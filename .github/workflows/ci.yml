@@ -1,0 +1,31 @@
+name: ci
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  database:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: trader
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: ci
+      PGDATABASE: trader
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply converted schema
+        run: |
+          for f in db/pg/[0-9]*.sql; do echo "== $f"; psql -v ON_ERROR_STOP=1 -q -f "$f"; done
+      - name: Count objects
+        run: |
+          psql -At -c "select 'tables', count(*) from information_schema.tables where table_schema='dbo' and table_type='BASE TABLE'"
+          psql -At -c "select 'columns', count(*) from information_schema.columns where table_schema='dbo'"
+          psql -At -c "select 'foreign keys', count(*) from information_schema.table_constraints where constraint_schema='dbo' and constraint_type='FOREIGN KEY'"
