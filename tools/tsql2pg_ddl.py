@@ -68,6 +68,9 @@ def conv_expr(e, pgtype=None):
     e = re.sub(r'localtimestamp\(3\)\s*\+\s*(\d+)', r"localtimestamp(3) + interval '\1 day'", e)
     e = re.sub(r'localtimestamp\(3\)\s*-\s*(\d+)', r"localtimestamp(3) - interval '\1 day'", e)
     e = re.sub(r'\bisnull\(', 'coalesce(', e, flags=re.I)
+    e = re.sub(r'datepart\(\s*year\s*,\s*localtimestamp\(3\)\s*\)', 'extract(year from localtimestamp(3))::integer', e, flags=re.I)
+    e = re.sub(r"convert\(varchar\(10\),\s*dateadd\(year,\s*(\d+),\s*localtimestamp\(3\)\),\s*101\)\s*\+\s*' 00:00:00.000'",
+               r"date_trunc('day', localtimestamp(3) + interval '\1 year')", e, flags=re.I)
     e = re.sub(r'\[([^\]]+)\]', lambda m: ident(m.group(1)), e)
     if pgtype == 'citext' and re.fullmatch(r'-?\d+(\.\d+)?', e):
         e = "'%s'" % e
@@ -125,7 +128,11 @@ def default_of(rest, pt):
         k += 1
         if depth == 0:
             break
-    return ' DEFAULT ' + conv_expr(rest[j:k], pt)
+    expr = conv_expr(rest[j:k], pt)
+    numeric = pt in ('smallint', 'integer', 'bigint', 'double precision', 'real') or pt.startswith('numeric')
+    if numeric and re.fullmatch(r"'[^']*'", expr) and not re.fullmatch(r"'-?\d+(\.\d+)?'", expr):
+        return ''  # SQL Server accepts this declaration but could never apply it (numeric column DEFAULT 'N')
+    return ' DEFAULT ' + expr
 
 
 def convert_tables(sql, names, report):
