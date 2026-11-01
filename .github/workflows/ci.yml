@@ -26,8 +26,8 @@ jobs:
           rc=0
           for f in db/pg/[0-9]*.sql; do
             echo "== $f"
-            psql -q -f "$f" 2> "$f.err" || true
-            if [ -s "$f.err" ]; then echo "--- errors in $f: $(grep -c ERROR "$f.err")"; head -60 "$f.err"; rc=1; fi
+            PGOPTIONS="-c client_min_messages=warning" psql -q -f "$f" 2> "$f.err" || true
+            if grep -q ERROR "$f.err"; then echo "--- errors in $f: $(grep -c ERROR "$f.err")"; head -60 "$f.err"; rc=1; fi
           done
           exit $rc
       - name: Count objects
