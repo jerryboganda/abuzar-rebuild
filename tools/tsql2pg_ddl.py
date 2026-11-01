@@ -157,7 +157,7 @@ def convert_tables(sql, names, report):
                 continue
             m = re.match(r'CONSTRAINT \[([^\]]+)\]\s+CHECK\s*(\(.*\))\s*$', c, re.I | re.S)
             if m:
-                lines.append('    CONSTRAINT %s CHECK %s' % (names.uniq(m.group(1), tname), conv_expr(m.group(2))))
+                lines.append('    CONSTRAINT %s CHECK (%s)' % (names.uniq(m.group(1), tname), conv_expr(m.group(2))))
                 report['check'] += 1
                 continue
             raise ValueError('constraint: ' + c)

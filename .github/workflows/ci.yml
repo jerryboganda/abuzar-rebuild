@@ -21,9 +21,15 @@ jobs:
       PGDATABASE: trader
     steps:
       - uses: actions/checkout@v4
-      - name: Apply converted schema
+      - name: Apply converted schema (collect every error, then fail)
         run: |
-          for f in db/pg/[0-9]*.sql; do echo "== $f"; psql -v ON_ERROR_STOP=1 -q -f "$f"; done
+          rc=0
+          for f in db/pg/[0-9]*.sql; do
+            echo "== $f"
+            psql -q -f "$f" 2> "$f.err" || true
+            if [ -s "$f.err" ]; then echo "--- errors in $f: $(grep -c ERROR "$f.err")"; head -60 "$f.err"; rc=1; fi
+          done
+          exit $rc
       - name: Count objects
         run: |
           psql -At -c "select 'tables', count(*) from information_schema.tables where table_schema='dbo' and table_type='BASE TABLE'"

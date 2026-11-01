@@ -127,8 +127,8 @@ CREATE TABLE dbo.adjbufferdetail (
     stockonshelf numeric(15,4) NOT NULL,
     alternatecustomicode citext NULL,
     CONSTRAINT pk_adjbufferdetail PRIMARY KEY (adjbuffercode, icode),
-    CONSTRAINT ck_adjbufferdetail_stockonshelf CHECK stockonshelf >= 0,
-    CONSTRAINT ck_adjbufferdetail_stockinhand CHECK stockinhand >= 0
+    CONSTRAINT ck_adjbufferdetail_stockonshelf CHECK (stockonshelf >= 0),
+    CONSTRAINT ck_adjbufferdetail_stockinhand CHECK (stockinhand >= 0)
 );
 
 CREATE TABLE dbo.adjbufferheader (
@@ -556,7 +556,7 @@ CREATE TABLE dbo.assocsaleinvlist (
     assocsaleinvcode integer NOT NULL,
     CONSTRAINT pk_assocsaleinvlist PRIMARY KEY (saleinvcode, assocsaleinvcode),
     CONSTRAINT uq_assocsaleinvlist_assocsaleinvcode UNIQUE (assocsaleinvcode),
-    CONSTRAINT ck_assocsaleinvlist_saleinvcode_assocsaleinvcode CHECK saleinvcode <> assocsaleinvcode
+    CONSTRAINT ck_assocsaleinvlist_saleinvcode_assocsaleinvcode CHECK (saleinvcode <> assocsaleinvcode)
 );
 
 CREATE TABLE dbo.author (
@@ -1114,7 +1114,7 @@ CREATE TABLE dbo.columnpreferences (
     columnname citext NOT NULL,
     colprecision smallint NOT NULL DEFAULT 0,
     CONSTRAINT pk_columnpreferences PRIMARY KEY (columnname),
-    CONSTRAINT ck_columnpreferences_coprecision CHECK colprecision >= 0 and colprecision <= 4
+    CONSTRAINT ck_columnpreferences_coprecision CHECK (colprecision >= 0 and colprecision <= 4)
 );
 
 CREATE TABLE dbo.companyheader (
@@ -4242,7 +4242,7 @@ CREATE TABLE dbo.dosage (
     localdosage citext NULL,
     CONSTRAINT pk_dosage PRIMARY KEY (dosagecode),
     CONSTRAINT uq_dosage_name UNIQUE (name),
-    CONSTRAINT ck_dosage_dosefactor CHECK dosefactor > 0
+    CONSTRAINT ck_dosage_dosefactor CHECK (dosefactor > 0)
 );
 
 CREATE TABLE dbo.dosageunit (
@@ -6380,7 +6380,7 @@ CREATE TABLE dbo.issueheader (
     pushedon timestamp(3) NULL,
     targetsitecode smallint NULL,
     CONSTRAINT pk_issueheader_2__13 PRIMARY KEY (issueinvcode),
-    CONSTRAINT ck_issueheader CHECK deptcode is not null or acccode is not null or recipientsalesman is not null
+    CONSTRAINT ck_issueheader CHECK (deptcode is not null or acccode is not null or recipientsalesman is not null)
 );
 
 CREATE TABLE dbo.issuereqdetail (
@@ -6596,7 +6596,7 @@ CREATE TABLE dbo.itemassociation (
     icode integer NOT NULL,
     associcode integer NOT NULL,
     CONSTRAINT pk_itemassociation_icode_associcode PRIMARY KEY (icode, associcode),
-    CONSTRAINT ck_itemassociation CHECK icode <> associcode
+    CONSTRAINT ck_itemassociation CHECK (icode <> associcode)
 );
 
 CREATE TABLE dbo.itemauthor (
@@ -7663,7 +7663,7 @@ CREATE TABLE dbo.notes (
     crs_transferedon timestamp(3) NULL,
     CONSTRAINT pk_notes_1__13 PRIMARY KEY (notecode),
     CONSTRAINT ix_notes_vouchercode UNIQUE (notecatcode, vouchercode),
-    CONSTRAINT test CHECK notecode > 0
+    CONSTRAINT test CHECK (notecode > 0)
 );
 
 CREATE TABLE dbo.notescategory (
@@ -7884,7 +7884,7 @@ CREATE TABLE dbo.patient (
     CONSTRAINT pk_patient_2__11 PRIMARY KEY (patientcode),
     CONSTRAINT regnouk UNIQUE (regno),
     CONSTRAINT uk_patient_membershipid UNIQUE (membershipid),
-    CONSTRAINT patientgednerchk CHECK gender = 'M' or gender = 'F' or gender = 'O'
+    CONSTRAINT patientgednerchk CHECK (gender = 'M' or gender = 'F' or gender = 'O')
 );
 
 CREATE TABLE dbo.patientadmission (
@@ -8845,9 +8845,9 @@ CREATE TABLE dbo.prescriptiondeletedetail (
     duration smallint NOT NULL,
     inscode smallint NULL,
     deletedate timestamp(3) NOT NULL,
-    CONSTRAINT ck_prescriptiondeletedetail_dosefactor CHECK dosefactor > 0,
-    CONSTRAINT ck_prescriptiondeletedetail_duration CHECK duration > 0,
-    CONSTRAINT ck_prescriptiondeletedetail_noofunits CHECK noofunits > 0
+    CONSTRAINT ck_prescriptiondeletedetail_dosefactor CHECK (dosefactor > 0),
+    CONSTRAINT ck_prescriptiondeletedetail_duration CHECK (duration > 0),
+    CONSTRAINT ck_prescriptiondeletedetail_noofunits CHECK (noofunits > 0)
 );
 
 CREATE TABLE dbo.prescriptiondetail (
@@ -8862,9 +8862,9 @@ CREATE TABLE dbo.prescriptiondetail (
     duration smallint NOT NULL,
     inscode smallint NULL,
     CONSTRAINT pk_prescriptiondetail_prescode_icode PRIMARY KEY (prescode, icode),
-    CONSTRAINT ck_prescriptiondetail_duration CHECK duration > 0,
-    CONSTRAINT ck_prescriptiondetail_noofunits CHECK noofunits > 0,
-    CONSTRAINT ck_prescriptiondetail_dosefactor CHECK dosefactor > 0
+    CONSTRAINT ck_prescriptiondetail_duration CHECK (duration > 0),
+    CONSTRAINT ck_prescriptiondetail_noofunits CHECK (noofunits > 0),
+    CONSTRAINT ck_prescriptiondetail_dosefactor CHECK (dosefactor > 0)
 );
 
 CREATE TABLE dbo.prescriptiondetaillog (
@@ -8880,9 +8880,9 @@ CREATE TABLE dbo.prescriptiondetaillog (
     duration smallint NOT NULL,
     inscode smallint NULL,
     CONSTRAINT pk_prescriptiondetaillog_logid_prescode_icode PRIMARY KEY (logid, prescode, icode),
-    CONSTRAINT ck_prescriptiondetaillog_dosefactor CHECK dosefactor > 0,
-    CONSTRAINT ck_prescriptiondetaillog_duration CHECK duration > 0,
-    CONSTRAINT ck_prescriptiondetaillog_noofunits CHECK noofunits > 0
+    CONSTRAINT ck_prescriptiondetaillog_dosefactor CHECK (dosefactor > 0),
+    CONSTRAINT ck_prescriptiondetaillog_duration CHECK (duration > 0),
+    CONSTRAINT ck_prescriptiondetaillog_noofunits CHECK (noofunits > 0)
 );
 
 CREATE TABLE dbo.prescriptionheader (
@@ -9064,7 +9064,7 @@ CREATE TABLE dbo.proddetail (
     batch citext NOT NULL DEFAULT '.',
     expiry timestamp(3) NOT NULL DEFAULT localtimestamp(3),
     CONSTRAINT pk_proddetail PRIMARY KEY (prodcode, icode, rowid),
-    CONSTRAINT ck_proddetail_qty CHECK qty > 0
+    CONSTRAINT ck_proddetail_qty CHECK (qty > 0)
 );
 
 CREATE TABLE dbo.prodheader (
@@ -9664,8 +9664,8 @@ CREATE TABLE dbo.purorderdetail (
     issueqty numeric(15,4) NOT NULL DEFAULT 0,
     receiptqty numeric(15,4) NOT NULL DEFAULT 0,
     CONSTRAINT pk_purorderdetail_1__11 PRIMARY KEY (pocode, icode),
-    CONSTRAINT ck_purorderdetail_bonusqtysatisfied CHECK bonusqtysatisfied >= 0,
-    CONSTRAINT ck_purorderdetail_qtysatisfied CHECK qtysatisfied >= 0
+    CONSTRAINT ck_purorderdetail_bonusqtysatisfied CHECK (bonusqtysatisfied >= 0),
+    CONSTRAINT ck_purorderdetail_qtysatisfied CHECK (qtysatisfied >= 0)
 );
 
 CREATE TABLE dbo.purorderheader (
@@ -10059,7 +10059,7 @@ CREATE TABLE dbo.receiptheader (
     motorvehiclecode integer NULL,
     issueinvcode integer NULL,
     CONSTRAINT pk_receiptheader_1__18 PRIMARY KEY (receiptinvcode),
-    CONSTRAINT ck_receiptheader CHECK deptcode is not null or acccode is not null or recipientsalesman is not null
+    CONSTRAINT ck_receiptheader CHECK (deptcode is not null or acccode is not null or recipientsalesman is not null)
 );
 
 CREATE TABLE dbo.recipe (
@@ -10111,7 +10111,7 @@ CREATE TABLE dbo.refusedsaledetail (
     totalstock numeric(15,4) NOT NULL DEFAULT 1,
     rowid integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
     saleprice numeric(12,2) NOT NULL DEFAULT 0,
-    CONSTRAINT ck_refusedsaledetail_icode_unknownitemname CHECK icode is null and unknownitemname is not null or icode is not null and unknownitemname is null
+    CONSTRAINT ck_refusedsaledetail_icode_unknownitemname CHECK (icode is null and unknownitemname is not null or icode is not null and unknownitemname is null)
 );
 
 CREATE TABLE dbo.refusedsaleheader (
