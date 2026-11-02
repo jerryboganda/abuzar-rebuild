@@ -516,7 +516,8 @@ class Translator(ExprMixin, QueryMixin, StmtMixin):
     def standalone(self, node, binds_cls=None):
         """translate a parsed SELECT/INSERT/UPDATE/DELETE with :bind variables -> (sql, binds, select_cols)"""
         self.begin('stmt', 'stmt', '')
-        self.bind_types = binds_cls or {}
+        if binds_cls is not None:
+            self.bind_types = binds_cls
         if node.k == 'select':
             sql, cols = self.select_full(node, Scope())
             return sql, list(self.binds)

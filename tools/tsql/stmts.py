@@ -91,7 +91,8 @@ def compact(text):
 
 def guess_type(name):
     last = name.split('.')[-1].split('[')[0].lower()
-    if 'date' in last or last.startswith(('dt', 'adt', 'ldt')):
+    probe = re.sub(r'update|validate|candidate|mandate', '', last)
+    if 'date' in probe or last.startswith(('dt', 'adt', 'ldt', 'idt')):
         return 'timestamp'
     for pre, ty in PREFIX_TYPES:
         if last.startswith(pre):
@@ -219,8 +220,14 @@ def proc_call_to_pg(raw, sigs):
     return 'SELECT * FROM dbo.%s(%s)' % (ident(name), ', '.join('%s => $%d' % (pident(a), i + 1) for i, (a, b) in enumerate(args))), [b for a, b in args], name
 
 
-def translate_text(tr, text):
+def translate_text(tr, text, bind_types=None):
     """parse + translate one statement text (with :binds).  -> (sql, binds, into)"""
+    if bind_types is None:
+        bind_types = {}
+        for nm in re.findall(r':([A-Za-z_][\w.\[\]]*)', text):
+            if guess_type(nm) == 'timestamp':
+                bind_types[nm.lower()] = 'D'
+    tr.bind_types = bind_types
     p = Parser(text, binds=True, dq_is_string=True)
     stmts = p.parse_batch()
     if len(stmts) != 1:
@@ -319,7 +326,8 @@ def main():
                 if d['dwkind'] == 'pbselect':
                     text, args2 = pbselect_to_tsql(d['raw'])
                     args = {**args, **args2}
-                sql, binds, into = translate_text(tr, text)
+                bt = {k: 'D' for k, v in args.items() if v in ('datetime', 'date', 'time', 'timestamp')}
+                sql, binds, into = translate_text(tr, text, bt)
                 r.update(translated=sql, params=binds, status='translated')
             r['param_types'] = [PB_PG.get(args.get(b.lower().split('.')[0], ''), guess_type(b) or 'text') for b in r['params']]
         except (ParseError, LexError) as ex:

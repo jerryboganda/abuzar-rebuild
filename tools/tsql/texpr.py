@@ -203,7 +203,7 @@ class ExprMixin:
         return '$%d' % (self.binds.index(n.name) + 1), self.bind_cls(n.name)
 
     def bind_cls(self, name):
-        return 'U'
+        return getattr(self, 'bind_types', {}).get(name.lower(), 'U')
 
     def e_default(self, n, sc):
         return 'DEFAULT', 'U'
@@ -274,6 +274,11 @@ class ExprMixin:
                 return 'localtimestamp(3)', 'D'
             if up in ('CURRENT_USER', 'SESSION_USER', 'SYSTEM_USER', 'USER'):
                 return 'current_user', 'S'
+            if up == 'IDENTITYCOL':
+                alias, colname = sc.find_identity(None)
+                if colname is None:
+                    raise Untranslatable('IDENTITYCOL of a table without an identity column')
+                return (ident(alias) + '.' if alias else '') + ident(colname), 'I'
             cls = sc.lookup(None, parts[0])
             return ident(parts[0]), cls or 'U'
         if parts[-1].lower() == 'identitycol':
@@ -468,6 +473,8 @@ class ExprMixin:
             cls = max(classes, key=lambda c: rank[c])
             if len(classes) > 1 and not (classes <= {'I', 'N'}):
                 results = [(nd, self.unify_cast(nd, s, c, cls), cls if c in rank else c) for nd, s, c in results]
+            elif any(nd.k == 'bind' for nd, _, _ in results) and cls in ('I', 'N', 'D'):
+                results = [(nd, self.unify_cast(nd, s, c, cls) if nd.k == 'bind' else s, c) for nd, s, c in results]
         i = 0
         for cs in conds:
             parts.append('WHEN %s THEN %s' % (cs, results[i][1]))

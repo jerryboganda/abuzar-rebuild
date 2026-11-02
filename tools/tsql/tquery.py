@@ -94,6 +94,7 @@ class QueryMixin:
             del self.binds[nbinds:]
             parts, cols, first_scope, single_limit = [], None, None, ''
             metas = []
+            member_nulls = []
             first_names = None
             for i, m in enumerate(members):
                 sql, mcols, msc, limit = self.select_core(m, outer, targets=targets, unify=unify)
@@ -103,6 +104,7 @@ class QueryMixin:
                 if i == 0:
                     cols, first_scope = mcols, msc
                     raw0 = list(getattr(self, 'last_raw', []))
+                member_nulls.append(list(getattr(self, 'last_nulls', [])))
                 if union:
                     if limit or (i > 0 and m.order):
                         if i > 0 and m.order:
@@ -117,7 +119,7 @@ class QueryMixin:
                     single_limit = limit
             if not union or attempt == 1:
                 break
-            unify = self.union_plan(metas)
+            unify = self.union_plan(metas, member_nulls)
             if not unify:
                 break
         sql = ' '.join(parts)
@@ -135,6 +137,8 @@ class QueryMixin:
                     if pos is not None:
                         items.append(str(pos) + (' DESC' if desc else ''))
                         continue
+                    if not (e.k == 'col' and len(e.parts) == 1):
+                        continue      # T-SQL accepts expressions that are not output columns; PostgreSQL cannot - tie-breaker dropped
                 else:
                     e = self.group_order_item(e, sel)
                     if e.k == 'col' and len(e.parts) == 1 and names0.count(e.parts[0].lower()) > 1:
@@ -143,6 +147,9 @@ class QueryMixin:
                 items.append(self.Es(e, osc) + (' DESC' if desc else ''))
             sql += ' ORDER BY ' + ', '.join(items)
         sql += single_limit
+        sql = sql.replace(' ORDER BY ' + '', ' ORDER BY ') if sel.order and not union else sql
+        if union and sel.order and sql.rstrip().endswith('ORDER BY'):
+            sql = sql.rstrip()[:-len('ORDER BY')].rstrip()
         return sql, cols
 
     def order_ordinal(self, e, osc, raw0, first):
@@ -194,6 +201,10 @@ class QueryMixin:
             for a, b in ((c.l, c.r), (c.r, c.l)):
                 if self.colkey(a) == me and self.colkey(b) in gset:
                     return b
+        last = e.parts[-1].lower()
+        for it in sel.items:
+            if it.alias and it.alias.lower() == last and not (it.e.k == 'col' and self.colkey(it.e) == me):
+                return Node('col', parts=[it.alias])
         return e
 
     def union_order_item(self, e, first):
@@ -211,14 +222,16 @@ class QueryMixin:
             return Node('col', parts=[e.parts[-1]])
         return e
 
-    def union_plan(self, metas):
-        """columns whose static class differs between the members of a UNION: {index: target class}"""
+    def union_plan(self, metas, nulls=None):
+        """columns of a UNION that need casts: {index: target class}.  Either the static class differs between the members, or some
+        member has a typeless NULL there (PostgreSQL resolves NULL-only branches of a chained UNION to text)"""
         n = min(len(m) for m in metas)
         plan = {}
         rank = {'D': 4, 'N': 3, 'I': 2, 'S': 1}
         for j in range(n):
             cl = [m[j][1] for m in metas if m[j][1] in rank]
-            if len(set(cl)) > 1:
+            has_null = nulls is not None and any(j < len(nl) and nl[j] for nl in nulls)
+            if cl and (len(set(cl)) > 1 or has_null):
                 plan[j] = max(cl, key=lambda c: rank[c])
         return plan
 
@@ -256,7 +269,11 @@ class QueryMixin:
         return sql, cols, sc, limit
 
     def unify_cast(self, e, s, c, target_cls):
-        if c == target_cls or c in ('U', 'P') or (e.k == 'lit' and e.t == 'null'):
+        if e.k == 'lit' and e.t == 'null':
+            return 'NULL::%s' % {'D': 'timestamp', 'N': 'numeric', 'I': 'integer', 'S': 'citext'}.get(target_cls, 'text')
+        if e.k == 'bind' and target_cls in ('D', 'N', 'I'):
+            return '(%s)::%s' % (s, {'D': 'timestamp', 'N': 'numeric', 'I': 'numeric'}[target_cls])
+        if c == target_cls or c in ('U', 'P'):
             return s
         if c == 'S':
             if e.k == 'lit' and e.t == 'str' and e.v.strip() == '':
@@ -273,7 +290,9 @@ class QueryMixin:
     def select_items(self, items, sc, targets=None, unify=None):
         out, cols = [], []
         raw = []
+        nulls = []
         self.last_raw = raw
+        self.last_nulls = nulls
         pos = 0
         for it in items:
             if it.var is not None:
@@ -299,6 +318,7 @@ class QueryMixin:
             if name is None and e.k == 'paren' and e.e.k == 'col':
                 name = e.e.parts[-1]
             raw.append(s)
+            nulls.append(e.k == 'lit' and e.t == 'null')
             if it.alias is not None:
                 s = '%s AS %s' % (s, ident(it.alias))
             elif name is not None and unify and pos in unify and e.k == 'col':
