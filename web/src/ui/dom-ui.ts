@@ -865,8 +865,9 @@ export class WinView {
         const d = document.createElement('div')
         d.className = 'ctl'
         d.style.overflow = 'hidden'
-        d.style.border = '1px solid #a0a0a0'
+        this.borderClass(c, d)
         this.place(c, d)
+        ;(c as NControl).listeners?.add(() => this.refresh(c, d))
         const v = new CtlView(this.ui, c, d)
         v.dw = new DwView(c as NDwBase, d)
         return v

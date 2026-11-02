@@ -77,6 +77,20 @@ export class NDwBase extends PBObject {
     for (const l of this.listeners) l()
   }
 
+  /** a script that changes visibility, position or size of the control (`dw.visible = false`, `dw.width = ...`) must see the change on the screen */
+  override pbSet(name: string, value: unknown): void {
+    super.pbSet(name, value)
+    if (['visible', 'enabled', 'x', 'y', 'width', 'height'].includes(name.toLowerCase())) this.changed()
+  }
+  async n_hide(): Promise<number> {
+    this.pbSet('visible', false)
+    return 1
+  }
+  async n_show(): Promise<number> {
+    this.pbSet('visible', true)
+    return 1
+  }
+
   // ---------------------------------------------------------------- properties
   override declare(name: string, type: string, value?: unknown): void {
     super.declare(name, type, value)
