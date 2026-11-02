@@ -85,6 +85,39 @@ export class DomUi implements UiHost {
     if (s) s.textContent = t
   }
 
+  /** text prompt standing in for the file dialogs of the original */
+  prompt(title: string, text: string, def: string): Promise<string | null> {
+    return new Promise((resolve) => {
+      const bg = document.createElement('div')
+      bg.className = 'modal-bg'
+      bg.style.zIndex = '1999'
+      const box = document.createElement('div')
+      box.className = 'msgbox'
+      box.innerHTML = '<div class="tbar" style="background:#fff"><div class="ttl"></div></div><div class="body" style="flex-direction:column"><div class="txt"></div><input style="width:100%;height:24px;border:1px solid #7a7a7a"></div><div class="btns"><button class="ok">OK</button><button class="cancel">Cancel</button></div>'
+      ;(box.querySelector('.ttl') as HTMLElement).textContent = title
+      ;(box.querySelector('.txt') as HTMLElement).textContent = text
+      const input = box.querySelector('input') as HTMLInputElement
+      input.value = def
+      const done = (v: string | null) => {
+        bg.remove()
+        box.remove()
+        resolve(v)
+      }
+      ;(box.querySelector('.ok') as HTMLElement).onclick = () => done(input.value)
+      ;(box.querySelector('.cancel') as HTMLElement).onclick = () => done(null)
+      input.onkeydown = (e) => {
+        if (e.key === 'Enter') done(input.value)
+        if (e.key === 'Escape') done(null)
+      }
+      this.desktop.appendChild(bg)
+      this.desktop.appendChild(box)
+      const r = this.desktop.getBoundingClientRect()
+      box.style.left = Math.max(0, (r.width - 420) / 2) + 'px'
+      box.style.top = Math.max(0, (r.height - 160) / 3) + 'px'
+      input.focus()
+    })
+  }
+
   messageBox(title: string, text: string, icon: string, buttons: string, def: number): Promise<number> {
     return new Promise((resolve) => {
       const bg = document.createElement('div')

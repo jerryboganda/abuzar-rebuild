@@ -8,6 +8,7 @@
 //! Statements arrive with `$n` placeholders and JSON parameters and are executed with the simple query protocol, so every
 //! result is returned in text form together with its PostgreSQL type name (the client decodes by type).
 
+pub mod fs;
 pub mod sqlsub;
 
 use std::collections::HashMap;
@@ -310,6 +311,12 @@ pub fn router(state: AppState) -> Router {
         .route("/api/query", post(query))
         .route("/api/exec", post(exec))
         .route("/api/call", post(call))
+        .route("/api/fs/read", post(fs::read))
+        .route("/api/fs/write", post(fs::write))
+        .route("/api/fs/exists", post(fs::exists))
+        .route("/api/fs/delete", post(fs::delete))
+        .route("/api/fs/copy", post(fs::copy))
+        .route("/api/print/raw", post(fs::print_raw))
         .route("/api/commit", post(commit))
         .route("/api/rollback", post(rollback))
         .route("/api/close", post(close))

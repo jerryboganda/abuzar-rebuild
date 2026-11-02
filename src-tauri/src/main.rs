@@ -14,6 +14,8 @@ fn database_url() -> Option<String> {
 }
 
 fn main() {
+    // the desktop application may use every path, like the original did
+    std::env::set_var("FS_UNRESTRICTED", "1");
     let url = database_url().unwrap_or_else(|| "postgres://postgres@127.0.0.1:5432/trader".to_string());
     let bind: SocketAddr = std::env::var("BIND").ok().and_then(|b| b.parse().ok()).unwrap_or_else(|| "127.0.0.1:8787".parse().unwrap());
     let rt = tokio::runtime::Builder::new_multi_thread().enable_all().build().expect("tokio runtime");

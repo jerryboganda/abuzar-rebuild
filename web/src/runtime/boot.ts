@@ -3,6 +3,7 @@ import { Runtime } from './interp.ts'
 import type { ClassLoader, UiHost } from './interp.ts'
 import { registerSysFuncs } from './sysfuncs.ts'
 import { registerWindowing } from './native/windowing.ts'
+import { registerFileFuncs } from './sysfiles.ts'
 import { executeStatement } from './native/transaction.ts'
 import type { SqlEntry } from './native/transaction.ts'
 import { PBObject } from './object.ts'
@@ -31,6 +32,7 @@ export async function createRuntime(o: BootOptions): Promise<Runtime> {
   const rt = new Runtime(o.loader)
   registerSysFuncs(rt)
   registerWindowing(rt)
+  registerFileFuncs(rt)
   rt.ui = o.ui ?? null
   rt.dwCatalog = new DwCatalog(o.readData)
   rt.sql = executeStatement
