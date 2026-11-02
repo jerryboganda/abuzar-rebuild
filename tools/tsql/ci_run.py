@@ -21,6 +21,15 @@ MARK = re.compile(r'^-- ==== (\S+) (.+?) ====\s*$', re.M)
 FILES = [('function', '40_functions.sql'), ('view', '50_views.sql'), ('proc', '60_procedures.sql'), ('trigger', '70_triggers.sql')]
 
 
+def shorten_name(name):
+    """same rule as tools/tsql/names.py: identifiers longer than 63 bytes get a sha1 suffix"""
+    import hashlib
+    n = name.strip().lower()
+    if len(n.encode('utf-8')) > 63:
+        n = n[:54] + '_' + hashlib.sha1(n.encode('utf-8')).hexdigest()[:8]
+    return n
+
+
 def split_units(path):
     text = open(path, encoding='utf-8').read()
     ms = list(MARK.finditer(text))
@@ -158,9 +167,7 @@ def plpgsql_check(conn, created, units_index, results, failures, sources):
         if cat not in ('proc', 'function', 'trigger'):
             continue
         fname = ('trg_' + name) if cat == 'trigger' else name
-        low = fname.lower()
-        if len(low) > 63:
-            continue
+        low = shorten_name(fname)
         try:
             row = conn.execute("select p.oid, p.prosrc <> '' from pg_proc p join pg_namespace n on n.oid = p.pronamespace "
                                "where n.nspname = 'dbo' and p.proname = %s", (low,)).fetchone()
@@ -444,6 +451,9 @@ def main():
     for (stage, cat, kind), fs in sorted(fk.items(), key=lambda x: -len(x[1]))[:a.top]:
         print('%4d  %s/%s  %s   e.g. %s' % (len(fs), stage, cat, kind, ', '.join(sorted({f['name'] for f in fs})[:3])))
     print('\nfailures total', len(failures))
+    print('=== BEGIN REPORT')
+    print(open(a.report, encoding='utf-8').read())
+    print('=== END REPORT')
     if os.environ.get('DUMP_FAILURES', '1') == '1':
         print('=== BEGIN FAILURES (json lines)')
         for f in failures:

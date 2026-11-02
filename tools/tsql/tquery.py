@@ -97,6 +97,8 @@ class QueryMixin:
             first_names = None
             for i, m in enumerate(members):
                 sql, mcols, msc, limit = self.select_core(m, outer, targets=targets, unify=unify)
+                if union and limit.endswith(' FOR UPDATE') or (union and ' FOR UPDATE OF ' in limit):
+                    limit = limit[:limit.index(' FOR UPDATE')]
                 metas.append(mcols)
                 if i == 0:
                     cols, first_scope = mcols, msc
