@@ -50,6 +50,8 @@ jobs:
           psql -At -c "select 'tables', count(*) from information_schema.tables where table_schema='dbo' and table_type='BASE TABLE'"
       - name: Apply routines one by one, check them, prepare statements
         run: python tools/tsql/ci_run.py --repo . --out ci-out --report ci-out/SQL-TRANSLATION-REPORT.md
+      - name: Functional test of the translation mechanisms
+        run: python tools/tsql/functional_test.py
       - name: Job summary
         if: always()
         run: |
