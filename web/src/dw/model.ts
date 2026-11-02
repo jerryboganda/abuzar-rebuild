@@ -103,10 +103,10 @@ export class DwModel implements EvalHost {
     // a column object whose name is not a data column shows the column its `id` points at (copies of one column on a label)
     for (const o of def.objects) {
       const id = Number(o.id)
-      if (o.type === 'column' && Number.isInteger(id) && id >= 1 && id <= this.colNames.length && !this.colIdx.has(o.name.toLowerCase())) this.colIdx.set(o.name.toLowerCase(), id - 1)
+      if (o.type === 'column' && Number.isInteger(id) && id >= 1 && id <= this.colNames.length && o.name && !this.colIdx.has(o.name.toLowerCase())) this.colIdx.set(o.name.toLowerCase(), id - 1)
     }
     this.computes.clear()
-    for (const o of def.objects) if (o.type === 'compute') this.computes.set(o.name.toLowerCase(), o)
+    for (const o of def.objects) if (o.type === 'compute' && o.name) this.computes.set(o.name.toLowerCase(), o)
   }
 
   get version(): number {

@@ -20,6 +20,7 @@ res = {
     'datawindow_retrieves': pair(r'DataWindows executed: (\d+) of (\d+)'),
     'procedures': pair(r'procedures executed: (\d+) of (\d+)'),
 }
+res['datawindow_evaluation'] = pair(r'DataWindows evaluated with synthetic rows: (\d+) of (\d+)')
 m = re.search(r'windows tried (\d+)\s+opened without runtime error (\d+)', log)
 res['windows'] = {'ok': int(m.group(2)), 'of': int(m.group(1))} if m else None
 m = re.search(r'start-up (completed|FAILED)(.*)', log)

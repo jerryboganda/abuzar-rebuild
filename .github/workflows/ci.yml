@@ -171,6 +171,8 @@ jobs:
         run: SMOKE_SERVER=http://127.0.0.1:8787 node web/tools/startup-check.ts web/public/data | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Execute every DataWindow retrieve and embedded statement
         run: node web/tools/dw-sweep.ts web/public/data http://127.0.0.1:8787 sweep.json | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Evaluate every DataWindow with synthetic rows (computed fields and expression properties)
+        run: node web/tools/dw-eval-sweep.ts web/public/data dweval.json | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Open every window against the real server and database
         run: SMOKE_SERVER=http://127.0.0.1:8787 node web/tools/smoke-windows.ts web/public/data - smoke.json | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Browser run of the real user interface (Chromium)

@@ -280,3 +280,18 @@ test('shared item list: one retrieve per session, reset and writes invalidate th
   assert.equal(await b.retrieve([0]), 3)
   assert.equal(queries(), 3)
 })
+
+test('a RichText DataWindow (objects without a name) builds and holds rows', () => {
+  const rt = new Runtime({ load: async () => undefined })
+  registerSysFuncs(rt)
+  const rich = {
+    datawindow: { processing: '7' },
+    bands: {},
+    table: { columns: [{ type: 'char(4000)', name: 'comments', dbname: 'Comments' }] },
+    objects: [{ id: '1', type: 'column' }],
+  } as unknown as DwDef
+  const m = new DwModel(rt, 'd_rich', rich)
+  m.insertRow(0)
+  m.setItem(1, 'comments', 'text')
+  assert.equal(m.getItem(1, 'comments'), 'text')
+})

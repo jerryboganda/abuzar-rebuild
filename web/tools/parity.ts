@@ -41,6 +41,7 @@ if (ci) {
   L.push(`- embedded statements that run (null parameters, errors of integrity / data classes not counted as failures): ${fmt(ci.embedded_statements)}`)
   L.push(`- translated procedures that run with neutral arguments: ${fmt(ci.procedures)}`)
   L.push(`- windows opened without a runtime error (retried with the usual Message.StringParm codes): ${fmt(ci.windows)}`)
+  if (ci.datawindow_evaluation) L.push(`- DataWindows whose computed fields and expression properties evaluate with synthetic rows (no database): ${fmt(ci.datawindow_evaluation)}`)
   L.push(`- start-up with the first administrator: ${ci.startup ?? 'not measured'}`)
   const mm = ci.main_menu as unknown as { visible: number; of: number; top_visible: number; top: number } | null
   if (mm) L.push(`- main menu after the rights were applied (headless run): ${mm.visible} of ${mm.of} items visible, ${mm.top_visible} of ${mm.top} top-level menus`)
