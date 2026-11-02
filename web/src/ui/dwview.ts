@@ -109,6 +109,7 @@ export class DwView {
         return
       }
       // the scroll bars are attributes of the control (HScrollBar / VScrollBar), not of the DataWindow object; without them nothing scrolls by mouse
+      this.root.style.background = pbColor(m.def.datawindow.color, '#fff')
       if (!this.previewOn(m)) {
         this.root.style.overflowX = this.ctl.props.get('hscrollbar') === true ? 'auto' : 'hidden'
         this.root.style.overflowY = this.ctl.props.get('vscrollbar') === true ? 'auto' : 'hidden'
@@ -719,7 +720,11 @@ export class DwView {
   }
 
   private async display(m: DwModel, o: DwObject, v: unknown): Promise<string> {
-    if (v === null || v === undefined) return ''
+    if (v === null || v === undefined) {
+      // an empty column still shows its display format when that has a section for null / zero-length text (the password columns show `*****`)
+      const f = splitExpr(o.format).value
+      return f && /^\s*'[^']*'\s*;\s*'[^']*'\s*$/.test(f) ? stringFormat(null, f) : ''
+    }
     if (o['dddw.name']) {
       const cm = await this.childOf(o)
       if (cm) {

@@ -335,18 +335,41 @@ export class Runtime {
   }
 
   /** defer a call until the current event handler has finished (PowerScript `post`) */
+  /**
+   * posted events run one after the other, each to its end (a message queue: `post event ue_newform()` after `postevent("ue_postopen")` means the second starts when the
+   * first is done).  A modal window or a message box waiting for its answer runs a message loop of its own in PowerBuilder: `yieldQueue` lets the queue go on meanwhile.
+   */
+  private draining = false
+  private gen = 0
   post(fn: () => Promise<void>): void {
     this.posted.push(fn)
-    if (this.posted.length === 1) setTimeout(() => void this.drainPosted(), 0)
+    if (!this.draining) {
+      this.draining = true
+      const g = this.gen
+      setTimeout(() => void this.drainPosted(g), 0)
+    }
   }
-  async drainPosted(): Promise<void> {
-    while (this.posted.length) {
-      const fn = this.posted.shift()!
-      try {
-        await fn()
-      } catch (e) {
-        this.onError(e)
+  async drainPosted(g = this.gen): Promise<void> {
+    try {
+      while (g === this.gen && this.posted.length) {
+        const fn = this.posted.shift()!
+        try {
+          await fn()
+        } catch (e) {
+          this.onError(e)
+        }
       }
+    } finally {
+      if (g === this.gen) this.draining = false
+    }
+  }
+  yieldQueue(): void {
+    this.gen++
+    this.draining = false
+    if (this.posted.length) {
+      this.draining = true
+      const g = this.gen
+      setTimeout(() => void this.drainPosted(g), 0)
     }
   }
   onError: (e: unknown) => void = (e) => {

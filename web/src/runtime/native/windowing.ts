@@ -91,7 +91,10 @@ async function openWin(rt: Runtime, a: unknown[], sheet: boolean, withParm: bool
     await rt.fire(t, 'selectionchanging', [0, first])
     await rt.fire(t, 'selectionchanged', [0, first])
   }
-  if (modal) await w.closed
+  if (modal) {
+    rt.yieldQueue()
+    await w.closed
+  }
   else if (w.props.get('visible') === false) rt.ui?.hideWindow?.(w)
   return 1
 }

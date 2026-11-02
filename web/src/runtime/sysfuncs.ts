@@ -262,6 +262,7 @@ export function registerSysFuncs(rt: Runtime): void {
   }, [0])
   def(rt, 'messagebox', async (r, a) => {
     if (!r.ui) return 1
+    r.yieldQueue() // the box waits for its answer: posted events go on meanwhile
     return r.ui.messageBox(s(a[0]), s(a[1]), a.length > 2 ? s(a[2]) : 'information!', a.length > 3 ? s(a[3]) : 'ok!', a.length > 4 ? n(a[4]) : 1)
   })
 }
