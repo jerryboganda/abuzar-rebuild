@@ -22,8 +22,9 @@ Run `trader-server.exe` on one machine with `DATABASE_URL`, `BIND=0.0.0.0:8787`,
 behind a firewall.  The file functions (export, import, label files) work on the server machine inside `FS_ROOT`.
 
 ## Backups
-The original backed up with SQL Server `BACKUP DATABASE` from inside the program.  Use `pg_dump -Fc trader > trader.dump` (scheduled with the Windows task
-scheduler) and `pg_restore -d trader trader.dump`.  The start-up check for a SQL Server backup is switched off by `95_bootstrap.sql`.
+The original backed up with SQL Server `BACKUP DATABASE` from inside the program.  The rebuild keeps that menu item: Maintenance > Database Utilities > Backup Database now writes a
+`pg_dump -Fc` file of the company database to the folder chosen in the window (the server needs `pg_dump` in its PATH; restore with `pg_restore -d trader <file>`).  Scheduled backups: run
+`pg_dump -Fc trader > trader.dump` with the Windows task scheduler.  The start-up check for a SQL Server backup is switched off by `95_bootstrap.sql`.
 
 ## Audit trail
 `dbo.audit_log` records every change of users, rights, preferences, accounts, customers, suppliers and items (old and new row as JSON, application user,

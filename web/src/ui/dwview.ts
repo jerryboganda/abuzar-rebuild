@@ -420,7 +420,7 @@ export class DwView {
       const top = document.createElement('div')
       top.style.cssText = `position:sticky;top:0;z-index:3;height:18px;margin:-18px 0 0 -18px;padding-left:18px;background:#f0f0f0;border-bottom:1px solid #a0a0a0;overflow:hidden;width:${Math.max(widest * z, 600)}px;box-sizing:content-box`
       top.style.backgroundImage = tick('x')
-      for (let i = 1; i * inch < widest * z; i++) {
+      for (let i = 1; i <= 60 && i * inch < Math.min(widest, 6000) * z; i++) {
         const n = document.createElement('span')
         n.textContent = String(i)
         n.style.cssText = `position:absolute;left:${18 + i * inch + 2}px;top:0;font:9px Segoe UI,Arial`

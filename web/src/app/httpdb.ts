@@ -73,7 +73,18 @@ export class HttpDb implements Db {
   async query(sql: string, params: unknown[]): Promise<QueryResult> {
     return this.post('/api/query', { sid: this.sid, sql: await this.jobs(sql, params), params })
   }
-  exec(sql: string, params: unknown[]): Promise<{ rowcount: number }> {
+  /** `Backup Database <db> To <device> With INIT ...` (SQL Server): a pg_dump of the database into that file; the system databases have nothing to dump */
+  private async backup(sql: string): Promise<boolean> {
+    const m = /^\s*backup\s+database\s+(\S+)\s+to\s+(?:disk\s*=\s*)?'([^']+)'/i.exec(sql)
+    if (!m) return false
+    if (/^\[?(master|msdb|model)\]?$/i.test(m[1])) return true
+    const r = await fetch(this.base + '/api/backup', { method: 'POST', headers: { 'content-type': 'application/json', ...authHeaders() }, body: JSON.stringify({ path: m[2] }) })
+    const j = (await r.json().catch(() => ({}))) as { ok?: boolean; error?: string }
+    if (!j.ok) throw new Error(j.error || 'Backup failed')
+    return true
+  }
+  async exec(sql: string, params: unknown[]): Promise<{ rowcount: number }> {
+    if (await this.backup(sql)) return { rowcount: 0 }
     return this.post('/api/exec', { sid: this.sid, sql, params })
   }
   call(sql: string, params: unknown[]): Promise<CallResult> {

@@ -340,6 +340,7 @@ pub fn router(state: AppState) -> Router {
         .route("/api/fs/delete", post(fs::delete))
         .route("/api/fs/copy", post(fs::copy))
         .route("/api/print/raw", post(fs::print_raw))
+        .route("/api/backup", post(fs::backup))
         .route("/api/commit", post(commit))
         .route("/api/rollback", post(rollback))
         .route("/api/close", post(close))

@@ -205,3 +205,30 @@ mod tests {
         assert!(resolve("a/../../x").is_err());
     }
 }
+
+#[derive(Deserialize)]
+pub struct BackupReq {
+    path: String,
+}
+
+/// `Backup Database <db> To <device>` of the original: a custom-format `pg_dump` of the company database to the given file (restore with `pg_restore`)
+pub async fn backup(Json(r): Json<BackupReq>) -> Json<Value> {
+    let target = match resolve(&r.path) {
+        Ok(p) => p,
+        Err(e) => return Json(json!({ "ok": false, "error": e })),
+    };
+    let Ok(url) = std::env::var("DATABASE_URL") else {
+        return Json(json!({ "ok": false, "error": "DATABASE_URL is not set" }));
+    };
+    if let Some(dir) = target.parent() {
+        let _ = std::fs::create_dir_all(dir);
+    }
+    let file = target.clone();
+    let run = tokio::task::spawn_blocking(move || std::process::Command::new("pg_dump").arg("-Fc").arg("-f").arg(&file).arg(&url).output()).await;
+    match run {
+        Ok(Ok(o)) if o.status.success() => Json(json!({ "ok": true, "path": target.to_string_lossy() })),
+        Ok(Ok(o)) => Json(json!({ "ok": false, "error": String::from_utf8_lossy(&o.stderr).trim() })),
+        Ok(Err(e)) => Json(json!({ "ok": false, "error": format!("pg_dump cannot be started: {e}") })),
+        Err(e) => Json(json!({ "ok": false, "error": e.to_string() })),
+    }
+}
