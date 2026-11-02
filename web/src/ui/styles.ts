@@ -51,7 +51,12 @@ label.ctl { display:flex; align-items:center; gap:4px; white-space:nowrap; }
 .menu-drop .sep { height:1px; background:#d7d7d7; margin:3px 2px; }
 .menu-drop .it .sub { position:absolute; left:100%; top:-3px; display:none; }
 .menu-drop .it:hover > .sub { display:block; }
-.toolbar { display:flex; background:#f0f0f0; height:34px; flex:0 0 34px; align-items:center; padding:0 4px; gap:2px; border-bottom:1px solid #d0d0d0; }
+.toolbar .tb { display:flex; flex-direction:column; align-items:center; justify-content:center; min-width:44px; height:42px; padding:1px 4px; background:transparent; border:1px solid transparent; font:9px Segoe UI,Tahoma,Arial,sans-serif; color:#000; }
+.toolbar .tb .g { font:16px Segoe UI Symbol,Segoe UI Emoji,Segoe UI,sans-serif; line-height:20px; }
+.toolbar .tb:hover:not(:disabled) { background:#e5f1fb; border-color:#99c9ef; }
+.toolbar .tb.dis { opacity:.4; }
+.toolbar .tb-gap { width:10px; flex:0 0 10px; }
+.toolbar { display:flex; background:#f0f0f0; min-height:34px; flex:0 0 auto; align-items:center; padding:0 4px; gap:2px; border-bottom:1px solid #d0d0d0; }
 .status { height:22px; flex:0 0 22px; background:#f0f0f0; border-top:1px solid #d0d0d0; padding:0 6px; line-height:22px; }
 .modal-bg { position:absolute; inset:0; background:rgba(0,0,0,.12); z-index:900; }
 .msgbox { position:absolute; background:#fff; border:1px solid #707070; box-shadow:0 4px 18px rgba(0,0,0,.4); min-width:300px; max-width:520px; z-index:2000; }

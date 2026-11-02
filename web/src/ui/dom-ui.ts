@@ -1,4 +1,5 @@
 // DOM implementation of the UiHost: windows, MDI frame, menus, controls, message boxes.
+import { toolbarItems } from './toolbar.ts'
 import type { Runtime, UiHost } from '../runtime/interp.ts'
 import { PBObject } from '../runtime/object.ts'
 import { NControl, NWindow } from '../runtime/native/controls.ts'
@@ -383,6 +384,7 @@ export class WinView {
   }
 
   destroy(): void {
+    if (this.toolbarTimer) clearInterval(this.toolbarTimer)
     this.el.remove()
   }
 
@@ -413,7 +415,41 @@ export class WinView {
     const menu = await rt.instantiate(name, this.w)
     this.w.props.set('menuid', menu)
     this.renderMenuBar(menu, bar)
+    this.startToolbar(menu)
   }
+
+  /** the toolbar follows the state of the menu items (sheets enable / disable them while the user works) */
+  private startToolbar(menu: PBObject): void {
+    const tool = this.client.querySelector('.toolbar') as HTMLElement | null
+    if (!tool) return
+    let last = ''
+    const refresh = () => {
+      const items = toolbarItems(menu)
+      const sig = items.map((x) => `${x.button.name}${x.button.enabled ? 1 : 0}${x.button.space ? 's' : ''}${x.button.text}`).join('|')
+      if (sig === last) return
+      last = sig
+      tool.replaceChildren()
+      for (const { item, button } of items) {
+        if (button.space) {
+          const gap = document.createElement('span')
+          gap.className = 'tb-gap'
+          tool.appendChild(gap)
+        }
+        const b = document.createElement('button')
+        b.className = 'tb' + (button.enabled ? '' : ' dis')
+        b.title = button.text
+        b.innerHTML = `<span class="g"></span><span class="t"></span>`
+        ;(b.querySelector('.g') as HTMLElement).textContent = button.glyph
+        ;(b.querySelector('.t') as HTMLElement).textContent = button.text
+        b.disabled = !button.enabled
+        b.onclick = () => void this.ui.rt.fire(item, 'clicked')
+        tool.appendChild(b)
+      }
+    }
+    refresh()
+    this.toolbarTimer = setInterval(refresh, 300)
+  }
+  private toolbarTimer: ReturnType<typeof setInterval> | undefined
 
   renderMenuBar(menu: PBObject, bar: HTMLElement): void {
     bar.replaceChildren()
