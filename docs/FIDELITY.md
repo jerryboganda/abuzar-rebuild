@@ -47,6 +47,8 @@ Tools: `tools/orig/` (crawler, crop, icon and sprite builders), `web/tools/{gen-
 * Windows open in steps (posted events): a screenshot taken 2.5 s after `OpenSheetWithParm` can still show the window's design-time title (Opening Purchase showed `Pack Purchase`).
 * `InsertRow` gives the new row's current cell the item focus (`ItemFocusChanged`): `dw_itemsdetail.itemfocuschanged` of the entry windows sets `editflag`, which `wf_validatedate` returns (`if not wf_validatedate() then close(this)` in the open event of purchase, sale return, quotation, adjustment, sale template ...). Without it those windows closed themselves; the original shows them open and asks `Do You want to save changes` when an untouched one is closed.
 * A column whose initial value is `today` takes the current date / time when a row is inserted (the sale template's date shows `02/11/2026 11:46`).
+* `object.<col>.visible = false` (a boolean) hides the column: it used to arrive as `no`, which the view did not read as 0, so every preference-driven hiding (header, item code, alias, godown column ...) was ignored. `visible` / `protect` are stored as `1` / `0`.
+* A grid DataWindow (processing 1) leaves a hidden column out together with its header and total, and the columns on its right move left (Adjustment Increase shows No / Item Name / Batch / Expiry / Qty / Price / Total).
 * First-run preferences: `GroupCustomerCategory` is off (the migration of the original updates `preferences.groupcustomercategory = 'N'`), otherwise Cash / Credit Sale refuse to open for a group without customer categories.
 ## Not yet matched
 * The window height of response windows: measured factor 0.924 of the height in units (Login 234 px, Select Format 306 px), the reason is unknown.

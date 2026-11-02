@@ -150,7 +150,33 @@ export class DwView {
       ;(byBand.get(b) || byBand.set(b, []).get(b)!).push(o)
     }
     const width = Math.max(0, ...m.def.objects.map((o) => num(o, 'x') + num(o, 'width') + (o.type === 'line' ? Math.max(num(o, 'x2'), num(o, 'x1')) - num(o, 'x') : 0)))
-    return { sx, sy, byBand, width: sx(width) }
+    this.hiddenCols = this.gridHidden(m)
+    return { sx, sy, byBand, width: sx(width - this.hiddenCols.reduce((a, h) => a + h.w, 0)) }
+  }
+
+  /** columns of a grid DataWindow (processing 1) that are not visible: the grid leaves them out with their headers and the columns on their right move left */
+  private hiddenCols: { x: number; w: number }[] = []
+  private gridHidden(m: DwModel): { x: number; w: number }[] {
+    if (num(m.def.datawindow, 'processing', 0) !== 1) return []
+    const out: { x: number; w: number }[] = []
+    for (const o of m.def.objects) {
+      if (o.type !== 'column' || o.band !== 'detail') continue
+      const v = m.overrides.get(`${o.name.toLowerCase()}.visible`) ?? o.visible
+      if (v === '0') out.push({ x: num(o, 'x'), w: num(o, 'width') })
+    }
+    return out
+  }
+  /** horizontal shift of an object of a grid with hidden columns; null when the object belonged to a hidden column (its header, its total) */
+  private gridShift(o: DwObject): number | null {
+    if (!this.hiddenCols.length || o.type === 'line') return 0
+    const x = num(o, 'x')
+    const w = num(o, 'width')
+    let shift = 0
+    for (const h of this.hiddenCols) {
+      if (x >= h.x + h.w - 1) shift += h.w
+      else if (o.type !== 'column' && x >= h.x - 1 && x + w <= h.x + h.w + 1) return null
+    }
+    return shift
   }
 
   async makeBand(m: DwModel, L: ReturnType<DwView['layout']>, band: string, row: number, cls: string): Promise<HTMLElement> {
@@ -534,6 +560,8 @@ export class DwView {
 
   private async object(m: DwModel, o: DwObject, row: number, band: string, sx: (v: number) => number, sy: (v: number) => number, _ctx: unknown): Promise<HTMLElement | null> {
     if ((await this.prop(m, o, 'visible', row, band)) === '0') return null
+    const shift = this.gridShift(o)
+    if (shift === null) return null
     const el = document.createElement('div')
     el.className = 'o o-' + o.type
     el.dataset.obj = o.name
@@ -561,7 +589,7 @@ export class DwView {
       }
       return el
     }
-    st.left = sx(num(o, 'x')) + 'px'
+    st.left = sx(num(o, 'x') - shift) + 'px'
     st.top = sy(num(o, 'y')) + 'px'
     st.width = sx(num(o, 'width')) + 'px'
     st.height = sy(num(o, 'height')) + 'px'

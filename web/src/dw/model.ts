@@ -736,6 +736,8 @@ export class DwModel implements EvalHost {
       let v = m[2]
       if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) v = v.slice(1, -1)
       const key = m[1].toLowerCase()
+      // `visible` and `protect` are read as 1 / 0: scripts assign booleans (`object.headerno.visible = false` arrives as `no`)
+      if (/\.(visible|protect)$/.test(key)) v = /^(no|false)$/i.test(v) ? '0' : /^(yes|true)$/i.test(v) ? '1' : v
       this.overrides.set(key, v)
       if (key === 'datawindow.table.select') this.retrieveSqlOverride = v
       else if (key === 'datawindow.table.sort') this.sortText = v
