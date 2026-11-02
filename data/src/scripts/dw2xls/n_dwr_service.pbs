@@ -7,10 +7,10 @@
 	integer li_groupcount
 	integer li_processing
 	integer li_i
-	integer li_ret
+	integer li_ret = 1
 	string ls_bands
 	string[] ls_band_arr
-	string ls_level_band
+	string ls_level_band = "header."
 	integer li_band_cnt
 	n_dwr_string lnvo_strsrv
 	li_groupcount = of_groupcount()
@@ -21,7 +21,7 @@
 	ls_bands = of_describe("datawindow.bands")
 	li_band_cnt = lnvo_strsrv.of_stringtoarray(ls_bands, "~t", ls_band_arr)
 	if this.invo_parm.ib_group_trailer then
-		for li_i = li_groupcount to li_i step -1
+		for li_i = li_groupcount to 1 step -1
 			of_addband("trailer." + string(li_i), 4, li_i)
 		next
 	end if
@@ -69,7 +69,7 @@
 		end if
 		as_bandname = "header"
 	end if
-	for ll_i = 1 to ll_i
+	for ll_i = 1 to this.ii_band_count
 		if this.invo_bands[ll_i].is_band_name = as_bandname then
 			anvo_band = this.invo_bands[ll_i]
 			return 1
@@ -126,7 +126,7 @@
 	long ll_dw_row
 	long ll_dw_row_cnt
 	integer li_cur_band
-	integer li_ret
+	integer li_ret = 1
 	integer li_i
 	integer li_progress
 	boolean lb_newpage
@@ -236,7 +236,7 @@
 		of_finish_work()
 	end if
 	if this.ib_nested and li_ret = 1 then
-		for li_i = 1 to li_i
+		for li_i = 1 to upperbound(this.invo_bands)
 			this.invo_bands[li_i].il_groupchangerow = 1
 		next
 	end if
@@ -252,7 +252,7 @@
 	return li_ret
 
 // n_dwr_service.of_process() returns integer
-	integer li_ret
+	integer li_ret = 1
 	w_n_dwr_service_progress w
 	if this.invo_parm.ib_show_progress and (not this.ib_multidw or this.ib_multidw_progress) then
 		this.ib_show_progress = true
@@ -332,7 +332,7 @@
 	return of_create(apo_requestor, anv_book, as_filename, lnvo_parm, lnvo_nested_parm)
 
 // n_dwr_service.of_create(powerobject apo_requestor, n_dwr_workbook anv_book, string as_filename, n_dwr_service_parm anvo_parm, n_dwr_nested_service_parm anvo_nested_parm) returns integer
-	integer li_ret
+	integer li_ret = 1
 	string ls_tmp_dir
 	boolean[] lb_null
 	n_dwr_band[] lnvo_null
@@ -457,7 +457,7 @@
 	return li_ret
 
 // n_dwr_service.of_analyse_dw(integer ai_percent_of_analyse) returns integer
-	integer li_ret
+	integer li_ret = 1
 	n_dwr_string lnvo_str_srv
 	string ls_objects
 	string[] ls_object
@@ -505,7 +505,7 @@
 	case else
 		return -1
 	end choose
-	for li_band = 1 to li_band
+	for li_band = 1 to this.ii_band_count
 		this.invo_bands[li_band].of_register_dynamic(this.ipo_requestor)
 	next
 	return 1
@@ -513,7 +513,7 @@
 // n_dwr_service.of_set_col_width() returns integer
 	long ll_col_count
 	long ll_i
-	integer li_ret
+	integer li_ret = 1
 	return li_ret
 
 // n_dwr_service.of_modify(string as_expr) returns string
@@ -730,7 +730,7 @@
 
 // n_dwr_service.of_createband(string as_band_name, integer ai_band_type, integer ai_group_level, long al_subband_y) returns n_dwr_band
 	n_dwr_band lnvo_band
-	integer li_ret
+	integer li_ret = 1
 	boolean lb_newpage
 	lnvo_band = create n_dwr_band
 	do
@@ -846,7 +846,7 @@
 	return 2800
 
 // n_dwr_service.of_export_to_current_sheet(powerobject apo_requestor) returns integer
-	integer li_ret
+	integer li_ret = 1
 	this.ipo_multidw_requestor = apo_requestor
 	this.ib_multidw_progress = true
 	li_ret = of_process()
@@ -1059,7 +1059,7 @@
 	case else
 		return -1
 	end choose
-	for li_band = 1 to li_band
+	for li_band = 1 to this.ii_band_count
 		this.invo_bands[li_band].of_register_dynamic2(this.ipo_requestor, al_rowcount)
 	next
 	return 1

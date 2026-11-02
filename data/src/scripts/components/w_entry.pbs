@@ -4,7 +4,7 @@
 	this.tab_retrieve.tabpage_list.sle_find.setfocus()
 
 // w_entry.wf_confirm_changes() returns 0
-	integer li_yesno
+	integer li_yesno = 1
 	if this.editflag = true then
 		li_yesno = messagebox("Confirm Changes", "Ok to loose any unsaved changes that you've typed", question!, yesno!, 2)
 		this.editflag = false
@@ -27,7 +27,7 @@
 	this.tab_retrieve.tabpage_list.ddlb_filter_column.reset()
 	this.tab_retrieve.tabpage_list.ddlb_sort.reset()
 	li_column_count = integer(dwcontrol.object.datawindow.column.count)
-	for li_counter = li_column_count to li_counter step -1
+	for li_counter = li_column_count to 1 step -1
 		ls_column_name = dwcontrol.describe("#" + string(li_counter) + ".Name")
 		this.tab_retrieve.tabpage_list.ddlb_sort.additem(ls_column_name)
 		this.tab_retrieve.tabpage_list.ddlb_filter_column.additem(ls_column_name)
@@ -386,7 +386,7 @@
 	ls_col_type = parent.parent.parent.id_dwcontrol.describe(ls_column_name + ".ColType")
 	le_buffertype = primary!
 	ll_rows_buffer = parent.parent.parent.id_dwcontrol.rowcount()
-	for li_buffers = 1 to li_buffers
+	for li_buffers = 1 to 2
 		for ll_row_counter = 1 to ll_rows_buffer
 			if left(ls_col_type, 4) = "char" then
 				ls_insert_item = trim(parent.parent.parent.id_dwcontrol.getitemstring(ll_row_counter, ls_column_name, le_buffertype, false))

@@ -52,6 +52,8 @@ export function nowDateTime(): PBDateTime {
 /** string(value [, format]) */
 export function formatValue(v: unknown, fmt?: string): string {
   if (v === null || v === undefined) return ''
+  // PowerBuilder's default decimal display is General: 2.0000 -> 2.
+  if (v instanceof Dec && (fmt === undefined || fmt === '')) return formatNumber(v, '[general]')
   if (fmt !== undefined && fmt !== '') {
     // the named date / time formats follow the regional settings; the original shows `[shortdate] [time]` as `11/2/2026 23:20`
     if (/^[^[]*\[(shortdate|longdate|time)\]/i.test(fmt)) fmt = fmt.replace(/\[shortdate\]/gi, 'm/d/yyyy').replace(/\[longdate\]/gi, 'dddd, mmmm d, yyyy').replace(/\[time\]/gi, 'hh:mm')

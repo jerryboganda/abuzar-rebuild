@@ -22,7 +22,7 @@
 	string ls_rtnstring
 	if not isnull(ad_dwcontrol.dataobject) then
 		li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
-		for li_counter = li_colcount to li_counter step -1
+		for li_counter = li_colcount to 1 step -1
 			ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
 			if ai_doundo = 1 then
 				ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
@@ -267,7 +267,7 @@
 
 // w_voucher_old.wf_initmodify(integer ai_protect) returns integer
 	long ll_glvochcode
-	long ll_counter
+	long ll_counter = 1
 	if this.id_master.getitemstring(1, "posted") = "N" then
 		ll_glvochcode = this.id_detail.getitemnumber(1, "code")
 		if wf_lockvoucher(ll_glvochcode) = 0 then
@@ -417,14 +417,14 @@
 	long ll_mastercurrrow
 	long ll_invid
 	long ll_acccode
-	long ll_salesmancode
+	long ll_salesmancode = 1
 	integer li_counter
 	double ld_debit
 	double ld_credit
 	double ld_currbalance
 	string ls_remarks
 	string ls_chkno
-	boolean lb_commitflag
+	boolean lb_commitflag = true
 	integer li_null
 	datetime ldt_server_datetime
 	string ls_date_errtext
@@ -465,7 +465,7 @@
 	end if
 	ll_detailrows = this.id_detail.rowcount()
 	if ll_detailrows > 0 then
-		for li_counter = 1 to li_counter
+		for li_counter = 1 to ll_detailrows
 			if this.id_detail.getitemdecimal(li_counter, "debit") = 0 and this.id_detail.getitemdecimal(li_counter, "credit") = 0 then
 				if this.ii_vouchertype = 1 or this.ii_vouchertype = 3 then
 					this.id_detail.setcolumn("debit")
@@ -562,7 +562,7 @@
 			setnull(ls_chkno)
 		end if
 		if this.ii_vouchertype = 9 or this.ii_vouchertype = 11 then
-			for li_counter = 1 to li_counter
+			for li_counter = 1 to this.id_detail.rowcount()
 				this.id_detail.setitem(li_counter, "credit", this.id_detail.getitemnumber(li_counter, "debit"))
 				this.id_detail.setitem(li_counter, "debit", 0)
 			next
@@ -616,7 +616,7 @@
 
 // w_voucher_old.ue_detail() returns 0 [event]
 	integer li_rtncode
-	integer li_protect
+	integer li_protect = 1
 	integer li_vouchcode
 	integer li_counter
 	long ll_row
@@ -637,7 +637,7 @@
 	wf_protectdw(this.id_detail, li_protect)
 	this.id_master.setitem(1, "remarks", ls_remarks)
 	if this.ii_vouchertype = 9 or this.ii_vouchertype = 11 then
-		for li_counter = 1 to li_counter
+		for li_counter = 1 to this.id_detail.rowcount()
 			this.id_detail.setitem(li_counter, "debit", this.id_detail.getitemnumber(li_counter, "credit"))
 			this.id_detail.setitem(li_counter, "credit", 0)
 		next

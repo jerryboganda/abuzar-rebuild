@@ -52,7 +52,7 @@
 // w_servicepurchase.wf_savastemplate() returns integer
 	s_saletemplateheader lstr_templateheader
 	long ll_invid
-	integer li_retcode
+	integer li_retcode = 1
 	long ll_code
 	long ll_qty
 	long ll_icode
@@ -95,7 +95,7 @@
 
 // w_servicepurchase.wf_retrievelist() returns long
 	string[] ls_posted
-	integer li_invforlastdays
+	integer li_invforlastdays = -10
 	datetime ld_invdate
 	ld_invdate = datetime(relativedate(today(), li_invforlastdays))
 	ls_posted[1] = "N"
@@ -104,14 +104,14 @@
 
 // w_servicepurchase.wf_selectitembatches(long al_gcode, long al_icode, long al_qty, datawindow ad_itemsdetail, long al_rowscount, string al_errortext) returns integer
 	datastore lds_itemstockinfo
-	long ll_counter
+	long ll_counter = 1
 	long ll_saleqty
 	long ll_reqqty
 	long ll_totalstock
 	long ll_batchqty
 	long ll_detailrowcount
 	boolean lb_flag
-	integer li_errcode
+	integer li_errcode = 1
 	lds_itemstockinfo = create datastore
 	lds_itemstockinfo.dataobject = "d_itemstockinfo"
 	lds_itemstockinfo.settransobject(this.it_transobject)
@@ -257,8 +257,8 @@
 	return li_errcode
 
 // w_servicepurchase.wf_inititeminfo(long al_icode, long al_row, integer ai_rtcode, string as_errortext) returns boolean
-	boolean retflag
-	boolean lb_continue
+	boolean retflag = true
+	boolean lb_continue = true
 	double ld_saleprice
 	double ld_discperc
 	double ld_costprice
@@ -295,7 +295,7 @@
 // w_servicepurchase.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
 	integer li_colcount
 	integer li_counter
-	integer li_start
+	integer li_start = 1
 	integer li_temp
 	string ls_colname
 	string ls_rtnstring
@@ -351,7 +351,7 @@
 	this.id_print.settransobject(this.it_transobject)
 
 // w_servicepurchase.wf_post() returns integer
-	integer li_postingmode
+	integer li_postingmode = 1
 	long ll_sinvcode
 	long ll_linvcode
 	long ll_found
@@ -376,7 +376,7 @@
 	long ll_rowcount
 	long ll_row
 	long ll_mrow
-	integer li_retcode
+	integer li_retcode = 1
 	integer li_errcode
 	string ls_errortext
 	if wf_iseditable() = false then
@@ -645,9 +645,9 @@
 // w_servicepurchase.wf_saveandpost() returns long
 	boolean lb_listtab
 	boolean lb_continueposting
-	integer li_postingmode
+	integer li_postingmode = 2
 	integer li_errcode
-	integer li_printoption
+	integer li_printoption = 1
 	long ll_sinvcode
 	long ll_linvcode
 	long ll_found
@@ -890,7 +890,7 @@
 	return this.it_transobject.sqlcode
 
 // w_servicepurchase.wf_returnthisinvoice(long al_invid, string as_errtext) returns boolean
-	boolean lb_commitflag
+	boolean lb_commitflag = true
 	if lb_commitflag then
 		if wf_deleteserviceinvoice(al_invid) <> 0 then
 			lb_commitflag = false
@@ -1014,15 +1014,15 @@
 	long ll_invid
 	long ll_icode
 	long ll_errrowid
-	long ll_usercode
+	long ll_usercode = 1
 	long ll_headerno
 	long ll_headerinvno
 	long ll_counter
 	long ll_count
 	long ll_statusrow
 	long ll_null
-	boolean lb_commitflag
-	boolean lb_continue
+	boolean lb_commitflag = true
+	boolean lb_continue = true
 	integer li_counter
 	integer li_tokenno
 	string ls_errtext
@@ -1244,7 +1244,7 @@
 
 // w_servicepurchase.ue_detail() returns 0 [event]
 	integer li_rtncode
-	integer li_protect
+	integer li_protect = 1
 	long ll_row
 	long ll_code
 	long ll_found
@@ -1832,7 +1832,7 @@
 // dw_itemsdetail.ue_enterkey() returns long [event]
 	integer li_rowno
 	integer i
-	integer li_columnno
+	integer li_columnno = 1
 	li_columnno = integer(this.object.qty.id)
 	if getrow() = rowcount() then
 		if getcolumn() = li_columnno then

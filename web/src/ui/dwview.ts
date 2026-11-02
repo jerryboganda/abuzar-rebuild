@@ -875,7 +875,15 @@ export class DwView {
     // must be evaluated, not shown literally
     const fmt = await this.prop(m, o, 'format', row, band)
     const mask = o['editmask.mask']
-    const useFmt = fmt && !/^\[general\]$/i.test(fmt) ? fmt : mask && o['editmask.useformat'] !== 'yes' ? mask : /^\[general\]$/i.test(fmt) ? fmt : ''
+    const useFmt = fmt !== undefined && fmt !== '' ? fmt : mask && o['editmask.useformat'] !== 'yes' ? mask : ''
+    // A numeric DataWindow column may hold its value as text (the editor
+    // commits the typed string).  Format it as a number, or [general] shows
+    // the stored scale: Qty 2.0000 instead of 2.
+    const ci = m.colIndex(o.name)
+    const kind = ci >= 0 ? m.kinds[ci] : ''
+    if (typeof v === 'string' && (kind === 'number' || kind === 'decimal') && v.trim() !== '' && Number.isFinite(Number(v))) {
+      v = kind === 'decimal' ? Dec.parse(v) : Number(v)
+    }
     if (typeof v === 'number' || v instanceof Dec || v instanceof PBDate || v instanceof PBTime || v instanceof PBDateTime) return formatValue(v, useFmt || undefined)
     if ((typeof v === 'string' || v === null || v === undefined) && /['"@;]/.test(useFmt)) return stringFormat(v ?? null, useFmt)
     return formatValue(v, useFmt || undefined)

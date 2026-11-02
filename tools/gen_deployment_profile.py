@@ -34,6 +34,8 @@ out_path = sys.argv[4]
 
 # preferences that can hold a secret or a machine-specific value are never copied
 secret = re.compile(r'smtp|api|host|url|username|userid|licen|regid|serial|path|comport|password$|^.*key$|folder|dir$|ownerphone|terms?\d*$', re.I)
+# plain-text preferences that shape what the screens show (default batch, default expiry, application title)
+EXTRA = {'defaultbatch', 'defaultexpiry', 'appname'}
 flag = re.compile(r'^[YNX]$|^\d{1,6}$|^-?\d{1,4}(\.\d{1,4})?$')
 
 lines = [
@@ -58,7 +60,7 @@ lines.append('-- flag / number preferences of the deployment')
 for pid, name, typ, v1, v2 in prefs:
     if secret.search(name) and not (typ.upper() == 'CHAR' and v1 in ('Y', 'N')):
         continue
-    if not flag.match(v1):
+    if name.lower() not in EXTRA and not flag.match(v1):
         continue
     n += 1
     lines.append('UPDATE dbo.softwarepreferences SET prefvalue = %s WHERE lower(name) = %s;' % (q(v1), q(name.lower())))

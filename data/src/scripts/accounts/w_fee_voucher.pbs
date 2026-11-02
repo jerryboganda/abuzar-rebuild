@@ -207,7 +207,7 @@
 
 // w_fee_voucher.wf_initmodify(integer ai_protect) returns integer
 	long ll_glvochcode
-	long ll_counter
+	long ll_counter = 1
 	if this.id_master.getitemstring(1, "posted") = "N" then
 		ll_glvochcode = this.id_detail.getitemnumber(1, "code")
 		if wf_lockvoucher(ll_glvochcode) = 0 then
@@ -338,7 +338,7 @@
 	string ls_rtnstring
 	if not isnull(ad_dwcontrol.dataobject) then
 		li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
-		for li_counter = li_colcount to li_counter step -1
+		for li_counter = li_colcount to 1 step -1
 			ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
 			if lower(ls_colname) = "date" then
 				if f_stringpreferences("askdateintrans") = "N" then
@@ -356,10 +356,10 @@
 
 // w_fee_voucher.wf_returnvoucher(long al_invid, string as_errortext) returns boolean
 	long ll_invcode
-	long ll_counter
+	long ll_counter = 1
 	long ll_detailrows
 	long ll_masterrow
-	boolean lb_commitflag
+	boolean lb_commitflag = true
 	double ld_amt
 	double ld_oldtotalamt
 	double ld_balance
@@ -551,7 +551,7 @@
 // w_fee_voucher.wf_populatedetail(long al_invid, datawindow ad_detail, string as_errortext, long al_errorrow) returns boolean
 	long ll_detailrows
 	long ll_errrowid
-	long ll_usercode
+	long ll_usercode = 1
 	long ll_invcode
 	long ll_counter
 	long ll_masterrow
@@ -571,7 +571,7 @@
 	double ld_invbalance
 	unsignedlong ul_rowcount
 	unsignedlong ul_maxutn
-	boolean lb_commitflag
+	boolean lb_commitflag = true
 	string ls_remarks
 	string ls_chkno
 	string ls_msg
@@ -1229,7 +1229,7 @@
 // w_fee_voucher.wf_saveandpost() returns 0
 	long ll_sinvcode
 	long ll_usercode
-	boolean lb_commitflag
+	boolean lb_commitflag = true
 	if not wf_iseditable() then
 		return
 	end if
@@ -1268,7 +1268,7 @@
 	long ll_duplrows
 	long ll_invcode
 	long ll_row
-	long ll_format
+	long ll_format = 1
 	integer li_result
 	integer li_rtncode
 	s_arguements lstr_selectedinvoices
@@ -1923,7 +1923,7 @@
 	long ll_invid
 	long ll_vouchercode
 	long ll_acccode
-	long ll_salesmancode
+	long ll_salesmancode = 1
 	long ll_errrowid
 	long ll_null
 	long ll_tmpcode
@@ -1937,8 +1937,8 @@
 	string ls_remarks
 	string ls_chkno
 	string ls_errtext
-	boolean lb_commitflag
-	boolean lb_continue
+	boolean lb_commitflag = true
+	boolean lb_continue = true
 	integer li_null
 	datetime ldt_server_datetime
 	string ls_date_errtext
@@ -1997,7 +1997,7 @@
 	end if
 	ll_detailrows = this.id_detail.rowcount()
 	if ll_detailrows > 0 then
-		for li_counter = 1 to li_counter
+		for li_counter = 1 to ll_detailrows
 			if this.id_detail.getitemdecimal(li_counter, "debit") = 0 and this.id_detail.getitemdecimal(li_counter, "credit") = 0 then
 				if this.is_detailtreatment = "D" then
 					this.id_detail.setcolumn("debit")
@@ -2175,7 +2175,7 @@
 
 // w_fee_voucher.ue_detail() returns 0 [event]
 	integer li_rtncode
-	integer li_protect
+	integer li_protect = 1
 	long ll_row
 	long ll_vouchcode
 	long ll_counter

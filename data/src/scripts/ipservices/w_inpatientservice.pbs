@@ -83,7 +83,7 @@
 // w_inpatientservice.wf_savastemplate() returns integer
 	s_saletemplateheader lstr_templateheader
 	long ll_invid
-	integer li_retcode
+	integer li_retcode = 1
 	long ll_code
 	long ll_qty
 	long ll_icode
@@ -167,7 +167,7 @@
 // w_inpatientservice.wf_retrievelist() returns long
 	string[] ls_posted
 	integer li_salecategory
-	integer li_invforlastdays
+	integer li_invforlastdays = -10
 	datetime ld_invdate
 	ld_invdate = datetime(relativedate(today(), li_invforlastdays))
 	ls_posted[1] = "N"
@@ -192,7 +192,7 @@
 	long ll_batchqty
 	long ll_detailrowcount
 	boolean lb_flag
-	integer li_errcode
+	integer li_errcode = 1
 	lds_itemstockinfo = create datastore
 	lds_itemstockinfo.dataobject = "d_itemstockinfo"
 	lds_itemstockinfo.settransobject(this.it_transobject)
@@ -243,7 +243,7 @@
 	string ls_fullcode
 	string ls_titleerrtext
 	string ls_errtext
-	integer li_errcode
+	integer li_errcode = 1
 	integer li_assgcode
 	ll_icode = this.id_detail.getitemnumber(this.il_currrow, "icode")
 	if vf_dwdupcode1(this.id_detail, "icode", string(ll_icode), this.il_currrow) = true then
@@ -267,7 +267,7 @@
 	string ls_titleerrtext
 	string ls_errtext
 	string ls_null
-	integer li_errcode
+	integer li_errcode = 1
 	integer li_null
 	integer li_option
 	integer li_duperr
@@ -323,7 +323,7 @@
 	integer li_errcode
 	integer li_assgcode
 	integer li_option
-	boolean lb_rtflag
+	boolean lb_rtflag = true
 	boolean ib_due
 	integer li_null
 	string ls_null
@@ -374,12 +374,12 @@
 	long ll_looseqty
 	long ll_stock
 	long ll_newstock
-	long ll_counter
+	long ll_counter = 1
 	long ll_detailrows
 	string ls_batch
 	string ls_due
 	datetime ld_expiry
-	boolean lb_commitflag
+	boolean lb_commitflag = true
 	double ld_avgprice
 	if lb_commitflag then
 		if wf_deleteserviceinvoice(al_invid) <> 0 then
@@ -416,7 +416,7 @@
 	string ls_fullcode
 	string ls_titleerrtext
 	string ls_errtext
-	integer li_errcode
+	integer li_errcode = 1
 	integer li_assgcode
 	integer li_option
 	boolean ib_due
@@ -456,7 +456,7 @@
 // w_inpatientservice.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
 	integer li_colcount
 	integer li_counter
-	integer li_start
+	integer li_start = 1
 	integer li_temp
 	string ls_colname
 	string ls_rtnstring
@@ -545,7 +545,7 @@
 	long ll_rowcount
 	long ll_row
 	long ll_mrow
-	integer li_retcode
+	integer li_retcode = 1
 	integer li_errcode
 	string ls_errortext
 	lds_quotationdetail = create datastore
@@ -620,8 +620,8 @@
 	return li_gcode
 
 // w_inpatientservice.wf_inititeminfo(long al_icode, long al_row, integer ai_rtcode, string as_errortext) returns boolean
-	boolean retflag
-	boolean lb_continue
+	boolean retflag = true
+	boolean lb_continue = true
 	double ld_saleprice
 	double ld_discperc
 	double ld_commission
@@ -641,9 +641,9 @@
 	datetime ldt_dt2
 	datetime ldt_dt3
 	datetime ldt_today
-	char lc_lockprice
-	char lc_lockdiscperc
-	char lc_lockserviceflatdisc
+	char lc_lockprice = "N"
+	char lc_lockdiscperc = "N"
+	char lc_lockserviceflatdisc = "N"
 	setnull(ls_null)
 	SQL SELECT service.aliasname , service.name , service.price , service.commission , service.costprice , dt =DATEADD ( mi , processmin , DATEADD ( hh , processhours , DATEADD ( dd , processdays , GETDATE ( ) ) ) ) , dt2 =( SELECT CAST ( convert ( varchar ( 100 ) , getdate ( ) , 111 ) + ' ' + convert ( varchar ( 100 ) , ISNULL ( ServiceDeliveryTime , CAST ( '1900-01-01 00:00:00' AS DATETIME ) ) , 108 ) AS DATETIME ) FROM Groups WHERE GroupCode =:this.il_groupcode ) , dt3 =( SELECT CAST ( convert ( varchar ( 100 ) , getdate ( ) + 1 , 111 ) + ' ' + convert ( varchar ( 100 ) , ISNULL ( ServiceDeliveryTime , CAST ( '1900-01-01 00:00:00' AS DATETIME ) ) , 108 ) AS DATETIME ) FROM Groups WHERE GroupCode =:this.il_groupcode ) , Today =( SELECT GETDATE ( ) FROM Groups WHERE GroupCode =:this.il_groupcode ) , ServiceFlatDisc , AllowSaleInDecimal , LockPrice , LockDiscPerc , LockServiceFlatDisc , ServiceFlatTax , ServiceGSTPerc , SharePerc INTO :ls_fullcode, :ls_name, :ld_saleprice, :ld_commission, :ld_costprice, :ldt_dt, :ldt_dt2, :ldt_dt3, :ldt_today, :ld_flatdisc, :ls_allowsaleindecimal, :lc_lockprice, :lc_lockdiscperc, :lc_lockserviceflatdisc, :ld_serviceflattax, :ld_servicegstperc, :ld_shareperc FROM service WHERE service.servicecode =:al_icode USING this.it_transobject;
 	if this.it_transobject.sqlcode = -1 then
@@ -709,7 +709,7 @@
 	long ll_icode
 	long ll_looseqty
 	long ll_stock
-	long ll_counter
+	long ll_counter = 1
 	long ll_count
 	if this.id_master.getitemstring(1, "posted") = "N" and ai_protect = 0 then
 		this.ib_modify = true
@@ -800,7 +800,7 @@
 	long ll_packunits
 	long ll_errrowid
 	long ll_customeracc
-	long ll_salesmancode
+	long ll_salesmancode = 1
 	long li_counter
 	long li_innercounter
 	long ll_insertedrows
@@ -812,7 +812,7 @@
 	double ld_avgprice
 	double ld_saleprice
 	double ld_discperc
-	boolean lb_commitflag
+	boolean lb_commitflag = true
 	string ls_batch
 	string ls_updatesaleprice
 	string ls_updsaleprice
@@ -928,8 +928,8 @@
 	long ll_postedby
 	string ls_null
 	string ls_remarks
-	string ls_posted
-	long ll_vouchercatcode
+	string ls_posted = "Y"
+	long ll_vouchercatcode = 2
 	datetime ldt_datetime
 	double ld_zerovalue
 	setnull(ll_null)
@@ -954,7 +954,7 @@
 	return 0
 
 // w_inpatientservice.wf_post() returns integer
-	integer li_postingmode
+	integer li_postingmode = 1
 	long ll_sinvcode
 	long ll_linvcode
 	long ll_found
@@ -991,7 +991,7 @@
 	long ll_insertedrows
 	long ll_srvorowid
 	long ll_currentrow
-	integer li_retcode
+	integer li_retcode = 1
 	integer li_errcode
 	integer li_looseqty
 	integer li_counter
@@ -1025,7 +1025,7 @@
 		lds_servicedetail.dataobject = "d_copy_serviceorderdetail"
 		lds_servicedetail.settransobject(this.it_transobject)
 		lla_detailrows = lstr_template.l_detailrows
-		for li_counter = this.id_detail.rowcount() to li_counter step -1
+		for li_counter = this.id_detail.rowcount() to 1 step -1
 			event ue_deleteitem()
 		next
 		ll_totalrows = upperbound(lstr_template.l_detailrows)
@@ -1163,7 +1163,7 @@
 	long ll_rowcount
 	long ll_row
 	long ll_mrow
-	integer li_retcode
+	integer li_retcode = 1
 	integer li_errcode
 	string ls_errortext
 	if wf_iseditable() = false then
@@ -1619,7 +1619,7 @@
 	long ll_rowcount
 	double ld_servicecharges
 	double ld_costprice
-	boolean lb_retflag
+	boolean lb_retflag = true
 	string ls_allowzero_servicecharges
 	string ls_belowcost_servicecharges
 	ll_rowcount = this.id_detail.rowcount()
@@ -1659,7 +1659,7 @@
 	long ll_templatepackunits
 	long ll_icode
 	long ll_notfound_itemcount
-	long ll_prefsetting
+	long ll_prefsetting = 1
 	double ld_templateprice
 	double ld_templatediscperc
 	double ld_template_flatdisc
@@ -1667,7 +1667,7 @@
 	double ld_templateqty
 	double ld_qty
 	double ld_commission
-	string ls_msgtitle
+	string ls_msgtitle = "Doctor Associated Service Template"
 	string ls_itemname
 	string ls_msgdetail
 	boolean lb_editsaleprice
@@ -1797,8 +1797,8 @@
 	return 1
 
 // w_inpatientservice.wf_get_associated_templatecode(long al_doctcode) returns long
-	long ll_retcode
-	long ll_templatecode
+	long ll_retcode = -1
+	long ll_templatecode = -1
 	if al_doctcode = 0 or isnull(al_doctcode) then
 		ll_retcode = -1
 		return ll_retcode
@@ -1817,8 +1817,8 @@
 	return ll_retcode
 
 // w_inpatientservice.wf_get_customer_associated_templatecode(long al_custcode) returns long
-	long ll_retcode
-	long ll_templatecode
+	long ll_retcode = -1
+	long ll_templatecode = -1
 	if al_custcode = 0 or isnull(al_custcode) then
 		ll_retcode = -1
 		return ll_retcode
@@ -1848,14 +1848,14 @@
 	long ll_templatepackunits
 	long ll_icode
 	long ll_notfound_itemcount
-	long ll_prefsetting
+	long ll_prefsetting = 1
 	double ld_templateprice
 	double ld_templatediscperc
 	double ld_templateflatdisc
 	double ld_templateqty
 	double ld_qty
 	double ld_commission
-	string ls_msgtitle
+	string ls_msgtitle = "Customer Associated Service Template"
 	string ls_itemname
 	string ls_msgdetail
 	boolean lb_editsaleprice
@@ -1965,9 +1965,9 @@
 // w_inpatientservice.wf_saveandpost() returns long
 	boolean lb_listtab
 	boolean lb_continueposting
-	integer li_postingmode
+	integer li_postingmode = 2
 	integer li_errcode
-	integer li_printoption
+	integer li_printoption = 1
 	long ll_sinvcode
 	long ll_linvcode
 	long ll_found
@@ -2057,7 +2057,7 @@
 	double ld_qty
 	double ld_policy_price
 	double ld_price
-	string ls_msgtitle
+	string ls_msgtitle = "Price Policy Implementation"
 	string ls_itemname
 	string ls_msgdetail
 	boolean lb_editsaleprice
@@ -2263,7 +2263,7 @@
 	long ll_packunits
 	long ll_errrowid
 	long ll_customeracc
-	long ll_salesmancode
+	long ll_salesmancode = 1
 	long ll_gcode
 	long ll_headerno
 	long ll_headerinvno
@@ -2276,11 +2276,11 @@
 	long ll_null
 	long ll_serviceresultcode
 	long ll_doctcode
-	boolean lb_commitflag
-	boolean lb_continue
+	boolean lb_commitflag = true
+	boolean lb_continue = true
 	integer li_counter
 	string ls_errtext
-	string ls_posted
+	string ls_posted = "N"
 	string ls_invlist
 	double ld_rate
 	double ld_avgprice
@@ -2588,7 +2588,7 @@
 
 // w_inpatientservice.ue_detail() returns 0 [event]
 	integer li_rtncode
-	integer li_protect
+	integer li_protect = 1
 	long ll_row
 	long ll_code
 	long ll_found
@@ -3630,7 +3630,7 @@
 // dw_itemsdetail.ue_enterkey() returns long [event]
 	integer li_rowno
 	integer i
-	integer li_columnno
+	integer li_columnno = 1
 	li_columnno = integer(this.object.discperc.id)
 	if getrow() = rowcount() then
 		if getcolumn() = li_columnno then

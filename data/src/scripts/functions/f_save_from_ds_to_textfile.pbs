@@ -14,7 +14,7 @@
 	if li_filehandle > -1 then
 		li_colcount = integer(ads_ds.object.datawindow.column.count)
 		if adb_colnames = true then
-			for ll_counter = 1 to ll_counter
+			for ll_counter = 1 to li_colcount
 				ls_colname = upper(ads_ds.describe("#" + string(ll_counter) + ".Name"))
 				ls_writetofile = ls_writetofile + ls_colname
 				if ll_counter <> li_colcount then
@@ -25,7 +25,7 @@
 		end if
 		for ll_counter = 1 to ads_ds.rowcount()
 			ls_writetofile = ""
-			for ll_innercounter = 1 to ll_innercounter
+			for ll_innercounter = 1 to li_colcount
 				ls_colname = ads_ds.describe("#" + string(ll_innercounter) + ".Name")
 				ls_temp = ads_ds.getitemstring(ll_counter, ls_colname)
 				if isnull(ls_temp) then

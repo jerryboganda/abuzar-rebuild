@@ -26,7 +26,7 @@
 	string ls_fullcode
 	string ls_name
 	boolean lb_suppitems
-	boolean lb_insertrow
+	boolean lb_insertrow = true
 	boolean lb_suppitemsonly
 	double ld_tmpqty
 	double ld_tmpbonus
@@ -652,7 +652,7 @@
 	string ls_name
 	string ls_po_mode
 	boolean lb_suppitems
-	boolean lb_insertrow
+	boolean lb_insertrow = true
 	boolean lb_suppitemsonly
 	double ld_looseqty
 	double ld_transitstock
@@ -991,7 +991,7 @@
 	long ll_packunits
 	long ll_icode
 	long ll_null
-	boolean lb_insertrow
+	boolean lb_insertrow = true
 	double ld_transitstock
 	double ld_packqty
 	double ld_purdiscperc
@@ -1271,7 +1271,7 @@
 
 // w_purchaseorder.wf_findcode(long al_icode) returns boolean
 	long ll_foundrow
-	boolean retflag
+	boolean retflag = true
 	ll_foundrow = this.idc_itemdddw.find("icode =long('" + string(al_icode) + "')", 1, this.idc_itemdddw.rowcount())
 	if ll_foundrow < 0 then
 		messagebox("Find", "Find Fail")
@@ -1305,7 +1305,7 @@
 
 // w_purchaseorder.wf_finditem(long al_icode) returns boolean
 	long ll_foundrow
-	boolean retflag
+	boolean retflag = true
 	ll_foundrow = this.idc_itemdddw.find("icode =long('" + string(al_icode) + "')", 1, this.idc_itemdddw.rowcount())
 	if ll_foundrow < 0 then
 		messagebox("Find", "Find Fail")
@@ -1468,7 +1468,7 @@
 // w_purchaseorder.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
 	integer li_colcount
 	integer li_counter
-	integer li_start
+	integer li_start = 1
 	integer li_temp
 	string ls_colname
 	string ls_rtnstring
@@ -1526,7 +1526,7 @@
 	long ll_count
 	double ld_price
 	string ls_fullcode
-	integer il_errcode
+	integer il_errcode = 1
 	integer li_null
 	string ls_null
 	ll_icode = this.id_detail.object.icode[this.il_currrow]
@@ -1583,7 +1583,7 @@
 	return 1
 
 // w_purchaseorder.wf_inititeminfo(long al_icode, long al_row) returns boolean
-	boolean retflag
+	boolean retflag = true
 	double ld_purprice
 	double ld_discperc
 	double ld_saleprice
@@ -1992,7 +1992,7 @@
 	this.id_detail.setredraw(true)
 
 // w_purchaseorder.wf_update_minqty(long al_icode, long al_qty, string as_errtext) returns long
-	long ll_retcode
+	long ll_retcode = -1
 	if f_stringpreferences("UpdateMinQty_PO_Save") = "Y" then
 		ll_retcode = this.it_transobject.update_item_minqty(al_icode, al_qty)
 	else
@@ -2124,7 +2124,7 @@
 
 // w_purchaseorder.wf_get_associatedquotation(long al_custcode) returns long
 	long ll_retcode
-	long ll_quotationcode
+	long ll_quotationcode = -1
 	if al_custcode = 0 or isnull(al_custcode) then
 		ll_retcode = -1
 		return ll_retcode
@@ -2163,7 +2163,7 @@
 	double ld_qty
 	double ld_bonusqty
 	double ld_bonusfactor
-	string ls_msgtitle
+	string ls_msgtitle = "Customer Associated Quotation"
 	string ls_itemname
 	string ls_msgdetail
 	boolean lb_editsaleprice
@@ -2522,7 +2522,7 @@
 	datastore lds_poheader
 	integer li_result
 	integer li_rtncode
-	boolean populateflag
+	boolean populateflag = true
 	s_saletemplate lstr_template
 	string ls_itemtotalval
 	string ls_fullcode
@@ -2676,7 +2676,7 @@
 	datastore lds_poheader
 	integer li_result
 	integer li_rtncode
-	boolean populateflag
+	boolean populateflag = true
 	s_arguements ls_arg
 	string ls_itemtotalval
 	string ls_fullcode
@@ -2792,7 +2792,7 @@
 	string ls_fullcode
 	string ls_name
 	boolean lb_suppitems
-	boolean lb_insertrow
+	boolean lb_insertrow = true
 	boolean lb_suppitemsonly
 	double ld_tmpqty
 	double ld_tmpbonus
@@ -3071,7 +3071,7 @@
 	return ll_retcode
 
 // w_purchaseorder.wf_update_itemalert(long al_icode, long al_itemalertcode) returns boolean
-	boolean retflag
+	boolean retflag = true
 	if not isnull(al_itemalertcode) then
 		SQL update item SET item.itemalertcode =:al_itemalertcode WHERE item.icode =:al_icode USING this.it_transobject;
 		if this.it_transobject.sqlcode = -1 then
@@ -3081,8 +3081,8 @@
 	return retflag
 
 // w_purchaseorder.wf_get_supp_associated_quotation(long al_suppcode) returns long
-	long ll_retcode
-	long ll_quotationcode
+	long ll_retcode = -1
+	long ll_quotationcode = -1
 	if al_suppcode = 0 or isnull(al_suppcode) then
 		ll_retcode = -1
 		return ll_retcode
@@ -3121,7 +3121,7 @@
 	double ld_qty
 	double ld_bonusqty
 	double ld_bonusfactor
-	string ls_msgtitle
+	string ls_msgtitle = "Supplier Associated Quotation"
 	string ls_itemname
 	string ls_msgdetail
 	boolean lb_editsaleprice
@@ -3232,7 +3232,7 @@
 	double ld_quotbonusqty
 	double ld_qty
 	double ld_bonusqty
-	string ls_msgtitle
+	string ls_msgtitle = "Supplier Associated Quotation"
 	string ls_itemname
 	string ls_msgdetail
 	boolean lb_editsaleprice
@@ -3395,7 +3395,7 @@
 	long ll_count
 	long ll_code
 	integer[] li_manf
-	integer li_index
+	integer li_index = 1
 	boolean lb_flag
 	call super::ue_detail
 	ll_code = this.id_dwcontrol.borderstyle.code[this.il_selectedrow]

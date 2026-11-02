@@ -144,7 +144,7 @@
 	long ll_detailrows
 	integer li_counter
 	integer ll_servicecomponentcode
-	boolean lb_commitflag
+	boolean lb_commitflag = true
 	dwitemstatus lds_rowstatus
 	if this.id_detail.rowcount() > 0 and isnull(this.id_detail.object.servicecomponentcode[1]) then
 		this.id_detail.setrow(1)
@@ -179,12 +179,12 @@
 		end if
 		li_counter = li_counter + 1
 	loop
-	for li_counter = 1 to li_counter
+	for li_counter = 1 to this.id_servicesample_req.rowcount()
 		if lb_commitflag = true then
 			this.id_servicesample_req.setitem(li_counter, "servicecode", ll_invid)
 		end if
 	next
-	for li_counter = 1 to li_counter
+	for li_counter = 1 to this.id_consumables.rowcount()
 		if lb_commitflag = true then
 			this.id_consumables.setitem(li_counter, "servicecode", ll_invid)
 		end if
@@ -316,7 +316,7 @@
 	lds_itemsetting.settransobject(this.it_transobject)
 	lds_itemsetting.retrieve(41, 1, 1)
 	li_visiblecolumns = lds_itemsetting.rowcount()
-	for li_counter = 1 to li_counter
+	for li_counter = 1 to lds_itemsetting.rowcount()
 		this.colname[li_counter, 1] = lds_itemsetting.getitemstring(li_counter, "colname") + "_t"
 		this.colname[li_counter, 2] = lds_itemsetting.getitemstring(li_counter, "colname")
 	next

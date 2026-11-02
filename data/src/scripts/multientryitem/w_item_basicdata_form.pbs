@@ -28,7 +28,7 @@
 // w_item_basicdata_form.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
 	integer li_colcount
 	integer li_counter
-	integer li_start
+	integer li_start = 1
 	integer li_temp
 	string ls_colname
 	string ls_rtnstring
@@ -50,7 +50,7 @@
 	this.tab_retrieve.tabpage_list.ddlb_filter_column.reset()
 	this.tab_retrieve.tabpage_list.ddlb_sort.reset()
 	li_column_count = integer(dwcontrol.object.datawindow.column.count)
-	for li_counter = li_column_count to li_counter step -1
+	for li_counter = li_column_count to 1 step -1
 		ls_column_name = dwcontrol.describe("#" + string(li_counter) + ".Name")
 		this.tab_retrieve.tabpage_list.ddlb_sort.additem(ls_column_name)
 		this.tab_retrieve.tabpage_list.ddlb_filter_column.additem(ls_column_name)
@@ -549,7 +549,7 @@
 	long ll_null
 	integer li_counter
 	integer ll_salesmancode
-	boolean lb_commitflag
+	boolean lb_commitflag = true
 	string ls_aliasname
 	string ls_itemname
 	string ls_manufname
@@ -664,20 +664,20 @@
 			end if
 			li_counter = li_counter + 1
 		loop
-		for li_counter = 1 to li_counter
+		for li_counter = 1 to this.id_iteminmodel.rowcount()
 			if lb_commitflag = true then
 				this.id_iteminmodel.setitem(li_counter, "icode", ll_invid)
 			end if
 		next
-		for li_counter = 1 to li_counter
+		for li_counter = 1 to this.id_associateditempart.rowcount()
 			this.id_associateditempart.setitem(li_counter, "code", ll_masteripartcode)
 		next
-		for li_counter = 1 to li_counter
+		for li_counter = 1 to this.id_itemauthor.rowcount()
 			if lb_commitflag = true then
 				this.id_itemauthor.setitem(li_counter, "icode", ll_invid)
 			end if
 		next
-		for li_counter = 1 to li_counter
+		for li_counter = 1 to this.id_itemassociation.rowcount()
 			if lb_commitflag = true then
 				this.id_itemassociation.setitem(li_counter, "icode", ll_invid)
 			end if

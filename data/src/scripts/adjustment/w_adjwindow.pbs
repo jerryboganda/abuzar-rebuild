@@ -21,7 +21,7 @@
 
 // w_adjwindow.wf_finditem(long al_icode) returns boolean
 	long ll_foundrow
-	boolean retflag
+	boolean retflag = true
 	ll_foundrow = this.idc_itemdddw.find("icode =long('" + string(al_icode) + "')", 1, this.idc_itemdddw.rowcount())
 	if ll_foundrow < 0 then
 		messagebox("Find", "Find Fail")
@@ -59,7 +59,7 @@
 	return ld_grandtotal
 
 // w_adjwindow.wf_inititeminfo(long al_icode, long al_row, string as_errortext) returns boolean
-	boolean retflag
+	boolean retflag = true
 	long ll_packunits
 	integer li_gcode
 	string ls_fullcode
@@ -129,7 +129,7 @@
 	long ll_adjcode
 	long ll_gcode
 	long ll_icode
-	long ll_counter
+	long ll_counter = 1
 	long ll_packunits
 	long ll_dddwrowcount
 	long ll_foundrow
@@ -193,7 +193,7 @@
 	ai_protect = 1
 
 // w_adjwindow.wf_iteminfo(long al_icode, double ad_purprice, double ad_avgprice, double ad_saleprice, double ad_recentpurprice) returns boolean
-	boolean retflag
+	boolean retflag = true
 	SQL SELECT item.purprice , item.avgprice , item.saleprice , item.recentpurprice INTO :ad_purprice, :ad_avgprice, :ad_saleprice, :ad_recentpurprice FROM item WHERE item.icode =:al_icode USING this.it_transobject;
 	if isnull(ad_purprice) then
 		ad_purprice = 0
@@ -272,7 +272,7 @@
 	string ls_colname
 	string ls_rtnstring
 	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
-	for li_counter = li_colcount to li_counter step -1
+	for li_counter = li_colcount to 1 step -1
 		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
 		if ai_doundo = 1 then
 			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
@@ -306,7 +306,7 @@
 	double ld_creditamt
 	double ld_currbalance
 	integer li_detailcounter
-	boolean lb_commitflag
+	boolean lb_commitflag = true
 	datastore lds_prdetail
 	lds_prdetail = create datastore
 	lds_prdetail.dataobject = "d_adjdetail1"
@@ -367,7 +367,7 @@
 	string ls_titleerrtext
 	string ls_errtext
 	string ls_null
-	integer li_errcode
+	integer li_errcode = 1
 	integer li_assgcode
 	integer li_null
 	ll_icode = this.id_detail.getitemnumber(this.il_currrow, "icode")
@@ -395,7 +395,7 @@
 	string ls_batch
 	string ls_errortext
 	date ld_expiry
-	integer li_errcode
+	integer li_errcode = 1
 	integer li_errorcode
 	integer li_null
 	string ls_null
@@ -426,7 +426,7 @@
 	return li_errcode
 
 // w_adjwindow.wf_releaselock(long al_icode) returns boolean
-	boolean retflag
+	boolean retflag = true
 	long ll_count
 	SQL SELECT count ( *) INTO :ll_count FROM godowndetail WITH ( NOLOCK ) WHERE godowndetail.Gcode =:this.ii_purchasegodownoption AND godowndetail.icode =:al_icode USING this.it_transobject;
 	if this.it_transobject.sqlcode = -1 then
@@ -481,7 +481,7 @@
 	double ld_totalstock
 	integer li_result
 	integer li_rtncode
-	boolean populateflag
+	boolean populateflag = true
 	s_arguements lstr_selecteditems
 	long ll_rowcount
 	long ll_rtcode
@@ -637,7 +637,7 @@
 	return li_errcode
 
 // w_adjwindow.wf_itemstockinfo(long al_gcode, long al_icode, string as_batch, datetime ad_expiry, double ad_stock) returns boolean
-	boolean retflag
+	boolean retflag = true
 	SQL SELECT godowndetail.currqty INTO :ad_stock FROM godowndetail WHERE godowndetail.Gcode =:al_gcode AND godowndetail.icode =:al_icode AND godowndetail.batch =:as_batch AND godowndetail.expiry =:ad_expiry USING this.it_transobject;
 	if isnull(ad_stock) then
 		ad_stock = 0
@@ -723,7 +723,7 @@
 	long ll_icode
 	long ll_gcode
 	long ll_packingunits
-	long ll_salesmancode
+	long ll_salesmancode = 1
 	long ll_adjcode
 	long ll_headerno
 	long ll_headerinvno
@@ -741,8 +741,8 @@
 	integer li_counter
 	integer li_errorrow
 	integer li_maxretcode
-	boolean lb_commitflag
-	boolean lb_continue
+	boolean lb_commitflag = true
+	boolean lb_continue = true
 	unsignedlong ul_rowcount
 	unsignedlong ul_maxutn
 	datetime ldt_server_datetime
@@ -994,7 +994,7 @@
 
 // w_adjwindow.ue_detail() returns 0 [event]
 	integer li_rtncode
-	integer li_protect
+	integer li_protect = 1
 	long ll_row
 	long ll_code
 	long ll_adjcode
@@ -1325,7 +1325,7 @@
 	double ld_storedqty
 	double ld_stock
 	double ld_packqty
-	double ld_defaultqty
+	double ld_defaultqty = 1.0
 	long ll_null
 	long ll_currentrow
 	long ll_icode

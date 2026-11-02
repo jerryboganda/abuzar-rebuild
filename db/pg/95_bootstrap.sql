@@ -4,7 +4,7 @@
 --
 -- The first administrator is  admin / admin  - change the password after the first login (the original keeps passwords in plain text, too).
 
-INSERT INTO dbo.users (usercode, username, password, active) VALUES (1, 'admin', 'admin', 'Y') ON CONFLICT DO NOTHING;
+INSERT INTO dbo.users (usercode, username, password, active) VALUES (1, 'ADMIN', 'admin', 'Y') ON CONFLICT DO NOTHING;
 INSERT INTO dbo.usergroups (usercode, groupcode, modifiedby) VALUES (1, 2, 1) ON CONFLICT DO NOTHING;
 
 -- one preferences row (every window reads it); all columns have defaults

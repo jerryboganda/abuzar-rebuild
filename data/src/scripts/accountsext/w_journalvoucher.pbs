@@ -8,7 +8,7 @@
 	string ls_rtnstring
 	if not isnull(ad_dwcontrol.dataobject) then
 		li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
-		for li_counter = li_colcount to li_counter step -1
+		for li_counter = li_colcount to 1 step -1
 			ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
 			if ai_doundo = 1 then
 				ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
@@ -47,7 +47,7 @@
 
 // w_journalvoucher.wf_initmodify(integer ai_protect) returns integer
 	long ll_glvochcode
-	long ll_counter
+	long ll_counter = 1
 	if this.id_master.getitemstring(1, "posted") = "N" then
 		ll_glvochcode = this.id_detail.getitemnumber(1, "code")
 		if wf_lockvoucher(ll_glvochcode) = 0 then
@@ -100,7 +100,7 @@
 
 // w_journalvoucher.wf_post() returns integer
 	integer li_errcode
-	long ll_salesmancode
+	long ll_salesmancode = 1
 	long ll_saleinvcount
 	s_arguements lstr_arginfo
 	datetime ldt_server_datetime
@@ -361,7 +361,7 @@
 	long ll_salesmancode
 	integer li_counter
 	integer li_null
-	boolean lb_commitflag
+	boolean lb_commitflag = true
 	datetime ldt_server_datetime
 	string ls_date_errtext
 	unsignedlong ul_rowcount
@@ -486,7 +486,7 @@
 
 // w_journalvoucher.ue_detail() returns 0 [event]
 	integer li_rtncode
-	integer li_protect
+	integer li_protect = 1
 	long ll_row
 	call super::ue_detail
 	setredraw(false)

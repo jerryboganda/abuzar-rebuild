@@ -31,7 +31,7 @@
 	string ls_fullcode
 	string ls_errtext
 	string ls_titleerrtext
-	integer il_errcode
+	integer il_errcode = 1
 	integer li_errcode
 	boolean lb_invalidrow
 	integer li_null
@@ -70,7 +70,7 @@
 	string ls_colname
 	string ls_rtnstring
 	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
-	for li_counter = li_colcount to li_counter step -1
+	for li_counter = li_colcount to 1 step -1
 		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
 		if ai_doundo = 1 then
 			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
@@ -95,7 +95,7 @@
 	end if
 
 // w_importedpurchase.wf_releaselock(long al_icode) returns boolean
-	boolean retflag
+	boolean retflag = true
 	long ll_count
 	SQL SELECT count ( *) INTO :ll_count FROM godowndetail WITH ( NOLOCK ) WHERE godowndetail.Gcode =:this.ii_purchasegodownoption AND godowndetail.icode =:al_icode USING this.it_transobject;
 	if this.it_transobject.sqlcode = -1 then
@@ -217,7 +217,7 @@
 	return li_retflag
 
 // w_importedpurchase.wf_getitemsaleprice(long al_icode, double ad_saleprice) returns boolean
-	boolean retflag
+	boolean retflag = true
 	SQL SELECT item.salePrice INTO :ad_saleprice FROM item WHERE item.icode =:al_icode USING this.it_transobject;
 	if isnull(ad_saleprice) then
 		ad_saleprice = 0
@@ -233,7 +233,7 @@
 	long ll_purinvcode
 	long ll_gcode
 	long ll_icode
-	long ll_counter
+	long ll_counter = 1
 	long ll_packunits
 	string ls_batch
 	string ls_itemtotalval
@@ -314,7 +314,7 @@
 	return false
 
 // w_importedpurchase.wf_iteminfo(long al_icode, long al_gcode, double ad_purprice, double ad_discperc, double ad_avgprice, long al_packunits, double al_packsalestax, double al_gstperc, double ad_saleprice) returns boolean
-	boolean retflag
+	boolean retflag = true
 	SQL SELECT 1 , item.salePrice , item.purdiscperc , item.avgprice , item.packunits , item.saleprice , item.packsalestax , item.gstperc1 INTO :al_gcode, :ad_purprice, :ad_discperc, :ad_avgprice, :al_packunits, :ad_saleprice, :al_packsalestax, :al_gstperc FROM item WHERE item.icode =:al_icode USING this.it_transobject;
 	if al_packunits < 1 or isnull(al_packunits) then
 		al_packunits = 1
@@ -352,7 +352,7 @@
 	long ll_count
 	integer li_result
 	integer li_rtncode
-	boolean populateflag
+	boolean populateflag = true
 	double ld_godownstock
 	double ld_allgodownstock
 	string ls_errortext
@@ -456,7 +456,7 @@
 	long ll_duplrows
 	integer li_result
 	integer li_rtncode
-	boolean populateflag
+	boolean populateflag = true
 	s_arguements lstr_selecteditems
 	string ls_itemtotalval
 	double ld_godownstock
@@ -593,7 +593,7 @@
 	return ll_retrievecount
 
 // w_importedpurchase.wf_populatepurorder() returns integer
-	boolean populateflag
+	boolean populateflag = true
 	string ls_itemtotalval
 	string ls_fullcode
 	integer li_result
@@ -815,7 +815,7 @@
 	long ll_suppcode
 	long ll_salesmancode
 	long ll_row
-	long ll_manfcode
+	long ll_manfcode = 1
 	integer li_rtcode
 	datetime ld_podate
 	string ls_podate
@@ -858,7 +858,7 @@
 	end if
 
 // w_importedpurchase.wf_updateitemavgprice(long al_icode, double ad_newavgprice) returns boolean
-	boolean retflag
+	boolean retflag = true
 	SQL update item SET item.avgprice =:ad_newavgprice WHERE item.icode =:al_icode USING this.it_transobject;
 	if this.it_transobject.sqlcode = -1 then
 		retflag = false
@@ -885,7 +885,7 @@
 	return true
 
 // w_importedpurchase.wf_post() returns boolean
-	integer li_postingmode
+	integer li_postingmode = 1
 	long ll_sinvcode
 	long ll_linvcode
 	setnull(ll_sinvcode)
@@ -893,10 +893,10 @@
 	return wf_post_adv_purchase(li_postingmode, ll_sinvcode, ll_linvcode)
 
 // w_importedpurchase.wf_saveandpost() returns 0
-	integer li_postingmode
+	integer li_postingmode = 2
 	long ll_sinvcode
 	long ll_linvcode
-	boolean lb_commitflag
+	boolean lb_commitflag = true
 	event ue_save()
 	if this.ib_commitok then
 		ll_sinvcode = this.id_master.getitemnumber(1, "code")
@@ -910,7 +910,7 @@
 	setpointer(arrow!)
 
 // w_importedpurchase.wf_inititeminfo(long al_icode, long al_row, string as_errortext) returns boolean
-	boolean retflag
+	boolean retflag = true
 	string ls_fullcode
 	string ls_name
 	string ls_itemtotalval
@@ -1084,7 +1084,7 @@
 	return 1
 
 // w_importedpurchase.wf_itemstockinfo(long al_icode, long al_gcode, double ad_stock) returns boolean
-	boolean retflag
+	boolean retflag = true
 	long ld_stock
 	long ld_totalstock
 	ad_stock = 100
@@ -1101,7 +1101,7 @@
 	return at_transobject.sqlcode
 
 // w_importedpurchase.wf_updateitemstock(long al_icode, long al_gcode, double ad_newstock) returns boolean
-	boolean retflag
+	boolean retflag = true
 	SQL update godowndetail SET godowndetail.currqty =:ad_newstock WHERE godowndetail.gcode =:al_gcode AND godowndetail.icode =:al_icode USING this.it_transobject;
 	if this.it_transobject.sqlcode = -1 then
 		retflag = false
@@ -1120,7 +1120,7 @@
 	return 0
 
 // w_importedpurchase.wf_post_adv_purchase(integer ai_postingmode, long al_startinginvcode, long al_endinginvcode) returns boolean
-	boolean lb_commitflag
+	boolean lb_commitflag = true
 	integer li_errcode
 	integer li_rtncode
 	integer li_detailcounter
@@ -1138,9 +1138,9 @@
 	string ls_date_errtext
 	string ls_errortext
 	string ls_success_msg
-	integer ci_normalpurchase
-	integer ci_openingpurchase
-	integer ci_loosepurchase
+	integer ci_normalpurchase = 1
+	integer ci_openingpurchase = 3
+	integer ci_loosepurchase = 7
 	long ll_rowcount
 	long ll_invcounter
 	long ll_invcode
@@ -1504,16 +1504,16 @@
 	double ld_misccharges
 	double ld_netrate
 	double ld_currbalance
-	boolean lb_commitflag
+	boolean lb_commitflag = true
 	unsignedlong ul_rowcount
 	unsignedlong ul_maxutn
 	datetime ldt_server_datetime
 	string ls_date_errtext
 	string ls_errortext
 	string ls_updateavgpricewithnetrate
-	integer ci_normalpurchase
-	integer ci_openingpurchase
-	integer ci_loosepurchase
+	integer ci_normalpurchase = 1
+	integer ci_openingpurchase = 3
+	integer ci_loosepurchase = 7
 	long ll_rowcount
 	long ll_invcounter
 	datastore lds_purdetail
@@ -1733,7 +1733,7 @@
 	return lb_commitflag
 
 // w_importedpurchase.wf_post_purchases(long al_imppurinvcode, long al_usercode, datetime adt_server_datetime, string as_errtext) returns boolean
-	boolean lb_retflag
+	boolean lb_retflag = true
 	long ll_rowcount
 	long ll_counter
 	long ll_purinvcode
@@ -2304,10 +2304,10 @@
 	double ld_bonusqty
 	double ld_looseqty
 	double ld_packqty
-	integer li_counter
+	integer li_counter = 1
 	integer li_option
 	long ll_icode
-	long ll_salesmancode
+	long ll_salesmancode = 1
 	long ll_mastercurrrow
 	long ll_footercurrrow
 	long ll_invid
@@ -2320,7 +2320,7 @@
 	double ld_famt
 	double ld_ftot
 	string ls_updatepurprice
-	boolean lb_commitflag
+	boolean lb_commitflag = true
 	datetime ldt_expiry
 	datetime ldt_server_datetime
 	string ls_date_errtext
@@ -2522,7 +2522,7 @@
 	call super::ue_newform
 	lm_menu = this.menuid
 	setredraw(false)
-	for ll_counter = 1 to ll_counter
+	for ll_counter = 1 to gds_securitywindow.rowcount()
 		if gds_securitywindow.object.rightcode[ll_counter] = 5007 then
 			lm_menu.m_file.m_savepost.enabled = true
 		end if
@@ -3267,7 +3267,7 @@
 	integer li_errcode
 	integer li_packunits
 	integer li_retmsgcode
-	integer li_option
+	integer li_option = 2
 	datetime ldt_expiry
 	date ld_expiry
 	time lt_expiry
@@ -3287,7 +3287,7 @@
 	double ld_bonusqty
 	double ld_packqty
 	double ld_looseqty
-	double ld_defaultqty
+	double ld_defaultqty = 1.0
 	datawindowchild ldc_items
 	dwitemstatus lrs_status
 	double ld_godownstock

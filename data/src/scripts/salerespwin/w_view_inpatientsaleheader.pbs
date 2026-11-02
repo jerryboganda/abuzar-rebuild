@@ -37,7 +37,7 @@
 // w_view_inpatientsaleheader.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
 	integer li_colcount
 	integer li_counter
-	integer li_start
+	integer li_start = 1
 	integer li_temp
 	string ls_colname
 	string ls_rtnstring
@@ -160,7 +160,7 @@
 	lds_itemsetting.settransobject(sqlca)
 	lds_itemsetting.retrieve(li_view_cashorcredit, 1)
 	li_visiblecolumns = lds_itemsetting.rowcount()
-	for li_counter = 1 to li_counter
+	for li_counter = 1 to lds_itemsetting.rowcount()
 		colname[li_counter, 1] = lds_itemsetting.getitemstring(li_counter, "colname") + "_t"
 		colname[li_counter, 2] = lds_itemsetting.getitemstring(li_counter, "colname")
 		colwidth[li_counter, 1] = integer(this.id_header.describe(colname[li_counter, 1] + ".Width"))
@@ -207,7 +207,7 @@
 		end if
 	loop
 	lds_itemsetting.retrieve(li_view_cashorcredit, 0)
-	for li_counter = 1 to li_counter
+	for li_counter = 1 to lds_itemsetting.rowcount()
 		holdcolname = lds_itemsetting.getitemstring(li_counter, "colname")
 		this.id_header.modify(holdcolname + ".Edit.Required='No'")
 	next

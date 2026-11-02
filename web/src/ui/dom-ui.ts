@@ -524,7 +524,7 @@ export class WinView {
     }
     const hit = this.shownMenu ? find(this.shownMenu) : null
     if (!hit) return false
-    void this.ui.rt.fire(hit, 'clicked')
+    void this.ui.rt.fire(hit, 'clicked').then(() => this.ui.rt.flushPosted())
     return true
   }
 
@@ -574,7 +574,7 @@ export class WinView {
         }
         b.appendChild(pic)
         b.disabled = !button.enabled
-        b.onclick = () => void this.ui.rt.fire(item, 'clicked')
+        b.onclick = () => void this.ui.rt.fire(item, 'clicked').then(() => this.ui.rt.flushPosted())
         tool.appendChild(b)
       }
       // every sheet's toolbar ends with the door: it closes the sheet (seen on every window of the original)
@@ -674,7 +674,7 @@ export class WinView {
           e.stopPropagation()
           if (sub.props.get('enabled') === false) return
           document.body.click()
-          void this.ui.rt.fire(sub, 'clicked')
+          void this.ui.rt.fire(sub, 'clicked').then(() => this.ui.rt.flushPosted())
         }
       }
       d.appendChild(it)
@@ -756,7 +756,7 @@ export class WinView {
         setMnemonic(b, str(c, 'text'))
         this.style(c, b)
         b.disabled = !bool(c, 'enabled', true)
-        b.onclick = () => void rt.fire(c, 'clicked')
+        b.onclick = () => void rt.fire(c, 'clicked').then(() => rt.flushPosted()).then(() => rt.flushPosted())
         b.onfocus = () => void rt.fire(c, 'getfocus')
         wire(b)
         el = b
@@ -770,7 +770,7 @@ export class WinView {
         d.style.textAlign = ALIGN[num(c, 'alignment', 0)] ?? 'left'
         d.style.lineHeight = 'normal'
         this.borderClass(c, d)
-        d.onclick = () => void rt.fire(c, 'clicked')
+        d.onclick = () => void rt.fire(c, 'clicked').then(() => rt.flushPosted()).then(() => rt.flushPosted())
         el = d
         break
       }
@@ -816,7 +816,7 @@ export class WinView {
         i.disabled = !bool(c, 'enabled', true)
         i.onchange = () => {
           c.props.set('checked', i.checked)
-          void rt.fire(c, 'clicked')
+          void rt.fire(c, 'clicked').then(() => rt.flushPosted())
         }
         const sp = document.createElement('span')
         setMnemonic(sp, str(c, 'text'))
@@ -933,7 +933,7 @@ export class WinView {
         img.className = 'ctl'
         img.src = 'data/assets/' + str(c, 'picturename').replace(/^.*[\\/]/, '').toLowerCase()
         img.onerror = () => (img.style.visibility = 'hidden')
-        img.onclick = () => void rt.fire(c, 'clicked')
+        img.onclick = () => void rt.fire(c, 'clicked').then(() => rt.flushPosted()).then(() => rt.flushPosted())
         el = img
         break
       }

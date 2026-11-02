@@ -2,7 +2,7 @@
 import { PBObject } from '../object.ts'
 import type { Member } from '../object.ts'
 import type { Runtime } from '../interp.ts'
-import { PBArray, toNum, toStr } from '../values.ts'
+import { PBArray, PBDateTime, toNum, toStr } from '../values.ts'
 import { Ref } from '../interp.ts'
 
 /** the automation object of an OLE control whose server is not installed here (fingerprint reader, ActiveX viewers): every call fails with -1,
@@ -57,7 +57,19 @@ export class NControl extends PBObject {
     const text = toStr(this.props.get('text'))
     const cur = ref.get()
     if (typeof cur === 'number') await ref.set(Number(text.replace(/,/g, '')) || 0)
-    else await ref.set(text)
+    else {
+      // EditMask.GetData fills a typed variable.  The target may be a struct
+      // member (report arguments), whose type the reference cannot inspect, so
+      // convert a date/time-looking value instead of handing over raw text.
+      const m = /^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})(?:[ T]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/.exec(text.trim())
+      const iso = /^(\d{4})[/-](\d{1,2})[/-](\d{1,2})(?:[ T]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/.exec(text.trim())
+      if (m) {
+        const y = +m[3] < 100 ? 2000 + +m[3] : +m[3]
+        await ref.set(PBDateTime.fromJs(new Date(y, +m[2] - 1, +m[1], +(m[4] ?? 0), +(m[5] ?? 0), +(m[6] ?? 0))))
+      } else if (iso) {
+        await ref.set(PBDateTime.fromJs(new Date(+iso[1], +iso[2] - 1, +iso[3], +(iso[4] ?? 0), +(iso[5] ?? 0), +(iso[6] ?? 0))))
+      } else await ref.set(text)
+    }
     return 1
   }
   /** the window that contains this control */

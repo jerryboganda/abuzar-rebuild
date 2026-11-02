@@ -20,7 +20,7 @@
 	return this.it_transobject.sqlcode
 
 // w_goods_recieveable_note.wf_getitemsaleprice(long al_icode, double ad_saleprice) returns boolean
-	boolean retflag
+	boolean retflag = true
 	SQL SELECT item.salePrice INTO :ad_saleprice FROM item WHERE item.icode =:al_icode USING this.it_transobject;
 	if isnull(ad_saleprice) then
 		ad_saleprice = 0
@@ -56,7 +56,7 @@
 	long ll_purinvcode
 	long ll_gcode
 	long ll_icode
-	long ll_counter
+	long ll_counter = 1
 	long ll_packunits
 	double ld_bonusqty
 	double ld_stock
@@ -160,7 +160,7 @@
 	string ls_colname
 	string ls_rtnstring
 	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
-	for li_counter = li_colcount to li_counter step -1
+	for li_counter = li_colcount to 1 step -1
 		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
 		if ai_doundo = 1 then
 			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
@@ -170,7 +170,7 @@
 	next
 
 // w_goods_recieveable_note.wf_releaselock(long al_icode) returns boolean
-	boolean retflag
+	boolean retflag = true
 	long ll_count
 	SQL SELECT count ( *) INTO :ll_count FROM godowndetail ( NOLOCK ) WHERE godowndetail.Gcode =:this.ii_purchasegodownoption AND godowndetail.icode =:al_icode USING this.it_transobject;
 	if this.it_transobject.sqlcode = -1 then
@@ -211,7 +211,7 @@
 	long ll_suppcode
 	long ll_salesmancode
 	long ll_row
-	long ll_manfcode
+	long ll_manfcode = 1
 	integer li_rtcode
 	datetime ld_podate
 	string ls_podate
@@ -256,7 +256,7 @@
 	ad_master.object.phone[ll_currow] = ls_phone
 
 // w_goods_recieveable_note.wf_updateitemavgprice(long al_icode, double ad_newavgprice) returns boolean
-	boolean retflag
+	boolean retflag = true
 	SQL update item SET item.avgprice =:ad_newavgprice WHERE item.icode =:al_icode USING this.it_transobject;
 	if this.it_transobject.sqlcode = -1 then
 		retflag = false
@@ -283,7 +283,7 @@
 	string ls_fullcode
 	string ls_errtext
 	string ls_titleerrtext
-	integer il_errcode
+	integer il_errcode = 1
 	integer li_errcode
 	integer li_null
 	string ls_null
@@ -319,7 +319,7 @@
 	end if
 
 // w_goods_recieveable_note.wf_iteminfo(long al_icode, long al_gcode, double ad_purprice, double ad_discperc, double ad_avgprice, long al_packunits, double al_packsalestax, double al_gstperc, double ad_saleprice) returns boolean
-	boolean retflag
+	boolean retflag = true
 	SQL SELECT 1 , item.salePrice , item.purdiscperc , item.avgprice , item.packunits , item.saleprice , item.packsalestax , item.gstperc1 INTO :al_gcode, :ad_purprice, :ad_discperc, :ad_avgprice, :al_packunits, :ad_saleprice, :al_packsalestax, :al_gstperc FROM item WHERE item.icode =:al_icode USING this.it_transobject;
 	if isnull(ad_purprice) then
 		ad_purprice = 0
@@ -338,7 +338,7 @@
 	return at_transobject.sqlcode
 
 // w_goods_recieveable_note.wf_inititeminfo(long al_icode, long al_row, string as_errortext) returns boolean
-	boolean retflag
+	boolean retflag = true
 	double ld_purprice
 	double ld_discperc
 	double ld_saleprice
@@ -454,7 +454,7 @@
 	long ll_duplrows
 	integer li_result
 	integer li_rtncode
-	boolean populateflag
+	boolean populateflag = true
 	double ld_godownstock
 	double ld_allgodownstock
 	long ll_rowcount
@@ -573,7 +573,7 @@
 	double ld_allgodownstock
 	integer li_result
 	integer li_rtncode
-	boolean populateflag
+	boolean populateflag = true
 	s_saletemplate lstr_template
 	string ls_itemtotalval
 	long ll_rowcount
@@ -735,7 +735,7 @@
 	double ld_allgodownstock
 	integer li_result
 	integer li_rtncode
-	boolean populateflag
+	boolean populateflag = true
 	s_arguements lstr_selecteditems
 	string ls_itemtotalval
 	long ll_rowcount
@@ -880,7 +880,7 @@
 	return ls_report
 
 // w_goods_recieveable_note.wf_post() returns boolean
-	integer li_postingmode
+	integer li_postingmode = 1
 	long ll_sinvcode
 	long ll_linvcode
 	setnull(ll_sinvcode)
@@ -1009,10 +1009,10 @@
 	return ll_disallowedcount
 
 // w_goods_recieveable_note.wf_saveandpost() returns 0
-	integer li_postingmode
+	integer li_postingmode = 2
 	long ll_sinvcode
 	long ll_linvcode
-	boolean lb_commitflag
+	boolean lb_commitflag = true
 	event ue_save()
 	if this.ib_commitok then
 		ll_sinvcode = this.id_master.getitemnumber(1, "code")
@@ -1085,16 +1085,16 @@
 	double ld_updpurrate
 	integer li_detailcounter
 	integer li_purchasecategory
-	boolean lb_commitflag
+	boolean lb_commitflag = true
 	unsignedlong ul_rowcount
 	unsignedlong ul_maxutn
 	datetime ldt_server_datetime
 	string ls_date_errtext
 	string ls_errortext
 	string ls_batchprefix
-	integer ci_normalpurchase
-	integer ci_openingpurchase
-	integer ci_loosepurchase
+	integer ci_normalpurchase = 1
+	integer ci_openingpurchase = 3
+	integer ci_loosepurchase = 7
 	long ll_rowcount
 	long ll_invcounter
 	long ll_invcode
@@ -1386,14 +1386,14 @@
 	return 0
 
 // w_goods_recieveable_note.wf_itemstockinfo(long al_icode, long al_gcode, double ad_stock) returns boolean
-	boolean retflag
+	boolean retflag = true
 	double ld_stock
 	double ld_totalstock
 	ad_stock = 100
 	return retflag
 
 // w_goods_recieveable_note.wf_updateitemstock(long al_icode, long al_gcode, double ad_newstock) returns boolean
-	boolean retflag
+	boolean retflag = true
 	SQL update godowndetail SET godowndetail.currqty =:ad_newstock WHERE godowndetail.gcode =:al_gcode AND godowndetail.icode =:al_icode USING this.it_transobject;
 	if this.it_transobject.sqlcode = -1 then
 		retflag = false
@@ -1431,7 +1431,7 @@
 	s_saletemplate lstr_template
 	boolean lb_enablesave
 	boolean lb_insertrow
-	integer li_retcode
+	integer li_retcode = 1
 	integer li_errcode
 	long ll_totalrows
 	long ll_rowcount
@@ -1623,10 +1623,10 @@
 	destroy this.dw_changeprice_foritemlog
 
 // w_goods_recieveable_note.ue_save() returns 0 [event]
-	integer li_counter
+	integer li_counter = 1
 	integer li_option
 	long ll_icode
-	long ll_salesmancode
+	long ll_salesmancode = 1
 	long ll_mastercurrrow
 	long ll_footercurrrow
 	long ll_invid
@@ -1639,7 +1639,7 @@
 	double ld_bonusqty
 	double ld_looseqty
 	string ls_updatepurprice
-	boolean lb_commitflag
+	boolean lb_commitflag = true
 	boolean lb_isnewinv
 	datetime ldt_expiry
 	datetime ldt_server_datetime
@@ -1826,7 +1826,7 @@
 	lm_menu = this.menuid
 	setredraw(false)
 	lm_menu.m_file.m_itempurchasehistory.enabled = false
-	for ll_counter = 1 to ll_counter
+	for ll_counter = 1 to gds_securitywindow.rowcount()
 		if gds_securitywindow.object.rightcode[ll_counter] = 528 then
 			lm_menu.m_file.m_savepost.enabled = true
 		end if
@@ -2596,7 +2596,7 @@
 // dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	integer li_errcode
-	integer li_option
+	integer li_option = 2
 	long ll_null
 	long ll_currentrow
 	long ll_icode
@@ -2606,7 +2606,7 @@
 	double ld_bonusqty
 	double ld_packqty
 	double ld_looseqty
-	double ld_defaultqty
+	double ld_defaultqty = 1.0
 	string ls_null
 	string ls_itemname
 	datetime ldt_expiry

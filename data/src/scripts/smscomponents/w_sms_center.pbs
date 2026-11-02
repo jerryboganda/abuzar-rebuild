@@ -23,7 +23,7 @@
 	long[] ll_docrowid
 	long ll_printable_count
 	long ll_min_refresh
-	boolean lb_continue
+	boolean lb_continue = true
 	datetime ldt_startdate
 	setpointer(hourglass!)
 	setredraw(false)
@@ -209,7 +209,7 @@
 
 // w_sms_center.wf_getdevices() returns long
 	long ll_portno
-	long ll_totalports
+	long ll_totalports = 3000
 	long ll_counter
 	long ll_insrow
 	long ll_count
@@ -352,7 +352,7 @@
 	long ll_start
 	long ll_end
 	char lc_temp
-	boolean lb_phoneok
+	boolean lb_phoneok = true
 	if len(as_phoneno) > 0 then
 		ll_end = len(as_phoneno)
 		for ll_start = 1 to ll_end
@@ -442,10 +442,10 @@
 	integer li_pdu_length
 	long ll_smscode
 	long ll_retcode
-	long ll_sms_sended
+	long ll_sms_sended = 1
 	string ls_smstext
 	string ls_smsto
-	string ls_errtext
+	string ls_errtext = "                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        0"
 	setpointer(hourglass!)
 	if al_row > 0 then
 		ll_smscode = this.id_outbox.object.smscode[al_row]
@@ -478,7 +478,7 @@
 	return 1
 
 // w_sms_center.wf_remove_whitespace(string as_text) returns string
-	long start_pos
+	long start_pos = 1
 	string old_str
 	string new_str
 	string mystring
@@ -520,7 +520,7 @@
 	long ll_templatecode
 	long ll_totsmsdone
 	long ll_smsdatacode
-	string ls_list
+	string ls_list = "                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      0"
 	string ls_reason
 	s_arguements lstr_arg
 	open(w_arg_smstemplate_data_enabled)
@@ -983,7 +983,7 @@
 	integer li_start
 	long ll_retcode
 	long ll_init
-	long ll_msgidentifier
+	long ll_msgidentifier = 1
 	boolean lb_portopen
 	string ls_command
 	string ls_response
@@ -1232,12 +1232,12 @@
 	integer li_ret
 	long ll_smscode
 	long ll_retcode
-	long ll_sms_sended
+	long ll_sms_sended = 1
 	string ls_smstext
 	string ls_smsto
-	string ls_errtext
-	string ls_lang
-	string ls_reponsetype
+	string ls_errtext = "                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        0"
+	string ls_lang = "En"
+	string ls_reponsetype = "xml"
 	string ls_userid
 	string ls_password
 	string ls_mask
@@ -1759,7 +1759,7 @@
 	long ll_count
 	long ll_lastpos
 	char lc_temp
-	boolean lb_phoneok
+	boolean lb_phoneok = true
 	setnull(ll_smstemplatecode)
 	parent.parent.parent.id_compose.accepttext()
 	ls_phoneno = trim(parent.parent.parent.id_compose.object.phoneno[1])
@@ -2167,7 +2167,7 @@
 	destroy this.dw_sent
 
 // cb_deleteall.clicked() returns long [event]
-	long ll_res
+	long ll_res = 2
 	ll_res = messagebox("Delete Sent SMS", "Are you sure to delete All the Sent SMS Record from SMS Center?", question!, yesnocancel!, 2)
 	if ll_res = 1 then
 		SQL DELETE DBO.SMS_Center WHERE SMSStatusCode =2 USING parent.parent.parent.it_transobject;
@@ -2185,7 +2185,7 @@
 	return ::message.returnvalue
 
 // cb_delete.clicked() returns long [event]
-	long ll_res
+	long ll_res = 2
 	s_arguements lstr_arg
 	open(w_arg_sdate_ldate)
 	lstr_arg = message.powerobjectparm
@@ -2260,7 +2260,7 @@
 // dw_sent.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	long ancestorreturnvalue
 	long ll_code
-	long ll_res
+	long ll_res = 2
 	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
 	if f_rightexists(5047) and key = keydelete! then
 		if rowcount() > 0 and getrow() > 0 then
@@ -2305,7 +2305,7 @@
 	destroy this.dw_expired
 
 // cb_expired_deleteall.clicked() returns long [event]
-	long ll_res
+	long ll_res = 2
 	ll_res = messagebox("Delete Expired SMS", "Are you sure to delete All the Expired SMS Record from SMS Center?", question!, yesnocancel!, 2)
 	if ll_res = 1 then
 		SQL DELETE DBO.SMS_Center WHERE SMSStatusCode =3 USING parent.parent.parent.it_transobject;
@@ -2322,7 +2322,7 @@
 	return ::message.returnvalue
 
 // cb_expired_delete.clicked() returns long [event]
-	long ll_res
+	long ll_res = 2
 	s_arguements lstr_arg
 	open(w_arg_sdate_ldate)
 	lstr_arg = message.powerobjectparm

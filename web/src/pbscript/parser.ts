@@ -784,7 +784,8 @@ export function parseScriptFile(text: string): { file: ScriptFile; errors: strin
     }
     if (!cur) continue
     const s = raw.trim()
-    if (s) cur.body.push({ s, n: i + 1 })
+    // a whole-line comment (hand-written notes in the redacted copies: `// PostgreSQL: ...`) is not code
+    if (s && !s.startsWith('//')) cur.body.push({ s, n: i + 1 })
   }
   flush()
   return { file, errors }

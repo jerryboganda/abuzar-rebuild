@@ -1,7 +1,7 @@
 // userobject n_xls_workbook_v5 (dw2xls)  ancestor: n_xls_workbook
 
 // n_xls_workbook_v5.of_create(string as_filename) returns integer
-	integer li_ret
+	integer li_ret = 1
 	this.invo_tmp_format = create n_xls_format_v5
 	of_reg_format(this.invo_tmp_format)
 	if handle(getapplication()) <> 0 then
@@ -37,7 +37,7 @@
 	return li_ret
 
 // n_xls_workbook_v5.of_close() returns integer
-	integer li_ret
+	integer li_ret = 1
 	if not this.ib_fileclosed then
 		li_ret = of_store_workbook()
 	end if
@@ -47,7 +47,7 @@
 	return of_add_worksheet("")
 
 // n_xls_workbook_v5.of_add_worksheet(string as_worksheetname) returns n_xls_worksheet
-	integer li_ret
+	integer li_ret = 1
 	integer li_i
 	n_xls_worksheet_v5 lnvo_worksheet
 	do
@@ -64,7 +64,7 @@
 		if trim(as_worksheetname) = "" then
 			as_worksheetname = this.is_sheetname + string(this.il_worksheetindex + 1)
 		end if
-		for li_i = 1 to li_i
+		for li_i = 1 to this.il_worksheetindex
 			if this.invo_worksheets[li_i].is_worksheetname = as_worksheetname then
 				messagebox("Error", "Duplicate worksheet name", stopsign!)
 				li_ret = -1
@@ -153,7 +153,7 @@
 	return of_append(ablb_header + ablb_data)
 
 // n_xls_workbook_v5.of_append(blob ablb_data) returns integer
-	integer li_ret
+	integer li_ret = 1
 	if len(ablb_data) > this.iui_limit then
 		ablb_data = of_add_continue(ablb_data)
 	end if
@@ -162,7 +162,7 @@
 	return li_ret
 
 // n_xls_workbook_v5.of_add_continue(blob ablb_data) returns blob
-	unsignedinteger lui_record
+	unsignedinteger lui_record = 60
 	blob lblb_header
 	blob lblb_temp
 	long ll_len
@@ -181,10 +181,10 @@
 	return lblb_temp
 
 // n_xls_workbook_v5.of_store_bof(integer ai_type) returns integer
-	unsignedinteger li_record
-	unsignedinteger li_len
-	unsignedinteger li_build
-	unsignedinteger li_year
+	unsignedinteger li_record = 2057
+	unsignedinteger li_len = 8
+	unsignedinteger li_build = 2412
+	unsignedinteger li_year = 1993
 	blob lblb_header
 	blob lblb_data
 	lblb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_len)
@@ -193,8 +193,8 @@
 	return 1
 
 // n_xls_workbook_v5.of_store_codepage() returns integer
-	unsignedinteger li_record
-	unsignedinteger li_length
+	unsignedinteger li_record = 66
+	unsignedinteger li_length = 2
 	blob lblb_header
 	blob lblb_data
 	integer li_ret
@@ -206,7 +206,7 @@
 // n_xls_workbook_v5.of_store_externs() returns integer
 	unsignedinteger li_i
 	unsignedinteger li_cnt
-	unsignedinteger li_start
+	unsignedinteger li_start = 1
 	li_cnt = upperbound(this.is_sheetnames)
 	of_store_externcount(li_cnt)
 	for li_i = li_start to li_cnt
@@ -215,7 +215,7 @@
 	return 1
 
 // n_xls_workbook_v5.of_store_names() returns integer
-	integer li_ret
+	integer li_ret = 1
 	long ll_i
 	n_xls_worksheet_v5 lnvo_sheet
 	for ll_i = 1 to this.il_worksheetindex
@@ -237,15 +237,15 @@
 	return li_ret
 
 // n_xls_workbook_v5.of_store_window1() returns integer
-	integer li_ret
-	unsignedinteger li_record
-	unsignedinteger li_length
+	integer li_ret = 1
+	unsignedinteger li_record = 61
+	unsignedinteger li_length = 18
 	unsignedinteger li_xwn
 	unsignedinteger li_ywn
-	unsignedinteger li_dxwn
-	unsignedinteger li_dywn
-	unsignedinteger li_grbit
-	unsignedinteger li_wtabratio
+	unsignedinteger li_dxwn = 9660
+	unsignedinteger li_dywn = 5490
+	unsignedinteger li_grbit = 56
+	unsignedinteger li_wtabratio = 600
 	blob lblb_header
 	blob lblb_data
 	lblb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
@@ -254,9 +254,9 @@
 	return li_ret
 
 // n_xls_workbook_v5.of_store_1904() returns integer
-	unsignedinteger li_record
-	unsignedinteger li_length
-	integer li_ret
+	unsignedinteger li_record = 34
+	unsignedinteger li_length = 2
+	integer li_ret = 1
 	blob lblb_header
 	blob lblb_data
 	lblb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
@@ -277,7 +277,7 @@
 	long ll_i
 	long ll_j
 	long ll_key
-	integer li_ret
+	integer li_ret = 1
 	n_xls_format_v5 lnvo_format
 	lb_font = this.invo_tmp_format.of_get_font()
 	for ll_i = 1 to 5
@@ -357,7 +357,7 @@
 	return true
 
 // n_xls_workbook_v5.of_store_all_num_formats() returns integer
-	integer li_ret
+	integer li_ret = 1
 	string[] ls_formats
 	long ll_formats_cnt
 	long ll_i
@@ -394,7 +394,7 @@
 
 // n_xls_workbook_v5.of_store_num_format(string as_format, unsignedinteger ai_index) returns integer
 	integer li_ret
-	unsignedinteger li_record
+	unsignedinteger li_record = 1054
 	unsignedinteger li_length
 	integer li_len_format
 	blob lb_header
@@ -407,7 +407,7 @@
 	return li_ret
 
 // n_xls_workbook_v5.of_store_all_xfs() returns integer
-	integer li_ret
+	integer li_ret = 1
 	blob lb_xf
 	long ll_i
 	n_xls_format_v5 lnvo_format
@@ -429,11 +429,11 @@
 
 // n_xls_workbook_v5.of_store_style() returns integer
 	integer li_ret
-	unsignedinteger li_record
-	unsignedinteger li_length
-	unsignedinteger li_ixfe
+	unsignedinteger li_record = 659
+	unsignedinteger li_length = 4
+	unsignedinteger li_ixfe = 32768
 	integer li_builtin
-	integer li_ilevel
+	integer li_ilevel = 255
 	blob lb_header
 	blob lb_data
 	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
@@ -442,12 +442,12 @@
 	return li_ret
 
 // n_xls_workbook_v5.of_store_palette() returns integer
-	integer li_ret
-	unsignedinteger li_record
+	integer li_ret = 1
+	unsignedinteger li_record = 146
 	unsignedinteger li_length
 	unsignedinteger li_ccv
 	unsignedinteger li_i
-	unsignedinteger li_start
+	unsignedinteger li_start = 1
 	blob lb_header
 	blob lb_data
 	blob lb_data_item
@@ -466,9 +466,9 @@
 	return li_ret
 
 // n_xls_workbook_v5.of_calc_sheet_offsets() returns integer
-	integer li_ret
-	integer li_bof
-	integer li_eof
+	integer li_ret = 1
+	integer li_bof = 11
+	integer li_eof = 4
 	unsignedlong ll_offset
 	long ll_i
 	n_xls_worksheet_v5 lnvo_sheet
@@ -486,8 +486,8 @@
 	return li_ret
 
 // n_xls_workbook_v5.of_store_boundsheet(string as_sheetname, unsignedlong al_offset) returns integer
-	integer li_ret
-	unsignedinteger li_record
+	integer li_ret = 1
+	unsignedinteger li_record = 133
 	unsignedinteger li_length
 	unsignedinteger li_grbit
 	unsignedinteger li_cch
@@ -501,9 +501,9 @@
 	return li_ret
 
 // n_xls_workbook_v5.of_store_externcount(unsignedinteger ai_cxals) returns integer
-	integer li_ret
-	unsignedinteger li_record
-	unsignedinteger li_length
+	integer li_ret = 1
+	unsignedinteger li_record = 22
+	unsignedinteger li_length = 2
 	blob lb_header
 	blob lb_data
 	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
@@ -512,13 +512,13 @@
 	return li_ret
 
 // n_xls_workbook_v5.of_store_name_short(unsignedinteger ai_index, integer ai_type, unsignedinteger ai_rowmin, unsignedinteger ai_rowmax, integer ai_colmin, integer ai_colmax) returns integer
-	integer li_ret
-	unsignedinteger li_record
-	unsignedinteger li_length
-	unsignedinteger li_grbit
+	integer li_ret = 1
+	unsignedinteger li_record = 24
+	unsignedinteger li_length = 36
+	unsignedinteger li_grbit = 32
 	integer li_chkey
-	integer li_cch
-	unsignedinteger li_cce
+	integer li_cch = 1
+	unsignedinteger li_cce = 21
 	unsignedinteger li_ixals
 	unsignedinteger li_itab
 	integer li_cchcustmenu
@@ -526,12 +526,12 @@
 	integer li_cchhelptopic
 	integer li_cchstatustext
 	integer li_rgch
-	integer li_unknown03
+	integer li_unknown03 = 59
 	unsignedinteger li_unknown04
 	unsignedinteger li_unknown05
 	unsignedinteger li_unknown06
-	unsignedinteger li_unknown07
-	unsignedinteger li_unknown08
+	unsignedinteger li_unknown07 = 4231
+	unsignedinteger li_unknown08 = 32773
 	blob lb_header
 	blob lb_data
 	li_ixals = ai_index + 1
@@ -544,8 +544,8 @@
 	return li_ret
 
 // n_xls_workbook_v5.of_store_eof() returns integer
-	integer li_ret
-	unsignedinteger li_record
+	integer li_ret = 1
+	unsignedinteger li_record = 10
 	unsignedinteger li_length
 	blob lb_header
 	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
@@ -553,13 +553,13 @@
 	return li_ret
 
 // n_xls_workbook_v5.of_store_externsheet(string as_sheetname) returns integer
-	integer li_ret
-	unsignedinteger li_record
+	integer li_ret = 1
+	unsignedinteger li_record = 23
 	unsignedinteger li_length
 	blob lb_header
 	blob lb_data
 	unsignedinteger li_cch
-	unsignedinteger li_rgch
+	unsignedinteger li_rgch = 3
 	li_length = 2 + len(as_sheetname)
 	li_cch = len(as_sheetname)
 	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
@@ -569,7 +569,7 @@
 	return li_ret
 
 // n_xls_workbook_v5.of_store_ole_file() returns integer
-	integer li_ret
+	integer li_ret = 1
 	integer li_i
 	olestream lstr_book
 	n_xls_worksheet_v5 lnvo_sheet
@@ -584,7 +584,7 @@
 		this.invo_data.of_write(lstr_book)
 	end if
 	if li_ret = 1 then
-		for li_i = 1 to li_i
+		for li_i = 1 to this.il_worksheetindex
 			lnvo_sheet = this.invo_worksheets[li_i]
 			lnvo_sheet.of_write_data(lstr_book)
 		next
@@ -596,29 +596,29 @@
 	return li_ret
 
 // n_xls_workbook_v5.of_store_name_long(unsignedinteger ai_index, unsignedinteger ai_type, unsignedinteger ai_rowmin, unsignedinteger ai_rowmax, unsignedinteger ai_colmin, unsignedinteger ai_colmax) returns integer
-	integer li_ret
-	unsignedinteger li_record
-	unsignedinteger li_length
+	integer li_ret = 1
+	unsignedinteger li_record = 24
+	unsignedinteger li_length = 61
 	blob lb_header
 	blob lb_data
-	unsignedinteger li_grbit
+	unsignedinteger li_grbit = 32
 	integer li_chkey
-	integer li_cch
-	unsignedinteger li_cce
+	integer li_cch = 1
+	unsignedinteger li_cce = 46
 	unsignedinteger li_ixals
 	unsignedinteger li_itab
 	integer li_cchcustmenu
 	integer li_cchdescription
 	integer li_cchhelptopic
 	integer li_cchstatustext
-	integer li_unknown01
-	unsignedinteger li_unknown02
-	integer li_unknown03
+	integer li_unknown01 = 41
+	unsignedinteger li_unknown02 = 43
+	integer li_unknown03 = 59
 	unsignedinteger li_unknown04
 	unsignedinteger li_unknown05
 	unsignedinteger li_unknown06
-	unsignedinteger li_unknown07
-	unsignedinteger li_unknown08
+	unsignedinteger li_unknown07 = 4231
+	unsignedinteger li_unknown08 = 32776
 	li_ixals = ai_index + 1
 	li_itab = li_ixals
 	li_unknown04 = 65535 - ai_index

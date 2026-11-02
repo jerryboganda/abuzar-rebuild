@@ -165,7 +165,7 @@
 // w_incentivesheet.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
 	integer li_colcount
 	integer li_counter
-	integer li_start
+	integer li_start = 1
 	integer li_temp
 	string ls_colname
 	string ls_rtnstring
@@ -191,10 +191,10 @@
 	string ls_fullcode
 	string ls_titleerrtext
 	string ls_errtext
-	integer li_errcode
+	integer li_errcode = 1
 	integer li_assgcode
 	integer li_option
-	boolean lb_rtflag
+	boolean lb_rtflag = true
 	boolean ib_due
 	integer li_null
 	string ls_null
@@ -224,7 +224,7 @@
 	string ls_fullcode
 	string ls_titleerrtext
 	string ls_errtext
-	integer li_errcode
+	integer li_errcode = 1
 	integer li_option
 	integer n
 	boolean lb_dupitem
@@ -276,7 +276,7 @@
 	string ls_fullcode
 	string ls_titleerrtext
 	string ls_errtext
-	integer li_errcode
+	integer li_errcode = 1
 	ll_icode = this.id_detail.getitemnumber(this.il_currrow, "icode")
 	if vf_dwdupcode1(this.id_detail, "icode", string(ll_icode), this.il_currrow) = true then
 		ls_titleerrtext = "Item Validation"
@@ -326,7 +326,7 @@
 	string ls_date_errtext
 	string ls_remarks
 	string ls_null
-	char lc_posted
+	char lc_posted = "Y"
 	boolean lb_flag
 	s_arguements lstr_arginfo
 	datastore lds_incentivesheet
@@ -413,7 +413,7 @@
 	return li_errcode
 
 // w_incentivesheet.wf_inititeminfo(long al_icode, long al_row, integer ai_rtcode, string as_errortext) returns boolean
-	boolean retflag
+	boolean retflag = true
 	long ll_packunits
 	long ll_null
 	string ls_fullcode
@@ -446,7 +446,7 @@
 // w_incentivesheet.wf_initmodify(integer ai_protect) returns 0
 	long ll_code
 	long ll_icode
-	long ll_counter
+	long ll_counter = 1
 	long ll_count
 	double ld_qty
 	if this.id_master.getitemstring(1, "posted") = "N" then
@@ -485,13 +485,13 @@
 	long ll_detailrows
 	long ll_icode
 	long ll_errrowid
-	long ll_salesmancode
+	long ll_salesmancode = 1
 	long li_counter
 	long li_innercounter
 	long ll_itemsdetailrowcount
 	long ll_rowgroup
 	long ll_row
-	boolean lb_commitflag
+	boolean lb_commitflag = true
 	dwitemstatus ldws_column
 	ll_detailrows = this.id_detail.rowcount()
 	li_counter = 1
@@ -714,14 +714,14 @@
 	long ll_invid
 	long ll_icode
 	long ll_errrowid
-	long ll_salesmancode
+	long ll_salesmancode = 1
 	long ll_counter
 	long ll_count
 	long ll_null
 	long ll_modifycount
 	long ll_found
-	boolean lb_commitflag
-	boolean lb_continue
+	boolean lb_commitflag = true
+	boolean lb_continue = true
 	integer li_counter
 	integer li_filehandle
 	integer li_maxretcode
@@ -909,7 +909,7 @@
 
 // w_incentivesheet.ue_detail() returns 0 [event]
 	integer li_rtncode
-	integer li_protect
+	integer li_protect = 1
 	long ll_row
 	long ll_code
 	long ll_counter
@@ -1288,7 +1288,7 @@
 	integer rt_code
 	integer li_res
 	long ll_icode
-	long li_packunits
+	long li_packunits = 1
 	long ll_null
 	string ls_result
 	string ls_null
@@ -1480,11 +1480,11 @@
 // dw_itemsdetail.ue_enterkey() returns long [event]
 	integer li_rowno
 	integer i
-	integer li_columnno
+	integer li_columnno = 1
 	boolean lb_duplicate
 	li_columnno = integer(this.object.incentiverate.id)
 	if getrow() = rowcount() then
-		for i = 1 to i
+		for i = 1 to parent.parent.parent.id_detail.rowcount() - 1
 			if parent.parent.parent.id_detail.getitemstring(i, "fullcode") = parent.parent.parent.is_aliasname then
 				lb_duplicate = true
 			end if

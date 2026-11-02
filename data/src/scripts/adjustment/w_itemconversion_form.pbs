@@ -8,7 +8,7 @@
 	string ls_errtext
 	string ls_titleerrtext
 	string ls_null
-	integer il_errcode
+	integer il_errcode = 1
 	integer li_errcode
 	integer li_null
 	boolean lb_dupitem
@@ -96,7 +96,7 @@
 	long ll_code
 	long ll_gcode
 	long ll_icode
-	long ll_counter
+	long ll_counter = 1
 	long ll_packunits
 	double ld_qty
 	double ld_stock
@@ -141,7 +141,7 @@
 	ai_protect = 1
 
 // w_itemconversion_form.wf_iteminfo(long al_icode, long al_gcode, double ad_purprice, double ad_discperc, double ad_avgprice, long al_packunits) returns boolean
-	boolean retflag
+	boolean retflag = true
 	SQL SELECT 1 , item.salePrice , item.purdiscperc , item.avgprice , item.packunits INTO :al_gcode, :ad_purprice, :ad_discperc, :ad_avgprice, :al_packunits FROM item WHERE item.icode =:al_icode USING this.it_transobject;
 	if isnull(ad_purprice) then
 		ad_purprice = 0
@@ -162,7 +162,7 @@
 	string ls_colname
 	string ls_rtnstring
 	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
-	for li_counter = li_colcount to li_counter step -1
+	for li_counter = li_colcount to 1 step -1
 		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
 		if ai_doundo = 1 then
 			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
@@ -186,7 +186,7 @@
 	return true
 
 // w_itemconversion_form.wf_post() returns boolean
-	integer li_postingmode
+	integer li_postingmode = 1
 	long ll_sinvcode
 	long ll_linvcode
 	setnull(ll_sinvcode)
@@ -194,7 +194,7 @@
 	return wf_post_itemconversion(li_postingmode, ll_sinvcode, ll_linvcode)
 
 // w_itemconversion_form.wf_inititeminfo(long al_icode, long al_row, string as_errortext) returns boolean
-	boolean retflag
+	boolean retflag = true
 	double ld_purprice
 	double ld_discperc
 	double ld_saleprice
@@ -256,7 +256,7 @@
 	long ll_duplrows
 	integer li_result
 	integer li_rtncode
-	boolean populateflag
+	boolean populateflag = true
 	s_arguements lstr_selecteditems
 	long ll_rowcount
 	long ll_rtcode
@@ -367,7 +367,7 @@
 	return 0
 
 // w_itemconversion_form.wf_validate_sourceitem(long al_icode) returns long
-	boolean retflag
+	boolean retflag = true
 	double ld_purprice
 	double ld_discperc
 	double ld_saleprice
@@ -455,7 +455,7 @@
 	string ls_titleerrtext
 	string ls_errtext
 	string ls_null
-	integer li_errcode
+	integer li_errcode = 1
 	integer li_null
 	integer li_option
 	integer li_duperr
@@ -535,12 +535,12 @@
 	long ll_rtcode
 	integer li_detailcounter
 	integer li_headerno
-	boolean lb_commitflag
+	boolean lb_commitflag = true
 	long ll_rowcount
 	long ll_counter
 	long ll_invcode
 	double ld_stock
-	string ls_invnos_with_errors
+	string ls_invnos_with_errors = "Unposted Invoice List: "
 	boolean lb_errflag
 	datetime ldt_server_datetime
 	string ls_date_errtext
@@ -634,7 +634,7 @@
 	long ll_icode
 	long ll_gcode
 	long ll_packingunits
-	long ll_salesmancode
+	long ll_salesmancode = 1
 	long ll_adjcode
 	long ll_count
 	long ll_found
@@ -649,8 +649,8 @@
 	double ld_looseqty
 	integer li_counter
 	integer li_errorrow
-	boolean lb_commitflag
-	boolean lb_continue
+	boolean lb_commitflag = true
+	boolean lb_continue = true
 	unsignedlong ul_rowcount
 	unsignedlong ul_maxutn
 	datetime ldt_server_datetime
@@ -811,7 +811,7 @@
 	long ll_code
 	long ll_found
 	integer li_rtncode
-	integer li_protect
+	integer li_protect = 1
 	call super::ue_detail
 	setredraw(false)
 	this.im_menu.m_file.m_post.enabled = false
@@ -1253,7 +1253,7 @@
 	double ld_null
 	double ld_bonusqty
 	double ld_packqty
-	double ld_defaultqty
+	double ld_defaultqty = 1.0
 	datawindowchild ldc_items
 	dwitemstatus lrs_status
 	double ld_godownstock

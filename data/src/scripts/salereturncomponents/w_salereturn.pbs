@@ -12,7 +12,7 @@
 	long ll_counter
 	long ll_datacarrycustcode
 	long ll_lastsrinvcode
-	boolean retflag
+	boolean retflag = true
 	double ld_srprice
 	double ld_prprice
 	double ld_discperc
@@ -43,7 +43,7 @@
 	string ls_packingdesc
 	string ls_errortext
 	string ls_error_syntax
-	string ls_connsetting
+	string ls_connsetting = "Set ANSI_NULLS ON Set ANSI_WARNINGS ON"
 	string ls_prledgerquery
 	string ls_prdetailquery
 	string ls_newsyntax
@@ -257,7 +257,7 @@
 	long ll_datacarrycustcode
 	long ll_lastsrinvcode
 	long ll_sitecode
-	boolean retflag
+	boolean retflag = true
 	double ld_srprice
 	double ld_prprice
 	double ld_discperc
@@ -288,7 +288,7 @@
 	string ls_packingdesc
 	string ls_errortext
 	string ls_error_syntax
-	string ls_connsetting
+	string ls_connsetting = "Set ANSI_NULLS ON Set ANSI_WARNINGS ON"
 	string ls_prledgerquery
 	string ls_prdetailquery
 	string ls_newsyntax
@@ -535,7 +535,7 @@
 	string ls_colname
 	string ls_rtnstring
 	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
-	for li_counter = li_colcount to li_counter step -1
+	for li_counter = li_colcount to 1 step -1
 		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
 		if ai_doundo = 1 then
 			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
@@ -620,7 +620,7 @@
 	long ll_counter
 	long ll_icode
 	long ll_sitecode
-	char lc_taxable
+	char lc_taxable = "N"
 	double ld_taxperc
 	SQL SELECT customer.address1 , customer.city , customer.phone , accounts.aliasname , customer.considerinpo , customer.salesmancode , taxperc =( SELECT TC.taxperc FROM TaxCategory TC WHERE TC.TaxCategoryCode =customer.taxcategorycode ) , customer.sitecode INTO :ls_address, :ls_city, :ls_phone, :ls_aliasname, :ls_considerinpo, :ll_smancode, :ld_taxperc, :ll_sitecode FROM customer , accounts WHERE customer.custcode =:al_custcode and customer.custcode =accounts.acccode USING this.it_transobject;
 	if this.it_transobject.sqlcode = 0 then
@@ -749,7 +749,7 @@
 	long ll_saleinvcode
 	long ll_gcode
 	long ll_icode
-	long ll_counter
+	long ll_counter = 1
 	long ll_dddwrowcount
 	long ll_dddwrow
 	long ll_totalpieces
@@ -873,7 +873,7 @@
 	long ll_packunits
 	long ll_errrowid
 	long ll_customeracc
-	long ll_salesmancode
+	long ll_salesmancode = 1
 	long li_counter
 	long li_innercounter
 	long ll_row
@@ -1052,7 +1052,7 @@
 	end if
 
 // w_salereturn.wf_post() returns integer
-	integer li_postingmode
+	integer li_postingmode = 1
 	long ll_sinvcode
 	long ll_linvcode
 	setnull(ll_sinvcode)
@@ -1067,7 +1067,7 @@
 	long ll_returneditems
 	long ll_erroritems
 	string ls_errtext
-	integer li_errcode
+	integer li_errcode = 1
 	this.id_detail.setredraw(false)
 	this.id_detail.reset()
 	ll_saleinvcode = this.id_master.getitemnumber(this.id_master.getrow(), "saleinvcode")
@@ -1851,7 +1851,7 @@
 	double ld_amt
 	double ld_new_sale_balance
 	double ld_new_sr_balance
-	char ac_posted
+	char ac_posted = "N"
 	string ls_msg
 	string ls_title
 	setnull(ll_null)
@@ -2227,11 +2227,11 @@
 	return li_errcode
 
 // w_salereturn.wf_saveandpost() returns 0
-	integer li_postingmode
+	integer li_postingmode = 2
 	long ll_sinvcode
 	long ll_linvcode
 	long ll_retcode
-	boolean lb_commitflag
+	boolean lb_commitflag = true
 	if not wf_iseditable() then
 		return
 	end if
@@ -3100,7 +3100,7 @@
 	return ll_retcode
 
 // w_salereturn.wf_set_discperc_onlyon_unlock_discperc() returns long
-	string ls_errtext
+	string ls_errtext = "                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ."
 	s_arguements lstr_arg
 	if f_rightexists(5164) then
 		open(w_arg_sinvcode_linvcode)
@@ -3119,7 +3119,7 @@
 	return 0
 
 // w_salereturn.wf_replace_postdate_with_date() returns long
-	string ls_errtext
+	string ls_errtext = "                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ."
 	s_arguements lstr_arg
 	if f_rightexists(5164) then
 		open(w_arg_sinvcode_linvcode)
@@ -3225,7 +3225,7 @@
 	long ll_packunits
 	long ll_found
 	long ll_innercounter
-	integer li_retcode
+	integer li_retcode = 1
 	integer li_errcode
 	integer li_counter
 	integer li_addbonusinqty
@@ -3262,7 +3262,7 @@
 			if ll_totalrows > 0 then
 				lb_enablesave = true
 			end if
-			for li_counter = 1 to li_counter
+			for li_counter = 1 to this.id_detail.rowcount()
 				event ue_deleteitem()
 			next
 			this.id_master.object.aliasname[1] = lds_saletemplateheader.object.aliasname[1]
@@ -3306,7 +3306,7 @@
 			if ll_totalrows > 0 then
 				lb_enablesave = true
 			end if
-			for li_counter = 1 to li_counter
+			for li_counter = 1 to this.id_detail.rowcount()
 				event ue_deleteitem()
 			next
 			this.id_master.object.aliasname[1] = lds_saletemplateheader.object.aliasname[1]
@@ -3403,7 +3403,7 @@
 	double ld_bonusqty
 	double ld_policy_price
 	double ld_price
-	string ls_msgtitle
+	string ls_msgtitle = "Price Policy Implementation"
 	string ls_itemname
 	string ls_msgdetail
 	string ls_finditem
@@ -3589,9 +3589,9 @@
 
 // w_salereturn.wf_push_sr_to_dropbox() returns long
 	integer li_errcode
-	long ll_salesmancode
+	long ll_salesmancode = 1
 	long ll_saleinvcount
-	long ll_counter
+	long ll_counter = 1
 	boolean lb_flag
 	string ls_msgtext
 	s_arguements lstr_arginfo
@@ -3779,8 +3779,8 @@
 	double ld_netprice
 	double ld_advancetaxamt
 	double ld_fbrposfee
-	boolean lb_commitflag
-	boolean lb_continue
+	boolean lb_commitflag = true
+	boolean lb_continue = true
 	integer li_errcode
 	integer li_pos
 	datetime ld_expiry
@@ -4278,7 +4278,7 @@
 
 // w_salereturn.ue_detail() returns 0 [event]
 	integer li_rtncode
-	integer li_protect
+	integer li_protect = 1
 	long ll_row
 	long ll_code
 	long ll_custcode
@@ -5966,7 +5966,7 @@
 // dw_itemsdetail.ue_enterkey() returns long [event]
 	integer li_rowno
 	integer i
-	integer li_columnno
+	integer li_columnno = 1
 	integer li_quicksearch_col
 	boolean lb_duplicate
 	if parent.parent.parent.ii_salerettype = 1 then

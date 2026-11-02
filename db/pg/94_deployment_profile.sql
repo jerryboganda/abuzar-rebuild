@@ -753,12 +753,15 @@ UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'archivea
 UPDATE dbo.softwarepreferences SET prefvalue = 'Y' WHERE lower(name) = 'keep_accbal_on_archive';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'deletesyncedtransactions';
 UPDATE dbo.softwarepreferences SET prefvalue = '1' WHERE lower(name) = 'inventorymovementmethod';
+UPDATE dbo.softwarepreferences SET prefvalue = '.' WHERE lower(name) = 'defaultbatch';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'itemcode';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'searchitemcodeifaliasnamenotfound';
 UPDATE dbo.softwarepreferences SET prefvalue = 'Y' WHERE lower(name) = 'markinitialized';
+UPDATE dbo.softwarepreferences SET prefvalue = '2030-12-12 00:00:00' WHERE lower(name) = 'defaultexpiry';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'promptbeforeprinting';
 UPDATE dbo.softwarepreferences SET prefvalue = 'Y' WHERE lower(name) = 'asknoofcoppiesinprintdialog';
 UPDATE dbo.softwarepreferences SET prefvalue = '30' WHERE lower(name) = 'maxallowdate';
+UPDATE dbo.softwarepreferences SET prefvalue = 'ABUZAR V2 01.01.2022' WHERE lower(name) = 'appname';
 UPDATE dbo.softwarepreferences SET prefvalue = 'Y' WHERE lower(name) = 'allowloginausermultipletimes';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'autopurgevirtualgl';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'autoresponsivesearchwithalternatealiasname';

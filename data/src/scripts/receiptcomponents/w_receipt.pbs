@@ -98,7 +98,7 @@
 	long ll_bonusqty
 	long ll_suppcode
 	long ll_check_for_basicdata_sync
-	boolean retflag
+	boolean retflag = true
 	double ld_purprice
 	double ld_discperc
 	double ld_itemflatdisc
@@ -130,7 +130,7 @@
 	string ls_packingdesc
 	string ls_errortext
 	string ls_error_syntax
-	string ls_connsetting
+	string ls_connsetting = "Set ANSI_NULLS ON Set ANSI_WARNINGS ON"
 	string ls_saleledgerquery
 	string ls_saledetailquery
 	string ls_newsyntax
@@ -310,7 +310,7 @@
 	long ll_suppcode
 	long ll_check_for_basicdata_sync
 	long ll_sitecode
-	boolean retflag
+	boolean retflag = true
 	double ld_purprice
 	double ld_discperc
 	double ld_itemflatdisc
@@ -342,7 +342,7 @@
 	string ls_packingdesc
 	string ls_errortext
 	string ls_error_syntax
-	string ls_connsetting
+	string ls_connsetting = "Set ANSI_NULLS ON Set ANSI_WARNINGS ON"
 	string ls_saleledgerquery
 	string ls_saledetailquery
 	string ls_newsyntax
@@ -535,7 +535,7 @@
 	long ll_suppcode
 	long ll_check_for_basicdata_sync
 	long ll_sitecode
-	boolean retflag
+	boolean retflag = true
 	double ld_purprice
 	double ld_discperc
 	double ld_itemflatdisc
@@ -567,7 +567,7 @@
 	string ls_packingdesc
 	string ls_errortext
 	string ls_error_syntax
-	string ls_connsetting
+	string ls_connsetting = "Set ANSI_NULLS ON Set ANSI_WARNINGS ON"
 	string ls_saleledgerquery
 	string ls_saledetailquery
 	string ls_newsyntax
@@ -756,7 +756,7 @@
 	string ls_fullcode
 	string ls_errtext
 	string ls_titleerrtext
-	integer il_errcode
+	integer il_errcode = 1
 	integer li_errcode
 	integer li_null
 	string ls_null
@@ -844,7 +844,7 @@
 	return ld_grandtotal
 
 // w_receipt.wf_iteminfo(long al_icode, long al_gcode, double ad_purprice, double ad_discperc, double ad_avgprice, long al_packunits) returns boolean
-	boolean retflag
+	boolean retflag = true
 	SQL SELECT 1 , item.salePrice , item.purdiscperc , item.avgprice , item.packunits INTO :al_gcode, :ad_purprice, :ad_discperc, :ad_avgprice, :al_packunits FROM item WHERE item.icode =:al_icode USING this.it_transobject;
 	al_gcode = this.ii_purchasegodownoption
 	if isnull(ad_purprice) then
@@ -866,7 +866,7 @@
 	string ls_colname
 	string ls_rtnstring
 	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
-	for li_counter = li_colcount to li_counter step -1
+	for li_counter = li_colcount to 1 step -1
 		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
 		if ai_doundo = 1 then
 			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
@@ -876,7 +876,7 @@
 	next
 
 // w_receipt.wf_releaselock(long al_icode) returns boolean
-	boolean retflag
+	boolean retflag = true
 	long ll_count
 	SQL SELECT count ( *) INTO :ll_count FROM godowndetail WITH ( NOLOCK ) WHERE godowndetail.Gcode =:this.ii_purchasegodownoption AND godowndetail.icode =:al_icode USING this.it_transobject;
 	if this.it_transobject.sqlcode = -1 then
@@ -968,7 +968,7 @@
 	ad_master.object.phone[ll_currow] = ls_phone
 
 // w_receipt.wf_updateitemavgprice(long al_icode, double ad_newavgprice) returns boolean
-	boolean retflag
+	boolean retflag = true
 	SQL update item SET item.avgprice =:ad_newavgprice WHERE item.icode =:al_icode USING this.it_transobject;
 	if this.it_transobject.sqlcode = -1 then
 		retflag = false
@@ -980,7 +980,7 @@
 	return this.it_transobject.sqlcode
 
 // w_receipt.wf_updateitemstock(long al_icode, long al_gcode, long al_newstock) returns boolean
-	boolean retflag
+	boolean retflag = true
 	SQL update godowndetail SET godowndetail.currqty =:al_newstock WHERE godowndetail.gcode =:al_gcode AND godowndetail.icode =:al_icode USING this.it_transobject;
 	if this.it_transobject.sqlcode = -1 then
 		retflag = false
@@ -995,7 +995,7 @@
 	return true
 
 // w_receipt.wf_post() returns boolean
-	integer li_postingmode
+	integer li_postingmode = 1
 	long ll_sinvcode
 	long ll_linvcode
 	setnull(ll_sinvcode)
@@ -1013,7 +1013,7 @@
 	long ll_receiptinvcode
 	long ll_gcode
 	long ll_icode
-	long ll_counter
+	long ll_counter = 1
 	long ll_packunits
 	string ls_batch
 	datetime ld_expiry
@@ -1148,7 +1148,7 @@
 	return ll_disallowedcount
 
 // w_receipt.wf_inititeminfo(long al_icode, long al_row, string as_errortext) returns boolean
-	boolean retflag
+	boolean retflag = true
 	double ld_purprice
 	double ld_avgprice
 	double ld_mrpp
@@ -1240,7 +1240,7 @@
 	return retflag
 
 // w_receipt.wf_itemstockinfo(long al_icode, long al_gcode, double al_stock) returns boolean
-	boolean retflag
+	boolean retflag = true
 	double ld_stock
 	double ld_totalstock
 	al_stock = 100
@@ -1293,7 +1293,7 @@
 	double ld_price
 	integer li_detailcounter
 	integer li_purchasecategory
-	boolean lb_commitflag
+	boolean lb_commitflag = true
 	char lc_updateavgprice
 	double ld_stock
 	double ld_newstock
@@ -1302,9 +1302,9 @@
 	double ld_packqty
 	double ld_bonusqty
 	double ld_looseqty
-	integer ci_normalpurchase
-	integer ci_openingpurchase
-	integer ci_loosepurchase
+	integer ci_normalpurchase = 1
+	integer ci_openingpurchase = 3
+	integer ci_loosepurchase = 7
 	long ll_rowcount
 	long ll_invcounter
 	long ll_invcode
@@ -1524,10 +1524,10 @@
 	return lb_commitflag
 
 // w_receipt.wf_saveandpost() returns 0
-	integer li_postingmode
+	integer li_postingmode = 2
 	long ll_sinvcode
 	long ll_linvcode
-	boolean lb_commitflag
+	boolean lb_commitflag = true
 	if not wf_iseditable() then
 		return
 	end if
@@ -1640,9 +1640,9 @@
 	long ll_tmprowid
 	long ll_tmpcode
 	long ll_icode
-	long ll_recipientcode
+	long ll_recipientcode = 2
 	long ll_format
-	integer li_retcode
+	integer li_retcode = 1
 	integer li_errcode
 	string ls_errortext
 	string ls_itemname
@@ -1756,7 +1756,7 @@
 	integer li_result
 	integer li_rtncode
 	string ls_errortext
-	boolean populateflag
+	boolean populateflag = true
 	s_saletemplate lstr_template
 	long ll_rowcount
 	long ll_rtcode
@@ -1840,7 +1840,7 @@
 // w_receipt.wf_validateworkorder(long al_code) returns long
 	long ll_code
 	long ll_custcode
-	long ll_recipientcode
+	long ll_recipientcode = 2
 	SQL SELECT WorkOrderCode , CustCode INTO :ll_code, :ll_custcode FROM WorkOrder WHERE WorkOrderCode =:al_code AND Approved ='Y' AND Posted ='N' USING this.it_transobject;
 	if this.it_transobject.sqlcode = 0 then
 		if isnull(ll_code) or ll_code < 0 then
@@ -1922,7 +1922,7 @@
 	long ll_format
 	double ld_tmpqty
 	double ld_tmpbonus
-	integer li_retcode
+	integer li_retcode = 1
 	integer li_errcode
 	string ls_errortext
 	string ls_itemname
@@ -2829,10 +2829,10 @@
 	destroy this.dw_purinvrep
 
 // w_receipt.ue_save() returns 0 [event]
-	integer li_counter
+	integer li_counter = 1
 	long ll_null
 	long ll_icode
-	long ll_salesmancode
+	long ll_salesmancode = 1
 	long ll_mastercurrrow
 	long ll_footercurrrow
 	long ll_invid
@@ -2844,7 +2844,7 @@
 	datetime ldt_server_datetime
 	string ls_date_errtext
 	string ls_updatepurprice
-	boolean lb_commitflag
+	boolean lb_commitflag = true
 	setnull(ll_null)
 	if f_validatedw(this.id_master) < 0 then
 		return
@@ -3011,7 +3011,7 @@
 	long ll_deptcode
 	long ll_issueinvcode
 	integer li_rtncode
-	integer li_protect
+	integer li_protect = 1
 	boolean lb_modify
 	m_receiptmenu lm_menu
 	lm_menu = this.menuid
@@ -3814,7 +3814,7 @@
 	string ls_error
 	double ld_bonusqty
 	double ld_packqty
-	double ld_defaultqty
+	double ld_defaultqty = 1.0
 	double ld_newqty
 	double ld_storedqty
 	double ld_stock

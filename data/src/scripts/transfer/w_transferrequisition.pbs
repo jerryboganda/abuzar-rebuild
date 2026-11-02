@@ -529,10 +529,10 @@
 	string ls_titleerrtext
 	string ls_errtext
 	string ls_itemname
-	integer li_errcode
+	integer li_errcode = 1
 	integer li_assgcode
 	integer li_option
-	boolean lb_rtflag
+	boolean lb_rtflag = true
 	boolean ib_due
 	integer li_null
 	string ls_null
@@ -572,7 +572,7 @@
 	return lb_rtflag
 
 // w_transferrequisition.wf_validategodown() returns integer
-	integer li_errcode
+	integer li_errcode = 1
 	long ll_null
 	long ll_row
 	string ls_titleerrtext
@@ -596,7 +596,7 @@
 // w_transferrequisition.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
 	integer li_colcount
 	integer li_counter
-	integer li_start
+	integer li_start = 1
 	integer li_temp
 	string ls_colname
 	string ls_rtnstring
@@ -613,7 +613,7 @@
 // w_transferrequisition.wf_savastemplate() returns integer
 	s_saletemplateheader lstr_templateheader
 	long ll_invid
-	integer li_retcode
+	integer li_retcode = 1
 	long ll_code
 	long ll_icode
 	long ll_totalrows
@@ -654,7 +654,7 @@
 	long ll_saleinvcode
 	long ll_gcode
 	long ll_icode
-	long ll_counter
+	long ll_counter = 1
 	double ld_stock
 	double ld_looseqty
 	if this.id_master.getitemstring(1, "posted") = "N" then
@@ -726,7 +726,7 @@
 	string ls_fullcode
 	string ls_titleerrtext
 	string ls_errtext
-	integer li_errcode
+	integer li_errcode = 1
 	integer li_assgcode
 	ll_icode = this.id_detail.getitemnumber(this.il_currrow, "icode")
 	if vf_dwdupcode1(this.id_detail, "icode", string(ll_icode), this.il_currrow) = true then
@@ -1012,7 +1012,7 @@
 	end if
 
 // w_transferrequisition.wf_inititeminfo(long al_icode, long al_row, integer ai_rtcode, string as_errortext) returns boolean
-	boolean retflag
+	boolean retflag = true
 	double ld_saleprice
 	double ld_discperc
 	double ld_purprice
@@ -1148,7 +1148,7 @@
 	string ls_fullcode
 	string ls_titleerrtext
 	string ls_errtext
-	integer li_errcode
+	integer li_errcode = 1
 	integer li_assgcode
 	integer li_option
 	boolean ib_due
@@ -1200,7 +1200,7 @@
 	long ll_salesmancode
 	long ll_saleinvcount
 	long ll_mastercurrrow
-	boolean lb_commitflag
+	boolean lb_commitflag = true
 	boolean lb_unpostedflag
 	string ls_errortext
 	s_arguements lstr_arginfo
@@ -1286,7 +1286,7 @@
 	long ll_unpostedrow
 	long ll_unpostedcounter
 	long ll_unpostrows
-	boolean lb_commitflag
+	boolean lb_commitflag = true
 	boolean lb_unpostedflag
 	string ls_errortext
 	s_arguements lstr_arginfo
@@ -1370,7 +1370,7 @@
 	long ll_icode
 	long ll_insertedrows
 	long ll_newrow
-	integer li_retcode
+	integer li_retcode = 1
 	integer li_errcode
 	integer li_counter
 	integer ll_found
@@ -1416,7 +1416,7 @@
 		li_counter = 1
 		this.id_detail.setrow(this.id_detail.rowcount())
 		this.id_detail.scrolltorow(this.id_detail.rowcount())
-		for li_counter = this.id_detail.rowcount() to li_counter step -1
+		for li_counter = this.id_detail.rowcount() to 1 step -1
 			event ue_deleteitem()
 		next
 	end if
@@ -1511,7 +1511,7 @@
 		if ll_totalrows > 0 then
 			lb_enablesave = true
 		end if
-		for li_counter = 1 to li_counter
+		for li_counter = 1 to ll_detailrows
 			li_holdqty = 0
 			ld_holdbonusqty = 0
 			ll_icode = lds_tempdetail.object.icode[li_counter]
@@ -1654,14 +1654,14 @@
 	long ll_packunits
 	long ll_errrowid
 	long ll_customeracc
-	long ll_salesmancode
+	long ll_salesmancode = 1
 	long ll_gcode
 	long ll_currentrow
 	long ll_rowcount
-	boolean lb_commitflag
-	boolean lb_continue
+	boolean lb_commitflag = true
+	boolean lb_continue = true
 	boolean lb_found
-	integer li_counter
+	integer li_counter = 1
 	integer li_sourcegodown
 	integer li_ttype
 	string ls_errtext
@@ -1711,7 +1711,7 @@
 	li_sourcegodown = this.id_master.getitemnumber(1, "sgcode")
 	li_ttype = this.id_master.getitemnumber(this.id_master.getrow(), "ttcode")
 	if li_ttype = 1 or li_ttype = 2 then
-		for li_counter = 1 to li_counter
+		for li_counter = 1 to this.id_detail.rowcount()
 			ll_icode = this.id_detail.getitemnumber(li_counter, "icode")
 			SQL SELECT SUM ( currqty ) INTO :ld_itemcurrqty FROM godowndetaiL WHERE godowndetail.icode =:ll_icode AND godowndetail.gcode =:li_sourcegodown USING this.it_transobject;
 			if this.it_transobject.sqlcode = -1 then
@@ -1731,7 +1731,7 @@
 			end if
 		next
 	end if
-	for li_counter = 1 to li_counter
+	for li_counter = 1 to this.id_detail.rowcount()
 		if this.id_detail.getitemnumber(li_counter, "qty") = 0.0 then
 			lb_found = true
 			ll_currentrow = lds_items.insertrow(0)
@@ -1757,7 +1757,7 @@
 	li_counter = 1
 	ll_detailrows = this.id_detail.rowcount()
 	ll_rowcount = this.id_detail.rowcount()
-	for li_counter = ll_rowcount to li_counter step -1
+	for li_counter = ll_rowcount to 1 step -1
 		if this.id_detail.getitemnumber(li_counter, "qty") = 0.0 then
 			this.id_detail.deleterow(li_counter)
 		end if
@@ -1846,7 +1846,7 @@
 
 // w_transferrequisition.ue_detail() returns 0 [event]
 	integer li_rtncode
-	integer li_protect
+	integer li_protect = 1
 	long ll_row
 	long ll_code
 	boolean lb_flag

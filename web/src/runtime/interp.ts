@@ -486,10 +486,12 @@ export class Runtime {
       }
       case 'for': {
         const a = toNum(await this.eval(s.a, f))
-        const b = toNum(await this.eval(s.b, f))
         const step = s.s ? toNum(await this.eval(s.s, f)) : 1
         if (step === 0) return NONE
-        for (let i = a; step > 0 ? i <= b : i >= b; i += step) {
+        // the compiled loop tests the limit expression again on every pass (`for i = 1 to ds.rowcount()` follows rows the body deletes)
+        for (let i = a; ; i += step) {
+          const b = toNum(await this.eval(s.b, f))
+          if (!(step > 0 ? i <= b : i >= b)) break
           await this.assign(s.v, i, f)
           const sig = await this.execBlock(s.body, f)
           if (sig === EXIT) break

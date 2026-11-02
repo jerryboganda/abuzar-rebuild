@@ -31,10 +31,10 @@
 	long ll_mastercurrrow
 	long ll_invid
 	long ll_detailrows
-	long li_ldsrow
-	integer li_counter
+	long li_ldsrow = 1
+	integer li_counter = 1
 	integer ll_salesmancode
-	boolean lb_commitflag
+	boolean lb_commitflag = true
 	ll_mastercurrrow = this.id_master.getrow()
 	ll_invid = this.id_master.object.code[ll_mastercurrrow]
 	SQL Delete userrights Where usercode =:ll_invid USING this.it_transobject;
@@ -106,8 +106,8 @@
 		this.im_menu.m_file.m_save.enabled = false
 	end if
 	this.id_rights.retrieve(li_code)
-	for li_counter = 1 to li_counter
-		for li_count = 1 to li_count
+	for li_counter = 1 to this.id_detail.rowcount()
+		for li_count = 1 to this.id_rights.rowcount()
 			if this.id_detail.getitemnumber(li_counter, "rightcode") = this.id_rights.getitemnumber(li_count, "rightcode") then
 				this.id_detail.setitem(li_counter, "checked", "Y")
 				this.id_detail.setitem(li_counter, "status", this.id_rights.getitemnumber(li_count, "status"))

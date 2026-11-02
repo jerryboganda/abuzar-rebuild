@@ -80,7 +80,7 @@
 	string ls_rtnstring
 	if not isnull(ad_dwcontrol.dataobject) then
 		li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
-		for li_counter = li_colcount to li_counter step -1
+		for li_counter = li_colcount to 1 step -1
 			ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
 			if ai_doundo = 1 then
 				ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
@@ -224,7 +224,7 @@
 	return ::message.returnvalue
 
 // w_listview_form.ue_list() returns 0 [event]
-	long ll_rtcode
+	long ll_rtcode = 1
 	call super::ue_list
 	if this.id_list.rowcount() <= 0 then
 		ll_rtcode = wf_retrieve()
@@ -516,7 +516,7 @@
 		ls_col_type = parent.parent.parent.id_dwcontrol.describe(ls_column_name + ".ColType")
 		le_buffertype = primary!
 		ll_rows_buffer = parent.parent.parent.id_dwcontrol.rowcount()
-		for li_buffers = 1 to li_buffers
+		for li_buffers = 1 to 2
 			for ll_row_counter = 1 to ll_rows_buffer
 				if left(ls_col_type, 4) = "char" then
 					ls_insert_item = trim(parent.parent.parent.id_dwcontrol.getitemstring(ll_row_counter, ls_column_name, le_buffertype, false))

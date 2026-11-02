@@ -1,7 +1,7 @@
 // userobject n_dwr_band (dw2xls)  ancestor: nonvisualobject
 
 // n_dwr_band.of_dynamic_horisontal_layout(long al_row) returns integer
-	integer li_ret
+	integer li_ret = 1
 	integer li_i
 	if this.ib_variable_band_height and this.ii_band_type = 3 then
 		this.ii_band_height = integer(of_describe("evaluate('rowheight()'," + string(al_row) + ")"))
@@ -34,14 +34,14 @@
 
 // n_dwr_band.of_set_row_height(long al_writer_row) returns integer
 	long ll_i
-	integer li_ret
+	integer li_ret = 1
 	return li_ret
 
 // n_dwr_band.of_find_row_in_detail() returns 0
 	string ls_syntax
 	long ll_pos
 	long ll_pos_end
-	long ll_start_pos
+	long ll_start_pos = 1
 	string ls_column
 	string ls_name
 	string ls_row_in_detail
@@ -108,7 +108,7 @@
 	case else
 		return -1
 	end choose
-	for li_i = 1 to li_i
+	for li_i = 1 to this.ii_fields_count
 		this.invo_fields[li_i].of_register_dynamic(this.ipo_requestor)
 	next
 	return 1
@@ -145,7 +145,7 @@
 // n_dwr_band.of_add_field(string as_name, long al_instance_id, n_dwr_field anvo_field) returns integer
 	string ls_field_class
 	string ls_coltype
-	integer li_ret
+	integer li_ret = 1
 	integer li_row_in_detail
 	long ll_i
 	n_dwr_field lnvo_field
@@ -320,8 +320,8 @@
 
 // n_dwr_band.of_process_row(long al_row, long al_base_y, n_dwr_progress apo_progress) returns integer
 	integer li_i
-	integer li_ret
-	integer li_res
+	integer li_ret = 1
+	integer li_res = 1
 	long ll_band_row
 	long ll_obj_written
 	integer li_merge_row
@@ -516,14 +516,14 @@
 // n_dwr_band.of_cancel() returns 0
 	long li_i
 	this.ib_cancel = true
-	for li_i = 1 to li_i
+	for li_i = 1 to this.ii_fields_count
 		if this.invo_fields[li_i].ii_dwo_type = 4 then
 			this.invo_fields[li_i].of_cancel_nested()
 		end if
 	next
 
 // n_dwr_band.of_add_line(string as_name, n_dwr_field anvo_field) returns integer
-	integer li_ret
+	integer li_ret = 1
 	if not this.invo_parm.ib_lines then
 		li_ret = -1
 	end if
@@ -539,7 +539,7 @@
 	return li_ret
 
 // n_dwr_band.of_add_rect(string as_name, n_dwr_field anvo_field) returns integer
-	integer li_ret
+	integer li_ret = 1
 	long ll_rect
 	if not this.invo_parm.ib_rectangles then
 		li_ret = -1
@@ -608,7 +608,7 @@
 	this.il_bg_x2 = al_x2
 
 // n_dwr_band.of_check_property(string as_property_name, boolean ab_is_expression, string as_expression, string as_value) returns integer
-	integer li_ret
+	integer li_ret = 1
 	string ls_str
 	long ll_pos
 	if left(as_property_name, 2) = "::" then
@@ -655,7 +655,7 @@
 	return li_ret
 
 // n_dwr_band.of_descr_bg_color() returns long
-	integer li_ret
+	integer li_ret = 1
 	string ls_str
 	string ls_bgmode
 	string ls_band
@@ -681,7 +681,7 @@
 	return -1
 
 // n_dwr_band.of_init(string as_band_name, integer ai_band_type, integer ai_group_level, boolean ab_newpage, n_dwr_grid anvo_vgrid) returns integer
-	integer li_ret
+	integer li_ret = 1
 	boolean lb_vgrid_def
 	long ll_cnt
 	string ls_sparse
@@ -848,7 +848,7 @@
 	if this.ii_rows_per_detail > 1 then
 		return -1
 	end if
-	for li_field = 1 to li_field
+	for li_field = 1 to upperbound(this.invo_fields)
 		if this.invo_fields[li_field].of_do_static_x_markup(anv_sheet) <> 1 then
 			li_ret = -1
 			return li_ret
@@ -894,7 +894,7 @@
 	case else
 		return -1
 	end choose
-	for li_i = 1 to li_i
+	for li_i = 1 to this.ii_fields_count
 		this.invo_fields[li_i].of_register_dynamic2(this.ipo_requestor, al_rowcount)
 	next
 	return 1
@@ -905,7 +905,7 @@
 	any la_val
 	any la_val_prev
 	if this.is_band_id = "1" and upperbound(this.invo_sparse_fields) > 0 and al_row > 1 then
-		for li_i = 1 to li_i
+		for li_i = 1 to upperbound(this.invo_sparse_fields)
 			la_val_prev = this.invo_sparse_fields[li_i].of_getvalue(al_row - 1)
 			la_val = this.invo_sparse_fields[li_i].of_getvalue(al_row)
 			if la_val_prev = la_val or isnull(la_val_prev) and isnull(la_val) then

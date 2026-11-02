@@ -6,7 +6,7 @@
 	long ll_jobcode
 	long ll_counter
 	long ll_qty
-	boolean retflag
+	boolean retflag = true
 	double ld_godownstock
 	double ld_allgodownstock
 	long ll_packunits
@@ -19,7 +19,7 @@
 	string ls_errortext
 	string ls_error_syntax
 	string ls_remarks
-	string ls_connsetting
+	string ls_connsetting = "Set ANSI_NULLS ON Set ANSI_WARNINGS ON"
 	string ls_headerquery
 	string ls_detailquery
 	string ls_newsyntax
@@ -134,7 +134,7 @@
 	long ll_jobcode
 	long ll_counter
 	long ll_qty
-	boolean retflag
+	boolean retflag = true
 	double ld_godownstock
 	double ld_allgodownstock
 	long ll_packunits
@@ -147,7 +147,7 @@
 	string ls_errortext
 	string ls_error_syntax
 	string ls_remarks
-	string ls_connsetting
+	string ls_connsetting = "Set ANSI_NULLS ON Set ANSI_WARNINGS ON"
 	string ls_headerquery
 	string ls_detailquery
 	string ls_newsyntax
@@ -231,7 +231,7 @@
 	this.id_list.settransobject(this.it_transobject)
 
 // w_adjbuffer.wf_iteminfo(long al_icode, long al_gcode, double ad_purprice, double ad_discperc, double ad_avgprice, long al_packunits) returns boolean
-	boolean retflag
+	boolean retflag = true
 	SQL SELECT 1 , item.salePrice , item.purdiscperc , item.avgprice , item.packunits INTO :al_gcode, :ad_purprice, :ad_discperc, :ad_avgprice, :al_packunits FROM item WHERE item.icode =:al_icode USING this.it_transobject;
 	if isnull(ad_purprice) then
 		ad_purprice = 0
@@ -252,7 +252,7 @@
 	string ls_colname
 	string ls_rtnstring
 	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
-	for li_counter = li_colcount to li_counter step -1
+	for li_counter = li_colcount to 1 step -1
 		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
 		if ai_doundo = 1 then
 			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
@@ -305,7 +305,7 @@
 	long ll_adjcode
 	long ll_gcode
 	long ll_icode
-	long ll_counter
+	long ll_counter = 1
 	long ll_packunits
 	double ld_looseqty
 	double ld_stock
@@ -342,7 +342,7 @@
 	ai_protect = 1
 
 // w_adjbuffer.wf_inititeminfo(long al_icode, long al_row, string as_errortext) returns boolean
-	boolean retflag
+	boolean retflag = true
 	integer li_gcode
 	long ll_packunits
 	double ld_purprice
@@ -422,7 +422,7 @@
 	string ls_fullcode
 	string ls_errtext
 	string ls_titleerrtext
-	integer il_errcode
+	integer il_errcode = 1
 	integer li_errcode
 	integer li_null
 	string ls_null
@@ -461,7 +461,7 @@
 	return this.it_transobject.sqlcode
 
 // w_adjbuffer.wf_post() returns boolean
-	integer li_postingmode
+	integer li_postingmode = 1
 	long ll_sinvcode
 	long ll_linvcode
 	setnull(ll_sinvcode)
@@ -561,12 +561,12 @@
 	long ll_rtcode
 	integer li_detailcounter
 	integer li_headerno
-	boolean lb_commitflag
+	boolean lb_commitflag = true
 	long ll_rowcount
 	long ll_counter
 	long ll_invcode
 	double ld_stock
-	string ls_invnos_with_errors
+	string ls_invnos_with_errors = "Unposted Invoice List: "
 	boolean lb_errflag
 	datetime ldt_server_datetime
 	string ls_date_errtext
@@ -633,10 +633,10 @@
 	return lb_commitflag
 
 // w_adjbuffer.wf_saveandpost() returns 0
-	integer li_postingmode
+	integer li_postingmode = 2
 	long ll_sinvcode
 	long ll_linvcode
-	boolean lb_commitflag
+	boolean lb_commitflag = true
 	event ue_save()
 	if this.ib_commitok then
 		ll_sinvcode = this.id_master.getitemnumber(1, "code")
@@ -653,7 +653,7 @@
 	long ll_found
 	long ll_code
 	long ll_listcurrrow
-	long rt_code
+	long rt_code = 1
 	long ll_row
 	long ll_icode
 	integer li_errcode
@@ -735,7 +735,7 @@
 	long ll_icode
 	long ll_gcode
 	long ll_packingunits
-	long ll_salesmancode
+	long ll_salesmancode = 1
 	long ll_adjcode
 	long ll_counter
 	long ll_found
@@ -750,8 +750,8 @@
 	double ld_newstock
 	integer li_counter
 	integer li_errorrow
-	boolean lb_commitflag
-	boolean lb_continue
+	boolean lb_commitflag = true
+	boolean lb_continue = true
 	datetime ldt_server_datetime
 	string ls_date_errtext
 	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
@@ -891,7 +891,7 @@
 // w_adjbuffer.ue_detail() returns 0 [event]
 	long ll_code
 	integer li_rtncode
-	integer li_protect
+	integer li_protect = 1
 	m_adjbuffermenu lm_menu
 	call super::ue_detail
 	lm_menu = this.menuid
@@ -1245,7 +1245,7 @@
 		return
 	end if
 	if lb_godownflag then
-		for ll_row = parent.parent.parent.id_detail.rowcount() to ll_row step -1
+		for ll_row = parent.parent.parent.id_detail.rowcount() to 1 step -1
 			parent.parent.parent.id_detail.deleterow(ll_row)
 		next
 		parent.parent.parent.id_detail.insertrow(0)
@@ -1275,7 +1275,7 @@
 	double ld_stock
 	double ld_bonusqty
 	double ld_packqty
-	double ld_defaultqty
+	double ld_defaultqty = 1.0
 	double ld_null
 	string ls_null
 	string ls_itemname

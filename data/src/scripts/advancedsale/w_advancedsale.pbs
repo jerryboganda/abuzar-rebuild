@@ -180,7 +180,7 @@
 	long ll_masterrow
 	datastore lds_invitemlist
 	boolean lb_listtab
-	boolean lb_editable
+	boolean lb_editable = true
 	s_datastore lstr
 	if wf_iseditable() = false then
 		lb_editable = false
@@ -405,7 +405,7 @@
 	string ls_fullcode
 	string ls_titleerrtext
 	string ls_errtext
-	integer li_errcode
+	integer li_errcode = 1
 	integer li_assgcode
 	ll_icode = this.id_detail.getitemnumber(this.il_currrow, "icode")
 	if vf_dwdupcode1(this.id_detail, "icode", string(ll_icode), this.il_currrow) = true then
@@ -464,10 +464,10 @@
 	string ls_fullcode
 	string ls_titleerrtext
 	string ls_errtext
-	integer li_errcode
+	integer li_errcode = 1
 	integer li_assgcode
 	integer li_option
-	boolean lb_rtflag
+	boolean lb_rtflag = true
 	boolean ib_due
 	integer li_null
 	string ls_null
@@ -504,7 +504,7 @@
 // w_advancedsale.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
 	integer li_colcount
 	integer li_counter
-	integer li_start
+	integer li_start = 1
 	integer li_temp
 	string ls_colname
 	string ls_rtnstring
@@ -528,7 +528,7 @@
 	this.tab_retrieve.tabpage_list.ddlb_filter_column.reset()
 	this.tab_retrieve.tabpage_list.ddlb_sort.reset()
 	li_column_count = integer(dwcontrol.object.datawindow.column.count)
-	for li_counter = li_column_count to li_counter step -1
+	for li_counter = li_column_count to 1 step -1
 		ls_column_name = dwcontrol.describe("#" + string(li_counter) + ".Name")
 		this.tab_retrieve.tabpage_list.ddlb_sort.additem(ls_column_name)
 		this.tab_retrieve.tabpage_list.ddlb_filter_column.additem(ls_column_name)
@@ -588,7 +588,7 @@
 	long ll_saleinvcode
 	long ll_gcode
 	long ll_icode
-	long ll_counter
+	long ll_counter = 1
 	long ll_count
 	double ld_saleprice
 	double ld_packsalestax
@@ -816,7 +816,7 @@
 
 // w_advancedsale.wf_retrievelistall() returns long
 	string[] ls_posted
-	string ls_showrows
+	string ls_showrows = "N"
 	integer[] li_salecategory
 	long ll_counter
 	datetime ld_invdate
@@ -876,7 +876,7 @@
 	string ls_titleerrtext
 	string ls_errtext
 	string ls_null
-	integer li_errcode
+	integer li_errcode = 1
 	integer li_null
 	integer li_option
 	integer li_duperr
@@ -968,7 +968,7 @@
 	string ls_fullcode
 	string ls_titleerrtext
 	string ls_errtext
-	integer li_errcode
+	integer li_errcode = 1
 	integer li_assgcode
 	integer li_option
 	integer n
@@ -1066,7 +1066,7 @@
 	return li_errcode
 
 // w_advancedsale.wf_returnsaleinvoice(long al_invid, string as_errortext) returns boolean
-	boolean lb_commitflag
+	boolean lb_commitflag = true
 	if lb_commitflag and wf_deletesaleinvoice(al_invid) <> 0 then
 		lb_commitflag = false
 		as_errortext = "Some database problem occur during modification of this sale invoice"
@@ -1075,9 +1075,9 @@
 
 // w_advancedsale.wf_retrievelist() returns long
 	string[] ls_posted
-	string ls_showrows
+	string ls_showrows = "N"
 	integer[] li_salecategory
-	integer li_invforlastdays
+	integer li_invforlastdays = -3
 	integer li_listrows
 	datetime ld_invdate
 	long ll_counter
@@ -1369,7 +1369,7 @@
 	this.id_print.settransobject(this.it_transobject)
 
 // w_advancedsale.wf_checkgodownstock(long al_icode, long al_row, integer ai_rtcode, string as_errortext) returns boolean
-	boolean retflag
+	boolean retflag = true
 	long ll_custcode
 	long ll_packunits
 	long ll_saleinvcode
@@ -1522,7 +1522,7 @@
 	double ld_upper_saleprice
 	integer li_packunits
 	integer li_retmsgcode
-	integer li_retcode
+	integer li_retcode = 1
 	SQL Select item.RecentPurPrice , item.packunits , item.salepricechangemargin , item.saleprice INTO :ld_recentpurprice, :li_packunits, :ld_salepricechangemargin, :ld_saleprice From Item Where item.icode =:al_icode USING this.it_transobject;
 	if li_packunits < 1 or isnull(li_packunits) then
 		li_packunits = 1
@@ -1857,7 +1857,7 @@
 
 // w_advancedsale.wf_set_godown_item_stock(long ai_gcode, long al_icode, long al_detailrow, string as_errortext) returns long
 	double ld_godownstock
-	boolean retflag
+	boolean retflag = true
 	this.it_transobject.getitemstocktotal(ai_gcode, al_icode, ld_godownstock)
 	if this.it_transobject.sqlcode <> 0 then
 		retflag = false
@@ -1893,7 +1893,7 @@
 	long ll_detailrows
 	long ll_icode
 	long ll_insertedrows
-	integer li_retcode
+	integer li_retcode = 1
 	integer li_errcode
 	integer li_counter
 	integer ll_found
@@ -1930,7 +1930,7 @@
 		if ll_totalrows > 0 then
 			lb_enablesave = true
 		end if
-		for li_counter = 1 to li_counter
+		for li_counter = 1 to this.id_detail.rowcount()
 			event ue_deleteitem()
 		next
 		for ll_rowcount = 1 to ll_totalrows
@@ -1952,7 +1952,7 @@
 		if ll_totalrows > 0 then
 			lb_enablesave = true
 		end if
-		for li_counter = 1 to li_counter
+		for li_counter = 1 to this.id_detail.rowcount()
 			event ue_deleteitem()
 		next
 		for ll_rowcount = 1 to ll_totalrows
@@ -1974,7 +1974,7 @@
 		if ll_totalrows > 0 then
 			lb_enablesave = true
 		end if
-		for li_counter = 1 to li_counter
+		for li_counter = 1 to this.id_detail.rowcount()
 			event ue_deleteitem()
 		next
 		for ll_rowcount = 1 to ll_totalrows
@@ -2004,10 +2004,10 @@
 		if ll_totalrows > 0 then
 			lb_enablesave = true
 		end if
-		for li_counter = 1 to li_counter
+		for li_counter = 1 to this.id_detail.rowcount()
 			event ue_deleteitem()
 		next
-		for li_counter = 1 to li_counter
+		for li_counter = 1 to ll_detailrows
 			li_holdqty = 0
 			ld_holdbonusqty = 0
 			ll_icode = lds_saletemplatedetail.object.icode[li_counter]
@@ -2074,7 +2074,7 @@
 		if ll_totalrows > 0 then
 			lb_enablesave = true
 		end if
-		for li_counter = 1 to li_counter
+		for li_counter = 1 to this.id_detail.rowcount()
 			event ue_deleteitem()
 		next
 		for ll_rowcount = 1 to ll_totalrows
@@ -2096,7 +2096,7 @@
 		if ll_totalrows > 0 then
 			lb_enablesave = true
 		end if
-		for li_counter = 1 to li_counter
+		for li_counter = 1 to this.id_detail.rowcount()
 			event ue_deleteitem()
 		next
 		for ll_rowcount = 1 to ll_totalrows
@@ -2115,7 +2115,7 @@
 	return li_retcode
 
 // w_advancedsale.wf_setimgonprint(integer ai_writeorclear) returns integer
-	integer li_retcode
+	integer li_retcode = 1
 	blob lblob_sigonsaleinv
 	if f_stringpreferences("sigonsaleinv") = "Y" then
 		if ai_writeorclear = 1 then
@@ -2351,7 +2351,7 @@
 	return li_retcode
 
 // w_advancedsale.wf_inititeminfo_quotation(long al_icode, long al_row, integer ai_rtcode, string as_errortext, long al_gcode) returns boolean
-	boolean retflag
+	boolean retflag = true
 	integer li_gcode
 	integer li_defaultgcode
 	integer li_defaultgst
@@ -2679,7 +2679,7 @@
 	long ll_packunits
 	long ll_errrowid
 	long ll_customeracc
-	long ll_salesmancode
+	long ll_salesmancode = 1
 	long li_counter
 	long li_innercounter
 	long ll_insertedrows
@@ -2712,7 +2712,7 @@
 	double ld_purunitrate
 	double ld_rppunitrate
 	integer li_rtmesscode
-	boolean lb_commitflag
+	boolean lb_commitflag = true
 	string ls_batch
 	string ls_updatesaleprice
 	string ls_updsaleprice
@@ -2824,7 +2824,7 @@
 	end if
 
 // w_advancedsale.wf_get_refusedsaleinvcode(long al_saleinvcode, long al_refinvcode) returns long
-	long ll_retcode
+	long ll_retcode = 2
 	long ll_invcode
 	setnull(al_refinvcode)
 	SQL SELECT MAX ( RefusedSaleInvCode ) INTO :al_refinvcode FROM RefusedSaleHeader WHERE SaleInvCode =:al_saleinvcode GROUP BY SaleInvCode USING sqlca;
@@ -2920,7 +2920,7 @@
 	return ll_retcode
 
 // w_advancedsale.wf_inititeminfo(long al_icode, long al_row, integer ai_rtcode, string as_errortext) returns boolean
-	boolean retflag
+	boolean retflag = true
 	integer li_gcode
 	integer li_defaultgcode
 	integer li_defaultgst
@@ -3244,7 +3244,7 @@
 // w_advancedsale.wf_savastemplate() returns integer
 	s_saletemplateheader lstr_templateheader
 	long ll_invid
-	integer li_retcode
+	integer li_retcode = 1
 	long ll_code
 	long ll_qty
 	long ll_icode
@@ -3296,7 +3296,7 @@
 	long ll_custcode
 	long ll_usesaleinv
 	long ll_loosepack
-	integer li_retcode
+	integer li_retcode = 1
 	integer li_errcode
 	string ls_errortext
 	string ls_itemname
@@ -3561,7 +3561,7 @@
 	return ls_report
 
 // w_advancedsale.wf_allow_sale_to_customer_below_avgprice(long al_custcode) returns long
-	char ls_allow
+	char ls_allow = "N"
 	SQL SELECT AllowSaleBelowAvgPrice INTO :ls_allow FROM CUSTOMER WHERE CustCode =:al_custcode USING sqlca;
 	if sqlca.sqlcode = 0 then
 		if ls_allow = "Y" then
@@ -3605,7 +3605,7 @@
 	long ll_counter
 	long ll_null
 	long ll_detailrows
-	long ll_retcode
+	long ll_retcode = 2
 	boolean lb_saveit
 	setnull(ll_null)
 	ll_detailrows = this.dw_receivable_adjdetail.rowcount()
@@ -3657,11 +3657,11 @@
 	return 0
 
 // w_advancedsale.wf_checklicenceexpiry(long al_custcode) returns integer
-	integer lic_licexpirycussion
-	integer li_option
+	integer lic_licexpirycussion = 30
+	integer li_option = 1
 	string ls_licenceno
 	datetime ldt_licence_expiry
-	long ll_daysremaining
+	long ll_daysremaining = 999
 	SQL Select licenceexpiry , licenceno INTO :ldt_licence_expiry, :ls_licenceno From Customer Where custcode =:al_custcode USING this.it_transobject;
 	if this.it_transobject.sqlcode = 0 and f_stringpreferences("ValidateCustLicExpiryInSale") = "Y" then
 		if isnull(ls_licenceno) then
@@ -3679,7 +3679,7 @@
 	return li_option
 
 // w_advancedsale.wf_checkunpostedcustomersale(long al_custcode) returns integer
-	integer li_option
+	integer li_option = 1
 	long ll_lastinvcode
 	if f_stringpreferences("UnpostedCustSaleInvAlert") = "Y" and wf_allowinvoice(al_custcode, ll_lastinvcode) > 0 then
 		li_option = messagebox("Customer Validation!", "Un-Posted Invoice(s) Exist for this Customer~r~n" + "Last Invoice # " + trim(string(ll_lastinvcode)), question!, yesno!, 2)
@@ -3862,8 +3862,8 @@
 	return 0
 
 // w_advancedsale.wf_get_associatedquotationcode(long al_custcode) returns long
-	long ll_retcode
-	long ll_quotationcode
+	long ll_retcode = -1
+	long ll_quotationcode = -1
 	if al_custcode = 0 or isnull(al_custcode) then
 		ll_retcode = -1
 		return ll_retcode
@@ -3902,7 +3902,7 @@
 	double ld_qty
 	double ld_bonusqty
 	double ld_bonusfactor
-	string ls_msgtitle
+	string ls_msgtitle = "Customer Associated Quotation"
 	string ls_itemname
 	string ls_msgdetail
 	boolean lb_editsaleprice
@@ -4107,11 +4107,11 @@
 	double ld_balance
 	double ld_unpostedbal
 	long ll_retcode
-	long ll_option
+	long ll_option = 2
 	long ll_groupcode
 	long ll_rightallowed
 	string ls_msg
-	string ls_msgtitle
+	string ls_msgtitle = "Customer Credit Limit Validation!"
 	if this.ii_saletype = 2 then
 		ll_groupcode = f_getgroupcode(al_usercode)
 		if f_stringpreferences("CheckCrLimitInCrSales") = "Y" and this.ii_saletype = 2 then
@@ -4165,7 +4165,7 @@
 	long ll_found
 	long ll_code
 	long ll_listcurrrow
-	long rt_code
+	long rt_code = 1
 	long ll_row
 	long ll_icode
 	integer li_errcode
@@ -4228,8 +4228,8 @@
 	return -1
 
 // w_advancedsale.wf_check_customer(long al_code) returns boolean
-	boolean lb_check1
-	boolean lb_check2
+	boolean lb_check1 = true
+	boolean lb_check2 = true
 	if wf_checkunpostedcustomersale(al_code) > 1 then
 		lb_check1 = false
 	end if
@@ -4287,7 +4287,7 @@
 	long ll_totalrows
 	long ll_rowcount
 	integer li_counter
-	integer li_retcode
+	integer li_retcode = 1
 	integer li_errcode
 	string ls_errortext
 	boolean lb_enablesave
@@ -4313,7 +4313,7 @@
 		if ll_totalrows > 0 then
 			lb_enablesave = true
 		end if
-		for li_counter = 1 to li_counter
+		for li_counter = 1 to this.id_detail.rowcount()
 			event ue_deleteitem()
 		next
 		for ll_rowcount = 1 to ll_totalrows
@@ -4339,7 +4339,7 @@
 	long ll_custcode
 	long ll_counter
 	long ll_headerno
-	integer li_retcode
+	integer li_retcode = 1
 	integer li_errcode
 	string ls_errortext
 	boolean lb_enablesave
@@ -4432,7 +4432,7 @@
 	string ls_itemdesc
 	boolean lb_enablesave
 	boolean lb_insertrow
-	integer li_retcode
+	integer li_retcode = 1
 	integer li_errcode
 	long ll_totalrows
 	long ll_rowcount
@@ -4692,7 +4692,7 @@
 // w_advancedsale.wf_populate_patient_recurring_invoices() returns long
 	datastore lds_saledetail
 	s_saletemplate lstr_template
-	integer li_retcode
+	integer li_retcode = 1
 	integer li_errcode
 	integer li_counter
 	integer ll_found
@@ -4750,7 +4750,7 @@
 		if ll_totalrows > 0 then
 			lb_enablesave = true
 		end if
-		for li_counter = 1 to li_counter
+		for li_counter = 1 to this.id_detail.rowcount()
 			event ue_deleteitem()
 		next
 		this.id_master.setitem(ll_masterrow, "recurringagainst", lstr_template.l_invtemplate)
@@ -4883,7 +4883,7 @@
 	long ll_assocsaleinvcode
 	long ll_totalrows
 	long ll_counter
-	long ll_salesmancode
+	long ll_salesmancode = 1
 	if this.ib_assocsaleinvlist then
 		ll_saleinvcode = this.id_master.object.code[1]
 		ll_custcode = this.id_master.object.custcode[1]
@@ -5058,9 +5058,9 @@
 	long ll_rightfound
 	long ll_rowgroup
 	long ll_refusedsaleresult
-	long ll_saveresult
-	boolean lb_commitflag
-	boolean lb_continue
+	long ll_saveresult = -1
+	boolean lb_commitflag = true
+	boolean lb_continue = true
 	integer li_counter
 	integer li_filehandle
 	integer li_maxretcode
@@ -5677,7 +5677,7 @@
 
 // w_advancedsale.ue_detail() returns 0 [event]
 	integer li_rtncode
-	integer li_protect
+	integer li_protect = 1
 	integer li_ismodifysaleprice
 	integer li_ismodifyitemdiscperc
 	integer li_ismodifyitemflatdisc
@@ -6711,7 +6711,7 @@
 	long ll_found
 	long ll_icode
 	long ll_rpp
-	long li_packunits
+	long li_packunits = 1
 	long ll_patientcode
 	long ll_allowed
 	long ll_null
@@ -7465,7 +7465,7 @@
 // dw_itemsdetail.ue_enterkey() returns long [event]
 	integer li_rowno
 	integer i
-	integer li_columnno
+	integer li_columnno = 1
 	integer li_quicksearch_col
 	boolean lb_duplicate
 	if f_numberpreferences("CreditsaleDetailWindowFormat") = 1 then
@@ -7484,7 +7484,7 @@
 			end if
 			return
 		end if
-		for i = 1 to i
+		for i = 1 to parent.parent.parent.id_detail.rowcount() - 1
 			if parent.parent.parent.id_detail.getitemstring(i, "fullcode") = parent.parent.parent.is_aliasname then
 				lb_duplicate = true
 			end if
