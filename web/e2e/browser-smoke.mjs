@@ -145,6 +145,19 @@ if (shots && observed) {
         await page.screenshot({ path: `${shots}/${name}_s${step}.png` })
       }
     }
+    if (path.startsWith('&Reports')) {
+      // the report may still be retrieving: wait (up to 20 s) until its DataWindow is shown, then take the final screen
+      for (let i = 0; i < 20; i++) {
+        const shown = await page.evaluate(() => {
+          const d = window.rt.windowInstances.get('w_reviewreport')?.children.get('dw_report')
+          return !d || d.props.get('visible') !== false
+        })
+        if (shown) break
+        await page.waitForTimeout(1000)
+      }
+      await page.waitForTimeout(800)
+      await page.screenshot({ path: `${shots}/${name}_final.png` })
+    }
     const titles = await page.evaluate(() => [...document.querySelectorAll('.pbwin .ttl')].map((t) => t.textContent.trim()).join(' ; '))
     // message boxes that were open (script errors show up as "Application error" boxes): what the user would have seen
     const boxes = await page.evaluate(() => [...document.querySelectorAll('.msgbox')].map((b) => ((b.querySelector('.ttl')?.textContent || '') + ': ' + (b.querySelector('.txt')?.textContent || '')).replace(/\s+/g, ' ').slice(0, 260)).join(' || '))

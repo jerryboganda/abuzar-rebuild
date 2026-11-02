@@ -682,6 +682,12 @@ export class DwModel implements EvalHost {
     if (p === 'datawindow.color') return this.def.datawindow.color ?? ''
     if (p === 'datawindow.column.count') return String(this.colNames.length)
     if (p === 'datawindow.readonly') return this.overrides.get('datawindow.readonly') ?? 'no'
+    // the print settings of the DataWindow object (the report window toggles the preview rulers by reading them: default no)
+    if (p.startsWith('datawindow.print.')) {
+      const v = this.def.datawindow[p.slice('datawindow.'.length)]
+      if (v !== undefined) return v
+      if (p === 'datawindow.print.preview' || p === 'datawindow.print.preview.rulers') return 'no'
+    }
     const m = /^([^.]+)\.(.+)$/.exec(p)
     if (m) {
       const [, obj, attr] = m
