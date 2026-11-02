@@ -50,6 +50,15 @@ async function openWin(rt: Runtime, a: unknown[], sheet: boolean, withParm: bool
   const mn = w.props.get('menuname')
   if (typeof mn === 'string' && mn && !w.props.get('menuid')) w.props.set('menuid', await rt.instantiate(mn.toLowerCase(), w))
   await rt.fireConstructors(w)
+  // the item list popup of the entry windows is a DataWindow that is only shown while the user searches (the original has it hidden until `show()`;
+  // its definition lacks the attribute, the program keeps `visible` false: its window class is not visible in the original's control tree)
+  const hidePopups = (o: PBObject) => {
+    for (const c of o.children.values()) {
+      if (c.name === 'dw_itemslist') c.props.set('visible', false)
+      hidePopups(c)
+    }
+  }
+  hidePopups(w)
   const type = Number(w.props.get('windowtype') ?? 0)
   const modal = type === 3
   rt.ui?.createWindow?.(w, { sheet, modal })

@@ -143,6 +143,25 @@ elseif ($Mode -eq 'dump') {
   $o | Out-File -Encoding utf8 $A1
   "$($o.Count) entries"
 }
+elseif ($Mode -eq 'children') {
+  # the controls of the sheet a command opens, with what Windows knows about them: class, visibility and rectangle (screen pixels)
+  Cleanup $frame
+  [void][W]::ShowWindow($frame, 3)
+  [void][W]::SetForegroundWindow($frame)
+  [void][W]::PostMessage($frame, 0x111, [IntPtr][int]$A1, [IntPtr]::Zero)
+  Start-Sleep -Milliseconds ([int]$A2)
+  $fr = New-Object W+RECT
+  [void][W]::GetWindowRect($frame, [ref]$fr)
+  $rows = New-Object 'System.Collections.Generic.List[string]'
+  $cb = [W+P]{ param($h, $l)
+    $r = New-Object W+RECT
+    [void][W]::GetWindowRect($h, [ref]$r)
+    $rows.Add(("{0}`t{1}`tvisible={2}`t{3},{4} {5}x{6}`t{7}" -f $h, [W]::Cls($h), [W]::IsWindowVisible($h), ($r.L - $fr.L), ($r.T - $fr.T), ($r.R - $r.L), ($r.B - $r.T), [W]::Txt($h)))
+    $true }
+  [void][W]::EnumChildWindows($frame, $cb, [IntPtr]::Zero)
+  $rows
+  Cleanup $frame
+}
 elseif ($Mode -eq 'open') {
   New-Item -ItemType Directory -Force $A2 | Out-Null
   $n = 0

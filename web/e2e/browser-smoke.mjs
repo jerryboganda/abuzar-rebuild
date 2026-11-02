@@ -103,7 +103,9 @@ if (shots && observed) {
     }
     await page.screenshot({ path: `${shots}/${name}.png` })
     const titles = await page.evaluate(() => [...document.querySelectorAll('.pbwin .ttl')].map((t) => t.textContent.trim()).join(' ; '))
-    rows.push(`${id}\t${res}\t${titles}\t${path}`)
+    // message boxes that were open (script errors show up as "Application error" boxes): what the user would have seen
+    const boxes = await page.evaluate(() => [...document.querySelectorAll('.msgbox')].map((b) => ((b.querySelector('.ttl')?.textContent || '') + ': ' + (b.querySelector('.txt')?.textContent || '')).replace(/\s+/g, ' ').slice(0, 260)).join(' || '))
+    rows.push(`${id}\t${res}\t${titles}\t${path}\t${boxes}`)
     await page.evaluate(async () => {
       for (let i = 0; i < 4; i++) {
         document.querySelectorAll('.msgbox .btns button').forEach((b) => {
