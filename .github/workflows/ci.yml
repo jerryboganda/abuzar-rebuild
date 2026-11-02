@@ -158,9 +158,9 @@ jobs:
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:8787/api/health && break; sleep 1; done
       - name: Seed and bootstrap data (statements that do not fit the final schema are reported, not fatal)
         run: |
-          for f in db/pg/90_seed.sql db/pg/95_bootstrap.sql; do
-            echo "== $f: $(grep -c ERROR "$f.err") errors"; grep ERROR "$f.err" | sed 's/[0-9]\+/N/g' | sort | uniq -c | sort -rn | head -15
-          done
+          for f in db/pg/85_base.sql db/pg/90_seed.sql db/pg/95_bootstrap.sql; do echo "== $f: $(grep -c ERROR "$f.err") errors"; grep ERROR "$f.err" | head -5; done
+          grep 'seed:' db/pg/90_seed.sql.err || true
+          grep 'seed skipped' db/pg/90_seed.sql.err | cut -c1-200 | head -40 || true
           psql -At -c "select 'rights', count(*) from dbo.rights" -c "select 'grouprights', count(*) from dbo.grouprights" -c "select 'softwarepreferences', count(*) from dbo.softwarepreferences" -c "select 'users', count(*) from dbo.users"
       - name: Start the application (login, post-login initialisation) with the first administrator
         continue-on-error: true

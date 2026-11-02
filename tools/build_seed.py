@@ -75,16 +75,15 @@ def main(src, repo, out):
         if node is not None and u['status'] is None:
             emit_unit(tr, 'view', u, node, body)
     stats = collections.Counter()
-    lines = ['-- Seed data translated from the original migration chain (tools/build_seed.py). Applied statement by statement.',
-             '-- Generated; do not edit.', '']
+    lines = []  # comments about what could not be translated
+    stmts = []
     why = collections.Counter()
     for script, text in blocks(os.path.join(src, 'db', 'seed', 'seed_ledger.sql')):
         try:
             sql, binds, _into = translate_text(tr, text)
             if binds:
                 raise Untranslatable('host variables in a seed statement')
-            lines.append('-- script %d' % script)
-            lines.append(sql.rstrip().rstrip(';') + ';')
+            stmts.append(sql.rstrip().rstrip(';'))
             stats['translated'] += 1
         except (ParseError, LexError, Untranslatable) as ex:
             stats['untranslated'] += 1
@@ -96,7 +95,21 @@ def main(src, repo, out):
             why['%s' % type(ex).__name__] += 1
             lines.append('-- script %d: translator error %s' % (script, type(ex).__name__))
             lines.extend('-- ' + l for l in text.split('\n')[:6])
-    open(out, 'w', encoding='utf-8', newline='\n').write('\n'.join(lines) + '\n')
+    head = ['-- Seed data translated from the original migration chain (tools/build_seed.py). Generated; do not edit.',
+            '-- The statements ran in the order of the original upgrade scripts, against the schema of their time: a statement that fails (a row it',
+            '-- needs is inserted later, a column no longer exists) is retried after the others, up to five passes; what never fits is reported.',
+            'DO $seed$', 'DECLARE', '  stmts text[] := ARRAY[']
+    nl = chr(10)
+    body = (',' + nl).join('    $q$' + s + '$q$' for s in stmts)
+    tail = ['  ];', '  pending text[] := stmts;', '  failed text[] := ARRAY[]::text[];', '  s text;', '  applied int := 0;', 'BEGIN',
+            '  FOR pass IN 1..5 LOOP', '    failed := ARRAY[]::text[];', '    FOREACH s IN ARRAY pending LOOP', '      BEGIN', '        EXECUTE s;',
+            '        applied := applied + 1;', '      EXCEPTION WHEN OTHERS THEN', '        failed := failed || s;', '      END;', '    END LOOP;',
+            '    EXIT WHEN cardinality(failed) = 0 OR cardinality(failed) = cardinality(pending);', '    pending := failed;', '  END LOOP;',
+            "  RAISE WARNING 'seed: % statements applied, % did not fit the schema', applied, cardinality(failed);",
+            '  FOREACH s IN ARRAY failed LOOP', "    RAISE WARNING 'seed skipped: %', left(regexp_replace(s, '[[:space:]]+', ' ', 'g'), 140);", '  END LOOP;', 'END', '$seed$;']
+    notes = [(l if l.startswith('--') else '-- ' + l) for l in lines]
+    text = nl.join(head) + nl + body + nl + nl.join(tail) + nl + (nl.join(notes) + nl if notes else '')
+    open(out, 'w', encoding='utf-8', newline=nl).write(text)
     print(dict(stats))
     for k, v in why.most_common(12):
         print(v, k)

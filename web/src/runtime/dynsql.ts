@@ -11,6 +11,8 @@ export function translateDynamicSql(text: string): { sql: string; params: string
   if (SET_ONLY.test(t)) return { sql: 'SELECT 1', params: [] }
   if (!/^(insert|update|delete|select)\b/i.test(t)) return undefined
   const sql = t
+    .replace(/^\s*delete\s+(?!from)/i, 'DELETE FROM ')
+    .replace(/#(\w+)/g, 'tmp_$1') // temporary tables are named tmp_<name> in the translated routines
     .replace(/\[(\w+)\]/g, '$1')
     .replace(/\bisnull\s*\(/gi, 'coalesce(')
     .replace(/\bgetdate\s*\(\s*\)/gi, 'localtimestamp(3)')

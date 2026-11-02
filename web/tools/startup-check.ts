@@ -31,6 +31,7 @@ const loader = new JsonClassLoader((n) => read(`classes/${n}.json`))
 const boxes: string[] = []
 const errors: string[] = []
 const windows: string[] = []
+const dialogs: string[] = []
 const ui = {
   async messageBox(title: string, text: string) {
     boxes.push(`${title}: ${text}`.slice(0, 300))
@@ -74,13 +75,28 @@ else {
     await dw.n_setitem(1, 'login', user)
     await dw.n_setitem(1, 'password', pass)
     await rt.fire(ok, 'clicked', [])
+    // response windows that open during the start-up (messages, dialogs) are closed like a user pressing the close button
+    const closer = setInterval(() => {
+      void (async () => {
+        for (const [name, w] of [...rt.windowInstances.entries()]) {
+          if (name === 'w_login1') continue
+          const cls = await rt.getClass(name)
+          if (Number(cls?.fields.find((f) => f.name === 'windowtype')?.value ?? 0) === 3) {
+            dialogs.push(name)
+            await rt.closeWindow(w).catch(() => undefined)
+          }
+        }
+      })()
+    }, 100)
     result = await Promise.race([started, new Promise<{ ok: boolean; error: string }>((r) => setTimeout(() => r({ ok: false, error: 'start-up did not finish in 60 s' }), 60000))])
+    clearInterval(closer)
   }
 }
 const msg = rt.globals.get('message') as PBObject
 console.log(`start-up ${result.ok ? 'completed' : 'FAILED'} ${result.error}`)
 console.log(`login result ${String(msg?.props.get('doubleparm'))}  user code ${String(rt.globals.get('gl_usercode'))}`)
 console.log(`windows created: ${windows.join(', ') || '-'}`)
+console.log(`response windows closed during start-up: ${dialogs.join(', ') || '-'}`)
 console.log(`message boxes (${boxes.length}):`)
 for (const b of boxes.slice(0, 20)) console.log('  ' + b)
 console.log(`runtime errors (${errors.length}):`)
