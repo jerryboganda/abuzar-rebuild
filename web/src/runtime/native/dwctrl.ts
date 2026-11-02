@@ -451,7 +451,12 @@ export class NDwBase extends PBObject {
     if (!ch) {
       const o = m.def.objects.find((x) => x.type === 'column' && x.name.toLowerCase() === name)
       const dddw = o?.['dddw.name']
-      if (!dddw) return -1
+      if (!dddw) {
+        // the variable receives an object even when the column has no DropDownDataWindow (GetChild returns -1): scripts that ignore the return code
+        // go on calling SetTransObject / Retrieve on it, and the original's reports (w_reviewreport.wf_retrieve) rely on that
+        if (ref instanceof Ref && (ref.get() === null || ref.get() === undefined)) await ref.set(new NDwBase(this.rt, 'datawindowchild', 'datawindowchild'))
+        return -1
+      }
       ch = new NDwBase(this.rt, 'datawindowchild', 'datawindowchild')
       ch.dwName = dddw.toLowerCase()
       ch.ready = ch.loadDef(ch.dwName)
