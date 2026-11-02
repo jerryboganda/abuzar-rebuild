@@ -25,6 +25,7 @@ async fn session_transaction_semantics() {
     let sid = s["sid"].as_str().unwrap().to_string();
     let (_, r) = call(&app, "/api/exec", json!({"sid": sid, "sql": "create temp table t(a int primary key, b citext, c numeric(12,2), d timestamp)"})).await;
     assert!(r.get("error").is_none(), "{r}");
+    call(&app, "/api/commit", json!({"sid": sid})).await; // DDL is transactional: keep the table through the rollback below
     let (_, r) = call(&app, "/api/exec", json!({"sid": sid, "sql": "insert into t values ($1,$2,$3,$4)", "params": [1, "O'Brien", "12.50", "2026-11-02 10:30:00.000"]})).await;
     assert_eq!(r["rowcount"], 1, "{r}");
     // a failing statement (duplicate key) must not abort the transaction: SQL Server semantics

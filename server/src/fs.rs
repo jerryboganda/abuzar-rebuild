@@ -168,7 +168,7 @@ fn raw_to_printer(printer: &str, data: &[u8]) -> Result<(), String> {
             return Err(format!("cannot open printer {printer}"));
         }
         let info = DOC_INFO_1W { pDocName: doc.as_ptr() as *mut u16, pOutputFile: null_mut(), pDatatype: datatype.as_ptr() as *mut u16 };
-        let result = if StartDocPrinterW(h, 1, &info as *const DOC_INFO_1W as *const u8) == 0 {
+        let result = if StartDocPrinterW(h, 1, &info) == 0 {
             Err("StartDocPrinter failed".to_string())
         } else {
             let mut written = 0u32;

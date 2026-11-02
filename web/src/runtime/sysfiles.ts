@@ -10,8 +10,12 @@ export function setApiBase(b: string): void {
 }
 
 async function api<T>(path: string, body: unknown): Promise<T> {
-  const r = await fetch(apiBase + path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
-  return (await r.json()) as T
+  try {
+    const r = await fetch(apiBase + path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+    return (await r.json()) as T
+  } catch {
+    return {} as T // no server (headless runs): behaves like a missing file
+  }
 }
 
 const enc = new TextEncoder()

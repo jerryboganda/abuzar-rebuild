@@ -130,6 +130,7 @@ jobs:
         run: for f in db/pg/[0-9]*.sql; do PGOPTIONS="-c client_min_messages=warning" psql -q -f "$f" > /dev/null 2> "$f.err" || true; done
       - name: Build the data tables the UI uses
         run: |
+          mkdir -p web/public/data
           python3 tools/build_sql_tables.py data/sql web/public/data/sql.json
           node web/tools/build-classes.ts data/src/objects data/src/scripts web/public/data/classes data/src/menu_trees
           mkdir -p web/public/data/dw && cp data/src/dw/* web/public/data/dw/ && cp data/src/names/names.json web/public/data/
