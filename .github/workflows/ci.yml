@@ -118,7 +118,7 @@ jobs:
       contents: write
     # the real thing: translated schema + routines in PostgreSQL 17, the Rust server, and every DataWindow / embedded statement executed through it
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     services:
       postgres:
         image: postgres:17
@@ -184,7 +184,7 @@ jobs:
           cd web/e2e
           npm install --no-save --no-package-lock --silent playwright@1.49.1
           npx playwright install --with-deps chromium > /dev/null
-          node browser-smoke.mjs http://127.0.0.1:8788 14 ../../shots ../../docs/observed/original-menu-frame.tsv 720000 | tee -a "$GITHUB_STEP_SUMMARY"
+          node browser-smoke.mjs http://127.0.0.1:8788 30 ../../shots ../../docs/observed/original-menu-frame.tsv 480000 | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Screens of the rebuild as release assets (no Actions artifact quota)
         if: always()
         continue-on-error: true
