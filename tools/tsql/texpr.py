@@ -200,7 +200,11 @@ class ExprMixin:
         # one parameter per host variable name (the same variable always carries the same value)
         if n.name not in self.binds:
             self.binds.append(n.name)
-        return '$%d' % (self.binds.index(n.name) + 1), self.bind_cls(n.name)
+        cls = self.bind_cls(n.name)
+        ref = '$%d' % (self.binds.index(n.name) + 1)
+        if cls == 'D':
+            ref = '(%s)::timestamp' % ref        # declared date/time host variable: gives PostgreSQL the parameter type
+        return ref, cls
 
     def bind_cls(self, name):
         return getattr(self, 'bind_types', {}).get(name.lower(), 'U')

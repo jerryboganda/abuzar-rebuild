@@ -125,16 +125,28 @@ def embedded(scripts_root):
         lib = os.path.basename(os.path.dirname(f))
         obj = os.path.splitext(os.path.basename(f))[0]
         routine = ''
+        rlines = []                      # (line number, text) of the current routine
         for i, line in enumerate(open(f, encoding='utf-8', errors='replace'), 1):
             m = HEADER.match(line)
             if m:
                 routine = m.group(1)
+                rlines = []
                 continue
+            rlines.append((i, line))
             s = line.strip()
             if not s.startswith('SQL '):
                 continue
-            out.append({'id': 'emb:%s/%s:%d' % (lib, obj, i), 'file': 'recovered/scripts/%s/%s.pbs' % (lib, obj),
-                        'line': i, 'routine': routine, 'raw': s[4:]})
+            rec = {'id': 'emb:%s/%s:%d' % (lib, obj, i), 'file': 'recovered/scripts/%s/%s.pbs' % (lib, obj),
+                   'line': i, 'routine': routine, 'raw': s[4:]}
+            mv = re.match(r'EXECUTE\s+IMMEDIATE\s+:([\w.]+)', s[4:], re.I)
+            if mv:
+                var = mv.group(1)
+                pat = re.compile(r'^\s*%s\s*\+?=' % re.escape(var), re.I)
+                found = [(n, t.strip()[:260]) for n, t in rlines[:-1] if pat.match(t)]
+                found = [x for x in found if not secret(x[1])]
+                if found:
+                    rec['builder'] = found[-12:]
+            out.append(rec)
     return out
 
 
@@ -276,6 +288,8 @@ def main():
         kind = classify_embedded(body)
         r = {'id': e['id'], 'source': e['file'], 'line': e['line'], 'routine': e['routine'], 'kind': 'embedded-' + kind,
              'original': body, 'translated': None, 'params': [], 'param_types': [], 'into': None, 'status': None, 'flags': flags}
+        if e.get('builder'):
+            r['builder'] = e['builder']
         if secret(body):
             r.update(original='[omitted]', status='excluded', note='contains a password-like token; vendor backup/restore code')
             recs.append(r)
