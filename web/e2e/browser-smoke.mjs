@@ -156,6 +156,11 @@ if (shots && observed) {
           const no = [...b.parentElement.querySelectorAll('button')].find((x) => /^no$/i.test(x.textContent.trim()))
           ;(no || b).click()
         })
+        // dialogs (password, arguments ...) are left with their Cancel button, as a user would; the rest is closed
+        document.querySelectorAll('.pbwin:not(.sheet) button').forEach((b) => {
+          if (/^cancel$/i.test(b.textContent.trim())) b.click()
+        })
+        await new Promise((r) => setTimeout(r, 200))
         for (const [n, w] of [...window.rt.windowInstances]) if (n !== 'w_main') await window.closeLikeUser(w)
         await new Promise((r) => setTimeout(r, 150))
       }
