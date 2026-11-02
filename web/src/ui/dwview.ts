@@ -2,6 +2,7 @@
 import type { NDwBase } from '../runtime/native/dwctrl.ts'
 import { argList } from '../dw/def.ts'
 import { renderChart } from '../dw/chart.ts'
+import { keyEnum, keyFlags, virtualKey } from './keys.ts'
 import type { DwModel } from '../dw/model.ts'
 import { num, splitExpr } from '../dw/def.ts'
 import type { DwObject } from '../dw/def.ts'
@@ -206,6 +207,42 @@ export class DwView {
   }
   private groupEnds(m: DwModel, i: number, levels: { level: number; by: number[] }[], level: number): boolean {
     return i === m.rowCount() - 1 || this.keyOf(m, i, level, levels) !== this.keyOf(m, i + 1, level, levels)
+  }
+
+  /** columns of a row a user can enter, in tab-sequence order */
+  private tabColumns(m: DwModel): string[] {
+    return m.def.objects
+      .filter((o) => o.type === 'column' && num(o, 'tabsequence', 0) > 0 && o.visible !== '0' && o.protect !== '1')
+      .sort((a, b) => num(a, 'tabsequence') - num(b, 'tabsequence'))
+      .map((o) => o.name.toLowerCase())
+  }
+
+  /** Tab / Enter: next enterable cell of the row, then the first of the next row (the previous one with `dir` = -1) */
+  async tabNext(dir: number): Promise<void> {
+    const m = this.ctl.model
+    if (!m || !m.rowCount()) return
+    const cols = this.tabColumns(m)
+    if (!cols.length) return
+    const cur = m.col > 0 ? m.colNames[m.col - 1] : ''
+    let i = cols.indexOf(cur) + dir
+    let row = Math.max(1, m.row)
+    if (i >= cols.length) {
+      i = 0
+      row++
+    } else if (i < 0) {
+      i = cols.length - 1
+      row--
+    }
+    if (row > m.rowCount() || row < 1) return
+    if (row !== m.row) {
+      m.row = row
+      await this.ctl.rt.fire(this.ctl, 'rowfocuschanged', [row])
+    }
+    m.col = m.colIndex(cols[i]) + 1
+    await this.ctl.rt.fire(this.ctl, 'itemfocuschanged', [row, { name: cols[i] }])
+    await this.paint(m)
+    const cell = this.root.querySelector(`.row[data-row="${row}"] .o[data-obj="${cols[i]}"]`) as HTMLElement | null
+    cell?.click()
   }
 
   private async rowClick(m: DwModel, row: number, ev: MouseEvent): Promise<void> {
@@ -502,12 +539,28 @@ export class DwView {
     }
     input.addEventListener('blur', () => void commit())
     input.addEventListener('keydown', (ev) => {
-      if (ev.key === 'Enter') {
-        void this.ctl.rt.fire(this.ctl, 'ue_enterkey', [0, 0]).then(() => void commit())
-      } else if (ev.key === 'Escape') {
+      const k = keyEnum(ev)
+      if (ev.key === 'Escape') {
         this.editor = null
         input.remove()
-      } else void this.ctl.rt.fire(this.ctl, 'ue_dwnkey', [ev.keyCode, 0])
+        return
+      }
+      if (ev.key === 'Tab') {
+        ev.preventDefault()
+        void commit().then(() => this.tabNext(ev.shiftKey ? -1 : 1))
+        return
+      }
+      if (ev.key === 'Enter') {
+        ev.preventDefault()
+        // ProcessEnter: a script on the control decides (usually it presses Tab); without one Enter moves on like Tab
+        const has = this.ctl.findRoutines('ue_enterkey').length > 0
+        void commit().then(async () => {
+          if (has) await this.ctl.rt.fire(this.ctl, 'ue_enterkey', [])
+          else await this.tabNext(1)
+        })
+        return
+      }
+      if (k) void this.ctl.rt.fire(this.ctl, 'ue_dwnkey', [k, keyFlags(ev)])
     })
   }
 }

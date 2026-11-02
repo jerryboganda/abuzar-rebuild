@@ -177,12 +177,34 @@ export function registerFileFuncs(rt: Runtime): void {
   })
   def('getfocus', (r) => (r.ui as { focused?: () => unknown } | null)?.focused?.() ?? null)
 
+  // ---- handle() / send(): `send(handle(this), 256, 9, 0)` presses Tab for the object (used by Enter-key navigation everywhere)
+  const byHandle = new Map<number, unknown>()
+  const handleOf = new WeakMap<object, number>()
+  let nextHandle2 = 1000
+  def('handle', (_r, a) => {
+    const o = a[0]
+    if (!o || typeof o !== 'object') return 0
+    let h = handleOf.get(o)
+    if (!h) {
+      h = nextHandle2++
+      handleOf.set(o, h)
+      byHandle.set(h, o)
+    }
+    return h
+  })
+  def('send', async (r, a) => {
+    const o = byHandle.get(toNum(a[0]))
+    const ui = r.ui as { sendKey?: (o: unknown, vk: number) => Promise<void> | void } | null
+    if (o && toNum(a[1]) === 256 && ui?.sendKey) await ui.sendKey(o, toNum(a[2]))
+    return 0
+  })
+  def('keydown', (r, a) => (r.ui as { keyIsDown?: (k: string) => boolean } | null)?.keyIsDown?.(toStr(a[0]).toLowerCase()) === true)
+
   // ---- misc
   def('rgb', (_r, a) => (toNum(a[0]) & 255) + (toNum(a[1]) & 255) * 256 + (toNum(a[2]) & 255) * 65536)
   def('beep', () => 1)
   def('sleep', (_r, a) => new Promise((res) => setTimeout(() => res(1), Math.min(toNum(a[0]) * 1000, 100))))
   def('run', () => 1) // starting other programs is not part of the rebuild (the original used it for notepad / explorer shortcuts)
-  def('keydown', () => false)
   def('blobmid', (_r, a) => {
     const b = a[0] instanceof Uint8Array ? a[0] : new Uint8Array(0)
     const start = Math.max(1, toNum(a[1])) - 1

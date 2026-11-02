@@ -8,6 +8,7 @@ import { cssFont, fontSize, pbColor, toPx } from './pb.ts'
 import { DwView } from './dwview.ts'
 import { printDw, printPlainText } from './print.ts'
 import { CSS } from './styles.ts'
+import { keyEnum, keyFlags } from './keys.ts'
 
 const num = (o: PBObject, k: string, d = 0): number => {
   const v = o.props.get(k)
@@ -44,6 +45,43 @@ export class DomUi implements UiHost {
     const st = document.createElement('style')
     st.textContent = CSS
     document.head.appendChild(st)
+    document.addEventListener('keydown', (e) => {
+      const k = keyEnum(e)
+      if (k) this.down.add(k)
+    })
+    document.addEventListener('keyup', (e) => {
+      const k = keyEnum(e)
+      if (k) this.down.delete(k)
+    })
+    window.addEventListener('blur', () => this.down.clear())
+  }
+
+  down = new Set<string>()
+  keyIsDown(k: string): boolean {
+    return this.down.has(k)
+  }
+
+  /** send(handle, WM_KEYDOWN, VK_TAB ...): move the focus like the Tab key */
+  async sendKey(o: unknown, vk: number): Promise<void> {
+    if (vk !== 9) return
+    if (o instanceof NDwBase) {
+      for (const wv of this.views.values()) {
+        const cv = wv.ctlViews.get(o)
+        if (cv?.dw) return cv.dw.tabNext(1)
+      }
+      return
+    }
+    // plain controls: the next control in tab order
+    for (const wv of this.views.values()) {
+      const cv = wv.ctlViews.get(o as PBObject)
+      if (!cv) continue
+      const all = [...wv.client.querySelectorAll<HTMLElement>('input,textarea,select,button')].filter((e) => !(e as HTMLInputElement).disabled && e.tabIndex >= 0)
+      all.sort((a, b) => a.tabIndex - b.tabIndex)
+      const here = (cv.el.matches('input,textarea,select,button') ? cv.el : cv.el.querySelector('input,textarea,select,button')) as HTMLElement | null
+      const i = here ? all.indexOf(here) : -1
+      all[(i + 1) % Math.max(1, all.length)]?.focus()
+      return
+    }
   }
 
   createWindow(w: NWindow, opts: { sheet: boolean; modal: boolean }): void {
@@ -174,6 +212,7 @@ class CtlView {
   el: HTMLElement
   obj: PBObject
   ui: DomUi
+  dw: DwView | null = null
   constructor(ui: DomUi, obj: PBObject, el: HTMLElement) {
     this.ui = ui
     this.obj = obj
@@ -246,6 +285,20 @@ export class WinView {
     }
     this.el.classList.add('hidden')
     this.el.addEventListener('mousedown', () => this.activate())
+    this.el.tabIndex = -1
+    this.el.addEventListener('keydown', (e) => {
+      const k = keyEnum(e)
+      if (!k) return
+      // the window's own key event fires only when no control has the focus (as in PowerBuilder)
+      if (e.target === this.el) void ui.rt.fire(this.w, 'key', [k, keyFlags(e)])
+      const tag = (e.target as HTMLElement).tagName
+      // default / cancel buttons
+      if (k === 'keyenter!' && tag !== 'TEXTAREA' && tag !== 'BUTTON' && !(e.target as HTMLElement).closest('.dw')) {
+        for (const [o, cv] of this.ctlViews) if (o.native === 'commandbutton' && o.props.get('default') === true && o.props.get('enabled') !== false) (cv.el as HTMLButtonElement).click()
+      } else if (k === 'keyescape!' && !(e.target as HTMLElement).closest('.dw')) {
+        for (const [o, cv] of this.ctlViews) if (o.native === 'commandbutton' && o.props.get('cancel') === true && o.props.get('enabled') !== false) (cv.el as HTMLButtonElement).click()
+      }
+    })
   }
 
   private syncWindow(): void {
@@ -454,7 +507,16 @@ export class WinView {
     const k = c.native
     let el: HTMLElement
     const wire = (target: HTMLElement) => {
-      target.dataset.tab = String(num(c, 'taborder', 0) || 9999)
+      const order = num(c, 'taborder', 0)
+      target.dataset.tab = String(order || 9999)
+      target.tabIndex = order > 0 ? order : -1 // taborder 0 = not a tab stop
+      // key events of the control: `key` (and the `ue_enterkey` user event that most buttons / edits map to the key message)
+      target.addEventListener('keydown', (e) => {
+        const k = keyEnum(e)
+        if (!k) return
+        void rt.fire(c, 'key', [k, keyFlags(e)])
+        void rt.fire(c, 'ue_enterkey', [k, keyFlags(e)])
+      })
     }
     switch (k) {
       case 'commandbutton':
@@ -579,8 +641,8 @@ export class WinView {
         d.style.overflow = 'hidden'
         d.style.border = '1px solid #a0a0a0'
         this.place(c, d)
-        new DwView(c as NDwBase, d)
         const v = new CtlView(this.ui, c, d)
+        v.dw = new DwView(c as NDwBase, d)
         return v
       }
       case 'tab': {
