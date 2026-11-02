@@ -108,6 +108,30 @@ if (shots && observed) {
       await page.waitForTimeout(500)
     }
     await page.screenshot({ path: `${shots}/${name}.png` })
+    // a report asks for its format and arguments in dialogs: press Ok like the user does and take the next screens (`_s2`, `_s3`, `_s4`)
+    if (path.startsWith('&Reports')) {
+      for (let step = 2; step <= 4; step++) {
+        const pressed = await page.evaluate(() => {
+          for (const w of [...document.querySelectorAll('.pbwin:not(.sheet)')].reverse()) {
+            const b = [...w.querySelectorAll('button')].find((x) => /^ok$/i.test(x.textContent.trim()) && !x.disabled)
+            if (b) {
+              b.click()
+              return true
+            }
+          }
+          return false
+        })
+        if (!pressed) break
+        let seen = ''
+        for (let i = 0; i < 12; i++) {
+          await page.waitForTimeout(600)
+          const h = await page.evaluate(() => document.body.innerHTML.length + ':' + document.querySelectorAll('.pbwin').length)
+          if (h === seen) break
+          seen = h
+        }
+        await page.screenshot({ path: `${shots}/${name}_s${step}.png` })
+      }
+    }
     const titles = await page.evaluate(() => [...document.querySelectorAll('.pbwin .ttl')].map((t) => t.textContent.trim()).join(' ; '))
     // message boxes that were open (script errors show up as "Application error" boxes): what the user would have seen
     const boxes = await page.evaluate(() => [...document.querySelectorAll('.msgbox')].map((b) => ((b.querySelector('.ttl')?.textContent || '') + ': ' + (b.querySelector('.txt')?.textContent || '')).replace(/\s+/g, ' ').slice(0, 260)).join(' || '))

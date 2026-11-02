@@ -45,6 +45,8 @@ label.ctl { display:flex; align-items:center; gap:4px; white-space:nowrap; }
 .dw .row.sel { background:#0078d7; }
 .dw .row.sel .o { color:#fff !important; }
 .dw .o.placeholder { border:1px dashed #bbb; }
+.dw .o .cbx { flex:none; width:13px; height:13px; border:1px solid #8a8a8a; border-radius:3px; background:#fff; box-sizing:border-box; }
+.dw .o .cbx.on { background:#0067c0 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2l2.4 2.4 4.6-5' fill='none' stroke='%23fff' stroke-width='1.6'/%3E%3C/svg%3E") center/11px no-repeat; border-color:#0067c0; }
 .dw .o.btn { background:#e1e1e1; border:1px solid #adadad; text-align:center; }
 .menubar { display:flex; background:#fff; height:20px; flex:0 0 20px; border-bottom:1px solid #f2f2f2; box-shadow:0 1px 0 #f0f0f0; padding:0 0 0 0; }
 .menubar .mi { padding:0 8px; line-height:18px; position:relative; white-space:nowrap; }

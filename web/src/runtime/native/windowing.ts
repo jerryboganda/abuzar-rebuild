@@ -64,6 +64,21 @@ async function openWin(rt: Runtime, a: unknown[], sheet: boolean, withParm: bool
   rt.ui?.createWindow?.(w, { sheet, modal })
   await rt.fire(w, 'open')
   rt.ui?.showWindow?.(w, { sheet, modal })
+  // a tab control raises SelectionChanging / SelectionChanged for its first page when its window comes up (the entry windows build their blank new form in it:
+  // the original's Users, Item or Sale Template window opens with an empty form and the menu in new-form state)
+  const tabs: PBObject[] = []
+  const findTabs = (o: PBObject) => {
+    for (const c of o.children.values()) {
+      if (c instanceof NControl && c.native === 'tab' && c.children.size) tabs.push(c)
+      else findTabs(c)
+    }
+  }
+  findTabs(w)
+  for (const t of tabs) {
+    const first = Number(t.props.get('selectedtab') ?? 1) || 1
+    await rt.fire(t, 'selectionchanging', [0, first])
+    await rt.fire(t, 'selectionchanged', [0, first])
+  }
   if (modal) await w.closed
   else if (w.props.get('visible') === false) rt.ui?.hideWindow?.(w)
   return 1

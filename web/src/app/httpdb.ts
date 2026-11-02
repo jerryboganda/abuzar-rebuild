@@ -64,8 +64,14 @@ export class HttpDb implements Db {
     if (appUser) await this.exec("SELECT set_config('app.user', $1, false)", [appUser]).catch(() => undefined)
     return this
   }
-  query(sql: string, params: unknown[]): Promise<QueryResult> {
-    return this.post('/api/query', { sid: this.sid, sql, params })
+  /** `Select enabled From SysJobs Where Name = :job` (SQL Server Agent): every job is known by name and disabled until it is enabled, see db/pg/86_jobs.sql */
+  private async jobs(sql: string, params: unknown[]): Promise<string> {
+    if (!/\bfrom\s+sysjobs\b/i.test(sql)) return sql
+    if (typeof params[0] === 'string') await this.post('/api/exec', { sid: this.sid, sql: 'INSERT INTO dbo.sysjobs (name) VALUES ($1) ON CONFLICT DO NOTHING', params: [params[0]] })
+    return sql.replace(/\bsysjobs\b/i, 'dbo.sysjobs')
+  }
+  async query(sql: string, params: unknown[]): Promise<QueryResult> {
+    return this.post('/api/query', { sid: this.sid, sql: await this.jobs(sql, params), params })
   }
   exec(sql: string, params: unknown[]): Promise<{ rowcount: number }> {
     return this.post('/api/exec', { sid: this.sid, sql, params })

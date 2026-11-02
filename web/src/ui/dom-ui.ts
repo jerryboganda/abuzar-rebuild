@@ -278,7 +278,8 @@ export class WinView {
     const H = toPx(num(w, 'height'), 'y')
     const s = this.el.style
     s.width = W + 'px'
-    s.height = H + 'px'
+    // the client area of a dialog is 0.924 of its height in units (measured: Login 1016 PBU -> 234 px, Select Format 1322 PBU -> 306 px), the title bar comes on top
+    s.height = (!opts.sheet && !isMdi && bool(w, 'titlebar', true) ? Math.round(H * 0.924) + 26 : H) + 'px'
     s.left = toPx(num(w, 'x'), 'x') + 'px'
     s.top = toPx(num(w, 'y'), 'y') + 'px'
     if (isMdi) {

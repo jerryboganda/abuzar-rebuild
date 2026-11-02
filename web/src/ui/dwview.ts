@@ -370,7 +370,8 @@ export class DwView {
     const view = this.root.clientHeight
     if (!view) return
     if (top < this.root.scrollTop) this.root.scrollTop = top
-    else if (top + h > this.root.scrollTop + view) this.root.scrollTop = top + h - view
+    // a row taller than the control (a form in a small DataWindow) shows from its top, like PowerBuilder does
+    else if (top + h > this.root.scrollTop + view) this.root.scrollTop = h > view ? top : top + h - view
     if (v) await this.fillWindow()
   }
 
@@ -384,15 +385,52 @@ export class DwView {
     const { buildPages } = await import('./print.ts') // print.ts builds its pages with a DwView: loaded on use
     const pages = await buildPages(this.ctl)
     const zoom = Number(m.overrides.get('datawindow.print.preview.zoom') ?? m.def.datawindow['print.preview.zoom'] ?? 100) / 100
+    const rulers = /^(yes|true|1)$/i.test(String(m.overrides.get('datawindow.print.preview.rulers') ?? m.def.datawindow['print.preview.rulers'] ?? ''))
     const wrap = document.createElement('div')
     wrap.className = 'dw-preview'
-    wrap.style.cssText = 'background:#808080;padding:10px;width:max-content;min-width:100%;box-sizing:border-box'
+    wrap.style.cssText = 'background:#fff;padding:' + (rulers ? '18px 0 10px 18px' : '10px') + ';width:max-content;min-width:100%;box-sizing:border-box;position:relative'
+    const z = zoom > 0 ? zoom : 1
+    const units = Number(m.def.datawindow.units ?? 0)
+    const margin = (k: string) => toPx(Number(m.def.datawindow['print.margin.' + k] ?? 0), 'x', units) * z
+    let widest = 0
     for (const p of pages) {
-      p.style.margin = '0 auto 10px'
-      p.style.boxShadow = '0 0 4px #000'
+      p.style.margin = '0 0 10px'
+      p.style.boxShadow = rulers ? 'none' : '0 0 4px #000'
       p.style.pageBreakAfter = 'auto'
-      if (zoom > 0 && zoom !== 1) p.style.setProperty('zoom', String(zoom))
+      if (z !== 1) p.style.setProperty('zoom', String(z))
+      if (rulers) {
+        // the print area, as the original's preview draws it (blue rectangle inside the page at the margins)
+        const frame = document.createElement('div')
+        frame.style.cssText = `position:absolute;left:${margin('left')}px;top:${toPx(Number(m.def.datawindow['print.margin.top'] ?? 0), 'y', units) * z}px;right:${margin('right')}px;bottom:${toPx(Number(m.def.datawindow['print.margin.bottom'] ?? 0), 'y', units) * z}px;border:1px solid #0000ff;pointer-events:none`
+        p.style.position = 'relative'
+        p.appendChild(frame)
+      }
+      widest = Math.max(widest, parseFloat(p.style.width) || p.offsetWidth || 816)
       wrap.appendChild(p)
+    }
+    if (rulers) {
+      // rulers in inches (96 px each), 1/8 inch ticks
+      const inch = 96 * z
+      const tick = (dir: 'x' | 'y') => {
+        const major = `repeating-linear-gradient(to ${dir === 'x' ? 'right' : 'bottom'}, #000 0 1px, transparent 1px ${inch}px)`
+        const half = `repeating-linear-gradient(to ${dir === 'x' ? 'right' : 'bottom'}, #000 0 1px, transparent 1px ${inch / 2}px)`
+        const minor = `repeating-linear-gradient(to ${dir === 'x' ? 'right' : 'bottom'}, #000 0 1px, transparent 1px ${inch / 8}px)`
+        return dir === 'x' ? `${major} 0 100%/100% 100% no-repeat, ${half} 0 100%/100% 60% no-repeat, ${minor} 0 100%/100% 30% no-repeat` : `${major} 100% 0/100% 100% no-repeat, ${half} 100% 0/60% 100% no-repeat, ${minor} 100% 0/30% 100% no-repeat`
+      }
+      const top = document.createElement('div')
+      top.style.cssText = `position:sticky;top:0;z-index:3;height:18px;margin:-18px 0 0 -18px;padding-left:18px;background:#f0f0f0;border-bottom:1px solid #a0a0a0;overflow:hidden;width:${Math.max(widest * z, 600)}px;box-sizing:content-box`
+      top.style.backgroundImage = tick('x')
+      for (let i = 1; i * inch < widest * z; i++) {
+        const n = document.createElement('span')
+        n.textContent = String(i)
+        n.style.cssText = `position:absolute;left:${18 + i * inch + 2}px;top:0;font:9px Segoe UI,Arial`
+        top.appendChild(n)
+      }
+      const left = document.createElement('div')
+      left.style.cssText = `position:absolute;left:0;top:18px;bottom:0;width:18px;background:#f0f0f0;border-right:1px solid #a0a0a0;z-index:2`
+      left.style.backgroundImage = tick('y')
+      wrap.prepend(left)
+      wrap.prepend(top)
     }
     this.virt = null
     this.root.replaceChildren(wrap)
@@ -620,7 +658,18 @@ export class DwView {
       el.style.padding = '0 2px'
       return el
     }
-    el.textContent = await this.display(m, o, v)
+    if (o['checkbox.on'] !== undefined && o.type === 'column') {
+      // a check box column: the Windows 11 box (blue with a white tick when on) and its text
+      const on = toStr(v) === o['checkbox.on']
+      el.textContent = ''
+      const box = document.createElement('span')
+      box.className = 'cbx' + (on ? ' on' : '')
+      el.appendChild(box)
+      if (o['checkbox.text']) el.append(' ' + o['checkbox.text'])
+      el.style.display = 'flex'
+      el.style.alignItems = 'center'
+      el.style.gap = '3px'
+    } else el.textContent = await this.display(m, o, v)
     if (o.type === 'column') {
       const protect = (await this.prop(m, o, 'protect', row, band)) === '1'
       const tab = num(o, 'tabsequence', 0)
