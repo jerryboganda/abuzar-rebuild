@@ -16,3 +16,6 @@ INSERT INTO dbo.groupallowedgodown (groupcode, gcode, module, priority) SELECT g
 
 -- the original checks at every start that a SQL Server backup exists and opens its backup window; backups are made with pg_dump here
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) IN ('checkmanualbackuphealthatstartup', 'checkmasterbackuphealthatstartup');
+
+-- the argument windows of the reports start with today 00:00:00 (the original showed that date)
+UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'applyargsdate';

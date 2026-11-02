@@ -52,7 +52,19 @@ async function openWin(rt: Runtime, a: unknown[], sheet: boolean, withParm: bool
   await rt.fireConstructors(w)
   // the item list popup of the entry windows is a DataWindow that is only shown while the user searches (the original has it hidden until `show()`;
   // its definition lacks the attribute, the program keeps `visible` false: its window class is not visible in the original's control tree)
+  // controls that sit inside the rectangle of a hidden group box and carry no `visible` attribute are hidden, too (the original shows none of the invoice / price fields of the
+  // argument windows; the definition only lists `visible = false` for the group box and some of its fields)
+  const num = (c: PBObject, k: string) => Number(c.props.get(k) ?? 0)
+  const hideInHiddenBoxes = (o: PBObject) => {
+    const kids = [...o.children.values()]
+    const boxes = kids.filter((c) => c.native === 'groupbox' && c.props.get('visible') === false)
+    for (const c of kids) {
+      if (c.native === 'groupbox' || (c.props.get('visible') ?? null) !== null) continue
+      if (boxes.some((b) => num(c, 'x') >= num(b, 'x') && num(c, 'y') >= num(b, 'y') && num(c, 'x') + num(c, 'width') <= num(b, 'x') + num(b, 'width') && num(c, 'y') + num(c, 'height') <= num(b, 'y') + num(b, 'height'))) c.props.set('visible', false)
+    }
+  }
   const hidePopups = (o: PBObject) => {
+    hideInHiddenBoxes(o)
     for (const c of o.children.values()) {
       if (c.name === 'dw_itemslist') c.props.set('visible', false)
       hidePopups(c)

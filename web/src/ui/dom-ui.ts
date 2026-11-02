@@ -717,7 +717,9 @@ export class WinView {
 
   private borderClass(c: PBObject, el: HTMLElement): void {
     const b = num(c, 'borderstyle', 0)
-    if (!bool(c, 'border', true)) return // BorderStyle only applies while Border is on
+    // Border defaults to on for the edit-like controls and to off for labels, check boxes, pictures ...; BorderStyle only applies while it is on
+    const editLike = ['singlelineedit', 'multilineedit', 'editmask', 'listbox', 'dropdownlistbox', 'datawindow', 'datastore', 'richtextedit', 'treeview', 'listview', 'picturelistbox'].includes(c.native)
+    if (!bool(c, 'border', editLike)) return
     if (b === 5) el.classList.add('lowered')
     else if (b === 6) el.classList.add('raised')
     else if (b === 2 || b === 1) el.classList.add('box')
@@ -824,6 +826,9 @@ export class WinView {
         setMnemonic(lg, str(c, 'text'))
         f.appendChild(lg)
         this.style(c, f)
+        // a group box is only a frame and a caption: it never hides or catches the controls inside it (they come earlier in the control order)
+        f.style.background = 'transparent'
+        f.style.pointerEvents = 'none'
         el = f
         break
       }
