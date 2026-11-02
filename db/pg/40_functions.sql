@@ -91,6 +91,22 @@ BEGIN
   RETURN NULL;
 END
 $body$;
+-- ==== compat tsql_dyn ====
+CREATE OR REPLACE FUNCTION dbo.tsql_dyn(q text) RETURNS text
+  LANGUAGE sql IMMUTABLE AS $body$
+  SELECT regexp_replace(
+         regexp_replace(
+         regexp_replace(
+         regexp_replace(
+         regexp_replace(
+         regexp_replace(q,
+           '^\s*DELETE\s+(?!FROM\b)', 'DELETE FROM ', 'i'),
+           '\mISNULL\s*\(', 'COALESCE(', 'gi'),
+           '\mGETDATE\s*\(\s*\)', 'localtimestamp(3)', 'gi'),
+           '\mLEN\s*\(', 'length(', 'gi'),
+           '#(\w+)', 'tmp_\1', 'g'),
+           '\[(\w+)\]', '\1', 'g')
+$body$;
 
 -- ==== function Fn_AccountBalance ====
 CREATE OR REPLACE FUNCTION dbo.fn_accountbalance(date timestamp, acccode integer)

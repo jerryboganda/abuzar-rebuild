@@ -305,20 +305,25 @@ def summarize(results, failures, units_index, repo, report_path, stmts_total):
         r = by.get(k, collections.Counter())
         row = [label, len(us), c.get('translated', 0), c.get('partial', 0), c.get('stub', 0) + c.get('excluded', 0),
                r.get('created', 0), r.get('failed', 0), r.get('check-ok', 0), r.get('check-errors', 0), r.get('check-temp-unresolved', 0)]
+        if k == 'view':
+            row[7] = row[8] = row[9] = 'n/a'
         lines.append('| ' + ' | '.join(str(x) for x in row) + ' |')
         for i, x in enumerate(row[1:]):
-            tot[i] += x
+            if isinstance(x, int):
+                tot[i] += x
     lines.append('| **all** | ' + ' | '.join(str(tot[i]) for i in range(9)) + ' |')
     lines += ['',
               '"translated fully" = every statement was translated; "with untranslated statements" = the routine compiles but contains `RAISE EXCEPTION \'untranslated T-SQL\'` placeholders (original kept as a comment);',
               '"stub" = parse/translation failed, or deliberately excluded (vendor backup/restore code, SQL Server system views): a function with the right signature that raises when called.',
               '"CREATE succeeded" counts what PostgreSQL accepted (PL/pgSQL syntax check only); "plpgsql_check clean" additionally resolves tables, columns, types and function calls inside each body.', '']
     sm = collections.Counter()
+    nfetch = 0
     for r in results:
         if r['category'].startswith('smoke-'):
             sm[r['result']] += 1
+            nfetch += r.get('cursors_fetched', 0)
     if sm:
-        lines += ['Runtime smoke test (every translated procedure/function called once with NULL arguments on the empty schema, rolled back): %s.' % ', '.join('%s %d' % (k, v) for k, v in sorted(sm.items())), '']
+        lines += ['Runtime smoke test (every translated procedure/function called once with NULL arguments on the empty schema, rolled back): %s. Result-set cursors opened by those calls and fetched with FETCH ALL: %d.' % (', '.join('%s %d' % (k, v) for k, v in sorted(sm.items())), nfetch), '']
     comp = by.get('compat', collections.Counter())
     lines += ['Compatibility helper functions (`dbo.tsql_*`): created %d, failed %d.' % (comp.get('created', 0), comp.get('failed', 0)), '']
     if stmts_total is not None:
@@ -381,8 +386,15 @@ def smoke_calls(conn, units_index, results, failures):
             conn.execute('BEGIN')
             conn.execute("SET LOCAL statement_timeout = '4s'")
             conn.execute('SET LOCAL search_path TO dbo, public')
-            conn.execute(sql).fetchall()
+            cur = conn.execute(sql)
+            rows = cur.fetchall()
             rec['result'] = 'ok'
+            if sg['kind'] == 'proc' and rows and cur.description:
+                # documented protocol: FETCH ALL FROM the refcursor returned in column rsN (runs the cursor's query)
+                for i, col in enumerate(cur.description):
+                    if re.fullmatch(r'rs\d+', col.name) and rows[0][i]:
+                        conn.execute('FETCH ALL FROM "%s"' % rows[0][i].replace('"', '""')).fetchall()
+                        rec['cursors_fetched'] = rec.get('cursors_fetched', 0) + 1
         except Exception as e:
             st = getattr(e, 'sqlstate', None)
             msg = first_line(e)

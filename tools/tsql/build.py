@@ -178,7 +178,7 @@ def view_order(parsed_views):
 
 
 def sig_json(tr, kind, u, sg, rs_cols):
-    params = [{'name': p.name, 'type': p.pgtype, 'tsql_type': p.tsql_type, 'mode': p.mode, 'default': p.default} for p in sg.params]
+    params = [{'name': p.name, 'pg_param': pident(p.name), 'type': p.pgtype, 'tsql_type': p.tsql_type, 'mode': p.mode, 'default': p.default} for p in sg.params]
     d = {'name': u['name'], 'pg_name': 'dbo.' + ident(u['name']).strip('"'), 'kind': kind, 'status': u['status'], 'params': params}
     if kind == 'proc':
         outs = [p.name for p in sg.params if p.mode == 'inout']
@@ -188,10 +188,10 @@ def sig_json(tr, kind, u, sg, rs_cols):
             rs.append({'column': 'rs%d' % (i + 1),
                        'columns': [{'name': c[0], 'class': c[1]} for c in cols if c[0]] if cols else None})
         d['returns'] = {'style': 'record', 'status_column': 'return_value', 'inout_columns': outs, 'result_sets': rs}
-        d['call'] = 'SELECT * FROM dbo.%s(%s)' % (ident(u['name']).strip('"'), ', '.join('%s => $%d' % (p['name'], i + 1) for i, p in enumerate(params)))
+        d['call'] = 'SELECT * FROM dbo.%s(%s)' % (ident(u['name']).strip('"'), ', '.join('%s => $%d' % (p['pg_param'], i + 1) for i, p in enumerate(params)))
     elif kind == 'function':
         if sg.ret_table is not None:
-            d['returns'] = {'style': 'table', 'columns': [{'name': c.name, 'type': c.pg} for c in sg.ret_table.cols]}
+            d['returns'] = {'style': 'table', 'columns': [{'name': ident(c.name).strip('"'), 'type': c.pg} for c in sg.ret_table.cols]}
             d['call'] = 'SELECT * FROM dbo.%s(%s)' % (ident(u['name']).strip('"'), ', '.join('$%d' % (i + 1) for i in range(len(params))))
         else:
             d['returns'] = {'style': 'scalar', 'type': sg.ret_pg}

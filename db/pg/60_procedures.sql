@@ -2235,7 +2235,7 @@ BEGIN
   END IF;
   _dq1 := v_alterdb;
   IF _dq1 IS NOT NULL THEN
-    EXECUTE _dq1;
+    EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   IF (0 <> 0) THEN
     return_value := 0;
@@ -2482,7 +2482,7 @@ BEGIN
     END IF;
     _dq1 := v_qry;
     IF _dq1 IS NOT NULL THEN
-      EXECUTE _dq1;
+      EXECUTE dbo.tsql_dyn(_dq1);
     END IF;
     v_err := 0;
     IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -2501,7 +2501,7 @@ BEGIN
   v_qry := 'TRUNCATE TABLE DBO.VirtualGl';
   _dq2 := v_qry;
   IF _dq2 IS NOT NULL THEN
-    EXECUTE _dq2;
+    EXECUTE dbo.tsql_dyn(_dq2);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -2513,7 +2513,7 @@ BEGIN
   v_qry := 'TRUNCATE TABLE DBO.GodownDetail';
   _dq3 := v_qry;
   IF _dq3 IS NOT NULL THEN
-    EXECUTE _dq3;
+    EXECUTE dbo.tsql_dyn(_dq3);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -2524,7 +2524,7 @@ BEGIN
   v_qry := (('INSERT INTO DBO.GodownDetail SELECT * ' || v_from) || v_tablename);
   _dq4 := v_qry;
   IF _dq4 IS NOT NULL THEN
-    EXECUTE _dq4;
+    EXECUTE dbo.tsql_dyn(_dq4);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -4226,7 +4226,7 @@ BEGIN
   v_query := ((((((' Update  Item Set ChangeReason=''Change Discounts Cat Wise'', Module=''Change Discounts'', UserCode  = ' || v_str_usercode) || ' , LastUpdate = ''') || v_str_serverdatetime) || ''' , ') || v_str_discquery) || v_str_wherecondition);
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    EXECUTE _dq1;
+    EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   IF (0 <> 0) THEN
     RAISE EXCEPTION 'Unable to update item Salediscperc';
@@ -4293,7 +4293,7 @@ BEGIN
   v_query := ((((((' Update  Item Set ChangeReason=''Change Discounts Man,Cat,Pack Wise'', Module=''Change Discounts'', UserCode  = ' || v_str_usercode) || ' , LastUpdate = ''') || v_str_serverdatetime) || ''' , ') || v_str_discquery) || v_str_wherecondition);
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    EXECUTE _dq1;
+    EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   IF (0 <> 0) THEN
     RAISE EXCEPTION 'Unable to update item Salediscperc';
@@ -4538,7 +4538,7 @@ BEGIN
   v_qry := (('INSERT INTO ReportData (Code1) Select COALESCE(COUNT(ICode),0) AS Items From ' || v_srv) || '...Item Where ICode NOT IN (SELECT ICode FROM Item)');
   _dq1 := v_qry;
   IF _dq1 IS NOT NULL THEN
-    EXECUTE _dq1;
+    EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   IF (0 <> 0) THEN
     RAISE EXCEPTION 'Some Problem occur in checking new items in data carry db';
@@ -4603,7 +4603,7 @@ BEGIN
   v_qry := ((((((((((((((((((((((('INSERT INTO ReportData (Name1, Code1) ' || 'SELECT ''Sales'', COALESCE((SELECT MIN(SaleInvCode) AS Diff ') || v_from) || 'SaleLedger), COALESCE((SELECT MAX(SaleInvCode) FROM SaleLedger), 0)) - COALESCE((SELECT MAX(SaleInvCode) FROM SaleLedger), 0) ') || ' UNION ALL ') || 'SELECT ''Service Sale'', COALESCE((SELECT MIN(ServiceInvCode) AS Diff ') || v_from) || 'ServiceHeader), COALESCE((SELECT MAX(ServiceInvCode) FROM ServiceHeader), 0)) - COALESCE((SELECT MAX(ServiceInvCode) FROM ServiceHeader), 0)') || ' UNION ALL ') || 'SELECT ''Service Purchase'', COALESCE((SELECT MIN(ServicePurInvCode) AS Diff ') || v_from) || 'ServicePurHeader), COALESCE((SELECT MAX(ServicePurInvCode) FROM ServicePurHeader), 0)) - COALESCE((SELECT MAX(ServicePurInvCode) FROM ServicePurHeader), 0)') || ' UNION ALL ') || 'SELECT ''A/c Voucher'', COALESCE((SELECT MIN(GLVochCode) AS Diff ') || v_from) || 'GLHeader), COALESCE((SELECT MAX(GLVochCode) FROM GLHeader), 0)) - COALESCE((SELECT MAX(GLVochCode) FROM GLHeader), 0)') || ' UNION ALL ') || 'SELECT ''Notes Receiveable/Payable'', COALESCE((SELECT MIN(NoteCode) AS Diff ') || v_from) || 'Notes), COALESCE((SELECT MAX(NoteCode) FROM Notes), 0)) - COALESCE((SELECT MAX(NoteCode) FROM Notes), 0)') || ' UNION ALL ') || 'SELECT ''Transaction Data'', COALESCE((SELECT MIN(DocumentCode) AS Diff ') || v_from) || 'TransactionHeader ), COALESCE((SELECT MAX(DocumentCode) FROM TransactionHeader), 0)) - COALESCE((SELECT MAX(DocumentCode) FROM TransactionHeader), 0)');
   _dq1 := v_qry;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   v_err := 0;
   IF ((v_err <> 0) OR (v_rtcode <> 0)) THEN
@@ -4701,7 +4701,7 @@ BEGIN
   v_qry := (v_qry || ') with tableresults, ALL_ERRORMSGS');
   _dq1 := v_qry;
   IF _dq1 IS NOT NULL THEN
-    EXECUTE _dq1;
+    EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   IF (0 <> 0) THEN
     return_value := 0;
@@ -5782,7 +5782,7 @@ BEGIN
   v_qry := (('INSERT INTO REPORTDATA (code1, code2, code3) SELECT * FROM ' || v_prefix) || 'Sequence');
   _dq1 := v_qry;
   IF _dq1 IS NOT NULL THEN
-    EXECUTE _dq1;
+    EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   v_sequenceid := trunc((SELECT max(code1) FROM dbo.reportdata))::integer;
   v_appversion := trunc((SELECT max(code2) FROM dbo.reportdata))::integer;
@@ -6442,13 +6442,13 @@ BEGIN
     v_qry := ((((('INSERT INTO tmp_inputrows (CardCode, Code, TokenValue, SMSText, SMSTO) SELECT DISTINCT T.ContactCardCode, P.Code, NULL, NULL, T.Mobile FROM ' || v_viewname) || ' AS T, (SELECT CODE FROM udf_StringToTabl_String(''') || v_as_list) || ''', '','')) P WHERE P.Code = T.') || v_filteron);
     _dq2 := v_qry;
     IF _dq2 IS NOT NULL THEN
-      EXECUTE _dq2;
+      EXECUTE dbo.tsql_dyn(_dq2);
     END IF;
     GET DIAGNOSTICS _rc = ROW_COUNT;
     v_qry := (((('INSERT INTO #InputRows (CardCode, Code, TokenValue, SMSText, SMSTO) SELECT DISTINCT T.ContactCardCode, P.Code, NULL, NULL, T.Mobile FROM GetAssociatedRecipientForSMS AS T, (SELECT CODE FROM udf_StringToTabl_String(''' || v_as_list) || ''', '','')) P WHERE T.SMSTemplateCode = ') || ltrim(rtrim(dbo.tsql_str((v_ai_smstemplatecode)::numeric, 10)))) || ' AND T.ContactCardCode NOT IN (SELECT M.CardCode FROM tmp_inputrows M)');
     _dq3 := v_qry;
     IF _dq3 IS NOT NULL THEN
-      EXECUTE _dq3;
+      EXECUTE dbo.tsql_dyn(_dq3);
     END IF;
     GET DIAGNOSTICS _rc = ROW_COUNT;
     UPDATE tmp_inputrows AS inputrows SET smstext = v_smstemplate;
@@ -6477,13 +6477,13 @@ BEGIN
         IF (v_mincontactcard > 0) THEN
           _dq4 := (((((('UPDATE tmp_inputrows SET TokenValue = (SELECT MAX(' || v_tokenname) || ') FROM ') || v_viewname) || ' WHERE ') || v_filteron) || ' = tmp_inputrows.Code  AND ContactCardCode = tmp_inputrows.CardCode)');
           IF _dq4 IS NOT NULL THEN
-            EXECUTE _dq4;
+            EXECUTE dbo.tsql_dyn(_dq4);
           END IF;
           GET DIAGNOSTICS _rc = ROW_COUNT;
         ELSE
           _dq5 := (((((('UPDATE tmp_inputrows SET TokenValue = (SELECT MAX(' || v_tokenname) || ') FROM ') || v_viewname) || ' WHERE ') || v_filteron) || ' = tmp_inputrows.Code )');
           IF _dq5 IS NOT NULL THEN
-            EXECUTE _dq5;
+            EXECUTE dbo.tsql_dyn(_dq5);
           END IF;
           GET DIAGNOSTICS _rc = ROW_COUNT;
         END IF;
@@ -7502,7 +7502,7 @@ BEGIN
   v_query := (((((('INSERT INTO ' || v_tableprefix) || 'CRS_DataTransferLog (ClientInstanceID, UserCode, StartDate, EndDate) VALUES (') || v_instanceid_str) || ', ') || coalesce(dbo.tsql_str((v_usercode)::numeric), 'NULL')) || ', localtimestamp(3), localtimestamp(3))');
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    EXECUTE _dq1;
+    EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_err := 0;
@@ -7514,7 +7514,7 @@ BEGIN
   v_query := ((('INSERT INTO REPORTDATA (Code1, Name1) SELECT LOGID=MAX(LogID), Name1 = ''CRS_DataTransferLog'' FROM ' || v_tableprefix) || 'CRS_DataTransferLog WHERE ClientInstanceID = ') || v_instanceid_str);
   _dq2 := v_query;
   IF _dq2 IS NOT NULL THEN
-    EXECUTE _dq2;
+    EXECUTE dbo.tsql_dyn(_dq2);
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_err := 0;
@@ -7537,7 +7537,7 @@ BEGIN
     v_query := (((((('INSERT INTO ' || v_tableprefix) || 'CRS_DataTransferLogDetail (LogID, SourceTableName, StartDate, EndDate) VALUES (') || v_logid_str) || ', ''') || v_tablename) || ''', GETDATE(), GETDATE())');
     _dq3 := v_query;
     IF _dq3 IS NOT NULL THEN
-      EXECUTE _dq3;
+      EXECUTE dbo.tsql_dyn(_dq3);
     END IF;
     GET DIAGNOSTICS _rc = ROW_COUNT;
     v_err := 0;
@@ -7563,7 +7563,7 @@ BEGIN
       END IF;
       _dq4 := v_localupd;
       IF _dq4 IS NOT NULL THEN
-        EXECUTE _dq4;
+        EXECUTE dbo.tsql_dyn(_dq4);
       END IF;
       GET DIAGNOSTICS _rc = ROW_COUNT;
       v_err := 0;
@@ -7578,7 +7578,7 @@ BEGIN
     v_query := (((((('UPDATE ' || v_tableprefix) || 'CRS_DataTransferLogDetail SET EndDate = localtimestamp(3) WHERE LogID = ') || v_logid_str) || ' AND SourceTableName = ''') || v_tablename) || '''');
     _dq5 := v_query;
     IF _dq5 IS NOT NULL THEN
-      EXECUTE _dq5;
+      EXECUTE dbo.tsql_dyn(_dq5);
     END IF;
     GET DIAGNOSTICS _rc = ROW_COUNT;
     v_err := 0;
@@ -7596,7 +7596,7 @@ BEGIN
   v_query := ((('UPDATE ' || v_tableprefix) || 'CRS_DataTransferLog SET EndDate = localtimestamp(3) WHERE LogID = ') || v_logid_str);
   _dq6 := v_query;
   IF _dq6 IS NOT NULL THEN
-    EXECUTE _dq6;
+    EXECUTE dbo.tsql_dyn(_dq6);
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_err := 0;
@@ -7719,7 +7719,7 @@ BEGIN
   v_qry := (((('SELECT T.BranchName, T.ICode, T.AliasName, T.ItemName, T.BranchStock, T.LastFetchedOn, T.Age FROM ' || v_tp) || 'View_CRS_ItemStockPosition T WHERE ICode = ') || ltrim(rtrim(dbo.tsql_str((v_icode)::numeric, 10)))) || ' ORDER BY BranchName');
   _dq1 := v_qry;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   return_value := 0;
   RETURN;
@@ -7888,7 +7888,7 @@ BEGIN
   v_header_qry := ((((('Update ' || v_tp) || 'SaleOrderHeader SET CRS_Sent = ''Y'', CRS_SentOn = localtimestamp(3), Posted=''Y'', PostDate=localtimestamp(3), PostedBy=') || ltrim(rtrim(dbo.tsql_str((v_usercode)::numeric)))) || ' WHERE Finalized=''Y'' AND Posted=''N'' AND CRS_Sent=''N'' AND ClientInstanceID=') || v_instanceid_str);
   _dq1 := v_header_qry;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -7946,7 +7946,7 @@ BEGIN
   v_qry := (((('INSERT INTO REPORTDATA (code1, code2, name1, name2) SELECT ClientInstanceID, ClientID, Name, Description FROM ' || v_tp) || 'CRS_ClientInstance WHERE Name = ''') || v_instancename) || '''');
   _dq1 := v_qry;
   IF _dq1 IS NOT NULL THEN
-    EXECUTE _dq1;
+    EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   v_instanceid := trunc((SELECT code1 FROM dbo.reportdata))::smallint;
   v_clientid := trunc((SELECT code2 FROM dbo.reportdata))::smallint;
@@ -8005,7 +8005,7 @@ BEGIN
   v_qry := (((((((((((((((('INSERT INTO REPORTDATA (code1, date1, date2, code2) SELECT ClientInstanceID, StartDate, EndDate, UserCode  FROM ' || v_srv) || '.') || v_db) || '.') || v_owner) || '.CRS_DataTransferLog WHERE ClientInstanceID = ') || ltrim(rtrim(dbo.tsql_str((v_instanceid)::numeric)))) || ' AND LogID IN (SELECT LogID=MAX(LogID) FROM ') || v_srv) || '.') || v_db) || '.') || v_owner) || '.CRS_DataTransferLog WHERE ClientInstanceID = ') || ltrim(rtrim(dbo.tsql_str((v_instanceid)::numeric)))) || ')');
   _dq1 := v_qry;
   IF _dq1 IS NOT NULL THEN
-    EXECUTE _dq1;
+    EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   v_clientinstanceid := trunc((SELECT max(code1) FROM dbo.reportdata))::smallint;
   v_startdate := (SELECT max(date1) FROM dbo.reportdata);
@@ -8448,7 +8448,7 @@ BEGIN
   v_query := ((('DELETE ' || v_tp) || 'CRS_VocherCategory WHERE ClientInstanceID = ') || v_id);
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    EXECUTE _dq1;
+    EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -8459,7 +8459,7 @@ BEGIN
   v_query := (((('INSERT INTO ' || v_tp) || 'CRS_VocherCategory (ClientInstanceID, VochCatCode, Name, ShortName, Counter, Posted, SystemType, JournalVoucher, HeaderTreatment, DetailTreatment, InvoiceBased, InvoiceType, AutoPosting, VoucherOrder, UseForSMS) SELECT ') || v_id) || ', VochCatCode, Name, ShortName, Counter, Posted, SystemType, JournalVoucher, HeaderTreatment, DetailTreatment, InvoiceBased, InvoiceType, AutoPosting, VoucherOrder, UseForSMS FROM DBO.VocherCategory ');
   _dq2 := v_query;
   IF _dq2 IS NOT NULL THEN
-    EXECUTE _dq2;
+    EXECUTE dbo.tsql_dyn(_dq2);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -8470,7 +8470,7 @@ BEGIN
   v_query := (((('INSERT INTO ' || v_tp) || 'CRS_GLheader (ClientInstanceID, GLVochCode, VochCatCode, AccCode, Date, salesmancode, Posted, PostDate, Remarks, OriginalDate, ModifiedBy, PostedBy, CHKNO, VoucherCode, SManCode, TransferAble, Transfered, TransferedON, TransferedBY, Imported, ImportedBY, BillSummaryCode, CurrencyCode, ConversionRate, Synced, SyncedOn, SyncedBy) SELECT ') || v_id) || ', GLVochCode, VochCatCode, AccCode, Date, salesmancode, Posted, PostDate, Remarks, OriginalDate, ModifiedBy, PostedBy, CHKNO, VoucherCode, SManCode, TransferAble, Transfered, TransferedON, TransferedBY, Imported, ImportedBY, BillSummaryCode, CurrencyCode, ConversionRate, Synced, SyncedOn, SyncedBy FROM DBO.GLHeader WHERE GLVochCode IN (SELECT Code FROM tmp_lsl)');
   _dq3 := v_query;
   IF _dq3 IS NOT NULL THEN
-    EXECUTE _dq3;
+    EXECUTE dbo.tsql_dyn(_dq3);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -8481,7 +8481,7 @@ BEGIN
   v_query := (((('INSERT INTO ' || v_tp) || 'CRS_GLDetail (ClientInstanceID, GLVochCode, AccCode, Debit, Credit, ChkNo, Remarks, GLRowID, GLUTN, PatientCode, INVOICECODE, OUTSTANDINGAMT, BALANCE, GuestCode, StudentCode, ForeignAmt) SELECT ') || v_id) || ', GLVochCode, AccCode, Debit, Credit, ChkNo, Remarks, GLRowID, GLUTN, PatientCode, INVOICECODE, OUTSTANDINGAMT, BALANCE, GuestCode, StudentCode, ForeignAmt FROM DBO.GLDetail WHERE GLVochCode IN (SELECT Code FROM tmp_lsl)');
   _dq4 := v_query;
   IF _dq4 IS NOT NULL THEN
-    EXECUTE _dq4;
+    EXECUTE dbo.tsql_dyn(_dq4);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -8495,7 +8495,7 @@ BEGIN
   v_query := (((('INSERT INTO ' || v_tp) || 'CRS_Notes (ClientInstanceID, NoteCode, AccCode, BankAccCode, IssueDate, DueDate, Amount, BankName, DocumentNumber, Remarks, NoteCatCode, Posted, PostDate, SalesmanCode, VoucherCode, Modified, ModifiedBY, PostedBY, Finalized, FinalizedDate, FinalizedBy, Synced, SyncedOn, SyncedBy) SELECT ') || v_id) || ', NoteCode, AccCode, BankAccCode, IssueDate, DueDate, Amount, BankName, DocumentNumber, Remarks, NoteCatCode, Posted, PostDate, SalesmanCode, VoucherCode, Modified, ModifiedBY, PostedBY, Finalized, FinalizedDate, FinalizedBy, Synced, SyncedOn, SyncedBy FROM DBO.Notes WHERE NoteCode IN (SELECT Code FROM tmp_lsl)');
   _dq5 := v_query;
   IF _dq5 IS NOT NULL THEN
-    EXECUTE _dq5;
+    EXECUTE dbo.tsql_dyn(_dq5);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -8506,7 +8506,7 @@ BEGIN
   v_query := (((('INSERT INTO ' || v_tp) || 'CRS_NotesDetail (ClientInstanceID, NoteCode, InvoiceCode, OutstandingAmt, Amt, NoteROWID, NotesUTN) SELECT ') || v_id) || ', NoteCode, InvoiceCode, OutstandingAmt, Amt, NoteROWID, NotesUTN FROM DBO.NotesDetail WHERE NoteCode IN (SELECT Code FROM tmp_lsl)');
   _dq6 := v_query;
   IF _dq6 IS NOT NULL THEN
-    EXECUTE _dq6;
+    EXECUTE dbo.tsql_dyn(_dq6);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -8520,7 +8520,7 @@ BEGIN
   v_query := (((('INSERT INTO ' || v_tp) || 'CRS_TransactionHeader (ClientInstanceID, DocumentCode, TransactionTypeCode, TransactionCode, Date, UserCode, Remarks, PatientCode, AdmissionCode, PatientBalance, AccCode, AccBalance, CashAccCode, CashTendered, CashCharged, CashBack, Posted, PostedBy, PostDate)  SELECT ') || v_id) || ', DocumentCode, TransactionTypeCode, TransactionCode, Date, UserCode, Remarks, PatientCode, AdmissionCode, PatientBalance, AccCode, AccBalance, CashAccCode, CashTendered, CashCharged, CashBack, Posted, PostedBy, PostDate  FROM DBO.TransactionHeader WHERE DocumentCode IN (SELECT Code FROM tmp_lsl)');
   _dq7 := v_query;
   IF _dq7 IS NOT NULL THEN
-    EXECUTE _dq7;
+    EXECUTE dbo.tsql_dyn(_dq7);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -8531,7 +8531,7 @@ BEGIN
   v_query := (((('INSERT INTO ' || v_tp) || 'CRS_TransactionDetail (ClientInstanceID, DocumentCode, AccCode, Amount, Remarks, RowID) SELECT ') || v_id) || ', DocumentCode, AccCode, Amount, Remarks, RowID FROM DBO.TransactionDetail WHERE DocumentCode IN (SELECT Code FROM tmp_lsl)');
   _dq8 := v_query;
   IF _dq8 IS NOT NULL THEN
-    EXECUTE _dq8;
+    EXECUTE dbo.tsql_dyn(_dq8);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -8573,7 +8573,7 @@ BEGIN
   v_query := (((('INSERT INTO ' || v_tp) || 'CRS_AdjHeader (ClientInstanceID,AdjCode,AdjCatCode,UserCode,Remarks,Date,ModifiedDate,ModifiedBy,Posted,PostedDate,PostedBy,HeaderNo,HeaderInvNo,AccCode,Synced,SyncedOn,SyncedBy) SELECT ') || v_id) || ',AdjCode,AdjCatCode,UserCode,Remarks,Date,ModifiedDate,ModifiedBy,Posted,PostedDate,PostedBy,HeaderNo,HeaderInvNo,AccCode,Synced,SyncedOn,SyncedBy FROM DBO.AdjHeader WHERE AdjCode IN (SELECT Code FROM tmp_lsl)');
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    EXECUTE _dq1;
+    EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -8584,7 +8584,7 @@ BEGIN
   v_query := (((('INSERT INTO ' || v_tp) || 'CRS_AdjDetail (ClientInstanceID,AdjCode,GCode,ICode,Batch,Expiry,LooseQty,Priority,Price,AvgPrice,PackUnits,SalePrice,PurPrice,RecentPurPrice,AdjUtn,UpdateAvgPrice,NewAvgPrice,CurrStock,AlternateCustomICode) SELECT ') || v_id) || ',AdjCode,GCode,ICode,Batch,Expiry,LooseQty,Priority,Price,AvgPrice,PackUnits,SalePrice,PurPrice,RecentPurPrice,AdjUtn,UpdateAvgPrice,NewAvgPrice,CurrStock,AlternateCustomICode FROM DBO.AdjDetail WHERE AdjCode IN (SELECT Code FROM tmp_lsl)');
   _dq2 := v_query;
   IF _dq2 IS NOT NULL THEN
-    EXECUTE _dq2;
+    EXECUTE dbo.tsql_dyn(_dq2);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -8684,7 +8684,7 @@ BEGIN
   v_query := (((((('INSERT INTO ' || v_tp) || 'CRS_DataTransferLog (ClientInstanceID, UserCode, StartDate, EndDate) VALUES (') || v_id) || ', ') || coalesce(dbo.tsql_str((v_usercode)::numeric), 'NULL')) || ', localtimestamp(3), localtimestamp(3))');
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    EXECUTE _dq1;
+    EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_err := 0;
@@ -8696,7 +8696,7 @@ BEGIN
   v_query := ((('INSERT INTO REPORTDATA (Code1, Name1) SELECT LOGID=MAX(LogID), Name1 = ''CRS_DataTransferLog'' FROM ' || v_tp) || 'CRS_DataTransferLog WHERE ClientInstanceID = ') || v_id);
   _dq2 := v_query;
   IF _dq2 IS NOT NULL THEN
-    EXECUTE _dq2;
+    EXECUTE dbo.tsql_dyn(_dq2);
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_err := 0;
@@ -8719,7 +8719,7 @@ BEGIN
     v_query := (((((('INSERT INTO ' || v_tp) || 'CRS_DataTransferLogDetail (LogID, SourceTableName, StartDate, EndDate) VALUES (') || v_logid_str) || ', ''') || v_tablename) || ''', GETDATE(), GETDATE())');
     _dq3 := v_query;
     IF _dq3 IS NOT NULL THEN
-      EXECUTE _dq3;
+      EXECUTE dbo.tsql_dyn(_dq3);
     END IF;
     GET DIAGNOSTICS _rc = ROW_COUNT;
     v_err := 0;
@@ -8835,7 +8835,7 @@ BEGIN
   v_query := ((('UPDATE ' || v_tp) || 'CRS_DataTransferLog SET EndDate = localtimestamp(3) WHERE LogID = ') || v_logid_str);
   _dq4 := v_query;
   IF _dq4 IS NOT NULL THEN
-    EXECUTE _dq4;
+    EXECUTE dbo.tsql_dyn(_dq4);
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_err := 0;
@@ -8884,7 +8884,7 @@ BEGIN
   v_query := (((('INSERT INTO ' || v_tp) || 'CRS_DueSatisfyHeader (ClientInstanceID,DueSatisfyCode,SaleInvCode,DueSatisfyDate,UserCode,DueAdjCode) SELECT ') || v_id) || ',DueSatisfyCode,SaleInvCode,DueSatisfyDate,UserCode,DueAdjCode FROM DBO.DueSatisfyHeader WHERE DueSatisfyCode IN (SELECT Code FROM tmp_lsl)');
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    EXECUTE _dq1;
+    EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -8895,7 +8895,7 @@ BEGIN
   v_query := (((('INSERT INTO ' || v_tp) || 'CRS_DueSatisfyDetail (ClientInstanceID,DueSatisfyCode,ICode,GCode,Batch,Expiry,DueSatisfyQty,AvgPrice,DueSatisfyUtn,PackSalePrice,PackUnits,SaleRowId) SELECT ') || v_id) || ',DueSatisfyCode,ICode,GCode,Batch,Expiry,DueSatisfyQty,AvgPrice,DueSatisfyUtn,PackSalePrice,PackUnits,SaleRowId FROM DBO.DueSatisfyDetail WHERE DueSatisfyCode IN (SELECT Code FROM tmp_lsl)');
   _dq2 := v_query;
   IF _dq2 IS NOT NULL THEN
-    EXECUTE _dq2;
+    EXECUTE dbo.tsql_dyn(_dq2);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -8939,7 +8939,7 @@ BEGIN
   v_query := ((('DELETE ' || v_tp) || 'CRS_IssueCategory WHERE ClientInstanceID = ') || v_id);
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    EXECUTE _dq1;
+    EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -8950,7 +8950,7 @@ BEGIN
   v_query := (((('INSERT INTO ' || v_tp) || 'CRS_IssueCategory (ClientInstanceID, IssueCategoryCode,Name,ShortName,Description,AccountFor,Posted,Counter,Enabled) SELECT ') || v_id) || ', IssueCategoryCode,Name,ShortName,Description,AccountFor,Posted,Counter,Enabled FROM DBO.IssueCategory');
   _dq2 := v_query;
   IF _dq2 IS NOT NULL THEN
-    EXECUTE _dq2;
+    EXECUTE dbo.tsql_dyn(_dq2);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -8961,7 +8961,7 @@ BEGIN
   v_query := (((('INSERT INTO ' || v_tp) || 'CRS_IssueHeader (ClientInstanceID,IssueInvCode,DeptCode,Date,OriginalDate,SalesmanCode,ModifiedBy,Deleted,DeletedBy,Posted,PostedBy,Remarks,PostDate,SmanCode,AreaCode,HeaderNo,HeaderInvNo,IssueTypeCode,ReferenceNo,ReferenceDate,PriceTypeCode,RecipientCode,AccCode,RecipientSalesMan,Terms1,Terms2,PatientCode,CustSiteCode,RefNo2,RefNo3,RefNo4,RefNo5,OrderDate,ServiceOCode,WorkOrderCode,ServiceIssueRequestCode,ServiceInvCode,Synced,SyncedOn,SyncedBy,ReceiptInvCode,IssueCategoryCode,AccountFor,DrAccCode,IssueCode,PrintWarranty,QuotationCode,MotorVehicleCode) SELECT ') || v_id) || ',IssueInvCode,DeptCode,Date,OriginalDate,SalesmanCode,ModifiedBy,Deleted,DeletedBy,Posted,PostedBy,Remarks,PostDate,SmanCode,AreaCode,HeaderNo,HeaderInvNo,IssueTypeCode,ReferenceNo,ReferenceDate,PriceTypeCode,RecipientCode,AccCode,RecipientSalesMan,Terms1,Terms2,PatientCode,CustSiteCode,RefNo2,RefNo3,RefNo4,RefNo5,OrderDate,ServiceOCode,WorkOrderCode,ServiceIssueRequestCode,ServiceInvCode,Synced,SyncedOn,SyncedBy,ReceiptInvCode,IssueCategoryCode,AccountFor,DrAccCode,IssueCode,PrintWarranty,QuotationCode,MotorVehicleCode FROM DBO.IssueHeader WHERE IssueInvCode IN (SELECT Code FROM tmp_lsl)');
   _dq3 := v_query;
   IF _dq3 IS NOT NULL THEN
-    EXECUTE _dq3;
+    EXECUTE dbo.tsql_dyn(_dq3);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -8972,7 +8972,7 @@ BEGIN
   v_query := (((('INSERT INTO ' || v_tp) || 'CRS_IssueDetail (ClientInstanceID,IssueInvCode,Icode,Batch,Expiry,Gcode,Priority,Qty,SalePrice,PurchasePrice,AvgPrice,PackUnits,MRPP,IssRowID, IssueUtn,SectCode,Price,SaleOrderRowID,itemdescription,RowGroup,IssueReqRowID,AlternateCustomICode,TotalPieces,PiecesInHand,ServiceIssueReqRowID,ServiceRowID,Claimable,ClaimableDiscPerc,ReceiptRowID,BalanceStock) SELECT ') || v_id) || ',IssueInvCode,Icode,Batch,Expiry,Gcode,Priority,Qty,SalePrice,PurchasePrice,AvgPrice,PackUnits,MRPP,IssRowID, IssueUtn,SectCode,Price,SaleOrderRowID,itemdescription,RowGroup,IssueReqRowID,AlternateCustomICode,TotalPieces,PiecesInHand,ServiceIssueReqRowID,ServiceRowID,Claimable,ClaimableDiscPerc,ReceiptRowID,BalanceStock FROM DBO.IssueDetail WHERE IssueInvCode IN (SELECT Code FROM tmp_lsl)');
   _dq4 := v_query;
   IF _dq4 IS NOT NULL THEN
-    EXECUTE _dq4;
+    EXECUTE dbo.tsql_dyn(_dq4);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -9014,7 +9014,7 @@ BEGIN
   v_query := (((('INSERT INTO ' || v_tp) || 'CRS_PRLedger (ClientInstanceID,PRInvCode,PurInvCode,PRCatCode,SuppCode,SalesmanCode,Date,DiscPerc,FlatDisc,MiscCharges,SalesTax,Posted,PostDate,Remarks,OriginalDate,ModifiedBy,PostedBy,InvGSTPerc1,HeaderNo,HeaderInvNo,InvTotal,AccountFor,PaymentMode,PaymentAccCode,Amt,AmtBY,AmtDate,AmtReference,OutstandingAmt,Marked,prtypecode,Terms1,Terms2,Terms3,Terms4,Terms5,PurchaseInvNo,ICatCode,UpdateAvgPriceWithNetRate,CustCode,Synced,SyncedOn,SyncedBy,DataCarryCustCode) SELECT ') || v_id) || ',PRInvCode,PurInvCode,PRCatCode,SuppCode,SalesmanCode,Date,DiscPerc,FlatDisc,MiscCharges,SalesTax,Posted,PostDate,Remarks,OriginalDate,ModifiedBy,PostedBy,InvGSTPerc1,HeaderNo,HeaderInvNo,InvTotal,AccountFor,PaymentMode,PaymentAccCode,Amt,AmtBY,AmtDate,AmtReference,OutstandingAmt,Marked,prtypecode,Terms1,Terms2,Terms3,Terms4,Terms5,PurchaseInvNo,ICatCode,UpdateAvgPriceWithNetRate,CustCode,Synced,SyncedOn,SyncedBy,DataCarryCustCode FROM DBO.PRLedger WHERE PRInvCode IN (SELECT Code FROM tmp_lsl)');
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    EXECUTE _dq1;
+    EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -9025,7 +9025,7 @@ BEGIN
   v_query := (((('INSERT INTO ' || v_tp) || 'CRS_PRDetail (ClientInstanceID,PRInvCode,ICode,Gcode,Batch,Expiry,PackQty,LooseQty,BonusQty,PackUnits,PRPrice,DiscPerc,AvgPrice,PackSalePrice,UnitSalesTax,GSTPerc,PrUtn,ItemDescription,TotalPieces,PiecesInHand,PRRowID,AlternateCustomICode,HistoricalBatch,BalanceStock) SELECT ') || v_id) || ',PRInvCode,ICode,Gcode,Batch,Expiry,PackQty,LooseQty,BonusQty,PackUnits,PRPrice,DiscPerc,AvgPrice,PackSalePrice,UnitSalesTax,GSTPerc,PrUtn,ItemDescription,TotalPieces,PiecesInHand,PRRowID,AlternateCustomICode,HistoricalBatch,BalanceStock FROM DBO.PRDetail WHERE PRInvCode IN (SELECT Code FROM tmp_lsl)');
   _dq2 := v_query;
   IF _dq2 IS NOT NULL THEN
-    EXECUTE _dq2;
+    EXECUTE dbo.tsql_dyn(_dq2);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -9068,7 +9068,7 @@ BEGIN
   v_query := (((('INSERT INTO ' || v_tp) || 'CRS_PurLedger (ClientInstanceID,PurInvCode,PurCatCode,SuppCode,SuppInvCode,SalesmanCode,Date,POCode,DiscPerc,FlatDisc,MiscCharges,SalesTax,Posted,postdate,Remarks,OriginalDate,ModifiedBy,PostedBy,SuppInvDate,GRN,PORB,InvGSTPerc1,purtypecode,HeaderNo,HeaderInvNo,InvTotal,AccountFor,PaymentMode,PaymentAccCode,Amt,AmtBY,AmtDate,AmtReference,OutstandingAmt,Marked,PrintBalance,PurInvPageSize,CurrencyCode,ConversionFactor,PrintCounter,AssociatedSaleOrderCode,AssociatedSaleInvCode,GCCode,Vehicle,ShipTo,NewPurchaseOrderNo,LCNO,UpdateAvgPriceWithNetRate,ImpactInventory,ImpPurInvCode,CreditDays,SuppInvAmount,ICatCode,MonthlyCounter,DailyCounter,CustCode,QE1_AccCode,QE2_AccCode,QE3_AccCode,QE4_AccCode,QE5_AccCode,WE1_AccCode,WE2_AccCode,WE3_AccCode,WE4_AccCode,WE5_AccCode,QExp1_CrAccCode,QExp2_CrAccCode,QExp3_CrAccCode,QExp4_CrAccCode,QExp5_CrAccCode,WExp1_CrAccCode,WExp2_CrAccCode,WExp3_CrAccCode,WExp4_CrAccCode,WExp5_CrAccCode,Synced,SyncedOn,SyncedBy,PurSlipPrintCounter,TaxCategoryCode,AdvanceTax,AdvanceTaxAmt) SELECT ') || v_id) || ',PurInvCode,PurCatCode,SuppCode,SuppInvCode,SalesmanCode,Date,POCode,DiscPerc,FlatDisc,MiscCharges,SalesTax,Posted,postdate,Remarks,OriginalDate,ModifiedBy,PostedBy,SuppInvDate,GRN,PORB,InvGSTPerc1,purtypecode,HeaderNo,HeaderInvNo,InvTotal,AccountFor,PaymentMode,PaymentAccCode,Amt,AmtBY,AmtDate,AmtReference,OutstandingAmt,Marked,PrintBalance,PurInvPageSize,CurrencyCode,ConversionFactor,PrintCounter,AssociatedSaleOrderCode,AssociatedSaleInvCode,GCCode,Vehicle,ShipTo,NewPurchaseOrderNo,LCNO,UpdateAvgPriceWithNetRate,ImpactInventory,ImpPurInvCode,CreditDays,SuppInvAmount,ICatCode,MonthlyCounter,DailyCounter,CustCode,QE1_AccCode,QE2_AccCode,QE3_AccCode,QE4_AccCode,QE5_AccCode,WE1_AccCode,WE2_AccCode,WE3_AccCode,WE4_AccCode,WE5_AccCode,QExp1_CrAccCode,QExp2_CrAccCode,QExp3_CrAccCode,QExp4_CrAccCode,QExp5_CrAccCode,WExp1_CrAccCode,WExp2_CrAccCode,WExp3_CrAccCode,WExp4_CrAccCode,WExp5_CrAccCode,Synced,SyncedOn,SyncedBy,PurSlipPrintCounter,TaxCategoryCode,AdvanceTax,AdvanceTaxAmt FROM DBO.PurLedger WHERE PuRInvCode IN (SELECT Code FROM tmp_lsl)');
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    EXECUTE _dq1;
+    EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -9079,7 +9079,7 @@ BEGIN
   v_query := (((('INSERT INTO ' || v_tp) || 'CRS_PurDetail (ClientInstanceID,PurInvCode,ICode,Gcode,Batch,Expiry,PackQty,LooseQty,PackUnits,PurPrice,DiscPerc,AvgPrice,BonusQty,PurRowID,NewAvgPrice,CurrStock,GSTPerc,UnitSalesTax,PurUtn,SalePrice,itemdescription,rate,SalePriceForItem,ForeignPrice,PurPriceInAdvPur,NetRate,RecentPurPrice,TotalPieces,PiecesInHand,ReceiptRowID,ManfCodeForItem,DiscountedSalePrice,FlatDiscForItem,RetailPrice,AlternateCustomICode,ManfDate,UnitWeight,QE1,QE2,QE3,QE4,QE5,WE1,WE2,WE3,WE4,WE5,BatchSalePrice,GodownStock,Location,ItemFlatDisc,LockBatch,LockReasonCode,ItemAdvanceTaxPerc,SalesTaxScheduleCode,PCTCode,ItemAlertCode) SELECT ') || v_id) || ',PurInvCode,ICode,Gcode,Batch,Expiry,PackQty,LooseQty,PackUnits,PurPrice,DiscPerc,AvgPrice,BonusQty,PurRowID,NewAvgPrice,CurrStock,GSTPerc,UnitSalesTax,PurUtn,SalePrice,itemdescription,rate,SalePriceForItem,ForeignPrice,PurPriceInAdvPur,NetRate,RecentPurPrice,TotalPieces,PiecesInHand,ReceiptRowID,ManfCodeForItem,DiscountedSalePrice,FlatDiscForItem,RetailPrice,AlternateCustomICode,ManfDate,UnitWeight,QE1,QE2,QE3,QE4,QE5,WE1,WE2,WE3,WE4,WE5,BatchSalePrice,GodownStock,Location,ItemFlatDisc,LockBatch,LockReasonCode,ItemAdvanceTaxPerc,SalesTaxScheduleCode,PCTCode,ItemAlertCode FROM DBO.PurDetail WHERE PurInvCode IN (SELECT Code FROM tmp_lsl)');
   _dq2 := v_query;
   IF _dq2 IS NOT NULL THEN
-    EXECUTE _dq2;
+    EXECUTE dbo.tsql_dyn(_dq2);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -9090,7 +9090,7 @@ BEGIN
   v_query := (((('INSERT INTO ' || v_tp) || 'CRS_PurExp (ClientInstanceID,PurInvCode,AccCode,Remarks,Amount,RowID) SELECT ') || v_id) || ',PurInvCode,AccCode,Remarks,Amount,RowID FROM DBO.PurExp WHERE PurInvCode IN (SELECT Code FROM tmp_lsl)');
   _dq3 := v_query;
   IF _dq3 IS NOT NULL THEN
-    EXECUTE _dq3;
+    EXECUTE dbo.tsql_dyn(_dq3);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -9134,7 +9134,7 @@ BEGIN
   v_query := ((('DELETE ' || v_tp) || 'CRS_ReceiptCategory WHERE ClientInstanceID = ') || v_id);
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    EXECUTE _dq1;
+    EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -9145,7 +9145,7 @@ BEGIN
   v_query := (((('INSERT INTO ' || v_tp) || 'CRS_ReceiptCategory (ClientInstanceID,ReceiptCategoryCode, Name, ShortName, Description, AccountFor, Posted, Counter, Enabled) SELECT ') || v_id) || ', ReceiptCategoryCode, Name, ShortName, Description, AccountFor, Posted, Counter, Enabled FROM DBO.ReceiptCategory');
   _dq2 := v_query;
   IF _dq2 IS NOT NULL THEN
-    EXECUTE _dq2;
+    EXECUTE dbo.tsql_dyn(_dq2);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -9156,7 +9156,7 @@ BEGIN
   v_query := (((('INSERT INTO ' || v_tp) || 'CRS_ReceiptHeader (ClientInstanceID,ReceiptInvCode,DeptCode,Date,OriginalDate,SalesmanCode,ModifiedBy,Deleted,DeletedBy,Posted,PostedBy,Remarks,PostDate,HeaderNo,HeaderInvNo,AreaCode,SmanCode,ReferenceNo,ReferenceDate,PriceTypeCode,RecipientCode,AccCode,RecipientSalesMan,WorkOrderCode,Synced,SyncedOn,SyncedBy,ReceiptCategoryCode,AccountFor,CrAccCode,ReceiptCode,QE1_AccCode,QE2_AccCode,QE3_AccCode,QE4_AccCode,QE5_AccCode,WE1_AccCode,WE2_AccCode,WE3_AccCode,WE4_AccCode,WE5_AccCode,QExp1_CrAccCode,QExp2_CrAccCode,QExp3_CrAccCode,QExp4_CrAccCode,QExp5_CrAccCode,WExp1_CrAccCode,WExp2_CrAccCode,WExp3_CrAccCode,WExp4_CrAccCode,WExp5_CrAccCode,MotorVehicleCode,IssueInvCode) SELECT ') || v_id) || ',ReceiptInvCode,DeptCode,Date,OriginalDate,SalesmanCode,ModifiedBy,Deleted,DeletedBy,Posted,PostedBy,Remarks,PostDate,HeaderNo,HeaderInvNo,AreaCode,SmanCode,ReferenceNo,ReferenceDate,PriceTypeCode,RecipientCode,AccCode,RecipientSalesMan,WorkOrderCode,Synced,SyncedOn,SyncedBy,ReceiptCategoryCode,AccountFor,CrAccCode,ReceiptCode,QE1_AccCode,QE2_AccCode,QE3_AccCode,QE4_AccCode,QE5_AccCode,WE1_AccCode,WE2_AccCode,WE3_AccCode,WE4_AccCode,WE5_AccCode,QExp1_CrAccCode,QExp2_CrAccCode,QExp3_CrAccCode,QExp4_CrAccCode,QExp5_CrAccCode,WExp1_CrAccCode,WExp2_CrAccCode,WExp3_CrAccCode,WExp4_CrAccCode,WExp5_CrAccCode,MotorVehicleCode,IssueInvCode FROM DBO.ReceiptHeader WHERE ReceiptInvCode IN (SELECT Code FROM tmp_lsl)');
   _dq3 := v_query;
   IF _dq3 IS NOT NULL THEN
-    EXECUTE _dq3;
+    EXECUTE dbo.tsql_dyn(_dq3);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -9167,7 +9167,7 @@ BEGIN
   v_query := (((('INSERT INTO ' || v_tp) || 'CRS_ReceiptDetail (ClientInstanceID,ReceiptInvCode,Icode,Batch,Expiry,Gcode,Priority,Qty,PackUnits,SalePrice,PurchasePrice,AvgPrice,MRPP,ReceiptUTN,SectCode,Price,UpdateAvgPrice,NewAvgPrice,CurrStock,itemdescription,SaleOrderRowID,AlternateCustomICode,TotalPieces,PiecesInHand,IssueRowID,ManfDate,RowID,UnitWeight,QE1,QE2,QE3,QE4,QE5,WE1,WE2,WE3,WE4,WE5) SELECT ') || v_id) || ',ReceiptInvCode,Icode,Batch,Expiry,Gcode,Priority,Qty,PackUnits,SalePrice,PurchasePrice,AvgPrice,MRPP,ReceiptUTN,SectCode,Price,UpdateAvgPrice,NewAvgPrice,CurrStock,itemdescription,SaleOrderRowID,AlternateCustomICode,TotalPieces,PiecesInHand,IssueRowID,ManfDate,RowID,UnitWeight,QE1,QE2,QE3,QE4,QE5,WE1,WE2,WE3,WE4,WE5 FROM DBO.ReceiptDetail WHERE ReceiptInvCode IN (SELECT Code FROM tmp_lsl)');
   _dq4 := v_query;
   IF _dq4 IS NOT NULL THEN
-    EXECUTE _dq4;
+    EXECUTE dbo.tsql_dyn(_dq4);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -9209,7 +9209,7 @@ BEGIN
   v_query := (((('INSERT INTO ' || v_tp) || 'CRS_SaleLedger (ClientInstanceID,SaleInvCode,SaleCatCode,CustCode,SalesManCode,Date,DiscPerc,FlatDisc,MiscCharges,SalesTax,Posted,PostDate,Remarks,CustRefNo,HeaderNo,HeaderInvNo,OriginalDate,ModifiedBy,PostedBy,SPrice,QuotationNo,DoctCode,PatientCode,ReprintingCounter,CashReceived,InvGSTPerc1,PrintWaranty,PrintBatch,MessageCode,SManCode,InvoiceSize,CustRefNo2,CustRefNo3,CustRefNo4,GSTNO,InvTotal,MachineName,ModifyCounter,ItemDiscPercNo,DiseaseCode,ReturnCounter,Paid,BillingDate,UnReceivedBalance,TotalOfSaleReturns,ListOfSRInvoices,PrintBalance,AccountFor,PaymentMode,PaymentAccCode,Amt,AmtBY,AmtDate,AmtReference,OutStandingAmt,Marked,DeliveredBy,SaleTypeCode,Balance,PPTCustCode,Deleted,PresCode,ImpactInventory,SaleOrderCode,SaleComments1,SaleComments2,AlterSaleInvCode,ConsiderInPO,DueDate,SRBufferInvCode,CustRefNo5,GCCode,GRN,SuppInvCode,Vehicle,ShipTo,GuaranteePersonCode,CashTendered,CashCharged,CashBack,CashAccCode,CustLicNo,CustLicExpiry,ModuleID,DocCode,SaleTypeInvNo,CurrencyCode,ConversionRate,MiscCharges1,MiscCharges2,MiscCharges3,MiscCharges4,MiscCharges5,SourceSaleInvCode,Fiscalized,FiscalizedOn,FiscalInvoiceNo,AdvanceTax,AdvanceTaxAmt,FBRPOSFee,CashierShiftCode) SELECT ') || v_id) || ',SaleInvCode,SaleCatCode,CustCode,SalesManCode,Date,DiscPerc,FlatDisc,MiscCharges,SalesTax,Posted,PostDate,Remarks,CustRefNo,HeaderNo,HeaderInvNo,OriginalDate,ModifiedBy,PostedBy,SPrice,QuotationNo,DoctCode,PatientCode,ReprintingCounter,CashReceived,InvGSTPerc1,PrintWaranty,PrintBatch,MessageCode,SManCode,InvoiceSize,CustRefNo2,CustRefNo3,CustRefNo4,GSTNO,InvTotal,MachineName,ModifyCounter,ItemDiscPercNo,DiseaseCode,ReturnCounter,Paid,BillingDate,UnReceivedBalance,TotalOfSaleReturns,ListOfSRInvoices,PrintBalance,AccountFor,PaymentMode,PaymentAccCode,Amt,AmtBY,AmtDate,AmtReference,OutStandingAmt,Marked,DeliveredBy,SaleTypeCode,Balance,PPTCustCode,Deleted,PresCode,ImpactInventory,SaleOrderCode,SaleComments1,SaleComments2,AlterSaleInvCode,ConsiderInPO,DueDate,SRBufferInvCode,CustRefNo5,GCCode,GRN,SuppInvCode,Vehicle,ShipTo,GuaranteePersonCode,CashTendered,CashCharged,CashBack,CashAccCode,CustLicNo,CustLicExpiry,ModuleID,DocCode,SaleTypeInvNo,CurrencyCode,ConversionRate,MiscCharges1,MiscCharges2,MiscCharges3,MiscCharges4,MiscCharges5,SourceSaleInvCode,Fiscalized,FiscalizedOn,FiscalInvoiceNo,AdvanceTax,AdvanceTaxAmt,FBRPOSFee,CashierShiftCode FROM DBO.SaleLedger WHERE SaleInvCode IN (SELECT Code FROM tmp_lsl)');
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    EXECUTE _dq1;
+    EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -9220,7 +9220,7 @@ BEGIN
   v_query := (((('INSERT INTO ' || v_tp) || 'CRS_SaleDetail (ClientInstanceID,SaleInvCode,ICode,GCode,Batch,Expiry,PackQty,LooseQty,PackUnits,SalePrice,AvgPrice,Rate,DiscPerc,SalesTax,RowID,DUE,SatisfiedDate,ItemFlatDisc,SaleItemDescription,PackPrice,UnitSalesTax,GSTPerc,SaleUtn,BonusQty,Claimable,BalanceStock,RowGroup,ClaimableDiscPerc,ManfDate,PackQtyForSale,SaleOrderRowID,DescICode,SourceSaleInvCode,SaleRowID,IssueRowID,PurUnitRate,RPPUnitRate,TotalPieces,PiecesInHand,PackSalePrice,RefusalSaleRowID,AlternatePurPrice,CommissionPerUnit,CommissionPerc,AlternateCustomICode,BatchCost,InsCode,YourLotNo,YourExpiry,YourPacking,Width,Length,ItemAdvanceTaxPerc,CloneItemFlatDisc,CloneDiscPerc,GodownBalanceStock) SELECT ') || v_id) || ',SaleInvCode,ICode,GCode,Batch,Expiry,PackQty,LooseQty,PackUnits,SalePrice,AvgPrice,Rate,DiscPerc,SalesTax,RowID,DUE,SatisfiedDate,ItemFlatDisc,SaleItemDescription,PackPrice,UnitSalesTax,GSTPerc,SaleUtn,BonusQty,Claimable,BalanceStock,RowGroup,ClaimableDiscPerc,ManfDate,PackQtyForSale,SaleOrderRowID,DescICode,SourceSaleInvCode,SaleRowID,IssueRowID,PurUnitRate,RPPUnitRate,TotalPieces,PiecesInHand,PackSalePrice,RefusalSaleRowID,AlternatePurPrice,CommissionPerUnit,CommissionPerc,AlternateCustomICode,BatchCost,InsCode,YourLotNo,YourExpiry,YourPacking,Width,Length,ItemAdvanceTaxPerc,CloneItemFlatDisc,CloneDiscPerc,GodownBalanceStock FROM DBO.SaleDetail WHERE SaleInvCode IN (SELECT Code FROM tmp_lsl)');
   _dq2 := v_query;
   IF _dq2 IS NOT NULL THEN
-    EXECUTE _dq2;
+    EXECUTE dbo.tsql_dyn(_dq2);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -9262,7 +9262,7 @@ BEGIN
   v_query := (((('INSERT INTO ' || v_tp) || 'CRS_SRLedger (ClientInstanceID,SRInvCode,SaleInvCode,Date,SRCatCode,CustCode,SalesManCode,DiscPerc,FlatDisc,MiscCharges,Posted,PostDate,Remarks,SalesTax,OriginalDate,ModifiedBy,PostedBy,HeaderNo,InvGSTPerc1,SManCode,CustRefNo,CustRefNo2,CustRefNo3,CustRefNo4,PatientCode,MachineName,HeaderInvNo,InvTotal,AccountFor,PaymentMode,PaymentAccCode,Amt,AmtBY,AmtDate,AmtReference,OutStandingAmt,Marked,PageSize,ReprintingCounter,DoctCode,ConsiderInPO,CashAccCode,CashTendered,CashCharged,CashBack,RetViaBillSummary,CurrencyCode,ConversionRate,Fiscalized,FiscalizedOn,FiscalInvoiceNo,AdvanceTax,AdvanceTaxAmt,FBRPOSFee,CashierShiftCode) SELECT ') || v_id) || ',SRInvCode,SaleInvCode,Date,SRCatCode,CustCode,SalesManCode,DiscPerc,FlatDisc,MiscCharges,Posted,PostDate,Remarks,SalesTax,OriginalDate,ModifiedBy,PostedBy,HeaderNo,InvGSTPerc1,SManCode,CustRefNo,CustRefNo2,CustRefNo3,CustRefNo4,PatientCode,MachineName,HeaderInvNo,InvTotal,AccountFor,PaymentMode,PaymentAccCode,Amt,AmtBY,AmtDate,AmtReference,OutStandingAmt,Marked,PageSize,ReprintingCounter,DoctCode,ConsiderInPO,CashAccCode,CashTendered,CashCharged,CashBack,RetViaBillSummary,CurrencyCode,ConversionRate,Fiscalized,FiscalizedOn,FiscalInvoiceNo,AdvanceTax,AdvanceTaxAmt,FBRPOSFee,CashierShiftCode FROM DBO.SRLedger WHERE SRInvCode IN (SELECT Code FROM tmp_lsl)');
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    EXECUTE _dq1;
+    EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -9273,7 +9273,7 @@ BEGIN
   v_query := (((('INSERT INTO ' || v_tp) || 'CRS_SRDetail (ClientInstanceID,SRInvCode,ICode,GCode,Batch,Expiry,PackQty,LooseQty,PackUnits,SRPrice,DiscPerc,SalesTax,AvgPrice,UnitSalesTax,GSTPerc,SRUtn,BonusQty,SalePrice,SaleRowID,RowID,ReturnItemDescription,TotalPieces,PiecesInHand,AlternatePurPrice) SELECT ') || v_id) || ',SRInvCode,ICode,GCode,Batch,Expiry,PackQty,LooseQty,PackUnits,SRPrice,DiscPerc,SalesTax,AvgPrice,UnitSalesTax,GSTPerc,SRUtn,BonusQty,SalePrice,SaleRowID,RowID,ReturnItemDescription,TotalPieces,PiecesInHand,AlternatePurPrice FROM DBO.SRDetail WHERE SRInvCode IN (SELECT Code FROM tmp_lsl)');
   _dq2 := v_query;
   IF _dq2 IS NOT NULL THEN
-    EXECUTE _dq2;
+    EXECUTE dbo.tsql_dyn(_dq2);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -9316,7 +9316,7 @@ BEGIN
   v_query := ((('DELETE ' || v_tp) || 'CRS_Godown WHERE ClientID = ') || v_cid);
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    EXECUTE _dq1;
+    EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -9327,7 +9327,7 @@ BEGIN
   v_query := ((('DELETE ' || v_tp) || 'CRS_GodownDetail WHERE ClientInstanceID = ') || v_id);
   _dq2 := v_query;
   IF _dq2 IS NOT NULL THEN
-    EXECUTE _dq2;
+    EXECUTE dbo.tsql_dyn(_dq2);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -9338,7 +9338,7 @@ BEGIN
   v_query := (((('INSERT INTO  ' || v_tp) || 'CRS_Godown (ClientId, GCode, Name, Location, GodownGroupCode) SELECT ') || v_cid) || ', GCode, Name, Location, GodownGroupCode FROM DBO.Godown');
   _dq3 := v_query;
   IF _dq3 IS NOT NULL THEN
-    EXECUTE _dq3;
+    EXECUTE dbo.tsql_dyn(_dq3);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -9349,7 +9349,7 @@ BEGIN
   v_query := (((('INSERT INTO ' || v_tp) || 'CRS_GodownDetail (ClientInstanceID, GCode, ICode, CurrQty, Batch, Expiry, Priority, ManfDate, LastUpdated, Locked, LockReasonCode, LastFetchedOn, PackUnits, PurPrice, SalePrice, SalePrice2, SalePrice3, SalePrice4, SalePrice5, RetailPrice, AvgPrice, RecentPurPrice, RecentPurPrice2, RecentPurPrice3, RecentPurPrice4, RecentPurPrice5) SELECT ClientInstanceID=') || v_id) || ', D.GCode, D.ICode, D.CurrQty, D.Batch, D.Expiry, D.Priority, D.ManfDate, D.LastUpdated, D.Locked, D.LockReasonCode, LastFetchedOn=localtimestamp(3), I.PackUnits, I.PurPrice, I.SalePrice, I.SalePrice2, I.SalePrice3, I.SalePrice4, I.SalePrice5, I.RetailPrice, I.AvgPrice, I.RecentPurPrice, I.RecentPurPrice2, I.RecentPurPrice3, I.RecentPurPrice4, I.RecentPurPrice5 FROM DBO.GodownDetail D  WITH (ReadPast), Item I WITH (ReadPast) WHERE I.ICode = D.ICode ');
   _dq4 := v_query;
   IF _dq4 IS NOT NULL THEN
-    EXECUTE _dq4;
+    EXECUTE dbo.tsql_dyn(_dq4);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -9390,7 +9390,7 @@ BEGIN
   v_query := (((('INSERT INTO ' || v_tp) || 'CRS_THeader (ClientInstanceID,TransCode,SGCode,DGCode,SalesManCode,Date,Posted,PostDate,Remarks,HeaderNo,HeaderInvNo,TTCode,StartDate,EndDate,PostedBy,TransReqCode,SMANCode,WorkOrderCode,Synced,SyncedOn,SyncedBy) SELECT ') || v_id) || ',TransCode,SGCode,DGCode,SalesManCode,Date,Posted,PostDate,Remarks,HeaderNo,HeaderInvNo,TTCode,StartDate,EndDate,PostedBy,TransReqCode,SMANCode,WorkOrderCode,Synced,SyncedOn,SyncedBy FROM DBO.THeader WHERE TransCode IN (SELECT Code FROM tmp_lsl)');
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    EXECUTE _dq1;
+    EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -9401,7 +9401,7 @@ BEGIN
   v_query := (((('INSERT INTO ' || v_tp) || 'CRS_TDetail (ClientInstanceID,TransCode,ICode,Batch,Expiry,Qty,ID,TransferUtn,AvgPrice,PurPrice,SalePrice,PackUnits,SourceStock,TargetStock,ReOrderQty,OptimumQty,RequiredQty,PackQty,RowGroup,TransReqRowID,ItemDescription,AlternateCustomICode) SELECT ') || v_id) || ',TransCode,ICode,Batch,Expiry,Qty,ID,TransferUtn,AvgPrice,PurPrice,SalePrice,PackUnits,SourceStock,TargetStock,ReOrderQty,OptimumQty,RequiredQty,PackQty,RowGroup,TransReqRowID,ItemDescription,AlternateCustomICode FROM DBO.TDetail WHERE TransCode IN (SELECT Code FROM tmp_lsl)');
   _dq2 := v_query;
   IF _dq2 IS NOT NULL THEN
-    EXECUTE _dq2;
+    EXECUTE dbo.tsql_dyn(_dq2);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -9506,7 +9506,7 @@ BEGIN
           v_upd := ((((((((('UPDATE CrossTab_ReportData SET C_Name' || v_str_col) || ' = ''') || v_colname) || ''', C_Code') || v_str_col) || ' = ') || v_colcode) || ' WHERE CODE2 = ') || ltrim(rtrim(dbo.tsql_str((v_curriter)::numeric, 7))));
           _dq1 := v_upd;
           IF _dq1 IS NOT NULL THEN
-            EXECUTE _dq1;
+            EXECUTE dbo.tsql_dyn(_dq1);
           END IF;
           v_err := 0;
           IF (v_err <> 0) THEN
@@ -9532,7 +9532,7 @@ BEGIN
         v_upd := ((((((((((((((((((('UPDATE CrossTab_ReportData SET ' || 'QTY') || v_str_col) || ' = ') || ltrim(rtrim(dbo.tsql_str((v_qty)::numeric, 7)))) || ', VAL') || v_str_col) || ' = ') || ltrim(rtrim(dbo.tsql_str((v_val)::numeric, 15, 5)))) || ', C_Code') || v_str_col) || ' = ') || v_colname) || ' WHERE CODE1 = ') || v_colcode) || ' AND ') || ' C_Code') || v_str_col) || ' = ') || v_colname);
         _dq2 := v_upd;
         IF _dq2 IS NOT NULL THEN
-          EXECUTE _dq2;
+          EXECUTE dbo.tsql_dyn(_dq2);
         END IF;
         v_err := 0;
         IF (v_err <> 0) THEN
@@ -9696,7 +9696,7 @@ BEGIN
       END IF;
       _dq2 := v_del_qry;
       IF _dq2 IS NOT NULL THEN
-        EXECUTE _dq2;
+        EXECUTE dbo.tsql_dyn(_dq2);
       END IF;
       GET DIAGNOSTICS _rc = ROW_COUNT;
       v_err := 0;
@@ -9763,7 +9763,7 @@ BEGIN
         END IF;
         _dq3 := v_upd_qry;
         IF _dq3 IS NOT NULL THEN
-          EXECUTE _dq3;
+          EXECUTE dbo.tsql_dyn(_dq3);
         END IF;
         GET DIAGNOSTICS _rc = ROW_COUNT;
         v_err := 0;
@@ -9837,7 +9837,7 @@ BEGIN
       END IF;
       _dq4 := v_ins_qry;
       IF _dq4 IS NOT NULL THEN
-        EXECUTE _dq4;
+        EXECUTE dbo.tsql_dyn(_dq4);
       END IF;
       GET DIAGNOSTICS _rc = ROW_COUNT;
       v_err := 0;
@@ -10399,7 +10399,7 @@ BEGIN
           v_upd := ((((((((('UPDATE CrossTab_ReportData SET C_Name' || v_str_col) || ' = ''') || v_colname) || ''', C_Code') || v_str_col) || ' = ') || v_colcode) || ' WHERE CODE2 = ') || ltrim(rtrim(dbo.tsql_str((v_curriter)::numeric, 7))));
           _dq1 := v_upd;
           IF _dq1 IS NOT NULL THEN
-            EXECUTE _dq1;
+            EXECUTE dbo.tsql_dyn(_dq1);
           END IF;
           v_err := 0;
           IF (v_err <> 0) THEN
@@ -10425,7 +10425,7 @@ BEGIN
         v_upd := ((((((((((((((((((('UPDATE CrossTab_ReportData SET ' || 'QTY') || v_str_col) || ' = ') || ltrim(rtrim(dbo.tsql_str((v_qty)::numeric, 7)))) || ', VAL') || v_str_col) || ' = ') || ltrim(rtrim(dbo.tsql_str((v_val)::numeric, 15, 5)))) || ', C_Code') || v_str_col) || ' = ') || v_colname) || ' WHERE CODE1 = ') || v_colcode) || ' AND ') || ' C_Code') || v_str_col) || ' = ') || v_colname);
         _dq2 := v_upd;
         IF _dq2 IS NOT NULL THEN
-          EXECUTE _dq2;
+          EXECUTE dbo.tsql_dyn(_dq2);
         END IF;
         v_err := 0;
         IF (v_err <> 0) THEN
@@ -10636,7 +10636,7 @@ BEGIN
           v_upd := ((((((((('UPDATE CrossTab_ReportData SET C_Name' || v_str_col) || ' = ''') || v_colname) || ''', C_Code') || v_str_col) || ' = ') || v_colcode) || ' WHERE CODE2 = ') || ltrim(rtrim(dbo.tsql_str((v_curriter)::numeric, 7))));
           _dq1 := v_upd;
           IF _dq1 IS NOT NULL THEN
-            EXECUTE _dq1;
+            EXECUTE dbo.tsql_dyn(_dq1);
           END IF;
           v_err := 0;
           IF (v_err <> 0) THEN
@@ -10663,7 +10663,7 @@ BEGIN
         v_upd := ((((((((((((((((((('UPDATE CrossTab_ReportData SET ' || 'QTY') || v_str_col) || ' = ') || ltrim(rtrim(dbo.tsql_str((v_qty)::numeric, 10)))) || ', VAL') || v_str_col) || ' = ') || ltrim(rtrim(dbo.tsql_str((v_val)::numeric, 15, 5)))) || ', C_Code') || v_str_col) || ' = ') || v_colname) || ' WHERE CODE2 > 0 AND CODE1 = ') || v_colcode) || ' AND ') || ' C_Code') || v_str_col) || ' = ') || v_colname);
         _dq2 := v_upd;
         IF _dq2 IS NOT NULL THEN
-          EXECUTE _dq2;
+          EXECUTE dbo.tsql_dyn(_dq2);
         END IF;
         v_err := 0;
         IF (v_err <> 0) THEN
@@ -10756,7 +10756,7 @@ BEGIN
           v_upd := ((((((((('UPDATE CrossTab_ReportData SET C_Name' || v_str_col) || ' = ''') || v_colname) || ''', C_Code') || v_str_col) || ' = ') || v_colcode) || ' WHERE CODE2 = ') || ltrim(rtrim(dbo.tsql_str((v_curriter)::numeric, 7))));
           _dq1 := v_upd;
           IF _dq1 IS NOT NULL THEN
-            EXECUTE _dq1;
+            EXECUTE dbo.tsql_dyn(_dq1);
           END IF;
           v_err := 0;
           IF (v_err <> 0) THEN
@@ -10782,7 +10782,7 @@ BEGIN
         v_upd := ((((((((((((((((((('UPDATE CrossTab_ReportData SET ' || 'QTY') || v_str_col) || ' = ') || ltrim(rtrim(dbo.tsql_str((v_qty)::numeric, 7)))) || ', VAL') || v_str_col) || ' = ') || ltrim(rtrim(dbo.tsql_str((v_val)::numeric, 15, 5)))) || ', C_Code') || v_str_col) || ' = ') || v_colname) || ' WHERE CODE1 = ') || v_colcode) || ' AND ') || ' C_Code') || v_str_col) || ' = ') || v_colname);
         _dq2 := v_upd;
         IF _dq2 IS NOT NULL THEN
-          EXECUTE _dq2;
+          EXECUTE dbo.tsql_dyn(_dq2);
         END IF;
         v_err := 0;
         IF (v_err <> 0) THEN
@@ -11161,7 +11161,7 @@ BEGIN
   END IF;
   _dq1 := v_qry;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   return_value := 0;
   RETURN;
@@ -11207,7 +11207,7 @@ BEGIN
   v_qry := ((((('SELECT SiteCode,IntimationCode,ICode, AliasName = (SELECT I.CustomICode FROM Item I WHERE I.ICode=E.ICode), ItemName = (SELECT I.Name FROM Item I WHERE I.ICode=E.ICode), Batch,Expiry, Qty,Packunits,PackPrice,Price,InvoiceCode,InvoiceDate,RefNo,RefDate,RowID,ManfCode,LastAccCode FROM ' || v_prefix) || 'DB_ExpiryIntimationDetail E WHERE IntimationCode = ') || ltrim(rtrim(dbo.tsql_str((v_intimationcode)::numeric, 10)))) || ' AND SiteCode = ') || ltrim(rtrim(dbo.tsql_str((v_sitecode)::numeric, 10))));
   _dq1 := v_qry;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   return_value := 0;
   RETURN;
@@ -11255,7 +11255,7 @@ BEGIN
   v_qry := ((((('SELECT SiteCode, TargetSiteCode, SourceSite=(SELECT S.Name FROM Site S WHERE S.SiteCode=E.SiteCode), TargetSite=(SELECT S.Name FROM Site S WHERE S.SiteCode=E.TargetSiteCode), IntimationCode, IntimationType=(SELECT I.Name FROM IntimationType I WHERE I.IntimationTypeCode=E.IntimationTypeCode), IntimationSerialNo, AliasName = (SELECT A.AliasName FROM Accounts A WHERE A.AccCode=E.AccCode), Account=(SELECT A.Name FROM Accounts A WHERE A.AccCode=E.AccCode), Date,RefNo,Remarks1,Remarks2,UserCode, Customer=(SELECT A.Name FROM Accounts A WHERE A.AccCode=E.CustCode), PushedOn,PushedBy,Pulled,PulledOn,PulledBy FROM DB_ExpiryIntimation E WHERE IntimationCode = ' || ltrim(rtrim(dbo.tsql_str((v_intimationcode)::numeric, 10)))) || ' AND SiteCode = ') || ltrim(rtrim(dbo.tsql_str((v_sitecode)::numeric, 10)))) || ' AND TargetSiteCode = ') || ltrim(rtrim(dbo.tsql_str((v_targetsitecode)::numeric, 10))));
   _dq1 := v_qry;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   return_value := 0;
   RETURN;
@@ -11303,7 +11303,7 @@ BEGIN
   v_qry := ((((((('SELECT SiteCode, TargetSiteCode, SourceSite=(SELECT S.Name FROM Site S WHERE S.SiteCode=E.SiteCode), TargetSite=(SELECT S.Name FROM Site S WHERE S.SiteCode=E.TargetSiteCode), IssueInvCode, Department=(SELECT D.Name FROM Department D WHERE D.DeptCode=E.DeptCode), Date, OriginalDate, SalesmanCode, Remarks,SmanCode, AreaCode,HeaderNo,HeaderInvNo,IssueTypeCode,ReferenceNo,ReferenceDate,PriceTypeCode,RecipientCode, AliasName = (SELECT A.AliasName FROM Accounts A WHERE A.AccCode=E.AccCode), Account=(SELECT A.Name FROM Accounts A WHERE A.AccCode=E.AccCode), RecipientSalesMan, RefNo2,RefNo3,RefNo4,RefNo5,AccountFor,DrAccCode,IssueCode,PushedOn,PushedBy,Pulled,PulledOn,PulledBy FROM ' || v_prefix) || 'DB_IssueHeader E WHERE IssueInvCode = ') || ltrim(rtrim(dbo.tsql_str((v_issueinvcode)::numeric, 10)))) || ' AND SiteCode = ') || ltrim(rtrim(dbo.tsql_str((v_sitecode)::numeric, 10)))) || ' AND TargetSiteCode = ') || ltrim(rtrim(dbo.tsql_str((v_targetsitecode)::numeric, 10))));
   _dq1 := v_qry;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   return_value := 0;
   RETURN;
@@ -11349,7 +11349,7 @@ BEGIN
   v_qry := ((((('SELECT SiteCode, PRInvCode, ICode, AliasName = (SELECT I.CustomICode FROM Item I WHERE I.ICode=E.ICode), ItemName = (SELECT I.Name FROM Item I WHERE I.ICode=E.ICode), Godown = (SELECT G.Name FROM Godown G WHERE G.GCode=E.GCode), Batch,Expiry,PackQty,LooseQty,BonusQty,PackUnits,PRPrice,DiscPerc,AvgPrice,PackSalePrice,UnitSalesTax,GSTPerc,PrUtn,ItemDescription,TotalPieces,PiecesInHand,PrRowId,AlternateCustomICode,HistoricalBatch,BalanceStock FROM ' || v_prefix) || 'DB_PrDetail E WHERE PrInvCode = ') || ltrim(rtrim(dbo.tsql_str((v_prinvcode)::numeric, 10)))) || ' AND SiteCode = ') || ltrim(rtrim(dbo.tsql_str((v_sitecode)::numeric, 10))));
   _dq1 := v_qry;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   return_value := 0;
   RETURN;
@@ -11397,7 +11397,7 @@ BEGIN
   v_qry := ((((((('SELECT SiteCode, TargetSiteCode, SourceSite=(SELECT S.Name FROM Site S WHERE S.SiteCode=E.SiteCode), TargetSite=(SELECT S.Name FROM Site S WHERE S.SiteCode=E.TargetSiteCode), PRInvCode,PurInvCode,PrCatCode, AliasName = (SELECT A.AliasName FROM Accounts A WHERE A.AccCode=E.SuppCode), Supplier=(SELECT A.Name FROM Accounts A WHERE A.AccCode=E.SuppCode), SalesmanCode,Date,DiscPerc,FlatDisc,MiscCharges,SalesTax,Remarks,InvGSTPerc1,InvTotal,Terms1,Terms2,Terms3,Terms4,Terms5,PurchaseInvNo,CustCode,DataCarryCustCode,PushedOn,PushedBy,Pulled,PulledOn,PulledBy FROM ' || v_prefix) || 'DB_PrLedger E WHERE PrInvCode = ') || ltrim(rtrim(dbo.tsql_str((v_prinvcode)::numeric, 10)))) || ' AND SiteCode = ') || ltrim(rtrim(dbo.tsql_str((v_sitecode)::numeric, 10)))) || ' AND TargetSiteCode = ') || ltrim(rtrim(dbo.tsql_str((v_targetsitecode)::numeric, 10))));
   _dq1 := v_qry;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   return_value := 0;
   RETURN;
@@ -11443,7 +11443,7 @@ BEGIN
   v_qry := ((((('SELECT SiteCode, PurInvCode, ICode, AliasName = (SELECT I.CustomICode FROM Item I WHERE I.ICode=E.ICode), ItemName = (SELECT I.Name FROM Item I WHERE I.ICode=E.ICode), Godown = (SELECT G.Name FROM Godown G WHERE G.GCode=E.GCode), Batch,Expiry, PackQty,LooseQty,PackUnits,PurPrice,DiscPerc,AvgPrice,BonusQty,PurRowId,NewAvgPrice,CurrStock,GSTPerc,UnitSalesTax,SalePrice,itemdescription,rate,SalePriceForItem,NetRate,RecentPurPrice,ManfCodeForItem,FlatDiscForItem,RetailPrice,AlternateCustomICode,ManfDate,Location,ItemFlatDisc,ItemAdvanceTaxPerc FROM ' || v_prefix) || 'DB_PurDetail E WHERE PurInvCode = ') || ltrim(rtrim(dbo.tsql_str((v_purinvcode)::numeric, 10)))) || ' AND SiteCode = ') || ltrim(rtrim(dbo.tsql_str((v_sitecode)::numeric, 10))));
   _dq1 := v_qry;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   return_value := 0;
   RETURN;
@@ -11491,7 +11491,7 @@ BEGIN
   v_qry := ((((((('SELECT SiteCode, TargetSiteCode, SourceSite=(SELECT S.Name FROM Site S WHERE S.SiteCode=E.SiteCode), TargetSite=(SELECT S.Name FROM Site S WHERE S.SiteCode=E.TargetSiteCode), PurInvCode,PurCatCode, AliasName = (SELECT A.AliasName FROM Accounts A WHERE A.AccCode=E.SuppCode), Supplier=(SELECT A.Name FROM Accounts A WHERE A.AccCode=E.SuppCode), SuppInvCode,SalesmanCode,Date,DiscPerc,FlatDisc,MiscCharges,SalesTax,Remarks,SuppInvDate,GRN,InvGSTPerc1,InvTotal,Vehicle,ShipTo,NewPurchaseOrderNo,LCNO,CustCode,AdvanceTax,AdvanceTaxAmt,PushedOn,PushedBy,Pulled,PulledOn,PulledBy FROM ' || v_prefix) || 'DB_PurLedger E WHERE PurInvCode = ') || ltrim(rtrim(dbo.tsql_str((v_purinvcode)::numeric, 10)))) || ' AND SiteCode = ') || ltrim(rtrim(dbo.tsql_str((v_sitecode)::numeric, 10)))) || ' AND TargetSiteCode = ') || ltrim(rtrim(dbo.tsql_str((v_targetsitecode)::numeric, 10))));
   _dq1 := v_qry;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   return_value := 0;
   RETURN;
@@ -11537,7 +11537,7 @@ BEGIN
   v_qry := ((((('SELECT SiteCode, POCode, ICode, AliasName = (SELECT I.CustomICode FROM Item I WHERE I.ICode=E.ICode), ItemName = (SELECT I.Name FROM Item I WHERE I.ICode=E.ICode), Batch,Expiry,Qty,Rate,DiscPerc,PORowId,BonusQty,Stock,ReorderQty,OptimumQty,MinQty,PackUnits,SoldQty,ReturnQty,QtySatisfied,BonusQtySatisfied,SaleOrderRequest,TransitStock,Remarks,ItemFlatDisc,PackSalesTax,GSTPerc,PurPrice,SalePrice,RPP,PackAvgPrice,ForeignPrice,LastPurInvCode,LastPurDate,AlternateCustomICode,Discperc2 FROM ' || v_prefix) || 'DB_PurORderDetail E WHERE POCode = ') || ltrim(rtrim(dbo.tsql_str((v_pocode)::numeric, 10)))) || ' AND SiteCode = ') || ltrim(rtrim(dbo.tsql_str((v_sitecode)::numeric, 10))));
   _dq1 := v_qry;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   return_value := 0;
   RETURN;
@@ -11585,7 +11585,7 @@ BEGIN
   v_qry := ((((((('SELECT SiteCode, TargetSiteCode, SourceSite=(SELECT S.Name FROM Site S WHERE S.SiteCode=E.SiteCode), TargetSite=(SELECT S.Name FROM Site S WHERE S.SiteCode=E.TargetSiteCode), POCode,ManfCode,AliasName = (SELECT A.AliasName FROM Accounts A WHERE A.AccCode=E.SuppCode), Supplier=(SELECT A.Name FROM Accounts A WHERE A.AccCode=E.SuppCode), SalesmanCode,Date,Remarks,PurOrderTerms1,PurOrderTerms2,PurOrderTerms3,PurOrderTerms4,PurOrderTerms5,PurOrderTerms6,PurOrderTerms7,PurOrderTerms8,ProjectionPeriod,ZeroQty,StartDate,EndDate,PurOrderCatCode,DemandDraftNo,Dated,Amount,CustCode,DiscPerc,SupplierReference,DeliveryLocation,UsageLocation,RequiredDate,InvGSTPerc1,FlatDisc,MiscCharges,Remarks2,Remarks3,PushedOn,PushedBy,Pulled,PulledOn,PulledBy FROM ' || v_prefix) || 'DB_PurOrderHeader E WHERE POCode = ') || ltrim(rtrim(dbo.tsql_str((v_pocode)::numeric, 10)))) || ' AND SiteCode = ') || ltrim(rtrim(dbo.tsql_str((v_sitecode)::numeric, 10)))) || ' AND TargetSiteCode = ') || ltrim(rtrim(dbo.tsql_str((v_targetsitecode)::numeric, 10))));
   _dq1 := v_qry;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   return_value := 0;
   RETURN;
@@ -11631,7 +11631,7 @@ BEGIN
   v_qry := ((((('SELECT SiteCode, SaleInvCode, ICode, AliasName = (SELECT I.CustomICode FROM Item I WHERE I.ICode=E.ICode), ItemName = (SELECT I.Name FROM Item I WHERE I.ICode=E.ICode), Godown = (SELECT G.Name FROM Godown G WHERE G.GCode=E.GCode), Batch, Expiry, LooseQty, PackUnits, SalePrice, AvgPrice, Rate, DiscPerc, ItemFlatDisc, SaleItemDescription, UnitSalesTax, GSTPerc, BonusQty FROM ' || v_prefix) || 'DB_SaleDetail E WHERE SaleInvCode = ') || ltrim(rtrim(dbo.tsql_str((v_saleinvcode)::numeric, 10)))) || ' AND SiteCode = ') || ltrim(rtrim(dbo.tsql_str((v_sitecode)::numeric, 10))));
   _dq1 := v_qry;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   return_value := 0;
   RETURN;
@@ -11679,7 +11679,7 @@ BEGIN
   v_qry := ((((((('SELECT SiteCode, TargetSiteCode, SourceSite=(SELECT S.Name FROM Site S WHERE S.SiteCode=E.SiteCode), TargetSite=(SELECT S.Name FROM Site S WHERE S.SiteCode=E.TargetSiteCode), SaleInvCode, SaleCatCode, AliasName = (SELECT A.AliasName FROM Accounts A WHERE A.AccCode=E.CustCode), Customer=(SELECT A.Name FROM Accounts A WHERE A.AccCode=E.CustCode), date, DiscPerc, FlatDisc, MiscCharges, SalesTax, Remarks, CustRefNo, InvGSTPerc1, MessageCode, SManCode, CustRefno2, CustRefno3, CustRefno4, InvTotal, DueDate, CustRefNo5, GRN, SuppInvCode, Vehicle, ShipTo, AdvanceTax, AdvanceTaxAmt, FBRPOSFee, PushedOn, PushedBy, Pulled, PulledOn, PulledBy FROM ' || v_prefix) || 'DB_SaleLedger E WHERE SaleInvCode = ') || ltrim(rtrim(dbo.tsql_str((v_saleinvcode)::numeric, 10)))) || ' AND SiteCode = ') || ltrim(rtrim(dbo.tsql_str((v_sitecode)::numeric, 10)))) || ' AND TargetSiteCode = ') || ltrim(rtrim(dbo.tsql_str((v_targetsitecode)::numeric, 10))));
   _dq1 := v_qry;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   return_value := 0;
   RETURN;
@@ -11725,7 +11725,7 @@ BEGIN
   v_qry := ((((('SELECT SiteCode, SRInvCode, ICode, AliasName = (SELECT I.CustomICode FROM Item I WHERE I.ICode=E.ICode), ItemName = (SELECT I.Name FROM Item I WHERE I.ICode=E.ICode), Godown = (SELECT G.Name FROM Godown G WHERE G.GCode=E.GCode), Batch, Expiry, LooseQty, PackUnits, SRPrice, AvgPrice, DiscPerc, ReturnItemDescription, UnitSalesTax, GSTPerc, BonusQty FROM ' || v_prefix) || 'DB_SRDetail E WHERE SRInvCode = ') || ltrim(rtrim(dbo.tsql_str((v_srinvcode)::numeric, 10)))) || ' AND SiteCode = ') || ltrim(rtrim(dbo.tsql_str((v_sitecode)::numeric, 10))));
   _dq1 := v_qry;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   return_value := 0;
   RETURN;
@@ -11773,7 +11773,7 @@ BEGIN
   v_qry := ((((((('SELECT SiteCode, TargetSiteCode, SourceSite=(SELECT S.Name FROM Site S WHERE S.SiteCode=E.SiteCode), TargetSite=(SELECT S.Name FROM Site S WHERE S.SiteCode=E.TargetSiteCode), SRInvCode, SaleInvCode, SRCatCode, AliasName = (SELECT A.AliasName FROM Accounts A WHERE A.AccCode=E.CustCode), Customer=(SELECT A.Name FROM Accounts A WHERE A.AccCode=E.CustCode), date, DiscPerc, FlatDisc, MiscCharges, Remarks, CustRefNo, InvGSTPerc1, SManCode, CustRefno2, CustRefno3, CustRefno4, InvTotal, AdvanceTax, AdvanceTaxAmt, FBRPOSFee, PushedOn, PushedBy, Pulled, PulledOn, PulledBy FROM ' || v_prefix) || 'DB_SRLedger E WHERE SRInvCode = ') || ltrim(rtrim(dbo.tsql_str((v_srinvcode)::numeric, 10)))) || ' AND SiteCode = ') || ltrim(rtrim(dbo.tsql_str((v_sitecode)::numeric, 10)))) || ' AND TargetSiteCode = ') || ltrim(rtrim(dbo.tsql_str((v_targetsitecode)::numeric, 10))));
   _dq1 := v_qry;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   return_value := 0;
   RETURN;
@@ -11825,7 +11825,7 @@ BEGIN
   v_upd := ((((((('UPDATE ' || v_prefix) || 'DB_ExpiryIntimation Set Pulled=''Y'',PulledOn=localtimestamp(3),PulledBy=') || ltrim(rtrim(dbo.tsql_str((v_usercode)::numeric)))) || ' WHERE SiteCode = ') || ltrim(rtrim(dbo.tsql_str((v_sitecode)::numeric)))) || ' AND IntimationCode = ') || ltrim(rtrim(dbo.tsql_str((v_sinvcode)::numeric))));
   _dq1 := v_upd;
   IF _dq1 IS NOT NULL THEN
-    EXECUTE _dq1;
+    EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -11885,7 +11885,7 @@ BEGIN
   v_upd := ((((((('UPDATE ' || v_prefix) || 'DB_IssueHeader Set Pulled=''Y'',PulledOn=localtimestamp(3),PulledBy=') || ltrim(rtrim(dbo.tsql_str((v_usercode)::numeric)))) || ' WHERE SiteCode = ') || ltrim(rtrim(dbo.tsql_str((v_sitecode)::numeric)))) || ' AND IssueInvCode = ') || ltrim(rtrim(dbo.tsql_str((v_sinvcode)::numeric))));
   _dq1 := v_upd;
   IF _dq1 IS NOT NULL THEN
-    EXECUTE _dq1;
+    EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -11945,7 +11945,7 @@ BEGIN
   v_upd := ((((((('UPDATE ' || v_prefix) || 'DB_PurOrderHeader Set Pulled=''Y'',PulledOn=localtimestamp(3),PulledBy=') || ltrim(rtrim(dbo.tsql_str((v_usercode)::numeric)))) || ' WHERE SiteCode = ') || ltrim(rtrim(dbo.tsql_str((v_sitecode)::numeric)))) || ' AND POCode = ') || ltrim(rtrim(dbo.tsql_str((v_sinvcode)::numeric))));
   _dq1 := v_upd;
   IF _dq1 IS NOT NULL THEN
-    EXECUTE _dq1;
+    EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -12005,7 +12005,7 @@ BEGIN
   v_upd := ((((((('UPDATE ' || v_prefix) || 'DB_PRLedger Set Pulled=''Y'',PulledOn=localtimestamp(3),PulledBy=') || ltrim(rtrim(dbo.tsql_str((v_usercode)::numeric)))) || ' WHERE SiteCode = ') || ltrim(rtrim(dbo.tsql_str((v_sitecode)::numeric)))) || ' AND PRInvCode = ') || ltrim(rtrim(dbo.tsql_str((v_sinvcode)::numeric))));
   _dq1 := v_upd;
   IF _dq1 IS NOT NULL THEN
-    EXECUTE _dq1;
+    EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -12065,7 +12065,7 @@ BEGIN
   v_upd := ((((((('UPDATE ' || v_prefix) || 'DB_SaleLedger Set Pulled=''Y'',PulledOn=localtimestamp(3),PulledBy=') || ltrim(rtrim(dbo.tsql_str((v_usercode)::numeric)))) || ' WHERE SiteCode = ') || ltrim(rtrim(dbo.tsql_str((v_sitecode)::numeric)))) || ' AND SaleInvCode = ') || ltrim(rtrim(dbo.tsql_str((v_sinvcode)::numeric))));
   _dq1 := v_upd;
   IF _dq1 IS NOT NULL THEN
-    EXECUTE _dq1;
+    EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -12133,7 +12133,7 @@ BEGIN
   v_ins_detail := (((((((('INSERT INTO ' || v_prefix) || 'DB_ExpiryIntimationDetail (SiteCode,IntimationCode,ICode,Batch,Expiry,Qty,Packunits,PackPrice,Price,InvoiceCode,InvoiceDate,RefNo,RefDate,RowID,ManfCode,LastAccCode) ') || ' SELECT P.SiteCode,P.IntimationCode,D.ICode,D.Batch,D.Expiry,D.Qty,D.Packunits,D.PackPrice,D.Price,D.InvoiceCode,D.InvoiceDate,D.RefNo,D.RefDate,D.RowID,D.ManfCode,D.LastAccCode FROM ExpiryIntimationDetail D, ExpiryIntimation P WHERE P.IntimationCode = D.IntimationCode AND P.SiteCode IS NOT NULL AND P.TargetSiteCode IS NOT NULL AND P.Posted=''Y'' AND P.Pushed=''N'' AND P.IntimationCode BETWEEN ') || ltrim(rtrim(dbo.tsql_str((v_sinvcode)::numeric)))) || ' AND ') || ltrim(rtrim(dbo.tsql_str((v_linvcode)::numeric)))) || ' AND P.IntimationTypeCode = ') || ltrim(rtrim(dbo.tsql_str((v_intimationtype)::numeric))));
   _dq1 := v_ins_header;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -12144,7 +12144,7 @@ BEGIN
   END IF;
   _dq2 := v_ins_detail;
   IF _dq2 IS NOT NULL THEN
-    IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE _dq2; ELSE EXECUTE _dq2; END IF;
+    IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE dbo.tsql_dyn(_dq2); ELSE EXECUTE dbo.tsql_dyn(_dq2); END IF;
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -12220,7 +12220,7 @@ BEGIN
   v_ins_detail := (((((('INSERT INTO ' || v_prefix) || 'DB_IssueDetail (SiteCode,IssueInvCode,Icode,Batch,Expiry,Gcode,Priority,Qty,SalePrice,PurchasePrice,AvgPrice,PackUnits,MRPP,IssRowId,IssueUtn,SectCode,Price,SaleOrderRowID,itemdescription,RowGroup,IssueReqRowID,AlternateCustomICode,TotalPieces,PiecesInHand,ServiceIssueReqRowID,ServiceRowID,Claimable,ClaimableDiscPerc,ReceiptRowID,BalanceStock) ') || ' SELECT P.SiteCode,P.IssueInvCode,D.Icode,D.Batch,D.Expiry,D.Gcode,D.Priority,D.Qty,D.SalePrice,D.PurchasePrice,D.AvgPrice,D.PackUnits,D.MRPP,D.IssRowId,D.IssueUtn,D.SectCode,D.Price,D.SaleOrderRowID,D.itemdescription,D.RowGroup,D.IssueReqRowID,D.AlternateCustomICode,D.TotalPieces,D.PiecesInHand,D.ServiceIssueReqRowID,D.ServiceRowID,D.Claimable,D.ClaimableDiscPerc,D.ReceiptRowID,D.BalanceStock FROM IssueDetail D, IssueHeader P WHERE P.IssueInvCode = D.IssueInvCode AND P.SiteCode IS NOT NULL AND P.TargetSiteCode IS NOT NULL AND P.Posted=''Y'' AND P.Pushed=''N'' AND P.IssueInvCode BETWEEN ') || ltrim(rtrim(dbo.tsql_str((v_sinvcode)::numeric)))) || ' AND ') || ltrim(rtrim(dbo.tsql_str((v_linvcode)::numeric))));
   _dq1 := v_ins_header;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -12231,7 +12231,7 @@ BEGIN
   END IF;
   _dq2 := v_ins_detail;
   IF _dq2 IS NOT NULL THEN
-    IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE _dq2; ELSE EXECUTE _dq2; END IF;
+    IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE dbo.tsql_dyn(_dq2); ELSE EXECUTE dbo.tsql_dyn(_dq2); END IF;
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -12311,7 +12311,7 @@ BEGIN
   v_ins_detail := (((((('INSERT INTO ' || v_prefix) || 'DB_PurOrderDetail (SiteCode,POCode,ICode,Batch,Expiry,Qty,Rate,DiscPerc,PORowId,BonusQty,Stock,ReorderQty,OptimumQty,MinQty,PackUnits,SoldQty,ReturnQty,QtySatisfied,BonusQtySatisfied,SaleOrderRequest,TransitStock,Remarks,ItemFlatDisc,PackSalesTax,GSTPerc,PurPrice,SalePrice,RPP,PackAvgPrice,ForeignPrice,LastPurInvCode,LastPurDate,AlternateCustomICode,Discperc2,POQty) ') || ' SELECT P.SiteCode,P.POCode,D.ICode,D.Batch,D.Expiry,D.Qty,D.Rate,D.DiscPerc,D.PORowId,D.BonusQty,D.Stock,D.ReorderQty,D.OptimumQty,D.MinQty,D.PackUnits,D.SoldQty,D.ReturnQty,D.QtySatisfied,D.BonusQtySatisfied,D.SaleOrderRequest,D.TransitStock,D.Remarks,D.ItemFlatDisc,D.PackSalesTax,D.GSTPerc,D.PurPrice,D.SalePrice,D.RPP,D.PackAvgPrice,D.ForeignPrice,D.LastPurInvCode,D.LastPurDate,D.AlternateCustomICode,D.Discperc2,POQty FROM PurOrderDetail D, PurOrderHeader P WHERE P.POCode = D.POCode AND P.SiteCode IS NOT NULL AND P.TargetSiteCode IS NOT NULL AND P.Posted=''Y'' AND P.Pushed=''N'' AND P.POCode BETWEEN ') || ltrim(rtrim(dbo.tsql_str((v_sinvcode)::numeric)))) || ' AND ') || ltrim(rtrim(dbo.tsql_str((v_linvcode)::numeric))));
   _dq1 := v_ins_header;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -12322,7 +12322,7 @@ BEGIN
   END IF;
   _dq2 := v_ins_detail;
   IF _dq2 IS NOT NULL THEN
-    IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE _dq2; ELSE EXECUTE _dq2; END IF;
+    IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE dbo.tsql_dyn(_dq2); ELSE EXECUTE dbo.tsql_dyn(_dq2); END IF;
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -12342,7 +12342,7 @@ BEGIN
   v_ins_header := (('INSERT INTO ReportData (Name1) SELECT MAX(PrefValue) FROM ' || v_prefix) || 'SoftwarePreferences WHERE Name = ''DropBox_AutoPullPurOrderAsQutation''');
   _dq3 := v_ins_header;
   IF _dq3 IS NOT NULL THEN
-    IF _dq3 ~* '^[[:space:]]*select' THEN OPEN rs3 FOR EXECUTE _dq3; ELSE EXECUTE _dq3; END IF;
+    IF _dq3 ~* '^[[:space:]]*select' THEN OPEN rs3 FOR EXECUTE dbo.tsql_dyn(_dq3); ELSE EXECUTE dbo.tsql_dyn(_dq3); END IF;
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -12357,7 +12357,7 @@ BEGIN
     v_err := 0;
     _dq4 := v_exec_remotesp;
     IF _dq4 IS NOT NULL THEN
-      EXECUTE _dq4;
+      EXECUTE dbo.tsql_dyn(_dq4);
     END IF;
     v_err := 0;
     IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -12427,7 +12427,7 @@ BEGIN
   v_ins_detail := (((((('INSERT INTO ' || v_prefix) || 'DB_PRDetail (SiteCode,PRInvCode,ICode,Gcode,Batch,Expiry,PackQty,LooseQty,BonusQty,PackUnits,PRPrice,DiscPerc,AvgPrice,PackSalePrice,UnitSalesTax,GSTPerc,PrUtn,ItemDescription,TotalPieces,PiecesInHand,PrRowId,AlternateCustomICode,HistoricalBatch,BalanceStock) ') || ' SELECT P.SiteCode,P.PRInvCode,D.ICode,D.Gcode,D.Batch,D.Expiry,D.PackQty,D.LooseQty,D.BonusQty,D.PackUnits,D.PRPrice,D.DiscPerc,D.AvgPrice,D.PackSalePrice,D.UnitSalesTax,D.GSTPerc,D.PrUtn,D.ItemDescription,D.TotalPieces,D.PiecesInHand,D.PrRowId,D.AlternateCustomICode,D.HistoricalBatch,D.BalanceStock FROM PRDetail D, PRLedger P WHERE P.prinvcode = D.prinvcode AND P.SiteCode IS NOT NULL AND P.TargetSiteCode IS NOT NULL AND P.Posted=''Y'' AND P.Pushed=''N'' AND P.prinvcode BETWEEN ') || ltrim(rtrim(dbo.tsql_str((v_sinvcode)::numeric)))) || ' AND ') || ltrim(rtrim(dbo.tsql_str((v_linvcode)::numeric))));
   _dq1 := v_ins_header;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -12438,7 +12438,7 @@ BEGIN
   END IF;
   _dq2 := v_ins_detail;
   IF _dq2 IS NOT NULL THEN
-    IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE _dq2; ELSE EXECUTE _dq2; END IF;
+    IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE dbo.tsql_dyn(_dq2); ELSE EXECUTE dbo.tsql_dyn(_dq2); END IF;
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -12514,7 +12514,7 @@ BEGIN
   v_ins_detail := (((((('INSERT INTO ' || v_prefix) || 'DB_PurDetail (SiteCode,PurInvCode,ICode,Gcode,Batch,Expiry,PackQty,LooseQty,PackUnits,PurPrice,DiscPerc,AvgPrice,BonusQty,PurRowId,NewAvgPrice,CurrStock,GSTPerc,UnitSalesTax,SalePrice,itemdescription,rate,SalePriceForItem,NetRate,RecentPurPrice,ManfCodeForItem,FlatDiscForItem,RetailPrice,AlternateCustomICode,ManfDate,Location,ItemFlatDisc,ItemAdvanceTaxPerc) ') || ' SELECT P.SiteCode,D.PurInvCode,D.ICode,D.Gcode,D.Batch,D.Expiry,D.PackQty,D.LooseQty,D.PackUnits,D.PurPrice,D.DiscPerc,D.AvgPrice,D.BonusQty,D.PurRowId,D.NewAvgPrice,D.CurrStock,D.GSTPerc,D.UnitSalesTax,D.SalePrice,D.itemdescription,D.rate,D.SalePriceForItem,D.NetRate,D.RecentPurPrice,D.ManfCodeForItem,D.FlatDiscForItem,D.RetailPrice,D.AlternateCustomICode,D.ManfDate,D.Location,D.ItemFlatDisc,D.ItemAdvanceTaxPerc FROM PurDetail D, purledger P WHERE P.purinvcode = D.purinvcode AND P.SiteCode IS NOT NULL AND P.TargetSiteCode IS NOT NULL AND P.Posted=''Y'' AND P.Pushed=''N'' AND P.purinvcode BETWEEN ') || ltrim(rtrim(dbo.tsql_str((v_sinvcode)::numeric)))) || ' AND ') || ltrim(rtrim(dbo.tsql_str((v_linvcode)::numeric))));
   _dq1 := v_ins_header;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -12525,7 +12525,7 @@ BEGIN
   END IF;
   _dq2 := v_ins_detail;
   IF _dq2 IS NOT NULL THEN
-    IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE _dq2; ELSE EXECUTE _dq2; END IF;
+    IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE dbo.tsql_dyn(_dq2); ELSE EXECUTE dbo.tsql_dyn(_dq2); END IF;
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -12609,7 +12609,7 @@ BEGIN
   END IF;
   _dq1 := v_ins_header;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -12620,7 +12620,7 @@ BEGIN
   END IF;
   _dq2 := v_ins_detail;
   IF _dq2 IS NOT NULL THEN
-    IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE _dq2; ELSE EXECUTE _dq2; END IF;
+    IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE dbo.tsql_dyn(_dq2); ELSE EXECUTE dbo.tsql_dyn(_dq2); END IF;
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -12708,7 +12708,7 @@ BEGIN
   END IF;
   _dq1 := v_ins_header;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -12719,7 +12719,7 @@ BEGIN
   END IF;
   _dq2 := v_ins_detail;
   IF _dq2 IS NOT NULL THEN
-    IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE _dq2; ELSE EXECUTE _dq2; END IF;
+    IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE dbo.tsql_dyn(_dq2); ELSE EXECUTE dbo.tsql_dyn(_dq2); END IF;
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -12784,7 +12784,7 @@ BEGIN
   ELSE
     _dq1 := v_qry;
     IF _dq1 IS NOT NULL THEN
-      EXECUTE _dq1;
+      EXECUTE dbo.tsql_dyn(_dq1);
     END IF;
   END IF;
   IF (0 <> 0) THEN
@@ -12890,7 +12890,7 @@ BEGIN
     DELETE FROM dbo.reportdata;
     _dq1 := (('INSERT INTO REPORTDATA (Code1) SELECT COUNT(*) ' || v_sql) || v_tablename);
     IF _dq1 IS NOT NULL THEN
-      EXECUTE _dq1;
+      EXECUTE dbo.tsql_dyn(_dq1);
     END IF;
     v_rowcount := trunc(coalesce((SELECT sum(code1) FROM dbo.reportdata), 0))::integer;
     IF (v_rowcount > 0) THEN
@@ -12911,7 +12911,7 @@ BEGIN
       v_qry := (((((((((v_del || v_tablename) || ' ') || v_whr) || v_pkcond) || v_notin) || v_pkcond) || v_sql) || v_tablename) || ')');
       _dq2 := v_qry;
       IF _dq2 IS NOT NULL THEN
-        EXECUTE _dq2;
+        EXECUTE dbo.tsql_dyn(_dq2);
       END IF;
       v_err := 0;
       IF (v_err <> 0) THEN
@@ -13114,7 +13114,7 @@ BEGIN
     v_script := (v_stmt || v_tablename);
     _dq1 := v_script;
     IF _dq1 IS NOT NULL THEN
-      EXECUTE _dq1;
+      EXECUTE dbo.tsql_dyn(_dq1);
     END IF;
     v_err := 0;
     IF (v_err <> 0) THEN
@@ -13342,7 +13342,7 @@ BEGIN
         RAISE NOTICE '%', v_qry;
         _dq1 := v_qry;
         IF _dq1 IS NOT NULL THEN
-          EXECUTE _dq1;
+          EXECUTE dbo.tsql_dyn(_dq1);
         END IF;
         v_err := 0;
         IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -13389,7 +13389,7 @@ BEGIN
   v_stmt := ((('ALTER TABLE DBO.' || ltrim(rtrim(v_tablename))) || ' DROP CONSTRAINT ') || v_constraint);
   _dq1 := v_stmt;
   IF _dq1 IS NOT NULL THEN
-    EXECUTE _dq1;
+    EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   return_value := 0;
   RETURN;
@@ -13423,7 +13423,7 @@ BEGIN
     v_stmt := ((('ALTER TABLE DBO.' || ltrim(rtrim(v_table))) || ' DROP CONSTRAINT ') || ltrim(rtrim(v_const)));
     _dq1 := v_stmt;
     IF _dq1 IS NOT NULL THEN
-      EXECUTE _dq1;
+      EXECUTE dbo.tsql_dyn(_dq1);
     END IF;
     FETCH NEXT FROM cur_c1 INTO v_table, v_col, v_priority, v_const;
     IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
@@ -13575,7 +13575,7 @@ BEGIN
         v_query := ((((((('Delete From ' || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.item WHERE ICode < ') || ltrim(rtrim(dbo.tsql_str(((50000 * v_inrow))::numeric))));
         _dq1 := v_query;
         IF _dq1 IS NOT NULL THEN
-          EXECUTE _dq1;
+          EXECUTE dbo.tsql_dyn(_dq1);
         END IF;
         IF (0 <> 0) THEN
           RAISE EXCEPTION 'Some Problem occur in emptying DataCarryDB, Table Name = %', v_tablename;
@@ -13587,7 +13587,7 @@ BEGIN
     ELSE
       _dq2 := v_query;
       IF _dq2 IS NOT NULL THEN
-        EXECUTE _dq2;
+        EXECUTE dbo.tsql_dyn(_dq2);
       END IF;
       IF (0 <> 0) THEN
         RAISE EXCEPTION 'Some Problem occur in emptying DataCarryDB, Table Name = %', v_tablename;
@@ -13639,7 +13639,7 @@ BEGIN
   v_query := ((((((('Select IntimationCode, IntimationTypeCode, Date, RefNo, Remarks1, Remarks2 From 	' || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.') || 'ExpiryIntimation');
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   return_value := 1;
   RETURN;
@@ -13688,7 +13688,7 @@ BEGIN
   v_query := ((((('Select SiteCode, Site=(SELECT Site.Name + SPACE(1) + CHAR(45) + SPACE(1) + InstanceID FROM Site WHERE Site.Sitecode = T.SiteCode), T.IntimationCode, T.IntimationTypeCode, T.Date, T.RefNo, T.Remarks1, T.Remarks2 From ' || v_prefix) || 'DB_ExpiryIntimation AS T WHERE T.TargetSiteCode = ') || ltrim(rtrim(dbo.tsql_str((v_sitecode)::numeric)))) || ' AND T.Pulled = ''N'' AND T.IntimationTypeCode = ') || ltrim(rtrim(dbo.tsql_str((v_intimationtypecode)::numeric))));
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   return_value := 1;
   RETURN;
@@ -13721,7 +13721,7 @@ BEGIN
   v_query := ((((((('INSERT INTO ' || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.') || 'GodownDetail (GCode, ICode, CurrQty, Batch, Expiry, Priority, ManfDate) SELECT GCode, ICode, CurrQty, Batch, Expiry, Priority, ManfDate FROM GodownDetail ');
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    EXECUTE _dq1;
+    EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   IF (0 <> 0) THEN
     RAISE EXCEPTION 'Some Problem occur in exporting stock in hand to DataCarryDB';
@@ -13910,7 +13910,7 @@ BEGIN
     v_inqry := ((((((((v_inqry || ' WHERE Posted=''Y'' AND Transmit = ') || chr(39)) || 'Y') || chr(39)) || ' AND Transmited = ') || chr(39)) || 'N') || chr(39));
     _dq1 := v_inqry;
     IF _dq1 IS NOT NULL THEN
-      EXECUTE _dq1;
+      EXECUTE dbo.tsql_dyn(_dq1);
     END IF;
     v_err := 0;
     IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -13921,7 +13921,7 @@ BEGIN
     v_query := ((v_ins || v_sql) || v_whr);
     _dq2 := v_query;
     IF _dq2 IS NOT NULL THEN
-      EXECUTE _dq2;
+      EXECUTE dbo.tsql_dyn(_dq2);
     END IF;
     v_err := 0;
     IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -13944,7 +13944,7 @@ BEGIN
       v_query := ((v_ins || v_sql) || v_whr);
       _dq3 := v_query;
       IF _dq3 IS NOT NULL THEN
-        EXECUTE _dq3;
+        EXECUTE dbo.tsql_dyn(_dq3);
       END IF;
       v_err := 0;
       IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -13962,7 +13962,7 @@ BEGIN
           v_query := v_ins;
           _dq4 := v_query;
           IF _dq4 IS NOT NULL THEN
-            EXECUTE _dq4;
+            EXECUTE dbo.tsql_dyn(_dq4);
           END IF;
           v_err := 0;
           IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -13982,7 +13982,7 @@ BEGIN
         END IF;
         _dq5 := v_query;
         IF _dq5 IS NOT NULL THEN
-          EXECUTE _dq5;
+          EXECUTE dbo.tsql_dyn(_dq5);
         END IF;
         v_err := 0;
         IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -17167,7 +17167,7 @@ BEGIN
   v_query := ((((v_query || ' where  	item.icode = i.icode AND item.saleprice <> i.saleprice and not exists (select columnname from transferabledata_restrictedcolumns where tablename=') || '''item''') || ' and columnname=') || '''saleprice'')');
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   IF (0 <> 0) THEN
     RAISE EXCEPTION 'Some Problem occur in generating ItemLog';
@@ -18834,7 +18834,7 @@ BEGIN
   v_del := (('TRUNCATE TABLE ' || v_targetdb) || '.DBO.PreviousSaleHistory');
   _dq1 := v_del;
   IF _dq1 IS NOT NULL THEN
-    EXECUTE _dq1;
+    EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -18845,7 +18845,7 @@ BEGIN
   v_ins_sql := (((((((((((((((((((((((((((((((((('INSERT INTO ' || v_targetdb) || '.DBO.PreviousSaleHistory ') || 'SELECT S.Date, S.ICode, SaleQty = SUM(S.SaleQty), ReturnQty = SUM(S.ReturnQty), SaleValue = SUM(S.SaleValue), ReturnValue = SUM(S.ReturnValue) FROM ') || '(SELECT DATE=CONVERT(DATETIME, CONVERT(VARCHAR(100), SL.Date, 110)), ') || 'SD.ICode, SaleQty = SUM(SD.LooseQty + SD.BonusQty), ReturnQty = 0, SaleValue = SUM(SD.LooseQty * (SD.SalePrice - SD.ItemFlatDisc) * (1 - SD.DiscPerc * 0.01) * (1 - SL.DiscPerc * 0.01)), ReturnValue = 0 ') || 'FROM ') || v_sourcedb) || '.DBO.SaleLedger SL, ') || v_sourcedb) || '.DBO.SaleDetail SD WHERE SL.Date BETWEEN ''') || left(to_char(v_startdate, 'MM-DD-YYYY'), 100)) || ' ') || left(to_char(v_startdate, 'HH24:MI:SS:MS'), 100)) || ''' AND ''') || left(to_char(v_enddate, 'MM-DD-YYYY'), 100)) || ' ') || left(to_char(v_enddate, 'HH24:MI:SS:MS'), 100)) || ''' AND ') || ' SL.SaleInvCode = SD.SaleInvCode GROUP BY SL.Date, SD.ICode UNION ALL ') || 'SELECT DATE=CONVERT(DATETIME, CONVERT(VARCHAR(100), SL.Date, 110)), SD.ICode, SaleQty = 0, ReturnQty = SUM(SD.LooseQty + SD.BonusQty), SaleValue=0, ReturnValue = SUM(SD.LooseQty * SD.SRPrice * (1 - SD.DiscPerc * 0.01) * (1 - SL.DiscPerc * 0.01)) FROM ') || v_sourcedb) || '.DBO.SRLedger SL, ') || v_sourcedb) || '.DBO.SRDetail SD WHERE SL.Date BETWEEN ''') || left(to_char(v_startdate, 'MM-DD-YYYY'), 100)) || ' ') || left(to_char(v_startdate, 'HH24:MI:SS:MS'), 100)) || ''' AND ''') || left(to_char(v_enddate, 'MM-DD-YYYY'), 100)) || ' ') || left(to_char(v_enddate, 'HH24:MI:SS:MS'), 100)) || ''' AND ') || ' SL.SRInvCode = SD.SRInvCode ') || 'GROUP BY SL.Date, SD.ICode) S GROUP BY S.Date, S.ICode');
   _dq2 := v_ins_sql;
   IF _dq2 IS NOT NULL THEN
-    IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq2; ELSE EXECUTE _dq2; END IF;
+    IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq2); ELSE EXECUTE dbo.tsql_dyn(_dq2); END IF;
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -18898,7 +18898,7 @@ BEGIN
   v_qry := (('SELECT * FROM OPENROWSET(''Microsoft.Jet.OLEDB.4.0'',''Excel 5.0;HDR=Yes;Database=' || v_file) || ''', ''select * from [sheet1$]'')');
   _dq1 := v_qry;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   IF (0 <> 0) THEN
     RAISE EXCEPTION 'Error in Fetching Information From File Specified';
@@ -22465,7 +22465,7 @@ BEGIN
   v_qry := (((((('INSERT INTO REPORTDATA (code1, code2, code3) SELECT * FROM ' || v_srv) || '.') || v_db) || '.') || v_owner) || '.Sequence');
   _dq1 := v_qry;
   IF _dq1 IS NOT NULL THEN
-    EXECUTE _dq1;
+    EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   v_sequenceid := trunc((SELECT code1 FROM dbo.reportdata))::integer;
   v_appversion := trunc((SELECT code2 FROM dbo.reportdata))::integer;
@@ -22938,7 +22938,7 @@ BEGIN
   v_query := 'ALTER TABLE tmp_header ADD COLUMN RowID integer NOT NULL GENERATED BY DEFAULT AS IDENTITY';
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF (0 <> 0) THEN
@@ -22956,7 +22956,7 @@ BEGIN
   v_query := (v_query || ' ORDER BY OldInvCode ');
   _dq2 := v_query;
   IF _dq2 IS NOT NULL THEN
-    IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE _dq2; ELSE EXECUTE _dq2; END IF;
+    IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE dbo.tsql_dyn(_dq2); ELSE EXECUTE dbo.tsql_dyn(_dq2); END IF;
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF ((0 = 0) AND (_rc > 0)) THEN
@@ -22970,7 +22970,7 @@ BEGIN
     v_query := (v_query || ' ORDER BY OldInvCode, PurRowId ');
     _dq3 := v_query;
     IF _dq3 IS NOT NULL THEN
-      IF _dq3 ~* '^[[:space:]]*select' THEN OPEN rs3 FOR EXECUTE _dq3; ELSE EXECUTE _dq3; END IF;
+      IF _dq3 ~* '^[[:space:]]*select' THEN OPEN rs3 FOR EXECUTE dbo.tsql_dyn(_dq3); ELSE EXECUTE dbo.tsql_dyn(_dq3); END IF;
     END IF;
     GET DIAGNOSTICS _rc = ROW_COUNT;
     IF ((0 <> 0) OR (_rc = 0)) THEN
@@ -23080,7 +23080,7 @@ BEGIN
     v_query := ('INSERT INTO DBO.QuotationHeader ' || v_sql);
     _dq1 := v_query;
     IF _dq1 IS NOT NULL THEN
-      EXECUTE _dq1;
+      EXECUTE dbo.tsql_dyn(_dq1);
     END IF;
     v_err := 0;
     IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -23092,7 +23092,7 @@ BEGIN
     v_query := ('INSERT INTO DBO.QuotationDetail (QuotationCode, ICode, Qty, PackUnits, SalePrice, DiscPerc, SalesTax, ItemFlatDisc, BonusQty, GSTPerc, UnitSalesTax, ItemDescription, GCode, RemoteNetSaleQty, RemoteStock, PORate, SpecialRate, RefNo)' || v_sql);
     _dq2 := v_query;
     IF _dq2 IS NOT NULL THEN
-      EXECUTE _dq2;
+      EXECUTE dbo.tsql_dyn(_dq2);
     END IF;
     v_err := 0;
     IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -23106,7 +23106,7 @@ BEGIN
     v_query := ('INSERT INTO DBO.SaleOrderHeader ' || v_sql);
     _dq3 := v_query;
     IF _dq3 IS NOT NULL THEN
-      EXECUTE _dq3;
+      EXECUTE dbo.tsql_dyn(_dq3);
     END IF;
     v_err := 0;
     IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -23118,7 +23118,7 @@ BEGIN
     v_query := ('INSERT INTO DBO.SaleOrderDetail (SaleOrderCode, ICode, GCode, LooseQty, PackUnits, SalePrice, AvgPrice, Rate, DiscPerc, ItemFlatDisc, SaleItemDescription, PackPrice, UnitSalesTax, GSTPerc, BonusQty, RowGroup, PackQtyForSale, BonusPackQtyForSale, Remarks, SaleOrderItemStatusCode, QuotationRowID, PrescriptionRowID, Batch, Expiry)' || v_sql);
     _dq4 := v_query;
     IF _dq4 IS NOT NULL THEN
-      EXECUTE _dq4;
+      EXECUTE dbo.tsql_dyn(_dq4);
     END IF;
     v_err := 0;
     IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -23132,7 +23132,7 @@ BEGIN
     v_query := ('INSERT INTO DBO.PurOrderHeader ' || v_sql);
     _dq5 := v_query;
     IF _dq5 IS NOT NULL THEN
-      EXECUTE _dq5;
+      EXECUTE dbo.tsql_dyn(_dq5);
     END IF;
     v_err := 0;
     IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -23144,7 +23144,7 @@ BEGIN
     v_query := ('INSERT INTO DBO.PurOrderDetail (POCode, ICode, Batch, Expiry, Qty, Rate, DiscPerc, BonusQty, Stock, ReorderQty, OptimumQty, MinQty, PackUnits, SoldQty, ReturnQty, QtySatisfied, BonusQtySatisfied, SaleOrderRequest, TransitStock, Remarks, ItemFlatDisc, PackSalesTax, GSTPerc, PurPrice, SalePrice, RPP, PackAvgPrice, ForeignPrice, LastPurInvCode, LastPurDate)' || v_sql);
     _dq6 := v_query;
     IF _dq6 IS NOT NULL THEN
-      EXECUTE _dq6;
+      EXECUTE dbo.tsql_dyn(_dq6);
     END IF;
     v_err := 0;
     IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -23201,7 +23201,7 @@ BEGIN
   v_query := 'ALTER TABLE tmp_header ADD COLUMN RowID integer NOT NULL GENERATED BY DEFAULT AS IDENTITY';
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF (0 <> 0) THEN
@@ -23219,7 +23219,7 @@ BEGIN
   v_query := (v_query || ' ORDER BY OldInvCode ');
   _dq2 := v_query;
   IF _dq2 IS NOT NULL THEN
-    IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE _dq2; ELSE EXECUTE _dq2; END IF;
+    IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE dbo.tsql_dyn(_dq2); ELSE EXECUTE dbo.tsql_dyn(_dq2); END IF;
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF ((0 = 0) AND (_rc > 0)) THEN
@@ -23233,7 +23233,7 @@ BEGIN
     v_query := (v_query || ' ORDER BY OldInvCode, RowID ');
     _dq3 := v_query;
     IF _dq3 IS NOT NULL THEN
-      IF _dq3 ~* '^[[:space:]]*select' THEN OPEN rs3 FOR EXECUTE _dq3; ELSE EXECUTE _dq3; END IF;
+      IF _dq3 ~* '^[[:space:]]*select' THEN OPEN rs3 FOR EXECUTE dbo.tsql_dyn(_dq3); ELSE EXECUTE dbo.tsql_dyn(_dq3); END IF;
     END IF;
     GET DIAGNOSTICS _rc = ROW_COUNT;
     IF ((0 <> 0) OR (_rc = 0)) THEN
@@ -23343,7 +23343,7 @@ BEGIN
   v_query := 'ALTER TABLE tmp_sheader ADD COLUMN RowID integer NOT NULL GENERATED BY DEFAULT AS IDENTITY';
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF (0 <> 0) THEN
@@ -23361,7 +23361,7 @@ BEGIN
   v_query := (v_query || ' ORDER BY OldInvCode ');
   _dq2 := v_query;
   IF _dq2 IS NOT NULL THEN
-    IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE _dq2; ELSE EXECUTE _dq2; END IF;
+    IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE dbo.tsql_dyn(_dq2); ELSE EXECUTE dbo.tsql_dyn(_dq2); END IF;
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF ((0 = 0) AND (_rc > 0)) THEN
@@ -23375,7 +23375,7 @@ BEGIN
     v_query := (v_query || ' ORDER BY OldInvCode, SrvRowId ');
     _dq3 := v_query;
     IF _dq3 IS NOT NULL THEN
-      IF _dq3 ~* '^[[:space:]]*select' THEN OPEN rs3 FOR EXECUTE _dq3; ELSE EXECUTE _dq3; END IF;
+      IF _dq3 ~* '^[[:space:]]*select' THEN OPEN rs3 FOR EXECUTE dbo.tsql_dyn(_dq3); ELSE EXECUTE dbo.tsql_dyn(_dq3); END IF;
     END IF;
     GET DIAGNOSTICS _rc = ROW_COUNT;
     IF ((0 <> 0) OR (_rc = 0)) THEN
@@ -23502,7 +23502,7 @@ BEGIN
     END IF;
     _dq1 := v_query;
     IF _dq1 IS NOT NULL THEN
-      EXECUTE _dq1;
+      EXECUTE dbo.tsql_dyn(_dq1);
     END IF;
     v_err := 0;
     IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -23530,7 +23530,7 @@ BEGIN
   v_query := ((((v_sql || v_imp_tablename) || ' ') || v_from) || 'GodownDetail');
   _dq2 := v_query;
   IF _dq2 IS NOT NULL THEN
-    EXECUTE _dq2;
+    EXECUTE dbo.tsql_dyn(_dq2);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -23657,7 +23657,7 @@ BEGIN
   v_sqldetail := (((((((((((('INSERT INTO DBO.SaleTemplateDetail (SaleTemplateCode, Icode, LooseQty, PackQty, SalePrice, DiscPerc, ItemFlatDisc, UnitSalesTax, GSTPerc, PackUnits, Remarks, BonusQty, SaleInvCode, SaleDate, CustCode, SaleCatCode, Marked) SELECT Template=' || ltrim(rtrim(dbo.tsql_str((v_templatecode)::numeric)))) || ' , D.ICode, LooseQty=SUM(D.LooseQty), PackQty=0, D.SalePrice, D.DiscPerc, D.ItemFlatDisc, D.UnitSalesTax, D.GstPerc, D.PackUnits, Remarks=S.Remarks, BonusQty = SUM(D.BonusQty), SaleInvCode=S.SaleInvCode, SaleDate=S.Date, CustCode=S.CustCode, S.SaleCatCode, Marked=''Y'' FROM ') || v_tablequalifier) || '.SaleLedger S, ') || v_tablequalifier) || '.SaleDetail D, ') || v_tablequalifier) || '.Item I WHERE S.SaleInvCode = D.SaleInvCode AND S.Date BETWEEN ''') || ltrim(rtrim(left(to_char(v_startdate, 'Mon DD YYYY HH12:MIAM'), 100)))) || ''' AND ''') || ltrim(rtrim(left(to_char(v_enddate, 'Mon DD YYYY HH12:MIAM'), 100)))) || ''' AND D.ICode = I.ICode GROUP BY I.Name, S.SaleInvCode, S.Date, S.CustCode, S.SaleCatCode, S.Remarks, D.ICode, D.SalePrice, D.DiscPerc, D.ItemFlatDisc, D.UnitSalesTax, D.GstPerc, D.PackUnits ORDER BY S.SaleInvCode, D.ICode');
   _dq1 := v_sqldetail;
   IF _dq1 IS NOT NULL THEN
-    EXECUTE _dq1;
+    EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   IF ((0 = 0) AND (v_errcode = 0)) THEN
     return_value := 0;
@@ -23725,7 +23725,7 @@ BEGIN
       v_query := 'TRUNCATE TABLE GodownDetail';
       _dq1 := v_query;
       IF _dq1 IS NOT NULL THEN
-        EXECUTE _dq1;
+        EXECUTE dbo.tsql_dyn(_dq1);
       END IF;
       IF (0 <> 0) THEN
         RAISE EXCEPTION 'T-SQL ROLLBACK in sp_ImportStock_From_ParentServer' USING ERRCODE = 'TS001';
@@ -23736,7 +23736,7 @@ BEGIN
       v_query := (((((('INSERT INTO GodownDetail SELECT T.* FROM ' || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.GodownDetail T WHERE T.ICode IN (SELECT ICode FROM Item)');
       _dq2 := v_query;
       IF _dq2 IS NOT NULL THEN
-        EXECUTE _dq2;
+        EXECUTE dbo.tsql_dyn(_dq2);
       END IF;
       IF (0 <> 0) THEN
         RAISE EXCEPTION 'T-SQL ROLLBACK in sp_ImportStock_From_ParentServer' USING ERRCODE = 'TS001';
@@ -24720,7 +24720,7 @@ BEGIN
     v_qry := (((((('UPDATE _TabMaxKey SET Tabmaxkey = COALESCE((SELECT MAX(' || v_pk) || ') FROM ') || v_tbl) || '), 0) WHERE Tabname = ''') || v_tbl) || '''');
     _dq1 := v_qry;
     IF _dq1 IS NOT NULL THEN
-      EXECUTE _dq1;
+      EXECUTE dbo.tsql_dyn(_dq1);
     END IF;
     v_err := 0;
     IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -25084,7 +25084,7 @@ BEGIN
     END IF;
     _dq1 := v_qry;
     IF _dq1 IS NOT NULL THEN
-      EXECUTE _dq1;
+      EXECUTE dbo.tsql_dyn(_dq1);
     END IF;
     v_err := 0;
     IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -25099,7 +25099,7 @@ BEGIN
       v_tabmaxsql := (((((((('UPDATE _tabmaxkey SET TABMAXKEY = ' || ' COALESCE((SELECT ') || v_maxcol) || ' FROM  ') || rtrim(ltrim(v_tablename))) || '), 0) ') || 'WHERE TABNAME = ''') || rtrim(ltrim(v_tablename))) || '''');
       _dq2 := v_tabmaxsql;
       IF _dq2 IS NOT NULL THEN
-        EXECUTE _dq2;
+        EXECUTE dbo.tsql_dyn(_dq2);
       END IF;
       v_err := 0;
       IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -25222,7 +25222,7 @@ BEGIN
     END IF;
     _dq1 := v_qry;
     IF _dq1 IS NOT NULL THEN
-      EXECUTE _dq1;
+      EXECUTE dbo.tsql_dyn(_dq1);
     END IF;
     v_err := 0;
     IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -25237,7 +25237,7 @@ BEGIN
       v_tabmaxsql := (((((((('UPDATE _tabmaxkey SET TABMAXKEY = ' || ' COALESCE((SELECT ') || v_maxcol) || ' FROM  ') || rtrim(ltrim(v_tablename))) || '), 0) ') || 'WHERE TABNAME = ''') || rtrim(ltrim(v_tablename))) || '''');
       _dq2 := v_tabmaxsql;
       IF _dq2 IS NOT NULL THEN
-        EXECUTE _dq2;
+        EXECUTE dbo.tsql_dyn(_dq2);
       END IF;
       v_err := 0;
       IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -25424,7 +25424,7 @@ BEGIN
         v_iqry := (v_qry || v_icodestr);
         _dq1 := v_iqry;
         IF _dq1 IS NOT NULL THEN
-          EXECUTE _dq1;
+          EXECUTE dbo.tsql_dyn(_dq1);
         END IF;
         v_err := 0;
         IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -25438,7 +25438,7 @@ BEGIN
           v_iqry := (((((((((('Update ' || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.') || 'Item Set UserCode=1 , ISizeCode=1, IStyleCode=1, IColourCode=1, ISleeveCode=1, IYarnCode=1, IFabricCode=1, IBrandCode=1, IPartCode=1 WHERE ICode BETWEEN ') || ltrim(rtrim(dbo.tsql_str((v_srow)::numeric)))) || ' AND ') || ltrim(rtrim(dbo.tsql_str((v_lrow)::numeric))));
           _dq2 := v_iqry;
           IF _dq2 IS NOT NULL THEN
-            EXECUTE _dq2;
+            EXECUTE dbo.tsql_dyn(_dq2);
           END IF;
           IF (0 <> 0) THEN
             RAISE EXCEPTION 'Updation Problem of Default Values In DataCarryDB';
@@ -25452,7 +25452,7 @@ BEGIN
     ELSE
       _dq3 := v_qry;
       IF _dq3 IS NOT NULL THEN
-        EXECUTE _dq3;
+        EXECUTE dbo.tsql_dyn(_dq3);
       END IF;
       v_err := 0;
       IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -25471,7 +25471,7 @@ BEGIN
   v_qry := ((((((('Delete From ' || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.') || 'DataImportlog ');
   _dq4 := v_qry;
   IF _dq4 IS NOT NULL THEN
-    EXECUTE _dq4;
+    EXECUTE dbo.tsql_dyn(_dq4);
   END IF;
   IF (0 <> 0) THEN
     RAISE EXCEPTION 'Problem Initializing Data Import Log in DataCarryDB';
@@ -25514,7 +25514,7 @@ BEGIN
   v_query := ((((((v_query || ' Where   IntimationTypeCode = ') || (v_type)::text) || ' AND IntimationCode Between ') || (v_scode)::text) || ' And ') || (v_lcode)::text);
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   IF (0 = 0) THEN
     v_query := ((((((('Insert 	Into ' || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.') || 'ExpiryIntimationDetail (IntimationCode, ICode, Batch, Expiry, Qty, Packunits, PackPrice, Price, InvoiceCode, InvoiceDate, RefNo, RefDate, RowID) ');
@@ -25524,7 +25524,7 @@ BEGIN
     v_query := (v_query || ' ORDER BY RowID ');
     _dq2 := v_query;
     IF _dq2 IS NOT NULL THEN
-      IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE _dq2; ELSE EXECUTE _dq2; END IF;
+      IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE dbo.tsql_dyn(_dq2); ELSE EXECUTE dbo.tsql_dyn(_dq2); END IF;
     END IF;
     IF (0 <> 0) THEN
       RAISE EXCEPTION 'Problem in inserting detail records of Expiry Intimation to Remote DataBase';
@@ -25576,7 +25576,7 @@ BEGIN
   END IF;
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF ((0 = 0) AND (_rc > 0)) THEN
@@ -25589,7 +25589,7 @@ BEGIN
     END IF;
     _dq2 := v_query;
     IF _dq2 IS NOT NULL THEN
-      IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE _dq2; ELSE EXECUTE _dq2; END IF;
+      IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE dbo.tsql_dyn(_dq2); ELSE EXECUTE dbo.tsql_dyn(_dq2); END IF;
     END IF;
     GET DIAGNOSTICS _rc = ROW_COUNT;
     IF ((0 <> 0) OR (_rc = 0)) THEN
@@ -25699,7 +25699,7 @@ BEGIN
   v_query := ((((v_query || ' Where   POCode Between ') || (v_spocode)::text) || ' And ') || (v_lpocode)::text);
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   IF (0 = 0) THEN
     v_query := ((((((('Insert 	Into ' || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.') || 'PurOrderDetail (POCode, ICode, Batch, Expiry, Qty, Rate, DiscPerc, PORowId, BonusQty, Stock, ReorderQty, OptimumQty, MinQty, PackUnits, SoldQty, ReturnQty, QtySatisfied, BonusQtySatisfied, SaleOrderRequest, TransitStock, Remarks, ItemFlatDisc, PackSalesTax, GSTPerc, PurPrice, SalePrice, RPP, PackAvgPrice, POQty) ');
@@ -25708,7 +25708,7 @@ BEGIN
     v_query := ((((v_query || 'Where   POCode Between ') || (v_spocode)::text) || ' And ') || (v_lpocode)::text);
     _dq2 := v_query;
     IF _dq2 IS NOT NULL THEN
-      IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE _dq2; ELSE EXECUTE _dq2; END IF;
+      IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE dbo.tsql_dyn(_dq2); ELSE EXECUTE dbo.tsql_dyn(_dq2); END IF;
     END IF;
     IF (0 <> 0) THEN
       RAISE EXCEPTION 'Problem in inserting detail records to Remote DataBase';
@@ -25754,7 +25754,7 @@ BEGIN
   v_query := ((((v_query || ' Where   PRInvCode Between ') || (v_sprcode)::text) || ' And ') || (v_lprcode)::text);
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   IF (0 = 0) THEN
     v_query := ((((((('Insert 	Into ' || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.') || 'PRDetail (PRInvCode, ICode, Batch, Expiry, LooseQty, BonusQty, PackUnits, PRPrice, DiscPerc, PackSalePrice, UnitSalesTax, GSTPerc, PrUtn) ');
@@ -25763,7 +25763,7 @@ BEGIN
     v_query := ((((v_query || 'Where   PRInvCode Between ') || (v_sprcode)::text) || ' And ') || (v_lprcode)::text);
     _dq2 := v_query;
     IF _dq2 IS NOT NULL THEN
-      IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE _dq2; ELSE EXECUTE _dq2; END IF;
+      IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE dbo.tsql_dyn(_dq2); ELSE EXECUTE dbo.tsql_dyn(_dq2); END IF;
     END IF;
     IF (0 <> 0) THEN
       RAISE EXCEPTION 'Problem in inserting detail records of Purchase Return to Remote DataBase';
@@ -25809,7 +25809,7 @@ BEGIN
   v_query := ((((v_query || ' Where   PurInvCode Between ') || (v_scode)::text) || ' And ') || (v_lcode)::text);
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   IF (0 = 0) THEN
     v_query := ((((((('Insert 	Into ' || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.') || 'PurDetail (PurInvCode,ICode,Gcode,Batch,Expiry,PackQty,LooseQty,PackUnits,PurPrice,DiscPerc,AvgPrice,BonusQty,PurRowId,NewAvgPrice,CurrStock,GSTPerc,UnitSalesTax,PurUtn,SalePrice,itemdescription,rate,SalePriceForItem,ForeignPrice,PurPriceInAdvPur,NetRate,RecentPurPrice,TotalPieces,PiecesInHand,ReceiptRowID,ManfCodeForItem,DiscountedSalePrice,FlatDiscForItem,RetailPrice,AlternateCustomICode,ManfDate,UnitWeight,QE1,QE2,QE3,QE4,QE5,WE1,WE2,WE3,WE4,WE5,BatchSalePrice) ');
@@ -25818,7 +25818,7 @@ BEGIN
     v_query := ((((v_query || 'Where   PurInvCode Between ') || (v_scode)::text) || ' And ') || (v_lcode)::text);
     _dq2 := v_query;
     IF _dq2 IS NOT NULL THEN
-      IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE _dq2; ELSE EXECUTE _dq2; END IF;
+      IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE dbo.tsql_dyn(_dq2); ELSE EXECUTE dbo.tsql_dyn(_dq2); END IF;
     END IF;
     IF (0 <> 0) THEN
       RAISE EXCEPTION 'Problem in inserting detail records of Purchase to Remote DataBase';
@@ -25864,7 +25864,7 @@ BEGIN
   v_query := ((((v_query || ' Where   QuotationCode Between ') || (v_scode)::text) || ' And ') || (v_lcode)::text);
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   IF (0 = 0) THEN
     v_query := ((((((('Insert 	Into ' || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.') || 'QuotationDetail (QuotationCode,ICode,Qty,PackUnits,SalePrice,DiscPerc,SalesTax,RowID,itemflatdisc,BonusQty,GSTPerc,UnitSalesTax,ItemDescription,gcode,RemoteNetSaleQty,RemoteStock,PORate,PODiscPerc,SpecialRate,RefNo,Remote_POQty) ');
@@ -25873,7 +25873,7 @@ BEGIN
     v_query := ((((v_query || 'Where   QuotationCode Between ') || (v_scode)::text) || ' And ') || (v_lcode)::text);
     _dq2 := v_query;
     IF _dq2 IS NOT NULL THEN
-      IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE _dq2; ELSE EXECUTE _dq2; END IF;
+      IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE dbo.tsql_dyn(_dq2); ELSE EXECUTE dbo.tsql_dyn(_dq2); END IF;
     END IF;
     IF (0 <> 0) THEN
       RAISE EXCEPTION 'Problem in inserting detail records of Quotations to Remote DataBase';
@@ -25926,7 +25926,7 @@ BEGIN
   END IF;
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF ((0 = 0) AND (_rc > 0)) THEN
@@ -25939,7 +25939,7 @@ BEGIN
     END IF;
     _dq2 := v_query;
     IF _dq2 IS NOT NULL THEN
-      IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE _dq2; ELSE EXECUTE _dq2; END IF;
+      IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE dbo.tsql_dyn(_dq2); ELSE EXECUTE dbo.tsql_dyn(_dq2); END IF;
     END IF;
     GET DIAGNOSTICS _rc = ROW_COUNT;
     IF ((0 <> 0) OR (_rc = 0)) THEN
@@ -25998,7 +25998,7 @@ BEGIN
   END IF;
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF ((0 = 0) AND (_rc > 0)) THEN
@@ -26011,7 +26011,7 @@ BEGIN
     END IF;
     _dq2 := v_query;
     IF _dq2 IS NOT NULL THEN
-      IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE _dq2; ELSE EXECUTE _dq2; END IF;
+      IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE dbo.tsql_dyn(_dq2); ELSE EXECUTE dbo.tsql_dyn(_dq2); END IF;
     END IF;
     GET DIAGNOSTICS _rc = ROW_COUNT;
     IF ((0 <> 0) OR (_rc = 0)) THEN
@@ -26069,7 +26069,7 @@ BEGIN
   END IF;
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF ((0 = 0) AND (_rc > 0)) THEN
@@ -26082,7 +26082,7 @@ BEGIN
     END IF;
     _dq2 := v_query;
     IF _dq2 IS NOT NULL THEN
-      IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE _dq2; ELSE EXECUTE _dq2; END IF;
+      IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE dbo.tsql_dyn(_dq2); ELSE EXECUTE dbo.tsql_dyn(_dq2); END IF;
     END IF;
     GET DIAGNOSTICS _rc = ROW_COUNT;
     IF (0 <> 0) THEN
@@ -26191,7 +26191,7 @@ BEGIN
   v_query := (((('Select SiteCode, Site=(SELECT Site.Name + SPACE(1) + CHAR(45) + SPACE(1) + InstanceID FROM Site WHERE Site.Sitecode = T.SiteCode), T.IssueInvCode, T.Date, T.Remarks From ' || v_prefix) || 'DB_IssueHeader AS T WHERE T.TargetSiteCode = ') || ltrim(rtrim(dbo.tsql_str((v_sitecode)::numeric)))) || ' AND T.Pulled = ''N''');
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   return_value := 1;
   RETURN;
@@ -26800,7 +26800,7 @@ BEGIN
     v_stmt := ((('ALTER TABLE DBO.' || ltrim(rtrim(v_table))) || ' DROP CONSTRAINT ') || ltrim(rtrim(v_const)));
     _dq1 := v_stmt;
     IF _dq1 IS NOT NULL THEN
-      EXECUTE _dq1;
+      EXECUTE dbo.tsql_dyn(_dq1);
     END IF;
     FETCH NEXT FROM cur_c1 INTO v_table, v_col, v_priority, v_const, v_newdatatype;
     IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
@@ -26814,17 +26814,17 @@ BEGIN
     v_stmt := (((((('UPDATE DBO.' || ltrim(rtrim(v_table))) || ' SET ') || v_col) || ' = 0.00 WHERE ') || v_col) || ' IS NULL');
     _dq2 := v_stmt;
     IF _dq2 IS NOT NULL THEN
-      EXECUTE _dq2;
+      EXECUTE dbo.tsql_dyn(_dq2);
     END IF;
     v_stmt := ((((('ALTER TABLE DBO.' || ltrim(rtrim(v_table))) || ' ALTER COLUMN ') || v_col) || ' ') || v_newdatatype);
     _dq3 := v_stmt;
     IF _dq3 IS NOT NULL THEN
-      EXECUTE _dq3;
+      EXECUTE dbo.tsql_dyn(_dq3);
     END IF;
     v_stmt := ((((((('ALTER TABLE DBO.' || ltrim(rtrim(v_table))) || ' ADD CONSTRAINT DF_') || ltrim(rtrim(v_table))) || '_') || ltrim(rtrim(v_col))) || ' DEFAULT (0) FOR ') || ltrim(rtrim(v_col)));
     _dq4 := v_stmt;
     IF _dq4 IS NOT NULL THEN
-      EXECUTE _dq4;
+      EXECUTE dbo.tsql_dyn(_dq4);
     END IF;
     FETCH NEXT FROM cur_c2 INTO v_table, v_col, v_priority, v_newdatatype;
     IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
@@ -27337,7 +27337,7 @@ BEGIN
   v_qry := qry;
   _dq1 := v_qry;
   IF _dq1 IS NOT NULL THEN
-    EXECUTE _dq1;
+    EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   return_value := 0;
   RETURN;
@@ -27650,7 +27650,7 @@ BEGIN
   v_query := ((((((('Select POCode, Date, Remarks, PurOrderCatCode From  ' || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.') || 'PurOrderHeader');
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   return_value := 1;
   RETURN;
@@ -27697,7 +27697,7 @@ BEGIN
   v_query := (((('Select SiteCode, Site=(SELECT Site.Name + SPACE(1) + CHAR(45) + SPACE(1) + InstanceID FROM Site WHERE Site.Sitecode = T.SiteCode), T.POCode, T.Date, T.Remarks, T.PurOrderCatCode, T.CustCode From  ' || v_prefix) || 'DB_PurOrderHeader AS T WHERE T.TargetSiteCode = ') || ltrim(rtrim(dbo.tsql_str((v_sitecode)::numeric)))) || ' AND T.Pulled = ''N''');
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   return_value := 1;
   RETURN;
@@ -31384,7 +31384,7 @@ BEGIN
   v_query := ((((((('Select PRInvCode, Date, InvTotal, Remarks, CustCode, DataCarryCustCode From  ' || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.') || 'PrLedger');
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   return_value := 1;
   RETURN;
@@ -31431,7 +31431,7 @@ BEGIN
   v_query := (((('Select T.SiteCode, Site=(SELECT Site.Name + SPACE(1) + CHAR(45) + SPACE(1) + InstanceID FROM Site WHERE Site.Sitecode = T.SiteCode), T.PRInvCode, T.Date, T.InvTotal, T.Remarks, T.CustCode, T.DataCarryCustCode From  ' || v_prefix) || 'DB_PrLedger AS T  WHERE T.TargetSiteCode = ') || ltrim(rtrim(dbo.tsql_str((v_sitecode)::numeric)))) || ' AND T.Pulled = ''N''');
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   return_value := 1;
   RETURN;
@@ -31797,7 +31797,7 @@ BEGIN
   v_query := ((((((('Select Purinvcode, Date, InvTotal, Remarks From 	' || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.') || 'PurLedger');
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   return_value := 1;
   RETURN;
@@ -31825,7 +31825,7 @@ BEGIN
   v_query := ((((((('Select Quotationcode, Date, CustRefNo, Remarks From 	' || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.') || 'QuotationHeader');
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   return_value := 1;
   RETURN;
@@ -32467,7 +32467,7 @@ BEGIN
   v_query := ((((((('Select SaleInvCode, Date, InvTotal, Remarks From 	' || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.') || 'SaleLedger');
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   return_value := 1;
   RETURN;
@@ -32514,7 +32514,7 @@ BEGIN
   v_query := (((('Select SiteCode, Site=(SELECT Site.Name + SPACE(1) + CHAR(45) + SPACE(1) + InstanceID FROM Site WHERE Site.Sitecode = T.SiteCode), T.SaleInvCode, T.Date, T.InvTotal, T.Remarks From 	' || v_prefix) || 'DB_SaleLedger AS T WHERE T.TargetSiteCode = ') || ltrim(rtrim(dbo.tsql_str((v_sitecode)::numeric)))) || ' AND T.Pulled = ''N''');
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   return_value := 1;
   RETURN;
@@ -32686,7 +32686,7 @@ BEGIN
           v_upd := ((((((((('UPDATE CrossTab_ReportData SET C_Name' || v_str_col) || ' = ''') || v_colname) || ''', C_Code') || v_str_col) || ' = ') || v_colcode) || ' WHERE CODE2 = ') || ltrim(rtrim(dbo.tsql_str((v_curriter)::numeric, 7))));
           _dq1 := v_upd;
           IF _dq1 IS NOT NULL THEN
-            EXECUTE _dq1;
+            EXECUTE dbo.tsql_dyn(_dq1);
           END IF;
           v_err := 0;
           IF (v_err <> 0) THEN
@@ -32712,7 +32712,7 @@ BEGIN
         v_upd := ((((((((((((((((((('UPDATE CrossTab_ReportData SET ' || 'QTY') || v_str_col) || ' = ') || ltrim(rtrim(dbo.tsql_str((v_qty)::numeric, 7)))) || ', VAL') || v_str_col) || ' = ') || ltrim(rtrim(dbo.tsql_str((v_val)::numeric, 15, 5)))) || ', C_Code') || v_str_col) || ' = ') || v_colname) || ' WHERE CODE1 = ') || v_colcode) || ' AND ') || ' C_Code') || v_str_col) || ' = ') || v_colname);
         _dq2 := v_upd;
         IF _dq2 IS NOT NULL THEN
-          EXECUTE _dq2;
+          EXECUTE dbo.tsql_dyn(_dq2);
         END IF;
         v_err := 0;
         IF (v_err <> 0) THEN
@@ -33151,7 +33151,7 @@ BEGIN
   END IF;
   _dq1 := v_qry;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   return_value := 0;
   RETURN;
@@ -33177,7 +33177,7 @@ BEGIN
   v_query := ((((((('Select ServiceInvCode, Date, InvTotal, Remarks From 	' || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.') || 'ServiceHeader');
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   return_value := 1;
   RETURN;
@@ -33516,7 +33516,7 @@ BEGIN
   v_qry := (((((((('UPDATE ' || v_full_table_name) || ' SET UserCode = ') || ltrim(rtrim(dbo.tsql_str((v_usercode)::numeric, 10)))) || v_from) || v_tablename) || ' AS T, ') || v_full_table_name) || ' AS I WHERE T.ICode = I.ICode ');
   _dq1 := v_qry;
   IF _dq1 IS NOT NULL THEN
-    EXECUTE _dq1;
+    EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   v_err := 0;
   IF (v_err <> 0) THEN
@@ -33671,7 +33671,7 @@ BEGIN
   v_query := ((((((('Select SaleOrderCode, Date, Remarks From  ' || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.') || 'SaleOrderHeader');
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   return_value := 1;
   RETURN;
@@ -33725,7 +33725,7 @@ BEGIN
   v_query := ((((((('Select StockAuditJobID, JobName, Remarks From   ' || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.') || 'StockAuditJob WHERE Posted = ''Y''');
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   return_value := 1;
   RETURN;
@@ -33972,7 +33972,7 @@ BEGIN
           v_upd := ((((((((('UPDATE CrossTab_ReportData SET C_Name' || v_str_col) || ' = ''') || v_colname) || ''', C_Code') || v_str_col) || ' = ') || v_colcode) || ' WHERE CODE2 = ') || ltrim(rtrim(dbo.tsql_str((v_curriter)::numeric, 7))));
           _dq1 := v_upd;
           IF _dq1 IS NOT NULL THEN
-            EXECUTE _dq1;
+            EXECUTE dbo.tsql_dyn(_dq1);
           END IF;
           v_err := 0;
           IF (v_err <> 0) THEN
@@ -33998,7 +33998,7 @@ BEGIN
         v_upd := ((((((((((((((((((((((('UPDATE CrossTab_ReportData SET ' || 'QTY') || v_str_col) || ' = ') || ltrim(rtrim(dbo.tsql_str((v_qty)::numeric, 15, 4)))) || ', Value') || v_str_col) || ' = ') || ltrim(rtrim(dbo.tsql_str((v_bonus)::numeric, 15, 4)))) || ', VAL') || v_str_col) || ' = ') || ltrim(rtrim(dbo.tsql_str((v_val)::numeric, 15, 5)))) || ', C_Code') || v_str_col) || ' = ') || v_colname) || ' WHERE CODE1 = ') || v_colcode) || ' AND ') || ' C_Code') || v_str_col) || ' = ') || v_colname);
         _dq2 := v_upd;
         IF _dq2 IS NOT NULL THEN
-          EXECUTE _dq2;
+          EXECUTE dbo.tsql_dyn(_dq2);
         END IF;
         v_err := 0;
         IF (v_err <> 0) THEN
@@ -34319,7 +34319,7 @@ BEGIN
     v_qry := ('INSERT INTO REPORTDATA (Code1) SELECT Count(*) FROM ' || v_tablename);
     _dq1 := v_qry;
     IF _dq1 IS NOT NULL THEN
-      EXECUTE _dq1;
+      EXECUTE dbo.tsql_dyn(_dq1);
     END IF;
     v_err := 0;
     IF (v_err <> 0) THEN
@@ -34334,7 +34334,7 @@ BEGIN
     v_qry := (('INSERT INTO REPORTDATA (Code1) SELECT Count(*) FROM ' || v_remoteref) || v_tablename);
     _dq2 := v_qry;
     IF _dq2 IS NOT NULL THEN
-      EXECUTE _dq2;
+      EXECUTE dbo.tsql_dyn(_dq2);
     END IF;
     v_err := 0;
     IF (v_err <> 0) THEN
@@ -34370,7 +34370,7 @@ BEGIN
         v_del_qry := (((((((v_del || 'FROM OPENQUERY(') || v_srv) || ',''SELECT ') || v_pkcond) || ' FROM ') || v_tablename) || ''')');
         _dq3 := v_del_qry;
         IF _dq3 IS NOT NULL THEN
-          EXECUTE _dq3;
+          EXECUTE dbo.tsql_dyn(_dq3);
         END IF;
         v_err := 0;
         IF (v_err <> 0) THEN
@@ -34418,7 +34418,7 @@ BEGIN
           END IF;
           _dq4 := v_upd_qry;
           IF _dq4 IS NOT NULL THEN
-            EXECUTE _dq4;
+            EXECUTE dbo.tsql_dyn(_dq4);
           END IF;
           v_err := 0;
           IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -34448,7 +34448,7 @@ BEGIN
         END IF;
         _dq5 := v_ins_qry;
         IF _dq5 IS NOT NULL THEN
-          EXECUTE _dq5;
+          EXECUTE dbo.tsql_dyn(_dq5);
         END IF;
         v_err := 0;
         IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -34473,7 +34473,7 @@ BEGIN
   END IF;
   _dq6 := v_ins_qry;
   IF _dq6 IS NOT NULL THEN
-    EXECUTE _dq6;
+    EXECUTE dbo.tsql_dyn(_dq6);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -34594,7 +34594,7 @@ BEGIN
       v_del_qry := (((((((((v_del || v_tablename) || ' ') || v_whr) || v_pkcond) || v_notin) || v_pkcond) || v_from) || v_imp_tablename) || ')');
       _dq1 := v_del_qry;
       IF _dq1 IS NOT NULL THEN
-        EXECUTE _dq1;
+        EXECUTE dbo.tsql_dyn(_dq1);
       END IF;
       v_err := 0;
       IF (v_err <> 0) THEN
@@ -34638,7 +34638,7 @@ BEGIN
         v_upd_qry := (((((((((v_upd || v_tablename) || ' ') || v_setpart) || ' ') || v_from) || v_imp_tablename) || v_endd) || ' ') || v_upd_pkcond);
         _dq2 := v_upd_qry;
         IF _dq2 IS NOT NULL THEN
-          EXECUTE _dq2;
+          EXECUTE dbo.tsql_dyn(_dq2);
         END IF;
         v_err := 0;
         IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -34673,7 +34673,7 @@ BEGIN
       END IF;
       _dq3 := v_ins_qry;
       IF _dq3 IS NOT NULL THEN
-        EXECUTE _dq3;
+        EXECUTE dbo.tsql_dyn(_dq3);
       END IF;
       v_err := 0;
       IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -34689,7 +34689,7 @@ BEGIN
       v_tabmaxsql := (((((((('UPDATE _tabmaxkey SET TABMAXKEY = ' || ' COALESCE((SELECT ') || v_maxcol) || ' FROM  ') || rtrim(ltrim(v_tablename))) || '), 0) ') || 'WHERE TABNAME = ''') || rtrim(ltrim(v_tablename))) || '''');
       _dq4 := v_tabmaxsql;
       IF _dq4 IS NOT NULL THEN
-        EXECUTE _dq4;
+        EXECUTE dbo.tsql_dyn(_dq4);
       END IF;
       v_err := 0;
       IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -34710,7 +34710,7 @@ BEGIN
     v_ins_qry := 'INSERT INTO DBO.GodownDetail SELECT * FROM DBO.Import_GodownDetail';
     _dq5 := v_ins_qry;
     IF _dq5 IS NOT NULL THEN
-      EXECUTE _dq5;
+      EXECUTE dbo.tsql_dyn(_dq5);
     END IF;
     v_err := 0;
     IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -34819,7 +34819,7 @@ BEGIN
     END IF;
     _dq1 := v_qry;
     IF _dq1 IS NOT NULL THEN
-      EXECUTE _dq1;
+      EXECUTE dbo.tsql_dyn(_dq1);
     END IF;
     v_syncablerows := trunc(coalesce((SELECT sum(code1) FROM dbo.reportdata), 0))::integer;
     IF ((v_synchronize = 'Y') AND (v_syncablerows > 0)) THEN
@@ -34858,7 +34858,7 @@ BEGIN
         RAISE NOTICE '%', v_qry;
         _dq2 := v_qry;
         IF _dq2 IS NOT NULL THEN
-          EXECUTE _dq2;
+          EXECUTE dbo.tsql_dyn(_dq2);
         END IF;
         v_err := 0;
         IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -34877,7 +34877,7 @@ BEGIN
           RAISE NOTICE '%', v_qry;
           _dq3 := v_qry;
           IF _dq3 IS NOT NULL THEN
-            EXECUTE _dq3;
+            EXECUTE dbo.tsql_dyn(_dq3);
           END IF;
           v_err := 0;
           IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -34898,7 +34898,7 @@ BEGIN
   v_qry := (('DELETE ' || v_remoteref) || 'GodownDetail');
   _dq4 := v_qry;
   IF _dq4 IS NOT NULL THEN
-    EXECUTE _dq4;
+    EXECUTE dbo.tsql_dyn(_dq4);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -34909,7 +34909,7 @@ BEGIN
   v_qry := (('INSERT INTO ' || v_remoteref) || 'GodownDetail SELECT * FROM GodownDetail');
   _dq5 := v_qry;
   IF _dq5 IS NOT NULL THEN
-    EXECUTE _dq5;
+    EXECUTE dbo.tsql_dyn(_dq5);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -35189,7 +35189,7 @@ BEGIN
   v_srcupd := (((((((('UPDATE ' || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.GLHeader SET TRANSFERED=''Y'', TRANSFEREDON = localtimestamp(3), TRANSFEREDBY = ') || ltrim(rtrim(dbo.tsql_str((v_usercode)::numeric)))) || ' WHERE GLVochCode IN (SELECT GLVochCode=OLDGLVochCode FROM GLHTEMP WHERE GLVochCode >= 0)');
   _dq1 := v_sqlheader;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   v_errcode := 0;
   IF ((0 <> 0) OR (v_errcode <> 0)) THEN
@@ -35207,7 +35207,7 @@ BEGIN
   END IF;
   _dq2 := v_sqldetail;
   IF _dq2 IS NOT NULL THEN
-    IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE _dq2; ELSE EXECUTE _dq2; END IF;
+    IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE dbo.tsql_dyn(_dq2); ELSE EXECUTE dbo.tsql_dyn(_dq2); END IF;
   END IF;
   v_errcode := 0;
   IF ((0 <> 0) OR (v_errcode <> 0)) THEN
@@ -35227,7 +35227,7 @@ BEGIN
   v_changevochtype := ' UPDATE GLHTEMP SET VochCatCode = CASE WHEN VochCatCode <= 5 THEN VochCatCode WHEN VochCatCode = 12 THEN 2 WHEN VochCatCode = 13 THEN 4 WHEN VochCatCode = 15 THEN 1 WHEN VochCatCode = 16 THEN 3 ELSE 5 END  ';
   _dq3 := v_changevochtype;
   IF _dq3 IS NOT NULL THEN
-    EXECUTE _dq3;
+    EXECUTE dbo.tsql_dyn(_dq3);
   END IF;
   v_errcode := 0;
   IF ((0 <> 0) OR (v_errcode <> 0)) THEN
@@ -35239,7 +35239,7 @@ BEGIN
   v_changevochtype := ' UPDATE GLDTEMP SET InvoiceCode=NULL, OutStandingAmt=0, Balance=0  ';
   _dq4 := v_changevochtype;
   IF _dq4 IS NOT NULL THEN
-    EXECUTE _dq4;
+    EXECUTE dbo.tsql_dyn(_dq4);
   END IF;
   v_errcode := 0;
   IF ((0 <> 0) OR (v_errcode <> 0)) THEN
@@ -35305,7 +35305,7 @@ BEGIN
     -- SET XACT_ABORT ON
     _dq5 := v_srcupd;
     IF _dq5 IS NOT NULL THEN
-      EXECUTE _dq5;
+      EXECUTE dbo.tsql_dyn(_dq5);
     END IF;
     v_errcode := 0;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
@@ -35326,7 +35326,7 @@ BEGIN
     v_sql := ((((('INSERT INTO DBO.GLHeader ( ' || v_list) || ' ) ') || 'SELECT ') || v_list) || ' FROM GLHTEMP WHERE GLHTEMP.GLVochCode >= 0');
     _dq6 := v_sql;
     IF _dq6 IS NOT NULL THEN
-      IF _dq6 ~* '^[[:space:]]*select' THEN OPEN rs3 FOR EXECUTE _dq6; ELSE EXECUTE _dq6; END IF;
+      IF _dq6 ~* '^[[:space:]]*select' THEN OPEN rs3 FOR EXECUTE dbo.tsql_dyn(_dq6); ELSE EXECUTE dbo.tsql_dyn(_dq6); END IF;
     END IF;
     v_errcode := 0;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
@@ -35347,7 +35347,7 @@ BEGIN
     v_sql := ((((('INSERT INTO DBO.GLDETAIL ( ' || v_list) || ' ) ') || 'SELECT ') || v_list) || ' FROM GLDTEMP WHERE GLDTEMP.GLVochCode >= 0');
     _dq7 := v_sql;
     IF _dq7 IS NOT NULL THEN
-      IF _dq7 ~* '^[[:space:]]*select' THEN OPEN rs4 FOR EXECUTE _dq7; ELSE EXECUTE _dq7; END IF;
+      IF _dq7 ~* '^[[:space:]]*select' THEN OPEN rs4 FOR EXECUTE dbo.tsql_dyn(_dq7); ELSE EXECUTE dbo.tsql_dyn(_dq7); END IF;
     END IF;
     v_errcode := 0;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
@@ -35489,7 +35489,7 @@ BEGIN
       v_del_qry := (((((((((v_del || v_tablename) || ' ') || v_whr) || v_pkcond) || v_notin) || v_pkcond) || v_from) || v_tablename) || ')');
       _dq1 := v_del_qry;
       IF _dq1 IS NOT NULL THEN
-        EXECUTE _dq1;
+        EXECUTE dbo.tsql_dyn(_dq1);
       END IF;
       v_err := 0;
       IF (v_err <> 0) THEN
@@ -35533,7 +35533,7 @@ BEGIN
         v_upd_qry := (((((((((v_upd || v_tablename) || ' ') || v_setpart) || ' ') || v_from) || v_tablename) || v_endd) || ' ') || v_upd_pkcond);
         _dq2 := v_upd_qry;
         IF _dq2 IS NOT NULL THEN
-          EXECUTE _dq2;
+          EXECUTE dbo.tsql_dyn(_dq2);
         END IF;
         v_err := 0;
         IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -35563,7 +35563,7 @@ BEGIN
       END IF;
       _dq3 := v_ins_qry;
       IF _dq3 IS NOT NULL THEN
-        EXECUTE _dq3;
+        EXECUTE dbo.tsql_dyn(_dq3);
       END IF;
       v_err := 0;
       IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -35579,7 +35579,7 @@ BEGIN
       v_tabmaxsql := (((((((('UPDATE _tabmaxkey SET TABMAXKEY = ' || ' COALESCE((SELECT ') || v_maxcol) || ' FROM  ') || rtrim(ltrim(v_tablename))) || '), 0) ') || 'WHERE TABNAME = ''') || rtrim(ltrim(v_tablename))) || '''');
       _dq4 := v_tabmaxsql;
       IF _dq4 IS NOT NULL THEN
-        EXECUTE _dq4;
+        EXECUTE dbo.tsql_dyn(_dq4);
       END IF;
       v_err := 0;
       IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -35603,7 +35603,7 @@ BEGIN
   END IF;
   _dq5 := v_ins_qry;
   IF _dq5 IS NOT NULL THEN
-    EXECUTE _dq5;
+    EXECUTE dbo.tsql_dyn(_dq5);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -35696,7 +35696,7 @@ BEGIN
   v_srcupd := (((((((('UPDATE ' || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.THeader SET TRANSFERED=''Y'', TRANSFEREDON = localtimestamp(3), TRANSFEREDBY = ') || ltrim(rtrim(dbo.tsql_str((v_usercode)::numeric)))) || ' WHERE TRANSCODE IN (SELECT OLDINVCODE FROM THTEMP WHERE TRANSCODE >= 0)');
   _dq1 := v_sqlheader;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_errcode := 0;
@@ -35715,7 +35715,7 @@ BEGIN
   END IF;
   _dq2 := v_sqldetail;
   IF _dq2 IS NOT NULL THEN
-    IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE _dq2; ELSE EXECUTE _dq2; END IF;
+    IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE dbo.tsql_dyn(_dq2); ELSE EXECUTE dbo.tsql_dyn(_dq2); END IF;
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_errcode := 0;
@@ -35977,7 +35977,7 @@ BEGIN
     -- SET XACT_ABORT ON
     _dq4 := v_srcupd;
     IF _dq4 IS NOT NULL THEN
-      EXECUTE _dq4;
+      EXECUTE dbo.tsql_dyn(_dq4);
     END IF;
     GET DIAGNOSTICS _rc = ROW_COUNT;
     v_errcode := 0;
@@ -35999,7 +35999,7 @@ BEGIN
     v_sql := ((((('INSERT INTO THEADER ( ' || v_list) || ' ) ') || 'SELECT ') || v_list) || ' FROM THTEMP WHERE THTEMP.TRANSCODE >=0');
     _dq5 := v_sql;
     IF _dq5 IS NOT NULL THEN
-      IF _dq5 ~* '^[[:space:]]*select' THEN OPEN rs3 FOR EXECUTE _dq5; ELSE EXECUTE _dq5; END IF;
+      IF _dq5 ~* '^[[:space:]]*select' THEN OPEN rs3 FOR EXECUTE dbo.tsql_dyn(_dq5); ELSE EXECUTE dbo.tsql_dyn(_dq5); END IF;
     END IF;
     GET DIAGNOSTICS _rc = ROW_COUNT;
     v_errcode := 0;
@@ -36021,7 +36021,7 @@ BEGIN
     v_sql := ((((('INSERT INTO TDETAIL ( ' || v_list) || ' ) ') || 'SELECT ') || v_list) || ' FROM TDTEMP2 WHERE TDTEMP2.TRANSCODE >=0 ORDER BY TDTEMP2.ID');
     _dq6 := v_sql;
     IF _dq6 IS NOT NULL THEN
-      IF _dq6 ~* '^[[:space:]]*select' THEN OPEN rs4 FOR EXECUTE _dq6; ELSE EXECUTE _dq6; END IF;
+      IF _dq6 ~* '^[[:space:]]*select' THEN OPEN rs4 FOR EXECUTE dbo.tsql_dyn(_dq6); ELSE EXECUTE dbo.tsql_dyn(_dq6); END IF;
     END IF;
     GET DIAGNOSTICS _rc = ROW_COUNT;
     v_errcode := 0;
@@ -36131,7 +36131,7 @@ BEGIN
   v_srcupd := (((((((('UPDATE ' || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.PurLedger SET TRANSFERED=''Y'', TRANSFEREDON = localtimestamp(3), TRANSFEREDBY = ') || ltrim(rtrim(dbo.tsql_str((v_usercode)::numeric)))) || ' WHERE PURINVCODE IN (SELECT OLDINVCODE FROM PLTEMP WHERE PURINVCODE >= 0)');
   _dq1 := v_sqlheader;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_errcode := 0;
@@ -36150,7 +36150,7 @@ BEGIN
   END IF;
   _dq2 := v_sqldetail;
   IF _dq2 IS NOT NULL THEN
-    IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE _dq2; ELSE EXECUTE _dq2; END IF;
+    IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE dbo.tsql_dyn(_dq2); ELSE EXECUTE dbo.tsql_dyn(_dq2); END IF;
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_errcode := 0;
@@ -36315,7 +36315,7 @@ BEGIN
     -- SET XACT_ABORT ON
     _dq3 := v_srcupd;
     IF _dq3 IS NOT NULL THEN
-      EXECUTE _dq3;
+      EXECUTE dbo.tsql_dyn(_dq3);
     END IF;
     GET DIAGNOSTICS _rc = ROW_COUNT;
     v_errcode := 0;
@@ -36337,7 +36337,7 @@ BEGIN
     v_sql := ((((('INSERT INTO PURLEDGER ( ' || v_list) || ' ) ') || 'SELECT ') || v_list) || ' FROM PLTEMP WHERE PLTEMP.PURINVCODE >= 0');
     _dq4 := v_sql;
     IF _dq4 IS NOT NULL THEN
-      IF _dq4 ~* '^[[:space:]]*select' THEN OPEN rs3 FOR EXECUTE _dq4; ELSE EXECUTE _dq4; END IF;
+      IF _dq4 ~* '^[[:space:]]*select' THEN OPEN rs3 FOR EXECUTE dbo.tsql_dyn(_dq4); ELSE EXECUTE dbo.tsql_dyn(_dq4); END IF;
     END IF;
     GET DIAGNOSTICS _rc = ROW_COUNT;
     v_errcode := 0;
@@ -36359,7 +36359,7 @@ BEGIN
     v_sql := ((((('INSERT INTO PURDETAIL ( ' || v_list) || ' ) ') || 'SELECT ') || v_list) || ' FROM PDTEMP WHERE PDTEMP.PURINVCODE >= 0');
     _dq5 := v_sql;
     IF _dq5 IS NOT NULL THEN
-      IF _dq5 ~* '^[[:space:]]*select' THEN OPEN rs4 FOR EXECUTE _dq5; ELSE EXECUTE _dq5; END IF;
+      IF _dq5 ~* '^[[:space:]]*select' THEN OPEN rs4 FOR EXECUTE dbo.tsql_dyn(_dq5); ELSE EXECUTE dbo.tsql_dyn(_dq5); END IF;
     END IF;
     GET DIAGNOSTICS _rc = ROW_COUNT;
     v_errcode := 0;
@@ -36467,7 +36467,7 @@ BEGIN
   v_srcupd := (((((((('UPDATE ' || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.PurLedger SET TRANSFERED=''Y'', TRANSFEREDON = localtimestamp(3), TRANSFEREDBY = ') || ltrim(rtrim(dbo.tsql_str((v_usercode)::numeric)))) || ' WHERE PURINVCODE IN (SELECT OLDINVCODE FROM PLTEMP WHERE PURINVCODE >= 0)');
   _dq1 := v_sqlheader;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   v_errcode := 0;
   IF ((0 <> 0) OR (v_errcode <> 0)) THEN
@@ -36485,7 +36485,7 @@ BEGIN
   END IF;
   _dq2 := v_sqldetail;
   IF _dq2 IS NOT NULL THEN
-    IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE _dq2; ELSE EXECUTE _dq2; END IF;
+    IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE dbo.tsql_dyn(_dq2); ELSE EXECUTE dbo.tsql_dyn(_dq2); END IF;
   END IF;
   v_errcode := 0;
   IF ((0 <> 0) OR (v_errcode <> 0)) THEN
@@ -36561,7 +36561,7 @@ BEGIN
     -- SET XACT_ABORT ON
     _dq3 := v_srcupd;
     IF _dq3 IS NOT NULL THEN
-      EXECUTE _dq3;
+      EXECUTE dbo.tsql_dyn(_dq3);
     END IF;
     v_errcode := 0;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
@@ -36582,7 +36582,7 @@ BEGIN
     v_sql := ((((('INSERT INTO PURLEDGER ( ' || v_list) || ' ) ') || 'SELECT ') || v_list) || ' FROM PLTEMP WHERE PLTEMP.PURINVCODE >= 0');
     _dq4 := v_sql;
     IF _dq4 IS NOT NULL THEN
-      IF _dq4 ~* '^[[:space:]]*select' THEN OPEN rs3 FOR EXECUTE _dq4; ELSE EXECUTE _dq4; END IF;
+      IF _dq4 ~* '^[[:space:]]*select' THEN OPEN rs3 FOR EXECUTE dbo.tsql_dyn(_dq4); ELSE EXECUTE dbo.tsql_dyn(_dq4); END IF;
     END IF;
     v_errcode := 0;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
@@ -36603,7 +36603,7 @@ BEGIN
     v_sql := ((((('INSERT INTO PURDETAIL ( ' || v_list) || ' ) ') || 'SELECT ') || v_list) || ' FROM PDTEMP WHERE PDTEMP.PURINVCODE >= 0 ORDER BY PDTEMP.PurRowID');
     _dq5 := v_sql;
     IF _dq5 IS NOT NULL THEN
-      IF _dq5 ~* '^[[:space:]]*select' THEN OPEN rs4 FOR EXECUTE _dq5; ELSE EXECUTE _dq5; END IF;
+      IF _dq5 ~* '^[[:space:]]*select' THEN OPEN rs4 FOR EXECUTE dbo.tsql_dyn(_dq5); ELSE EXECUTE dbo.tsql_dyn(_dq5); END IF;
     END IF;
     v_errcode := 0;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
@@ -36690,7 +36690,7 @@ BEGIN
   v_srcupd := (((('UPDATE ' || v_tablequalifier) || '.SaleLedger SET TRANSFERED=''Y'', TRANSFEREDON = localtimestamp(3), TRANSFEREDBY = ') || ltrim(rtrim(dbo.tsql_str((v_usercode)::numeric)))) || ' WHERE SaleInvCode IN (SELECT OLDINVCODE FROM SOHTEMP WHERE SaleInvCode >= 0)');
   _dq1 := v_sqlheader;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   v_errcode := 0;
   IF ((0 <> 0) OR (v_errcode <> 0)) THEN
@@ -36710,7 +36710,7 @@ BEGIN
   END IF;
   _dq2 := v_sqldetail;
   IF _dq2 IS NOT NULL THEN
-    IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE _dq2; ELSE EXECUTE _dq2; END IF;
+    IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE dbo.tsql_dyn(_dq2); ELSE EXECUTE dbo.tsql_dyn(_dq2); END IF;
   END IF;
   v_errcode := 0;
   IF ((0 <> 0) OR (v_errcode <> 0)) THEN
@@ -36791,7 +36791,7 @@ BEGIN
   -- SET XACT_ABORT ON
   _dq3 := v_srcupd;
   IF _dq3 IS NOT NULL THEN
-    EXECUTE _dq3;
+    EXECUTE dbo.tsql_dyn(_dq3);
   END IF;
   v_errcode := 0;
   IF ((0 <> 0) OR (v_errcode <> 0)) THEN
@@ -36905,7 +36905,7 @@ BEGIN
   v_srcupd := (((('UPDATE ' || v_tablequalifier) || '.SaleLedger SET TRANSFERED=''Y'', TRANSFEREDON = localtimestamp(3), TRANSFEREDBY = ') || ltrim(rtrim(dbo.tsql_str((v_usercode)::numeric)))) || ' WHERE SaleInvCode IN (SELECT OLDINVCODE FROM SHTEMP WHERE SaleInvCode >= 0)');
   _dq1 := v_sqlheader;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_errcode := 0;
@@ -36924,7 +36924,7 @@ BEGIN
   END IF;
   _dq2 := v_sqldetail;
   IF _dq2 IS NOT NULL THEN
-    IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE _dq2; ELSE EXECUTE _dq2; END IF;
+    IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE dbo.tsql_dyn(_dq2); ELSE EXECUTE dbo.tsql_dyn(_dq2); END IF;
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_errcode := 0;
@@ -37204,7 +37204,7 @@ BEGIN
     -- SET XACT_ABORT ON
     _dq3 := v_srcupd;
     IF _dq3 IS NOT NULL THEN
-      EXECUTE _dq3;
+      EXECUTE dbo.tsql_dyn(_dq3);
     END IF;
     GET DIAGNOSTICS _rc = ROW_COUNT;
     v_errcode := 0;
@@ -37226,7 +37226,7 @@ BEGIN
     v_sql := ((((('INSERT INTO SaleLedger ( ' || v_list) || ' ) ') || 'SELECT ') || v_list) || ' FROM SHTEMP WHERE SHTEMP.SALEINVCODE >=0');
     _dq4 := v_sql;
     IF _dq4 IS NOT NULL THEN
-      IF _dq4 ~* '^[[:space:]]*select' THEN OPEN rs3 FOR EXECUTE _dq4; ELSE EXECUTE _dq4; END IF;
+      IF _dq4 ~* '^[[:space:]]*select' THEN OPEN rs3 FOR EXECUTE dbo.tsql_dyn(_dq4); ELSE EXECUTE dbo.tsql_dyn(_dq4); END IF;
     END IF;
     GET DIAGNOSTICS _rc = ROW_COUNT;
     v_errcode := 0;
@@ -37247,7 +37247,7 @@ BEGIN
     v_sql := ((((('INSERT INTO SALEDETAIL ( ' || v_list) || ' ) ') || 'SELECT ') || v_list) || ' FROM SDTEMP2 WHERE SALEINVCODE >= 0 ORDER BY ROWID');
     _dq5 := v_sql;
     IF _dq5 IS NOT NULL THEN
-      IF _dq5 ~* '^[[:space:]]*select' THEN OPEN rs4 FOR EXECUTE _dq5; ELSE EXECUTE _dq5; END IF;
+      IF _dq5 ~* '^[[:space:]]*select' THEN OPEN rs4 FOR EXECUTE dbo.tsql_dyn(_dq5); ELSE EXECUTE dbo.tsql_dyn(_dq5); END IF;
     END IF;
     GET DIAGNOSTICS _rc = ROW_COUNT;
     v_errcode := 0;
@@ -38118,7 +38118,7 @@ BEGIN
   v_query := ((v_ins || v_sql) || v_whr);
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
-    EXECUTE _dq1;
+    EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -38146,7 +38146,7 @@ BEGIN
     v_query := ((v_ins || v_sql) || v_whr);
     _dq2 := v_query;
     IF _dq2 IS NOT NULL THEN
-      EXECUTE _dq2;
+      EXECUTE dbo.tsql_dyn(_dq2);
     END IF;
     v_err := 0;
     IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -38163,7 +38163,7 @@ BEGIN
       v_query := (v_ins || v_whr);
       _dq3 := v_query;
       IF _dq3 IS NOT NULL THEN
-        EXECUTE _dq3;
+        EXECUTE dbo.tsql_dyn(_dq3);
       END IF;
       v_err := 0;
       IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -38182,7 +38182,7 @@ BEGIN
       END IF;
       _dq4 := v_query;
       IF _dq4 IS NOT NULL THEN
-        EXECUTE _dq4;
+        EXECUTE dbo.tsql_dyn(_dq4);
       END IF;
       v_err := 0;
       IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -38386,7 +38386,7 @@ BEGIN
   v_qry := (((((('UPDATE ' || v_dbname) || '.DBO.SaleDetail SET AvgPrice = COALESCE((SELECT DBO.Fn_GetItemCostHistory(D.ICode, S.Date)), AvgPrice) FROM ') || v_dbname) || '.DBO.SaleLedger S, ') || v_dbname) || '.DBO.SaleDetail D WHERE S.SaleInvCode = D.SaleInvCode ');
   _dq1 := v_qry;
   IF _dq1 IS NOT NULL THEN
-    EXECUTE _dq1;
+    EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -38397,7 +38397,7 @@ BEGIN
   v_qry := (((((('UPDATE ' || v_dbname) || '.DBO.SRDetail SET AvgPrice = COALESCE((SELECT DBO.Fn_GetItemCostHistory(D.ICode, S.Date)), AvgPrice) FROM ') || v_dbname) || '.DBO.SRLedger S, ') || v_dbname) || '.DBO.SRDetail D WHERE S.SRInvCode = D.SRInvCode ');
   _dq2 := v_qry;
   IF _dq2 IS NOT NULL THEN
-    EXECUTE _dq2;
+    EXECUTE dbo.tsql_dyn(_dq2);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -38861,7 +38861,7 @@ BEGIN
       _dq1 := v_qry;
       IF _dq1 IS NOT NULL THEN
         rs1 := NULL;
-        IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+        IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
       END IF;
       v_err := 0;
       IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -39230,7 +39230,7 @@ BEGIN
     v_qry := ((((((((((v_upd || v_tablename) || ' ') || v_setpart) || ' ') || v_sql) || v_tablename) || v_endd) || ' ') || v_pkcond) || ltrim(rtrim(dbo.tsql_str((v_icatcode)::numeric))));
     _dq1 := v_qry;
     IF _dq1 IS NOT NULL THEN
-      EXECUTE _dq1;
+      EXECUTE dbo.tsql_dyn(_dq1);
     END IF;
     v_err := 0;
     IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -40844,7 +40844,7 @@ BEGIN
   v_qry := ((('if exists (select * from dbo.sysobjects where id = object_id(N''' || v_tablename) || ''') and OBJECTPROPERTY(id, N''IsUserTable'') = 1) ') || v_drop);
   _dq1 := v_qry;
   IF _dq1 IS NOT NULL THEN
-    EXECUTE _dq1;
+    EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -40887,7 +40887,7 @@ BEGIN
   v_qry := (((((((('EXECUTE ' || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.SP_WaseelaMini_Truncate ''') || v_table) || '''');
   _dq1 := v_qry;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
     RAISE EXCEPTION 'Export Data Problem: Truncate Table Failed for % ', v_table;
@@ -40898,7 +40898,7 @@ BEGIN
   v_qry := (((v_sql || v_table) || ' SELECT * FROM DBO.View_WaseelaMini_') || v_table);
   _dq2 := v_qry;
   IF _dq2 IS NOT NULL THEN
-    IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE _dq2; ELSE EXECUTE _dq2; END IF;
+    IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE dbo.tsql_dyn(_dq2); ELSE EXECUTE dbo.tsql_dyn(_dq2); END IF;
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -41065,7 +41065,7 @@ BEGIN
   v_qry := ((('INSERT INTO tmp_lt_so (webordercode, SaleOrderCode, OrderCode) ' || ' SELECT DISTINCT webordercode=SaleOrderCode , Null, Null FROM ') || v_prefix) || 'SaleOrderHeader WHERE Status=''PENDING'' AND SaleOrderCode NOT IN (SELECT WebOrderCode FROM SaleOrderHeader WHERE SOCatCode=1 AND WebOrderCode > 0)');
   _dq1 := v_qry;
   IF _dq1 IS NOT NULL THEN
-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE _dq1; ELSE EXECUTE _dq1; END IF;
+    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_err := 0;
@@ -41093,7 +41093,7 @@ BEGIN
   v_qry := (((('INSERT INTO DBO.SaleOrderHeader (SaleOrderCode, HeaderNo, CustCode, UserCode, Date, OriginalDate, BillingDate, DiscPerc, MiscCharges, InvGSTPerc1, Posted, PostDate, InvoiceSize, GSTNo, Invtotal, ItemDiscPercNo, Amt, Deleted, Finalized, SOCatCode, OrderCode, DeliveryDeadLine, LateDeliveryCharges, WebOrderCode, Status, Type) ' || ' SELECT T.SaleOrderCode, 1 AS HeaderNo, H.CustCode, 1 AS UserCode, H.Date, H.Date AS OriginalDate, H.date AS BillingDate, 0 AS DiscPerc, 0 AS MiscCharges, 0 AS InvGSTPerc1, ''N'' AS Posted, localtimestamp(3) AS PostDate, ''F'' AS InvoiceSize, 1 AS GSTNo, H.Invtotal, 1 AS ItemDiscPercNo, AdvanceAmount AS Amt, ''N'' AS Deleted, ''Y'' AS Finalized, 1 AS SOCatCode, T.OrderCode AS OrderCode, H.DeliveryDeadLine, H.DeliveryCharges AS LateDeliveryCharges, H.SaleOrderCode AS WebOrderCode, UPPER(H.Status), UPPER(H.Type) ') || ' FROM ') || v_prefix) || 'SaleOrderHeader H, tmp_lt_so T  WHERE H.Posted=''N'' AND H.SaleOrderCode = T.webordercode');
   _dq2 := v_qry;
   IF _dq2 IS NOT NULL THEN
-    IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE _dq2; ELSE EXECUTE _dq2; END IF;
+    IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE dbo.tsql_dyn(_dq2); ELSE EXECUTE dbo.tsql_dyn(_dq2); END IF;
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_err := 0;
@@ -41106,7 +41106,7 @@ BEGIN
   v_qry := (((((((('INSERT INTO DBO.SaleOrderDetail (SaleOrderCode, ICode, GCode, LooseQty, PackUnits, SalePrice, AvgPrice, Rate, DiscPerc, ItemFlatDIsc, SaleItemDescription, PackPrice, UnitSalesTax, GSTPerc, BonusQty, RowGroup, PackQtyForSale, Remarks, Batch, Expiry, StrengthPerc, Claimable, ClaimableDiscPerc, ItemAdvanceTaxPerc) ' || ' SELECT T.SaleOrderCode, D.ICode, GCode=1, LooseQty=D.Qty, PackUnits=I.PackUnits, SalePrice=D.SalePrice, I.AvgPrice, Rate=I.SalePrice, DiscPerc=0, ItemFlatDIsc=0, SaleItemDescription=D.Remarks, PackPrice=I.SalePrice, UnitSalesTax=Round(I.PackSalesTax / I.PackUnits, 2), GSTPerc=0, D.BonusQty, RowGroup=1, PackQtyForSale=0, D.Remarks, Batch=''.'', Expiry=''2099-12-12'', StrengthPerc=0, Claimable=''Y'', ClaimableDiscPerc=0, ItemAdvanceTaxPerc=0 ') || ' FROM ') || v_prefix) || 'SaleOrderDetail D, ') || v_prefix) || 'Item I, tmp_lt_so T ') || ' WHERE D.SaleOrderCode = T.webordercode AND D.ICode = I.ICode ') || ' ORDER BY D.SaleOrderCode, D.RowID ');
   _dq3 := v_qry;
   IF _dq3 IS NOT NULL THEN
-    IF _dq3 ~* '^[[:space:]]*select' THEN OPEN rs3 FOR EXECUTE _dq3; ELSE EXECUTE _dq3; END IF;
+    IF _dq3 ~* '^[[:space:]]*select' THEN OPEN rs3 FOR EXECUTE dbo.tsql_dyn(_dq3); ELSE EXECUTE dbo.tsql_dyn(_dq3); END IF;
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_err := 0;
@@ -41231,7 +41231,7 @@ BEGIN
   v_qry := ('Truncate TABLE ' || v_tablename);
   _dq1 := v_qry;
   IF _dq1 IS NOT NULL THEN
-    EXECUTE _dq1;
+    EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
@@ -41294,7 +41294,7 @@ BEGIN
   v_qry := ((((('UPDATE ' || v_prefix) || 'SaleOrderHeader SET Status = ''') || v_status) || ''', Synced = ''Y'', SyncedOn = GETDATE() WHERE SaleOrderCode = ') || dbo.tsql_str((v_webordercode)::numeric));
   _dq1 := v_qry;
   IF _dq1 IS NOT NULL THEN
-    EXECUTE _dq1;
+    EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_err := 0;
@@ -41522,7 +41522,7 @@ BEGIN
           v_upd := ((((((((('UPDATE CrossTab_ReportData SET C_Name' || v_str_col) || ' = ''') || v_colname) || ''', C_Code') || v_str_col) || ' = ') || v_colcode) || ' WHERE CODE2 = ') || ltrim(rtrim(dbo.tsql_str((v_curriter)::numeric, 7))));
           _dq1 := v_upd;
           IF _dq1 IS NOT NULL THEN
-            EXECUTE _dq1;
+            EXECUTE dbo.tsql_dyn(_dq1);
           END IF;
           v_err := 0;
           IF (v_err <> 0) THEN
@@ -41548,7 +41548,7 @@ BEGIN
         v_upd := ((((((((((((((((((((((('UPDATE CrossTab_ReportData SET ' || 'QTY') || v_str_col) || ' = ') || ltrim(rtrim(dbo.tsql_str((v_qty)::numeric, 7)))) || ', Value') || v_str_col) || ' = ') || ltrim(rtrim(dbo.tsql_str((v_bonus)::numeric, 15, 4)))) || ', VAL') || v_str_col) || ' = ') || ltrim(rtrim(dbo.tsql_str((v_val)::numeric, 15, 5)))) || ', C_Code') || v_str_col) || ' = ') || v_colname) || ' WHERE CODE1 = ') || v_colcode) || ' AND ') || ' C_Code') || v_str_col) || ' = ') || v_colname);
         _dq2 := v_upd;
         IF _dq2 IS NOT NULL THEN
-          EXECUTE _dq2;
+          EXECUTE dbo.tsql_dyn(_dq2);
         END IF;
         v_err := 0;
         IF (v_err <> 0) THEN

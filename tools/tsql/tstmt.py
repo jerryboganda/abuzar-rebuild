@@ -697,9 +697,9 @@ class StmtMixin:
             rs = self.rs_alloc()
             if self.ctx.loop_depth:
                 self.emit('%s := NULL;' % rs)
-            self.emit("IF %s ~* '^[[:space:]]*select' THEN OPEN %s FOR EXECUTE %s; ELSE EXECUTE %s; END IF;" % (dq, rs, dq, dq))
+            self.emit("IF %s ~* '^[[:space:]]*select' THEN OPEN %s FOR EXECUTE dbo.tsql_dyn(%s); ELSE EXECUTE dbo.tsql_dyn(%s); END IF;" % (dq, rs, dq, dq))
         else:
-            self.emit('EXECUTE %s;' % dq)
+            self.emit('EXECUTE dbo.tsql_dyn(%s);' % dq)
         self.dedent()
         self.emit('END IF;')
         self.after_dml()
