@@ -48,6 +48,7 @@ A stored procedure becomes `dbo.<name>(<params>, OUT return_value integer [, OUT
   BEGIN;
   SELECT * FROM dbo.sp_x(a => $1, b => $2);      -- one row: INOUT values, return_value, rs1, rs2 ...
   FETCH ALL FROM "<rs1 value>";                   -- rows of the first result set (cursor name is the refcursor value)
+  CLOSE "<rs1 value>";                            -- always close: an open cursor over a temp table blocks the next call's DROP/TRUNCATE of it
   COMMIT;
   ```
   A cursor slot that was not opened in this call is `NULL`. No column list is needed on the call, and the column types of the result are whatever

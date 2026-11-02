@@ -107,7 +107,10 @@ def main():
         return conn.execute(sql, a).fetchone()
 
     def fetch_rs(row, idx):
-        return conn.execute('FETCH ALL FROM "%s"' % row[idx]).fetchall()
+        # documented protocol: FETCH ALL, then CLOSE (an open cursor over a temp table blocks the next DROP/TRUNCATE of that table)
+        rows = conn.execute('FETCH ALL FROM "%s"' % row[idx]).fetchall()
+        conn.execute('CLOSE "%s"' % row[idx])
+        return rows
 
     # ---- identity / insert / trigger on insert
     conn.execute('BEGIN')
