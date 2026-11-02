@@ -247,6 +247,12 @@ export class NDwBase extends PBObject {
     if (!m) return -1
     const n = m.insertRow(toNum(r))
     this.changed()
+    // the new row is the current row and its current cell gets the item focus: the entry windows rely on it (dw_itemsdetail.itemfocuschanged sets
+    // `editflag`, which `wf_validatedate` returns; ue_newform clears `ib_focusdetail` right before it so that the event does not open the item list)
+    if (n > 0 && m.colNames.length) {
+      if (m.col < 1) m.col = 1
+      await this.rt.fire(this, 'itemfocuschanged', [n, { name: m.colNames[m.col - 1] }])
+    }
     return n
   }
   async n_deleterow(r: unknown = 0): Promise<number> {

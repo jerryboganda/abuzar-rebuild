@@ -128,6 +128,14 @@ export class DwModel implements EvalHost {
         return ini !== undefined && ini !== '' ? Number(ini) : null
       case 'decimal':
         return ini !== undefined && ini !== '' ? Dec.parse(ini) : null
+      case 'date':
+      case 'datetime':
+      case 'time': {
+        // the initial value `today` of a date / time column is the moment the row is inserted (the sale template's date shows 02/11/2026 11:46)
+        if (ini?.trim().toLowerCase() !== 'today') return null
+        const now = PBDateTime.fromJs(new Date())
+        return this.kinds[i] === 'date' ? now.date : this.kinds[i] === 'time' ? now.time : now
+      }
       default:
         return null
     }

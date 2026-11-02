@@ -40,7 +40,14 @@ Tools: `tools/orig/` (crawler, crop, icon and sprite builders), `web/tools/{gen-
 * A DataWindow control scrolls only where it has `HScrollBar` / `VScrollBar`; a form taller than the control shows from its top.
 * String display formats `'*****';'*****'` show for empty columns, too (password columns).
 * `Backup Database` is a `pg_dump`; SQL Agent job lookups (`SysJobs`) read `dbo.sysjobs`.
-
+* A DataWindow control whose design-time `dataobject` is set takes a new one when a script assigns it (`wf_assigndatawindowobjects` of the purchase / sale return windows): the definition is reloaded; the first rebuild kept the design-time one and `GetChild` then failed.
+* A `DataWindowChild` variable is usable before `GetChild` filled it (calls answer -1, no null-object error): `w_purchase` (Opening Purchase) filters one it never assigned and the original opens the window.
+* `DataWindow.Show()` / `Hide()` and `x`, `y`, `width`, `height`, `visible` set from scripts reach the screen: the report window shows its preview after the retrieve.
+* The height of a drop-down list box in the definition includes its list; the closed control is one line (21 px).
+* Windows open in steps (posted events): a screenshot taken 2.5 s after `OpenSheetWithParm` can still show the window's design-time title (Opening Purchase showed `Pack Purchase`).
+* `InsertRow` gives the new row's current cell the item focus (`ItemFocusChanged`): `dw_itemsdetail.itemfocuschanged` of the entry windows sets `editflag`, which `wf_validatedate` returns (`if not wf_validatedate() then close(this)` in the open event of purchase, sale return, quotation, adjustment, sale template ...). Without it those windows closed themselves; the original shows them open and asks `Do You want to save changes` when an untouched one is closed.
+* A column whose initial value is `today` takes the current date / time when a row is inserted (the sale template's date shows `02/11/2026 11:46`).
+* First-run preferences: `GroupCustomerCategory` is off (the migration of the original updates `preferences.groupcustomercategory = 'N'`), otherwise Cash / Credit Sale refuse to open for a group without customer categories.
 ## Not yet matched
 * The window height of response windows: measured factor 0.924 of the height in units (Login 234 px, Select Format 306 px), the reason is unknown.
 * Dropdown menu pixel metrics (width, padding) were approximated from screenshots; the crawler does not open dropdowns.

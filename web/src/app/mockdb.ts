@@ -26,6 +26,12 @@ export class MockDb implements Db {
         rows: [[1, 'admin']],
       }
     }
+    // Startup checks the cloud-server switch; the mock database has no
+    // ConfigSetting table, so answer the one setting with its production
+    // default (N) instead of raising a modal and halting the start-up.
+    if (/CloudServerSettings/i.test(sql)) {
+      return { columns: [{ name: 'Value', type: 'text' }], rows: [['N']] }
+    }
     const name = sql.startsWith('mock:') ? sql.slice(5) : ''
     const def = name ? ((await this.catalog.get(name)) as DwDef | undefined) : undefined
     if (!def) return { columns: [], rows: [] }
