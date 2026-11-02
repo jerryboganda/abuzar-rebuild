@@ -604,7 +604,7 @@ export class WinView {
       if (item.props.get('visible') === false) continue
       const mi = document.createElement('div')
       mi.className = 'mi'
-      mi.textContent = caption(str(item, 'text'))
+      setMnemonic(mi, str(item, 'text'))
       mi.onmouseenter = () => this.statusText(str(item, 'microhelp') || caption(str(item, 'text')))
       mi.onmouseleave = () => this.statusText('Ready')
       mi.onclick = (e) => {
@@ -643,13 +643,15 @@ export class WinView {
       }
       const it = document.createElement('div')
       it.className = 'it' + (sub.props.get('enabled') === false ? ' dis' : '')
-      const [label, hot] = caption(text).split('	')
+      const [rawLabel, rawHot] = text.split('	')
+      const label = caption(rawLabel)
+      const hot = rawHot
       const ck = document.createElement('span')
       ck.className = 'ck'
       ck.textContent = sub.props.get('checked') === true ? '✓' : ''
       const l = document.createElement('span')
       l.className = 'lb'
-      l.textContent = label.trim()
+      setMnemonic(l, rawLabel.trim())
       const r = document.createElement('span')
       r.className = sub.children.size ? 'ar' : 'hk'
       r.textContent = sub.children.size ? '' : (hot ?? '').trim()

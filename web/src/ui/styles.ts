@@ -49,9 +49,9 @@ label.ctl { display:flex; align-items:center; gap:4px; white-space:nowrap; }
 .menubar { display:flex; background:#fff; height:20px; flex:0 0 20px; border-bottom:1px solid #f2f2f2; box-shadow:0 1px 0 #f0f0f0; padding:0 0 0 0; }
 .menubar .mi { padding:0 8px; line-height:18px; position:relative; white-space:nowrap; }
 .menubar .mi:hover, .menubar .mi.open { background:#e5e5e5; }
-.menu-drop { position:absolute; left:0; top:19px; min-width:120px; background:#f9f9f9; border:1px solid #d6d6d6; border-radius:7px; box-shadow:0 6px 14px rgba(0,0,0,.18); z-index:1000; padding:3px; }
-.menu-drop .it { height:22px; line-height:22px; padding:0 8px 0 0; display:flex; align-items:center; white-space:nowrap; position:relative; border-radius:4px; }
-.menu-drop .it .ck { flex:0 0 26px; text-align:center; font-size:11px; }
+.menu-drop { position:absolute; left:0; top:19px; min-width:120px; background:#f9f9f9; border:1px solid #d6d6d6; border-radius:8px; box-shadow:0 6px 14px rgba(0,0,0,.18); z-index:1000; padding:4px; }
+.menu-drop .it { height:22px; line-height:22px; padding:0 10px 0 0; margin:0 2px; display:flex; align-items:center; white-space:nowrap; position:relative; border-radius:4px; }
+.menu-drop .it .ck { flex:0 0 32px; text-align:center; font-size:11px; }
 .menu-drop .it .lb { flex:1; padding-right:28px; }
 .menu-drop .it .hk { padding-left:24px; color:#000; }
 .menu-drop .it .ar { width:14px; text-align:right; }
@@ -59,7 +59,7 @@ label.ctl { display:flex; align-items:center; gap:4px; white-space:nowrap; }
 .menu-drop .it:hover { background:#ebebeb; }
 .menu-drop .it.dis { color:#8a8a8a; }
 .menu-drop .it.dis .hk { color:#8a8a8a; }
-.menu-drop .sep { height:1px; background:#d0d0d0; margin:3px 2px 3px 26px; }
+.menu-drop .sep { height:1px; background:#d0d0d0; margin:3px 2px 3px 32px; }
 .menu-drop .it .sub { position:absolute; left:100%; top:-4px; display:none; margin-left:-2px; }
 .menu-drop .it:hover > .sub { display:block; }
 .toolbar { display:flex; background:#f0f0f0; height:28px; flex:0 0 28px; align-items:center; padding:0 0 0 3px; border-top:1px solid #a0a0a0; border-bottom:1px solid #a0a0a0; box-shadow:inset 0 1px 0 #fff, 0 1px 0 #696969; margin-bottom:1px; }
