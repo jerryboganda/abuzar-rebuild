@@ -586,15 +586,29 @@ class Parser:
             return self.adv().value
         return None
 
+    def collect_parens(self):
+        words = []
+        self.expect_op('(')
+        d = 1
+        while d:
+            t = self.adv()
+            if t.kind == 'eof':
+                self.err('unbalanced parens')
+            if t.is_op('('):
+                d += 1
+            elif t.is_op(')'):
+                d -= 1
+            elif t.kind == 'id':
+                words.append(t.value.upper())
+        return words
+
     def parse_hints(self):
         hints = []
         if self.kw('WITH') and self.peek().is_op('('):
             self.adv()
-            self.skip_parens()
-            hints.append('with')
+            hints.extend(self.collect_parens())
         elif self.op('(') and self.peek().kind == 'id' and self.peek().value.upper() in HINT_WORDS:
-            self.skip_parens()
-            hints.append('paren')
+            hints.extend(self.collect_parens())
         return hints
 
     def parse_table_primary(self):

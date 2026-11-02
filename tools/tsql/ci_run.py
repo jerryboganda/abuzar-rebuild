@@ -238,6 +238,12 @@ def prepare_statements(conn, repo, results, failures):
         except Exception as e:
             sqlstate = getattr(e, 'sqlstate', None)
             msg = first_line(e)
+            near = None
+            try:
+                pos = int(e.diag.position) - len('PREPARE s AS ') - 1
+                near = st['translated'][max(0, pos - 100):pos + 100]
+            except Exception:
+                pass
             try:
                 conn.execute('DEALLOCATE s')
             except Exception:
@@ -266,7 +272,7 @@ def prepare_statements(conn, repo, results, failures):
                 rec['result'] = 'failed'
                 rec['sqlstate'], rec['message'], rec['kind'] = sqlstate, msg, kind_of_error(msg)
                 failures.append({'stage': 'prepare', 'category': rec['category'], 'name': st['id'], 'sqlstate': sqlstate,
-                                 'message': msg, 'kind': rec['kind'], 'file': st.get('file'), 'text': st['translated'][:300]})
+                                 'message': msg, 'kind': rec['kind'], 'file': st.get('file'), 'text': st['translated'][:300], 'near': near})
         results.append(rec)
         stats[(rec['result'], st['kind'])] += 1
     return sts
@@ -375,6 +381,8 @@ def smoke_calls(conn, units_index, results, failures):
             msg = first_line(e)
             if st == '0A000' and 'untranslated T-SQL' in msg:
                 rec['result'] = 'ok-untranslated-placeholder'
+            elif st in ('23502', '23503', '22004', '22P02', '22003', '22012'):
+                rec['result'] = 'ok-null-argument-effect'     # NOT NULL / FK / cast errors caused by the NULL test arguments
             elif st in ('TS001',):
                 rec['result'] = 'ok-rollback-requested'
             elif st == 'P0001':

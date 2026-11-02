@@ -100,6 +100,7 @@ class QueryMixin:
                 metas.append(mcols)
                 if i == 0:
                     cols, first_scope = mcols, msc
+                    raw0 = list(getattr(self, 'last_raw', []))
                 if union:
                     if limit or (i > 0 and m.order):
                         if i > 0 and m.order:
@@ -121,15 +122,48 @@ class QueryMixin:
         if sel.order:
             osc = first_scope if first_scope is not None else Scope(outer)
             items = []
+            names0 = [c[0] for c in cols] if cols else []
             for e, desc in sel.order:
                 if union:
+                    e0 = e
                     e = self.union_order_item(e, sel)
+                    pos = self.order_ordinal(e0, osc, raw0, sel)
+                    if pos is None and e is not e0:
+                        pos = self.order_ordinal(e, osc, raw0, sel)
+                    if pos is not None:
+                        items.append(str(pos) + (' DESC' if desc else ''))
+                        continue
                 else:
                     e = self.group_order_item(e, sel)
+                    if e.k == 'col' and len(e.parts) == 1 and names0.count(e.parts[0].lower()) > 1:
+                        items.append(str(names0.index(e.parts[0].lower()) + 1) + (' DESC' if desc else ''))
+                        continue
                 items.append(self.Es(e, osc) + (' DESC' if desc else ''))
             sql += ' ORDER BY ' + ', '.join(items)
         sql += single_limit
         return sql, cols
+
+    def order_ordinal(self, e, osc, raw0, first):
+        """ORDER BY item of a UNION -> position in the select list (T-SQL matches by expression)"""
+        if e.k == 'lit':
+            return None
+        nb = len(self.binds)
+        try:
+            sql = self.Es(e, osc)
+        except Untranslatable:
+            return None
+        finally:
+            del self.binds[nb:]
+        for j, r in enumerate(raw0):
+            if r == sql:
+                return j + 1
+        if e.k == 'col':
+            last = e.parts[-1].lower()
+            hits = [j for j, it in enumerate(first.items)
+                    if (it.alias or (it.e.parts[-1] if it.e.k == 'col' else '') or '').lower() == last]
+            if hits:
+                return hits[0] + 1
+        return None
 
     @staticmethod
     def colkey(x):
@@ -214,6 +248,9 @@ class QueryMixin:
                 limit = ' FETCH FIRST %s ROWS WITH TIES' % tp
             else:
                 limit = ' LIMIT %s' % tp
+        locks = getattr(sc, 'rowlocks', None)
+        if locks and not s.distinct and not s.group and not s.union and not any(contains_agg(it.e) for it in s.items):
+            limit += ' FOR UPDATE OF ' + ', '.join(ident(x) for x in locks)
         return sql, cols, sc, limit
 
     def unify_cast(self, e, s, c, target_cls):
@@ -233,6 +270,8 @@ class QueryMixin:
 
     def select_items(self, items, sc, targets=None, unify=None):
         out, cols = [], []
+        raw = []
+        self.last_raw = raw
         pos = 0
         for it in items:
             if it.var is not None:
@@ -257,6 +296,7 @@ class QueryMixin:
                 name = e.parts[-1]
             if name is None and e.k == 'paren' and e.e.k == 'col':
                 name = e.e.parts[-1]
+            raw.append(s)
             if it.alias is not None:
                 s = '%s AS %s' % (s, ident(it.alias))
             elif name is not None and unify and pos in unify and e.k == 'col':
@@ -291,6 +331,8 @@ class QueryMixin:
             alias = n.alias
             reg = alias or n.parts[-1]
             sc.add(reg, t)
+            if 'UPDLOCK' in n.hints or 'XLOCK' in n.hints:
+                sc.rowlocks = getattr(sc, 'rowlocks', []) + [alias or n.parts[-1].lstrip('#')]
             if kind in ('temp', 'tvar') and not alias:
                 sc.add(n.parts[-1].lstrip('#@'), t)
             sql = pg
