@@ -340,6 +340,15 @@ def summarize(results, failures, units_index, repo, report_path, stmts_total):
             lines.append('| %s | %d | %d | %d | %d | %d | %d |' % (k, sts[k]['total'], sts[k]['translated'], r.get('prepared', 0),
                                                                  r.get('prepared-with-declared-types', 0), r.get('indeterminate-param-type', 0), r.get('failed', 0)))
         lines.append('')
+        # statements that were not translated at all
+        nt = collections.Counter()
+        for sx in stmts_total:
+            if sx.get('status') != 'translated':
+                nt[(sx['kind'], sx.get('status'), re.sub(r'\s+near .*', '', (sx.get('note') or '')[:90]))] += 1
+        lines += ['Statements that were not translated (kind, status, reason):', '', '| count | kind | status | reason |', '|---|---|---|---|']
+        for (k, stt, nn), c in sorted(nt.items(), key=lambda x: -x[1]):
+            lines.append('| %d | %s | %s | %s |' % (c, k, stt, nn.replace('|', '/')))
+        lines.append('')
     fk = collections.defaultdict(list)
     for f in failures:
         fk[(f['stage'], f['category'], f['kind'])].append(f)
