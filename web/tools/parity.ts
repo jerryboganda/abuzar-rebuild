@@ -33,6 +33,16 @@ if (smoke) {
   const miss = Object.entries(smoke.missing).sort((a, b) => b[1] - a[1]).slice(0, 25)
   L.push('- unimplemented functions / members met at run time (calls):', '  ' + miss.map(([k, v]) => `\`${k}\` ${v}`).join(', '))
 }
+const ci = json(join(root, 'docs/ci-results.json')) as Record<string, { ok: number; of: number } | string | null> | null
+if (ci) {
+  const fmt = (x: unknown) => (x && typeof x === 'object' ? `**${(x as { ok: number }).ok} of ${(x as { of: number }).of}** (${((100 * (x as { ok: number }).ok) / (x as { of: number }).of).toFixed(1)}%)` : 'not measured')
+  L.push('', `## Against a real server and PostgreSQL 17 (CI end-to-end job, run ${ci.run}, commit ${String(ci.commit).slice(0, 7)})`)
+  L.push(`- DataWindow retrieve statements that run: ${fmt(ci.datawindow_retrieves)}`)
+  L.push(`- embedded statements that run (null parameters, errors of integrity / data classes not counted as failures): ${fmt(ci.embedded_statements)}`)
+  L.push(`- translated procedures that run with neutral arguments: ${fmt(ci.procedures)}`)
+  L.push(`- windows opened without a runtime error (retried with the usual Message.StringParm codes): ${fmt(ci.windows)}`)
+  L.push(`- start-up with the first administrator: ${ci.startup ?? 'not measured'}`)
+}
 L.push('', '## SQL translation (PostgreSQL 17)')
 if (stmts) {
   const m = count(stmts, (s) => s.status)

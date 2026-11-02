@@ -125,6 +125,8 @@ export class DomUi implements UiHost {
     await dw.ready
     const m = dw.model
     if (!m) return false
+    // PDF: the report goes through the print dialog ("Save as PDF"); writing a PDF file unattended needs the shell (not available yet)
+    if (/^pdf!?$/i.test(type) && !file) return printDw(dw)
     const out = await exportDw(m, type || 'excel!', headers)
     if (!out) return false
     if (file) return writeFileBytes(file, out.bytes)

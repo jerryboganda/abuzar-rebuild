@@ -204,6 +204,28 @@ export class NDwBase extends PBObject {
     this.changed()
     return n
   }
+  /** ScrollNextRow / ScrollPriorRow / ScrollNextPage / ScrollPriorPage: the row scrolled to, -1 without rows */
+  private async scrollBy(delta: number): Promise<number> {
+    const m = await this.m()
+    if (!m || !m.rowCount()) return -1
+    return this.n_scrolltorow(Math.min(m.rowCount(), Math.max(1, Math.max(1, m.row) + delta)))
+  }
+  async n_scrollnextrow(): Promise<number> {
+    return this.scrollBy(1)
+  }
+  async n_scrollpriorrow(): Promise<number> {
+    return this.scrollBy(-1)
+  }
+  async n_scrollnextpage(): Promise<number> {
+    return this.scrollBy(10)
+  }
+  async n_scrollpriorpage(): Promise<number> {
+    return this.scrollBy(-10)
+  }
+  /** SetSQLPreview(sql): the SQLPreview event is not raised (its handlers only adapt literals for SQL Server), so there is nothing to replace */
+  async n_setsqlpreview(): Promise<number> {
+    return 1
+  }
   async n_insertrow(r: unknown = 0): Promise<number> {
     const m = await this.m()
     if (!m) return -1

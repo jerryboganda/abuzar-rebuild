@@ -285,5 +285,14 @@ function registerLabelPrinter(rt: Runtime, def: (name: string, fn: (r: Runtime, 
     const r = await api<{ ok?: boolean }>('/api/print/raw', { printer, data: b64(data) })
     return r.ok ? 1 : 0
   })
+  def('tsc_formfeed_new', () => add('FORMFEED'))
+  // the same printer DLL under other names (bcp_*) and in its older form without the suffix
+  for (const n of ['openport', 'setup', 'clearbuffer', 'sendcommand', 'printerfont', 'windowsfont', 'barcode', 'printlabel', 'closeport', 'formfeed']) {
+    const f = rt.sys.get(`tsc_${n}_new`)
+    if (!f) continue
+    for (const alias of [`bcp_${n}_new`, `tsc_${n}`, `bcp_${n}`]) if (!rt.sys.has(alias)) rt.sys.set(alias, f)
+  }
+  // customer pole display on USB: no device here, the calls succeed
+  for (const n of ['pd_openusbpd', 'pd_closeusbpd', 'pd_pdstate', 'pd_writepd']) def(n, () => 1)
   void PBArray
 }
