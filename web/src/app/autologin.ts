@@ -16,6 +16,8 @@ export async function autoLogin(rt: Runtime, user: string, password: string): Pr
   const ok = login.children.get('cb_ok')
   if (!dw || !ok) return false
   await dw.ready
+  // the open script inserts the row of the login form and makes it current; clicking Ok earlier would read an empty form
+  while ((await dw.n_getrow()) < 1 && Date.now() - t0 < 30000) await new Promise((r) => setTimeout(r, 50))
   await dw.n_setitem(1, 'login', user)
   await dw.n_setitem(1, 'password', password)
   await rt.fire(ok, 'clicked', [])

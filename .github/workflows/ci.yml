@@ -153,6 +153,8 @@ jobs:
           python3 tools/build_sql_tables.py data/sql web/public/data/sql.json
           node web/tools/build-classes.ts data/src/objects data/src/scripts web/public/data/classes data/src/menu_trees
           mkdir -p web/public/data/dw && cp data/src/dw/* web/public/data/dw/ && cp data/src/names/names.json web/public/data/
+      - name: Main menu equals the menu read from the running original
+        run: node web/tools/menu-parity.ts web/public/data docs/observed/original-menu-frame.tsv db/pg/96_rights_profile.sql | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Build and start the server
         run: |
           cargo build --release -p trader-server
