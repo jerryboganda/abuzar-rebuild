@@ -147,7 +147,7 @@ async fn run_statement(s: &mut Session, sql: String, want_rows: bool) -> Result<
         s.conn.execute("SAVEPOINT stmt").await.map_err(db_err)?;
     }
     let result = if want_rows {
-        match sqlx::raw_sql(&sql).fetch_all(&mut s.conn).await {
+        match s.conn.fetch_all(sql.as_str()).await {
             Ok(rows) => {
                 let mut cols: Vec<ColumnInfo> = Vec::new();
                 if let Some(r) = rows.first() {
@@ -173,7 +173,7 @@ async fn run_statement(s: &mut Session, sql: String, want_rows: bool) -> Result<
             Err(e) => Err(db_err(e)),
         }
     } else {
-        match sqlx::raw_sql(&sql).execute(&mut s.conn).await {
+        match s.conn.execute(sql.as_str()).await {
             Ok(r) => Ok((Vec::new(), Vec::new(), r.rows_affected())),
             Err(e) => Err(db_err(e)),
         }
