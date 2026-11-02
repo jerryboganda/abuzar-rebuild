@@ -21,6 +21,12 @@ export class NControl extends PBObject {
   }
 
   // ---- common window-object methods
+  /** the window that contains this control */
+  async n_getparent(): Promise<unknown> {
+    let p = this.parent
+    while (p && !(p instanceof NWindow)) p = p.parent
+    return p
+  }
   async n_hide(): Promise<number> {
     this.pbSet('visible', false)
     return 1

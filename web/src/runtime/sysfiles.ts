@@ -144,6 +144,39 @@ export function registerFileFuncs(rt: Runtime): void {
     return 1
   }, [1])
 
+  // ---- plain-text print jobs (PrintOpen / PrintSend / PrintClose): receipts and simple lists, printed through the shell
+  const jobs = new Map<number, string[]>()
+  let nextJob = 1
+  def('printopen', () => {
+    jobs.set(nextJob, [])
+    return nextJob++
+  })
+  def('printsend', (_r, a) => {
+    const j = jobs.get(toNum(a[0]))
+    if (!j) return -1
+    j.push(toStr(a[1]))
+    return 1
+  })
+  def('printtext', (_r, a) => {
+    const j = jobs.get(toNum(a[0]))
+    if (!j) return -1
+    j.push(toStr(a[1]) + String.fromCharCode(10))
+    return 1
+  })
+  def('printpage', () => 1)
+  def('printdefinefont', () => 1)
+  def('printsetup', () => 1)
+  def('printsetprinter', () => 1)
+  def('printgetprinter', () => '')
+  def('printclose', async (r, a) => {
+    const j = jobs.get(toNum(a[0]))
+    if (!j) return -1
+    jobs.delete(toNum(a[0]))
+    const ui = r.ui as { printText?: (t: string) => Promise<boolean> } | null
+    return ui?.printText ? ((await ui.printText(j.join(''))) ? 1 : -1) : 1
+  })
+  def('getfocus', (r) => (r.ui as { focused?: () => unknown } | null)?.focused?.() ?? null)
+
   // ---- misc
   def('rgb', (_r, a) => (toNum(a[0]) & 255) + (toNum(a[1]) & 255) * 256 + (toNum(a[2]) & 255) * 65536)
   def('beep', () => 1)

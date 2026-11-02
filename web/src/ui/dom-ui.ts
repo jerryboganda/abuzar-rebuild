@@ -6,7 +6,7 @@ import { NDwBase } from '../runtime/native/dwctrl.ts'
 import { PBArray, toNum, toStr } from '../runtime/values.ts'
 import { cssFont, fontSize, pbColor, toPx } from './pb.ts'
 import { DwView } from './dwview.ts'
-import { printDw } from './print.ts'
+import { printDw, printPlainText } from './print.ts'
 import { CSS } from './styles.ts'
 
 const num = (o: PBObject, k: string, d = 0): number => {
@@ -79,6 +79,15 @@ export class DomUi implements UiHost {
   }
   print(dw: NDwBase): Promise<boolean> {
     return printDw(dw)
+  }
+  printText(text: string): Promise<boolean> {
+    return printPlainText(text)
+  }
+  /** control that has the keyboard focus */
+  focused(): PBObject | null {
+    const el = document.activeElement as HTMLElement | null
+    for (const wv of this.views.values()) for (const [obj, cv] of wv.ctlViews) if (cv.el === el || cv.el.contains(el)) return obj
+    return null
   }
   setMicroHelp(_w: NWindow, t: string): void {
     const s = this.desktop.querySelector('.status') as HTMLElement | null

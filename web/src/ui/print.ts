@@ -115,6 +115,23 @@ export async function buildPages(ctl: NDwBase): Promise<HTMLElement[]> {
   return pages
 }
 
+/** print a plain text job (PrintOpen / PrintSend) in a fixed-width font */
+export async function printPlainText(text: string): Promise<boolean> {
+  const frame = document.createElement('iframe')
+  frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0'
+  document.body.appendChild(frame)
+  const doc = frame.contentDocument!
+  doc.open()
+  doc.write('<!doctype html><html><head><meta charset="utf-8"><style>@page{margin:10mm}pre{font:10pt "Courier New",monospace;margin:0;white-space:pre-wrap}</style></head><body><pre></pre></body></html>')
+  doc.close()
+  doc.querySelector('pre')!.textContent = text
+  await new Promise((r) => setTimeout(r, 50))
+  frame.contentWindow!.focus()
+  frame.contentWindow!.print()
+  setTimeout(() => frame.remove(), 60000)
+  return true
+}
+
 /** open the browser print dialog (WebView2 / Chromium: also "save as PDF") for the pages of a report */
 export async function printDw(ctl: NDwBase): Promise<boolean> {
   const pages = await buildPages(ctl)
