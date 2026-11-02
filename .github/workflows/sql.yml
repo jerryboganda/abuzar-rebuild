@@ -1,0 +1,62 @@
+name: sql
+on:
+  push:
+    paths:
+      - 'db/pg/**'
+      - 'tools/tsql/**'
+      - 'data/sql/**'
+      - '.github/workflows/sql.yml'
+  workflow_dispatch:
+jobs:
+  sql:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: trader
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: ci
+      PGDATABASE: trader
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install psycopg
+        run: pip install "psycopg[binary]"
+      - name: Install plpgsql_check into the PostgreSQL 17 service container
+        continue-on-error: true
+        run: |
+          cid=$(docker ps -q --filter ancestor=postgres:17 | head -n1)
+          echo "container $cid"
+          docker exec "$cid" bash -c "apt-get update -qq && apt-get install -y -qq postgresql-17-plpgsql-check" > plpgsql_check_install.log 2>&1 || (tail -20 plpgsql_check_install.log; exit 1)
+          tail -3 plpgsql_check_install.log
+      - name: Apply tables, foreign keys, indexes (db/pg/00..30)
+        run: |
+          for f in db/pg/00_*.sql db/pg/10_*.sql db/pg/20_*.sql db/pg/30_*.sql; do
+            echo "== $f"
+            PGOPTIONS="-c client_min_messages=warning" psql -q -f "$f" 2> "$f.err" || true
+            if grep -q ERROR "$f.err"; then echo "--- errors in $f: $(grep -c ERROR "$f.err")"; head -20 "$f.err"; fi
+          done
+          psql -At -c "select 'tables', count(*) from information_schema.tables where table_schema='dbo' and table_type='BASE TABLE'"
+      - name: Apply routines one by one, check them, prepare statements
+        run: python tools/tsql/ci_run.py --repo . --out ci-out --report ci-out/SQL-TRANSLATION-REPORT.md
+      - name: Job summary
+        if: always()
+        run: |
+          if [ -f ci-out/SQL-TRANSLATION-REPORT.md ]; then cat ci-out/SQL-TRANSLATION-REPORT.md >> "$GITHUB_STEP_SUMMARY"; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sql-translation-results
+          path: |
+            ci-out/sql-failures.json
+            ci-out/results.json
+            ci-out/SQL-TRANSLATION-REPORT.md

@@ -1,0 +1,301 @@
+"""CI runner: apply the translated routines to a real PostgreSQL 17 one by one and validate embedded statements.
+
+usage: python tools/tsql/ci_run.py --repo . --out ci-out
+ - applies db/pg/40..70 one routine at a time (a failure does not hide the others)
+ - plpgsql_check_function() on every created PL/pgSQL function when the extension is available
+ - PREPARE of every translated embedded / DataWindow statement (data/sql/statements.json)
+Writes: <out>/sql-failures.json  <out>/results.json  docs/SQL-TRANSLATION-REPORT.md (to --report)
+Needs: pip install "psycopg[binary]" ; PG* environment variables for the connection.
+"""
+import argparse
+import collections
+import json
+import os
+import re
+import sys
+import time
+
+import psycopg
+
+MARK = re.compile(r'^-- ==== (\S+) (.+?) ====\s*$', re.M)
+FILES = [('function', '40_functions.sql'), ('view', '50_views.sql'), ('proc', '60_procedures.sql'), ('trigger', '70_triggers.sql')]
+
+
+def split_units(path):
+    text = open(path, encoding='utf-8').read()
+    ms = list(MARK.finditer(text))
+    out = []
+    for i, m in enumerate(ms):
+        end = ms[i + 1].start() if i + 1 < len(ms) else len(text)
+        out.append((m.group(1), m.group(2), text[m.end():end].strip()))
+    return out
+
+
+def kind_of_error(msg):
+    m = re.sub(r'"[^"]*"', '"X"', msg)
+    m = re.sub(r'\b\d+\b', 'N', m)
+    m = re.sub(r'\$\d+', '$N', m)
+    m = re.sub(r"'[^']*'", "'X'", m)
+    return m[:140]
+
+
+def connect():
+    return psycopg.connect(autocommit=True)
+
+
+def first_line(e):
+    return str(e).strip().split('\n')[0]
+
+
+def apply_units(conn, repo, results, failures):
+    created = []
+    for kind, fname in FILES:
+        path = os.path.join(repo, 'db', 'pg', fname)
+        if not os.path.exists(path):
+            continue
+        for k, name, sql in split_units(path):
+            cat = 'compat' if k == 'compat' else k
+            rec = {'category': cat, 'name': name, 'file': fname}
+            if sql.lstrip().startswith('-- view not translated'):
+                rec['result'] = 'skipped'
+                results.append(rec)
+                continue
+            try:
+                conn.execute('SET search_path TO dbo, public')
+                conn.execute(sql)
+                rec['result'] = 'created'
+                created.append((cat, name))
+            except Exception as e:
+                rec['result'] = 'failed'
+                st = getattr(e, 'sqlstate', None)
+                rec['sqlstate'] = st
+                rec['message'] = first_line(e)
+                rec['kind'] = kind_of_error(first_line(e))
+                diag = getattr(e, 'diag', None)
+                if diag is not None and diag.statement_position:
+                    try:
+                        pos = int(diag.statement_position)
+                        rec['near'] = sql[max(0, pos - 80):pos + 80].replace('\n', ' ')
+                    except Exception:
+                        pass
+                failures.append({'stage': 'create', **rec})
+            results.append(rec)
+    return created
+
+
+def plpgsql_check(conn, created, units_index, results, failures):
+    try:
+        conn.execute('CREATE EXTENSION IF NOT EXISTS plpgsql_check')
+    except Exception as e:
+        print('plpgsql_check not available:', first_line(e))
+        return False
+    # trigger functions need their table
+    trig_tables = {}
+    for u in units_index:
+        if u['kind'] == 'trigger':
+            trig_tables[u['name']] = u.get('table')
+    n = 0
+    for cat, name in created:
+        if cat not in ('proc', 'function', 'trigger'):
+            continue
+        fname = ('trg_' + name) if cat == 'trigger' else name
+        low = fname.lower()
+        if len(low) > 63:
+            continue
+        try:
+            row = conn.execute("select p.oid, p.prosrc <> '' from pg_proc p join pg_namespace n on n.oid = p.pronamespace "
+                               "where n.nspname = 'dbo' and p.proname = %s", (low,)).fetchone()
+        except Exception:
+            row = None
+        rec = next((r for r in results if r['category'] == cat and r['name'] == name and r['result'] == 'created'), None)
+        if rec is None:
+            continue
+        if row is None:
+            rec['check'] = 'not-found'
+            continue
+        oid = row[0]
+        try:
+            if cat == 'trigger':
+                tbl = trig_tables.get(name)
+                rows = conn.execute("select lineno, sqlstate, message, level, statement, query from plpgsql_check_function_tb(%s::oid::regproc, %s::regclass, fatal_errors := false, other_warnings := false, extra_warnings := false, performance_warnings := false)",
+                                    (oid, 'dbo.' + tbl.lower() if tbl else None)).fetchall()
+            else:
+                rows = conn.execute("select lineno, sqlstate, message, level, statement, query from plpgsql_check_function_tb(%s::oid::regproc, fatal_errors := false, other_warnings := false, extra_warnings := false, performance_warnings := false)",
+                                    (oid,)).fetchall()
+        except Exception as e:
+            rec['check'] = 'check-error'
+            rec['check_message'] = first_line(e)
+            continue
+        errs = [r for r in rows if r[3] == 'error']
+        n += 1
+        if not errs:
+            rec['check'] = 'ok'
+        else:
+            rec['check'] = 'errors'
+            rec['check_errors'] = [{'line': r[0], 'sqlstate': r[1], 'message': r[2], 'statement': r[4], 'query': (r[5] or '')[:200]} for r in errs[:8]]
+            for r in errs[:8]:
+                failures.append({'stage': 'check', 'category': cat, 'name': name, 'sqlstate': r[1], 'message': r[2],
+                                 'kind': kind_of_error(r[2]), 'line': r[0], 'query': (r[5] or '')[:200]})
+    print('plpgsql_check ran on', n, 'functions')
+    return True
+
+
+PB_PG = {'string': 'text', 'number': 'numeric', 'long': 'integer', 'ulong': 'integer', 'int': 'integer', 'integer': 'integer',
+         'uint': 'integer', 'decimal': 'numeric', 'real': 'real', 'double': 'double precision', 'datetime': 'timestamp',
+         'date': 'date', 'time': 'time', 'boolean': 'boolean', 'blob': 'bytea'}
+
+
+def prepare_statements(conn, repo, results, failures):
+    path = os.path.join(repo, 'data', 'sql', 'statements.json')
+    if not os.path.exists(path):
+        return None
+    sts = json.load(open(path, encoding='utf-8'))
+    stats = collections.Counter()
+    for st in sts:
+        if st.get('status') != 'translated' or not st.get('translated'):
+            stats[('skipped', st.get('kind'))] += 1
+            continue
+        rec = {'category': 'stmt-' + st['kind'], 'name': st['id'], 'result': None}
+        try:
+            conn.execute('SET search_path TO dbo, public')
+            conn.execute('PREPARE s AS ' + st['translated'])
+            conn.execute('DEALLOCATE s')
+            rec['result'] = 'prepared'
+        except Exception as e:
+            sqlstate = getattr(e, 'sqlstate', None)
+            msg = first_line(e)
+            try:
+                conn.execute('DEALLOCATE s')
+            except Exception:
+                pass
+            if sqlstate == '42P18':
+                types = st.get('param_types') or []
+                ok = False
+                if types and len(types) == len(st.get('params') or []):
+                    try:
+                        conn.execute('PREPARE s (%s) AS %s' % (', '.join(types), st['translated']))
+                        conn.execute('DEALLOCATE s')
+                        ok = True
+                    except Exception as e2:
+                        try:
+                            conn.execute('DEALLOCATE s')
+                        except Exception:
+                            pass
+                        sqlstate, msg = getattr(e2, 'sqlstate', None), first_line(e2)
+                if ok:
+                    rec['result'] = 'prepared-with-declared-types'
+                else:
+                    rec['result'] = 'indeterminate-param-type'
+                    rec['sqlstate'], rec['message'] = sqlstate, msg
+            else:
+                rec['result'] = 'failed'
+                rec['sqlstate'], rec['message'], rec['kind'] = sqlstate, msg, kind_of_error(msg)
+                failures.append({'stage': 'prepare', 'category': rec['category'], 'name': st['id'], 'sqlstate': sqlstate,
+                                 'message': msg, 'kind': rec['kind'], 'file': st.get('file'), 'text': st['translated'][:300]})
+        results.append(rec)
+        stats[(rec['result'], st['kind'])] += 1
+    return sts
+
+
+def summarize(results, failures, units_index, repo, report_path, stmts_total):
+    by = collections.defaultdict(collections.Counter)
+    for r in results:
+        by[r['category']][r['result']] += 1
+        if r.get('check'):
+            by[r['category']]['check-' + r['check']] += 1
+    st_idx = {(u['kind'], u['name']): u for u in units_index}
+    lines = ['# SQL translation report', '',
+             'Generated by `tools/tsql/ci_run.py` against PostgreSQL 17 (GitHub Actions run). Numbers below come from that run, not from estimates.', '']
+    lines += ['## Routines (views, functions, procedures, triggers)', '',
+              '| category | total | translated fully | translated with untranslated statements | stub or excluded | CREATE succeeded | CREATE failed | plpgsql_check clean | plpgsql_check errors |',
+              '|---|---|---|---|---|---|---|---|---|']
+    kinds = {'function': 'function', 'view': 'view', 'proc': 'procedure', 'trigger': 'trigger'}
+    tot = collections.Counter()
+    for k, label in kinds.items():
+        us = [u for u in units_index if u['kind'] == k]
+        c = collections.Counter(u['status'] for u in us)
+        r = by.get(k, collections.Counter())
+        row = [label, len(us), c.get('translated', 0), c.get('partial', 0), c.get('stub', 0) + c.get('excluded', 0),
+               r.get('created', 0), r.get('failed', 0), r.get('check-ok', 0), r.get('check-errors', 0)]
+        lines.append('| ' + ' | '.join(str(x) for x in row) + ' |')
+        for i, x in enumerate(row[1:]):
+            tot[i] += x
+    lines.append('| **all** | ' + ' | '.join(str(tot[i]) for i in range(8)) + ' |')
+    lines += ['',
+              '"translated fully" = every statement was translated; "with untranslated statements" = the routine compiles but contains `RAISE EXCEPTION \'untranslated T-SQL\'` placeholders (original kept as a comment);',
+              '"stub" = parse/translation failed, or deliberately excluded (vendor backup/restore code, SQL Server system views): a function with the right signature that raises when called.',
+              '"CREATE succeeded" counts what PostgreSQL accepted (PL/pgSQL syntax check only); "plpgsql_check clean" additionally resolves tables, columns, types and function calls inside each body.', '']
+    comp = by.get('compat', collections.Counter())
+    lines += ['Compatibility helper functions (`dbo.tsql_*`): created %d, failed %d.' % (comp.get('created', 0), comp.get('failed', 0)), '']
+    if stmts_total is not None:
+        lines += ['## Embedded SQL statements and DataWindow retrieve SQL', '',
+                  '| category | total | translated | PREPARE ok | ok with declared param types | indeterminate param type | failed |', '|---|---|---|---|---|---|---|']
+        sts = collections.defaultdict(collections.Counter)
+        for s in stmts_total:
+            sts[s['kind']]['total'] += 1
+            if s.get('status') == 'translated':
+                sts[s['kind']]['translated'] += 1
+        for k in sorted(sts):
+            r = by.get('stmt-' + k, collections.Counter())
+            lines.append('| %s | %d | %d | %d | %d | %d | %d |' % (k, sts[k]['total'], sts[k]['translated'], r.get('prepared', 0),
+                                                                 r.get('prepared-with-declared-types', 0), r.get('indeterminate-param-type', 0), r.get('failed', 0)))
+        lines.append('')
+    fk = collections.defaultdict(list)
+    for f in failures:
+        fk[(f['stage'], f['category'], f['kind'])].append(f)
+    lines += ['## Top failure causes', '', '| count | stage | category | cause (identifiers normalised) | examples |', '|---|---|---|---|---|']
+    for (stage, cat, kind), fs in sorted(fk.items(), key=lambda x: -len(x[1]))[:40]:
+        ex = ', '.join(sorted({f['name'] for f in fs})[:3])
+        lines.append('| %d | %s | %s | %s | %s |' % (len(fs), stage, cat, kind.replace('|', '/'), ex.replace('|', '/')))
+    # untranslated statement reasons
+    notes = collections.Counter()
+    for u in units_index:
+        for n in u.get('notes') or []:
+            notes[re.sub(r'\b[\w.]+\b', lambda m: m.group(0) if m.group(0).islower() or not m.group(0)[0].isupper() else m.group(0), n)[:100]] += 1
+    lines += ['', '## Untranslated statements inside routines (by reason)', '', '| count | reason |', '|---|---|']
+    for n, c in notes.most_common(40):
+        lines.append('| %d | %s |' % (c, n.replace('|', '/')))
+    lines += ['', '## Stubs and exclusions', '', '| routine | kind | reason |', '|---|---|---|']
+    for u in units_index:
+        if u['status'] in ('stub', 'excluded'):
+            lines.append('| %s | %s | %s |' % (u['name'], u['kind'], (u.get('error') or '').replace('|', '/')[:160]))
+    os.makedirs(os.path.dirname(report_path) or '.', exist_ok=True)
+    open(report_path, 'w', encoding='utf-8', newline='\n').write('\n'.join(lines) + '\n')
+    return by
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--repo', default='.')
+    ap.add_argument('--out', default='ci-out')
+    ap.add_argument('--report', default='ci-out/SQL-TRANSLATION-REPORT.md')
+    ap.add_argument('--top', type=int, default=25)
+    a = ap.parse_args()
+    os.makedirs(a.out, exist_ok=True)
+    units_index = json.load(open(os.path.join(a.repo, 'data', 'sql', 'units.json'), encoding='utf-8'))
+    conn = connect()
+    results, failures = [], []
+    t0 = time.time()
+    created = apply_units(conn, a.repo, results, failures)
+    print('applied routines in %.0fs' % (time.time() - t0))
+    have_check = plpgsql_check(conn, created, units_index, results, failures)
+    t0 = time.time()
+    stmts = prepare_statements(conn, a.repo, results, failures)
+    print('statements prepared in %.0fs' % (time.time() - t0))
+    by = summarize(results, failures, units_index, a.repo, a.report, stmts)
+    json.dump(failures, open(os.path.join(a.out, 'sql-failures.json'), 'w', encoding='utf-8'), indent=1)
+    json.dump(results, open(os.path.join(a.out, 'results.json'), 'w', encoding='utf-8'), indent=1)
+    print('\n=== counts per category')
+    for cat in sorted(by):
+        print(cat, dict(by[cat]))
+    print('\n=== top failure groups')
+    fk = collections.defaultdict(list)
+    for f in failures:
+        fk[(f['stage'], f['category'], f['kind'])].append(f)
+    for (stage, cat, kind), fs in sorted(fk.items(), key=lambda x: -len(x[1]))[:a.top]:
+        print('%4d  %s/%s  %s   e.g. %s' % (len(fs), stage, cat, kind, ', '.join(sorted({f['name'] for f in fs})[:3])))
+    print('\nfailures total', len(failures))
+
+
+if __name__ == '__main__':
+    main()

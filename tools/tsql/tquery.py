@@ -1,0 +1,471 @@
+"""Query translation: SELECT / INSERT / UPDATE / DELETE."""
+import re
+from .parser import Node
+from .names import ident, q, fn_ident, shorten
+from .schema import map_type, Table, Col
+from .texpr import Scope, Untranslatable, contains_agg, is_simple
+
+SYSTABLES = {'sysobjects', 'syscolumns', 'sysindexes', 'sysusers', 'sysdatabases', 'sysprocesses', 'sysfiles', 'syskeys',
+             'sysdepends', 'sysforeignkeys', 'sysreferences', 'sysconstraints', 'systypes', 'syscomments', 'sysjobs',
+             'sysjobschedules', 'sysjobsteps', 'syslogins', 'sysmessages', 'sysperfinfo', 'sysservers', 'sysfilegroups',
+             'sysindexkeys', 'sysprotects', 'syspermissions', 'sysmembers', 'syssegments'}
+
+
+def walk_nodes(n):
+    """generator over all Node descendants"""
+    if isinstance(n, Node):
+        yield n
+        for v in n.__dict__.values():
+            for x in walk_nodes(v):
+                yield x
+    elif isinstance(n, (list, tuple)):
+        for v in n:
+            for x in walk_nodes(v):
+                yield x
+
+
+class QueryMixin:
+    # ------------------------------------------------------------------ names
+    def temp_name(self, name):
+        n = name.lstrip('#').lower()
+        return ident('tmp_' + n)
+
+    def tvar_name(self, name):
+        return ident('tv_%s_%s' % (self.ctx.fname.lower(), name.lstrip('@').lower()))
+
+    def lookup_temp(self, key):
+        t = self.ctx.temps.get(key)
+        return t
+
+    def resolve_table(self, parts):
+        """-> (kind, pgname, Table|None, basename)  kinds real temp tvar trans info"""
+        parts = list(parts)
+        if len(parts) == 4:
+            raise Untranslatable('linked-server table ' + '.'.join(parts))
+        if len(parts) == 3:
+            db, sch, name = parts
+            if name.startswith('#'):
+                parts = [name]
+            elif db.lower() in ('', 'dbo', 'traderdbv3') and sch.lower() in ('', 'dbo'):
+                parts = [name]
+            elif db.lower() == 'information_schema' or sch.lower() == 'information_schema':
+                parts = [sch, name]
+            else:
+                raise Untranslatable('cross-database table %s.%s.%s' % (db, sch, name))
+        if len(parts) == 2:
+            sch, name = parts
+            if sch.lower() == 'information_schema':
+                return ('info', 'information_schema.' + ident(name), None, name.lower())
+            if sch.lower() not in ('dbo', ''):
+                raise Untranslatable('schema-qualified table %s.%s' % (sch, name))
+            parts = [name]
+        name = parts[0]
+        low = name.lower()
+        if name.startswith('#'):
+            t = self.ctx.temps.get(low)
+            return ('temp', self.temp_name(name), t[1] if t else None, low)
+        if name.startswith('@'):
+            t = self.ctx.temps.get(low)
+            return ('tvar', self.tvar_name(name), t[1] if t else None, low)
+        if low in ('inserted', 'deleted') and self.ctx.trigger_table is not None:
+            return ('trans', low, self.ctx.trigger_table, low)
+        if low in SYSTABLES:
+            raise Untranslatable('system table ' + name)
+        t = self.tables.get(low)
+        if t is None:
+            t = self.catalog.views.get(low)
+        return ('real', 'dbo.' + ident(name), t, low)
+
+    # ------------------------------------------------------------------ SELECT
+    def select_sql(self, sel, outer):
+        return self.select_full(sel, outer)[0]
+
+    def select_full(self, sel, outer):
+        members = []
+        cur = sel
+        while cur is not None:
+            members.append(cur)
+            cur = cur.union[2] if cur.union else None
+        union = len(members) > 1
+        parts, cols, first_scope, single_limit = [], None, None, ''
+        for i, m in enumerate(members):
+            sql, mcols, msc, limit = self.select_core(m, outer)
+            if i == 0:
+                cols, first_scope = mcols, msc
+            if union:
+                if limit or (i > 0 and m.order):
+                    if i > 0 and m.order:
+                        sql += ' ORDER BY ' + ', '.join(self.Es(e, msc) + (' DESC' if d else '') for e, d in m.order)
+                    sql = '(%s%s)' % (sql, limit)
+                parts.append(sql)
+                if m.union:
+                    op, all_, _ = m.union
+                    parts.append(op + (' ALL' if all_ else ''))
+            else:
+                parts.append(sql)
+                single_limit = limit
+        sql = ' '.join(parts)
+        if sel.order:
+            osc = first_scope if first_scope is not None else Scope(outer)
+            sql += ' ORDER BY ' + ', '.join(self.Es(e, osc) + (' DESC' if d else '') for e, d in sel.order)
+        sql += single_limit
+        return sql, cols
+
+    def select_core(self, s, outer, with_limit=True):
+        sc = Scope(outer)
+        frm = ''
+        if s.frm:
+            frm = ' FROM ' + self.from_list(s.frm, sc)
+        items, cols = self.select_items(s.items, sc)
+        parts = ['SELECT']
+        if s.distinct:
+            parts.append('DISTINCT')
+        parts.append(', '.join(items))
+        sql = ' '.join(parts) + frm
+        if s.where is not None:
+            sql += ' WHERE ' + self.Es(s.where, sc)
+        if s.group:
+            if s.group_all:
+                raise Untranslatable('GROUP BY ALL')
+            sql += ' GROUP BY ' + ', '.join(self.Es(g, sc) for g in s.group)
+        if s.having is not None:
+            sql += ' HAVING ' + self.Es(s.having, sc)
+        limit = ''
+        if s.top is not None:
+            if s.top_pct:
+                raise Untranslatable('TOP PERCENT')
+            tp = self.Es(s.top, sc)
+            if s.with_ties:
+                limit = ' FETCH FIRST %s ROWS WITH TIES' % tp
+            else:
+                limit = ' LIMIT %s' % tp
+        return sql, cols, sc, limit
+
+    def select_items(self, items, sc):
+        out, cols = [], []
+        for it in items:
+            if it.var is not None:
+                raise Untranslatable('variable assignment inside query expression')
+            e = it.e
+            if e.k == 'star':
+                s, _ = self.E(e, sc)
+                out.append(s)
+                cols.extend(self.star_cols(e, sc))
+                continue
+            s, c = self.E(e, sc)
+            name = it.alias
+            if name is None and e.k == 'col':
+                name = e.parts[-1]
+            if name is None and e.k == 'paren' and e.e.k == 'col':
+                name = e.e.parts[-1]
+            if it.alias is not None:
+                s = '%s AS %s' % (s, ident(it.alias))
+            elif name is None and e.k in ('lit', 'bin', 'func', 'case', 'cast', 'convert', 'sub') and False:
+                pass
+            out.append(s)
+            cols.append((name.lower() if name else None, c))
+        return out, cols
+
+    def star_cols(self, e, sc):
+        cols = []
+        if e.q:
+            qual = [p for p in e.q if p != ''][-1].lower()
+            t = sc.table_of(qual)
+            if t is not None:
+                return [(c.name.lower(), c.cls) for c in t.cols]
+            return [(None, 'U')]
+        for alias, t in sc.items:
+            if t is None:
+                return [(None, 'U')]
+            cols.extend((c.name.lower(), c.cls) for c in t.cols)
+        return cols
+
+    # ------------------------------------------------------------------ FROM
+    def from_list(self, srcs, sc):
+        return ', '.join(self.from_src(s, sc) for s in srcs)
+
+    def from_src(self, n, sc):
+        k = n.k
+        if k == 'table':
+            kind, pg, t, base = self.resolve_table(n.parts)
+            alias = n.alias
+            reg = alias or n.parts[-1]
+            sc.add(reg, t)
+            if kind in ('temp', 'tvar') and not alias:
+                sc.add(n.parts[-1].lstrip('#@'), t)
+            sql = pg
+            if alias:
+                sql += ' AS ' + ident(alias)
+            elif kind in ('temp', 'tvar'):
+                sql += ' AS ' + ident(n.parts[-1].lstrip('#@'))
+            return sql
+        if k == 'tvar':
+            low = n.name.lower() if n.name.startswith('@') else '@' + n.name.lower()
+            t = self.ctx.temps.get(low)
+            tab = t[1] if t else None
+            sc.add(n.alias or n.name, tab)
+            return '%s AS %s' % (self.tvar_name(n.name), ident(n.alias or n.name))
+        if k == 'derived':
+            sub_outer = sc.parent
+            sql, cols = self.select_full(n.sel, sub_outer)
+            names = n.cols
+            tcols = []
+            for i, (nm, cls) in enumerate(cols):
+                nm2 = names[i].lower() if names and i < len(names) else nm
+                if nm2:
+                    tcols.append(Col(nm2, '', cls))
+            sc.add(n.alias, Table(n.alias or '', tcols))
+            sql = '(%s) AS %s' % (sql, ident(n.alias)) if n.alias else '(%s)' % sql
+            if names:
+                sql += '(%s)' % ', '.join(ident(x) for x in names)
+            return sql
+        if k == 'tfunc':
+            parts = [p for p in n.name if p != '']
+            lname = parts[-1].lower()
+            if len(parts) > 2 or (len(parts) == 2 and parts[0].lower() != 'dbo'):
+                raise Untranslatable('cross-database table function')
+            sig = self.catalog.funcs.get(lname)
+            args = []
+            for i, a in enumerate(n.args):
+                s, c = self.E(a, sc)
+                if sig is not None and i < len(sig.params):
+                    s = self.coerce_to(a, s, c, sig.params[i].pgtype, sig.params[i].cls)
+                args.append(s)
+            tab = sig.ret_table if sig is not None else None
+            sc.add(n.alias or lname, tab)
+            return '%s(%s) AS %s' % (fn_ident(lname), ', '.join(args), ident(n.alias or lname))
+        if k == 'join':
+            l = self.from_src(n.l, sc)
+            r = self.from_src(n.r, sc)
+            kw = {'INNER': 'JOIN', 'LEFT': 'LEFT JOIN', 'RIGHT': 'RIGHT JOIN', 'FULL': 'FULL JOIN', 'CROSS': 'CROSS JOIN'}[n.kind]
+            if n.kind == 'CROSS' or n.on is None:
+                return '%s %s %s' % (l, 'CROSS JOIN' if n.on is None else kw, r) + ('' if n.on is None else '')
+            return '%s %s %s ON %s' % (l, kw, r, self.Es(n.on, sc))
+        if k == 'group':
+            return '(%s)' % self.from_src(n.src, sc)
+        raise Untranslatable('FROM source ' + k)
+
+    # ------------------------------------------------------------------ target helpers
+    def target_info(self, t):
+        """INSERT/UPDATE/DELETE target -> (kind, pgname, Table|None, base)"""
+        if t.k == 'tvar':
+            low = t.name.lower() if t.name.startswith('@') else '@' + t.name.lower()
+            tab = self.ctx.temps.get(low)
+            return ('tvar', self.tvar_name(t.name), tab[1] if tab else None, low)
+        return self.resolve_table(t.parts)
+
+    # ------------------------------------------------------------------ INSERT
+    def insert_sql(self, n, sc_outer=None):
+        kind, pg, tab, base = self.target_info(n.target)
+        sc = Scope()
+        cols_sql = ''
+        names = None
+        if n.cols:
+            names = [c for c in n.cols]
+            cols_sql = ' (%s)' % ', '.join(ident(c) for c in names)
+        if n.sel is not None:
+            sql, ocols = self.select_full(n.sel, Scope())
+            if names is None and tab is not None:
+                ins = [c for c in tab.cols if c.identity]
+                if ins and ocols and all(c[0] != '*' for c in ocols):
+                    noni = [c for c in tab.cols if not c.identity]
+                    if len(ocols) == len(noni) and len(ocols) != len(tab.cols):
+                        names = [c.name for c in noni]
+                        cols_sql = ' (%s)' % ', '.join(ident(c) for c in names)
+            return 'INSERT INTO %s%s %s' % (pg, cols_sql, sql)
+        if getattr(n, 'defaults', False):
+            return 'INSERT INTO %s DEFAULT VALUES' % pg
+        rows = []
+        for row in n.rows:
+            vals = []
+            for i, e in enumerate(row):
+                s, c = self.E(e, sc)
+                vals.append(s)
+            rows.append('(%s)' % ', '.join(vals))
+        if names is None and tab is not None and rows:
+            ins = [c for c in tab.cols if c.identity]
+            nvals = len(n.rows[0])
+            if ins and nvals == len(tab.cols) - len(ins):
+                names = [c.name for c in tab.cols if not c.identity]
+                cols_sql = ' (%s)' % ', '.join(ident(c) for c in names)
+        return 'INSERT INTO %s%s VALUES %s' % (pg, cols_sql, ', '.join(rows))
+
+    # ------------------------------------------------------------------ UPDATE / DELETE
+    def find_target(self, n, srcs):
+        """locate the target table inside the FROM list.  -> (path, node) or None
+        path: ('top', idx) | ('left', idx) when target is the left-most leaf of an all-inner join tree | ('deep', idx)"""
+        tkind = n.target.k
+        tparts = n.target.parts if tkind == 'table' else None
+        tname = (tparts[-1] if tparts else n.target.name).lower().lstrip('@') if True else None
+        tname_full = (tparts[-1] if tparts else n.target.name).lower()
+
+        def matches(x):
+            if x.k == 'table':
+                if x.alias is not None:
+                    return x.alias.lower() == tname_full
+                return x.parts[-1].lower() == tname_full
+            if x.k == 'tvar':
+                if x.alias is not None:
+                    return x.alias.lower() == tname_full
+                return x.name.lower() == tname_full or ('@' + x.name.lower()) == tname_full
+            return False
+
+        def contains(x):
+            if matches(x):
+                return True
+            if x.k == 'join':
+                return contains(x.l) or contains(x.r)
+            if x.k == 'group':
+                return contains(x.src)
+            return False
+
+        for i, s in enumerate(srcs):
+            if matches(s):
+                return ('top', i, s)
+        for i, s in enumerate(srcs):
+            if s.k == 'join' and contains(s):
+                # left-most leaf of an inner-join chain?
+                chain, cur, ok = [], s, True
+                while cur.k == 'join':
+                    if cur.kind not in ('INNER', 'CROSS'):
+                        ok = False
+                    chain.append(cur)
+                    cur = cur.l
+                if ok and matches(cur):
+                    return ('left', i, cur)
+                return ('deep', i, None)
+        for i, s in enumerate(srcs):
+            if s.k == 'group' and contains(s):
+                return ('deep', i, None)
+        return None
+
+    def flatten_inner(self, s):
+        """inner-join chain -> (leaf list, [conditions]) ; leaves excludes the left-most leaf"""
+        leaves, conds = [], []
+        chain = []
+        cur = s
+        while cur.k == 'join':
+            chain.append(cur)
+            cur = cur.l
+        for j in reversed(chain):
+            leaves.append(j.r)
+            if j.on is not None:
+                conds.append(j.on)
+        return cur, leaves, conds
+
+    def dml_common(self, n, is_update):
+        kind, pg, tab, base = self.target_info(n.target)
+        tname = n.target.parts[-1] if n.target.k == 'table' else n.target.name
+        info = {'kind': kind, 'pg': pg, 'tab': tab}
+        sc = Scope()
+        alias = None
+        from_sql = ''
+        extra_where = []
+        ctid_mode = False
+        frm = n.frm
+        if not frm:
+            sc.add(tname.lstrip('#@'), tab)
+            sc.add(tname, tab)
+            return info, sc, None, '', [], False
+        found = self.find_target(n, frm)
+        if found is None:
+            sc.add(tname.lstrip('#@'), tab)
+            sc.add(tname, tab)
+            from_sql = self.from_list(frm, sc)
+            return info, sc, None, from_sql, [], False
+        mode, idx, leaf = found
+        if mode in ('top', 'left'):
+            if mode == 'top':
+                tnode = leaf
+                rest = frm[:idx] + frm[idx + 1:]
+                conds = []
+            else:
+                tnode, leaves, conds = self.flatten_inner(frm[idx])
+                rest = frm[:idx] + leaves + frm[idx + 1:]
+            if tnode.k == 'table':
+                k2, pg2, tab2, _ = self.resolve_table(tnode.parts)
+                info = {'kind': k2, 'pg': pg2, 'tab': tab2}
+            else:
+                k2, pg2, tab2, _ = self.target_info(Node('tvar', name=tnode.name, alias=None))
+                info = {'kind': k2, 'pg': pg2, 'tab': tab2}
+            talias = tnode.alias or (tnode.parts[-1].lstrip('#') if tnode.k == 'table' else tnode.name.lstrip('@'))
+            alias = talias
+            sc.add(talias, info['tab'])
+            if tnode.k == 'table':
+                sc.add(tnode.parts[-1], info['tab'])
+            from_sql = self.from_list(rest, sc) if rest else ''
+            extra_where = [self.Es(c, sc) for c in conds]
+            return info, sc, alias, from_sql, extra_where, False
+        # deep: ctid fallback
+        sc2 = Scope()
+        from_sql = self.from_list(frm, sc2)
+        return info, sc2, None, from_sql, [], True
+
+    def update_sql(self, n):
+        if n.top is not None:
+            raise Untranslatable('UPDATE TOP')
+        info, sc, alias, from_sql, extra, ctid = self.dml_common(n, True)
+        tname = n.target.parts[-1] if n.target.k == 'table' else n.target.name
+        sets = []
+        for tgt, op, e in n.sets:
+            if tgt[0] == 'var':
+                raise Untranslatable('UPDATE ... SET @variable = ...')
+            col = tgt[1][-1]
+            s, c = self.E(e, sc)
+            if op != '=':
+                cur = ident(col)
+                s = '%s %s (%s)' % (cur, op[0], s)
+            sets.append((col, s))
+        where_sql = ''
+        if n.where is not None:
+            if n.where.k == 'current_of':
+                where_sql = ' WHERE CURRENT OF %s' % self.cursor_var(n.where.cursor)
+            else:
+                w = self.Es(n.where, sc)
+                where_sql = ' WHERE ' + ' AND '.join(extra + [w])
+        elif extra:
+            where_sql = ' WHERE ' + ' AND '.join(extra)
+        if ctid:
+            tnode = self.find_target(n, n.frm)
+            # alias of the target inside the original FROM
+            talias = self.target_alias_in(n, n.frm)
+            vals = ', '.join('%s AS _v%d' % (s, i) for i, (_, s) in enumerate(sets))
+            inner_w = ''
+            if n.where is not None:
+                inner_w = ' WHERE ' + self.Es(n.where, sc)
+            sub = 'SELECT %s.ctid AS _id, %s FROM %s%s' % (ident(talias), vals, from_sql, inner_w)
+            return 'UPDATE %s AS _t SET %s FROM (%s) AS _s WHERE _t.ctid = _s._id' % (
+                info['pg'], ', '.join('%s = _s._v%d' % (ident(c), i) for i, (c, _) in enumerate(sets)), sub)
+        a = ' AS ' + ident(alias) if alias else ''
+        return 'UPDATE %s%s SET %s%s%s' % (info['pg'], a, ', '.join('%s = %s' % (ident(c), s) for c, s in sets),
+                                           (' FROM ' + from_sql) if from_sql else '', where_sql)
+
+    def target_alias_in(self, n, frm):
+        tname = (n.target.parts[-1] if n.target.k == 'table' else n.target.name).lower()
+        for x in walk_nodes(frm):
+            if x.k == 'table':
+                if (x.alias and x.alias.lower() == tname) or (not x.alias and x.parts[-1].lower() == tname):
+                    return x.alias or x.parts[-1]
+        return tname
+
+    def delete_sql(self, n):
+        if n.top is not None:
+            raise Untranslatable('DELETE TOP')
+        info, sc, alias, from_sql, extra, ctid = self.dml_common(n, False)
+        where_sql = ''
+        if n.where is not None:
+            if n.where.k == 'current_of':
+                where_sql = ' WHERE CURRENT OF %s' % self.cursor_var(n.where.cursor)
+            else:
+                w = self.Es(n.where, sc)
+                where_sql = ' WHERE ' + ' AND '.join(extra + [w])
+        elif extra:
+            where_sql = ' WHERE ' + ' AND '.join(extra)
+        if ctid:
+            talias = self.target_alias_in(n, n.frm)
+            inner_w = ''
+            if n.where is not None:
+                inner_w = ' WHERE ' + self.Es(n.where, sc)
+            return 'DELETE FROM %s WHERE ctid IN (SELECT %s.ctid FROM %s%s)' % (info['pg'], ident(talias), from_sql, inner_w)
+        a = ' AS ' + ident(alias) if alias else ''
+        return 'DELETE FROM %s%s%s%s' % (info['pg'], a, (' USING ' + from_sql) if from_sql else '', where_sql)
