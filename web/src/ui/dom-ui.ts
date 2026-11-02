@@ -851,7 +851,18 @@ export class WinView {
         pageObjs.forEach((po, i) => {
           const tabEl = document.createElement('div')
           tabEl.className = 't'
-          tabEl.textContent = caption(str(po, 'text'))
+          // the picture of the page (a stock name such as `Table!`) and the text, which keeps its trailing blanks (they widen the tab)
+          const spot = iconPos(str(po, 'picturename'))
+          if (spot !== null) {
+            const pic = document.createElement('span')
+            pic.className = 'pic'
+            pic.style.backgroundPosition = `-${spot * 16}px 0`
+            tabEl.appendChild(pic)
+          }
+          const label = document.createElement('span')
+          label.className = 'lb'
+          label.textContent = caption(str(po, 'text'))
+          tabEl.appendChild(label)
           tabEl.onclick = () => {
             const old = toNum(c.props.get('selectedtab') ?? 1)
             select(i + 1)

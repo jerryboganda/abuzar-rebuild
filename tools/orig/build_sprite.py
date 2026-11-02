@@ -17,6 +17,7 @@ import icons  # noqa: E402
 BG = (240, 240, 240)
 # pictures whose captured (disabled) rendering has a different silhouette than the enabled bitmap: resource found by eye on a contact sheet
 FORCE = {'clear': 1266}
+OVERRIDE = {'find': 1048}
 
 
 def sheets(logs):
@@ -59,6 +60,7 @@ def main():
     for cls, (title, menu) in win.items():
         menus_by_title.setdefault(title, set()).add(menu)
     best = {}  # stock name -> (richness, grid)
+    chosen = {}  # stock name -> resource id found by comparing with the capture
     report = []
     for path in sorted(glob.glob(os.path.join(shots_dir, '*.png'))):
         name = os.path.basename(path)
@@ -119,6 +121,7 @@ def main():
             px = res[FORCE[key]]
             a = icons.art(px, px[0][0])
             best[key] = (r, [[BG if c == px[0][0] else c for c in row] for row in a[1]])
+            chosen[key] = FORCE[key]
             report.append((key, 'resource %s (forced)' % FORCE[key]))
             continue
         mask = [[c != BG for c in row] for row in grid]
@@ -144,23 +147,39 @@ def main():
             top = min(cands, key=lambda c: (c[1], -c[0])) if colourful else max(cands, key=lambda c: c[0])
             g2, tr = res_art[top[2]]
             best[key] = (r, [[BG if c == tr else c for c in row] for row in g2])
+            chosen[key] = top[2] if colourful else None
             report.append((key, 'resource %s (silhouette %.2f, colour distance %.0f, %d candidates)' % (top[2], top[0], top[1], len(cands))))
         else:
             report.append((key, 'kept the captured picture'))
-    names = sorted(best)
+    # every stock name of PBVM125.dll (name table next to the picture ids), with what the screenshots showed taking precedence
+    table = {n.lower().rstrip('!'): rid for n, rid in json.load(open(opt['names']))}
+    # the toolbar of the original shows a different picture than the name table for these (checked on screen: the pencil is `Search!`)
+    for key, rid in OVERRIDE.items():
+        report.append((key, 'screen shows resource %s, the name table says %s: the screen wins' % (rid, table.get(key))))
+        table[key] = rid
+    for key in best:
+        table.setdefault(key, None)
+    names = sorted(k for k, rid in table.items() if rid in res or k in best)
     cell = 16
     sheet_w = cell * max(1, len(names))
     rows_out = [[BG] * sheet_w for _ in range(cell)]
     alpha = [[0] * sheet_w for _ in range(cell)]
     for k, nm in enumerate(names):
-        grid = best[nm][1]
+        rid = table.get(nm)
+        if rid in res:
+            px = res[rid]
+            tr = px[0][0]
+            grid = px
+        else:
+            grid = best[nm][1]
+            tr = BG
         gh, gw = len(grid), len(grid[0])
         ox = k * cell + max(0, (cell - gw) // 2)
         oy = max(0, (cell - gh) // 2)
         for y in range(min(gh, cell)):
             for x in range(min(gw, cell)):
                 c = grid[y][x]
-                if c != BG:
+                if c != tr:
                     rows_out[oy + y][ox + x] = c
                     alpha[oy + y][ox + x] = 255
     out = opt['out']

@@ -31,10 +31,11 @@ fieldset.ctl { border:1px solid #a0a0a0; margin:0; padding:0; border-radius:2px;
 fieldset.ctl > legend { padding:0 3px; margin-left:6px; }
 label.ctl { display:flex; align-items:center; gap:4px; white-space:nowrap; }
 .tabctl { position:absolute; }
-.tabctl .strip { display:flex; height:24px; border-bottom:1px solid #d9d9d9; }
-.tabctl .t { padding:2px 8px; border:1px solid #d9d9d9; border-bottom:none; background:#f0f0f0; margin-right:-1px; }
-.tabctl .t.on { background:#fff; font-weight:600; }
-.tabctl .page { position:absolute; left:0; right:0; bottom:0; top:24px; background:#fff; border:1px solid #d9d9d9; border-top:none; }
+.tabctl .strip { display:flex; height:23px; }
+.tabctl .t { display:flex; align-items:center; gap:3px; padding:0 6px 0 4px; border:1px solid #e5e5e5; border-bottom:none; background:#f0f0f0; margin-right:-1px; white-space:pre; }
+.tabctl .t .pic { display:block; width:16px; height:16px; background:url(toolbar.png) no-repeat; flex:none; }
+.tabctl .t.on { background:#f9f9f9; outline:1px dotted #000; outline-offset:-3px; }
+.tabctl .page { position:absolute; left:0; right:0; bottom:0; top:23px; background:#f0f0f0; border:1px solid #e5e5e5; }
 .dw { position:absolute; inset:0; overflow:auto; background:#fff; user-select:text; }
 .dw-inner { position:relative; min-width:100%; }
 .dw .o { pointer-events:auto; }

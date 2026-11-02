@@ -45,7 +45,7 @@ const frame = await page.evaluate(() => ({
 console.log(`main window: menu bar [${frame.menuItems.join(' | ')}], ${frame.toolbarButtons} toolbar buttons`)
 
 // screens for the side-by-side comparison with the original (uploaded by the workflow as release assets)
-if (shots) {
+if (shots && !process.argv[5]) {
   const { mkdirSync } = await import('node:fs')
   mkdirSync(shots, { recursive: true })
   await page.screenshot({ path: `${shots}/main.png` })
@@ -67,6 +67,56 @@ if (shots) {
       if (w) await window.rt.closeWindow(w).catch(() => {})
     }, name)
   }
+}
+// the same menu walk as tools/orig/crawl.ps1 does in the original: every leaf of the observed menu, a screenshot named by the id of the original's command
+const observed = process.argv[5] || ''
+const budgetMs = Number(process.argv[6] || 900000)
+if (shots && observed) {
+  const { readFileSync, writeFileSync, mkdirSync } = await import('node:fs')
+  mkdirSync(shots, { recursive: true })
+  await page.screenshot({ path: `${shots}/main.png` })
+  const lines = readFileSync(observed, 'utf8').replace(/^﻿/, '').split(/\r?\n/).filter(Boolean).map((l) => l.split('\t'))
+  const skipRe = /Exit|Change User|Backup Database|Check Database Integrity|Import Previous Sales|Inplace Initialization|Lock Item Batches/i
+  const leaves = lines.filter((p) => p[1] === 'item' && p[2] !== 'disabled' && p[0] !== '0' && !skipRe.test(p[3]))
+  const rep = leaves.filter((p) => p[3].startsWith('&Reports'))
+  const order = [...leaves.filter((p) => !p[3].startsWith('&Reports')), ...rep.filter((_, i) => i % 3 === 0)]
+  const t0 = Date.now()
+  const rows = []
+  for (const p of order) {
+    if (Date.now() - t0 > budgetMs) break
+    const [id, , , path] = p
+    current = path
+    const name = id + '_' + path.replace(/[^A-Za-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 110)
+    const res = await page.evaluate(async (pa) => {
+      try {
+        return String(await Promise.race([window.__menu(pa), new Promise((r) => setTimeout(() => r('timeout'), 6000))]))
+      } catch (e) {
+        return 'error ' + ((e && e.message) || e)
+      }
+    }, path)
+    let prev = ''
+    for (let i = 0; i < 10; i++) {
+      const h = await page.evaluate(() => document.body.innerHTML.length + ':' + document.querySelectorAll('.pbwin').length)
+      if (h === prev) break
+      prev = h
+      await page.waitForTimeout(500)
+    }
+    await page.screenshot({ path: `${shots}/${name}.png` })
+    const titles = await page.evaluate(() => [...document.querySelectorAll('.pbwin .ttl')].map((t) => t.textContent.trim()).join(' ; '))
+    rows.push(`${id}\t${res}\t${titles}\t${path}`)
+    await page.evaluate(async () => {
+      for (let i = 0; i < 4; i++) {
+        document.querySelectorAll('.msgbox .btns button').forEach((b) => {
+          const no = [...b.parentElement.querySelectorAll('button')].find((x) => /^no$/i.test(x.textContent.trim()))
+          ;(no || b).click()
+        })
+        for (const [n, w] of [...window.rt.windowInstances]) if (n !== 'w_main') await window.rt.closeWindow(w).catch(() => {})
+        await new Promise((r) => setTimeout(r, 150))
+      }
+    })
+  }
+  writeFileSync(`${shots}/menu-crawl.tsv`, rows.join('\n') + '\n')
+  console.log(`menu walk: ${rows.length} of ${order.length} items opened in ${Math.round((Date.now() - t0) / 1000)} s; ${rows.filter((r) => r.split('\t')[1] !== 'true').length} did not click`)
 }
 const names = await page.evaluate(async () => {
   const j = await (await fetch('/data/classes/_index.json')).json()

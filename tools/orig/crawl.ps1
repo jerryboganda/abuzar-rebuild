@@ -153,8 +153,9 @@ elseif ($Mode -eq 'open') {
     $name = ('{0}_' -f $id) + (($path -replace '[^A-Za-z0-9]+', '_').Trim('_'))
     if ($name.Length -gt 120) { $name = $name.Substring(0, 120) }
     $frame = Frame
-    for ($w = 0; -not $frame -and $w -lt 40; $w++) { Start-Sleep -Seconds 1; $frame = Frame }
-    if (-not $frame) { "{0}`t{1}`tNOFRAME`t{2}" -f $n, $id, $path; continue }
+    for ($w = 0; -not $frame -and $w -lt 12; $w++) { Start-Sleep -Seconds 1; $frame = Frame }
+    # the program ended (a runtime error of the original terminates it) and its start needs a login: stop, the log says where
+    if (-not $frame) { "{0}`t{1}`tNOFRAME`t{2}" -f $n, $id, $path; break }
     Cleanup $frame
     [void][W]::ShowWindow($frame, 3)
     [void][W]::SetForegroundWindow($frame)

@@ -126,6 +126,25 @@ async function main(): Promise<void> {
       ref.name = name
       await rt.sys.get('opensheet')!.fn(rt, [ref, rt.windowInstances.get('w_main')], undefined as never)
     }
+    // clicks a menu item of the main menu by its captions (`&Purchase | &Purchases`), like the user does; the browser test uses it for the screens
+    ;(window as unknown as Record<string, unknown>).__menu = async (path: string) => {
+      const clean = (t: unknown) => String(t ?? '').replace(/<TAB>/g, ' ').replace(/&/g, '').replace(/\s+/g, ' ').trim().toLowerCase()
+      let m = rt.windowInstances.get('w_main')?.props.get('menuid') as PBObject | undefined
+      for (const part of path.split(' | ')) {
+        const want = clean(part)
+        const kids: PBObject[] = m ? [...m.children.values()] : []
+        const hit = kids.find((k) => clean(k.props.get('text')) === want && k.props.get('visible') !== false) ?? kids.find((k) => clean(k.props.get('text')).startsWith(want) && k.props.get('visible') !== false)
+        if (!hit) return false
+        m = hit
+        if (!hit.children.size) {
+          await rt.fire(hit, 'selected')
+          await rt.fire(hit, 'clicked')
+          return true
+        }
+        await rt.fire(hit, 'selected')
+      }
+      return false
+    }
     ;(window as unknown as Record<string, unknown>).__open = async (name: string) => {
       const ref = new Ref(() => null, () => {})
       ref.name = name

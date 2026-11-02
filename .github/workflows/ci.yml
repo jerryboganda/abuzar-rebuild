@@ -184,7 +184,7 @@ jobs:
           cd web/e2e
           npm install --no-save --no-package-lock --silent playwright@1.49.1
           npx playwright install --with-deps chromium > /dev/null
-          node browser-smoke.mjs http://127.0.0.1:8788 14 ../../shots | tee -a "$GITHUB_STEP_SUMMARY"
+          node browser-smoke.mjs http://127.0.0.1:8788 14 ../../shots ../../docs/observed/original-menu-frame.tsv 720000 | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Screens of the rebuild as release assets (no Actions artifact quota)
         if: always()
         continue-on-error: true
@@ -193,7 +193,7 @@ jobs:
         run: |
           ls shots 2>/dev/null || exit 0
           gh release view ci-screens -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || gh release create ci-screens -R "$GITHUB_REPOSITORY" --title "CI screens" --notes "Screens of the rebuild taken by the browser run of the last CI build" --prerelease
-          gh release upload ci-screens shots/*.png --clobber -R "$GITHUB_REPOSITORY"
+          gh release upload ci-screens shots/*.png shots/*.tsv --clobber -R "$GITHUB_REPOSITORY"
       - name: Server log (tail)
         if: always()
         run: tail -n 40 server.log || true
