@@ -63,6 +63,29 @@ fn quote(s: &str, n: usize) -> Result<String, SubError> {
     Ok(format!("'{}'", s.replace('\'', "''")))
 }
 
+/// true when the placeholder at `b[i..j]` is the only member of an `IN ( ... )` list
+fn in_list_context(b: &[u8], i: usize, j: usize) -> bool {
+    let mut k = j;
+    while k < b.len() && b[k].is_ascii_whitespace() {
+        k += 1;
+    }
+    if k >= b.len() || b[k] != b')' {
+        return false;
+    }
+    let mut p = i;
+    while p > 0 && b[p - 1].is_ascii_whitespace() {
+        p -= 1;
+    }
+    if p == 0 || b[p - 1] != b'(' {
+        return false;
+    }
+    p -= 1;
+    while p > 0 && b[p - 1].is_ascii_whitespace() {
+        p -= 1;
+    }
+    p >= 2 && b[p - 2..p].eq_ignore_ascii_case(b"in") && (p == 2 || !(b[p - 3].is_ascii_alphanumeric() || b[p - 3] == b'_'))
+}
+
 /// Replace `$n` placeholders with literals.
 pub fn substitute(sql: &str, params: &[Value]) -> Result<String, SubError> {
     let b = sql.as_bytes();
@@ -122,7 +145,21 @@ pub fn substitute(sql: &str, params: &[Value]) -> Result<String, SubError> {
                     let n: usize = sql[i + 1..j].parse().unwrap_or(0);
                     let v = params.get(n.wrapping_sub(1)).ok_or(SubError::Missing(n))?;
                     out.push_str(&sql[last..i]);
-                    out.push_str(&literal(v, n)?);
+                    match v {
+                        // `col IN (:list)`: a list argument (numberlist / stringlist) becomes the members of the list
+                        Value::Array(items) if in_list_context(b, i, j) => {
+                            if items.is_empty() {
+                                out.push_str("NULL");
+                            } else {
+                                let mut parts = Vec::with_capacity(items.len());
+                                for it in items {
+                                    parts.push(literal(it, n)?);
+                                }
+                                out.push_str(&parts.join(","));
+                            }
+                        }
+                        _ => out.push_str(&literal(v, n)?),
+                    }
                     last = j;
                     i = j;
                 } else {
@@ -156,6 +193,14 @@ mod tests {
     fn replaces_in_order_and_quotes() {
         let s = substitute("select * from t where a = $1 and b = $2 and c = $1", &[json!(5), json!("O'Brien")]).unwrap();
         assert_eq!(s, "select * from t where a = 5 and b = 'O''Brien' and c = 5");
+    }
+
+    #[test]
+    fn list_arguments_expand_inside_in() {
+        let s = substitute("select * from t where a in ($1) and b in ( $2 ) and c = any($3) and d not in ($4)", &[json!([1, 2]), json!(["x"]), json!([3]), json!([])]).unwrap();
+        assert_eq!(s, "select * from t where a in (1,2) and b in ( 'x' ) and c = any(ARRAY[3]) and d not in (NULL)");
+        // a scalar in the same position is unchanged; so is a word that merely ends in "in"
+        assert_eq!(substitute("where a in ($1) and begin($2)", &[json!(5), json!([1])]).unwrap(), "where a in (5) and begin(ARRAY[1])");
     }
 
     #[test]

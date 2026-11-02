@@ -133,3 +133,5 @@ const missing = [...rt.missing.entries()].sort((a, b) => b[1] - a[1])
 console.log('missing (top 40)', missing.slice(0, 40).map(([k, v]) => `${k}:${v}`).join('  '))
 if (reportFile) writeFileSync(reportFile, JSON.stringify({ results, missing: Object.fromEntries(missing) }, null, 1))
 void readdirSync
+// open handles of the HTTP client would keep the process (and the CI job) alive
+setTimeout(() => process.exit(0), 200)

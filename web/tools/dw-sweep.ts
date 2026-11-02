@@ -98,3 +98,5 @@ console.log(`DataWindows executed: ${ok} of ${tried} retrieve statements run on 
 for (const [k, v] of [...failures.entries()].sort((a, b) => b[1].n - a[1].n).slice(0, 25)) console.log(`${v.n} x ${k}   e.g. ${v.example}`)
 if (out) writeFileSync(out, JSON.stringify({ tried, ok, failures: Object.fromEntries(failures), bad, stmtTried, stmtOk, stmtFailures: Object.fromEntries(stmtStats), stmtBad }, null, 1))
 void readdirSync
+// open handles of the HTTP client would keep the process (and the CI job) alive
+setTimeout(() => process.exit(0), 200)
