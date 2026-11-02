@@ -59,6 +59,23 @@ const mode = (v: unknown) => String(v ?? '').toLowerCase()
 export function registerFileFuncs(rt: Runtime): void {
   const def = (name: string, fn: (r: Runtime, a: unknown[]) => unknown | Promise<unknown>, refs?: number[]) => rt.sys.set(name, refs ? { fn: (r, a) => fn(r, a), refs } : { fn: (r, a) => fn(r, a) })
 
+  /** kernel32 GetEnvironmentVariableA(name, ref buffer, size): the variables a browser knows about; 0 = not found */
+  def('getenvironmentvariablea', async (_r, a) => {
+    const name = toStr(a[0]).toUpperCase()
+    const value = name === 'COMPUTERNAME' ? (globalThis.location?.hostname || 'LOCALHOST').toUpperCase() : ''
+    if (!value) return 0
+    if (a[1] instanceof Ref) await a[1].set(value)
+    return value.length
+  }, [1])
+  /** kernel32 QueryPerformanceFrequency / Counter (ref longlong): microsecond timer of the page */
+  def('queryperformancefrequency', async (_r, a) => {
+    if (a[0] instanceof Ref) await a[0].set(1000000)
+    return 1
+  }, [0])
+  def('queryperformancecounter', async (_r, a) => {
+    if (a[0] instanceof Ref) await a[0].set(Math.round(performance.now() * 1000))
+    return 1
+  }, [0])
   /** QRCodeGenLibrary.dll: createbmpfile(file, text, errCorLvl, borderSize, scale) -> 0, or 1 file / 2 text / 3 level / 4 border / 5 scale */
   def('createbmpfile', async (_r, a) => {
     const text = toStr(a[1])
