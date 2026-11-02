@@ -1,8 +1,22 @@
 // Windows and standard controls (headless behaviour; the DOM layer binds to `onProp` and the listeners).
 import { PBObject } from '../object.ts'
+import type { Member } from '../object.ts'
 import type { Runtime } from '../interp.ts'
 import { PBArray, toNum, toStr } from '../values.ts'
 import { Ref } from '../interp.ts'
+
+/** the automation object of an OLE control whose server is not installed here (fingerprint reader, ActiveX viewers): every call fails with -1,
+ *  so the window opens and the device features report an error instead of the whole window failing */
+class OleStub implements Member {
+  pbGet(): unknown {
+    return null
+  }
+  pbSet(): void {}
+  pbCall(name: string, _args: unknown[], rt: Runtime): number {
+    rt.noteMissing('ole:' + name)
+    return -1
+  }
+}
 
 export class NControl extends PBObject {
   listeners = new Set<() => void>()
@@ -15,6 +29,11 @@ export class NControl extends PBObject {
   override setNative(name: string, value: unknown): void {
     super.setNative(name, value)
     this.changed()
+  }
+  private ole = new OleStub()
+  override pbGet(name: string): unknown {
+    if (name === 'object' && (this.native === 'olecustomcontrol' || this.native === 'ole')) return this.ole
+    return super.pbGet(name)
   }
   override pbSet(name: string, value: unknown): void {
     super.pbSet(name, value)
