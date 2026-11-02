@@ -1,0 +1,75 @@
+// window w_crystal_report_viewer (reportviewer)  ancestor: window
+
+// w_crystal_report_viewer.wf_select_report() returns long
+	choose case this.is_reportinfo.s_reportobject
+	case "12321321341234"
+		return 0
+	end choose
+	return 0
+
+// w_crystal_report_viewer.wf_open_report() returns 0
+	long ll_ret
+	runtimeerror er
+	try
+		ll_ret = this.ioo_application.connecttonewobject("CrystalRuntime.Application")
+		this.ioo_report = this.ioo_application.__invoke_method("openreport", 2, {"Reports\" + this.is_reportinfo.s_reportobject, 1}, true)
+		this.ioo_application.__invoke_method("logonserver", 5, {"PDSODBC.DLL", "waseela_dsn", gs_dbname, "sa", gs_password}, true)
+		this.ioo_report.__invoke_method("discardsaveddata", 0, {}, true)
+		wf_set_parameters()
+		this.ioo_report.__invoke_method("readrecords", 0, {}, true)
+		this.ole_crs_viewer.object.__invoke_method("reportsource", 1, {this.ioo_report}, true)
+		this.ole_crs_viewer.object.__invoke_method("viewreport", 0, {}, true)
+		this.ole_crs_viewer.object.enableprintbutton = true
+		this.ole_crs_viewer.object.__invoke_method("displaytoolbar", 1, {true}, true)
+		this.ole_crs_viewer.object.__invoke_method("displaytabs", 1, {true}, true)
+	catch (throwable er)
+		messagebox("Error", "Error occured in code: " + er.getmessage())
+	end try
+
+// w_crystal_report_viewer.wf_set_parameters() returns long
+	choose case this.is_reportinfo.s_reportobject
+	case "rptPrintCheque.rpt"
+		this.ioo_report.parameterfields.item[1].__invoke_method("addcurrentvalue", 1, {this.is_reportinfo.l_code}, true)
+		return 0
+	end choose
+	return 0
+
+// w_crystal_report_viewer.create() returns 0
+	this.cb_print = create cb_print
+	this.st_placeholder = create st_placeholder
+	this.ole_crs_viewer = create ole_crs_viewer
+	this.control = {this.cb_print, this.st_placeholder, this.ole_crs_viewer}
+
+// w_crystal_report_viewer.destroy() returns 0
+	destroy this.cb_print
+	destroy this.st_placeholder
+	destroy this.ole_crs_viewer
+
+// w_crystal_report_viewer.open() returns long
+	long ll_width
+	long ll_height
+	long ll_found
+	environment env
+	this.ioo_application = create n_oo
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.ole_crs_viewer.width = ll_width * 0.985
+	this.ole_crs_viewer.height = ll_height * 0.80
+	this.cb_print.y = this.ole_crs_viewer.y + this.ole_crs_viewer.height + 10
+	this.st_placeholder.x = int(this.ole_crs_viewer.width / 2.0 - this.st_placeholder.width / 2.0)
+	this.st_placeholder.y = int(this.ole_crs_viewer.height / 2.0 - this.st_placeholder.height / 2.0)
+	this.st_placeholder.visible = true
+	this.is_reportinfo = ::message.powerobjectparm
+	wf_select_report()
+	wf_open_report()
+	this.st_placeholder.visible = false
+	setredraw(true)
+	return ::message.returnvalue
+
+// cb_print.clicked() returns long
+	parent.ole_crs_viewer.object.__invoke_method("printreport", 0, {}, true)
+	return ::message.returnvalue

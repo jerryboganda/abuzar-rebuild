@@ -1,0 +1,1840 @@
+// userobject n_xls_worksheet_v5 (dw2xls)  ancestor: n_xls_worksheet
+
+// n_xls_worksheet_v5.of_close() returns integer
+	integer li_ret
+	unsignedinteger li_i
+	unsignedinteger li_cnt
+	unsignedinteger li_end
+	long ll_i
+	of_store_bof(16)
+	li_cnt = upperbound(this.invo_colinfo)
+	if li_cnt > 0 then
+		of_store_defcol()
+		for li_i = li_cnt to li_end step 65535
+			of_store_colinfo(this.invo_colinfo[li_i])
+		next
+	end if
+	of_store_externcount(this.invo_workbook.il_worksheetindex)
+	for ll_i = 1 to this.invo_workbook.il_worksheetindex
+		of_store_externsheet(this.invo_workbook.invo_worksheets[ll_i].is_worksheetname)
+	next
+	of_store_print_headers()
+	of_store_print_gridlines()
+	of_store_gridset()
+	of_store_wsbool()
+	of_store_hbreak()
+	of_store_vbreak()
+	of_store_setup()
+	of_store_protect()
+	of_store_password()
+	of_store_dimensions()
+	of_store_margin_bottom()
+	of_store_margin_top()
+	of_store_margin_right()
+	of_store_margin_left()
+	of_store_vcenter()
+	of_store_hcenter()
+	of_store_footer()
+	of_store_header()
+	of_store_window2()
+	of_store_zoom()
+	if not isnull(this.invo_panes) and isvalid(this.invo_panes) then
+		of_store_panes(this.invo_panes)
+	end if
+	of_store_selection(this.invo_selection)
+	of_store_eof()
+	return li_ret
+
+// n_xls_worksheet_v5.of_merge_write(unsignedinteger ai_first_row, unsignedinteger ai_first_col, unsignedinteger ai_last_row, unsignedinteger ai_last_col, double adb_num, n_xls_format anvo_format) returns integer
+	integer li_ret
+	unsignedinteger li_rwfirst
+	unsignedinteger li_colfirst
+	unsignedinteger li_rwlast
+	unsignedinteger li_collast
+	unsignedinteger li_i
+	unsignedinteger li_j
+	n_xls_format_v5 lnvo_format
+	li_rwfirst = ai_first_row
+	li_colfirst = ai_first_col
+	li_rwlast = ai_last_row
+	li_collast = ai_last_col
+	if li_rwfirst = li_rwlast and li_colfirst = li_collast then
+		messagebox("Error", "Can't merge single cell", stopsign!)
+		return -1
+	end if
+	if li_rwfirst > li_rwlast then
+		li_rwfirst = ai_last_row
+		li_rwlast = ai_first_row
+	end if
+	if li_colfirst > li_collast then
+		li_colfirst = ai_last_col
+		li_collast = ai_first_col
+	end if
+	if not isnull(anvo_format) and isvalid(anvo_format) then
+		lnvo_format = anvo_format
+		lnvo_format.of_set_merge_range()
+	end if
+	of_write(li_rwfirst, li_colfirst, adb_num, anvo_format)
+	for li_i = li_rwfirst to li_rwlast
+		for li_j = li_colfirst to li_collast
+			if not (li_i = li_rwfirst and li_j = li_colfirst) then
+				of_write(li_i, li_j, anvo_format)
+			end if
+		next
+	next
+	of_merge_cells(li_rwfirst, li_colfirst, li_rwlast, li_collast)
+	return li_ret
+
+// n_xls_worksheet_v5.of_merge_write(unsignedinteger ai_first_row, unsignedinteger ai_first_col, unsignedinteger ai_last_row, unsignedinteger ai_last_col, string as_str, n_xls_format anvo_format) returns integer
+	integer li_ret
+	unsignedinteger li_rwfirst
+	unsignedinteger li_colfirst
+	unsignedinteger li_rwlast
+	unsignedinteger li_collast
+	unsignedinteger li_i
+	unsignedinteger li_j
+	n_xls_format_v5 lnvo_format
+	li_rwfirst = ai_first_row
+	li_colfirst = ai_first_col
+	li_rwlast = ai_last_row
+	li_collast = ai_last_col
+	if li_rwfirst = li_rwlast and li_colfirst = li_collast then
+		messagebox("Error", "Can't merge single cell", stopsign!)
+		return -1
+	end if
+	if li_rwfirst > li_rwlast then
+		li_rwfirst = ai_last_row
+		li_rwlast = ai_first_row
+	end if
+	if li_colfirst > li_collast then
+		li_colfirst = ai_last_col
+		li_collast = ai_first_col
+	end if
+	if not isnull(anvo_format) and isvalid(anvo_format) then
+		lnvo_format = anvo_format
+		lnvo_format.of_set_merge_range()
+	end if
+	of_write(li_rwfirst, li_colfirst, as_str, anvo_format)
+	for li_i = li_rwfirst to li_rwlast
+		for li_j = li_colfirst to li_collast
+			if not (li_i = li_rwfirst and li_j = li_colfirst) then
+				of_write(li_i, li_j, anvo_format)
+			end if
+		next
+	next
+	of_merge_cells(li_rwfirst, li_colfirst, li_rwlast, li_collast)
+	return li_ret
+
+// n_xls_worksheet_v5.of_merge_write(unsignedinteger ai_first_row, unsignedinteger ai_first_col, unsignedinteger ai_last_row, unsignedinteger ai_last_col, datetime adt_datetime, n_xls_format anvo_format) returns integer
+	double ld_val
+	time lt_time
+	string ls_time
+	integer li_hour
+	integer li_minute
+	integer li_second
+	lt_time = time(adt_datetime)
+	ls_time = string(lt_time)
+	lt_time = time(ls_time)
+	li_hour = hour(lt_time)
+	li_minute = minute(lt_time)
+	li_second = second(lt_time)
+	ld_val = daysafter(date("1899-12-30"), date(adt_datetime)) + (li_second + li_minute * 60 + li_hour * 3600) / (24 * 3600)
+	return of_merge_write(ai_first_row, ai_first_col, ai_last_row, ai_last_col, ld_val, anvo_format)
+
+// n_xls_worksheet_v5.of_merge_write(unsignedinteger ai_first_row, unsignedinteger ai_first_col, unsignedinteger ai_last_row, unsignedinteger ai_last_col, date ad_date, n_xls_format anvo_format) returns integer
+	double ld_val
+	ld_val = daysafter(date("1899-12-30"), ad_date)
+	return of_merge_write(ai_first_row, ai_first_col, ai_last_row, ai_last_col, ld_val, anvo_format)
+
+// n_xls_worksheet_v5.of_merge_write(unsignedinteger ai_first_row, unsignedinteger ai_first_col, unsignedinteger ai_last_row, unsignedinteger ai_last_col, n_xls_format anvo_format) returns integer
+	integer li_ret
+	unsignedinteger li_rwfirst
+	unsignedinteger li_colfirst
+	unsignedinteger li_rwlast
+	unsignedinteger li_collast
+	unsignedinteger li_i
+	unsignedinteger li_j
+	n_xls_format_v5 lnvo_format
+	li_rwfirst = ai_first_row
+	li_colfirst = ai_first_col
+	li_rwlast = ai_last_row
+	li_collast = ai_last_col
+	if li_rwfirst = li_rwlast and li_colfirst = li_collast then
+		messagebox("Error", "Can't merge single cell", stopsign!)
+		return -1
+	end if
+	if li_rwfirst > li_rwlast then
+		li_rwfirst = ai_last_row
+		li_rwlast = ai_first_row
+	end if
+	if li_colfirst > li_collast then
+		li_colfirst = ai_last_col
+		li_collast = ai_first_col
+	end if
+	if not isnull(anvo_format) and isvalid(anvo_format) then
+		lnvo_format = anvo_format
+		lnvo_format.of_set_merge_range()
+	end if
+	of_write(li_rwfirst, li_colfirst, anvo_format)
+	for li_i = li_rwfirst to li_rwlast
+		for li_j = li_colfirst to li_collast
+			if not (li_i = li_rwfirst and li_j = li_colfirst) then
+				of_write(li_i, li_j, anvo_format)
+			end if
+		next
+	next
+	of_merge_cells(li_rwfirst, li_colfirst, li_rwlast, li_collast)
+	return li_ret
+
+// n_xls_worksheet_v5.of_xf(unsignedinteger ai_row, unsignedinteger ai_col, n_xls_format anvo_format) returns integer
+	unsignedinteger li_xf
+	unsignedlong ll_key
+	if not isnull(anvo_format) and isvalid(anvo_format) then
+		return this.invo_workbook.of_reg_format(anvo_format)
+	end if
+	ll_key = this.invo_key_row_formats.of_get_key_index(ai_row)
+	if ll_key > 0 then
+		return this.invo_workbook.of_reg_format(this.invo_row_formats[ll_key])
+	end if
+	ll_key = this.invo_key_col_formats.of_get_key_index(ai_col)
+	if ll_key > 0 then
+		return this.invo_workbook.of_reg_format(this.invo_col_formats[ll_key])
+	end if
+	return li_xf
+
+// n_xls_worksheet_v5.of_append_data(blob ab_data) returns integer
+	integer li_ret
+	if len(ab_data) > this.ii_limit then
+		ab_data = of_add_continue(ab_data)
+	end if
+	this.il_datasize = this.il_datasize + len(ab_data)
+	this.invo_data.of_append(ab_data)
+	return li_ret
+
+// n_xls_worksheet_v5.of_add_continue(blob ab_data) returns blob
+	unsignedinteger li_record
+	blob lb_header
+	blob lb_tmp
+	unsignedlong ll_start_pos
+	lb_tmp = blobmid(ab_data, 1, this.ii_limit)
+	ab_data = blobmid(ab_data, this.ii_limit + 1, len(ab_data) - this.ii_limit)
+	blobedit(lb_tmp, 3, this.invo_sub.of_pack("v", this.ii_limit - 4))
+	do while len(ab_data) > this.ii_limit
+		lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", this.ii_limit)
+		lb_tmp = lb_header + lb_tmp
+		lb_tmp = blobmid(ab_data, 1, this.ii_limit) + lb_tmp
+		ab_data = blobmid(ab_data, this.ii_limit + 1, len(ab_data) - this.ii_limit)
+	loop
+	if len(ab_data) > 0 then
+		lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", len(ab_data))
+		lb_tmp = lb_header + lb_tmp
+		lb_tmp = ab_data + lb_tmp
+	end if
+	return lb_tmp
+
+// n_xls_worksheet_v5.of_sort_pagebreaks(unsignedinteger[] ai_page_breaks) returns integer
+	integer li_ret
+	n_associated_ulong_srv invo_key_breaks
+	unsignedinteger li_cnt
+	unsignedinteger li_i
+	unsignedinteger li_start
+	unsignedlong ll_ind
+	unsignedinteger[] li_new
+	invo_key_breaks = create n_associated_ulong_srv
+	li_cnt = upperbound(ai_page_breaks)
+	for li_i = li_start to li_cnt
+		if ai_page_breaks[li_i] > 0 then
+			ll_ind = invo_key_breaks.of_get_key_index(ai_page_breaks[li_i])
+			if ll_ind = 0 then
+				invo_key_breaks.of_add_key(ai_page_breaks[li_i])
+			end if
+		end if
+	next
+	invo_key_breaks.of_sort_keys()
+	li_cnt = invo_key_breaks.of_get_keys_count()
+	for li_i = li_start to li_cnt
+		li_new[li_i] = invo_key_breaks.of_get_key(li_i)
+	next
+	ai_page_breaks = li_new
+	return li_ret
+
+// n_xls_worksheet_v5.of_check_dimensions(unsignedlong al_row, unsignedlong al_col) returns integer
+	integer li_ret
+	if al_row > this.il_xls_rowmax then
+		return -2
+	end if
+	if al_col > this.il_xls_colmax then
+		return -2
+	end if
+	this.ib_dim_changed = true
+	if al_row < this.il_dim_rowmin then
+		this.il_dim_rowmin = al_row
+	end if
+	if al_row > this.il_dim_rowmax then
+		this.il_dim_rowmax = al_row
+	end if
+	if al_col < this.il_dim_colmin then
+		this.il_dim_colmin = al_col
+	end if
+	if al_col > this.il_dim_colmax then
+		this.il_dim_colmax = al_col
+	end if
+	return li_ret
+
+// n_xls_worksheet_v5.of_store_dimensions() returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	unsignedinteger li_row_min
+	unsignedinteger li_row_max
+	unsignedinteger li_col_min
+	unsignedinteger li_col_max
+	unsignedinteger li_reserved
+	blob lb_header
+	blob lb_data
+	if this.ib_dim_changed then
+		li_row_min = this.il_dim_rowmin
+		li_row_max = this.il_dim_rowmax + 1
+		li_col_min = this.il_dim_colmin
+		li_col_max = this.il_dim_colmax + 1
+	else
+		li_row_min = 0
+		li_row_max = 0
+		li_col_min = 0
+		li_col_max = 256
+	end if
+	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	lb_data = this.invo_sub.of_pack("v", li_row_min) + this.invo_sub.of_pack("v", li_row_max) + this.invo_sub.of_pack("v", li_col_min) + this.invo_sub.of_pack("v", li_col_max) + this.invo_sub.of_pack("v", li_reserved)
+	of_append_header(lb_header + lb_data)
+	return li_ret
+
+// n_xls_worksheet_v5.of_store_window2() returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	blob lb_header
+	blob lb_data
+	unsignedinteger li_grbit
+	unsignedinteger li_rwtop
+	unsignedinteger li_colleft
+	unsignedlong ll_rgbhdr
+	integer li_fdspfmla
+	integer li_fdspgrid
+	integer li_fdsprwcol
+	integer li_ffrozen
+	integer li_fdspzeros
+	integer li_fdefaulthdr
+	integer li_farabic
+	integer li_fdspguts
+	integer li_ffrozennosplit
+	integer li_fselected
+	integer li_fpaged
+	if this.ib_screen_gridlines then
+		li_fdspgrid = 1
+	end if
+	if this.ib_frozen then
+		li_ffrozen = 1
+	end if
+	if this.ib_selected then
+		li_fselected = 1
+	end if
+	li_grbit = li_fdspfmla
+	li_grbit = li_fdspgrid * 2 + li_grbit
+	li_grbit = li_fdsprwcol * 4 + li_grbit
+	li_grbit = li_ffrozen * 8 + li_grbit
+	li_grbit = li_fdspzeros * 16 + li_grbit
+	li_grbit = li_fdefaulthdr * 32 + li_grbit
+	li_grbit = li_farabic * 64 + li_grbit
+	li_grbit = li_fdspguts * 128 + li_grbit
+	li_grbit = li_ffrozennosplit * 256 + li_grbit
+	li_grbit = li_fselected * 512 + li_grbit
+	li_grbit = li_fpaged * 1024 + li_grbit
+	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	lb_data = this.invo_sub.of_pack("v", li_grbit) + this.invo_sub.of_pack("v", li_rwtop) + this.invo_sub.of_pack("v", li_colleft) + this.invo_sub.of_pack("V", ll_rgbhdr)
+	of_append_data(lb_header + lb_data)
+	return li_ret
+
+// n_xls_worksheet_v5.of_store_defcol() returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	blob lb_header
+	blob lb_data
+	unsignedinteger li_colwidth
+	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	lb_data = this.invo_sub.of_pack("v", li_colwidth)
+	of_append_header(lb_header + lb_data)
+	return li_ret
+
+// n_xls_worksheet_v5.of_store_colinfo(n_xls_colinfo anvo_colinfo) returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	blob lb_header
+	blob lb_data
+	unsignedinteger li_coldx
+	unsignedinteger li_ixfe
+	unsignedinteger li_grbit
+	unsignedinteger li_reserved
+	n_xls_format_v5 lnvo_format
+	li_coldx = of_get_excel_width(anvo_colinfo.id_width)
+	if anvo_colinfo.ib_hidden then
+		li_grbit = 1
+	end if
+	if not isnull(anvo_colinfo.invo_format) and isvalid(anvo_colinfo.invo_format) then
+		lnvo_format = anvo_colinfo.invo_format
+		li_ixfe = this.invo_workbook.of_get_xf(lnvo_format)
+	end if
+	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	lb_data = this.invo_sub.of_pack("v", anvo_colinfo.ii_firstcol) + this.invo_sub.of_pack("v", anvo_colinfo.ii_lastcol) + this.invo_sub.of_pack("v", li_coldx) + this.invo_sub.of_pack("v", li_ixfe) + this.invo_sub.of_pack("v", li_grbit) + this.invo_sub.of_pack("C", li_reserved)
+	of_append_header(lb_header + lb_data)
+	return li_ret
+
+// n_xls_worksheet_v5.of_store_selection(n_xls_selection anvo_selection) returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	blob lb_header
+	blob lb_data
+	unsignedinteger li_pnn
+	unsignedinteger li_irefact
+	unsignedinteger li_cref
+	unsignedinteger li_rwact
+	unsignedinteger li_colact
+	unsignedinteger li_rwfirst
+	unsignedinteger li_rwlast
+	unsignedinteger li_colfirst
+	unsignedinteger li_collast
+	li_pnn = this.ii_active_pane
+	li_rwact = anvo_selection.ii_first_row
+	li_colact = anvo_selection.ii_first_col
+	if anvo_selection.ii_first_row > anvo_selection.ii_last_row then
+		li_rwfirst = anvo_selection.ii_last_row
+		li_rwlast = anvo_selection.ii_first_row
+	else
+		li_rwfirst = anvo_selection.ii_first_row
+		li_rwlast = anvo_selection.ii_last_row
+	end if
+	if anvo_selection.ii_first_col > anvo_selection.ii_last_col then
+		li_colfirst = anvo_selection.ii_last_col
+		li_collast = anvo_selection.ii_first_col
+	else
+		li_colfirst = anvo_selection.ii_first_col
+		li_collast = anvo_selection.ii_last_col
+	end if
+	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	lb_data = this.invo_sub.of_pack("C", li_pnn) + this.invo_sub.of_pack("v", li_rwact) + this.invo_sub.of_pack("v", li_colact) + this.invo_sub.of_pack("v", li_irefact) + this.invo_sub.of_pack("v", li_cref) + this.invo_sub.of_pack("v", li_rwfirst) + this.invo_sub.of_pack("v", li_rwlast) + this.invo_sub.of_pack("C", li_colfirst) + this.invo_sub.of_pack("C", li_collast)
+	of_append_data(lb_header + lb_data)
+	return li_ret
+
+// n_xls_worksheet_v5.of_store_externcount(unsignedinteger ai_count) returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	blob lb_header
+	blob lb_data
+	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	lb_data = this.invo_sub.of_pack("v", ai_count)
+	of_append_header(lb_header + lb_data)
+	return li_ret
+
+// n_xls_worksheet_v5.of_store_externsheet(string as_sheetname) returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	blob lb_header
+	blob lb_data
+	unsignedinteger li_cch
+	unsignedinteger li_rgch
+	if this.is_worksheetname = as_sheetname then
+		as_sheetname = ""
+		li_length = 2
+		li_cch = 1
+		li_rgch = 2
+	else
+		li_length = 2 + len(as_sheetname)
+		li_cch = len(as_sheetname)
+		li_rgch = 3
+	end if
+	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	lb_data = this.invo_sub.of_pack("C", li_cch) + this.invo_sub.of_pack("C", li_rgch)
+	if len(as_sheetname) > 0 then
+		lb_data = lb_data + blob(as_sheetname)
+	end if
+	of_append_header(lb_header + lb_data)
+	return li_ret
+
+// n_xls_worksheet_v5.of_store_panes(n_xls_panes anvo_panes) returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	blob lb_header
+	blob lb_data
+	unsignedinteger li_y
+	unsignedinteger li_x
+	unsignedinteger li_rwtop
+	unsignedinteger li_colleft
+	unsignedinteger li_pnnact
+	if this.ib_frozen then
+		li_y = anvo_panes.id_y
+		li_x = anvo_panes.id_x
+		if isnull(anvo_panes.ii_rowtop) then
+			li_rwtop = li_y
+		else
+			li_rwtop = anvo_panes.ii_rowtop
+		end if
+		if isnull(anvo_panes.ii_colleft) then
+			li_colleft = li_x
+		else
+			li_colleft = anvo_panes.ii_colleft
+		end if
+	else
+		if isnull(anvo_panes.ii_rowtop) then
+			li_rwtop = 0
+		else
+			li_rwtop = anvo_panes.ii_rowtop
+		end if
+		if isnull(anvo_panes.ii_colleft) then
+			li_colleft = 0
+		else
+			li_colleft = anvo_panes.ii_colleft
+		end if
+		li_y = 20.0 * anvo_panes.id_y + 255.0
+		li_x = 113.879 * anvo_panes.id_x + 390.0
+	end if
+	if li_x <> 0 and li_y <> 0 then
+		li_pnnact = 0
+	end if
+	if li_x <> 0 and li_y = 0 then
+		li_pnnact = 1
+	end if
+	if li_x = 0 and li_y <> 0 then
+		li_pnnact = 2
+	end if
+	if li_x = 0 and li_y = 0 then
+		li_pnnact = 3
+	end if
+	this.ii_active_pane = li_pnnact
+	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	lb_data = this.invo_sub.of_pack("v", li_x) + this.invo_sub.of_pack("v", li_y) + this.invo_sub.of_pack("v", li_rwtop) + this.invo_sub.of_pack("v", li_colleft) + this.invo_sub.of_pack("v", li_pnnact)
+	of_append_data(lb_header + lb_data)
+	return li_ret
+
+// n_xls_worksheet_v5.of_store_setup() returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	blob lb_header
+	blob lb_data
+	unsignedinteger li_ipagestart
+	unsignedinteger li_grbit
+	unsignedinteger li_ires
+	unsignedinteger li_ivres
+	unsignedinteger li_icopies
+	unsignedinteger li_flefttoright
+	unsignedinteger li_flandscape
+	unsignedinteger li_fnopls
+	unsignedinteger li_fnocolor
+	unsignedinteger li_fdraft
+	unsignedinteger li_fnotes
+	unsignedinteger li_fnoorient
+	unsignedinteger li_fusepage
+	li_flandscape = this.ii_orientation
+	li_grbit = li_flefttoright
+	li_grbit = li_flandscape * 2 + li_grbit
+	li_grbit = li_fnopls * 4 + li_grbit
+	li_grbit = li_fnocolor * 8 + li_grbit
+	li_grbit = li_fdraft * 16 + li_grbit
+	li_grbit = li_fnotes * 32 + li_grbit
+	li_grbit = li_fnoorient * 64 + li_grbit
+	li_grbit = li_fusepage * 128 + li_grbit
+	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	lb_data = this.invo_sub.of_pack("v", this.ii_paper_size) + this.invo_sub.of_pack("v", this.ii_print_scale) + this.invo_sub.of_pack("v", li_ipagestart) + this.invo_sub.of_pack("v", this.ii_fit_width) + this.invo_sub.of_pack("v", this.ii_fit_height) + this.invo_sub.of_pack("v", li_grbit) + this.invo_sub.of_pack("v", li_ires) + this.invo_sub.of_pack("v", li_ivres) + this.invo_sub.of_pack("d", this.id_margin_head) + this.invo_sub.of_pack("d", this.id_margin_foot) + this.invo_sub.of_pack("v", li_icopies)
+	of_append_header(lb_header + lb_data)
+	return li_ret
+
+// n_xls_worksheet_v5.of_store_header() returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	blob lb_header
+	blob lb_data
+	unsignedinteger li_cch
+	li_cch = len(this.is_header)
+	li_length = 1 + li_cch
+	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	lb_data = this.invo_sub.of_pack("C", li_cch)
+	lb_data = lb_data + blob(this.is_header)
+	of_append_data(lb_header + lb_data)
+	return li_ret
+
+// n_xls_worksheet_v5.of_store_footer() returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	blob lb_header
+	blob lb_data
+	unsignedinteger li_cch
+	li_cch = len(this.is_footer)
+	li_length = 1 + li_cch
+	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	lb_data = this.invo_sub.of_pack("C", li_cch)
+	lb_data = lb_data + blob(this.is_footer)
+	of_append_data(lb_header + lb_data)
+	return li_ret
+
+// n_xls_worksheet_v5.of_store_hcenter() returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	blob lb_header
+	blob lb_data
+	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	lb_data = this.invo_sub.of_pack("v", this.ii_hcenter)
+	of_append_data(lb_header + lb_data)
+	return li_ret
+
+// n_xls_worksheet_v5.of_store_vcenter() returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	blob lb_header
+	blob lb_data
+	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	lb_data = this.invo_sub.of_pack("v", this.ii_vcenter)
+	of_append_data(lb_header + lb_data)
+	return li_ret
+
+// n_xls_worksheet_v5.of_store_margin_left() returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	blob lb_header
+	blob lb_data
+	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	lb_data = this.invo_sub.of_pack("d", this.id_margin_left)
+	of_append_data(lb_header + lb_data)
+	return li_ret
+
+// n_xls_worksheet_v5.of_store_margin_right() returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	blob lb_header
+	blob lb_data
+	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	lb_data = this.invo_sub.of_pack("d", this.id_margin_right)
+	of_append_data(lb_header + lb_data)
+	return li_ret
+
+// n_xls_worksheet_v5.of_store_margin_top() returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	blob lb_header
+	blob lb_data
+	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	lb_data = this.invo_sub.of_pack("d", this.id_margin_top)
+	of_append_data(lb_header + lb_data)
+	return li_ret
+
+// n_xls_worksheet_v5.of_store_margin_bottom() returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	blob lb_header
+	blob lb_data
+	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	lb_data = this.invo_sub.of_pack("d", this.id_margin_bottom)
+	of_append_data(lb_header + lb_data)
+	return li_ret
+
+// n_xls_worksheet_v5.of_merge_cells(unsignedinteger ai_first_row, unsignedinteger ai_first_col, unsignedinteger ai_last_row, unsignedinteger ai_last_col) returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	blob lb_header
+	blob lb_data
+	unsignedinteger li_clref
+	unsignedinteger li_rwfirst
+	unsignedinteger li_colfirst
+	unsignedinteger li_rwlast
+	unsignedinteger li_collast
+	li_rwfirst = ai_first_row
+	li_colfirst = ai_first_col
+	li_rwlast = ai_last_row
+	li_collast = ai_last_col
+	if li_rwfirst = li_rwlast and li_colfirst = li_collast then
+		return -1
+	end if
+	if li_rwfirst > li_rwlast then
+		li_rwfirst = ai_last_row
+		li_rwlast = ai_first_row
+	end if
+	if li_colfirst > li_collast then
+		li_colfirst = ai_last_col
+		li_collast = ai_first_col
+	end if
+	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	lb_data = this.invo_sub.of_pack("v", li_clref) + this.invo_sub.of_pack("v", li_rwfirst) + this.invo_sub.of_pack("v", li_rwlast) + this.invo_sub.of_pack("v", li_colfirst) + this.invo_sub.of_pack("v", li_collast)
+	of_append_data(lb_header + lb_data)
+	return li_ret
+
+// n_xls_worksheet_v5.of_store_print_headers() returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	blob lb_header
+	blob lb_data
+	unsignedinteger li_fprintrwcol
+	if this.ib_print_headers then
+		li_fprintrwcol = 1
+	end if
+	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	lb_data = this.invo_sub.of_pack("v", li_fprintrwcol)
+	of_append_header(lb_header + lb_data)
+	return li_ret
+
+// n_xls_worksheet_v5.of_store_print_gridlines() returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	blob lb_header
+	blob lb_data
+	unsignedinteger li_fprintgrid
+	if this.ib_print_gridlines then
+		li_fprintgrid = 1
+	end if
+	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	lb_data = this.invo_sub.of_pack("v", li_fprintgrid)
+	of_append_header(lb_header + lb_data)
+	return li_ret
+
+// n_xls_worksheet_v5.of_store_gridset() returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	blob lb_header
+	blob lb_data
+	unsignedinteger li_fgridset
+	if not this.ib_print_gridlines then
+		li_fgridset = 1
+	end if
+	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	lb_data = this.invo_sub.of_pack("v", li_fgridset)
+	of_append_header(lb_header + lb_data)
+	return li_ret
+
+// n_xls_worksheet_v5.of_store_wsbool() returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	blob lb_header
+	blob lb_data
+	unsignedinteger li_grbit
+	if this.ib_fit_page then
+		li_grbit = 1473
+	else
+		li_grbit = 1217
+	end if
+	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	lb_data = this.invo_sub.of_pack("v", li_grbit)
+	of_append_header(lb_header + lb_data)
+	return li_ret
+
+// n_xls_worksheet_v5.of_store_hbreak() returns integer
+	integer li_ret
+	unsignedinteger[] li_tmp
+	unsignedinteger li_record
+	unsignedinteger li_length
+	blob lb_header
+	blob lb_data
+	unsignedinteger li_cbrk
+	unsignedinteger li_i
+	unsignedinteger li_start
+	li_tmp = this.ii_hbreaks
+	of_sort_pagebreaks(li_tmp)
+	li_cbrk = upperbound(li_tmp)
+	if li_cbrk = 0 then
+		return li_ret
+	end if
+	li_length = (li_cbrk + 1) * 2
+	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	lb_data = this.invo_sub.of_pack("v", li_cbrk)
+	for li_i = li_start to li_cbrk
+		lb_data = lb_data + this.invo_sub.of_pack("v", li_tmp[li_i])
+	next
+	of_append_header(lb_header + lb_data)
+	return li_ret
+
+// n_xls_worksheet_v5.of_store_vbreak() returns integer
+	integer li_ret
+	unsignedinteger[] li_tmp
+	unsignedinteger li_record
+	unsignedinteger li_length
+	blob lb_header
+	blob lb_data
+	unsignedinteger li_cbrk
+	unsignedinteger li_i
+	unsignedinteger li_start
+	li_tmp = this.ii_vbreaks
+	of_sort_pagebreaks(li_tmp)
+	li_cbrk = upperbound(li_tmp)
+	if li_cbrk = 0 then
+		return li_ret
+	end if
+	li_length = (li_cbrk + 1) * 2
+	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	lb_data = this.invo_sub.of_pack("v", li_cbrk)
+	for li_i = li_start to li_cbrk
+		lb_data = lb_data + this.invo_sub.of_pack("v", li_tmp[li_i])
+	next
+	of_append_header(lb_header + lb_data)
+	return li_ret
+
+// n_xls_worksheet_v5.of_store_protect() returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	blob lb_header
+	blob lb_data
+	unsignedinteger li_flock
+	if not this.ib_protect then
+		return li_ret
+	end if
+	li_flock = 1
+	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	lb_data = this.invo_sub.of_pack("v", li_flock)
+	of_append_header(lb_header + lb_data)
+	return li_ret
+
+// n_xls_worksheet_v5.of_store_password() returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	blob lb_header
+	blob lb_data
+	unsignedinteger li_wpassword
+	if not this.ib_protect then
+		return li_ret
+	end if
+	li_wpassword = of_encode_password(this.is_password)
+	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	lb_data = this.invo_sub.of_pack("v", li_wpassword)
+	of_append_header(lb_header + lb_data)
+	return li_ret
+
+// n_xls_worksheet_v5.of_size_col(unsignedinteger ai_col) returns unsignedinteger
+	unsignedinteger li_ind
+	li_ind = this.invo_key_col_sizes.of_get_key_index(ai_col)
+	if li_ind > 0 then
+		if this.id_col_sizes[li_ind] = 0.0 then
+			return 0
+		else
+			return this.id_col_sizes[li_ind] * 7.0 + 5.0
+		end if
+		return
+	end if
+	return 64
+
+// n_xls_worksheet_v5.of_size_row(unsignedinteger ai_row) returns unsignedinteger
+	unsignedinteger li_ind
+	li_ind = this.invo_key_row_sizes.of_get_key_index(ai_row)
+	if li_ind > 0 then
+		if this.id_row_sizes[li_ind] = 0.0 then
+			return 0
+		else
+			return this.id_row_sizes[li_ind] * 4.0 / 3.0
+		end if
+		return
+	end if
+	return 17
+
+// n_xls_worksheet_v5.of_store_zoom() returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	blob lb_header
+	blob lb_data
+	if this.ii_zoom = 100 then
+		return li_ret
+	end if
+	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	lb_data = this.invo_sub.of_pack("v", this.ii_zoom) + this.invo_sub.of_pack("v", 100)
+	of_append_data(lb_header + lb_data)
+	return li_ret
+
+// n_xls_worksheet_v5.of_write(unsignedinteger ai_row, unsignedinteger ai_col, double adb_num, n_xls_format anvo_format) returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	unsignedinteger li_xf
+	blob lb_header
+	blob lb_data
+	n_xls_format_v5 lnvo_format
+	lnvo_format = anvo_format
+	li_xf = of_xf(ai_row, ai_col, lnvo_format)
+	if of_check_dimensions(ai_row, ai_col) <> 1 then
+		li_ret = -2
+	end if
+	if li_ret = 1 then
+		lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+		lb_data = this.invo_sub.of_pack("v", ai_row) + this.invo_sub.of_pack("v", ai_col) + this.invo_sub.of_pack("v", li_xf) + this.invo_sub.of_pack("d", adb_num)
+		of_append_data(lb_header + lb_data)
+	end if
+	return li_ret
+
+// n_xls_worksheet_v5.of_write(unsignedinteger ai_row, unsignedinteger ai_col, string as_str, n_xls_format anvo_format) returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	unsignedinteger li_xf
+	unsignedinteger li_strlen
+	blob lb_header
+	blob lb_data
+	n_xls_format_v5 lnvo_format
+	if isnull(as_str) then
+		as_str = ""
+	end if
+	as_str = this.invo_sub.of_str2xls(as_str)
+	li_strlen = len(as_str)
+	if li_strlen > this.il_xls_strmax then
+		li_strlen = this.il_xls_strmax
+		as_str = left(as_str, li_strlen)
+	end if
+	li_length = 8 + li_strlen
+	lnvo_format = anvo_format
+	li_xf = of_xf(ai_row, ai_col, lnvo_format)
+	if of_check_dimensions(ai_row, ai_col) <> 1 then
+		li_ret = -2
+	end if
+	if li_ret = 1 then
+		lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+		lb_data = this.invo_sub.of_pack("v", ai_row) + this.invo_sub.of_pack("v", ai_col) + this.invo_sub.of_pack("v", li_xf) + this.invo_sub.of_pack("v", li_strlen)
+		lb_data = lb_data + blob(as_str)
+		of_append_data(lb_header + lb_data)
+	end if
+	return li_ret
+
+// n_xls_worksheet_v5.of_write(unsignedinteger ai_row, unsignedinteger ai_col, datetime adt_datetime, n_xls_format anvo_format) returns integer
+	double ld_val
+	time lt_time
+	string ls_time
+	integer li_hour
+	integer li_minute
+	integer li_second
+	lt_time = time(adt_datetime)
+	ls_time = string(lt_time)
+	lt_time = time(ls_time)
+	li_hour = hour(lt_time)
+	li_minute = minute(lt_time)
+	li_second = second(lt_time)
+	ld_val = daysafter(date("1899-12-30"), date(adt_datetime)) + (li_second + li_minute * 60 + li_hour * 3600) / (24 * 3600)
+	return of_write(ai_row, ai_col, ld_val, anvo_format)
+
+// n_xls_worksheet_v5.of_write(unsignedinteger ai_row, unsignedinteger ai_col, date ad_date, n_xls_format anvo_format) returns integer
+	double ld_val
+	ld_val = daysafter(date("1899-12-30"), ad_date)
+	return of_write(ai_row, ai_col, ld_val, anvo_format)
+
+// n_xls_worksheet_v5.of_write(unsignedinteger ai_row, unsignedinteger ai_col, n_xls_format anvo_format) returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	unsignedinteger li_xf
+	blob lb_header
+	blob lb_data
+	n_xls_format_v5 lnvo_format
+	lnvo_format = anvo_format
+	li_xf = of_xf(ai_row, ai_col, lnvo_format)
+	if of_check_dimensions(ai_row, ai_col) <> 1 then
+		li_ret = -2
+	end if
+	if li_ret = 1 then
+		lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+		lb_data = this.invo_sub.of_pack("v", ai_row) + this.invo_sub.of_pack("v", ai_col) + this.invo_sub.of_pack("v", li_xf)
+		of_append_data(lb_header + lb_data)
+	end if
+	return li_ret
+
+// n_xls_worksheet_v5.of_store_bof(unsignedinteger ai_type) returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	blob lb_header
+	blob lb_data
+	unsignedinteger li_version
+	unsignedinteger li_build
+	unsignedinteger li_year
+	li_version = this.invo_workbook.ii_biff_version
+	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	lb_data = this.invo_sub.of_pack("v", li_version) + this.invo_sub.of_pack("v", ai_type) + this.invo_sub.of_pack("v", li_build) + this.invo_sub.of_pack("v", li_year)
+	of_append_header(lb_header + lb_data)
+	return li_ret
+
+// n_xls_worksheet_v5.of_store_eof() returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	blob lb_header
+	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	of_append_data(lb_header)
+	return li_ret
+
+// n_xls_worksheet_v5.of_append_header(blob ab_data) returns integer
+	integer li_ret
+	if len(ab_data) > this.ii_limit then
+		ab_data = of_add_continue(ab_data)
+	end if
+	this.il_datasize = this.il_datasize + len(ab_data)
+	this.invo_header.of_append(ab_data)
+	return li_ret
+
+// n_xls_worksheet_v5.of_write(unsignedinteger ai_row, unsignedinteger ai_col, time at_time, n_xls_format anvo_format) returns integer
+	double ld_val
+	integer li_hour
+	integer li_minute
+	integer li_second
+	li_hour = hour(at_time)
+	li_minute = minute(at_time)
+	li_second = second(at_time)
+	ld_val = (li_second + li_minute * 60 + li_hour * 3600) / (24 * 3600)
+	return of_write(ai_row, ai_col, ld_val, anvo_format)
+
+// n_xls_worksheet_v5.of_merge_write(unsignedinteger ai_first_row, unsignedinteger ai_first_col, unsignedinteger ai_last_row, unsignedinteger ai_last_col, time at_time, n_xls_format anvo_format) returns integer
+	double ld_val
+	integer li_hour
+	integer li_minute
+	integer li_second
+	li_hour = hour(at_time)
+	li_minute = minute(at_time)
+	li_second = second(at_time)
+	ld_val = (li_second + li_minute * 60 + li_hour * 3600) / (24 * 3600)
+	return of_merge_write(ai_first_row, ai_first_col, ai_last_row, ai_last_col, ld_val, anvo_format)
+
+// n_xls_worksheet_v5.of_set_row_format(long al_row, n_xls_format anvo_format) returns integer
+	integer li_ret
+	unsignedinteger li_height
+	boolean lb_hidden
+	setnull(li_height)
+	setnull(lb_hidden)
+	li_ret = of_set_row(al_row, li_height, anvo_format, lb_hidden)
+	return li_ret
+
+// n_xls_worksheet_v5.of_set_row_hidden(long al_row, boolean ab_hidden) returns integer
+	integer li_ret
+	n_xls_format_v5 lnvo_format
+	unsignedinteger li_height
+	setnull(li_height)
+	setnull(lnvo_format)
+	li_ret = of_set_row(al_row, li_height, lnvo_format, ab_hidden)
+	return li_ret
+
+// n_xls_worksheet_v5.of_set_column_format(long al_col, n_xls_format anvo_format) returns integer
+	integer li_ret
+	unsignedinteger li_width
+	boolean lb_hidden
+	unsignedlong ll_i
+	ll_i = this.invo_key_col_sizes.of_get_key_index(al_col)
+	if ll_i > 0 then
+		li_width = this.id_col_sizes[ll_i]
+	else
+		setnull(li_width)
+	end if
+	ll_i = this.invo_key_col_hiddens.of_get_key_index(al_col)
+	if ll_i > 0 then
+		lb_hidden = this.ib_col_hiddens[ll_i]
+	else
+		setnull(lb_hidden)
+	end if
+	li_ret = of_set_column(al_col, al_col, li_width, anvo_format, lb_hidden)
+	return li_ret
+
+// n_xls_worksheet_v5.of_set_column_hidden(long al_col, boolean ab_hidden) returns integer
+	integer li_ret
+	n_xls_format_v5 lnvo_format
+	unsignedinteger li_width
+	unsignedlong ll_i
+	ll_i = this.invo_key_col_formats.of_get_key_index(al_col)
+	if ll_i > 0 then
+		lnvo_format = this.invo_col_formats[ll_i]
+	else
+		setnull(lnvo_format)
+	end if
+	ll_i = this.invo_key_col_sizes.of_get_key_index(al_col)
+	if ll_i > 0 then
+		li_width = this.id_col_sizes[ll_i]
+	else
+		setnull(li_width)
+	end if
+	li_ret = of_set_column(al_col, al_col, li_width, lnvo_format, ab_hidden)
+	return li_ret
+
+// n_xls_worksheet_v5.of_write_data(olestream astr_book) returns integer
+	integer li_ret
+	this.invo_header.of_write(astr_book)
+	this.invo_data.of_write(astr_book)
+	return li_ret
+
+// n_xls_worksheet_v5.of_write(unsignedinteger ai_row, unsignedinteger ai_col, double adb_num) returns integer
+	n_xls_format_v5 lnvo_format
+	setnull(lnvo_format)
+	return of_write(ai_row, ai_col, adb_num, lnvo_format)
+
+// n_xls_worksheet_v5.of_write(unsignedinteger ai_row, unsignedinteger ai_col, string as_str) returns integer
+	n_xls_format_v5 lnvo_format
+	setnull(lnvo_format)
+	return of_write(ai_row, ai_col, as_str, lnvo_format)
+
+// n_xls_worksheet_v5.of_write(unsignedinteger ai_row, unsignedinteger ai_col, time at_time) returns integer
+	n_xls_format_v5 lnvo_format
+	setnull(lnvo_format)
+	return of_write(ai_row, ai_col, at_time, lnvo_format)
+
+// n_xls_worksheet_v5.of_write(unsignedinteger ai_row, unsignedinteger ai_col, datetime adt_datetime) returns integer
+	n_xls_format_v5 lnvo_format
+	setnull(lnvo_format)
+	return of_write(ai_row, ai_col, adt_datetime, lnvo_format)
+
+// n_xls_worksheet_v5.of_write(unsignedinteger ai_row, unsignedinteger ai_col, date ad_date) returns integer
+	n_xls_format_v5 lnvo_format
+	setnull(lnvo_format)
+	return of_write(ai_row, ai_col, ad_date, lnvo_format)
+
+// n_xls_worksheet_v5.of_write(unsignedinteger ai_row, unsignedinteger ai_col) returns integer
+	n_xls_format_v5 lnvo_format
+	setnull(lnvo_format)
+	return of_write(ai_row, ai_col, lnvo_format)
+
+// n_xls_worksheet_v5.of_get_name() returns string
+	return this.is_worksheetname
+
+// n_xls_worksheet_v5.of_activate() returns integer
+	integer li_ret
+	li_ret = of_select()
+	if li_ret = 1 then
+		this.invo_workbook.ii_activesheet = this.ii_index
+	end if
+	return li_ret
+
+// n_xls_worksheet_v5.of_set_first_sheet() returns integer
+	integer li_ret
+	this.invo_workbook.ii_firstsheet = this.ii_index
+	return li_ret
+
+// n_xls_worksheet_v5.of_protect(string as_password) returns integer
+	integer li_ret
+	this.ib_protect = true
+	this.is_password = as_password
+	return li_ret
+
+// n_xls_worksheet_v5.of_set_selection(unsignedinteger ai_first_row, unsignedinteger ai_first_col, unsignedinteger ai_last_row, unsignedinteger ai_last_col) returns integer
+	integer li_ret
+	this.invo_selection.ii_first_row = ai_first_row
+	this.invo_selection.ii_last_row = ai_last_row
+	this.invo_selection.ii_first_col = ai_first_col
+	this.invo_selection.ii_last_col = ai_last_col
+	return li_ret
+
+// n_xls_worksheet_v5.of_set_selection(unsignedinteger ai_row, unsignedinteger ai_col) returns integer
+	integer li_ret
+	this.invo_selection.ii_first_row = ai_row
+	this.invo_selection.ii_last_row = ai_row
+	this.invo_selection.ii_first_col = ai_col
+	this.invo_selection.ii_last_col = ai_col
+	return li_ret
+
+// n_xls_worksheet_v5.of_thaw_panes(double ad_y, double ad_x, unsignedinteger ai_rowtop, unsignedinteger ai_colleft) returns integer
+	integer li_ret
+	if isnull(this.invo_panes) then
+		this.invo_panes = create n_xls_panes
+	end if
+	this.invo_panes.id_y = ad_y
+	this.invo_panes.id_x = ad_x
+	this.invo_panes.ii_rowtop = ai_rowtop
+	this.invo_panes.ii_colleft = ai_colleft
+	this.ib_frozen = false
+	return li_ret
+
+// n_xls_worksheet_v5.of_freeze_panes(unsignedinteger ai_row, unsignedinteger ai_col, unsignedinteger ai_rowtop, unsignedinteger ai_colleft) returns integer
+	integer li_ret
+	if isnull(this.invo_panes) then
+		this.invo_panes = create n_xls_panes
+	end if
+	this.invo_panes.id_y = ai_row
+	this.invo_panes.id_x = ai_col
+	this.invo_panes.ii_rowtop = ai_rowtop
+	this.invo_panes.ii_colleft = ai_colleft
+	this.ib_frozen = true
+	return li_ret
+
+// n_xls_worksheet_v5.of_set_portrait() returns integer
+	integer li_ret
+	this.ii_orientation = 1
+	return li_ret
+
+// n_xls_worksheet_v5.of_set_landscape() returns integer
+	integer li_ret
+	this.ii_orientation = 0
+	return li_ret
+
+// n_xls_worksheet_v5.of_set_paper(unsignedinteger ai_paper_size) returns integer
+	integer li_ret
+	this.ii_paper_size = ai_paper_size
+	return li_ret
+
+// n_xls_worksheet_v5.of_set_paper() returns integer
+	return of_set_paper(0)
+
+// n_xls_worksheet_v5.of_set_header(string as_header, double ad_margin_head) returns integer
+	integer li_ret
+	if len(as_header) >= 255 then
+		messagebox("Error", "Header string must be less than 255 characters", stopsign!)
+		li_ret = -1
+	end if
+	if li_ret = 1 then
+		this.is_header = as_header
+		if isnull(ad_margin_head) then
+			this.id_margin_head = 0.50
+		else
+			this.id_margin_head = ad_margin_head
+		end if
+	end if
+	return li_ret
+
+// n_xls_worksheet_v5.of_set_footer(string as_footer, double ad_margin_foot) returns integer
+	integer li_ret
+	if len(as_footer) >= 255 then
+		messagebox("Error", "Footer string must be less than 255 characters", stopsign!)
+		li_ret = -1
+	end if
+	if li_ret = 1 then
+		this.is_footer = as_footer
+		if isnull(ad_margin_foot) then
+			this.id_margin_foot = 0.50
+		else
+			this.id_margin_foot = ad_margin_foot
+		end if
+	end if
+	return li_ret
+
+// n_xls_worksheet_v5.of_center_horizontally() returns integer
+	return of_center_horizontally(true)
+
+// n_xls_worksheet_v5.of_center_horizontally(boolean ab_option) returns integer
+	integer li_ret
+	if ab_option then
+		this.ii_hcenter = 1
+	else
+		this.ii_hcenter = 0
+	end if
+	return li_ret
+
+// n_xls_worksheet_v5.of_center_vertically() returns integer
+	return of_center_vertically(true)
+
+// n_xls_worksheet_v5.of_center_vertically(boolean ab_option) returns integer
+	integer li_ret
+	if ab_option then
+		this.ii_vcenter = 1
+	else
+		this.ii_vcenter = 0
+	end if
+	return li_ret
+
+// n_xls_worksheet_v5.of_set_margins(double ad_margin) returns integer
+	of_set_margin_left(ad_margin)
+	of_set_margin_right(ad_margin)
+	of_set_margin_top(ad_margin)
+	of_set_margin_bottom(ad_margin)
+	return 1
+
+// n_xls_worksheet_v5.of_set_margins_lr(double ad_margin) returns integer
+	of_set_margin_left(ad_margin)
+	of_set_margin_right(ad_margin)
+	return 1
+
+// n_xls_worksheet_v5.of_set_margins_tb(double ad_margin) returns integer
+	of_set_margin_top(ad_margin)
+	of_set_margin_bottom(ad_margin)
+	return 1
+
+// n_xls_worksheet_v5.of_set_margin_left(double ad_margin) returns integer
+	this.id_margin_left = ad_margin
+	return 1
+
+// n_xls_worksheet_v5.of_set_margin_right(double ad_margin) returns integer
+	this.id_margin_right = ad_margin
+	return 1
+
+// n_xls_worksheet_v5.of_set_margin_top(double ad_margin) returns integer
+	this.id_margin_top = ad_margin
+	return 1
+
+// n_xls_worksheet_v5.of_set_margin_bottom(double ad_margin) returns integer
+	this.id_margin_bottom = ad_margin
+	return 1
+
+// n_xls_worksheet_v5.of_repeat_rows(unsignedinteger ai_first_row, unsignedinteger ai_last_row) returns integer
+	this.ii_title_rowmin = ai_first_row
+	this.ii_title_rowmax = ai_last_row
+	return 1
+
+// n_xls_worksheet_v5.of_repeat_columns(unsignedinteger ai_first_col, unsignedinteger ai_last_col) returns integer
+	this.ii_title_colmin = ai_first_col
+	this.ii_title_colmax = ai_last_col
+	return 1
+
+// n_xls_worksheet_v5.of_print_area(unsignedinteger ai_first_row, unsignedinteger ai_first_col, unsignedinteger ai_last_row, unsignedinteger ai_last_col) returns integer
+	integer li_ret
+	this.ii_print_rowmin = ai_first_row
+	this.ii_print_colmin = ai_first_col
+	this.ii_print_rowmax = ai_last_row
+	this.ii_print_colmax = ai_last_col
+	return li_ret
+
+// n_xls_worksheet_v5.of_hide_gridlines(unsignedinteger ai_option) returns integer
+	integer li_ret
+	choose case ai_option
+	case 0
+		this.ib_print_gridlines = true
+		this.ib_screen_gridlines = true
+	case 1
+		this.ib_print_gridlines = false
+		this.ib_screen_gridlines = true
+	case else
+		this.ib_print_gridlines = false
+		this.ib_screen_gridlines = false
+	end choose
+	return li_ret
+
+// n_xls_worksheet_v5.of_print_row_col_headers(boolean ab_print_headers) returns integer
+	this.ib_print_headers = ab_print_headers
+	return 1
+
+// n_xls_worksheet_v5.of_fit_to_pages(unsignedinteger ai_width, unsignedinteger ai_height) returns integer
+	integer li_ret
+	this.ib_fit_page = true
+	this.ii_fit_width = ai_width
+	this.ii_fit_height = ai_height
+	return li_ret
+
+// n_xls_worksheet_v5.of_add_h_pagebreak(unsignedinteger ai_hbreak) returns integer
+	this.ii_hbreaks[upperbound(this.ii_hbreaks) + 1] = ai_hbreak
+	return 1
+
+// n_xls_worksheet_v5.of_add_v_pagebreak(unsignedinteger ai_vbreak) returns integer
+	this.ii_vbreaks[upperbound(this.ii_vbreaks) + 1] = ai_vbreak
+	return 1
+
+// n_xls_worksheet_v5.of_set_zoom(unsignedinteger ai_scale) returns integer
+	integer li_ret
+	if ai_scale < 10 or ai_scale > 400 then
+		messagebox("Error", "Zoom factor outside range: 10-400", stopsign!)
+		li_ret = -1
+	end if
+	if li_ret = 1 then
+		this.ii_zoom = ai_scale
+	end if
+	return li_ret
+
+// n_xls_worksheet_v5.of_set_print_scale(unsignedinteger ai_scale) returns integer
+	integer li_ret
+	if ai_scale < 10 or ai_scale > 400 then
+		messagebox("Error", "Print scale scale outside range: 10-400", stopsign!)
+		li_ret = -1
+	end if
+	if li_ret = 1 then
+		this.ib_fit_page = false
+		this.ii_print_scale = ai_scale
+	end if
+	return li_ret
+
+// n_xls_worksheet_v5.of_get_data() returns blob
+	blob lb_tmp
+	if isnull(this.ib_data) then
+		return this.ib_data
+	end if
+	lb_tmp = this.ib_data
+	setnull(this.ib_data)
+	return lb_tmp
+
+// n_xls_worksheet_v5.of_encode_password(string as_password) returns unsignedlong
+	unsignedlong ll_ret
+	unsignedlong[] ll_chars
+	unsignedinteger li_count
+	unsignedinteger li_i
+	unsignedinteger li_start
+	unsignedlong ll_low
+	unsignedlong ll_high
+	li_count = len(as_password)
+	if li_count > 0 then
+		for li_i = li_start to li_count
+			ll_chars[li_i] = uf_bitshl(asc(mid(as_password, li_i, 1)), li_i)
+			ll_low = uf_bitand(ll_chars[li_i], 32767)
+			ll_high = uf_bitshr(uf_bitand(ll_chars[li_i], uf_bitshl(32767, 15)), 15)
+			ll_chars[li_i] = uf_bitor(ll_low, ll_high)
+		next
+		ll_ret = 0
+		for li_i = li_start to li_count
+			ll_ret = uf_bitxor(ll_ret, ll_chars[li_i])
+		next
+		ll_ret = uf_bitxor(ll_ret, li_count)
+		ll_ret = uf_bitxor(ll_ret, 52811)
+	else
+		ll_ret = 0
+	end if
+	return ll_ret
+
+// n_xls_worksheet_v5.of_set_row_height(long al_row, double ad_height) returns integer
+	integer li_ret
+	n_xls_format_v5 lnvo_format
+	boolean lb_hidden
+	setnull(lnvo_format)
+	setnull(lb_hidden)
+	li_ret = of_set_row(al_row, ad_height, lnvo_format, lb_hidden)
+	return li_ret
+
+// n_xls_worksheet_v5.of_set_row(unsignedinteger ai_row, double ad_height, n_xls_format_v5 anvo_format, boolean ab_hidden) returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	unsignedinteger li_colmic
+	unsignedinteger li_colmac
+	unsignedinteger li_irwmac
+	unsignedinteger li_reserved
+	unsignedinteger li_grbit
+	unsignedinteger li_ixfe
+	unsignedinteger li_miyrw
+	blob lb_header
+	blob lb_data
+	unsignedlong ll_i
+	boolean lb_format_undef
+	if not isnull(anvo_format) then
+		if isvalid(anvo_format) then
+			li_ixfe = this.invo_workbook.of_reg_format(anvo_format)
+			li_grbit = 128 + li_grbit
+		else
+			lb_format_undef = true
+		end if
+	else
+		lb_format_undef = true
+	end if
+	if lb_format_undef then
+		ll_i = this.invo_key_row_formats.of_get_key_index(ai_row)
+		if ll_i > 0 then
+			li_ixfe = this.invo_workbook.of_reg_format(this.invo_row_formats[ll_i])
+			li_grbit = 128 + li_grbit
+		end if
+	end if
+	if not isnull(ad_height) then
+		li_miyrw = of_get_excel_height(ad_height)
+	else
+		ll_i = this.invo_key_row_sizes.of_get_key_index(ai_row)
+		if ll_i > 0 then
+			li_miyrw = this.id_row_sizes[ll_i] * 20.0
+		end if
+	end if
+	if isnull(ab_hidden) then
+		ll_i = this.invo_key_row_hiddens.of_get_key_index(ai_row)
+		if ll_i > 0 and this.ib_row_hiddens[ll_i] then
+			li_grbit = 32 + li_grbit
+		end if
+	elseif ab_hidden then
+		li_grbit = 32 + li_grbit
+	end if
+	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	lb_data = this.invo_sub.of_pack("v", ai_row) + this.invo_sub.of_pack("v", li_colmic) + this.invo_sub.of_pack("v", li_colmac) + this.invo_sub.of_pack("v", li_miyrw) + this.invo_sub.of_pack("v", li_irwmac) + this.invo_sub.of_pack("v", li_reserved) + this.invo_sub.of_pack("v", li_grbit) + this.invo_sub.of_pack("v", li_ixfe)
+	of_append_data(lb_header + lb_data)
+	if not isnull(ab_hidden) then
+		ll_i = this.invo_key_row_hiddens.of_get_key_index(ai_row)
+		if ll_i = 0 then
+			ll_i = this.invo_key_row_hiddens.of_add_key(ai_row)
+		end if
+		this.ib_row_hiddens[ll_i] = ab_hidden
+	end if
+	if not isnull(ad_height) then
+		ll_i = this.invo_key_row_sizes.of_get_key_index(ai_row)
+		if ll_i = 0 then
+			ll_i = this.invo_key_row_sizes.of_add_key(ai_row)
+		end if
+		this.id_row_sizes[ll_i] = ad_height
+	end if
+	if not isnull(anvo_format) and isvalid(anvo_format) then
+		ll_i = this.invo_key_row_formats.of_get_key_index(ai_row)
+		if ll_i = 0 then
+			ll_i = this.invo_key_row_formats.of_add_key(ai_row)
+		end if
+		this.invo_row_formats[ll_i] = anvo_format
+	end if
+	return li_ret
+
+// n_xls_worksheet_v5.of_set_column_width(long al_col, double ad_width) returns integer
+	integer li_ret
+	n_xls_format_v5 lnvo_format
+	boolean lb_hidden
+	unsignedlong ll_i
+	ll_i = this.invo_key_col_formats.of_get_key_index(al_col)
+	if ll_i > 0 then
+		lnvo_format = this.invo_col_formats[ll_i]
+	else
+		setnull(lnvo_format)
+	end if
+	ll_i = this.invo_key_col_hiddens.of_get_key_index(al_col)
+	if ll_i > 0 then
+		lb_hidden = this.ib_col_hiddens[ll_i]
+	else
+		setnull(lb_hidden)
+	end if
+	li_ret = of_set_column(al_col, al_col, ad_width, lnvo_format, lb_hidden)
+	return li_ret
+
+// n_xls_worksheet_v5.of_set_column(unsignedinteger ai_firstcol, unsignedinteger ai_lastcol, double ad_width, n_xls_format anvo_format, boolean ab_hidden) returns integer
+	integer li_ret
+	double ld_width
+	unsignedinteger li_i
+	unsignedlong ll_key
+	n_xls_colinfo lnvo_colinfo
+	n_xls_format_v5 lnvo_format
+	lnvo_colinfo = create n_xls_colinfo
+	lnvo_colinfo.ii_firstcol = ai_firstcol
+	lnvo_colinfo.ii_lastcol = ai_lastcol
+	lnvo_colinfo.id_width = ad_width
+	if not isnull(anvo_format) then
+		if isvalid(anvo_format) then
+			lnvo_format = create n_xls_format_v5
+			lnvo_format.of_copy(anvo_format)
+			this.invo_workbook.of_reg_format(lnvo_format)
+		else
+			setnull(lnvo_format)
+		end if
+	else
+		setnull(lnvo_format)
+	end if
+	lnvo_colinfo.invo_format = lnvo_format
+	lnvo_colinfo.ib_hidden = ab_hidden
+	this.invo_colinfo[upperbound(this.invo_colinfo) + 1] = lnvo_colinfo
+	if ab_hidden then
+		ld_width = 0
+	else
+		ld_width = ad_width
+	end if
+	for li_i = ai_firstcol to ai_lastcol
+		ll_key = this.invo_key_col_sizes.of_find_key(li_i)
+		if ll_key < 1 then
+			ll_key = this.invo_key_col_sizes.of_add_key(li_i)
+		end if
+		this.id_col_sizes[ll_key] = ad_width
+	next
+	if not isnull(ab_hidden) then
+		for li_i = ai_firstcol to ai_lastcol
+			ll_key = this.invo_key_col_hiddens.of_find_key(li_i)
+			if ll_key < 1 then
+				ll_key = this.invo_key_col_hiddens.of_add_key(li_i)
+			end if
+			this.ib_col_hiddens[ll_key] = ab_hidden
+		next
+	end if
+	if not isnull(anvo_format) and isvalid(anvo_format) then
+		for li_i = ai_firstcol to ai_lastcol
+			ll_key = this.invo_key_col_formats.of_find_key(li_i)
+			if ll_key < 1 then
+				ll_key = this.invo_key_col_formats.of_add_key(li_i)
+			end if
+			this.invo_col_formats[ll_key] = anvo_format
+		next
+	end if
+	return li_ret
+
+// n_xls_worksheet_v5.of_set_column_width(long al_col, long al_width) returns integer
+	integer li_ret
+	n_xls_format_v5 lnvo_format
+	boolean lb_hidden
+	unsignedlong ll_i
+	ll_i = this.invo_key_col_formats.of_get_key_index(al_col)
+	if ll_i > 0 then
+		lnvo_format = this.invo_col_formats[ll_i]
+	else
+		setnull(lnvo_format)
+	end if
+	ll_i = this.invo_key_col_hiddens.of_get_key_index(al_col)
+	if ll_i > 0 then
+		lb_hidden = this.ib_col_hiddens[ll_i]
+	else
+		setnull(lb_hidden)
+	end if
+	li_ret = of_set_column(al_col, al_col, al_width, lnvo_format, lb_hidden)
+	return li_ret
+
+// n_xls_worksheet_v5.of_set_row_height(long al_row, long al_height) returns integer
+	integer li_ret
+	n_xls_format_v5 lnvo_format
+	boolean lb_hidden
+	setnull(lnvo_format)
+	setnull(lb_hidden)
+	li_ret = of_set_row(al_row, al_height, lnvo_format, lb_hidden)
+	return li_ret
+
+// n_xls_worksheet_v5.of_process_bitmap(string as_bitmap_filename, long al_width, long al_height, long al_size, blob ab_data) returns integer
+	integer li_ret
+	integer li_file
+	blob lb_data_item
+	blob lb_data
+	unsignedlong ll_size
+	unsignedinteger li_planes
+	unsignedinteger li_bitcount
+	unsignedlong ll_compression
+	blob lb_header
+	li_file = fileopen(as_bitmap_filename, streammode!, read!, lockwrite!)
+	if li_file <> -1 then
+		setnull(lb_data)
+		do while fileread(li_file, lb_data_item) > 0
+			if isnull(lb_data) then
+				lb_data = lb_data_item
+			else
+				lb_data = lb_data_item + lb_data
+			end if
+		loop
+		if isnull(lb_data) then
+			li_ret = -1
+		end if
+		fileclose(li_file)
+	else
+		li_ret = -1
+		messagebox("Error", "Couldn't open " + as_bitmap_filename, stopsign!)
+	end if
+	if li_ret = 1 and len(lb_data) <= 54 then
+		li_ret = -1
+		messagebox("Error", as_bitmap_filename + " doesn't contain enough data", stopsign!)
+	end if
+	if li_ret = 1 and string(blobmid(lb_data, 1, 2)) <> "BM" then
+		li_ret = -1
+		messagebox("Error", as_bitmap_filename + " doesn't appear to to be a valid bitmap image", stopsign!)
+	end if
+	if li_ret = 1 then
+		ll_size = long(blobmid(lb_data, 3, 4))
+		ll_size = ll_size - (54 - 12)
+		al_width = long(blobmid(lb_data, 19, 4))
+		al_height = long(blobmid(lb_data, 23, 4))
+		if al_width > 65535 then
+			li_ret = -1
+			messagebox("Error", as_bitmap_filename + ": largest image width supported is 65535", stopsign!)
+		end if
+	end if
+	if li_ret = 1 and al_height > 65535 then
+		li_ret = -1
+		messagebox("Error", as_bitmap_filename + ": largest image height supported is 65535", stopsign!)
+	end if
+	if li_ret = 1 then
+		li_planes = integer(blobmid(lb_data, 27, 2))
+		li_bitcount = integer(blobmid(lb_data, 29, 2))
+		if li_bitcount <> 24 then
+			li_ret = -1
+			messagebox("Error", as_bitmap_filename + " isn't a 24bit true color bitmap", stopsign!)
+		end if
+	end if
+	if li_ret = 1 and li_planes <> 1 then
+		li_ret = -1
+		messagebox("Error", as_bitmap_filename + ": only 1 plane supported in bitmap image", stopsign!)
+	end if
+	if li_ret = 1 then
+		ll_compression = long(blobmid(lb_data, 31, 4))
+		if ll_compression <> 0 then
+			li_ret = -1
+			messagebox("Error", as_bitmap_filename + ": compression not supported in bitmap image", stopsign!)
+		end if
+	end if
+	if li_ret = 1 then
+		lb_header = this.invo_sub.of_pack("V", 12) + this.invo_sub.of_pack("v", al_width) + this.invo_sub.of_pack("v", al_height) + this.invo_sub.of_pack("v", 1) + this.invo_sub.of_pack("v", 24)
+		ab_data = lb_header + blobmid(lb_data, 55, len(lb_data) - 55 + 1)
+		al_size = ll_size
+	end if
+	return li_ret
+
+// n_xls_worksheet_v5.of_insert_bitmap(unsignedinteger ai_row, unsignedinteger ai_col, string as_bitmap_filename, unsignedinteger ai_x, unsignedinteger ai_y, double ad_scale_width, double ad_scale_height) returns integer
+	integer li_ret
+	long li_width
+	long li_height
+	long li_size
+	blob lb_data
+	blob lb_header
+	li_ret = of_process_bitmap(as_bitmap_filename, li_width, li_height, li_size, lb_data)
+	if li_ret = 1 then
+		li_width = li_width * ad_scale_width
+		li_height = li_height * ad_scale_height
+		li_ret = of_position_image(ai_col, ai_row, ai_x, ai_y, li_width, li_height)
+	end if
+	if li_ret = 1 then
+		lb_header = this.invo_sub.of_pack("v", 127) + this.invo_sub.of_pack("v", 8 + li_size) + this.invo_sub.of_pack("v", 9) + this.invo_sub.of_pack("v", 1) + this.invo_sub.of_pack("V", li_size)
+		of_append_data(lb_header + lb_data)
+	end if
+	return li_ret
+
+// n_xls_worksheet_v5.of_insert_bitmap(unsignedinteger ai_row, unsignedinteger ai_col, string as_bitmap_filename, unsignedinteger ai_x, unsignedinteger ai_y) returns integer
+	return of_insert_bitmap(ai_row, ai_col, as_bitmap_filename, ai_x, ai_y, 1, 1)
+
+// n_xls_worksheet_v5.of_insert_bitmap(unsignedinteger ai_row, unsignedinteger ai_col, string as_bitmap_filename) returns integer
+	return of_insert_bitmap(ai_row, ai_col, as_bitmap_filename, 0, 0, 1, 1)
+
+// n_xls_worksheet_v5.of_position_image(unsignedinteger ai_col_start, unsignedinteger ai_row_start, unsignedinteger ai_x1, unsignedinteger ai_y1, unsignedinteger ai_width, unsignedinteger ai_height) returns integer
+	integer li_ret
+	unsignedinteger li_col_end
+	unsignedinteger li_row_end
+	unsignedinteger li_x2
+	unsignedinteger li_y2
+	li_col_end = ai_col_start
+	li_row_end = ai_row_start
+	if ai_x1 >= of_size_col(ai_col_start) then
+		ai_x1 = 0
+	end if
+	if ai_y1 >= of_size_row(ai_row_start) then
+		ai_y1 = 0
+	end if
+	ai_width = ai_width + ai_x1 - 1
+	ai_height = ai_height + ai_y1 - 1
+	do while ai_width >= of_size_col(li_col_end)
+		ai_width = ai_width - of_size_col(li_col_end)
+		li_col_end = li_col_end + 1
+	loop
+	do while ai_height >= of_size_row(li_row_end)
+		ai_height = ai_height - of_size_row(li_row_end)
+		li_row_end = li_row_end + 1
+	loop
+	if of_size_col(ai_col_start) = 0 then
+		return -1
+	end if
+	if of_size_col(li_col_end) = 0 then
+		return -1
+	end if
+	if of_size_row(ai_row_start) = 0 then
+		return -1
+	end if
+	if of_size_row(li_row_end) = 0 then
+		return -1
+	end if
+	ai_x1 = ai_x1 / of_size_col(ai_col_start) * 1024.0
+	ai_y1 = ai_y1 / of_size_row(ai_row_start) * 256.0
+	li_x2 = ai_width / of_size_col(li_col_end) * 1024.0
+	li_y2 = ai_height / of_size_row(li_row_end) * 256.0
+	li_ret = of_store_obj_picture(ai_col_start, ai_x1, ai_row_start, ai_y1, li_col_end, li_x2, li_row_end, li_y2)
+	return li_ret
+
+// n_xls_worksheet_v5.of_get_excel_height(double ad_value) returns unsignedinteger
+	unsignedinteger li_w1
+	double ld_w1
+	double ld_w2
+	li_w1 = truncate(ad_value, 0)
+	ld_w2 = ad_value - li_w1
+	ld_w2 = round(ld_w2 * 4.0, 0) / 4
+	return (li_w1 + ld_w2) * 20.0
+
+// n_xls_worksheet_v5.of_get_excel_width(double ad_value) returns unsignedinteger
+	unsignedinteger li_w1
+	double ld_w1
+	double ld_w2
+	double ld_w
+	li_w1 = truncate(ad_value, 0)
+	ld_w2 = ad_value - li_w1
+	if li_w1 > 0 then
+		ld_w1 = li_w1 + 0.72
+	else
+		ld_w1 = 0
+	end if
+	if li_w1 > 0 then
+		ld_w = ld_w1 * 256.0 + ld_w2 * 256.0
+	else
+		ld_w = ld_w1 * 256.0 + ld_w2 * 256.0 * 1.8
+	end if
+	return ld_w
+
+// n_xls_worksheet_v5.of_select() returns integer
+	integer li_ret
+	this.ib_selected = true
+	return li_ret
+
+// n_xls_worksheet_v5.of_store_obj_picture(unsignedinteger ai_col_start, unsignedinteger ai_x1, unsignedinteger ai_row_start, unsignedinteger ai_y1, unsignedinteger ai_col_end, unsignedinteger ai_x2, unsignedinteger ai_row_end, unsignedinteger ai_y2) returns integer
+	integer li_ret
+	blob lb_header
+	lb_header = this.invo_sub.of_pack("v", 93) + this.invo_sub.of_pack("v", 60) + this.invo_sub.of_pack("V", 1) + this.invo_sub.of_pack("v", 8) + this.invo_sub.of_pack("v", 1) + this.invo_sub.of_pack("v", 1556) + this.invo_sub.of_pack("v", ai_col_start) + this.invo_sub.of_pack("v", ai_x1) + this.invo_sub.of_pack("v", ai_row_start) + this.invo_sub.of_pack("v", ai_y1) + this.invo_sub.of_pack("v", ai_col_end) + this.invo_sub.of_pack("v", ai_x2) + this.invo_sub.of_pack("v", ai_row_end) + this.invo_sub.of_pack("v", ai_y2) + this.invo_sub.of_pack("v", 0) + this.invo_sub.of_pack("V", 0) + this.invo_sub.of_pack("v", 0) + this.invo_sub.of_pack("C", 9) + this.invo_sub.of_pack("C", 9) + this.invo_sub.of_pack("C", 0) + this.invo_sub.of_pack("C", 0) + this.invo_sub.of_pack("C", 8) + this.invo_sub.of_pack("C", 255) + this.invo_sub.of_pack("C", 1) + this.invo_sub.of_pack("C", 0) + this.invo_sub.of_pack("v", 0) + this.invo_sub.of_pack("V", 9) + this.invo_sub.of_pack("v", 0) + this.invo_sub.of_pack("v", 0) + this.invo_sub.of_pack("v", 0) + this.invo_sub.of_pack("v", 1) + this.invo_sub.of_pack("V", 0)
+	of_append_data(lb_header)
+	return li_ret
+
+// n_xls_worksheet_v5.of_write(long ai_row, long ai_col, string aa_value, long ai_format) returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	unsignedinteger li_strlen
+	blob lb_header
+	blob lb_data
+	if isnull(aa_value) then
+		aa_value = ""
+	end if
+	aa_value = this.invo_sub.of_str2xls(aa_value)
+	li_strlen = len(aa_value)
+	if li_strlen > this.il_xls_strmax then
+		li_strlen = this.il_xls_strmax
+		aa_value = left(aa_value, li_strlen)
+	end if
+	li_length = 8 + li_strlen
+	if of_check_dimensions(ai_row, ai_col) <> 1 then
+		li_ret = -2
+	end if
+	if li_ret = 1 then
+		lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+		lb_data = this.invo_sub.of_pack("v", ai_row) + this.invo_sub.of_pack("v", ai_col) + this.invo_sub.of_pack("v", ai_format) + this.invo_sub.of_pack("v", li_strlen)
+		lb_data = lb_data + blob(aa_value)
+		of_append_data(lb_header + lb_data)
+	end if
+	return li_ret
+
+// n_xls_worksheet_v5.of_write(long ai_row, long ai_col, double aa_value, long ai_format) returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	unsignedinteger li_xf
+	blob lb_header
+	blob lb_data
+	if of_check_dimensions(ai_row, ai_col) <> 1 then
+		li_ret = -2
+	end if
+	if li_ret = 1 then
+		lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+		lb_data = this.invo_sub.of_pack("v", ai_row) + this.invo_sub.of_pack("v", ai_col) + this.invo_sub.of_pack("v", ai_format) + this.invo_sub.of_pack("d", aa_value)
+		of_append_data(lb_header + lb_data)
+	end if
+	return li_ret
+
+// n_xls_worksheet_v5.constructor() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::constructor()
+	this.il_dim_rowmin = this.il_xls_rowmax + 1
+	this.il_dim_colmin = this.il_xls_colmax + 1
+	this.invo_selection = create n_xls_selection
+	this.invo_data = create n_xls_data
+	this.invo_header = create n_xls_data
+	this.invo_selection.ii_first_row = 0
+	this.invo_selection.ii_last_row = 0
+	this.invo_selection.ii_first_col = 0
+	this.invo_selection.ii_last_col = 0
+	setnull(this.invo_panes)
+	setnull(this.ii_title_rowmin)
+	setnull(this.ii_title_rowmax)
+	setnull(this.ii_title_colmin)
+	setnull(this.ii_title_colmax)
+	setnull(this.ii_print_rowmin)
+	setnull(this.ii_print_rowmax)
+	setnull(this.ii_print_colmin)
+	setnull(this.ii_print_colmax)
+	this.invo_key_col_sizes = create n_associated_ulong_srv
+	this.invo_key_row_sizes = create n_associated_ulong_srv
+	this.invo_key_col_formats = create n_associated_ulong_srv
+	this.invo_key_row_formats = create n_associated_ulong_srv
+	this.invo_key_col_hiddens = create n_associated_ulong_srv
+	this.invo_key_row_hiddens = create n_associated_ulong_srv
+	return ::message.returnvalue
+
+// n_xls_worksheet_v5.create() returns 0
+	call super::create
+
+// n_xls_worksheet_v5.destroy() returns 0
+	call super::destroy

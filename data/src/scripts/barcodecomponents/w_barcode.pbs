@@ -1,0 +1,135 @@
+// window w_barcode (barcodecomponents)  ancestor: window
+
+// w_barcode.wf_retrieve() returns integer
+	integer li_retcode
+	li_retcode = this.dw_item.retrieve()
+	return li_retcode
+
+// w_barcode.create() returns 0
+	if this.menuname = "m_reviewreport" then
+		this.menuid = create m_reviewreport
+	end if
+	this.cb_cancel = create cb_cancel
+	this.dw_header = create dw_header
+	this.dw_barcodelist = create dw_barcodelist
+	this.cb_retrieve = create cb_retrieve
+	this.cb_print = create cb_print
+	this.dw_item = create dw_item
+	this.gb_1 = create gb_1
+	this.control = {this.cb_cancel, this.dw_header, this.dw_barcodelist, this.cb_retrieve, this.cb_print, this.dw_item, this.gb_1}
+
+// w_barcode.destroy() returns 0
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.cb_cancel
+	destroy this.dw_header
+	destroy this.dw_barcodelist
+	destroy this.cb_retrieve
+	destroy this.cb_print
+	destroy this.dw_item
+	destroy this.gb_1
+
+// w_barcode.open() returns long
+	long ll_width
+	long ll_height
+	environment env
+	m_entry lm_menu
+	lm_menu = this.menuid
+	this.menuid.dynamic mf_initsecurityapp(lm_menu)
+	this.im_reportmenu = this.menuid
+	this.im_reportmenu.m_file.m_saveas.enabled = false
+	this.im_reportmenu.m_file.m_retrieve.enabled = true
+	this.im_reportmenu.m_file.m_sort.enabled = false
+	this.im_reportmenu.m_file.m_filter.enabled = false
+	this.im_reportmenu.m_file.m_visible.enabled = false
+	this.im_reportmenu.m_file.m_home.enabled = false
+	this.im_reportmenu.m_file.m_pageup.enabled = false
+	this.im_reportmenu.m_file.m_pagedown.enabled = false
+	this.im_reportmenu.m_file.m_end.enabled = false
+	this.im_reportmenu.m_file.m_preview.enabled = false
+	this.im_reportmenu.m_file.m_zoom.enabled = false
+	this.im_reportmenu.m_file.m_zoomout.enabled = false
+	this.im_reportmenu.m_file.m_print.enabled = false
+	this.im_reportmenu.m_file.m_refresh.enabled = false
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.gb_1.width = ll_width * 0.98
+	this.dw_item.y = this.dw_header.y + this.dw_header.height + 15
+	this.dw_item.width = ll_width * 0.98
+	this.dw_item.height = ll_height * 0.60
+	this.cb_print.y = this.dw_item.y + this.dw_item.height + 15
+	this.cb_cancel.y = this.dw_item.y + this.dw_item.height + 15
+	this.cb_retrieve.y = this.dw_item.y + this.dw_item.height + 15
+	setredraw(true)
+	this.dw_item.settransobject(sqlca)
+	this.dw_item.retrieve()
+	return ::message.returnvalue
+
+// w_barcode.activate() returns long
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	close(parent)
+	return ::message.returnvalue
+
+// cb_retrieve.clicked() returns long
+	parent.dw_item.retrieve()
+	return ::message.returnvalue
+
+// cb_print.clicked() returns long
+	long ll_totalrows
+	long ll_counter
+	long ll_innercounter
+	long ll_qty
+	long ll_currrow
+	integer li_startcell
+	integer li_stopcell
+	integer li_temp
+	string ls_clientname
+	datastore lds_barcodes
+	ls_clientname = trim(f_reportheaderinfo("clientname"))
+	li_startcell = parent.dw_header.getitemnumber(1, "fromcell")
+	li_stopcell = parent.dw_header.getitemnumber(1, "tocell")
+	if li_startcell > li_stopcell then
+		li_stopcell = li_temp
+		li_stopcell = li_startcell
+		li_startcell = li_temp
+	end if
+	lds_barcodes = create datastore
+	lds_barcodes.dataobject = "d_barcodelabels"
+	lds_barcodes.settransobject(sqlca)
+	parent.dw_item.accepttext()
+	ll_totalrows = parent.dw_item.rowcount()
+	lds_barcodes.reset()
+	if ll_totalrows > 0 then
+		if li_startcell > 1 then
+			for ll_counter = 1 to ll_counter
+				lds_barcodes.insertrow(0)
+			next
+		end if
+		ll_counter = 1
+		for ll_counter = 1 to ll_totalrows
+			if parent.dw_item.getitemstring(ll_counter, "yes") = "Y" and parent.dw_item.getitemnumber(ll_counter, "qty") > 0.0 then
+				ll_qty = parent.dw_item.getitemnumber(ll_counter, "qty")
+				for ll_innercounter = 1 to ll_qty
+					ll_currrow = lds_barcodes.insertrow(0)
+					lds_barcodes.setitem(ll_currrow, "name", trim(parent.dw_item.getitemstring(ll_counter, "name")))
+					lds_barcodes.setitem(ll_currrow, "custicode", "*" + trim(parent.dw_item.getitemstring(ll_counter, "custicode")) + "*")
+					lds_barcodes.setitem(ll_currrow, "customicode", trim(parent.dw_item.getitemstring(ll_counter, "custicode")))
+					lds_barcodes.setitem(ll_currrow, "price", parent.dw_item.getitemstring(ll_counter, "price"))
+					lds_barcodes.setitem(ll_currrow, "clientname", ls_clientname)
+				next
+			end if
+		next
+	end if
+	parent.dw_barcodelist.setredraw(false)
+	lds_barcodes.sharedata(parent.dw_barcodelist)
+	parent.dw_barcodelist.setredraw(true)
+	parent.dw_barcodelist.print()
+	destroy lds_barcodes
+	return ::message.returnvalue

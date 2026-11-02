@@ -1,0 +1,165 @@
+// window w_changeitem_reorderqty (changeitemprice)  ancestor: w_multi_entry
+
+// w_changeitem_reorderqty.ue_setqty(string as_type) returns 0
+	long ll_counter
+	long ll_qty
+	long ll_packunits
+	double ld_avgqty
+	string ls_colname
+	s_arguements lstr_arg
+	open(w_changeitem_min_reorder_optimum_qty)
+	lstr_arg = message.powerobjectparm
+	if upper(as_type) = "M" then
+		ls_colname = "minqty"
+	elseif upper(as_type) = "R" then
+		ls_colname = "reorderqty"
+	else
+		ls_colname = "optimumqty"
+	end if
+	if lstr_arg.i_status = 1 then
+		this.id_detail.setredraw(false)
+		for ll_counter = 1 to this.id_detail.rowcount()
+			ld_avgqty = this.id_detail.getitemnumber(ll_counter, "c_avgqty")
+			ll_packunits = this.id_detail.getitemnumber(ll_counter, "packunits")
+			if lstr_arg.l_code1 = 1 then
+				ll_qty = lstr_arg.l_code2
+			elseif lstr_arg.l_code1 = 2 then
+				ll_qty = long(ld_avgqty * lstr_arg.l_code2)
+			elseif lstr_arg.l_code1 = 3 then
+				ll_qty = long(ll_packunits * lstr_arg.l_code2)
+			end if
+			this.id_detail.setitem(ll_counter, ls_colname, ll_qty)
+		next
+		this.id_detail.setredraw(true)
+	end if
+
+// w_changeitem_reorderqty.ue_generate() returns 0
+	s_arguements lstr_arg
+	if this.is_dwtype = "L" then
+		open(w_arg_class_sdate_ldate_all)
+	elseif this.is_dwtype = "C" then
+		open(w_arg_category_sdate_ldate)
+	elseif this.is_dwtype = "M" then
+		open(w_arg_manufacturers)
+	elseif this.is_dwtype = "P" then
+		open(w_arg_packings)
+	elseif this.is_dwtype = "O" then
+		open(w_arg_manf_cat_class_packing)
+	end if
+	lstr_arg = message.powerobjectparm
+	if lstr_arg.i_status = 1 then
+		setredraw(false)
+		if this.is_dwtype = "O" then
+			this.id_detail.retrieve(lstr_arg.d_sdate, lstr_arg.d_edate, lstr_arg.ia_integerlist, lstr_arg.ia_integerlist1, lstr_arg.ia_integerlist2, lstr_arg.la_longlist)
+		else
+			this.id_detail.retrieve(lstr_arg.d_sdate, lstr_arg.d_edate, upper(this.is_dwtype), lstr_arg.ia_integerlist)
+		end if
+		this.id_master.setitem(1, "startdate", lstr_arg.d_sdate)
+		this.id_master.setitem(1, "enddate", lstr_arg.d_edate)
+		setredraw(true)
+	end if
+
+// w_changeitem_reorderqty.wf_assigndatawindow(string as_masterdw, string as_detaildw, string as_listdw) returns 0
+	this.id_master.dataobject = as_masterdw
+	this.id_detail.dataobject = as_detaildw
+	this.id_list.dataobject = as_listdw
+	this.id_master.settransobject(this.it_transobject)
+	this.id_detail.settransobject(this.it_transobject)
+	this.id_list.settransobject(this.it_transobject)
+
+// w_changeitem_reorderqty.create() returns 0
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_changeitem_reorderqty" then
+		this.menuid = create m_changeitem_reorderqty
+	end if
+
+// w_changeitem_reorderqty.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_changeitem_reorderqty.ue_detail() returns 0
+	call super::ue_detail
+	this.im_menu.m_file.m_save.enabled = true
+
+// w_changeitem_reorderqty.ue_postopen() returns 0
+	call super::ue_postopen
+	this.is_dwtype = message.stringparm
+	this.is_dwtype = upper(this.is_dwtype)
+	if this.is_dwtype = "O" then
+		wf_assigndatawindow("d_changeitem_reorderqty_header", "d_changeitem_reorderqty_detail_compound", "d_changeitem_price_manf_list")
+	else
+		wf_assigndatawindow("d_changeitem_reorderqty_header", "d_changeitem_reorderqty_detail", "d_changeitem_price_manf_list")
+	end if
+	if this.is_dwtype = "M" then
+		this.title = "Change Item Reorder Qty Manufacturer Wise"
+	elseif this.is_dwtype = "L" then
+		this.title = "Change Item Reorder Qty Class Wise"
+	elseif this.is_dwtype = "C" then
+		this.title = "Change Item Reorder Qty Category Wise"
+	elseif this.is_dwtype = "P" then
+		this.title = "Change Item Reorder Qty Packing Wise"
+	elseif this.is_dwtype = "O" then
+		this.title = "Change Item Reorder Qty - Compound Criteria"
+	end if
+	this.im_menu.m_file.m_new.enabled = false
+	this.im_menu.m_file.m_delete.enabled = false
+	this.im_menu.m_item.m_newitem.enabled = false
+	this.im_menu.m_item.m_deleteitem.enabled = false
+
+// w_changeitem_reorderqty.ue_save() returns 0
+	long ll_salesmancode
+	long ll_rowcount
+	long ll_counter
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	dwitemstatus lds_rowstatus
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	ll_rowcount = this.id_detail.rowcount()
+	if ll_rowcount > 0 then
+		if not wf_validateserverdatetime(ldt_server_datetime, ls_date_errtext) then
+			messagebox("Date Violation", ls_date_errtext, stopsign!)
+			return
+		end if
+		ll_salesmancode = gl_usercode
+		do while ll_counter <= ll_rowcount
+			lds_rowstatus = this.id_detail.getitemstatus(ll_counter, 0, primary!)
+			if lds_rowstatus = datamodified! then
+				this.id_detail.setitem(ll_counter, "usercode", ll_salesmancode)
+				this.id_detail.setitem(ll_counter, "lastupdate", ldt_server_datetime)
+				this.id_detail.setitem(ll_counter, "ChangeReason", "Multiple Changes")
+				this.id_detail.setitem(ll_counter, "Module", this.title)
+			end if
+			ll_counter = ll_counter + 1
+		loop
+		if this.id_detail.update() > 0 then
+			SQL commit USING this.it_transobject;
+			messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+			this.ib_commitok = true
+			this.id_master.resetupdate()
+			this.im_menu.m_file.m_new.enabled = true
+			this.editflag = false
+			if gd_recenttransdate < this.id_systemdate then
+				gd_recenttransdate = this.id_systemdate
+			end if
+		else
+			SQL rollback USING this.it_transobject;
+			setpointer(arrow!)
+			return
+		end if
+		return
+	end if
+	messagebox("Updataion Problem", "No rows to Update!", stopsign!)
+
+// w_changeitem_reorderqty.ue_newitem() returns 0
+
+// w_changeitem_reorderqty.ue_deleteitem() returns 0

@@ -1,0 +1,64 @@
+// window w_arg_area_subarea_customers_period (reports_cust)  ancestor: w_listarguments
+
+// w_arg_area_subarea_customers_period.create() returns 0
+	integer icurrent
+	call super::create
+	this.st_selectable = create st_selectable
+	this.st_selected = create st_selected
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_selectable
+	this.control[icurrent + 2] = this.st_selected
+
+// w_arg_area_subarea_customers_period.destroy() returns 0
+	call super::destroy
+	destroy this.st_selectable
+	destroy this.st_selected
+
+// w_arg_area_subarea_customers_period.open() returns long
+	long ancestorreturnvalue
+	long ll_counter
+	long ll_rowcount
+	integer rtncode
+	ancestorreturnvalue = super::open()
+	this.is_stringparam = message.stringparm
+	if this.is_stringparam = "A" then
+		this.is_dataobject = "d_arg_area"
+		this.is_colname = "areacode"
+		this.is_childcolname = "areacode"
+		this.st_selectable.text = "Area(s)"
+		this.st_selected.text = "Area(s)"
+	elseif this.is_stringparam = "S" then
+		this.is_dataobject = "d_arg_subarea"
+		this.is_colname = "subareacode"
+		this.is_childcolname = "subareacode"
+		this.st_selectable.text = "Sub Area(s)"
+		this.st_selected.text = "Sub Area(s)"
+	elseif this.is_stringparam = "C" then
+		this.is_dataobject = "d_arg_cust"
+		this.is_colname = "custcode"
+		this.is_childcolname = "accounts_acccode"
+		this.st_selectable.text = "Customer(s)"
+		this.st_selected.text = "Customer(s)"
+	end if
+	this.dw_control.dataobject = this.is_dataobject
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	rtncode = this.dw_control.getchild(this.is_colname, this.idc_categories)
+	if rtncode = -1 then
+		messagebox("Error", "Not a DataWindowChild")
+	end if
+	ll_rowcount = this.idc_categories.rowcount()
+	for ll_counter = 1 to ll_rowcount
+		if this.is_stringparam = "C" then
+			this.lb_categories.additem(this.idc_categories.getitemstring(ll_counter, "customer_name"))
+		else
+			this.lb_categories.additem(this.idc_categories.getitemstring(ll_counter, "name"))
+		end if
+	next
+	this.dw_price.insertrow(0)
+	this.dw_price.scrolltorow(0)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue

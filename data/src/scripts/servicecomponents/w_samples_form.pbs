@@ -1,0 +1,500 @@
+// window w_samples_form (servicecomponents)  ancestor: w_multi_entry
+
+// w_samples_form.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM ServiceComponent WHERE ServiceComponent.name =:as_name USING this.it_transobject;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_samples_form.wf_validateitem() returns integer
+	long ll_icode
+	integer li_errcode
+	string ls_managername
+	integer li_null
+	ll_icode = this.id_detail.getitemnumber(this.il_currrow, "servicerowid")
+	if vf_dwdupcode1(this.id_detail, "servicerowid", string(ll_icode), this.il_currrow) = true then
+		ls_managername = ""
+		messagebox("Duplication Error", "Current row is duplicate")
+		li_errcode = -1
+	else
+		li_errcode = 0
+	end if
+	this.ib_itemvalidated = true
+	if li_errcode = -1 then
+		setnull(li_null)
+		this.id_detail.setcolumn("servicerowid")
+		this.id_detail.scrolltorow(this.il_currrow)
+		this.id_detail.object.servicerowid[this.il_currrow] = li_null
+	else
+		li_errcode = wf_getserviceinfo(ll_icode)
+	end if
+	return li_errcode
+
+// w_samples_form.wf_getserviceinfo(long al_code) returns long
+	datetime ldt_servicedate
+	datetime ldt_dob
+	datetime ldt_deliverydate
+	long ll_retcode
+	long ll_rowcount
+	long ll_counter
+	long ll_res
+	long ll_row
+	long ll_servicecount
+	datastore lds_services
+	s_arguements istr_arg
+	lds_services = create datastore
+	lds_services.dataobject = "d_sample_for_service_required"
+	lds_services.settransobject(sqlca)
+	SQL SELECT servicecount =( SELECT COUNT ( SD.ServiceCode ) FROM ServiceDetail SD , Service SV WHERE SD.ServiceInvCode =:al_code AND SD.ServiceCode =SV.ServiceCode AND SV.ResultRequired ='Y' ) INTO :ll_servicecount FROM DBO.ServiceHeader WHERE ServiceInvCode =:al_code AND Posted ='Y' USING sqlca;
+	if sqlca.sqlcode = 0 then
+		if isnull(ll_servicecount) or ll_servicecount = 0 then
+			ll_retcode = 1
+		else
+			if this.id_detail.rowcount() > 0 then
+				ll_res = messagebox("", "Detail Rows will lost. Are you sure to populated Services?", question!, yesno!, 1)
+				if ll_res = 1 then
+					this.id_detail.reset()
+					ll_retcode = 0
+				else
+					ll_retcode = 1
+				end if
+			end if
+			ll_retcode = 0
+		end if
+	else
+		ll_retcode = 1
+	end if
+	if ll_retcode = 0 then
+		openwithparm(w_select_service_from_serviceinvoice, al_code)
+		istr_arg = message.powerobjectparm
+		if istr_arg.i_status = 1 then
+			lds_services.retrieve(istr_arg.la_longlist)
+			if lds_services.rowcount() > 0 then
+				ll_retcode = wf_set_service_info(al_code)
+				if ll_retcode = 0 then
+					for ll_counter = 1 to lds_services.rowcount()
+						ll_row = this.id_detail.insertrow(0)
+						this.id_detail.object.code[ll_row] = this.id_master.object.code[1]
+						this.id_detail.object.servicerowid[ll_row] = lds_services.object.srvrowid[ll_counter]
+						this.id_detail.object.sampletypecode[ll_row] = lds_services.object.sampletypecode[ll_counter]
+						this.id_detail.object.color[ll_row] = lds_services.object.color[ll_counter]
+						this.id_detail.object.volume[ll_row] = lds_services.object.volume[ll_counter]
+						this.id_detail.object.remarks[ll_row] = lds_services.object.remarks[ll_counter]
+					next
+					this.id_detail.setredraw(false)
+					this.id_detail.sort()
+					this.id_detail.groupcalc()
+					this.id_detail.setredraw(true)
+				end if
+			else
+				ll_retcode = 1
+			end if
+			this.idc_service.retrieve(al_code)
+		end if
+	end if
+	return ll_retcode
+
+// w_samples_form.wf_set_service_info(long al_serviceinvcode) returns long
+	long ll_patientcode
+	long ll_custcode
+	long ll_admissioncode
+	long ll_patientlocation
+	long ll_retcode
+	integer li_ageyears
+	integer li_agemonths
+	integer li_agedays
+	datetime ldt_servicedate
+	datetime ldt_dob
+	string ls_regno
+	string ls_patientname
+	string ls_fname
+	string ls_address1
+	string ls_address2
+	string ls_phone
+	char lc_gender
+	ls_regno = "                                                                                       "
+	ls_patientname = "                                                                                       "
+	ls_fname = "                                                                                       "
+	ls_address1 = "                                                                                       "
+	ls_address2 = "                                                                                       "
+	ls_phone = "                                                                                       "
+	if al_serviceinvcode > 0 then
+		sqlca.getserviceinfo(al_serviceinvcode, ldt_servicedate, ll_patientcode, ls_regno, ls_patientname, ls_fname, ldt_dob, lc_gender, ll_custcode, ls_address1, ls_address2, ls_phone, li_ageyears, li_agemonths, li_agedays, ll_admissioncode, ll_patientlocation)
+		if sqlca.sqlcode = 0 then
+			this.id_master.object.servicedate[1] = ldt_servicedate
+			this.id_master.object.patientcode[1] = ll_patientcode
+			this.id_master.object.patientregno[1] = ls_regno
+			this.id_master.object.gender[1] = lc_gender
+			this.id_master.object.admissioncode[1] = ll_admissioncode
+			this.id_master.object.locationcode[1] = ll_patientlocation
+			this.id_master.object.ageyears[1] = li_ageyears
+			this.id_master.object.agemonths[1] = li_agemonths
+			this.id_master.object.agedays[1] = li_agedays
+			ll_retcode = 0
+		else
+			messagebox("Service Info. Fetch Error", sqlca.sqlerrtext)
+			ll_retcode = 1
+		end if
+	else
+		ll_retcode = 1
+	end if
+	return ll_retcode
+
+// w_samples_form.wf_locksamples(long al_sinvcode, long al_linvcode, long al_totalinvoice) returns long
+	integer li_count
+	SQL Select count ( *) INTO :al_totalinvoice From Samples WITH ( UPDLOCK HOLDLOCK ) Where SampleCode Between :al_sinvcode AND :al_linvcode AND Posted ='Y' USING sqlca;
+	return sqlca.sqlcode
+
+// w_samples_form.wf_markasprocessed() returns long
+	integer li_errcode
+	long ll_usercode
+	long ll_invcount
+	long ll_counter
+	boolean lb_flag
+	s_arguements lstr_arginfo
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	if this.tab_retrieve.selectedtab = 1 then
+		return 0
+	end if
+	open(w_salesmanpassword)
+	ll_usercode = long(message.doubleparm)
+	setfocus()
+	if ll_usercode > 0 then
+		open(w_arg_sinvcode_linvcode)
+		lstr_arginfo = message.powerobjectparm
+		if lstr_arginfo.i_status = 1 then
+			setpointer(hourglass!)
+			if not wf_getserverdatetime(ldt_server_datetime, ls_date_errtext) then
+				messagebox("Date Violation", ls_date_errtext, stopsign!)
+				return -1
+			end if
+			SQL rollback USING sqlca;
+			li_errcode = wf_locksamples(lstr_arginfo.l_code1, lstr_arginfo.l_code2, ll_invcount)
+			if li_errcode = 0 then
+				sqlca.marksamplesasprocessed(lstr_arginfo.l_code1, lstr_arginfo.l_code2, ll_usercode)
+				if sqlca.sqlcode <> 0 then
+					li_errcode = -1
+				end if
+			end if
+		end if
+		if li_errcode = 0 then
+			SQL commit USING sqlca;
+			if sqlca.sqlcode <> 0 then
+				li_errcode = -1
+			end if
+		else
+			SQL rollback USING sqlca;
+		end if
+	else
+		setfocus()
+	end if
+	setpointer(arrow!)
+	if li_errcode <> 0 then
+		messagebox("Mark as Prcocessed", "Some database request fails, Please try again")
+	else
+		messagebox("Mark as Processed", "Total Un-Processed Samples were " + string(ll_invcount) + "~n~rAll samples in range have been Marked as Processed successfully")
+	end if
+	return li_errcode
+
+// w_samples_form.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	if not isnull(ad_dwcontrol.dataobject) then
+		li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+		for li_counter = li_colcount to li_counter step -1
+			ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+			if ai_doundo = 1 then
+				ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+			else
+				ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+			end if
+		next
+	end if
+
+// w_samples_form.wf_populate_ddlb(datawindow dwcontrol) returns 0
+	integer li_column_count
+	integer li_counter
+	string ls_column_name
+	string ls_columntype
+	this.tab_retrieve.tabpage_list.ddlb_filter_column.reset()
+	this.tab_retrieve.tabpage_list.ddlb_sort.reset()
+	li_column_count = integer(dwcontrol.object.datawindow.column.count)
+	for li_counter = li_column_count to li_counter step -1
+		ls_column_name = dwcontrol.describe("#" + string(li_counter) + ".Name")
+		this.tab_retrieve.tabpage_list.ddlb_sort.additem(ls_column_name)
+		this.tab_retrieve.tabpage_list.ddlb_filter_column.additem(ls_column_name)
+	next
+	this.tab_retrieve.tabpage_list.ddlb_sort.text = ls_column_name
+	ls_columntype = this.id_dwcontrol.describe("#1.ColType")
+	if left(ls_columntype, 4) = "char" then
+		this.ii_type = 1
+	elseif left(ls_columntype, 4) = "date" then
+		this.ii_type = 3
+	else
+		this.ii_type = 2
+	end if
+	this.ii_colindex = 1
+	this.tab_retrieve.tabpage_list.rb_descending.checked = true
+	this.is_sortsequence = "D"
+	wf_sortdw(this.tab_retrieve.tabpage_list.ddlb_sort.text, this.is_sortsequence)
+	this.id_master.setfocus()
+
+// w_samples_form.create() returns 0
+	integer icurrent
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_samplesmenu" then
+		this.menuid = create m_samplesmenu
+	end if
+
+// w_samples_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_samples_form.ue_save() returns 0
+	long ll_mastercurrrow
+	long ll_invid
+	long ll_detailrows
+	long ll_usercode
+	long ll_servicerowid
+	integer li_counter
+	boolean lb_commitflag
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	if this.id_detail.rowcount() > 0 and (isnull(this.id_detail.object.servicerowid[1]) or isnull(this.id_detail.object.sampletypecode[1])) then
+		this.id_detail.setrow(1)
+		this.id_detail.scrolltorow(1)
+		event ue_deleteitem()
+	end if
+	if this.id_detail.rowcount() = 0 then
+		messagebox("Service Validation", "No Service Selected From Service List~r~nPerhaps this Service Invoice Does not contain any service for which service result is required~r~nPlease enter a valid service invoice code", stopsign!)
+		setpointer(arrow!)
+		return
+	end if
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	setpointer(hourglass!)
+	ll_mastercurrrow = this.id_master.getrow()
+	ll_invid = this.id_master.object.code[ll_mastercurrrow]
+	ll_usercode = gl_usercode
+	if not wf_validateserverdatetime(ldt_server_datetime, ls_date_errtext) then
+		messagebox("Date Violation", ls_date_errtext, stopsign!)
+		setpointer(arrow!)
+		return
+	end if
+	if isnull(ll_invid) then
+		f_newtableid("samples", ll_invid)
+		this.id_master.object.code[ll_mastercurrrow] = ll_invid
+		this.id_master.setitem(ll_mastercurrrow, "usercode", ll_usercode)
+		this.id_master.setitem(ll_mastercurrrow, "sampledate", ldt_server_datetime)
+		this.id_master.setitem(ll_mastercurrrow, "posted", "Y")
+		this.id_master.setitem(ll_mastercurrrow, "postdate", ldt_server_datetime)
+		this.id_master.setitem(ll_mastercurrrow, "postedby", ll_usercode)
+	end if
+	ll_detailrows = this.id_detail.rowcount()
+	li_counter = 1
+	do while li_counter <= ll_detailrows and lb_commitflag = true
+		this.id_detail.setitem(li_counter, "code", ll_invid)
+		li_counter = li_counter + 1
+	loop
+	if this.id_master.update(true, false) < 0 then
+		SQL rollback USING this.it_transobject;
+		setpointer(arrow!)
+		return
+	end if
+	if this.id_detail.update() > 0 then
+		SQL commit USING this.it_transobject;
+		messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+		this.ib_commitok = true
+		this.id_master.resetupdate()
+		this.im_menu.m_file.m_new.enabled = true
+		this.editflag = false
+		if gd_recenttransdate < this.id_systemdate then
+			gd_recenttransdate = this.id_systemdate
+		end if
+	else
+		SQL rollback USING this.it_transobject;
+		messagebox("Database Problem", "Some Database Problem Occured in saving Sample Detail!", stopsign!)
+		setpointer(arrow!)
+		return
+	end if
+	setpointer(arrow!)
+
+// w_samples_form.ue_newform() returns 0
+	long ll_null
+	call super::ue_newform
+	this.id_master.setfocus()
+	wf_protectdw(this.id_master, 0)
+	wf_protectdw(this.id_detail, 0)
+	setnull(ll_null)
+	this.id_detail.getchild("servicerowid", this.idc_service)
+	this.idc_service.settransobject(this.it_transobject)
+	this.idc_service.retrieve(ll_null)
+	this.id_master.setcolumn("serviceinvcode")
+	this.id_master.setfocus()
+
+// w_samples_form.ue_newitem() returns 0
+	long ll_rowcount
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	if this.id_detail.rowcount() > 0 and f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	this.idc_service.retrieve(this.id_master.object.code[1])
+	this.id_detail.insertrow(0)
+	this.id_detail.setcolumn("servicerowid")
+	ll_rowcount = this.id_detail.rowcount()
+	if ll_rowcount > 1 then
+		this.id_detail.scrolltorow(ll_rowcount)
+		this.id_detail.setfocus()
+	end if
+	this.im_menu.m_file.m_save.enabled = true
+	this.ib_validatefullcode = true
+	if this.id_detail.rowcount() > 1 then
+	end if
+
+// w_samples_form.ue_detail() returns 0
+	m_samplesmenu lm_menu
+	integer li_protect
+	call super::ue_detail
+	lm_menu = this.menuid
+	lm_menu.m_file.m_markasprocessed.visible = false
+	lm_menu.m_file.m_markasprocessed.enabled = false
+	if this.id_master.rowcount() > 0 then
+		this.idc_service.retrieve(this.id_master.object.serviceinvcode[1])
+		if this.idc_service.rowcount() = 0 then
+			this.idc_service.insertrow(0)
+		end if
+		if this.id_master.object.posted[1] = "Y" then
+			li_protect = 1
+			this.im_menu.m_file.m_save.visible = false
+			this.im_menu.m_file.m_save.enabled = false
+		else
+			li_protect = 0
+		end if
+		if this.id_master.object.serviceinvcode[1] > 0 then
+			wf_set_service_info(this.id_master.object.serviceinvcode[1])
+		end if
+		wf_protectdw(this.id_master, li_protect)
+		wf_protectdw(this.id_detail, li_protect)
+	end if
+
+// w_samples_form.ue_postopen() returns 0
+	long ll_null
+	call super::ue_postopen
+	setnull(ll_null)
+	this.id_detail.getchild("servicerowid", this.idc_service)
+	this.idc_service.settransobject(this.it_transobject)
+	this.idc_service.retrieve(ll_null)
+
+// w_samples_form.ue_deleteitem() returns 0
+	long ll_currow
+	long ll_detailrows
+	this.ib_itemvalidated = true
+	this.id_detail.deleterow(0)
+	ll_detailrows = this.id_detail.rowcount()
+	if ll_detailrows < 0 then
+		this.im_menu.m_file.m_save.enabled = false
+	end if
+	wf_grandtotal()
+
+// w_samples_form.ue_list() returns 0
+	m_samplesmenu lm_menu
+	call super::ue_list
+	lm_menu = this.menuid
+	lm_menu.m_file.m_markasprocessed.visible = true
+	lm_menu.m_file.m_markasprocessed.enabled = true
+
+// w_samples_form.ue_new() returns 0
+	long ll_null
+	call super::ue_new
+	setnull(ll_null)
+	this.id_detail.getchild("servicerowid", this.idc_service)
+	this.idc_service.settransobject(this.it_transobject)
+	this.idc_service.retrieve(ll_null)
+
+// w_samples_form.ue_print() returns 0
+	integer li_option
+	long ll_code
+	boolean lb_listtab
+	s_datastore lstr
+	call super::ue_print
+	if this.tab_retrieve.selectedtab = 2 then
+		lb_listtab = true
+	end if
+	if this.im_menu.m_file.m_save.enabled = true and lb_listtab = false then
+		li_option = messagebox("Save Changes", "Do you want to save invoice", information!, yesno!, 2)
+		if li_option = 1 then
+			triggerevent("ue_save")
+			if wf_commitform() = false then
+				return
+			end if
+			return
+		end if
+		return
+	end if
+	if lb_listtab then
+		if isnull(this.id_list.getrow()) or this.id_list.getrow() <= 0 then
+			messagebox("Rows Validation", "Kindly select any row from the list view.")
+			return
+		end if
+		ll_code = this.id_list.getitemnumber(this.id_list.getrow(), "code")
+		if isnull(ll_code) or ll_code <= 0 then
+			messagebox("Selection Validation", "Kindly select any row from the list view.")
+			return
+		end if
+	else
+		ll_code = this.id_master.getitemnumber(1, "code")
+	end if
+	this.id_print = this.tab_retrieve.tabpage_detail.dw_print
+	if gs_company = "KHYBER" then
+		this.id_print.dataobject = "d_khyber_samples_printout"
+	else
+		this.id_print.dataobject = "d_samples_printout"
+	end if
+	this.id_print.settransobject(sqlca)
+	this.id_print.retrieve(ll_code)
+	if lb_listtab then
+		lstr.dw = this.id_print
+		lstr.s_name1 = this.id_print.dataobject
+		openwithparm(w_preview_invoices, lstr)
+		lstr = message.powerobjectparm
+		if lstr.i_closemode = -1 then
+			return
+		end if
+		return
+	end if
+	if f_stringpreferences("PromptBeforePrinting") = "Y" and printsetup() < 0 then
+		messagebox("Printer", "Printing Error")
+		this.id_print.printcancel()
+	end if
+	if this.id_print.rowcount() > 0 then
+		if this.id_print.print() < 0 then
+			messagebox("Printing", "Can not Print Invoice", information!)
+		end if
+	else
+		messagebox("Printing Error", "Can not Print Data,~r~nNo rows are retrieved", information!)
+	end if
+	if this.im_menu.m_file.m_save.enabled = true and lb_listtab = false then
+		postevent("ue_new")
+	end if

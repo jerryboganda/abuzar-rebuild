@@ -1,0 +1,106 @@
+// function f_searchitem_quicksearch (functions)  ancestor: function_object
+
+// f_searchitem_quicksearch.wf_searchitem_quicksearch(string as_str, transaction at_transobject) returns long
+	long ll_found
+	long ll_code
+	long ll_listcurrrow
+	long ll_row
+	long ll_icode
+	integer li_errcode
+	string ls_errtext
+	datastore lds_string_pref
+	datastore lds_criteriavalues
+	s_popup_selection lstr_selection
+	if as_str = "" or isnull(as_str) then
+		ll_found = 0
+	else
+		lds_string_pref = create datastore
+		lds_string_pref.dataobject = "d_quickserach_preference"
+		lds_string_pref.settransobject(at_transobject)
+		lds_string_pref.retrieve()
+		if lds_string_pref.rowcount() > 0 then
+			lstr_selection.l_code = 1
+			lstr_selection.s_name = as_str
+			lstr_selection.s_name2 = lds_string_pref.getitemstring(lds_string_pref.rowcount(), "colname")
+			openwithparm(w_popup_criteriavaluesselection, lstr_selection)
+			lstr_selection = message.powerobjectparm
+			if lstr_selection.l_code > 0 and lstr_selection.l_code > 0 then
+				lstr_selection.s_name = ""
+				lstr_selection.s_name2 = lds_string_pref.getitemstring(lds_string_pref.rowcount(), "colname")
+				lstr_selection.s_name3 = "criteriasearch"
+				openwithparm(w_popup_itemselection, lstr_selection)
+				lstr_selection = message.powerobjectparm
+				if lstr_selection.l_code > 0 then
+					ll_found = lstr_selection.l_code
+				end if
+			end if
+		end if
+	end if
+	return ll_found
+
+// f_searchitem_quicksearch.f_searchitem_quicksearch(string as_str, transaction at_transobject) returns long
+	long ll_found
+	long ll_code
+	long ll_listcurrrow
+	long ll_row
+	long ll_icode
+	integer li_errcode
+	string ls_errtext
+	datastore lds_string_pref
+	s_popup_selection lstr_selection
+	datastore lds_criteriavalues
+	if as_str = "" or isnull(as_str) then
+		ll_found = 0
+	else
+		lds_string_pref = create datastore
+		lds_string_pref.dataobject = "d_quickserach_preference"
+		lds_string_pref.settransobject(at_transobject)
+		lds_string_pref.retrieve()
+		if lds_string_pref.rowcount() > 0 then
+			lstr_selection.l_code = 1
+			lstr_selection.s_name = as_str
+			lstr_selection.s_name2 = lds_string_pref.getitemstring(lds_string_pref.rowcount(), "colname")
+			lstr_selection.s_name4 = "quicksearch"
+			if f_stringpreferences("QuickPrefferedSearchType") = "X" and lstr_selection.s_name2 = "masteripartcode" then
+				lds_criteriavalues = create datastore
+				lds_criteriavalues.dataobject = "d_popup_criteriavaluesselection"
+				lds_criteriavalues.settransobject(at_transobject)
+				lds_criteriavalues.retrieve(lstr_selection.s_name2)
+				if lds_criteriavalues.rowcount() > 0 then
+					ll_found = lds_criteriavalues.find(" name = '" + trim(as_str) + "' ", 1, lds_criteriavalues.rowcount())
+					if ll_found = 0 or ll_found > lds_criteriavalues.rowcount() then
+						ll_found = 0
+						lstr_selection.l_code = 0
+					else
+						lstr_selection.l_code = lds_criteriavalues.getitemnumber(ll_found, "code")
+						ll_found = 0
+					end if
+				end if
+			else
+				if lstr_selection.s_name2 = "masteripartcode" then
+					openwithparm(w_popup_criteriavaluesselection_2, lstr_selection)
+				else
+					openwithparm(w_popup_criteriavaluesselection, lstr_selection)
+				end if
+				lstr_selection = message.powerobjectparm
+			end if
+			if lstr_selection.l_code > 0 and lstr_selection.l_code > 0 then
+				lstr_selection.s_name2 = lds_string_pref.getitemstring(lds_string_pref.rowcount(), "colname")
+				lstr_selection.s_name3 = "criteriasearch"
+				if lstr_selection.s_name2 = "masteripartcode" then
+					lstr_selection.s_name = as_str
+					openwithparm(w_popup_itemselection_2, lstr_selection)
+				else
+					openwithparm(w_popup_itemselection, lstr_selection)
+				end if
+				lstr_selection = message.powerobjectparm
+				if lstr_selection.l_code > 0 then
+					ll_found = lstr_selection.l_code
+				end if
+			end if
+		end if
+	end if
+	if ll_found = 0 then
+		ll_found = -1
+	end if
+	return ll_found

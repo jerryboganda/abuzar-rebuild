@@ -1,0 +1,171 @@
+// window w_generate_services_academicclass (reports)  ancestor: window
+
+// w_generate_services_academicclass.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		post event ue_close()
+	end if
+	return ::message.returnvalue
+
+// w_generate_services_academicclass.ue_close() returns 0
+	closewithreturn(this, this.istr_arg)
+
+// w_generate_services_academicclass.create() returns 0
+	this.cbx_omitspecialcharges = create cbx_omitspecialcharges
+	this.dw_footer = create dw_footer
+	this.dw_master = create dw_master
+	this.cb_retrieve = create cb_retrieve
+	this.cb_ok = create cb_ok
+	this.dw_detail = create dw_detail
+	this.control = {this.cbx_omitspecialcharges, this.dw_footer, this.dw_master, this.cb_retrieve, this.cb_ok, this.dw_detail}
+
+// w_generate_services_academicclass.destroy() returns 0
+	destroy this.cbx_omitspecialcharges
+	destroy this.dw_footer
+	destroy this.dw_master
+	destroy this.cb_retrieve
+	destroy this.cb_ok
+	destroy this.dw_detail
+
+// w_generate_services_academicclass.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	this.istr_arg = message.powerobjectparm
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		this.width = ll_win_width * 0.98
+		this.height = ll_win_height * 0.90
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	this.dw_detail.width = this.width * 0.98
+	this.dw_detail.height = this.height - this.dw_master.height - 230
+	this.cb_retrieve.y = this.height - 200
+	this.cb_ok.y = this.height - 200
+	this.cbx_omitspecialcharges.y = this.height - 200
+	this.cbx_omitspecialcharges.x = this.width - this.cbx_omitspecialcharges.width - 10
+	this.dw_master.settransobject(sqlca)
+	this.dw_detail.settransobject(sqlca)
+	this.dw_footer.settransobject(sqlca)
+	this.dw_master.insertrow(0)
+	this.dw_master.scrolltorow(0)
+	this.dw_master.setfocus()
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// dw_master.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// cb_retrieve.clicked() returns long
+	string ls_filter
+	long ll_masterrow
+	parent.dw_master.accepttext()
+	ll_masterrow = parent.dw_master.getrow()
+	if parent.dw_master.getitemnumber(ll_masterrow, "servicecode") > 0.0 then
+		parent.dw_detail.setredraw(false)
+		parent.dw_detail.retrieve(parent.istr_arg.ia_integerlist, parent.dw_master.getitemnumber(ll_masterrow, "servicecode"))
+		parent.dw_detail.setredraw(true)
+	else
+		messagebox("Validation!", "Plese Select Valid Class and Service.")
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	long ll_rowcount
+	long ll_counter
+	long ll_servicecode
+	long ll_studentcode
+	long ll_classcode
+	long ll_serviceinvcode
+	double ld_fee
+	double ld_discperc
+	double ld_flatdisc
+	string ls_remarks
+	string ls_studentname
+	string ls_classname
+	string ls_servicename
+	boolean lb_ok
+	boolean lb_omitspecialcharges
+	string ls_date
+	u_transaction lt_transobject
+	if parent.cbx_omitspecialcharges.checked = true then
+		lb_omitspecialcharges = true
+	end if
+	lt_transobject = create u_transaction
+	SQL start USING lt_transobject;
+	if lt_transobject.sqlcode = 0 then
+		parent.istr_arg.l_code2 = parent.dw_master.getitemnumber(parent.dw_master.getrow(), "servicecode")
+		ls_remarks = parent.dw_master.getitemstring(parent.dw_master.getrow(), "remarks")
+		ll_rowcount = parent.dw_detail.rowcount()
+		for ll_counter = 1 to ll_rowcount
+			if parent.dw_detail.getitemstring(ll_counter, "selected") = "Y" then
+				if lb_omitspecialcharges and parent.dw_detail.getitemstring(ll_counter, "OmitSpecialCharges") = "Y" then
+					goto L1368
+				end if
+				ll_classcode = parent.dw_detail.object.classcode[ll_counter]
+				ll_studentcode = parent.dw_detail.object.studentcode[ll_counter]
+				ll_servicecode = parent.dw_detail.object.servicecode[ll_counter]
+				ls_classname = parent.dw_detail.object.classname[ll_counter]
+				ls_servicename = parent.dw_detail.object.servicename[ll_counter]
+				ls_studentname = parent.dw_detail.object.studentname[ll_counter]
+				ld_fee = parent.dw_detail.object.fee[ll_counter]
+				ld_flatdisc = parent.dw_detail.object.flatdiscount[ll_counter]
+				ld_discperc = parent.dw_detail.object.discperc[ll_counter]
+				lt_transobject.generate_svc_for_studentfee(ll_classcode, ll_studentcode, ls_remarks, ll_servicecode, ld_fee, ld_flatdisc, ld_discperc, gl_usercode, ll_serviceinvcode)
+				if lt_transobject.sqlcode <> 0 then
+					goto L1368
+				end if
+				messagebox("Student Fee Generation", "Some Problem Occurred while Generating Student Fee.~r~nClass Name = " + ls_classname + "~r~nService Name = " + ls_servicename + "~r~nStudent Name = " + ls_studentname + "~r~n~r~nDetails are:-~r~n" + lt_transobject.sqlerrtext)
+				SQL rollback USING lt_transobject;
+				lb_ok = false
+				exit
+			end if
+		next
+		if lb_ok then
+			parent.istr_arg.i_status = 1
+			SQL commit USING lt_transobject;
+			if lt_transobject.sqlcode = 0 then
+				parent.post event ue_close()
+			else
+				messagebox("Student Fee Generation", "Some Problem Occurred while Generating Student Fee.~r~nDetails are:-~r~n" + lt_transobject.sqlerrtext)
+			end if
+		end if
+	else
+		messagebox("Database Connection Problem", "Some Database Connection Problem Occurred~r~nDetails are:-~r~n" + lt_transobject.sqlerrtext)
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_detail.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_detail.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue

@@ -1,0 +1,276 @@
+// window w_rightsmodification (templates)  ancestor: window
+
+// w_rightsmodification.ue_displayrights() returns 0
+	long ll_counter
+	long ll_count
+	long ll_rightsclonecount
+	long ll_rightscount
+	setpointer(hourglass!)
+	setredraw(false)
+	this.ids_grouprights.retrieve()
+	this.ids_userrights.retrieve()
+	this.ids_rights.retrieve()
+	ll_rightsclonecount = this.dw_rightsclone.rowcount()
+	ll_rightscount = this.ids_rights.rowcount()
+	for ll_counter = 1 to ll_rightsclonecount
+		if this.ids_rights.find("RightCode = " + string(this.dw_rightsclone.object.rightcode[ll_counter]), 1, ll_rightscount) > 0 then
+			this.dw_rightsclone.object.assign[ll_counter] = "Y"
+		end if
+	next
+	setredraw(true)
+	setpointer(arrow!)
+
+// w_rightsmodification.ue_save() returns 0
+	long ll_counter
+	long ll_limit
+	long ll_currow
+	setpointer(hourglass!)
+	this.ids_newgrouprights.reset()
+	this.ids_newuserrights.reset()
+	this.ids_newrights.reset()
+	ll_limit = this.dw_rightsclone.rowcount()
+	for ll_counter = 1 to ll_limit
+		if this.dw_rightsclone.object.assign[ll_counter] = "Y" then
+			ll_currow = this.ids_newrights.insertrow(0)
+			this.ids_newrights.object.rightcode[ll_currow] = this.dw_rightsclone.object.rightcode[ll_counter]
+			this.ids_newrights.object.rightname[ll_currow] = this.dw_rightsclone.object.rightname[ll_counter]
+			this.ids_newrights.object.menuname[ll_currow] = this.dw_rightsclone.object.menuname[ll_counter]
+			this.ids_newrights.object.levelindex[ll_currow] = this.dw_rightsclone.object.levelindex[ll_counter]
+			this.ids_newrights.object.indicesstring[ll_currow] = this.dw_rightsclone.object.indicesstring[ll_counter]
+			this.ids_newrights.object.object[ll_currow] = this.dw_rightsclone.object.object[ll_counter]
+			this.ids_newrights.object.rightcatcode[ll_currow] = this.dw_rightsclone.object.rightcatcode[ll_counter]
+		end if
+	next
+	ll_limit = this.ids_newrights.rowcount()
+	for ll_counter = 1 to ll_limit
+		ll_currow = this.ids_newgrouprights.insertrow(0)
+		this.ids_newgrouprights.object.rightcode[ll_currow] = this.ids_newrights.object.rightcode[ll_counter]
+		this.ids_newgrouprights.object.groupcode[ll_currow] = 2
+		this.ids_newgrouprights.object.status[ll_currow] = 1
+	next
+	ll_limit = this.ids_grouprights.rowcount()
+	for ll_counter = 1 to ll_limit
+		if this.ids_newrights.find("RightCode = " + string(this.ids_grouprights.object.rightcode[ll_counter]), 1, this.ids_newrights.rowcount()) > 0 and this.ids_grouprights.object.groupcode[ll_counter] <> 2 then
+			ll_currow = this.ids_newgrouprights.insertrow(0)
+			this.ids_newgrouprights.object.groupcode[ll_currow] = this.ids_grouprights.object.groupcode[ll_counter]
+			this.ids_newgrouprights.object.rightcode[ll_currow] = this.ids_grouprights.object.rightcode[ll_counter]
+			this.ids_newgrouprights.object.status[ll_currow] = 1
+		end if
+	next
+	ll_limit = this.ids_userrights.rowcount()
+	for ll_counter = 1 to ll_limit
+		if this.ids_newrights.find("RightCode = " + string(this.ids_userrights.object.rightcode[ll_counter]), 1, this.ids_newrights.rowcount()) > 0 then
+			ll_currow = this.ids_newuserrights.insertrow(0)
+			this.ids_newuserrights.object.usercode[ll_currow] = this.ids_userrights.object.usercode[ll_counter]
+			this.ids_newuserrights.object.rightcode[ll_currow] = this.ids_userrights.object.rightcode[ll_counter]
+			this.ids_newuserrights.object.status[ll_currow] = 1
+		end if
+	next
+	ll_limit = this.ids_grouprights.rowcount()
+	for ll_counter = 1 to ll_limit
+		this.ids_grouprights.deleterow(0)
+	next
+	ll_limit = this.ids_userrights.rowcount()
+	for ll_counter = 1 to ll_limit
+		this.ids_userrights.deleterow(0)
+	next
+	ll_limit = this.ids_rights.rowcount()
+	for ll_counter = 1 to ll_limit
+		this.ids_rights.deleterow(0)
+	next
+	if this.ids_userrights.update() = 1 then
+		if this.ids_grouprights.update() = 1 then
+			if this.ids_rights.update() = 1 then
+				if this.ids_newrights.update() = 1 then
+					if this.ids_newgrouprights.update() = 1 then
+						if this.ids_newuserrights.update() = 1 then
+							SQL commit USING this.it_transobject;
+							if this.it_transobject.sqlcode <> 0 then
+								messagebox("Database Error-7", "Changes not saved in the database")
+							else
+								messagebox("Confirmation", "Changes saved in the database")
+							end if
+						else
+							SQL rollback USING this.it_transobject;
+							messagebox("Database Error-6", "Changes not saved in the database")
+						end if
+					else
+						SQL rollback USING this.it_transobject;
+						messagebox("Database Error-5", "Changes not saved in the database")
+					end if
+				else
+					SQL rollback USING this.it_transobject;
+					messagebox("Database Error-4", "Changes not saved in the database")
+				end if
+			else
+				SQL rollback USING this.it_transobject;
+				messagebox("Database Error-3", "Changes not saved in the database")
+			end if
+		else
+			SQL rollback USING this.it_transobject;
+			messagebox("Database Error-2", "Changes not saved in the database")
+		end if
+	else
+		SQL rollback USING this.it_transobject;
+		messagebox("Database Error-1", "Changes not saved in the database")
+	end if
+	setpointer(arrow!)
+	post event ue_displayrights()
+
+// w_rightsmodification.ue_close() returns 0
+	close(this)
+
+// w_rightsmodification.ue_postopen() returns long
+	if message.doubleparm = 2.0 then
+		this.ib_localdatabase = true
+	end if
+	this.it_transobject = create u_transaction
+	SQL start USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		messagebox("DataBase Connection Error", "Cannot connect to DataBase~r~n" + string(this.it_transobject.sqlerrtext))
+		SQL stop USING this.it_transobject;
+		post event ue_close()
+		return 1
+	end if
+	if this.ib_localdatabase = true then
+		this.it_transobject_localdb = create transaction
+		this.it_transobject_localdb.dbms = "OLE DB"
+		this.it_transobject_localdb.autocommit = true
+		this.it_transobject_localdb.dbparm = "PROVIDER='Microsoft.Jet.OLEDB.4.0',DATASOURCE='RightsClone.mdb'," + "StaticBind='No',PBNoCatalog='YES'"
+		SQL start USING this.it_transobject_localdb;
+		if this.it_transobject_localdb.sqlcode <> 0 then
+			SQL stop USING this.it_transobject_localdb;
+			messagebox("DataBase Connection Error", "Cannot connect to local Rights DataBase~r~n" + string(this.it_transobject_localdb.sqlerrtext))
+			return 1
+		end if
+		this.dw_rightsclone.settransobject(this.it_transobject_localdb)
+	else
+		this.dw_rightsclone.settransobject(this.it_transobject)
+	end if
+	this.dw_rightscategory.settransobject(this.it_transobject)
+	this.dw_rightscategory.retrieve()
+	this.dw_rightsclone.retrieve()
+	this.ids_rights = create datastore
+	this.ids_rights.dataobject = "d_rights_modification"
+	this.ids_rights.settransobject(this.it_transobject)
+	this.ids_newrights = create datastore
+	this.ids_newrights.dataobject = "d_rights_modification"
+	this.ids_newrights.settransobject(this.it_transobject)
+	this.ids_userrights = create datastore
+	this.ids_userrights.dataobject = "d_userrights_modification"
+	this.ids_userrights.settransobject(this.it_transobject)
+	this.ids_newuserrights = create datastore
+	this.ids_newuserrights.dataobject = "d_userrights_modification"
+	this.ids_newuserrights.settransobject(this.it_transobject)
+	this.ids_grouprights = create datastore
+	this.ids_grouprights.dataobject = "d_grouprights_modification"
+	this.ids_grouprights.settransobject(this.it_transobject)
+	this.ids_newgrouprights = create datastore
+	this.ids_newgrouprights.dataobject = "d_grouprights_modification"
+	this.ids_newgrouprights.settransobject(this.it_transobject)
+	post event ue_displayrights()
+	return 1
+
+// w_rightsmodification.wf_setrightsbyrightcatcode(string as_assign) returns 0
+	long ll_counter
+	long ll_count
+	long ll_rightsclonecount
+	long ll_rightscount
+	integer li_rightcatcode
+	li_rightcatcode = this.dw_rightscategory.getitemnumber(this.dw_rightscategory.getrow(), "rightcatcode")
+	if li_rightcatcode <= 0 or isnull(li_rightcatcode) then
+		messagebox("Right Category Validation", "Kindly select some right category from dropdown.")
+		return
+	end if
+	setpointer(hourglass!)
+	setredraw(false)
+	ll_rightsclonecount = this.dw_rightsclone.rowcount()
+	for ll_counter = 1 to ll_rightsclonecount
+		if this.dw_rightsclone.object.rightcatcode[ll_counter] = li_rightcatcode then
+			this.dw_rightsclone.object.assign[ll_counter] = as_assign
+		end if
+	next
+	setredraw(true)
+	setpointer(arrow!)
+
+// w_rightsmodification.create() returns 0
+	this.cb_cancel = create cb_cancel
+	this.cb_unset = create cb_unset
+	this.cb_set = create cb_set
+	this.st_1 = create st_1
+	this.dw_rightscategory = create dw_rightscategory
+	this.cb_save = create cb_save
+	this.dw_rightsclone = create dw_rightsclone
+	this.gb_right = create gb_right
+	this.control = {this.cb_cancel, this.cb_unset, this.cb_set, this.st_1, this.dw_rightscategory, this.cb_save, this.dw_rightsclone, this.gb_right}
+
+// w_rightsmodification.destroy() returns 0
+	destroy this.cb_cancel
+	destroy this.cb_unset
+	destroy this.cb_set
+	destroy this.st_1
+	destroy this.dw_rightscategory
+	destroy this.cb_save
+	destroy this.dw_rightsclone
+	destroy this.gb_right
+
+// w_rightsmodification.activate() returns long
+	this.windowstate = maximized!
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_rightsmodification.close() returns long
+	destroy this.it_transobject
+	destroy this.it_transobject_localdb
+	return ::message.returnvalue
+
+// w_rightsmodification.open() returns long
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width * 0.98
+		ll_height = ll_win_height * 0.96
+		this.width = ll_width
+		this.height = ll_height
+		this.gb_right.width = ll_width * 0.98
+		this.gb_right.height = ll_height - 300
+		this.dw_rightsclone.width = this.gb_right.width - 100
+		this.dw_rightsclone.height = this.gb_right.height - this.dw_rightscategory.y - 200
+		this.cb_save.y = ll_height - 250
+		this.cb_cancel.y = ll_height - 250
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	post event ue_postopen()
+	return ::message.returnvalue
+
+// w_rightsmodification.key(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		post event ue_close()
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// cb_unset.clicked() returns long
+	parent.wf_setrightsbyrightcatcode("N")
+	return ::message.returnvalue
+
+// cb_set.clicked() returns long
+	parent.wf_setrightsbyrightcatcode("Y")
+	return ::message.returnvalue
+
+// cb_save.clicked() returns long
+	parent.event ue_save()
+	return ::message.returnvalue

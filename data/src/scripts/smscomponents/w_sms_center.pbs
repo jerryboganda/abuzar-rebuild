@@ -1,0 +1,2754 @@
+// window w_sms_center (smscomponents)  ancestor: window
+
+// w_sms_center.wf_set_autoprint() returns long
+	long ll_found
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 5026", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.ib_autoprint = true
+	end if
+	return 0
+
+// w_sms_center.wf_settimer(long ai_time) returns 0
+	timer(ai_time, this)
+
+// w_sms_center.wf_refresh(integer ai_mode) returns long
+	long ll_index
+	long ll_rowcount
+	long ll_series_num
+	long ll_counter
+	long ll_innercounter
+	long ll_groupcode
+	long ll_prints_left
+	long[] ll_docrowid
+	long ll_printable_count
+	long ll_min_refresh
+	boolean lb_continue
+	datetime ldt_startdate
+	setpointer(hourglass!)
+	setredraw(false)
+	if this.ib_editrefresh = false then
+	end if
+	if ai_mode = 1 then
+		this.id_outbox.retrieve()
+		this.ib_editflag = false
+	elseif this.ib_editflag = false then
+		this.id_outbox.retrieve()
+	end if
+	ll_rowcount = this.id_outbox.rowcount()
+	setpointer(arrow!)
+	setredraw(true)
+	return 0
+
+// w_sms_center.wf_select_printslip() returns 0
+	long ll_listrow
+	long ll_module
+	string ls_report
+	string ls_doctype
+	ll_listrow = this.id_outbox.getrow()
+	if ll_listrow > 0 then
+		ll_module = this.id_outbox.object.moduleid[ll_listrow]
+	end if
+	if ls_report = "" then
+		ls_report = "d_cashieractivitymonitor_printout"
+	end if
+	this.ids_print.dataobject = ls_report
+	this.ids_print.settransobject(this.it_transobject)
+
+// w_sms_center.wf_selectprintreport(integer ai_module, long al_doccode) returns string
+	string ls_pagesize
+	string ls_report
+	long ll_currrow
+	boolean lb_printout
+	integer li_headerno
+	integer li_catcode
+	integer li_printformat
+	ll_currrow = this.id_outbox.getrow()
+	if ll_currrow > 0 then
+		li_catcode = this.id_outbox.object.catcode[ll_currrow]
+		if li_catcode = 1 then
+			lb_printout = true
+		end if
+		if ai_module = 1 then
+			SQL SELECT InvoiceSize , HeaderNo INTO :ls_pagesize, :li_headerno FROM SaleLedger WHERE SaleInvCode =:al_doccode USING this.it_transobject;
+			ls_report = f_getsaleprintout(ls_pagesize, lb_printout, li_headerno)
+			f_set_headerlogo(this.id_print, li_headerno)
+		elseif ai_module = 2 then
+			SQL SELECT PageSize , HeaderNo INTO :ls_pagesize, :li_headerno FROM SRLedger WHERE SRInvCode =:al_doccode USING this.it_transobject;
+			if ls_pagesize = "F" then
+				ls_report = "d_wholesaleretinvreport_full"
+			elseif ls_pagesize = "H" then
+				ls_report = "d_wholesaleretinvreport_half"
+			else
+				ls_report = "d_wholesaleretinvreport"
+			end if
+		else
+			li_printformat = f_numberpreferences("VoucherPrintingFormat")
+			ls_pagesize = f_stringpreferences("VoucherPrintingPageSize")
+			ls_report = "d_voucherprint"
+			choose case ls_pagesize
+			case "F"
+				choose case li_printformat
+				case 1
+					ls_report = "d_voucherprint"
+				case 2
+					ls_report = "d_voucherprint_format2"
+				case 3
+					ls_report = "d_voucherprint_patient"
+				case 4
+					ls_report = "d_voucherprint_standard2"
+				end choose
+			case "H"
+				choose case li_printformat
+				case 1
+					ls_report = "d_voucherprint_half"
+				case 2
+					ls_report = "d_voucherprint_half_format2"
+				case 3
+					ls_report = "d_voucherprint_half_patient"
+				case 4
+					ls_report = "d_voucherprint_half_standard2"
+				end choose
+			end choose
+		end if
+		this.id_print.dataobject = ls_report
+		this.id_print.settransobject(this.it_transobject)
+	end if
+	return ls_report
+
+// w_sms_center.wf_set_preferences() returns long
+	long ll_refreshtime
+	return 0
+
+// w_sms_center.wf_initialize() returns long
+	string ls_command
+	string ls_reponse
+	long ll_counter
+	ls_command = "AT~r~n"
+	this.ole_device.object.output = ls_command
+	sleep(500)
+	ls_reponse = upper(this.ole_device.object.input)
+	if match(ls_reponse, "OK") then
+		return 1
+	end if
+	return 0
+
+// w_sms_center.wf_get_make() returns string
+	string ls_make
+	string ls_command
+	string ls_response
+	string ls_temp
+	long ll_counter
+	ls_command = "AT+GMI~r~n"
+	this.ole_device.object.output = ls_command
+	sleep(500)
+	ls_response = upper(this.ole_device.object.input)
+	if match(ls_response, "OK") then
+		if pos(ls_response, ls_command) > 0 then
+			ls_make = mid(ls_response, pos(ls_response, ls_command) + len(ls_command), len(ls_response))
+		else
+			ls_make = ls_response
+		end if
+		ls_make = trim(wf_remove_whitespace(ls_make))
+		if pos(ls_make, " OK") > 0 then
+			ls_temp = trim(left(ls_make, pos(ls_make, " OK") - 1))
+			ls_make = ls_temp
+		end if
+	else
+		ls_make = "N/A"
+	end if
+	this.is_make = ls_make
+	return ls_make
+
+// w_sms_center.wf_wait() returns long
+	long ll_waitcount
+	for ll_waitcount = 1 to 9999999
+	next
+	return 0
+
+// w_sms_center.wf_get_model() returns string
+	string ls_model
+	string ls_command
+	string ls_response
+	string ls_temp
+	long ll_counter
+	ls_command = "AT+GMM~r~n"
+	this.ole_device.object.output = ls_command
+	sleep(500)
+	ls_response = upper(this.ole_device.object.input)
+	if match(ls_response, "OK") then
+		if pos(ls_response, ls_command) > 0 then
+			ls_model = mid(ls_response, pos(ls_response, ls_command) + len(ls_command), len(ls_response))
+		else
+			ls_model = ls_response
+		end if
+		ls_model = trim(wf_remove_whitespace(ls_model))
+		if pos(ls_model, " OK") > 0 then
+			ls_temp = trim(left(ls_model, pos(ls_model, " OK") - 1))
+			ls_model = ls_temp
+		end if
+	else
+		ls_model = "N/A"
+	end if
+	this.is_model = ls_model
+	return ls_model
+
+// w_sms_center.wf_set_motorola_textmode() returns long
+	string ls_command
+	string ls_reponse
+	long ll_counter
+	ls_command = "AT+Mode=2" + this.is_cr + this.is_lf
+	this.ole_device.object.output = ls_command
+	ls_reponse = upper(this.ole_device.object.input)
+	wf_wait()
+	ls_reponse = upper(this.ole_device.object.input)
+	if match(ls_reponse, "OK") then
+		return 1
+	end if
+	return 0
+
+// w_sms_center.wf_getdevices() returns long
+	long ll_portno
+	long ll_totalports
+	long ll_counter
+	long ll_insrow
+	long ll_count
+	boolean lb_portopen
+	string ls_portname
+	runtimeerror ex
+	setpointer(hourglass!)
+	this.idc_deviceinfo.reset()
+	for ll_counter = 1 to ll_totalports
+		ll_portno = ll_counter
+		ls_portname = "COM" + trim(string(ll_counter))
+		ll_insrow = this.idc_deviceinfo.insertrow(0)
+		this.idc_deviceinfo.setitem(ll_insrow, "portno", ll_counter)
+		this.idc_deviceinfo.setitem(ll_insrow, "portname", ls_portname)
+		try
+			this.ole_device.object.commport = ll_portno
+			this.ole_device.object.settings = "9600,N,8,1"
+			this.ole_device.object.inputlen = 0
+			this.ole_device.object.portopen = true
+			wf_wait()
+			lb_portopen = true
+		catch (throwable ex)
+			lb_portopen = false
+		end try
+		if lb_portopen then
+			this.idc_deviceinfo.setitem(ll_insrow, "portstatus", 1)
+			this.ole_device.object.portopen = false
+		else
+			this.idc_deviceinfo.setitem(ll_insrow, "portstatus", 0)
+		end if
+	next
+	this.idc_deviceinfo.setfilter("portstatus=1")
+	this.idc_deviceinfo.filter()
+	wf_identifydevices()
+	this.idc_deviceinfo.setfilter("portstatus=1 and modemstatus=1")
+	this.idc_deviceinfo.filter()
+	this.id_device.reset()
+	this.id_device.insertrow(0)
+	ll_count = this.id_device.rowcount()
+	if isnull(ll_count) then
+		ll_count = 0
+	end if
+	this.tab_smscenter.tabpage_device.text = "Devices (" + trim(string(ll_count)) + ")"
+	if this.idc_deviceinfo.rowcount() > 0 and this.id_device.rowcount() > 0 then
+		this.id_device.setitem(1, "PortNo", this.idc_deviceinfo.getitemnumber(1, "portno"))
+		wf_setdevicedetail(this.id_device.object.portno[1])
+	end if
+	setpointer(arrow!)
+	return 0
+
+// w_sms_center.wf_identifydevices() returns long
+	long ll_portno
+	long ll_totalrows
+	long ll_counter
+	long ll_insrow
+	long ll_waitcount
+	boolean lb_portopen
+	string ls_command
+	string ls_reponse
+	string ls_msgtitle
+	string ls_portname
+	runtimeerror ex
+	ls_command = ""
+	ll_totalrows = this.idc_deviceinfo.rowcount()
+	for ll_counter = 1 to ll_totalrows
+		ll_portno = this.idc_deviceinfo.getitemnumber(ll_counter, "portno")
+		ls_portname = this.idc_deviceinfo.getitemstring(ll_counter, "portname")
+		try
+			this.ole_device.object.commport = ll_portno
+			this.ole_device.object.settings = "9600,N,8,1"
+			this.ole_device.object.inputlen = 0
+			this.ole_device.object.portopen = true
+			sleep(500)
+			lb_portopen = true
+			if lb_portopen then
+				this.idc_deviceinfo.setitem(ll_counter, "modemstatus", wf_initialize())
+				this.is_make = wf_get_make()
+				this.idc_deviceinfo.setitem(ll_counter, "make", this.is_make)
+				this.idc_deviceinfo.setitem(ll_counter, "modelname", wf_get_model())
+				this.idc_deviceinfo.setitem(ll_counter, "imei", wf_get_imei())
+				this.idc_deviceinfo.setitem(ll_counter, "smscenterno", wf_get_sms_center())
+				this.idc_deviceinfo.setitem(ll_counter, "batterystatus", wf_get_battery_status())
+				this.idc_deviceinfo.setitem(ll_counter, "signalstrength", wf_get_signal_strength())
+				this.ole_device.object.portopen = false
+			else
+				this.idc_deviceinfo.setitem(ll_counter, "modemstatus", 0)
+			end if
+		catch (throwable ex)
+			lb_portopen = false
+			messagebox("Exception Occur", "Details are:~r~n" + ex.getmessage())
+			goto L1030
+		end try
+	next
+	return 0
+
+// w_sms_center.wf_setdevicedetail(long al_portno) returns long
+	long ll_found
+	ll_found = this.idc_deviceinfo.find("portno = " + string(al_portno), 1, this.idc_deviceinfo.rowcount())
+	if this.id_device.rowcount() > 0 and ll_found > 0 then
+		this.id_device.setitem(1, "portname", this.idc_deviceinfo.getitemstring(ll_found, "portname"))
+		this.id_device.setitem(1, "portstatus", this.idc_deviceinfo.getitemnumber(ll_found, "portstatus"))
+		this.id_device.setitem(1, "ModemStatus", this.idc_deviceinfo.getitemnumber(ll_found, "ModemStatus"))
+		this.id_device.setitem(1, "make", this.idc_deviceinfo.getitemstring(ll_found, "make"))
+		this.id_device.setitem(1, "modelname", this.idc_deviceinfo.getitemstring(ll_found, "modelname"))
+		this.id_device.setitem(1, "imei", this.idc_deviceinfo.getitemstring(ll_found, "imei"))
+		this.id_device.setitem(1, "smscenterno", this.idc_deviceinfo.getitemstring(ll_found, "smscenterno"))
+		this.id_device.setitem(1, "batterystatus", this.idc_deviceinfo.getitemstring(ll_found, "batterystatus"))
+		this.id_device.setitem(1, "signalstrength", this.idc_deviceinfo.getitemstring(ll_found, "signalstrength"))
+		this.is_model = this.idc_deviceinfo.getitemstring(ll_found, "modelname")
+		this.is_make = this.idc_deviceinfo.getitemstring(ll_found, "make")
+		return 0
+	end if
+	return 1
+
+// w_sms_center.wf_get_groupcontacts(long al_groupcode, string as_groupcontacts) returns long
+	string ls_mobile
+	string ls_mobilelist
+	long ll_counter
+	datastore lds_ds
+	if al_groupcode > 0 then
+		lds_ds = create datastore
+		lds_ds.dataobject = "d_smscenter_contactgroup_selection"
+		lds_ds.settransobject(this.it_transobject)
+		lds_ds.retrieve(al_groupcode)
+		if lds_ds.rowcount() > 0 then
+			for ll_counter = 1 to lds_ds.rowcount()
+				ls_mobile = lds_ds.object.mobile[ll_counter]
+				if wf_validate_phoneno(ls_mobile) = 0 then
+					ls_mobilelist = ls_mobilelist + ls_mobile + ","
+				end if
+			next
+			as_groupcontacts = left(ls_mobilelist, len(ls_mobilelist) - 1)
+		end if
+	else
+		as_groupcontacts = ""
+	end if
+	return 0
+
+// w_sms_center.wf_validate_phoneno(string as_phoneno) returns long
+	long ll_start
+	long ll_end
+	char lc_temp
+	boolean lb_phoneok
+	if len(as_phoneno) > 0 then
+		ll_end = len(as_phoneno)
+		for ll_start = 1 to ll_end
+			lc_temp = mid(as_phoneno, ll_start, 1)
+			if not (asc(lc_temp) = 44 or asc(lc_temp) > 47 and asc(lc_temp) < 58) then
+				lb_phoneok = false
+				exit
+			end if
+		next
+	end if
+	if lb_phoneok = false then
+		return -1
+	end if
+	return 0
+
+// w_sms_center.wf_get_contactlist() returns long
+	string ls_mobile
+	string ls_mobilelist
+	string ls_phone
+	string ls_temp
+	long ll_count
+	long ll_counter
+	long ll_lastpos
+	long ll_start
+	s_arguements lstr_arg
+	datastore lds_ds
+	lds_ds = create datastore
+	lds_ds.dataobject = "d_smscenter_contactselection"
+	lds_ds.settransobject(this.it_transobject)
+	open(w_arg_contactselection_smscenter)
+	lstr_arg = message.powerobjectparm
+	if lstr_arg.i_status = 1 then
+		lds_ds.retrieve(lstr_arg.ia_integerlist)
+		if lds_ds.rowcount() > 0 then
+			for ll_counter = 1 to lds_ds.rowcount()
+				ls_mobile = lds_ds.object.mobile[ll_counter]
+				if len(ls_mobile) > 0 and not isnull(ls_mobile) and wf_validate_phoneno(ls_mobile) = 0 then
+					ls_mobilelist = ls_mobilelist + ls_mobile + ","
+				end if
+			next
+			ls_phone = trim(this.id_compose.object.phoneno[1])
+			if len(ls_phone) > 0 then
+				ls_phone = ls_phone + "," + ls_mobilelist
+			else
+				ls_phone = ls_mobilelist
+			end if
+			if len(ls_phone) > 8000 then
+				ll_count = ceiling(len(ls_phone) / 8000.0)
+				ll_start = 1
+				for ll_counter = 1 to ll_count
+					ll_lastpos = lastpos(ls_phone, ",", ll_counter * 8000)
+					ls_temp = mid(ls_phone, ll_start, ll_lastpos - 1)
+					ll_start = ll_lastpos + 1
+					if ll_counter = 1 then
+						this.id_compose.setitem(1, "phoneno", ls_temp)
+					else
+						this.id_compose.setitem(1, "phoneno" + trim(string(ll_counter)), ls_temp)
+					end if
+				next
+			else
+				this.id_compose.object.phoneno[1] = ls_phone
+			end if
+		end if
+	end if
+	return 0
+
+// w_sms_center.wf_get_smstemplatetext(long al_code) returns long
+	string ls_smstext
+	long ll_smstypecode
+	if al_code > 0 then
+		SQL SELECT smstemplate , smstypecode INTO :ls_smstext, :ll_smstypecode FROM SMS_Template WHERE SMSTemplateCode =:al_code USING this.it_transobject;
+		if this.it_transobject.sqlcode = 0 then
+			this.id_compose.object.smstext[1] = ls_smstext
+			this.id_compose.object.smstypecode[1] = ll_smstypecode
+			this.id_compose.object.smstypecode.protect = 1
+		else
+			return 1
+		end if
+	else
+		this.id_compose.object.smstext[1] = ""
+		this.id_compose.object.smstypecode[1] = 1
+		this.id_compose.object.smstypecode.protect = 0
+	end if
+	return 0
+
+// w_sms_center.wf_sendsms(long al_row) returns long
+	integer li_pdu_length
+	long ll_smscode
+	long ll_retcode
+	long ll_sms_sended
+	string ls_smstext
+	string ls_smsto
+	string ls_errtext
+	setpointer(hourglass!)
+	if al_row > 0 then
+		ll_smscode = this.id_outbox.object.smscode[al_row]
+		ls_smsto = trim(this.id_outbox.object.smsto[al_row])
+		ls_smstext = trim(this.id_outbox.object.smstext[al_row])
+		if isnull(ls_smstext) then
+			ls_smstext = ""
+		end if
+		ll_sms_sended = wf_sendsms_pdumode(ls_smsto, ls_smstext, ls_errtext)
+		if ll_sms_sended = 0 then
+			if wf_update_smsstatus(ll_smscode) = 0 then
+				ll_retcode = 0
+			else
+				ll_retcode = 1
+			end if
+		else
+			ll_retcode = ll_sms_sended
+		end if
+	end if
+	setpointer(arrow!)
+	return ll_retcode
+
+// w_sms_center.wf_update_smsstatus(long al_code) returns long
+	SQL update DBO.SMS_Center SET SMSStatusCode =2 , SentDate =GETDATE ( ) WHERE SMSCode =:al_code USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		SQL commit USING this.it_transobject;
+		return 0
+	end if
+	SQL rollback USING this.it_transobject;
+	return 1
+
+// w_sms_center.wf_remove_whitespace(string as_text) returns string
+	long start_pos
+	string old_str
+	string new_str
+	string mystring
+	string ret_str
+	mystring = as_text
+	old_str = "~r~n"
+	new_str = " "
+	start_pos = pos(mystring, old_str, start_pos)
+	do while start_pos > 0
+		mystring = replace(mystring, start_pos, len(old_str), new_str)
+		start_pos = pos(mystring, old_str, start_pos + len(new_str))
+	loop
+	ret_str = mystring
+	return ret_str
+
+// w_sms_center.wf_get_imei() returns string
+	string ls_emei
+	string ls_command
+	string ls_response
+	long ll_counter
+	ls_command = "AT+CGSN~r~n"
+	this.ole_device.object.output = ls_command
+	sleep(500)
+	ls_response = upper(this.ole_device.object.input)
+	if match(ls_response, "OK") then
+		if pos(ls_response, ls_command) > 0 then
+			ls_emei = mid(ls_response, pos(ls_response, ls_command) + len(ls_command), len(ls_response))
+		else
+			ls_emei = ls_response
+		end if
+		ls_emei = trim(wf_remove_whitespace(ls_emei))
+		ls_emei = trim(left(ls_emei, pos(ls_emei, "OK") - 1))
+	else
+		ls_emei = "N/A"
+	end if
+	return ls_emei
+
+// w_sms_center.wf_generate_datasms() returns long
+	long ll_templatecode
+	long ll_totsmsdone
+	long ll_smsdatacode
+	string ls_list
+	string ls_reason
+	s_arguements lstr_arg
+	open(w_arg_smstemplate_data_enabled)
+	lstr_arg = message.powerobjectparm
+	if lstr_arg.i_status = 1 then
+		ll_templatecode = lstr_arg.l_code1
+		SQL SELECT smsdatacode INTO :ll_smsdatacode FROM SMS_template WHERE SMSTemplateCode =:ll_templatecode USING this.it_transobject;
+		if this.it_transobject.sqlcode = 0 then
+		end if
+		if ll_smsdatacode > 0 then
+			choose case ll_smsdatacode
+			case 1
+				open(w_sms_finalizedsaleorder)
+				lstr_arg = message.powerobjectparm
+			case 2
+				open(w_sms_postedsales)
+				lstr_arg = message.powerobjectparm
+			case 10
+				open(w_arg_zone)
+				lstr_arg = message.powerobjectparm
+				lstr_arg.s_name1 = trim(string(lstr_arg.l_code1))
+			case 26
+				open(w_arg_patients)
+				lstr_arg = message.powerobjectparm
+			case else
+				lstr_arg.s_name1 = "1"
+			end choose
+			if lstr_arg.i_status = 1 and len(lstr_arg.s_name1) > 0 then
+				ls_list = lstr_arg.s_name1
+				this.it_transobject.createdatasms(ls_list, ll_templatecode, ll_totsmsdone)
+				if this.it_transobject.sqlcode = 0 then
+					SQL commit USING this.it_transobject;
+				else
+					ls_reason = this.it_transobject.sqlerrtext
+					SQL rollback USING this.it_transobject;
+					messagebox("Generate Data SMS", "Data SMS Generation Terminated due to some problems. Details are:-~r~n" + ls_reason, stopsign!)
+				end if
+			end if
+		end if
+	end if
+	return 0
+
+// w_sms_center.wf_open_port(integer ai_portno) returns boolean
+	boolean lb_portopen
+	runtimeerror ex
+	try
+		this.ole_device.object.commport = ai_portno
+		this.ole_device.object.settings = "9600,N,8,1"
+		this.ole_device.object.inputlen = 0
+		this.ole_device.object.portopen = true
+		lb_portopen = true
+	catch (throwable ex)
+		lb_portopen = false
+		messagebox("Com Port Exception", "Com Port Exception Occurred.~r~nDetails are:~r~n" + ex.getmessage())
+	end try
+	return lb_portopen
+
+// w_sms_center.wf_sendsms_textmode(string as_smsto, string as_smstext) returns long
+	long ll_retcode
+	boolean lb_portopen
+	string ls_command
+	string ls_response
+	runtimeerror ex
+	as_smstext = wf_remove_whitespace(as_smstext)
+	as_smstext = as_smstext + space(20) + this.is_ctrl_z
+	if as_smstext = "" or isnull(as_smstext) then
+		as_smstext = ""
+	end if
+	try
+		if wf_initialize() = 1 then
+			if match(this.is_make, "MOTOROLA") then
+				wf_set_motorola_textmode()
+			end if
+			ls_command = "AT+CMGF=1" + this.is_cr + this.is_lf
+			this.ole_device.object.output = trim(ls_command)
+			sleep(500)
+			ls_response = upper(this.ole_device.object.input)
+			if match(ls_response, "OK") then
+				ls_command = "AT+CMGS=~"" + as_smsto + "~"" + this.is_cr + this.is_lf
+				this.ole_device.object.output = trim(ls_command)
+				sleep(300)
+				ls_response = upper(this.ole_device.object.input)
+				if match(ls_response, ">") then
+					ls_command = as_smstext
+					this.ole_device.object.output = ls_command
+					sleep(1000)
+					ls_response = upper(this.ole_device.object.input)
+					if match(ls_response, "ERROR") then
+						ll_retcode = 1
+					elseif match(ls_response, "OK") or ls_response = "" or isnull(ls_response) then
+						ll_retcode = 0
+					else
+						ll_retcode = 2
+					end if
+				else
+					ll_retcode = 3
+				end if
+			else
+				ll_retcode = 4
+			end if
+		else
+			ll_retcode = 5
+		end if
+	catch (throwable ex)
+		ll_retcode = 7
+		messagebox("Com Port Exception", "Com Port Exception Occurred.~r~nDetails are:~r~n" + ex.getmessage())
+	end try
+	setpointer(arrow!)
+	return ll_retcode
+
+// w_sms_center.wf_encode_pdu(string as_userdata, string as_destaddress, string as_smsaddress, integer ai_pdu_length, integer ai_totsms, integer ai_thissmsno, boolean ab_incsmsc) returns string
+	string ls_pdu_str
+	oleobject ole_pdu
+	integer result
+	ole_pdu = create oleobject
+	result = ole_pdu.connecttonewobject("project1.pdu")
+	if result = 0 then
+		ls_pdu_str = ole_pdu.__invoke_method("encodepdu", 7, {as_userdata, as_destaddress, as_smsaddress, ai_pdu_length, ai_totsms, ai_thissmsno, ab_incsmsc}, true)
+	else
+		messagebox("connection failure", "Connection failure. Error Code = " + string(result))
+	end if
+	destroy ole_pdu
+	if result < 0 then
+		setnull(ls_pdu_str)
+	end if
+	return ls_pdu_str
+
+// w_sms_center.wf_sendsms_from_outbox(long al_row) returns long
+	long ll_retcode
+	long ll_rowcount
+	long ll_code
+	long ll_row
+	long ll_sendcount
+	long ll_portno
+	long ll_portstatus
+	boolean lb_portopen
+	boolean lb_flag
+	this.ib_editrefresh = true
+	this.id_outbox.retrieve(1)
+	ll_rowcount = this.id_outbox.rowcount()
+	ll_row = this.id_device.getrow()
+	if al_row < 0 then
+		for ll_row = 1 to ll_rowcount
+			if this.id_outbox.object.expiry[ll_row] <= this.id_outbox.object.today[ll_row] then
+				ll_code = this.id_outbox.object.smscode[ll_row]
+				wf_update_expired_smsstatus(ll_code)
+				lb_flag = true
+			end if
+		next
+		ll_row = 1
+	end if
+	if lb_flag then
+		this.id_outbox.retrieve(1)
+		ll_rowcount = this.id_outbox.rowcount()
+	end if
+	if ll_rowcount > 0 then
+		if this.is_smsmethod = "M" then
+			if this.id_device.rowcount() > 0 and this.idc_deviceinfo.rowcount() > 0 and ll_row > 0 then
+				ll_portno = this.id_device.object.portno[ll_row]
+				ll_portstatus = this.id_device.object.portstatus[ll_row]
+				if ll_portno > 0 and ll_portstatus > 0 then
+					lb_portopen = wf_open_port(ll_portno)
+				end if
+				if lb_portopen then
+					this.tab_smscenter.tabpage_outbox.hpb_sentprog.visible = true
+					this.tab_smscenter.tabpage_outbox.hpb_sentprog.minposition = 0
+					this.tab_smscenter.tabpage_outbox.hpb_sentprog.maxposition = ll_rowcount
+					this.tab_smscenter.tabpage_outbox.hpb_sentprog.setstep = 1
+					if al_row > 0 then
+						ll_retcode = wf_sendsms(al_row)
+						if ll_retcode = 0 then
+							ll_sendcount = ll_sendcount + 1
+							this.tab_smscenter.tabpage_outbox.hpb_sentprog.stepit()
+						end if
+					else
+						for ll_row = 1 to ll_rowcount
+							ll_retcode = wf_sendsms(ll_row)
+							if ll_retcode = 0 then
+								ll_sendcount = ll_sendcount + 1
+								this.tab_smscenter.tabpage_outbox.hpb_sentprog.stepit()
+							end if
+						next
+					end if
+					this.tab_smscenter.tabpage_outbox.hpb_sentprog.visible = false
+					this.ole_device.object.portopen = false
+				else
+					this.ib_editrefresh = false
+					return 0
+				end if
+				return
+			end if
+		elseif this.is_smsmethod = "W" then
+			this.tab_smscenter.tabpage_outbox.hpb_sentprog.visible = true
+			this.tab_smscenter.tabpage_outbox.hpb_sentprog.minposition = 0
+			this.tab_smscenter.tabpage_outbox.hpb_sentprog.maxposition = ll_rowcount
+			this.tab_smscenter.tabpage_outbox.hpb_sentprog.setstep = 1
+			if al_row > 0 then
+				ll_retcode = wf_send_websms(al_row)
+				if ll_retcode = 0 then
+					ll_sendcount = ll_sendcount + 1
+					this.tab_smscenter.tabpage_outbox.hpb_sentprog.stepit()
+				end if
+			else
+				for ll_row = 1 to ll_rowcount
+					ll_retcode = wf_send_websms(ll_row)
+					if ll_retcode = 0 then
+						ll_sendcount = ll_sendcount + 1
+						this.tab_smscenter.tabpage_outbox.hpb_sentprog.stepit()
+					end if
+				next
+			end if
+			this.tab_smscenter.tabpage_outbox.hpb_sentprog.visible = false
+		end if
+	else
+		if ll_rowcount = 0 then
+			this.ib_editrefresh = false
+			return 0
+		end if
+		if this.id_device.rowcount() = 0 or this.idc_deviceinfo.rowcount() = 0 then
+			this.ib_editrefresh = false
+			return 0
+		end if
+	end if
+	wf_update_sent_outbox_info()
+	if ll_sendcount > 0 then
+	end if
+	this.ib_editrefresh = false
+	return ll_retcode
+
+// w_sms_center.wf_get_jobschedule() returns long
+	string ls_jobstarttime
+	string ls_hold
+	integer li_hr
+	integer li_enabled
+	this.it_jobtransobject = create u_transaction
+	this.it_jobtransobject.autocommit = true
+	this.it_jobtransobject.dbparm = "PROVIDER='SQLOLEDB',DATASOURCE='" + gs_servername + "',CommitOnDisconnect='No',PROVIDERSTRING='DataBase=MSDB" + ";APP=" + gs_app + ";WSID=" + gs_localcomputername + "',PBTrimCharColumns='Yes',StripParmNames='Yes'"
+	SQL start USING this.it_jobtransobject;
+	this.tab_smscenter.tabpage_schedule.dw_schedule.settransobject(this.it_jobtransobject)
+	this.tab_smscenter.tabpage_schedule.dw_schedule.retrieve(gs_autocreatescheduledsmsjob, gs_autocreatescheduledsmsjobschedule)
+	SQL Select enabled INTO :li_enabled From SysJobs Where Name =:gs_autocreatescheduledsmsjob USING this.it_jobtransobject;
+	if this.it_jobtransobject.sqlcode = 0 then
+		if li_enabled = 1 then
+			this.tab_smscenter.tabpage_schedule.cbx_activate.checked = true
+			if this.tab_smscenter.tabpage_schedule.dw_schedule.getitemnumber(1, "unit") = 1.0 then
+				this.tab_smscenter.tabpage_schedule.rb_once.checked = true
+				ls_jobstarttime = string(this.tab_smscenter.tabpage_schedule.dw_schedule.getitemnumber(1, "occurancetime"))
+				li_hr = integer(left(ls_jobstarttime, len(ls_jobstarttime) - 4))
+				ls_hold = left(right(ls_jobstarttime, 4), len(right(ls_jobstarttime, 4)) - 2)
+				if isnull(ls_hold) or ls_hold = "" then
+					ls_hold = "00"
+				elseif len(ls_hold) = 1 then
+					ls_hold = "0" + ls_hold
+				end if
+				this.tab_smscenter.tabpage_schedule.ddlb_min.selectitem(ls_hold, 0)
+				ls_hold = right(ls_jobstarttime, 2)
+				if isnull(ls_hold) or ls_hold = "" then
+					ls_hold = "00"
+				elseif len(ls_hold) = 1 then
+					ls_hold = "0" + ls_hold
+				end if
+				this.tab_smscenter.tabpage_schedule.ddlb_sec.selectitem(ls_hold, 0)
+				if li_hr > 12 then
+					this.tab_smscenter.tabpage_schedule.ddlb_hr.selectitem(string(li_hr - 12), 0)
+					this.tab_smscenter.tabpage_schedule.ddlb_time.selectitem("PM", 0)
+				elseif li_hr = 12 then
+					this.tab_smscenter.tabpage_schedule.ddlb_hr.selectitem("12", 0)
+					this.tab_smscenter.tabpage_schedule.ddlb_time.selectitem("PM", 0)
+				else
+					if isnull(li_hr) or li_hr = 0 then
+						this.tab_smscenter.tabpage_schedule.ddlb_hr.selectitem("12", 0)
+					else
+						this.tab_smscenter.tabpage_schedule.ddlb_hr.selectitem(string(li_hr), 0)
+					end if
+					this.tab_smscenter.tabpage_schedule.ddlb_time.selectitem("AM", 0)
+				end if
+				this.tab_smscenter.tabpage_schedule.dw_schedule.enabled = false
+			else
+				this.tab_smscenter.tabpage_schedule.rb_every.checked = true
+				this.tab_smscenter.tabpage_schedule.ddlb_hr.enabled = false
+				this.tab_smscenter.tabpage_schedule.ddlb_min.enabled = false
+				this.tab_smscenter.tabpage_schedule.ddlb_sec.enabled = false
+				this.tab_smscenter.tabpage_schedule.ddlb_time.enabled = false
+			end if
+		else
+			this.tab_smscenter.tabpage_schedule.cbx_activate.checked = false
+			this.tab_smscenter.tabpage_schedule.rb_every.enabled = false
+			this.tab_smscenter.tabpage_schedule.dw_schedule.enabled = false
+			this.tab_smscenter.tabpage_schedule.rb_once.enabled = false
+			this.tab_smscenter.tabpage_schedule.ddlb_hr.enabled = false
+			this.tab_smscenter.tabpage_schedule.ddlb_min.enabled = false
+			this.tab_smscenter.tabpage_schedule.ddlb_sec.enabled = false
+			this.tab_smscenter.tabpage_schedule.ddlb_time.enabled = false
+		end if
+	else
+		messagebox("Job", "Unable to fetch  job status.")
+	end if
+	return 0
+
+// w_sms_center.wf_update_summary_and_graph() returns long
+	long ll_rowcount
+	long ll_counter
+	long ll_found
+	long ll_row
+	long ll_typecode
+	long ll_smscount
+	integer li_series_num
+	integer li_cat_num
+	string ls_type
+	graph gr_1
+	gr_1 = this.tab_smscenter.tabpage_graph.gr_graph
+	setredraw(false)
+	this.id_summary.setfilter("")
+	this.id_summary.filter()
+	this.id_summary.retrieve()
+	ll_rowcount = this.id_sent.rowcount()
+	gr_1.reset(all!)
+	for ll_counter = 1 to ll_rowcount
+		ll_typecode = this.id_sent.object.smstypecode[ll_counter]
+		ll_found = this.id_summary.find("smstypecode = " + string(ll_typecode), 1, this.id_summary.rowcount())
+		if ll_found > 0 then
+			ll_row = ll_found
+			this.id_summary.object.smscount[ll_row] = this.id_summary.object.smscount[ll_row] + 1
+		end if
+	next
+	this.id_summary.setfilter("smscount <> 0")
+	this.id_summary.filter()
+	ll_counter = 0
+	for ll_counter = 1 to this.id_summary.rowcount()
+		ls_type = this.id_summary.object.smstype[ll_counter]
+		ll_smscount = this.id_summary.object.smscount[ll_counter]
+		li_series_num = gr_1.findseries(ls_type)
+		if li_series_num = -1 then
+			li_series_num = gr_1.addseries(ls_type)
+		end if
+		if li_series_num > 0 then
+			gr_1.adddata(li_series_num, ll_smscount, ls_type)
+		end if
+	next
+	this.id_summary.setredraw(false)
+	this.id_summary.sort()
+	this.id_summary.groupcalc()
+	this.id_summary.setredraw(true)
+	gr_1.textcolor = rgb(285, 105, 135)
+	this.tab_smscenter.tabpage_graph.gr_graph = gr_1
+	setpointer(arrow!)
+	setredraw(true)
+	return 0
+
+// w_sms_center.wf_update_sent_outbox_info() returns long
+	long ll_count
+	if this.ib_editrefresh = false then
+		this.id_outbox.retrieve(1)
+		ll_count = this.id_outbox.rowcount()
+		if isnull(ll_count) then
+			ll_count = 0
+		end if
+		this.tab_smscenter.tabpage_outbox.text = "Outbox (" + trim(string(ll_count)) + ")"
+		this.id_sent.retrieve(2)
+		ll_count = this.id_sent.rowcount()
+		if isnull(ll_count) then
+			ll_count = 0
+		end if
+		this.tab_smscenter.tabpage_sent.text = "Sent (" + trim(string(ll_count)) + ")"
+		wf_update_summary_and_graph()
+	end if
+	return 0
+
+// w_sms_center.wf_apply_rights() returns long
+	if f_rightexists(5028) = false then
+		this.tab_smscenter.tabpage_device.visible = false
+		this.tab_smscenter.tabpage_device.enabled = false
+		this.tab_smscenter.tabpage_device.dw_device.visible = false
+		this.tab_smscenter.tabpage_device.cb_refresh.visible = false
+	end if
+	if f_rightexists(5029) = false then
+		this.tab_smscenter.tabpage_compose.visible = false
+		this.tab_smscenter.tabpage_compose.enabled = false
+	end if
+	if f_rightexists(5030) = false then
+		this.im_menu.m_activitylist.m_generatedatasms.visible = false
+		this.im_menu.m_activitylist.m_generatedatasms.enabled = false
+	end if
+	if f_rightexists(5031) = false then
+		this.tab_smscenter.tabpage_summary.visible = false
+		this.tab_smscenter.tabpage_summary.enabled = false
+	end if
+	if f_rightexists(5032) = false then
+		this.tab_smscenter.tabpage_graph.visible = false
+		this.tab_smscenter.tabpage_graph.enabled = false
+	end if
+	if f_rightexists(5033) = false then
+		this.tab_smscenter.tabpage_schedule.visible = false
+		this.tab_smscenter.tabpage_schedule.enabled = false
+	end if
+	if f_rightexists(5034) = false then
+		this.tab_smscenter.tabpage_outbox.visible = false
+		this.tab_smscenter.tabpage_outbox.enabled = false
+	end if
+	if f_rightexists(5035) = false then
+		this.tab_smscenter.tabpage_outbox.cb_send_outbox.visible = false
+		this.tab_smscenter.tabpage_outbox.cb_send_outbox.enabled = false
+		this.im_menu.m_activitylist.m_sendfromoutbox.visible = false
+		this.im_menu.m_activitylist.m_sendfromoutbox.enabled = false
+	end if
+	if f_rightexists(5036) = false then
+		this.tab_smscenter.tabpage_outbox.cb_sendselected.visible = false
+		this.tab_smscenter.tabpage_outbox.cb_sendselected.enabled = false
+	end if
+	if f_rightexists(5037) = false then
+		this.tab_smscenter.tabpage_outbox.cb_retrieve_outbox.visible = false
+		this.tab_smscenter.tabpage_outbox.cb_retrieve_outbox.enabled = false
+	end if
+	if f_rightexists(5038) = false then
+		this.tab_smscenter.tabpage_outbox.cb_filter_outbox.visible = false
+		this.tab_smscenter.tabpage_outbox.cb_filter_outbox.enabled = false
+	end if
+	if f_rightexists(5039) = false then
+		this.tab_smscenter.tabpage_outbox.cb_sort_outbox.visible = false
+		this.tab_smscenter.tabpage_outbox.cb_sort_outbox.enabled = false
+	end if
+	if f_rightexists(5040) = false then
+		this.tab_smscenter.tabpage_outbox.cb_mark_outbox.visible = false
+		this.tab_smscenter.tabpage_outbox.cb_mark_outbox.enabled = false
+	end if
+	if f_rightexists(5042) = false then
+		this.tab_smscenter.tabpage_sent.visible = false
+		this.tab_smscenter.tabpage_sent.enabled = false
+	end if
+	if f_rightexists(5043) = false then
+		this.tab_smscenter.tabpage_sent.cb_retrieve_sent.visible = false
+		this.tab_smscenter.tabpage_sent.cb_retrieve_sent.enabled = false
+	end if
+	if f_rightexists(5044) = false then
+		this.tab_smscenter.tabpage_sent.cb_filter_sent.visible = false
+		this.tab_smscenter.tabpage_sent.cb_filter_sent.enabled = false
+	end if
+	if f_rightexists(5045) = false then
+		this.tab_smscenter.tabpage_sent.cb_sort_sent.visible = false
+		this.tab_smscenter.tabpage_sent.cb_sort_sent.enabled = false
+	end if
+	if f_rightexists(5046) = false then
+		this.tab_smscenter.tabpage_sent.cb_filter_sent.visible = false
+		this.tab_smscenter.tabpage_sent.cb_filter_sent.enabled = false
+	end if
+	if f_rightexists(5048) = false then
+		this.tab_smscenter.tabpage_sent.cb_delete.visible = false
+		this.tab_smscenter.tabpage_sent.cb_delete.enabled = false
+	end if
+	if f_rightexists(5049) = false then
+		this.tab_smscenter.tabpage_sent.cb_deleteall.visible = false
+		this.tab_smscenter.tabpage_sent.cb_deleteall.enabled = false
+	end if
+	return 0
+
+// w_sms_center.wf_sendsms_pdumode(string as_smsto, string as_smstext, string as_errtext) returns long
+	integer li_pdu_length
+	integer li_totsms
+	integer li_smscounter
+	integer li_start
+	long ll_retcode
+	long ll_init
+	long ll_msgidentifier
+	boolean lb_portopen
+	string ls_command
+	string ls_response
+	string ls_pdu_str
+	string ls_finalmsg
+	string ls_thissmstext
+	runtimeerror ex
+	if as_smstext = "" or isnull(as_smstext) then
+		as_smstext = ""
+	end if
+	try
+		li_totsms = ceiling(len(as_smstext) / 130.0)
+		li_start = 1
+		if li_totsms > 1 then
+			randomize(0)
+			ll_msgidentifier = rand(200)
+		end if
+		for li_smscounter = 1 to li_totsms
+			ls_thissmstext = mid(as_smstext, li_start, 130)
+			if li_totsms > 1 and li_smscounter > 1 then
+				sleep(3000)
+			end if
+			li_pdu_length = 0
+			ls_pdu_str = wf_encode_sms_in_pdu(ls_thissmstext, as_smsto, li_pdu_length, li_totsms, li_smscounter, ll_msgidentifier)
+			ls_finalmsg = ls_pdu_str
+			li_start = li_start + 130
+			if wf_initialize() = 1 then
+				ls_command = "AT+CMGF=0~r~n"
+				this.ole_device.object.output = trim(ls_command)
+				sleep(500)
+				ls_response = upper(this.ole_device.object.input)
+				if match(ls_response, "OK") then
+					ls_command = "AT+CMGS=" + trim(string(li_pdu_length)) + "~r~n"
+					this.ole_device.object.output = trim(ls_command)
+					sleep(1000)
+					ls_response = upper(this.ole_device.object.input)
+					if match(ls_response, ">") then
+						ls_command = ls_finalmsg + chara(26)
+						this.ole_device.object.output = ls_command
+						sleep(500)
+						ls_response = upper(this.ole_device.object.input)
+						if match(ls_response, "ERROR") then
+							as_errtext = ls_response
+							ll_retcode = 1
+							exit
+						else
+							ll_retcode = 0
+						end if
+					else
+						as_errtext = "3~r~n" + ls_response
+						ll_retcode = 3
+						exit
+					end if
+				else
+					as_errtext = "4~r~n" + ls_response
+					ll_retcode = 4
+					exit
+				end if
+			else
+				as_errtext = "5~r~n" + ls_response
+				ll_retcode = 5
+				exit
+			end if
+		next
+	catch (throwable ex)
+		ll_retcode = 7
+		messagebox("Com Port Exception", "Com Port Exception Occurred.~r~nDetails are:~r~n" + ex.getmessage())
+	end try
+	return ll_retcode
+
+// w_sms_center.wf_get_sms_center() returns string
+	string ls_smsc
+	string ls_command
+	string ls_response
+	string ls_temp
+	long ll_counter
+	ls_command = "AT+CSCA?~r~n"
+	this.ole_device.object.output = ls_command
+	sleep(500)
+	ls_response = upper(this.ole_device.object.input)
+	if match(ls_response, "OK") then
+		if pos(ls_response, ls_command) > 0 then
+			ls_smsc = mid(ls_response, pos(ls_response, ls_command) + len(ls_command), len(ls_response))
+		else
+			ls_smsc = ls_response
+		end if
+		ls_smsc = trim(wf_remove_whitespace(ls_smsc))
+		if pos(ls_smsc, " OK") > 0 then
+			ls_temp = trim(left(ls_smsc, pos(ls_smsc, " OK") - 1))
+			ls_smsc = ls_temp
+			ls_smsc = mid(ls_temp, pos(ls_temp, "+CSCA:") + len("+CSCA:"), len(ls_temp) - len("+CSCA:"))
+		end if
+	else
+		ls_smsc = "N/A"
+	end if
+	return ls_smsc
+
+// w_sms_center.wf_set_sms_centre() returns string
+	string ls_smsc
+	string ls_command
+	string ls_response
+	string ls_temp
+	long ll_counter
+	long ll_portno
+	long ll_portstatus
+	long ll_row
+	boolean lb_portopen
+	s_arguements lstr_arg
+	ll_row = this.id_device.getrow()
+	open(w_arg_smscenter)
+	lstr_arg = message.powerobjectparm
+	if lstr_arg.i_status = 1 and ll_row > 0 then
+		ls_smsc = lstr_arg.s_name1
+		ll_portno = this.id_device.object.portno[ll_row]
+		ll_portstatus = this.id_device.object.portstatus[ll_row]
+		if ll_portno > 0 and ll_portstatus > 0 then
+			lb_portopen = wf_open_port(ll_portno)
+		end if
+		if lb_portopen then
+			ls_command = "AT+CSCA=~"" + ls_smsc + "~",145"
+			this.ole_device.object.output = ls_command
+			sleep(500)
+			ls_response = upper(this.ole_device.object.input)
+			if match(ls_response, "OK") then
+				if pos(ls_response, ls_command) > 0 then
+					ls_smsc = mid(ls_response, pos(ls_response, ls_command) + len(ls_command), len(ls_response))
+				else
+					ls_smsc = ls_response
+				end if
+				ls_smsc = trim(wf_remove_whitespace(ls_smsc))
+				if pos(ls_smsc, " OK") > 0 then
+					ls_temp = trim(left(ls_smsc, pos(ls_smsc, " OK") - 1))
+					ls_smsc = ls_temp
+				end if
+			else
+				ls_smsc = "N/A"
+			end if
+			this.ole_device.object.portopen = false
+		end if
+	end if
+	return ls_smsc
+
+// w_sms_center.wf_get_signal_strength() returns string
+	string ls_signal
+	string ls_command
+	string ls_response
+	string ls_temp
+	string ls_temp1
+	string ls_temp2
+	long ll_counter
+	ls_command = "AT+CSQ~r~n"
+	this.ole_device.object.output = ls_command
+	sleep(500)
+	ls_response = upper(this.ole_device.object.input)
+	if match(ls_response, "OK") then
+		if pos(ls_response, ls_command) > 0 then
+			ls_signal = mid(ls_response, pos(ls_response, ls_command) + len(ls_command), len(ls_response))
+		else
+			ls_signal = ls_response
+		end if
+		ls_signal = trim(wf_remove_whitespace(ls_signal))
+		if pos(ls_signal, " OK") > 0 then
+			ls_temp = trim(left(ls_signal, pos(ls_signal, " OK") - 1))
+			ls_signal = ls_temp
+			ls_signal = mid(ls_temp, pos(ls_temp, "+CSQ:") + len("+CSQ:"), len(ls_temp) - len("+CSQ:"))
+			ls_temp = trim(ls_signal)
+			ls_temp1 = mid(ls_temp, 1, pos(ls_temp, ",") - 1)
+			ls_temp2 = mid(ls_temp, pos(ls_temp, ",") + 1, len(ls_temp))
+			if integer(ls_temp1) <= 9 then
+				ls_signal = "Marginal"
+			elseif integer(ls_temp1) <= 14 then
+				ls_signal = "OK"
+			elseif integer(ls_temp1) <= 19 then
+				ls_signal = "Good"
+			elseif integer(ls_temp1) >= 20 then
+				ls_signal = "Excellent"
+			end if
+			if len(trim(ls_temp2)) > 0 then
+				ls_signal = ls_signal + ", Level = " + ls_temp2 + "dBm "
+			end if
+		end if
+	else
+		ls_signal = "N/A"
+	end if
+	return ls_signal
+
+// w_sms_center.wf_get_battery_status() returns string
+	string ls_battery
+	string ls_command
+	string ls_response
+	string ls_temp
+	string ls_temp2
+	long ll_counter
+	ls_command = "AT+CBC~r~n"
+	this.ole_device.object.output = ls_command
+	sleep(500)
+	ls_response = upper(this.ole_device.object.input)
+	if match(ls_response, "OK") then
+		if pos(ls_response, ls_command) > 0 then
+			ls_battery = mid(ls_response, pos(ls_response, ls_command) + len(ls_command), len(ls_response))
+		else
+			ls_battery = ls_response
+		end if
+		ls_battery = trim(wf_remove_whitespace(ls_battery))
+		if pos(ls_battery, " OK") > 0 then
+			ls_temp = trim(left(ls_battery, pos(ls_battery, " OK") - 1))
+			ls_battery = ls_temp
+			ls_battery = mid(ls_temp, pos(ls_temp, "+CBC:") + len("+CBC:"), len(ls_temp) - len("+CBC:"))
+			ls_temp = trim(ls_battery)
+			ls_temp2 = mid(ls_temp, pos(ls_temp, ",") + 1, len(ls_temp) - 1) + "%"
+			if left(ls_temp, 1) = "0" then
+				ls_battery = "Battery Powered, " + ls_temp2 + " Remaining"
+			elseif left(ls_temp, 1) = "1" then
+				ls_battery = "Battery Powered and Connected, " + ls_temp2 + " Remaining"
+			elseif left(ls_temp, 1) = "2" then
+				ls_battery = "Device Not Connected to Battery."
+			elseif left(ls_temp, 1) = "3" then
+				ls_battery = "Recognized power fault, calls inhibited"
+			end if
+		end if
+	else
+		ls_battery = "N/A"
+	end if
+	return ls_battery
+
+// w_sms_center.wf_encode_sms_in_pdu(string as_userdata, string as_destaddress, integer ai_pdu_length, integer ai_totsms, integer ai_thissmsno, integer ai_msgidentifier) returns string
+	string ls_pdu_str
+	oleobject ole_pdu
+	integer result
+	ole_pdu = create oleobject
+	result = ole_pdu.connecttonewobject("MyPDUConverter.pduconverter")
+	if result = 0 then
+		ls_pdu_str = ole_pdu.__invoke_method("encodepdu", 6, {as_userdata, as_destaddress, ai_pdu_length, ai_totsms, ai_thissmsno, ai_msgidentifier}, true)
+	else
+		messagebox("connection failure", "Connection failure. Error Code = " + string(result))
+	end if
+	destroy ole_pdu
+	if result < 0 then
+		setnull(ls_pdu_str)
+	end if
+	return ls_pdu_str
+
+// w_sms_center.wf_send_websms(long al_row) returns long
+	integer li_pdu_length
+	integer li_res
+	integer li_ret
+	long ll_smscode
+	long ll_retcode
+	long ll_sms_sended
+	string ls_smstext
+	string ls_smsto
+	string ls_errtext
+	string ls_lang
+	string ls_reponsetype
+	string ls_userid
+	string ls_password
+	string ls_mask
+	string ls_url
+	string ls_temp
+	string ls_parm
+	string ls_key
+	inet iinet_base
+	u_websms_result lu_websms_result
+	nc_urlencode l_nc_urlencode
+	soapconnection conn
+	basichttpbinding_icorporatecbs proxy_obj
+	long rval
+	long llog
+	long ll_ret
+	string str_endpoint
+	string ls_response
+	quicksmsresquest obj_quicksms
+	soapexception e
+	blob lblb_args
+	string ls_headers
+	long ll_length
+	ls_userid = f_stringpreferences("WEBSMSUserID")
+	ls_password = f_stringpreferences("WEBSMSPassword")
+	ls_mask = f_stringpreferences("WEBSMSMask")
+	ls_key = f_stringpreferences("WebSMSAPIKey")
+	setpointer(hourglass!)
+	if al_row > 0 then
+		ll_smscode = this.id_outbox.object.smscode[al_row]
+		ls_smsto = trim(this.id_outbox.object.smsto[al_row])
+		ls_smstext = trim(this.id_outbox.object.smstext[al_row])
+		if isnull(ls_smstext) then
+			ls_smstext = ""
+		end if
+		if f_stringpreferences("WebSMSProvider") = "Z" then
+			proxy_obj = create basichttpbinding_icorporatecbs
+			str_endpoint = "http://cbs.zong.com.pk/ReachCWSv2/CorporateSMS.svc?Service1"
+			conn = create soapconnection
+			llog = conn.setoptions("SoapLog='C:\mySoapLog.log', UserID='" + ls_userid + "',Password='" + ls_password + "',Timeout=0,ConnectionCache=True")
+			rval = conn.createinstance(proxy_obj, "basichttpbinding_icorporatecbs", str_endpoint)
+			try
+				obj_quicksms = create quicksmsresquest
+				obj_quicksms.loginid = ls_userid
+				obj_quicksms.loginpassword = ls_password
+				if ls_mask = "" or isnull(ls_mask) then
+					ls_mask = f_reportheaderinfo("clientname")
+				end if
+				obj_quicksms.mask = ls_mask
+				obj_quicksms.unicode = "0"
+				obj_quicksms.shortcodeprefered = "n"
+				obj_quicksms.ws_message = ls_smstext
+				obj_quicksms.destination = ls_smsto
+				ls_response = proxy_obj.quicksms(obj_quicksms)
+				ll_sms_sended = 0
+			catch (throwable e)
+				ll_sms_sended = 1
+			end try
+			destroy conn
+		elseif f_stringpreferences("WebSMSProvider") = "B" then
+			iinet_base = create inet
+			lu_websms_result = create u_websms_result
+			ls_url = "https://brandyourtext.com/sms/api/send?username=" + ls_userid + "&password=" + ls_password + "&mask=" + ls_mask + "&mobile=" + ls_smsto + "&message="
+			l_nc_urlencode = create nc_urlencode
+			ls_temp = l_nc_urlencode.of_urlencode(ls_smstext)
+			ls_url = ls_url + ls_temp
+			li_ret = getcontextservice("Internet", iinet_base)
+			if li_ret = 1 then
+				li_res = iinet_base.geturl(ls_url, lu_websms_result)
+				if li_res = 1 then
+					if lu_websms_result.il_retcode = 1 then
+						ll_sms_sended = 0
+					else
+						ls_errtext = lu_websms_result.is_msg + "~r~nDetails are:-~r~n" + lu_websms_result.is_data
+					end if
+				else
+					ls_errtext = "Cannot invoke Web service"
+					ll_sms_sended = 1
+				end if
+			end if
+		elseif f_stringpreferences("WebSMSProvider") = "J" then
+			iinet_base = create inet
+			lu_websms_result = create u_websms_result
+			l_nc_urlencode = create nc_urlencode
+			ls_temp = l_nc_urlencode.of_urlencode(ls_smstext)
+			ls_url = "https://connect.jazzcmt.com/sendsms_url.html?Username=" + ls_userid + "&Password=" + ls_password + "&From=" + ls_mask + "&To=" + ls_smsto + "&Message="
+			ls_url = ls_url + ls_temp
+			li_ret = getcontextservice("Internet", iinet_base)
+			if li_ret = 1 then
+				li_res = iinet_base.geturl(ls_url, lu_websms_result)
+				if li_res = 1 then
+					if lu_websms_result.il_retcode = 1 then
+						ll_sms_sended = 0
+					else
+						ls_errtext = lu_websms_result.is_msg + "~r~nDetails are:-~r~n" + lu_websms_result.is_data
+					end if
+				else
+					ls_errtext = "Cannot invoke Web service"
+					ll_sms_sended = 1
+				end if
+			end if
+		elseif f_stringpreferences("WebSMSProvider") = "D" then
+			iinet_base = create inet
+			lu_websms_result = create u_websms_result
+			l_nc_urlencode = create nc_urlencode
+			ls_temp = l_nc_urlencode.of_urlencode(ls_smstext)
+			ls_url = "http://brandedsms.pk/api/sendsms.php?id=" + ls_userid + "&key=" + ls_key + "&msg=" + ls_temp + "&to=" + ls_smsto + "&mask=" + ls_mask + "&lang=" + ls_lang + "&type=" + ls_reponsetype
+			li_ret = getcontextservice("Internet", iinet_base)
+			if li_ret = 1 then
+				li_res = iinet_base.geturl(ls_url, lu_websms_result)
+				if li_res = 1 then
+					if lu_websms_result.il_retcode = 1 then
+						ll_sms_sended = 0
+					else
+						ls_errtext = lu_websms_result.is_msg + "~r~nDetails are:-~r~n" + lu_websms_result.is_data
+					end if
+				else
+					ls_errtext = "Cannot invoke Web service"
+					ll_sms_sended = 1
+				end if
+			end if
+		elseif f_stringpreferences("WebSMSProvider") = "I" then
+			iinet_base = create inet
+			lu_websms_result = create u_websms_result
+			l_nc_urlencode = create nc_urlencode
+			ls_temp = l_nc_urlencode.of_urlencode(ls_smstext)
+			ls_url = "http://api.bizsms.pk/api-send-branded-sms.aspx?username=" + ls_userid + "&pass=" + ls_password + "&text=" + ls_temp + "&masking=" + ls_mask + "&destinationnum=" + ls_smsto + "&language=English&responsetype=text"
+			li_ret = getcontextservice("Internet", iinet_base)
+			if li_ret = 1 then
+				li_res = iinet_base.geturl(ls_url, lu_websms_result)
+				if li_res = 1 then
+					if lu_websms_result.il_retcode = 1 then
+						ll_sms_sended = 0
+					else
+						ls_errtext = lu_websms_result.is_msg + "~r~nDetails are:-~r~n" + lu_websms_result.is_data
+					end if
+				else
+					ls_errtext = "Cannot invoke Web service"
+					ll_sms_sended = 1
+				end if
+			end if
+		elseif f_stringpreferences("WebSMSProvider") = "O" then
+			iinet_base = create inet
+			lu_websms_result = create u_websms_result
+			ls_url = "http://outreach.pk/api/sendsms.php/sendsms/url?id=" + ls_userid + "&pass=" + ls_password + "&mask=" + ls_mask + "&to=" + ls_smsto + "&lang=English&msg="
+			l_nc_urlencode = create nc_urlencode
+			ls_temp = l_nc_urlencode.of_urlencode(ls_smstext)
+			ls_url = ls_url + ls_temp + "&type=xml"
+			li_ret = getcontextservice("Internet", iinet_base)
+			if li_ret = 1 then
+				li_res = iinet_base.geturl(ls_url, lu_websms_result)
+				if li_res = 1 then
+					if lu_websms_result.il_retcode = 1 then
+						ll_sms_sended = 0
+					else
+						ls_errtext = lu_websms_result.is_msg + "~r~nDetails are:-~r~n" + lu_websms_result.is_data
+					end if
+				else
+					ls_errtext = "Cannot invoke Web service"
+					ll_sms_sended = 1
+				end if
+			end if
+		elseif f_stringpreferences("WebSMSProvider") = "P" then
+			iinet_base = create inet
+			lu_websms_result = create u_websms_result
+			ls_url = "http://www.smspoint.pk/api/smsapi/"
+			l_nc_urlencode = create nc_urlencode
+			ls_temp = l_nc_urlencode.of_urlencode(ls_smstext)
+			ls_parm = "username=" + ls_userid + "&password=" + ls_password + "&clientid=" + ls_userid + "&mask=" + ls_mask + "&msg=" + ls_temp + "&to=" + ls_smsto + "&language=English"
+			li_ret = getcontextservice("Internet", iinet_base)
+			if li_ret = 1 then
+				lblb_args = blob(space(800000) + "0", encodingutf8!)
+				lblb_args = blob(ls_parm, encodingutf8!)
+				ll_length = len(lblb_args)
+				ls_headers = "Content-Type: " + "application/x-www-form-urlencoded"
+				li_res = iinet_base.posturl(ls_url, lblb_args, ls_headers, 80, lu_websms_result)
+				if li_res = 1 then
+					if lu_websms_result.il_retcode = 1 then
+						ll_sms_sended = 0
+					else
+						ls_errtext = lu_websms_result.is_msg + "~r~nDetails are:-~r~n" + lu_websms_result.is_data
+					end if
+				else
+					ls_errtext = "Cannot invoke Web service"
+					ll_sms_sended = 1
+				end if
+			end if
+		end if
+		if ll_sms_sended = 0 then
+			if wf_update_smsstatus(ll_smscode) = 0 then
+				ll_retcode = 0
+			else
+				ll_retcode = 1
+			end if
+		else
+			ll_retcode = ll_sms_sended
+		end if
+	end if
+	setpointer(arrow!)
+	return ll_retcode
+
+// w_sms_center.wf_get_patientsforsms() returns long
+	string ls_mobile
+	string ls_mobilelist
+	string ls_phone
+	string ls_temp
+	long ll_count
+	long ll_counter
+	long ll_lastpos
+	long ll_start
+	s_arguements lstr_arg
+	s_arguements lstr_arg2
+	datastore lds_ds
+	lds_ds = create datastore
+	lds_ds.dataobject = "d_smscenter_patientselection_detail"
+	lds_ds.settransobject(this.it_transobject)
+	open(w_arg_patientcategory_only)
+	lstr_arg = message.powerobjectparm
+	if lstr_arg.i_status = 1 then
+		openwithparm(w_arg_patientselection_smscenter, lstr_arg)
+		lstr_arg2 = message.powerobjectparm
+		if lstr_arg2.i_status = 1 then
+			lds_ds.retrieve(lstr_arg2.ia_integerlist)
+			if lds_ds.rowcount() > 0 then
+				for ll_counter = 1 to lds_ds.rowcount()
+					ls_mobile = lds_ds.object.mobile[ll_counter]
+					if len(ls_mobile) > 0 and not isnull(ls_mobile) and wf_validate_phoneno(ls_mobile) = 0 then
+						ls_mobilelist = ls_mobilelist + ls_mobile + ","
+					end if
+				next
+				ls_phone = trim(this.id_compose.object.phoneno[1])
+				if len(ls_phone) > 0 then
+					ls_phone = ls_phone + "," + ls_mobilelist
+				else
+					ls_phone = ls_mobilelist
+				end if
+				if len(ls_phone) > 8000 then
+					ll_count = ceiling(len(ls_phone) / 8000.0)
+					ll_start = 1
+					for ll_counter = 1 to ll_count
+						ll_lastpos = lastpos(ls_phone, ",", ll_counter * 8000)
+						ls_temp = mid(ls_phone, ll_start, ll_lastpos - 1)
+						ll_start = ll_lastpos + 1
+						if ll_counter = 1 then
+							this.id_compose.setitem(1, "phoneno", ls_temp)
+						else
+							this.id_compose.setitem(1, "phoneno" + trim(string(ll_counter)), ls_temp)
+						end if
+					next
+				else
+					this.id_compose.object.phoneno[1] = ls_phone
+				end if
+			end if
+		end if
+	end if
+	return 0
+
+// w_sms_center.wf_update_expired_smsstatus(long al_code) returns long
+	SQL update DBO.SMS_Center SET SMSStatusCode =3 WHERE SMSCode =:al_code USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		SQL commit USING this.it_transobject;
+		return 0
+	end if
+	SQL rollback USING this.it_transobject;
+	return 1
+
+// w_sms_center.create() returns 0
+	if this.menuname = "m_smscentermenu" then
+		this.menuid = create m_smscentermenu
+	end if
+	this.dw_print = create dw_print
+	this.tab_smscenter = create tab_smscenter
+	this.ole_device = create ole_device
+	this.timing_2 = create timing_2
+	this.timing_1 = create timing_1
+	this.control = {this.dw_print, this.tab_smscenter, this.ole_device}
+
+// w_sms_center.destroy() returns 0
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_print
+	destroy this.tab_smscenter
+	destroy this.ole_device
+	destroy this.timing_2
+	destroy this.timing_1
+
+// w_sms_center.open() returns long
+	long ll_counter
+	long ll_pos
+	long ll_rtcode
+	long ll_found
+	long ll_groupcode
+	string ls_exp
+	string ls_exp2
+	string ls_username
+	w_entry w_parent
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	this.im_menu = this.menuid
+	this.it_transobject = create u_transaction
+	SQL start USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		messagebox("Connection Failure", "Unable to connect to the database", stopsign!)
+		close(this)
+		return ::message.returnvalue
+	end if
+	this.id_print = create datawindow
+	this.ids_print = create u_ds_standard
+	this.dw_print.dataobject = "d_khyber_thermal_saleinvrep"
+	this.dw_print.settransobject(this.it_transobject)
+	this.id_print = this.dw_print
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width * 0.98
+		ll_height = ll_win_height * 0.96
+		this.width = ll_width
+		this.height = ll_height
+		this.tab_smscenter.width = ll_width * 0.98
+		this.tab_smscenter.height = ll_height * 0.83
+		this.tab_smscenter.tabpage_device.dw_device.width = this.tab_smscenter.width * 0.98
+		this.tab_smscenter.tabpage_device.dw_device.height = this.tab_smscenter.height * 0.91 - 100
+		this.tab_smscenter.tabpage_compose.dw_compose.width = this.tab_smscenter.width * 0.98
+		this.tab_smscenter.tabpage_compose.dw_compose.height = this.tab_smscenter.height * 0.91 - 100
+		this.tab_smscenter.tabpage_outbox.dw_outbox.width = this.tab_smscenter.width * 0.98
+		this.tab_smscenter.tabpage_outbox.dw_outbox.height = this.tab_smscenter.height * 0.89 - 100
+		this.tab_smscenter.tabpage_outbox.hpb_sentprog.width = this.tab_smscenter.width * 0.98 - 10
+		this.tab_smscenter.tabpage_outbox.hpb_sentprog.y = this.tab_smscenter.tabpage_outbox.dw_outbox.y + this.tab_smscenter.tabpage_outbox.dw_outbox.height + 10
+		this.tab_smscenter.tabpage_sent.dw_sent.width = this.tab_smscenter.width * 0.98
+		this.tab_smscenter.tabpage_sent.dw_sent.height = this.tab_smscenter.height * 0.91 - 100
+		this.tab_smscenter.tabpage_expired.dw_expired.width = this.tab_smscenter.width * 0.98
+		this.tab_smscenter.tabpage_expired.dw_expired.height = this.tab_smscenter.height * 0.91 - 100
+		this.tab_smscenter.tabpage_summary.dw_summary.width = this.tab_smscenter.width * 0.98
+		this.tab_smscenter.tabpage_summary.dw_summary.height = this.tab_smscenter.height * 0.91 - 100
+		this.tab_smscenter.tabpage_graph.gr_graph.width = this.tab_smscenter.width * 0.98
+		this.tab_smscenter.tabpage_graph.gr_graph.height = this.tab_smscenter.height * 0.91
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	this.id_device = this.tab_smscenter.tabpage_device.dw_device
+	this.id_device.settransobject(this.it_transobject)
+	ll_rtcode = this.id_device.getchild("portno", this.idc_deviceinfo)
+	if ll_rtcode = -1 then
+		messagebox("Error", "can not get datawindow child")
+		close(this)
+		return ::message.returnvalue
+	end if
+	this.idc_deviceinfo.settransobject(this.it_transobject)
+	this.id_device.retrieve()
+	this.id_compose = this.tab_smscenter.tabpage_compose.dw_compose
+	this.id_compose.settransobject(this.it_transobject)
+	this.id_compose.reset()
+	this.id_compose.insertrow(0)
+	this.id_outbox = this.tab_smscenter.tabpage_outbox.dw_outbox
+	this.id_outbox.settransobject(this.it_transobject)
+	this.id_sent = this.tab_smscenter.tabpage_sent.dw_sent
+	this.id_sent.settransobject(this.it_transobject)
+	this.id_summary = this.tab_smscenter.tabpage_summary.dw_summary
+	this.id_summary.settransobject(this.it_transobject)
+	this.id_expired = this.tab_smscenter.tabpage_expired.dw_expired
+	this.id_expired.settransobject(this.it_transobject)
+	wf_get_jobschedule()
+	wf_apply_rights()
+	if f_rightexists(5041) then
+		wf_settimer(f_numberpreferences("ActMonRefreshTime"))
+	end if
+	wf_getdevices()
+	wf_update_sent_outbox_info()
+	this.is_smsmethod = f_stringpreferences("SendMethod")
+	if this.is_smsmethod = "M" then
+		this.id_device.setfocus()
+	else
+		this.tab_smscenter.tabpage_device.visible = false
+		this.tab_smscenter.tabpage_compose.setfocus()
+		this.tab_smscenter.selecttab("tabpage_compose")
+		this.id_compose.setfocus()
+	end if
+	return ::message.returnvalue
+
+// w_sms_center.timer() returns long
+	if this.ib_editrefresh = false then
+		wf_update_sent_outbox_info()
+		wf_sendsms_from_outbox(-1)
+		wf_update_sent_outbox_info()
+	end if
+	return ::message.returnvalue
+
+// tab_smscenter.create() returns 0
+	this.tabpage_device = create tabpage_device
+	this.tabpage_compose = create tabpage_compose
+	this.tabpage_outbox = create tabpage_outbox
+	this.tabpage_sent = create tabpage_sent
+	this.tabpage_expired = create tabpage_expired
+	this.tabpage_schedule = create tabpage_schedule
+	this.tabpage_summary = create tabpage_summary
+	this.tabpage_graph = create tabpage_graph
+	this.control = {this.tabpage_device, this.tabpage_compose, this.tabpage_outbox, this.tabpage_sent, this.tabpage_expired, this.tabpage_schedule, this.tabpage_summary, this.tabpage_graph}
+
+// tab_smscenter.destroy() returns 0
+	destroy this.tabpage_device
+	destroy this.tabpage_compose
+	destroy this.tabpage_outbox
+	destroy this.tabpage_sent
+	destroy this.tabpage_expired
+	destroy this.tabpage_schedule
+	destroy this.tabpage_summary
+	destroy this.tabpage_graph
+
+// tab_smscenter.selectionchanged(integer oldindex, integer newindex) returns long
+	long ll_count
+	if newindex = 3 then
+		parent.id_outbox.retrieve(1)
+		ll_count = parent.id_outbox.rowcount()
+		if isnull(ll_count) then
+			ll_count = 0
+		end if
+		this.tabpage_outbox.text = "Outbox (" + trim(string(ll_count)) + ")"
+	elseif newindex = 4 then
+		parent.id_sent.retrieve(2)
+		ll_count = parent.id_sent.rowcount()
+		if isnull(ll_count) then
+			ll_count = 0
+		end if
+		this.tabpage_sent.text = "Sent (" + trim(string(ll_count)) + ")"
+	elseif newindex = 5 then
+		parent.id_expired.retrieve(3)
+		ll_count = parent.id_expired.rowcount()
+		if isnull(ll_count) then
+			ll_count = 0
+		end if
+		this.tabpage_expired.text = "Expired (" + trim(string(ll_count)) + ")"
+	end if
+	return ::message.returnvalue
+
+// tabpage_device.create() returns 0
+	this.cb_set_smscentre = create cb_set_smscentre
+	this.cb_refresh = create cb_refresh
+	this.dw_device = create dw_device
+	this.control = {this.cb_set_smscentre, this.cb_refresh, this.dw_device}
+
+// tabpage_device.destroy() returns 0
+	destroy this.cb_set_smscentre
+	destroy this.cb_refresh
+	destroy this.dw_device
+
+// cb_set_smscentre.clicked() returns long
+	parent.parent.parent.wf_set_sms_centre()
+	return ::message.returnvalue
+
+// cb_refresh.clicked() returns long
+	parent.parent.parent.id_device.reset()
+	parent.parent.parent.wf_getdevices()
+	if parent.parent.parent.id_device.rowcount() > 0 then
+		parent.parent.parent.id_device.setrow(1)
+	end if
+	return ::message.returnvalue
+
+// dw_device.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "portno"
+		return parent.parent.parent.wf_setdevicedetail(long(data))
+	end choose
+	return ::message.returnvalue
+
+// dw_device.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// tabpage_compose.create() returns 0
+	this.cb_reset = create cb_reset
+	this.cb_send = create cb_send
+	this.dw_compose = create dw_compose
+	this.control = {this.cb_reset, this.cb_send, this.dw_compose}
+
+// tabpage_compose.destroy() returns 0
+	destroy this.cb_reset
+	destroy this.cb_send
+	destroy this.dw_compose
+
+// cb_reset.clicked() returns long
+	parent.parent.parent.id_compose.reset()
+	parent.parent.parent.id_compose.insertrow(0)
+	return ::message.returnvalue
+
+// cb_send.clicked() returns long
+	string ls_phones
+	string ls_phoneno
+	string ls_groupcontacts
+	string ls_finalcontacts
+	string ls_smstext
+	string ls_temp
+	string ls_phoneno2
+	string ls_phoneno3
+	string ls_phoneno4
+	string ls_phoneno5
+	string ls_phoneno6
+	string ls_phoneno7
+	string ls_phoneno8
+	string ls_phoneno9
+	string ls_phoneno10
+	long ll_groupcode
+	long ll_start
+	long ll_end
+	long ll_smstype
+	long ll_smstemplatecode
+	long ll_totsmsdone
+	long ll_counter
+	long ll_count
+	long ll_lastpos
+	char lc_temp
+	boolean lb_phoneok
+	setnull(ll_smstemplatecode)
+	parent.parent.parent.id_compose.accepttext()
+	ls_phoneno = trim(parent.parent.parent.id_compose.object.phoneno[1])
+	if isnull(ls_phoneno) then
+		ls_phoneno = ""
+	end if
+	ls_phoneno2 = trim(parent.parent.parent.id_compose.object.phoneno2[1])
+	if isnull(ls_phoneno2) then
+		ls_phoneno2 = ""
+	end if
+	ls_phoneno3 = trim(parent.parent.parent.id_compose.object.phoneno3[1])
+	if isnull(ls_phoneno3) then
+		ls_phoneno3 = ""
+	end if
+	ls_phoneno4 = trim(parent.parent.parent.id_compose.object.phoneno4[1])
+	if isnull(ls_phoneno4) then
+		ls_phoneno4 = ""
+	end if
+	ls_phoneno5 = trim(parent.parent.parent.id_compose.object.phoneno5[1])
+	if isnull(ls_phoneno5) then
+		ls_phoneno5 = ""
+	end if
+	ls_phoneno6 = trim(parent.parent.parent.id_compose.object.phoneno6[1])
+	if isnull(ls_phoneno6) then
+		ls_phoneno6 = ""
+	end if
+	ls_phoneno7 = trim(parent.parent.parent.id_compose.object.phoneno7[1])
+	if isnull(ls_phoneno7) then
+		ls_phoneno7 = ""
+	end if
+	ls_phoneno8 = trim(parent.parent.parent.id_compose.object.phoneno8[1])
+	if isnull(ls_phoneno8) then
+		ls_phoneno8 = ""
+	end if
+	ls_phoneno9 = trim(parent.parent.parent.id_compose.object.phoneno9[1])
+	if isnull(ls_phoneno9) then
+		ls_phoneno9 = ""
+	end if
+	ls_phoneno10 = trim(parent.parent.parent.id_compose.object.phoneno10[1])
+	if isnull(ls_phoneno10) then
+		ls_phoneno10 = ""
+	end if
+	ll_groupcode = parent.parent.parent.id_compose.object.groupcode[1]
+	ll_smstype = parent.parent.parent.id_compose.object.smstypecode[1]
+	ls_smstext = trim(parent.parent.parent.id_compose.object.smstext[1])
+	ll_smstemplatecode = parent.parent.parent.id_compose.object.smstemplatecode[1]
+	ls_phones = ls_phoneno + ls_phoneno2 + ls_phoneno3 + ls_phoneno4 + ls_phoneno5 + ls_phoneno6 + ls_phoneno7 + ls_phoneno8 + ls_phoneno9 + ls_phoneno10
+	if len(ls_phones) = 0 and (ll_groupcode = 0 or isnull(ll_groupcode)) then
+		messagebox("Message Recipient Validation", "Not a valid Message Recipient selected", stopsign!)
+		parent.parent.parent.id_compose.setcolumn("phoneno")
+		parent.parent.parent.id_compose.setfocus()
+		return ::message.returnvalue
+	end if
+	if len(ls_phones) > 0 then
+		ll_end = len(ls_phones)
+		for ll_start = 1 to ll_end
+			lc_temp = mid(ls_phones, ll_start, 1)
+			if not (asc(lc_temp) = 44 or asc(lc_temp) > 47 and asc(lc_temp) < 58) then
+				lb_phoneok = false
+				exit
+			end if
+		next
+	end if
+	if lb_phoneok = false then
+		messagebox("Phone Number Validation", "Invalid characters in Phone no are not allowed.~r~nPlease enter valid phone number", stopsign!)
+		parent.parent.parent.id_compose.setcolumn("phoneno")
+		parent.parent.parent.id_compose.setfocus()
+		return ::message.returnvalue
+	end if
+	if ll_groupcode > 0 then
+		parent.parent.parent.wf_get_groupcontacts(ll_groupcode, ls_groupcontacts)
+	else
+		ls_groupcontacts = ""
+	end if
+	if len(ls_phoneno) > 0 then
+		ls_finalcontacts = ls_phoneno
+	end if
+	ls_phoneno = parent.parent.parent.id_compose.object.phoneno2[1]
+	if len(ls_phoneno) > 0 then
+		if ls_finalcontacts = "" then
+			ls_finalcontacts = ls_phoneno
+		else
+			ls_finalcontacts = ls_finalcontacts + "," + ls_phoneno
+		end if
+	end if
+	ls_phoneno = parent.parent.parent.id_compose.object.phoneno3[1]
+	if len(ls_phoneno) > 0 then
+		if ls_finalcontacts = "" then
+			ls_finalcontacts = ls_phoneno
+		else
+			ls_finalcontacts = ls_finalcontacts + "," + ls_phoneno
+		end if
+	end if
+	ls_phoneno = parent.parent.parent.id_compose.object.phoneno4[1]
+	if len(ls_phoneno) > 0 then
+		if ls_finalcontacts = "" then
+			ls_finalcontacts = ls_phoneno
+		else
+			ls_finalcontacts = ls_finalcontacts + "," + ls_phoneno
+		end if
+	end if
+	ls_phoneno = parent.parent.parent.id_compose.object.phoneno5[1]
+	if len(ls_phoneno) > 0 then
+		if ls_finalcontacts = "" then
+			ls_finalcontacts = ls_phoneno
+		else
+			ls_finalcontacts = ls_finalcontacts + "," + ls_phoneno
+		end if
+	end if
+	ls_phoneno = parent.parent.parent.id_compose.object.phoneno6[1]
+	if len(ls_phoneno) > 0 then
+		if ls_finalcontacts = "" then
+			ls_finalcontacts = ls_phoneno
+		else
+			ls_finalcontacts = ls_finalcontacts + "," + ls_phoneno
+		end if
+	end if
+	ls_phoneno = parent.parent.parent.id_compose.object.phoneno7[1]
+	if len(ls_phoneno) > 0 then
+		if ls_finalcontacts = "" then
+			ls_finalcontacts = ls_phoneno
+		else
+			ls_finalcontacts = ls_finalcontacts + "," + ls_phoneno
+		end if
+	end if
+	ls_phoneno = parent.parent.parent.id_compose.object.phoneno8[1]
+	if len(ls_phoneno) > 0 then
+		if ls_finalcontacts = "" then
+			ls_finalcontacts = ls_phoneno
+		else
+			ls_finalcontacts = ls_finalcontacts + "," + ls_phoneno
+		end if
+	end if
+	ls_phoneno = parent.parent.parent.id_compose.object.phoneno9[1]
+	if len(ls_phoneno) > 0 then
+		if ls_finalcontacts = "" then
+			ls_finalcontacts = ls_phoneno
+		else
+			ls_finalcontacts = ls_finalcontacts + "," + ls_phoneno
+		end if
+	end if
+	ls_phoneno = parent.parent.parent.id_compose.object.phoneno10[1]
+	if len(ls_phoneno) > 0 then
+		if ls_finalcontacts = "" then
+			ls_finalcontacts = ls_phoneno
+		else
+			ls_finalcontacts = ls_finalcontacts + "," + ls_phoneno
+		end if
+	end if
+	if len(ls_groupcontacts) > 0 then
+		if len(ls_finalcontacts) > 0 then
+			ls_finalcontacts = ls_finalcontacts + "," + ls_groupcontacts
+		else
+			ls_finalcontacts = ls_groupcontacts
+		end if
+	end if
+	SQL rollback USING parent.parent.parent.it_transobject;
+	if len(ls_finalcontacts) >= 8000 then
+		ll_count = ceiling(len(ls_finalcontacts) / 8000.0)
+		ll_start = 1
+		for ll_counter = 1 to ll_count
+			ll_lastpos = lastpos(ls_finalcontacts, ",", ll_counter * 8000)
+			if ll_lastpos = 0 then
+				ll_lastpos = len(ls_finalcontacts) + 1
+			end if
+			ls_temp = mid(ls_finalcontacts, ll_start, ll_lastpos - 1)
+			ll_start = ll_lastpos + 1
+			parent.parent.parent.it_transobject.createsms(ls_temp, ll_smstype, ls_smstext, ll_smstemplatecode, ll_totsmsdone)
+			if parent.parent.parent.it_transobject.sqlcode = 0 then
+				SQL commit USING parent.parent.parent.it_transobject;
+			else
+				SQL rollback USING parent.parent.parent.it_transobject;
+				messagebox("Send SMS", "SMS Not Successfully sent to Outbox of SMS Center.~r~nReasons are:-~r~n" + parent.parent.parent.it_transobject.sqlerrtext, stopsign!)
+			end if
+		next
+	else
+		parent.parent.parent.it_transobject.createsms(ls_finalcontacts, ll_smstype, ls_smstext, ll_smstemplatecode, ll_totsmsdone)
+		if parent.parent.parent.it_transobject.sqlcode = 0 then
+			SQL commit USING parent.parent.parent.it_transobject;
+		else
+			SQL rollback USING parent.parent.parent.it_transobject;
+			messagebox("Send SMS", "SMS Not Successfully sent to Outbox of SMS Center.~r~nReasons are:-~r~n" + parent.parent.parent.it_transobject.sqlerrtext, stopsign!)
+		end if
+	end if
+	parent.parent.parent.wf_update_sent_outbox_info()
+	return ::message.returnvalue
+
+// dw_compose.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	if getcolumnname() <> "smstext" then
+		send(handle(this), 256, 9, long(90))
+		return 1
+	end if
+	return ::message.returnvalue
+
+// dw_compose.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	s_arguements lstr_arg
+	s_arguements lstr_arg2
+	long ll_choice
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if getcolumnname() = "phoneno" and key = keyf4! then
+		parent.parent.parent.wf_get_contactlist()
+	elseif getcolumnname() = "phoneno" and key = keyf5! then
+		open(w_select_school_branch_class_defaulter)
+		ll_choice = message.doubleparm
+		if ll_choice = 1 then
+			open(w_arg_academicclass)
+		elseif ll_choice = 2 then
+			open(w_arg_school)
+		elseif ll_choice = 3 then
+			open(w_arg_schollbranch)
+		elseif ll_choice = 4 then
+			open(w_arg_schollbranch_sdate_ldate_age_total)
+		end if
+		if ll_choice > 0 then
+			lstr_arg = message.powerobjectparm
+			if lstr_arg.i_status = 1 then
+				lstr_arg.l_code1 = ll_choice
+				openwithparm(w_arg_classwise_studentselection_forsms, lstr_arg)
+				lstr_arg2 = message.powerobjectparm
+				if lstr_arg2.i_status = 1 then
+					parent.parent.parent.id_compose.object.phoneno[1] = lstr_arg2.s_name1
+				end if
+			end if
+		end if
+	elseif getcolumnname() = "phoneno" and key = keyf6! then
+		open(w_selectformat_emp_cat_dept_desig)
+		ll_choice = message.doubleparm
+		if ll_choice = 1 then
+			open(w_arg_emp_category)
+		elseif ll_choice = 2 then
+			open(w_arg_emp_department)
+		elseif ll_choice = 3 then
+			open(w_arg_emp_designation)
+		end if
+		if ll_choice > 0 then
+			lstr_arg = message.powerobjectparm
+			if lstr_arg.i_status = 1 then
+				lstr_arg.l_code1 = ll_choice
+				openwithparm(w_arg_employeeselection_forsms, lstr_arg)
+				lstr_arg2 = message.powerobjectparm
+				if lstr_arg2.i_status = 1 then
+					parent.parent.parent.id_compose.object.phoneno[1] = lstr_arg2.s_name1
+				end if
+			end if
+		end if
+	elseif getcolumnname() = "phoneno" and key = keyf7! then
+		parent.parent.parent.wf_get_patientsforsms()
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// dw_compose.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "smstext"
+		if len(data) = 161 then
+			messagebox("SMS Text Validation", "SMS Text Crossed the Maximum Limit of a SMS (160 Characters per sms)", stopsign!)
+			return 0
+		end if
+	case "smstemplatecode"
+		return parent.parent.parent.wf_get_smstemplatetext(long(data))
+	end choose
+	return ::message.returnvalue
+
+// dw_compose.editchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::editchanged(row, dwo, data)
+	choose case dwo.name
+	case "smstext"
+		accepttext()
+		return 0
+	end choose
+	return 0
+
+// tabpage_outbox.create() returns 0
+	this.cb_mark_outbox_expired = create cb_mark_outbox_expired
+	this.cb_sendselected = create cb_sendselected
+	this.hpb_sentprog = create hpb_sentprog
+	this.cb_mark_outbox = create cb_mark_outbox
+	this.cb_sort_outbox = create cb_sort_outbox
+	this.cb_filter_outbox = create cb_filter_outbox
+	this.cb_retrieve_outbox = create cb_retrieve_outbox
+	this.cb_send_outbox = create cb_send_outbox
+	this.dw_outbox = create dw_outbox
+	this.control = {this.cb_mark_outbox_expired, this.cb_sendselected, this.hpb_sentprog, this.cb_mark_outbox, this.cb_sort_outbox, this.cb_filter_outbox, this.cb_retrieve_outbox, this.cb_send_outbox, this.dw_outbox}
+
+// tabpage_outbox.destroy() returns 0
+	destroy this.cb_mark_outbox_expired
+	destroy this.cb_sendselected
+	destroy this.hpb_sentprog
+	destroy this.cb_mark_outbox
+	destroy this.cb_sort_outbox
+	destroy this.cb_filter_outbox
+	destroy this.cb_retrieve_outbox
+	destroy this.cb_send_outbox
+	destroy this.dw_outbox
+
+// cb_mark_outbox_expired.clicked() returns long
+	long ll_smscode
+	if parent.parent.parent.id_outbox.getrow() > 0 and parent.parent.parent.id_outbox.rowcount() > 0 then
+		ll_smscode = parent.parent.parent.id_outbox.object.smscode[parent.parent.parent.id_outbox.getrow()]
+		parent.parent.parent.wf_update_expired_smsstatus(ll_smscode)
+	end if
+	parent.parent.parent.wf_update_sent_outbox_info()
+	return ::message.returnvalue
+
+// cb_sendselected.clicked() returns long
+	if parent.parent.parent.id_outbox.getrow() > 0 then
+		parent.parent.parent.wf_sendsms_from_outbox(parent.parent.parent.id_outbox.getrow())
+	end if
+	return ::message.returnvalue
+
+// cb_mark_outbox.clicked() returns long
+	long ll_smscode
+	if parent.parent.parent.id_outbox.getrow() > 0 and parent.parent.parent.id_outbox.rowcount() > 0 then
+		ll_smscode = parent.parent.parent.id_outbox.object.smscode[parent.parent.parent.id_outbox.getrow()]
+		parent.parent.parent.wf_update_smsstatus(ll_smscode)
+	end if
+	parent.parent.parent.wf_update_sent_outbox_info()
+	return ::message.returnvalue
+
+// cb_sort_outbox.clicked() returns long
+	string ls_null
+	setnull(ls_null)
+	parent.parent.parent.id_outbox.setsort(ls_null)
+	parent.parent.parent.id_outbox.sort()
+	parent.parent.parent.id_outbox.groupcalc()
+	return ::message.returnvalue
+
+// cb_filter_outbox.clicked() returns long
+	string ls_null
+	setnull(ls_null)
+	parent.parent.parent.id_outbox.scrolltorow(0)
+	parent.parent.parent.id_outbox.setfilter(ls_null)
+	parent.parent.parent.id_outbox.filter()
+	parent.parent.parent.id_outbox.groupcalc()
+	return ::message.returnvalue
+
+// cb_retrieve_outbox.clicked() returns long
+	parent.parent.parent.wf_update_sent_outbox_info()
+	return ::message.returnvalue
+
+// cb_send_outbox.clicked() returns long
+	parent.parent.parent.wf_sendsms_from_outbox(-1)
+	return ::message.returnvalue
+
+// dw_outbox.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_outbox.rowfocuschanged(long currentrow) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::rowfocuschanged(currentrow)
+	if currentrow > 0 then
+		selectrow(0, false)
+		setrow(currentrow)
+		scrolltorow(currentrow)
+		selectrow(currentrow, true)
+	end if
+	return ::message.returnvalue
+
+// dw_outbox.editchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::editchanged(row, dwo, data)
+	parent.parent.parent.ib_editflag = true
+	return ::message.returnvalue
+
+// dw_outbox.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	long ll_code
+	ancestorreturnvalue = super::doubleclicked(xpos, ypos, row, dwo)
+	if row > 0 then
+		ll_code = parent.parent.parent.id_outbox.object.smscode[row]
+		if ll_code > 0 then
+			openwithparm(w_smscenter_preview, ll_code)
+		end if
+	end if
+	return ::message.returnvalue
+
+// tabpage_sent.create() returns 0
+	this.cb_deleteall = create cb_deleteall
+	this.cb_delete = create cb_delete
+	this.cb_mark_unsent = create cb_mark_unsent
+	this.cb_sort_sent = create cb_sort_sent
+	this.cb_filter_sent = create cb_filter_sent
+	this.cb_retrieve_sent = create cb_retrieve_sent
+	this.dw_sent = create dw_sent
+	this.control = {this.cb_deleteall, this.cb_delete, this.cb_mark_unsent, this.cb_sort_sent, this.cb_filter_sent, this.cb_retrieve_sent, this.dw_sent}
+
+// tabpage_sent.destroy() returns 0
+	destroy this.cb_deleteall
+	destroy this.cb_delete
+	destroy this.cb_mark_unsent
+	destroy this.cb_sort_sent
+	destroy this.cb_filter_sent
+	destroy this.cb_retrieve_sent
+	destroy this.dw_sent
+
+// cb_deleteall.clicked() returns long
+	long ll_res
+	ll_res = messagebox("Delete Sent SMS", "Are you sure to delete All the Sent SMS Record from SMS Center?", question!, yesnocancel!, 2)
+	if ll_res = 1 then
+		SQL DELETE DBO.SMS_Center WHERE SMSStatusCode =2 USING parent.parent.parent.it_transobject;
+		if parent.parent.parent.it_transobject.sqlcode = 0 then
+			SQL commit USING parent.parent.parent.it_transobject;
+			messagebox("Delete Sent SMS", "Sent SMS Succsessfully Deleted from database.", information!)
+			parent.parent.parent.id_sent.retrieve(2)
+			parent.parent.parent.tab_smscenter.tabpage_sent.text = "Sent (" + trim(string(parent.parent.parent.id_sent.rowcount())) + ")"
+		else
+			SQL rollback USING parent.parent.parent.it_transobject;
+			messagebox("Delete Sent SMS", "Problem in Deleting Sent SMS from database.~r~nDetails are:~r~n" + parent.parent.parent.it_transobject.sqlerrtext, stopsign!)
+		end if
+	end if
+	parent.parent.parent.wf_update_sent_outbox_info()
+	return ::message.returnvalue
+
+// cb_delete.clicked() returns long
+	long ll_res
+	s_arguements lstr_arg
+	open(w_arg_sdate_ldate)
+	lstr_arg = message.powerobjectparm
+	if lstr_arg.i_status = 1 then
+		ll_res = messagebox("Delete Sent SMS", "Are you sure to delete Sent SMS Record from SMS Center?", question!, yesnocancel!, 2)
+		if ll_res = 1 then
+			SQL DELETE DBO.SMS_Center WHERE Date BETWEEN :lstr_arg.d_sdate AND :lstr_arg.d_edate AND SMSStatusCode =2 USING parent.parent.parent.it_transobject;
+			if parent.parent.parent.it_transobject.sqlcode = 0 then
+				SQL commit USING parent.parent.parent.it_transobject;
+				messagebox("Delete Sent SMS", "Sent SMS Succsessfully Deleted from database.", information!)
+				parent.parent.parent.id_sent.retrieve(2)
+				parent.parent.parent.tab_smscenter.tabpage_sent.text = "Sent (" + trim(string(parent.parent.parent.id_sent.rowcount())) + ")"
+			else
+				SQL rollback USING parent.parent.parent.it_transobject;
+				messagebox("Delete Sent SMS", "Problem in Deleting Sent SMS from database.~r~nDetails are:~r~n" + parent.parent.parent.it_transobject.sqlerrtext, stopsign!)
+			end if
+		end if
+	end if
+	parent.parent.parent.wf_update_sent_outbox_info()
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// cb_mark_unsent.clicked() returns long
+	long ll_smscode
+	if parent.parent.parent.id_sent.getrow() > 0 then
+		ll_smscode = parent.parent.parent.id_sent.object.smscode[parent.parent.parent.id_sent.getrow()]
+		SQL update DBO.SMS_Center SET SMSStatusCode =1 WHERE SMSCode =:ll_smscode USING parent.parent.parent.it_transobject;
+		if parent.parent.parent.it_transobject.sqlcode = 0 then
+			SQL commit USING parent.parent.parent.it_transobject;
+		else
+			SQL rollback USING parent.parent.parent.it_transobject;
+		end if
+	end if
+	parent.parent.parent.wf_update_sent_outbox_info()
+	return ::message.returnvalue
+
+// cb_sort_sent.clicked() returns long
+	string ls_null
+	setnull(ls_null)
+	parent.parent.parent.id_sent.setsort(ls_null)
+	parent.parent.parent.id_sent.sort()
+	parent.parent.parent.id_sent.groupcalc()
+	return ::message.returnvalue
+
+// cb_filter_sent.clicked() returns long
+	string ls_null
+	setnull(ls_null)
+	parent.parent.parent.id_sent.scrolltorow(0)
+	parent.parent.parent.id_sent.setfilter(ls_null)
+	parent.parent.parent.id_sent.filter()
+	parent.parent.parent.id_sent.groupcalc()
+	return ::message.returnvalue
+
+// cb_retrieve_sent.clicked() returns long
+	parent.parent.parent.wf_update_sent_outbox_info()
+	return ::message.returnvalue
+
+// dw_sent.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	long ll_code
+	ancestorreturnvalue = super::doubleclicked(xpos, ypos, row, dwo)
+	if row > 0 then
+		ll_code = parent.parent.parent.id_sent.object.smscode[row]
+		if ll_code > 0 then
+			openwithparm(w_smscenter_preview, ll_code)
+		end if
+	end if
+	return ::message.returnvalue
+
+// dw_sent.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	long ll_code
+	long ll_res
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if f_rightexists(5047) and key = keydelete! then
+		if rowcount() > 0 and getrow() > 0 then
+			ll_code = this.object.smscode[getrow()]
+			if ll_code > 0 then
+				ll_res = messagebox("Delete Sent SMS", "Are you sure to delete this Sent SMS from SMS Center?", question!, yesnocancel!, 2)
+				if ll_res = 1 then
+					SQL DELETE SMS_Center WHERE SMSCode =:ll_code AND SMSStatusCode =2 USING parent.parent.parent.it_transobject;
+					if parent.parent.parent.it_transobject.sqlcode = 0 then
+						SQL commit USING parent.parent.parent.it_transobject;
+						messagebox("Delete Sent SMS", "Sent SMS Succsessfully Deleted from database.", information!)
+						parent.parent.parent.id_sent.retrieve(2)
+						parent.parent.parent.tab_smscenter.tabpage_sent.text = "Sent (" + trim(string(parent.parent.parent.id_sent.rowcount())) + ")"
+					else
+						SQL rollback USING parent.parent.parent.it_transobject;
+						messagebox("Delete Sent SMS", "Problem in Deleting Sent SMS from database.~r~nDetails are:~r~n" + parent.parent.parent.it_transobject.sqlerrtext, stopsign!)
+					end if
+				end if
+			end if
+		end if
+		parent.parent.parent.wf_update_sent_outbox_info()
+	end if
+	return 0
+
+// tabpage_expired.create() returns 0
+	this.cb_expired_deleteall = create cb_expired_deleteall
+	this.cb_expired_delete = create cb_expired_delete
+	this.cb_expired_mark_unsent = create cb_expired_mark_unsent
+	this.cb_expired_sort = create cb_expired_sort
+	this.cb_expired_filter = create cb_expired_filter
+	this.cb_expired_retrieve = create cb_expired_retrieve
+	this.dw_expired = create dw_expired
+	this.control = {this.cb_expired_deleteall, this.cb_expired_delete, this.cb_expired_mark_unsent, this.cb_expired_sort, this.cb_expired_filter, this.cb_expired_retrieve, this.dw_expired}
+
+// tabpage_expired.destroy() returns 0
+	destroy this.cb_expired_deleteall
+	destroy this.cb_expired_delete
+	destroy this.cb_expired_mark_unsent
+	destroy this.cb_expired_sort
+	destroy this.cb_expired_filter
+	destroy this.cb_expired_retrieve
+	destroy this.dw_expired
+
+// cb_expired_deleteall.clicked() returns long
+	long ll_res
+	ll_res = messagebox("Delete Expired SMS", "Are you sure to delete All the Expired SMS Record from SMS Center?", question!, yesnocancel!, 2)
+	if ll_res = 1 then
+		SQL DELETE DBO.SMS_Center WHERE SMSStatusCode =3 USING parent.parent.parent.it_transobject;
+		if parent.parent.parent.it_transobject.sqlcode = 0 then
+			SQL commit USING parent.parent.parent.it_transobject;
+			messagebox("Delete Expired SMS", "Expired SMS Succsessfully Deleted from database.", information!)
+			parent.parent.parent.id_expired.retrieve(3)
+			parent.parent.parent.tab_smscenter.tabpage_expired.text = "Expired (" + trim(string(parent.parent.parent.id_expired.rowcount())) + ")"
+		else
+			SQL rollback USING parent.parent.parent.it_transobject;
+			messagebox("Expired Sent SMS", "Problem in Deleting Expired SMS from database.~r~nDetails are:~r~n" + parent.parent.parent.it_transobject.sqlerrtext, stopsign!)
+		end if
+	end if
+	return ::message.returnvalue
+
+// cb_expired_delete.clicked() returns long
+	long ll_res
+	s_arguements lstr_arg
+	open(w_arg_sdate_ldate)
+	lstr_arg = message.powerobjectparm
+	if lstr_arg.i_status = 1 then
+		ll_res = messagebox("Delete Expired SMS", "Are you sure to delete Expired SMS Record from SMS Center?", question!, yesnocancel!, 2)
+		if ll_res = 1 then
+			SQL DELETE DBO.SMS_Center WHERE Date BETWEEN :lstr_arg.d_sdate AND :lstr_arg.d_edate AND SMSStatusCode =3 USING parent.parent.parent.it_transobject;
+			if parent.parent.parent.it_transobject.sqlcode = 0 then
+				SQL commit USING parent.parent.parent.it_transobject;
+				messagebox("Delete Expired SMS", "Expired SMS Succsessfully Deleted from database.", information!)
+				parent.parent.parent.id_expired.retrieve(3)
+				parent.parent.parent.tab_smscenter.tabpage_expired.text = "Expired (" + trim(string(parent.parent.parent.id_expired.rowcount())) + ")"
+			else
+				SQL rollback USING parent.parent.parent.it_transobject;
+				messagebox("Delete Expired SMS", "Problem in Deleting Expired SMS from database.~r~nDetails are:~r~n" + parent.parent.parent.it_transobject.sqlerrtext, stopsign!)
+			end if
+		end if
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// cb_expired_mark_unsent.clicked() returns long
+	long ll_smscode
+	if parent.parent.parent.id_expired.getrow() > 0 then
+		ll_smscode = parent.parent.parent.id_expired.object.smscode[parent.parent.parent.id_expired.getrow()]
+		SQL update DBO.SMS_Center SET SMSStatusCode =1 WHERE SMSCode =:ll_smscode USING parent.parent.parent.it_transobject;
+		if parent.parent.parent.it_transobject.sqlcode = 0 then
+			SQL commit USING parent.parent.parent.it_transobject;
+		else
+			SQL rollback USING parent.parent.parent.it_transobject;
+		end if
+		parent.parent.parent.id_expired.retrieve(3)
+	end if
+	parent.parent.parent.wf_update_sent_outbox_info()
+	return ::message.returnvalue
+
+// cb_expired_sort.clicked() returns long
+	string ls_null
+	setnull(ls_null)
+	parent.parent.parent.id_expired.setsort(ls_null)
+	parent.parent.parent.id_expired.sort()
+	parent.parent.parent.id_expired.groupcalc()
+	return ::message.returnvalue
+
+// cb_expired_filter.clicked() returns long
+	string ls_null
+	setnull(ls_null)
+	parent.parent.parent.id_expired.scrolltorow(0)
+	parent.parent.parent.id_expired.setfilter(ls_null)
+	parent.parent.parent.id_expired.filter()
+	parent.parent.parent.id_expired.groupcalc()
+	return ::message.returnvalue
+
+// cb_expired_retrieve.clicked() returns long
+	parent.parent.parent.id_expired.retrieve(3)
+	return ::message.returnvalue
+
+// tabpage_schedule.create() returns 0
+	this.cb_save_schedule = create cb_save_schedule
+	this.st_hr = create st_hr
+	this.st_min = create st_min
+	this.st_sec = create st_sec
+	this.ddlb_time = create ddlb_time
+	this.ddlb_sec = create ddlb_sec
+	this.ddlb_min = create ddlb_min
+	this.ddlb_hr = create ddlb_hr
+	this.dw_schedule = create dw_schedule
+	this.rb_every = create rb_every
+	this.rb_once = create rb_once
+	this.cbx_activate = create cbx_activate
+	this.gb_3 = create gb_3
+	this.control = {this.cb_save_schedule, this.st_hr, this.st_min, this.st_sec, this.ddlb_time, this.ddlb_sec, this.ddlb_min, this.ddlb_hr, this.dw_schedule, this.rb_every, this.rb_once, this.cbx_activate, this.gb_3}
+
+// tabpage_schedule.destroy() returns 0
+	destroy this.cb_save_schedule
+	destroy this.st_hr
+	destroy this.st_min
+	destroy this.st_sec
+	destroy this.ddlb_time
+	destroy this.ddlb_sec
+	destroy this.ddlb_min
+	destroy this.ddlb_hr
+	destroy this.dw_schedule
+	destroy this.rb_every
+	destroy this.rb_once
+	destroy this.cbx_activate
+	destroy this.gb_3
+
+// cb_save_schedule.clicked() returns long
+	string ls_jobname
+	string ls_schedulename
+	string ls_hr
+	string ls_min
+	string ls_sec
+	string ls_activetime
+	string ls_ampm
+	string ls_errtext
+	integer li_unitvalue
+	integer li_unit
+	integer li_hr
+	long ll_activetime
+	ls_jobname = gs_autocreatescheduledsmsjob
+	ls_schedulename = gs_autocreatescheduledsmsjobschedule
+	if parent.parent.parent.tab_smscenter.tabpage_schedule.cbx_activate.checked = true then
+		if parent.parent.parent.tab_smscenter.tabpage_schedule.rb_once.checked = true then
+			ls_hr = parent.parent.parent.tab_smscenter.tabpage_schedule.ddlb_hr.text
+			ls_min = parent.parent.parent.tab_smscenter.tabpage_schedule.ddlb_min.text
+			ls_sec = parent.parent.parent.tab_smscenter.tabpage_schedule.ddlb_sec.text
+			ls_ampm = parent.parent.parent.tab_smscenter.tabpage_schedule.ddlb_time.text
+			if isnull(ls_hr) or ls_hr = "" or ls_hr = "none" then
+				messagebox(" Time Validation", "Please select hours from dropdown box.")
+				parent.parent.parent.tab_smscenter.tabpage_schedule.ddlb_hr.setfocus()
+				return ::message.returnvalue
+			elseif isnull(ls_min) or ls_min = "" or ls_min = "none" then
+				messagebox(" Time Validation", "Please select minutes from dropdown box.")
+				parent.parent.parent.tab_smscenter.tabpage_schedule.ddlb_min.setfocus()
+				return ::message.returnvalue
+			elseif isnull(ls_sec) or ls_sec = "" or ls_sec = "none" then
+				messagebox(" Time Validation", "Please select seconds from dropdown box.")
+				parent.parent.parent.tab_smscenter.tabpage_schedule.ddlb_sec.setfocus()
+				return ::message.returnvalue
+			elseif isnull(ls_ampm) or ls_ampm = "" or ls_ampm = "none" then
+				messagebox(" Time Validation", "Please select AM/PM from dropdown box.")
+				parent.parent.parent.tab_smscenter.tabpage_schedule.ddlb_time.setfocus()
+				return ::message.returnvalue
+			end if
+			li_hr = integer(ls_hr)
+			if ls_ampm = "PM" then
+				if li_hr < 12 then
+					li_hr = li_hr + 12
+				end if
+			elseif li_hr = 12 then
+				li_hr = 0
+			end if
+			ls_activetime = string(li_hr) + ls_min + ls_sec
+			ll_activetime = long(ls_activetime)
+			li_unit = 1
+			li_unitvalue = 0
+		else
+			if parent.parent.parent.tab_smscenter.tabpage_schedule.dw_schedule.accepttext() = 1 then
+				li_unitvalue = parent.parent.parent.tab_smscenter.tabpage_schedule.dw_schedule.getitemnumber(1, "unitvalue")
+				li_unit = parent.parent.parent.tab_smscenter.tabpage_schedule.dw_schedule.getitemnumber(1, "unit")
+				if li_unit = 4 then
+					if not (li_unitvalue >= 1 and li_unitvalue <= 1440) then
+						messagebox(" Time Validation", "Please enter valid value for minutes between 1 and 1440.")
+						parent.parent.parent.tab_smscenter.tabpage_schedule.dw_schedule.setcolumn(1)
+						parent.parent.parent.tab_smscenter.tabpage_schedule.dw_schedule.setfocus()
+						return ::message.returnvalue
+					end if
+				elseif li_unit = 8 then
+					if not (li_unitvalue >= 1 and li_unitvalue <= 24) then
+						messagebox(" Time Validation", "Please enter valid value for hours between 1 and 24.")
+						parent.parent.parent.tab_smscenter.tabpage_schedule.dw_schedule.setcolumn(2)
+						parent.parent.parent.tab_smscenter.tabpage_schedule.dw_schedule.setfocus()
+						return ::message.returnvalue
+					end if
+				else
+					messagebox(" Time Validation", "Please select minutes/hours from dropdown list box")
+					parent.parent.parent.tab_smscenter.tabpage_schedule.dw_schedule.setcolumn(2)
+					parent.parent.parent.tab_smscenter.tabpage_schedule.dw_schedule.setfocus()
+					return ::message.returnvalue
+				end if
+			else
+				messagebox(" Time Validation", "Please enter valid value for a unit.")
+				parent.parent.parent.tab_smscenter.tabpage_schedule.dw_schedule.setcolumn(1)
+				parent.parent.parent.tab_smscenter.tabpage_schedule.dw_schedule.setfocus()
+				return ::message.returnvalue
+			end if
+			ll_activetime = 0
+		end if
+		sqlca.adjustjobschedule(ls_jobname, ls_schedulename, ll_activetime, li_unit, li_unitvalue)
+		sqlca.activatejob(ls_jobname, 1)
+	else
+		sqlca.activatejob(ls_jobname, 0)
+	end if
+	if sqlca.sqlcode = 0 then
+		SQL commit USING sqlca;
+		messagebox("Schedule Setting", "Successfully Saved Schedule Settting")
+	else
+		ls_errtext = "Problem while Saving Schedule Settting~r~nReasons Are" + sqlca.sqlerrtext
+		SQL rollback USING sqlca;
+		messagebox("Schedule Setting", ls_errtext)
+	end if
+	return ::message.returnvalue
+
+// rb_every.clicked() returns long
+	if this.checked = true then
+		parent.parent.parent.tab_smscenter.tabpage_schedule.dw_schedule.enabled = true
+		parent.parent.parent.tab_smscenter.tabpage_schedule.ddlb_hr.enabled = false
+		parent.parent.parent.tab_smscenter.tabpage_schedule.ddlb_min.enabled = false
+		parent.parent.parent.tab_smscenter.tabpage_schedule.ddlb_sec.enabled = false
+		parent.parent.parent.tab_smscenter.tabpage_schedule.ddlb_time.enabled = false
+	end if
+	return ::message.returnvalue
+
+// rb_once.clicked() returns long
+	if this.checked = true then
+		parent.parent.parent.tab_smscenter.tabpage_schedule.dw_schedule.enabled = false
+		parent.parent.parent.tab_smscenter.tabpage_schedule.ddlb_hr.enabled = true
+		parent.parent.parent.tab_smscenter.tabpage_schedule.ddlb_min.enabled = true
+		parent.parent.parent.tab_smscenter.tabpage_schedule.ddlb_sec.enabled = true
+		parent.parent.parent.tab_smscenter.tabpage_schedule.ddlb_time.enabled = true
+	end if
+	return ::message.returnvalue
+
+// cbx_activate.clicked() returns long
+	if this.checked = true then
+		parent.parent.parent.tab_smscenter.tabpage_schedule.rb_once.enabled = true
+		parent.parent.parent.tab_smscenter.tabpage_schedule.rb_once.checked = true
+		parent.parent.parent.tab_smscenter.tabpage_schedule.rb_every.enabled = true
+		parent.parent.parent.tab_smscenter.tabpage_schedule.dw_schedule.enabled = false
+		parent.parent.parent.tab_smscenter.tabpage_schedule.ddlb_hr.enabled = true
+		parent.parent.parent.tab_smscenter.tabpage_schedule.ddlb_min.enabled = true
+		parent.parent.parent.tab_smscenter.tabpage_schedule.ddlb_sec.enabled = true
+		parent.parent.parent.tab_smscenter.tabpage_schedule.ddlb_time.enabled = true
+	else
+		parent.parent.parent.tab_smscenter.tabpage_schedule.rb_every.enabled = false
+		parent.parent.parent.tab_smscenter.tabpage_schedule.rb_once.enabled = false
+		parent.parent.parent.tab_smscenter.tabpage_schedule.dw_schedule.enabled = false
+		parent.parent.parent.tab_smscenter.tabpage_schedule.ddlb_hr.enabled = false
+		parent.parent.parent.tab_smscenter.tabpage_schedule.ddlb_min.enabled = false
+		parent.parent.parent.tab_smscenter.tabpage_schedule.ddlb_sec.enabled = false
+		parent.parent.parent.tab_smscenter.tabpage_schedule.ddlb_time.enabled = false
+	end if
+	return ::message.returnvalue
+
+// tabpage_summary.create() returns 0
+	this.dw_summary = create dw_summary
+	this.control = {this.dw_summary}
+
+// tabpage_summary.destroy() returns 0
+	destroy this.dw_summary
+
+// tabpage_graph.create() returns 0
+	this.st_tooltip = create st_tooltip
+	this.gr_graph = create gr_graph
+	this.control = {this.st_tooltip, this.gr_graph}
+
+// tabpage_graph.destroy() returns 0
+	destroy this.st_tooltip
+	destroy this.gr_graph
+
+// gr_graph.create() returns 0
+	this.titledispattr = create grdispattr
+	this.legenddispattr = create grdispattr
+	this.piedispattr = create grdispattr
+	this.series = create graxis
+	this.series.dispattr = create grdispattr
+	this.series.labeldispattr = create grdispattr
+	this.category = create graxis
+	this.category.dispattr = create grdispattr
+	this.category.labeldispattr = create grdispattr
+	this.values = create graxis
+	this.values.dispattr = create grdispattr
+	this.values.labeldispattr = create grdispattr
+	this.titledispattr.textsize = 24
+	this.titledispattr.facename = "Tahoma"
+	this.titledispattr.underline = true
+	this.titledispattr.fontcharset = defaultcharset!
+	this.titledispattr.fontfamily = swiss!
+	this.titledispattr.fontpitch = variable!
+	this.titledispattr.alignment = center!
+	this.titledispattr.textcolor = 8388608
+	this.titledispattr.backcolor = 12639424
+	this.titledispattr.format = "[General]"
+	this.titledispattr.displayexpression = "title"
+	this.category.label = "SMS Type"
+	this.category.autoscale = true
+	this.category.shadebackedge = true
+	this.category.secondaryline = transparent!
+	this.category.majorgridline = transparent!
+	this.category.minorgridline = transparent!
+	this.category.droplines = transparent!
+	this.category.originline = transparent!
+	this.category.majortic = outside!
+	this.category.datatype = adttext!
+	this.category.dispattr.textsize = 13
+	this.category.dispattr.facename = "Tahoma"
+	this.category.dispattr.fontcharset = defaultcharset!
+	this.category.dispattr.fontfamily = swiss!
+	this.category.dispattr.fontpitch = variable!
+	this.category.dispattr.alignment = center!
+	this.category.dispattr.textcolor = 128
+	this.category.dispattr.backcolor = 536870912
+	this.category.dispattr.format = "[General]"
+	this.category.dispattr.displayexpression = "category"
+	this.category.labeldispattr.textsize = 16
+	this.category.labeldispattr.facename = "Arial"
+	this.category.labeldispattr.fontcharset = defaultcharset!
+	this.category.labeldispattr.fontfamily = swiss!
+	this.category.labeldispattr.fontpitch = variable!
+	this.category.labeldispattr.alignment = center!
+	this.category.labeldispattr.textcolor = 8388608
+	this.category.labeldispattr.backcolor = 15780518
+	this.category.labeldispattr.format = "[General]"
+	this.category.labeldispattr.displayexpression = "categoryaxislabel"
+	this.values.label = "No. of SMS"
+	this.values.autoscale = true
+	this.values.secondaryline = transparent!
+	this.values.majorgridline = transparent!
+	this.values.minorgridline = dot!
+	this.values.droplines = transparent!
+	this.values.majortic = outside!
+	this.values.datatype = adtdouble!
+	this.values.dispattr.textsize = 13
+	this.values.dispattr.facename = "Tahoma"
+	this.values.dispattr.fontcharset = defaultcharset!
+	this.values.dispattr.fontfamily = swiss!
+	this.values.dispattr.fontpitch = variable!
+	this.values.dispattr.alignment = right!
+	this.values.dispattr.textcolor = 128
+	this.values.dispattr.backcolor = 536870912
+	this.values.dispattr.format = "[General]"
+	this.values.dispattr.displayexpression = "value"
+	this.values.labeldispattr.textsize = 16
+	this.values.labeldispattr.facename = "Arial"
+	this.values.labeldispattr.fontcharset = defaultcharset!
+	this.values.labeldispattr.fontfamily = swiss!
+	this.values.labeldispattr.fontpitch = variable!
+	this.values.labeldispattr.alignment = center!
+	this.values.labeldispattr.textcolor = 8388608
+	this.values.labeldispattr.backcolor = 15780518
+	this.values.labeldispattr.format = "[General]"
+	this.values.labeldispattr.displayexpression = "valuesaxislabel"
+	this.values.labeldispattr.escapement = 900
+	this.series.label = "(None)"
+	this.series.autoscale = true
+	this.series.secondaryline = transparent!
+	this.series.majorgridline = transparent!
+	this.series.minorgridline = transparent!
+	this.series.droplines = transparent!
+	this.series.originline = transparent!
+	this.series.majortic = outside!
+	this.series.datatype = adttext!
+	this.series.dispattr.textsize = 13
+	this.series.dispattr.facename = "Arial"
+	this.series.dispattr.fontcharset = defaultcharset!
+	this.series.dispattr.fontfamily = swiss!
+	this.series.dispattr.fontpitch = variable!
+	this.series.dispattr.backcolor = 536870912
+	this.series.dispattr.format = "[General]"
+	this.series.dispattr.displayexpression = "series"
+	this.series.labeldispattr.textsize = 16
+	this.series.labeldispattr.facename = "Arial"
+	this.series.labeldispattr.fontcharset = defaultcharset!
+	this.series.labeldispattr.fontfamily = swiss!
+	this.series.labeldispattr.fontpitch = variable!
+	this.series.labeldispattr.alignment = center!
+	this.series.labeldispattr.backcolor = 536870912
+	this.series.labeldispattr.format = "[General]"
+	this.series.labeldispattr.displayexpression = "seriesaxislabel"
+	this.legenddispattr.textsize = 13
+	this.legenddispattr.facename = "Arial"
+	this.legenddispattr.fontcharset = defaultcharset!
+	this.legenddispattr.fontfamily = swiss!
+	this.legenddispattr.fontpitch = variable!
+	this.legenddispattr.backcolor = 536870912
+	this.legenddispattr.format = "[General]"
+	this.legenddispattr.displayexpression = "series"
+	this.piedispattr.weight = 400
+	this.piedispattr.facename = "Arial"
+	this.piedispattr.fontcharset = defaultcharset!
+	this.piedispattr.fontfamily = swiss!
+	this.piedispattr.fontpitch = variable!
+	this.piedispattr.backcolor = 536870912
+	this.piedispattr.format = "[General]"
+	this.piedispattr.displayexpression = "if(seriescount > 1, series,string(percentofseries,~"0.00%~"))"
+	this.piedispattr.autosize = true
+
+// gr_graph.destroy() returns 0
+	destroy this.titledispattr
+	destroy this.legenddispattr
+	destroy this.piedispattr
+	destroy this.series.dispattr
+	destroy this.series.labeldispattr
+	destroy this.series
+	destroy this.category.dispattr
+	destroy this.category.labeldispattr
+	destroy this.category
+	destroy this.values.dispattr
+	destroy this.values.labeldispattr
+	destroy this.values
+
+// gr_graph.ue_rbuttonup(unsignedlong flags, integer xpos, integer ypos) returns long
+	parent.parent.parent.tab_smscenter.tabpage_graph.st_tooltip.visible = false
+	return ::message.returnvalue
+
+// gr_graph.clicked() returns long
+	grobjecttype clickedobject
+	string ls_cat
+	integer li_series
+	integer li_category
+	clickedobject = objectatpointer(li_series, li_category)
+	if clickedobject = typedata! or clickedobject = typecategory! then
+		ls_cat = categoryname(li_category)
+	end if
+	return ::message.returnvalue
+
+// gr_graph.rbuttondown(unsignedlong flags, integer xpos, integer ypos) returns long
+	grobjecttype clickedobject
+	integer li_series
+	integer li_category
+	long ll_counter
+	clickedobject = objectatpointer(li_series, li_category)
+	if clickedobject = typedata! then
+		parent.st_tooltip.text = string(getdata(li_series, li_category), "###,###,##0")
+		parent.st_tooltip.x = parent.pointerx()
+		parent.st_tooltip.y = parent.pointery() - 65
+		parent.parent.parent.tab_smscenter.tabpage_graph.st_tooltip.visible = true
+	end if
+	return ::message.returnvalue
+
+// timing_2.create() returns 0
+	call super::create
+	triggerevent("constructor")
+
+// timing_2.destroy() returns 0
+	triggerevent("destructor")
+	call super::destroy
+
+// timing_1.create() returns 0
+	call super::create
+	triggerevent("constructor")
+
+// timing_1.destroy() returns 0
+	triggerevent("destructor")
+	call super::destroy

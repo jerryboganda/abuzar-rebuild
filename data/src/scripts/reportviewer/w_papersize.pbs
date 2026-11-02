@@ -1,0 +1,119 @@
+// window w_papersize (reportviewer)  ancestor: window
+
+// w_papersize.wf_visibleinvisible(string as_data) returns 0
+	if as_data = "256" then
+		this.dw_control.object.t_width.visible = 1
+		this.dw_control.object.width.visible = 1
+		this.dw_control.object.t_width_inches.visible = 1
+		this.dw_control.object.t_height.visible = 1
+		this.dw_control.object.height.visible = 1
+		this.dw_control.object.t_height_inches.visible = 1
+		this.dw_control.object.widthvalue.visible = 1
+		this.dw_control.object.widthunit.visible = 1
+		this.dw_control.object.heightvalue.visible = 1
+		this.dw_control.object.heightunit.visible = 1
+	else
+		this.dw_control.object.t_width.visible = 0
+		this.dw_control.object.width.visible = 0
+		this.dw_control.object.t_width_inches.visible = 0
+		this.dw_control.object.t_height.visible = 0
+		this.dw_control.object.height.visible = 0
+		this.dw_control.object.t_height_inches.visible = 0
+		this.dw_control.object.widthvalue.visible = 0
+		this.dw_control.object.widthunit.visible = 0
+		this.dw_control.object.heightvalue.visible = 0
+		this.dw_control.object.heightunit.visible = 0
+	end if
+
+// w_papersize.create() returns 0
+	this.dw_control = create dw_control
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.gb_1 = create gb_1
+	this.control = {this.dw_control, this.cb_cancel, this.cb_ok, this.gb_1}
+
+// w_papersize.destroy() returns 0
+	destroy this.dw_control
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.gb_1
+
+// w_papersize.close() returns long
+	closewithreturn(this, this.istr_repinfo)
+	return ::message.returnvalue
+
+// w_papersize.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	this.istr_repinfo = message.powerobjectparm
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.object.papersizecode[1] = long(this.istr_repinfo.s_reporttitle)
+	this.dw_control.object.width[1] = f_convertunits(4, double(this.istr_repinfo.s_reportobject), "X", 2)
+	this.dw_control.object.height[1] = f_convertunits(4, double(this.istr_repinfo.s_otherinfo), "Y", 2)
+	this.dw_control.object.widthunit[1] = 4
+	this.dw_control.object.heightunit[1] = 4
+	this.dw_control.object.widthvalue[1] = double(this.istr_repinfo.s_reportobject)
+	this.dw_control.object.heightvalue[1] = double(this.istr_repinfo.s_otherinfo)
+	wf_visibleinvisible(this.istr_repinfo.s_reporttitle)
+	this.dw_control.setcolumn("papersizecode")
+	this.dw_control.setfocus()
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// dw_control.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	double ld_value
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "papersizecode"
+		parent.wf_visibleinvisible(data)
+	case "width"
+		ld_value = f_convertunits(2, double(data), "X", 4)
+		this.object.widthvalue[row] = ld_value
+	case "height"
+		ld_value = f_convertunits(2, double(data), "Y", 4)
+		this.object.heightvalue[row] = ld_value
+	end choose
+	return 0
+
+// dw_control.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// cb_cancel.clicked() returns long
+	parent.istr_repinfo.i_status = -1
+	parent.triggerevent(close!)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	if parent.dw_control.accepttext() < 0 then
+		return ::message.returnvalue
+	end if
+	parent.istr_repinfo.s_reporttitle = trim(string(parent.dw_control.object.papersizecode[1]))
+	parent.istr_repinfo.s_reportobject = trim(string(f_convertunits(2, parent.dw_control.object.width[1], "X", 4)))
+	parent.istr_repinfo.s_otherinfo = trim(string(f_convertunits(2, parent.dw_control.object.height[1], "Y", 4)))
+	parent.istr_repinfo.i_status = 1
+	parent.triggerevent(close!)
+	return ::message.returnvalue

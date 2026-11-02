@@ -1,0 +1,915 @@
+// window w_voucher_old (accountsext)  ancestor: w_multi_entry
+
+// w_voucher_old.wf_setvouchertype(integer ai_vouchtype) returns 0
+	this.ii_vouchertype = ai_vouchtype
+
+// w_voucher_old.wf_retrievelist() returns long
+	string[] ls_criteria
+	ls_criteria[1] = "N"
+	return this.id_list.retrieve(this.ii_vouchertype, ls_criteria)
+
+// w_voucher_old.wf_retrievelistall() returns long
+	string[] ls_criteria
+	ls_criteria[1] = "N"
+	ls_criteria[2] = "Y"
+	return this.id_list.retrieve(this.ii_vouchertype, ls_criteria)
+
+// w_voucher_old.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	if not isnull(ad_dwcontrol.dataobject) then
+		li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+		for li_counter = li_colcount to li_counter step -1
+			ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+			if ai_doundo = 1 then
+				ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+			else
+				ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+			end if
+		next
+	end if
+
+// w_voucher_old.wf_retrieveinvbalance(long al_invcode, long al_row) returns 0
+	datastore lds_invbal
+	lds_invbal = create datastore
+	if this.ii_vouchertype = 12 or this.ii_vouchertype = 13 then
+		lds_invbal.dataobject = "d_saleinvbalance"
+	else
+		lds_invbal.dataobject = "d_purinvbalance"
+	end if
+	lds_invbal.settransobject(this.it_transobject)
+	lds_invbal.retrieve(al_invcode)
+	if this.ii_vouchertype = 12 or this.ii_vouchertype = 13 then
+		this.id_detail.setitem(al_row, "credit", lds_invbal.getitemnumber(lds_invbal.getrow(), "c_balance"))
+	else
+		this.id_detail.setitem(al_row, "debit", lds_invbal.getitemnumber(lds_invbal.getrow(), "c_balance"))
+	end if
+	this.id_detail.setitem(al_row, "invamt", lds_invbal.getitemnumber(lds_invbal.getrow(), "c_balance"))
+
+// w_voucher_old.wf_lockvoucher(integer al_glvochcode) returns integer
+	integer li_count
+	if this.ii_vouchertype <= 11 then
+		SQL Select count ( *) INTO :li_count From glheader WITH ( UPDLOCK HOLDLOCK ) Where glheader.glvochcode =:al_glvochcode USING this.it_transobject;
+	else
+		SQL Select count ( *) INTO :li_count From InvLedger ( UPDLOCK HOLDLOCK ) Where InvLedger.Invvochcode =:al_glvochcode USING this.it_transobject;
+	end if
+	return this.it_transobject.sqlcode
+
+// w_voucher_old.wf_lockvouchers(long al_sinvcode, long al_linvcode, long al_totalinvoice) returns integer
+	integer li_count
+	if this.ii_vouchertype <= 11 then
+		SQL Select count ( *) INTO :al_totalinvoice From glheader WITH ( UPDLOCK HOLDLOCK ) Where glheader.glvochcode Between :al_sinvcode AND :al_linvcode AND glheader.Posted ='N' USING sqlca;
+	else
+		SQL Select count ( *) INTO :al_totalinvoice From InvLedger ( UPDLOCK HOLDLOCK ) Where InvLedger.Invvochcode Between :al_sinvcode AND :al_linvcode AND InvLedger.Posted ='N' USING sqlca;
+	end if
+	return sqlca.sqlcode
+
+// w_voucher_old.wf_post() returns integer
+	integer li_errcode
+	long ll_salesmancode
+	long ll_saleinvcount
+	s_arguements lstr_arginfo
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	open(w_salesmanpassword)
+	ll_salesmancode = long(message.doubleparm)
+	setfocus()
+	if ll_salesmancode > 0 then
+		open(w_arg_sinvcode_linvcode)
+		lstr_arginfo = message.powerobjectparm
+		if lstr_arginfo.i_status = 1 then
+			setpointer(hourglass!)
+			if not wf_getserverdatetime(ldt_server_datetime, ls_date_errtext) then
+				messagebox("Date Violation", ls_date_errtext, stopsign!)
+				return -1
+			end if
+			SQL rollback USING sqlca;
+			li_errcode = wf_lockvouchers(lstr_arginfo.l_code1, lstr_arginfo.l_code2, ll_saleinvcount)
+			if li_errcode = 0 then
+				sqlca.postgeneralledger(lstr_arginfo.l_code1, lstr_arginfo.l_code2, this.ii_vouchertype, ll_salesmancode)
+				if sqlca.sqlcode <> 0 then
+					li_errcode = -1
+				end if
+			end if
+		end if
+		if li_errcode = 0 then
+			SQL commit USING sqlca;
+			if sqlca.sqlcode <> 0 then
+				li_errcode = -1
+			end if
+		else
+			SQL rollback USING sqlca;
+		end if
+	else
+		setfocus()
+	end if
+	setpointer(arrow!)
+	if li_errcode <> 0 then
+		messagebox("Posting Fails", "Some database request fails, Please try again")
+	else
+		messagebox("Posting Successfull", "Successfully Posted")
+	end if
+	return li_errcode
+
+// w_voucher_old.wf_cleargroupbox() returns 0
+	this.tab_retrieve.tabpage_detail.gb_accounts.visible = false
+	this.tab_retrieve.tabpage_detail.rb_creditors.visible = false
+	this.tab_retrieve.tabpage_detail.rb_debitors.visible = false
+	this.tab_retrieve.tabpage_detail.rb_other.visible = false
+	this.tab_retrieve.tabpage_detail.rb_all.visible = false
+
+// w_voucher_old.wf_validateserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+	return true
+
+// w_voucher_old.wf_deleteemptydetailrow() returns integer
+	long ll_rowcount
+	integer li_rtcode
+	ll_rowcount = this.id_detail.rowcount()
+	if ll_rowcount > 1 and isnull(this.id_detail.getitemnumber(ll_rowcount, "acccode")) then
+		this.id_detail.deleterow(ll_rowcount)
+		li_rtcode = 1
+	end if
+	return li_rtcode
+
+// w_voucher_old.wf_filter(string as_acctype) returns 0
+	long ll_subcode
+	string ls_filter
+	if not isnull(as_acctype) then
+		ls_filter = "restricted='N' AND "
+	else
+		ls_filter = "restricted='N'"
+	end if
+	if f_rightexists(537) then
+		ls_filter = ""
+	end if
+	if not isnull(as_acctype) then
+		if as_acctype = "CashSub" then
+			ll_subcode = this.il_cashsub
+		elseif as_acctype = "BankSub" then
+			ll_subcode = this.il_banksub
+		elseif as_acctype = "CreditorsSub" then
+			ll_subcode = this.il_creditorssub
+		elseif as_acctype = "DebitorsSub" then
+			ll_subcode = this.il_debitorssub
+		else
+			setnull(ll_subcode)
+		end if
+		if not isnull(ll_subcode) then
+			ls_filter = ls_filter + "subcode = Long('" + string(ll_subcode) + "')"
+			this.idc_dddwdetailaccount.setfilter(ls_filter)
+			this.idc_dddwdetailaccount.filter()
+		else
+			ls_filter = ls_filter + "subcode <> Long('" + string(this.il_creditorssub) + "') AND subcode <> Long('" + string(this.il_debitorssub) + "')"
+			this.idc_dddwdetailaccount.setfilter(ls_filter)
+			this.idc_dddwdetailaccount.filter()
+		end if
+	end if
+	this.idc_dddwdetailaccount.setfilter(ls_filter)
+	this.idc_dddwdetailaccount.filter()
+
+// w_voucher_old.wf_assigndatawindowobjects(string as_masterdw, string as_detaildw, string as_listdw) returns 0
+	this.id_master.dataobject = as_masterdw
+	this.id_detail.dataobject = as_detaildw
+	this.id_list.dataobject = as_listdw
+	this.id_master.settransobject(this.it_transobject)
+	this.id_detail.settransobject(this.it_transobject)
+	this.id_list.settransobject(this.it_transobject)
+
+// w_voucher_old.wf_initglobalconstants() returns 0
+	this.it_transobject.getglobalcode("GT_CashSub", this.il_cashsub)
+	this.it_transobject.getglobalcode("GT_BankSub", this.il_banksub)
+	this.it_transobject.getglobalcode("GT_CreditorsSub", this.il_creditorssub)
+	this.it_transobject.getglobalcode("GT_DebitorsSub", this.il_debitorssub)
+
+// w_voucher_old.wf_getfullcode(long al_acccode, string as_fullcode) returns integer
+	integer li_retflag
+	string ls_fullcode
+	SQL SELECT aliasname INTO :ls_fullcode FROM dbo.accounts WHERE dbo.accounts.acccode =:al_acccode USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		li_retflag = 1
+		as_fullcode = ls_fullcode
+	else
+		li_retflag = this.it_transobject.sqlcode
+	end if
+	return li_retflag
+
+// w_voucher_old.wf_setpatientname(string as_data) returns 0
+	long ll_rowno
+	ll_rowno = this.idc_dddwdetailpatient.find("name >='" + as_data + "'", 1, this.idc_dddwdetailpatient.rowcount())
+	if ll_rowno > 0 then
+		this.idc_dddwdetailpatient.selectrow(0, false)
+		this.idc_dddwdetailpatient.setrow(ll_rowno)
+		this.idc_dddwdetailpatient.scrolltorow(ll_rowno)
+		this.idc_dddwdetailpatient.selectrow(ll_rowno, true)
+	end if
+
+// w_voucher_old.wf_validateregno(string as_regno, long al_patientcode, long al_acccode) returns boolean
+	SQL SELECT patientcode , CustCode INTO :al_patientcode, :al_acccode FROM Patient WHERE regno =:as_regno USING sqlca;
+	if sqlca.sqlcode = 0 then
+		return true
+	end if
+	return false
+
+// w_voucher_old.wf_validatepatient(long al_patientcode, string as_regno, long al_acccode) returns boolean
+	SQL SELECT regno , CustCode INTO :as_regno, :al_acccode FROM Patient WHERE PatientCode =:al_patientcode USING sqlca;
+	if sqlca.sqlcode = 0 then
+		return true
+	end if
+	return false
+
+// w_voucher_old.wf_setaccountname(string as_data) returns 0
+	long ll_rowno
+	ll_rowno = this.idc_dddwdetailaccount.find("name >='" + as_data + "'", 1, this.idc_dddwdetailaccount.rowcount())
+	if ll_rowno > 0 then
+		this.idc_dddwdetailaccount.selectrow(0, false)
+		this.idc_dddwdetailaccount.setrow(ll_rowno)
+		this.idc_dddwdetailaccount.scrolltorow(ll_rowno)
+		this.idc_dddwdetailaccount.selectrow(ll_rowno, true)
+	end if
+
+// w_voucher_old.wf_setbalance() returns integer
+	string ls_balance
+	ls_balance = "Balance:" + " " + string(this.idc_dddwdetailaccount.getitemnumber(this.idc_dddwdetailaccount.getrow(), "c_balance")) + " " + this.idc_dddwdetailaccount.getitemstring(this.idc_dddwdetailaccount.getrow(), "BalanceType")
+	this.id_detail.object.t_balance.text = ls_balance
+	this.id_detail.setitem(this.id_detail.getrow(), "balance", ls_balance)
+	return 1
+
+// w_voucher_old.wf_setcustomerareawise() returns integer
+	s_popup_selection ls_popup_selection
+	string ls_aliasname
+	long ll_custcode
+	if this.editflag = true and (this.tab_retrieve.tabpage_detail.rb_debitors.checked or this.tab_retrieve.tabpage_detail.rb_all.checked) then
+		open(w_popup_areaselection)
+		ls_popup_selection = message.powerobjectparm
+		if ls_popup_selection.l_code > 0 then
+			openwithparm(w_popup_customerselectionareawise, ls_popup_selection)
+			ls_popup_selection = message.powerobjectparm
+			if ls_popup_selection.l_code > 0 then
+				ll_custcode = ls_popup_selection.l_code
+				this.id_detail.setitem(this.id_detail.getrow(), "acccode", ll_custcode)
+				SQL rollback USING sqlca;
+				SQL Select aliasname INTO :ls_aliasname From Accounts Where acccode =:ll_custcode USING sqlca;
+				if sqlca.sqlcode = 0 then
+					SQL commit USING sqlca;
+					this.id_detail.setitem(this.id_detail.getrow(), "fullcode", ls_aliasname)
+				else
+					SQL rollback USING sqlca;
+				end if
+				this.id_detail.setcolumn("acccode")
+				this.id_detail.setfocus()
+			end if
+		end if
+	end if
+	return 1
+
+// w_voucher_old.wf_initmodify(integer ai_protect) returns integer
+	long ll_glvochcode
+	long ll_counter
+	if this.id_master.getitemstring(1, "posted") = "N" then
+		ll_glvochcode = this.id_detail.getitemnumber(1, "code")
+		if wf_lockvoucher(ll_glvochcode) = 0 then
+			this.id_master.retrieve(ll_glvochcode)
+			this.id_detail.retrieve(ll_glvochcode)
+			ai_protect = 0
+			this.ib_modify = true
+			this.editflag = true
+			this.il_oldacccode = this.id_master.getitemnumber(1, "acccode")
+			this.im_menu.m_file.m_save.enabled = true
+			this.im_menu.m_file.m_new.enabled = false
+			this.im_menu.m_file.m_delete.enabled = false
+			this.im_menu.m_item.m_newitem.enabled = true
+			this.im_menu.m_item.m_deleteitem.enabled = true
+			this.im_menu.m_file.m_first.enabled = false
+			this.im_menu.m_file.m_next.enabled = false
+			this.im_menu.m_file.m_previous.enabled = false
+			this.im_menu.m_file.m_last.enabled = false
+			this.im_menu.m_file.m_retrieve.enabled = true
+			this.im_menu.m_file.m_retrieve.text = "Lis&t"
+			this.tab_retrieve.tabpage_detail.enabled = true
+		end if
+	end if
+	return 1
+
+// w_voucher_old.wf_getserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+	return true
+
+// w_voucher_old.wf_validatedate() returns boolean
+	datetime ldt_systemdatetime
+	SQL SELECT GETDATE ( ) INTO :ldt_systemdatetime FROM _UTN USING sqlca;
+	if sqlca.sqlcode = 0 then
+		this.id_master.setitem(1, "date", ldt_systemdatetime)
+		return true
+	end if
+	return false
+
+// w_voucher_old.wf_validategroupcustcat() returns integer
+	long ll_acccode
+	long ll_found
+	long ll_code
+	long ll_counter
+	long ll_rowcount
+	boolean lb_groupcustcat
+	if f_stringpreferences("GroupCustCatInTrans") = "N" then
+		return 0
+	end if
+	ll_rowcount = this.id_detail.rowcount()
+	ll_code = this.id_master.getitemnumber(1, "code")
+	for ll_counter = 1 to ll_rowcount
+		ll_acccode = this.id_detail.getitemnumber(ll_counter, "acccode")
+		ll_found = 0
+		SQL Select Count ( *) INTO :ll_found From dbo.customer Where custcode =:ll_acccode USING this.it_transobject;
+		if ll_found > 0 and this.it_transobject.sqlcode = 0 then
+			ll_found = 0
+			this.it_transobject.isallowedcustomergroupcategory(f_getgroupcode(gl_usercode), ll_acccode, ll_found)
+			if this.it_transobject.sqlcode = 0 and ll_found < 1 then
+				return -1
+			end if
+			return
+		end if
+	next
+	return 0
+
+// w_voucher_old.wf_accountledger() returns 0
+	long ll_acccode
+	if this.id_detail = getfocus() and this.id_detail.rowcount() > 0 then
+		ll_acccode = this.id_detail.getitemnumber(this.id_detail.getrow(), "acccode")
+		openwithparm(w_account_ledger, ll_acccode)
+	end if
+
+// w_voucher_old.wf_findfullcode(string as_fullcode, long al_acccode) returns integer
+	boolean lb_groupcustcat
+	long ll_found
+	long ll_subcode
+	if f_stringpreferences("GroupCustCatInTrans") = "Y" then
+		lb_groupcustcat = true
+	end if
+	if this.tab_retrieve.tabpage_detail.rb_all.checked then
+		SQL SELECT acccode , subcode INTO :al_acccode, :ll_subcode FROM dbo.accounts WHERE aliasname =:as_fullcode USING this.it_transobject;
+	elseif this.tab_retrieve.tabpage_detail.rb_creditors.checked then
+		SQL SELECT acccode , subcode INTO :al_acccode, :ll_subcode FROM dbo.accounts WHERE aliasname =:as_fullcode and subcode =:this.il_creditorssub USING this.it_transobject;
+	elseif this.tab_retrieve.tabpage_detail.rb_debitors.checked then
+		SQL SELECT acccode , subcode INTO :al_acccode, :ll_subcode FROM dbo.accounts WHERE aliasname =:as_fullcode and subcode =:this.il_debitorssub USING this.it_transobject;
+	elseif this.tab_retrieve.tabpage_detail.rb_other.checked then
+		SQL SELECT acccode , subcode INTO :al_acccode, :ll_subcode FROM dbo.accounts WHERE aliasname =:as_fullcode and subcode not in ( :this.il_creditorssub , :this.il_debitorssub ) USING this.it_transobject;
+	end if
+	if this.it_transobject.sqlcode = 0 then
+		if lb_groupcustcat = true and ll_subcode = this.il_debitorssub and not (as_fullcode = "" or isnull(as_fullcode)) then
+			ll_found = 0
+			this.it_transobject.isallowedcustomergroupcategory(f_getgroupcode(gl_usercode), al_acccode, ll_found)
+			if this.it_transobject.sqlcode = 0 then
+				if ll_found < 1 then
+					return -2
+				end if
+			else
+				return -2
+			end if
+			return
+		end if
+		return 1
+	end if
+	if as_fullcode = "" or isnull(as_fullcode) then
+		return 1
+	end if
+	return this.it_transobject.sqlcode
+
+// w_voucher_old.create() returns 0
+	integer icurrent
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_voucher" then
+		this.menuid = create m_voucher
+	end if
+	this.dw_voucherrep = create dw_voucherrep
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_voucherrep
+
+// w_voucher_old.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_voucherrep
+
+// w_voucher_old.ue_newform() returns 0
+	integer rtncode
+	long li_fetched_code
+	long row
+	long ll_manfcode
+	call super::ue_newform
+	setredraw(false)
+	this.id_detail.object.t_balance.text = ""
+	wf_protectdw(this.id_master, 0)
+	wf_protectdw(this.id_detail, 0)
+	this.ib_modify = false
+	this.im_menu.m_file.m_post.enabled = false
+	this.im_menu.m_file.m_print.enabled = true
+	setredraw(true)
+	if not wf_validatedate() then
+	end if
+
+// w_voucher_old.ue_save() returns 0
+	long ll_detailrows
+	long ll_mastercurrrow
+	long ll_invid
+	long ll_acccode
+	long ll_salesmancode
+	integer li_counter
+	double ld_debit
+	double ld_credit
+	double ld_currbalance
+	string ls_remarks
+	string ls_chkno
+	boolean lb_commitflag
+	integer li_null
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	unsignedlong ul_firstutn
+	unsignedlong ul_rowcount
+	unsignedlong ul_maxutn
+	setnull(li_null)
+	if this.ib_modify = false and this.i_editmode = 2 then
+		messagebox("!", "Error")
+	end if
+	wf_deleteemptydetailrow()
+	this.id_master.accepttext()
+	this.id_detail.accepttext()
+	if this.ii_vouchertype >= 12 then
+		if isnull(this.id_detail.getitemnumber(this.il_currrow, "acccode")) and isnull(this.id_detail.getitemnumber(this.il_currrow, "invcode")) then
+			messagebox("Invoice No.", "Please select Invoice No. OR Account")
+			this.id_detail.setcolumn("invcode")
+			this.id_detail.scrolltorow(this.il_currrow)
+			return
+		end if
+		if not isnull(this.id_detail.getitemnumber(this.il_currrow, "acccode")) and not isnull(this.id_detail.getitemnumber(this.il_currrow, "invcode")) then
+			messagebox("Invoice No.", "Please select Invoice No. OR Account")
+			this.id_detail.setcolumn("invcode")
+			this.id_detail.scrolltorow(this.il_currrow)
+			this.id_detail.setitem(this.il_currrow, "invcode", li_null)
+			this.id_detail.setitem(this.il_currrow, "acccode", li_null)
+			return
+		end if
+		return
+	end if
+	if this.ib_itemvalidated = false then
+		this.ib_itemvalidated = true
+		messagebox("Account Validation", "Duplicate Account, Please select some other")
+		this.id_detail.setcolumn("acccode")
+		this.id_detail.scrolltorow(this.il_currrow)
+		this.id_detail.object.acccode[this.il_currrow] = li_null
+		return
+	end if
+	ll_detailrows = this.id_detail.rowcount()
+	if ll_detailrows > 0 then
+		for li_counter = 1 to li_counter
+			if this.id_detail.getitemdecimal(li_counter, "debit") = 0 and this.id_detail.getitemdecimal(li_counter, "credit") = 0 then
+				if this.ii_vouchertype = 1 or this.ii_vouchertype = 3 then
+					this.id_detail.setcolumn("debit")
+				else
+					this.id_detail.setcolumn("credit")
+				end if
+				this.id_detail.scrolltorow(li_counter)
+				messagebox("Amount Validation", "Please Enter Valid Amount")
+				return
+			end if
+			if this.id_detail.getitemdecimal(li_counter, "debit") > 0 and this.id_detail.getitemdecimal(li_counter, "credit") > 0 then
+				if this.ii_vouchertype = 1 or this.ii_vouchertype = 3 then
+					this.id_detail.setcolumn("debit")
+				else
+					this.id_detail.setcolumn("credit")
+				end if
+				this.id_detail.scrolltorow(li_counter)
+				messagebox("Amount Validation", "Please Enter Valid Amount")
+				return
+			end if
+			if this.id_detail.getitemnumber(li_counter, "acccode") = this.id_master.getitemnumber(1, "acccode") then
+				this.id_detail.setcolumn("acccode")
+				this.id_detail.scrolltorow(li_counter)
+				messagebox("Account Validation", "Duplicate Account!~r Already Selected in Header Window")
+				return
+			end if
+		next
+	end if
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	if f_stringpreferences("Transuserwindow") = "Y" then
+		open(w_salesmanpassword)
+		ll_salesmancode = long(message.doubleparm)
+		setfocus()
+	else
+		ll_salesmancode = gl_usercode
+	end if
+	setfocus()
+	if ll_salesmancode > 0 then
+		setpointer(hourglass!)
+		ll_mastercurrrow = this.id_master.getrow()
+		ll_invid = this.id_master.object.code[ll_mastercurrrow]
+		ldt_server_datetime = this.id_master.object.date[ll_mastercurrrow]
+		if isnull(ll_invid) then
+			if this.ii_vouchertype <= 11 then
+				f_newtableid("glheader", ll_invid)
+			else
+				f_newtableid("InvLedger", ll_invid)
+			end if
+			this.id_master.object.code[ll_mastercurrrow] = ll_invid
+			this.id_master.setitem(ll_mastercurrrow, "salesmancode", ll_salesmancode)
+			this.id_master.setitem(ll_mastercurrrow, "date", ldt_server_datetime)
+			this.id_master.setitem(ll_mastercurrrow, "Originaldate", ldt_server_datetime)
+			this.id_master.setitem(ll_mastercurrrow, "Postdate", ldt_server_datetime)
+		else
+			this.id_master.setitem(ll_mastercurrrow, "modifiedby", ll_salesmancode)
+			this.id_master.setitem(ll_mastercurrrow, "date", ldt_server_datetime)
+		end if
+		if this.ii_vouchertype <= 11 then
+			this.id_master.setitem(ll_mastercurrrow, "vochcatcode", this.ii_vouchertype)
+		else
+			this.id_master.setitem(ll_mastercurrrow, "invvochcatcode", this.ii_vouchertype)
+		end if
+		ll_detailrows = this.id_detail.rowcount()
+		ul_rowcount = this.id_detail.rowcount() + 1
+		sqlca.getmaxutn(ul_rowcount, ul_maxutn)
+		if sqlca.sqlcode = 0 then
+			SQL commit USING sqlca;
+		else
+			SQL rollback USING sqlca;
+			messagebox("Saving", "Saving fail due to error in generating Utn")
+			return
+		end if
+		ul_firstutn = ul_maxutn
+		ul_maxutn = ul_maxutn + 1
+		li_counter = 1
+		do while li_counter <= ll_detailrows and lb_commitflag = true
+			this.id_detail.setitem(li_counter, "code", ll_invid)
+			this.id_detail.setitem(li_counter, "GLUTN", ul_maxutn)
+			ul_maxutn = ul_maxutn + 1
+			li_counter = li_counter + 1
+		loop
+		if this.ii_vouchertype = 1 or this.ii_vouchertype = 3 or this.ii_vouchertype = 6 or this.ii_vouchertype = 7 or this.ii_vouchertype = 8 or this.ii_vouchertype = 15 or this.ii_vouchertype = 16 or this.ii_vouchertype = 10 then
+			ld_credit = round(this.id_detail.getitemnumber(1, "c_totalamt"), 2)
+			ld_debit = 0
+			setnull(ls_chkno)
+		elseif this.ii_vouchertype = 2 or this.ii_vouchertype = 4 or this.ii_vouchertype = 9 or this.ii_vouchertype = 12 or this.ii_vouchertype = 13 or this.ii_vouchertype = 11 then
+			ld_credit = 0
+			ld_debit = round(this.id_detail.getitemnumber(1, "c_totalamt"), 2)
+			setnull(ls_chkno)
+		end if
+		if this.ii_vouchertype = 9 or this.ii_vouchertype = 11 then
+			for li_counter = 1 to li_counter
+				this.id_detail.setitem(li_counter, "credit", this.id_detail.getitemnumber(li_counter, "debit"))
+				this.id_detail.setitem(li_counter, "debit", 0)
+			next
+		end if
+		if this.id_master.update(true, false) > 0 then
+			ll_acccode = this.id_master.object.acccode[ll_mastercurrrow]
+			ls_remarks = this.id_master.object.remarks[ll_mastercurrrow]
+			if this.ii_vouchertype <= 11 then
+				if not this.ib_modify then
+					SQL INSERT gldetail ( glvochcode , acccode , debit , credit , ChkNo , remarks , GLUTN ) VALUES ( :ll_invid , :ll_acccode , :ld_debit , :ld_credit , :ls_chkno , :ls_remarks , :ul_firstutn ) USING this.it_transobject;
+				else
+					SQL update gldetail SET acccode =:ll_acccode , debit =:ld_debit , credit =:ld_credit , ChkNo =:ls_chkno , remarks =:ls_remarks , GLUTN =:ul_firstutn WHERE gldetail.glvochcode =:ll_invid AND gldetail.AccCode =:this.il_oldacccode USING this.it_transobject;
+				end if
+			elseif not this.ib_modify then
+				SQL INSERT InvDetail ( Invvochcode , acccode , debit , credit , ChkNo , remarks ) VALUES ( :ll_invid , :ll_acccode , :ld_debit , :ld_credit , :ls_chkno , :ls_remarks ) USING this.it_transobject;
+			else
+				SQL update InvDetail SET acccode =:ll_acccode , debit =:ld_debit , credit =:ld_credit , ChkNo =:ls_chkno , remarks =:ls_remarks WHERE InvDetail.Invvochcode =:ll_invid AND InvDetail.AccCode =:this.il_oldacccode USING this.it_transobject;
+			end if
+			if this.it_transobject.sqlcode = 0 then
+				if this.id_detail.update() > 0 then
+					SQL commit USING this.it_transobject;
+					messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+					this.ib_commitok = true
+					this.ib_modify = false
+					this.id_master.resetupdate()
+					this.im_menu.m_file.m_new.enabled = true
+					this.editflag = false
+					if gd_recenttransdate < this.id_systemdate then
+						gd_recenttransdate = this.id_systemdate
+					end if
+					setpointer(arrow!)
+					return
+				else
+					lb_commitflag = false
+				end if
+			else
+				lb_commitflag = false
+			end if
+		else
+			lb_commitflag = false
+		end if
+		if lb_commitflag = false then
+			SQL rollback USING this.it_transobject;
+			messagebox("Result", "Changes don't take effect in database", exclamation!, ok!, 1)
+			setpointer(arrow!)
+		end if
+		setpointer(arrow!)
+		return
+	end if
+	setfocus()
+
+// w_voucher_old.ue_detail() returns 0
+	integer li_rtncode
+	integer li_protect
+	integer li_vouchcode
+	integer li_counter
+	long ll_row
+	string ls_remarks
+	call super::ue_detail
+	setredraw(false)
+	li_vouchcode = this.id_master.getitemnumber(1, "code")
+	SQL select remarks INTO :ls_remarks from glheader where glvochcode =:li_vouchcode USING this.it_transobject;
+	this.id_detail.object.t_balance.text = ""
+	if wf_validategroupcustcat() <> 0 then
+		messagebox("Group Customer Category Validation", "Current user group does not have enough permissions w.r.t customer.~r~nPossible Reasons are:~r~nCustomer on the selected voucher is not allowed to the current user group.")
+		this.tab_retrieve.selectedtab = 2
+		setredraw(true)
+		return
+	end if
+	wf_initmodify(li_protect)
+	wf_protectdw(this.id_master, li_protect)
+	wf_protectdw(this.id_detail, li_protect)
+	this.id_master.setitem(1, "remarks", ls_remarks)
+	if this.ii_vouchertype = 9 or this.ii_vouchertype = 11 then
+		for li_counter = 1 to li_counter
+			this.id_detail.setitem(li_counter, "debit", this.id_detail.getitemnumber(li_counter, "credit"))
+			this.id_detail.setitem(li_counter, "credit", 0)
+		next
+	end if
+	this.im_menu.m_file.m_post.enabled = false
+	setredraw(true)
+
+// w_voucher_old.ue_newitem() returns 0
+	integer li_null
+	long ll_rowcount
+	setnull(li_null)
+	ll_rowcount = this.id_detail.rowcount()
+	this.id_detail.accepttext()
+	if this.ii_vouchertype <= 5 and ll_rowcount > 0 then
+		if this.id_detail.object.credit[this.id_detail.getrow()] < 1 and this.id_detail.object.debit[this.id_detail.getrow()] < 1 then
+			messagebox("Inpur Error", "Enter some valid amount")
+			this.id_detail.scrolltorow(ll_rowcount)
+			if this.ii_vouchertype = 1 or this.ii_vouchertype = 3 then
+				this.id_detail.setcolumn("debit")
+			else
+				this.id_detail.setcolumn("credit")
+			end if
+			this.id_detail.scrolltorow(ll_rowcount)
+			return
+		elseif this.id_detail.object.credit[this.id_detail.getrow()] > 0 and this.id_detail.object.debit[this.id_detail.getrow()] > 0 then
+			messagebox("Inpur Error", "Enter Valid Amount")
+			if this.ii_vouchertype = 1 or this.ii_vouchertype = 3 then
+				this.id_detail.setcolumn("debit")
+			else
+				this.id_detail.setcolumn("credit")
+			end if
+			this.id_detail.scrolltorow(ll_rowcount)
+			return
+		end if
+		return
+	end if
+	if this.ii_vouchertype >= 12 and this.id_detail.getrow() > 0 then
+		if isnull(this.id_detail.getitemnumber(this.id_detail.getrow(), "acccode")) and isnull(this.id_detail.getitemnumber(this.il_currrow, "invcode")) then
+			messagebox("Invoice No.", "Please select Invoice No. OR Account")
+			this.id_detail.setcolumn("invcode")
+			this.id_detail.scrolltorow(this.il_currrow)
+			return
+		end if
+		if not isnull(this.id_detail.getitemnumber(this.id_detail.getrow(), "acccode")) and not isnull(this.id_detail.getitemnumber(this.il_currrow, "invcode")) then
+			messagebox("Invoice No.", "Please select Invoice No. OR Account")
+			this.id_detail.setcolumn("invcode")
+			this.id_detail.scrolltorow(this.il_currrow)
+			this.id_detail.setitem(this.il_currrow, "invcode", li_null)
+			this.id_detail.setitem(this.il_currrow, "acccode", li_null)
+			return
+		end if
+		return
+	end if
+	if this.ib_itemvalidated = false then
+		this.ib_itemvalidated = true
+		messagebox("Account Validation", "Duplicate Account, Please select some other")
+		this.id_detail.setcolumn("acccode")
+		this.id_detail.scrolltorow(this.il_currrow)
+		this.id_detail.object.acccode[this.il_currrow] = li_null
+		return
+	end if
+	if this.ib_invnovalidated = false then
+		messagebox("Invoice No Account Validation", "Duplicate Invoice No, Please enter some other")
+		this.ib_invnovalidated = true
+		this.id_detail.setcolumn("invcode")
+		this.id_detail.scrolltorow(this.il_currrow)
+		this.id_detail.object.invcode[this.il_currrow] = li_null
+		return
+	end if
+	if this.ii_vouchertype = 5 and this.id_detail.rowcount() >= 1 then
+		if this.id_detail.object.credit[this.id_detail.getrow()] < 1 and this.id_detail.object.debit[this.id_detail.getrow()] < 1 then
+			messagebox("Inpur Error", "Enter some valid value for credit or debit field")
+			return
+		elseif this.id_detail.object.credit[this.id_detail.getrow()] > 0 and this.id_detail.object.debit[this.id_detail.getrow()] > 0 then
+			messagebox("Inpur Error", "One of the credit or debit field must be zero")
+			return
+		end if
+		return
+	end if
+	this.im_menu.m_file.m_print.enabled = true
+	if this.id_detail.rowcount() > 0 and f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	if this.ii_vouchertype <= 11 then
+		if f_stringpreferences("aliasnameintrans") = "N" then
+			this.id_detail.setcolumn(2)
+		else
+			this.id_detail.setcolumn(1)
+		end if
+	else
+		this.id_detail.setcolumn("invcode")
+	end if
+	this.id_detail.insertrow(0)
+	ll_rowcount = this.id_detail.rowcount()
+	if ll_rowcount > 1 then
+		this.id_detail.scrolltorow(ll_rowcount)
+		this.id_detail.setfocus()
+	end if
+	this.id_detail.setitem(this.id_detail.getrow(), "remarks", this.id_detail.getitemstring(1, "remarks"))
+	this.im_menu.m_file.m_save.enabled = true
+	this.ib_validatefullcode = true
+
+// w_voucher_old.ue_refreshddw() returns 0
+	setpointer(hourglass!)
+	this.idc_dddwdetailaccount.setredraw(false)
+	this.idc_dddwdetailaccount.settransobject(this.it_transobject)
+	this.idc_dddwdetailaccount.reset()
+	this.idc_dddwdetailaccount.retrieve()
+	this.idc_dddwdetailaccount.setredraw(true)
+	this.idc_dddwheaderaccount.setredraw(false)
+	this.idc_dddwheaderaccount.settransobject(this.it_transobject)
+	this.idc_dddwheaderaccount.reset()
+	this.idc_dddwheaderaccount.retrieve(this.is_headeracctype)
+	this.idc_dddwheaderaccount.setredraw(true)
+	this.idc_dddwdetailpatient.setredraw(false)
+	this.idc_dddwdetailpatient.settransobject(this.it_transobject)
+	this.idc_dddwdetailpatient.reset()
+	this.idc_dddwdetailpatient.retrieve()
+	this.idc_dddwdetailpatient.setredraw(true)
+	setpointer(arrow!)
+
+// w_voucher_old.ue_list() returns 0
+	call super::ue_list
+	SQL rollback USING this.it_transobject;
+	this.ib_modify = false
+	this.im_menu.m_file.m_post.enabled = true
+	this.im_menu.m_file.m_print.enabled = false
+
+// w_voucher_old.ue_postopen() returns 0
+	long ll_counter
+	integer li_rtncode
+	string ls_filter
+	datawindowchild ldc_dddpurcategory
+	s_arguements lstr_voucherinfo
+	m_voucher lm_menu
+	call super::ue_postopen
+	lm_menu = this.menuid
+	setredraw(false)
+	setnull(ls_filter)
+	lstr_voucherinfo = message.powerobjectparm
+	wf_setvouchertype(lstr_voucherinfo.l_code1)
+	SQL rollback USING sqlca;
+	sqlca.virtualgl("A")
+	if sqlca.sqlcode = 0 then
+		SQL commit USING sqlca;
+	else
+		SQL rollback USING sqlca;
+	end if
+	if this.ii_vouchertype > 5 and this.ii_vouchertype < 12 then
+		wf_cleargroupbox()
+		ls_filter = lstr_voucherinfo.s_name3
+	end if
+	choose case this.ii_vouchertype
+	case 12
+		this.title = "Invoice Cash Receipt Voucher"
+		wf_assigndatawindowobjects("d_InvCashReceiptHeader", "d_InvCashReceiptDetail", "d_InvCashReceiptList")
+	case 13
+		this.title = "Invoice Bank Receipt Voucher"
+		wf_assigndatawindowobjects("d_InvBankReceiptHeader", "d_InvBankReceiptDetail", "d_InvBankReceiptList")
+	case 15
+		this.title = "Invoice Cash Payment Voucher"
+		wf_assigndatawindowobjects("d_InvCashPaymentHeader", "d_InvCashPaymentDetail", "d_InvCashPaymentList")
+	case 16
+		this.title = "Invoice Bank Payment Voucher"
+		wf_assigndatawindowobjects("d_InvBankPaymentHeader", "d_InvBankPaymentDetail", "d_InvBankPaymentList")
+	case 1
+		this.title = "Cash Payment Voucher"
+		wf_assigndatawindowobjects("d_CashPaymentHeader", "d_CashPaymentDetail", "d_CashPaymentList")
+	case 2
+		this.title = "Cash Receipt Voucher"
+		wf_assigndatawindowobjects("d_CashReceiptHeader", "d_CashReceiptDetail", "d_CashReceiptList")
+	case 3
+		this.title = "Bank Payment Voucher"
+		wf_assigndatawindowobjects("d_BankPaymentHeader", "d_BankPaymentDetail", "d_BankPaymentList")
+	case 4
+		this.title = "Bank Receipt Voucher"
+		wf_assigndatawindowobjects("d_BankReceiptHeader", "d_BankReceiptDetail", "d_BankReceiptList")
+	case 5
+		wf_assigndatawindowobjects("d_JournalVoucherHeader", "d_JournalVoucherDetail", "d_JournalVoucherList")
+	case else
+		this.title = lstr_voucherinfo.s_name1
+		ls_filter = lstr_voucherinfo.s_name3
+		wf_cleargroupbox()
+		wf_assigndatawindowobjects("d_OpeningVoucherHeader", "d_OpeningVoucherDetail", "d_openingvoucherslist")
+	end choose
+	if f_stringpreferences("aliasnameintrans") = "N" then
+		this.id_detail.object.fullcode.visible = false
+		this.id_detail.object.aliasname_t.visible = false
+	end if
+	wf_initglobalconstants()
+	if this.ii_vouchertype <> 5 then
+		li_rtncode = this.id_master.getchild("acccode", this.idc_dddwheaderaccount)
+		if li_rtncode = -1 then
+			messagebox("Error", "Can not get a master DataWindowChild")
+			close(this)
+		end if
+		this.idc_dddwheaderaccount.settransobject(this.it_transobject)
+		this.is_headeracctype = lstr_voucherinfo.s_name2
+		this.idc_dddwheaderaccount.retrieve(lstr_voucherinfo.s_name2)
+	end if
+	li_rtncode = this.id_detail.getchild("acccode", this.idc_dddwdetailaccount)
+	if li_rtncode = -1 then
+		messagebox("Error", "Can not get a detail DataWindowChild")
+		close(this)
+	end if
+	this.idc_dddwdetailaccount.settransobject(this.it_transobject)
+	wf_filter(ls_filter)
+	this.idc_dddwdetailaccount.retrieve()
+	li_rtncode = this.id_detail.getchild("patientcode", this.idc_dddwdetailpatient)
+	if li_rtncode = -1 then
+		messagebox("Error", "Can not get a detail DataWindowChild")
+		close(this)
+	end if
+	this.idc_dddwdetailpatient.settransobject(this.it_transobject)
+	this.id_footer.insertrow(0)
+	this.id_footer.scrolltorow(0)
+	this.im_menu.m_file.m_print.visible = true
+	this.ib_editing = false
+	for ll_counter = 1 to gds_securitywindow.rowcount()
+		if gds_securitywindow.object.rightcode[ll_counter] = 546 then
+			lm_menu.m_file.m_accountledger.visible = true
+			lm_menu.m_file.m_accountledger.enabled = true
+		end if
+		if gds_securitywindow.object.rightcode[ll_counter] = 547 then
+			this.id_detail.object.t_balance.visible = true
+		end if
+	next
+	this.id_detail.object.regno.visible = false
+	this.id_detail.object.regno_t.visible = false
+	this.id_detail.object.patientcode.visible = false
+	this.id_detail.object.patientcode_t.visible = false
+	this.tab_retrieve.tabpage_detail.rb_all.postevent(clicked!)
+	setredraw(true)
+
+// w_voucher_old.ue_print() returns 0
+	long ll_code
+	long ll_counter
+	long ll_rowcount
+	integer li_option
+	call super::ue_print
+	if this.im_menu.m_file.m_save.enabled = true then
+		li_option = messagebox("Save Changes", "Do you want to save voucher", information!, yesno!, 2)
+		if li_option = 1 then
+			triggerevent("ue_save")
+			if wf_commitform() = false then
+				return
+			end if
+			return
+		end if
+		return
+	end if
+	ll_code = this.id_master.getitemnumber(1, "code")
+	if this.ii_vouchertype >= 12 then
+		this.dw_voucherrep.dataobject = "d_journalInvvoucherreport"
+	else
+		this.dw_voucherrep.dataobject = "d_journalvoucherreport"
+	end if
+	this.dw_voucherrep.settransobject(this.it_transobject)
+	ll_rowcount = this.dw_voucherrep.retrieve(ll_code)
+	if this.dw_voucherrep.rowcount() > 0 then
+		if this.dw_voucherrep.print() < 0 then
+			messagebox("Printing", "Can not Print Voucher", information!)
+		end if
+		if this.im_menu.m_file.m_save.enabled = true then
+			postevent("ue_new")
+		end if
+		return
+	end if
+	messagebox("Printing Error", "Can not Print Voucher,~r~nNo rows are retrieved", information!)
+
+// w_voucher_old.ue_deleteitem() returns 0
+	call super::ue_deleteitem
+	if this.id_detail.rowcount() <= 0 then
+		this.im_menu.m_file.m_print.enabled = false
+	end if

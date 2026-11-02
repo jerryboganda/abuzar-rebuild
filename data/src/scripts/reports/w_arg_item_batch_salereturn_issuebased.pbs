@@ -1,0 +1,105 @@
+// window w_arg_item_batch_salereturn_issuebased (reports)  ancestor: w_popup_forselection_walias
+
+// w_arg_item_batch_salereturn_issuebased.wf_validate_batchno(long al_icode, string as_batch) returns long
+	datetime ldt_expiry
+	double ld_qty
+	SQL SELECT Expiry =Max ( Expiry ) , Qty =SUM ( ISNULL ( Qty , 0 ) ) INTO :ldt_expiry, :ld_qty FROM ( SELECT Expiry =Max ( Expiry ) , Qty =SUM ( Qty ) FROM IssueDetail WHERE ICode =:al_icode AND Batch =:as_batch UNION ALL SELECT Expiry =Max ( Expiry ) , Qty =- SUM ( LooseQty ) FROM SRDetail WHERE ICode =:al_icode AND Batch =:as_batch ) A USING sqlca;
+	if sqlca.sqlcode = 0 then
+		if ld_qty > 0.0 then
+			this.dw_control.object.expirydate[1] = ldt_expiry
+		else
+			messagebox("Batch No. Validation!", "Invalid Batch or Returnable Qty for this batch is not enough")
+			return 1
+		end if
+	else
+		messagebox("Batch No. Validation!", "Database Problem.Possible Reasons:-~r~n" + sqlca.sqlerrtext)
+		return 1
+	end if
+	return 0
+
+// w_arg_item_batch_salereturn_issuebased.create() returns 0
+	integer icurrent
+	call super::create
+	this.gb_2 = create gb_2
+	this.st_1 = create st_1
+	this.st_2 = create st_2
+	this.em_startdate = create em_startdate
+	this.em_enddate = create em_enddate
+	this.dw_control = create dw_control
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.gb_2
+	this.control[icurrent + 2] = this.st_1
+	this.control[icurrent + 3] = this.st_2
+	this.control[icurrent + 4] = this.em_startdate
+	this.control[icurrent + 5] = this.em_enddate
+	this.control[icurrent + 6] = this.dw_control
+
+// w_arg_item_batch_salereturn_issuebased.destroy() returns 0
+	call super::destroy
+	destroy this.gb_2
+	destroy this.st_1
+	destroy this.st_2
+	destroy this.em_startdate
+	destroy this.em_enddate
+	destroy this.dw_control
+
+// w_arg_item_batch_salereturn_issuebased.open() returns long
+	long ancestorreturnvalue
+	date ld_currdate
+	string ls_text
+	ancestorreturnvalue = super::open()
+	gd_itemsinfo.sharedata(this.id_selectionlist)
+	ld_currdate = today()
+	ls_text = string(ld_currdate, "dd/mm/yyyy")
+	ls_text = trim(ls_text) + " 00:00:00"
+	this.em_startdate.text = ls_text
+	ls_text = string(ld_currdate, "dd/mm/yyyy")
+	ls_text = trim(ls_text) + " 23:59:59"
+	this.em_enddate.text = ls_text
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.retrieve()
+	this.dw_control.setrow(0)
+	this.dw_control.scrolltorow(0)
+	return ::message.returnvalue
+
+// w_arg_item_batch_salereturn_issuebased.ue_close() returns 0
+	closewithreturn(this, this.istr_arg)
+
+// em_startdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// em_enddate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// dw_control.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_control.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	long ll_retcode
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	if dwo.name = "batchno" then
+		if isnull(data) then
+			messagebox("Batch No. Validation!", "Please enter valid batch no.")
+			ll_retcode = 1
+		elseif not isnull(parent.dw_selected.object.code[1]) and parent.dw_selected.object.code[1] > 0 then
+			ll_retcode = parent.wf_validate_batchno(parent.dw_selected.object.code[1], data)
+		end if
+		return ll_retcode
+	end if
+	return ll_retcode
+
+// dw_control.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return ::message.returnvalue

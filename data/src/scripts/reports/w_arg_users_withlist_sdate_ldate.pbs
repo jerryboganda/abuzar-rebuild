@@ -1,0 +1,55 @@
+// window w_arg_users_withlist_sdate_ldate (reports)  ancestor: w_listarguments
+
+// w_arg_users_withlist_sdate_ldate.create() returns 0
+	integer icurrent
+	call super::create
+	this.cbx_cash = create cbx_cash
+	this.cbx_credit = create cbx_credit
+	this.st_4 = create st_4
+	this.st_8 = create st_8
+	this.gb_5 = create gb_5
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.cbx_cash
+	this.control[icurrent + 2] = this.cbx_credit
+	this.control[icurrent + 3] = this.st_4
+	this.control[icurrent + 4] = this.st_8
+	this.control[icurrent + 5] = this.gb_5
+
+// w_arg_users_withlist_sdate_ldate.destroy() returns 0
+	call super::destroy
+	destroy this.cbx_cash
+	destroy this.cbx_credit
+	destroy this.st_4
+	destroy this.st_8
+	destroy this.gb_5
+
+// w_arg_users_withlist_sdate_ldate.open() returns long
+	long ancestorreturnvalue
+	long ll_counter
+	long ll_rowcount
+	integer rtncode
+	ancestorreturnvalue = super::open()
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	rtncode = this.dw_control.getchild("usercode", this.idc_categories)
+	if rtncode = -1 then
+		messagebox("Error", "Not a DataWindowChild")
+	end if
+	ll_rowcount = this.idc_categories.rowcount()
+	for ll_counter = 1 to ll_rowcount
+		this.lb_categories.additem(this.idc_categories.getitemstring(ll_counter, "username"))
+	next
+	return ::message.returnvalue
+
+// cbx_cash.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// cbx_credit.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue

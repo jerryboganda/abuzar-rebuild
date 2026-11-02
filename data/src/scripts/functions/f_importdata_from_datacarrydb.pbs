@@ -1,0 +1,214 @@
+// function f_importdata_from_datacarrydb (functions)  ancestor: function_object
+
+// f_importdata_from_datacarrydb.f_importdata_from_datacarrydb(char ac_importitems, char ac_service, char ac_importaccounts, char ac_importsecurity, char ac_patients, transaction at_transobject, integer ai_usercode) returns long
+	string ls_errtext
+	string ls_datetime
+	string ls_tablename
+	string ls_autoinsert
+	string ls_autoupdate
+	string ls_autodelete
+	string ls_updatetabmaxkey
+	string[] ls_transferabledata
+	string ls_query_reset
+	string ls_query_newitemsonly
+	string ls_query_allitems
+	string ls_query_accounts1
+	string ls_query_accounts2
+	string ls_query_accounts3
+	string ls_query_security
+	string ls_query_patients
+	string ls_query_service
+	long ll_transferabletables
+	long ll_rows
+	long ll_counter
+	boolean lb_commitok
+	datetime ldt_datetime
+	u_transaction lt_transobject
+	string ls_server
+	string ls_computer
+	string ls_query
+	lt_transobject = at_transobject
+	ls_query_reset = "Update TransferableData Set AutoInsert = 'N', AutoUpdate = 'N', AutoDelete = 'N', UpdateTabMaxKey = 'N' WHERE Enable='Y' "
+	ls_query_newitemsonly = "Update TransferableData Set AutoInsert = 'Y', " + "AutoUpdate = CASE TableName WHEN 'Item' THEN 'N' ELSE 'Y' END, " + "AutoDelete = CASE TableName WHEN 'POPolicyDetail' THEN 'Y' WHEN 'AlternateItemAlias' THEN 'Y' WHEN 'PackingCaseCapacity' THEN 'Y' WHEN 'DiscountPolicyDetail' THEN 'Y' ELSE 'N' END, " + "UpdateTabMaxKey = CASE TableName WHEN 'POPolicyDetail' THEN 'N' WHEN 'AlternateItemAlias' THEN 'N' WHEN 'PackingCaseCapacity' THEN 'N' WHEN 'DiscountPolicyDetail' THEN 'N' ELSE 'Y' END " + "Where Enable='Y' AND TableName In ('Item','CategorySegment','Site','ItemAlert','ItemCategory','PCT','SalesTaxSchedule','ItemClass','ItemPacking','Manufacturer','ManufacturerCategory','ManufacturerType','GenericItemType','GenericItem','POPolicy','POPolicyDetail','AlternateItemAlias','PackingCaseCapacity','DiscountPolicy','DiscountPolicyDetail','MeasuringUnit','LockReason')"
+	ls_query_allitems = "Update TransferableData Set AutoInsert = 'Y', AutoUpdate = 'Y', " + "AutoDelete = CASE TableName WHEN 'POPolicyDetail' THEN 'Y' WHEN 'AlternateItemAlias' THEN 'Y' WHEN 'PackingCaseCapacity' THEN 'Y' WHEN 'DiscountPolicyDetail' THEN 'Y' ELSE 'N' END, " + "UpdateTabMaxKey = 'Y' " + "Where Enable='Y' AND TableName In ('Item','CategorySegment','Site','ItemAlert','ItemCategory','PCT','SalesTaxSchedule','ItemClass','ItemPacking','Manufacturer','ManufacturerCategory','ManufacturerType','GenericItemType','GenericItem','POPolicy','POPolicyDetail','AlternateItemAlias','PackingCaseCapacity','DiscountPolicy','DiscountPolicyDetail','MeasuringUnit','LockReason')"
+	ls_query_security = "Update TransferableData Set AutoInsert = 'Y', AutoUpdate = 'Y', AutoDelete = CASE TableName WHEN 'Groups' THEN 'N' ELSE 'Y' END, UpdateTabMaxKey = CASE TableName WHEN 'Groups' THEN 'Y' ELSE 'N' END Where Enable='Y' AND TableName In ('Groups', 'GroupRights')"
+	ls_query_accounts1 = "Update TransferableData Set AutoInsert = 'Y', AutoUpdate = 'Y', AutoDelete = 'N', UpdateTabMaxKey = 'Y' Where Enable='Y' AND TableName In ('TaxCategory','Alert','SupplierCategory','CustomerSegment','CustomerSector','CustomerCategory','CustomerGroup','SalesMan','County','Area','SubArea','CategoryAccounts','SubAccounts','Accounts','Supplier','Customer','ContactPolicy','Region','Zone','SalesTeam','SummaryAccount','GroupSummaryAccount','VocherCategory','VocherCategoryHeader','Message','SaleType')"
+	ls_query_accounts2 = "Update TransferableData Set AutoInsert = 'Y', AutoUpdate = 'Y', AutoDelete = 'Y', UpdateTabMaxKey = 'N' Where Enable='Y' AND TableName In ('SupplierManufacturers','ItemSuppliers','SalesTeamMember','CustItemCatWiseSaleDiscount','CustomerGroupDetail','ContactPolicyDetail', 'ZoneAreas', 'SummaryAccountDetail', 'VocherCategoryDetail')"
+	ls_query_accounts3 = "Update TransferableData Set AutoInsert = 'Y', AutoUpdate = 'Y', AutoDelete = 'Y', UpdateTabMaxKey = 'N' Where Enable='Y' AND TableName In ('SupplierManufacturers','SalesTeamMember','CustItemCatWiseSaleDiscount','CustomerGroupDetail','ContactPolicyDetail','ZoneAreas','SummaryAccountDetail','VocherCategoryDetail')"
+	ls_query_patients = "Update TransferableData Set AutoInsert = 'Y', AutoUpdate = 'Y', AutoDelete = 'N', UpdateTabMaxKey = 'Y' Where Enable='Y' AND TableName In ('Gestation','Rank','Unit','Relation','DoctorCategory','Doctors','Ward','DiseaseType','Disease','Patient','PatientLocation','PatientCategory')"
+	ls_query_service = "Update TransferableData Set AutoInsert = 'Y', AutoUpdate = 'Y', AutoDelete = CASE TableName WHEN 'ServiceBreakUp' THEN 'Y' WHEN 'ServiceComponentOption' THEN 'Y' WHEN 'ServiceComponentComment' THEN 'Y' WHEN 'ServiceComponentRefValue' THEN 'Y' ELSE 'N' END, UpdateTabMaxKey = 'Y' Where Enable='Y' AND TableName In ('Service','ServiceType','ServiceCategory','ServiceBreakUp','ServiceComponent','ServiceComponentType','ServiceComponentUnit','ServiceComponentComment','ServiceComponentOption','ServiceComponentRefValue','ServiceResultStamp','ServiceSampleRequirement')"
+	setpointer(hourglass!)
+	SQL rollback USING lt_transobject;
+	SQL EXECUTE IMMEDIATE :ls_query_reset USING lt_transobject;
+	if lt_transobject.sqlcode = 0 then
+		if ac_importitems = "N" then
+			SQL EXECUTE IMMEDIATE :ls_query_newitemsonly USING lt_transobject;
+			if lt_transobject.sqlcode <> 0 then
+				ls_errtext = "Problem in import of new items. Import Setting Initialization Failed~r~nReasons Are:-~r~n" + lt_transobject.sqlerrtext
+				lb_commitok = false
+			end if
+		elseif ac_importitems = "A" then
+			SQL EXECUTE IMMEDIATE :ls_query_allitems USING lt_transobject;
+			if lt_transobject.sqlcode <> 0 then
+				ls_errtext = "Problem in import of all items. Import Setting Initialization Failed~r~nReasons Are:-~r~n" + lt_transobject.sqlerrtext
+				lb_commitok = false
+			end if
+		end if
+		if lb_commitok and ac_importaccounts = "Y" then
+			SQL EXECUTE IMMEDIATE :ls_query_accounts1 USING lt_transobject;
+			if lt_transobject.sqlcode <> 0 then
+				ls_errtext = "Problem in import of accounts. Import Setting Initialization Failed (1st step)~r~nReasons Are:-~r~n" + lt_transobject.sqlerrtext
+				lb_commitok = false
+			elseif ac_importitems = "" then
+				SQL EXECUTE IMMEDIATE :ls_query_accounts3 USING lt_transobject;
+				if lt_transobject.sqlcode <> 0 then
+					ls_errtext = "Problem in import of accounts. Import Setting Initialization Failed (3rd step)~r~nReasons Are:-~r~n" + lt_transobject.sqlerrtext
+					lb_commitok = false
+				end if
+			else
+				SQL EXECUTE IMMEDIATE :ls_query_accounts2 USING lt_transobject;
+				if lt_transobject.sqlcode <> 0 then
+					ls_errtext = "Problem in import of accounts. Import Setting Initialization Failed (2nd step)~r~nReasons Are:-~r~n" + lt_transobject.sqlerrtext
+					lb_commitok = false
+				end if
+			end if
+		end if
+		if lb_commitok and ac_patients = "Y" then
+			SQL EXECUTE IMMEDIATE :ls_query_patients USING lt_transobject;
+			if lt_transobject.sqlcode <> 0 then
+				ls_errtext = "Problem in import of patients. Import Setting Initialization Failed~r~nReasons Are:-~r~n" + lt_transobject.sqlerrtext
+				lb_commitok = false
+			end if
+		end if
+		if lb_commitok and ac_service = "Y" then
+			SQL EXECUTE IMMEDIATE :ls_query_service USING lt_transobject;
+			if lt_transobject.sqlcode <> 0 then
+				ls_errtext = "Problem in import of services. Import Setting Initialization Failed~r~nReasons Are:-~r~n" + lt_transobject.sqlerrtext
+				lb_commitok = false
+			end if
+		end if
+		if lb_commitok and ac_importsecurity = "Y" and f_check_grouprightsindatacarry() > 0 then
+			SQL EXECUTE IMMEDIATE :ls_query_security USING lt_transobject;
+			if lt_transobject.sqlcode <> 0 then
+				ls_errtext = "Problem in import of security Settings. Import Setting Initialization Failed~r~nReasons Are:-~r~n" + lt_transobject.sqlerrtext
+				lb_commitok = false
+			else
+				lb_commitok = true
+			end if
+		end if
+		if not lb_commitok then
+			SQL rollback USING lt_transobject;
+			messagebox("Import Data From DataCarryDB", ls_errtext, stopsign!)
+			return -1
+		end if
+	else
+		lb_commitok = false
+		messagebox("Import Data From DataCarryDB", "Unable to reset previous import settings at start of fresh import.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext, stopsign!)
+		SQL rollback USING lt_transobject;
+		return -1
+	end if
+	if lb_commitok then
+		SQL OPEN transferabledata_cursor USING lt_transobject;
+		SQL FETCH transferabledata_cursor INTO :ls_tablename, :ls_autoinsert, :ls_autoupdate, :ls_autodelete, :ls_updatetabmaxkey USING lt_transobject;
+		do while lt_transobject.sqlcode = 0
+			ll_transferabletables = ll_transferabletables + 1
+			ls_transferabledata[ll_transferabletables, 1] = ls_tablename
+			ls_transferabledata[ll_transferabletables, 2] = ls_autoinsert
+			ls_transferabledata[ll_transferabletables, 3] = ls_autoupdate
+			ls_transferabledata[ll_transferabletables, 4] = ls_autodelete
+			ls_transferabledata[ll_transferabletables, 5] = ls_updatetabmaxkey
+			SQL FETCH transferabledata_cursor INTO :ls_tablename, :ls_autoinsert, :ls_autoupdate, :ls_autodelete, :ls_updatetabmaxkey USING lt_transobject;
+		loop
+		SQL CLOSE transferabledata_cursor USING lt_transobject;
+		SQL update TransferableData Set AutoInsert ='N' , AutoUpdate ='N' , AutoDelete ='N' , UpdateTabmaxkey ='N' WHERE Enable ='Y' USING lt_transobject;
+		if lt_transobject.sqlcode <> 0 then
+			messagebox("Import Data From DataCarryDB.", "Unable to Update TransferableData.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext, stopsign!)
+			SQL rollback USING lt_transobject;
+			return -1
+		end if
+		ll_rows = lt_transobject.generateitemlog_datacarrydb(gs_inlinkserver, gs_inlinkserverdb, gs_inlinkserverowner)
+		if lt_transobject.sqlcode <> 0 then
+			messagebox("Import Data From DataCarryDB..", "Unable to generate ItemLog for TransferableData.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext, stopsign!)
+			SQL rollback USING lt_transobject;
+			return -1
+		end if
+		for ll_counter = 1 to ll_transferabletables
+			SQL update TransferableData Set AutoInsert =:ls_transferabledata[ll_counter, 2] , AutoUpdate =:ls_transferabledata[ll_counter, 3] , AutoDelete =:ls_transferabledata[ll_counter, 4] , UpdateTabmaxkey =:ls_transferabledata[ll_counter, 5] Where Enable ='Y' AND TableName =:ls_transferabledata[ll_counter, 1] USING lt_transobject;
+			if lt_transobject.sqlcode <> 0 then
+				messagebox("Import Data From DataCarryDB...", "Unable to Update TransferableData for single attribute values.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext, stopsign!)
+				SQL rollback USING lt_transobject;
+				return -1
+			else
+				ll_rows = lt_transobject.deletebasicdata(gs_inlinkserver, gs_inlinkserverdb, gs_inlinkserverowner)
+				if lt_transobject.sqlcode <> 0 then
+					ls_errtext = "Deletion Problem in Basic Data: ~r~n" + lt_transobject.sqlerrtext
+					SQL rollback USING lt_transobject;
+					messagebox("Import Data From DataCarryDB....", ls_errtext, stopsign!)
+					return -1
+				else
+					ll_rows = lt_transobject.updatebasicdata(gs_inlinkserver, gs_inlinkserverdb, gs_inlinkserverowner)
+					if lt_transobject.sqlcode <> 0 then
+						ls_errtext = "Update Problem in Transfering Basic Data: ~r~n" + lt_transobject.sqlerrtext
+						SQL rollback USING lt_transobject;
+						messagebox("Import Data From DataCarryDB.....", ls_errtext, stopsign!)
+						return -1
+					else
+						ll_rows = lt_transobject.insertbasicdata_form_datacarry(gs_inlinkserver, gs_inlinkserverdb, gs_inlinkserverowner)
+						if lt_transobject.sqlcode <> 0 then
+							ls_errtext = "Insert Problem in Transfering Basic Data: ~r~n" + lt_transobject.sqlerrtext
+							SQL rollback USING lt_transobject;
+							messagebox("Import Data From DataCarryDB......", ls_errtext, stopsign!)
+							return -1
+						else
+							SQL update TransferableData Set AutoInsert ='N' , AutoUpdate ='N' , AutoDelete ='N' , UpdateTabmaxkey ='N' WHERE Enable ='Y' USING lt_transobject;
+							if lt_transobject.sqlcode <> 0 then
+								messagebox("Import Data From DataCarryDB.......", "Unable to update values from TransferableData.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext, stopsign!)
+								SQL rollback USING lt_transobject;
+								return -1
+							end if
+						end if
+					end if
+				end if
+			end if
+		next
+		for ll_counter = 1 to ll_transferabletables
+			SQL update TransferableData Set AutoInsert =:ls_transferabledata[ll_counter, 2] , AutoUpdate =:ls_transferabledata[ll_counter, 3] , AutoDelete =:ls_transferabledata[ll_counter, 4] , UpdateTabmaxkey =:ls_transferabledata[ll_counter, 5] Where Enable ='Y' AND TableName =:ls_transferabledata[ll_counter, 1] USING lt_transobject;
+			if lt_transobject.sqlcode <> 0 then
+				messagebox("Import Data From DataCarryDB!", "Unable to Update TransferableData for single attribute values.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext, stopsign!)
+				SQL rollback USING lt_transobject;
+				return -1
+			end if
+		next
+		lt_transobject.setuserresponsibility_for_datacarry(gs_inlinkserver, gs_inlinkserverdb, gs_inlinkserverowner, ac_importitems, ai_usercode)
+		if lt_transobject.sqlcode <> 0 then
+			messagebox("Import Data From DataCarryDB!", "Unable to Update User Responsibility Regarding Data Carry~r~nReasons are:~r~n" + lt_transobject.sqlerrtext, stopsign!)
+			SQL rollback USING lt_transobject;
+			return -1
+		end if
+		SQL commit USING lt_transobject;
+		if lt_transobject.sqlcode = 0 and (ac_importitems = "N" or ac_importitems = "A") then
+			ls_server = lower(gs_servername)
+			ls_computer = lower(gs_localcomputername)
+			SQL SELECT a =GETDATE ( ) INTO :ldt_datetime FROM ( SELECT a =1 ) AS T USING lt_transobject;
+			ls_datetime = string(ldt_datetime, "yyyy-mm-dd hh:mm:ss")
+			ls_query = "INSERT INTO " + trim(gs_inlinkserver) + "." + trim(gs_inlinkserverdb) + "." + trim(gs_inlinkserverowner) + "." + "DataImportlog (ServerName, ComputerName, DateTime) VALUES (" + "'" + ls_server + "', " + "'" + ls_computer + "', '" + ls_datetime + "'" + ")"
+			SQL EXECUTE IMMEDIATE :ls_query USING lt_transobject;
+			if lt_transobject.sqlcode <> 0 then
+				ls_errtext = "Problem in inserting into data import log.~r~nReasons Are:-~r~n" + lt_transobject.sqlerrtext
+				SQL rollback USING lt_transobject;
+				messagebox("Problem", ls_errtext, stopsign!)
+				lb_commitok = false
+				return -1
+			else
+				SQL commit USING lt_transobject;
+			end if
+		end if
+		setpointer(arrow!)
+		messagebox("Import From DataCarryDB", "Successfull updation of Basic Data.", information!)
+		return 1
+	else
+		SQL rollback USING lt_transobject;
+		messagebox("Import From DataCarryDB!!", ls_errtext, stopsign!)
+		return -1
+	end if
+	return 1

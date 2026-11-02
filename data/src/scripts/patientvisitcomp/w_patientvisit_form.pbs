@@ -1,0 +1,3105 @@
+// window w_patientvisit_form (patientvisitcomp)  ancestor: window
+
+// w_patientvisit_form.ue_close() returns 0
+	SQL stop USING this.it_transobject;
+	close(this)
+
+// w_patientvisit_form.wf_set_interface_adjustments() returns 0
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width * 0.95
+		ll_height = ll_win_height * 0.95
+		this.width = ll_width
+		this.height = ll_height
+		this.cb_ok.y = ll_height - this.cb_ok.height - 200
+		this.cb_cancel.y = ll_height - this.cb_cancel.height - 200
+		this.cb_print.y = ll_height - this.cb_print.height - 200
+		this.cb_patientsearch.y = ll_height - this.cb_patientsearch.height - 200
+		this.cb_visithistory.y = ll_height - this.cb_visithistory.height - 200
+		this.cb_image.y = ll_height - this.cb_image.height - 200
+		this.cb_rx_history.y = ll_height - this.cb_image.height - 200
+		this.tab_main.width = ll_width * 0.98
+		this.tab_main.height = this.cb_ok.y - 50
+		this.tab_main.tabpage_vd.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_vd.height = this.tab_main.height - 500
+		this.tab_main.tabpage_vd.dw_vd.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_vd.dw_vd.height = this.tab_main.height - 500
+		this.tab_main.tabpage_vitals.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_vitals.height = this.tab_main.height - 500
+		this.tab_main.tabpage_vitals.dw_vitals.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_vitals.dw_vitals.height = this.tab_main.height - 500
+		this.tab_main.tabpage_symptoms.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_symptoms.height = this.tab_main.height - 500
+		this.tab_main.tabpage_symptoms.dw_symptoms.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_symptoms.dw_symptoms.height = this.tab_main.height - 500
+		this.tab_main.tabpage_pexam.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_pexam.height = this.tab_main.height - 500
+		this.tab_main.tabpage_pexam.dw_pexam.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_pexam.dw_pexam.height = this.tab_main.height - 500
+		this.tab_main.tabpage_precautions.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_precautions.height = this.tab_main.height - 500
+		this.tab_main.tabpage_precautions.dw_precautions.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_precautions.dw_precautions.height = this.tab_main.height - 500
+		this.tab_main.tabpage_diagnostics.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_diagnostics.height = this.tab_main.height - 500
+		this.tab_main.tabpage_diagnostics.dw_diagnostics.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_diagnostics.dw_diagnostics.height = this.tab_main.height - 500
+		this.tab_main.tabpage_rx.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_rx.height = this.tab_main.height - 500
+		this.tab_main.tabpage_rx.dw_rx.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_rx.dw_rx.height = this.tab_main.height - 500
+		this.tab_main.tabpage_obs_us.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_obs_us.height = this.tab_main.height - 500
+		this.tab_main.tabpage_obs_us.dw_obs_us.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_obs_us.dw_obs_us.height = this.tab_main.height - 500
+		this.tab_main.tabpage_gyn_us.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_gyn_us.height = this.tab_main.height - 500
+		this.tab_main.tabpage_gyn_us.dw_gyn_us.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_gyn_us.dw_gyn_us.height = this.tab_main.height - 500
+		this.tab_main.tabpage_abd_us.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_abd_us.height = this.tab_main.height - 500
+		this.tab_main.tabpage_abd_us.dw_abd_us.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_abd_us.dw_abd_us.height = this.tab_main.height - 500
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+
+// w_patientvisit_form.wf_set_tab_visibility() returns long
+	if f_rightexists(5093) = false then
+		this.tab_main.tabpage_vitals.visible = false
+		this.tab_main.tabpage_vitals.dw_vitals.visible = false
+	end if
+	if f_rightexists(5094) = false then
+		this.tab_main.tabpage_symptoms.visible = false
+		this.tab_main.tabpage_symptoms.dw_symptoms.visible = false
+	end if
+	if f_rightexists(5095) = false then
+		this.tab_main.tabpage_pexam.visible = false
+		this.tab_main.tabpage_pexam.dw_pexam.visible = false
+	end if
+	if f_rightexists(5096) = false then
+		this.tab_main.tabpage_diagnostics.visible = false
+		this.tab_main.tabpage_diagnostics.dw_diagnostics.visible = false
+	end if
+	if f_rightexists(5097) = false then
+		this.tab_main.tabpage_rx.visible = false
+		this.tab_main.tabpage_rx.dw_rx.visible = false
+	end if
+	if f_rightexists(5098) = false then
+		this.cb_visithistory.visible = false
+	end if
+	if f_rightexists(5099) = false then
+		this.cb_patientsearch.visible = false
+	end if
+	if f_rightexists(5100) = false then
+		this.cb_image.visible = false
+	end if
+	if f_rightexists(5141) = false then
+		this.tab_main.tabpage_precautions.visible = false
+		this.tab_main.tabpage_precautions.dw_precautions.visible = false
+	end if
+	if f_rightexists(5208) = false then
+		this.tab_main.tabpage_obs_us.visible = false
+		this.tab_main.tabpage_obs_us.dw_obs_us.visible = false
+	end if
+	if f_rightexists(5209) = false then
+		this.tab_main.tabpage_gyn_us.visible = false
+		this.tab_main.tabpage_gyn_us.dw_gyn_us.visible = false
+	end if
+	if f_rightexists(5210) = false then
+		this.tab_main.tabpage_abd_us.visible = false
+		this.tab_main.tabpage_abd_us.dw_abd_us.visible = false
+	end if
+	wf_select_first_tab()
+	return 0
+
+// w_patientvisit_form.wf_connect() returns long
+	SQL start USING this.it_transobject;
+	return this.it_transobject.sqlcode
+
+// w_patientvisit_form.wf_tabnewid(string as_tablename, long al_newid) returns long
+	long ll_rtcode
+	SQL SELECT TABMAXKEY INTO :al_newid FROM _TABMAXKEY WITH ( UPDLOCK HOLDLOCK ) WHERE _TABMAXKEY.TABName =:as_tablename USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		al_newid = al_newid + 1
+		SQL update dbo._tabmaxkey SET TABMAXKEY =:al_newid WHERE _TABMAXKEY.TABName =:as_tablename USING this.it_transobject;
+		if this.it_transobject.sqlcode < 0 then
+			ll_rtcode = this.it_transobject.sqlcode
+			al_newid = 0
+		end if
+	else
+		ll_rtcode = this.it_transobject.sqlcode
+		al_newid = 0
+	end if
+	return ll_rtcode
+
+// w_patientvisit_form.wf_get_patient_info(long al_code) returns long
+	long ll_patientcode
+	long ll_admissioncode
+	string ls_regno
+	string ls_patientname
+	string ls_fname
+	string ls_age
+	string ls_gender
+	SQL SELECT PatientCode , RegNo , Name , FName , Age =LTRIM ( RTRIM ( STR ( AgeYears ) ) ) + ' yrs ' + LTRIM ( RTRIM ( STR ( AgeMonths ) ) ) + ' month ' + LTRIM ( RTRIM ( STR ( AgeDays ) ) ) + ' days' , Gender , AdmissionCode =NULL INTO :ll_patientcode, :ls_regno, :ls_patientname, :ls_fname, :ls_age, :ls_gender, :ll_admissioncode FROM Patient WHERE PatientCode IN ( SELECT V.PatientCode FROM Visit V WHERE V.VisitCode =:al_code ) USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		this.il_code = al_code
+		this.il_patientcode = ll_patientcode
+		this.is_regno = ls_regno
+		this.il_admission = ll_admissioncode
+		this.is_patientname = ls_patientname
+		this.is_fhname = ls_fname
+		this.is_age = ls_age
+		this.is_gender = ls_gender
+		return 0
+	end if
+	return -1
+
+// w_patientvisit_form.wf_retrieve_tabs() returns long
+	long ll_rtncode
+	this.id_vd = this.tab_main.tabpage_vd.dw_vd
+	this.id_vd.settransobject(this.it_transobject)
+	ll_rtncode = this.id_vd.getchild("doctcode", this.idc_doctor)
+	this.idc_doctor.settransobject(this.it_transobject)
+	ll_rtncode = this.idc_doctor.retrieve(gl_usercode)
+	if this.il_code > 0 then
+		this.id_vd.retrieve(this.il_code)
+	elseif this.id_vd.rowcount() = 0 then
+		this.id_vd.insertrow(0)
+	end if
+	this.id_vitals = this.tab_main.tabpage_vitals.dw_vitals
+	this.id_vitals.settransobject(this.it_transobject)
+	if this.il_code > 0 then
+		this.id_vitals.retrieve(this.il_code)
+	end if
+	this.id_symptoms = this.tab_main.tabpage_symptoms.dw_symptoms
+	this.id_symptoms.settransobject(this.it_transobject)
+	this.id_symptoms.retrieve(this.il_code)
+	this.id_pexam = this.tab_main.tabpage_pexam.dw_pexam
+	this.id_pexam.settransobject(this.it_transobject)
+	this.id_pexam.retrieve(this.il_code)
+	this.id_precautions = this.tab_main.tabpage_precautions.dw_precautions
+	this.id_precautions.settransobject(this.it_transobject)
+	this.id_precautions.retrieve(this.il_code)
+	this.id_diagnostics = this.tab_main.tabpage_diagnostics.dw_diagnostics
+	this.id_diagnostics.settransobject(this.it_transobject)
+	this.id_diagnostics.retrieve(this.il_code)
+	this.id_precautions = this.tab_main.tabpage_precautions.dw_precautions
+	this.id_precautions.settransobject(this.it_transobject)
+	this.id_precautions.retrieve(this.il_code)
+	this.id_diagnostics = this.tab_main.tabpage_diagnostics.dw_diagnostics
+	this.id_diagnostics.settransobject(this.it_transobject)
+	this.id_diagnostics.retrieve(this.il_code)
+	this.id_rx = this.tab_main.tabpage_rx.dw_rx
+	this.id_rx.settransobject(this.it_transobject)
+	this.id_selectionlist = this.tab_main.tabpage_rx.dw_selectionlist
+	this.id_selectionlist.settransobject(this.it_transobject)
+	gd_popup_itemsinfo.sharedata(this.id_selectionlist)
+	wf_itemlist_initialization()
+	if this.il_code > 0 then
+		this.id_rx.retrieve(this.il_code)
+	end if
+	this.id_obs = this.tab_main.tabpage_obs_us.dw_obs_us
+	this.id_obs.settransobject(this.it_transobject)
+	if this.il_code > 0 then
+		this.id_obs.retrieve(this.il_code)
+	end if
+	this.id_gyn = this.tab_main.tabpage_gyn_us.dw_gyn_us
+	this.id_gyn.settransobject(this.it_transobject)
+	if this.il_code > 0 then
+		this.id_gyn.retrieve(this.il_code)
+	end if
+	this.id_abd = this.tab_main.tabpage_abd_us.dw_abd_us
+	this.id_abd.settransobject(this.it_transobject)
+	if this.il_code > 0 then
+		this.id_abd.retrieve(this.il_code)
+	end if
+	this.id_image = this.dw_image
+	this.id_image.settransobject(this.it_transobject)
+	if this.il_code > 0 then
+		this.id_image.retrieve(this.il_patientcode)
+		wf_populate_image()
+	end if
+	return 0
+
+// w_patientvisit_form.wf_insert_row(datawindow adw_dw, integer ai_askpermit) returns long
+	long ll_row
+	long ll_res
+	if ai_askpermit = 1 then
+		ll_res = messagebox("Insert New Record", "Do you want to Insert New Record?", question!, yesnocancel!, 2)
+	else
+		ll_res = 1
+	end if
+	if ll_res = 1 then
+		ll_row = adw_dw.insertrow(0)
+		if this.id_vitals.rowcount() > 1 and this.id_rx.rowcount() > 0 then
+			this.id_rx.object.bsa[this.id_rx.rowcount()] = this.id_vitals.object.bsa[1]
+		end if
+		adw_dw.setrow(ll_row)
+		adw_dw.scrolltorow(ll_row)
+	end if
+	return 0
+
+// w_patientvisit_form.wf_delete_row(datawindow adw_dw, integer ai_askpermit) returns long
+	long ll_row
+	long ll_res
+	if adw_dw.rowcount() > 0 and adw_dw.getrow() > 0 then
+		if ai_askpermit = 1 then
+			ll_res = messagebox("Delete Record", "Do you want to delete this record?", question!, yesnocancel!, 2)
+		else
+			ll_res = 1
+		end if
+		if ll_res = 1 then
+			ll_row = adw_dw.getrow()
+			if adw_dw.deleterow(ll_row) = 1 and adw_dw.rowcount() > 0 then
+				adw_dw.setrow(1)
+				adw_dw.scrolltorow(1)
+			end if
+		end if
+	end if
+	return 0
+
+// w_patientvisit_form.wf_goto_record(datawindow adw_dw) returns long
+	long ll_current
+	long ll_counter
+	long ll_row
+	datastore lds_ds
+	s_arguements lstr_arg
+	ll_current = adw_dw.getrow()
+	if adw_dw.rowcount() > 0 then
+		lds_ds = create datastore
+		lds_ds.dataobject = "d_mr_recordpointer"
+		lds_ds.settransobject(sqlca)
+		for ll_counter = 1 to adw_dw.rowcount()
+			ll_row = lds_ds.insertrow(0)
+			if ll_row = ll_current then
+				lds_ds.object.currentrow[ll_row] = 1
+			else
+				lds_ds.object.currentrow[ll_row] = 0
+			end if
+			lds_ds.object.rowid[ll_row] = adw_dw.object.rowid[ll_counter]
+			lds_ds.object.rowno[ll_row] = ll_counter
+			lds_ds.object.date[ll_row] = adw_dw.object.date[ll_counter]
+		next
+		if lds_ds.rowcount() > 0 then
+			openwithparm(w_arg_mr_record_pointer, lds_ds)
+			lstr_arg = message.powerobjectparm
+			if lstr_arg.i_status = 1 and lstr_arg.l_code1 > 0 then
+				adw_dw.setrow(lstr_arg.l_code1)
+				adw_dw.scrolltorow(lstr_arg.l_code1)
+			end if
+		end if
+	end if
+	return 0
+
+// w_patientvisit_form.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns integer
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+	return 0
+
+// w_patientvisit_form.wf_apply_protect_setting() returns integer
+	if this.il_protect = 1 then
+		wf_protectdw(this.id_vd, this.il_protect)
+		wf_protectdw(this.id_vitals, this.il_protect)
+		wf_protectdw(this.id_symptoms, this.il_protect)
+		wf_protectdw(this.id_pexam, this.il_protect)
+		wf_protectdw(this.id_precautions, this.il_protect)
+		wf_protectdw(this.id_diagnostics, this.il_protect)
+		wf_protectdw(this.id_image, this.il_protect)
+		wf_protectdw(this.id_rx, this.il_protect)
+		wf_protectdw(this.id_image, this.il_protect)
+		wf_protectdw(this.id_obs, this.il_protect)
+		wf_protectdw(this.id_gyn, this.il_protect)
+		wf_protectdw(this.id_abd, this.il_protect)
+		this.cb_ok.enabled = false
+		this.cb_patientsearch.enabled = true
+		this.cb_print.enabled = true
+		this.cb_print.visible = true
+		this.cb_visithistory.visible = true
+		this.cb_image.enabled = false
+		this.cb_rx_history.enabled = true
+	end if
+	return 0
+
+// w_patientvisit_form.wf_save() returns long
+	if this.il_protect = 0 then
+		this.cb_ok.triggerevent(clicked!)
+	end if
+	return 0
+
+// w_patientvisit_form.wf_select_first_tab() returns long
+	if this.tab_main.tabpage_vd.visible then
+		this.tab_main.selecttab(1)
+		return 0
+	end if
+	if this.tab_main.tabpage_vitals.visible then
+		this.tab_main.selecttab(2)
+		return 0
+	end if
+	if this.tab_main.tabpage_symptoms.visible = true then
+		this.tab_main.selecttab(3)
+		return 0
+	end if
+	if this.tab_main.tabpage_pexam.visible = true then
+		this.tab_main.selecttab(4)
+		return 0
+	end if
+	if this.tab_main.tabpage_precautions.visible = true then
+		this.tab_main.selecttab(5)
+		return 0
+	end if
+	if this.tab_main.tabpage_diagnostics.visible = true then
+		this.tab_main.selecttab(6)
+		return 0
+	end if
+	if this.tab_main.tabpage_rx.visible = true then
+		this.tab_main.selecttab(7)
+		return 0
+	end if
+	if this.tab_main.tabpage_obs_us.visible = true then
+		this.tab_main.selecttab(8)
+		return 0
+	end if
+	if this.tab_main.tabpage_gyn_us.visible = true then
+		this.tab_main.selecttab(9)
+		return 0
+	end if
+	if this.tab_main.tabpage_abd_us.visible = true then
+		this.tab_main.selecttab(10)
+		return 0
+	end if
+	return 0
+
+// w_patientvisit_form.wf_get_image(long al_row) returns long
+	blob lbl_image
+	u_transaction lt_transobject
+	lt_transobject = create u_transaction
+	lt_transobject.autocommit = true
+	SQL start USING lt_transobject;
+	if lt_transobject.sqlcode <> 0 then
+		messagebox("Connection Error", "Unable to connect to DataBase server")
+		destroy lt_transobject
+		return -1
+	end if
+	SQL SelectBlob PatientImage INTO :lbl_image From PatientImage Where Patientcode =:this.il_patientcode AND RowID =:al_row USING lt_transobject;
+	if lt_transobject.sqlcode <> 0 then
+		messagebox("Patient Image/Picture ", "Unable to fetch patient Image.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext)
+	end if
+	SQL stop USING lt_transobject;
+	destroy lt_transobject
+	this.istr_image.blob[al_row] = lbl_image
+	return 0
+
+// w_patientvisit_form.wf_populate_image() returns long
+	long ll_counter
+	long ll_rowcount
+	long ll_code
+	ll_rowcount = this.id_image.rowcount()
+	if ll_rowcount <= 0 then
+		return 0
+	end if
+	ll_code = this.id_image.object.code[1]
+	for ll_counter = 1 to ll_rowcount
+		this.istr_image.ls_value[ll_counter, 1] = trim(string(this.id_image.object.rowid[ll_counter]))
+		this.istr_image.ls_value[ll_counter, 2] = this.id_image.object.imagedescription[ll_counter]
+		this.istr_image.ls_value[ll_counter, 3] = this.id_image.object.imagetype[ll_counter]
+		wf_get_image(ll_counter)
+	next
+	return 0
+
+// w_patientvisit_form.wf_update_image() returns long
+	long ll_counter
+	long ll_code
+	long ll_rowid
+	string ls_desc
+	string ls_imgtype
+	u_transaction lt_transobject
+	ll_code = this.il_code
+	if ll_code > 0 and this.id_image.rowcount() = 0 then
+		return 0
+	end if
+	lt_transobject = create u_transaction
+	lt_transobject.autocommit = true
+	SQL start USING lt_transobject;
+	if lt_transobject.sqlcode <> 0 then
+		messagebox("Connection Error", "Unable to connect to DataBase server for updating/inserting in PatientImage Table")
+		destroy lt_transobject
+		return -1
+	end if
+	SQL DELETE PatientImage WHERE PatientCode =:this.il_patientcode USING lt_transobject;
+	if lt_transobject.sqlcode <> 0 then
+		messagebox("Connection Error", "Unable to Delete Previous Patient Image Record from database")
+		destroy lt_transobject
+		return -1
+	end if
+	for ll_counter = 1 to this.id_image.rowcount()
+		ll_rowid = this.id_image.object.rowid[ll_counter]
+		ls_desc = this.id_image.object.imagedescription[ll_counter]
+		ls_imgtype = this.id_image.object.imagetype[ll_counter]
+		SQL INSERT INTO PatientImage ( Patientcode , ImageDescription , RowID , ImageType , AdmissionCode , visitcode ) VALUES ( :this.il_patientcode , :ls_desc , :ll_rowid , :ls_imgtype , :this.il_admission , :this.il_code ) USING lt_transobject;
+		if lt_transobject.sqlcode <> 0 then
+			messagebox("Insert Error", "Unable to Insert Patient Images Into Patient Image Table.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext)
+			SQL stop USING lt_transobject;
+			destroy lt_transobject
+			return -1
+		end if
+		SQL UpdateBlob PatientImage Set PatientImage =:this.istr_image.blob[ll_counter] Where Patientcode =:this.il_patientcode and ROWID =:ll_rowid USING lt_transobject;
+		if lt_transobject.sqlcode <> 0 then
+			messagebox("Patient Image ", "Unable to update Patient image.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext)
+		end if
+	next
+	SQL stop USING lt_transobject;
+	destroy lt_transobject
+	return 0
+
+// w_patientvisit_form.wf_itemlist_initialization() returns 0
+	long li_counter
+	long ll_startrow
+	long ll_rowcount
+	long ll_found
+	char lc_char
+	ll_rowcount = this.id_selectionlist.rowcount()
+	setredraw(false)
+	this.id_selectionlist.setsort("name A")
+	this.id_selectionlist.sort()
+	for li_counter = 65 to 90
+		lc_char = char(li_counter)
+		this.ia_llookuptable[li_counter] = this.id_selectionlist.find("Lower(name) >= Lower('" + char(li_counter) + "')", ll_startrow, 99999)
+		ll_startrow = this.ia_llookuptable[li_counter]
+	next
+	this.ia_llookuptable[92] = 99999
+	this.id_selectionlist.object.t_stock.visible = false
+	this.id_selectionlist.object.stock.visible = false
+	this.id_selectionlist.object.t_sstock.visible = true
+	this.id_selectionlist.object.sstock.visible = true
+	this.id_selectionlist.object.t_pstock.visible = false
+	this.id_selectionlist.object.pstock.visible = false
+	if f_stringpreferences("aliasname") = "N" then
+		this.id_selectionlist.object.aliasname.visible = false
+	end if
+	if f_stringpreferences("itempackingdesc") = "N" then
+		this.id_selectionlist.object.packingdesc.visible = false
+	end if
+	if f_stringpreferences("itemlocation") = "N" then
+		this.id_selectionlist.object.location.visible = false
+	end if
+	if f_stringpreferences("manufacturer") = "N" then
+		this.id_selectionlist.object.manufacturer.visible = false
+	end if
+	if f_stringpreferences("packing") = "N" then
+		this.id_selectionlist.object.packing.visible = false
+	end if
+	if f_stringpreferences("packunits") = "N" then
+		this.id_selectionlist.object.packunits.visible = false
+	end if
+	if f_stringpreferences("saleprice") = "N" then
+		this.id_selectionlist.object.saleprice.visible = false
+	end if
+	if f_stringpreferences("stock") = "N" then
+		this.id_selectionlist.object.sstock.visible = false
+	end if
+	if f_stringpreferences("showitemalertinitemlist") = "N" then
+		this.id_selectionlist.object.itemalertcode.visible = false
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 587", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.id_selectionlist.object.purprice.visible = true
+	else
+		this.id_selectionlist.object.purprice.visible = false
+	end if
+	f_setcolumnstyle(this.id_rx, "Qty")
+	setredraw(true)
+
+// w_patientvisit_form.wf_validateitem(long al_row) returns integer
+	long ll_icode
+	long ll_null
+	integer li_errcode
+	setnull(ll_null)
+	if this.id_rx.rowcount() > 0 then
+		ll_icode = this.id_rx.getitemnumber(al_row, "icode")
+	end if
+	if isnull(ll_icode) then
+		this.ib_rowvalidated = false
+		this.ib_itemvalidated = false
+		messagebox("Validation Error!", "Please Enter Valid Item")
+		li_errcode = -1
+	else
+		if ll_icode > 0 then
+			wf_help_prescription_population(ll_icode)
+		end if
+		li_errcode = 0
+		this.ib_rowvalidated = true
+		this.ib_itemvalidated = true
+	end if
+	if li_errcode = -1 then
+		this.id_rx.setcolumn("icode")
+		this.id_rx.scrolltorow(al_row)
+		this.id_rx.object.icode[al_row] = ll_null
+	end if
+	return li_errcode
+
+// w_patientvisit_form.wf_inititeminfo(long al_icode, long al_row) returns long
+	long ll_retcode
+	double ld_saleprice
+	SQL SELECT saleprice =Round ( saleprice / CASE PackUnits WHEN 0 THEN 1 ELSE PackUnits END , 2 ) INTO :ld_saleprice FROM item WHERE ICode =:al_icode USING this.it_transobject;
+	if sqlca.sqlcode = 0 then
+		ll_retcode = 0
+	else
+		ll_retcode = -1
+	end if
+	return ll_retcode
+
+// w_patientvisit_form.wf_get_dosefactor(long al_dosagecode) returns long
+	long ll_dosefactor
+	SQL Select dosefactor INTO :ll_dosefactor From Dosage Where dosagecode =:al_dosagecode USING this.it_transobject;
+	if sqlca.sqlcode = 0 then
+		return ll_dosefactor
+	end if
+	return -1
+
+// w_patientvisit_form.wf_itemlist_initialization_pod() returns 0
+	long li_counter
+	long ll_startrow
+	long ll_rowcount
+	long ll_found
+	char lc_char
+	ll_rowcount = this.id_selectionlistpod.rowcount()
+	setredraw(false)
+	this.id_selectionlistpod.setsort("name A")
+	this.id_selectionlistpod.sort()
+	for li_counter = 65 to 90
+		lc_char = char(li_counter)
+		this.ia_llookuptablepod[li_counter] = this.id_selectionlistpod.find("Lower(name) >= Lower('" + char(li_counter) + "')", ll_startrow, 99999)
+		ll_startrow = this.ia_llookuptablepod[li_counter]
+	next
+	this.ia_llookuptablepod[92] = 99999
+	this.id_selectionlistpod.object.t_stock.visible = false
+	this.id_selectionlistpod.object.stock.visible = false
+	this.id_selectionlistpod.object.t_sstock.visible = true
+	this.id_selectionlistpod.object.sstock.visible = true
+	this.id_selectionlistpod.object.t_pstock.visible = false
+	this.id_selectionlistpod.object.pstock.visible = false
+	if f_stringpreferences("aliasname") = "N" then
+		this.id_selectionlistpod.object.aliasname.visible = false
+	end if
+	if f_stringpreferences("itempackingdesc") = "N" then
+		this.id_selectionlistpod.object.packingdesc.visible = false
+	end if
+	if f_stringpreferences("itemlocation") = "N" then
+		this.id_selectionlistpod.object.location.visible = false
+	end if
+	if f_stringpreferences("manufacturer") = "N" then
+		this.id_selectionlistpod.object.manufacturer.visible = false
+	end if
+	if f_stringpreferences("packing") = "N" then
+		this.id_selectionlistpod.object.packing.visible = false
+	end if
+	if f_stringpreferences("packunits") = "N" then
+		this.id_selectionlistpod.object.packunits.visible = false
+	end if
+	if f_stringpreferences("saleprice") = "N" then
+		this.id_selectionlistpod.object.saleprice.visible = false
+	end if
+	if f_stringpreferences("stock") = "N" then
+		this.id_selectionlistpod.object.sstock.visible = false
+	end if
+	if f_stringpreferences("showitemalertinitemlist") = "N" then
+		this.id_selectionlistpod.object.itemalertcode.visible = false
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 587", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.id_selectionlistpod.object.purprice.visible = true
+	else
+		this.id_selectionlistpod.object.purprice.visible = false
+	end if
+	setredraw(true)
+
+// w_patientvisit_form.wf_setimage(string as_caller) returns long
+	long ll_counter
+	long ll_code
+	long ll_row
+	s_itemimage lstr_image
+	if this.il_protect = 1 then
+		return 0
+	end if
+	lstr_image.s_caller = as_caller
+	for ll_counter = 1 to this.id_image.rowcount()
+		lstr_image.ls_value[ll_counter, 1] = trim(string(this.id_image.object.rowid[ll_counter]))
+		lstr_image.ls_value[ll_counter, 2] = this.id_image.object.imagedescription[ll_counter]
+		lstr_image.ls_value[ll_counter, 3] = this.id_image.object.imagetype[ll_counter]
+		lstr_image.blob[ll_counter] = this.istr_image.blob[ll_counter]
+	next
+	openwithparm(w_patientimage, lstr_image)
+	lstr_image = message.powerobjectparm
+	if lstr_image.i_closemode = 1 then
+		this.istr_image = lstr_image
+		this.id_image.reset()
+		ll_code = this.il_patientcode
+		for ll_counter = 1 to 200
+			if long(lstr_image.ls_value[ll_counter, 1]) > 0 then
+				ll_row = this.id_image.insertrow(0)
+				this.id_image.object.code[ll_row] = ll_code
+				this.id_image.object.admissioncode[ll_row] = this.il_admission
+				this.id_image.object.visitcode[ll_row] = this.il_code
+				this.id_image.object.rowid[ll_row] = long(lstr_image.ls_value[ll_counter, 1])
+				this.id_image.object.imagedescription[ll_row] = lstr_image.ls_value[ll_counter, 2]
+				this.id_image.object.imagetype[ll_row] = lstr_image.ls_value[ll_counter, 3]
+			end if
+		next
+	end if
+	return 0
+
+// w_patientvisit_form.wf_show_patient_gallery() returns long
+	if this.il_code > 0 then
+		openwithparm(w_patientgallary, this.il_patientcode)
+	end if
+	return 0
+
+// w_patientvisit_form.wf_validateserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+	datetime ldt_last_transdate
+	datetime ldt_current_serverdate
+	long li_max_allow_days
+	ar_errtext = "Invoice Date  Check violates"
+	li_max_allow_days = f_numberpreferences("MaxAllowDate")
+	if isnull(li_max_allow_days) then
+		li_max_allow_days = 4
+	end if
+	SQL SELECT LastTransDate INTO :ldt_last_transdate FROM ServerDate USING sqlca;
+	if sqlca.sqlcode = 0 then
+		sqlca.getdatetime(ldt_current_serverdate)
+		if sqlca.sqlcode = 0 then
+			if ldt_current_serverdate >= ldt_last_transdate and daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) <= li_max_allow_days then
+				ar_server_datetime = ldt_current_serverdate
+				return true
+			elseif ldt_current_serverdate < ldt_last_transdate then
+				ar_errtext = "Back Date Invoice Check violates"
+				return false
+			elseif daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) > li_max_allow_days then
+				ar_errtext = "Forward Date Invoice Check violates"
+				return false
+			end if
+		else
+			return false
+		end if
+		return
+	end if
+	return false
+
+// w_patientvisit_form.wf_set_bmi(string as_col, string as_data) returns long
+	double ld_data
+	double ld_height
+	double ld_height1
+	double ld_height2
+	double ld_weight
+	double ld_weight1
+	double ld_weight2
+	double ld_temp
+	double ld_weight_gms
+	double ll_log
+	ld_data = double(as_data)
+	if ld_data <= 0.0 or isnull(ld_data) then
+		ld_data = 1
+	end if
+	choose case as_col
+	case "height1"
+		ld_height1 = ld_data
+		ld_height2 = this.id_vitals.object.height2[1]
+		ld_height = (ld_height1 * 12.0 + ld_height2) * 2.54
+		ld_weight1 = this.id_vitals.object.weight1[1]
+		ld_weight2 = this.id_vitals.object.weight2[1]
+		ld_weight = ld_weight1 + ld_weight2 / 1000.0
+		if ld_height > 0.0 then
+			this.id_vitals.object.bmi[1] = ld_weight / (ld_height / 100.0) ^ 2.0
+		else
+			this.id_vitals.object.bmi[1] = ld_weight
+		end if
+		if this.id_vitals.object.bsamethod[1] = 1 then
+			this.id_vitals.object.bsa[1] = 0.007184 * ld_height ^ 0.725 * ld_weight ^ 0.425
+		elseif this.id_vitals.object.bsamethod[1] = 2 then
+			this.id_vitals.object.bsa[1] = (ld_height * ld_weight / 3600.0) ^ 0.5
+		elseif this.id_vitals.object.bsamethod[1] = 3 then
+			this.id_vitals.object.bsa[1] = 0.024265 * ld_height ^ 0.3964 * ld_weight ^ 0.5378
+		elseif this.id_vitals.object.bsamethod[1] = 4 then
+			this.id_vitals.object.bsa[1] = 0.0235 * ld_height ^ 0.42246 * ld_weight ^ 0.51456
+		elseif this.id_vitals.object.bsamethod[1] = 5 then
+			ld_weight_gms = ld_weight * 1000.0
+			ld_temp = 0.7285 - 0.0188 * logten(ld_weight_gms)
+			this.id_vitals.object.bsa[1] = 0.0003207 * ld_height ^ 0.3 * ld_weight_gms ^ ld_temp
+		end if
+	case "height2"
+		ld_height1 = this.id_vitals.object.height1[1]
+		ld_height2 = ld_data
+		ld_height = (ld_height1 * 12.0 + ld_height2) * 2.54
+		ld_weight1 = this.id_vitals.object.weight1[1]
+		ld_weight2 = this.id_vitals.object.weight2[1]
+		ld_weight = ld_weight1 + ld_weight2 / 1000.0
+		if ld_height > 0.0 then
+			this.id_vitals.object.bmi[1] = ld_weight / (ld_height / 100.0) ^ 2.0
+		else
+			this.id_vitals.object.bmi[1] = ld_weight
+		end if
+		if this.id_vitals.object.bsamethod[1] = 1 then
+			this.id_vitals.object.bsa[1] = 0.007184 * ld_height ^ 0.725 * ld_weight ^ 0.425
+		elseif this.id_vitals.object.bsamethod[1] = 2 then
+			this.id_vitals.object.bsa[1] = (ld_height * ld_weight / 3600.0) ^ 0.5
+		elseif this.id_vitals.object.bsamethod[1] = 3 then
+			this.id_vitals.object.bsa[1] = 0.024265 * ld_height ^ 0.3964 * ld_weight ^ 0.5378
+		elseif this.id_vitals.object.bsamethod[1] = 4 then
+			this.id_vitals.object.bsa[1] = 0.0235 * ld_height ^ 0.42246 * ld_weight ^ 0.51456
+		elseif this.id_vitals.object.bsamethod[1] = 5 then
+			ld_weight_gms = ld_weight * 1000.0
+			ld_temp = 0.7285 - 0.0188 * logten(ld_weight_gms)
+			this.id_vitals.object.bsa[1] = 0.0003207 * ld_height ^ 0.3 * ld_weight_gms ^ ld_temp
+		end if
+	case "weight1"
+		ld_height1 = this.id_vitals.object.height1[1]
+		ld_height2 = this.id_vitals.object.height2[1]
+		ld_height = (ld_height1 * 12.0 + ld_height2) * 2.54
+		ld_weight1 = ld_data
+		ld_weight2 = this.id_vitals.object.weight2[1]
+		ld_weight = ld_weight1 + ld_weight2 / 1000.0
+		if ld_height > 0.0 then
+			this.id_vitals.object.bmi[1] = ld_weight / (ld_height / 100.0) ^ 2.0
+		else
+			this.id_vitals.object.bmi[1] = ld_weight
+		end if
+		if this.id_vitals.object.bsamethod[1] = 1 then
+			this.id_vitals.object.bsa[1] = 0.007184 * ld_height ^ 0.725 * ld_weight ^ 0.425
+		elseif this.id_vitals.object.bsamethod[1] = 2 then
+			this.id_vitals.object.bsa[1] = (ld_height * ld_weight / 3600.0) ^ 0.5
+		elseif this.id_vitals.object.bsamethod[1] = 3 then
+			this.id_vitals.object.bsa[1] = 0.024265 * ld_height ^ 0.3964 * ld_weight ^ 0.5378
+		elseif this.id_vitals.object.bsamethod[1] = 4 then
+			this.id_vitals.object.bsa[1] = 0.0235 * ld_height ^ 0.42246 * ld_weight ^ 0.51456
+		elseif this.id_vitals.object.bsamethod[1] = 5 then
+			ld_weight_gms = ld_weight * 1000.0
+			ld_temp = 0.7285 - 0.0188 * logten(ld_weight_gms)
+			this.id_vitals.object.bsa[1] = 0.0003207 * ld_height ^ 0.3 * ld_weight_gms ^ ld_temp
+		end if
+	case "weight2"
+		ld_height1 = this.id_vitals.object.height1[1]
+		ld_height2 = this.id_vitals.object.height2[1]
+		ld_height = (ld_height1 * 12.0 + ld_height2) * 2.54
+		ld_weight1 = this.id_vitals.object.weight1[1]
+		ld_weight2 = ld_data
+		ld_weight = ld_weight1 + ld_weight2 / 1000.0
+		if ld_height > 0.0 then
+			this.id_vitals.object.bmi[1] = ld_weight / (ld_height / 100.0) ^ 2.0
+		else
+			this.id_vitals.object.bmi[1] = ld_weight
+		end if
+		if this.id_vitals.object.bsamethod[1] = 1 then
+			this.id_vitals.object.bsa[1] = 0.007184 * ld_height ^ 0.725 * ld_weight ^ 0.425
+		elseif this.id_vitals.object.bsamethod[1] = 2 then
+			this.id_vitals.object.bsa[1] = (ld_height * ld_weight / 3600.0) ^ 0.5
+		elseif this.id_vitals.object.bsamethod[1] = 3 then
+			this.id_vitals.object.bsa[1] = 0.024265 * ld_height ^ 0.3964 * ld_weight ^ 0.5378
+		elseif this.id_vitals.object.bsamethod[1] = 4 then
+			this.id_vitals.object.bsa[1] = 0.0235 * ld_height ^ 0.42246 * ld_weight ^ 0.51456
+		elseif this.id_vitals.object.bsamethod[1] = 5 then
+			ld_weight_gms = ld_weight * 1000.0
+			ld_temp = 0.7285 - 0.0188 * logten(ld_weight_gms)
+			this.id_vitals.object.bsa[1] = 0.0003207 * ld_height ^ 0.3 * ld_weight_gms ^ ld_temp
+		end if
+	case "bsamethod"
+		ld_height1 = this.id_vitals.object.height1[1]
+		ld_height2 = this.id_vitals.object.height2[1]
+		ld_height = (ld_height1 * 12.0 + ld_height2) * 2.54
+		ld_weight1 = this.id_vitals.object.weight1[1]
+		ld_weight2 = this.id_vitals.object.weight2[1]
+		ld_weight = ld_weight1 + ld_weight2 / 1000.0
+		if ld_height > 0.0 then
+			this.id_vitals.object.bmi[1] = ld_weight / (ld_height / 100.0) ^ 2.0
+		else
+			this.id_vitals.object.bmi[1] = ld_weight
+		end if
+		if long(as_data) = 1 then
+			this.id_vitals.object.bsa[1] = 0.007184 * ld_height ^ 0.725 * ld_weight ^ 0.425
+		elseif long(as_data) = 2 then
+			this.id_vitals.object.bsa[1] = (ld_height * ld_weight / 3600.0) ^ 0.5
+		elseif long(as_data) = 3 then
+			this.id_vitals.object.bsa[1] = 0.024265 * ld_height ^ 0.3964 * ld_weight ^ 0.5378
+		elseif long(as_data) = 4 then
+			this.id_vitals.object.bsa[1] = 0.0235 * ld_height ^ 0.42246 * ld_weight ^ 0.51456
+		elseif long(as_data) = 5 then
+			ld_weight_gms = ld_weight * 1000.0
+			ll_log = logten(ld_weight_gms)
+			ld_temp = 0.7285 - 0.0188 * logten(ld_weight_gms)
+			this.id_vitals.object.bsa[1] = 0.0003207 * ld_height ^ 0.3 * ld_weight_gms ^ ld_temp
+		end if
+	end choose
+	return 0
+
+// w_patientvisit_form.wf_retrieve_appointments(long al_doctcode) returns long
+	long ll_rtncode
+	long ll_maxestpatientcount
+	if al_doctcode > 0 then
+		ll_rtncode = this.idc_appointment.retrieve(al_doctcode)
+		SQL SELECT ISNULL ( EstPatientCountPerDay , 0 ) INTO :ll_maxestpatientcount FROM DBO.Doctors WHERE DoctCode =:al_doctcode USING sqlca;
+		if sqlca.sqlcode = 0 then
+			this.id_vd.object.maxestpatientcount[1] = ll_maxestpatientcount
+		else
+			messagebox("Doctor Validation", "Problem in fetching Doctor Estimated Patient Count. Details are:-~r~n" + sqlca.sqlerrtext, stopsign!)
+		end if
+	end if
+	return ll_rtncode
+
+// w_patientvisit_form.wf_set_appointmentinfo(long al_appointmentcode) returns long
+	long ll_found
+	long ll_null
+	long ll_visitcode
+	integer li_protect
+	boolean lb_modify
+	string ls_null
+	setnull(ll_null)
+	setnull(ls_null)
+	if isnull(al_appointmentcode) then
+		this.id_vd.object.regno.protect = 0
+		this.id_vd.object.patientcode.protect = 0
+		this.id_vd.object.regno[1] = ls_null
+		this.id_vd.object.patientcode[1] = ll_null
+		this.id_vd.object.patientdetails[1] = ls_null
+		this.id_vd.object.referredby[1] = ls_null
+		this.id_vd.object.recommendations[1] = ls_null
+		this.id_vd.object.previousdiagnosis[1] = ls_null
+		this.id_vd.object.remarks[1] = ls_null
+		this.id_vd.object.diagnosis[1] = ls_null
+		this.id_vd.object.token[1] = ll_null
+	else
+		ll_found = 0
+		ll_found = this.idc_appointment.find("code = " + string(al_appointmentcode) + "", 1, this.idc_appointment.rowcount())
+		if ll_found > 0 then
+			SQL SELECT MIN ( VisitCode ) INTO :ll_visitcode FROM Visit WHERE AppointmentCode =:al_appointmentcode USING this.it_transobject;
+			if this.it_transobject.sqlcode = 0 then
+				this.il_code = ll_visitcode
+				if ll_visitcode <= 0 or isnull(ll_visitcode) then
+					if this.id_vd.rowcount() > 0 then
+						this.id_vd.object.appointmentcode[1] = al_appointmentcode
+						this.id_vd.object.regno.protect = 1
+						this.id_vd.object.patientcode.protect = 1
+						this.id_vd.object.regno[1] = this.idc_appointment.getitemstring(ll_found, "regno")
+						this.id_vd.object.patientcode[1] = this.idc_appointment.getitemnumber(ll_found, "patientcode")
+						this.id_vd.object.patientdetails[1] = this.idc_appointment.getitemstring(ll_found, "patientname")
+						this.id_vd.object.remarks[1] = this.idc_appointment.getitemstring(ll_found, "remarks")
+						this.id_vd.object.referredby[1] = this.idc_appointment.getitemstring(ll_found, "referredby")
+						this.id_vd.object.token[1] = this.idc_appointment.getitemnumber(ll_found, "tokenno")
+					end if
+				else
+					this.id_vd.retrieve(ll_visitcode)
+					wf_get_patient_info(this.il_code)
+					wf_retrieve_tabs()
+					if this.id_vd.getitemstring(this.id_vd.getrow(), "Posted") = "N" then
+						lb_modify = true
+					end if
+					if lb_modify then
+						li_protect = 0
+					end if
+					if this.id_vd.object.patientcode[1] > 0 then
+						this.id_image.retrieve(this.id_vd.object.patientcode[1])
+						wf_populate_image()
+					end if
+					wf_protectdw(this.id_vd, li_protect)
+				end if
+			end if
+		end if
+	end if
+	return 0
+
+// w_patientvisit_form.wf_find_patient_regno(long al_patientcode, string as_regno) returns long
+	long ll_retflag
+	char lc_active
+	ll_retflag = 0
+	SQL SELECT patient.regno , patient.active INTO :as_regno, :lc_active FROM patient WHERE patient.patientcode =:al_patientcode and patientcatcode in ( select distinct patientcatcode from patientcatallowedmodule where moduleid =:this.ii_module ) USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		if isnull(as_regno) then
+			ll_retflag = 0
+		elseif lc_active = "Y" then
+			ll_retflag = 1
+		else
+			ll_retflag = -2
+		end if
+	else
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_patientvisit_form.wf_findpatientcode(string as_regno, long al_patientcode) returns long
+	long ll_patientcode
+	long ll_retflag
+	string ls_itemname
+	char lc_active
+	ll_retflag = 0
+	SQL SELECT patient.patientcode , patient.active INTO :ll_patientcode, :lc_active FROM patient WHERE patient.regno =:as_regno and patientcatcode in ( select distinct patientcatcode from patientcatallowedmodule where moduleid =:this.ii_module ) USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		al_patientcode = ll_patientcode
+		if isnull(al_patientcode) then
+			ll_retflag = 0
+		elseif lc_active = "Y" then
+			ll_retflag = 1
+		else
+			ll_retflag = -2
+		end if
+	else
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_patientvisit_form.wf_patientsearch() returns string
+	string ls_regno
+	long ll_res
+	long ll_null
+	s_arguements ls_arguements
+	setnull(ll_null)
+	open(w_patientsearch)
+	ls_arguements = message.powerobjectparm
+	if ls_arguements.i_status = 1 then
+		openwithparm(w_patientsearchresult, ls_arguements)
+		ls_arguements = message.powerobjectparm
+		if this.il_protect = 1 then
+			return ""
+		end if
+		if ls_arguements.i_status = 1 and ls_arguements.l_code1 > 0 then
+			ll_res = wf_find_patient_regno(ls_arguements.l_code1, ls_regno)
+			wf_validate_patient(ls_regno)
+			this.id_vd.object.appointmentcode[this.id_vd.rowcount()] = ll_null
+			this.id_vd.object.patientcode[this.id_vd.rowcount()] = ls_arguements.l_code1
+			this.id_vd.object.regno[this.id_vd.rowcount()] = ls_regno
+			this.id_vd.object.patientdetails[1] = ""
+			this.id_vd.object.referredby[1] = ""
+			this.id_vd.object.previousdiagnosis[1] = ""
+			this.id_vd.object.diagnosis[1] = ""
+			this.id_vd.object.recommendations[1] = ""
+			this.id_vd.object.remarks[1] = ""
+			this.id_vd.object.precautions[1] = ""
+			this.id_vd.object.token[1] = ll_null
+		end if
+	end if
+	return ls_regno
+
+// w_patientvisit_form.wf_registerpatient() returns string
+	string ls_regno
+	long ll_res
+	long ll_patientcode
+	s_datatype lstr_datatype
+	lstr_datatype.al_long = this.id_vd.object.patientcode[this.id_vd.rowcount()]
+	openwithparm(w_patientregistration, lstr_datatype)
+	ls_regno = message.stringparm
+	this.id_vd.object.regno[this.id_vd.rowcount()] = ls_regno
+	setpointer(hourglass!)
+	this.idc_patient.setredraw(false)
+	this.idc_patient.settransobject(this.it_transobject)
+	wf_patient_retrieve()
+	wf_validate_patient(ls_regno)
+	this.idc_patient.setredraw(true)
+	setpointer(arrow!)
+	if ls_regno <> "" and not isnull(ls_regno) then
+		ll_res = wf_findpatientcode(ls_regno, ll_patientcode)
+		if ll_res > 0 then
+			this.id_vd.object.patientcode[this.id_vd.rowcount()] = ll_patientcode
+		end if
+	end if
+	return ls_regno
+
+// w_patientvisit_form.wf_visithistory() returns long
+	long ll_res
+	long ll_null
+	long ll_patientcode
+	long ll_counter
+	long ll_insrow
+	s_arguements ls_arguements
+	u_ds_standard lds_visit
+	u_ds_standard lds_rx
+	setnull(ll_null)
+	if this.id_vd.rowcount() > 0 then
+		ll_patientcode = this.id_vd.object.patientcode[this.id_vd.rowcount()]
+		if ll_patientcode > 0 then
+			ls_arguements.l_code1 = ll_patientcode
+			openwithparm(w_visithistory, ls_arguements)
+			ls_arguements = message.powerobjectparm
+			if ls_arguements.i_status = 1 then
+				if this.il_protect = 1 then
+					return 0
+				end if
+				if ls_arguements.l_code1 > 0 then
+					lds_visit = create u_ds_standard
+					lds_visit.dataobject = "d_visit_detail"
+					lds_visit.settransobject(sqlca)
+					lds_rx = create u_ds_standard
+					lds_rx.dataobject = "d_visit_prescription"
+					lds_rx.settransobject(sqlca)
+					lds_visit.retrieve(ls_arguements.l_code1)
+					if lds_visit.rowcount() > 0 then
+						this.id_vd.object.patientdetails[this.id_vd.rowcount()] = lds_visit.object.patientdetails[lds_visit.rowcount()]
+						this.id_vd.object.referredby[this.id_vd.rowcount()] = lds_visit.object.referredby[lds_visit.rowcount()]
+						this.id_vd.object.previousdiagnosis[this.id_vd.rowcount()] = lds_visit.object.previousdiagnosis[lds_visit.rowcount()]
+						this.id_vd.object.diagnosis[this.id_vd.rowcount()] = lds_visit.object.diagnosis[lds_visit.rowcount()]
+						this.id_vd.object.recommendations[this.id_vd.rowcount()] = lds_visit.object.recommendations[lds_visit.rowcount()]
+						this.id_vd.object.remarks[this.id_vd.rowcount()] = lds_visit.object.remarks[lds_visit.rowcount()]
+						lds_rx.retrieve(ls_arguements.l_code1)
+						if lds_rx.rowcount() > 0 then
+							if this.id_rx.rowcount() > 0 and (isnull(this.id_rx.object.icode[this.id_rx.rowcount()]) or this.id_rx.object.icode[this.id_rx.rowcount()] = 0) then
+								this.id_rx.setrow(this.id_rx.rowcount())
+								this.id_rx.deleterow(0)
+							end if
+							for ll_counter = 1 to lds_rx.rowcount()
+								ll_insrow = this.id_rx.insertrow(0)
+								this.id_rx.object.icode[ll_insrow] = lds_rx.object.icode[ll_counter]
+								this.id_rx.object.itemname[ll_insrow] = lds_rx.object.itemname[ll_counter]
+								this.id_rx.object.date[ll_insrow] = lds_rx.object.date[ll_counter]
+								this.id_rx.object.duration[ll_insrow] = lds_rx.object.duration[ll_counter]
+								this.id_rx.object.diseasecode[ll_insrow] = lds_rx.object.diseasecode[ll_counter]
+								this.id_rx.object.dosagecode[ll_insrow] = lds_rx.object.dosagecode[ll_counter]
+								this.id_rx.object.dosagefactor[ll_insrow] = lds_rx.object.dosagefactor[ll_counter]
+								this.id_rx.object.routecode[ll_insrow] = lds_rx.object.routecode[ll_counter]
+								this.id_rx.object.inscode[ll_insrow] = lds_rx.object.inscode[ll_counter]
+								this.id_rx.object.details[ll_insrow] = lds_rx.object.details[ll_counter]
+								this.id_rx.object.qty[ll_insrow] = lds_rx.object.qty[ll_counter]
+								this.id_rx.object.manualchangeintotqty[ll_insrow] = lds_rx.object.manualchangeintotqty[ll_counter]
+								this.id_rx.object.dosageunitcode[ll_insrow] = lds_rx.object.dosageunitcode[ll_counter]
+								this.id_rx.object.dosagestrength[ll_insrow] = lds_rx.object.dosagestrength[ll_counter]
+								this.id_rx.object.totalqty[ll_insrow] = lds_rx.object.totalqty[ll_counter]
+							next
+						end if
+					end if
+				end if
+			end if
+		else
+			messagebox("Patient Visit History", "Please select a patient first to view history")
+		end if
+	else
+		messagebox("Patient Visit History...", "Please select a patient first to view history")
+	end if
+	return 0
+
+// w_patientvisit_form.wf_presave() returns long
+	long ll_counter
+	long ll_rows
+	long ll_row
+	this.id_vd.object.code[1] = this.il_code
+	this.id_vitals.object.code[1] = this.il_code
+	this.ids_symptoms_hidden.dataobject = this.id_symptoms.dataobject
+	this.ids_symptoms_hidden.settransobject(this.it_transobject)
+	ll_counter = 0
+	for ll_counter = 1 to this.id_symptoms.rowcount()
+		if this.id_symptoms.object.selected[ll_counter] = "Y" then
+			ll_row = this.ids_symptoms_hidden.insertrow(0)
+			if ll_row > 0 then
+				this.ids_symptoms_hidden.object.code[ll_row] = this.il_code
+				this.ids_symptoms_hidden.object.symptomcode[ll_row] = this.id_symptoms.object.symptomcode[ll_counter]
+				this.ids_symptoms_hidden.object.severitylevelcode[ll_row] = this.id_symptoms.object.severitylevelcode[ll_counter]
+				this.ids_symptoms_hidden.object.duration[ll_row] = this.id_symptoms.object.duration[ll_counter]
+				this.ids_symptoms_hidden.object.details[ll_row] = this.id_symptoms.object.details[ll_counter]
+			end if
+		end if
+	next
+	this.ids_pexam_hidden.dataobject = this.id_pexam.dataobject
+	this.ids_pexam_hidden.settransobject(this.it_transobject)
+	ll_counter = 0
+	for ll_counter = 1 to this.id_pexam.rowcount()
+		if this.id_pexam.object.selected[ll_counter] = "Y" then
+			ll_row = this.ids_pexam_hidden.insertrow(0)
+			if ll_row > 0 then
+				this.ids_pexam_hidden.object.code[ll_row] = this.il_code
+				this.ids_pexam_hidden.object.physicalexamcode[ll_row] = this.id_pexam.object.physicalexamcode[ll_counter]
+				this.ids_pexam_hidden.object.details[ll_row] = this.id_pexam.object.details[ll_counter]
+			end if
+		end if
+	next
+	this.ids_precautions_hidden.dataobject = this.id_precautions.dataobject
+	this.ids_precautions_hidden.settransobject(this.it_transobject)
+	ll_counter = 0
+	for ll_counter = 1 to this.id_precautions.rowcount()
+		if this.id_precautions.object.selected[ll_counter] = "Y" then
+			ll_row = this.ids_precautions_hidden.insertrow(0)
+			if ll_row > 0 then
+				this.ids_precautions_hidden.object.code[ll_row] = this.il_code
+				this.ids_precautions_hidden.object.precautioncode[ll_row] = this.id_precautions.object.precautioncode[ll_counter]
+			end if
+		end if
+	next
+	this.ids_diagnostics_hidden.dataobject = this.id_diagnostics.dataobject
+	this.ids_diagnostics_hidden.settransobject(this.it_transobject)
+	ll_counter = 0
+	for ll_counter = 1 to this.id_diagnostics.rowcount()
+		if this.id_diagnostics.object.selected[ll_counter] = "Y" then
+			ll_row = this.ids_diagnostics_hidden.insertrow(0)
+			if ll_row > 0 then
+				this.ids_diagnostics_hidden.object.code[ll_row] = this.il_code
+				this.ids_diagnostics_hidden.object.diagnosticitemcode[ll_row] = this.id_diagnostics.object.diagnosticitemcode[ll_counter]
+				this.ids_diagnostics_hidden.object.diagnosticvalue[ll_row] = this.id_diagnostics.object.diagnosticvalue[ll_counter]
+				this.ids_diagnostics_hidden.object.details[ll_row] = this.id_diagnostics.object.details[ll_counter]
+			end if
+		end if
+	next
+	ll_counter = 0
+	for ll_counter = 1 to this.id_rx.rowcount()
+		this.id_rx.object.code[ll_counter] = this.il_code
+	next
+	if this.id_obs.rowcount() > 0 then
+		this.id_obs.object.code[1] = this.il_code
+		this.id_obs.object.patientcode[1] = this.il_patientcode
+		this.id_obs.object.admissioncode[1] = this.il_admission
+	end if
+	if this.id_gyn.rowcount() > 0 then
+		this.id_gyn.object.code[1] = this.il_code
+		this.id_gyn.object.patientcode[1] = this.il_patientcode
+		this.id_gyn.object.admissioncode[1] = this.il_admission
+	end if
+	if this.id_abd.rowcount() > 0 then
+		this.id_abd.object.code[1] = this.il_code
+		this.id_abd.object.patientcode[1] = this.il_patientcode
+		this.id_abd.object.admissioncode[1] = this.il_admission
+	end if
+	SQL DELETE VisitSymptoms WHERE VisitCode =:this.il_code USING this.it_transobject;
+	SQL DELETE VisitPhysicalExam WHERE VisitCode =:this.il_code USING this.it_transobject;
+	SQL DELETE VisitPrecaution WHERE VisitCode =:this.il_code USING this.it_transobject;
+	SQL DELETE VisitDiagnostics WHERE VisitCode =:this.il_code USING this.it_transobject;
+	return 0
+
+// w_patientvisit_form.wf_dosageinfo(long al_dosagecode, long al_row) returns long
+	long ll_factor
+	if al_dosagecode > 0 then
+		SQL SELECT dosefactor INTO :ll_factor FROM Dosage WHERE DosageCode =:al_dosagecode USING sqlca;
+	end if
+	if sqlca.sqlcode = 0 and ll_factor > 0 then
+		this.id_rx.object.dosagefactor[al_row] = ll_factor
+	end if
+	return 0
+
+// w_patientvisit_form.wf_update_totalqty(long al_row) returns long
+	double ld_qty
+	double ld_totqty
+	double ld_bsa
+	long ll_dosageunitcode
+	long ll_dosagecode
+	long ll_dosagefactor
+	long ll_duration
+	if al_row > 0 and this.id_rx.object.manualchangeintotqty[al_row] = 0 then
+		ld_qty = this.id_rx.object.qty[al_row]
+		if isnull(ld_qty) then
+			ld_qty = 0
+		end if
+		ld_bsa = this.id_rx.object.bsa[al_row]
+		if isnull(ld_bsa) or ld_bsa <= 0.0 then
+			ld_bsa = 1
+		end if
+		ll_dosagecode = this.id_rx.object.dosagecode[al_row]
+		ll_dosagefactor = this.id_rx.object.dosagefactor[al_row]
+		if isnull(ll_dosagefactor) then
+			ll_dosagefactor = 1
+		end if
+		ll_duration = this.id_rx.object.duration[al_row]
+		if isnull(ll_duration) then
+			ll_duration = 0
+		end if
+		ld_totqty = ld_qty * ld_bsa * ll_dosagefactor * ll_duration
+		this.id_rx.object.totalqty[al_row] = round(ld_totqty, 4)
+	end if
+	return 0
+
+// w_patientvisit_form.wf_print() returns integer
+	long i_rtcode
+	long ll_retrieve
+	s_datastore lstr
+	if this.ib_print = true then
+		wf_select_printout()
+		this.dw_print.settransobject(sqlca)
+		this.dw_print.retrieve(this.il_code)
+		lstr.d_value = this.il_code
+		lstr.dw = this.dw_print
+		lstr.s_name1 = this.dw_print.dataobject
+		openwithparm(w_preview_invoices, lstr)
+		lstr = message.powerobjectparm
+		if lstr.i_closemode = -1 then
+			return 0
+		else
+			if f_stringpreferences("PromptBeforePrinting") = "Y" and printsetup() < 0 then
+				messagebox("Printer", "Printing Error")
+				this.dw_print.printcancel()
+			end if
+			if this.dw_print.rowcount() > 0 then
+				if this.dw_print.print() < 0 then
+					messagebox("Printing", "Can not Print Invoice", information!)
+				end if
+			else
+				messagebox("Printing Error", "Can not Print Data,~r~nNo rows are retrieved", information!)
+			end if
+		end if
+	end if
+	return 0
+
+// w_patientvisit_form.wf_select_printout() returns long
+	string ls_report
+	if gs_company = "DRQUDRATULLAH" then
+		ls_report = "d_visitprescription_print_drqudratullah"
+	elseif gs_company = "HABIBPH2" then
+		ls_report = "d_visitprescription_print_habibph2"
+	elseif gs_company = "FAMILYCAREHSP" then
+		ls_report = "d_familycarehsp_visitprescription_print"
+	elseif gs_company = "DRMAHVISH" then
+		ls_report = "d_visitprescription_drmahvish"
+	elseif gs_company = "PHARMACYHABAD" then
+		ls_report = "d_visitprescription_print_pharmacyhabad"
+	elseif gs_company = "ALSHAFAY" then
+		ls_report = "d_visitprescription_print_alshafay"
+	elseif gs_company = "DRWAJIDALI" then
+		ls_report = "d_visitprescription_print_drwajidali"
+	elseif gs_company = "TEM" or gs_company = "ABUZAR" then
+		ls_report = "d_visitprescription_print_alshafay"
+	elseif gs_company = "BAJWAHOSPITAL2" then
+		ls_report = "d_bajwahospital2_visitprescription_print"
+	elseif gs_company = "DRIRFANSB" then
+		ls_report = "d_visitprescription_print_drirfansb"
+	elseif gs_company = "DRSHUMAIL" then
+		ls_report = "d_visitprescription_print_drshumail"
+	elseif gs_company = "REALDOCTORPVT" then
+		ls_report = "d_visitprescription_print_realdoctorpvt"
+	elseif gs_company = "RASHIDNURSING" then
+		ls_report = "d_visitprescription_print_rashidnursing"
+	elseif gs_company = "DRRABNAWAZ" then
+		ls_report = "d_visitprescription_print_drrabnawazraja"
+	elseif gs_company = "KHALISMEDICAL" then
+		ls_report = "d_visitprescription_print_khalismedical"
+	else
+		ls_report = "d_visitprescription_print_comp"
+	end if
+	this.dw_print.dataobject = ls_report
+	return 0
+
+// w_patientvisit_form.wf_validate_rx() returns long
+	long ll_currrow
+	long ll_counter
+	long ll_null
+	ll_currrow = this.id_rx.getrow()
+	setnull(ll_null)
+	if this.id_rx.rowcount() > 0 then
+		if isnull(this.id_rx.getitemnumber(ll_currrow, "icode")) then
+			if isnull(this.id_rx.getitemstring(ll_currrow, "itemname")) then
+				this.id_rx.deleterow(ll_currrow)
+			elseif this.ib_itemvalidated = false then
+				messagebox("Item Validation", "Please Select Some Valid Item")
+				this.id_rx.setcolumn("itemname")
+				this.id_rx.scrolltorow(ll_currrow)
+				this.id_rx.setfocus()
+				return 1
+			end if
+		elseif this.ib_itemvalidated = false then
+			messagebox("Item Validation", "Please Select Some Valid Item")
+			this.id_rx.setcolumn("itemname")
+			this.id_rx.scrolltorow(ll_currrow)
+			this.id_rx.setfocus()
+			return 1
+		end if
+		if f_validatedw(this.id_rx) < 0 then
+			return 1
+		end if
+		this.il_currrow = this.id_rx.rowcount()
+		if this.ib_itemvalidated = false and wf_validateitem(ll_currrow) = -1 then
+			return 1
+		end if
+		return
+	end if
+	for ll_counter = 1 to this.id_rx.rowcount()
+		this.id_rx.object.code[ll_counter] = this.il_code
+	next
+	return 0
+
+// w_patientvisit_form.wf_populate_diseasetreatment_template() returns long
+	s_arguements lstr_arg
+	long ll_diseasetypecode
+	long ll_diseasecode
+	long ll_templatecode
+	long ll_row
+	long ll_counter
+	datastore lds_items
+	open(w_arg_diseasetype)
+	lstr_arg = message.powerobjectparm
+	if lstr_arg.l_code1 > 0 then
+		ll_diseasetypecode = lstr_arg.l_code1
+		openwithparm(w_arg_disease_diseasetype, lstr_arg.l_code1)
+		lstr_arg = message.powerobjectparm
+		if lstr_arg.l_code1 > 0 then
+			ll_diseasecode = lstr_arg.l_code1
+			openwithparm(w_arg_diseasetreatmenttemplate_disease, lstr_arg.l_code1)
+			lstr_arg = message.powerobjectparm
+			if lstr_arg.l_code1 > 0 then
+				ll_templatecode = lstr_arg.l_code1
+				lds_items = create datastore
+				lds_items.dataobject = "d_diseasetreatmenttemplate_detail"
+				lds_items.settransobject(sqlca)
+				lds_items.retrieve(ll_templatecode)
+				if lds_items.rowcount() > 0 then
+					if this.id_rx.rowcount() > 0 then
+						if this.id_rx.object.icode[this.id_rx.rowcount()] <= 0 then
+							this.id_rx.deleterow(0)
+						end if
+					end if
+					for ll_counter = 1 to lds_items.rowcount()
+						ll_row = this.id_rx.insertrow(0)
+						if ll_row > 0 then
+							if this.id_vitals.rowcount() > 0 then
+								this.id_rx.object.bsa[ll_row] = this.id_vitals.object.bsa[1]
+							end if
+							this.id_rx.object.icode[ll_row] = lds_items.object.icode[ll_counter]
+							this.id_rx.object.itemname[ll_row] = lds_items.object.itemname[ll_counter]
+							this.id_rx.object.duration[ll_row] = lds_items.object.duration[ll_counter]
+							this.id_rx.object.diseasecode[ll_row] = ll_diseasecode
+							this.id_rx.object.dosagecode[ll_row] = lds_items.object.dosagecode[ll_counter]
+							this.id_rx.object.dosagefactor[ll_row] = lds_items.object.dosagefactor[ll_counter]
+							this.id_rx.object.routecode[ll_row] = lds_items.object.routecode[ll_counter]
+							this.id_rx.object.inscode[ll_row] = lds_items.object.inscode[ll_counter]
+							this.id_rx.object.details[ll_row] = lds_items.object.details[ll_counter]
+							this.id_rx.object.qty[ll_row] = lds_items.object.qty[ll_counter]
+							this.id_rx.object.dosageunitcode[ll_row] = lds_items.object.dosageunitcode[ll_counter]
+							this.id_rx.object.dosagestrength[ll_row] = lds_items.object.dosagestrength[ll_counter]
+							this.id_rx.object.totalqty[ll_row] = lds_items.object.totalqty[ll_counter]
+							wf_update_totalqty(ll_row)
+						end if
+					next
+				end if
+			end if
+		end if
+	end if
+	return 0
+
+// w_patientvisit_form.wf_show_rx_history() returns long
+	long ll_res
+	long ll_null
+	long ll_patientcode
+	long ll_counter
+	long ll_insrow
+	s_arguements ls_arguements
+	setnull(ll_null)
+	if this.id_vd.rowcount() > 0 then
+		ll_patientcode = this.id_vd.object.patientcode[this.id_vd.rowcount()]
+		if ll_patientcode > 0 then
+			ls_arguements.l_code1 = ll_patientcode
+			openwithparm(w_visit_prescription_history, ls_arguements)
+			ls_arguements = message.powerobjectparm
+			if this.il_protect = 1 then
+				return 0
+			end if
+		else
+			messagebox("Patient Visit Prescription History", "Please select a patient first to view Visit Prescription History")
+		end if
+	else
+		messagebox("Patient Visit Prescription History...", "Please select a patient first to view Visit Prescription History")
+	end if
+	return 0
+
+// w_patientvisit_form.wf_show_rx_value() returns long
+	long ll_count
+	long ll_invcode
+	long ll_masterrow
+	long ll_insrow
+	long ll_icode
+	double ld_rate
+	string ls_viewoption
+	datastore lds_rx_value
+	boolean lb_listtab
+	boolean lb_editable
+	s_datastore lstr
+	lds_rx_value = create datastore
+	lds_rx_value.dataobject = "d_visit_prescription_value"
+	lds_rx_value.settransobject(sqlca)
+	this.id_rx.accepttext()
+	for ll_count = 1 to this.id_rx.rowcount()
+		ll_insrow = lds_rx_value.insertrow(0)
+		if ll_insrow > 0 then
+			ll_icode = this.id_rx.object.icode[ll_count]
+			lds_rx_value.object.code[ll_insrow] = this.id_rx.object.code[ll_count]
+			lds_rx_value.object.icode[ll_insrow] = this.id_rx.object.icode[ll_count]
+			lds_rx_value.object.itemname[ll_insrow] = this.id_rx.object.itemname[ll_count]
+			lds_rx_value.object.date[ll_insrow] = this.id_rx.object.date[ll_count]
+			lds_rx_value.object.duration[ll_insrow] = this.id_rx.object.duration[ll_count]
+			lds_rx_value.object.diseasecode[ll_insrow] = this.id_rx.object.diseasecode[ll_count]
+			lds_rx_value.object.dosagecode[ll_insrow] = this.id_rx.object.dosagecode[ll_count]
+			lds_rx_value.object.dosagefactor[ll_insrow] = this.id_rx.object.dosagefactor[ll_count]
+			lds_rx_value.object.routecode[ll_insrow] = this.id_rx.object.routecode[ll_count]
+			lds_rx_value.object.inscode[ll_insrow] = this.id_rx.object.inscode[ll_count]
+			lds_rx_value.object.rowid[ll_insrow] = this.id_rx.object.rowid[ll_count]
+			lds_rx_value.object.details[ll_insrow] = this.id_rx.object.details[ll_count]
+			lds_rx_value.object.qty[ll_insrow] = this.id_rx.object.qty[ll_count]
+			lds_rx_value.object.bsa[ll_insrow] = this.id_rx.object.bsa[ll_count]
+			lds_rx_value.object.manualchangeintotqty[ll_insrow] = this.id_rx.object.manualchangeintotqty[ll_count]
+			lds_rx_value.object.dosageunitcode[ll_insrow] = this.id_rx.object.dosageunitcode[ll_count]
+			lds_rx_value.object.dosagestrength[ll_insrow] = this.id_rx.object.dosagestrength[ll_count]
+			lds_rx_value.object.totalqty[ll_insrow] = this.id_rx.object.totalqty[ll_count]
+			SQL SELECT Rate =Round ( SalePrice / CASE WHEN PackUnits > 0 THEN PackUnits ELSE 1 END , 2 ) INTO :ld_rate FROM Item WHERE ICode =:ll_icode USING this.it_transobject;
+			if this.it_transobject.sqlcode = 0 then
+				lds_rx_value.object.rate[ll_insrow] = ld_rate
+			end if
+		end if
+	next
+	lstr.ds = lds_rx_value
+	lstr.s_name1 = "d_visit_prescription_value"
+	openwithparm(w_preview_invoices, lstr)
+	lstr = message.powerobjectparm
+	destroy lds_rx_value
+	return 0
+
+// w_patientvisit_form.wf_populate_diseasetemplate() returns long
+	s_arguements lstr_arg
+	long ll_diseasetypecode
+	long ll_diseasecode
+	long ll_templatecode
+	long ll_row
+	long ll_counter
+	datastore lds_items
+	open(w_arg_diseasetreatmenttemplate)
+	lstr_arg = message.powerobjectparm
+	if lstr_arg.l_code1 > 0 then
+		ll_templatecode = lstr_arg.l_code1
+		SQL SELECT DISEASECODE INTO :ll_diseasecode FROM DiseaseTreatmentTemp WHERE DiseaseTreatmentTempCode =:ll_templatecode USING sqlca;
+		if sqlca.sqlcode = 0 then
+			if isnull(ll_diseasecode) or ll_diseasecode <= 0 then
+				ll_diseasecode = 1
+			end if
+		else
+			ll_diseasecode = 1
+		end if
+		lds_items = create datastore
+		lds_items.dataobject = "d_diseasetreatmenttemplate_detail"
+		lds_items.settransobject(sqlca)
+		lds_items.retrieve(ll_templatecode)
+		if lds_items.rowcount() > 0 then
+			if this.id_rx.rowcount() > 0 then
+				if this.id_rx.object.icode[this.id_rx.rowcount()] <= 0 then
+					this.id_rx.deleterow(0)
+				end if
+			end if
+			for ll_counter = 1 to lds_items.rowcount()
+				ll_row = this.id_rx.insertrow(0)
+				if ll_row > 0 then
+					if this.id_vitals.rowcount() > 0 then
+						this.id_rx.object.bsa[ll_row] = this.id_vitals.object.bsa[1]
+					end if
+					this.id_rx.object.icode[ll_row] = lds_items.object.icode[ll_counter]
+					this.id_rx.object.itemname[ll_row] = lds_items.object.itemname[ll_counter]
+					this.id_rx.object.duration[ll_row] = lds_items.object.duration[ll_counter]
+					this.id_rx.object.diseasecode[ll_row] = ll_diseasecode
+					this.id_rx.object.dosagecode[ll_row] = lds_items.object.dosagecode[ll_counter]
+					this.id_rx.object.dosagefactor[ll_row] = lds_items.object.dosagefactor[ll_counter]
+					this.id_rx.object.routecode[ll_row] = lds_items.object.routecode[ll_counter]
+					this.id_rx.object.inscode[ll_row] = lds_items.object.inscode[ll_counter]
+					this.id_rx.object.details[ll_row] = lds_items.object.details[ll_counter]
+					this.id_rx.object.qty[ll_row] = lds_items.object.qty[ll_counter]
+					this.id_rx.object.dosageunitcode[ll_row] = lds_items.object.dosageunitcode[ll_counter]
+					this.id_rx.object.dosagestrength[ll_row] = lds_items.object.dosagestrength[ll_counter]
+					this.id_rx.object.totalqty[ll_row] = lds_items.object.totalqty[ll_counter]
+					wf_update_totalqty(ll_row)
+				end if
+			next
+		end if
+	end if
+	return 0
+
+// w_patientvisit_form.wf_getnestedreport(datawindowchild adc_nested, datawindow adw_parentdatawindow, string as_nesteddatawindow) returns long
+	integer li_rtncode
+	li_rtncode = adw_parentdatawindow.getchild(as_nesteddatawindow, adc_nested)
+	if li_rtncode <> -1 then
+		adc_nested.settransobject(sqlca)
+	end if
+	return li_rtncode
+
+// w_patientvisit_form.wf_print(string dataobject) returns integer
+	string ls_report
+	s_datastore lstr
+	ls_report = dataobject
+	this.dw_print2.dataobject = ls_report
+	this.dw_print2.settransobject(sqlca)
+	this.dw_print2.retrieve(this.il_code)
+	lstr.dw = this.dw_print2
+	lstr.s_name1 = this.dw_print2.dataobject
+	openwithparm(w_preview_invoices, lstr)
+	lstr = message.powerobjectparm
+	if lstr.i_closemode = -1 then
+		return 0
+	else
+		if f_stringpreferences("PromptBeforePrinting") = "Y" and printsetup() < 0 then
+			messagebox("Printer", "Printing Error")
+			this.dw_print2.printcancel()
+		end if
+		if this.dw_print2.rowcount() > 0 then
+			if this.dw_print2.print() < 0 then
+				messagebox("Printing", "Can not Print Invoice", information!)
+			end if
+		else
+			messagebox("Printing Error", "Can not Print Data,~r~nNo rows are retrieved", information!)
+		end if
+	end if
+	return 0
+
+// w_patientvisit_form.wf_select_obs_us_print() returns string
+	string ls_report
+	ls_report = "d_patientvisit_obs_us_print"
+	return ls_report
+
+// w_patientvisit_form.wf_select_gyn_us_print() returns string
+	string ls_report
+	ls_report = "d_patientvisit_gyn_us_print"
+	return ls_report
+
+// w_patientvisit_form.wf_select_abd_us_print() returns string
+	string ls_report
+	ls_report = "d_patientvisit_abd_us_print"
+	return ls_report
+
+// w_patientvisit_form.wf_help_prescription_population(long al_icode) returns long
+	long ll_retcode
+	long ll_ret_status
+	long ll_row
+	long ll_count
+	s_arguements lstr_arg
+	datastore lds_rx_value
+	lds_rx_value = create datastore
+	lds_rx_value.dataobject = "d_populate_visit_prescription"
+	lds_rx_value.settransobject(this.it_transobject)
+	ll_ret_status = lds_rx_value.retrieve(al_icode)
+	if lds_rx_value.rowcount() <= 0 then
+		return 0
+	else
+		ll_row = this.id_rx.getrow()
+		if ll_row > 0 then
+			ll_count = 1
+			this.id_rx.object.icode[ll_row] = lds_rx_value.object.icode[ll_count]
+			this.id_rx.object.itemname[ll_row] = lds_rx_value.object.itemname[ll_count]
+			this.id_rx.object.duration[ll_row] = lds_rx_value.object.duration[ll_count]
+			this.id_rx.object.diseasecode[ll_row] = lds_rx_value.object.diseasecode[ll_count]
+			this.id_rx.object.dosagecode[ll_row] = lds_rx_value.object.dosagecode[ll_count]
+			this.id_rx.object.dosagefactor[ll_row] = lds_rx_value.object.dosagefactor[ll_count]
+			this.id_rx.object.routecode[ll_row] = lds_rx_value.object.routecode[ll_count]
+			this.id_rx.object.inscode[ll_row] = lds_rx_value.object.inscode[ll_count]
+			this.id_rx.object.details[ll_row] = lds_rx_value.object.details[ll_count]
+			this.id_rx.object.qty[ll_row] = lds_rx_value.object.qty[ll_count]
+			this.id_rx.object.manualchangeintotqty[ll_row] = lds_rx_value.object.manualchangeintotqty[ll_count]
+			this.id_rx.object.dosageunitcode[ll_row] = lds_rx_value.object.dosageunitcode[ll_count]
+			this.id_rx.object.dosagestrength[ll_row] = lds_rx_value.object.dosagestrength[ll_count]
+			this.id_rx.object.totalqty[ll_row] = lds_rx_value.object.totalqty[ll_count]
+		end if
+		if lds_rx_value.rowcount() > 0 then
+			lstr_arg.l_code1 = al_icode
+			openwithparm(w_visit_prescription_assistant, lstr_arg)
+			lstr_arg = message.powerobjectparm
+			if lstr_arg.i_status = 1 then
+				this.id_rx.object.icode[ll_row] = lstr_arg.l_code1
+				this.id_rx.object.itemname[ll_row] = lstr_arg.s_name1
+				this.id_rx.object.duration[ll_row] = lstr_arg.l_code2
+				this.id_rx.object.diseasecode[ll_row] = lstr_arg.l_code3
+				this.id_rx.object.dosagecode[ll_row] = lstr_arg.l_code4
+				this.id_rx.object.dosagefactor[ll_row] = lstr_arg.l_code5
+				this.id_rx.object.routecode[ll_row] = lstr_arg.l_code6
+				this.id_rx.object.inscode[ll_row] = lstr_arg.l_code7
+				this.id_rx.object.details[ll_row] = lstr_arg.s_name2
+				this.id_rx.object.qty[ll_row] = lstr_arg.db_code1
+				this.id_rx.object.manualchangeintotqty[ll_row] = lstr_arg.l_code9
+				this.id_rx.object.dosageunitcode[ll_row] = lstr_arg.l_code10
+				this.id_rx.object.dosagestrength[ll_row] = lstr_arg.s_name3
+				this.id_rx.object.totalqty[ll_row] = lstr_arg.db_code2
+			end if
+		end if
+	end if
+	return 0
+
+// w_patientvisit_form.wf_patient_retrieve() returns long
+	long ll_prow
+	long ll_pcode
+	long ll_retcode
+	long ll_rtncode
+	this.ic_retrievepatientlist = f_stringpreferences("RetrievePatientListInPatientVisit")
+	if this.ic_retrievepatientlist = "N" then
+		ll_retcode = 0
+	else
+		ll_rtncode = this.idc_patient.retrieve(this.ii_module)
+	end if
+	if this.idc_patient.rowcount() <= 0 then
+		ll_prow = this.idc_patient.insertrow(0)
+		setnull(ll_pcode)
+		this.idc_patient.setitem(ll_prow, "patientcode", ll_pcode)
+		this.idc_patient.setitem(ll_prow, "regno", "<NONE>")
+		this.idc_patient.setitem(ll_prow, "name", "<NONE>")
+		this.idc_patient.setitem(ll_prow, "customer", "<NONE>")
+		this.idc_patient.setitem(ll_prow, "city", "<NONE>")
+		this.idc_patient.scrolltorow(ll_prow)
+	end if
+	if ll_rtncode < 0 then
+		return -1
+	end if
+	return 0
+
+// w_patientvisit_form.wf_validate_patient(string as_regno) returns long
+	u_transaction it_mytrans
+	string ls_name
+	string ls_regno
+	string ls_city
+	string ls_nic
+	string ls_customer
+	string ls_patient
+	string ls_ref
+	long ll_patientcode
+	long ll_relationcode
+	long ll_doctcode
+	long ll_wardcode
+	long ll_recperiod
+	long ll_prow
+	long ll_found
+	long ll_pcode
+	it_mytrans = create u_transaction
+	SQL start USING it_mytrans;
+	if this.ic_retrievepatientlist = "N" then
+		SQL SELECT Name =P.name , Regno =P.regno , patientcode =P.patientcode , City =P.city , NIC =P.NationalIDCard , relationcode =P.relationcode , doctcode =P.doctcode , wardcode =P.wardcode , customer =A.name , patient =LTRIM ( RTRIM ( P.Name ) ) + ' (' + LTRIM ( RTRIM ( P.RegNo ) ) + ')' , RecurringPeriod =ISNULL ( P.RecurringPeriod , 0 ) , Reference =P.Reference INTO :ls_name, :ls_regno, :ll_patientcode, :ls_city, :ls_nic, :ll_relationcode, :ll_doctcode, :ll_wardcode, :ls_customer, :ls_patient, :ll_recperiod, :ls_ref FROM Patient P , Accounts A WHERE P.RegNo =:as_regno AND P.CustCode =A.AccCode USING it_mytrans;
+		if it_mytrans.sqlcode = 0 then
+			ll_found = this.idc_patient.find("regno = '" + as_regno + "'", 1, this.idc_patient.rowcount())
+			if ll_found > 0 and ll_found <= this.idc_patient.rowcount() then
+				ll_prow = ll_found
+			else
+				ll_prow = this.idc_patient.insertrow(0)
+			end if
+			setnull(ll_pcode)
+			this.idc_patient.setitem(ll_prow, "name", ls_name)
+			this.idc_patient.setitem(ll_prow, "regno", ls_regno)
+			this.idc_patient.setitem(ll_prow, "patientcode", ll_patientcode)
+			this.idc_patient.setitem(ll_prow, "city", ls_city)
+			this.idc_patient.setitem(ll_prow, "nic", ls_nic)
+			this.idc_patient.setitem(ll_prow, "relationcode", ll_relationcode)
+			this.idc_patient.setitem(ll_prow, "doctcode", ll_doctcode)
+			this.idc_patient.setitem(ll_prow, "wardcode", ll_wardcode)
+			this.idc_patient.setitem(ll_prow, "customer", ls_customer)
+			this.idc_patient.setitem(ll_prow, "patient", ls_patient)
+			this.idc_patient.setitem(ll_prow, "RecurringPeriod", ll_recperiod)
+			this.idc_patient.setitem(ll_prow, "Reference", ls_ref)
+			this.idc_patient.scrolltorow(ll_prow)
+			this.id_vd.setredraw(false)
+			this.id_vd.object.patientcode[1] = ll_patientcode
+			this.id_vd.setredraw(true)
+		end if
+	else
+		this.idc_patient.retrieve(this.ii_module)
+	end if
+	this.idc_patient.setredraw(true)
+	destroy it_mytrans
+	return 0
+
+// w_patientvisit_form.create() returns 0
+	this.cb_rx_history = create cb_rx_history
+	this.cb_image = create cb_image
+	this.cb_visithistory = create cb_visithistory
+	this.cb_patientsearch = create cb_patientsearch
+	this.cb_print = create cb_print
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.tab_main = create tab_main
+	this.dw_print = create dw_print
+	this.dw_image = create dw_image
+	this.dw_print2 = create dw_print2
+	this.control = {this.cb_rx_history, this.cb_image, this.cb_visithistory, this.cb_patientsearch, this.cb_print, this.cb_cancel, this.cb_ok, this.tab_main, this.dw_print, this.dw_image, this.dw_print2}
+
+// w_patientvisit_form.destroy() returns 0
+	destroy this.cb_rx_history
+	destroy this.cb_image
+	destroy this.cb_visithistory
+	destroy this.cb_patientsearch
+	destroy this.cb_print
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.tab_main
+	destroy this.dw_print
+	destroy this.dw_image
+	destroy this.dw_print2
+
+// w_patientvisit_form.open() returns long
+	integer li_xpos
+	integer li_ypos
+	integer li_xendpos
+	integer li_counter
+	integer li_taborder
+	integer li_visiblecolumns
+	integer li_zerotaborder
+	long ll_counter
+	long li_retcode
+	long li_rtncode
+	long ll_found
+	long ll_rtncode
+	boolean lb_active
+	boolean lb_restricted
+	boolean lb_customicode
+	boolean lb_zerotabordercol
+	date ld_date
+	long ll_retcode
+	setnull(this.il_code)
+	setnull(this.il_patientcode)
+	setnull(this.il_admission)
+	ld_date = today()
+	this.istr_datatype = message.powerobjectparm
+	this.il_protect = this.istr_datatype.ai_int
+	this.il_code = this.istr_datatype.al_long
+	this.it_transobject = create u_transaction
+	if wf_connect() <> 0 then
+		messagebox("Connection Failure", "Unable to connect to the database", stopsign!)
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	this.id_vd = create u_dwstandard
+	this.id_profile = create u_dwstandard
+	this.id_vitals = create u_dwstandard
+	this.id_symptoms = create u_dwstandard
+	this.id_pexam = create u_dwstandard
+	this.id_diagnostics = create u_dwstandard
+	this.id_precautions = create u_dwstandard
+	this.id_rx = create u_dwstandard
+	this.id_image = create u_dwstandard
+	this.id_tg = create u_dwstandard
+	this.id_obs = create u_dwstandard
+	this.id_gyn = create u_dwstandard
+	this.id_abd = create u_dwstandard
+	ll_found = gds_securitywindow.find("rightcode = 5012", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.ib_modifydate = true
+	end if
+	if f_rightexists(5092) then
+		this.ib_registerpatient = true
+	else
+		this.ib_registerpatient = false
+	end if
+	if f_rightexists(5100) then
+		this.ib_uploadimage = true
+	else
+		this.ib_uploadimage = false
+	end if
+	if f_rightexists(5100) then
+		this.ib_viewimage = true
+	else
+		this.ib_viewimage = false
+	end if
+	setredraw(false)
+	this.il_attendingdoctcode = f_get_user_doctor(gl_usercode)
+	wf_get_patient_info(this.il_code)
+	wf_apply_protect_setting()
+	wf_set_interface_adjustments()
+	wf_set_tab_visibility()
+	wf_retrieve_tabs()
+	ll_found = gds_securitywindow.find("rightcode = 5012", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.ib_modifydate = true
+	end if
+	ll_rtncode = this.id_vd.getchild("patientcode", this.idc_patient)
+	if ll_rtncode = -1 then
+		messagebox("Patient Visit", "Problem in Retrieving Patient List")
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	this.idc_patient.settransobject(this.it_transobject)
+	if wf_patient_retrieve() < 0 then
+		messagebox("Patient Visit", "Problem in Retrieving Patient List")
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	if this.il_code > 0 and this.ic_retrievepatientlist = "N" and this.id_vd.rowcount() > 0 and not isnull(this.id_vd.object.regno[1]) then
+		wf_validate_patient(this.id_vd.object.regno[1])
+	end if
+	ll_rtncode = this.id_vd.getchild("doctcode", this.idc_doctor)
+	if ll_rtncode = -1 then
+		messagebox("Patient Visit", "Problem in Retrieving Doctors List")
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	this.idc_doctor.settransobject(this.it_transobject)
+	ll_rtncode = this.idc_doctor.retrieve(gl_usercode)
+	if ll_rtncode <= 0 then
+		messagebox("Patient Visit", "Not Enough Doctor Allowed, Please contact your system administrator")
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	if isnull(this.il_code) and this.idc_doctor.rowcount() > 0 then
+		this.id_vd.object.doctcode.initial = string(this.idc_doctor.getitemnumber(1, "doctcode"))
+	end if
+	ll_rtncode = this.id_vd.getchild("appointmentcode", this.idc_appointment)
+	if ll_rtncode = -1 then
+		messagebox("Patient Visit", "Problem in Retrieving Appointment List")
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	this.idc_appointment.settransobject(this.it_transobject)
+	if isnull(this.il_code) then
+		wf_retrieve_appointments(this.idc_doctor.getitemnumber(1, "doctcode"))
+	end if
+	this.ids_symptoms_hidden = create u_ds_standard
+	this.ids_pexam_hidden = create u_ds_standard
+	this.ids_precautions_hidden = create u_ds_standard
+	this.ids_diagnostics_hidden = create u_ds_standard
+	this.ids_symptoms_hidden.dataobject = this.id_symptoms.dataobject
+	this.ids_symptoms_hidden.settransobject(this.it_transobject)
+	this.ids_pexam_hidden.dataobject = this.id_pexam.dataobject
+	this.ids_pexam_hidden.settransobject(this.it_transobject)
+	this.ids_precautions_hidden.dataobject = this.id_precautions.dataobject
+	this.ids_precautions_hidden.settransobject(this.it_transobject)
+	this.ids_diagnostics_hidden.dataobject = this.id_diagnostics.dataobject
+	this.ids_diagnostics_hidden.settransobject(this.it_transobject)
+	if f_stringpreferences("PatientAppointmentCompulsion") = "N" then
+		this.id_vd.object.appointmentcode.edit.required = "no"
+	end if
+	setredraw(true)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_patientvisit_form.key(keycode key, unsignedlong keyflags) returns long
+	if key = keyf8! and this.ib_viewimage then
+		wf_show_patient_gallery()
+	end if
+	if key = keyf9! and this.ib_uploadimage then
+		wf_setimage("ECG")
+	end if
+	return ::message.returnvalue
+
+// cb_rx_history.clicked() returns long
+	parent.wf_show_rx_history()
+	return ::message.returnvalue
+
+// cb_image.clicked() returns long
+	if parent.il_protect = 1 then
+		return ::message.returnvalue
+	end if
+	parent.wf_setimage("PV")
+	return ::message.returnvalue
+
+// cb_visithistory.clicked() returns long
+	parent.wf_visithistory()
+	return ::message.returnvalue
+
+// cb_patientsearch.clicked() returns long
+	parent.wf_patientsearch()
+	return ::message.returnvalue
+
+// cb_print.clicked() returns long
+	parent.ib_print = true
+	if parent.il_protect = 0 then
+		parent.wf_save()
+	else
+		parent.wf_print()
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.postevent("ue_close")
+	return ::message.returnvalue
+
+// cb_ok.ue_enterkry(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		triggerevent(clicked!)
+	end if
+	return 1
+
+// cb_ok.clicked() returns long
+	datetime ldt_server_datetime
+	string ls_aliasname
+	string ls_date_errtext
+	long ll_newid
+	long ll_row
+	long ll_counter
+	long ll_liccode
+	long li_rc
+	long ll_usercode
+	long ll_retcode
+	boolean lb_commitok
+	if parent.il_protect = 1 then
+		return ::message.returnvalue
+	end if
+	ll_row = 1
+	if parent.id_vd.getrow() > 0 then
+		if isnull(parent.id_vd.object.patientcode[1]) then
+			messagebox("Patient Validation", "Please select a valid patient", stopsign!)
+			return ::message.returnvalue
+		end if
+		parent.il_patientcode = parent.id_vd.object.patientcode[1]
+	end if
+	if f_validatedw(parent.id_vd) < 0 then
+		parent.tab_main.selecttab(1)
+		return ::message.returnvalue
+	end if
+	if f_validatedw(parent.id_vitals) < 0 then
+		parent.tab_main.selecttab(2)
+		return ::message.returnvalue
+	end if
+	if f_validatedw(parent.id_symptoms) < 0 then
+		parent.tab_main.selecttab(3)
+		return ::message.returnvalue
+	end if
+	if f_validatedw(parent.id_pexam) < 0 then
+		parent.tab_main.selecttab(4)
+		return ::message.returnvalue
+	end if
+	if f_validatedw(parent.id_precautions) < 0 then
+		parent.tab_main.selecttab(5)
+		return ::message.returnvalue
+	end if
+	if f_validatedw(parent.id_diagnostics) < 0 then
+		parent.tab_main.selecttab(6)
+		return ::message.returnvalue
+	end if
+	if f_validatedw(parent.id_rx) < 0 then
+		parent.tab_main.selecttab(7)
+		return ::message.returnvalue
+	end if
+	if parent.wf_validate_rx() = 1 then
+		parent.tab_main.selecttab(7)
+		return ::message.returnvalue
+	end if
+	if f_validatedw(parent.id_obs) < 0 then
+		parent.tab_main.selecttab(8)
+		return ::message.returnvalue
+	end if
+	if f_validatedw(parent.id_gyn) < 0 then
+		parent.tab_main.selecttab(9)
+		return ::message.returnvalue
+	end if
+	if f_validatedw(parent.id_abd) < 0 then
+		parent.tab_main.selecttab(10)
+		return ::message.returnvalue
+	end if
+	if not parent.ib_modifydate then
+		if not parent.wf_validateserverdatetime(ldt_server_datetime, ls_date_errtext) then
+			messagebox("Date Violation", ls_date_errtext, stopsign!)
+			return ::message.returnvalue
+		end if
+		parent.id_vd.object.date[1] = ldt_server_datetime
+	end if
+	if isnull(parent.id_vd.object.followupdays[ll_row]) or parent.id_vd.object.followupdays[ll_row] < 0 then
+		parent.id_vd.object.followupdays[ll_row] = 0
+	end if
+	ll_usercode = gl_usercode
+	if ll_usercode > 0 then
+		ll_newid = parent.id_vd.object.code[1]
+		if isnull(parent.il_code) and isnull(ll_newid) then
+			parent.wf_tabnewid("Visit", ll_newid)
+			parent.il_code = ll_newid
+		end if
+		parent.id_vd.object.usercode[1] = ll_usercode
+		parent.wf_presave()
+		if parent.id_vd.update(true, false) < 1 then
+			messagebox("Visit Detail Validation", "Unable to update Visit Detail  Record" + "~r~nDetails Are:- " + parent.it_transobject.sqlerrtext, stopsign!)
+			SQL rollback USING parent.it_transobject;
+			ll_retcode = -1
+		end if
+		if parent.id_vitals.update(true, false) < 1 then
+			messagebox("Vital Signs Validation", "Unable to update Vital Signs Record" + "~r~nDetails Are:- " + parent.it_transobject.sqlerrtext, stopsign!)
+			SQL rollback USING parent.it_transobject;
+			ll_retcode = -1
+		end if
+		if parent.ids_symptoms_hidden.update(true, false) < 1 then
+			messagebox("Symptoms Validation", "Unable to update Symptoms Record" + "~r~nDetails Are:- " + parent.it_transobject.sqlerrtext, stopsign!)
+			SQL rollback USING parent.it_transobject;
+			ll_retcode = -1
+		end if
+		if parent.ids_pexam_hidden.update(true, false) < 1 then
+			messagebox("Physical Examination Validation", "Unable to update Physical Examination  Record" + "~r~nDetails Are:- " + parent.it_transobject.sqlerrtext, stopsign!)
+			SQL rollback USING parent.it_transobject;
+			ll_retcode = -1
+		end if
+		if parent.ids_precautions_hidden.update(true, false) < 1 then
+			messagebox("Precautions validation", "Unable to update Precautions Record" + "~r~nDetails Are:- " + parent.it_transobject.sqlerrtext, stopsign!)
+			SQL rollback USING parent.it_transobject;
+			ll_retcode = -1
+		end if
+		if parent.ids_diagnostics_hidden.update(true, false) < 1 then
+			messagebox("Diagnostics validation", "Unable to update Diagnostics Record" + "~r~nDetails Are:- " + parent.it_transobject.sqlerrtext, stopsign!)
+			SQL rollback USING parent.it_transobject;
+			ll_retcode = -1
+		end if
+		if parent.id_rx.update(true, false) < 1 then
+			messagebox("Visit Prescription validation", "Unable to update Prescription Record" + "~r~nDetails Are:- " + parent.it_transobject.sqlerrtext, stopsign!)
+			SQL rollback USING parent.it_transobject;
+			ll_retcode = -1
+		end if
+		if parent.id_obs.update(true, false) < 1 then
+			messagebox("Obsteterical ultrasound validation", "Unable to update Obsteterical ultrasound Record" + "~r~nDetails Are:- " + parent.it_transobject.sqlerrtext, stopsign!)
+			SQL rollback USING parent.it_transobject;
+			ll_retcode = -1
+		end if
+		if parent.id_gyn.update(true, false) < 1 then
+			messagebox("Gynecological ultrasound validation", "Unable to update Gynecological ultrasound Record" + "~r~nDetails Are:- " + parent.it_transobject.sqlerrtext, stopsign!)
+			SQL rollback USING parent.it_transobject;
+			ll_retcode = -1
+		end if
+		if parent.id_abd.update(true, false) < 1 then
+			messagebox("Abdominal ultrasound validation", "Unable to update Abdominal ultrasound Record" + "~r~nDetails Are:- " + parent.it_transobject.sqlerrtext, stopsign!)
+			SQL rollback USING parent.it_transobject;
+			ll_retcode = -1
+		end if
+		if ll_retcode = 0 then
+			SQL commit USING parent.it_transobject;
+			lb_commitok = true
+			if parent.ib_print = true then
+				parent.wf_print()
+			end if
+			if parent.wf_update_image() = 0 then
+				parent.id_image.reset()
+				parent.istr_image = parent.istr_blank_image
+			end if
+			parent.event ue_close()
+		else
+			return ::message.returnvalue
+		end if
+		return
+	end if
+	return ::message.returnvalue
+
+// tab_main.create() returns 0
+	this.tabpage_vd = create tabpage_vd
+	this.tabpage_vitals = create tabpage_vitals
+	this.tabpage_symptoms = create tabpage_symptoms
+	this.tabpage_pexam = create tabpage_pexam
+	this.tabpage_precautions = create tabpage_precautions
+	this.tabpage_diagnostics = create tabpage_diagnostics
+	this.tabpage_rx = create tabpage_rx
+	this.tabpage_obs_us = create tabpage_obs_us
+	this.tabpage_gyn_us = create tabpage_gyn_us
+	this.tabpage_abd_us = create tabpage_abd_us
+	this.control = {this.tabpage_vd, this.tabpage_vitals, this.tabpage_symptoms, this.tabpage_pexam, this.tabpage_precautions, this.tabpage_diagnostics, this.tabpage_rx, this.tabpage_obs_us, this.tabpage_gyn_us, this.tabpage_abd_us}
+
+// tab_main.destroy() returns 0
+	destroy this.tabpage_vd
+	destroy this.tabpage_vitals
+	destroy this.tabpage_symptoms
+	destroy this.tabpage_pexam
+	destroy this.tabpage_precautions
+	destroy this.tabpage_diagnostics
+	destroy this.tabpage_rx
+	destroy this.tabpage_obs_us
+	destroy this.tabpage_gyn_us
+	destroy this.tabpage_abd_us
+
+// tab_main.selectionchanged(integer oldindex, integer newindex) returns long
+	if parent.il_protect = 0 then
+		parent.cb_print.visible = true
+		parent.cb_patientsearch.visible = true
+		if isnull(parent.il_code) then
+			if newindex = 1 then
+				parent.id_vd.setfocus()
+				if parent.id_vd.rowcount() = 0 then
+					if parent.idc_patient.rowcount() = 0 then
+						parent.idc_patient.insertrow(0)
+					end if
+					parent.idc_doctor.insertrow(0)
+					parent.idc_appointment.insertrow(0)
+					parent.id_vd.insertrow(0)
+				end if
+			elseif newindex = 2 then
+				parent.id_vitals.setfocus()
+				if parent.id_vitals.rowcount() = 0 then
+					parent.wf_insert_row(parent.id_vitals, 0)
+				end if
+			elseif newindex = 3 then
+				parent.id_symptoms.setfocus()
+				if parent.id_symptoms.rowcount() = 0 then
+					parent.wf_insert_row(parent.id_symptoms, 0)
+				end if
+			elseif newindex = 4 then
+				parent.id_pexam.setfocus()
+				if parent.id_pexam.rowcount() = 0 then
+					parent.wf_insert_row(parent.id_pexam, 0)
+				end if
+			elseif newindex = 5 then
+				parent.id_precautions.setfocus()
+				if parent.id_precautions.rowcount() = 0 then
+					parent.wf_insert_row(parent.id_precautions, 0)
+				end if
+			elseif newindex = 6 then
+				parent.id_diagnostics.setfocus()
+				if parent.id_diagnostics.rowcount() = 0 then
+					parent.wf_insert_row(parent.id_diagnostics, 0)
+				end if
+			elseif newindex = 7 then
+				parent.id_rx.setfocus()
+				if parent.id_rx.rowcount() = 0 then
+					parent.wf_insert_row(parent.id_rx, 0)
+					if parent.id_vitals.rowcount() > 0 then
+						parent.id_rx.object.bsa[parent.id_rx.rowcount()] = parent.id_vitals.object.bsa[1]
+					end if
+				end if
+			elseif newindex = 8 then
+				parent.id_obs.setfocus()
+				if parent.id_obs.rowcount() = 0 then
+					parent.wf_insert_row(parent.id_obs, 0)
+				end if
+			elseif newindex = 9 then
+				parent.id_gyn.setfocus()
+				if parent.id_gyn.rowcount() = 0 then
+					parent.wf_insert_row(parent.id_gyn, 0)
+				end if
+			elseif newindex = 10 then
+				parent.id_abd.setfocus()
+				if parent.id_abd.rowcount() = 0 then
+					parent.wf_insert_row(parent.id_abd, 0)
+				end if
+			end if
+		end if
+	end if
+	return ::message.returnvalue
+
+// tabpage_vd.create() returns 0
+	this.dw_vd = create dw_vd
+	this.control = {this.dw_vd}
+
+// tabpage_vd.destroy() returns 0
+	destroy this.dw_vd
+
+// dw_vd.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	setfocus()
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_vd.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	long ll_patientcode
+	long ll_res
+	long ll_found
+	long ll_count
+	integer li_null
+	datetime ldt_date_null
+	date ld_followupdate
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	setnull(ldt_date_null)
+	setnull(li_null)
+	choose case dwo.name
+	case "doctcode"
+		parent.parent.parent.wf_retrieve_appointments(long(data))
+	case "appointmentcode"
+		parent.parent.parent.wf_set_appointmentinfo(long(data))
+	case "regno"
+		if not isnull(data) and data <> "" then
+			ll_res = parent.parent.parent.wf_findpatientcode(data, ll_patientcode)
+			if ll_res > 0 then
+				setitem(row, "patientcode", ll_patientcode)
+				parent.parent.parent.wf_validate_patient(data)
+			else
+				if ll_res = -2 then
+					messagebox("Patient Validation", "Patient with  RegNo  " + data + " is Inactive")
+				else
+					messagebox("Patient Validation", "Patient with  RegNo  " + data + " does not exist")
+				end if
+				return 1
+			end if
+			return
+		end if
+	case "patientcode"
+		ll_patientcode = long(data)
+		ll_found = parent.parent.parent.idc_patient.find("patientcode=" + trim(string(ll_patientcode)), 1, parent.parent.parent.idc_patient.rowcount())
+		if ll_found > 0 then
+			setitem(1, "regno", parent.parent.parent.idc_patient.getitemstring(parent.parent.parent.idc_patient.getrow(), "regno"))
+		else
+			messagebox("Patient Validation", "Patient does not exist or Already Inactive.")
+			return 1
+		end if
+	case "followupdays"
+		if long(data) < 0 or isnull(data) then
+			messagebox("Patient Follow-up Days Validation", "Please enter valid Patient Follow-up Days.", stopsign!)
+			return 1
+		else
+			ld_followupdate = relativedate(date(this.object.date[1]), long(data))
+			SQL SELECT ISNULL ( COUNT ( V.VisitCode ) , :ld_followupdate ) INTO :ll_count FROM Visit V WHERE CAST ( CONVERT ( VARCHAR ( 100 ) , DateAdd ( dd , V.FollowUpDAys , V.Date ) , 101 ) AS DATETIME ) ={d '2024-11-08' } USING parent.parent.parent.it_transobject;
+			if parent.parent.parent.it_transobject.sqlcode = 0 then
+				this.object.followupdate[1] = ld_followupdate
+				this.object.estimatedpatientcount[1] = ll_count
+				if ll_count > this.object.maxestpatientcount[1] then
+					ll_res = messagebox("Patient Follow-up Days Validation", "Estimated Patient Count is exceeding Maximum Daily Patients Limit.~r~nAllow this to happen?", question!, yesno!, 2)
+					if ll_res = 1 then
+						return 0
+					else
+						return 1
+					end if
+				else
+					this.object.estimatedpatientcount[1] = ll_count
+				end if
+			else
+				return 0
+			end if
+		end if
+		return
+	end choose
+	return ::message.returnvalue
+
+// dw_vd.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if len(gettext()) > 0 then
+		selecttext(1, len(gettext()))
+	end if
+	return ::message.returnvalue
+
+// dw_vd.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if getcolumnname() = "patientcode" and parent.parent.parent.ib_registerpatient and key = keyf5! then
+		parent.parent.parent.wf_registerpatient()
+	end if
+	if key = keyf8! and parent.parent.parent.ib_viewimage then
+		parent.parent.parent.wf_show_patient_gallery()
+	end if
+	if keyflags = 2 and key = keys! then
+		parent.parent.parent.cb_ok.triggerevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// dw_vd.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	if getcolumnname() <> "diagnosis" then
+		if getcolumnname() <> "previousdiagnosis" then
+			if getcolumnname() <> "recommendations" then
+				send(handle(this), 256, 9, long(90))
+				return 1
+			end if
+		end if
+	end if
+	return ::message.returnvalue
+
+// tabpage_vitals.create() returns 0
+	this.dw_vitals = create dw_vitals
+	this.control = {this.dw_vitals}
+
+// tabpage_vitals.destroy() returns 0
+	destroy this.dw_vitals
+
+// dw_vitals.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	if parent.parent.parent.id_vitals.getcolumnname() <> "vitalnotes" then
+		send(handle(this), 256, 9, long(90))
+		return 1
+	end if
+	return ::message.returnvalue
+
+// dw_vitals.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	setfocus()
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_vitals.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if len(gettext()) > 0 then
+		selecttext(1, len(gettext()))
+	end if
+	return ::message.returnvalue
+
+// dw_vitals.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "height1"
+		parent.parent.parent.wf_set_bmi("height1", data)
+	case "height2"
+		parent.parent.parent.wf_set_bmi("height2", data)
+	case "weight1"
+		parent.parent.parent.wf_set_bmi("weight1", data)
+	case "weight2"
+		parent.parent.parent.wf_set_bmi("weight2", data)
+	case "bsamethod"
+		parent.parent.parent.wf_set_bmi("bsamethod", data)
+	end choose
+	return ::message.returnvalue
+
+// dw_vitals.itemerror(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "height1", "height1"
+		if long(data) < 0 then
+			messagebox("Height Validation", "Please Enter Valid Height")
+		end if
+	case "weight1", "weight1"
+		if long(data) < 0 then
+			messagebox("Weight Validation", "Please Enter Valid Weight")
+		end if
+	case "temperaturevalue"
+		if long(data) < 0 then
+			messagebox("Temprature Value Validation", "Please Enter Valid Temprature Value")
+		end if
+	case "pulserate"
+		if long(data) < 0 then
+			messagebox("Pulse Rate Validation", "Please Enter Valid Pulse Rate ")
+		end if
+	case "respiration"
+		if long(data) < 0 then
+			messagebox("Repiration Value Value Validation", "Please Enter Valid Repiration Value")
+		end if
+	case "bloodpressuresystolic", "bloodpressurediastolic"
+		if long(data) < 0 then
+			messagebox("Blood Pressure Value Validation", "Please Enter Valid Blood Pressure Value")
+		end if
+	end choose
+	return 1
+
+// dw_vitals.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keyf8! and parent.parent.parent.ib_viewimage then
+		parent.parent.parent.wf_show_patient_gallery()
+	end if
+	if keyflags = 2 and key = keys! then
+		parent.parent.parent.cb_ok.triggerevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// tabpage_symptoms.create() returns 0
+	this.dw_symptoms = create dw_symptoms
+	this.control = {this.dw_symptoms}
+
+// tabpage_symptoms.destroy() returns 0
+	destroy this.dw_symptoms
+
+// dw_symptoms.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	setfocus()
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_symptoms.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	if getcolumnname() <> "remarks" then
+		send(handle(this), 256, 9, long(90))
+		return 1
+	end if
+	return ::message.returnvalue
+
+// dw_symptoms.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if len(gettext()) > 0 then
+		selecttext(1, len(gettext()))
+	end if
+	return ::message.returnvalue
+
+// dw_symptoms.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keyf8! and parent.parent.parent.ib_viewimage then
+		parent.parent.parent.wf_show_patient_gallery()
+	end if
+	if keyflags = 2 and key = keys! then
+		parent.parent.parent.cb_ok.triggerevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// dw_symptoms.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	integer li_retcode
+	long ll_null
+	string ls_null
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	setnull(ll_null)
+	setnull(ls_null)
+	choose case dwo.name
+	case "duration"
+		if long(data) < 0 then
+			messagebox("Duration Validation!", "Please enter a valid duration")
+			return 1
+		end if
+	case else
+		parent.parent.parent.ib_rowvalidated = true
+	end choose
+	return li_retcode
+
+// tabpage_pexam.create() returns 0
+	this.dw_pexam = create dw_pexam
+	this.control = {this.dw_pexam}
+
+// tabpage_pexam.destroy() returns 0
+	destroy this.dw_pexam
+
+// dw_pexam.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_pexam.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	setfocus()
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_pexam.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keyf8! and parent.parent.parent.ib_viewimage then
+		parent.parent.parent.wf_show_patient_gallery()
+	end if
+	if keyflags = 2 and key = keys! then
+		parent.parent.parent.cb_ok.triggerevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// dw_pexam.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	if len(gettext()) > 0 then
+		selecttext(1, len(gettext()))
+	end if
+	return ::message.returnvalue
+
+// tabpage_precautions.create() returns 0
+	this.dw_precautions = create dw_precautions
+	this.control = {this.dw_precautions}
+
+// tabpage_precautions.destroy() returns 0
+	destroy this.dw_precautions
+
+// dw_precautions.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	setfocus()
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_precautions.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	if getcolumnname() <> "prevabnormallabs" then
+		send(handle(this), 256, 9, long(90))
+		return 1
+	end if
+	return ::message.returnvalue
+
+// dw_precautions.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if len(gettext()) > 0 then
+		selecttext(1, len(gettext()))
+	end if
+	return ::message.returnvalue
+
+// dw_precautions.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keyf8! and parent.parent.parent.ib_viewimage then
+		parent.parent.parent.wf_show_patient_gallery()
+	end if
+	if keyflags = 2 and key = keys! then
+		parent.parent.parent.cb_ok.triggerevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// tabpage_diagnostics.create() returns 0
+	this.dw_diagnostics = create dw_diagnostics
+	this.control = {this.dw_diagnostics}
+
+// tabpage_diagnostics.destroy() returns 0
+	destroy this.dw_diagnostics
+
+// dw_diagnostics.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	setfocus()
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_diagnostics.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	if not (getcolumnname() = "otherexam" or getcolumnname() = "othersystemicabnormalfindingsexam") then
+		send(handle(this), 256, 9, long(90))
+		return 1
+	end if
+	return ::message.returnvalue
+
+// dw_diagnostics.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if len(gettext()) > 0 then
+		selecttext(1, len(gettext()))
+	end if
+	return ::message.returnvalue
+
+// dw_diagnostics.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keyf8! and parent.parent.parent.ib_viewimage then
+		parent.parent.parent.wf_show_patient_gallery()
+	end if
+	if keyflags = 2 and key = keys! then
+		parent.parent.parent.cb_ok.triggerevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// tabpage_rx.create() returns 0
+	this.dw_rx = create dw_rx
+	this.dw_selectionlist = create dw_selectionlist
+	this.control = {this.dw_rx, this.dw_selectionlist}
+
+// tabpage_rx.destroy() returns 0
+	destroy this.dw_rx
+	destroy this.dw_selectionlist
+
+// dw_rx.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	integer rt_code
+	long ll_currrow
+	long ll_listcurrrow
+	long ll_rowm
+	long ll_rowcount
+	long ll_icode
+	long ll_found
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if parent.parent.parent.il_protect = 0 then
+		if keyflags = 2 then
+			if key = keyi! then
+				if parent.parent.parent.ib_rowvalidated = false and parent.parent.parent.wf_validateitem(getrow()) = -1 then
+					return ::message.returnvalue
+				end if
+				if getrow() > 0 and isnull(this.object.icode[getrow()]) then
+					return ::message.returnvalue
+				end if
+				if rowcount() > 0 and f_validatedw(this) < 0 then
+					return ::message.returnvalue
+				end if
+				ll_rowcount = insertrow(0)
+				if parent.parent.parent.id_vitals.rowcount() > 0 and ll_rowcount > 0 then
+					parent.parent.parent.id_rx.object.bsa[ll_rowcount] = parent.parent.parent.id_vitals.object.bsa[1]
+				end if
+				if ll_rowcount > 1 then
+					scrolltorow(ll_rowcount)
+					setcolumn("itemname")
+					setfocus()
+					parent.parent.parent.id_selectionlist.show()
+					parent.parent.parent.il_currrow = ll_rowcount
+				end if
+			elseif key = keyd! then
+				parent.parent.parent.ib_rowvalidated = true
+				if rowcount() > 0 then
+					deleterow(0)
+				end if
+				ll_rowcount = rowcount()
+				parent.parent.parent.il_currrow = ll_rowcount
+				if ll_rowcount > 1 then
+					scrolltorow(ll_rowcount)
+					setcolumn("itemname")
+					setfocus()
+					parent.parent.parent.id_selectionlist.hide()
+				end if
+				parent.parent.parent.ib_rowvalidated = true
+			end if
+		end if
+		if getcolumnname() = "itemname" then
+			ll_rowm = getrow()
+			setredraw(false)
+			if key = keydownarrow! then
+				parent.parent.parent.id_selectionlist.selectrow(0, false)
+				parent.parent.parent.id_selectionlist.scrollnextrow()
+				ll_listcurrrow = parent.parent.parent.id_selectionlist.getrow()
+				rt_code = 1
+			elseif key = keyuparrow! then
+				parent.parent.parent.id_selectionlist.selectrow(0, false)
+				parent.parent.parent.id_selectionlist.scrollpriorrow()
+				ll_listcurrrow = parent.parent.parent.id_selectionlist.getrow()
+				rt_code = 1
+			elseif key = keypagedown! then
+				parent.parent.parent.id_selectionlist.selectrow(0, false)
+				parent.parent.parent.id_selectionlist.scrollnextpage()
+				ll_listcurrrow = parent.parent.parent.id_selectionlist.getrow()
+				rt_code = 1
+			elseif key = keypageup! then
+				parent.parent.parent.id_selectionlist.selectrow(0, false)
+				parent.parent.parent.id_selectionlist.scrollpriorpage()
+				ll_listcurrrow = parent.parent.parent.id_selectionlist.getrow()
+				rt_code = 1
+			elseif key = keyend! then
+				parent.parent.parent.id_selectionlist.selectrow(0, false)
+				parent.parent.parent.id_selectionlist.scrolltorow(parent.parent.parent.id_selectionlist.rowcount())
+				ll_listcurrrow = parent.parent.parent.id_selectionlist.getrow()
+				rt_code = 1
+			elseif key = keyhome! then
+				parent.parent.parent.id_selectionlist.selectrow(0, false)
+				parent.parent.parent.id_selectionlist.scrolltorow(1)
+				ll_listcurrrow = parent.parent.parent.id_selectionlist.getrow()
+				rt_code = 1
+			elseif key = keyback! then
+				parent.parent.parent.ib_bkspace = true
+				setredraw(true)
+			elseif key = keyescape! then
+				if parent.parent.parent.id_selectionlist.visible = false then
+					return ::message.returnvalue
+				end if
+				parent.parent.parent.id_selectionlist.hide()
+				setfocus()
+				setredraw(true)
+			elseif key = keyf4! then
+				parent.parent.parent.id_selectionlist.show()
+				parent.parent.parent.id_selectionlist.selectrow(0, false)
+				parent.parent.parent.id_selectionlist.scrolltorow(parent.parent.parent.il_itemlistfoundrow)
+				parent.parent.parent.id_selectionlist.selectrow(parent.parent.parent.il_itemlistfoundrow, true)
+				setredraw(true)
+			elseif key = keyf5! then
+				parent.parent.parent.id_selectionlist.hide()
+				setredraw(true)
+				ll_icode = f_drilldown_itemsearch("criteriasearch", 1)
+				parent.parent.parent.id_selectionlist.setfilter("")
+				parent.parent.parent.id_selectionlist.filter()
+				if ll_icode > 0 then
+					ll_found = parent.parent.parent.id_selectionlist.find("code = " + string(ll_icode), 1, parent.parent.parent.id_selectionlist.rowcount())
+					if ll_found > 0 then
+						ll_listcurrrow = ll_found
+						parent.parent.parent.id_selectionlist.selectrow(0, false)
+						parent.parent.parent.id_selectionlist.selectrow(ll_listcurrrow, true)
+						rt_code = 1
+					end if
+				end if
+				setfocus()
+			elseif key = keyf6! then
+				parent.parent.parent.id_selectionlist.hide()
+				setredraw(true)
+				ll_icode = f_drilldown_itemsearch("namesearch", 1)
+				parent.parent.parent.id_selectionlist.setfilter("")
+				parent.parent.parent.id_selectionlist.filter()
+				if ll_icode > 0 then
+					ll_found = parent.parent.parent.id_selectionlist.find("code = " + string(ll_icode), 1, parent.parent.parent.id_selectionlist.rowcount())
+					if ll_found > 0 then
+						ll_listcurrrow = ll_found
+						parent.parent.parent.id_selectionlist.selectrow(0, false)
+						rt_code = 1
+					end if
+				end if
+				setfocus()
+			elseif key = keyf7! then
+				if not isnull(getitemnumber(ll_rowm, "icode")) then
+					ll_icode = getitemnumber(ll_rowm, "icode")
+					parent.parent.parent.id_selectionlist.hide()
+					setredraw(true)
+					ll_icode = f_prefered_itemsearch(ll_icode)
+					parent.parent.parent.id_selectionlist.setfilter("")
+					parent.parent.parent.id_selectionlist.filter()
+					if ll_icode > 0 then
+						ll_found = parent.parent.parent.id_selectionlist.find("code = " + string(ll_icode), 1, parent.parent.parent.id_selectionlist.rowcount())
+						if ll_found > 0 then
+							ll_listcurrrow = ll_found
+							parent.parent.parent.id_selectionlist.selectrow(0, false)
+							rt_code = 1
+						end if
+					end if
+				end if
+				setfocus()
+			elseif isnull(getitemnumber(getrow(), "icode")) and key = keyenter! then
+				parent.parent.parent.id_selectionlist.hide()
+				parent.parent.parent.id_selectionlist.selectrow(0, false)
+				parent.parent.parent.id_selectionlist.scrolltorow(parent.parent.parent.id_selectionlist.getrow())
+				parent.parent.parent.id_selectionlist.selectrow(parent.parent.parent.id_selectionlist.getrow(), true)
+				ll_listcurrrow = parent.parent.parent.id_selectionlist.getrow()
+				setitem(ll_rowm, "icode", parent.parent.parent.id_selectionlist.getitemnumber(ll_listcurrrow, "code"))
+				setitem(ll_rowm, "itemname", parent.parent.parent.id_selectionlist.getitemstring(ll_listcurrrow, "name"))
+				selecttext(1, len(gettext()))
+				parent.parent.parent.ib_itemvalidated = false
+				parent.parent.parent.ib_rowvalidated = false
+				setredraw(true)
+			else
+				setredraw(true)
+			end if
+			if rt_code = 1 then
+				parent.parent.parent.id_selectionlist.selectrow(0, false)
+				parent.parent.parent.id_selectionlist.selectrow(ll_listcurrrow, true)
+				parent.parent.parent.il_itemlistfoundrow = ll_listcurrrow
+				setitem(ll_rowm, "icode", parent.parent.parent.id_selectionlist.getitemnumber(ll_listcurrrow, "code"))
+				setitem(ll_rowm, "itemname", parent.parent.parent.id_selectionlist.getitemstring(ll_listcurrrow, "name"))
+				selecttext(1, len(gettext()))
+				parent.parent.parent.ib_itemvalidated = false
+				parent.parent.parent.ib_rowvalidated = false
+				setredraw(true)
+			end if
+		end if
+	end if
+	if key = keyf8! and parent.parent.parent.ib_viewimage then
+		parent.parent.parent.wf_show_patient_gallery()
+	end if
+	if key = keyf11! then
+		parent.parent.parent.wf_show_rx_value()
+	end if
+	if key = keyf12! then
+		parent.parent.parent.wf_populate_diseasetemplate()
+	end if
+	if key = keyf9! then
+		parent.parent.parent.wf_populate_diseasetreatment_template()
+	end if
+	setfocus()
+	if keyflags = 2 and key = keys! then
+		parent.parent.parent.cb_ok.triggerevent(clicked!)
+	end if
+	return rt_code
+
+// dw_rx.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	setfocus()
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_rx.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	string ls_itemname
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	parent.parent.parent.wf_update_totalqty(row)
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem(row) = -1 then
+		parent.parent.parent.ib_itemvalidated = false
+		parent.parent.parent.ib_rowvalidated = false
+		return ::message.returnvalue
+	end if
+	if row > 0 then
+		choose case dwo.name
+		case "itemname"
+			ls_itemname = this.object.itemname[row]
+			if isnull(ls_itemname) then
+				ls_itemname = ""
+			end if
+			parent.parent.parent.il_itemlistfoundrow = parent.parent.parent.id_selectionlist.find("name = '" + ls_itemname + "'", 1, parent.parent.parent.id_selectionlist.rowcount())
+			if parent.parent.parent.il_itemlistfoundrow > parent.parent.parent.id_selectionlist.rowcount() then
+				parent.parent.parent.il_itemlistfoundrow = parent.parent.parent.id_selectionlist.rowcount()
+			elseif isnull(parent.parent.parent.il_itemlistfoundrow) or parent.parent.parent.il_itemlistfoundrow = 0 then
+				parent.parent.parent.il_itemlistfoundrow = 1
+			end if
+			parent.parent.parent.id_selectionlist.show()
+			parent.parent.parent.id_selectionlist.selectrow(0, false)
+			parent.parent.parent.id_selectionlist.scrolltorow(parent.parent.parent.il_itemlistfoundrow)
+			parent.parent.parent.id_selectionlist.selectrow(parent.parent.parent.il_itemlistfoundrow, true)
+		case else
+			parent.parent.parent.id_selectionlist.hide()
+		end choose
+	end if
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_rx.ue_enterkey() returns long
+	long ancestorreturnvalue
+	long ll_rowcount
+	ancestorreturnvalue = super::ue_enterkey()
+	if getrow() = rowcount() and getcolumn() = integer(this.object.datawindow.column.count) then
+		if parent.parent.parent.id_rx.rowcount() > 0 and f_validatedw(parent.parent.parent.id_rx) < 0 then
+			return ::message.returnvalue
+		end if
+		if parent.parent.parent.ib_rowvalidated = false and parent.parent.parent.wf_validateitem(getrow()) = -1 then
+			return 1
+		end if
+		ll_rowcount = parent.parent.parent.id_rx.insertrow(0)
+		if parent.parent.parent.id_vitals.rowcount() > 0 and ll_rowcount > 0 then
+			parent.parent.parent.id_rx.object.bsa[ll_rowcount] = parent.parent.parent.id_vitals.object.bsa[1]
+		end if
+		if ll_rowcount > 1 then
+			parent.parent.parent.id_rx.scrolltorow(ll_rowcount)
+			parent.parent.parent.id_rx.setcolumn("itemname")
+			parent.parent.parent.id_rx.setfocus()
+		end if
+		return 1
+	end if
+	if getcolumnname() = "itemname" then
+		parent.parent.parent.id_selectionlist.hide()
+		if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem(getrow()) = -1 then
+			return 1
+		end if
+		return
+	end if
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_rx.editchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	long ll_currrow
+	long ll_startrow
+	ancestorreturnvalue = super::editchanged(row, dwo, data)
+	ll_startrow = 0
+	choose case dwo.name
+	case "itemname"
+		if upper(left(data, 1)) >= "A" and upper(left(data, 1)) <= "Z" or left(data, 1) >= "0" and left(data, 1) <= "9" or left(data, 1) = "*" then
+			ll_currrow = parent.parent.parent.id_selectionlist.getrow()
+			if len(data) > 1 then
+				ll_startrow = ll_currrow
+			else
+				if left(data, 1) >= "0" and left(data, 1) <= "9" or left(data, 1) = "*" then
+					ll_startrow = 1
+				else
+					ll_startrow = parent.parent.parent.ia_llookuptable[asc(upper(data))]
+				end if
+				parent.parent.parent.ib_bkspace = false
+			end if
+			if parent.parent.parent.ib_bkspace then
+				parent.parent.parent.il_itemlistfoundrow = parent.parent.parent.id_selectionlist.find("Lower(name) <= '" + lower(data) + "'", ll_startrow, 0)
+				parent.parent.parent.il_itemlistfoundrow = parent.parent.parent.il_itemlistfoundrow + 1
+				parent.parent.parent.ib_bkspace = false
+			else
+				parent.parent.parent.il_itemlistfoundrow = parent.parent.parent.id_selectionlist.find("Lower(name) >= '" + lower(data) + "'", ll_startrow, 99999)
+			end if
+			if parent.parent.parent.il_itemlistfoundrow = 0 then
+				parent.parent.parent.il_itemlistfoundrow = parent.parent.parent.id_selectionlist.rowcount()
+			end if
+			if parent.parent.parent.il_itemlistfoundrow <> ll_currrow then
+				parent.parent.parent.id_selectionlist.selectrow(0, false)
+				parent.parent.parent.id_selectionlist.setrow(parent.parent.parent.il_itemlistfoundrow)
+				parent.parent.parent.id_selectionlist.scrolltorow(parent.parent.parent.il_itemlistfoundrow)
+				parent.parent.parent.id_selectionlist.selectrow(parent.parent.parent.il_itemlistfoundrow, true)
+				setfocus()
+			elseif parent.parent.parent.il_itemlistfoundrow = ll_currrow then
+				parent.parent.parent.id_selectionlist.selectrow(0, false)
+				parent.parent.parent.id_selectionlist.setrow(parent.parent.parent.il_itemlistfoundrow)
+				parent.parent.parent.id_selectionlist.scrolltorow(parent.parent.parent.il_itemlistfoundrow)
+				parent.parent.parent.id_selectionlist.selectrow(parent.parent.parent.il_itemlistfoundrow, true)
+				setfocus()
+			end if
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_rx.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	integer li_retcode
+	long ll_icode
+	long ll_null
+	long ll_gcode
+	string ls_itemname
+	string ls_null
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	setnull(ll_null)
+	setnull(ls_null)
+	choose case dwo.name
+	case "dosagecode"
+		parent.parent.parent.wf_dosageinfo(long(data), row)
+		this.object.manualchangeintotqty[row] = 0
+	case "itemname"
+		setitem(row, "icode", parent.parent.parent.id_selectionlist.getitemnumber(parent.parent.parent.id_selectionlist.getrow(), "code"))
+		setitem(row, "itemname", parent.parent.parent.id_selectionlist.getitemstring(parent.parent.parent.id_selectionlist.getrow(), "name"))
+		parent.parent.parent.ib_itemvalidated = false
+		parent.parent.parent.ib_rowvalidated = false
+		parent.parent.parent.il_currrow = row
+		li_retcode = 1
+	case "qty"
+		if double(data) <= 0.0 then
+			messagebox("Qty Validation!", "Please enter valid Qty")
+			return 1
+		end if
+		this.object.manualchangeintotqty[row] = 0
+	case "totalqty"
+		if double(data) <= 0.0 then
+			messagebox("Total Qty Validation!", "Please enter valid Total Qty")
+			return 1
+		else
+			this.object.manualchangeintotqty[row] = 1
+		end if
+	case "duration"
+		if long(data) < 0 then
+			messagebox("Duration Validation!", "Please enter a valid duration")
+			return 1
+		end if
+		this.object.manualchangeintotqty[row] = 0
+	case else
+		parent.parent.parent.ib_rowvalidated = true
+	end choose
+	return li_retcode
+
+// dw_rx.itemerror(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "itemname"
+		messagebox("Item Validation", "Please enter valid Item Name")
+	case "qty"
+		messagebox("Qty Validation", "Please enter valid Qty")
+	case "duration"
+		messagebox("Duration Validation", "Please enter valid duration")
+	end choose
+	return 1
+
+// dw_rx.losefocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::losefocus()
+	parent.parent.parent.id_selectionlist.hide()
+	return ::message.returnvalue
+
+// dw_rx.rowfocuschanged(long currentrow) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::rowfocuschanged(currentrow)
+	parent.parent.parent.wf_update_totalqty(currentrow)
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem(getrow()) = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_rx.rowfocuschanging(long currentrow, long newrow) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::rowfocuschanging(currentrow, newrow)
+	parent.parent.parent.wf_update_totalqty(currentrow)
+	return ::message.returnvalue
+
+// dw_selectionlist.ue_setfocus() returns 0
+	parent.parent.parent.id_tg.setcolumn("itemname")
+	parent.parent.parent.id_tg.setfocus()
+
+// dw_selectionlist.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::doubleclicked(xpos, ypos, row, dwo)
+	post event ue_setfocus()
+	return ::message.returnvalue
+
+// dw_selectionlist.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	long ll_rowmain
+	ancestorreturnvalue = super::clicked(xpos, ypos, row, dwo)
+	if row > 0 then
+		ll_rowmain = parent.parent.parent.id_tg.getrow()
+		parent.parent.parent.id_tg.setitem(ll_rowmain, "icode", parent.parent.parent.id_selectionlist.getitemnumber(row, "code"))
+		parent.parent.parent.id_tg.setitem(ll_rowmain, "itemname", parent.parent.parent.id_selectionlist.getitemstring(row, "name"))
+		parent.parent.parent.id_tg.selecttext(1, len(gettext()))
+		parent.parent.parent.ib_itemvalidated = false
+		selectrow(0, false)
+		selectrow(row, true)
+		post event ue_setfocus()
+	end if
+	return ::message.returnvalue
+
+// tabpage_obs_us.create() returns 0
+	this.dw_obs_us = create dw_obs_us
+	this.control = {this.dw_obs_us}
+
+// tabpage_obs_us.destroy() returns 0
+	destroy this.dw_obs_us
+
+// dw_obs_us.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	if getcolumnname() <> "comments" then
+		send(handle(this), 256, 9, long(90))
+		return 1
+	end if
+	return ::message.returnvalue
+
+// dw_obs_us.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	setfocus()
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_obs_us.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if keyflags = 3 and key = keyp! then
+		parent.parent.parent.wf_print(parent.parent.parent.wf_select_obs_us_print())
+	end if
+	if keyflags = 2 and key = keys! then
+		parent.parent.parent.cb_ok.triggerevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// tabpage_gyn_us.create() returns 0
+	this.dw_gyn_us = create dw_gyn_us
+	this.control = {this.dw_gyn_us}
+
+// tabpage_gyn_us.destroy() returns 0
+	destroy this.dw_gyn_us
+
+// dw_gyn_us.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	if getcolumnname() <> "comments" then
+		send(handle(this), 256, 9, long(90))
+		return 1
+	end if
+	return ::message.returnvalue
+
+// dw_gyn_us.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	setfocus()
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_gyn_us.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if keyflags = 3 and key = keyp! then
+		parent.parent.parent.wf_print(parent.parent.parent.wf_select_gyn_us_print())
+	end if
+	if keyflags = 2 and key = keys! then
+		parent.parent.parent.cb_ok.triggerevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// tabpage_abd_us.create() returns 0
+	this.dw_abd_us = create dw_abd_us
+	this.control = {this.dw_abd_us}
+
+// tabpage_abd_us.destroy() returns 0
+	destroy this.dw_abd_us
+
+// dw_abd_us.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	setfocus()
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_abd_us.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	if getcolumnname() <> "comments" then
+		send(handle(this), 256, 9, long(90))
+		return 1
+	end if
+	return ::message.returnvalue
+
+// dw_abd_us.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if keyflags = 3 and key = keyp! then
+		parent.parent.parent.wf_print(parent.parent.parent.wf_select_abd_us_print())
+	end if
+	if keyflags = 2 and key = keys! then
+		parent.parent.parent.cb_ok.triggerevent(clicked!)
+	end if
+	return ::message.returnvalue

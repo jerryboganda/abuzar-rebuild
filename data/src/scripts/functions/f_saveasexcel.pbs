@@ -1,0 +1,19 @@
+// function f_saveasexcel (functions)  ancestor: function_object
+
+// f_saveasexcel.f_saveasexcel(datawindow adw_dw) returns long
+	string ls_path
+	string ls_file
+	string ls_filter
+	long ll_value
+	long ll_ret
+	ls_path = trim(f_stringpreferences("OutputFilePath")) + "report.xls"
+	ll_value = getfilesavename("Select File", ls_path, ls_file, "XLS", "Microsoft Excel Files (*.xls),*.xls", f_stringpreferences("OutputFilePath"), 32770)
+	setpointer(hourglass!)
+	ll_ret = uf_save_dw_as_excel(adw_dw, ls_path)
+	if ll_ret = 1 then
+		messagebox("Save as Excel File", "Successfully Saved Excel File")
+	else
+		messagebox("Save as Excel File", "Problem in Saving Excel File")
+	end if
+	setpointer(arrow!)
+	return ll_ret

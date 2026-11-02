@@ -1,0 +1,71 @@
+// function f_fiscalizesaleinvoice (functions)  ancestor: function_object
+
+// f_fiscalizesaleinvoice.f_fiscalizesaleinvoice(long al_saleinvcode) returns long
+	long ll_retcode
+	long ll_salesmancode
+	string ls_method
+	string ls_errtext
+	u_transaction lt_transobject
+	n_winsock my_socket
+	unsignedlong lul_mysocket
+	string ls_hostname
+	string ls_hostip
+	string ls_errortext
+	long li_pos
+	long ll_port
+	string ls_saleinvcode
+	string ls_servername
+	string ls_temp
+	ls_method = f_stringpreferences("FiscalizationMethod")
+	if ls_method = "" or isnull(ls_method) then
+		ls_method = "1"
+	end if
+	if al_saleinvcode > 0 then
+		if ls_method = "1" then
+			lt_transobject = create u_transaction
+			SQL start USING lt_transobject;
+			if lt_transobject.sqlcode = 0 then
+				SQL SELECT Salesmancode INTO :ll_salesmancode FROM SaleLedger WHERE saleInvcode =:al_saleinvcode USING lt_transobject;
+				if ll_salesmancode <= 0 or isnull(ll_salesmancode) then
+					ll_salesmancode = gl_usercode
+				end if
+				lt_transobject.fiscalizesaleinvoice(al_saleinvcode, ll_salesmancode)
+				if lt_transobject.sqlcode <> 0 then
+					ls_errtext = "Problem in Fiscalization for this invoice.~r~nReasons are:- " + lt_transobject.sqlerrtext
+					SQL rollback USING lt_transobject;
+					messagebox("Fiscalization Problem", ls_errtext)
+				else
+					SQL commit USING lt_transobject;
+				end if
+			end if
+		else
+			my_socket.of_startup()
+			my_socket.of_setunicode(false, false)
+			ls_hostname = my_socket.of_gethostname()
+			ls_hostip = my_socket.of_getipaddress(ls_hostname)
+			ls_servername = f_stringpreferences("FiscalizationMachine")
+			if ls_servername = "" or isnull(ls_servername) then
+				li_pos = pos(gs_servername, "\")
+				if li_pos > 0 then
+					ls_servername = left(gs_servername, li_pos - 1)
+				else
+					ls_servername = gs_servername
+				end if
+			end if
+			ll_port = long(f_stringpreferences("FiscalizationAppPort"))
+			if ll_port <= 0 or isnull(ll_port) then
+				ll_port = 9111
+			end if
+			lul_mysocket = my_socket.of_connect(ls_servername, ll_port)
+			if lul_mysocket > 0 then
+				ls_saleinvcode = "S" + trim(string(al_saleinvcode))
+				if my_socket.of_send(lul_mysocket, ls_saleinvcode) then
+					my_socket.of_recv(lul_mysocket, ls_temp)
+				end if
+			else
+				ls_errortext = my_socket.of_getlasterror()
+				messagebox("Fiscalization Error", ls_errortext)
+			end if
+		end if
+	end if
+	return 0

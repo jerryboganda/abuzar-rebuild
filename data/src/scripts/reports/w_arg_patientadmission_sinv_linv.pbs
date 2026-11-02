@@ -1,0 +1,37 @@
+// window w_arg_patientadmission_sinv_linv (reports)  ancestor: w_arguements
+
+// w_arg_patientadmission_sinv_linv.create() returns 0
+	integer icurrent
+	call super::create
+	this.st_4 = create st_4
+	this.st_5 = create st_5
+	this.dw_ranginvoice = create dw_ranginvoice
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_4
+	this.control[icurrent + 2] = this.st_5
+	this.control[icurrent + 3] = this.dw_ranginvoice
+
+// w_arg_patientadmission_sinv_linv.destroy() returns 0
+	call super::destroy
+	destroy this.st_4
+	destroy this.st_5
+	destroy this.dw_ranginvoice
+
+// w_arg_patientadmission_sinv_linv.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	this.dw_ranginvoice.insertrow(0)
+	return ::message.returnvalue
+
+// w_arg_patientadmission_sinv_linv.ue_close(integer ai_stauts) returns 0
+	super::ue_close(ai_stauts)
+	closewithreturn(this, this.istr_arg)
+
+// dw_ranginvoice.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1

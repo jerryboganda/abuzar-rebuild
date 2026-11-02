@@ -1,0 +1,66 @@
+// window w_set_price_from_another_price (changeitemprice)  ancestor: window
+
+// w_set_price_from_another_price.ue_close(double ad_value) returns 0
+	this.s_price.i_status = ad_value
+	this.s_price.s_name1 = this.dw_control.object.sourcecolumn[this.dw_control.rowcount()]
+	this.s_price.s_name2 = this.dw_control.object.targetcolumn[this.dw_control.rowcount()]
+	closewithreturn(this, this.s_price)
+
+// w_set_price_from_another_price.create() returns 0
+	this.dw_control = create dw_control
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.control = {this.dw_control, this.cb_cancel, this.cb_ok}
+
+// w_set_price_from_another_price.destroy() returns 0
+	destroy this.dw_control
+	destroy this.cb_cancel
+	destroy this.cb_ok
+
+// w_set_price_from_another_price.open() returns long
+	environment le_env
+	long ll_width
+	long ll_height
+	if getenvironment(le_env) = 1 then
+		ll_width = pixelstounits(le_env.screenwidth, xpixelstounits!) - this.width
+		ll_height = pixelstounits(le_env.screenheight, ypixelstounits!) - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width * 0.5
+			ll_height = ll_height * 0.5
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(0)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	long ll_row
+	ll_row = parent.dw_control.rowcount()
+	if isnull(parent.dw_control.object.sourcecolumn[ll_row]) then
+		messagebox("Source Column Validation", "Please Enter Valid Value For Source Column.")
+		parent.dw_control.setfocus()
+		parent.dw_control.setcolumn("sourcecolumn")
+		return ::message.returnvalue
+	end if
+	if isnull(parent.dw_control.object.targetcolumn[ll_row]) then
+		messagebox("Target Column Validation", "Please Enter Valid Value For Target Column.")
+		parent.dw_control.setfocus()
+		parent.dw_control.setcolumn("targetcolumn")
+		return ::message.returnvalue
+	end if
+	if parent.dw_control.object.sourcecolumn[ll_row] = parent.dw_control.object.targetcolumn[ll_row] then
+		messagebox("Source and Target Column Validation", "Both Source and Target Columns can not be same~r~nPlease Enter Valid Value.")
+		parent.dw_control.setfocus()
+		parent.dw_control.setcolumn("sourcecolumn")
+		return ::message.returnvalue
+	end if
+	parent.post event ue_close(1)
+	return ::message.returnvalue

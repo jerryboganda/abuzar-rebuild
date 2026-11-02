@@ -1,0 +1,86 @@
+// window w_arg_aging (reports)  ancestor: w_listarguments
+
+// w_arg_aging.create() returns 0
+	integer icurrent
+	call super::create
+	this.st_4 = create st_4
+	this.st_8 = create st_8
+	this.rb_customer = create rb_customer
+	this.rb_supplier = create rb_supplier
+	this.em_interval = create em_interval
+	this.st_9 = create st_9
+	this.st_10 = create st_10
+	this.em_limit = create em_limit
+	this.gb_5 = create gb_5
+	this.gb_6 = create gb_6
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_4
+	this.control[icurrent + 2] = this.st_8
+	this.control[icurrent + 3] = this.rb_customer
+	this.control[icurrent + 4] = this.rb_supplier
+	this.control[icurrent + 5] = this.em_interval
+	this.control[icurrent + 6] = this.st_9
+	this.control[icurrent + 7] = this.st_10
+	this.control[icurrent + 8] = this.em_limit
+	this.control[icurrent + 9] = this.gb_5
+	this.control[icurrent + 10] = this.gb_6
+
+// w_arg_aging.destroy() returns 0
+	call super::destroy
+	destroy this.st_4
+	destroy this.st_8
+	destroy this.rb_customer
+	destroy this.rb_supplier
+	destroy this.em_interval
+	destroy this.st_9
+	destroy this.st_10
+	destroy this.em_limit
+	destroy this.gb_5
+	destroy this.gb_6
+
+// w_arg_aging.open() returns long
+	long ancestorreturnvalue
+	long ll_counter
+	long ll_rowcount
+	integer rtncode
+	listviewitem l_lvi
+	ancestorreturnvalue = super::open()
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	rtncode = this.dw_control.getchild("area", this.idc_categories)
+	this.em_startdate.text = string(today(), "dd/mm/yyyy hh:mm:ss")
+	if rtncode = -1 then
+		messagebox("Error", "Not a DataWindowChild")
+	end if
+	ll_rowcount = this.idc_categories.rowcount()
+	for ll_counter = 1 to ll_rowcount
+		this.lb_categories.additem(this.idc_categories.getitemstring(ll_counter, "name"))
+	next
+	return ::message.returnvalue
+
+// rb_customer.clicked() returns long
+	if this.checked = true then
+		parent.gb_1.visible = true
+		parent.st_4.visible = true
+		parent.st_5.visible = true
+		parent.st_6.visible = true
+		parent.st_8.visible = true
+		parent.lb_categories.visible = true
+		parent.lb_selectedcategories.visible = true
+		parent.cbx_all.visible = true
+	end if
+	return ::message.returnvalue
+
+// rb_supplier.clicked() returns long
+	if this.checked = true then
+		parent.gb_1.visible = false
+		parent.st_4.visible = false
+		parent.st_5.visible = false
+		parent.st_6.visible = false
+		parent.st_8.visible = false
+		parent.lb_categories.visible = false
+		parent.lb_selectedcategories.visible = false
+		parent.cbx_all.visible = false
+	end if
+	return ::message.returnvalue

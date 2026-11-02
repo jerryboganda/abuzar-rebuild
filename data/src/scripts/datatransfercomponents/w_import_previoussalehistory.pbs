@@ -1,0 +1,41 @@
+// window w_import_previoussalehistory (datatransfercomponents)  ancestor: w_arguements
+
+// w_import_previoussalehistory.create() returns 0
+	integer icurrent
+	call super::create
+	this.hpb_hpb = create hpb_hpb
+	this.st_4 = create st_4
+	this.sle_currdb = create sle_currdb
+	this.gb_overallprogress = create gb_overallprogress
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.hpb_hpb
+	this.control[icurrent + 2] = this.st_4
+	this.control[icurrent + 3] = this.sle_currdb
+	this.control[icurrent + 4] = this.gb_overallprogress
+
+// w_import_previoussalehistory.destroy() returns 0
+	call super::destroy
+	destroy this.hpb_hpb
+	destroy this.st_4
+	destroy this.sle_currdb
+	destroy this.gb_overallprogress
+
+// w_import_previoussalehistory.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.it_mytrans = create u_transaction
+	this.it_mytrans.dbparm = "PROVIDER='SQLOLEDB',DATASOURCE='" + gs_servername + "',CommitOnDisconnect='No',PROVIDERSTRING='DataBase=master" + ";APP=" + gs_app + ";WSID=" + gs_localcomputername + "',PBTrimCharColumns='Yes',StripParmNames='Yes'"
+	SQL start USING this.it_mytrans;
+	if this.it_mytrans.sqlcode <> 0 then
+		messagebox("Connection Problem", "Problem Connecting Database", stopsign!)
+		close(this)
+	end if
+	this.dw_control.settransobject(this.it_mytrans)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	this.sle_currdb.text = gs_dbname
+	return ::message.returnvalue
+
+// w_import_previoussalehistory.ue_close(integer ai_stauts) returns 0
+	super::ue_close(ai_stauts)
+	close(this)

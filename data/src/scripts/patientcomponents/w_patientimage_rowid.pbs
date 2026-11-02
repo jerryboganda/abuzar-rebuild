@@ -1,0 +1,259 @@
+// window w_patientimage_rowid (patientcomponents)  ancestor: window
+
+// w_patientimage_rowid.ue_close(integer ar_closearg) returns 0
+	if ar_closearg = -1 then
+		this.istr_blob.i_closemode = -1
+	else
+		this.istr_blob.i_closemode = 1
+	end if
+	if fileexists(this.is_filename) then
+		filedelete(this.is_filename)
+	end if
+	closewithreturn(this, this.istr_blob)
+
+// w_patientimage_rowid.wf_get_image() returns 0
+	long fh
+	long ret
+	long ll_fbytes
+	long ll_pos
+	string ls_file
+	string ls_filename
+	string ls_ext
+	string ls_defaultext
+	string ls_temp
+	string ls_filefilter
+	ls_temp = gs_temp_directory
+	ls_file = left(ls_temp, len(ls_temp) - pos(reverse(ls_temp), "\") + 1)
+	ls_filename = mid(ls_temp, len(ls_temp) - pos(reverse(ls_temp), "\") + 2)
+	ret = getfileopenname("Select File", ls_file, ls_filename, ls_defaultext, ls_filefilter, ls_temp)
+	if ret = 1 then
+		this.p_image.picturename = ls_file
+		fh = fileopen(ls_file, streammode!, read!, lockread!)
+		if fh <> -1 then
+			ll_fbytes = filereadex(fh, this.istr_blob.lb_blob)
+			fileclose(fh)
+			ll_pos = pos(ls_file, ".", 1)
+			ls_ext = upper(mid(ls_file, ll_pos + 1))
+			this.istr_blob.s_name = ls_ext
+		end if
+	end if
+
+// w_patientimage_rowid.wf_set_image_ole() returns string
+	string ls_filename
+	string ls_imagetype
+	ls_imagetype = this.is_imgtype
+	ls_filename = gs_temp_img_filename
+	ls_filename = left(ls_filename, len(ls_filename) - 4) + "_ole"
+	ls_filename = ls_filename + "." + ls_imagetype
+	f_writeimgtofile(ls_filename, this.istr_blob.lb_blob)
+	return ls_filename
+
+// w_patientimage_rowid.create() returns 0
+	this.cb_scan = create cb_scan
+	this.p_image = create p_image
+	this.ole_twain = create ole_twain
+	this.cb_change = create cb_change
+	this.cb_ok = create cb_ok
+	this.cb_cancel = create cb_cancel
+	this.st_placeholder = create st_placeholder
+	this.control = {this.cb_scan, this.p_image, this.ole_twain, this.cb_change, this.cb_ok, this.cb_cancel, this.st_placeholder}
+
+// w_patientimage_rowid.destroy() returns 0
+	destroy this.cb_scan
+	destroy this.p_image
+	destroy this.ole_twain
+	destroy this.cb_change
+	destroy this.cb_ok
+	destroy this.cb_cancel
+	destroy this.st_placeholder
+
+// w_patientimage_rowid.open() returns long
+	long ll_imagew
+	long ll_imageh
+	long ll_code
+	long ll_rowid
+	long ll_pos
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	string ls_temp
+	string ls_ext
+	environment env
+	this.is_filename = gs_temp_img_filename
+	this.is_filename = left(this.is_filename, len(this.is_filename) - 3)
+	this.istr_blob = message.powerobjectparm
+	if isnull(this.istr_blob.s_name) or this.istr_blob.s_name = "" then
+		if f_stringpreferences("ImageScanTool") = "Dynamic Twain" then
+			this.is_filename = this.is_filename + "jpg"
+		else
+			this.is_filename = this.is_filename + "bmp"
+		end if
+	else
+		this.is_filename = this.is_filename + this.istr_blob.s_name
+	end if
+	this.cb_change.text = "&Browse"
+	f_writeimgtofile(this.is_filename, this.istr_blob.lb_blob)
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		this.width = ll_win_width * 0.99
+		this.height = ll_win_height * 0.96
+		this.p_image.height = this.height - 200
+		this.p_image.width = this.width * 0.995
+		this.p_image.visible = false
+		this.p_image.x = 1
+		this.p_image.y = 1
+		this.p_image.width = this.p_image.width - 10
+		this.p_image.height = this.p_image.height - 10
+		this.p_image.visible = true
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	this.cb_scan.y = this.p_image.y + this.p_image.height + 15
+	this.cb_change.y = this.p_image.y + this.p_image.height + 15
+	this.cb_ok.y = this.p_image.y + this.p_image.height + 15
+	this.cb_cancel.y = this.p_image.y + this.p_image.height + 15
+	ll_pos = pos(this.is_filename, ".", 1)
+	ls_ext = upper(mid(this.is_filename, ll_pos + 1))
+	if ls_ext = "BMP" or ls_ext = "JPG" or ls_ext = "JPEG" or ls_ext = "GIF" then
+		this.p_image.picturename = this.is_filename
+	else
+		this.p_image.picturename = ""
+		this.st_placeholder.visible = true
+		this.st_placeholder.width = this.p_image.width
+		this.st_placeholder.y = this.p_image.height / 2.0
+	end if
+	post event ue_postopen()
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_patientimage_rowid.key(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		post event ue_close(-1)
+	end if
+	return ::message.returnvalue
+
+// w_patientimage_rowid.close() returns long
+	if fileexists(this.is_filename) then
+		filedelete(this.is_filename)
+	end if
+	return ::message.returnvalue
+
+// cb_scan.clicked() returns long
+	long ll_pos
+	string ls_ext
+	long ll_retcode
+	long fh
+	long ll_fbytes
+	runtimeerror ex
+	string ls_err
+	string ls_errcode
+	runtimeerror ex2
+	parent.p_image.setredraw(false)
+	try
+		if f_stringpreferences("ImageScanTool") = "Dynamic Twain" then
+			parent.is_filename = gs_temp_directory + "\scanimage1.jpg"
+			parent.ole_twain.object.ifthrowexception = false
+			if parent.ole_twain.object.__invoke_method("sourcecount", 0, {}, true) > 0 and parent.ole_twain.object.__invoke_method("selectsourcebyindex", 1, {0}, true) and parent.ole_twain.object.__invoke_method("opensource", 0, {}, true) then
+				parent.ole_twain.object.ifshowui = false
+				parent.ole_twain.object.capability = 4385
+				parent.ole_twain.object.captype = 5
+				parent.ole_twain.object.capvalue = 90
+				if parent.ole_twain.object.__invoke_method("capset", 0, {}, true) = true then
+				end if
+				if parent.ole_twain.object.__invoke_method("acquireimage", 0, {}, true) then
+				end if
+			end if
+		elseif f_stringpreferences("ImageScanTool") = "EZTwainX" then
+			parent.is_filename = gs_temp_directory + "\scanimage1.bmp"
+			ll_retcode = parent.twain_sethideui(1)
+			ll_retcode = parent.twain_acquiretofilename(0, parent.is_filename)
+			if ll_retcode = 0 then
+				parent.p_image.picturename = parent.is_filename
+				fh = fileopen(parent.is_filename, streammode!, read!, lockread!)
+				if fh <> -1 then
+					ll_fbytes = filereadex(fh, parent.istr_blob.lb_blob)
+					fileclose(fh)
+					ll_pos = pos(parent.is_filename, ".", 1)
+					ls_ext = upper(mid(parent.is_filename, ll_pos + 1))
+					parent.istr_blob.s_name = ls_ext
+				end if
+			else
+				messagebox("Oh - Oh!", "Scan Failed on code: " + string(ll_retcode))
+			end if
+		end if
+	catch (throwable ex)
+		try
+			if f_stringpreferences("ImageScanTool") = "Dynamic Twain" then
+				ls_errcode = string(parent.ole_twain.object.errorcode)
+				ls_err = parent.ole_twain.object.errorstring
+			end if
+		catch (throwable ex2)
+		end try
+		messagebox("Exception Occur", "Details are:~r~n" + ex.getmessage() + "~r~nError Code" + ls_errcode + "~r~nError Description" + ls_err)
+	end try
+	parent.p_image.setredraw(true)
+	return ::message.returnvalue
+
+// p_image.clicked() returns long
+	string ls_filename
+	string ls_cmd
+	string ls_null
+	string ls_imagetype
+	setnull(ls_null)
+	if not (this.picturename = "" or isnull(this.picturename)) then
+		ls_filename = parent.wf_set_image_ole()
+		ls_cmd = "rundll32.exe shimgvw.dll,ImageView_Fullscreen " + ls_filename
+		run(ls_cmd)
+	end if
+	return ::message.returnvalue
+
+// ole_twain.onposttransfer() returns 0
+	long fh
+	long ll_fbytes
+	long ll_pos
+	string ls_ext
+	runtimeerror ex
+	try
+		if this.object.__invoke_method("saveasjpeg", 1, {parent.is_filename}, true) then
+			parent.p_image.picturename = parent.is_filename
+			fh = fileopen(parent.is_filename, streammode!, read!, lockread!)
+			if fh <> -1 then
+				ll_fbytes = filereadex(fh, parent.istr_blob.lb_blob)
+				fileclose(fh)
+				ll_pos = pos(parent.is_filename, ".", 1)
+				ls_ext = upper(mid(parent.is_filename, ll_pos + 1))
+				parent.istr_blob.s_name = ls_ext
+			end if
+		end if
+	catch (throwable ex)
+		messagebox("Exception Occur", "Details are:~r~n" + ex.getmessage())
+	end try
+
+// cb_change.clicked() returns long
+	parent.wf_get_image()
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// st_placeholder.clicked() returns long
+	string ls_filename
+	string ls_null
+	setnull(ls_null)
+	ls_filename = parent.is_filename
+	f_writeimgtofile(ls_filename, parent.istr_blob.lb_blob)
+	shellexecute(0, "open", ls_filename, ls_null, ls_null, 1)
+	return ::message.returnvalue

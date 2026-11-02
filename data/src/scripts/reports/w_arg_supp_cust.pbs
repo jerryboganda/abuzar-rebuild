@@ -1,0 +1,30 @@
+// window w_arg_supp_cust (reports)  ancestor: w_arguements
+
+// w_arg_supp_cust.create() returns 0
+	integer icurrent
+	call super::create
+	this.st_4 = create st_4
+	this.dw_customer = create dw_customer
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_4
+	this.control[icurrent + 2] = this.dw_customer
+
+// w_arg_supp_cust.destroy() returns 0
+	call super::destroy
+	destroy this.st_4
+	destroy this.dw_customer
+
+// w_arg_supp_cust.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	this.dw_customer.settransobject(sqlca)
+	this.dw_customer.insertrow(0)
+	this.dw_customer.scrolltorow(0)
+	return ::message.returnvalue
+
+// w_arg_supp_cust.ue_close(integer ai_stauts) returns 0
+	super::ue_close(ai_stauts)
+	closewithreturn(this, this.istr_arg)

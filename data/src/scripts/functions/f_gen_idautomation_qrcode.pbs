@@ -1,0 +1,23 @@
+// function f_gen_idautomation_qrcode (functions)  ancestor: function_object
+
+// f_gen_idautomation_qrcode.f_gen_idautomation_qrcode(string as_info) returns string
+	string ls_code
+	string ls_eol
+	string ls_qrcode
+	string ls_fname
+	blob blb_qrcode
+	integer li_rtcode
+	boolean lb_tilde
+	string ls_encmode
+	oleobject ole_data
+	ls_code = as_info
+	ls_eol = char(13) + char(10)
+	if fileexists(ls_fname) then
+		filedelete(ls_fname)
+	end if
+	ls_encmode = "Byte"
+	lb_tilde = false
+	ole_data = create oleobject
+	li_rtcode = ole_data.connecttonewobject("IDAuto.QRCode")
+	ole_data.__invoke_method("fontencode", 6, {as_info, 0, 0, 1, 1, ls_qrcode}, true)
+	return ls_qrcode

@@ -1,0 +1,428 @@
+// window w_mastercashierwindow (salerespwin)  ancestor: window
+
+// w_mastercashierwindow.ue_close(integer ai_status) returns integer
+	long ll_headerrow
+	long ll_detailrow
+	long ll_footerrow
+	long ll_counter
+	s_mastercashwin_all lstr_cash
+	string ls_null
+	if ai_status = -1 then
+		this.istr_cash.i_status = -1
+		closewithreturn(this, this.istr_cash)
+		return -1
+	end if
+	setnull(ls_null)
+	if f_validatedw(this.dw_header) < 0 then
+		return 1
+	end if
+	if f_validatedw(this.dw_detail) < 0 then
+		return 1
+	end if
+	if f_validatedw(this.dw_footer) < 0 then
+		return 1
+	end if
+	ll_headerrow = this.dw_header.getrow()
+	ll_detailrow = this.dw_detail.getrow()
+	ll_footerrow = this.dw_footer.getrow()
+	this.istr_cash.l_doccode = this.dw_header.object.documentcode[ll_headerrow]
+	this.istr_cash.l_cashacccode = this.dw_header.object.cashacccode[ll_headerrow]
+	this.istr_cash.d_cashtendered = this.dw_header.object.cashtendered[ll_headerrow]
+	this.istr_cash.d_cashcharged = this.dw_header.object.cashcharged[ll_headerrow]
+	this.istr_cash.d_cashback = this.dw_header.object.cashback[ll_headerrow]
+	this.istr_cash.d_netamt = this.dw_header.object.doctotal[ll_footerrow]
+	this.istr_cash.d_docbalance = this.dw_footer.object.invbalance[ll_footerrow]
+	for ll_counter = 1 to 100
+		this.istr_cash.l_acccode[ll_counter] = -1
+		this.istr_cash.s_remarks[ll_counter] = ls_null
+		this.istr_cash.d_amount[ll_counter] = -1
+		this.istr_cash.l_rowid[ll_counter] = -1
+	next
+	for ll_counter = 1 to this.dw_detail.rowcount()
+		if this.dw_detail.object.acccode[ll_counter] > 0 and this.dw_detail.object.amount[ll_counter] >= 0 then
+			this.dw_detail.object.rowid[ll_counter] = this.dw_detail.getitemnumber(ll_counter, "c_rowid")
+			this.istr_cash.l_acccode[ll_counter] = this.dw_detail.object.acccode[ll_counter]
+			this.istr_cash.s_remarks[ll_counter] = this.dw_detail.object.remarks[ll_counter]
+			this.istr_cash.d_amount[ll_counter] = this.dw_detail.object.amount[ll_counter]
+			this.istr_cash.l_rowid[ll_counter] = this.dw_detail.object.rowid[ll_counter]
+		end if
+	next
+	this.istr_cash.i_status = ai_status
+	closewithreturn(this, this.istr_cash)
+	return 0
+
+// w_mastercashierwindow.wf_getglobalcode(string as_str) returns integer
+	integer ll_code
+	SQL SELECT Code INTO :ll_code FROM Global WHERE Name =:as_str USING sqlca;
+	if sqlca.sqlcode <> 0 then
+		ll_code = 0
+	end if
+	return ll_code
+
+// w_mastercashierwindow.wf_setbalance(string as_col, double ad_amt) returns 0
+	if as_col = "cashtendered" then
+		if this.istr_cash.i_interfacecode = 16 or this.istr_cash.i_interfacecode = 17 or this.istr_cash.i_interfacecode = 20 then
+			this.dw_header.object.cashcharged[1] = ad_amt
+			this.dw_header.object.cashback[1] = 0
+			this.dw_footer.object.invbalance[1] = 0
+		else
+			if ad_amt > this.dw_header.object.doctotal[1] then
+				this.dw_header.object.cashcharged[1] = this.dw_header.object.doctotal[1]
+				this.dw_header.object.cashback[1] = ad_amt - this.dw_header.object.doctotal[1]
+			else
+				this.dw_header.object.cashcharged[1] = ad_amt
+				this.dw_header.object.cashback[1] = 0
+			end if
+			if this.dw_detail.rowcount() > 0 then
+				if this.dw_header.object.doctotal[1] - this.dw_header.object.cashcharged[1] - this.dw_detail.getitemnumber(1, "c_totalamt") >= 0 then
+					this.dw_footer.object.invbalance[1] = this.dw_header.object.doctotal[1] - this.dw_header.object.cashcharged[1] - this.dw_detail.getitemnumber(1, "c_totalamt")
+				else
+					this.dw_footer.object.invbalance[1] = 0
+				end if
+			elseif this.dw_header.object.doctotal[1] - this.dw_header.object.cashcharged[1] >= 0 then
+				this.dw_footer.object.invbalance[1] = this.dw_header.object.doctotal[1] - this.dw_header.object.cashcharged[1]
+			else
+				this.dw_footer.object.invbalance[1] = 0
+			end if
+		end if
+		return
+	end if
+	if as_col = "cashcharged" then
+		if ad_amt > this.dw_header.object.cashtendered[1] then
+			this.dw_header.object.cashback[1] = 0
+		else
+			this.dw_header.object.cashback[1] = this.dw_header.object.cashtendered[1] - ad_amt
+		end if
+		if this.istr_cash.i_interfacecode = 16 or this.istr_cash.i_interfacecode = 17 or this.istr_cash.i_interfacecode = 20 then
+			this.dw_footer.object.invbalance[1] = 0
+			return
+		end if
+		if this.dw_detail.rowcount() > 0 then
+			if this.dw_header.object.doctotal[1] - ad_amt - this.dw_detail.getitemnumber(1, "c_totalamt") >= 0 then
+				this.dw_footer.object.invbalance[1] = this.dw_header.object.doctotal[1] - ad_amt - this.dw_detail.getitemnumber(1, "c_totalamt")
+			else
+				this.dw_footer.object.invbalance[1] = 0
+			end if
+			return
+		end if
+		if this.dw_header.object.doctotal[1] - ad_amt >= 0 then
+			this.dw_footer.object.invbalance[1] = this.dw_header.object.doctotal[1] - ad_amt
+			return
+		end if
+		this.dw_footer.object.invbalance[1] = 0
+	end if
+
+// w_mastercashierwindow.wf_adopt_cashwindowtemplate() returns long
+	long ll_counter
+	long ll_temp_rows
+	long ll_insrow
+	datastore lds_cashtemp
+	lds_cashtemp = create datastore
+	lds_cashtemp.dataobject = "d_cashierwindowtemplate_detail1"
+	lds_cashtemp.settransobject(sqlca)
+	lds_cashtemp.retrieve(this.istr_cash.i_interfacecode)
+	ll_temp_rows = lds_cashtemp.rowcount()
+	if ll_temp_rows > 0 then
+		for ll_counter = 1 to ll_temp_rows
+			ll_insrow = this.dw_detail.insertrow(0)
+			this.dw_detail.object.documentcode[ll_insrow] = this.istr_cash.l_doccode
+			this.dw_detail.object.documenttype[ll_insrow] = this.istr_cash.s_doctype
+			this.dw_detail.object.acccode[ll_insrow] = lds_cashtemp.object.acccode[ll_counter]
+			this.dw_detail.object.remarks[ll_insrow] = lds_cashtemp.object.remarks[ll_counter]
+			this.dw_detail.object.amount[ll_insrow] = 0.00
+			this.dw_detail.object.rowid[ll_insrow] = lds_cashtemp.object.rowid[ll_counter]
+		next
+	end if
+	return 0
+
+// w_mastercashierwindow.wf_set_invbalance() returns long
+	this.dw_detail.accepttext()
+	if this.dw_detail.rowcount() > 0 then
+		if this.dw_header.object.doctotal[1] - this.dw_header.object.cashcharged[1] - this.dw_detail.getitemnumber(1, "c_totalamt") >= 0 then
+			this.dw_footer.object.invbalance[1] = this.dw_header.object.doctotal[1] - this.dw_header.object.cashcharged[1] - this.dw_detail.getitemnumber(1, "c_totalamt")
+		else
+			this.dw_footer.object.invbalance[1] = 0
+		end if
+	end if
+	return 0
+
+// w_mastercashierwindow.create() returns 0
+	this.dw_footer = create dw_footer
+	this.dw_detail = create dw_detail
+	this.dw_header = create dw_header
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.control = {this.dw_footer, this.dw_detail, this.dw_header, this.cb_cancel, this.cb_ok}
+
+// w_mastercashierwindow.destroy() returns 0
+	destroy this.dw_footer
+	destroy this.dw_detail
+	destroy this.dw_header
+	destroy this.cb_cancel
+	destroy this.cb_ok
+
+// w_mastercashierwindow.open() returns long
+	string ls_invcode
+	long ll_rtcode
+	long ll_headerrow
+	long ll_footerrow
+	long ll_counter
+	long ll_insrow
+	long ll_found
+	long ll_code
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	this.istr_cash = message.powerobjectparm
+	ll_rtcode = this.dw_header.getchild("cashacccode", this.idc_cashacc)
+	if ll_rtcode = -1 then
+		messagebox("Error", "Not a DataWindowChild")
+	end if
+	this.dw_header.settransobject(sqlca)
+	this.idc_cashacc.settransobject(sqlca)
+	this.idc_cashacc.retrieve(this.istr_cash.l_groupcode, this.istr_cash.l_module)
+	this.dw_header.insertrow(0)
+	this.dw_header.scrolltorow(0)
+	this.dw_detail.settransobject(sqlca)
+	this.dw_footer.settransobject(sqlca)
+	this.dw_footer.insertrow(0)
+	this.dw_footer.scrolltorow(0)
+	ll_headerrow = this.dw_header.rowcount()
+	ll_footerrow = this.dw_footer.rowcount()
+	ll_code = this.istr_cash.l_doccode
+	this.dw_header.object.documentcode[ll_headerrow] = this.istr_cash.l_doccode
+	this.dw_header.object.cashacccode[ll_headerrow] = this.istr_cash.l_cashacccode
+	this.dw_header.object.cashtendered[ll_headerrow] = this.istr_cash.d_cashtendered
+	this.dw_header.object.cashcharged[ll_headerrow] = this.istr_cash.d_cashcharged
+	this.dw_header.object.cashback[ll_headerrow] = this.istr_cash.d_cashback
+	this.dw_header.object.doctotal[ll_footerrow] = this.istr_cash.d_netamt
+	this.dw_footer.object.invbalance[ll_footerrow] = this.istr_cash.d_docbalance
+	wf_adopt_cashwindowtemplate()
+	for ll_counter = 1 to 100
+		if this.istr_cash.l_acccode[ll_counter] > 0 and this.istr_cash.d_amount[ll_counter] > 0 and this.istr_cash.l_rowid[ll_counter] > 0 then
+			ll_found = 0
+			ll_found = this.dw_detail.find(" documentcode = " + trim(string(ll_code)) + " AND acccode = " + trim(string(this.istr_cash.l_acccode[ll_counter])), 1, this.dw_detail.rowcount())
+			if ll_found > 0 then
+				ll_insrow = ll_found
+			else
+				ll_insrow = this.dw_detail.insertrow(0)
+			end if
+			this.dw_detail.object.documentcode[ll_insrow] = this.istr_cash.l_doccode
+			this.dw_detail.object.documenttype[ll_insrow] = this.istr_cash.s_doctype
+			this.dw_detail.object.acccode[ll_insrow] = this.istr_cash.l_acccode[ll_counter]
+			this.dw_detail.object.remarks[ll_insrow] = this.istr_cash.s_remarks[ll_counter]
+			this.dw_detail.object.amount[ll_insrow] = this.istr_cash.d_amount[ll_counter]
+			this.dw_detail.object.rowid[ll_insrow] = this.istr_cash.l_rowid[ll_counter]
+		end if
+	next
+	if this.istr_cash.i_interfacecode = 16 or this.istr_cash.i_interfacecode = 17 or this.istr_cash.i_interfacecode = 20 then
+		this.dw_header.object.documentcode.visible = false
+		this.dw_header.object.documentcode_t.visible = false
+		this.dw_header.object.doctotal.visible = false
+		this.dw_header.object.doctotal_t.visible = false
+	end if
+	this.dw_header.setcolumn("cashtendered")
+	this.dw_header.setfocus()
+	this.dw_header.selecttext(1, len(this.dw_header.gettext()))
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	long ll_null
+	long ll_res
+	integer li_errcode
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	setnull(ll_null)
+	choose case dwo.name
+	case "amount"
+		if double(data) < 0.0 then
+			messagebox("Amount Validation!", "Please enter valid amount in the current row.", stopsign!)
+			return 1
+		end if
+		parent.wf_setbalance(dwo.name, double(data))
+	end choose
+	return li_errcode
+
+// dw_detail.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_detail.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	parent.wf_set_invbalance()
+	return ::message.returnvalue
+
+// dw_detail.losefocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::losefocus()
+	parent.wf_set_invbalance()
+	return ::message.returnvalue
+
+// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	parent.wf_set_invbalance()
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_header.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_header.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	long ll_null
+	long ll_res
+	integer li_errcode
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	setnull(ll_null)
+	choose case dwo.name
+	case "cashtendered"
+		if double(data) < 0.0 or data = "" or isnull(data) then
+			messagebox("Cash Tendered Validation!", "Please enter valid amount for Cash Tendered.", stopsign!)
+			return 1
+		end if
+		parent.wf_setbalance(dwo.name, double(data))
+	case "cashcharged"
+		if double(data) < 0.0 or data = "" or isnull(data) then
+			messagebox("Cash Charged Validation!", "Please enter valid amount for Cash Charged.", stopsign!)
+			return 1
+		elseif double(data) > this.object.cashtendered[row] then
+			messagebox("Cash Charged Validation!", "Please enter valid amount for Cash Charged~r~nCash Charged must not exceed Cash Tendered.", stopsign!)
+			return 1
+		elseif double(data) > this.object.doctotal[row] then
+			if not (parent.istr_cash.i_interfacecode = 16 or parent.istr_cash.i_interfacecode = 17 or parent.istr_cash.i_interfacecode = 20) then
+				ll_res = messagebox("Cash Charged Validation!", "Cash Charged is more than document amount~r~nIs Cash Charged a valid amount?.", question!, yesno!, 2)
+				if ll_res > 1 then
+					return 1
+				end if
+			end if
+			return
+		end if
+		parent.wf_setbalance(dwo.name, double(data))
+		return li_errcode
+	end choose
+	return li_errcode
+
+// dw_header.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// cb_cancel.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		triggerevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.istr_cash.i_status = -1
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		triggerevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	double ld_totamt
+	long ll_res
+	if parent.dw_header.accepttext() < 1 then
+		return ::message.returnvalue
+	end if
+	if parent.dw_detail.accepttext() < 1 then
+		return ::message.returnvalue
+	end if
+	if parent.dw_footer.accepttext() < 1 then
+		return ::message.returnvalue
+	end if
+	if parent.dw_detail.rowcount() > 0 then
+		ld_totamt = parent.dw_detail.getitemnumber(1, "c_totalamt")
+	else
+		ld_totamt = 0
+	end if
+	if parent.dw_header.object.cashacccode[1] <= 0 or isnull(parent.dw_header.object.cashacccode[1]) then
+		messagebox("Cash Account Validation", "In order to proceed futher, Select Valid Cash Account", stopsign!)
+		parent.dw_header.setfocus()
+		parent.dw_header.setcolumn("cashacccode")
+		return ::message.returnvalue
+	end if
+	if parent.dw_header.object.cashtendered[1] < 0 then
+		messagebox("Cash Tendered Amount Validation", "In order to proceed futher, Cash Tendered can not be -ve", stopsign!)
+		return ::message.returnvalue
+	end if
+	if parent.dw_header.object.cashcharged[1] < 0 then
+		messagebox("Cash Charged Amount Validation", "In order to proceed futher, Cash Charged can not be -ve", stopsign!)
+		return ::message.returnvalue
+	end if
+	if parent.dw_header.object.cashcharged[1] > parent.dw_header.object.cashtendered[1] then
+		messagebox("Cash Charged Amount Validation", "In order to proceed futher, Cash Charged can not be more than cash tendered.", stopsign!)
+		return ::message.returnvalue
+	end if
+	if parent.dw_header.object.cashback[1] < 0 then
+		messagebox("Cash Back Amount", "In order to proceed futher, Cash Back can not be -ve", stopsign!)
+		return ::message.returnvalue
+	end if
+	if parent.istr_cash.i_interfacecode = 4 or parent.istr_cash.i_interfacecode = 9 or parent.istr_cash.i_interfacecode = 13 then
+		if parent.dw_header.object.cashcharged[1] <> parent.dw_header.object.doctotal[1] then
+			ll_res = messagebox("Cash Charged Amount", "It can not be saved as Cash~r~nShould It be saved as Credit?", question!, yesno!, 2)
+			if ll_res <> 1 then
+				return ::message.returnvalue
+			end if
+		elseif ld_totamt <> 0.0 then
+			ll_res = messagebox("Amount Validation", "It can not be saved as Cash~r~nShould It be saved as Credit?", question!, yesno!, 2)
+			if ll_res <> 1 then
+				return ::message.returnvalue
+			end if
+			return
+		end if
+		return
+	end if
+	if parent.istr_cash.i_interfacecode >= 9 and parent.istr_cash.i_interfacecode <= 15 then
+		if parent.dw_header.object.cashcharged[1] > parent.dw_header.object.doctotal[1] then
+			messagebox("Cash Charged Amount", "Cash charged can not be more than Document Total~r~nPlease enter valid amount for cash charged.", stopsign!, ok!)
+			parent.dw_header.setfocus()
+			parent.dw_header.setcolumn("cashcharged")
+			return ::message.returnvalue
+		end if
+		if parent.dw_header.object.doctotal[1] - parent.dw_header.object.cashcharged[1] - ld_totamt < 0 then
+			messagebox("Total Amount Charged Validation", "Total Amount charged can not be more than Document Total~r~nPlease enter valid total amount charged.", stopsign!, ok!)
+			parent.dw_header.setfocus()
+			parent.dw_header.setcolumn("cashcharged")
+			return ::message.returnvalue
+		end if
+		return
+	end if
+	parent.istr_cash.d_cashtendered = parent.dw_header.object.cashtendered[1]
+	parent.istr_cash.d_cashcharged = parent.dw_header.object.cashcharged[1]
+	parent.istr_cash.d_cashback = parent.dw_header.object.cashback[1]
+	parent.istr_cash.i_status = 1
+	parent.post event ue_close(1)
+	return ::message.returnvalue

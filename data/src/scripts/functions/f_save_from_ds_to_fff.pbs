@@ -1,0 +1,50 @@
+// function f_save_from_ds_to_fff (functions)  ancestor: function_object
+
+// f_save_from_ds_to_fff.f_save_from_ds_to_fff(string as_path, datastore ads_ds, string ads_delimiter, boolean adb_colnames) returns any
+	integer li_filehandle
+	integer li_colcount
+	integer li_collen
+	long ll_counter
+	long ll_innercounter
+	string ls_writetofile
+	string ls_prevcol
+	string ls_colname
+	string ls_temp
+	li_filehandle = fileopen(as_path, linemode!, write!, lockwrite!, replace!)
+	if li_filehandle > -1 then
+		li_colcount = integer(ads_ds.object.datawindow.column.count)
+		if adb_colnames = true then
+			for ll_counter = 2 to ll_counter step 2
+				ls_colname = ads_ds.describe("#" + string(ll_counter) + ".Name")
+				ls_writetofile = ls_writetofile + ls_colname
+				if ll_counter <> li_colcount then
+					ls_writetofile = ls_writetofile + ads_delimiter
+				end if
+			next
+			filewrite(li_filehandle, ls_writetofile)
+		end if
+		for ll_counter = 1 to ads_ds.rowcount()
+			ls_writetofile = ""
+			for ll_innercounter = 2 to ll_innercounter step 2
+				ls_colname = ads_ds.describe("#" + string(ll_innercounter) + ".Name")
+				ls_prevcol = ads_ds.describe("#" + string(ll_innercounter - 1) + ".Name")
+				li_collen = ads_ds.getitemnumber(ll_counter, ls_prevcol)
+				ls_temp = ads_ds.getitemstring(ll_counter, ls_colname)
+				if isnull(ls_temp) then
+					ls_temp = ""
+				end if
+				if len(ls_temp) > li_collen then
+					ls_writetofile = ls_writetofile + left(ls_temp, li_collen)
+				else
+					ls_writetofile = ls_writetofile + ls_temp + space(li_collen - len(ls_temp))
+				end if
+				if ll_innercounter <> li_colcount then
+					ls_writetofile = ls_writetofile + ads_delimiter
+				end if
+			next
+			filewrite(li_filehandle, ls_writetofile)
+		next
+		fileclose(li_filehandle)
+		return 1
+	end if
+	return 0

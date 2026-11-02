@@ -1,0 +1,54 @@
+// userobject n_dwr_colors (dw2xls)  ancestor: n_associated_ulong_srv
+
+// n_dwr_colors.of_get_custom_color_index(long al_color) returns integer
+	unsignedlong ll_index
+	integer li_red
+	integer li_green
+	integer li_blue
+	if truncate(al_color / 16777216.0, 0) = 64 then
+		return 65
+	end if
+	ll_index = of_find_key(al_color)
+	if ll_index > 0 then
+		return 64 - integer(ll_index)
+	end if
+	if of_get_keys_count() > 63 - 8 then
+		return -1
+	end if
+	ll_index = of_add_key(al_color)
+	li_red = al_color mod 256
+	li_green = truncate(al_color / 256.0, 0) mod 256
+	li_blue = truncate(al_color / (256 * 256), 0) mod 256
+	this.invo_writer.of_set_custom_color(64 - integer(ll_index), li_red, li_green, li_blue)
+	return 64 - integer(ll_index)
+
+// n_dwr_colors.of_get_color(long al_color) returns long
+	long ll_mask
+	long ll_col
+	boolean lb_sys
+	if al_color > ll_mask then
+		ll_col = truncate(al_color / ll_mask, 0)
+		choose case ll_col
+		case 64
+			al_color = this.clwindow
+		case 2
+			al_color = this.clwindowtext
+		case 4
+			al_color = this.clbtnface
+		case 16
+			al_color = this.clappworkspace
+		case 8
+			al_color = getsyscolor(al_color)
+			lb_sys = true
+		end choose
+	end if
+	if al_color >= this.cldelta and not lb_sys then
+		return getsyscolor(al_color - this.cldelta)
+	end if
+	return al_color
+
+// n_dwr_colors.create() returns 0
+	call super::create
+
+// n_dwr_colors.destroy() returns 0
+	call super::destroy

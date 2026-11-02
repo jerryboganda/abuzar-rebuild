@@ -1,0 +1,1363 @@
+// window w_adjincrease (adjustment)  ancestor: w_multi_entry
+
+// w_adjincrease.ue_populate_shelfstock_from_datacarry() returns 0
+	long ll_icode
+	long ll_row
+	long ll_jobcode
+	long ll_counter
+	long ll_qty
+	boolean retflag
+	double ld_godownstock
+	double ld_allgodownstock
+	long ll_packunits
+	integer li_gcode
+	string ls_fullcode
+	string ls_name
+	string ls_batch
+	string ls_itemtotalval
+	string ls_packingdesc
+	string ls_errortext
+	string ls_error_syntax
+	string ls_remarks
+	string ls_connsetting
+	string ls_headerquery
+	string ls_detailquery
+	string ls_newsyntax
+	string ls_suppinvcode
+	string ls_suppinvcode_tmp
+	datetime ldt_expiry
+	datastore lds_header
+	datastore lds_detail
+	s_arguements lstr_arguments
+	u_transaction lt_transobject
+	if wf_iseditable() = false then
+		return
+	end if
+	lt_transobject = create u_transaction
+	SQL start USING lt_transobject;
+	if lt_transobject.sqlcode <> 0 then
+		messagebox("Connection Problem", "Unable to connect to database.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext)
+		return
+	end if
+	SQL EXECUTE IMMEDIATE :ls_connsetting USING lt_transobject;
+	setpointer(hourglass!)
+	lds_detail = create datastore
+	ls_detailquery = "Select ~tGCode, ICode, Batch, Expiry, SUM(CurrQty) AS Qty " + " From ~t" + gs_inlinkserver + "." + gs_inlinkserverdb + "." + gs_inlinkserverowner + "." + "GodownDetail " + " GROUP BY GCode, ICode, Batch, Expiry "
+	ls_newsyntax = lt_transobject.syntaxfromsql(ls_detailquery, "", ls_error_syntax)
+	if len(ls_error_syntax) > 0 then
+		SQL stop USING lt_transobject;
+		messagebox("Syntax Validation", "Syntax Error For Godown Detail DataStore")
+		return
+	else
+		ls_error_syntax = ""
+		lds_detail.create(ls_newsyntax, ls_error_syntax)
+		if len(ls_error_syntax) > 0 then
+			SQL stop USING lt_transobject;
+			messagebox("Create Validation", "Create Error For Godown Detail DataStore")
+			return
+		end if
+	end if
+	lds_detail.settransobject(lt_transobject)
+	if lds_detail.retrieve() <= 0 then
+		SQL stop USING lt_transobject;
+		messagebox("Fetch Error", "Unable to fetch any data from Godown Detail for Shelf Stock.")
+		return
+	end if
+	for ll_counter = 1 to this.id_detail.rowcount()
+		event ue_deleteitem()
+	next
+	ll_counter = 0
+	for ll_counter = 1 to this.id_detail.rowcount()
+		event ue_deleteitem()
+	next
+	for ll_counter = 1 to lds_detail.rowcount()
+		ll_row = this.id_detail.insertrow(0)
+		ll_icode = lds_detail.getitemnumber(ll_counter, "icode")
+		ll_qty = lds_detail.getitemnumber(ll_counter, "qty")
+		wf_inititeminfo(ll_icode, ll_row, ls_errortext)
+		this.id_detail.object.gcode[ll_row] = lds_detail.object.gcode[ll_counter]
+		this.id_detail.object.batch[ll_row] = lds_detail.object.batch[ll_counter]
+		this.id_detail.object.expiry[ll_row] = lds_detail.object.expiry[ll_counter]
+		this.id_detail.object.looseqty[ll_row] = lds_detail.object.qty[ll_counter]
+	next
+	ls_remarks = "stock imported from data carry as on " + string(today(), "dd-mm-yyyy hh:mm")
+	this.id_master.object.remarks[this.id_master.rowcount()] = left(ls_remarks, 100)
+	if this.id_detail.rowcount() > 0 then
+		this.im_menu.m_file.m_save.enabled = true
+		wf_grandtotal()
+	else
+		this.im_menu.m_file.m_save.enabled = false
+	end if
+	SQL stop USING lt_transobject;
+
+// w_adjincrease.ue_populate_stockaudit_from_datacarry() returns 0
+	long ll_icode
+	long ll_row
+	long ll_jobcode
+	long ll_counter
+	long ll_qty
+	boolean retflag
+	double ld_godownstock
+	double ld_allgodownstock
+	long ll_packunits
+	integer li_gcode
+	string ls_fullcode
+	string ls_name
+	string ls_batch
+	string ls_itemtotalval
+	string ls_packingdesc
+	string ls_errortext
+	string ls_error_syntax
+	string ls_remarks
+	string ls_connsetting
+	string ls_headerquery
+	string ls_detailquery
+	string ls_newsyntax
+	string ls_suppinvcode
+	string ls_suppinvcode_tmp
+	datetime ldt_expiry
+	datastore lds_header
+	datastore lds_detail
+	s_arguements lstr_arguments
+	u_transaction lt_transobject
+	if wf_iseditable() = false then
+		return
+	end if
+	li_gcode = this.id_master.object.gcode[this.id_master.rowcount()]
+	if isnull(li_gcode) then
+		messagebox("Godown Validation!", "Kindly Select a Godown First")
+		return
+	end if
+	open(w_populate_stockaudit_from_datacarrydb)
+	lstr_arguments = message.powerobjectparm
+	if lstr_arguments.i_status <= 0 then
+		return
+	end if
+	ll_jobcode = lstr_arguments.l_code1
+	lt_transobject = create u_transaction
+	SQL start USING lt_transobject;
+	if lt_transobject.sqlcode <> 0 then
+		messagebox("Connection Problem", "Unable to connect to database.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext)
+		return
+	end if
+	SQL EXECUTE IMMEDIATE :ls_connsetting USING lt_transobject;
+	if ll_jobcode > 0 then
+		setpointer(hourglass!)
+		lds_header = create datastore
+		lds_detail = create datastore
+		ls_headerquery = "Select ~tStockAuditJobID, JobName, Remarks, Posted " + "From ~t" + gs_inlinkserver + "." + gs_inlinkserverdb + "." + gs_inlinkserverowner + "." + "StockAuditJob " + "Where   StockAuditJobID = " + string(ll_jobcode)
+		ls_detailquery = "Select ~tStockAuditJobID, ICode, SUM(Qty) AS Qty " + "From ~t" + gs_inlinkserver + "." + gs_inlinkserverdb + "." + gs_inlinkserverowner + "." + "StockAuditDetail " + "Where ~tStockAuditJobID = " + string(ll_jobcode) + "  GROUP BY StockAuditJobID, ICode "
+		ls_newsyntax = lt_transobject.syntaxfromsql(ls_headerquery, "", ls_error_syntax)
+		if len(ls_error_syntax) > 0 then
+			SQL stop USING lt_transobject;
+			messagebox("Syntax Validation", "Syntax Error For Stock Audit Job DataStore")
+			return
+		else
+			ls_error_syntax = ""
+			lds_header.create(ls_newsyntax, ls_error_syntax)
+			if len(ls_error_syntax) > 0 then
+				SQL stop USING lt_transobject;
+				messagebox("Create Validation", "Create Error For Stock Audit Job DataStore")
+				return
+			end if
+		end if
+		lds_header.settransobject(lt_transobject)
+		if lds_header.retrieve() <= 0 then
+			SQL stop USING lt_transobject;
+			messagebox("Fetch Error", "Unable to fetch any data from Stock Audit Job.")
+			return
+		end if
+		ls_newsyntax = ""
+		ls_error_syntax = ""
+		ls_newsyntax = lt_transobject.syntaxfromsql(ls_detailquery, "", ls_error_syntax)
+		if len(ls_error_syntax) > 0 then
+			SQL stop USING lt_transobject;
+			messagebox("Syntax Validation", "Syntax Error For Stock Audit Job Detail DataStore")
+			return
+		else
+			ls_error_syntax = ""
+			lds_detail.create(ls_newsyntax, ls_error_syntax)
+			if len(ls_error_syntax) > 0 then
+				SQL stop USING lt_transobject;
+				messagebox("Create Validation", "Create Error For Stock Audit Job Detail DataStore")
+				return
+			end if
+		end if
+		lds_detail.settransobject(lt_transobject)
+		if lds_detail.retrieve() <= 0 then
+			SQL stop USING lt_transobject;
+			messagebox("Fetch Error", "Unable to fetch any data from Stock Audit Job Detail.")
+			return
+		end if
+		for ll_counter = 1 to this.id_detail.rowcount()
+			event ue_deleteitem()
+		next
+		ll_counter = 0
+		for ll_counter = 1 to this.id_detail.rowcount()
+			event ue_deleteitem()
+		next
+		for ll_counter = 1 to lds_detail.rowcount()
+			ll_row = this.id_detail.insertrow(0)
+			ll_icode = lds_detail.getitemnumber(ll_counter, "icode")
+			ll_qty = lds_detail.getitemnumber(ll_counter, "qty")
+			wf_inititeminfo(ll_icode, ll_row, ls_errortext)
+			this.id_detail.setitem(ll_row, "looseqty", ll_qty)
+		next
+		if isnull(lds_header.object.remarks[1]) then
+			ls_remarks = trim(string(lds_header.object.stockauditjobid[1])) + lds_header.object.jobname[1]
+		else
+			ls_remarks = trim(string(lds_header.object.stockauditjobid[1])) + ", " + lds_header.object.jobname[1] + ", " + lds_header.object.remarks[1]
+		end if
+		this.id_master.object.remarks[this.id_master.rowcount()] = left(ls_remarks, 100)
+		if this.id_detail.rowcount() > 0 then
+			this.im_menu.m_file.m_save.enabled = true
+			wf_grandtotal()
+		else
+			this.im_menu.m_file.m_save.enabled = false
+		end if
+	end if
+	SQL stop USING lt_transobject;
+
+// w_adjincrease.wf_validateitem() returns integer
+	long ll_icode
+	long ll_gcode
+	double ld_purprice
+	double ld_discperc
+	double ld_avgprice
+	string ls_fullcode
+	string ls_errtext
+	string ls_titleerrtext
+	integer il_errcode
+	integer li_errcode
+	integer li_null
+	string ls_null
+	ll_icode = this.id_detail.object.icode[this.il_currrow]
+	if wf_genfullcode(ll_icode, ls_fullcode) > 0 then
+		this.id_detail.object.fullcode[this.il_currrow] = ls_fullcode
+		if not wf_inititeminfo(ll_icode, this.il_currrow, ls_errtext) then
+			ls_titleerrtext = "Item Validation"
+			li_errcode = -1
+		end if
+	else
+		il_errcode = -1
+	end if
+	this.ib_itemvalidated = true
+	if il_errcode = -1 then
+		setnull(li_null)
+		setnull(ls_null)
+		this.id_detail.setcolumn(this.is_columnitemname)
+		this.id_detail.scrolltorow(this.il_currrow)
+		this.id_detail.object.icode[this.il_currrow] = li_null
+		this.id_detail.object.itemname[this.il_currrow] = ls_null
+	end if
+	return il_errcode
+
+// w_adjincrease.wf_assigndatawindowobjects(string as_masterdw, string as_detaildw, string as_listdw) returns 0
+	this.id_master.dataobject = as_masterdw
+	this.id_detail.dataobject = as_detaildw
+	this.id_list.dataobject = as_listdw
+	this.id_master.settransobject(this.it_transobject)
+	this.id_detail.settransobject(this.it_transobject)
+	this.id_list.settransobject(this.it_transobject)
+
+// w_adjincrease.wf_genfullcode(long al_icode, string as_fullcode) returns integer
+	integer li_retflag
+	string ls_fullcode
+	long icode
+	SQL SELECT customicode INTO :ls_fullcode FROM item WHERE item.icode =:al_icode USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		li_retflag = 1
+		as_fullcode = ls_fullcode
+	else
+		li_retflag = this.it_transobject.sqlcode
+	end if
+	return li_retflag
+
+// w_adjincrease.wf_grandtotal() returns double
+	double ld_grandtotal
+	double ld_detaildwtotal
+	if this.id_detail.rowcount() > 0 and this.id_footer.rowcount() > 0 then
+		ld_detaildwtotal = this.id_detail.getitemnumber(1, "d_detaildwtotal")
+		ld_grandtotal = ld_detaildwtotal
+		ld_grandtotal = round(ld_grandtotal, 0)
+		this.id_footer.setitem(1, "total", ld_grandtotal)
+		ld_detaildwtotal = this.id_footer.getitemnumber(1, "total")
+	end if
+	return ld_grandtotal
+
+// w_adjincrease.wf_initmodify(integer ai_protect) returns 0
+	long ll_adjcode
+	long ll_gcode
+	long ll_icode
+	long ll_counter
+	long ll_packunits
+	string ls_batch
+	datetime ld_expiry
+	double ld_looseqty
+	double ld_stock
+	double ll_packqty
+	if this.id_master.getitemstring(1, "posted") = "N" then
+		ll_adjcode = this.id_detail.getitemnumber(1, "code")
+		if wf_lockadjinvoice(ll_adjcode) = 0 then
+			for ll_counter = 1 to this.id_detail.rowcount()
+				ll_gcode = this.id_detail.getitemnumber(ll_counter, "gcode")
+				ll_icode = this.id_detail.getitemnumber(ll_counter, "icode")
+				ld_looseqty = this.id_detail.getitemnumber(ll_counter, "looseqty")
+				ll_packunits = this.id_detail.getitemnumber(ll_counter, "packunits")
+				this.it_transobject.getitemstocktotal(ll_gcode, ll_icode, ld_stock)
+				if this.it_transobject.sqlcode = 0 then
+					ai_protect = 0
+					this.id_footer.setitem(ll_counter, "stock", ld_stock - ld_looseqty)
+				end if
+			next
+			if ai_protect = 0 then
+				this.id_footer.setitem(1, "stock", this.id_footer.getitemnumber(1, "stock"))
+				this.im_menu.m_file.m_save.enabled = true
+				this.im_menu.m_file.m_new.enabled = false
+				this.im_menu.m_file.m_delete.enabled = false
+				this.im_menu.m_item.m_newitem.enabled = true
+				this.im_menu.m_item.m_deleteitem.enabled = true
+				this.im_menu.m_file.m_first.enabled = false
+				this.im_menu.m_file.m_next.enabled = false
+				this.im_menu.m_file.m_previous.enabled = false
+				this.im_menu.m_file.m_last.enabled = false
+				this.im_menu.m_file.m_retrieve.enabled = true
+				this.im_menu.m_file.m_retrieve.text = "Lis&t"
+				this.tab_retrieve.tabpage_detail.enabled = true
+			end if
+		end if
+		return
+	end if
+	ai_protect = 1
+
+// w_adjincrease.wf_iteminfo(long al_icode, long al_gcode, double ad_purprice, double ad_discperc, double ad_avgprice, long al_packunits) returns boolean
+	boolean retflag
+	SQL SELECT 1 , item.salePrice , item.purdiscperc , item.avgprice , item.packunits INTO :al_gcode, :ad_purprice, :ad_discperc, :ad_avgprice, :al_packunits FROM item WHERE item.icode =:al_icode USING this.it_transobject;
+	if isnull(ad_purprice) then
+		ad_purprice = 0
+	elseif isnull(ad_discperc) then
+		ad_discperc = 0
+	elseif isnull(ad_avgprice) then
+		ad_avgprice = 0
+	end if
+	if this.it_transobject.sqlcode = -1 then
+		retflag = false
+	end if
+	return retflag
+
+// w_adjincrease.wf_lockadjinvoice(long al_adjcode) returns integer
+	integer li_count
+	SQL Select count ( *) INTO :li_count From adjheader WITH ( UPDLOCK HOLDLOCK ) Where adjheader.adjcode =:al_adjcode USING this.it_transobject;
+	return this.it_transobject.sqlcode
+
+// w_adjincrease.wf_lockadjinvoices(long al_sinvcode, long al_linvcode) returns integer
+	integer li_count
+	SQL SELECT count ( *) INTO :li_count FROM adjheader WITH ( UPDLOCK HOLDLOCK ) WHERE adjheader.adjcode Between :al_sinvcode and :al_linvcode AND adjheader.adjcatcode =1 USING this.it_transobject;
+	return this.it_transobject.sqlcode
+
+// w_adjincrease.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_counter step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+
+// w_adjincrease.wf_selectprintreport() returns string
+	string ls_report
+	return ls_report
+
+// w_adjincrease.wf_setgodownoption() returns 0
+	this.ii_purchasegodownoption = this.id_detail.getitemnumber(1, "gcode")
+	if this.il_strategy = 1 and this.il_godowncount = 1 then
+		this.id_detail.object.gcode.protect = 1
+		this.id_detail.object.gcode.background.color = this.backcolor
+	end if
+
+// w_adjincrease.wf_validatefullcode(string as_custicode, long al_currrow) returns boolean
+	return true
+
+// w_adjincrease.wf_post() returns boolean
+	long ll_code1
+	long ll_code2
+	long ll_headerno
+	long ll_headerinvno
+	integer li_errcode
+	integer li_rtncode
+	long ll_supplieracc
+	long ll_detailrows
+	long ll_mastercurrrow
+	long ll_footercurrrow
+	long ll_invid
+	long ll_icode
+	long ll_gcode
+	long ll_packingunits
+	long ll_salesmancode
+	long ll_errrowid
+	string ls_batch
+	datetime ld_expiry
+	double ld_avgprice
+	double ld_purprice
+	double ld_itempurcost
+	double ld_debitamt
+	double ld_creditamt
+	double ld_currbalance
+	double ld_newavgprice
+	double ld_stock
+	double ld_newstock
+	double ld_looseqty
+	double ld_purqty
+	integer li_detailcounter
+	boolean lb_commitflag
+	long ll_rowcount
+	long ll_invcounter
+	long ll_invcode
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	char lc_updateavgprice
+	s_arguements lstr_arginfo
+	datastore lds_purinvforposting
+	datastore lds_purheader
+	datastore lds_purdetail
+	datawindowchild ldc_godown
+	lds_purinvforposting = create datastore
+	lds_purinvforposting.dataobject = "d_adjinvno"
+	lds_purinvforposting.settransobject(this.it_transobject)
+	lds_purheader = create datastore
+	lds_purheader.dataobject = "d_adjheader"
+	lds_purheader.settransobject(this.it_transobject)
+	lds_purdetail = create datastore
+	lds_purdetail.dataobject = "d_adjincreasedetail"
+	lds_purdetail.settransobject(this.it_transobject)
+	li_rtncode = lds_purdetail.getchild("gcode", ldc_godown)
+	if li_rtncode = -1 then
+		messagebox("Error", "Can not get a DataWindowChild~r~nPosting Failed")
+		return false
+	end if
+	ldc_godown.settransobject(this.it_transobject)
+	li_rtncode = ldc_godown.retrieve(this.il_groupcode, this.ii_module, this.il_strategy)
+	if li_rtncode = -1 then
+		messagebox("Error", "Not Enough Godown Rights to Post Adjustments~r~nPosting Failed")
+		return false
+	end if
+	open(w_salesmanpassword)
+	ll_salesmancode = long(message.doubleparm)
+	setfocus()
+	if ll_salesmancode > 0 then
+		open(w_arg_sinvcode_linvcode)
+		lstr_arginfo = message.powerobjectparm
+		if lstr_arginfo.i_status = 1 then
+			setpointer(hourglass!)
+			li_errcode = wf_lockadjinvoices(lstr_arginfo.l_code1, lstr_arginfo.l_code2)
+			ll_code1 = lstr_arginfo.l_code1
+			ll_code2 = lstr_arginfo.l_code2
+			lds_purinvforposting.retrieve(1, lstr_arginfo.l_code1, lstr_arginfo.l_code2)
+			if li_errcode = 0 then
+				ll_rowcount = lds_purinvforposting.rowcount()
+				for ll_invcounter = 1 to ll_rowcount
+					ll_invcode = lds_purinvforposting.object.adjcode[ll_invcounter]
+					if wf_allowadjustmentmodification(ll_invcode, this.il_groupcode, this.il_strategy) = 0 then
+						lds_purheader.retrieve(ll_invcode)
+						lds_purdetail.retrieve(ll_invcode)
+						ll_mastercurrrow = lds_purheader.getrow()
+						ll_detailrows = lds_purdetail.rowcount()
+						lds_purheader.object.posted[ll_mastercurrrow] = "Y"
+						ll_headerno = lds_purheader.getitemnumber(ll_mastercurrrow, "headerno")
+						ll_headerinvno = lds_purheader.getitemnumber(ll_mastercurrrow, "headerinvno")
+						if isnull(ll_headerinvno) then
+							f_generateheaderinvcode(ll_headerno, this.ii_module, ll_headerinvno)
+							if ll_headerinvno > 0 then
+								lds_purheader.setitem(ll_mastercurrrow, "headerinvno", ll_headerinvno)
+							end if
+						end if
+						if not wf_getserverdatetime(ldt_server_datetime, ls_date_errtext) then
+							messagebox("Date Violation", ls_date_errtext, stopsign!)
+							return false
+						end if
+						lds_purheader.object.posteddate[ll_mastercurrrow] = ldt_server_datetime
+						lds_purheader.object.postedby[ll_mastercurrrow] = ll_salesmancode
+						li_detailcounter = 1
+						do while li_detailcounter <= ll_detailrows and lb_commitflag = true
+							ll_icode = lds_purdetail.object.icode[li_detailcounter]
+							ll_gcode = lds_purdetail.object.gcode[li_detailcounter]
+							ls_batch = lds_purdetail.object.batch[li_detailcounter]
+							ld_expiry = lds_purdetail.object.expiry[li_detailcounter]
+							ld_looseqty = lds_purdetail.object.looseqty[li_detailcounter]
+							ll_packingunits = lds_purdetail.object.packunits[li_detailcounter]
+							lc_updateavgprice = lds_purdetail.object.updateavgprice[li_detailcounter]
+							ld_purprice = lds_purdetail.object.price[li_detailcounter]
+							ld_purqty = ld_looseqty
+							this.it_transobject.getitemavgprice(ll_icode, ld_avgprice)
+							if this.it_transobject.sqlcode = 0 then
+								this.it_transobject.getitemstockall(ll_icode, ld_stock)
+								if this.it_transobject.sqlcode = 0 then
+									lds_purdetail.object.avgprice[li_detailcounter] = ld_avgprice
+									lds_purdetail.object.currstock[li_detailcounter] = ld_stock
+									ld_newstock = ld_stock + ld_purqty
+									if ld_newstock > 0.0 then
+										ld_newavgprice = round((ld_stock * ld_avgprice + ld_purprice * ld_looseqty) / ld_newstock, 5)
+										if lc_updateavgprice = "Y" then
+											this.it_transobject.updateitemavgprice(ll_icode, ld_newavgprice)
+											if this.it_transobject.sqlcode <> 0 then
+												lb_commitflag = false
+											end if
+										else
+											ld_newavgprice = ld_avgprice
+										end if
+										lds_purdetail.object.newavgprice[li_detailcounter] = ld_newavgprice
+										if lb_commitflag then
+											this.it_transobject.getitemstockbatch(ll_gcode, ll_icode, ls_batch, ld_expiry, ld_stock)
+											if this.it_transobject.sqlcode = 0 then
+												ld_newstock = ld_stock + ld_purqty
+												this.it_transobject.updateitemstockbatch(ll_gcode, ll_icode, ls_batch, ld_expiry, ld_newstock)
+												if this.it_transobject.sqlcode <> 0 then
+													lb_commitflag = false
+												end if
+											else
+												lb_commitflag = false
+											end if
+										end if
+									else
+										lb_commitflag = false
+									end if
+								else
+									lb_commitflag = false
+								end if
+							else
+								lb_commitflag = false
+							end if
+							li_detailcounter = li_detailcounter + 1
+						loop
+						if lb_commitflag = false then
+							SQL rollback USING this.it_transobject;
+							messagebox("Updation Fail", string(ll_invcode) + "~n~r can not be posted")
+							return lb_commitflag
+						else
+							if lds_purheader.update(true, false) < 0 then
+								SQL rollback USING this.it_transobject;
+							end if
+							if lds_purdetail.update() > 0 then
+								SQL commit USING this.it_transobject;
+							else
+								SQL rollback USING this.it_transobject;
+							end if
+						end if
+					end if
+				next
+				messagebox("Posting", "Posting Completed")
+				return lb_commitflag
+			end if
+			return
+		end if
+		return
+	end if
+	setpointer(arrow!)
+	destroy lds_purinvforposting
+	destroy lds_purheader
+	destroy lds_purdetail
+	return lb_commitflag
+
+// w_adjincrease.wf_retrievelist() returns long
+	string[] ls_posted
+	ls_posted[1] = "N"
+	return this.id_list.retrieve(ls_posted, this.il_groupcode, this.ii_module)
+
+// w_adjincrease.wf_retrievelistall() returns long
+	string[] ls_posted
+	ls_posted[1] = "N"
+	ls_posted[2] = "Y"
+	return this.id_list.retrieve(ls_posted, this.il_groupcode, this.ii_module)
+
+// w_adjincrease.wf_inititeminfo(long al_icode, long al_row, string as_errortext) returns boolean
+	boolean retflag
+	double ld_purprice
+	double ld_discperc
+	double ld_saleprice
+	double ld_recentpurprice
+	double ld_avgprice
+	double ld_price
+	long ll_packunits
+	integer li_gcode
+	string ls_fullcode
+	string ls_name
+	string ls_alternatecustomicode
+	string ls_null
+	double ld_godownstock
+	double ld_allgodownstock
+	setnull(ls_null)
+	SQL SELECT item.customicode , item.name , item.purprice , item.packunits , item.purdiscperc , item.gcode , item.saleprice , item.recentpurprice , item.avgprice INTO :ls_fullcode, :ls_name, :ld_purprice, :ll_packunits, :ld_discperc, :li_gcode, :ld_saleprice, :ld_recentpurprice, :ld_avgprice FROM item WHERE item.icode =:al_icode USING this.it_transobject;
+	if ll_packunits < 1 or isnull(ll_packunits) then
+		ll_packunits = 1
+	end if
+	if this.it_transobject.sqlcode = -1 then
+		retflag = false
+		as_errortext = "Database Error: Item information can not be retrieved"
+	end if
+	if this.il_godowncount = 1 and this.il_strategy = 1 then
+		this.ii_defaultgcode = this.id_detail.getitemnumber(al_row, "gcode")
+	elseif this.il_strategy = 1 then
+		this.ii_defaultgcode = this.id_detail.getitemnumber(al_row, "gcode")
+	end if
+	this.it_transobject.getitemstocktotal(this.ii_defaultgcode, al_icode, ld_godownstock)
+	this.it_transobject.getitemstockinallowedgodown(al_icode, this.il_groupcode, this.il_strategy, this.ii_module, ld_allgodownstock)
+	if this.it_transobject.sqlcode = -1 then
+		retflag = false
+		as_errortext = "Database Error: Item information can not be retrieved"
+	end if
+	ls_alternatecustomicode = this.id_detail.object.alternatecustomicode[al_row]
+	if isnull(ls_alternatecustomicode) then
+		ls_alternatecustomicode = ""
+	end if
+	if lower(ls_fullcode) = lower(ls_alternatecustomicode) then
+		ls_alternatecustomicode = ls_null
+		this.id_detail.object.alternatecustomicode[al_row] = ls_null
+	end if
+	this.id_detail.setitem(al_row, "gcode", this.ii_defaultgcode)
+	this.id_detail.setitem(al_row, "icode", al_icode)
+	this.id_detail.setitem(al_row, this.is_columnitemname, ls_name)
+	this.id_detail.setitem(al_row, "fullcode", ls_fullcode)
+	this.id_detail.setitem(al_row, "packunits", ll_packunits)
+	this.id_detail.setitem(al_row, "stock", ld_godownstock)
+	this.id_detail.setitem(al_row, "totalstock", ld_allgodownstock)
+	if ld_avgprice <= 0.0 or isnull(ld_avgprice) then
+		ld_price = ld_purprice / ll_packunits
+	else
+		ld_price = ld_avgprice
+	end if
+	this.id_detail.setitem(al_row, "price", ld_price)
+	this.id_detail.setitem(al_row, "purprice", ld_purprice)
+	this.id_detail.setitem(al_row, "saleprice", ld_saleprice)
+	this.id_detail.setitem(al_row, "avgprice", ld_avgprice)
+	this.id_detail.setitem(al_row, "recentpurprice", ld_recentpurprice)
+	this.id_footer.setitem(1, "stock", ld_godownstock)
+	this.id_footer.setitem(1, "totalstock", ld_allgodownstock)
+	return retflag
+
+// w_adjincrease.wf_findfullcode(string as_fullcode, long al_icode, string al_itemname) returns integer
+	long ll_icode
+	long ll_retflag
+	string ls_itemname
+	if f_stringpreferences("GroupCategoryRights") = "Y" then
+		SQL SELECT item.icode , item.name INTO :ll_icode, :ls_itemname FROM item WHERE item.customicode =:as_fullcode AND item.Active =1 AND Item.ICatCode IN ( SELECT ICatCode FROM ItemCategory WHERE ICatCode IN ( SELECT ItemsCategoryCode FROM ItemsGroupCategory WHERE GroupCode IN ( SELECT GroupCode FROM UserGroups WHERE UserCode =:gl_usercode ) ) ) USING this.it_transobject;
+	else
+		SQL SELECT item.icode , item.name INTO :ll_icode, :ls_itemname FROM item WHERE item.customicode =:as_fullcode AND item.Active =1 USING this.it_transobject;
+	end if
+	if this.it_transobject.sqlcode = 0 then
+		al_icode = ll_icode
+		al_itemname = ls_itemname
+		if isnull(al_icode) then
+			ll_retflag = 0
+		else
+			ll_retflag = 1
+		end if
+	else
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_adjincrease.wf_allowadjustmentmodification(double ad_invoicecode, long al_groupcode, integer ai_strategy) returns long
+	long ll_disallowedcount
+	SQL SELECT DISTINCT GCode =ISNull ( Count ( GCode ) , 0 ) INTO :ll_disallowedcount FROM AdjDetail WHERE AdjCode =:ad_invoicecode AND GCode NOT IN ( SELECT Godown.GCode FROM Godown WHERE GCode IN ( CASE :ai_strategy WHEN 2 THEN ( SELECT G.GCode From Godown G WHERE G.GCode =Godown.GCode ) ELSE ( SELECT G.GCode From GroupAllowedGodown G WHERE G.GroupCode =:al_groupcode AND G.Module =:this.ii_module AND Godown.GCode =G.GCode ) END ) ) USING sqlca;
+	return ll_disallowedcount
+
+// w_adjincrease.wf_populatefiltereditems() returns integer
+	datastore lds_itemselected
+	long ll_detailrows
+	long ll_count
+	long ll_duplrows
+	integer li_result
+	integer li_rtncode
+	boolean populateflag
+	s_arguements lstr_selecteditems
+	long ll_rowcount
+	long ll_rtcode
+	long ll_icode
+	long ll_gcode
+	long ll_packunits
+	long ll_retrievecount
+	long ll_lockedcount
+	double ld_purprice
+	double ld_discperc
+	double ld_avgprice
+	double ld_saleprice
+	double ld_packsalestax
+	double ld_gstperc
+	double ld_godownstock
+	double ld_allgodownstock
+	string ls_fullcode
+	if this.ib_modify = true then
+		messagebox("Result", "Can not populate items after Posting!")
+		return 0
+	end if
+	this.id_detail.setredraw(false)
+	setpointer(hourglass!)
+	ll_detailrows = this.id_detail.rowcount()
+	if ll_detailrows > 0 then
+		if not isnull(this.id_detail.object.icode[1]) then
+			li_result = messagebox("Warning", "Rows in Detail Window will Lost", exclamation!, okcancel!, 2)
+			if li_result = 1 then
+				for ll_count = 1 to ll_detailrows
+					this.id_detail.deleterow(0)
+				next
+			else
+				populateflag = false
+			end if
+		else
+			this.id_detail.reset()
+		end if
+	end if
+	if populateflag = true then
+		openwithparm(w_arg_item_populate3, this.ii_module)
+		lstr_selecteditems = message.powerobjectparm
+		this.id_detail.reset()
+		lds_itemselected = create datastore
+		if lstr_selecteditems.s_name2 = "OR" then
+			lds_itemselected.dataobject = "d_populateditems_active"
+		else
+			lds_itemselected.dataobject = "d_populateditems_active_and"
+		end if
+		lds_itemselected.settransobject(this.it_transobject)
+		this.id_detail.reset()
+		ll_rtcode = lds_itemselected.retrieve(lstr_selecteditems.ia_integerlist, lstr_selecteditems.ia_integerlist1, lstr_selecteditems.ia_integerlist2, lstr_selecteditems.la_longlist, lstr_selecteditems.l_code1, lstr_selecteditems.s_name1)
+		ll_rowcount = lds_itemselected.rowcount()
+		for ll_count = 1 to ll_rowcount
+			ll_icode = lds_itemselected.object.icode[ll_count]
+			if wf_genfullcode(ll_icode, ls_fullcode) > 0 then
+				this.id_detail.insertrow(0)
+				this.id_detail.object.icode[ll_count] = ll_icode
+				ll_gcode = lds_itemselected.object.gcode[ll_count]
+				if isnull(ll_gcode) then
+					this.id_detail.object.gcode[ll_count] = this.ii_purchasegodownoption
+					ll_gcode = this.ii_purchasegodownoption
+				else
+					this.id_detail.object.gcode[ll_count] = ll_gcode
+				end if
+				this.id_detail.object.fullcode[ll_count] = ls_fullcode
+				this.id_detail.object.itemname[ll_count] = lds_itemselected.object.name[ll_count]
+				this.id_detail.object.batch[ll_count] = "."
+				this.id_detail.object.saleprice[ll_count] = lds_itemselected.object.saleprice[ll_count]
+				this.id_detail.object.looseqty[ll_count] = lds_itemselected.object.qty[ll_count]
+				this.id_detail.object.price[ll_count] = round(lds_itemselected.object.rate[ll_count] / lds_itemselected.object.packunits[ll_count], 2)
+				this.id_detail.object.recentpurprice[ll_count] = lds_itemselected.object.recentpurprice[ll_count]
+				this.id_detail.object.expiry[ll_count] = datetime(date("12/12/2010"))
+				this.id_detail.object.purprice[ll_count] = lds_itemselected.object.avgprice[ll_count]
+				this.id_detail.object.avgprice[ll_count] = lds_itemselected.object.avgprice[ll_count]
+				this.id_detail.object.packunits[ll_count] = lds_itemselected.object.packunits[ll_count]
+				this.id_detail.setitemstatus(ll_count, "purprice", primary!, notmodified!)
+				this.it_transobject.getitemstocktotal(ll_gcode, ll_icode, ld_godownstock)
+				this.it_transobject.getitemstockinallowedgodown(ll_icode, this.il_groupcode, this.il_strategy, this.ii_module, ld_allgodownstock)
+				if this.it_transobject.sqlcode = -1 then
+					messagebox("Database Error", "Database Error: Item information can not be retrieved")
+				else
+					this.id_detail.object.stock[1] = ld_godownstock
+					this.id_footer.object.stock[1] = ld_godownstock
+					this.id_footer.object.totalstock[1] = ld_allgodownstock
+				end if
+				ll_retrievecount = ll_retrievecount + 1
+			else
+				messagebox("Database Error", "Can not generate item FullCode")
+			end if
+		next
+		destroy lds_itemselected
+		if ll_retrievecount = ll_rowcount then
+			messagebox("Result", string(ll_rowcount) + " Items are populated. ")
+		else
+			messagebox("Result", "Total records were " + string(ll_rowcount) + "~n~r" + string(ll_rowcount - ll_duplrows - ll_lockedcount) + " records are retrieved successfully~n~r" + string(ll_duplrows) + " records are duplicate so are not retrieved~n~r" + string(ll_lockedcount) + " records are in error")
+		end if
+	end if
+	ll_detailrows = this.id_detail.rowcount()
+	if ll_detailrows > 0 and this.ib_modify = false then
+		this.im_menu.m_file.m_save.enabled = true
+	end if
+	setpointer(arrow!)
+	this.id_detail.setredraw(true)
+	return ll_retrievecount
+
+// w_adjincrease.wf_setiteminfo(long al_icode, long al_row, long ad_gcode, double ad_saleprice, double ad_discperc, double ad_stock) returns 0
+	this.id_detail.setitem(al_row, "gcode", ad_gcode)
+	this.id_detail.setitem(al_row, "purprice", ad_saleprice)
+	this.id_footer.object.stock[this.id_footer.getrow()] = ad_stock
+
+// w_adjincrease.wf_fetchserverdate(boolean ab_checked) returns long
+	if ab_checked then
+		this.ib_fetchserverdate = true
+	else
+		this.ib_fetchserverdate = false
+	end if
+	return 0
+
+// w_adjincrease.wf_show_item_adjustment_history() returns 0
+	s_itempurchasehistory ls_itempurchasehistory
+	if this.id_detail = getfocus() and this.id_detail.rowcount() > 0 then
+		ls_itempurchasehistory.ar_icode = this.id_detail.getitemnumber(this.id_detail.getrow(), "icode")
+		ls_itempurchasehistory.ar_date = this.id_master.getitemdatetime(this.id_master.getrow(), "date")
+		openwithparm(w_itemadjustmenthistory, ls_itempurchasehistory)
+	end if
+
+// w_adjincrease.create() returns 0
+	integer icurrent
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_adjustmentmenu" then
+		this.menuid = create m_adjustmentmenu
+	end if
+	this.dw_adjreport = create dw_adjreport
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_adjreport
+
+// w_adjincrease.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_adjreport
+
+// w_adjincrease.ue_save() returns 0
+	long ll_detailrows
+	long ll_mastercurrrow
+	long ll_footercurrrow
+	long ll_invid
+	long ll_icode
+	long ll_gcode
+	long ll_packingunits
+	long ll_salesmancode
+	long ll_adjcode
+	long ll_headerno
+	long ll_headerinvno
+	long ll_count
+	long ll_found
+	string ls_batch
+	string ls_errtext
+	datetime ld_expiry
+	double ld_avgprice
+	double ld_prprice
+	double ld_newavgprice
+	double ld_stock
+	double ld_newstock
+	double ld_looseqty
+	integer li_counter
+	integer li_errorrow
+	boolean lb_commitflag
+	boolean lb_continue
+	unsignedlong ul_rowcount
+	unsignedlong ul_maxutn
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	char lc_updateavgprice
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		this.id_detail.setfocus()
+		return
+	end if
+	wf_deleteemptydetailrow()
+	ll_detailrows = this.id_detail.rowcount()
+	if ll_detailrows > 1 then
+		for ll_count = 1 to ll_detailrows
+			ll_found = 0
+			if ll_count = ll_detailrows then
+				exit
+			end if
+			ll_found = this.id_detail.find("gcode = long('" + string(this.id_detail.getitemnumber(ll_count, "gcode")) + "') and " + " icode = long('" + string(this.id_detail.getitemnumber(ll_count, "icode")) + "') and batch = '" + this.id_detail.getitemstring(ll_count, "batch") + "' and expiry = Date('" + string(this.id_detail.getitemdatetime(ll_count, "expiry"), "yyyy-mm-dd") + "')", ll_count + 1, ll_detailrows)
+			if ll_found > 0 then
+				messagebox("Item Validation", "Duplicate items found at row " + string(ll_count) + " and " + string(ll_found) + "." + "~r~nSuggested options are either delete the row or ~r~n" + "change Item batch")
+				this.id_detail.scrolltorow(ll_count)
+				this.id_detail.setcolumn("looseqty")
+				this.id_detail.setfocus()
+				return
+			end if
+		next
+	elseif ll_detailrows <= 0 then
+		messagebox("On Save Validation", "There are no rows to save.~r~nKindly insert some item row.")
+		return
+	end if
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_footer) < 0 then
+		return
+	end if
+	if not wf_validateserverdatetime(ldt_server_datetime, ls_date_errtext) then
+		messagebox("Date Violation", ls_date_errtext, stopsign!)
+		return
+	end if
+	if f_stringpreferences("AskUserPwdInAdjustment") = "Y" then
+		open(w_salesmanpassword)
+		ll_salesmancode = long(message.doubleparm)
+	else
+		ll_salesmancode = gl_usercode
+	end if
+	setfocus()
+	if ll_salesmancode > 0 then
+		SQL rollback USING sqlca;
+		ul_rowcount = this.id_detail.rowcount()
+		sqlca.getmaxutn(ul_rowcount, ul_maxutn)
+		if sqlca.sqlcode = 0 then
+			SQL commit USING sqlca;
+		else
+			SQL rollback USING sqlca;
+			messagebox("Saving", "Error in generating Utn")
+			return
+		end if
+		setpointer(hourglass!)
+		ll_mastercurrrow = this.id_master.getrow()
+		ll_footercurrrow = this.id_footer.getrow()
+		ll_headerno = this.id_master.getitemnumber(ll_mastercurrrow, "headerno")
+		ll_headerinvno = this.id_master.getitemnumber(ll_mastercurrrow, "headerinvno")
+		if isnull(ll_headerinvno) then
+			f_generateheaderinvcode(ll_headerno, this.ii_module, ll_headerinvno)
+			if ll_headerinvno > 0 then
+				this.id_master.setitem(ll_mastercurrrow, "headerinvno", ll_headerinvno)
+			end if
+		end if
+		ll_invid = this.id_master.object.code[ll_mastercurrrow]
+		if isnull(ll_invid) then
+			f_newtableid("AdjHeader", ll_invid)
+			this.id_master.object.code[ll_mastercurrrow] = ll_invid
+			this.id_master.setitem(ll_mastercurrrow, "usercode", ll_salesmancode)
+		end if
+		li_counter = 1
+		if not this.ib_modifydate then
+			if not wf_getserverdatetime(ldt_server_datetime, ls_date_errtext) then
+				messagebox("Date Violation", ls_date_errtext, stopsign!)
+				return
+			end if
+			this.id_master.setitem(ll_mastercurrrow, "Date", ldt_server_datetime)
+			this.id_master.setitem(ll_mastercurrrow, "ModifiedDate", ldt_server_datetime)
+			this.id_master.setitem(ll_mastercurrrow, "PostedDate", ldt_server_datetime)
+		else
+			ldt_server_datetime = this.id_master.getitemdatetime(ll_mastercurrrow, "date")
+			this.id_master.setitem(ll_mastercurrrow, "date", ldt_server_datetime)
+			this.id_master.setitem(ll_mastercurrrow, "Posteddate", ldt_server_datetime)
+			this.id_master.setitem(ll_mastercurrrow, "modifieddate", ldt_server_datetime)
+		end if
+		this.id_master.setitem(ll_mastercurrrow, "adjcatcode", 1)
+		if lb_continue then
+			do while li_counter <= ll_detailrows and lb_commitflag = true
+				this.id_detail.setitem(li_counter, "AdjUtn", ul_maxutn)
+				ul_maxutn = ul_maxutn + 1
+				this.id_detail.setitem(li_counter, "code", ll_invid)
+				ll_icode = this.id_detail.object.icode[li_counter]
+				ll_gcode = this.id_detail.object.gcode[li_counter]
+				ls_batch = this.id_detail.object.batch[li_counter]
+				ld_expiry = this.id_detail.object.expiry[li_counter]
+				ld_looseqty = this.id_detail.object.looseqty[li_counter]
+				ll_packingunits = this.id_detail.object.packunits[li_counter]
+				ld_avgprice = this.id_detail.object.avgprice[li_counter]
+				lc_updateavgprice = this.id_detail.object.updateavgprice[li_counter]
+				ld_prprice = this.id_detail.object.price[li_counter]
+				this.it_transobject.getitemavgprice(ll_icode, ld_avgprice)
+				if this.it_transobject.sqlcode = 0 then
+					this.it_transobject.getitemstockall(ll_icode, ld_stock)
+					if this.it_transobject.sqlcode = 0 then
+						this.id_detail.object.avgprice[li_counter] = ld_avgprice
+						this.id_detail.object.currstock[li_counter] = ld_stock
+						ld_newavgprice = round((ld_stock * ld_avgprice + ld_prprice * ld_looseqty) / (ld_stock + ld_looseqty), 5)
+						if lc_updateavgprice = "Y" then
+							this.it_transobject.updateitemavgprice(ll_icode, ld_newavgprice)
+							if this.it_transobject.sqlcode <> 0 then
+								lb_commitflag = false
+								ls_errtext = "Item Avg. Price Updation Error:~r~n" + this.it_transobject.sqlerrtext
+							end if
+						else
+							ld_newavgprice = ld_avgprice
+						end if
+						this.id_detail.object.newavgprice[li_counter] = ld_newavgprice
+						if lb_commitflag then
+							this.it_transobject.getitemstockbatch(ll_gcode, ll_icode, ls_batch, ld_expiry, ld_stock)
+							if this.it_transobject.sqlcode = 0 then
+								ld_newstock = ld_stock + ld_looseqty
+								if ld_newstock > 0.0 then
+									this.it_transobject.updateitemstockbatch(ll_gcode, ll_icode, ls_batch, ld_expiry, ld_newstock)
+									if this.it_transobject.sqlcode <> 0 then
+										lb_commitflag = false
+										ls_errtext = "Stock Updation Error:~r~n" + this.it_transobject.sqlerrtext
+									end if
+								end if
+							else
+								lb_commitflag = false
+								ls_errtext = "Batch Wise Stock Fetch Error:~r~n" + this.it_transobject.sqlerrtext
+							end if
+						end if
+					end if
+				else
+					lb_commitflag = false
+				end if
+				li_counter = li_counter + 1
+			loop
+			call super::ue_save
+		end if
+	else
+		SQL rollback USING this.it_transobject;
+		messagebox("Updation Error", ls_errtext + " ", stopsign!)
+	end if
+	if not lb_commitflag then
+		SQL rollback USING this.it_transobject;
+		messagebox("Updation Error", ls_errtext + " ", stopsign!)
+		setfocus()
+	end if
+	if lb_commitflag and f_stringpreferences("IncAdjInActMonitor") = "Y" then
+		this.it_transobject.updateactivitymonitor("AI", ll_invid)
+		if this.it_transobject.sqlcode = 0 then
+			SQL commit USING this.it_transobject;
+		else
+			SQL rollback USING this.it_transobject;
+			messagebox("Activity Monitor", "Problem in updating activity monitor.~r~nReasons are:- " + this.it_transobject.sqlerrtext)
+		end if
+	end if
+	setpointer(arrow!)
+
+// w_adjincrease.ue_newform() returns 0
+	integer rtncode
+	integer li_price
+	long ll_counter
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	call super::ue_newform
+	setredraw(false)
+	this.ib_modify = false
+	this.id_footer.reset()
+	this.id_footer.insertrow(0)
+	this.id_footer.scrolltorow(0)
+	wf_protectdw(this.id_master, 0)
+	wf_protectdw(this.id_detail, 0)
+	wf_protectdw(this.id_footer, 0)
+	wf_setgodownoption()
+	this.id_master.setcolumn(1)
+	this.id_master.setfocus()
+	if not wf_validatedate() then
+		close(this)
+	end if
+	li_price = 1
+	for ll_counter = 1 to gds_securitywindow.rowcount()
+		if gds_securitywindow.object.rightcode[ll_counter] = 554 then
+			li_price = 0
+		end if
+	next
+	this.id_detail.object.price.protect = li_price
+	if this.ib_modifydate then
+		if this.ib_fetchserverdate then
+			wf_getserverdatetime(ldt_server_datetime, ls_date_errtext)
+			this.id_master.setitem(this.id_master.getrow(), "date", ldt_server_datetime)
+		else
+			this.id_master.setitem(this.id_master.getrow(), "date", today())
+		end if
+	end if
+	setredraw(true)
+
+// w_adjincrease.ue_detail() returns 0
+	long ll_code
+	integer li_rtncode
+	integer li_protect
+	call super::ue_detail
+	setredraw(false)
+	this.im_menu.m_file.m_post.enabled = false
+	this.ib_modify = true
+	ll_code = this.id_dwcontrol.borderstyle.code[this.il_selectedrow]
+	this.id_footer.retrieve(ll_code)
+	this.id_footer.setrow(1)
+	this.id_footer.scrolltorow(1)
+	wf_initmodify(li_protect)
+	if wf_allowadjustmentmodification(ll_code, this.il_groupcode, this.il_strategy) <> 0 then
+		this.id_detail.reset()
+		messagebox("Adjustment Modification Validation", "You Can not modify this Adjustment,~r~nGodown settings do not permit this modification.")
+		this.tab_retrieve.selecttab(2)
+		return
+	end if
+	wf_protectdw(this.id_master, li_protect)
+	wf_protectdw(this.id_detail, li_protect)
+	wf_protectdw(this.id_footer, li_protect)
+	this.im_menu.m_file.m_save.enabled = false
+	if this.il_godowncount = 1 and this.il_strategy = 1 then
+		this.id_master.object.gcode[1] = this.ii_purchasegodownoption
+	end if
+	wf_setgodownoption()
+	if li_protect = 0 then
+		this.im_menu.m_file.m_save.enabled = true
+	end if
+	this.im_menu.m_file.m_print.enabled = true
+	wf_grandtotal()
+	setredraw(true)
+
+// w_adjincrease.ue_newitem() returns 0
+	long ll_rowcount
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		this.id_detail.setfocus()
+		return
+	end if
+	if this.id_detail.rowcount() > 1 and vf_dwdupcodebatch(this.id_detail, "gcode", gl_defaultgcode, "icode", this.id_detail.getitemnumber(this.id_detail.getrow(), "icode"), "batch", this.id_detail.getitemstring(this.id_detail.getrow(), "batch"), "expiry", this.id_detail.getitemdatetime(this.id_detail.getrow(), "expiry"), this.il_currrow) = true then
+		messagebox("Item Validation", "Duplicate item, please select some other item")
+		return
+	end if
+	if this.id_detail.rowcount() > 0 and f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	this.id_detail.settransobject(this.it_transobject)
+	if f_stringpreferences("itemcode") = "N" then
+		this.id_detail.setcolumn(this.is_columnitemname)
+	else
+		this.id_detail.setcolumn("fullcode")
+	end if
+	this.id_detail.insertrow(0)
+	ll_rowcount = this.id_detail.rowcount()
+	if ll_rowcount > 1 then
+		this.id_detail.scrolltorow(ll_rowcount)
+		this.id_detail.setfocus()
+	end if
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_print.enabled = true
+	this.ib_validatefullcode = true
+
+// w_adjincrease.ue_deleteitem() returns 0
+	long ll_row
+	ll_row = this.id_detail.getrow()
+	if this.id_detail.rowcount() > 0 then
+		call super::ue_deleteitem
+		return
+	end if
+	this.im_menu.m_file.m_print.enabled = false
+
+// w_adjincrease.close() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::close()
+	destroy this.ids_itemstockinfo
+	return ::message.returnvalue
+
+// w_adjincrease.ue_new() returns 0
+	call super::ue_new
+	this.im_menu.m_file.m_post.enabled = false
+
+// w_adjincrease.ue_list() returns 0
+	call super::ue_list
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_menu.m_file.m_post.enabled = true
+
+// w_adjincrease.ue_print() returns 0
+	long ll_row
+	long ll_invcode
+	boolean lb_listtab
+	s_datastore lstr
+	call super::ue_print
+	if this.tab_retrieve.selectedtab = 2 then
+		lb_listtab = true
+	end if
+	if this.im_menu.m_file.m_save.enabled = true and lb_listtab = false then
+		triggerevent("ue_save")
+		if wf_commitform() = false then
+			return
+		end if
+		return
+	end if
+	wf_selectprintreport()
+	if lb_listtab then
+		if isnull(this.id_list.getrow()) or this.id_list.getrow() <= 0 then
+			messagebox("Rows Validation", "Kindly select any row from the list view.")
+			return
+		end if
+		ll_invcode = this.id_list.getitemnumber(this.id_list.getrow(), "code")
+		if isnull(ll_invcode) or ll_invcode <= 0 then
+			messagebox("Selection Validation", "Kindly select any row from the list view.")
+			return
+		end if
+	else
+		ll_invcode = this.id_master.getitemnumber(1, "code")
+	end if
+	this.id_print.retrieve(ll_invcode)
+	if lb_listtab then
+		lstr.dw = this.id_print
+		lstr.s_name1 = this.id_print.dataobject
+		openwithparm(w_preview_invoices, lstr)
+		lstr = message.powerobjectparm
+		if lstr.i_closemode = -1 then
+			return
+		end if
+		return
+	end if
+	if this.id_print.rowcount() > 0 then
+		if this.id_print.print() < 0 then
+			messagebox("Printing", "Can not Print Invoice", information!)
+		end if
+		if this.im_menu.m_file.m_save.enabled = true and lb_listtab = false then
+			postevent("ue_new")
+		end if
+		return
+	end if
+	messagebox("Printing Error", "Can not Print Invoice,~r~nNo rows are retrieved", information!)
+
+// w_adjincrease.ue_postopen() returns 0
+	datawindowchild ldc_dddpurcategory
+	datawindowchild ldc_headerno
+	integer li_rtncode
+	long ll_code
+	long ll_counter
+	long ll_found
+	datastore lds_headers
+	m_adjustmentmenu lm_menu
+	call super::ue_postopen
+	lds_headers = create datastore
+	lds_headers.dataobject = "d_groupallowedmoduleheader"
+	lds_headers.settransobject(sqlca)
+	setredraw(false)
+	lm_menu = this.menuid
+	this.im_menu.m_file.m_post.visible = false
+	this.im_menu.m_file.m_post.toolbaritemvisible = false
+	this.il_groupcode = f_getgroupcode(gl_usercode)
+	this.il_strategy = f_groupgodownstrategy(this.ii_module, this.il_groupcode)
+	this.il_godowncount = f_groupallowedgodowncount(this.ii_module, this.il_groupcode)
+	if isnull(this.il_groupcode) then
+		messagebox("Problem identifying User Group", "Contact System Administrator for your group settings.")
+		close(this)
+		return
+	end if
+	if isnull(this.il_strategy) or this.il_strategy = 1 and this.il_godowncount = 0 then
+		messagebox("Error", "Your Godown Settings do not permit to Make Adjustments")
+		close(this)
+		return
+	end if
+	li_rtncode = this.id_detail.getchild("gcode", this.idc_godown)
+	if li_rtncode = -1 then
+		messagebox("Error", "Can not get a DataWindowChild")
+		close(this)
+		return
+	end if
+	this.idc_godown.settransobject(this.it_transobject)
+	li_rtncode = this.idc_godown.retrieve(this.il_groupcode, this.ii_module, this.il_strategy)
+	if li_rtncode = -1 then
+		messagebox("Error", "Not Enough Godown Rights to Make Adjustment")
+		close(this)
+		return
+	end if
+	this.ii_purchasegodownoption = this.idc_godown.getitemnumber(1, "gcode")
+	this.id_detail.object.gcode.initial = string(this.ii_purchasegodownoption)
+	if f_stringpreferences("alternatecustomicodeinadj") = "N" then
+		this.id_detail.object.alternatecustomicode.visible = false
+	end if
+	this.id_itemslist.object.t_stock.visible = false
+	this.id_itemslist.object.stock.visible = false
+	this.id_itemslist.object.t_sstock.visible = false
+	this.id_itemslist.object.sstock.visible = false
+	this.id_itemslist.object.t_pstock.visible = true
+	this.id_itemslist.object.pstock.visible = true
+	if this.il_godowncount = 1 and this.il_strategy = 1 then
+		this.id_detail.object.gcode.visible = false
+		this.id_master.object.t_gcode.visible = true
+		this.id_master.object.gcode.visible = true
+		this.id_master.object.gcode.initial = string(this.ii_purchasegodownoption)
+	end if
+	if f_stringpreferences("showbatchinadj") = "N" then
+		this.id_detail.object.batch.visible = false
+	end if
+	if f_stringpreferences("showexpiryinadj") = "N" then
+		this.id_detail.object.expiry.visible = false
+	end if
+	if f_stringpreferences("manufacturer") = "N" then
+		this.id_itemslist.object.manufacturer.visible = false
+	end if
+	if f_stringpreferences("itemname") = "N" then
+		this.id_itemslist.object.itemname.visible = false
+	end if
+	if f_stringpreferences("packing") = "N" then
+		this.id_itemslist.object.packing.visible = false
+	end if
+	if f_stringpreferences("packunits") = "N" then
+		this.id_itemslist.object.packunits.visible = false
+	end if
+	if f_stringpreferences("saleprice") = "N" then
+		this.id_itemslist.object.saleprice.visible = false
+	end if
+	if f_stringpreferences("ShowTransitStockInItemList") = "N" then
+		this.id_itemslist.object.transitstock.visible = false
+	end if
+	if f_stringpreferences("showitemalertinitemlist") = "N" then
+		this.id_itemslist.object.itemalertcode.visible = false
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 587", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.id_itemslist.object.purprice.visible = true
+	else
+		this.id_itemslist.object.purprice.visible = false
+	end if
+	if f_stringpreferences("stock") = "N" then
+		this.id_itemslist.object.pstock.visible = false
+	end if
+	if f_stringpreferences("itemcode") = "N" then
+		this.id_detail.object.fullcode.visible = false
+	end if
+	li_rtncode = lds_headers.retrieve(this.il_groupcode, this.ii_module)
+	if li_rtncode <= 0 then
+		messagebox("Problem", "Not Enough Header Rights to Make Adjustment")
+		close(this)
+		return
+	end if
+	if f_stringpreferences("headeronadjustmentinv") = "N" then
+		this.id_master.object.headerno.visible = false
+		this.id_master.object.t_headerno.visible = false
+	end if
+	this.id_master.getchild("headerno", ldc_headerno)
+	for ll_counter = 1 to lds_headers.rowcount()
+		ldc_headerno.insertrow(0)
+		ldc_headerno.setitem(ll_counter, "code", lds_headers.getitemnumber(ll_counter, "headercode"))
+		ldc_headerno.setitem(ll_counter, "name", "")
+		ll_found = 0
+		ll_found = gds_reoprtheaderinfo.find("headerno=" + string(lds_headers.getitemnumber(ll_counter, "headercode")), 1, gds_reoprtheaderinfo.rowcount())
+		if ll_found > 0 then
+			ldc_headerno.setitem(ll_counter, "headeralias", gds_reoprtheaderinfo.getitemstring(ll_found, "Remarks"))
+		end if
+	next
+	this.id_master.object.headerno.initial = string(lds_headers.getitemnumber(1, "headercode"))
+	this.id_master.setitem(1, "headerno", this.id_master.object.headerno.initial)
+	gd_itemsinfo.sharedata(this.id_itemslist)
+	this.id_footer.insertrow(0)
+	this.id_footer.scrolltorow(0)
+	this.id_detail.object.batch.initial = f_stringpreferences("defaultbatch")
+	this.id_detail.object.expiry.initial = string(f_datepreferences("defaultexpiry"))
+	this.id_detail.object.updateavgprice.initial = f_stringpreferences("UpdAvgPriceInAdjInc")
+	if f_stringpreferences("ShowUpdAvgPriceInAdjInc") = "N" then
+		this.id_detail.object.updateavgprice.visible = false
+	end if
+	f_setcolumnstyle(this.id_detail, "Qty")
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 699", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.id_master.object.date.protect = 0
+		this.id_master.object.date.background.color = rgb(255, 255, 255)
+		this.ib_modifydate = true
+		lm_menu.m_file.m_setserverdate.visible = true
+		lm_menu.m_file.m_setserverdate.enabled = true
+	end if
+	if not this.ib_modifydate then
+		this.id_master.object.date.protect = 1
+		this.id_master.settaborder("date", 0)
+		lm_menu.m_file.m_setserverdate.visible = false
+		lm_menu.m_file.m_setserverdate.enabled = false
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 5143", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		lm_menu.m_file.m_populatestockinhandfromdatacarry.visible = true
+		lm_menu.m_file.m_populatestockinhandfromdatacarry.enabled = true
+	else
+		lm_menu.m_file.m_populatestockinhandfromdatacarry.visible = false
+		lm_menu.m_file.m_populatestockinhandfromdatacarry.enabled = false
+	end if
+	this.id_print = this.dw_adjreport
+	this.id_print.settransobject(this.it_transobject)
+	setredraw(true)
+
+// w_adjincrease.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	show()
+	return ::message.returnvalue

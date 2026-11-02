@@ -1,0 +1,59 @@
+// window w_arg_itemcat_itemcols_sdate_ldate (reports)  ancestor: w_listarguments
+
+// w_arg_itemcat_itemcols_sdate_ldate.create() returns 0
+	integer icurrent
+	call super::create
+	this.st_4 = create st_4
+	this.st_8 = create st_8
+	this.dw_control2 = create dw_control2
+	this.lb_fields = create lb_fields
+	this.gb_5 = create gb_5
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_4
+	this.control[icurrent + 2] = this.st_8
+	this.control[icurrent + 3] = this.dw_control2
+	this.control[icurrent + 4] = this.lb_fields
+	this.control[icurrent + 5] = this.gb_5
+
+// w_arg_itemcat_itemcols_sdate_ldate.destroy() returns 0
+	call super::destroy
+	destroy this.st_4
+	destroy this.st_8
+	destroy this.dw_control2
+	destroy this.lb_fields
+	destroy this.gb_5
+
+// w_arg_itemcat_itemcols_sdate_ldate.open() returns long
+	long ancestorreturnvalue
+	long ll_counter
+	long ll_rowcount
+	long ll_colcount
+	long[] ll_list
+	integer rtncode
+	ancestorreturnvalue = super::open()
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	rtncode = this.dw_control.getchild("category", this.idc_categories)
+	if rtncode = -1 then
+		messagebox("Error", "Not a DataWindowChild")
+	end if
+	ll_rowcount = this.idc_categories.rowcount()
+	for ll_counter = 1 to ll_rowcount
+		this.lb_categories.additem(this.idc_categories.getitemstring(ll_counter, "name"))
+	next
+	ll_list[1] = -1
+	ll_list[2] = 0
+	this.dw_control2.settransobject(sqlca)
+	this.dw_control2.retrieve(ll_list, datetime(today()), datetime(today()))
+	ll_colcount = long(this.dw_control2.object.datawindow.column.count)
+	for ll_counter = 1 to ll_colcount
+		if not (upper(this.dw_control2.describe("#" + string(ll_counter) + ".Name")) = "DATE" or upper(this.dw_control2.describe("#" + string(ll_counter) + ".Name")) = "ITEM" or upper(this.dw_control2.describe("#" + string(ll_counter) + ".Name")) = "USERNAME" or upper(this.dw_control2.describe("#" + string(ll_counter) + ".Name")) = "ITEMROWID") then
+			this.lb_fields.additem(upper(this.dw_control2.describe("#" + string(ll_counter) + ".Name")))
+		end if
+	next
+	return ::message.returnvalue
+
+// lb_fields.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1

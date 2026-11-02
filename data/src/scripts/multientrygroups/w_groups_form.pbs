@@ -1,0 +1,491 @@
+// window w_groups_form (multientrygroups)  ancestor: window
+
+// w_groups_form.ue_close() returns 0
+	SQL stop USING this.it_transobject;
+	close(this)
+
+// w_groups_form.wf_set_interface_adjustments() returns 0
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width * 0.95
+		ll_height = ll_win_height * 0.95
+		this.width = ll_width
+		this.height = ll_height
+		this.cb_ok.y = ll_height - this.cb_ok.height - 200
+		this.cb_cancel.y = ll_height - this.cb_cancel.height - 200
+		this.tab_main.width = ll_width * 0.98
+		this.tab_main.height = this.cb_ok.y - 50
+		this.tab_main.tabpage_group.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_group.height = this.tab_main.height - 500
+		this.tab_main.tabpage_group.dw_group.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_group.dw_group.height = this.tab_main.height - 500
+		this.tab_main.tabpage_rights.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_rights.height = this.tab_main.height - 500
+		this.tab_main.tabpage_rights.dw_rights.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_rights.dw_rights.height = this.tab_main.height - 500
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+
+// w_groups_form.wf_set_tab_visibility() returns long
+	wf_select_first_tab()
+	return 0
+
+// w_groups_form.wf_connect() returns long
+	SQL start USING this.it_transobject;
+	return this.it_transobject.sqlcode
+
+// w_groups_form.wf_tabnewid(string as_tablename, long al_newid) returns long
+	long ll_rtcode
+	SQL SELECT TABMAXKEY INTO :al_newid FROM _TABMAXKEY WITH ( UPDLOCK HOLDLOCK ) WHERE _TABMAXKEY.TABName =:as_tablename USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		al_newid = al_newid + 1
+		SQL update dbo._tabmaxkey SET TABMAXKEY =:al_newid WHERE _TABMAXKEY.TABName =:as_tablename USING this.it_transobject;
+		if this.it_transobject.sqlcode < 0 then
+			ll_rtcode = this.it_transobject.sqlcode
+			al_newid = 0
+		end if
+	else
+		ll_rtcode = this.it_transobject.sqlcode
+		al_newid = 0
+	end if
+	return ll_rtcode
+
+// w_groups_form.wf_retrieve_tabs() returns long
+	integer li_counter
+	integer li_count
+	integer li_detailrowcount
+	integer li_rightscount
+	long ll_row
+	this.dw_groupgodowns.settransobject(this.it_transobject)
+	this.dw_groupheaders.settransobject(this.it_transobject)
+	this.id_rights_hidden = this.dw_rights_hidden
+	this.id_rights_hidden.settransobject(this.it_transobject)
+	this.id_rights_hidden.retrieve(this.il_code)
+	this.id_group = this.tab_main.tabpage_group.dw_group
+	this.id_group.settransobject(this.it_transobject)
+	if this.il_code > 0 then
+		this.id_group.retrieve(this.il_code)
+	else
+		this.id_group.insertrow(0)
+	end if
+	this.id_rights = this.tab_main.tabpage_rights.dw_rights
+	this.id_rights.settransobject(this.it_transobject)
+	this.id_rights.retrieve()
+	ll_row = this.id_group.getrow()
+	if ll_row > 0 then
+		if this.id_group.object.code[ll_row] = 2 then
+			this.id_rights.object.checked.protect = 1
+			this.il_protect = 1
+		else
+			this.il_protect = 0
+			this.id_rights.object.checked.protect = 0
+		end if
+		if this.id_group.object.code[ll_row] = 5 then
+			this.id_group.object.groupname.protect = 1
+		else
+			this.id_group.object.groupname.protect = 0
+		end if
+	end if
+	this.id_rights_hidden.retrieve(this.id_group.getitemnumber(ll_row, "code"))
+	li_detailrowcount = this.id_rights.rowcount()
+	li_rightscount = this.id_rights_hidden.rowcount()
+	for li_counter = 1 to li_detailrowcount
+		if this.id_rights_hidden.find("RightCode = " + string(this.id_rights.object.rightcode[li_counter]), 1, li_rightscount) > 0 then
+			this.id_rights.setitem(li_counter, "checked", "Y")
+		end if
+	next
+	return 0
+
+// w_groups_form.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns integer
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+	return 0
+
+// w_groups_form.wf_apply_protect_setting() returns integer
+	return 0
+
+// w_groups_form.wf_save() returns long
+	if this.il_protect = 0 then
+		this.cb_ok.triggerevent(clicked!)
+	end if
+	return 0
+
+// w_groups_form.wf_print() returns long
+	if this.il_protect = 0 then
+		wf_save()
+	end if
+	return 0
+
+// w_groups_form.wf_select_first_tab() returns long
+	if this.tab_main.tabpage_group.visible then
+		this.tab_main.selecttab(1)
+		return 0
+	end if
+	return 0
+
+// w_groups_form.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	long ll_code
+	boolean b_flag
+	as_name = trim(as_name)
+	if this.id_group.rowcount() > 0 then
+		ll_code = this.id_group.object.code[1]
+	end if
+	if ll_code > 0 then
+		SQL SELECT count ( *) INTO :ll_count FROM Groups WHERE Groups.groupname =:as_name AND Groups.GroupCode <> :ll_code USING this.it_transobject;
+	else
+		SQL SELECT count ( *) INTO :ll_count FROM Groups WHERE Groups.groupname =:as_name USING this.it_transobject;
+	end if
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_groups_form.wf_populategrouprights() returns long
+	long ll_retcode
+	long ll_counter
+	long ll_rowcount
+	datastore lds_groupright
+	s_arguements lstr_arg
+	lds_groupright = create datastore
+	lds_groupright.dataobject = "d_groupright"
+	lds_groupright.settransobject(this.it_transobject)
+	open(w_arg_group)
+	lstr_arg = message.powerobjectparm
+	if lstr_arg.i_status = 1 then
+		lds_groupright.retrieve(lstr_arg.l_code3)
+		ll_rowcount = lds_groupright.rowcount()
+		if ll_rowcount > 0 and this.id_rights.rowcount() > 0 then
+			for ll_counter = 1 to this.id_rights.rowcount()
+				if lds_groupright.find("RightCode = " + string(this.id_rights.object.rightcode[ll_counter]), 1, ll_rowcount) > 0 then
+					this.id_rights.setitem(ll_counter, "checked", "Y")
+				end if
+			next
+		end if
+	end if
+	return ll_retcode
+
+// w_groups_form.create() returns 0
+	this.dw_groupheaders = create dw_groupheaders
+	this.dw_groupgodowns = create dw_groupgodowns
+	this.dw_rights_hidden = create dw_rights_hidden
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.tab_main = create tab_main
+	this.control = {this.dw_groupheaders, this.dw_groupgodowns, this.dw_rights_hidden, this.cb_cancel, this.cb_ok, this.tab_main}
+
+// w_groups_form.destroy() returns 0
+	destroy this.dw_groupheaders
+	destroy this.dw_groupgodowns
+	destroy this.dw_rights_hidden
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.tab_main
+
+// w_groups_form.open() returns long
+	integer li_xpos
+	integer li_ypos
+	integer li_xendpos
+	integer li_counter
+	integer li_taborder
+	integer li_visiblecolumns
+	integer li_zerotaborder
+	long ll_counter
+	long li_retcode
+	long li_rtncode
+	boolean lb_active
+	boolean lb_restricted
+	boolean lb_customicode
+	boolean lb_zerotabordercol
+	date ld_date
+	long ll_retcode
+	ld_date = today()
+	this.il_code = message.doubleparm
+	this.it_transobject = create u_transaction
+	if wf_connect() <> 0 then
+		messagebox("Connection Failure", "Unable to connect to the database", stopsign!)
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	wf_retrieve_tabs()
+	wf_apply_protect_setting()
+	wf_set_interface_adjustments()
+	wf_set_tab_visibility()
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.postevent("ue_close")
+	return ::message.returnvalue
+
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		triggerevent(clicked!)
+	end if
+	return 1
+
+// cb_ok.clicked() returns long
+	string ls_aliasname
+	long ll_newid
+	long ll_row
+	long ll_counter
+	long ll_liccode
+	long li_rc
+	long ll_invid
+	long ll_detailrows
+	long ll_salesmancode
+	long li_ldsrow
+	long ll_null
+	boolean lb_commitflag
+	boolean lb_modify
+	setnull(ll_null)
+	if f_validatedw(parent.id_group) < 0 then
+		parent.tab_main.selecttab(1)
+		return ::message.returnvalue
+	end if
+	if f_validatedw(parent.id_rights) < 0 then
+		parent.tab_main.selecttab(2)
+		return ::message.returnvalue
+	end if
+	setpointer(hourglass!)
+	ll_row = parent.id_group.getrow()
+	if ll_row > 0 then
+		if parent.id_group.object.accumdiscperccaution[ll_row] > parent.id_group.object.accumulateddiscperc[ll_row] then
+			parent.id_group.setcolumn("accumdiscperccaution")
+			parent.id_group.setfocus()
+			return ::message.returnvalue
+		end if
+		ll_invid = parent.id_group.object.code[ll_row]
+		if isnull(ll_invid) then
+			parent.wf_tabnewid("Groups", ll_invid)
+			parent.id_group.object.code[ll_row] = ll_invid
+			lb_modify = false
+		else
+			lb_modify = true
+		end if
+		if lb_modify then
+			SQL Delete grouprights Where groupcode =:ll_invid USING parent.it_transobject;
+			if parent.it_transobject.sqlcode <> 0 then
+				lb_commitflag = false
+			end if
+		end if
+		ll_detailrows = parent.id_rights.rowcount()
+		ll_counter = 1
+		parent.id_rights_hidden.reset()
+		do while ll_counter <= ll_detailrows and lb_commitflag = true
+			if parent.id_rights.getitemstring(ll_counter, "checked") = "Y" then
+				li_ldsrow = parent.id_rights_hidden.insertrow(0)
+				parent.id_rights_hidden.setitem(li_ldsrow, "groupcode", ll_invid)
+				parent.id_rights_hidden.setitem(li_ldsrow, "rightcode", parent.id_rights.getitemnumber(ll_counter, "rightcode"))
+				parent.id_rights_hidden.setitem(li_ldsrow, "status", 1)
+				li_ldsrow = li_ldsrow + 1
+			end if
+			ll_counter = ll_counter + 1
+		loop
+		parent.id_rights = parent.id_rights_hidden
+		if lb_commitflag then
+			setpointer(hourglass!)
+			if parent.id_group.update(true, false) < 0 then
+				SQL rollback USING parent.it_transobject;
+				messagebox("Problem Saving", "Can not save group level settings~r~nDetails: - " + parent.it_transobject.sqlerrtext, exclamation!, ok!, 1)
+				parent.id_rights = parent.tab_main.tabpage_rights.dw_rights
+				if lb_modify = false then
+					parent.id_group.object.code[1] = ll_null
+				end if
+				lb_commitflag = false
+				setpointer(arrow!)
+				return ::message.returnvalue
+			end if
+			if not lb_modify then
+				for ll_counter = 1 to 8
+					parent.dw_groupgodowns.insertrow(0)
+					parent.dw_groupgodowns.scrolltorow(0)
+					parent.dw_groupgodowns.setitem(ll_counter, "groupcode", ll_invid)
+					parent.dw_groupgodowns.setitem(ll_counter, "godown", "")
+					parent.dw_groupgodowns.setitem(ll_counter, "gcode", 1)
+					parent.dw_groupgodowns.setitem(ll_counter, "allowed", 1)
+					parent.dw_groupgodowns.setitem(ll_counter, "module", ll_counter)
+					parent.dw_groupgodowns.setitem(ll_counter, "priority", 10)
+					parent.dw_groupheaders.insertrow(0)
+					parent.dw_groupheaders.scrolltorow(0)
+					parent.dw_groupheaders.setitem(ll_counter, "groupcode", ll_invid)
+					parent.dw_groupheaders.setitem(ll_counter, "headercode", 1)
+					parent.dw_groupheaders.setitem(ll_counter, "allowed", 1)
+					parent.dw_groupheaders.setitem(ll_counter, "module", ll_counter)
+					parent.dw_groupheaders.setitem(ll_counter, "priority", 10)
+				next
+				if parent.dw_groupgodowns.update() < 0 then
+					messagebox("Problem Saving", "Can not save default group Settings", exclamation!, ok!, 1)
+					setpointer(arrow!)
+					return ::message.returnvalue
+				end if
+				if parent.dw_groupheaders.update() < 0 then
+					messagebox("Problem Saving", "Can not save default header Settings", exclamation!, ok!, 1)
+					setpointer(arrow!)
+					return ::message.returnvalue
+				end if
+				return
+			end if
+			if parent.id_rights.update(true, false) > 0 then
+				SQL commit USING parent.it_transobject;
+				messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+				lb_commitflag = true
+				parent.event ue_close()
+				return ::message.returnvalue
+			else
+				SQL rollback USING parent.it_transobject;
+				messagebox("Problem Saving", "Can not save group level rights~r~nDetails: - " + parent.it_transobject.sqlerrtext, exclamation!, ok!, 1)
+				setpointer(arrow!)
+				parent.id_rights = parent.tab_main.tabpage_rights.dw_rights
+				lb_commitflag = false
+				return ::message.returnvalue
+			end if
+		else
+			SQL rollback USING parent.it_transobject;
+			messagebox("Problem Saving", "Can not save changes to database~r~nDetails: - " + parent.it_transobject.sqlerrtext, exclamation!, ok!, 1)
+			setpointer(arrow!)
+			parent.id_rights = parent.tab_main.tabpage_rights.dw_rights
+			lb_commitflag = false
+			return ::message.returnvalue
+		end if
+		parent.id_rights = parent.tab_main.tabpage_rights.dw_rights
+		parent.id_rights_hidden.reset()
+	end if
+	setpointer(arrow!)
+	return ::message.returnvalue
+
+// tab_main.create() returns 0
+	this.tabpage_group = create tabpage_group
+	this.tabpage_rights = create tabpage_rights
+	this.control = {this.tabpage_group, this.tabpage_rights}
+
+// tab_main.destroy() returns 0
+	destroy this.tabpage_group
+	destroy this.tabpage_rights
+
+// tab_main.selectionchanged(integer oldindex, integer newindex) returns long
+	if newindex = 1 then
+		parent.id_group.setfocus()
+	elseif newindex = 2 then
+		parent.id_rights.setfocus()
+	end if
+	return ::message.returnvalue
+
+// tabpage_group.create() returns 0
+	this.dw_group = create dw_group
+	this.control = {this.dw_group}
+
+// tabpage_group.destroy() returns 0
+	destroy this.dw_group
+
+// dw_group.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_group.getfocus() returns long
+	setfocus()
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_group.itemfocuschanged(long row, dwobject dwo) returns long
+	if len(gettext()) > 0 then
+		selecttext(1, len(gettext()))
+	end if
+	return ::message.returnvalue
+
+// dw_group.itemerror(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "groupname"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for Group Name in current row")
+		end if
+	end choose
+	return 1
+
+// dw_group.itemchanged(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "groupname"
+		if parent.parent.parent.wf_duplicatename(data) then
+			messagebox("Name Validation", "Duplication Name Error~n~rPlease Choose Some Other Name")
+			return 1
+		end if
+	case "accumdiscperccaution"
+		if double(data) > this.object.accumulateddiscperc[row] then
+			return 1
+		else
+			return 0
+		end if
+		return
+	end choose
+	return ::message.returnvalue
+
+// tabpage_rights.create() returns 0
+	this.dw_rights = create dw_rights
+	this.control = {this.dw_rights}
+
+// tabpage_rights.destroy() returns 0
+	destroy this.dw_rights
+
+// dw_rights.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	setfocus()
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_rights.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_rights.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if len(gettext()) > 0 then
+		selecttext(1, len(gettext()))
+	end if
+	return ::message.returnvalue
+
+// dw_rights.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	integer rt_code
+	long ll_currrow
+	long ll_listcurrrow
+	long ll_icode
+	long ll_found
+	long ll_rowm
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keyf5! then
+		parent.parent.parent.wf_populategrouprights()
+	end if
+	return 0

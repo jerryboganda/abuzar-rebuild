@@ -1,0 +1,146 @@
+// window w_printer (printer)  ancestor: window
+
+// w_printer.create() returns 0
+	this.cbx_1 = create cbx_1
+	this.p_1 = create p_1
+	this.st_4 = create st_4
+	this.ddlb_1 = create ddlb_1
+	this.cb_3 = create cb_3
+	this.cb_2 = create cb_2
+	this.cb_1 = create cb_1
+	this.sle_1 = create sle_1
+	this.mle_1 = create mle_1
+	this.rb_3 = create rb_3
+	this.rb_2 = create rb_2
+	this.rb_1 = create rb_1
+	this.em_1 = create em_1
+	this.st_3 = create st_3
+	this.st_2 = create st_2
+	this.st_1 = create st_1
+	this.gb_2 = create gb_2
+	this.gb_1 = create gb_1
+	this.control = {this.cbx_1, this.p_1, this.st_4, this.ddlb_1, this.cb_3, this.cb_2, this.cb_1, this.sle_1, this.mle_1, this.rb_3, this.rb_2, this.rb_1, this.em_1, this.st_3, this.st_2, this.st_1, this.gb_2, this.gb_1}
+
+// w_printer.destroy() returns 0
+	destroy this.cbx_1
+	destroy this.p_1
+	destroy this.st_4
+	destroy this.ddlb_1
+	destroy this.cb_3
+	destroy this.cb_2
+	destroy this.cb_1
+	destroy this.sle_1
+	destroy this.mle_1
+	destroy this.rb_3
+	destroy this.rb_2
+	destroy this.rb_1
+	destroy this.em_1
+	destroy this.st_3
+	destroy this.st_2
+	destroy this.st_1
+	destroy this.gb_2
+	destroy this.gb_1
+
+// w_printer.open() returns long
+	this.idw_requestor = message.powerobjectparm
+	this.st_2.text = this.idw_requestor.object.datawindow.printer
+	this.ddlb_1.text = "All Pages in Range"
+	this.em_1.setfocus()
+	this.em_1.selecttext(1, len(this.em_1.text))
+	if f_stringpreferences("asknoofcoppiesinprintdialog") = "N" then
+		this.em_1.enabled = false
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// cbx_1.clicked() returns long
+	if this.checked then
+		parent.p_1.picturename = "collate.bmp"
+	else
+		parent.p_1.picturename = "non_coll.bmp"
+	end if
+	return ::message.returnvalue
+
+// cb_3.clicked() returns long
+	parent.is_defaultinfo = printgetprinter()
+	parent.is_currentprinter = left(parent.is_defaultinfo, pos(parent.is_defaultinfo, "~t") - 1)
+	if printsetup() = 1 then
+		parent.st_2.text = parent.idw_requestor.object.datawindow.printer
+	else
+		printsetprinter(trim(parent.is_currentprinter))
+	end if
+	return ::message.returnvalue
+
+// cb_2.clicked() returns long
+	close(parent)
+	return ::message.returnvalue
+
+// cb_1.clicked() returns long
+	string ls_range
+	string ls_curpage
+	string ls_copies
+	boolean lb_passed
+	integer li_page
+	integer li_include
+	long ll_job
+	double ld_copies
+	if parent.rb_1.checked then
+		parent.idw_requestor.object.datawindow.print.page.range = ""
+		lb_passed = true
+	elseif parent.rb_2.checked then
+		ls_curpage = parent.idw_requestor.describe("evaluate ('Page()', 1)")
+		parent.idw_requestor.object.datawindow.print.page.range = ls_curpage
+		lb_passed = true
+	elseif parent.rb_3.checked then
+		ls_range = trim(parent.sle_1.text)
+		if isnull(ls_range) or ls_range = "" then
+			messagebox("ERROR : Print Range", "This is not a valid print range.", exclamation!)
+			lb_passed = false
+		else
+			parent.idw_requestor.object.datawindow.print.page.range = trim(parent.sle_1.text)
+			lb_passed = true
+		end if
+	end if
+	if lb_passed then
+		if parent.cbx_1.checked then
+			parent.idw_requestor.object.datawindow.print.collate = true
+		else
+			parent.idw_requestor.object.datawindow.print.collate = false
+		end if
+		choose case trim(parent.ddlb_1.text)
+		case "All Pages in Range"
+			li_include = 0
+		case "Even Pages"
+			li_include = 1
+		case "Odd Pages"
+			li_include = 2
+		end choose
+		parent.idw_requestor.object.datawindow.print.quality = 0
+		parent.idw_requestor.object.datawindow.print.page.rangeinclude = li_include
+		parent.em_1.getdata(ld_copies)
+		parent.idw_requestor.object.datawindow.print.copies = integer(string(ld_copies))
+		if f_isprintimgondatawindow(parent.idw_requestor) then
+			f_setimgonprint(1, parent.idw_requestor)
+		end if
+		parent.idw_requestor.print()
+		if f_isprintimgondatawindow(parent.idw_requestor) then
+			f_setimgonprint(0, parent.idw_requestor)
+		end if
+	end if
+	printsetprinter(trim(parent.is_currentprinter))
+	close(parent)
+	return ::message.returnvalue
+
+// sle_1.getfocus() returns long
+	parent.rb_3.checked = true
+	return ::message.returnvalue
+
+// rb_3.clicked() returns long
+	parent.sle_1.setfocus()
+	return ::message.returnvalue
+
+// rb_3.getfocus() returns long
+	parent.sle_1.setfocus()
+	return ::message.returnvalue

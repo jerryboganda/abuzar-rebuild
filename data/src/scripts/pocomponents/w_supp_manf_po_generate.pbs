@@ -1,0 +1,252 @@
+// window w_supp_manf_po_generate (pocomponents)  ancestor: window
+
+// w_supp_manf_po_generate.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		post event ue_close()
+	end if
+	return ::message.returnvalue
+
+// w_supp_manf_po_generate.ue_close() returns 0
+	u_ds_standard lds_ds
+	lds_ds = create u_ds_standard
+	lds_ds.dataobject = this.dw_detail.dataobject
+	lds_ds.settransobject(sqlca)
+	this.dw_detail.rowscopy(1, this.dw_detail.rowcount(), primary!, lds_ds, 1, primary!)
+	this.istr_arg.ds = lds_ds
+	this.istr_arg.s_name1 = string(this.dw_master.object.suppcode[1])
+	this.istr_arg.s_name2 = string(this.dw_master.object.manfcode[1])
+	closewithreturn(this, this.istr_arg)
+
+// w_supp_manf_po_generate.wf_assigndwobjects(string as_masterdw, string as_detaildw, string as_footerdw) returns 0
+	this.dw_master.dataobject = as_masterdw
+	this.dw_detail.dataobject = as_detaildw
+	this.dw_footer.dataobject = as_footerdw
+	this.dw_master.settransobject(sqlca)
+	this.dw_detail.settransobject(sqlca)
+	this.dw_footer.settransobject(sqlca)
+
+// w_supp_manf_po_generate.wf_adjustorder(string as_colname, long al_code) returns long
+	long ll_manfcode
+	long ll_suppcode
+	long ll_null
+	long ll_found
+	long ll_counter
+	string ls_manflist
+	string ls_filter
+	this.dw_master.accepttext()
+	setnull(ll_null)
+	if lower(as_colname) = "suppcode" then
+		ll_suppcode = al_code
+		this.idc_manf.retrieve(ll_suppcode)
+		if isnull(al_code) then
+			this.dw_master.object.manfcode[1] = ll_null
+		end if
+		this.ids_suppmanf.retrieve(ll_suppcode)
+		if this.ids_suppmanf.rowcount() = 0 then
+			this.dw_master.object.manfcode[1] = ll_null
+		else
+			ll_manfcode = this.dw_master.object.manfcode[1]
+			ll_found = this.ids_suppmanf.find("manfcode = " + trim(string(ll_manfcode)), 1, this.ids_suppmanf.rowcount())
+			if ll_found = 0 or ll_found > this.ids_suppmanf.rowcount() then
+				this.dw_master.object.manfcode[1] = ll_null
+			end if
+			for ll_counter = 1 to this.ids_suppmanf.rowcount()
+				ls_manflist = ls_manflist + trim(string(this.ids_suppmanf.object.manfcode[ll_counter])) + ","
+			next
+			if right(ls_manflist, 1) = "," then
+				ls_manflist = mid(ls_manflist, 1, len(ls_manflist) - 1)
+			end if
+		end if
+		ll_manfcode = this.dw_master.object.manfcode[1]
+	elseif lower(as_colname) = "manfcode" then
+		ll_manfcode = al_code
+		ll_suppcode = this.dw_master.object.suppcode[1]
+		this.ids_suppmanf.retrieve(ll_suppcode)
+		if this.ids_suppmanf.rowcount() <> 0 then
+			for ll_counter = 1 to this.ids_suppmanf.rowcount()
+				ls_manflist = ls_manflist + trim(string(this.ids_suppmanf.object.manfcode[ll_counter])) + ","
+			next
+			if right(ls_manflist, 1) = "," then
+				ls_manflist = mid(ls_manflist, 1, len(ls_manflist) - 1)
+			end if
+		end if
+		ll_manfcode = al_code
+	end if
+	if isnull(ll_manfcode) then
+		if isnull(ll_suppcode) then
+			ls_filter = ""
+		elseif ls_manflist = "" then
+			ls_filter = "manfcode = -25555 "
+		else
+			ls_filter = "manfcode IN (" + ls_manflist + ")"
+		end if
+	else
+		ls_filter = "manfcode = " + trim(string(ll_manfcode))
+	end if
+	this.dw_detail.setfilter(ls_filter)
+	this.dw_detail.filter()
+	return 0
+
+// w_supp_manf_po_generate.create() returns 0
+	this.cb_cancel = create cb_cancel
+	this.dw_footer = create dw_footer
+	this.dw_master = create dw_master
+	this.cb_retrieve = create cb_retrieve
+	this.cb_ok = create cb_ok
+	this.dw_detail = create dw_detail
+	this.control = {this.cb_cancel, this.dw_footer, this.dw_master, this.cb_retrieve, this.cb_ok, this.dw_detail}
+
+// w_supp_manf_po_generate.destroy() returns 0
+	destroy this.cb_cancel
+	destroy this.dw_footer
+	destroy this.dw_master
+	destroy this.cb_retrieve
+	destroy this.cb_ok
+	destroy this.dw_detail
+
+// w_supp_manf_po_generate.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	long ll_custcode
+	long ll_retcode
+	long ll_suppcode
+	long ll_btn_start
+	string ls_date
+	this.istr_arg = message.powerobjectparm
+	setnull(ll_suppcode)
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		this.width = ll_win_width * 0.98
+		this.height = ll_win_height * 0.95
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	this.dw_master.width = this.width * 0.98
+	this.dw_detail.width = this.width * 0.98
+	this.dw_detail.height = this.height * 0.82
+	ll_btn_start = (this.width - (this.cb_ok.width + this.cb_cancel.width + this.cb_retrieve.width + 40)) / 2.0
+	this.cb_ok.y = this.height * 0.90
+	this.cb_cancel.y = this.height * 0.90
+	this.cb_retrieve.y = this.height * 0.90
+	this.cb_ok.x = ll_btn_start
+	ll_btn_start = ll_btn_start + this.cb_ok.width + 20
+	this.cb_cancel.x = ll_btn_start
+	ll_btn_start = ll_btn_start + this.cb_cancel.width + 20
+	this.cb_retrieve.x = ll_btn_start
+	wf_assigndwobjects("d_supp_manf_po_generate", "d_supp_manf_po_generate_detail", "")
+	ll_retcode = this.dw_master.getchild("manfcode", this.idc_manf)
+	if ll_retcode = -1 then
+		messagebox("Error", "Can not get a DataWindowChild")
+	end if
+	this.idc_manf.settransobject(sqlca)
+	this.idc_manf.retrieve(ll_suppcode)
+	this.dw_master.insertrow(0)
+	this.dw_master.scrolltorow(0)
+	this.dw_master.object.suppcode[1] = long(this.istr_arg.s_name1)
+	this.dw_detail.retrieve()
+	this.ids_suppmanf = create u_ds_standard
+	this.ids_suppmanf.dataobject = "d_ds_supp_manf_generate_po"
+	this.ids_suppmanf.settransobject(sqlca)
+	wf_adjustorder("suppcode", this.dw_master.object.suppcode[1])
+	this.dw_master.setcolumn("suppcode")
+	this.dw_master.setfocus()
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.istr_arg.i_closemode = 1
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// dw_master.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_master.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	long ll_code
+	long ll_retcode
+	string ls_null
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "suppcode", "manfcode"
+		ll_code = long(data)
+		return parent.wf_adjustorder(dwo.name, ll_code)
+	end choose
+	return ll_retcode
+
+// cb_retrieve.clicked() returns long
+	parent.dw_detail.retrieve()
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	if parent.dw_detail.accepttext() <= 0 then
+		parent.dw_detail.setcolumn("Qty")
+		parent.dw_detail.setfocus()
+		return ::message.returnvalue
+	end if
+	parent.istr_arg.i_closemode = 0
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// dw_detail.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	long ll_retcode
+	double ld_code
+	string ls_null
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "qty"
+		if not isnull(data) then
+			ld_code = double(data)
+			if ld_code < 0.0 then
+				return 1
+			end if
+		end if
+	case "purprice"
+		if not isnull(data) then
+			ld_code = double(data)
+			if ld_code < 0.0 then
+				return 1
+			end if
+		end if
+		return ll_retcode
+	end choose
+	return ll_retcode
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	long ll_retcode
+	double ld_code
+	string ls_null
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "qty"
+		messagebox("Order Qty Validation", "Please enter valid Order Qty", information!)
+	case "purprice"
+		messagebox("Order Price Validation", "Please enter valid Order Price", information!)
+		return 0
+	end choose
+	return 0

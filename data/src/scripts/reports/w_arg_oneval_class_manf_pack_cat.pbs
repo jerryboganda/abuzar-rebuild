@@ -1,0 +1,49 @@
+// window w_arg_oneval_class_manf_pack_cat (reports)  ancestor: w_arguements
+
+// w_arg_oneval_class_manf_pack_cat.create() returns 0
+	integer icurrent
+	call super::create
+	this.st_godown = create st_godown
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_godown
+
+// w_arg_oneval_class_manf_pack_cat.destroy() returns 0
+	call super::destroy
+	destroy this.st_godown
+
+// w_arg_oneval_class_manf_pack_cat.open() returns long
+	long ancestorreturnvalue
+	long ll_counter
+	long ll_rowcount
+	integer rtncode
+	ancestorreturnvalue = super::open()
+	this.is_stringparam = message.stringparm
+	if this.is_stringparam = "M" then
+		this.is_dataobject = "d_arg_manf"
+		this.is_colname = "manfcode"
+		this.st_3.text = "Manufacturer:"
+	elseif this.is_stringparam = "C" then
+		this.is_dataobject = "d_arg_cat"
+		this.is_colname = "icatcode"
+		this.st_3.text = "Item Category:"
+	elseif this.is_stringparam = "L" then
+		this.is_dataobject = "d_arg_class"
+		this.is_colname = "iccode"
+		this.st_3.text = "Item Class:"
+	elseif this.is_stringparam = "P" then
+		this.is_dataobject = "d_arg_packing"
+		this.is_colname = "packcode"
+		this.st_3.text = "Item Packing:"
+	end if
+	this.dw_control.dataobject = this.is_dataobject
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_arg_oneval_class_manf_pack_cat.ue_close(integer ai_stauts) returns 0
+	super::ue_close(ai_stauts)
+	closewithreturn(this, this.istr_arg)

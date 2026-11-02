@@ -1,0 +1,217 @@
+// window w_guest_form (guestcomponents)  ancestor: w_single_entry
+
+// w_guest_form.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM Guest WHERE name =:as_name USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_guest_form.wf_duplicateregno(string as_name) returns boolean
+	long ll_count
+	long ll_code
+	boolean b_flag
+	as_name = trim(as_name)
+	ll_code = this.id_detail.object.code[this.id_detail.rowcount()]
+	if isnull(ll_code) then
+		SQL SELECT count ( *) INTO :ll_count FROM Guest WHERE regno =:as_name USING sqlca;
+	else
+		SQL SELECT count ( *) INTO :ll_count FROM Guest WHERE regno =:as_name AND GuestCode <> :ll_code USING sqlca;
+	end if
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_guest_form.wf_setprintout() returns long
+	long ll_retcode
+	string ls_printout
+	ls_printout = ""
+	if ls_printout = "" then
+		ls_printout = "d_guest_print"
+	end if
+	this.id_print.dataobject = ls_printout
+	return ll_retcode
+
+// w_guest_form.create() returns 0
+	call super::create
+
+// w_guest_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_guest_form.activate() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::activate()
+	this.windowstate = maximized!
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_guest_form.open() returns long
+	long ancestorreturnvalue
+	integer li_rtncode
+	ancestorreturnvalue = super::open()
+	this.is_tablename = "Guest"
+	this.id_print.dataobject = "d_guest_print"
+	this.id_print.settransobject(sqlca)
+	this.il_groupcode = f_getgroupcode(gl_usercode)
+	return ::message.returnvalue
+
+// w_guest_form.ue_save() returns 0
+	long ll_primarykey
+	long ll_row
+	long ll_primarykey2
+	long ll_totrows
+	long ll_rowcounter
+	long ll_usercode
+	long ll_found
+	long ll_null
+	long ll_primarycode_old
+	long ll_new_pat_reg
+	long ll_counter
+	integer li_patientcatcode
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	string ls_regno
+	boolean lb_commit
+	dwitemstatus ldw_active
+	setnull(ll_null)
+	setpointer(hourglass!)
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	ll_row = this.id_detail.getrow()
+	ll_primarykey = this.id_detail.object.code[this.id_detail.getrow()]
+	ll_primarycode_old = ll_primarykey
+	ls_regno = this.id_detail.object.regno[ll_row]
+	if f_stringpreferences("autogenguestregno") = "N" and len(ls_regno) > 0 and wf_duplicateregno(ls_regno) then
+		messagebox("Problem Saving", "Duplicate Patient Reg. No.~r~nPlease give some other Reg. No.")
+		this.id_detail.setfocus()
+		this.id_detail.setcolumn("regno")
+		return
+	end if
+	if not wf_validateserverdatetime(ldt_server_datetime, ls_date_errtext) then
+		messagebox("Date Violation", ls_date_errtext, stopsign!)
+		return
+	end if
+	this.id_detail.object.date[ll_row] = ldt_server_datetime
+	ldw_active = this.id_detail.getitemstatus(ll_row, "active", primary!)
+	ll_usercode = gl_usercode
+	setfocus()
+	if ll_usercode > 0 then
+		if isnull(ll_primarykey) then
+			ll_new_pat_reg = 1
+			ll_primarykey = 0
+			SQL rollback USING sqlca;
+			sqlca.gettabmaxkey(this.is_tablename, ll_primarykey)
+			if sqlca.sqlcode = 0 then
+				this.id_detail.setitem(ll_row, "code", ll_primarykey)
+			else
+				SQL rollback USING sqlca;
+				lb_commit = false
+				messagebox("Patient Registration Problem", "Problem in Generation of Patient Code~r~n Possibe Reason: " + sqlca.sqlerrtext)
+			end if
+			if f_stringpreferences("autogenguestregno") = "Y" then
+				this.id_detail.object.regno[ll_row] = trim(string(ll_primarykey))
+			elseif isnull(this.id_detail.object.regno[ll_row]) or len(ls_regno) = 0 or this.id_detail.object.regno[ll_row] = "" then
+				this.id_detail.object.regno[ll_row] = trim(string(ll_primarykey))
+			end if
+		end if
+		if lb_commit then
+			this.id_detail.setitem(ll_row, "usercode", ll_usercode)
+			if this.id_detail.update() > 0 then
+				SQL commit USING sqlca;
+				messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+				this.ib_commitok = true
+				this.im_menu.m_file.m_new.enabled = true
+				this.editflag = false
+			else
+				SQL rollback USING sqlca;
+				setpointer(arrow!)
+				messagebox("Save Changes", "Changes Rollback in database, ~n~rSome database problem occurs", exclamation!, ok!, 1)
+			end if
+		end if
+	end if
+	if isnull(ll_primarycode_old) then
+		this.id_detail.setitem(ll_row, "code", ll_null)
+	end if
+	setpointer(arrow!)
+
+// w_guest_form.ue_detail() returns 0
+	call super::ue_detail
+	this.id_detail.object.active.protect = 0
+	this.im_menu.m_file.m_print.enabled = true
+
+// w_guest_form.ue_newform() returns 0
+	call super::ue_newform
+	this.id_detail.object.regno.protect = 0
+	this.id_detail.object.active.protect = 1
+	if f_stringpreferences("autogenguestregno") = "Y" then
+		this.id_detail.object.regno.edit.displayonly = "yes"
+		this.id_detail.object.regno.edit.required = "no"
+		this.id_detail.setcolumn("name")
+	end if
+
+// w_guest_form.ue_print() returns 0
+	long ll_code
+	long ll_row
+	long li_printretcode
+	string ls_printsize
+	boolean lb_listtab
+	s_datastore lstr
+	if this.tab_retrieve.selectedtab = 2 then
+		lb_listtab = true
+	end if
+	if this.im_menu.m_file.m_save.enabled = true and lb_listtab = false then
+		triggerevent("ue_save")
+		if wf_commitform() = false then
+			return
+		end if
+		return
+	end if
+	if lb_listtab then
+		if isnull(this.id_list.getrow()) or this.id_list.getrow() <= 0 then
+			messagebox("Rows Validation", "Kindly select any row from the list view.")
+			return
+		end if
+		ll_code = this.id_list.getitemnumber(this.id_list.getrow(), "code")
+		if isnull(ll_code) or ll_code <= 0 then
+			messagebox("Selection Validation", "Kindly select any row from the list view.")
+			return
+		end if
+	else
+		ll_code = this.id_detail.getitemnumber(1, "code")
+	end if
+	wf_setprintout()
+	this.id_print.settransobject(this.it_transobject)
+	this.id_print.retrieve(ll_code)
+	if lb_listtab then
+		lstr.dw = this.id_print
+		lstr.s_name1 = this.id_print.dataobject
+		openwithparm(w_preview_invoices, lstr)
+		lstr = message.powerobjectparm
+		if lstr.i_closemode = -1 then
+			return
+		end if
+		return
+	end if
+	if this.id_print.rowcount() > 0 then
+		if f_stringpreferences("PromptBeforePrinting") = "Y" and printsetup() < 0 then
+			messagebox("Printer", "Printing Error")
+			this.id_print.printcancel()
+		end if
+		li_printretcode = this.id_print.print()
+		if li_printretcode < 0 then
+			messagebox("Printing", "Can not Print Invoice", information!)
+		end if
+		if this.im_menu.m_file.m_save.enabled = true and lb_listtab = false then
+			postevent("ue_new")
+		end if
+		return
+	end if
+	messagebox("Printing Error", "Can not Print,~r~nNo rows are retrieved", information!)

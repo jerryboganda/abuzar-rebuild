@@ -1,0 +1,73 @@
+// userobject n_dwr_height (dw2xls)  ancestor: nonvisualobject
+
+// n_dwr_height.of_get_ds(integer ai_units) returns datastore
+	choose case ai_units
+	case 0
+		return this.ids_sys0
+	case 1
+		return this.ids_sys1
+	case 2
+		return this.ids_sys2
+	case 3
+		return this.ids_sys3
+	end choose
+	return this.ids_sys0
+
+// n_dwr_height.of_get_col_height_font(integer ai_col_width, string str, string font_name, boolean font_italic, integer font_underline, integer font_weight, integer font_size, integer units) returns long
+	string ls_val
+	integer ret
+	datastore lds
+	lds = of_get_ds(units)
+	lds.object.str_col[1] = str
+	lds.object.str_col.height = 0
+	lds.object.str_col.width = ai_col_width
+	lds.object.datawindow.detail.height = 0
+	lds.object.str_col.font.face = font_name
+	lds.object.str_col.font.italic = font_italic
+	if font_underline = 0 then
+		lds.object.str_col.font.underline = false
+	else
+		lds.object.str_col.font.underline = true
+	end if
+	lds.object.str_col.font.weight = font_weight
+	lds.object.str_col.font.height = -abs(font_size)
+	ret = long(lds.describe("evaluate('rowheight()', 1)"))
+	ret = pixelstounits(unitstopixels(ret, yunitstopixels!), ypixelstounits!) + 7
+	return ret
+
+// n_dwr_height.create() returns 0
+	call super::create
+	triggerevent("constructor")
+
+// n_dwr_height.destroy() returns 0
+	triggerevent("destructor")
+	call super::destroy
+
+// n_dwr_height.constructor() returns long
+	integer li_ret
+	string ls_syntax
+	this.ids_sys0 = create datastore
+	this.ids_sys1 = create datastore
+	this.ids_sys2 = create datastore
+	this.ids_sys3 = create datastore
+	ls_syntax = "~trelease 5;~r~n" + "~tdatawindow(units=0 processing=0)~r~n" + "~tsummary(height=0 color=~"536870912~" )~r~n" + "~tfooter(height=0 color=~"536870912~" )~r~n" + "~tdetail(height=0 color=~"536870912~"  height.autosize=yes)~r~n" + "~ttable(column=(type=char(32000) updatewhereclause=yes name=str_col dbname=~"str_col~" )~r~n" + "~t )~r~n" + "~tcolumn(band=detail id=1 alignment=~"0~" tabsequence=10 border=~"0~" color=~"33554432~" x=~"5~" y=~"4~" height=~"76~" width=~"302~" format=~"[general]~" name=str_col visible=~"1~" height.autosize=yes edit.limit=0 edit.case=any edit.focusrectangle=no edit.autoselect=yes edit.autovscroll=yes edit.imemode=0  font.face=~"Arial~" font.height=~"-10~" font.weight=~"400~"  font.family=~"2~" font.pitch=~"2~" font.charset=~"0~" background.mode=~"1~" background.color=~"536870912~")"
+	li_ret = this.ids_sys0.create(ls_syntax)
+	if li_ret = 1 and this.ids_sys0.rowcount() = 0 then
+		this.ids_sys0.insertrow(0)
+	end if
+	ls_syntax = "~trelease 5;~r~n" + "~tdatawindow(units=1 processing=0)~r~n" + "~tsummary(height=0 color=~"536870912~" )~r~n" + "~tfooter(height=0 color=~"536870912~" )~r~n" + "~tdetail(height=0 color=~"536870912~"  height.autosize=yes)~r~n" + "~ttable(column=(type=char(32000) updatewhereclause=yes name=str_col dbname=~"str_col~" )~r~n" + "~t )~r~n" + "~tcolumn(band=detail id=1 alignment=~"0~" tabsequence=10 border=~"0~" color=~"33554432~" x=~"1~" y=~"1~" height=~"19~" width=~"66~" format=~"[general]~" name=str_col visible=~"1~" height.autosize=yes edit.limit=0 edit.case=any edit.focusrectangle=no edit.autoselect=yes edit.autovscroll=yes edit.imemode=0  font.face=~"Arial~" font.height=~"-10~" font.weight=~"400~"  font.family=~"2~" font.pitch=~"2~" font.charset=~"0~" background.mode=~"1~" background.color=~"536870912~")"
+	li_ret = this.ids_sys1.create(ls_syntax)
+	if li_ret = 1 and this.ids_sys1.rowcount() = 0 then
+		this.ids_sys1.insertrow(0)
+	end if
+	ls_syntax = "~trelease 5;~r~n" + "~tdatawindow(units=2 processing=0)~r~n" + "~tsummary(height=0 color=~"536870912~" )~r~n" + "~tfooter(height=0 color=~"536870912~" )~r~n" + "~tdetail(height=0 color=~"536870912~"  height.autosize=yes)~r~n" + "~ttable(column=(type=char(32000) updatewhereclause=yes name=str_col dbname=~"str_col~" )~r~n" + "~t )~r~n" + "~tcolumn(band=detail id=1 alignment=~"0~" tabsequence=10 border=~"0~" color=~"33554432~" x=~"10~" y=~"10~" height=~"197~" width=~"687~" format=~"[general]~" name=str_col visible=~"1~" height.autosize=yes edit.limit=0 edit.case=any edit.focusrectangle=no edit.autoselect=yes edit.autovscroll=yes edit.imemode=0  font.face=~"Arial~" font.height=~"-10~" font.weight=~"400~"  font.family=~"2~" font.pitch=~"2~" font.charset=~"0~" background.mode=~"1~" background.color=~"536870912~")"
+	li_ret = this.ids_sys2.create(ls_syntax)
+	if li_ret = 1 and this.ids_sys2.rowcount() = 0 then
+		this.ids_sys2.insertrow(0)
+	end if
+	ls_syntax = "~trelease 5;~r~n" + "~tdatawindow(units=3 processing=0)~r~n" + "~tsummary(height=0 color=~"536870912~" )~r~n" + "~tfooter(height=0 color=~"536870912~" )~r~n" + "~tdetail(height=0 color=~"536870912~"  height.autosize=yes)~r~n" + "~ttable(column=(type=char(32000) updatewhereclause=yes name=str_col dbname=~"str_col~" )~r~n" + "~t )~r~n" + "~tcolumn(band=detail id=1 alignment=~"0~" tabsequence=10 border=~"0~" color=~"33554432~" x=~"26~" y=~"27~" height=~"502~" width=~"1746~" format=~"[general]~" name=str_col visible=~"1~" height.autosize=yes edit.limit=0 edit.case=any edit.focusrectangle=no edit.autoselect=yes edit.autovscroll=yes edit.imemode=0  font.face=~"Arial~" font.height=~"-10~" font.weight=~"400~"  font.family=~"2~" font.pitch=~"2~" font.charset=~"0~" background.mode=~"1~" background.color=~"536870912~")"
+	li_ret = this.ids_sys3.create(ls_syntax)
+	if li_ret = 1 and this.ids_sys3.rowcount() = 0 then
+		this.ids_sys3.insertrow(0)
+	end if
+	return ::message.returnvalue

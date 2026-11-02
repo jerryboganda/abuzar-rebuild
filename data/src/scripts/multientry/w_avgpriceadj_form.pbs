@@ -1,0 +1,662 @@
+// window w_avgpriceadj_form (multientry)  ancestor: w_multi_entry
+
+// w_avgpriceadj_form.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_counter step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+
+// w_avgpriceadj_form.wf_grandtotal() returns double
+	double ld_grandtotal
+	double ld_detaildwtotal
+	return ld_grandtotal
+
+// w_avgpriceadj_form.wf_findfullcode(string as_fullcode, long al_icode, string al_itemname) returns integer
+	integer ll_icode
+	integer ll_retflag
+	string ls_itemname
+	if f_stringpreferences("GroupCategoryRights") = "Y" then
+		SQL SELECT item.icode , item.name INTO :ll_icode, :ls_itemname FROM item WHERE item.customicode =:as_fullcode AND item.Active =1 AND Item.ICatCode IN ( SELECT ICatCode FROM ItemCategory WHERE ICatCode IN ( SELECT ItemsCategoryCode FROM ItemsGroupCategory WHERE GroupCode IN ( SELECT GroupCode FROM UserGroups WHERE UserCode =:gl_usercode ) ) ) USING this.it_transobject;
+	else
+		SQL SELECT item.icode , item.name INTO :ll_icode, :ls_itemname FROM item WHERE item.customicode =:as_fullcode AND item.Active =1 USING this.it_transobject;
+	end if
+	if this.it_transobject.sqlcode = 0 then
+		al_icode = ll_icode
+		al_itemname = ls_itemname
+		if isnull(al_icode) then
+			ll_retflag = 0
+		else
+			ll_retflag = 1
+		end if
+	else
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_avgpriceadj_form.wf_genfullcode(long al_icode, string as_fullcode) returns integer
+	integer li_retflag
+	string ls_fullcode
+	long icode
+	SQL SELECT customicode INTO :ls_fullcode FROM item WHERE item.icode =:al_icode USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		li_retflag = 1
+		as_fullcode = ls_fullcode
+	else
+		li_retflag = this.it_transobject.sqlcode
+	end if
+	return li_retflag
+
+// w_avgpriceadj_form.wf_updateitem(datetime adt_datetime, long al_row) returns boolean
+	long ll_icode
+	long ll_usercode
+	double ld_purprice
+	double ld_newpurprice
+	double ld_saleprice
+	double ld_newsaleprice
+	double ld_avgprice
+	double ld_newavgprice
+	ll_usercode = this.id_master.object.usercode[this.id_master.getrow()]
+	if al_row >= 1 then
+		ll_icode = this.id_detail.object.icode[al_row]
+		ld_purprice = this.id_detail.object.purprice[al_row]
+		ld_newpurprice = this.id_detail.object.newpurprice[al_row]
+		ld_saleprice = this.id_detail.object.saleprice[al_row]
+		ld_newsaleprice = this.id_detail.object.newsaleprice[al_row]
+		ld_avgprice = this.id_detail.object.avgprice[al_row]
+		ld_newavgprice = this.id_detail.object.newavgprice[al_row]
+		SQL update DBO.Item SET SalePrice =:ld_newsaleprice , PurPrice =:ld_newpurprice , AvgPrice =:ld_newavgprice , UserCode =:ll_usercode , LastUpdate =:adt_datetime , ChangeReason ='Avg. Price Adjustment' , Module ='Item Price/Supplier Liability Adjustment' WHERE ICode =:ll_icode AND SalePrice =:ld_saleprice AND PurPrice =:ld_purprice AND AvgPrice =:ld_avgprice USING this.it_transobject;
+		if this.it_transobject.sqlcode = 0 then
+			return true
+		else
+			return false
+		end if
+		return
+	end if
+	return false
+
+// w_avgpriceadj_form.wf_validateitem() returns integer
+	long ll_icode
+	long ll_gcode
+	double ld_purprice
+	double ld_discperc
+	double ld_avgprice
+	string ls_fullcode
+	string ls_errtext
+	string ls_titleerrtext
+	integer il_errcode
+	integer li_errcode
+	integer li_null
+	string ls_null
+	ll_icode = this.id_detail.object.icode[this.il_currrow]
+	if wf_genfullcode(ll_icode, ls_fullcode) > 0 then
+		this.id_detail.object.fullcode[this.il_currrow] = ls_fullcode
+		if not wf_inititeminfo(ll_icode, this.il_currrow, ls_errtext) then
+			ls_titleerrtext = "Item Validation"
+			li_errcode = -1
+		end if
+	else
+		il_errcode = -1
+	end if
+	this.ib_itemvalidated = true
+	if il_errcode = -1 then
+		setnull(li_null)
+		setnull(ls_null)
+		this.id_detail.setcolumn(this.is_columnitemname)
+		this.id_detail.scrolltorow(this.il_currrow)
+		this.id_detail.object.icode[this.il_currrow] = li_null
+		this.id_detail.object.itemname[this.il_currrow] = ls_null
+	end if
+	return il_errcode
+
+// w_avgpriceadj_form.wf_createvoucher(long al_usercode, datetime adt_server_datetime, long al_glvochcode, long al_vochcode) returns boolean
+	long ll_vochcatcode
+	long ll_acccode
+	long ll_rowcount
+	long ll_null
+	long ll_dr_acccode
+	long ll_cr_acccode
+	long ll_tmpcode
+	char lc_posted
+	string ls_remarks
+	string ls_null
+	double ld_amount
+	setnull(ls_null)
+	setnull(ll_null)
+	ll_rowcount = this.id_master.rowcount()
+	ll_vochcatcode = this.ii_vouchercategory
+	ll_acccode = 2
+	lc_posted = this.id_master.object.posted[ll_rowcount]
+	ls_remarks = this.id_master.object.remarks[ll_rowcount]
+	ll_tmpcode = this.id_master.object.dr_acccode[ll_rowcount]
+	ld_amount = this.id_master.object.amount[ll_rowcount]
+	ld_amount = abs(ld_amount)
+	if this.il_mode = 1 then
+		ll_dr_acccode = this.id_master.object.dr_acccode[ll_rowcount]
+		ll_cr_acccode = this.id_master.object.cr_acccode[ll_rowcount]
+	elseif ld_amount < 0.0 then
+		ll_dr_acccode = this.ii_discacc
+		ll_cr_acccode = ll_tmpcode
+	else
+		ll_dr_acccode = ll_tmpcode
+		ll_cr_acccode = this.ii_discacc
+	end if
+	this.it_transobject.createvoucher(ll_vochcatcode, ll_acccode, adt_server_datetime, al_usercode, lc_posted, adt_server_datetime, ls_remarks, adt_server_datetime, ll_null, al_usercode, ls_null, ll_dr_acccode, ll_cr_acccode, ld_amount, ls_null, ls_remarks, ll_null, ll_null, ll_null, ll_null, 0.00, 0.00, al_glvochcode, al_vochcode, ll_null)
+	if this.it_transobject.sqlcode = 0 then
+		return true
+	end if
+	return false
+
+// w_avgpriceadj_form.wf_inititeminfo(long al_icode, long al_row, string as_errortext) returns boolean
+	boolean retflag
+	double ld_purprice
+	double ld_discperc
+	double ld_saleprice
+	double ld_avgprice
+	long ll_packunits
+	long ll_suppcode
+	integer li_gcode
+	string ls_fullcode
+	string ls_name
+	double ld_godownstock
+	double ld_allgodownstock
+	SQL SELECT item.customicode , item.name , item.purprice , item.packunits , item.saleprice , item.avgprice INTO :ls_fullcode, :ls_name, :ld_purprice, :ll_packunits, :ld_saleprice, :ld_avgprice FROM item WHERE item.icode =:al_icode USING this.it_transobject;
+	if ll_packunits < 1 or isnull(ll_packunits) then
+		ll_packunits = 1
+	end if
+	if this.it_transobject.sqlcode = -1 then
+		retflag = false
+		as_errortext = "Database Error: Item information can not be retrieved"
+	end if
+	ld_allgodownstock = 0
+	this.it_transobject.getitemstockall(al_icode, ld_allgodownstock)
+	if this.it_transobject.sqlcode <> 0 then
+		retflag = false
+		as_errortext = "Database Error: Item Stock information can not be retrieved"
+	end if
+	ll_suppcode = 0
+	if this.il_mode <> 1 then
+		SQL SELECT min ( suppcode ) INTO :ll_suppcode FROM itemsuppliers WHERE icode =:al_icode AND priority IN ( SELECT MIN ( i.priority ) FROM itemsuppliers i WHERE i.icode =:al_icode ) USING this.it_transobject;
+	end if
+	if this.it_transobject.sqlcode <> 0 then
+		retflag = false
+		as_errortext = "Database Error: Item Supplier information can not be retrieved"
+	end if
+	this.id_detail.setitem(al_row, "icode", al_icode)
+	this.id_detail.setitem(al_row, this.is_columnitemname, ls_name)
+	this.id_detail.setitem(al_row, "fullcode", ls_fullcode)
+	this.id_detail.setitem(al_row, "saleprice", ld_saleprice)
+	this.id_detail.setitem(al_row, "newsaleprice", ld_saleprice)
+	this.id_detail.setitem(al_row, "purprice", ld_purprice)
+	this.id_detail.setitem(al_row, "newpurprice", ld_purprice)
+	this.id_detail.setitem(al_row, "avgprice", ld_avgprice)
+	this.id_detail.setitem(al_row, "newavgprice", ld_avgprice)
+	this.id_detail.setitem(al_row, "stock", ld_allgodownstock)
+	if this.il_mode <> 1 then
+		this.id_master.setitem(this.id_master.getrow(), "dr_acccode", ll_suppcode)
+	end if
+	return retflag
+
+// w_avgpriceadj_form.wf_assigndatawindowobjects(string as_masterdw, string as_detaildw, string as_listdw) returns 0
+	this.id_master.dataobject = as_masterdw
+	this.id_detail.dataobject = as_detaildw
+	this.id_list.dataobject = as_listdw
+	this.id_master.settransobject(this.it_transobject)
+	this.id_detail.settransobject(this.it_transobject)
+	this.id_list.settransobject(this.it_transobject)
+
+// w_avgpriceadj_form.wf_populteitems() returns 0
+	datastore lds_itemselected
+	long ll_detailrows
+	long ll_count
+	long ll_duplrows
+	long ll_insertedrow
+	integer li_result
+	integer li_rtncode
+	integer li_errcode
+	boolean populateflag
+	s_arguements lstr_selecteditems
+	string ls_errortext
+	long ll_rowcount
+	long ll_rtcode
+	long ll_icode
+	long ll_retrievecount
+	long ll_lockedcount
+	string ls_fullcode
+	if wf_iseditable() = false then
+		return
+	end if
+	this.id_detail.setredraw(false)
+	setpointer(hourglass!)
+	ll_detailrows = this.id_detail.rowcount()
+	if ll_detailrows > 0 then
+		if not isnull(this.id_detail.object.icode[1]) then
+			li_result = messagebox("Warning", "Rows in Detail Window will Lost", exclamation!, okcancel!, 2)
+			if li_result = 1 then
+				for ll_count = 1 to ll_detailrows
+					this.id_detail.deleterow(0)
+				next
+				if this.id_detail.update() <> 1 then
+					messagebox("DataBase Problem", "Problem in Deleting Rows")
+					return
+				end if
+			else
+				populateflag = false
+			end if
+		else
+			this.id_detail.reset()
+		end if
+	end if
+	if populateflag = true then
+		openwithparm(w_arg_item_populate2, 3)
+		lstr_selecteditems = message.powerobjectparm
+		this.id_detail.reset()
+		lds_itemselected = create datastore
+		if lstr_selecteditems.s_name2 = "OR" then
+			lds_itemselected.dataobject = "d_populateditems_active"
+		else
+			lds_itemselected.dataobject = "d_populateditems_active_and"
+		end if
+		lds_itemselected.settransobject(this.it_transobject)
+		this.id_detail.reset()
+		ll_rtcode = lds_itemselected.retrieve(lstr_selecteditems.ia_integerlist, lstr_selecteditems.ia_integerlist1, lstr_selecteditems.ia_integerlist2, lstr_selecteditems.la_longlist, lstr_selecteditems.l_code1, lstr_selecteditems.s_name1)
+		ll_rowcount = lds_itemselected.rowcount()
+		for ll_count = 1 to ll_rowcount
+			ll_icode = lds_itemselected.object.icode[ll_count]
+			ll_insertedrow = this.id_detail.insertrow(0)
+			wf_inititeminfo(ll_icode, ll_insertedrow, ls_errortext)
+			if this.it_transobject.sqlcode = -1 then
+				messagebox("Database Error", "Database Error: Item information can not be retrieved")
+			end if
+			ll_retrievecount = ll_retrievecount + 1
+		next
+		destroy lds_itemselected
+		if ll_retrievecount = ll_rowcount then
+			messagebox("Result", string(ll_rowcount) + " Items are populated. ")
+		else
+			messagebox("Result", "Total records were " + string(ll_rowcount) + "~n~r" + string(ll_rowcount - ll_duplrows - ll_lockedcount) + " records are retrieved successfully~n~r" + string(ll_duplrows) + " records are duplicate so are not retrieved~n~r" + string(ll_lockedcount) + " records are in error")
+		end if
+	end if
+	ll_detailrows = this.id_detail.rowcount()
+	if ll_detailrows > 0 then
+		this.im_menu.m_file.m_save.enabled = true
+	else
+		this.im_menu.m_file.m_save.enabled = false
+	end if
+	setpointer(arrow!)
+	this.id_detail.setredraw(true)
+
+// w_avgpriceadj_form.create() returns 0
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_avgpriceadj" then
+		this.menuid = create m_avgpriceadj
+	end if
+
+// w_avgpriceadj_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_avgpriceadj_form.ue_save() returns 0
+	long ll_mastercurrrow
+	long ll_invid
+	long ll_detailrows
+	long ll_counter
+	long ll_icode
+	long ll_null
+	long ll_glvochcode
+	long ll_vouchercode
+	long ll_detailcurrrow
+	long ll_salesmancode
+	integer li_maxretcode
+	double ld_avgprice
+	double ld_stock
+	boolean lb_continue
+	boolean lb_item_update
+	boolean lb_log_generated
+	boolean lb_commitflag
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	unsignedlong ul_rowcount
+	unsignedlong ul_maxutn
+	setnull(ll_null)
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		this.id_detail.setfocus()
+		return
+	end if
+	wf_deleteemptydetailrow()
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	setpointer(hourglass!)
+	ll_mastercurrrow = this.id_master.getrow()
+	ll_detailcurrrow = this.id_detail.getrow()
+	if this.id_master.object.amount[ll_mastercurrrow] <> 0 then
+		if isnull(this.id_master.object.dr_acccode[ll_mastercurrrow]) or this.id_master.object.dr_acccode[ll_mastercurrrow] = 0 then
+			messagebox("Debit Account Validation", "Please Select a valid value")
+			this.id_master.setcolumn("dr_acccode")
+			this.id_master.setfocus()
+			return
+		end if
+		if this.il_mode = 1 then
+			if isnull(this.id_master.object.cr_acccode[ll_mastercurrrow]) or this.id_master.object.cr_acccode[ll_mastercurrrow] = 0 then
+				messagebox("Credit Account Validation", "Please Select a valid value")
+				this.id_master.setcolumn("cr_acccode")
+				this.id_master.setfocus()
+				return
+			end if
+		else
+			this.id_master.object.cr_acccode[ll_mastercurrrow] = this.ii_discacc
+		end if
+		if this.id_master.object.dr_acccode[ll_mastercurrrow] = this.id_master.object.cr_acccode[ll_mastercurrrow] then
+			messagebox("Debit/Credit Account Validation", "Both debit and credit accounts are same~r~nPlease select some other account")
+			this.id_master.setcolumn("cr_acccode")
+			this.id_master.setfocus()
+			return
+		end if
+		return
+	end if
+	for ll_counter = 1 to ll_detailcurrrow
+		if this.id_detail.object.purprice[ll_counter] = this.id_detail.object.newpurprice[ll_counter] and this.id_detail.object.saleprice[ll_counter] = this.id_detail.object.newsaleprice[ll_counter] and this.id_detail.object.avgprice[ll_counter] = this.id_detail.object.newavgprice[ll_counter] and this.id_master.object.amount[ll_mastercurrrow] = 0 then
+			this.id_detail.setrow(ll_counter)
+			this.id_detail.setcolumn("newpurprice")
+			this.id_detail.setfocus()
+			messagebox("Saving Problem", "Nothing to save~r~nMake some valid changes")
+			return
+		end if
+	next
+	open(w_salesmanpassword)
+	ll_salesmancode = long(message.doubleparm)
+	setfocus()
+	if ll_salesmancode > 0 then
+		if not wf_validateserverdatetime(ldt_server_datetime, ls_date_errtext) then
+			messagebox("Date Violation", ls_date_errtext, stopsign!)
+			setpointer(arrow!)
+			return
+		end if
+		SQL rollback USING sqlca;
+		ul_rowcount = this.id_detail.rowcount()
+		sqlca.getmaxutn(ul_rowcount, ul_maxutn)
+		if sqlca.sqlcode = 0 then
+			SQL commit USING sqlca;
+		else
+			SQL rollback USING sqlca;
+			messagebox("SAVING Problem", " Error in generating Utn ")
+			return
+		end if
+		for ll_counter = 1 to this.id_detail.rowcount()
+			this.id_detail.setitem(ll_counter, "Utn", ul_maxutn)
+			ul_maxutn = ul_maxutn + 1
+		next
+		this.id_master.object.usercode[ll_mastercurrrow] = ll_salesmancode
+		this.id_master.object.postedby[ll_mastercurrrow] = ll_salesmancode
+		this.id_master.object.date[ll_mastercurrrow] = ldt_server_datetime
+		this.id_master.object.postdate[ll_mastercurrrow] = ldt_server_datetime
+		SQL rollback USING this.it_transobject;
+		if f_generateitemlog(this.id_detail, "item_avgprice_change", this.it_transobject, ldt_server_datetime) >= 0 then
+			lb_continue = true
+		else
+			lb_continue = false
+		end if
+		if lb_continue then
+			for ll_counter = 1 to this.id_detail.rowcount()
+				ll_icode = this.id_detail.object.icode[ll_counter]
+				ld_avgprice = this.id_detail.object.avgprice[ll_counter]
+				this.it_transobject.getitemavgprice(ll_icode, ld_avgprice)
+				if this.it_transobject.sqlcode = 0 then
+					this.it_transobject.getitemstockall(ll_icode, ld_stock)
+					if this.it_transobject.sqlcode = 0 then
+						if ld_stock = this.id_detail.object.stock[ll_counter] then
+							if wf_updateitem(ldt_server_datetime, ll_counter) then
+								lb_continue = true
+							else
+								lb_continue = false
+							end if
+						else
+							SQL rollback USING this.it_transobject;
+							this.id_detail.object.stock[ll_counter] = ld_stock
+							lb_continue = false
+							messagebox("Item Stock Problem!", "Problem in Updation of Item Prices~r~nStock In hand changed", stopsign!)
+							setpointer(arrow!)
+							return
+						end if
+					else
+						SQL rollback USING this.it_transobject;
+						lb_continue = false
+						messagebox("Item Stock Problem!", "Problem in fetching Item Stock~r~nDetails: " + this.it_transobject.sqlerrtext, stopsign!)
+						setpointer(arrow!)
+						return
+					end if
+				else
+					SQL rollback USING this.it_transobject;
+					lb_continue = false
+					messagebox("Item Avg Price Problem!", "Problem in fetching Item Avg. Price~r~nDetails: " + this.it_transobject.sqlerrtext, stopsign!)
+					setpointer(arrow!)
+					return
+				end if
+				if lb_continue = false then
+					exit
+				end if
+			next
+		else
+			SQL rollback USING this.it_transobject;
+			messagebox("Item History Problem!", "Problem in preserving Item History~r~nPlease Try Later", stopsign!)
+			setpointer(arrow!)
+			return
+		end if
+		if lb_continue then
+			if this.id_master.object.amount[ll_mastercurrrow] <> 0 then
+				if wf_createvoucher(ll_salesmancode, ldt_server_datetime, ll_glvochcode, ll_vouchercode) then
+					lb_continue = true
+				else
+					SQL rollback USING this.it_transobject;
+					lb_continue = false
+					messagebox("Voucher Creation Problem!", "Problem in creating voucher~r~nDetails: " + this.it_transobject.sqlerrtext, stopsign!)
+					setpointer(arrow!)
+					return
+				end if
+			else
+				lb_continue = true
+			end if
+		else
+			SQL rollback USING this.it_transobject;
+			messagebox("Item Update Problem!", "Problem in Updation of Item Prices~r~nPlease Try Later", stopsign!)
+			setpointer(arrow!)
+			return
+		end if
+		if lb_continue then
+			if this.id_master.object.amount[ll_mastercurrrow] <> 0 then
+				this.id_master.object.glvochcode[ll_mastercurrrow] = ll_glvochcode
+			else
+				this.id_master.object.glvochcode[ll_mastercurrrow] = ll_null
+				this.id_master.object.dr_acccode[ll_mastercurrrow] = ll_null
+				this.id_master.object.cr_acccode[ll_mastercurrrow] = ll_null
+			end if
+			li_maxretcode = wf_tabnewid("AvgPriceAdjHeader", ll_invid)
+			if li_maxretcode < 0 then
+				SQL rollback USING this.it_transobject;
+				messagebox("DataBase Problem", "Transaction is Rollback Due to Problem in~r~ngenerating Document Code")
+				return
+			end if
+			if ll_invid > 0 then
+				this.id_master.setitem(ll_mastercurrrow, "code", ll_invid)
+				for ll_counter = 1 to this.id_detail.rowcount()
+					this.id_detail.setitem(ll_counter, "code", ll_invid)
+				next
+				call super::ue_save
+			else
+				SQL rollback USING this.it_transobject;
+				messagebox("DataBase Problem", "Transaction is Rollback Due to Problem in~r~ngenerating Document Code")
+				return
+			end if
+			return
+		end if
+		return
+	end if
+	setpointer(arrow!)
+
+// w_avgpriceadj_form.ue_newitem() returns 0
+	long ll_rowcount
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		this.id_detail.setfocus()
+		return
+	end if
+	if this.id_detail.rowcount() > 0 and f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	this.id_detail.settransobject(this.it_transobject)
+	if f_stringpreferences("itemcode") = "N" then
+		this.id_detail.setcolumn(this.is_columnitemname)
+	else
+		this.id_detail.setcolumn("fullcode")
+	end if
+	this.id_detail.insertrow(0)
+	ll_rowcount = this.id_detail.rowcount()
+	if ll_rowcount > 1 then
+		this.id_detail.scrolltorow(ll_rowcount)
+		this.id_detail.setfocus()
+	end if
+	this.im_menu.m_file.m_save.enabled = true
+	this.ib_validatefullcode = true
+
+// w_avgpriceadj_form.ue_deleteitem() returns 0
+	long ll_row
+	ll_row = this.id_detail.getrow()
+	if this.id_detail.rowcount() > 0 then
+		call super::ue_deleteitem
+		return
+	end if
+	this.im_menu.m_file.m_print.enabled = false
+
+// w_avgpriceadj_form.close() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::close()
+	destroy this.ids_itemstockinfo
+	return ::message.returnvalue
+
+// w_avgpriceadj_form.ue_refreshddw() returns 0
+	call super::ue_refreshddw
+	setpointer(hourglass!)
+	this.idc_dracc.setredraw(false)
+	this.idc_dracc.settransobject(this.it_transobject)
+	this.idc_dracc.reset()
+	this.idc_dracc.retrieve(this.ii_vouchercategory)
+	this.idc_dracc.setredraw(true)
+	this.idc_cracc.setredraw(false)
+	this.idc_cracc.settransobject(this.it_transobject)
+	this.idc_cracc.reset()
+	this.idc_cracc.retrieve(this.ii_vouchercategory)
+	this.idc_cracc.setredraw(true)
+	setpointer(arrow!)
+
+// w_avgpriceadj_form.ue_postopen() returns 0
+	integer li_rtncode
+	m_avgpriceadj lm_menu
+	call super::ue_postopen
+	lm_menu = this.menuid
+	this.il_mode = message.doubleparm
+	setredraw(false)
+	this.ii_vouchercategory = f_numberpreferences("VochCatForPriceAdj")
+	this.ii_discacc = f_getglobalcode("GT_DiscountRecAllowedAcc")
+	if this.il_mode = 1 then
+		this.title = "Item Price/Account Adjustment"
+		wf_assigndatawindowobjects("d_AvgPriceAdjHeader", "d_AvgPriceAdjDetail_Normal", "d_AvgPriceAdjList")
+		lm_menu.m_file.m_populateitems.visible = true
+	else
+		this.title = "Item Price/Supplier Liability Adjustment"
+		wf_assigndatawindowobjects("d_AvgPriceAdjHeader", "d_AvgPriceAdjDetail", "d_AvgPriceAdjList")
+		this.id_master.object.cr_acccode.visible = true
+		this.id_master.object.dr_acccode_t.text = "Supplier:"
+		this.id_master.object.cr_acccode_t.visible = false
+		this.id_master.object.cr_acccode.visible = false
+		lm_menu.m_file.m_populateitems.visible = false
+	end if
+	li_rtncode = this.id_master.getchild("dr_acccode", this.idc_dracc)
+	if li_rtncode = -1 then
+		messagebox("Error", "Can not get a master DataWindowChild")
+		close(this)
+		return
+	end if
+	this.idc_dracc.settransobject(this.it_transobject)
+	this.idc_dracc.retrieve(this.ii_vouchercategory)
+	li_rtncode = this.id_master.getchild("cr_acccode", this.idc_cracc)
+	if li_rtncode = -1 then
+		messagebox("Error", "Can not get a master DataWindowChild")
+		close(this)
+		return
+	end if
+	this.idc_cracc.settransobject(this.it_transobject)
+	this.idc_cracc.retrieve(this.ii_vouchercategory)
+	this.id_itemslist.object.t_stock.visible = true
+	this.id_itemslist.object.stock.visible = true
+	this.id_itemslist.object.t_sstock.visible = false
+	this.id_itemslist.object.sstock.visible = false
+	this.id_itemslist.object.t_pstock.visible = false
+	this.id_itemslist.object.pstock.visible = false
+	gd_itemsinfo.sharedata(this.id_itemslist)
+	setredraw(true)
+
+// w_avgpriceadj_form.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	show()
+	return ::message.returnvalue
+
+// w_avgpriceadj_form.ue_detail() returns 0
+	long ll_code
+	integer li_rtncode
+	integer li_protect
+	call super::ue_detail
+	setredraw(false)
+	ll_code = this.id_dwcontrol.borderstyle.code[this.il_selectedrow]
+	if this.id_dwcontrol.borderstyle.posted[this.il_selectedrow] = "Y" then
+		li_protect = 1
+	end if
+	wf_protectdw(this.id_master, li_protect)
+	wf_protectdw(this.id_detail, li_protect)
+	if li_protect = 0 then
+		this.im_menu.m_file.m_save.enabled = true
+	else
+		this.im_menu.m_file.m_save.enabled = false
+	end if
+	if this.il_mode = 1 then
+		if li_protect = 0 then
+			this.im_menu.m_item.m_newitem.enabled = true
+			this.im_menu.m_item.m_deleteitem.enabled = true
+		end if
+	else
+		this.im_menu.m_item.m_newitem.enabled = false
+		this.im_menu.m_item.m_deleteitem.enabled = false
+	end if
+	if li_protect = 1 then
+		this.editflag = false
+	end if
+	this.im_menu.m_file.m_print.enabled = false
+	setredraw(true)
+
+// w_avgpriceadj_form.ue_newform() returns 0
+	integer li_protect
+	call super::ue_newform
+	this.id_detail.setfocus()
+	if this.il_mode <> 1 then
+		this.im_menu.m_item.m_newitem.enabled = false
+		this.im_menu.m_item.m_deleteitem.enabled = false
+	end if
+	wf_protectdw(this.id_master, li_protect)
+	wf_protectdw(this.id_detail, li_protect)

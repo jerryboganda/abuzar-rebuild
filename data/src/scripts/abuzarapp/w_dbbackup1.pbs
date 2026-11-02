@@ -1,0 +1,119 @@
+// window w_dbbackup1 (abuzarapp)  ancestor: window
+
+// w_dbbackup1.wf_setbuttonvisibility(boolean ab_status) returns 0
+	this.cb_backup.enabled = ab_status
+	this.cb_cancel.enabled = ab_status
+	this.cb_backupinfo.enabled = ab_status
+	this.cb_verifybackup.enabled = ab_status
+
+// w_dbbackup1.create() returns 0
+	this.cb_verifybackup = create cb_verifybackup
+	this.st_bkstatus = create st_bkstatus
+	this.cb_backupinfo = create cb_backupinfo
+	this.hpb_dbbackup = create hpb_dbbackup
+	this.cb_backup = create cb_backup
+	this.cb_cancel = create cb_cancel
+	this.control = {this.cb_verifybackup, this.st_bkstatus, this.cb_backupinfo, this.hpb_dbbackup, this.cb_backup, this.cb_cancel}
+
+// w_dbbackup1.destroy() returns 0
+	destroy this.cb_verifybackup
+	destroy this.st_bkstatus
+	destroy this.cb_backupinfo
+	destroy this.hpb_dbbackup
+	destroy this.cb_backup
+	destroy this.cb_cancel
+
+// w_dbbackup1.close() returns long
+	return ::message.returnvalue
+
+// w_dbbackup1.open() returns long
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	long ll_option
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	ll_option = message.doubleparm
+	if ll_option = 2 then
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// cb_verifybackup.clicked() returns long
+	string ls_filename
+	parent.wf_setbuttonvisibility(false)
+	open(w_backupinfo_for_verificatioin)
+	ls_filename = message.stringparm
+	f_verify_backup_file(ls_filename)
+	parent.wf_setbuttonvisibility(true)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// cb_backupinfo.clicked() returns long
+	parent.wf_setbuttonvisibility(false)
+	open(w_backupinfo)
+	parent.wf_setbuttonvisibility(true)
+	return ::message.returnvalue
+
+// cb_backup.clicked() returns long
+	integer li_counter
+	string ls_servername
+	string ls_version_info
+	string ls_backup
+	string ls_backupdevice
+	integer li_pos
+	sqlca.dbms_version(ls_version_info)
+	parent.wf_setbuttonvisibility(false)
+	parent.it_transobject = create u_transaction
+	parent.it_transobject.autocommit = true
+	SQL start USING parent.it_transobject;
+	parent.hpb_dbbackup.position = 30
+	ls_backupdevice = f_getbackupdevicename("manual")
+	li_pos = pos(gs_servername, "\")
+	if li_pos > 0 then
+		ls_servername = left(gs_servername, li_pos - 1)
+	else
+		ls_servername = gs_servername
+	end if
+	parent.st_bkstatus.visible = true
+	parent.st_bkstatus.text = "Backup for " + gs_dbname + " is in progress . . . "
+	if match(ls_version_info, "SQL Server 2012") = true then
+		ls_backup = "Backup Database " + gs_dbname + " To " + ls_backupdevice + " With INIT"
+	else
+		ls_backup = "Backup Database " + gs_dbname + " To " + ls_backupdevice + " With INIT, MEDIAPASSWORD = " + "'REDACTED" + lower(ls_servername) + "' , PASSWORD = " + "'REDACTED" + lower(ls_servername) + "'"
+	end if
+	SQL EXECUTE IMMEDIATE :ls_backup USING parent.it_transobject;
+	parent.hpb_dbbackup.position = 100
+	if parent.it_transobject.sqlcode = 0 then
+		parent.st_bkstatus.visible = true
+		parent.st_bkstatus.text = "Backup for " + gs_dbname + " successfully completed."
+		messagebox("BackUp DataBase", "BackUp Successful" + parent.it_transobject.sqlerrtext)
+	else
+		parent.st_bkstatus.visible = true
+		parent.st_bkstatus.text = "Backup for " + gs_dbname + " failed."
+		messagebox("BackUp DataBase", "Some problem occur in taking backup.~r~nPossible reasons are " + parent.it_transobject.sqlerrtext)
+	end if
+	parent.st_bkstatus.visible = false
+	parent.wf_setbuttonvisibility(true)
+	SQL stop USING parent.it_transobject;
+	destroy parent.it_transobject
+	close(parent)
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	close(parent)
+	return ::message.returnvalue

@@ -1,0 +1,87 @@
+// function f_prefered_itemsearch (functions)  ancestor: function_object
+
+// f_prefered_itemsearch.wf_prefered_itemsearch(long al_sampleitem) returns long
+	long ll_rtcode
+	long ll_rowcount
+	long ll_code
+	string ls_colname
+	string ls_query
+	datastore lds_item
+	s_popup_selection lstr_selection
+	if al_sampleitem <= 0 or isnull(al_sampleitem) then
+		return -1
+	end if
+	lds_item = create datastore
+	lds_item.dataobject = "d_iteminfo_for_preferedsearch"
+	lds_item.settransobject(sqlca)
+	ll_rtcode = lds_item.retrieve(al_sampleitem)
+	if ll_rtcode <= 0 then
+		return -1
+	else
+		ll_rowcount = lds_item.rowcount()
+		if ll_rowcount > 0 then
+			ls_colname = lds_item.getitemstring(ll_rowcount, "colname")
+			ll_code = lds_item.getitemnumber(ll_rowcount, ls_colname)
+		else
+			return -1
+		end if
+	end if
+	if ll_code > 0 then
+		lstr_selection.l_code = ll_code
+		lstr_selection.s_name = ""
+		lstr_selection.s_name2 = ls_colname
+		lstr_selection.s_name3 = "preferedsearch"
+		openwithparm(w_popup_itemselection, lstr_selection)
+		lstr_selection = message.powerobjectparm
+		if lstr_selection.l_code > 0 then
+			return lstr_selection.l_code
+		end if
+		return
+	end if
+	return lstr_selection.l_code
+
+// f_prefered_itemsearch.f_prefered_itemsearch(long al_sampleitem) returns long
+	long ll_rtcode
+	long ll_rowcount
+	long ll_code
+	string ls_colname
+	string ls_query
+	datastore lds_item
+	s_popup_selection lstr_selection
+	if al_sampleitem <= 0 or isnull(al_sampleitem) then
+		return -1
+	end if
+	lds_item = create datastore
+	lds_item.dataobject = "d_iteminfo_for_preferedsearch"
+	lds_item.settransobject(sqlca)
+	ll_rtcode = lds_item.retrieve(al_sampleitem)
+	if ll_rtcode <= 0 then
+		return -1
+	else
+		ll_rowcount = lds_item.rowcount()
+		if ll_rowcount > 0 then
+			ls_colname = lds_item.getitemstring(ll_rowcount, "colname")
+			if ls_colname = "" or isnull(ls_colname) then
+				return -1
+			elseif lower(ls_colname) = "modelcode" or lower(ls_colname) = "authorcode" then
+				return -1
+			else
+				ll_code = lds_item.getitemnumber(ll_rowcount, ls_colname)
+			end if
+		else
+			return -1
+		end if
+	end if
+	if ll_code > 0 then
+		lstr_selection.l_code = ll_code
+		lstr_selection.s_name = ""
+		lstr_selection.s_name2 = ls_colname
+		lstr_selection.s_name3 = "criteriasearch"
+		openwithparm(w_popup_itemselection, lstr_selection)
+		lstr_selection = message.powerobjectparm
+		if lstr_selection.l_code > 0 then
+			return lstr_selection.l_code
+		end if
+		return
+	end if
+	return lstr_selection.l_code

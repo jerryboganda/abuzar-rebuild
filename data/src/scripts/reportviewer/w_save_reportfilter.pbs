@@ -1,0 +1,125 @@
+// window w_save_reportfilter (reportviewer)  ancestor: window
+
+// w_save_reportfilter.wf_duplicate_filter(string as_str) returns long
+	long ll_count
+	if this.is_filterinfo.s_reporttitle = as_str then
+		return ll_count
+	end if
+	SQL SELECT Count ( ReportFilter.FilterName ) INTO :ll_count FROM DBO.ReportFilter WHERE ReportFilter.ReportIdentifier =:this.is_filterinfo.s_reportobject AND ReportFilter.FilterName =:as_str USING sqlca;
+	if sqlca.sqlcode <> 0 then
+		ll_count = 1
+	end if
+	return ll_count
+
+// w_save_reportfilter.create() returns 0
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.dw_control = create dw_control
+	this.control = {this.cb_cancel, this.cb_ok, this.dw_control}
+
+// w_save_reportfilter.destroy() returns 0
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.dw_control
+
+// w_save_reportfilter.open() returns long
+	long ll_retcode
+	this.is_filterinfo = message.powerobjectparm
+	SQL rollback USING sqlca;
+	this.dw_control.settransobject(sqlca)
+	ll_retcode = this.dw_control.retrieve(this.is_filterinfo.s_reportobject, this.is_filterinfo.s_reporttitle, this.is_filterinfo.s_otherinfo)
+	if ll_retcode <= 0 then
+		this.dw_control.insertrow(0)
+		this.dw_control.scrolltorow(0)
+		this.dw_control.setitem(1, "ReportIdentifier", this.is_filterinfo.s_reportobject)
+		this.dw_control.setitem(1, "FilterName", this.is_filterinfo.s_reporttitle)
+		this.dw_control.setitem(1, "FilterExpression", this.is_filterinfo.s_otherinfo)
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_save_reportfilter.close() returns long
+	this.is_filterinfo.i_status = 1
+	closewithreturn(this, this.is_filterinfo)
+	return ::message.returnvalue
+
+// w_save_reportfilter.key(keycode key, unsignedlong keyflags) returns long
+	if keydown(keyescape!) then
+		this.is_filterinfo.i_status = 0
+		SQL rollback USING sqlca;
+		closewithreturn(this, this.is_filterinfo)
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.is_filterinfo.i_status = 0
+	closewithreturn(parent, parent.is_filterinfo)
+	return ::message.returnvalue
+
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	parent.dw_control.accepttext()
+	if parent.dw_control.getrow() > 0 and parent.wf_duplicate_filter(parent.dw_control.object.filtername[parent.dw_control.getrow()]) > 0 then
+		messagebox("Filter Name Validation!", "Duplicate Filter Name Not Allowed~r~nPlease enter valid Filter Name")
+		parent.dw_control.setcolumn("filtername")
+		parent.dw_control.setfocus()
+	end if
+	if parent.dw_control.update() > 0 then
+		SQL commit USING sqlca;
+		parent.is_filterinfo.i_status = 1
+		parent.is_filterinfo.s_reporttitle = parent.dw_control.getitemstring(1, "filtername")
+		parent.postevent(close!)
+	else
+		SQL rollback USING sqlca;
+		messagebox("Saving Problem!", "Problem in saving filter to database~r~nReason:-" + sqlca.sqlerrtext)
+	end if
+	return ::message.returnvalue
+
+// dw_control.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_control.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	long ll_retcode
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "filtername"
+		if data = "" or isnull(data) then
+			ll_retcode = 1
+		elseif parent.wf_duplicate_filter(data) > 0 then
+			ll_retcode = 1
+		end if
+		return ll_retcode
+	end choose
+	return ll_retcode
+
+// dw_control.itemerror(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	long ll_retcode
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "filtername"
+		if data = "" or isnull(data) then
+			messagebox("Filter Name Validation!", "Please enter valid Filter Name")
+		else
+			messagebox("Filter Name Validation!", "Duplicate Filter Name Not Allowed~r~nPlease enter valid Filter Name")
+		end if
+		return ll_retcode
+	end choose
+	return ll_retcode

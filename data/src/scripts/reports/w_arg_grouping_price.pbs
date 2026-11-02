@@ -1,0 +1,66 @@
+// window w_arg_grouping_price (reports)  ancestor: w_listarguments
+
+// w_arg_grouping_price.create() returns 0
+	integer icurrent
+	call super::create
+	this.st_selectable = create st_selectable
+	this.st_selected = create st_selected
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_selectable
+	this.control[icurrent + 2] = this.st_selected
+
+// w_arg_grouping_price.destroy() returns 0
+	call super::destroy
+	destroy this.st_selectable
+	destroy this.st_selected
+
+// w_arg_grouping_price.open() returns long
+	long ancestorreturnvalue
+	long ll_counter
+	long ll_rowcount
+	integer rtncode
+	ancestorreturnvalue = super::open()
+	this.is_stringparam = message.stringparm
+	if this.is_stringparam = "M" then
+		this.is_dataobject = "d_manufacturers"
+		this.is_colname = "manufacturers"
+		this.is_childcolname = "manfcode"
+		this.st_selectable.text = "Manufacturer(s)"
+		this.st_selected.text = "Manufacturer(s)"
+	elseif this.is_stringparam = "C" then
+		this.is_dataobject = "d_itemcategories"
+		this.is_colname = "categories"
+		this.is_childcolname = "icatcode"
+		this.st_selectable.text = "Item Categories"
+		this.st_selected.text = "Item Categories"
+	elseif this.is_stringparam = "L" then
+		this.is_dataobject = "d_arg_class"
+		this.is_colname = "iccode"
+		this.is_childcolname = "iccode"
+		this.st_selectable.text = "Item Class(s)"
+		this.st_selected.text = "Item Class(s)"
+	elseif this.is_stringparam = "P" then
+		this.is_dataobject = "d_arg_packing"
+		this.is_colname = "packcode"
+		this.is_childcolname = "packcode"
+		this.st_selectable.text = "Item Packing(s)"
+		this.st_selected.text = "Item Packing(s)"
+	end if
+	this.dw_control.dataobject = this.is_dataobject
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	rtncode = this.dw_control.getchild(this.is_colname, this.idc_categories)
+	if rtncode = -1 then
+		messagebox("Error", "Not a DataWindowChild")
+	end if
+	ll_rowcount = this.idc_categories.rowcount()
+	for ll_counter = 1 to ll_rowcount
+		this.lb_categories.additem(this.idc_categories.getitemstring(ll_counter, "name"))
+	next
+	this.dw_price.insertrow(0)
+	this.dw_price.scrolltorow(0)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue

@@ -1,0 +1,33 @@
+// window w_itemalert_form (singleentryitem)  ancestor: w_single_entry
+
+// w_itemalert_form.ue_newform() returns 0
+	call super::ue_newform
+
+// w_itemalert_form.create() returns 0
+	integer icurrent
+	call super::create
+
+// w_itemalert_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_itemalert_form.activate() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::activate()
+	this.is_tablename = "ItemAlert"
+	this.windowstate = maximized!
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_itemalert_form.ue_save() returns 0
+	long ll_newid
+	long ll_row
+	ll_row = this.id_detail.getrow()
+	ll_newid = this.id_detail.object.code[this.id_detail.getrow()]
+	if isnull(ll_newid) then
+		f_newtableid("ItemAlert", ll_newid)
+		this.id_detail.object.code[ll_row] = ll_newid
+	end if
+	call super::ue_save

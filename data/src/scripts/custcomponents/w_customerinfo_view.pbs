@@ -1,0 +1,57 @@
+// window w_customerinfo_view (custcomponents)  ancestor: window
+
+// w_customerinfo_view.create() returns 0
+	this.dw_customerinfo = create dw_customerinfo
+	this.control = {this.dw_customerinfo}
+
+// w_customerinfo_view.destroy() returns 0
+	destroy this.dw_customerinfo
+
+// w_customerinfo_view.open() returns long
+	long ll_custcode
+	long ll_colcount
+	long ll_counter
+	s_arguements lstr_arg
+	long ll_width
+	long ll_height
+	environment env
+	lstr_arg = message.powerobjectparm
+	if getenvironment(env) <> 1 then
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.y = int((ll_height - this.height) / 2.0)
+	this.x = int((ll_width - this.width) / 2.0)
+	this.dw_customerinfo.object.accounts_aliasname_t.visible = true
+	this.dw_customerinfo.object.accounts_aliasname.visible = true
+	ll_colcount = long(this.dw_customerinfo.object.datawindow.column.count)
+	for ll_counter = 1 to ll_colcount
+		this.dw_customerinfo.settaborder(ll_counter, 0)
+	next
+	sqlca.virtualgl("A")
+	if sqlca.sqlcode = 0 then
+		SQL commit USING sqlca;
+	else
+		SQL rollback USING sqlca;
+	end if
+	this.dw_customerinfo.settransobject(sqlca)
+	this.dw_customerinfo.retrieve(lstr_arg.l_code1, lstr_arg.db_code1)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_customerinfo_view.close() returns long
+	close(this)
+	return ::message.returnvalue
+
+// w_customerinfo_view.key(keycode key, unsignedlong keyflags) returns long
+	if keydown(keyescape!) then
+		close(this)
+	end if
+	return ::message.returnvalue

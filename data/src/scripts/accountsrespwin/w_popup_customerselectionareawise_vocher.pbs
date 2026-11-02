@@ -1,0 +1,63 @@
+// window w_popup_customerselectionareawise_vocher (accountsrespwin)  ancestor: w_popup_forselection_walias
+
+// w_popup_customerselectionareawise_vocher.create() returns 0
+	integer icurrent
+	call super::create
+	this.cbx_all = create cbx_all
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.cbx_all
+
+// w_popup_customerselectionareawise_vocher.destroy() returns 0
+	call super::destroy
+	destroy this.cbx_all
+
+// w_popup_customerselectionareawise_vocher.open() returns long
+	string ls_custfilterstring
+	s_popup_selection ls_popup_selection
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	setredraw(false)
+	this.id_selected = create datawindow
+	this.id_selected.settransobject(sqlca)
+	this.id_selected = this.dw_selected
+	this.id_selectionlist = create datawindow
+	this.id_selectionlist = this.dw_selectionlist
+	this.id_selectionlist.settransobject(sqlca)
+	this.id_selected.reset()
+	this.id_selected.insertrow(0)
+	post event ue_postopen()
+	ls_popup_selection = message.powerobjectparm
+	this.id_selectionlist.retrieve(ls_popup_selection.l_code)
+	if f_stringpreferences("GroupCustCatInTrans") = "Y" then
+		ls_custfilterstring = "0                                                                                                                                                                                                             "
+		sqlca.getallowedgroupcustomercategory(f_getgroupcode(gl_usercode), ls_custfilterstring)
+		if ls_custfilterstring = " " or ls_custfilterstring = "" or isnull(ls_custfilterstring) then
+			ls_custfilterstring = "0"
+			messagebox("Group Customer Category Validation", "Current user group does not have enough permissions w.r.t customer to select customer.~r~nIn order to select customer kindly assign customer categories to this user group ~r~n using Group Customer Category module.~r~nOR~r~nDisable Group Customer Category from Preferences.")
+			event ue_close()
+			if not isvalid(message) then
+				return 0
+			end if
+			return message.returnvalue
+		end if
+		this.id_selectionlist.setfilter("custcatcode In (" + ls_custfilterstring + " )")
+		this.id_selectionlist.filter()
+	end if
+	setredraw(true)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue

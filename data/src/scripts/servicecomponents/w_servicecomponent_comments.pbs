@@ -1,0 +1,266 @@
+// window w_servicecomponent_comments (servicecomponents)  ancestor: window
+
+// w_servicecomponent_comments.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		post event ue_close(-1)
+	end if
+	return ::message.returnvalue
+
+// w_servicecomponent_comments.ue_close(integer ai_closemode) returns integer
+	long ll_currrow
+	long ll_counter
+	long ll_ret
+	s_comments lstr_comments
+	this.id_header.accepttext()
+	ll_currrow = this.id_header.getrow()
+	if ai_closemode = -1 then
+		this.istr_comments.i_closemode = -1
+		closewithreturn(this, this.istr_comments)
+		return -1
+	end if
+	if this.id_header.rowcount() > 0 then
+		if isnull(this.id_header.object.rowid[1]) or isnull(this.id_header.object.description[1]) then
+			this.id_header.deleterow(ll_currrow)
+		end if
+		for ll_counter = 1 to this.id_header.rowcount()
+			if isnull(this.id_header.object.rowid[ll_counter]) or isnull(this.id_header.object.description[ll_counter]) then
+				this.id_header.setrow(ll_counter)
+				this.id_header.setcolumn("description")
+				this.id_header.setfocus()
+				messagebox("Description Validation", "Please enter some valid desctiption for these comments", stopsign!)
+				return 1
+			end if
+		next
+		if f_validatedw(this.id_header) < 0 then
+			return 1
+		end if
+		this.il_currrow = this.id_header.rowcount()
+		if this.ib_rowvalidated = false and wf_validateitem() = -1 then
+			return 1
+		end if
+		this.istr_comments = lstr_comments
+		for ll_counter = 1 to this.id_header.rowcount()
+			this.id_header.object.rowid[ll_counter] = this.id_header.object.c_rowid[ll_counter]
+			this.istr_comments.ls_value[ll_counter, 1] = trim(string(this.id_header.object.rowid[ll_counter]))
+			this.istr_comments.ls_value[ll_counter, 2] = this.id_header.object.description[ll_counter]
+			this.istr_comments.ls_value[ll_counter, 3] = this.id_header.object.comments[ll_counter]
+		next
+	end if
+	if ai_closemode > 0 then
+		this.istr_comments.selectedrow = ll_currrow
+	else
+		this.istr_comments.selectedrow = 0
+	end if
+	this.istr_comments.i_closemode = ai_closemode
+	closewithreturn(this, this.istr_comments)
+	return 0
+
+// w_servicecomponent_comments.wf_validateitem() returns integer
+	string ls_optionname
+	integer li_errcode
+	string ls_null
+	ls_optionname = this.id_header.getitemstring(this.il_currrow, "description")
+	if vf_dwdupstring(this.id_header, "description", ls_optionname, this.il_currrow) = true then
+		messagebox("Duplication Error", "Current row is duplicate")
+		li_errcode = -1
+		this.ib_rowvalidated = false
+	else
+		li_errcode = 0
+		this.ib_rowvalidated = true
+	end if
+	if li_errcode = -1 then
+		setnull(ls_null)
+		this.id_header.setcolumn("description")
+		this.id_header.scrolltorow(this.il_currrow)
+		this.id_header.object.description[this.il_currrow] = ls_null
+	end if
+	return li_errcode
+
+// w_servicecomponent_comments.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+
+// w_servicecomponent_comments.wf_show_comments(integer al_row) returns long
+	s_comments lstr_comments
+	if al_row > 0 then
+		lstr_comments.s_comment = this.id_header.object.comments[al_row]
+		openwithparm(w_servicecomponents_rowid_comments, lstr_comments)
+		lstr_comments = message.powerobjectparm
+		if lstr_comments.i_closemode = 1 then
+			this.id_header.object.comments[al_row] = lstr_comments.s_comment
+		end if
+	end if
+	return 0
+
+// w_servicecomponent_comments.create() returns 0
+	this.cb_ok = create cb_ok
+	this.cb_cancel = create cb_cancel
+	this.dw_viewheader = create dw_viewheader
+	this.control = {this.cb_ok, this.cb_cancel, this.dw_viewheader}
+
+// w_servicecomponent_comments.destroy() returns 0
+	destroy this.cb_ok
+	destroy this.cb_cancel
+	destroy this.dw_viewheader
+
+// w_servicecomponent_comments.open() returns long
+	long ll_row
+	long ll_currrow
+	long ll_counter
+	string ls_saletype
+	integer li_protect
+	integer li_view_cashorcredit
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	this.id_header = this.dw_viewheader
+	this.id_header.settransobject(sqlca)
+	this.istr_comments = message.powerobjectparm
+	if this.istr_comments.ls_value[1, 1] <> "" and not isnull(this.istr_comments.ls_value[1, 1]) then
+		for ll_counter = 1 to 200
+			if this.istr_comments.ls_value[ll_counter, 1] <> "" and not isnull(this.istr_comments.ls_value[ll_counter, 1]) then
+				ll_row = this.id_header.insertrow(0)
+				this.id_header.object.rowid[ll_row] = integer(this.istr_comments.ls_value[ll_counter, 1])
+				this.id_header.object.description[ll_row] = this.istr_comments.ls_value[ll_counter, 2]
+				this.id_header.object.comments[ll_row] = this.istr_comments.ls_value[ll_counter, 3]
+			end if
+		next
+	end if
+	if this.id_header.rowcount() = 0 then
+		this.id_header.insertrow(0)
+	end if
+	this.id_header.scrolltorow(this.id_header.rowcount())
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		triggerevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// dw_viewheader.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ll_rowcount
+	if key = keyescape! then
+		parent.post event ue_close(-1)
+	end if
+	if keyflags = 2 then
+		if key = keyi! then
+			if parent.ib_rowvalidated = false and parent.wf_validateitem() = -1 then
+				return ::message.returnvalue
+			end if
+			if parent.id_header.rowcount() > 0 and f_validatedw(parent.id_header) < 0 then
+				return ::message.returnvalue
+			end if
+			ll_rowcount = parent.id_header.insertrow(0)
+			if ll_rowcount > 1 then
+				parent.id_header.scrolltorow(ll_rowcount)
+				parent.id_header.setfocus()
+			end if
+		end if
+		if key = keyd! then
+			parent.ib_rowvalidated = true
+			if parent.id_header.rowcount() > 0 then
+				parent.id_header.deleterow(0)
+			end if
+			ll_rowcount = parent.id_header.rowcount()
+			if ll_rowcount > 1 then
+				parent.id_header.scrolltorow(ll_rowcount)
+				parent.id_header.setfocus()
+			end if
+			parent.ib_rowvalidated = true
+		end if
+	end if
+	return ::message.returnvalue
+
+// dw_viewheader.ue_enterkey() returns long
+	long ll_rowcount
+	if getrow() = rowcount() and getcolumn() = integer(this.object.datawindow.column.count) then
+		if parent.id_header.rowcount() > 0 and f_validatedw(parent.id_header) < 0 then
+			return ::message.returnvalue
+		end if
+		if parent.ib_rowvalidated = false and parent.wf_validateitem() = -1 then
+			return 1
+		end if
+		if parent.id_header.object.description[getrow()] = "" or isnull(parent.id_header.object.description[getrow()]) then
+			return ::message.returnvalue
+		else
+			ll_rowcount = parent.id_header.insertrow(0)
+		end if
+		if ll_rowcount > 1 then
+			parent.id_header.scrolltorow(ll_rowcount)
+			parent.id_header.setfocus()
+		end if
+		return 1
+	end if
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_viewheader.itemerror(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "description"
+		if data = "" or isnull(data) then
+			messagebox("Description Validation", "Value required Description in current row")
+		end if
+	end choose
+	return 1
+
+// dw_viewheader.itemfocuschanged(long row, dwobject dwo) returns long
+	if parent.ib_rowvalidated = false and parent.wf_validateitem() = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_viewheader.itemchanged(long row, dwobject dwo, string data) returns long
+	integer li_errcode
+	choose case dwo.name
+	case "description"
+		parent.ib_rowvalidated = false
+		parent.il_currrow = row
+		li_errcode = 0
+	case else
+		parent.ib_rowvalidated = true
+	end choose
+	return li_errcode
+
+// dw_viewheader.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	choose case dwo.name
+	case "b_comments"
+		parent.wf_show_comments(row)
+	end choose
+	return ::message.returnvalue

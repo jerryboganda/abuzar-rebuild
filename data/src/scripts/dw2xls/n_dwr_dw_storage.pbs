@@ -1,0 +1,38 @@
+// userobject n_dwr_dw_storage (dw2xls)  ancestor: nonvisualobject
+
+// n_dwr_dw_storage.of_clear() returns 0
+	string[] ls_empty
+	is_name = ls_empty
+	is_syntax = ls_empty
+	is_comment = ls_empty
+
+// n_dwr_dw_storage.of_add_dw(string as_name, string as_syntax, string as_comment) returns 0
+	long ll_next
+	ll_next = upperbound(is_name) + 1
+	is_name[ll_next] = as_name
+	is_syntax[ll_next] = as_syntax
+	is_comment[ll_next] = as_comment
+
+// n_dwr_dw_storage.of_storetopbl(string as_pbl) returns integer
+	integer li_ret
+	long ll_i
+	string ls_errors
+	if fileexists(as_pbl) and not filedelete(as_pbl) then
+		return -1
+	end if
+	li_ret = librarycreate(as_pbl)
+	if li_ret <> 1 then
+		return li_ret
+	end if
+	for ll_i = 1 to upperbound(is_name)
+		li_ret = libraryimport(as_pbl, is_name[ll_i], importdatawindow!, is_syntax[ll_i], ls_errors, is_comment[ll_i])
+	next
+	return 1
+
+// n_dwr_dw_storage.create() returns 0
+	call super::create
+	triggerevent("constructor")
+
+// n_dwr_dw_storage.destroy() returns 0
+	triggerevent("destructor")
+	call super::destroy

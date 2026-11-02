@@ -1,0 +1,374 @@
+// window w_groupwiseheadersetting (templates)  ancestor: window
+
+// w_groupwiseheadersetting.ue_save() returns 0
+	long ll_row
+	long ll_totrows
+	long ll_rowcount
+	long ll_retval
+	setpointer(hourglass!)
+	if f_validatedw(this.dw_groupinfo) < 0 then
+		return
+	end if
+	if f_validatedw(this.dw_groupallowedheader_sale) < 0 then
+		return
+	end if
+	if f_validatedw(this.dw_groupallowedheader_salereturn) < 0 then
+		return
+	end if
+	if f_validatedw(this.dw_groupallowedheader_purchase) < 0 then
+		return
+	end if
+	if f_validatedw(this.dw_groupallowedheader_purchasereturn) < 0 then
+		return
+	end if
+	if f_validatedw(this.dw_groupallowedheader_issue) < 0 then
+		return
+	end if
+	if f_validatedw(this.dw_groupallowedheader_receipt) < 0 then
+		return
+	end if
+	if f_validatedw(this.dw_groupallowedheader_adjustment) < 0 then
+		return
+	end if
+	if f_validatedw(this.dw_groupallowedheader_transfer) < 0 then
+		return
+	end if
+	if f_validatedw(this.dw_groupallowedheader_saleorder) < 0 then
+		return
+	end if
+	if f_validatedw(this.dw_groupallowedheader_quotation) < 0 then
+		return
+	end if
+	if f_validatedw(this.dw_groupallowedheader_advancedsale) < 0 then
+		return
+	end if
+	if f_validatedw(this.dw_groupallowedheader_servicesale) < 0 then
+		return
+	end if
+	if f_validatedw(this.dw_groupallowedheader_servicesr) < 0 then
+		return
+	end if
+	if f_validatedw(this.dw_groupallowedheader_servicepur) < 0 then
+		return
+	end if
+	if f_validatedw(this.dw_groupallowedheader_servicepr) < 0 then
+		return
+	end if
+	ll_totrows = this.dw_groupallowedheaderdetail.rowcount()
+	ll_row = 0
+	do while ll_totrows > 0 and ll_row <= ll_totrows
+		this.dw_groupallowedheaderdetail.deleterow(0)
+		ll_row = ll_row + 1
+	loop
+	ll_retval = wf_getgroupallowedheader(this.dw_groupallowedheader_sale, this.dw_groupallowedheaderdetail)
+	ll_retval = wf_getgroupallowedheader(this.dw_groupallowedheader_salereturn, this.dw_groupallowedheaderdetail)
+	ll_retval = wf_getgroupallowedheader(this.dw_groupallowedheader_purchase, this.dw_groupallowedheaderdetail)
+	ll_retval = wf_getgroupallowedheader(this.dw_groupallowedheader_purchasereturn, this.dw_groupallowedheaderdetail)
+	ll_retval = wf_getgroupallowedheader(this.dw_groupallowedheader_issue, this.dw_groupallowedheaderdetail)
+	ll_retval = wf_getgroupallowedheader(this.dw_groupallowedheader_receipt, this.dw_groupallowedheaderdetail)
+	ll_retval = wf_getgroupallowedheader(this.dw_groupallowedheader_adjustment, this.dw_groupallowedheaderdetail)
+	ll_retval = wf_getgroupallowedheader(this.dw_groupallowedheader_transfer, this.dw_groupallowedheaderdetail)
+	ll_retval = wf_getgroupallowedheader(this.dw_groupallowedheader_saleorder, this.dw_groupallowedheaderdetail)
+	ll_retval = wf_getgroupallowedheader(this.dw_groupallowedheader_quotation, this.dw_groupallowedheaderdetail)
+	ll_retval = wf_getgroupallowedheader(this.dw_groupallowedheader_advancedsale, this.dw_groupallowedheaderdetail)
+	ll_retval = wf_getgroupallowedheader(this.dw_groupallowedheader_servicepur, this.dw_groupallowedheaderdetail)
+	ll_retval = wf_getgroupallowedheader(this.dw_groupallowedheader_servicepr, this.dw_groupallowedheaderdetail)
+	ll_retval = wf_getgroupallowedheader(this.dw_groupallowedheader_servicesale, this.dw_groupallowedheaderdetail)
+	ll_retval = wf_getgroupallowedheader(this.dw_groupallowedheader_servicesr, this.dw_groupallowedheaderdetail)
+	if this.dw_groupallowedheaderdetail.update() > 0 then
+		SQL commit USING sqlca;
+		messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+		setpointer(arrow!)
+		post event Close()
+	else
+		SQL rollback USING sqlca;
+		setpointer(arrow!)
+		messagebox("Save Changes", "Changes Rollback in database, ~n~rSome database problem occurs", exclamation!, ok!, 1)
+		return
+	end if
+	setpointer(arrow!)
+
+// w_groupwiseheadersetting.wf_validategroupallowedheader(datawindow ad_grouplist) returns integer
+	long ll_totrows
+	long ll_row
+	long ll_retval
+	ll_totrows = ad_grouplist.rowcount()
+	ll_row = 1
+	ll_retval = 0
+	do while ll_totrows <> 0 and ll_row <= ll_totrows
+		if ad_grouplist.object.allowed[ll_row] = 1 then
+			ll_retval = ll_row
+			return ll_retval
+		end if
+		ll_row = ll_row + 1
+	loop
+	return ll_retval
+
+// w_groupwiseheadersetting.wf_insertheaderinfo(datawindow adw_targetdw, long al_headercode, string as_headername, string as_headeralias, long al_groupcode, integer ai_module) returns 0
+	long ll_row
+	ll_row = adw_targetdw.insertrow(0)
+	adw_targetdw.object.groupcode[ll_row] = al_groupcode
+	adw_targetdw.object.header[ll_row] = as_headername
+	adw_targetdw.object.headeralias[ll_row] = as_headeralias
+	adw_targetdw.object.headercode[ll_row] = al_headercode
+	adw_targetdw.object.allowed[ll_row] = 0
+	adw_targetdw.object.module[ll_row] = ai_module
+	adw_targetdw.object.priority[ll_row] = 10
+
+// w_groupwiseheadersetting.wf_getgroupallowedheader(datawindow ad_sourcedw, datawindow ad_targetdw) returns long
+	long ll_totrows
+	long ll_row
+	long ll_newrow
+	ll_totrows = ad_sourcedw.rowcount()
+	ll_row = 1
+	do while ll_totrows <> 0 and ll_row <= ll_totrows
+		if ad_sourcedw.object.allowed[ll_row] = 1 then
+			ll_newrow = ad_targetdw.insertrow(0)
+			ad_targetdw.object.groupcode[ll_newrow] = ad_sourcedw.object.groupcode[ll_row]
+			ad_targetdw.object.headercode[ll_newrow] = ad_sourcedw.object.headercode[ll_row]
+			ad_targetdw.object.module[ll_newrow] = ad_sourcedw.object.module[ll_row]
+			ad_targetdw.object.allowed[ll_newrow] = ad_sourcedw.object.allowed[ll_row]
+			ad_targetdw.object.priority[ll_newrow] = ad_sourcedw.object.priority[ll_row]
+		end if
+		ll_row = ll_row + 1
+	loop
+	return 1
+
+// w_groupwiseheadersetting.create() returns 0
+	if this.menuname = "m_groupheadersetting" then
+		this.menuid = create m_groupheadersetting
+	end if
+	this.dw_groupallowedheader_servicepur = create dw_groupallowedheader_servicepur
+	this.dw_groupallowedheader_servicepr = create dw_groupallowedheader_servicepr
+	this.dw_groupallowedheader_servicesr = create dw_groupallowedheader_servicesr
+	this.dw_groupallowedheader_servicesale = create dw_groupallowedheader_servicesale
+	this.dw_groupallowedheader_advancedsale = create dw_groupallowedheader_advancedsale
+	this.dw_groupallowedheader_quotation = create dw_groupallowedheader_quotation
+	this.dw_groupallowedheader_saleorder = create dw_groupallowedheader_saleorder
+	this.cb_cancel = create cb_cancel
+	this.cb_save = create cb_save
+	this.dw_groupallowedheaderdetail = create dw_groupallowedheaderdetail
+	this.dw_groupallowedheader_transfer = create dw_groupallowedheader_transfer
+	this.dw_groupallowedheader_adjustment = create dw_groupallowedheader_adjustment
+	this.dw_groupallowedheader_receipt = create dw_groupallowedheader_receipt
+	this.dw_groupallowedheader_issue = create dw_groupallowedheader_issue
+	this.dw_groupallowedheader_purchasereturn = create dw_groupallowedheader_purchasereturn
+	this.dw_groupallowedheader_purchase = create dw_groupallowedheader_purchase
+	this.dw_groupallowedheader_salereturn = create dw_groupallowedheader_salereturn
+	this.dw_groupallowedheader_sale = create dw_groupallowedheader_sale
+	this.dw_groupinfo = create dw_groupinfo
+	this.gb_sale = create gb_sale
+	this.gb_salereturn = create gb_salereturn
+	this.gb_purchase = create gb_purchase
+	this.gb_purchasereturn = create gb_purchasereturn
+	this.gb_issue = create gb_issue
+	this.gb_receipt = create gb_receipt
+	this.gb_adjustment = create gb_adjustment
+	this.gb_transfer = create gb_transfer
+	this.gb_saleorder = create gb_saleorder
+	this.gb_quotation = create gb_quotation
+	this.gb_advancedsale = create gb_advancedsale
+	this.gb_servicesr = create gb_servicesr
+	this.gb_servicesale = create gb_servicesale
+	this.gb_servicepr = create gb_servicepr
+	this.gb_servicepur = create gb_servicepur
+	this.control = {this.dw_groupallowedheader_servicepur, this.dw_groupallowedheader_servicepr, this.dw_groupallowedheader_servicesr, this.dw_groupallowedheader_servicesale, this.dw_groupallowedheader_advancedsale, this.dw_groupallowedheader_quotation, this.dw_groupallowedheader_saleorder, this.cb_cancel, this.cb_save, this.dw_groupallowedheaderdetail, this.dw_groupallowedheader_transfer, this.dw_groupallowedheader_adjustment, this.dw_groupallowedheader_receipt, this.dw_groupallowedheader_issue, this.dw_groupallowedheader_purchasereturn, this.dw_groupallowedheader_purchase, this.dw_groupallowedheader_salereturn, this.dw_groupallowedheader_sale, this.dw_groupinfo, this.gb_sale, this.gb_salereturn, this.gb_purchase, this.gb_purchasereturn, this.gb_issue, this.gb_receipt, this.gb_adjustment, this.gb_transfer, this.gb_saleorder, this.gb_quotation, this.gb_advancedsale, this.gb_servicesr, this.gb_servicesale, this.gb_servicepr, this.gb_servicepur}
+
+// w_groupwiseheadersetting.destroy() returns 0
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_groupallowedheader_servicepur
+	destroy this.dw_groupallowedheader_servicepr
+	destroy this.dw_groupallowedheader_servicesr
+	destroy this.dw_groupallowedheader_servicesale
+	destroy this.dw_groupallowedheader_advancedsale
+	destroy this.dw_groupallowedheader_quotation
+	destroy this.dw_groupallowedheader_saleorder
+	destroy this.cb_cancel
+	destroy this.cb_save
+	destroy this.dw_groupallowedheaderdetail
+	destroy this.dw_groupallowedheader_transfer
+	destroy this.dw_groupallowedheader_adjustment
+	destroy this.dw_groupallowedheader_receipt
+	destroy this.dw_groupallowedheader_issue
+	destroy this.dw_groupallowedheader_purchasereturn
+	destroy this.dw_groupallowedheader_purchase
+	destroy this.dw_groupallowedheader_salereturn
+	destroy this.dw_groupallowedheader_sale
+	destroy this.dw_groupinfo
+	destroy this.gb_sale
+	destroy this.gb_salereturn
+	destroy this.gb_purchase
+	destroy this.gb_purchasereturn
+	destroy this.gb_issue
+	destroy this.gb_receipt
+	destroy this.gb_adjustment
+	destroy this.gb_transfer
+	destroy this.gb_saleorder
+	destroy this.gb_quotation
+	destroy this.gb_advancedsale
+	destroy this.gb_servicesr
+	destroy this.gb_servicesale
+	destroy this.gb_servicepr
+	destroy this.gb_servicepur
+
+// w_groupwiseheadersetting.open() returns long
+	long ll_groupcode
+	long ll_row
+	long ll_totrows
+	long ll_module
+	long ll_headercode
+	long ll_found
+	string ls_datawindow
+	string ls_headername
+	string ls_headeralias
+	ll_groupcode = message.doubleparm
+	for ll_row = 1 to gds_reoprtheaderinfo.rowcount()
+		ll_headercode = gds_reoprtheaderinfo.getitemnumber(ll_row, "headerno")
+		ls_headername = gds_reoprtheaderinfo.getitemstring(ll_row, "clientname")
+		ls_headeralias = gds_reoprtheaderinfo.getitemstring(ll_row, "remarks")
+		wf_insertheaderinfo(this.dw_groupallowedheader_sale, ll_headercode, ls_headername, ls_headeralias, ll_groupcode, 1)
+		wf_insertheaderinfo(this.dw_groupallowedheader_salereturn, ll_headercode, ls_headername, ls_headeralias, ll_groupcode, 2)
+		wf_insertheaderinfo(this.dw_groupallowedheader_purchase, ll_headercode, ls_headername, ls_headeralias, ll_groupcode, 3)
+		wf_insertheaderinfo(this.dw_groupallowedheader_purchasereturn, ll_headercode, ls_headername, ls_headeralias, ll_groupcode, 4)
+		wf_insertheaderinfo(this.dw_groupallowedheader_issue, ll_headercode, ls_headername, ls_headeralias, ll_groupcode, 5)
+		wf_insertheaderinfo(this.dw_groupallowedheader_receipt, ll_headercode, ls_headername, ls_headeralias, ll_groupcode, 6)
+		wf_insertheaderinfo(this.dw_groupallowedheader_adjustment, ll_headercode, ls_headername, ls_headeralias, ll_groupcode, 7)
+		wf_insertheaderinfo(this.dw_groupallowedheader_transfer, ll_headercode, ls_headername, ls_headeralias, ll_groupcode, 8)
+		wf_insertheaderinfo(this.dw_groupallowedheader_saleorder, ll_headercode, ls_headername, ls_headeralias, ll_groupcode, 12)
+		wf_insertheaderinfo(this.dw_groupallowedheader_quotation, ll_headercode, ls_headername, ls_headeralias, ll_groupcode, 15)
+		wf_insertheaderinfo(this.dw_groupallowedheader_advancedsale, ll_headercode, ls_headername, ls_headeralias, ll_groupcode, 21)
+		wf_insertheaderinfo(this.dw_groupallowedheader_servicepur, ll_headercode, ls_headername, ls_headeralias, ll_groupcode, 43)
+		wf_insertheaderinfo(this.dw_groupallowedheader_servicepr, ll_headercode, ls_headername, ls_headeralias, ll_groupcode, 44)
+		wf_insertheaderinfo(this.dw_groupallowedheader_servicesale, ll_headercode, ls_headername, ls_headeralias, ll_groupcode, 51)
+		wf_insertheaderinfo(this.dw_groupallowedheader_servicesr, ll_headercode, ls_headername, ls_headeralias, ll_groupcode, 52)
+	next
+	this.dw_groupinfo.settransobject(sqlca)
+	this.dw_groupallowedheaderdetail.settransobject(sqlca)
+	this.dw_groupinfo.retrieve(ll_groupcode)
+	ll_row = this.dw_groupinfo.rowcount()
+	if ll_row <= 0 then
+		messagebox("Database Error", "Problem occured at database.")
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	ll_groupcode = this.dw_groupinfo.getitemnumber(ll_row, "code")
+	this.dw_groupallowedheaderdetail.retrieve(ll_groupcode)
+	for ll_row = 1 to this.dw_groupallowedheaderdetail.rowcount()
+		choose case this.dw_groupallowedheaderdetail.getitemnumber(ll_row, "module")
+		case 1.0
+			ll_found = this.dw_groupallowedheader_sale.find("headercode = " + trim(string(this.dw_groupallowedheaderdetail.getitemnumber(ll_row, "headercode"))), 1, this.dw_groupallowedheader_sale.rowcount())
+			if ll_found > 0 then
+				this.dw_groupallowedheader_sale.setitem(ll_found, "allowed", 1)
+				this.dw_groupallowedheader_sale.setitem(ll_found, "priority", this.dw_groupallowedheaderdetail.getitemnumber(ll_row, "priority"))
+			end if
+		case 2.0
+			ll_found = this.dw_groupallowedheader_salereturn.find("headercode = " + trim(string(this.dw_groupallowedheaderdetail.getitemnumber(ll_row, "headercode"))), 1, this.dw_groupallowedheader_salereturn.rowcount())
+			if ll_found > 0 then
+				this.dw_groupallowedheader_salereturn.setitem(ll_found, "allowed", 1)
+				this.dw_groupallowedheader_salereturn.setitem(ll_found, "priority", this.dw_groupallowedheaderdetail.getitemnumber(ll_row, "priority"))
+			end if
+		case 3.0
+			ll_found = this.dw_groupallowedheader_purchase.find("headercode = " + trim(string(this.dw_groupallowedheaderdetail.getitemnumber(ll_row, "headercode"))), 1, this.dw_groupallowedheader_purchase.rowcount())
+			if ll_found > 0 then
+				this.dw_groupallowedheader_purchase.setitem(ll_found, "allowed", 1)
+				this.dw_groupallowedheader_purchase.setitem(ll_found, "priority", this.dw_groupallowedheaderdetail.getitemnumber(ll_row, "priority"))
+			end if
+		case 4.0
+			ll_found = this.dw_groupallowedheader_purchasereturn.find("headercode = " + trim(string(this.dw_groupallowedheaderdetail.getitemnumber(ll_row, "headercode"))), 1, this.dw_groupallowedheader_purchasereturn.rowcount())
+			if ll_found > 0 then
+				this.dw_groupallowedheader_purchasereturn.setitem(ll_found, "allowed", 1)
+				this.dw_groupallowedheader_purchasereturn.setitem(ll_found, "priority", this.dw_groupallowedheaderdetail.getitemnumber(ll_row, "priority"))
+			end if
+		case 5.0
+			ll_found = this.dw_groupallowedheader_issue.find("headercode = " + trim(string(this.dw_groupallowedheaderdetail.getitemnumber(ll_row, "headercode"))), 1, this.dw_groupallowedheader_issue.rowcount())
+			if ll_found > 0 then
+				this.dw_groupallowedheader_issue.setitem(ll_found, "allowed", 1)
+				this.dw_groupallowedheader_issue.setitem(ll_found, "priority", this.dw_groupallowedheaderdetail.getitemnumber(ll_row, "priority"))
+			end if
+		case 6.0
+			ll_found = this.dw_groupallowedheader_receipt.find("headercode = " + trim(string(this.dw_groupallowedheaderdetail.getitemnumber(ll_row, "headercode"))), 1, this.dw_groupallowedheader_receipt.rowcount())
+			if ll_found > 0 then
+				this.dw_groupallowedheader_receipt.setitem(ll_found, "allowed", 1)
+				this.dw_groupallowedheader_receipt.setitem(ll_found, "priority", this.dw_groupallowedheaderdetail.getitemnumber(ll_row, "priority"))
+			end if
+		case 7.0
+			ll_found = this.dw_groupallowedheader_adjustment.find("headercode = " + trim(string(this.dw_groupallowedheaderdetail.getitemnumber(ll_row, "headercode"))), 1, this.dw_groupallowedheader_adjustment.rowcount())
+			if ll_found > 0 then
+				this.dw_groupallowedheader_adjustment.setitem(ll_found, "allowed", 1)
+				this.dw_groupallowedheader_adjustment.setitem(ll_found, "priority", this.dw_groupallowedheaderdetail.getitemnumber(ll_row, "priority"))
+			end if
+		case 8.0
+			ll_found = this.dw_groupallowedheader_transfer.find("headercode = " + trim(string(this.dw_groupallowedheaderdetail.getitemnumber(ll_row, "headercode"))), 1, this.dw_groupallowedheader_transfer.rowcount())
+			if ll_found > 0 then
+				this.dw_groupallowedheader_transfer.setitem(ll_found, "allowed", 1)
+				this.dw_groupallowedheader_transfer.setitem(ll_found, "priority", this.dw_groupallowedheaderdetail.getitemnumber(ll_row, "priority"))
+			end if
+		case 12.0
+			ll_found = this.dw_groupallowedheader_saleorder.find("headercode = " + trim(string(this.dw_groupallowedheaderdetail.getitemnumber(ll_row, "headercode"))), 1, this.dw_groupallowedheader_saleorder.rowcount())
+			if ll_found > 0 then
+				this.dw_groupallowedheader_saleorder.setitem(ll_found, "allowed", 1)
+				this.dw_groupallowedheader_saleorder.setitem(ll_found, "priority", this.dw_groupallowedheaderdetail.getitemnumber(ll_row, "priority"))
+			end if
+		case 15.0
+			ll_found = this.dw_groupallowedheader_quotation.find("headercode = " + trim(string(this.dw_groupallowedheaderdetail.getitemnumber(ll_row, "headercode"))), 1, this.dw_groupallowedheader_quotation.rowcount())
+			if ll_found > 0 then
+				this.dw_groupallowedheader_quotation.setitem(ll_found, "allowed", 1)
+				this.dw_groupallowedheader_quotation.setitem(ll_found, "priority", this.dw_groupallowedheaderdetail.getitemnumber(ll_row, "priority"))
+			end if
+		case 21.0
+			ll_found = this.dw_groupallowedheader_advancedsale.find("headercode = " + trim(string(this.dw_groupallowedheaderdetail.getitemnumber(ll_row, "headercode"))), 1, this.dw_groupallowedheader_advancedsale.rowcount())
+			if ll_found > 0 then
+				this.dw_groupallowedheader_advancedsale.setitem(ll_found, "allowed", 1)
+				this.dw_groupallowedheader_advancedsale.setitem(ll_found, "priority", this.dw_groupallowedheaderdetail.getitemnumber(ll_row, "priority"))
+			end if
+		case 43.0
+			ll_found = this.dw_groupallowedheader_servicepur.find("headercode = " + trim(string(this.dw_groupallowedheaderdetail.getitemnumber(ll_row, "headercode"))), 1, this.dw_groupallowedheader_servicepur.rowcount())
+			if ll_found > 0 then
+				this.dw_groupallowedheader_servicepur.setitem(ll_found, "allowed", 1)
+				this.dw_groupallowedheader_servicepur.setitem(ll_found, "priority", this.dw_groupallowedheaderdetail.getitemnumber(ll_row, "priority"))
+			end if
+		case 44.0
+			ll_found = this.dw_groupallowedheader_servicepr.find("headercode = " + trim(string(this.dw_groupallowedheaderdetail.getitemnumber(ll_row, "headercode"))), 1, this.dw_groupallowedheader_servicepr.rowcount())
+			if ll_found > 0 then
+				this.dw_groupallowedheader_servicepr.setitem(ll_found, "allowed", 1)
+				this.dw_groupallowedheader_servicepr.setitem(ll_found, "priority", this.dw_groupallowedheaderdetail.getitemnumber(ll_row, "priority"))
+			end if
+		case 51.0
+			ll_found = this.dw_groupallowedheader_servicesale.find("headercode = " + trim(string(this.dw_groupallowedheaderdetail.getitemnumber(ll_row, "headercode"))), 1, this.dw_groupallowedheader_servicesale.rowcount())
+			if ll_found > 0 then
+				this.dw_groupallowedheader_servicesale.setitem(ll_found, "allowed", 1)
+				this.dw_groupallowedheader_servicesale.setitem(ll_found, "priority", this.dw_groupallowedheaderdetail.getitemnumber(ll_row, "priority"))
+			end if
+		case 52.0
+			ll_found = this.dw_groupallowedheader_servicesr.find("headercode = " + trim(string(this.dw_groupallowedheaderdetail.getitemnumber(ll_row, "headercode"))), 1, this.dw_groupallowedheader_servicesr.rowcount())
+			if ll_found > 0 then
+				this.dw_groupallowedheader_servicesr.setitem(ll_found, "allowed", 1)
+				this.dw_groupallowedheader_servicesr.setitem(ll_found, "priority", this.dw_groupallowedheaderdetail.getitemnumber(ll_row, "priority"))
+			end if
+		end choose
+	next
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_groupwiseheadersetting.close() returns long
+	close(this)
+	return ::message.returnvalue
+
+// w_groupwiseheadersetting.activate() returns long
+	this.windowstate = maximized!
+	setredraw(true)
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event Close()
+	return ::message.returnvalue
+
+// cb_save.clicked() returns long
+	parent.post event ue_save()
+	return ::message.returnvalue

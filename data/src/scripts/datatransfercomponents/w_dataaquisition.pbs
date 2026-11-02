@@ -1,0 +1,279 @@
+// window w_dataaquisition (datatransfercomponents)  ancestor: window
+
+// w_dataaquisition.ue_close(integer ai_status) returns 0
+	SQL stop USING this.it_datatransobject;
+	destroy this.it_datatransobject
+	close(this)
+
+// w_dataaquisition.wf_disconnect() returns 0
+	SQL stop USING this.it_datatransobject;
+	destroy this.it_datatransobject
+
+// w_dataaquisition.wf_connect() returns integer
+	this.it_datatransobject = create u_transaction
+	this.it_datatransobject.autocommit = true
+	SQL start USING this.it_datatransobject;
+	return this.it_datatransobject.sqlcode
+
+// w_dataaquisition.create() returns 0
+	this.st_backupname = create st_backupname
+	this.cb_selectfile = create cb_selectfile
+	this.st_3 = create st_3
+	this.st_2 = create st_2
+	this.st_1_ok = create st_1_ok
+	this.st_1 = create st_1
+	this.hpb_basic = create hpb_basic
+	this.cb_cancel = create cb_cancel
+	this.cb_start = create cb_start
+	this.st_1_cancel = create st_1_cancel
+	this.gb_basic = create gb_basic
+	this.st_2_ok = create st_2_ok
+	this.st_2_cancel = create st_2_cancel
+	this.st_3_ok = create st_3_ok
+	this.st_3_cancel = create st_3_cancel
+	this.gb_options = create gb_options
+	this.control = {this.st_backupname, this.cb_selectfile, this.st_3, this.st_2, this.st_1_ok, this.st_1, this.hpb_basic, this.cb_cancel, this.cb_start, this.st_1_cancel, this.gb_basic, this.st_2_ok, this.st_2_cancel, this.st_3_ok, this.st_3_cancel, this.gb_options}
+
+// w_dataaquisition.destroy() returns 0
+	destroy this.st_backupname
+	destroy this.cb_selectfile
+	destroy this.st_3
+	destroy this.st_2
+	destroy this.st_1_ok
+	destroy this.st_1
+	destroy this.hpb_basic
+	destroy this.cb_cancel
+	destroy this.cb_start
+	destroy this.st_1_cancel
+	destroy this.gb_basic
+	destroy this.st_2_ok
+	destroy this.st_2_cancel
+	destroy this.st_3_ok
+	destroy this.st_3_cancel
+	destroy this.gb_options
+
+// w_dataaquisition.open() returns long
+	long ll_groupcode
+	long ll_count
+	long ll_usercode
+	long ll_appversion
+	long ll_sequenceid
+	long ll_dbstatus
+	long ll_parentappversion
+	long ll_parentsequenceid
+	long ll_parentdbstatus
+	long ll_retcode
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	open(w_salesmanpassword)
+	ll_usercode = long(message.doubleparm)
+	if ll_usercode < 0 or isnull(ll_usercode) then
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	else
+		ll_groupcode = f_getgroupcode(ll_usercode)
+		if ll_groupcode > 0 then
+			SQL SELECT ISNULL ( COUNT ( RightCode ) , 0 ) INTO :ll_count FROM GroupRights WHERE GroupCode =:ll_groupcode AND RightCode IN ( 1481 ) USING sqlca;
+			if isnull(ll_count) then
+				ll_count = 0
+			end if
+			if sqlca.sqlcode <> 0 then
+				close(this)
+				if not isvalid(message) then
+					return 0
+				end if
+				return message.returnvalue
+			elseif ll_count = 0 then
+				messagebox("Rights Validation", "You do not have rights to execute this business function/process.~r~nKindly consult your system administrator.", stopsign!)
+				close(this)
+				if not isvalid(message) then
+					return 0
+				end if
+				return message.returnvalue
+			end if
+		else
+			close(this)
+			if not isvalid(message) then
+				return 0
+			end if
+			return message.returnvalue
+		end if
+	end if
+	open(w_dataaquisition_alert)
+	if message.doubleparm <= 0.0 then
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	ll_retcode = wf_connect()
+	if ll_retcode <> 0 then
+		messagebox("Connection Problem", "Problem Connecting Database, Details are:-~r~n" + this.it_datatransobject.sqlerrtext)
+		post event ue_close(0)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_dataaquisition.close() returns long
+	return ::message.returnvalue
+
+// cb_selectfile.clicked() returns long
+	string docpath
+	string[] docname
+	integer i
+	integer li_cnt
+	integer li_rtn
+	integer li_filenum
+	docpath = f_stringpreferences("outputfilepath")
+	li_rtn = getfileopenname("Select File", docpath, docname, "PKT", "Packet Files (*.PKT),*.PKT,", docpath, 18)
+	if li_rtn < 1 then
+		return ::message.returnvalue
+	end if
+	li_cnt = upperbound(docname)
+	if li_cnt = 1 then
+		parent.is_packetfile = string(docpath)
+	else
+		for i = 1 to li_cnt
+			parent.is_packetfile = string(docpath) + "\" + string(docname[i]) + "~r~n" + parent.is_packetfile
+		next
+	end if
+	parent.st_backupname.text = parent.is_packetfile
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(0)
+	return ::message.returnvalue
+
+// cb_start.clicked() returns long
+	boolean lb_ok
+	string ls_errtext
+	string ls_backupfile
+	string ls_temp
+	long ll_retcode
+	long ll_res
+	long ll_sequenceid
+	long ll_appversion
+	long ll_dbstatus
+	long ll_dm_sequenceid
+	long ll_dm_appversion
+	long ll_dm_dbstatus
+	datastore lds_sequence
+	lds_sequence = create datastore
+	lds_sequence.dataobject = "d_sequence"
+	lds_sequence.settransobject(parent.it_datatransobject)
+	lds_sequence.retrieve()
+	ll_appversion = lds_sequence.getitemnumber(1, "AppVersion")
+	ll_sequenceid = lds_sequence.getitemnumber(1, "SequenceId")
+	ll_dbstatus = lds_sequence.getitemnumber(1, "DBStatus")
+	setpointer(hourglass!)
+	ll_res = messagebox("Risk Alert", "Data Aquisition is a risky process.~r~nIt Might cause data loss~r~nDo you still want to proceed with Process?", question!, yesno!, 2)
+	if ll_res > 1 then
+		return ::message.returnvalue
+	end if
+	SQL rollback USING parent.it_datatransobject;
+	parent.gb_basic.visible = true
+	parent.hpb_basic.visible = true
+	if lb_ok then
+		parent.gb_options.visible = true
+		parent.hpb_basic.stepit()
+		parent.st_1.visible = true
+		ll_retcode = parent.it_datatransobject.readdatamigrationpacket(parent.is_packetfile, gs_packetserver, parent.is_datamigration_db)
+		parent.hpb_basic.stepit()
+		if parent.it_datatransobject.sqlcode <> 0 then
+			ls_errtext = "Error occured while Reading Data Migration Packet~r~nDetails Are:-~r~n" + parent.it_datatransobject.sqlerrtext
+			SQL rollback USING parent.it_datatransobject;
+			messagebox("Data Aquisition Error - Step # 1", ls_errtext)
+			lb_ok = false
+			parent.st_1_cancel.visible = true
+		else
+			SQL commit USING parent.it_datatransobject;
+		end if
+		if lb_ok then
+			SQL stop USING parent.it_datatransobject;
+			parent.it_datatransobject.autocommit = false
+			SQL start USING parent.it_datatransobject;
+			parent.it_datatransobject.getversioninfo("", parent.is_datamigration_db, "DBO", ll_dm_sequenceid, ll_dm_appversion, ll_dm_dbstatus)
+			if parent.it_datatransobject.sqlcode <> 0 then
+				ls_errtext = "Error occured while enquiring for data migration packet version.~r~nDetails Are:-~r~n" + parent.it_datatransobject.sqlerrtext
+				SQL rollback USING parent.it_datatransobject;
+				messagebox("Data Aquisition Error - Step # 1-1", ls_errtext)
+				lb_ok = false
+			elseif not (ll_sequenceid = ll_dm_sequenceid and ll_appversion = ll_dm_appversion and ll_dbstatus = ll_dm_dbstatus) then
+				ls_errtext = "Data Migration Packet Version does not match with current database.~r~n" + "Kindly match Application version(s) of the involved servers.~r~nDetails are:~r~n" + "Packet Values are -> " + trim(string(ll_dm_appversion)) + "-" + trim(string(ll_dm_dbstatus)) + "-" + trim(string(ll_dm_sequenceid)) + "~r~nCurrent Application Values are -> " + trim(string(ll_appversion)) + "-" + trim(string(ll_dbstatus)) + "-" + trim(string(ll_sequenceid))
+				SQL rollback USING parent.it_datatransobject;
+				messagebox("Data Aquisition Error - Step # 1-2", ls_errtext)
+				lb_ok = false
+			end if
+		end if
+		if lb_ok then
+			parent.it_datatransobject.checkpacketcounters("", parent.is_datamigration_db, "DBO")
+			if parent.it_datatransobject.sqlcode <> 0 then
+				ls_errtext = "Error occured while check packet counters.~r~nDetails Are:-~r~n" + parent.it_datatransobject.sqlerrtext
+				SQL rollback USING parent.it_datatransobject;
+				messagebox("Data Aquisition Error - Step # 1-3", ls_errtext)
+				lb_ok = false
+			end if
+		end if
+		if lb_ok then
+			parent.st_1.textcolor = rgb(0, 150, 0)
+			parent.st_1_ok.visible = true
+			parent.st_2.visible = true
+			ll_retcode = parent.it_datatransobject.transferbasicdata("", parent.is_datamigration_db, "DBO")
+			parent.hpb_basic.stepit()
+			if parent.it_datatransobject.sqlcode <> 0 then
+				ls_errtext = "Error occured while Synchronizing basic data~r~nDetails Are:-~r~n" + parent.it_datatransobject.sqlerrtext
+				SQL rollback USING parent.it_datatransobject;
+				messagebox("Data Aquisition Error - Step # 2", ls_errtext)
+				lb_ok = false
+				parent.st_2_cancel.visible = true
+			end if
+		end if
+		if lb_ok then
+			parent.st_2.textcolor = rgb(0, 150, 0)
+			parent.st_2_ok.visible = true
+			parent.st_3.visible = true
+			ll_retcode = parent.it_datatransobject.aquirepostedtransactions("", parent.is_datamigration_db, "DBO")
+			parent.hpb_basic.stepit()
+			if parent.it_datatransobject.sqlcode <> 0 then
+				ls_errtext = "Error occured while Aquiring Transactions.~r~nDetails Are:-~r~n" + parent.it_datatransobject.sqlerrtext
+				SQL rollback USING parent.it_datatransobject;
+				messagebox("Data Aquisition Error - Step # 3", ls_errtext)
+				lb_ok = false
+				parent.st_3_cancel.visible = true
+			end if
+		end if
+		if lb_ok then
+			parent.st_3.textcolor = rgb(0, 150, 0)
+			parent.st_3_ok.visible = true
+			parent.hpb_basic.stepit()
+			SQL commit USING parent.it_datatransobject;
+			messagebox("Data Aquisition", "Data Aquisition completed.~r~nChanges Take Effect in database.", information!)
+			parent.hpb_basic.stepit()
+		end if
+	end if
+	setpointer(arrow!)
+	parent.post event ue_close(1)
+	return ::message.returnvalue

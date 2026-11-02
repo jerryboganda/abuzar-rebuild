@@ -1,0 +1,419 @@
+// window w_vouchercategory (accounts)  ancestor: w_multi_entry
+
+// w_vouchercategory.wf_pickselectedsubaccounts(datawindow ad_sourcedw, datawindow ad_targetdw) returns long
+	long ll_totrows
+	long ll_row
+	long ll_newrow
+	ll_totrows = ad_sourcedw.rowcount()
+	ll_row = 1
+	do while ll_totrows <> 0 and ll_row <= ll_totrows
+		if ad_sourcedw.object.selected[ll_row] = 1 then
+			ll_newrow = ad_targetdw.insertrow(0)
+			ad_targetdw.object.code[ll_newrow] = ad_sourcedw.object.code[ll_row]
+			ad_targetdw.object.subacccode[ll_newrow] = ad_sourcedw.object.subacccode[ll_row]
+		end if
+		ll_row = ll_row + 1
+	loop
+	return 1
+
+// w_vouchercategory.wf_duplicateshortname(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM VocherCategory WHERE VocherCategory.shortname =:as_name USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_vouchercategory.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM VocherCategory WHERE VocherCategory.name =:as_name USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_vouchercategory.wf_setjv(integer ai_jv) returns 0
+	long ll_null
+	string ls_null
+	setnull(ll_null)
+	setnull(ls_null)
+	if ai_jv = 0 then
+		if this.id_master.getitemnumber(1, "invoicebased") = 0.0 then
+			this.id_detail.visible = true
+			this.id_footer.visible = true
+		else
+			this.id_detail.visible = true
+			this.id_footer.visible = false
+		end if
+		return
+	end if
+	this.id_detail.visible = false
+	this.id_footer.visible = true
+
+// w_vouchercategory.wf_setinvoicebased(integer ai_invoicebased) returns 0
+	long ll_null
+	string ls_null
+	setnull(ll_null)
+	setnull(ls_null)
+	if ai_invoicebased = 0 then
+		if this.id_master.getitemnumber(1, "journalvoucher") = 0.0 then
+			this.id_detail.visible = true
+			this.id_footer.visible = true
+			this.id_master.object.headertreatment[1] = "D"
+			this.id_master.object.detailtreatment[1] = "C"
+			this.id_master.object.headertreatment.protect = 0
+			this.id_master.object.detailtreatment.protect = 0
+		else
+			this.id_detail.visible = false
+			this.id_footer.visible = true
+			this.id_master.object.headertreatment.protect = 1
+			this.id_master.object.detailtreatment.protect = 1
+			this.id_master.object.headertreatment[1] = ls_null
+			this.id_master.object.detailtreatment[1] = ls_null
+		end if
+		this.id_master.object.invoicetype[1] = ll_null
+		this.id_master.object.invoicetype.protect = 1
+		return
+	end if
+	this.id_detail.visible = true
+	this.id_footer.visible = false
+	this.id_master.object.invoicetype.protect = 0
+	this.id_master.object.headertreatment.protect = 0
+	this.id_master.object.detailtreatment.protect = 0
+	this.id_master.object.journalvoucher[1] = 0
+	this.id_master.object.invoicetype[1] = ll_null
+	this.id_master.object.headertreatment[1] = "D"
+	this.id_master.object.detailtreatment[1] = "C"
+
+// w_vouchercategory.wf_setjournalvoucher(integer ai_jv) returns 0
+	long ll_null
+	string ls_null
+	setnull(ll_null)
+	setnull(ls_null)
+	if ai_jv = 0 then
+		if this.id_master.getitemnumber(1, "invoicebased") = 0.0 then
+			this.id_detail.visible = true
+			this.id_footer.visible = true
+			this.id_master.object.invoicetype.protect = 1
+		else
+			this.id_master.object.invoicetype.protect = 0
+			this.id_detail.visible = true
+			this.id_footer.visible = false
+		end if
+		this.id_master.object.headertreatment.protect = 0
+		this.id_master.object.detailtreatment.protect = 0
+		this.id_master.object.invoicetype[1] = ll_null
+		this.id_master.object.headertreatment[1] = "D"
+		this.id_master.object.detailtreatment[1] = "C"
+	else
+		this.id_detail.visible = false
+		this.id_footer.visible = true
+		this.id_master.object.invoicebased[1] = 0
+		this.id_master.object.invoicetype[1] = ll_null
+		this.id_master.object.headertreatment[1] = ls_null
+		this.id_master.object.detailtreatment[1] = ls_null
+		this.id_master.object.invoicetype.protect = 1
+		this.id_master.object.headertreatment.protect = 1
+		this.id_master.object.detailtreatment.protect = 1
+	end if
+	this.id_master.object.useforsms.protect = 0
+
+// w_vouchercategory.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	if not isnull(ad_dwcontrol.dataobject) then
+		li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+		for li_counter = li_colcount to li_counter step -1
+			ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+			if ai_doundo = 1 then
+				ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+			else
+				ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+			end if
+		next
+	end if
+
+// w_vouchercategory.create() returns 0
+	integer icurrent
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_vouchercatmenu" then
+		this.menuid = create m_vouchercatmenu
+	end if
+
+// w_vouchercategory.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_vouchercategory.ue_newform() returns 0
+	setredraw(false)
+	this.i_editmode = 1
+	this.i_retrievemode = 2
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_new.enabled = false
+	this.im_menu.m_file.m_delete.enabled = false
+	this.im_menu.m_item.m_newitem.enabled = false
+	this.im_menu.m_item.m_deleteitem.enabled = false
+	this.im_menu.m_file.m_first.enabled = false
+	this.im_menu.m_file.m_next.enabled = false
+	this.im_menu.m_file.m_previous.enabled = false
+	this.im_menu.m_file.m_last.enabled = false
+	this.im_menu.m_file.m_print.enabled = false
+	this.im_menu.m_file.m_retrieve.enabled = true
+	this.im_menu.m_file.m_retrieve.text = "Lis&t"
+	this.tab_retrieve.tabpage_detail.enabled = true
+	if this.id_master.rowcount() > 0 then
+		this.id_master.reset()
+	end if
+	this.ib_focusdetail = false
+	this.id_master.insertrow(0)
+	this.id_detail.reset()
+	this.id_detail.retrieve(-1)
+	this.id_footer.retrieve(-1)
+	this.id_master.setcolumn(1)
+	this.id_master.setfocus()
+	wf_protectdw(this.id_master, 0)
+	wf_protectdw(this.id_detail, 0)
+	wf_protectdw(this.id_footer, 0)
+	wf_setjournalvoucher(0)
+	setredraw(true)
+
+// w_vouchercategory.ue_detail() returns 0
+	integer li_protect
+	call super::ue_detail
+	if this.id_master.object.posted[this.id_master.rowcount()] = "Y" or this.id_master.object.systemtype[this.id_master.rowcount()] = 1 then
+		li_protect = 1
+	else
+		this.im_menu.m_file.m_save.enabled = true
+		li_protect = 0
+	end if
+	wf_setjv(this.id_master.object.journalvoucher[this.id_master.rowcount()])
+	wf_protectdw(this.id_master, li_protect)
+	if li_protect = 1 then
+		this.id_master.modify("autoposting.Protect=0")
+		this.id_master.modify("voucherorder.Protect=0")
+		this.id_master.modify("useforsms.Protect=0")
+	end if
+	this.im_menu.m_file.m_save.enabled = true
+
+// w_vouchercategory.ue_save() returns 0
+	long ll_invid
+	long ll_mastercurrrow
+	long ll_counter
+	long ll_rows
+	long ll_null
+	boolean lb_updatedetail
+	boolean lb_updatefooter
+	boolean lb_commit
+	boolean lb_flag
+	string ls_null
+	setnull(ls_null)
+	setnull(ll_null)
+	setpointer(hourglass!)
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_footer) < 0 then
+		return
+	end if
+	ll_mastercurrrow = this.id_master.getrow()
+	if isnull(this.id_master.object.shortname[ll_mastercurrrow]) then
+		messagebox("Short Name Validation!", "Please Enter Some Valid Short Name")
+		this.id_master.setcolumn("shortname")
+		this.id_master.setfocus()
+		return
+	end if
+	if this.id_master.object.invoicebased[ll_mastercurrrow] = 1 and isnull(this.id_master.object.invoicetype[ll_mastercurrrow]) then
+		messagebox("Invoice Type Validation!", "Please Select Some Valid Invoice Type")
+		this.id_master.setcolumn("invoicetype")
+		this.id_master.setfocus()
+		return
+	end if
+	if this.id_master.object.journalvoucher[ll_mastercurrrow] = 0 then
+		if this.id_master.object.invoicebased[ll_mastercurrrow] = 0 then
+			lb_updatedetail = true
+			lb_updatefooter = true
+		else
+			lb_updatedetail = true
+			lb_updatefooter = false
+		end if
+		if isnull(this.id_master.object.headertreatment[ll_mastercurrrow]) or isnull(this.id_master.object.detailtreatment[ll_mastercurrrow]) then
+			if isnull(this.id_master.object.headertreatment[ll_mastercurrrow]) then
+				messagebox("Validation Problem", "Header A/c Should either be Debit or Credit")
+				this.id_master.setfocus()
+				this.id_master.setcolumn("headertreatment")
+				return
+			else
+				messagebox("Validation Problem", "Detail A/c Should either be Debit or Credit")
+				this.id_master.setfocus()
+				this.id_master.setcolumn("headertreatment")
+				return
+			end if
+			return
+		end if
+		if this.id_master.object.headertreatment[ll_mastercurrrow] = this.id_master.object.detailtreatment[ll_mastercurrrow] then
+			messagebox("Validation Problem", "Header and Detail Accounting Treatement Should be different")
+			this.id_master.setfocus()
+			this.id_master.setcolumn("headertreatment")
+			return
+		end if
+		if isnull(this.id_master.object.headertreatment[ll_mastercurrrow]) then
+			messagebox("Validation Problem", "Header A/c Should either be Debit or Credit")
+			this.id_master.setfocus()
+			this.id_master.setcolumn("headertreatment")
+			return
+		end if
+	else
+		this.id_master.object.headertreatment[ll_mastercurrrow] = ls_null
+		this.id_master.object.detailtreatment[ll_mastercurrrow] = ls_null
+		this.id_master.object.invoicebased[ll_mastercurrrow] = 0
+		this.id_master.object.invoicetype[ll_mastercurrrow] = ll_null
+		lb_updatedetail = false
+		lb_updatefooter = true
+	end if
+	if lb_updatedetail = true then
+		lb_flag = false
+		for ll_counter = 1 to this.id_detail.rowcount()
+			if this.id_detail.getitemnumber(ll_counter, "selected") = 1.0 then
+				lb_flag = true
+				exit
+			end if
+		next
+		if not lb_flag then
+			messagebox("Validation Problem", "Please Select Some Group A/c For Header Window")
+			this.id_detail.setfocus()
+			this.id_detail.setcolumn("selected")
+			this.id_detail.scrolltorow(1)
+			return
+		end if
+		return
+	end if
+	if lb_updatefooter = true then
+		lb_flag = false
+		for ll_counter = 1 to this.id_footer.rowcount()
+			if this.id_footer.getitemnumber(ll_counter, "selected") = 1.0 then
+				lb_flag = true
+				exit
+			end if
+		next
+		if not lb_flag then
+			messagebox("Validation Problem", "Please Select Some Group A/c For Detail Window")
+			this.id_footer.setfocus()
+			this.id_footer.setcolumn("selected")
+			this.id_footer.scrolltorow(1)
+			return
+		end if
+		return
+	end if
+	ll_invid = this.id_master.object.code[ll_mastercurrrow]
+	if lb_updatedetail and lb_updatefooter then
+		wf_pickselectedsubaccounts(this.id_detail, this.id_detaildw)
+		wf_pickselectedsubaccounts(this.id_footer, this.id_footerdw)
+	elseif lb_updatedetail and not lb_updatefooter then
+		wf_pickselectedsubaccounts(this.id_detail, this.id_detaildw)
+	elseif not lb_updatedetail and lb_updatefooter then
+		wf_pickselectedsubaccounts(this.id_footer, this.id_footerdw)
+	end if
+	if isnull(ll_invid) then
+		wf_tabnewid("VocherCategory", ll_invid)
+		this.id_master.object.code[ll_mastercurrrow] = ll_invid
+		ll_rows = this.id_detaildw.rowcount()
+		for ll_counter = 1 to ll_rows
+			this.id_detaildw.setitem(ll_counter, "code", ll_invid)
+		next
+		ll_rows = this.id_footerdw.rowcount()
+		for ll_counter = 1 to ll_rows
+			this.id_footerdw.setitem(ll_counter, "code", ll_invid)
+		next
+	end if
+	SQL DELETE VocherCategoryHeader WHERE VochCatCode =:ll_invid USING this.it_transobject;
+	SQL DELETE VocherCategoryDetail WHERE VochCatCode =:ll_invid USING this.it_transobject;
+	if this.id_master.update(true, false) < 0 then
+		SQL rollback USING this.it_transobject;
+		setpointer(arrow!)
+		return
+	end if
+	if lb_updatedetail and this.id_detaildw.update() < 0 then
+		SQL rollback USING this.it_transobject;
+		setpointer(arrow!)
+		return
+	end if
+	if lb_updatefooter and this.id_footerdw.update() < 0 then
+		SQL rollback USING this.it_transobject;
+		setpointer(arrow!)
+		return
+	end if
+	if lb_commit then
+		SQL commit USING this.it_transobject;
+		messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+		this.ib_commitok = true
+		this.id_master.resetupdate()
+		this.im_menu.m_file.m_new.enabled = true
+		this.editflag = false
+		if gd_recenttransdate < this.id_systemdate then
+			gd_recenttransdate = this.id_systemdate
+		end if
+	else
+		SQL rollback USING this.it_transobject;
+		setpointer(arrow!)
+		return
+	end if
+	this.id_detaildw.reset()
+	this.id_footerdw.reset()
+	setpointer(arrow!)
+
+// w_vouchercategory.ue_postopen() returns 0
+	m_vouchercatmenu lm_menu
+	call super::ue_postopen
+	lm_menu = this.menuid
+	this.id_detaildw = this.tab_retrieve.tabpage_detail.dw_detaildw
+	this.id_footerdw = this.tab_retrieve.tabpage_detail.dw_footerdw
+	this.id_detaildw.settransobject(this.it_transobject)
+	this.id_footerdw.settransobject(this.it_transobject)
+
+// w_vouchercategory.open() returns long
+	m_entry lm_menu
+	long ll_width
+	long ll_height
+	environment env
+	postevent("ue_postopen")
+	wf_setmenu(this.menuid)
+	lm_menu = this.menuid
+	lm_menu.dynamic mf_initsecurityapp(lm_menu)
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.tab_retrieve.width = ll_width * 0.99
+	this.tab_retrieve.height = ll_height * 0.83
+	this.tab_retrieve.tabpage_detail.dw_detail.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_itemsdetail.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_itemsdetail.height = (this.tab_retrieve.height - this.tab_retrieve.tabpage_detail.dw_detail.height) * 0.90 / 2
+	this.tab_retrieve.tabpage_detail.dw_footer.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_footer.height = this.tab_retrieve.tabpage_detail.dw_itemsdetail.height
+	this.tab_retrieve.tabpage_detail.dw_footer.y = this.tab_retrieve.tabpage_detail.dw_detail.height + this.tab_retrieve.tabpage_detail.dw_itemsdetail.height
+	this.tab_retrieve.tabpage_list.gb_fliter.width = ll_width * 0.97 - this.tab_retrieve.tabpage_list.gb_sort.width
+	this.tab_retrieve.tabpage_list.r_1.width = ll_width * 0.99
+	this.tab_retrieve.tabpage_list.r_1.height = ll_height * 0.765 - this.tab_retrieve.tabpage_list.gb_sort.height
+	this.tab_retrieve.tabpage_list.dw_list.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_list.dw_list.height = ll_height * 0.75 - this.tab_retrieve.tabpage_list.dw_list.y
+	this.tab_retrieve.tabpage_detail.dw_itemslist.height = ll_height * 0.6
+	this.tab_retrieve.tabpage_detail.dw_itemslist.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width * 0.73
+	setredraw(true)
+	return ::message.returnvalue

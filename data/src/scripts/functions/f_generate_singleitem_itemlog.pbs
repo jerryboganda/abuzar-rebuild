@@ -1,0 +1,26 @@
+// function f_generate_singleitem_itemlog (functions)  ancestor: function_object
+
+// f_generate_singleitem_itemlog.f_generate_singleitem_itemlog(long al_icode, transaction at_transobject, datetime adt_server_datetime) returns long
+	long ll_retval
+	long ll_rowcount
+	long ll_counter
+	long ll_code
+	long ll_icatcode
+	long ll_packcode
+	long ll_manfcode
+	long ll_classcode
+	long ll_icode
+	long ll_iccode
+	double ld_newsaleprice
+	double ld_saledisc
+	if al_icode > 0 then
+		SQL INSERT itemlog SELECT LogDate =:adt_server_datetime , newsaleprice =:ld_newsaleprice , stock =( SELECT isnull ( sum ( g.currqty ) , 0 ) FROM godowndetail g WHERE g.icode =i.icode ) , i.*FROM item i WHERE i.icode =:al_icode USING at_transobject;
+		if at_transobject.sqlcode = 0 then
+			ll_retval = 1
+		else
+			ll_retval = -1
+			return ll_retval
+		end if
+		return
+	end if
+	return ll_retval

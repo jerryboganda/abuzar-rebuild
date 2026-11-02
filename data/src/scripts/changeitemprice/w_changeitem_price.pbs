@@ -1,0 +1,461 @@
+// window w_changeitem_price (changeitemprice)  ancestor: w_multi_entry
+
+// w_changeitem_price.ue_changeitemclass() returns 0
+	long ll_counter
+	long ll_endrow
+	long ll_rows
+	long ll_porow
+	long ll_days
+	long ll_projectiondays
+	long ll_stock
+	long ll_forecastqty
+	long ll_looseqty
+	long ll_packqty
+	integer li_allrows
+	double ld_avgqty
+	double ld_packqty
+	string ls_fullcode
+	string ls_name
+	s_arguements lstr_arg
+	open(w_arg_class)
+	lstr_arg = message.powerobjectparm
+	this.id_detail.setredraw(false)
+	for ll_counter = 1 to this.id_detail.rowcount()
+		this.id_detail.setitem(ll_counter, "item_iccode", lstr_arg.l_code1)
+	next
+	this.id_detail.setredraw(true)
+
+// w_changeitem_price.ue_set_column_value() returns 0
+	long ll_counter
+	long ll_endrow
+	long ll_rows
+	long ll_porow
+	long ll_days
+	long ll_projectiondays
+	long ll_stock
+	long ll_forecastqty
+	long ll_looseqty
+	long ll_packqty
+	integer li_allrows
+	double ld_avgqty
+	double ld_packqty
+	double ld_val
+	string ls_fullcode
+	string ls_name
+	string ls_type
+	string ls_colname
+	string ls_colcaption
+	string ls_val
+	s_arguements lstr_arg
+	open(w_selection_manf_cat_class_pack_etc)
+	ls_type = message.stringparm
+	if ls_type = "" or isnull(ls_type) then
+		return
+	end if
+	if ls_type = "item_maxsalediscperc" or ls_type = "item_gstperc1" or ls_type = "item_gstperc2" or ls_type = "item_salepricechangemargin" then
+		this.id_detail.setredraw(false)
+		if ls_type = "item_maxsalediscperc" then
+			ls_colcaption = "Max Sale Disc(%):"
+		elseif ls_type = "item_gstperc1" then
+			ls_colcaption = "Sales Tax 1 (%):"
+		elseif ls_type = "item_gstperc2" then
+			ls_colcaption = "Sales Tax 2 (%):"
+		elseif ls_type = "item_salepricechangemargin" then
+			ls_colcaption = "Sale Price Change Margin (%):"
+		end if
+		openwithparm(w_arg_decimal_val, ls_colcaption)
+		ld_val = message.doubleparm
+		if ld_val <> -1.0 then
+			for ll_counter = 1 to this.id_detail.rowcount()
+				this.id_detail.setitem(ll_counter, ls_type, ld_val)
+			next
+			this.id_detail.setredraw(true)
+		else
+			return
+		end if
+		return
+	end if
+	if ls_type = "item_taxable" then
+		ls_colcaption = "Taxable:"
+		openwithparm(w_arg_yesno, ls_colcaption)
+		ls_val = message.stringparm
+		if len(ls_val) > 0 then
+			for ll_counter = 1 to this.id_detail.rowcount()
+				this.id_detail.setitem(ll_counter, ls_type, ls_val)
+			next
+			this.id_detail.setredraw(true)
+		else
+			return
+		end if
+		return
+	end if
+	if ls_type = "item_uppersaleqtylimit" then
+		this.id_detail.setredraw(false)
+		ls_colcaption = "Upper Sale Qty Limit:"
+		openwithparm(w_arg_integer_val, ls_colcaption)
+		ld_val = message.doubleparm
+		if ld_val <> -1.0 then
+			for ll_counter = 1 to this.id_detail.rowcount()
+				this.id_detail.setitem(ll_counter, ls_type, ld_val)
+			next
+			this.id_detail.setredraw(true)
+		else
+			return
+		end if
+		return
+	end if
+	openwithparm(w_arg_oneval_class_mnf_pack_cat_stax_etc, ls_type)
+	lstr_arg = message.powerobjectparm
+	if lstr_arg.i_status = 1 then
+		this.id_detail.setredraw(false)
+		if ls_type = "M" then
+			ls_colname = "item_manfcode"
+		elseif ls_type = "C" then
+			ls_colname = "item_icatcode"
+		elseif ls_type = "L" then
+			ls_colname = "item_iccode"
+		elseif ls_type = "P" then
+			ls_colname = "item_packcode"
+		elseif ls_type = "S" then
+			ls_colname = "item_salestaxschedulecode"
+		elseif ls_type = "T" then
+			ls_colname = "item_pctcode"
+		end if
+		for ll_counter = 1 to this.id_detail.rowcount()
+			this.id_detail.setitem(ll_counter, ls_colname, lstr_arg.l_code1)
+		next
+	end if
+	this.id_detail.setredraw(true)
+
+// w_changeitem_price.wf_assigndatawindow(string as_masterdw, string as_detaildw, string as_listdw) returns 0
+	this.id_master.dataobject = as_masterdw
+	this.id_detail.dataobject = as_detaildw
+	this.id_list.dataobject = as_listdw
+	this.id_master.settransobject(this.it_transobject)
+	this.id_detail.settransobject(this.it_transobject)
+	this.id_list.settransobject(this.it_transobject)
+
+// w_changeitem_price.wf_updatesaleprice_purprice() returns long
+	long ll_rows
+	long ll_counter
+	double ld_value
+	ll_rows = this.id_detail.rowcount()
+	if ll_rows > 0 then
+		openwithparm(w_set_saleprice_purchase_formula, ld_value)
+		ld_value = message.doubleparm
+		if ld_value > 0.0 then
+			for ll_counter = 1 to ll_rows
+				this.id_detail.object.item_saleprice[ll_counter] = round(this.id_detail.object.item_purprice[ll_counter] + this.id_detail.object.item_purprice[ll_counter] * ld_value * 0.01, 2)
+			next
+		end if
+	end if
+	return 0
+
+// w_changeitem_price.wf_copy_source_target_column() returns long
+	long ll_rows
+	long ll_counter
+	s_item_filter_criteria s_price
+	ll_rows = this.id_detail.rowcount()
+	if ll_rows > 0 then
+		open(w_set_price_from_another_price)
+		s_price = message.powerobjectparm
+		if s_price.i_status = 1 then
+			for ll_counter = 1 to ll_rows
+				this.id_detail.setitem(ll_counter, s_price.s_name2, this.id_detail.getitemnumber(ll_counter, s_price.s_name1))
+			next
+		end if
+	end if
+	return 0
+
+// w_changeitem_price.wf_set_columnvalue() returns long
+	long ll_rows
+	long ll_counter
+	double ld_value
+	string ls_column
+	s_item_filter_criteria s_price
+	ll_rows = this.id_detail.rowcount()
+	if ll_rows > 0 then
+		open(w_set_columnvalue)
+		s_price = message.powerobjectparm
+		if s_price.i_status = 1 then
+			ls_column = s_price.s_name1
+			ld_value = round(s_price.d_value1, 2)
+			for ll_counter = 1 to ll_rows
+				this.id_detail.setitem(ll_counter, ls_column, ld_value)
+			next
+		end if
+	end if
+	return 0
+
+// w_changeitem_price.wf_set_purprice_from_saleprice_saledisc() returns long
+	long ll_rows
+	long ll_counter
+	double ld_value
+	double ld_saleprice
+	string ls_sourcecolumn
+	string ls_targetcolumn
+	s_item_filter_criteria s_price
+	ll_rows = this.id_detail.rowcount()
+	if ll_rows > 0 then
+		open(w_set_purprice_from_saleprice_saledisc)
+		s_price = message.powerobjectparm
+		if s_price.i_status = 1 then
+			ls_sourcecolumn = s_price.s_name1
+			ls_targetcolumn = s_price.s_name2
+			ld_value = round(s_price.d_value1, 2)
+			for ll_counter = 1 to ll_rows
+				ld_saleprice = this.id_detail.getitemdecimal(ll_counter, ls_sourcecolumn)
+				if ls_sourcecolumn = "item_retailprice" then
+					this.id_detail.setitem(ll_counter, ls_targetcolumn, round(ld_saleprice * 100.0 / (100.0 + ld_value), 2))
+				else
+					this.id_detail.setitem(ll_counter, ls_targetcolumn, ld_saleprice - round(ld_saleprice * ld_value * 0.01, 2))
+				end if
+			next
+		end if
+	end if
+	return 0
+
+// w_changeitem_price.wf_filter_items() returns 0
+	string ls_null
+	setnull(ls_null)
+	this.id_detail.scrolltorow(0)
+	this.id_detail.setfilter(ls_null)
+	this.id_detail.filter()
+	this.id_detail.groupcalc()
+
+// w_changeitem_price.wf_update_saleprice_with_saleprice() returns long
+	long ll_rows
+	long ll_counter
+	double ld_value
+	ll_rows = this.id_detail.rowcount()
+	if ll_rows > 0 then
+		openwithparm(w_set_saleprice_formula, ld_value)
+		ld_value = message.doubleparm
+		if ld_value > 0.0 then
+			for ll_counter = 1 to ll_rows
+				this.id_detail.object.item_saleprice[ll_counter] = round(this.id_detail.object.item_saleprice[ll_counter] + this.id_detail.object.item_saleprice[ll_counter] * ld_value * 0.01, 2)
+			next
+		end if
+	end if
+	return 0
+
+// w_changeitem_price.wf_set_packsalestax() returns long
+	return 0
+
+// w_changeitem_price.wf_set_packsalestax_formula() returns long
+	long ll_rows
+	long ll_counter
+	s_item_filter_criteria lstr_price
+	ll_rows = this.id_detail.rowcount()
+	if ll_rows > 0 then
+		open(w_set_packsalestax_formula)
+		lstr_price = message.powerobjectparm
+		if lstr_price.i_status = 1 and len(lstr_price.s_name1) > 0 then
+			for ll_counter = 1 to ll_rows
+				if lstr_price.s_name1 = "item_retailprice" then
+					this.id_detail.object.item_packsalestax[ll_counter] = round(this.id_detail.object.item_retailprice[ll_counter] * lstr_price.d_value1 / (100.0 + lstr_price.d_value1), 2)
+				elseif lstr_price.s_name1 = "item_saleprice" then
+					this.id_detail.object.item_packsalestax[ll_counter] = round(this.id_detail.object.item_saleprice[ll_counter] * lstr_price.d_value1 / 100, 2)
+				elseif lstr_price.s_name1 = "item_saleprice2" then
+					this.id_detail.object.item_packsalestax[ll_counter] = round(this.id_detail.object.item_saleprice2[ll_counter] * lstr_price.d_value1 / 100, 2)
+				elseif lstr_price.s_name1 = "item_saleprice3" then
+					this.id_detail.object.item_packsalestax[ll_counter] = round(this.id_detail.object.item_saleprice3[ll_counter] * lstr_price.d_value1 / 100, 2)
+				elseif lstr_price.s_name1 = "item_saleprice4" then
+					this.id_detail.object.item_packsalestax[ll_counter] = round(this.id_detail.object.item_saleprice4[ll_counter] * lstr_price.d_value1 / 100, 2)
+				elseif lstr_price.s_name1 = "item_saleprice5" then
+					this.id_detail.object.item_packsalestax[ll_counter] = round(this.id_detail.object.item_saleprice5[ll_counter] * lstr_price.d_value1 / 100, 2)
+				end if
+			next
+		end if
+	end if
+	return 0
+
+// w_changeitem_price.wf_update_price_margin_based() returns long
+	long ll_rows
+	long ll_counter
+	double ld_value
+	double ld_base
+	double ld_margin
+	double ld_marginbased
+	s_update_price_marginbased lstr_values
+	ll_rows = this.id_detail.rowcount()
+	if ll_rows > 0 then
+		openwithparm(w_set_price_marginbased_formula, lstr_values)
+		lstr_values = message.powerobjectparm
+		if lstr_values.i_status = 1 then
+			for ll_counter = 1 to ll_rows
+				ld_base = this.id_detail.getitemnumber(ll_counter, lstr_values.s_base)
+				ld_margin = lstr_values.d_margin
+				ld_marginbased = this.id_detail.getitemnumber(ll_counter, lstr_values.s_marginbase)
+				ld_value = round(ld_base + ld_margin * ld_marginbased * 0.01, 2)
+				this.id_detail.setitem(ll_counter, lstr_values.s_update, ld_value)
+			next
+		end if
+	end if
+	return 0
+
+// w_changeitem_price.wf_update_price_salestaxschedule_based() returns long
+	long ll_rows
+	long ll_counter
+	long ll_salestaxschedulecode
+	double ld_value
+	double ld_base
+	double ld_taxperc
+	double ld_marginbased
+	s_update_price_marginbased lstr_values
+	ll_rows = this.id_detail.rowcount()
+	if ll_rows > 0 then
+		openwithparm(w_set_price_staxschedule_formula, lstr_values)
+		lstr_values = message.powerobjectparm
+		if lstr_values.i_status = 1 then
+			for ll_counter = 1 to ll_rows
+				ld_base = this.id_detail.getitemnumber(ll_counter, lstr_values.s_base)
+				ll_salestaxschedulecode = lstr_values.l_code
+				this.id_detail.setitem(ll_counter, lstr_values.s_update, ld_value)
+			next
+		end if
+	end if
+	return 0
+
+// w_changeitem_price.create() returns 0
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_changeitemprice" then
+		this.menuid = create m_changeitemprice
+	end if
+
+// w_changeitem_price.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_changeitem_price.ue_detail() returns 0
+	call super::ue_detail
+	this.id_detail.setfilter("")
+	this.id_detail.filter()
+	this.id_detail.setfocus()
+	this.im_menu.m_file.m_save.enabled = true
+
+// w_changeitem_price.ue_postopen() returns 0
+	long li_visiblecolumns
+	long li_counter
+	long li_taborder
+	boolean lb_zerotabordercol
+	datastore lds_itemsetting
+	call super::ue_postopen
+	lds_itemsetting = create datastore
+	this.is_dwtype = message.stringparm
+	if this.is_dwtype = "MANF_WISE" then
+		this.title = "Change Item Price - Manufacturer Wise"
+		wf_assigndatawindow("d_changeitem_price_manf", "d_changeitem_price_manf_detail", "d_changeitem_price_manf_list")
+	elseif this.is_dwtype = "CLASS_WISE" then
+		this.title = "Change Item Price - Class Wise"
+		wf_assigndatawindow("d_changeitem_price_class", "d_changeitem_price_class_detail", "d_changeitem_price_class_list")
+	elseif this.is_dwtype = "CAT_WISE" then
+		this.title = "Change Item Price - Category Wise"
+		wf_assigndatawindow("d_changeitem_price_cat", "d_changeitem_price_cat_detail", "d_changeitem_price_cat_list")
+	elseif this.is_dwtype = "PACKING_WISE" then
+		this.title = "Change Item Price - Packing Wise"
+		wf_assigndatawindow("d_changeitem_price_packing", "d_changeitem_price_packing_detail", "d_changeitem_price_packing_list")
+	elseif this.is_dwtype = "GENERICNAME_WISE" then
+		this.title = "Change Item Price - Generic Name Wise"
+		wf_assigndatawindow("d_changeitem_price_generic", "d_changeitem_price_generic_detail", "d_changeitem_price_generic_list")
+	elseif this.is_dwtype = "PURINVBASED" then
+		this.title = "Change Item Price - Purchase Invoice Based"
+		wf_assigndatawindow("d_changeitem_price_purinvbased", "d_changeitem_price_purinvbased_detail", "d_changeitem_price_purinvbased_list")
+	elseif this.is_dwtype = "MARGINBASED" then
+		this.title = "Change Item Price - Margin Based"
+		wf_assigndatawindow("d_changeitem_price_marginbased", "d_changeitem_price_marginbased_detail", "d_changeitem_price_marginbased_list")
+		this.tab_retrieve.tabpage_list.enabled = false
+		this.tab_retrieve.tabpage_list.visible = false
+		this.id_master.retrieve(1)
+	end if
+	lds_itemsetting.dataobject = "d_interfacesettingcols"
+	lds_itemsetting.settransobject(this.it_transobject)
+	lds_itemsetting.retrieve(53, 3, 1)
+	li_visiblecolumns = lds_itemsetting.rowcount()
+	for li_counter = 1 to lds_itemsetting.rowcount()
+		this.colname[li_counter, 1] = lds_itemsetting.getitemstring(li_counter, "colname") + "_t"
+		this.colname[li_counter, 2] = lds_itemsetting.getitemstring(li_counter, "colname")
+		this.colwidth[li_counter, 1] = integer(this.id_detail.describe(this.colname[li_counter, 1] + ".Width"))
+		this.colwidth[li_counter, 2] = integer(this.id_detail.describe(this.colname[li_counter, 2] + ".Width"))
+	next
+	li_counter = 1
+	li_taborder = 1
+	do while li_counter <= li_visiblecolumns
+		if this.colname[li_counter, 2] = "item_avgprice" or this.colname[li_counter, 2] = "item_packunits" or this.colname[li_counter, 2] = "item_margin" then
+			lb_zerotabordercol = true
+		else
+			lb_zerotabordercol = false
+		end if
+		this.id_detail.modify(this.colname[li_counter, 2] + ".Visible=1")
+		if lb_zerotabordercol then
+			this.id_detail.modify(this.colname[li_counter, 2] + ".protect=1")
+		else
+			this.id_detail.settaborder(this.colname[li_counter, 2], li_taborder)
+		end if
+		li_taborder = li_taborder + 1
+		li_counter = li_counter + 1
+	loop
+	if f_stringpreferences("itemgstperc") = "N" then
+		this.id_detail.object.item_gstperc1.visible = false
+		this.id_detail.object.item_gstperc2.visible = false
+		this.id_detail.object.t_gstperc1.visible = false
+		this.id_detail.object.t_gstperc2.visible = false
+	end if
+
+// w_changeitem_price.ue_save() returns 0
+	long ll_salesmancode
+	long ll_rowcount
+	long ll_counter
+	long ll_code
+	long ll_retval
+	datetime ldt_server_datetime
+	double ld_saleretail
+	double ld_newsaleprice
+	string ls_date_errtext
+	dwitemstatus lds_rowstatus
+	dwitemstatus lds_columnstatus
+	if this.is_dwtype <> "MARGINBASED" and f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	ll_rowcount = this.id_detail.rowcount()
+	if ll_rowcount > 0 then
+		if not wf_validateserverdatetime(ldt_server_datetime, ls_date_errtext) then
+			messagebox("Date Violation", ls_date_errtext, stopsign!)
+			return
+		end if
+		ll_salesmancode = gl_usercode
+		do while ll_counter <= ll_rowcount
+			lds_rowstatus = this.id_detail.getitemstatus(ll_counter, 0, primary!)
+			lds_columnstatus = this.id_detail.getitemstatus(ll_counter, "saleretail", primary!)
+			if lds_columnstatus = datamodified! then
+				ld_saleretail = this.id_detail.object.saleretail[ll_counter]
+				this.id_detail.setitem(ll_counter, "item_saleprice", ld_saleretail)
+				this.id_detail.setitem(ll_counter, "item_retailprice", ld_saleretail)
+				this.id_detail.setitem(ll_counter, "ChangeReason", "Multiple Changes")
+				this.id_detail.setitem(ll_counter, "Module", this.title)
+			end if
+			if lds_rowstatus = datamodified! then
+				this.id_detail.setitem(ll_counter, "item_usercode", ll_salesmancode)
+				this.id_detail.setitem(ll_counter, "item_lastupdate", ldt_server_datetime)
+			end if
+			ll_counter = ll_counter + 1
+		loop
+		SQL rollback USING this.it_transobject;
+		if f_generateitemlog(this.id_detail, "item_changeprice", this.it_transobject, ldt_server_datetime) >= 0 then
+			call super::ue_save
+		else
+			SQL rollback USING this.it_transobject;
+			messagebox("Database Problem", "Some Database problem occured generating Item Log!", stopsign!)
+			return
+		end if
+		return
+	end if
+	messagebox("Updataion Problem", "No rows to Update!", stopsign!)

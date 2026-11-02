@@ -1,0 +1,387 @@
+// window w_popup_partialsearch_selection_acc (components)  ancestor: window
+
+// w_popup_partialsearch_selection_acc.ue_close(integer ai_status) returns 0
+	this.is_popup_selection.l_code = ai_status
+	if this.dw_master.rowcount() > 0 then
+		this.is_popup_selection.l_code2 = this.dw_master.getitemnumber(this.dw_master.getrow(), "acccode")
+	else
+		this.is_popup_selection.l_code2 = 0
+	end if
+	closewithreturn(this, this.is_popup_selection)
+
+// w_popup_partialsearch_selection_acc.wf_populatesearchcolumns() returns 0
+	string ls_colname
+	string ls_initial_column_selection
+	string ls_columntype
+	long ll_colcount
+	long ll_counter
+	boolean lb_flag
+	for ll_counter = 1 to ll_counter
+		ls_columntype = this.dw_master.describe("#" + string(ll_counter) + ".ColType")
+		ls_colname = this.dw_master.describe("#" + string(ll_counter) + ".Name")
+		if left(upper(ls_columntype), 4) = "CHAR" then
+			this.ddlb_search.additem(ls_colname)
+			if match(upper(ls_colname), "NAME") and lb_flag = true then
+				lb_flag = false
+				ls_initial_column_selection = ls_colname
+			end if
+		end if
+	next
+	this.ddlb_search.selectitem(ls_initial_column_selection, 1)
+	this.dw_master.setsort(ls_initial_column_selection + this.is_sortorder)
+	this.dw_master.sort()
+
+// w_popup_partialsearch_selection_acc.wf_partialsearch() returns integer
+	s_popup_selection lstr_selection
+	string ls_colname
+	string ls_searchtext
+	string ls_filterexp
+	string ls_temp
+	long ll_colcount
+	long ll_counter
+	boolean lb_flag
+	ls_temp = trim(this.dw_find.getitemstring(1, "find"))
+	if isnull(ls_temp) then
+		ls_temp = ""
+	end if
+	ls_colname = this.ddlb_search.text
+	ls_filterexp = ""
+	if this.rb_anywhere.checked = true then
+		ls_searchtext = ls_temp
+	end if
+	if this.rb_start.checked = true then
+		ls_searchtext = "^" + ls_temp
+	end if
+	if this.rb_end.checked = true then
+		ls_searchtext = ls_temp + "$"
+	end if
+	if this.dw_master.rowcount() > 0 then
+		ls_filterexp = "match(" + ls_colname + ", '" + ls_searchtext + "')"
+	else
+		messagebox("Search Aborted", "Nothing To Search")
+		return -1
+	end if
+	this.dw_master.setfilter(ls_filterexp)
+	this.dw_master.filter()
+	if this.dw_master.rowcount() <= 0 then
+		messagebox("Search Result", "No Record(s) found matching with the~r~nspecified search criteria")
+		return -1
+	end if
+	return 0
+
+// w_popup_partialsearch_selection_acc.create() returns 0
+	this.st_1 = create st_1
+	this.cb_retrieve = create cb_retrieve
+	this.rb_end = create rb_end
+	this.rb_start = create rb_start
+	this.rb_anywhere = create rb_anywhere
+	this.st_searchon = create st_searchon
+	this.st_find = create st_find
+	this.dw_find = create dw_find
+	this.gb_searchposition = create gb_searchposition
+	this.ddlb_searchtype = create ddlb_searchtype
+	this.ddlb_search = create ddlb_search
+	this.dw_master = create dw_master
+	this.gb_search = create gb_search
+	this.control = {this.st_1, this.cb_retrieve, this.rb_end, this.rb_start, this.rb_anywhere, this.st_searchon, this.st_find, this.dw_find, this.gb_searchposition, this.ddlb_searchtype, this.ddlb_search, this.dw_master, this.gb_search}
+
+// w_popup_partialsearch_selection_acc.destroy() returns 0
+	destroy this.st_1
+	destroy this.cb_retrieve
+	destroy this.rb_end
+	destroy this.rb_start
+	destroy this.rb_anywhere
+	destroy this.st_searchon
+	destroy this.st_find
+	destroy this.dw_find
+	destroy this.gb_searchposition
+	destroy this.ddlb_searchtype
+	destroy this.ddlb_search
+	destroy this.dw_master
+	destroy this.gb_search
+
+// w_popup_partialsearch_selection_acc.open() returns long
+	long ll_rtcode
+	long ll_code
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	this.istr_account_search = message.powerobjectparm
+	this.is_dw = this.istr_account_search.s_datawindowname
+	setredraw(false)
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width
+		ll_height = ll_win_height
+		this.width = ll_width * 0.99
+		this.height = ll_height * 0.90
+		this.dw_master.width = ll_width * 0.98
+		this.gb_search.width = ll_width * 0.98
+		this.gb_search.x = 5
+		this.dw_master.height = (this.height - this.gb_search.height) * 0.85
+		this.dw_master.x = 5
+		this.dw_master.y = this.gb_search.height + 10
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	this.dw_find.settransobject(sqlca)
+	this.dw_find.insertrow(0)
+	this.dw_master.dataobject = this.is_dw
+	this.dw_master.settransobject(sqlca)
+	ll_rtcode = this.dw_master.retrieve(this.istr_account_search.l_vouchertype)
+	this.dw_master.setfocus()
+	this.dw_master.setcolumn(1)
+	if ll_rtcode > 0 then
+		this.dw_master.selectrow(1, true)
+		this.dw_master.setrow(1)
+		this.dw_master.scrolltorow(1)
+	end if
+	this.ddlb_searchtype.selectitem(2)
+	wf_populatesearchcolumns()
+	this.dw_find.setfocus()
+	setredraw(true)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// cb_retrieve.clicked() returns long
+	parent.dw_find.accepttext()
+	parent.dw_master.setfilter("")
+	parent.dw_master.filter()
+	parent.dw_master.retrieve(parent.istr_account_search.l_vouchertype)
+	parent.dw_master.selectrow(0, false)
+	parent.dw_master.scrolltorow(1)
+	parent.dw_master.selectrow(1, true)
+	parent.dw_find.setfocus()
+	return ::message.returnvalue
+
+// rb_end.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// rb_start.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// rb_anywhere.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_find.editchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	long ll_row
+	string ls_columnname
+	string ls_character
+	long ll_found_row
+	integer li_num_chars
+	string str
+	ancestorreturnvalue = super::editchanged(row, dwo, data)
+	if parent.ddlb_searchtype.text <> "Partial Text Search" then
+		if len(data) > 0 then
+			ls_columnname = parent.ddlb_search.text
+			parent.dw_master.setredraw(false)
+			if parent.is_sortorder = " A" then
+				ll_found_row = f_binarysearch(data, parent.dw_master, ls_columnname)
+			else
+				ll_found_row = f_binarysearch_string(data, parent.dw_master, ls_columnname)
+			end if
+			if ll_found_row > 0 then
+				parent.dw_master.setredraw(false)
+				parent.dw_master.selectrow(0, false)
+				parent.dw_master.scrolltorow(ll_found_row)
+				parent.dw_master.selectrow(ll_found_row, true)
+				parent.dw_master.setredraw(true)
+			end if
+			parent.dw_master.setredraw(true)
+		else
+			parent.dw_master.scrolltorow(0)
+			parent.dw_master.selectrow(0, false)
+			parent.dw_master.setredraw(true)
+		end if
+	end if
+	return ::message.returnvalue
+
+// dw_find.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	integer rt_code
+	long ll_currrow
+	long ll_listcurrrow
+	long ll_code
+	long ll_rowm
+	string ls_filterexp
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	setredraw(false)
+	ll_rowm = getrow()
+	if key = keydownarrow! then
+		if parent.dw_master.rowcount() > 0 then
+			parent.dw_master.selectrow(0, false)
+			parent.dw_master.scrollnextrow()
+			ll_listcurrrow = parent.dw_master.getrow()
+			rt_code = 1
+		end if
+	elseif key = keyuparrow! then
+		if parent.dw_master.rowcount() > 0 then
+			parent.dw_master.selectrow(0, false)
+			parent.dw_master.scrollpriorrow()
+			ll_listcurrrow = parent.dw_master.getrow()
+			rt_code = 1
+		end if
+	elseif key = keypagedown! then
+		if parent.dw_master.rowcount() > 0 then
+			parent.dw_master.selectrow(0, false)
+			parent.dw_master.scrollnextpage()
+			ll_listcurrrow = parent.dw_master.getrow()
+			rt_code = 1
+		end if
+	elseif key = keypageup! then
+		if parent.dw_master.rowcount() > 0 then
+			parent.dw_master.selectrow(0, false)
+			parent.dw_master.scrollpriorpage()
+			ll_listcurrrow = parent.dw_master.getrow()
+			rt_code = 1
+		end if
+	elseif key = keyend! then
+		if parent.dw_master.rowcount() > 0 then
+			parent.dw_master.selectrow(0, false)
+			parent.dw_master.scrolltorow(99999)
+			ll_listcurrrow = parent.dw_master.getrow()
+			rt_code = 1
+		end if
+	elseif key = keyhome! then
+		if parent.dw_master.rowcount() > 0 then
+			parent.dw_master.selectrow(0, false)
+			parent.dw_master.scrolltorow(1)
+			ll_listcurrrow = parent.dw_master.getrow()
+			rt_code = 1
+		end if
+	elseif key = keyenter! then
+		accepttext()
+		if parent.ddlb_searchtype.text = "Partial Text Search" then
+			parent.dw_master.setfilter("")
+			parent.dw_master.filter()
+			ll_code = parent.wf_partialsearch()
+			if ll_code = 0 and parent.dw_master.rowcount() > 0 then
+				parent.dw_master.selectrow(0, false)
+				parent.dw_master.scrolltorow(1)
+				ll_listcurrrow = 1
+				rt_code = 1
+			end if
+			setredraw(true)
+		else
+			ll_listcurrrow = parent.dw_master.getrow()
+			rt_code = 1
+		end if
+	elseif key = keyf12! then
+		parent.post event ue_close(1)
+	elseif key = keyescape! then
+		parent.post event ue_close(0)
+	else
+		setredraw(true)
+	end if
+	if rt_code = 1 then
+		setredraw(false)
+		parent.dw_master.selectrow(ll_listcurrrow, true)
+		setitem(ll_rowm, "find", parent.dw_master.getitemstring(ll_listcurrrow, trim(parent.ddlb_search.text)))
+		selecttext(ll_rowm, len(gettext()))
+		setredraw(true)
+	end if
+	return rt_code
+
+// ddlb_searchtype.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+		return 1
+	end if
+	return ::message.returnvalue
+
+// ddlb_searchtype.selectionchanged(integer index) returns long
+	if index = 2 then
+		parent.gb_searchposition.visible = true
+		parent.rb_anywhere.visible = true
+		parent.rb_start.visible = true
+		parent.rb_end.visible = true
+	else
+		parent.rb_anywhere.visible = false
+		parent.rb_start.visible = false
+		parent.rb_end.visible = false
+		parent.gb_searchposition.visible = false
+	end if
+	return ::message.returnvalue
+
+// ddlb_search.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+		return 1
+	end if
+	return ::message.returnvalue
+
+// ddlb_search.selectionchanged(integer index) returns long
+	parent.dw_master.setsort(this.text + " A")
+	parent.dw_master.sort()
+	if parent.dw_master.rowcount() > 0 then
+		parent.dw_find.setredraw(false)
+		parent.dw_master.selectrow(0, false)
+		parent.dw_master.selectrow(parent.dw_master.getrow(), true)
+		parent.dw_find.setitem(1, "find", parent.dw_master.getitemstring(parent.dw_master.getrow(), trim(this.text)))
+		parent.dw_find.selecttext(1, len(parent.dw_find.gettext()))
+		parent.dw_find.setredraw(true)
+	end if
+	return ::message.returnvalue
+
+// dw_master.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	parent.dw_find.setfocus()
+	return ::message.returnvalue
+
+// dw_master.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	string s_str
+	string s_t
+	integer i_len
+	s_str = string(dwo.name)
+	s_t = right(s_str, 2)
+	if s_t = "_t" then
+		i_len = len(s_str)
+		s_str = left(s_str, i_len - 2)
+		if this.s_previous <> s_str then
+			this.b_flag = true
+		end if
+		if this.b_flag = true then
+			parent.is_sortorder = " A"
+			setsort(s_str + parent.is_sortorder)
+			sort()
+			this.b_flag = false
+		else
+			parent.is_sortorder = " D"
+			setsort(s_str + parent.is_sortorder)
+			sort()
+			this.b_flag = true
+		end if
+	end if
+	this.s_previous = s_str
+	if row > 0 then
+		selectrow(0, false)
+		selectrow(row, true)
+		parent.dw_find.setitem(1, "find", parent.dw_master.getitemstring(row, trim(parent.ddlb_search.text)))
+		parent.dw_find.selecttext(1, len(parent.dw_find.gettext()))
+	end if
+	parent.dw_find.setfocus()
+	return ::message.returnvalue
+
+// dw_master.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::doubleclicked(xpos, ypos, row, dwo)
+	parent.post event ue_close(1)
+	return ::message.returnvalue

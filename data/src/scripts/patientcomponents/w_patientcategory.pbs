@@ -1,0 +1,199 @@
+// window w_patientcategory (patientcomponents)  ancestor: w_multi_entry
+
+// w_patientcategory.wf_duplicateshortname(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM PatientCategory WHERE PatientCategory.shortname =:as_name USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_patientcategory.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM PatientCategory WHERE PatientCategory.name =:as_name USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_patientcategory.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	if not isnull(ad_dwcontrol.dataobject) then
+		li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+		for li_counter = li_colcount to li_counter step -1
+			ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+			if ai_doundo = 1 then
+				ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+			else
+				ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+			end if
+		next
+	end if
+
+// w_patientcategory.wf_pickselectedmodule(datawindow ad_sourcedw, datawindow ad_targetdw) returns long
+	long ll_totrows
+	long ll_row
+	long ll_newrow
+	ll_totrows = ad_sourcedw.rowcount()
+	ll_row = 1
+	do while ll_totrows <> 0 and ll_row <= ll_totrows
+		if ad_sourcedw.object.selected[ll_row] = 1 then
+			ll_newrow = ad_targetdw.insertrow(0)
+			ad_targetdw.object.code[ll_newrow] = ad_sourcedw.object.code[ll_row]
+			ad_targetdw.object.moduleid[ll_newrow] = ad_sourcedw.object.moduleid[ll_row]
+		end if
+		ll_row = ll_row + 1
+	loop
+	return 1
+
+// w_patientcategory.create() returns 0
+	integer icurrent
+	call super::create
+
+// w_patientcategory.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_patientcategory.ue_newform() returns 0
+	setredraw(false)
+	this.i_editmode = 1
+	this.i_retrievemode = 2
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_new.enabled = false
+	this.im_menu.m_file.m_delete.enabled = false
+	this.im_menu.m_item.m_newitem.enabled = false
+	this.im_menu.m_item.m_deleteitem.enabled = false
+	this.im_menu.m_file.m_first.enabled = false
+	this.im_menu.m_file.m_next.enabled = false
+	this.im_menu.m_file.m_previous.enabled = false
+	this.im_menu.m_file.m_last.enabled = false
+	this.im_menu.m_file.m_print.enabled = false
+	this.im_menu.m_file.m_retrieve.enabled = true
+	this.im_menu.m_file.m_retrieve.text = "Lis&t"
+	this.tab_retrieve.tabpage_detail.enabled = true
+	if this.id_master.rowcount() > 0 then
+		this.id_master.reset()
+	end if
+	this.ib_focusdetail = false
+	this.id_master.insertrow(0)
+	this.id_detail.reset()
+	this.id_detail.retrieve(-1)
+	this.id_master.setcolumn(1)
+	this.id_master.setfocus()
+	setredraw(true)
+
+// w_patientcategory.ue_detail() returns 0
+	integer li_protect
+	call super::ue_detail
+	this.im_menu.m_file.m_save.enabled = true
+	li_protect = 0
+
+// w_patientcategory.ue_save() returns 0
+	long ll_invid
+	long ll_mastercurrrow
+	long ll_counter
+	long ll_rows
+	long ll_null
+	boolean lb_commit
+	boolean lb_flag
+	string ls_null
+	setnull(ls_null)
+	setnull(ll_null)
+	setpointer(hourglass!)
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	ll_mastercurrrow = this.id_master.getrow()
+	if isnull(this.id_master.object.shortname[ll_mastercurrrow]) then
+		messagebox("Short Name Validation!", "Please Enter Some Valid Short Name")
+		this.id_master.setcolumn("shortname")
+		this.id_master.setfocus()
+		return
+	end if
+	ll_invid = this.id_master.object.code[ll_mastercurrrow]
+	wf_pickselectedmodule(this.id_detail, this.id_detaildw)
+	ll_invid = this.id_master.object.code[ll_mastercurrrow]
+	if isnull(ll_invid) then
+		wf_tabnewid("PatientCategory", ll_invid)
+		this.id_master.object.code[ll_mastercurrrow] = ll_invid
+		ll_rows = this.id_detaildw.rowcount()
+		for ll_counter = 1 to ll_rows
+			this.id_detaildw.setitem(ll_counter, "code", ll_invid)
+		next
+	end if
+	if this.id_master.update(true, false) < 0 then
+		SQL rollback USING this.it_transobject;
+		messagebox("Problem Saving..", "Changes do not take effect in database", stopsign!, ok!, 1)
+		setpointer(arrow!)
+		return
+	else
+		SQL DELETE PatientCatAllowedModule WHERE PatientCatCode =:ll_invid USING this.it_transobject;
+		if this.id_detaildw.update() < 0 then
+			SQL rollback USING this.it_transobject;
+			messagebox("Problem Saving..", "Changes do not take effect in database.", stopsign!, ok!, 1)
+			setpointer(arrow!)
+			return
+		else
+			SQL commit USING this.it_transobject;
+			messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+			this.ib_commitok = true
+			this.id_master.resetupdate()
+			this.im_menu.m_file.m_new.enabled = true
+			this.id_detaildw.reset()
+			this.editflag = false
+			if gd_recenttransdate < this.id_systemdate then
+				gd_recenttransdate = this.id_systemdate
+			end if
+		end if
+	end if
+	this.id_master.reset()
+	this.id_detail.reset()
+	setpointer(arrow!)
+
+// w_patientcategory.open() returns long
+	m_entry lm_menu
+	long ll_width
+	long ll_height
+	environment env
+	postevent("ue_postopen")
+	wf_setmenu(this.menuid)
+	lm_menu = this.menuid
+	lm_menu.dynamic mf_initsecurityapp(lm_menu)
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.tab_retrieve.width = ll_width * 0.99
+	this.tab_retrieve.height = ll_height * 0.83
+	this.tab_retrieve.tabpage_detail.dw_detail.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_itemsdetail.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_itemsdetail.height = (this.tab_retrieve.height - this.tab_retrieve.tabpage_detail.dw_detail.height) * 0.90
+	this.tab_retrieve.tabpage_list.gb_fliter.width = ll_width * 0.97 - this.tab_retrieve.tabpage_list.gb_sort.width
+	this.tab_retrieve.tabpage_list.r_1.width = ll_width * 0.99
+	this.tab_retrieve.tabpage_list.r_1.height = ll_height * 0.765 - this.tab_retrieve.tabpage_list.gb_sort.height
+	this.tab_retrieve.tabpage_list.dw_list.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_list.dw_list.height = ll_height * 0.75 - this.tab_retrieve.tabpage_list.dw_list.y
+	this.tab_retrieve.tabpage_detail.dw_itemslist.height = ll_height * 0.6
+	this.tab_retrieve.tabpage_detail.dw_itemslist.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width * 0.73
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_patientcategory.ue_postopen() returns 0
+	call super::ue_postopen
+	this.id_detaildw = this.tab_retrieve.tabpage_detail.dw_detaildw
+	this.id_detaildw.settransobject(this.it_transobject)

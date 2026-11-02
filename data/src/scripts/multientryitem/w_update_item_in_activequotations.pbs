@@ -1,0 +1,120 @@
+// window w_update_item_in_activequotations (multientryitem)  ancestor: window
+
+// w_update_item_in_activequotations.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		post event ue_close()
+	end if
+	return ::message.returnvalue
+
+// w_update_item_in_activequotations.ue_close() returns 0
+	close(this)
+
+// w_update_item_in_activequotations.create() returns 0
+	this.cb_cancel = create cb_cancel
+	this.dw_footer = create dw_footer
+	this.dw_master = create dw_master
+	this.cb_ok = create cb_ok
+	this.dw_detail = create dw_detail
+	this.control = {this.cb_cancel, this.dw_footer, this.dw_master, this.cb_ok, this.dw_detail}
+
+// w_update_item_in_activequotations.destroy() returns 0
+	destroy this.cb_cancel
+	destroy this.dw_footer
+	destroy this.dw_master
+	destroy this.cb_ok
+	destroy this.dw_detail
+
+// w_update_item_in_activequotations.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	this.il_code = message.doubleparm
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		this.width = ll_win_width * 0.98
+		this.height = ll_win_height * 0.90
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	this.dw_detail.width = this.width * 0.98
+	this.dw_detail.height = this.height - this.dw_master.height - 230
+	this.cb_ok.y = this.height - 200
+	this.dw_master.settransobject(sqlca)
+	this.dw_detail.settransobject(sqlca)
+	this.dw_footer.settransobject(sqlca)
+	this.dw_master.retrieve(this.il_code)
+	this.dw_master.scrolltorow(0)
+	this.dw_master.setfocus()
+	this.dw_detail.retrieve(this.il_code)
+	this.dw_detail.scrolltorow(0)
+	this.dw_detail.setfocus()
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// dw_master.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// cb_ok.clicked() returns long
+	long ll_rowcount
+	long ll_counter
+	long ll_servicecode
+	long ll_studentcode
+	long ll_classcode
+	double ld_fee
+	double ld_discperc
+	double ld_flatdisc
+	string ls_remarks
+	string ls_studentname
+	string ls_classname
+	string ls_servicename
+	boolean lb_ok
+	boolean lb_omitspecialcharges
+	string ls_date
+	if parent.dw_detail.accepttext() = 1 then
+		if parent.dw_detail.update() = 1 then
+			SQL commit USING sqlca;
+			parent.post event ue_close()
+		else
+			SQL rollback USING sqlca;
+			messagebox("Quotation Detail", "Some Problem Occurred while update of Quotation Detail called.~r~nDetails are:-~r~n" + sqlca.sqlerrtext)
+		end if
+	end if
+	return ::message.returnvalue
+
+// dw_detail.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_detail.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue

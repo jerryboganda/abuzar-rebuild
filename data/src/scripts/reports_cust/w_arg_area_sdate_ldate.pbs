@@ -1,0 +1,19 @@
+// window w_arg_area_sdate_ldate (reports_cust)  ancestor: w_arguements
+
+// w_arg_area_sdate_ldate.create() returns 0
+	call super::create
+
+// w_arg_area_sdate_ldate.destroy() returns 0
+	call super::destroy
+
+// w_arg_area_sdate_ldate.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	return ::message.returnvalue
+
+// w_arg_area_sdate_ldate.ue_close(integer ai_stauts) returns 0
+	super::ue_close(ai_stauts)
+	closewithreturn(this, this.istr_arg)

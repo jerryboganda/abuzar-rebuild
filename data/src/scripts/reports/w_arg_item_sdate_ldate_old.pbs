@@ -1,0 +1,23 @@
+// window w_arg_item_sdate_ldate_old (reports)  ancestor: w_arguements
+
+// w_arg_item_sdate_ldate_old.create() returns 0
+	call super::create
+
+// w_arg_item_sdate_ldate_old.destroy() returns 0
+	call super::destroy
+
+// w_arg_item_sdate_ldate_old.open() returns long
+	long ancestorreturnvalue
+	integer rtcode
+	ancestorreturnvalue = super::open()
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.getchild("icode", this.idc_itemdddw)
+	this.idc_itemdddw.settransobject(sqlca)
+	rtcode = gd_itemsinfo.sharedata(this.idc_itemdddw)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	return ::message.returnvalue
+
+// w_arg_item_sdate_ldate_old.ue_close(integer ai_stauts) returns 0
+	super::ue_close(ai_stauts)
+	closewithreturn(this, this.istr_arg)

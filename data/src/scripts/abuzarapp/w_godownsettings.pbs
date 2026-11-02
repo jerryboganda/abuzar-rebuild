@@ -1,0 +1,109 @@
+// window w_godownsettings (abuzarapp)  ancestor: window
+
+// w_godownsettings.create() returns 0
+	this.dw_preferences = create dw_preferences
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.dw_multigodown = create dw_multigodown
+	this.rb_multigodown = create rb_multigodown
+	this.rb_singlegodown = create rb_singlegodown
+	this.gb_1 = create gb_1
+	this.control = {this.dw_preferences, this.cb_cancel, this.cb_ok, this.dw_multigodown, this.rb_multigodown, this.rb_singlegodown, this.gb_1}
+
+// w_godownsettings.destroy() returns 0
+	destroy this.dw_preferences
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.dw_multigodown
+	destroy this.rb_multigodown
+	destroy this.rb_singlegodown
+	destroy this.gb_1
+
+// w_godownsettings.open() returns long
+	this.id_preferences = this.dw_preferences
+	this.id_preferences.settransobject(sqlca)
+	this.id_preferences.retrieve()
+	this.id_multigodown = this.dw_multigodown
+	this.id_multigodown.settransobject(sqlca)
+	this.id_multigodown.retrieve()
+	if f_stringpreferences("Multigodown") = "Y" then
+		this.rb_multigodown.checked = true
+	else
+		this.id_multigodown.object.defaultgcode.visible = false
+		this.id_multigodown.object.salegodownoption.visible = false
+		this.id_multigodown.object.purchasegodownoption.visible = false
+		this.id_multigodown.object.transfergodownoption.visible = false
+		this.id_multigodown.object.t_defaultgcode.visible = false
+		this.id_multigodown.object.t_salegodownoption.visible = false
+		this.id_multigodown.object.t_purchasegodownoption.visible = false
+		this.id_multigodown.object.t_transfergodownoption.visible = false
+		this.rb_singlegodown.checked = true
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	close(parent)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	string ls_temp
+	w_godownsettings w_parent
+	if parent.rb_multigodown.checked then
+		ls_temp = "Y"
+	else
+		ls_temp = "N"
+	end if
+	f_set_preference_local(parent.id_preferences, "MultiGodown", ls_temp)
+	if parent.rb_singlegodown.checked then
+		ls_temp = "1"
+	else
+		ls_temp = trim(string(parent.id_multigodown.getitemnumber(1, "DefaultGCode")))
+	end if
+	f_set_preference_local(parent.id_preferences, "DefaultGCode", ls_temp)
+	ls_temp = trim(string(parent.id_multigodown.getitemnumber(1, "SaleGodownOption")))
+	f_set_preference_local(parent.id_preferences, "SaleGodownOption", ls_temp)
+	ls_temp = trim(string(parent.id_multigodown.getitemnumber(1, "PurchaseGodownOption")))
+	f_set_preference_local(parent.id_preferences, "PurchaseGodownOption", ls_temp)
+	ls_temp = trim(string(parent.id_multigodown.getitemnumber(1, "TransferGodownOption")))
+	f_set_preference_local(parent.id_preferences, "TransferGodownOption", ls_temp)
+	if f_validatedw(parent.id_preferences) < 0 then
+		return ::message.returnvalue
+	end if
+	w_parent = getparent()
+	if parent.id_preferences.update() > 0 then
+		SQL commit USING sqlca;
+		gds_preferences.retrieve()
+	else
+		messagebox("Datasase Error", "Some Database problem occur during saving")
+		SQL rollback USING sqlca;
+		setpointer(arrow!)
+	end if
+	w_parent.setfocus()
+	close(w_godownsettings)
+	return ::message.returnvalue
+
+// rb_multigodown.clicked() returns long
+	if parent.rb_multigodown.checked then
+		parent.id_multigodown.object.defaultgcode.visible = true
+		parent.id_multigodown.object.salegodownoption.visible = true
+		parent.id_multigodown.object.purchasegodownoption.visible = true
+		parent.id_multigodown.object.transfergodownoption.visible = true
+		parent.id_multigodown.object.t_defaultgcode.visible = true
+		parent.id_multigodown.object.t_salegodownoption.visible = true
+		parent.id_multigodown.object.t_purchasegodownoption.visible = true
+		parent.id_multigodown.object.t_transfergodownoption.visible = true
+	end if
+	return ::message.returnvalue
+
+// rb_singlegodown.clicked() returns long
+	if parent.rb_singlegodown.checked then
+		parent.id_multigodown.object.defaultgcode.visible = false
+		parent.id_multigodown.object.salegodownoption.visible = false
+		parent.id_multigodown.object.purchasegodownoption.visible = false
+		parent.id_multigodown.object.transfergodownoption.visible = false
+		parent.id_multigodown.object.t_defaultgcode.visible = false
+		parent.id_multigodown.object.t_salegodownoption.visible = false
+		parent.id_multigodown.object.t_purchasegodownoption.visible = false
+		parent.id_multigodown.object.t_transfergodownoption.visible = false
+	end if
+	return ::message.returnvalue

@@ -1,0 +1,223 @@
+// window w_userauthentication_form (useratten)  ancestor: window
+
+// w_userauthentication_form.ue_close(integer ai_status) returns 0
+	s_arguements lstr_in_out
+	lstr_in_out.l_code1 = ai_status
+	this.em_date.getdata(lstr_in_out.d_sdate)
+	closewithreturn(this, lstr_in_out)
+
+// w_userauthentication_form.wf_validate_key(string as_data) returns integer
+	long ll_row
+	string ls_null
+	string ls_authkey
+	setnull(ls_null)
+	ll_row = this.id_key.rowcount()
+	ls_authkey = this.id_key.getitemstring(ll_row, "authenticationkey")
+	if isnull(as_data) or as_data = "" then
+		messagebox("Authentication Key Validation!", "Please enter valid Authentication Key")
+		this.dw_key.setcolumn("userkey")
+		this.dw_key.setitem(ll_row, "userkey", ls_null)
+		this.dw_key.setfocus()
+		return -1
+	end if
+	if this.ii_mode = 0 and lower(as_data) <> lower(ls_authkey) then
+		this.ii_tries = this.ii_tries + 1
+		if this.ii_tries > 2 then
+			messagebox("Authentication Key Validation!", "Number of attempts elapsed. Try Later.....")
+			this.cb_cancel.postevent(clicked!)
+		else
+			messagebox("Authentication Key Validation", "Authentication Key is not correct")
+			this.dw_key.setcolumn("userkey")
+			this.dw_key.setfocus()
+		end if
+		this.id_key.object.userkey[ll_row] = ls_null
+		return -1
+	end if
+	return 1
+
+// w_userauthentication_form.create() returns 0
+	this.em_date = create em_date
+	this.st_date = create st_date
+	this.cb_ok = create cb_ok
+	this.cb_cancel = create cb_cancel
+	this.dw_key = create dw_key
+	this.control = {this.em_date, this.st_date, this.cb_ok, this.cb_cancel, this.dw_key}
+
+// w_userauthentication_form.destroy() returns 0
+	destroy this.em_date
+	destroy this.st_date
+	destroy this.cb_ok
+	destroy this.cb_cancel
+	destroy this.dw_key
+
+// w_userauthentication_form.open() returns long
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	long ll_found
+	datetime ldt_in_out
+	environment env
+	s_arguements lstr_in_out
+	lstr_in_out = message.powerobjectparm
+	this.ii_mode = lstr_in_out.l_code2
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	this.id_key = this.dw_key
+	this.id_key.settransobject(sqlca)
+	this.id_key.retrieve()
+	ll_found = 0
+	if lstr_in_out.l_code1 = 1 then
+		ll_found = gds_securitywindow.find("rightcode = 709", 1, gds_securitywindow.rowcount())
+		if ll_found > 0 then
+			this.em_date.visible = true
+			this.st_date.visible = true
+		else
+			this.em_date.visible = false
+			this.st_date.visible = false
+		end if
+	elseif lstr_in_out.l_code1 = 2 then
+		ll_found = gds_securitywindow.find("rightcode = 710", 1, gds_securitywindow.rowcount())
+		if ll_found > 0 then
+			this.em_date.visible = true
+			this.st_date.visible = true
+		else
+			this.em_date.visible = false
+			this.st_date.visible = false
+		end if
+	end if
+	SQL SELECT GetDate ( ) INTO :ldt_in_out FROM users USING sqlca;
+	this.em_date.text = string(ldt_in_out, "dd/mm/yy hh:mm:ss")
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_userauthentication_form.key(keycode key, unsignedlong keyflags) returns long
+	if keydown(keyescape!) then
+		event ue_close(-1)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	long ancestorreturnvalue
+	long ll_row
+	long ll_null
+	long ll_usercode
+	long ll_updcode
+	long ll_rightcode
+	long ll_groupcode
+	string ls_userkey
+	string ls_authkey
+	ancestorreturnvalue = super::clicked()
+	ll_row = parent.dw_key.getrow()
+	parent.dw_key.accepttext()
+	ls_userkey = parent.dw_key.getitemstring(ll_row, "userkey")
+	if parent.wf_validate_key(ls_userkey) > 0 then
+		if parent.ii_mode = parent.iic_updatemode then
+			open(w_salesmanpassword)
+			ll_usercode = long(message.doubleparm)
+			setfocus()
+			if ll_usercode > 0 then
+				ll_groupcode = f_getgroupcode(ll_usercode)
+				SQL SELECT RightCode INTO :ll_rightcode FROM GroupRights WHERE GroupCode =:ll_groupcode AND RightCode =1030 USING sqlca;
+				if sqlca.sqlcode = 0 then
+					if ll_rightcode = 1030 then
+						SQL rollback USING sqlca;
+						parent.id_key.setitem(ll_row, "AuthenticationKey", ls_userkey)
+						ll_updcode = parent.id_key.update(false, true)
+						if ll_updcode = 1 then
+							SQL commit USING sqlca;
+							if sqlca.sqlcode <> 0 then
+								messagebox("Saving Problem!", "Authentication Key Saving Problem!~r~nDetails:- " + sqlca.sqlerrtext)
+								return -1
+							end if
+							return
+						end if
+					else
+						messagebox("Saving Problem!", "Authentication Key Saving Problem!~r~nDetails:- You have no right to change Authentication Key~r~nPlease contact system administrator")
+						return -1
+					end if
+				else
+					messagebox("Saving Problem!", "Authentication Key Saving Problem!~r~nDetails:- You have no right to change Authentication Key~r~nPlease contact system administrator~r~n" + sqlca.sqlerrtext)
+					return -1
+				end if
+			else
+				messagebox("Invalid User", "You do not have rights to modify/update Authentication Key~r~nContact your system administrator")
+				return -1
+			end if
+			return
+		end if
+		parent.event ue_close(1)
+	else
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// cb_cancel.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		parent.event ue_close(-1)
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.event ue_close(-1)
+	return ::message.returnvalue
+
+// dw_key.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	long rt_code
+	long ll_code
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "userkey"
+		if parent.wf_validate_key(data) > 0 then
+			rt_code = 0
+		else
+			rt_code = 1
+		end if
+	end choose
+	return rt_code
+
+// dw_key.itemerror(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	integer ll_code
+	string ls_salesman
+	string ls_password
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "userkey"
+		if isnull(data) or data = "" then
+			messagebox("Authentication Key Validation", "Enter some valid Authentication Key")
+		end if
+	end choose
+	return 1
+
+// dw_key.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	if parent.ii_mode = 0 and getcolumn() = 2 then
+		parent.cb_ok.postevent(clicked!)
+	end if
+	send(handle(this), 256, 9, long(90))
+	return 1

@@ -1,0 +1,49 @@
+// function f_get_googleqrcode_for_fiscalinvno (functions)  ancestor: function_object
+
+// f_get_googleqrcode_for_fiscalinvno.f_get_googleqrcode_for_fiscalinvno(long al_saleinvcode) returns long
+	string ls_method
+	string ls_errtext
+	n_winsock my_socket
+	unsignedlong lul_mysocket
+	string ls_hostname
+	string ls_hostip
+	string ls_errortext
+	long li_pos
+	long ll_port
+	string ls_saleinvcode
+	string ls_servername
+	blob lbl_qrcode
+	string ls_fname
+	if al_saleinvcode > 0 then
+		my_socket.of_startup()
+		my_socket.of_setunicode(false, false)
+		ls_hostname = my_socket.of_gethostname()
+		ls_hostip = my_socket.of_getipaddress(ls_hostname)
+		ls_servername = f_stringpreferences("FiscalizationMachine")
+		if ls_servername = "" or isnull(ls_servername) then
+			li_pos = pos(gs_servername, "\")
+			if li_pos > 0 then
+				ls_servername = left(gs_servername, li_pos - 1)
+			else
+				ls_servername = gs_servername
+			end if
+		end if
+		ll_port = long(f_stringpreferences("FiscalizationAppPort"))
+		if ll_port <= 0 or isnull(ll_port) then
+			ll_port = 9111
+		end if
+		lul_mysocket = my_socket.of_connect(ls_servername, ll_port)
+		if lul_mysocket > 0 then
+			ls_saleinvcode = "Q" + trim(string(al_saleinvcode))
+			if my_socket.of_send(lul_mysocket, ls_saleinvcode) and my_socket.of_recv(lul_mysocket, lbl_qrcode) then
+				if fileexists(ls_fname) then
+					filedelete(ls_fname)
+				end if
+				f_writeimgtofile(ls_fname, lbl_qrcode)
+			end if
+		else
+			ls_errortext = my_socket.of_getlasterror()
+			messagebox("Fiscalization Error", ls_errortext)
+		end if
+	end if
+	return 0

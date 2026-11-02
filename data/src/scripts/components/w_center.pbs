@@ -1,0 +1,39 @@
+// window w_center (components)  ancestor: window
+
+// w_center.f_center() returns integer
+	long ll_screenheight
+	long ll_screenwidth
+	long ll_rc
+	long ll_x
+	long ll_y
+	environment lenv_obj
+	if isnull(this) or not isvalid(this) then
+		return -1
+	end if
+	if getenvironment(lenv_obj) = -1 then
+		return -1
+	end if
+	ll_screenheight = pixelstounits(lenv_obj.screenheight, ypixelstounits!)
+	ll_screenwidth = pixelstounits(lenv_obj.screenwidth, xpixelstounits!)
+	if not (ll_screenheight > 0) or not (ll_screenwidth > 0) then
+		return -1
+	end if
+	if ll_screenwidth > this.width then
+		ll_x = ll_screenwidth / 2.0 - this.width / 2.0
+	end if
+	if ll_screenheight > this.height then
+		ll_y = ll_screenheight / 2.0 - this.height / 2.0
+	end if
+	ll_rc = move(ll_x, ll_y)
+	if ll_rc <> 1 then
+		return -1
+	end if
+	return 1
+
+// w_center.create() returns 0
+
+// w_center.destroy() returns 0
+
+// w_center.open() returns long
+	f_center()
+	return ::message.returnvalue

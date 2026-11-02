@@ -1,0 +1,69 @@
+// window w_weighingscale_form (singleentryitem)  ancestor: w_single_entry
+
+// w_weighingscale_form.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM WeighingScale WHERE WeighingScale.name =:as_name USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_weighingscale_form.create() returns 0
+	call super::create
+
+// w_weighingscale_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_weighingscale_form.activate() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::activate()
+	this.windowstate = maximized!
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_weighingscale_form.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.is_tablename = "WeighingScale"
+	return ::message.returnvalue
+
+// w_weighingscale_form.ue_save() returns 0
+	long ll_row
+	ll_row = this.id_detail.rowcount()
+	if ll_row > 0 then
+		if this.id_detail.object.barcodelen[ll_row] < this.id_detail.object.scaleidpos[ll_row] then
+			messagebox("Scale ID Starting Position", "Scale ID Starting Position must not exceed bar code length")
+			return
+		end if
+		if this.id_detail.object.barcodelen[ll_row] < this.id_detail.object.itemstartpos[ll_row] then
+			messagebox("Item Code Starting Position", "Item Code Starting Position must not exceed bar code length")
+			return
+		end if
+		if this.id_detail.object.barcodelen[ll_row] < this.id_detail.object.itemendpos[ll_row] then
+			messagebox("Item Code Ending Position", "Item Code Ending Position must not exceed bar code length")
+			return
+		end if
+		if this.id_detail.object.itemendpos[ll_row] < this.id_detail.object.itemstartpos[ll_row] then
+			messagebox("Item Code Starting/Ending Position", "Item Code Starting Position must not exceed Item Code Ending Position ")
+			return
+		end if
+		if this.id_detail.object.barcodelen[ll_row] < this.id_detail.object.weightstartpos[ll_row] then
+			messagebox("Item Weight Starting Position", "Item Weight Starting Position must not exceed bar code length")
+			return
+		end if
+		if this.id_detail.object.barcodelen[ll_row] < this.id_detail.object.weightendpos[ll_row] then
+			messagebox("Item Weight Ending Position", "Item Weight Ending Position must not exceed bar code length")
+			return
+		end if
+		if this.id_detail.object.weightendpos[ll_row] < this.id_detail.object.weightstartpos[ll_row] then
+			messagebox("Item Weight Starting/Ending Position", "Item Weight Starting Position must not exceed Item Weight Ending Position ")
+			return
+		end if
+		return
+	end if
+	call super::ue_save

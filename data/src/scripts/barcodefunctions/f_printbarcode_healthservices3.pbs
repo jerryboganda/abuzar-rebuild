@@ -1,0 +1,86 @@
+// function f_printbarcode_healthservices3 (barcodefunctions)  ancestor: function_object
+
+// f_printbarcode_healthservices3.f_printbarcode_healthservices3(datawindow id_master, datawindow id_detail, boolean ib_printprice) returns long
+	long ll_totalrows
+	long ll_counter
+	long ll_innercounter
+	long ll_qty
+	long ll_currrow
+	long ll_tot_label_rows
+	integer li_startcell
+	integer li_stopcell
+	integer li_temp
+	integer li_file
+	string ls_clientname
+	string ls_clientname_25_char
+	string ls_itemname
+	string ls_aliasname
+	string ls_licno
+	string ls_price
+	string ls_expdate
+	string ls_format
+	string ls_xpos
+	string ls_printer
+	string ls_purprice
+	string ls_packing
+	string ls_batch
+	string ls_supplier
+	long ll_headerno
+	long ll_labelno
+	long ll_labelpos
+	long ll_supply_cols_per_row
+	integer li_barcodeleninprint
+	ll_headerno = id_master.getitemnumber(id_master.getrow(), "headerno")
+	ls_clientname = trim(f_reportheaderinfo_wrt_headerno("clientname", ll_headerno))
+	li_barcodeleninprint = f_numberpreferences("BarCodeLenInPrint")
+	ls_licno = "Lic. #: " + f_reportheaderinfosale("druglicenceno", ll_headerno)
+	if isnull(id_master.object.suppliername[1]) then
+		ls_supplier = ""
+	else
+		ls_supplier = "Customer: " + id_master.object.suppliername[1]
+	end if
+	ll_totalrows = id_detail.rowcount()
+	ls_printer = trim(id_master.object.barcodeprinter[1])
+	if lower(ls_printer) = lower("TSC TDP-247") and ll_totalrows > 0 then
+		ll_counter = 1
+		tsc_openport_new("TSC TDP-247")
+		tsc_setup_new("38", "28", "5", "10", "0", "3", "0")
+		tsc_sendcommand_new("DIRECTION 1,0")
+		for ll_counter = 1 to ll_totalrows
+			if len(trim(id_detail.getitemstring(ll_counter, "fullcode"))) <= li_barcodeleninprint and id_detail.getitemnumber(ll_counter, "qty") > 0.0 then
+				ll_qty = id_detail.getitemnumber(ll_counter, "qty")
+				if isnull(id_detail.object.itemname[ll_counter]) then
+					ls_itemname = ""
+				else
+					ls_itemname = "Item Name: " + left(trim(id_detail.object.itemname[ll_counter]), 60)
+				end if
+				if isnull(id_detail.object.batch[ll_counter]) then
+					ls_batch = ""
+				else
+					ls_batch = "Batch: " + id_detail.object.batch[ll_counter]
+				end if
+				if isnull(id_detail.object.expiry[ll_counter]) then
+					ls_expdate = ""
+				else
+					ls_expdate = "Expiry: " + trim(string(id_detail.object.expiry[ll_counter], "dd/mm/yyyy"))
+				end if
+				if ib_printprice then
+					ls_price = "Rs: " + trim(string(round(id_detail.getitemdecimal(ll_counter, "saleprice"), 2), "###,##0.00"))
+				else
+					ls_price = ""
+				end if
+				tsc_clearbuffer_new()
+				tsc_windowsfont_new(25, 10, 30, 0, 2, 0, "Arial", ls_clientname)
+				tsc_windowsfont_new(25, 44, 25, 0, 2, 0, "Arial", ls_licno)
+				tsc_windowsfont_new(25, 66, 25, 0, 2, 0, "Arial", left(ls_supplier, 22))
+				tsc_windowsfont_new(25, 91, 25, 0, 2, 0, "Arial", mid(ls_supplier, 23, 22))
+				tsc_windowsfont_new(25, 113, 25, 0, 2, 0, "Arial", left(ls_itemname, 22))
+				tsc_windowsfont_new(25, 138, 25, 0, 2, 0, "Arial", mid(ls_itemname, 23, 22))
+				tsc_windowsfont_new(25, 167, 25, 0, 2, 0, "Arial", ls_batch)
+				tsc_windowsfont_new(25, 192, 25, 0, 2, 0, "Arial", ls_expdate)
+				tsc_printlabel_new("1", string(ll_qty))
+			end if
+		next
+		tsc_closeport_new()
+	end if
+	return 0

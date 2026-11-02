@@ -1,0 +1,51 @@
+// window w_area_form (custcomponents)  ancestor: w_single_entry
+
+// w_area_form.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM Area WHERE Area.name =:as_name USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_area_form.wf_duplicateshortname(string as_name1, string as_name2) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name1 = trim(as_name1)
+	as_name2 = trim(as_name2)
+	SQL SELECT count ( *) INTO :ll_count FROM Area WHERE Area.shortname =:as_name1 + '~r~n' + :as_name2 USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	this.id_detail.setitem(this.id_detail.getrow(), "shortname", as_name1 + "~r~n" + as_name2)
+	return b_flag
+
+// w_area_form.create() returns 0
+	call super::create
+
+// w_area_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_area_form.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.is_tablename = "area"
+	return ::message.returnvalue
+
+// w_area_form.activate() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::activate()
+	this.windowstate = maximized!
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_area_form.ue_save() returns 0
+	call super::ue_save
+	if this.id_detail.accepttext() > 0 then
+		this.id_detail.setitem(this.id_detail.getrow(), "shortname", this.id_detail.getitemstring(this.id_detail.getrow(), "shortname1") + "~r~n" + this.id_detail.getitemstring(this.id_detail.getrow(), "shortname2"))
+	end if

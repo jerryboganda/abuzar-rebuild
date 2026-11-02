@@ -1,0 +1,155 @@
+// window w_arg_users_vouchcat_sdate_ldate (reports)  ancestor: w_listarguments
+
+// w_arg_users_vouchcat_sdate_ldate.create() returns 0
+	integer icurrent
+	call super::create
+	this.dw_control2 = create dw_control2
+	this.st_selectable = create st_selectable
+	this.st_selected = create st_selected
+	this.lb_cust = create lb_cust
+	this.lb_selectedcust = create lb_selectedcust
+	this.cbx_allcust = create cbx_allcust
+	this.st_10 = create st_10
+	this.st_11 = create st_11
+	this.cbx_posted = create cbx_posted
+	this.cbx_unposted = create cbx_unposted
+	this.gb_6 = create gb_6
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_control2
+	this.control[icurrent + 2] = this.st_selectable
+	this.control[icurrent + 3] = this.st_selected
+	this.control[icurrent + 4] = this.lb_cust
+	this.control[icurrent + 5] = this.lb_selectedcust
+	this.control[icurrent + 6] = this.cbx_allcust
+	this.control[icurrent + 7] = this.st_10
+	this.control[icurrent + 8] = this.st_11
+	this.control[icurrent + 9] = this.cbx_posted
+	this.control[icurrent + 10] = this.cbx_unposted
+	this.control[icurrent + 11] = this.gb_6
+
+// w_arg_users_vouchcat_sdate_ldate.destroy() returns 0
+	call super::destroy
+	destroy this.dw_control2
+	destroy this.st_selectable
+	destroy this.st_selected
+	destroy this.lb_cust
+	destroy this.lb_selectedcust
+	destroy this.cbx_allcust
+	destroy this.st_10
+	destroy this.st_11
+	destroy this.cbx_posted
+	destroy this.cbx_unposted
+	destroy this.gb_6
+
+// w_arg_users_vouchcat_sdate_ldate.open() returns long
+	long ancestorreturnvalue
+	long ll_counter
+	long ll_rowcount
+	integer rtncode
+	ancestorreturnvalue = super::open()
+	this.is_dataobject = "d_arg_users"
+	this.is_colname = "usercode"
+	this.is_childcolname = "usercode"
+	this.st_selectable.text = "User(s)"
+	this.st_selected.text = "User(s)"
+	this.dw_startendinvoice.settransobject(sqlca)
+	this.dw_startendinvoice.insertrow(0)
+	this.dw_startendinvoice.scrolltorow(0)
+	this.dw_control.dataobject = this.is_dataobject
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	rtncode = this.dw_control.getchild(this.is_colname, this.idc_categories)
+	if rtncode = -1 then
+		messagebox("Error", "Not a DataWindowChild")
+	end if
+	ll_rowcount = this.idc_categories.rowcount()
+	for ll_counter = 1 to ll_rowcount
+		this.lb_categories.additem(this.idc_categories.getitemstring(ll_counter, "username"))
+	next
+	this.dw_control2.settransobject(sqlca)
+	this.dw_control2.insertrow(0)
+	this.dw_control2.scrolltorow(0)
+	rtncode = this.dw_control2.getchild("vochcatcode", this.idc_child)
+	if rtncode = -1 then
+		messagebox("Error", "Not a DataWindowChild")
+	end if
+	ll_rowcount = this.idc_child.rowcount()
+	for ll_counter = 1 to ll_rowcount
+		this.lb_cust.additem(this.idc_child.getitemstring(ll_counter, "name"))
+	next
+	return ::message.returnvalue
+
+// dw_control2.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// lb_cust.ue_keypress(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		post event doubleclicked(selectedindex())
+	end if
+	return ::message.returnvalue
+
+// lb_cust.doubleclicked(integer index) returns long
+	string ls_item
+	long ll_selectedindex
+	ls_item = string(selecteditem())
+	ll_selectedindex = selectedindex()
+	if not isnull(ls_item) and index >= 1 then
+		parent.lb_selectedcust.additem(ls_item)
+		deleteitem(index)
+		if ll_selectedindex > 1 then
+			if totalitems() < ll_selectedindex then
+				selectitem(totalitems())
+			else
+				selectitem(ll_selectedindex)
+			end if
+		else
+			selectitem(1)
+		end if
+	else
+		messagebox("Selection Validation", "Please select some value from selectable listbox")
+	end if
+	return ::message.returnvalue
+
+// lb_cust.getfocus() returns long
+	return ::message.returnvalue
+
+// lb_selectedcust.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		post event doubleclicked(selectedindex())
+	end if
+	return ::message.returnvalue
+
+// lb_selectedcust.doubleclicked(integer index) returns long
+	string ls_item
+	long ll_selectedindex
+	ll_selectedindex = selectedindex()
+	ls_item = string(selecteditem())
+	if not isnull(ls_item) and index >= 1 then
+		parent.lb_cust.additem(ls_item)
+		deleteitem(index)
+		if totalitems() < ll_selectedindex then
+			selectitem(totalitems())
+		else
+			selectitem(ll_selectedindex)
+		end if
+	else
+		messagebox("Selection Validation", "Please select some value from selected listbox")
+	end if
+	return ::message.returnvalue
+
+// lb_selectedcust.getfocus() returns long
+	return ::message.returnvalue
+
+// cbx_posted.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// cbx_unposted.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue

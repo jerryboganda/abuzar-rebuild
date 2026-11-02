@@ -1,0 +1,28 @@
+// window w_arg_percentage_reduce_raise (reports)  ancestor: w_arguements
+
+// w_arg_percentage_reduce_raise.create() returns 0
+	call super::create
+
+// w_arg_percentage_reduce_raise.destroy() returns 0
+	call super::destroy
+
+// w_arg_percentage_reduce_raise.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.is_columnname = message.stringparm
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	if this.dw_control.object.interventiontype[1] = 1 then
+		this.dw_control.object.percentage_t.text = "Reduce " + this.is_columnname + " To:"
+	else
+		this.dw_control.object.percentage_t.text = "Raise " + this.is_columnname + " By:"
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_arg_percentage_reduce_raise.ue_close(integer ai_stauts) returns 0
+	super::ue_close(ai_stauts)
+	closewithreturn(this, this.istr_arg)

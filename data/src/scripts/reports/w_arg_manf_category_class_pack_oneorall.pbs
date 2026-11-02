@@ -1,0 +1,37 @@
+// window w_arg_manf_category_class_pack_oneorall (reports)  ancestor: w_arguements
+
+// w_arg_manf_category_class_pack_oneorall.create() returns 0
+	integer icurrent
+	call super::create
+	this.st_gcode = create st_gcode
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_gcode
+
+// w_arg_manf_category_class_pack_oneorall.destroy() returns 0
+	call super::destroy
+	destroy this.st_gcode
+
+// w_arg_manf_category_class_pack_oneorall.open() returns long
+	long ancestorreturnvalue
+	long ll_retcode
+	ancestorreturnvalue = super::open()
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.retrieve()
+	this.dw_control.scrolltorow(0)
+	ll_retcode = this.dw_control.getchild("manfcode", this.idc_manf)
+	this.idc_manf.settransobject(sqlca)
+	this.idc_manf.retrieve()
+	ll_retcode = this.dw_control.getchild("icatcode", this.idc_cat)
+	this.idc_cat.settransobject(sqlca)
+	this.idc_cat.retrieve()
+	ll_retcode = this.dw_control.getchild("iccode", this.idc_class)
+	this.idc_class.settransobject(sqlca)
+	this.idc_class.retrieve()
+	ll_retcode = this.dw_control.getchild("packcode", this.idc_pack)
+	this.idc_pack.settransobject(sqlca)
+	this.idc_pack.retrieve()
+	return ::message.returnvalue
+
+// w_arg_manf_category_class_pack_oneorall.ue_close(integer ai_stauts) returns 0
+	super::ue_close(ai_stauts)
+	closewithreturn(this, this.istr_arg)

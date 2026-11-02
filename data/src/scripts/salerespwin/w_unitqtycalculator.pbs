@@ -1,0 +1,131 @@
+// window w_unitqtycalculator (salerespwin)  ancestor: window
+
+// w_unitqtycalculator.ue_close(integer ai_status) returns 0
+	if ai_status = -1 then
+		this.istr_amountoninvoice.d_amt = this.istr_oldamountoninvoice.d_amt
+		this.istr_amountoninvoice.c_paymentmode = this.istr_oldamountoninvoice.c_paymentmode
+		this.istr_amountoninvoice.i_acccode = this.istr_oldamountoninvoice.i_acccode
+		this.istr_amountoninvoice.s_reference = this.istr_oldamountoninvoice.s_reference
+		this.istr_amountoninvoice.i_status = this.istr_oldamountoninvoice.i_status
+	end if
+	closewithreturn(this, this.istr_amountoninvoice)
+
+// w_unitqtycalculator.create() returns 0
+	this.dw_amountoninvoice = create dw_amountoninvoice
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.control = {this.dw_amountoninvoice, this.cb_cancel, this.cb_ok}
+
+// w_unitqtycalculator.destroy() returns 0
+	destroy this.dw_amountoninvoice
+	destroy this.cb_cancel
+	destroy this.cb_ok
+
+// w_unitqtycalculator.open() returns long
+	string ls_aliasname
+	string ls_name
+	decimal ld_saleprice
+	decimal ld_measureqty
+	long ll_packunits
+	long ll_measureunit
+	string ls_invcode
+	long ll_rtcode
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	this.istr_amountoninvoice = message.powerobjectparm
+	this.istr_oldamountoninvoice = this.istr_amountoninvoice
+	choose case this.istr_amountoninvoice.s_module
+	case "sales"
+		this.title = "Unit Qty Calculator"
+	end choose
+	this.id_dw = this.dw_amountoninvoice
+	this.id_dw.settransobject(sqlca)
+	this.id_dw.insertrow(0)
+	this.id_dw.scrolltorow(0)
+	SQL SELECT customicode , name , saleprice , packunits , measureunitcode , measureqty =( select m.measureqty from measuringunit m where m.measureunitcode =item.measureunitcode ) INTO :ls_aliasname, :ls_name, :ld_saleprice, :ll_packunits, :ll_measureunit, :ld_measureqty FROM Item WHERE ICode =:this.istr_amountoninvoice.l_invcode USING sqlca;
+	this.id_dw.object.icode[1] = this.istr_amountoninvoice.l_invcode
+	this.id_dw.object.aliasname[1] = ls_aliasname
+	this.id_dw.object.name[1] = ls_name
+	this.id_dw.object.saleprice[1] = ld_saleprice
+	this.id_dw.object.packunits[1] = ll_packunits
+	this.id_dw.object.rate[1] = this.istr_amountoninvoice.d_netamt
+	this.id_dw.object.measuringunit[1] = ll_measureunit
+	this.id_dw.object.measureqty[1] = ld_measureqty
+	this.id_dw.selecttext(1, len(this.id_dw.gettext()))
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	f_setcolumnstyle(this.id_dw, "Qty")
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// dw_amountoninvoice.itemchanged(long row, dwobject dwo, string data) returns long
+	long ll_null
+	long ll_measuringunit
+	double ld_mqty
+	integer li_errcode
+	setnull(ll_null)
+	choose case dwo.name
+	case "measuringunit"
+		ll_measuringunit = long(data)
+		if ll_measuringunit > 0 then
+			SQL SELECT MeasureQty INTO :ld_mqty FROM MeasuringUnit WHERE MeasureUnitCode =:ll_measuringunit USING sqlca;
+			if sqlca.sqlcode = 0 then
+				this.object.measureqty[row] = ld_mqty
+			end if
+		else
+			messagebox("Measuring Unit", "Please Select valid Measuring Unit")
+			return 1
+		end if
+	case "rate"
+		if double(data) < 0.0 then
+			li_errcode = 1
+		end if
+	case "gstperc"
+		if double(data) < 0.0 or double(data) > 100.0 then
+			li_errcode = 1
+		end if
+	end choose
+	return li_errcode
+
+// dw_amountoninvoice.itemerror(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "amt"
+		messagebox("Amount Validation!", "Please Enter Valid Amount")
+	case "paymentmode"
+		messagebox("Payment Mode Validation!", "Please Enter Valid Payment Mode")
+	end choose
+	return ::message.returnvalue
+
+// dw_amountoninvoice.itemfocuschanged(long row, dwobject dwo) returns long
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.istr_amountoninvoice.i_status = -1
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	if parent.id_dw.accepttext() = 1 then
+		parent.istr_amountoninvoice.d_value = parent.id_dw.getitemdecimal(1, "c_totalunits")
+		parent.istr_amountoninvoice.i_status = 1
+		parent.post event ue_close(1)
+	end if
+	return ::message.returnvalue

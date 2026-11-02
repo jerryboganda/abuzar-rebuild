@@ -1,0 +1,67 @@
+// window w_modify_purorderheader (pocomponents)  ancestor: window
+
+// w_modify_purorderheader.create() returns 0
+	this.dw_control = create dw_control
+	this.control = {this.dw_control}
+
+// w_modify_purorderheader.destroy() returns 0
+	destroy this.dw_control
+
+// w_modify_purorderheader.open() returns long
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.width = ll_width * 0.98
+	this.height = ll_height * 0.90
+	this.y = int((ll_height - this.height) / 2.0)
+	this.dw_control.width = this.width - this.width * 0.02
+	this.dw_control.height = this.height - this.width * 0.05
+	if f_stringpreferences("ShowSuppRefInPurOrder") = "N" then
+		this.dw_control.object.supplierreference.visible = false
+	end if
+	if f_stringpreferences("ShowDeliveryLocationInPurOrder") = "N" then
+		this.dw_control.object.deliverylocation.visible = false
+	end if
+	if f_stringpreferences("ShowUsageLocationInPurOrder") = "N" then
+		this.dw_control.object.usagelocation.visible = false
+	end if
+	if f_stringpreferences("ShowReqDateInPurOrder") = "N" then
+		this.dw_control.object.requireddate.visible = false
+	end if
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.retrieve()
+	return ::message.returnvalue
+
+// w_modify_purorderheader.close() returns long
+	close(this)
+	return ::message.returnvalue
+
+// w_modify_purorderheader.key(keycode key, unsignedlong keyflags) returns long
+	long ll_option
+	if keydown(keyescape!) then
+		ll_option = messagebox("Modify Purchase Order Content", "Any Changes made will be lost. Save Changes?", question!, yesno!, 2)
+		if ll_option = 1 then
+			SQL rollback USING sqlca;
+			if this.dw_control.update() > 0 then
+				SQL commit USING sqlca;
+				if sqlca.sqlcode = 0 then
+					messagebox("Modify Purchase Order Content", "Changes Take Effect in Database", information!)
+					close(this)
+				else
+					messagebox("Modify Purchase Order Content", "Changes Do not Take Effect in Database~r~nReasons: " + sqlca.sqlerrtext, stopsign!)
+					return ::message.returnvalue
+				end if
+				return
+			end if
+		else
+			return ::message.returnvalue
+		end if
+		close(this)
+	end if
+	return ::message.returnvalue

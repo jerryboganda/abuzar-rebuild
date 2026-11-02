@@ -1,0 +1,72 @@
+// window w_arg_spoteam_distcode (reports)  ancestor: w_listarguments
+
+// w_arg_spoteam_distcode.create() returns 0
+	integer icurrent
+	call super::create
+	this.st_4 = create st_4
+	this.st_8 = create st_8
+	this.sle_distcode = create sle_distcode
+	this.st_9 = create st_9
+	this.hpb_hpb = create hpb_hpb
+	this.gb_overallprogress = create gb_overallprogress
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_4
+	this.control[icurrent + 2] = this.st_8
+	this.control[icurrent + 3] = this.sle_distcode
+	this.control[icurrent + 4] = this.st_9
+	this.control[icurrent + 5] = this.hpb_hpb
+	this.control[icurrent + 6] = this.gb_overallprogress
+
+// w_arg_spoteam_distcode.destroy() returns 0
+	call super::destroy
+	destroy this.st_4
+	destroy this.st_8
+	destroy this.sle_distcode
+	destroy this.st_9
+	destroy this.hpb_hpb
+	destroy this.gb_overallprogress
+
+// w_arg_spoteam_distcode.open() returns long
+	long ancestorreturnvalue
+	string ls_stringparam
+	string ls_filter
+	long ll_counter
+	long ll_rowcount
+	integer rtncode
+	ancestorreturnvalue = super::open()
+	ls_stringparam = message.stringparm
+	this.dw_control.settransobject(sqlca)
+	rtncode = this.dw_control.retrieve()
+	if rtncode = -1 then
+		messagebox("Error", "No SPO Team(s) To Select")
+	else
+		ll_rowcount = this.dw_control.rowcount()
+		ll_counter = 1
+		for ll_counter = 1 to ll_rowcount
+			this.lb_categories.additem(this.dw_control.getitemstring(ll_counter, "name"))
+		next
+	end if
+	this.sle_distcode.text = trim(f_stringpreferences("MerckDistCode"))
+	this.is_trans = trim(f_stringpreferences("OutputFilePath")) + trim(f_stringpreferences("MerckDistCode")) + "INV.TXT"
+	this.is_cust = trim(f_stringpreferences("OutputFilePath")) + trim(f_stringpreferences("MerckDistCode")) + "CUST.TXT"
+	this.is_stock = trim(f_stringpreferences("OutputFilePath")) + trim(f_stringpreferences("MerckDistCode")) + "STOCK.TXT"
+	this.is_share = trim(f_stringpreferences("OutputFilePath")) + trim(f_stringpreferences("MerckDistCode")) + "SHARE.TXT"
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// sle_distcode.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// sle_distcode.modified() returns long
+	if len(this.text) > 0 then
+		parent.is_trans = trim(f_stringpreferences("OutputFilePath")) + this.text + "INV.TXT"
+		parent.is_cust = trim(f_stringpreferences("OutputFilePath")) + this.text + "CUST.TXT"
+		parent.is_stock = trim(f_stringpreferences("OutputFilePath")) + this.text + "STOCK.TXT"
+		parent.is_share = trim(f_stringpreferences("OutputFilePath")) + this.text + "SHARE.TXT"
+	end if
+	return ::message.returnvalue

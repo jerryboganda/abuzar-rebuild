@@ -1,0 +1,30 @@
+// window w_issuetype_form (singleentry)  ancestor: w_single_entry
+
+// w_issuetype_form.ue_newform() returns 0
+	call super::ue_newform
+	this.id_detail.setcolumn(1)
+
+// w_issuetype_form.create() returns 0
+	call super::create
+
+// w_issuetype_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_issuetype_form.activate() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::activate()
+	this.windowstate = maximized!
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_issuetype_form.ue_detail() returns 0
+	call super::ue_detail
+
+// w_issuetype_form.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.is_tablename = "IssueType"
+	return ::message.returnvalue

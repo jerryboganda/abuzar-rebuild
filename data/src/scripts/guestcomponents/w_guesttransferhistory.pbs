@@ -1,0 +1,63 @@
+// window w_guesttransferhistory (guestcomponents)  ancestor: window
+
+// w_guesttransferhistory.create() returns 0
+	this.cb_print = create cb_print
+	this.dw_previnv = create dw_previnv
+	this.control = {this.cb_print, this.dw_previnv}
+
+// w_guesttransferhistory.destroy() returns 0
+	destroy this.cb_print
+	destroy this.dw_previnv
+
+// w_guesttransferhistory.open() returns long
+	long ll_width
+	long ll_height
+	long ll_code
+	long ll_counter
+	long ll_rowcount
+	environment env
+	ll_code = message.doubleparm
+	if getenvironment(env) <> 1 then
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.width = ll_width * 0.98
+	this.height = ll_height * 0.90
+	this.y = int((ll_height - this.height) / 2.0)
+	this.dw_previnv.width = this.width - this.width * 0.02
+	this.dw_previnv.height = this.height * 0.90
+	this.cb_print.y = this.dw_previnv.height + 20
+	this.dw_previnv.settransobject(sqlca)
+	ll_rowcount = this.dw_previnv.retrieve(ll_code)
+	this.dw_previnv.modify("DataWindow.Print.Preview=yes")
+	this.dw_previnv.object.datawindow.print.buttons = "yes"
+	setredraw(true)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_guesttransferhistory.close() returns long
+	close(this)
+	return ::message.returnvalue
+
+// w_guesttransferhistory.key(keycode key, unsignedlong keyflags) returns long
+	if keydown(keyescape!) then
+		close(this)
+	end if
+	return ::message.returnvalue
+
+// cb_print.clicked() returns long
+	if parent.dw_previnv.visible then
+		if printsetup() < 0 then
+			messagebox("Printer", "Printing Error")
+			parent.dw_previnv.printcancel()
+		end if
+		parent.dw_previnv.print()
+	end if
+	return ::message.returnvalue

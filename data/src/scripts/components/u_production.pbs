@@ -1,0 +1,186 @@
+// userobject u_production (components)  ancestor: nonvisualobject
+
+// u_production.of_settransobject(transaction at_transobject) returns 0
+	this.it_transobject = at_transobject
+	this.ids_master.settransobject(this.it_transobject)
+	this.ids_detail.settransobject(this.it_transobject)
+
+// u_production.of_insertrow_master(datetime adt_datetime, long al_issuegcode, long al_receiptgcode, long al_usercode, long al_saleinvcode) returns integer
+	long ll_currentrow
+	ll_currentrow = this.ids_master.insertrow(0)
+	if ll_currentrow > 0 then
+		this.ids_master.object.date[ll_currentrow] = adt_datetime
+		this.ids_master.object.issuegcode[ll_currentrow] = al_issuegcode
+		this.ids_master.object.receiptgcode[ll_currentrow] = al_receiptgcode
+		this.ids_master.object.originaldate[ll_currentrow] = adt_datetime
+		this.ids_master.object.posted[ll_currentrow] = "N"
+		this.ids_master.object.postdate[ll_currentrow] = adt_datetime
+		this.ids_master.object.finalized[ll_currentrow] = "N"
+		this.ids_master.object.createdby[ll_currentrow] = al_usercode
+		this.ids_master.object.remarks[ll_currentrow] = "SYSTEM GENERATED PRODUCTION FOR POS :" + string(al_saleinvcode)
+		return ll_currentrow
+	end if
+	return -1
+
+// u_production.of_retrieve_recipe() returns long
+	string ls_query
+	string ls_syntaxquery
+	string ls_error
+	ls_query = "Select Distinct ResultedItem From Recipe"
+	ls_syntaxquery = this.it_transobject.syntaxfromsql(ls_query, "", ls_error)
+	if len(ls_error) > 0 then
+		return -1
+	end if
+	this.ids_recipe.create(ls_syntaxquery, ls_error)
+	if len(ls_error) > 0 then
+		return -2
+	end if
+	this.ids_recipe.settransobject(this.it_transobject)
+	return this.ids_recipe.retrieve()
+
+// u_production.of_is_recipeitem(long al_icode) returns boolean
+	long ll_found
+	ll_found = this.ids_recipe.find("ResultedItem = " + string(al_icode), 1, this.ids_recipe.rowcount())
+	if ll_found > 0 then
+		return true
+	end if
+	return false
+
+// u_production.of_savechanges() returns long
+	long ll_counter
+	long ll_code
+	if this.it_transobject.gettabmaxkey("ProdHeader", ll_code) = 0 then
+		if this.ids_master.rowcount() > 0 then
+			this.ids_master.object.code[1] = ll_code
+			if this.ids_detail.rowcount() > 0 then
+				for ll_counter = 1 to this.ids_detail.rowcount()
+					this.ids_detail.object.code[ll_counter] = ll_code
+				next
+				if this.ids_master.update() > 0 then
+					if this.ids_detail.update() > 0 then
+						return ll_code
+					end if
+				else
+					return -4
+				end if
+			else
+				return -3
+			end if
+		else
+			return -2
+		end if
+		return
+	end if
+	return -1
+
+// u_production.of_insertrow_detail(datawindow adw_detail) returns long
+	long ll_icode
+	long ll_sets
+	long ll_counter
+	long ll_insertedrow
+	double ld_qty
+	for ll_counter = 1 to adw_detail.rowcount()
+		ll_icode = adw_detail.object.icode[ll_counter]
+		ld_qty = adw_detail.object.looseqty[ll_counter]
+		ll_sets = adw_detail.object.itemtypecode[ll_counter]
+		if ll_sets = 2 then
+			if of_fill_detail_with_setcontentitems(ll_icode, ld_qty) < 0 then
+				return -2
+			end if
+		elseif of_is_recipeitem(ll_icode) and of_insertrow_detail(ll_icode, ld_qty) <= 0 then
+			return -1
+		end if
+	next
+	return this.ids_detail.rowcount()
+
+// u_production.of_post(long al_invid, long al_usercode, long al_headerno, datetime adt_server_datetime, string as_error) returns long
+	long ll_retcode
+	ll_retcode = this.it_transobject.postproduction(al_invid, al_usercode, al_headerno, adt_server_datetime)
+	if this.it_transobject.sqlcode <> 0 or ll_retcode <> 0 then
+		as_error = this.it_transobject.sqlerrtext
+		return this.it_transobject.sqlcode
+	end if
+	return 0
+
+// u_production.of_fill_detail_with_setcontentitems(long al_icode, double al_qty) returns long
+	long ll_counter
+	long ll_icode
+	string ls_query
+	string ls_syntaxquery
+	string ls_error
+	double ld_qty
+	double ld_minorderqty
+	integer li_round
+	datastore lds_set_contentitems
+	li_round = f_get_colprecision("Qty")
+	ls_query = "Select  RD.ICode, RD.Qty, R.Qty AS MinOrderQty From Recipe R, RecipeDetail RD Where~tR.RecipeCode = RD.RecipeCode And R.ResultedItem = " + string(al_icode) + " And R.Priority IN ( Select Min(Priority) From Recipe Where ResultedItem = " + string(al_icode) + " )"
+	ls_syntaxquery = this.it_transobject.syntaxfromsql(ls_query, "", ls_error)
+	if len(ls_error) > 0 then
+		return -1
+	end if
+	lds_set_contentitems = create datastore
+	lds_set_contentitems.create(ls_syntaxquery, ls_error)
+	if len(ls_error) > 0 then
+		return -2
+	end if
+	lds_set_contentitems.settransobject(this.it_transobject)
+	lds_set_contentitems.retrieve()
+	if lds_set_contentitems.rowcount() > 0 then
+		for ll_counter = 1 to lds_set_contentitems.rowcount()
+			ll_icode = lds_set_contentitems.getitemnumber(ll_counter, "recipedetail_icode")
+			ld_minorderqty = lds_set_contentitems.object.recipe_minorderqty[ll_counter]
+			if ld_minorderqty <= 0.0 or isnull(ld_minorderqty) then
+				ld_minorderqty = 1
+			end if
+			ld_qty = round(al_qty / ld_minorderqty * lds_set_contentitems.object.recipedetail_qty[ll_counter], li_round)
+			if of_is_recipeitem(ll_icode) and of_insertrow_detail(ll_icode, ld_qty) <= 0 then
+				return -1
+			end if
+		next
+	else
+		return -3
+	end if
+	destroy lds_set_contentitems
+	return 0
+
+// u_production.of_insertrow_detail(long al_icode, double al_qty) returns long
+	long ll_currentrow
+	ll_currentrow = this.ids_detail.insertrow(0)
+	if ll_currentrow > 0 then
+		this.ids_detail.object.icode[ll_currentrow] = al_icode
+		this.ids_detail.object.qty[ll_currentrow] = al_qty
+		this.ids_detail.object.batch[ll_currentrow] = f_stringpreferences("defaultbatch")
+		this.ids_detail.object.expiry[ll_currentrow] = f_datepreferences("defaultexpiry")
+		return ll_currentrow
+	end if
+	return -1
+
+// u_production.of_finalize(long al_invid, long al_usercode, string as_error) returns long
+	long ll_retcode
+	ll_retcode = this.it_transobject.finalize_production(al_invid, al_invid, al_usercode)
+	if this.it_transobject.sqlcode <> 0 or ll_retcode <> 0 then
+		as_error = this.it_transobject.sqlerrtext
+		return this.it_transobject.sqlcode
+	end if
+	return 0
+
+// u_production.create() returns 0
+	call super::create
+	triggerevent("constructor")
+
+// u_production.destroy() returns 0
+	triggerevent("destructor")
+	call super::destroy
+
+// u_production.constructor() returns long
+	this.ids_master = create datastore
+	this.ids_master.dataobject = "d_productionheader"
+	this.ids_detail = create datastore
+	this.ids_detail.dataobject = "d_productiondetail"
+	this.ids_recipe = create datastore
+	return ::message.returnvalue
+
+// u_production.destructor() returns long
+	destroy this.ids_master
+	destroy this.ids_detail
+	return ::message.returnvalue

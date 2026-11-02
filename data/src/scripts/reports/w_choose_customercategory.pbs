@@ -1,0 +1,79 @@
+// window w_choose_customercategory (reports)  ancestor: window
+
+// w_choose_customercategory.ue_close() returns 0
+	closewithreturn(this, this.istr_arg)
+
+// w_choose_customercategory.create() returns 0
+	this.cbx_selectall = create cbx_selectall
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.dw_selection = create dw_selection
+	this.gb_1 = create gb_1
+	this.control = {this.cbx_selectall, this.cb_cancel, this.cb_ok, this.dw_selection, this.gb_1}
+
+// w_choose_customercategory.destroy() returns 0
+	destroy this.cbx_selectall
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.dw_selection
+	destroy this.gb_1
+
+// w_choose_customercategory.open() returns long
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	this.dw_selection.settransobject(sqlca)
+	this.dw_selection.retrieve(f_getgroupcode(gl_usercode))
+	return ::message.returnvalue
+
+// cbx_selectall.clicked() returns long
+	long ll_counter
+	boolean lb_checked
+	lb_checked = this.checked
+	for ll_counter = 1 to parent.dw_selection.rowcount()
+		if lb_checked then
+			parent.dw_selection.setitem(ll_counter, "status", "Y")
+		else
+			parent.dw_selection.setitem(ll_counter, "status", "N")
+		end if
+	next
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.istr_arg.i_status = -1
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	long ll_counter
+	integer[] ia_list
+	for ll_counter = 1 to parent.dw_selection.rowcount()
+		if parent.dw_selection.getitemstring(ll_counter, "status") = "Y" then
+			ia_list[ll_counter] = parent.dw_selection.getitemnumber(ll_counter, "code")
+		end if
+	next
+	if upperbound(ia_list) <= 0 then
+		messagebox("Selection Validation", "Kindly select some Category from the list.")
+		return ::message.returnvalue
+	end if
+	parent.istr_arg.i_status = 1
+	parent.istr_arg.ia_integerlist = ia_list
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// dw_selection.rowfocuschanged(long currentrow) returns long
+	selectrow(0, false)
+	selectrow(currentrow, true)
+	return ::message.returnvalue

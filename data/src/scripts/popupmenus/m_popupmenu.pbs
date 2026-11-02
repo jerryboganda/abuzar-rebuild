@@ -1,0 +1,168 @@
+// menu m_popupmenu (popupmenus)  ancestor: menu
+
+// m_popupmenu.mf_displayreport(string as_title, string as_dataobject) returns 0
+	w_reviewreport lw_sheet
+	s_reportinfo ls_reportinfo
+	ls_reportinfo.s_reporttitle = as_title
+	ls_reportinfo.s_reportobject = as_dataobject
+	opensheetwithparm(lw_sheet, ls_reportinfo, this.parentwindow, 0, layered!)
+
+// m_popupmenu.mf_findindex(integer ai_indexno, string as_indicesstring) returns integer
+	integer li_countcommas
+	integer li_counter
+	integer li_index
+	long ll_startingstrpos
+	long ll_endingstrpos
+	li_countcommas = ai_indexno - 1
+	do while li_counter < li_countcommas
+		ll_startingstrpos = pos(as_indicesstring, ",", ll_startingstrpos)
+		ll_startingstrpos = ll_startingstrpos + 1
+		li_counter = li_counter + 1
+	loop
+	ll_endingstrpos = pos(as_indicesstring, ",", ll_startingstrpos)
+	li_index = integer(mid(as_indicesstring, ll_startingstrpos, ll_endingstrpos - ll_startingstrpos))
+	return li_index
+
+// m_popupmenu.mf_getstatus(integer ai_status) returns boolean
+	if ai_status = 1 then
+		return true
+	end if
+	return false
+
+// m_popupmenu.mf_initsecurityapp(menu am_menu, string as_indicesstring) returns integer
+	integer li_retcode
+	integer li_levelindex
+	integer li_status
+	integer li_parentlevel
+	long ll_counter
+	long ll_found
+	long ll_securityrowcount
+	string ls_indicesstring
+	boolean lb_enablerestricted
+	datastore lds_security
+	dwruntimeerror exdw
+	nullobjecterror exnullobj
+	runtimeerror ex
+	dwruntimeerror exdw2
+	nullobjecterror exnullobj2
+	runtimeerror ex2
+	dwruntimeerror exdw3
+	nullobjecterror exnullobj3
+	runtimeerror ex3
+	dwruntimeerror exdw4
+	nullobjecterror exnullobj4
+	runtimeerror ex4
+	dwruntimeerror exdw5
+	nullobjecterror exnullobj5
+	runtimeerror ex5
+	dwruntimeerror exdw6
+	nullobjecterror exnullobj6
+	runtimeerror ex6
+	li_parentlevel = wf_findlevel(as_indicesstring)
+	lds_security = create datastore
+	lds_security.dataobject = "d_security_filtered"
+	lds_security.settransobject(sqlca)
+	lds_security.setfilter("indicesstring <> '" + as_indicesstring + "'")
+	lds_security.filter()
+	lds_security.retrieve(gl_usercode, "A", as_indicesstring)
+	ll_securityrowcount = lds_security.rowcount()
+	for ll_counter = 1 to ll_securityrowcount
+		li_status = lds_security.object.status[ll_counter]
+		li_levelindex = lds_security.object.levelindex[ll_counter]
+		li_levelindex = li_levelindex - li_parentlevel
+		ls_indicesstring = lds_security.object.indicesstring[ll_counter]
+		if ll_counter > 98 then
+			ll_counter = ll_counter
+		end if
+		choose case li_levelindex
+		case 1
+			try
+				am_menu.item[mf_findindex(1, ls_indicesstring)].visible = mf_getstatus(li_status)
+				am_menu.item[mf_findindex(1, ls_indicesstring)].enabled = mf_getstatus(li_status)
+			catch (throwable exdw)
+			catch (throwable exnullobj)
+			catch (throwable ex)
+			end try
+		case 2
+			try
+				am_menu.item[mf_findindex(1, ls_indicesstring)].item[mf_findindex(2, ls_indicesstring)].visible = mf_getstatus(li_status)
+				am_menu.item[mf_findindex(1, ls_indicesstring)].item[mf_findindex(2, ls_indicesstring)].enabled = mf_getstatus(li_status)
+			catch (throwable exdw2)
+			catch (throwable exnullobj2)
+			catch (throwable ex2)
+			end try
+		case 3
+			try
+				am_menu.item[mf_findindex(1, ls_indicesstring)].item[mf_findindex(2, ls_indicesstring)].item[mf_findindex(3, ls_indicesstring)].visible = mf_getstatus(li_status)
+				am_menu.item[mf_findindex(1, ls_indicesstring)].item[mf_findindex(2, ls_indicesstring)].item[mf_findindex(3, ls_indicesstring)].enabled = mf_getstatus(li_status)
+			catch (throwable exdw3)
+			catch (throwable exnullobj3)
+			catch (throwable ex3)
+			end try
+		case 4
+			try
+				am_menu.item[mf_findindex(1, ls_indicesstring)].item[mf_findindex(2, ls_indicesstring)].item[mf_findindex(3, ls_indicesstring)].item[mf_findindex(4, ls_indicesstring)].visible = mf_getstatus(li_status)
+				am_menu.item[mf_findindex(1, ls_indicesstring)].item[mf_findindex(2, ls_indicesstring)].item[mf_findindex(3, ls_indicesstring)].item[mf_findindex(4, ls_indicesstring)].enabled = mf_getstatus(li_status)
+			catch (throwable exdw4)
+			catch (throwable exnullobj4)
+			catch (throwable ex4)
+			end try
+		case 5
+			try
+				am_menu.item[mf_findindex(1, ls_indicesstring)].item[mf_findindex(2, ls_indicesstring)].item[mf_findindex(3, ls_indicesstring)].item[mf_findindex(4, ls_indicesstring)].item[mf_findindex(5, ls_indicesstring)].visible = mf_getstatus(li_status)
+				am_menu.item[mf_findindex(1, ls_indicesstring)].item[mf_findindex(2, ls_indicesstring)].item[mf_findindex(3, ls_indicesstring)].item[mf_findindex(4, ls_indicesstring)].item[mf_findindex(5, ls_indicesstring)].enabled = mf_getstatus(li_status)
+			catch (throwable exdw5)
+			catch (throwable exnullobj5)
+			catch (throwable ex5)
+			end try
+		case 6
+			try
+				am_menu.item[mf_findindex(1, ls_indicesstring)].item[mf_findindex(2, ls_indicesstring)].item[mf_findindex(3, ls_indicesstring)].item[mf_findindex(4, ls_indicesstring)].item[mf_findindex(5, ls_indicesstring)].item[mf_findindex(6, ls_indicesstring)].visible = mf_getstatus(li_status)
+				am_menu.item[mf_findindex(1, ls_indicesstring)].item[mf_findindex(2, ls_indicesstring)].item[mf_findindex(3, ls_indicesstring)].item[mf_findindex(4, ls_indicesstring)].item[mf_findindex(5, ls_indicesstring)].item[mf_findindex(6, ls_indicesstring)].enabled = mf_getstatus(li_status)
+			catch (throwable exdw6)
+			catch (throwable exnullobj6)
+			catch (throwable ex6)
+			end try
+		end choose
+	next
+	return li_retcode
+
+// m_popupmenu.wf_findlevel(string as_indicesstring) returns integer
+	integer li_countcommas
+	integer li_counter
+	integer li_index
+	long ll_startingstrpos
+	long ll_endingstrpos
+	li_countcommas = 0
+	do while li_counter < len(as_indicesstring)
+		ll_startingstrpos = pos(as_indicesstring, ",", ll_startingstrpos)
+		if ll_startingstrpos > 0 then
+			li_countcommas = li_countcommas + 1
+			ll_startingstrpos = ll_startingstrpos + 1
+		end if
+		li_counter = li_counter + 1
+	loop
+	return li_countcommas
+
+// m_popupmenu.create() returns 0
+	m_popupmenu = this
+	call super::create
+	this.text = "m_popupmenu"
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_popupmenu.destroy() returns 0
+	call super::destroy

@@ -1,0 +1,97 @@
+// window w_copypurinvoicestopurledgermod (purchaseresponsewin)  ancestor: window
+
+// w_copypurinvoicestopurledgermod.create() returns 0
+	this.cb_1 = create cb_1
+	this.cb_transfer = create cb_transfer
+	this.control = {this.cb_1, this.cb_transfer}
+
+// w_copypurinvoicestopurledgermod.destroy() returns 0
+	destroy this.cb_1
+	destroy this.cb_transfer
+
+// w_copypurinvoicestopurledgermod.open() returns long
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	long ll_usercode
+	long ll_groupcode
+	long ll_count
+	environment env
+	open(w_salesmanpassword)
+	ll_usercode = long(message.doubleparm)
+	if ll_usercode < 0 or isnull(ll_usercode) then
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	else
+		ll_groupcode = f_getgroupcode(ll_usercode)
+		if ll_groupcode > 0 then
+			SQL SELECT ISNULL ( COUNT ( RightCode ) , 0 ) INTO :ll_count FROM GroupRights WHERE GroupCode =:ll_groupcode AND RightCode IN ( 1523 , 1583 , 1584 ) USING sqlca;
+			if isnull(ll_count) then
+				ll_count = 0
+			end if
+			if sqlca.sqlcode <> 0 then
+				close(this)
+				if not isvalid(message) then
+					return 0
+				end if
+				return message.returnvalue
+			elseif ll_count = 0 then
+				messagebox("Rights Validation", "You do not have rights to execute this business function/process.~r~nKindly consult your system administrator.", stopsign!)
+				close(this)
+				if not isvalid(message) then
+					return 0
+				end if
+				return message.returnvalue
+			end if
+		else
+			close(this)
+			if not isvalid(message) then
+				return 0
+			end if
+			return message.returnvalue
+		end if
+	end if
+	setfocus()
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// cb_1.clicked() returns long
+	close(parent)
+	return ::message.returnvalue
+
+// cb_transfer.clicked() returns long
+	long ll_error
+	long ll_rows
+	string ls_err
+	SQL rollback USING sqlca;
+	ll_error = sqlca.copyinvoicestopurledgermod(ll_rows)
+	if sqlca.sqlcode <> 0 then
+		ls_err = sqlca.sqlerrtext
+		SQL rollback USING sqlca;
+		messagebox("Error", "Unable to dump invoices.~r~nPossible causes are: " + ls_err)
+	else
+		SQL commit USING sqlca;
+		if ll_rows = 0 then
+			messagebox("Dump Confirmation", "No Inoice exist for Dumping")
+		else
+			messagebox("Dump Confirmation", "All invoices successfully Dumped~r~n" + "Total Invoices Dumped are " + string(ll_rows))
+		end if
+		close(parent)
+	end if
+	return ::message.returnvalue

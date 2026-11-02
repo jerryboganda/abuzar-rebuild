@@ -1,0 +1,28 @@
+// userobject u_internetresult_medask (components)  ancestor: internetresult
+
+// u_internetresult_medask.internetdata(blob data) returns integer
+	string ls_success_token
+	string ls_data
+	if this.is_service = "Login" then
+		ls_success_token = "Login successfully"
+	else
+		ls_success_token = "200"
+	end if
+	ls_data = string(data, encodingansi!)
+	this.is_data = ls_data
+	if match(ls_data, ls_success_token) then
+		this.is_msg = ls_success_token
+		this.il_retcode = 1
+		return this.il_retcode
+	end if
+	this.is_msg = "un-successfull"
+	this.il_retcode = -1
+	return this.il_retcode
+
+// u_internetresult_medask.create() returns 0
+	call super::create
+	triggerevent("constructor")
+
+// u_internetresult_medask.destroy() returns 0
+	triggerevent("destructor")
+	call super::destroy

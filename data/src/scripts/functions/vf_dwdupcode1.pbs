@@ -1,0 +1,21 @@
+// function vf_dwdupcode1 (functions)  ancestor: function_object
+
+// vf_dwdupcode1.vf_dwdupcode1(datawindow ad_dwcontrol, string as_colname, string as_code, integer al_row) returns boolean
+	long rt_code
+	boolean yesno
+	if ad_dwcontrol.rowcount() > 1 then
+		if al_row > 1 then
+			rt_code = ad_dwcontrol.find(as_colname + " = Long('" + as_code + "')", al_row - 1, 0)
+		end if
+		if rt_code = 0 then
+			if al_row <> ad_dwcontrol.rowcount() then
+				rt_code = ad_dwcontrol.find(as_colname + "=Long(~"" + as_code + "~")", al_row + 1, ad_dwcontrol.rowcount())
+			end if
+			if rt_code <> 0 then
+				yesno = true
+			end if
+		else
+			yesno = true
+		end if
+	end if
+	return yesno

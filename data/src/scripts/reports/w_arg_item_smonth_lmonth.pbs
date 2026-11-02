@@ -1,0 +1,66 @@
+// window w_arg_item_smonth_lmonth (reports)  ancestor: w_arguements
+
+// w_arg_item_smonth_lmonth.create() returns 0
+	integer icurrent
+	call super::create
+	this.dw_smonth = create dw_smonth
+	this.dw_lmonth = create dw_lmonth
+	this.dw_syear = create dw_syear
+	this.dw_lyear = create dw_lyear
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_smonth
+	this.control[icurrent + 2] = this.dw_lmonth
+	this.control[icurrent + 3] = this.dw_syear
+	this.control[icurrent + 4] = this.dw_lyear
+
+// w_arg_item_smonth_lmonth.destroy() returns 0
+	call super::destroy
+	destroy this.dw_smonth
+	destroy this.dw_lmonth
+	destroy this.dw_syear
+	destroy this.dw_lyear
+
+// w_arg_item_smonth_lmonth.open() returns long
+	long ancestorreturnvalue
+	integer rtcode
+	string ls_month
+	ancestorreturnvalue = super::open()
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.getchild("icode", this.idc_itemdddw)
+	this.idc_itemdddw.settransobject(sqlca)
+	rtcode = gd_itemsinfo.sharedata(this.idc_itemdddw)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	this.dw_smonth.insertrow(0)
+	this.dw_smonth.scrolltorow(0)
+	this.dw_smonth.setitem(1, "month", month(today()))
+	this.dw_lmonth.insertrow(0)
+	this.dw_lmonth.scrolltorow(0)
+	this.dw_lmonth.setitem(1, "month", month(today()))
+	this.dw_syear.insertrow(0)
+	this.dw_syear.scrolltorow(0)
+	this.dw_syear.setitem(1, "year", year(today()))
+	this.dw_lyear.insertrow(0)
+	this.dw_lyear.scrolltorow(0)
+	this.dw_lyear.setitem(1, "year", year(today()))
+	return ::message.returnvalue
+
+// w_arg_item_smonth_lmonth.ue_close(integer ai_stauts) returns 0
+	super::ue_close(ai_stauts)
+	closewithreturn(this, this.istr_arg)
+
+// dw_smonth.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return ::message.returnvalue
+
+// dw_lmonth.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return ::message.returnvalue
+
+// dw_syear.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return ::message.returnvalue
+
+// dw_lyear.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return ::message.returnvalue

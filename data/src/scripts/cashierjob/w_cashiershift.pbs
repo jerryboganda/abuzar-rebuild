@@ -1,0 +1,484 @@
+// window w_cashiershift (cashierjob)  ancestor: w_multi_entry
+
+// w_cashiershift.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM Groups WHERE GroupName =:as_name USING this.it_transobject;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_cashiershift.wf_validateitem() returns integer
+	long ll_usercode
+	long rt_code
+	integer li_errcode
+	integer li_null
+	boolean ib_yesno
+	setnull(li_null)
+	ll_usercode = this.id_detail.getitemnumber(this.il_currrow, "usercode")
+	if this.id_detail.rowcount() > 1 then
+		if this.il_currrow > 1 then
+			rt_code = this.id_detail.find("usercode = " + trim(string(ll_usercode)), this.il_currrow - 1, 0)
+		end if
+		if rt_code = 0 then
+			if this.il_currrow <> this.id_detail.rowcount() then
+				rt_code = this.id_detail.find("usercode = " + trim(string(ll_usercode)), this.il_currrow + 1, this.id_detail.rowcount())
+			end if
+			if rt_code <> 0 then
+				ib_yesno = true
+			end if
+		else
+			ib_yesno = true
+		end if
+	end if
+	if ib_yesno = true then
+		messagebox("Duplication Error", "Current row is duplicate")
+		li_errcode = -1
+	else
+		li_errcode = 0
+	end if
+	this.ib_itemvalidated = true
+	if li_errcode = -1 then
+		this.id_detail.setcolumn("usercode")
+		this.id_detail.scrolltorow(this.il_currrow)
+		this.id_detail.object.usercode[this.il_currrow] = li_null
+	end if
+	return li_errcode
+
+// w_cashiershift.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+
+// w_cashiershift.wf_set_defaultfilter() returns integer
+	string ls_filter
+	if this.id_master.rowcount() > 0 then
+		ls_filter = this.id_master.object.defaultfiltercriteria[1]
+		if ls_filter = "" or isnull(ls_filter) or ls_filter = "?" then
+			setnull(ls_filter)
+		end if
+		this.id_footer.setfilter(ls_filter)
+		this.id_footer.filter()
+		ls_filter = this.id_footer.object.datawindow.table.filter
+		this.id_master.object.defaultfiltercriteria[1] = ls_filter
+	end if
+	return 0
+
+// w_cashiershift.wf_setcashiershift(long al_shiftowner) returns long
+	long ll_shiftcode
+	long ll_retcode
+	long ll_counter
+	long ll_rowcount
+	long ll_insrow
+	datastore lds_detail
+	datastore lds_header
+	SQL SELECT Max ( CashierShiftCode ) INTO :ll_shiftcode FROM CashierShift WHERE CashierShift.ShiftOwner =:al_shiftowner USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		ll_retcode = 0
+	else
+		ll_retcode = 1
+		return 1
+	end if
+	if ll_retcode = 0 and ll_shiftcode > 0 then
+		lds_header = create datastore
+		lds_header.dataobject = this.id_master.dataobject
+		lds_header.settransobject(this.it_transobject)
+		lds_detail = create datastore
+		lds_detail.dataobject = this.id_detail.dataobject
+		lds_detail.settransobject(this.it_transobject)
+		lds_header.retrieve(ll_shiftcode)
+		lds_detail.retrieve(ll_shiftcode)
+		if lds_header.rowcount() > 0 then
+			if lds_detail.rowcount() > 0 then
+				this.id_detail.reset()
+				ll_counter = 1
+				for ll_counter = 1 to lds_detail.rowcount()
+					ll_insrow = this.id_detail.insertrow(0)
+					if ll_insrow > 0 then
+						this.id_detail.object.usercode[ll_insrow] = lds_detail.object.usercode[ll_counter]
+					end if
+				next
+			else
+				ll_retcode = 0
+			end if
+		else
+			ll_retcode = 0
+		end if
+	end if
+	return ll_retcode
+
+// w_cashiershift.wf_print_cashiershift() returns long
+	long ll_cashiershift
+	if this.id_list.getrow() > 0 then
+		ll_cashiershift = this.id_list.object.code[this.id_list.getrow()]
+		if this.id_list.object.shiftstatus[this.id_list.getrow()] = "C" then
+			openwithparm(w_cashiershiftreport, ll_cashiershift)
+		end if
+	end if
+	return 0
+
+// w_cashiershift.wf_set_cash_account_balance(long al_acccode) returns long
+	double ld_balance
+	long ll_retcode
+	datetime ldt_date
+	SQL SELECT GETDATE ( ) INTO :ldt_date FROM ( SELECT A =1 ) A USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		this.it_transobject.accountopeningbalance(al_acccode, ldt_date, ld_balance)
+		if this.it_transobject.sqlcode = 0 then
+			this.id_master.object.openingbalance[1] = ld_balance
+			ll_retcode = 0
+		else
+			ll_retcode = 1
+		end if
+	end if
+	return ll_retcode
+
+// w_cashiershift.wf_check_cash_account_availability(long al_acccode) returns long
+	long ll_count
+	long ll_retcode
+	if al_acccode > 0 then
+		SQL SELECT count ( *) INTO :ll_count FROM CashierShift WHERE ShiftStatus ='O' AND CashAccCode =:al_acccode USING this.it_transobject;
+		if this.it_transobject.sqlcode = 0 then
+			if ll_count > 0 then
+				ll_retcode = 1
+			else
+				ll_retcode = 0
+			end if
+		else
+			ll_retcode = 1
+		end if
+	end if
+	return ll_retcode
+
+// w_cashiershift.wf_closeshift() returns long
+	long ll_cashiershiftcode
+	if this.tab_retrieve.selectedtab = 1 then
+		return 0
+	end if
+	if this.id_list.rowcount() > 0 and this.id_list.getrow() > 0 then
+		ll_cashiershiftcode = this.id_list.object.code[this.id_list.getrow()]
+		if ll_cashiershiftcode > 0 then
+			openwithparm(w_cashiershift_closing, ll_cashiershiftcode)
+		end if
+	end if
+	return 0
+
+// w_cashiershift.wf_deleteemptydetailrow() returns integer
+	long ll_rowcount
+	long ll_counter
+	long ll_usercode
+	integer li_rtcode
+	dwruntimeerror myexc
+	ll_rowcount = this.id_detail.rowcount()
+	ll_counter = 1
+	do while ll_counter <= this.id_detail.rowcount()
+		try
+			ll_usercode = this.id_detail.object.usercode[ll_counter]
+		catch (throwable myexc)
+		end try
+		if isnull(ll_usercode) then
+			this.id_detail.deleterow(ll_counter)
+			li_rtcode = 1
+			this.ib_itemslistopen = false
+			this.id_itemslist.hide()
+			setfocus()
+		else
+			ll_counter = ll_counter + 1
+		end if
+	loop
+	return li_rtcode
+
+// w_cashiershift.wf_populate_users() returns long
+	long ll_counter
+	long ll_detailrows
+	long ll_insrow
+	datastore lds_users
+	lds_users = create datastore
+	lds_users.dataobject = "ddd_users_active"
+	lds_users.settransobject(this.it_transobject)
+	lds_users.retrieve()
+	if lds_users.rowcount() > 0 then
+		ll_detailrows = this.id_detail.rowcount()
+		if ll_detailrows > 0 then
+			for ll_counter = 1 to ll_detailrows
+				triggerevent("ue_deleteitem")
+			next
+		end if
+		for ll_counter = 1 to lds_users.rowcount()
+			ll_insrow = this.id_detail.insertrow(0)
+			if ll_insrow > 0 then
+				this.id_detail.object.usercode[ll_insrow] = lds_users.object.usercode[ll_counter]
+			end if
+		next
+	end if
+	return 0
+
+// w_cashiershift.wf_print_creditsummary() returns integer
+	long ll_cashiershift
+	if this.id_list.getrow() > 0 then
+		ll_cashiershift = this.id_list.object.code[this.id_list.getrow()]
+		if this.id_list.object.shiftstatus[this.id_list.getrow()] = "C" then
+			openwithparm(w_cashier_creditsummary, ll_cashiershift)
+		end if
+	end if
+	return 0
+
+// w_cashiershift.create() returns 0
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_cashiershiftmenu" then
+		this.menuid = create m_cashiershiftmenu
+	end if
+
+// w_cashiershift.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_cashiershift.ue_save() returns 0
+	long ll_mastercurrrow
+	long ll_invid
+	long ll_detailrows
+	long ll_shiftowner
+	long ll_count
+	long ll_usercode
+	long ll_counter
+	long ll_validate_usercode
+	integer li_counter
+	integer ll_salesmancode
+	boolean lb_commitflag
+	dwitemstatus lds_rowstatus
+	wf_deleteemptydetailrow()
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	open(w_salesmanpassword)
+	ll_usercode = long(message.doubleparm)
+	setfocus()
+	setpointer(hourglass!)
+	if ll_usercode > 0 then
+		ll_mastercurrrow = this.id_master.getrow()
+		ll_invid = this.id_master.object.code[ll_mastercurrrow]
+		ll_shiftowner = this.id_master.object.shiftowner[ll_mastercurrrow]
+		if ll_invid > 0 then
+			SQL SELECT Count ( *) INTO :ll_count FROM CashierShift WHERE CashierShiftCode <> :ll_invid AND ShiftStatus ='O' AND ( ShiftOwner =:ll_shiftowner OR ( SELECT CSU.UserCode FROM CashierShiftUsers CSU WHERE CSU.UserCode =:ll_shiftowner AND CSU.CashierShiftCode IN ( SELECT CS.CashierShiftCode FROM CashierShift CS WHERE CS.ShiftStatus ='O' AND CS.CashierShiftCode <> :ll_invid ) ) > 0 ) USING this.it_transobject;   /* bind positions inferred */
+			if this.it_transobject.sqlcode = 0 then
+				if ll_count > 0 then
+					messagebox("Cashier Shift Owner Validation", "The Selected Cashier Shift Owner already has some Open Cashier Shift.~r~nAs a rule only one opened cashier shift is allowed for each cashier.", stopsign!)
+					return
+				end if
+			else
+				messagebox("Shift Owner Validation", "Problem while Shift Owner validation.~r~nReasons are:-~r~n" + this.it_transobject.sqlerrtext, stopsign!)
+				return
+			end if
+		else
+			SQL SELECT Count ( *) INTO :ll_count FROM CashierShift WHERE ShiftStatus ='O' AND ( ShiftOwner =:ll_shiftowner OR ( SELECT CSU.UserCode FROM CashierShiftUsers CSU WHERE CSU.UserCode =:ll_shiftowner AND CSU.CashierShiftCode IN ( SELECT CS.CashierShiftCode FROM CashierShift CS WHERE CS.ShiftStatus ='O' ) ) > 0 ) USING this.it_transobject;
+			if this.it_transobject.sqlcode = 0 then
+				if ll_count > 0 then
+					messagebox("Cashier Shift Owner Validation", "The Selected Cashier Shift Owner already has some Open Cashier Shift.~r~nAs a rule only one opened cashier shift is allowed for each cashier.", stopsign!)
+					return
+				end if
+			else
+				messagebox("Shift Owner Validation", "Problem while Shift Owner validation.~r~nReasons are:-~r~n" + this.it_transobject.sqlerrtext, stopsign!)
+				return
+			end if
+		end if
+		for ll_counter = 1 to this.id_detail.rowcount()
+			ll_validate_usercode = this.id_detail.object.usercode[ll_counter]
+			if ll_usercode > 0 then
+				if ll_invid > 0 then
+					SQL SELECT Count ( *) INTO :ll_count FROM CashierShiftUsers CSU WHERE ( CSU.UserCode =:ll_validate_usercode OR ( SELECT CS.ShiftOwner FROM CashierShift CS WHERE CS.CashierShiftCode <> :ll_invid AND CS.ShiftStatus ='O' AND CS.ShiftOwner =:ll_validate_usercode ) > :ll_invid ) AND CSU.CashierShiftCode IN ( SELECT CSS.CashierShiftCode FROM CashierShift CSS WHERE CSS.ShiftStatus ='O' AND CSS.CashierShiftCode <> 0 ) USING this.it_transobject;   /* bind positions inferred */
+				else
+					SQL SELECT Count ( *) INTO :ll_count FROM CashierShiftUsers WHERE ( UserCode =:ll_validate_usercode OR ( SELECT CS.ShiftOwner FROM CashierShift CS WHERE CS.ShiftStatus ='O' AND CS.ShiftOwner =:ll_validate_usercode ) > 0 ) AND CashierShiftCode IN ( SELECT CS.CashierShiftCode FROM CashierShift CS WHERE CS.ShiftStatus ='O' ) USING this.it_transobject;
+				end if
+				if this.it_transobject.sqlcode = 0 and ll_count > 0 then
+					this.id_detail.setcolumn("usercode")
+					this.id_detail.setfocus()
+					this.id_detail.setrow(ll_counter)
+					this.id_detail.scrolltorow(ll_counter)
+					messagebox("User Validation", "This User is already part of an opened cashier shift.~r~nPlease select some other user.", stopsign!)
+					return
+				end if
+				return
+			end if
+		next
+		if isnull(ll_invid) then
+			wf_tabnewid("cashiershift", ll_invid)
+			if wf_check_cash_account_availability(this.id_master.object.cashacccode[1]) = 0 then
+				wf_set_cash_account_balance(this.id_master.object.cashacccode[1])
+			else
+				SQL rollback USING this.it_transobject;
+				return
+			end if
+			this.id_master.object.code[ll_mastercurrrow] = ll_invid
+		end if
+		this.id_master.object.openedby[ll_mastercurrrow] = ll_usercode
+		ll_detailrows = this.id_detail.rowcount()
+		li_counter = 1
+		do while li_counter <= ll_detailrows and lb_commitflag = true
+			lds_rowstatus = this.id_detail.getitemstatus(li_counter, 0, primary!)
+			if lds_rowstatus = newmodified! then
+				this.id_detail.setitem(li_counter, "code", ll_invid)
+			end if
+			li_counter = li_counter + 1
+		loop
+		call super::ue_save
+	end if
+	setpointer(arrow!)
+
+// w_cashiershift.ue_newform() returns 0
+	m_cashiershiftmenu lm_menu
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	call super::ue_newform
+	lm_menu = this.menuid
+	wf_protectdw(this.id_master, 0)
+	wf_protectdw(this.id_detail, 0)
+	this.idc_cashacc.retrieve(gl_usercode)
+	SQL rollback USING this.it_transobject;
+	this.it_transobject.virtualgl("A")
+	if this.it_transobject.sqlcode = 0 then
+		SQL commit USING this.it_transobject;
+	else
+		SQL rollback USING this.it_transobject;
+	end if
+	this.id_master.setfocus()
+	lm_menu.m_file.m_post.enabled = false
+	if this.id_master.rowcount() > 0 then
+		wf_getserverdatetime(ldt_server_datetime, ls_date_errtext)
+		this.id_master.object.openedon[1] = ldt_server_datetime
+		this.id_master.object.openedby[1] = gl_usercode
+		this.id_master.object.shiftowner[1] = gl_usercode
+		wf_setcashiershift(gl_usercode)
+		if this.id_master.object.cashacccode[1] > 0 then
+			wf_set_cash_account_balance(this.id_master.object.cashacccode[1])
+		end if
+	end if
+
+// w_cashiershift.ue_newitem() returns 0
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	call super::ue_newitem
+	this.id_detail.setcolumn("usercode")
+
+// w_cashiershift.ue_detail() returns 0
+	long li_protect
+	call super::ue_detail
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_delete.enabled = true
+	this.im_menu.m_file.m_first.enabled = true
+	this.im_menu.m_file.m_next.enabled = true
+	this.im_menu.m_file.m_last.enabled = true
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_menu.m_file.m_previous.enabled = true
+	this.im_menu.m_item.m_newitem.enabled = true
+	this.im_menu.m_item.m_deleteitem.enabled = true
+	if this.id_list.getrow() > 0 then
+		if this.id_list.object.shiftstatus[this.id_list.getrow()] = "C" then
+			li_protect = 1
+		else
+			li_protect = 0
+		end if
+	end if
+	wf_protectdw(this.id_master, li_protect)
+	wf_protectdw(this.id_detail, li_protect)
+	if this.id_master.getrow() > 0 and this.id_master.object.code[this.id_master.getrow()] > 0 then
+		this.id_master.object.cashacccode.protect = "1"
+	end if
+
+// w_cashiershift.ue_list() returns 0
+	m_cashiershiftmenu lm_menu
+	long ll_rtcode
+	lm_menu = this.menuid
+	wf_protectdw(this.id_master, 0)
+	wf_protectdw(this.id_detail, 0)
+	this.id_master.setfocus()
+	lm_menu.m_file.m_post.enabled = true
+	lm_menu.m_file.m_post.visible = true
+	if this.id_list.rowcount() <= 0 then
+		ll_rtcode = wf_retrieve(gl_usercode)
+	end if
+	if ll_rtcode > 0 then
+		this.im_menu.m_file.m_new.enabled = true
+		this.im_menu.m_file.m_save.enabled = false
+		this.im_menu.m_file.m_delete.enabled = false
+		this.im_menu.m_item.m_newitem.enabled = false
+		this.im_menu.m_item.m_deleteitem.enabled = false
+		this.im_menu.m_item.m_insertnewitem.enabled = false
+		this.im_menu.m_item.m_deletecurrentitem.enabled = false
+		this.im_menu.m_file.m_first.enabled = true
+		this.im_menu.m_file.m_next.enabled = true
+		this.im_menu.m_file.m_last.enabled = true
+		this.im_menu.m_file.m_print.enabled = true
+		this.im_menu.m_file.m_previous.enabled = true
+		this.im_menu.m_file.m_retrieve.text = "De&tail"
+		this.i_retrievemode = 2
+		this.i_editmode = 2
+		if this.il_selectedrow = 0 then
+			wf_first()
+			wf_selectunselectrow(1)
+		else
+			this.il_selectedrow = 1
+		end if
+		this.tab_retrieve.tabpage_list.dw_find.setfocus()
+		return
+	end if
+	messagebox("Result", "No rows or retrieved possible empty table~r~nInsert some rows first")
+	postevent("ue_new")
+
+// w_cashiershift.ue_deleteitem() returns 0
+	long ll_currow
+	long ll_detailrows
+	long ll_icode
+	dwruntimeerror myexc
+	this.ib_itemvalidated = true
+	try
+		ll_icode = this.id_detail.object.icode[this.id_detail.getrow()]
+	catch (throwable myexc)
+	end try
+	if not isnull(ll_icode) then
+		this.id_detail.rowscopy(this.id_detail.getrow(), this.id_detail.getrow(), primary!, this.ids_itemrecyclebin, this.ids_itemrecyclebin.rowcount() + 1, primary!)
+	end if
+	this.id_detail.deleterow(0)
+	ll_detailrows = this.id_detail.rowcount()
+	wf_grandtotal()
+
+// w_cashiershift.ue_postopen() returns 0
+	long li_rtncode
+	call super::ue_postopen
+	li_rtncode = this.id_master.getchild("cashacccode", this.idc_cashacc)
+	if li_rtncode = -1 then
+		messagebox("Error", "Can not get a DataWindowChild")
+		close(this)
+	end if
+	this.idc_cashacc.settransobject(this.it_transobject)
+	li_rtncode = this.idc_cashacc.retrieve(gl_usercode)
+	if this.idc_cashacc.rowcount() > 0 then
+		this.id_master.object.cashacccode.initial = trim(string(this.idc_cashacc.getitemnumber(1, "acccode")))
+	end if
+	this.id_master.object.shiftowner.initial = trim(string(gl_usercode))
+	this.id_master.object.openedby.initial = trim(string(gl_usercode))

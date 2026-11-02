@@ -1,0 +1,18 @@
+// function f_validate_shortname (functions)  ancestor: function_object
+
+// f_validate_shortname.f_validate_shortname(string as_name, string as_module, long al_code) returns long
+	long ll_count
+	if isnull(al_code) then
+		SQL SELECT ISNULL ( Count ( ShortName ) , 0 ) INTO :ll_count FROM ( SELECT DISTINCT ShortName from vochercategory UNION SELECT DISTINCT ShortName from TransactionType UNION SELECT 'SV' UNION SELECT 'SR' UNION SELECT 'PV' UNION SELECT 'PR' UNION SELECT 'RS' UNION SELECT 'RR' UNION SELECT 'NR' UNION SELECT 'NP' UNION SELECT 'SO' UNION SELECT 'PA' UNION SELECT 'PG' UNION SELECT 'GC' UNION SELECT 'SP' UNION SELECT 'RP' ) T WHERE UPPER ( T.ShortName ) =UPPER ( :as_name ) USING sqlca;
+	else
+		SQL SELECT ISNULL ( Count ( ShortName ) , 0 ) INTO :ll_count FROM ( SELECT DISTINCT ShortName FROM vochercategory WHERE VochCatCode <> :al_code AND :as_module ='V' UNION SELECT DISTINCT ShortName FROM TransactionType WHERE TransactionTypeCode <> :al_code AND :as_module ='T' UNION SELECT 'SV' UNION SELECT 'SR' UNION SELECT 'PV' UNION SELECT 'PR' UNION SELECT 'RS' UNION SELECT 'RR' UNION SELECT 'NR' UNION SELECT 'NP' UNION SELECT 'SO' UNION SELECT 'PA' UNION SELECT 'PG' UNION SELECT 'GC' UNION SELECT 'SP' UNION SELECT 'RP' ) T WHERE UPPER ( T.ShortName ) =UPPER ( :as_name ) USING sqlca;
+	end if
+	if sqlca.sqlcode = 0 then
+		if ll_count > 0 then
+			return -1
+		else
+			return 0
+		end if
+		return
+	end if
+	return -2

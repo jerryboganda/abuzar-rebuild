@@ -1,0 +1,22 @@
+// function f_fetch_sites (functions)  ancestor: function_object
+
+// f_fetch_sites.f_fetch_sites() returns long
+	datastore lds_sites
+	long ll_counter
+	lds_sites = create datastore
+	if gc_dropbox = "Y" then
+		lds_sites.dataobject = "d_dropbox_active_sites"
+		lds_sites.settransobject(sqlca)
+		if lds_sites.retrieve() = -1 then
+			messagebox("Sites Data Error", "Error Retrieving Sites data from Drop Box Server...", stopsign!)
+			return -1
+		else
+			for ll_counter = 1 to lds_sites.rowcount()
+				if lds_sites.object.instanceid[ll_counter] = gs_regid then
+					gl_sitecode = lds_sites.object.sitecode[ll_counter]
+					return 0
+				end if
+			next
+		end if
+	end if
+	return 0

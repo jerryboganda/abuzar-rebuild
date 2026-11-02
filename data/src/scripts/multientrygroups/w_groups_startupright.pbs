@@ -1,0 +1,141 @@
+// window w_groups_startupright (multientrygroups)  ancestor: w_multi_entry
+
+// w_groups_startupright.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM Groups WHERE Groups.groupname =:as_name USING this.it_transobject;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_groups_startupright.wf_validateitem() returns integer
+	long ll_icode
+	integer li_errcode
+	integer li_null
+	ll_icode = this.id_detail.getitemnumber(this.il_currrow, "rightcode")
+	if vf_dwdupcode1(this.id_detail, "rightcode", string(ll_icode), this.il_currrow) = true then
+		messagebox("Duplication Error", "Current row is duplicate")
+		li_errcode = -1
+	else
+		li_errcode = 0
+	end if
+	this.ib_itemvalidated = true
+	if li_errcode = -1 then
+		setnull(li_null)
+		this.id_detail.setitem(this.il_currrow, "rightcode", li_null)
+	end if
+	return li_errcode
+
+// w_groups_startupright.create() returns 0
+	integer icurrent
+	call super::create
+	this.dw_rights = create dw_rights
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_rights
+
+// w_groups_startupright.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_rights
+
+// w_groups_startupright.ue_save() returns 0
+	long ll_mastercurrrow
+	long ll_invid
+	long ll_detailrows
+	long ll_counter
+	integer li_counter
+	integer ll_salesmancode
+	integer li_ldsrow
+	boolean lb_commitflag
+	boolean lb_modify
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	setpointer(hourglass!)
+	ll_mastercurrrow = this.id_master.getrow()
+	ll_invid = this.id_master.object.code[ll_mastercurrrow]
+	if isnull(ll_invid) then
+		messagebox("Group Validation!", "Not a valid user group~rPlease select some group from list and then choose its startup rights")
+		return
+	end if
+	setpointer(hourglass!)
+	ll_detailrows = this.id_detail.rowcount()
+	li_counter = 1
+	SQL DELETE DBO.GroupAllowedStartupRight WHERE GroupCode =:ll_invid USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		this.id_rights.reset()
+		do while li_counter <= ll_detailrows and lb_commitflag = true
+			if this.id_detail.object.allowed[li_counter] = "Y" then
+				this.id_rights.insertrow(0)
+				this.id_rights.setitem(li_ldsrow, "groupcode", ll_invid)
+				this.id_rights.setitem(li_ldsrow, "rightcode", this.id_detail.object.rightcode[li_counter])
+				this.id_rights.setitem(li_ldsrow, "details", this.id_detail.object.details[li_counter])
+				li_ldsrow = li_ldsrow + 1
+			end if
+			li_counter = li_counter + 1
+		loop
+		this.id_detail = this.id_rights
+		if this.id_detail.update() > 0 then
+			SQL commit USING this.it_transobject;
+			messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+			this.ib_commitok = true
+			this.id_master.resetupdate()
+			this.im_menu.m_file.m_new.enabled = true
+			this.editflag = false
+		else
+			SQL rollback USING this.it_transobject;
+			setpointer(arrow!)
+			this.id_detail = this.tab_retrieve.tabpage_detail.dw_itemsdetail
+			return
+		end if
+		return
+	end if
+	this.id_detail = this.tab_retrieve.tabpage_detail.dw_itemsdetail
+	this.id_rights.reset()
+	setpointer(arrow!)
+
+// w_groups_startupright.ue_newitem() returns 0
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	call super::ue_newitem
+
+// w_groups_startupright.ue_detail() returns 0
+	integer li_counter
+	integer li_count
+	integer li_detailrowcount
+	integer li_rightscount
+	long ll_row
+	call super::ue_detail
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_delete.enabled = true
+	this.im_menu.m_file.m_first.enabled = true
+	this.im_menu.m_file.m_next.enabled = true
+	this.im_menu.m_file.m_last.enabled = true
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_menu.m_file.m_previous.enabled = true
+	this.im_menu.m_item.m_newitem.enabled = true
+	this.im_menu.m_item.m_deleteitem.enabled = true
+	ll_row = this.id_master.getrow()
+	if ll_row > 0 then
+		this.id_rights.retrieve(this.id_master.getitemnumber(ll_row, "code"))
+		li_detailrowcount = this.id_detail.rowcount()
+		li_rightscount = this.id_rights.rowcount()
+	end if
+
+// w_groups_startupright.ue_postopen() returns 0
+	call super::ue_postopen
+	this.id_rights = this.dw_rights
+	this.id_rights.settransobject(this.it_transobject)
+
+// w_groups_startupright.ue_newform() returns 0
+	call super::ue_newform
+	this.im_menu.m_item.m_newitem.toolbaritemvisible = false
+	this.im_menu.m_item.m_deleteitem.toolbaritemvisible = false

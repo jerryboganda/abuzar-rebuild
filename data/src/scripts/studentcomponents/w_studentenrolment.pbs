@@ -1,0 +1,627 @@
+// window w_studentenrolment (studentcomponents)  ancestor: w_multi_entry
+
+// w_studentenrolment.wf_visible(boolean ab_flag) returns 0
+	this.id_footer.object.stock.visible = ab_flag
+	this.id_footer.object.t_stock.visible = ab_flag
+
+// w_studentenrolment.wf_genfullcode(long al_icode, string as_fullcode) returns integer
+	integer li_retflag
+	string ls_fullcode
+	long icode
+	long iccode
+	long icatcode
+	long packcode
+	long manfcode
+	SQL SELECT RegNo INTO :ls_fullcode FROM Student WHERE Studentcode =:al_icode USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		li_retflag = 1
+		as_fullcode = ls_fullcode
+	else
+		li_retflag = this.it_transobject.sqlcode
+	end if
+	return li_retflag
+
+// w_studentenrolment.wf_selectprintreport() returns string
+	string ls_report
+	if ls_report = "" or isnull(ls_report) then
+		ls_report = "d_studentenrolment_print"
+	end if
+	this.id_print.dataobject = ls_report
+	this.id_print.settransobject(this.it_transobject)
+	return ls_report
+
+// w_studentenrolment.wf_assigndatawindowobjects(string as_masterdw, string as_detaildw, string as_footerdw, string as_listdw, string as_printdw) returns 0
+	this.id_master.dataobject = as_masterdw
+	this.id_detail.dataobject = as_detaildw
+	this.id_footer.dataobject = as_footerdw
+	this.id_list.dataobject = as_listdw
+	this.id_print.dataobject = as_printdw
+	this.id_master.settransobject(this.it_transobject)
+	this.id_detail.settransobject(this.it_transobject)
+	this.id_footer.settransobject(this.it_transobject)
+	this.id_list.settransobject(this.it_transobject)
+	this.id_print.settransobject(this.it_transobject)
+
+// w_studentenrolment.wf_closelist() returns 0
+	this.ib_itemslistopen = false
+	this.id_itemslist.hide()
+
+// w_studentenrolment.wf_post() returns integer
+	return 0
+
+// w_studentenrolment.wf_validatefullcode(string as_custicode, long al_currrow) returns boolean
+	long ll_icode
+	long ll_stock
+	long ll_totalstock
+	string ls_fullcode
+	string ls_titleerrtext
+	string ls_errtext
+	integer li_errcode
+	integer li_assgcode
+	integer li_option
+	boolean lb_rtflag
+	boolean ib_due
+	integer li_null
+	string ls_null
+	ls_titleerrtext = "Item Validation"
+	if vf_dwdupcode1(this.id_detail, "icode", string(ll_icode), al_currrow) = true then
+		ls_errtext = "Duplicate item, please select some other item"
+		li_errcode = -1
+	elseif wf_inititeminfo(ll_icode, this.il_currrow, li_errcode, ls_errtext) then
+		if li_errcode = -2 then
+			li_option = messagebox("Item Validation", "Item stock does not exist~n~rDo You want to due this item", information!, yesno!, 2)
+			if li_option = 1 then
+				this.id_detail.setitem(this.il_currrow, "looseqty", 1)
+				this.id_detail.setitem(this.il_currrow, "dueqty", 1)
+				ib_due = true
+			else
+				li_errcode = -1
+			end if
+		end if
+	else
+		li_errcode = -1
+		ls_titleerrtext = "Item Validation"
+	end if
+	if li_errcode = -1 and not ib_due then
+		lb_rtflag = false
+		messagebox(ls_titleerrtext, ls_errtext)
+		setnull(li_null)
+		setnull(ls_null)
+		this.id_detail.setitem(al_currrow, this.is_columnitemname, ls_null)
+		this.id_detail.setitem(al_currrow, "icode", li_null)
+		this.id_detail.selecttext(1, len(this.id_detail.gettext()))
+	end if
+	return lb_rtflag
+
+// w_studentenrolment.wf_grandtotal() returns double
+	double ld_grandtotal
+	ld_grandtotal = 0
+	return ld_grandtotal
+
+// w_studentenrolment.wf_initmodify(integer ai_protect) returns 0
+	long ll_code
+	ll_code = this.id_master.getitemnumber(1, "code")
+	this.id_master.retrieve(ll_code)
+	this.id_detail.retrieve(ll_code)
+	if ai_protect = 0 then
+		this.ib_modify = true
+		this.im_menu.m_file.m_save.enabled = true
+		this.im_menu.m_file.m_new.enabled = false
+		this.im_menu.m_file.m_delete.enabled = false
+		this.im_menu.m_item.m_newitem.enabled = true
+		this.im_menu.m_item.m_deleteitem.enabled = true
+		this.im_menu.m_file.m_first.enabled = false
+		this.im_menu.m_file.m_next.enabled = false
+		this.im_menu.m_file.m_previous.enabled = false
+		this.im_menu.m_file.m_last.enabled = false
+		this.im_menu.m_file.m_retrieve.enabled = true
+		this.im_menu.m_file.m_retrieve.text = "Lis&t"
+		this.tab_retrieve.tabpage_detail.enabled = true
+		return
+	end if
+	this.ib_modify = false
+	this.im_menu.m_file.m_save.enabled = false
+	this.im_menu.m_file.m_new.enabled = true
+	this.im_menu.m_file.m_delete.enabled = false
+	this.im_menu.m_item.m_newitem.enabled = false
+	this.im_menu.m_item.m_deleteitem.enabled = false
+	this.im_menu.m_file.m_first.enabled = false
+	this.im_menu.m_file.m_next.enabled = false
+	this.im_menu.m_file.m_previous.enabled = false
+	this.im_menu.m_file.m_last.enabled = false
+	this.im_menu.m_file.m_retrieve.enabled = true
+	this.im_menu.m_file.m_retrieve.text = "Lis&t"
+	this.tab_retrieve.tabpage_detail.enabled = true
+
+// w_studentenrolment.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+
+// w_studentenrolment.wf_validateitem(boolean ab_flag) returns integer
+	long ll_icode
+	long ll_stock
+	long ll_totalstock
+	string ls_fullcode
+	string ls_titleerrtext
+	string ls_errtext
+	integer li_errcode
+	integer li_assgcode
+	integer li_option
+	boolean ib_due
+	integer li_null
+	string ls_null
+	ll_icode = this.id_detail.getitemnumber(this.il_currrow, "icode")
+	if not isnull(ll_icode) then
+		if vf_dwdupcode1(this.id_detail, "icode", string(ll_icode), this.il_currrow) = true then
+			ls_titleerrtext = "Item Validation"
+			ls_errtext = "Duplicate item, please select some other item"
+			li_errcode = -1
+		elseif wf_inititeminfo(ll_icode, this.il_currrow, li_errcode, ls_errtext) then
+			if li_errcode = -2 then
+				li_errcode = -1
+			end if
+		else
+			li_errcode = -1
+			ls_titleerrtext = "Item Validation"
+		end if
+	end if
+	if ab_flag then
+		this.ib_itemvalidated = true
+	end if
+	if li_errcode = -1 then
+		setnull(li_null)
+		setnull(ls_null)
+		ls_titleerrtext = "Item Validation"
+		messagebox(ls_titleerrtext, ls_errtext)
+		this.id_detail.setcolumn("fullcode")
+		this.id_detail.object.fullcode[this.il_currrow] = ls_null
+		this.id_detail.scrolltorow(this.il_currrow)
+		this.id_detail.object.icode[this.il_currrow] = li_null
+		this.id_detail.object.itemname[this.il_currrow] = ls_null
+	end if
+	return li_errcode
+
+// w_studentenrolment.wf_findfullcode(string as_fullcode, long al_icode, string al_itemname) returns integer
+	integer ll_icode
+	integer ll_retflag
+	integer ll_classcode
+	string ls_itemname
+	string ls_class
+	ll_classcode = this.id_master.object.code[1]
+	SQL SELECT Student.Studentcode , Student.name + ' (' + Student.RegNo + ')' INTO :ll_icode, :ls_itemname FROM Student WHERE Student.RegNo =:as_fullcode USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		SQL SELECT Class =MAX ( C.Name ) INTO :ls_class FROM StudentClass SC , Class C WHERE C.Active ='Y' AND C.ClassCode =SC.ClassCode AND SC.StudentCode =:ll_icode AND C.ClassCode <> :ll_classcode USING this.it_transobject;
+		if this.it_transobject.sqlcode = 0 then
+			if isnull(ls_class) then
+				al_icode = ll_icode
+				al_itemname = ls_itemname
+				if isnull(al_icode) then
+					ll_retflag = 0
+				else
+					ll_retflag = 1
+				end if
+			else
+				ll_retflag = -2
+				messagebox("Student Validation", "Student already enrolled in " + ls_class)
+			end if
+		end if
+	else
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_studentenrolment.wf_inititeminfo(long al_icode, long al_row, integer ai_rtcode, string as_errortext) returns boolean
+	boolean retflag
+	long ll_packunits
+	long ll_saleinvcode
+	long ll_classcode
+	double ld_saleprice
+	double ld_saleprice2
+	double ld_saleprice3
+	double ld_avgprice
+	double ld_mrpp
+	double ld_purprice
+	double ld_godownstock
+	integer li_gcode
+	string ls_fullcode
+	string ls_name
+	string ls_null
+	string ls_fname
+	string ls_class
+	setnull(ls_null)
+	SQL SELECT RegNo , name =name + ' (' + RegNo + ')' , fname INTO :ls_fullcode, :ls_name, :ls_fname FROM Student WHERE Studentcode =:al_icode USING this.it_transobject;
+	if this.it_transobject.sqlcode = -1 then
+		retflag = false
+		as_errortext = "Database Error: Student information can not be retrieved"
+	end if
+	li_gcode = this.id_master.object.code[1]
+	if retflag then
+		ll_classcode = this.id_master.object.code[1]
+		SQL SELECT Class =MAX ( C.Name ) INTO :ls_class FROM StudentClass SC , Class C WHERE C.Active ='Y' AND C.ClassCode =SC.ClassCode AND SC.StudentCode =:al_icode AND C.ClassCode <> :ll_classcode USING this.it_transobject;
+		if this.it_transobject.sqlcode = 0 then
+			if not isnull(ls_class) then
+				retflag = false
+				as_errortext = "Student already enrolled in " + ls_class
+			end if
+		else
+			retflag = false
+			as_errortext = "Database Error: Student information can not be retrieved"
+		end if
+		this.id_detail.setitem(al_row, "code", li_gcode)
+		this.id_detail.setitem(al_row, this.is_columnitemname, ls_name)
+		this.id_detail.setitem(al_row, "fullcode", ls_fullcode)
+		this.id_detail.setitem(al_row, "icode", al_icode)
+		this.id_detail.setitem(al_row, "fathername", ls_fname)
+	else
+		retflag = false
+		as_errortext = "Database Error: Student information can not be retrieved"
+	end if
+	return retflag
+
+// w_studentenrolment.create() returns 0
+	integer icurrent
+	call super::create
+	this.dw_saleinvrep = create dw_saleinvrep
+	this.dw_saleinvdetail = create dw_saleinvdetail
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_saleinvrep
+	this.control[icurrent + 2] = this.dw_saleinvdetail
+
+// w_studentenrolment.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_saleinvrep
+	destroy this.dw_saleinvdetail
+
+// w_studentenrolment.ue_save() returns 0
+	long ll_detailrows
+	long ll_counter
+	long ll_count
+	long ll_salesmancode
+	long ll_mastercurrrow
+	long ll_row
+	long ll_code
+	long ll_insrow
+	long ll_null
+	boolean lb_commitflag
+	boolean lb_continue
+	integer li_counter
+	string ls_errtext
+	string ll_rollno
+	setnull(ll_null)
+	if this.ib_itemvalidated = false and wf_validateitem(true) = -1 then
+		this.id_detail.setfocus()
+		return
+	end if
+	wf_deleteemptydetailrow()
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	if isnull(this.id_master.getitemnumber(1, "code")) then
+		messagebox("Class Validation", "Kindly select some Class from the list window~r~nthan Enroll Students in it.")
+		return
+	end if
+	setpointer(hourglass!)
+	ll_salesmancode = gl_usercode
+	ll_code = this.id_master.getitemnumber(1, "code")
+	if ll_salesmancode > 0 and ll_code > 0 then
+		if this.id_master.update(true, false) > 0 then
+			this.dw_saleinvdetail.settransobject(this.it_transobject)
+			for ll_counter = 1 to this.id_detail.rowcount()
+				ll_insrow = this.dw_saleinvdetail.insertrow(0)
+				this.dw_saleinvdetail.object.code[ll_insrow] = this.id_detail.object.code[ll_counter]
+				this.dw_saleinvdetail.object.icode[ll_insrow] = this.id_detail.object.icode[ll_counter]
+				this.dw_saleinvdetail.object.fullcode[ll_insrow] = this.id_detail.object.fullcode[ll_counter]
+				this.dw_saleinvdetail.object.itemname[ll_insrow] = this.id_detail.object.itemname[ll_counter]
+				this.dw_saleinvdetail.object.fathername[ll_insrow] = this.id_detail.object.fathername[ll_counter]
+				this.dw_saleinvdetail.object.currlistrow[ll_insrow] = this.id_detail.object.currlistrow[ll_counter]
+				this.dw_saleinvdetail.object.admissiondate[ll_insrow] = this.id_detail.object.admissiondate[ll_counter]
+				this.dw_saleinvdetail.object.serviceinvcode[ll_insrow] = this.id_detail.object.serviceinvcode[ll_counter]
+				this.dw_saleinvdetail.object.lastserviceinvdate[ll_insrow] = this.id_detail.object.lastserviceinvdate[ll_counter]
+				this.dw_saleinvdetail.object.promotionrowid[ll_insrow] = this.id_detail.object.promotionrowid[ll_counter]
+				this.dw_saleinvdetail.object.graduationrowid[ll_insrow] = this.id_detail.object.graduationrowid[ll_counter]
+				this.dw_saleinvdetail.object.rollno[ll_insrow] = this.id_detail.object.rollno[ll_counter]
+			next
+			SQL update Student SET Status ='R' , CurrentClass =:ll_null FROM StudentClass , Student WHERE StudentClass.ClassCode =:ll_code AND Student.StudentCode =StudentClass.StudentCode USING this.it_transobject;
+			if this.it_transobject.sqlcode = 0 then
+				SQL DELETE StudentClass WHERE ClassCode =:ll_code USING this.it_transobject;
+				if this.it_transobject.sqlcode = 0 then
+					this.id_detail = this.dw_saleinvdetail
+					if this.id_detail.update() > 0 then
+						SQL update Student SET Student.Status ='A' , CurrentClass =:ll_code FROM Student , StudentClass WHERE Student.StudentCode =StudentClass.StudentCode AND StudentClass.ClassCode =:ll_code USING this.it_transobject;
+						if this.it_transobject.sqlcode = 0 then
+							SQL commit USING this.it_transobject;
+							messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+							this.ib_commitok = true
+							this.id_master.resetupdate()
+							this.im_menu.m_file.m_new.enabled = true
+							this.dw_saleinvdetail.reset()
+							this.id_detail = this.tab_retrieve.tabpage_detail.dw_itemsdetail
+							this.editflag = false
+							if gd_recenttransdate < this.id_systemdate then
+								gd_recenttransdate = this.id_systemdate
+							end if
+						else
+							SQL rollback USING this.it_transobject;
+							setpointer(arrow!)
+							return
+						end if
+					else
+						SQL rollback USING this.it_transobject;
+						setpointer(arrow!)
+						return
+					end if
+				else
+					SQL rollback USING this.it_transobject;
+					setpointer(arrow!)
+					return
+				end if
+			else
+				SQL rollback USING this.it_transobject;
+				setpointer(arrow!)
+				return
+			end if
+			if this.ib_commitok then
+				this.ib_modify = false
+			end if
+		else
+			SQL rollback USING this.it_transobject;
+			setpointer(arrow!)
+			return
+		end if
+	else
+		setfocus()
+	end if
+	setpointer(arrow!)
+
+// w_studentenrolment.ue_newform() returns 0
+	integer rtncode
+	long li_fetched_code
+	long row
+	long ll_manfcode
+	long ll_newrollno
+	setredraw(false)
+	call super::ue_newform
+	this.id_footer.reset()
+	this.id_footer.insertrow(0)
+	this.id_footer.scrolltorow(0)
+	this.im_menu.m_file.m_print.enabled = false
+	this.im_menu.m_file.m_post.enabled = false
+	wf_protectdw(this.id_master, 0)
+	wf_protectdw(this.id_detail, 0)
+	wf_protectdw(this.id_footer, 0)
+	this.ib_modify = false
+	this.id_master.setcolumn(1)
+	this.id_master.setfocus()
+	wf_visible(true)
+	if this.id_detail.rowcount() > 0 then
+		ll_newrollno = this.id_detail.getitemnumber(1, "c_max")
+	else
+		ll_newrollno = 1
+	end if
+	this.id_detail.object.rollno[this.id_detail.rowcount()] = string(ll_newrollno)
+	setredraw(true)
+
+// w_studentenrolment.ue_detail() returns 0
+	integer li_rtncode
+	integer li_protect
+	long ll_row
+	long ll_code
+	long ll_deptcode
+	long ll_rowcount
+	boolean lb_flag
+	boolean lb_modify
+	m_multi_entry lm_menu
+	call super::ue_detail
+	lm_menu = this.menuid
+	setredraw(false)
+	this.im_menu.m_file.m_post.enabled = false
+	this.im_menu.m_file.m_print.visible = true
+	this.im_menu.m_file.m_print.enabled = true
+	ll_code = this.id_master.object.code[this.id_master.rowcount()]
+	li_protect = 0
+	if this.id_list.getrow() > 0 then
+		if this.id_list.object.active[this.id_list.getrow()] = "Y" then
+			li_protect = 0
+		else
+			li_protect = 1
+			this.editflag = false
+		end if
+	end if
+	wf_initmodify(li_protect)
+	wf_protectdw(this.id_detail, li_protect)
+	wf_grandtotal()
+	if this.id_detail.rowcount() > 0 and li_protect = 0 then
+		this.im_menu.m_file.m_save.enabled = true
+	else
+		this.im_menu.m_file.m_save.enabled = false
+	end if
+	setredraw(true)
+
+// w_studentenrolment.ue_newitem() returns 0
+	long ll_rowcount
+	long ll_newrollno
+	if this.ib_itemvalidated = false and wf_validateitem(true) = -1 then
+		this.id_detail.setfocus()
+		return
+	end if
+	if this.id_detail.rowcount() > 0 and f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	this.id_detail.setcolumn("fullcode")
+	this.id_detail.insertrow(0)
+	ll_rowcount = this.id_detail.rowcount()
+	if ll_rowcount > 1 then
+		this.id_detail.scrolltorow(ll_rowcount)
+		this.id_detail.setfocus()
+	end if
+	if this.id_detail.rowcount() > 0 then
+		ll_newrollno = this.id_detail.getitemnumber(1, "c_max")
+	else
+		ll_newrollno = 1
+	end if
+	this.id_detail.object.rollno[this.id_detail.rowcount()] = string(ll_newrollno)
+	this.im_menu.m_file.m_save.enabled = true
+	this.ib_validatefullcode = true
+
+// w_studentenrolment.close() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::close()
+	return ::message.returnvalue
+
+// w_studentenrolment.ue_list() returns 0
+	call super::ue_list
+	SQL rollback USING this.it_transobject;
+	this.im_menu.m_file.m_post.enabled = false
+	this.im_menu.m_file.m_print.visible = true
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_menu.m_file.m_print.toolbaritemvisible = true
+	this.ib_modify = false
+	this.id_itemslist.hide()
+	if this.id_detail.rowcount() > 0 then
+		postevent("ue_deleteitem")
+	end if
+	wf_retrievelist()
+
+// w_studentenrolment.ue_print() returns 0
+	long ll_code
+	long ll_row
+	long li_printretcode
+	string ls_printsize
+	boolean lb_listtab
+	s_datastore lstr
+	call super::ue_print
+	if this.tab_retrieve.selectedtab = 2 then
+		lb_listtab = true
+	end if
+	if this.im_menu.m_file.m_save.enabled = true and lb_listtab = false then
+		triggerevent("ue_save")
+		if wf_commitform() = false then
+			return
+		end if
+		return
+	end if
+	if lb_listtab then
+		if isnull(this.id_list.getrow()) or this.id_list.getrow() <= 0 then
+			messagebox("Rows Validation", "Kindly select any row from the list view.")
+			return
+		end if
+		ll_code = this.id_list.getitemnumber(this.id_list.getrow(), "code")
+		if isnull(ll_code) or ll_code <= 0 then
+			messagebox("Selection Validation", "Kindly select any row from the list view.")
+			return
+		end if
+	else
+		ll_code = this.id_detail.getitemnumber(1, "code")
+	end if
+	wf_selectprintreport()
+	this.id_print.settransobject(this.it_transobject)
+	this.id_print.retrieve(ll_code)
+	if lb_listtab then
+		lstr.dw = this.id_print
+		lstr.s_name1 = this.id_print.dataobject
+		openwithparm(w_preview_invoices, lstr)
+		lstr = message.powerobjectparm
+		if lstr.i_closemode = -1 then
+			return
+		end if
+		return
+	end if
+	if this.id_print.rowcount() > 0 then
+		if f_stringpreferences("PromptBeforePrinting") = "Y" and printsetup() < 0 then
+			messagebox("Printer", "Printing Error")
+			this.id_print.printcancel()
+		end if
+		li_printretcode = this.id_print.print()
+		if li_printretcode < 0 then
+			messagebox("Printing", "Can not Print Invoice", information!)
+		end if
+		if this.im_menu.m_file.m_save.enabled = true and lb_listtab = false then
+			postevent("ue_new")
+		end if
+		return
+	end if
+	messagebox("Printing Error", "Can not Print,~r~nNo rows are retrieved", information!)
+
+// w_studentenrolment.ue_new() returns 0
+	call super::ue_new
+	this.im_menu.m_file.m_post.enabled = false
+
+// w_studentenrolment.ue_postopen() returns 0
+	m_multi_entry lm_menu
+	integer li_rtncode
+	long ll_counter
+	long ll_pos
+	long ll_found
+	long li_count
+	long ll_startrow
+	char lc_char
+	setredraw(false)
+	wf_connect()
+	this.id_master = this.tab_retrieve.tabpage_detail.dw_detail
+	this.id_detail = this.tab_retrieve.tabpage_detail.dw_itemsdetail
+	this.id_footer = this.tab_retrieve.tabpage_detail.dw_footer
+	this.id_list = this.tab_retrieve.tabpage_list.dw_list
+	this.id_itemslist = this.tab_retrieve.tabpage_detail.dw_itemslist
+	this.id_master.settransobject(this.it_transobject)
+	this.id_detail.settransobject(this.it_transobject)
+	this.id_list.settransobject(this.it_transobject)
+	this.id_footer.settransobject(this.it_transobject)
+	this.id_itemslist.settransobject(this.it_transobject)
+	this.id_dwcontrol = this.id_list
+	post wf_populate_ddlb(this.id_dwcontrol)
+	this.tab_retrieve.tabpage_list.dw_find.settransobject(this.it_transobject)
+	this.id_master.setfocus()
+	setredraw(true)
+	this.ids_itemrecyclebin = create datastore
+	this.ids_itemrecyclebin.tag = this.id_detail.dataobject
+	this.ids_itemrecyclebin.settransobject(this.it_transobject)
+	setredraw(false)
+	this.id_print = this.dw_saleinvrep
+	this.id_itemslist.retrieve()
+	for li_count = 65 to 90
+		lc_char = char(li_count)
+		this.ia_llookuptable[li_count] = this.id_itemslist.find("Lower(itemname) >= Lower('" + char(li_count) + "')", ll_startrow, 999999)
+		ll_startrow = this.ia_llookuptable[li_count]
+	next
+	this.ia_llookuptable[92] = 999999
+	this.id_footer.reset()
+	this.id_footer.insertrow(0)
+	this.id_footer.scrolltorow(0)
+	setredraw(true)
+
+// w_studentenrolment.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	return ::message.returnvalue
+
+// w_studentenrolment.ue_refreshddw() returns 0
+	long li_count
+	long ll_startrow
+	char lc_char
+	call super::ue_refreshddw
+	this.id_itemslist.retrieve()
+	for li_count = 65 to 90
+		lc_char = char(li_count)
+		this.ia_llookuptable[li_count] = this.id_itemslist.find("Lower(itemname) >= Lower('" + char(li_count) + "')", ll_startrow, 999999)
+		ll_startrow = this.ia_llookuptable[li_count]
+	next
+	this.ia_llookuptable[92] = 999999

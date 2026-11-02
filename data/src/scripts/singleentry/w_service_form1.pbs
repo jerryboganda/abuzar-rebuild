@@ -1,0 +1,26 @@
+// window w_service_form1 (singleentry)  ancestor: w_single_entry
+
+// w_service_form1.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM Service WHERE Service.name =:as_name USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_service_form1.create() returns 0
+	call super::create
+
+// w_service_form1.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_service_form1.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.is_tablename = "Service"
+	return ::message.returnvalue

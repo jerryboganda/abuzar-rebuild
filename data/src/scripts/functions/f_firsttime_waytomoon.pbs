@@ -1,0 +1,23 @@
+// function f_firsttime_waytomoon (functions)  ancestor: function_object
+
+// f_firsttime_waytomoon.f_firsttime_waytomoon() returns integer
+	long ll_count
+	string ls_query
+	SQL SELECT COUNT ( name ) INTO :ll_count FROM SysObjects WHERE name ='sp_waytomoon' USING sqlca;
+	if sqlca.sqlcode = 0 then
+		if ll_count = 0 or isnull(ll_count) then
+			ls_query = " CREATE PROCEDURE SP_WayToMoon @fl VARCHAR(100), @fl2 VARCHAR(100) AS DECLARE @cmdline VARCHAR(255) DECLARE @rt_code INT DECLARE @Ver VARCHAR(4000) SET @Ver = @@Version IF CHARINDEX('X64', @Ver, 1) > 0 SET @cmdline = 'dir %systemroot%\syswow64\' + LTRIM(RTRIM(@fl)) ELSE SET @cmdline = 'dir %systemroot%\system32\' + LTRIM(RTRIM(@fl)) EXEC @rt_code = master..xp_cmdshell @cmdline, NO_OUTPUT IF @rt_code >= 1 RETURN 1 ELSE BEGIN IF CHARINDEX('X64', @Ver, 1) > 0 SET @cmdline = 'dir %systemroot%\syswow64\' + LTRIM(RTRIM(@fl2)) ELSE SET @cmdline = 'dir %systemroot%\system32\' + LTRIM(RTRIM(@fl2)) EXEC @rt_code = master..xp_cmdshell @cmdline, NO_OUTPUT IF @rt_code >= 1 RETURN 1 END RETURN 0 "
+			SQL EXECUTE IMMEDIATE :ls_query USING sqlca;
+			if sqlca.sqlcode = 0 then
+				SQL commit USING sqlca;
+				return 0
+			else
+				SQL rollback USING sqlca;
+				return -1
+			end if
+			return
+		end if
+	else
+		return -1
+	end if
+	return 0

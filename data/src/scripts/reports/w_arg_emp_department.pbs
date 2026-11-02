@@ -1,0 +1,50 @@
+// window w_arg_emp_department (reports)  ancestor: w_listarguments
+
+// w_arg_emp_department.create() returns 0
+	integer icurrent
+	call super::create
+	this.dw_control2 = create dw_control2
+	this.st_4 = create st_4
+	this.st_selectable = create st_selectable
+	this.st_selected = create st_selected
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_control2
+	this.control[icurrent + 2] = this.st_4
+	this.control[icurrent + 3] = this.st_selectable
+	this.control[icurrent + 4] = this.st_selected
+
+// w_arg_emp_department.destroy() returns 0
+	call super::destroy
+	destroy this.dw_control2
+	destroy this.st_4
+	destroy this.st_selectable
+	destroy this.st_selected
+
+// w_arg_emp_department.open() returns long
+	long ancestorreturnvalue
+	long ll_counter
+	long ll_rowcount
+	integer rtncode
+	ancestorreturnvalue = super::open()
+	this.is_dataobject = "d_arg_emp_department"
+	this.is_colname = "deptcode"
+	this.is_childcolname = "code"
+	this.st_selectable.text = "Department"
+	this.st_selected.text = "Department"
+	this.dw_control.dataobject = this.is_dataobject
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.retrieve()
+	this.dw_control.scrolltorow(0)
+	rtncode = this.dw_control.getchild(this.is_colname, this.idc_categories)
+	if rtncode = -1 then
+		messagebox("Error", "Not a DataWindowChild")
+	end if
+	ll_rowcount = this.idc_categories.rowcount()
+	for ll_counter = 1 to ll_rowcount
+		this.lb_categories.additem(this.idc_categories.getitemstring(ll_counter, "name"))
+	next
+	return ::message.returnvalue
+
+// dw_control2.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1

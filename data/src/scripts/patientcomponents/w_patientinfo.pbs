@@ -1,0 +1,125 @@
+// window w_patientinfo (patientcomponents)  ancestor: window
+
+// w_patientinfo.create() returns 0
+	this.dw_control = create dw_control
+	this.control = {this.dw_control}
+
+// w_patientinfo.destroy() returns 0
+	destroy this.dw_control
+
+// w_patientinfo.open() returns long
+	integer li_rtncode
+	long ll_width
+	long ll_height
+	long li_retcode
+	long ll_code
+	long ll_colcount
+	long ll_counter
+	integer li_xpos
+	integer li_ypos
+	integer li_xendpos
+	integer li_counter
+	integer li_taborder
+	integer li_visiblecolumns
+	boolean lb_zerotabordercol
+	boolean lb_wardcode_enabled
+	datastore lds_itemsetting
+	environment env
+	lds_itemsetting = create datastore
+	lds_itemsetting.dataobject = "d_interfacesettingcols"
+	lds_itemsetting.settransobject(sqlca)
+	ll_code = long(message.doubleparm)
+	if getenvironment(env) <> 1 then
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.width = ll_width * 0.98
+	this.height = ll_height * 0.75
+	this.y = int((ll_height - this.height) / 2.0)
+	this.dw_control.width = this.width - this.width * 0.02
+	this.dw_control.height = this.height - this.width * 0.05
+	lds_itemsetting.retrieve(14, 3, 1)
+	li_visiblecolumns = lds_itemsetting.rowcount()
+	for li_counter = 1 to li_counter
+		this.colname[li_counter, 1] = lds_itemsetting.getitemstring(li_counter, "colname") + "_t"
+		this.colname[li_counter, 2] = lds_itemsetting.getitemstring(li_counter, "colname")
+		this.colwidth[li_counter, 1] = integer(this.dw_control.describe(this.colname[li_counter, 1] + ".Width"))
+		this.colwidth[li_counter, 2] = integer(this.dw_control.describe(this.colname[li_counter, 2] + ".Width"))
+		this.colheight[li_counter] = integer(this.dw_control.describe(this.colname[li_counter, 2] + ".Height"))
+	next
+	li_taborder = 100
+	li_counter = 1
+	li_ypos = 100
+	li_xendpos = 2650
+	do while li_counter <= li_visiblecolumns and li_ypos <= 200000
+		if this.colname[li_counter, 2] = "date" or this.colname[li_counter, 2] = "usercode" or this.colname[li_counter, 2] = "inactivedate" or this.colname[li_counter, 2] = "inactivedby" or this.colname[li_counter, 2] = "code" or this.colname[li_counter, 2] = "active" or this.colname[li_counter, 2] = "originaldate" or this.colname[li_counter, 2] = "createdby" then
+			lb_zerotabordercol = true
+		else
+			lb_zerotabordercol = false
+		end if
+		if lower(this.colname[li_counter, 2]) = "wardcode" then
+			lb_wardcode_enabled = true
+		end if
+		li_xpos = 32
+		this.dw_control.modify(this.colname[li_counter, 1] + ".X=" + string(li_xpos))
+		this.dw_control.modify(this.colname[li_counter, 1] + ".Y=" + string(li_ypos))
+		this.dw_control.modify(this.colname[li_counter, 1] + ".Visible=1")
+		li_xpos = 750
+		this.dw_control.modify(this.colname[li_counter, 2] + ".X=" + string(li_xpos))
+		this.dw_control.modify(this.colname[li_counter, 2] + ".Y=" + string(li_ypos))
+		this.dw_control.modify(this.colname[li_counter, 2] + ".Visible=1")
+		if lb_zerotabordercol then
+			this.dw_control.modify(this.colname[li_counter, 2] + ".protect=1")
+		else
+			this.dw_control.settaborder(this.colname[li_counter, 2], li_taborder)
+		end if
+		li_taborder = li_taborder + 1
+		li_ypos = li_ypos + integer(this.dw_control.describe(this.colname[li_counter, 2] + ".Height")) + 25
+		li_counter = li_counter + 1
+	loop
+	ll_colcount = long(this.dw_control.object.datawindow.column.count)
+	for ll_counter = 1 to ll_colcount
+		this.dw_control.settaborder(ll_counter, 0)
+	next
+	this.dw_control.settransobject(sqlca)
+	li_rtncode = this.dw_control.getchild("patientcatcode", this.idc_patientcat)
+	if li_rtncode = -1 then
+		messagebox("Error", "Can not get a DataWindowChild")
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	this.idc_patientcat.settransobject(sqlca)
+	li_rtncode = this.idc_patientcat.retrieve(14)
+	if li_rtncode <= 0 then
+		messagebox("Patient Information", "Not Enough Patient Categories Allowed, Please contact your system administrator")
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	else
+		this.dw_control.object.patientcatcode.initial = string(this.idc_patientcat.getitemnumber(1, "patientcatcode"))
+	end if
+	this.dw_control.retrieve(ll_code)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_patientinfo.close() returns long
+	close(this)
+	return ::message.returnvalue
+
+// w_patientinfo.key(keycode key, unsignedlong keyflags) returns long
+	if keydown(keyescape!) then
+		close(this)
+	end if
+	return ::message.returnvalue

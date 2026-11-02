@@ -1,0 +1,122 @@
+// window w_select_service_from_serviceinvoice (servicemodules)  ancestor: window
+
+// w_select_service_from_serviceinvoice.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		post event ue_close()
+	end if
+	return ::message.returnvalue
+
+// w_select_service_from_serviceinvoice.ue_close() returns 0
+	closewithreturn(this, this.istr_arg)
+
+// w_select_service_from_serviceinvoice.wf_assigndwobjects(string as_masterdw, string as_detaildw, string as_footerdw) returns 0
+	this.dw_master.dataobject = as_masterdw
+	this.dw_detail.dataobject = as_detaildw
+	this.dw_footer.dataobject = as_footerdw
+	this.dw_master.settransobject(sqlca)
+	this.dw_detail.settransobject(sqlca)
+	this.dw_footer.settransobject(sqlca)
+
+// w_select_service_from_serviceinvoice.create() returns 0
+	this.rb_servicename = create rb_servicename
+	this.rb_asentered = create rb_asentered
+	this.cb_filter = create cb_filter
+	this.rb_both = create rb_both
+	this.rb_npop = create rb_npop
+	this.rb_pop = create rb_pop
+	this.cb_ok = create cb_ok
+	this.dw_footer = create dw_footer
+	this.dw_master = create dw_master
+	this.gb_1 = create gb_1
+	this.gb_2 = create gb_2
+	this.dw_detail = create dw_detail
+	this.control = {this.rb_servicename, this.rb_asentered, this.cb_filter, this.rb_both, this.rb_npop, this.rb_pop, this.cb_ok, this.dw_footer, this.dw_master, this.gb_1, this.gb_2, this.dw_detail}
+
+// w_select_service_from_serviceinvoice.destroy() returns 0
+	destroy this.rb_servicename
+	destroy this.rb_asentered
+	destroy this.cb_filter
+	destroy this.rb_both
+	destroy this.rb_npop
+	destroy this.rb_pop
+	destroy this.cb_ok
+	destroy this.dw_footer
+	destroy this.dw_master
+	destroy this.gb_1
+	destroy this.gb_2
+	destroy this.dw_detail
+
+// w_select_service_from_serviceinvoice.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	long ll_invcode
+	ll_invcode = message.doubleparm
+	if isnull(ll_invcode) or ll_invcode = 0 then
+		messagebox("Service Invoice Validation", "Can not populate Service invoices~r~nPlease Select Valid Service Invoice")
+		post event ue_close()
+	end if
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	this.title = "Populate Service(s) From Service Invoice"
+	wf_assigndwobjects("d_service_for_sample_header", "d_select_service_for_sample", "")
+	this.dw_master.retrieve(ll_invcode)
+	this.dw_detail.retrieve(ll_invcode)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// cb_filter.clicked() returns long
+	string ls_filter
+	if parent.rb_pop.checked = true then
+		ls_filter = "status='Y'"
+	elseif parent.rb_npop.checked = true then
+		ls_filter = "status='N'"
+	else
+		ls_filter = ""
+	end if
+	parent.dw_detail.setredraw(false)
+	parent.dw_detail.setfilter(ls_filter)
+	parent.dw_detail.filter()
+	parent.dw_detail.setredraw(true)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	long[] ll_invcode
+	long ll_rowcount
+	long ll_counter
+	long ll_arrindex
+	long ll_thiscode
+	boolean lb_remarks
+	string ls_date
+	ll_rowcount = parent.dw_detail.rowcount()
+	for ll_counter = 1 to ll_rowcount
+		if parent.dw_detail.getitemstring(ll_counter, "selected") = "Y" then
+			ll_arrindex = ll_arrindex + 1
+			ll_thiscode = parent.dw_detail.getitemnumber(ll_counter, "srvrowid")
+			parent.istr_arg.la_longlist[ll_arrindex] = ll_thiscode
+		end if
+	next
+	parent.istr_arg.i_status = 1
+	if parent.rb_asentered.checked then
+		parent.istr_arg.s_name1 = "srvrowid"
+	else
+		parent.istr_arg.s_name1 = "servicename"
+	end if
+	parent.post event ue_close()
+	return ::message.returnvalue

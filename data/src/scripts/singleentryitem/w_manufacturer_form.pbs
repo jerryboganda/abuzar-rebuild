@@ -1,0 +1,86 @@
+// window w_manufacturer_form (singleentryitem)  ancestor: w_single_entry
+
+// w_manufacturer_form.wf_duplicatecode(string as_manfcode) returns boolean
+	integer li_manfcode
+	integer li_dupmanfcode
+	li_manfcode = integer(as_manfcode)
+	SQL SELECT manufacturer.manfcode INTO :li_dupmanfcode FROM manufacturer WHERE manufacturer.manfcode =:li_manfcode USING sqlca;
+	if li_dupmanfcode = li_manfcode then
+		return true
+	end if
+	return false
+
+// w_manufacturer_form.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM Manufacturer WHERE Manufacturer.name =:as_name USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_manufacturer_form.wf_duplicatealiasname(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM Manufacturer WHERE Manufacturer.aliasname =:as_name USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_manufacturer_form.create() returns 0
+	call super::create
+
+// w_manufacturer_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_manufacturer_form.activate() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::activate()
+	this.windowstate = maximized!
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_manufacturer_form.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.is_tablename = "Manufacturer"
+	return ::message.returnvalue
+
+// w_manufacturer_form.ue_save() returns 0
+	long ll_primarykey
+	long ll_row
+	string ls_aliasname
+	setpointer(hourglass!)
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	ll_row = this.id_detail.getrow()
+	ll_primarykey = this.id_detail.object.code[this.id_detail.getrow()]
+	if isnull(ll_primarykey) then
+		ll_primarykey = 0
+		f_newtableid(this.is_tablename, ll_primarykey)
+		this.id_detail.setitem(ll_row, "code", ll_primarykey)
+	end if
+	ls_aliasname = this.id_detail.getitemstring(this.id_detail.getrow(), "aliasname")
+	if isnull(ls_aliasname) then
+		this.id_detail.setitem(this.id_detail.getrow(), "aliasname", string(ll_primarykey))
+	end if
+	if this.id_detail.update() > 0 then
+		SQL commit USING sqlca;
+		messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+		this.ib_commitok = true
+		this.im_menu.m_file.m_new.enabled = true
+		this.editflag = false
+	else
+		SQL rollback USING sqlca;
+		setpointer(arrow!)
+		messagebox("Save Changes", "Changes Rollback in database, ~n~rSome database problem occurs", exclamation!, ok!, 1)
+		return
+	end if
+	setpointer(arrow!)

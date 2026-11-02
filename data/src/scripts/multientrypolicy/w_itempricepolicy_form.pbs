@@ -1,0 +1,204 @@
+// window w_itempricepolicy_form (multientrypolicy)  ancestor: w_multi_entry
+
+// w_itempricepolicy_form.wf_validateitem() returns integer
+	long ll_qtylimit
+	integer li_errcode
+	integer li_null
+	setnull(li_null)
+	if this.il_currrow > this.id_detail.rowcount() then
+		this.il_currrow = this.id_detail.rowcount()
+	end if
+	ll_qtylimit = this.id_detail.getitemnumber(this.il_currrow, "qtylimit")
+	if vf_dwdupcode1(this.id_detail, "qtylimit", string(ll_qtylimit), this.il_currrow) = true then
+		messagebox("Duplication Error", "Current row is duplicate for Qty Limit")
+		li_errcode = -1
+	else
+		li_errcode = 0
+	end if
+	this.ib_itemvalidated = true
+	if li_errcode = -1 then
+		this.id_detail.setcolumn("qtylimit")
+		this.id_detail.scrolltorow(this.il_currrow)
+		this.id_detail.setitem(this.il_currrow, "qtylimit", li_null)
+	end if
+	return li_errcode
+
+// w_itempricepolicy_form.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	long ll_masterrow
+	long ll_code
+	boolean b_flag
+	ll_masterrow = this.id_master.getrow()
+	if ll_masterrow > 0 then
+		ll_code = this.id_master.object.code[ll_masterrow]
+	end if
+	as_name = trim(as_name)
+	if isnull(ll_code) then
+		SQL SELECT count ( *) INTO :ll_count FROM PricePolicy WHERE PricePolicy.name =:as_name USING this.it_transobject;
+	else
+		SQL SELECT count ( *) INTO :ll_count FROM PricePolicy WHERE PricePolicy.name =:as_name AND PricePolicy.PricePolicyCode <> :ll_code USING this.it_transobject;
+	end if
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_itempricepolicy_form.wf_assigndatawindowobjects(string as_masterdw, string as_detaildw, string as_listdw) returns 0
+	this.id_master.dataobject = as_masterdw
+	this.id_detail.dataobject = as_detaildw
+	this.id_list.dataobject = as_listdw
+	this.id_master.settransobject(this.it_transobject)
+	this.id_detail.settransobject(this.it_transobject)
+	this.id_list.settransobject(this.it_transobject)
+
+// w_itempricepolicy_form.wf_duplicateitemname(long al_icode) returns boolean
+	long ll_count
+	long ll_masterrow
+	long ll_code
+	boolean b_flag
+	ll_masterrow = this.id_master.getrow()
+	if ll_masterrow > 0 then
+		ll_code = this.id_master.object.code[ll_masterrow]
+	end if
+	if isnull(ll_code) then
+		SQL SELECT count ( *) INTO :ll_count FROM PricePolicy WHERE PricePolicy.Icode =:al_icode USING this.it_transobject;
+	else
+		SQL SELECT count ( *) INTO :ll_count FROM PricePolicy WHERE PricePolicy.Icode =:al_icode AND PricePolicy.PricePolicyCode <> :ll_code USING this.it_transobject;
+	end if
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_itempricepolicy_form.wf_inititeminfo(long al_icode, long al_row) returns long
+	long ll_packunits
+	double ld_price
+	SQL SELECT packunits , saleprice INTO :ll_packunits, :ld_price FROM DBO.Item WHERE ICode =:al_icode USING sqlca;
+	if sqlca.sqlcode = 0 then
+		this.id_detail.object.price[al_row] = ld_price
+		this.id_detail.object.packunits[al_row] = ll_packunits
+	end if
+	return 0
+
+// w_itempricepolicy_form.create() returns 0
+	call super::create
+
+// w_itempricepolicy_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_itempricepolicy_form.ue_save() returns 0
+	long ll_mastercurrrow
+	long ll_invid
+	long ll_detailrows
+	long ll_counter
+	long ll_icode
+	long ll_null
+	integer ll_salesmancode
+	boolean lb_commitflag
+	string ls_itemname
+	setnull(ll_null)
+	if wf_validateitem() = -1 then
+		return
+	end if
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	setpointer(hourglass!)
+	ll_mastercurrrow = this.id_master.getrow()
+	if wf_duplicateitemname(this.id_master.object.icode[ll_mastercurrrow]) then
+		messagebox("Item Name Validation", "Price Policy already exists for this item~r~nKindly select some other Item Name")
+		return
+	end if
+	ll_icode = this.id_master.object.icode[ll_mastercurrrow]
+	SQL SELECT Item.Name INTO :ls_itemname FROM DBO.Item WHERE ICode =:ll_icode USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		this.id_master.object.name[ll_mastercurrrow] = ls_itemname
+		if isnull(this.id_master.object.name[ll_mastercurrrow]) then
+			messagebox("Price Policy Name Validation!", "Please Enter Some Valid Price Policy Name")
+			this.id_master.setcolumn("name")
+			this.id_master.setfocus()
+			return
+		end if
+		if wf_duplicatename(this.id_master.object.name[ll_mastercurrrow]) then
+			messagebox("Price Policy Name Validation", "Price Policy already exists with this name~r~nKindly enter some other Name")
+			return
+		end if
+	else
+		messagebox("Price Policy Name Validation!", "Can not fetch item name while saving price policy", stopsign!)
+		return
+	end if
+	ll_invid = this.id_master.object.code[ll_mastercurrrow]
+	SQL rollback USING this.it_transobject;
+	if isnull(ll_invid) then
+		wf_tabnewid("PricePolicy", ll_invid)
+		this.id_master.object.code[ll_mastercurrrow] = ll_invid
+		ll_detailrows = this.id_detail.rowcount()
+		for ll_counter = 1 to ll_detailrows
+			this.id_detail.setitem(ll_counter, "code", ll_invid)
+		next
+	end if
+	ll_detailrows = this.id_detail.rowcount()
+	ll_counter = 1
+	do while ll_counter <= ll_detailrows
+		this.id_detail.setitem(ll_counter, "code", ll_invid)
+		ll_counter = ll_counter + 1
+	loop
+	call super::ue_save
+	ll_invid = ll_null
+	this.id_master.object.code[ll_mastercurrrow] = ll_null
+	setpointer(arrow!)
+
+// w_itempricepolicy_form.ue_newform() returns 0
+	call super::ue_newform
+	this.id_master.setfocus()
+
+// w_itempricepolicy_form.ue_newitem() returns 0
+	long ll_rowcount
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	if this.id_detail.rowcount() > 0 and f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	this.id_detail.setcolumn(2)
+	this.id_detail.insertrow(0)
+	ll_rowcount = this.id_detail.rowcount()
+	if ll_rowcount > 1 then
+		if not isnull(this.id_master.object.icode[this.id_master.rowcount()]) then
+			wf_inititeminfo(this.id_master.object.icode[this.id_master.rowcount()], ll_rowcount)
+		end if
+		this.id_detail.scrolltorow(ll_rowcount)
+		this.id_detail.setfocus()
+		this.id_detail.object.expirydate[ll_rowcount] = this.id_detail.object.expirydate[ll_rowcount - 1]
+	end if
+	this.im_menu.m_file.m_save.enabled = true
+	this.ib_validatefullcode = true
+
+// w_itempricepolicy_form.ue_detail() returns 0
+	call super::ue_detail
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_delete.enabled = true
+	this.im_menu.m_file.m_first.enabled = true
+	this.im_menu.m_file.m_next.enabled = true
+	this.im_menu.m_file.m_last.enabled = true
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_menu.m_file.m_previous.enabled = true
+	this.im_menu.m_item.m_newitem.enabled = true
+	this.im_menu.m_item.m_deleteitem.enabled = true
+
+// w_itempricepolicy_form.ue_deleteitem() returns 0
+	long ll_currow
+	long ll_detailrows
+	this.ib_itemvalidated = true
+	this.id_detail.deleterow(0)
+	ll_detailrows = this.id_detail.rowcount()
+	if ll_detailrows < 1 then
+		this.im_menu.m_file.m_save.enabled = false
+	end if
+	wf_grandtotal()

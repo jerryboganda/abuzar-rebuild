@@ -1,0 +1,34 @@
+// function f_findtreeitem (packingmodule)  ancestor: function_object
+
+// f_findtreeitem.f_findtreeitem(treeview tv_tree, boolean ab_findbydata, any aa_data) returns long
+	long[] ll_handle
+	integer li_count
+	treeviewitem lt_tvi
+	li_count = 1
+	ll_handle[1] = tv_tree.finditem(roottreeitem!, 0)
+	do while li_count > 0
+		if tv_tree.getitem(ll_handle[li_count], lt_tvi) = -1 then
+			return -1
+		end if
+		if ab_findbydata then
+			if lt_tvi.data = aa_data then
+				return ll_handle[li_count]
+			end if
+		elseif lt_tvi.label = string(aa_data) then
+			return ll_handle[li_count]
+		end if
+		if lt_tvi.children then
+			li_count = li_count + 1
+			ll_handle[li_count] = tv_tree.finditem(childtreeitem!, ll_handle[li_count - 1])
+		else
+			ll_handle[li_count] = tv_tree.finditem(nexttreeitem!, ll_handle[li_count])
+		end if
+		do while ll_handle[li_count] <= 0
+			li_count = li_count - 1
+			if li_count = 0 then
+				exit
+			end if
+			ll_handle[li_count] = tv_tree.finditem(nexttreeitem!, ll_handle[li_count])
+		loop
+	loop
+	return 0

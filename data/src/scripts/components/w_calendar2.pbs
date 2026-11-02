@@ -1,0 +1,75 @@
+// window w_calendar2 (components)  ancestor: window
+
+// w_calendar2.ue_close(integer ai_status) returns 0
+	date ld_date
+	if ai_status = 1 then
+		this.mc_calendar.getselecteddate(ld_date)
+		this.is_date = string(ld_date, "yyyy-mm-dd")
+	else
+		this.is_date = string(this.id_old_date, "yyyy-mm-dd")
+	end if
+	closewithreturn(this, this.is_date)
+
+// w_calendar2.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	long ll_retcode
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	this.is_date = message.stringparm
+	this.is_date = mid(this.is_date, 1, 4) + "/" + mid(this.is_date, 6, 2) + "/" + mid(this.is_date, 9, 2)
+	this.id_date = date(this.is_date)
+	this.id_old_date = this.id_date
+	if isdate(this.is_date) then
+		ll_retcode = this.mc_calendar.setselecteddate(this.id_date)
+	else
+		this.mc_calendar.settoday(today())
+	end if
+	this.mc_calendar.setfocus()
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_calendar2.create() returns 0
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.mc_calendar = create mc_calendar
+	this.control = {this.cb_cancel, this.cb_ok, this.mc_calendar}
+
+// w_calendar2.destroy() returns 0
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.mc_calendar
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// mc_calendar.doubleclicked(unsignedlong flags, integer xpos, integer ypos) returns long
+	parent.cb_ok.triggerevent(clicked!)
+	return ::message.returnvalue
+
+// mc_calendar.datechanged() returns long
+	getselecteddate(parent.id_date)
+	parent.is_date = string(parent.id_date, "yyyy-mm-dd")
+	return ::message.returnvalue

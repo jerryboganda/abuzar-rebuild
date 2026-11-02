@@ -1,0 +1,143 @@
+// window w_arg_employeeselection_forsms (reports)  ancestor: window
+
+// w_arg_employeeselection_forsms.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		post event ue_close()
+	end if
+	return ::message.returnvalue
+
+// w_arg_employeeselection_forsms.ue_close() returns 0
+	closewithreturn(this, this.istr_arg)
+
+// w_arg_employeeselection_forsms.wf_validate_mobile(string as_phoneno) returns integer
+	long ll_start
+	long ll_end
+	char lc_temp
+	boolean lb_phoneok
+	if len(as_phoneno) > 0 then
+		ll_end = len(as_phoneno)
+		for ll_start = 1 to ll_end
+			lc_temp = mid(as_phoneno, ll_start, 1)
+			if not (asc(lc_temp) = 44 or asc(lc_temp) > 47 and asc(lc_temp) < 58) then
+				lb_phoneok = false
+				exit
+			end if
+		next
+	end if
+	if lb_phoneok = false then
+		return -1
+	end if
+	return 0
+
+// w_arg_employeeselection_forsms.create() returns 0
+	this.cb_none = create cb_none
+	this.cb_all = create cb_all
+	this.cb_ok = create cb_ok
+	this.dw_detail = create dw_detail
+	this.control = {this.cb_none, this.cb_all, this.cb_ok, this.dw_detail}
+
+// w_arg_employeeselection_forsms.destroy() returns 0
+	destroy this.cb_none
+	destroy this.cb_all
+	destroy this.cb_ok
+	destroy this.dw_detail
+
+// w_arg_employeeselection_forsms.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	long ll_custcode
+	long ll_x
+	long ll_y
+	string ls_date
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width * 0.95
+		ll_height = ll_win_height * 0.95
+		this.width = ll_width
+		this.height = ll_height
+		this.cb_ok.y = this.height - 250
+		this.cb_all.y = this.height - 250
+		this.cb_none.y = this.height - 250
+		this.dw_detail.width = ll_width * 0.98
+		this.dw_detail.height = this.height - 300
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_x = ll_width / 2.0
+			ll_y = ll_width / 2.0
+			if ll_x > 0 and ll_y > 0 then
+				this.x = ll_x
+				this.y = ll_y
+			end if
+		end if
+	end if
+	this.istr_arg = message.powerobjectparm
+	this.dw_detail.settransobject(sqlca)
+	this.dw_detail.retrieve(this.istr_arg.l_code1, this.istr_arg.ia_integerlist)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// cb_none.clicked() returns long
+	string ls_filter
+	long ll_totrows
+	long ll_counter
+	ll_totrows = parent.dw_detail.rowcount()
+	for ll_counter = 1 to ll_totrows
+		parent.dw_detail.object.mobileselected[ll_counter] = "N"
+		parent.dw_detail.object.fmobileselected[ll_counter] = "N"
+		parent.dw_detail.object.mmobileselected[ll_counter] = "N"
+	next
+	return ::message.returnvalue
+
+// cb_all.clicked() returns long
+	string ls_filter
+	long ll_totrows
+	long ll_counter
+	ll_totrows = parent.dw_detail.rowcount()
+	for ll_counter = 1 to ll_totrows
+		parent.dw_detail.object.mobileselected[ll_counter] = "Y"
+		parent.dw_detail.object.fmobileselected[ll_counter] = "Y"
+		parent.dw_detail.object.mmobileselected[ll_counter] = "Y"
+	next
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	long[] ll_invcode
+	long ll_rowcount
+	long ll_counter
+	long ll_arrindex
+	long ll_thiscode
+	boolean lb_remarks
+	string ls_date
+	string ls_mobile
+	string ls_mobilelist
+	ll_rowcount = parent.dw_detail.rowcount()
+	for ll_counter = 1 to ll_rowcount
+		if parent.dw_detail.object.mobileselected[ll_counter] = "Y" then
+			ls_mobile = parent.dw_detail.object.mobile[ll_counter]
+			if not (ls_mobile = "" or isnull(ls_mobile) or len(ls_mobile) <= 0) then
+				if parent.wf_validate_mobile(ls_mobile) = 0 then
+					ls_mobilelist = ls_mobilelist + ls_mobile + ","
+				end if
+			end if
+		end if
+	next
+	if right(ls_mobilelist, 1) = "," then
+		ls_mobilelist = left(ls_mobilelist, len(ls_mobilelist) - 1)
+	end if
+	parent.istr_arg.s_name1 = ls_mobilelist
+	parent.istr_arg.i_status = 1
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// dw_detail.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1

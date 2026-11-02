@@ -1,0 +1,48 @@
+// window w_groupitemwisereceiptexptemplate (receiptcomponents)  ancestor: w_single_entry
+
+// w_groupitemwisereceiptexptemplate.wf_validategroup(long al_code) returns boolean
+	long ll_count
+	if al_code > 0 then
+		SQL SELECT ISNULL ( COUNT ( *) , 0 ) INTO :ll_count FROM GroupItemWiseReceiptExpTemplate WHERE GroupCode =:al_code USING sqlca;
+		if sqlca.sqlcode = 0 then
+			if ll_count <> 0 then
+				this.id_detail.retrieve(al_code)
+			end if
+			return true
+		else
+			return false
+		end if
+		return
+	end if
+	return false
+
+// w_groupitemwisereceiptexptemplate.create() returns 0
+	call super::create
+
+// w_groupitemwisereceiptexptemplate.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_groupitemwisereceiptexptemplate.activate() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::activate()
+	this.windowstate = maximized!
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_groupitemwisereceiptexptemplate.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	return ::message.returnvalue
+
+// w_groupitemwisereceiptexptemplate.ue_detail() returns 0
+	call super::ue_detail
+	if this.id_list.getrow() > 0 and this.id_list.object.code[this.id_list.getrow()] > 0 then
+		this.id_detail.retrieve(this.id_list.object.code[this.id_list.getrow()])
+		if this.id_detail.rowcount() = 0 then
+			this.id_detail.insertrow(0)
+			this.id_detail.object.code[1] = this.id_list.object.code[this.id_list.getrow()]
+		end if
+	end if

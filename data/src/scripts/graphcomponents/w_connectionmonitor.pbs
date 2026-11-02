@@ -1,0 +1,258 @@
+// window w_connectionmonitor (graphcomponents)  ancestor: window
+
+// w_connectionmonitor.wf_refresh() returns long
+	long ll_index
+	long ll_rowcount
+	long ll_series_num
+	long ll_counter
+	long ll_innercounter
+	long ll_groupcode
+	long ll_prints_left
+	long[] ll_docrowid
+	long ll_printable_count
+	long ll_refreshrate
+	boolean lb_continue
+	datetime ldt_startdate
+	setpointer(hourglass!)
+	setredraw(false)
+	this.id_list.retrieve(gs_dbname, gl_sessionid)
+	if this.id_list.rowcount() > 0 and this.id_list.getrow() > 0 then
+		this.id_list2.retrieve(this.id_list.object.id[this.id_list.getrow()])
+	end if
+	setpointer(arrow!)
+	setredraw(true)
+	return 0
+
+// w_connectionmonitor.wf_filter() returns 0
+	string ls_null
+	setnull(ls_null)
+	this.id_list.scrolltorow(0)
+	this.id_list.setfilter(ls_null)
+	this.id_list.filter()
+	this.id_list.groupcalc()
+
+// w_connectionmonitor.wf_sort() returns long
+	string ls_null
+	setnull(ls_null)
+	this.id_list.setsort(ls_null)
+	this.id_list.sort()
+	this.id_list.groupcalc()
+	return 0
+
+// w_connectionmonitor.wf_settimer(long ai_time) returns 0
+	timer(ai_time, this)
+
+// w_connectionmonitor.wf_delete() returns integer
+	integer li_res
+	long ll_processes
+	long ll_processcount
+	long ll_id
+	long ll_row
+	string ls_cn
+	string ls_db
+	string ls_query
+	string ls_del_query
+	string ls_netsend
+	ll_row = this.id_list.getrow()
+	if this.id_list.rowcount() > 0 and ll_row > 0 then
+		ll_id = this.id_list.object.id[ll_row]
+		ls_cn = this.id_list.object.computername[ll_row]
+		ls_db = this.id_list.object.databasename[ll_row]
+		if ll_id = gl_sessionid then
+			messagebox("Session Kill Request", "Self Destruction Activity.~r~nYou are trying to Kill your own Session.~r~nThis Action is not permitted/allowed.", information!)
+			return 0
+		end if
+		li_res = messagebox("Session Kill Request", "You are about to kill an active user's running session.~r~nThis may result in data/work loss for the concerned user.~r~nAre you sure to kill this user's session anyway?", question!, yesnocancel!, 1)
+		if li_res = 1 then
+			this.it_transobject.autocommit = true
+			this.id_list2.retrieve(ll_id)
+			if this.id_list2.rowcount() > 0 then
+				ll_processes = this.id_list2.rowcount()
+				ll_processcount = 1
+				do while ll_processcount <= ll_processes
+					ls_query = "Kill " + string(this.id_list2.object.processid[ll_processcount])
+					SQL EXECUTE IMMEDIATE :ls_query USING this.it_transobject;
+					ll_processcount = ll_processcount + 1
+				loop
+			end if
+			ls_del_query = "DELETE Tempdb.dbo.sysisolaation WHERE ID = " + string(ll_id)
+			SQL EXECUTE IMMEDIATE :ls_del_query USING this.it_transobject;
+			ls_netsend = "NET SEND " + ls_cn + " " + "~"Kindly Close your waseela application connected with " + ls_db + " using Session ID = " + string(ll_id) + "~""
+			run(ls_netsend, minimized!)
+		end if
+	end if
+	this.it_transobject.autocommit = false
+	wf_refresh()
+	return 0
+
+// w_connectionmonitor.create() returns 0
+	if this.menuname = "m_connectionmonitor" then
+		this.menuid = create m_connectionmonitor
+	end if
+	this.tab_monitor = create tab_monitor
+	this.control = {this.tab_monitor}
+
+// w_connectionmonitor.destroy() returns 0
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.tab_monitor
+
+// w_connectionmonitor.open() returns long
+	long ll_usercode
+	long ll_groupcode
+	long ll_rightcode
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	open(w_salesmanpassword)
+	ll_usercode = long(message.doubleparm)
+	if ll_usercode <= 0 then
+		messagebox("User Validation", "The User/Password you have specified is not entiltled to run this module", stopsign!)
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	ll_groupcode = f_getgroupcode(ll_usercode)
+	SQL SELECT MAX ( RightCode ) INTO :ll_rightcode FROM GroupRights WHERE GroupCode =:ll_groupcode AND RightCode =1292 USING sqlca;
+	if sqlca.sqlcode = 0 then
+		if ll_rightcode <> 1292 then
+			messagebox("User/Group Validation", "The User/Password you have specified is not entiltled to run this module~r~nSession Monitoring Rights are not allowed to this user.~r~nOnly Trusted Users are acceptable here.", stopsign!)
+			close(this)
+			if not isvalid(message) then
+				return 0
+			end if
+			return message.returnvalue
+		end if
+	else
+		messagebox("User/Group Validation", "Unable to confirm the rights to run this module~r~nPlease Try Again.~r~nDetails Are:-" + sqlca.sqlerrtext, stopsign!)
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	this.im_menu = this.menuid
+	this.ids_print = create u_ds_standard
+	this.it_transobject = create u_transaction
+	SQL start USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		messagebox("Connection Failure", "Unable to connect to the database", stopsign!)
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width * 0.98
+		ll_height = ll_win_height * 0.96
+		this.width = ll_width
+		this.height = ll_height
+		this.tab_monitor.width = ll_width * 0.98
+		this.tab_monitor.height = ll_height * 0.90
+		this.tab_monitor.tabpage_list.width = this.tab_monitor.width * 0.98
+		this.tab_monitor.tabpage_list.height = this.tab_monitor.height * 0.90
+		this.tab_monitor.tabpage_list.dw_buttons.width = this.tab_monitor.tabpage_list.width
+		this.tab_monitor.tabpage_list.dw_buttons.y = this.tab_monitor.tabpage_list.height - this.tab_monitor.tabpage_list.dw_buttons.height
+		this.tab_monitor.tabpage_list.dw_list.width = this.tab_monitor.tabpage_list.width
+		this.tab_monitor.tabpage_list.dw_list.height = this.tab_monitor.tabpage_list.height - this.tab_monitor.tabpage_list.dw_buttons.height - 25
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	this.id_list = this.tab_monitor.tabpage_list.dw_list
+	this.id_list.settransobject(this.it_transobject)
+	this.id_list2 = this.tab_monitor.tabpage_list.dw_list2
+	this.id_list2.settransobject(this.it_transobject)
+	this.id_button = this.tab_monitor.tabpage_list.dw_buttons
+	this.id_button.settransobject(this.it_transobject)
+	this.id_button.retrieve()
+	wf_settimer(this.id_button.object.refreshtime[1])
+	wf_refresh()
+	this.id_list.setfocus()
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_connectionmonitor.timer() returns long
+	wf_refresh()
+	return ::message.returnvalue
+
+// tab_monitor.create() returns 0
+	this.tabpage_list = create tabpage_list
+	this.control = {this.tabpage_list}
+
+// tab_monitor.destroy() returns 0
+	destroy this.tabpage_list
+
+// tabpage_list.create() returns 0
+	this.dw_buttons = create dw_buttons
+	this.dw_list2 = create dw_list2
+	this.dw_list = create dw_list
+	this.control = {this.dw_buttons, this.dw_list2, this.dw_list}
+
+// tabpage_list.destroy() returns 0
+	destroy this.dw_buttons
+	destroy this.dw_list2
+	destroy this.dw_list
+
+// dw_buttons.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "refreshtime"
+		if long(data) > 0 then
+			parent.parent.parent.ib_editrefresh = true
+			parent.parent.parent.wf_settimer(long(data))
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_buttons.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_list.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_list.rowfocuschanged(long currentrow) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::rowfocuschanged(currentrow)
+	if currentrow > 0 then
+		selectrow(0, false)
+		setrow(currentrow)
+		scrolltorow(currentrow)
+		selectrow(currentrow, true)
+		if currentrow > 0 then
+			parent.parent.parent.id_list2.retrieve(parent.parent.parent.id_list.object.id[currentrow])
+		end if
+	end if
+	return ::message.returnvalue
+
+// dw_list.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keyf5! then
+		parent.parent.parent.wf_refresh()
+	elseif key = keyf6! then
+		parent.parent.parent.wf_filter()
+	elseif key = keydelete! then
+		parent.parent.parent.wf_delete()
+	end if
+	return ::message.returnvalue

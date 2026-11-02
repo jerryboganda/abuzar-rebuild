@@ -1,0 +1,62 @@
+// window w_graph_title (graphcomponents)  ancestor: w_center
+
+// w_graph_title.open() returns long
+	long ancestorreturnvalue
+	graphicobject lgro_hold
+	ancestorreturnvalue = super::open()
+	lgro_hold = message.powerobjectparm
+	if lgro_hold.typeof() = graph! then
+		this.io_passed = graph!
+		this.igr_parm = message.powerobjectparm
+		this.sle_title.text = this.igr_parm.title
+		this.sle_title.selecttext(1, 999)
+		this.is_original_title = this.igr_parm.title
+	elseif lgro_hold.typeof() = datawindow! then
+		this.io_passed = datawindow!
+		this.idw_parm = message.powerobjectparm
+		this.sle_title.text = this.idw_parm.object.gr_1.title
+		this.sle_title.selecttext(1, 999)
+		this.is_original_title = this.sle_title.text
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_graph_title.create() returns 0
+	integer icurrent
+	call super::create
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.sle_title = create sle_title
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.cb_cancel
+	this.control[icurrent + 2] = this.cb_ok
+	this.control[icurrent + 3] = this.sle_title
+
+// w_graph_title.destroy() returns 0
+	call super::destroy
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.sle_title
+
+// cb_cancel.clicked() returns long
+	if parent.io_passed = graph! then
+		parent.igr_parm.title = parent.is_original_title
+	elseif parent.io_passed = datawindow! then
+		parent.idw_parm.object.gr_1.title = parent.is_original_title
+	end if
+	close(parent)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	close(parent)
+	return ::message.returnvalue
+
+// sle_title.modified() returns long
+	if parent.io_passed = graph! then
+		parent.igr_parm.title = this.text
+	elseif parent.io_passed = datawindow! then
+		parent.idw_parm.object.gr_1.title = this.text
+	end if
+	return ::message.returnvalue

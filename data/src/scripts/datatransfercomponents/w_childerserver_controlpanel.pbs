@@ -1,0 +1,696 @@
+// window w_childerserver_controlpanel (datatransfercomponents)  ancestor: window
+
+// w_childerserver_controlpanel.ue_close(integer ai_status) returns 0
+	SQL stop USING this.it_datatransobject;
+	destroy this.it_datatransobject
+	close(this)
+
+// w_childerserver_controlpanel.wf_disconnect() returns 0
+	SQL stop USING this.it_datatransobject;
+	destroy this.it_datatransobject
+
+// w_childerserver_controlpanel.wf_openreport() returns 0
+
+// w_childerserver_controlpanel.wf_gettaskinfo(long al_parentstatus) returns long
+	this.dw_control.settransobject(this.it_datatransobject)
+	this.dw_control.retrieve(al_parentstatus)
+	if this.dw_control.rowcount() > 0 then
+		this.dw_control.object.parentserver[1] = gs_parentlinkserver
+		this.dw_control.object.parentdatabase[1] = gs_parentdbname
+	end if
+	return 0
+
+// w_childerserver_controlpanel.wf_perform_task(string as_object) returns long
+	setpointer(hourglass!)
+	wf_starttask(as_object)
+	wf_gettaskinfo(this.il_parentstatus)
+	setpointer(arrow!)
+	return 0
+
+// w_childerserver_controlpanel.wf_starttask(string as_object) returns 0
+	string ls_connsetting
+	long ll_counter
+	long ll_saletype
+	long ll_sale_or_return
+	s_arguements lstr_arg
+	ls_connsetting = "Set ANSI_NULLS ON Set ANSI_WARNINGS ON"
+	SQL stop USING this.it_datatransobject;
+	SQL start USING this.it_datatransobject;
+	if this.it_datatransobject.sqlcode = 0 then
+		SQL EXECUTE IMMEDIATE :ls_connsetting USING this.it_datatransobject;
+		if this.it_datatransobject.sqlcode = 0 then
+			this.st_progress.text = ""
+			this.hpb_progress.position = 0
+			this.gb_progress.visible = true
+			this.hpb_progress.visible = true
+			this.st_progress.visible = true
+			if as_object = "b_import" then
+				this.st_progress.text = "droping temporary tables . . ."
+				for ll_counter = 1 to 100000
+				next
+				this.hpb_progress.stepit()
+				this.hpb_progress.stepit()
+				SQL rollback USING this.it_datatransobject;
+				this.it_datatransobject.dropimporttables()
+				if this.it_datatransobject.sqlcode = 0 then
+					SQL commit USING this.it_datatransobject;
+					this.hpb_progress.stepit()
+					this.hpb_progress.stepit()
+					this.st_progress.text = "creating temporary tables . . ."
+					this.hpb_progress.stepit()
+					this.hpb_progress.stepit()
+					for ll_counter = 1 to 100000
+					next
+					this.st_progress.text = "importing basic data to temporary tables . . ."
+					this.hpb_progress.stepit()
+					this.hpb_progress.stepit()
+					this.it_datatransobject.importdata(gs_parentlinkserver, gs_parentdbname, "dbo")
+					if this.it_datatransobject.sqlcode = 0 then
+						SQL commit USING this.it_datatransobject;
+						this.hpb_progress.stepit()
+						this.hpb_progress.stepit()
+						messagebox("Import Basic Data", "Basic Data Import Task Completed Successfully", information!)
+					else
+						messagebox("Import Basic Data", "Problem Importing Basic Data~r~nCan not import data to temporary tables~r~nReasons are:- " + this.it_datatransobject.sqlerrtext, stopsign!)
+					end if
+				else
+					SQL rollback USING this.it_datatransobject;
+					messagebox("Import Basic Data", "Problem Importing Basic Data~r~nCan not drop temporary tables~r~nReasons are:- " + this.it_datatransobject.sqlerrtext, stopsign!)
+				end if
+			elseif as_object = "b_sync" then
+				this.hpb_progress.stepit()
+				this.hpb_progress.stepit()
+				this.st_progress.text = "synchronization of basic data in progress . . ."
+				for ll_counter = 1 to 100000
+				next
+				this.hpb_progress.stepit()
+				this.hpb_progress.stepit()
+				this.hpb_progress.stepit()
+				SQL rollback USING this.it_datatransobject;
+				this.it_datatransobject.syncimporteddata()
+				if this.it_datatransobject.sqlcode = 0 then
+					SQL commit USING this.it_datatransobject;
+					this.hpb_progress.stepit()
+					this.hpb_progress.stepit()
+					this.hpb_progress.stepit()
+					this.hpb_progress.stepit()
+					this.hpb_progress.stepit()
+					messagebox("Synchronizing Basic Data", "Basic Data Synchronizing Task Completed Successfully", information!)
+				else
+					SQL rollback USING this.it_datatransobject;
+					messagebox("Synchronizing Basic Data", "Problem Synchronizing Basic Data~r~nCan not Synchronize basic data~r~nReasons are:- " + this.it_datatransobject.sqlerrtext, stopsign!)
+				end if
+			elseif as_object = "b_saletrans" then
+				open(w_select_sales_advsales)
+				ll_saletype = message.doubleparm
+				if ll_saletype = 1 then
+					open(w_select_sales_salereturn)
+					ll_sale_or_return = message.doubleparm
+					if ll_sale_or_return = 1 then
+						open(w_sales_transmit_cust_sdate_ldate)
+					else
+						open(w_sreturn_transmit_cust_sdate_ldate)
+						ll_saletype = 3
+					end if
+				else
+					open(w_advsales_transmit_cust_sdate_ldate)
+				end if
+				lstr_arg = message.powerobjectparm
+				if lstr_arg.i_status = 1 then
+					this.hpb_progress.stepit()
+					this.hpb_progress.stepit()
+					this.st_progress.text = "transmitting sales/return data in progress . . ."
+					for ll_counter = 1 to 100000
+					next
+					this.hpb_progress.stepit()
+					this.hpb_progress.stepit()
+					this.hpb_progress.stepit()
+					SQL rollback USING this.it_datatransobject;
+					this.it_datatransobject.transmit_childserversales(lstr_arg.l_code1, lstr_arg.d_sdate, lstr_arg.d_edate, gs_servername, gs_parentlinkserver, gs_parentdbname, "dbo", ll_saletype)
+					if this.it_datatransobject.sqlcode = 0 then
+						SQL commit USING this.it_datatransobject;
+						this.hpb_progress.stepit()
+						this.hpb_progress.stepit()
+						this.hpb_progress.stepit()
+						this.hpb_progress.stepit()
+						this.hpb_progress.stepit()
+						messagebox("Transmitting Sales/Return Data", "Transmitting Sales/Return Data Task Completed Successfully", information!)
+					else
+						messagebox("Transmitting Sales/Return Data", "Problem Trasmitting Sales/Return Data~r~nCan not Trasmit sales/return data~r~nReasons are:- " + this.it_datatransobject.sqlerrtext, stopsign!)
+						SQL rollback USING this.it_datatransobject;
+					end if
+				else
+					messagebox("Trasnmitting Sales/Return Data", "No Sales/Return Data Selected To Trasmit~r~nPlease select some sales/return and try again", information!)
+				end if
+			end if
+			this.hpb_progress.visible = false
+			this.st_progress.visible = false
+			this.gb_progress.visible = false
+		else
+			messagebox("Connection Problem", "Problem Occured While Connecting to database~r~nProblem while setting database connection options~r~nReasons are:- " + this.it_datatransobject.sqlerrtext, stopsign!)
+		end if
+	else
+		messagebox("Connection Problem", "Problem Occured While Connecting to database~r~nPlease Try Again~r~nReasons are:- " + this.it_datatransobject.sqlerrtext, stopsign!)
+	end if
+
+// w_childerserver_controlpanel.wf_checkvisibility() returns long
+	if not f_rightexists(1749) then
+		this.dw_control.object.b_import.visible = false
+	end if
+	if not f_rightexists(1750) then
+		this.dw_control.object.b_sync.visible = false
+	end if
+	if not f_rightexists(1751) then
+		this.dw_control.object.b_saletrans.visible = false
+	end if
+	return 0
+
+// w_childerserver_controlpanel.create() returns 0
+	this.cbx_activateautostockimport = create cbx_activateautostockimport
+	this.rb_importstockonce = create rb_importstockonce
+	this.st_importstockhr = create st_importstockhr
+	this.ddlb_importstockhr = create ddlb_importstockhr
+	this.ddlb_importstockmin = create ddlb_importstockmin
+	this.st_importstocksec = create st_importstocksec
+	this.ddlb_importstocksec = create ddlb_importstocksec
+	this.ddlb_importstocktime = create ddlb_importstocktime
+	this.st_importstockmin = create st_importstockmin
+	this.rb_importstockevery = create rb_importstockevery
+	this.dw_importstockschedule = create dw_importstockschedule
+	this.dw_importdataschedule = create dw_importdataschedule
+	this.rb_importdataevery = create rb_importdataevery
+	this.st_importdatamin = create st_importdatamin
+	this.ddlb_importdatatime = create ddlb_importdatatime
+	this.ddlb_importdatasec = create ddlb_importdatasec
+	this.st_importdatasec = create st_importdatasec
+	this.ddlb_importdatamin = create ddlb_importdatamin
+	this.ddlb_importdatahr = create ddlb_importdatahr
+	this.st_importdatahr = create st_importdatahr
+	this.rb_importdataonce = create rb_importdataonce
+	this.cbx_activateautodataimport = create cbx_activateautodataimport
+	this.dw_control = create dw_control
+	this.cb_saveandclose = create cb_saveandclose
+	this.gb_progress = create gb_progress
+	this.hpb_progress = create hpb_progress
+	this.st_progress = create st_progress
+	this.gb_2 = create gb_2
+	this.gb_1 = create gb_1
+	this.gb_3 = create gb_3
+	this.gb_4 = create gb_4
+	this.control = {this.cbx_activateautostockimport, this.rb_importstockonce, this.st_importstockhr, this.ddlb_importstockhr, this.ddlb_importstockmin, this.st_importstocksec, this.ddlb_importstocksec, this.ddlb_importstocktime, this.st_importstockmin, this.rb_importstockevery, this.dw_importstockschedule, this.dw_importdataschedule, this.rb_importdataevery, this.st_importdatamin, this.ddlb_importdatatime, this.ddlb_importdatasec, this.st_importdatasec, this.ddlb_importdatamin, this.ddlb_importdatahr, this.st_importdatahr, this.rb_importdataonce, this.cbx_activateautodataimport, this.dw_control, this.cb_saveandclose, this.gb_progress, this.hpb_progress, this.st_progress, this.gb_2, this.gb_1, this.gb_3, this.gb_4}
+
+// w_childerserver_controlpanel.destroy() returns 0
+	destroy this.cbx_activateautostockimport
+	destroy this.rb_importstockonce
+	destroy this.st_importstockhr
+	destroy this.ddlb_importstockhr
+	destroy this.ddlb_importstockmin
+	destroy this.st_importstocksec
+	destroy this.ddlb_importstocksec
+	destroy this.ddlb_importstocktime
+	destroy this.st_importstockmin
+	destroy this.rb_importstockevery
+	destroy this.dw_importstockschedule
+	destroy this.dw_importdataschedule
+	destroy this.rb_importdataevery
+	destroy this.st_importdatamin
+	destroy this.ddlb_importdatatime
+	destroy this.ddlb_importdatasec
+	destroy this.st_importdatasec
+	destroy this.ddlb_importdatamin
+	destroy this.ddlb_importdatahr
+	destroy this.st_importdatahr
+	destroy this.rb_importdataonce
+	destroy this.cbx_activateautodataimport
+	destroy this.dw_control
+	destroy this.cb_saveandclose
+	destroy this.gb_progress
+	destroy this.hpb_progress
+	destroy this.st_progress
+	destroy this.gb_2
+	destroy this.gb_1
+	destroy this.gb_3
+	destroy this.gb_4
+
+// w_childerserver_controlpanel.open() returns long
+	long ll_appversion
+	long ll_sequenceid
+	long ll_dbstatus
+	long ll_parent_appversion
+	long ll_parent_sequenceid
+	long ll_parent_dbstatus
+	long ll_retcode
+	long ll_importdatahr
+	long ll_importstockhr
+	string ls_jobstarttime
+	string ls_hold
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	string ls_version_info
+	datastore lds_sequence
+	integer li_enabled
+	sqlca.dbms_version(ls_version_info)
+	if match(ls_version_info, "SQL Server 2012") = true then
+		this.dw_importdataschedule.dataobject = "d_backupschedule_2012"
+		this.dw_importstockschedule.dataobject = "d_backupschedule_2012"
+	end if
+	this.it_datatransobject = create u_transaction
+	SQL start USING this.it_datatransobject;
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	lds_sequence = create datastore
+	lds_sequence.dataobject = "d_sequence"
+	lds_sequence.settransobject(this.it_datatransobject)
+	lds_sequence.retrieve()
+	ll_appversion = lds_sequence.getitemnumber(1, "AppVersion")
+	ll_sequenceid = lds_sequence.getitemnumber(1, "SequenceId")
+	ll_dbstatus = lds_sequence.getitemnumber(1, "DBStatus")
+	f_getappversion(gs_parentlinkserver, gs_parentdbname, gs_parentowner, ll_parent_sequenceid, ll_parent_appversion, ll_parent_dbstatus)
+	if ll_parent_sequenceid > 0 and ll_parent_appversion > 0 then
+		this.il_parentstatus = 1
+		if ll_parent_appversion <> ll_appversion or ll_parent_sequenceid <> ll_sequenceid or ll_parent_dbstatus <> ll_dbstatus then
+			messagebox("Version Problem", "Both Source and Target Must have same Application Version")
+			post event ue_close(0)
+			return ::message.returnvalue
+		end if
+	else
+		this.il_parentstatus = 0
+	end if
+	wf_gettaskinfo(this.il_parentstatus)
+	wf_checkvisibility()
+	this.it_jobtransobject = create u_transaction
+	this.it_jobtransobject.dbms = "OLE DB"
+	this.it_jobtransobject.autocommit = true
+	this.it_jobtransobject.dbparm = "PROVIDER='SQLOLEDB',DATASOURCE='" + gs_servername + "',CommitOnDisconnect='No',PROVIDERSTRING='DataBase=MSDB" + ";APP=" + gs_app + ";WSID=" + gs_localcomputername + "',PBTrimCharColumns='Yes',StripParmNames='Yes'"
+	SQL start USING this.it_jobtransobject;
+	this.dw_importdataschedule.settransobject(this.it_jobtransobject)
+	this.dw_importdataschedule.retrieve(gs_autoimportdatajob, gs_autoimportdatajobschedule)
+	SQL Select enabled INTO :li_enabled From SysJobs Where Name =:gs_autoimportdatajob USING this.it_jobtransobject;
+	if this.it_jobtransobject.sqlcode = 0 then
+		if li_enabled = 1 then
+			this.cbx_activateautodataimport.checked = true
+			if this.dw_importdataschedule.getitemnumber(1, "unit") = 1.0 then
+				this.rb_importdataonce.checked = true
+				ls_jobstarttime = string(this.dw_importdataschedule.getitemnumber(1, "occurancetime"))
+				ll_importdatahr = integer(left(ls_jobstarttime, len(ls_jobstarttime) - 4))
+				ls_hold = left(right(ls_jobstarttime, 4), len(right(ls_jobstarttime, 4)) - 2)
+				if isnull(ls_hold) or ls_hold = "" then
+					ls_hold = "00"
+				elseif len(ls_hold) = 1 then
+					ls_hold = "0" + ls_hold
+				end if
+				this.ddlb_importdatamin.selectitem(ls_hold, 0)
+				ls_hold = right(ls_jobstarttime, 2)
+				if isnull(ls_hold) or ls_hold = "" then
+					ls_hold = "00"
+				elseif len(ls_hold) = 1 then
+					ls_hold = "0" + ls_hold
+				end if
+				this.ddlb_importdatasec.selectitem(ls_hold, 0)
+				if ll_importdatahr > 12 then
+					this.ddlb_importdatahr.selectitem(string(ll_importdatahr - 12), 0)
+					this.ddlb_importdatatime.selectitem("PM", 0)
+				elseif ll_importdatahr = 12 then
+					this.ddlb_importdatahr.selectitem("12", 0)
+					this.ddlb_importdatatime.selectitem("PM", 0)
+				else
+					if isnull(ll_importdatahr) or ll_importdatahr = 0 then
+						this.ddlb_importdatahr.selectitem("12", 0)
+					else
+						this.ddlb_importdatahr.selectitem(string(ll_importdatahr), 0)
+					end if
+					this.ddlb_importdatatime.selectitem("AM", 0)
+				end if
+				this.dw_importdataschedule.enabled = false
+			else
+				this.rb_importdataevery.checked = true
+				this.ddlb_importdatahr.enabled = false
+				this.ddlb_importdatamin.enabled = false
+				this.ddlb_importdatasec.enabled = false
+				this.ddlb_importdatatime.enabled = false
+			end if
+		else
+			this.cbx_activateautodataimport.checked = false
+			this.rb_importdataevery.enabled = false
+			this.dw_importdataschedule.enabled = false
+			this.rb_importdataonce.enabled = false
+			this.ddlb_importdatahr.enabled = false
+			this.ddlb_importdatamin.enabled = false
+			this.ddlb_importdatasec.enabled = false
+			this.ddlb_importdatatime.enabled = false
+		end if
+	else
+		messagebox("Job", "Unable to fetch Auto Import Data From Parent Server job status.")
+	end if
+	this.dw_importstockschedule.settransobject(this.it_jobtransobject)
+	this.dw_importstockschedule.retrieve(gs_autoimportstockjob, gs_autoimportstockjobschedule)
+	SQL Select enabled INTO :li_enabled From SysJobs Where Name =:gs_autoimportstockjob USING this.it_jobtransobject;
+	if this.it_jobtransobject.sqlcode = 0 then
+		if li_enabled = 1 then
+			this.cbx_activateautostockimport.checked = true
+			if this.dw_importstockschedule.getitemnumber(1, "unit") = 1.0 then
+				this.rb_importstockonce.checked = true
+				ls_jobstarttime = string(this.dw_importstockschedule.getitemnumber(1, "occurancetime"))
+				ll_importstockhr = integer(left(ls_jobstarttime, len(ls_jobstarttime) - 4))
+				ls_hold = left(right(ls_jobstarttime, 4), len(right(ls_jobstarttime, 4)) - 2)
+				if isnull(ls_hold) or ls_hold = "" then
+					ls_hold = "00"
+				elseif len(ls_hold) = 1 then
+					ls_hold = "0" + ls_hold
+				end if
+				this.ddlb_importstockmin.selectitem(ls_hold, 0)
+				ls_hold = right(ls_jobstarttime, 2)
+				if isnull(ls_hold) or ls_hold = "" then
+					ls_hold = "00"
+				elseif len(ls_hold) = 1 then
+					ls_hold = "0" + ls_hold
+				end if
+				this.ddlb_importstocksec.selectitem(ls_hold, 0)
+				if ll_importstockhr > 12 then
+					this.ddlb_importstockhr.selectitem(string(ll_importstockhr - 12), 0)
+					this.ddlb_importstocktime.selectitem("PM", 0)
+				elseif ll_importstockhr = 12 then
+					this.ddlb_importstockhr.selectitem("12", 0)
+					this.ddlb_importstocktime.selectitem("PM", 0)
+				else
+					if isnull(ll_importstockhr) or ll_importstockhr = 0 then
+						this.ddlb_importstockhr.selectitem("12", 0)
+					else
+						this.ddlb_importstockhr.selectitem(string(ll_importstockhr), 0)
+					end if
+					this.ddlb_importstocktime.selectitem("AM", 0)
+				end if
+				this.dw_importstockschedule.enabled = false
+			else
+				this.rb_importstockevery.checked = true
+				this.ddlb_importstockhr.enabled = false
+				this.ddlb_importstockmin.enabled = false
+				this.ddlb_importstocksec.enabled = false
+				this.ddlb_importstocktime.enabled = false
+			end if
+		else
+			this.cbx_activateautostockimport.checked = false
+			this.rb_importstockevery.enabled = false
+			this.dw_importstockschedule.enabled = false
+			this.rb_importstockonce.enabled = false
+			this.ddlb_importstockhr.enabled = false
+			this.ddlb_importstockmin.enabled = false
+			this.ddlb_importstocksec.enabled = false
+			this.ddlb_importstocktime.enabled = false
+		end if
+	else
+		messagebox("Job", "Unable to fetch Auto Import Stock From Parent Server job status.")
+	end if
+	return ::message.returnvalue
+
+// cbx_activateautostockimport.clicked() returns long
+	if this.checked = true then
+		parent.rb_importstockonce.enabled = true
+		parent.rb_importstockevery.enabled = true
+		parent.dw_importstockschedule.enabled = false
+		parent.ddlb_importstockhr.enabled = true
+		parent.ddlb_importstockmin.enabled = true
+		parent.ddlb_importstocksec.enabled = true
+		parent.ddlb_importstocktime.enabled = true
+	else
+		parent.rb_importstockevery.enabled = false
+		parent.rb_importstockonce.enabled = false
+		parent.dw_importstockschedule.enabled = false
+		parent.ddlb_importstockhr.enabled = false
+		parent.ddlb_importstockmin.enabled = false
+		parent.ddlb_importstocksec.enabled = false
+		parent.ddlb_importstocktime.enabled = false
+	end if
+	return ::message.returnvalue
+
+// rb_importstockonce.clicked() returns long
+	if this.checked = true then
+		parent.dw_importstockschedule.enabled = false
+		parent.ddlb_importstockhr.enabled = true
+		parent.ddlb_importstockmin.enabled = true
+		parent.ddlb_importstocksec.enabled = true
+		parent.ddlb_importstocktime.enabled = true
+	end if
+	return ::message.returnvalue
+
+// rb_importstockevery.clicked() returns long
+	if this.checked = true then
+		parent.dw_importstockschedule.enabled = true
+		parent.ddlb_importstockhr.enabled = false
+		parent.ddlb_importstockmin.enabled = false
+		parent.ddlb_importstocksec.enabled = false
+		parent.ddlb_importstocktime.enabled = false
+	end if
+	return ::message.returnvalue
+
+// rb_importdataevery.clicked() returns long
+	if this.checked = true then
+		parent.dw_importdataschedule.enabled = true
+		parent.ddlb_importdatahr.enabled = false
+		parent.ddlb_importdatamin.enabled = false
+		parent.ddlb_importdatasec.enabled = false
+		parent.ddlb_importdatatime.enabled = false
+	end if
+	return ::message.returnvalue
+
+// rb_importdataonce.clicked() returns long
+	if this.checked = true then
+		parent.dw_importdataschedule.enabled = false
+		parent.ddlb_importdatahr.enabled = true
+		parent.ddlb_importdatamin.enabled = true
+		parent.ddlb_importdatasec.enabled = true
+		parent.ddlb_importdatatime.enabled = true
+	end if
+	return ::message.returnvalue
+
+// cbx_activateautodataimport.clicked() returns long
+	if this.checked = true then
+		parent.rb_importdataonce.enabled = true
+		parent.rb_importdataevery.enabled = true
+		parent.dw_importdataschedule.enabled = false
+		parent.ddlb_importdatahr.enabled = true
+		parent.ddlb_importdatamin.enabled = true
+		parent.ddlb_importdatasec.enabled = true
+		parent.ddlb_importdatatime.enabled = true
+	else
+		parent.rb_importdataevery.enabled = false
+		parent.rb_importdataonce.enabled = false
+		parent.dw_importdataschedule.enabled = false
+		parent.ddlb_importdatahr.enabled = false
+		parent.ddlb_importdatamin.enabled = false
+		parent.ddlb_importdatasec.enabled = false
+		parent.ddlb_importdatatime.enabled = false
+	end if
+	return ::message.returnvalue
+
+// dw_control.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked(xpos, ypos, row, dwo)
+	choose case dwo.name
+	case "b_import", "b_sync", "b_saletrans"
+		parent.wf_perform_task(dwo.name)
+	end choose
+	return ::message.returnvalue
+
+// cb_saveandclose.clicked() returns long
+	double ld_expirydays
+	integer li_cashsalepostingtime
+	integer li_creditsalepostingtime
+	integer li_counter
+	long ll_retcode
+	boolean lb_commitok
+	string ls_errtext
+	string ls_errtitle
+	string ls_errmodule
+	string ls_string
+	string ls_jobname
+	string ls_schedulename
+	string ls_hr
+	string ls_min
+	string ls_sec
+	string ls_activetime
+	string ls_ampm
+	integer li_unitvalue
+	integer li_unit
+	integer li_hr
+	long ll_activetime
+	if lb_commitok then
+		ls_jobname = gs_autoimportdatajob
+		ls_schedulename = gs_autoimportdatajobschedule
+		if parent.cbx_activateautodataimport.checked = true then
+			if parent.rb_importdataonce.checked = true then
+				ls_hr = parent.ddlb_importdatahr.text
+				ls_min = parent.ddlb_importdatamin.text
+				ls_sec = parent.ddlb_importdatasec.text
+				ls_ampm = parent.ddlb_importdatatime.text
+				if isnull(ls_hr) or ls_hr = "" or ls_hr = "none" then
+					messagebox("Auto Import Data Job Time Validation", "Please select hours from dropdown box.")
+					parent.ddlb_importdatahr.setfocus()
+					return ::message.returnvalue
+				elseif isnull(ls_min) or ls_min = "" or ls_min = "none" then
+					messagebox("Auto Import Data Time Validation", "Please select minutes from dropdown box.")
+					parent.ddlb_importdatamin.setfocus()
+					return ::message.returnvalue
+				elseif isnull(ls_sec) or ls_sec = "" or ls_sec = "none" then
+					messagebox("Auto Import Data Time Validation", "Please select seconds from dropdown box.")
+					parent.ddlb_importdatasec.setfocus()
+					return ::message.returnvalue
+				elseif isnull(ls_ampm) or ls_ampm = "" or ls_ampm = "none" then
+					messagebox("Auto Import Data Time Validation", "Please select AM/PM from dropdown box.")
+					parent.ddlb_importdatatime.setfocus()
+					return ::message.returnvalue
+				end if
+				li_hr = integer(ls_hr)
+				if ls_ampm = "PM" then
+					if li_hr < 12 then
+						li_hr = li_hr + 12
+					end if
+				elseif li_hr = 12 then
+					li_hr = 0
+				end if
+				ls_activetime = string(li_hr) + ls_min + ls_sec
+				ll_activetime = long(ls_activetime)
+				li_unit = 1
+				li_unitvalue = 0
+			else
+				if parent.dw_importdataschedule.accepttext() = 1 then
+					li_unitvalue = parent.dw_importdataschedule.getitemnumber(1, "unitvalue")
+					li_unit = parent.dw_importdataschedule.getitemnumber(1, "unit")
+					if li_unit = 4 then
+						if not (li_unitvalue >= 1 and li_unitvalue <= 1440) then
+							messagebox("BackUp Time Validation", "Please enter valid value for minutes between 1 and 1440.")
+							parent.dw_importdataschedule.setcolumn(1)
+							parent.dw_importdataschedule.setfocus()
+							return ::message.returnvalue
+						end if
+					elseif li_unit = 8 then
+						if not (li_unitvalue >= 1 and li_unitvalue <= 24) then
+							messagebox("BackUp Time Validation", "Please enter valid value for hours between 1 and 24.")
+							parent.dw_importdataschedule.setcolumn(2)
+							parent.dw_importdataschedule.setfocus()
+							return ::message.returnvalue
+						end if
+					else
+						messagebox("BackUp Time Validation", "Please select minutes/hours from dropdown list box")
+						parent.dw_importdataschedule.setcolumn(2)
+						parent.dw_importdataschedule.setfocus()
+						return ::message.returnvalue
+					end if
+				else
+					messagebox("BackUp Time Validation", "Please enter valid value for a unit.")
+					parent.dw_importdataschedule.setcolumn(1)
+					parent.dw_importdataschedule.setfocus()
+					return ::message.returnvalue
+				end if
+				ll_activetime = 0
+			end if
+			sqlca.adjustjobschedule(ls_jobname, ls_schedulename, ll_activetime, li_unit, li_unitvalue)
+			sqlca.activatejob(ls_jobname, 1)
+		else
+			sqlca.activatejob(ls_jobname, 0)
+		end if
+		if sqlca.sqlcode = 0 then
+			SQL commit USING sqlca;
+		else
+			SQL rollback USING sqlca;
+			messagebox("Job Error", "Unable to update Auto Import Data job status.")
+			setpointer(arrow!)
+		end if
+		ls_jobname = gs_autoimportstockjob
+		ls_schedulename = gs_autoimportstockjobschedule
+		if parent.cbx_activateautostockimport.checked = true then
+			if parent.rb_importstockonce.checked = true then
+				ls_hr = parent.ddlb_importstockhr.text
+				ls_min = parent.ddlb_importstockmin.text
+				ls_sec = parent.ddlb_importstocksec.text
+				ls_ampm = parent.ddlb_importstocktime.text
+				if isnull(ls_hr) or ls_hr = "" or ls_hr = "none" then
+					messagebox("Auto Import Stock Job Time Validation", "Please select hours from dropdown box.")
+					parent.ddlb_importstockhr.setfocus()
+					return ::message.returnvalue
+				elseif isnull(ls_min) or ls_min = "" or ls_min = "none" then
+					messagebox("Auto Import Stock Time Validation", "Please select minutes from dropdown box.")
+					parent.ddlb_importstockmin.setfocus()
+					return ::message.returnvalue
+				elseif isnull(ls_sec) or ls_sec = "" or ls_sec = "none" then
+					messagebox("Auto Import Stock Time Validation", "Please select seconds from dropdown box.")
+					parent.ddlb_importstocksec.setfocus()
+					return ::message.returnvalue
+				elseif isnull(ls_ampm) or ls_ampm = "" or ls_ampm = "none" then
+					messagebox("Auto Import Stock Time Validation", "Please select AM/PM from dropdown box.")
+					parent.ddlb_importstocktime.setfocus()
+					return ::message.returnvalue
+				end if
+				li_hr = integer(ls_hr)
+				if ls_ampm = "PM" then
+					if li_hr < 12 then
+						li_hr = li_hr + 12
+					end if
+				elseif li_hr = 12 then
+					li_hr = 0
+				end if
+				ls_activetime = string(li_hr) + ls_min + ls_sec
+				ll_activetime = long(ls_activetime)
+				li_unit = 1
+				li_unitvalue = 0
+			else
+				if parent.dw_importstockschedule.accepttext() = 1 then
+					li_unitvalue = parent.dw_importstockschedule.getitemnumber(1, "unitvalue")
+					li_unit = parent.dw_importstockschedule.getitemnumber(1, "unit")
+					if li_unit = 4 then
+						if not (li_unitvalue >= 1 and li_unitvalue <= 1440) then
+							messagebox("BackUp Time Validation", "Please enter valid value for minutes between 1 and 1440.")
+							parent.dw_importstockschedule.setcolumn(1)
+							parent.dw_importstockschedule.setfocus()
+							return ::message.returnvalue
+						end if
+					elseif li_unit = 8 then
+						if not (li_unitvalue >= 1 and li_unitvalue <= 24) then
+							messagebox("BackUp Time Validation", "Please enter valid value for hours between 1 and 24.")
+							parent.dw_importstockschedule.setcolumn(2)
+							parent.dw_importstockschedule.setfocus()
+							return ::message.returnvalue
+						end if
+					else
+						messagebox("BackUp Time Validation", "Please select minutes/hours from dropdown list box")
+						parent.dw_importstockschedule.setcolumn(2)
+						parent.dw_importstockschedule.setfocus()
+						return ::message.returnvalue
+					end if
+				else
+					messagebox("BackUp Time Validation", "Please enter valid value for a unit.")
+					parent.dw_importstockschedule.setcolumn(1)
+					parent.dw_importstockschedule.setfocus()
+					return ::message.returnvalue
+				end if
+				ll_activetime = 0
+			end if
+			sqlca.adjustjobschedule(ls_jobname, ls_schedulename, ll_activetime, li_unit, li_unitvalue)
+			sqlca.activatejob(ls_jobname, 1)
+		else
+			sqlca.activatejob(ls_jobname, 0)
+		end if
+		if sqlca.sqlcode = 0 then
+			SQL commit USING sqlca;
+		else
+			SQL rollback USING sqlca;
+			messagebox("Job Error", "Unable to update Auto Import Stock job status.")
+			setpointer(arrow!)
+		end if
+	else
+		SQL rollback USING sqlca;
+	end if
+	setpointer(arrow!)
+	parent.post event ue_close(1)
+	return ::message.returnvalue

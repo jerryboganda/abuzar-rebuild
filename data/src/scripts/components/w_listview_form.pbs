@@ -1,0 +1,748 @@
+// window w_listview_form (components)  ancestor: w_entry_primitives
+
+// w_listview_form.ue_getfocus() returns 0
+	this.tab_retrieve.tabpage_list.dw_find.setfocus()
+
+// w_listview_form.ue_newitem() returns 0
+
+// w_listview_form.ue_printlist() returns 0
+	long ll_code
+	long ll_print_setup
+	long ll_retrieve
+	if this.id_printlist.dataobject = "" then
+		return
+	else
+		ll_retrieve = this.id_printlist.retrieve()
+		if this.id_printlist.rowcount() > 0 then
+			if f_stringpreferences("PromptBeforePrinting") = "Y" then
+				ll_print_setup = printsetup()
+				if ll_print_setup < 0 then
+					messagebox("Printer", "Printing Error")
+					this.id_printlist.printcancel()
+				end if
+			end if
+			if ll_print_setup >= 0 and this.id_printlist.print() < 0 then
+				messagebox("Printing Error", "Can not Print List", information!)
+			end if
+		else
+			messagebox("Printing Error", "Can not Print Data,~r~nNo rows are retrieved", information!)
+		end if
+	end if
+
+// w_listview_form.wf_populate_ddlb(datawindow dwcontrol) returns 0
+	integer li_column_count
+	long li_counter
+	string ls_column_name
+	string ls_columntype
+	this.tab_retrieve.tabpage_list.ddlb_filter_column.reset()
+	this.tab_retrieve.tabpage_list.ddlb_sort.reset()
+	li_column_count = integer(dwcontrol.object.datawindow.column.count)
+	for li_counter = li_column_count to 1 step -1
+		ls_column_name = dwcontrol.describe("#" + string(li_counter) + ".Name")
+		this.tab_retrieve.tabpage_list.ddlb_sort.additem(ls_column_name)
+		this.tab_retrieve.tabpage_list.ddlb_filter_column.additem(ls_column_name)
+	next
+	this.tab_retrieve.tabpage_list.ddlb_sort.text = ls_column_name
+	ls_columntype = this.id_dwcontrol.describe("#1.ColType")
+	if left(ls_columntype, 4) = "char" then
+		this.ii_type = 1
+	elseif left(ls_columntype, 4) = "date" then
+		this.ii_type = 3
+	else
+		this.ii_type = 2
+	end if
+	this.ii_colindex = 1
+	this.tab_retrieve.tabpage_list.rb_ascending.checked = true
+	wf_sortdw(this.tab_retrieve.tabpage_list.ddlb_sort.text, this.is_sortsequence)
+
+// w_listview_form.wf_sortdw(string a_column_name, char a_order) returns 0
+	this.id_dwcontrol.setredraw(false)
+	this.id_dwcontrol.selectrow(0, false)
+	this.id_dwcontrol.setredraw(true)
+	this.il_selectedrow = 0
+	this.is_filter = ""
+	this.id_dwcontrol.setsort(a_column_name + " " + a_order)
+	this.id_dwcontrol.sort()
+	this.tab_retrieve.tabpage_list.dw_find.object.find[1] = ""
+	this.tab_retrieve.tabpage_list.dw_find.setfocus()
+
+// w_listview_form.wf_setmenu(menu a_menu) returns 0
+	this.im_menu = a_menu
+
+// w_listview_form.wf_grandtotal() returns double
+	return 0
+
+// w_listview_form.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	if not isnull(ad_dwcontrol.dataobject) then
+		li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+		for li_counter = li_colcount to li_counter step -1
+			ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+			if ai_doundo = 1 then
+				ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+			else
+				ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+			end if
+		next
+	end if
+
+// w_listview_form.wf_selectunselectrow(long row) returns 0
+	if row > 0 then
+		this.il_selectedrow = row
+		this.im_menu.m_file.m_retrieve.enabled = true
+	end if
+	if this.tab_retrieve.tabpage_list.dw_list.rowcount() > 0 then
+		if this.il_selectedrow <> 0 then
+			this.tab_retrieve.tabpage_list.dw_list.selectrow(0, false)
+			this.id_dwcontrol.selectrow(this.il_selectedrow, true)
+			if this.ii_type = 1 then
+				this.tab_retrieve.tabpage_list.dw_find.object.find[1] = this.id_dwcontrol.getitemstring(this.il_selectedrow, this.ii_colindex)
+			elseif this.ii_type = 3 then
+				this.tab_retrieve.tabpage_list.dw_find.object.find[1] = string(this.id_dwcontrol.getitemdatetime(this.il_selectedrow, this.ii_colindex), "dd/mm/yyyy hh/mm/ss")
+			else
+				this.tab_retrieve.tabpage_list.dw_find.object.find[1] = string(this.id_dwcontrol.getitemnumber(this.il_selectedrow, this.ii_colindex))
+			end if
+		end if
+		this.tab_retrieve.tabpage_list.dw_find.setfocus()
+	end if
+
+// w_listview_form.wf_filter() returns 0
+	string ls_quote
+	string ls_column_name
+	string ls_match_data
+	string ls_filter
+	string ls_match_date
+	string ls_columntype
+	ls_columntype = this.id_dwcontrol.describe(this.tab_retrieve.tabpage_list.ddlb_filter_column.text + ".ColType")
+	if left(ls_columntype, 4) = "char" then
+		ls_quote = "'"
+		ls_column_name = "upper(" + trim(this.tab_retrieve.tabpage_list.ddlb_filter_column.text) + ")"
+		ls_match_data = upper(this.tab_retrieve.tabpage_list.ddlb_data.text)
+	elseif left(ls_columntype, 4) = "date" then
+		ls_quote = "'"
+		ls_column_name = trim(this.tab_retrieve.tabpage_list.ddlb_filter_column.text)
+		ls_match_data = this.tab_retrieve.tabpage_list.ddlb_data.text
+		ls_match_date = mid(ls_match_data, pos(ls_match_data, "/", 1) + 1, pos(ls_match_data, "/", pos(ls_match_data, "/", 1) + 1) - pos(ls_match_data, "/", 1) - 1) + "/" + mid(ls_match_data, 1, pos(ls_match_data, "/", 1) - 1) + "/" + mid(ls_match_data, pos(ls_match_data, "/", pos(ls_match_data, "/", 1) + 1) + 1, 2)
+		ls_filter = "Date(" + ls_column_name + ") " + this.tab_retrieve.tabpage_list.ddlb_op.text + "Date(" + ls_quote + ls_match_date + ls_quote + ")"
+	else
+		ls_quote = ""
+		ls_column_name = trim(this.tab_retrieve.tabpage_list.ddlb_filter_column.text)
+		ls_match_data = this.tab_retrieve.tabpage_list.ddlb_data.text
+	end if
+	ls_filter = ls_column_name + this.tab_retrieve.tabpage_list.ddlb_op.text + ls_quote + ls_match_data + ls_quote
+	this.tab_retrieve.tabpage_list.dw_list.setfilter(ls_filter)
+	this.tab_retrieve.tabpage_list.dw_list.filter()
+	if this.tab_retrieve.tabpage_list.dw_list.rowcount() > 0 then
+		this.id_list.selectrow(1, true)
+		if this.ii_type = 1 then
+			this.tab_retrieve.tabpage_list.dw_find.object.find[1] = this.id_dwcontrol.getitemstring(1, this.ii_colindex)
+			return
+		end if
+		if this.ii_type = 3 then
+			this.tab_retrieve.tabpage_list.dw_find.object.find[1] = string(this.id_dwcontrol.getitemdatetime(1, this.ii_colindex), "dd/mm/yyyy hh/mm/ss")
+			return
+		end if
+		this.tab_retrieve.tabpage_list.dw_find.object.find[1] = string(this.id_dwcontrol.getitemnumber(1, this.ii_colindex))
+	end if
+
+// w_listview_form.wf_commitform() returns boolean
+	return this.ib_commitok
+
+// w_listview_form.wf_setprintout() returns long
+	return 0
+
+// w_listview_form.wf_openmywindow(long al_code) returns 0
+
+// w_listview_form.create() returns 0
+	integer icurrent
+	call super::create
+	if this.menuname = "m_single_entry" then
+		this.menuid = create m_single_entry
+	end if
+	this.dw_listprint = create dw_listprint
+	this.dw_print = create dw_print
+	this.tab_retrieve = create tab_retrieve
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_listprint
+	this.control[icurrent + 2] = this.dw_print
+	this.control[icurrent + 3] = this.tab_retrieve
+
+// w_listview_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_listprint
+	destroy this.dw_print
+	destroy this.tab_retrieve
+
+// w_listview_form.open() returns long
+	long ancestorreturnvalue
+	m_entry lm_menu
+	long ll_width
+	long ll_height
+	environment env
+	ancestorreturnvalue = super::open()
+	this.it_transobject = sqlca
+	postevent("ue_postopen")
+	wf_setmenu(this.menuid)
+	lm_menu = this.menuid
+	lm_menu.mf_initsecurityapp(lm_menu)
+	this.im_menu.m_file.m_save.enabled = false
+	this.im_menu.m_file.m_delete.enabled = false
+	this.im_menu.m_file.m_previous.enabled = false
+	this.im_menu.m_file.m_retrieve.text = "De&tail"
+	this.id_list = this.tab_retrieve.tabpage_list.dw_list
+	this.id_list.settransobject(this.it_transobject)
+	this.id_list.retrieve()
+	this.dw_print.dataobject = this.tab_retrieve.tabpage_list.dw_list.dataobject
+	this.id_print = this.dw_print
+	this.id_printlist = this.dw_listprint
+	this.id_print.settransobject(this.it_transobject)
+	this.id_printlist.settransobject(this.it_transobject)
+	this.id_dwcontrol = this.id_list
+	wf_populate_ddlb(this.id_dwcontrol)
+	this.tab_retrieve.tabpage_list.dw_find.settransobject(this.it_transobject)
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.tab_retrieve.width = ll_width * 0.99
+	this.tab_retrieve.height = ll_height * 0.83
+	this.tab_retrieve.tabpage_list.gb_fliter.width = ll_width * 0.97 - this.tab_retrieve.tabpage_list.gb_sort.width
+	this.tab_retrieve.tabpage_list.r_1.width = ll_width * 0.99
+	this.tab_retrieve.tabpage_list.r_1.height = ll_height * 0.765 - this.tab_retrieve.tabpage_list.gb_sort.height
+	this.tab_retrieve.tabpage_list.dw_list.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_list.dw_list.height = ll_height * 0.75 - this.tab_retrieve.tabpage_list.dw_list.y
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_listview_form.ue_list() returns 0
+	long ll_rtcode
+	call super::ue_list
+	if this.id_list.rowcount() <= 0 then
+		ll_rtcode = wf_retrieve()
+	end if
+	wf_populate_ddlb(this.id_list)
+	if ll_rtcode > 0 then
+		this.im_menu.m_file.m_new.enabled = true
+		this.im_menu.m_file.m_save.enabled = false
+		this.im_menu.m_file.m_delete.enabled = false
+		this.im_menu.m_file.m_first.enabled = true
+		this.im_menu.m_file.m_next.enabled = true
+		this.im_menu.m_file.m_last.enabled = true
+		this.im_menu.m_file.m_print.enabled = true
+		this.im_menu.m_file.m_previous.enabled = true
+		this.im_menu.m_file.m_retrieve.text = "De&tail"
+		this.i_retrievemode = 2
+		this.i_editmode = 2
+		if this.il_selectedrow = 0 then
+			wf_first()
+			wf_selectunselectrow(1)
+		end if
+		this.tab_retrieve.tabpage_list.dw_find.setfocus()
+		return
+	end if
+	messagebox("Result", "No rows or retrieved possible empty table~r~nInsert some rows first")
+	postevent("ue_new")
+
+// w_listview_form.ue_retrieve() returns 0
+	call super::ue_retrieve
+	if this.i_retrievemode = 1 then
+		this.i_editmode = 2
+		this.tab_retrieve.selectedtab = 1
+		return
+	end if
+	this.tab_retrieve.selectedtab = 2
+
+// w_listview_form.ue_first() returns 0
+	long ll_code
+	call super::ue_first
+	ll_code = wf_first()
+	wf_selectunselectrow(1)
+	if this.tab_retrieve.selectedtab = 1 then
+		postevent("ue_detail")
+	end if
+	this.im_menu.m_file.m_next.enabled = true
+	this.im_menu.m_file.m_previous.enabled = false
+
+// w_listview_form.ue_last() returns 0
+	long ll_code
+	call super::ue_last
+	ll_code = wf_last()
+	wf_selectunselectrow(this.id_list.rowcount())
+	if this.tab_retrieve.selectedtab = 1 then
+		postevent("ue_detail")
+	end if
+	this.im_menu.m_file.m_next.enabled = false
+	this.im_menu.m_file.m_previous.enabled = true
+
+// w_listview_form.ue_next() returns 0
+	long ll_code
+	call super::ue_next
+	ll_code = wf_next()
+	wf_selectunselectrow(this.id_dwcontrol.getrow())
+	if this.id_dwcontrol.getselectedrow(0) = this.id_dwcontrol.rowcount() then
+		this.im_menu.m_file.m_next.enabled = false
+	end if
+	this.im_menu.m_file.m_previous.enabled = true
+	if this.tab_retrieve.selectedtab = 1 then
+		postevent("ue_detail")
+	end if
+
+// w_listview_form.ue_previous() returns 0
+	long ll_code
+	call super::ue_previous
+	ll_code = wf_previous()
+	wf_selectunselectrow(this.id_dwcontrol.getrow())
+	if this.id_dwcontrol.getselectedrow(0) = 1 then
+		this.im_menu.m_file.m_previous.enabled = false
+	end if
+	this.im_menu.m_file.m_next.enabled = true
+	if this.tab_retrieve.selectedtab = 1 then
+		postevent("ue_detail")
+	end if
+
+// w_listview_form.ue_exit() returns 0
+	call super::ue_exit
+	postevent("close")
+
+// w_listview_form.closequery() returns long
+	long ancestorreturnvalue
+	integer li_yesno
+	integer li_rtcode
+	ancestorreturnvalue = super::closequery()
+	if this.editflag = true then
+		li_yesno = messagebox("Form", "Do You want to save changes", question!, yesnocancel!, 2)
+		if li_yesno = 1 then
+			triggerevent("ue_save")
+			if wf_commitform() = false then
+				li_rtcode = 1
+			end if
+		elseif li_yesno = 3 then
+			li_rtcode = 1
+		end if
+	end if
+	return li_rtcode
+
+// w_listview_form.activate() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::activate()
+	this.windowstate = maximized!
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_listview_form.ue_print() returns 0
+	long ll_code
+	boolean lb_listtab
+	s_datastore lstr
+	call super::ue_print
+	if this.tab_retrieve.selectedtab = 1 then
+		lb_listtab = true
+	end if
+	if lb_listtab then
+		if isnull(this.id_list.getrow()) or this.id_list.getrow() <= 0 then
+			messagebox("Rows Validation", "Kindly select any row from the list view.")
+			return
+		end if
+		ll_code = this.id_list.getitemnumber(this.id_list.getrow(), "code")
+		if isnull(ll_code) or ll_code <= 0 then
+			messagebox("Selection Validation", "Kindly select any row from the list view.")
+			return
+		end if
+		wf_setprintout()
+		this.id_print.settransobject(this.it_transobject)
+		this.id_print.retrieve(ll_code)
+		lstr.dw = this.id_print
+		lstr.s_name1 = this.id_print.dataobject
+		openwithparm(w_preview_invoices, lstr)
+		lstr = message.powerobjectparm
+		if lstr.i_closemode = -1 then
+			return
+		end if
+		if f_stringpreferences("PromptBeforePrinting") = "Y" and printsetup() < 0 then
+			messagebox("Printer", "Printing Error")
+			this.id_print.printcancel()
+		end if
+		if this.id_print.rowcount() > 0 then
+			if this.id_print.print() < 0 then
+				messagebox("Printing", "Can not Print Invoice", information!)
+			end if
+			return
+		end if
+		messagebox("Printing Error", "Can not Print Data,~r~nNo rows are retrieved", information!)
+	end if
+
+// tab_retrieve.selectionchanging(integer oldindex, integer newindex) returns long
+	integer li_yesno
+	integer li_rtcode
+	if oldindex = 1 and newindex = 2 and parent.editflag = true then
+		li_yesno = messagebox("Confirm Changes", "Yes to save changes that you've typed", question!, yesnocancel!, 2)
+		if li_yesno = 1 then
+			getparent().triggerevent("ue_save")
+			if getparent().dynamic wf_commitform() = false then
+				li_rtcode = 1
+			end if
+		elseif li_yesno = 3 then
+			li_rtcode = 1
+		else
+			parent.editflag = false
+			parent.i_editmode = 2
+		end if
+	end if
+	return li_rtcode
+
+// tab_retrieve.create() returns 0
+	this.tabpage_list = create tabpage_list
+	this.control = {this.tabpage_list}
+
+// tab_retrieve.destroy() returns 0
+	destroy this.tabpage_list
+
+// tab_retrieve.selectionchanged(integer oldindex, integer newindex) returns long
+	if newindex = 1 and parent.i_editmode = 2 then
+		parent.event ue_detail()
+	elseif newindex = 1 and parent.i_editmode = 1 then
+		parent.event ue_newform()
+	else
+		parent.event ue_list()
+	end if
+	return ::message.returnvalue
+
+// tab_retrieve.key(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent("ue_losefocus")
+	end if
+	return ::message.returnvalue
+
+// tabpage_list.create() returns 0
+	this.r_1 = create r_1
+	this.gb_sort = create gb_sort
+	this.gb_fliter = create gb_fliter
+	this.ddlb_sort = create ddlb_sort
+	this.rb_ascending = create rb_ascending
+	this.rb_descending = create rb_descending
+	this.ddlb_filter_column = create ddlb_filter_column
+	this.ddlb_op = create ddlb_op
+	this.ddlb_data = create ddlb_data
+	this.cb_filter = create cb_filter
+	this.dw_list = create dw_list
+	this.st_find = create st_find
+	this.st_1 = create st_1
+	this.st_2 = create st_2
+	this.dw_find = create dw_find
+	this.cb_retrieve = create cb_retrieve
+	this.control = {this.r_1, this.gb_sort, this.gb_fliter, this.ddlb_sort, this.rb_ascending, this.rb_descending, this.ddlb_filter_column, this.ddlb_op, this.ddlb_data, this.cb_filter, this.dw_list, this.st_find, this.st_1, this.st_2, this.dw_find, this.cb_retrieve}
+
+// tabpage_list.destroy() returns 0
+	destroy this.r_1
+	destroy this.gb_sort
+	destroy this.gb_fliter
+	destroy this.ddlb_sort
+	destroy this.rb_ascending
+	destroy this.rb_descending
+	destroy this.ddlb_filter_column
+	destroy this.ddlb_op
+	destroy this.ddlb_data
+	destroy this.cb_filter
+	destroy this.dw_list
+	destroy this.st_find
+	destroy this.st_1
+	destroy this.st_2
+	destroy this.dw_find
+	destroy this.cb_retrieve
+
+// ddlb_sort.selectionchanged(integer index) returns long
+	string ls_columntype
+	integer temp1
+	integer temp2
+	parent.parent.parent.ii_colindex = integer(parent.parent.parent.id_dwcontrol.describe(parent.ddlb_sort.text + ".ID"))
+	ls_columntype = parent.parent.parent.id_dwcontrol.describe("#" + string(parent.parent.parent.ii_colindex) + ".ColType")
+	if left(ls_columntype, 4) = "char" then
+		parent.parent.parent.ii_type = 1
+	elseif left(ls_columntype, 4) = "date" then
+		parent.parent.parent.ii_type = 3
+	else
+		parent.parent.parent.ii_type = 2
+	end if
+	parent.parent.parent.im_menu.m_file.m_next.enabled = false
+	parent.parent.parent.im_menu.m_file.m_previous.enabled = false
+	parent.parent.parent.im_menu.m_file.m_retrieve.enabled = false
+	parent.parent.parent.wf_sortdw(parent.ddlb_sort.text, parent.parent.parent.is_sortsequence)
+	return ::message.returnvalue
+
+// rb_ascending.clicked() returns long
+	parent.parent.parent.im_menu.m_file.m_retrieve.enabled = false
+	parent.parent.parent.im_menu.m_file.m_next.enabled = false
+	parent.parent.parent.im_menu.m_file.m_previous.enabled = false
+	parent.parent.parent.is_sortsequence = "A"
+	parent.parent.parent.tab_retrieve.tabpage_list.rb_descending.checked = false
+	parent.parent.parent.wf_sortdw(parent.ddlb_sort.text, parent.parent.parent.is_sortsequence)
+	return ::message.returnvalue
+
+// rb_descending.clicked() returns long
+	parent.parent.parent.im_menu.m_file.m_retrieve.enabled = false
+	parent.parent.parent.im_menu.m_file.m_next.enabled = false
+	parent.parent.parent.im_menu.m_file.m_previous.enabled = false
+	parent.parent.parent.is_sortsequence = "D"
+	parent.parent.parent.tab_retrieve.tabpage_list.rb_ascending.checked = false
+	parent.parent.parent.wf_sortdw(parent.ddlb_sort.text, parent.parent.parent.is_sortsequence)
+	return ::message.returnvalue
+
+// ddlb_filter_column.selectionchanged(integer index) returns long
+	dwbuffer le_buffertype
+	integer li_buffers
+	long ll_row_counter
+	long ll_rows_buffer
+	long li_items
+	long li_index
+	string ls_column_name
+	string ls_col_type
+	string ls_insert_item
+	string ls_buffertype
+	setpointer(hourglass!)
+	if index > 0 then
+		if parent.parent.parent.tab_retrieve.tabpage_list.cb_filter.text = "Un&filter" then
+			parent.parent.parent.tab_retrieve.tabpage_list.cb_filter.triggerevent(clicked!)
+		end if
+		ls_column_name = parent.parent.parent.tab_retrieve.tabpage_list.ddlb_filter_column.text
+		parent.ddlb_data.reset()
+		ls_col_type = parent.parent.parent.id_dwcontrol.describe(ls_column_name + ".ColType")
+		le_buffertype = primary!
+		ll_rows_buffer = parent.parent.parent.id_dwcontrol.rowcount()
+		for li_buffers = 1 to li_buffers
+			for ll_row_counter = 1 to ll_rows_buffer
+				if left(ls_col_type, 4) = "char" then
+					ls_insert_item = trim(parent.parent.parent.id_dwcontrol.getitemstring(ll_row_counter, ls_column_name, le_buffertype, false))
+				elseif left(ls_col_type, 4) = "date" then
+					ls_insert_item = string(parent.parent.parent.id_dwcontrol.getitemdatetime(ll_row_counter, ls_column_name, le_buffertype, false), "d/m/yy")
+				else
+					ls_insert_item = string(parent.parent.parent.id_dwcontrol.getitemnumber(ll_row_counter, ls_column_name, le_buffertype, false))
+				end if
+				parent.parent.parent.tab_retrieve.tabpage_list.ddlb_data.insertitem(ls_insert_item, 1)
+			next
+			le_buffertype = filter!
+			ll_rows_buffer = parent.parent.parent.id_dwcontrol.filteredcount()
+		next
+		parent.ddlb_data.sorted = true
+		parent.ddlb_data.visible = true
+		li_items = parent.parent.parent.tab_retrieve.tabpage_list.ddlb_data.totalitems()
+		li_index = 1
+		do while li_index <= li_items - 1
+			if parent.parent.parent.tab_retrieve.tabpage_list.ddlb_data.text(li_index) = parent.parent.parent.tab_retrieve.tabpage_list.ddlb_data.text(li_index + 1) then
+				li_items = parent.parent.parent.tab_retrieve.tabpage_list.ddlb_data.deleteitem(li_index)
+			else
+				li_index = li_index + 1
+			end if
+		loop
+	end if
+	return ::message.returnvalue
+
+// ddlb_op.selectionchanged(integer index) returns long
+	if parent.parent.parent.tab_retrieve.tabpage_list.cb_filter.text = "Un&filter" then
+		parent.cb_filter.triggerevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// ddlb_data.selectionchanged(integer index) returns long
+	if parent.cb_filter.text = "Un&filter" then
+		parent.parent.parent.wf_filter()
+	end if
+	return ::message.returnvalue
+
+// cb_filter.clicked() returns long
+	string filt
+	string quote
+	string ls_column_name
+	string ls_match_data
+	parent.parent.parent.im_menu.m_file.m_retrieve.enabled = false
+	parent.parent.parent.im_menu.m_file.m_next.enabled = false
+	parent.parent.parent.im_menu.m_file.m_previous.enabled = false
+	if parent.cb_filter.text = "Un&filter" then
+		parent.cb_filter.text = "&Filter"
+		filt = ""
+		parent.parent.parent.tab_retrieve.tabpage_list.dw_list.setfilter(filt)
+		parent.parent.parent.id_dwcontrol.filter()
+	else
+		parent.cb_filter.text = "Un&filter"
+		parent.parent.parent.wf_filter()
+		if parent.parent.parent.tab_retrieve.tabpage_list.dw_list.rowcount() = 0 then
+			parent.parent.parent.tab_retrieve.tabpage_list.dw_find.object.find[1] = string("")
+		end if
+	end if
+	return ::message.returnvalue
+
+// dw_list.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked(xpos, ypos, row, dwo)
+	if row = 1 then
+		parent.parent.parent.im_menu.m_file.m_previous.enabled = false
+		parent.parent.parent.im_menu.m_file.m_next.enabled = true
+	elseif row = parent.parent.parent.id_dwcontrol.rowcount() then
+		parent.parent.parent.im_menu.m_file.m_next.enabled = false
+		parent.parent.parent.im_menu.m_file.m_previous.enabled = true
+	else
+		parent.parent.parent.im_menu.m_file.m_next.enabled = true
+		parent.parent.parent.im_menu.m_file.m_previous.enabled = true
+	end if
+	parent.parent.parent.wf_selectunselectrow(row)
+	parent.getparent().dynamic postevent("ue_getfocus")
+	return ::message.returnvalue
+
+// dw_list.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::doubleclicked(xpos, ypos, row, dwo)
+	if row > 0 then
+		parent.parent.parent.il_selectedrow = row
+		parent.parent.parent.tab_retrieve.selectedtab = 1
+	end if
+	return ::message.returnvalue
+
+// dw_list.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	parent.getparent().dynamic postevent("ue_getfocus")
+	return ::message.returnvalue
+
+// dw_list.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	parent.getparent().dynamic postevent("ue_getfocus")
+	return ::message.returnvalue
+
+// dw_find.keypressed(keycode key, unsignedlong keyflags) returns long
+	integer li_movement
+	long ll_row
+	long ll_temp
+	long ll_code
+	string sl_columnname
+	string ls_filterexp
+	s_popup_selection lstr_selection
+	if key = keyf8! then
+		openwithparm(w_popup_partialsearch_selection, parent.parent.parent.id_list.dataobject)
+		lstr_selection = message.powerobjectparm
+		if lstr_selection.l_code > 0 and lstr_selection.l_code2 > 0 then
+			ll_temp = parent.parent.parent.id_list.find("code = " + string(lstr_selection.l_code2), 1, parent.parent.parent.id_list.rowcount())
+			if ll_temp > 0 then
+				ll_row = ll_temp
+				parent.parent.parent.id_list.scrolltorow(ll_row)
+			end if
+		end if
+	elseif key = keyf6! then
+		openwithparm(w_popup_comprehensicesearch_selection, parent.parent.parent.id_list.dataobject)
+		lstr_selection = message.powerobjectparm
+		if lstr_selection.l_code > 0 and lstr_selection.l_code2 > 0 then
+			ll_temp = parent.parent.parent.id_list.find("code = " + string(lstr_selection.l_code2), 1, parent.parent.parent.id_list.rowcount())
+			if ll_temp > 0 then
+				ll_row = ll_temp
+				parent.parent.parent.id_list.scrolltorow(ll_row)
+			end if
+		end if
+	elseif key = keyuparrow! then
+		ll_row = parent.parent.parent.id_list.getrow() - 1
+		parent.parent.parent.id_list.scrollpriorrow()
+	elseif key = keydownarrow! then
+		ll_row = parent.parent.parent.id_list.getrow() + 1
+		parent.parent.parent.id_list.scrollnextrow()
+	elseif key = keypagedown! then
+		parent.parent.parent.id_list.scrollnextpage()
+		ll_row = parent.parent.parent.id_dwcontrol.getrow()
+	elseif key = keypageup! then
+		parent.parent.parent.id_list.scrollpriorpage()
+		ll_row = parent.parent.parent.id_dwcontrol.getrow()
+	elseif key = keyhome! then
+		scrolltorow(1)
+		ll_row = 1
+	elseif key = keyend! then
+		ll_row = parent.parent.parent.id_list.rowcount()
+		scrolltorow(ll_row)
+	elseif key = keyenter! and parent.parent.parent.id_dwcontrol.getselectedrow(0) > 0 then
+		parent.parent.parent.i_editmode = 2
+		parent.parent.parent.tab_retrieve.selectedtab = 1
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	if ll_row > 0 and ll_row <= parent.parent.parent.id_dwcontrol.rowcount() then
+		parent.parent.parent.id_list.setredraw(false)
+		parent.parent.parent.im_menu.m_file.m_retrieve.enabled = true
+		parent.parent.parent.id_list.selectrow(0, false)
+		parent.parent.parent.id_list.selectrow(ll_row, true)
+		if parent.parent.parent.ii_type = 1 then
+			setitem(1, "find", parent.parent.parent.id_list.getitemstring(ll_row, parent.parent.parent.ii_colindex))
+		elseif parent.parent.parent.ii_type = 3 then
+			setitem(1, "find", trim(string(parent.parent.parent.id_list.getitemdatetime(ll_row, parent.parent.parent.ii_colindex))))
+		else
+			setitem(1, "find", trim(string(parent.parent.parent.id_list.getitemnumber(ll_row, parent.parent.parent.ii_colindex))))
+		end if
+		parent.parent.parent.il_selectedrow = ll_row
+		selecttext(1, len(gettext()))
+		parent.parent.parent.id_list.setredraw(true)
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// dw_find.editchanged(long row, dwobject dwo, string data) returns long
+	long ll_row
+	string sl_columnname
+	string ls_character
+	long ll_found_row
+	integer li_num_chars
+	string str
+	if len(data) > 0 then
+		sl_columnname = parent.parent.parent.id_dwcontrol.describe("#" + string(parent.parent.parent.ii_colindex) + ".name")
+		parent.parent.parent.id_dwcontrol.setredraw(false)
+		if parent.parent.parent.is_sortsequence = "A" then
+			if parent.parent.parent.ii_type = 1 then
+				ll_found_row = f_binarysearch(data, parent.parent.parent.id_dwcontrol, sl_columnname)
+			elseif parent.parent.parent.ii_type = 3 then
+				if isdate(data) then
+					ll_found_row = f_binarysearch_date(data, parent.parent.parent.id_dwcontrol, sl_columnname)
+				end if
+			else
+				ll_found_row = f_binarysearch_long(long(data), parent.parent.parent.id_dwcontrol, sl_columnname)
+			end if
+		elseif parent.parent.parent.ii_type = 1 then
+			ll_found_row = f_binarysearch_string(data, parent.parent.parent.id_dwcontrol, sl_columnname)
+		elseif parent.parent.parent.ii_type = 3 then
+			ll_found_row = parent.parent.parent.id_dwcontrol.find(sl_columnname + " <=DateTime('" + data + "')", 1, 99999)
+		else
+			ll_found_row = f_binarysearchdesc_long(long(data), parent.parent.parent.id_dwcontrol, sl_columnname)
+		end if
+		if ll_found_row > 0 then
+			parent.parent.parent.im_menu.m_file.m_retrieve.enabled = true
+			parent.parent.parent.id_dwcontrol.setredraw(false)
+			parent.parent.parent.id_dwcontrol.selectrow(0, false)
+			parent.parent.parent.id_dwcontrol.scrolltorow(ll_found_row)
+			parent.parent.parent.id_dwcontrol.selectrow(ll_found_row, true)
+			parent.parent.parent.id_dwcontrol.setredraw(true)
+		end if
+		parent.parent.parent.id_dwcontrol.setredraw(true)
+	else
+		parent.parent.parent.id_dwcontrol.scrolltorow(0)
+		parent.parent.parent.id_dwcontrol.selectrow(0, false)
+		parent.parent.parent.id_dwcontrol.setredraw(true)
+		parent.parent.parent.im_menu.m_file.m_retrieve.enabled = false
+		parent.parent.parent.im_menu.m_file.m_next.enabled = false
+		parent.parent.parent.im_menu.m_file.m_previous.enabled = false
+	end if
+	parent.parent.parent.il_selectedrow = ll_found_row
+	return ::message.returnvalue
+
+// cb_retrieve.clicked() returns long
+	long ll_rtcode
+	parent.parent.parent.id_list.reset()
+	ll_rtcode = parent.parent.parent.wf_retrieve()
+	parent.parent.parent.wf_first()
+	parent.parent.parent.wf_selectunselectrow(1)
+	parent.parent.parent.tab_retrieve.tabpage_list.dw_find.setfocus()
+	return ::message.returnvalue

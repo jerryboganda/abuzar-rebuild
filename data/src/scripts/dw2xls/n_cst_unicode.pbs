@@ -1,0 +1,72 @@
+// userobject n_cst_unicode (dw2xls)  ancestor: nonvisualobject
+
+// n_cst_unicode.of_ansi2unicode(string as_value) returns blob
+	return of_ansi2unicode(as_value, 0)
+
+// n_cst_unicode.of_ansi2unicode(string as_value, unsignedinteger ai_codepage) returns blob
+	blob lc_buff
+	integer li_output_size
+	string ls_temp_buff
+	integer li_input_size
+	setnull(lc_buff)
+	li_input_size = len(as_value)
+	li_output_size = len(blob(as_value))
+	if li_input_size = li_output_size then
+		lc_buff = blob("*")
+		li_output_size = multibytetowidechar(ai_codepage, 0, as_value, li_input_size, lc_buff, 0)
+		if li_output_size > 0 then
+			ls_temp_buff = space(li_output_size * 2)
+			lc_buff = blob(ls_temp_buff)
+			li_output_size = multibytetowidechar(ai_codepage, 0, as_value, li_input_size, lc_buff, li_output_size)
+		else
+			lc_buff = blob("")
+		end if
+	else
+		lc_buff = blob(as_value)
+	end if
+	return lc_buff
+
+// n_cst_unicode.of_unicode2ansi(blob a_value) returns string
+	return of_unicode2ansi(a_value, 0)
+
+// n_cst_unicode.of_unicode2ansi(blob a_value, unsignedinteger ai_codepage) returns string
+	integer li_input_size
+	integer li_output_size
+	string ls_buff
+	char lc_def_char
+	boolean lb_use_def_char
+	if len(blob("*")) = 2 then
+		return string(a_value)
+	end if
+	li_input_size = len(a_value) / 2.0
+	li_output_size = widechartomultibyte(ai_codepage, 0, a_value, li_input_size, ls_buff, 0, lc_def_char, lb_use_def_char)
+	ls_buff = space(li_output_size)
+	lc_def_char = "?"
+	lb_use_def_char = true
+	widechartomultibyte(ai_codepage, 0, a_value, li_input_size, ls_buff, li_output_size, lc_def_char, lb_use_def_char)
+	return ls_buff
+
+// n_cst_unicode.of_unicode2ansi(blob a_value, unsignedinteger ai_codepage, char ac_default_char) returns string
+	integer li_input_size
+	integer li_output_size
+	string ls_buff
+	char lc_def_char
+	boolean lb_use_def_char
+	if len(blob("*")) = 2 then
+		return string(a_value)
+	end if
+	li_input_size = len(a_value) / 2.0
+	li_output_size = widechartomultibyte(ai_codepage, 0, a_value, li_input_size, ls_buff, 0, lc_def_char, lb_use_def_char)
+	ls_buff = space(li_output_size)
+	lc_def_char = ac_default_char
+	lb_use_def_char = true
+	widechartomultibyte(ai_codepage, 0, a_value, li_input_size, ls_buff, li_output_size, lc_def_char, lb_use_def_char)
+	return ls_buff
+
+// n_cst_unicode.create() returns 0
+	call super::create
+	triggerevent("constructor")
+
+// n_cst_unicode.destroy() returns 0
+	triggerevent("destructor")
+	call super::destroy

@@ -1,0 +1,1566 @@
+// window w_saletemplate (templates)  ancestor: w_multi_entry
+
+// w_saletemplate.ue_enableprint() returns 0
+	this.im_menu.m_file.m_print.enabled = true
+
+// w_saletemplate.ue_print_2() returns 0
+	integer li_option
+	long ll_custcode
+	long ll_row
+	long ll_printretcode
+	long ll_invcode
+	string ls_custname
+	boolean lb_listtab
+	s_datastore lstr
+	if this.tab_retrieve.selectedtab = 2 then
+		lb_listtab = true
+	end if
+	if this.im_menu.m_file.m_save.enabled = true and lb_listtab = false then
+		triggerevent("ue_save")
+		if wf_commitform() = false then
+			return
+		end if
+		return
+	end if
+	if lb_listtab then
+		if isnull(this.id_list.getrow()) or this.id_list.getrow() <= 0 then
+			messagebox("Rows Validation", "Kindly select any row from the list view.")
+			return
+		end if
+		ll_invcode = this.id_list.getitemnumber(this.id_list.getrow(), "code")
+		if isnull(ll_invcode) or ll_invcode <= 0 then
+			messagebox("Selection Validation", "Kindly select any row from the list view.")
+			return
+		end if
+	else
+		ll_invcode = this.id_master.getitemnumber(1, "code")
+	end if
+	this.id_print = this.tab_retrieve.tabpage_detail.dw_print
+	if gs_company = "ALHAQCORP" then
+		this.id_print.dataobject = "d_saletemplate_report_alhaqcorp2"
+	else
+		this.id_print.dataobject = "d_saletemplate_report"
+	end if
+	this.id_print.settransobject(this.it_transobject)
+	this.id_print.retrieve(ll_invcode)
+	if lb_listtab then
+		lstr.dw = this.id_print
+		lstr.s_name1 = this.id_print.dataobject
+		openwithparm(w_preview_invoices, lstr)
+		lstr = message.powerobjectparm
+		if lstr.i_closemode = -1 then
+			return
+		end if
+		return
+	end if
+	if f_stringpreferences("PromptBeforePrinting") = "Y" and printsetup() < 0 then
+		messagebox("Printer", "Printing Error")
+		this.id_print.printcancel()
+	end if
+	if this.id_print.rowcount() > 0 then
+		ll_printretcode = this.id_print.print()
+		if ll_printretcode < 0 then
+			messagebox("Printing", "Can not Print", information!)
+		end if
+		if this.im_menu.m_file.m_save.enabled = true then
+			postevent("ue_new")
+		end if
+		return
+	end if
+	messagebox("Printing Error.", "Can not Print,~r~nNo rows are retrieved", information!)
+
+// w_saletemplate.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM saletemplateheader WHERE saletemplateheader.name =:as_name USING this.it_transobject;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_saletemplate.wf_inititeminfo(long al_icode, long al_row, integer ai_rtcode, string as_errortext) returns boolean
+	boolean retflag
+	double ld_rpp
+	double ld_purprice
+	double ld_flatdisc
+	double ld_invdiscperc
+	double ld_discperc2
+	double ld_discperc3
+	double ld_discperc4
+	double ld_saleprice
+	double ld_discperc
+	double ld_purdiscperc
+	double ld_avgprice
+	double ld_unitsalestax
+	double ld_gstperc1
+	double ld_gstperc2
+	double ld_packsalestax
+	double ld_saleprice2
+	double ld_saleprice3
+	double ld_saleprice4
+	double ld_saleprice5
+	double ld_discperc5
+	double ld_retailprice
+	double ld_godownstock
+	double ld_totalstock
+	long ll_packunits
+	long ll_godownstock
+	long ll_saleqty
+	long ll_saleinvcode
+	long ll_totalstock
+	long ll_reorderqty
+	long li_discstatus
+	long ll_qtysale
+	long ll_bonus
+	long ll_itemdesc_status
+	integer li_gcode
+	integer li_defaultgcode
+	integer li_defaultgst
+	integer li_custcode
+	integer li_flatdiscstatus
+	integer li_itemdiscpercno
+	string ls_fullcode
+	string ls_name
+	string ls_null
+	string ls_antinorcotix
+	string ls_itemtotalval
+	string ls_locksaleprice
+	string ls_lockdiscperc
+	string ls_remarks
+	long ll_holdlooseqty
+	long ll_desiredbonus
+	setnull(ls_null)
+	SQL SELECT item.customicode , item.name , item.saleprice , item.packunits , item.salediscperc , item.saleprice2 , item.saleprice3 , item.saleprice4 , item.saleprice5 , item.avgprice , item.PurDiscPerc , item.antinorcotix , item.reorderqty , item.purprice , item.recentpurprice , round ( item.Packsalestax / item.packunits , 2 ) , item.gstperc1 , item.gstperc2 , qtysale =item.saleqty , bonus =item.bonusqty , ISNULL ( item.Packsalestax , 0 ) , item.flatdisc , item.locksaleprice , item.lockdiscperc , item.salediscperc2 , item.salediscperc3 , item.salediscperc4 , item.salediscperc5 , item.remarks , item.retailprice INTO :ls_fullcode, :ls_name, :ld_saleprice, :ll_packunits, :ld_discperc, :ld_saleprice2, :ld_saleprice3, :ld_saleprice4, :ld_saleprice5, :ld_avgprice, :ld_purdiscperc, :ls_antinorcotix, :ll_reorderqty, :ld_purprice, :ld_rpp, :ld_unitsalestax, :ld_gstperc1, :ld_gstperc2, :ll_qtysale, :ll_bonus, :ld_packsalestax, :ld_flatdisc, :ls_locksaleprice, :ls_lockdiscperc, :ld_discperc2, :ld_discperc3, :ld_discperc4, :ld_discperc5, :ls_remarks, :ld_retailprice FROM item WHERE item.icode =:al_icode USING this.it_transobject;
+	if ll_packunits < 1 or isnull(ll_packunits) then
+		ll_packunits = 1
+	end if
+	if this.it_transobject.sqlcode = -1 then
+		retflag = false
+		as_errortext = "Database Error: Item information can not be retrieved"
+	end if
+	this.it_transobject.getitemstockall(al_icode, ld_totalstock)
+	if this.it_transobject.sqlcode <> 0 then
+		retflag = false
+		as_errortext = "Database Error: Item information can not be retrieved"
+	end if
+	ls_itemtotalval = string(ld_saleprice, "######0.00") + " + " + string(ld_packsalestax, "######0.00") + " =  " + string(ld_saleprice + ld_packsalestax, "#####0.00")
+	this.it_transobject.getitemstocktotal(li_gcode, al_icode, ld_godownstock)
+	if this.it_transobject.sqlcode <> 0 then
+		retflag = false
+		as_errortext = "Database Error: Item information can not be retrieved"
+	end if
+	if retflag then
+		this.id_detail.setitem(al_row, this.is_columnitemname, ls_name)
+		li_discstatus = long(this.id_detail.object.discperc.visible)
+		li_flatdiscstatus = long(this.id_detail.object.itemflatdisc.visible)
+		if li_discstatus = 1 then
+			if this.id_detail.getitemstatus(al_row, "discperc", primary!) = notmodified! then
+				this.id_detail.setitem(al_row, "discperc", ld_discperc)
+			end if
+		else
+			this.id_detail.setitem(al_row, "discperc", 0)
+		end if
+		if al_icode <> this.id_detail.getitemnumber(al_row, "itemcode") and li_discstatus = 1 then
+			this.id_detail.setitem(al_row, "discperc", ld_discperc)
+		end if
+		if this.id_detail.getitemstatus(al_row, "saleprice", primary!) = notmodified! then
+			this.id_detail.setitem(al_row, "saleprice", ld_saleprice / ll_packunits)
+		end if
+		if al_icode <> this.id_detail.getitemnumber(al_row, "itemcode") then
+			this.id_detail.setitem(al_row, "saleprice", ld_saleprice / ll_packunits)
+		end if
+		this.id_detail.setitem(al_row, "icode", al_icode)
+		this.id_detail.setitem(al_row, "packunits", ll_packunits)
+		if li_flatdiscstatus = 1 then
+			if this.id_detail.getitemstatus(al_row, "itemflatdisc", primary!) = notmodified! then
+				this.id_detail.setitem(al_row, "itemflatdisc", ld_flatdisc)
+			end if
+		else
+			this.id_detail.setitem(al_row, "itemflatdisc", 0)
+		end if
+		if this.id_detail.getitemstatus(al_row, "Unitsalestax", primary!) = notmodified! then
+			this.id_detail.setitem(al_row, "unitsalestax", ld_unitsalestax)
+		end if
+		if this.id_detail.getitemstatus(al_row, "gstperc", primary!) = notmodified! then
+			this.id_detail.setitem(al_row, "gstperc", ld_gstperc1)
+		end if
+		this.id_detail.setitem(al_row, "packunits", ll_packunits)
+		this.id_detail.setitem(al_row, "stock", ld_godownstock)
+		this.id_detail.setitem(al_row, "totalstock", ld_totalstock)
+		this.id_detail.setitem(al_row, "retailprice", ld_retailprice / ll_packunits)
+		this.id_detail.setitem(al_row, "recentpurprice", ld_rpp)
+		this.id_detail.setitem(al_row, "purprice", ld_purprice)
+		this.id_detail.setitem(al_row, "itemtotalval", ls_itemtotalval)
+		this.id_detail.setitem(al_row, "avgprice", ld_avgprice)
+		if al_icode <> this.id_detail.getitemnumber(al_row, "itemcode") then
+			this.id_detail.setitem(al_row, "unitsalestax", ld_unitsalestax)
+			this.id_detail.setitem(al_row, "gstperc", ld_gstperc1)
+		end if
+	else
+		retflag = false
+		as_errortext = "Item can not be sold, its Stock is Zero"
+	end if
+	this.id_footer.object.t_purdiscper.text = string(ld_purdiscperc)
+	this.id_footer.setitem(1, "stock", ld_godownstock)
+	this.id_footer.setitem(1, "totalstock", ld_totalstock)
+	this.id_footer.setitem(1, "retailprice", ld_retailprice / ll_packunits)
+	this.id_footer.setitem(1, "rpp", ld_rpp)
+	this.id_footer.setitem(1, "purprice", ld_purprice)
+	this.id_footer.setitem(1, "avgprice", ld_avgprice)
+	this.id_footer.setitem(1, "itemtotalval", ls_itemtotalval)
+	this.id_detail.setitem(al_row, "itemcode", al_icode)
+	return retflag
+
+// w_saletemplate.wf_validateitem() returns integer
+	long ll_icode
+	long ll_count
+	string ls_fullcode
+	string ls_titleerrtext
+	string ls_errtext
+	integer li_errcode
+	boolean lb_dupitem
+	boolean lb_invalidrow
+	integer li_null
+	string ls_null
+	ll_icode = this.id_detail.getitemnumber(this.il_currrow, "icode")
+	if isnull(this.il_currrow) or this.il_currrow <= 0 then
+		lb_invalidrow = true
+		setnull(ll_icode)
+	else
+		ll_icode = this.id_detail.getitemnumber(this.il_currrow, "icode")
+	end if
+	if not isnull(ll_icode) then
+		if not wf_inititeminfo(ll_icode, this.il_currrow, li_errcode, ls_errtext) then
+			ls_titleerrtext = "Item Validation"
+		end if
+	end if
+	this.ib_itemvalidated = true
+	if li_errcode = -1 then
+		setnull(li_null)
+		setnull(ls_null)
+		ls_titleerrtext = "Item Validation"
+		if lb_dupitem = true then
+			this.id_detail.scrolltorow(this.il_currrow)
+			this.id_detail.object.icode[this.il_currrow] = li_null
+			this.id_detail.object.fullcode[this.il_currrow] = ls_null
+			this.id_detail.object.itemname[this.il_currrow] = ls_null
+			post event ue_deleteitem_row(this.il_currrow)
+			for ll_count = 1 to this.id_detail.rowcount()
+				if this.id_detail.getitemnumber(ll_count, "icode") = ll_icode then
+					post event ue_scrolltorow(ll_count, "qty")
+					exit
+				end if
+			next
+			messagebox(ls_titleerrtext, ls_errtext)
+		elseif lb_invalidrow = true then
+			li_errcode = -1
+		else
+			messagebox(ls_titleerrtext, ls_errtext)
+			if f_stringpreferences("itemcode") = "N" then
+				this.id_detail.setcolumn(this.is_columnitemname)
+				this.ib_itemslistopen = true
+				this.id_itemslist.show()
+			else
+				this.id_detail.setcolumn("fullcode")
+				this.id_detail.object.fullcode[this.il_currrow] = ls_null
+			end if
+			this.id_detail.scrolltorow(this.il_currrow)
+			this.id_detail.object.icode[this.il_currrow] = li_null
+			this.id_detail.object.itemname[this.il_currrow] = ls_null
+			this.id_detail.object.qty[this.il_currrow] = 1
+			this.id_detail.object.saleprice[this.il_currrow] = li_null
+			if long(this.id_detail.object.discperc.visible) = 1 then
+				this.id_detail.object.discperc[this.il_currrow] = li_null
+			else
+				this.id_detail.object.discperc[this.il_currrow] = 0
+			end if
+			if long(this.id_detail.object.itemflatdisc.visible) = 1 then
+				this.id_detail.object.itemflatdisc[this.il_currrow] = li_null
+			else
+				this.id_detail.object.itemflatdisc[this.il_currrow] = 0
+			end if
+			this.id_detail.object.unitsalestax[this.il_currrow] = li_null
+			this.id_detail.object.gstperc[this.il_currrow] = li_null
+		end if
+	end if
+	return li_errcode
+
+// w_saletemplate.wf_isinvoiceinuse(long al_invoiceno) returns boolean
+	long ll_found
+	ll_found = 0
+	SQL Select count ( *) INTO :ll_found From SaleTemplateHeader With ( ReadPast , RowLock , UpdLock ) Where SaleTemplateCode =:al_invoiceno USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		if ll_found = 0 then
+			return true
+		else
+			return false
+		end if
+		return
+	end if
+	return false
+
+// w_saletemplate.wf_generatesale() returns long
+	s_arguements lstr_arg
+	string ls_env_name
+	string ls_env_val
+	long ll_icode
+	long ll_gcode
+	long ll_sinvno
+	long ll_einvno
+	long ll_saletemplatecode
+	long ll_headerno
+	long ll_max_lineitems
+	long ll_max_lineitems_coushin
+	long ll_max_itemqty
+	datetime ldt_startdate
+	datetime ldt_enddate
+	long ll_counter
+	long ll_env_len
+	long ll_rtcode
+	long ll_holdqty
+	dwitemstatus lds_rowstatus
+	boolean lb_found_datamodification
+	double ld_currqty
+	if this.tab_retrieve.selectedtab = 2 then
+		return 0
+	end if
+	ll_saletemplatecode = this.id_master.getitemnumber(this.id_master.getrow(), "code")
+	if isnull(ll_saletemplatecode) then
+		messagebox("Template Validation", "Kindly select some template from list view.")
+		return 0
+	end if
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return 0
+	end if
+	if f_validatedw(this.id_master) < 0 then
+		return 0
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return 0
+	end if
+	if this.id_detail.rowcount() <= 0 then
+		messagebox("Row Validation", "There are no rows for this template.~r~nKindly insert some rows.")
+		return 0
+	end if
+	for ll_counter = 1 to this.id_detail.rowcount()
+		lds_rowstatus = this.id_detail.getitemstatus(ll_counter, 0, primary!)
+		if lds_rowstatus = datamodified! or lds_rowstatus = newmodified! then
+			lb_found_datamodification = true
+			if lds_rowstatus = newmodified! then
+				this.id_detail.setitem(ll_counter, "code", ll_saletemplatecode)
+			end if
+		end if
+	next
+	if lb_found_datamodification = true or this.id_detail.deletedcount() > 0 then
+		triggerevent("ue_save")
+		if wf_commitform() = true then
+			this.ib_commitok = false
+			this.editflag = true
+			wf_isinvoiceinuse(this.id_master.getitemnumber(this.id_master.getrow(), "code"))
+		else
+			wf_isinvoiceinuse(this.id_master.getitemnumber(this.id_master.getrow(), "code"))
+			return 0
+		end if
+		return
+	end if
+	open(w_arg_godown_sdate_ldate_v1)
+	lstr_arg = message.powerobjectparm
+	if lstr_arg.i_status = 1 then
+		setpointer(hourglass!)
+		ll_saletemplatecode = this.id_master.getitemnumber(this.id_master.getrow(), "code")
+		ll_gcode = lstr_arg.l_code1
+		ldt_startdate = lstr_arg.d_sdate
+		ldt_enddate = lstr_arg.d_edate
+		ll_max_lineitems = lstr_arg.l_code2
+		ll_max_itemqty = lstr_arg.l_code3
+		for ll_counter = 1 to this.id_detail.rowcount()
+			ll_icode = this.id_detail.getitemnumber(ll_counter, "icode")
+			this.it_transobject.getitemstocktotal(ll_gcode, ll_icode, ld_currqty)
+			if this.it_transobject.sqlcode = 0 then
+				ll_holdqty = this.id_detail.getitemnumber(ll_counter, "qty")
+				if ll_holdqty > long(ld_currqty) then
+					messagebox("Stock Validation", "Stock does not exist for item (" + this.id_detail.getitemstring(ll_counter, "itemname") + ")")
+					return 0
+				end if
+			else
+				messagebox("Stock Validation", "Unable to fetch item stock for item (" + this.id_detail.getitemstring(ll_counter, "itemname") + ")")
+				return 0
+			end if
+		next
+		SQL rollback USING sqlca;
+		ls_env_name = "COMPUTERNAME"
+		ls_env_val = space(20)
+		ll_env_len = 20
+		ll_env_len = getenvironmentvariablea(ls_env_name, ls_env_val, ll_env_len)
+		ll_max_lineitems_coushin = ll_max_lineitems
+		ll_rtcode = sqlca.generateautosale(ls_env_val, ll_saletemplatecode, gl_usercode, ll_gcode, 1, ldt_startdate, ldt_enddate, ll_max_lineitems, ll_max_lineitems_coushin, ll_max_itemqty, ll_sinvno, ll_einvno)
+		setpointer(arrow!)
+		if sqlca.sqlcode = 0 and ll_rtcode >= 0 then
+			SQL commit USING sqlca;
+			messagebox("Successful Generation", "Sale generated from " + string(ll_sinvno) + " to " + string(ll_einvno))
+		else
+			messagebox("UnSuccessful Generation", "Problem in generating sale.~r~nReasons are:~r~n" + sqlca.sqlerrtext)
+			SQL rollback USING sqlca;
+		end if
+	end if
+	return 0
+
+// w_saletemplate.wf_findfullcode(string as_fullcode, long al_icode, string al_itemname) returns integer
+	integer ll_retflag
+	long ll_icode
+	long ll_groupcode
+	string ls_itemname
+	ll_groupcode = f_getgroupcode(gl_usercode)
+	if f_stringpreferences("GroupCategoryRights") = "Y" then
+		SQL SELECT item.icode , item.name INTO :ll_icode, :ls_itemname FROM item WHERE item.customicode =:as_fullcode AND ( item.Restricted ='N' OR ( Item.Restricted ='Y' AND Exists ( select *from grouprights where rightcode =515 and groupcode =:ll_groupcode ) ) ) AND item.Active =1 AND Item.ICatCode IN ( SELECT ICatCode FROM ItemCategory WHERE ICatCode IN ( SELECT ItemsCategoryCode FROM ItemsGroupCategory WHERE GroupCode IN ( SELECT GroupCode FROM UserGroups WHERE UserCode =:gl_usercode ) ) ) USING this.it_transobject;
+	else
+		SQL SELECT item.icode , item.name INTO :ll_icode, :ls_itemname FROM item WHERE item.customicode =:as_fullcode AND item.Active =1 AND ( item.Restricted ='N' OR ( Item.Restricted ='Y' AND Exists ( select *from grouprights where rightcode =515 and groupcode =:ll_groupcode ) ) ) USING this.it_transobject;
+	end if
+	if this.it_transobject.sqlcode = 0 then
+		al_icode = ll_icode
+		al_itemname = ls_itemname
+		if isnull(al_icode) then
+			ll_retflag = 0
+		else
+			ll_retflag = 1
+		end if
+	else
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_saletemplate.wf_updateprices() returns long
+	long ll_masterrow
+	long ll_detailrows
+	long ll_counter
+	long ll_packunits
+	long ll_icode
+	double ld_price
+	ll_masterrow = this.id_master.rowcount()
+	if ll_masterrow > 0 then
+		ll_detailrows = this.id_detail.rowcount()
+		if ll_detailrows > 0 then
+			for ll_counter = 1 to ll_detailrows
+				ll_icode = this.id_detail.getitemnumber(ll_counter, "icode")
+				if ll_icode > 0 then
+					SQL SELECT item.packunits , price =Round ( item.saleprice / CASE item.packunits WHEN 0 THEN 1 ELSE item.packunits END , 2 ) INTO :ll_packunits, :ld_price FROM DBO.ITEM WHERE DBO.ITEM.ICode =:ll_icode USING this.it_transobject;
+					if this.it_transobject.sqlcode = 0 then
+						this.id_detail.setitem(ll_counter, "saleprice", ld_price)
+						this.id_detail.setitem(ll_counter, "packunits", ll_packunits)
+					end if
+				end if
+			next
+		end if
+	end if
+	return 0
+
+// w_saletemplate.wf_deleteemptydetailrows() returns long
+	long ll_count
+	long ll_deletecount
+	ll_deletecount = 0
+	for ll_count = 1 to this.id_detail.rowcount()
+		if isnull(this.id_detail.getitemnumber(ll_count, "icode")) or this.id_detail.getitemnumber(ll_count, "icode") = 0.0 then
+			ll_deletecount = ll_deletecount + 1
+			this.id_detail.deleterow(ll_count)
+		end if
+	next
+	return ll_deletecount
+
+// w_saletemplate.wf_populatefiltereditems() returns long
+	integer li_rtcode
+	integer li_rtncode
+	long ll_rtcode
+	long ll_rowcount
+	long ll_count
+	long ll_icode
+	long ll_currentrow
+	long ll_found
+	string as_errortext
+	s_arguements lstr_selecteditems
+	datastore lds_selecteditems
+	if this.id_master.accepttext() = -1 then
+		return -1
+	end if
+	open(w_arg_item_populate2)
+	lstr_selecteditems = message.powerobjectparm
+	lds_selecteditems = create datastore
+	if lstr_selecteditems.s_name2 = "OR" then
+		lds_selecteditems.dataobject = "d_populateditems_active_stockitems"
+	else
+		lds_selecteditems.dataobject = "d_populateditems_and_active_stockitems"
+	end if
+	lds_selecteditems.settransobject(sqlca)
+	ll_rtcode = lds_selecteditems.retrieve(lstr_selecteditems.ia_integerlist, lstr_selecteditems.ia_integerlist1, lstr_selecteditems.ia_integerlist2, lstr_selecteditems.la_longlist, lstr_selecteditems.s_name1)
+	ll_rowcount = lds_selecteditems.rowcount()
+	wf_deleteemptydetailrow()
+	setpointer(hourglass!)
+	setredraw(false)
+	if this.id_detail.rowcount() > 0 and isnull(this.id_detail.object.icode[this.id_detail.rowcount()]) then
+		event ue_deleteitem()
+	end if
+	for ll_count = 1 to ll_rowcount
+		ll_icode = lds_selecteditems.object.icode[ll_count]
+		ll_found = this.id_detail.find("icode=" + string(ll_icode), 1, this.id_detail.rowcount())
+		if not (ll_found > 0) then
+			ll_currentrow = this.id_detail.insertrow(0)
+			if wf_inititeminfo(ll_icode, ll_currentrow, li_rtncode, as_errortext) then
+				this.id_detail.object.qty[ll_count] = 1
+			end if
+		end if
+	next
+	if this.id_detail.rowcount() > 0 then
+		this.im_menu.m_file.m_save.enabled = true
+	end if
+	setredraw(true)
+	setpointer(arrow!)
+	return 0
+
+// w_saletemplate.wf_grandtotal() returns double
+	double ld_grandtotal
+	double ld_detaildwtotal
+	double ld_discountvalue
+	double ld_invtaxperc1val
+	double ld_intaxperc1
+	double ld_totaltax
+	double ld_totalitemleveltax
+	real lr_discperc
+	real lr_flatdisc
+	real lr_misccharges
+	real lr_salestax
+	real lr_itemstotal
+	if this.id_detail.rowcount() > 0 and this.id_footer.rowcount() > 0 then
+		lr_discperc = 0
+		lr_flatdisc = 0
+		lr_misccharges = 0
+		lr_salestax = 0
+		ld_detaildwtotal = this.id_detail.getitemnumber(1, "c_detaildwtotal")
+		ld_intaxperc1 = 0
+		ld_totalitemleveltax = this.id_detail.getitemnumber(1, "c_sumtaxval") + this.id_detail.getitemnumber(1, "c_sumgstval")
+		ld_discountvalue = 0
+		ld_grandtotal = ld_detaildwtotal - ld_discountvalue - lr_flatdisc + lr_misccharges + lr_salestax
+		ld_invtaxperc1val = round((ld_detaildwtotal - ld_discountvalue - lr_flatdisc) * ld_intaxperc1 * 0.01, 2)
+		ld_totaltax = round(ld_invtaxperc1val + ld_totalitemleveltax, 0)
+		ld_grandtotal = round(ld_grandtotal, 0) + ld_totaltax
+		this.id_footer.setitem(1, "total", ld_grandtotal)
+	end if
+	return ld_grandtotal
+
+// w_saletemplate.wf_filteritems() returns long
+	string ls_null
+	string ls_filter
+	setnull(ls_null)
+	this.id_detail.scrolltorow(0)
+	this.id_detail.setfilter(ls_null)
+	ls_filter = this.id_detail.object.datawindow.table.filter
+	if ls_filter = "" or ls_filter = "?" or isnull(ls_filter) then
+		this.id_detail.setfilter("")
+	else
+		this.id_detail.setfilter(ls_filter)
+	end if
+	this.id_detail.filter()
+	this.id_detail.groupcalc()
+	return 0
+
+// w_saletemplate.wf_updatesaleprice_basicdata() returns long
+	long ll_masterrow
+	long ll_detailrows
+	long ll_counter
+	long ll_packunits
+	long ll_icode
+	long ll_itemcount
+	long[] ll_items
+	long ll_optioncode
+	double ld_price
+	string ls_itemname
+	boolean lb_commitok
+	u_transaction my_transobject
+	if this.tab_retrieve.selectedtab = 2 then
+		return 0
+	end if
+	ll_optioncode = messagebox("Bulk Data Updation Warning", "Item sale prices present in this sale template will be updated in items basic data.~r~nContinue with the process?", question!, yesno!, 2)
+	if ll_optioncode = 2 then
+		return 0
+	end if
+	my_transobject = create u_transaction
+	SQL start USING my_transobject;
+	if my_transobject.sqlcode = 0 then
+		ll_masterrow = this.id_master.rowcount()
+		if ll_masterrow > 0 then
+			ll_detailrows = this.id_detail.rowcount()
+			if ll_detailrows > 0 then
+				for ll_counter = 1 to ll_detailrows
+					ll_icode = this.id_detail.object.icode[ll_counter]
+					ll_packunits = this.id_detail.object.packunits[ll_counter]
+					ld_price = this.id_detail.object.saleprice[ll_counter]
+					ls_itemname = this.id_detail.object.itemname[ll_counter]
+					SQL update DBO.Item SET SalePrice =Round ( :ld_price *:ll_packunits , 2 ) , Packunits =:ll_packunits WHERE ICode =:ll_icode USING my_transobject;
+					if my_transobject.sqlcode <> 0 then
+						lb_commitok = false
+						exit
+					end if
+				next
+				if lb_commitok then
+					SQL commit USING my_transobject;
+					messagebox("Sale Price Upation", "Successfull basic data updation", information!)
+				else
+					SQL rollback USING my_transobject;
+					messagebox("Sale Price Upation", "Problems in successfull basic data updation.~r~nItem Name = " + ls_itemname + ". More Details are:-~r~n" + my_transobject.sqlerrtext, stopsign!)
+				end if
+			end if
+		end if
+	else
+		messagebox("Connection Problem", "Can not connect to database", stopsign!)
+	end if
+	return 0
+
+// w_saletemplate.wf_set_gstperc() returns long
+	long ll_rows
+	long ll_counter
+	double ld_gstperc
+	double[] ld_gstpercarr
+	if this.tab_retrieve.selectedtab = 2 then
+		return 0
+	end if
+	ll_rows = this.id_detail.rowcount()
+	if ll_rows > 0 then
+		openwithparm(w_setgstperc, ld_gstperc)
+		ld_gstperc = message.doubleparm
+		if ld_gstperc > 0.0 then
+			for ll_counter = 1 to ll_rows
+				ld_gstpercarr[ll_counter] = ld_gstperc
+			next
+			this.id_detail.object.gstperc[1, ll_rows] = ld_gstpercarr
+		end if
+	end if
+	return 0
+
+// w_saletemplate.wf_import_sales() returns long
+	long ll_templatecode
+	long ll_res
+	string ls_errtext
+	s_arguements lstr_arg
+	if this.tab_retrieve.selectedtab = 1 then
+		return 0
+	end if
+	ll_res = messagebox("Data Manipulation Warning", "Template Once Generated will not be revertable.~r~nAre you sure to perform this activity?", question!, yesnocancel!, 3)
+	if ll_res <> 1 then
+		return 0
+	end if
+	open(w_arg_sdate_ldate)
+	lstr_arg = message.powerobjectparm
+	if lstr_arg.i_status = 1 then
+		SQL rollback USING this.it_transobject;
+		setpointer(hourglass!)
+		this.it_transobject.importsales(gs_parentlinkserver, gs_parentdbname, gs_parentowner, lstr_arg.d_sdate, lstr_arg.d_edate, ll_templatecode)
+		setpointer(arrow!)
+		if this.it_transobject.sqlcode = 0 then
+			SQL commit USING this.it_transobject;
+			messagebox("Import Sales Data", "Sales Data Imported Successfully in Sale Template Code = " + string(ll_templatecode), information!)
+		else
+			ls_errtext = this.it_transobject.sqlerrtext
+			SQL rollback USING this.it_transobject;
+			messagebox("Import Sales Data", "Sales Data Imported Successfully in Sale Template Code = " + ls_errtext, stopsign!)
+		end if
+	end if
+	return 0
+
+// w_saletemplate.wf_launch_analyzer() returns long
+	long ll_code
+	long ll_format
+	long ll_summdetail
+	string ls_report
+	string ls_group
+	s_datastore lstr
+	if this.tab_retrieve.selectedtab = 1 then
+		return 0
+	end if
+	if this.id_list.rowcount() > 0 and this.id_list.getrow() > 0 then
+		ll_code = this.id_list.object.code[this.id_list.getrow()]
+	end if
+	if ll_code <= 0 or isnull(ll_code) then
+		return 0
+	end if
+	open(w_select_templateanalyzer)
+	ll_format = message.doubleparm
+	if ll_format > 0 and ll_format <= 4 then
+		open(w_selectformat_summary_detail)
+		ll_summdetail = message.doubleparm
+		if ll_summdetail = 1 then
+			ls_report = "d_saletemplate_analysis1"
+		else
+			ls_report = "d_saletemplate_analysis1_detail"
+		end if
+		this.dw_analyzerprint.dataobject = ls_report
+		this.dw_analyzerprint.settransobject(sqlca)
+		if ll_format = 1 then
+			ls_group = "M"
+		end if
+		if ll_format = 2 then
+			ls_group = "C"
+		end if
+		if ll_format = 3 then
+			ls_group = "L"
+		end if
+		if ll_format = 4 then
+			ls_group = "P"
+		end if
+		this.dw_analyzerprint.retrieve(ls_group, ll_code)
+		lstr.dw = this.dw_analyzerprint
+		lstr.s_module = "Template"
+		lstr.s_name1 = ls_report
+		openwithparm(w_preview_invoices, lstr)
+	elseif ll_format > 0 and ll_format <= 6 then
+		ls_report = "d_saletemplate_analysis_stock"
+		this.dw_analyzerprint.dataobject = ls_report
+		this.dw_analyzerprint.settransobject(sqlca)
+		this.dw_analyzerprint.retrieve(ll_code)
+		if ll_format = 5 then
+			this.dw_analyzerprint.setfilter("stock >= qty")
+			this.dw_analyzerprint.filter()
+		elseif ll_format = 6 then
+			this.dw_analyzerprint.setfilter("stock < qty")
+			this.dw_analyzerprint.filter()
+		end if
+		lstr.dw = this.dw_analyzerprint
+		lstr.s_module = "Template"
+		lstr.s_name1 = ls_report
+		openwithparm(w_preview_invoices, lstr)
+	elseif ll_format = 7 then
+		ls_report = "d_saletemplate_analysis_customerwise"
+		this.dw_analyzerprint.dataobject = ls_report
+		this.dw_analyzerprint.settransobject(sqlca)
+		this.dw_analyzerprint.retrieve(ll_code)
+		lstr.dw = this.dw_analyzerprint
+		lstr.s_module = "Template"
+		lstr.s_name1 = ls_report
+		openwithparm(w_preview_invoices, lstr)
+	elseif ll_format = 8 then
+		ls_report = "d_saletemplate_analysis_datewise"
+		this.dw_analyzerprint.dataobject = ls_report
+		this.dw_analyzerprint.settransobject(sqlca)
+		this.dw_analyzerprint.retrieve(ll_code)
+		lstr.dw = this.dw_analyzerprint
+		lstr.s_module = "Template"
+		lstr.s_name1 = ls_report
+		openwithparm(w_preview_invoices, lstr)
+	end if
+	return 0
+
+// w_saletemplate.wf_launch_manipulator() returns integer
+	long ll_count
+	long ll_code
+	long ll_format
+	long ll_counter
+	long ll_round
+	long ll_res
+	long[] ll_longlist
+	long ll_arraycount
+	long ll_rowcount
+	long ll_found
+	long ll_startrow
+	string ls_group
+	string ls_stringarr1
+	string ls_marked
+	string ls_report
+	boolean lb_continue
+	double ld_value
+	s_arguements lstr_arg
+	if this.tab_retrieve.selectedtab = 1 then
+		return 0
+	end if
+	if this.id_list.rowcount() > 0 and this.id_list.getrow() > 0 then
+		ll_code = this.id_list.object.code[this.id_list.getrow()]
+	end if
+	if ll_code <= 0 or isnull(ll_code) then
+		return 0
+	end if
+	open(w_select_templatemanipulator)
+	ll_format = message.doubleparm
+	if ll_format = 1 then
+		SQL update SaleTemplateDetail SET Marked ='Y' WHERE SaleTemplateCode =:ll_code USING this.it_transobject;
+		if this.it_transobject.sqlcode = 0 then
+			messagebox("Saving Successfull", "Changes Take Effect in Database", information!)
+			SQL commit USING this.it_transobject;
+		else
+			messagebox("Saving Un-Successfull", "Changes Take Effect in Database~r~nDetails are:-~r~n" + this.it_transobject.sqlerrtext, stopsign!)
+			SQL rollback USING this.it_transobject;
+		end if
+	elseif ll_format = 2 then
+		SQL update SaleTemplateDetail SET Marked ='N' WHERE SaleTemplateCode =:ll_code USING this.it_transobject;
+		if this.it_transobject.sqlcode = 0 then
+			messagebox("Saving Successfull", "Changes Take Effect in Database", information!)
+			SQL commit USING this.it_transobject;
+		else
+			messagebox("Saving Un-Successfull", "Changes Take Effect in Database~r~nDetails are:-~r~n" + this.it_transobject.sqlerrtext, stopsign!)
+			SQL rollback USING this.it_transobject;
+		end if
+	elseif ll_format = 3 or ll_format = 4 then
+		open(w_selection_manf_cat_class_packing)
+		ls_group = message.stringparm
+		openwithparm(w_arg_grouping, ls_group)
+		lstr_arg = message.powerobjectparm
+		if lstr_arg.i_status = 1 then
+			if ll_format = 3 then
+				ls_marked = "Y"
+			else
+				ls_marked = "N"
+			end if
+			ll_longlist = lstr_arg.ia_integerlist
+			f_tostring(ll_longlist, ls_stringarr1, ",")
+			this.it_transobject.templatemarking(ll_code, ls_group, ls_stringarr1, ls_marked)
+			if this.it_transobject.sqlcode = 0 then
+				messagebox("Saving Successfull", "Changes Take Effect in Database", information!)
+				SQL commit USING this.it_transobject;
+			else
+				messagebox("Saving Un-Successfull", "Changes Take Effect in Database~r~nDetails are:-~r~n" + this.it_transobject.sqlerrtext, stopsign!)
+				SQL rollback USING this.it_transobject;
+			end if
+		end if
+	elseif ll_format = 5 then
+		ll_round = f_get_colprecision("Qty")
+		openwithparm(w_arg_percentage_reduce_raise, "Qty")
+		lstr_arg = message.powerobjectparm
+		if lstr_arg.i_status = 1 then
+			SQL update SaleTemplateDetail SET LooseQty =ISNULL ( ROUND ( ( LooseQty *CASE WHEN :lstr_arg.l_code1 =1 THEN ( 1 - :lstr_arg.db_code1 *0.01 ) ELSE ( 1 + :lstr_arg.db_code1 *0.01 ) END ) , :ll_round ) , 0 ) WHERE SaleTemplateCode =:ll_code AND Marked ='Y' USING this.it_transobject;   /* bind positions inferred */
+			if this.it_transobject.sqlcode = 0 then
+				messagebox("Saving Successfull", "Changes Take Effect in Database", information!)
+				SQL commit USING this.it_transobject;
+			else
+				messagebox("Saving Un-Successfull", "Changes Take Effect in Database~r~nDetails are:-~r~n" + this.it_transobject.sqlerrtext, stopsign!)
+				SQL rollback USING this.it_transobject;
+			end if
+		end if
+	elseif ll_format = 6 then
+		openwithparm(w_arg_percentage_reduce_raise, "Sale Price")
+		lstr_arg = message.powerobjectparm
+		if lstr_arg.i_status = 1 then
+			SQL update SaleTemplateDetail SET SalePrice =ISNULL ( ROUND ( ( SalePrice *CASE WHEN :lstr_arg.l_code1 =1 THEN ( 1 - :lstr_arg.db_code1 *0.01 ) ELSE ( 1 + :lstr_arg.db_code1 *0.01 ) END ) , 2 ) , 0 ) WHERE SaleTemplateCode =:ll_code AND Marked ='Y' USING this.it_transobject;   /* bind positions inferred */
+			if this.it_transobject.sqlcode = 0 then
+				messagebox("Saving Successfull", "Changes Take Effect in Database", information!)
+				SQL commit USING this.it_transobject;
+			else
+				messagebox("Saving Un-Successfull", "Changes Take Effect in Database~r~nDetails are:-~r~n" + this.it_transobject.sqlerrtext, stopsign!)
+				SQL rollback USING this.it_transobject;
+			end if
+		end if
+	elseif ll_format = 7 then
+		open(w_arg_only_decimal_input)
+		lstr_arg = message.powerobjectparm
+		if lstr_arg.i_status = 1 then
+			SQL update SaleTemplateDetail SET DiscPerc =:lstr_arg.db_code1 WHERE SaleTemplateCode =:ll_code AND Marked ='Y' USING this.it_transobject;
+			if this.it_transobject.sqlcode = 0 then
+				messagebox("Saving Successfull", "Changes Take Effect in Database", information!)
+				SQL commit USING this.it_transobject;
+			else
+				messagebox("Saving Un-Successfull", "Changes Take Effect in Database~r~nDetails are:-~r~n" + this.it_transobject.sqlerrtext, stopsign!)
+				SQL rollback USING this.it_transobject;
+			end if
+		end if
+	elseif ll_format = 8 then
+		open(w_arg_only_decimal_input)
+		lstr_arg = message.powerobjectparm
+		if lstr_arg.i_status = 1 then
+			SQL update SaleTemplateDetail SET GSTPerc =:lstr_arg.db_code1 WHERE SaleTemplateCode =:ll_code AND Marked ='Y' USING this.it_transobject;
+			if this.it_transobject.sqlcode = 0 then
+				messagebox("Saving Successfull", "Changes Take Effect in Database", information!)
+				SQL commit USING this.it_transobject;
+			else
+				messagebox("Saving Un-Successfull", "Changes Take Effect in Database~r~nDetails are:-~r~n" + this.it_transobject.sqlerrtext, stopsign!)
+				SQL rollback USING this.it_transobject;
+			end if
+		end if
+	elseif ll_format = 9 then
+		ll_res = messagebox("Data Loss Warning", "Rows once removed will be lost forever. Are you sure to perform this activity?", question!, yesnocancel!, 3)
+		if ll_res = 1 then
+			SQL DELETE SaleTemplateDetail WHERE SaleTemplateCode =:ll_code AND Marked ='N' USING this.it_transobject;
+			if this.it_transobject.sqlcode = 0 then
+				messagebox("Saving Successfull", "Changes Take Effect in Database", information!)
+				SQL commit USING this.it_transobject;
+			else
+				messagebox("Saving Un-Successfull", "Changes Take Effect in Database~r~nDetails are:-~r~n" + this.it_transobject.sqlerrtext, stopsign!)
+				SQL rollback USING this.it_transobject;
+			end if
+		end if
+	elseif ll_format = 10 then
+		ll_res = messagebox("Data Loss Warning", "Rows once removed will be lost forever. Are you sure to perform this activity?", question!, yesnocancel!, 3)
+		if ll_res = 1 then
+			SQL DELETE SaleTemplateDetail WHERE SaleTemplateCode =:ll_code AND Marked ='Y' USING this.it_transobject;
+			if this.it_transobject.sqlcode = 0 then
+				messagebox("Saving Successfull", "Changes Take Effect in Database", information!)
+				SQL commit USING this.it_transobject;
+			else
+				messagebox("Saving Un-Successfull", "Changes Take Effect in Database~r~nDetails are:-~r~n" + this.it_transobject.sqlerrtext, stopsign!)
+				SQL rollback USING this.it_transobject;
+			end if
+		end if
+	elseif ll_format = 11 then
+		ll_res = messagebox("Data Loss Warning", "Rows once removed will be lost forever. Are you sure to perform this activity?", question!, yesnocancel!, 3)
+		if ll_res = 1 then
+			SQL DELETE SaleTemplateDetail WHERE SaleTemplateCode =:ll_code AND Marked ='Y' AND ( LooseQty + BonusQty ) <= 0 USING this.it_transobject;
+			if this.it_transobject.sqlcode = 0 then
+				messagebox("Saving Successfull", "Changes Take Effect in Database", information!)
+				SQL commit USING this.it_transobject;
+			else
+				messagebox("Saving Un-Successfull", "Changes Take Effect in Database~r~nDetails are:-~r~n" + this.it_transobject.sqlerrtext, stopsign!)
+				SQL rollback USING this.it_transobject;
+			end if
+		end if
+	elseif ll_format = 12 then
+		SQL update SaleTemplateDetail SET Marked ='N' WHERE SaleTemplateCode =:ll_code AND Marked ='Y' AND ICode IN ( SELECT T.ICode FROM ( SELECT ICode =I.ICode , Qty =SUM ( D.LooseQty ) , Stock =ISNULL ( ( SELECT SUM ( GD.CurrQty ) FROM GodownDetail GD WHERE GD.ICode =I.ICode ) , 0 ) FROM SaleTemplateHeader H , SaleTemplateDetail D , Item I WHERE H.SaleTemplateCode =:ll_code AND H.SaleTemplateCode =D.SaleTemplateCode AND D.ICode =I.ICode AND D.Marked ='Y' GROUP BY I.ICode ) T WHERE T.Qty > T.Stock ) USING this.it_transobject;
+		if this.it_transobject.sqlcode = 0 then
+			messagebox("Saving Successfull", "Changes Take Effect in Database", information!)
+			SQL commit USING this.it_transobject;
+		else
+			messagebox("Saving Un-Successfull", "Changes Take Effect in Database~r~nDetails are:-~r~n" + this.it_transobject.sqlerrtext, stopsign!)
+			SQL rollback USING this.it_transobject;
+		end if
+	elseif ll_format = 13 then
+		openwithparm(w_templatemanipulater_cust_sdate_ldate, ll_code)
+	elseif ll_format = 14 then
+		SQL DELETE SaleTemplateDetail WHERE SaleTemplateCode =:ll_code AND ICode NOT IN ( SELECT DISTINCT GD.ICode FROM GodownDetail GD ) USING this.it_transobject;
+		if this.it_transobject.sqlcode = 0 then
+			messagebox("Saving Successfull", "Changes Take Effect in Database", information!)
+			SQL commit USING this.it_transobject;
+		else
+			messagebox("Saving Un-Successfull", "Changes Take Effect in Database~r~nDetails are:-~r~n" + this.it_transobject.sqlerrtext, stopsign!)
+			SQL rollback USING this.it_transobject;
+		end if
+	elseif ll_format = 15 then
+		SQL update SaleTemplateDetail SET Marked ='N' WHERE SaleTemplateCode =:ll_code AND SaleCatCode IN ( 3 ) USING this.it_transobject;
+		if this.it_transobject.sqlcode = 0 then
+			messagebox("Saving Successfull", "Changes Take Effect in Database", information!)
+			SQL commit USING this.it_transobject;
+		else
+			messagebox("Saving Un-Successfull", "Changes Take Effect in Database~r~nDetails are:-~r~n" + this.it_transobject.sqlerrtext, stopsign!)
+			SQL rollback USING this.it_transobject;
+		end if
+	elseif ll_format = 16 then
+		SQL update SaleTemplateDetail SET Marked ='N' WHERE SaleTemplateCode =:ll_code AND SaleCatCode IN ( 1 , 2 ) USING this.it_transobject;
+		if this.it_transobject.sqlcode = 0 then
+			messagebox("Saving Successfull", "Changes Take Effect in Database", information!)
+			SQL commit USING this.it_transobject;
+		else
+			messagebox("Saving Un-Successfull", "Changes Take Effect in Database~r~nDetails are:-~r~n" + this.it_transobject.sqlerrtext, stopsign!)
+			SQL rollback USING this.it_transobject;
+		end if
+	elseif ll_format = 17 then
+		SQL SELECT Count =ISNULL ( Count ( RowID ) , 0 ) , Value =ISNULL ( SUM ( LooseQty *( SalePrice - ItemFlatDisc ) *( 1 - DiscPerc *0.01 ) ) , 0 ) INTO :ll_count, :ld_value FROM SaleTemplateDetail WHERE SaleTemplateCode =:ll_code AND ICode IN ( SELECT I.ICode FROM Item I WHERE I.Taxable ='N' ) USING this.it_transobject;
+		if this.it_transobject.sqlcode = 0 then
+			ll_res = messagebox("Data Loss Warning", "Non-Taxable Rows = " + string(ll_count, "##,##0") + ", Value = " + string(ld_value, "#,###,##0.00") + "~r~nRows once removed will be lost forever. Are you sure to perform this activity?", question!, yesnocancel!, 3)
+		end if
+		if ll_res = 1 then
+			SQL DELETE SaleTemplateDetail WHERE SaleTemplateCode =:ll_code AND ICode IN ( SELECT I.ICode FROM Item I WHERE I.Taxable ='N' ) USING this.it_transobject;
+			if this.it_transobject.sqlcode = 0 then
+				messagebox("Saving Successfull", "Changes Take Effect in Database", information!)
+				SQL commit USING this.it_transobject;
+			else
+				messagebox("Saving Un-Successfull", "Changes Take Effect in Database~r~nDetails are:-~r~n" + this.it_transobject.sqlerrtext, stopsign!)
+				SQL rollback USING this.it_transobject;
+			end if
+		end if
+	elseif ll_format = 18 then
+		SQL SELECT Count =ISNULL ( Count ( RowID ) , 0 ) , Value =ISNULL ( SUM ( LooseQty *( SalePrice - ItemFlatDisc ) *( 1 - DiscPerc *0.01 ) ) , 0 ) INTO :ll_count, :ld_value FROM SaleTemplateDetail WHERE SaleTemplateCode =:ll_code AND ICode IN ( SELECT I.ICode FROM Item I WHERE I.Taxable ='Y' ) USING this.it_transobject;
+		if this.it_transobject.sqlcode = 0 then
+			ll_res = messagebox("Data Loss Warning", "Taxable Rows = " + string(ll_count, "##,##0") + ", Value = " + string(ld_value, "#,###,##0.00") + "~r~nRows once removed will be lost forever. Are you sure to perform this activity?", question!, yesnocancel!, 3)
+		end if
+		if ll_res = 1 then
+			SQL DELETE SaleTemplateDetail WHERE SaleTemplateCode =:ll_code AND ICode IN ( SELECT I.ICode FROM Item I WHERE I.Taxable ='Y' ) USING this.it_transobject;
+			if this.it_transobject.sqlcode = 0 then
+				messagebox("Saving Successfull", "Changes Take Effect in Database", information!)
+				SQL commit USING this.it_transobject;
+			else
+				messagebox("Saving Un-Successfull", "Changes Take Effect in Database~r~nDetails are:-~r~n" + this.it_transobject.sqlerrtext, stopsign!)
+				SQL rollback USING this.it_transobject;
+			end if
+		end if
+	end if
+	return 0
+
+// w_saletemplate.wf_generate_sales_from_marked_items() returns long
+	string ls_env_name
+	string ls_env_val
+	long ll_sinvno
+	long ll_einvno
+	long ll_saletemplatecode
+	long ll_headerno
+	long ll_res
+	long ll_counter
+	long ll_env_len
+	long ll_rtcode
+	double ld_currqty
+	ll_res = messagebox("Data Manipulation Warning", "Invoices Once Generated will not be revertable.~r~nAre you sure to perform this activity?", question!, yesnocancel!, 3)
+	if ll_res <> 1 then
+		return 0
+	end if
+	if this.tab_retrieve.selectedtab = 1 then
+		return 0
+	end if
+	if this.id_list.getrow() > 0 and this.id_list.rowcount() > 0 then
+		ll_saletemplatecode = this.id_list.object.code[this.id_list.getrow()]
+	end if
+	if isnull(ll_saletemplatecode) or ll_saletemplatecode <= 0 then
+		messagebox("Template Validation", "Kindly select some template from list view.")
+		return 0
+	end if
+	if gl_usercode > 0 then
+		setpointer(hourglass!)
+		ls_env_name = "COMPUTERNAME"
+		ls_env_val = space(20)
+		ll_env_len = 20
+		ll_env_len = getenvironmentvariablea(ls_env_name, ls_env_val, ll_env_len)
+		ll_rtcode = this.it_transobject.generatemarkedsalefromtemplate(ll_saletemplatecode, gl_usercode, ls_env_val, ll_sinvno, ll_einvno)
+		setpointer(arrow!)
+		if this.it_transobject.sqlcode = 0 and ll_rtcode >= 0 then
+			SQL commit USING this.it_transobject;
+			messagebox("Successful Generation", "Sale generated from " + string(ll_sinvno) + " to " + string(ll_einvno))
+		else
+			messagebox("UnSuccessful Generation", "Problem in generating sale.~r~nReasons are:~r~n" + this.it_transobject.sqlerrtext)
+			SQL rollback USING this.it_transobject;
+		end if
+	end if
+	return 0
+
+// w_saletemplate.wf_adjust_template_wrt_stock() returns long
+	long ll_code
+	long ll_counter
+	long ll_found
+	long ll_icode
+	long ll_foundtodelete
+	long ll_lastfound
+	long ll_updcount
+	long ll_icode2
+	long ll_rows
+	long ll_res
+	double ld_qty
+	double ld_stock
+	double ld_satisfiedqty
+	double ld_thisqty
+	boolean lb_ok
+	boolean lb_ok2
+	string ls_errtext
+	u_transaction it_mytrans
+	datastore lds_items
+	datastore lds_templateitems
+	if this.tab_retrieve.selectedtab = 1 then
+		return 0
+	end if
+	if this.id_list.rowcount() > 0 and this.id_list.getrow() > 0 then
+		ll_code = this.id_list.object.code[this.id_list.getrow()]
+	end if
+	if ll_code <= 0 or isnull(ll_code) then
+		return 0
+	end if
+	ll_res = messagebox("Data Loss Warning", "Rows once removed will be lost forever. Are you sure to perform this activity?", question!, yesnocancel!, 3)
+	if ll_res <> 1 then
+		return 0
+	end if
+	it_mytrans = create u_transaction
+	SQL start USING it_mytrans;
+	setpointer(hourglass!)
+	SQL DELETE SaleTemplateDetail WHERE SaleTemplateCode =:ll_code AND ICode NOT IN ( SELECT DISTINCT ICode FROM GodownDetail ) USING it_mytrans;
+	setpointer(arrow!)
+	if it_mytrans.sqlcode = 0 then
+		SQL commit USING it_mytrans;
+	else
+		ls_errtext = it_mytrans.sqlerrtext
+		SQL rollback USING it_mytrans;
+		messagebox("Sale Template", "Some Database Error Occured While Purging zero Stock Items.~r~nDetails are:-~r~n" + it_mytrans.sqlerrtext, stopsign!)
+		return 0
+	end if
+	setpointer(hourglass!)
+	SQL update SaleTemplateDetail SET Marked ='Y' WHERE SaleTemplateCode =:ll_code USING it_mytrans;
+	setpointer(arrow!)
+	if it_mytrans.sqlcode = 0 then
+		SQL commit USING it_mytrans;
+	else
+		ls_errtext = it_mytrans.sqlerrtext
+		SQL rollback USING it_mytrans;
+		messagebox("Sale Template", "Some Database Error Occured While Marking Items.~r~nDetails are:-~r~n" + it_mytrans.sqlerrtext, stopsign!)
+		return 0
+	end if
+	setpointer(hourglass!)
+	lds_items = create datastore
+	lds_templateitems = create datastore
+	lds_items.dataobject = "d_adjust_saletemplate_wrt_stock"
+	lds_items.settransobject(it_mytrans)
+	lds_items.retrieve(ll_code)
+	lds_templateitems.dataobject = this.id_detail.dataobject
+	lds_templateitems.settransobject(it_mytrans)
+	lds_templateitems.retrieve(ll_code)
+	if lds_templateitems.rowcount() > 0 and lds_items.rowcount() >= 0 then
+		ll_counter = 1
+		for ll_counter = 1 to lds_items.rowcount()
+			ll_icode = lds_items.object.icode[ll_counter]
+			ld_qty = lds_items.object.qty[ll_counter]
+			ld_stock = lds_items.object.stock[ll_counter]
+			ld_satisfiedqty = 0
+			ll_found = 0
+			ll_lastfound = 0
+			if ld_qty >= ld_stock then
+				lb_ok = true
+				do while lb_ok
+					ll_found = lds_templateitems.find("icode = " + trim(string(ll_icode)), ll_lastfound + 1, lds_templateitems.rowcount())
+					if ll_found > 0 and ll_found <= lds_templateitems.rowcount() then
+						ll_lastfound = ll_found
+						ld_thisqty = lds_templateitems.object.qty[ll_found]
+						if ld_stock >= ld_thisqty + ld_satisfiedqty then
+							ld_satisfiedqty = ld_satisfiedqty + ld_thisqty
+						else
+							if ld_stock > ld_satisfiedqty then
+								lds_templateitems.object.qty[ll_found] = ld_stock - ld_satisfiedqty
+							else
+								lds_templateitems.object.qty[ll_found] = 0
+								lds_templateitems.object.marked[ll_found] = "N"
+							end if
+							ll_updcount = ll_updcount + 1
+							lds_templateitems.object.bonusqty[ll_found] = 0
+							ld_thisqty = lds_templateitems.object.qty[ll_found]
+							ld_satisfiedqty = ld_satisfiedqty + ld_thisqty
+							lb_ok = false
+							lb_ok2 = true
+							do while lb_ok2
+								ll_found = lds_templateitems.find("icode = " + trim(string(ll_icode)), ll_lastfound + 1, lds_templateitems.rowcount())
+								if ll_found > 0 and ll_found <= lds_templateitems.rowcount() then
+									ll_lastfound = ll_found
+									lds_templateitems.object.marked[ll_found] = "N"
+									ll_updcount = ll_updcount + 1
+								else
+									lb_ok2 = false
+								end if
+							loop
+						end if
+					else
+						ll_lastfound = 0
+						lb_ok = false
+					end if
+				loop
+			end if
+		next
+		if ll_updcount > 0 then
+			if lds_templateitems.update() > 0 then
+				SQL DELETE SaleTemplateDetail WHERE SaleTemplateCode =:ll_code AND ( Marked ='N' OR ( LooseQty + BonusQty ) <= 0 ) USING it_mytrans;
+				if it_mytrans.sqlcode = 0 then
+					SQL commit USING it_mytrans;
+					messagebox("Sales Template", "Sale Template Successfully adjusted w.r.t. stock", information!)
+				else
+					SQL rollback USING it_mytrans;
+					messagebox("Sales Template", "Sale Template adjustment w.r.t. stock is not done successfully", stopsign!)
+				end if
+			else
+				SQL rollback USING it_mytrans;
+				messagebox("Sales Template", "Sale Template adjustment w.r.t. stock is not done successfully", stopsign!)
+			end if
+		end if
+	end if
+	setpointer(arrow!)
+	return 0
+
+// w_saletemplate.wf_adjust_template_wrt_saleestimates() returns long
+	long ll_code
+	string ls_grouping
+	s_arguements lstr_arg
+	if this.tab_retrieve.selectedtab = 1 then
+		return 0
+	end if
+	if this.id_list.rowcount() > 0 and this.id_list.getrow() > 0 then
+		ll_code = this.id_list.object.code[this.id_list.getrow()]
+	end if
+	if ll_code <= 0 or isnull(ll_code) then
+		return 0
+	end if
+	open(w_selection_manf_cat_class_packing)
+	ls_grouping = message.stringparm
+	lstr_arg.l_code1 = ll_code
+	lstr_arg.s_name1 = ls_grouping
+	if ls_grouping = "" or isnull(ls_grouping) then
+		return 0
+	end if
+	openwithparm(w_saletemplate_saleestimates, lstr_arg)
+	return 0
+
+// w_saletemplate.create() returns 0
+	integer icurrent
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_saletemplatemenu" then
+		this.menuid = create m_saletemplatemenu
+	end if
+	this.dw_analyzerprint = create dw_analyzerprint
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_analyzerprint
+
+// w_saletemplate.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_analyzerprint
+
+// w_saletemplate.ue_save() returns 0
+	long ll_mastercurrrow
+	long ll_invid
+	long ll_detailrows
+	integer li_counter
+	integer ll_salesmancode
+	boolean lb_commitflag
+	dwitemstatus lds_rowstatus
+	wf_deleteemptydetailrows()
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	setpointer(hourglass!)
+	ll_mastercurrrow = this.id_master.getrow()
+	ll_invid = this.id_master.object.code[ll_mastercurrrow]
+	if isnull(ll_invid) then
+		f_newtableid("saletemplateheader", ll_invid)
+		this.id_master.object.code[ll_mastercurrrow] = ll_invid
+	end if
+	ll_detailrows = this.id_detail.rowcount()
+	li_counter = 1
+	do while li_counter <= ll_detailrows and lb_commitflag = true
+		lds_rowstatus = this.id_detail.getitemstatus(li_counter, 0, primary!)
+		if lds_rowstatus = newmodified! then
+			this.id_detail.setitem(li_counter, "code", ll_invid)
+		end if
+		li_counter = li_counter + 1
+	loop
+	call super::ue_save
+	setpointer(arrow!)
+
+// w_saletemplate.ue_detail() returns 0
+	long ll_code
+	call super::ue_detail
+	ll_code = this.id_dwcontrol.borderstyle.code[this.il_selectedrow]
+	if wf_isinvoiceinuse(ll_code) = true then
+		messagebox("Template Validation", "Sale Template already in use by some other user.~r~nKindly try again after sometime or open some other template.")
+		this.tab_retrieve.selecttab(2)
+		return
+	end if
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_delete.enabled = true
+	this.im_menu.m_file.m_first.enabled = true
+	this.im_menu.m_file.m_next.enabled = true
+	this.im_menu.m_file.m_last.enabled = true
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_menu.m_file.m_previous.enabled = true
+	this.im_menu.m_item.m_newitem.enabled = true
+	this.im_menu.m_item.m_deleteitem.enabled = true
+	wf_grandtotal()
+
+// w_saletemplate.ue_newitem() returns 0
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	if f_stringpreferences("itemcode") = "Y" then
+		this.id_detail.setcolumn("fullcode")
+	else
+		this.id_detail.setcolumn("itemname")
+	end if
+	this.id_footer.setitem(this.id_footer.getrow(), "stock", 0)
+	this.id_footer.setitem(this.id_footer.getrow(), "retailprice", 0)
+	this.id_footer.setitem(this.id_footer.getrow(), "rpp", 0)
+	this.id_footer.setitem(this.id_footer.getrow(), "purprice", 0)
+	this.id_footer.setitem(this.id_footer.getrow(), "avgprice", 0)
+	this.id_footer.setitem(this.id_footer.getrow(), "itemtotalval", "")
+	this.id_footer.object.t_purdiscper.text = ""
+	this.id_footer.setitem(this.id_footer.getrow(), "totalstock", 0)
+	call super::ue_newitem
+	if this.id_detail.getrow() > 0 and this.id_detail.getrow() - 1 > 0 then
+		this.id_detail.object.saleinvcode[this.id_detail.getrow()] = this.id_detail.object.saleinvcode[this.id_detail.getrow() - 1]
+		this.id_detail.object.saledate[this.id_detail.getrow()] = this.id_detail.object.saledate[this.id_detail.getrow() - 1]
+		this.id_detail.object.custcode[this.id_detail.getrow()] = this.id_detail.object.custcode[this.id_detail.getrow() - 1]
+	end if
+
+// w_saletemplate.ue_postopen() returns 0
+	boolean lb_found
+	integer li_rtncode
+	long ll_counter
+	long ll_found
+	long ll_groupcode
+	m_saletemplatemenu lm_menu
+	datastore lds_headers
+	datawindowchild ldc_headerno
+	call super::ue_postopen
+	lm_menu = this.menuid
+	gd_itemsinfo.sharedata(this.id_itemslist)
+	lds_headers = create datastore
+	lds_headers.dataobject = "d_groupallowedmoduleheader"
+	lds_headers.settransobject(sqlca)
+	for ll_counter = 1 to gds_securitywindow.rowcount()
+		if gds_securitywindow.object.rightcode[ll_counter] = 558 then
+			lb_found = true
+		end if
+	next
+	if lb_found then
+		lm_menu.m_file.m_generate.visible = true
+		lm_menu.m_file.m_generate.enabled = true
+	else
+		lm_menu.m_file.m_generate.visible = false
+		lm_menu.m_file.m_generate.enabled = false
+	end if
+	if f_stringpreferences("itemcode") = "N" then
+		this.id_detail.object.fullcode.visible = false
+	end if
+	if f_rightexists(5150) then
+		lm_menu.m_file.m_importsalesdata.visible = true
+		lm_menu.m_file.m_importsalesdata.enabled = true
+	else
+		lm_menu.m_file.m_importsalesdata.visible = false
+		lm_menu.m_file.m_importsalesdata.enabled = false
+		this.id_detail.object.saleinvcode.visible = false
+		this.id_detail.object.saledate.visible = false
+		this.id_detail.object.custcode.visible = false
+		this.id_detail.object.marked.visible = false
+	end if
+	if f_rightexists(5151) then
+		lm_menu.m_file.m_launchtemplateanalyzer.visible = true
+		lm_menu.m_file.m_launchtemplateanalyzer.enabled = true
+	else
+		lm_menu.m_file.m_launchtemplateanalyzer.visible = false
+		lm_menu.m_file.m_launchtemplateanalyzer.enabled = false
+	end if
+	if f_rightexists(5152) then
+		lm_menu.m_file.m_launchtemplatemanipulator.visible = true
+		lm_menu.m_file.m_launchtemplatemanipulator.enabled = true
+	else
+		lm_menu.m_file.m_launchtemplatemanipulator.visible = false
+		lm_menu.m_file.m_launchtemplatemanipulator.enabled = false
+	end if
+	if f_rightexists(5153) then
+		lm_menu.m_file.m_generatesalesfrommarkeditems.visible = true
+		lm_menu.m_file.m_generatesalesfrommarkeditems.enabled = true
+	else
+		lm_menu.m_file.m_generatesalesfrommarkeditems.visible = false
+		lm_menu.m_file.m_generatesalesfrommarkeditems.enabled = false
+	end if
+	if f_rightexists(5159) then
+		lm_menu.m_file.m_autoadjusttemplatewrtstock.visible = true
+		lm_menu.m_file.m_autoadjusttemplatewrtstock.enabled = true
+	end if
+	if f_rightexists(5160) then
+		lm_menu.m_file.m_adjusttemplatewrtsalesestimates.visible = true
+		lm_menu.m_file.m_adjusttemplatewrtsalesestimates.enabled = true
+	end if
+	ll_groupcode = f_getgroupcode(gl_usercode)
+	li_rtncode = lds_headers.retrieve(ll_groupcode, 1)
+	if li_rtncode <= 0 then
+		messagebox("Problem", "Not Enough Header Rights to Make Sales")
+		close(this)
+		return
+	end if
+	this.id_master.getchild("headerno", ldc_headerno)
+	for ll_counter = 1 to lds_headers.rowcount()
+		ldc_headerno.insertrow(0)
+		ldc_headerno.setitem(ll_counter, "code", lds_headers.getitemnumber(ll_counter, "headercode"))
+		ldc_headerno.setitem(ll_counter, "name", "")
+		ll_found = 0
+		ll_found = gds_reoprtheaderinfo.find("headerno=" + string(lds_headers.getitemnumber(ll_counter, "headercode")), 1, gds_reoprtheaderinfo.rowcount())
+		if ll_found > 0 then
+			if isnull(gds_reoprtheaderinfo.getitemstring(ll_found, "Remarks")) then
+				ldc_headerno.setitem(ll_counter, "headeralias", trim(string(gds_reoprtheaderinfo.getitemnumber(ll_found, "headerno"))))
+			else
+				ldc_headerno.setitem(ll_counter, "headeralias", trim(gds_reoprtheaderinfo.getitemstring(ll_found, "Remarks")) + " (" + trim(string(gds_reoprtheaderinfo.getitemnumber(ll_found, "headerno"))) + ")")
+			end if
+		end if
+	next
+	this.id_master.object.headerno.initial = string(lds_headers.getitemnumber(1, "headercode"))
+	this.id_master.setitem(1, "headerno", this.id_master.object.headerno.initial)
+	this.id_itemslist.object.t_stock.visible = false
+	this.id_itemslist.object.stock.visible = false
+	this.id_itemslist.object.t_sstock.visible = true
+	this.id_itemslist.object.sstock.visible = true
+	this.id_itemslist.object.t_pstock.visible = false
+	this.id_itemslist.object.pstock.visible = false
+	if f_stringpreferences("showitemalertinitemlist") = "N" then
+		this.id_itemslist.object.itemalertcode.visible = false
+	end if
+	if f_stringpreferences("stock") = "N" then
+		this.id_itemslist.object.sstock.visible = false
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 587", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.id_itemslist.object.purprice.visible = true
+	else
+		this.id_itemslist.object.purprice.visible = false
+	end if
+	this.id_footer.object.rpp.visible = true
+	this.id_footer.object.t_rpp.visible = true
+	this.id_footer.object.avgprice.visible = true
+	this.id_footer.object.purprice.visible = true
+	this.id_footer.object.retailprice.visible = true
+	if f_stringpreferences("itemunittax") = "N" then
+		this.id_detail.object.unitsalestax.visible = false
+		this.id_detail.object.taxperunit_t.visible = false
+		this.id_detail.object.c_sumtaxval.visible = false
+		this.id_detail.object.c_taxval.visible = false
+		this.id_detail.object.taxval_t.visible = false
+	end if
+	if f_stringpreferences("itemgstperc") = "N" then
+		this.id_detail.object.gstperc.visible = false
+		this.id_detail.object.gstperc_t.visible = false
+		this.id_detail.object.c_sumgstval.visible = false
+		this.id_detail.object.c_gstval.visible = false
+		this.id_detail.object.c_gstval_t.visible = false
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 683", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		lm_menu.m_file.m_updatesalepriceinbasicdata.visible = true
+	else
+		lm_menu.m_file.m_updatesalepriceinbasicdata.visible = false
+	end if
+	f_setcolumnstyle(this.id_detail, "Qty")
+
+// w_saletemplate.ue_print() returns 0
+	integer li_option
+	long ll_custcode
+	long ll_row
+	long ll_printretcode
+	long ll_invcode
+	string ls_custname
+	boolean lb_listtab
+	s_datastore lstr
+	call super::ue_print
+	if this.tab_retrieve.selectedtab = 2 then
+		lb_listtab = true
+	end if
+	if this.im_menu.m_file.m_save.enabled = true and lb_listtab = false then
+		triggerevent("ue_save")
+		if wf_commitform() = false then
+			return
+		end if
+		return
+	end if
+	if lb_listtab then
+		if isnull(this.id_list.getrow()) or this.id_list.getrow() <= 0 then
+			messagebox("Rows Validation", "Kindly select any row from the list view.")
+			return
+		end if
+		ll_invcode = this.id_list.getitemnumber(this.id_list.getrow(), "code")
+		if isnull(ll_invcode) or ll_invcode <= 0 then
+			messagebox("Selection Validation", "Kindly select any row from the list view.")
+			return
+		end if
+	else
+		ll_invcode = this.id_master.getitemnumber(1, "code")
+	end if
+	this.id_print = this.tab_retrieve.tabpage_detail.dw_print
+	if gs_company = "ALHAQCORP" then
+		this.id_print.dataobject = "d_saletemplate_report_alhaqcorp"
+	else
+		this.id_print.dataobject = "d_saletemplate_report"
+	end if
+	this.id_print.settransobject(this.it_transobject)
+	this.id_print.retrieve(ll_invcode)
+	if lb_listtab then
+		lstr.dw = this.id_print
+		lstr.s_name1 = this.id_print.dataobject
+		openwithparm(w_preview_invoices, lstr)
+		lstr = message.powerobjectparm
+		if lstr.i_closemode = -1 then
+			return
+		end if
+		return
+	end if
+	if f_stringpreferences("PromptBeforePrinting") = "Y" and printsetup() < 0 then
+		messagebox("Printer", "Printing Error")
+		this.id_print.printcancel()
+	end if
+	if this.id_print.rowcount() > 0 then
+		ll_printretcode = this.id_print.print()
+		if ll_printretcode < 0 then
+			messagebox("Printing", "Can not Print", information!)
+		end if
+		if this.im_menu.m_file.m_save.enabled = true then
+			postevent("ue_new")
+		end if
+		return
+	end if
+	messagebox("Printing Error.", "Can not Print,~r~nNo rows are retrieved", information!)
+
+// w_saletemplate.ue_list() returns 0
+	call super::ue_list
+	SQL rollback USING this.it_transobject;
+	this.im_menu.m_file.m_print.enabled = false
+	post event ue_enableprint()
+
+// w_saletemplate.ue_newform() returns 0
+	integer rtncode
+	integer li_defaultgcode
+	integer li_ismodifysaleprice
+	integer li_ismodifyitemdiscperc
+	integer li_ismodifyitemflatdisc
+	integer li_modifysalestax
+	integer li_modifybonusqty
+	integer li_viewstock
+	integer li_viewtotalstock
+	long li_fetched_code
+	long row
+	long ll_manfcode
+	long ll_counter
+	long ll_custcode
+	double ld_invdiscperc
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	m_saletemplatemenu lm_menu
+	call super::ue_newform
+	lm_menu = this.menuid
+	this.id_footer.reset()
+	this.id_footer.insertrow(0)
+	this.id_footer.scrolltorow(0)
+	this.im_menu.m_file.m_print.enabled = true
+	this.id_detail.setredraw(false)
+	this.id_detail.setredraw(true)
+	li_ismodifysaleprice = 1
+	li_ismodifyitemdiscperc = 1
+	li_ismodifyitemflatdisc = 1
+	li_modifysalestax = 1
+	li_modifybonusqty = 1
+	li_viewstock = 0
+	li_viewtotalstock = 0
+	for ll_counter = 1 to gds_securitywindow.rowcount()
+		if gds_securitywindow.object.rightcode[ll_counter] = 511 then
+			li_ismodifysaleprice = 0
+		end if
+		if gds_securitywindow.object.rightcode[ll_counter] = 516 then
+			li_ismodifyitemdiscperc = 0
+		end if
+		if gds_securitywindow.object.rightcode[ll_counter] = 517 then
+			li_ismodifyitemflatdisc = 0
+		end if
+		if gds_securitywindow.object.rightcode[ll_counter] = 520 then
+			li_modifysalestax = 0
+		end if
+		if gds_securitywindow.object.rightcode[ll_counter] = 596 then
+			li_modifybonusqty = 0
+		end if
+		if gds_securitywindow.object.rightcode[ll_counter] = 535 then
+			li_viewstock = 1
+		end if
+		if gds_securitywindow.object.rightcode[ll_counter] = 536 then
+			li_viewtotalstock = 1
+		end if
+	next
+	this.id_footer.object.t_totalstock.visible = li_viewtotalstock
+	this.id_footer.object.totalstock.visible = li_viewtotalstock
+	this.id_detail.object.saleprice.protect = li_ismodifysaleprice
+	this.id_master.object.headerno.protect = 0
+	this.id_detail.object.discperc.protect = li_ismodifyitemdiscperc
+	this.id_detail.object.itemflatdisc.protect = li_ismodifyitemflatdisc
+	this.id_detail.object.unitsalestax.protect = li_modifysalestax
+	this.id_detail.object.gstperc.protect = li_modifysalestax
+	if not wf_validatedate() then
+		close(this)
+		return
+	end if
+	this.id_master.setfocus()

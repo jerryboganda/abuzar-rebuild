@@ -1,0 +1,332 @@
+// window w_datatransfer (datatransferapp)  ancestor: window
+
+// w_datatransfer.ue_close(integer ai_status) returns 0
+	SQL stop USING this.it_datatransobject;
+	destroy this.it_datatransobject
+	close(this)
+
+// w_datatransfer.wf_disconnect() returns 0
+	SQL stop USING this.it_datatransobject;
+	destroy this.it_datatransobject
+
+// w_datatransfer.wf_openreport() returns 0
+	openwithparm(w_logdetail, this.istr_logdetail)
+
+// w_datatransfer.wf_connect() returns integer
+	this.it_datatransobject = create u_transaction
+	SQL start USING this.it_datatransobject;
+	return this.it_datatransobject.sqlcode
+
+// w_datatransfer.create() returns 0
+	this.rb_saleorder = create rb_saleorder
+	this.rb_sales = create rb_sales
+	this.cbx_accvoucher = create cbx_accvoucher
+	this.hpb_accvoucher = create hpb_accvoucher
+	this.hpb_sale = create hpb_sale
+	this.hpb_trans = create hpb_trans
+	this.hpb_purchase = create hpb_purchase
+	this.hpb_basic = create hpb_basic
+	this.cbx_purchase = create cbx_purchase
+	this.cbx_trans = create cbx_trans
+	this.cb_cancel = create cb_cancel
+	this.cb_start = create cb_start
+	this.gb_basic = create gb_basic
+	this.gb_purchase = create gb_purchase
+	this.gb_trans = create gb_trans
+	this.gb_sale = create gb_sale
+	this.gb_accvoucher = create gb_accvoucher
+	this.gb_sales = create gb_sales
+	this.gb_options = create gb_options
+	this.control = {this.rb_saleorder, this.rb_sales, this.cbx_accvoucher, this.hpb_accvoucher, this.hpb_sale, this.hpb_trans, this.hpb_purchase, this.hpb_basic, this.cbx_purchase, this.cbx_trans, this.cb_cancel, this.cb_start, this.gb_basic, this.gb_purchase, this.gb_trans, this.gb_sale, this.gb_accvoucher, this.gb_sales, this.gb_options}
+
+// w_datatransfer.destroy() returns 0
+	destroy this.rb_saleorder
+	destroy this.rb_sales
+	destroy this.cbx_accvoucher
+	destroy this.hpb_accvoucher
+	destroy this.hpb_sale
+	destroy this.hpb_trans
+	destroy this.hpb_purchase
+	destroy this.hpb_basic
+	destroy this.cbx_purchase
+	destroy this.cbx_trans
+	destroy this.cb_cancel
+	destroy this.cb_start
+	destroy this.gb_basic
+	destroy this.gb_purchase
+	destroy this.gb_trans
+	destroy this.gb_sale
+	destroy this.gb_accvoucher
+	destroy this.gb_sales
+	destroy this.gb_options
+
+// w_datatransfer.open() returns long
+	long ll_appversion
+	long ll_sequenceid
+	long ll_dbstatus
+	long ll_parentappversion
+	long ll_parentsequenceid
+	long ll_parentdbstatus
+	long ll_retcode
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	datastore lds_sequence
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	lds_sequence = create datastore
+	lds_sequence.dataobject = "d_sequence"
+	lds_sequence.settransobject(sqlca)
+	lds_sequence.retrieve()
+	ll_appversion = lds_sequence.getitemnumber(1, "AppVersion")
+	ll_sequenceid = lds_sequence.getitemnumber(1, "SequenceId")
+	ll_dbstatus = lds_sequence.getitemnumber(1, "DBStatus")
+	if ll_appversion < this.il_minappversion or ll_sequenceid < this.il_minsequenceid or ll_dbstatus <> this.il_mindbstatus then
+		messagebox("Version Problem", "Please Update your Application Version")
+		post event ue_close(0)
+		return ::message.returnvalue
+	end if
+	ll_retcode = wf_connect()
+	if ll_retcode <> 0 then
+		messagebox("Connection Problem", "Problem Connecting Parent Server Database, Details are:-~r~n" + this.it_datatransobject.sqlerrtext)
+		post event ue_close(0)
+		return ::message.returnvalue
+	end if
+	f_getappversion(gs_parentlinkserver, gs_parentdbname, gs_parentowner, ll_parentsequenceid, ll_parentappversion, ll_parentdbstatus)
+	if ll_parentsequenceid > 0 and ll_parentappversion > 0 then
+		this.il_parentstatus = 1
+		if ll_parentappversion <> ll_appversion or ll_parentsequenceid <> ll_sequenceid or ll_parentdbstatus <> ll_dbstatus then
+			messagebox("Version Problem", "Both Parent and Child Server Databases Must have same Application Version", stopsign!)
+			post event ue_close(0)
+			return ::message.returnvalue
+		end if
+	else
+		this.il_parentstatus = 0
+	end if
+	if ll_parentappversion < this.il_minappversion or ll_parentsequenceid < this.il_minsequenceid or ll_parentdbstatus <> this.il_mindbstatus then
+		messagebox("Version Problem", "Application Version On Parent Server Database Needs to be updated")
+		post event ue_close(0)
+		return ::message.returnvalue
+	end if
+	if ll_parentappversion <> ll_appversion or ll_parentsequenceid <> ll_sequenceid or ll_parentdbstatus <> ll_dbstatus then
+		messagebox("Version Problem", "Both Parent and Child Server Databases Must have same Application Version")
+		post event ue_close(0)
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// w_datatransfer.close() returns long
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(0)
+	return ::message.returnvalue
+
+// cb_start.clicked() returns long
+	boolean lb_ok
+	string ls_errtext
+	long ll_translogid
+	long ll_purlogid
+	long ll_salelogid
+	long ll_del
+	long ll_upd
+	long ll_ins
+	long ll_pur
+	long ll_tran
+	long ll_sal
+	long ll_accvouchers
+	long ll_accvoucher_logid
+	long ll_startsocode
+	long ll_endsocode
+	setpointer(hourglass!)
+	SQL rollback USING parent.it_datatransobject;
+	parent.gb_basic.visible = true
+	parent.hpb_basic.visible = true
+	if lb_ok then
+		parent.hpb_basic.stepit()
+		ll_del = parent.it_datatransobject.transferbasicdata(gs_parentlinkserver, gs_parentdbname, gs_parentowner)
+		parent.hpb_basic.stepit()
+		if parent.it_datatransobject.sqlcode <> 0 then
+			ls_errtext = "Problem in Transfering Basic Data: ~r~n" + parent.it_datatransobject.sqlerrtext
+			SQL rollback USING parent.it_datatransobject;
+			messagebox("Basic Data Transfer", ls_errtext)
+			lb_ok = false
+		else
+			SQL commit USING parent.it_datatransobject;
+			parent.hpb_basic.stepit()
+		end if
+	end if
+	if parent.cbx_purchase.checked = true then
+		if lb_ok then
+			SQL rollback USING parent.it_datatransobject;
+			parent.it_datatransobject.droptemporarytables()
+			if parent.it_datatransobject.sqlcode <> 0 then
+				ls_errtext = "Problem Transfering Purchase Invoices: ~r~n" + parent.it_datatransobject.sqlerrtext
+				SQL rollback USING parent.it_datatransobject;
+				messagebox("Purchase Invoices Transfer", ls_errtext)
+				lb_ok = false
+			else
+				SQL commit USING parent.it_datatransobject;
+			end if
+		end if
+		if lb_ok then
+			parent.gb_purchase.visible = true
+			parent.hpb_purchase.visible = true
+			SQL rollback USING parent.it_datatransobject;
+			ll_pur = parent.it_datatransobject.transferpurchaseinvoices2(gs_parentlinkserver, gs_parentdbname, gs_parentowner, gl_usercode, ll_purlogid)
+			if parent.it_datatransobject.sqlcode <> 0 then
+				ls_errtext = "Problem Transfering Purchase Invoices: ~r~n" + parent.it_datatransobject.sqlerrtext
+				SQL rollback USING parent.it_datatransobject;
+				messagebox("Purchase Invoices Transfer", ls_errtext)
+			else
+				parent.hpb_purchase.stepit()
+				parent.hpb_purchase.stepit()
+				SQL commit USING parent.it_datatransobject;
+				parent.hpb_purchase.stepit()
+				messagebox("Purchase Invoices Transfer", "Data Transfer Process Completed for Purchase Invoices.")
+			end if
+		end if
+	end if
+	if parent.cbx_trans.checked = true then
+		if lb_ok then
+			SQL rollback USING parent.it_datatransobject;
+			parent.it_datatransobject.droptemporarytables()
+			if parent.it_datatransobject.sqlcode <> 0 then
+				ls_errtext = "Problem Transfering Inter-Godown Transfer Invoices: ~r~n" + parent.it_datatransobject.sqlerrtext
+				SQL rollback USING parent.it_datatransobject;
+				messagebox("Inter-Godown Transfer", ls_errtext)
+				lb_ok = false
+			else
+				SQL commit USING parent.it_datatransobject;
+			end if
+		end if
+		if lb_ok then
+			parent.gb_trans.visible = true
+			parent.hpb_trans.visible = true
+			SQL rollback USING parent.it_datatransobject;
+			ll_tran = parent.it_datatransobject.transferintergodowntransfers(gs_parentlinkserver, gs_parentdbname, gs_parentowner, gl_usercode, ll_translogid)
+			if parent.it_datatransobject.sqlcode <> 0 then
+				ls_errtext = "Problem Transfering Inter-Godown Transfer Invoices: ~r~n" + parent.it_datatransobject.sqlerrtext
+				SQL rollback USING parent.it_datatransobject;
+				messagebox("Inter-Godown Transfer", ls_errtext)
+			else
+				parent.hpb_trans.stepit()
+				parent.hpb_trans.stepit()
+				SQL commit USING parent.it_datatransobject;
+				parent.hpb_trans.stepit()
+				messagebox("Inter-Godown Transfer", "Data Transfer Process Completed for Inter-Godown Transfers.")
+			end if
+		end if
+	end if
+	if parent.rb_sales.checked = true then
+		if lb_ok then
+			SQL rollback USING parent.it_datatransobject;
+			parent.it_datatransobject.droptemporarytables()
+			if parent.it_datatransobject.sqlcode <> 0 then
+				ls_errtext = "Problem Transfering Sales Invoices: ~r~n" + parent.it_datatransobject.sqlerrtext
+				SQL rollback USING parent.it_datatransobject;
+				messagebox("Sales Invoices Transfer", ls_errtext)
+				lb_ok = false
+			else
+				SQL commit USING parent.it_datatransobject;
+			end if
+		end if
+		if lb_ok then
+			parent.gb_sale.visible = true
+			parent.hpb_sale.visible = true
+			SQL rollback USING parent.it_datatransobject;
+			ll_sal = parent.it_datatransobject.transfersaleinvoices(gs_parentlinkserver, gs_parentdbname, gs_parentowner, gl_usercode, ll_salelogid)
+			if parent.it_datatransobject.sqlcode <> 0 then
+				ls_errtext = "Problem Transfering Sales Invoices: ~r~n" + parent.it_datatransobject.sqlerrtext
+				SQL rollback USING parent.it_datatransobject;
+				messagebox("Sales Invoices Transfer", ls_errtext)
+			else
+				parent.hpb_sale.stepit()
+				parent.hpb_sale.stepit()
+				SQL commit USING parent.it_datatransobject;
+				parent.hpb_sale.stepit()
+				messagebox("Sales Invoices Transfer", "Data Transfer Process Completed for Sales Invoices.")
+			end if
+		end if
+	end if
+	if parent.rb_saleorder.checked = true then
+		if lb_ok then
+			SQL rollback USING parent.it_datatransobject;
+			parent.it_datatransobject.droptemporarytables()
+			if parent.it_datatransobject.sqlcode <> 0 then
+				ls_errtext = "Problem Transfering Sales Invoices: ~r~n" + parent.it_datatransobject.sqlerrtext
+				SQL rollback USING parent.it_datatransobject;
+				messagebox("Sales Invoices Transfer", ls_errtext)
+				lb_ok = false
+			else
+				SQL commit USING parent.it_datatransobject;
+			end if
+		end if
+		if lb_ok then
+			parent.gb_sale.visible = true
+			parent.hpb_sale.visible = true
+			SQL rollback USING parent.it_datatransobject;
+			ll_sal = parent.it_datatransobject.transfersaleintosaleorders(gs_parentlinkserver, gs_parentdbname, gs_parentowner, gl_usercode, ll_startsocode, ll_endsocode)
+			if parent.it_datatransobject.sqlcode <> 0 then
+				ls_errtext = "Problem Transfering Sales Invoices into Sale Orders: ~r~n" + parent.it_datatransobject.sqlerrtext
+				SQL rollback USING parent.it_datatransobject;
+				messagebox("Sales Invoices Transfer into Sale Order", ls_errtext)
+			else
+				parent.hpb_sale.stepit()
+				parent.hpb_sale.stepit()
+				SQL commit USING parent.it_datatransobject;
+				parent.hpb_sale.stepit()
+				messagebox("Sales Invoices Transfer", "Data Transfer Process Completed for Sales Invoices into Sale Orders.")
+			end if
+		end if
+	end if
+	if parent.cbx_accvoucher.checked = true then
+		if lb_ok then
+			SQL rollback USING parent.it_datatransobject;
+			parent.it_datatransobject.droptemporarytables()
+			if parent.it_datatransobject.sqlcode <> 0 then
+				ls_errtext = "Problem Transfering Accounting Vouchers: ~r~n" + parent.it_datatransobject.sqlerrtext
+				SQL rollback USING parent.it_datatransobject;
+				messagebox("Accounting Vouchers Transfer Problem", ls_errtext)
+				lb_ok = false
+			else
+				SQL commit USING parent.it_datatransobject;
+			end if
+		end if
+		if lb_ok then
+			parent.gb_accvoucher.visible = true
+			parent.hpb_accvoucher.visible = true
+			SQL rollback USING parent.it_datatransobject;
+			ll_accvouchers = parent.it_datatransobject.transferaccountingvoucher(gs_parentlinkserver, gs_parentdbname, gs_parentowner, gl_usercode, ll_accvoucher_logid)
+			if parent.it_datatransobject.sqlcode <> 0 then
+				ls_errtext = "Problem Transfering Accounting Vouchers: ~r~n" + parent.it_datatransobject.sqlerrtext
+				SQL rollback USING parent.it_datatransobject;
+				messagebox("Accounting Vouchers Transfer", ls_errtext)
+			else
+				parent.hpb_accvoucher.stepit()
+				parent.hpb_accvoucher.stepit()
+				SQL commit USING parent.it_datatransobject;
+				parent.hpb_sale.stepit()
+				messagebox("Accounting Vouchers Transfer", "Data Transfer Process Completed for Accounting Vouchers.")
+			end if
+		end if
+	end if
+	parent.istr_logdetail.ta_transobj = parent.it_datatransobject
+	parent.istr_logdetail.la_longlist[1] = ll_purlogid
+	parent.istr_logdetail.la_longlist[2] = ll_translogid
+	parent.istr_logdetail.la_longlist[3] = ll_salelogid
+	parent.istr_logdetail.la_longlist[4] = ll_accvoucher_logid
+	openwithparm(w_logdetail, parent.istr_logdetail)
+	setpointer(arrow!)
+	parent.post event ue_close(1)
+	return ::message.returnvalue

@@ -1,0 +1,198 @@
+// window w_patient_first_contact (patientcomponents)  ancestor: window
+
+// w_patient_first_contact.ue_close(integer ai_status) returns 0
+	long ll_row
+	string ls_null
+	setnull(ls_null)
+	this.dw_control.accepttext()
+	if ai_status <= 0 then
+		this.il_retvalue = ai_status
+	end if
+	SQL stop USING this.it_transobject;
+	closewithreturn(this, this.il_retvalue)
+
+// w_patient_first_contact.wf_get_patient_info(long al_code) returns long
+	long ll_patientcode
+	long ll_admissioncode
+	long ll_doctcode
+	string ls_regno
+	SQL SELECT PatientCode , RegNo , DoctCode , AdmissionCode =( SELECT MAX ( PA.AdmissionCode ) FROM PatientAdmission PA WHERE PA.PatientCode =:al_code AND Discharged ='N' ) INTO :ll_patientcode, :ls_regno, :ll_doctcode, :ll_admissioncode FROM Patient WHERE PatientCode =:al_code USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		this.dw_control.object.patientcode[1] = ll_patientcode
+		this.dw_control.object.regno[1] = ls_regno
+		this.dw_control.object.doctcode[1] = ll_doctcode
+		this.dw_control.object.admissioncode[1] = ll_admissioncode
+		return 0
+	end if
+	return -1
+
+// w_patient_first_contact.wf_print(long al_patientcode, long al_admissioncode) returns 0
+	long ll_rowid
+	s_datastore lstr
+	if isnull(al_patientcode) or al_patientcode <= 0 then
+		messagebox("Patient Validation", "Kindly select some valid patient.")
+		return
+	end if
+	wf_setprintout()
+	if al_admissioncode > 0 then
+		SQL SELECT MAX ( RowID ) INTO :ll_rowid FROM PatientFirstContact WHERE PatientCode =:al_patientcode AND AdmissionCode =:al_admissioncode USING this.it_transobject;
+	else
+		SQL SELECT MAX ( RowID ) INTO :ll_rowid FROM PatientFirstContact WHERE PatientCode =:al_patientcode USING this.it_transobject;
+	end if
+	if ll_rowid > 0 and this.it_transobject.sqlcode = 0 then
+		this.dw_print.settransobject(this.it_transobject)
+		this.dw_print.retrieve(ll_rowid)
+		lstr.dw = this.dw_print
+		lstr.s_name1 = this.dw_print.dataobject
+		openwithparm(w_preview_invoices, lstr)
+		lstr = message.powerobjectparm
+		if lstr.i_closemode = -1 then
+			return
+		end if
+		if f_stringpreferences("PromptBeforePrinting") = "Y" and printsetup() < 0 then
+			messagebox("Printer", "Printing Error")
+			this.dw_print.printcancel()
+		end if
+		if this.dw_print.rowcount() > 0 then
+			if this.dw_print.print() < 0 then
+				messagebox("Printing", "Can not Print Invoice", information!)
+			end if
+			return
+		end if
+		messagebox("Printing Error", "Can not Print Data,~r~nNo rows are retrieved", information!)
+	end if
+
+// w_patient_first_contact.wf_setprintout() returns 0
+	if gs_company = "PIC2014" then
+		this.dw_print.dataobject = "d_patient_first_contact_print"
+	else
+		this.dw_print.dataobject = "d_patient_first_contact_print"
+	end if
+
+// w_patient_first_contact.create() returns 0
+	this.dw_print = create dw_print
+	this.cb_cancel = create cb_cancel
+	this.dw_control = create dw_control
+	this.cb_ok = create cb_ok
+	this.control = {this.dw_print, this.cb_cancel, this.dw_control, this.cb_ok}
+
+// w_patient_first_contact.destroy() returns 0
+	destroy this.dw_print
+	destroy this.cb_cancel
+	destroy this.dw_control
+	destroy this.cb_ok
+
+// w_patient_first_contact.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	long ll_code
+	this.it_transobject = create u_transaction
+	SQL start USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		close(this)
+	end if
+	ll_code = message.doubleparm
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	this.dw_control.settransobject(this.it_transobject)
+	this.dw_control.insertrow(0)
+	this.dw_control.setrow(1)
+	this.dw_control.scrolltorow(1)
+	wf_get_patient_info(ll_code)
+	this.dw_control.object.usercode[1] = gl_usercode
+	this.dw_control.object.attendingdoctcode[1] = f_get_user_doctor(gl_usercode)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(0)
+	return ::message.returnvalue
+
+// dw_control.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_control.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_control.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	long ll_code
+	long ll_count
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keyf5! and this.object.patientcode[1] > 0 then
+		ll_code = this.object.patientcode[1]
+		SQL SELECT ISNULL ( Count ( RowID ) , 0 ) INTO :ll_count FROM PatientFirstContact WHERE PatientCode =:ll_code USING sqlca;
+		if ll_count > 0 and sqlca.sqlcode = 0 then
+			openwithparm(w_patientfirstcontacthistory, ll_code)
+		end if
+	end if
+	return ::message.returnvalue
+
+// cb_ok.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	string ls_errtext
+	long ll_code
+	long ll_optioncode
+	long ll_admissioncode
+	integer li_doctcode
+	ll_code = parent.dw_control.object.patientcode[1]
+	if parent.dw_control.accepttext() < 1 then
+		return ::message.returnvalue
+	end if
+	li_doctcode = parent.dw_control.object.doctcode[1]
+	ll_optioncode = parent.dw_control.object.optioncode[1]
+	parent.il_retvalue = ll_optioncode
+	if ll_optioncode = 1 then
+		parent.post event ue_close(1)
+		return ::message.returnvalue
+	end if
+	if ll_optioncode = 3 then
+		parent.it_transobject.admit_patient_emergency(ll_code, gl_usercode, li_doctcode, ll_admissioncode)
+		if parent.it_transobject.sqlcode = 0 then
+			parent.dw_control.object.admissioncode[1] = ll_admissioncode
+		else
+			ls_errtext = parent.it_transobject.sqlerrtext
+			SQL rollback USING parent.it_transobject;
+			messagebox("Patient Admission", "Unable to admit patient.~r~nDetails are:- " + ls_errtext, stopsign!)
+			return ::message.returnvalue
+		end if
+		return
+	end if
+	if parent.dw_control.update() = 1 then
+		SQL commit USING parent.it_transobject;
+		parent.post event ue_close(1)
+	else
+		ls_errtext = parent.it_transobject.sqlerrtext
+		SQL rollback USING parent.it_transobject;
+		messagebox("Patient Admission", "Unable to admit patient.~r~nDetails are:- " + ls_errtext, stopsign!)
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue

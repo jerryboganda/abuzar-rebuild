@@ -1,0 +1,102 @@
+// window w_possiblebatchexpiry (salereturncomponents)  ancestor: window
+
+// w_possiblebatchexpiry.ue_close(integer ai_status) returns 0
+	this.istr_possiblebatchexpiry.i_status = ai_status
+	closewithreturn(this, this.istr_possiblebatchexpiry)
+
+// w_possiblebatchexpiry.create() returns 0
+	this.dw_batchexpiry = create dw_batchexpiry
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.control = {this.dw_batchexpiry, this.cb_cancel, this.cb_ok}
+
+// w_possiblebatchexpiry.destroy() returns 0
+	destroy this.dw_batchexpiry
+	destroy this.cb_cancel
+	destroy this.cb_ok
+
+// w_possiblebatchexpiry.open() returns long
+	long ll_width
+	long ll_height
+	long ll_rows
+	datawindowchild ldc_batchexpiry
+	environment env
+	this.istr_possiblebatchexpiry = message.powerobjectparm
+	setredraw(false)
+	this.dw_batchexpiry.settransobject(sqlca)
+	ll_rows = this.dw_batchexpiry.retrieve(this.istr_possiblebatchexpiry.l_custcode, this.istr_possiblebatchexpiry.l_icode)
+	if getenvironment(env) <> 1 then
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	this.x = int((ll_width - this.width) / 2.0)
+	this.y = int((ll_height - this.height) / 2.0)
+	setredraw(true)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// dw_batchexpiry.keypressed(keycode key, unsignedlong keyflags) returns long
+	long ll_row
+	ll_row = getselectedrow(0)
+	if key = keyuparrow! then
+		if getrow() = rowcount() then
+			selectrow(ll_row, false)
+			scrolltorow(rowcount() - 1)
+			selectrow(rowcount() - 1, true)
+		else
+			selectrow(ll_row, false)
+			selectrow(getrow(), true)
+		end if
+	elseif key = keydownarrow! then
+		if getrow() = 1 and ll_row = 1 then
+			selectrow(ll_row, false)
+			scrolltorow(2)
+			selectrow(2, true)
+		else
+			selectrow(ll_row, false)
+			selectrow(getrow(), true)
+		end if
+	elseif key = keypagedown! then
+		selectrow(ll_row, false)
+		selectrow(getrow(), true)
+	elseif key = keypageup! then
+		selectrow(ll_row, false)
+		selectrow(getrow(), true)
+	elseif key = keyhome! then
+		selectrow(ll_row, false)
+		selectrow(getrow(), true)
+	elseif key = keyend! then
+		selectrow(ll_row, false)
+		selectrow(getrow(), true)
+	end if
+	return ::message.returnvalue
+
+// dw_batchexpiry.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	selectrow(getselectedrow(0), false)
+	scrolltorow(row)
+	selectrow(row, true)
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(0)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	long ll_row
+	datetime ldt_dt
+	ll_row = parent.dw_batchexpiry.getselectedrow(0)
+	if ll_row > 0 then
+		parent.istr_possiblebatchexpiry.s_batch = parent.dw_batchexpiry.getitemstring(ll_row, "batch")
+		ldt_dt = parent.dw_batchexpiry.getitemdatetime(ll_row, "expiry")
+		parent.istr_possiblebatchexpiry.d_expiry = date(ldt_dt)
+		parent.post event ue_close(1)
+	else
+		parent.post event ue_close(0)
+	end if
+	return ::message.returnvalue

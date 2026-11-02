@@ -1,0 +1,2070 @@
+// userobject n_dwr_field (dw2xls)  ancestor: nonvisualobject
+
+// n_dwr_field.of_getvalue(long al_row) returns any
+	choose case this.ipo_requestortype
+	case datawindow!
+		return of_getvalue_dw(al_row)
+	case datastore!
+		return of_getvalue_ds(al_row)
+	case datawindowchild!
+		return of_getvalue_dwc(al_row)
+	end choose
+
+// n_dwr_field.of_setformat() returns integer
+	integer li_ret
+	string ls_format
+	integer li_color_index
+	long ll_color
+	string ls_border_style
+	this.inv_format = this.inv_book.of_createformat()
+	if li_ret = 1 then
+		ls_format = of_descr_numformat()
+		if ls_format = "" then
+			ls_format = "[General]"
+		end if
+		ls_format = of_change_format(ls_format, this.is_coltype)
+		this.inv_format.setnumformat(this.inv_format.handle, ls_format)
+		this.inv_format.setfontname(this.inv_format.handle, of_descr_font_face())
+		this.inv_format.setfontsize(this.inv_format.handle, of_descr_font_height())
+		if of_descr_font_italic() then
+			this.inv_format.setfontitalic(this.inv_format.handle, 1)
+		end if
+		this.inv_format.setfontunderline(this.inv_format.handle, of_descr_font_underline())
+		this.inv_format.setfontweight(this.inv_format.handle, of_descr_font_weight2())
+		this.inv_format.sethalign(this.inv_format.handle, of_descr_alignment2())
+		this.inv_format.setvalign(this.inv_format.handle, 0)
+		if this.is_coltype = "s" then
+			this.inv_format.setwrap(this.inv_format.handle, 1)
+		end if
+		ll_color = of_descr_color2()
+		this.inv_format.setfgcolor(this.inv_format.handle, ll_color)
+		ll_color = of_descr_bg_color2()
+		this.inv_format.setbgcolor(this.inv_format.handle, ll_color)
+		this.inv_format.setfontcharset(this.inv_format.handle, of_descr_font_charset())
+		this.inv_format.setfontfamily(this.inv_format.handle, of_descr_font_family())
+		this.inv_format.setrotation(this.inv_format.handle, of_descr_font_escapement())
+	end if
+	if li_ret = 1 then
+		ls_border_style = of_describe(this.is_dwo_name + ".Border")
+		if isnumber(ls_border_style) and integer(ls_border_style) > 0 then
+			this.inv_format.setborderstyle(this.inv_format.handle, 1)
+		elseif integer(of_describe("Datawindow.Processing")) = 1 and this.inv_parm.ib_draw_dw_grid_lines then
+			this.inv_format.setborderstyle(this.inv_format.handle, 7)
+		end if
+		this.ib_custom_format = this.ib_color_expr or this.ib_bg_color_expr or this.ib_alignment_expr or this.ib_font_face_expr or this.ib_font_height_expr or this.ib_font_italic_expr or this.ib_font_underline_expr or this.ib_font_weight_expr or this.ib_format_expr or this.ib_font_escapement_expr
+		if not this.ib_custom_format then
+			this.il_format_ix = this.inv_book.of_addformat(this.inv_format)
+		end if
+	end if
+	return li_ret
+
+// n_dwr_field.of_get_x1() returns long
+	if this.il_cached_x1 = -1 then
+		return of_get_x1(1)
+	end if
+	return this.il_base_x + this.il_cached_x1
+
+// n_dwr_field.of_get_y1(long al_row) returns long
+	long ll_ret
+	al_row = al_row + this.ii_row_in_detail - 1
+	if al_row > this.il_dw_row_count then
+		return 0
+	end if
+	if this.is_expr_y1 = "" then
+		ll_ret = this.il_base_y + this.il_cached_y1
+	elseif this.is_expr_y1 = "-" then
+		this.il_cached_y1 = of_describe_expr(this.is_dwo_name + ".y", al_row, this.is_expr_y1) - this.il_subband_y
+		ll_ret = this.il_base_y + this.il_cached_y1
+	else
+		ll_ret = this.il_base_y + of_evaluate0(this.is_expr_y1, al_row) - this.il_subband_y
+	end if
+	return ll_ret
+
+// n_dwr_field.of_get_y2(long al_row) returns long
+	long ll_ret
+	al_row = al_row + this.ii_row_in_detail - 1
+	if al_row > this.il_dw_row_count then
+		return 0
+	end if
+	if this.is_expr_y2 = "" then
+		ll_ret = this.il_base_y + this.il_cached_y2
+	elseif this.is_expr_y2 = "-" then
+		ll_ret = of_get_y1(al_row) + of_get_height(al_row)
+		this.il_cached_y2 = ll_ret - this.il_base_y
+		if this.is_expr_y1 <> "" or this.is_expr_height <> "" then
+			this.is_expr_y2 = "*"
+		else
+			this.is_expr_y2 = ""
+		end if
+	else
+		ll_ret = of_get_y1(al_row) + of_get_height(al_row)
+	end if
+	return ll_ret
+
+// n_dwr_field.of_get_y1() returns long
+	if this.il_cached_y1 = -1000000000 then
+		return of_get_y1(1)
+	end if
+	return this.il_base_y + this.il_cached_y1
+
+// n_dwr_field.of_get_visible(long al_row) returns integer
+	integer li_ret
+	al_row = al_row + this.ii_row_in_detail - 1
+	if al_row <= this.il_dw_row_count then
+		li_ret = of_describe_expr(this.is_dwo_name + ".visible", al_row)
+	end if
+	return li_ret
+
+// n_dwr_field.of_get_y2() returns long
+	if this.il_cached_y2 = -1000000000 then
+		return of_get_y2(1)
+	end if
+	return this.il_base_y + this.il_cached_y2
+
+// n_dwr_field.of_get_item_coltype() returns string
+	string ls_coltype
+	long ll_pos
+	long ll_pos_dec
+	ls_coltype = trim(lower(of_describe(this.is_dwo_name + ".coltype")))
+	ll_pos = pos(ls_coltype, "(")
+	if ll_pos > 0 then
+		ll_pos_dec = pos(ls_coltype, ",", ll_pos)
+		if ll_pos_dec <= 0 then
+			ll_pos_dec = pos(ls_coltype, ")", ll_pos)
+		end if
+		this.ii_colsize = integer(mid(ls_coltype, ll_pos + 1, ll_pos_dec - ll_pos - 1))
+		ls_coltype = trim(left(ls_coltype, ll_pos - 1))
+	end if
+	choose case ls_coltype
+	case "char", "string"
+		ls_coltype = "s"
+	case "decimal", "int", "long", "ulong", "number", "real", "integer"
+		ls_coltype = "n"
+	case "date"
+		ls_coltype = "d"
+	case "datetime", "timestamp"
+		ls_coltype = "dt"
+	case "time"
+		ls_coltype = "t"
+	case else
+		ls_coltype = "-"
+	end choose
+	return ls_coltype
+
+// n_dwr_field.of_describe_expr(string as_expr, long al_row) returns long
+	string ls_val
+	long ll_pos
+	n_dwr_string lnvo_str
+	choose case this.ipo_requestortype
+	case datawindow!
+		ls_val = this.idw_requestor.describe(as_expr)
+	case datastore!
+		ls_val = this.ids_requestor.describe(as_expr)
+	case datawindowchild!
+		ls_val = this.idwc_requestor.describe(as_expr)
+	case else
+		return -1
+	end choose
+	ll_pos = pos(ls_val, "~t")
+	if ll_pos > 0 then
+		ls_val = mid(ls_val, ll_pos + 1, len(ls_val) - ll_pos - 1)
+		ls_val = lnvo_str.of_globalreplace(ls_val, "'", "~~'")
+		choose case this.ipo_requestortype
+		case datawindow!
+			ls_val = this.idw_requestor.describe("evaluate(~"" + ls_val + "~", " + string(al_row) + ")")
+		case datastore!
+			ls_val = this.ids_requestor.describe("evaluate(~"" + ls_val + "~", " + string(al_row) + ")")
+		case datawindowchild!
+			ls_val = this.idwc_requestor.describe("evaluate(~"" + ls_val + "~", " + string(al_row) + ")")
+		case else
+			return -1
+		end choose
+		if isnumber(ls_val) then
+			return long(ls_val)
+		end if
+	elseif isnumber(ls_val) then
+		return long(ls_val)
+	end if
+	return -1
+
+// n_dwr_field.of_unquote(string as_str) returns string
+	long ll_pos
+	if left(as_str, 1) = "~"" and right(as_str, 1) = "~"" then
+		as_str = mid(as_str, 2, len(as_str) - 2)
+	end if
+	ll_pos = pos(as_str, "~~~"")
+	do while ll_pos > 0
+		as_str = replace(as_str, ll_pos, 2, "~"")
+		ll_pos = pos(as_str, "~~~"")
+	loop
+	return as_str
+
+// n_dwr_field.of_change_format(string as_format, string as_type) returns string
+	long ll_pos
+	n_dwr_string lnvo_str
+	string[] ls_arr
+	string[] ls_emp
+	long ll_cnt
+	long ll_i
+	long ll_ret
+	as_format = lower(as_format)
+	if not this.inv_book.ib_system_format_cached then
+		ll_ret = registryget("HKEY_CURRENT_USER\Control Panel\International", "sShortDate", regstring!, this.inv_book.is_system_shortdate_format)
+		if ll_ret <> 1 then
+			this.inv_book.is_system_shortdate_format = "dd.MM.yyyy"
+		end if
+		ll_ret = registryget("HKEY_CURRENT_USER\Control Panel\International", "sLongDate", regstring!, this.inv_book.is_system_longdate_format)
+		if ll_ret <> 1 then
+			this.inv_book.is_system_longdate_format = "dd MMMM yyyy"
+		end if
+		ll_ret = registryget("HKEY_CURRENT_USER\Control Panel\International", "sTimeFormat", regstring!, this.inv_book.is_system_time_format)
+		if ll_ret <> 1 then
+			this.inv_book.is_system_time_format = "HH:mm"
+		end if
+		this.inv_book.is_system_time_format = lnvo_str.of_globalreplace(this.inv_book.is_system_time_format, "tt", "AM/PM")
+		this.inv_book.is_system_date_format = this.inv_book.is_system_shortdate_format
+		this.inv_book.is_system_currency_format = of_get_system_currency_format()
+		ll_cnt = lnvo_str.of_parsetoarray(this.inv_book.is_system_currency_format, ";", this.inv_book.is_system_currency_format_parts)
+		for ll_i = upperbound(this.inv_book.is_system_currency_format_parts) + 1 to 3
+			this.inv_book.is_system_currency_format_parts[ll_i] = this.inv_book.is_system_currency_format_parts[1]
+		next
+		this.inv_book.ib_system_format_cached = true
+	end if
+	ll_pos = pos(as_format, "@")
+	if ll_pos > 0 then
+		as_format = "[general]"
+	end if
+	ll_cnt = lnvo_str.of_parsetoarray(as_format, ";", ls_arr)
+	choose case as_type
+	case "n"
+		if ll_cnt > 3 then
+			ll_cnt = 3
+		end if
+	case else
+		if ll_cnt > 1 then
+			ll_cnt = 1
+		end if
+	end choose
+	for ll_i = 1 to ll_cnt
+		ls_emp[ll_i] = lnvo_str.of_globalreplace(ls_arr[ll_i], "'", "~"")
+		ls_emp[ll_i] = lnvo_str.of_globalreplace(ls_emp[ll_i], "@", "General")
+		ls_emp[ll_i] = lnvo_str.of_globalreplace(ls_emp[ll_i], "[currency]", this.inv_book.is_system_currency_format_parts[ll_i])
+	next
+	lnvo_str.of_arraytostring(ls_emp, ";", as_format)
+	if this.is_coltype = "d" then
+		as_format = lnvo_str.of_globalreplace(as_format, "[general]", "[shortdate]")
+	elseif this.is_coltype = "dt" then
+		as_format = lnvo_str.of_globalreplace(as_format, "[general]", "[shortdate]")
+	elseif this.is_coltype = "t" then
+		as_format = lnvo_str.of_globalreplace(as_format, "[general]", "[time]")
+	else
+		as_format = lnvo_str.of_globalreplace(as_format, "[general]", "General")
+	end if
+	as_format = lnvo_str.of_globalreplace(as_format, "[shortdate]", this.inv_book.is_system_shortdate_format)
+	as_format = lnvo_str.of_globalreplace(as_format, "[longdate]", this.inv_book.is_system_longdate_format)
+	as_format = lnvo_str.of_globalreplace(as_format, "[date]", this.inv_book.is_system_date_format)
+	as_format = lnvo_str.of_globalreplace(as_format, "[time]", this.inv_book.is_system_time_format)
+	if this.ii_colsize > 255 or this.ii_dwo_type = 2 and as_type = "s" then
+		if this.ib_use_general_for_large_cols then
+			as_format = "General"
+		else
+			as_format = ""
+		end if
+	end if
+	return as_format
+
+// n_dwr_field.of_set_color(n_xls_format a_format, long al_row) returns integer
+	long ll_color
+	integer li_color_index
+	al_row = al_row + this.ii_row_in_detail - 1
+	if al_row <= this.il_dw_row_count then
+		ll_color = long(of_describe("evaluate(~"" + this.is_color_expr + "~", " + string(al_row) + ")"))
+		if ll_color >= 0 then
+			li_color_index = this.invo_colors.of_get_custom_color_index(ll_color)
+			if li_color_index > 0 then
+				a_format.of_set_color(li_color_index)
+			end if
+		end if
+	end if
+	return 1
+
+// n_dwr_field.of_set_bg_color(n_xls_format a_format, long al_row) returns integer
+	long ll_color
+	integer li_color_index
+	al_row = al_row + this.ii_row_in_detail - 1
+	if al_row <= this.il_dw_row_count then
+		ll_color = long(of_describe("evaluate(~"" + this.is_bg_color_expr + "~", " + string(al_row) + ")"))
+		if ll_color >= 0 then
+			li_color_index = this.invo_colors.of_get_custom_color_index(ll_color)
+			if li_color_index > 0 then
+				a_format.of_set_bg_color(li_color_index)
+			end if
+		end if
+	end if
+	return 1
+
+// n_dwr_field.of_check_property(string as_property_name, boolean ab_is_expression, string as_expression, string as_value) returns integer
+	integer li_ret
+	string ls_str
+	long ll_pos
+	if left(as_property_name, 2) = "::" then
+		choose case this.ipo_requestortype
+		case datawindow!
+			ls_str = this.idw_requestor.describe(mid(as_property_name, 3))
+		case datastore!
+			ls_str = this.ids_requestor.describe(mid(as_property_name, 3))
+		case datawindowchild!
+			ls_str = this.idwc_requestor.describe(mid(as_property_name, 3))
+		case else
+			return -1
+		end choose
+	else
+		choose case this.ipo_requestortype
+		case datawindow!
+			ls_str = this.idw_requestor.describe(this.is_dwo_name + "." + as_property_name)
+		case datastore!
+			ls_str = this.ids_requestor.describe(this.is_dwo_name + "." + as_property_name)
+		case datawindowchild!
+			ls_str = this.idwc_requestor.describe(this.is_dwo_name + "." + as_property_name)
+		case else
+			return -1
+		end choose
+	end if
+	if ls_str <> "!" and ls_str <> "?" and ls_str <> "" then
+		ll_pos = pos(lower(ls_str), "~t")
+		if ll_pos > 0 then
+			as_expression = right(ls_str, len(ls_str) - ll_pos)
+			if right(as_expression, 1) = "~"" then
+				as_expression = left(as_expression, len(as_expression) - 1)
+			end if
+			ab_is_expression = trim(as_expression) <> ""
+			ls_str = left(ls_str, ll_pos - 1)
+			if left(ls_str, 1) = "~"" then
+				ls_str = right(ls_str, len(ls_str) - 1)
+			end if
+		end if
+		as_value = ls_str
+		li_ret = 1
+	else
+		li_ret = -1
+	end if
+	return li_ret
+
+// n_dwr_field.of_descr_numformat() returns string
+	integer li_ret
+	string ls_value
+	li_ret = of_check_property("Format", this.ib_format_expr, this.is_format_expr, ls_value)
+	if li_ret = 1 then
+		return ls_value
+	end if
+	return ""
+
+// n_dwr_field.of_descr_font_face() returns string
+	integer li_ret
+	string ls_value
+	li_ret = of_check_property("Font.Face", this.ib_font_face_expr, this.is_font_face_expr, ls_value)
+	if li_ret = 1 then
+		return ls_value
+	end if
+	return "Arial"
+
+// n_dwr_field.of_descr_font_height() returns long
+	integer li_ret
+	string ls_value
+	li_ret = of_check_property("Font.Height", this.ib_font_height_expr, this.is_font_height_expr, ls_value)
+	if li_ret = 1 then
+		if isnumber(ls_value) then
+			return abs(integer(ls_value))
+		else
+			return 10
+		end if
+		return
+	end if
+	return 10
+
+// n_dwr_field.of_descr_font_italic() returns boolean
+	integer li_ret
+	string ls_value
+	li_ret = of_check_property("Font.Italic", this.ib_font_italic_expr, this.is_font_italic_expr, ls_value)
+	if li_ret = 1 then
+		return lower(ls_value) = "yes" or ls_value = "1"
+	end if
+	return false
+
+// n_dwr_field.of_descr_font_underline() returns integer
+	integer li_ret
+	string ls_value
+	li_ret = of_check_property("font.underline", this.ib_font_underline_expr, this.is_font_underline_expr, ls_value)
+	if li_ret = 1 then
+		if lower(ls_value) = "yes" or ls_value = "1" then
+			return 1
+		else
+			return 0
+		end if
+		return
+	end if
+	return 0
+
+// n_dwr_field.of_descr_font_weight() returns boolean
+	integer li_ret
+	string ls_value
+	li_ret = of_check_property("font.weight", this.ib_font_weight_expr, this.is_font_weight_expr, ls_value)
+	if li_ret = 1 then
+		if isnumber(ls_value) then
+			return abs(integer(ls_value)) = 700
+		else
+			return false
+		end if
+		return
+	end if
+	return false
+
+// n_dwr_field.of_descr_alignment() returns string
+	integer li_ret
+	string ls_value
+	li_ret = of_check_property("alignment", this.ib_alignment_expr, this.is_alignment_expr, ls_value)
+	if li_ret <> 1 then
+		ls_value = "-1"
+	end if
+	choose case ls_value
+	case "0"
+		return "left"
+	case "1"
+		return "right"
+	case "2"
+		return "center"
+	case "3"
+		return "justified"
+	end choose
+	if this.is_coltype = "n" then
+		return "right"
+	end if
+	return "left"
+
+// n_dwr_field.of_descr_bg_color() returns integer
+	integer li_ret
+	string ls_str
+	string ls_value
+	long ll_color
+	ls_str = of_describe(this.is_dwo_name + ".Background.Mode")
+	if ls_str <> "1" then
+		li_ret = of_check_property("Background.Color", this.ib_bg_color_expr, this.is_bg_color_expr, ls_value)
+		if li_ret = 1 then
+			if isnumber(ls_value) then
+				ll_color = this.invo_colors.of_get_color(long(ls_value))
+				return this.invo_colors.of_get_custom_color_index(ll_color)
+			else
+				return -1
+			end if
+		else
+			return -1
+		end if
+		return
+	end if
+	return -1
+
+// n_dwr_field.of_descr_color() returns integer
+	integer li_ret
+	string ls_value
+	long ll_color
+	li_ret = of_check_property("Color", this.ib_color_expr, this.is_color_expr, ls_value)
+	if li_ret = 1 then
+		if isnumber(ls_value) then
+			ll_color = this.invo_colors.of_get_color(long(ls_value))
+			return this.invo_colors.of_get_custom_color_index(ll_color)
+		else
+			return -1
+		end if
+		return
+	end if
+	return -1
+
+// n_dwr_field.of_eval_bg_color(n_xls_format anvo_format, long al_row) returns integer
+	integer li_color_index
+	string ls_value
+	long ll_color
+	al_row = al_row + this.ii_row_in_detail - 1
+	if al_row <= this.il_dw_row_count then
+		ls_value = of_describe("evaluate(~"" + this.is_bg_color_expr + "~", " + string(al_row) + ")")
+		if isnumber(ls_value) then
+			ll_color = this.invo_colors.of_get_color(long(ls_value))
+			li_color_index = this.invo_colors.of_get_custom_color_index(ll_color)
+			if li_color_index > 0 then
+				anvo_format.of_set_bg_color(li_color_index)
+				return 1
+			end if
+			return
+		end if
+		return
+	end if
+	return -1
+
+// n_dwr_field.of_eval_color(n_xls_format anvo_format, long al_row) returns integer
+	integer li_color_index
+	string ls_value
+	long ll_color
+	al_row = al_row + this.ii_row_in_detail - 1
+	if al_row <= this.il_dw_row_count then
+		ls_value = of_describe("evaluate(~"" + this.is_color_expr + "~", " + string(al_row) + ")")
+		if isnumber(ls_value) then
+			ll_color = this.invo_colors.of_get_color(long(ls_value))
+			li_color_index = this.invo_colors.of_get_custom_color_index(ll_color)
+			if li_color_index > 0 then
+				anvo_format.of_set_color(li_color_index)
+				return 1
+			end if
+			return
+		end if
+		return
+	end if
+	return -1
+
+// n_dwr_field.of_eval_font_face(n_xls_format anvo_format, long al_row) returns integer
+	string ls_value
+	al_row = al_row + this.ii_row_in_detail - 1
+	if al_row <= this.il_dw_row_count then
+		ls_value = trim(of_describe("evaluate(~"" + this.is_font_face_expr + "~", " + string(al_row) + ")"))
+		if ls_value <> "" then
+			anvo_format.of_set_font(ls_value)
+			return 1
+		end if
+		return
+	end if
+	return -1
+
+// n_dwr_field.of_eval_numformat(n_xls_format anvo_format, long al_row) returns integer
+	string ls_value
+	al_row = al_row + this.ii_row_in_detail - 1
+	if al_row <= this.il_dw_row_count then
+		ls_value = trim(of_describe("evaluate(~"" + this.is_format_expr + "~", " + string(al_row) + ")"))
+		if ls_value = "" then
+			ls_value = "[General]"
+		end if
+		ls_value = of_change_format(ls_value, this.is_coltype)
+		anvo_format.of_set_num_format(ls_value)
+		return 1
+	end if
+	return -1
+
+// n_dwr_field.of_eval_font_height(n_xls_format anvo_format, long al_row) returns integer
+	string ls_value
+	al_row = al_row + this.ii_row_in_detail - 1
+	if al_row <= this.il_dw_row_count then
+		ls_value = of_describe("evaluate(~"" + this.is_font_height_expr + "~", " + string(al_row) + ")")
+		if isnumber(ls_value) then
+			anvo_format.of_set_size(abs(integer(ls_value)))
+			return 1
+		end if
+		return
+	end if
+	return -1
+
+// n_dwr_field.of_eval_font_italic(n_xls_format anvo_format, long al_row) returns integer
+	string ls_value
+	al_row = al_row + this.ii_row_in_detail - 1
+	if al_row <= this.il_dw_row_count then
+		ls_value = of_describe("evaluate(~"" + this.is_font_italic_expr + "~", " + string(al_row) + ")")
+		anvo_format.of_set_italic(lower(ls_value) = "yes" or ls_value = "1")
+		return 1
+	end if
+	return -1
+
+// n_dwr_field.of_eval_font_underline(n_xls_format anvo_format, long al_row) returns integer
+	string ls_value
+	al_row = al_row + this.ii_row_in_detail - 1
+	if al_row <= this.il_dw_row_count then
+		ls_value = of_describe("evaluate(~"" + this.is_font_underline_expr + "~", " + string(al_row) + ")")
+		if lower(ls_value) = "yes" or ls_value = "1" then
+			anvo_format.of_set_underline(1)
+		else
+			anvo_format.of_set_underline(0)
+		end if
+		return 1
+	end if
+	return -1
+
+// n_dwr_field.of_eval_font_weight(n_xls_format anvo_format, long al_row) returns integer
+	string ls_value
+	al_row = al_row + this.ii_row_in_detail - 1
+	if al_row <= this.il_dw_row_count then
+		ls_value = of_describe("evaluate(~"" + this.is_font_weight_expr + "~", " + string(al_row) + ")")
+		if isnumber(ls_value) then
+			anvo_format.of_set_bold(abs(integer(ls_value)) = 700)
+		else
+			anvo_format.of_set_bold(false)
+		end if
+		return 1
+	end if
+	return -1
+
+// n_dwr_field.of_eval_alignment(n_xls_format anvo_format, long al_row) returns integer
+	string ls_value
+	string ls_align
+	al_row = al_row + this.ii_row_in_detail - 1
+	if al_row <= this.il_dw_row_count then
+		ls_value = trim(of_describe("evaluate(~"" + this.is_alignment_expr + "~", " + string(al_row) + ")"))
+		choose case ls_value
+		case "0"
+			ls_align = "left"
+		case "1"
+			ls_align = "right"
+		case "2"
+			ls_align = "center"
+		case "3"
+			ls_align = "justified"
+		case else
+			if this.is_coltype = "n" then
+				ls_align = "right"
+			else
+				ls_align = "left"
+			end if
+		end choose
+		anvo_format.of_set_align(ls_align)
+		return 1
+	end if
+	return -1
+
+// n_dwr_field.of_get_x1(long al_row) returns long
+	long ll_ret
+	if this.is_expr_x1 = "" then
+		ll_ret = this.il_base_x + this.il_cached_x1
+	elseif this.is_expr_x1 = "-" then
+		this.il_cached_x1 = of_describe_expr(this.is_dwo_name + ".x", al_row, this.is_expr_x1)
+		ll_ret = this.il_base_x + this.il_cached_x1
+	else
+		ll_ret = this.il_base_x + of_evaluate0(this.is_expr_x1, al_row)
+	end if
+	return ll_ret
+
+// n_dwr_field.of_get_x2() returns long
+	if this.il_cached_x2 = -1 then
+		return of_get_x2(1)
+	end if
+	return this.il_base_x + this.il_cached_x2
+
+// n_dwr_field.of_get_x2(long al_row) returns long
+	long ll_ret
+	if this.is_expr_x2 = "" then
+		ll_ret = this.il_base_x + this.il_cached_x2
+	elseif this.is_expr_x2 = "-" then
+		ll_ret = of_get_x1(al_row) + of_get_width(al_row)
+		this.il_cached_x2 = ll_ret - this.il_base_x
+		if this.is_expr_x1 <> "" or this.is_expr_width <> "" then
+			this.is_expr_x2 = this.is_expr_x1 + " + " + this.is_expr_width
+		else
+			this.is_expr_x2 = ""
+		end if
+	else
+		ll_ret = of_get_x1(al_row) + of_get_width(al_row)
+	end if
+	return ll_ret
+
+// n_dwr_field.of_describe(string as_expr) returns string
+	choose case this.ipo_requestortype
+	case datawindow!
+		return this.idw_requestor.describe(as_expr)
+	case datastore!
+		return this.ids_requestor.describe(as_expr)
+	case datawindowchild!
+		return this.idwc_requestor.describe(as_expr)
+	end choose
+	return "!"
+
+// n_dwr_field.of_getvalue_dw(long al_row) returns any
+	datawindow lpo_requestor
+	any la_val
+	string ls_val
+	double ldb_val
+	datetime ldt_val
+	date ld_val
+	time lt_val
+	integer li_id
+	lpo_requestor = this.ipo_requestor
+	setnull(la_val)
+	al_row = al_row + this.ii_row_in_detail - 1
+	if al_row <= this.il_dw_row_count then
+		choose case this.ii_dwo_type
+		case 1, 2
+			if this.ii_column_display_type = 1 then
+				choose case this.is_coltype
+				case "s"
+					li_id = integer(lpo_requestor.describe(this.is_dwo_name + ".id"))
+					if li_id > 0 then
+						la_val = lpo_requestor.getitemstring(al_row, li_id)
+					else
+						la_val = string(lpo_requestor.describe("Evaluate('" + this.is_dwo_name + "', " + string(al_row) + ")"))
+					end if
+				case "n"
+					la_val = lpo_requestor.getitemdecimal(al_row, this.is_dwo_name)
+				case "d"
+					la_val = lpo_requestor.getitemdate(al_row, this.is_dwo_name)
+				case "dt"
+					la_val = lpo_requestor.getitemdatetime(al_row, this.is_dwo_name)
+				case "t"
+					la_val = lpo_requestor.getitemtime(al_row, this.is_dwo_name)
+				end choose
+			elseif this.ii_column_display_type = 2 then
+				choose case this.is_coltype
+				case "s"
+					la_val = lpo_requestor.getitemstring(al_row, this.is_dwo_name)
+				case "n"
+					la_val = lpo_requestor.getitemdecimal(al_row, this.is_dwo_name)
+				case "d"
+					la_val = lpo_requestor.getitemdate(al_row, this.is_dwo_name)
+				case "dt"
+					la_val = lpo_requestor.getitemdatetime(al_row, this.is_dwo_name)
+				case "t"
+					la_val = lpo_requestor.getitemtime(al_row, this.is_dwo_name)
+				end choose
+				if isnull(la_val) then
+					la_val = ""
+				end if
+			elseif this.ii_column_display_type = 3 then
+				choose case this.is_coltype
+				case "s"
+					la_val = lpo_requestor.getitemstring(al_row, this.is_dwo_name)
+				case "n"
+					la_val = lpo_requestor.getitemdecimal(al_row, this.is_dwo_name)
+				case "d"
+					la_val = lpo_requestor.getitemdate(al_row, this.is_dwo_name)
+				case "dt"
+					la_val = lpo_requestor.getitemdatetime(al_row, this.is_dwo_name)
+				case "t"
+					la_val = lpo_requestor.getitemtime(al_row, this.is_dwo_name)
+				end choose
+				if this.ib_disable_lookup_display then
+					if isnull(la_val) then
+						la_val = ""
+					end if
+				elseif not isnull(la_val) then
+					la_val = string(lpo_requestor.describe("Evaluate('LookUpDisplay(" + this.is_dwo_name + ")', " + string(al_row) + ")"))
+				else
+					la_val = ""
+				end if
+			else
+				choose case this.is_coltype
+				case "s"
+					la_val = lpo_requestor.getitemstring(al_row, this.is_dwo_name)
+				case "n"
+					la_val = lpo_requestor.getitemdecimal(al_row, this.is_dwo_name)
+				case "d"
+					la_val = lpo_requestor.getitemdate(al_row, this.is_dwo_name)
+				case "dt"
+					la_val = lpo_requestor.getitemdatetime(al_row, this.is_dwo_name)
+				case "t"
+					la_val = lpo_requestor.getitemtime(al_row, this.is_dwo_name)
+				end choose
+				if not isnull(la_val) then
+					la_val = string(lpo_requestor.describe("Evaluate('LookUpDisplay(" + this.is_dwo_name + ")', " + string(al_row) + ")"))
+				else
+					la_val = ""
+				end if
+			end if
+		case 3
+			if this.is_text_expr <> "" then
+				la_val = of_describe_str_expr(this.is_dwo_name + ".Text", al_row)
+			else
+				la_val = this.is_text
+			end if
+		case 4
+			la_val = "{" + this.is_dwo_name + "}"
+		end choose
+	end if
+	return la_val
+
+// n_dwr_field.of_getvalue_ds(long al_row) returns any
+	datastore lpo_requestor
+	any la_val
+	string ls_val
+	double ldb_val
+	datetime ldt_val
+	date ld_val
+	time lt_val
+	integer li_id
+	lpo_requestor = this.ipo_requestor
+	setnull(la_val)
+	al_row = al_row + this.ii_row_in_detail - 1
+	if al_row <= this.il_dw_row_count then
+		choose case this.ii_dwo_type
+		case 1, 2
+			if this.ii_column_display_type = 1 then
+				choose case this.is_coltype
+				case "s"
+					li_id = integer(lpo_requestor.describe(this.is_dwo_name + ".id"))
+					if li_id > 0 then
+						la_val = lpo_requestor.getitemstring(al_row, li_id)
+					else
+						la_val = string(lpo_requestor.describe("Evaluate('" + this.is_dwo_name + "', " + string(al_row) + ")"))
+					end if
+				case "n"
+					la_val = lpo_requestor.getitemdecimal(al_row, this.is_dwo_name)
+				case "d"
+					la_val = lpo_requestor.getitemdate(al_row, this.is_dwo_name)
+				case "dt"
+					la_val = lpo_requestor.getitemdatetime(al_row, this.is_dwo_name)
+				case "t"
+					la_val = lpo_requestor.getitemtime(al_row, this.is_dwo_name)
+				end choose
+			elseif this.ii_column_display_type = 2 then
+				choose case this.is_coltype
+				case "s"
+					la_val = lpo_requestor.getitemstring(al_row, this.is_dwo_name)
+				case "n"
+					la_val = lpo_requestor.getitemdecimal(al_row, this.is_dwo_name)
+				case "d"
+					la_val = lpo_requestor.getitemdate(al_row, this.is_dwo_name)
+				case "dt"
+					la_val = lpo_requestor.getitemdatetime(al_row, this.is_dwo_name)
+				case "t"
+					la_val = lpo_requestor.getitemtime(al_row, this.is_dwo_name)
+				end choose
+				if isnull(la_val) then
+					la_val = ""
+				end if
+			elseif this.ii_column_display_type = 3 then
+				choose case this.is_coltype
+				case "s"
+					la_val = lpo_requestor.getitemstring(al_row, this.is_dwo_name)
+				case "n"
+					la_val = lpo_requestor.getitemdecimal(al_row, this.is_dwo_name)
+				case "d"
+					la_val = lpo_requestor.getitemdate(al_row, this.is_dwo_name)
+				case "dt"
+					la_val = lpo_requestor.getitemdatetime(al_row, this.is_dwo_name)
+				case "t"
+					la_val = lpo_requestor.getitemtime(al_row, this.is_dwo_name)
+				end choose
+				if this.ib_disable_lookup_display then
+					if isnull(la_val) then
+						la_val = ""
+					end if
+				elseif not isnull(la_val) then
+					la_val = string(lpo_requestor.describe("Evaluate('LookUpDisplay(" + this.is_dwo_name + ")', " + string(al_row) + ")"))
+				else
+					la_val = ""
+				end if
+			else
+				choose case this.is_coltype
+				case "s"
+					la_val = lpo_requestor.getitemstring(al_row, this.is_dwo_name)
+				case "n"
+					la_val = lpo_requestor.getitemdecimal(al_row, this.is_dwo_name)
+				case "d"
+					la_val = lpo_requestor.getitemdate(al_row, this.is_dwo_name)
+				case "dt"
+					la_val = lpo_requestor.getitemdatetime(al_row, this.is_dwo_name)
+				case "t"
+					la_val = lpo_requestor.getitemtime(al_row, this.is_dwo_name)
+				end choose
+				if not isnull(la_val) then
+					la_val = string(lpo_requestor.describe("Evaluate('LookUpDisplay(" + this.is_dwo_name + ")', " + string(al_row) + ")"))
+				else
+					la_val = ""
+				end if
+			end if
+		case 3
+			if this.is_text_expr <> "" then
+				la_val = of_describe_str_expr(this.is_dwo_name + ".Text", al_row)
+			else
+				la_val = this.is_text
+			end if
+		case 4
+			la_val = "{" + this.is_dwo_name + "}"
+		end choose
+	end if
+	return la_val
+
+// n_dwr_field.of_getvalue_dwc(long al_row) returns any
+	datawindowchild lpo_requestor
+	any la_val
+	string ls_val
+	double ldb_val
+	datetime ldt_val
+	date ld_val
+	time lt_val
+	integer li_id
+	lpo_requestor = this.ipo_requestor
+	setnull(la_val)
+	al_row = al_row + this.ii_row_in_detail - 1
+	if al_row <= this.il_dw_row_count then
+		choose case this.ii_dwo_type
+		case 1, 2
+			if this.ii_column_display_type = 1 then
+				choose case this.is_coltype
+				case "s"
+					li_id = integer(lpo_requestor.describe(this.is_dwo_name + ".id"))
+					if li_id > 0 then
+						la_val = lpo_requestor.getitemstring(al_row, li_id)
+					else
+						la_val = string(lpo_requestor.describe("Evaluate('" + this.is_dwo_name + "', " + string(al_row) + ")"))
+					end if
+				case "n"
+					la_val = lpo_requestor.getitemdecimal(al_row, this.is_dwo_name)
+				case "d"
+					la_val = lpo_requestor.getitemdate(al_row, this.is_dwo_name)
+				case "dt"
+					la_val = lpo_requestor.getitemdatetime(al_row, this.is_dwo_name)
+				case "t"
+					la_val = lpo_requestor.getitemtime(al_row, this.is_dwo_name)
+				end choose
+			elseif this.ii_column_display_type = 2 then
+				choose case this.is_coltype
+				case "s"
+					la_val = lpo_requestor.getitemstring(al_row, this.is_dwo_name)
+				case "n"
+					la_val = lpo_requestor.getitemdecimal(al_row, this.is_dwo_name)
+				case "d"
+					la_val = lpo_requestor.getitemdate(al_row, this.is_dwo_name)
+				case "dt"
+					la_val = lpo_requestor.getitemdatetime(al_row, this.is_dwo_name)
+				case "t"
+					la_val = lpo_requestor.getitemtime(al_row, this.is_dwo_name)
+				end choose
+				if isnull(la_val) then
+					la_val = ""
+				end if
+			elseif this.ii_column_display_type = 3 then
+				choose case this.is_coltype
+				case "s"
+					la_val = lpo_requestor.getitemstring(al_row, this.is_dwo_name)
+				case "n"
+					la_val = lpo_requestor.getitemdecimal(al_row, this.is_dwo_name)
+				case "d"
+					la_val = lpo_requestor.getitemdate(al_row, this.is_dwo_name)
+				case "dt"
+					la_val = lpo_requestor.getitemdatetime(al_row, this.is_dwo_name)
+				case "t"
+					la_val = lpo_requestor.getitemtime(al_row, this.is_dwo_name)
+				end choose
+				if this.ib_disable_lookup_display then
+					if isnull(la_val) then
+						la_val = ""
+					end if
+				elseif not isnull(la_val) then
+					la_val = string(lpo_requestor.describe("Evaluate('LookUpDisplay(" + this.is_dwo_name + ")', " + string(al_row) + ")"))
+				else
+					la_val = ""
+				end if
+			else
+				choose case this.is_coltype
+				case "s"
+					la_val = lpo_requestor.getitemstring(al_row, this.is_dwo_name)
+				case "n"
+					la_val = lpo_requestor.getitemdecimal(al_row, this.is_dwo_name)
+				case "d"
+					la_val = lpo_requestor.getitemdate(al_row, this.is_dwo_name)
+				case "dt"
+					la_val = lpo_requestor.getitemdatetime(al_row, this.is_dwo_name)
+				case "t"
+					la_val = lpo_requestor.getitemtime(al_row, this.is_dwo_name)
+				end choose
+				if not isnull(la_val) then
+					la_val = string(lpo_requestor.describe("Evaluate('LookUpDisplay(" + this.is_dwo_name + ")', " + string(al_row) + ")"))
+				else
+					la_val = ""
+				end if
+			end if
+		case 3
+			if this.is_text_expr <> "" then
+				la_val = of_describe_str_expr(this.is_dwo_name + ".Text", al_row)
+			else
+				la_val = this.is_text
+			end if
+		case 4
+			la_val = "{" + this.is_dwo_name + "}"
+		end choose
+	end if
+	return la_val
+
+// n_dwr_field.of_createnestedservice(n_dwr_nested_service_parm anvo_nested_parm, n_dwr_service_parm anvo_parm) returns integer
+	integer li_ret
+	long ll_parent_rowcount
+	string ls_dwo
+	blob lblob_1
+	environment e
+	string ls_tmpfile
+	datawindowchild ldwc_nested
+	this.inv_nested_service_parm = anvo_nested_parm
+	this.inv_parm = anvo_parm
+	this.is_parent_band_id = this.inv_nested_service_parm.is_parent_band_id
+	this.ids_reportdata = create datastore
+	choose case this.ipo_requestortype
+	case datawindow!
+		ls_dwo = this.idw_requestor.dataobject
+		ll_parent_rowcount = this.idw_requestor.rowcount()
+	case datastore!
+		ls_dwo = this.ids_requestor.dataobject
+		ll_parent_rowcount = this.ids_requestor.rowcount()
+	case else
+		return -1
+	end choose
+	if ll_parent_rowcount = 0 then
+		return -1
+	end if
+	if ls_dwo <> "" then
+		this.ids_reportdata.dataobject = ls_dwo
+	end if
+	choose case this.ipo_requestortype
+	case datawindow!, datastore!
+		getenvironment(e)
+		if e.pbmajorrevision < 6 then
+			if this.ipo_requestor.dynamic saveas(ls_tmpfile, psreport!, true) <> 1 then
+				return -1
+			end if
+			this.ids_reportdata.dataobject = ls_tmpfile
+			filedelete(ls_tmpfile)
+		elseif this.inv_parm.ib_nested_workaround then
+			this.ids_reportdata = this.ipo_requestor
+		else
+			this.ipo_requestor.dynamic getfullstate(lblob_1)
+			this.ids_reportdata.dynamic setfullstate(lblob_1)
+		end if
+		if not this.inv_parm.ib_nested_workaround then
+			this.ids_reportdata.modify("Datawindow.Processing=5")
+		end if
+	case else
+		return -1
+	end choose
+	if this.inv_parm.ib_nested_workaround then
+		this.ids_reportdata.rowsmove(1, 1, primary!, this.ids_reportdata, 1, primary!)
+	end if
+	li_ret = this.ids_reportdata.getchild(this.is_dwo_name, ldwc_nested)
+	if li_ret = 1 then
+		this.il_child_cache_row = 1
+		this.idwc_child_cache = ldwc_nested
+		if this.inv_parm.ib_nested_workaround then
+			this.il_child_cache_rowcount = this.idwc_child_cache.rowcount()
+			anvo_nested_parm.il_requestor_rowcount = this.il_child_cache_rowcount
+		end if
+		anvo_nested_parm.il_nested_x = of_get_x1()
+		anvo_nested_parm.il_nested_y = of_get_y1()
+		this.inv_nestedservice = create using "n_dwr_service"
+		li_ret = this.inv_nestedservice.of_create(this.idwc_child_cache, this.inv_book, ":not applicable:", anvo_parm, anvo_nested_parm)
+	end if
+	if li_ret = 1 then
+		li_ret = this.inv_nestedservice.of_analyse_dw(0)
+	end if
+	return li_ret
+
+// n_dwr_field.of_dynamic_horisontal_layout(long al_row, n_dwr_grid anvo_hgrid) returns integer
+	return 1
+
+// n_dwr_field.of_register_dynamic(powerobject apo_requestor) returns integer
+	this.ipo_requestor = apo_requestor
+	this.ipo_requestortype = this.ipo_requestor.typeof()
+	choose case this.ipo_requestortype
+	case datawindow!
+		this.idw_requestor = this.ipo_requestor
+		this.il_dw_row_count = this.idw_requestor.rowcount()
+	case datastore!
+		this.ids_requestor = this.ipo_requestor
+		this.il_dw_row_count = this.ids_requestor.rowcount()
+	case datawindowchild!
+		this.idwc_requestor = this.ipo_requestor
+		this.il_dw_row_count = this.idwc_requestor.rowcount()
+	case else
+		return -1
+	end choose
+	return 1
+
+// n_dwr_field.of_init(string as_dwo_name, integer ai_dwo_type) returns integer
+	integer li_ret
+	integer li_i
+	this.is_dwo_name = as_dwo_name
+	this.ii_dwo_type = ai_dwo_type
+	choose case this.ii_dwo_type
+	case 1
+		this.is_coltype = of_get_item_coltype()
+		this.il_id = long(of_describe(as_dwo_name + ".id"))
+	case 2
+		this.is_coltype = of_get_item_coltype()
+	case 3
+		this.is_coltype = "s"
+		this.is_text = of_describe(as_dwo_name + ".text")
+		this.is_text = of_unquote(this.is_text)
+		if pos(this.is_text, "~t") > 0 then
+			this.is_text_expr = this.is_text
+		end if
+	case 4
+		this.is_coltype = "r"
+		this.is_nested_dataobject = of_describe(this.is_dwo_name + ".DataObject")
+	end choose
+	if li_ret = 1 then
+		choose case this.ipo_requestortype
+		case datawindow!
+			this.il_dw_row_count = this.idw_requestor.rowcount()
+		case datastore!
+			this.il_dw_row_count = this.ids_requestor.rowcount()
+		case datawindowchild!
+			this.il_dw_row_count = this.idwc_requestor.rowcount()
+		case else
+			return -1
+		end choose
+		this.ib_autosize_height = of_describe(as_dwo_name + ".height.autosize") = "yes"
+		this.ii_column_display_type = of_get_column_display_type()
+		li_ret = of_setformat()
+		this.ii_units = integer(of_describe("Datawindow.Units"))
+		if this.inv_parm.ib_check_suppressed then
+			for li_i = 1 to li_i
+				if this.inv_parent_band.is_sparselist[li_i] = as_dwo_name then
+					this.ii_sparse = li_i
+				end if
+			next
+		end if
+	end if
+	return li_ret
+
+// n_dwr_field.of_dwc2ds(datawindowchild adwc_src, boolean ab_copydata) returns datastore
+	datastore lds_res
+	boolean lb_copy_using_psr
+	string ls_tmpfile
+	lds_res = create datastore
+	adwc_src.modify("DataWindow.Crosstab.StaticMode=Yes")
+	if not lb_copy_using_psr then
+		lds_res.create(adwc_src.describe("Datawindow.Syntax"))
+		if ab_copydata then
+			adwc_src.rowscopy(1, adwc_src.rowcount(), primary!, lds_res, 1, primary!)
+			lds_res.groupcalc()
+		end if
+	elseif ab_copydata then
+		filedelete(ls_tmpfile)
+		if adwc_src.saveas(ls_tmpfile, psreport!, true) <> 1 then
+			lds_res.create(adwc_src.describe("Datawindow.Syntax"))
+			adwc_src.rowscopy(1, adwc_src.rowcount(), primary!, lds_res, 1, primary!)
+			lds_res.groupcalc()
+		else
+			lds_res.dataobject = ls_tmpfile
+			filedelete(ls_tmpfile)
+		end if
+	else
+		lds_res.create(adwc_src.describe("Datawindow.Syntax"))
+	end if
+	return lds_res
+
+// n_dwr_field.of_get_band_y1() returns long
+	if this.il_cached_y1 = -1000000000 then
+		return of_get_y1(1) - this.il_base_y
+	end if
+	return this.il_cached_y1
+
+// n_dwr_field.of_get_band_y2() returns long
+	if this.il_cached_y2 = -1000000000 then
+		return of_get_y2(1) - this.il_base_y
+	end if
+	return this.il_cached_y2
+
+// n_dwr_field.of_describe_str_expr(string as_expr, long al_row) returns string
+	string ls_val
+	long ll_pos
+	choose case this.ipo_requestortype
+	case datawindow!
+		ls_val = this.idw_requestor.describe(as_expr)
+	case datastore!
+		ls_val = this.ids_requestor.describe(as_expr)
+	case datawindowchild!
+		ls_val = this.idwc_requestor.describe(as_expr)
+	case else
+		return ""
+	end choose
+	ll_pos = pos(ls_val, "~t")
+	if ll_pos > 0 then
+		ls_val = mid(ls_val, ll_pos + 1, len(ls_val) - ll_pos - 1)
+		choose case this.ipo_requestortype
+		case datawindow!
+			ls_val = this.idw_requestor.describe("evaluate(~"" + ls_val + "~", " + string(al_row) + ")")
+		case datastore!
+			ls_val = this.ids_requestor.describe("evaluate(~"" + ls_val + "~", " + string(al_row) + ")")
+		case datawindowchild!
+			ls_val = this.idwc_requestor.describe("evaluate(~"" + ls_val + "~", " + string(al_row) + ")")
+		case else
+			return ""
+		end choose
+		return ls_val
+	end if
+	return ls_val
+
+// n_dwr_field.of_get_system_currency_format() returns string
+	long ll_ret
+	long ll_mongrouping
+	string ls_scurrency
+	string ls_smondecimalsep
+	string ls_smonthousandsep
+	string ls_smongrouping
+	string ls_numformat
+	string ls_icurrency
+	string ls_inegcurr
+	string ls_positive
+	string ls_negative
+	n_dwr_string s
+	ll_ret = registryget("HKEY_CURRENT_USER\Control Panel\International", "sCurrency", regstring!, ls_scurrency)
+	if ll_ret <> 1 then
+		ls_scurrency = "$"
+	end if
+	ll_ret = registryget("HKEY_CURRENT_USER\Control Panel\International", "iCurrency", regstring!, ls_icurrency)
+	if ll_ret <> 1 then
+		ls_icurrency = "0"
+	end if
+	ll_ret = registryget("HKEY_CURRENT_USER\Control Panel\International", "iNegCurr", regstring!, ls_inegcurr)
+	if ll_ret <> 1 then
+		ls_inegcurr = "0"
+	end if
+	ll_ret = registryget("HKEY_CURRENT_USER\Control Panel\International", "sMonDecimalSep", regstring!, ls_smondecimalsep)
+	if ll_ret <> 1 then
+		ls_smondecimalsep = "."
+	end if
+	ll_ret = registryget("HKEY_CURRENT_USER\Control Panel\International", "sMonThousandSep", regstring!, ls_smonthousandsep)
+	if ll_ret <> 1 then
+		ls_smonthousandsep = ","
+	end if
+	ll_ret = registryget("HKEY_CURRENT_USER\Control Panel\International", "sMonGrouping", regstring!, ls_smongrouping)
+	if ll_ret <> 1 then
+		ls_smongrouping = "3;0"
+	end if
+	choose case ls_icurrency
+	case "0"
+		ls_positive = "$n"
+	case "1"
+		ls_positive = "n$"
+	case "2"
+		ls_positive = "$ n"
+	case "3"
+		ls_positive = "n $"
+	case else
+		ls_positive = "$n"
+	end choose
+	choose case ls_inegcurr
+	case "0"
+		ls_negative = "($n)"
+	case "1"
+		ls_negative = "-$n"
+	case "2"
+		ls_negative = "$-n"
+	case "3"
+		ls_negative = "$n-"
+	case "4"
+		ls_negative = "(n$)"
+	case "5"
+		ls_negative = "-n$"
+	case "6"
+		ls_negative = "n-$"
+	case "7"
+		ls_negative = "n$-"
+	case "8"
+		ls_negative = "-n $"
+	case "9"
+		ls_negative = "-$ n"
+	case "10"
+		ls_negative = "n $-"
+	case "11"
+		ls_negative = "$ n-"
+	case "12"
+		ls_negative = "$ -n"
+	case "13"
+		ls_negative = "n- $"
+	case "14"
+		ls_negative = "($ n)"
+	case "15"
+		ls_negative = "(n $)"
+	case else
+		ls_negative = "-$n"
+	end choose
+	ll_ret = pos(ls_smongrouping, ";")
+	if ll_ret > 0 then
+		ls_smongrouping = left(ls_smongrouping, ll_ret - 1)
+	end if
+	ll_mongrouping = long(ls_smongrouping)
+	if ll_mongrouping <> 0 then
+		ls_numformat = "#" + ls_smonthousandsep + fill("#", ll_mongrouping - 1) + "0.00"
+	else
+		ls_numformat = "#0.00"
+	end if
+	ls_numformat = s.of_globalreplace(ls_positive + ";" + ls_negative, "n", ls_numformat)
+	ls_numformat = s.of_globalreplace(ls_numformat, "$", ls_scurrency)
+	return ls_numformat
+
+// n_dwr_field.of_describe_expr(string as_expr, long al_row, string as_prop_expr) returns long
+	string ls_val
+	long ll_pos
+	n_dwr_string lnvo_str
+	choose case this.ipo_requestortype
+	case datawindow!
+		ls_val = this.idw_requestor.describe(as_expr)
+	case datastore!
+		ls_val = this.ids_requestor.describe(as_expr)
+	case datawindowchild!
+		ls_val = this.idwc_requestor.describe(as_expr)
+	case else
+		return -1
+	end choose
+	ll_pos = pos(ls_val, "~t")
+	if ll_pos > 0 then
+		ls_val = mid(ls_val, ll_pos + 1, len(ls_val) - ll_pos - 1)
+		ls_val = lnvo_str.of_globalreplace(ls_val, "'", "~~'")
+		as_prop_expr = ls_val
+		choose case this.ipo_requestortype
+		case datawindow!
+			ls_val = this.idw_requestor.describe("evaluate(~"" + ls_val + "~", " + string(al_row) + ")")
+		case datastore!
+			ls_val = this.ids_requestor.describe("evaluate(~"" + ls_val + "~", " + string(al_row) + ")")
+		case datawindowchild!
+			ls_val = this.idwc_requestor.describe("evaluate(~"" + ls_val + "~", " + string(al_row) + ")")
+		case else
+			return -1
+		end choose
+		if isnumber(ls_val) then
+			return long(ls_val)
+		end if
+	else
+		as_prop_expr = ""
+		if isnumber(ls_val) then
+			return long(ls_val)
+		end if
+	end if
+	return -1
+
+// n_dwr_field.of_evaluate0(string as_expr, long al_row) returns long
+	string ls_val
+	choose case this.ipo_requestortype
+	case datawindow!
+		ls_val = this.idw_requestor.describe("evaluate(~"" + as_expr + "~", " + string(al_row) + ")")
+	case datastore!
+		ls_val = this.ids_requestor.describe("evaluate(~"" + as_expr + "~", " + string(al_row) + ")")
+	case datawindowchild!
+		ls_val = this.idwc_requestor.describe("evaluate(~"" + as_expr + "~", " + string(al_row) + ")")
+	case else
+		return -1
+	end choose
+	if isnumber(ls_val) then
+		return long(ls_val)
+	end if
+	return -1
+
+// n_dwr_field.of_get_width(long al_row) returns long
+	long ll_ret
+	if this.is_expr_width = "" then
+		ll_ret = this.il_cached_width
+	elseif this.is_expr_width = "-" then
+		this.il_cached_width = of_describe_expr(this.is_dwo_name + ".width", al_row, this.is_expr_width)
+		ll_ret = this.il_cached_width
+	else
+		ll_ret = of_evaluate0(this.is_expr_width, al_row)
+	end if
+	return ll_ret
+
+// n_dwr_field.of_get_height(long al_row) returns long
+	long ll_ret
+	long ll_pos
+	long ll_lines_cnt
+	long ll_row_height
+	long ll_row_width
+	long ll_i
+	long ll_start
+	long ll_val
+	long ll_col_width
+	string ls_type
+	string ls_val
+	string[] ls_str_array
+	if this.is_expr_height = "" then
+		ll_ret = this.il_cached_height
+	elseif this.is_expr_height = "-" then
+		this.il_cached_height = of_describe_expr(this.is_dwo_name + ".height", al_row, this.is_expr_height)
+		if this.ii_dwo_type = 1 or this.ii_dwo_type = 2 or this.ii_dwo_type = 3 then
+			if this.inv_parm.ib_enable_merge_cells then
+				if this.inv_parent_band.ii_dw_processing = 1 and this.inv_parent_band.ii_band_type = 3 and this.inv_parm.ib_grid_columns_by_rowheight then
+					ll_val = long(of_describe("evaluate('rowheight()', " + string(al_row) + ")"))
+					ll_ret = ll_val - of_get_y1()
+					this.is_expr_height = "-"
+				elseif this.ib_autosize_height and not this.inv_parm.ib_ignore_autosizeheight then
+					ls_val = string(of_getvalue(al_row))
+					ll_col_width = of_get_width(al_row)
+					ll_val = of_get_col_height_font(ll_col_width, ls_val, of_descr_font_face(), of_descr_font_italic(), of_descr_font_underline(), of_descr_font_weight2(), of_descr_font_height())
+					ll_ret = ll_val
+					this.is_expr_height = "-"
+				else
+					ll_ret = this.il_cached_height
+				end if
+			else
+				ll_ret = this.il_cached_height
+			end if
+		else
+			ll_ret = this.il_cached_height
+		end if
+	else
+		ll_ret = of_evaluate0(this.is_expr_height, al_row)
+	end if
+	return ll_ret
+
+// n_dwr_field.of_evaluate_str0(string as_expr, long al_row) returns string
+	string ls_val
+	choose case this.ipo_requestortype
+	case datawindow!
+		ls_val = this.idw_requestor.describe("evaluate(~"" + as_expr + "~", " + string(al_row) + ")")
+	case datastore!
+		ls_val = this.ids_requestor.describe("evaluate(~"" + as_expr + "~", " + string(al_row) + ")")
+	case datawindowchild!
+		ls_val = this.idwc_requestor.describe("evaluate(~"" + as_expr + "~", " + string(al_row) + ")")
+	case else
+		return ""
+	end choose
+	return ls_val
+
+// n_dwr_field.of_describe_str_expr(string as_expr, long al_row, string as_prop_expr) returns string
+	string ls_val
+	long ll_pos
+	n_dwr_string lnvo_str
+	choose case this.ipo_requestortype
+	case datawindow!
+		ls_val = this.idw_requestor.describe(as_expr)
+	case datastore!
+		ls_val = this.ids_requestor.describe(as_expr)
+	case datawindowchild!
+		ls_val = this.idwc_requestor.describe(as_expr)
+	case else
+		return ""
+	end choose
+	ll_pos = pos(ls_val, "~t")
+	if ll_pos > 0 then
+		ls_val = mid(ls_val, ll_pos + 1, len(ls_val) - ll_pos - 1)
+		ls_val = lnvo_str.of_globalreplace(ls_val, "'", "~~'")
+		as_prop_expr = ls_val
+		choose case this.ipo_requestortype
+		case datawindow!
+			ls_val = this.idw_requestor.describe("evaluate(~"" + ls_val + "~", " + string(al_row) + ")")
+		case datastore!
+			ls_val = this.ids_requestor.describe("evaluate(~"" + ls_val + "~", " + string(al_row) + ")")
+		case datawindowchild!
+			ls_val = this.idwc_requestor.describe("evaluate(~"" + ls_val + "~", " + string(al_row) + ")")
+		case else
+			return ""
+		end choose
+		return ls_val
+	end if
+	as_prop_expr = ""
+	return ls_val
+
+// n_dwr_field.of_getdddwcolumnids(datawindowchild adw, string[] as_id) returns integer
+	string[] ls_empty
+	string ls_objects
+	string[] ls_object
+	string ls_str
+	string ls_id
+	n_dwr_string s
+	long ll_objectcount
+	long ll_i
+	as_id = ls_empty
+	ls_objects = adw.describe("DataWindow.Objects")
+	ll_objectcount = s.of_parsetoarray(ls_objects, "~t", ls_object)
+	for ll_i = 1 to ll_objectcount
+		ls_id = adw.describe(ls_object[ll_i] + ".id")
+		if long(ls_id) > 0 then
+			ls_str = adw.describe(ls_object[ll_i] + ".DDDW.Name")
+			if ls_str <> "!" and ls_str <> "?" and ls_str <> "" then
+				as_id[upperbound(as_id) + 1] = ls_id
+			end if
+		end if
+	next
+	return 1
+
+// n_dwr_field.of_setsubbandy(long ai_subband_y) returns 0
+	this.il_subband_y = ai_subband_y
+	this.il_cached_y1 = -1000000000
+	this.is_expr_y1 = "-"
+	this.il_cached_x1 = -1
+	this.is_expr_x1 = "-"
+
+// n_dwr_field.of_process_nested(long al_row, long al_writer_row, n_dwr_grid anvo_hgrid, n_dwr_progress apo_progress) returns long
+	long ll_rown
+	long li_ret
+	boolean lb_restoreoriginalroworder
+	if this.ib_usetrc then
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 1
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+		ll_rown = 0
+	end if
+	if this.il_child_cache_row <> al_row then
+		this.il_child_cache_row = -1
+		if al_row > 1 then
+			this.ids_reportdata.rowsmove(al_row, al_row, primary!, this.ids_reportdata, 1, primary!)
+			lb_restoreoriginalroworder = this.inv_parm.ib_nested_workaround
+		end if
+		li_ret = this.ids_reportdata.getchild(this.is_dwo_name, this.idwc_child_cache)
+		if li_ret <> 1 then
+			return 0
+		end if
+		this.il_child_cache_row = al_row
+		this.il_child_cache_rowcount = this.idwc_child_cache.rowcount()
+	end if
+	this.inv_nested_service_parm.il_writer_row = al_writer_row
+	this.inv_nested_service_parm.il_parent_row = al_row
+	this.inv_nested_service_parm.ipo_dynamic_requestor = this.idwc_child_cache
+	this.inv_nested_service_parm.invo_dynamic_hgrid = anvo_hgrid
+	if this.inv_parm.ib_nested_workaround then
+		this.inv_nested_service_parm.il_requestor_rowcount = this.il_child_cache_rowcount
+	end if
+	this.inv_nested_service_parm.ipo_progress = apo_progress
+	li_ret = this.inv_nestedservice.of_process_work()
+	if li_ret = 1 then
+		ll_rown = this.inv_nested_service_parm.il_writer_row - al_writer_row
+	end if
+	if lb_restoreoriginalroworder then
+		this.ids_reportdata.rowsmove(1, 1, primary!, this.ids_reportdata, al_row + 1, primary!)
+	end if
+	return ll_rown
+
+// n_dwr_field.of_descr_font_weight2() returns integer
+	integer li_ret
+	string ls_value
+	li_ret = of_check_property("font.weight", this.ib_font_weight_expr, this.is_font_weight_expr, ls_value)
+	if li_ret = 1 then
+		if isnumber(ls_value) then
+			return abs(integer(ls_value))
+		else
+			return 400
+		end if
+		return
+	end if
+	return 400
+
+// n_dwr_field.of_descr_alignment2() returns long
+	integer li_ret
+	string ls_value
+	li_ret = of_check_property("alignment", this.ib_alignment_expr, this.is_alignment_expr, ls_value)
+	if li_ret <> 1 then
+		if this.is_coltype = "n" then
+			return 1
+		else
+			return 0
+		end if
+		return
+	end if
+	return long(ls_value)
+
+// n_dwr_field.of_descr_color2() returns long
+	integer li_ret
+	string ls_value
+	long ll_color
+	li_ret = of_check_property("Color", this.ib_color_expr, this.is_color_expr, ls_value)
+	if li_ret = 1 then
+		if isnumber(ls_value) then
+			ll_color = long(ls_value)
+			return ll_color
+		else
+			return 0
+		end if
+		return
+	end if
+	return 0
+
+// n_dwr_field.of_descr_bg_color2() returns long
+	integer li_ret
+	string ls_str
+	string ls_bgmode
+	string ls_band
+	string ls_value
+	long ll_color
+	ll_color = 1073741824
+	if not this.ib_band_bg then
+		ls_str = of_describe(this.is_dwo_name + ".Background.Mode")
+		if ls_str <> "1" then
+			li_ret = of_check_property("Background.Color", this.ib_bg_color_expr, this.is_bg_color_expr, ls_value)
+			if li_ret = 1 then
+				if isnumber(ls_value) then
+					ll_color = long(ls_value)
+				end if
+			end if
+		end if
+	else
+		ls_bgmode = of_describe(this.is_dwo_name + ".Background.Mode")
+		li_ret = of_check_property("Background.Color", this.ib_bg_color_expr, this.is_bg_color_expr, ls_value)
+		if ls_bgmode = "1" or not this.ib_bg_color_expr and (ls_value = "553648127" or ls_value = "536870912") or li_ret <> 1 or not isnumber(ls_value) then
+			ls_value = string(this.inv_parent_band.of_descr_bg_color())
+			this.ib_bg_color_expr = this.inv_parent_band.ib_bg_color_expr
+			this.is_bg_color_expr = this.inv_parent_band.is_bg_color_expr
+			if not this.ib_bg_color_expr and (ls_value = "553648127" or ls_value = "536870912") or li_ret <> 1 or not isnumber(ls_value) then
+				li_ret = of_check_property("::Datawindow.Color", this.ib_bg_color_expr, this.is_bg_color_expr, ls_value)
+			end if
+		end if
+		ll_color = long(ls_value)
+	end if
+	return ll_color
+
+// n_dwr_field.of_get_format(long al_row) returns long
+	integer li_ret
+	long ll_format_ix
+	n_xls_format lnvo_temp_format
+	if not this.ib_custom_format then
+		return this.il_format_ix
+	end if
+	al_row = al_row + this.ii_row_in_detail - 1
+	if al_row > this.il_dw_row_count then
+		return this.il_format_ix
+	end if
+	if this.ib_bg_color_expr then
+		of_eval_bg_color(al_row)
+	end if
+	if this.ib_color_expr then
+		of_eval_color(al_row)
+	end if
+	if this.ib_format_expr then
+		of_eval_numformat(al_row)
+	end if
+	if this.ib_font_face_expr then
+		of_eval_font_face(al_row)
+	end if
+	if this.ib_font_underline_expr then
+		of_eval_font_underline(al_row)
+	end if
+	if this.ib_font_italic_expr then
+		of_eval_font_italic(al_row)
+	end if
+	if this.ib_font_weight_expr then
+		of_eval_font_weight(al_row)
+	end if
+	if this.ib_alignment_expr then
+		of_eval_alignment(al_row)
+	end if
+	if isvalid(this.inv_parm) and not isnull(this.inv_parm) then
+		if this.inv_parm.ib_font_height_expression and this.ib_font_height_expr then
+			of_eval_font_height(al_row)
+		end if
+	elseif this.ib_font_height_expr then
+		of_eval_font_height(al_row)
+	end if
+	if this.ib_font_escapement_expr then
+		of_eval_font_escapement(al_row)
+	end if
+	ll_format_ix = this.inv_book.of_addformat(this.inv_format)
+	return ll_format_ix
+
+// n_dwr_field.of_eval_alignment(long al_row) returns integer
+	long ll_value
+	al_row = al_row + this.ii_row_in_detail - 1
+	if al_row <= this.il_dw_row_count then
+		ll_value = long(trim(of_describe("evaluate(~"" + this.is_alignment_expr + "~", " + string(al_row) + ")")))
+		this.inv_format.sethalign(this.inv_format.handle, ll_value)
+		return 1
+	end if
+	return -1
+
+// n_dwr_field.of_eval_bg_color(long al_row) returns integer
+	integer li_color_index
+	string ls_value
+	long ll_color
+	al_row = al_row + this.ii_row_in_detail - 1
+	if al_row <= this.il_dw_row_count then
+		ll_color = long(of_describe("evaluate(~"" + this.is_bg_color_expr + "~", " + string(al_row) + ")"))
+		this.inv_format.setbgcolor(this.inv_format.handle, ll_color)
+		return 1
+	end if
+	return -1
+
+// n_dwr_field.of_eval_color(long al_row) returns integer
+	integer li_color_index
+	string ls_value
+	long ll_color
+	al_row = al_row + this.ii_row_in_detail - 1
+	if al_row <= this.il_dw_row_count then
+		ll_color = long(of_describe("evaluate(~"" + this.is_color_expr + "~", " + string(al_row) + ")"))
+		this.inv_format.setfgcolor(this.inv_format.handle, ll_color)
+		return 1
+	end if
+	return -1
+
+// n_dwr_field.of_eval_font_face(long al_row) returns integer
+	string ls_value
+	al_row = al_row + this.ii_row_in_detail - 1
+	if al_row <= this.il_dw_row_count then
+		ls_value = trim(of_describe("evaluate(~"" + this.is_font_face_expr + "~", " + string(al_row) + ")"))
+		if ls_value <> "" then
+			this.inv_format.setfontname(this.inv_format.handle, ls_value)
+			return 1
+		end if
+		return
+	end if
+	return -1
+
+// n_dwr_field.of_eval_font_height(long al_row) returns integer
+	long ll_value
+	al_row = al_row + this.ii_row_in_detail - 1
+	if al_row <= this.il_dw_row_count then
+		ll_value = long(of_describe("evaluate(~"" + this.is_font_height_expr + "~", " + string(al_row) + ")"))
+		this.inv_format.setfontsize(this.inv_format.handle, abs(ll_value))
+		return 1
+	end if
+	return -1
+
+// n_dwr_field.of_eval_font_italic(long al_row) returns integer
+	string ls_value
+	al_row = al_row + this.ii_row_in_detail - 1
+	if al_row <= this.il_dw_row_count then
+		ls_value = of_describe("evaluate(~"" + this.is_font_italic_expr + "~", " + string(al_row) + ")")
+		if lower(ls_value) = "yes" or ls_value = "1" then
+			this.inv_format.setfontitalic(this.inv_format.handle, 1)
+		else
+			this.inv_format.setfontitalic(this.inv_format.handle, 0)
+		end if
+		return 1
+	end if
+	return -1
+
+// n_dwr_field.of_eval_font_underline(long al_row) returns integer
+	string ls_value
+	al_row = al_row + this.ii_row_in_detail - 1
+	if al_row <= this.il_dw_row_count then
+		ls_value = of_describe("evaluate(~"" + this.is_font_underline_expr + "~", " + string(al_row) + ")")
+		if lower(ls_value) = "yes" or ls_value = "1" then
+			this.inv_format.setfontunderline(this.inv_format.handle, 1)
+		else
+			this.inv_format.setfontunderline(this.inv_format.handle, 0)
+		end if
+		return 1
+	end if
+	return -1
+
+// n_dwr_field.of_eval_font_weight(long al_row) returns integer
+	string ls_value
+	al_row = al_row + this.ii_row_in_detail - 1
+	if al_row <= this.il_dw_row_count then
+		ls_value = of_describe("evaluate(~"" + this.is_font_weight_expr + "~", " + string(al_row) + ")")
+		if isnumber(ls_value) then
+			this.inv_format.setfontweight(this.inv_format.handle, abs(integer(ls_value)))
+		else
+			this.inv_format.setfontweight(this.inv_format.handle, 400)
+		end if
+		return 1
+	end if
+	return -1
+
+// n_dwr_field.of_eval_numformat(long al_row) returns integer
+	string ls_value
+	al_row = al_row + this.ii_row_in_detail - 1
+	if al_row <= this.il_dw_row_count then
+		ls_value = trim(of_describe("evaluate(~"" + this.is_format_expr + "~", " + string(al_row) + ")"))
+		if ls_value = "" then
+			ls_value = "[General]"
+		end if
+		ls_value = of_change_format(ls_value, this.is_coltype)
+		this.inv_format.setnumformat(this.inv_format.handle, ls_value)
+		return 1
+	end if
+	return -1
+
+// n_dwr_field.of_descr_font_charset() returns long
+	integer li_ret
+	li_ret = long(of_describe(this.is_dwo_name + ".Font.Charset"))
+	return li_ret
+
+// n_dwr_field.of_descr_font_family() returns long
+	integer li_ret
+	li_ret = long(of_describe(this.is_dwo_name + ".Font.Family"))
+	return li_ret
+
+// n_dwr_field.of_cancel_nested() returns 0
+	if this.ii_dwo_type = 4 then
+		this.inv_nestedservice.of_cancel()
+	end if
+
+// n_dwr_field.of_descr_font_escapement() returns integer
+	integer li_ret
+	string ls_value
+	integer li_value
+	li_ret = of_check_property("font.escapement", this.ib_font_escapement_expr, this.is_font_escapement_expr, ls_value)
+	if li_ret = 1 and isnumber(ls_value) then
+		li_value = integer(ls_value) / 10.0
+	end if
+	return li_value
+
+// n_dwr_field.of_eval_font_escapement(long al_row) returns integer
+	long ll_value
+	al_row = al_row + this.ii_row_in_detail - 1
+	if al_row <= this.il_dw_row_count then
+		ll_value = long(of_describe("evaluate(~"" + this.is_font_escapement_expr + "~", " + string(al_row) + ")"))
+		this.inv_format.setrotation(this.inv_format.handle, long(ll_value / 10.0))
+		return 1
+	end if
+	return -1
+
+// n_dwr_field.of_setrect(long al_x1, long al_y1, long al_x2, long al_y2) returns integer
+	integer ll_x1
+	integer ll_w
+	integer ll_y1
+	integer ll_h
+	integer ll_x2
+	integer ll_y2
+	ll_x1 = of_get_x1(1)
+	ll_x2 = of_get_x2(1)
+	ll_w = of_get_width(1)
+	ll_y1 = of_get_y1(1)
+	ll_y2 = of_get_y2(1)
+	ll_h = of_get_height(1)
+	this.il_cached_x1 = this.il_cached_x1 + (al_x1 - ll_x1)
+	this.il_cached_y1 = this.il_cached_y1 + (al_y1 - ll_y1)
+	this.il_cached_x2 = this.il_cached_x2 + (al_x2 - ll_x2)
+	this.il_cached_y2 = this.il_cached_y2 + (al_y2 - ll_y2)
+	this.il_cached_width = this.il_cached_width + (al_x2 - al_x1 - ll_w)
+	this.il_cached_height = this.il_cached_height + (al_y2 - al_y1 - ll_h)
+	return 1
+
+// n_dwr_field.of_render(n_dwr_worksheet anv_sheet, long al_row, long al_base_y, long al_units, n_dwr_progress apo_progress) returns boolean
+	return false
+
+// n_dwr_field.of_get_band_bg_color(long al_row) returns long
+	integer li_color_index
+	string ls_value
+	long ll_color
+	al_row = al_row + this.ii_row_in_detail - 1
+	if al_row <= this.il_dw_row_count then
+		ll_color = long(of_describe("evaluate(~"" + this.is_bg_color_expr + "~", " + string(al_row) + ")"))
+		this.inv_format.setbgcolor(this.inv_format.handle, ll_color)
+		return 1
+	end if
+	return -1
+
+// n_dwr_field.of_use_band_bg(boolean ab_enable) returns integer
+	this.ib_band_bg = ab_enable
+	return 1
+
+// n_dwr_field.of_register(powerobject apo_requestor, n_dwr_workbook anv_book, n_dwr_colors anvo_colors, long al_base_x, long al_base_y, long al_subband_y, boolean ab_band_background) returns integer
+	this.il_base_x = al_base_x
+	this.il_base_y = al_base_y
+	this.il_subband_y = al_subband_y
+	this.ipo_requestor = apo_requestor
+	this.ipo_requestortype = this.ipo_requestor.typeof()
+	choose case this.ipo_requestortype
+	case datawindow!
+		this.idw_requestor = this.ipo_requestor
+	case datastore!
+		this.ids_requestor = this.ipo_requestor
+	case datawindowchild!
+		this.idwc_requestor = this.ipo_requestor
+	case else
+		return -1
+	end choose
+	this.inv_book = anv_book
+	this.invo_colors = anvo_colors
+	of_use_band_bg(ab_band_background)
+	return 1
+
+// n_dwr_field.of_getbgrect(st_rect ast_rect, long al_row) returns 0
+
+// n_dwr_field.of_dispose() returns 0
+	setnull(this.inv_nestedservice)
+	setnull(this.inv_parent_band)
+
+// n_dwr_field.of_setparentband(powerobject anv_band) returns 0
+	this.inv_parent_band = anv_band
+
+// n_dwr_field.of_get_col_height_font(integer ai_col_width, string str, string font_name, boolean font_italic, integer font_underline, integer font_weight, integer font_size) returns long
+	if this.inv_parm.ib_nonvisual_calc_height then
+		return this.inv_book.invo_height.of_get_col_height_font(ai_col_width, str, font_name, font_italic, font_underline, font_weight, font_size, this.ii_units)
+	end if
+	return this.inv_book.ws.wf_get_col_height_font(ai_col_width, str, font_name, font_italic, font_underline, font_weight, font_size, this.ii_units)
+
+// n_dwr_field.of_do_static_x_markup(n_dwr_worksheet anv_sheet) returns integer
+	integer li_ret
+	long ll_x1
+	long ll_x2
+	if this.ii_dwo_type = 4 then
+		if isvalid(this.inv_nestedservice) then
+			li_ret = this.inv_nestedservice.of_do_static_x_markup(anv_sheet)
+		else
+			li_ret = -1
+		end if
+		return li_ret
+	end if
+	ll_x1 = of_get_x1(1)
+	ll_x2 = of_get_x2(1)
+	if this.is_expr_x1 = "" and this.is_expr_x2 = "" then
+		anv_sheet.addxinterval(anv_sheet.handle, ll_x1, ll_x2, this.ii_units)
+	else
+		li_ret = -1
+	end if
+	return li_ret
+
+// n_dwr_field.of_get_column_display_type() returns integer
+	string ls_str
+	choose case this.ii_dwo_type
+	case 1
+		ls_str = of_describe(this.is_dwo_name + ".CheckBox.On")
+		if ls_str <> "!" and ls_str <> "?" and ls_str <> "" then
+			return 2
+		end if
+		ls_str = of_describe(this.is_dwo_name + ".DDDW.Name")
+		if ls_str <> "!" and ls_str <> "?" and ls_str <> "" then
+			return 3
+		end if
+		ls_str = of_describe(this.is_dwo_name + ".DDLB.Required")
+		if ls_str <> "!" and ls_str <> "?" and ls_str <> "" then
+			return 4
+		end if
+		ls_str = of_describe(this.is_dwo_name + ".RadioButtons.Columns")
+		if ls_str <> "0" and ls_str <> "!" and ls_str <> "?" and ls_str <> "" then
+			return 1
+		end if
+		ls_str = of_describe(this.is_dwo_name + ".Edit.CodeTable")
+		if lower(ls_str) = "yes" then
+			return 5
+		end if
+		return 1
+	case 2, 3
+		return 1
+	case 4
+		return 6
+	end choose
+	return 1
+
+// n_dwr_field.of_register_dynamic2(powerobject apo_requestor, long al_rowcount) returns integer
+	this.ipo_requestor = apo_requestor
+	this.ipo_requestortype = this.ipo_requestor.typeof()
+	choose case this.ipo_requestortype
+	case datawindow!
+		this.idw_requestor = this.ipo_requestor
+		this.il_dw_row_count = al_rowcount
+	case datastore!
+		this.ids_requestor = this.ipo_requestor
+		this.il_dw_row_count = al_rowcount
+	case datawindowchild!
+		this.idwc_requestor = this.ipo_requestor
+		this.il_dw_row_count = al_rowcount
+	case else
+		return -1
+	end choose
+	return 1
+
+// n_dwr_field.of_descr_bitmapname() returns boolean
+	integer li_ret
+	string ls_value
+	string ls_dummy
+	boolean lb_dummy
+	li_ret = of_check_property("bitmapname", lb_dummy, ls_dummy, ls_value)
+	if li_ret = 1 then
+		return lower(ls_value) = "yes" or ls_value = "1"
+	end if
+	return false
+
+// n_dwr_field.create() returns 0
+	call super::create
+	triggerevent("constructor")
+
+// n_dwr_field.destroy() returns 0
+	triggerevent("destructor")
+	call super::destroy
+
+// n_dwr_field.constructor() returns long
+	this.inv_const = create n_dwr_const
+	return ::message.returnvalue

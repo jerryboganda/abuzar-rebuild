@@ -1,0 +1,145 @@
+// window w_serviceticketsettings (servicecomponents)  ancestor: window
+
+// w_serviceticketsettings.ue_close(integer ai_status) returns 0
+	if ai_status = -1 then
+		this.istr_serviceticketsetting.b_status = this.istr_oldserviceticketsetting.b_status
+		this.istr_serviceticketsetting.l_tickets = this.istr_oldserviceticketsetting.l_tickets
+		this.istr_serviceticketsetting.l_interval = this.istr_oldserviceticketsetting.l_interval
+		this.istr_serviceticketsetting.l_expiry = this.istr_oldserviceticketsetting.l_expiry
+	end if
+	closewithreturn(this, this.istr_serviceticketsetting)
+
+// w_serviceticketsettings.wf_update_taxperc(double ad_unittax) returns long
+	if this.id_dw.object.purvalue[1] <= 0 or isnull(this.id_dw.object.purvalue[1]) then
+		this.id_dw.object.taxperc[1] = ad_unittax
+	else
+		this.id_dw.object.taxperc[1] = ad_unittax / this.id_dw.object.purvalue[1] * 100
+	end if
+	return 0
+
+// w_serviceticketsettings.wf_update_unittax(double ad_taxperc) returns long
+	this.id_dw.object.gstvalue[1] = ad_taxperc * this.id_dw.object.purvalue[1] * 0.01
+	return 0
+
+// w_serviceticketsettings.wf_update_taxdetail(integer ai_taxtype) returns long
+	if ai_taxtype = 1 then
+		if this.id_dw.object.invunittax[1] <> 0 then
+			if this.id_dw.object.invpurprice[1] <= 0 or isnull(this.id_dw.object.invpurprice[1]) then
+				this.id_dw.object.taxperc[1] = this.id_dw.object.invunittax[1]
+			else
+				this.id_dw.object.taxperc[1] = this.id_dw.object.invunittax[1] / this.id_dw.object.invpurprice[1] * 100
+			end if
+		else
+			this.id_dw.object.invunittax[1] = this.id_dw.object.taxperc[1] * this.id_dw.object.invpurprice[1] * 0.01
+		end if
+	elseif this.id_dw.object.invunittax[1] <> 0 then
+		if this.id_dw.object.invsaleprice[1] <= 0 or isnull(this.id_dw.object.invsaleprice[1]) then
+			this.id_dw.object.taxperc[1] = this.id_dw.object.invunittax[1]
+		else
+			this.id_dw.object.taxperc[1] = this.id_dw.object.invunittax[1] / this.id_dw.object.invsaleprice[1] * 100
+		end if
+	else
+		this.id_dw.object.invunittax[1] = this.id_dw.object.taxperc[1] * this.id_dw.object.invsaleprice[1] * 0.01
+	end if
+	return 0
+
+// w_serviceticketsettings.create() returns 0
+	this.dw_control = create dw_control
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.control = {this.dw_control, this.cb_cancel, this.cb_ok}
+
+// w_serviceticketsettings.destroy() returns 0
+	destroy this.dw_control
+	destroy this.cb_cancel
+	destroy this.cb_ok
+
+// w_serviceticketsettings.open() returns long
+	string ls_aliasname
+	string ls_name
+	decimal ld_saleprice
+	decimal ld_purprice
+	long ll_packunits
+	string ls_invcode
+	long ll_rtcode
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	this.istr_serviceticketsetting = message.powerobjectparm
+	this.istr_oldserviceticketsetting = this.istr_serviceticketsetting
+	this.id_dw = this.dw_control
+	this.id_dw.settransobject(sqlca)
+	this.id_dw.retrieve(this.istr_serviceticketsetting.l_tickets, this.istr_serviceticketsetting.l_interval, this.istr_serviceticketsetting.l_expiry)
+	if this.id_dw.rowcount() = 0 then
+		this.id_dw.insertrow(0)
+	end if
+	this.id_dw.scrolltorow(1)
+	this.id_dw.selecttext(1, len(this.id_dw.gettext()))
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// dw_control.itemchanged(long row, dwobject dwo, string data) returns long
+	long ll_null
+	integer li_errcode
+	setnull(ll_null)
+	choose case dwo.name
+	case "gstvalue"
+		if double(data) < 0.0 then
+			li_errcode = 1
+		else
+			parent.wf_update_taxperc(double(data))
+		end if
+	case "taxperc"
+		if double(data) < 0.0 or double(data) > 100.0 then
+			li_errcode = 1
+		else
+			parent.wf_update_unittax(double(data))
+		end if
+	end choose
+	return li_errcode
+
+// dw_control.itemerror(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "invunitax"
+		messagebox("Unit Tax Validation!", "Please Enter Valid Unit Tax")
+	case "taxperc"
+		messagebox("Tax Percentage Validation!", "Please Enter Valid Tax Percentage")
+	end choose
+	return ::message.returnvalue
+
+// dw_control.itemfocuschanged(long row, dwobject dwo) returns long
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.istr_serviceticketsetting.b_status = false
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	if parent.id_dw.accepttext() = 1 then
+		parent.istr_serviceticketsetting.l_tickets = parent.id_dw.object.ticketstogenerate[1]
+		parent.istr_serviceticketsetting.l_interval = parent.id_dw.object.ticketintervalindays[1]
+		parent.istr_serviceticketsetting.l_expiry = parent.id_dw.object.ticketexpiryindays[1]
+		parent.istr_serviceticketsetting.b_status = true
+		parent.post event ue_close(1)
+	end if
+	return ::message.returnvalue

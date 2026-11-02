@@ -1,0 +1,40 @@
+// window w_sale_primarykeyfixer (templates)  ancestor: window
+
+// w_sale_primarykeyfixer.open() returns long
+	string ls_text
+	integer li_counter
+	this.it_transobject = create u_transaction
+	SQL start USING this.it_transobject;
+	return ::message.returnvalue
+
+// w_sale_primarykeyfixer.create() returns 0
+	this.cb_ok = create cb_ok
+	this.cb_cancel = create cb_cancel
+	this.control = {this.cb_ok, this.cb_cancel}
+
+// w_sale_primarykeyfixer.destroy() returns 0
+	destroy this.cb_ok
+	destroy this.cb_cancel
+
+// w_sale_primarykeyfixer.close() returns long
+	SQL stop USING this.it_transobject;
+	destroy this.it_transobject
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	string ls_errtext
+	SQL rollback USING parent.it_transobject;
+	parent.it_transobject.init_update_tabmaxkey()
+	if parent.it_transobject.sqlcode = 0 then
+		SQL commit USING parent.it_transobject;
+	else
+		ls_errtext = parent.it_transobject.sqlerrtext
+		SQL rollback USING parent.it_transobject;
+		messagebox("Problem Fixation", "Problem occurred at database while running problem fixation utility. Reasons are:-~r~n" + ls_errtext, stopsign!)
+	end if
+	close(parent)
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	close(parent)
+	return ::message.returnvalue

@@ -1,0 +1,36 @@
+// window w_arg_serviceresult_deliverydate (reports)  ancestor: w_arguements
+
+// w_arg_serviceresult_deliverydate.create() returns 0
+	call super::create
+
+// w_arg_serviceresult_deliverydate.destroy() returns 0
+	call super::destroy
+
+// w_arg_serviceresult_deliverydate.ue_close(integer ai_stauts) returns 0
+	super::ue_close(ai_stauts)
+	closewithreturn(this, this.istr_arg)
+
+// w_arg_serviceresult_deliverydate.open() returns long
+	long ancestorreturnvalue
+	long lt_rtcode
+	long ll_rows
+	long ll_found
+	string ls_date
+	ancestorreturnvalue = super::open()
+	this.em_startdate.text = string(today(), "dd/mm/yyyy hh:mm:ss")
+	this.dw_control.settransobject(sqlca)
+	lt_rtcode = this.dw_control.getchild("date", this.idc_date)
+	this.idc_date.settransobject(sqlca)
+	this.idc_date.retrieve()
+	this.dw_control.retrieve()
+	ll_rows = this.idc_date.rowcount()
+	ls_date = left(this.dw_control.object.date[1], 10)
+	if ll_rows > 0 then
+		ll_found = this.idc_date.find("LEFT(deliverydate2,10) = ~"" + ls_date + "~"", 1, ll_rows)
+		if ll_found > 0 and ll_found <= ll_rows then
+			this.dw_control.object.date[1] = this.idc_date.getitemstring(ll_found, "deliverydate2")
+		else
+			this.dw_control.object.date[1] = this.idc_date.getitemstring(ll_rows, "deliverydate2")
+		end if
+	end if
+	return ::message.returnvalue

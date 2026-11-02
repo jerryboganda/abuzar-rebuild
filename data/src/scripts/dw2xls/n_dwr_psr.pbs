@@ -1,0 +1,345 @@
+// userobject n_dwr_psr (dw2xls)  ancestor: nonvisualobject
+
+// n_dwr_psr.of_openfile(string as_file) returns integer
+	integer li_ret
+	this.ipo_storage = create olestorage
+	li_ret = this.ipo_storage.open(as_file, stgread!)
+	if li_ret <> 0 then
+		setnull(this.ipo_storage)
+		return -1
+	end if
+	this.is_file = as_file
+	of_parsedwlookup()
+	return 1
+
+// n_dwr_psr.of_close() returns integer
+	integer li_ret
+	if isvalid(this.ipo_storage) then
+		li_ret = this.ipo_storage.close()
+		setnull(this.ipo_storage)
+		if this.ib_temporary then
+			filedelete(this.is_file)
+		end if
+		this.is_file = ""
+	end if
+	return li_ret
+
+// n_dwr_psr.of_parsepath(string as_path, string as_out_dir, string as_out_file) returns integer
+	long li_pos
+	li_pos = pos(reverse(as_path), "\")
+	if li_pos > 0 then
+		as_out_dir = left(as_path, len(as_path) - li_pos)
+		as_out_file = right(as_path, li_pos - 1)
+	else
+		as_out_file = as_path
+		as_out_dir = ""
+	end if
+	return 1
+
+// n_dwr_psr.of_gettempfilename(string as_prefix, string as_suffix) returns string
+	string[] ls_values
+	contextkeyword lpo_kw
+	integer li_ret
+	if is_tempdir = "" then
+		li_ret = getcontextservice("Keyword", lpo_kw)
+		lpo_kw.getcontextkeywords("TEMP", ls_values)
+		if upperbound(ls_values) > 0 then
+			is_tempdir = ls_values[1]
+		else
+			is_tempdir = "."
+		end if
+	end if
+	ii_tempid = ii_tempid + 1
+	return is_tempdir + "\dw2xls_" + as_prefix + string(ii_tempid) + "_" + string(handle(getapplication())) + as_suffix
+
+// n_dwr_psr.of_createfromdw(powerobject apo_dw) returns integer
+	string ls_file
+	ls_file = of_gettempfilename("dw", ".psr")
+	if fileexists(ls_file) and not filedelete(ls_file) then
+		return -1
+	end if
+	if apo_dw.dynamic saveas(ls_file, psreport!, true) <> 1 then
+		return -1
+	end if
+	if of_openfile(ls_file) <> 1 then
+		filedelete(ls_file)
+		return -1
+	end if
+	this.ib_temporary = true
+	return 1
+
+// n_dwr_psr.of_copystream(olestorage apo_src_root_storage, string as_src_stream_name, olestorage apo_tgt_root_storage, string as_tgt_stream_name) returns long
+	olestorage lpo_src_storage
+	olestorage lpo_tgt_storage
+	olestream lpo_src_stream
+	olestream lpo_tgt_stream
+	long li_ret
+	string ls_src_dir
+	string ls_src_file
+	string ls_tgt_dir
+	string ls_tgt_file
+	setnull(lpo_src_stream)
+	setnull(lpo_tgt_stream)
+	of_parsepath(as_src_stream_name, ls_src_dir, ls_src_file)
+	if ls_src_dir = "" then
+		lpo_src_storage = apo_src_root_storage
+	else
+		lpo_src_storage = of_opensubstorage(ls_src_dir, apo_src_root_storage, stgread!)
+	end if
+	of_parsepath(as_tgt_stream_name, ls_tgt_dir, ls_tgt_file)
+	if ls_tgt_dir = "" then
+		lpo_tgt_storage = apo_tgt_root_storage
+	else
+		lpo_tgt_storage = of_opensubstorage(ls_tgt_dir, apo_tgt_root_storage, stgreadwrite!)
+	end if
+	if not (isnull(lpo_src_storage) or isnull(lpo_tgt_storage)) then
+		lpo_src_stream = of_openstream(lpo_src_storage, ls_src_file, stgread!)
+		if not isnull(lpo_src_stream) then
+			lpo_tgt_stream = of_openstream(lpo_tgt_storage, ls_tgt_file, stgwrite!)
+			if not isnull(lpo_tgt_stream) then
+				li_ret = of_copystream(lpo_src_stream, lpo_tgt_stream)
+				if li_ret = 0 then
+					lpo_src_stream.close()
+					lpo_tgt_stream.close()
+					if ls_src_dir <> "" then
+						lpo_src_storage.close()
+					end if
+					if ls_tgt_dir <> "" then
+						lpo_tgt_storage.close()
+					end if
+					return 1
+				end if
+			end if
+		end if
+	end if
+	if ls_src_dir <> "" then
+		lpo_src_storage.close()
+	end if
+	if ls_tgt_dir <> "" then
+		lpo_tgt_storage.close()
+	end if
+	if not isnull(lpo_src_stream) then
+		lpo_src_stream.close()
+	end if
+	if not isnull(lpo_tgt_stream) then
+		lpo_tgt_stream.close()
+	end if
+	return -1
+
+// n_dwr_psr.of_copystream(olestream apo_src_stream, olestream apo_tgt_stream) returns integer
+	long li_ret
+	long li_streamsize
+	long li_chunksize
+	blob lb_temp
+	if apo_src_stream.length(li_streamsize) <> 0 then
+		return -1
+	end if
+	do while li_streamsize > 0
+		li_ret = apo_src_stream.read(lb_temp, min(li_chunksize, li_streamsize))
+		if li_ret < 0 then
+			return -1
+		end if
+		li_ret = apo_tgt_stream.write(lb_temp)
+		if li_ret <= 0 then
+			return -1
+		end if
+		li_streamsize = li_streamsize - li_chunksize
+	loop
+	return 0
+
+// n_dwr_psr.of_finddwoid(string as_dwoname) returns string
+	long li_reccount
+	long li_record
+	li_reccount = upperbound(this.ipo_dwlookup)
+	as_dwoname = lower(as_dwoname)
+	for li_record = 1 to li_reccount
+		if this.ipo_dwlookup[li_record].dwo_name = as_dwoname then
+			return this.ipo_dwlookup[li_record].dwo_id
+		end if
+	next
+	return ""
+
+// n_dwr_psr.of_makestorage(olestorage apo_root_storage, string as_dir) returns integer
+	olestorage lpo_tgt_storage
+	lpo_tgt_storage = of_opensubstorage(as_dir, apo_root_storage, stgreadwrite!)
+	if isnull(lpo_tgt_storage) then
+		return -1
+	end if
+	lpo_tgt_storage.close()
+	return 1
+
+// n_dwr_psr.of_openstream(olestorage apo_storage, string as_name, stgreadmode apo_mode) returns olestream
+	olestream lpo_stream
+	integer li_ret
+	lpo_stream = create olestream
+	li_ret = lpo_stream.open(apo_storage, as_name, apo_mode)
+	if li_ret <> 0 then
+		setnull(lpo_stream)
+		return lpo_stream
+	end if
+	return lpo_stream
+
+// n_dwr_psr.of_opensubstorage(string as_name, olestorage apo_parentstorage, stgreadmode apo_mode) returns olestorage
+	olestorage lpo_storage
+	integer li_ret
+	lpo_storage = create olestorage
+	li_ret = lpo_storage.open(as_name, apo_mode, stgexclusive!, apo_parentstorage)
+	if li_ret <> 0 then
+		setnull(lpo_storage)
+		return lpo_storage
+	end if
+	return lpo_storage
+
+// n_dwr_psr.of_parsedwlookup() returns integer
+	st_dwlookup[] e
+	long li_reccount
+	long li_record
+	long li_pos
+	integer li_dw_id
+	blob lbb_data
+	blob lbb_long
+	this.ipo_dwlookup = e
+	if ii_recsize = 0 and of_setdwlookuprecsize() <> 1 then
+		return -1
+	end if
+	lbb_data = of_readstream(this.ipo_storage, "dwstg\dwlookup")
+	if isnull(lbb_data) then
+		return 0
+	end if
+	blobedit(lbb_long, 1, long(0))
+	li_reccount = long(blobmid(lbb_data, 1, 4))
+	if li_reccount < 0 or li_reccount > 10000 then
+		return -1
+	end if
+	for li_record = 1 to li_reccount
+		this.ipo_dwlookup[li_record].dwo_name = lower(string(blobmid(lbb_data, 5 + (li_record - 1) * ii_recsize, ii_recsize - 2)))
+		blobedit(lbb_long, 1, blobmid(lbb_data, 5 + li_record * ii_recsize - 2, 2))
+		this.ipo_dwlookup[li_record].dwo_id = string(long(lbb_long))
+	next
+	return 1
+
+// n_dwr_psr.of_readstream(olestorage apo_root_storage, string as_stream) returns blob
+	long li_ret
+	string ls_dir
+	string ls_file
+	olestorage lpo_storage
+	olestream lpo_stream
+	blob lbb_data
+	setnull(lpo_stream)
+	of_parsepath(as_stream, ls_dir, ls_file)
+	if ls_dir = "" then
+		lpo_storage = apo_root_storage
+	else
+		lpo_storage = of_opensubstorage(ls_dir, apo_root_storage, stgread!)
+	end if
+	if not isnull(lpo_storage) then
+		lpo_stream = of_openstream(lpo_storage, ls_file, stgread!)
+		if not isnull(lpo_stream) then
+			li_ret = lpo_stream.read(lbb_data)
+			if li_ret >= 0 then
+				return lbb_data
+			end if
+		end if
+	end if
+	setnull(lbb_data)
+	return lbb_data
+
+// n_dwr_psr.of_setdwlookuprecsize() returns integer
+	environment lenv
+	ii_recsize = 42 + 2
+	getenvironment(lenv)
+	choose case lenv.charset
+	case charsetansi!
+		ii_recsize = 42 + 2
+	case charsetunicode!
+		ii_recsize = 84 + 2
+	case else
+		return -1
+	end choose
+	return 1
+
+// n_dwr_psr.of_nested2psr(string as_nested_id, string as_nested_instance_id, string as_parent_band, long al_parent_row, string[] as_dddw_column_id, string as_psr_name) returns integer
+	olestorage lpo_tgt_storage
+	long li_ret
+	long li_item
+	long li_column
+	string ls_nested_data_name
+	ls_nested_data_name = "datanest_" + string(al_parent_row) + "_" + as_parent_band + "_" + as_nested_id
+	lpo_tgt_storage = create olestorage
+	filedelete(as_psr_name)
+	li_ret = lpo_tgt_storage.open(as_psr_name, stgreadwrite!)
+	if li_ret <> 0 then
+		return -1
+	end if
+	of_makestorage(lpo_tgt_storage, "neststg")
+	of_makestorage(lpo_tgt_storage, "dwstg")
+	li_ret = 1
+	if li_ret > 0 then
+		li_ret = of_copystream(this.ipo_storage, "neststg\" + ls_nested_data_name, lpo_tgt_storage, "data")
+	end if
+	if li_ret > 0 then
+		li_ret = of_copystream(this.ipo_storage, "dwstg\source_" + as_nested_instance_id, lpo_tgt_storage, "source")
+	end if
+	if li_ret > 0 then
+		li_ret = of_copystream(this.ipo_storage, "dwstg\object_" + as_nested_instance_id, lpo_tgt_storage, "object")
+	end if
+	if li_ret > 0 then
+		li_ret = of_copystream(this.ipo_storage, "dwstg\dwlookup", lpo_tgt_storage, "dwstg\dwlookup")
+	end if
+	for li_item = 1 to upperbound(this.ipo_dwlookup)
+		if this.ipo_dwlookup[li_item].dwo_id <> as_nested_instance_id then
+			if li_ret > 0 then
+				li_ret = of_copystream(this.ipo_storage, "dwstg\source_" + this.ipo_dwlookup[li_item].dwo_id, lpo_tgt_storage, "dwstg\source_" + this.ipo_dwlookup[li_item].dwo_id)
+			end if
+			if li_ret > 0 then
+				li_ret = of_copystream(this.ipo_storage, "dwstg\object_" + this.ipo_dwlookup[li_item].dwo_id, lpo_tgt_storage, "dwstg\object_" + this.ipo_dwlookup[li_item].dwo_id)
+			end if
+		end if
+	next
+	if li_ret > 0 then
+		for li_item = 1 to upperbound(as_dddw_column_id)
+			li_ret = of_copystream(this.ipo_storage, "neststg\datadddw_1_" + as_dddw_column_id[li_item] + "_0_" + string(al_parent_row), lpo_tgt_storage, "neststg\datadddw_0_" + as_dddw_column_id[li_item] + "_0")
+		next
+		li_ret = 1
+	end if
+	lpo_tgt_storage.close()
+	return li_ret
+
+// n_dwr_psr.of_nested2ds(string as_nested_id, string as_dataobject, string as_parent_band, long al_parent_row, string[] as_dddw_column_id, datastore ads_nested) returns integer
+	string ls_temppsr
+	string ls_instance_id
+	integer li_ret
+	ls_instance_id = of_finddwoid(as_dataobject)
+	if ls_instance_id = "" then
+		return -1
+	end if
+	ls_temppsr = of_gettempfilename("nest", ".psr")
+	li_ret = of_nested2psr(as_nested_id, ls_instance_id, as_parent_band, al_parent_row, as_dddw_column_id, ls_temppsr)
+	if li_ret <> 1 then
+		return -1
+	end if
+	ads_nested = create datastore
+	ads_nested.dataobject = ls_temppsr
+	if not ib_debug_keep_temp then
+		filedelete(ls_temppsr)
+	end if
+	if not isvalid(ads_nested.object) then
+		setnull(ads_nested)
+		return -1
+	end if
+	return 1
+
+// n_dwr_psr.of_debug_keep_temp(boolean ab_debug_keep_temp) returns 0
+	ib_debug_keep_temp = ab_debug_keep_temp
+
+// n_dwr_psr.create() returns 0
+	call super::create
+	triggerevent("constructor")
+
+// n_dwr_psr.destroy() returns 0
+	triggerevent("destructor")
+	call super::destroy
+
+// n_dwr_psr.destructor() returns long
+	of_close()
+	return ::message.returnvalue

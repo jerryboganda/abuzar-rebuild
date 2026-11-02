@@ -1,0 +1,51 @@
+// window w_arg_godown_sdate_ldate_v1 (reports)  ancestor: w_arguements
+
+// w_arg_godown_sdate_ldate_v1.create() returns 0
+	integer icurrent
+	call super::create
+	this.st_4 = create st_4
+	this.em_maxlineitems = create em_maxlineitems
+	this.st_5 = create st_5
+	this.em_maxitemqty = create em_maxitemqty
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_4
+	this.control[icurrent + 2] = this.em_maxlineitems
+	this.control[icurrent + 3] = this.st_5
+	this.control[icurrent + 4] = this.em_maxitemqty
+
+// w_arg_godown_sdate_ldate_v1.destroy() returns 0
+	call super::destroy
+	destroy this.st_4
+	destroy this.em_maxlineitems
+	destroy this.st_5
+	destroy this.em_maxitemqty
+
+// w_arg_godown_sdate_ldate_v1.open() returns long
+	long ancestorreturnvalue
+	date ld_currdate
+	string ls_text
+	ancestorreturnvalue = super::open()
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	ld_currdate = today()
+	ls_text = string(ld_currdate, "dd/mm/yyyy")
+	this.em_startdate.text = ls_text
+	this.em_enddate.text = ls_text
+	return ::message.returnvalue
+
+// w_arg_godown_sdate_ldate_v1.ue_close(integer ai_stauts) returns 0
+	super::ue_close(ai_stauts)
+	closewithreturn(this, this.istr_arg)
+
+// em_maxlineitems.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// em_maxitemqty.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue

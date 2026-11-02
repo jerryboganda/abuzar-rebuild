@@ -1,0 +1,72 @@
+// window w_filter_changeitem_price (singleentryitem)  ancestor: window
+
+// w_filter_changeitem_price.ue_close(integer ai_status) returns 0
+	if this.rb_companywise.checked then
+		this.is_selectedreport = "MANF_WISE"
+	elseif this.rb_categorywise.checked then
+		this.is_selectedreport = "CAT_WISE"
+	elseif this.rb_classwise.checked then
+		this.is_selectedreport = "CLASS_WISE"
+	elseif this.rb_packingwise.checked then
+		this.is_selectedreport = "PACKING_WISE"
+	elseif this.rb_categorypackingandcompanywise.checked then
+		this.is_selectedreport = "CAT_PACK_MANF_WISE"
+	elseif this.rb_catpackmanfclasswise.checked then
+		this.is_selectedreport = "CAT_PACK_MANF_CLASS_WISE"
+	elseif this.rb_genericnamewise.checked then
+		this.is_selectedreport = "GENERICNAME_WISE"
+	elseif this.rb_purinvbased.checked then
+		this.is_selectedreport = "PURINVBASED"
+	elseif this.rb_margin_based.checked then
+		this.is_selectedreport = "MARGINBASED"
+	end if
+	closewithreturn(this, this.is_selectedreport)
+
+// w_filter_changeitem_price.create() returns 0
+	this.rb_margin_based = create rb_margin_based
+	this.rb_purinvbased = create rb_purinvbased
+	this.rb_genericnamewise = create rb_genericnamewise
+	this.rb_catpackmanfclasswise = create rb_catpackmanfclasswise
+	this.rb_packingwise = create rb_packingwise
+	this.rb_categorypackingandcompanywise = create rb_categorypackingandcompanywise
+	this.rb_classwise = create rb_classwise
+	this.rb_categorywise = create rb_categorywise
+	this.rb_companywise = create rb_companywise
+	this.cb_ok = create cb_ok
+	this.gb_format = create gb_format
+	this.control = {this.rb_margin_based, this.rb_purinvbased, this.rb_genericnamewise, this.rb_catpackmanfclasswise, this.rb_packingwise, this.rb_categorypackingandcompanywise, this.rb_classwise, this.rb_categorywise, this.rb_companywise, this.cb_ok, this.gb_format}
+
+// w_filter_changeitem_price.destroy() returns 0
+	destroy this.rb_margin_based
+	destroy this.rb_purinvbased
+	destroy this.rb_genericnamewise
+	destroy this.rb_catpackmanfclasswise
+	destroy this.rb_packingwise
+	destroy this.rb_categorypackingandcompanywise
+	destroy this.rb_classwise
+	destroy this.rb_categorywise
+	destroy this.rb_companywise
+	destroy this.cb_ok
+	destroy this.gb_format
+
+// w_filter_changeitem_price.open() returns long
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	parent.post event ue_close(1)
+	return ::message.returnvalue

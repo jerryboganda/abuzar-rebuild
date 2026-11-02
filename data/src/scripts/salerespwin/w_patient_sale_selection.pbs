@@ -1,0 +1,301 @@
+// window w_patient_sale_selection (salerespwin)  ancestor: window
+
+// w_patient_sale_selection.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	choose case key
+	case keyescape!
+		post event ue_close()
+	end choose
+	return ::message.returnvalue
+
+// w_patient_sale_selection.ue_close() returns 0
+	closewithreturn(this, this.istr_arg)
+
+// w_patient_sale_selection.ue_first() returns 0
+	long ll_code
+	ll_code = wf_first()
+	wf_selectunselectrow(1)
+	ll_code = this.dw_detail.retrieve(this.dw_master.object.code[this.il_selectedrow])
+	if ll_code <> 0 then
+		this.il_detailrow = 1
+	end if
+
+// w_patient_sale_selection.ue_next() returns 0
+	long ll_code
+	ll_code = wf_next()
+	wf_selectunselectrow(this.dw_master.getrow())
+	ll_code = this.dw_detail.retrieve(this.dw_master.object.code[this.il_selectedrow])
+	if ll_code <> 0 then
+		this.il_detailrow = 1
+	end if
+
+// w_patient_sale_selection.ue_previous() returns 0
+	long ll_code
+	ll_code = wf_previous()
+	wf_selectunselectrow(this.dw_master.getrow())
+	ll_code = this.dw_detail.retrieve(this.dw_master.object.code[this.il_selectedrow])
+	if ll_code <> 0 then
+		this.il_detailrow = 1
+	end if
+
+// w_patient_sale_selection.ue_last() returns 0
+	long ll_code
+	ll_code = wf_last()
+	wf_selectunselectrow(this.dw_master.rowcount())
+	ll_code = this.dw_detail.retrieve(this.dw_master.object.code[this.il_selectedrow])
+	if ll_code <> 0 then
+		this.il_detailrow = 1
+	end if
+
+// w_patient_sale_selection.wf_first() returns long
+	long ret_val
+	if this.dw_master.rowcount() > 0 then
+		this.dw_master.scrolltorow(0)
+		ret_val = this.dw_master.getrow()
+	end if
+	return ret_val
+
+// w_patient_sale_selection.wf_last() returns long
+	long ret_val
+	this.dw_master.scrolltorow(this.dw_master.rowcount())
+	ret_val = this.dw_master.getrow()
+	return ret_val
+
+// w_patient_sale_selection.wf_next() returns long
+	long ret_val
+	this.dw_master.scrollnextrow()
+	ret_val = this.dw_master.getrow()
+	return ret_val
+
+// w_patient_sale_selection.wf_previous() returns long
+	long ret_val
+	this.dw_master.scrollpriorrow()
+	ret_val = this.dw_master.getrow()
+	return ret_val
+
+// w_patient_sale_selection.wf_selectunselectrow(long row) returns 0
+	if row > 0 then
+		this.il_selectedrow = row
+	end if
+	if this.dw_master.rowcount() > 0 and this.il_selectedrow <> 0 then
+		this.dw_master.selectrow(0, false)
+		this.dw_master.selectrow(this.il_selectedrow, true)
+	end if
+
+// w_patient_sale_selection.create() returns 0
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.dw_detail = create dw_detail
+	this.dw_master = create dw_master
+	this.control = {this.cb_cancel, this.cb_ok, this.dw_detail, this.dw_master}
+
+// w_patient_sale_selection.destroy() returns 0
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.dw_detail
+	destroy this.dw_master
+
+// w_patient_sale_selection.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	long ll_module
+	long ll_rtcode
+	long k
+	long[] ll_longlist
+	environment env
+	this.il_code = message.doubleparm
+	this.dw_master.settransobject(sqlca)
+	this.dw_detail.settransobject(sqlca)
+	if getenvironment(env) <> 1 then
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	this.width = ll_width * 0.98
+	this.height = ll_height * 0.85
+	this.y = int((ll_height - this.height) / 2.0)
+	this.dw_master.width = this.width - this.width * 0.02
+	this.dw_master.height = this.height - this.height * 0.4
+	this.dw_detail.width = this.width - this.width * 0.02
+	this.dw_detail.height = this.height - this.height * 0.4
+	this.cb_ok.y = this.height - this.cb_ok.height - 100
+	this.cb_cancel.y = this.height - this.cb_cancel.height - 100
+	ll_rtcode = this.dw_master.retrieve(this.il_code)
+	if ll_rtcode <> 0 then
+		post event ue_first()
+	end if
+	f_setcolumnstyle(this.dw_detail, "Qty")
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.istr_arg.i_status = -1
+	parent.triggerevent("ue_close")
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	long ll_counter
+	long ll_row
+	for ll_counter = 1 to parent.dw_master.rowcount()
+		if parent.dw_master.object.selected[ll_counter] = "Y" then
+			ll_row = ll_row + 1
+			parent.istr_arg.la_longlist[ll_row] = parent.dw_master.object.code[ll_counter]
+		end if
+	next
+	parent.istr_arg.i_status = 1
+	parent.triggerevent("ue_close")
+	return ::message.returnvalue
+
+// dw_detail.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	long ll_row
+	if key = keyuparrow! then
+		if parent.il_detailrow <= parent.dw_detail.rowcount() then
+			if parent.il_detailrow = 1 then
+				ll_row = 1
+			else
+				ll_row = parent.il_detailrow - 1
+				parent.dw_detail.setrow(ll_row)
+				parent.dw_detail.scrolltorow(ll_row)
+			end if
+		end if
+	elseif key = keydownarrow! then
+		if parent.il_detailrow <= parent.dw_detail.rowcount() then
+			if parent.il_detailrow = parent.dw_detail.rowcount() then
+				ll_row = parent.il_detailrow
+			else
+				ll_row = parent.il_detailrow + 1
+				parent.dw_detail.setrow(ll_row)
+				parent.dw_detail.scrolltorow(ll_row)
+			end if
+		end if
+	elseif key = keypagedown! then
+		parent.dw_detail.scrollnextpage()
+		ll_row = parent.dw_detail.getrow()
+	elseif key = keypageup! then
+		parent.dw_detail.scrollpriorpage()
+		ll_row = parent.dw_detail.getrow()
+	elseif key = keyhome! then
+		scrolltorow(1)
+		ll_row = 1
+	elseif key = keyend! then
+		ll_row = parent.dw_detail.rowcount()
+		scrolltorow(ll_row)
+	end if
+	if ll_row > 0 and ll_row <= parent.dw_detail.rowcount() then
+		parent.il_detailrow = ll_row
+		parent.dw_detail.selectrow(0, false)
+		parent.dw_detail.selectrow(parent.il_detailrow, true)
+	end if
+	return ::message.returnvalue
+
+// dw_detail.getfocus() returns long
+	if parent.dw_detail.rowcount() > 0 then
+		parent.dw_detail.selectrow(0, false)
+		parent.dw_detail.selectrow(1, true)
+		parent.il_detailrow = 1
+	end if
+	return ::message.returnvalue
+
+// dw_detail.losefocus() returns long
+	if parent.dw_detail.rowcount() > 0 then
+		parent.dw_detail.selectrow(0, false)
+		parent.il_detailrow = 1
+	end if
+	return ::message.returnvalue
+
+// dw_detail.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	parent.dw_detail.selectrow(0, false)
+	parent.dw_detail.selectrow(row, true)
+	parent.il_detailrow = row
+	return ::message.returnvalue
+
+// dw_detail.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	parent.dw_detail.selectrow(0, false)
+	parent.dw_detail.selectrow(row, true)
+	parent.il_detailrow = row
+	return ::message.returnvalue
+
+// dw_master.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	integer li_movement
+	long ll_row
+	long ll_temp
+	string sl_columnname
+	if key = keyuparrow! then
+		if parent.il_selectedrow <= parent.dw_master.rowcount() then
+			if parent.il_selectedrow > 1 then
+				ll_row = parent.il_selectedrow - 1
+				parent.dw_master.scrolltorow(ll_row)
+			else
+				ll_row = parent.il_selectedrow
+			end if
+		end if
+	elseif key = keydownarrow! then
+		if parent.il_selectedrow <= parent.dw_master.rowcount() then
+			if parent.il_selectedrow < parent.dw_master.rowcount() then
+				ll_row = parent.il_selectedrow + 1
+				parent.dw_master.scrolltorow(ll_row)
+			else
+				ll_row = parent.il_selectedrow
+			end if
+		end if
+	elseif key = keypagedown! then
+		parent.dw_master.scrollnextpage()
+		ll_row = parent.dw_master.getrow()
+	elseif key = keypageup! then
+		parent.dw_master.scrollpriorpage()
+		ll_row = parent.dw_master.getrow()
+	elseif key = keyhome! then
+		scrolltorow(1)
+		ll_row = 1
+	elseif key = keyend! then
+		ll_row = parent.dw_master.rowcount()
+		scrolltorow(ll_row)
+	end if
+	if ll_row > 0 and ll_row <= parent.dw_master.rowcount() then
+		parent.dw_master.selectrow(0, false)
+		parent.dw_master.selectrow(ll_row, true)
+		parent.il_selectedrow = ll_row
+		if parent.dw_master.rowcount() > 0 then
+			parent.dw_detail.retrieve(parent.dw_master.object.code[parent.il_selectedrow])
+		end if
+	end if
+	return ::message.returnvalue
+
+// dw_master.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	parent.wf_selectunselectrow(row)
+	if parent.dw_master.rowcount() > 0 then
+		parent.dw_detail.retrieve(parent.dw_master.object.code[parent.il_selectedrow])
+	end if
+	return ::message.returnvalue
+
+// dw_master.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	parent.wf_selectunselectrow(row)
+	if parent.dw_master.rowcount() > 0 then
+		parent.dw_detail.retrieve(parent.dw_master.object.code[parent.il_selectedrow])
+	end if
+	return ::message.returnvalue
+
+// dw_master.losefocus() returns long
+	if parent.dw_master.rowcount() > 0 then
+		parent.dw_master.selectrow(0, false)
+	end if
+	return ::message.returnvalue
+
+// dw_master.getfocus() returns long
+	if parent.dw_master.rowcount() > 0 then
+		parent.dw_master.selectrow(0, false)
+		if parent.il_selectedrow <= parent.dw_master.rowcount() then
+			parent.dw_master.selectrow(parent.il_selectedrow, true)
+		else
+			parent.il_selectedrow = 1
+			parent.dw_master.selectrow(1, true)
+		end if
+	end if
+	return ::message.returnvalue

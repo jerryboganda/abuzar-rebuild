@@ -1,0 +1,121 @@
+// function f_printbarcode_farooqplusph (barcodefunctions)  ancestor: function_object
+
+// f_printbarcode_farooqplusph.f_printbarcode_farooqplusph(datawindow id_master, datawindow id_detail, boolean ib_printprice) returns long
+	long ll_totalrows
+	long ll_counter
+	long ll_innercounter
+	long ll_qty
+	long ll_currrow
+	long ll_tot_label_rows
+	long ll_job
+	integer li_startcell
+	integer li_stopcell
+	integer li_temp
+	integer li_file
+	integer li_file2
+	string ls_clientname
+	string ls_clientname_25_char
+	string ls_address
+	string ls_itemname
+	string ls_aliasname
+	string ls_price
+	string ls_filecontent
+	string ls_seperator
+	string ls_date
+	string ls_format
+	string ls_xpos
+	string ls_infocode
+	string ls_printer
+	string ls_manufshortname
+	string ls_design
+	string ls_purprice
+	string ls_supp_alias
+	string ls_contents
+	long ll_headerno
+	long ll_labelno
+	long ll_labelpos
+	long ll_supply_cols_per_row
+	integer li_barcodeleninprint
+	ls_seperator = ";"
+	ls_supp_alias = id_master.object.aliasname[id_master.getrow()]
+	ll_headerno = id_master.getitemnumber(id_master.getrow(), "headerno")
+	ls_clientname = trim(f_reportheaderinfo_wrt_headerno("clientname", ll_headerno))
+	ls_clientname_25_char = upper(left(trim(f_reportheaderinfo_wrt_headerno("clientname", ll_headerno)), 25))
+	li_barcodeleninprint = f_numberpreferences("BarCodeLenInPrint")
+	ls_address = trim(f_reportheaderinfo_wrt_headerno("address1", ll_headerno))
+	ll_totalrows = id_detail.rowcount()
+	ls_printer = trim(id_master.object.barcodeprinter[1])
+	if lower(ls_printer) = lower("Zebra TLP 2844") then
+		ls_format = id_master.object.labelformat[1]
+		li_file = fileopen("label.prn", linemode!, write!, lockwrite!, replace!)
+		if li_file = -1 then
+			messagebox("Error", "Unable to locate file for Label printing")
+			return 0
+		else
+			ls_filecontent = ""
+			filewrite(li_file, ls_filecontent)
+			filewrite(li_file, ls_filecontent)
+			ls_filecontent = "Q224,019"
+			filewrite(li_file, ls_filecontent)
+			ls_filecontent = "q831"
+			filewrite(li_file, ls_filecontent)
+			ls_filecontent = "rN"
+			filewrite(li_file, ls_filecontent)
+			ls_filecontent = "S1"
+			filewrite(li_file, ls_filecontent)
+			ls_filecontent = "D10"
+			filewrite(li_file, ls_filecontent)
+			ls_filecontent = "ZT"
+			filewrite(li_file, ls_filecontent)
+			ls_filecontent = "JB"
+			filewrite(li_file, ls_filecontent)
+			ls_filecontent = "O"
+			filewrite(li_file, ls_filecontent)
+			ls_filecontent = "R265,0"
+			filewrite(li_file, ls_filecontent)
+			for ll_counter = 1 to ll_totalrows
+				if id_detail.getitemnumber(ll_counter, "qty") > 0.0 then
+					ll_qty = id_detail.getitemnumber(ll_counter, "qty")
+					ls_itemname = trim(id_detail.getitemstring(ll_counter, "itemname"))
+					ls_aliasname = left(trim(id_detail.getitemstring(ll_counter, "fullcode")), li_barcodeleninprint)
+					if ib_printprice then
+						ls_price = "Rs.: " + trim(string(round(id_detail.getitemdecimal(ll_counter, "saleprice"), 2)))
+					else
+						ls_price = ""
+					end if
+					ls_filecontent = "N"
+					filewrite(li_file, ls_filecontent)
+					ls_filecontent = "A285,200,2,1,1,2,N,~"" + trim(mid(ls_clientname, 1, 25)) + "~""
+					filewrite(li_file, ls_filecontent)
+					ls_filecontent = "A285,176,2,1,1,2,N,~"" + trim(mid(ls_address, 1, 25)) + "~""
+					filewrite(li_file, ls_filecontent)
+					ls_filecontent = "B285,150,2,1,2,4,70,B,~"" + ls_aliasname + "~""
+					filewrite(li_file, ls_filecontent)
+					ls_filecontent = "A285,50,2,1,1,2,N,~"" + left(ls_itemname, 28) + "~""
+					filewrite(li_file, ls_filecontent)
+					ls_filecontent = "A285,28,2,1,2,2,N,~"" + ls_price + "~""
+					filewrite(li_file, ls_filecontent)
+					ls_filecontent = "P" + trim(string(ll_qty))
+					filewrite(li_file, ls_filecontent)
+				end if
+			next
+			fileclose(li_file)
+			li_file2 = fileopen("label.prn", textmode!, read!, lockread!)
+			if li_file2 = -1 then
+				messagebox("Error", "Unable to locate file for Label printing")
+				return 0
+			else
+				filereadex(li_file2, ls_contents)
+				fileclose(li_file2)
+				printsetprinter("Zebra TLP 2844")
+				ll_job = printopen("waseela", false)
+				if ll_job = -1 then
+					messagebox("Error", "Unable to Open Print Job for Label printing")
+				else
+					printsend(ll_job, ls_contents)
+					printclose(ll_job)
+				end if
+			end if
+		end if
+	end if
+	return 0

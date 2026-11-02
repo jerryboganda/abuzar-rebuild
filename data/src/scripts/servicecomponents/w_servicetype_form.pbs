@@ -1,0 +1,40 @@
+// window w_servicetype_form (servicecomponents)  ancestor: w_single_entry
+
+// w_servicetype_form.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM ServiceType WHERE ServiceType.name =:as_name USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_servicetype_form.ue_newform() returns 0
+	call super::ue_newform
+	this.id_detail.setcolumn(1)
+
+// w_servicetype_form.create() returns 0
+	call super::create
+
+// w_servicetype_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_servicetype_form.activate() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::activate()
+	this.windowstate = maximized!
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_servicetype_form.ue_detail() returns 0
+	call super::ue_detail
+
+// w_servicetype_form.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.is_tablename = "ServiceType"
+	return ::message.returnvalue

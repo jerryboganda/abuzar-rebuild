@@ -1,0 +1,34 @@
+// userobject n_cst_hash_long (dw2xls)  ancestor: n_cst_hash
+
+// n_cst_hash_long.of_get_value(string as_key) returns long
+	long ll_ret
+	n_cst_hash_long_entry lnvo_cur_entry
+	lnvo_cur_entry = of_find_hash_entry(as_key)
+	if not isnull(lnvo_cur_entry) then
+		ll_ret = lnvo_cur_entry.il_value
+	else
+		setnull(ll_ret)
+	end if
+	return ll_ret
+
+// n_cst_hash_long.of_set_value(string as_key, long al_value) returns integer
+	integer li_ret
+	n_cst_hash_long_entry lnvo_cur_entry
+	lnvo_cur_entry = of_get_hash_entry(as_key)
+	if not isnull(lnvo_cur_entry) then
+		lnvo_cur_entry.il_value = al_value
+	else
+		li_ret = -1
+	end if
+	return li_ret
+
+// n_cst_hash_long.of_create_entry() returns n_cst_hash_entry
+	n_cst_hash_entry lnvo_ret
+	lnvo_ret = create n_cst_hash_long_entry
+	return lnvo_ret
+
+// n_cst_hash_long.create() returns 0
+	triggerevent("constructor")
+
+// n_cst_hash_long.destroy() returns 0
+	triggerevent("destructor")

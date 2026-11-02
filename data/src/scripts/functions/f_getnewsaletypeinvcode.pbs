@@ -1,0 +1,17 @@
+// function f_getnewsaletypeinvcode (functions)  ancestor: function_object
+
+// f_getnewsaletypeinvcode.f_getnewsaletypeinvcode(integer ai_saletypecode, long al_saletypeinvno, transaction at_transobject) returns long
+	long ll_rtcode
+	SQL SELECT dbo.SaleType.COUNTER INTO :al_saletypeinvno FROM dbo.SaleType WITH ( UPDLOCK HOLDLOCK ) WHERE dbo.SaleType.SaleTypeCode =:ai_saletypecode USING at_transobject;
+	if at_transobject.sqlcode = 0 then
+		al_saletypeinvno = al_saletypeinvno + 1
+		SQL update dbo.SaleType SET dbo.SaleType.COUNTER =:al_saletypeinvno WHERE dbo.SaleType.SaleTypeCode =:ai_saletypecode USING at_transobject;
+		if at_transobject.sqlcode < 0 then
+			ll_rtcode = at_transobject.sqlcode
+			al_saletypeinvno = 0
+		end if
+	else
+		ll_rtcode = at_transobject.sqlcode
+		al_saletypeinvno = 0
+	end if
+	return ll_rtcode

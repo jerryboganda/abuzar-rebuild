@@ -1,0 +1,59 @@
+// window w_arg_oneval_class_mnf_pack_cat_stax_etc (reports)  ancestor: w_arguements
+
+// w_arg_oneval_class_mnf_pack_cat_stax_etc.create() returns 0
+	integer icurrent
+	call super::create
+	this.st_godown = create st_godown
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_godown
+
+// w_arg_oneval_class_mnf_pack_cat_stax_etc.destroy() returns 0
+	call super::destroy
+	destroy this.st_godown
+
+// w_arg_oneval_class_mnf_pack_cat_stax_etc.open() returns long
+	long ancestorreturnvalue
+	long ll_counter
+	long ll_rowcount
+	integer rtncode
+	ancestorreturnvalue = super::open()
+	this.is_stringparam = message.stringparm
+	if this.is_stringparam = "M" then
+		this.is_dataobject = "d_arg_manf"
+		this.is_colname = "manfcode"
+		this.st_3.text = "Manufacturer:"
+	elseif this.is_stringparam = "C" then
+		this.is_dataobject = "d_arg_cat"
+		this.is_colname = "icatcode"
+		this.st_3.text = "Item Category:"
+	elseif this.is_stringparam = "L" then
+		this.is_dataobject = "d_arg_class"
+		this.is_colname = "iccode"
+		this.st_3.text = "Item Class:"
+	elseif this.is_stringparam = "P" then
+		this.is_dataobject = "d_arg_packing"
+		this.is_colname = "packcode"
+		this.st_3.text = "Item Packing:"
+	elseif this.is_stringparam = "S" then
+		this.is_dataobject = "d_arg_salestaxschedule"
+		this.is_colname = "salestaxschedulecode"
+		this.st_3.text = "S/Tax Schedule:"
+	elseif this.is_stringparam = "T" then
+		this.is_dataobject = "d_arg_pctcode"
+		this.is_colname = "pctcode"
+		this.st_3.text = "PCT Code:"
+	end if
+	this.dw_control.setredraw(false)
+	this.dw_control.dataobject = this.is_dataobject
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	this.dw_control.setredraw(true)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_arg_oneval_class_mnf_pack_cat_stax_etc.ue_close(integer ai_stauts) returns 0
+	super::ue_close(ai_stauts)
+	closewithreturn(this, this.istr_arg)

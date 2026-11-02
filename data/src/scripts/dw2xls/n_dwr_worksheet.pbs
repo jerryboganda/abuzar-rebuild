@@ -1,0 +1,307 @@
+// userobject n_dwr_worksheet (dw2xls)  ancestor: nonvisualobject
+
+// n_dwr_worksheet.of_create_cell(long ai_x1, long ai_x2, long ai_y1, long ai_y2, double aa_value, long al_format, integer ai_units) returns integer
+	long lul_cell
+	lul_cell = addcelldouble(this.handle, aa_value, ai_x1, ai_x2, ai_y1, ai_y2, al_format, ai_units)
+	return 1
+
+// n_dwr_worksheet.of_create_cell(long ai_x1, long ai_x2, long ai_y1, long ai_y2, string aa_value, long al_format, integer ai_units) returns integer
+	long lul_cell
+	lul_cell = addcellstring(this.handle, aa_value, ai_x1, ai_x2, ai_y1, ai_y2, al_format, ai_units)
+	return 1
+
+// n_dwr_worksheet.of_create_cell(long ai_x1, long ai_x2, long ai_y1, long ai_y2, time aa_value, long al_format, integer ai_units) returns integer
+	double ld_val
+	integer li_hour
+	integer li_minute
+	integer li_second
+	long lul_cell
+	li_hour = hour(aa_value)
+	li_minute = minute(aa_value)
+	li_second = second(aa_value)
+	ld_val = (li_second + li_minute * 60 + li_hour * 3600) / (24 * 3600)
+	ld_val = ld_val + 0.0000000001
+	lul_cell = addcelldouble(this.handle, ld_val, ai_x1, ai_x2, ai_y1, ai_y2, al_format, ai_units)
+	return 1
+
+// n_dwr_worksheet.of_create_cell(long ai_x1, long ai_x2, long ai_y1, long ai_y2, datetime aa_value, long al_format, integer ai_units) returns integer
+	double ld_val
+	double ld_add
+	time lt_time
+	string ls_time
+	integer li_hour
+	integer li_minute
+	integer li_second
+	long lul_cell
+	lt_time = time(aa_value)
+	ls_time = string(lt_time)
+	lt_time = time(ls_time)
+	li_hour = hour(lt_time)
+	li_minute = minute(lt_time)
+	li_second = second(lt_time)
+	if this.ib_fixdatebase and date(aa_value) <= date("1900-02-28") then
+		ld_add = -1
+	end if
+	ld_val = daysafter(date("1899-12-30"), date(aa_value)) + ld_add + (li_second + li_minute * 60 + li_hour * 3600) / (24 * 3600)
+	ld_val = ld_val + 0.0000000001
+	lul_cell = addcelldouble(this.handle, ld_val, ai_x1, ai_x2, ai_y1, ai_y2, al_format, ai_units)
+	return 1
+
+// n_dwr_worksheet.of_create_cell(long ai_x1, long ai_x2, long ai_y1, long ai_y2, date aa_value, long al_format, integer ai_units) returns integer
+	double ld_val
+	double ld_add
+	long lul_cell
+	if this.ib_fixdatebase and aa_value <= date("1900-02-28") then
+		ld_add = -1
+	end if
+	ld_val = daysafter(date("1899-12-30"), aa_value) + ld_add
+	ld_val = ld_val + 0.0000000001
+	lul_cell = addcelldouble(this.handle, ld_val, ai_x1, ai_x2, ai_y1, ai_y2, al_format, ai_units)
+	return 1
+
+// n_dwr_worksheet.of_insert_bitmap(long ai_row, long ai_col, string as_bitmap_filename) returns integer
+	return of_insert_bitmap(ai_row, ai_col, as_bitmap_filename, 0, 0, 1, 1)
+
+// n_dwr_worksheet.of_insert_bitmap(long ai_row, long ai_col, string as_bitmap_filename, long ai_x, long ai_y) returns integer
+	return of_insert_bitmap(ai_row, ai_col, as_bitmap_filename, ai_x, ai_y, 1, 1)
+
+// n_dwr_worksheet.of_insert_bitmap(long ai_row, long ai_col, string as_bitmap_filename, long ai_x, long ai_y, double ad_scale_width, double ad_scale_height) returns integer
+	integer li_ret
+	long li_width
+	long li_height
+	long li_size
+	blob lb_data
+	blob lb_header
+	unsignedlong len
+	if hasimagessupport(this.handle) then
+		li_ret = of_process_bitmap(as_bitmap_filename, li_width, li_height, li_size, lb_data)
+		if li_ret = 1 then
+			li_width = li_width * ad_scale_width
+			li_height = li_height * ad_scale_height
+			li_ret = of_position_image(ai_col, ai_row, ai_x, ai_y, li_width, li_height)
+		end if
+		if li_ret = 1 then
+			lb_header = this.invo_sub.of_pack("v", 127) + this.invo_sub.of_pack("v", 8 + li_size) + this.invo_sub.of_pack("v", 9) + this.invo_sub.of_pack("v", 1) + this.invo_sub.of_pack("V", li_size)
+			len = len(lb_header) + len(lb_data)
+			excel97_appenddata(this.handle, lb_header + lb_data, len)
+		end if
+	else
+		li_ret = -1
+		messagebox("Error", "Images are not supported yet", stopsign!)
+	end if
+	return li_ret
+
+// n_dwr_worksheet.of_position_image(long ai_col_start, long ai_row_start, long ai_x1, long ai_y1, long ai_width, long ai_height) returns integer
+	integer li_ret
+	unsignedinteger li_col_end
+	unsignedinteger li_row_end
+	unsignedinteger li_x2
+	unsignedinteger li_y2
+	li_col_end = ai_col_start
+	li_row_end = ai_row_start
+	if ai_x1 >= of_size_col(ai_col_start) then
+		ai_x1 = 0
+	end if
+	if ai_y1 >= of_size_row(ai_row_start) then
+		ai_y1 = 0
+	end if
+	ai_width = ai_width + ai_x1 - 1
+	ai_height = ai_height + ai_y1 - 1
+	do while ai_width >= of_size_col(li_col_end)
+		ai_width = of_size_col(li_col_end) - ai_width
+		li_col_end = li_col_end + 1
+	loop
+	do while ai_height >= of_size_row(li_row_end)
+		ai_height = of_size_row(li_row_end) - ai_height
+		li_row_end = li_row_end + 1
+	loop
+	if of_size_col(ai_col_start) = 0 then
+		return -1
+	end if
+	if of_size_col(li_col_end) = 0 then
+		return -1
+	end if
+	if of_size_row(ai_row_start) = 0 then
+		return -1
+	end if
+	if of_size_row(li_row_end) = 0 then
+		return -1
+	end if
+	ai_x1 = ai_x1 / of_size_col(ai_col_start) * 1024.0
+	ai_y1 = ai_y1 / of_size_row(ai_row_start) * 256.0
+	li_x2 = ai_width / of_size_col(li_col_end) * 1024.0
+	li_y2 = ai_height / of_size_row(li_row_end) * 256.0
+	li_ret = of_store_obj_picture(ai_col_start, ai_x1, ai_row_start, ai_y1, li_col_end, li_x2, li_row_end, li_y2)
+	return li_ret
+
+// n_dwr_worksheet.of_size_row(unsignedlong ai_row) returns unsignedlong
+	return excel97_getrowheight(this.handle, ai_row)
+
+// n_dwr_worksheet.of_size_col(unsignedlong ai_col) returns unsignedlong
+	return excel97_getcolwidth(this.handle, ai_col)
+
+// n_dwr_worksheet.of_store_obj_picture(long ai_col_start, long ai_x1, long ai_row_start, long ai_y1, long ai_col_end, long ai_x2, long ai_row_end, long ai_y2) returns integer
+	integer li_ret
+	blob lb_header
+	unsignedlong len
+	lb_header = this.invo_sub.of_pack("v", 93) + this.invo_sub.of_pack("v", 60) + this.invo_sub.of_pack("V", 1) + this.invo_sub.of_pack("v", 8) + this.invo_sub.of_pack("v", 1) + this.invo_sub.of_pack("v", 1556) + this.invo_sub.of_pack("v", ai_col_start) + this.invo_sub.of_pack("v", ai_x1) + this.invo_sub.of_pack("v", ai_row_start) + this.invo_sub.of_pack("v", ai_y1) + this.invo_sub.of_pack("v", ai_col_end) + this.invo_sub.of_pack("v", ai_x2) + this.invo_sub.of_pack("v", ai_row_end) + this.invo_sub.of_pack("v", ai_y2) + this.invo_sub.of_pack("v", 0) + this.invo_sub.of_pack("V", 0) + this.invo_sub.of_pack("v", 0) + this.invo_sub.of_pack("C", 9) + this.invo_sub.of_pack("C", 9) + this.invo_sub.of_pack("C", 0) + this.invo_sub.of_pack("C", 0) + this.invo_sub.of_pack("C", 8) + this.invo_sub.of_pack("C", 255) + this.invo_sub.of_pack("C", 1) + this.invo_sub.of_pack("C", 0) + this.invo_sub.of_pack("v", 0) + this.invo_sub.of_pack("V", 9) + this.invo_sub.of_pack("v", 0) + this.invo_sub.of_pack("v", 0) + this.invo_sub.of_pack("v", 0) + this.invo_sub.of_pack("v", 1) + this.invo_sub.of_pack("V", 0)
+	len = len(lb_header)
+	excel97_appenddata(this.handle, lb_header, len)
+	return li_ret
+
+// n_dwr_worksheet.of_initunitconvertor() returns 0
+	n_dwr_sub lsub
+	long li_unit
+	lsub = create n_dwr_sub
+	for li_unit = 0 to 3
+		setunitxcoef(this.handle, li_unit, lsub.of_get_coef_x(li_unit))
+		setunitycoef(this.handle, li_unit, lsub.of_get_coef_y(li_unit))
+	next
+
+// n_dwr_worksheet.of_process_bitmap(string as_bitmap_filename, long al_width, long al_height, long al_size, blob ab_data) returns integer
+	integer li_ret
+	integer li_file
+	blob lb_data_item
+	blob lb_data
+	unsignedlong ll_size
+	unsignedinteger li_planes
+	unsignedinteger li_bitcount
+	unsignedlong ll_compression
+	blob lb_header
+	li_file = fileopen(as_bitmap_filename, streammode!, read!, lockwrite!)
+	if li_file <> -1 then
+		setnull(lb_data)
+		do while fileread(li_file, lb_data_item) > 0
+			if isnull(lb_data) then
+				lb_data = lb_data_item
+			else
+				lb_data = lb_data_item + lb_data
+			end if
+		loop
+		if isnull(lb_data) then
+			li_ret = -1
+		end if
+		fileclose(li_file)
+	else
+		li_ret = -1
+		messagebox("Error", "Couldn't open " + as_bitmap_filename, stopsign!)
+	end if
+	if li_ret = 1 and len(lb_data) <= 54 then
+		li_ret = -1
+		messagebox("Error", as_bitmap_filename + " doesn't contain enough data", stopsign!)
+	end if
+	if li_ret = 1 and string(blobmid(lb_data, 1, 2)) <> "BM" then
+		li_ret = -1
+		messagebox("Error", as_bitmap_filename + " doesn't appear to to be a valid bitmap image", stopsign!)
+	end if
+	if li_ret = 1 then
+		ll_size = long(blobmid(lb_data, 3, 4))
+		ll_size = ll_size - (54 - 12)
+		al_width = long(blobmid(lb_data, 19, 4))
+		al_height = long(blobmid(lb_data, 23, 4))
+		if al_width > 65535 then
+			li_ret = -1
+			messagebox("Error", as_bitmap_filename + ": largest image width supported is 65535", stopsign!)
+		end if
+	end if
+	if li_ret = 1 and al_height > 65535 then
+		li_ret = -1
+		messagebox("Error", as_bitmap_filename + ": largest image height supported is 65535", stopsign!)
+	end if
+	if li_ret = 1 then
+		li_planes = integer(blobmid(lb_data, 27, 2))
+		li_bitcount = integer(blobmid(lb_data, 29, 2))
+		if li_bitcount <> 24 then
+			li_ret = -1
+			messagebox("Error", as_bitmap_filename + " isn't a 24bit true color bitmap", stopsign!)
+		end if
+	end if
+	if li_ret = 1 and li_planes <> 1 then
+		li_ret = -1
+		messagebox("Error", as_bitmap_filename + ": only 1 plane supported in bitmap image", stopsign!)
+	end if
+	if li_ret = 1 then
+		ll_compression = long(blobmid(lb_data, 31, 4))
+		if ll_compression <> 0 then
+			li_ret = -1
+			messagebox("Error", as_bitmap_filename + ": compression not supported in bitmap image", stopsign!)
+		end if
+	end if
+	if li_ret = 1 then
+		lb_header = this.invo_sub.of_pack("V", 12) + this.invo_sub.of_pack("v", al_width) + this.invo_sub.of_pack("v", al_height) + this.invo_sub.of_pack("v", 1) + this.invo_sub.of_pack("v", 24)
+		ab_data = lb_header + blobmid(lb_data, 55, len(lb_data) - 55 + 1)
+		al_size = ll_size
+	end if
+	return li_ret
+
+// n_dwr_worksheet.of_set_header(string as_text, double ad_height) returns integer
+	integer li_ret
+	if len(as_text) >= 255 then
+		messagebox("Error", "Header string must be less than 255 characters", stopsign!)
+		li_ret = -1
+	end if
+	if li_ret = 1 then
+		setheader(this.handle, as_text, ad_height)
+	end if
+	return li_ret
+
+// n_dwr_worksheet.of_set_footer(string as_text, double ad_height) returns integer
+	integer li_ret
+	if len(as_text) >= 255 then
+		messagebox("Error", "Footer string must be less than 255 characters", stopsign!)
+		li_ret = -1
+	end if
+	if li_ret = 1 then
+		setfooter(this.handle, as_text, ad_height)
+	end if
+	return li_ret
+
+// n_dwr_worksheet.of_set_margin_bottom(double ad_value) returns integer
+	integer li_ret
+	setmarginbottom(this.handle, ad_value)
+	return li_ret
+
+// n_dwr_worksheet.of_set_margin_left(double ad_value) returns integer
+	integer li_ret
+	setmarginleft(this.handle, ad_value)
+	return li_ret
+
+// n_dwr_worksheet.of_set_margin_right(double ad_value) returns integer
+	integer li_ret
+	setmarginright(this.handle, ad_value)
+	return li_ret
+
+// n_dwr_worksheet.of_set_margin_top(double ad_value) returns integer
+	integer li_ret
+	setmargintop(this.handle, ad_value)
+	return li_ret
+
+// n_dwr_worksheet.of_set_orientation(long al_orientation) returns integer
+	setorientation(this.handle, al_orientation)
+	return 1
+
+// n_dwr_worksheet.of_set_landscape() returns integer
+	return of_set_orientation(0)
+
+// n_dwr_worksheet.of_set_portrait() returns integer
+	return of_set_orientation(1)
+
+// n_dwr_worksheet.of_create_cell_drawing(long ai_x1, long ai_x2, long ai_y1, long ai_y2, string as_imagepath, long al_format, integer ai_units) returns integer
+	long lul_cell
+	lul_cell = addcelldrawing(this.handle, as_imagepath, ai_x1, ai_x2, ai_y1, ai_y2, al_format, ai_units)
+	return 1
+
+// n_dwr_worksheet.create() returns 0
+	call super::create
+	triggerevent("constructor")
+
+// n_dwr_worksheet.destroy() returns 0
+	triggerevent("destructor")
+	call super::destroy
+
+// n_dwr_worksheet.destructor() returns long
+	return ::message.returnvalue
+
+// n_dwr_worksheet.constructor() returns long
+	this.invo_sub = create n_xls_subroutines_v97
+	return ::message.returnvalue

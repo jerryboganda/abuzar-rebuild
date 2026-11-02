@@ -1,0 +1,136 @@
+// window w_barcodelabels_popup (barcodecomponents)  ancestor: w_barcodelabels
+
+// w_barcodelabels_popup.ue_populateitem() returns 0
+	long ll_counter
+	long ll_currentrow
+	long ll_code
+	long ll_qty
+	long ll_icode
+	string ls_errortext
+	s_datawindow lstr_arg
+	datastore lds_detail
+	lstr_arg = message.powerobjectparm
+	lds_detail = lstr_arg.dws
+	setredraw(false)
+	ll_currentrow = 1
+	if not isvalid(lds_detail) then
+		return
+	end if
+	if this.id_master.rowcount() <= 0 then
+		this.id_master.insertrow(0)
+	end if
+	if lds_detail.rowcount() > 0 then
+		ll_code = lds_detail.object.code[lds_detail.rowcount()]
+		if ll_code > 0 and lstr_arg.l_code3 = 1 then
+			this.id_master.retrieve(ll_code)
+		end if
+	end if
+	if f_stringpreferences("UseBarCodePrinter") = "Y" and this.id_master.rowcount() > 0 then
+		this.id_master.object.barcodeprinter[1] = trim(f_stringpreferences("BarCodePrinterName"))
+		this.id_master.object.labelformat[1] = trim(string(f_numberpreferences("defaultbarcodeformat")))
+	end if
+	if this.id_master.rowcount() > 0 then
+		this.id_master.object.suppliername[1] = lstr_arg.s_name1
+		this.id_master.object.patientname[1] = lstr_arg.s_name2
+		this.id_master.object.doctorname[1] = lstr_arg.s_name3
+	end if
+	for ll_counter = 1 to lds_detail.rowcount()
+		ll_icode = lds_detail.object.icode[ll_counter]
+		if ll_counter > 1 and ll_icode > 0 then
+			ll_currentrow = this.id_detail.insertrow(0)
+		end if
+		if lstr_arg.l_code = 1 then
+			ll_qty = lds_detail.object.packqty[ll_counter] * lds_detail.object.packunits[ll_counter]
+		else
+			ll_qty = lds_detail.object.looseqty[ll_counter]
+		end if
+		if ll_icode > 0 then
+			this.id_detail.object.code[ll_currentrow] = lds_detail.object.code[ll_counter]
+			if lstr_arg.l_code3 = 1 then
+				if lstr_arg.l_code2 = 3 or lstr_arg.l_code2 = 7 or lstr_arg.l_code2 = 8 then
+					this.id_detail.object.saleprice[ll_currentrow] = lds_detail.object.saleprice[ll_counter]
+				else
+					this.id_detail.object.saleprice[ll_currentrow] = lds_detail.object.salepriceforitem[ll_counter]
+					this.id_detail.object.purprice[ll_currentrow] = lds_detail.object.purprice[ll_counter]
+				end if
+			else
+				this.id_detail.object.saleprice[ll_currentrow] = lds_detail.object.saleprice[ll_counter]
+				this.id_detail.object.inscode[ll_currentrow] = lds_detail.object.inscode[ll_counter]
+			end if
+			this.id_detail.object.itemcodetype[ll_currentrow] = 0
+			if wf_inititeminfo(ll_icode, ll_currentrow, ls_errortext) = false then
+				messagebox("Item Error", ls_errortext)
+			end if
+			this.id_detail.object.qty[ll_currentrow] = ll_qty
+			if lstr_arg.l_code3 = 1 or lstr_arg.l_code3 = 3 then
+				this.id_detail.object.batch[ll_currentrow] = lds_detail.object.batch[ll_counter]
+				this.id_detail.object.expiry[ll_currentrow] = lds_detail.object.expiry[ll_counter]
+			end if
+		end if
+	next
+	this.tab_retrieve.tabpage_detail.dw_cells.object.tocell[1] = this.id_detail.object.c_totalqty[this.id_detail.rowcount()]
+	if this.id_detail.rowcount() > 0 then
+		this.im_menu.m_file.m_print.enabled = true
+	end if
+	setredraw(true)
+	destroy lds_detail
+
+// w_barcodelabels_popup.create() returns 0
+	call super::create
+
+// w_barcodelabels_popup.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_barcodelabels_popup.open() returns long
+	m_entry lm_menu
+	long ll_width
+	long ll_height
+	environment env
+	postevent("ue_postopen")
+	wf_setmenu(this.menuid)
+	lm_menu = this.menuid
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.tab_retrieve.width = ll_width * 0.99
+	this.tab_retrieve.height = ll_height * 0.83
+	this.tab_retrieve.tabpage_detail.dw_detail.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_itemsdetail.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_footer.y = this.tab_retrieve.height * 0.90 - this.tab_retrieve.tabpage_detail.dw_footer.height
+	this.tab_retrieve.tabpage_detail.dw_itemsdetail.height = this.tab_retrieve.tabpage_detail.dw_footer.y - this.tab_retrieve.tabpage_detail.dw_itemsdetail.y
+	this.tab_retrieve.tabpage_list.gb_fliter.width = ll_width * 0.97 - this.tab_retrieve.tabpage_list.gb_sort.width
+	this.tab_retrieve.tabpage_list.r_1.width = ll_width * 0.99
+	this.tab_retrieve.tabpage_list.r_1.height = ll_height * 0.765 - this.tab_retrieve.tabpage_list.gb_sort.height
+	this.tab_retrieve.tabpage_list.dw_list.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_list.dw_list.height = ll_height * 0.75 - this.tab_retrieve.tabpage_list.dw_list.y
+	this.tab_retrieve.tabpage_detail.dw_itemslist.height = ll_height * 0.6
+	this.tab_retrieve.tabpage_detail.dw_itemslist.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width * 0.73
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_barcodelabels_popup.closequery() returns long
+	return 0
+
+// w_barcodelabels_popup.key(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::key(key, keyflags)
+	if key = keyescape! then
+		close(this)
+	end if
+	return ::message.returnvalue
+
+// w_barcodelabels_popup.ue_print() returns 0
+	call super::ue_print
+	close(this)
+
+// w_barcodelabels_popup.ue_postopen() returns 0
+	call super::ue_postopen
+	message.doubleparm = 1
+	event ue_postopen()
+	post event ue_populateitem()

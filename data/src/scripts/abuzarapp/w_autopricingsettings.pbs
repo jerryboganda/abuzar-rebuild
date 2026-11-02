@@ -1,0 +1,138 @@
+// window w_autopricingsettings (abuzarapp)  ancestor: window
+
+// w_autopricingsettings.create() returns 0
+	this.gb_2 = create gb_2
+	this.cbx_modsaleusingcustlatestsale = create cbx_modsaleusingcustlatestsale
+	this.cbx_updsaleusingcustlatestsale = create cbx_updsaleusingcustlatestsale
+	this.dw_preferences = create dw_preferences
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.gb_1 = create gb_1
+	this.cbx_updflatdiscusingcustlatestsale = create cbx_updflatdiscusingcustlatestsale
+	this.cbx_upddiscpercusingcustlatestsale = create cbx_upddiscpercusingcustlatestsale
+	this.cbx_updbonusqtyusingcustlatestsale = create cbx_updbonusqtyusingcustlatestsale
+	this.cbx_updspriceusingcustlatestsale = create cbx_updspriceusingcustlatestsale
+	this.control = {this.gb_2, this.cbx_modsaleusingcustlatestsale, this.cbx_updsaleusingcustlatestsale, this.dw_preferences, this.cb_cancel, this.cb_ok, this.gb_1, this.cbx_updflatdiscusingcustlatestsale, this.cbx_upddiscpercusingcustlatestsale, this.cbx_updbonusqtyusingcustlatestsale, this.cbx_updspriceusingcustlatestsale}
+
+// w_autopricingsettings.destroy() returns 0
+	destroy this.gb_2
+	destroy this.cbx_modsaleusingcustlatestsale
+	destroy this.cbx_updsaleusingcustlatestsale
+	destroy this.dw_preferences
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.gb_1
+	destroy this.cbx_updflatdiscusingcustlatestsale
+	destroy this.cbx_upddiscpercusingcustlatestsale
+	destroy this.cbx_updbonusqtyusingcustlatestsale
+	destroy this.cbx_updspriceusingcustlatestsale
+
+// w_autopricingsettings.open() returns long
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	this.id_preferences = this.dw_preferences
+	this.id_preferences.settransobject(sqlca)
+	this.id_preferences.retrieve()
+	if f_stringpreferences("UpdSaleUsingCustLatestSale") = "Y" then
+		this.cbx_updsaleusingcustlatestsale.checked = true
+	else
+		this.cbx_updsaleusingcustlatestsale.checked = false
+	end if
+	if f_stringpreferences("ModSaleUsingCustLatestSale") = "Y" then
+		this.cbx_modsaleusingcustlatestsale.checked = true
+	else
+		this.cbx_modsaleusingcustlatestsale.checked = false
+	end if
+	if f_stringpreferences("UpdSPriceUsingCustLatestSale") = "Y" then
+		this.cbx_updspriceusingcustlatestsale.checked = true
+	else
+		this.cbx_updspriceusingcustlatestsale.checked = false
+	end if
+	if f_stringpreferences("UpdBonusQtyUsingCustLatestSale") = "Y" then
+		this.cbx_updbonusqtyusingcustlatestsale.checked = true
+	else
+		this.cbx_updbonusqtyusingcustlatestsale.checked = false
+	end if
+	if f_stringpreferences("UpdDiscPercUsingCustLatestSale") = "Y" then
+		this.cbx_upddiscpercusingcustlatestsale.checked = true
+	else
+		this.cbx_upddiscpercusingcustlatestsale.checked = false
+	end if
+	if f_stringpreferences("UpdFlatDiscUsingCustLatestSale") = "Y" then
+		this.cbx_updflatdiscusingcustlatestsale.checked = true
+	else
+		this.cbx_updflatdiscusingcustlatestsale.checked = false
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	close(parent)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	string ls_temp
+	w_autopricingsettings w_parent
+	if parent.cbx_updsaleusingcustlatestsale.checked = true then
+		ls_temp = "Y"
+	else
+		ls_temp = "N"
+	end if
+	f_set_preference_local(parent.id_preferences, "UpdSaleUsingCustLatestSale", ls_temp)
+	if parent.cbx_modsaleusingcustlatestsale.checked = true then
+		ls_temp = "Y"
+	else
+		ls_temp = "N"
+	end if
+	f_set_preference_local(parent.id_preferences, "ModSaleUsingCustLatestSale", ls_temp)
+	if parent.cbx_updspriceusingcustlatestsale.checked = true then
+		ls_temp = "Y"
+	else
+		ls_temp = "N"
+	end if
+	f_set_preference_local(parent.id_preferences, "UpdSPriceUsingCustLatestSale", ls_temp)
+	if parent.cbx_updbonusqtyusingcustlatestsale.checked = true then
+		ls_temp = "Y"
+	else
+		ls_temp = "N"
+	end if
+	f_set_preference_local(parent.id_preferences, "UpdBonusQtyUsingCustLatestSale", ls_temp)
+	if parent.cbx_upddiscpercusingcustlatestsale.checked = true then
+		ls_temp = "Y"
+	else
+		ls_temp = "N"
+	end if
+	f_set_preference_local(parent.id_preferences, "UpdDiscPercUsingCustLatestSale", ls_temp)
+	if parent.cbx_updflatdiscusingcustlatestsale.checked = true then
+		ls_temp = "Y"
+	else
+		ls_temp = "N"
+	end if
+	f_set_preference_local(parent.id_preferences, "UpdFlatDiscUsingCustLatestSale", ls_temp)
+	if f_validatedw(parent.id_preferences) < 0 then
+		return ::message.returnvalue
+	end if
+	w_parent = getparent()
+	if parent.id_preferences.update() > 0 then
+		SQL commit USING sqlca;
+		gds_preferences.retrieve()
+	else
+		messagebox("Datasase Error", "Some Database problem occur during saving")
+		SQL rollback USING sqlca;
+		setpointer(arrow!)
+	end if
+	w_parent.setfocus()
+	close(w_autopricingsettings)
+	return ::message.returnvalue

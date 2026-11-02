@@ -1,0 +1,84 @@
+// menu m_vaccinefollowupmenu (patientvaccinecomp)  ancestor: menu
+
+// m_vaccinefollowupmenu.create() returns 0
+	m_vaccinefollowupmenu = this
+	call super::create
+	this.text = "m_vaccinefollowupmenu"
+	this.m_activitylist = create m_activitylist
+	this.item[upperbound(this.item) + 1] = this.m_activitylist
+
+// m_vaccinefollowupmenu.destroy() returns 0
+	call super::destroy
+	destroy this.m_activitylist
+
+// m_activitylist.create() returns 0
+	call super::create
+	this.text = "Activity &List"
+	this.m_populatevaccineschedule = create m_populatevaccineschedule
+	this.m_exportvaccinefollow-upinexcel = create m_exportvaccinefollow-upinexcel
+	this.m_print = create m_print
+	this.m_exit = create m_exit
+	this.item[upperbound(this.item) + 1] = this.m_populatevaccineschedule
+	this.item[upperbound(this.item) + 1] = this.m_exportvaccinefollow-upinexcel
+	this.item[upperbound(this.item) + 1] = this.m_print
+	this.item[upperbound(this.item) + 1] = this.m_exit
+
+// m_activitylist.destroy() returns 0
+	call super::destroy
+	destroy this.m_populatevaccineschedule
+	destroy this.m_exportvaccinefollow-upinexcel
+	destroy this.m_print
+	destroy this.m_exit
+
+// m_populatevaccineschedule.clicked() returns 0
+	this.parentwindow.dynamic wf_populate_vaccine_schedule()
+
+// m_populatevaccineschedule.create() returns 0
+	call super::create
+	this.text = "Populate Vaccine Schedule~tF5"
+	this.shortcut = 116
+	this.toolbaritemname = "AddWatch5!"
+	this.toolbaritemdownname = "AddWatch5!"
+	this.toolbaritemtext = "Populate Patient Vaccine Schedule"
+
+// m_populatevaccineschedule.destroy() returns 0
+	call super::destroy
+
+// m_exportvaccinefollow-upinexcel.clicked() returns 0
+	this.parentwindow.dynamic wf_save_vaccine_followup_as_excel()
+
+// m_exportvaccinefollow-upinexcel.create() returns 0
+	call super::create
+	this.text = "Export Vaccine Follow-Up In Excel~tF6"
+	this.shortcut = 117
+	this.toolbaritemname = "CrossTab!"
+	this.toolbaritemdownname = "CrossTab!"
+	this.toolbaritemtext = "Export Vaccine Follow-Up In Excel"
+
+// m_exportvaccinefollow-upinexcel.destroy() returns 0
+	call super::destroy
+
+// m_print.create() returns 0
+	call super::create
+	this.text = "Print~tCtrl+P"
+	this.shortcut = 336
+	this.microhelp = "Print Vaccine Schedule for selected patient"
+	this.toolbaritemname = "Print!"
+	this.toolbaritemdownname = "Print!"
+	this.toolbaritemtext = "Print"
+
+// m_print.destroy() returns 0
+	call super::destroy
+
+// m_print.clicked() returns 0
+	this.parentwindow.dynamic wf_print()
+
+// m_exit.create() returns 0
+	call super::create
+	this.text = "&Exit"
+
+// m_exit.destroy() returns 0
+	call super::destroy
+
+// m_exit.clicked() returns 0
+	close(this.parentwindow)

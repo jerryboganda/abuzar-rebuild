@@ -1,0 +1,103 @@
+// window w_custwiseitemcategory (custcomponents)  ancestor: w_multi_entry
+
+// w_custwiseitemcategory.wf_validatecategory() returns integer
+	long ll_catcode
+	integer li_errcode
+	integer li_cat
+	ll_catcode = this.id_detail.getitemnumber(this.il_currrow, "icatcode")
+	if vf_dwdupcode1(this.id_detail, "icatcode", string(ll_catcode), this.il_currrow) = true then
+		messagebox("Duplicate Item Category Name", "Item Category has already been selected")
+		li_errcode = -1
+	end if
+	this.ib_itemvalidated = true
+	if li_errcode = -1 then
+		setnull(li_cat)
+		this.id_detail.setcolumn("icatcode")
+		this.id_detail.setitem(this.il_currrow, "icatcode", li_cat)
+		this.id_detail.scrolltorow(this.il_currrow)
+	end if
+	return li_errcode
+
+// w_custwiseitemcategory.create() returns 0
+	call super::create
+
+// w_custwiseitemcategory.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_custwiseitemcategory.ue_save() returns 0
+	long ll_counter
+	long ll_code
+	setpointer(hourglass!)
+	if this.id_detail.rowcount() > 0 and isnull(this.id_detail.object.icatcode[this.id_detail.rowcount()]) then
+		this.id_detail.deleterow(this.id_detail.rowcount())
+	end if
+	if this.ib_itemvalidated = false and wf_validatecategory() = -1 then
+		return
+	end if
+	ll_code = this.id_master.getitemnumber(this.id_master.getrow(), "code")
+	if isnull(ll_code) or ll_code = 0 then
+		messagebox("Customer Validation", "Please Select a valid customer form list tab.", stopsign!)
+		return
+	end if
+	for ll_counter = 1 to this.id_detail.rowcount()
+		this.id_detail.setitem(ll_counter, "code", ll_code)
+	next
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	if this.id_detail.update(true, false) < 0 then
+		SQL rollback USING this.it_transobject;
+		messagebox("Save Changes Fail", "Changes do not take effect in database~n~r Some database problem occur", exclamation!, ok!, 1)
+		setpointer(arrow!)
+	else
+		SQL commit USING this.it_transobject;
+		messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+		this.ib_commitok = true
+		this.id_detail.resetupdate()
+		this.im_menu.m_file.m_new.enabled = true
+		this.editflag = false
+	end if
+	setpointer(arrow!)
+
+// w_custwiseitemcategory.ue_newform() returns 0
+	call super::ue_newform
+	this.im_menu.m_item.m_newitem.enabled = true
+	this.im_menu.m_item.m_deleteitem.enabled = true
+	this.id_master.setfocus()
+
+// w_custwiseitemcategory.ue_newitem() returns 0
+	if this.ib_itemvalidated = false and wf_validatecategory() = -1 then
+		return
+	end if
+	call super::ue_newitem
+
+// w_custwiseitemcategory.ue_detail() returns 0
+	long ll_code
+	long ll_rowcount
+	call super::ue_detail
+	this.im_menu.m_file.m_retrieve.text = "Lis&t"
+	this.im_menu.m_file.m_print.enabled = true
+	this.i_editmode = 2
+	this.i_retrievemode = 2
+	ll_code = this.id_dwcontrol.borderstyle.code[this.il_selectedrow]
+	this.id_dwcontrol = this.id_master
+	ll_rowcount = wf_retrieve(ll_code)
+	this.id_dwcontrol = this.id_detail
+	wf_retrieve(ll_code)
+	this.id_detail.setrow(1)
+	this.id_detail.scrolltorow(1)
+	this.id_detail.setcolumn("icatcode")
+	this.id_detail.setfocus()
+	this.id_dwcontrol = this.id_list
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_new.visible = false
+	this.im_menu.m_item.m_newitem.enabled = true
+	this.im_menu.m_item.m_deleteitem.enabled = true
+
+// w_custwiseitemcategory.ue_postopen() returns 0
+	call super::ue_postopen
+	this.id_detail.getchild("icatcode", this.idc_cat)
+	this.idc_cat.settransobject(this.it_transobject)

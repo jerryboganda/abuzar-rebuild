@@ -1,0 +1,54 @@
+// function f_holdon (functions)  ancestor: function_object
+
+// f_holdon.fn_holdon() returns long
+	long ll_stat
+	long ll_flag
+	long ll_fcatlength
+	datetime ldt_fcatvalue
+	datetime ldt_current_serverdate
+	string ls_date
+	SQL Select stat , flag , convert ( datetime , fcatvalue ) , fcatlength INTO :ll_stat, :ll_flag, :ldt_fcatvalue From syscatelog Where fcatid =1 USING sqlca;
+	sqlca.getdatetime(ldt_current_serverdate)
+	if sqlca.sqlcode = 0 then
+		ls_date = string(ldt_current_serverdate, "mm/dd/yy")
+		if ll_stat = 1 and ll_flag = 0 and date(ls_date) >= date(ldt_fcatvalue) then
+			SQL rollback USING sqlca;
+			SQL update syscatelog Set flag =1 Where fcatid =1 USING sqlca;
+			if sqlca.sqlcode = 0 then
+				SQL commit USING sqlca;
+			else
+				SQL rollback USING sqlca;
+			end if
+		end if
+	end if
+	return 0
+
+// f_holdon.f_holdon(long al_fcatid) returns long
+	long ll_stat
+	long ll_flag
+	long ll_fcatlength
+	datetime ldt_fcatvalue
+	datetime ldt_current_serverdate
+	string ls_date
+	SQL Select stat , flag , Convert ( DateTime , fcatvalue ) , fcatlength INTO :ll_stat, :ll_flag, :ldt_fcatvalue, :ll_fcatlength From syscatelog Where fcatid =:al_fcatid USING sqlca;
+	sqlca.getdatetime(ldt_current_serverdate)
+	if sqlca.sqlcode = 0 then
+		ls_date = string(ldt_current_serverdate, "mm/dd/yy")
+		if ll_stat = 1 then
+			if ll_flag = 0 then
+				if date(ls_date) >= date(ldt_fcatvalue) then
+					SQL rollback USING sqlca;
+					SQL update syscatelog Set flag =1 Where fcatid =:al_fcatid USING sqlca;
+					if sqlca.sqlcode = 0 then
+						SQL commit USING sqlca;
+					else
+						SQL rollback USING sqlca;
+					end if
+					sqlca.holdon(ll_fcatlength)
+				end if
+			elseif ll_flag = 1 then
+				sqlca.holdon(ll_fcatlength)
+			end if
+		end if
+	end if
+	return 0

@@ -1,0 +1,105 @@
+// window w_set_misccharges (salerespwin)  ancestor: window
+
+// w_set_misccharges.ue_close(integer ai_status) returns 0
+	if ai_status = -1 then
+		this.id_processingfee = -9999
+	else
+		this.id_processingfee = this.dw_control.getitemnumber(1, "c_processingfee")
+		if this.id_processingfee < 0.0 then
+			this.id_processingfee = -9999
+		end if
+	end if
+	closewithreturn(this, this.id_processingfee)
+
+// w_set_misccharges.create() returns 0
+	this.dw_control = create dw_control
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.control = {this.dw_control, this.cb_cancel, this.cb_ok}
+
+// w_set_misccharges.destroy() returns 0
+	destroy this.dw_control
+	destroy this.cb_cancel
+	destroy this.cb_ok
+
+// w_set_misccharges.open() returns long
+	string ls_aliasname
+	string ls_name
+	decimal ld_saleprice
+	long ll_packunits
+	string ls_invcode
+	long ll_rtcode
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	this.id_oldnetamt = message.doubleparm
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.retrieve()
+	this.dw_control.scrolltorow(1)
+	this.dw_control.object.netamount[1] = this.id_oldnetamt
+	this.dw_control.object.processingfeeperc[1] = 0.00
+	this.id_processingfee = 0.00
+	this.dw_control.selecttext(1, len(this.dw_control.gettext()))
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// dw_control.itemchanged(long row, dwobject dwo, string data) returns long
+	long ll_null
+	integer li_errcode
+	setnull(ll_null)
+	choose case dwo.name
+	case "rate"
+		if double(data) < 0.0 then
+			li_errcode = 1
+		end if
+	end choose
+	return li_errcode
+
+// dw_control.itemerror(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "amt"
+		messagebox("Amount Validation!", "Please Enter Valid Amount")
+	case "paymentmode"
+		messagebox("Payment Mode Validation!", "Please Enter Valid Payment Mode")
+	end choose
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	parent.dw_control.accepttext()
+	if isnull(parent.dw_control.getitemnumber(1, "processingfeeperc")) or parent.dw_control.getitemnumber(1, "processingfeeperc") < 0.0 or parent.dw_control.getitemnumber(1, "processingfeeperc") > 100.0 then
+		messagebox("Processing Fee %age Validaion!", "Please Enter Valid Processing Fee Percentage")
+		parent.dw_control.setfocus()
+		parent.dw_control.setcolumn("processingfeeperc")
+		return ::message.returnvalue
+	end if
+	if parent.dw_control.getitemnumber(1, "c_newnetamount") < 0.0 then
+		messagebox("Processing Fee %age Validaion!", "Please Enter Valid Processing Fee Percentage")
+		parent.dw_control.setfocus()
+		parent.dw_control.setcolumn("processingfeeperc")
+		return ::message.returnvalue
+	end if
+	parent.id_processingfee = parent.dw_control.getitemnumber(1, "c_processingfee")
+	parent.post event ue_close(1)
+	return ::message.returnvalue

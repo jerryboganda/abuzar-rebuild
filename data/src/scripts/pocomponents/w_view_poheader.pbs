@@ -1,0 +1,170 @@
+// window w_view_poheader (pocomponents)  ancestor: window
+
+// w_view_poheader.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		post event ue_close(-1)
+	end if
+	return ::message.returnvalue
+
+// w_view_poheader.ue_close(integer ai_closemode) returns integer
+	long ll_currrow
+	string[] ls_values
+	s_dw_header ls_dw_header
+	ll_currrow = this.id_header.getrow()
+	if ai_closemode = -1 then
+		ls_dw_header.i_closemode = -1
+		closewithreturn(this, ls_dw_header)
+		return -1
+	end if
+	if f_validatedw(this.id_header) < 0 then
+		return 1
+	end if
+	ls_values[1] = string(this.id_header.getitemnumber(ll_currrow, "custcode"))
+	if not isnull(this.id_header.getitemdatetime(ll_currrow, "dated")) then
+		ls_values[2] = string(this.id_header.getitemdatetime(ll_currrow, "dated"), "mm/dd/YYYY")
+	else
+		setnull(ls_values[2])
+	end if
+	ls_values[3] = string(this.id_header.getitemnumber(ll_currrow, "amount"))
+	ls_values[4] = this.id_header.getitemstring(ll_currrow, "demanddraftno")
+	ls_dw_header.values = ls_values
+	ls_dw_header.dw_header = this.id_header
+	ls_dw_header.i_closemode = 1
+	closewithreturn(this, ls_dw_header)
+	return 0
+
+// w_view_poheader.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+
+// w_view_poheader.wf_findpatientcode(string as_regno, integer ai_patientcode) returns integer
+	integer li_patientcode
+	integer ll_retflag
+	string ls_itemname
+	SQL SELECT patient.patientcode INTO :li_patientcode FROM patient WHERE patient.regno =:as_regno USING sqlca;
+	if sqlca.sqlcode = 0 then
+		ai_patientcode = li_patientcode
+		if isnull(ai_patientcode) then
+			ll_retflag = 0
+		else
+			ll_retflag = 1
+		end if
+	else
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_view_poheader.create() returns 0
+	this.cb_ok = create cb_ok
+	this.cb_cancel = create cb_cancel
+	this.dw_viewheader = create dw_viewheader
+	this.control = {this.cb_ok, this.cb_cancel, this.dw_viewheader}
+
+// w_view_poheader.destroy() returns 0
+	destroy this.cb_ok
+	destroy this.cb_cancel
+	destroy this.dw_viewheader
+
+// w_view_poheader.open() returns long
+	long ll_row
+	long ll_currrow
+	long ll_counter
+	string ls_saletype
+	integer li_protect
+	integer li_view_cashorcredit
+	datetime ldt_null
+	datawindow ldw_header
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	s_dw_header ls_dw_header
+	ldw_header = create datawindow
+	ldw_header.settransobject(sqlca)
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	this.id_header = this.dw_viewheader
+	this.id_header.settransobject(sqlca)
+	ls_dw_header = message.powerobjectparm
+	ldw_header = ls_dw_header.dw_header
+	this.id_header.reset()
+	ll_row = this.id_header.insertrow(0)
+	ll_currrow = ldw_header.getrow()
+	this.id_header.setitem(ll_row, "custcode", ldw_header.getitemnumber(ll_currrow, "custcode"))
+	this.id_header.setitem(ll_row, "dated", ldw_header.getitemdatetime(ll_currrow, "dated"))
+	this.id_header.setitem(ll_row, "amount", ldw_header.getitemdecimal(ll_currrow, "amount"))
+	this.id_header.setitem(ll_row, "demanddraftno", ldw_header.getitemstring(ll_currrow, "demanddraftno"))
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		triggerevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// dw_viewheader.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		parent.post event ue_close(-1)
+	end if
+	return ::message.returnvalue
+
+// dw_viewheader.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_viewheader.itemchanged(long row, dwobject dwo, string data) returns long
+	integer li_res
+	integer rt_code
+	integer li_patientcode
+	choose case dwo.name
+	case "patientregno"
+		if not isnull(data) and data <> "" then
+			li_res = parent.wf_findpatientcode(data, li_patientcode)
+			if li_res > 0 then
+				setitem(row, "patientcode", li_patientcode)
+				rt_code = 0
+			else
+				messagebox("Patient Validation", "Patient with  RegNo  " + data + " does not exist")
+				rt_code = 1
+			end if
+		end if
+	case "patientcode"
+		parent.id_header.setitem(row, "patientregno", parent.idc_patient.getitemstring(parent.idc_patient.getrow(), "regno"))
+	end choose
+	return ::message.returnvalue
+
+// dw_viewheader.itemerror(long row, dwobject dwo, string data) returns long
+	return 1

@@ -1,0 +1,145 @@
+// window w_arg_cat_class_stockandsale (reports)  ancestor: w_listarguments
+
+// w_arg_cat_class_stockandsale.create() returns 0
+	integer icurrent
+	call super::create
+	this.st_4 = create st_4
+	this.st_8 = create st_8
+	this.lb_classes = create lb_classes
+	this.st_selectableclasses = create st_selectableclasses
+	this.lb_selectedclasses = create lb_selectedclasses
+	this.st_9 = create st_9
+	this.cbx_all_classes = create cbx_all_classes
+	this.dw_classes = create dw_classes
+	this.dw_price2 = create dw_price2
+	this.gb_5 = create gb_5
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_4
+	this.control[icurrent + 2] = this.st_8
+	this.control[icurrent + 3] = this.lb_classes
+	this.control[icurrent + 4] = this.st_selectableclasses
+	this.control[icurrent + 5] = this.lb_selectedclasses
+	this.control[icurrent + 6] = this.st_9
+	this.control[icurrent + 7] = this.cbx_all_classes
+	this.control[icurrent + 8] = this.dw_classes
+	this.control[icurrent + 9] = this.dw_price2
+	this.control[icurrent + 10] = this.gb_5
+
+// w_arg_cat_class_stockandsale.destroy() returns 0
+	call super::destroy
+	destroy this.st_4
+	destroy this.st_8
+	destroy this.lb_classes
+	destroy this.st_selectableclasses
+	destroy this.lb_selectedclasses
+	destroy this.st_9
+	destroy this.cbx_all_classes
+	destroy this.dw_classes
+	destroy this.dw_price2
+	destroy this.gb_5
+
+// w_arg_cat_class_stockandsale.open() returns long
+	long ancestorreturnvalue
+	long ll_counter
+	long ll_rowcount
+	integer rtncode
+	ancestorreturnvalue = super::open()
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	this.dw_price.insertrow(0)
+	this.dw_price.scrolltorow(0)
+	rtncode = this.dw_control.getchild("category", this.idc_categories)
+	if rtncode = -1 then
+		messagebox("Error", "Not a DataWindowChild")
+	end if
+	ll_rowcount = this.idc_categories.rowcount()
+	for ll_counter = 1 to ll_rowcount
+		this.lb_categories.additem(this.idc_categories.getitemstring(ll_counter, "name"))
+	next
+	this.dw_classes.settransobject(sqlca)
+	this.dw_classes.insertrow(0)
+	this.dw_classes.scrolltorow(0)
+	rtncode = this.dw_classes.getchild("iccode", this.idc_classes)
+	if rtncode = -1 then
+		messagebox("Error", "Not a DataWindowChild")
+	end if
+	ll_rowcount = this.idc_classes.rowcount()
+	for ll_counter = 1 to ll_rowcount
+		this.lb_classes.additem(this.idc_classes.getitemstring(ll_counter, "name"))
+	next
+	this.dw_price.settransobject(sqlca)
+	this.dw_price.insertrow(0)
+	this.dw_price.scrolltorow(0)
+	this.dw_price2.settransobject(sqlca)
+	this.dw_price2.insertrow(0)
+	this.dw_price2.scrolltorow(0)
+	return ::message.returnvalue
+
+// lb_classes.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		post event doubleclicked(selectedindex())
+	end if
+	return ::message.returnvalue
+
+// lb_classes.doubleclicked(integer index) returns long
+	string ls_item
+	long ll_selectedindex
+	ls_item = string(selecteditem())
+	ll_selectedindex = selectedindex()
+	if not isnull(ls_item) and index >= 1 then
+		parent.lb_selectedclasses.additem(ls_item)
+		deleteitem(index)
+		if ll_selectedindex > 1 then
+			if totalitems() < ll_selectedindex then
+				selectitem(totalitems())
+			else
+				selectitem(ll_selectedindex)
+			end if
+		else
+			selectitem(1)
+		end if
+	else
+		messagebox("Selection Validation", "Please select some value from selectable listbox")
+	end if
+	return ::message.returnvalue
+
+// lb_classes.getfocus() returns long
+	selectitem(0)
+	selectitem(1)
+	return ::message.returnvalue
+
+// lb_selectedclasses.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		post event doubleclicked(selectedindex())
+	end if
+	return ::message.returnvalue
+
+// lb_selectedclasses.doubleclicked(integer index) returns long
+	string ls_item
+	long ll_selectedindex
+	ll_selectedindex = selectedindex()
+	ls_item = string(selecteditem())
+	if not isnull(ls_item) and index >= 1 then
+		parent.lb_classes.additem(ls_item)
+		deleteitem(index)
+		if totalitems() < ll_selectedindex then
+			selectitem(totalitems())
+		else
+			selectitem(ll_selectedindex)
+		end if
+	else
+		messagebox("Selection Validation", "Please select some value from selected listbox")
+	end if
+	return ::message.returnvalue
+
+// lb_selectedclasses.getfocus() returns long
+	selectitem(0)
+	selectitem(1)
+	return ::message.returnvalue
+
+// dw_price2.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1

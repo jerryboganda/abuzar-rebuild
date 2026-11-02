@@ -1,0 +1,37 @@
+// function f_partialsearch (functions)  ancestor: function_object
+
+// f_partialsearch.f_partialsearch(datawindow ad_dw, string as_filterexp) returns integer
+	s_popup_selection lstr_selection
+	string ls_colname
+	long ll_colcount
+	long ll_counter
+	boolean lb_flag
+	for ll_counter = 1 to ll_counter
+		ls_colname = ad_dw.describe("#" + string(ll_counter) + ".Name")
+		if match(upper(ls_colname), "NAME") then
+			lb_flag = true
+			exit
+		end if
+	next
+	if lb_flag then
+		as_filterexp = ""
+		open(w_popup_textsearch_criteria)
+		lstr_selection = message.powerobjectparm
+		if lstr_selection.l_code > 0 then
+			ad_dw.setfilter(as_filterexp)
+			ad_dw.filter()
+			if ad_dw.rowcount() > 0 then
+				as_filterexp = "match(" + ls_colname + ", '" + lstr_selection.s_name2 + "')"
+			else
+				messagebox("Search Aborted", "Nothing To Search")
+				return -1
+			end if
+		else
+			messagebox("Search Aborted", "Please Select Valid Search criteria")
+			return -1
+		end if
+	else
+		messagebox("Search Aborted", "Search Facility is not available here")
+		return -1
+	end if
+	return 0

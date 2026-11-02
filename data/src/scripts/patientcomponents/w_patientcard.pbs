@@ -1,0 +1,458 @@
+// window w_patientcard (patientcomponents)  ancestor: w_multi_entry
+
+// w_patientcard.wf_visible(boolean ab_flag) returns 0
+	this.id_footer.object.stock.visible = ab_flag
+	this.id_footer.object.t_stock.visible = ab_flag
+
+// w_patientcard.wf_genfullcode(long al_icode, string as_fullcode) returns integer
+	integer li_retflag
+	string ls_fullcode
+	long icode
+	long iccode
+	long icatcode
+	long packcode
+	long manfcode
+	SQL SELECT RegNo INTO :ls_fullcode FROM Patient WHERE Patientcode =:al_icode USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		li_retflag = 1
+		as_fullcode = ls_fullcode
+	else
+		li_retflag = this.it_transobject.sqlcode
+	end if
+	return li_retflag
+
+// w_patientcard.wf_selectprintreport() returns string
+	string ls_report
+	long ll_format
+	long ll_paperside
+	if gs_company = "AMANCHILDCARE" then
+		ls_report = "d_amanchildcare_patientcard_print"
+	elseif gs_company = "CPTHINPATIENT" then
+		ls_report = "d_cpthinpatient_patientcard_print"
+	end if
+	if ls_report = "" or isnull(ls_report) then
+		ls_report = "d_patientcard_print"
+	end if
+	this.id_print.dataobject = ls_report
+	this.id_print.settransobject(this.it_transobject)
+	return ls_report
+
+// w_patientcard.wf_assigndatawindowobjects(string as_masterdw, string as_detaildw, string as_footerdw, string as_listdw, string as_printdw) returns 0
+	this.id_master.dataobject = as_masterdw
+	this.id_detail.dataobject = as_detaildw
+	this.id_footer.dataobject = as_footerdw
+	this.id_list.dataobject = as_listdw
+	this.id_print.dataobject = as_printdw
+	this.id_master.settransobject(this.it_transobject)
+	this.id_detail.settransobject(this.it_transobject)
+	this.id_footer.settransobject(this.it_transobject)
+	this.id_list.settransobject(this.it_transobject)
+	this.id_print.settransobject(this.it_transobject)
+
+// w_patientcard.wf_closelist() returns 0
+	this.ib_itemslistopen = false
+	this.id_itemslist.hide()
+
+// w_patientcard.wf_post() returns integer
+	return 0
+
+// w_patientcard.wf_validatefullcode(string as_custicode, long al_currrow) returns boolean
+	long ll_icode
+	long ll_stock
+	long ll_totalstock
+	string ls_fullcode
+	string ls_titleerrtext
+	string ls_errtext
+	integer li_errcode
+	integer li_assgcode
+	integer li_option
+	boolean lb_rtflag
+	boolean ib_due
+	integer li_null
+	string ls_null
+	ls_titleerrtext = "Patient Validation"
+	if vf_dwdupcode1(this.id_detail, "icode", string(ll_icode), al_currrow) = true then
+		ls_errtext = "Duplicate item, please select some other Patient"
+		li_errcode = -1
+	elseif not wf_inititeminfo(ll_icode, this.il_currrow, li_errcode, ls_errtext) then
+		li_errcode = -1
+		ls_titleerrtext = "Patient Validation"
+	end if
+	if li_errcode = -1 then
+		lb_rtflag = false
+		messagebox(ls_titleerrtext, ls_errtext)
+		setnull(li_null)
+		setnull(ls_null)
+		this.id_detail.setitem(al_currrow, this.is_columnitemname, ls_null)
+		this.id_detail.setitem(al_currrow, "icode", li_null)
+		this.id_detail.selecttext(1, len(this.id_detail.gettext()))
+	end if
+	return lb_rtflag
+
+// w_patientcard.wf_grandtotal() returns double
+	double ld_grandtotal
+	ld_grandtotal = 0
+	return ld_grandtotal
+
+// w_patientcard.wf_initmodify(integer ai_protect) returns 0
+	long ll_code
+	ll_code = this.id_master.getitemnumber(1, "code")
+	this.id_master.retrieve(ll_code)
+	this.id_detail.retrieve(ll_code)
+	if ai_protect = 0 then
+		this.ib_modify = true
+		this.im_menu.m_file.m_save.enabled = true
+		this.im_menu.m_file.m_new.enabled = false
+		this.im_menu.m_file.m_delete.enabled = false
+		this.im_menu.m_item.m_newitem.enabled = true
+		this.im_menu.m_item.m_deleteitem.enabled = true
+		this.im_menu.m_file.m_first.enabled = false
+		this.im_menu.m_file.m_next.enabled = false
+		this.im_menu.m_file.m_previous.enabled = false
+		this.im_menu.m_file.m_last.enabled = false
+		this.im_menu.m_file.m_retrieve.enabled = true
+		this.im_menu.m_file.m_retrieve.text = "Lis&t"
+		this.tab_retrieve.tabpage_detail.enabled = true
+		return
+	end if
+	this.ib_modify = false
+	this.im_menu.m_file.m_save.enabled = false
+	this.im_menu.m_file.m_new.enabled = true
+	this.im_menu.m_file.m_delete.enabled = false
+	this.im_menu.m_item.m_newitem.enabled = false
+	this.im_menu.m_item.m_deleteitem.enabled = false
+	this.im_menu.m_file.m_first.enabled = false
+	this.im_menu.m_file.m_next.enabled = false
+	this.im_menu.m_file.m_previous.enabled = false
+	this.im_menu.m_file.m_last.enabled = false
+	this.im_menu.m_file.m_retrieve.enabled = true
+	this.im_menu.m_file.m_retrieve.text = "Lis&t"
+	this.tab_retrieve.tabpage_detail.enabled = true
+
+// w_patientcard.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+
+// w_patientcard.wf_validateitem(boolean ab_flag) returns integer
+	long ll_icode
+	long ll_stock
+	long ll_totalstock
+	string ls_fullcode
+	string ls_titleerrtext
+	string ls_errtext
+	integer li_errcode
+	integer li_assgcode
+	integer li_option
+	boolean ib_due
+	integer li_null
+	string ls_null
+	ll_icode = this.id_detail.getitemnumber(this.il_currrow, "icode")
+	if not isnull(ll_icode) then
+		if vf_dwdupcode1(this.id_detail, "icode", string(ll_icode), this.il_currrow) = true then
+			ls_titleerrtext = "Patient Validation"
+			ls_errtext = "Duplicate Patient, please select some other Patient"
+			li_errcode = -1
+		elseif wf_inititeminfo(ll_icode, this.il_currrow, li_errcode, ls_errtext) then
+			if li_errcode = -2 then
+				li_errcode = -1
+			end if
+		else
+			li_errcode = -1
+			ls_titleerrtext = "Patient Validation"
+		end if
+	end if
+	if ab_flag then
+		this.ib_itemvalidated = true
+	end if
+	if li_errcode = -1 then
+		setnull(li_null)
+		setnull(ls_null)
+		ls_titleerrtext = "Patient Validation"
+		messagebox(ls_titleerrtext, ls_errtext)
+		this.id_detail.setcolumn("fullcode")
+		this.id_detail.object.fullcode[this.il_currrow] = ls_null
+		this.id_detail.scrolltorow(this.il_currrow)
+		this.id_detail.object.icode[this.il_currrow] = li_null
+		this.id_detail.object.itemname[this.il_currrow] = ls_null
+	end if
+	return li_errcode
+
+// w_patientcard.wf_findfullcode(string as_fullcode, long al_icode, string al_itemname) returns integer
+	long ll_icode
+	long ll_retflag
+	long ll_classcode
+	long ll_rollno
+	string ls_itemname
+	string ls_class
+	string ls_father
+	ll_classcode = this.id_master.object.code[1]
+	SQL SELECT Patient.Patientcode , Patient.name + ' (' + Patient.RegNo + ')' , Patient.FName INTO :ll_icode, :ls_itemname, :ls_father FROM Patient WHERE Patient.RegNo =:as_fullcode AND Patient.Active ='Y' USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		al_icode = ll_icode
+		al_itemname = ls_itemname
+		if isnull(al_icode) then
+			ll_retflag = 0
+		else
+			ll_retflag = 1
+		end if
+	else
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_patientcard.wf_inititeminfo(long al_icode, long al_row, integer ai_rtcode, string as_errortext) returns boolean
+	boolean retflag
+	string ls_fullcode
+	string ls_name
+	string ls_null
+	string ls_fname
+	string ls_class
+	string ls_rollno
+	long ll_icode
+	long ll_retflag
+	long ll_classcode
+	long ll_transportroutecode
+	long ll_vehiclecode
+	datetime ldt_dob
+	string ls_cnic
+	string ls_gender
+	string ls_age
+	SQL SELECT RegNo , PatientName =Patient.name + ' (' + Patient.RegNo + ')' , Patient.fname , Patient.Patientcode , Patient.NationalIDCard , Patient.Gender , Patient.DOB , Age =LTRIM ( RTRIM ( STR ( ( DATEDIFF ( dd , Patient.DOB , getdate ( ) ) / 365 ) , 4 , 0 ) ) ) + ' Year(s) ' + LTRIM ( RTRIM ( STR ( DATEDIFF ( mm , Patient.DOB , getdate ( ) ) % 12 , 4 , 0 ) ) ) + ' Month(s) ' + LTRIM ( RTRIM ( STR ( ( DATEDIFF ( dd , Patient.DOB , getdate ( ) ) % 365 % 12 ) , 4 , 0 ) ) ) + ' Day(s) ' INTO :ls_fullcode, :ls_name, :ls_fname, :ll_icode, :ls_cnic, :ls_gender, :ldt_dob, :ls_age FROM Patient WHERE Patientcode =:al_icode AND Patient.Active ='Y' USING this.it_transobject;
+	setnull(ls_null)
+	if this.it_transobject.sqlcode = -1 then
+		retflag = false
+		as_errortext = "Database Error: Student information can not be retrieved"
+	end if
+	if retflag then
+		this.id_detail.setitem(al_row, "code", al_icode)
+		this.id_detail.setitem(al_row, "icode", al_icode)
+		this.id_detail.setitem(al_row, "fullcode", ls_fullcode)
+		this.id_detail.setitem(al_row, this.is_columnitemname, ls_name)
+		this.id_detail.setitem(al_row, "code", ll_classcode)
+		this.id_detail.setitem(al_row, "fathername", ls_fname)
+		this.id_detail.setitem(al_row, "cnic", ls_cnic)
+		this.id_detail.setitem(al_row, "gender", ls_gender)
+		this.id_detail.setitem(al_row, "dob", ldt_dob)
+		this.id_detail.setitem(al_row, "age", ls_age)
+	else
+		retflag = false
+		as_errortext = "Database Error: Student information can not be retrieved"
+	end if
+	return retflag
+
+// w_patientcard.wf_populate_students_classwise() returns long
+	long ll_rows
+	long ll_counter
+	long ll_insrow
+	s_arguements lstr_arg
+	datastore lds_students
+	lds_students = create datastore
+	lds_students.dataobject = "d_studentenrolment_detail"
+	lds_students.settransobject(sqlca)
+	open(w_arg_activeclass_single)
+	lstr_arg = message.powerobjectparm
+	if lstr_arg.i_status = 1 then
+		wf_deleteemptydetailrow()
+		lds_students.retrieve(lstr_arg.l_code1)
+		if lds_students.rowcount() > 0 then
+			for ll_counter = 1 to lds_students.rowcount()
+				ll_insrow = this.id_detail.insertrow(0)
+				if ll_insrow > 0 then
+					this.id_detail.object.icode[ll_insrow] = lds_students.object.icode[ll_counter]
+					this.id_detail.object.fullcode[ll_insrow] = lds_students.object.fullcode[ll_counter]
+					this.id_detail.object.itemname[ll_insrow] = lds_students.object.itemname[ll_counter]
+					this.id_detail.object.code[ll_insrow] = lds_students.object.code[ll_counter]
+					this.id_detail.object.rollno[ll_insrow] = lds_students.object.rollno[ll_counter]
+					this.id_detail.object.fathername[ll_insrow] = lds_students.object.fathername[ll_counter]
+				end if
+			next
+		end if
+	end if
+	return 0
+
+// w_patientcard.wf_get_studentimage() returns integer
+	return 0
+
+// w_patientcard.create() returns 0
+	integer icurrent
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_patientcard" then
+		this.menuid = create m_patientcard
+	end if
+	this.dw_saleinvrep = create dw_saleinvrep
+	this.dw_saleinvdetail = create dw_saleinvdetail
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_saleinvrep
+	this.control[icurrent + 2] = this.dw_saleinvdetail
+
+// w_patientcard.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_saleinvrep
+	destroy this.dw_saleinvdetail
+
+// w_patientcard.ue_save() returns 0
+
+// w_patientcard.ue_newform() returns 0
+	integer rtncode
+	long li_fetched_code
+	long row
+	long ll_manfcode
+	long ll_newrollno
+	call super::ue_newform
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_menu.m_file.m_post.enabled = false
+	wf_protectdw(this.id_master, 0)
+	wf_protectdw(this.id_detail, 0)
+	wf_protectdw(this.id_footer, 0)
+	this.ib_modify = false
+	this.id_detail.setcolumn(1)
+	this.id_detail.setfocus()
+	wf_visible(true)
+	setredraw(true)
+
+// w_patientcard.ue_newitem() returns 0
+	long ll_rowcount
+	long ll_newrollno
+	if this.ib_itemvalidated = false and wf_validateitem(true) = -1 then
+		this.id_detail.setfocus()
+		return
+	end if
+	if this.id_detail.rowcount() > 0 and f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	this.id_detail.setcolumn("fullcode")
+	this.id_detail.insertrow(0)
+	ll_rowcount = this.id_detail.rowcount()
+	if ll_rowcount > 1 then
+		this.id_detail.scrolltorow(ll_rowcount)
+		this.id_detail.setfocus()
+	end if
+	this.im_menu.m_file.m_save.enabled = false
+	this.ib_validatefullcode = true
+
+// w_patientcard.close() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::close()
+	return ::message.returnvalue
+
+// w_patientcard.ue_print() returns 0
+	long[] ll_code
+	long ll_row
+	long li_printretcode
+	long ll_counter
+	string ls_printsize
+	s_datastore lstr
+	s_arguements lstr_arg
+	call super::ue_print
+	wf_deleteemptydetailrow()
+	for ll_counter = 1 to this.id_detail.rowcount()
+		lstr_arg.ia_integerlist[ll_counter] = this.id_detail.object.icode[ll_counter]
+	next
+	wf_selectprintreport()
+	this.id_print.settransobject(this.it_transobject)
+	this.id_print.retrieve(lstr_arg.ia_integerlist)
+	lstr.dw = this.id_print
+	lstr.s_name1 = this.id_print.dataobject
+	openwithparm(w_preview_invoices, lstr)
+	lstr = message.powerobjectparm
+	if lstr.i_closemode = -1 then
+		return
+	end if
+	if this.id_print.rowcount() > 0 then
+		if f_stringpreferences("PromptBeforePrinting") = "Y" and printsetup() < 0 then
+			messagebox("Printer", "Printing Error")
+			this.id_print.printcancel()
+		end if
+		li_printretcode = this.id_print.print()
+		if li_printretcode < 0 then
+			messagebox("Printing", "Can not Print Invoice", information!)
+		end if
+		return
+	end if
+	messagebox("Printing Error", "Can not Print,~r~nNo rows are retrieved", information!)
+
+// w_patientcard.ue_new() returns 0
+	call super::ue_new
+	this.im_menu.m_file.m_post.enabled = false
+
+// w_patientcard.ue_postopen() returns 0
+	m_patientcard lm_menu
+	integer li_rtncode
+	long ll_counter
+	long ll_pos
+	long ll_found
+	long li_count
+	long ll_startrow
+	char lc_char
+	wf_setmenu(this.menuid)
+	lm_menu = this.menuid
+	setredraw(false)
+	wf_connect()
+	this.id_master = this.tab_retrieve.tabpage_detail.dw_detail
+	this.id_detail = this.tab_retrieve.tabpage_detail.dw_itemsdetail
+	this.id_footer = this.tab_retrieve.tabpage_detail.dw_footer
+	this.id_list = this.tab_retrieve.tabpage_list.dw_list
+	this.id_itemslist = this.tab_retrieve.tabpage_detail.dw_itemslist
+	this.id_master.settransobject(this.it_transobject)
+	this.id_detail.settransobject(this.it_transobject)
+	this.id_list.settransobject(this.it_transobject)
+	this.id_footer.settransobject(this.it_transobject)
+	this.id_itemslist.settransobject(this.it_transobject)
+	this.id_dwcontrol = this.id_list
+	post wf_populate_ddlb(this.id_dwcontrol)
+	this.tab_retrieve.tabpage_list.dw_find.settransobject(this.it_transobject)
+	this.id_master.setfocus()
+	setredraw(true)
+	this.ids_itemrecyclebin = create datastore
+	this.ids_itemrecyclebin.tag = this.id_detail.dataobject
+	this.ids_itemrecyclebin.settransobject(this.it_transobject)
+	setredraw(false)
+	this.id_print = this.dw_saleinvrep
+	this.id_itemslist.retrieve()
+	for li_count = 65 to 90
+		lc_char = char(li_count)
+		this.ia_llookuptable[li_count] = this.id_itemslist.find("Lower(itemname) >= Lower('" + char(li_count) + "')", ll_startrow, 999999)
+		ll_startrow = this.ia_llookuptable[li_count]
+	next
+	this.ia_llookuptable[92] = 999999
+	this.id_footer.reset()
+	this.id_footer.insertrow(0)
+	this.id_footer.scrolltorow(0)
+	setredraw(true)
+
+// w_patientcard.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	return ::message.returnvalue
+
+// w_patientcard.ue_refreshddw() returns 0
+	long li_count
+	long ll_startrow
+	char lc_char
+	call super::ue_refreshddw
+	this.id_itemslist.retrieve()
+	for li_count = 65 to 90
+		lc_char = char(li_count)
+		this.ia_llookuptable[li_count] = this.id_itemslist.find("Lower(itemname) >= Lower('" + char(li_count) + "')", ll_startrow, 999999)
+		ll_startrow = this.ia_llookuptable[li_count]
+	next
+	this.ia_llookuptable[92] = 999999

@@ -1,0 +1,14 @@
+// function f_datepreferences (functions)  ancestor: function_object
+
+// f_datepreferences.f_datepreferences(string as_preferencename) returns datetime
+	long ll_found
+	string ls_prefname
+	string ls_ret_string
+	ls_prefname = lower(as_preferencename)
+	ll_found = gds_preferences.find(" lower(name) = '" + ls_prefname + "'", 1, gds_preferences.rowcount())
+	if ll_found > 0 and ll_found <= gds_preferences.rowcount() then
+		ls_ret_string = gds_preferences.getitemstring(ll_found, "prefvalue")
+	else
+		ls_ret_string = ""
+	end if
+	return datetime(date(left(trim(ls_ret_string), 10)), time(right(trim(ls_ret_string), 8)))

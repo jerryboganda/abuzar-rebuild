@@ -1,0 +1,1845 @@
+// window w_expiryintimation (expiryintimation)  ancestor: w_multi_entry
+
+// w_expiryintimation.ue_setitemfocus() returns 0
+	string ls_null
+	setnull(ls_null)
+	if f_stringpreferences("itemcode") = "Y" then
+		this.id_detail.setcolumn("fullcode")
+		this.id_detail.setfocus()
+		return
+	end if
+	this.id_detail.setitem(this.id_detail.getrow(), "itemname", " ")
+	this.id_detail.setcolumn("itemname")
+	this.id_detail.setfocus()
+	this.id_detail.setitem(this.id_detail.getrow(), "itemname", ls_null)
+
+// w_expiryintimation.ue_enableprint() returns 0
+	this.im_menu.m_file.m_print.enabled = true
+
+// w_expiryintimation.ue_populate_expintimation_from_datacarry() returns 0
+	long ll_icode
+	long ll_row
+	long ll_intimationcode
+	long ll_counter
+	long ll_qty
+	long ll_bonusqty
+	long ll_acccode
+	long ll_check_for_basicdata_sync
+	boolean retflag
+	double ld_purprice
+	double ld_discperc
+	double ld_itemflatdisc
+	double ld_saleprice
+	double ld_avgprice
+	double ld_packsalestax
+	double ld_gstperc
+	double ld_rpp
+	double ld_unitsalestax
+	double ld_itempurprice
+	double ld_rate
+	double ld_rpp2
+	double ld_rpp3
+	double ld_rpp4
+	double ld_rpp5
+	double ld_invdiscperc
+	double ld_invflatdisc
+	double ld_invmisccharges
+	double ld_invgstperc1
+	double ld_godownstock
+	double ld_allgodownstock
+	long ll_packunits
+	long ll_itemscount
+	integer li_rtcode
+	string ls_fullcode
+	string ls_name
+	string ls_batch
+	string ls_itemtotalval
+	string ls_packingdesc
+	string ls_errortext
+	string ls_error_syntax
+	string ls_connsetting
+	string ls_headerquery
+	string ls_detailquery
+	string ls_newsyntax
+	string ls_suppinvcode
+	string ls_suppinvcode_tmp
+	datetime ldt_expiry
+	datastore lds_header
+	datastore lds_detail
+	s_arguements lstr_arguments
+	u_transaction lt_transobject
+	if wf_iseditable() = false then
+		return
+	end if
+	ll_acccode = this.id_master.object.acccode[this.id_master.rowcount()]
+	if isnull(ll_acccode) then
+		if this.ii_intimationtype = 1 then
+			messagebox("Supplier Validation!", "Kindly Select a Supplier first")
+		else
+			messagebox("Customer Validation!", "Kindly Select a Customer first")
+		end if
+		return
+	end if
+	open(w_populate_expintimation_from_datacarry)
+	lstr_arguments = message.powerobjectparm
+	if lstr_arguments.i_status <= 0 then
+		return
+	end if
+	ll_intimationcode = lstr_arguments.l_code1
+	if ll_intimationcode > 0 and this.id_master.object.acccode[this.id_master.rowcount()] > 0 then
+		ls_suppinvcode = trim(string(ll_intimationcode))
+	end if
+	lt_transobject = create u_transaction
+	SQL start USING lt_transobject;
+	if lt_transobject.sqlcode <> 0 then
+		messagebox("Connection Problem", "Unable to connect to database.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext)
+		return
+	end if
+	SQL EXECUTE IMMEDIATE :ls_connsetting USING lt_transobject;
+	if ll_intimationcode > 0 then
+		setpointer(hourglass!)
+		ll_check_for_basicdata_sync = f_check_for_basicdata_sync()
+		if ll_check_for_basicdata_sync < 0 then
+			return
+		end if
+		lds_header = create datastore
+		lds_detail = create datastore
+		ls_headerquery = "Select ~tIntimationCode, IntimationTypeCode, IntimationSerialNo, AccCode, Date, RefNo, Remarks1, Remarks2, UserCode, Posted, PostedBy, PostDate, CustCode " + "From ~t" + gs_inlinkserver + "." + gs_inlinkserverdb + "." + gs_inlinkserverowner + "." + "ExpiryIntimation " + "Where   IntimationTypeCode = " + string(this.ii_intimationtype) + " AND intimationcode = " + string(ll_intimationcode)
+		ls_detailquery = "Select ~tIntimationCode, ICode, Batch, Expiry, Qty, Packunits, PackPrice, Price, InvoiceCode, InvoiceDate, RefNo, RefDate " + "From ~t" + gs_inlinkserver + "." + gs_inlinkserverdb + "." + gs_inlinkserverowner + "." + "ExpiryIntimationDetail " + "Where ~tintimationcode = " + string(ll_intimationcode) + " AND intimationcode IN (SELECT intimationcode FROM " + gs_inlinkserver + "." + gs_inlinkserverdb + "." + gs_inlinkserverowner + "." + "ExpiryIntimation " + "Where   IntimationTypeCode = " + string(this.ii_intimationtype) + " AND intimationcode = " + string(ll_intimationcode) + ")"
+		ls_newsyntax = lt_transobject.syntaxfromsql(ls_headerquery, "", ls_error_syntax)
+		if len(ls_error_syntax) > 0 then
+			SQL stop USING lt_transobject;
+			messagebox("Syntax Validation", "Syntax Error For Expiry Intimation DataStore")
+			return
+		else
+			ls_error_syntax = ""
+			lds_header.create(ls_newsyntax, ls_error_syntax)
+			if len(ls_error_syntax) > 0 then
+				SQL stop USING lt_transobject;
+				messagebox("Create Validation", "Create Error For Expiry Intimation  DataStore")
+				return
+			end if
+		end if
+		lds_header.settransobject(lt_transobject)
+		if lds_header.retrieve() <= 0 then
+			SQL stop USING lt_transobject;
+			messagebox("Fetch Error", "Unable to fetch any data from source Expiry Intimation .")
+			return
+		end if
+		ls_newsyntax = ""
+		ls_error_syntax = ""
+		ls_newsyntax = lt_transobject.syntaxfromsql(ls_detailquery, "", ls_error_syntax)
+		if len(ls_error_syntax) > 0 then
+			SQL stop USING lt_transobject;
+			messagebox("Syntax Validation", "Syntax Error For Expiry Intimation  Detail DataStore")
+			return
+		else
+			ls_error_syntax = ""
+			lds_detail.create(ls_newsyntax, ls_error_syntax)
+			if len(ls_error_syntax) > 0 then
+				SQL stop USING lt_transobject;
+				messagebox("Create Validation", "Create Error For Expiry Intimation Detail DataStore")
+				return
+			end if
+		end if
+		lds_detail.settransobject(lt_transobject)
+		if lds_detail.retrieve() <= 0 then
+			SQL stop USING lt_transobject;
+			messagebox("Fetch Error", "Unable to fetch any data from source Expiry Intimation Detail.")
+			return
+		end if
+		this.id_master.setitem(1, "refno", lds_header.object.refno[1])
+		this.id_master.setitem(1, "remarks1", lds_header.object.remarks1[1])
+		this.id_master.setitem(1, "remarks2", lds_header.object.remarks2[1])
+		for ll_counter = 1 to this.id_detail.rowcount()
+			event ue_deleteitem()
+		next
+		for ll_counter = 1 to lds_detail.rowcount()
+			ll_row = this.id_detail.insertrow(0)
+			ll_icode = lds_detail.getitemnumber(ll_counter, "icode")
+			wf_inititeminfo(ll_icode, ll_counter, li_rtcode, ls_errortext)
+			this.id_detail.object.icode[ll_row] = lds_detail.object.icode[ll_counter]
+			this.id_detail.object.batch[ll_row] = lds_detail.object.batch[ll_counter]
+			this.id_detail.object.expiry[ll_row] = lds_detail.object.expiry[ll_counter]
+			this.id_detail.object.packunits[ll_row] = lds_detail.object.packunits[ll_counter]
+			this.id_detail.object.packprice[ll_row] = lds_detail.object.packprice[ll_counter]
+			this.id_detail.object.price[ll_row] = lds_detail.object.price[ll_counter]
+			this.id_detail.object.qty[ll_row] = lds_detail.object.qty[ll_counter]
+			this.id_detail.object.invoicecode[ll_row] = lds_detail.object.invoicecode[ll_counter]
+			this.id_detail.object.invoicedate[ll_row] = lds_detail.object.invoicedate[ll_counter]
+			this.id_detail.object.refno[ll_row] = lds_detail.object.refno[ll_counter]
+			this.id_detail.object.refdate[ll_row] = lds_detail.object.refdate[ll_counter]
+		next
+		if this.id_detail.rowcount() > 0 then
+			this.im_menu.m_file.m_save.enabled = true
+			wf_grandtotal()
+		else
+			this.im_menu.m_file.m_save.enabled = false
+		end if
+	end if
+	SQL stop USING lt_transobject;
+
+// w_expiryintimation.ue_pull_expiryintimation_from_dropbox() returns 0
+	long ll_icode
+	long ll_row
+	long ll_intimationcode
+	long ll_counter
+	long ll_qty
+	long ll_bonusqty
+	long ll_acccode
+	long ll_check_for_basicdata_sync
+	long ll_sitecode
+	boolean retflag
+	double ld_purprice
+	double ld_discperc
+	double ld_itemflatdisc
+	double ld_saleprice
+	double ld_avgprice
+	double ld_packsalestax
+	double ld_gstperc
+	double ld_rpp
+	double ld_unitsalestax
+	double ld_itempurprice
+	double ld_rate
+	double ld_rpp2
+	double ld_rpp3
+	double ld_rpp4
+	double ld_rpp5
+	double ld_invdiscperc
+	double ld_invflatdisc
+	double ld_invmisccharges
+	double ld_invgstperc1
+	double ld_godownstock
+	double ld_allgodownstock
+	long ll_packunits
+	long ll_itemscount
+	integer li_rtcode
+	string ls_fullcode
+	string ls_name
+	string ls_batch
+	string ls_itemtotalval
+	string ls_packingdesc
+	string ls_errortext
+	string ls_error_syntax
+	string ls_connsetting
+	string ls_headerquery
+	string ls_detailquery
+	string ls_newsyntax
+	string ls_suppinvcode
+	string ls_suppinvcode_tmp
+	datetime ldt_expiry
+	datastore lds_header
+	datastore lds_detail
+	s_arguements lstr_arguments
+	u_transaction lt_transobject
+	long ll_totrows
+	if wf_iseditable() = false then
+		return
+	end if
+	ll_acccode = this.id_master.object.acccode[this.id_master.rowcount()]
+	if isnull(ll_acccode) then
+		if this.ii_intimationtype = 1 then
+			messagebox("Supplier Validation!", "Kindly Select a Supplier first")
+		else
+			messagebox("Customer Validation!", "Kindly Select a Customer first")
+		end if
+		return
+	end if
+	openwithparm(w_pull_expintimation_from_dropbox, this.ii_intimationtype)
+	lstr_arguments = message.powerobjectparm
+	if lstr_arguments.i_status <= 0 then
+		return
+	end if
+	ll_intimationcode = lstr_arguments.l_code1
+	ll_sitecode = lstr_arguments.l_code2
+	if ll_intimationcode > 0 and ll_sitecode > 0 and this.id_master.object.acccode[this.id_master.rowcount()] > 0 then
+		ls_suppinvcode = trim(string(ll_intimationcode))
+	end if
+	lt_transobject = create u_transaction
+	SQL start USING lt_transobject;
+	if lt_transobject.sqlcode <> 0 then
+		messagebox("Connection Problem", "Unable to connect to database.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext)
+		return
+	end if
+	SQL EXECUTE IMMEDIATE :ls_connsetting USING lt_transobject;
+	if ll_intimationcode > 0 and ll_sitecode > 0 then
+		setpointer(hourglass!)
+		ll_check_for_basicdata_sync = f_check_for_basicdata_sync()
+		if ll_check_for_basicdata_sync < 0 then
+			return
+		end if
+		lds_header = create datastore
+		lds_detail = create datastore
+		ls_headerquery = "Select ~tSiteCode, IntimationCode, IntimationTypeCode, IntimationSerialNo, AccCode, Date, RefNo, Remarks1, Remarks2, UserCode, CustCode " + "From ~t" + gs_dropbox_server + "." + gs_dropbox_db + "." + "DBO." + "DB_ExpiryIntimation " + "Where   IntimationTypeCode = " + string(this.ii_intimationtype) + " AND intimationcode = " + string(ll_intimationcode) + " AND SiteCode = " + string(ll_sitecode)
+		ls_detailquery = "Select ~tIntimationCode, ICode, Batch, Expiry, Qty, Packunits, PackPrice, Price, InvoiceCode, InvoiceDate, RefNo, RefDate " + "From ~t" + gs_dropbox_server + "." + gs_dropbox_db + "." + "DBO." + "DB_ExpiryIntimationDetail " + "Where ~tintimationcode = " + string(ll_intimationcode) + " AND intimationcode IN (SELECT intimationcode FROM " + gs_dropbox_server + "." + gs_dropbox_db + "." + "DBO." + "DB_ExpiryIntimation " + "Where   IntimationTypeCode = " + string(this.ii_intimationtype) + " AND intimationcode = " + string(ll_intimationcode) + " AND SiteCode = " + string(ll_sitecode) + ")"
+		ls_newsyntax = lt_transobject.syntaxfromsql(ls_headerquery, "", ls_error_syntax)
+		if len(ls_error_syntax) > 0 then
+			SQL stop USING lt_transobject;
+			messagebox("Syntax Validation", "Syntax Error For Expiry Intimation DataStore")
+			return
+		else
+			ls_error_syntax = ""
+			lds_header.create(ls_newsyntax, ls_error_syntax)
+			if len(ls_error_syntax) > 0 then
+				SQL stop USING lt_transobject;
+				messagebox("Create Validation", "Create Error For Expiry Intimation  DataStore")
+				return
+			end if
+		end if
+		lds_header.settransobject(lt_transobject)
+		if lds_header.retrieve() <= 0 then
+			SQL stop USING lt_transobject;
+			messagebox("Fetch Error", "Unable to fetch any data from source Expiry Intimation .")
+			return
+		end if
+		ls_newsyntax = ""
+		ls_error_syntax = ""
+		ls_newsyntax = lt_transobject.syntaxfromsql(ls_detailquery, "", ls_error_syntax)
+		if len(ls_error_syntax) > 0 then
+			SQL stop USING lt_transobject;
+			messagebox("Syntax Validation", "Syntax Error For Expiry Intimation  Detail DataStore")
+			return
+		else
+			ls_error_syntax = ""
+			lds_detail.create(ls_newsyntax, ls_error_syntax)
+			if len(ls_error_syntax) > 0 then
+				SQL stop USING lt_transobject;
+				messagebox("Create Validation", "Create Error For Expiry Intimation Detail DataStore")
+				return
+			end if
+		end if
+		lds_detail.settransobject(lt_transobject)
+		if lds_detail.retrieve() <= 0 then
+			SQL stop USING lt_transobject;
+			messagebox("Fetch Error", "Unable to fetch any data from source Expiry Intimation Detail.")
+			return
+		end if
+		this.id_master.setitem(1, "refno", lds_header.object.refno[1])
+		this.id_master.setitem(1, "remarks1", lds_header.object.remarks1[1])
+		this.id_master.setitem(1, "remarks2", lds_header.object.remarks2[1])
+		for ll_counter = 1 to this.id_detail.rowcount()
+			event ue_deleteitem()
+		next
+		for ll_counter = 1 to lds_detail.rowcount()
+			ll_row = this.id_detail.insertrow(0)
+			ll_icode = lds_detail.getitemnumber(ll_counter, "icode")
+			wf_inititeminfo(ll_icode, ll_counter, li_rtcode, ls_errortext)
+			this.id_detail.object.icode[ll_row] = lds_detail.object.icode[ll_counter]
+			this.id_detail.object.batch[ll_row] = lds_detail.object.batch[ll_counter]
+			this.id_detail.object.expiry[ll_row] = lds_detail.object.expiry[ll_counter]
+			this.id_detail.object.packunits[ll_row] = lds_detail.object.packunits[ll_counter]
+			this.id_detail.object.packprice[ll_row] = lds_detail.object.packprice[ll_counter]
+			this.id_detail.object.price[ll_row] = lds_detail.object.price[ll_counter]
+			this.id_detail.object.qty[ll_row] = lds_detail.object.qty[ll_counter]
+			this.id_detail.object.invoicecode[ll_row] = lds_detail.object.invoicecode[ll_counter]
+			this.id_detail.object.invoicedate[ll_row] = lds_detail.object.invoicedate[ll_counter]
+			this.id_detail.object.refno[ll_row] = lds_detail.object.refno[ll_counter]
+			this.id_detail.object.refdate[ll_row] = lds_detail.object.refdate[ll_counter]
+		next
+		if this.id_detail.rowcount() > 0 then
+			this.im_menu.m_file.m_save.enabled = true
+			wf_grandtotal()
+			triggerevent("ue_save")
+			if wf_commitform() = true then
+				SQL rollback USING sqlca;
+				sqlca.markexpiryintimationaspulled(ll_sitecode, ll_intimationcode, gl_usercode, gs_dropbox_server, gs_dropbox_db, "dbo")
+				if sqlca.sqlcode = 0 then
+					SQL commit USING sqlca;
+				else
+					SQL rollback USING sqlca;
+				end if
+				postevent("ue_new")
+			else
+				ll_totrows = this.id_detail.rowcount()
+				if ll_totrows > 0 then
+					for ll_row = 1 to ll_totrows
+						triggerevent("ue_deleteitem")
+					next
+				end if
+			end if
+		else
+			this.im_menu.m_file.m_save.enabled = false
+		end if
+	end if
+	SQL stop USING lt_transobject;
+
+// w_expiryintimation.wf_assigndatawindowobjects(string as_masterdw, string as_detaildw, string as_footerdw, string as_listdw, string as_printdw) returns 0
+	this.id_master.dataobject = as_masterdw
+	this.id_detail.dataobject = as_detaildw
+	this.id_footer.dataobject = as_footerdw
+	this.id_list.dataobject = as_listdw
+	this.id_print.dataobject = as_printdw
+	this.id_master.settransobject(this.it_transobject)
+	this.id_detail.settransobject(this.it_transobject)
+	this.id_footer.settransobject(this.it_transobject)
+	this.id_list.settransobject(this.it_transobject)
+	this.id_print.settransobject(this.it_transobject)
+
+// w_expiryintimation.wf_closelist() returns 0
+	this.ib_itemslistopen = false
+	this.id_itemslist.hide()
+
+// w_expiryintimation.wf_deleteallemptydetailrows() returns integer
+	long ll_count
+	long ll_deletecount
+	ll_deletecount = 0
+	for ll_count = 1 to this.id_detail.rowcount()
+		if isnull(this.id_detail.getitemnumber(ll_count, "icode")) then
+			ll_deletecount = ll_deletecount + 1
+			this.id_detail.deleterow(ll_count)
+		end if
+	next
+	return ll_deletecount
+
+// w_expiryintimation.wf_fetchserverdate(boolean ab_checked) returns long
+	if ab_checked then
+		this.ib_fetchserverdate = true
+	else
+		this.ib_fetchserverdate = false
+	end if
+	return 0
+
+// w_expiryintimation.wf_findfullcode(string as_fullcode, long al_icode, string al_itemname) returns integer
+	integer ll_retflag
+	long ll_icode
+	string ls_itemname
+	if f_stringpreferences("GroupCategoryRights") = "Y" then
+		SQL SELECT item.icode , item.name INTO :ll_icode, :ls_itemname FROM item WHERE item.customicode =:as_fullcode AND ( item.Restricted ='N' OR ( Item.Restricted ='Y' AND Exists ( select *from grouprights where rightcode =515 and groupcode =:this.il_groupcode ) ) ) AND item.Active =1 AND Item.ICatCode IN ( SELECT ICatCode FROM ItemCategory WHERE ICatCode IN ( SELECT ItemsCategoryCode FROM ItemsGroupCategory WHERE GroupCode IN ( SELECT GroupCode FROM UserGroups WHERE UserCode =:gl_usercode ) ) ) USING this.it_transobject;
+	else
+		SQL SELECT item.icode , item.name INTO :ll_icode, :ls_itemname FROM item WHERE item.customicode =:as_fullcode AND item.Active =1 AND ( item.Restricted ='N' OR ( Item.Restricted ='Y' AND Exists ( select *from grouprights where rightcode =515 and groupcode =:this.il_groupcode ) ) ) USING this.it_transobject;
+	end if
+	if this.it_transobject.sqlcode = 0 then
+		al_icode = ll_icode
+		al_itemname = ls_itemname
+		if isnull(al_icode) then
+			ll_retflag = 0
+		else
+			ll_retflag = 1
+		end if
+	else
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_expiryintimation.wf_genfullcode(long al_icode, string as_fullcode) returns integer
+	integer li_retflag
+	string ls_fullcode
+	long icode
+	long iccode
+	long icatcode
+	long packcode
+	long manfcode
+	SQL SELECT customicode INTO :ls_fullcode FROM item WHERE item.icode =:al_icode USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		li_retflag = 1
+		as_fullcode = ls_fullcode
+	else
+		li_retflag = this.it_transobject.sqlcode
+	end if
+	return li_retflag
+
+// w_expiryintimation.wf_getmaxdate(datetime ad_date) returns integer
+	SQL Select Max ( Date ) INTO :ad_date From saleledger USING this.it_transobject;
+	return this.it_transobject.sqlcode
+
+// w_expiryintimation.wf_isinvoiceinuse(long al_invoiceno) returns boolean
+	long ll_found
+	SQL Select count ( *) INTO :ll_found From ExpiryIntimation Where IntimationCode =:al_invoiceno and Posted ='Y' USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		if ll_found = 0 or isnull(ll_found) then
+			ll_found = 0
+			SQL Select count ( *) INTO :ll_found From ExpiryIntimation With ( ReadPast , RowLock , UpdLock ) Where IntimationCode =:al_invoiceno USING this.it_transobject;
+			if this.it_transobject.sqlcode = 0 then
+				if ll_found = 0 then
+					return true
+				else
+					return false
+				end if
+			else
+				return false
+			end if
+		else
+			return false
+		end if
+		return
+	end if
+	return false
+
+// w_expiryintimation.wf_isposted(long al_invcode) returns boolean
+	long ll_count
+	SQL SELECT Count ( IntimationCode ) INTO :ll_count FROM ExpiryIntimation WHERE IntimationCode =:al_invcode and Posted ='Y' USING sqlca;
+	if sqlca.sqlcode = 0 then
+		if ll_count > 0 then
+			return true
+		else
+			return false
+		end if
+		return
+	end if
+	return false
+
+// w_expiryintimation.wf_print() returns integer
+	integer li_errcode
+	long ll_salesmancode
+	long ll_saleinvcount
+	long ll_count
+	s_arguements lstr_arginfo
+	open(w_salesmanpassword)
+	ll_salesmancode = long(message.doubleparm)
+	setfocus()
+	if ll_salesmancode > 0 then
+		open(w_arg_sinvcode_linvcode)
+		lstr_arginfo = message.powerobjectparm
+		if lstr_arginfo.i_status = 1 then
+			setpointer(hourglass!)
+			for ll_count = lstr_arginfo.l_code1 to lstr_arginfo.l_code2
+				this.id_print.retrieve(ll_count)
+				if this.id_print.rowcount() > 0 then
+					if this.id_print.print() < 0 then
+						messagebox("Printing", "Can not Print Invoice", information!)
+					end if
+				else
+					messagebox("Printing Error", "Can not Print Invoice,~r~nNo rows are retrieved", information!)
+				end if
+			next
+		end if
+	else
+		setfocus()
+	end if
+	setpointer(arrow!)
+	return li_errcode
+
+// w_expiryintimation.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+
+// w_expiryintimation.wf_setfocuswithscroll(string as_colname, long al_row) returns integer
+	this.id_detail.scrolltorow(al_row)
+	this.id_detail.setcolumn(as_colname)
+	this.id_detail.setfocus()
+	this.id_detail.selecttext(1, len(this.id_detail.gettext()))
+	return 1
+
+// w_expiryintimation.wf_validatefullcode(string as_custicode, long al_currrow) returns boolean
+	long ll_icode
+	string ls_fullcode
+	string ls_titleerrtext
+	string ls_errtext
+	integer li_errcode
+	integer li_assgcode
+	integer li_option
+	boolean lb_rtflag
+	boolean ib_due
+	integer li_null
+	string ls_null
+	ls_titleerrtext = "Item Validation"
+	if vf_dwdupcode1(this.id_detail, "icode", string(ll_icode), al_currrow) = true then
+		ls_errtext = "Duplicate item, please select some other item"
+		li_errcode = -1
+	elseif not wf_inititeminfo(ll_icode, this.il_currrow, li_errcode, ls_errtext) then
+		li_errcode = -1
+		ls_titleerrtext = "Item Validation"
+	end if
+	if li_errcode = -1 and not ib_due then
+		lb_rtflag = false
+		messagebox(ls_titleerrtext, ls_errtext)
+		setnull(li_null)
+		setnull(ls_null)
+		this.id_detail.setitem(al_currrow, this.is_columnitemname, ls_null)
+		this.id_detail.setitem(al_currrow, "icode", li_null)
+		this.id_detail.selecttext(1, len(this.id_detail.gettext()))
+	end if
+	return lb_rtflag
+
+// w_expiryintimation.wf_validateitem(boolean ab_flag) returns integer
+	long ll_icode
+	long ll_count
+	long ll_duprow
+	long ll_null
+	string ls_fullcode
+	string ls_titleerrtext
+	string ls_errtext
+	string ls_null
+	string ls_batch
+	datetime ldt_null
+	datetime ldt_expiry
+	integer li_errcode
+	integer li_option
+	integer n
+	integer li_null
+	boolean lb_dupitem
+	boolean lb_zerostock
+	boolean lb_invalidrow
+	setnull(ldt_null)
+	setnull(ls_null)
+	setnull(ll_null)
+	if isnull(this.il_currrow) or this.il_currrow <= 0 then
+		lb_invalidrow = true
+		setnull(ll_icode)
+	else
+		ll_icode = this.id_detail.getitemnumber(this.il_currrow, "icode")
+	end if
+	if not isnull(ll_icode) then
+		if not wf_inititeminfo(ll_icode, this.il_currrow, li_errcode, ls_errtext) then
+			ls_titleerrtext = "Item Validation"
+		end if
+	end if
+	if ab_flag then
+		this.ib_itemvalidated = true
+	end if
+	if li_errcode = -1 then
+		setnull(li_null)
+		setnull(ls_null)
+		if lb_invalidrow = true then
+			li_errcode = -1
+		else
+			ls_titleerrtext = "Item Validation"
+			messagebox(ls_titleerrtext, ls_errtext)
+			if f_stringpreferences("itemcode") = "N" then
+				this.id_detail.setcolumn(this.is_columnitemname)
+				this.ib_itemslistopen = true
+				this.id_itemslist.show()
+			else
+				this.id_detail.setcolumn("fullcode")
+				this.id_detail.object.fullcode[this.il_currrow] = ls_null
+			end if
+			this.id_detail.scrolltorow(this.il_currrow)
+			this.id_detail.object.icode[this.il_currrow] = li_null
+			this.id_detail.object.itemname[this.il_currrow] = ls_null
+			this.id_detail.object.qty[this.il_currrow] = 1
+			this.id_detail.object.packprice[this.il_currrow] = 0
+			this.id_detail.object.price[this.il_currrow] = 0
+			this.id_detail.object.packunits[this.il_currrow] = 1
+			this.id_detail.object.invoicecode[this.il_currrow] = ll_null
+			this.id_detail.object.invoicedate[this.il_currrow] = ldt_null
+			this.id_detail.object.refno[this.il_currrow] = ls_null
+			this.id_detail.object.refdate[this.il_currrow] = ldt_null
+		end if
+	end if
+	return li_errcode
+
+// w_expiryintimation.wf_validateitemnew() returns integer
+	long ll_icode
+	string ls_fullcode
+	string ls_titleerrtext
+	string ls_errtext
+	integer li_errcode
+	ll_icode = this.id_detail.getitemnumber(this.il_currrow, "icode")
+	if vf_dwdupcode1(this.id_detail, "icode", string(ll_icode), this.il_currrow) = true then
+		ls_titleerrtext = "Item Validation"
+		ls_errtext = "Duplicate item, please select some other item"
+		li_errcode = -1
+		messagebox(ls_titleerrtext, ls_errtext)
+	elseif not wf_inititeminfo(ll_icode, this.il_currrow, li_errcode, ls_errtext) then
+		ls_titleerrtext = "Item Validation"
+		li_errcode = -2
+	end if
+	this.ib_itemvalidated = true
+	return li_errcode
+
+// w_expiryintimation.wf_grandtotal() returns double
+	double ld_grandtotal
+	double ld_detaildwtotal
+	real lr_itemstotal
+	if this.id_detail.rowcount() > 0 and this.id_footer.rowcount() > 0 then
+		ld_detaildwtotal = this.id_detail.getitemnumber(1, "c_detaildwtotal")
+		ld_grandtotal = ld_detaildwtotal
+		ld_grandtotal = round(ld_grandtotal, 0)
+		this.id_footer.setitem(1, "amount", ld_grandtotal)
+	end if
+	return ld_grandtotal
+
+// w_expiryintimation.wf_selectprintreport(string as_invoicesize) returns string
+	string ls_report
+	if gs_company = "BILAL" then
+		ls_report = "d_bilal_expiryintimation_print"
+	elseif gs_company = "TAJMEDICOSWH" or gs_company = "TAJMEDICOS3" or gs_company = "TAJMEDISURGICAL" or gs_company = "TAJMEDICOSSSGC" or gs_company = "TAJMEDICOSKT" then
+		ls_report = "d_tajmedicoswh_expiryintimation_print"
+	else
+		ls_report = "d_expiryintimation_print"
+	end if
+	this.id_print.dataobject = ls_report
+	this.id_print.settransobject(this.it_transobject)
+	return ls_report
+
+// w_expiryintimation.wf_post() returns integer
+	integer li_errcode
+	long ll_counter
+	long ll_invcount
+	long ll_invcode
+	long ll_null
+	long ll_glvochcode
+	long ll_vochcode
+	long ll_salesmancode
+	long ll_vochcatcode
+	long ll_acccode
+	long ll_dr_acccode
+	long ll_cr_acccode
+	double ld_amount
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	string ls_remarks
+	string ls_null
+	char lc_posted
+	boolean lb_flag
+	s_arguements lstr_arginfo
+	setnull(ll_null)
+	setnull(ls_null)
+	open(w_salesmanpassword)
+	ll_salesmancode = long(message.doubleparm)
+	setfocus()
+	if ll_salesmancode > 0 then
+		open(w_arg_sinvcode_linvcode)
+		lstr_arginfo = message.powerobjectparm
+		if lstr_arginfo.i_status = 1 then
+			setpointer(hourglass!)
+			if not wf_validateserverdatetime(ldt_server_datetime, ls_date_errtext) then
+				messagebox("Date Violation", ls_date_errtext, stopsign!)
+				setpointer(arrow!)
+				return -1
+			end if
+			SQL rollback USING this.it_transobject;
+			SQL update DBO.ExpiryIntimation SET Posted ='Y' , PostDate =:ldt_server_datetime , PostedBy =:ll_salesmancode WHERE Posted ='N' AND IntimationTypeCode =:this.ii_intimationtype AND IntimationCode BETWEEN :lstr_arginfo.l_code1 AND :lstr_arginfo.l_code2 USING this.it_transobject;
+			if this.it_transobject.sqlcode <> 0 then
+				messagebox("Posting Problem!", "Problem in Posting Expiry Intimation.~r~nDetails: " + this.it_transobject.sqlerrtext, stopsign!)
+				li_errcode = -1
+			end if
+		end if
+		if li_errcode = 0 then
+			SQL commit USING this.it_transobject;
+			if this.it_transobject.sqlcode <> 0 then
+				li_errcode = -1
+			end if
+		else
+			SQL rollback USING this.it_transobject;
+		end if
+	else
+		setfocus()
+	end if
+	setpointer(arrow!)
+	if ll_salesmancode > 0 then
+		if li_errcode = 0 then
+			messagebox("Posting Successfull", "All rows have been posted successfully")
+		end if
+	end if
+	return li_errcode
+
+// w_expiryintimation.wf_inititeminfo(long al_icode, long al_row, integer ai_rtcode, string as_errortext) returns boolean
+	boolean retflag
+	long ll_null
+	long ll_packunits
+	long ll_manfcode
+	double ld_purprice
+	double ld_saleprice
+	string ls_fullcode
+	string ls_name
+	string ls_null
+	string ls_remarks
+	string ls_packingdesc
+	setnull(ll_null)
+	setnull(ls_null)
+	SQL SELECT item.customicode , item.name , item.packunits , item.packingdesc , item.purprice , item.saleprice , item.manfcode INTO :ls_fullcode, :ls_name, :ll_packunits, :ls_packingdesc, :ld_purprice, :ld_saleprice, :ll_manfcode FROM item WHERE item.icode =:al_icode USING this.it_transobject;
+	if ll_packunits < 1 or isnull(ll_packunits) then
+		ll_packunits = 1
+	end if
+	if this.it_transobject.sqlcode = -1 then
+		retflag = false
+		as_errortext = "Database Error: Item information can not be retrieved"
+	end if
+	if retflag then
+		this.id_detail.setitem(al_row, this.is_columnitemname, ls_name)
+		this.id_detail.setitem(al_row, "fullcode", ls_fullcode)
+		this.id_detail.setitem(al_row, "icode", al_icode)
+		this.id_detail.setitem(al_row, "packingdesc", ls_packingdesc)
+		this.id_detail.setitem(al_row, "packunits", ll_packunits)
+		this.id_detail.setitem(al_row, "manfcode", ll_manfcode)
+		if this.ii_intimationtype = 1 then
+			this.id_detail.setitem(al_row, "packprice", ld_purprice)
+			this.id_detail.setitem(al_row, "price", ld_purprice / ll_packunits)
+		else
+			this.id_detail.setitem(al_row, "packprice", ld_saleprice)
+			this.id_detail.setitem(al_row, "price", ld_saleprice / ll_packunits)
+		end if
+	else
+		retflag = false
+		as_errortext = "Item can not be selected"
+	end if
+	this.id_detail.setitem(al_row, "itemcode", al_icode)
+	return retflag
+
+// w_expiryintimation.wf_initmodify(integer ai_protect) returns 0
+	long ll_code
+	long ll_icode
+	long ll_counter
+	long ll_count
+	double ld_qty
+	if this.id_master.getitemstring(1, "posted") = "N" then
+		this.id_master.setitem(1, "sitecode", gl_sitecode)
+		ll_code = this.id_detail.getitemnumber(1, "code")
+		if wf_lockintimation(ll_code) = 0 then
+			this.id_master.retrieve(ll_code)
+			this.id_detail.retrieve(ll_code)
+			if ai_protect = 0 then
+				this.ib_modify = true
+				this.im_menu.m_file.m_save.enabled = true
+				this.im_menu.m_file.m_new.enabled = false
+				this.im_menu.m_file.m_delete.enabled = false
+				this.im_menu.m_item.m_newitem.enabled = true
+				this.im_menu.m_item.m_deleteitem.enabled = true
+				this.im_menu.m_file.m_first.enabled = false
+				this.im_menu.m_file.m_next.enabled = false
+				this.im_menu.m_file.m_previous.enabled = false
+				this.im_menu.m_file.m_last.enabled = false
+				this.im_menu.m_file.m_retrieve.enabled = true
+				this.im_menu.m_file.m_retrieve.text = "Lis&t"
+				this.tab_retrieve.tabpage_detail.enabled = true
+			end if
+			return
+		end if
+		messagebox("Cannot Modify", "This Intimation Document is already in use. Document Code = " + string(ll_code))
+	end if
+
+// w_expiryintimation.wf_populatedetail(long al_invid, datawindow ad_saledetail, string as_errortext, long al_errorrow) returns boolean
+	long ll_detailrows
+	long ll_icode
+	long ll_errrowid
+	long ll_salesmancode
+	long li_counter
+	long li_innercounter
+	long ll_itemsdetailrowcount
+	long ll_rowgroup
+	long ll_row
+	boolean lb_commitflag
+	dwitemstatus ldws_column
+	ll_detailrows = this.id_detail.rowcount()
+	li_counter = 1
+	ll_itemsdetailrowcount = 0
+	as_errortext = "    Some database problem ocuurs         "
+	ll_rowgroup = 0
+	do while li_counter <= ll_detailrows and lb_commitflag
+		ll_rowgroup = ll_rowgroup + 1
+		ll_icode = this.id_detail.getitemnumber(li_counter, "icode")
+		ll_row = ad_saledetail.insertrow(0)
+		ad_saledetail.setitem(ll_row, "code", al_invid)
+		ad_saledetail.setitem(ll_row, "icode", this.id_detail.getitemnumber(li_counter, "icode"))
+		ad_saledetail.setitem(ll_row, "packingdesc", this.id_detail.object.packingdesc[li_counter])
+		ad_saledetail.setitem(ll_row, "batch", this.id_detail.object.batch[li_counter])
+		ad_saledetail.setitem(ll_row, "expiry", this.id_detail.object.expiry[li_counter])
+		ad_saledetail.setitem(ll_row, "qty", this.id_detail.object.qty[li_counter])
+		ad_saledetail.setitem(ll_row, "packprice", this.id_detail.object.packprice[li_counter])
+		ad_saledetail.setitem(ll_row, "price", this.id_detail.object.price[li_counter])
+		ad_saledetail.setitem(ll_row, "packunits", this.id_detail.object.packunits[li_counter])
+		ad_saledetail.setitem(ll_row, "invoicecode", this.id_detail.object.invoicecode[li_counter])
+		ad_saledetail.setitem(ll_row, "invoicedate", this.id_detail.object.invoicedate[li_counter])
+		ad_saledetail.setitem(ll_row, "refno", this.id_detail.object.refno[li_counter])
+		ad_saledetail.setitem(ll_row, "refdate", this.id_detail.object.refdate[li_counter])
+		ad_saledetail.setitem(ll_row, "ManfCode", this.id_detail.object.manfcode[li_counter])
+		ad_saledetail.setitem(ll_row, "LastAccCode", this.id_detail.object.lastacccode[li_counter])
+		li_counter = li_counter + 1
+	loop
+	if not lb_commitflag then
+		al_errorrow = li_counter - 1
+		messagebox("Database Error", as_errortext)
+	end if
+	return lb_commitflag
+
+// w_expiryintimation.wf_gen_sale_incentive_sheet() returns long
+	string ls_grouping
+	string ls_errortext
+	s_arguements ls_arg
+	datastore lds_detail
+	long[] ll_grouplist
+	long ll_totalrows
+	long ll_rowcount
+	long ll_detailrows
+	long ll_icode
+	long ll_custcode
+	long ll_counter
+	long ll_retcode
+	integer li_errcode
+	boolean lb_enablesave
+	return 0
+
+// w_expiryintimation.wf_gen_pur_incentive_sheet() returns long
+	string ls_grouping
+	string ls_errortext
+	s_arguements ls_arg
+	datastore lds_detail
+	long[] ll_grouplist
+	long ll_totalrows
+	long ll_rowcount
+	long ll_detailrows
+	long ll_icode
+	long ll_suppcode
+	long ll_counter
+	long ll_retcode
+	integer li_errcode
+	boolean lb_enablesave
+	return 0
+
+// w_expiryintimation.wf_delete_expiryintimation(long al_code) returns long
+	SQL Delete ExpiryIntimationDetail Where IntimationCode =:al_code USING this.it_transobject;
+	return this.it_transobject.sqlcode
+
+// w_expiryintimation.wf_lockintimation(long al_code) returns integer
+	integer li_count
+	this.it_transobject.dbparm = " Async =1, DBGetTime = 20"
+	this.it_transobject.dbparm = "Async =0, DBGetTime = 0"
+	return this.it_transobject.sqlcode
+
+// w_expiryintimation.wf_gen_intimation_serialno(integer ai_intimationtype, long al_serialno, transaction at_transobject) returns long
+	long ll_rtcode
+	SQL SELECT COUNTER INTO :al_serialno FROM dbo.IntimationType WITH ( UPDLOCK HOLDLOCK ) WHERE IntimationTypeCode =:ai_intimationtype USING at_transobject;
+	if at_transobject.sqlcode = 0 then
+		al_serialno = al_serialno + 1
+		SQL update dbo.IntimationType SET COUNTER =:al_serialno WHERE IntimationTypeCode =:ai_intimationtype USING at_transobject;
+		if at_transobject.sqlcode < 0 then
+			ll_rtcode = at_transobject.sqlcode
+			al_serialno = 0
+		end if
+	else
+		ll_rtcode = at_transobject.sqlcode
+		al_serialno = 0
+	end if
+	return ll_rtcode
+
+// w_expiryintimation.wf_set_accountinfo(long al_acccode) returns long
+	string ls_address
+	string ls_city
+	string ls_phone
+	string ls_aliasname
+	string ls_name
+	long ll_currow
+	long ll_sitecode
+	double ld_currbalance
+	if this.ii_intimationtype = 1 then
+		SQL SELECT accounts.name , supplier.address1 , supplier.city , supplier.phone , accounts.aliasname , supplier.sitecode INTO :ls_name, :ls_address, :ls_city, :ls_phone, :ls_aliasname, :ll_sitecode FROM supplier , Accounts WHERE supplier.suppcode =:al_acccode AND supplier.suppcode =Accounts.AccCode USING this.it_transobject;
+	else
+		SQL SELECT accounts.name , customer.address1 , customer.city , customer.phone , accounts.aliasname , customer.sitecode INTO :ls_name, :ls_address, :ls_city, :ls_phone, :ls_aliasname, :ll_sitecode FROM customer , Accounts WHERE customer.custcode =:al_acccode AND customer.custcode =Accounts.AccCode USING this.it_transobject;
+	end if
+	ll_currow = this.id_master.getrow()
+	ll_currow = 1
+	this.id_master.object.aliasname[ll_currow] = ls_aliasname
+	this.id_master.object.targetsitecode[ll_currow] = ll_sitecode
+	return 0
+
+// w_expiryintimation.wf_findacccode(string as_aliasname, long al_acccode) returns long
+	long ll_acccode
+	long ll_retflag
+	if this.ii_intimationtype = 1 then
+		SQL SELECT accounts.acccode INTO :ll_acccode FROM accounts , supplier WHERE accounts.aliasname =:as_aliasname AND accounts.acccode =supplier.suppcode USING this.it_transobject;
+	else
+		SQL SELECT accounts.acccode INTO :ll_acccode FROM accounts , customer WHERE accounts.aliasname =:as_aliasname AND accounts.acccode =customer.custcode USING this.it_transobject;
+	end if
+	if this.it_transobject.sqlcode = 0 then
+		al_acccode = ll_acccode
+		if isnull(al_acccode) then
+			ll_retflag = 0
+		else
+			ll_retflag = 1
+		end if
+	else
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_expiryintimation.wf_get_possible_batch_expiry() returns long
+	long ll_acccode
+	long ll_icode
+	s_possiblebatchexpiry_expint lstr_possiblebatchexpiry
+	if this.id_master.getrow() > 0 and this.id_master.rowcount() > 0 then
+		ll_acccode = this.id_master.object.acccode[1]
+	else
+		setnull(ll_acccode)
+	end if
+	if this.id_detail.getrow() > 0 and this.id_detail.rowcount() > 0 then
+		ll_icode = this.id_detail.object.icode[this.id_detail.getrow()]
+	else
+		setnull(ll_icode)
+	end if
+	if this.id_detail = getfocus() and this.id_detail.rowcount() > 0 and not isnull(ll_acccode) and not isnull(ll_icode) then
+		lstr_possiblebatchexpiry.l_acccode = ll_acccode
+		lstr_possiblebatchexpiry.l_icode = ll_icode
+		lstr_possiblebatchexpiry.i_module = this.ii_intimationtype
+		openwithparm(w_possiblebatchexpiry_expiryintimation, lstr_possiblebatchexpiry)
+		lstr_possiblebatchexpiry = message.powerobjectparm
+		if lstr_possiblebatchexpiry.i_status = 1 then
+			this.id_detail.setitem(this.id_detail.getrow(), "batch", lstr_possiblebatchexpiry.s_batch)
+			this.id_detail.setitem(this.id_detail.getrow(), "expiry", lstr_possiblebatchexpiry.d_expiry)
+			this.id_detail.setitem(this.id_detail.getrow(), "qty", lstr_possiblebatchexpiry.d_qty)
+			this.id_detail.setitem(this.id_detail.getrow(), "invoicecode", lstr_possiblebatchexpiry.l_invcode)
+			this.id_detail.setitem(this.id_detail.getrow(), "invoicedate", lstr_possiblebatchexpiry.dt_invdate)
+			this.id_detail.setitem(this.id_detail.getrow(), "refno", lstr_possiblebatchexpiry.s_refno)
+			this.id_detail.setitem(this.id_detail.getrow(), "refdate", lstr_possiblebatchexpiry.dt_refdate)
+		end if
+	end if
+	return 0
+
+// w_expiryintimation.wf_consolidatedexpiryintimation() returns long
+	long ll_counter
+	long ll_arr_rows
+	long ll_intimationcode
+	string ls_list
+	s_arguements lstr_arg
+	if wf_iseditable() = true then
+		return 0
+	end if
+	openwithparm(w_expintimation_range_selection, this.ii_intimationtype)
+	lstr_arg = message.powerobjectparm
+	if lstr_arg.i_status = 1 then
+		ll_arr_rows = upperbound(lstr_arg.ia_integerlist)
+		ls_list = ""
+		for ll_counter = 1 to ll_arr_rows
+			ls_list = ls_list + trim(string(lstr_arg.ia_integerlist[ll_counter])) + ","
+		next
+		ls_list = left(ls_list, len(ls_list) - 1)
+		if len(ls_list) > 0 then
+			SQL rollback USING this.it_transobject;
+			this.it_transobject.consolidatedexpiryintimation(gl_usercode, ls_list, lstr_arg.l_code3, lstr_arg.l_code4, this.ii_intimationtype, ll_intimationcode)
+			if this.it_transobject.sqlcode = 0 then
+				SQL commit USING this.it_transobject;
+				messagebox("Expiry Intimation Consolidation", "Expiry Intimation Consolidation done successfully.~r~nExpiry Intimation Code = " + trim(string(ll_intimationcode)), information!)
+			else
+				messagebox("Expiry Intimation Consolidation", this.it_transobject.sqlerrtext, stopsign!)
+				SQL rollback USING this.it_transobject;
+			end if
+		end if
+	end if
+	return 0
+
+// w_expiryintimation.wf_extractexpiryintimation() returns long
+	long ll_counter
+	long ll_arr_rows
+	long ll_intimationcode
+	long ll_consolidatedintimation
+	long ll_custcode
+	long ll_acccode
+	long ll_option
+	char ac_grouptype
+	string ls_list
+	s_arguements lstr_arg
+	s_arguements istr_temp
+	if wf_iseditable() = true then
+		return 0
+	end if
+	if this.id_list.rowcount() <= 0 or this.id_list.getrow() < 0 then
+		return 0
+	end if
+	ll_consolidatedintimation = this.id_list.object.code[this.id_list.getrow()]
+	if isnull(ll_consolidatedintimation) or ll_consolidatedintimation <= 0 then
+		return 0
+	end if
+	open(w_arg_supp_cust)
+	istr_temp = message.powerobjectparm
+	if istr_temp.i_status = 1 then
+		ll_acccode = istr_temp.l_code1
+		ll_custcode = istr_temp.l_code2
+		open(w_selectformat_suppitems_default)
+		ll_option = message.doubleparm
+		if ll_option = 1 then
+			ac_grouptype = "S"
+			ls_list = "S"
+		else
+			open(w_selection_manf_cat_class_packing)
+			ac_grouptype = message.stringparm
+			openwithparm(w_arg_grouping, ac_grouptype)
+			lstr_arg = message.powerobjectparm
+			if lstr_arg.i_status = 1 then
+				ll_arr_rows = upperbound(lstr_arg.ia_integerlist)
+				ls_list = ""
+				for ll_counter = 1 to ll_arr_rows
+					ls_list = ls_list + trim(string(lstr_arg.ia_integerlist[ll_counter])) + ","
+				next
+				ls_list = left(ls_list, len(ls_list) - 1)
+			end if
+		end if
+		if len(ls_list) > 0 then
+			SQL rollback USING this.it_transobject;
+			this.it_transobject.extractexpiryintimation(gl_usercode, ll_consolidatedintimation, ac_grouptype, ls_list, ll_acccode, ll_custcode, this.ii_intimationtype, ll_intimationcode)
+			if this.it_transobject.sqlcode = 0 then
+				SQL commit USING this.it_transobject;
+				messagebox("Expiry Intimation Extraction", "Expiry Intimation Extraction done successfully.~r~nExpiry Intimation Code = " + trim(string(ll_intimationcode)), information!)
+			else
+				messagebox("Expiry Intimation Extraction", this.it_transobject.sqlerrtext, stopsign!)
+				SQL rollback USING this.it_transobject;
+			end if
+		end if
+	end if
+	return 0
+
+// w_expiryintimation.wf_fetch_lasttransaction_info(long al_icode, string as_batch, datetime adt_expiry, long al_row) returns integer
+	long ll_acccode
+	long ll_invcode
+	datetime ldt_date
+	datetime ldt_refdate
+	double ld_qty
+	string ls_refno
+	if this.ii_intimationtype = 1 then
+		SQL SELECT PurInvCode , Date , SuppCode , SuppInvCode , SuppInvDate , Qty =ISNULL ( ( SELECT SUM ( D.LooseQty + D.PackQty + D.BonusQty ) FROM PurDetail D WHERE D.PurInvCode =PurLedger.PurInvCode AND D.ICode =:al_icode AND D.Batch =:as_batch AND D.Expiry =:adt_expiry ) , 0 ) INTO :ll_invcode, :ldt_date, :ll_acccode, :ls_refno, :ldt_refdate, :ld_qty FROM DBO.PurLedger WHERE PurLedger.PurInvCode IN ( SELECT MAX ( PurDetail.PurInvCode ) FROM DBO.PurDetail WHERE PurDetail.ICode =:al_icode AND PurDetail.Batch =:as_batch AND PurDetail.Expiry =:adt_expiry ) USING this.it_transobject;
+	else
+		SQL SELECT SaleInvCode , Date , CustCode , CustRefNo , BillingDate , Qty =ISNULL ( ( SELECT SUM ( D.LooseQty + D.BonusQty ) FROM SaleDetail D WHERE D.SaleInvCode =SaleLedger.SaleInvCode AND D.ICode =:al_icode AND D.Batch =:as_batch AND D.Expiry =:adt_expiry ) , 0 ) INTO :ll_invcode, :ldt_date, :ll_acccode, :ls_refno, :ldt_refdate, :ld_qty FROM DBO.SaleLedger WHERE SaleLedger.SaleInvCode IN ( SELECT MAX ( SaleDetail.SaleInvCode ) FROM DBO.SaleDetail WHERE SaleDetail.ICode =:al_icode AND SaleDetail.Batch =:as_batch AND SaleDetail.Expiry =:adt_expiry ) USING this.it_transobject;
+	end if
+	if this.it_transobject.sqlcode = 0 and al_row > 0 then
+		this.id_detail.object.invoicecode[al_row] = ll_invcode
+		this.id_detail.object.invoicedate[al_row] = ldt_date
+		this.id_detail.object.refno[al_row] = ls_refno
+		this.id_detail.object.refdate[al_row] = ldt_refdate
+		this.id_detail.object.lastacccode[al_row] = ll_acccode
+		this.id_detail.object.qty[al_row] = ld_qty
+	end if
+	return 0
+
+// w_expiryintimation.wf_populate_possiblebatchexpiry() returns long
+	long ll_retcode
+	long ll_counter
+	long ll_rowcount
+	long ll_insrow
+	long ll_icode
+	integer li_rtcode
+	string ls_type
+	string ls_errortext
+	s_arguements ls_reparg
+	datastore lds_store
+	lds_store = create datastore
+	lds_store.dataobject = "d_populate_possible_expiryreport"
+	lds_store.settransobject(sqlca)
+	open(w_selection_manf_cat_class_packing)
+	ls_type = message.stringparm
+	if not (ls_type = "" or isnull(ls_type)) then
+		openwithparm(w_arg_manfs_cats_classes_packs_dates, ls_type)
+		ls_reparg = message.powerobjectparm
+	end if
+	if ls_reparg.i_status = 1 then
+		do while this.id_detail.rowcount() > 0
+			this.id_detail.deleterow(0)
+		loop
+		ll_retcode = lds_store.retrieve(ls_type, ls_reparg.ia_integerlist, ls_reparg.d_sdate, ls_reparg.d_edate)
+		ll_rowcount = lds_store.rowcount()
+		if ll_rowcount > 0 then
+			for ll_counter = 1 to ll_rowcount
+				ll_insrow = this.id_detail.insertrow(0)
+				if ll_insrow > 0 then
+					ll_icode = lds_store.object.icode[ll_counter]
+					if ll_icode > 0 and wf_inititeminfo(ll_icode, ll_insrow, li_rtcode, ls_errortext) then
+						this.id_detail.object.batch[ll_insrow] = lds_store.object.batch[ll_counter]
+						this.id_detail.object.expiry[ll_insrow] = lds_store.object.expiry[ll_counter]
+						this.id_detail.object.qty[ll_insrow] = lds_store.object.qty[ll_counter]
+						this.id_detail.object.invoicecode[ll_insrow] = lds_store.object.purinvcode[ll_counter]
+						this.id_detail.object.invoicedate[ll_insrow] = lds_store.object.date[ll_counter]
+						this.id_detail.object.lastacccode[ll_insrow] = lds_store.object.suppcode[ll_counter]
+						this.id_detail.object.refno[ll_insrow] = lds_store.object.suppinvcode[ll_counter]
+						this.id_detail.object.refdate[ll_insrow] = lds_store.object.suppinvdate[ll_counter]
+					end if
+				end if
+			next
+		end if
+	end if
+	return ll_retcode
+
+// w_expiryintimation.wf_push_expiryintimation_to_dropbox() returns long
+	integer li_errcode
+	long ll_salesmancode
+	long ll_invcount
+	long ll_counter
+	boolean lb_flag
+	string ls_msgtext
+	s_arguements lstr_arginfo
+	open(w_salesmanpassword)
+	ll_salesmancode = long(message.doubleparm)
+	if ll_salesmancode > 0 then
+		open(w_arg_sinvcode_linvcode)
+		lstr_arginfo = message.powerobjectparm
+		if lstr_arginfo.i_status = 1 then
+			setpointer(hourglass!)
+			li_errcode = this.it_transobject.pushexpiryintimationtodropbox(lstr_arginfo.l_code1, lstr_arginfo.l_code2, this.ii_intimationtype, ll_salesmancode, gs_dropbox_server, gs_dropbox_db, "DBO", ll_invcount)
+			if li_errcode <> 0 then
+				li_errcode = this.it_transobject.sqlcode
+				ls_msgtext = this.it_transobject.sqlerrtext
+			end if
+		end if
+		if li_errcode = 0 then
+			SQL commit USING this.it_transobject;
+			if this.it_transobject.sqlcode <> 0 then
+				ls_msgtext = this.it_transobject.sqlerrtext
+				li_errcode = this.it_transobject.sqlcode
+			end if
+		else
+			SQL rollback USING this.it_transobject;
+		end if
+	else
+		setfocus()
+	end if
+	setpointer(arrow!)
+	if ll_salesmancode > 0 then
+		if li_errcode <> 0 then
+			messagebox("Push Expiry Intimation To Drop Box Fails", "Some database request fails, Please try again.~r~nReasons Are:-~r~n" + ls_msgtext + "~r~nError Code = " + string(li_errcode), stopsign!)
+		else
+			messagebox("Push to Drop Box Successfull", "Total Invoices to push were " + string(ll_invcount) + "~n~rAll Invoices have been pushed successfully to drop box.", information!)
+		end if
+	end if
+	return li_errcode
+
+// w_expiryintimation.create() returns 0
+	integer icurrent
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_expiryintimation" then
+		this.menuid = create m_expiryintimation
+	end if
+	this.dw_saleinvrep = create dw_saleinvrep
+	this.ic_cashdrawerprinter = create ic_cashdrawerprinter
+	this.ic_comport = create ic_comport
+	this.ic_drawerport = create ic_drawerport
+	this.dw_saleinvdetail = create dw_saleinvdetail
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_saleinvrep
+	this.control[icurrent + 2] = this.ic_cashdrawerprinter
+	this.control[icurrent + 3] = this.ic_comport
+	this.control[icurrent + 4] = this.ic_drawerport
+	this.control[icurrent + 5] = this.dw_saleinvdetail
+
+// w_expiryintimation.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_saleinvrep
+	destroy this.ic_cashdrawerprinter
+	destroy this.ic_comport
+	destroy this.ic_drawerport
+	destroy this.dw_saleinvdetail
+
+// w_expiryintimation.ue_save() returns 0
+	long ll_detailrows
+	long ll_counter2
+	long ll_mastercurrrow
+	long ll_footercurrrow
+	long ll_invid
+	long ll_icode
+	long ll_intimationretcode
+	long ll_errrowid
+	long ll_salesmancode
+	long ll_counter
+	long ll_count
+	long ll_null
+	long ll_modifycount
+	long ll_found
+	long ll_serialno
+	boolean lb_commitflag
+	boolean lb_continue
+	integer li_counter
+	integer li_filehandle
+	integer li_maxretcode
+	string ls_errtext
+	string ls_holdstring
+	string ls_drawermessage
+	string ls_askuserpwd
+	string ls_batch
+	s_salesman lstr_salesman
+	datetime ldt_expiry
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	string ls_itemname
+	string ls_messagetext
+	if this.tab_retrieve.selectedtab = 2 then
+		return
+	end if
+	if wf_iseditable() = false then
+		return
+	end if
+	if this.ib_itemvalidated = false and wf_validateitem(true) = -1 then
+		this.id_detail.setfocus()
+		return
+	end if
+	wf_deleteemptydetailrow()
+	if this.id_master.rowcount() > 0 and (this.id_master.object.acccode[this.id_master.rowcount()] = 0 and isnull(this.id_master.object.acccode[this.id_master.rowcount()])) then
+		if this.ii_intimationtype = 1 then
+			messagebox("Supplier Validation", "Please Select Some Valid Supplier")
+		else
+			messagebox("Customer Validation", "Please Select Some Valid Customer")
+		end if
+		this.id_master.setfocus()
+		this.id_master.setcolumn("acccode")
+		return
+	end if
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_footer) < 0 then
+		return
+	end if
+	if this.id_detail.rowcount() < 1 then
+		messagebox("Rows Validation", "Please insert a row before proceeding")
+		return
+	end if
+	ll_found = this.id_detail.find("qty <= 0 ", 1, this.id_detail.rowcount())
+	if ll_found > 0 then
+		messagebox("Qty Validation", "Please Enter Valid Qty in Row " + string(ll_found))
+		this.id_detail.setfocus()
+		this.id_detail.scrolltorow(ll_found)
+		this.id_detail.setcolumn("qty")
+		return
+	end if
+	setpointer(hourglass!)
+	if not wf_validateserverdatetime(ldt_server_datetime, ls_date_errtext) then
+		messagebox("Date Violation", ls_date_errtext, stopsign!)
+		return
+	end if
+	wf_grandtotal()
+	this.id_footer.accepttext()
+	open(w_salesmanpassword)
+	ll_salesmancode = long(message.doubleparm)
+	setfocus()
+	if ll_salesmancode > 0 then
+		ll_mastercurrrow = this.id_master.getrow()
+		ll_invid = this.id_master.getitemnumber(ll_mastercurrrow, "code")
+		if isnull(ll_invid) then
+			li_maxretcode = wf_tabnewid("expiryintimation", ll_invid)
+			if li_maxretcode < 0 then
+				SQL rollback USING this.it_transobject;
+				messagebox("DataBase Problem", "Transaction is Rollback Due to Problem in~r~ngenerating Intimation Code")
+				return
+			end if
+			if ll_invid > 0 then
+				this.id_master.setitem(ll_mastercurrrow, "code", ll_invid)
+			end if
+		end if
+		ll_serialno = this.id_master.getitemnumber(ll_mastercurrrow, "intimationserialno")
+		this.id_master.setitem(ll_mastercurrrow, "intimationtypecode", this.ii_intimationtype)
+		if isnull(ll_serialno) or ll_serialno = 0 then
+			ll_intimationretcode = wf_gen_intimation_serialno(this.ii_intimationtype, ll_serialno, this.it_transobject)
+			if ll_intimationretcode < 0 then
+				SQL rollback USING this.it_transobject;
+				messagebox("DataBase Problem", "Transaction is Rollback Due to Problem in~r~n ~t~t~t~t~t~t~t~t~t~t~t~t~tgenerating Voucher Code")
+				return
+			end if
+			if ll_serialno > 0 then
+				this.id_master.setitem(ll_mastercurrrow, "intimationserialno", ll_serialno)
+			end if
+		end if
+		if this.ib_modify then
+			if not this.ib_modifydate then
+				if not wf_getserverdatetime(ldt_server_datetime, ls_date_errtext) then
+					messagebox("Date Violation", ls_date_errtext, stopsign!)
+					return
+				end if
+			else
+				ldt_server_datetime = this.id_master.getitemdatetime(ll_mastercurrrow, "date")
+			end if
+			this.id_master.setitem(ll_mastercurrrow, "date", ldt_server_datetime)
+			this.idt_server_datetime = ldt_server_datetime
+			if wf_delete_expiryintimation(ll_invid) <> 0 then
+				lb_continue = false
+			end if
+		else
+			this.id_master.setitem(ll_mastercurrrow, "usercode", ll_salesmancode)
+			if not this.ib_modifydate then
+				if not wf_getserverdatetime(ldt_server_datetime, ls_date_errtext) then
+					messagebox("Date Violation", ls_date_errtext, stopsign!)
+					return
+				end if
+			else
+				ldt_server_datetime = this.id_master.getitemdatetime(ll_mastercurrrow, "date")
+			end if
+			this.idt_server_datetime = ldt_server_datetime
+			this.id_master.setitem(ll_mastercurrrow, "date", ldt_server_datetime)
+		end if
+		if lb_continue then
+			this.id_saleinvdetail.reset()
+			if not wf_populatedetail(ll_invid, this.id_saleinvdetail, ls_errtext, ll_errrowid) then
+				lb_continue = false
+				this.id_detail.scrolltorow(ll_errrowid)
+				this.id_detail.setfocus()
+			else
+				this.id_detail = this.id_saleinvdetail
+				if this.id_master.update(true, false) > 0 then
+					if this.id_detail.update() > 0 then
+						SQL commit USING this.it_transobject;
+						messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+						this.ib_commitok = true
+						this.id_master.resetupdate()
+						this.im_menu.m_file.m_new.enabled = true
+						this.editflag = false
+						if gd_recenttransdate < this.id_systemdate then
+							gd_recenttransdate = this.id_systemdate
+						end if
+					else
+						SQL rollback USING this.it_transobject;
+						messagebox("Saving Problem", "Changes do not effect in database~r~nReasons are:~r~n" + this.it_transobject.sqlerrtext, stopsign!, ok!, 1)
+						lb_continue = false
+						setpointer(arrow!)
+					end if
+				else
+					SQL rollback USING this.it_transobject;
+					messagebox("Saving Problem", "Changes do not effect in database~r~nReasons are:~r~n" + this.it_transobject.sqlerrtext, stopsign!, ok!, 1)
+					lb_continue = false
+					setpointer(arrow!)
+				end if
+				if this.ib_commitok then
+					this.ib_modify = false
+				elseif this.ib_modify = false then
+					setnull(ll_null)
+					this.id_master.setitem(1, "Code", ll_null)
+					this.id_master.accepttext()
+				end if
+				this.id_detail = this.tab_retrieve.tabpage_detail.dw_itemsdetail
+				this.id_saleinvdetail.reset()
+			end if
+		end if
+		if not lb_continue then
+			SQL rollback USING this.it_transobject;
+			if this.ib_modify = false then
+				setnull(ll_null)
+				this.id_master.setitem(1, "Code", ll_null)
+				this.id_master.accepttext()
+			end if
+		end if
+	else
+		setfocus()
+	end if
+	setpointer(arrow!)
+
+// w_expiryintimation.ue_newform() returns 0
+	integer rtncode
+	long li_fetched_code
+	long row
+	long ll_manfcode
+	long ll_counter
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	m_expiryintimation lm_menu
+	call super::ue_newform
+	lm_menu = this.menuid
+	this.id_footer.reset()
+	this.id_footer.insertrow(0)
+	this.id_footer.scrolltorow(0)
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_menu.m_file.m_post.enabled = false
+	this.id_detail.setredraw(false)
+	wf_protectdw(this.id_master, 0)
+	wf_protectdw(this.id_detail, 0)
+	wf_protectdw(this.id_footer, 0)
+	this.id_detail.setredraw(true)
+	this.ib_modify = false
+	if not wf_validatedate() then
+		close(this)
+	end if
+	if this.ib_modifydate then
+		if this.ib_fetchserverdate then
+			wf_getserverdatetime(ldt_server_datetime, ls_date_errtext)
+			this.id_master.setitem(this.id_master.getrow(), "date", ldt_server_datetime)
+		else
+			this.id_master.setitem(this.id_master.getrow(), "date", today())
+		end if
+	end if
+	this.id_master.object.intimationtypecode.initial = trim(string(this.ii_intimationtype))
+
+// w_expiryintimation.ue_detail() returns 0
+	integer li_rtncode
+	integer li_protect
+	long ll_row
+	long ll_code
+	long ll_counter
+	boolean lb_flag
+	boolean lb_modify
+	m_expiryintimation lm_menu
+	long ll_rowcount
+	long ll_validinv
+	double ld_code
+	lm_menu = this.menuid
+	this.tab_retrieve.tabpage_list.em_invno.getdata(ld_code)
+	if ld_code = 0.0 then
+		ld_code = this.id_list.object.code[this.il_selectedrow]
+	else
+		SQL select count ( *) INTO :ll_validinv from ExpiryIntimation where IntimationCode =:ld_code USING this.it_transobject;
+		if ll_validinv <> 1 then
+			this.id_detail.reset()
+			messagebox("Intimation Code Validation", "Intimation Code does not exist")
+			this.tab_retrieve.selecttab(2)
+			return
+		end if
+	end if
+	if wf_isinvoiceinuse(ld_code) = true then
+		messagebox("Document Code Validation", "Intimation already in use by some other user.~r~nKindly try again after sometime or open some other Intimation.")
+		this.tab_retrieve.selecttab(2)
+		return
+	end if
+	this.im_menu.m_file.m_retrieve.text = "Lis&t"
+	this.im_menu.m_file.m_print.enabled = true
+	this.i_editmode = 2
+	this.i_retrievemode = 2
+	this.id_dwcontrol = this.id_master
+	ll_rowcount = wf_retrieve(ld_code)
+	this.id_master.setrow(1)
+	this.id_master.scrolltorow(1)
+	this.id_dwcontrol = this.id_footer
+	wf_retrieve(ld_code)
+	this.id_footer.setrow(1)
+	this.id_footer.scrolltorow(1)
+	this.id_dwcontrol = this.id_detail
+	wf_retrieve(ld_code)
+	this.id_master.setcolumn(1)
+	this.id_master.setfocus()
+	this.id_dwcontrol = this.id_list
+	setredraw(false)
+	this.im_menu.m_file.m_post.enabled = false
+	if this.id_master.getitemstring(this.id_master.getrow(), "Posted") = "N" then
+		lb_modify = true
+	end if
+	if not lb_modify then
+		this.im_menu.m_file.m_save.enabled = false
+		this.editflag = false
+	else
+		li_protect = 0
+		wf_initmodify(li_protect)
+		if f_stringpreferences("itemcode") = "Y" then
+			this.id_detail.setcolumn("fullcode")
+		else
+			this.id_detail.setcolumn("itemname")
+		end if
+	end if
+	if this.id_master.getitemstring(this.id_master.getrow(), "Posted") = "N" then
+		wf_protectdw(this.id_master, 0)
+		wf_protectdw(this.id_detail, 0)
+		wf_protectdw(this.id_footer, 0)
+	else
+		wf_protectdw(this.id_master, li_protect)
+		wf_protectdw(this.id_detail, li_protect)
+		wf_protectdw(this.id_footer, li_protect)
+	end if
+	if li_protect = 0 then
+		lb_flag = true
+	end if
+	wf_grandtotal()
+	this.id_master.setfocus()
+	setredraw(true)
+
+// w_expiryintimation.ue_newitem() returns 0
+	long ll_rowcount
+	setnull(this.is_aliasname)
+	if this.ib_itemvalidated = false and wf_validateitem(true) = -1 then
+		this.id_detail.setfocus()
+		return
+	end if
+	if this.id_detail.rowcount() > 0 and f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	if f_stringpreferences("itemcode") = "N" then
+		this.id_detail.setcolumn(this.is_columnitemname)
+	else
+		this.id_detail.setcolumn("fullcode")
+	end if
+	this.id_detail.insertrow(0)
+	ll_rowcount = this.id_detail.rowcount()
+	if ll_rowcount > 1 then
+		this.id_detail.scrolltorow(ll_rowcount)
+		this.id_detail.setfocus()
+	end if
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_print.enabled = true
+	this.ib_validatefullcode = true
+
+// w_expiryintimation.ue_deleteitem() returns 0
+	long ll_currow
+	long ll_detailrows
+	this.ib_itemvalidated = true
+	this.id_detail.deleterow(0)
+	ll_detailrows = this.id_detail.rowcount()
+	if ll_detailrows < 1 then
+		this.im_menu.m_file.m_save.enabled = false
+	end if
+	wf_grandtotal()
+	if this.id_detail.rowcount() > 0 then
+		return
+	end if
+	this.im_menu.m_file.m_print.enabled = false
+	this.im_menu.m_file.m_save.enabled = false
+
+// w_expiryintimation.close() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::close()
+	this.id_itemslist.sharedataoff()
+	return 1
+
+// w_expiryintimation.ue_list() returns 0
+	long ll_row
+	m_expiryintimation lm_menu
+	call super::ue_list
+	lm_menu = this.menuid
+	SQL rollback USING this.it_transobject;
+	this.im_menu.m_file.m_post.enabled = true
+	this.im_menu.m_file.m_print.enabled = false
+	this.ib_modify = false
+	this.id_itemslist.hide()
+	if this.id_detail.rowcount() > 0 then
+		postevent("ue_deleteitem")
+	end if
+	this.tab_retrieve.tabpage_list.em_invno.selecttext(1, 7)
+	this.tab_retrieve.tabpage_list.em_invno.clear()
+	ll_row = wf_retrievelist()
+	wf_disabledetailtab(ll_row)
+	post event ue_enableprint()
+	this.editflag = false
+	this.im_menu.m_file.m_save.enabled = false
+
+// w_expiryintimation.ue_print() returns 0
+	long ll_row
+	long ll_invcode
+	long ll_counter
+	string ls_posted
+	string ls_invoicesize
+	integer li_option
+	boolean lb_listtab
+	s_datastore lstr
+	call super::ue_print
+	if this.tab_retrieve.selectedtab = 2 then
+		lb_listtab = true
+	end if
+	if this.im_menu.m_file.m_save.enabled = true and lb_listtab = false then
+		if this.ib_modify then
+			li_option = messagebox("Save Changes", "Do you want to save Intimation", information!, yesno!, 2)
+			if li_option = 1 then
+				triggerevent("ue_save")
+				if wf_commitform() = false then
+					return
+				end if
+			else
+				event ue_newitem()
+			end if
+		else
+			triggerevent("ue_save")
+			if wf_commitform() = false then
+				return
+			end if
+		end if
+		return
+	end if
+	if lb_listtab then
+		if isnull(this.id_list.getrow()) or this.id_list.getrow() <= 0 then
+			messagebox("Rows Validation", "Kindly select any row from the list view.")
+			return
+		end if
+		ll_invcode = this.id_list.getitemnumber(this.id_list.getrow(), "code")
+		if isnull(ll_invcode) or ll_invcode <= 0 then
+			messagebox("Selection Validation", "Kindly select any row from the list view.")
+			return
+		end if
+	else
+		ll_invcode = this.id_master.getitemnumber(1, "code")
+	end if
+	wf_selectprintreport(ls_invoicesize)
+	this.id_print.retrieve(ll_invcode)
+	if lb_listtab then
+		lstr.dw = this.id_print
+		lstr.s_name1 = this.id_print.dataobject
+		openwithparm(w_preview_invoices, lstr)
+		lstr = message.powerobjectparm
+		if lstr.i_closemode = -1 then
+			return
+		end if
+		return
+	end if
+	if f_stringpreferences("saleaskforcopies") = "Y" then
+		open(w_printer_copies)
+		this.id_print.object.datawindow.print.copies = string(message.doubleparm)
+	end if
+	if f_stringpreferences("PromptBeforePrinting") = "Y" and printsetup() < 0 then
+		messagebox("Printer", "Printing Error")
+		this.id_print.printcancel()
+	end if
+	if this.id_print.rowcount() > 0 then
+		if this.id_print.print() < 0 then
+			messagebox("Printing", "Can not Print Intimation Document", information!)
+		end if
+		if this.im_menu.m_file.m_save.enabled = true and lb_listtab = false then
+			postevent("ue_new")
+		end if
+		return
+	end if
+	messagebox("Printing Error", "Can not Print Intimation document,~r~nNo rows are retrieved", information!)
+
+// w_expiryintimation.ue_refreshddw() returns 0
+	call super::ue_refreshddw
+	setpointer(hourglass!)
+	this.idc_acc.setredraw(false)
+	this.idc_acc.settransobject(this.it_transobject)
+	this.idc_acc.retrieve()
+	this.idc_acc.setredraw(true)
+	setpointer(arrow!)
+
+// w_expiryintimation.ue_new() returns 0
+	call super::ue_new
+	this.im_menu.m_file.m_post.enabled = false
+
+// w_expiryintimation.ue_postopen() returns 0
+	m_expiryintimation lm_menu
+	integer li_rtncode
+	long ll_counter
+	long ll_found
+	call super::ue_postopen
+	lm_menu = this.menuid
+	this.ii_intimationtype = message.doubleparm
+	this.id_master.object.intimationtypecode.initial = trim(string(this.ii_intimationtype))
+	setredraw(false)
+	f_fetch_sites()
+	this.id_print = this.dw_saleinvrep
+	this.id_saleinvdetail = this.dw_saleinvdetail
+	this.id_saleinvdetail.settransobject(this.it_transobject)
+	if this.ii_intimationtype = 1 then
+		this.title = "Expiry Intimation - Purchase Based"
+		wf_assigndatawindowobjects("d_expiryintimation_header", "d_expiryintimation_detail", "d_expiryintimation_footer", "d_expiryintimation_list", "d_expiryintimation_print")
+	else
+		this.title = "Expiry Intimation - Sale Based"
+		wf_assigndatawindowobjects("d_expiryintimation_header2", "d_expiryintimation_detail", "d_expiryintimation_footer", "d_expiryintimation_list2", "d_expiryintimation_print")
+	end if
+	li_rtncode = this.id_master.getchild("acccode", this.idc_acc)
+	if li_rtncode = -1 then
+		messagebox("Error!", "Can not get a DataWindowChild")
+		close(this)
+	end if
+	this.idc_acc.settransobject(this.it_transobject)
+	this.idc_acc.retrieve()
+	this.im_menu.m_file.m_post.visible = true
+	this.im_menu.m_file.m_post.toolbaritemvisible = true
+	this.im_menu.m_file.m_post.enabled = true
+	this.il_groupcode = f_getgroupcode(gl_usercode)
+	if isnull(this.il_groupcode) then
+		messagebox("Problem identifying User Group", "Contact System Administrator for your group settings.")
+		close(this)
+		return
+	end if
+	this.id_itemslist.object.t_stock.visible = true
+	this.id_itemslist.object.stock.visible = true
+	if f_stringpreferences("packingdescinsale") = "N" then
+		this.id_detail.object.packingdesc.visible = false
+	end if
+	if f_stringpreferences("manufacturer") = "N" then
+		this.id_itemslist.object.manufacturer.visible = false
+	end if
+	if f_stringpreferences("itemname") = "N" then
+		this.id_itemslist.object.itemname.visible = false
+	end if
+	if f_stringpreferences("packing") = "N" then
+		this.id_itemslist.object.packing.visible = false
+	end if
+	if f_stringpreferences("packunits") = "N" then
+		this.id_itemslist.object.packunits.visible = false
+	end if
+	if f_stringpreferences("saleprice") = "N" then
+		this.id_itemslist.object.saleprice.visible = false
+	end if
+	if f_stringpreferences("ShowTransitStockInItemList") = "N" then
+		this.id_itemslist.object.transitstock.visible = false
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 587", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.id_itemslist.object.purprice.visible = true
+	else
+		this.id_itemslist.object.purprice.visible = false
+	end if
+	if f_stringpreferences("stock") = "N" then
+		this.id_itemslist.object.stock.visible = false
+	end if
+	if f_stringpreferences("itemcode") = "N" then
+		this.id_detail.object.fullcode.visible = false
+	end if
+	gd_itemsinfo.sharedata(this.id_itemslist)
+	this.id_footer.reset()
+	this.id_footer.insertrow(0)
+	this.id_footer.scrolltorow(0)
+	this.id_master.accepttext()
+	f_setcolumnstyle(this.id_detail, "Qty")
+	setredraw(true)
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 563", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.id_master.object.date.protect = 0
+		this.id_master.object.date.background.color = rgb(255, 255, 255)
+		this.ib_modifydate = true
+		lm_menu.m_file.m_setserverdate.visible = true
+		lm_menu.m_file.m_setserverdate.enabled = true
+	end if
+	if not this.ib_modifydate then
+		this.id_master.object.date.protect = 1
+		this.id_master.settaborder("date", 0)
+		lm_menu.m_file.m_setserverdate.visible = false
+		lm_menu.m_file.m_setserverdate.enabled = false
+	end if
+	if gl_sitecode > 0 and gc_dropbox = "Y" then
+		this.id_master.object.sitecode.initial = trim(string(gl_sitecode))
+		this.id_master.object.targetsitecode.visible = true
+		this.id_master.object.t_targetsitecode.visible = true
+	else
+		this.id_master.object.targetsitecode.visible = false
+		this.id_master.object.t_targetsitecode.visible = false
+	end if
+	this.id_detail.object.batch.initial = f_stringpreferences("defaultbatch")
+	this.id_detail.object.expiry.initial = string(f_datepreferences("defaultexpiry"))
+	if this.ii_intimationtype = 1 then
+		this.id_detail.object.lastacccode_t.text = "Supplier"
+	end if
+	if not f_rightexists(5280) then
+		lm_menu.m_file.m_pushexpiryintimationtodropbox.enabled = false
+		lm_menu.m_file.m_pushexpiryintimationtodropbox.visible = false
+		this.id_list.object.pushed.visible = false
+		this.id_list.object.pushedon.visible = false
+		this.id_list.object.pushedby.visible = false
+		this.id_list.object.pushedfor.visible = false
+	end if
+	if not f_rightexists(5281) then
+		lm_menu.m_file.m_pullexpiryintimationfromdropbox.enabled = false
+		lm_menu.m_file.m_pullexpiryintimationfromdropbox.visible = false
+	end if
+	if f_islicenseexpire() = -2 then
+		close(this)
+	end if
+
+// ic_comport.ue_show() returns long
+	this.object.portopen = true
+	this.object.portopen = false
+	return 1
+
+// ic_comport.constructor() returns long
+	integer li_defaultcomport
+	if f_stringpreferences("DisplayPool") = "Y" then
+		li_defaultcomport = f_numberpreferences("DefaultComPort")
+		if isnull(li_defaultcomport) then
+			li_defaultcomport = 1
+		end if
+		this.object.commport = li_defaultcomport
+		this.object.settings = "9600,N,8,1"
+		this.object.inputlen = 0
+	end if
+	return ::message.returnvalue
+
+// ic_drawerport.constructor() returns long
+	integer li_defaultcomport
+	if f_stringpreferences("CashDrawer") = "Y" then
+		li_defaultcomport = f_numberpreferences("CashDrawerComPort")
+		if isnull(li_defaultcomport) then
+			li_defaultcomport = 1
+		end if
+		this.object.commport = li_defaultcomport
+		this.object.settings = "300,N,8,1"
+		this.object.inputlen = 0
+	end if
+	return ::message.returnvalue

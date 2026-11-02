@@ -1,0 +1,589 @@
+// window w_transferablemarking (datatransferapp)  ancestor: w_multi_entry
+
+// w_transferablemarking.wf_deleteallemptydetailrows() returns integer
+	long ll_count
+	long ll_deletecount
+	long ll_code
+	long ll_rowcount
+	ll_deletecount = 0
+	ll_rowcount = this.id_detail.rowcount()
+	for ll_count = 1 to this.id_detail.rowcount()
+		ll_code = this.id_detail.getitemnumber(ll_count, "invoicecode")
+		if isnull(ll_code) then
+			ll_deletecount = ll_deletecount + 1
+			this.id_detail.deleterow(ll_count)
+		end if
+	next
+	for ll_count = 1 to this.id_detail.rowcount()
+		ll_code = this.id_detail.getitemnumber(ll_count, "invoicecode")
+		if isnull(ll_code) then
+			ll_deletecount = ll_deletecount + 1
+			this.id_detail.deleterow(ll_count)
+		end if
+	next
+	return ll_deletecount
+
+// w_transferablemarking.wf_deleteemptydetailrow() returns integer
+	long ll_rowcount
+	long ll_code
+	integer li_rtcode
+	ll_rowcount = this.id_detail.rowcount()
+	ll_code = this.id_detail.getitemnumber(ll_rowcount, "invoicecode")
+	if ll_rowcount > 1 and isnull(ll_code) then
+		this.id_detail.deleterow(ll_rowcount)
+		li_rtcode = 1
+		setfocus()
+	end if
+	return li_rtcode
+
+// w_transferablemarking.wf_validateinvcode(long al_row, long al_invcode) returns integer
+	integer li_rtcode
+	long ll_invcode
+	long ll_acccode
+	long ll_notecode
+	long ll_transferedby
+	long ll_vouchercode
+	long ll_vochcatcode
+	double ld_outstandingamt
+	double ld_netamt
+	datetime ld_date
+	string ls_transferable
+	string ls_transfered
+	string ls_aliasname
+	string ls_name
+	string ls_posted
+	string ls_remarks
+	if vf_dwdupcode1(this.id_detail, "invoicecode", string(al_invcode), al_row) = true then
+		li_rtcode = 1
+		messagebox("Invoice Validation", "Duplicate Invoice, please select some other invoice")
+	else
+		choose case this.ii_invtype
+		case 0
+			SQL SELECT GLHeader.GLVochCode , GLHeader.VoucherCode , GLHeader.transferable , GLHeader.transfered , GLHeader.transferedBy , GLHeader.Date , Accounts.AliasName , Accounts.Name , GLHeader.AccCode , GLHeader.Posted , GLHeader.Remarks , GLHeader.VochCatCode INTO :ll_invcode, :ll_vouchercode, :ls_transferable, :ls_transfered, :ll_transferedby, :ld_date, :ls_aliasname, :ls_name, :ll_acccode, :ls_posted, :ls_remarks, :ll_vochcatcode FROM GLHeader , Accounts WHERE GLHeader.GLVochCode =:al_invcode AND GLHeader.AccCode =Accounts.AccCode AND GLHeader.Transfered ='N' USING sqlca;
+		case 1
+			SQL SELECT SaleLedger.SaleInvCode , SaleLedger.transferable , SaleLedger.transfered , SaleLedger.transferedBy , SaleLedger.InvTotal , SaleLedger.Date , Accounts.AliasName , Accounts.Name , SaleLedger.CustCode , SaleLedger.Posted INTO :ll_invcode, :ls_transferable, :ls_transfered, :ll_transferedby, :ld_netamt, :ld_date, :ls_aliasname, :ls_name, :ll_acccode, :ls_posted FROM SaleLedger , Accounts WHERE SaleLedger.SaleInvCode =:al_invcode AND SaleLedger.CustCode =Accounts.AccCode AND SaleLedger.Transfered ='N' USING sqlca;
+		case 3
+			SQL SELECT PurLedger.PurInvCode , PurLedger.transferable , PurLedger.transfered , PurLedger.transferedBy , PurLedger.InvTotal , PurLedger.Date , Accounts.AliasName , Accounts.Name , PurLedger.SuppCode , PurLedger.Posted INTO :ll_invcode, :ls_transferable, :ls_transfered, :ll_transferedby, :ld_netamt, :ld_date, :ls_aliasname, :ls_name, :ll_acccode, :ls_posted FROM PurLedger , Accounts WHERE PurLedger.PurInvCode =:al_invcode AND PurLedger.SuppCode =Accounts.AccCode AND PurLedger.Transfered ='N' USING sqlca;
+		case 2
+			SQL SELECT SRLedger.SRInvCode , SRLedger.InvTotal , SRLedger.Date , Accounts.AliasName , Accounts.Name , SRLedger.CustCode , SRLedger.Posted INTO :ll_invcode, :ls_transferable, :ld_netamt, :ld_date, :ls_aliasname, :ls_name, :ll_acccode, :ls_posted FROM SRLedger , Accounts WHERE SRLedger.SRInvCode =:al_invcode AND SRLedger.CustCode =Accounts.AccCode USING sqlca;
+		case 4
+			SQL SELECT PRLedger.PRInvCode , PRLedger.InvTotal , PRLedger.Date , Accounts.AliasName , Accounts.Name , PRLedger.SuppCode , PRLedger.Posted INTO :ll_invcode, :ls_transferable, :ld_netamt, :ld_date, :ls_aliasname, :ls_name, :ll_acccode, :ls_posted FROM PRLedger , Accounts WHERE PRLedger.PRInvCode =:al_invcode AND PRLedger.SuppCode =Accounts.AccCode USING sqlca;
+		case 8
+			SQL SELECT THeader.TransCode , THeader.transferable , THeader.transfered , THeader.transferedBy , InvTotal =SUM ( Tdetail.saleprice *Tdetail.Qty ) , THeader.Date , AliasName =( SELECT Godown.Name FROM Godown WHERE Godown.GCode =THeader.DGCode ) , Name =( SELECT Godown.Name FROM Godown WHERE Godown.GCode =THeader.SGCode ) , THeader.SGCode , THeader.Posted INTO :ll_invcode, :ls_transferable, :ls_transfered, :ll_transferedby, :ld_netamt, :ld_date, :ls_aliasname, :ls_name, :ll_acccode, :ls_posted FROM THeader , TDetail WHERE THeader.TransCode =:al_invcode AND THeader.TransCode =TDetail.TransCode AND THeader.Transfered ='N' GROUP BY THeader.TransCode , THeader.transferable , THeader.transfered , THeader.transferedBy , THeader.Date , THeader.SGCode , THeader.DGCode , THeader.Posted USING sqlca;
+		end choose
+		if sqlca.sqlcode = 0 then
+			if ll_invcode > 0 then
+				this.id_detail.object.invoicecode[al_row] = ll_invcode
+				this.id_detail.object.oldtransferable[al_row] = upper(ls_transferable)
+				if upper(ls_transferable) = "Y" then
+					ls_transferable = "N"
+				else
+					ls_transferable = "Y"
+				end if
+				this.id_detail.object.transferable[al_row] = upper(ls_transferable)
+				this.id_detail.object.transfered[al_row] = upper(ls_transfered)
+				this.id_detail.object.transferedby[al_row] = ll_transferedby
+				this.id_detail.object.posted[al_row] = ls_posted
+				this.id_detail.object.date[al_row] = ld_date
+				this.id_detail.object.aliasname[al_row] = ls_aliasname
+				this.id_detail.object.name[al_row] = ls_name
+				this.id_detail.object.acccode[al_row] = ll_acccode
+				if this.ii_invtype = 0 then
+					this.id_detail.object.vochcatcode[al_row] = ll_vochcatcode
+					this.id_detail.object.glvochcode[al_row] = ll_invcode
+					this.id_detail.object.vouchercode[al_row] = ll_vouchercode
+					this.id_detail.object.remarks[al_row] = ls_remarks
+				else
+					this.id_detail.object.netamt[al_row] = ld_netamt
+				end if
+			else
+				li_rtcode = 1
+			end if
+		else
+			li_rtcode = 1
+		end if
+	end if
+	return li_rtcode
+
+// w_transferablemarking.wf_showdetails() returns 0
+	long ll_invcode
+	s_invdetail lstr_invdetail
+	if this.id_detail.getrow() > 0 then
+		ll_invcode = this.id_detail.object.invoicecode[this.id_detail.getrow()]
+	end if
+	if ll_invcode > 0 then
+		lstr_invdetail.i_module = this.ii_invtype
+		lstr_invdetail.l_invcode = ll_invcode
+		openwithparm(w_invoicedetail, lstr_invdetail)
+	end if
+
+// w_transferablemarking.wf_populateinvoices() returns long
+	datastore lds_invselected
+	long ll_detailrows
+	long ll_count
+	long ll_duplrows
+	long ll_invcode
+	long ll_row
+	long ll_format
+	integer li_result
+	integer li_rtncode
+	boolean populateflag
+	s_arguements lstr_selectedinvoices
+	long ll_rowcount
+	long ll_rtcode
+	long ll_retrievecount
+	long ll_lockedcount
+	string ls_fullcode
+	this.id_detail.setredraw(false)
+	setpointer(hourglass!)
+	ll_detailrows = this.id_detail.rowcount()
+	if ll_detailrows > 0 then
+		if not isnull(this.id_detail.object.invoicecode[1]) then
+			li_result = messagebox("Warning", "Rows in Detail Window will Lost", exclamation!, okcancel!, 2)
+			if li_result = 1 then
+				for ll_count = 1 to ll_detailrows
+					this.id_detail.deleterow(0)
+				next
+				if this.id_detail.update() <> 1 then
+					messagebox("DataBase Problem", "Problem in Deleting Rows")
+					return 0
+				end if
+			else
+				populateflag = false
+			end if
+		else
+			this.id_detail.reset()
+		end if
+	end if
+	if populateflag = true then
+		if this.ii_invtype = 0 then
+			openwithparm(w_arg_sinvcode_linvcode, lstr_selectedinvoices)
+		elseif this.ii_invtype = 1 or this.ii_invtype = 2 then
+			open(w_select_cust_header)
+			ll_format = message.doubleparm
+			if ll_format = 1 then
+				openwithparm(w_arg_cust_sinv_linv, lstr_selectedinvoices)
+			elseif ll_format = 2 then
+				openwithparm(w_arg_headerno_sdate_ldate, lstr_selectedinvoices)
+			end if
+		elseif this.ii_invtype = 8 then
+			openwithparm(w_arg_godown_sinv_linv, lstr_selectedinvoices)
+		else
+			open(w_selectformat_supp_suppcat_purtype)
+			ll_format = message.doubleparm
+			if ll_format = 1 then
+				openwithparm(w_arg_supp_sinv_linv, lstr_selectedinvoices)
+			elseif ll_format = 2 then
+				openwithparm(w_arg_suppcategory_peiord, lstr_selectedinvoices)
+			elseif ll_format = 3 then
+				openwithparm(w_arg_purchasetype_peiord, lstr_selectedinvoices)
+			end if
+		end if
+		lstr_selectedinvoices = message.powerobjectparm
+		this.id_detail.reset()
+		lds_invselected = create datastore
+		choose case this.ii_invtype
+		case 0
+			lds_invselected.dataobject = "d_glvoch_fortransferable"
+		case 1
+			if ll_format = 1 then
+				lds_invselected.dataobject = "d_saleinvoices_fortransferable"
+			elseif ll_format = 2 then
+				lds_invselected.dataobject = "d_saleinvoices_header_fortransferable"
+			end if
+		case 2
+			lds_invselected.dataobject = ""
+		case 3
+			if ll_format = 1 then
+				lds_invselected.dataobject = "d_purinvoices_fortransferable1"
+			elseif ll_format = 2 then
+				lds_invselected.dataobject = "d_purinvoices_fortransferable1_suppcat"
+			elseif ll_format = 3 then
+				lds_invselected.dataobject = "d_purinvoices_fortransferable1_purtype"
+			end if
+		case 4
+			lds_invselected.dataobject = ""
+		case 8
+			lds_invselected.dataobject = "d_transinvoices_fortransferable1"
+		end choose
+		lds_invselected.settransobject(this.it_transobject)
+		this.id_detail.reset()
+		if this.ii_invtype = 0 then
+			ll_rtcode = lds_invselected.retrieve(lstr_selectedinvoices.l_code1, lstr_selectedinvoices.l_code2)
+		elseif this.ii_invtype = 1 or this.ii_invtype = 2 then
+			if ll_format = 1 then
+				ll_rtcode = lds_invselected.retrieve(lstr_selectedinvoices.l_code1, lstr_selectedinvoices.l_code2, lstr_selectedinvoices.l_code3, lstr_selectedinvoices.l_code4)
+			else
+				ll_rtcode = lds_invselected.retrieve(lstr_selectedinvoices.d_sdate, lstr_selectedinvoices.d_edate, lstr_selectedinvoices.l_code1)
+			end if
+		elseif this.ii_invtype = 3 then
+			if ll_format = 1 then
+				ll_rtcode = lds_invselected.retrieve(lstr_selectedinvoices.l_code1, lstr_selectedinvoices.l_code2, lstr_selectedinvoices.l_code3, lstr_selectedinvoices.l_code4)
+			else
+				ll_rtcode = lds_invselected.retrieve(lstr_selectedinvoices.ia_integerlist, lstr_selectedinvoices.d_sdate, lstr_selectedinvoices.d_edate)
+			end if
+		else
+			ll_rtcode = lds_invselected.retrieve(lstr_selectedinvoices.l_code1, lstr_selectedinvoices.l_code2, lstr_selectedinvoices.l_code3, lstr_selectedinvoices.l_code4)
+		end if
+		ll_rowcount = lds_invselected.rowcount()
+		for ll_count = 1 to ll_rowcount
+			ll_invcode = lds_invselected.object.invcode[ll_count]
+			ll_row = this.id_detail.insertrow(0)
+			if wf_validateinvcode(ll_row, ll_invcode) = 0 then
+				ll_retrievecount = ll_retrievecount + 1
+			else
+				this.id_detail.deleterow(ll_row)
+			end if
+		next
+		destroy lds_invselected
+		if ll_retrievecount = ll_rowcount then
+			messagebox("Result", string(ll_rowcount) + " Invoices are populated. ")
+		else
+			messagebox("Result", "Total invoices were " + string(ll_rowcount) + "~n~r" + string(ll_rowcount - ll_duplrows - ll_lockedcount) + " invoices populated successfully~n~r" + string(ll_duplrows) + " invoices are not populated successfully~n~r" + string(ll_lockedcount) + " records are in error")
+		end if
+	end if
+	ll_detailrows = this.id_detail.rowcount()
+	if ll_detailrows > 0 then
+		this.im_menu.m_file.m_save.enabled = true
+	else
+		this.im_menu.m_file.m_save.enabled = false
+	end if
+	setpointer(arrow!)
+	this.id_detail.setredraw(true)
+	return ll_retrievecount
+
+// w_transferablemarking.wf_lockinvoice(long al_invcode) returns integer
+	integer li_count
+	this.it_transobject.dbparm = " Async =1, DBGetTime = 20"
+	choose case this.ii_invtype
+	case 0
+	case 1
+		this.it_transobject.locksaleinvoice(al_invcode)
+	case 2
+		this.it_transobject.lockpurinvoice(al_invcode)
+	case 3
+		this.it_transobject.locksrinvoice(al_invcode)
+	case 4
+		this.it_transobject.lockprinvoice(al_invcode)
+	case 8
+		return 0
+	end choose
+	this.it_transobject.dbparm = "Async =0, DBGetTime = 0"
+	return this.it_transobject.sqlcode
+
+// w_transferablemarking.wf_assigndatawindowobjects(string as_detaildw, string as_hiddendw) returns 0
+	this.id_detail.dataobject = as_detaildw
+	this.id_detail.settransobject(this.it_transobject)
+	this.dw_invdetail.dataobject = as_hiddendw
+	this.id_invdetail = this.dw_invdetail
+	this.id_invdetail.settransobject(this.it_transobject)
+
+// w_transferablemarking.wf_savedetail(long al_errrowid, string as_errtext) returns boolean
+	long ll_detailrows
+	long ll_counter
+	long ll_invcode
+	long ll_rowscount
+	long ll_null
+	boolean lb_continue
+	string ls_transferable
+	setnull(ll_null)
+	ll_detailrows = wf_populatedetail(al_errrowid, as_errtext)
+	ll_counter = 1
+	if ll_detailrows > 0 then
+		do while ll_counter <= ll_detailrows and lb_continue
+			ll_invcode = this.id_invdetail.object.invoicecode[ll_counter]
+			ls_transferable = this.id_invdetail.object.transferable[ll_counter]
+			if wf_lockinvoice(ll_invcode) <> 0 then
+				as_errtext = "Invoice is in use, try later"
+				lb_continue = false
+			end if
+			ll_counter = ll_counter + 1
+		loop
+	else
+		lb_continue = false
+	end if
+	return lb_continue
+
+// w_transferablemarking.wf_populatedetail(long al_errrowid, string as_errtext) returns long
+	long ll_detailrows
+	long ll_counter
+	long ll_invcode
+	long ll_updateablerows
+	long ll_updatedrows
+	long ll_rtcode
+	long ll_find
+	long ll_elements
+	long i
+	string ls_transferable
+	string ls_oldtransferable
+	string ls_str
+	long[] lla_invoices
+	boolean lb_continue
+	ll_detailrows = this.id_detail.rowcount()
+	this.id_invdetail.reset()
+	for ll_counter = 1 to ll_detailrows
+		ll_invcode = this.id_detail.object.invoicecode[ll_counter]
+		ls_transferable = this.id_detail.object.transferable[ll_counter]
+		ls_oldtransferable = this.id_detail.object.oldtransferable[ll_counter]
+		if ls_transferable <> ls_oldtransferable then
+			ll_updateablerows = ll_updateablerows + 1
+			lla_invoices[ll_updateablerows] = ll_invcode
+		end if
+	next
+	if ll_updateablerows > 0 then
+		ll_rtcode = this.id_invdetail.retrieve(lla_invoices)
+		if ll_rtcode > 0 then
+			ll_counter = 1
+			do while ll_counter <= ll_rtcode and lb_continue
+				ll_invcode = this.id_invdetail.getitemnumber(ll_counter, "invoicecode")
+				ls_str = "invoicecode = " + string(ll_invcode)
+				ll_find = this.id_detail.find(ls_str, 1, this.id_detail.rowcount())
+				if ll_find > 0 then
+					if this.id_invdetail.object.transferable[ll_counter] = this.id_detail.object.transferable[ll_find] then
+						al_errrowid = ll_find
+						as_errtext = "Marked Status is Changed between Retrieve and Update."
+						lb_continue = false
+					else
+						this.id_invdetail.object.transferable[ll_counter] = this.id_detail.object.transferable[ll_find]
+						ll_updatedrows = ll_updatedrows + 1
+					end if
+				else
+					al_errrowid = 1
+					as_errtext = "Marked Status is Changed between Retrieve and Update"
+					lb_continue = false
+				end if
+				ll_counter = ll_counter + 1
+			loop
+		else
+			al_errrowid = 1
+			as_errtext = "No invoice available for marking"
+			lb_continue = false
+		end if
+	else
+		as_errtext = "No invoice available for marking, Please Mark atleast one invoice"
+		ll_updatedrows = 0
+		lb_continue = false
+	end if
+	if not lb_continue then
+		ll_updatedrows = 0
+	end if
+	return ll_updatedrows
+
+// w_transferablemarking.wf_select_deselect_all() returns long
+	string ls_transferable
+	long ll_format
+	long ll_counter
+	open(w_select_deselect_all)
+	ll_format = message.doubleparm
+	if ll_format = 1 then
+		ls_transferable = "Y"
+	else
+		ls_transferable = "N"
+	end if
+	for ll_counter = 1 to this.id_detail.rowcount()
+		this.id_detail.object.transferable[ll_counter] = ls_transferable
+	next
+	return 0
+
+// w_transferablemarking.create() returns 0
+	integer icurrent
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_transferablemarking" then
+		this.menuid = create m_transferablemarking
+	end if
+	this.dw_invdetail = create dw_invdetail
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_invdetail
+
+// w_transferablemarking.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_invdetail
+
+// w_transferablemarking.ue_save() returns 0
+	long ll_detailrows
+	long ll_errrowid
+	long ll_counter
+	long ll_count
+	long ll_null
+	boolean lb_commitflag
+	boolean lb_continue
+	integer li_counter
+	string ls_errtext
+	ll_detailrows = this.id_detail.rowcount()
+	if ll_detailrows > 0 then
+		for ll_counter = 1 to ll_detailrows
+			if isnull(this.id_detail.getitemnumber(ll_counter, "invoicecode")) or this.id_detail.getitemnumber(ll_counter, "invoicecode") = 0.0 then
+				this.id_detail.deleterow(ll_counter)
+			end if
+		next
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	wf_deleteallemptydetailrows()
+	if this.id_detail.rowcount() < 0 then
+		messagebox("Rows Validation", "Please insert a row before proceeding")
+		return
+	end if
+	setpointer(hourglass!)
+	if this.id_detail.rowcount() > 0 then
+		if lb_continue then
+			this.id_invdetail.reset()
+			lb_continue = wf_savedetail(ll_errrowid, ls_errtext)
+			if lb_continue then
+				if this.id_invdetail.update() > 0 then
+					lb_continue = true
+					SQL commit USING this.it_transobject;
+					messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+					this.ib_commitok = true
+					this.id_detail.reset()
+					this.id_invdetail.resetupdate()
+					this.im_menu.m_file.m_new.enabled = true
+					this.editflag = false
+				else
+					this.ib_commitok = false
+					lb_continue = false
+				end if
+			end if
+		end if
+		if not lb_continue then
+			SQL rollback USING this.it_transobject;
+			this.id_detail.setcolumn("invoicecode")
+			this.id_detail.scrolltorow(ll_errrowid)
+			this.id_detail.setfocus()
+			messagebox("Updation Error", ls_errtext, stopsign!)
+		end if
+	else
+		SQL rollback USING this.it_transobject;
+		setpointer(arrow!)
+		return
+	end if
+	setpointer(arrow!)
+
+// w_transferablemarking.ue_newform() returns 0
+	this.im_menu.m_file.m_print.enabled = false
+	setredraw(false)
+	this.i_editmode = 1
+	this.i_retrievemode = 2
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_new.enabled = false
+	this.im_menu.m_file.m_delete.enabled = false
+	this.im_menu.m_item.m_newitem.enabled = true
+	this.im_menu.m_item.m_deleteitem.enabled = true
+	this.im_menu.m_file.m_first.enabled = false
+	this.im_menu.m_file.m_next.enabled = false
+	this.im_menu.m_file.m_previous.enabled = false
+	this.im_menu.m_file.m_last.enabled = false
+	this.im_menu.m_file.m_print.enabled = false
+	this.im_menu.m_file.m_retrieve.enabled = true
+	this.im_menu.m_file.m_retrieve.text = "Lis&t"
+	this.tab_retrieve.tabpage_detail.enabled = true
+	if this.id_master.rowcount() > 0 then
+		this.id_master.reset()
+	end if
+	this.ib_focusdetail = false
+	this.id_detail.reset()
+	postevent("ue_newitem")
+	this.id_detail.setcolumn("invoicecode")
+	this.id_detail.scrolltorow(0)
+	this.id_detail.setfocus()
+	setredraw(true)
+
+// w_transferablemarking.ue_newitem() returns 0
+	long ll_rowcount
+	long ll_rtcode
+	if this.id_detail.rowcount() > 0 and f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	this.id_detail.setcolumn("invoicecode")
+	this.id_detail.insertrow(0)
+	ll_rowcount = this.id_detail.rowcount()
+	if ll_rowcount > 1 then
+		this.id_detail.scrolltorow(ll_rowcount)
+		this.id_detail.setfocus()
+	end if
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_print.enabled = false
+	this.ib_validatefullcode = true
+
+// w_transferablemarking.close() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::close()
+	this.id_itemslist.sharedataoff()
+	return ::message.returnvalue
+
+// w_transferablemarking.ue_list() returns 0
+	long ll_row
+	m_transferablemarking lm_menu
+	call super::ue_list
+	lm_menu = this.menuid
+	SQL rollback USING this.it_transobject;
+	this.im_menu.m_file.m_post.enabled = false
+	this.im_menu.m_file.m_print.enabled = false
+	this.ib_modify = false
+	this.id_itemslist.hide()
+	if this.id_detail.rowcount() > 0 then
+		postevent("ue_deleteitem")
+	end if
+	ll_row = wf_retrievelist()
+	wf_disabledetailtab(ll_row)
+
+// w_transferablemarking.ue_new() returns 0
+	call super::ue_new
+	this.im_menu.m_file.m_post.enabled = false
+
+// w_transferablemarking.ue_postopen() returns 0
+	integer li_rtncode
+	integer i
+	long ll_counter
+	long ll_pos
+	long ll_prow
+	long ll_pcode
+	m_transferablemarking lm_menu
+	call super::ue_postopen
+	lm_menu = this.menuid
+	setredraw(false)
+	this.ii_invtype = message.doubleparm
+	choose case this.ii_invtype
+	case 0
+		this.title = "Accounting Voucher Marking For Data Transfer"
+		wf_assigndatawindowobjects("d_accvoucher_transferable_marking", "d_accvoucher_transferable_marking_hidden")
+	case 1
+		this.title = "Sale Invoice Marking For Data Transfer"
+		wf_assigndatawindowobjects("d_saletransferablemarking", "d_saletransferablemarking_hidden")
+	case 2
+		this.title = "Sale Return Marking For Data Transfer"
+		wf_assigndatawindowobjects("d_srinvtransfer", "d_srinvtransfer_hidden")
+	case 3
+		this.title = "Purchase Invoice Marking For Data Transfer"
+		wf_assigndatawindowobjects("d_purtransferablemarking", "d_purtransferablemarking_hidden")
+	case 4
+		this.title = "Purchase Return Marking For Data Transfer"
+		wf_assigndatawindowobjects("d_prinvtransfer", "d_prinvtransfer_hidden")
+	case 8
+		this.title = "Inter-Godown Transfer Marking For Data Transfer"
+		wf_assigndatawindowobjects("d_transtransferablemarking", "d_transtransferablemarking_hidden")
+	end choose
+	setredraw(true)
+
+// w_transferablemarking.ue_deleteitem() returns 0
+	long ll_currow
+	long ll_detailrows
+	this.ib_itemvalidated = true
+	this.id_detail.deleterow(0)
+	ll_detailrows = this.id_detail.rowcount()
+	if ll_detailrows < 0 then
+		this.im_menu.m_file.m_save.enabled = false
+	end if
+
+// w_transferablemarking.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.tab_retrieve.tabpage_list.enabled = false
+	return ::message.returnvalue

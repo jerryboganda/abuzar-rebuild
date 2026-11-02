@@ -1,0 +1,65 @@
+// userobject n_xls_data (dw2xls)  ancestor: nonvisualobject
+
+// n_xls_data.of_add_item() returns integer
+	integer li_ret
+	this.il_count = this.il_count + 1
+	this.ii_current_size = 0
+	return li_ret
+
+// n_xls_data.of_append(blob ab_data) returns integer
+	integer li_ret
+	unsignedlong ll_size
+	unsignedinteger li_right_size
+	blob lb_part
+	ll_size = len(ab_data)
+	do while ll_size > 0
+		if this.ii_current_size = this.ii_max_current_size then
+			of_add_item()
+		end if
+		if ll_size <= this.ii_max_current_size - this.ii_current_size then
+			if this.ii_current_size = 0 then
+				this.ib_arr[this.il_count] = ab_data
+			else
+				this.ib_arr[this.il_count] = ab_data + this.ib_arr[this.il_count]
+			end if
+			this.ii_current_size = ll_size + this.ii_current_size
+			this.il_total_size = this.il_total_size + ll_size
+			ll_size = 0
+		else
+			li_right_size = this.ii_max_current_size - this.ii_current_size
+			lb_part = blobmid(ab_data, 1, li_right_size)
+			ab_data = blobmid(ab_data, li_right_size + 1, ll_size - li_right_size)
+			ll_size = ll_size - li_right_size
+			if this.ii_current_size = 0 then
+				this.ib_arr[this.il_count] = lb_part
+			else
+				this.ib_arr[this.il_count] = lb_part + this.ib_arr[this.il_count]
+			end if
+			this.ii_current_size = this.ii_current_size + li_right_size
+			this.il_total_size = this.il_total_size + li_right_size
+		end if
+	loop
+	return li_ret
+
+// n_xls_data.of_write(olestream ai_stream) returns integer
+	integer li_ret
+	unsignedlong ll_i
+	unsignedlong ll_start
+	blob[] lb_emp
+	for ll_i = ll_start to this.il_count
+		if ll_i = this.il_count then
+			ai_stream.write(blobmid(this.ib_arr[ll_i], 1, this.ii_current_size))
+		else
+			ai_stream.write(blobmid(this.ib_arr[ll_i], 1, this.ii_max_current_size))
+		end if
+	next
+	this.ib_arr = lb_emp
+	return li_ret
+
+// n_xls_data.create() returns 0
+	call super::create
+	triggerevent("constructor")
+
+// n_xls_data.destroy() returns 0
+	triggerevent("destructor")
+	call super::destroy

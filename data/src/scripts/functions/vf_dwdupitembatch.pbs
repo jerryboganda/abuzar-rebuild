@@ -1,0 +1,26 @@
+// function vf_dwdupitembatch (functions)  ancestor: function_object
+
+// vf_dwdupitembatch.vf_dwdupitembatch(datawindow ad_dwcontrol, string as_colicode, long al_icode, string as_colbatch, string as_batch, string as_colexpiry, datetime ad_expiry, long al_row) returns boolean
+	long rt_code
+	long ll_row
+	long ll_rowcount
+	boolean yesno
+	boolean lb_duplicate
+	al_row = ad_dwcontrol.getrow()
+	ll_rowcount = ad_dwcontrol.rowcount()
+	if ll_rowcount > 1 then
+		if al_row > 1 then
+			rt_code = ad_dwcontrol.find(as_colicode + " = long('" + string(al_icode) + "') and " + as_colbatch + " = '" + as_batch + "' and " + as_colexpiry + " = Date('" + string(ad_expiry, "yyyy-mm-dd") + "')", al_row - 1, 0)
+		end if
+		if rt_code = 0 then
+			if al_row <> ad_dwcontrol.rowcount() then
+				rt_code = ad_dwcontrol.find(as_colicode + " = long('" + string(al_icode) + "') and " + as_colbatch + " = '" + as_batch + "' and " + as_colexpiry + " = Date('" + string(ad_expiry, "yyyy-mm-dd") + "')", al_row + 1, ll_rowcount)
+			end if
+			if rt_code <> 0 then
+				yesno = true
+			end if
+		else
+			yesno = true
+		end if
+	end if
+	return yesno

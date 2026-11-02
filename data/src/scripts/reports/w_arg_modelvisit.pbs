@@ -1,0 +1,24 @@
+// window w_arg_modelvisit (reports)  ancestor: w_arguements
+
+// w_arg_modelvisit.create() returns 0
+	integer icurrent
+	call super::create
+	this.st_godown = create st_godown
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_godown
+
+// w_arg_modelvisit.destroy() returns 0
+	call super::destroy
+	destroy this.st_godown
+
+// w_arg_modelvisit.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	return ::message.returnvalue
+
+// w_arg_modelvisit.ue_close(integer ai_stauts) returns 0
+	super::ue_close(ai_stauts)
+	closewithreturn(this, this.istr_arg)

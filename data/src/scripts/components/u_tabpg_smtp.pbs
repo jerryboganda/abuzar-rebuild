@@ -1,0 +1,247 @@
+// userobject u_tabpg_smtp (components)  ancestor: u_tabpg
+
+// u_tabpg_smtp.create() returns 0
+	integer icurrent
+	call super::create
+	this.cbx_debugviewer = create cbx_debugviewer
+	this.cbx_logfile = create cbx_logfile
+	this.cb_del = create cb_del
+	this.cb_addfile = create cb_addfile
+	this.st_7 = create st_7
+	this.lb_attachments = create lb_attachments
+	this.cbx_sendhtml = create cbx_sendhtml
+	this.st_6 = create st_6
+	this.sle_send_email = create sle_send_email
+	this.st_4 = create st_4
+	this.st_3 = create st_3
+	this.sle_from_email = create sle_from_email
+	this.sle_from_name = create sle_from_name
+	this.st_2 = create st_2
+	this.mle_body = create mle_body
+	this.cb_send = create cb_send
+	this.st_1 = create st_1
+	this.sle_send_name = create sle_send_name
+	this.st_5 = create st_5
+	this.dw_subject = create dw_subject
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.cbx_debugviewer
+	this.control[icurrent + 2] = this.cbx_logfile
+	this.control[icurrent + 3] = this.cb_del
+	this.control[icurrent + 4] = this.cb_addfile
+	this.control[icurrent + 5] = this.st_7
+	this.control[icurrent + 6] = this.lb_attachments
+	this.control[icurrent + 7] = this.cbx_sendhtml
+	this.control[icurrent + 8] = this.st_6
+	this.control[icurrent + 9] = this.sle_send_email
+	this.control[icurrent + 10] = this.st_4
+	this.control[icurrent + 11] = this.st_3
+	this.control[icurrent + 12] = this.sle_from_email
+	this.control[icurrent + 13] = this.sle_from_name
+	this.control[icurrent + 14] = this.st_2
+	this.control[icurrent + 15] = this.mle_body
+	this.control[icurrent + 16] = this.cb_send
+	this.control[icurrent + 17] = this.st_1
+	this.control[icurrent + 18] = this.sle_send_name
+	this.control[icurrent + 19] = this.st_5
+	this.control[icurrent + 20] = this.dw_subject
+
+// u_tabpg_smtp.destroy() returns 0
+	call super::destroy
+	destroy this.cbx_debugviewer
+	destroy this.cbx_logfile
+	destroy this.cb_del
+	destroy this.cb_addfile
+	destroy this.st_7
+	destroy this.lb_attachments
+	destroy this.cbx_sendhtml
+	destroy this.st_6
+	destroy this.sle_send_email
+	destroy this.st_4
+	destroy this.st_3
+	destroy this.sle_from_email
+	destroy this.sle_from_name
+	destroy this.st_2
+	destroy this.mle_body
+	destroy this.cb_send
+	destroy this.st_1
+	destroy this.sle_send_name
+	destroy this.st_5
+	destroy this.dw_subject
+
+// u_tabpg_smtp.constructor() returns long
+	long ancestorreturnvalue
+	long ll_retcode
+	ancestorreturnvalue = super::constructor()
+	this.dw_subject.settransobject(sqlca)
+	ll_retcode = this.dw_subject.getchild("subject", this.idc_subject)
+	this.idc_subject.settransobject(sqlca)
+	this.idc_subject.retrieve()
+	this.dw_subject.retrieve()
+	this.po_parent = getparent()
+	this.sle_send_name.text = ""
+	this.sle_send_email.text = ""
+	this.sle_from_name.text = f_stringpreferences("SMTPUserName")
+	this.sle_from_email.text = f_stringpreferences("SMTPUserID")
+	this.dw_subject.object.subject[1] = ""
+	this.mle_body.text = ""
+	if of_getreg("SendHTML", "N") = "Y" then
+		this.cbx_sendhtml.checked = true
+	else
+		this.cbx_sendhtml.checked = false
+	end if
+	return ::message.returnvalue
+
+// u_tabpg_smtp.destructor() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::destructor()
+	return ::message.returnvalue
+
+// u_tabpg_smtp.ue_pagechanged(integer oldindex) returns 0
+	super::ue_pagechanged(oldindex)
+	this.sle_send_name.setfocus()
+
+// cb_del.clicked() returns long
+	integer li_row
+	li_row = parent.lb_attachments.selectedindex()
+	if li_row > 0 then
+		parent.lb_attachments.deleteitem(li_row)
+	end if
+	return ::message.returnvalue
+
+// cb_addfile.clicked() returns long
+	string ls_pathname
+	string ls_filename
+	string ls_filter
+	integer li_rc
+	ls_filter = "All files,*.*"
+	li_rc = getfileopenname("Select File to Attach", ls_pathname, ls_filename, "", ls_filter)
+	if li_rc = 1 then
+		parent.lb_attachments.additem(ls_pathname)
+	end if
+	return ::message.returnvalue
+
+// cb_send.clicked() returns long
+	string ls_body
+	string ls_server
+	string ls_uid
+	string ls_pwd
+	string ls_sendername
+	string ls_filename
+	string ls_port
+	string ls_encrypt
+	string ls_errormsg
+	integer li_idx
+	integer li_max
+	boolean lb_html
+	boolean lb_return
+	unsignedinteger lui_port
+	setpointer(hourglass!)
+	ls_server = f_stringpreferences("SMTPServer")
+	if ls_server = "" then
+		messagebox("Edit Error", "You must specify Server in Email Preferences  first!", stopsign!)
+		return ::message.returnvalue
+	end if
+	ls_port = f_stringpreferences("SMTPPort")
+	if ls_server = "" then
+		messagebox("Mail Error", "You must specify Port in Email Preferences first!", stopsign!)
+		return 0
+	end if
+	if parent.sle_send_email.text = "" then
+		parent.sle_send_email.setfocus()
+		messagebox("Edit Error", "To Email is a required field!", stopsign!)
+		return ::message.returnvalue
+	end if
+	if parent.sle_from_email.text = "" then
+		parent.sle_from_email.setfocus()
+		messagebox("Edit Error", "From Email is a required field!", stopsign!)
+		return ::message.returnvalue
+	end if
+	if parent.dw_subject.object.subject[1] = "" then
+		parent.dw_subject.setfocus()
+		messagebox("Edit Error", "Subject is a required field!", stopsign!)
+		return ::message.returnvalue
+	end if
+	if parent.mle_body.text = "" then
+		parent.mle_body.setfocus()
+		messagebox("Edit Error", "Body is a required field!", stopsign!)
+		return ::message.returnvalue
+	end if
+	if not gn_smtp.of_validemail(parent.sle_from_email.text, ls_errormsg) then
+		parent.sle_from_email.setfocus()
+		messagebox("Edit Error", ls_errormsg, stopsign!)
+		return ::message.returnvalue
+	end if
+	if not gn_smtp.of_validemail(parent.sle_send_email.text, ls_errormsg) then
+		parent.sle_send_email.setfocus()
+		messagebox("Edit Error", ls_errormsg, stopsign!)
+		return ::message.returnvalue
+	end if
+	if parent.cbx_sendhtml.checked then
+		ls_body = "<html><body bgcolor='#FFFFFF' topmargin=8 leftmargin=8><h2>"
+		ls_body = parent.of_replaceall(parent.mle_body.text, "~r~n", "<br>") + "</h2>" + ls_body
+		ls_body = "</body></html>" + ls_body
+		lb_html = true
+	else
+		ls_body = parent.mle_body.text
+		lb_html = false
+	end if
+	lui_port = long(ls_port)
+	gn_smtp.of_resetall()
+	gn_smtp.of_setport(lui_port)
+	gn_smtp.of_setserver(ls_server)
+	gn_smtp.of_setlogfile(parent.cbx_logfile.checked, "smtp_logfile8.txt")
+	gn_smtp.of_setdebugviewer(parent.cbx_debugviewer.checked)
+	gn_smtp.of_setsubject(parent.dw_subject.object.subject[1])
+	gn_smtp.of_setbody(ls_body, lb_html)
+	gn_smtp.of_setfrom(parent.sle_from_email.text, parent.sle_from_name.text)
+	gn_smtp.of_addaddress(parent.sle_send_email.text, parent.sle_send_name.text)
+	if f_stringpreferences("SMTPAuthRequired") = "Y" then
+		ls_uid = f_stringpreferences("SMTPUserID")
+		ls_pwd = f_stringpreferences("SMTPPassword")
+		gn_smtp.of_setlogin(ls_uid, ls_pwd)
+	end if
+	li_max = parent.lb_attachments.totalitems()
+	for li_idx = 1 to li_max
+		ls_filename = parent.lb_attachments.text(li_idx)
+		gn_smtp.of_addattachment(ls_filename)
+	next
+	ls_encrypt = f_stringpreferences("SMTPEncryptionType")
+	choose case ls_encrypt
+	case "SSL"
+		lb_return = gn_smtp.of_sendsslmail()
+	case "TLS"
+		lb_return = gn_smtp.of_sendtlsmail()
+	case else
+		lb_return = gn_smtp.of_sendmail()
+	end choose
+	if lb_return then
+		messagebox("SendMail", "Mail successfully sent!")
+		parent.ib_emailsent = true
+		close(parent.po_parent)
+	else
+		messagebox("SendMail Error", gn_smtp.of_getlasterror())
+		parent.ib_emailsent = false
+	end if
+	return ::message.returnvalue
+
+// dw_subject.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "subject"
+		if data = "" or isnull(data) then
+			messagebox("Subject Validation", "Please Select Some Valid Subject")
+			return 1
+		elseif parent.idc_subject.getrow() > 0 then
+			parent.mle_body.text = parent.idc_subject.getitemstring(parent.idc_subject.getrow(), "body")
+		else
+			parent.mle_body.text = ""
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_subject.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1

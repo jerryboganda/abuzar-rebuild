@@ -1,0 +1,1798 @@
+// function f_retrieve_report9 (reportviewer)  ancestor: function_object
+
+// f_retrieve_report9.f_retrieve_report9(datawindow adw_report, s_reportinfo as_reportinfo, s_arguements as_reparg, long al_format, string as_type, integer ai_mode) returns long
+	integer ii_normal
+	integer ii_autorefresh
+	long ll_insertrow
+	long ll_rowcount
+	long ll_count
+	long ll_loopcounter
+	long ll_counter
+	long[] ll_arr
+	long ll_zeroqty
+	long ll_tempcode
+	long ll_lastrow
+	long ll_insrow
+	long ll_acccode
+	long ll_found
+	long ll_crs
+	string ls_itemname
+	string ls_nestedreport
+	string ls_stringparam
+	string ls_name
+	string ls_cp
+	string ls_address
+	string ls_address2
+	string ls_city
+	string ls_stringarr1
+	string ls_stringarr2
+	string ls_stringarr3
+	string ls_value
+	string ls_lastpage
+	string ls_crs
+	integer i_rtcode
+	integer li_packunits
+	integer li_suppress
+	integer ll_format
+	integer li_type
+	long ll_maincriteria
+	long ll_format2
+	double ld_saleprice
+	double ld_salediscperc
+	double ld_cols
+	double ld_ratediff
+	double ld_value
+	double ld_amount
+	s_arguements lstr_temp
+	datawindowchild ldc_nested
+	datastore lds_data
+	lds_data = create datastore
+	choose case as_reportinfo.s_reportobject
+	case "d_godown_pr_detail"
+		if ai_mode = 0 then
+			open(w_arg_godowns_sdate_ldate)
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_reparg.d_sdate, as_reparg.d_edate, as_reparg.ia_integerlist)
+		end if
+	case "d_godown_pr_summary"
+		if ai_mode = 0 then
+			open(w_arg_godowns_sdate_ldate)
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_reparg.d_sdate, as_reparg.d_edate, as_reparg.ia_integerlist)
+		end if
+	case "d_godown_purchase_detail"
+		if ai_mode = 0 then
+			open(w_arg_godowns_sdate_ldate)
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_reparg.d_sdate, as_reparg.d_edate, as_reparg.ia_integerlist)
+		end if
+	case "d_godown_purchase_summary"
+		if ai_mode = 0 then
+			open(w_arg_godowns_sdate_ldate)
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_reparg.d_sdate, as_reparg.d_edate, as_reparg.ia_integerlist)
+		end if
+	case "d_crs_accountbalances"
+		setpointer(hourglass!)
+		if ai_mode = 0 then
+			open(w_selectformat_crs_consolidated)
+			ll_crs = message.doubleparm
+			if ll_crs = 1 then
+				open(w_arg_clientinstance)
+				lstr_temp = message.powerobjectparm
+			end if
+			open(w_arg_sdate)
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			if ll_crs = 1 then
+				as_reparg.l_code2 = lstr_temp.l_code1
+			else
+				as_reparg.l_code2 = -1
+			end if
+			SQL rollback USING sqlca;
+			sqlca.virtualgl("A")
+			if sqlca.sqlcode = 0 then
+				SQL commit USING sqlca;
+				if f_rightexists(533) then
+					i_rtcode = 1
+				else
+					i_rtcode = 0
+				end if
+				i_rtcode = adw_report.retrieve(as_reparg.l_code2, as_reparg.d_sdate, i_rtcode)
+			else
+				SQL rollback USING sqlca;
+			end if
+		end if
+		setpointer(arrow!)
+	case "d_crs_suppliersbalances"
+		if ai_mode = 0 then
+			open(w_selectformat_crs_consolidated)
+			ll_crs = message.doubleparm
+			if ll_crs = 1 then
+				open(w_arg_clientinstance)
+				lstr_temp = message.powerobjectparm
+			end if
+			open(w_arg_suppcategory_ldate)
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			if ll_crs = 1 then
+				as_reparg.l_code2 = lstr_temp.l_code1
+			else
+				as_reparg.l_code2 = -1
+			end if
+			setpointer(hourglass!)
+			SQL rollback USING sqlca;
+			sqlca.virtualgl("A")
+			if sqlca.sqlcode = 0 then
+				SQL commit USING sqlca;
+				if f_rightexists(533) then
+					i_rtcode = 1
+				else
+					i_rtcode = 0
+				end if
+				i_rtcode = adw_report.retrieve(as_reparg.l_code2, as_reparg.ia_integerlist, as_reparg.d_edate, i_rtcode)
+			else
+				SQL rollback USING sqlca;
+			end if
+			setpointer(arrow!)
+		end if
+	case "d_crs_customerbalances"
+		if ai_mode = 0 then
+			open(w_selectformat_crs_consolidated)
+			ll_crs = message.doubleparm
+			if ll_crs = 1 then
+				open(w_arg_clientinstance)
+				lstr_temp = message.powerobjectparm
+			end if
+			open(w_arg_area_custcategory_date)
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			if ll_crs = 1 then
+				as_reparg.l_code2 = lstr_temp.l_code1
+			else
+				as_reparg.l_code2 = -1
+			end if
+			setpointer(hourglass!)
+			SQL rollback USING sqlca;
+			sqlca.virtualgl("A")
+			if sqlca.sqlcode = 0 then
+				SQL commit USING sqlca;
+				if f_rightexists(533) then
+					i_rtcode = 1
+				else
+					i_rtcode = 0
+				end if
+				i_rtcode = adw_report.retrieve(as_reparg.l_code2, as_reparg.ia_integerlist, as_reparg.ia_integerlist1, as_reparg.d_edate, i_rtcode)
+			else
+				SQL rollback USING sqlca;
+			end if
+			setpointer(arrow!)
+		end if
+	case "d_crs_accountledger"
+		if ai_mode = 0 then
+			open(w_selectformat_crs_consolidated)
+			ll_crs = message.doubleparm
+			if ll_crs = 1 then
+				open(w_arg_clientinstance)
+				lstr_temp = message.powerobjectparm
+			end if
+			openwithparm(w_arg_accounts_sdate_ldate, "O")
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			if ll_crs = 1 then
+				as_reparg.l_code2 = lstr_temp.l_code1
+			else
+				as_reparg.l_code2 = -1
+			end if
+			setpointer(hourglass!)
+			SQL rollback USING sqlca;
+			sqlca.crs_virtualgl()
+			if sqlca.sqlcode = 0 then
+				SQL commit USING sqlca;
+				i_rtcode = adw_report.retrieve(as_reparg.l_code2, as_reparg.ia_integerlist, as_reparg.d_sdate, as_reparg.d_edate)
+			else
+				SQL rollback USING sqlca;
+			end if
+			setpointer(arrow!)
+		end if
+	case "d_crs_customerledger"
+		if ai_mode = 0 then
+			open(w_selectformat_crs_consolidated)
+			ll_crs = message.doubleparm
+			if ll_crs = 1 then
+				open(w_arg_clientinstance)
+				lstr_temp = message.powerobjectparm
+			end if
+			open(w_select_cust_custgroup)
+			li_type = message.doubleparm
+			open(w_selectformat_crs_ledgertype)
+			al_format = message.doubleparm
+			if li_type = 1 then
+				if al_format = 1 then
+					adw_report.dataobject = "d_crs_customerledger"
+				else
+					adw_report.dataobject = "d_crs_customerledger_itemwise"
+				end if
+				open(w_arg_customers_sdate_ldate)
+			else
+				if al_format = 1 then
+					adw_report.dataobject = "d_crs_customerledger_custgroup"
+				else
+					adw_report.dataobject = "d_crs_customerledger_itemwise_custgroup"
+				end if
+				open(w_arg_custgroup)
+			end if
+			adw_report.settransobject(sqlca)
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			if ll_crs = 1 then
+				as_reparg.l_code2 = lstr_temp.l_code1
+			else
+				as_reparg.l_code2 = -1
+			end if
+			SQL rollback USING sqlca;
+			sqlca.crs_virtualgl()
+			if sqlca.sqlcode = 0 then
+				SQL commit USING sqlca;
+			else
+				SQL rollback USING sqlca;
+			end if
+			if li_type = 1 then
+				if as_reparg.l_code1 = 1 then
+					as_reparg.ia_integerlist = ll_arr
+					as_reparg.ia_integerlist[1] = -1
+				end if
+				i_rtcode = adw_report.retrieve(as_reparg.l_code2, as_reparg.ia_integerlist, as_reparg.d_sdate, as_reparg.d_edate, as_reparg.l_code1)
+			else
+				i_rtcode = adw_report.retrieve(as_reparg.l_code2, as_reparg.l_code1, as_reparg.d_sdate, as_reparg.d_edate)
+			end if
+		else
+			SQL rollback USING sqlca;
+		end if
+	case "d_itemnamechanges"
+		if ai_mode = 0 then
+			open(w_arg_sdate_ldate)
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_reparg.d_sdate, as_reparg.d_edate)
+		end if
+	case "d_crs_supplierledger"
+		if ai_mode = 0 then
+			open(w_selectformat_crs_consolidated)
+			ll_crs = message.doubleparm
+			if ll_crs = 1 then
+				open(w_arg_clientinstance)
+				lstr_temp = message.powerobjectparm
+			end if
+			open(w_selectformat_crs_supplierledger)
+			if message.doubleparm = 1.0 then
+				adw_report.dataobject = "d_crs_supplierledger"
+			elseif message.doubleparm = 2.0 then
+				adw_report.dataobject = "d_crs_supplierledger_landscape"
+			else
+				adw_report.dataobject = "d_crs_supplierledger_itemwise"
+			end if
+			adw_report.settransobject(sqlca)
+			open(w_arg_suppliers_sdate_ldate)
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			if ll_crs = 1 then
+				as_reparg.l_code2 = lstr_temp.l_code1
+			else
+				as_reparg.l_code2 = -1
+			end if
+			SQL rollback USING sqlca;
+			sqlca.crs_virtualgl()
+			if sqlca.sqlcode = 0 then
+				SQL commit USING sqlca;
+				i_rtcode = adw_report.retrieve(as_reparg.l_code2, as_reparg.ia_integerlist, as_reparg.d_sdate, as_reparg.d_edate)
+			else
+				SQL rollback USING sqlca;
+			end if
+		end if
+	case "d_crs_accountledger"
+		if ai_mode = 0 then
+			open(w_selectformat_crs_consolidated)
+			ll_crs = message.doubleparm
+			if ll_crs = 1 then
+				open(w_arg_clientinstance)
+				lstr_temp = message.powerobjectparm
+			end if
+			openwithparm(w_arg_accounts_sdate_ldate, "O")
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			if ll_crs = 1 then
+				as_reparg.l_code2 = lstr_temp.l_code1
+			else
+				as_reparg.l_code2 = -1
+			end if
+			setpointer(hourglass!)
+			SQL rollback USING sqlca;
+			sqlca.crs_virtualgl()
+			if sqlca.sqlcode = 0 then
+				SQL commit USING sqlca;
+				i_rtcode = adw_report.retrieve(as_reparg.l_code2, as_reparg.ia_integerlist, as_reparg.d_sdate, as_reparg.d_edate)
+			else
+				SQL rollback USING sqlca;
+			end if
+			setpointer(arrow!)
+		end if
+	case "d_crs_customerledger"
+		if ai_mode = 0 then
+			open(w_selectformat_crs_consolidated)
+			ll_crs = message.doubleparm
+			if ll_crs = 1 then
+				open(w_arg_clientinstance)
+				lstr_temp = message.powerobjectparm
+			end if
+			open(w_select_cust_custgroup)
+			li_type = message.doubleparm
+			open(w_selectformat_crs_ledgertype)
+			al_format = message.doubleparm
+			if li_type = 1 then
+				if al_format = 1 then
+					adw_report.dataobject = "d_crs_customerledger"
+				else
+					adw_report.dataobject = "d_crs_customerledger_itemwise"
+				end if
+				open(w_arg_customers_sdate_ldate)
+			else
+				if al_format = 1 then
+					adw_report.dataobject = "d_crs_customerledger_custgroup"
+				else
+					adw_report.dataobject = "d_crs_customerledger_itemwise_custgroup"
+				end if
+				open(w_arg_custgroup)
+			end if
+			adw_report.settransobject(sqlca)
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			if ll_crs = 1 then
+				as_reparg.l_code2 = lstr_temp.l_code1
+			else
+				as_reparg.l_code2 = -1
+			end if
+			SQL rollback USING sqlca;
+			sqlca.crs_virtualgl()
+			if sqlca.sqlcode = 0 then
+				SQL commit USING sqlca;
+			else
+				SQL rollback USING sqlca;
+			end if
+			if li_type = 1 then
+				if as_reparg.l_code1 = 1 then
+					as_reparg.ia_integerlist = ll_arr
+					as_reparg.ia_integerlist[1] = -1
+				end if
+				i_rtcode = adw_report.retrieve(as_reparg.l_code2, as_reparg.ia_integerlist, as_reparg.d_sdate, as_reparg.d_edate, as_reparg.l_code1)
+			else
+				i_rtcode = adw_report.retrieve(as_reparg.l_code2, as_reparg.l_code1, as_reparg.d_sdate, as_reparg.d_edate)
+			end if
+		else
+			SQL rollback USING sqlca;
+		end if
+	case "d_dataexportutility_pakangels"
+		if ai_mode = 0 then
+			open(w_arg_scode_lcode2)
+			as_reparg = message.powerobjectparm
+			adw_report.settransobject(sqlca)
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_reparg.l_code1, as_reparg.l_code2)
+		end if
+	case "d_stockbatchprioritywise_novalue"
+		if ai_mode = 0 then
+			open(w_selection_manf_cat_class_packing)
+			as_type = message.stringparm
+			openwithparm(w_arg_grouping_pricetype2, as_type)
+			as_reparg = message.powerobjectparm
+			adw_report.settransobject(sqlca)
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_type, as_reparg.ia_integerlist, as_reparg.l_code1)
+		end if
+	case "d_issuebased_receipts"
+		if ai_mode = 0 then
+			open(w_arg_sdate_ldate)
+			as_reparg = message.powerobjectparm
+			adw_report.settransobject(sqlca)
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_reparg.d_sdate, as_reparg.d_edate)
+		end if
+	case "d_masoodhomoeo_dataexportutility"
+		if ai_mode = 0 then
+			open(w_select_crs_normal)
+			ls_crs = message.stringparm
+			open(w_arg_sdate_ldate_saletype)
+			as_reparg = message.powerobjectparm
+			adw_report.settransobject(sqlca)
+		end if
+		if as_reparg.i_status = 1 then
+			adw_report.dataobject = "d_masoodhomoeo_dataexportutility"
+			adw_report.settransobject(sqlca)
+			if ls_crs = "N" then
+				adw_report.object.client.visible = false
+			end if
+			i_rtcode = adw_report.retrieve(ls_crs, as_reparg.d_sdate, as_reparg.d_edate, as_reparg.s_name1)
+		end if
+	case "d_doctorwise_surgerylist"
+		if ai_mode = 0 then
+			open(w_arg_doctors_sdate_ldate)
+			as_reparg = message.powerobjectparm
+			open(w_selectformat_1_2)
+			al_format = message.doubleparm
+			if al_format = 1 then
+				adw_report.dataobject = "d_doctorwise_surgerylist"
+			elseif al_format = 2 then
+				adw_report.dataobject = "d_doctorwise_surgerylist2"
+			end if
+			adw_report.settransobject(sqlca)
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_reparg.ia_integerlist, as_reparg.d_sdate, as_reparg.d_edate)
+		end if
+	case "d_producttypewise_product_stockinhand"
+		if ai_mode = 0 then
+			open(w_selectformat_product_stockinhand)
+			al_format = message.doubleparm
+			if al_format = 1 then
+				adw_report.dataobject = "d_producttypewise_product_stockinhand"
+			elseif al_format = 2 then
+				adw_report.dataobject = "d_productpurposewise_product_stockinhand2"
+			end if
+			adw_report.settransobject(sqlca)
+		end if
+		i_rtcode = adw_report.retrieve()
+	case "d_monthwise_grossprofit"
+		if ai_mode = 0 then
+			open(w_arg_sdate_ldate)
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_reparg.d_sdate, as_reparg.d_edate)
+		end if
+	case "d_custcategory_custwise_grossprofit"
+		if ai_mode = 0 then
+			open(w_arg_sdate_ldate)
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_reparg.d_sdate, as_reparg.d_edate)
+		end if
+	case "d_patient_transaction_status"
+		if ai_mode = 0 then
+			open(w_arg_sdate_ldate)
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_reparg.d_sdate, as_reparg.d_edate)
+		end if
+	case "d_saleperson_cust_item_netsale_crosstab"
+		if ai_mode = 0 then
+			open(w_arg_salesman_manf_sdate_ldate)
+			as_reparg = message.powerobjectparm
+			open(w_selectformat_1_3)
+			al_format = message.doubleparm
+			if al_format = 1 then
+				adw_report.dataobject = "d_saleperson_cust_item_netsale_crosstab"
+			elseif al_format = 2 then
+				adw_report.dataobject = "d_saleperson_cust_item_netsale_crosstab2"
+			else
+				adw_report.dataobject = "d_saleperson_cust_item_netsale_crosstab3"
+			end if
+			adw_report.settransobject(sqlca)
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_reparg.l_code1, as_reparg.ia_integerlist, as_reparg.d_sdate, as_reparg.d_edate)
+		end if
+	case "d_saleperson_monthly_netsale_summary"
+		if ai_mode = 0 then
+			openwithparm(w_arg_manfs_salesman_sdate_ldate, "M")
+			as_reparg = message.powerobjectparm
+			open(w_selectformat_sman_monthlysales)
+			al_format = message.doubleparm
+			if al_format = 1 then
+				adw_report.dataobject = "d_saleperson_monthly_netsale_summary"
+			else
+				adw_report.dataobject = "d_saleperson_monthly_netsale_summary2"
+			end if
+			adw_report.settransobject(sqlca)
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_reparg.ia_integerlist1, as_reparg.ia_integerlist, as_reparg.d_sdate, as_reparg.d_edate)
+		end if
+	case "d_manf_monthly_stockmovement"
+		if ai_mode = 0 then
+			open(w_arg_manufacturers)
+			as_reparg = message.powerobjectparm
+			open(w_selectformat_monthly_stockmovement)
+			al_format = message.doubleparm
+			if al_format = 1 then
+				adw_report.dataobject = "d_manf_monthly_stockmovement"
+			elseif al_format = 2 then
+				adw_report.dataobject = "d_manf_monthly_stockmovement2"
+			else
+				adw_report.dataobject = "d_manf_monthly_stockmovement3"
+			end if
+			adw_report.settransobject(sqlca)
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_reparg.ia_integerlist, as_reparg.d_sdate, as_reparg.d_edate)
+		end if
+	case "d_saleman_manf_customer_netsale_crosstab"
+		if ai_mode = 0 then
+			open(w_arg_salesman_manf_sdate_ldate)
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_reparg.d_sdate, as_reparg.d_edate, as_reparg.ia_integerlist, as_reparg.l_code1)
+		end if
+	case "s_supp_service_purchase_detail"
+		if ai_mode = 0 then
+			open(w_arg_suppliers_sdate_ldate)
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_reparg.ia_integerlist, as_reparg.d_sdate, as_reparg.d_edate)
+		end if
+	case "d_crs_consolidatedstockposition"
+		if ai_mode = 0 then
+			open(w_selection_manf_cat_class_packing)
+			ls_stringparam = message.stringparm
+			openwithparm(w_arg_manfs_cats_classes_packs, ls_stringparam)
+			as_reparg = message.powerobjectparm
+			open(w_selectformat_crs_stockposition)
+			al_format = message.doubleparm
+			if al_format = 1 then
+				adw_report.dataobject = "d_crs_consolidatedstockposition"
+			elseif al_format = 2 then
+				adw_report.dataobject = "d_crs_consolidatedstockposition_summary"
+			else
+				adw_report.dataobject = "d_crs_consolidatedstockposition_summary2"
+			end if
+			adw_report.settransobject(sqlca)
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(ls_stringparam, as_reparg.ia_integerlist)
+		end if
+	case "d_cust_assocgodown_stockinhand"
+		if ai_mode = 0 then
+			open(w_arg_customers)
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_reparg.ia_integerlist)
+		end if
+	case "d_itemwisepurchases"
+		if ai_mode = 0 then
+			open(w_arg_items_sdate_ldate)
+			as_reparg = message.powerobjectparm
+			if as_reparg.i_status = 1 then
+				open(w_arg_suppliers)
+				lstr_temp = message.powerobjectparm
+				if lstr_temp.i_status = 1 then
+					open(w_selectformat_itempurchases)
+					al_format = message.doubleparm
+					if al_format = 1 then
+						adw_report.dataobject = "d_itemwisepurchases_summary"
+					elseif al_format = 2 then
+						adw_report.dataobject = "d_itemwisepurchases"
+					elseif al_format = 3 then
+						adw_report.dataobject = "d_itemwisepurchases_summary_foreignprice"
+					elseif al_format = 4 then
+						adw_report.dataobject = "d_itemwisepurchases_foreignprice"
+					elseif al_format = 5 then
+						adw_report.dataobject = "d_item_supp_purchase_summary"
+					end if
+					adw_report.settransobject(sqlca)
+				end if
+			end if
+		end if
+		if as_reparg.i_status = 1 and lstr_temp.i_status = 1 then
+			if as_reparg.l_code2 = 1 then
+				as_reparg.la_longlist = ll_arr
+				as_reparg.la_longlist[1] = -1
+			end if
+			as_reparg.ia_integerlist = lstr_temp.ia_integerlist
+			i_rtcode = adw_report.retrieve(as_reparg.l_code2, as_reparg.la_longlist, as_reparg.d_sdate, as_reparg.d_edate, as_reparg.ia_integerlist)
+		end if
+	case "d_itemcategorywise_daywisenetsale"
+		if ai_mode = 0 then
+			open(w_arg_categories_period)
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_reparg.ia_integerlist, as_reparg.d_sdate, as_reparg.d_edate)
+		end if
+	case "d_dayssummary_salmod"
+		if ai_mode = 0 then
+			open(w_arg_customers_sdate_ldate_v5)
+			as_reparg = message.powerobjectparm
+			open(w_selectformat_dayssummary_salmod)
+		end if
+		if as_reparg.i_status = 1 then
+			if message.doubleparm <= 2.0 then
+				if lower(as_reparg.s_name3) = "originaldate" then
+					if message.doubleparm = 1.0 then
+						adw_report.dataobject = "d_dayssummary_origdate_salmod"
+					else
+						adw_report.dataobject = "d_dayssummary_origdate_salmod2"
+					end if
+					adw_report.settransobject(sqlca)
+				else
+					if message.doubleparm = 1.0 then
+						adw_report.dataobject = "d_dayssummary_salmod"
+					else
+						adw_report.dataobject = "d_dayssummary_salmod2"
+					end if
+					adw_report.settransobject(sqlca)
+				end if
+				i_rtcode = adw_report.retrieve(as_reparg.ia_integerlist, as_reparg.d_sdate, as_reparg.d_edate, as_reparg.db_code1)
+			elseif message.doubleparm = 3.0 then
+				adw_report.dataobject = "d_dayssummary_salmod3"
+				adw_report.settransobject(sqlca)
+				i_rtcode = adw_report.retrieve(as_reparg.s_name3, as_reparg.ia_integerlist, as_reparg.d_sdate, as_reparg.d_edate, as_reparg.db_code1)
+			elseif message.doubleparm = 4.0 then
+				adw_report.dataobject = "d_dayssummary_salmod4"
+				adw_report.settransobject(sqlca)
+				i_rtcode = adw_report.retrieve(as_reparg.s_name3, as_reparg.ia_integerlist, as_reparg.d_sdate, as_reparg.d_edate, as_reparg.db_code1)
+			end if
+		end if
+	case "d_sale_salereturn_detail"
+		if ai_mode = 0 then
+			open(w_arg_sdate_ldate)
+			as_reparg = message.powerobjectparm
+			open(w_selectformat_1_2)
+			al_format = message.doubleparm
+			if al_format = 1 then
+				adw_report.dataobject = "d_sale_salereturn_detail"
+			elseif al_format = 2 then
+				adw_report.dataobject = "d_sale_salereturn_detail2"
+			end if
+			adw_report.settransobject(sqlca)
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_reparg.d_sdate, as_reparg.d_edate)
+		end if
+	case "d_customerwise_advancetax_summary"
+		if ai_mode = 0 then
+			open(w_arg_customers_oneorall_sdate_ldate)
+			as_reparg = message.powerobjectparm
+			open(w_selectformat_advancetaxonsale)
+			al_format = message.doubleparm
+			if al_format = 1 then
+				adw_report.dataobject = "d_customerwise_advancetax_summary"
+			elseif al_format = 2 then
+				adw_report.dataobject = "d_customerwise_advancetax_detail"
+			elseif al_format = 3 then
+				adw_report.dataobject = "d_customerwise_advancetax"
+			elseif al_format = 4 then
+				adw_report.dataobject = "d_customerwise_advancetax2"
+			elseif al_format = 5 then
+				adw_report.dataobject = "d_customerwise_advancetax_fbrformat"
+			elseif al_format = 6 then
+				adw_report.dataobject = "d_customerwise_advancetax_fbrformat2"
+			elseif al_format = 7 then
+				adw_report.dataobject = "d_customerwise_advancetax_fbrformat3"
+			end if
+			adw_report.settransobject(sqlca)
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_reparg.d_sdate, as_reparg.d_edate, as_reparg.ia_integerlist, as_reparg.l_code1)
+		end if
+	case "d_supplierwise_advancetax_summary"
+		if ai_mode = 0 then
+			open(w_arg_suppliers_sdate_ldate)
+			as_reparg = message.powerobjectparm
+			open(w_selectformat_advancetax)
+			al_format = message.doubleparm
+			if al_format = 1 then
+				adw_report.dataobject = "d_supplierwise_advancetax_summary"
+			elseif al_format = 2 then
+				adw_report.dataobject = "d_supplierwise_advancetax_summary2"
+			elseif al_format = 3 then
+				adw_report.dataobject = "d_supplierwise_advancetax_summary3"
+			elseif al_format = 4 then
+				adw_report.dataobject = "d_supplierwise_advancetax_summary4"
+			else
+				adw_report.dataobject = "d_supplierwise_advancetax_detail"
+			end if
+			adw_report.settransobject(sqlca)
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_reparg.d_sdate, as_reparg.d_edate, as_reparg.ia_integerlist)
+		end if
+	case "d_salestaxreport"
+		if ai_mode = 0 then
+			open(w_selectformat_1_3)
+			al_format = message.doubleparm
+			if al_format = 1 then
+				adw_report.dataobject = "d_salestaxreport"
+			elseif al_format = 2 then
+				adw_report.dataobject = "d_salestaxreport2"
+			elseif al_format = 3 then
+				adw_report.dataobject = "d_salestaxreport3"
+			end if
+			adw_report.settransobject(sqlca)
+			if al_format = 3 then
+				open(w_arg_custcategories_sdate_ldate)
+			else
+				open(w_arg_sdate_ldate)
+			end if
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			if al_format = 3 then
+				i_rtcode = adw_report.retrieve(as_reparg.ia_integerlist, as_reparg.d_sdate, as_reparg.d_edate)
+			else
+				i_rtcode = adw_report.retrieve(as_reparg.d_sdate, as_reparg.d_edate)
+			end if
+		end if
+	case "d_selectedsales_withsummaries"
+		if ai_mode = 0 then
+			open(w_arg_sinvcode_linvcode_invselection)
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			if gs_company = "ZIKRIADIST" then
+				adw_report.dataobject = "d_zikria_selectedsales_withsummaries"
+			end if
+			adw_report.settransobject(sqlca)
+			SQL rollback USING sqlca;
+			SQL DELETE ReportData USING sqlca;
+			for ll_counter = 1 to upperbound(as_reparg.la_longlist)
+				SQL INSERT INTO ReportData ( Code1 ) Values ( :as_reparg.la_longlist[ll_counter] ) USING sqlca;
+			next
+			sqlca.virtualgl("A")
+			if sqlca.sqlcode = 0 then
+				SQL commit USING sqlca;
+				adw_report.retrieve(as_reparg.s_name1, as_reparg.s_name2, as_reparg.s_name3)
+			else
+				SQL rollback USING sqlca;
+			end if
+		end if
+	case "d_custcatwise_outputtaxdetail"
+		if ai_mode = 0 then
+			open(w_arg_custcategories_sdate_ldate)
+			as_reparg = message.powerobjectparm
+			open(w_selectformat_outputsalestax)
+			al_format = message.doubleparm
+			if al_format = 1 then
+				adw_report.dataobject = "d_custcatwise_outputtaxsummary"
+			elseif al_format = 2 then
+				adw_report.dataobject = "d_custcatwise_outputtaxdetail"
+			else
+				adw_report.dataobject = "d_custcatwise_outputtaxdetail2"
+			end if
+			adw_report.settransobject(sqlca)
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_reparg.ia_integerlist, as_reparg.d_sdate, as_reparg.d_edate)
+		end if
+	case "d_suppcatwise_inputtaxdetail"
+		if ai_mode = 0 then
+			open(w_arg_suppcategory_period)
+			as_reparg = message.powerobjectparm
+			open(w_selectformat_inputax)
+			al_format = message.doubleparm
+			if al_format = 1 then
+				adw_report.dataobject = "d_suppcatwise_inputtaxsummary"
+			elseif al_format = 2 then
+				adw_report.dataobject = "d_suppcatwise_inputtaxsummary2"
+			elseif al_format = 3 then
+				adw_report.dataobject = "d_suppcatwise_inputtaxsummary3"
+			elseif al_format = 4 then
+				adw_report.dataobject = "d_suppcatwise_inputtaxdetail"
+			elseif al_format = 5 then
+				adw_report.dataobject = "d_suppcatwise_inputtaxdetail2"
+			end if
+			adw_report.settransobject(sqlca)
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_reparg.ia_integerlist, as_reparg.d_sdate, as_reparg.d_edate)
+		end if
+	case "d_dailysalessummery_headerwisev2"
+		if ai_mode = 0 then
+			open(w_arg_headerno_sdate_ldate)
+			as_reparg = message.powerobjectparm
+			open(w_selectformat_headerwisesummary2)
+			al_format = message.doubleparm
+			if al_format = 1 then
+				adw_report.dataobject = "d_dailysalessummery_headerwisev2"
+			else
+				adw_report.dataobject = "d_dailysummarysales_headerwise"
+			end if
+			adw_report.settransobject(sqlca)
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_reparg.l_code1, as_reparg.d_sdate, as_reparg.d_edate)
+		end if
+	case "d_dailysalessummery_headerwise"
+		if ai_mode = 0 then
+			open(w_arg_header_sdate_ldate)
+			as_reparg = message.powerobjectparm
+			open(w_selectformat_headerwisesummary)
+			al_format = message.doubleparm
+			if al_format = 1 then
+				adw_report.dataobject = "d_dailysalessummery_headerwise"
+			elseif al_format = 2 then
+				adw_report.dataobject = "d_dailysalessummery_headerwise2"
+			elseif al_format = 3 then
+				adw_report.dataobject = "d_dailysalessummery_headerwise3"
+			end if
+			adw_report.settransobject(sqlca)
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_reparg.d_sdate, as_reparg.d_edate, as_reparg.ia_integerlist, as_reparg.l_code1)
+		end if
+	case "d_stockinhand_itemalertwise"
+		if ai_mode = 0 then
+			open(w_arg_itemalert_pricetype)
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_reparg.ia_integerlist, as_reparg.l_code1)
+		end if
+	case "d_aging_customerwise"
+		if ai_mode = 0 then
+			open(w_arg_aging_customerwise)
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			ll_arr = as_reparg.ia_integerlist
+			f_tostring(ll_arr, ls_stringarr1, ",")
+			SQL rollback USING sqlca;
+			sqlca.virtualgl("A")
+			if sqlca.sqlcode = 0 then
+				SQL commit USING sqlca;
+				sqlca.aging_customerwise(as_reparg.s_name1, as_reparg.d_sdate, as_reparg.l_code1, as_reparg.l_code2, ls_stringarr1)
+				if sqlca.sqlcode = 0 then
+					SQL commit USING sqlca;
+					i_rtcode = adw_report.retrieve(as_reparg.d_sdate, as_reparg.l_code1, as_reparg.l_code2, as_reparg.s_name1, as_reparg.ia_integerlist)
+				else
+					SQL rollback USING sqlca;
+				end if
+			else
+				SQL rollback USING sqlca;
+			end if
+		end if
+	case "d_customer_ntn_salestaxreport"
+		if ai_mode = 0 then
+			open(w_arg_customers_oneorall_sdate_ldate)
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_reparg.ia_integerlist, as_reparg.l_code1, as_reparg.d_sdate, as_reparg.d_edate)
+		end if
+	case "d_supplierwise_pur_sales_with_gp"
+		if ai_mode = 0 then
+			open(w_arg_suppliers_sdate_ldate)
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_reparg.ia_integerlist, as_reparg.d_sdate, as_reparg.d_edate)
+		end if
+	case "d_studentstrength_report"
+		if ai_mode = 0 then
+			open(w_arg_ason)
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_reparg.d_sdate)
+		end if
+	case "d_doctorwise_netervice_detail"
+		if ai_mode = 0 then
+			open(w_arg_doctors_sdate_ldate)
+			as_reparg = message.powerobjectparm
+			open(w_selectformat_1_2)
+			al_format = message.doubleparm
+			if al_format = 1 then
+				adw_report.dataobject = "d_doctorwise_netervice_detail"
+			elseif al_format = 2 then
+				adw_report.dataobject = "d_doctorwise_netervice_detail2"
+			end if
+			adw_report.settransobject(sqlca)
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_reparg.ia_integerlist, as_reparg.d_sdate, as_reparg.d_edate)
+		end if
+	case "d_issue_detail_recipientwise"
+		if ai_mode = 0 then
+			open(w_arg_recipient)
+			al_format = message.doubleparm
+			if al_format = 1 then
+				open(w_arg_department_sdate_ldate)
+			elseif al_format = 2 then
+				open(w_arg_date_customer)
+			elseif al_format = 3 then
+				open(w_arg_supplier_all)
+			else
+				open(w_arg_salesman_sdate_ldate)
+			end if
+			as_reparg = message.powerobjectparm
+			open(w_selectformat_1_2)
+			ll_format2 = message.doubleparm
+			if ll_format2 = 1 then
+				adw_report.dataobject = "d_issue_detail_recipientwise"
+			else
+				adw_report.dataobject = "d_issue_detail_recipientwise2"
+			end if
+			adw_report.settransobject(sqlca)
+		end if
+		if as_reparg.i_status = 1 then
+			adw_report.retrieve(as_reparg.d_sdate, as_reparg.d_edate, al_format, as_reparg.ia_integerlist)
+		end if
+	case "d_receipt_detail_sourcewise"
+		if ai_mode = 0 then
+			open(w_arg_recipient)
+			al_format = message.doubleparm
+			if al_format = 1 then
+				open(w_arg_department_sdate_ldate)
+			elseif al_format = 2 then
+				open(w_arg_date_customer)
+			elseif al_format = 3 then
+				open(w_arg_supplier_all)
+			else
+				open(w_arg_salesman_sdate_ldate)
+			end if
+			as_reparg = message.powerobjectparm
+			open(w_selectformat_1_2)
+			ll_format2 = message.doubleparm
+			if ll_format2 = 1 then
+				adw_report.dataobject = "d_receipt_detail_sourcewise"
+			else
+				adw_report.dataobject = "d_receipt_detail_sourcewise2"
+			end if
+			adw_report.settransobject(sqlca)
+		end if
+		if as_reparg.i_status = 1 then
+			adw_report.retrieve(as_reparg.d_sdate, as_reparg.d_edate, al_format, as_reparg.ia_integerlist)
+		end if
+	case "d_saledetail_crosstab"
+		if ai_mode = 0 then
+			open(w_arg_sdate_ldate)
+			as_reparg = message.powerobjectparm
+			open(w_selectformat_1_3)
+			al_format = message.doubleparm
+			if al_format = 1 then
+				adw_report.dataobject = "d_saledetail_crosstab"
+			elseif al_format = 2 then
+				adw_report.dataobject = "d_saledetail_crosstab2"
+			else
+				adw_report.dataobject = "d_saledetail_crosstab3"
+			end if
+			adw_report.settransobject(sqlca)
+		end if
+		if as_reparg.i_status = 1 then
+			adw_report.retrieve(as_reparg.d_sdate, as_reparg.d_edate)
+		end if
+	case "d_stockinhand_allowedgodown_crosstab"
+		if ai_mode = 0 then
+			open(w_selection_manf_cat_class_packing)
+			as_type = message.stringparm
+			if not (as_type = "" or isnull(as_type)) then
+				openwithparm(w_arg_group_allowedgodowns_zqty, as_type)
+				as_reparg = message.powerobjectparm
+			end if
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_type, as_reparg.ia_integerlist, as_reparg.ia_integerlist1, as_reparg.l_code2, as_reparg.l_code3)
+		end if
+	case "d_claimable_for_allwedcustomer"
+		if ai_mode = 0 then
+			open(w_arg_allowedcustomers)
+			lstr_temp = message.powerobjectparm
+			if lstr_temp.i_status = 1 then
+				open(w_selection_manf_cat_class_packing)
+				ls_stringparam = message.stringparm
+				openwithparm(w_arg_grouping_dates, ls_stringparam)
+				as_reparg = message.powerobjectparm
+				as_reparg.ia_integerlist1 = lstr_temp.ia_integerlist
+			end if
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_reparg.d_sdate, as_reparg.d_edate, as_reparg.ia_integerlist1, ls_stringparam, as_reparg.ia_integerlist)
+		end if
+	case "d_wastage_summary_report"
+		if ai_mode = 0 then
+			open(w_arg_issue_receipt_ggroup_period)
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			adw_report.retrieve(as_reparg.d_sdate, as_reparg.d_edate, as_reparg.l_code1, as_reparg.l_code2)
+		end if
+	case "d_itemsaleandreturn"
+		if ai_mode = 0 then
+			open(w_selectformat_itemsalereturn)
+			al_format = message.doubleparm
+			if al_format = 6 then
+				adw_report.dataobject = "d_itemsaleandreturn6"
+			elseif al_format = 5 then
+				adw_report.dataobject = "d_itemsaleandreturn5"
+			elseif al_format = 4 then
+				adw_report.dataobject = "d_itemsaleandreturn4"
+			elseif al_format = 3 then
+				adw_report.dataobject = "d_itemsaleandreturn_summary"
+			elseif al_format = 2 then
+				adw_report.dataobject = "d_itemsaleandreturn2"
+			else
+				adw_report.dataobject = "d_itemsaleandreturn"
+			end if
+			adw_report.settransobject(sqlca)
+			if al_format <= 5 then
+				open(w_arg_items)
+				lstr_temp = message.powerobjectparm
+				if lstr_temp.i_status = 1 then
+					open(w_arg_custs_sdate_ldate)
+					as_reparg = message.powerobjectparm
+				end if
+			else
+				open(w_selection_manf_cat_class_packing)
+				as_type = message.stringparm
+				if not (as_type = "" or isnull(as_type)) then
+					openwithparm(w_arg_manfs_custs_godowns_sdate_ldate, as_type)
+					as_reparg = message.powerobjectparm
+					if isnull(as_reparg.l_code1) or as_reparg.l_code1 < 1 then
+						as_reparg.l_code1 = 0
+					end if
+				end if
+			end if
+		end if
+		if al_format <= 5 then
+			if as_reparg.i_status = 1 and lstr_temp.i_status = 1 then
+				as_reparg.la_longlist = lstr_temp.la_longlist
+				as_reparg.l_code2 = lstr_temp.l_code2
+				i_rtcode = adw_report.retrieve(as_reparg.d_sdate, as_reparg.d_edate, as_reparg.ia_integerlist, as_reparg.l_code2, as_reparg.la_longlist)
+			end if
+		elseif as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_reparg.ia_integerlist, as_reparg.d_sdate, as_reparg.d_edate, as_reparg.ia_integerlist1, as_reparg.s_name1, as_reparg.l_code2, as_type)
+		end if
+	case "d_customer_manfwisesales"
+		if ai_mode = 0 then
+			open(w_selectformat_cust_manf_sales)
+			al_format = int(message.doubleparm)
+			if al_format = 1 then
+				adw_report.dataobject = "d_customer_manfwisesales"
+			elseif al_format = 2 then
+				adw_report.dataobject = "d_customer_manfwisesales_summary"
+			elseif al_format = 3 then
+				adw_report.dataobject = "d_customer_manf_saleandreturn"
+			elseif al_format = 4 then
+				adw_report.dataobject = "d_customer_manf_saleandreturn2"
+			elseif al_format = 5 then
+				adw_report.dataobject = "d_customer_manf_saleandreturn3"
+			elseif al_format = 6 then
+				adw_report.dataobject = "d_customer_manf_saleandreturn4"
+			elseif al_format = 7 then
+				adw_report.dataobject = "d_customer_manf_saleandreturn5"
+			elseif al_format = 8 then
+				adw_report.dataobject = "d_customer_manf_saleandreturn6"
+			elseif al_format = 9 then
+				adw_report.dataobject = "d_customer_manf_saleandreturn7"
+			end if
+			adw_report.settransobject(sqlca)
+			if al_format = 1 then
+				open(w_arg_saletype)
+				lstr_temp = message.powerobjectparm
+			end if
+			open(w_selection_manf_cat_class_packing)
+			as_type = message.stringparm
+			if not (as_type = "" or isnull(as_type)) then
+				openwithparm(w_arg_manfs_custs_godowns_sdate_ldate, as_type)
+				as_reparg = message.powerobjectparm
+				if isnull(as_reparg.l_code1) or as_reparg.l_code1 < 1 then
+					as_reparg.l_code1 = 0
+				end if
+				if as_reparg.i_status = 1 then
+				end if
+			end if
+			if as_reparg.i_status = 1 then
+				if al_format = 1 then
+					as_reparg.ia_integerlist2 = lstr_temp.ia_integerlist
+					i_rtcode = adw_report.retrieve(as_reparg.ia_integerlist, as_reparg.d_sdate, as_reparg.d_edate, as_reparg.ia_integerlist1, as_reparg.s_name1, as_reparg.l_code2, as_type, as_reparg.ia_integerlist2)
+				elseif al_format = 3 or al_format = 4 or al_format = 5 or al_format = 6 or al_format = 7 or al_format = 8 or al_format = 9 then
+					i_rtcode = adw_report.retrieve(as_reparg.ia_integerlist, as_reparg.d_sdate, as_reparg.d_edate, as_reparg.ia_integerlist1, as_reparg.s_name1, as_reparg.l_code2, as_type)
+				elseif al_format = 2 then
+					i_rtcode = adw_report.retrieve(as_reparg.ia_integerlist, as_reparg.d_sdate, as_reparg.d_edate, as_reparg.ia_integerlist1, as_reparg.s_name1, as_reparg.l_code2, as_type, as_reparg.s_name2)
+				end if
+			end if
+		end if
+	case "d_supplierledger", "d_supplierledger_landscape"
+		if ai_mode = 0 then
+			if as_reportinfo.s_reportobject = "d_supplierledger_landscape" then
+				open(w_selectformat_summary_detail2)
+				if message.doubleparm = 7.0 then
+					adw_report.dataobject = "d_supplierledger_landscape_purexp"
+				elseif message.doubleparm = 6.0 then
+					adw_report.dataobject = "d_supplierledger_itemwise_patient"
+				elseif message.doubleparm = 5.0 then
+					adw_report.dataobject = "d_supplierledger_landscape_pursumm"
+				elseif message.doubleparm = 4.0 then
+					adw_report.dataobject = "d_supplierledger_landscape_withdetail"
+				elseif message.doubleparm = 3.0 then
+					adw_report.dataobject = "d_supplierledger_itemwise_format2"
+				elseif message.doubleparm = 2.0 then
+					adw_report.dataobject = "d_supplierledger_itemwise"
+				else
+					adw_report.dataobject = "d_supplierledger_landscape"
+				end if
+			else
+				open(w_selectformat_supplierledger_portrait)
+				if message.doubleparm = 1.0 then
+					adw_report.dataobject = "d_supplierledger"
+				elseif message.doubleparm = 2.0 then
+					adw_report.dataobject = "d_supplierledger_summary"
+				elseif message.doubleparm = 3.0 then
+					adw_report.dataobject = "d_supplierledger_withgridlines"
+				elseif message.doubleparm = 4.0 then
+					adw_report.dataobject = "d_supplierledger_unpostedtrans"
+				end if
+			end if
+			adw_report.settransobject(sqlca)
+			open(w_arg_suppliers_sdate_ldate)
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			SQL rollback USING sqlca;
+			sqlca.virtualgl("A")
+			if sqlca.sqlcode = 0 then
+				SQL commit USING sqlca;
+				i_rtcode = adw_report.retrieve(as_reparg.ia_integerlist, as_reparg.d_sdate, as_reparg.d_edate)
+			else
+				SQL rollback USING sqlca;
+			end if
+		end if
+	case "d_userwiseservices_summary"
+		if ai_mode = 0 then
+			open(w_arg_sdate_ldate)
+			as_reparg = message.powerobjectparm
+			open(w_selectformat_1_2)
+			al_format = message.doubleparm
+			if al_format = 1 then
+				adw_report.dataobject = "d_userwiseservices_summary"
+			else
+				adw_report.dataobject = "d_userwiseservices_summary2"
+			end if
+			adw_report.settransobject(sqlca)
+		end if
+		if as_reparg.i_status = 1 then
+			adw_report.retrieve(as_reparg.d_sdate, as_reparg.d_edate)
+		end if
+	case "d_patientwise_salesinvoicesummary"
+		if ai_mode = 0 then
+			open(w_arg_patient_sdate_ldate)
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			adw_report.retrieve(as_reparg.l_code1, as_reparg.d_sdate, as_reparg.d_edate)
+		end if
+	case "d_serviceinvtypewise_grossprofit"
+		if ai_mode = 0 then
+			open(w_arg_serviceinvtype_sdate_ldate)
+			as_reparg = message.powerobjectparm
+			if as_reparg.i_status = 1 then
+				open(w_selectformat_serviceinvtype_gp)
+				al_format = message.doubleparm
+				if al_format = 1 then
+					adw_report.dataobject = "d_serviceinvtypewise_grossprofit"
+				elseif al_format = 2 then
+					adw_report.dataobject = "d_serviceinvtypewise_grossprofit2"
+				else
+					adw_report.dataobject = "d_serviceinvtypewise_grossprofit3"
+				end if
+				adw_report.settransobject(sqlca)
+			end if
+		end if
+		if as_reparg.i_status = 1 then
+			adw_report.retrieve(as_reparg.ia_integerlist, as_reparg.d_sdate, as_reparg.d_edate)
+		end if
+	case "d_diseasewise_sales_service_gp"
+		if ai_mode = 0 then
+			open(w_arg_diseases_sdate_ldate)
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			adw_report.retrieve(as_reparg.ia_integerlist, as_reparg.d_sdate, as_reparg.d_edate)
+		end if
+	case "d_diseasewise_grossprofit"
+		if ai_mode = 0 then
+			open(w_arg_diseases_sdate_ldate)
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			adw_report.retrieve(as_reparg.ia_integerlist, as_reparg.d_sdate, as_reparg.d_edate)
+		end if
+	case "d_saletypewise_grossprofit"
+		if ai_mode = 0 then
+			open(w_arg_saletype_sdate_ldate)
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			adw_report.retrieve(as_reparg.ia_integerlist, as_reparg.d_sdate, as_reparg.d_edate)
+		end if
+	case "d_receipt_issue_crosstab"
+		if ai_mode = 0 then
+			open(w_arg_recipient)
+			al_format = message.doubleparm
+			if al_format = 1 then
+				open(w_arg_department_sdate_ldate)
+			elseif al_format = 2 then
+				open(w_arg_date_customer)
+			elseif al_format = 3 then
+				open(w_arg_supplier_all)
+			else
+				open(w_arg_salesman_sdate_ldate)
+			end if
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			adw_report.retrieve(as_reparg.d_sdate, as_reparg.d_edate, al_format, as_reparg.ia_integerlist)
+		end if
+	case "d_customerledger"
+		if ai_mode = 0 then
+			open(w_selectformat_ledgertype)
+			al_format = message.doubleparm
+			if al_format = 1 then
+				adw_report.dataobject = "d_customerledger"
+			elseif al_format = 2 then
+				adw_report.dataobject = "d_customerledger_headerwise"
+			elseif al_format = 3 then
+				adw_report.dataobject = "d_customerledger3"
+			elseif al_format = 4 then
+				adw_report.dataobject = "d_customerledger_itemwise"
+			elseif al_format = 5 then
+				adw_report.dataobject = "d_customerledger3_pagebreak"
+			elseif al_format = 6 then
+				adw_report.dataobject = "d_customerledger_itemwise_ref"
+			elseif al_format = 7 then
+				adw_report.dataobject = "d_customerledger_itemwise_itemdesc"
+			elseif al_format = 8 then
+				adw_report.dataobject = "d_customerledger_custsumm"
+			elseif al_format = 9 then
+				adw_report.dataobject = "d_customerledger_withdetail"
+			elseif al_format = 10 then
+				adw_report.dataobject = "d_customerledger_halfpage"
+			elseif al_format = 11 then
+				adw_report.dataobject = "d_customerledger_itemwise_portrait"
+			elseif al_format = 12 then
+				adw_report.dataobject = "d_customerledger_pagebreakup"
+			elseif al_format = 13 then
+				adw_report.dataobject = "d_customerledger_nocashsale"
+			elseif al_format = 14 then
+				adw_report.dataobject = "d_customerledger_itemwise_patient"
+			elseif al_format = 15 then
+				adw_report.dataobject = "d_customerledger_withdetail_salesman"
+			elseif al_format = 16 then
+				adw_report.dataobject = "d_customerledger_patient"
+			elseif al_format = 17 then
+				adw_report.dataobject = "d_customerledger_wirh_bankname"
+			elseif al_format = 18 then
+				adw_report.dataobject = "d_customerledger_gridlines"
+			elseif al_format = 19 then
+				adw_report.dataobject = "d_customerledger_withdetail_salesman2"
+			elseif al_format = 20 then
+				adw_report.dataobject = "d_customerledger_withpostdate"
+			end if
+			adw_report.settransobject(sqlca)
+			if adw_report.dataobject = "d_customerledger3" or adw_report.dataobject = "d_customerledger3_pagebreak" then
+				open(w_arg_customers_sdate_ldate_unposted)
+			else
+				open(w_arg_customers_sdate_ldate)
+			end if
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			if as_reparg.l_code1 = 1 then
+				as_reparg.ia_integerlist = ll_arr
+				as_reparg.ia_integerlist[1] = -1
+			end if
+			SQL rollback USING sqlca;
+			sqlca.virtualgl("A")
+			if sqlca.sqlcode = 0 then
+				SQL commit USING sqlca;
+			else
+				SQL rollback USING sqlca;
+			end if
+			if adw_report.dataobject = "d_customerledger3" or adw_report.dataobject = "d_customerledger3_pagebreak" then
+				i_rtcode = adw_report.retrieve(as_reparg.ia_integerlist, as_reparg.d_sdate, as_reparg.d_edate, as_reparg.l_code2, as_reparg.l_code1)
+			elseif al_format = 12 then
+				ls_name = ""
+				SQL SELECT username INTO :ls_name FROM USERS WHERE Users.usercode =:gl_usercode USING sqlca;
+				i_rtcode = adw_report.retrieve(as_reparg.ia_integerlist, as_reparg.d_sdate, as_reparg.d_edate, ls_name, as_reparg.l_code1)
+			else
+				i_rtcode = adw_report.retrieve(as_reparg.ia_integerlist, as_reparg.d_sdate, as_reparg.d_edate, as_reparg.l_code1)
+			end if
+		else
+			SQL rollback USING sqlca;
+		end if
+	case "d_stockregister_norcotics_generictype"
+		if ai_mode = 0 then
+			open(w_arg_genericitemtype_sdate_ldate)
+			as_reparg = message.powerobjectparm
+			open(w_selectformat_1_2)
+			al_format = message.doubleparm
+			if al_format = 1 then
+				adw_report.dataobject = "d_stockregister_norcotics_generictype"
+			else
+				adw_report.dataobject = "d_stockregister_norcotics_generictype2"
+			end if
+			adw_report.settransobject(sqlca)
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_reparg.ia_integerlist, as_reparg.d_sdate, as_reparg.d_edate)
+		end if
+	case "d_saleorderitemsnotsold"
+		if ai_mode = 0 then
+			open(w_select_cust_custgroup)
+			al_format = message.doubleparm
+			if al_format = 1 then
+				open(w_arg_customers_sman_sdate_ldate)
+				adw_report.dataobject = "d_saleorderitemsnotsold"
+			else
+				open(w_arg_custgroup_salesman)
+				adw_report.dataobject = "d_saleorderitemsnotsold2"
+			end if
+			adw_report.settransobject(sqlca)
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			if al_format = 1 then
+				i_rtcode = adw_report.retrieve(as_reparg.d_sdate, as_reparg.d_edate, as_reparg.ia_integerlist, as_reparg.l_code2)
+			else
+				i_rtcode = adw_report.retrieve(as_reparg.d_sdate, as_reparg.d_edate, as_reparg.l_code1, as_reparg.l_code2)
+			end if
+		end if
+	case "d_saleorder_sales_disparity"
+		if ai_mode = 0 then
+			open(w_select_cust_custgroup)
+			al_format = message.doubleparm
+			if al_format = 1 then
+				open(w_arg_customers_sman_sdate_ldate)
+				adw_report.dataobject = "d_saleorder_sales_disparity"
+			else
+				open(w_arg_custgroup_salesman)
+				adw_report.dataobject = "d_saleorder_sales_disparity2"
+			end if
+			adw_report.settransobject(sqlca)
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			if al_format = 1 then
+				i_rtcode = adw_report.retrieve(as_reparg.d_sdate, as_reparg.d_edate, as_reparg.ia_integerlist, as_reparg.l_code2)
+			else
+				i_rtcode = adw_report.retrieve(as_reparg.d_sdate, as_reparg.d_edate, as_reparg.l_code1, as_reparg.l_code2)
+			end if
+		end if
+	case "d_saleorder_supplierwiseorderestimate"
+		if ai_mode = 0 then
+			open(w_arg_sinvcode_linvcode)
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_reparg.l_code1, as_reparg.l_code2)
+		end if
+	case "d_crsclientwise_netsalesummary"
+		if ai_mode = 0 then
+			open(w_select_general_monthlysummary)
+			al_format = message.doubleparm
+			if al_format = 1 then
+				adw_report.dataobject = "d_crsclientwise_netsalesummary"
+			elseif al_format = 2 then
+				adw_report.dataobject = "d_crs_clientwise_monthlysalesummary"
+			end if
+			adw_report.settransobject(sqlca)
+			open(w_arg_sdate_ldate)
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			SQL rollback USING sqlca;
+			sqlca.crs_crsclient_monthlysales(as_reparg.d_sdate, as_reparg.d_edate)
+			if sqlca.sqlcode = 0 then
+				SQL commit USING sqlca;
+				i_rtcode = adw_report.retrieve(as_reparg.d_sdate, as_reparg.d_edate)
+			else
+				SQL rollback USING sqlca;
+			end if
+		end if
+	case "d_crs_clientwise_monthlysalesummary"
+		if ai_mode = 0 then
+			open(w_arg_sdate_ldate)
+			as_reparg = message.powerobjectparm
+			if as_reparg.i_status = 1 then
+				i_rtcode = adw_report.retrieve(as_reparg.d_sdate, as_reparg.d_edate)
+			end if
+		end if
+	case "d_dayssalessummery"
+		if ai_mode = 0 then
+			open(w_selectformat_dayssalessummary)
+			al_format = message.doubleparm
+			if al_format = 1 or al_format = 4 or al_format = 5 then
+				open(w_arg_godowns_sdate_ldate_rpp_avg)
+				if al_format = 1 then
+					adw_report.dataobject = "d_dayssalessummery"
+				elseif al_format = 4 then
+					adw_report.dataobject = "d_dayssalessummery4"
+				else
+					adw_report.dataobject = "d_dayssalessummery5"
+				end if
+			elseif al_format = 2 then
+				open(w_arg_sdate_ldate_avg_rpp)
+				adw_report.dataobject = "d_dayssalessummery2"
+			elseif al_format = 3 then
+				open(w_arg_godowns_sdate_ldate_rpp_avg_comm)
+				adw_report.dataobject = "d_dayssalessummery3"
+			end if
+			as_reparg = message.powerobjectparm
+			adw_report.settransobject(sqlca)
+		end if
+		if as_reparg.i_status = 1 then
+			if al_format = 1 or al_format = 4 or al_format = 5 then
+				i_rtcode = adw_report.retrieve(as_reparg.d_sdate, as_reparg.d_edate, as_reparg.ia_integerlist2, as_reparg.l_code1, as_reparg.ia_integerlist)
+			elseif al_format = 2 then
+				i_rtcode = adw_report.retrieve(as_reparg.d_sdate, as_reparg.d_edate, as_reparg.l_code1)
+			elseif al_format = 3 then
+				i_rtcode = adw_report.retrieve(as_reparg.d_sdate, as_reparg.d_edate, as_reparg.ia_integerlist2, as_reparg.l_code1, as_reparg.ia_integerlist, as_reparg.db_code1)
+			end if
+		end if
+	case "d_itemlist_schemeitems"
+		if ai_mode = 0 then
+			open(w_selection_manf_cat_class_packing)
+			as_type = message.stringparm
+			openwithparm(w_arg_grouping, as_type)
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			adw_report.retrieve(as_type, as_reparg.ia_integerlist)
+		end if
+	case "d_groupwise_itemlist"
+		if ai_mode = 0 then
+			open(w_selection_manf_cat_class_packing)
+			as_type = message.stringparm
+			openwithparm(w_arg_grouping, as_type)
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			adw_report.retrieve(as_type, as_reparg.ia_integerlist)
+		end if
+	case "d_customerwisesalessummery_patient"
+		open(w_selectformat_1_6)
+		if message.doubleparm = 1.0 then
+			open(w_arg_cust_sdate_ldate_v5)
+			as_reparg = message.powerobjectparm
+			if as_reparg.i_status = 1 then
+				if lower(as_reparg.s_name3) = "originaldate" then
+					adw_report.dataobject = "d_customerwisesalessummery_patient_odate"
+					adw_report.settransobject(sqlca)
+				elseif lower(as_reparg.s_name3) = "billingdate" then
+					adw_report.dataobject = "d_customerwisesalessummery_patient_bdate"
+					adw_report.settransobject(sqlca)
+				else
+					adw_report.dataobject = "d_customerwisesalessummery_patient"
+					adw_report.settransobject(sqlca)
+				end if
+				i_rtcode = adw_report.retrieve(as_reparg.l_code1, as_reparg.d_sdate, as_reparg.d_edate, as_reparg.db_code1, as_reparg.s_name1, as_reparg.l_code4)
+			end if
+		elseif message.doubleparm = 2.0 or message.doubleparm = 6.0 then
+			open(w_arg_cust_sdate_ldate_v5)
+			as_reparg = message.powerobjectparm
+			if message.doubleparm = 2.0 then
+				adw_report.dataobject = "d_customerwisesalessummery_patient2"
+			else
+				adw_report.dataobject = "d_customerwisesalessummery_patient6"
+			end if
+			adw_report.settransobject(sqlca)
+			i_rtcode = adw_report.retrieve(as_reparg.l_code1, as_reparg.d_sdate, as_reparg.d_edate, as_reparg.db_code1, as_reparg.s_name1, as_reparg.l_code4, as_reparg.s_name3)
+		elseif message.doubleparm = 3.0 then
+			open(w_arg_cust_sdate_ldate_v19)
+			as_reparg = message.powerobjectparm
+			adw_report.dataobject = "d_customerwisesalessummery_patient3"
+			adw_report.settransobject(sqlca)
+			i_rtcode = adw_report.retrieve(as_reparg.l_code1, as_reparg.d_sdate, as_reparg.d_edate, as_reparg.db_code1, as_reparg.s_name3, as_reparg.s_name4)
+		elseif message.doubleparm = 4.0 then
+			open(w_arg_cust_sdate_ldate_v19)
+			as_reparg = message.powerobjectparm
+			adw_report.dataobject = "d_customerwisesalessummery_patient4"
+			adw_report.settransobject(sqlca)
+			i_rtcode = adw_report.retrieve(as_reparg.l_code1, as_reparg.d_sdate, as_reparg.d_edate, as_reparg.db_code1, as_reparg.s_name3, as_reparg.s_name4)
+		else
+			open(w_arg_patientcategory_single)
+			lstr_temp = message.powerobjectparm
+			if lstr_temp.i_status = 1 then
+				open(w_arg_sdate_ldate_v1)
+				as_reparg = message.powerobjectparm
+				adw_report.dataobject = "d_patientcatwise_salessummery_patient"
+				adw_report.settransobject(sqlca)
+				as_reparg.l_code1 = lstr_temp.l_code1
+				i_rtcode = adw_report.retrieve(as_reparg.l_code1, as_reparg.d_sdate, as_reparg.d_edate, as_reparg.db_code1, as_reparg.s_name1, as_reparg.l_code4)
+			end if
+		end if
+	case "d_purinv_acc_detail"
+		if ai_mode = 0 then
+			open(w_arg_purinvcode)
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			SQL rollback USING sqlca;
+			sqlca.virtualgl("A")
+			if sqlca.sqlcode = 0 then
+				SQL commit USING sqlca;
+			else
+				SQL rollback USING sqlca;
+			end if
+			i_rtcode = adw_report.retrieve(as_reparg.l_code1)
+		end if
+	case "d_areawise_monthly_comparativesale"
+		if ai_mode = 0 then
+			open(w_arg_manf_month_year)
+			as_reparg = message.powerobjectparm
+			as_type = "M"
+			as_reparg.s_name1 = string(as_reparg.l_code1)
+			open(w_selectformat_summary_detail)
+			al_format = message.doubleparm
+			if al_format = 1 then
+				adw_report.dataobject = "d_areawise_monthly_comparativesale_summ"
+			else
+				adw_report.dataobject = "d_areawise_monthly_comparativesale"
+			end if
+			adw_report.settransobject(sqlca)
+		end if
+		if as_reparg.i_status = 1 then
+			SQL rollback USING sqlca;
+			sqlca.areawise_comparativemonthsales(as_reparg.l_code2, as_reparg.l_code3, as_type, as_reparg.s_name1)
+			if sqlca.sqlcode = 0 then
+				SQL commit USING sqlca;
+			else
+				SQL rollback USING sqlca;
+			end if
+			i_rtcode = adw_report.retrieve(as_type, as_reparg.s_name1, as_reparg.l_code2, as_reparg.l_code3)
+		end if
+	case "d_nic_ntn_customers_netsales"
+		if ai_mode = 0 then
+			open(w_selection_manf_cat_class_packing)
+			as_type = message.stringparm
+			if not (as_type = "" or isnull(as_type)) then
+				openwithparm(w_arg_grouping_dates, as_type)
+				as_reparg = message.powerobjectparm
+			end if
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_type, as_reparg.ia_integerlist, as_reparg.d_sdate, as_reparg.d_edate)
+		end if
+	case "d_stockinhand_godown_crosstabaudit2"
+		if ai_mode = 0 then
+			open(w_selection_manf_cat_class_packing)
+			as_type = message.stringparm
+			if not (as_type = "" or isnull(as_type)) then
+				openwithparm(w_arg_grouping_godowns_zeroqty_pricetype, as_type)
+				as_reparg = message.powerobjectparm
+			end if
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_type, as_reparg.ia_integerlist, as_reparg.ia_integerlist1, as_reparg.l_code2, as_reparg.l_code3)
+		end if
+	case "d_stockinhand_godown_batchexpiry"
+		if ai_mode = 0 then
+			open(w_selectformat_1_2)
+			al_format = message.doubleparm
+			if al_format = 2 then
+				adw_report.dataobject = "d_stockinhand_godown_batchexpiry2"
+			else
+				adw_report.dataobject = "d_stockinhand_godown_batchexpiry"
+			end if
+			adw_report.settransobject(sqlca)
+			open(w_selection_manf_cat_class_packing)
+			as_type = message.stringparm
+			if not (as_type = "" or isnull(as_type)) then
+				openwithparm(w_arg_grouping_godowns_zeroqty_pricetype, as_type)
+				as_reparg = message.powerobjectparm
+			end if
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_type, as_reparg.ia_integerlist, as_reparg.ia_integerlist1, as_reparg.l_code2, as_reparg.l_code3)
+		end if
+	case "d_saleperson_cust_manf_saleandreturn"
+		if ai_mode = 0 then
+			open(w_selection_manf_cat_class_packing)
+			as_type = message.stringparm
+			if not (as_type = "" or isnull(as_type)) then
+				openwithparm(w_arg_manfs_salesman_sdate_ldate, as_type)
+				as_reparg = message.powerobjectparm
+				if isnull(as_reparg.l_code1) or as_reparg.l_code1 < 1 then
+					as_reparg.l_code1 = 0
+				end if
+				open(w_selectformat_1_2)
+				al_format = message.doubleparm
+				if al_format = 1 then
+					adw_report.dataobject = "d_saleperson_cust_manf_saleandreturn"
+				else
+					adw_report.dataobject = "d_saleperson_cust_manf_saleandreturn2"
+				end if
+				adw_report.settransobject(sqlca)
+			end if
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_reparg.ia_integerlist, as_reparg.d_sdate, as_reparg.d_edate, as_reparg.ia_integerlist1, as_type)
+		end if
+	case "d_lpledger_cmh"
+		if ai_mode = 0 then
+			open(w_selectformat_1_6)
+			al_format = message.doubleparm
+			if al_format = 1 then
+				open(w_arg_date_customer_inputstring)
+			elseif al_format = 2 then
+				adw_report.dataobject = "d_lpledger_cmh_2"
+				open(w_arg_customers_sdate_ldate_comments2)
+			elseif al_format = 3 then
+				adw_report.dataobject = "d_lpledger_cmh_3"
+				open(w_arg_date_customer_inputstring)
+			elseif al_format = 4 then
+				adw_report.dataobject = "d_lpledger_cmh_4"
+				open(w_arg_date_customer_inputstring)
+			elseif al_format = 5 then
+				adw_report.dataobject = "d_lpledger_cmh_5"
+				open(w_arg_date_customer_inputstring3)
+			elseif al_format = 6 then
+				adw_report.dataobject = "d_lpledger_cmh_6"
+				open(w_arg_customers_sdate_ldate_v7)
+			end if
+			adw_report.settransobject(sqlca)
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			SQL rollback USING sqlca;
+			SQL Select cp , address1 , city INTO :ls_cp, :ls_address, :ls_city From Customer Where custcode =:as_reparg.ia_integerlist[1] USING sqlca;
+			if sqlca.sqlcode = 0 then
+				SQL commit USING sqlca;
+			else
+				SQL rollback USING sqlca;
+			end if
+			if al_format = 1 or al_format = 3 then
+				i_rtcode = adw_report.retrieve(as_reparg.ia_integerlist, as_reparg.d_sdate, as_reparg.d_edate, ls_city, as_reparg.s_name1)
+			elseif al_format = 4 then
+				i_rtcode = adw_report.retrieve(as_reparg.ia_integerlist, as_reparg.d_sdate, as_reparg.d_edate, as_reparg.s_name2, as_reparg.s_name1, as_reparg.s_name3, as_reparg.s_name4, as_reparg.s_name5, as_reparg.s_name6)
+			elseif al_format = 5 then
+				i_rtcode = adw_report.retrieve(as_reparg.ia_integerlist, as_reparg.d_sdate, as_reparg.d_edate, as_reparg.s_name1, as_reparg.s_name2, as_reparg.s_name6)
+			elseif al_format = 6 then
+				i_rtcode = adw_report.retrieve(as_reparg.ia_integerlist, as_reparg.d_sdate, as_reparg.d_edate, as_reparg.db_code1, as_reparg.s_name1, as_reparg.s_name2)
+			else
+				i_rtcode = adw_report.retrieve(as_reparg.ia_integerlist, as_reparg.d_sdate, as_reparg.d_edate, as_reparg.s_name1, as_reparg.s_name2, as_reparg.s_name3, as_reparg.s_name4, as_reparg.s_name5, as_reparg.s_name6)
+			end if
+		end if
+	case "d_itemwise_doctors_netsale"
+		if ai_mode = 0 then
+			open(w_arg_items_sdate_ldate)
+			as_reparg = message.powerobjectparm
+			if as_reparg.i_status = 1 then
+				i_rtcode = adw_report.retrieve(as_reparg.la_longlist, as_reparg.d_sdate, as_reparg.d_edate)
+			end if
+		end if
+	case "d_salespersonscope_conflicts"
+		if ai_mode = 0 then
+			open(w_arg_manufacturers_only)
+			as_reparg = message.powerobjectparm
+			if as_reparg.i_status = 1 then
+				i_rtcode = adw_report.retrieve(as_reparg.ia_integerlist)
+			end if
+		end if
+	case "d_saleorderdetail_status_report"
+		if ai_mode = 0 then
+			open(w_arg_sdate_ldate)
+			as_reparg = message.powerobjectparm
+			open(w_selectformat_saleorderstatus)
+			al_format = message.doubleparm
+			if al_format = 1 then
+				adw_report.dataobject = "d_saleorderdetail_status_report"
+			elseif al_format = 2 then
+				adw_report.dataobject = "d_saleorderdetail_status_report2"
+			elseif al_format = 3 then
+				adw_report.dataobject = "d_saleorderdetail_status_report3"
+			end if
+			adw_report.settransobject(sqlca)
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_reparg.d_sdate, as_reparg.d_edate)
+		end if
+	case "d_quotationwisedetail"
+		if ai_mode = 0 then
+			open(w_arg_squotcode_lquotcode)
+			as_reparg = message.powerobjectparm
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_reparg.l_code1, as_reparg.l_code2)
+		end if
+	case "d_wholesaleinvreport_areawise_reprint"
+		if gs_company = "KHAWAJASONS" then
+			adw_report.dataobject = "d_khawajasons_wholesaleinvreport_reprint"
+		elseif gs_company = "BAYGPHARMA" then
+			adw_report.dataobject = "d_baygpharma_areawise_reprint"
+		elseif gs_company = "PHARMALINKS2" then
+			adw_report.dataobject = "d_pharmalinks2_saleinvreport_areawise_rp"
+			f_set_sigon_invoice(adw_report, 1)
+		elseif gs_company = "DUAENTP" then
+			adw_report.dataobject = "d_duaentp_areawise_reprint"
+			f_set_sigon_invoice(adw_report, 1)
+		elseif gs_company = "MUBASHARPH3" then
+			adw_report.dataobject = "d_mubasharph3_saleinvreport_areawise_rp"
+			f_set_sigon_invoice(adw_report, 1)
+		elseif gs_company = "ALMUSTAFAENTP" then
+			adw_report.dataobject = "d_almustafaentp_salereport_areawise_rp"
+			f_set_sigon_invoice(adw_report, 1)
+		elseif gs_company = "MEHBOOBBRODIST" then
+			adw_report.dataobject = "d_mehboobbrodist_areawise_reprint"
+			f_set_sigon_invoice(adw_report, 1)
+		elseif gs_company = "RYKMEDICINECO" then
+			adw_report.dataobject = "d_rykmedicineco_areawise_reprint"
+			f_set_sigon_invoice(adw_report, 1)
+		elseif gs_company = "ALHAMDTRADERS" then
+			adw_report.dataobject = "d_alhamdtraders_salereport_areawise_f"
+			f_set_sigon_invoice(adw_report, 1)
+		elseif gs_company = "AZAMMEDICINE3" then
+			adw_report.dataobject = "d_azammedicine3_wholesaleinvreport_rp"
+			f_set_sigon_invoice(adw_report, 1)
+		end if
+		adw_report.settransobject(sqlca)
+		if ai_mode = 0 then
+			open(w_arg_areas_sdate_ldate)
+			as_reparg = message.powerobjectparm
+		end if
+		setpointer(hourglass!)
+		if as_reparg.i_status = 1 then
+			SQL rollback USING sqlca;
+			sqlca.virtualgl("A")
+			if sqlca.sqlcode = 0 then
+				SQL commit USING sqlca;
+			else
+				SQL rollback USING sqlca;
+			end if
+		end if
+		if as_reparg.i_status = 1 then
+			i_rtcode = adw_report.retrieve(as_reparg.d_sdate, as_reparg.d_edate, as_reparg.ia_integerlist)
+		end if
+	case "d_manf_cat_class_pack_auditstockinhand"
+		if ai_mode = 0 then
+			open(w_selectformat_1_3)
+			al_format = message.doubleparm
+			if al_format = 1 or al_format = 3 then
+				open(w_selection_manf_cat_class_packing)
+				as_type = message.stringparm
+				openwithparm(w_arg_grouping, as_type)
+				as_reparg = message.powerobjectparm
+				if al_format = 1 then
+					adw_report.dataobject = "d_manf_cat_class_pack_auditstockinhand"
+				elseif al_format = 3 then
+					adw_report.dataobject = "d_manf_cat_class_pack_auditstockinhand3"
+				end if
+				adw_report.settransobject(sqlca)
+				if as_reparg.i_status = 1 then
+					i_rtcode = adw_report.retrieve(as_type, as_reparg.ia_integerlist)
+				end if
+			else
+				adw_report.dataobject = "d_manf_cat_class_pack_auditstockinhand_2"
+				open(w_arg_manufacturercategory)
+				as_reparg = message.powerobjectparm
+				adw_report.settransobject(sqlca)
+				i_rtcode = adw_report.retrieve(as_reparg.ia_integerlist)
+			end if
+		end if
+	case else
+		return 0
+	end choose
+	return 1

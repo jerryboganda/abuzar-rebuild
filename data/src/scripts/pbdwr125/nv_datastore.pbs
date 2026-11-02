@@ -1,0 +1,181 @@
+// userobject nv_datastore (pbdwr125)  ancestor: datastore
+
+// nv_datastore.htmlcontextapplied(string action) returns long
+	long ll_ret
+	nonvisualobject lnv_serviceobject
+	long ll_index
+	long ll_numservices
+	any la_evtret
+	ll_numservices = upperbound(this.inv_serviceobjects)
+	for ll_index = 1 to ll_numservices
+		lnv_serviceobject = this.inv_serviceobjects[ll_index]
+		if isvalid(lnv_serviceobject) then
+			la_evtret = lnv_serviceobject.dynamic event htmlcontextapplied(action, this)
+			if not isnull(la_evtret) and la_evtret = 1 then
+				ll_ret = 1
+			end if
+		end if
+	next
+	return ll_ret
+
+// nv_datastore.getlasterrorstring() returns string
+	return this.is_lasterrorstring
+
+// nv_datastore.getlasterror() returns long
+	return this.il_lasterror
+
+// nv_datastore.setserviceclasses(string as_serviceclassnames, string as_notfoundclasses) returns integer
+	nonvisualobject[] lnv_newarray
+	integer li_ret
+	string ls_classname
+	integer li_semipos
+	integer li_lastpos
+	long ll_index
+	classdefinition l_classdefinition
+	as_notfoundclasses = ""
+	do
+		li_semipos = pos(as_serviceclassnames, ";", li_lastpos)
+		if li_semipos > 0 then
+			ls_classname = mid(as_serviceclassnames, li_lastpos, li_semipos - li_lastpos)
+			li_lastpos = li_semipos + 1
+		else
+			ls_classname = mid(as_serviceclassnames, li_lastpos, len(as_serviceclassnames))
+		end if
+		ls_classname = trim(ls_classname)
+		if ls_classname <> "" then
+			l_classdefinition = findclassdefinition(ls_classname)
+			if isvalid(l_classdefinition) then
+				lnv_newarray[ll_index] = create using ls_classname
+				ll_index = ll_index + 1
+			else
+				as_notfoundclasses = ls_classname + ";" + as_notfoundclasses
+				li_ret = -1
+			end if
+		end if
+	loop while li_semipos <> 0
+	if li_ret = 1 then
+		this.inv_serviceobjects = lnv_newarray
+	end if
+	return li_ret
+
+// nv_datastore.dberror(long sqldbcode, string sqlerrtext, string sqlsyntax, dwbuffer buffer, long row) returns long
+	nonvisualobject lnv_serviceobject
+	long ll_index
+	long ll_numservices
+	dwbuffer le_tempbuffer
+	this.ib_haderror = true
+	this.is_lasterrorstring = sqlerrtext
+	this.il_lasterror = sqldbcode
+	le_tempbuffer = buffer
+	ll_numservices = upperbound(this.inv_serviceobjects)
+	for ll_index = 1 to ll_numservices
+		lnv_serviceobject = this.inv_serviceobjects[ll_index]
+		if isvalid(lnv_serviceobject) then
+			lnv_serviceobject.dynamic event dberror(sqldbcode, sqlerrtext, sqlsyntax, le_tempbuffer, row, this)
+		end if
+	next
+	return 0
+
+// nv_datastore.create() returns 0
+	call super::create
+	triggerevent("constructor")
+
+// nv_datastore.destroy() returns 0
+	call super::destroy
+	triggerevent("destructor")
+
+// nv_datastore.retrievestart() returns long
+	long ll_ret
+	nonvisualobject lnv_serviceobject
+	long ll_index
+	long ll_numservices
+	any la_evtret
+	ll_numservices = upperbound(this.inv_serviceobjects)
+	for ll_index = 1 to ll_numservices
+		lnv_serviceobject = this.inv_serviceobjects[ll_index]
+		if isvalid(lnv_serviceobject) then
+			la_evtret = lnv_serviceobject.dynamic event retrievestart(this)
+			if not isnull(la_evtret) then
+				if la_evtret = 1 then
+					ll_ret = 1
+				end if
+				if la_evtret = 2 and ll_ret <> 1 then
+					ll_ret = 2
+				end if
+			end if
+		end if
+	next
+	return ll_ret
+
+// nv_datastore.retrieveend(long rowcount) returns long
+	nonvisualobject lnv_serviceobject
+	long ll_index
+	long ll_numservices
+	ll_numservices = upperbound(this.inv_serviceobjects)
+	for ll_index = 1 to ll_numservices
+		lnv_serviceobject = this.inv_serviceobjects[ll_index]
+		if isvalid(lnv_serviceobject) then
+			lnv_serviceobject.dynamic event retrieveend(rowcount, this)
+		end if
+	next
+	return 0
+
+// nv_datastore.sqlpreview(sqlpreviewfunction request, sqlpreviewtype sqltype, string sqlsyntax, dwbuffer buffer, long row) returns long
+	long ll_ret
+	nonvisualobject lnv_serviceobject
+	long ll_index
+	long ll_numservices
+	any la_evtret
+	sqlpreviewfunction le_temprequest
+	sqlpreviewtype le_tempsqltype
+	dwbuffer le_tempbuffer
+	le_temprequest = request
+	le_tempsqltype = sqltype
+	le_tempbuffer = buffer
+	ll_numservices = upperbound(this.inv_serviceobjects)
+	for ll_index = 1 to ll_numservices
+		lnv_serviceobject = this.inv_serviceobjects[ll_index]
+		if isvalid(lnv_serviceobject) then
+			la_evtret = lnv_serviceobject.dynamic event sqlpreview(le_temprequest, le_tempsqltype, sqlsyntax, le_tempbuffer, row, this)
+			if not isnull(la_evtret) then
+				if la_evtret = 1 then
+					ll_ret = 1
+				end if
+				if la_evtret = 2 and ll_ret <> 1 then
+					ll_ret = 2
+				end if
+			end if
+		end if
+	next
+	return ll_ret
+
+// nv_datastore.updatestart() returns long
+	long ll_ret
+	nonvisualobject lnv_serviceobject
+	long ll_index
+	long ll_numservices
+	any la_evtret
+	ll_numservices = upperbound(this.inv_serviceobjects)
+	for ll_index = 1 to ll_numservices
+		lnv_serviceobject = this.inv_serviceobjects[ll_index]
+		if isvalid(lnv_serviceobject) then
+			la_evtret = lnv_serviceobject.dynamic event updatestart(this)
+			if not isnull(la_evtret) and la_evtret = 1 then
+				ll_ret = 1
+			end if
+		end if
+	next
+	return ll_ret
+
+// nv_datastore.updateend(long rowsinserted, long rowsupdated, long rowsdeleted) returns long
+	nonvisualobject lnv_serviceobject
+	long ll_index
+	long ll_numservices
+	ll_numservices = upperbound(this.inv_serviceobjects)
+	for ll_index = 1 to ll_numservices
+		lnv_serviceobject = this.inv_serviceobjects[ll_index]
+		if isvalid(lnv_serviceobject) then
+			lnv_serviceobject.dynamic event updateend(rowsinserted, rowsupdated, rowsdeleted, this)
+		end if
+	next
+	return 0

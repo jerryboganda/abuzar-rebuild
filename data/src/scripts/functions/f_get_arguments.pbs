@@ -1,0 +1,225 @@
+// function f_get_arguments (functions)  ancestor: function_object
+
+// f_get_arguments.f_get_arguments(s_arguements str_struct, string as_reportobject, string as_reportformat) returns long
+	string ls_argumentstr
+	string ls_sep
+	string ls_arr_sep
+	string ls_arr_str
+	string ls_msg_title
+	string ls_msgtext
+	long ll_counter
+	long ll_upperbound
+	long ll_currpos
+	long ll_lastpos
+	long ll_arrlastpos
+	long ll_arrcurrpos
+	long ll_len
+	long ll_groupcode
+	long ll_rightcode
+	u_transaction at_transobject
+	blob lblb_arg
+	ls_msgtext = "Report Input(s) successfully Retrieved from database"
+	at_transobject = create u_transaction
+	SQL start USING at_transobject;
+	if at_transobject.sqlcode <> 0 then
+		ls_msgtext = at_transobject.sqlerrtext
+		messagebox(ls_msg_title, "Problems in Connection while fetching Report Input(s) from database~r~nMore Details are:-" + ls_msgtext, stopsign!)
+		return -1
+	end if
+	ll_groupcode = f_getgroupcode(gl_usercode)
+	SQL SELECT RightCode INTO :ll_rightcode FROM GroupAllowedStartupRight WHERE GroupCode =:ll_groupcode AND RightCode IN ( SELECT RightCode FROM StartupRight WHERE ObjectName =:as_reportobject ) AND Details =:as_reportformat USING at_transobject;
+	if at_transobject.sqlcode <> 0 then
+		ls_msgtext = at_transobject.sqlerrtext
+		messagebox(ls_msg_title, "Problems in fetching Report Input(s) from database~r~nYou donot have startup right for this report~r~nMore Details are:- " + ls_msgtext, stopsign!)
+		return -2
+	end if
+	SQL SELECTBLOB Arguments INTO :lblb_arg FROM GroupAllowedStartupRight WHERE GroupCode =:ll_groupcode AND RightCode =:ll_rightcode USING at_transobject;
+	if at_transobject.sqlnrows <= 0 then
+		ls_msgtext = at_transobject.sqlerrtext
+		messagebox(ls_msg_title, "Problems in fetching Report Input(s) from database.~r~nProblem in fetch report format for this report~r~nMore Details are:- " + ls_msgtext, stopsign!)
+		return -3
+	end if
+	ls_argumentstr = string(lblb_arg)
+	ll_len = len(ls_argumentstr)
+	if ll_len > 0 then
+		ll_lastpos = ll_currpos + 1
+		ll_currpos = pos(ls_argumentstr, ls_sep, ll_lastpos)
+		str_struct.l_code1 = long(mid(ls_argumentstr, ll_lastpos, ll_currpos - ll_lastpos))
+		ll_lastpos = ll_currpos + 1
+		ll_currpos = pos(ls_argumentstr, ls_sep, ll_lastpos)
+		str_struct.l_code2 = long(mid(ls_argumentstr, ll_lastpos, ll_currpos - ll_lastpos))
+		ll_lastpos = ll_currpos + 1
+		ll_currpos = pos(ls_argumentstr, ls_sep, ll_lastpos)
+		str_struct.l_code3 = long(mid(ls_argumentstr, ll_lastpos, ll_currpos - ll_lastpos))
+		ll_lastpos = ll_currpos + 1
+		ll_currpos = pos(ls_argumentstr, ls_sep, ll_lastpos)
+		str_struct.l_code4 = long(mid(ls_argumentstr, ll_lastpos, ll_currpos - ll_lastpos))
+		ll_lastpos = ll_currpos + 1
+		ll_currpos = pos(ls_argumentstr, ls_sep, ll_lastpos)
+		str_struct.d_sdate = datetime(mid(ls_argumentstr, ll_lastpos, ll_currpos - ll_lastpos))
+		ll_lastpos = ll_currpos + 1
+		ll_currpos = pos(ls_argumentstr, ls_sep, ll_lastpos)
+		str_struct.d_edate = datetime(mid(ls_argumentstr, ll_lastpos, ll_currpos - ll_lastpos))
+		ll_lastpos = ll_currpos + 1
+		ll_currpos = pos(ls_argumentstr, ls_sep, ll_lastpos)
+		str_struct.i_status = long(mid(ls_argumentstr, ll_lastpos, ll_currpos - ll_lastpos))
+		ll_lastpos = ll_currpos + 1
+		ll_currpos = pos(ls_argumentstr, ls_sep, ll_lastpos)
+		if lower(mid(ls_argumentstr, ll_lastpos, ll_currpos - ll_lastpos)) = "false" then
+			str_struct.i_supress = false
+		else
+			str_struct.i_supress = true
+		end if
+		ll_lastpos = ll_currpos + 1
+		ll_currpos = pos(ls_argumentstr, ls_sep, ll_lastpos)
+		if lower(mid(ls_argumentstr, ll_lastpos, ll_currpos - ll_lastpos)) = "false" then
+			str_struct.i_hide = false
+		else
+			str_struct.i_hide = true
+		end if
+		ll_lastpos = ll_currpos + 1
+		ll_currpos = pos(ls_argumentstr, ls_sep, ll_lastpos)
+		str_struct.s_name1 = mid(ls_argumentstr, ll_lastpos, ll_currpos - ll_lastpos)
+		ll_lastpos = ll_currpos + 1
+		ll_currpos = pos(ls_argumentstr, ls_sep, ll_lastpos)
+		str_struct.s_name2 = mid(ls_argumentstr, ll_lastpos, ll_currpos - ll_lastpos)
+		ll_lastpos = ll_currpos + 1
+		ll_currpos = pos(ls_argumentstr, ls_sep, ll_lastpos)
+		str_struct.s_name3 = mid(ls_argumentstr, ll_lastpos, ll_currpos - ll_lastpos)
+		ll_lastpos = ll_currpos + 1
+		ll_currpos = pos(ls_argumentstr, ls_sep, ll_lastpos)
+		str_struct.s_name4 = mid(ls_argumentstr, ll_lastpos, ll_currpos - ll_lastpos)
+		ll_lastpos = ll_currpos + 1
+		ll_currpos = pos(ls_argumentstr, ls_sep, ll_lastpos)
+		str_struct.s_name5 = mid(ls_argumentstr, ll_lastpos, ll_currpos - ll_lastpos)
+		ll_lastpos = ll_currpos + 1
+		ll_currpos = pos(ls_argumentstr, ls_sep, ll_lastpos)
+		str_struct.s_name6 = mid(ls_argumentstr, ll_lastpos, ll_currpos - ll_lastpos)
+		ll_lastpos = ll_currpos + 1
+		ll_currpos = pos(ls_argumentstr, ls_sep, ll_lastpos)
+		str_struct.s_name7 = mid(ls_argumentstr, ll_lastpos, ll_currpos - ll_lastpos)
+		ll_lastpos = ll_currpos + 1
+		ll_currpos = pos(ls_argumentstr, ls_sep, ll_lastpos)
+		ls_arr_str = mid(ls_argumentstr, ll_lastpos, ll_currpos - ll_lastpos)
+		if len(ls_arr_str) > 0 then
+			ll_counter = 0
+			ll_arrlastpos = 1
+			ll_arrcurrpos = pos(ls_arr_str, ls_arr_sep, ll_arrlastpos)
+			do while ll_arrcurrpos > 0
+				ll_counter = ll_counter + 1
+				str_struct.sa_stringlist[ll_counter] = mid(ls_arr_str, ll_arrlastpos, ll_arrcurrpos - ll_arrlastpos)
+				ll_arrlastpos = ll_arrcurrpos + 1
+				ll_arrcurrpos = pos(ls_arr_str, ls_arr_sep, ll_arrlastpos)
+			loop
+		end if
+		ll_lastpos = ll_currpos + 1
+		ll_currpos = pos(ls_argumentstr, ls_sep, ll_lastpos)
+		ls_arr_str = mid(ls_argumentstr, ll_lastpos, ll_currpos - ll_lastpos)
+		if len(ls_arr_str) > 0 then
+			ll_counter = 0
+			ll_arrlastpos = 1
+			ll_arrcurrpos = pos(ls_arr_str, ls_arr_sep, ll_arrlastpos)
+			do while ll_arrcurrpos > 0
+				ll_counter = ll_counter + 1
+				str_struct.ia_integerlist[ll_counter] = long(mid(ls_arr_str, ll_arrlastpos, ll_arrcurrpos - ll_arrlastpos))
+				ll_arrlastpos = ll_arrcurrpos + 1
+				ll_arrcurrpos = pos(ls_arr_str, ls_arr_sep, ll_arrlastpos)
+			loop
+		end if
+		ll_lastpos = ll_currpos + 1
+		ll_currpos = pos(ls_argumentstr, ls_sep, ll_lastpos)
+		ls_arr_str = mid(ls_argumentstr, ll_lastpos, ll_currpos - ll_lastpos)
+		if len(ls_arr_str) > 0 then
+			ll_counter = 0
+			ll_arrlastpos = 1
+			ll_arrcurrpos = pos(ls_arr_str, ls_arr_sep, ll_arrlastpos)
+			do while ll_arrcurrpos > 0
+				ll_counter = ll_counter + 1
+				str_struct.ra_reallist[ll_counter] = real(mid(ls_arr_str, ll_arrlastpos, ll_arrcurrpos - ll_arrlastpos))
+				ll_arrlastpos = ll_arrcurrpos + 1
+				ll_arrcurrpos = pos(ls_arr_str, ls_arr_sep, ll_arrlastpos)
+			loop
+		end if
+		ll_lastpos = ll_currpos + 1
+		ll_currpos = pos(ls_argumentstr, ls_sep, ll_lastpos)
+		ls_arr_str = mid(ls_argumentstr, ll_lastpos, ll_currpos - ll_lastpos)
+		if len(ls_arr_str) > 0 then
+			ll_counter = 0
+			ll_arrlastpos = 1
+			ll_arrcurrpos = pos(ls_arr_str, ls_arr_sep, ll_arrlastpos)
+			do while ll_arrcurrpos > 0
+				ll_counter = ll_counter + 1
+				str_struct.ia_integerlist1[ll_counter] = long(mid(ls_arr_str, ll_arrlastpos, ll_arrcurrpos - ll_arrlastpos))
+				ll_arrlastpos = ll_arrcurrpos + 1
+				ll_arrcurrpos = pos(ls_arr_str, ls_arr_sep, ll_arrlastpos)
+			loop
+		end if
+		ll_lastpos = ll_currpos + 1
+		ll_currpos = pos(ls_argumentstr, ls_sep, ll_lastpos)
+		str_struct.db_code1 = double(mid(ls_argumentstr, ll_lastpos, ll_currpos - ll_lastpos))
+		ll_lastpos = ll_currpos + 1
+		ll_currpos = pos(ls_argumentstr, ls_sep, ll_lastpos)
+		str_struct.db_code2 = double(mid(ls_argumentstr, ll_lastpos, ll_currpos - ll_lastpos))
+		ll_lastpos = ll_currpos + 1
+		ll_currpos = pos(ls_argumentstr, ls_sep, ll_lastpos)
+		ls_arr_str = mid(ls_argumentstr, ll_lastpos, ll_currpos - ll_lastpos)
+		if len(ls_arr_str) > 0 then
+			ll_counter = 0
+			ll_arrlastpos = 1
+			ll_arrcurrpos = pos(ls_arr_str, ls_arr_sep, ll_arrlastpos)
+			do while ll_arrcurrpos > 0
+				ll_counter = ll_counter + 1
+				str_struct.ia_integerlist2[ll_counter] = long(mid(ls_arr_str, ll_arrlastpos, ll_arrcurrpos - ll_arrlastpos))
+				ll_arrlastpos = ll_arrcurrpos + 1
+				ll_arrcurrpos = pos(ls_arr_str, ls_arr_sep, ll_arrlastpos)
+			loop
+		end if
+		ll_lastpos = ll_currpos + 1
+		ll_currpos = pos(ls_argumentstr, ls_sep, ll_lastpos)
+		str_struct.l_code5 = long(mid(ls_argumentstr, ll_lastpos, ll_currpos - ll_lastpos))
+		ll_lastpos = ll_currpos + 1
+		ll_currpos = pos(ls_argumentstr, ls_sep, ll_lastpos)
+		str_struct.l_code6 = long(mid(ls_argumentstr, ll_lastpos, ll_currpos - ll_lastpos))
+		ll_lastpos = ll_currpos + 1
+		ll_currpos = pos(ls_argumentstr, ls_sep, ll_lastpos)
+		ls_arr_str = mid(ls_argumentstr, ll_lastpos, ll_currpos - ll_lastpos)
+		if len(ls_arr_str) > 0 then
+			ll_counter = 0
+			ll_arrlastpos = 1
+			ll_arrcurrpos = pos(ls_arr_str, ls_arr_sep, ll_arrlastpos)
+			do while ll_arrcurrpos > 0
+				ll_counter = ll_counter + 1
+				str_struct.la_longlist[ll_counter] = long(mid(ls_arr_str, ll_arrlastpos, ll_arrcurrpos - ll_arrlastpos))
+				ll_arrlastpos = ll_arrcurrpos + 1
+				ll_arrcurrpos = pos(ls_arr_str, ls_arr_sep, ll_arrlastpos)
+			loop
+		end if
+		ll_lastpos = ll_currpos + 1
+		ll_currpos = pos(ls_argumentstr, ls_sep, ll_lastpos)
+		str_struct.d_date1 = datetime(mid(ls_argumentstr, ll_lastpos, ll_currpos - ll_lastpos))
+		ll_lastpos = ll_currpos + 1
+		ll_currpos = pos(ls_argumentstr, ls_sep, ll_lastpos)
+		str_struct.d_date2 = datetime(mid(ls_argumentstr, ll_lastpos, ll_currpos - ll_lastpos))
+		ll_lastpos = ll_currpos + 1
+		ll_currpos = pos(ls_argumentstr, ls_sep, ll_lastpos)
+		str_struct.d_date3 = datetime(mid(ls_argumentstr, ll_lastpos, ll_currpos - ll_lastpos))
+		ll_lastpos = ll_currpos + 1
+		ll_currpos = pos(ls_argumentstr, ls_sep, ll_lastpos)
+		str_struct.d_date4 = datetime(mid(ls_argumentstr, ll_lastpos, ll_currpos - ll_lastpos))
+		ll_lastpos = ll_currpos + 1
+		ll_currpos = pos(ls_argumentstr, ls_sep, ll_lastpos)
+		str_struct.l_code7 = long(mid(ls_argumentstr, ll_lastpos, ll_currpos - ll_lastpos))
+		ll_lastpos = ll_currpos + 1
+		ll_currpos = pos(ls_argumentstr, ls_sep, ll_lastpos)
+		str_struct.l_code8 = long(mid(ls_argumentstr, ll_lastpos, ll_currpos - ll_lastpos))
+		ll_lastpos = ll_currpos + 1
+		ll_currpos = pos(ls_argumentstr, ls_sep, ll_lastpos)
+		str_struct.l_code9 = long(mid(ls_argumentstr, ll_lastpos, ll_currpos - ll_lastpos))
+		ll_lastpos = ll_currpos + 1
+		ll_currpos = pos(ls_argumentstr, ls_sep, ll_lastpos)
+		str_struct.l_code10 = long(mid(ls_argumentstr, ll_lastpos, ll_currpos - ll_lastpos))
+		ll_lastpos = ll_currpos + 1
+		ll_currpos = pos(ls_argumentstr, ls_sep, ll_lastpos)
+		str_struct.db_code3 = double(mid(ls_argumentstr, ll_lastpos, ll_currpos - ll_lastpos))
+	end if
+	return 0

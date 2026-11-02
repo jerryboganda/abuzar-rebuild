@@ -1,0 +1,25 @@
+// window w_issuelicense_list (custcomponents)  ancestor: w_listview_form
+
+// w_issuelicense_list.wf_openmywindow(long al_code) returns 0
+	long ll_code
+	if this.id_list.rowcount() > 0 and this.id_list.getrow() > 0 and al_code > 0 then
+		ll_code = al_code
+	else
+		setnull(ll_code)
+	end if
+	openwithparm(w_issuelicense_form, ll_code)
+
+// w_issuelicense_list.create() returns 0
+	call super::create
+
+// w_issuelicense_list.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_issuelicense_list.ue_new() returns 0
+	long ll_code
+	call super::ue_new
+	setnull(ll_code)
+	wf_openmywindow(ll_code)

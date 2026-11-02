@@ -1,0 +1,45 @@
+// window w_arg_spocode_lpocode (reports)  ancestor: w_arguements
+
+// w_arg_spocode_lpocode.create() returns 0
+	integer icurrent
+	call super::create
+	this.st_4 = create st_4
+	this.cbx_storekeepersummary = create cbx_storekeepersummary
+	this.cbx_billsummary = create cbx_billsummary
+	this.cbx_invoiceprinting = create cbx_invoiceprinting
+	this.ddlb_format = create ddlb_format
+	this.st_5 = create st_5
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_4
+	this.control[icurrent + 2] = this.cbx_storekeepersummary
+	this.control[icurrent + 3] = this.cbx_billsummary
+	this.control[icurrent + 4] = this.cbx_invoiceprinting
+	this.control[icurrent + 5] = this.ddlb_format
+	this.control[icurrent + 6] = this.st_5
+
+// w_arg_spocode_lpocode.destroy() returns 0
+	call super::destroy
+	destroy this.st_4
+	destroy this.cbx_storekeepersummary
+	destroy this.cbx_billsummary
+	destroy this.cbx_invoiceprinting
+	destroy this.ddlb_format
+	destroy this.st_5
+
+// w_arg_spocode_lpocode.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	return ::message.returnvalue
+
+// w_arg_spocode_lpocode.ue_close(integer ai_stauts) returns 0
+	super::ue_close(ai_stauts)
+	closewithreturn(this, this.istr_arg)
+
+// ddlb_format.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue

@@ -1,0 +1,170 @@
+// window w_student_siblings_discount (studentcomponents)  ancestor: window
+
+// w_student_siblings_discount.wf_validate_mobile(string no) returns boolean
+	string ls_mobile
+	long ll_end
+	long ll_start
+	char lc_temp
+	boolean lb_mobileok
+	ls_mobile = no
+	if len(ls_mobile) = 0 or isnull(ls_mobile) or ls_mobile = "" then
+		return lb_mobileok
+	end if
+	if len(ls_mobile) > 0 and match(ls_mobile, "[ A-Za-z+-.,;:~"\@#%^&*()]+$") then
+		messagebox("Mobile Number Validation", "Please enter valid mobile number", stopsign!)
+		lb_mobileok = false
+	end if
+	if len(ls_mobile) > 0 and lb_mobileok then
+		ll_end = len(ls_mobile)
+		for ll_start = 1 to ll_end
+			lc_temp = mid(ls_mobile, ll_start, 1)
+			if not (asc(lc_temp) = 44 or asc(lc_temp) > 47 and asc(lc_temp) < 58) then
+				lb_mobileok = false
+				exit
+			end if
+		next
+	end if
+	if lb_mobileok = false then
+		messagebox("Mobile Number Validation", "Invalid characters in mobile no are not allowed.~r~nPlease enter valid mobile number", stopsign!)
+	end if
+	return lb_mobileok
+
+// w_student_siblings_discount.wf_saveasexcel() returns long
+	f_saveasexcel(this.dw_control)
+	return 0
+
+// w_student_siblings_discount.create() returns 0
+	this.cb_saveasexcel = create cb_saveasexcel
+	this.cb_print = create cb_print
+	this.cb_cancel = create cb_cancel
+	this.cb_select = create cb_select
+	this.dw_control = create dw_control
+	this.control = {this.cb_saveasexcel, this.cb_print, this.cb_cancel, this.cb_select, this.dw_control}
+
+// w_student_siblings_discount.destroy() returns 0
+	destroy this.cb_saveasexcel
+	destroy this.cb_print
+	destroy this.cb_cancel
+	destroy this.cb_select
+	destroy this.dw_control
+
+// w_student_siblings_discount.open() returns long
+	long ll_width
+	long ll_height
+	long ll_noofsiblings
+	environment env
+	this.it_transobject = create u_transaction
+	SQL start USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		messagebox("Connection Problem", "Can not connect to database. Details are:-~r~n" + this.it_transobject.sqlerrtext, stopsign!)
+		close(this)
+		return ::message.returnvalue
+	end if
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.width = ll_width * 0.98
+	this.height = ll_height * 0.90
+	this.y = int((ll_height - this.height) / 2.0)
+	this.dw_control.width = this.width * 0.98
+	this.dw_control.height = this.height * 0.85
+	this.cb_select.y = this.dw_control.y + this.dw_control.height + 10
+	this.cb_cancel.y = this.dw_control.y + this.dw_control.height + 10
+	this.cb_print.y = this.dw_control.y + this.dw_control.height + 10
+	this.cb_saveasexcel.y = this.dw_control.y + this.dw_control.height + 10
+	open(w_arg_noofsiblings)
+	ll_noofsiblings = ::message.doubleparm
+	if ll_noofsiblings > 0 then
+		this.dw_control.settransobject(this.it_transobject)
+		this.dw_control.retrieve(ll_noofsiblings)
+		if this.dw_control.rowcount() > 0 then
+			this.dw_control.setfocus()
+			this.dw_control.setcolumn("discperc")
+		end if
+	else
+		close(this)
+		return ::message.returnvalue
+	end if
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_student_siblings_discount.close() returns long
+	SQL stop USING this.it_transobject;
+	close(this)
+	return ::message.returnvalue
+
+// cb_saveasexcel.clicked() returns long
+	parent.wf_saveasexcel()
+	return 0
+
+// cb_print.clicked() returns long
+	s_datastore lstr
+	if parent.dw_control.accepttext() = 1 and parent.dw_control.update(true, true) = 1 then
+		SQL commit USING parent.it_transobject;
+		if parent.it_transobject.sqlcode = 0 then
+			lstr.s_module = ""
+			lstr.dw = parent.dw_control
+			lstr.s_name1 = parent.dw_control.dataobject
+			openwithparm(w_preview_invoices, lstr)
+		else
+			return ::message.returnvalue
+		end if
+		return
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.postevent(close!)
+	return ::message.returnvalue
+
+// cb_select.clicked() returns long
+	if parent.dw_control.accepttext() = 1 and parent.dw_control.update(true, true) = 1 then
+		SQL commit USING parent.it_transobject;
+		if parent.it_transobject.sqlcode = 0 then
+			messagebox("Saving...", "Changes Take Effect in database", information!)
+			parent.postevent(close!)
+		else
+			return ::message.returnvalue
+		end if
+		return
+	end if
+	return ::message.returnvalue
+
+// dw_control.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	if len(gettext()) > 0 then
+		selecttext(1, len(gettext()))
+	end if
+	return ::message.returnvalue
+
+// dw_control.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if len(gettext()) > 0 then
+		selecttext(1, len(gettext()))
+	end if
+	return ::message.returnvalue
+
+// dw_control.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	integer li_retcode
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "mobile"
+		if parent.wf_validate_mobile(data) = false then
+			li_retcode = 1
+		end if
+	case "fmobile"
+		if parent.wf_validate_mobile(data) = false then
+			li_retcode = 1
+		end if
+	case "mmobile"
+		if parent.wf_validate_mobile(data) = false then
+			li_retcode = 1
+		end if
+	end choose
+	return li_retcode

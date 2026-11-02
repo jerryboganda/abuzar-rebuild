@@ -1,0 +1,64 @@
+// menu m_smscentermenu (smscomponents)  ancestor: menu
+
+// m_smscentermenu.create() returns 0
+	m_smscentermenu = this
+	call super::create
+	this.text = "m_activitymonitor"
+	this.m_activitylist = create m_activitylist
+	this.item[upperbound(this.item) + 1] = this.m_activitylist
+
+// m_smscentermenu.destroy() returns 0
+	call super::destroy
+	destroy this.m_activitylist
+
+// m_activitylist.create() returns 0
+	call super::create
+	this.text = "Activity &List"
+	this.m_sendfromoutbox = create m_sendfromoutbox
+	this.m_generatedatasms = create m_generatedatasms
+	this.m_exit = create m_exit
+	this.item[upperbound(this.item) + 1] = this.m_sendfromoutbox
+	this.item[upperbound(this.item) + 1] = this.m_generatedatasms
+	this.item[upperbound(this.item) + 1] = this.m_exit
+
+// m_activitylist.destroy() returns 0
+	call super::destroy
+	destroy this.m_sendfromoutbox
+	destroy this.m_generatedatasms
+	destroy this.m_exit
+
+// m_sendfromoutbox.clicked() returns 0
+	this.parentwindow.dynamic wf_sendsms_from_outbox(-1)
+
+// m_sendfromoutbox.create() returns 0
+	call super::create
+	this.text = "Send All SMS From Outbox~tF2"
+	this.shortcut = 113
+	this.microhelp = "Send messages stored in Outbox to their respective recipients."
+	this.toolbaritemname = "Inherit!"
+
+// m_sendfromoutbox.destroy() returns 0
+	call super::destroy
+
+// m_generatedatasms.clicked() returns 0
+	this.parentwindow.dynamic wf_generate_datasms()
+
+// m_generatedatasms.create() returns 0
+	call super::create
+	this.text = "Generate Data SMS~tF3"
+	this.shortcut = 114
+	this.microhelp = "Generate SMS Based on Data Contents provided in Data based SMS Templates"
+	this.toolbaritemname = "CreateRuntime5!"
+
+// m_generatedatasms.destroy() returns 0
+	call super::destroy
+
+// m_exit.create() returns 0
+	call super::create
+	this.text = "&Exit"
+
+// m_exit.destroy() returns 0
+	call super::destroy
+
+// m_exit.clicked() returns 0
+	close(this.parentwindow)

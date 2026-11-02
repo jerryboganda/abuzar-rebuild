@@ -1,0 +1,678 @@
+// window w_patientregistration (patientcomponents)  ancestor: window
+
+// w_patientregistration.ue_close(integer ai_status) returns 0
+	if ai_status = -1 then
+		setnull(this.is_regno)
+	end if
+	closewithreturn(this, this.is_regno)
+
+// w_patientregistration.ue_postopen() returns 0
+	boolean lb_wardcode_enabled
+	string ls_custcode
+	string ls_setting
+	long ll_custcode
+	integer li_rtncode
+	integer li_xpos
+	integer li_ypos
+	integer li_xendpos
+	integer li_counter
+	integer li_taborder
+	integer li_visiblecolumns
+	integer li_zerotaborder
+	long ll_counter
+	long li_retcode
+	boolean lb_active
+	boolean lb_restricted
+	boolean lb_customicode
+	boolean lb_zerotabordercol
+	datawindowchild ldc_itemcategory
+	datastore lds_itemsetting
+	this.il_groupcode = f_getgroupcode(gl_usercode)
+	this.dw_detail.settransobject(this.it_transobject)
+	li_rtncode = this.dw_detail.getchild("patientcatcode", this.idc_patientcat)
+	if li_rtncode = -1 then
+		messagebox("Error", "Can not get a DataWindowChild")
+		close(this)
+		return
+	end if
+	this.idc_patientcat.settransobject(this.it_transobject)
+	li_rtncode = this.idc_patientcat.retrieve(14)
+	if li_rtncode <= 0 then
+		messagebox("Patient Registration", "Not Enough Patient Categories Allowed, Please contact your system administrator")
+		close(this)
+		return
+	else
+		this.dw_detail.object.patientcatcode.initial = string(this.idc_patientcat.getitemnumber(1, "patientcatcode"))
+	end if
+	if f_stringpreferences("ApplyDoctorDutyRosterInPatientReg") = "Y" then
+		this.dw_detail.object.doctcode.initial = trim(string(f_get_duty_doctor()))
+	end if
+	this.dw_detail.insertrow(0)
+	if this.dw_detail.rowcount() > 0 then
+		ls_custcode = f_stringpreferences("defaultcustomerinpatientreg")
+		if ls_custcode = "-1" then
+			ll_custcode = 22
+		else
+			ll_custcode = long(ls_custcode)
+		end if
+		this.dw_detail.object.custcode[1] = ll_custcode
+	end if
+	lds_itemsetting = create datastore
+	lds_itemsetting.dataobject = "d_interfacesettingcols"
+	lds_itemsetting.settransobject(this.it_transobject)
+	lds_itemsetting.retrieve(14, 3, 1)
+	li_visiblecolumns = lds_itemsetting.rowcount()
+	for li_counter = 1 to li_counter
+		this.colname[li_counter, 1] = lds_itemsetting.getitemstring(li_counter, "colname") + "_t"
+		this.colname[li_counter, 2] = lds_itemsetting.getitemstring(li_counter, "colname")
+		this.colwidth[li_counter, 1] = integer(this.dw_detail.describe(this.colname[li_counter, 1] + ".Width"))
+		this.colwidth[li_counter, 2] = integer(this.dw_detail.describe(this.colname[li_counter, 2] + ".Width"))
+	next
+	li_taborder = 100
+	li_counter = 1
+	li_ypos = 100
+	li_xendpos = 2650
+	do while li_counter <= li_visiblecolumns and li_ypos <= 200000
+		if this.colname[li_counter, 2] = "date" or this.colname[li_counter, 2] = "usercode" or this.colname[li_counter, 2] = "inactivedate" or this.colname[li_counter, 2] = "inactivedby" or this.colname[li_counter, 2] = "code" or this.colname[li_counter, 2] = "active" or this.colname[li_counter, 2] = "originaldate" or this.colname[li_counter, 2] = "createdby" then
+			lb_zerotabordercol = true
+		else
+			lb_zerotabordercol = false
+		end if
+		if lower(this.colname[li_counter, 2]) = "wardcode" then
+			lb_wardcode_enabled = true
+		end if
+		li_xpos = 32
+		this.dw_detail.modify(this.colname[li_counter, 1] + ".X=" + string(li_xpos))
+		this.dw_detail.modify(this.colname[li_counter, 1] + ".Y=" + string(li_ypos))
+		this.dw_detail.modify(this.colname[li_counter, 1] + ".Visible=1")
+		li_xpos = 750
+		this.dw_detail.modify(this.colname[li_counter, 2] + ".X=" + string(li_xpos))
+		this.dw_detail.modify(this.colname[li_counter, 2] + ".Y=" + string(li_ypos))
+		this.dw_detail.modify(this.colname[li_counter, 2] + ".Visible=1")
+		if lb_zerotabordercol then
+			this.dw_detail.modify(this.colname[li_counter, 2] + ".protect=1")
+		elseif lower(this.colname[li_counter, 2]) = "fname" then
+			this.dw_detail.settaborder(this.colname[li_counter, 2] + "_t", li_taborder)
+			li_taborder = li_taborder + 1
+			this.dw_detail.settaborder(this.colname[li_counter, 2], li_taborder)
+		else
+			this.dw_detail.settaborder(this.colname[li_counter, 2], li_taborder)
+		end if
+		li_taborder = li_taborder + 1
+		li_ypos = li_ypos + integer(this.dw_detail.describe(this.colname[li_counter, 2] + ".Height")) + 25
+		li_counter = li_counter + 1
+	loop
+	if f_stringpreferences("AutoGeneratePatientRegNo") <> "N" then
+		this.dw_detail.object.regno.edit.displayonly = "yes"
+		this.dw_detail.object.regno.edit.required = "no"
+		this.dw_detail.setcolumn("name")
+	end if
+	if f_stringpreferences("LockDoctorInPatientReg") = "Y" then
+		this.dw_detail.object.doctcode.protect = "1"
+	end if
+	ls_setting = this.dw_detail.describe("mobileno1.visible")
+	if ls_setting = "1" and f_stringpreferences("MobileNo1CompulsionInPatientReg") = "Y" then
+		this.dw_detail.object.mobileno1.edit.required = "yes"
+	end if
+	wf_assign_master_cash_win_object()
+	this.dw_detail.object.fname_t.protect = "0"
+
+// w_patientregistration.wf_validateserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+	datetime ldt_last_transdate
+	datetime ldt_current_serverdate
+	long li_max_allow_days
+	ar_errtext = "Invoice Date  Check violates"
+	li_max_allow_days = f_numberpreferences("MaxAllowDate")
+	if isnull(li_max_allow_days) then
+		li_max_allow_days = 4
+	end if
+	SQL SELECT LastTransDate INTO :ldt_last_transdate FROM ServerDate USING sqlca;
+	if sqlca.sqlcode = 0 then
+		sqlca.getdatetime(ldt_current_serverdate)
+		if sqlca.sqlcode = 0 then
+			if ldt_current_serverdate >= ldt_last_transdate and daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) <= li_max_allow_days then
+				ar_server_datetime = ldt_current_serverdate
+				return true
+			elseif ldt_current_serverdate < ldt_last_transdate then
+				ar_errtext = "Back Date Invoice Check violates"
+				return false
+			elseif daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) > li_max_allow_days then
+				ar_errtext = "Forward Date Invoice Check violates"
+				return false
+			end if
+		else
+			return false
+		end if
+		return
+	end if
+	return false
+
+// w_patientregistration.wf_duplicateregno(string as_name) returns boolean
+	long ll_count
+	long ll_patientcode
+	boolean b_flag
+	as_name = trim(as_name)
+	ll_patientcode = this.dw_detail.object.code[this.dw_detail.rowcount()]
+	if isnull(ll_patientcode) then
+		SQL SELECT count ( *) INTO :ll_count FROM Patient WHERE patient.regno =:as_name USING this.it_transobject;
+	else
+		SQL SELECT count ( *) INTO :ll_count FROM Patient WHERE patient.regno =:as_name AND Patient.PatientCode <> :ll_patientcode USING this.it_transobject;
+	end if
+	if this.it_transobject.sqlcode = 0 then
+		if ll_count > 0 then
+			b_flag = true
+		else
+			b_flag = false
+		end if
+	else
+		b_flag = false
+	end if
+	return b_flag
+
+// w_patientregistration.wf_getserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+	datetime ldt_last_transdate
+	datetime ldt_current_serverdate
+	integer li_max_allow_days
+	string ls_hold_serverdate
+	date ld_datepart
+	time lt_timepart
+	ar_errtext = "Please verify Server DateTime"
+	li_max_allow_days = f_numberpreferences("MaxAllowDate")
+	if isnull(li_max_allow_days) then
+		li_max_allow_days = 4
+	end if
+	SQL rollback USING sqlca;
+	SQL SELECT LastTransDate INTO :ldt_last_transdate FROM ServerDate USING sqlca;
+	if sqlca.sqlcode = 0 then
+		sqlca.getdatetime(ldt_current_serverdate)
+		if sqlca.sqlcode = 0 then
+			if ldt_current_serverdate >= ldt_last_transdate and daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) <= li_max_allow_days then
+				ld_datepart = date(string(ldt_current_serverdate, "yyyy-mm-dd"))
+				lt_timepart = time(string(ldt_current_serverdate, "hh:mm:ss"))
+				ldt_current_serverdate = datetime(ld_datepart, lt_timepart)
+				SQL update ServerDate SET LastTransDate =:ldt_current_serverdate USING sqlca;
+				if sqlca.sqlcode = 0 then
+					SQL commit USING sqlca;
+					ar_server_datetime = ldt_current_serverdate
+					return true
+				else
+					SQL rollback USING sqlca;
+					return false
+				end if
+			elseif ldt_current_serverdate < ldt_last_transdate then
+				ar_errtext = "Back Date Invoice Check violates"
+				return false
+			elseif daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) > li_max_allow_days then
+				ar_errtext = "Forward Date Invoice Check violates"
+				return false
+			end if
+		else
+			SQL rollback USING sqlca;
+			return false
+		end if
+		return
+	end if
+	SQL rollback USING sqlca;
+	return false
+
+// w_patientregistration.wf_assign_master_cash_win_object() returns 0
+	this.ids_cashwin = create u_ds_standard
+	this.ids_cashwin.dataobject = "d_mastercashierwindow_detail"
+	this.ids_cashwin.settransobject(this.it_transobject)
+
+// w_patientregistration.wf_set_cashaccount() returns long
+	long ll_cashacccode
+	long ll_module
+	long ll_code
+	ll_module = 14
+	ll_code = this.dw_detail.object.code[this.dw_detail.rowcount()]
+	ll_cashacccode = f_is_group_module_cashaccount_allowed(this.il_groupcode, ll_module)
+	if ll_cashacccode <= 0 or isnull(ll_cashacccode) then
+		ll_cashacccode = 0
+		messagebox("Group Cash Account Problem", "No Cash Account Attached to the group of the user logged on~r~nKindly contact system administrator to do the needfull.", stopsign!, ok!)
+	elseif isnull(ll_code) or this.dw_detail.object.code[1] <= 0 then
+		this.dw_detail.object.cashacccode[this.dw_detail.rowcount()] = ll_cashacccode
+	else
+		ll_cashacccode = this.dw_detail.object.cashacccode[this.dw_detail.rowcount()]
+	end if
+	return ll_cashacccode
+
+// w_patientregistration.wf_show_mastercashierwindow() returns integer
+	long ll_counter
+	long ll_code
+	long ll_row
+	long ll_insrow
+	long ll_module
+	long ll_cashacccode
+	double ld_tot_acc_amt
+	s_mastercashwin_all lstr_values
+	lstr_values.i_interfacecode = 16
+	if f_stringpreferences("askmastercashwin_in_patientreg") = "N" then
+		return 1
+	end if
+	ll_module = 14
+	ll_code = this.dw_detail.object.code[this.dw_detail.rowcount()]
+	ll_cashacccode = this.dw_detail.object.cashacccode[this.dw_detail.rowcount()]
+	if ll_cashacccode <= 0 or isnull(ll_cashacccode) then
+		messagebox("Group Cash Account Problem", "No Cash Account Attached to the group of the user logged on~r~nKindly contact system administrator to do the needfull.", stopsign!, ok!)
+		return 0
+	end if
+	lstr_values.l_doccode = ll_code
+	lstr_values.s_doctype = this.is_doctype
+	lstr_values.l_cashacccode = ll_cashacccode
+	lstr_values.l_groupcode = this.il_groupcode
+	lstr_values.l_module = ll_module
+	lstr_values.d_netamt = 0
+	lstr_values.d_cashtendered = this.dw_detail.object.cashtendered[this.dw_detail.rowcount()]
+	lstr_values.d_cashcharged = this.dw_detail.object.cashcharged[this.dw_detail.rowcount()]
+	lstr_values.d_cashback = this.dw_detail.object.cashback[this.dw_detail.rowcount()]
+	for ll_counter = 1 to this.ids_cashwin.rowcount()
+		lstr_values.l_acccode[ll_counter] = this.ids_cashwin.object.acccode[ll_counter]
+		lstr_values.s_remarks[ll_counter] = this.ids_cashwin.object.remarks[ll_counter]
+		lstr_values.d_amount[ll_counter] = this.ids_cashwin.object.amount[ll_counter]
+		lstr_values.l_rowid[ll_counter] = this.ids_cashwin.object.rowid[ll_counter]
+		ld_tot_acc_amt = ld_tot_acc_amt + this.ids_cashwin.object.amount[ll_counter]
+	next
+	if lstr_values.d_netamt >= lstr_values.d_cashcharged then
+		lstr_values.d_docbalance = lstr_values.d_netamt - lstr_values.d_cashcharged - ld_tot_acc_amt
+	else
+		lstr_values.d_docbalance = 0
+	end if
+	for ll_counter = 1 to 100
+		if lstr_values.l_rowid[ll_counter] <= 0 then
+			lstr_values.l_rowid[ll_counter] = -1
+		end if
+	next
+	openwithparm(w_mastercashierwindow, lstr_values)
+	lstr_values = message.powerobjectparm
+	if lstr_values.i_status = 1 then
+		this.ids_cashwin.reset()
+		ld_tot_acc_amt = 0
+		for ll_counter = 1 to 100
+			if lstr_values.l_acccode[ll_counter] > 0 and lstr_values.d_amount[ll_counter] > 0 and lstr_values.l_rowid[ll_counter] > 0 then
+				ll_insrow = this.ids_cashwin.insertrow(0)
+				this.ids_cashwin.object.documentcode[ll_insrow] = ll_code
+				this.ids_cashwin.object.documenttype[ll_insrow] = this.is_doctype
+				this.ids_cashwin.object.acccode[ll_insrow] = lstr_values.l_acccode[ll_counter]
+				this.ids_cashwin.object.remarks[ll_insrow] = lstr_values.s_remarks[ll_counter]
+				this.ids_cashwin.object.amount[ll_insrow] = lstr_values.d_amount[ll_counter]
+				this.ids_cashwin.object.rowid[ll_insrow] = lstr_values.l_rowid[ll_counter]
+			end if
+		next
+		this.dw_detail.object.cashacccode[this.dw_detail.rowcount()] = lstr_values.l_cashacccode
+		this.dw_detail.object.cashtendered[this.dw_detail.rowcount()] = lstr_values.d_cashtendered
+		this.dw_detail.object.cashcharged[this.dw_detail.rowcount()] = lstr_values.d_cashcharged
+		this.dw_detail.object.cashback[this.dw_detail.rowcount()] = lstr_values.d_cashback
+		return 1
+	end if
+	return 0
+
+// w_patientregistration.wf_connect() returns long
+	this.it_transobject = create u_transaction
+	SQL start USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		return 0
+	end if
+	messagebox("Connection Problem", "Problem Connecting Database ... ~r~n" + this.it_transobject.sqlerrtext)
+	return -1
+
+// w_patientregistration.wf_update_mastercashierwindow(long al_code, string as_type, long al_new_pat_reg) returns long
+	long ll_counter
+	if al_new_pat_reg = 1 then
+		for ll_counter = 1 to this.ids_cashwin.rowcount()
+			this.ids_cashwin.object.documentcode[ll_counter] = al_code
+			this.ids_cashwin.object.documenttype[ll_counter] = as_type
+			this.ids_cashwin.object.date[ll_counter] = this.dw_detail.object.date[1]
+		next
+		SQL DELETE DBO.MasterCashWin WHERE DocumentCode =:al_code AND DocumentType =:as_type USING sqlca;
+		if sqlca.sqlcode = 0 then
+			if this.ids_cashwin.update() > 0 then
+				return 0
+			else
+				return -1
+			end if
+		else
+			return -1
+		end if
+		return
+	end if
+	return 0
+
+// w_patientregistration.wf_print() returns long
+	long ll_code
+	long li_printretcode
+	string ls_format
+	ll_code = this.dw_detail.getitemnumber(1, "code")
+	if not (ll_code = 0 or isnull(ll_code)) then
+		ls_format = f_set_patientprintout()
+		if ls_format = "" or isnull(ls_format) then
+			ls_format = "d_patientregisteration_print"
+		end if
+		this.dw_print.dataobject = ls_format
+		this.dw_print.settransobject(this.it_transobject)
+		this.dw_print.retrieve(ll_code)
+		if this.dw_print.rowcount() > 0 then
+			if f_stringpreferences("PromptBeforePrinting") = "Y" and printsetup() < 0 then
+				messagebox("Printer", "Printing Error")
+				this.dw_print.printcancel()
+			end if
+			li_printretcode = this.dw_print.print()
+			if li_printretcode < 0 then
+				messagebox("Printing", "Can not Print Invoice", information!)
+			end if
+		else
+			messagebox("Printing Error", "Can not Print,~r~nNo rows are retrieved", information!)
+		end if
+	end if
+	return 0
+
+// w_patientregistration.create() returns 0
+	this.dw_print = create dw_print
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.dw_detail = create dw_detail
+	this.control = {this.dw_print, this.cb_cancel, this.cb_ok, this.dw_detail}
+
+// w_patientregistration.destroy() returns 0
+	destroy this.dw_print
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.dw_detail
+
+// w_patientregistration.open() returns long
+	long ll_row
+	long ll_width
+	long ll_height
+	environment env
+	if wf_connect() <> 0 then
+		close(this)
+		return ::message.returnvalue
+	end if
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.title = f_stringpreferences("patientcaptioninsale") + " Registration"
+	this.x = int((ll_width - this.width) / 2.0)
+	this.y = int((ll_height - this.height) / 2.0)
+	post event ue_postopen()
+	return ::message.returnvalue
+
+// cb_cancel.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	long ll_primarykey
+	long ll_row
+	long ll_usercode
+	long ll_null
+	long ll_new_pat_reg
+	long ll_primarykey_old
+	integer li_patientcatcode
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	string ls_regno
+	string ls_patientcode
+	string ls_errtext
+	dwitemstatus ldw_active
+	boolean lb_commit
+	setpointer(hourglass!)
+	setnull(ll_null)
+	if f_validatedw(parent.dw_detail) < 0 then
+		return ::message.returnvalue
+	end if
+	if parent.wf_set_cashaccount() = 0 then
+		return ::message.returnvalue
+	end if
+	ll_row = parent.dw_detail.getrow()
+	ll_primarykey = parent.dw_detail.object.code[ll_row]
+	ll_primarykey_old = ll_primarykey
+	if isnull(ll_primarykey) and not f_rightexists(5024) then
+		messagebox("Problem Saving", "You do not have the Right to enter New Patient~r~nPlease ask system administrator to do the needfull.")
+		parent.dw_detail.setfocus()
+		parent.dw_detail.setcolumn("regno")
+		return ::message.returnvalue
+	end if
+	if ll_primarykey > 0 and not f_rightexists(5025) then
+		messagebox("Problem Saving", "You do not have the Right to modify Patient Record~r~nPlease ask system administrator to do the needfull.")
+		parent.dw_detail.setfocus()
+		parent.dw_detail.setcolumn("regno")
+		return ::message.returnvalue
+	end if
+	if f_stringpreferences("AutoGeneratePatientRegNo") = "N" and parent.wf_duplicateregno(parent.dw_detail.object.regno[ll_row]) then
+		messagebox("Problem Saving", "Duplicate Patient Reg. No.~r~nPlease give some other Reg. No.")
+		parent.dw_detail.setfocus()
+		parent.dw_detail.setcolumn("regno")
+		return ::message.returnvalue
+	end if
+	if f_stringpreferences("askuserpwdinpatientreg") = "Y" then
+		open(w_salesmanpassword)
+		ll_usercode = long(::message.doubleparm)
+		setfocus()
+	else
+		ll_usercode = gl_usercode
+	end if
+	if ll_usercode > 0 then
+		parent.dw_detail.setitem(ll_row, "usercode", ll_usercode)
+		if not parent.wf_getserverdatetime(ldt_server_datetime, ls_date_errtext) then
+			messagebox("Date Violation", ls_date_errtext, stopsign!)
+			return ::message.returnvalue
+		end if
+		parent.dw_detail.object.date[ll_row] = ldt_server_datetime
+		if parent.wf_show_mastercashierwindow() = 0 then
+			return ::message.returnvalue
+		end if
+		if isnull(ll_primarykey) then
+			ll_primarykey = 0
+			ll_new_pat_reg = 1
+			SQL rollback USING parent.it_transobject;
+			parent.it_transobject.gettabmaxkey("Patient", ll_primarykey)
+			if parent.it_transobject.sqlcode = 0 then
+				parent.dw_detail.setitem(ll_row, "code", ll_primarykey)
+				parent.dw_detail.object.originaldate[ll_row] = ldt_server_datetime
+				parent.dw_detail.object.createdby[ll_row] = ll_usercode
+				li_patientcatcode = parent.dw_detail.object.patientcatcode[ll_row]
+				if isnull(parent.dw_detail.getitemstring(1, "membershipid")) then
+					parent.dw_detail.setitem(parent.dw_detail.getrow(), "membershipid", string(ll_primarykey))
+				end if
+				if f_stringpreferences("AutoGeneratePatientRegNo") = "Y" then
+					if isnull(parent.dw_detail.object.regno[ll_row]) or len(ls_regno) = 0 or parent.dw_detail.object.regno[ll_row] = "" then
+						parent.dw_detail.object.regno[ll_row] = trim(string(ll_primarykey))
+					end if
+				elseif f_stringpreferences("AutoGeneratePatientRegNo") = "C" then
+					if parent.it_transobject.autogeneratepatientregno(li_patientcatcode, ls_regno) = 0 then
+						parent.dw_detail.object.regno[ll_row] = ls_regno
+					else
+						SQL rollback USING parent.it_transobject;
+						lb_commit = false
+						parent.dw_detail.setitem(ll_row, "code", ll_null)
+						messagebox("Patient Registration Problem", "Problem in Auto Generation of Patient Reg. No.~r~n Possibe Reason: " + parent.it_transobject.sqlerrtext)
+					end if
+				end if
+			else
+				SQL rollback USING parent.it_transobject;
+				lb_commit = false
+				parent.dw_detail.setitem(ll_row, "code", ll_null)
+				messagebox("Patient Registration Problem", "Problem in Auto Generation of Patient Reg. No.~r~n Possibe Reason: " + parent.it_transobject.sqlerrtext)
+			end if
+		end if
+		if lb_commit then
+			ldw_active = parent.dw_detail.getitemstatus(ll_row, "active", primary!)
+			if parent.dw_detail.object.active[ll_row] = "N" and (ldw_active = datamodified! or ldw_active = newmodified!) then
+				parent.dw_detail.object.inactivedate[ll_row] = ldt_server_datetime
+			end if
+			if f_stringpreferences("askmastercashwin_in_patientreg") = "N" then
+				parent.dw_detail.object.cashtendered[1] = 0
+				parent.dw_detail.object.cashcharged[1] = 0
+				parent.dw_detail.object.cashback[1] = 0
+				parent.dw_detail.accepttext()
+			end if
+			if parent.dw_detail.update() > 0 then
+				if parent.wf_update_mastercashierwindow(ll_primarykey, parent.is_doctype, ll_new_pat_reg) = 0 then
+					SQL commit USING parent.it_transobject;
+					if parent.ib_print then
+						parent.wf_print()
+					end if
+					if ll_new_pat_reg = 1 then
+						ls_patientcode = trim(string(ll_primarykey))
+						parent.it_transobject.createautotriggersms(ls_patientcode, 14, "Saving")
+						if parent.it_transobject.sqlcode <> 0 then
+							ls_errtext = "Problem in Generating Auto Triggered SMS.~r~nReasons are:- " + parent.it_transobject.sqlerrtext
+							SQL rollback USING parent.it_transobject;
+							messagebox("Auto Triggered SMS", ls_errtext)
+						else
+							SQL commit USING parent.it_transobject;
+						end if
+					end if
+					messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+					parent.is_regno = parent.dw_detail.object.regno[ll_row]
+				else
+					SQL rollback USING parent.it_transobject;
+					setpointer(arrow!)
+					messagebox("Saving Problem", "Changes Not Saved in database for Master Cashier Window transactions.", stopsign!, ok!, 1)
+				end if
+			else
+				SQL rollback USING parent.it_transobject;
+				setpointer(arrow!)
+				if isnull(ll_primarykey_old) then
+					parent.dw_detail.setitem(ll_row, "code", ll_null)
+				end if
+				messagebox("Save Changes", "Changes Rollback in database, ~n~rSome database problem occurs", exclamation!, ok!, 1)
+				return ::message.returnvalue
+			end if
+			setpointer(arrow!)
+			parent.post event ue_close(1)
+		end if
+	end if
+	if isnull(ll_primarykey_old) then
+		parent.dw_detail.setitem(ll_row, "code", ll_null)
+	end if
+	setpointer(arrow!)
+	return ::message.returnvalue
+
+// dw_detail.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_detail.ue_downkey(keycode key, unsignedlong keyflags) returns long
+	if keyflags = 2 and key = keyp! then
+		parent.ib_print = true
+		parent.cb_ok.triggerevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long
+	long ll_totdays
+	long ll_years
+	long ll_months
+	long ll_days
+	choose case dwo.name
+	case "gender"
+		if upper(data) = "M" then
+			this.object.fname_t.protect = "1"
+			this.object.fname_t[row] = "F"
+		else
+			this.object.fname_t.protect = "0"
+			this.object.fname_t[row] = "F"
+		end if
+	case "regno"
+		if parent.wf_duplicateregno(data) then
+			return 1
+		end if
+	case "dob"
+		if isdate(string(date(left(data, 10)))) then
+			ll_totdays = daysafter(date(string(date(left(data, 10)))), today())
+			ll_years = ll_totdays / 365.0
+			ll_months = ll_totdays mod 365 / 30.0
+			ll_days = ll_totdays mod 365 mod 30
+			setitem(row, "ageyears", ll_years)
+			setitem(row, "agemonths", ll_months)
+			setitem(row, "agedays", ll_days)
+		else
+			return 1
+		end if
+	case "ageyears"
+		ll_years = long(data)
+		if isnull(ll_years) then
+			ll_years = 0
+		end if
+		ll_months = this.object.agemonths[row]
+		if isnull(ll_months) then
+			ll_months = 0
+		end if
+		ll_days = this.object.agedays[row]
+		if isnull(ll_days) then
+			ll_days = 0
+		end if
+		ll_totdays = ll_years * 365 + ll_months * 30 + ll_days
+		if ll_totdays >= 0 then
+			setitem(row, "dob", relativedate(today(), -ll_totdays))
+		else
+			return 1
+		end if
+	case "agemonths"
+		ll_years = this.object.ageyears[row]
+		if isnull(ll_years) then
+			ll_years = 0
+		end if
+		ll_months = long(data)
+		if isnull(ll_months) then
+			ll_months = 0
+		end if
+		ll_days = this.object.agedays[row]
+		if isnull(ll_days) then
+			ll_days = 0
+		end if
+		ll_totdays = ll_years * 365 + ll_months * 30 + ll_days
+		if ll_totdays >= 0 then
+			setitem(row, "dob", relativedate(today(), -ll_totdays))
+		else
+			return 1
+		end if
+	case "agedays"
+		ll_years = this.object.ageyears[row]
+		if isnull(ll_years) then
+			ll_years = 0
+		end if
+		ll_months = this.object.agemonths[row]
+		if isnull(ll_months) then
+			ll_months = 0
+		end if
+		ll_days = long(data)
+		if isnull(ll_days) then
+			ll_days = 0
+		end if
+		ll_totdays = ll_years * 365 + ll_months * 30 + ll_days
+		if ll_totdays >= 0 then
+			setitem(row, "dob", relativedate(today(), -ll_totdays))
+		else
+			return 1
+		end if
+	case "recurringperiod"
+		if long(data) < 0 then
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "regno"
+		messagebox("ItemNo Validation", "Item Duplication Error~r~nPlease enter some other Reg No")
+	end choose
+	return 1

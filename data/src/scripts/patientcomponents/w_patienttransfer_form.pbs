@@ -1,0 +1,187 @@
+// window w_patienttransfer_form (patientcomponents)  ancestor: w_single_entry
+
+// w_patienttransfer_form.wf_findpatientcode(string as_regno) returns long
+	long ll_patientcode
+	SQL SELECT PatientCode INTO :ll_patientcode FROM Patient WHERE Patient.RegNo =:as_regno USING sqlca;
+	return ll_patientcode
+
+// w_patienttransfer_form.wf_findregno(long al_patientcode) returns string
+	string ls_regno
+	SQL SELECT Patient.RegNo INTO :ls_regno FROM Patient WHERE Patient.PatientCode =:al_patientcode USING sqlca;
+	return ls_regno
+
+// w_patienttransfer_form.wf_getwardcode(long al_locationcode) returns long
+	long ll_wardcode
+	SQL SELECT patientlocation.wardcode INTO :ll_wardcode FROM patientlocation WHERE patientlocation.locationcode =:al_locationcode USING sqlca;
+	return ll_wardcode
+
+// w_patienttransfer_form.wf_locationoccupied(long al_locationcode) returns long
+	long ll_retcode
+	SQL SELECT SUM ( CASE occupied WHEN 'Y' THEN 1 ELSE 0 END ) INTO :ll_retcode FROM ( SELECT Occupied =ISNULL ( ( SELECT DISTINCT 'Y' FROM PatientAdmission PA WHERE PA.Discharged ='N' AND PA.LocationCode =PL.LocationCode ) , 'N' ) FROM PatientLocation PL WHERE PL.LocationCode =:al_locationcode ) P USING sqlca;
+	return ll_retcode
+
+// w_patienttransfer_form.wf_transferhistory() returns 0
+	long ll_admissioncode
+	ll_admissioncode = this.id_detail.object.admissioncode[this.id_detail.rowcount()]
+	openwithparm(w_patienttransferhistory, ll_admissioncode)
+
+// w_patienttransfer_form.wf_admitted(long al_admissioncode) returns long
+	long ll_count
+	SQL SELECT Count ( *) INTO :ll_count FROM PatientAdmission WHERE PatientAdmission.AdmissionCode =:al_admissioncode AND PatientAdmission.Discharged ='N' AND PatientAdmission.Discharged1 ='N' USING sqlca;
+	return ll_count
+
+// w_patienttransfer_form.create() returns 0
+	integer icurrent
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_transfermenu" then
+		this.menuid = create m_transfermenu
+	end if
+	this.dw_patienttransferdetail = create dw_patienttransferdetail
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_patienttransferdetail
+
+// w_patienttransfer_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_patienttransferdetail
+
+// w_patienttransfer_form.activate() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::activate()
+	this.windowstate = maximized!
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_patienttransfer_form.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.is_tablename = "PatientTransfer"
+	this.im_transfermenu = this.menuid
+	return ::message.returnvalue
+
+// w_patienttransfer_form.ue_save() returns 0
+	long ll_primarykey
+	long ll_row
+	long ll_retcode
+	long ll_locationcode
+	long ll_totrows
+	long ll_rowcounter
+	long ll_admissioncode
+	long ll_usercode
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	setpointer(hourglass!)
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	ll_row = this.id_detail.getrow()
+	ll_primarykey = this.id_detail.object.code[ll_row]
+	ll_locationcode = this.id_detail.object.targetlocation[ll_row]
+	if wf_admitted(this.id_detail.object.admissioncode[ll_row]) <= 0 then
+		messagebox("Problem Saving", "Patient No more Admitted.~r~nTransfer Aborted.")
+		this.id_detail.setfocus()
+		this.id_detail.setcolumn("targetlocation")
+		return
+	end if
+	if ll_locationcode = this.id_detail.object.sourcelocation[ll_row] then
+		messagebox("Problem Saving", "Current Location and New Location must be different.")
+		this.id_detail.setfocus()
+		this.id_detail.setcolumn("targetlocation")
+		return
+	end if
+	if wf_locationoccupied(ll_locationcode) > 0 then
+		messagebox("Problem Saving", "Location is already occupied by some patient.")
+		this.id_detail.setfocus()
+		this.id_detail.setcolumn("targetlocation")
+		return
+	end if
+	open(w_salesmanpassword)
+	ll_usercode = long(message.doubleparm)
+	setfocus()
+	if ll_usercode = 0 or isnull(ll_usercode) then
+		messagebox("User Validation", "Please Select Valid User", stopsign!)
+		return
+	end if
+	this.dw_patienttransferdetail.settransobject(sqlca)
+	if isnull(ll_primarykey) then
+		if not wf_validateserverdatetime(ldt_server_datetime, ls_date_errtext) then
+			messagebox("Date Violation", ls_date_errtext, stopsign!)
+			return
+		end if
+		this.id_detail.setitem(ll_row, "date", ldt_server_datetime)
+	end if
+	if isnull(ll_primarykey) then
+		ll_primarykey = 0
+		f_newtableid(this.is_tablename, ll_primarykey)
+		this.id_detail.setitem(ll_row, "code", ll_primarykey)
+	end if
+	ll_rowcounter = this.dw_patienttransferdetail.insertrow(0)
+	if ll_rowcounter > 0 then
+		this.dw_patienttransferdetail.object.transfercode[ll_rowcounter] = ll_primarykey
+		this.dw_patienttransferdetail.object.admissioncode[ll_rowcounter] = this.id_detail.object.admissioncode[ll_row]
+		this.dw_patienttransferdetail.object.date[ll_rowcounter] = ldt_server_datetime
+		this.dw_patienttransferdetail.object.sourcelocation[ll_rowcounter] = this.id_detail.object.sourcelocation[ll_row]
+		this.dw_patienttransferdetail.object.targetlocation[ll_rowcounter] = this.id_detail.object.targetlocation[ll_row]
+		this.dw_patienttransferdetail.object.doctcode[ll_rowcounter] = this.id_detail.object.doctcode[ll_row]
+		this.dw_patienttransferdetail.object.remarks[ll_rowcounter] = this.id_detail.object.remarks[ll_row]
+		this.dw_patienttransferdetail.object.usercode[ll_rowcounter] = ll_usercode
+	end if
+	ll_admissioncode = this.id_detail.object.admissioncode[ll_row]
+	if this.dw_patienttransferdetail.update() > 0 then
+		SQL update DBO.PatientAdmission SET LocationCode =:ll_locationcode WHERE AdmissionCode =:ll_admissioncode USING sqlca;
+		if sqlca.sqlcode = 0 then
+			SQL commit USING sqlca;
+			messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+			this.ib_commitok = true
+		else
+			SQL rollback USING sqlca;
+			setpointer(arrow!)
+			messagebox("Save Changes", "Changes Rollback in database, ~n~rSome database problem occurs~n~rDetails: -" + sqlca.sqlerrtext, exclamation!, ok!, 1)
+		end if
+		this.editflag = false
+	else
+		SQL rollback USING sqlca;
+		setpointer(arrow!)
+		messagebox("Save Changes", "Changes Rollback in database, ~n~rSome database problem occurs~n~rDetails: -" + sqlca.sqlerrtext, exclamation!, ok!, 1)
+		return
+	end if
+	setpointer(arrow!)
+
+// w_patienttransfer_form.ue_detail() returns 0
+	long ll_code
+	this.im_menu.m_file.m_new.enabled = false
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_delete.enabled = true
+	this.im_menu.m_file.m_first.enabled = true
+	this.im_menu.m_file.m_next.enabled = true
+	this.im_menu.m_file.m_last.enabled = true
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_menu.m_file.m_previous.enabled = true
+	this.im_menu.m_file.m_retrieve.text = "Lis&t"
+	this.i_editmode = 2
+	this.i_retrievemode = 2
+	if this.tab_retrieve.tabpage_list.dw_list.rowcount() > 0 and this.il_selectedrow > 0 then
+		ll_code = this.id_dwcontrol.borderstyle.code[this.il_selectedrow]
+		this.id_dwcontrol = this.id_detail
+		wf_retrieve(ll_code)
+		this.id_dwcontrol = this.id_list
+		this.tab_retrieve.tabpage_detail.dw_detail.setfocus()
+	end if
+
+// w_patienttransfer_form.ue_newform() returns 0
+	integer li_protect
+	long ll_retcode
+	call super::ue_newform
+	ll_retcode = this.id_detail.getchild("TargetLocation", this.idc_location)
+	if ll_retcode = -1 then
+		messagebox("Error", "Can not Get Datawindow Child for Patient Target Location", stopsign!)
+		close(this)
+	end if
+	this.idc_location.settransobject(sqlca)
+	this.idc_location.retrieve()
+	wf_protectdw(this.id_detail, li_protect)

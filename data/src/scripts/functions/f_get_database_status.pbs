@@ -1,0 +1,61 @@
+// function f_get_database_status (functions)  ancestor: function_object
+
+// f_get_database_status.f_get_database_status() returns long
+	long ll_retcode
+	long ll_status
+	long ll_autorecover
+	long ll_recoveryresult
+	long ll_pos
+	string ls_statusinfo
+	string ls_msgtext
+	string ls_msgtitle
+	string ls_servername
+	ll_pos = pos(gs_servername, "\")
+	if ll_pos > 0 then
+		ls_servername = left(gs_servername, ll_pos - 1)
+	else
+		ls_servername = gs_servername
+	end if
+	sqlca.dbms = "OLE DB"
+	sqlca.logid = "sa"
+	sqlca.lock = "RC"
+	sqlca.logpass = gs_password
+	sqlca.autocommit = true
+	sqlca.dbparm = "PROVIDER='SQLOLEDB',DATASOURCE='" + gs_servername + "',CommitOnDisconnect='Yes',PROVIDERSTRING='DataBase=" + gs_dbname + ";APP=Waseela;WSID=" + gs_localcomputername + "',PBTrimCharColumns='Yes',StripParmNames='Yes'"
+	SQL start USING sqlca;
+	if sqlca.sqlcode = 0 then
+		sqlca.cleanup_bad_session(gs_dbname)
+		SQL stop USING sqlca;
+		ls_msgtext = "Connection Sucessfull"
+		ll_retcode = 0
+	else
+		ls_msgtext = "Can not connect to database~r~nReason are:-~r~n" + sqlca.sqlerrtext + "~r~n"
+		SQL stop USING sqlca;
+		sqlca.dbparm = "PROVIDER='SQLOLEDB',DATASOURCE='" + gs_servername + "',CommitOnDisconnect='Yes',PROVIDERSTRING='DataBase=master" + ";APP=Waseela;WSID=" + gs_localcomputername + "',PBTrimCharColumns='Yes',StripParmNames='Yes'"
+		SQL start USING sqlca;
+		if sqlca.sqlcode = 0 then
+			SQL SELECT Status , StatusInfo =CASE Status WHEN 1 THEN 'AUTO CLOSE' WHEN 4 THEN 'SELECT INT/BULKCOPY' WHEN 8 THEN 'TRUNCATE LOG ON CHECK POINT' WHEN 16 THEN 'TORN PAGE DETECTION' WHEN 32 THEN 'LOADING' WHEN 64 THEN 'PRE RECOVERY' WHEN 128 THEN 'RECOVERING' WHEN 192 THEN 'RECOVERY IS UNDERWAY' WHEN 256 THEN 'NOT RECOVERED/SUSPECTED' WHEN 512 THEN 'OFF-LINE' WHEN 992 THEN 'LOADING/OFF-LINE/RECOVERING/SUSPECTED' WHEN 1024 THEN 'READ ONLY' WHEN 2048 THEN 'DBO USE ONLY' WHEN 4096 THEN 'SINGLE USER' WHEN 32768 THEN 'EMERGENCY' WHEN 4194304 THEN 'AUTO SHRINK' WHEN 1073741824 THEN 'CLEANLY SHUTDOWN' ELSE 'SUSPECTED' END INTO :ll_status, :ls_statusinfo FROM SysDatabases WHERE Name =:gs_dbname USING sqlca;
+			if sqlca.sqlcode = 0 then
+				ll_retcode = -1
+				ls_msgtext = ls_msgtext + "~r~n" + "Your database is not in working order~r~n" + "Current database status : " + ls_statusinfo + "~r~n~r~n"
+			else
+				ll_retcode = -2
+				ls_msgtext = ls_msgtext + "~r~n" + "No entry found for the specified database " + upper(gs_dbname) + "~r~n" + "Either your database is not in working order or~r~n" + "You are trying to connect to a wrong Database~r~n~r~n" + "Kindly Consult Abuzar Consultancy Support Team"
+			end if
+			messagebox(ls_msgtitle, ls_msgtext, stopsign!)
+			if match(lower(ls_servername), lower(gs_localcomputername)) then
+				ls_msgtext = "Database Restore/Recovery is a quick remedy/solution to this problem.~r~n" + "Should the system launch Auto Restore/Recovery Procedure?"
+				ll_autorecover = messagebox(ls_msgtitle, ls_msgtext, question!, yesno!, 2)
+				if ll_autorecover = 1 then
+					open(w_autorecovery)
+				end if
+			end if
+			SQL stop USING sqlca;
+		else
+			ll_retcode = -3
+			ls_msgtext = ls_msgtext + "~r~n" + "Either database server does not exists or~r~n" + "Database server not running properly on this machine~r~n~r~n" + "Kindly Consult Abuzar Consultancy Support Team"
+			SQL stop USING sqlca;
+			messagebox(ls_msgtitle, ls_msgtext, stopsign!)
+		end if
+	end if
+	return ll_retcode

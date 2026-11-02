@@ -1,0 +1,31 @@
+// function f_insert_client_instance (functions)  ancestor: function_object
+
+// f_insert_client_instance.f_insert_client_instance() returns long
+	string ls_query
+	long ll_count
+	ls_query = "if Not exists (select * from dbo.sysobjects where id = object_id(N'[ClientInstance]') and OBJECTPROPERTY(id, N'IsUserTable') = 1)" + " begin " + " Create Table ClientInstance ( Name varchar(100) Not Null, ClientID SMALLINT, ClientInstanceID SMALLINT)" + " Insert Into ClientInstance ( Name )" + " Values ('" + gs_regid + "')" + " end "
+	SQL EXECUTE IMMEDIATE :ls_query USING sqlca;
+	if sqlca.sqlcode = 0 then
+		SQL SELECT Count ( *) INTO :ll_count FROM ClientInstance USING sqlca;
+		if sqlca.sqlcode = 0 then
+			if ll_count <= 0 or isnull(ll_count) then
+				SQL INSERT INTO ClientInstance ( Name ) Values ( :gs_regid ) USING sqlca;
+			else
+				SQL update ClientInstance SET Name =:gs_regid WHERE lower ( name ) <> lower ( :gs_regid ) USING sqlca;
+			end if
+			if sqlca.sqlcode = 0 then
+				SQL commit USING sqlca;
+				return 0
+			else
+				SQL rollback USING sqlca;
+				return -1
+			end if
+		else
+			SQL rollback USING sqlca;
+			return -1
+		end if
+	else
+		SQL rollback USING sqlca;
+		return -1
+	end if
+	return 0

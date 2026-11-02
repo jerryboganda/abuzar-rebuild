@@ -1,0 +1,408 @@
+// window w_patient_profile (patientcomponents)  ancestor: window
+
+// w_patient_profile.ue_close(integer ai_status) returns 0
+	if ai_status = -1 then
+		setnull(this.is_regno)
+	end if
+	closewithreturn(this, this.is_regno)
+
+// w_patient_profile.ue_postopen() returns 0
+	string ls_custcode
+	long ll_custcode
+	integer li_rtncode
+	this.dw_patientregistration.settransobject(sqlca)
+	li_rtncode = this.dw_patientregistration.getchild("patientcatcode", this.idc_patientcat)
+	if li_rtncode = -1 then
+		messagebox("Patient Profile", "Can not open the parient profile due to patient list retieval failure")
+		close(this)
+		return
+	end if
+	this.idc_patientcat.settransobject(sqlca)
+	li_rtncode = this.idc_patientcat.retrieve(18)
+	if li_rtncode <= 0 then
+		messagebox("Patient Profile", "Not Enough Patient Categories Allowed, Please contact your system administrator")
+		close(this)
+		return
+	else
+		this.dw_patientregistration.object.patientcatcode.initial = string(this.idc_patientcat.getitemnumber(1, "patientcatcode"))
+	end if
+	if this.istr_datatype.al_long > 0 then
+		this.dw_patientregistration.retrieve(this.istr_datatype.al_long)
+	else
+		this.dw_patientregistration.insertrow(0)
+	end if
+	if f_stringpreferences("AutoGeneratePatientRegNo") <> "N" then
+		this.dw_patientregistration.object.regno.edit.displayonly = "yes"
+		this.dw_patientregistration.object.regno.edit.required = "no"
+		this.dw_patientregistration.setcolumn("name")
+	end if
+	if this.dw_patientregistration.rowcount() > 0 then
+		ls_custcode = f_stringpreferences("defaultcustomerinpatientreg")
+		if ls_custcode = "-1" then
+			ll_custcode = 22
+		else
+			ll_custcode = long(ls_custcode)
+		end if
+		this.dw_patientregistration.object.custcode[1] = ll_custcode
+	end if
+
+// w_patient_profile.wf_validateserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+	datetime ldt_last_transdate
+	datetime ldt_current_serverdate
+	long li_max_allow_days
+	ar_errtext = "Invoice Date  Check violates"
+	li_max_allow_days = f_numberpreferences("MaxAllowDate")
+	if isnull(li_max_allow_days) then
+		li_max_allow_days = 4
+	end if
+	SQL SELECT LastTransDate INTO :ldt_last_transdate FROM ServerDate USING sqlca;
+	if sqlca.sqlcode = 0 then
+		sqlca.getdatetime(ldt_current_serverdate)
+		if sqlca.sqlcode = 0 then
+			if ldt_current_serverdate >= ldt_last_transdate and daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) <= li_max_allow_days then
+				ar_server_datetime = ldt_current_serverdate
+				return true
+			elseif ldt_current_serverdate < ldt_last_transdate then
+				ar_errtext = "Back Date Invoice Check violates"
+				return false
+			elseif daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) > li_max_allow_days then
+				ar_errtext = "Forward Date Invoice Check violates"
+				return false
+			end if
+		else
+			return false
+		end if
+		return
+	end if
+	return false
+
+// w_patient_profile.wf_duplicateregno(string as_name) returns boolean
+	long ll_count
+	long ll_patientcode
+	boolean b_flag
+	as_name = trim(as_name)
+	ll_patientcode = this.dw_patientregistration.object.code[this.dw_patientregistration.rowcount()]
+	if isnull(ll_patientcode) then
+		SQL SELECT count ( *) INTO :ll_count FROM Patient WHERE patient.regno =:as_name USING sqlca;
+	else
+		SQL SELECT count ( *) INTO :ll_count FROM Patient WHERE patient.regno =:as_name AND Patient.PatientCode <> :ll_patientcode USING sqlca;
+	end if
+	if sqlca.sqlcode = 0 then
+		if ll_count > 0 then
+			b_flag = true
+		else
+			b_flag = false
+		end if
+	else
+		b_flag = false
+	end if
+	return b_flag
+
+// w_patient_profile.wf_getserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+	datetime ldt_last_transdate
+	datetime ldt_current_serverdate
+	integer li_max_allow_days
+	string ls_hold_serverdate
+	date ld_datepart
+	time lt_timepart
+	ar_errtext = "Please verify Server DateTime"
+	li_max_allow_days = f_numberpreferences("MaxAllowDate")
+	if isnull(li_max_allow_days) then
+		li_max_allow_days = 4
+	end if
+	SQL rollback USING sqlca;
+	SQL SELECT LastTransDate INTO :ldt_last_transdate FROM ServerDate USING sqlca;
+	if sqlca.sqlcode = 0 then
+		sqlca.getdatetime(ldt_current_serverdate)
+		if sqlca.sqlcode = 0 then
+			if ldt_current_serverdate >= ldt_last_transdate and daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) <= li_max_allow_days then
+				ld_datepart = date(string(ldt_current_serverdate, "yyyy-mm-dd"))
+				lt_timepart = time(string(ldt_current_serverdate, "hh:mm:ss"))
+				ldt_current_serverdate = datetime(ld_datepart, lt_timepart)
+				SQL update ServerDate SET LastTransDate =:ldt_current_serverdate USING sqlca;
+				if sqlca.sqlcode = 0 then
+					SQL commit USING sqlca;
+					ar_server_datetime = ldt_current_serverdate
+					return true
+				else
+					SQL rollback USING sqlca;
+					return false
+				end if
+			elseif ldt_current_serverdate < ldt_last_transdate then
+				ar_errtext = "Back Date Invoice Check violates"
+				return false
+			elseif daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) > li_max_allow_days then
+				ar_errtext = "Forward Date Invoice Check violates"
+				return false
+			end if
+		else
+			SQL rollback USING sqlca;
+			return false
+		end if
+		return
+	end if
+	SQL rollback USING sqlca;
+	return false
+
+// w_patient_profile.create() returns 0
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.dw_patientregistration = create dw_patientregistration
+	this.control = {this.cb_cancel, this.cb_ok, this.dw_patientregistration}
+
+// w_patient_profile.destroy() returns 0
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.dw_patientregistration
+
+// w_patient_profile.open() returns long
+	long ll_row
+	long ll_width
+	long ll_height
+	long ll_argpassed
+	environment env
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	this.istr_datatype = ::message.powerobjectparm
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.x = int((ll_width - this.width) / 2.0)
+	this.y = int((ll_height - this.height) / 2.0)
+	post event ue_postopen()
+	return ::message.returnvalue
+
+// cb_cancel.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	long ll_primarykey
+	long ll_row
+	long ll_usercode
+	long ll_null
+	long ll_new_pat_reg
+	integer li_patientcatcode
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	string ls_regno
+	string ls_patientcode
+	string ls_errtext
+	dwitemstatus ldw_active
+	boolean lb_commit
+	setpointer(hourglass!)
+	setnull(ll_null)
+	if f_validatedw(parent.dw_patientregistration) < 0 then
+		return ::message.returnvalue
+	end if
+	ll_row = parent.dw_patientregistration.getrow()
+	ll_primarykey = parent.dw_patientregistration.object.code[ll_row]
+	if isnull(ll_primarykey) and not f_rightexists(5024) then
+		messagebox("Problem Saving", "You do not have the Right to enter New Patient~r~nPlease ask system administrator to do the needfull.")
+		parent.dw_patientregistration.setfocus()
+		parent.dw_patientregistration.setcolumn("regno")
+		return ::message.returnvalue
+	end if
+	if ll_primarykey > 0 and not f_rightexists(5025) then
+		messagebox("Problem Saving", "You do not have the Right to modify Patient Record~r~nPlease ask system administrator to do the needfull.")
+		parent.dw_patientregistration.setfocus()
+		parent.dw_patientregistration.setcolumn("regno")
+		return ::message.returnvalue
+	end if
+	if f_stringpreferences("AutoGeneratePatientRegNo") = "N" and parent.wf_duplicateregno(parent.dw_patientregistration.object.regno[ll_row]) then
+		messagebox("Problem Saving Patient Profile", "Duplicate Patient Reg. No.~r~nPlease give some other Reg. No.")
+		parent.dw_patientregistration.setfocus()
+		parent.dw_patientregistration.setcolumn("regno")
+		return ::message.returnvalue
+	end if
+	if isnull(ll_primarykey) then
+		ll_new_pat_reg = 1
+	else
+		ll_new_pat_reg = 0
+	end if
+	if f_stringpreferences("askuserpwdinpatientreg") = "Y" then
+		open(w_salesmanpassword)
+		ll_usercode = long(::message.doubleparm)
+		setfocus()
+	else
+		ll_usercode = gl_usercode
+	end if
+	if ll_usercode > 0 then
+		parent.dw_patientregistration.setitem(ll_row, "usercode", ll_usercode)
+		if not parent.wf_getserverdatetime(ldt_server_datetime, ls_date_errtext) then
+			messagebox("Date Violation", ls_date_errtext, stopsign!)
+			return ::message.returnvalue
+		end if
+		parent.dw_patientregistration.object.date[ll_row] = ldt_server_datetime
+		if isnull(ll_primarykey) then
+			ll_primarykey = 0
+			SQL rollback USING sqlca;
+			sqlca.gettabmaxkey("Patient", ll_primarykey)
+			if sqlca.sqlcode = 0 then
+				parent.dw_patientregistration.setitem(ll_row, "code", ll_primarykey)
+				parent.dw_patientregistration.object.originaldate[ll_row] = ldt_server_datetime
+				parent.dw_patientregistration.object.createdby[ll_row] = ll_usercode
+				li_patientcatcode = parent.dw_patientregistration.object.patientcatcode[ll_row]
+				if isnull(parent.dw_patientregistration.getitemstring(1, "membershipid")) then
+					parent.dw_patientregistration.setitem(parent.dw_patientregistration.getrow(), "membershipid", string(ll_primarykey))
+				end if
+				if f_stringpreferences("AutoGeneratePatientRegNo") = "Y" then
+					if sqlca.autogeneratepatientregno(li_patientcatcode, ls_regno) = 0 then
+						parent.dw_patientregistration.object.regno[ll_row] = ls_regno
+					else
+						SQL rollback USING sqlca;
+						lb_commit = false
+						parent.dw_patientregistration.setitem(ll_row, "code", ll_null)
+						messagebox("Patient Profile Problem", "Problem in Auto Generation of Patient Reg. No.~r~n Possibe Reason: " + sqlca.sqlerrtext)
+					end if
+				end if
+			else
+				SQL rollback USING sqlca;
+				lb_commit = false
+				parent.dw_patientregistration.setitem(ll_row, "code", ll_null)
+				messagebox("Patient Profile Problem", "Problem in Auto Generation of Patient Reg. No.~r~n Possibe Reason: " + sqlca.sqlerrtext)
+			end if
+		end if
+		if lb_commit then
+			ldw_active = parent.dw_patientregistration.getitemstatus(ll_row, "active", primary!)
+			if parent.dw_patientregistration.object.active[ll_row] = "N" and (ldw_active = datamodified! or ldw_active = newmodified!) then
+				parent.dw_patientregistration.object.inactivedate[ll_row] = ldt_server_datetime
+			end if
+			if parent.dw_patientregistration.update() > 0 then
+				parent.is_regno = parent.dw_patientregistration.object.regno[ll_row]
+				SQL commit USING sqlca;
+				if ll_new_pat_reg = 1 then
+					ls_patientcode = trim(string(ll_primarykey))
+					sqlca.createautotriggersms(ls_patientcode, 14, "Saving")
+					if sqlca.sqlcode <> 0 then
+						ls_errtext = "Problem in Generating Auto Triggered SMS.~r~nReasons are:- " + sqlca.sqlerrtext
+						SQL rollback USING sqlca;
+						messagebox("Auto Triggered SMS", ls_errtext)
+					else
+						SQL commit USING sqlca;
+					end if
+				end if
+				messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+			else
+				SQL rollback USING sqlca;
+				setpointer(arrow!)
+				messagebox("Save Changes", "Changes Rollback in database, ~n~rSome database problem occurs", exclamation!, ok!, 1)
+				return ::message.returnvalue
+			end if
+			setpointer(arrow!)
+			parent.post event ue_close(1)
+		end if
+	end if
+	parent.dw_patientregistration.setitem(ll_row, "code", ll_null)
+	setpointer(arrow!)
+	return ::message.returnvalue
+
+// dw_patientregistration.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_patientregistration.itemchanged(long row, dwobject dwo, string data) returns long
+	long ll_totdays
+	long ll_years
+	long ll_months
+	long ll_days
+	choose case dwo.name
+	case "regno"
+		if parent.wf_duplicateregno(data) then
+			return 1
+		end if
+	case "dob"
+		if isdate(string(date(left(data, 10)))) then
+			ll_totdays = daysafter(date(string(date(left(data, 10)))), today())
+			ll_years = ll_totdays / 365.0
+			ll_months = ll_totdays mod 365 / 30.0
+			ll_days = ll_totdays mod 365 mod 30
+			setitem(row, "ageyears", ll_years)
+			setitem(row, "agemonths", ll_months)
+			setitem(row, "agedays", ll_days)
+		else
+			return 1
+		end if
+	case "ageyears"
+		ll_years = long(data)
+		if isnull(ll_years) then
+			ll_years = 0
+		end if
+		ll_months = this.object.agemonths[row]
+		if isnull(ll_months) then
+			ll_months = 0
+		end if
+		ll_days = this.object.agedays[row]
+		if isnull(ll_days) then
+			ll_days = 0
+		end if
+		ll_totdays = ll_years * 365 + ll_months * 30 + ll_days
+		if ll_totdays >= 0 then
+			setitem(row, "dob", relativedate(today(), -ll_totdays))
+		else
+			return 1
+		end if
+	case "agemonths"
+		ll_years = this.object.ageyears[row]
+		if isnull(ll_years) then
+			ll_years = 0
+		end if
+		ll_months = long(data)
+		if isnull(ll_months) then
+			ll_months = 0
+		end if
+		ll_days = this.object.agedays[row]
+		if isnull(ll_days) then
+			ll_days = 0
+		end if
+		ll_totdays = ll_years * 365 + ll_months * 30 + ll_days
+		if ll_totdays >= 0 then
+			setitem(row, "dob", relativedate(today(), -ll_totdays))
+		else
+			return 1
+		end if
+	case "agedays"
+		ll_years = this.object.ageyears[row]
+		if isnull(ll_years) then
+			ll_years = 0
+		end if
+		ll_months = this.object.agemonths[row]
+		if isnull(ll_months) then
+			ll_months = 0
+		end if
+		ll_days = long(data)
+		if isnull(ll_days) then
+			ll_days = 0
+		end if
+		ll_totdays = ll_years * 365 + ll_months * 30 + ll_days
+		if ll_totdays >= 0 then
+			setitem(row, "dob", relativedate(today(), -ll_totdays))
+		else
+			return 1
+		end if
+	case "recurringperiod"
+		if long(data) < 0 then
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_patientregistration.itemerror(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "regno"
+		messagebox("ItemNo Validation", "Item Duplication Error~r~nPlease enter some other Reg No")
+	end choose
+	return 1

@@ -1,0 +1,77 @@
+// window w_change_itempurprice_manfwise (singleentryitem)  ancestor: w_single_entry
+
+// w_change_itempurprice_manfwise.wf_changepurprice() returns integer
+	long ll_manfcode
+	long ll_salesmancode
+	long ll_rtncode
+	double ld_discperc
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	if f_validatedw(this.id_detail) < 0 then
+		return 0
+	end if
+	ld_discperc = this.id_detail.getitemdecimal(1, "discperc") / 100
+	ll_manfcode = this.id_detail.getitemnumber(1, "manfcode")
+	if not wf_validateserverdatetime(ldt_server_datetime, ls_date_errtext) then
+		messagebox("Date Violation", ls_date_errtext, stopsign!)
+		ll_rtncode = -1
+		return ll_rtncode
+	end if
+	ll_salesmancode = gl_usercode
+	SQL rollback USING this.it_transobject;
+	ll_rtncode = f_generateitemlog(this.id_detail, "item_changepurprice_manfwise", this.it_transobject, ldt_server_datetime)
+	if ll_rtncode >= 0 then
+		SQL update Item Set purprice =Round ( saleprice *:ld_discperc , 2 ) , UserCode =:ll_salesmancode , LastUpdate =:ldt_server_datetime , ChangeReason ='Pur Price Changes' , Module ='Change Item Pur.Price Form' WHERE Item.manfcode =:ll_manfcode AND Item.Active =1 USING this.it_transobject;
+		if this.it_transobject.sqlcode = 0 then
+			SQL commit USING this.it_transobject;
+			messagebox("Save Changes", "Purchase Price has been changed")
+		else
+			SQL rollback USING this.it_transobject;
+			messagebox("Save Changes", "Some database problem occurs,~n~rPurchase Price can not be changed")
+		end if
+	else
+		SQL rollback USING this.it_transobject;
+		messagebox("Save Changes", "Some database problem occurs,~n~rPurchase Price can not be changed")
+	end if
+	return ll_rtncode
+
+// w_change_itempurprice_manfwise.create() returns 0
+	integer icurrent
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_changeitempurprice_manfwise" then
+		this.menuid = create m_changeitempurprice_manfwise
+	end if
+
+// w_change_itempurprice_manfwise.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_change_itempurprice_manfwise.activate() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::activate()
+	this.windowstate = maximized!
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_change_itempurprice_manfwise.closequery() returns long
+	return ::message.returnvalue
+
+// w_change_itempurprice_manfwise.open() returns long
+	long ancestorreturnvalue
+	integer li_counter
+	ancestorreturnvalue = super::open()
+	this.it_transobject = create u_transaction
+	SQL start USING this.it_transobject;
+	return ::message.returnvalue
+
+// w_change_itempurprice_manfwise.close() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::close()
+	SQL stop USING this.it_transobject;
+	destroy this.it_transobject
+	return ::message.returnvalue

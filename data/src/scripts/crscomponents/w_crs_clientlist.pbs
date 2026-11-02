@@ -1,0 +1,26 @@
+// window w_crs_clientlist (crscomponents)  ancestor: w_single_entry
+
+// w_crs_clientlist.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM crs_clientlist WHERE crs_clientlist.name =:as_name USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_crs_clientlist.create() returns 0
+	call super::create
+
+// w_crs_clientlist.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_crs_clientlist.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.is_tablename = "crs_clientlist"
+	return ::message.returnvalue

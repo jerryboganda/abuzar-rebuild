@@ -1,0 +1,69 @@
+// function f_printbarcode_alkhidmatstore (barcodefunctions)  ancestor: function_object
+
+// f_printbarcode_alkhidmatstore.f_printbarcode_alkhidmatstore(datawindow id_master, datawindow id_detail, boolean ib_printprice) returns long
+	long ll_totalrows
+	long ll_counter
+	long ll_innercounter
+	long ll_qty
+	long ll_currrow
+	long ll_tot_label_rows
+	integer li_startcell
+	integer li_stopcell
+	integer li_temp
+	integer li_file
+	string ls_clientname
+	string ls_clientname_25_char
+	string ls_itemname
+	string ls_aliasname
+	string ls_price
+	string ls_filecontent
+	string ls_seperator
+	string ls_date
+	string ls_format
+	string ls_xpos
+	string ls_infocode
+	string ls_printer
+	string ls_manufshortname
+	string ls_design
+	string ls_purprice
+	string ls_supp_alias
+	long ll_headerno
+	long ll_labelno
+	long ll_labelpos
+	long ll_supply_cols_per_row
+	integer li_barcodeleninprint
+	ls_seperator = ";"
+	ls_supp_alias = id_master.object.aliasname[id_master.getrow()]
+	ll_headerno = id_master.getitemnumber(id_master.getrow(), "headerno")
+	ls_clientname = trim(f_reportheaderinfo_wrt_headerno("clientname", ll_headerno))
+	ls_clientname_25_char = upper(left(trim(f_reportheaderinfo_wrt_headerno("clientname", ll_headerno)), 25))
+	li_barcodeleninprint = f_numberpreferences("BarCodeLenInPrint")
+	ll_totalrows = id_detail.rowcount()
+	ls_printer = trim(id_master.object.barcodeprinter[1])
+	if lower(ls_printer) = lower("TSC TTP-244 Plus") and ll_totalrows > 0 then
+		ll_counter = 1
+		tsc_openport_new("TSC TTP-244 Plus")
+		tsc_setup_new("38", "28", "4", "4", "0", "4", "0")
+		tsc_sendcommand_new("DIRECTION 1,0")
+		for ll_counter = 1 to ll_totalrows
+			if len(trim(id_detail.getitemstring(ll_counter, "fullcode"))) <= li_barcodeleninprint and id_detail.getitemnumber(ll_counter, "qty") > 0.0 then
+				ll_qty = id_detail.getitemnumber(ll_counter, "qty")
+				ls_itemname = left(trim(id_detail.getitemstring(ll_counter, "itemname")), 30)
+				ls_aliasname = left(trim(id_detail.getitemstring(ll_counter, "fullcode")), 8)
+				if ib_printprice then
+					ls_price = "Rs: " + trim(string(round(id_detail.getitemdecimal(ll_counter, "saleprice"), 2), "###,##0.00"))
+				else
+					ls_price = ""
+				end if
+				tsc_clearbuffer_new()
+				tsc_windowsfont_new(10, 8, 28, 0, 2, 0, "Arial", ls_clientname)
+				tsc_barcode_new("10", "42", "39", "95", "0", "0", "2", "4", ls_aliasname)
+				tsc_windowsfont_new(10, 140, 25, 0, 0, 0, "Times new Roman", ls_aliasname)
+				tsc_windowsfont_new(10, 166, 20, 0, 0, 0, "Times new Roman", ls_itemname)
+				tsc_windowsfont_new(10, 185, 25, 0, 0, 0, "Times new Roman", ls_price)
+				tsc_printlabel_new("1", string(ll_qty))
+			end if
+		next
+		tsc_closeport_new()
+	end if
+	return 0

@@ -1,0 +1,106 @@
+// window w_studentsearch (studentcomponents)  ancestor: window
+
+// w_studentsearch.ue_close(integer ai_status) returns 0
+	long ll_row
+	long ll_null
+	string ls_null
+	this.is_arguements.i_status = ai_status
+	setnull(ll_null)
+	setnull(ls_null)
+	this.dw_control.accepttext()
+	if ai_status = 1 and this.dw_control.rowcount() > 0 then
+		ll_row = this.dw_control.rowcount()
+		if isnull(this.dw_control.object.studentcode[ll_row]) then
+			this.is_arguements.l_code1 = ll_null
+		else
+			this.is_arguements.l_code1 = this.dw_control.object.studentcode[ll_row]
+		end if
+		if isnull(this.dw_control.object.regno[ll_row]) then
+			this.is_arguements.s_name1 = ""
+		else
+			this.is_arguements.s_name1 = this.dw_control.object.regno[ll_row]
+		end if
+		if isnull(this.dw_control.object.name[ll_row]) then
+			this.is_arguements.s_name2 = ""
+		else
+			this.is_arguements.s_name2 = "%" + this.dw_control.object.name[ll_row] + "%"
+		end if
+		if isnull(this.dw_control.object.fathernc[ll_row]) then
+			this.is_arguements.s_name3 = ""
+		else
+			this.is_arguements.s_name3 = "%" + this.dw_control.object.fathernc[ll_row] + "%"
+		end if
+		if isnull(this.dw_control.object.phone[ll_row]) then
+			this.is_arguements.s_name4 = ""
+		else
+			this.is_arguements.s_name4 = "%" + this.dw_control.object.phone[ll_row] + "%"
+		end if
+		if isnull(this.dw_control.object.fathermobile[ll_row]) then
+			this.is_arguements.s_name5 = ""
+		else
+			this.is_arguements.s_name5 = "%" + this.dw_control.object.fathermobile[ll_row] + "%"
+		end if
+	end if
+	closewithreturn(this, this.is_arguements)
+
+// w_studentsearch.create() returns 0
+	this.cb_cancel = create cb_cancel
+	this.dw_control = create dw_control
+	this.cb_ok = create cb_ok
+	this.control = {this.cb_cancel, this.dw_control, this.cb_ok}
+
+// w_studentsearch.destroy() returns 0
+	destroy this.cb_cancel
+	destroy this.dw_control
+	destroy this.cb_ok
+
+// w_studentsearch.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.setcolumn("regno")
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(0)
+	return ::message.returnvalue
+
+// dw_control.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_control.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// cb_ok.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	parent.post event ue_close(1)
+	return ::message.returnvalue

@@ -1,0 +1,146 @@
+// window w_select (reportviewer)  ancestor: window
+
+// w_select.wf_getindex(listbox lb_list) returns integer
+	return 0
+
+// w_select.create() returns 0
+	this.dw_1 = create dw_1
+	this.cb_close = create cb_close
+	this.cb_ok = create cb_ok
+	this.dw_my1 = create dw_my1
+	this.control = {this.dw_1, this.cb_close, this.cb_ok, this.dw_my1}
+
+// w_select.destroy() returns 0
+	destroy this.dw_1
+	destroy this.cb_close
+	destroy this.cb_ok
+	destroy this.dw_my1
+
+// w_select.open() returns long
+	string ls_visible
+	string ls_column_name
+	string ls_tag
+	string ls_names
+	string[] ls_colnames
+	string ls_coltype
+	string ls_autovisible
+	string ls_visibleexp
+	string ls_visibleexpression
+	long li_column_count
+	long li_counter
+	long ll_len
+	long ll_lastpos
+	long ll_arrcount
+	long ll_count
+	s_dwinfo ls_dwinfo
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	ls_dwinfo = message.powerobjectparm
+	this.id_columninfo = ls_dwinfo.dw_control
+	ls_names = this.id_columninfo.object.datawindow.objects
+	ll_len = len(ls_names)
+	ll_lastpos = 1
+	ll_arrcount = 1
+	for li_counter = 1 to ll_len
+		if mid(ls_names, li_counter, 1) = "~t" then
+			ls_colnames[ll_arrcount] = mid(ls_names, ll_lastpos, li_counter - ll_lastpos)
+			ll_arrcount = ll_arrcount + 1
+			ll_lastpos = li_counter + 1
+		end if
+	next
+	if ll_lastpos < ll_len then
+		ls_colnames[ll_arrcount] = mid(ls_names, ll_lastpos, ll_len)
+	end if
+	ll_count = 0
+	li_column_count = upperbound(ls_colnames)
+	li_counter = 1
+	for li_counter = 1 to li_column_count
+		ls_column_name = trim(ls_colnames[li_counter])
+		ls_visible = this.id_columninfo.describe(trim(ls_colnames[li_counter]) + ".visible")
+		ls_visibleexpression = this.id_columninfo.describe(trim(ls_colnames[li_counter]) + ".visible")
+		ls_tag = this.id_columninfo.describe("object." + ls_colnames[li_counter] + ".tag")
+		ls_coltype = this.id_columninfo.describe(trim(ls_colnames[li_counter]) + ".type")
+		if len(ls_visibleexpression) > 0 then
+			if pos(ls_visibleexpression, "~t", 1) > 0 then
+				ls_visibleexp = mid(ls_visibleexpression, pos(ls_visibleexpression, "~t", 1) + 1, len(ls_visibleexpression) - (pos(ls_visibleexpression, "~t", 1) + 1))
+				if ls_visibleexp = "0" then
+					ls_autovisible = "0"
+				else
+					ls_autovisible = "1"
+				end if
+			else
+				ls_autovisible = "0"
+				ls_visibleexp = ""
+			end if
+		end if
+		ll_count = this.dw_1.insertrow(0)
+		this.dw_1.setitem(ll_count, "columnname", ls_column_name)
+		this.dw_1.setitem(ll_count, "columntype", ls_coltype)
+		if integer(ls_visible) = 1 then
+			this.dw_1.setitem(ll_count, "visible", "Y")
+		elseif integer(ls_visible) = 0 then
+			this.dw_1.setitem(ll_count, "visible", "N")
+		elseif integer(mid(ls_visible, 2, 1)) = 1 then
+			this.dw_1.setitem(ll_count, "visible", "Y")
+		else
+			this.dw_1.setitem(ll_count, "visible", "N")
+		end if
+		if integer(ls_autovisible) = 1 then
+			this.dw_1.setitem(ll_count, "autovisible", "Y")
+		else
+			this.dw_1.setitem(ll_count, "autovisible", "N")
+		end if
+		this.dw_1.setitem(ll_count, "visibilityexp", ls_visibleexp)
+	next
+	this.dw_1.sort()
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// dw_1.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked(xpos, ypos, row, dwo)
+	return ::message.returnvalue
+
+// cb_close.clicked() returns long
+	close(parent)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	long li_column_count
+	long ll_counter
+	string ls_visible
+	string ls_colname
+	li_column_count = parent.dw_1.rowcount()
+	for ll_counter = 1 to li_column_count
+		ls_colname = parent.dw_1.getitemstring(ll_counter, "columnname")
+		if parent.dw_1.getitemstring(ll_counter, "visible") = "Y" then
+			ls_visible = "1"
+		else
+			ls_visible = "0"
+		end if
+		if parent.dw_1.getitemstring(ll_counter, "Autovisible") = "N" then
+			parent.id_columninfo.modify(parent.dw_1.getitemstring(ll_counter, "columnname") + ".Visible = " + ls_visible)
+			parent.id_columninfo.modify("t_" + parent.dw_1.getitemstring(ll_counter, "columnname") + ".Visible = " + ls_visible)
+		end if
+	next
+	close(parent)
+	return ::message.returnvalue

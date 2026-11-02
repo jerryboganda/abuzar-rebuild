@@ -1,0 +1,85 @@
+// function f_printbarcode_waleedshopping (barcodefunctions)  ancestor: function_object
+
+// f_printbarcode_waleedshopping.f_printbarcode_waleedshopping(datawindow id_master, datawindow id_detail, boolean ib_printprice) returns long
+	long ll_totalrows
+	long ll_counter
+	long ll_innercounter
+	long ll_qty
+	long ll_currrow
+	long ll_tot_label_rows
+	integer li_startcell
+	integer li_stopcell
+	integer li_temp
+	integer li_file
+	string ls_clientname
+	string ls_clientname_25_char
+	string ls_phone
+	string ls_itemname
+	string ls_aliasname
+	string ls_price
+	string ls_filecontent
+	string ls_seperator
+	string ls_date
+	string ls_format
+	string ls_xpos
+	string ls_infocode
+	string ls_printer
+	string ls_manufshortname
+	string ls_design
+	string ls_purprice
+	string ls_supp_alias
+	string ls_packing
+	long ll_headerno
+	long ll_labelno
+	long ll_labelpos
+	long ll_supply_cols_per_row
+	integer li_barcodeleninprint
+	ls_seperator = ";"
+	ls_supp_alias = id_master.object.aliasname[id_master.getrow()]
+	ll_headerno = id_master.getitemnumber(id_master.getrow(), "headerno")
+	li_barcodeleninprint = 25
+	ls_clientname = trim(f_reportheaderinfo_wrt_headerno("clientname", ll_headerno))
+	ls_clientname_25_char = upper(left(trim(f_reportheaderinfo_wrt_headerno("clientname", ll_headerno)), 25))
+	ll_totalrows = id_detail.rowcount()
+	ls_printer = trim(id_master.object.barcodeprinter[1])
+	if lower(ls_printer) = lower("TSC TTP-244 PLUS") and ll_totalrows > 0 then
+		ls_date = string(today(), "yymmdd..")
+		ll_counter = 1
+		tsc_openport_new("TSC TTP-244 Plus")
+		tsc_setup_new("38", "26", "4", "7", "0", "4", "0")
+		tsc_sendcommand_new("GAP 4 mm, 0 mm")
+		tsc_sendcommand_new("SPEED 4")
+		tsc_sendcommand_new("DENSITY 7")
+		tsc_sendcommand_new("DIRECTION 0,0")
+		tsc_sendcommand_new("REFERENCE 0,0")
+		tsc_sendcommand_new("OFFSET 0 mm")
+		tsc_sendcommand_new("SHIFT 0")
+		tsc_sendcommand_new("SET TEAR OFF")
+		tsc_sendcommand_new("SET PEEL OFF")
+		tsc_sendcommand_new("SET CUTTER OFF")
+		tsc_sendcommand_new("CLS")
+		tsc_sendcommand_new("CODEPAGE 850")
+		for ll_counter = 1 to ll_totalrows
+			if len(trim(id_detail.getitemstring(ll_counter, "fullcode"))) <= li_barcodeleninprint and id_detail.getitemnumber(ll_counter, "qty") > 0.0 then
+				ll_qty = id_detail.getitemnumber(ll_counter, "qty")
+				ls_itemname = left(trim(id_detail.getitemstring(ll_counter, "itemname")), 60)
+				ls_aliasname = left(trim(id_detail.getitemstring(ll_counter, "fullcode")), li_barcodeleninprint)
+				ls_packing = left(trim(id_detail.getitemstring(ll_counter, "packing")), 30)
+				if ib_printprice then
+					ls_price = "Rs: " + trim(string(round(id_detail.getitemdecimal(ll_counter, "saleprice"), 2), "###,##0.00"))
+				else
+					ls_price = ""
+				end if
+				tsc_clearbuffer_new()
+				tsc_printerfont_new("290", "200", "0", "180", "11", "10", ls_clientname)
+				tsc_printerfont_new("290", "167", "0", "180", "9", "7", left(ls_itemname, 30))
+				tsc_barcode_new("290", "145", "39", "80", "0", "180", "2", "3", ls_aliasname)
+				tsc_printerfont_new("290", "62", "0", "180", "10", "8", ls_aliasname)
+				tsc_printerfont_new("290", "37", "0", "180", "12", "12", ls_price)
+				tsc_printlabel_new("1", string(ll_qty))
+			end if
+		next
+		tsc_formfeed_new()
+		tsc_closeport_new()
+	end if
+	return 0

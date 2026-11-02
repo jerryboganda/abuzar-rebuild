@@ -1,0 +1,698 @@
+// window w_studentfeesheet_form (studentcomponents)  ancestor: window
+
+// w_studentfeesheet_form.ue_close() returns 0
+	SQL stop USING this.it_transobject;
+	close(this)
+
+// w_studentfeesheet_form.ue_postopen() returns 0
+	long ll_counter
+	long ll_pos
+	long ll_prow
+	long ll_pcode
+	integer li_rtncode
+	setredraw(true)
+	if f_stringpreferences("askdateintrans") = "Y" then
+		this.id_header.object.date.protect = 0
+		this.id_header.object.date.background.color = rgb(255, 255, 255)
+		return
+	end if
+	this.id_header.settaborder("date", 0)
+	this.id_header.object.date.protect = 1
+	this.id_header.object.date.background.color = this.backcolor
+
+// w_studentfeesheet_form.wf_set_interface_adjustments() returns 0
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width * 0.95
+		ll_height = ll_win_height * 0.95
+		this.width = ll_width
+		this.height = ll_height
+		this.cb_cancel.y = ll_height - this.cb_cancel.height - 200
+		this.tab_main.width = ll_width - 100
+		this.tab_main.height = this.cb_cancel.y - 50
+		this.tab_main.tabpage_header.width = this.tab_main.width - 50
+		this.tab_main.tabpage_header.height = this.tab_main.height - 100
+		this.tab_main.tabpage_header.dw_header.width = this.tab_main.tabpage_header.width - 20
+		this.tab_main.tabpage_header.dw_detail.width = this.tab_main.tabpage_header.width - 20
+		this.tab_main.tabpage_header.dw_detail.height = this.tab_main.tabpage_header.height - this.tab_main.tabpage_header.dw_header.height - 100
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+
+// w_studentfeesheet_form.wf_set_tab_visibility() returns long
+	wf_select_first_tab()
+	return 0
+
+// w_studentfeesheet_form.wf_connect() returns long
+	SQL start USING this.it_transobject;
+	return this.it_transobject.sqlcode
+
+// w_studentfeesheet_form.wf_tabnewid(string as_tablename, long al_newid) returns long
+	long ll_rtcode
+	SQL SELECT TABMAXKEY INTO :al_newid FROM _TABMAXKEY WITH ( UPDLOCK HOLDLOCK ) WHERE _TABMAXKEY.TABName =:as_tablename USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		al_newid = al_newid + 1
+		SQL update dbo._tabmaxkey SET TABMAXKEY =:al_newid WHERE _TABMAXKEY.TABName =:as_tablename USING this.it_transobject;
+		if this.it_transobject.sqlcode < 0 then
+			ll_rtcode = this.it_transobject.sqlcode
+			al_newid = 0
+		end if
+	else
+		ll_rtcode = this.it_transobject.sqlcode
+		al_newid = 0
+	end if
+	return ll_rtcode
+
+// w_studentfeesheet_form.wf_retrieve_tabs() returns long
+	long ll_retrieve
+	this.tab_main.tabpage_header.dw_header.settransobject(this.it_transobject)
+	this.id_header = create datawindow
+	this.id_header = this.tab_main.tabpage_header.dw_header
+	this.id_header.settransobject(this.it_transobject)
+	this.id_detail = create datawindow
+	this.id_detail = this.tab_main.tabpage_header.dw_detail
+	this.id_detail.settransobject(this.it_transobject)
+	if this.il_code > 0 then
+		this.id_header.retrieve(this.il_code)
+		this.id_detail.retrieve(this.il_code)
+		this.id_header.setfocus()
+	end if
+	return 0
+
+// w_studentfeesheet_form.wf_insert_row(datawindow adw_dw, integer ai_askpermit) returns long
+	long ll_row
+	long ll_res
+	if ai_askpermit = 1 then
+		ll_res = messagebox("Insert New Record", "Do you want to Insert New Record?", question!, yesnocancel!, 2)
+	else
+		ll_res = 1
+	end if
+	if ll_res = 1 then
+		ll_row = adw_dw.insertrow(0)
+		adw_dw.setrow(ll_row)
+		adw_dw.scrolltorow(ll_row)
+	end if
+	return 0
+
+// w_studentfeesheet_form.wf_delete_row(datawindow adw_dw, integer ai_askpermit) returns long
+	long ll_row
+	long ll_res
+	if adw_dw.rowcount() > 0 and adw_dw.getrow() > 0 then
+		if ai_askpermit = 1 then
+			ll_res = messagebox("Delete Record", "Do you want to delete this record?", question!, yesnocancel!, 2)
+		else
+			ll_res = 1
+		end if
+		if ll_res = 1 then
+			ll_row = adw_dw.getrow()
+			if adw_dw.deleterow(ll_row) = 1 and adw_dw.rowcount() > 0 then
+				adw_dw.setrow(1)
+				adw_dw.scrolltorow(1)
+			end if
+		end if
+	end if
+	return 0
+
+// w_studentfeesheet_form.wf_goto_record(datawindow adw_dw) returns long
+	long ll_current
+	long ll_counter
+	long ll_row
+	datastore lds_ds
+	s_arguements lstr_arg
+	ll_current = adw_dw.getrow()
+	if adw_dw.rowcount() > 0 then
+		lds_ds = create datastore
+		lds_ds.dataobject = "d_mr_recordpointer"
+		lds_ds.settransobject(sqlca)
+		for ll_counter = 1 to adw_dw.rowcount()
+			ll_row = lds_ds.insertrow(0)
+			if ll_row = ll_current then
+				lds_ds.object.currentrow[ll_row] = 1
+			else
+				lds_ds.object.currentrow[ll_row] = 0
+			end if
+			lds_ds.object.rowid[ll_row] = adw_dw.object.rowid[ll_counter]
+			lds_ds.object.rowno[ll_row] = ll_counter
+			lds_ds.object.date[ll_row] = adw_dw.object.date[ll_counter]
+		next
+		if lds_ds.rowcount() > 0 then
+			openwithparm(w_arg_mr_record_pointer, lds_ds)
+			lstr_arg = message.powerobjectparm
+			if lstr_arg.i_status = 1 and lstr_arg.l_code1 > 0 then
+				adw_dw.setrow(lstr_arg.l_code1)
+				adw_dw.scrolltorow(lstr_arg.l_code1)
+			end if
+		end if
+	end if
+	return 0
+
+// w_studentfeesheet_form.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns integer
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+	return 0
+
+// w_studentfeesheet_form.wf_apply_protect_setting() returns integer
+	if this.il_protect = 1 then
+		wf_protectdw(this.id_header, this.il_protect)
+		wf_protectdw(this.id_detail, this.il_protect)
+	end if
+	return 0
+
+// w_studentfeesheet_form.wf_save() returns long
+	if this.il_protect <> 0 then
+		if this.ib_print then
+		end if
+	end if
+	return 0
+
+// w_studentfeesheet_form.wf_print() returns long
+	if this.il_protect = 0 then
+		wf_save()
+	end if
+	return 0
+
+// w_studentfeesheet_form.wf_select_first_tab() returns long
+	if this.tab_main.tabpage_header.visible then
+		this.tab_main.selecttab(1)
+		return 0
+	end if
+	return 0
+
+// w_studentfeesheet_form.wf_show_patient_gallery() returns long
+	if this.il_code > 0 then
+		openwithparm(w_patientgallary, this.il_code)
+	end if
+	return 0
+
+// w_studentfeesheet_form.wf_validateserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+	datetime ldt_last_transdate
+	datetime ldt_current_serverdate
+	long li_max_allow_days
+	ar_errtext = "Invoice Date  Check violates"
+	li_max_allow_days = f_numberpreferences("MaxAllowDate")
+	if isnull(li_max_allow_days) then
+		li_max_allow_days = 4
+	end if
+	SQL SELECT LastTransDate INTO :ldt_last_transdate FROM ServerDate USING sqlca;
+	if sqlca.sqlcode = 0 then
+		sqlca.getdatetime(ldt_current_serverdate)
+		if sqlca.sqlcode = 0 then
+			if ldt_current_serverdate >= ldt_last_transdate and daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) <= li_max_allow_days then
+				ar_server_datetime = ldt_current_serverdate
+				return true
+			elseif ldt_current_serverdate < ldt_last_transdate then
+				ar_errtext = "Back Date Invoice Check violates"
+				return false
+			elseif daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) > li_max_allow_days then
+				ar_errtext = "Forward Date Invoice Check violates"
+				return false
+			end if
+		else
+			return false
+		end if
+		return
+	end if
+	return false
+
+// w_studentfeesheet_form.wf_print_dischargeslip() returns integer
+	return 0
+
+// w_studentfeesheet_form.wf_findcustcode(long ai_custcode, string as_aliasname) returns long
+	integer li_custcode
+	integer ll_retflag
+	string ls_itemname
+	SQL SELECT accounts.acccode INTO :li_custcode FROM accounts , customer WHERE accounts.aliasname =:as_aliasname AND accounts.acccode =customer.custcode USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		ai_custcode = li_custcode
+		if isnull(ai_custcode) then
+			ll_retflag = 0
+		else
+			ll_retflag = 1
+		end if
+	else
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_studentfeesheet_form.wf_customerinfo(long al_custcode) returns long
+	string ls_address
+	string ls_city
+	string ls_phone
+	long ll_currow
+	double ld_currbalance
+	SQL SELECT customer.address1 , customer.city , customer.phone INTO :ls_address, :ls_city, :ls_phone FROM customer WHERE customer.custcode =:al_custcode USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+	end if
+	return this.it_transobject.sqlcode
+
+// w_studentfeesheet_form.wf_find_service_fullcode(string as_aliasname, long al_servicecode, string as_servicename) returns long
+	long ll_retflag
+	setnull(al_servicecode)
+	as_servicename = "                                                                  "
+	this.it_transobject.getservice_aliasname(gl_usercode, as_aliasname, al_servicecode, as_servicename)
+	if this.it_transobject.sqlcode = 0 then
+		if isnull(al_servicecode) then
+			ll_retflag = 0
+		else
+			ll_retflag = 1
+		end if
+	else
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_studentfeesheet_form.wf_getserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+	datetime ldt_last_transdate
+	datetime ldt_current_serverdate
+	integer li_max_allow_days
+	string ls_hold_serverdate
+	date ld_datepart
+	time lt_timepart
+	ar_errtext = "Please verify Server DateTime"
+	li_max_allow_days = f_numberpreferences("MaxAllowDate")
+	if isnull(li_max_allow_days) then
+		li_max_allow_days = 4
+	end if
+	SQL rollback USING sqlca;
+	SQL SELECT LastTransDate INTO :ldt_last_transdate FROM ServerDate USING sqlca;
+	if sqlca.sqlcode = 0 then
+		sqlca.getdatetime(ldt_current_serverdate)
+		ar_server_datetime = ldt_current_serverdate
+		if sqlca.sqlcode = 0 then
+			if ldt_current_serverdate >= ldt_last_transdate and daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) <= li_max_allow_days then
+				ld_datepart = date(string(ldt_current_serverdate, "yyyy-mm-dd"))
+				lt_timepart = time(string(ldt_current_serverdate, "hh:mm:ss"))
+				ldt_current_serverdate = datetime(ld_datepart, lt_timepart)
+				SQL update ServerDate SET LastTransDate =:ldt_current_serverdate USING sqlca;
+				if sqlca.sqlcode = 0 then
+					SQL commit USING sqlca;
+					ar_server_datetime = ldt_current_serverdate
+					return true
+				else
+					SQL rollback USING sqlca;
+					return false
+				end if
+			elseif ldt_current_serverdate < ldt_last_transdate then
+				ar_errtext = "Back Date Invoice Check violates"
+				return false
+			elseif daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) > li_max_allow_days then
+				ar_errtext = "Forward Date Invoice Check violates"
+				return false
+			end if
+		else
+			SQL rollback USING sqlca;
+			ar_server_datetime = datetime(date(today()), time(today()))
+			return false
+		end if
+		return
+	end if
+	SQL rollback USING sqlca;
+	ar_server_datetime = datetime(date(today()), time(today()))
+	return false
+
+// w_studentfeesheet_form.wf_findpatientcode(string as_regno, long al_patientcode) returns long
+	long ll_patientcode
+	long ll_retflag
+	string ls_itemname
+	SQL SELECT patient.patientcode INTO :ll_patientcode FROM patient WHERE patient.regno =:as_regno USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		al_patientcode = ll_patientcode
+		if isnull(al_patientcode) then
+			ll_retflag = 0
+		else
+			ll_retflag = 1
+		end if
+	else
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_studentfeesheet_form.wf_findfullcode(string as_fullcode, long al_icode, string as_itemname) returns long
+	long ll_icode
+	long ll_retflag
+	string ls_itemname
+	if f_stringpreferences("GroupCategoryRights") = "Y" then
+		SQL SELECT item.icode , item.name INTO :ll_icode, :ls_itemname FROM item WHERE item.customicode =:as_fullcode AND item.Active =1 AND Item.ICatCode IN ( SELECT ICatCode FROM ItemCategory WHERE ICatCode IN ( SELECT ItemsCategoryCode FROM ItemsGroupCategory WHERE GroupCode IN ( SELECT GroupCode FROM UserGroups WHERE UserCode =:gl_usercode ) ) ) USING this.it_transobject;
+	else
+		SQL SELECT item.icode , item.name INTO :ll_icode, :ls_itemname FROM item WHERE item.customicode =:as_fullcode AND item.Active =1 USING this.it_transobject;
+	end if
+	if this.it_transobject.sqlcode = 0 then
+		al_icode = ll_icode
+		as_itemname = ls_itemname
+		if isnull(al_icode) then
+			ll_retflag = 0
+		else
+			ll_retflag = 1
+		end if
+	else
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_studentfeesheet_form.wf_validateinvoice(long al_invcode) returns long
+	long ll_retcode
+	long ll_acccode
+	long ll_counter
+	string ls_aliasname
+	double ld_invtotal
+	double ld_outstandingamt
+	double ld_whperc
+	SQL SELECT AliasName =( SELECT A.AliasName FROM Accounts A WHERE A.AccCode =H.SuppCode ) , AccCode =H.SuppCode , WHPerc =ISNULL ( ( SELECT S.WHPerc FROM Supplier S WHERE S.SuppCode =H.SuppCode ) , 0 ) , H.InvTotal , H.OutStandingAmt INTO :ls_aliasname, :ll_acccode, :ld_whperc, :ld_invtotal, :ld_outstandingamt FROM PurLedger H WHERE H.PurInvCode =:al_invcode AND H.Posted ='Y' AND H.AccountFor ='Y' USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		this.id_header.object.purinvcode[1] = al_invcode
+		this.id_header.object.netamt[1] = ld_invtotal
+		this.id_header.object.outstandingamt[1] = ld_outstandingamt
+		this.id_header.object.aliasname[1] = ls_aliasname
+		this.id_header.object.acccode[1] = ll_acccode
+		this.id_header.object.whtaxbaseamt[1] = ld_outstandingamt
+		this.id_header.object.whtaxperc[1] = ld_whperc
+		this.id_header.object.whtaxamt[1] = round(ld_outstandingamt * ld_whperc * 0.01, 2)
+		this.id_header.object.paymentamt[1] = round(ld_outstandingamt - round(ld_outstandingamt * ld_whperc * 0.01, 2), 2)
+	end if
+	return ll_retcode
+
+// w_studentfeesheet_form.wf_set_deductionamt(integer ai_deduction, integer ai_perc_or_base, double ad_data) returns long
+	if ai_perc_or_base = 1 then
+		if ai_deduction = 1 then
+			this.id_header.object.whtaxamt[1] = round(ad_data * this.id_header.object.whtaxbaseamt[1] / 100, 0)
+			this.id_header.object.paymentamt[1] = this.id_header.object.outstandingamt[1] - round(ad_data * this.id_header.object.whtaxbaseamt[1] / 100, 0)
+		end if
+	elseif ai_deduction = 1 then
+		this.id_header.object.whtaxamt[1] = round(ad_data * this.id_header.object.whtaxperc[1] / 100, 0)
+		this.id_header.object.paymentamt[1] = round(this.id_header.object.outstandingamt[1] - round(ad_data * this.id_header.object.whtaxperc[1] / 100, 0), 0)
+	end if
+	return 0
+
+// w_studentfeesheet_form.wf_lockinvoice(long al_invcode) returns long
+	integer li_count
+	this.it_transobject.dbparm = " Async =1, DBGetTime = 20"
+	this.it_transobject.lockpurinvoice(al_invcode)
+	this.it_transobject.dbparm = "Async =0, DBGetTime = 0"
+	return this.it_transobject.sqlcode
+
+// w_studentfeesheet_form.wf_populatedetail(long al_invid, string as_errortext) returns boolean
+	long ll_detailrows
+	long ll_errrowid
+	long ll_usercode
+	long ll_invcode
+	long ll_counter
+	long ll_masterrow
+	long ll_row
+	long ll_acccode
+	long ll_patientcode
+	long ll_guestcode
+	long ll_studentcode
+	long ll_null
+	long ll_unpostedtrans
+	double ld_amt
+	double ld_balance
+	double ld_newbalance
+	double ld_totalamt
+	double ld_debit
+	double ld_credit
+	double ld_invbalance
+	double ld_foreignamt
+	unsignedlong ul_rowcount
+	unsignedlong ul_maxutn
+	boolean lb_commitflag
+	string ls_remarks
+	string ls_chkno
+	string ls_msg
+	ls_msg = space(1000)
+	setnull(ll_null)
+	ll_counter = 1
+	ls_msg = "000                                                                                                                                 "
+	as_errortext = "    Some database problem ocuurs         "
+	ll_masterrow = this.id_header.rowcount()
+	if ll_masterrow > 0 then
+		ll_invcode = this.id_header.object.purinvcode[ll_masterrow]
+	end if
+	if wf_lockinvoice(ll_invcode) = 0 and ll_masterrow > 0 then
+		ls_msg = "000                                                                                                                                 "
+		this.it_transobject.checkunpostedpurinvintransactions(ll_invcode, al_invid, "PP", ll_unpostedtrans, ls_msg)
+		if ll_unpostedtrans > 0 then
+			lb_commitflag = false
+			as_errortext = "Unposted Transaction(s) Exist for this Invoice~r~n~r~n" + ls_msg
+		else
+			this.it_transobject.getpurinvbalance(ll_invcode, ld_invbalance)
+			if this.it_transobject.sqlcode = 0 then
+				ld_amt = this.id_header.object.paymentamt[ll_masterrow]
+				if this.id_header.object.whtaxamt[ll_masterrow] > 0 then
+					ld_amt = ld_amt + this.id_header.object.whtaxamt[ll_masterrow]
+				end if
+				if ld_amt <> 0.0 and lb_commitflag then
+					ld_newbalance = ld_invbalance - ld_amt
+					if ld_newbalance >= 0.0 then
+						this.it_transobject.updatepurinvbalance(ll_invcode, ld_newbalance)
+						if this.it_transobject.sqlcode <> 0 then
+							lb_commitflag = false
+							as_errortext = "Purchase Invoice Balance Updation Error:~r~n" + this.it_transobject.sqlerrtext
+						end if
+					else
+						lb_commitflag = false
+						as_errortext = "Purchase Invoice Balance Updation Error:~r~n" + this.it_transobject.sqlerrtext
+					end if
+				else
+					lb_commitflag = false
+					as_errortext = "Not Enough Balance On Purchase Invoice"
+				end if
+			else
+				lb_commitflag = false
+				as_errortext = "Purchase Invoice Balance Retrieval Error:~r~n" + this.it_transobject.sqlerrtext
+			end if
+		end if
+	else
+		lb_commitflag = false
+		as_errortext = "Invoice Is Used by some other user"
+	end if
+	return lb_commitflag
+
+// w_studentfeesheet_form.wf_validatedate() returns boolean
+	datetime ldt_systemdatetime
+	SQL SELECT GETDATE ( ) INTO :ldt_systemdatetime FROM _UTN USING sqlca;
+	if sqlca.sqlcode = 0 then
+		this.id_header.setitem(1, "date", ldt_systemdatetime)
+		return true
+	end if
+	return false
+
+// w_studentfeesheet_form.wf_selectrow(long ll_row) returns long
+	string ls_temp
+	if ll_row > 0 then
+		this.id_detail.selectrow(0, false)
+		this.id_detail.selectrow(ll_row, true)
+		this.id_detail.scrolltorow(ll_row)
+		this.id_detail.setrow(ll_row)
+	end if
+	return 0
+
+// w_studentfeesheet_form.create() returns 0
+	this.cb_cancel = create cb_cancel
+	this.tab_main = create tab_main
+	this.control = {this.cb_cancel, this.tab_main}
+
+// w_studentfeesheet_form.destroy() returns 0
+	destroy this.cb_cancel
+	destroy this.tab_main
+
+// w_studentfeesheet_form.open() returns long
+	integer li_xpos
+	integer li_ypos
+	integer li_xendpos
+	integer li_counter
+	integer li_taborder
+	integer li_visiblecolumns
+	integer li_zerotaborder
+	long ll_counter
+	long li_retcode
+	long li_rtncode
+	boolean lb_active
+	boolean lb_restricted
+	boolean lb_customicode
+	boolean lb_zerotabordercol
+	date ld_date
+	long ll_retcode
+	this.istr_arg = message.powerobjectparm
+	this.il_code = this.istr_arg.l_code1
+	this.il_studentfeesheetcode = this.istr_arg.l_code2
+	this.il_protect = this.istr_arg.l_code3
+	this.it_transobject = create u_transaction
+	if wf_connect() <> 0 then
+		messagebox("Connection Failure!", "Unable to connect to the database", stopsign!)
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	wf_retrieve_tabs()
+	wf_apply_protect_setting()
+	wf_set_interface_adjustments()
+	wf_set_tab_visibility()
+	if f_stringpreferences("askdateintrans") = "N" and not wf_validatedate() then
+		close(this)
+	end if
+	triggerevent("ue_postopen")
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_studentfeesheet_form.close() returns long
+	triggerevent("ue_close")
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.postevent("ue_close")
+	return ::message.returnvalue
+
+// tab_main.create() returns 0
+	this.tabpage_header = create tabpage_header
+	this.control = {this.tabpage_header}
+
+// tab_main.destroy() returns 0
+	destroy this.tabpage_header
+
+// tab_main.selectionchanged(integer oldindex, integer newindex) returns long
+	if parent.il_protect = 0 and newindex = 1 then
+		parent.id_header.setfocus()
+		if parent.id_header.rowcount() = 0 then
+			parent.wf_insert_row(parent.id_header, 0)
+		end if
+	end if
+	return ::message.returnvalue
+
+// tabpage_header.create() returns 0
+	this.dw_header = create dw_header
+	this.dw_detail = create dw_detail
+	this.control = {this.dw_header, this.dw_detail}
+
+// tabpage_header.destroy() returns 0
+	destroy this.dw_header
+	destroy this.dw_detail
+
+// dw_header.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_header.getfocus() returns long
+	setfocus()
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_detail.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	long ll_col
+	long ll_row
+	string ls_column
+	string ls_desc
+	string ls_exp
+	string ls_value
+	string ls_tag
+	string ls_name
+	string ls_type
+	string ls_band
+	string s_str
+	string s_t
+	integer i_len
+	ancestorreturnvalue = super::clicked(xpos, ypos, row, dwo)
+	s_str = string(dwo.name)
+	s_t = right(s_str, 2)
+	if s_t = "_t" then
+		i_len = len(s_str)
+		s_str = left(s_str, i_len - 2)
+		if this.s_previous <> s_str then
+			this.b_flag = true
+		end if
+		if this.b_flag = true then
+			setsort(s_str)
+			sort()
+			this.b_flag = false
+		else
+			setsort(s_str + " D")
+			sort()
+			this.b_flag = true
+		end if
+	end if
+	this.s_previous = s_str
+	ls_name = dwo.name
+	ls_type = dwo.type
+	ls_band = getbandatpointer()
+	if upper(left(ls_band, 7)) = "DETAIL" then
+		ll_row = row
+	elseif pos(ls_band, "~t") > 0 then
+		ll_row = long(mid(ls_band, pos(ls_band, "~t") + 1, len(ls_band)))
+	end if
+	if ll_row > 0 then
+	end if
+	ll_col = getclickedcolumn()
+	if ll_col > 0 then
+		setcolumn(ll_col)
+		ls_desc = "#" + trim(string(ll_col)) + ".pointer"
+	elseif upper(left(ls_type, 6)) = "COLUMN" and len(ls_name) > 0 then
+		ls_column = ls_name
+		setcolumn(ls_column)
+		ls_desc = ls_column + ".pointer"
+	end if
+	ls_desc = describe(ls_desc)
+	if ls_desc = "~"HyperLink!~"" then
+		if ll_col > 0 then
+			ls_exp = describe("#" + trim(string(ll_col)) + ".coltype")
+			ls_tag = describe("#" + trim(string(ll_col)) + ".tag")
+		else
+			ls_exp = describe(ls_column + ".coltype")
+			ls_tag = describe(ls_column + ".tag")
+		end if
+		if upper(left(ls_exp, 4)) = "CHAR" then
+			if ll_col > 0 then
+				ls_value = getitemstring(ll_row, ll_col)
+			else
+				ls_value = getitemstring(ll_row, ls_column)
+			end if
+			if pos(ls_value, "-") <= 0 then
+				if ls_tag <> "" then
+					ls_value = ls_tag + "-" + ls_value
+				end if
+			end if
+			f_opentranaction(ls_value)
+		elseif upper(left(ls_exp, 4)) = "LONG" or upper(left(ls_exp, 6)) = "NUMBER" then
+			if ls_tag = "" or isnull(ls_tag) then
+				ls_tag = ""
+			end if
+			if ls_tag = "" then
+				ls_tag = ""
+			else
+				ls_tag = ls_tag + "-"
+			end if
+			if ll_col > 0 then
+				ls_value = ls_tag + trim(string(getitemnumber(ll_row, ll_col)))
+			else
+				ls_value = ls_tag + trim(string(getitemnumber(ll_row, ls_column)))
+			end if
+			f_opentranaction(ls_value)
+		end if
+	end if
+	return ::message.returnvalue

@@ -1,0 +1,582 @@
+// userobject n_xls_format_v97 (dw2xls)  ancestor: n_xls_format
+
+// n_xls_format_v97.of_set_font(string as_fontname) returns integer
+	integer li_ret
+	this.is_font = as_fontname
+	this.ib_font = this.invo_sub.to_unicode(as_fontname)
+	return li_ret
+
+// n_xls_format_v97.of_set_font(blob ab_fontname) returns integer
+	integer li_ret
+	this.ib_font = ab_fontname
+	this.is_font = this.invo_sub.to_ansi(ab_fontname)
+	return li_ret
+
+// n_xls_format_v97.of_set_size(integer ai_size) returns integer
+	integer li_ret
+	this.ii_size = ai_size
+	return li_ret
+
+// n_xls_format_v97.of_get_color(string as_color) returns unsignedinteger
+	choose case trim(lower(as_color))
+	case "aqua"
+		return 15
+	case "cyan"
+		return 15
+	case "black"
+		return 8
+	case "blue"
+		return 12
+	case "brown"
+		return 16
+	case "magenta"
+		return 14
+	case "fuchsia"
+		return 14
+	case "gray"
+		return 23
+	case "grey"
+		return 23
+	case "green"
+		return 17
+	case "lime"
+		return 11
+	case "navy"
+		return 18
+	case "orange"
+		return 53
+	case "purple"
+		return 20
+	case "red"
+		return 10
+	case "silver"
+		return 22
+	case "white"
+		return 9
+	case "yellow"
+		return 13
+	end choose
+	return 32767
+
+// n_xls_format_v97.of_set_color(long al_colorindex) returns integer
+	integer li_ret
+	if al_colorindex < 8 then
+		al_colorindex = al_colorindex + 8
+	end if
+	if al_colorindex > 63 then
+		al_colorindex = 32767
+	end if
+	this.ii_color = al_colorindex
+	return li_ret
+
+// n_xls_format_v97.of_set_color(string as_color) returns integer
+	integer li_ret
+	of_set_color(of_get_color(as_color))
+	return li_ret
+
+// n_xls_format_v97.of_set_bold(boolean ab_bold) returns integer
+	integer li_ret
+	if ab_bold then
+		this.ii_bold = 700
+	else
+		this.ii_bold = 400
+	end if
+	return li_ret
+
+// n_xls_format_v97.of_set_italic(boolean ab_italic) returns integer
+	integer li_ret
+	if ab_italic then
+		this.ii_italic = 1
+	else
+		this.ii_italic = 0
+	end if
+	return li_ret
+
+// n_xls_format_v97.of_set_num_format(blob ab_num_format) returns integer
+	integer li_ret
+	this.ib_num_format = ab_num_format
+	this.is_num_format = this.invo_sub.to_ansi(ab_num_format)
+	this.ii_num_format = 0
+	return li_ret
+
+// n_xls_format_v97.of_set_num_format(string as_num_format) returns integer
+	integer li_ret
+	this.ib_num_format = this.invo_sub.to_unicode(as_num_format)
+	this.is_num_format = as_num_format
+	this.ii_num_format = 0
+	return li_ret
+
+// n_xls_format_v97.of_set_align(string as_align) returns integer
+	integer li_ret
+	choose case trim(lower(as_align))
+	case "left"
+		of_set_text_h_align(1)
+	case "centre", "center"
+		of_set_text_h_align(2)
+	case "right"
+		of_set_text_h_align(3)
+	case "fill"
+		of_set_text_h_align(4)
+	case "justify"
+		of_set_text_h_align(5)
+	case "merge"
+		of_set_text_h_align(6)
+	case "equal_space"
+		of_set_text_h_align(7)
+	case "top"
+		of_set_text_v_align(0)
+	case "vcentre", "vcenter"
+		of_set_text_v_align(1)
+	case "bottom"
+		of_set_text_v_align(2)
+	case "vjustify"
+		of_set_text_v_align(3)
+	case "vequal_space"
+		of_set_text_v_align(4)
+	case else
+		return -1
+	end choose
+	return li_ret
+
+// n_xls_format_v97.of_set_text_wrap(boolean ab_text_wrap) returns integer
+	integer li_ret
+	if ab_text_wrap then
+		this.ii_text_wrap = 1
+	else
+		this.ii_text_wrap = 0
+	end if
+	return li_ret
+
+// n_xls_format_v97.of_set_bg_color(string as_color) returns integer
+	integer li_ret
+	of_set_bg_color(of_get_color(as_color))
+	return li_ret
+
+// n_xls_format_v97.of_set_bg_color(long al_colorindex) returns integer
+	integer li_ret
+	if al_colorindex < 8 then
+		al_colorindex = al_colorindex + 8
+	end if
+	if al_colorindex > 63 then
+		al_colorindex = 32767
+	end if
+	this.ii_bg_color = al_colorindex
+	return li_ret
+
+// n_xls_format_v97.of_set_border(integer ai_border_style) returns integer
+	of_set_left(ai_border_style)
+	of_set_right(ai_border_style)
+	of_set_top(ai_border_style)
+	of_set_bottom(ai_border_style)
+	return 1
+
+// n_xls_format_v97.of_set_border_color(long al_color_index) returns integer
+	of_set_left_color(al_color_index)
+	of_set_right_color(al_color_index)
+	of_set_top_color(al_color_index)
+	of_set_bottom_color(al_color_index)
+	return 1
+
+// n_xls_format_v97.of_set_border_color(string as_color) returns integer
+	of_set_left_color(as_color)
+	of_set_right_color(as_color)
+	of_set_top_color(as_color)
+	of_set_bottom_color(as_color)
+	return 1
+
+// n_xls_format_v97.of_set_bottom(integer ai_border_style) returns integer
+	this.ii_bottom = ai_border_style
+	return 1
+
+// n_xls_format_v97.of_set_right(integer ai_border_style) returns integer
+	this.ii_right = ai_border_style
+	return 1
+
+// n_xls_format_v97.of_set_left(integer ai_border_style) returns integer
+	this.ii_left = ai_border_style
+	return 1
+
+// n_xls_format_v97.of_set_top(integer ai_border_style) returns integer
+	this.ii_top = ai_border_style
+	return 1
+
+// n_xls_format_v97.of_set_bottom_color(long al_color_index) returns integer
+	integer li_ret
+	if al_color_index < 8 then
+		al_color_index = al_color_index + 8
+	end if
+	if al_color_index > 63 then
+		al_color_index = 32767
+	end if
+	this.ii_bottom_color = al_color_index
+	return li_ret
+
+// n_xls_format_v97.of_set_bottom_color(string as_color) returns integer
+	integer li_ret
+	of_set_bottom_color(of_get_color(as_color))
+	return li_ret
+
+// n_xls_format_v97.of_set_left_color(long al_color_index) returns integer
+	integer li_ret
+	if al_color_index < 8 then
+		al_color_index = al_color_index + 8
+	end if
+	if al_color_index > 63 then
+		al_color_index = 32767
+	end if
+	this.ii_left_color = al_color_index
+	return li_ret
+
+// n_xls_format_v97.of_set_left_color(string as_color) returns integer
+	integer li_ret
+	of_set_left_color(of_get_color(as_color))
+	return li_ret
+
+// n_xls_format_v97.of_set_right_color(long al_color_index) returns integer
+	integer li_ret
+	if al_color_index < 8 then
+		al_color_index = al_color_index + 8
+	end if
+	if al_color_index > 63 then
+		al_color_index = 32767
+	end if
+	this.ii_right_color = al_color_index
+	return li_ret
+
+// n_xls_format_v97.of_set_right_color(string as_color) returns integer
+	integer li_ret
+	of_set_right_color(of_get_color(as_color))
+	return li_ret
+
+// n_xls_format_v97.of_set_top_color(long al_color_index) returns integer
+	integer li_ret
+	if al_color_index < 8 then
+		al_color_index = al_color_index + 8
+	end if
+	if al_color_index > 63 then
+		al_color_index = 32767
+	end if
+	this.ii_top_color = al_color_index
+	return li_ret
+
+// n_xls_format_v97.of_set_top_color(string as_color) returns integer
+	integer li_ret
+	of_set_top_color(of_get_color(as_color))
+	return li_ret
+
+// n_xls_format_v97.of_get_font() returns blob
+	unsignedinteger li_record
+	unsignedinteger li_length
+	unsignedinteger li_dyheight
+	unsignedinteger li_grbit
+	unsignedinteger li_icv
+	unsignedinteger li_bls
+	unsignedinteger li_sss
+	unsignedinteger li_uls
+	unsignedinteger li_bfamily
+	unsignedinteger li_bcharset
+	unsignedinteger li_reserved
+	unsignedinteger li_cch
+	blob lb_data
+	li_dyheight = this.ii_size * 20
+	li_icv = this.ii_color
+	li_bls = this.ii_bold
+	li_sss = this.ii_font_script
+	li_uls = this.ii_underline
+	li_bfamily = this.ii_font_family
+	li_bcharset = this.ii_font_charset
+	li_cch = len(this.ib_font) / 2.0
+	li_record = 49
+	li_length = 16 + li_cch * 2
+	li_reserved = 0
+	li_grbit = 0
+	li_grbit = this.ii_italic * 2 + li_grbit
+	li_grbit = this.ii_font_strikeout * 8 + li_grbit
+	li_grbit = this.ii_font_outline * 16 + li_grbit
+	li_grbit = this.ii_font_shadow * 32 + li_grbit
+	lb_data = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length) + this.invo_sub.of_pack("v", li_dyheight) + this.invo_sub.of_pack("v", li_grbit) + this.invo_sub.of_pack("v", li_icv) + this.invo_sub.of_pack("v", li_bls) + this.invo_sub.of_pack("v", li_sss) + this.invo_sub.of_pack("C", li_uls) + this.invo_sub.of_pack("C", li_bfamily) + this.invo_sub.of_pack("C", li_bcharset) + this.invo_sub.of_pack("C", li_reserved) + this.invo_sub.of_pack("C", li_cch) + this.invo_sub.of_pack("C", 1) + this.ib_font
+	return lb_data
+
+// n_xls_format_v97.of_get_font_key() returns string
+	string ls_ret
+	unsignedinteger li_pos
+	ls_ret = string(len(this.is_font), "000") + this.is_font + trim(string(this.ii_size, "0000")) + trim(string(this.ii_font_script, "00")) + trim(string(this.ii_underline, "00")) + trim(string(this.ii_font_strikeout, "00")) + trim(string(this.ii_bold, "000")) + trim(string(this.ii_font_outline, "00")) + trim(string(this.ii_font_family, "0000")) + trim(string(this.ii_font_charset, "000000")) + trim(string(this.ii_font_shadow, "00")) + trim(string(this.ii_color, "000")) + trim(string(this.ii_italic, "0"))
+	li_pos = pos(ls_ret, " ")
+	do while li_pos > 0
+		ls_ret = replace(ls_ret, li_pos, 1, "_")
+		li_pos = pos(ls_ret, " ")
+	loop
+	return ls_ret
+
+// n_xls_format_v97.of_get_xf(string as_style) returns blob
+	unsignedinteger li_record
+	unsignedinteger li_length
+	unsignedinteger li_ifnt
+	unsignedinteger li_ifmt
+	unsignedinteger li_style
+	unsignedinteger li_align
+	unsignedlong ll_border1
+	unsignedlong ll_border2
+	unsignedinteger li_pcolor
+	unsignedinteger li_atr_num
+	unsignedinteger li_atr_fnt
+	unsignedinteger li_atr_alc
+	unsignedinteger li_atr_bdr
+	unsignedinteger li_atr_pat
+	unsignedinteger li_atr_prot
+	unsignedinteger li_rotation
+	unsignedinteger li_grbit8
+	unsignedinteger li_usedattr
+	blob lb_data
+	if as_style = "style" then
+		li_style = 65525
+	else
+		li_style = this.ii_locked + this.ii_hidden * 2
+	end if
+	if this.ii_num_format <> 0 then
+		li_atr_num = 1
+	end if
+	if this.ii_font_index <> 0 then
+		li_atr_fnt = 1
+	end if
+	if this.ii_text_h_align <> 0 or this.ii_text_v_align <> 2 or this.ii_text_wrap <> 0 then
+		li_atr_alc = 1
+	end if
+	if this.ii_bottom <> 0 or this.ii_top <> 0 or this.ii_left <> 0 or this.ii_right <> 0 then
+		li_atr_bdr = 1
+	end if
+	if this.ii_fg_color <> 64 or this.ii_bg_color <> 65 or this.ii_pattern <> 0 then
+		li_atr_pat = 1
+	end if
+	if this.ii_hidden <> 0 or this.ii_locked <> 1 then
+		li_atr_prot = 1
+	end if
+	if this.ii_fg_color = 32767 then
+		this.ii_fg_color = 64
+	end if
+	if this.ii_bg_color = 32767 then
+		this.ii_bg_color = 65
+	end if
+	if this.ii_bottom_color = 32767 then
+		this.ii_bottom_color = 64
+	end if
+	if this.ii_top_color = 32767 then
+		this.ii_top_color = 64
+	end if
+	if this.ii_left_color = 32767 then
+		this.ii_left_color = 64
+	end if
+	if this.ii_right_color = 32767 then
+		this.ii_right_color = 64
+	end if
+	if this.ii_bottom = 0 then
+		this.ii_bottom_color = 0
+	end if
+	if this.ii_top = 0 then
+		this.ii_top_color = 0
+	end if
+	if this.ii_left = 0 then
+		this.ii_left_color = 0
+	end if
+	if this.ii_right = 0 then
+		this.ii_right_color = 0
+	end if
+	if this.ii_pattern <= 1 and this.ii_bg_color <> 65 and this.ii_fg_color = 64 then
+		this.ii_fg_color = this.ii_bg_color
+		this.ii_bg_color = 64
+		this.ii_pattern = 1
+	end if
+	if this.ii_pattern <= 1 and this.ii_bg_color = 65 and this.ii_fg_color <> 64 then
+		this.ii_bg_color = 64
+		this.ii_pattern = 1
+	end if
+	choose case this.ii_rotation
+	case 0
+		li_rotation = 0
+	case 1
+		li_rotation = 255
+	case 2
+		li_rotation = 90
+	case 3
+		li_rotation = 180
+	end choose
+	li_ifnt = this.ii_font_index
+	li_ifmt = this.ii_num_format
+	li_align = this.ii_text_h_align + this.ii_text_wrap * 8 + this.ii_text_v_align * 16 + this.ii_text_justlast * 128
+	li_grbit8 = 0 + 0 * 16 + 0 * 64
+	li_usedattr = li_atr_num + li_atr_fnt * 2 + li_atr_alc * 4 + li_atr_bdr * 8 + li_atr_pat * 16 + li_atr_prot * 32
+	ll_border1 = this.ii_left + this.ii_right * 16 + this.ii_top * 256 + this.ii_bottom * 4096 + this.ii_left_color * 65536 + this.ii_right_color * 8388608
+	ll_border2 = this.ii_top_color + this.ii_bottom_color * 128 + 0 * 16384 + 0 * 2097152 + this.ii_pattern * 67108864
+	li_pcolor = this.ii_fg_color + this.ii_bg_color * 128
+	li_record = 224
+	li_length = 20
+	lb_data = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length) + this.invo_sub.of_pack("v", li_ifnt) + this.invo_sub.of_pack("v", li_ifmt) + this.invo_sub.of_pack("v", li_style) + this.invo_sub.of_pack("C", li_align) + this.invo_sub.of_pack("C", li_rotation) + this.invo_sub.of_pack("C", li_grbit8) + this.invo_sub.of_pack("C", li_usedattr * 4) + this.invo_sub.of_pack("V", ll_border1) + this.invo_sub.of_pack("V", ll_border2) + this.invo_sub.of_pack("v", li_pcolor)
+	return lb_data
+
+// n_xls_format_v97.of_set_merge_range() returns integer
+	this.ii_merge_range = 1
+	return 1
+
+// n_xls_format_v97.of_get_xf_index() returns unsignedinteger
+	return this.ii_xf_index
+
+// n_xls_format_v97.of_set_text_v_align(unsignedinteger ai_align) returns integer
+	this.ii_text_v_align = ai_align
+	return 1
+
+// n_xls_format_v97.of_set_text_h_align(unsignedinteger ai_align) returns integer
+	this.ii_text_h_align = ai_align
+	return 1
+
+// n_xls_format_v97.of_set_underline(integer ai_style) returns integer
+	this.ii_underline = ai_style
+	return 1
+
+// n_xls_format_v97.of_set_rotation(integer ai_rotation) returns integer
+	integer li_ret
+	if ai_rotation >= 0 and ai_rotation <= 180 or ai_rotation = 255 then
+		this.ii_rotation = ai_rotation
+	else
+		li_ret = -1
+	end if
+	return li_ret
+
+// n_xls_format_v97.of_set_script(integer ai_script) returns integer
+	integer li_ret
+	if ai_script < 0 or ai_script > 2 then
+		li_ret = -1
+	else
+		this.ii_font_script = ai_script
+	end if
+	return li_ret
+
+// n_xls_format_v97.of_set_outline(boolean ab_option) returns integer
+	if ab_option then
+		this.ii_font_outline = 1
+	else
+		this.ii_font_outline = 0
+	end if
+	return 1
+
+// n_xls_format_v97.of_set_hidden(boolean ab_option) returns integer
+	if ab_option then
+		this.ii_hidden = 1
+	else
+		this.ii_hidden = 0
+	end if
+	return 1
+
+// n_xls_format_v97.of_set_locked(boolean ab_option) returns integer
+	if ab_option then
+		this.ii_locked = 1
+	else
+		this.ii_locked = 0
+	end if
+	return 1
+
+// n_xls_format_v97.of_set_strikeout(boolean ab_option) returns integer
+	if ab_option then
+		this.ii_font_strikeout = 1
+	else
+		this.ii_font_strikeout = 0
+	end if
+	return 1
+
+// n_xls_format_v97.of_set_text_justlast() returns integer
+	this.ii_text_justlast = 1
+	return 1
+
+// n_xls_format_v97.of_set_pattern(integer ai_pattern) returns integer
+	integer li_ret
+	if ai_pattern < 0 or ai_pattern > 18 then
+		li_ret = -1
+	else
+		this.ii_pattern = ai_pattern
+	end if
+	return li_ret
+
+// n_xls_format_v97.of_set_fg_color(string as_color) returns integer
+	return of_set_fg_color(of_get_color(as_color))
+
+// n_xls_format_v97.of_set_fg_color(long al_colorindex) returns integer
+	integer li_ret
+	if al_colorindex < 8 then
+		al_colorindex = al_colorindex + 8
+	end if
+	if al_colorindex > 63 then
+		al_colorindex = 32767
+	end if
+	this.ii_fg_color = al_colorindex
+	return li_ret
+
+// n_xls_format_v97.of_set_merge() returns integer
+	return of_set_text_h_align(6)
+
+// n_xls_format_v97.of_copy(n_xls_format anvo_format) returns integer
+	n_xls_format_v97 lnvo_format
+	lnvo_format = anvo_format
+	this.ii_font_index = lnvo_format.ii_font_index
+	this.is_num_format = lnvo_format.is_num_format
+	this.ii_num_format = lnvo_format.ii_num_format
+	this.ib_num_format = lnvo_format.ib_num_format
+	this.is_font = lnvo_format.is_font
+	this.ib_font = lnvo_format.ib_font
+	this.ii_size = lnvo_format.ii_size
+	this.ii_bold = lnvo_format.ii_bold
+	this.ii_italic = lnvo_format.ii_italic
+	this.ii_color = lnvo_format.ii_color
+	this.ii_underline = lnvo_format.ii_underline
+	this.ii_font_strikeout = lnvo_format.ii_font_strikeout
+	this.ii_font_outline = lnvo_format.ii_font_outline
+	this.ii_font_shadow = lnvo_format.ii_font_shadow
+	this.ii_font_script = lnvo_format.ii_font_script
+	this.ii_font_family = lnvo_format.ii_font_family
+	this.ii_font_charset = lnvo_format.ii_font_charset
+	this.ii_hidden = lnvo_format.ii_hidden
+	this.ii_locked = lnvo_format.ii_locked
+	this.ii_text_h_align = lnvo_format.ii_text_h_align
+	this.ii_text_wrap = lnvo_format.ii_text_wrap
+	this.ii_text_v_align = lnvo_format.ii_text_v_align
+	this.ii_text_justlast = lnvo_format.ii_text_justlast
+	this.ii_rotation = lnvo_format.ii_rotation
+	this.ii_fg_color = lnvo_format.ii_fg_color
+	this.ii_bg_color = lnvo_format.ii_bg_color
+	this.ii_pattern = lnvo_format.ii_pattern
+	this.ii_bottom = lnvo_format.ii_bottom
+	this.ii_top = lnvo_format.ii_top
+	this.ii_left = lnvo_format.ii_left
+	this.ii_right = lnvo_format.ii_right
+	this.ii_bottom_color = lnvo_format.ii_bottom_color
+	this.ii_top_color = lnvo_format.ii_top_color
+	this.ii_left_color = lnvo_format.ii_left_color
+	this.ii_right_color = lnvo_format.ii_right_color
+	this.ii_merge_range = lnvo_format.ii_merge_range
+	return 1
+
+// n_xls_format_v97.of_set_num_format(integer ai_builtin_format) returns integer
+	this.ii_num_format = ai_builtin_format
+	setnull(this.ib_num_format)
+	return 1
+
+// n_xls_format_v97.of_get_format_key() returns string
+	string ls_ret
+	unsignedinteger li_pos
+	ls_ret = string(this.ii_num_format, "00000") + string(len(this.is_num_format), "000") + this.is_num_format + string(this.ii_hidden, "0") + string(this.ii_locked, "0") + string(this.ii_text_h_align, "00") + string(this.ii_text_wrap, "0") + string(this.ii_text_v_align, "00") + string(this.ii_text_justlast, "00") + string(this.ii_rotation, "000") + string(this.ii_fg_color, "000") + string(this.ii_bg_color, "000") + string(this.ii_pattern, "000") + string(this.ii_bottom, "000") + string(this.ii_top, "000") + string(this.ii_left, "000") + string(this.ii_right, "000") + string(this.ii_bottom_color, "000") + string(this.ii_top_color, "000") + string(this.ii_left_color, "000") + string(this.ii_right_color, "000") + string(this.ii_merge_range, "0") + of_get_font_key()
+	li_pos = pos(ls_ret, " ")
+	do while li_pos > 0
+		ls_ret = replace(ls_ret, li_pos, 1, "_")
+		li_pos = pos(ls_ret, " ")
+	loop
+	return ls_ret
+
+// n_xls_format_v97.constructor() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::constructor()
+	this.ib_font = this.invo_sub.to_unicode(this.is_font)
+	return ::message.returnvalue
+
+// n_xls_format_v97.create() returns 0
+	triggerevent("constructor")
+
+// n_xls_format_v97.destroy() returns 0
+	triggerevent("destructor")

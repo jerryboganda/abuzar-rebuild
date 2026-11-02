@@ -1,0 +1,1277 @@
+// window w_incentivesheet (incentivesheet)  ancestor: w_multi_entry
+
+// w_incentivesheet.ue_setitemfocus() returns 0
+	string ls_null
+	setnull(ls_null)
+	if f_stringpreferences("itemcode") = "Y" then
+		this.id_detail.setcolumn("fullcode")
+		this.id_detail.setfocus()
+		return
+	end if
+	this.id_detail.setitem(this.id_detail.getrow(), "itemname", " ")
+	this.id_detail.setcolumn("itemname")
+	this.id_detail.setfocus()
+	this.id_detail.setitem(this.id_detail.getrow(), "itemname", ls_null)
+
+// w_incentivesheet.ue_enableprint() returns 0
+	this.im_menu.m_file.m_print.enabled = true
+
+// w_incentivesheet.wf_assigndatawindowobjects(string as_masterdw, string as_detaildw, string as_footerdw, string as_listdw, string as_printdw) returns 0
+	this.id_master.dataobject = as_masterdw
+	this.id_detail.dataobject = as_detaildw
+	this.id_footer.dataobject = as_footerdw
+	this.id_list.dataobject = as_listdw
+	this.id_print.dataobject = as_printdw
+	this.id_master.settransobject(this.it_transobject)
+	this.id_detail.settransobject(this.it_transobject)
+	this.id_footer.settransobject(this.it_transobject)
+	this.id_list.settransobject(this.it_transobject)
+	this.id_print.settransobject(this.it_transobject)
+
+// w_incentivesheet.wf_closelist() returns 0
+	this.ib_itemslistopen = false
+	this.id_itemslist.hide()
+
+// w_incentivesheet.wf_deleteallemptydetailrows() returns integer
+	long ll_count
+	long ll_deletecount
+	ll_deletecount = 0
+	for ll_count = 1 to this.id_detail.rowcount()
+		if isnull(this.id_detail.getitemnumber(ll_count, "icode")) then
+			ll_deletecount = ll_deletecount + 1
+			this.id_detail.deleterow(ll_count)
+		end if
+	next
+	return ll_deletecount
+
+// w_incentivesheet.wf_fetchserverdate(boolean ab_checked) returns long
+	if ab_checked then
+		this.ib_fetchserverdate = true
+	else
+		this.ib_fetchserverdate = false
+	end if
+	return 0
+
+// w_incentivesheet.wf_findfullcode(string as_fullcode, long al_icode, string al_itemname) returns integer
+	integer ll_retflag
+	long ll_icode
+	string ls_itemname
+	if f_stringpreferences("GroupCategoryRights") = "Y" then
+		SQL SELECT item.icode , item.name INTO :ll_icode, :ls_itemname FROM item WHERE item.customicode =:as_fullcode AND ( item.Restricted ='N' OR ( Item.Restricted ='Y' AND Exists ( select *from grouprights where rightcode =515 and groupcode =:this.il_groupcode ) ) ) AND item.Active =1 AND Item.ICatCode IN ( SELECT ICatCode FROM ItemCategory WHERE ICatCode IN ( SELECT ItemsCategoryCode FROM ItemsGroupCategory WHERE GroupCode IN ( SELECT GroupCode FROM UserGroups WHERE UserCode =:gl_usercode ) ) ) USING this.it_transobject;
+	else
+		SQL SELECT item.icode , item.name INTO :ll_icode, :ls_itemname FROM item WHERE item.customicode =:as_fullcode AND item.Active =1 AND ( item.Restricted ='N' OR ( Item.Restricted ='Y' AND Exists ( select *from grouprights where rightcode =515 and groupcode =:this.il_groupcode ) ) ) USING this.it_transobject;
+	end if
+	if this.it_transobject.sqlcode = 0 then
+		al_icode = ll_icode
+		al_itemname = ls_itemname
+		if isnull(al_icode) then
+			ll_retflag = 0
+		else
+			ll_retflag = 1
+		end if
+	else
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_incentivesheet.wf_genfullcode(long al_icode, string as_fullcode) returns integer
+	integer li_retflag
+	string ls_fullcode
+	long icode
+	long iccode
+	long icatcode
+	long packcode
+	long manfcode
+	SQL SELECT customicode INTO :ls_fullcode FROM item WHERE item.icode =:al_icode USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		li_retflag = 1
+		as_fullcode = ls_fullcode
+	else
+		li_retflag = this.it_transobject.sqlcode
+	end if
+	return li_retflag
+
+// w_incentivesheet.wf_getmaxdate(datetime ad_date) returns integer
+	SQL Select Max ( Date ) INTO :ad_date From saleledger USING this.it_transobject;
+	return this.it_transobject.sqlcode
+
+// w_incentivesheet.wf_isinvoiceinuse(long al_invoiceno) returns boolean
+	long ll_found
+	SQL Select count ( *) INTO :ll_found From IncentiveSheet Where IncentiveDocCode =:al_invoiceno and Posted ='Y' USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		if ll_found = 0 or isnull(ll_found) then
+			ll_found = 0
+			SQL Select count ( *) INTO :ll_found From IncentiveSheet With ( ReadPast , RowLock , UpdLock ) Where IncentiveDocCode =:al_invoiceno USING this.it_transobject;
+			if this.it_transobject.sqlcode = 0 then
+				if ll_found = 0 then
+					return true
+				else
+					return false
+				end if
+			else
+				return false
+			end if
+		else
+			return false
+		end if
+		return
+	end if
+	return false
+
+// w_incentivesheet.wf_isposted(long al_invcode) returns boolean
+	long ll_count
+	SQL SELECT Count ( IncentiveDocCode ) INTO :ll_count FROM IncentiveSheet WHERE IncentiveDocCode =:al_invcode and Posted ='Y' USING sqlca;
+	if sqlca.sqlcode = 0 then
+		if ll_count > 0 then
+			return true
+		else
+			return false
+		end if
+		return
+	end if
+	return false
+
+// w_incentivesheet.wf_print() returns integer
+	integer li_errcode
+	long ll_salesmancode
+	long ll_saleinvcount
+	long ll_count
+	s_arguements lstr_arginfo
+	open(w_salesmanpassword)
+	ll_salesmancode = long(message.doubleparm)
+	setfocus()
+	if ll_salesmancode > 0 then
+		open(w_arg_sinvcode_linvcode)
+		lstr_arginfo = message.powerobjectparm
+		if lstr_arginfo.i_status = 1 then
+			setpointer(hourglass!)
+			for ll_count = lstr_arginfo.l_code1 to lstr_arginfo.l_code2
+				this.id_print.retrieve(ll_count)
+				if this.id_print.rowcount() > 0 then
+					if this.id_print.print() < 0 then
+						messagebox("Printing", "Can not Print Invoice", information!)
+					end if
+				else
+					messagebox("Printing Error", "Can not Print Invoice,~r~nNo rows are retrieved", information!)
+				end if
+			next
+		end if
+	else
+		setfocus()
+	end if
+	setpointer(arrow!)
+	return li_errcode
+
+// w_incentivesheet.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+
+// w_incentivesheet.wf_setfocuswithscroll(string as_colname, long al_row) returns integer
+	this.id_detail.scrolltorow(al_row)
+	this.id_detail.setcolumn(as_colname)
+	this.id_detail.setfocus()
+	this.id_detail.selecttext(1, len(this.id_detail.gettext()))
+	return 1
+
+// w_incentivesheet.wf_validatefullcode(string as_custicode, long al_currrow) returns boolean
+	long ll_icode
+	string ls_fullcode
+	string ls_titleerrtext
+	string ls_errtext
+	integer li_errcode
+	integer li_assgcode
+	integer li_option
+	boolean lb_rtflag
+	boolean ib_due
+	integer li_null
+	string ls_null
+	ls_titleerrtext = "Item Validation"
+	if vf_dwdupcode1(this.id_detail, "icode", string(ll_icode), al_currrow) = true then
+		ls_errtext = "Duplicate item, please select some other item"
+		li_errcode = -1
+	elseif not wf_inititeminfo(ll_icode, this.il_currrow, li_errcode, ls_errtext) then
+		li_errcode = -1
+		ls_titleerrtext = "Item Validation"
+	end if
+	if li_errcode = -1 and not ib_due then
+		lb_rtflag = false
+		messagebox(ls_titleerrtext, ls_errtext)
+		setnull(li_null)
+		setnull(ls_null)
+		this.id_detail.setitem(al_currrow, this.is_columnitemname, ls_null)
+		this.id_detail.setitem(al_currrow, "icode", li_null)
+		this.id_detail.selecttext(1, len(this.id_detail.gettext()))
+	end if
+	return lb_rtflag
+
+// w_incentivesheet.wf_validateitem(boolean ab_flag) returns integer
+	long ll_icode
+	long ll_count
+	long ll_duprow
+	string ls_fullcode
+	string ls_titleerrtext
+	string ls_errtext
+	integer li_errcode
+	integer li_option
+	integer n
+	boolean lb_dupitem
+	boolean lb_zerostock
+	boolean lb_invalidrow
+	integer li_null
+	string ls_null
+	if isnull(this.il_currrow) or this.il_currrow <= 0 then
+		lb_invalidrow = true
+		setnull(ll_icode)
+	else
+		ll_icode = this.id_detail.getitemnumber(this.il_currrow, "icode")
+	end if
+	if not isnull(ll_icode) then
+		if not wf_inititeminfo(ll_icode, this.il_currrow, li_errcode, ls_errtext) then
+			ls_titleerrtext = "Item Validation"
+		end if
+	end if
+	if ab_flag then
+		this.ib_itemvalidated = true
+	end if
+	if li_errcode = -1 then
+		setnull(li_null)
+		setnull(ls_null)
+		if lb_invalidrow = true then
+			li_errcode = -1
+		else
+			ls_titleerrtext = "Item Validation"
+			messagebox(ls_titleerrtext, ls_errtext)
+			if f_stringpreferences("itemcode") = "N" then
+				this.id_detail.setcolumn(this.is_columnitemname)
+				this.ib_itemslistopen = true
+				this.id_itemslist.show()
+			else
+				this.id_detail.setcolumn("fullcode")
+				this.id_detail.object.fullcode[this.il_currrow] = ls_null
+			end if
+			this.id_detail.scrolltorow(this.il_currrow)
+			this.id_detail.object.icode[this.il_currrow] = li_null
+			this.id_detail.object.itemname[this.il_currrow] = ls_null
+			this.id_detail.object.qty[this.il_currrow] = 1
+			this.id_detail.object.incentiverate[this.il_currrow] = 0
+		end if
+	end if
+	return li_errcode
+
+// w_incentivesheet.wf_validateitemnew() returns integer
+	long ll_icode
+	string ls_fullcode
+	string ls_titleerrtext
+	string ls_errtext
+	integer li_errcode
+	ll_icode = this.id_detail.getitemnumber(this.il_currrow, "icode")
+	if vf_dwdupcode1(this.id_detail, "icode", string(ll_icode), this.il_currrow) = true then
+		ls_titleerrtext = "Item Validation"
+		ls_errtext = "Duplicate item, please select some other item"
+		li_errcode = -1
+		messagebox(ls_titleerrtext, ls_errtext)
+	elseif not wf_inititeminfo(ll_icode, this.il_currrow, li_errcode, ls_errtext) then
+		ls_titleerrtext = "Item Validation"
+		li_errcode = -2
+	end if
+	this.ib_itemvalidated = true
+	return li_errcode
+
+// w_incentivesheet.wf_grandtotal() returns double
+	double ld_grandtotal
+	double ld_detaildwtotal
+	real lr_itemstotal
+	if this.id_detail.rowcount() > 0 and this.id_footer.rowcount() > 0 then
+		ld_detaildwtotal = this.id_detail.getitemnumber(1, "c_detaildwtotal")
+		ld_grandtotal = ld_detaildwtotal
+		ld_grandtotal = round(ld_grandtotal, 0)
+		this.id_footer.setitem(1, "amount", ld_grandtotal)
+	end if
+	return ld_grandtotal
+
+// w_incentivesheet.wf_selectprintreport(string as_invoicesize) returns string
+	string ls_report
+	this.id_print.dataobject = ls_report
+	this.id_print.settransobject(this.it_transobject)
+	return ls_report
+
+// w_incentivesheet.wf_post() returns integer
+	integer li_errcode
+	long ll_counter
+	long ll_invcount
+	long ll_invcode
+	long ll_null
+	long ll_glvochcode
+	long ll_vochcode
+	long ll_salesmancode
+	long ll_vochcatcode
+	long ll_acccode
+	long ll_dr_acccode
+	long ll_cr_acccode
+	double ld_amount
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	string ls_remarks
+	string ls_null
+	char lc_posted
+	boolean lb_flag
+	s_arguements lstr_arginfo
+	datastore lds_incentivesheet
+	lds_incentivesheet = create datastore
+	lds_incentivesheet.dataobject = "d_post_incentivesheet"
+	lds_incentivesheet.settransobject(sqlca)
+	setnull(ll_null)
+	setnull(ls_null)
+	open(w_salesmanpassword)
+	ll_salesmancode = long(message.doubleparm)
+	setfocus()
+	if ll_salesmancode > 0 then
+		open(w_arg_sinvcode_linvcode)
+		lstr_arginfo = message.powerobjectparm
+		if lstr_arginfo.i_status = 1 then
+			setpointer(hourglass!)
+			if not wf_validateserverdatetime(ldt_server_datetime, ls_date_errtext) then
+				messagebox("Date Violation", ls_date_errtext, stopsign!)
+				setpointer(arrow!)
+				return -1
+			end if
+			SQL rollback USING sqlca;
+			lds_incentivesheet.retrieve(lstr_arginfo.l_code1, lstr_arginfo.l_code2)
+			ll_invcount = lds_incentivesheet.rowcount()
+			if ll_invcount > 0 then
+				for ll_counter = 1 to ll_invcount
+					ll_invcode = lds_incentivesheet.object.incentivedoccode[ll_counter]
+					if ll_invcode > 0 then
+						sqlca.lockincentivesheet(ll_invcode)
+						if sqlca.sqlcode = 0 then
+							lc_posted = "Y"
+							ll_vochcatcode = 5
+							ll_acccode = 5
+							ll_dr_acccode = lds_incentivesheet.object.dracccode[ll_counter]
+							ll_cr_acccode = lds_incentivesheet.object.cracccode[ll_counter]
+							ld_amount = lds_incentivesheet.object.amount[ll_counter]
+							ls_remarks = lds_incentivesheet.object.remarks[ll_counter]
+							sqlca.createvoucher(ll_vochcatcode, ll_acccode, ldt_server_datetime, ll_salesmancode, lc_posted, ldt_server_datetime, ls_remarks, ldt_server_datetime, ll_null, ll_salesmancode, ls_null, ll_dr_acccode, ll_cr_acccode, ld_amount, ls_null, ls_remarks, ll_null, ll_null, ll_null, ll_null, 0.00, 0.00, ll_glvochcode, ll_vochcode, ll_null)
+							if sqlca.sqlcode <> 0 then
+								messagebox("Posting Problem!", "Problem in creating voucher.~r~nIncentive Doc. Code " + string(ll_invcode) + " and greater can not be posted~r~nDetails: " + this.it_transobject.sqlerrtext, stopsign!)
+								li_errcode = -1
+								exit
+							else
+								SQL update DBO.IncentiveSheet SET Posted ='Y' , PostDate =:ldt_server_datetime , PostedBy =:ll_salesmancode , GlVochCode =:ll_glvochcode WHERE IncentiveDocCode =:ll_invcode AND Posted ='N' USING sqlca;
+								if sqlca.sqlcode <> 0 then
+									messagebox("Posting Problem!", "Problem in creating voucher.~r~nIncentive Doc. Code " + string(ll_invcode) + " and greater can not be posted~r~nDetails: " + this.it_transobject.sqlerrtext, stopsign!)
+									li_errcode = -1
+									exit
+								end if
+							end if
+						else
+							messagebox("Posting Problem!", "Problem in obtaining lock for incentive docuemnt code " + string(ll_invcode) + "~r~nIncentive Doc. Code " + string(ll_invcode) + " and greater can not be posted~r~nDetails: " + this.it_transobject.sqlerrtext, stopsign!)
+							li_errcode = -1
+							exit
+						end if
+					else
+						messagebox("Posting Problem!", "Problem in obtaining incentive docuemnt code " + string(ll_invcode) + "~r~nIncentive Doc. Code " + string(ll_invcode) + " and greater can not be posted~r~nDetails: " + this.it_transobject.sqlerrtext, stopsign!)
+						li_errcode = -1
+						exit
+					end if
+				next
+			else
+				messagebox("Posting Problem!", "No Incentive Sheet is available for posting", information!, ok!)
+				li_errcode = -1
+			end if
+		end if
+		if li_errcode = 0 then
+			SQL commit USING sqlca;
+			if sqlca.sqlcode <> 0 then
+				li_errcode = -1
+			end if
+		else
+			SQL rollback USING sqlca;
+		end if
+	else
+		setfocus()
+	end if
+	setpointer(arrow!)
+	if ll_salesmancode > 0 then
+		if li_errcode = 0 then
+			messagebox("Posting Successfull", "Total unposted rows were " + string(ll_invcount) + "~n~rAll rows have been posted successfully")
+		end if
+	end if
+	return li_errcode
+
+// w_incentivesheet.wf_inititeminfo(long al_icode, long al_row, integer ai_rtcode, string as_errortext) returns boolean
+	boolean retflag
+	long ll_packunits
+	long ll_null
+	string ls_fullcode
+	string ls_name
+	string ls_null
+	string ls_remarks
+	string ls_packingdesc
+	setnull(ll_null)
+	setnull(ls_null)
+	SQL SELECT item.customicode , item.name , item.packunits , item.packingdesc INTO :ls_fullcode, :ls_name, :ll_packunits, :ls_packingdesc FROM item WHERE item.icode =:al_icode USING this.it_transobject;
+	if ll_packunits < 1 or isnull(ll_packunits) then
+		ll_packunits = 1
+	end if
+	if this.it_transobject.sqlcode = -1 then
+		retflag = false
+		as_errortext = "Database Error: Item information can not be retrieved"
+	end if
+	if retflag then
+		this.id_detail.setitem(al_row, this.is_columnitemname, ls_name)
+		this.id_detail.setitem(al_row, "fullcode", ls_fullcode)
+		this.id_detail.setitem(al_row, "icode", al_icode)
+		this.id_detail.setitem(al_row, "packingdesc", ls_packingdesc)
+	else
+		retflag = false
+		as_errortext = "Item can not be selected"
+	end if
+	this.id_detail.setitem(al_row, "itemcode", al_icode)
+	return retflag
+
+// w_incentivesheet.wf_initmodify(integer ai_protect) returns 0
+	long ll_code
+	long ll_icode
+	long ll_counter
+	long ll_count
+	double ld_qty
+	if this.id_master.getitemstring(1, "posted") = "N" then
+		ll_code = this.id_detail.getitemnumber(1, "code")
+		if wf_lockincentivedocument(ll_code) = 0 then
+			this.id_master.retrieve(ll_code)
+			this.id_detail.retrieve(ll_code)
+			if ai_protect = 0 then
+				this.ib_modify = true
+				this.im_menu.m_file.m_save.enabled = true
+				this.im_menu.m_file.m_new.enabled = false
+				this.im_menu.m_file.m_delete.enabled = false
+				this.im_menu.m_item.m_newitem.enabled = true
+				this.im_menu.m_item.m_deleteitem.enabled = true
+				this.im_menu.m_file.m_first.enabled = false
+				this.im_menu.m_file.m_next.enabled = false
+				this.im_menu.m_file.m_previous.enabled = false
+				this.im_menu.m_file.m_last.enabled = false
+				this.im_menu.m_file.m_retrieve.enabled = true
+				this.im_menu.m_file.m_retrieve.text = "Lis&t"
+				this.tab_retrieve.tabpage_detail.enabled = true
+			end if
+			return
+		end if
+		messagebox("Cannot Modify", "This Incentive Document is already in use. Document Code = " + string(ll_code))
+	end if
+
+// w_incentivesheet.wf_lockincentivedocument(long al_code) returns integer
+	integer li_count
+	this.it_transobject.dbparm = " Async =1, DBGetTime = 20"
+	this.it_transobject.lockincentivesheet(al_code)
+	this.it_transobject.dbparm = "Async =0, DBGetTime = 0"
+	return this.it_transobject.sqlcode
+
+// w_incentivesheet.wf_populatedetail(long al_invid, datawindow ad_saledetail, string as_errortext, long al_errorrow) returns boolean
+	long ll_detailrows
+	long ll_icode
+	long ll_errrowid
+	long ll_salesmancode
+	long li_counter
+	long li_innercounter
+	long ll_itemsdetailrowcount
+	long ll_rowgroup
+	long ll_row
+	boolean lb_commitflag
+	dwitemstatus ldws_column
+	ll_detailrows = this.id_detail.rowcount()
+	li_counter = 1
+	ll_itemsdetailrowcount = 0
+	as_errortext = "    Some database problem ocuurs         "
+	ll_rowgroup = 0
+	do while li_counter <= ll_detailrows and lb_commitflag
+		ll_rowgroup = ll_rowgroup + 1
+		ll_icode = this.id_detail.getitemnumber(li_counter, "icode")
+		ll_row = ad_saledetail.insertrow(0)
+		ad_saledetail.setitem(ll_row, "code", al_invid)
+		ad_saledetail.setitem(ll_row, "icode", this.id_detail.getitemnumber(li_counter, "icode"))
+		ad_saledetail.setitem(ll_row, "qty", this.id_detail.getitemnumber(li_counter, "qty"))
+		ad_saledetail.setitem(ll_row, "incentiverate", this.id_detail.getitemnumber(li_counter, "incentiverate"))
+		li_counter = li_counter + 1
+	loop
+	if not lb_commitflag then
+		al_errorrow = li_counter - 1
+		messagebox("Database Error", as_errortext)
+	end if
+	return lb_commitflag
+
+// w_incentivesheet.wf_deleteincentivesheet(long al_code) returns long
+	SQL Delete IncentiveSheetDetail Where IncentiveDocCode =:al_code USING this.it_transobject;
+	return this.it_transobject.sqlcode
+
+// w_incentivesheet.wf_gen_sale_incentive_sheet() returns long
+	string ls_grouping
+	string ls_errortext
+	s_arguements ls_arg
+	datastore lds_detail
+	long[] ll_grouplist
+	long ll_totalrows
+	long ll_rowcount
+	long ll_detailrows
+	long ll_icode
+	long ll_custcode
+	long ll_counter
+	long ll_retcode
+	integer li_errcode
+	boolean lb_enablesave
+	if wf_iseditable() = false then
+		return 0
+	end if
+	open(w_selection_manf_cat_class_packing)
+	ls_grouping = message.stringparm
+	openwithparm(w_arg_grouping, ls_grouping)
+	ls_arg = message.powerobjectparm
+	ll_grouplist = ls_arg.ia_integerlist
+	open(w_arg_cust_sdate_ldate)
+	ls_arg = message.powerobjectparm
+	if ls_arg.i_status = -1 then
+		return -1
+	end if
+	ll_custcode = ls_arg.l_code1
+	if isnull(ll_custcode) or ll_custcode = 0 then
+		messagebox("Customer Validation", "Can not populate Sales Qty from Sales Record~r~nPlease Select Valid Customer")
+		this.id_master.setcolumn("suppcode")
+		this.id_master.setfocus()
+		return -1
+	else
+		this.id_master.object.cracccode[this.id_master.rowcount()] = ll_custcode
+		this.id_master.object.dracccode[this.id_master.rowcount()] = this.gt_discountrecallowedacc
+		this.id_master.object.remarks[this.id_master.rowcount()] = "Sales Incentive Sheet for the period (" + trim(string(ls_arg.d_sdate, "dd-mm-yyyy")) + " To " + trim(string(ls_arg.d_edate, "dd-mm-yyyy")) + ")"
+		this.id_master.object.startdate[this.id_master.rowcount()] = ls_arg.d_sdate
+		this.id_master.object.enddate[this.id_master.rowcount()] = ls_arg.d_edate
+	end if
+	lds_detail = create datastore
+	lds_detail.dataobject = "d_gen_sale_incentive_sheet"
+	lds_detail.settransobject(this.it_transobject)
+	ll_totalrows = lds_detail.retrieve(ll_custcode, ls_arg.d_sdate, ls_arg.d_edate, ls_grouping, ll_grouplist)
+	if ll_totalrows < 0 then
+		messagebox("Database Problem", "Sales Qty Record List can not fetch due to a database problem", stopsign!, ok!)
+		return -1
+	end if
+	ll_totalrows = lds_detail.rowcount()
+	if ll_totalrows > 0 then
+		lb_enablesave = true
+	end if
+	ll_counter = 0
+	ll_detailrows = this.id_detail.rowcount()
+	for ll_counter = 1 to ll_detailrows
+		event ue_deleteitem()
+	next
+	ll_counter = 0
+	for ll_rowcount = 1 to ll_totalrows
+		ll_counter = this.id_detail.insertrow(0)
+		ll_icode = lds_detail.object.icode[ll_rowcount]
+		if wf_inititeminfo(ll_icode, ll_rowcount, li_errcode, ls_errortext) then
+			this.id_detail.object.icode[ll_counter] = ll_icode
+			this.id_detail.object.fullcode[ll_counter] = lds_detail.object.customicode[ll_rowcount]
+			this.id_detail.object.itemname[ll_counter] = lds_detail.object.itemname[ll_rowcount]
+			this.id_detail.object.qty[ll_counter] = lds_detail.object.qty[ll_rowcount]
+		else
+			event ue_deleteitem()
+		end if
+	next
+	if lb_enablesave then
+		this.im_menu.m_file.m_save.enabled = true
+		this.im_menu.m_file.m_print.enabled = true
+	end if
+	destroy lds_detail
+	return ll_retcode
+
+// w_incentivesheet.wf_gen_pur_incentive_sheet() returns long
+	string ls_grouping
+	string ls_errortext
+	s_arguements ls_arg
+	datastore lds_detail
+	long[] ll_grouplist
+	long ll_totalrows
+	long ll_rowcount
+	long ll_detailrows
+	long ll_icode
+	long ll_suppcode
+	long ll_counter
+	long ll_retcode
+	integer li_errcode
+	boolean lb_enablesave
+	if wf_iseditable() = false then
+		return 0
+	end if
+	open(w_selection_manf_cat_class_packing)
+	ls_grouping = message.stringparm
+	openwithparm(w_arg_grouping, ls_grouping)
+	ls_arg = message.powerobjectparm
+	ll_grouplist = ls_arg.ia_integerlist
+	open(w_arg_supp_sdate_ldate)
+	ls_arg = message.powerobjectparm
+	if ls_arg.i_status = -1 then
+		return -1
+	end if
+	ll_suppcode = ls_arg.l_code1
+	if isnull(ll_suppcode) or ll_suppcode = 0 then
+		messagebox("Supplier Validation", "Can not populate Purchase Qty from Purchase Record~r~nPlease Select Valid Supplier")
+		this.id_master.setcolumn("suppcode")
+		this.id_master.setfocus()
+		return -1
+	else
+		this.id_master.object.dracccode[this.id_master.rowcount()] = ll_suppcode
+		this.id_master.object.cracccode[this.id_master.rowcount()] = this.gt_discountrecallowedacc
+		this.id_master.object.remarks[this.id_master.rowcount()] = "Pur. Incentive Sheet for the period (" + trim(string(ls_arg.d_sdate, "dd-mm-yyyy")) + " To " + trim(string(ls_arg.d_edate, "dd-mm-yyyy")) + ")"
+		this.id_master.object.startdate[this.id_master.rowcount()] = ls_arg.d_sdate
+		this.id_master.object.enddate[this.id_master.rowcount()] = ls_arg.d_edate
+	end if
+	lds_detail = create datastore
+	lds_detail.dataobject = "d_gen_pur_incentive_sheet"
+	lds_detail.settransobject(this.it_transobject)
+	ll_totalrows = lds_detail.retrieve(ll_suppcode, ls_arg.d_sdate, ls_arg.d_edate, ls_grouping, ll_grouplist)
+	if ll_totalrows < 0 then
+		messagebox("Database Problem", "Purchase Qty Record List can not fetch due to a database problem", stopsign!, ok!)
+		return -1
+	end if
+	ll_totalrows = lds_detail.rowcount()
+	if ll_totalrows > 0 then
+		lb_enablesave = true
+	end if
+	ll_counter = 0
+	ll_detailrows = this.id_detail.rowcount()
+	for ll_counter = 1 to ll_detailrows
+		event ue_deleteitem()
+	next
+	ll_counter = 0
+	for ll_rowcount = 1 to ll_totalrows
+		ll_counter = this.id_detail.insertrow(0)
+		ll_icode = lds_detail.object.icode[ll_rowcount]
+		if wf_inititeminfo(ll_icode, ll_rowcount, li_errcode, ls_errortext) then
+			this.id_detail.object.icode[ll_counter] = ll_icode
+			this.id_detail.object.fullcode[ll_counter] = lds_detail.object.customicode[ll_rowcount]
+			this.id_detail.object.itemname[ll_counter] = lds_detail.object.itemname[ll_rowcount]
+			this.id_detail.object.qty[ll_counter] = lds_detail.object.qty[ll_rowcount]
+		else
+			event ue_deleteitem()
+		end if
+	next
+	if lb_enablesave then
+		this.im_menu.m_file.m_save.enabled = true
+		this.im_menu.m_file.m_print.enabled = true
+	end if
+	destroy lds_detail
+	return ll_retcode
+
+// w_incentivesheet.create() returns 0
+	integer icurrent
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_incentivessheet" then
+		this.menuid = create m_incentivessheet
+	end if
+	this.dw_saleinvrep = create dw_saleinvrep
+	this.ic_cashdrawerprinter = create ic_cashdrawerprinter
+	this.ic_comport = create ic_comport
+	this.ic_drawerport = create ic_drawerport
+	this.dw_saleinvdetail = create dw_saleinvdetail
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_saleinvrep
+	this.control[icurrent + 2] = this.ic_cashdrawerprinter
+	this.control[icurrent + 3] = this.ic_comport
+	this.control[icurrent + 4] = this.ic_drawerport
+	this.control[icurrent + 5] = this.dw_saleinvdetail
+
+// w_incentivesheet.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_saleinvrep
+	destroy this.ic_cashdrawerprinter
+	destroy this.ic_comport
+	destroy this.ic_drawerport
+	destroy this.dw_saleinvdetail
+
+// w_incentivesheet.ue_save() returns 0
+	long ll_detailrows
+	long ll_counter2
+	long ll_mastercurrrow
+	long ll_footercurrrow
+	long ll_invid
+	long ll_icode
+	long ll_errrowid
+	long ll_salesmancode
+	long ll_counter
+	long ll_count
+	long ll_null
+	long ll_modifycount
+	long ll_found
+	boolean lb_commitflag
+	boolean lb_continue
+	integer li_counter
+	integer li_filehandle
+	integer li_maxretcode
+	string ls_errtext
+	string ls_holdstring
+	string ls_drawermessage
+	string ls_askuserpwd
+	s_salesman lstr_salesman
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	string ls_itemname
+	string ls_messagetext
+	if this.tab_retrieve.selectedtab = 2 then
+		return
+	end if
+	if wf_iseditable() = false then
+		return
+	end if
+	if this.ib_itemvalidated = false and wf_validateitem(true) = -1 then
+		this.id_detail.setfocus()
+		return
+	end if
+	wf_deleteemptydetailrow()
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_footer) < 0 then
+		return
+	end if
+	if this.id_detail.rowcount() < 1 then
+		messagebox("Rows Validation", "Please insert a row before proceeding")
+		return
+	end if
+	ll_found = this.id_detail.find("qty <= 0 ", 1, this.id_detail.rowcount())
+	if ll_found > 0 then
+		messagebox("Qty Validation", "Please Enter Valid Qty in Row " + string(ll_found))
+		this.id_detail.setfocus()
+		this.id_detail.scrolltorow(ll_found)
+		this.id_detail.setcolumn("qty")
+		return
+	end if
+	setpointer(hourglass!)
+	if not wf_validateserverdatetime(ldt_server_datetime, ls_date_errtext) then
+		messagebox("Date Violation", ls_date_errtext, stopsign!)
+		return
+	end if
+	wf_grandtotal()
+	this.id_footer.accepttext()
+	this.id_master.setitem(1, "amount", this.id_footer.getitemnumber(1, "amount"))
+	open(w_salesmanpassword)
+	ll_salesmancode = long(message.doubleparm)
+	setfocus()
+	if ll_salesmancode > 0 then
+		ll_mastercurrrow = this.id_master.getrow()
+		ll_invid = this.id_master.getitemnumber(ll_mastercurrrow, "code")
+		if isnull(ll_invid) then
+			li_maxretcode = wf_tabnewid("incentivesheet", ll_invid)
+			if li_maxretcode < 0 then
+				SQL rollback USING this.it_transobject;
+				messagebox("DataBase Problem", "Transaction is Rollback Due to Problem in~r~n ~t~t~t~t~t~t~t~t~t~t~t~t~tgenerating Incentive Document Code")
+				return
+			end if
+			if ll_invid > 0 then
+				this.id_master.setitem(ll_mastercurrrow, "code", ll_invid)
+			end if
+		end if
+		if this.ib_modify then
+			if not this.ib_modifydate then
+				if not wf_getserverdatetime(ldt_server_datetime, ls_date_errtext) then
+					messagebox("Date Violation", ls_date_errtext, stopsign!)
+					return
+				end if
+			else
+				ldt_server_datetime = this.id_master.getitemdatetime(ll_mastercurrrow, "date")
+			end if
+			this.id_master.setitem(ll_mastercurrrow, "date", ldt_server_datetime)
+			this.idt_server_datetime = ldt_server_datetime
+			if wf_deleteincentivesheet(ll_invid) <> 0 then
+				lb_continue = false
+			end if
+		else
+			this.id_master.setitem(ll_mastercurrrow, "usercode", ll_salesmancode)
+			if not this.ib_modifydate then
+				if not wf_getserverdatetime(ldt_server_datetime, ls_date_errtext) then
+					messagebox("Date Violation", ls_date_errtext, stopsign!)
+					return
+				end if
+			else
+				ldt_server_datetime = this.id_master.getitemdatetime(ll_mastercurrrow, "date")
+			end if
+			this.idt_server_datetime = ldt_server_datetime
+			this.id_master.setitem(ll_mastercurrrow, "date", ldt_server_datetime)
+		end if
+		if lb_continue then
+			this.id_saleinvdetail.reset()
+			if not wf_populatedetail(ll_invid, this.id_saleinvdetail, ls_errtext, ll_errrowid) then
+				lb_continue = false
+				this.id_detail.scrolltorow(ll_errrowid)
+				this.id_detail.setfocus()
+			else
+				this.id_detail = this.id_saleinvdetail
+				if this.id_master.update(true, false) > 0 then
+					if this.id_detail.update() > 0 then
+						SQL commit USING this.it_transobject;
+						messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+						this.ib_commitok = true
+						this.id_master.resetupdate()
+						this.im_menu.m_file.m_new.enabled = true
+						this.editflag = false
+						if gd_recenttransdate < this.id_systemdate then
+							gd_recenttransdate = this.id_systemdate
+						end if
+					else
+						SQL rollback USING this.it_transobject;
+						messagebox("Saving Problem", "Changes do not effect in database~r~nReasons are:~r~n" + this.it_transobject.sqlerrtext, stopsign!, ok!, 1)
+						lb_continue = false
+						setpointer(arrow!)
+					end if
+				else
+					SQL rollback USING this.it_transobject;
+					messagebox("Saving Problem", "Changes do not effect in database~r~nReasons are:~r~n" + this.it_transobject.sqlerrtext, stopsign!, ok!, 1)
+					lb_continue = false
+					setpointer(arrow!)
+				end if
+				if this.ib_commitok then
+					this.ib_modify = false
+				elseif this.ib_modify = false then
+					setnull(ll_null)
+					this.id_master.setitem(1, "Code", ll_null)
+					this.id_master.accepttext()
+				end if
+				this.id_detail = this.tab_retrieve.tabpage_detail.dw_itemsdetail
+				this.id_saleinvdetail.reset()
+			end if
+		end if
+		if not lb_continue then
+			SQL rollback USING this.it_transobject;
+			if this.ib_modify = false then
+				setnull(ll_null)
+				this.id_master.setitem(1, "Code", ll_null)
+				this.id_master.accepttext()
+			end if
+		end if
+	else
+		setfocus()
+	end if
+	setpointer(arrow!)
+
+// w_incentivesheet.ue_newform() returns 0
+	integer rtncode
+	long li_fetched_code
+	long row
+	long ll_manfcode
+	long ll_counter
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	m_incentivessheet lm_menu
+	call super::ue_newform
+	lm_menu = this.menuid
+	this.id_footer.reset()
+	this.id_footer.insertrow(0)
+	this.id_footer.scrolltorow(0)
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_menu.m_file.m_post.enabled = false
+	this.id_detail.setredraw(false)
+	wf_protectdw(this.id_master, 0)
+	wf_protectdw(this.id_detail, 0)
+	wf_protectdw(this.id_footer, 0)
+	this.id_detail.setredraw(true)
+	this.ib_modify = false
+	if not wf_validatedate() then
+		close(this)
+	end if
+	if this.ib_modifydate then
+		if this.ib_fetchserverdate then
+			wf_getserverdatetime(ldt_server_datetime, ls_date_errtext)
+			this.id_master.setitem(this.id_master.getrow(), "date", ldt_server_datetime)
+			return
+		end if
+		this.id_master.setitem(this.id_master.getrow(), "date", today())
+	end if
+
+// w_incentivesheet.ue_detail() returns 0
+	integer li_rtncode
+	integer li_protect
+	long ll_row
+	long ll_code
+	long ll_counter
+	boolean lb_flag
+	boolean lb_modify
+	m_incentivessheet lm_menu
+	long ll_rowcount
+	long ll_validinv
+	double ld_code
+	lm_menu = this.menuid
+	this.tab_retrieve.tabpage_list.em_invno.getdata(ld_code)
+	if ld_code = 0.0 then
+		ld_code = this.id_list.object.code[this.il_selectedrow]
+	else
+		SQL select count ( *) INTO :ll_validinv from IncentiveSheet where IncentiveDocCode =:ld_code USING this.it_transobject;
+		if ll_validinv <> 1 then
+			this.id_detail.reset()
+			messagebox("Doc. Code Validation", "Incentive Doc. Code does not exist")
+			this.tab_retrieve.selecttab(2)
+			return
+		end if
+	end if
+	if wf_isinvoiceinuse(ld_code) = true then
+		messagebox("Document Code Validation", "Incentive document already in use by some other user.~r~nKindly try again after sometime or open some other Incentive Document.")
+		this.tab_retrieve.selecttab(2)
+		return
+	end if
+	this.im_menu.m_file.m_retrieve.text = "Lis&t"
+	this.im_menu.m_file.m_print.enabled = true
+	this.i_editmode = 2
+	this.i_retrievemode = 2
+	this.id_dwcontrol = this.id_master
+	ll_rowcount = wf_retrieve(ld_code)
+	this.id_master.setrow(1)
+	this.id_master.scrolltorow(1)
+	this.id_dwcontrol = this.id_footer
+	wf_retrieve(ld_code)
+	this.id_footer.setrow(1)
+	this.id_footer.scrolltorow(1)
+	this.id_dwcontrol = this.id_detail
+	wf_retrieve(ld_code)
+	this.id_master.setcolumn(1)
+	this.id_master.setfocus()
+	this.id_dwcontrol = this.id_list
+	setredraw(false)
+	this.im_menu.m_file.m_post.enabled = false
+	if this.id_master.getitemstring(this.id_master.getrow(), "Posted") = "N" then
+		lb_modify = true
+	end if
+	if not lb_modify then
+		this.im_menu.m_file.m_save.enabled = false
+		this.editflag = false
+	else
+		li_protect = 0
+		wf_initmodify(li_protect)
+		if f_stringpreferences("itemcode") = "Y" then
+			this.id_detail.setcolumn("fullcode")
+		else
+			this.id_detail.setcolumn("itemname")
+		end if
+	end if
+	if this.id_master.getitemstring(this.id_master.getrow(), "Posted") = "N" then
+		wf_protectdw(this.id_master, 0)
+		wf_protectdw(this.id_detail, 0)
+		wf_protectdw(this.id_footer, 0)
+	else
+		wf_protectdw(this.id_master, li_protect)
+		wf_protectdw(this.id_detail, li_protect)
+		wf_protectdw(this.id_footer, li_protect)
+	end if
+	if li_protect = 0 then
+		lb_flag = true
+	end if
+	wf_grandtotal()
+	this.id_master.setfocus()
+	setredraw(true)
+
+// w_incentivesheet.ue_newitem() returns 0
+	long ll_rowcount
+	setnull(this.is_aliasname)
+	if this.ib_itemvalidated = false and wf_validateitem(true) = -1 then
+		this.id_detail.setfocus()
+		return
+	end if
+	if this.id_detail.rowcount() > 0 and f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	if f_stringpreferences("itemcode") = "N" then
+		this.id_detail.setcolumn(this.is_columnitemname)
+	else
+		this.id_detail.setcolumn("fullcode")
+	end if
+	this.id_detail.insertrow(0)
+	ll_rowcount = this.id_detail.rowcount()
+	if ll_rowcount > 1 then
+		this.id_detail.scrolltorow(ll_rowcount)
+		this.id_detail.setfocus()
+	end if
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_print.enabled = true
+	this.ib_validatefullcode = true
+
+// w_incentivesheet.ue_deleteitem() returns 0
+	long ll_currow
+	long ll_detailrows
+	this.ib_itemvalidated = true
+	this.id_detail.deleterow(0)
+	ll_detailrows = this.id_detail.rowcount()
+	if ll_detailrows < 1 then
+		this.im_menu.m_file.m_save.enabled = false
+	end if
+	wf_grandtotal()
+	if this.id_detail.rowcount() > 0 then
+		return
+	end if
+	this.im_menu.m_file.m_print.enabled = false
+	this.im_menu.m_file.m_save.enabled = false
+
+// w_incentivesheet.close() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::close()
+	this.id_itemslist.sharedataoff()
+	return 1
+
+// w_incentivesheet.ue_list() returns 0
+	long ll_row
+	m_incentivessheet lm_menu
+	call super::ue_list
+	lm_menu = this.menuid
+	SQL rollback USING this.it_transobject;
+	this.im_menu.m_file.m_post.enabled = true
+	this.im_menu.m_file.m_print.enabled = false
+	this.ib_modify = false
+	this.id_itemslist.hide()
+	if this.id_detail.rowcount() > 0 then
+		postevent("ue_deleteitem")
+	end if
+	this.tab_retrieve.tabpage_list.em_invno.selecttext(1, 7)
+	this.tab_retrieve.tabpage_list.em_invno.clear()
+	ll_row = wf_retrievelist()
+	wf_disabledetailtab(ll_row)
+	post event ue_enableprint()
+	this.editflag = false
+	this.im_menu.m_file.m_save.enabled = false
+
+// w_incentivesheet.ue_print() returns 0
+	long ll_row
+	long ll_invcode
+	long ll_counter
+	string ls_posted
+	integer li_option
+	boolean lb_listtab
+	s_datastore lstr
+	call super::ue_print
+	if this.tab_retrieve.selectedtab = 2 then
+		lb_listtab = true
+	end if
+	if this.im_menu.m_file.m_save.enabled = true and lb_listtab = false then
+		if this.ib_modify then
+			li_option = messagebox("Save Changes", "Do you want to save incentive sheet", information!, yesno!, 2)
+			if li_option = 1 then
+				triggerevent("ue_save")
+				if wf_commitform() = false then
+					return
+				end if
+			else
+				event ue_newitem()
+			end if
+		else
+			triggerevent("ue_save")
+			if wf_commitform() = false then
+				return
+			end if
+		end if
+		return
+	end if
+	if lb_listtab then
+		if isnull(this.id_list.getrow()) or this.id_list.getrow() <= 0 then
+			messagebox("Rows Validation", "Kindly select any row from the list view.")
+			return
+		end if
+		ll_invcode = this.id_list.getitemnumber(this.id_list.getrow(), "code")
+		if isnull(ll_invcode) or ll_invcode <= 0 then
+			messagebox("Selection Validation", "Kindly select any row from the list view.")
+			return
+		end if
+	else
+		ll_invcode = this.id_master.getitemnumber(1, "code")
+	end if
+	this.id_print.retrieve(ll_invcode)
+	if lb_listtab then
+		lstr.dw = this.id_print
+		lstr.s_name1 = this.id_print.dataobject
+		openwithparm(w_preview_invoices, lstr)
+		lstr = message.powerobjectparm
+		if lstr.i_closemode = -1 then
+			return
+		end if
+		return
+	end if
+	if f_stringpreferences("saleaskforcopies") = "Y" then
+		open(w_printer_copies)
+		this.id_print.object.datawindow.print.copies = string(message.doubleparm)
+	end if
+	if f_stringpreferences("PromptBeforePrinting") = "Y" and printsetup() < 0 then
+		messagebox("Printer", "Printing Error")
+		this.id_print.printcancel()
+	end if
+	if this.id_print.rowcount() > 0 then
+		if this.id_print.print() < 0 then
+			messagebox("Printing", "Can not Print Incentive Document", information!)
+		end if
+		if this.im_menu.m_file.m_save.enabled = true and lb_listtab = false then
+			postevent("ue_new")
+		end if
+		return
+	end if
+	messagebox("Printing Error", "Can not Print Invoice,~r~nNo rows are retrieved", information!)
+
+// w_incentivesheet.ue_refreshddw() returns 0
+	call super::ue_refreshddw
+	setpointer(hourglass!)
+	this.idc_dracc.setredraw(false)
+	this.idc_dracc.settransobject(this.it_transobject)
+	this.idc_dracc.retrieve()
+	this.idc_dracc.setredraw(true)
+	this.idc_cracc.setredraw(false)
+	this.idc_cracc.settransobject(this.it_transobject)
+	this.idc_cracc.retrieve()
+	this.idc_cracc.setredraw(true)
+	setpointer(arrow!)
+
+// w_incentivesheet.ue_new() returns 0
+	call super::ue_new
+	this.im_menu.m_file.m_post.enabled = false
+
+// w_incentivesheet.ue_postopen() returns 0
+	m_incentivessheet lm_menu
+	integer li_rtncode
+	long ll_counter
+	long ll_found
+	call super::ue_postopen
+	lm_menu = this.menuid
+	this.gt_discountrecallowedacc = f_getglobalcode("GT_DiscountRecAllowedAcc")
+	setredraw(false)
+	this.id_print = this.dw_saleinvrep
+	this.id_saleinvdetail = this.dw_saleinvdetail
+	this.id_saleinvdetail.settransobject(this.it_transobject)
+	this.title = "Incentive Sheet"
+	wf_assigndatawindowobjects("d_incentivesheet_header", "d_incentivesheet_detail", "d_incentivesheet_footer", "d_incentivesheet_list", "d_incentivesheet_print")
+	li_rtncode = this.id_master.getchild("dracccode", this.idc_dracc)
+	if li_rtncode = -1 then
+		messagebox("Error!", "Can not get a DataWindowChild")
+		close(this)
+	end if
+	this.idc_dracc.settransobject(this.it_transobject)
+	this.idc_dracc.retrieve()
+	li_rtncode = this.id_master.getchild("cracccode", this.idc_dracc)
+	if li_rtncode = -1 then
+		messagebox("Error!", "Can not get a DataWindowChild")
+		close(this)
+	end if
+	this.idc_cracc.settransobject(this.it_transobject)
+	this.idc_cracc.retrieve()
+	this.im_menu.m_file.m_post.visible = true
+	this.im_menu.m_file.m_post.toolbaritemvisible = true
+	this.im_menu.m_file.m_post.enabled = true
+	this.il_groupcode = f_getgroupcode(gl_usercode)
+	if isnull(this.il_groupcode) then
+		messagebox("Problem identifying User Group", "Contact System Administrator for your group settings.")
+		close(this)
+		return
+	end if
+	this.id_itemslist.object.t_stock.visible = true
+	this.id_itemslist.object.stock.visible = true
+	if f_stringpreferences("packingdescinsale") = "N" then
+		this.id_detail.object.packingdesc.visible = false
+	end if
+	if f_stringpreferences("manufacturer") = "N" then
+		this.id_itemslist.object.manufacturer.visible = false
+	end if
+	if f_stringpreferences("itemname") = "N" then
+		this.id_itemslist.object.itemname.visible = false
+	end if
+	if f_stringpreferences("packing") = "N" then
+		this.id_itemslist.object.packing.visible = false
+	end if
+	if f_stringpreferences("packunits") = "N" then
+		this.id_itemslist.object.packunits.visible = false
+	end if
+	if f_stringpreferences("saleprice") = "N" then
+		this.id_itemslist.object.saleprice.visible = false
+	end if
+	if f_stringpreferences("ShowTransitStockInItemList") = "N" then
+		this.id_itemslist.object.transitstock.visible = false
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 587", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.id_itemslist.object.purprice.visible = true
+	else
+		this.id_itemslist.object.purprice.visible = false
+	end if
+	if f_stringpreferences("stock") = "N" then
+		this.id_itemslist.object.stock.visible = false
+	end if
+	if f_stringpreferences("itemcode") = "N" then
+		this.id_detail.object.fullcode.visible = false
+	end if
+	gd_itemsinfo.sharedata(this.id_itemslist)
+	this.id_footer.reset()
+	this.id_footer.insertrow(0)
+	this.id_footer.scrolltorow(0)
+	this.id_master.accepttext()
+	f_setcolumnstyle(this.id_detail, "Qty")
+	setredraw(true)
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 563", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.id_master.object.date.protect = 0
+		this.id_master.object.date.background.color = rgb(255, 255, 255)
+		this.ib_modifydate = true
+		lm_menu.m_file.m_setserverdate.visible = true
+		lm_menu.m_file.m_setserverdate.enabled = true
+	end if
+	if not this.ib_modifydate then
+		this.id_master.object.date.protect = 1
+		this.id_master.settaborder("date", 0)
+		lm_menu.m_file.m_setserverdate.visible = false
+		lm_menu.m_file.m_setserverdate.enabled = false
+	end if
+	if f_islicenseexpire() = -2 then
+		close(this)
+	end if
+
+// ic_comport.ue_show() returns long
+	this.object.portopen = true
+	this.object.portopen = false
+	return 1
+
+// ic_comport.constructor() returns long
+	integer li_defaultcomport
+	if f_stringpreferences("DisplayPool") = "Y" then
+		li_defaultcomport = f_numberpreferences("DefaultComPort")
+		if isnull(li_defaultcomport) then
+			li_defaultcomport = 1
+		end if
+		this.object.commport = li_defaultcomport
+		this.object.settings = "9600,N,8,1"
+		this.object.inputlen = 0
+	end if
+	return ::message.returnvalue
+
+// ic_drawerport.constructor() returns long
+	integer li_defaultcomport
+	if f_stringpreferences("CashDrawer") = "Y" then
+		li_defaultcomport = f_numberpreferences("CashDrawerComPort")
+		if isnull(li_defaultcomport) then
+			li_defaultcomport = 1
+		end if
+		this.object.commport = li_defaultcomport
+		this.object.settings = "300,N,8,1"
+		this.object.inputlen = 0
+	end if
+	return ::message.returnvalue

@@ -1,0 +1,136 @@
+// window w_userspermission (multientrygroups)  ancestor: w_multi_entry
+
+// w_userspermission.wf_validateitem() returns integer
+	long ll_icode
+	integer li_errcode
+	ll_icode = this.id_detail.getitemnumber(this.il_currrow, "rightcode")
+	if vf_dwdupcode1(this.id_detail, "rightcode", string(ll_icode), this.il_currrow) = true then
+		messagebox("Duplication Error", "Current row is duplicate")
+		li_errcode = -1
+	else
+		li_errcode = 0
+	end if
+	this.ib_itemvalidated = true
+	return li_errcode
+
+// w_userspermission.create() returns 0
+	integer icurrent
+	call super::create
+	this.dw_rights = create dw_rights
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_rights
+
+// w_userspermission.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_rights
+
+// w_userspermission.ue_save() returns 0
+	long ll_mastercurrrow
+	long ll_invid
+	long ll_detailrows
+	long li_ldsrow
+	integer li_counter
+	integer ll_salesmancode
+	boolean lb_commitflag
+	ll_mastercurrrow = this.id_master.getrow()
+	ll_invid = this.id_master.object.code[ll_mastercurrrow]
+	SQL Delete userrights Where usercode =:ll_invid USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		lb_commitflag = false
+	end if
+	this.id_rights.reset()
+	ll_detailrows = this.id_detail.rowcount()
+	do while li_counter <= ll_detailrows and lb_commitflag = true
+		if this.id_detail.getitemstring(li_counter, "checked") = "Y" then
+			this.id_rights.insertrow(0)
+			this.id_rights.setitem(li_ldsrow, "usercode", ll_invid)
+			this.id_rights.setitem(li_ldsrow, "rightcode", this.id_detail.getitemnumber(li_counter, "rightcode"))
+			if this.id_detail.getitemnumber(li_counter, "status") = 1.0 then
+				this.id_rights.setitem(li_ldsrow, "status", 1)
+			else
+				this.id_rights.setitem(li_ldsrow, "status", 0)
+			end if
+			li_ldsrow = li_ldsrow + 1
+		end if
+		li_counter = li_counter + 1
+	loop
+	this.id_detail = this.id_rights
+	if this.id_detail.rowcount() <= 0 then
+		return
+	end if
+	if lb_commitflag then
+		setpointer(hourglass!)
+		if this.id_master.update(true, false) < 0 then
+			SQL rollback USING this.it_transobject;
+			setpointer(arrow!)
+			return
+		end if
+		if this.id_detail.update() > 0 then
+			SQL commit USING this.it_transobject;
+			messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+			this.ib_commitok = true
+			this.id_master.resetupdate()
+			this.im_menu.m_file.m_new.enabled = true
+			this.editflag = false
+		else
+			SQL rollback USING this.it_transobject;
+			setpointer(arrow!)
+			return
+		end if
+	else
+		SQL rollback USING this.it_transobject;
+		setpointer(arrow!)
+		return
+	end if
+	this.id_detail = this.tab_retrieve.tabpage_detail.dw_itemsdetail
+	this.id_rights.reset()
+	setpointer(arrow!)
+
+// w_userspermission.ue_detail() returns 0
+	integer li_counter
+	integer li_count
+	integer li_code
+	call super::ue_detail
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_delete.enabled = true
+	this.im_menu.m_file.m_first.enabled = true
+	this.im_menu.m_file.m_next.enabled = true
+	this.im_menu.m_file.m_last.enabled = true
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_menu.m_file.m_previous.enabled = true
+	li_code = this.id_master.getitemnumber(this.id_master.getrow(), "code")
+	if isnull(li_code) then
+		this.im_menu.m_file.m_save.enabled = false
+	end if
+	this.id_rights.retrieve(li_code)
+	for li_counter = 1 to li_counter
+		for li_count = 1 to li_count
+			if this.id_detail.getitemnumber(li_counter, "rightcode") = this.id_rights.getitemnumber(li_count, "rightcode") then
+				this.id_detail.setitem(li_counter, "checked", "Y")
+				this.id_detail.setitem(li_counter, "status", this.id_rights.getitemnumber(li_count, "status"))
+			end if
+		next
+	next
+
+// w_userspermission.ue_newitem() returns 0
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	call super::ue_newitem
+
+// w_userspermission.ue_newform() returns 0
+	call super::ue_newform
+	this.id_master.setfocus()
+	if isnull(this.id_master.getitemnumber(this.id_master.getrow(), "Code")) then
+		this.im_menu.m_file.m_save.enabled = false
+	end if
+	this.im_menu.m_item.m_newitem.toolbaritemvisible = false
+	this.im_menu.m_item.m_deleteitem.toolbaritemvisible = false
+
+// w_userspermission.ue_postopen() returns 0
+	call super::ue_postopen
+	this.id_rights = this.dw_rights
+	this.id_rights.settransobject(this.it_transobject)

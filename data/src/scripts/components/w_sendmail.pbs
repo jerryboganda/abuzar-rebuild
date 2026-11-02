@@ -1,0 +1,62 @@
+// window w_sendmail (components)  ancestor: window
+
+// w_sendmail.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		post event ue_close()
+	end if
+	return ::message.returnvalue
+
+// w_sendmail.wf_assigndwobjects(string as_detaildw) returns 0
+
+// w_sendmail.create() returns 0
+	this.uo_1 = create uo_1
+	this.cb_close = create cb_close
+	this.control = {this.uo_1, this.cb_close}
+
+// w_sendmail.destroy() returns 0
+	destroy this.uo_1
+	destroy this.cb_close
+
+// w_sendmail.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	long ll_custcode
+	this.istr_arg = message.powerobjectparm
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	if not isnull(this.istr_arg.s_name1) then
+		this.uo_1.sle_send_name.text = this.istr_arg.s_name1
+	end if
+	if not isnull(this.istr_arg.s_name2) then
+		this.uo_1.sle_send_email.text = this.istr_arg.s_name2
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_sendmail.close() returns long
+	close(this)
+	return ::message.returnvalue
+
+// uo_1.destroy() returns 0
+	call super::destroy
+
+// cb_close.clicked() returns long
+	close(parent)
+	return ::message.returnvalue

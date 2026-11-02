@@ -1,0 +1,39 @@
+// window w_logo (abuzarapp)  ancestor: window
+
+// w_logo.create() returns 0
+	this.st_changeuser = create st_changeuser
+	this.p_1 = create p_1
+	this.control = {this.st_changeuser, this.p_1}
+
+// w_logo.destroy() returns 0
+	destroy this.st_changeuser
+	destroy this.p_1
+
+// w_logo.open() returns long
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	u_transaction lt_trans
+	integer li_val
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	lt_trans = create u_transaction
+	SQL start USING lt_trans;
+	if lt_trans.sqlcode = 0 then
+		SQL SELECT CAST ( PrefValue AS INT ) INTO :li_val FROM SoftwarePreferences WHERE Name ='LogoSelected' USING lt_trans;
+		if lt_trans.sqlcode = 0 and li_val <> 0 then
+			this.p_1.picturename = "logo_1.bmp"
+		end if
+	end if
+	SQL stop USING lt_trans;
+	return ::message.returnvalue

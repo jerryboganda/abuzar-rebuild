@@ -1,0 +1,177 @@
+// userobject n_dwr_grid (dw2xls)  ancestor: nonvisualobject
+
+// n_dwr_grid.of_add_split(long al_val) returns long
+	long ll_ret
+	long ll_i
+	long[] emp
+	long pos
+	boolean lb_set
+	ll_ret = of_find_split(al_val)
+	if ll_ret < 1 then
+		this.il_split_count = this.il_split_count + 1
+		this.il_splitter[this.il_split_count] = al_val
+		ll_ret = this.il_split_count
+		pos = 1
+		for ll_i = 1 to this.il_split_count - 1
+			if this.il_splitter[this.il_splitter_ind_ord[ll_i]] > this.il_splitter[ll_ret] and not lb_set then
+				emp[pos] = ll_ret
+				pos = pos + 1
+				lb_set = true
+			end if
+			emp[pos] = this.il_splitter_ind_ord[ll_i]
+			pos = pos + 1
+		next
+		if not lb_set then
+			emp[this.il_split_count] = ll_ret
+		end if
+		this.il_splitter_ind_ord = emp
+	end if
+	return ll_ret
+
+// n_dwr_grid.of_get_splits_between(long al_split_ind_from, long al_split_ind_to) returns integer
+	long ll_i
+	long ll_start
+	long ll_stop
+	for ll_i = 1 to this.il_split_count
+		if this.il_splitter_ind_ord[ll_i] = al_split_ind_from then
+			ll_start = ll_i
+		end if
+		if this.il_splitter_ind_ord[ll_i] = al_split_ind_to then
+			ll_stop = ll_i
+		end if
+	next
+	if ll_start > 0 and ll_stop > 0 then
+		if ll_start > ll_stop then
+			return -1
+		else
+			return ll_stop - ll_start
+		end if
+		return
+	end if
+	return -1
+
+// n_dwr_grid.of_find_split(long al_val) returns long
+	long ll_ret
+	long ll_i
+	if this.il_split_count > 0 then
+		for ll_i = 1 to this.il_split_count
+			if abs(this.il_splitter[ll_i] - al_val) < this.ii_round_ratio then
+				return ll_i
+			end if
+		next
+	end if
+	return ll_ret
+
+// n_dwr_grid.of_find_min_split() returns long
+	long ll_ret
+	long ll_i
+	long ll_min_val
+	setnull(ll_min_val)
+	for ll_i = 1 to this.il_split_count
+		if this.il_splitter[ll_i] < ll_min_val or isnull(ll_min_val) then
+			ll_ret = ll_i
+			ll_min_val = this.il_splitter[ll_i]
+		end if
+	next
+	return ll_ret
+
+// n_dwr_grid.of_find_max_split() returns long
+	long ll_ret
+	long ll_i
+	long ll_max_val
+	setnull(ll_max_val)
+	for ll_i = 1 to this.il_split_count
+		if this.il_splitter[ll_i] > ll_max_val or isnull(ll_max_val) then
+			ll_ret = ll_i
+			ll_max_val = this.il_splitter[ll_i]
+		end if
+	next
+	return ll_ret
+
+// n_dwr_grid.of_get_split_count() returns integer
+	return this.il_split_count
+
+// n_dwr_grid.of_get_pos(long al_start_ind, long al_stop_ind, long al_pos, integer ai_merge_cnt) returns integer
+	long ll_i
+	long ll_start
+	long ll_stop
+	for ll_i = 1 to this.il_split_count
+		if this.il_splitter_ind_ord[ll_i] = al_start_ind then
+			ll_start = ll_i
+		end if
+		if this.il_splitter_ind_ord[ll_i] = al_stop_ind then
+			ll_stop = ll_i
+		end if
+	next
+	if ll_start > 0 and ll_stop > 0 then
+		if ll_start > ll_stop then
+			return -1
+		else
+			al_pos = ll_start
+			ai_merge_cnt = ll_stop - ll_start - 1
+			return 1
+		end if
+		return
+	end if
+	return -1
+
+// n_dwr_grid.of_get_col_width(long al_col) returns long
+	if al_col > 0 and al_col < this.il_split_count then
+		return this.il_splitter[this.il_splitter_ind_ord[al_col + 1]] - this.il_splitter[this.il_splitter_ind_ord[al_col]]
+	end if
+	return -1
+
+// n_dwr_grid.of_add_splits(long[] al_val, long al_base) returns 0
+	long ll_i
+	long ll_n
+	ll_n = upperbound(al_val)
+	for ll_i = 1 to ll_n
+		of_add_split(al_base + al_val[ll_i])
+	next
+
+// n_dwr_grid.of_get_split_values(long[] al_val) returns 0
+	al_val = this.il_splitter
+
+// n_dwr_grid.of_get_split_value(long al_split_index) returns long
+	return this.il_splitter[al_split_index]
+
+// n_dwr_grid.of_get_split_values(long[] al_val, long al_base) returns integer
+	long li_i
+	long li_n
+	long[] ll_val
+	al_val = ll_val
+	for li_i = 1 to this.il_split_count
+		if this.il_splitter[li_i] >= al_base then
+			li_n = li_n + 1
+			al_val[li_n] = this.il_splitter[li_i] - al_base
+		end if
+	next
+	return li_n
+
+// n_dwr_grid.of_debug_get_values_string() returns string
+	string ls_val
+	long li_i
+	for li_i = 1 to this.il_split_count
+		ls_val = " " + string(this.il_splitter[this.il_splitter_ind_ord[li_i]]) + ls_val
+	next
+	return ls_val
+
+// n_dwr_grid.of_get_split_pos(long al_split_index) returns long
+	long ll_i
+	for ll_i = 1 to this.il_split_count
+		if al_split_index = this.il_splitter_ind_ord[ll_i] then
+			return ll_i
+		end if
+	next
+	return 0
+
+// n_dwr_grid.of_get_split_ind_ord(long al_split_ord_index) returns long
+	return this.il_splitter_ind_ord[al_split_ord_index]
+
+// n_dwr_grid.create() returns 0
+	call super::create
+	triggerevent("constructor")
+
+// n_dwr_grid.destroy() returns 0
+	triggerevent("destructor")
+	call super::destroy

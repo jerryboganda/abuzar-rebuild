@@ -1,0 +1,52 @@
+// window w_sendmail_old (components)  ancestor: window
+
+// w_sendmail_old.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		post event ue_close()
+	end if
+	return ::message.returnvalue
+
+// w_sendmail_old.wf_assigndwobjects(string as_detaildw) returns 0
+
+// w_sendmail_old.create() returns 0
+	this.uo_1 = create uo_1
+	this.cb_close = create cb_close
+	this.control = {this.uo_1, this.cb_close}
+
+// w_sendmail_old.destroy() returns 0
+	destroy this.uo_1
+	destroy this.cb_close
+
+// w_sendmail_old.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	long ll_custcode
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	return ::message.returnvalue
+
+// w_sendmail_old.close() returns long
+	close(this)
+	return ::message.returnvalue
+
+// uo_1.destroy() returns 0
+	call super::destroy
+
+// cb_close.clicked() returns long
+	close(parent)
+	return ::message.returnvalue

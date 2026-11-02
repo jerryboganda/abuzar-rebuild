@@ -1,0 +1,98 @@
+// window w_set_price_marginbased_formula (changeitemprice)  ancestor: window
+
+// w_set_price_marginbased_formula.ue_close(double ad_value) returns 0
+	this.istr_values.i_status = ad_value
+	closewithreturn(this, this.istr_values)
+
+// w_set_price_marginbased_formula.create() returns 0
+	this.st_4 = create st_4
+	this.dw_marginbase = create dw_marginbase
+	this.dw_base = create dw_base
+	this.dw_update = create dw_update
+	this.st_3 = create st_3
+	this.st_2 = create st_2
+	this.st_1 = create st_1
+	this.em_value = create em_value
+	this.st_qty = create st_qty
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.control = {this.st_4, this.dw_marginbase, this.dw_base, this.dw_update, this.st_3, this.st_2, this.st_1, this.em_value, this.st_qty, this.cb_cancel, this.cb_ok}
+
+// w_set_price_marginbased_formula.destroy() returns 0
+	destroy this.st_4
+	destroy this.dw_marginbase
+	destroy this.dw_base
+	destroy this.dw_update
+	destroy this.st_3
+	destroy this.st_2
+	destroy this.st_1
+	destroy this.em_value
+	destroy this.st_qty
+	destroy this.cb_cancel
+	destroy this.cb_ok
+
+// w_set_price_marginbased_formula.open() returns long
+	environment le_env
+	long ll_width
+	long ll_height
+	if getenvironment(le_env) = 1 then
+		ll_width = pixelstounits(le_env.screenwidth, xpixelstounits!) - this.width
+		ll_height = pixelstounits(le_env.screenheight, ypixelstounits!) - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width * 0.5
+			ll_height = ll_height * 0.5
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	this.em_value.selecttext(1, len(this.em_value.text))
+	this.dw_update.settransobject(sqlca)
+	this.dw_update.insertrow(0)
+	this.dw_base.settransobject(sqlca)
+	this.dw_base.insertrow(0)
+	this.dw_marginbase.settransobject(sqlca)
+	this.dw_marginbase.insertrow(0)
+	return ::message.returnvalue
+
+// dw_marginbase.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_base.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_update.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(0)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	double ld_value
+	parent.dw_update.accepttext()
+	parent.dw_base.accepttext()
+	parent.dw_marginbase.accepttext()
+	parent.em_value.getdata(ld_value)
+	if long(ld_value) < 0 then
+		messagebox("Qty Validation", "Please Enter Valid Increase in Sale Price.")
+		parent.em_value.setfocus()
+		parent.em_value.selecttext(1, len(parent.em_value.text))
+		return ::message.returnvalue
+	end if
+	parent.istr_values.s_update = parent.dw_update.object.columnname[1]
+	parent.istr_values.s_base = parent.dw_base.object.columnname[1]
+	parent.istr_values.s_marginbase = parent.dw_marginbase.object.columnname[1]
+	parent.istr_values.d_margin = ld_value
+	parent.post event ue_close(1)
+	return ::message.returnvalue

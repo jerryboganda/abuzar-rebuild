@@ -1,0 +1,103 @@
+// window w_printcheques (notescomponents)  ancestor: window
+
+// w_printcheques.create() returns 0
+	this.cb_print = create cb_print
+	this.dw_control = create dw_control
+	this.control = {this.cb_print, this.dw_control}
+
+// w_printcheques.destroy() returns 0
+	destroy this.cb_print
+	destroy this.dw_control
+
+// w_printcheques.open() returns long
+	long ll_width
+	long ll_height
+	long ll_win_width
+	long ll_win_height
+	string ls_dataobject
+	environment env
+	this.il_invcode = message.doubleparm
+	if getenvironment(env) <> 1 then
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	setredraw(false)
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+	this.width = ll_width * 0.98
+	this.height = ll_height * 0.98
+	this.dw_control.width = ll_width * 0.95
+	this.dw_control.height = ll_height * 0.80
+	this.cb_print.x = ll_width * 0.50
+	this.cb_print.y = ll_height * 0.85
+	ll_width = ll_win_width - this.width
+	ll_height = ll_win_height - this.height
+	if ll_width > 0 and ll_height > 0 then
+		this.x = ll_width / 2.0
+		this.y = ll_height / 2.0
+	end if
+	ls_dataobject = "d_chequeprint"
+	this.dw_control.dataobject = ls_dataobject
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.retrieve(this.il_invcode)
+	this.dw_control.modify("DataWindow.Print.Preview=yes DataWindow.Print.Preview.Rulers=yes")
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_printcheques.close() returns long
+	close(this)
+	return ::message.returnvalue
+
+// w_printcheques.key(keycode key, unsignedlong keyflags) returns long
+	if keydown(keyescape!) then
+		close(this)
+	end if
+	return ::message.returnvalue
+
+// cb_print.clicked() returns long
+	long ll_printed
+	SQL rollback USING sqlca;
+	SQL update PurLedger SET PurSlipPrintCounter =PurSlipPrintCounter + 1 WHERE PurInvCode =:parent.il_invcode USING sqlca;
+	if sqlca.sqlcode = 0 then
+		SQL commit USING sqlca;
+	else
+		SQL rollback USING sqlca;
+	end if
+	if parent.dw_control.dataobject = "d_carepharmacy_pur_invoivce_slip" then
+		parent.dw_control.retrieve(parent.il_invcode, gs_company)
+	else
+		parent.dw_control.retrieve(parent.il_invcode)
+	end if
+	if parent.dw_control.rowcount() > 0 then
+		if f_stringpreferences("PromptBeforePrinting") = "Y" then
+			if printsetup() < 0 then
+				messagebox("Printer", "Printing Error")
+				parent.dw_control.printcancel()
+			else
+				ll_printed = 1
+			end if
+		end if
+		if parent.dw_control.print() < 0 then
+			messagebox("Printing", "Can not Print Invoice", information!)
+		else
+			ll_printed = 1
+		end if
+	else
+		messagebox("Printing Error", "Can not Print,~r~nNo rows are retrieved", information!)
+	end if
+	if ll_printed <> 1 then
+		SQL rollback USING sqlca;
+		SQL update PurLedger SET PurSlipPrintCounter =PurSlipPrintCounter - 1 WHERE PurInvCode =:parent.il_invcode USING sqlca;
+		if sqlca.sqlcode = 0 then
+			SQL commit USING sqlca;
+		else
+			SQL rollback USING sqlca;
+		end if
+	end if
+	return ::message.returnvalue

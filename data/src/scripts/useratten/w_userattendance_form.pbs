@@ -1,0 +1,356 @@
+// window w_userattendance_form (useratten)  ancestor: window
+
+// w_userattendance_form.wf_checkusername(string as_name) returns long
+	long rt_code
+	long ll_code
+	long ll_row
+	long ll_null
+	string ls_name
+	datetime ldt_timein
+	setnull(ll_null)
+	ll_row = this.id_password.getrow()
+	if ll_row > 0 then
+		SQL SELECT DBO.Users.UserCode , DBO.Users.UserName INTO :ll_code, :ls_name FROM DBO.Users WHERE DBO.Users.UserName =:as_name USING sqlca;
+		if sqlca.sqlcode = 0 then
+			if isnull(ls_name) or ls_name = "" then
+				rt_code = 1
+			elseif upper(as_name) <> upper(ls_name) then
+				rt_code = 1
+			else
+				rt_code = 0
+			end if
+		else
+			rt_code = 1
+		end if
+	else
+		rt_code = 1
+	end if
+	if rt_code = 0 then
+		sqlca.check_userattendance(ll_code, this.il_rowid)
+		if this.il_rowid < 0 then
+			if this.il_mode = 1 then
+				rt_code = 0
+			else
+				rt_code = 2
+			end if
+		elseif this.il_mode = 1 then
+			rt_code = 2
+		else
+			rt_code = 0
+		end if
+	end if
+	if rt_code = 0 then
+		ldt_timein = wf_gettimeindate(this.il_rowid)
+		this.id_password.setitem(ll_row, "usercode", ll_code)
+		this.id_password.setitem(ll_row, "timein", ldt_timein)
+	else
+		this.id_password.setitem(ll_row, "usercode", ll_null)
+	end if
+	return rt_code
+
+// w_userattendance_form.wf_checkusercode(long al_code) returns long
+	long rt_code
+	long ll_code
+	long ll_row
+	long ll_null
+	string ls_name
+	string ls_null
+	datetime ldt_timein
+	setnull(ls_null)
+	setnull(ll_null)
+	ll_row = this.id_password.getrow()
+	if ll_row > 0 then
+		SQL SELECT DBO.Users.UserCode , DBO.Users.UserName INTO :ll_code, :ls_name FROM DBO.Users WHERE DBO.Users.UserCode =:al_code USING sqlca;
+		if sqlca.sqlcode = 0 then
+			if isnull(ll_code) or ll_code = 0 then
+				rt_code = 1
+			elseif ll_code <> al_code then
+				rt_code = 1
+			else
+				rt_code = 0
+			end if
+		else
+			rt_code = 1
+		end if
+	else
+		rt_code = 1
+	end if
+	if rt_code = 0 then
+		sqlca.check_userattendance(al_code, this.il_rowid)
+		if this.il_rowid < 0 then
+			if this.il_mode = 1 then
+				rt_code = 0
+			else
+				rt_code = 2
+			end if
+		elseif this.il_mode = 1 then
+			rt_code = 2
+		else
+			rt_code = 0
+		end if
+	end if
+	if rt_code = 0 then
+		ldt_timein = wf_gettimeindate(this.il_rowid)
+		this.id_password.setitem(ll_row, "username", ls_name)
+		this.id_password.setitem(ll_row, "timein", ldt_timein)
+	else
+		this.id_password.setitem(ll_row, "username", ls_null)
+	end if
+	return rt_code
+
+// w_userattendance_form.wf_gettimeindate(long al_rowid) returns datetime
+	datetime ldt_timein
+	SQL SELECT TimeIn INTO :ldt_timein FROM DBO.UserAttendance WHERE RowId =:this.il_rowid USING sqlca;
+	return ldt_timein
+
+// w_userattendance_form.create() returns 0
+	this.cb_ok = create cb_ok
+	this.cb_cancel = create cb_cancel
+	this.dw_password = create dw_password
+	this.control = {this.cb_ok, this.cb_cancel, this.dw_password}
+
+// w_userattendance_form.destroy() returns 0
+	destroy this.cb_ok
+	destroy this.cb_cancel
+	destroy this.dw_password
+
+// w_userattendance_form.open() returns long
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	this.il_mode = message.doubleparm
+	if this.il_mode = 1 then
+		this.title = "User Attendance: Time-in Window"
+	else
+		this.title = "User Attendance: Time-out Window"
+	end if
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	this.id_password = this.dw_password
+	this.id_password.settransobject(sqlca)
+	this.id_password.insertrow(0)
+	if this.il_mode <> 1 then
+		this.id_password.object.timein.visible = true
+		this.id_password.object.t_timein.visible = true
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_userattendance_form.key(keycode key, unsignedlong keyflags) returns long
+	if keydown(keyescape!) then
+		close(this)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	long ancestorreturnvalue
+	long ll_row
+	long ll_code
+	long ll_counter
+	long ll_len
+	long ll_null
+	long ll_auth_flag
+	string ls_temp
+	string ls_username
+	string ls_password
+	string ls_msg
+	s_arguements lstr_in_out
+	string ls_null
+	ancestorreturnvalue = super::clicked()
+	ll_row = parent.dw_password.getrow()
+	ls_msg = "                                                                                                          "
+	if f_validatedw(parent.id_password) < 0 then
+		return ::message.returnvalue
+	end if
+	ls_username = parent.dw_password.getitemstring(ll_row, "username")
+	ll_code = parent.dw_password.getitemnumber(ll_row, "usercode")
+	ls_password = parent.dw_password.getitemstring(ll_row, "password")
+	if isnull(ll_code) or ll_code = 0 then
+		messagebox("Code Validation", "Plese enter Valid Code")
+		parent.dw_password.setcolumn("usercode")
+		parent.dw_password.setfocus()
+		return ::message.returnvalue
+	elseif ls_username = "" or isnull(ls_username) then
+		messagebox("Name Validation", "Plese enter Valid Name")
+		parent.dw_password.setcolumn("username")
+		parent.dw_password.setfocus()
+		return ::message.returnvalue
+	elseif len(ls_username) > 0 and ll_code > 0 then
+		SQL SELECT dbo.users.password INTO :ls_temp FROM dbo.users WHERE dbo.users.usercode =:ll_code USING sqlca;
+		setnull(ll_null)
+		if sqlca.sqlcode <> 0 then
+			messagebox("Code Validation", "Code does not exist")
+			parent.dw_password.setcolumn("usercode")
+			parent.dw_password.setfocus()
+			return ::message.returnvalue
+		end if
+	else
+		messagebox("Code Validation", "Plese enter Code")
+		parent.dw_password.setcolumn("usercode")
+		parent.dw_password.setfocus()
+		return ::message.returnvalue
+	end if
+	setnull(ls_null)
+	if ls_password = "" or isnull(ls_password) then
+		messagebox("Password", "Please enter password")
+		parent.dw_password.setcolumn("password")
+		parent.dw_password.setfocus()
+		return ::message.returnvalue
+	elseif lower(ls_password) <> lower(ls_temp) then
+		parent.ii_tries = parent.ii_tries + 1
+		if parent.ii_tries > 2 then
+			messagebox("Password Validation", "Number of Password attempts elapsed. Try Later.....")
+			parent.cb_cancel.postevent(clicked!)
+		else
+			messagebox("Password", "Password is not correct")
+			parent.dw_password.setcolumn("password")
+			parent.dw_password.setfocus()
+		end if
+		parent.id_password.object.password[ll_row] = ls_null
+		return ::message.returnvalue
+	else
+		lstr_in_out.l_code1 = parent.il_mode
+		lstr_in_out.l_code2 = 0
+		openwithparm(w_userauthentication_form, lstr_in_out)
+		lstr_in_out = ::message.powerobjectparm
+		if lstr_in_out.l_code1 > 0 then
+			if parent.il_mode = 1 then
+				if parent.il_rowid >= 0 then
+					messagebox("Saving Problem!", "User Already Timed-in, Timeout first and the time-in again!")
+					return ::message.returnvalue
+				end if
+			elseif parent.il_rowid < 0 then
+				messagebox("Saving Problem!", "User Already Timed-out, Timein first and the timeout again!")
+				return ::message.returnvalue
+			end if
+			SQL rollback USING sqlca;
+			sqlca.mark_userattendance(ll_code, parent.il_rowid, parent.il_mode, lstr_in_out.d_sdate, ls_msg)
+			if sqlca.sqlcode = 0 then
+				SQL commit USING sqlca;
+				messagebox("Saving", "Changes made to Database Successfully~r~nDetails Are: -~r~n" + ls_msg, information!)
+				close(parent)
+			else
+				messagebox("Saving Problem!", "Some Database Problem Occured~r~nChanges not made to the database.~r~nDetails Are: -~r~n" + sqlca.sqlerrtext, stopsign!)
+				SQL rollback USING sqlca;
+			end if
+		end if
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	close(parent)
+	return ::message.returnvalue
+
+// dw_password.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	long rt_code
+	long ll_code
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "usercode"
+		if long(data) < 0 then
+			rt_code = 1
+		elseif long(data) > 0 then
+			rt_code = parent.wf_checkusercode(long(data))
+			if rt_code = 2 then
+				if parent.il_mode = 1 then
+					messagebox("Code Validation", "Can't Time-in, User Already Time-in")
+				else
+					messagebox("Code Validation", "Can't Timeout, User Not Timed-In")
+				end if
+				rt_code = 1
+			end if
+		else
+			rt_code = 0
+		end if
+	case "username"
+		ll_code = getitemnumber(row, "usercode")
+		if data = "" then
+			if ll_code = 0 or isnull(ll_code) then
+				rt_code = 1
+			end if
+		elseif len(data) > 0 then
+			rt_code = parent.wf_checkusername(data)
+			if rt_code = 2 then
+				if parent.il_mode = 1 then
+					messagebox("Name Validation", "Can't Time-in, User Already Time-in")
+				else
+					messagebox("Name Validation", "Can't Timeout, User Not Timed-In")
+				end if
+				rt_code = 1
+			end if
+		elseif ll_code = 0 or isnull(ll_code) then
+			rt_code = 1
+		end if
+	end choose
+	return rt_code
+
+// dw_password.itemerror(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	integer ll_code
+	string ls_salesman
+	string ls_password
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "usercode"
+		messagebox("Code Validation", "Enter some valid code")
+	case "username"
+		messagebox("Name Validation", "Enter some valid name")
+	end choose
+	return 1
+
+// dw_password.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	if getcolumn() = 3 then
+		parent.cb_ok.postevent(clicked!)
+	end if
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_password.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	long jump
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if getitemnumber(row, "usercode") > 0.0 and len(getitemstring(row, "username")) > 0 then
+		if parent.il_mode = 1 then
+			if parent.il_rowid < 0 then
+				jump = 1
+			else
+				jump = 0
+			end if
+		elseif parent.il_rowid < 0 then
+			jump = 0
+		else
+			jump = 1
+		end if
+		if jump = 1 then
+			setcolumn("password")
+			setfocus()
+		end if
+	end if
+	return ::message.returnvalue

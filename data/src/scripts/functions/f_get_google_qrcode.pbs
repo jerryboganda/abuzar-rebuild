@@ -1,0 +1,30 @@
+// function f_get_google_qrcode (functions)  ancestor: function_object
+
+// f_get_google_qrcode.f_get_google_qrcode(string as_info) returns long
+	long ll_retcode
+	integer li_res
+	integer li_ret
+	string ls_url
+	string ls_errtext
+	inet iinet_base
+	u_internetresult_qrcode lu_internetresult
+	nc_urlencode l_nc_urlencode
+	string ls_temp
+	iinet_base = create inet
+	lu_internetresult = create u_internetresult_qrcode
+	l_nc_urlencode = create nc_urlencode
+	ls_temp = l_nc_urlencode.of_urlencode(as_info)
+	ls_url = "http://chart.apis.google.com/chart?cht=qr&chs=230x230&chof=gif&&chl=" + ls_temp + "&choe=UTF-8&"
+	li_ret = getcontextservice("Internet", iinet_base)
+	if li_ret = 1 then
+		li_res = iinet_base.geturl(ls_url, lu_internetresult)
+		if li_res = 1 then
+			if lu_internetresult.il_retcode <> 1 then
+				ls_errtext = lu_internetresult.is_msg + "~r~nDetails are:-~r~n" + lu_internetresult.is_data
+			end if
+		else
+			ls_errtext = "Cannot invoke Google QR Code Web service"
+			ll_retcode = 1
+		end if
+	end if
+	return ll_retcode

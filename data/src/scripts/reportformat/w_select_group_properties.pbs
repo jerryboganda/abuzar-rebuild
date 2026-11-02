@@ -1,0 +1,53 @@
+// window w_select_group_properties (reportformat)  ancestor: window
+
+// w_select_group_properties.ue_close(integer ai_status) returns 0
+	if this.cbx_resetpagecount.checked = true then
+		closewithreturn(this, 1)
+		return
+	end if
+	closewithreturn(this, 2)
+
+// w_select_group_properties.create() returns 0
+	this.cbx_newpage = create cbx_newpage
+	this.cbx_resetpagecount = create cbx_resetpagecount
+	this.cb_ok = create cb_ok
+	this.gb_grpprop = create gb_grpprop
+	this.control = {this.cbx_newpage, this.cbx_resetpagecount, this.cb_ok, this.gb_grpprop}
+
+// w_select_group_properties.destroy() returns 0
+	destroy this.cbx_newpage
+	destroy this.cbx_resetpagecount
+	destroy this.cb_ok
+	destroy this.gb_grpprop
+
+// w_select_group_properties.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	return ::message.returnvalue
+
+// cb_ok.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	parent.post event ue_close(1)
+	return ::message.returnvalue

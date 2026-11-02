@@ -1,0 +1,50 @@
+// window w_studenttransferhistory (studentcomponents)  ancestor: window
+
+// w_studenttransferhistory.ue_close() returns 0
+	close(this)
+
+// w_studenttransferhistory.create() returns 0
+	this.dw_transferhistory = create dw_transferhistory
+	this.control = {this.dw_transferhistory}
+
+// w_studenttransferhistory.destroy() returns 0
+	destroy this.dw_transferhistory
+
+// w_studenttransferhistory.open() returns long
+	long ll_admissioncode
+	long ll_row
+	long ll_width
+	long ll_height
+	environment env
+	ll_admissioncode = message.doubleparm
+	this.dw_transferhistory.settransobject(sqlca)
+	this.dw_transferhistory.retrieve(ll_admissioncode)
+	if getenvironment(env) <> 1 then
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.width = ll_width - 30
+	this.dw_transferhistory.width = this.width - 30
+	this.x = int((ll_width - this.width) / 2.0)
+	this.y = int((ll_height - this.height) / 2.0)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_studenttransferhistory.key(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		postevent("ue_close")
+	end if
+	return ::message.returnvalue
+
+// w_studenttransferhistory.close() returns long
+	return ::message.returnvalue
+
+// w_studenttransferhistory.closequery() returns long
+	return ::message.returnvalue

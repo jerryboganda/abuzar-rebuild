@@ -1,0 +1,113 @@
+// window w_componentvalue_dropdown (servicecomponents)  ancestor: window
+
+// w_componentvalue_dropdown.of_getvalue() returns integer
+	this.dw_value.object.value_t.text = of_get_caption(this.is_compvalue.code)
+	this.dw_value.object.value[1] = trim(this.is_compvalue.value)
+	return 0
+
+// w_componentvalue_dropdown.of_setvalue() returns long
+	string ls_find
+	string ls_foundstr
+	long ll_found
+	this.is_compvalue.value = this.dw_value.object.value[1]
+	ls_find = "optionname = '" + this.is_compvalue.value + "'"
+	ll_found = this.idc_child.find(ls_find, 1, this.idc_child.rowcount())
+	if ll_found > 0 then
+		ls_foundstr = trim(this.idc_child.getitemstring(ll_found, "optionname"))
+		this.is_compvalue.value = ls_foundstr
+	else
+		this.is_compvalue.value = trim(this.is_compvalue.value)
+	end if
+	return 0
+
+// w_componentvalue_dropdown.of_get_caption(long al_code) returns string
+	string ls_name
+	if al_code > 0 then
+		SQL SELECT Name INTO :ls_name FROM ServiceComponent WHERE ServiceComponentCode =:al_code USING sqlca;
+		if sqlca.sqlcode = 0 then
+		end if
+	end if
+	return ls_name
+
+// w_componentvalue_dropdown.create() returns 0
+	this.dw_value = create dw_value
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.control = {this.dw_value, this.cb_cancel, this.cb_ok}
+
+// w_componentvalue_dropdown.destroy() returns 0
+	destroy this.dw_value
+	destroy this.cb_cancel
+	destroy this.cb_ok
+
+// w_componentvalue_dropdown.close() returns long
+	closewithreturn(this, this.is_compvalue)
+	return ::message.returnvalue
+
+// w_componentvalue_dropdown.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	long ll_counter
+	integer li_retcode
+	string ls_temp
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	this.is_compvalue = message.powerobjectparm
+	li_retcode = this.dw_value.getchild("value", this.idc_child)
+	if li_retcode = -1 then
+		messagebox("Error", "Not a DataWindowChild")
+	end if
+	this.idc_child.settransobject(sqlca)
+	this.idc_child.retrieve(this.is_compvalue.code)
+	this.dw_value.settransobject(sqlca)
+	this.dw_value.insertrow(0)
+	this.dw_value.scrolltorow(0)
+	of_getvalue()
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_componentvalue_dropdown.key(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		this.is_compvalue.status = false
+	end if
+	return ::message.returnvalue
+
+// dw_value.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_value.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.is_compvalue.status = false
+	parent.triggerevent(close!)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	if parent.dw_value.accepttext() < 1 then
+		return ::message.returnvalue
+	end if
+	parent.of_setvalue()
+	parent.is_compvalue.status = true
+	parent.triggerevent(close!)
+	return ::message.returnvalue

@@ -1,0 +1,1513 @@
+// window w_servicepurchase (servicepurcomponents)  ancestor: w_multi_entry
+
+// w_servicepurchase.ue_save_withnocommit() returns long
+	setpointer(hourglass!)
+	if f_validatedw(this.id_master) < 0 then
+		return -1
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return -2
+	end if
+	if this.id_master.update(true, false) < 0 then
+		SQL rollback USING this.it_transobject;
+		setpointer(arrow!)
+		return -3
+	end if
+	if this.id_detail.update() < 0 then
+		SQL rollback USING this.it_transobject;
+		setpointer(arrow!)
+		return -4
+	end if
+	setpointer(arrow!)
+	return 0
+
+// w_servicepurchase.wf_genfullcode(long al_icode, string as_fullcode) returns integer
+	integer li_retflag
+	string ls_fullcode
+	long icode
+	long iccode
+	long icatcode
+	long packcode
+	long manfcode
+	SQL SELECT customicode INTO :ls_fullcode FROM item WHERE item.icode =:al_icode USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		li_retflag = 1
+		as_fullcode = ls_fullcode
+	else
+		li_retflag = this.it_transobject.sqlcode
+	end if
+	return li_retflag
+
+// w_servicepurchase.wf_getmaxdate(datetime ad_date) returns integer
+	SQL Select Max ( Date ) INTO :ad_date From saleledger USING this.it_transobject;
+	return this.it_transobject.sqlcode
+
+// w_servicepurchase.wf_getsalesstockinfo(long al_saleinvcode, long al_gcode, long al_icode, long al_saleqty) returns integer
+	SQL Select IsNull ( Sum ( saledetail.looseqty ) , 0 ) INTO :al_saleqty from saledetail where saledetail.saleinvcode =:al_saleinvcode and saledetail.gcode =:al_gcode and saledetail.icode =:al_icode USING this.it_transobject;
+	if isnull(al_saleqty) then
+		al_saleqty = 0
+	end if
+	return this.it_transobject.sqlcode
+
+// w_servicepurchase.wf_savastemplate() returns integer
+	s_saletemplateheader lstr_templateheader
+	long ll_invid
+	integer li_retcode
+	long ll_code
+	long ll_qty
+	long ll_icode
+	long ll_totalrows
+	long ll_rowcount
+	open(w_savesaleastemplate)
+	lstr_templateheader = message.powerobjectparm
+	f_newtableid("SaleTemplateHeader", ll_invid)
+	SQL INSERT INTO SaleTemplateHeader ( saletemplatecode , date , modified , name ) values ( :ll_invid , :lstr_templateheader.dt_templatedate , :lstr_templateheader.dt_templatedate , :lstr_templateheader.s_template ) USING this.it_transobject;
+	ll_totalrows = this.id_detail.rowcount()
+	for ll_rowcount = 1 to ll_totalrows
+		ll_code = ll_invid
+		ll_icode = this.id_detail.getitemnumber(ll_rowcount, "icode")
+		ll_qty = this.id_detail.getitemnumber(ll_rowcount, "looseqty")
+		SQL insert into saletemplatedetail ( saletemplatecode , icode , looseqty ) values ( :ll_code , :ll_icode , :ll_qty ) USING this.it_transobject;
+	next
+	setpointer(hourglass!)
+	if this.it_transobject.sqlcode < 0 then
+		SQL rollback USING this.it_transobject;
+		setpointer(arrow!)
+		return li_retcode
+	else
+		SQL commit USING this.it_transobject;
+		messagebox("Save Changes", "Template saved", exclamation!, ok!, 1)
+	end if
+	return li_retcode
+
+// w_servicepurchase.wf_getitemassociategcode(long la_icode) returns integer
+	integer li_gcode
+	SQL Select Gcode INTO :li_gcode From item Where icode =:la_icode USING this.it_transobject;
+	return li_gcode
+
+// w_servicepurchase.wf_retrievelistall() returns long
+	string[] ls_posted
+	datetime ld_invdate
+	ld_invdate = datetime(date("12/12/1998"), time("00:00:00"))
+	ls_posted[1] = "N"
+	ls_posted[2] = "Y"
+	return this.id_list.retrieve(ls_posted, ld_invdate)
+
+// w_servicepurchase.wf_retrievelist() returns long
+	string[] ls_posted
+	integer li_invforlastdays
+	datetime ld_invdate
+	ld_invdate = datetime(relativedate(today(), li_invforlastdays))
+	ls_posted[1] = "N"
+	ls_posted[2] = "Y"
+	return this.id_list.retrieve(ls_posted, ld_invdate)
+
+// w_servicepurchase.wf_selectitembatches(long al_gcode, long al_icode, long al_qty, datawindow ad_itemsdetail, long al_rowscount, string al_errortext) returns integer
+	datastore lds_itemstockinfo
+	long ll_counter
+	long ll_saleqty
+	long ll_reqqty
+	long ll_totalstock
+	long ll_batchqty
+	long ll_detailrowcount
+	boolean lb_flag
+	integer li_errcode
+	lds_itemstockinfo = create datastore
+	lds_itemstockinfo.dataobject = "d_itemstockinfo"
+	lds_itemstockinfo.settransobject(this.it_transobject)
+	if lds_itemstockinfo.retrieve(al_gcode, al_icode) > 0 then
+		ll_totalstock = lds_itemstockinfo.getitemnumber(1, "c_totalstock")
+		if ll_totalstock >= al_qty then
+			ll_reqqty = al_qty
+			ll_detailrowcount = ad_itemsdetail.rowcount()
+			ll_counter = 1
+			do while ll_counter <= lds_itemstockinfo.rowcount() and not lb_flag
+				ll_batchqty = lds_itemstockinfo.getitemnumber(ll_counter, "currqty")
+				if ll_batchqty >= ll_reqqty then
+					ll_saleqty = ll_reqqty
+					lb_flag = true
+				else
+					ll_saleqty = ll_batchqty
+					ll_reqqty = ll_reqqty - ll_batchqty
+				end if
+				ad_itemsdetail.insertrow(0)
+				ll_detailrowcount = ll_detailrowcount + 1
+				ad_itemsdetail.setitem(ll_detailrowcount, "gcode", al_gcode)
+				ad_itemsdetail.setitem(ll_detailrowcount, "icode", al_icode)
+				ad_itemsdetail.setitem(ll_detailrowcount, "batch", lds_itemstockinfo.getitemstring(ll_counter, "batch"))
+				ad_itemsdetail.setitem(ll_detailrowcount, "expiry", lds_itemstockinfo.getitemdatetime(ll_counter, "expiry"))
+				ad_itemsdetail.setitem(ll_detailrowcount, "stock", ll_batchqty)
+				ad_itemsdetail.setitem(ll_detailrowcount, "totalstock", ll_totalstock)
+				ad_itemsdetail.setitem(ll_detailrowcount, "looseqty", ll_saleqty)
+				ll_counter = ll_counter + 1
+			loop
+			al_rowscount = ll_counter - 1
+		else
+			li_errcode = 1
+			al_rowscount = ll_totalstock
+			al_errortext = "Stock has been decreased for this item   "
+		end if
+	else
+		li_errcode = 1
+		al_rowscount = ll_totalstock
+		al_errortext = "Stock does not exist for this item   "
+	end if
+	destroy lds_itemstockinfo
+	return li_errcode
+
+// w_servicepurchase.wf_closelist() returns 0
+	this.ib_itemslistopen = false
+	this.id_itemslist.hide()
+
+// w_servicepurchase.wf_setgodownoption() returns 0
+	this.ii_defaultgcode = f_numberpreferences("defaultgcode")
+	this.ii_salegodown = f_numberpreferences("salegodownoption")
+	if this.ii_salegodown = 2 or this.ii_salegodown = 1 then
+		this.id_detail.modify("gcode" + ".Protect=1")
+		this.id_detail.object.gcode.background.color = rgb(255, 255, 255)
+	end if
+
+// w_servicepurchase.wf_visible(boolean ab_flag) returns 0
+
+// w_servicepurchase.wf_initmodify(integer ai_protect) returns 0
+	long ll_saleinvcode
+	long ll_gcode
+	long ll_icode
+	long ll_looseqty
+	long ll_stock
+	long ll_counter
+	long ll_count
+	if this.id_master.getitemstring(1, "posted") = "N" then
+		if ai_protect = 0 then
+			this.ib_modify = true
+			this.editflag = true
+			this.im_menu.m_file.m_save.enabled = true
+			this.im_menu.m_file.m_new.enabled = false
+			this.im_menu.m_file.m_delete.enabled = false
+			this.im_menu.m_item.m_newitem.enabled = true
+			this.im_menu.m_item.m_deleteitem.enabled = true
+			this.im_menu.m_file.m_first.enabled = false
+			this.im_menu.m_file.m_next.enabled = false
+			this.im_menu.m_file.m_previous.enabled = false
+			this.im_menu.m_file.m_last.enabled = false
+			this.im_menu.m_file.m_retrieve.enabled = true
+			this.im_menu.m_file.m_retrieve.text = "Lis&t"
+			this.tab_retrieve.tabpage_detail.enabled = true
+		end if
+		return
+	end if
+	this.ib_modify = false
+	this.editflag = false
+
+// w_servicepurchase.wf_findfullcode(string as_fullcode, long al_icode, string al_itemname) returns integer
+	integer ll_icode
+	integer ll_retflag
+	string ls_itemname
+	if f_stringpreferences("EnableServiceCatRights") = "Y" then
+		SQL SELECT service.servicecode , service.name INTO :ll_icode, :ls_itemname FROM service WHERE service.aliasname =:as_fullcode AND service.servicecatcode IN ( SELECT sc.servicecatcode FROM GroupAllowedServiceCategory sc WHERE sc.GroupCode =:this.il_groupcode ) USING this.it_transobject;
+	else
+		SQL SELECT service.servicecode , service.name INTO :ll_icode, :ls_itemname FROM service WHERE service.aliasname =:as_fullcode USING this.it_transobject;
+	end if
+	if this.it_transobject.sqlcode = 0 then
+		al_icode = ll_icode
+		al_itemname = ls_itemname
+		if isnull(al_icode) then
+			ll_retflag = 0
+		else
+			ll_retflag = 1
+		end if
+	else
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_servicepurchase.wf_validateitem(boolean ab_flag) returns integer
+	long ll_icode
+	long ll_stock
+	long ll_totalstock
+	string ls_fullcode
+	string ls_titleerrtext
+	string ls_errtext
+	integer li_errcode
+	integer li_assgcode
+	integer li_option
+	boolean ib_due
+	integer li_null
+	string ls_null
+	if this.id_detail.rowcount() > 0 and this.il_currrow > 0 then
+		ll_icode = this.id_detail.getitemnumber(this.il_currrow, "icode")
+	else
+		li_errcode = -1
+	end if
+	if not isnull(ll_icode) and wf_inititeminfo(ll_icode, this.il_currrow, li_errcode, ls_errtext) then
+	end if
+	if ab_flag then
+		this.ib_itemvalidated = true
+	end if
+	if li_errcode = -1 then
+		setnull(li_null)
+		setnull(ls_null)
+		ls_titleerrtext = "Purcahse of Service Validation"
+		messagebox(ls_titleerrtext, ls_errtext)
+		this.id_detail.setcolumn(this.is_columnitemname)
+		this.id_detail.scrolltorow(this.il_currrow)
+		this.id_detail.object.icode[this.il_currrow] = li_null
+		this.id_detail.object.itemname[this.il_currrow] = ls_null
+	end if
+	return li_errcode
+
+// w_servicepurchase.wf_inititeminfo(long al_icode, long al_row, integer ai_rtcode, string as_errortext) returns boolean
+	boolean retflag
+	boolean lb_continue
+	double ld_saleprice
+	double ld_discperc
+	double ld_costprice
+	double ld_flatdisc
+	string ls_fullcode
+	string ls_name
+	string ls_null
+	string ls_allowsaleindecimal
+	setnull(ls_null)
+	SQL SELECT service.aliasname , service.name , service.price , service.costprice , ServiceFlatDisc , AllowSaleInDecimal INTO :ls_fullcode, :ls_name, :ld_saleprice, :ld_costprice, :ld_flatdisc, :ls_allowsaleindecimal FROM service WHERE service.servicecode =:al_icode USING this.it_transobject;
+	if this.it_transobject.sqlcode = -1 then
+		ai_rtcode = -1
+		retflag = false
+		as_errortext = "Database Error: Service information can not be retrieved"
+	end if
+	if retflag then
+		this.id_detail.setitem(al_row, this.is_columnitemname, ls_name)
+		this.id_detail.setitem(al_row, "fullcode", ls_fullcode)
+		this.id_detail.setitem(al_row, "allowsaleindecimal", ls_allowsaleindecimal)
+		if this.id_detail.getitemstatus(al_row, "price", primary!) = new! or this.id_detail.getitemstatus(al_row, "price", primary!) = notmodified! then
+			this.id_detail.setitem(al_row, "price", ld_saleprice)
+			this.id_detail.setitem(al_row, "serviceflatdisc", ld_flatdisc)
+		end if
+		if al_icode <> this.id_detail.getitemnumber(al_row, "itemcode") then
+			this.id_detail.setitem(al_row, "price", ld_saleprice)
+			this.id_detail.setitem(al_row, "serviceflatdisc", ld_flatdisc)
+		end if
+		this.id_detail.setitem(al_row, "itemcode", al_icode)
+		this.id_detail.setitem(al_row, "icode", al_icode)
+		ai_rtcode = 0
+	end if
+	return retflag
+
+// w_servicepurchase.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+
+// w_servicepurchase.wf_grandtotal() returns double
+	double ld_grandtotal
+	double ld_detaildwtotal
+	double ld_customerbalance
+	double ld_cashreceived
+	real lr_discperc
+	real lr_flatdisc
+	real lr_misccharges
+	real lr_salestax
+	real lr_itemstotal
+	if this.id_detail.rowcount() > 0 and this.id_footer.rowcount() > 0 then
+		lr_discperc = this.id_footer.object.invdiscperc[1]
+		lr_flatdisc = this.id_footer.object.flatdisc[1]
+		lr_misccharges = this.id_footer.object.misccharges[1]
+		ld_detaildwtotal = this.id_detail.getitemnumber(1, "c_detaildwtotal")
+		ld_grandtotal = ld_detaildwtotal * (1.0 - lr_discperc * 0.01) - lr_flatdisc + lr_misccharges + lr_salestax
+		ld_grandtotal = round(ld_grandtotal, 0)
+		this.id_footer.setitem(1, "total", ld_grandtotal)
+	end if
+	return ld_grandtotal
+
+// w_servicepurchase.wf_selectprintreport() returns string
+	string ls_pagesize
+	string ls_report
+	ls_report = "d_servicepurchaseprint_full"
+	this.id_print.dataobject = ls_report
+	this.id_print.settransobject(this.it_transobject)
+	return ls_report
+
+// w_servicepurchase.wf_assigndatawindowobjects(string as_masterdw, string as_detaildw, string as_footerdw, string as_listdw, string as_printdw) returns 0
+	this.id_master.dataobject = as_masterdw
+	this.id_detail.dataobject = as_detaildw
+	this.id_footer.dataobject = as_footerdw
+	this.id_list.dataobject = as_listdw
+	this.id_print.dataobject = as_printdw
+	this.id_master.settransobject(this.it_transobject)
+	this.id_detail.settransobject(this.it_transobject)
+	this.id_footer.settransobject(this.it_transobject)
+	this.id_list.settransobject(this.it_transobject)
+	this.id_print.settransobject(this.it_transobject)
+
+// w_servicepurchase.wf_post() returns integer
+	integer li_postingmode
+	long ll_sinvcode
+	long ll_linvcode
+	long ll_found
+	if this.tab_retrieve.selectedtab = 1 then
+		return 0
+	end if
+	setnull(ll_sinvcode)
+	setnull(ll_linvcode)
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 5076", 1, gds_securitywindow.rowcount())
+	if ll_found <= 0 then
+		messagebox("Purchase Of Service Invoice Posting", "Not Enough rights to post service invoice")
+		return -1
+	end if
+	return wf_post_service_custwise(li_postingmode, ll_sinvcode, ll_linvcode)
+
+// w_servicepurchase.wf_editservicetemplate() returns long
+	datastore lds_detail
+	datastore lds_header
+	s_saletemplate lstr_template
+	long ll_totalrows
+	long ll_rowcount
+	long ll_row
+	long ll_mrow
+	integer li_retcode
+	integer li_errcode
+	string ls_errortext
+	if wf_iseditable() = false then
+		return 0
+	end if
+	if this.id_master.rowcount() > 0 then
+		if this.id_master.object.posted[1] = "Y" and this.id_master.object.code[1] > 0 then
+			return 0
+		end if
+	else
+		return 0
+	end if
+	lds_detail = create datastore
+	lds_header = create datastore
+	open(w_edit_servicetemplate)
+	lstr_template = message.powerobjectparm
+	if lstr_template.c_copyinvfrom = "T" then
+		lds_detail.dataobject = "d_servicetemplate_detail"
+		lds_detail.settransobject(this.it_transobject)
+		lds_header.dataobject = "d_servicetemplate_header"
+		lds_header.settransobject(this.it_transobject)
+		ll_row = lds_header.retrieve(lstr_template.l_invtemplate)
+		lds_detail.retrieve(lstr_template.l_invtemplate)
+		ll_totalrows = lds_header.retrieve(lstr_template.l_invtemplate)
+		if ll_row < 0 or ll_totalrows < 0 then
+			li_retcode = -1
+			return -1
+		else
+			for ll_rowcount = 1 to this.id_detail.rowcount()
+				event ue_deleteitem()
+			next
+		end if
+		ll_mrow = this.id_master.getrow()
+		ll_totalrows = lds_detail.rowcount()
+		this.id_detail.reset()
+		for ll_rowcount = 1 to ll_totalrows
+			this.id_detail.insertrow(0)
+			wf_inititeminfo(lds_detail.getitemnumber(ll_rowcount, "icode"), ll_rowcount, li_errcode, ls_errortext)
+			this.id_detail.setitem(ll_rowcount, "qty", lds_detail.getitemnumber(ll_rowcount, "qty"))
+			this.id_detail.setitem(ll_rowcount, "price", lds_detail.getitemnumber(ll_rowcount, "saleprice"))
+			this.id_detail.setitem(ll_rowcount, "serviceflatdisc", lds_detail.getitemnumber(ll_rowcount, "serviceflatdisc"))
+			this.id_detail.setitem(ll_rowcount, "discperc", lds_detail.getitemnumber(ll_rowcount, "discperc"))
+		next
+		this.im_menu.m_file.m_save.enabled = true
+		this.im_menu.m_file.m_print.enabled = true
+	end if
+	return li_retcode
+
+// w_servicepurchase.wf_refreshitemslist_catwise() returns 0
+	long ll_counter
+	string ls_categories
+	integer[] la_catcode
+	s_arguements lstr_arg
+	open(w_choose_servicecategory)
+	lstr_arg = message.powerobjectparm
+	if lstr_arg.i_status = -1 then
+		return
+	end if
+	la_catcode = lstr_arg.ia_integerlist
+	ls_categories = ""
+	for ll_counter = 1 to upperbound(la_catcode)
+		ls_categories = ls_categories + string(la_catcode[ll_counter]) + " , "
+	next
+	ls_categories = ls_categories + " 0 "
+	f_retrieve_servicelist(this.id_itemslist, this.it_transobject)
+	this.id_itemslist.setfilter("servicecatcode In (" + ls_categories + ")")
+	this.id_itemslist.filter()
+	wf_initialize_lookup_table()
+
+// w_servicepurchase.wf_refreshitemslist_itemname() returns 0
+	s_popup_selection lstr_selection
+	long ll_counter
+	boolean lb_enablerestricted
+	string ls_selection
+	integer[] la_catcode
+	open(w_popup_itemsearchcriteriaselection)
+	lstr_selection = message.powerobjectparm
+	if lstr_selection.l_code > 0 then
+		ls_selection = lstr_selection.s_name2
+		this.id_itemslist.reset()
+		this.id_itemslist.setfilter("")
+		this.id_itemslist.filter()
+		f_retrieve_servicelist(this.id_itemslist, this.it_transobject)
+		this.id_itemslist.setfilter("itemname LIKE '" + ls_selection + "'")
+		this.id_itemslist.filter()
+	end if
+	wf_initialize_lookup_table()
+
+// w_servicepurchase.wf_refresh_singleservicecategory() returns 0
+	long ll_counter
+	long ll_find
+	string ls_categories
+	string ls_servicecat
+	integer[] la_catcode
+	datastore lds_ds
+	lds_ds = create datastore
+	lds_ds.dataobject = "d_servicecategory_list"
+	lds_ds.settransobject(sqlca)
+	lds_ds.retrieve()
+	open(w_select_single_servicecategry)
+	ls_servicecat = message.stringparm
+	ll_find = lds_ds.find("name = '" + ls_servicecat + "'", 1, lds_ds.rowcount())
+	ls_categories = ""
+	if ll_find > 0 and ll_find <= lds_ds.rowcount() then
+		ls_categories = string(lds_ds.object.code[ll_find])
+	end if
+	f_retrieve_servicelist(this.id_itemslist, this.it_transobject)
+	this.id_itemslist.setfilter("servicecatcode In (" + ls_categories + ")")
+	this.id_itemslist.filter()
+	wf_initialize_lookup_table()
+
+// w_servicepurchase.wf_initialize_lookup_table() returns integer
+	long li_count
+	long ll_startrow
+	char lc_char
+	for li_count = 65 to 90
+		lc_char = char(li_count)
+		this.ia_llookuptable[li_count] = this.id_itemslist.find("Lower(itemname) >= Lower('" + char(li_count) + "')", ll_startrow, 99999)
+		ll_startrow = this.ia_llookuptable[li_count]
+	next
+	this.ia_llookuptable[92] = 999999
+	return 0
+
+// w_servicepurchase.wf_refreshitemslist() returns 0
+	f_retrieve_servicelist(this.id_itemslist, this.it_transobject)
+	wf_initialize_lookup_table()
+
+// w_servicepurchase.wf_assign_master_cash_win_object() returns 0
+	this.ids_cashwin = create u_ds_standard
+	this.ids_cashwin.dataobject = "d_mastercashierwindow_detail"
+	this.ids_cashwin.settransobject(this.it_transobject)
+
+// w_servicepurchase.wf_set_cashaccount() returns long
+	long ll_cashacccode
+	long ll_module
+	long ll_code
+	ll_module = 43
+	ll_code = this.id_master.object.code[this.id_master.rowcount()]
+	ll_cashacccode = f_is_group_module_cashaccount_allowed(this.il_groupcode, ll_module)
+	if ll_cashacccode <= 0 or isnull(ll_cashacccode) then
+		ll_cashacccode = 0
+		messagebox("Group Cash Account Problem", "No Cash Account Attached to the group of the user logged on~r~nKindly contact system administrator to do the needfull.", stopsign!, ok!)
+	elseif isnull(ll_code) or this.id_master.object.code[1] <= 0 then
+		this.id_master.object.cashacccode[this.id_master.rowcount()] = ll_cashacccode
+	else
+		ll_cashacccode = this.id_master.object.cashacccode[this.id_master.rowcount()]
+	end if
+	return ll_cashacccode
+
+// w_servicepurchase.wf_show_mastercashierwindow() returns long
+	long ll_counter
+	long ll_code
+	long ll_row
+	long ll_insrow
+	long ll_module
+	long ll_cashacccode
+	double ld_tot_acc_amt
+	double ld_netsales
+	double ld_servicetotal
+	s_mastercashwin_all lstr_values
+	lstr_values.i_interfacecode = 21
+	if f_stringpreferences("askmastercashierwin_inservicepur") = "N" then
+		return 1
+	end if
+	ll_module = 43
+	ll_code = this.id_master.object.code[this.id_master.rowcount()]
+	ll_cashacccode = this.id_master.object.cashacccode[this.id_master.rowcount()]
+	if ll_cashacccode <= 0 or isnull(ll_cashacccode) then
+		messagebox("Group Cash Account Problem", "No Cash Account Attached to the group of the user logged on~r~nKindly contact system administrator to do the needfull.", stopsign!, ok!)
+		return 0
+	end if
+	ld_servicetotal = wf_grandtotal()
+	if isnull(ld_servicetotal) then
+		ld_servicetotal = 0.00
+	end if
+	lstr_values.l_doccode = ll_code
+	lstr_values.s_doctype = this.is_doctype
+	lstr_values.l_cashacccode = ll_cashacccode
+	lstr_values.l_groupcode = this.il_groupcode
+	lstr_values.l_module = ll_module
+	lstr_values.d_netamt = round(ld_servicetotal, 0)
+	lstr_values.d_cashtendered = this.id_master.object.cashtendered[this.id_master.rowcount()]
+	lstr_values.d_cashcharged = this.id_master.object.cashcharged[this.id_master.rowcount()]
+	lstr_values.d_cashback = this.id_master.object.cashback[this.id_master.rowcount()]
+	for ll_counter = 1 to this.ids_cashwin.rowcount()
+		lstr_values.l_acccode[ll_counter] = this.ids_cashwin.object.acccode[ll_counter]
+		lstr_values.s_remarks[ll_counter] = this.ids_cashwin.object.remarks[ll_counter]
+		lstr_values.d_amount[ll_counter] = this.ids_cashwin.object.amount[ll_counter]
+		lstr_values.l_rowid[ll_counter] = this.ids_cashwin.object.rowid[ll_counter]
+		ld_tot_acc_amt = ld_tot_acc_amt + this.ids_cashwin.object.amount[ll_counter]
+	next
+	if lstr_values.d_netamt >= lstr_values.d_cashcharged then
+		lstr_values.d_docbalance = lstr_values.d_netamt - lstr_values.d_cashcharged - ld_tot_acc_amt
+	else
+		lstr_values.d_docbalance = 0
+	end if
+	for ll_counter = 1 to 100
+		if lstr_values.l_rowid[ll_counter] <= 0 then
+			lstr_values.l_rowid[ll_counter] = -1
+		end if
+	next
+	openwithparm(w_mastercashierwindow, lstr_values)
+	lstr_values = message.powerobjectparm
+	if lstr_values.i_status = 1 then
+		this.ids_cashwin.reset()
+		ld_tot_acc_amt = 0
+		for ll_counter = 1 to 100
+			if lstr_values.l_acccode[ll_counter] > 0 and lstr_values.d_amount[ll_counter] > 0 and lstr_values.l_rowid[ll_counter] > 0 then
+				ll_insrow = this.ids_cashwin.insertrow(0)
+				this.ids_cashwin.object.documentcode[ll_insrow] = ll_code
+				this.ids_cashwin.object.documenttype[ll_insrow] = this.is_doctype
+				this.ids_cashwin.object.acccode[ll_insrow] = lstr_values.l_acccode[ll_counter]
+				this.ids_cashwin.object.remarks[ll_insrow] = lstr_values.s_remarks[ll_counter]
+				this.ids_cashwin.object.amount[ll_insrow] = lstr_values.d_amount[ll_counter]
+				this.ids_cashwin.object.rowid[ll_insrow] = lstr_values.l_rowid[ll_counter]
+			end if
+		next
+		this.id_master.object.cashacccode[this.id_master.rowcount()] = lstr_values.l_cashacccode
+		this.id_master.object.cashtendered[this.id_master.rowcount()] = lstr_values.d_cashtendered
+		this.id_master.object.cashcharged[this.id_master.rowcount()] = lstr_values.d_cashcharged
+		this.id_master.object.cashback[this.id_master.rowcount()] = lstr_values.d_cashback
+		this.id_master.object.outstandingamt[this.id_master.rowcount()] = lstr_values.d_docbalance
+		return 1
+	end if
+	return 0
+
+// w_servicepurchase.wf_update_mastercashierwindow(long al_code, string as_type) returns long
+	long ll_counter
+	for ll_counter = 1 to this.ids_cashwin.rowcount()
+		this.ids_cashwin.object.documentcode[ll_counter] = al_code
+		this.ids_cashwin.object.documenttype[ll_counter] = as_type
+		this.ids_cashwin.object.date[ll_counter] = this.id_master.object.date[1]
+	next
+	SQL DELETE DBO.MasterCashWin WHERE DocumentCode =:al_code AND DocumentType =:as_type USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		if this.ids_cashwin.update() > 0 then
+			return 0
+		else
+			return -1
+		end if
+		return
+	end if
+	return -1
+
+// w_servicepurchase.wf_show_accountledger() returns long
+	long ll_acccode
+	if this.tab_retrieve.selectedtab = 1 then
+		if this.id_master.rowcount() > 0 and this.id_master.getrow() > 0 then
+			ll_acccode = this.id_master.object.custcode[this.id_master.getrow()]
+		end if
+	elseif this.tab_retrieve.selectedtab = 2 and (this.id_list.rowcount() > 0 and this.id_list.getrow() > 0) then
+		ll_acccode = this.id_list.object.custcode[this.id_list.getrow()]
+	end if
+	if not isnull(ll_acccode) and ll_acccode <> 0 then
+		SQL rollback USING sqlca;
+		sqlca.virtualgl("A")
+		if sqlca.sqlcode = 0 then
+			SQL commit USING sqlca;
+		else
+			SQL rollback USING sqlca;
+		end if
+		openwithparm(w_account_ledger, ll_acccode)
+	end if
+	return 0
+
+// w_servicepurchase.wf_saveandpost() returns long
+	boolean lb_listtab
+	boolean lb_continueposting
+	integer li_postingmode
+	integer li_errcode
+	integer li_printoption
+	long ll_sinvcode
+	long ll_linvcode
+	long ll_found
+	if this.tab_retrieve.selectedtab = 2 then
+		lb_listtab = true
+	end if
+	if lb_listtab then
+		return 0
+	end if
+	if wf_iseditable() = false then
+		return 0
+	end if
+	if this.id_master.object.posted[1] = "Y" then
+		return 0
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 716", 1, gds_securitywindow.rowcount())
+	if ll_found <= 0 then
+		messagebox("Service Invoice Posting", "Not Enough rights to post service invoice")
+		return -1
+	end if
+	li_printoption = messagebox("Print Purchase of Service Invoice", "Do You want to Print Purchase of Service invoice As Well?", information!, yesno!, 1)
+	if li_printoption = 1 then
+		event ue_print()
+	else
+		event ue_save()
+	end if
+	if this.ib_commitok and this.il_codevalue > 0 then
+		lb_continueposting = true
+	else
+		return 0
+	end if
+	if lb_continueposting then
+		ll_sinvcode = this.il_codevalue
+		ll_linvcode = this.il_codevalue
+		if isnull(ll_sinvcode) or isnull(ll_linvcode) or ll_sinvcode < 0 or ll_linvcode < 0 then
+			return 0
+		else
+			event ue_new()
+		end if
+	end if
+	setpointer(arrow!)
+	return li_errcode
+
+// w_servicepurchase.wf_update_virtualgl() returns integer
+	SQL rollback USING sqlca;
+	sqlca.virtualgl("A")
+	if sqlca.sqlcode = 0 then
+		SQL commit USING sqlca;
+	else
+		SQL rollback USING sqlca;
+	end if
+	return 0
+
+// w_servicepurchase.wf_deleteserviceinvoice(long al_code) returns integer
+	SQL Delete ServicePurDetail Where ServicePurDetail.ServicePurInvCode =:al_code USING this.it_transobject;
+	return this.it_transobject.sqlcode
+
+// w_servicepurchase.wf_find_suppcode(integer ai_suppcode, string as_aliasname) returns integer
+	integer li_suppcode
+	integer ll_retflag
+	SQL SELECT accounts.acccode INTO :li_suppcode FROM accounts , supplier WHERE accounts.aliasname =:as_aliasname AND accounts.acccode =supplier.suppcode USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		ai_suppcode = li_suppcode
+		if isnull(ai_suppcode) then
+			ll_retflag = 0
+		else
+			ll_retflag = 1
+		end if
+	else
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_servicepurchase.wf_setsuppinfo(long al_suppcode, datawindow ad_master) returns long
+	string ls_address
+	string ls_city
+	string ls_phone
+	string ls_aliasname
+	long ll_currow
+	long ll_dayslimit
+	double ld_currbalance
+	SQL SELECT supplier.address1 , supplier.city , supplier.phone , accounts.aliasname , supplier.dayslimit INTO :ls_address, :ls_city, :ls_phone, :ls_aliasname, :ll_dayslimit FROM supplier , Accounts WHERE supplier.suppcode =:al_suppcode AND supplier.suppcode =Accounts.AccCode USING this.it_transobject;
+	ll_currow = ad_master.getrow()
+	ll_currow = 1
+	ad_master.object.aliasname[ll_currow] = ls_aliasname
+	ad_master.object.supplierbalance[ll_currow] = abs(this.idc_supplierlist.getitemnumber(this.idc_supplierlist.getrow(), "balance"))
+	ad_master.object.debitorcredit[ll_currow] = this.idc_supplierlist.getitemstring(this.idc_supplierlist.getrow(), "balancetype")
+	return 0
+
+// w_servicepurchase.wf_setsuppname(string as_data) returns long
+	long ll_rowno
+	ll_rowno = this.idc_supplierlist.find("accounts_name >='" + as_data + "'", 1, this.idc_supplierlist.rowcount())
+	if ll_rowno > 0 then
+		this.idc_supplierlist.selectrow(0, false)
+		this.idc_supplierlist.setrow(ll_rowno)
+		this.idc_supplierlist.scrolltorow(ll_rowno)
+		this.idc_supplierlist.selectrow(ll_rowno, true)
+	end if
+	return 0
+
+// w_servicepurchase.wf_set_preferences() returns long
+	if f_stringpreferences("showref1inservicepur") = "N" then
+		this.id_master.object.ref1.visible = false
+		this.id_master.object.ref1_t.visible = false
+	end if
+	if f_stringpreferences("showref2inservicepur") = "N" then
+		this.id_master.object.ref2.visible = false
+		this.id_master.object.ref2_t.visible = false
+	end if
+	if f_stringpreferences("showref3inservicepur") = "N" then
+		this.id_master.object.ref3.visible = false
+		this.id_master.object.ref3_t.visible = false
+	end if
+	if f_stringpreferences("showref4inservicepur") = "N" then
+		this.id_master.object.ref4.visible = false
+		this.id_master.object.ref4_t.visible = false
+	end if
+	if f_stringpreferences("showremarksinservicepur") = "N" then
+		this.id_master.object.remarks.visible = false
+		this.id_master.object.remarks_t.visible = false
+	end if
+	if f_stringpreferences("showheadernoinservicepur") = "N" then
+		this.id_master.object.headerno.visible = false
+		this.id_master.object.headerno_t.visible = false
+	end if
+	if f_stringpreferences("showsuppbalanceinservicepur") = "N" then
+		this.id_master.object.supplierbalance.visible = false
+		this.id_master.object.supplierbalance_t.visible = false
+		this.id_master.object.debitorcredit.visible = false
+	end if
+	if f_stringpreferences("showexpenseaccountinservicepur") = "N" then
+		this.id_master.object.expacccode.visible = false
+		this.id_master.object.expacccode_t.visible = false
+	end if
+	if f_stringpreferences("showflatdiscinservicepurdetail") = "N" then
+		this.id_detail.object.serviceflatdisc.visible = false
+	end if
+	if f_stringpreferences("showdiscpercinservicepurdetail") = "N" then
+		this.id_detail.object.discperc.visible = false
+	end if
+	if f_stringpreferences("showremarksinservicepurdetail") = "N" then
+		this.id_detail.object.remarks.visible = false
+	end if
+	if f_stringpreferences("showpostedinservicepurlist") = "N" then
+		this.id_list.object.posted.visible = false
+	end if
+	if f_stringpreferences("showpostedbyinservicepurlist") = "N" then
+		this.id_list.object.postedby.visible = false
+	end if
+	if f_stringpreferences("showmodifiedbyinservicepurlist") = "N" then
+		this.id_list.object.modifiedby.visible = false
+	end if
+	if f_stringpreferences("showref1inservicepurlist") = "N" then
+		this.id_list.object.ref1.visible = false
+	end if
+	if f_stringpreferences("showref2inservicepurlist") = "N" then
+		this.id_list.object.ref2.visible = false
+	end if
+	if f_stringpreferences("showref3inservicepurlist") = "N" then
+		this.id_list.object.ref3.visible = false
+	end if
+	if f_stringpreferences("showref4inservicepurlist") = "N" then
+		this.id_list.object.ref4.visible = false
+	end if
+	if f_stringpreferences("showremarksinservicepurlist") = "N" then
+		this.id_list.object.remarks.visible = false
+	end if
+	if f_stringpreferences("showheadernoinservicepurlist") = "N" then
+		this.id_list.object.headerno.visible = false
+	end if
+	return 0
+
+// w_servicepurchase.wf_post_service_custwise(integer ai_postingmode, long al_startinginvcode, long al_endinginvcode) returns long
+	integer li_errcode
+	long ll_salesmancode
+	long ll_invcount
+	long ll_counter
+	boolean lb_flag
+	string ls_msgtext
+	s_arguements lstr_arginfo
+	if ai_postingmode = 1 then
+		open(w_salesmanpassword)
+		ll_salesmancode = long(message.doubleparm)
+		setfocus()
+	else
+		ll_salesmancode = gl_usercode
+	end if
+	if ll_salesmancode > 0 then
+		if ai_postingmode = 1 then
+			open(w_arg_supp_sinv_linv)
+			lstr_arginfo = message.powerobjectparm
+		else
+			lstr_arginfo.l_code1 = al_startinginvcode
+			lstr_arginfo.l_code2 = al_endinginvcode
+			lstr_arginfo.l_code3 = this.id_master.getitemnumber(1, "suppcode")
+			lstr_arginfo.l_code4 = 1
+			lstr_arginfo.i_status = 1
+		end if
+		if lstr_arginfo.i_status = 1 then
+			setpointer(hourglass!)
+			li_errcode = wf_lockserviceinvoices(lstr_arginfo.l_code1, lstr_arginfo.l_code2, lstr_arginfo.l_code3, ll_invcount)
+			if li_errcode = 0 then
+				this.it_transobject.postpurofservice_suppwise(lstr_arginfo.l_code1, lstr_arginfo.l_code2, ll_salesmancode, lstr_arginfo.l_code3, lstr_arginfo.l_code4)
+				if this.it_transobject.sqlcode <> 0 then
+					li_errcode = this.it_transobject.sqlcode
+					ls_msgtext = this.it_transobject.sqlerrtext
+				end if
+			end if
+		end if
+		if li_errcode = 0 then
+			SQL commit USING this.it_transobject;
+			if this.it_transobject.sqlcode <> 0 then
+				ls_msgtext = this.it_transobject.sqlerrtext
+				li_errcode = this.it_transobject.sqlcode
+			end if
+		else
+			SQL rollback USING this.it_transobject;
+		end if
+	else
+		setfocus()
+	end if
+	setpointer(arrow!)
+	if ll_salesmancode > 0 then
+		if li_errcode <> 0 then
+			messagebox("Posting Fails", "Some database request fails, Please try again.~r~nReasons Are:-~r~n" + ls_msgtext + "~r~nError Code = " + string(li_errcode))
+		else
+			messagebox("Posting Successfull", "Total unposted rows were " + string(ll_invcount) + "~n~rAll rows have been posted successfully")
+		end if
+	end if
+	return li_errcode
+
+// w_servicepurchase.wf_lockserviceinvoices(long al_sinvcode, long al_linvcode, long al_suppcode, long al_totalinvoice) returns integer
+	integer li_count
+	if al_suppcode = 0 or isnull(al_suppcode) then
+		SQL Select count ( *) INTO :al_totalinvoice From ServicePurHeader WITH ( UPDLOCK HOLDLOCK ) Where ServicePurinvcode Between :al_sinvcode AND :al_linvcode AND Posted ='N' USING this.it_transobject;
+	else
+		SQL Select count ( *) INTO :al_totalinvoice From ServicePurHeader WITH ( UPDLOCK HOLDLOCK ) Where SuppCode =:al_suppcode AND ServicePurinvcode Between :al_sinvcode AND :al_linvcode AND Posted ='N' USING this.it_transobject;
+	end if
+	return this.it_transobject.sqlcode
+
+// w_servicepurchase.wf_returnthisinvoice(long al_invid, string as_errtext) returns boolean
+	boolean lb_commitflag
+	if lb_commitflag then
+		if wf_deleteserviceinvoice(al_invid) <> 0 then
+			lb_commitflag = false
+			as_errtext = "    Some database problem occur"
+		end if
+	else
+		as_errtext = "    Some database problem occur"
+	end if
+	return lb_commitflag
+
+// w_servicepurchase.wf_apply_groupsuppliercategory() returns long
+	long ll_counter
+	long ll_rows
+	integer li_rtncode
+	string ls_filterstring
+	datastore lds_groupsuppcategory
+	if f_stringpreferences("GroupSuppCatInPurAndPRSvc") = "Y" then
+		lds_groupsuppcategory = create datastore
+		lds_groupsuppcategory.dataobject = "d_groupsuppcategory_detail"
+		lds_groupsuppcategory.settransobject(this.it_transobject)
+		this.il_groupcode = f_getgroupcode(gl_usercode)
+		ll_rows = lds_groupsuppcategory.retrieve(this.il_groupcode)
+		ls_filterstring = ""
+		for ll_counter = 1 to lds_groupsuppcategory.rowcount()
+			ls_filterstring = ls_filterstring + trim(string(lds_groupsuppcategory.object.suppcatcode[ll_counter])) + ","
+		next
+		if right(ls_filterstring, 1) = "," then
+			ls_filterstring = left(ls_filterstring, len(ls_filterstring) - 1)
+		end if
+		if ls_filterstring = "" then
+			ls_filterstring = "-1"
+		end if
+		this.idc_supplierlist.setfilter("suppcatcode In (" + ls_filterstring + ") ")
+		this.idc_supplierlist.filter()
+	end if
+	return 0
+
+// w_servicepurchase.wf_check_groupsuppliercategory() returns long
+	long ll_acccode
+	long ll_found
+	long ll_code
+	long ll_counter
+	long ll_rowcount
+	long ll_groupcode
+	long ll_suppcatcode
+	boolean lb_groupcustcat
+	if f_stringpreferences("GroupSuppCatInPurAndPRSvc") = "N" then
+		return 0
+	end if
+	ll_groupcode = f_getgroupcode(gl_usercode)
+	ll_rowcount = this.id_detail.rowcount()
+	ll_acccode = this.id_master.getitemnumber(1, "suppcode")
+	SQL Select MAX ( SuppCode ) , MAX ( SuppCatCode ) INTO :ll_found, :ll_suppcatcode From dbo.supplier Where suppcode =:ll_acccode USING this.it_transobject;
+	if ll_found > 0 and ll_suppcatcode > 0 and this.it_transobject.sqlcode = 0 then
+		ll_found = 0
+		SQL SELECT count ( suppcatcode ) INTO :ll_found FROM GroupSupplierCategory WHERE SuppCatCode =:ll_suppcatcode AND GroupCode =:ll_groupcode USING this.it_transobject;
+		if this.it_transobject.sqlcode = 0 and ll_found < 1 then
+			return -1
+		end if
+		return
+	end if
+	return 0
+
+// w_servicepurchase.wf_set_headersetting() returns long
+	integer li_rtncode
+	long ll_counter
+	long ll_found
+	datastore lds_headers
+	datawindowchild ldc_headerno
+	lds_headers = create datastore
+	lds_headers.dataobject = "d_groupallowedmoduleheader"
+	lds_headers.settransobject(sqlca)
+	li_rtncode = lds_headers.retrieve(this.il_groupcode, this.ii_module)
+	if li_rtncode <= 0 then
+		return li_rtncode
+	end if
+	if lds_headers.rowcount() > 0 then
+		this.id_master.object.headerno.initial = string(lds_headers.getitemnumber(1, "headercode"))
+		this.id_master.setitem(1, "headerno", this.id_master.object.headerno.initial)
+		this.id_master.getchild("headerno", ldc_headerno)
+		for ll_counter = 1 to lds_headers.rowcount()
+			ldc_headerno.insertrow(0)
+			ldc_headerno.setitem(ll_counter, "code", lds_headers.getitemnumber(ll_counter, "headercode"))
+			ll_found = 0
+			ll_found = gds_reoprtheaderinfo.find("headerno=" + string(lds_headers.getitemnumber(ll_counter, "headercode")), 1, gds_reoprtheaderinfo.rowcount())
+			if ll_found > 0 then
+				ldc_headerno.setitem(ll_counter, "name", gds_reoprtheaderinfo.getitemstring(ll_found, "clientname"))
+				if isnull(gds_reoprtheaderinfo.getitemstring(ll_found, "Remarks")) then
+					ldc_headerno.setitem(ll_counter, "headeralias", trim(string(gds_reoprtheaderinfo.getitemnumber(ll_found, "headerno"))))
+				else
+					ldc_headerno.setitem(ll_counter, "headeralias", trim(gds_reoprtheaderinfo.getitemstring(ll_found, "Remarks")) + " (" + trim(string(gds_reoprtheaderinfo.getitemnumber(ll_found, "headerno"))) + ")")
+				end if
+			end if
+		next
+	end if
+	return 1
+
+// w_servicepurchase.create() returns 0
+	integer icurrent
+	call super::create
+	this.dw_saleinvrep = create dw_saleinvrep
+	this.dw_saleinvdetail = create dw_saleinvdetail
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_saleinvrep
+	this.control[icurrent + 2] = this.dw_saleinvdetail
+
+// w_servicepurchase.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_saleinvrep
+	destroy this.dw_saleinvdetail
+
+// w_servicepurchase.ue_save() returns 0
+	long ll_suppcode
+	long ll_detailrows
+	long ll_saveresult
+	long ll_mastercurrrow
+	long ll_footercurrrow
+	long ll_invid
+	long ll_icode
+	long ll_errrowid
+	long ll_usercode
+	long ll_headerno
+	long ll_headerinvno
+	long ll_counter
+	long ll_count
+	long ll_statusrow
+	long ll_null
+	boolean lb_commitflag
+	boolean lb_continue
+	integer li_counter
+	integer li_tokenno
+	string ls_errtext
+	double ld_rate
+	double ld_avgprice
+	double ld_saleprice
+	double ld_discperc
+	double ld_invdiscperc
+	double ld_flatdisc
+	double ld_salestax
+	double ld_misccharges
+	double ld_cashreceived
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	setnull(ll_null)
+	this.ib_commitok = false
+	if this.ib_itemvalidated = false and wf_validateitem(true) = -1 then
+		this.id_detail.setfocus()
+		return
+	end if
+	wf_deleteemptydetailrow()
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_footer) < 0 then
+		return
+	end if
+	wf_grandtotal()
+	if wf_check_groupsuppliercategory() <> 0 then
+		messagebox("Group Wise Supplier Category Validation", "Current user group does not have enough permissions w.r.t supplier.~r~nPossible Reasons are:~r~nSupllier is not allowed to the current user group.")
+		this.id_master.setcolumn("suppcode")
+		this.id_master.setfocus()
+		return
+	end if
+	if this.id_footer.getitemnumber(this.id_footer.getrow(), "total") < 0.0 then
+		messagebox("Invoice Total Validation", "Invoice total can not be negative")
+		return
+	end if
+	setpointer(hourglass!)
+	if not wf_validateserverdatetime(ldt_server_datetime, ls_date_errtext) then
+		messagebox("Date Violation", ls_date_errtext, stopsign!)
+		return
+	end if
+	if wf_set_cashaccount() = 0 then
+		return
+	end if
+	if f_stringpreferences("ServiceSalesManWindow") = "Y" then
+		open(w_salesmanpassword)
+		ll_usercode = long(message.doubleparm)
+		setfocus()
+	else
+		ll_usercode = gl_usercode
+	end if
+	wf_grandtotal()
+	if ll_usercode > 0 then
+		ll_mastercurrrow = this.id_master.getrow()
+		ll_footercurrrow = this.id_footer.getrow()
+		if wf_show_mastercashierwindow() = 0 then
+			return
+		end if
+		ll_invid = this.id_master.getitemnumber(ll_mastercurrrow, "code")
+		if isnull(ll_invid) then
+			wf_tabnewid("ServicePurHeader", ll_invid)
+			if ll_invid > 0 then
+				this.id_master.setitem(ll_mastercurrrow, "code", ll_invid)
+			end if
+		end if
+		if f_stringpreferences("showheadernoinservicepur") = "N" then
+			this.id_master.setitem(ll_mastercurrrow, "Headerno", f_numberpreferences("headerno"))
+		end if
+		ll_headerno = this.id_master.getitemnumber(ll_mastercurrrow, "headerno")
+		ll_headerinvno = this.id_master.getitemnumber(ll_mastercurrrow, "headerinvno")
+		if isnull(ll_headerinvno) then
+			f_generateheaderinvcode(ll_headerno, this.ii_module, ll_headerinvno)
+			if ll_headerinvno > 0 then
+				this.id_master.setitem(ll_mastercurrrow, "headerinvno", ll_headerinvno)
+			end if
+		end if
+		ld_misccharges = this.id_footer.getitemnumber(ll_footercurrrow, "misccharges")
+		ld_invdiscperc = this.id_footer.getitemnumber(ll_footercurrrow, "invdiscperc")
+		ld_flatdisc = this.id_footer.getitemnumber(ll_footercurrrow, "flatdisc")
+		ll_suppcode = this.id_master.getitemnumber(ll_mastercurrrow, "suppcode")
+		this.id_master.setitem(ll_mastercurrrow, "discperc", ld_invdiscperc)
+		this.id_master.setitem(ll_mastercurrrow, "flatdisc", ld_flatdisc)
+		this.id_master.setitem(ll_mastercurrrow, "misccharges", ld_misccharges)
+		this.id_master.setitem(ll_mastercurrrow, "invtotal", wf_grandtotal())
+		if f_stringpreferences("askmastercashierwin_inservicepur") = "N" then
+			this.id_master.object.cashtendered[ll_mastercurrrow] = 0
+			this.id_master.object.cashcharged[ll_mastercurrrow] = 0
+			this.id_master.object.cashback[ll_mastercurrrow] = 0
+			this.id_master.object.outstandingamt[ll_mastercurrrow] = this.id_master.object.invtotal[ll_mastercurrrow]
+			this.id_master.accepttext()
+		elseif this.id_master.object.invtotal[ll_mastercurrrow] - this.id_master.object.cashcharged[ll_mastercurrrow] >= 0 then
+			this.id_master.object.outstandingamt[ll_mastercurrrow] = this.id_master.object.invtotal[ll_mastercurrrow] - this.id_master.object.cashcharged[ll_mastercurrrow]
+		else
+			this.id_master.object.outstandingamt[ll_mastercurrrow] = 0.00
+		end if
+		if this.ib_modify then
+			this.id_master.setitem(ll_mastercurrrow, "modifiedby", ll_usercode)
+			if not this.ib_modifydate then
+				if not wf_getserverdatetime(ldt_server_datetime, ls_date_errtext) then
+					messagebox("Date Violation", ls_date_errtext, stopsign!)
+					return
+				end if
+			else
+				ldt_server_datetime = this.id_master.getitemdatetime(ll_mastercurrrow, "date")
+			end if
+			this.id_master.setitem(ll_mastercurrrow, "date", ldt_server_datetime)
+			lb_continue = wf_returnthisinvoice(ll_invid, ls_errtext)
+		else
+			this.id_master.setitem(ll_mastercurrrow, "usercode", ll_usercode)
+			if not this.ib_modifydate then
+				if not wf_getserverdatetime(ldt_server_datetime, ls_date_errtext) then
+					messagebox("Date Violation", ls_date_errtext, stopsign!)
+					return
+				end if
+			else
+				ldt_server_datetime = this.id_master.getitemdatetime(ll_mastercurrrow, "date")
+			end if
+			this.id_master.setitem(ll_mastercurrrow, "Originaldate", ldt_server_datetime)
+			this.id_master.setitem(ll_mastercurrrow, "Date", ldt_server_datetime)
+			this.id_master.setitem(ll_mastercurrrow, "PostDate", ldt_server_datetime)
+		end if
+		if lb_continue then
+			this.id_saleinvdetail.reset()
+			for ll_counter = 1 to this.id_detail.rowcount()
+				this.id_saleinvdetail.insertrow(0)
+				this.id_saleinvdetail.setitem(ll_counter, "Code", ll_invid)
+				this.id_saleinvdetail.setitem(ll_counter, "icode", this.id_detail.getitemnumber(ll_counter, "icode"))
+				this.id_saleinvdetail.setitem(ll_counter, "fullcode", this.id_detail.getitemstring(ll_counter, "fullcode"))
+				this.id_saleinvdetail.setitem(ll_counter, "itemname", this.id_detail.getitemstring(ll_counter, "itemname"))
+				this.id_saleinvdetail.setitem(ll_counter, "qty", this.id_detail.getitemnumber(ll_counter, "qty"))
+				this.id_saleinvdetail.setitem(ll_counter, "price", this.id_detail.getitemnumber(ll_counter, "price"))
+				this.id_saleinvdetail.setitem(ll_counter, "serviceflatdisc", this.id_detail.getitemnumber(ll_counter, "serviceflatdisc"))
+				this.id_saleinvdetail.setitem(ll_counter, "discperc", this.id_detail.getitemnumber(ll_counter, "discperc"))
+				this.id_saleinvdetail.setitem(ll_counter, "allowsaleindecimal", this.id_detail.getitemstring(ll_counter, "allowsaleindecimal"))
+				this.id_saleinvdetail.setitem(ll_counter, "remarks", this.id_detail.getitemstring(ll_counter, "remarks"))
+			next
+			this.id_detail = this.id_saleinvdetail
+			ll_saveresult = event ue_save_withnocommit()
+			if ll_saveresult = 0 then
+				if wf_update_mastercashierwindow(ll_invid, this.is_doctype) = 0 then
+					SQL commit USING this.it_transobject;
+					messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+					this.ib_commitok = true
+					this.il_codevalue = ll_invid
+					this.id_master.resetupdate()
+					this.im_menu.m_file.m_new.enabled = true
+					this.editflag = false
+					if gd_recenttransdate < this.id_systemdate then
+						gd_recenttransdate = this.id_systemdate
+					end if
+				else
+					messagebox("Saving Problem", "Changes Not Saved in database for Master Cashier Window transactions.", stopsign!, ok!, 1)
+				end if
+			else
+				messagebox("Saving Problem", "Changes Not Saved in database while saving service record.", stopsign!, ok!, 1)
+			end if
+			this.id_detail = this.tab_retrieve.tabpage_detail.dw_itemsdetail
+			this.id_saleinvdetail.reset()
+			if this.ib_commitok then
+				this.ib_modify = false
+			else
+				lb_continue = false
+			end if
+		end if
+		if not lb_continue then
+			SQL rollback USING this.it_transobject;
+			messagebox("Updation Error", ls_errtext + " in current row", stopsign!)
+			if this.ib_modify = false then
+				this.id_master.setitem(1, "Code", ll_null)
+				this.id_master.accepttext()
+			end if
+		elseif f_stringpreferences("includservicepur_inactivitymonitor") = "Y" then
+			this.it_transobject.updateactivitymonitor(this.is_doctype, ll_invid)
+			if this.it_transobject.sqlcode <> 0 then
+				SQL rollback USING this.it_transobject;
+				messagebox("Activity Monitor", "Problem in updating activity monitor.~r~nReasons are:- " + this.it_transobject.sqlerrtext)
+			else
+				SQL commit USING this.it_transobject;
+			end if
+		end if
+	else
+		setfocus()
+	end if
+	setpointer(arrow!)
+
+// w_servicepurchase.ue_newform() returns 0
+	integer rtncode
+	integer li_rtncode
+	long li_fetched_code
+	long row
+	long ll_manfcode
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	call super::ue_newform
+	wf_update_virtualgl()
+	setredraw(false)
+	this.id_footer.reset()
+	this.id_footer.insertrow(0)
+	this.id_footer.scrolltorow(0)
+	this.im_menu.m_file.m_print.enabled = true
+	wf_protectdw(this.id_master, 0)
+	wf_protectdw(this.id_detail, 0)
+	wf_protectdw(this.id_footer, 0)
+	this.ib_modify = false
+	if this.ib_modifydate then
+		wf_getserverdatetime(ldt_server_datetime, ls_date_errtext)
+		this.id_master.setitem(this.id_master.getrow(), "date", ldt_server_datetime)
+	end if
+	wf_assign_master_cash_win_object()
+	this.id_master.setcolumn(1)
+	this.id_master.setfocus()
+	wf_visible(true)
+	setredraw(true)
+
+// w_servicepurchase.ue_detail() returns 0
+	integer li_rtncode
+	integer li_protect
+	long ll_row
+	long ll_code
+	long ll_found
+	boolean lb_flag
+	boolean lb_modify
+	call super::ue_detail
+	setredraw(false)
+	this.im_menu.m_file.m_post.enabled = false
+	this.im_menu.m_file.m_print.enabled = true
+	if this.id_master.object.code[this.id_master.rowcount()] > 0 and wf_check_groupsuppliercategory() <> 0 then
+		this.editflag = false
+		messagebox("Group Wise Supplier Category Validation", "Current user group does not have enough permissions w.r.t supplier.~r~nPossible Reasons are:~r~nSupllier is not allowed to the current user group.")
+		this.tab_retrieve.selecttab(2)
+		return
+	end if
+	if this.id_master.object.code[this.id_master.rowcount()] > 0 and this.id_master.getitemstring(this.id_master.getrow(), "Posted") = "N" then
+		ll_found = 0
+		ll_found = gds_securitywindow.find("rightcode = 5074", 1, gds_securitywindow.rowcount())
+		if ll_found > 0 then
+			li_protect = 0
+			wf_initmodify(li_protect)
+		else
+			this.id_detail.reset()
+			messagebox("Purchase of Service Modification", "Not Enough rights for Purchase of service invoice modification~r~nPlease contact your system administrator to do the needfull", stopsign!)
+			this.tab_retrieve.selecttab(2)
+			return
+		end if
+		return
+	end if
+	if this.id_master.object.code[this.id_master.rowcount()] > 0 then
+		this.ids_cashwin.retrieve(this.id_master.object.code[1], this.is_doctype)
+	else
+		wf_assign_master_cash_win_object()
+	end if
+	wf_protectdw(this.id_master, li_protect)
+	wf_protectdw(this.id_detail, li_protect)
+	wf_protectdw(this.id_footer, li_protect)
+	if li_protect = 0 then
+		lb_flag = true
+	end if
+	wf_visible(lb_flag)
+	wf_grandtotal()
+	if this.id_master.getitemstring(this.id_master.getrow(), "Posted") = "Y" then
+		this.editflag = false
+	end if
+	this.id_itemslist.hide()
+	this.ib_itemslistopen = false
+	setredraw(true)
+
+// w_servicepurchase.ue_newitem() returns 0
+	long ll_rowcount
+	if this.ib_itemvalidated = false and wf_validateitem(true) = -1 then
+		this.id_detail.setfocus()
+		return
+	end if
+	if this.id_detail.rowcount() > 0 and f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	this.id_detail.insertrow(0)
+	ll_rowcount = this.id_detail.rowcount()
+	if ll_rowcount > 1 then
+		this.id_detail.scrolltorow(ll_rowcount)
+		if f_stringpreferences("itemcode") = "N" then
+			this.id_detail.setcolumn("itemname")
+			this.ib_focusdetail = true
+			this.id_itemslist.show()
+		else
+			this.id_detail.setcolumn("fullcode")
+			this.ib_focusdetail = true
+			this.id_itemslist.hide()
+		end if
+		this.id_detail.setfocus()
+	end if
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_print.enabled = true
+	this.ib_validatefullcode = true
+
+// w_servicepurchase.ue_deleteitem() returns 0
+	long ll_row
+	long ll_footerrow
+	call super::ue_deleteitem
+	ll_row = this.id_detail.getrow()
+	ll_footerrow = this.id_footer.getrow()
+	if this.id_detail.rowcount() > 0 then
+		this.id_footer.setitem(ll_footerrow, "icode", this.id_detail.getitemnumber(ll_row, "icode"))
+		return
+	end if
+	this.id_footer.setitem(ll_footerrow, "icode", 0)
+	this.im_menu.m_file.m_save.enabled = false
+
+// w_servicepurchase.close() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::close()
+	this.id_itemslist.sharedataoff()
+	return ::message.returnvalue
+
+// w_servicepurchase.ue_list() returns 0
+	call super::ue_list
+	SQL rollback USING this.it_transobject;
+	this.im_menu.m_file.m_post.enabled = true
+	this.ib_modify = false
+	this.id_itemslist.hide()
+	if this.id_detail.rowcount() > 0 then
+		postevent("ue_deleteitem")
+	end if
+	wf_retrievelist()
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_menu.m_file.m_print.visible = true
+
+// w_servicepurchase.ue_print() returns 0
+	long ll_row
+	long ll_invcode
+	integer li_option
+	boolean lb_listtab
+	s_datastore lstr
+	call super::ue_print
+	if this.tab_retrieve.selectedtab = 2 then
+		lb_listtab = true
+	end if
+	if this.im_menu.m_file.m_save.enabled = true and lb_listtab = false then
+		if this.ib_modify then
+			li_option = messagebox("Save Changes", "Do you want to save invoice", information!, yesno!, 2)
+			if li_option = 1 then
+				triggerevent("ue_save")
+				if wf_commitform() = false then
+					return
+				end if
+				return
+			end if
+		else
+			triggerevent("ue_save")
+			if wf_commitform() = false then
+				return
+			end if
+		end if
+		return
+	end if
+	if lb_listtab then
+		if isnull(this.id_list.getrow()) or this.id_list.getrow() <= 0 then
+			messagebox("Rows Validation", "Kindly select any row from the list view.")
+			return
+		end if
+		ll_invcode = this.id_list.getitemnumber(this.id_list.getrow(), "code")
+		if isnull(ll_invcode) or ll_invcode <= 0 then
+			messagebox("Selection Validation", "Kindly select any row from the list view.")
+			return
+		end if
+	else
+		ll_invcode = this.id_master.getitemnumber(1, "code")
+	end if
+	wf_selectprintreport()
+	this.id_print.settransobject(this.it_transobject)
+	this.id_print.retrieve(ll_invcode)
+	if lb_listtab then
+		lstr.dw = this.id_print
+		lstr.s_name1 = this.id_print.dataobject
+		openwithparm(w_preview_invoices, lstr)
+		lstr = message.powerobjectparm
+		if lstr.i_closemode = -1 then
+			return
+		end if
+		return
+	end if
+	if f_stringpreferences("PromptBeforePrinting") = "Y" and printsetup() < 0 then
+		messagebox("Printer", "Printing Error")
+		this.id_print.printcancel()
+	end if
+	if this.id_print.rowcount() > 0 then
+		if this.id_print.print() < 0 then
+			messagebox("Printing", "Can not Print Invoice", information!)
+		end if
+		if this.im_menu.m_file.m_save.enabled = true and lb_listtab = false then
+			postevent("ue_new")
+		end if
+		return
+	end if
+	messagebox("Printing Error", "Can not Print Invoice,~r~nNo rows are retrieved", information!)
+
+// w_servicepurchase.ue_refreshddw() returns 0
+	call super::ue_refreshddw
+	f_retrieve_servicelist(this.id_itemslist, this.it_transobject)
+	setpointer(hourglass!)
+	wf_update_virtualgl()
+	this.idc_supplierlist.setredraw(false)
+	this.idc_supplierlist.settransobject(this.it_transobject)
+	this.idc_supplierlist.retrieve()
+	this.idc_supplierlist.setredraw(true)
+	wf_apply_groupsuppliercategory()
+	setpointer(arrow!)
+
+// w_servicepurchase.ue_new() returns 0
+	call super::ue_new
+	this.im_menu.m_file.m_post.enabled = false
+
+// w_servicepurchase.ue_postopen() returns 0
+	datawindowchild ldc_headerno
+	m_multi_entry lm_menu
+	integer li_rtncode
+	long ll_counter
+	long ll_pos
+	long ll_found
+	long li_count
+	long ll_startrow
+	char lc_char
+	call super::ue_postopen
+	lm_menu = this.menuid
+	setredraw(false)
+	wf_update_virtualgl()
+	wf_assign_master_cash_win_object()
+	this.il_groupcode = f_getgroupcode(gl_usercode)
+	this.id_print = this.dw_saleinvrep
+	this.id_saleinvdetail = this.dw_saleinvdetail
+	this.id_saleinvdetail.settransobject(this.it_transobject)
+	li_rtncode = this.id_master.getchild("suppcode", this.idc_supplierlist)
+	if li_rtncode = -1 then
+		messagebox("Error", "Can not get a DataWindowChild")
+		close(this)
+	end if
+	this.idc_supplierlist.settransobject(this.it_transobject)
+	this.idc_supplierlist.retrieve()
+	wf_apply_groupsuppliercategory()
+	li_rtncode = wf_set_headersetting()
+	if li_rtncode <= 0 then
+		messagebox("Problem", "Not Enough Header Rights to Make Service Sales")
+		close(this)
+		return
+	end if
+	wf_set_preferences()
+	this.id_master.object.posted.initial = "N"
+	if f_stringpreferences("itemcode") = "N" then
+		this.id_detail.object.fullcode.visible = false
+	end if
+	f_retrieve_servicelist(this.id_itemslist, this.it_transobject)
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 5075", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.id_master.object.date.protect = 0
+		this.id_master.object.date.background.color = rgb(255, 255, 255)
+		this.ib_modifydate = true
+	end if
+	if not this.ib_modifydate then
+		this.id_master.object.date.protect = 1
+		this.id_master.settaborder("date", 0)
+	end if
+	this.id_itemslist.object.location.visible = false
+	for li_count = 65 to 90
+		lc_char = char(li_count)
+		this.ia_llookuptable[li_count] = this.id_itemslist.find("Lower(itemname) >= Lower('" + char(li_count) + "')", ll_startrow, 99999)
+		ll_startrow = this.ia_llookuptable[li_count]
+	next
+	this.ia_llookuptable[92] = 99999
+	this.id_footer.reset()
+	this.id_footer.insertrow(0)
+	this.id_footer.scrolltorow(0)
+	if f_stringpreferences("filter_svccat_on_startup_in_servicepur") = "Y" then
+		wf_refresh_singleservicecategory()
+		this.id_itemslist.hide()
+	end if
+	f_setserviceqtystyle(this.id_detail, "qty")
+	setredraw(true)
+
+// w_servicepurchase.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.is_child = classname()
+	return ::message.returnvalue

@@ -1,0 +1,27 @@
+// window w_arg_machine_sdate_ldate (reports)  ancestor: w_arguements
+
+// w_arg_machine_sdate_ldate.create() returns 0
+	call super::create
+
+// w_arg_machine_sdate_ldate.destroy() returns 0
+	call super::destroy
+
+// w_arg_machine_sdate_ldate.open() returns long
+	long ancestorreturnvalue
+	long ll_retcode
+	long ll_rowcount
+	ancestorreturnvalue = super::open()
+	this.dw_control.settransobject(sqlca)
+	ll_retcode = this.dw_control.getchild("machinename", this.idc_machine)
+	if ll_retcode = -1 then
+		messagebox("Error", "Not a DataWindowChild")
+	end if
+	this.idc_machine.settransobject(sqlca)
+	this.idc_machine.insertrow(0)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	return ::message.returnvalue
+
+// w_arg_machine_sdate_ldate.ue_close(integer ai_stauts) returns 0
+	super::ue_close(ai_stauts)
+	closewithreturn(this, this.istr_arg)

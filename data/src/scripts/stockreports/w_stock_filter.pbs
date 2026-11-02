@@ -1,0 +1,145 @@
+// window w_stock_filter (stockreports)  ancestor: window
+
+// w_stock_filter.create() returns 0
+	this.rb_itemalertwise = create rb_itemalertwise
+	this.rb_manfcatclass = create rb_manfcatclass
+	this.rb_groupgodownstock = create rb_groupgodownstock
+	this.rb_allitem_allgodown = create rb_allitem_allgodown
+	this.rb_catmanfcrosstab = create rb_catmanfcrosstab
+	this.rb_masterpartno = create rb_masterpartno
+	this.rb_manfwisestockandtransitstock = create rb_manfwisestockandtransitstock
+	this.st_2 = create st_2
+	this.st_1 = create st_1
+	this.rb_stockinhand_plain2 = create rb_stockinhand_plain2
+	this.rb_stockinhand_plain = create rb_stockinhand_plain
+	this.rb_authorwise = create rb_authorwise
+	this.rb_genericitemwise = create rb_genericitemwise
+	this.rb_itempartno = create rb_itempartno
+	this.rb_stockwithmargin = create rb_stockwithmargin
+	this.rb_manfcat_summary = create rb_manfcat_summary
+	this.rb_manfsummary = create rb_manfsummary
+	this.rb_calssandpackingwise = create rb_calssandpackingwise
+	this.rb_packingwise = create rb_packingwise
+	this.rb_categoryandcompanywise = create rb_categoryandcompanywise
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.rb_categorypackingandcompanywise = create rb_categorypackingandcompanywise
+	this.rb_categoryandpackingwise = create rb_categoryandpackingwise
+	this.rb_classandcategorywise = create rb_classandcategorywise
+	this.rb_companywise = create rb_companywise
+	this.rb_categorywise = create rb_categorywise
+	this.rb_allitem = create rb_allitem
+	this.gb_1 = create gb_1
+	this.control = {this.rb_itemalertwise, this.rb_manfcatclass, this.rb_groupgodownstock, this.rb_allitem_allgodown, this.rb_catmanfcrosstab, this.rb_masterpartno, this.rb_manfwisestockandtransitstock, this.st_2, this.st_1, this.rb_stockinhand_plain2, this.rb_stockinhand_plain, this.rb_authorwise, this.rb_genericitemwise, this.rb_itempartno, this.rb_stockwithmargin, this.rb_manfcat_summary, this.rb_manfsummary, this.rb_calssandpackingwise, this.rb_packingwise, this.rb_categoryandcompanywise, this.cb_cancel, this.cb_ok, this.rb_categorypackingandcompanywise, this.rb_categoryandpackingwise, this.rb_classandcategorywise, this.rb_companywise, this.rb_categorywise, this.rb_allitem, this.gb_1}
+
+// w_stock_filter.destroy() returns 0
+	destroy this.rb_itemalertwise
+	destroy this.rb_manfcatclass
+	destroy this.rb_groupgodownstock
+	destroy this.rb_allitem_allgodown
+	destroy this.rb_catmanfcrosstab
+	destroy this.rb_masterpartno
+	destroy this.rb_manfwisestockandtransitstock
+	destroy this.st_2
+	destroy this.st_1
+	destroy this.rb_stockinhand_plain2
+	destroy this.rb_stockinhand_plain
+	destroy this.rb_authorwise
+	destroy this.rb_genericitemwise
+	destroy this.rb_itempartno
+	destroy this.rb_stockwithmargin
+	destroy this.rb_manfcat_summary
+	destroy this.rb_manfsummary
+	destroy this.rb_calssandpackingwise
+	destroy this.rb_packingwise
+	destroy this.rb_categoryandcompanywise
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.rb_categorypackingandcompanywise
+	destroy this.rb_categoryandpackingwise
+	destroy this.rb_classandcategorywise
+	destroy this.rb_companywise
+	destroy this.rb_categorywise
+	destroy this.rb_allitem
+	destroy this.gb_1
+
+// w_stock_filter.close() returns long
+	closewithreturn(w_stock_filter, this.is_selectedreport)
+	return ::message.returnvalue
+
+// w_stock_filter.open() returns long
+	environment le_env
+	long ll_width
+	long ll_height
+	if getenvironment(le_env) = 1 then
+		ll_width = pixelstounits(le_env.screenwidth, xpixelstounits!) - this.width
+		ll_height = pixelstounits(le_env.screenheight, ypixelstounits!) - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width * 0.5
+			ll_height = ll_height * 0.5
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.triggerevent(close!)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	if parent.rb_stockwithmargin.checked then
+		parent.is_selectedreport = "d_stockinhand_margin"
+	elseif parent.rb_allitem.checked then
+		parent.is_selectedreport = "d_stockinhand_godownwise"
+	elseif parent.rb_categorywise.checked then
+		parent.is_selectedreport = "d_stockinhand_godownwise_powerwise"
+	elseif parent.rb_categoryandcompanywise.checked then
+		parent.is_selectedreport = "d_stockinhand_godown_powercompany"
+	elseif parent.rb_companywise.checked then
+		parent.is_selectedreport = "d_stockinhand_godown_companywise"
+	elseif parent.rb_classandcategorywise.checked then
+		parent.is_selectedreport = "d_stockinhand_godown_classpower"
+	elseif parent.rb_categoryandpackingwise.checked then
+		parent.is_selectedreport = "d_stockinhand_godown_powerpacking"
+	elseif parent.rb_categorypackingandcompanywise.checked then
+		parent.is_selectedreport = "d_stockinhand_godown_powerpackingcompany"
+	elseif parent.rb_calssandpackingwise.checked then
+		parent.is_selectedreport = "d_stockinhand_godown_classandpacking"
+	elseif parent.rb_packingwise.checked then
+		parent.is_selectedreport = "d_stockinhand_packingwise"
+	elseif parent.rb_calssandpackingwise.checked then
+		parent.is_selectedreport = "d_stockinhand_packing_classwise"
+	elseif parent.rb_manfsummary.checked then
+		parent.is_selectedreport = "d_stockinhand_manfsummery"
+	elseif parent.rb_manfcat_summary.checked then
+		parent.is_selectedreport = "d_stockinhand_manfcat_summery"
+	elseif parent.rb_itempartno.checked then
+		parent.is_selectedreport = "d_stockinhand_partno"
+	elseif parent.rb_genericitemwise.checked then
+		parent.is_selectedreport = "d_stockinhand_genericitem"
+	elseif parent.rb_authorwise.checked then
+		parent.is_selectedreport = "d_stockinhand_authorwise"
+	elseif parent.rb_stockinhand_plain.checked then
+		parent.is_selectedreport = "d_stockinhand_plain"
+	elseif parent.rb_stockinhand_plain2.checked then
+		parent.is_selectedreport = "d_stockinhand_plain2"
+	elseif parent.rb_manfwisestockandtransitstock.checked then
+		parent.is_selectedreport = "d_group_manf_stock_transitstock_crosstab"
+	elseif parent.rb_masterpartno.checked then
+		parent.is_selectedreport = "d_masterpart_stockinhand"
+	elseif parent.rb_catmanfcrosstab.checked then
+		parent.is_selectedreport = "d_stockinhand_icat_generic_manf_crosstab"
+	elseif parent.rb_allitem_allgodown.checked then
+		parent.is_selectedreport = "d_stockinhand_transitstock_crosstab"
+	elseif parent.rb_groupgodownstock.checked then
+		parent.is_selectedreport = "d_godowngroup_stockinhand"
+	elseif parent.rb_manfcatclass.checked then
+		parent.is_selectedreport = "d_stockinhand_manf_cat_classwise"
+	elseif parent.rb_itemalertwise.checked then
+		parent.is_selectedreport = "d_stockinhand_itemalertwise"
+	end if
+	parent.triggerevent(close!)
+	return ::message.returnvalue

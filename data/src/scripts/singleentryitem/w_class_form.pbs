@@ -1,0 +1,30 @@
+// window w_class_form (singleentryitem)  ancestor: w_single_entry
+
+// w_class_form.ue_newform() returns 0
+	call super::ue_newform
+	this.id_detail.setcolumn(1)
+
+// w_class_form.create() returns 0
+	call super::create
+
+// w_class_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_class_form.activate() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::activate()
+	this.windowstate = maximized!
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_class_form.ue_detail() returns 0
+	call super::ue_detail
+
+// w_class_form.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.is_tablename = "ItemClass"
+	return ::message.returnvalue

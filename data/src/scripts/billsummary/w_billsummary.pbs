@@ -1,0 +1,1450 @@
+// window w_billsummary (billsummary)  ancestor: w_multi_entry
+
+// w_billsummary.wf_deleteallemptydetailrows() returns integer
+	long ll_count
+	long ll_deletecount
+	long ll_code
+	long ll_rowcount
+	long ll_custcode
+	ll_deletecount = 0
+	ll_rowcount = this.id_detail.rowcount()
+	if ll_rowcount > 0 then
+		for ll_count = 1 to this.id_detail.rowcount()
+			ll_code = this.id_detail.getitemnumber(ll_count, "saleinvcode")
+			ll_custcode = this.id_detail.getitemnumber(ll_count, "custcode")
+			if ll_code <= 0 and ll_custcode <= 0 then
+				ll_deletecount = ll_deletecount + 1
+				this.id_detail.deleterow(ll_count)
+			end if
+		next
+		for ll_count = 1 to this.id_detail.rowcount()
+			ll_code = this.id_detail.getitemnumber(ll_count, "saleinvcode")
+			ll_custcode = this.id_detail.getitemnumber(ll_count, "custcode")
+			if ll_code <= 0 and ll_custcode <= 0 then
+				ll_deletecount = ll_deletecount + 1
+				this.id_detail.deleterow(ll_count)
+			end if
+		next
+	end if
+	return ll_deletecount
+
+// w_billsummary.wf_deleteemptydetailrow() returns integer
+	long ll_rowcount
+	long ll_code
+	long ll_custcode
+	integer li_rtcode
+	ll_rowcount = this.id_detail.rowcount()
+	ll_code = this.id_detail.getitemnumber(ll_rowcount, "saleinvcode")
+	ll_custcode = this.id_detail.getitemnumber(ll_rowcount, "custcode")
+	if ll_rowcount > 1 and (ll_custcode <= 0 and ll_code <= 0) then
+		this.id_detail.deleterow(ll_rowcount)
+		li_rtcode = 1
+		setfocus()
+	end if
+	return li_rtcode
+
+// w_billsummary.wf_lockinvoice(long al_invcode) returns integer
+	integer li_count
+	this.it_transobject.dbparm = " Async =1, DBGetTime = 20"
+	this.it_transobject.lockbillsummary(al_invcode, al_invcode)
+	this.it_transobject.dbparm = "Async =0, DBGetTime = 0"
+	return this.it_transobject.sqlcode
+
+// w_billsummary.wf_populateinvoices() returns long
+	datastore lds_bills
+	long ll_detailrows
+	long ll_count
+	long ll_duplrows
+	long ll_invcode
+	long ll_row
+	long ll_custcode
+	long ll_oldcustcode
+	long ll_newcust_row
+	long ll_retcode
+	long ll_billsumm
+	long ll_rowcount
+	long ll_rtcode
+	long ll_retrievecount
+	long ll_lockedcount
+	long ll_format
+	string ls_fullcode
+	double ld_cust_invtotal
+	double ld_invtotal
+	integer li_result
+	integer li_rtncode
+	boolean populateflag
+	string ls_remarks
+	string ls_oldareaname
+	s_arguements lstr_billsum
+	this.id_detail.setredraw(false)
+	setpointer(hourglass!)
+	ll_detailrows = this.id_detail.rowcount()
+	if ll_detailrows > 0 then
+		if this.id_detail.object.saleinvcode[1] > 0 or this.id_detail.object.custcode[1] > 0 then
+			li_result = messagebox("Warning", "Rows in Detail Window will Lost", exclamation!, okcancel!, 2)
+			if li_result = 1 then
+				for ll_count = 1 to ll_detailrows
+					this.id_detail.deleterow(0)
+				next
+				if this.id_detail.update() <> 1 then
+					messagebox("DataBase Problem", "Problem in Deleting Rows")
+					return 0
+				end if
+			else
+				populateflag = false
+			end if
+		else
+			this.id_detail.reset()
+		end if
+	end if
+	if populateflag = true then
+		lds_bills = create datastore
+		open(w_select_invoicerange_period)
+		ll_format = message.doubleparm
+		if this.id_master.object.billsummarytypecode[1] = 1 then
+			if ll_format = 1 then
+				open(w_arg_billsummary_population)
+				lds_bills.dataobject = "d_billsummary_population"
+			else
+				open(w_arg_billsummary_population_period)
+				lds_bills.dataobject = "d_billsummary_population_period"
+			end if
+		elseif ll_format = 1 then
+			open(w_arg_billsummary_population_invbased)
+			lds_bills.dataobject = "d_billsummary_population_invbased"
+		else
+			open(w_arg_billsummary_pop_invbased_period)
+			lds_bills.dataobject = "d_billsummary_population_invbased_period"
+		end if
+		lstr_billsum = message.powerobjectparm
+		lds_bills.settransobject(this.it_transobject)
+		if this.id_master.object.billsummarytypecode[1] = 1 then
+			if ll_format = 1 then
+				ll_rtcode = lds_bills.retrieve(lstr_billsum.ia_integerlist, lstr_billsum.l_code1, lstr_billsum.l_code2, lstr_billsum.s_name1, lstr_billsum.l_code3, lstr_billsum.l_code4)
+			else
+				ll_rtcode = lds_bills.retrieve(lstr_billsum.ia_integerlist, lstr_billsum.d_sdate, lstr_billsum.d_edate, lstr_billsum.s_name1, lstr_billsum.l_code3, lstr_billsum.l_code4)
+			end if
+		elseif ll_format = 1 then
+			ll_rtcode = lds_bills.retrieve(lstr_billsum.ia_integerlist, lstr_billsum.d_sdate, lstr_billsum.d_edate)
+		else
+			ll_rtcode = lds_bills.retrieve(lstr_billsum.ia_integerlist, lstr_billsum.d_sdate, lstr_billsum.d_edate)
+		end if
+		this.id_detail.reset()
+		ll_rowcount = lds_bills.rowcount()
+		setnull(ll_newcust_row)
+		for ll_count = 1 to ll_rowcount
+			if ls_oldareaname <> lds_bills.object.areaname[ll_count] then
+				ls_oldareaname = lds_bills.object.areaname[ll_count]
+				ls_remarks = ls_remarks + ls_oldareaname + ", "
+			end if
+			ll_custcode = lds_bills.object.custcode[ll_count]
+			ll_invcode = lds_bills.object.saleinvcode[ll_count]
+			if ll_invcode > 0 then
+				ll_row = this.id_detail.insertrow(0)
+				ll_retcode = wf_validateinvcode(ll_row, ll_invcode, ll_billsumm, 1)
+				if ll_retcode = 0 then
+					ll_retrievecount = ll_retrievecount + 1
+				else
+					this.id_detail.deleterow(ll_row)
+				end if
+			elseif ll_custcode > 0 then
+				ll_row = this.id_detail.insertrow(0)
+				ll_retcode = wf_setcustomerinfo(ll_custcode, ll_row)
+				if ll_retcode = 0 then
+					ll_retrievecount = ll_retrievecount + 1
+				else
+					this.id_detail.deleterow(ll_row)
+				end if
+			end if
+			if ll_retcode = 0 and this.id_master.object.billsummarytypecode[1] = 1 then
+				ld_invtotal = this.id_detail.object.netamount[ll_row]
+				if isnull(ld_invtotal) then
+					ld_invtotal = 0
+				end if
+				if ll_oldcustcode = ll_custcode then
+					ld_cust_invtotal = ld_cust_invtotal + ld_invtotal
+					if ll_row > 0 then
+						this.id_detail.object.accbalance[ll_row] = 0.00
+					end if
+				else
+					if ll_newcust_row > 0 then
+						this.id_detail.object.accbalance[ll_newcust_row] = this.id_detail.object.accbalance[ll_newcust_row] - ld_cust_invtotal
+					end if
+					ll_newcust_row = ll_row
+					ld_cust_invtotal = ld_invtotal
+					ll_oldcustcode = ll_custcode
+				end if
+			end if
+		next
+		if ll_oldcustcode = ll_custcode and ll_newcust_row > 0 then
+			this.id_detail.object.accbalance[ll_newcust_row] = this.id_detail.object.accbalance[ll_newcust_row] - ld_cust_invtotal
+		end if
+		destroy lds_bills
+		this.id_master.object.remarks[1] = left(ls_remarks, len(ls_remarks) - 1)
+		if ll_retrievecount = ll_rowcount then
+			messagebox("Result", string(ll_rowcount) + " Records are populated. ")
+		else
+			messagebox("Result", "Total records in the selection criteria were " + string(ll_rowcount) + "~n~r" + string(ll_retrievecount) + " records populated successfully~n~r" + string(ll_rowcount - ll_retrievecount) + " records are not populated successfully~n~r" + "beacuse they are already included in some other bill summary statements.")
+		end if
+	end if
+	ll_detailrows = this.id_detail.rowcount()
+	if ll_detailrows > 0 then
+		this.im_menu.m_file.m_save.enabled = true
+	else
+		this.im_menu.m_file.m_save.enabled = false
+	end if
+	setpointer(arrow!)
+	this.id_detail.setredraw(true)
+	return ll_retrievecount
+
+// w_billsummary.wf_assigndatawindowobjects(string as_detaildw, string as_hiddendw) returns 0
+	this.id_detail.dataobject = as_detaildw
+	this.id_detail.settransobject(this.it_transobject)
+	this.dw_invdetail.dataobject = as_hiddendw
+	this.id_invdetail = this.dw_invdetail
+	this.id_invdetail.settransobject(this.it_transobject)
+
+// w_billsummary.wf_setbalance(long al_custcode, long ll_row) returns long
+	long ll_retcode
+	double ld_balance
+	SQL SELECT Balance =ISNULL ( DBO.fn_AccountBalance ( GETDATE ( ) , :al_custcode ) , 0 ) INTO :ld_balance FROM Customer WHERE CustCode =:al_custcode USING sqlca;   /* bind positions inferred */
+	if sqlca.sqlcode = 0 then
+		this.id_detail.object.accbalance[ll_row] = ld_balance
+		ll_retcode = 0
+	else
+		ll_retcode = -1
+	end if
+	return ll_retcode
+
+// w_billsummary.wf_findcustcode(string as_aliasname, long al_custcode) returns long
+	long ll_custcode
+	long ll_retflag
+	string ls_aliasname
+	SQL SELECT A.AliasName , A.AccCode INTO :ls_aliasname, :ll_custcode FROM Accounts A , Customer C WHERE A.AliasName =:as_aliasname AND A.AccCode =C.CustCode AND A.Active ='Y' USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		al_custcode = ll_custcode
+		ll_retflag = 0
+	else
+		ll_retflag = 1
+	end if
+	return ll_retflag
+
+// w_billsummary.wf_setcustomerinfo(long al_custcode, long al_row) returns long
+	long ll_custcode
+	long ll_retflag
+	long ll_null
+	string ls_aliasname
+	double ld_null
+	setnull(ll_null)
+	setnull(ld_null)
+	SQL SELECT A.AliasName , A.AccCode INTO :ls_aliasname, :ll_custcode FROM Accounts A , Customer C WHERE A.AccCode =:al_custcode AND A.AccCode =C.CustCode AND A.Active ='Y' USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		ll_retflag = 0
+		this.id_detail.object.aliasname[al_row] = ls_aliasname
+		this.id_detail.object.custcode[al_row] = ll_custcode
+		this.id_detail.object.saleinvcode[al_row] = ll_null
+		this.id_detail.object.netamount[al_row] = 0.00
+		this.id_detail.object.outstandingamt[al_row] = 0.00
+		wf_setbalance(ll_custcode, al_row)
+	else
+		ll_retflag = 1
+	end if
+	return ll_retflag
+
+// w_billsummary.wf_execute_virtualgl() returns integer
+	sqlca.virtualgl("A")
+	if sqlca.sqlcode = 0 then
+		SQL commit USING sqlca;
+	else
+		SQL rollback USING sqlca;
+	end if
+	return 0
+
+// w_billsummary.wf_refreshitemslist() returns 0
+	wf_execute_virtualgl()
+
+// w_billsummary.wf_savedetail(long al_code) returns boolean
+	long ll_detailrows
+	long ll_counter
+	long ll_invcode
+	long ll_rowscount
+	long ll_null
+	long ll_insrow
+	long ll_unpostedtrans
+	double ld_invbalance
+	double ld_newbalance
+	double ld_affectiveamt
+	boolean lb_continue
+	string ls_msg
+	string ls_errortext
+	setnull(ll_null)
+	ll_detailrows = this.id_detail.rowcount()
+	ll_counter = 1
+	if ll_detailrows > 0 then
+		for ll_counter = 1 to ll_detailrows
+			ll_invcode = this.id_detail.object.saleinvcode[ll_counter]
+			ld_affectiveamt = this.id_detail.object.debitnoteamt[ll_counter] - this.id_detail.object.creditnoteamt[ll_counter] - this.id_detail.object.cashamt[ll_counter] - this.id_detail.object.chequeamt[ll_counter]
+			if ll_invcode > 0 then
+				ls_msg = "000                                                                                                                                 "
+				this.it_transobject.checkunpostedsaleinvintransactions(ll_invcode, al_code, "BS", ll_unpostedtrans, ls_msg)
+				if ll_unpostedtrans > 0 then
+					ls_errortext = "Unposted Transaction(s) Exist for this Invoice~r~n~r~n" + ls_msg
+					lb_continue = false
+					exit
+				end if
+				this.it_transobject.getsaleinvbalance(ll_invcode, ld_invbalance)
+				if this.it_transobject.sqlcode <> 0 then
+					goto L836
+				end if
+				ls_errortext = "Problem in fetching Sale Invoice Balance for sale invoice code:" + trim(string(ll_invcode)) + "~r~n~r~n" + this.it_transobject.sqlerrtext
+				lb_continue = false
+				exit
+			end if
+			ll_insrow = this.id_invdetail.insertrow(0)
+			this.id_invdetail.object.code[ll_insrow] = al_code
+			this.id_invdetail.object.aliasname[ll_insrow] = this.id_detail.object.aliasname[ll_counter]
+			this.id_invdetail.object.custcode[ll_insrow] = this.id_detail.object.custcode[ll_counter]
+			this.id_invdetail.object.accbalance[ll_insrow] = this.id_detail.object.accbalance[ll_counter]
+			this.id_invdetail.object.saleinvcode[ll_insrow] = this.id_detail.object.saleinvcode[ll_counter]
+			this.id_invdetail.object.netamount[ll_insrow] = this.id_detail.object.netamount[ll_counter]
+			if ll_invcode > 0 then
+				this.id_invdetail.object.outstandingamt[ll_insrow] = ld_invbalance
+			else
+				this.id_invdetail.object.outstandingamt[ll_insrow] = this.id_detail.object.outstandingamt[ll_counter]
+			end if
+			this.id_invdetail.object.cashamt[ll_insrow] = this.id_detail.object.cashamt[ll_counter]
+			this.id_invdetail.object.cashacccode[ll_insrow] = this.id_detail.object.cashacccode[ll_counter]
+			this.id_invdetail.object.chequeamt[ll_insrow] = this.id_detail.object.chequeamt[ll_counter]
+			this.id_invdetail.object.bankacccode[ll_insrow] = this.id_detail.object.bankacccode[ll_counter]
+			this.id_invdetail.object.debitnoteamt[ll_insrow] = this.id_detail.object.debitnoteamt[ll_counter]
+			this.id_invdetail.object.debitnoteacccode[ll_insrow] = this.id_detail.object.debitnoteacccode[ll_counter]
+			this.id_invdetail.object.debitnoteamt[ll_insrow] = this.id_detail.object.debitnoteamt[ll_counter]
+			this.id_invdetail.object.debitnoteacccode[ll_insrow] = this.id_detail.object.debitnoteacccode[ll_counter]
+			this.id_invdetail.object.creditnoteamt[ll_insrow] = this.id_detail.object.creditnoteamt[ll_counter]
+			this.id_invdetail.object.creditnoteacccode[ll_insrow] = this.id_detail.object.creditnoteacccode[ll_counter]
+			this.id_invdetail.object.srbufferinvcode[ll_insrow] = this.id_detail.object.srbufferinvcode[ll_counter]
+			this.id_invdetail.object.salereturnamt[ll_insrow] = this.id_detail.object.salereturnamt[ll_counter]
+			this.id_invdetail.object.billsonhandbreakup[ll_insrow] = this.id_detail.object.billsonhandbreakup[ll_counter]
+			this.id_invdetail.object.remarks[ll_insrow] = this.id_detail.object.remarks[ll_counter]
+		next
+	else
+		lb_continue = false
+	end if
+	if lb_continue = false then
+		messagebox("Saving Problem", ls_errortext, stopsign!)
+	end if
+	return lb_continue
+
+// w_billsummary.wf_deletebillsummarydetail(long al_code) returns integer
+	SQL DELETE BillSummaryDetail WHERE BillSummaryCode =:al_code USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		return 0
+	end if
+	return -1
+
+// w_billsummary.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+
+// w_billsummary.wf_set_account(string as_colname, long al_row) returns long
+	s_billsummary_account ls_billsum
+	if lower(as_colname) = "cashamt" then
+		ls_billsum.acccode = this.id_detail.object.cashacccode[al_row]
+		ls_billsum.name = "Select Cash Account Title/Name"
+		ls_billsum.cat = 12
+	elseif lower(as_colname) = "chequeamt" then
+		ls_billsum.acccode = this.id_detail.object.bankacccode[al_row]
+		ls_billsum.name = "Select Bank Account Title/Name"
+		ls_billsum.cat = 13
+	elseif lower(as_colname) = "debitnoteamt" then
+		ls_billsum.acccode = this.id_detail.object.debitnoteacccode[al_row]
+		ls_billsum.name = "Select Debit Note Account Title/Name"
+		ls_billsum.cat = 21
+	elseif lower(as_colname) = "creditnoteamt" then
+		ls_billsum.acccode = this.id_detail.object.creditnoteacccode[al_row]
+		ls_billsum.name = "Select Credit Note Account Title/Name"
+		ls_billsum.cat = 22
+	end if
+	openwithparm(w_billsummary_acccountselection, ls_billsum)
+	ls_billsum = message.powerobjectparm
+	if ls_billsum.status then
+		if lower(as_colname) = "cashamt" then
+			this.id_detail.object.cashacccode[al_row] = ls_billsum.acccode
+		elseif lower(as_colname) = "chequeamt" then
+			this.id_detail.object.bankacccode[al_row] = ls_billsum.acccode
+		elseif lower(as_colname) = "debitnoteamt" then
+			this.id_detail.object.debitnoteacccode[al_row] = ls_billsum.acccode
+		elseif lower(as_colname) = "creditnoteamt" then
+			this.id_detail.object.creditnoteacccode[al_row] = ls_billsum.acccode
+		end if
+	end if
+	return 0
+
+// w_billsummary.wf_assign_sr_dataobjects() returns long
+	return 0
+
+// w_billsummary.wf_show_salereturn(long al_row) returns 0
+
+// w_billsummary.wf_save_salereturn(integer ai_mode, long al_usercode, long al_retinvcode) returns long
+	return 0
+
+// w_billsummary.wf_set_salereturn_amount(long al_row) returns long
+	long ll_retinvcode
+	long ll_saleinvcode
+	double ld_returnamt
+	if al_row > 0 then
+		ll_retinvcode = this.id_detail.object.srbufferinvcode[al_row]
+		if ll_retinvcode > 0 then
+			SQL SELECT RetAmt =ISNULL ( DBO.fn_GetSRBufferInvTotal ( T.SRBufferInvCode ) , 0 ) , T.Saleinvcode INTO :ld_returnamt, :ll_saleinvcode FROM SRBufferLedger T WHERE T.SRBufferInvCode =:ll_retinvcode USING sqlca;
+			if sqlca.sqlcode = 0 then
+				if ld_returnamt < 0.0 then
+					ld_returnamt = 0.00
+				end if
+			else
+				ld_returnamt = 0.00
+			end if
+		end if
+	end if
+	this.id_detail.object.salereturnamt[al_row] = ld_returnamt
+	this.id_detail.object.refsaleinvcode[al_row] = ll_saleinvcode
+	return 0
+
+// w_billsummary.wf_open_item_form_popup() returns 0
+	openwithparm(w_salereturnbuffer_popup, this, this)
+
+// w_billsummary.wf_request_open_salereturn() returns 0
+	this.id_master.accepttext()
+	this.id_detail.accepttext()
+	this.istr_buffer.i_status = 1
+	this.istr_buffer.l_code1 = this.id_detail.object.srbufferinvcode[this.id_detail.getrow()]
+	this.istr_buffer.l_code2 = -100
+	this.istr_buffer.l_code3 = this.id_detail.object.custcode[this.id_detail.getrow()]
+	this.istr_buffer.l_code4 = 0
+	setnull(this.istr_buffer.l_code5)
+
+// w_billsummary.wf_request_referenced_salereturn() returns 0
+	this.id_master.accepttext()
+	this.id_detail.accepttext()
+	this.istr_buffer.i_status = 1
+	this.istr_buffer.l_code1 = this.id_detail.object.srbufferinvcode[this.id_detail.getrow()]
+	this.istr_buffer.l_code2 = this.id_detail.object.saleinvcode[this.id_detail.getrow()]
+	this.istr_buffer.l_code3 = this.id_detail.object.custcode[this.id_detail.getrow()]
+	this.istr_buffer.l_code4 = 1
+
+// w_billsummary.wf_finalize_billsummary() returns long
+	integer li_errcode
+	long ll_salesmancode
+	long ll_invcount
+	long ll_counter
+	boolean lb_flag
+	s_arguements lstr_arginfo
+	open(w_salesmanpassword)
+	ll_salesmancode = long(message.doubleparm)
+	setfocus()
+	if ll_salesmancode > 0 then
+		open(w_arg_sinvcode_linvcode)
+		lstr_arginfo = message.powerobjectparm
+		if lstr_arginfo.i_status = 1 then
+			setpointer(hourglass!)
+			SQL rollback USING sqlca;
+			li_errcode = sqlca.lockbillsummary(lstr_arginfo.l_code1, lstr_arginfo.l_code2)
+			if li_errcode = 0 then
+				sqlca.finalizebillsummary(lstr_arginfo.l_code1, lstr_arginfo.l_code2, ll_salesmancode)
+				if sqlca.sqlcode <> 0 then
+					li_errcode = -1
+				end if
+			end if
+		end if
+		if li_errcode = 0 then
+			SQL commit USING sqlca;
+			if sqlca.sqlcode <> 0 then
+				li_errcode = -1
+			end if
+		else
+			SQL rollback USING sqlca;
+		end if
+	else
+		setfocus()
+	end if
+	setpointer(arrow!)
+	if ll_salesmancode > 0 then
+		if li_errcode <> 0 then
+			messagebox("Bill Summary Finalization Fails", "Some database request fails, Please try again")
+		else
+			messagebox("Bill Summary Finalization", "Finalization Successfull")
+		end if
+	end if
+	return li_errcode
+
+// w_billsummary.wf_post() returns long
+	integer li_errcode
+	long ll_salesmancode
+	long ll_invcount
+	long ll_counter
+	boolean lb_flag
+	string ls_errtext
+	s_arguements lstr_arginfo
+	open(w_salesmanpassword)
+	ll_salesmancode = long(message.doubleparm)
+	setfocus()
+	if ll_salesmancode > 0 then
+		open(w_arg_sinvcode_linvcode)
+		lstr_arginfo = message.powerobjectparm
+		if lstr_arginfo.i_status = 1 then
+			setpointer(hourglass!)
+			SQL rollback USING this.it_transobject;
+			this.it_transobject.postbillsummary(lstr_arginfo.l_code1, lstr_arginfo.l_code2, ll_salesmancode, "Y")
+			if this.it_transobject.sqlcode <> 0 then
+				ls_errtext = "Some database request fails, Please try again. Details are:-~r~n  " + this.it_transobject.sqlerrtext
+				li_errcode = -1
+			end if
+		end if
+		if li_errcode = 0 then
+			SQL commit USING this.it_transobject;
+			if this.it_transobject.sqlcode <> 0 then
+				ls_errtext = "Some database request fails, Please try again. Details are:-~r~n  " + this.it_transobject.sqlerrtext
+				li_errcode = -1
+			end if
+		else
+			SQL rollback USING this.it_transobject;
+		end if
+	else
+		setfocus()
+	end if
+	setpointer(arrow!)
+	if ll_salesmancode > 0 then
+		if li_errcode <> 0 then
+			messagebox("Bill Summary Posting Fails", ls_errtext)
+		else
+			messagebox("Bill Summary Posting Successfull", "All rows have been Posted successfully")
+		end if
+	end if
+	return li_errcode
+
+// w_billsummary.wf_return_billsummary(long al_invid, string as_errortext) returns boolean
+	long ll_invcode
+	long ll_counter
+	long ll_detailrows
+	long ll_masterrow
+	boolean lb_commitflag
+	double ld_amt
+	double ld_oldtotalamt
+	double ld_balance
+	double ld_totalamt
+	double ld_newbalance
+	this.id_invdetail.retrieve(al_invid)
+	as_errortext = "Some database problem occur"
+	ll_detailrows = this.id_invdetail.rowcount()
+	ll_counter = 1
+	do while ll_counter <= ll_detailrows and lb_commitflag
+		ll_invcode = this.id_invdetail.getitemnumber(ll_counter, "saleinvcode")
+		if not isnull(ll_invcode) then
+			ld_amt = this.id_invdetail.object.cashamt[ll_counter] + this.id_invdetail.object.chequeamt[ll_counter] + this.id_invdetail.object.creditnoteamt[ll_counter] - this.id_invdetail.object.debitnoteamt[ll_counter]
+			this.it_transobject.getsaleinvbalance(ll_invcode, ld_balance)
+			if this.it_transobject.sqlcode = 0 then
+				if ld_amt <> 0.0 and lb_commitflag then
+					ld_newbalance = ld_balance + ld_amt
+					if ld_newbalance >= 0.0 then
+						this.it_transobject.updatesaleinvbalance(ll_invcode, ld_newbalance)
+						if this.it_transobject.sqlcode <> 0 then
+							lb_commitflag = false
+							as_errortext = "Balance Updation Error:~r~n" + this.it_transobject.sqlerrtext
+							return lb_commitflag
+						end if
+					else
+						lb_commitflag = false
+						as_errortext = "Balance Updation Error:~r~n" + this.it_transobject.sqlerrtext
+						return lb_commitflag
+					end if
+				else
+					lb_commitflag = false
+					as_errortext = "Not Enough Balance On Sale Invoice."
+					return lb_commitflag
+				end if
+				goto L880
+			end if
+			lb_commitflag = false
+			as_errortext = "Balance Retrieval Error:~r~n" + this.it_transobject.sqlerrtext
+			return lb_commitflag
+		end if
+		ll_counter = ll_counter + 1
+	loop
+	return lb_commitflag
+
+// w_billsummary.wf_set_initial_accounts(integer ai_type) returns long
+	long ll_rowcount
+	long ll_acccode
+	datastore lds_acc
+	lds_acc = create datastore
+	lds_acc.dataobject = "ddd_vouchheaderaccounts"
+	lds_acc.settransobject(sqlca)
+	setnull(ll_acccode)
+	ll_acccode = f_numberpreferences("defaultcashacc_inbillsum")
+	if ll_acccode = 0 or isnull(ll_acccode) then
+		if ai_type = 1 then
+			lds_acc.retrieve(2)
+		else
+			lds_acc.retrieve(12)
+		end if
+		ll_rowcount = lds_acc.rowcount()
+		if ll_rowcount > 0 then
+			this.id_detail.object.cashacccode.initial = trim(string(lds_acc.object.acccode[1]))
+		end if
+	else
+		this.id_detail.object.cashacccode.initial = trim(string(ll_acccode))
+	end if
+	setnull(ll_acccode)
+	ll_acccode = f_numberpreferences("defaultbankacc_inbillsum")
+	if ll_acccode = 0 or isnull(ll_acccode) then
+		if ai_type = 1 then
+			lds_acc.retrieve(4)
+		else
+			lds_acc.retrieve(13)
+		end if
+		ll_rowcount = lds_acc.rowcount()
+		if ll_rowcount > 0 then
+			this.id_detail.object.bankacccode.initial = trim(string(lds_acc.object.acccode[1]))
+		end if
+	else
+		this.id_detail.object.bankacccode.initial = trim(string(ll_acccode))
+	end if
+	setnull(ll_acccode)
+	ll_acccode = f_numberpreferences("defaultdrnoteacc_inbillsum")
+	if ll_acccode = 0 or isnull(ll_acccode) then
+		if ai_type = 1 then
+			lds_acc.retrieve(19)
+		else
+			lds_acc.retrieve(21)
+		end if
+		ll_rowcount = lds_acc.rowcount()
+		if ll_rowcount > 0 then
+			this.id_detail.object.debitnoteacccode.initial = trim(string(lds_acc.object.acccode[1]))
+		end if
+	else
+		this.id_detail.object.debitnoteacccode.initial = trim(string(ll_acccode))
+	end if
+	setnull(ll_acccode)
+	ll_acccode = f_numberpreferences("defaultcrnoteacc_inbillsum")
+	if ll_acccode = 0 or isnull(ll_acccode) then
+		if ai_type = 1 then
+			lds_acc.retrieve(20)
+		else
+			lds_acc.retrieve(22)
+		end if
+		ll_rowcount = lds_acc.rowcount()
+		if ll_rowcount > 0 then
+			this.id_detail.object.creditnoteacccode.initial = trim(string(lds_acc.object.acccode[1]))
+		end if
+	else
+		this.id_detail.object.creditnoteacccode.initial = trim(string(ll_acccode))
+	end if
+	return 0
+
+// w_billsummary.wf_setbillsummarytype(integer ai_type) returns long
+	long ll_totrows
+	long ll_row
+	string ls_dataobject
+	setredraw(false)
+	ls_dataobject = this.id_detail.dataobject
+	this.id_detail.dataobject = ls_dataobject
+	this.id_detail.settransobject(this.it_transobject)
+	ll_totrows = this.id_detail.rowcount()
+	ll_row = 0
+	do while ll_totrows > 0 and ll_row <= ll_totrows
+		this.id_detail.deleterow(ll_row)
+		ll_row = ll_row + 1
+	loop
+	wf_set_initial_accounts(ai_type)
+	wf_set_column_on_off(ai_type)
+	setredraw(true)
+	return 0
+
+// w_billsummary.wf_set_column_on_off(integer ai_type) returns long
+	if ai_type = 1 then
+		this.id_detail.object.aliasname.protect = 0
+		this.id_detail.object.custcode.protect = 0
+		this.id_detail.object.accbalance.visible = true
+		this.id_detail.object.saleinvcode.visible = true
+		this.id_detail.object.netamount.visible = true
+		this.id_detail.object.outstandingamt.visible = false
+		this.id_detail.object.c_totreceivable.visible = true
+		if f_stringpreferences("showcashamt_inbillsum") = "N" then
+			this.id_detail.object.cashamt.visible = false
+		else
+			this.id_detail.object.cashamt.visible = true
+		end if
+		if f_stringpreferences("showbankamt_inbillsum") = "N" then
+			this.id_detail.object.chequeamt.visible = false
+		else
+			this.id_detail.object.chequeamt.visible = true
+		end if
+		if f_stringpreferences("showdrnoteamt_inbillsum") = "N" then
+			this.id_detail.object.debitnoteamt.visible = false
+		else
+			this.id_detail.object.debitnoteamt.visible = true
+		end if
+		if f_stringpreferences("showcrnoteamt_inbillsum") = "N" then
+			this.id_detail.object.creditnoteamt.visible = false
+		else
+			this.id_detail.object.creditnoteamt.visible = true
+		end if
+		if f_stringpreferences("showsr_inbillsum") = "N" then
+			this.id_detail.object.srbufferinvcode.visible = false
+			this.id_detail.object.salereturnamt.visible = false
+		else
+			this.id_detail.object.srbufferinvcode.visible = true
+			this.id_detail.object.salereturnamt.visible = true
+		end if
+		this.id_detail.object.c_effectivebalance.visible = true
+		if f_stringpreferences("showbillsonhand_inbillsum") = "N" then
+			this.id_detail.object.billsonhandbreakup.visible = false
+			this.id_detail.object.c_billsonhandtotal.visible = false
+			this.id_detail.object.c_diff.visible = false
+		else
+			this.id_detail.object.billsonhandbreakup.visible = true
+			this.id_detail.object.c_billsonhandtotal.visible = true
+			this.id_detail.object.c_diff.visible = true
+		end if
+		this.id_detail.object.c_invbalance.visible = false
+		if f_stringpreferences("showremarks_inbillsum") = "N" then
+			this.id_detail.object.remarks.visible = false
+		else
+			this.id_detail.object.remarks.visible = true
+		end if
+	else
+		this.id_detail.object.aliasname.protect = 1
+		this.id_detail.object.custcode.protect = 1
+		this.id_detail.object.accbalance.visible = false
+		this.id_detail.object.saleinvcode.visible = true
+		this.id_detail.object.netamount.visible = true
+		this.id_detail.object.outstandingamt.visible = true
+		this.id_detail.object.c_totreceivable.visible = false
+		if f_stringpreferences("showcashamt_inbillsum") = "N" then
+			this.id_detail.object.cashamt.visible = false
+		else
+			this.id_detail.object.cashamt.visible = true
+		end if
+		if f_stringpreferences("showbankamt_inbillsum") = "N" then
+			this.id_detail.object.chequeamt.visible = false
+		else
+			this.id_detail.object.chequeamt.visible = true
+		end if
+		if f_stringpreferences("showdrnoteamt_inbillsum") = "N" then
+			this.id_detail.object.debitnoteamt.visible = false
+		else
+			this.id_detail.object.debitnoteamt.visible = true
+		end if
+		if f_stringpreferences("showcrnoteamt_inbillsum") = "N" then
+			this.id_detail.object.creditnoteamt.visible = false
+		else
+			this.id_detail.object.creditnoteamt.visible = true
+		end if
+		if f_stringpreferences("showsr_inbillsum") = "N" then
+			this.id_detail.object.srbufferinvcode.visible = false
+			this.id_detail.object.salereturnamt.visible = false
+		else
+			this.id_detail.object.srbufferinvcode.visible = true
+			this.id_detail.object.salereturnamt.visible = true
+		end if
+		this.id_detail.object.c_effectivebalance.visible = false
+		this.id_detail.object.billsonhandbreakup.visible = false
+		this.id_detail.object.c_billsonhandtotal.visible = false
+		this.id_detail.object.c_diff.visible = false
+		this.id_detail.object.c_invbalance.visible = true
+		if f_stringpreferences("showremarks_inbillsum") = "N" then
+			this.id_detail.object.remarks.visible = false
+		else
+			this.id_detail.object.remarks.visible = true
+		end if
+	end if
+	if this.id_master.object.finalized[1] = "Y" and this.id_master.object.posted[1] = "N" then
+		this.id_detail.object.cashamt.protect = 0
+		this.id_detail.object.chequeamt.protect = 0
+		this.id_detail.object.debitnoteamt.protect = 0
+		this.id_detail.object.creditnoteamt.protect = 0
+		this.id_detail.object.salereturnamt.protect = 0
+	else
+		this.id_detail.object.cashamt.protect = 1
+		this.id_detail.object.chequeamt.protect = 1
+		this.id_detail.object.debitnoteamt.protect = 1
+		this.id_detail.object.creditnoteamt.protect = 1
+		this.id_detail.object.salereturnamt.protect = 1
+	end if
+	return 0
+
+// w_billsummary.wf_setinvoicedetail(long al_invcode, long al_row, integer ai_mode) returns long
+	long li_rtcode
+	long ll_invcode
+	long ll_acccode
+	double ld_netamt
+	double ld_outstandingamt
+	datetime ld_date
+	string ls_aliasname
+	string ls_name
+	string ls_posted
+	SQL SELECT SaleLedger.SaleInvCode , SaleLedger.InvTotal , SaleLedger.outstandingamt , SaleLedger.Date , Accounts.AliasName , Accounts.Name , SaleLedger.CustCode , SaleLedger.Posted INTO :ll_invcode, :ld_netamt, :ld_outstandingamt, :ld_date, :ls_aliasname, :ls_name, :ll_acccode, :ls_posted FROM SaleLedger , Accounts WHERE SaleLedger.SaleInvCode =:al_invcode AND SaleLedger.AccountFor ='Y' AND SaleLedger.SaleCatCode IN ( 2 ) AND SaleLedger.CustCode =Accounts.AccCode AND Accounts.Active ='Y' USING sqlca;
+	if sqlca.sqlcode = 0 then
+		if this.id_master.object.billsummarytypecode[1] > 1 and ld_outstandingamt <= 0.0 then
+			li_rtcode = -4
+		end if
+		if ll_invcode > 0 and upper(ls_posted) = "Y" then
+			this.id_detail.object.saleinvcode[al_row] = ll_invcode
+			this.id_detail.object.netamount[al_row] = ld_netamt
+			this.id_detail.object.outstandingamt[al_row] = ld_outstandingamt
+			this.id_detail.object.aliasname[al_row] = ls_aliasname
+			this.id_detail.object.custcode[al_row] = ll_acccode
+			wf_setbalance(ll_acccode, al_row)
+			if ai_mode = 0 then
+				this.id_detail.object.accbalance[al_row] = this.id_detail.object.accbalance[al_row] - ld_netamt
+			end if
+			li_rtcode = 0
+		elseif upper(ls_posted) = "N" then
+			li_rtcode = -3
+		else
+			li_rtcode = -1
+		end if
+	else
+		li_rtcode = -2
+	end if
+	return li_rtcode
+
+// w_billsummary.wf_validateinvcode(long al_row, long al_invcode, long al_billsummarycode, integer ai_mode) returns integer
+	integer li_rtcode
+	integer ll_retcode
+	long ll_invcode
+	long ll_acccode
+	long ll_billsummarycode
+	long ll_count
+	long ll_billsumm
+	double ld_balanceamt
+	double ld_netamt
+	datetime ld_date
+	string ls_aliasname
+	string ls_name
+	if isnull(al_invcode) or trim(string(al_invcode)) = "" then
+		li_rtcode = 0
+		return li_rtcode
+	end if
+	if vf_dwdupcode1(this.id_detail, "saleinvcode", string(al_invcode), al_row) = true then
+		li_rtcode = 1
+		messagebox("Invoice Validation", "Duplicate Invoice, please select some other invoice")
+	else
+		if this.id_master.rowcount() > 0 then
+			ll_billsummarycode = this.id_master.object.code[1]
+		else
+			setnull(ll_billsummarycode)
+		end if
+		if ll_billsummarycode > 0 then
+			SQL SELECT Count ( D.SaleInvCode ) , Max ( B.BillSummaryCode ) INTO :ll_count, :ll_billsumm FROM BillSummaryDetail D , BillSummary B WHERE D.SaleInvCode =:al_invcode AND B.BillSummaryCode <> :ll_billsummarycode AND B.BillSummaryCode =D.BillSummaryCode AND B.Posted ='N' USING this.it_transobject;
+		else
+			SQL SELECT Count ( D.SaleInvCode ) , Max ( B.BillSummaryCode ) INTO :ll_count, :ll_billsumm FROM BillSummaryDetail D , BillSummary B WHERE D.SaleInvCode =:al_invcode AND B.BillSummaryCode =D.BillSummaryCode AND B.Posted ='N' USING this.it_transobject;
+		end if
+		if this.it_transobject.sqlcode = 0 then
+			if ll_count = 0 then
+				ll_retcode = wf_setinvoicedetail(al_invcode, al_row, ai_mode)
+				if ll_retcode = 0 then
+					li_rtcode = 0
+				elseif ll_retcode = -3 then
+					li_rtcode = -5
+				elseif ll_retcode = -4 then
+					li_rtcode = -6
+				else
+					li_rtcode = -4
+				end if
+			else
+				al_billsummarycode = ll_billsumm
+				li_rtcode = -3
+			end if
+		else
+			li_rtcode = -2
+		end if
+	end if
+	return li_rtcode
+
+// w_billsummary.wf_selectprintout(long al_type) returns 0
+	string ls_printout
+	integer i_rtcode
+	datawindowchild ldc_nested
+	s_arguements lstr_arg
+	if gs_company = "IDEALTRADERS" then
+		ls_printout = "d_idealtraders_billsummaryprint"
+	elseif gs_company = "UNITEDMEDICINE2" then
+		ls_printout = "d_unitedmedicine2_billsummaryprint"
+	elseif gs_company = "MAXPHARMADIST" or gs_company = "MAXPHARMADIST4" or gs_company = "MAXPHARMADIST9" then
+		ls_printout = "d_maxpharmdist_billsummaryprint2"
+	elseif gs_company = "SAARAMDIST" then
+		ls_printout = "d_saaramdist_billsummaryprint"
+	elseif gs_company = "GALAXYDIST2" or gs_company = "SNOORMEDICINE" or gs_company = "DRUGSERVICES" or gs_company = "DRUGSERVICES2" or gs_company = "DRUGSERVICES3" or gs_company = "DRUGSERVICES4" or gs_company = "DRUGSERVICES5" then
+		ls_printout = "d_galaxydist_billsummaryprint"
+	end if
+	if ls_printout = "" or isnull(ls_printout) then
+		if al_type = 1 then
+			ls_printout = "d_billsummaryprint"
+		else
+			ls_printout = "d_billsummaryprint2"
+		end if
+	end if
+	this.dw_print.dataobject = ls_printout
+	this.dw_print.settransobject(this.it_transobject)
+
+// w_billsummary.wf_print_storekeepersummary() returns long
+	long ll_code
+	long ll_row
+	long ll_count
+	long ll_insrow
+	double ld_price
+	s_datastore lstr
+	datastore lds_print
+	lds_print = create datastore
+	if this.tab_retrieve.selectedtab = 1 then
+		return 0
+	end if
+	if isnull(this.id_list.getrow()) or this.id_list.getrow() <= 0 then
+		messagebox("Rows Validation", "Kindly select any row from the list view.")
+		return 0
+	end if
+	ll_code = this.id_list.getitemnumber(this.id_list.getrow(), "code")
+	if isnull(ll_code) or ll_code <= 0 then
+		messagebox("Selection Validation", "Kindly select any row from the list view.")
+		return 0
+	end if
+	if gs_company = "GALAXYDIST2" or gs_company = "SNOORMEDICINE" or gs_company = "DRUGSERVICES" or gs_company = "DRUGSERVICES2" or gs_company = "DRUGSERVICES3" or gs_company = "DRUGSERVICES4" or gs_company = "DRUGSERVICES5" then
+		lds_print.dataobject = "d_galaxydist_billsumm_storesummary_print"
+	elseif gs_company = "AMINTRADERS" then
+		lds_print.dataobject = "d_amintraders_billsummary_storesummary"
+	else
+		lds_print.dataobject = "d_billsummary_storesummary_print"
+	end if
+	lds_print.settransobject(sqlca)
+	lds_print.retrieve(ll_code)
+	if ll_code > 0 then
+		lstr.s_module = "billsummmary_storekeepersummary"
+		lstr.ds = lds_print
+		lstr.s_name1 = lds_print.dataobject
+		openwithparm(w_preview_invoices2, lstr)
+		lstr = message.powerobjectparm
+	end if
+	return 0
+
+// w_billsummary.wf_print_saleinvoices() returns long
+	long ll_code
+	long ll_row
+	long ll_count
+	long ll_insrow
+	double ld_price
+	s_datastore lstr
+	datastore lds_print
+	lds_print = create datastore
+	if this.tab_retrieve.selectedtab = 1 then
+		return 0
+	end if
+	if isnull(this.id_list.getrow()) or this.id_list.getrow() <= 0 then
+		messagebox("Rows Validation", "Kindly select any row from the list view.")
+		return 0
+	end if
+	ll_code = this.id_list.getitemnumber(this.id_list.getrow(), "code")
+	if isnull(ll_code) or ll_code <= 0 then
+		messagebox("Selection Validation", "Kindly select any row from the list view.")
+		return 0
+	end if
+	if gs_company = "GALAXYDIST2" or gs_company = "SNOORMEDICINE" or gs_company = "DRUGSERVICES" or gs_company = "DRUGSERVICES2" or gs_company = "DRUGSERVICES3" or gs_company = "DRUGSERVICES4" or gs_company = "DRUGSERVICES5" then
+		lds_print.dataobject = "d_glaxydist_saleinvreport_billsummary"
+	elseif gs_company = "MAXPHARMADIST" or gs_company = "MAXPHARMADIST2" or gs_company = "MAXPHARMADIST3" or gs_company = "MAXPHARMADIST4" then
+		lds_print.dataobject = "d_maxpharmadist_billsummary_saleinvces"
+	elseif gs_company = "AMINTRADERS" then
+		lds_print.dataobject = "d_amintraders_billsummary_saleinvreport"
+	else
+		lds_print.dataobject = "d_billsummary_saleinvreport"
+	end if
+	lds_print.settransobject(sqlca)
+	lds_print.retrieve(ll_code)
+	if ll_code > 0 then
+		lstr.s_module = "billsummmary_saleinvprint"
+		lstr.ds = lds_print
+		lstr.s_name1 = lds_print.dataobject
+		openwithparm(w_preview_invoices2, lstr)
+		lstr = message.powerobjectparm
+	end if
+	return 0
+
+// w_billsummary.create() returns 0
+	integer icurrent
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_billsummarymenu" then
+		this.menuid = create m_billsummarymenu
+	end if
+	this.dw_invdetail = create dw_invdetail
+	this.dw_print = create dw_print
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_invdetail
+	this.control[icurrent + 2] = this.dw_print
+
+// w_billsummary.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_invdetail
+	destroy this.dw_print
+
+// w_billsummary.ue_save() returns 0
+	long ll_detailrows
+	long ll_salesmancode
+	long ll_errrowid
+	long ll_counter
+	long ll_count
+	long ll_null
+	long ll_maxretcode
+	long ll_invid
+	long ll_mastercurrrow
+	long ll_code
+	long ll_billsumcode
+	long ll_invcode
+	long ll_unpostedtrans
+	boolean lb_commitflag
+	boolean lb_continue
+	datetime ldt_server_datetime
+	string ls_errtext
+	string ls_date_errtext
+	string ls_msg
+	ll_detailrows = this.id_detail.rowcount()
+	ll_mastercurrrow = this.id_master.rowcount()
+	if ll_detailrows > 0 then
+		for ll_counter = 1 to ll_detailrows
+			if not (this.id_detail.object.saleinvcode[ll_counter] > 0 or this.id_detail.object.custcode[ll_counter] > 0) then
+				this.id_detail.deleterow(ll_counter)
+			end if
+		next
+	end if
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	wf_deleteemptydetailrow()
+	wf_deleteallemptydetailrows()
+	if this.id_detail.rowcount() <= 0 then
+		messagebox("Rows Validation", "Please insert a row before proceeding")
+		return
+	end if
+	if this.id_master.object.billsummarytypecode[1] <> 1 then
+		ll_detailrows = this.id_detail.rowcount()
+		if ll_detailrows > 0 then
+			for ll_counter = 1 to ll_detailrows
+				if this.id_detail.getitemnumber(ll_counter, "c_invbalance") < 0.0 then
+					messagebox("Sale Invoice Validation", "Invoice Balance Can not be -ve.~r~nEither you have entered some wrong amount / return.~r~nPlease recheck and make desired adjustments.")
+					this.id_detail.setcolumn("saleinvcode")
+					this.id_detail.setrow(ll_counter)
+					this.id_detail.scrolltorow(ll_counter)
+					this.id_detail.setfocus()
+					return
+				end if
+			next
+		end if
+	end if
+	if not wf_validateserverdatetime(ldt_server_datetime, ls_date_errtext) then
+		messagebox("Date Violation", ls_date_errtext, stopsign!)
+		return
+	end if
+	open(w_salesmanpassword)
+	ll_salesmancode = long(message.doubleparm)
+	setfocus()
+	setpointer(hourglass!)
+	if ll_salesmancode > 0 then
+		if not wf_getserverdatetime(ldt_server_datetime, ls_date_errtext) then
+			messagebox("Date Violation", ls_date_errtext, stopsign!)
+			return
+		end if
+		ll_invid = this.id_master.getitemnumber(ll_mastercurrrow, "code")
+		ll_code = ll_invid
+		for ll_counter = 1 to this.id_detail.rowcount()
+			ls_msg = "000                                                                                                                                 "
+			ll_invcode = this.id_detail.object.saleinvcode[ll_counter]
+			if ll_invcode > 0 then
+				this.it_transobject.checkunpostedsaleinvintransactions(ll_invcode, ll_code, "BS", ll_unpostedtrans, ls_msg)
+				if ll_unpostedtrans > 0 then
+					ls_errtext = "Unposted Transaction(s) Exist for this Invoice~r~n~r~n" + ls_msg
+					this.id_detail.setrow(ll_counter)
+					this.id_detail.setfocus()
+					this.id_detail.setcolumn("saleinvcode")
+					return
+				end if
+				return
+			end if
+		next
+		if isnull(ll_invid) then
+			ll_maxretcode = wf_tabnewid("billsummary", ll_invid)
+			if ll_maxretcode < 0 then
+				SQL rollback USING this.it_transobject;
+				messagebox("DataBase Problem", "Transaction is Rollback Due to Problem in~r~ngenerating Bill Summary Code")
+				return
+			end if
+			return
+		end if
+		if ll_invid > 0 then
+			this.id_master.setitem(ll_mastercurrrow, "code", ll_invid)
+		end if
+		this.id_master.setitem(ll_mastercurrrow, "date", ldt_server_datetime)
+		this.id_master.setitem(ll_mastercurrrow, "usercode", ll_salesmancode)
+		if this.id_detail.rowcount() > 0 then
+			if this.id_master.update() > 0 then
+				if lb_continue then
+					this.id_invdetail.reset()
+					lb_continue = wf_savedetail(ll_invid)
+					if lb_continue then
+						if ll_code > 0 then
+							wf_deletebillsummarydetail(ll_code)
+						end if
+						if this.id_invdetail.update() > 0 then
+							lb_continue = true
+							SQL commit USING this.it_transobject;
+							messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+							this.ib_commitok = true
+							this.id_detail.reset()
+							this.id_invdetail.resetupdate()
+							this.im_menu.m_file.m_new.enabled = true
+							this.editflag = false
+						else
+							this.ib_commitok = false
+							lb_continue = false
+						end if
+					end if
+				end if
+			else
+				lb_continue = false
+			end if
+			if not lb_continue then
+				SQL rollback USING this.it_transobject;
+				this.id_detail.setcolumn("aliasname")
+				this.id_detail.scrolltorow(ll_errrowid)
+				this.id_detail.setfocus()
+				if this.ib_modify = false then
+					setnull(ll_null)
+					this.id_master.setitem(ll_mastercurrrow, "code", ll_null)
+				end if
+				messagebox("Updation Error", ls_errtext, stopsign!)
+			end if
+		else
+			SQL rollback USING this.it_transobject;
+			if this.ib_modify = false then
+				setnull(ll_null)
+				this.id_master.setitem(ll_mastercurrrow, "code", ll_null)
+			end if
+			setpointer(arrow!)
+			return
+		end if
+		return
+	end if
+	setpointer(arrow!)
+
+// w_billsummary.ue_newform() returns 0
+	m_billsummarymenu lm_menu
+	call super::ue_newform
+	lm_menu = this.menuid
+	wf_execute_virtualgl()
+	wf_setbillsummarytype(this.id_master.object.billsummarytypecode[1])
+	this.id_detail.reset()
+	this.im_menu.m_item.m_newitem.visible = true
+	this.im_menu.m_item.m_deleteitem.visible = true
+	this.im_menu.m_file.m_post.enabled = true
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_menu.m_file.m_save.enabled = true
+	lm_menu.m_file.m_finalizebillsummary.enabled = false
+	lm_menu.m_file.m_finalizebillsummary.toolbaritemvisible = false
+	lm_menu.m_file.m_populateinvoices.enabled = true
+	lm_menu.m_file.m_printsaleinvoices.enabled = false
+	lm_menu.m_file.m_printsaleinvoices.visible = false
+	lm_menu.m_file.m_printstorekeepersummary.enabled = false
+	lm_menu.m_file.m_printstorekeepersummary.visible = false
+	wf_protectdw(this.id_master, 0)
+	wf_protectdw(this.id_detail, 1)
+	if this.id_master.object.billsummarytypecode[1] = 1 then
+		this.id_detail.object.aliasname.protect = 0
+		this.id_detail.object.custcode.protect = 0
+		this.id_detail.object.saleinvcode.protect = 0
+	else
+		this.id_detail.object.aliasname.protect = 1
+		this.id_detail.object.custcode.protect = 1
+		this.id_detail.object.saleinvcode.protect = 0
+		this.id_detail.object.cashamt.protect = 1
+		this.id_detail.object.chequeamt.protect = 1
+		this.id_detail.object.debitnoteamt.protect = 1
+		this.id_detail.object.creditnoteamt.protect = 1
+	end if
+	postevent("ue_newitem")
+	if this.id_master.object.billsummarytypecode[1] = 1 then
+		this.id_detail.setcolumn("aliasname")
+	else
+		this.id_detail.setcolumn("saleinvcode")
+	end if
+	this.id_detail.scrolltorow(0)
+	this.id_detail.setfocus()
+	this.ib_modify = false
+	setredraw(true)
+
+// w_billsummary.ue_newitem() returns 0
+	long ll_rowcount
+	long ll_rtcode
+	ll_rowcount = this.id_detail.rowcount()
+	if ll_rowcount > 0 then
+		if this.id_master.object.finalized[1] = "Y" then
+			return
+		end if
+		if f_validatedw(this.id_detail) < 0 then
+			return
+		end if
+		return
+	end if
+	if ll_rowcount > 0 then
+		if not (this.id_detail.object.saleinvcode[ll_rowcount] > 0 or this.id_detail.object.custcode[ll_rowcount] > 0) then
+			return
+		end if
+		return
+	end if
+	if this.id_master.object.billsummarytypecode[1] = 1 then
+		this.id_detail.setcolumn("aliasname")
+	else
+		this.id_detail.setcolumn("saleinvcode")
+	end if
+	this.id_detail.insertrow(0)
+	ll_rowcount = this.id_detail.rowcount()
+	if ll_rowcount > 1 then
+		this.id_detail.scrolltorow(ll_rowcount)
+		this.id_detail.setfocus()
+	end if
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_print.enabled = false
+	this.ib_validatefullcode = true
+
+// w_billsummary.close() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::close()
+	this.id_itemslist.sharedataoff()
+	return ::message.returnvalue
+
+// w_billsummary.ue_list() returns 0
+	long ll_row
+	long ll_found
+	m_billsummarymenu lm_menu
+	call super::ue_list
+	lm_menu = this.menuid
+	SQL rollback USING this.it_transobject;
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_menu.m_file.m_save.enabled = false
+	this.im_menu.m_file.m_print.enabled = true
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 723", 1, gds_securitywindow.rowcount())
+	if ll_found = 0 then
+		this.im_menu.m_file.m_post.enabled = false
+	else
+		this.im_menu.m_file.m_post.enabled = true
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 722", 1, gds_securitywindow.rowcount())
+	if ll_found = 0 then
+		lm_menu.m_file.m_finalizebillsummary.enabled = false
+		lm_menu.m_file.m_finalizebillsummary.toolbaritemvisible = false
+	else
+		lm_menu.m_file.m_finalizebillsummary.enabled = true
+		lm_menu.m_file.m_finalizebillsummary.toolbaritemvisible = true
+	end if
+	lm_menu.m_file.m_populateinvoices.enabled = false
+	lm_menu.m_file.m_printstorekeepersummary.enabled = true
+	lm_menu.m_file.m_printstorekeepersummary.visible = true
+	lm_menu.m_file.m_printsaleinvoices.enabled = true
+	lm_menu.m_file.m_printsaleinvoices.visible = true
+	this.ib_modify = false
+	this.id_itemslist.hide()
+	if this.id_detail.rowcount() > 0 then
+		postevent("ue_deleteitem")
+	end if
+	ll_row = wf_retrievelist()
+	wf_disabledetailtab(ll_row)
+
+// w_billsummary.ue_deleteitem() returns 0
+	long ll_currow
+	long ll_detailrows
+	this.ib_itemvalidated = true
+	if this.id_master.rowcount() > 0 and this.id_master.object.finalized[1] = "Y" then
+		return
+	end if
+	this.id_detail.deleterow(0)
+	ll_detailrows = this.id_detail.rowcount()
+	if ll_detailrows < 0 then
+		this.im_menu.m_file.m_save.enabled = false
+	end if
+
+// w_billsummary.ue_postopen() returns 0
+	call super::ue_postopen
+	if f_numberpreferences("defaultbillsummarytype") = 1 then
+		wf_assigndatawindowobjects("d_billsummarydetail", "d_billsummarydetail")
+	else
+		wf_assigndatawindowobjects("d_billsummarydetail_invbased", "d_billsummarydetail_invbased")
+	end if
+	this.id_master.object.billsummarytypecode.initial = trim(string(f_numberpreferences("defaultbillsummarytype")))
+
+// w_billsummary.ue_detail() returns 0
+	integer li_protect
+	long ll_row
+	long ll_code
+	m_billsummarymenu lm_menu
+	call super::ue_detail
+	lm_menu = this.menuid
+	setredraw(false)
+	ll_code = this.id_master.getitemnumber(1, "code")
+	if this.id_master.object.posted[this.id_master.rowcount()] = "Y" then
+		this.ib_modify = false
+	else
+		this.ib_modify = true
+	end if
+	if this.ib_modify then
+		this.im_menu.m_file.m_save.enabled = true
+		li_protect = 0
+	else
+		this.im_menu.m_file.m_save.enabled = false
+		li_protect = 1
+	end if
+	this.im_menu.m_file.m_post.enabled = false
+	this.im_menu.m_file.m_print.enabled = true
+	lm_menu.m_file.m_finalizebillsummary.enabled = false
+	lm_menu.m_file.m_finalizebillsummary.toolbaritemvisible = false
+	if this.id_master.getitemstring(this.id_master.getrow(), "Finalized") = "Y" and this.id_master.getitemstring(this.id_master.getrow(), "Posted") = "N" then
+		wf_protectdw(this.id_master, 1)
+		wf_protectdw(this.id_detail, 1)
+		this.id_detail.object.cashamt.protect = 0
+		this.id_detail.object.chequeamt.protect = 0
+		this.id_detail.object.debitnoteamt.protect = 0
+		this.id_detail.object.creditnoteamt.protect = 0
+		this.id_detail.object.salereturnamt.protect = 0
+		this.id_detail.object.billsonhandbreakup.protect = 0
+		this.id_detail.object.remarks.protect = 0
+	else
+		wf_protectdw(this.id_master, li_protect)
+		wf_protectdw(this.id_detail, li_protect)
+	end if
+	wf_set_initial_accounts(this.id_master.object.billsummarytypecode[1])
+	wf_set_column_on_off(this.id_master.object.billsummarytypecode[1])
+	if this.id_master.getitemstring(this.id_master.getrow(), "Finalized") = "N" then
+		this.im_menu.m_item.m_newitem.enabled = true
+		this.im_menu.m_item.m_deleteitem.enabled = true
+		this.id_detail.object.cashamt.protect = 1
+		this.id_detail.object.chequeamt.protect = 1
+		this.id_detail.object.debitnoteamt.protect = 1
+		this.id_detail.object.creditnoteamt.protect = 1
+		this.id_detail.object.salereturnamt.protect = 1
+		this.id_detail.object.billsonhandbreakup.protect = 1
+		this.id_detail.object.remarks.protect = 1
+		lm_menu.m_file.m_populateinvoices.enabled = true
+	else
+		this.im_menu.m_item.m_newitem.enabled = false
+		this.im_menu.m_item.m_deleteitem.enabled = false
+		this.im_menu.m_item.m_insertnewitem.enabled = false
+		this.im_menu.m_item.m_deletecurrentitem.enabled = false
+		lm_menu.m_file.m_populateinvoices.enabled = false
+	end if
+	lm_menu.m_file.m_printstorekeepersummary.enabled = false
+	lm_menu.m_file.m_printstorekeepersummary.visible = false
+	lm_menu.m_file.m_printsaleinvoices.enabled = false
+	lm_menu.m_file.m_printsaleinvoices.visible = false
+	if this.ib_modify then
+		this.editflag = true
+	else
+		this.editflag = false
+	end if
+	setredraw(true)
+
+// w_billsummary.ue_print() returns 0
+	long ll_code
+	long ll_counter
+	long ll_rowcount
+	long ll_billsummarytype
+	integer li_option
+	boolean lb_listtab
+	s_datastore lstr
+	call super::ue_print
+	if this.tab_retrieve.selectedtab = 2 then
+		lb_listtab = true
+	end if
+	if this.im_menu.m_file.m_save.enabled = true and lb_listtab = false then
+		li_option = messagebox("Save Changes", "Do you want to save changes", information!, yesno!, 2)
+		if li_option = 1 then
+			triggerevent("ue_save")
+			if wf_commitform() = false then
+				return
+			end if
+			return
+		end if
+		return
+	end if
+	if lb_listtab then
+		if isnull(this.id_list.getrow()) or this.id_list.getrow() <= 0 then
+			messagebox("Rows Validation", "Kindly select any row from the list view.")
+			return
+		end if
+		ll_code = this.id_list.getitemnumber(this.id_list.getrow(), "code")
+		if isnull(ll_code) or ll_code <= 0 then
+			messagebox("Selection Validation", "Kindly select any row from the list view.")
+			return
+		end if
+	else
+		ll_code = this.id_master.getitemnumber(1, "code")
+	end if
+	SQL SELECT BillSummaryTypeCode INTO :ll_billsummarytype FROM Billsummary WHERE billsummarycode =:ll_code USING sqlca;
+	if sqlca.sqlcode <> 0 then
+		return
+	end if
+	wf_selectprintout(ll_billsummarytype)
+	ll_rowcount = this.dw_print.retrieve(ll_code)
+	if lb_listtab then
+		lstr.dw = this.dw_print
+		lstr.s_name1 = this.dw_print.dataobject
+		openwithparm(w_preview_invoices, lstr)
+		lstr = message.powerobjectparm
+		if lstr.i_closemode = -1 then
+			return
+		end if
+		return
+	end if
+	if ll_rowcount > 0 then
+		if f_stringpreferences("PromptBeforePrinting") = "Y" and printsetup() < 0 then
+			messagebox("Printer", "Printing Error")
+			this.dw_print.printcancel()
+		end if
+		if this.dw_print.print() < 0 then
+			messagebox("Printing", "Can not Print", information!)
+		end if
+		if this.im_menu.m_file.m_save.enabled = true then
+			postevent("ue_new")
+		end if
+		return
+	end if
+	messagebox("Printing Error", "Can not Print,~r~nNo rows are retrieved", information!)
+
+// w_billsummary.ue_callback_popupwindow(any ar_object) returns 0
+	long ll_code
+	long ll_row
+	string as_errortext
+	super::ue_callback_popupwindow(ar_object)
+	ll_code = long(ar_object)
+	ll_row = this.id_detail.getrow()
+	if ll_row > 0 and ll_code > 0 then
+		this.id_detail.object.srbufferinvcode[ll_row] = ll_code
+		wf_set_salereturn_amount(ll_row)
+	end if

@@ -1,0 +1,290 @@
+// window w_listarguments (reports)  ancestor: window
+
+// w_listarguments.ue_close(integer ai_status) returns 0
+	if ai_status <> 1 then
+		this.istr_arg.i_status = -1
+	end if
+	closewithreturn(this, this.istr_arg)
+
+// w_listarguments.ue_downkey(keycode key, unsignedlong keyflags) returns long
+	string ls_item
+	long ll_selectedindex
+	long ll_counter
+	long ll_totitems
+	if key = keyf12! then
+		if this.lb_selectedcategories.totalitems() <= 0 then
+			ll_totitems = this.lb_categories.totalitems()
+			if ll_totitems > 0 then
+				for ll_counter = 1 to ll_totitems
+					this.lb_categories.selectitem(1)
+					ls_item = string(this.lb_categories.selecteditem())
+					if not isnull(ls_item) then
+						this.lb_selectedcategories.additem(ls_item)
+						this.lb_categories.deleteitem(1)
+					end if
+				next
+			end if
+		elseif this.lb_selectedcategories.totalitems() > 0 and this.lb_categories.totalitems() <= 0 then
+			ll_totitems = this.lb_selectedcategories.totalitems()
+			if ll_totitems > 0 then
+				for ll_counter = 1 to ll_totitems
+					this.lb_selectedcategories.selectitem(1)
+					ls_item = string(this.lb_selectedcategories.selecteditem())
+					if not isnull(ls_item) then
+						this.lb_categories.additem(ls_item)
+						this.lb_selectedcategories.deleteitem(1)
+					end if
+				next
+			end if
+		end if
+	end if
+	return 0
+
+// w_listarguments.create() returns 0
+	this.st_7 = create st_7
+	this.st_3 = create st_3
+	this.dw_startendinvoice = create dw_startendinvoice
+	this.cbx_all = create cbx_all
+	this.st_6 = create st_6
+	this.st_5 = create st_5
+	this.lb_selectedcategories = create lb_selectedcategories
+	this.lb_categories = create lb_categories
+	this.dw_price = create dw_price
+	this.cbx_hide = create cbx_hide
+	this.cbx_supress = create cbx_supress
+	this.dw_control = create dw_control
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.st_2 = create st_2
+	this.st_1 = create st_1
+	this.em_enddate = create em_enddate
+	this.em_startdate = create em_startdate
+	this.gb_1 = create gb_1
+	this.gb_2 = create gb_2
+	this.gb_3 = create gb_3
+	this.gb_4 = create gb_4
+	this.control = {this.st_7, this.st_3, this.dw_startendinvoice, this.cbx_all, this.st_6, this.st_5, this.lb_selectedcategories, this.lb_categories, this.dw_price, this.cbx_hide, this.cbx_supress, this.dw_control, this.cb_cancel, this.cb_ok, this.st_2, this.st_1, this.em_enddate, this.em_startdate, this.gb_1, this.gb_2, this.gb_3, this.gb_4}
+
+// w_listarguments.destroy() returns 0
+	destroy this.st_7
+	destroy this.st_3
+	destroy this.dw_startendinvoice
+	destroy this.cbx_all
+	destroy this.st_6
+	destroy this.st_5
+	destroy this.lb_selectedcategories
+	destroy this.lb_categories
+	destroy this.dw_price
+	destroy this.cbx_hide
+	destroy this.cbx_supress
+	destroy this.dw_control
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.st_2
+	destroy this.st_1
+	destroy this.em_enddate
+	destroy this.em_startdate
+	destroy this.gb_1
+	destroy this.gb_2
+	destroy this.gb_3
+	destroy this.gb_4
+
+// w_listarguments.open() returns long
+	string ls_text
+	date ld_currdate
+	time lt_currtime
+	datetime ld_startdate
+	datetime ld_enddate
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	ld_currdate = today()
+	if f_stringpreferences("ApplyArgSDate") = "N" then
+		ls_text = string(ld_currdate, "dd/mm/yyyy")
+		ls_text = trim(ls_text) + " 00:00:00"
+	else
+		ls_text = string(f_datepreferences("DefaultArgSDate"), "dd/mm/yyyy hh:mm:ss")
+	end if
+	this.em_startdate.text = ls_text
+	ls_text = string(ld_currdate, "dd/mm/yyyy")
+	ls_text = trim(ls_text) + " 23:59:59"
+	this.em_enddate.text = ls_text
+	return ::message.returnvalue
+
+// dw_startendinvoice.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// cbx_all.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// lb_selectedcategories.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		post event doubleclicked(selectedindex())
+	end if
+	return ::message.returnvalue
+
+// lb_selectedcategories.getfocus() returns long
+	selectitem(0)
+	selectitem(1)
+	return ::message.returnvalue
+
+// lb_selectedcategories.doubleclicked(integer index) returns long
+	string ls_item
+	long ll_selectedindex
+	ll_selectedindex = selectedindex()
+	ls_item = string(selecteditem())
+	if not isnull(ls_item) and index >= 1 then
+		parent.lb_categories.additem(ls_item)
+		deleteitem(index)
+		if totalitems() < ll_selectedindex then
+			selectitem(totalitems())
+		else
+			selectitem(ll_selectedindex)
+		end if
+	else
+		messagebox("Selection Validation", "Please select some value from selected listbox")
+	end if
+	return ::message.returnvalue
+
+// lb_categories.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		post event doubleclicked(selectedindex())
+	end if
+	return ::message.returnvalue
+
+// lb_categories.getfocus() returns long
+	selectitem(0)
+	selectitem(1)
+	return ::message.returnvalue
+
+// lb_categories.doubleclicked(integer index) returns long
+	string ls_item
+	long ll_selectedindex
+	ls_item = string(selecteditem())
+	ll_selectedindex = selectedindex()
+	if not isnull(ls_item) and index >= 1 then
+		parent.lb_selectedcategories.additem(ls_item)
+		deleteitem(index)
+		if ll_selectedindex > 1 then
+			if totalitems() < ll_selectedindex then
+				selectitem(totalitems())
+			else
+				selectitem(ll_selectedindex)
+			end if
+		else
+			selectitem(1)
+		end if
+	else
+		messagebox("Selection Validation", "Please select some value from selectable listbox")
+	end if
+	return ::message.returnvalue
+
+// dw_price.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// cbx_hide.keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// cbx_supress.keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// dw_control.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// cb_cancel.ue_keypresed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	string ls_enddate
+	date ld_date
+	parent.em_enddate.getdata(ls_enddate)
+	ld_date = date(ls_enddate)
+	if parent.dw_control.accepttext() = 1 then
+		parent.dw_control.setfocus()
+	end if
+	return ::message.returnvalue
+
+// em_enddate.keydown(keycode key, unsignedlong keyflags) returns long
+	string ls_date
+	string ls_temp
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	if key = keyf4! then
+		ls_temp = this.text
+		ls_date = left(ls_temp, 10)
+		openwithparm(w_calendar, ls_date)
+		ls_date = message.stringparm
+		if not (ls_date = "" or isnull(ls_date)) then
+			ls_temp = ls_date + " " + right(ls_temp, 8)
+			this.text = ls_temp
+		end if
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// em_startdate.keydown(keycode key, unsignedlong keyflags) returns long
+	string ls_date
+	string ls_temp
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	if key = keyf4! then
+		ls_temp = this.text
+		ls_date = left(ls_temp, 10)
+		openwithparm(w_calendar, ls_date)
+		ls_date = message.stringparm
+		if not (ls_date = "" or isnull(ls_date)) then
+			ls_temp = ls_date + " " + right(ls_temp, 8)
+			this.text = ls_temp
+		end if
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue

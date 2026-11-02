@@ -1,0 +1,65 @@
+// window w_selection_transfer_1tomany (reportformat)  ancestor: window
+
+// w_selection_transfer_1tomany.create() returns 0
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.rb_landscape = create rb_landscape
+	this.rb_portrait = create rb_portrait
+	this.gb_1 = create gb_1
+	this.control = {this.cb_cancel, this.cb_ok, this.rb_landscape, this.rb_portrait, this.gb_1}
+
+// w_selection_transfer_1tomany.destroy() returns 0
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.rb_landscape
+	destroy this.rb_portrait
+	destroy this.gb_1
+
+// w_selection_transfer_1tomany.close() returns long
+	closewithreturn(this, this.ii_selectedreport)
+	return ::message.returnvalue
+
+// w_selection_transfer_1tomany.open() returns long
+	environment le_env
+	long ll_width
+	long ll_height
+	if getenvironment(le_env) = 1 then
+		ll_width = pixelstounits(le_env.screenwidth, xpixelstounits!) - this.width
+		ll_height = pixelstounits(le_env.screenheight, ypixelstounits!) - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width * 0.5
+			ll_height = ll_height * 0.5
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.triggerevent(close!)
+	return ::message.returnvalue
+
+// cb_ok.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	if parent.rb_portrait.checked = true then
+		parent.ii_selectedreport = 1
+	else
+		parent.ii_selectedreport = 2
+	end if
+	parent.triggerevent(close!)
+	return ::message.returnvalue
+
+// rb_landscape.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// rb_portrait.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	send(handle(this), 256, 9, long(90))
+	return 1

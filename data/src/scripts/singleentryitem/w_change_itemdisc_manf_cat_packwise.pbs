@@ -1,0 +1,105 @@
+// window w_change_itemdisc_manf_cat_packwise (singleentryitem)  ancestor: w_single_entry
+
+// w_change_itemdisc_manf_cat_packwise.wf_changedisc() returns integer
+	long ll_manfcode
+	long ll_icatcode
+	long ll_packcode
+	long ll_salesmancode
+	long ll_rtncode
+	long ll_salediscno
+	double ld_saledisc
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	string ls_msg_text
+	integer li_yesno
+	if f_validatedw(this.id_detail) < 0 then
+		return 0
+	end if
+	ls_msg_text = "Sale Discount of all those Items~r~nwhich belong to selected Manufacturer, Item Category and Item Packing"
+	ls_msg_text = ls_msg_text + " will be Changed.~r~nAre You Sure you want to do this?"
+	li_yesno = messagebox("Sale Discount Change", ls_msg_text, exclamation!, yesno!, 2)
+	if li_yesno = 2 then
+		return 0
+	end if
+	ld_saledisc = this.id_detail.getitemdecimal(1, "saledisc")
+	ll_salediscno = this.id_detail.getitemnumber(1, "salediscno")
+	ll_manfcode = this.id_detail.getitemnumber(1, "manfcode")
+	ll_icatcode = this.id_detail.getitemnumber(1, "icatcode")
+	ll_packcode = this.id_detail.getitemnumber(1, "packcode")
+	if not wf_validateserverdatetime(ldt_server_datetime, ls_date_errtext) then
+		messagebox("Date Violation", ls_date_errtext, stopsign!)
+		ll_rtncode = -1
+		return ll_rtncode
+	end if
+	ll_salesmancode = gl_usercode
+	SQL rollback USING this.it_transobject;
+	setpointer(hourglass!)
+	ll_rtncode = f_generateitemlog(this.id_detail, "item_changedisc_maf_cat_packing", this.it_transobject, ldt_server_datetime)
+	if ll_rtncode >= 0 then
+		ll_rtncode = this.it_transobject.changeitemdisc_manf_cat_packing(ll_manfcode, ll_icatcode, ll_packcode, ll_salediscno, ld_saledisc, gl_usercode, ldt_server_datetime)
+		if this.it_transobject.sqlcode = 0 and ll_rtncode = 0 then
+			SQL commit USING this.it_transobject;
+			messagebox("Save Changes", "Discount has been changed")
+		else
+			SQL rollback USING this.it_transobject;
+			messagebox("Save Changes", "Some database problem occurs,~n~rSale Discount can not be changed.~r~n" + this.it_transobject.sqlerrtext)
+		end if
+	else
+		SQL rollback USING this.it_transobject;
+		messagebox("Save Changes", "Some database problem occur in generating itemlog,~n~rSale Discount can not be changed.~r~n" + this.it_transobject.sqlerrtext)
+	end if
+	setpointer(arrow!)
+	return ll_rtncode
+
+// w_change_itemdisc_manf_cat_packwise.create() returns 0
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_changeitemsdisc_catwise" then
+		this.menuid = create m_changeitemsdisc_catwise
+	end if
+
+// w_change_itemdisc_manf_cat_packwise.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_change_itemdisc_manf_cat_packwise.activate() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::activate()
+	this.windowstate = maximized!
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_change_itemdisc_manf_cat_packwise.closequery() returns long
+	return ::message.returnvalue
+
+// w_change_itemdisc_manf_cat_packwise.open() returns long
+	long ancestorreturnvalue
+	integer li_counter
+	string ls_stringparam
+	ancestorreturnvalue = super::open()
+	this.it_transobject = create u_transaction
+	SQL start USING this.it_transobject;
+	return ::message.returnvalue
+
+// w_change_itemdisc_manf_cat_packwise.close() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::close()
+	SQL stop USING this.it_transobject;
+	destroy this.it_transobject
+	return ::message.returnvalue
+
+// w_change_itemdisc_manf_cat_packwise.ue_postopen() returns 0
+	string ls_stringparam
+	integer li_null
+	call super::ue_postopen
+	setredraw(false)
+	this.id_detail.settransobject(this.it_transobject)
+	this.id_detail.retrieve()
+	setnull(li_null)
+	setredraw(true)
+
+// w_change_itemdisc_manf_cat_packwise.ue_save() returns 0

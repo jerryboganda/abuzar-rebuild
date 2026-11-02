@@ -1,0 +1,533 @@
+// window w_groupwisegodownsetting (templates)  ancestor: window
+
+// w_groupwisegodownsetting.ue_save() returns 0
+	long ll_row
+	long ll_totrows
+	long ll_rowcount
+	long ll_retval
+	setpointer(hourglass!)
+	if f_validatedw(this.dw_groupinfo) < 0 then
+		return
+	end if
+	if f_validatedw(this.dw_salestrategy) < 0 then
+		return
+	end if
+	if f_validatedw(this.dw_salereturnstrategy) < 0 then
+		return
+	end if
+	if f_validatedw(this.dw_purchasestrategy) < 0 then
+		return
+	end if
+	if f_validatedw(this.dw_purchasereturnstrategy) < 0 then
+		return
+	end if
+	if f_validatedw(this.dw_issuestrategy) < 0 then
+		return
+	end if
+	if f_validatedw(this.dw_receiptstrategy) < 0 then
+		return
+	end if
+	if f_validatedw(this.dw_adjustmentstrategy) < 0 then
+		return
+	end if
+	if f_validatedw(this.dw_transferstrategy) < 0 then
+		return
+	end if
+	if f_validatedw(this.dw_transferstrategy2) < 0 then
+		return
+	end if
+	if f_validatedw(this.dw_quotationstrategy) < 0 then
+		return
+	end if
+	this.dw_groupinfo.setitem(1, "salegodownstrategy", this.dw_salestrategy.getitemnumber(1, "salegodownstrategy"))
+	this.dw_groupinfo.setitem(1, "salereturngodownstrategy", this.dw_salereturnstrategy.getitemnumber(1, "salereturngodownstrategy"))
+	this.dw_groupinfo.setitem(1, "purchasegodownstrategy", this.dw_purchasestrategy.getitemnumber(1, "purchasegodownstrategy"))
+	this.dw_groupinfo.setitem(1, "purchasereturngodownstrategy", this.dw_purchasereturnstrategy.getitemnumber(1, "purchasereturngodownstrategy"))
+	this.dw_groupinfo.setitem(1, "issuegodownstrategy", this.dw_issuestrategy.getitemnumber(1, "issuegodownstrategy"))
+	this.dw_groupinfo.setitem(1, "receiptgodownstrategy", this.dw_receiptstrategy.getitemnumber(1, "receiptgodownstrategy"))
+	this.dw_groupinfo.setitem(1, "adjustmentgodownstrategy", this.dw_adjustmentstrategy.getitemnumber(1, "adjustmentgodownstrategy"))
+	this.dw_groupinfo.setitem(1, "transfersourcegodownstrategy", this.dw_transferstrategy.getitemnumber(1, "transfersourcegodownstrategy"))
+	this.dw_groupinfo.setitem(1, "transfertargetgodownstrategy", this.dw_transferstrategy2.getitemnumber(1, "transfersourcegodownstrategy"))
+	this.dw_groupinfo.setitem(1, "quotationgodownstrategy", this.dw_quotationstrategy.getitemnumber(1, "quotationgodownstrategy"))
+	if this.dw_salestrategy.getitemnumber(1, "salegodownstrategy") = 1.0 and f_validatedw(this.dw_groupallowedgodown_sale) < 0 then
+		return
+	end if
+	if this.dw_salereturnstrategy.getitemnumber(1, "salereturngodownstrategy") = 1.0 and f_validatedw(this.dw_groupallowedgodown_salereturn) < 0 then
+		return
+	end if
+	if this.dw_purchasestrategy.getitemnumber(1, "purchasegodownstrategy") = 1.0 and f_validatedw(this.dw_groupallowedgodown_purchase) < 0 then
+		return
+	end if
+	if this.dw_purchasereturnstrategy.getitemnumber(1, "purchasereturngodownstrategy") = 1.0 and f_validatedw(this.dw_groupallowedgodown_purchasereturn) < 0 then
+		return
+	end if
+	if this.dw_issuestrategy.getitemnumber(1, "issuegodownstrategy") = 1.0 and f_validatedw(this.dw_groupallowedgodown_issue) < 0 then
+		return
+	end if
+	if this.dw_receiptstrategy.getitemnumber(1, "receiptgodownstrategy") = 1.0 and f_validatedw(this.dw_groupallowedgodown_receipt) < 0 then
+		return
+	end if
+	if this.dw_adjustmentstrategy.getitemnumber(1, "adjustmentgodownstrategy") = 1.0 and f_validatedw(this.dw_groupallowedgodown_adjustment) < 0 then
+		return
+	end if
+	if this.dw_transferstrategy.getitemnumber(1, "transfersourcegodownstrategy") = 1.0 and f_validatedw(this.dw_groupallowedgodown_transfer) < 0 then
+		return
+	end if
+	if this.dw_transferstrategy2.getitemnumber(1, "transfersourcegodownstrategy") = 1.0 and f_validatedw(this.dw_groupallowedgodown_transfer2) < 0 then
+		return
+	end if
+	if this.dw_quotationstrategy.getitemnumber(1, "quotationgodownstrategy") = 1.0 and f_validatedw(this.dw_groupallowedgodown_quotation) < 0 then
+		return
+	end if
+	ll_totrows = this.dw_groupallowedgodowndetail.rowcount()
+	ll_row = 0
+	do while ll_totrows > 0 and ll_row <= ll_totrows
+		this.dw_groupallowedgodowndetail.deleterow(0)
+		ll_row = ll_row + 1
+	loop
+	if this.dw_salestrategy.getitemnumber(1, "salegodownstrategy") = 1.0 then
+		ll_retval = wf_getgroupallowedgodown(this.dw_groupallowedgodown_sale, this.dw_groupallowedgodowndetail)
+	end if
+	if this.dw_salereturnstrategy.getitemnumber(1, "salereturngodownstrategy") = 1.0 then
+		ll_retval = wf_getgroupallowedgodown(this.dw_groupallowedgodown_salereturn, this.dw_groupallowedgodowndetail)
+	end if
+	if this.dw_purchasestrategy.getitemnumber(1, "purchasegodownstrategy") = 1.0 then
+		ll_retval = wf_getgroupallowedgodown(this.dw_groupallowedgodown_purchase, this.dw_groupallowedgodowndetail)
+	end if
+	if this.dw_purchasereturnstrategy.getitemnumber(1, "purchasereturngodownstrategy") = 1.0 then
+		ll_retval = wf_getgroupallowedgodown(this.dw_groupallowedgodown_purchasereturn, this.dw_groupallowedgodowndetail)
+	end if
+	if this.dw_issuestrategy.getitemnumber(1, "issuegodownstrategy") = 1.0 then
+		ll_retval = wf_getgroupallowedgodown(this.dw_groupallowedgodown_issue, this.dw_groupallowedgodowndetail)
+	end if
+	if this.dw_receiptstrategy.getitemnumber(1, "receiptgodownstrategy") = 1.0 then
+		ll_retval = wf_getgroupallowedgodown(this.dw_groupallowedgodown_receipt, this.dw_groupallowedgodowndetail)
+	end if
+	if this.dw_adjustmentstrategy.getitemnumber(1, "adjustmentgodownstrategy") = 1.0 then
+		ll_retval = wf_getgroupallowedgodown(this.dw_groupallowedgodown_adjustment, this.dw_groupallowedgodowndetail)
+	end if
+	if this.dw_transferstrategy.getitemnumber(1, "transfersourcegodownstrategy") = 1.0 then
+		ll_retval = wf_getgroupallowedgodown(this.dw_groupallowedgodown_transfer, this.dw_groupallowedgodowndetail)
+	end if
+	if this.dw_transferstrategy2.getitemnumber(1, "transfersourcegodownstrategy") = 1.0 then
+		ll_retval = wf_getgroupallowedgodown(this.dw_groupallowedgodown_transfer2, this.dw_groupallowedgodowndetail)
+	end if
+	if this.dw_quotationstrategy.getitemnumber(1, "quotationgodownstrategy") = 1.0 then
+		ll_retval = wf_getgroupallowedgodown(this.dw_groupallowedgodown_quotation, this.dw_groupallowedgodowndetail)
+	end if
+	if this.dw_groupinfo.update() > 0 then
+		if this.dw_groupallowedgodowndetail.update() > 0 then
+			SQL commit USING sqlca;
+			messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+			setpointer(arrow!)
+			post event Close()
+		else
+			SQL rollback USING sqlca;
+			setpointer(arrow!)
+			messagebox("Save Changes", "Changes Rollback in database, ~n~rSome database problem occurs", exclamation!, ok!, 1)
+			return
+		end if
+	else
+		SQL rollback USING sqlca;
+		setpointer(arrow!)
+		messagebox("Save Changes", "Changes Rollback in database, ~n~rSome database problem occurs", exclamation!, ok!, 1)
+		return
+	end if
+	setpointer(arrow!)
+
+// w_groupwisegodownsetting.wf_getgroupallowedgodown(datawindow ad_sourcedw, datawindow ad_targetdw) returns long
+	long ll_totrows
+	long ll_row
+	long ll_newrow
+	ll_totrows = ad_sourcedw.rowcount()
+	ll_row = 1
+	do while ll_totrows <> 0 and ll_row <= ll_totrows
+		if ad_sourcedw.object.allowed[ll_row] = 1 then
+			ll_newrow = ad_targetdw.insertrow(0)
+			ad_targetdw.object.groupcode[ll_newrow] = ad_sourcedw.object.groupcode[ll_row]
+			ad_targetdw.object.godown[ll_newrow] = ad_sourcedw.object.godown[ll_row]
+			ad_targetdw.object.gcode[ll_newrow] = ad_sourcedw.object.gcode[ll_row]
+			ad_targetdw.object.module[ll_newrow] = ad_sourcedw.object.module[ll_row]
+			ad_targetdw.object.allowed[ll_newrow] = ad_sourcedw.object.allowed[ll_row]
+			ad_targetdw.object.priority[ll_newrow] = ad_sourcedw.object.priority[ll_row]
+		end if
+		ll_row = ll_row + 1
+	loop
+	return 1
+
+// w_groupwisegodownsetting.wf_validategroupallowedgodown(datawindow ad_grouplist) returns integer
+	long ll_totrows
+	long ll_row
+	long ll_retval
+	ll_totrows = ad_grouplist.rowcount()
+	ll_row = 1
+	ll_retval = 0
+	do while ll_totrows <> 0 and ll_row <= ll_totrows
+		if ad_grouplist.object.allowed[ll_row] = 1 then
+			ll_retval = ll_row
+			return ll_retval
+		end if
+		ll_row = ll_row + 1
+	loop
+	return ll_retval
+
+// w_groupwisegodownsetting.create() returns 0
+	if this.menuname = "m_groupgodownsetting" then
+		this.menuid = create m_groupgodownsetting
+	end if
+	this.dw_groupallowedgodown_quotation = create dw_groupallowedgodown_quotation
+	this.dw_quotationstrategy = create dw_quotationstrategy
+	this.dw_transferstrategy2 = create dw_transferstrategy2
+	this.dw_groupallowedgodown_transfer2 = create dw_groupallowedgodown_transfer2
+	this.cb_cancel = create cb_cancel
+	this.cb_save = create cb_save
+	this.dw_groupallowedgodowndetail = create dw_groupallowedgodowndetail
+	this.dw_groupallowedgodown_transfer = create dw_groupallowedgodown_transfer
+	this.dw_groupallowedgodown_adjustment = create dw_groupallowedgodown_adjustment
+	this.dw_transferstrategy = create dw_transferstrategy
+	this.dw_adjustmentstrategy = create dw_adjustmentstrategy
+	this.dw_groupallowedgodown_receipt = create dw_groupallowedgodown_receipt
+	this.dw_receiptstrategy = create dw_receiptstrategy
+	this.dw_groupallowedgodown_issue = create dw_groupallowedgodown_issue
+	this.dw_groupallowedgodown_purchasereturn = create dw_groupallowedgodown_purchasereturn
+	this.dw_groupallowedgodown_purchase = create dw_groupallowedgodown_purchase
+	this.dw_groupallowedgodown_salereturn = create dw_groupallowedgodown_salereturn
+	this.dw_groupallowedgodown_sale = create dw_groupallowedgodown_sale
+	this.dw_issuestrategy = create dw_issuestrategy
+	this.dw_purchasereturnstrategy = create dw_purchasereturnstrategy
+	this.dw_purchasestrategy = create dw_purchasestrategy
+	this.dw_salereturnstrategy = create dw_salereturnstrategy
+	this.dw_salestrategy = create dw_salestrategy
+	this.dw_groupinfo = create dw_groupinfo
+	this.gb_1 = create gb_1
+	this.gb_salereturn = create gb_salereturn
+	this.gb_purchase = create gb_purchase
+	this.gb_purchasereturn = create gb_purchasereturn
+	this.gb_issue = create gb_issue
+	this.gb_receipt = create gb_receipt
+	this.gb_adjustment = create gb_adjustment
+	this.gb_transfer = create gb_transfer
+	this.gb_transfer2 = create gb_transfer2
+	this.gb_quotation = create gb_quotation
+	this.control = {this.dw_groupallowedgodown_quotation, this.dw_quotationstrategy, this.dw_transferstrategy2, this.dw_groupallowedgodown_transfer2, this.cb_cancel, this.cb_save, this.dw_groupallowedgodowndetail, this.dw_groupallowedgodown_transfer, this.dw_groupallowedgodown_adjustment, this.dw_transferstrategy, this.dw_adjustmentstrategy, this.dw_groupallowedgodown_receipt, this.dw_receiptstrategy, this.dw_groupallowedgodown_issue, this.dw_groupallowedgodown_purchasereturn, this.dw_groupallowedgodown_purchase, this.dw_groupallowedgodown_salereturn, this.dw_groupallowedgodown_sale, this.dw_issuestrategy, this.dw_purchasereturnstrategy, this.dw_purchasestrategy, this.dw_salereturnstrategy, this.dw_salestrategy, this.dw_groupinfo, this.gb_1, this.gb_salereturn, this.gb_purchase, this.gb_purchasereturn, this.gb_issue, this.gb_receipt, this.gb_adjustment, this.gb_transfer, this.gb_transfer2, this.gb_quotation}
+
+// w_groupwisegodownsetting.destroy() returns 0
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_groupallowedgodown_quotation
+	destroy this.dw_quotationstrategy
+	destroy this.dw_transferstrategy2
+	destroy this.dw_groupallowedgodown_transfer2
+	destroy this.cb_cancel
+	destroy this.cb_save
+	destroy this.dw_groupallowedgodowndetail
+	destroy this.dw_groupallowedgodown_transfer
+	destroy this.dw_groupallowedgodown_adjustment
+	destroy this.dw_transferstrategy
+	destroy this.dw_adjustmentstrategy
+	destroy this.dw_groupallowedgodown_receipt
+	destroy this.dw_receiptstrategy
+	destroy this.dw_groupallowedgodown_issue
+	destroy this.dw_groupallowedgodown_purchasereturn
+	destroy this.dw_groupallowedgodown_purchase
+	destroy this.dw_groupallowedgodown_salereturn
+	destroy this.dw_groupallowedgodown_sale
+	destroy this.dw_issuestrategy
+	destroy this.dw_purchasereturnstrategy
+	destroy this.dw_purchasestrategy
+	destroy this.dw_salereturnstrategy
+	destroy this.dw_salestrategy
+	destroy this.dw_groupinfo
+	destroy this.gb_1
+	destroy this.gb_salereturn
+	destroy this.gb_purchase
+	destroy this.gb_purchasereturn
+	destroy this.gb_issue
+	destroy this.gb_receipt
+	destroy this.gb_adjustment
+	destroy this.gb_transfer
+	destroy this.gb_transfer2
+	destroy this.gb_quotation
+
+// w_groupwisegodownsetting.open() returns long
+	long ll_groupcode
+	long ll_salestrategy
+	long ll_salereturnstrategy
+	long ll_purchasestrategy
+	long ll_purchasereturnstrategy
+	long ll_issuestrategy
+	long ll_receiptstrategy
+	long ll_adjustmentstrategy
+	long ll_transferstrategy
+	long ll_transferstrategy2
+	long ll_row
+	long ll_totrows
+	long ll_module
+	long ll_quotationstrategy
+	string ls_datawindow
+	ll_groupcode = message.doubleparm
+	this.dw_groupinfo.settransobject(sqlca)
+	this.dw_salestrategy.settransobject(sqlca)
+	this.dw_salereturnstrategy.settransobject(sqlca)
+	this.dw_purchasestrategy.settransobject(sqlca)
+	this.dw_purchasereturnstrategy.settransobject(sqlca)
+	this.dw_issuestrategy.settransobject(sqlca)
+	this.dw_receiptstrategy.settransobject(sqlca)
+	this.dw_adjustmentstrategy.settransobject(sqlca)
+	this.dw_transferstrategy.settransobject(sqlca)
+	this.dw_transferstrategy2.settransobject(sqlca)
+	this.dw_quotationstrategy.settransobject(sqlca)
+	this.dw_groupallowedgodown_sale.settransobject(sqlca)
+	this.dw_groupallowedgodown_salereturn.settransobject(sqlca)
+	this.dw_groupallowedgodown_purchase.settransobject(sqlca)
+	this.dw_groupallowedgodown_purchasereturn.settransobject(sqlca)
+	this.dw_groupallowedgodown_issue.settransobject(sqlca)
+	this.dw_groupallowedgodown_receipt.settransobject(sqlca)
+	this.dw_groupallowedgodown_adjustment.settransobject(sqlca)
+	this.dw_groupallowedgodown_transfer.settransobject(sqlca)
+	this.dw_groupallowedgodown_transfer2.settransobject(sqlca)
+	this.dw_groupallowedgodown_quotation.settransobject(sqlca)
+	this.dw_groupallowedgodowndetail.settransobject(sqlca)
+	this.dw_salestrategy.insertrow(0)
+	this.dw_salereturnstrategy.insertrow(0)
+	this.dw_purchasestrategy.insertrow(0)
+	this.dw_purchasereturnstrategy.insertrow(0)
+	this.dw_issuestrategy.insertrow(0)
+	this.dw_receiptstrategy.insertrow(0)
+	this.dw_adjustmentstrategy.insertrow(0)
+	this.dw_transferstrategy.insertrow(0)
+	this.dw_transferstrategy2.insertrow(0)
+	this.dw_quotationstrategy.insertrow(0)
+	this.dw_salestrategy.scrolltorow(1)
+	this.dw_salereturnstrategy.scrolltorow(1)
+	this.dw_purchasestrategy.scrolltorow(1)
+	this.dw_purchasereturnstrategy.scrolltorow(1)
+	this.dw_issuestrategy.scrolltorow(1)
+	this.dw_receiptstrategy.scrolltorow(1)
+	this.dw_adjustmentstrategy.scrolltorow(1)
+	this.dw_transferstrategy.scrolltorow(1)
+	this.dw_transferstrategy2.scrolltorow(1)
+	this.dw_quotationstrategy.scrolltorow(1)
+	this.dw_groupinfo.retrieve(ll_groupcode)
+	ll_row = this.dw_groupinfo.rowcount()
+	if ll_row <= 0 then
+		messagebox("Database Error", "Problem occured at database.")
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	ll_groupcode = this.dw_groupinfo.getitemnumber(ll_row, "code")
+	ll_salestrategy = this.dw_groupinfo.getitemnumber(ll_row, "salegodownstrategy")
+	ll_salereturnstrategy = this.dw_groupinfo.getitemnumber(ll_row, "salereturngodownstrategy")
+	ll_purchasestrategy = this.dw_groupinfo.getitemnumber(ll_row, "purchasegodownstrategy")
+	ll_purchasereturnstrategy = this.dw_groupinfo.getitemnumber(ll_row, "purchasereturngodownstrategy")
+	ll_issuestrategy = this.dw_groupinfo.getitemnumber(ll_row, "issuegodownstrategy")
+	ll_receiptstrategy = this.dw_groupinfo.getitemnumber(ll_row, "receiptgodownstrategy")
+	ll_adjustmentstrategy = this.dw_groupinfo.getitemnumber(ll_row, "adjustmentgodownstrategy")
+	ll_transferstrategy = this.dw_groupinfo.getitemnumber(ll_row, "transfersourcegodownstrategy")
+	ll_transferstrategy2 = this.dw_groupinfo.getitemnumber(ll_row, "transfertargetgodownstrategy")
+	ll_quotationstrategy = this.dw_groupinfo.getitemnumber(ll_row, "quotationgodownstrategy")
+	this.dw_salestrategy.setitem(1, "salegodownstrategy", ll_salestrategy)
+	this.dw_salereturnstrategy.setitem(1, "salereturngodownstrategy", ll_salereturnstrategy)
+	this.dw_purchasestrategy.setitem(1, "purchasegodownstrategy", ll_purchasestrategy)
+	this.dw_purchasereturnstrategy.setitem(1, "purchasereturngodownstrategy", ll_purchasereturnstrategy)
+	this.dw_issuestrategy.setitem(1, "issuegodownstrategy", ll_issuestrategy)
+	this.dw_receiptstrategy.setitem(1, "receiptgodownstrategy", ll_receiptstrategy)
+	this.dw_adjustmentstrategy.setitem(1, "adjustmentgodownstrategy", ll_adjustmentstrategy)
+	this.dw_transferstrategy.setitem(1, "transfersourcegodownstrategy", ll_transferstrategy)
+	this.dw_transferstrategy2.setitem(1, "transfersourcegodownstrategy", ll_transferstrategy2)
+	this.dw_quotationstrategy.setitem(1, "quotationgodownstrategy", ll_quotationstrategy)
+	this.dw_groupallowedgodown_sale.retrieve(ll_groupcode, 1)
+	this.dw_groupallowedgodown_salereturn.retrieve(ll_groupcode, 2)
+	this.dw_groupallowedgodown_purchase.retrieve(ll_groupcode, 3)
+	this.dw_groupallowedgodown_purchasereturn.retrieve(ll_groupcode, 4)
+	this.dw_groupallowedgodown_issue.retrieve(ll_groupcode, 5)
+	this.dw_groupallowedgodown_receipt.retrieve(ll_groupcode, 6)
+	this.dw_groupallowedgodown_adjustment.retrieve(ll_groupcode, 7)
+	this.dw_groupallowedgodown_transfer.retrieve(ll_groupcode, 8)
+	this.dw_groupallowedgodown_transfer2.retrieve(ll_groupcode, 13)
+	this.dw_groupallowedgodown_quotation.retrieve(ll_groupcode, 15)
+	this.dw_groupallowedgodowndetail.retrieve(ll_groupcode)
+	if ll_salestrategy <> 1 then
+		this.dw_groupallowedgodown_sale.visible = false
+	else
+		this.dw_groupallowedgodown_sale.visible = true
+	end if
+	if ll_salereturnstrategy <> 1 then
+		this.dw_groupallowedgodown_salereturn.visible = false
+	else
+		this.dw_groupallowedgodown_salereturn.visible = true
+	end if
+	if ll_purchasestrategy <> 1 then
+		this.dw_groupallowedgodown_purchase.visible = false
+	else
+		this.dw_groupallowedgodown_purchase.visible = true
+	end if
+	if ll_purchasereturnstrategy <> 1 then
+		this.dw_groupallowedgodown_purchasereturn.visible = false
+	else
+		this.dw_groupallowedgodown_purchasereturn.visible = true
+	end if
+	if ll_issuestrategy <> 1 then
+		this.dw_groupallowedgodown_issue.visible = false
+	else
+		this.dw_groupallowedgodown_issue.visible = true
+	end if
+	if ll_receiptstrategy <> 1 then
+		this.dw_groupallowedgodown_receipt.visible = false
+	else
+		this.dw_groupallowedgodown_receipt.visible = true
+	end if
+	if ll_adjustmentstrategy <> 1 then
+		this.dw_groupallowedgodown_adjustment.visible = false
+	else
+		this.dw_groupallowedgodown_adjustment.visible = true
+	end if
+	if ll_transferstrategy <> 1 then
+		this.dw_groupallowedgodown_transfer.visible = false
+	else
+		this.dw_groupallowedgodown_transfer.visible = true
+	end if
+	if ll_transferstrategy2 <> 1 then
+		this.dw_groupallowedgodown_transfer2.visible = false
+	else
+		this.dw_groupallowedgodown_transfer2.visible = true
+	end if
+	if ll_quotationstrategy <> 1 then
+		this.dw_groupallowedgodown_quotation.visible = false
+	else
+		this.dw_groupallowedgodown_quotation.visible = true
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_groupwisegodownsetting.close() returns long
+	close(this)
+	return ::message.returnvalue
+
+// w_groupwisegodownsetting.activate() returns long
+	this.windowstate = maximized!
+	setredraw(true)
+	return ::message.returnvalue
+
+// dw_quotationstrategy.itemchanged(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "transfersourcegodownstrategy"
+		if long(data) = 1 then
+			parent.dw_groupallowedgodown_transfer2.visible = true
+		else
+			parent.dw_groupallowedgodown_transfer2.visible = false
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_transferstrategy2.itemchanged(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "transfersourcegodownstrategy"
+		if long(data) = 1 then
+			parent.dw_groupallowedgodown_transfer2.visible = true
+		else
+			parent.dw_groupallowedgodown_transfer2.visible = false
+		end if
+	end choose
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event Close()
+	return ::message.returnvalue
+
+// cb_save.clicked() returns long
+	parent.post event ue_save()
+	return ::message.returnvalue
+
+// dw_transferstrategy.itemchanged(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "transfersourcegodownstrategy"
+		if long(data) = 1 then
+			parent.dw_groupallowedgodown_transfer.visible = true
+		else
+			parent.dw_groupallowedgodown_transfer.visible = false
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_adjustmentstrategy.itemchanged(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "adjustmentgodownstrategy"
+		if long(data) = 1 then
+			parent.dw_groupallowedgodown_adjustment.visible = true
+		else
+			parent.dw_groupallowedgodown_adjustment.visible = false
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_receiptstrategy.itemchanged(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "receiptgodownstrategy"
+		if long(data) = 1 then
+			parent.dw_groupallowedgodown_receipt.visible = true
+		else
+			parent.dw_groupallowedgodown_receipt.visible = false
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_issuestrategy.itemchanged(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "issuegodownstrategy"
+		if long(data) = 1 then
+			parent.dw_groupallowedgodown_issue.visible = true
+		else
+			parent.dw_groupallowedgodown_issue.visible = false
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_purchasereturnstrategy.itemchanged(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "purchasereturngodownstrategy"
+		if long(data) = 1 then
+			parent.dw_groupallowedgodown_purchasereturn.visible = true
+		else
+			parent.dw_groupallowedgodown_purchasereturn.visible = false
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_purchasestrategy.itemchanged(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "purchasegodownstrategy"
+		if long(data) = 1 then
+			parent.dw_groupallowedgodown_purchase.visible = true
+		else
+			parent.dw_groupallowedgodown_purchase.visible = false
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_salereturnstrategy.itemchanged(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "salereturngodownstrategy"
+		if long(data) = 1 then
+			parent.dw_groupallowedgodown_salereturn.visible = true
+		else
+			parent.dw_groupallowedgodown_salereturn.visible = false
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_salestrategy.itemchanged(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "salegodownstrategy"
+		if long(data) = 1 then
+			parent.dw_groupallowedgodown_sale.visible = true
+		else
+			parent.dw_groupallowedgodown_sale.visible = false
+		end if
+	end choose
+	return ::message.returnvalue

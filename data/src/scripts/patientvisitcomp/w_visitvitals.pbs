@@ -1,0 +1,371 @@
+// window w_visitvitals (patientvisitcomp)  ancestor: window
+
+// w_visitvitals.ue_close(integer ai_status) returns 0
+	this.istr_ds.i_closemode = ai_status
+	if this.istr_ds.i_protect = 0 and ai_status = 1 then
+		this.istr_ds.ds.sharedata(this.dw_detail)
+	end if
+	closewithreturn(this, this.istr_ds)
+
+// w_visitvitals.ue_postopen() returns 0
+	this.dw_detail.settransobject(sqlca)
+	this.istr_ds.ds.sharedata(this.dw_detail)
+	if this.dw_detail.rowcount() <= 0 then
+		this.dw_detail.insertrow(0)
+	end if
+	wf_protectdw(this.dw_detail, this.istr_ds.i_protect)
+
+// w_visitvitals.wf_validateserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+	datetime ldt_last_transdate
+	datetime ldt_current_serverdate
+	long li_max_allow_days
+	ar_errtext = "Invoice Date  Check violates"
+	li_max_allow_days = f_numberpreferences("MaxAllowDate")
+	if isnull(li_max_allow_days) then
+		li_max_allow_days = 4
+	end if
+	SQL SELECT LastTransDate INTO :ldt_last_transdate FROM ServerDate USING sqlca;
+	if sqlca.sqlcode = 0 then
+		sqlca.getdatetime(ldt_current_serverdate)
+		if sqlca.sqlcode = 0 then
+			if ldt_current_serverdate >= ldt_last_transdate and daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) <= li_max_allow_days then
+				ar_server_datetime = ldt_current_serverdate
+				return true
+			elseif ldt_current_serverdate < ldt_last_transdate then
+				ar_errtext = "Back Date Invoice Check violates"
+				return false
+			elseif daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) > li_max_allow_days then
+				ar_errtext = "Forward Date Invoice Check violates"
+				return false
+			end if
+		else
+			return false
+		end if
+		return
+	end if
+	return false
+
+// w_visitvitals.wf_duplicateregno(string as_name) returns boolean
+	long ll_count
+	long ll_patientcode
+	boolean b_flag
+	as_name = trim(as_name)
+	ll_patientcode = this.dw_detail.object.code[this.dw_detail.rowcount()]
+	if isnull(ll_patientcode) then
+		SQL SELECT count ( *) INTO :ll_count FROM Patient WHERE patient.regno =:as_name USING sqlca;
+	else
+		SQL SELECT count ( *) INTO :ll_count FROM Patient WHERE patient.regno =:as_name AND Patient.PatientCode <> :ll_patientcode USING sqlca;
+	end if
+	if sqlca.sqlcode = 0 then
+		if ll_count > 0 then
+			b_flag = true
+		else
+			b_flag = false
+		end if
+	else
+		b_flag = false
+	end if
+	return b_flag
+
+// w_visitvitals.wf_getserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+	datetime ldt_last_transdate
+	datetime ldt_current_serverdate
+	integer li_max_allow_days
+	string ls_hold_serverdate
+	date ld_datepart
+	time lt_timepart
+	ar_errtext = "Please verify Server DateTime"
+	li_max_allow_days = f_numberpreferences("MaxAllowDate")
+	if isnull(li_max_allow_days) then
+		li_max_allow_days = 4
+	end if
+	SQL rollback USING sqlca;
+	SQL SELECT LastTransDate INTO :ldt_last_transdate FROM ServerDate USING sqlca;
+	if sqlca.sqlcode = 0 then
+		sqlca.getdatetime(ldt_current_serverdate)
+		if sqlca.sqlcode = 0 then
+			if ldt_current_serverdate >= ldt_last_transdate and daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) <= li_max_allow_days then
+				ld_datepart = date(string(ldt_current_serverdate, "yyyy-mm-dd"))
+				lt_timepart = time(string(ldt_current_serverdate, "hh:mm:ss"))
+				ldt_current_serverdate = datetime(ld_datepart, lt_timepart)
+				SQL update ServerDate SET LastTransDate =:ldt_current_serverdate USING sqlca;
+				if sqlca.sqlcode = 0 then
+					SQL commit USING sqlca;
+					ar_server_datetime = ldt_current_serverdate
+					return true
+				else
+					SQL rollback USING sqlca;
+					return false
+				end if
+			elseif ldt_current_serverdate < ldt_last_transdate then
+				ar_errtext = "Back Date Invoice Check violates"
+				return false
+			elseif daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) > li_max_allow_days then
+				ar_errtext = "Forward Date Invoice Check violates"
+				return false
+			end if
+		else
+			SQL rollback USING sqlca;
+			return false
+		end if
+		return
+	end if
+	SQL rollback USING sqlca;
+	return false
+
+// w_visitvitals.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+
+// w_visitvitals.wf_set_bmi(string as_col, string as_data) returns long
+	double ld_data
+	double ld_height
+	double ld_height1
+	double ld_height2
+	double ld_weight
+	double ld_weight1
+	double ld_weight2
+	double ld_temp
+	double ld_weight_gms
+	double ll_log
+	ld_data = double(as_data)
+	if ld_data <= 0.0 or isnull(ld_data) then
+		ld_data = 1
+	end if
+	choose case as_col
+	case "height1"
+		ld_height1 = ld_data
+		ld_height2 = this.dw_detail.object.height2[1]
+		ld_height = (ld_height1 * 12.0 + ld_height2) * 2.54
+		ld_weight = this.dw_detail.object.weight1[1]
+		if ld_height > 0.0 then
+			this.dw_detail.object.bmi[1] = this.dw_detail.object.weight1[1] / (ld_height / 100.0) ^ 2.0
+		else
+			this.dw_detail.object.bmi[1] = this.dw_detail.object.weight1[1]
+		end if
+		if this.dw_detail.object.bsamethod[1] = 1 then
+			this.dw_detail.object.bsa[1] = 0.007184 * ld_height ^ 0.725 * ld_weight ^ 0.425
+		elseif this.dw_detail.object.bsamethod[1] = 2 then
+			this.dw_detail.object.bsa[1] = (ld_height * ld_weight / 3600.0) ^ 0.5
+		elseif this.dw_detail.object.bsamethod[1] = 3 then
+			this.dw_detail.object.bsa[1] = 0.024265 * ld_height ^ 0.3964 * ld_weight ^ 0.5378
+		elseif this.dw_detail.object.bsamethod[1] = 4 then
+			this.dw_detail.object.bsa[1] = 0.0235 * ld_height ^ 0.42246 * ld_weight ^ 0.51456
+		elseif this.dw_detail.object.bsamethod[1] = 5 then
+			ld_weight_gms = ld_weight * 1000.0
+			ld_temp = 0.7285 - 0.0188 * logten(ld_weight_gms)
+			this.dw_detail.object.bsa[1] = 0.0003207 * ld_height ^ 0.3 * ld_weight_gms ^ ld_temp
+		end if
+	case "height2"
+		ld_height1 = this.dw_detail.object.height1[1]
+		ld_height2 = ld_data
+		ld_height = (ld_height1 * 12.0 + ld_height2) * 2.54
+		ld_weight = this.dw_detail.object.weight1[1]
+		if ld_height > 0.0 then
+			this.dw_detail.object.bmi[1] = this.dw_detail.object.weight1[1] / (ld_height / 100.0) ^ 2.0
+		else
+			this.dw_detail.object.bmi[1] = this.dw_detail.object.weight1[1]
+		end if
+		if this.dw_detail.object.bsamethod[1] = 1 then
+			this.dw_detail.object.bsa[1] = 0.007184 * ld_height ^ 0.725 * ld_weight ^ 0.425
+		elseif this.dw_detail.object.bsamethod[1] = 2 then
+			this.dw_detail.object.bsa[1] = (ld_height * ld_weight / 3600.0) ^ 0.5
+		elseif this.dw_detail.object.bsamethod[1] = 3 then
+			this.dw_detail.object.bsa[1] = 0.024265 * ld_height ^ 0.3964 * ld_weight ^ 0.5378
+		elseif this.dw_detail.object.bsamethod[1] = 4 then
+			this.dw_detail.object.bsa[1] = 0.0235 * ld_height ^ 0.42246 * ld_weight ^ 0.51456
+		elseif this.dw_detail.object.bsamethod[1] = 5 then
+			ld_weight_gms = ld_weight * 1000.0
+			ld_temp = 0.7285 - 0.0188 * logten(ld_weight_gms)
+			this.dw_detail.object.bsa[1] = 0.0003207 * ld_height ^ 0.3 * ld_weight_gms ^ ld_temp
+		end if
+	case "weight1"
+		ld_height1 = this.dw_detail.object.height1[1]
+		ld_height2 = this.dw_detail.object.height2[1]
+		ld_height = (ld_height1 * 12.0 + ld_height2) * 2.54
+		ld_weight = ld_data
+		if ld_height > 0.0 then
+			this.dw_detail.object.bmi[1] = ld_weight / (ld_height / 100.0) ^ 2.0
+		else
+			this.dw_detail.object.bmi[1] = ld_weight
+		end if
+		if this.dw_detail.object.bsamethod[1] = 1 then
+			this.dw_detail.object.bsa[1] = 0.007184 * ld_height ^ 0.725 * ld_weight ^ 0.425
+		elseif this.dw_detail.object.bsamethod[1] = 2 then
+			this.dw_detail.object.bsa[1] = (ld_height * ld_weight / 3600.0) ^ 0.5
+		elseif this.dw_detail.object.bsamethod[1] = 3 then
+			this.dw_detail.object.bsa[1] = 0.024265 * ld_height ^ 0.3964 * ld_weight ^ 0.5378
+		elseif this.dw_detail.object.bsamethod[1] = 4 then
+			this.dw_detail.object.bsa[1] = 0.0235 * ld_height ^ 0.42246 * ld_weight ^ 0.51456
+		elseif this.dw_detail.object.bsamethod[1] = 5 then
+			ld_weight_gms = ld_weight * 1000.0
+			ld_temp = 0.7285 - 0.0188 * logten(ld_weight_gms)
+			this.dw_detail.object.bsa[1] = 0.0003207 * ld_height ^ 0.3 * ld_weight_gms ^ ld_temp
+		end if
+	case "bsamethod"
+		ld_height1 = this.dw_detail.object.height1[1]
+		ld_height2 = this.dw_detail.object.height2[1]
+		ld_height = (ld_height1 * 12.0 + ld_height2) * 2.54
+		ld_weight = this.dw_detail.object.weight1[1]
+		if ld_height > 0.0 then
+			this.dw_detail.object.bmi[1] = ld_weight / (ld_height / 100.0) ^ 2.0
+		else
+			this.dw_detail.object.bmi[1] = ld_weight
+		end if
+		if long(as_data) = 1 then
+			this.dw_detail.object.bsa[1] = 0.007184 * ld_height ^ 0.725 * ld_weight ^ 0.425
+		elseif long(as_data) = 2 then
+			this.dw_detail.object.bsa[1] = (ld_height * ld_weight / 3600.0) ^ 0.5
+		elseif long(as_data) = 3 then
+			this.dw_detail.object.bsa[1] = 0.024265 * ld_height ^ 0.3964 * ld_weight ^ 0.5378
+		elseif long(as_data) = 4 then
+			this.dw_detail.object.bsa[1] = 0.0235 * ld_height ^ 0.42246 * ld_weight ^ 0.51456
+		elseif long(as_data) = 5 then
+			ld_weight_gms = ld_weight * 1000.0
+			ll_log = logten(ld_weight_gms)
+			ld_temp = 0.7285 - 0.0188 * logten(ld_weight_gms)
+			this.dw_detail.object.bsa[1] = 0.0003207 * ld_height ^ 0.3 * ld_weight_gms ^ ld_temp
+		end if
+	end choose
+	return 0
+
+// w_visitvitals.create() returns 0
+	this.cb_back = create cb_back
+	this.dw_detail = create dw_detail
+	this.control = {this.cb_back, this.dw_detail}
+
+// w_visitvitals.destroy() returns 0
+	destroy this.cb_back
+	destroy this.dw_detail
+
+// w_visitvitals.open() returns long
+	long ll_row
+	long ll_width
+	long ll_height
+	long ll_argpassed
+	environment env
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	this.istr_ds = ::message.powerobjectparm
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.x = int((ll_width - this.width) / 2.0)
+	this.y = int((ll_height - this.height) / 2.0)
+	post event ue_postopen()
+	return ::message.returnvalue
+
+// w_visitvitals.close() returns long
+	triggerevent("ue_close")
+	return ::message.returnvalue
+
+// cb_back.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_back.clicked() returns long
+	if f_validatedw(parent.dw_detail) < 0 then
+		return ::message.returnvalue
+	end if
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// dw_detail.ue_enterkey() returns long
+	if parent.dw_detail.getcolumnname() <> "vitalnotes" then
+		send(handle(this), 256, 9, long(90))
+		return 1
+	end if
+	return ::message.returnvalue
+
+// dw_detail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	integer rt_code
+	if keyflags = 2 and key = keyb! then
+		parent.post event ue_close(1)
+	end if
+	return rt_code
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "height1"
+		parent.wf_set_bmi("height1", data)
+	case "height2"
+		parent.wf_set_bmi("height2", data)
+	case "weight1"
+		parent.wf_set_bmi("weight1", data)
+	case "weight2"
+		parent.wf_set_bmi("weight2", data)
+	case "bsamethod"
+		parent.wf_set_bmi("bsamethod", data)
+	case "regno"
+		if parent.wf_duplicateregno(data) then
+			return 1
+		end if
+	case "dob"
+		if isdate(string(date(left(data, 10)))) then
+			setitem(row, "age", year(today()) - year(date(string(date(left(data, 10))))))
+		else
+			return 1
+		end if
+	case "age"
+		if long(data) = 0 then
+			setitem(row, "dob", today())
+		elseif long(data) > 0 then
+			setitem(row, "dob", relativedate(today(), -(360 * long(data))))
+		else
+			return 1
+		end if
+	case "recurringperiod"
+		if long(data) < 0 then
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "height1", "height1"
+		if long(data) < 0 then
+			messagebox("Height Validation", "Please Enter Valid Height")
+		end if
+	case "weight1", "weight1"
+		if long(data) < 0 then
+			messagebox("Weight Validation", "Please Enter Valid Weight")
+		end if
+	case "temperaturevalue"
+		if long(data) < 0 then
+			messagebox("Temprature Value Validation", "Please Enter Valid Temprature Value")
+		end if
+	case "pulserate"
+		if long(data) < 0 then
+			messagebox("Pulse Rate Validation", "Please Enter Valid Pulse Rate ")
+		end if
+	case "respiration"
+		if long(data) < 0 then
+			messagebox("Repiration Value Value Validation", "Please Enter Valid Repiration Value")
+		end if
+	case "bloodpressuresystolic", "bloodpressurediastolic"
+		if long(data) < 0 then
+			messagebox("Blood Pressure Value Validation", "Please Enter Valid Blood Pressure Value")
+		end if
+	end choose
+	return 1
+
+// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue

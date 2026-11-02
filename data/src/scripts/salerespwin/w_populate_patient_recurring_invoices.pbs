@@ -1,0 +1,103 @@
+// window w_populate_patient_recurring_invoices (salerespwin)  ancestor: window
+
+// w_populate_patient_recurring_invoices.ue_setfocus(char ac_type) returns 0
+	long ll_invcode
+	setnull(ll_invcode)
+
+// w_populate_patient_recurring_invoices.ue_postopen() returns 0
+	long ll_invcode
+	this.istr_template.b_userinput = false
+	this.dw_control.settransobject(sqlca)
+	if this.dw_control.getchild("saleinvcode", this.idc_saleinv) <> 1 then
+		messagebox("DataWindow Child", "Can not get DataWindow Child reference for sale invoice")
+		return
+	end if
+	this.idc_saleinv.settransobject(sqlca)
+	this.idc_saleinv.retrieve(this.il_patientcode)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	this.dw_control.setfocus()
+
+// w_populate_patient_recurring_invoices.create() returns 0
+	this.dw_control = create dw_control
+	this.st_saleinvno = create st_saleinvno
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.gb_1 = create gb_1
+	this.control = {this.dw_control, this.st_saleinvno, this.cb_cancel, this.cb_ok, this.gb_1}
+
+// w_populate_patient_recurring_invoices.destroy() returns 0
+	destroy this.dw_control
+	destroy this.st_saleinvno
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.gb_1
+
+// w_populate_patient_recurring_invoices.open() returns long
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	this.il_patientcode = message.doubleparm
+	post event ue_postopen()
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_populate_patient_recurring_invoices.close() returns long
+	closewithreturn(this, this.istr_template)
+	return ::message.returnvalue
+
+// w_populate_patient_recurring_invoices.key(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		post event Close()
+	end if
+	return ::message.returnvalue
+
+// dw_control.key(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		parent.post event Close()
+	end if
+	return ::message.returnvalue
+
+// dw_control.itemerror(long row, dwobject dwo, string data) returns long
+	messagebox("Sale Invoice Code Validation", "Please enter valid Sale Invoice Code")
+	return 1
+
+// cb_cancel.clicked() returns long
+	parent.istr_template.b_userinput = false
+	parent.post event Close()
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	long ll_find
+	long ll_invcode
+	parent.istr_template.b_userinput = false
+	if parent.dw_control.accepttext() = -1 then
+		parent.dw_control.setfocus()
+		return ::message.returnvalue
+	end if
+	ll_invcode = parent.dw_control.getitemnumber(1, "saleinvcode")
+	SQL Select count ( *) INTO :ll_find From SaleLedger Where SaleInvcode =:ll_invcode AND RecurringInvoice ='Y' USING sqlca;
+	if ll_find <= 0 or sqlca.sqlcode <> 0 then
+		messagebox("Sale Invoice Code Validation", "Sale Invoice Code does not exist")
+		parent.dw_control.setfocus()
+		return ::message.returnvalue
+	end if
+	parent.istr_template.c_copyinvfrom = "I"
+	parent.istr_template.l_invtemplate = parent.dw_control.getitemnumber(1, "saleinvcode")
+	parent.istr_template.b_userinput = true
+	parent.post event Close()
+	return ::message.returnvalue

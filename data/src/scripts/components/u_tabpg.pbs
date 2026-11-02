@@ -1,0 +1,35 @@
+// userobject u_tabpg (components)  ancestor: userobject
+
+// u_tabpg.of_getreg(string as_entry, string as_default) returns string
+	string ls_regkey
+	string ls_regvalue
+	ls_regkey = "HKEY_CURRENT_USER\Software\TopWiz\EmailSMTP"
+	registryget(ls_regkey, as_entry, ls_regvalue)
+	if ls_regvalue = "" then
+		ls_regvalue = as_default
+	end if
+	return ls_regvalue
+
+// u_tabpg.of_setreg(string as_entry, string as_value) returns 0
+	string ls_regkey
+	ls_regkey = "HKEY_CURRENT_USER\Software\TopWiz\EmailSMTP"
+	registryset(ls_regkey, as_entry, as_value)
+
+// u_tabpg.of_replaceall(string as_oldstring, string as_findstr, string as_replace) returns string
+	string ls_newstring
+	long ll_findstr
+	long ll_replace
+	long ll_pos
+	ll_findstr = len(as_findstr)
+	ll_replace = len(as_replace)
+	ls_newstring = as_oldstring
+	ll_pos = pos(ls_newstring, as_findstr)
+	do while ll_pos > 0
+		ls_newstring = replace(ls_newstring, ll_pos, ll_findstr, as_replace)
+		ll_pos = pos(ls_newstring, as_findstr, ll_pos + ll_replace)
+	loop
+	return ls_newstring
+
+// u_tabpg.create() returns 0
+
+// u_tabpg.destroy() returns 0

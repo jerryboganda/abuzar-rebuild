@@ -1,0 +1,148 @@
+// window w_users (multientrygroups)  ancestor: w_multi_entry
+
+// w_users.wf_validateitem() returns integer
+	long ll_icode
+	integer li_errcode
+	integer li_null
+	ll_icode = this.id_detail.getitemnumber(this.il_currrow, "groupcode")
+	if vf_dwdupcode1(this.id_detail, "groupcode", string(ll_icode), this.il_currrow) = true then
+		messagebox("Duplication Error", "Current row is duplicate")
+		li_errcode = -1
+	else
+		li_errcode = 0
+	end if
+	this.ib_itemvalidated = true
+	if li_errcode = -1 then
+		setnull(li_null)
+		this.id_detail.setcolumn("groupcode")
+		this.id_detail.scrolltorow(this.il_currrow)
+		this.id_detail.object.groupcode[this.il_currrow] = li_null
+	end if
+	return li_errcode
+
+// w_users.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM Users WHERE Users.UserName =:as_name USING this.it_transobject;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_users.wf_retrievelistall() returns long
+	long ll_groupcode
+	ll_groupcode = f_getgroupcode(gl_usercode)
+	return this.id_list.retrieve(ll_groupcode)
+
+// w_users.wf_retrievelist() returns long
+	long ll_groupcode
+	ll_groupcode = f_getgroupcode(gl_usercode)
+	return this.id_list.retrieve(ll_groupcode)
+
+// w_users.create() returns 0
+	call super::create
+
+// w_users.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_users.ue_save() returns 0
+	long ll_mastercurrrow
+	long ll_invid
+	long ll_detailrows
+	integer li_counter
+	integer ll_salesmancode
+	boolean lb_commitflag
+	boolean b_flag
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	ll_mastercurrrow = this.id_master.getrow()
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	if this.id_master.object.password[ll_mastercurrrow] = "" then
+		messagebox("Password Validation!", "Blank password is not acceptable", stopsign!)
+		return
+	end if
+	setpointer(hourglass!)
+	ll_invid = this.id_master.object.code[ll_mastercurrrow]
+	if isnull(ll_invid) then
+		f_newtableid("Users", ll_invid)
+		this.id_master.object.code[ll_mastercurrrow] = ll_invid
+		b_flag = false
+	end if
+	if string(this.id_master.object.password[ll_mastercurrrow]) = string(this.id_master.object.confirmpassword[ll_mastercurrrow]) or b_flag = true then
+		ll_detailrows = this.id_detail.rowcount()
+		li_counter = 1
+		do while li_counter <= ll_detailrows and lb_commitflag = true
+			this.id_detail.setitem(li_counter, "usercode", ll_invid)
+			this.id_detail.setitem(li_counter, "modifiedby", gl_usercode)
+			li_counter = li_counter + 1
+		loop
+		call super::ue_save
+		setpointer(arrow!)
+		return
+	end if
+	messagebox("Confirm Password Validation", "The passwords does not match,~n~rPlease retype both passwords")
+
+// w_users.ue_newitem() returns 0
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	call super::ue_newitem
+
+// w_users.ue_detail() returns 0
+	call super::ue_detail
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_delete.enabled = true
+	this.im_menu.m_file.m_first.enabled = true
+	this.im_menu.m_file.m_next.enabled = true
+	this.im_menu.m_file.m_last.enabled = true
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_menu.m_file.m_previous.enabled = true
+	this.im_menu.m_item.m_newitem.enabled = true
+	this.im_menu.m_item.m_deleteitem.enabled = true
+	if this.id_master.getitemnumber(1, "Code") = 1.0 then
+		this.im_menu.m_item.m_newitem.enabled = false
+		this.im_menu.m_item.m_deleteitem.enabled = false
+		this.id_detail.object.groupcode.protect = 1
+		this.id_master.object.active.protect = 1
+	else
+		this.id_detail.object.groupcode.protect = 0
+		this.id_master.object.active.protect = 0
+	end if
+	if f_getgroupcode(gl_usercode) = 2 and gl_usercode = 1 then
+		this.id_master.object.password.protect = 0
+		this.id_master.object.confirmpassword.protect = 0
+		return
+	end if
+	this.id_master.object.password.protect = 1
+	this.id_master.object.confirmpassword.protect = 1
+
+// w_users.ue_newform() returns 0
+	call super::ue_newform
+	this.id_detail.object.groupcode.protect = 0
+	this.id_master.object.active.protect = 0
+	this.id_master.object.password.protect = 0
+	this.id_master.object.confirmpassword.protect = 0
+
+// w_users.ue_postopen() returns 0
+	long ll_groupcode
+	long ll_retcode
+	call super::ue_postopen
+	ll_groupcode = f_getgroupcode(gl_usercode)
+	ll_retcode = this.id_detail.getchild("groupcode", this.idc_groups)
+	if ll_retcode = -1 then
+		messagebox("DataWindowChild", "Unable to get DataWindow Child for Groups")
+	end if
+	this.idc_groups.settransobject(this.it_transobject)
+	if ll_groupcode <> 2 then
+		this.idc_groups.setfilter("groupcode <> 2")
+	end if

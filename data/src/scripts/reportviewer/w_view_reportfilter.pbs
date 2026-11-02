@@ -1,0 +1,166 @@
+// window w_view_reportfilter (reportviewer)  ancestor: window
+
+// w_view_reportfilter.wf_select_unselect_row() returns long
+	long ll_oldrow
+	ll_oldrow = this.ii_currow
+	if this.dw_control.getrow() > 0 then
+		this.dw_control.selectrow(ll_oldrow, false)
+		this.ii_currow = this.dw_control.getrow()
+		this.dw_control.selectrow(this.ii_currow, true)
+		this.dw_control.setrow(this.ii_currow)
+		this.dw_control.scrolltorow(this.ii_currow)
+	end if
+	return this.ii_currow
+
+// w_view_reportfilter.wf_selectfilter() returns long
+	long ll_row
+	ll_row = this.dw_control.getrow()
+	if ll_row > 0 then
+		this.is_filterinfo.s_reportobject = this.dw_control.object.reportidentifier[ll_row]
+		this.is_filterinfo.s_reporttitle = this.dw_control.object.filtername[ll_row]
+		this.is_filterinfo.s_otherinfo = this.dw_control.object.filterexpression[ll_row]
+		this.is_filterinfo.i_status = 1
+	end if
+	return 0
+
+// w_view_reportfilter.create() returns 0
+	this.dw_control = create dw_control
+	this.control = {this.dw_control}
+
+// w_view_reportfilter.destroy() returns 0
+	destroy this.dw_control
+
+// w_view_reportfilter.open() returns long
+	long ll_width
+	long ll_height
+	long ll_code
+	long ll_masteripartcode
+	environment env
+	this.is_filterinfo = message.powerobjectparm
+	if getenvironment(env) <> 1 then
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.width = ll_width * 0.98
+	this.height = ll_height * 0.90
+	this.y = int((ll_height - this.height) / 2.0)
+	this.dw_control.width = this.width - this.width * 0.02
+	this.dw_control.height = this.height - this.width * 0.05
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.retrieve(this.is_filterinfo.s_reportobject)
+	if this.dw_control.rowcount() > 0 then
+		this.ii_currow = 1
+		wf_select_unselect_row()
+	else
+		this.ii_currow = 0
+	end if
+	setredraw(true)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_view_reportfilter.close() returns long
+	this.is_filterinfo.i_status = 1
+	closewithreturn(this, this.is_filterinfo)
+	return ::message.returnvalue
+
+// w_view_reportfilter.key(keycode key, unsignedlong keyflags) returns long
+	if keydown(keyescape!) then
+		this.is_filterinfo.i_status = 0
+		closewithreturn(this, this.is_filterinfo)
+	end if
+	return ::message.returnvalue
+
+// dw_control.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	long ll_row
+	long ll_retcode
+	ancestorreturnvalue = super::doubleclicked(xpos, ypos, row, dwo)
+	choose case dwo.name
+	case "filtername", "filterexpression"
+		ll_row = getrow()
+		if getrow() > 0 then
+			parent.wf_selectfilter()
+			parent.postevent(close!)
+		end if
+	case else
+		ll_retcode = 1
+	end choose
+	return ll_retcode
+
+// dw_control.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	integer rt_code
+	long ll_currrow
+	long ll_listcurrrow
+	long ll_rowm
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	ll_rowm = getrow()
+	if keyflags = 2 then
+		if keydown(keys!) then
+			SQL rollback USING sqlca;
+			if parent.dw_control.update() > 0 then
+				SQL commit USING sqlca;
+				parent.wf_selectfilter()
+				parent.postevent(close!)
+			else
+				SQL rollback USING sqlca;
+				messagebox("Filter Updation!", "Unable to update filter information~r~nReasons are: -~r~n" + sqlca.sqlerrtext)
+			end if
+		elseif key = keyd! then
+			selectrow(0, false)
+			ll_listcurrrow = getrow()
+			if ll_listcurrrow > 0 then
+				deleterow(ll_rowm)
+				parent.wf_select_unselect_row()
+			end if
+			ll_listcurrrow = getrow()
+			rt_code = 1
+		end if
+	end if
+	if key = keydownarrow! then
+		selectrow(0, false)
+		scrollnextrow()
+		ll_listcurrrow = getrow()
+		rt_code = 1
+	elseif key = keyuparrow! then
+		selectrow(0, false)
+		scrollpriorrow()
+		ll_listcurrrow = getrow()
+		rt_code = 1
+	elseif key = keypagedown! then
+		selectrow(0, false)
+		scrollnextpage()
+		ll_listcurrrow = getrow()
+		rt_code = 1
+	elseif key = keypageup! then
+		selectrow(0, false)
+		scrollpriorpage()
+		ll_listcurrrow = getrow()
+		rt_code = 1
+	elseif key = keyend! then
+		selectrow(0, false)
+		scrolltorow(99999)
+		ll_listcurrrow = getrow()
+		rt_code = 1
+	elseif key = keyenter! then
+		ll_listcurrrow = getrow()
+		rt_code = 1
+		parent.wf_selectfilter()
+		parent.postevent(close!)
+	elseif key = keyhome! then
+		selectrow(0, false)
+		scrolltorow(1)
+		ll_listcurrrow = getrow()
+		rt_code = 1
+	end if
+	if rt_code = 1 then
+		parent.wf_select_unselect_row()
+	end if
+	return rt_code

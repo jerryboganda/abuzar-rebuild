@@ -1,0 +1,34 @@
+// userobject n_dwr_rect_band (dw2xls)  ancestor: n_dwr_band
+
+// n_dwr_rect_band.of_setparent(n_dwr_field anv_parent) returns 0
+	this.inv_parent_field = anv_parent
+
+// n_dwr_rect_band.of_init_bg_fillers() returns 0
+	this.ib_background_color = true
+	if this.ib_background_color then
+		of_initbgstorage()
+		this.inv_bg_format.setbgcolor(this.inv_bg_format.handle, of_descr_bg_color())
+		this.ib_custom_format = this.ib_bg_color_expr
+		if not this.ib_custom_format then
+			this.il_bg_format_ix = this.inv_book.of_addformat(this.inv_bg_format)
+		end if
+	end if
+
+// n_dwr_rect_band.of_descr_bg_color() returns long
+	long ll_color
+	ll_color = this.inv_parent_field.of_descr_bg_color2()
+	this.ib_bg_color_expr = this.inv_parent_field.ib_bg_color_expr
+	this.is_bg_color_expr = this.inv_parent_field.is_bg_color_expr
+	return ll_color
+
+// n_dwr_rect_band.of_getbgrect(st_rect ast_rect, long al_row) returns 0
+	this.inv_parent_field.of_getbgrect(ast_rect, al_row)
+
+// n_dwr_rect_band.of_dispose() returns 0
+	setnull(this.inv_parent_field)
+
+// n_dwr_rect_band.create() returns 0
+	call super::create
+
+// n_dwr_rect_band.destroy() returns 0
+	call super::destroy

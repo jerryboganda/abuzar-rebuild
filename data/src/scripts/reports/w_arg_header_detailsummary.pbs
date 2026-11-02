@@ -1,0 +1,33 @@
+// window w_arg_header_detailsummary (reports)  ancestor: w_arguements
+
+// w_arg_header_detailsummary.create() returns 0
+	integer icurrent
+	call super::create
+	this.rb_detail = create rb_detail
+	this.rb_summary = create rb_summary
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.rb_detail
+	this.control[icurrent + 2] = this.rb_summary
+
+// w_arg_header_detailsummary.destroy() returns 0
+	call super::destroy
+	destroy this.rb_detail
+	destroy this.rb_summary
+
+// w_arg_header_detailsummary.ue_close(integer ai_stauts) returns 0
+	super::ue_close(ai_stauts)
+	closewithreturn(this, this.istr_arg)
+
+// w_arg_header_detailsummary.open() returns long
+	long ancestorreturnvalue
+	integer ll_counter
+	datawindowchild ldc_headerno
+	ancestorreturnvalue = super::open()
+	this.dw_control.insertrow(0)
+	this.dw_control.getchild("headerno", ldc_headerno)
+	for ll_counter = 1 to ll_counter
+		ldc_headerno.insertrow(0)
+		ldc_headerno.setitem(ll_counter, "name", gds_reoprtheaderinfo.getitemstring(ll_counter, "clientname"))
+		ldc_headerno.setitem(ll_counter, "code", gds_reoprtheaderinfo.getitemnumber(ll_counter, "headerno"))
+	next
+	return ::message.returnvalue

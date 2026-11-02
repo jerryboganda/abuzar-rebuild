@@ -1,0 +1,643 @@
+// window w_itemregrequest_form (multientryitem)  ancestor: w_multi_entry
+
+// w_itemregrequest_form.wf_duplicateitemno(string as_itemno) returns boolean
+	long ll_icode
+	long ll_found
+	boolean lb_duplicate
+	as_itemno = trim(as_itemno)
+	if this.id_detail.rowcount() > 0 then
+		ll_icode = this.id_detail.object.code[this.id_detail.rowcount()]
+	end if
+	ll_found = this.id_alternateitemalias.find("customicode = '" + upper(as_itemno) + "' ", 1, this.id_alternateitemalias.rowcount())
+	if ll_found = 0 or ll_found > this.id_alternateitemalias.rowcount() then
+		lb_duplicate = false
+	else
+		lb_duplicate = true
+	end if
+	if lb_duplicate = false then
+		if sqlca.checkuniquealiasname(ll_icode, as_itemno) = 0 then
+			lb_duplicate = false
+		else
+			lb_duplicate = true
+		end if
+	end if
+	return lb_duplicate
+
+// w_itemregrequest_form.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+
+// w_itemregrequest_form.wf_populate_ddlb(datawindow dwcontrol) returns 0
+	integer li_column_count
+	integer li_counter
+	string ls_column_name
+	string ls_columntype
+	this.tab_retrieve.tabpage_list.ddlb_filter_column.reset()
+	this.tab_retrieve.tabpage_list.ddlb_sort.reset()
+	li_column_count = integer(dwcontrol.object.datawindow.column.count)
+	for li_counter = li_column_count to li_counter step -1
+		ls_column_name = dwcontrol.describe("#" + string(li_counter) + ".Name")
+		this.tab_retrieve.tabpage_list.ddlb_sort.additem(ls_column_name)
+		this.tab_retrieve.tabpage_list.ddlb_filter_column.additem(ls_column_name)
+	next
+	this.tab_retrieve.tabpage_list.ddlb_sort.text = ls_column_name
+	ls_columntype = this.id_dwcontrol.describe("#1.ColType")
+	if left(ls_columntype, 4) = "char" then
+		this.ii_type = 1
+	elseif left(ls_columntype, 4) = "date" then
+		this.ii_type = 3
+	else
+		this.ii_type = 2
+	end if
+	this.ii_colindex = 1
+	this.tab_retrieve.tabpage_list.rb_ascending.checked = true
+	wf_sortdw(this.tab_retrieve.tabpage_list.ddlb_sort.text, this.is_sortsequence)
+	this.id_master.setfocus()
+
+// w_itemregrequest_form.wf_retrievelistall() returns long
+	return this.id_list.retrieve(f_getgroupcode(gl_usercode))
+
+// w_itemregrequest_form.wf_retrievelist() returns long
+	long ll_rtcode
+	if this.ib_showiteminlist then
+		ll_rtcode = this.id_list.retrieve(f_getgroupcode(gl_usercode))
+	else
+		ll_rtcode = -1
+	end if
+	return ll_rtcode
+
+// w_itemregrequest_form.wf_select_alternateitemalias() returns 0
+	s_dw_header lstr_header
+	lstr_header.dw_header = this.id_alternateitemalias
+	lstr_header.l_code = this.id_master.object.code[this.id_master.getrow()]
+	lstr_header.s_saletype = this.id_master.object.customicode[this.id_master.getrow()]
+	openwithparm(w_alternate_item_aliasname_req_form, lstr_header)
+
+// w_itemregrequest_form.wf_duplicate_regno(string as_regno) returns long
+	long ll_icode
+	long ll_count
+	long ll_retcode
+	as_regno = trim(as_regno)
+	if this.id_master.rowcount() > 0 then
+		ll_icode = this.id_master.object.code[this.id_master.rowcount()]
+	end if
+	if ll_icode > 0 then
+		SQL SELECT ISNULL ( count ( *) , 0 ) INTO :ll_count FROM item WHERE item.regdno =:as_regno and icode <> :ll_icode USING sqlca;
+	else
+		SQL SELECT ISNULL ( count ( *) , 0 ) INTO :ll_count FROM item WHERE item.regdno =:as_regno USING sqlca;
+	end if
+	if sqlca.sqlcode = 0 then
+		if ll_count > 0 then
+			ll_retcode = 1
+		else
+			ll_retcode = 0
+		end if
+	else
+		ll_retcode = 2
+	end if
+	return ll_retcode
+
+// w_itemregrequest_form.wf_send() returns long
+	long ll_row
+	long ll_code
+	long ll_usercode
+	long ll_srv_reg_code
+	long ll_counter
+	long ll_rowcount
+	long ll_retcode
+	long ll_rowcount2
+	long ll_null
+	boolean lb_listtab
+	char lc_sent
+	datetime ldt_null
+	u_ds_standard lds_master
+	u_ds_standard lds_alteralias
+	u_ds_standard lds_master2
+	u_transaction lt_servertans
+	setnull(ll_null)
+	setnull(ldt_null)
+	if len(f_stringpreferences("SourceDatabaseName")) = 0 or f_get_config_setting("AllowSourceServerConnections") <> "Y" or isnull(f_get_config_setting("AllowSourceServerConnections")) then
+		return 0
+	end if
+	if this.tab_retrieve.selectedtab = 2 then
+		lb_listtab = true
+	end if
+	if this.im_menu.m_file.m_save.enabled = true and lb_listtab = false then
+		triggerevent("ue_save")
+		if wf_commitform() = false then
+			return 0
+		end if
+		return
+	end if
+	if lb_listtab then
+		if isnull(this.id_list.getrow()) or this.id_list.getrow() <= 0 then
+			messagebox("Rows Validation", "Kindly select any row from the list view.")
+			return 0
+		end if
+		ll_code = this.id_list.getitemnumber(this.id_list.getrow(), "code")
+		if isnull(ll_code) or ll_code <= 0 then
+			messagebox("Selection Validation", "Kindly select any row from the list view.")
+			return 0
+		end if
+	else
+		ll_code = this.id_master.getitemnumber(1, "code")
+	end if
+	if lb_listtab then
+		open(w_salesmanpassword)
+		ll_usercode = long(message.doubleparm)
+		setfocus()
+	else
+		SQL SELECT UserCode , SendToSvr =ISNULL ( Sent , 'N' ) INTO :ll_usercode, :lc_sent FROM ItemRegRequest WHERE ItemRegReqCode =:ll_code USING this.it_transobject;
+		if this.it_transobject.sqlcode = 0 then
+			if ll_usercode <= 0 or isnull(ll_usercode) then
+				ll_usercode = gl_usercode
+			end if
+		else
+			ll_usercode = gl_usercode
+		end if
+	end if
+	lds_master = create u_ds_standard
+	lds_master2 = create u_ds_standard
+	lds_alteralias = create u_ds_standard
+	lds_master.dataobject = this.id_master.dataobject
+	lds_master2.dataobject = this.id_master.dataobject
+	lds_alteralias.dataobject = this.id_alternateitemalias.dataobject
+	lds_master.settransobject(this.it_transobject)
+	lds_alteralias.settransobject(this.it_transobject)
+	ll_rowcount = lds_master.retrieve(ll_code)
+	ll_rowcount2 = lds_alteralias.retrieve(ll_code)
+	if ll_code > 0 and ll_usercode > 0 and lc_sent = "N" and ll_rowcount > 0 then
+		lt_servertans = create u_transaction
+		lt_servertans.logpass = gs_source_pwd
+		lt_servertans.autocommit = false
+		lt_servertans.dbparm = "PROVIDER='SQLOLEDB',DATASOURCE='" + gs_source_server + "',CommitOnDisconnect='No',PROVIDERSTRING='DataBase=" + gs_source_db + ";APP=" + gs_app + ";WSID=" + gs_localcomputername + "',PBTrimCharColumns='Yes',StripParmNames='Yes',PBMaxBlobSize=1024000"
+		SQL start USING lt_servertans;
+		if lt_servertans.sqlcode = 0 then
+			lds_master.settransobject(lt_servertans)
+			lds_alteralias.settransobject(lt_servertans)
+			lt_servertans.gettabmaxkey("ItemRegRequest", ll_srv_reg_code)
+			lds_master.object.code[1] = ll_srv_reg_code
+			lds_master.object.sent[1] = "N"
+			lds_master.object.senton[1] = ldt_null
+			lds_master.object.sentby[1] = ll_null
+			lds_master.object.serveritemregreqcode[1] = ll_null
+			lds_master.setitemstatus(1, 0, primary!, newmodified!)
+			ll_counter = 0
+			for ll_counter = 1 to lds_alteralias.rowcount()
+				lds_alteralias.object.code[ll_counter] = ll_srv_reg_code
+				lds_alteralias.setitemstatus(ll_counter, 0, primary!, newmodified!)
+			next
+			if lds_master.update(true, false) = 1 then
+				if lds_alteralias.update(true, false) = 1 then
+					lds_master2.settransobject(this.it_transobject)
+					lds_master2.retrieve(ll_code)
+					if lds_master2.rowcount() > 0 then
+						lds_master2.object.serveritemregreqcode[1] = ll_srv_reg_code
+						lds_master2.object.sent[1] = "Y"
+						lds_master2.object.senton[1] = today()
+						lds_master2.object.sentby[1] = ll_usercode
+						if lds_master2.update(true, false) = 1 then
+							SQL commit USING this.it_transobject;
+							if this.it_transobject.sqlcode = 0 then
+								SQL commit USING lt_servertans;
+								if lt_servertans.sqlcode = 0 then
+									messagebox("Sending SuccessFull", "Changes take effect into database", information!)
+								end if
+							end if
+						end if
+					end if
+				else
+					SQL rollback USING lt_servertans;
+					messagebox("Sending Failed..", "Changes not take effect into database", stopsign!)
+				end if
+			else
+				SQL rollback USING lt_servertans;
+				messagebox("Sending Failed", "Changes not take effect into database", stopsign!)
+			end if
+		else
+			messagebox("Connection to Server", "Connection failure for server : " + gs_parentserver + ", Database : " + gs_parentdbname)
+		end if
+		SQL stop USING lt_servertans;
+	else
+		messagebox("Send Error", "Can not send item,~r~nPlease try again!", information!)
+	end if
+	destroy lds_master
+	destroy lds_master2
+	destroy lds_alteralias
+	return 0
+
+// w_itemregrequest_form.create() returns 0
+	integer icurrent
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_itemregreq_form" then
+		this.menuid = create m_itemregreq_form
+	end if
+	this.dw_alternatealias = create dw_alternatealias
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_alternatealias
+
+// w_itemregrequest_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_alternatealias
+
+// w_itemregrequest_form.ue_save() returns 0
+	long ll_mastercurrrow
+	long ll_invid
+	long ll_detailrows
+	long ll_found
+	long ll_null
+	integer li_counter
+	integer ll_salesmancode
+	boolean lb_commitflag
+	boolean lb_newitem
+	string ls_aliasname
+	string ls_itemname
+	string ls_errtext
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	datastore lds_itemlist
+	lds_itemlist = create datastore
+	lds_itemlist.dataobject = "d_itemlist"
+	lds_itemlist.settransobject(this.it_transobject)
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if this.id_alternateitemalias.rowcount() > 0 and (this.id_alternateitemalias.object.customicode[1] = "" or isnull(this.id_alternateitemalias.object.customicode[1])) then
+		this.id_alternateitemalias.deleterow(1)
+	end if
+	lds_itemlist.retrieve()
+	ls_itemname = this.id_master.getitemstring(this.id_master.getrow(), "name")
+	ll_found = lds_itemlist.find("itemname='" + ls_itemname + "'", 1, lds_itemlist.rowcount())
+	if ll_found > 0 then
+		messagebox("Item Validation", "Item with the same name already exists.~r~n" + "Kindly change the Item name.~r~nAlready existing Item details are:~r~n" + "Item Name = " + lds_itemlist.getitemstring(ll_found, "itemname") + "~r~n" + "Alias Name = " + lds_itemlist.getitemstring(ll_found, "fullcode"))
+		return
+	end if
+	setpointer(hourglass!)
+	if f_stringpreferences("AskUserPasswordInItem") = "Y" then
+		open(w_salesmanpassword)
+		ll_salesmancode = long(message.doubleparm)
+		setfocus()
+	else
+		ll_salesmancode = gl_usercode
+	end if
+	if ll_salesmancode > 0 then
+		ll_mastercurrrow = this.id_master.getrow()
+		ll_invid = this.id_master.object.code[ll_mastercurrrow]
+		if isnull(ll_invid) then
+			lb_newitem = true
+			wf_tabnewid("ItemRegRequest", ll_invid)
+			this.id_master.object.code[ll_mastercurrrow] = ll_invid
+		end if
+		if isnull(this.id_master.getitemnumber(this.id_master.getrow(), "packsalestax")) then
+			this.id_master.setitem(this.id_master.getrow(), "packsalestax", 0)
+		end if
+		ls_aliasname = this.id_master.getitemstring(this.id_master.getrow(), "CustomICode")
+		if isnull(ls_aliasname) then
+			this.id_master.setitem(this.id_master.getrow(), "CustomICode", string(ll_invid))
+		end if
+		if isnull(this.id_master.object.regdno[1]) or this.id_master.object.regdno[1] = "" then
+			this.id_master.object.regdno[1] = this.id_master.object.customicode[1]
+		end if
+		if not wf_validateserverdatetime(ldt_server_datetime, ls_date_errtext) then
+			messagebox("Date Violation", ls_date_errtext, stopsign!)
+			setpointer(arrow!)
+			return
+		end if
+		if not wf_getserverdatetime(ldt_server_datetime, ls_date_errtext) then
+			messagebox("Date Violation", ls_date_errtext, stopsign!)
+			return
+		end if
+		for li_counter = 1 to li_counter
+			if lb_commitflag = true then
+				this.id_alternateitemalias.setitem(li_counter, "code", ll_invid)
+			end if
+		next
+		this.id_master.setitem(li_counter, "usercode", ll_salesmancode)
+		this.id_master.setitem(li_counter, "lastupdate", ldt_server_datetime)
+		if isnull(ll_invid) then
+			this.id_master.setitem(li_counter, "date", ldt_server_datetime)
+		end if
+		if this.id_master.update(true, false) < 0 then
+			SQL rollback USING this.it_transobject;
+			if lb_newitem = true then
+				setnull(ll_null)
+				this.id_master.object.code[1] = ll_null
+			end if
+			setpointer(arrow!)
+			return
+		end if
+		if this.id_alternateitemalias.update(true, false) > 0 then
+			SQL commit USING this.it_transobject;
+			messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+			this.ib_commitok = true
+			this.il_codevalue = ll_invid
+			this.id_master.resetupdate()
+			this.id_detail.resetupdate()
+			this.id_alternateitemalias.resetupdate()
+			this.im_menu.m_file.m_new.enabled = true
+			this.editflag = false
+			if gd_recenttransdate < this.id_systemdate then
+				gd_recenttransdate = this.id_systemdate
+			end if
+		else
+			ls_errtext = this.it_transobject.sqlerrtext
+			SQL rollback USING this.it_transobject;
+			messagebox("Database Problem", "Some Database Problem Occured in saving Alternate Item Alias Name(s)!~r~nDetails are:-~r~n" + ls_errtext, stopsign!)
+			setpointer(arrow!)
+		end if
+	else
+		setfocus()
+	end if
+	if wf_commitform() = false then
+		if lb_newitem = true then
+			setnull(ll_null)
+			this.id_master.object.code[1] = ll_null
+		end if
+		return
+	end if
+	setpointer(arrow!)
+
+// w_itemregrequest_form.ue_detail() returns 0
+	long ll_counter
+	long ll_icode
+	call super::ue_detail
+	this.im_menu.m_file.m_post.visible = true
+	this.im_menu.m_file.m_post.enabled = true
+	this.im_menu.m_file.m_delete.enabled = true
+	this.im_menu.m_file.m_first.enabled = true
+	this.im_menu.m_file.m_next.enabled = true
+	this.im_menu.m_file.m_last.enabled = true
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_menu.m_file.m_previous.enabled = true
+	this.id_master.setredraw(false)
+	wf_protectdw(this.id_master, 1)
+	this.ib_modify = true
+	this.id_master.setcolumn("name")
+	if this.id_master.rowcount() > 0 then
+		ll_icode = this.id_master.object.code[this.id_master.rowcount()]
+		this.id_alternateitemalias.retrieve(this.id_master.object.code[this.id_master.rowcount()])
+		if isnull(this.id_master.object.icode[1]) then
+			if this.id_master.object.sent[1] = "N" then
+				this.im_menu.m_file.m_save.enabled = true
+				this.im_menu.m_item.m_newitem.enabled = true
+				this.im_menu.m_item.m_deleteitem.enabled = true
+				wf_protectdw(this.id_master, 0)
+			else
+				this.im_menu.m_file.m_save.enabled = false
+				this.im_menu.m_item.m_newitem.enabled = false
+				this.im_menu.m_item.m_deleteitem.enabled = false
+				wf_protectdw(this.id_master, 1)
+			end if
+			this.id_master.object.status.protect = "0"
+			if f_rightexists(5172) then
+				this.id_master.object.status.protect = 0
+			else
+				this.id_master.object.status.protect = 1
+			end if
+		else
+			this.id_master.object.status.protect = 1
+			wf_protectdw(this.id_master, 1)
+		end if
+	end if
+	this.id_master.object.avgprice.protect = 1
+	this.id_master.setredraw(true)
+
+// w_itemregrequest_form.ue_newitem() returns 0
+
+// w_itemregrequest_form.ue_newform() returns 0
+	long ll_counter
+	call super::ue_newform
+	this.ib_modify = false
+	this.im_menu.m_file.m_post.visible = true
+	this.im_menu.m_file.m_post.enabled = true
+	this.id_master.setfocus()
+	wf_protectdw(this.id_master, 0)
+	this.id_master.object.avgprice.protect = 1
+	this.id_master.object.status.protect = 1
+	this.id_alternateitemalias.reset()
+	if this.id_master.rowcount() > 0 then
+		this.id_master.object.servername[1] = gs_servername
+		this.id_master.object.machinename[1] = gs_localcomputername
+	end if
+	setnull(this.iblob_notes)
+
+// w_itemregrequest_form.ue_postopen() returns 0
+	long ll_found
+	long ll_itemcolumn_row
+	integer li_xpos
+	integer li_ypos
+	integer li_xendpos
+	integer li_counter
+	integer li_taborder
+	integer li_visiblecolumns
+	long ll_counter
+	long li_retcode
+	boolean lb_active
+	boolean lb_restricted
+	boolean lb_customicode
+	datastore lds_itemsetting
+	datastore lds_listsetting
+	call super::ue_postopen
+	this.is_sortsequence = "A"
+	this.id_master.object.manfcode.initial = string(f_numberpreferences("ItemDefaultmanfcode"))
+	this.id_master.object.iccode.initial = string(f_numberpreferences("ItemDefaultclass"))
+	this.id_master.object.packcode.initial = string(f_numberpreferences("ItemDefaultPackcode"))
+	this.id_master.object.gcode.initial = string(f_numberpreferences("ItemDefaultAssociatedGcode"))
+	this.id_master.object.locksaleprice.initial = string(f_stringpreferences("DefaultItemlockSaleprice"))
+	this.id_master.object.lockdiscperc.initial = string(f_stringpreferences("DefaultItemLockDiscPerc"))
+	f_setcolumnstyle(this.id_master, "Qty")
+	lds_itemsetting = create datastore
+	lds_itemsetting.dataobject = "d_interfacesettingcols"
+	lds_itemsetting.settransobject(this.it_transobject)
+	lds_itemsetting.retrieve(48, 3, 1)
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 705", 1, gds_securitywindow.rowcount())
+	if ll_found <= 0 then
+		ll_itemcolumn_row = lds_itemsetting.find("colname = " + "'purprice'", 1, lds_itemsetting.rowcount())
+		if ll_itemcolumn_row > 0 then
+			lds_itemsetting.deleterow(ll_itemcolumn_row)
+		end if
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 706", 1, gds_securitywindow.rowcount())
+	if ll_found <= 0 then
+		ll_itemcolumn_row = lds_itemsetting.find("colname = " + "'avgprice'", 1, lds_itemsetting.rowcount())
+		if ll_itemcolumn_row > 0 then
+			lds_itemsetting.deleterow(ll_itemcolumn_row)
+		end if
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 707", 1, gds_securitywindow.rowcount())
+	if ll_found <= 0 then
+		ll_itemcolumn_row = lds_itemsetting.find("colname = " + "'recentpurprice'", 1, lds_itemsetting.rowcount())
+		if ll_itemcolumn_row > 0 then
+			lds_itemsetting.deleterow(ll_itemcolumn_row)
+		end if
+	end if
+	li_visiblecolumns = lds_itemsetting.rowcount()
+	for li_counter = 1 to li_counter
+		this.colname[li_counter, 1] = lds_itemsetting.getitemstring(li_counter, "colname") + "_t"
+		this.colname[li_counter, 2] = lds_itemsetting.getitemstring(li_counter, "colname")
+		this.colwidth[li_counter, 1] = integer(this.id_master.describe(this.colname[li_counter, 1] + ".Width"))
+		this.colwidth[li_counter, 2] = integer(this.id_master.describe(this.colname[li_counter, 2] + ".Width"))
+	next
+	li_taborder = 100
+	li_counter = 1
+	li_ypos = 308
+	li_xendpos = 5650
+	do while li_counter <= li_visiblecolumns and li_ypos <= 200000
+		li_xpos = 32
+		this.id_master.modify(this.colname[li_counter, 1] + ".X=" + string(li_xpos))
+		this.id_master.modify(this.colname[li_counter, 1] + ".Y=" + string(li_ypos))
+		this.id_master.modify(this.colname[li_counter, 1] + ".Visible=1")
+		li_xpos = 750
+		this.id_master.modify(this.colname[li_counter, 2] + ".X=" + string(li_xpos))
+		this.id_master.modify(this.colname[li_counter, 2] + ".Y=" + string(li_ypos))
+		this.id_master.modify(this.colname[li_counter, 2] + ".Visible=1")
+		this.id_master.settaborder(this.colname[li_counter, 2], li_taborder)
+		if lower(this.colname[li_counter, 2]) = "avgprice" then
+			this.id_master.modify("c_margin_markup.X=" + string(li_xpos + integer(this.id_master.describe(this.colname[li_counter, 2] + ".Width")) + 50))
+			this.id_master.modify("c_margin_markup.Y=" + string(li_ypos))
+			this.id_master.modify("c_margin_markup.Visible=1")
+		end if
+		li_taborder = li_taborder + 1
+		li_ypos = li_ypos + integer(this.id_master.describe(this.colname[li_counter, 2] + ".Height")) + 25
+		li_counter = li_counter + 1
+	loop
+	for ll_counter = 1 to gds_securitywindow.rowcount()
+		if gds_securitywindow.object.rightcode[ll_counter] = 512 then
+			lb_active = true
+			if this.id_master.object.active.visible = "1" then
+				this.id_master.object.active.visible = true
+				this.id_master.object.active_t.visible = true
+			end if
+		end if
+		if gds_securitywindow.object.rightcode[ll_counter] = 514 then
+			lb_restricted = true
+			if this.id_master.object.restricted.visible = "1" then
+				this.id_master.object.restricted.visible = true
+				this.id_master.object.restricted_t.visible = true
+			end if
+		end if
+		if gds_securitywindow.object.rightcode[ll_counter] = 524 then
+			lb_customicode = true
+			if this.id_master.object.customicode.visible = "1" then
+				this.id_master.object.customicode.visible = true
+				this.id_master.object.customicode_t.visible = true
+			end if
+		end if
+	next
+	if lb_active = false then
+		this.id_master.object.active.visible = false
+		this.id_master.object.active_t.visible = false
+	end if
+	if lb_restricted = false then
+		this.id_master.object.restricted.visible = false
+		this.id_master.object.restricted_t.visible = false
+	end if
+	if lb_customicode = false then
+		this.id_master.object.customicode.visible = false
+		this.id_master.object.customicode_t.visible = false
+	end if
+	if f_stringpreferences("bonusinsale") = "Y" then
+		if this.id_master.object.bonusratio.visible = "1" then
+			this.id_master.object.bonusratio_t.visible = true
+			this.id_master.object.bonusratio.visible = true
+		end if
+		if this.id_master.object.bonusqty.visible = "1" then
+			this.id_master.object.bonusqty_t.visible = true
+			this.id_master.object.bonusqty.visible = true
+		end if
+	end if
+	if f_stringpreferences("itemgstperc") = "Y" then
+		if this.id_master.object.gstperc1.visible = "1" then
+			this.id_master.object.gstperc1.visible = true
+			this.id_master.object.gstperc1_t.visible = true
+		end if
+		if this.id_master.object.gstperc2.visible = "1" then
+			this.id_master.object.gstperc2.visible = true
+			this.id_master.object.gstperc2_t.visible = true
+		end if
+	end if
+	this.id_master.object.icatcode.initial = string(f_numberpreferences("ItemDefaultcategory"))
+	lds_listsetting = create datastore
+	lds_listsetting.dataobject = "d_interfacesettingcols"
+	lds_listsetting.settransobject(this.it_transobject)
+	lds_listsetting.retrieve(9, 4, 0)
+	for ll_counter = 1 to lds_listsetting.rowcount()
+		this.id_list.modify(lds_listsetting.getitemstring(ll_counter, "colname") + "_t" + ".Visible=0")
+		this.id_list.modify(lds_listsetting.getitemstring(ll_counter, "colname") + ".Visible=0")
+	next
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 566", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.ib_showiteminlist = true
+	else
+		this.ib_showiteminlist = false
+	end if
+	if f_rightexists(5101) then
+		this.ib_addnewitem = true
+	end if
+	f_setcolumnstyle(this.dw_alternatealias, "Qty")
+	this.id_alternateitemalias = this.dw_alternatealias
+	this.id_alternateitemalias.settransobject(this.it_transobject)
+	this.id_master.object.avgprice.protect = 1
+	this.id_master.object.code.protect = 1
+
+// w_itemregrequest_form.open() returns long
+	m_entry lm_menu
+	long ll_width
+	long ll_height
+	environment env
+	postevent("ue_postopen")
+	wf_setmenu(this.menuid)
+	lm_menu = this.menuid
+	lm_menu.dynamic mf_initsecurityapp(lm_menu)
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.tab_retrieve.width = ll_width * 0.99
+	this.tab_retrieve.height = ll_height * 0.83
+	this.tab_retrieve.tabpage_detail.dw_detail.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_itemsdetail.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_footer.y = this.tab_retrieve.height * 0.90 - this.tab_retrieve.tabpage_detail.dw_footer.height
+	this.tab_retrieve.tabpage_detail.dw_detail.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width
+	this.tab_retrieve.tabpage_detail.dw_footer.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width
+	this.tab_retrieve.tabpage_detail.dw_detail.height = this.tab_retrieve.height * 0.90 - this.tab_retrieve.tabpage_detail.dw_footer.height
+	this.tab_retrieve.tabpage_list.gb_fliter.width = ll_width * 0.97 - this.tab_retrieve.tabpage_list.gb_sort.width
+	this.tab_retrieve.tabpage_list.r_1.width = ll_width * 0.99
+	this.tab_retrieve.tabpage_list.r_1.height = ll_height * 0.765 - this.tab_retrieve.tabpage_list.gb_sort.height
+	this.tab_retrieve.tabpage_list.dw_list.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_list.dw_list.height = ll_height * 0.75 - this.tab_retrieve.tabpage_list.dw_list.y
+	this.tab_retrieve.tabpage_detail.dw_itemslist.height = ll_height * 0.6
+	this.tab_retrieve.tabpage_detail.dw_itemslist.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width * 0.67
+	this.tab_retrieve.tabpage_detail.dw_itemslist.x = 1150
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_itemregrequest_form.ue_list() returns 0
+	call super::ue_list
+	this.im_menu.m_file.m_post.visible = true
+	this.im_menu.m_file.m_post.enabled = true

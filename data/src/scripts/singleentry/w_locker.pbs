@@ -1,0 +1,125 @@
+// window w_locker (singleentry)  ancestor: w_single_entry
+
+// w_locker.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM Locker WHERE name =:as_name USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_locker.wf_release_all_lockers() returns long
+	long ll_res
+	if this.tab_retrieve.selectedtab = 1 then
+		return 0
+	end if
+	ll_res = messagebox("Locker Release Process", "Do you want to release all the lockers?", question!, yesnocancel!, 2)
+	if ll_res = 1 then
+		SQL rollback USING sqlca;
+		SQL update Lockers SET Occupied ='N' USING sqlca;
+		if sqlca.sqlcode = 0 then
+			SQL commit USING sqlca;
+			messagebox("Locker Release Process", "All Lockers Marked as Releaseed", information!)
+		else
+			SQL rollback USING sqlca;
+		end if
+	end if
+	return 0
+
+// w_locker.create() returns 0
+	integer icurrent
+	call super::create
+
+// w_locker.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_locker.open() returns long
+	long ancestorreturnvalue
+	m_entry lm_menu
+	long ll_width
+	long ll_height
+	environment env
+	ancestorreturnvalue = super::open()
+	this.is_tablename = "locker"
+	postevent("ue_postopen")
+	wf_setmenu(this.menuid)
+	lm_menu = this.menuid
+	lm_menu.mf_initsecurityapp(lm_menu)
+	this.im_menu.m_file.m_save.enabled = false
+	this.im_menu.m_file.m_delete.enabled = false
+	this.im_menu.m_file.m_previous.enabled = false
+	this.im_menu.m_file.m_retrieve.text = "De&tail"
+	this.id_detail = this.tab_retrieve.tabpage_detail.dw_detail
+	this.id_list = this.tab_retrieve.tabpage_list.dw_list
+	this.tab_retrieve.tabpage_detail.dw_print.dataobject = this.tab_retrieve.tabpage_detail.dw_detail.dataobject
+	this.id_print = this.tab_retrieve.tabpage_detail.dw_print
+	this.id_printlist = this.tab_retrieve.tabpage_detail.dw_listprint
+	this.id_detail.settransobject(sqlca)
+	this.id_list.settransobject(sqlca)
+	this.id_print.settransobject(sqlca)
+	this.id_printlist.settransobject(sqlca)
+	this.it_transobject = sqlca
+	this.id_dwcontrol = this.id_list
+	wf_populate_ddlb(this.id_dwcontrol)
+	this.tab_retrieve.tabpage_detail.dw_lockerdetail.settransobject(sqlca)
+	this.tab_retrieve.tabpage_list.dw_find.settransobject(sqlca)
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.tab_retrieve.width = ll_width * 0.99
+	this.tab_retrieve.height = ll_height * 0.83
+	this.tab_retrieve.tabpage_list.gb_fliter.width = ll_width * 0.97 - this.tab_retrieve.tabpage_list.gb_sort.width
+	this.tab_retrieve.tabpage_list.r_1.width = ll_width * 0.99
+	this.tab_retrieve.tabpage_list.r_1.height = ll_height * 0.765 - this.tab_retrieve.tabpage_list.gb_sort.height
+	this.tab_retrieve.tabpage_list.dw_list.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_list.dw_list.height = ll_height * 0.75 - this.tab_retrieve.tabpage_list.dw_list.y
+	this.tab_retrieve.tabpage_detail.dw_detail.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_detail.height = ll_height * 0.35
+	this.tab_retrieve.tabpage_detail.dw_lockerdetail.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_lockerdetail.y = this.tab_retrieve.tabpage_detail.dw_detail.y + this.tab_retrieve.tabpage_detail.dw_detail.height
+	setredraw(true)
+	f_setcolumnstyle(this.tab_retrieve.tabpage_detail.dw_lockerdetail, "Qty")
+	return ::message.returnvalue
+
+// w_locker.ue_detail() returns 0
+	long ll_code
+	long ll_found
+	call super::ue_detail
+	this.im_menu.m_file.m_save.enabled = true
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 579", 1, gds_securitywindow.rowcount())
+	if ll_found <= 0 then
+		this.im_menu.m_file.m_delete.enabled = false
+	else
+		this.im_menu.m_file.m_delete.enabled = true
+	end if
+	this.im_menu.m_file.m_first.enabled = true
+	this.im_menu.m_file.m_next.enabled = true
+	this.im_menu.m_file.m_last.enabled = true
+	this.im_menu.m_file.m_print.enabled = false
+	this.im_menu.m_file.m_previous.enabled = true
+	this.im_menu.m_file.m_retrieve.text = "Lis&t"
+	this.i_editmode = 2
+	this.i_retrievemode = 2
+	if this.tab_retrieve.tabpage_list.dw_list.rowcount() > 0 and this.il_selectedrow > 0 then
+		ll_code = this.id_dwcontrol.borderstyle.code[this.il_selectedrow]
+		this.id_dwcontrol = this.id_detail
+		wf_retrieve(ll_code)
+		if this.id_detail.rowcount() > 0 then
+			this.tab_retrieve.tabpage_detail.dw_lockerdetail.retrieve(this.id_detail.object.lastserviceinvcode[1])
+		end if
+		this.id_dwcontrol = this.id_list
+		this.tab_retrieve.tabpage_detail.dw_detail.setfocus()
+	end if
+
+// w_locker.ue_newform() returns 0
+	call super::ue_newform
+	wf_protectdw(this.tab_retrieve.tabpage_detail.dw_lockerdetail, 1)

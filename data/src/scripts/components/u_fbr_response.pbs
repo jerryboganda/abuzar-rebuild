@@ -1,0 +1,27 @@
+// userobject u_fbr_response (components)  ancestor: internetresult
+
+// u_fbr_response.internetdata(blob data) returns integer
+	string ls_success_token
+	string ls_data
+	long ll_pos
+	ls_success_token = "~",~"Code~":~"100~""
+	ls_data = string(data, encodingansi!)
+	this.is_data = ls_data
+	this.is_msg = space(80000) + "0"
+	if match(ls_data, ls_success_token) then
+		ll_pos = pos(ls_data, ls_success_token, 1)
+		this.is_msg = mid(ls_data, 19, ll_pos - 19)
+		this.il_retcode = 1
+		return this.il_retcode
+	end if
+	this.is_msg = "fiscalization not done successfully~r~nDetails are:-~r~n" + ls_data
+	this.il_retcode = -1
+	return this.il_retcode
+
+// u_fbr_response.create() returns 0
+	call super::create
+	triggerevent("constructor")
+
+// u_fbr_response.destroy() returns 0
+	triggerevent("destructor")
+	call super::destroy

@@ -1,0 +1,218 @@
+// window w_emp_payroll_payment (employee)  ancestor: window
+
+// w_emp_payroll_payment.ue_close(integer ai_status) returns 0
+	close(this)
+
+// w_emp_payroll_payment.ue_postopen() returns 0
+	this.dw_detail.settransobject(this.it_transobject)
+	this.dw_detail.retrieve()
+	if this.dw_detail.rowcount() > 0 then
+		this.dw_detail.setrow(1)
+		this.dw_detail.scrolltorow(1)
+		this.dw_detail.setcolumn("PaidBy")
+	end if
+
+// w_emp_payroll_payment.wf_validateserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+	datetime ldt_last_transdate
+	datetime ldt_current_serverdate
+	long li_max_allow_days
+	ar_errtext = "Invoice Date  Check violates"
+	li_max_allow_days = f_numberpreferences("MaxAllowDate")
+	if isnull(li_max_allow_days) then
+		li_max_allow_days = 4
+	end if
+	SQL SELECT LastTransDate INTO :ldt_last_transdate FROM ServerDate USING sqlca;
+	if sqlca.sqlcode = 0 then
+		sqlca.getdatetime(ldt_current_serverdate)
+		if sqlca.sqlcode = 0 then
+			if ldt_current_serverdate >= ldt_last_transdate and daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) <= li_max_allow_days then
+				ar_server_datetime = ldt_current_serverdate
+				return true
+			elseif ldt_current_serverdate < ldt_last_transdate then
+				ar_errtext = "Back Date Invoice Check violates"
+				return false
+			elseif daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) > li_max_allow_days then
+				ar_errtext = "Forward Date Invoice Check violates"
+				return false
+			end if
+		else
+			return false
+		end if
+		return
+	end if
+	return false
+
+// w_emp_payroll_payment.wf_duplicateregno(string as_name) returns boolean
+	long ll_count
+	long ll_patientcode
+	boolean b_flag
+	as_name = trim(as_name)
+	ll_patientcode = this.dw_detail.object.code[this.dw_detail.rowcount()]
+	if isnull(ll_patientcode) then
+		SQL SELECT count ( *) INTO :ll_count FROM Patient WHERE patient.regno =:as_name USING this.it_transobject;
+	else
+		SQL SELECT count ( *) INTO :ll_count FROM Patient WHERE patient.regno =:as_name AND Patient.PatientCode <> :ll_patientcode USING this.it_transobject;
+	end if
+	if this.it_transobject.sqlcode = 0 then
+		if ll_count > 0 then
+			b_flag = true
+		else
+			b_flag = false
+		end if
+	else
+		b_flag = false
+	end if
+	return b_flag
+
+// w_emp_payroll_payment.wf_getserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+	datetime ldt_last_transdate
+	datetime ldt_current_serverdate
+	integer li_max_allow_days
+	string ls_hold_serverdate
+	date ld_datepart
+	time lt_timepart
+	ar_errtext = "Please verify Server DateTime"
+	li_max_allow_days = f_numberpreferences("MaxAllowDate")
+	if isnull(li_max_allow_days) then
+		li_max_allow_days = 4
+	end if
+	SQL rollback USING sqlca;
+	SQL SELECT LastTransDate INTO :ldt_last_transdate FROM ServerDate USING sqlca;
+	if sqlca.sqlcode = 0 then
+		sqlca.getdatetime(ldt_current_serverdate)
+		if sqlca.sqlcode = 0 then
+			if ldt_current_serverdate >= ldt_last_transdate and daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) <= li_max_allow_days then
+				ld_datepart = date(string(ldt_current_serverdate, "yyyy-mm-dd"))
+				lt_timepart = time(string(ldt_current_serverdate, "hh:mm:ss"))
+				ldt_current_serverdate = datetime(ld_datepart, lt_timepart)
+				SQL update ServerDate SET LastTransDate =:ldt_current_serverdate USING sqlca;
+				if sqlca.sqlcode = 0 then
+					SQL commit USING sqlca;
+					ar_server_datetime = ldt_current_serverdate
+					return true
+				else
+					SQL rollback USING sqlca;
+					return false
+				end if
+			elseif ldt_current_serverdate < ldt_last_transdate then
+				ar_errtext = "Back Date Invoice Check violates"
+				return false
+			elseif daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) > li_max_allow_days then
+				ar_errtext = "Forward Date Invoice Check violates"
+				return false
+			end if
+		else
+			SQL rollback USING sqlca;
+			return false
+		end if
+		return
+	end if
+	SQL rollback USING sqlca;
+	return false
+
+// w_emp_payroll_payment.wf_connect() returns long
+	this.it_transobject = create u_transaction
+	SQL start USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		return 0
+	end if
+	messagebox("Connection Problem", "Problem Connecting Database ... ~r~n" + this.it_transobject.sqlerrtext)
+	return -1
+
+// w_emp_payroll_payment.create() returns 0
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.dw_detail = create dw_detail
+	this.control = {this.cb_cancel, this.cb_ok, this.dw_detail}
+
+// w_emp_payroll_payment.destroy() returns 0
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.dw_detail
+
+// w_emp_payroll_payment.open() returns long
+	long ll_row
+	long ll_width
+	long ll_height
+	environment env
+	if wf_connect() <> 0 then
+		close(this)
+		return ::message.returnvalue
+	end if
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.width = ll_width * 0.95
+	this.height = ll_height * 0.75
+	this.dw_detail.width = this.width * 0.98
+	this.dw_detail.height = this.height - this.cb_ok.height - 300
+	this.cb_ok.y = this.dw_detail.y + this.dw_detail.height + 100
+	this.cb_cancel.y = this.dw_detail.y + this.dw_detail.height + 100
+	this.x = int((ll_width - this.width) / 2.0)
+	this.y = int((ll_height - this.height) / 2.0)
+	post event ue_postopen()
+	return ::message.returnvalue
+
+// cb_cancel.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	long ll_row
+	long ll_usercode
+	long ll_null
+	long ll_counter
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	string ls_regno
+	boolean lb_commit
+	setpointer(hourglass!)
+	setnull(ll_null)
+	if f_validatedw(parent.dw_detail) < 0 then
+		return ::message.returnvalue
+	end if
+	open(w_salesmanpassword)
+	ll_usercode = long(::message.doubleparm)
+	setfocus()
+	if ll_usercode > 0 then
+		if not parent.wf_getserverdatetime(ldt_server_datetime, ls_date_errtext) then
+			messagebox("Date Violation", ls_date_errtext, stopsign!)
+			return ::message.returnvalue
+		end if
+		for ll_counter = 1 to parent.dw_detail.rowcount()
+			parent.dw_detail.setitem(ll_counter, "paidby", ll_usercode)
+			parent.dw_detail.object.paymentdate[ll_counter] = ldt_server_datetime
+		next
+		if parent.dw_detail.update() > 0 then
+			SQL commit USING parent.it_transobject;
+			messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+		else
+			SQL rollback USING parent.it_transobject;
+			setpointer(arrow!)
+			messagebox("Save Changes", "Changes Rollback in database, ~n~rSome database problem occurs", exclamation!, ok!, 1)
+			return ::message.returnvalue
+		end if
+		setpointer(arrow!)
+		parent.post event ue_close(1)
+	end if
+	setpointer(arrow!)
+	return ::message.returnvalue
+
+// dw_detail.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1

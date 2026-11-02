@@ -1,0 +1,618 @@
+// window w_refusedsale_form (salerespwin)  ancestor: window
+
+// w_refusedsale_form.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// w_refusedsale_form.ue_close(integer ai_closemode) returns integer
+	long ll_currrow
+	long ll_counter
+	long ll_null
+	ll_currrow = this.id_detail.getrow()
+	setnull(ll_null)
+	if this.id_detail.rowcount() > 0 then
+		if this.id_detail.getitemnumber(ll_currrow, "reasoncode") = 2.0 then
+			this.id_detail.setitem(ll_currrow, "icode", ll_null)
+		elseif isnull(this.id_detail.getitemnumber(ll_currrow, "icode")) then
+			if isnull(this.id_detail.getitemstring(ll_currrow, "itemname")) then
+				this.id_detail.deleterow(ll_currrow)
+			elseif this.ib_itemvalidated = false then
+				messagebox("Item Validation", "Please Select Some Valid Item")
+				this.id_detail.setcolumn("itemname")
+				this.id_detail.scrolltorow(ll_currrow)
+				this.id_detail.setfocus()
+				return 1
+			end if
+		elseif this.ib_itemvalidated = false then
+			messagebox("Item Validation", "Please Select Some Valid Item")
+			this.id_detail.setcolumn("itemname")
+			this.id_detail.scrolltorow(ll_currrow)
+			this.id_detail.setfocus()
+			return 1
+		end if
+		if f_validatedw(this.id_header) < 0 then
+			return 1
+		end if
+		if f_validatedw(this.id_detail) < 0 then
+			return 1
+		end if
+		this.il_currrow = this.id_detail.rowcount()
+		if this.ib_itemvalidated = false and wf_validateitem(ll_currrow) = -1 then
+			return 1
+		end if
+		return
+	end if
+	if this.istr_dw.i_protect = 0 then
+		this.istr_dw.dw = this.id_header
+		this.istr_dw.dw2 = this.id_detail
+	end if
+	closewithreturn(this, this.istr_dw)
+	return 0
+
+// w_refusedsale_form.ue_postopen() returns 0
+	long li_counter
+	long ll_startrow
+	long ll_rowcount
+	long ll_found
+	char lc_char
+	ll_rowcount = this.id_selectionlist.rowcount()
+	if ll_rowcount <= 0 or isnull(ll_rowcount) then
+		messagebox("Row Validation", "There are no rows to select in SelectionList.~r~nKindly try again.")
+		close(this)
+		return
+	end if
+	setredraw(false)
+	this.id_selectionlist.setsort("name A")
+	this.id_selectionlist.sort()
+	for li_counter = 65 to 90
+		lc_char = char(li_counter)
+		this.ia_llookuptable[li_counter] = this.id_selectionlist.find("Lower(name) >= Lower('" + char(li_counter) + "')", ll_startrow, this.id_selectionlist.rowcount())
+		ll_startrow = this.ia_llookuptable[li_counter]
+	next
+	this.ia_llookuptable[92] = this.id_selectionlist.rowcount()
+	this.id_selectionlist.object.t_stock.visible = false
+	this.id_selectionlist.object.stock.visible = false
+	this.id_selectionlist.object.t_sstock.visible = true
+	this.id_selectionlist.object.sstock.visible = true
+	this.id_selectionlist.object.t_pstock.visible = false
+	this.id_selectionlist.object.pstock.visible = false
+	if f_stringpreferences("aliasname") = "N" then
+		this.id_selectionlist.object.aliasname.visible = false
+	end if
+	if f_stringpreferences("itempackingdesc") = "N" then
+		this.id_selectionlist.object.packingdesc.visible = false
+	end if
+	if f_stringpreferences("itemlocation") = "N" then
+		this.id_selectionlist.object.location.visible = false
+	end if
+	if f_stringpreferences("manufacturer") = "N" then
+		this.id_selectionlist.object.manufacturer.visible = false
+	end if
+	if f_stringpreferences("packing") = "N" then
+		this.id_selectionlist.object.packing.visible = false
+	end if
+	if f_stringpreferences("packunits") = "N" then
+		this.id_selectionlist.object.packunits.visible = false
+	end if
+	if f_stringpreferences("saleprice") = "N" then
+		this.id_selectionlist.object.saleprice.visible = false
+	end if
+	if f_stringpreferences("stock") = "N" then
+		this.id_selectionlist.object.sstock.visible = false
+	end if
+	if f_stringpreferences("showitemalertinitemlist") = "N" then
+		this.id_selectionlist.object.itemalertcode.visible = false
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 587", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.id_selectionlist.object.purprice.visible = true
+	else
+		this.id_selectionlist.object.purprice.visible = false
+	end if
+	f_setcolumnstyle(this.dw_detail, "Qty")
+	setredraw(true)
+
+// w_refusedsale_form.wf_validateitem(long al_row) returns integer
+	long ll_icode
+	long ll_null
+	integer li_errcode
+	setnull(ll_null)
+	ll_icode = this.id_detail.getitemnumber(al_row, "icode")
+	if this.id_detail.getitemnumber(al_row, "reasoncode") = 2.0 then
+		this.id_detail.setitem(this.il_currrow, "icode", ll_null)
+		this.ib_rowvalidated = true
+		this.ib_itemvalidated = true
+	else
+		if isnull(ll_icode) then
+			this.ib_rowvalidated = false
+			this.ib_itemvalidated = false
+			messagebox("Validation Error!", "Please Enter Valid Item")
+			li_errcode = -1
+		elseif vf_dwdupcode1(this.id_detail, "icode", string(ll_icode), al_row) = true then
+			messagebox("Duplication Error", "Current row is duplicate")
+			li_errcode = -1
+			this.ib_rowvalidated = false
+			this.ib_itemvalidated = false
+		else
+			li_errcode = 0
+			this.ib_rowvalidated = true
+			this.ib_itemvalidated = true
+		end if
+		if li_errcode = -1 then
+			this.id_detail.setcolumn("icode")
+			this.id_detail.scrolltorow(al_row)
+			this.id_detail.object.icode[al_row] = ll_null
+		end if
+	end if
+	return li_errcode
+
+// w_refusedsale_form.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+
+// w_refusedsale_form.wf_set_item_saleprice(long al_icode, long al_row) returns long
+	long ll_retcode
+	double ld_saleprice
+	SQL SELECT saleprice =Round ( saleprice / CASE PackUnits WHEN 0 THEN 1 ELSE PackUnits END , 2 ) INTO :ld_saleprice FROM item WHERE ICode =:al_icode USING sqlca;
+	if sqlca.sqlcode = 0 then
+		ll_retcode = 0
+		this.id_detail.setitem(al_row, "saleprice", ld_saleprice)
+	else
+		ll_retcode = -1
+	end if
+	return ll_retcode
+
+// w_refusedsale_form.create() returns 0
+	this.cb_ok = create cb_ok
+	this.dw_selectionlist = create dw_selectionlist
+	this.dw_detail = create dw_detail
+	this.dw_header = create dw_header
+	this.control = {this.cb_ok, this.dw_selectionlist, this.dw_detail, this.dw_header}
+
+// w_refusedsale_form.destroy() returns 0
+	destroy this.cb_ok
+	destroy this.dw_selectionlist
+	destroy this.dw_detail
+	destroy this.dw_header
+
+// w_refusedsale_form.open() returns long
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	setredraw(false)
+	this.istr_dw = message.powerobjectparm
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	this.id_detail = this.dw_detail
+	this.id_header = this.dw_header
+	this.id_selectionlist = this.dw_selectionlist
+	this.id_header.settransobject(sqlca)
+	this.id_detail.settransobject(sqlca)
+	this.id_selectionlist.settransobject(sqlca)
+	this.istr_dw.dw.sharedata(this.id_header)
+	if this.id_header.rowcount() = 0 then
+		this.id_header.insertrow(0)
+	end if
+	this.istr_dw.dw2.sharedata(this.id_detail)
+	if this.istr_dw.i_protect = 0 then
+		this.id_detail.insertrow(0)
+	end if
+	this.il_currrow = this.id_detail.rowcount()
+	gd_popup_itemsinfo.sharedata(this.id_selectionlist)
+	post event ue_postopen()
+	this.dw_detail.setcolumn("reasoncode")
+	this.dw_detail.scrolltorow(this.il_currrow)
+	this.dw_detail.setfocus()
+	wf_protectdw(this.id_header, this.istr_dw.i_protect)
+	wf_protectdw(this.id_detail, this.istr_dw.i_protect)
+	if this.istr_dw.i_protect = 0 then
+		this.dw_header.object.remarks[1] = this.istr_dw.s_name1
+	end if
+	setredraw(true)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_refusedsale_form.closequery() returns long
+	long ll_currrow
+	long ll_counter
+	long ll_null
+	ll_currrow = this.id_detail.getrow()
+	setnull(ll_null)
+	if this.id_detail.rowcount() > 0 then
+		if this.id_detail.getitemnumber(ll_currrow, "reasoncode") = 2.0 then
+			this.id_detail.setitem(ll_currrow, "icode", ll_null)
+		elseif isnull(this.id_detail.getitemnumber(ll_currrow, "icode")) then
+			if isnull(this.id_detail.getitemstring(ll_currrow, "itemname")) then
+				this.id_detail.deleterow(ll_currrow)
+			elseif this.ib_itemvalidated = false then
+				messagebox("Item Validation", "Please Select Some Valid Item")
+				this.id_detail.setcolumn("itemname")
+				this.id_detail.scrolltorow(ll_currrow)
+				this.id_detail.setfocus()
+				return 1
+			end if
+		elseif this.ib_itemvalidated = false then
+			messagebox("Item Validation", "Please Select Some Valid Item")
+			this.id_detail.setcolumn("itemname")
+			this.id_detail.scrolltorow(ll_currrow)
+			this.id_detail.setfocus()
+			return 1
+		end if
+		if f_validatedw(this.id_header) < 0 then
+			return 1
+		end if
+		if f_validatedw(this.id_detail) < 0 then
+			return 1
+		end if
+		this.il_currrow = this.id_detail.rowcount()
+		if this.ib_itemvalidated = false and wf_validateitem(ll_currrow) = -1 then
+			return 1
+		end if
+		return
+	end if
+	if this.istr_dw.i_protect = 0 then
+		this.istr_dw.dw = this.id_header
+		this.istr_dw.dw2 = this.id_detail
+	end if
+	return 0
+
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		triggerevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// dw_selectionlist.ue_setfocus() returns 0
+	parent.id_detail.setcolumn("itemname")
+	parent.id_detail.setfocus()
+
+// dw_selectionlist.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	long ll_rowmain
+	if row > 0 then
+		ll_rowmain = parent.id_detail.getrow()
+		parent.id_detail.setitem(ll_rowmain, "icode", parent.id_selectionlist.getitemnumber(row, "code"))
+		parent.id_detail.setitem(ll_rowmain, "itemname", parent.id_selectionlist.getitemstring(row, "name"))
+		parent.id_detail.selecttext(1, len(gettext()))
+		parent.ib_itemvalidated = false
+		selectrow(0, false)
+		selectrow(row, true)
+		post event ue_setfocus()
+	end if
+	return ::message.returnvalue
+
+// dw_selectionlist.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	post event ue_setfocus()
+	return ::message.returnvalue
+
+// dw_detail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	integer rt_code
+	long ll_currrow
+	long ll_listcurrrow
+	long ll_rowm
+	long ll_rowcount
+	if keyflags = 2 then
+		if parent.istr_dw.i_protect = 0 then
+			if key = keyi! then
+				if parent.ib_rowvalidated = false and parent.wf_validateitem(getrow()) = -1 then
+					return ::message.returnvalue
+				end if
+				if rowcount() > 0 and f_validatedw(parent.id_detail) < 0 then
+					return ::message.returnvalue
+				end if
+				ll_rowcount = insertrow(0)
+				if ll_rowcount > 1 then
+					scrolltorow(ll_rowcount)
+					setcolumn("reasoncode")
+					setfocus()
+					parent.id_selectionlist.hide()
+					parent.il_currrow = ll_rowcount
+				end if
+			end if
+			if key = keyd! then
+				parent.ib_rowvalidated = true
+				if rowcount() > 0 then
+					deleterow(0)
+				end if
+				ll_rowcount = rowcount()
+				parent.il_currrow = ll_rowcount
+				if ll_rowcount > 1 then
+					scrolltorow(ll_rowcount)
+					setcolumn("reasoncode")
+					setfocus()
+					parent.id_selectionlist.hide()
+				end if
+				parent.ib_rowvalidated = true
+			end if
+		end if
+		if key = keys! then
+			parent.post event ue_close(1)
+		end if
+	end if
+	if getcolumnname() = "itemname" then
+		ll_rowm = getrow()
+		if getitemnumber(ll_rowm, "reasoncode") = 2.0 then
+			rt_code = 0
+		else
+			setredraw(false)
+			if key = keydownarrow! then
+				parent.id_selectionlist.selectrow(0, false)
+				parent.id_selectionlist.scrollnextrow()
+				ll_listcurrrow = parent.id_selectionlist.getrow()
+				rt_code = 1
+			elseif key = keyuparrow! then
+				parent.id_selectionlist.selectrow(0, false)
+				parent.id_selectionlist.scrollpriorrow()
+				ll_listcurrrow = parent.id_selectionlist.getrow()
+				rt_code = 1
+			elseif key = keypagedown! then
+				parent.id_selectionlist.selectrow(0, false)
+				parent.id_selectionlist.scrollnextpage()
+				ll_listcurrrow = parent.id_selectionlist.getrow()
+				rt_code = 1
+			elseif key = keypageup! then
+				parent.id_selectionlist.selectrow(0, false)
+				parent.id_selectionlist.scrollpriorpage()
+				ll_listcurrrow = parent.id_selectionlist.getrow()
+				rt_code = 1
+			elseif key = keyend! then
+				parent.id_selectionlist.selectrow(0, false)
+				parent.id_selectionlist.scrolltorow(99999)
+				ll_listcurrrow = parent.id_selectionlist.getrow()
+				rt_code = 1
+			elseif key = keyhome! then
+				parent.id_selectionlist.selectrow(0, false)
+				parent.id_selectionlist.scrolltorow(1)
+				ll_listcurrrow = parent.id_selectionlist.getrow()
+				rt_code = 1
+			elseif key = keyback! then
+				parent.ib_bkspace = true
+				setredraw(true)
+			elseif key = keyescape! then
+				if parent.id_selectionlist.visible = false then
+					return ::message.returnvalue
+				end if
+				parent.id_selectionlist.hide()
+				setfocus()
+				setredraw(true)
+			elseif key = keyf4! then
+				parent.id_selectionlist.show()
+				parent.id_selectionlist.selectrow(0, false)
+				parent.id_selectionlist.scrolltorow(parent.id_selectionlist.getrow())
+				parent.id_selectionlist.selectrow(parent.id_selectionlist.getrow(), true)
+				setredraw(true)
+			elseif isnull(getitemnumber(parent.id_detail.getrow(), "icode")) and key = keyenter! then
+				parent.id_selectionlist.hide()
+				parent.id_selectionlist.selectrow(0, false)
+				parent.id_selectionlist.scrolltorow(parent.id_selectionlist.getrow())
+				parent.id_selectionlist.selectrow(parent.id_selectionlist.getrow(), true)
+				ll_listcurrrow = parent.id_selectionlist.getrow()
+				setitem(ll_rowm, "icode", parent.id_selectionlist.getitemnumber(ll_listcurrrow, "code"))
+				setitem(ll_rowm, "itemname", parent.id_selectionlist.getitemstring(ll_listcurrrow, "name"))
+				selecttext(1, len(gettext()))
+				parent.ib_itemvalidated = false
+				parent.ib_rowvalidated = false
+				setredraw(true)
+			else
+				setredraw(true)
+			end if
+			if rt_code = 1 then
+				parent.id_selectionlist.selectrow(ll_listcurrrow, true)
+				setitem(ll_rowm, "icode", parent.id_selectionlist.getitemnumber(ll_listcurrrow, "code"))
+				setitem(ll_rowm, "itemname", parent.id_selectionlist.getitemstring(ll_listcurrrow, "name"))
+				selecttext(1, len(gettext()))
+				parent.ib_itemvalidated = false
+				parent.ib_rowvalidated = false
+				setredraw(true)
+			end if
+		end if
+	end if
+	return rt_code
+
+// dw_detail.ue_enterkey() returns long
+	long ll_rowcount
+	if getrow() = rowcount() and getcolumn() = integer(this.object.datawindow.column.count) then
+		if parent.id_detail.rowcount() > 0 and f_validatedw(parent.id_detail) < 0 then
+			return ::message.returnvalue
+		end if
+		if parent.ib_rowvalidated = false and parent.wf_validateitem(getrow()) = -1 then
+			return 1
+		end if
+		ll_rowcount = parent.id_detail.insertrow(0)
+		if ll_rowcount > 1 then
+			parent.id_detail.scrolltorow(ll_rowcount)
+			parent.id_detail.setcolumn("reasoncode")
+			parent.id_detail.setfocus()
+		end if
+		return 1
+	end if
+	if getcolumnname() = "itemname" then
+		parent.id_selectionlist.hide()
+		if parent.ib_itemvalidated = false and parent.wf_validateitem(getrow()) = -1 then
+			return 1
+		end if
+		return
+	end if
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "itemname"
+		messagebox("Name Validation", "Please enter value for Name")
+	case "saleprice"
+		messagebox("Price Validation", "Please enter valid value for saleprice")
+	end choose
+	return 1
+
+// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long
+	if parent.ib_itemvalidated = false and parent.wf_validateitem(row) = -1 then
+		parent.ib_itemvalidated = false
+		parent.ib_rowvalidated = false
+		return ::message.returnvalue
+	end if
+	choose case dwo.name
+	case "itemname"
+		if getitemnumber(row, "reasoncode") = 2.0 then
+			parent.id_selectionlist.hide()
+		elseif isnull(getitemnumber(row, "icode")) then
+			parent.id_selectionlist.show()
+		else
+			parent.wf_set_item_saleprice(getitemnumber(row, "icode"), row)
+		end if
+	case "qty"
+		parent.wf_set_item_saleprice(getitemnumber(row, "icode"), row)
+	case "remarks"
+		parent.wf_set_item_saleprice(getitemnumber(row, "icode"), row)
+	case else
+		parent.id_selectionlist.hide()
+	end choose
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long
+	integer li_retcode
+	long ll_icode
+	long ll_null
+	long ll_gcode
+	string ls_itemname
+	string ls_null
+	setnull(ll_null)
+	setnull(ls_null)
+	choose case dwo.name
+	case "reasoncode"
+		parent.ib_rowvalidated = false
+		parent.il_currrow = row
+		li_retcode = 0
+		if long(data) = 2 then
+			setitem(row, "icode", ll_null)
+		else
+			setitem(row, "icode", ll_null)
+			setitem(row, "itemname", ls_null)
+		end if
+	case "saleprice"
+		if real(data) < 0.0 then
+			return 1
+		end if
+	case "itemname"
+		if getitemnumber(row, "reasoncode") = 2.0 then
+			parent.id_selectionlist.hide()
+			if data = "" or isnull(data) then
+				parent.ib_itemvalidated = false
+				parent.ib_rowvalidated = false
+				parent.il_currrow = row
+				li_retcode = 2
+			else
+				parent.ib_itemvalidated = true
+				parent.ib_rowvalidated = true
+				parent.il_currrow = row
+				li_retcode = 0
+			end if
+		else
+			setitem(row, "icode", parent.id_selectionlist.getitemnumber(parent.id_selectionlist.getrow(), "code"))
+			setitem(row, "itemname", parent.id_selectionlist.getitemstring(parent.id_selectionlist.getrow(), "name"))
+			parent.ib_itemvalidated = false
+			parent.ib_rowvalidated = false
+			parent.il_currrow = row
+			li_retcode = 2
+		end if
+	case "qty"
+		parent.wf_set_item_saleprice(getitemnumber(row, "icode"), row)
+	case else
+		parent.ib_rowvalidated = true
+	end choose
+	return li_retcode
+
+// dw_detail.editchanged(long row, dwobject dwo, string data) returns long
+	long ll_currrow
+	long ll_startrow
+	ll_startrow = 0
+	choose case dwo.name
+	case "itemname"
+		if getitemnumber(row, "reasoncode") <> 2.0 then
+			if upper(left(data, 1)) >= "A" and upper(left(data, 1)) <= "Z" or left(data, 1) >= "0" and left(data, 1) <= "9" or left(data, 1) = "*" then
+				ll_currrow = parent.id_selectionlist.getrow()
+				if len(data) > 1 then
+					ll_startrow = ll_currrow
+				else
+					if left(data, 1) >= "0" and left(data, 1) <= "9" or left(data, 1) = "*" then
+						ll_startrow = 1
+					else
+						ll_startrow = parent.ia_llookuptable[asc(upper(data))]
+					end if
+					parent.ib_bkspace = false
+				end if
+				if parent.ib_bkspace then
+					parent.il_itemlistfoundrow = parent.id_selectionlist.find("Lower(name) <= '" + lower(data) + "'", ll_startrow, 0)
+					parent.il_itemlistfoundrow = parent.il_itemlistfoundrow + 1
+					parent.ib_bkspace = false
+				else
+					parent.il_itemlistfoundrow = parent.id_selectionlist.find("Lower(name) >= '" + lower(data) + "'", ll_startrow, 99999)
+				end if
+				if parent.il_itemlistfoundrow = 0 then
+					parent.il_itemlistfoundrow = parent.id_selectionlist.rowcount()
+				end if
+				if parent.il_itemlistfoundrow <> ll_currrow then
+					parent.id_selectionlist.selectrow(0, false)
+					parent.id_selectionlist.setrow(parent.il_itemlistfoundrow)
+					parent.id_selectionlist.scrolltorow(parent.il_itemlistfoundrow)
+					parent.id_selectionlist.selectrow(parent.il_itemlistfoundrow, true)
+					setfocus()
+				elseif parent.il_itemlistfoundrow = ll_currrow then
+					parent.id_selectionlist.selectrow(0, false)
+					parent.id_selectionlist.setrow(parent.il_itemlistfoundrow)
+					parent.id_selectionlist.scrolltorow(parent.il_itemlistfoundrow)
+					parent.id_selectionlist.selectrow(parent.il_itemlistfoundrow, true)
+					setfocus()
+				end if
+			end if
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.losefocus() returns long
+	parent.id_selectionlist.hide()
+	return ::message.returnvalue
+
+// dw_detail.rowfocuschanged(long currentrow) returns long
+	if parent.ib_itemvalidated = false and parent.wf_validateitem(getrow()) = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_header.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1

@@ -1,0 +1,21 @@
+// function f_drilldown_batchsearch (functions)  ancestor: function_object
+
+// f_drilldown_batchsearch.f_drilldown_batchsearch(string as_searchtype, longlong al_icode) returns double
+	s_popup_selection lstr_selection
+	if as_searchtype <> "criteriasearch" then
+		if as_searchtype = "batchsearch" then
+			open(w_popup_batchsearchcriteriaselection)
+			lstr_selection = message.powerobjectparm
+			if lstr_selection.l_code > 0 then
+				lstr_selection.l_code2 = al_icode
+				openwithparm(w_popup_batchselection, lstr_selection)
+				lstr_selection = message.powerobjectparm
+				if lstr_selection.l_code > 0 then
+					return lstr_selection.d_value
+				end if
+				return
+			end if
+			return
+		end if
+	end if
+	return 0.0

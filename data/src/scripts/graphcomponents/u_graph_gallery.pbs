@@ -1,0 +1,84 @@
+// userobject u_graph_gallery (graphcomponents)  ancestor: userobject
+
+// u_graph_gallery.uf_query_gallery(integer ai_row, integer ai_col, string as_type) returns integer
+	ai_row = this.ii_row
+	ai_col = this.ii_col
+	if this.ii_row = 2 and this.ii_col = 6 then
+		return 0
+	end if
+	if this.ii_row < 1 or this.ii_col < 1 then
+		return 0
+	end if
+	as_type = this.is_graphtype
+	return 1
+
+// u_graph_gallery.constructor() returns long
+	this.p_gallery.width = this.mle_1.width - 20
+	this.p_gallery.height = this.mle_1.height - 20
+	return ::message.returnvalue
+
+// u_graph_gallery.create() returns 0
+	this.p_gallery = create p_gallery
+	this.st_1 = create st_1
+	this.cb_ok = create cb_ok
+	this.cb_cancel = create cb_cancel
+	this.mle_1 = create mle_1
+	this.control = {this.p_gallery, this.st_1, this.cb_ok, this.cb_cancel, this.mle_1}
+
+// u_graph_gallery.destroy() returns 0
+	destroy this.p_gallery
+	destroy this.st_1
+	destroy this.cb_ok
+	destroy this.cb_cancel
+	destroy this.mle_1
+
+// p_gallery.clicked() returns long
+	integer icolwidth
+	integer irowheight
+	integer li_x
+	integer li_y
+	integer li_textx
+	integer li_texty
+	string ls_title
+	string[] ls_titles1
+	string[] ls_titles3
+	string[] ls_graphtype
+	li_x = pointerx()
+	li_y = pointery()
+	if li_x < 25 or li_x > 1747 or li_y < 30 or li_y > 954 then
+		parent.st_1.hide()
+		beep(1)
+		return ::message.returnvalue
+	end if
+	parent.ii_col = (li_x - 25) / 287.0 + 1.0
+	parent.ii_row = (li_y - 30) / irowheight + 1.0
+	if parent.ii_row = 3 then
+		ls_title = ls_titles3[parent.ii_col]
+	else
+		ls_title = ls_titles1[parent.ii_col]
+	end if
+	li_texty = parent.ii_row * irowheight + (parent.ii_row - 1) * 10
+	parent.st_1.text = ls_title
+	li_textx = this.x + (parent.ii_col - 1) * 287 + 75
+	li_texty = li_texty - this.y
+	parent.st_1.hide()
+	if parent.ii_row = 2 and parent.ii_col = 6 then
+		beep(1)
+	else
+		parent.st_1.move(li_textx, li_texty)
+		parent.st_1.show()
+	end if
+	parent.is_graphtype = ls_graphtype[parent.ii_col, parent.ii_row]
+	return ::message.returnvalue
+
+// p_gallery.doubleclicked() returns long
+	parent.cb_ok.triggerevent(clicked!)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	parent.triggerevent("gallery_ok")
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.triggerevent("gallery_cancel")
+	return ::message.returnvalue

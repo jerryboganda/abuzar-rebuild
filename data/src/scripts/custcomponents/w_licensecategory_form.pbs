@@ -1,0 +1,42 @@
+// window w_licensecategory_form (custcomponents)  ancestor: w_single_entry
+
+// w_licensecategory_form.ue_newform() returns 0
+	call super::ue_newform
+
+// w_licensecategory_form.create() returns 0
+	call super::create
+
+// w_licensecategory_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_licensecategory_form.activate() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::activate()
+	this.windowstate = maximized!
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_licensecategory_form.ue_save() returns 0
+	long ll_primarykey
+	long ll_row
+	setpointer(hourglass!)
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	ll_row = this.id_detail.getrow()
+	if this.id_detail.update() > 0 then
+		SQL commit USING sqlca;
+		messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+		this.ib_commitok = true
+		this.im_menu.m_file.m_new.enabled = true
+		this.editflag = false
+	else
+		SQL rollback USING sqlca;
+		setpointer(arrow!)
+		messagebox("Save Changes", "Changes Rollback in database, ~n~rSome database problem occurs", exclamation!, ok!, 1)
+		return
+	end if
+	setpointer(arrow!)

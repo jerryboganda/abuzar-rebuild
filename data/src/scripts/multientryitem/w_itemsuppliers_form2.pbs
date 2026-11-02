@@ -1,0 +1,203 @@
+// window w_itemsuppliers_form2 (multientryitem)  ancestor: w_multi_entry
+
+// w_itemsuppliers_form2.wf_validateitem() returns integer
+	long ll_icode
+	long ll_code
+	integer li_errcode
+	string ls_colname
+	integer li_null
+	ls_colname = "icode"
+	ll_code = this.id_detail.getitemnumber(this.il_currrow, ls_colname)
+	ll_icode = this.id_detail.getitemnumber(this.il_currrow, ls_colname)
+	if vf_dwdupcode1(this.id_detail, ls_colname, string(ll_icode), this.il_currrow) = true then
+		messagebox("Duplication Error", "Current row is duplicate")
+		li_errcode = -1
+	else
+		li_errcode = 0
+	end if
+	this.ib_itemvalidated = true
+	if li_errcode = -1 then
+		setnull(li_null)
+		this.id_detail.setcolumn(ls_colname)
+		this.id_detail.scrolltorow(this.il_currrow)
+		this.id_detail.setitem(this.il_currrow, ls_colname, li_null)
+	end if
+	return li_errcode
+
+// w_itemsuppliers_form2.wf_viewitemsuppliers() returns 0
+	if this.id_detail = getfocus() and this.id_detail.rowcount() > 0 and this.id_detail.getitemnumber(this.id_detail.getrow(), "icode") > 0.0 then
+		openwithparm(w_viewitemsuppliers, this.id_detail.getitemnumber(this.id_detail.getrow(), "icode"))
+	end if
+
+// w_itemsuppliers_form2.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM Accounts WHERE Accounts.name =:as_name USING this.it_transobject;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_itemsuppliers_form2.wf_populateitems() returns 0
+	long ll_detailrows
+	long ll_count
+	long ll_lastelement
+	long ll_row
+	long ll_suppcode
+	long ll_max_priority
+	long ll_icode
+	integer li_result
+	integer li_rtncode
+	boolean populateflag
+	s_arguements lstr_selected
+	datastore lds_itemselected
+	this.id_detail.setredraw(false)
+	setpointer(hourglass!)
+	ll_suppcode = this.id_master.getitemnumber(1, "code")
+	if ll_suppcode = 0 or isnull(ll_suppcode) then
+		messagebox("Supplier Validation!", "You must select some valid supplier from List Tab")
+		return
+	end if
+	ll_detailrows = this.id_detail.rowcount()
+	if ll_detailrows > 0 then
+		if not isnull(this.id_detail.object.code[1]) then
+			li_result = messagebox("Warning", "Rows in Detail Window will Lost", exclamation!, okcancel!, 2)
+			if li_result = 1 then
+				for ll_count = 1 to ll_detailrows
+					this.id_detail.deleterow(0)
+				next
+			else
+				populateflag = false
+			end if
+		else
+			this.id_detail.deleterow(0)
+		end if
+	end if
+	if populateflag = true then
+		open(w_arg_manufacturers_v2)
+		lstr_selected = message.powerobjectparm
+		if lstr_selected.i_status = 1 then
+			lds_itemselected = create datastore
+			lds_itemselected.dataobject = "d_populate_itemsuppliers"
+			lds_itemselected.settransobject(sqlca)
+			li_rtncode = lds_itemselected.retrieve(ll_suppcode, lstr_selected.ia_integerlist)
+			ll_detailrows = lds_itemselected.rowcount()
+			for ll_count = 1 to ll_detailrows
+				ll_row = this.id_detail.insertrow(0)
+				ll_icode = lds_itemselected.getitemnumber(ll_count, "icode")
+				SQL SELECT MAX ( Priority ) INTO :ll_max_priority FROM ItemSuppliers WHERE ICode =:ll_icode USING sqlca;
+				if isnull(ll_max_priority) then
+					ll_max_priority = 0
+				end if
+				this.id_detail.setitem(ll_row, "code", ll_suppcode)
+				this.id_detail.setitem(ll_row, "icode", ll_icode)
+				if lds_itemselected.getitemnumber(ll_count, "priority") > 0.0 then
+					this.id_detail.setitem(ll_row, "priority", lds_itemselected.getitemnumber(ll_count, "priority"))
+				else
+					ll_max_priority = ll_max_priority + 1
+					this.id_detail.setitem(ll_row, "priority", ll_max_priority)
+				end if
+				this.id_detail.setitem(ll_row, "rate", lds_itemselected.getitemnumber(ll_count, "rate"))
+				this.id_detail.setitem(ll_row, "discperc", lds_itemselected.getitemnumber(ll_count, "discperc"))
+				this.id_detail.setitem(ll_row, "saleqty", lds_itemselected.getitemnumber(ll_count, "saleqty"))
+				this.id_detail.setitem(ll_row, "bonusqty", lds_itemselected.getitemnumber(ll_count, "bonusqty"))
+				this.id_detail.setitem(ll_row, "days", lds_itemselected.getitemnumber(ll_count, "days"))
+				this.id_detail.setitem(ll_row, "manufacturer", lds_itemselected.getitemstring(ll_count, "manufacturer"))
+			next
+			if ll_count > 0 then
+				messagebox("Result", string(ll_count) + " Items are populated. ")
+			end if
+		end if
+	end if
+	setpointer(arrow!)
+	this.id_detail.setredraw(true)
+
+// w_itemsuppliers_form2.create() returns 0
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_itemsuppliers" then
+		this.menuid = create m_itemsuppliers
+	end if
+
+// w_itemsuppliers_form2.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_itemsuppliers_form2.ue_save() returns 0
+	long ll_mastercurrrow
+	long ll_invid
+	long ll_detailrows
+	integer li_counter
+	integer ll_salesmancode
+	boolean lb_commitflag
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	setpointer(hourglass!)
+	ll_mastercurrrow = this.id_master.getrow()
+	ll_invid = this.id_master.object.code[ll_mastercurrrow]
+	if isnull(this.id_master.getitemnumber(1, "code")) then
+		messagebox("Validation", "Kindly select from the list window~r~nthan populate it with items")
+		return
+	end if
+	ll_detailrows = this.id_detail.rowcount()
+	li_counter = 1
+	do while li_counter <= ll_detailrows
+		this.id_detail.setitem(li_counter, "code", ll_invid)
+		li_counter = li_counter + 1
+	loop
+	call super::ue_save
+	setpointer(arrow!)
+
+// w_itemsuppliers_form2.ue_newform() returns 0
+	call super::ue_newform
+	this.id_master.setfocus()
+
+// w_itemsuppliers_form2.ue_newitem() returns 0
+	long ll_rowcount
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	if this.id_detail.rowcount() > 0 and f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	this.id_detail.setcolumn(2)
+	this.id_detail.insertrow(0)
+	ll_rowcount = this.id_detail.rowcount()
+	if ll_rowcount > 1 then
+		this.id_detail.scrolltorow(ll_rowcount)
+		this.id_detail.setfocus()
+	end if
+	this.im_menu.m_file.m_save.enabled = true
+	this.ib_validatefullcode = true
+
+// w_itemsuppliers_form2.ue_detail() returns 0
+	call super::ue_detail
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_delete.enabled = true
+	this.im_menu.m_file.m_first.enabled = true
+	this.im_menu.m_file.m_next.enabled = true
+	this.im_menu.m_file.m_last.enabled = true
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_menu.m_file.m_previous.enabled = true
+	this.im_menu.m_item.m_newitem.enabled = true
+	this.im_menu.m_item.m_deleteitem.enabled = true
+
+// w_itemsuppliers_form2.ue_deleteitem() returns 0
+	long ll_currow
+	long ll_detailrows
+	this.ib_itemvalidated = true
+	this.id_detail.deleterow(0)
+	ll_detailrows = this.id_detail.rowcount()
+	wf_grandtotal()

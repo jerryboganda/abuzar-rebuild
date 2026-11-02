@@ -1,0 +1,79 @@
+// window w_customer_assoc_godown_form_old (custcomponents)  ancestor: w_single_entry
+
+// w_customer_assoc_godown_form_old.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM CustomerCategory WHERE CustomerCategory.name =:as_name USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_customer_assoc_godown_form_old.create() returns 0
+	call super::create
+
+// w_customer_assoc_godown_form_old.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_customer_assoc_godown_form_old.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.is_tablename = "AccountGodown"
+	return ::message.returnvalue
+
+// w_customer_assoc_godown_form_old.ue_save() returns 0
+	long ll_primarykey
+	long ll_row
+	long ll_gcode
+	long ll_count
+	setpointer(hourglass!)
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	ll_row = this.id_detail.getrow()
+	ll_primarykey = this.id_detail.object.code[this.id_detail.getrow()]
+	if isnull(ll_primarykey) then
+		messagebox("Customer Validation", "Please select some valid customer from customer list", stopsign!)
+		return
+	else
+		ll_gcode = this.id_detail.object.gcode[this.id_detail.getrow()]
+		if ll_primarykey > 0 and ll_gcode > 0 then
+			SQL SELECT ISNULL ( COUNT ( *) , 0 ) INTO :ll_count FROM AccountGodown WHERE AccCode <> :ll_primarykey AND GCode =:ll_gcode USING sqlca;
+			if sqlca.sqlcode = 0 then
+				if ll_count > 0 then
+					messagebox("Godown Validation", "Godown Already Associated To Some Other Customer.~r~nKindly Select some other customer.", stopsign!)
+					return
+				end if
+			else
+				messagebox("Database Problem", "some database problem occurred. Details are:-~r~n" + sqlca.sqlerrtext, stopsign!)
+				return
+			end if
+			return
+		end if
+	end if
+	if this.id_detail.update() > 0 then
+		SQL commit USING sqlca;
+		messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+		this.ib_commitok = true
+		this.im_menu.m_file.m_new.enabled = true
+		this.editflag = false
+	else
+		SQL rollback USING sqlca;
+		setpointer(arrow!)
+		messagebox("Save Changes", "Changes Rollback in database, ~n~rSome database problem occurs", exclamation!, ok!, 1)
+		return
+	end if
+	setpointer(arrow!)
+
+// w_customer_assoc_godown_form_old.ue_detail() returns 0
+	call super::ue_detail
+	if this.id_detail.rowcount() <= 0 then
+		this.id_detail.insertrow(0)
+		if this.id_list.getrow() > 0 then
+			this.id_detail.object.code[1] = this.id_list.object.code[this.id_list.getrow()]
+		end if
+	end if

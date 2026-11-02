@@ -1,0 +1,128 @@
+// function f_save_arguments (functions)  ancestor: function_object
+
+// f_save_arguments.f_save_arguments(s_arguements str_struct, string as_reportobject, string as_reportformat) returns long
+	string ls_argumentstr
+	string ls_sep
+	string ls_arr_sep
+	string ls_msg_title
+	string ls_msgtext
+	long ll_counter
+	long ll_upperbound
+	long ll_fileid
+	long ll_groupcode
+	long ll_rightcode
+	u_transaction at_transobject
+	blob lblb_arg
+	at_transobject = create u_transaction
+	ls_msgtext = "Report Input(s) successfully saved to database"
+	SQL start USING at_transobject;
+	if at_transobject.sqlcode <> 0 then
+		ls_msgtext = at_transobject.sqlerrtext
+		messagebox(ls_msg_title, "Problems in Connection while Saving Report Input(s) to database~r~nMore Details are:- " + ls_msgtext, stopsign!)
+		return -1
+	end if
+	ll_groupcode = f_getgroupcode(gl_usercode)
+	SQL SELECT RightCode INTO :ll_rightcode FROM GroupAllowedStartupRight WHERE GroupCode =:ll_groupcode AND RightCode IN ( SELECT RightCode FROM StartupRight WHERE ObjectName =:as_reportobject AND Allowed ='Y' ) USING at_transobject;
+	if at_transobject.sqlcode <> 0 then
+		ls_msgtext = at_transobject.sqlerrtext
+		messagebox(ls_msg_title, "Problems in saving Report Input to database~r~nYou donot have startup right for this report~r~nMore Details are:- " + ls_msgtext, stopsign!)
+		return -2
+	end if
+	ls_argumentstr = ls_argumentstr + trim(string(str_struct.l_code1)) + ls_sep
+	ls_argumentstr = ls_argumentstr + trim(string(str_struct.l_code2)) + ls_sep
+	ls_argumentstr = ls_argumentstr + trim(string(str_struct.l_code3)) + ls_sep
+	ls_argumentstr = ls_argumentstr + trim(string(str_struct.l_code4)) + ls_sep
+	ls_argumentstr = ls_argumentstr + trim(string(str_struct.d_sdate, "mm/dd/yyyy hh:mm:ss")) + ls_sep
+	ls_argumentstr = ls_argumentstr + trim(string(str_struct.d_edate, "mm/dd/yyyy hh:mm:ss")) + ls_sep
+	ls_argumentstr = ls_argumentstr + trim(string(str_struct.i_status)) + ls_sep
+	ls_argumentstr = ls_argumentstr + trim(string(str_struct.i_supress)) + ls_sep
+	ls_argumentstr = ls_argumentstr + trim(string(str_struct.i_hide)) + ls_sep
+	ls_argumentstr = ls_argumentstr + str_struct.s_name1 + ls_sep
+	ls_argumentstr = ls_argumentstr + str_struct.s_name2 + ls_sep
+	ls_argumentstr = ls_argumentstr + str_struct.s_name3 + ls_sep
+	ls_argumentstr = ls_argumentstr + str_struct.s_name4 + ls_sep
+	ls_argumentstr = ls_argumentstr + str_struct.s_name5 + ls_sep
+	ls_argumentstr = ls_argumentstr + str_struct.s_name6 + ls_sep
+	ls_argumentstr = ls_argumentstr + str_struct.s_name7 + ls_sep
+	ll_upperbound = upperbound(str_struct.sa_stringlist)
+	if ll_upperbound > 0 then
+		ll_counter = 0
+		for ll_counter = 1 to ll_upperbound
+			ls_argumentstr = ls_argumentstr + str_struct.sa_stringlist[ll_counter] + ls_arr_sep
+		next
+	end if
+	ls_argumentstr = ls_argumentstr + "" + ls_sep
+	ll_upperbound = upperbound(str_struct.ia_integerlist)
+	if ll_upperbound > 0 then
+		ll_counter = 0
+		for ll_counter = 1 to ll_upperbound
+			ls_argumentstr = ls_argumentstr + trim(string(str_struct.ia_integerlist[ll_counter])) + ls_arr_sep
+		next
+	end if
+	ls_argumentstr = ls_argumentstr + "" + ls_sep
+	ll_upperbound = upperbound(str_struct.ra_reallist)
+	if ll_upperbound > 0 then
+		ll_counter = 0
+		for ll_counter = 1 to ll_upperbound
+			ls_argumentstr = ls_argumentstr + trim(string(str_struct.ra_reallist[ll_counter])) + ls_arr_sep
+		next
+	end if
+	ls_argumentstr = ls_argumentstr + "" + ls_sep
+	ll_upperbound = upperbound(str_struct.ia_integerlist1)
+	if ll_upperbound > 0 then
+		ll_counter = 0
+		for ll_counter = 1 to ll_upperbound
+			ls_argumentstr = ls_argumentstr + trim(string(str_struct.ia_integerlist1[ll_counter])) + ls_arr_sep
+		next
+	end if
+	ls_argumentstr = ls_argumentstr + "" + ls_sep
+	ls_argumentstr = ls_argumentstr + trim(string(str_struct.db_code1)) + ls_sep
+	ls_argumentstr = ls_argumentstr + trim(string(str_struct.db_code2)) + ls_sep
+	ll_upperbound = upperbound(str_struct.ia_integerlist2)
+	if ll_upperbound > 0 then
+		ll_counter = 0
+		for ll_counter = 1 to ll_upperbound
+			ls_argumentstr = ls_argumentstr + trim(string(str_struct.ia_integerlist2[ll_counter])) + ls_arr_sep
+		next
+	end if
+	ls_argumentstr = ls_argumentstr + "" + ls_sep
+	ls_argumentstr = ls_argumentstr + trim(string(str_struct.l_code5)) + ls_sep
+	ls_argumentstr = ls_argumentstr + trim(string(str_struct.l_code6)) + ls_sep
+	ll_upperbound = upperbound(str_struct.la_longlist)
+	if ll_upperbound > 0 then
+		ll_counter = 0
+		for ll_counter = 1 to ll_upperbound
+			ls_argumentstr = ls_argumentstr + trim(string(str_struct.la_longlist[ll_counter])) + ls_arr_sep
+		next
+	end if
+	ls_argumentstr = ls_argumentstr + "" + ls_sep
+	ls_argumentstr = ls_argumentstr + trim(string(str_struct.d_date1, "mm/dd/yyyy hh:mm:ss")) + ls_sep
+	ls_argumentstr = ls_argumentstr + trim(string(str_struct.d_date2, "mm/dd/yyyy hh:mm:ss")) + ls_sep
+	ls_argumentstr = ls_argumentstr + trim(string(str_struct.d_date3, "mm/dd/yyyy hh:mm:ss")) + ls_sep
+	ls_argumentstr = ls_argumentstr + trim(string(str_struct.d_date4, "mm/dd/yyyy hh:mm:ss")) + ls_sep
+	ls_argumentstr = ls_argumentstr + trim(string(str_struct.l_code7)) + ls_sep
+	ls_argumentstr = ls_argumentstr + trim(string(str_struct.l_code8)) + ls_sep
+	ls_argumentstr = ls_argumentstr + trim(string(str_struct.l_code9)) + ls_sep
+	ls_argumentstr = ls_argumentstr + trim(string(str_struct.l_code10)) + ls_sep
+	ls_argumentstr = ls_argumentstr + trim(string(str_struct.db_code3)) + ls_sep
+	SQL update GroupAllowedStartupRight SET Details =:as_reportformat WHERE GroupCode =:ll_groupcode AND RightCode =:ll_rightcode USING at_transobject;
+	if at_transobject.sqlcode = 0 then
+		SQL commit USING at_transobject;
+	else
+		ls_msgtext = at_transobject.sqlerrtext
+		SQL rollback USING at_transobject;
+		messagebox(ls_msg_title, "Problems in saving Report Input to database.~r~nProblem in saving report format for this report~r~nMore Details are:- " + ls_msgtext, stopsign!)
+		return -3
+	end if
+	lblb_arg = blob(ls_argumentstr)
+	SQL UPDATEBLOB GroupAllowedStartupRight SET Arguments =:lblb_arg WHERE GroupCode =:ll_groupcode AND RightCode =:ll_rightcode USING at_transobject;
+	if at_transobject.sqlnrows > 0 then
+		SQL commit USING at_transobject;
+	else
+		ls_msgtext = at_transobject.sqlerrtext
+		SQL rollback USING at_transobject;
+		messagebox(ls_msg_title, "Problems in saving Report Input to database..~r~nProblem in saving report inputs for this report~r~nMore Details are:- " + ls_msgtext, stopsign!)
+		return -4
+	end if
+	messagebox(ls_msg_title, ls_msgtext, information!)
+	return 0

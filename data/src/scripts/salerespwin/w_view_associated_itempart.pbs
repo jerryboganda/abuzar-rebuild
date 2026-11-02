@@ -1,0 +1,55 @@
+// window w_view_associated_itempart (salerespwin)  ancestor: window
+
+// w_view_associated_itempart.wf_get_masterinfo(long al_code, long al_masteripartcode) returns long
+	SQL SELECT ISNULL ( MasterIPartCode , IPartCode ) INTO :al_masteripartcode FROM DBO.ItemPart WHERE IPartCode IN ( SELECT DBO.Item.IPartCode FROM DBO.Item WHERE DBO.Item.ICode =:al_code ) USING sqlca;
+	if isnull(al_masteripartcode) then
+		al_masteripartcode = 0
+	end if
+	return 0
+
+// w_view_associated_itempart.create() returns 0
+	this.dw_control = create dw_control
+	this.control = {this.dw_control}
+
+// w_view_associated_itempart.destroy() returns 0
+	destroy this.dw_control
+
+// w_view_associated_itempart.open() returns long
+	long ll_width
+	long ll_height
+	long ll_code
+	long ll_masteripartcode
+	environment env
+	ll_code = message.doubleparm
+	wf_get_masterinfo(ll_code, ll_masteripartcode)
+	if getenvironment(env) <> 1 then
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.width = ll_width * 0.98
+	this.height = ll_height * 0.90
+	this.y = int((ll_height - this.height) / 2.0)
+	this.dw_control.width = this.width - this.width * 0.02
+	this.dw_control.height = this.height - this.width * 0.05
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.retrieve(ll_masteripartcode)
+	setredraw(true)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_view_associated_itempart.close() returns long
+	close(this)
+	return ::message.returnvalue
+
+// w_view_associated_itempart.key(keycode key, unsignedlong keyflags) returns long
+	if keydown(keyescape!) then
+		close(this)
+	end if
+	return ::message.returnvalue

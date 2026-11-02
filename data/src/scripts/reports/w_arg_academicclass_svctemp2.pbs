@@ -1,0 +1,57 @@
+// window w_arg_academicclass_svctemp2 (reports)  ancestor: w_listarguments
+
+// w_arg_academicclass_svctemp2.create() returns 0
+	integer icurrent
+	call super::create
+	this.st_4 = create st_4
+	this.st_8 = create st_8
+	this.dw_template = create dw_template
+	this.dw_services = create dw_services
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_4
+	this.control[icurrent + 2] = this.st_8
+	this.control[icurrent + 3] = this.dw_template
+	this.control[icurrent + 4] = this.dw_services
+
+// w_arg_academicclass_svctemp2.destroy() returns 0
+	call super::destroy
+	destroy this.st_4
+	destroy this.st_8
+	destroy this.dw_template
+	destroy this.dw_services
+
+// w_arg_academicclass_svctemp2.open() returns long
+	long ancestorreturnvalue
+	string ls_stringparam
+	string ls_filter
+	long ll_counter
+	long ll_rowcount
+	integer rtncode
+	listviewitem l_lvi
+	ancestorreturnvalue = super::open()
+	ls_stringparam = message.stringparm
+	this.dw_control.settransobject(sqlca)
+	rtncode = this.dw_control.retrieve()
+	if rtncode = -1 then
+		messagebox("Error", "No Account(s) To Select")
+	else
+		ll_rowcount = this.dw_control.rowcount()
+		ll_counter = 1
+		for ll_counter = 1 to ll_rowcount
+			this.lb_categories.additem(this.dw_control.getitemstring(ll_counter, "name"))
+		next
+	end if
+	this.dw_template.settransobject(sqlca)
+	rtncode = this.dw_template.retrieve()
+	this.dw_services.settransobject(sqlca)
+	this.dw_services.retrieve()
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// dw_services.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1

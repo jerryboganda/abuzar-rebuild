@@ -1,0 +1,19 @@
+// function f_is_specialright_enabled (functions)  ancestor: function_object
+
+// f_is_specialright_enabled.f_is_specialright_enabled(string as_rightid) returns boolean
+	string ls_enable
+	string ls_null
+	setnull(ls_null)
+	SQL SELECT Enable INTO :ls_enable FROM DBO.SpecialRight WHERE RightID =:as_rightid USING sqlca;
+	if sqlca.sqlcode = 0 then
+		if isnull(ls_enable) then
+			return false
+		elseif ls_enable = "Y" then
+			return true
+		else
+			return false
+		end if
+	else
+		return false
+	end if
+	return false

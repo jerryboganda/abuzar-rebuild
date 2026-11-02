@@ -1,0 +1,16 @@
+// function f_is_group_module_cashaccount_allowed (functions)  ancestor: function_object
+
+// f_is_group_module_cashaccount_allowed.f_is_group_module_cashaccount_allowed(long al_groupcode, long al_module) returns long
+	long ll_rows
+	long ll_cashacc
+	u_ds_standard lds_data
+	lds_data = create u_ds_standard
+	lds_data.dataobject = "ddd_group_module_cashaccount"
+	lds_data.settransobject(sqlca)
+	lds_data.retrieve(al_groupcode, al_module)
+	ll_rows = lds_data.rowcount()
+	if ll_rows <= 0 then
+		return ll_rows
+	end if
+	ll_cashacc = lds_data.object.cashacccode[1]
+	return ll_cashacc

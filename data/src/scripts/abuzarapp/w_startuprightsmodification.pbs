@@ -1,0 +1,89 @@
+// window w_startuprightsmodification (abuzarapp)  ancestor: window
+
+// w_startuprightsmodification.ue_displayrights() returns 0
+
+// w_startuprightsmodification.ue_save() returns 0
+	long ll_counter
+	long ll_limit
+	long ll_currow
+	setpointer(hourglass!)
+	if this.dw_rights.update() = 1 then
+		SQL commit USING this.it_transobject;
+		messagebox("Confirmation", "Changes saved in the database")
+	else
+		SQL rollback USING this.it_transobject;
+		messagebox("Database Error-1", "Changes not saved in the database")
+	end if
+	setpointer(arrow!)
+	triggerevent(clicked!)
+
+// w_startuprightsmodification.ue_close() returns 0
+	close(this)
+
+// w_startuprightsmodification.ue_postopen() returns long
+	this.it_transobject = create u_transaction
+	SQL start USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		messagebox("DataBase Connection Error", "Cannot connect to DataBase~r~n" + string(this.it_transobject.sqlerrtext))
+		SQL stop USING this.it_transobject;
+		post event ue_close()
+		return 1
+	end if
+	this.dw_rights.settransobject(this.it_transobject)
+	this.dw_rights.retrieve()
+	return 1
+
+// w_startuprightsmodification.create() returns 0
+	this.cb_cancel = create cb_cancel
+	this.cb_save = create cb_save
+	this.dw_rights = create dw_rights
+	this.gb_1 = create gb_1
+	this.control = {this.cb_cancel, this.cb_save, this.dw_rights, this.gb_1}
+
+// w_startuprightsmodification.destroy() returns 0
+	destroy this.cb_cancel
+	destroy this.cb_save
+	destroy this.dw_rights
+	destroy this.gb_1
+
+// w_startuprightsmodification.activate() returns long
+	this.windowstate = maximized!
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_startuprightsmodification.close() returns long
+	destroy this.it_transobject
+	return ::message.returnvalue
+
+// w_startuprightsmodification.open() returns long
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	post event ue_postopen()
+	return ::message.returnvalue
+
+// w_startuprightsmodification.key(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		post event ue_close()
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// cb_save.clicked() returns long
+	parent.event ue_save()
+	return ::message.returnvalue

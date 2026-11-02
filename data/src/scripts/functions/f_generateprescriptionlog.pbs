@@ -1,0 +1,21 @@
+// function f_generateprescriptionlog (functions)  ancestor: function_object
+
+// f_generateprescriptionlog.f_generateprescriptionlog(long al_prescode, datetime adt_server_datetime, transaction at_transobject) returns long
+	long ll_retval
+	long ll_logid
+	if f_newtableid1("PrescriptionHeaderLog", ll_logid) >= 0 then
+		SQL INSERT PrescriptionHeaderlog SELECT LogID =:ll_logid , LogDate =:adt_server_datetime , P.*FROM PrescriptionHeader P WHERE P.PresCode =:al_prescode USING at_transobject;
+		if at_transobject.sqlcode = 0 then
+			SQL INSERT PrescriptionDetailLog SELECT LogID =:ll_logid , PD.*FROM PrescriptionDetail PD WHERE PD.PresCode =:al_prescode USING at_transobject;
+			if at_transobject.sqlcode = 0 then
+				ll_retval = 0
+			else
+				ll_retval = -1
+			end if
+		else
+			ll_retval = -1
+		end if
+	else
+		ll_retval = -1
+	end if
+	return ll_retval

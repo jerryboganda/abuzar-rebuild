@@ -1,0 +1,35 @@
+// window w_arg_cust_student_servicetemplate (reports_cust)  ancestor: w_arguements
+
+// w_arg_cust_student_servicetemplate.create() returns 0
+	integer icurrent
+	call super::create
+	this.st_godown = create st_godown
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_godown
+
+// w_arg_cust_student_servicetemplate.destroy() returns 0
+	call super::destroy
+	destroy this.st_godown
+
+// w_arg_cust_student_servicetemplate.open() returns long
+	long ancestorreturnvalue
+	integer li_rtcode
+	ancestorreturnvalue = super::open()
+	this.dw_control.settransobject(sqlca)
+	li_rtcode = this.dw_control.getchild("customerstudentservicetemplatecode", this.idc_child)
+	if li_rtcode = -1 then
+		messagebox("Problem", "Can Not a Retrieve Possible Service Templte")
+		close(this)
+		return ::message.returnvalue
+	end if
+	this.idc_child.settransobject(sqlca)
+	this.idc_child.retrieve()
+	this.dw_control.insertrow(0)
+	this.dw_control.setrow(0)
+	this.dw_control.scrolltorow(0)
+	this.idc_child.setrow(1)
+	return ::message.returnvalue
+
+// w_arg_cust_student_servicetemplate.ue_close(integer ai_stauts) returns 0
+	super::ue_close(ai_stauts)
+	closewithreturn(this, this.istr_arg)

@@ -1,0 +1,83 @@
+// function f_opentranaction (functions)  ancestor: function_object
+
+// f_opentranaction.f_opentranaction(string as_type) returns integer
+	long ll_pos
+	long ll_code
+	integer li_len
+	string ls_tran
+	string ls_type
+	s_invdetail lstr_invdetail
+	ls_type = as_type
+	if left(as_type, 1) = "*" then
+		ls_type = mid(ls_type, 2, len(ls_type) - 1)
+	end if
+	li_len = len(ls_type)
+	ll_pos = pos(ls_type, "-", 1) - 1
+	ls_tran = left(ls_type, ll_pos)
+	ll_code = long(mid(ls_type, ll_pos + 2, li_len))
+	if ls_tran = "SV" then
+		lstr_invdetail.i_module = 1
+		lstr_invdetail.l_invcode = ll_code
+		openwithparm(w_invoicedetail, lstr_invdetail)
+	elseif ls_tran = "SR" or ls_tran = "CSR" or ls_tran = "CRR" then
+		lstr_invdetail.i_module = 2
+		lstr_invdetail.l_invcode = ll_code
+		openwithparm(w_invoicedetail, lstr_invdetail)
+	elseif ls_tran = "PV" then
+		lstr_invdetail.i_module = 3
+		lstr_invdetail.l_invcode = ll_code
+		openwithparm(w_invoicedetail, lstr_invdetail)
+	elseif ls_tran = "PR" then
+		lstr_invdetail.i_module = 4
+		lstr_invdetail.l_invcode = ll_code
+		openwithparm(w_invoicedetail, lstr_invdetail)
+	elseif ls_tran = "IS" or ls_tran = "ISU" then
+		lstr_invdetail.i_module = 5
+		lstr_invdetail.l_invcode = ll_code
+		openwithparm(w_invoicedetail, lstr_invdetail)
+	elseif ls_tran = "RC" or ls_tran = "RCT" then
+		lstr_invdetail.i_module = 6
+		lstr_invdetail.l_invcode = ll_code
+		openwithparm(w_invoicedetail, lstr_invdetail)
+	elseif ls_tran = "AD" or ls_tran = "AI" then
+		lstr_invdetail.i_module = 7
+		lstr_invdetail.l_invcode = ll_code
+		openwithparm(w_invoicedetail, lstr_invdetail)
+	elseif ls_tran = "TR" then
+		lstr_invdetail.i_module = 8
+		lstr_invdetail.l_invcode = ll_code
+		openwithparm(w_invoicedetail, lstr_invdetail)
+	elseif ls_tran = "RS" then
+		lstr_invdetail.i_module = 22
+		lstr_invdetail.l_invcode = ll_code
+		openwithparm(w_invoicedetail, lstr_invdetail)
+	elseif ls_tran = "RR" then
+		lstr_invdetail.i_module = 28
+		lstr_invdetail.l_invcode = ll_code
+		openwithparm(w_invoicedetail, lstr_invdetail)
+	elseif ls_tran = "SP" then
+		lstr_invdetail.i_module = 43
+		lstr_invdetail.l_invcode = ll_code
+		openwithparm(w_invoicedetail, lstr_invdetail)
+	elseif ls_tran = "RP" then
+		lstr_invdetail.i_module = 44
+		lstr_invdetail.l_invcode = ll_code
+		openwithparm(w_invoicedetail, lstr_invdetail)
+	elseif ls_tran = "NP" or ls_tran = "NR" then
+		lstr_invdetail.i_module = 1001
+		lstr_invdetail.l_invcode = ll_code
+		openwithparm(w_invoicedetail, lstr_invdetail)
+	elseif ls_tran = "DS" then
+		lstr_invdetail.i_module = 1002
+		lstr_invdetail.l_invcode = ll_code
+		openwithparm(w_invoicedetail, lstr_invdetail)
+	elseif ls_tran = "DD" then
+		lstr_invdetail.i_module = 1003
+		lstr_invdetail.l_invcode = ll_code
+		openwithparm(w_invoicedetail, lstr_invdetail)
+	else
+		lstr_invdetail.i_module = 45
+		lstr_invdetail.l_invcode = ll_code
+		openwithparm(w_invoicedetail, lstr_invdetail)
+	end if
+	return 0

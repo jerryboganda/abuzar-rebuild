@@ -1,0 +1,166 @@
+// window w_about (abuzarapp)  ancestor: window
+
+// w_about.ue_close(integer ai_close) returns 0
+	closewithreturn(this, ai_close)
+
+// w_about.ue_postopen() returns 0
+	if f_islicenseexpire() = -1 then
+		this.cb_renewlic.visible = true
+	end if
+
+// w_about.open() returns long
+	string ls_regid
+	string ls_appregid
+	string ls_licensekey
+	string ls_startdate
+	string ls_key
+	long ll_iteration
+	long ll_appver
+	long ll_seqid
+	long ll_duration
+	long ll_first
+	long ll_second
+	long ll_rows
+	long ll_cache
+	datetime ldt_startdate
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if gs_isreportserver = "Y" then
+		this.sle_version.textcolor = rgb(255, 0, 0)
+	end if
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	SQL Select Appversion , Sequenceid INTO :this.il_appversion, :this.il_seqid From Sequence USING sqlca;
+	if sqlca.sqlcode <> 0 then
+		messagebox("DataBase Problem", "Unable to fetch information.")
+		post event ue_close(-1)
+	end if
+	SQL Select textcatalog , cache , t.rcount INTO :ls_licensekey, :ll_cache, :ll_rows From systextcatalog , ( Select Max ( textcatalogid ) as id , Count ( textcatalogid ) as rcount From Systextcatalog ) t where systextcatalog.textcatalogid =t.id USING sqlca;
+	if sqlca.sqlcode <> 0 then
+		messagebox("DataBase Problem", "Unable to fetch information.")
+		post event ue_close(-1)
+	end if
+	if f_getlicinfo(sqlca, ls_licensekey, ldt_startdate, ll_duration, this.il_iteration, ll_first, ll_second, ls_key) = 0 then
+		this.is_appversion = gs_regid + "." + string(this.il_appversion) + "." + string(this.il_iteration) + "." + string(this.il_seqid)
+	else
+		post event ue_close(-1)
+	end if
+	this.sle_clientname.text = f_reportheaderinfo("clientname")
+	this.sle_address1.text = f_reportheaderinfo("address1")
+	this.sle_address2.text = f_reportheaderinfo("address2")
+	this.sle_version.text = "Product License ID: " + this.is_appversion
+	this.st_wks.text = gs_localcomputername
+	this.st_server.text = gs_servername
+	this.st_db.text = gs_dbname
+	post event ue_postopen()
+	return ::message.returnvalue
+
+// w_about.create() returns 0
+	this.sle_address2 = create sle_address2
+	this.cb_serverdetails = create cb_serverdetails
+	this.st_6 = create st_6
+	this.st_server1 = create st_server1
+	this.st_wks1 = create st_wks1
+	this.st_db = create st_db
+	this.st_server = create st_server
+	this.st_wks = create st_wks
+	this.shl_mail2 = create shl_mail2
+	this.shl_mail1 = create shl_mail1
+	this.shl_web = create shl_web
+	this.st_7 = create st_7
+	this.st_1 = create st_1
+	this.cb_renewlic = create cb_renewlic
+	this.st_5 = create st_5
+	this.st_4 = create st_4
+	this.st_3 = create st_3
+	this.st_2 = create st_2
+	this.st_line3 = create st_line3
+	this.st_line2 = create st_line2
+	this.st_line1 = create st_line1
+	this.st_software = create st_software
+	this.cb_ok = create cb_ok
+	this.gb_systeminfo = create gb_systeminfo
+	this.sle_clientname = create sle_clientname
+	this.sle_address1 = create sle_address1
+	this.gb_companyinfo = create gb_companyinfo
+	this.sle_version = create sle_version
+	this.gb_licenseinfo = create gb_licenseinfo
+	this.control = {this.sle_address2, this.cb_serverdetails, this.st_6, this.st_server1, this.st_wks1, this.st_db, this.st_server, this.st_wks, this.shl_mail2, this.shl_mail1, this.shl_web, this.st_7, this.st_1, this.cb_renewlic, this.st_5, this.st_4, this.st_3, this.st_2, this.st_line3, this.st_line2, this.st_line1, this.st_software, this.cb_ok, this.gb_systeminfo, this.sle_clientname, this.sle_address1, this.gb_companyinfo, this.sle_version, this.gb_licenseinfo}
+
+// w_about.destroy() returns 0
+	destroy this.sle_address2
+	destroy this.cb_serverdetails
+	destroy this.st_6
+	destroy this.st_server1
+	destroy this.st_wks1
+	destroy this.st_db
+	destroy this.st_server
+	destroy this.st_wks
+	destroy this.shl_mail2
+	destroy this.shl_mail1
+	destroy this.shl_web
+	destroy this.st_7
+	destroy this.st_1
+	destroy this.cb_renewlic
+	destroy this.st_5
+	destroy this.st_4
+	destroy this.st_3
+	destroy this.st_2
+	destroy this.st_line3
+	destroy this.st_line2
+	destroy this.st_line1
+	destroy this.st_software
+	destroy this.cb_ok
+	destroy this.gb_systeminfo
+	destroy this.sle_clientname
+	destroy this.sle_address1
+	destroy this.gb_companyinfo
+	destroy this.sle_version
+	destroy this.gb_licenseinfo
+
+// cb_serverdetails.clicked() returns long
+	string ls_version_info
+	sqlca.dbms_version(ls_version_info)
+	if sqlca.sqlcode = 0 then
+		openwithparm(w_dbmsinfo, ls_version_info)
+	end if
+	return ::message.returnvalue
+
+// shl_mail2.clicked() returns long
+	return ::message.returnvalue
+
+// shl_mail1.clicked() returns long
+	return ::message.returnvalue
+
+// shl_web.clicked() returns long
+	return ::message.returnvalue
+
+// cb_renewlic.clicked() returns long
+	open(w_activation)
+	if message.doubleparm = -1.0 then
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	else
+		parent.post event ue_close(1)
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// cb_ok.clicked() returns long
+	parent.post event ue_close(1)
+	return ::message.returnvalue

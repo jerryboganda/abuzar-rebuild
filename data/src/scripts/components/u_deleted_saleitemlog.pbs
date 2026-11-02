@@ -1,0 +1,63 @@
+// userobject u_deleted_saleitemlog (components)  ancestor: nonvisualobject
+
+// u_deleted_saleitemlog.of_generatelog(datawindow ad_detail, long al_row, long al_saleinvcode, long al_usercode) returns long
+	long ll_detailrows
+	long ll_icode
+	long ll_saleinvcode
+	integer li_gcode
+	integer li_packunits
+	integer li_usercode
+	double ld_qty
+	double ld_bonusqty
+	double ld_saleprice
+	double ld_discperc
+	double ld_itemflatdisc
+	double ld_unitsalestax
+	double ld_gstperc
+	datetime ldt_date
+	string ls_machinename
+	if al_row > 0 and ad_detail.rowcount() > 0 then
+		SQL start USING this.it_transobject;
+		if this.it_transobject.sqlcode = 0 then
+			ll_icode = ad_detail.object.icode[al_row]
+			li_gcode = ad_detail.object.gcode[al_row]
+			li_packunits = ad_detail.object.packunits[al_row]
+			ld_qty = ad_detail.object.looseqty[al_row]
+			ld_bonusqty = ad_detail.object.bonusqty[al_row]
+			ld_saleprice = ad_detail.object.saleprice[al_row]
+			ld_discperc = ad_detail.object.discperc[al_row]
+			ld_itemflatdisc = ad_detail.object.itemflatdisc[al_row]
+			ld_unitsalestax = ad_detail.object.unitsalestax[al_row]
+			ld_gstperc = ad_detail.object.gstperc[al_row]
+			setnull(ldt_date)
+			ls_machinename = gs_localcomputername
+			li_usercode = al_usercode
+			ll_saleinvcode = al_saleinvcode
+			if ll_icode > 0 then
+				this.it_transobject.preserve_deletedsaleitemslog(ll_icode, li_gcode, li_packunits, ld_qty, ld_bonusqty, ld_saleprice, ld_discperc, ld_itemflatdisc, ld_unitsalestax, ld_gstperc, ldt_date, ls_machinename, li_usercode, ll_saleinvcode)
+				if this.it_transobject.sqlcode = 0 then
+					SQL commit USING this.it_transobject;
+				else
+					messagebox("Log Generation Problem", "Unable To Generate deleted sale item log~r~ndetails are:-~r~n" + this.it_transobject.sqlerrtext, stopsign!)
+					SQL rollback USING this.it_transobject;
+				end if
+			end if
+		else
+			messagebox("Connection Problem", "Unable To Connect to database", stopsign!)
+			return -1
+		end if
+		SQL stop USING this.it_transobject;
+	end if
+	return 0
+
+// u_deleted_saleitemlog.create() returns 0
+	call super::create
+	triggerevent("constructor")
+
+// u_deleted_saleitemlog.destroy() returns 0
+	triggerevent("destructor")
+	call super::destroy
+
+// u_deleted_saleitemlog.constructor() returns long
+	this.it_transobject = create u_transaction
+	return ::message.returnvalue

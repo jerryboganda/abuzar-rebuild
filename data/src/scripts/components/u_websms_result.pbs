@@ -1,0 +1,41 @@
+// userobject u_websms_result (components)  ancestor: internetresult
+
+// u_websms_result.internetdata(blob data) returns integer
+	string ls_success_token
+	string ls_data
+	string ls_method
+	ls_success_token = "sms sent successfully"
+	ls_data = string(data, encodingansi!)
+	this.is_data = ls_data
+	ls_method = f_stringpreferences("WebSMSProvider")
+	if ls_method = "B" then
+		ls_success_token = "sms sent successfully"
+	elseif ls_method = "J" then
+		ls_success_token = "Message Sent Successfully!"
+	elseif ls_method = "D" then
+		ls_success_token = "<code>100</code><type>success</type>"
+	elseif ls_method = "I" then
+		ls_success_token = "SMS Sent Successfully."
+	elseif ls_method = "O" then
+		ls_success_token = "<type>Success</type>"
+	elseif ls_method = "P" then
+		ls_success_token = "Sent Successfully"
+	else
+		ls_success_token = "sms sent successfully"
+	end if
+	if match(ls_data, ls_success_token) then
+		this.is_msg = ls_success_token
+		this.il_retcode = 1
+		return this.il_retcode
+	end if
+	this.is_msg = "sms not sent successfully"
+	this.il_retcode = -1
+	return this.il_retcode
+
+// u_websms_result.create() returns 0
+	call super::create
+	triggerevent("constructor")
+
+// u_websms_result.destroy() returns 0
+	triggerevent("destructor")
+	call super::destroy

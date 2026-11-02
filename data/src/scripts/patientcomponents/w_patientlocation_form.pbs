@@ -1,0 +1,78 @@
+// window w_patientlocation_form (patientcomponents)  ancestor: w_single_entry
+
+// w_patientlocation_form.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM Ward WHERE Ward.name =:as_name USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_patientlocation_form.create() returns 0
+	call super::create
+
+// w_patientlocation_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_patientlocation_form.activate() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::activate()
+	this.windowstate = maximized!
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_patientlocation_form.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.is_tablename = "PatientLocation"
+	return ::message.returnvalue
+
+// w_patientlocation_form.ue_save() returns 0
+	long ll_primarykey
+	long ll_row
+	long ll_code
+	long ll_wardcode
+	long ll_retcode
+	string ls_name
+	setpointer(hourglass!)
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	ll_row = this.id_detail.getrow()
+	ll_primarykey = this.id_detail.object.code[this.id_detail.getrow()]
+	ls_name = this.id_detail.object.name[ll_row]
+	ll_wardcode = this.id_detail.object.wardcode[ll_row]
+	if isnull(ll_primarykey) then
+		SQL SELECT COUNT ( *) INTO :ll_retcode FROM PATIENTLOCATION WHERE PATIENTLOCATION.WardCode =:ll_wardcode AND PATIENTLOCATION.Name =:ls_name USING sqlca;
+	else
+		SQL SELECT COUNT ( *) INTO :ll_retcode FROM PATIENTLOCATION WHERE PATIENTLOCATION.LocationCode <> :ll_primarykey AND PATIENTLOCATION.WardCode =:ll_wardcode AND PATIENTLOCATION.Name =:ls_name USING sqlca;
+	end if
+	if ll_retcode <> 0 then
+		messagebox("Problem Saving", "Location is already defined for this ward.")
+		this.id_detail.setfocus()
+		this.id_detail.setcolumn("name")
+		return
+	end if
+	if isnull(ll_primarykey) then
+		ll_primarykey = 0
+		f_newtableid(this.is_tablename, ll_primarykey)
+		this.id_detail.setitem(ll_row, "code", ll_primarykey)
+	end if
+	if this.id_detail.update() > 0 then
+		SQL commit USING sqlca;
+		messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+		this.ib_commitok = true
+		this.im_menu.m_file.m_new.enabled = true
+		this.editflag = false
+	else
+		SQL rollback USING sqlca;
+		setpointer(arrow!)
+		messagebox("Save Changes", "Changes Rollback in database, ~n~rSome database problem occurs", exclamation!, ok!, 1)
+		return
+	end if
+	setpointer(arrow!)

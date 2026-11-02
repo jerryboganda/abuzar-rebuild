@@ -1,0 +1,22 @@
+// function f_duplicateicodegcode (functions)  ancestor: function_object
+
+// f_duplicateicodegcode.f_duplicateicodegcode(datawindow ad_dwcontrol, string as_colname1, string as_icode, string as_colname2, string as_gcode, integer al_row) returns boolean
+	long rt_code
+	long ll_currow
+	boolean yesno
+	if ad_dwcontrol.rowcount() > 1 then
+		if al_row > 1 then
+			rt_code = ad_dwcontrol.find(as_colname1 + " = Integer('" + as_icode + "')" + "and" + as_colname2 + " = Integer('" + as_gcode + "')", al_row - 1, 0)
+		end if
+		if rt_code = 0 then
+			if al_row <> ad_dwcontrol.rowcount() then
+				rt_code = ad_dwcontrol.find(as_colname1 + "=Integer(~"" + as_icode + "~")" + "and" + as_colname2 + "=Integer(~"" + as_gcode + "~")", al_row + 1, ad_dwcontrol.rowcount())
+			end if
+			if rt_code <> 0 then
+				yesno = true
+			end if
+		else
+			yesno = true
+		end if
+	end if
+	return yesno

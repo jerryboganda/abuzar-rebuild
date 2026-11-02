@@ -1,0 +1,70 @@
+// window w_select_manf_cat_class_packing_combined (reportformat)  ancestor: window
+
+// w_select_manf_cat_class_packing_combined.create() returns 0
+	this.rb_compound = create rb_compound
+	this.rb_packingwise = create rb_packingwise
+	this.rb_classwise = create rb_classwise
+	this.rb_categorywise = create rb_categorywise
+	this.rb_manufacturerwise = create rb_manufacturerwise
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.gb_commandgroupbox = create gb_commandgroupbox
+	this.gb_stockreporttype = create gb_stockreporttype
+	this.control = {this.rb_compound, this.rb_packingwise, this.rb_classwise, this.rb_categorywise, this.rb_manufacturerwise, this.cb_cancel, this.cb_ok, this.gb_commandgroupbox, this.gb_stockreporttype}
+
+// w_select_manf_cat_class_packing_combined.destroy() returns 0
+	destroy this.rb_compound
+	destroy this.rb_packingwise
+	destroy this.rb_classwise
+	destroy this.rb_categorywise
+	destroy this.rb_manufacturerwise
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.gb_commandgroupbox
+	destroy this.gb_stockreporttype
+
+// w_select_manf_cat_class_packing_combined.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	return ::message.returnvalue
+
+// w_select_manf_cat_class_packing_combined.close() returns long
+	closewithreturn(this, this.is_selectedreport)
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.is_selectedreport = ""
+	close(parent)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	if parent.rb_manufacturerwise.checked = true then
+		parent.is_selectedreport = "M"
+	elseif parent.rb_categorywise.checked = true then
+		parent.is_selectedreport = "C"
+	elseif parent.rb_classwise.checked = true then
+		parent.is_selectedreport = "L"
+	elseif parent.rb_packingwise.checked = true then
+		parent.is_selectedreport = "P"
+	elseif parent.rb_compound.checked = true then
+		parent.is_selectedreport = "O"
+	end if
+	close(parent)
+	return ::message.returnvalue

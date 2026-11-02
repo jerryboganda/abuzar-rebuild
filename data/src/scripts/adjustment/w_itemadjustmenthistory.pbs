@@ -1,0 +1,46 @@
+// window w_itemadjustmenthistory (adjustment)  ancestor: window
+
+// w_itemadjustmenthistory.create() returns 0
+	this.dw_control = create dw_control
+	this.control = {this.dw_control}
+
+// w_itemadjustmenthistory.destroy() returns 0
+	destroy this.dw_control
+
+// w_itemadjustmenthistory.open() returns long
+	s_itempurchasehistory ls_itempurchasehistory
+	long ll_width
+	long ll_height
+	long ll_found
+	environment env
+	ls_itempurchasehistory = message.powerobjectparm
+	if getenvironment(env) <> 1 then
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.width = ll_width * 0.98
+	this.height = ll_height * 0.80
+	this.y = int((ll_height - this.height) / 2.0)
+	this.dw_control.width = this.width - this.width * 0.02
+	this.dw_control.height = this.height - this.height * 0.05
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.retrieve(ls_itempurchasehistory.ar_icode, ls_itempurchasehistory.ar_date)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_itemadjustmenthistory.close() returns long
+	close(this)
+	return ::message.returnvalue
+
+// w_itemadjustmenthistory.key(keycode key, unsignedlong keyflags) returns long
+	if keydown(keyescape!) then
+		close(this)
+	end if
+	return ::message.returnvalue

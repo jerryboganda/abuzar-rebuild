@@ -1,0 +1,41 @@
+// window w_doctor_form (singleentry)  ancestor: w_single_entry
+
+// w_doctor_form.ue_newform() returns 0
+	call super::ue_newform
+
+// w_doctor_form.create() returns 0
+	call super::create
+
+// w_doctor_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_doctor_form.activate() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::activate()
+	this.windowstate = maximized!
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_doctor_form.ue_save() returns 0
+	call super::ue_save
+
+// w_doctor_form.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.is_tablename = "doctors"
+	return ::message.returnvalue
+
+// w_doctor_form.ue_postopen() returns 0
+	long ll_counter
+	datawindowchild ldc_headerno
+	call super::ue_postopen
+	this.id_detail.getchild("headerno", ldc_headerno)
+	for ll_counter = 1 to gds_reoprtheaderinfo.rowcount()
+		ldc_headerno.insertrow(0)
+		ldc_headerno.setitem(ll_counter, "code", gds_reoprtheaderinfo.object.headerno[ll_counter])
+		ldc_headerno.setitem(ll_counter, "name", gds_reoprtheaderinfo.object.clientname[ll_counter])
+		ldc_headerno.setitem(ll_counter, "headeralias", gds_reoprtheaderinfo.object.remarks[ll_counter])
+	next

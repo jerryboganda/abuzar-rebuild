@@ -1,0 +1,167 @@
+// window w_manuf_update (singleentryitem)  ancestor: window
+
+// w_manuf_update.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	return ::message.returnvalue
+
+// w_manuf_update.ue_close() returns 0
+	wf_disconnect()
+	close(this)
+
+// w_manuf_update.wf_disconnect() returns 0
+	SQL stop USING this.it_transobject;
+	destroy this.it_transobject
+
+// w_manuf_update.wf_connect() returns integer
+	this.it_transobject = create u_transaction
+	SQL start USING this.it_transobject;
+	return this.it_transobject.sqlcode
+
+// w_manuf_update.wf_duplicatealiasname(string as_aliasname, long al_code) returns boolean
+	long ll_count
+	long ll_icode
+	long ll_row
+	boolean b_flag
+	as_aliasname = trim(as_aliasname)
+	SQL SELECT count ( *) INTO :ll_count FROM manufacturer WHERE manufacturer.aliasname =:as_aliasname and manufacturer.manfcode <> :al_code USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_manuf_update.wf_duplicatename(string as_name, long al_code) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM manufacturer WHERE manufacturer.name =:as_name and manufacturer.manfcode <> :al_code USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_manuf_update.create() returns 0
+	this.dw_master = create dw_master
+	this.control = {this.dw_master}
+
+// w_manuf_update.destroy() returns 0
+	destroy this.dw_master
+
+// w_manuf_update.open() returns long
+	long ll_rtcode
+	long ll_code
+	long ll_counter
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	setredraw(false)
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width
+		ll_height = ll_win_height
+		this.width = ll_width * 0.99
+		this.height = ll_height * 0.90
+		this.dw_master.width = ll_width * 0.98
+		this.dw_master.height = this.height * 0.95
+		this.dw_master.x = 0
+		this.dw_master.y = 0
+	end if
+	wf_connect()
+	this.dw_master.settransobject(this.it_transobject)
+	ll_rtcode = this.dw_master.retrieve()
+	setredraw(true)
+	return ::message.returnvalue
+
+// dw_master.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	return ::message.returnvalue
+
+// dw_master.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	integer li_icode
+	integer li_retcode
+	integer li_selected
+	long ll_qty
+	double ld_price
+	double ld_discperc
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "aliasname"
+		if parent.wf_duplicatealiasname(data, this.object.code[row]) then
+			messagebox("AliasName Validation", "AliasName Duplication Error~r~nPlease enter some other AliasName")
+			li_retcode = 1
+		end if
+	case "name"
+		if parent.wf_duplicatename(data, this.object.code[row]) then
+			messagebox("Name Validation", "Name Duplication Error~r~nPlease enter some other Name")
+			li_retcode = 1
+		end if
+	end choose
+	if li_retcode = 0 then
+		parent.ib_editflag = true
+	end if
+	return li_retcode
+
+// dw_master.itemerror(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	string ls_errormessage
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	ls_errormessage = "Please enter valid value "
+	choose case dwo.name
+	case "aliasname"
+		ls_errormessage = ls_errormessage + " for Alias Name"
+	case "name"
+		ls_errormessage = ls_errormessage + " for Name"
+	end choose
+	ls_errormessage = ls_errormessage + " in row number " + string(row)
+	messagebox("Manufacturer Validation", ls_errormessage)
+	return 1
+
+// dw_master.rowfocuschanging(long currentrow, long newrow) returns long
+	long ancestorreturnvalue
+	long li_rtcode
+	ancestorreturnvalue = super::rowfocuschanging(currentrow, newrow)
+	if parent.ib_editflag then
+		SQL rollback USING parent.it_transobject;
+		if update(true, true) > 0 then
+			SQL commit USING parent.it_transobject;
+			parent.ib_editflag = false
+		else
+			SQL rollback USING parent.it_transobject;
+			li_rtcode = 1
+		end if
+	end if
+	return li_rtcode
+
+// dw_master.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	integer li_movement
+	long ll_row
+	long ll_temp
+	string sl_columnname
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keypagedown! then
+		ll_row = parent.dw_master.scrollnextpage()
+	elseif key = keypageup! then
+		ll_row = parent.dw_master.scrollpriorpage()
+	elseif key = keyescape! then
+		if parent.ib_editflag then
+			SQL rollback USING parent.it_transobject;
+			if update(true, true) > 0 then
+				SQL commit USING parent.it_transobject;
+				parent.ib_editflag = false
+			else
+				SQL rollback USING parent.it_transobject;
+			end if
+		end if
+		parent.post event ue_close()
+	elseif key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+		return 1
+	end if
+	if ll_row > 0 and ll_row <= rowcount() then
+		parent.il_selectedrow = ll_row
+	end if
+	return ::message.returnvalue

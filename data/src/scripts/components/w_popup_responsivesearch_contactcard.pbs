@@ -1,0 +1,220 @@
+// window w_popup_responsivesearch_contactcard (components)  ancestor: window
+
+// w_popup_responsivesearch_contactcard.ue_close(integer ai_status) returns 0
+	this.is_popup_selection.l_code = ai_status
+	if this.dw_data.rowcount() > 0 then
+		this.is_popup_selection.l_code2 = this.dw_data.getitemnumber(this.dw_data.getrow(), "code")
+		this.is_popup_selection.s_name = this.dw_data.getitemstring(this.dw_data.getrow(), "name")
+	else
+		this.is_popup_selection.l_code2 = 0
+	end if
+	this.dw_data.setfilter("")
+	this.dw_data.filter()
+	closewithreturn(this, this.is_popup_selection)
+
+// w_popup_responsivesearch_contactcard.wf_set_column_visibility() returns long
+	return 0
+
+// w_popup_responsivesearch_contactcard.create() returns 0
+	this.dw_search = create dw_search
+	this.dw_data = create dw_data
+	this.control = {this.dw_search, this.dw_data}
+
+// w_popup_responsivesearch_contactcard.destroy() returns 0
+	destroy this.dw_search
+	destroy this.dw_data
+
+// w_popup_responsivesearch_contactcard.open() returns long
+	long ll_rtcode
+	long ll_code
+	string ls_filter
+	s_datastore lstr_ds
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	lstr_ds = message.powerobjectparm
+	this.is_dw = lstr_ds.s_name1
+	this.is_column = lstr_ds.s_name2
+	lstr_ds.s_name5 = trim(lstr_ds.s_name5)
+	setredraw(false)
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width
+		ll_height = ll_win_height
+		this.width = ll_width * 0.99
+		this.height = ll_height * 0.95
+		this.dw_data.width = ll_width * 0.98
+		this.dw_search.width = ll_width * 0.98
+		this.dw_data.height = (this.height - this.dw_search.height - 20) * 0.85
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	this.dw_search.settransobject(sqlca)
+	this.dw_search.insertrow(0)
+	if this.dw_search.rowcount() > 0 and len(lstr_ds.s_name5) > 0 then
+		this.dw_search.object.searchtext[this.dw_search.rowcount()] = trim(lstr_ds.s_name5)
+	end if
+	this.dw_data.dataobject = this.is_dw
+	this.dw_data.settransobject(sqlca)
+	this.dw_data.retrieve()
+	wf_set_column_visibility()
+	ll_rtcode = this.dw_data.rowcount()
+	this.dw_data.setfocus()
+	this.dw_data.setcolumn(1)
+	if ll_rtcode > 0 then
+		this.dw_data.selectrow(1, true)
+		this.dw_data.setrow(1)
+		this.dw_data.scrolltorow(1)
+	end if
+	this.dw_data.setsort(this.is_column)
+	this.dw_data.sort()
+	this.dw_search.setfocus()
+	this.dw_search.setcolumn(1)
+	this.dw_search.accepttext()
+	if lstr_ds.s_name5 = "" or isnull(lstr_ds.s_name5) then
+		ls_filter = ""
+	else
+		ls_filter = ls_filter + "match(lower(" + this.is_column + "), '" + lower(lstr_ds.s_name5) + "')"
+	end if
+	this.dw_data.setfilter(ls_filter)
+	this.dw_data.filter()
+	this.dw_data.retrieve()
+	setredraw(true)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// dw_search.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	integer rt_code
+	long ll_rowm
+	integer li_movement
+	long ll_row
+	long ll_temp
+	string sl_columnname
+	string ls_rightid
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	setredraw(false)
+	ll_rowm = getrow()
+	if key = keyf12! or key = keyenter! then
+		parent.post event ue_close(1)
+		return rt_code
+	elseif key = keyescape! then
+		parent.post event ue_close(0)
+		return rt_code
+	else
+		if key = keyuparrow! then
+			ll_row = parent.dw_data.getrow() - 1
+			parent.dw_data.scrollpriorrow()
+		elseif key = keydownarrow! then
+			ll_row = parent.dw_data.getrow() + 1
+			parent.dw_data.scrollnextrow()
+		elseif key = keypagedown! then
+			parent.dw_data.scrollnextpage()
+			ll_row = parent.dw_data.getrow()
+		elseif key = keypageup! then
+			parent.dw_data.scrollpriorpage()
+			ll_row = parent.dw_data.getrow()
+		elseif key = keyhome! then
+			scrolltorow(1)
+			ll_row = 1
+			parent.dw_data.setrow(ll_row)
+		elseif key = keyend! then
+			ll_row = parent.dw_data.rowcount()
+			scrolltorow(ll_row)
+		elseif key = keyenter! and parent.dw_data.getselectedrow(0) > 0 then
+			return ::message.returnvalue
+		end if
+		if ll_row > 0 and ll_row <= parent.dw_data.rowcount() then
+			parent.dw_data.setredraw(false)
+			parent.dw_data.selectrow(0, false)
+			parent.dw_data.selectrow(ll_row, true)
+			parent.il_selectedrow = ll_row
+			selecttext(1, len(gettext()))
+			parent.dw_data.setredraw(true)
+		end if
+	end if
+	setredraw(true)
+	return ::message.returnvalue
+
+// dw_search.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_search.editchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	string ls_filter
+	ancestorreturnvalue = super::editchanged(row, dwo, data)
+	if data = "" or isnull(data) then
+		ls_filter = ""
+	else
+		ls_filter = ls_filter + "match(lower(" + parent.is_column + "), '" + lower(data) + "')"
+	end if
+	parent.dw_data.setfilter(ls_filter)
+	parent.dw_data.filter()
+	return ::message.returnvalue
+
+// dw_search.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_data.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	parent.dw_search.setfocus()
+	return ::message.returnvalue
+
+// dw_data.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	string s_str
+	string s_t
+	integer i_len
+	s_str = string(dwo.name)
+	s_t = right(s_str, 2)
+	if s_t = "_t" then
+		i_len = len(s_str)
+		s_str = left(s_str, i_len - 2)
+		if this.s_previous <> s_str then
+			this.b_flag = true
+		end if
+		if this.b_flag = true then
+			parent.is_sortorder = " A"
+			setsort(s_str + parent.is_sortorder)
+			sort()
+			this.b_flag = false
+		else
+			parent.is_sortorder = " D"
+			setsort(s_str + parent.is_sortorder)
+			sort()
+			this.b_flag = true
+		end if
+	end if
+	this.s_previous = s_str
+	if row > 0 then
+		selectrow(0, false)
+		selectrow(row, true)
+		parent.dw_search.selecttext(1, len(parent.dw_search.gettext()))
+	end if
+	parent.dw_search.setfocus()
+	return ::message.returnvalue
+
+// dw_data.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::doubleclicked(xpos, ypos, row, dwo)
+	parent.post event ue_close(1)
+	return ::message.returnvalue

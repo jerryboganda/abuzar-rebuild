@@ -1,0 +1,42 @@
+// window w_arg_decimal_val (reports)  ancestor: window
+
+// w_arg_decimal_val.create() returns 0
+	this.st_val = create st_val
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.em_val = create em_val
+	this.control = {this.st_val, this.cb_cancel, this.cb_ok, this.em_val}
+
+// w_arg_decimal_val.destroy() returns 0
+	destroy this.st_val
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.em_val
+
+// w_arg_decimal_val.open() returns long
+	this.st_val.text = message.stringparm
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// cb_cancel.clicked() returns long
+	closewithreturn(parent, -1)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	double ld_val
+	parent.em_val.getdata(ld_val)
+	if ld_val < 0.0 or ld_val > 100.0 then
+		messagebox("Validation", message.stringparm + " Should be within range [0-100]")
+		parent.em_val.setfocus()
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	closewithreturn(parent, ld_val)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue

@@ -1,0 +1,48 @@
+// window w_saleordercategory_form (saleorder)  ancestor: w_single_entry
+
+// w_saleordercategory_form.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM SaleOrderCategory WHERE SaleOrderCategory.name =:as_name USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_saleordercategory_form.wf_duplicate_shortname(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM SaleOrderCategory WHERE SaleOrderCategory.shortname =:as_name USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_saleordercategory_form.create() returns 0
+	call super::create
+
+// w_saleordercategory_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_saleordercategory_form.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.is_tablename = "SaleOrderCategory"
+	return ::message.returnvalue
+
+// w_saleordercategory_form.ue_detail() returns 0
+	integer li_protect
+	call super::ue_detail
+	if this.id_detail.object.posted[this.id_detail.rowcount()] = "Y" then
+		this.im_menu.m_file.m_save.enabled = false
+		li_protect = 1
+	else
+		this.im_menu.m_file.m_save.enabled = true
+		li_protect = 0
+	end if
+	wf_protectdw(this.id_detail, li_protect)

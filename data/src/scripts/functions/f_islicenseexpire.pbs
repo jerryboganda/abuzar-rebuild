@@ -1,0 +1,115 @@
+// function f_islicenseexpire (functions)  ancestor: function_object
+
+// f_islicenseexpire.f_islicenseexpire() returns integer
+	datetime ldt_current_serverdate
+	datetime ldt_licenseexpiredate
+	datetime ldt_lastaccessdate
+	long ll_additionaldays
+	long ll_daysleft
+	long ll_invoicecounter
+	long ll_invoicelimit
+	long ll_additionalinvoices
+	long ll_rows
+	long ll_duration
+	long ll_iteration
+	long ll_first
+	long ll_second
+	integer li_retcode
+	integer li_status
+	string ls_date
+	string ls_licensekey
+	string ls_key
+	date ld_coushindate
+	ll_additionaldays = gl_additionaldays
+	ll_additionalinvoices = gl_additionalinvoices
+	SQL Select textcatalog , Convert ( DateTime , cataloglength ) , textlength , status , t.rcount INTO :ls_licensekey, :ldt_lastaccessdate, :ll_invoicelimit, :li_status, :ll_rows From systextcatalog , ( Select Max ( textcatalogid ) as id , Count ( textcatalogid ) as rcount From Systextcatalog ) t where systextcatalog.textcatalogid =t.id USING sqlca;
+	if sqlca.sqlcode = -1 then
+		return -2
+	end if
+	if isnull(ll_rows) or ll_rows <= 0 then
+		return -2
+	end if
+	if f_getlicinfo(sqlca, ls_licensekey, ldt_licenseexpiredate, ll_duration, ll_iteration, ll_first, ll_second, ls_key) <> 0 then
+		return -2
+	end if
+	if ll_duration > 12 or ll_duration <= 0 then
+		li_status = 1
+		SQL update SysTextCatalog Set status =:li_status USING sqlca;
+		if sqlca.sqlcode = 0 then
+			SQL commit USING sqlca;
+		else
+			SQL rollback USING sqlca;
+		end if
+		messagebox("License Expire", "Your application license has expired.~r~n" + "Kindly renew your application license.")
+		return -2
+	end if
+	if ll_rows <> ll_iteration then
+		messagebox("License Validation", "Inconsistent License Information.")
+		return -2
+	end if
+	sqlca.getdatetime(ldt_current_serverdate)
+	if sqlca.sqlcode <> 0 then
+		return -2
+	end if
+	SQL Select Max ( SaleInvcode ) INTO :ll_invoicecounter From SaleLedger USING sqlca;
+	if sqlca.sqlcode = 0 then
+		if li_status = 1 then
+			messagebox("License Expire", "Your application license has expired.~r~n" + "Kindly renew your application license.")
+			return -2
+		end if
+		ls_date = string(ldt_current_serverdate, "mm/dd/yy")
+		if date(ldt_current_serverdate) >= date(ldt_lastaccessdate) then
+			SQL rollback USING sqlca;
+			SQL update systextcatalog Set cataloglength =Convert ( Int , Convert ( DateTime , :ls_date ) ) USING sqlca;
+			if sqlca.sqlcode = 0 then
+				SQL commit USING sqlca;
+				ldt_lastaccessdate = ldt_current_serverdate
+				ld_coushindate = relativedate(date(ldt_licenseexpiredate), -1 * ll_additionaldays)
+				ll_daysleft = daysafter(ld_coushindate, date(ldt_current_serverdate))
+				if ll_daysleft > 0 and ll_daysleft <= ll_additionaldays then
+					messagebox("License Expire", "Your application license expires within some days~r~n" + "Kindly renew your application license.")
+					li_retcode = -1
+				end if
+				if date(ldt_lastaccessdate) >= date(ldt_licenseexpiredate) then
+					li_retcode = -2
+					li_status = 1
+					SQL update SysTextCatalog Set status =:li_status USING sqlca;
+					if sqlca.sqlcode = 0 then
+						SQL commit USING sqlca;
+					else
+						SQL rollback USING sqlca;
+					end if
+					messagebox("License Expire", "Your application license has expired.~r~n" + "Kindly renew your application license.")
+				elseif daysafter(date(ldt_lastaccessdate), date(ldt_licenseexpiredate)) > 375 then
+					li_retcode = -2
+					li_status = 1
+					SQL update SysTextCatalog Set status =:li_status USING sqlca;
+					if sqlca.sqlcode = 0 then
+						SQL commit USING sqlca;
+					else
+						SQL rollback USING sqlca;
+					end if
+					messagebox("License Expire", "Your application license has expired...~r~n" + "Kindly renew your application license.")
+				end if
+			else
+				SQL rollback USING sqlca;
+				li_retcode = -1
+			end if
+		elseif ll_invoicecounter >= ll_invoicelimit then
+			li_retcode = 0
+			if ll_invoicecounter >= ll_invoicelimit + ll_additionalinvoices then
+				li_retcode = -2
+				li_status = 1
+				SQL update SysTextCatalog Set status =:li_status USING sqlca;
+				if sqlca.sqlcode = 0 then
+					SQL commit USING sqlca;
+				else
+					SQL rollback USING sqlca;
+				end if
+				messagebox("License Expire", "Your application license has expired.~r~n" + "Kindly renew your application license.")
+			else
+				messagebox("License Expire", "Your application license is about to expire within some time~r~n" + "Kindly renew your application license.")
+			end if
+		end if
+	end if
+	return li_retcode

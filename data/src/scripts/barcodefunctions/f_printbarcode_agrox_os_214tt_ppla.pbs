@@ -1,0 +1,399 @@
+// function f_printbarcode_agrox_os_214tt_ppla (barcodefunctions)  ancestor: function_object
+
+// f_printbarcode_agrox_os_214tt_ppla.f_printbarcode_agrox_os_214tt_ppla(datawindow id_master, datawindow id_detail, boolean ib_printprice) returns long
+	long ll_totalrows
+	long ll_counter
+	long ll_innercounter
+	long ll_qty
+	long ll_currrow
+	long ll_tot_label_rows
+	integer li_startcell
+	integer li_stopcell
+	integer li_temp
+	integer li_file
+	string ls_clientname
+	string ls_clientname_25_char
+	string ls_itemname
+	string ls_aliasname
+	string ls_price
+	string ls_filecontent
+	string ls_seperator
+	string ls_date
+	string ls_format
+	string ls_xpos
+	string ls_infocode
+	string ls_printer
+	string ls_manufshortname
+	string ls_design
+	string ls_purprice
+	string ls_supp_alias
+	string ls_qty
+	long ll_headerno
+	long ll_labelno
+	long ll_labelpos
+	long ll_supply_cols_per_row
+	integer li_barcodeleninprint
+	ls_seperator = ";"
+	ls_supp_alias = id_master.object.aliasname[id_master.getrow()]
+	ll_headerno = id_master.getitemnumber(id_master.getrow(), "headerno")
+	ls_clientname = trim(f_reportheaderinfo_wrt_headerno("clientname", ll_headerno))
+	ls_clientname_25_char = upper(left(trim(f_reportheaderinfo_wrt_headerno("clientname", ll_headerno)), 25))
+	li_barcodeleninprint = f_numberpreferences("BarCodeLenInPrint")
+	ll_totalrows = id_detail.rowcount()
+	ls_printer = trim(id_master.object.barcodeprinter[1])
+	if ls_printer = "Argox OS-214TT PPLA" and ll_totalrows > 0 then
+		ls_format = id_master.object.labelformat[1]
+		if ls_format = "1" then
+			ll_counter = 1
+			li_file = fileopen("label.prn", linemode!, write!, lockwrite!, replace!)
+			if li_file = -1 then
+				messagebox("Error", "Unable to locate file for Label printing")
+			else
+				ll_labelno = 1
+				for ll_counter = 1 to ll_totalrows
+					if id_detail.getitemnumber(ll_counter, "qty") > 0.0 then
+						ll_qty = id_detail.getitemnumber(ll_counter, "qty")
+						ls_itemname = left(trim(id_detail.getitemstring(ll_counter, "itemname")), 28)
+						ls_aliasname = left(trim(id_detail.getitemstring(ll_counter, "fullcode")), li_barcodeleninprint)
+						if ib_printprice then
+							ls_price = "Rs: " + trim(string(round(id_detail.getitemdecimal(ll_counter, "saleprice"), 2), "##,###,###.#0"))
+						else
+							ls_price = ""
+						end if
+						ls_date = string(today(), "dd/mm")
+						filewrite(li_file, "c0000")
+						filewrite(li_file, "KI503")
+						filewrite(li_file, "O0220")
+						filewrite(li_file, "f220")
+						filewrite(li_file, "KW0090")
+						filewrite(li_file, "KI7")
+						filewrite(li_file, "V0")
+						filewrite(li_file, "L")
+						filewrite(li_file, "H12")
+						filewrite(li_file, "PC")
+						filewrite(li_file, "A2")
+						filewrite(li_file, "D11")
+						ls_filecontent = "192100100450007" + ls_clientname
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "1E1102300120012A" + ls_aliasname
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "101100000070007" + ls_itemname
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "103100000020007" + ls_price
+						filewrite(li_file, ls_filecontent)
+						ls_qty = trim(string(ll_qty))
+						if len(ls_qty) < 2 then
+							ls_qty = fill("0", 2 - len(ls_qty)) + ls_qty
+						end if
+						ls_filecontent = "^" + ls_qty
+						filewrite(li_file, ls_filecontent)
+						if len(ls_qty) < 4 then
+							ls_qty = fill("0", 4 - len(ls_qty)) + ls_qty
+						end if
+						ls_filecontent = "Q" + ls_qty
+						filewrite(li_file, ls_filecontent)
+						filewrite(li_file, "E")
+					end if
+				next
+				fileclose(li_file)
+				run("..\BarcodePrint\BP.bat", normal!)
+			end if
+		elseif ls_format = "2" then
+			ll_counter = 1
+			li_file = fileopen("label.prn", linemode!, write!, lockwrite!, replace!)
+			if li_file = -1 then
+				messagebox("Error", "Unable to locate file for Label printing")
+			else
+				ll_supply_cols_per_row = 3
+				ll_labelno = 1
+				for ll_counter = 1 to ll_totalrows
+					if id_detail.getitemnumber(ll_counter, "qty") > 0.0 then
+						ll_qty = id_detail.getitemnumber(ll_counter, "qty")
+						ls_itemname = left(trim(id_detail.getitemstring(ll_counter, "itemname")), 34)
+						ls_aliasname = left(trim(id_detail.getitemstring(ll_counter, "fullcode")), li_barcodeleninprint)
+						if ib_printprice then
+							ls_price = "Rs: " + trim(string(round(id_detail.getitemdecimal(ll_counter, "saleprice"), 2), "##,###,###.#0"))
+						else
+							ls_price = ""
+						end if
+						ls_date = string(today(), "dd/mm")
+						for ll_innercounter = 1 to ll_qty
+							ll_labelpos = ll_labelno mod ll_supply_cols_per_row
+							if ll_labelpos = 1 then
+								filewrite(li_file, "c0000")
+								filewrite(li_file, "KI503")
+								filewrite(li_file, "O0220")
+								filewrite(li_file, "f220")
+								filewrite(li_file, "KW0354")
+								filewrite(li_file, "KI7")
+								filewrite(li_file, "V0")
+								filewrite(li_file, "L")
+								filewrite(li_file, "H12")
+								filewrite(li_file, "PC")
+								filewrite(li_file, "A2")
+								filewrite(li_file, "D11")
+							end if
+							if ll_labelpos = 1 then
+								ls_filecontent = "113200000550011" + ls_clientname
+								filewrite(li_file, ls_filecontent)
+								ls_filecontent = "1E2202300200009A" + ls_aliasname
+								filewrite(li_file, ls_filecontent)
+								ls_filecontent = "101200000110007" + ls_itemname
+								filewrite(li_file, ls_filecontent)
+								ls_filecontent = "103200000010012" + ls_price
+								filewrite(li_file, ls_filecontent)
+							elseif ll_labelpos = 2 then
+								ls_filecontent = "113200000550133" + ls_clientname
+								filewrite(li_file, ls_filecontent)
+								ls_filecontent = "1E2202300200131A" + ls_aliasname
+								filewrite(li_file, ls_filecontent)
+								ls_filecontent = "101200000110129" + ls_itemname
+								filewrite(li_file, ls_filecontent)
+								ls_filecontent = "103200000010134" + ls_price
+								filewrite(li_file, ls_filecontent)
+							elseif ll_labelpos = 0 then
+								ls_filecontent = "113200000550255" + ls_clientname
+								filewrite(li_file, ls_filecontent)
+								ls_filecontent = "1E2202300200253A" + ls_aliasname
+								filewrite(li_file, ls_filecontent)
+								ls_filecontent = "101200000110251" + ls_itemname
+								filewrite(li_file, ls_filecontent)
+								ls_filecontent = "103200000010256" + ls_price
+								filewrite(li_file, ls_filecontent)
+								filewrite(li_file, "^01")
+								filewrite(li_file, "Q0001")
+								filewrite(li_file, "E")
+							end if
+							ll_labelno = ll_labelno + 1
+						next
+					end if
+				next
+				if ll_labelpos <> 0 then
+					filewrite(li_file, "^01")
+					filewrite(li_file, "Q0001")
+					filewrite(li_file, "E")
+				end if
+				fileclose(li_file)
+				run("..\BarcodePrint\BP.bat", normal!)
+			end if
+		elseif ls_format = "3" then
+			ll_counter = 1
+			li_file = fileopen("label.prn", linemode!, write!, lockwrite!, replace!)
+			if li_file = -1 then
+				messagebox("Error", "Unable to locate file for Label printing")
+			else
+				ll_labelno = 1
+				for ll_counter = 1 to ll_totalrows
+					if id_detail.getitemnumber(ll_counter, "qty") > 0.0 then
+						ll_qty = id_detail.getitemnumber(ll_counter, "qty")
+						ls_itemname = left(trim(id_detail.getitemstring(ll_counter, "itemname")), 41)
+						ls_aliasname = left(trim(id_detail.getitemstring(ll_counter, "fullcode")), li_barcodeleninprint)
+						if ib_printprice then
+							ls_price = "Rs: " + trim(string(round(id_detail.getitemdecimal(ll_counter, "saleprice"), 2), "##,###,###.#0"))
+						else
+							ls_price = ""
+						end if
+						ls_date = string(today(), "dd/mm")
+						filewrite(li_file, "c0000")
+						filewrite(li_file, "KI503")
+						filewrite(li_file, "O0220")
+						filewrite(li_file, "f220")
+						filewrite(li_file, "KW0130")
+						filewrite(li_file, "KI7")
+						filewrite(li_file, "V0")
+						filewrite(li_file, "L")
+						filewrite(li_file, "H12")
+						filewrite(li_file, "PC")
+						filewrite(li_file, "A2")
+						filewrite(li_file, "D11")
+						ls_filecontent = "1E2201500090008A" + ls_aliasname
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "101100000050008" + ls_itemname
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "103100000000008" + ls_price
+						filewrite(li_file, ls_filecontent)
+						ls_qty = trim(string(ll_qty))
+						if len(ls_qty) < 2 then
+							ls_qty = fill("0", 2 - len(ls_qty)) + ls_qty
+						end if
+						ls_filecontent = "^" + ls_qty
+						filewrite(li_file, ls_filecontent)
+						if len(ls_qty) < 4 then
+							ls_qty = fill("0", 4 - len(ls_qty)) + ls_qty
+						end if
+						ls_filecontent = "Q" + ls_qty
+						filewrite(li_file, ls_filecontent)
+						filewrite(li_file, "E")
+					end if
+				next
+				fileclose(li_file)
+				run("..\BarcodePrint\BP.bat", normal!)
+			end if
+		elseif ls_format = "4" then
+			ll_counter = 1
+			li_file = fileopen("label.prn", linemode!, write!, lockwrite!, replace!)
+			if li_file = -1 then
+				messagebox("Error", "Unable to locate file for Label printing")
+			else
+				ll_labelno = 1
+				for ll_counter = 1 to ll_totalrows
+					if id_detail.getitemnumber(ll_counter, "qty") > 0.0 then
+						ll_qty = id_detail.getitemnumber(ll_counter, "qty")
+						ls_itemname = left(trim(id_detail.getitemstring(ll_counter, "itemname")), 19)
+						ls_aliasname = left(trim(id_detail.getitemstring(ll_counter, "fullcode")), li_barcodeleninprint)
+						if ib_printprice then
+							ls_price = "Rs: " + trim(string(round(id_detail.getitemdecimal(ll_counter, "saleprice"), 2), "##,###,###.#0"))
+						else
+							ls_price = ""
+						end if
+						ls_date = string(today(), "dd/mm")
+						filewrite(li_file, "c0000")
+						filewrite(li_file, "KI503")
+						filewrite(li_file, "O0220")
+						filewrite(li_file, "f220")
+						filewrite(li_file, "KW0150")
+						filewrite(li_file, "KI7")
+						filewrite(li_file, "V0")
+						filewrite(li_file, "L")
+						filewrite(li_file, "H12")
+						filewrite(li_file, "PC")
+						filewrite(li_file, "A2")
+						filewrite(li_file, "D11")
+						ls_filecontent = "1E2203900440009A" + ls_aliasname
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "193200100950016" + ls_clientname
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "191100000310015" + ls_itemname
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "193100000200020" + ls_price
+						filewrite(li_file, ls_filecontent)
+						ls_qty = trim(string(ll_qty))
+						if len(ls_qty) < 2 then
+							ls_qty = fill("0", 2 - len(ls_qty)) + ls_qty
+						end if
+						ls_filecontent = "^" + ls_qty
+						filewrite(li_file, ls_filecontent)
+						if len(ls_qty) < 4 then
+							ls_qty = fill("0", 4 - len(ls_qty)) + ls_qty
+						end if
+						ls_filecontent = "Q" + ls_qty
+						filewrite(li_file, ls_filecontent)
+						filewrite(li_file, "E")
+					end if
+				next
+				fileclose(li_file)
+				run("..\BarcodePrint\BP.bat", normal!)
+			end if
+		elseif ls_format = "5" then
+			ll_counter = 1
+			li_file = fileopen("label.prn", linemode!, write!, lockwrite!, replace!)
+			if li_file = -1 then
+				messagebox("Error", "Unable to locate file for Label printing")
+			else
+				ll_labelno = 1
+				for ll_counter = 1 to ll_totalrows
+					if id_detail.getitemnumber(ll_counter, "qty") > 0.0 then
+						ll_qty = id_detail.getitemnumber(ll_counter, "qty")
+						ls_itemname = left(trim(id_detail.getitemstring(ll_counter, "itemname")), 32)
+						ls_aliasname = left(trim(id_detail.getitemstring(ll_counter, "fullcode")), li_barcodeleninprint)
+						if ib_printprice then
+							ls_price = "Rs: " + trim(string(round(id_detail.getitemdecimal(ll_counter, "saleprice"), 2), "##,###,###.#0"))
+						else
+							ls_price = ""
+						end if
+						ls_date = string(today(), "dd/mm")
+						filewrite(li_file, "c0000")
+						filewrite(li_file, "KI503")
+						filewrite(li_file, "O0220")
+						filewrite(li_file, "f220")
+						filewrite(li_file, "KW0180")
+						filewrite(li_file, "KI7")
+						filewrite(li_file, "V0")
+						filewrite(li_file, "L")
+						filewrite(li_file, "H12")
+						filewrite(li_file, "PC")
+						filewrite(li_file, "A2")
+						filewrite(li_file, "D11")
+						ls_filecontent = "1E2208900540012A" + ls_aliasname
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "194200001530010" + ls_clientname
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "191200000270006" + ls_itemname
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "194200000020008" + ls_price
+						filewrite(li_file, ls_filecontent)
+						ls_qty = trim(string(ll_qty))
+						if len(ls_qty) < 2 then
+							ls_qty = fill("0", 2 - len(ls_qty)) + ls_qty
+						end if
+						ls_filecontent = "^" + ls_qty
+						filewrite(li_file, ls_filecontent)
+						if len(ls_qty) < 4 then
+							ls_qty = fill("0", 4 - len(ls_qty)) + ls_qty
+						end if
+						ls_filecontent = "Q" + ls_qty
+						filewrite(li_file, ls_filecontent)
+						filewrite(li_file, "E")
+					end if
+				next
+				fileclose(li_file)
+				run("..\BarcodePrint\BP.bat", normal!)
+			end if
+		elseif ls_format = "6" then
+			ll_counter = 1
+			li_file = fileopen("label.prn", linemode!, write!, lockwrite!, replace!)
+			if li_file = -1 then
+				messagebox("Error", "Unable to locate file for Label printing")
+			else
+				ll_labelno = 1
+				for ll_counter = 1 to ll_totalrows
+					if id_detail.getitemnumber(ll_counter, "qty") > 0.0 then
+						ll_qty = id_detail.getitemnumber(ll_counter, "qty")
+						ls_itemname = left(trim(id_detail.getitemstring(ll_counter, "itemname")), 30)
+						ls_aliasname = left(trim(id_detail.getitemstring(ll_counter, "fullcode")), li_barcodeleninprint)
+						if ib_printprice then
+							ls_price = "Rs: " + trim(string(round(id_detail.getitemdecimal(ll_counter, "saleprice"), 2), "##,###,###.#0"))
+						else
+							ls_price = ""
+						end if
+						ls_date = string(today(), "dd/mm")
+						filewrite(li_file, "c0000")
+						filewrite(li_file, "KI503")
+						filewrite(li_file, "O0220")
+						filewrite(li_file, "f220")
+						filewrite(li_file, "KW0281")
+						filewrite(li_file, "KI7")
+						filewrite(li_file, "V0")
+						filewrite(li_file, "L")
+						filewrite(li_file, "H12")
+						filewrite(li_file, "PC")
+						filewrite(li_file, "A2")
+						filewrite(li_file, "D11")
+						ls_filecontent = "1:3100001850013" + ls_clientname
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "1E3311300540010A" + ls_aliasname
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "191100300350003" + ls_itemname
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "194200300040007" + ls_price
+						filewrite(li_file, ls_filecontent)
+						ls_qty = trim(string(ll_qty))
+						if len(ls_qty) < 2 then
+							ls_qty = fill("0", 2 - len(ls_qty)) + ls_qty
+						end if
+						ls_filecontent = "^" + ls_qty
+						filewrite(li_file, ls_filecontent)
+						if len(ls_qty) < 4 then
+							ls_qty = fill("0", 4 - len(ls_qty)) + ls_qty
+						end if
+						ls_filecontent = "Q" + ls_qty
+						filewrite(li_file, ls_filecontent)
+						filewrite(li_file, "E")
+					end if
+				next
+				fileclose(li_file)
+				run("..\BarcodePrint\BP.bat", normal!)
+			end if
+		end if
+	end if
+	return 0

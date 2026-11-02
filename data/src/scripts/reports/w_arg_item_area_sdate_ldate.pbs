@@ -1,0 +1,70 @@
+// window w_arg_item_area_sdate_ldate (reports)  ancestor: w_popup_forselection_walias
+
+// w_arg_item_area_sdate_ldate.create() returns 0
+	integer icurrent
+	call super::create
+	this.gb_2 = create gb_2
+	this.st_1 = create st_1
+	this.st_2 = create st_2
+	this.em_startdate = create em_startdate
+	this.em_enddate = create em_enddate
+	this.dw_area = create dw_area
+	this.st_3 = create st_3
+	this.gb_3 = create gb_3
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.gb_2
+	this.control[icurrent + 2] = this.st_1
+	this.control[icurrent + 3] = this.st_2
+	this.control[icurrent + 4] = this.em_startdate
+	this.control[icurrent + 5] = this.em_enddate
+	this.control[icurrent + 6] = this.dw_area
+	this.control[icurrent + 7] = this.st_3
+	this.control[icurrent + 8] = this.gb_3
+
+// w_arg_item_area_sdate_ldate.destroy() returns 0
+	call super::destroy
+	destroy this.gb_2
+	destroy this.st_1
+	destroy this.st_2
+	destroy this.em_startdate
+	destroy this.em_enddate
+	destroy this.dw_area
+	destroy this.st_3
+	destroy this.gb_3
+
+// w_arg_item_area_sdate_ldate.open() returns long
+	long ancestorreturnvalue
+	date ld_currdate
+	string ls_text
+	ancestorreturnvalue = super::open()
+	this.dw_area.settransobject(sqlca)
+	this.dw_area.insertrow(0)
+	this.dw_area.scrolltorow(0)
+	gd_itemsinfo.sharedata(this.id_selectionlist)
+	ld_currdate = today()
+	ls_text = string(ld_currdate, "dd/mm/yyyy")
+	ls_text = trim(ls_text) + " 00:00:00"
+	this.em_startdate.text = ls_text
+	ls_text = string(ld_currdate, "dd/mm/yyyy")
+	ls_text = trim(ls_text) + " 23:59:59"
+	this.em_enddate.text = ls_text
+	return ::message.returnvalue
+
+// w_arg_item_area_sdate_ldate.ue_close() returns 0
+	closewithreturn(this, this.istr_arg)
+
+// em_startdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// em_enddate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// dw_area.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1

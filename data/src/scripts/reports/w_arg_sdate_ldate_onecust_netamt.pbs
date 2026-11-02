@@ -1,0 +1,143 @@
+// window w_arg_sdate_ldate_onecust_netamt (reports)  ancestor: w_arg_sinvcode_linvcode
+
+// w_arg_sdate_ldate_onecust_netamt.create() returns 0
+	integer icurrent
+	call super::create
+	this.dw_customer = create dw_customer
+	this.st_5 = create st_5
+	this.dw_invoiceselection = create dw_invoiceselection
+	this.cb_retrieve = create cb_retrieve
+	this.st_6 = create st_6
+	this.em_totalnetamount = create em_totalnetamount
+	this.st_7 = create st_7
+	this.em_discperc = create em_discperc
+	this.cbx_allinv = create cbx_allinv
+	this.gb_2 = create gb_2
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_customer
+	this.control[icurrent + 2] = this.st_5
+	this.control[icurrent + 3] = this.dw_invoiceselection
+	this.control[icurrent + 4] = this.cb_retrieve
+	this.control[icurrent + 5] = this.st_6
+	this.control[icurrent + 6] = this.em_totalnetamount
+	this.control[icurrent + 7] = this.st_7
+	this.control[icurrent + 8] = this.em_discperc
+	this.control[icurrent + 9] = this.cbx_allinv
+	this.control[icurrent + 10] = this.gb_2
+
+// w_arg_sdate_ldate_onecust_netamt.destroy() returns 0
+	call super::destroy
+	destroy this.dw_customer
+	destroy this.st_5
+	destroy this.dw_invoiceselection
+	destroy this.cb_retrieve
+	destroy this.st_6
+	destroy this.em_totalnetamount
+	destroy this.st_7
+	destroy this.em_discperc
+	destroy this.cbx_allinv
+	destroy this.gb_2
+
+// w_arg_sdate_ldate_onecust_netamt.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.dw_customer.settransobject(sqlca)
+	this.dw_customer.insertrow(0)
+	this.dw_customer.scrolltorow(0)
+	this.dw_invoiceselection.settransobject(sqlca)
+	this.dw_invoiceselection.reset()
+	return ::message.returnvalue
+
+// dw_customer.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_invoiceselection.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_invoiceselection.itemchanged(long row, dwobject dwo, string data) returns long
+	long ll_counter
+	long ll_rowcount
+	double ld_totalnetamount
+	choose case dwo.name
+	case "invselect"
+		ld_totalnetamount = 0.00
+		ll_rowcount = rowcount()
+		for ll_counter = 1 to ll_rowcount
+			if getitemstring(ll_counter, "invselect") = "Y" then
+				ld_totalnetamount = ld_totalnetamount + getitemdecimal(ll_counter, "netamount")
+			end if
+		next
+		if data = "Y" then
+			ld_totalnetamount = ld_totalnetamount + getitemdecimal(row, "netamount")
+		elseif data = "N" then
+			ld_totalnetamount = ld_totalnetamount - getitemdecimal(row, "netamount")
+		end if
+		parent.em_totalnetamount.text = string(ld_totalnetamount, "###############0.00")
+	end choose
+	return ::message.returnvalue
+
+// cb_retrieve.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent("Clicked")
+	end if
+	return ::message.returnvalue
+
+// cb_retrieve.clicked() returns long
+	long ll_sinvcode
+	long ll_linvcode
+	long ll_custcode
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	ll_custcode = parent.dw_customer.getitemnumber(parent.dw_customer.getrow(), "custcode")
+	if isnull(parent.istr_arg.d_sdate) then
+		messagebox("Starting Date Validation.", "Please provide starting date")
+		parent.em_startdate.setfocus()
+		return ::message.returnvalue
+	end if
+	if isnull(parent.istr_arg.d_edate) then
+		messagebox("Ending Date Validation.", "Please provide ending date")
+		parent.em_enddate.setfocus()
+		return ::message.returnvalue
+	end if
+	if parent.istr_arg.d_sdate > parent.istr_arg.d_edate then
+		messagebox("Date Validation.", "Please enter valid starting date")
+		parent.em_startdate.setfocus()
+		return ::message.returnvalue
+	end if
+	if ll_custcode <= 0 or isnull(ll_custcode) then
+		messagebox("Customer Validation.", "Please select some customer from the list")
+		parent.dw_customer.setfocus()
+		return ::message.returnvalue
+	end if
+	parent.dw_invoiceselection.reset()
+	parent.dw_invoiceselection.retrieve(parent.istr_arg.d_sdate, parent.istr_arg.d_edate, ll_custcode)
+	parent.em_totalnetamount.text = "0.00"
+	return ::message.returnvalue
+
+// em_discperc.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+		return 1
+	end if
+	return ::message.returnvalue
+
+// cbx_allinv.clicked() returns long
+	double ld_totalnetamount
+	long ll_rowcount
+	long ll_counter
+	ll_rowcount = parent.dw_invoiceselection.rowcount()
+	if this.checked then
+		for ll_counter = 1 to ll_rowcount
+			parent.dw_invoiceselection.object.invselect[ll_counter] = "Y"
+			ld_totalnetamount = ld_totalnetamount + parent.dw_invoiceselection.getitemdecimal(ll_counter, "netamount")
+		next
+	else
+		for ll_counter = 1 to ll_rowcount
+			parent.dw_invoiceselection.object.invselect[ll_counter] = "N"
+		next
+		ld_totalnetamount = 0
+	end if
+	parent.em_totalnetamount.text = string(ld_totalnetamount, "###############0.00")
+	return ::message.returnvalue

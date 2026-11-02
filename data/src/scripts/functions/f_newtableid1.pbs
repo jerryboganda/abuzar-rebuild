@@ -1,0 +1,22 @@
+// function f_newtableid1 (functions)  ancestor: function_object
+
+// f_newtableid1.f_newtableid1(string as_tablename, long al_newid) returns long
+	long ll_rtcode
+	SQL rollback USING sqlca;
+	SQL SELECT TABMAXKEY INTO :al_newid FROM _TABMAXKEY WITH ( UPDLOCK HOLDLOCK ) WHERE _TABMAXKEY.TABName =:as_tablename USING sqlca;
+	if sqlca.sqlcode = 0 then
+		al_newid = al_newid + 1
+		SQL update dbo._tabmaxkey SET TABMAXKEY =:al_newid WHERE _TABMAXKEY.TABName =:as_tablename USING sqlca;
+		if sqlca.sqlcode = 0 then
+			SQL commit USING sqlca;
+		else
+			ll_rtcode = sqlca.sqlcode
+			al_newid = 0
+			SQL rollback USING sqlca;
+		end if
+	else
+		ll_rtcode = sqlca.sqlcode
+		al_newid = 0
+		SQL rollback USING sqlca;
+	end if
+	return ll_rtcode

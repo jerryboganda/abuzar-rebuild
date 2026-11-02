@@ -1,0 +1,53 @@
+// window w_saleorder_purorder_info (saleorder)  ancestor: window
+
+// w_saleorder_purorder_info.create() returns 0
+	this.cb_print = create cb_print
+	this.dw_control = create dw_control
+	this.control = {this.cb_print, this.dw_control}
+
+// w_saleorder_purorder_info.destroy() returns 0
+	destroy this.cb_print
+	destroy this.dw_control
+
+// w_saleorder_purorder_info.open() returns long
+	long ll_width
+	long ll_height
+	long ll_code
+	environment env
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	ll_code = ::message.doubleparm
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.width = ll_width * 0.98
+	this.height = ll_height * 0.90
+	this.y = int((ll_height - this.height) / 2.0)
+	this.dw_control.width = this.width - this.width * 0.02
+	this.dw_control.height = this.height * 0.90
+	this.cb_print.y = this.dw_control.height + 20
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.retrieve(ll_code)
+	this.dw_control.modify("DataWindow.Print.Preview=yes DataWindow.Print.Preview.Rulers=yes")
+	return ::message.returnvalue
+
+// w_saleorder_purorder_info.close() returns long
+	close(this)
+	return ::message.returnvalue
+
+// w_saleorder_purorder_info.key(keycode key, unsignedlong keyflags) returns long
+	if keydown(keyescape!) then
+		close(this)
+	end if
+	return ::message.returnvalue
+
+// cb_print.clicked() returns long
+	if parent.dw_control.visible then
+		if printsetup() < 0 then
+			messagebox("Printer", "Printing Error")
+			parent.dw_control.printcancel()
+		end if
+		parent.dw_control.print()
+	end if
+	return ::message.returnvalue

@@ -1,0 +1,60 @@
+// window w_arg_date_customer_disc_inputstring (reports)  ancestor: w_listarguments
+
+// w_arg_date_customer_disc_inputstring.create() returns 0
+	integer icurrent
+	call super::create
+	this.st_4 = create st_4
+	this.st_8 = create st_8
+	this.st_9 = create st_9
+	this.em_discperc = create em_discperc
+	this.sle_line1 = create sle_line1
+	this.st_10 = create st_10
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_4
+	this.control[icurrent + 2] = this.st_8
+	this.control[icurrent + 3] = this.st_9
+	this.control[icurrent + 4] = this.em_discperc
+	this.control[icurrent + 5] = this.sle_line1
+	this.control[icurrent + 6] = this.st_10
+
+// w_arg_date_customer_disc_inputstring.destroy() returns 0
+	call super::destroy
+	destroy this.st_4
+	destroy this.st_8
+	destroy this.st_9
+	destroy this.em_discperc
+	destroy this.sle_line1
+	destroy this.st_10
+
+// w_arg_date_customer_disc_inputstring.open() returns long
+	long ancestorreturnvalue
+	long ll_counter
+	long ll_rowcount
+	integer rtncode
+	ancestorreturnvalue = super::open()
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	rtncode = this.dw_control.getchild("custcode", this.idc_categories)
+	if rtncode = -1 then
+		messagebox("Error", "Not a DataWindowChild")
+	end if
+	ll_rowcount = this.idc_categories.rowcount()
+	for ll_counter = 1 to ll_rowcount
+		this.lb_categories.additem(this.idc_categories.getitemstring(ll_counter, "customer_name"))
+	next
+	this.lb_categories.setfocus()
+	this.lb_categories.selectitem(1)
+	return ::message.returnvalue
+
+// em_discperc.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// sle_line1.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue

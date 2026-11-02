@@ -1,0 +1,68 @@
+// window w_set_columnvalue (changeitemprice)  ancestor: window
+
+// w_set_columnvalue.ue_close(double ad_value) returns 0
+	this.dw_control.accepttext()
+	this.s_price.i_status = ad_value
+	this.s_price.s_name1 = this.dw_control.object.sourcecolumn[this.dw_control.rowcount()]
+	this.s_price.d_value1 = this.dw_control.object.value[this.dw_control.rowcount()]
+	closewithreturn(this, this.s_price)
+
+// w_set_columnvalue.create() returns 0
+	this.dw_control = create dw_control
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.control = {this.dw_control, this.cb_cancel, this.cb_ok}
+
+// w_set_columnvalue.destroy() returns 0
+	destroy this.dw_control
+	destroy this.cb_cancel
+	destroy this.cb_ok
+
+// w_set_columnvalue.open() returns long
+	environment le_env
+	long ll_width
+	long ll_height
+	if getenvironment(le_env) = 1 then
+		ll_width = pixelstounits(le_env.screenwidth, xpixelstounits!) - this.width
+		ll_height = pixelstounits(le_env.screenheight, ypixelstounits!) - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width * 0.5
+			ll_height = ll_height * 0.5
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	return ::message.returnvalue
+
+// dw_control.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(0)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	long ll_row
+	parent.dw_control.accepttext()
+	ll_row = parent.dw_control.rowcount()
+	if isnull(parent.dw_control.object.sourcecolumn[ll_row]) then
+		messagebox("Source Column Validation", "Please Enter Valid Value For Source Column.")
+		parent.dw_control.setfocus()
+		parent.dw_control.setcolumn("sourcecolumn")
+		return ::message.returnvalue
+	end if
+	if isnull(parent.dw_control.object.value[ll_row]) or parent.dw_control.object.value[ll_row] < 0 then
+		messagebox("Value Validation", "Please Enter Valid Value For Value Column.")
+		parent.dw_control.setfocus()
+		parent.dw_control.setcolumn("value")
+		return ::message.returnvalue
+	end if
+	parent.post event ue_close(1)
+	return ::message.returnvalue

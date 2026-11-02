@@ -1,0 +1,21 @@
+// function f_binarysearchdesc_long (functions)  ancestor: function_object
+
+// f_binarysearchdesc_long.f_binarysearchdesc_long(long al_finddata, datawindow d_data, string as_columnname) returns long
+	long l_low
+	long l_mid
+	long l_high
+	long l_length
+	long l_row
+	l_low = 1
+	l_high = d_data.rowcount()
+	do while l_low <= l_high
+		l_mid = (l_low + l_high) / 2.0
+		if al_finddata > d_data.getitemnumber(l_mid, as_columnname) then
+			l_high = l_mid - 1
+		elseif al_finddata < d_data.getitemnumber(l_mid, as_columnname) then
+			l_low = l_mid + 1
+		else
+			return l_mid
+		end if
+	loop
+	return -1

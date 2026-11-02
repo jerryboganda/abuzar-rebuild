@@ -1,0 +1,189 @@
+// window w_motorvehicle_form (multientry)  ancestor: w_multi_entry
+
+// w_motorvehicle_form.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM Vehicle WHERE name =:as_name USING this.it_transobject;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_motorvehicle_form.wf_validateitem() returns integer
+	long ll_icode
+	integer li_errcode
+	string ls_managername
+	integer li_null
+	ll_icode = this.id_detail.getitemnumber(this.il_currrow, "transportroutecode")
+	if vf_dwdupcode1(this.id_detail, "transportroutecode", string(ll_icode), this.il_currrow) = true then
+		ls_managername = ""
+		messagebox("Duplication Error", "Current row is duplicate")
+		li_errcode = -1
+	else
+		li_errcode = 0
+	end if
+	this.ib_itemvalidated = true
+	if li_errcode = -1 then
+		setnull(li_null)
+		this.id_detail.setcolumn("transportroutecode")
+		this.id_detail.scrolltorow(this.il_currrow)
+		this.id_detail.object.transportroutecode[this.il_currrow] = li_null
+	end if
+	return li_errcode
+
+// w_motorvehicle_form.create() returns 0
+	call super::create
+
+// w_motorvehicle_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_motorvehicle_form.ue_save() returns 0
+	long ll_mastercurrrow
+	long ll_invid
+	long ll_detailrows
+	long ll_null
+	integer li_counter
+	integer ll_salesmancode
+	boolean lb_commitflag
+	setnull(ll_null)
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if isnull(this.id_master.object.chasisno[1]) or this.id_master.object.chasisno[1] = "" then
+		this.id_master.setfocus()
+		this.id_master.setcolumn("chasisno")
+	end if
+	setpointer(hourglass!)
+	ll_mastercurrrow = this.id_master.getrow()
+	ll_invid = this.id_master.object.code[ll_mastercurrrow]
+	if isnull(ll_invid) then
+		f_newtableid("motorvehicle", ll_invid)
+		this.id_master.object.code[ll_mastercurrrow] = ll_invid
+	end if
+	if this.id_master.update(true, true) < 0 then
+		this.id_master.object.code[ll_mastercurrrow] = ll_null
+		SQL rollback USING this.it_transobject;
+	else
+		SQL commit USING this.it_transobject;
+		messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+		this.ib_commitok = true
+		this.id_master.resetupdate()
+		this.im_menu.m_file.m_new.enabled = true
+		this.editflag = false
+		if gd_recenttransdate < this.id_systemdate then
+			gd_recenttransdate = this.id_systemdate
+		end if
+	end if
+	setpointer(arrow!)
+
+// w_motorvehicle_form.ue_newform() returns 0
+	call super::ue_newform
+	this.id_master.setfocus()
+
+// w_motorvehicle_form.ue_newitem() returns 0
+
+// w_motorvehicle_form.ue_detail() returns 0
+	call super::ue_detail
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_delete.enabled = true
+	this.im_menu.m_file.m_first.enabled = true
+	this.im_menu.m_file.m_next.enabled = true
+	this.im_menu.m_file.m_last.enabled = true
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_menu.m_file.m_previous.enabled = true
+	this.im_menu.m_item.m_newitem.enabled = false
+	this.im_menu.m_item.m_deleteitem.enabled = false
+
+// w_motorvehicle_form.ue_postopen() returns 0
+	string ls_describe
+	setredraw(false)
+	wf_connect()
+	this.id_master = this.tab_retrieve.tabpage_detail.dw_detail
+	this.id_detail = this.tab_retrieve.tabpage_detail.dw_itemsdetail
+	this.id_footer = this.tab_retrieve.tabpage_detail.dw_footer
+	this.id_list = this.tab_retrieve.tabpage_list.dw_list
+	this.id_itemslist = this.tab_retrieve.tabpage_detail.dw_itemslist
+	this.id_master.settransobject(this.it_transobject)
+	this.id_detail.settransobject(this.it_transobject)
+	this.id_list.settransobject(this.it_transobject)
+	this.id_footer.settransobject(this.it_transobject)
+	this.id_itemslist.settransobject(this.it_transobject)
+	this.id_dwcontrol = this.id_list
+	post wf_populate_ddlb(this.id_dwcontrol)
+	this.tab_retrieve.tabpage_list.dw_find.settransobject(this.it_transobject)
+	this.id_master.setfocus()
+	setredraw(true)
+	if f_stringpreferences("aliasname") = "N" then
+		this.id_itemslist.object.fullcode.visible = false
+	end if
+	if f_stringpreferences("localitemname") = "N" then
+		ls_describe = trim(this.id_itemslist.describe("localitemname.visible"))
+		if ls_describe = "1" then
+			this.id_itemslist.object.localitemname.visible = false
+		end if
+	end if
+	if f_stringpreferences("itempackingdesc") = "N" then
+		this.id_itemslist.object.packingdesc.visible = false
+	end if
+	if f_stringpreferences("itemlocation") = "N" then
+		this.id_itemslist.object.location.visible = false
+	end if
+	if f_stringpreferences("GenericItemName") = "N" and this.id_itemslist.describe("genericname.visible") <> "!" then
+		this.id_itemslist.object.genericname.visible = false
+	end if
+	if this.id_itemslist.describe("c_pack_sstock.visible") <> "!" then
+		if f_stringpreferences("PackStock") = "Y" and this.is_child = "w_sale" then
+			this.id_itemslist.object.c_pack_sstock.visible = true
+			this.id_itemslist.object.t_c_pack_sstock.visible = true
+		else
+			this.id_itemslist.object.c_pack_sstock.visible = false
+			this.id_itemslist.object.t_c_pack_sstock.visible = false
+		end if
+	end if
+	this.ids_itemrecyclebin = create datastore
+	this.ids_itemrecyclebin.tag = this.id_detail.dataobject
+	this.ids_itemrecyclebin.settransobject(this.it_transobject)
+
+// w_motorvehicle_form.open() returns long
+	m_entry lm_menu
+	long ll_width
+	long ll_height
+	environment env
+	postevent("ue_postopen")
+	wf_setmenu(this.menuid)
+	lm_menu = this.menuid
+	lm_menu.dynamic mf_initsecurityapp(lm_menu)
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.tab_retrieve.width = ll_width * 0.99
+	this.tab_retrieve.height = ll_height * 0.83
+	this.tab_retrieve.tabpage_detail.dw_detail.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_detail.height = ll_height * 0.90
+	this.tab_retrieve.tabpage_detail.dw_itemsdetail.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_footer.y = this.tab_retrieve.height * 0.90 - this.tab_retrieve.tabpage_detail.dw_footer.height
+	this.tab_retrieve.tabpage_detail.dw_detail.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width
+	this.tab_retrieve.tabpage_detail.dw_footer.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width
+	this.tab_retrieve.tabpage_list.gb_fliter.width = ll_width * 0.97 - this.tab_retrieve.tabpage_list.gb_sort.width
+	this.tab_retrieve.tabpage_list.r_1.width = ll_width * 0.99
+	this.tab_retrieve.tabpage_list.r_1.height = ll_height * 0.765 - this.tab_retrieve.tabpage_list.gb_sort.height
+	this.tab_retrieve.tabpage_list.dw_list.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_list.dw_list.height = ll_height * 0.75 - this.tab_retrieve.tabpage_list.dw_list.y
+	if int(this.tab_retrieve.tabpage_list.ddlb_data.width / this.tab_retrieve.tabpage_list.width) < 26 then
+		this.tab_retrieve.tabpage_list.ddlb_data.width = int(this.tab_retrieve.tabpage_list.width * 0.26)
+	end if
+	this.tab_retrieve.tabpage_detail.dw_itemslist.height = ll_height * 0.6
+	this.tab_retrieve.tabpage_detail.dw_itemslist.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width * 0.67
+	this.tab_retrieve.tabpage_detail.dw_itemslist.x = 1150
+	setredraw(true)
+	return ::message.returnvalue

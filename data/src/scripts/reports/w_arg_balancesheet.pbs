@@ -1,0 +1,84 @@
+// window w_arg_balancesheet (reports)  ancestor: window
+
+// w_arg_balancesheet.create() returns 0
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.rb_1 = create rb_1
+	this.rb_0 = create rb_0
+	this.em_enddate = create em_enddate
+	this.em_startdate = create em_startdate
+	this.st_3 = create st_3
+	this.st_2 = create st_2
+	this.st_1 = create st_1
+	this.gb_1 = create gb_1
+	this.control = {this.cb_cancel, this.cb_ok, this.rb_1, this.rb_0, this.em_enddate, this.em_startdate, this.st_3, this.st_2, this.st_1, this.gb_1}
+
+// w_arg_balancesheet.destroy() returns 0
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.rb_1
+	destroy this.rb_0
+	destroy this.em_enddate
+	destroy this.em_startdate
+	destroy this.st_3
+	destroy this.st_2
+	destroy this.st_1
+	destroy this.gb_1
+
+// w_arg_balancesheet.open() returns long
+	string ls_text
+	date ld_currdate
+	time lt_currtime
+	datetime ld_startdate
+	datetime ld_enddate
+	ld_currdate = today()
+	ls_text = string(ld_currdate, "dd/mm/yyyy")
+	ls_text = trim(ls_text) + " 00:00:00"
+	this.em_startdate.text = ls_text
+	ls_text = string(ld_currdate, "dd/mm/yyyy")
+	ls_text = trim(ls_text) + " 23:59:59"
+	this.em_enddate.text = ls_text
+	return ::message.returnvalue
+
+// cb_cancel.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	closewithreturn(parent, parent.istr_arg)
+	return ::message.returnvalue
+
+// cb_ok.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	string ls_enddate
+	date ld_date
+	if parent.rb_0.checked = true then
+		parent.istr_arg.l_code1 = 1
+	end if
+	if parent.rb_1.checked = true then
+		parent.istr_arg.l_code1 = 2
+	end if
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	parent.istr_arg.i_status = 1
+	closewithreturn(parent, parent.istr_arg)
+	return ::message.returnvalue
+
+// em_enddate.keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// em_startdate.keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue

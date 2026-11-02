@@ -1,0 +1,404 @@
+// window w_servicecomponent_refvalue (servicecomponents)  ancestor: window
+
+// w_servicecomponent_refvalue.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		post event ue_close(-1)
+	end if
+	return ::message.returnvalue
+
+// w_servicecomponent_refvalue.ue_close(integer ai_closemode) returns integer
+	long ll_currrow
+	long ll_counter
+	long ll_ret
+	string ls_gender
+	string ls_ageunit
+	long ll_loweragelimit
+	long ll_upperagelimit
+	long ll_gestationcode
+	long ll_testmachinecode
+	s_values_blob lstr_values_blob
+	lstr_values_blob.s_name = this.istr_values_blob.s_name
+	lstr_values_blob.code = this.istr_values_blob.code
+	this.id_header.accepttext()
+	ll_currrow = this.id_header.getrow()
+	if ai_closemode = -1 then
+		this.istr_values_blob.i_closemode = -1
+		closewithreturn(this, this.istr_values_blob)
+		return -1
+	end if
+	if this.id_header.rowcount() > 0 then
+		for ll_counter = 1 to this.id_header.rowcount()
+			ls_gender = this.id_header.object.gender[ll_counter]
+			ls_ageunit = this.id_header.object.ageunit[ll_counter]
+			ll_loweragelimit = this.id_header.object.loweragelimit[ll_counter]
+			ll_upperagelimit = this.id_header.object.upperagelimit[ll_counter]
+			ll_gestationcode = this.id_header.object.gestationcode[ll_counter]
+			ll_testmachinecode = this.id_header.object.testmachinecode[ll_counter]
+			if vf_dwdup_refvalue(this.id_header, ls_gender, ls_ageunit, ll_gestationcode, ll_testmachinecode, ll_loweragelimit, ll_upperagelimit, ll_counter) = true then
+				this.id_header.setrow(ll_counter)
+				this.id_header.setcolumn("gender")
+				this.id_header.setfocus()
+				messagebox("Duplication Error", "Current row is duplicate")
+				return 1
+			end if
+			if this.istr_values_blob.s_name = "S" then
+				if isnull(this.id_header.object.lowerreferencevalue[ll_counter]) or this.id_header.object.lowerreferencevalue[ll_counter] = "" then
+					messagebox("Lower Ref. Value", "Please enter valid Lower Ref. Value")
+					this.id_header.setrow(ll_counter)
+					this.id_header.setcolumn("lowerreferencevalue")
+					this.id_header.setfocus()
+					return 1
+				end if
+				if isnull(this.id_header.object.upperreferencevalue[ll_counter]) or this.id_header.object.upperreferencevalue[ll_counter] = "" then
+					messagebox("Upper Ref. Value", "Please enter valid Upper Ref. Value")
+					this.id_header.setrow(ll_counter)
+					this.id_header.setcolumn("upperreferencevalue")
+					this.id_header.setfocus()
+					return 1
+				end if
+			else
+				if isnull(this.id_header.object.lowerreferencevalue2[ll_counter]) or this.id_header.object.lowerreferencevalue2[ll_counter] < 0 then
+					messagebox("Lower Ref. Value", "Please enter valid Lower Ref. Value")
+					this.id_header.setrow(ll_counter)
+					this.id_header.setcolumn("lowerreferencevalue2")
+					this.id_header.setfocus()
+					return 1
+				end if
+				if isnull(this.id_header.object.upperreferencevalue2[ll_counter]) or this.id_header.object.upperreferencevalue2[ll_counter] < 0 then
+					messagebox("Upper Ref. Value", "Please enter valid Upper Ref. Value")
+					this.id_header.setrow(ll_counter)
+					this.id_header.setcolumn("upperreferencevalue2")
+					this.id_header.setfocus()
+					return 1
+				end if
+			end if
+		next
+		if f_validatedw(this.id_header) < 0 then
+			return 1
+		end if
+		this.il_currrow = this.id_header.rowcount()
+		if this.ib_rowvalidated = false and wf_validateitem() = -1 then
+			return 1
+		end if
+		this.istr_values_blob = lstr_values_blob
+		for ll_counter = 1 to this.id_header.rowcount()
+			this.id_header.object.rowid[ll_counter] = this.id_header.object.c_rowid[ll_counter]
+			this.istr_values_blob.ls_value[ll_counter, 1] = this.id_header.object.gender[ll_counter]
+			this.istr_values_blob.ls_value[ll_counter, 2] = this.id_header.object.ageunit[ll_counter]
+			this.istr_values_blob.ls_value[ll_counter, 3] = trim(string(this.id_header.object.gestationcode[ll_counter]))
+			this.istr_values_blob.ls_value[ll_counter, 4] = trim(string(this.id_header.object.testmachinecode[ll_counter]))
+			this.istr_values_blob.ls_value[ll_counter, 5] = trim(string(this.id_header.object.loweragelimit[ll_counter]))
+			this.istr_values_blob.ls_value[ll_counter, 6] = trim(string(this.id_header.object.upperagelimit[ll_counter]))
+			if this.istr_values_blob.s_name = "S" then
+				this.istr_values_blob.ls_value[ll_counter, 7] = this.id_header.object.lowerreferencevalue[ll_counter]
+				this.istr_values_blob.ls_value[ll_counter, 8] = this.id_header.object.upperreferencevalue[ll_counter]
+			else
+				this.istr_values_blob.ls_value[ll_counter, 7] = string(this.id_header.object.lowerreferencevalue2[ll_counter])
+				this.istr_values_blob.ls_value[ll_counter, 8] = string(this.id_header.object.upperreferencevalue2[ll_counter])
+			end if
+			this.istr_values_blob.ls_value[ll_counter, 9] = trim(string(this.id_header.object.rowid[ll_counter]))
+		next
+		for ll_counter = 1 to 200
+			if long(this.istr_values_blob.ls_value[ll_counter, 9]) <= 0 then
+				this.istr_values_blob.ls_value[ll_counter, 9] = "-1"
+			end if
+		next
+	else
+		this.istr_values_blob = lstr_values_blob
+	end if
+	this.istr_values_blob.i_closemode = ai_closemode
+	closewithreturn(this, this.istr_values_blob)
+	return 0
+
+// w_servicecomponent_refvalue.wf_validateitem() returns integer
+	string ls_gender
+	string ls_ageunit
+	long ll_gestationcode
+	long ll_testmachinecode
+	long ll_loweragelimit
+	long ll_upperagelimit
+	integer li_errcode
+	string ls_null
+	ls_gender = this.id_header.object.gender[this.il_currrow]
+	ls_ageunit = this.id_header.object.ageunit[this.il_currrow]
+	ll_loweragelimit = this.id_header.object.loweragelimit[this.il_currrow]
+	ll_upperagelimit = this.id_header.object.upperagelimit[this.il_currrow]
+	ll_gestationcode = this.id_header.object.gestationcode[this.il_currrow]
+	ll_testmachinecode = this.id_header.object.testmachinecode[this.il_currrow]
+	if vf_dwdup_refvalue(this.id_header, ls_gender, ls_ageunit, ll_gestationcode, ll_testmachinecode, ll_loweragelimit, ll_upperagelimit, this.il_currrow) = true then
+		messagebox("Duplication Error", "Current row is duplicate")
+		li_errcode = -1
+		this.ib_rowvalidated = false
+	else
+		li_errcode = 0
+		this.ib_rowvalidated = true
+	end if
+	if li_errcode = -1 then
+		setnull(ls_null)
+		this.id_header.setcolumn("gender")
+		this.id_header.scrolltorow(this.il_currrow)
+	end if
+	return li_errcode
+
+// w_servicecomponent_refvalue.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+
+// w_servicecomponent_refvalue.create() returns 0
+	this.cb_ok = create cb_ok
+	this.cb_cancel = create cb_cancel
+	this.dw_viewheader = create dw_viewheader
+	this.control = {this.cb_ok, this.cb_cancel, this.dw_viewheader}
+
+// w_servicecomponent_refvalue.destroy() returns 0
+	destroy this.cb_ok
+	destroy this.cb_cancel
+	destroy this.dw_viewheader
+
+// w_servicecomponent_refvalue.open() returns long
+	long ll_row
+	long ll_currrow
+	long ll_counter
+	string ls_saletype
+	long li_protect
+	long li_view_cashorcredit
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	setredraw(false)
+	this.id_header = this.dw_viewheader
+	this.id_header.settransobject(sqlca)
+	this.istr_values_blob = message.powerobjectparm
+	if this.istr_values_blob.s_name = "S" then
+		this.id_header.object.lowerreferencevalue.edit.required = true
+		this.id_header.object.upperreferencevalue.edit.required = true
+		this.id_header.object.lowerreferencevalue2.editmask.required = false
+		this.id_header.object.upperreferencevalue2.editmask.required = false
+		this.id_header.object.lowerreferencevalue2.visible = false
+		this.id_header.object.upperreferencevalue2.visible = false
+	else
+		this.id_header.object.lowerreferencevalue.visible = false
+		this.id_header.object.upperreferencevalue.visible = false
+		this.id_header.object.lowerreferencevalue.edit.required = false
+		this.id_header.object.upperreferencevalue.edit.required = false
+		this.id_header.object.lowerreferencevalue2.visible = true
+		this.id_header.object.upperreferencevalue2.visible = true
+		this.id_header.object.lowerreferencevalue2.editmask.required = true
+		this.id_header.object.upperreferencevalue2.editmask.required = true
+		this.id_header.object.lowerreferencevalue2.initial = "0"
+		this.id_header.object.upperreferencevalue2.initial = "0"
+		this.id_header.object.lowerreferencevalue2.editmask.mask = f_get_servicecomponentunit_editmask(this.istr_values_blob.s_name)
+		this.id_header.object.upperreferencevalue2.editmask.mask = f_get_servicecomponentunit_editmask(this.istr_values_blob.s_name)
+		this.id_header.object.lowerreferencevalue2.format = f_get_servicecomponentunit_editmask(this.istr_values_blob.s_name)
+		this.id_header.object.upperreferencevalue2.format = f_get_servicecomponentunit_editmask(this.istr_values_blob.s_name)
+		this.id_header.object.lowerreferencevalue2.editmask.focusrectangle = "Yes"
+		this.id_header.object.upperreferencevalue2.editmask.focusrectangle = "Yes"
+	end if
+	if long(this.istr_values_blob.ls_value[1, 9]) > 0 then
+		for ll_counter = 1 to 200
+			if long(this.istr_values_blob.ls_value[ll_counter, 9]) > 0 then
+				ll_row = this.id_header.insertrow(0)
+				this.id_header.object.gender[ll_row] = this.istr_values_blob.ls_value[ll_counter, 1]
+				this.id_header.object.ageunit[ll_row] = this.istr_values_blob.ls_value[ll_counter, 2]
+				this.id_header.object.gestationcode[ll_row] = long(this.istr_values_blob.ls_value[ll_counter, 3])
+				this.id_header.object.testmachinecode[ll_row] = long(this.istr_values_blob.ls_value[ll_counter, 4])
+				this.id_header.object.loweragelimit[ll_row] = long(this.istr_values_blob.ls_value[ll_counter, 5])
+				this.id_header.object.upperagelimit[ll_row] = long(this.istr_values_blob.ls_value[ll_counter, 6])
+				if this.istr_values_blob.s_name = "S" then
+					this.id_header.object.lowerreferencevalue[ll_row] = this.istr_values_blob.ls_value[ll_counter, 7]
+					this.id_header.object.upperreferencevalue[ll_row] = this.istr_values_blob.ls_value[ll_counter, 8]
+				elseif this.istr_values_blob.s_name = "N" then
+					this.id_header.object.lowerreferencevalue2[ll_row] = long(this.istr_values_blob.ls_value[ll_counter, 7])
+					this.id_header.object.upperreferencevalue2[ll_row] = long(this.istr_values_blob.ls_value[ll_counter, 8])
+				elseif this.istr_values_blob.s_name = "D" then
+					this.id_header.object.lowerreferencevalue2[ll_row] = double(this.istr_values_blob.ls_value[ll_counter, 7])
+					this.id_header.object.upperreferencevalue2[ll_row] = double(this.istr_values_blob.ls_value[ll_counter, 8])
+				end if
+				this.id_header.object.rowid[ll_row] = long(this.istr_values_blob.ls_value[ll_counter, 9])
+			end if
+		next
+	end if
+	this.id_header.scrolltorow(this.id_header.rowcount())
+	setredraw(true)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		triggerevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// dw_viewheader.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ll_rowcount
+	if key = keyescape! then
+		parent.post event ue_close(-1)
+	end if
+	if keyflags = 2 then
+		if key = keyi! then
+			if parent.ib_rowvalidated = false and parent.wf_validateitem() = -1 then
+				return ::message.returnvalue
+			end if
+			if parent.id_header.rowcount() > 0 and f_validatedw(parent.id_header) < 0 then
+				return ::message.returnvalue
+			end if
+			ll_rowcount = parent.id_header.insertrow(0)
+			if ll_rowcount > 1 then
+				parent.id_header.scrolltorow(ll_rowcount)
+				parent.id_header.setcolumn("testmachinecode")
+				parent.id_header.setfocus()
+			end if
+		end if
+		if key = keyd! then
+			parent.ib_rowvalidated = true
+			if parent.id_header.rowcount() > 0 then
+				parent.id_header.deleterow(0)
+			end if
+			ll_rowcount = parent.id_header.rowcount()
+			if ll_rowcount > 1 then
+				parent.id_header.scrolltorow(ll_rowcount)
+				parent.id_header.setcolumn("testmachinecode")
+				parent.id_header.setfocus()
+			end if
+			parent.ib_rowvalidated = true
+		end if
+	end if
+	return ::message.returnvalue
+
+// dw_viewheader.ue_enterkey() returns long
+	long ll_rowcount
+	if getrow() = rowcount() and getcolumn() = integer(this.object.datawindow.column.count) then
+		if parent.id_header.rowcount() > 0 then
+			parent.id_header.setcolumn("testmachinecode")
+			if f_validatedw(parent.id_header) < 0 then
+				return ::message.returnvalue
+			end if
+			return
+		end if
+		if parent.ib_rowvalidated = false and parent.wf_validateitem() = -1 then
+			return 1
+		end if
+		if parent.id_header.object.gender[getrow()] = "" or isnull(parent.id_header.object.ageunit[getrow()]) or isnull(parent.id_header.object.gestationcode[getrow()]) or isnull(parent.id_header.object.testmachinecode[getrow()]) then
+			return ::message.returnvalue
+		else
+			ll_rowcount = parent.id_header.insertrow(0)
+		end if
+		if ll_rowcount > 1 then
+			parent.id_header.scrolltorow(ll_rowcount)
+			parent.id_header.setcolumn("testmachinecode")
+			parent.id_header.setfocus()
+		end if
+		return 1
+	end if
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_viewheader.itemerror(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "Gender"
+		if data = "" or isnull(data) then
+			messagebox("Gender Validation", "Value required Gender in current row")
+		end if
+	end choose
+	return 1
+
+// dw_viewheader.itemfocuschanged(long row, dwobject dwo) returns long
+	selecttext(1, len(gettext()))
+	if parent.ib_rowvalidated = false and parent.wf_validateitem() = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_viewheader.itemchanged(long row, dwobject dwo, string data) returns long
+	integer li_errcode
+	choose case dwo.name
+	case "gender"
+		parent.ib_rowvalidated = false
+		parent.il_currrow = row
+		li_errcode = 0
+	case "ageunit"
+		this.object.loweragelimit[row] = 1
+		this.object.upperagelimit[row] = 1
+	case "loweragelimit"
+		if long(data) < 0 then
+			messagebox("Lower Age Limit Validation", "Lower Age Limit can not be -ve~r~nPlease Enter Valid Lower Age Limit", stopsign!)
+			return 1
+		end if
+		if this.object.ageunit[row] = "M" then
+			if long(data) > 12 then
+				messagebox("Lower Age Limit Validation", "Please Enter Valid Lower Age Limit", stopsign!)
+				return 1
+			else
+				return 0
+			end if
+		elseif this.object.ageunit[row] = "D" then
+			if long(data) > 31 then
+				messagebox("Lower Age Limit Validation", "Please Enter Valid Lower Age Limit", stopsign!)
+				return 1
+			else
+				return 0
+			end if
+		else
+			return 0
+		end if
+	case "upperagelimit"
+		if long(data) < 0 then
+			messagebox("Upper Age Limit Validation", "Upper Age Limit can not be -ve~r~nPlease Enter Valid Upper Age Limit", stopsign!)
+			return 1
+		end if
+		if this.object.ageunit[row] = "M" then
+			if long(data) > 12 then
+				messagebox("Upper Age Limit Validation", "Please Enter Valid Upper Age Limit", stopsign!)
+				li_errcode = 1
+			end if
+		elseif this.object.ageunit[row] = "D" and long(data) > 31 then
+			messagebox("Upper Age Limit Validation", "Please Enter Valid Upper Age Limit", stopsign!)
+			li_errcode = 1
+		end if
+		if li_errcode = 0 then
+			if long(data) < this.object.loweragelimit[row] then
+				messagebox("Upper Age Limit Validation", "Please Enter Valid Upper Age Limit~r~nUpper Age Limit Must be greater or equal to Lower Age Limit", stopsign!)
+				li_errcode = 1
+			else
+				li_errcode = 0
+			end if
+		end if
+	case else
+		parent.ib_rowvalidated = true
+	end choose
+	return li_errcode

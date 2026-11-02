@@ -1,0 +1,38 @@
+// userobject n_dwr_format (dw2xls)  ancestor: nonvisualobject
+
+// n_dwr_format.of_str2alignment(string as_alignment) returns long
+	choose case lower(as_alignment)
+	case "left"
+		return 0
+	case "right"
+		return 1
+	case "center"
+		return 2
+	case "justify", "justified"
+		return 3
+	case "top"
+		return 0
+	case "bottom"
+		return 2
+	case "middle", "vcenter"
+		return 1
+	end choose
+	return 0
+
+// n_dwr_format.create() returns 0
+	call super::create
+	triggerevent("constructor")
+
+// n_dwr_format.destroy() returns 0
+	triggerevent("destructor")
+	call super::destroy
+
+// n_dwr_format.destructor() returns long
+	if this.handle <> 0 then
+		destroyformat(this.handle)
+	end if
+	return ::message.returnvalue
+
+// n_dwr_format.constructor() returns long
+	this.inv_const = create n_dwr_const
+	return ::message.returnvalue

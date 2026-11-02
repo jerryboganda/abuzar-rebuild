@@ -1,0 +1,453 @@
+// window w_cashonsales (salerespwin)  ancestor: w_single_entry
+
+// w_cashonsales.ue_close() returns 0
+	postevent(close!)
+
+// w_cashonsales.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM Ward WHERE Ward.name =:as_name USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_cashonsales.wf_retrievelist() returns integer
+	long rtcode
+	rtcode = this.id_dwcontrol.retrieve(this.il_groupcode, this.ii_module)
+	return rtcode
+
+// w_cashonsales.wf_validatepaymentacccode(char ac_paymentmode, long al_acccode) returns boolean
+	long ll_count
+	boolean b_flag
+	if ac_paymentmode = "C" or isnull(ac_paymentmode) then
+		SQL SELECT count ( *) INTO :ll_count FROM accounts WHERE accounts.acccode =:al_acccode and accounts.subcode IN ( SELECT code FROM GLOBAL WHERE name ='GT_CashSub' ) USING this.it_mytransobject;
+	else
+		SQL SELECT count ( *) INTO :ll_count FROM accounts WHERE accounts.acccode =:al_acccode and accounts.subcode IN ( SELECT code FROM GLOBAL WHERE name ='GT_BankSub' ) USING this.it_mytransobject;
+	end if
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_cashonsales.wf_saveform(string as_messagetitle, string as_messagetext, long al_error_row, string as_error_col) returns integer
+	long ll_counter
+	long ll_null
+	long ll_usercode
+	long ll_paymentacccode
+	integer li_retcode
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	string ls_null
+	char lc_null
+	char lc_paymentmode
+	datetime ldt_null
+	double ld_invtotal
+	double ld_amt
+	dwitemstatus lds_rowstatus
+	setnull(ll_null)
+	setnull(ls_null)
+	setnull(lc_null)
+	setnull(ldt_null)
+	for ll_counter = 1 to this.id_detail.rowcount()
+		if isnull(this.id_detail.getitemnumber(ll_counter, "amt")) then
+			as_messagetitle = "Amount Validation!"
+			as_messagetext = "Please Enter Valid Amount Received"
+			al_error_row = ll_counter
+			as_error_col = "amt"
+			return -1
+		elseif this.id_detail.getitemnumber(1, "amt") < 0.0 then
+			as_messagetitle = "Amount Validation!"
+			as_messagetext = "Negative Amount is not acceptable~r~nPlease Enter Valid Amount Received"
+			al_error_row = ll_counter
+			as_error_col = "amt"
+			return -1
+		end if
+	next
+	as_error_col = ""
+	al_error_row = 0
+	li_retcode = this.id_detail.accepttext()
+	if li_retcode < 0 then
+		as_messagetitle = "Validation"
+		as_messagetext = "Error in validation of data"
+		al_error_row = 0
+		return -1
+	end if
+	open(w_salesmanpassword)
+	ll_usercode = long(message.doubleparm)
+	setfocus()
+	if ll_usercode > 0 then
+		if not wf_validateserverdatetime(ldt_server_datetime, ls_date_errtext) then
+			as_messagetitle = "Date Violation"
+			as_messagetext = ls_date_errtext
+			al_error_row = 0
+			return -1
+		end if
+		if not wf_getserverdatetime(ldt_server_datetime, ls_date_errtext) then
+			as_messagetitle = "Date Violation"
+			as_messagetext = ls_date_errtext
+			al_error_row = 0
+			return -1
+		end if
+		ll_counter = 1
+		do while ll_counter <= this.id_detail.rowcount()
+			lds_rowstatus = this.id_detail.getitemstatus(ll_counter, 0, primary!)
+			ld_invtotal = this.id_detail.getitemnumber(ll_counter, "invtotal")
+			ld_amt = this.id_detail.getitemnumber(ll_counter, "amt")
+			lc_paymentmode = this.id_detail.getitemstring(ll_counter, "paymentmode")
+			ll_paymentacccode = this.id_detail.getitemnumber(ll_counter, "paymentacccode")
+			if lds_rowstatus = datamodified! then
+				if ld_amt > 0.0 then
+					if isnull(lc_paymentmode) then
+						as_messagetitle = "Payment Mode Validation!"
+						as_messagetext = "Select Valid Payment Mode for Amount Received"
+						al_error_row = ll_counter
+						as_error_col = "paymentmode"
+						return -1
+					end if
+					if isnull(ll_paymentacccode) then
+						as_messagetitle = "Cash/Bank Account Validation!"
+						as_messagetext = "Select Valid Cash/Bank Account for Amount Received"
+						al_error_row = ll_counter
+						as_error_col = "ddd_acccode"
+						return -1
+					end if
+					if wf_validatepaymentacccode(lc_paymentmode, ll_paymentacccode) = true then
+						this.id_detail.setitem(ll_counter, "amtdate", ldt_server_datetime)
+						this.id_detail.setitem(ll_counter, "amtby", ll_usercode)
+						if ld_invtotal - ld_amt >= 0.0 then
+							this.id_detail.setitem(ll_counter, "outstandingamt", ld_invtotal - ld_amt)
+						else
+							this.id_detail.setitem(ll_counter, "outstandingamt", 0)
+						end if
+					else
+						as_messagetitle = "Cash/Bank Account Validation!"
+						as_messagetext = "Select Valid Cash/Bank Account for Amount Received"
+						al_error_row = ll_counter
+						as_error_col = "ddd_acccode"
+						return -1
+					end if
+				elseif ld_amt = 0.0 then
+					this.id_detail.setitem(ll_counter, "paymentmode", lc_null)
+					this.id_detail.setitem(ll_counter, "paymentacccode", ll_null)
+					this.id_detail.setitem(ll_counter, "ddd_acccode", ll_null)
+					this.id_detail.setitem(ll_counter, "amtdate", ldt_null)
+					this.id_detail.setitem(ll_counter, "amtreference", ls_null)
+					this.id_detail.setitem(ll_counter, "amtby", ll_usercode)
+					this.id_detail.setitem(ll_counter, "outstandingamt", ld_invtotal - ld_amt)
+				else
+					as_messagetitle = "Cash/Bank Account Validation!"
+					as_messagetext = "Select Valid Cash/Bank Account for Amount Received"
+					al_error_row = ll_counter
+					as_error_col = "amt"
+					return -1
+				end if
+				return
+			end if
+			ll_counter = ll_counter + 1
+		loop
+		li_retcode = this.id_detail.update(true, true)
+		if li_retcode = 1 then
+			SQL commit USING this.it_mytransobject;
+			if this.it_mytransobject.sqlcode <> 0 then
+				SQL rollback USING this.it_mytransobject;
+				as_messagetitle = "Error on Commit"
+				as_messagetext = this.it_mytransobject.sqlerrtext
+				al_error_row = 0
+				as_error_col = ""
+				li_retcode = -1
+			else
+				as_messagetitle = "Saving Completed"
+				as_messagetext = "Changes Saved in Database"
+				al_error_row = 0
+				as_error_col = ""
+				li_retcode = 1
+			end if
+		else
+			SQL rollback USING this.it_mytransobject;
+			as_messagetitle = "Update Failed"
+			as_messagetext = "Rolling back changes to database"
+			al_error_row = 0
+			as_error_col = ""
+			li_retcode = -1
+		end if
+	else
+		as_messagetitle = "Saving Aborted"
+		as_messagetext = "Please enter valid username/password"
+		al_error_row = 0
+		as_error_col = ""
+		li_retcode = -1
+	end if
+	return li_retcode
+
+// w_cashonsales.wf_check_lockedinvoices() returns long
+	long ll_counter
+	long ll_found
+	long ll_totalinvoices
+	SQL Select count ( *) INTO :ll_found From SaleLedger S Where S.AccountFor ='Y' AND S.Posted ='N' AND S.Deleted ='N' AND S.SaleCatCode =2 USING this.it_mytransobject;
+	if sqlca.sqlcode = 0 then
+		SQL Select count ( *) INTO :ll_totalinvoices From SaleLedger S WITH ( readpast , rowlock , updlock ) Where S.AccountFor ='Y' AND S.Posted ='N' AND S.Deleted ='N' AND S.SaleCatCode =2 USING this.it_mytransobject;
+		if ll_totalinvoices <> ll_found then
+			messagebox("Cash on Sales", "Sale Invoice Locking Attempt failed,~r~n" + "Some sale invoice(s) are already under modification~r~n" + "Kindly complete/abort modification process and try again")
+			return -1
+		elseif wf_locksaleinvoices() <> 0 then
+			messagebox("Cash on Sales", "Sale Invoice Locking Attempt failed,~r~n" + "Some sale invoice(s) are already under modification~r~n" + "Kindly complete/abort modification process and try again")
+			return -1
+		end if
+	else
+		messagebox("Cash on Sales", "Unable to fetech status of Sale Invoice(s)~r~nKindly complete/abort modification process of the said invoice and try again")
+		return -1
+	end if
+	return 0
+
+// w_cashonsales.wf_locksaleinvoices() returns long
+	return 0
+
+// w_cashonsales.wf_confirm_changes() returns 0
+	integer li_yesno
+	if this.editflag = true then
+		li_yesno = messagebox("Confirm Changes", "Ok to loose any unsaved changes that you've typed", question!, yesno!, 2)
+		this.editflag = false
+	end if
+	this.i_editmode = 2
+	if li_yesno = 2 then
+		if this.tab_retrieve.tabpage_detail.dw_detail.update() > 0 then
+			SQL commit USING this.it_mytransobject;
+			return
+		end if
+		SQL rollback USING this.it_mytransobject;
+		messagebox("Error", "changes Cancel", exclamation!, ok!, 1)
+	end if
+
+// w_cashonsales.wf_getserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+	datetime ldt_last_transdate
+	datetime ldt_current_serverdate
+	integer li_max_allow_days
+	string ls_hold_serverdate
+	date ld_datepart
+	time lt_timepart
+	ar_errtext = "Please verify Server DateTime"
+	li_max_allow_days = f_numberpreferences("MaxAllowDate")
+	if isnull(li_max_allow_days) then
+		li_max_allow_days = 4
+	end if
+	SQL rollback USING this.it_mytransobject;
+	SQL SELECT LastTransDate INTO :ldt_last_transdate FROM ServerDate USING this.it_mytransobject;
+	if this.it_mytransobject.sqlcode = 0 then
+		this.it_mytransobject.getdatetime(ldt_current_serverdate)
+		if this.it_mytransobject.sqlcode = 0 then
+			if ldt_current_serverdate >= ldt_last_transdate and daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) <= li_max_allow_days then
+				ld_datepart = date(string(ldt_current_serverdate, "yyyy-mm-dd"))
+				lt_timepart = time(string(ldt_current_serverdate, "hh:mm:ss"))
+				ldt_current_serverdate = datetime(ld_datepart, lt_timepart)
+				SQL update ServerDate SET LastTransDate =:ldt_current_serverdate USING this.it_mytransobject;
+				if this.it_mytransobject.sqlcode = 0 then
+					SQL commit USING this.it_mytransobject;
+					ar_server_datetime = ldt_current_serverdate
+					return true
+				else
+					SQL rollback USING this.it_mytransobject;
+					return false
+				end if
+			elseif ldt_current_serverdate < ldt_last_transdate then
+				ar_errtext = "Back Date Invoice Check violates"
+				return false
+			elseif daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) > li_max_allow_days then
+				ar_errtext = "Forward Date Invoice Check violates"
+				return false
+			end if
+		else
+			SQL rollback USING this.it_mytransobject;
+			return false
+		end if
+		return
+	end if
+	SQL rollback USING this.it_mytransobject;
+	return false
+
+// w_cashonsales.wf_validateserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+	datetime ldt_last_transdate
+	datetime ldt_current_serverdate
+	long li_max_allow_days
+	ar_errtext = "Invoice Date  Check violates"
+	li_max_allow_days = f_numberpreferences("MaxAllowDate")
+	if isnull(li_max_allow_days) then
+		li_max_allow_days = 4
+	end if
+	SQL SELECT LastTransDate INTO :ldt_last_transdate FROM ServerDate USING this.it_mytransobject;
+	if this.it_mytransobject.sqlcode = 0 then
+		this.it_mytransobject.getdatetime(ldt_current_serverdate)
+		if this.it_mytransobject.sqlcode = 0 then
+			if ldt_current_serverdate >= ldt_last_transdate and daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) <= li_max_allow_days then
+				ar_server_datetime = ldt_current_serverdate
+				return true
+			elseif ldt_current_serverdate < ldt_last_transdate then
+				ar_errtext = "Back Date Invoice Check violates"
+				return false
+			elseif daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) > li_max_allow_days then
+				ar_errtext = "Forward Date Invoice Check violates"
+				return false
+			end if
+		else
+			return false
+		end if
+		return
+	end if
+	return false
+
+// w_cashonsales.create() returns 0
+	call super::create
+
+// w_cashonsales.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_cashonsales.activate() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::activate()
+	this.windowstate = maximized!
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_cashonsales.ue_delete() returns 0
+
+// w_cashonsales.ue_save() returns 0
+	long ll_row
+	long ll_temp
+	long ll_err_row
+	string sl_columnname
+	string ls_messtitle
+	string ls_messtext
+	string ls_err_col
+	boolean lb_save
+	if isnull(this.id_detail.getitemnumber(1, "code")) then
+		return
+	end if
+	setpointer(hourglass!)
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	if wf_saveform(ls_messtitle, ls_messtext, ll_err_row, ls_err_col) >= 0 then
+		messagebox(ls_messtitle, ls_messtext, information!)
+		this.ib_commitok = true
+		this.im_menu.m_file.m_new.enabled = true
+		this.editflag = false
+		setpointer(arrow!)
+		postevent("ue_close")
+		return
+	end if
+	messagebox(ls_messtitle, ls_messtext + "~r~nRecommendations:- ~r~nKindly close this module and re-open again with fresh values", stopsign!)
+	if ll_err_row > 0 then
+		this.id_detail.setrow(ll_err_row)
+	end if
+	if ls_err_col <> "" then
+		this.id_detail.setcolumn(ls_err_col)
+	end if
+	this.id_detail.setfocus()
+	setpointer(arrow!)
+
+// w_cashonsales.ue_newform() returns 0
+	long ll_counter
+	long ll_saleinvcode
+	long ll_found
+	setredraw(false)
+	this.i_editmode = 1
+	this.i_retrievemode = 2
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_new.enabled = false
+	this.im_menu.m_file.m_delete.enabled = false
+	this.im_menu.m_file.m_delete.enabled = false
+	this.im_menu.m_file.m_first.enabled = false
+	this.im_menu.m_file.m_next.enabled = false
+	this.im_menu.m_file.m_previous.enabled = false
+	this.im_menu.m_file.m_last.enabled = false
+	this.im_menu.m_file.m_print.enabled = false
+	this.im_menu.m_file.m_retrieve.enabled = true
+	this.im_menu.m_file.m_retrieve.text = "Lis&t"
+	this.tab_retrieve.tabpage_detail.enabled = true
+	if this.id_detail.rowcount() > 0 then
+		this.id_detail.reset()
+	end if
+	this.idc_paymentacccode.retrieve(f_getglobalcode("GT_CashSub"))
+	this.id_detail.insertrow(0)
+	this.id_detail.setcolumn(1)
+	this.id_detail.setfocus()
+	setredraw(true)
+
+// w_cashonsales.close() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::close()
+	close(this)
+	return ::message.returnvalue
+
+// w_cashonsales.open() returns long
+	m_entry lm_menu
+	long ll_width
+	long ll_height
+	environment env
+	integer li_rtncode
+	this.it_mytransobject = create u_transaction
+	SQL start USING this.it_mytransobject;
+	postevent("ue_postopen")
+	wf_setmenu(this.menuid)
+	lm_menu = this.menuid
+	lm_menu.mf_initsecurityapp(lm_menu)
+	this.im_menu.m_file.m_save.enabled = false
+	this.im_menu.m_file.m_delete.enabled = false
+	this.im_menu.m_file.m_previous.enabled = false
+	this.im_menu.m_file.m_retrieve.text = "De&tail"
+	this.id_detail = this.tab_retrieve.tabpage_detail.dw_detail
+	this.id_list = this.tab_retrieve.tabpage_list.dw_list
+	this.tab_retrieve.tabpage_detail.dw_print.dataobject = this.tab_retrieve.tabpage_detail.dw_detail.dataobject
+	this.id_print = this.tab_retrieve.tabpage_detail.dw_print
+	this.id_detail.settransobject(this.it_mytransobject)
+	this.id_list.settransobject(this.it_mytransobject)
+	this.id_print.settransobject(this.it_mytransobject)
+	this.id_dwcontrol = this.id_list
+	wf_populate_ddlb(this.id_dwcontrol)
+	this.tab_retrieve.tabpage_list.dw_find.settransobject(this.it_mytransobject)
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.tab_retrieve.width = ll_width * 0.99
+	this.tab_retrieve.height = ll_height * 0.83
+	this.tab_retrieve.tabpage_list.gb_fliter.width = ll_width * 0.97 - this.tab_retrieve.tabpage_list.gb_sort.width
+	this.tab_retrieve.tabpage_list.r_1.width = ll_width * 0.99
+	this.tab_retrieve.tabpage_list.r_1.height = ll_height * 0.765 - this.tab_retrieve.tabpage_list.gb_sort.height
+	this.tab_retrieve.tabpage_list.dw_list.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_list.dw_list.height = ll_height * 0.75 - this.tab_retrieve.tabpage_list.dw_list.y
+	this.tab_retrieve.tabpage_detail.dw_detail.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_detail.height = ll_height * 0.70
+	setredraw(true)
+	this.is_tablename = "SaleLedger"
+	this.im_menu.m_file.m_new.visible = false
+	this.il_groupcode = f_getgroupcode(gl_usercode)
+	li_rtncode = this.id_detail.getchild("ddd_acccode", this.idc_paymentacccode)
+	if li_rtncode = -1 then
+		messagebox("Error", "Can not get a DataWindowChild")
+		close(this)
+	end if
+	this.idc_paymentacccode.settransobject(this.it_mytransobject)
+	this.idc_paymentacccode.insertrow(0)
+	this.tab_retrieve.tabpage_list.enabled = false
+	return ::message.returnvalue
+
+// w_cashonsales.ue_postopen() returns 0
+	call super::ue_postopen
+	if wf_check_lockedinvoices() = 0 then
+		this.id_detail.retrieve(this.il_groupcode)
+		return
+	end if
+	close(this)
+
+// w_cashonsales.closequery() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::closequery()
+	SQL rollback USING this.it_mytransobject;
+	return ::message.returnvalue

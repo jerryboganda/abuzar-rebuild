@@ -1,0 +1,77 @@
+// window w_dberror (components)  ancestor: window
+
+// w_dberror.ue_key(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		close(w_dberror)
+	end if
+	return ::message.returnvalue
+
+// w_dberror.create() returns 0
+	this.cb_viewdetails = create cb_viewdetails
+	this.mle_sqlerrormessage = create mle_sqlerrormessage
+	this.mle_apperrormessage = create mle_apperrormessage
+	this.gb_1 = create gb_1
+	this.gb_2 = create gb_2
+	this.control = {this.cb_viewdetails, this.mle_sqlerrormessage, this.mle_apperrormessage, this.gb_1, this.gb_2}
+
+// w_dberror.destroy() returns 0
+	destroy this.cb_viewdetails
+	destroy this.mle_sqlerrormessage
+	destroy this.mle_apperrormessage
+	destroy this.gb_1
+	destroy this.gb_2
+
+// w_dberror.open() returns long
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	s_dberror ls_dberror
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - 1300
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	ls_dberror = message.powerobjectparm
+	this.mle_apperrormessage.text = ls_dberror.s_apperrormessage
+	this.mle_sqlerrormessage.text = ls_dberror.s_sqlerrormessage
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// cb_viewdetails.ue_key(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		close(w_dberror)
+	elseif key = keyenter! then
+		triggerevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_viewdetails.clicked() returns long
+	if parent.height = 660 then
+		this.text = "<<  &Details"
+		parent.height = 1300
+	else
+		this.text = ">>  &Details"
+		parent.height = 660
+	end if
+	return ::message.returnvalue
+
+// mle_sqlerrormessage.ue_key(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		close(w_dberror)
+	end if
+	return ::message.returnvalue
+
+// mle_apperrormessage.ue_key(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		close(w_dberror)
+	end if
+	return ::message.returnvalue

@@ -1,0 +1,126 @@
+// window w_startup (abuzarapp)  ancestor: window
+
+// w_startup.wf_execute_task(string as_title, string as_object, string as_format) returns long
+	w_reviewreport lw_sheet
+	s_reportinfo ls_reportinfo
+	ls_reportinfo.s_reporttitle = as_title
+	ls_reportinfo.s_reportobject = as_object
+	ls_reportinfo.s_format = as_format
+	ls_reportinfo.i_value = 1
+	opensheetwithparm(lw_sheet, ls_reportinfo, w_main, 0, layered!)
+	return 0
+
+// w_startup.create() returns 0
+	this.dw_startup = create dw_startup
+	this.cb_close = create cb_close
+	this.control = {this.dw_startup, this.cb_close}
+
+// w_startup.destroy() returns 0
+	destroy this.dw_startup
+	destroy this.cb_close
+
+// w_startup.close() returns long
+	return ::message.returnvalue
+
+// w_startup.open() returns long
+	string ls_query
+	string ls_backupdevice
+	string ls_servername
+	string[] ls_bkupdevice
+	string ls_bkinfo
+	string ls_backupinformation
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	long ll_row
+	long ll_counter
+	datastore lds_bkup
+	environment env
+	integer li_counter
+	lds_bkup = create datastore
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	this.it_transobject = create u_transaction
+	this.it_transobject.autocommit = true
+	SQL start USING this.it_transobject;
+	this.il_groupcode = f_getgroupcode(gl_usercode)
+	this.dw_startup.settransobject(this.it_transobject)
+	this.dw_startup.retrieve(this.il_groupcode)
+	lds_bkup.dataobject = "d_backupinfo"
+	lds_bkup.settransobject(this.it_transobject)
+	ls_bkupdevice[1, 2] = "Manual Backup"
+	ls_bkupdevice[1, 3] = "manual"
+	ls_bkupdevice[2, 2] = "Auto Client Backup"
+	ls_bkupdevice[2, 3] = "autoclient"
+	ls_bkupdevice[3, 2] = "Auto StartUp Backup"
+	ls_bkupdevice[3, 3] = "autostartup"
+	for ll_counter = 1 to 3
+		ls_backupdevice = f_getbackupdevicename(ls_bkupdevice[ll_counter, 3])
+		ls_bkupdevice[ll_counter, 1] = ls_backupdevice
+	next
+	f_getbackupinfo(this.it_transobject, lds_bkup, ls_bkupdevice)
+	ll_counter = 1
+	if lds_bkup.rowcount() > 0 then
+		for ll_counter = 1 to lds_bkup.rowcount()
+			if isnull(lds_bkup.object.c_backupage[ll_counter]) or trim(lds_bkup.object.c_backupage[ll_counter]) = "" then
+				ls_backupinformation = "(Not Available)"
+			else
+				ls_backupinformation = lds_bkup.object.c_backupage[ll_counter]
+			end if
+			if ll_counter = 1 then
+				ls_bkupdevice[1, 4] = "Manual Backup " + ls_backupinformation
+			elseif ll_counter = 2 then
+				ls_bkupdevice[2, 4] = "Auto Client Backup " + ls_backupinformation
+			elseif ll_counter = 3 then
+				ls_bkupdevice[3, 4] = "Auto StartUp Backup " + ls_backupinformation
+			end if
+		next
+	end if
+	if this.dw_startup.rowcount() > 0 then
+		ll_counter = 1
+		for ll_counter = 1 to this.dw_startup.rowcount()
+			if this.dw_startup.object.rightcode[ll_counter] <= 3 then
+				if this.dw_startup.object.rightcode[ll_counter] = 1 then
+					this.dw_startup.object.information[ll_counter] = ls_bkupdevice[1, 4]
+				elseif this.dw_startup.object.rightcode[ll_counter] = 2 then
+					this.dw_startup.object.information[ll_counter] = ls_bkupdevice[2, 4]
+				elseif this.dw_startup.object.rightcode[ll_counter] = 3 then
+					this.dw_startup.object.information[ll_counter] = ls_bkupdevice[3, 4]
+				end if
+			end if
+		next
+	end if
+	SQL stop USING this.it_transobject;
+	destroy this.it_transobject
+	return ::message.returnvalue
+
+// dw_startup.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	long ll_code
+	string ls_type
+	if row > 0 then
+		ll_code = this.object.rightcode[row]
+		ls_type = this.object.righttype[row]
+		choose case dwo.name
+		case "b_exe"
+			choose case ls_type
+			case "B"
+				open(w_backupinfo)
+			case "R"
+				parent.wf_execute_task(this.object.rightname[row], this.object.objectname[row], this.object.details[row])
+			end choose
+		end choose
+	end if
+	return ::message.returnvalue
+
+// cb_close.clicked() returns long
+	close(parent)
+	return ::message.returnvalue

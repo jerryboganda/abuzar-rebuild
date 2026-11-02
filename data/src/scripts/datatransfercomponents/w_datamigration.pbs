@@ -1,0 +1,332 @@
+// window w_datamigration (datatransfercomponents)  ancestor: window
+
+// w_datamigration.ue_close(integer ai_status) returns 0
+	wf_disconnect()
+	wf_disconnect2()
+	close(this)
+
+// w_datamigration.wf_disconnect() returns 0
+	SQL stop USING this.it_datatransobject;
+	destroy this.it_datatransobject
+
+// w_datamigration.wf_connect() returns integer
+	this.it_datatransobject = create u_transaction
+	SQL start USING this.it_datatransobject;
+	return this.it_datatransobject.sqlcode
+
+// w_datamigration.wf_connect2() returns long
+	this.it_locking_trans = create u_transaction
+	SQL start USING this.it_locking_trans;
+	return this.it_locking_trans.sqlcode
+
+// w_datamigration.wf_disconnect2() returns 0
+	SQL stop USING this.it_locking_trans;
+	destroy this.it_locking_trans
+
+// w_datamigration.create() returns 0
+	this.st_4_ok = create st_4_ok
+	this.st_4 = create st_4
+	this.shl_backupfile = create shl_backupfile
+	this.st_3_ok = create st_3_ok
+	this.st_3 = create st_3
+	this.st_2_ok = create st_2_ok
+	this.st_2 = create st_2
+	this.st_1_ok = create st_1_ok
+	this.st_1 = create st_1
+	this.hpb_basic = create hpb_basic
+	this.cb_cancel = create cb_cancel
+	this.cb_start = create cb_start
+	this.st_1_cancel = create st_1_cancel
+	this.st_2_cancel = create st_2_cancel
+	this.st_3_cancel = create st_3_cancel
+	this.st_4_cancel = create st_4_cancel
+	this.gb_options = create gb_options
+	this.gb_basic = create gb_basic
+	this.control = {this.st_4_ok, this.st_4, this.shl_backupfile, this.st_3_ok, this.st_3, this.st_2_ok, this.st_2, this.st_1_ok, this.st_1, this.hpb_basic, this.cb_cancel, this.cb_start, this.st_1_cancel, this.st_2_cancel, this.st_3_cancel, this.st_4_cancel, this.gb_options, this.gb_basic}
+
+// w_datamigration.destroy() returns 0
+	destroy this.st_4_ok
+	destroy this.st_4
+	destroy this.shl_backupfile
+	destroy this.st_3_ok
+	destroy this.st_3
+	destroy this.st_2_ok
+	destroy this.st_2
+	destroy this.st_1_ok
+	destroy this.st_1
+	destroy this.hpb_basic
+	destroy this.cb_cancel
+	destroy this.cb_start
+	destroy this.st_1_cancel
+	destroy this.st_2_cancel
+	destroy this.st_3_cancel
+	destroy this.st_4_cancel
+	destroy this.gb_options
+	destroy this.gb_basic
+
+// w_datamigration.open() returns long
+	long ll_groupcode
+	long ll_count
+	long ll_usercode
+	long ll_appversion
+	long ll_sequenceid
+	long ll_dbstatus
+	long ll_parentappversion
+	long ll_parentsequenceid
+	long ll_parentdbstatus
+	long ll_retcode
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	open(w_salesmanpassword)
+	ll_usercode = long(message.doubleparm)
+	if ll_usercode < 0 or isnull(ll_usercode) then
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	else
+		ll_groupcode = f_getgroupcode(ll_usercode)
+		if ll_groupcode > 0 then
+			SQL SELECT ISNULL ( COUNT ( RightCode ) , 0 ) INTO :ll_count FROM GroupRights WHERE GroupCode =:ll_groupcode AND RightCode IN ( 1480 ) USING sqlca;
+			if isnull(ll_count) then
+				ll_count = 0
+			end if
+			if sqlca.sqlcode <> 0 then
+				close(this)
+				if not isvalid(message) then
+					return 0
+				end if
+				return message.returnvalue
+			elseif ll_count = 0 then
+				messagebox("Rights Validation", "You do not have rights to execute this business function/process.~r~nKindly consult your system administrator.", stopsign!)
+				close(this)
+				if not isvalid(message) then
+					return 0
+				end if
+				return message.returnvalue
+			end if
+		else
+			close(this)
+			if not isvalid(message) then
+				return 0
+			end if
+			return message.returnvalue
+		end if
+	end if
+	open(w_datamigration_alert)
+	if message.doubleparm <= 0.0 then
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	ll_retcode = wf_connect()
+	if ll_retcode <> 0 then
+		messagebox("Connection Problem", "Problem Connecting Database, Details are:-~r~n" + this.it_datatransobject.sqlerrtext)
+		post event ue_close(0)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	ll_retcode = wf_connect2()
+	if ll_retcode <> 0 then
+		messagebox("Connection Problem", "Problem Connecting Database, Details are:-~r~n" + this.it_locking_trans.sqlerrtext)
+		post event ue_close(0)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_datamigration.close() returns long
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(0)
+	return ::message.returnvalue
+
+// cb_start.clicked() returns long
+	boolean lb_ok
+	string ls_errtext
+	string ls_packetfile
+	string ls_temp
+	string ls_salesump
+	string ls_purdump
+	string ls_prevsalehistory
+	long ll_retcode
+	long ll_res
+	long ll_count
+	long ll_rows
+	datetime ldt_startdate
+	datetime ldt_enddate
+	ls_prevsalehistory = f_stringpreferences("SaveSaleHistoryBeforeMigration")
+	ldt_startdate = datetime(relativedate(today(), -90), time("00:00:00"))
+	ldt_enddate = datetime(today(), time("00:00:00"))
+	ls_purdump = f_stringpreferences("PreparePurDumpBeforeMigration")
+	ls_salesump = f_stringpreferences("PrepareSaleDumpBeforeMigration")
+	ll_res = messagebox("Risk Alert", "Data Migration is a risky process.~r~nIt Might cause data loss~r~nDo you still want to proceed with Process?", question!, yesno!, 2)
+	if ll_res > 1 then
+		return ::message.returnvalue
+	end if
+	SQL rollback USING parent.it_datatransobject;
+	SQL rollback USING parent.it_locking_trans;
+	ll_retcode = parent.it_datatransobject.copysbuffertosales()
+	if parent.it_datatransobject.sqlcode <> 0 then
+		ls_errtext = "Error occured while moving Posted Sales from Buffer to SaleLedger~r~nDetails Are:-~r~n" + parent.it_datatransobject.sqlerrtext
+		SQL rollback USING parent.it_datatransobject;
+		messagebox("Data Migration Error - Step # 0", ls_errtext)
+		lb_ok = false
+		parent.st_1_cancel.visible = true
+	else
+		SQL commit USING parent.it_datatransobject;
+	end if
+	parent.gb_basic.visible = true
+	parent.hpb_basic.visible = true
+	SQL SELECT COUNT ( *) INTO :ll_count FROM _TabMaxKey ( TABLOCKX ) USING parent.it_locking_trans;
+	if parent.it_locking_trans.sqlcode = 0 and lb_ok then
+		setpointer(hourglass!)
+		if lb_ok then
+			parent.gb_options.visible = true
+			parent.hpb_basic.stepit()
+			parent.st_1.visible = true
+			ll_retcode = parent.it_datatransobject.checkunpostedtransactions()
+			parent.hpb_basic.stepit()
+			if parent.it_datatransobject.sqlcode <> 0 then
+				ls_errtext = "Error occured while looking for Un-Posted Transaction(s)~r~nDetails Are:-~r~n" + parent.it_datatransobject.sqlerrtext
+				SQL rollback USING parent.it_datatransobject;
+				SQL rollback USING parent.it_locking_trans;
+				messagebox("Data Migration Error - Step # 1", ls_errtext)
+				lb_ok = false
+				parent.st_1_cancel.visible = true
+			else
+				SQL commit USING parent.it_datatransobject;
+			end if
+			if lb_ok and ls_purdump = "Y" then
+				parent.it_datatransobject.copyinvoicestopurledgermod(ll_rows)
+				if parent.it_datatransobject.sqlcode <> 0 then
+					ls_errtext = "Unable to preapre purchase invoices dump.~r~nPossible causes are: " + parent.it_datatransobject.sqlerrtext
+					SQL rollback USING parent.it_datatransobject;
+					SQL rollback USING parent.it_locking_trans;
+					messagebox("Data Migration Error - Step # 1.1", ls_errtext, stopsign!)
+					lb_ok = false
+					parent.st_1_cancel.visible = true
+				else
+					SQL commit USING parent.it_datatransobject;
+				end if
+			end if
+			if lb_ok and ls_salesump = "Y" then
+				parent.it_datatransobject.copyinvoicestosaledump(ll_rows)
+				if parent.it_datatransobject.sqlcode <> 0 then
+					ls_errtext = "Unable to preapre sale invoices dump.~r~nPossible causes are: " + parent.it_datatransobject.sqlerrtext
+					SQL rollback USING parent.it_datatransobject;
+					SQL rollback USING parent.it_locking_trans;
+					messagebox("Data Migration Error - Step # 1.2", ls_errtext, stopsign!)
+					lb_ok = false
+					parent.st_1_cancel.visible = true
+				else
+					SQL commit USING parent.it_datatransobject;
+				end if
+			end if
+			if lb_ok and ls_prevsalehistory = "Y" then
+				parent.it_datatransobject.get_previoussalehistory_onarchival(ldt_startdate, ldt_enddate)
+				if parent.it_datatransobject.sqlcode <> 0 then
+					ls_errtext = "Unable to get sale invoices history.~r~nPossible causes are: " + parent.it_datatransobject.sqlerrtext
+					SQL rollback USING parent.it_datatransobject;
+					SQL rollback USING parent.it_locking_trans;
+					messagebox("Data Migration Error - Step # 1.3", ls_errtext, stopsign!)
+					lb_ok = false
+					parent.st_1_cancel.visible = true
+				else
+					SQL commit USING parent.it_datatransobject;
+				end if
+			end if
+			if lb_ok then
+				parent.st_1.textcolor = rgb(0, 150, 0)
+				SQL stop USING parent.it_datatransobject;
+				parent.it_datatransobject.autocommit = true
+				SQL start USING parent.it_datatransobject;
+				parent.st_1_ok.visible = true
+				parent.st_2.visible = true
+				ll_retcode = parent.it_datatransobject.preparedatamigrationpacket(gs_servername, gs_dbname, ls_packetfile)
+				parent.hpb_basic.stepit()
+				if parent.it_datatransobject.sqlcode <> 0 then
+					ls_errtext = "Error occured while Preparing Data Migration Packet.~r~nDetails Are:-~r~n" + parent.it_datatransobject.sqlerrtext
+					SQL rollback USING parent.it_datatransobject;
+					SQL rollback USING parent.it_locking_trans;
+					messagebox("Data Migration Error - Step # 2", ls_errtext)
+					lb_ok = false
+					parent.st_2_cancel.visible = true
+				end if
+			end if
+			if lb_ok then
+				parent.st_2.textcolor = rgb(0, 150, 0)
+				parent.st_2_ok.visible = true
+				parent.shl_backupfile.url = ls_packetfile
+				parent.shl_backupfile.text = ls_packetfile
+				parent.shl_backupfile.visible = true
+				parent.st_3.visible = true
+				ll_retcode = parent.it_datatransobject.verifydatamigrationpacket(ls_packetfile, parent.is_datamigration_db, gs_servername)
+				parent.hpb_basic.stepit()
+				if parent.it_datatransobject.sqlcode <> 0 then
+					ls_errtext = "Error occured while Verifying Data Migration Packet.~r~nDetails Are:-~r~n" + parent.it_datatransobject.sqlerrtext
+					SQL rollback USING parent.it_datatransobject;
+					SQL rollback USING parent.it_locking_trans;
+					messagebox("Data Migration Error - Step # 3", ls_errtext)
+					lb_ok = false
+					parent.st_3_cancel.visible = true
+				end if
+			end if
+			if lb_ok then
+				parent.st_3.textcolor = rgb(0, 150, 0)
+				parent.st_3_ok.visible = true
+				SQL stop USING parent.it_datatransobject;
+				parent.it_datatransobject.autocommit = false
+				SQL start USING parent.it_datatransobject;
+				parent.st_4.visible = true
+				ll_retcode = parent.it_datatransobject.deletepostedtransactions()
+				parent.hpb_basic.stepit()
+				if parent.it_datatransobject.sqlcode <> 0 then
+					ls_errtext = "Error occured while Finalizing Data Migration Process.~r~nDetails Are:-~r~n" + parent.it_datatransobject.sqlerrtext
+					SQL rollback USING parent.it_datatransobject;
+					SQL rollback USING parent.it_locking_trans;
+					messagebox("Data Migration Error - Step # 4", ls_errtext)
+					lb_ok = false
+					parent.st_4_cancel.visible = true
+				end if
+			end if
+			if lb_ok then
+				parent.st_4.textcolor = rgb(0, 150, 0)
+				parent.st_4_ok.visible = true
+				SQL commit USING parent.it_datatransobject;
+				SQL commit USING parent.it_locking_trans;
+				messagebox("Data Migration", "Data Migration completed.~r~nChanges Take Effect in database.", information!)
+				parent.hpb_basic.stepit()
+			end if
+		end if
+		setpointer(arrow!)
+		parent.post event ue_close(1)
+	else
+		messagebox("Data Migration", "Data Migration Problem.~r~nCan not Acquire Locks for the desired resources.~r~nDetails are:-~r~n" + parent.it_locking_trans.sqlerrtext, information!)
+		SQL rollback USING parent.it_locking_trans;
+	end if
+	return ::message.returnvalue

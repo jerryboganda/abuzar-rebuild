@@ -1,0 +1,24 @@
+// userobject u_internetresult (components)  ancestor: internetresult
+
+// u_internetresult.internetdata(blob data) returns integer
+	string ls_success_token
+	string ls_data
+	ls_success_token = "sms sent successfully"
+	ls_data = string(data, encodingansi!)
+	this.is_data = ls_data
+	if match(ls_data, ls_success_token) then
+		this.is_msg = ls_success_token
+		this.il_retcode = 1
+		return this.il_retcode
+	end if
+	this.is_msg = "sms not sent successfully"
+	this.il_retcode = -1
+	return this.il_retcode
+
+// u_internetresult.create() returns 0
+	call super::create
+	triggerevent("constructor")
+
+// u_internetresult.destroy() returns 0
+	triggerevent("destructor")
+	call super::destroy

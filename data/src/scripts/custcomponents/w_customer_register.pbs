@@ -1,0 +1,520 @@
+// window w_customer_register (custcomponents)  ancestor: window
+
+// w_customer_register.ue_close(integer ai_status) returns 0
+	if ai_status = -1 then
+		setnull(this.is_aliasname)
+	end if
+	closewithreturn(this, this.is_aliasname)
+
+// w_customer_register.ue_postopen() returns 0
+	integer li_rtncode
+	integer li_xpos
+	integer li_ypos
+	integer li_xendpos
+	integer li_counter
+	integer li_taborder
+	integer li_visiblecolumns
+	integer li_zerotaborder
+	long ll_counter
+	long li_retcode
+	boolean lb_active
+	boolean lb_restricted
+	boolean lb_customicode
+	boolean lb_zerotabordercol
+	datawindowchild ldc_itemcategory
+	datastore lds_itemsetting
+	this.it_transobject = create u_transaction
+	SQL start USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		messagebox("Connection Failure", "Unable to connect to database.~r~nReasons are:-" + this.it_transobject.sqlerrtext, stopsign!)
+		close(this)
+		return
+	end if
+	this.id_cust_itemcat = create datawindow
+	this.dw_control.settransobject(this.it_transobject)
+	this.id_cust_itemcat.dataobject = "d_custitemcatassociation"
+	this.id_cust_itemcat.settransobject(this.it_transobject)
+	this.dw_control.insertrow(0)
+	lds_itemsetting = create datastore
+	lds_itemsetting.dataobject = "d_interfacesettingcols"
+	lds_itemsetting.settransobject(this.it_transobject)
+	lds_itemsetting.retrieve(24, 3, 1)
+	li_visiblecolumns = lds_itemsetting.rowcount()
+	for li_counter = 1 to li_counter
+		this.colname[li_counter, 1] = lds_itemsetting.getitemstring(li_counter, "colname") + "_t"
+		this.colname[li_counter, 2] = lds_itemsetting.getitemstring(li_counter, "colname")
+		this.colwidth[li_counter, 1] = integer(this.dw_control.describe(this.colname[li_counter, 1] + ".Width"))
+		this.colwidth[li_counter, 2] = integer(this.dw_control.describe(this.colname[li_counter, 2] + ".Width"))
+		this.colheight[li_counter] = integer(this.dw_control.describe(this.colname[li_counter, 2] + ".Height"))
+	next
+	li_taborder = 10
+	li_counter = 1
+	li_ypos = 100
+	li_xendpos = 30000
+	do while li_counter <= li_visiblecolumns and li_ypos <= 2000000
+		li_xpos = 14
+		this.dw_control.modify(this.colname[li_counter, 1] + ".X=" + string(li_xpos))
+		this.dw_control.modify(this.colname[li_counter, 1] + ".Y=" + string(li_ypos))
+		this.dw_control.modify(this.colname[li_counter, 1] + ".Visible=1")
+		li_xpos = 617
+		this.dw_control.modify(this.colname[li_counter, 2] + ".X=" + string(li_xpos))
+		this.dw_control.modify(this.colname[li_counter, 2] + ".Y=" + string(li_ypos))
+		this.dw_control.modify(this.colname[li_counter, 2] + ".Visible=1")
+		this.dw_control.settaborder(this.colname[li_counter, 2], li_taborder)
+		li_taborder = li_taborder + 1
+		li_ypos = li_ypos + this.colheight[li_counter] + 22
+		li_counter = li_counter + 1
+	loop
+	this.dw_control.object.accounts_aliasname.protect = 0
+	this.dw_control.object.customer_licenceexpiry.protect = 0
+	this.dw_control.setfocus()
+	this.dw_control.setcolumn("accounts_name")
+
+// w_customer_register.wf_validateserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+	datetime ldt_last_transdate
+	datetime ldt_current_serverdate
+	long li_max_allow_days
+	ar_errtext = "Invoice Date  Check violates"
+	li_max_allow_days = f_numberpreferences("MaxAllowDate")
+	if isnull(li_max_allow_days) then
+		li_max_allow_days = 4
+	end if
+	SQL SELECT LastTransDate INTO :ldt_last_transdate FROM ServerDate USING sqlca;
+	if sqlca.sqlcode = 0 then
+		sqlca.getdatetime(ldt_current_serverdate)
+		if sqlca.sqlcode = 0 then
+			if ldt_current_serverdate >= ldt_last_transdate and daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) <= li_max_allow_days then
+				ar_server_datetime = ldt_current_serverdate
+				return true
+			elseif ldt_current_serverdate < ldt_last_transdate then
+				ar_errtext = "Back Date Invoice Check violates"
+				return false
+			elseif daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) > li_max_allow_days then
+				ar_errtext = "Forward Date Invoice Check violates"
+				return false
+			end if
+		else
+			return false
+		end if
+		return
+	end if
+	return false
+
+// w_customer_register.wf_getserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+	datetime ldt_last_transdate
+	datetime ldt_current_serverdate
+	integer li_max_allow_days
+	string ls_hold_serverdate
+	date ld_datepart
+	time lt_timepart
+	ar_errtext = "Please verify Server DateTime"
+	li_max_allow_days = f_numberpreferences("MaxAllowDate")
+	if isnull(li_max_allow_days) then
+		li_max_allow_days = 4
+	end if
+	SQL rollback USING sqlca;
+	SQL SELECT LastTransDate INTO :ldt_last_transdate FROM ServerDate USING sqlca;
+	if sqlca.sqlcode = 0 then
+		sqlca.getdatetime(ldt_current_serverdate)
+		if sqlca.sqlcode = 0 then
+			if ldt_current_serverdate >= ldt_last_transdate and daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) <= li_max_allow_days then
+				ld_datepart = date(string(ldt_current_serverdate, "yyyy-mm-dd"))
+				lt_timepart = time(string(ldt_current_serverdate, "hh:mm:ss"))
+				ldt_current_serverdate = datetime(ld_datepart, lt_timepart)
+				SQL update ServerDate SET LastTransDate =:ldt_current_serverdate USING sqlca;
+				if sqlca.sqlcode = 0 then
+					SQL commit USING sqlca;
+					ar_server_datetime = ldt_current_serverdate
+					return true
+				else
+					SQL rollback USING sqlca;
+					return false
+				end if
+			elseif ldt_current_serverdate < ldt_last_transdate then
+				ar_errtext = "Back Date Invoice Check violates"
+				return false
+			elseif daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) > li_max_allow_days then
+				ar_errtext = "Forward Date Invoice Check violates"
+				return false
+			end if
+		else
+			SQL rollback USING sqlca;
+			return false
+		end if
+		return
+	end if
+	SQL rollback USING sqlca;
+	return false
+
+// w_customer_register.wf_duplicatealiasname(string as_name) returns boolean
+	long ll_count
+	long ll_acccode
+	boolean b_flag
+	as_name = trim(as_name)
+	ll_acccode = this.dw_control.object.code[this.dw_control.rowcount()]
+	if isnull(ll_acccode) then
+		SQL SELECT count ( *) INTO :ll_count FROM Accounts WHERE Accounts.AliasName =:as_name USING this.it_transobject;
+	else
+		SQL SELECT count ( *) INTO :ll_count FROM Accounts WHERE Accounts.AliasName =:as_name AND Accounts.AccCode <> :ll_acccode USING this.it_transobject;
+	end if
+	if this.it_transobject.sqlcode = 0 then
+		if ll_count > 0 then
+			b_flag = true
+		else
+			b_flag = false
+		end if
+	else
+		b_flag = false
+	end if
+	return b_flag
+
+// w_customer_register.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	long ll_acccode
+	boolean b_flag
+	as_name = trim(as_name)
+	ll_acccode = this.dw_control.object.code[this.dw_control.rowcount()]
+	if isnull(ll_acccode) then
+		SQL SELECT count ( *) INTO :ll_count FROM Accounts WHERE Accounts.Name =:as_name USING this.it_transobject;
+	else
+		SQL SELECT count ( *) INTO :ll_count FROM Accounts WHERE Accounts.Name =:as_name AND Accounts.AccCode <> :ll_acccode USING this.it_transobject;
+	end if
+	if sqlca.sqlcode = 0 then
+		if ll_count > 0 then
+			b_flag = true
+		else
+			b_flag = false
+		end if
+	else
+		b_flag = false
+	end if
+	return b_flag
+
+// w_customer_register.create() returns 0
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.dw_control = create dw_control
+	this.control = {this.cb_cancel, this.cb_ok, this.dw_control}
+
+// w_customer_register.destroy() returns 0
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.dw_control
+
+// w_customer_register.open() returns long
+	long ll_row
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.x = int((ll_width - this.width) / 2.0)
+	this.y = int((ll_height - this.height) / 2.0)
+	post event ue_postopen()
+	return ::message.returnvalue
+
+// cb_cancel.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	long ll_primarykey
+	long ll_row
+	long ll_counter
+	long ll_null
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	string ls_aliasname
+	dwitemstatus ldw_active
+	boolean lb_commit
+	boolean lb_new_customer
+	integer li_rc
+	string ls_err
+	string ls_mod
+	datawindow ldw_detail
+	setpointer(hourglass!)
+	setnull(ll_null)
+	if f_validatedw(parent.dw_control) < 0 then
+		return ::message.returnvalue
+	end if
+	ll_row = parent.dw_control.getrow()
+	ll_primarykey = parent.dw_control.object.code[ll_row]
+	if isnull(ll_primarykey) then
+		ll_primarykey = 0
+		lb_new_customer = true
+		SQL rollback USING parent.it_transobject;
+		parent.it_transobject.gettabmaxkey("accounts", ll_primarykey)
+		if parent.it_transobject.sqlcode = 0 then
+			parent.dw_control.object.code[ll_row] = ll_primarykey
+			parent.dw_control.object.accounts_acccode[ll_row] = ll_primarykey
+		else
+			SQL rollback USING parent.it_transobject;
+			lb_commit = false
+			parent.dw_control.object.code[ll_row] = ll_null
+			messagebox("Customer Code Generation Problem", "Problem in Generation of Customer Code~r~n Possibe Reason: " + parent.it_transobject.sqlerrtext)
+			return ::message.returnvalue
+		end if
+		return
+	end if
+	ls_aliasname = parent.dw_control.getitemstring(1, "accounts_aliasname")
+	if isnull(ls_aliasname) then
+		parent.dw_control.setitem(parent.dw_control.getrow(), "accounts_aliasname", string(ll_primarykey))
+	end if
+	if isnull(parent.dw_control.getitemstring(1, "customer_membershipid")) then
+		parent.dw_control.setitem(parent.dw_control.getrow(), "customer_membershipid", string(ll_primarykey))
+	end if
+	for ll_counter = 1 to parent.id_cust_itemcat.rowcount()
+		parent.id_cust_itemcat.object.custcode[ll_counter] = ll_primarykey
+	next
+	ldw_detail = parent.dw_control
+	li_rc = ldw_detail.update(true, false)
+	if li_rc = 1 then
+		ls_mod = "accounts_acccode.Update=No "
+		ls_mod = ls_mod + "accounts_name.Update=No "
+		ls_mod = ls_mod + "accounts_SubCode.Update=No "
+		ls_mod = ls_mod + "accounts_openingdate.Update=No "
+		ls_mod = ls_mod + "accounts_aliasname.Update=No "
+		ls_mod = ls_mod + "accounts_active.Update=No "
+		ls_mod = ls_mod + "accounts_alertcode.Update=No "
+		ls_mod = ls_mod + "accounts_acccode.Key=No "
+		ls_mod = ls_mod + "DataWindow.Table.UpdateTable='customer' "
+		ls_mod = ls_mod + "code.Key=Yes "
+		ls_mod = ls_mod + "code.Update=Yes "
+		ls_mod = ls_mod + "customer_CP.Update=Yes "
+		ls_mod = ls_mod + "customer_CP2.Update=Yes "
+		ls_mod = ls_mod + "customer_address1.Update=Yes "
+		ls_mod = ls_mod + "customer_address2.Update=Yes "
+		ls_mod = ls_mod + "customer_city.Update=Yes "
+		ls_mod = ls_mod + "customer_postcode.Update=Yes "
+		ls_mod = ls_mod + "customer_countycode.Update=Yes "
+		ls_mod = ls_mod + "customer_country.Update=Yes "
+		ls_mod = ls_mod + "customer_phone.Update=Yes "
+		ls_mod = ls_mod + "customer_fax.Update=Yes "
+		ls_mod = ls_mod + "customer_email.Update=Yes "
+		ls_mod = ls_mod + "customer_areacode.Update=Yes "
+		ls_mod = ls_mod + "customer_crlimit.Update=Yes "
+		ls_mod = ls_mod + "customer_dayslimit.Update=Yes "
+		ls_mod = ls_mod + "customer_custcatcode.Update=Yes "
+		ls_mod = ls_mod + "customer_licenceno.Update=Yes "
+		ls_mod = ls_mod + "customer_licenceexpiry.Update=Yes "
+		ls_mod = ls_mod + "customer_SalesTaxRegNo.Update=Yes "
+		ls_mod = ls_mod + "customer_DefaultGST.Update=Yes "
+		ls_mod = ls_mod + "customer_InvDiscperc.Update=Yes "
+		ls_mod = ls_mod + "customer_DefaultSalePrice.Update=Yes "
+		ls_mod = ls_mod + "customer_DefaultItemDiscperc.Update=Yes "
+		ls_mod = ls_mod + "customer_subareacode.Update=Yes "
+		ls_mod = ls_mod + "customer_BankName.Update=Yes "
+		ls_mod = ls_mod + "customer_BankAdd.Update=Yes "
+		ls_mod = ls_mod + "customer_messagecode.Update=Yes "
+		ls_mod = ls_mod + "customer_salesmancode.Update=Yes "
+		ls_mod = ls_mod + "customer_specialinstructions.Update=Yes "
+		ls_mod = ls_mod + "customer_allowsalebelowavgprice.Update=Yes "
+		ls_mod = ls_mod + "customer_schedforposting.Update=Yes "
+		ls_mod = ls_mod + "customer_designation.Update=Yes "
+		ls_mod = ls_mod + "customer_collectionpolicycode.Update=Yes "
+		ls_mod = ls_mod + "customer_associatedquotationcode.Update=Yes "
+		ls_mod = ls_mod + "customer_poassociatedquotationcode.Update=Yes "
+		ls_mod = ls_mod + "customer_saletypecode.Update=Yes "
+		ls_mod = ls_mod + "customer_gender.Update=Yes "
+		ls_mod = ls_mod + "customer_dob.Update=Yes "
+		ls_mod = ls_mod + "customer_nic.Update=Yes "
+		ls_mod = ls_mod + "customer_occupation.Update=Yes "
+		ls_mod = ls_mod + "customer_eduqualf.Update=Yes "
+		ls_mod = ls_mod + "customer_refno.Update=Yes "
+		ls_mod = ls_mod + "customer_considerinpo.Update=Yes "
+		ls_mod = ls_mod + "customer_membershipid.Update=Yes "
+		ls_mod = ls_mod + "customer_ntnno.Update=Yes "
+		ls_mod = ls_mod + "customer_printwaranty.Update=Yes "
+		ls_mod = ls_mod + "customer_gccode.Update=Yes "
+		ls_mod = ls_mod + "customer_associatedservicetemplatecode.Update=Yes "
+		ls_mod = ls_mod + "customer_printoutstandingserviceresult.Update=Yes "
+		ls_mod = ls_mod + "customer_printamtonserviceinv.Update=Yes "
+		ls_mod = ls_mod + "customer_printbalance.Update=Yes "
+		ls_mod = ls_mod + "customer_block.Update=Yes "
+		ls_mod = ls_mod + "customer_charges.Update=Yes "
+		ls_mod = ls_mod + "customer_fullname.Update=Yes "
+		ls_mod = ls_mod + "customer_owner.Update=Yes "
+		ls_mod = ls_mod + "customer_address.Update=Yes "
+		ls_mod = ls_mod + "customer_issuedlicenseno.Update=Yes "
+		ls_mod = ls_mod + "customer_miscchargesperc.Update=Yes "
+		ls_mod = ls_mod + "customer_ageinyears.Update=Yes "
+		ls_mod = ls_mod + "customer_married.Update=Yes "
+		ls_mod = ls_mod + "customer_noofdependents.Update=Yes "
+		ls_mod = ls_mod + "customer_monthlyincome.Update=Yes "
+		ls_mod = ls_mod + "customer_cellno.Update=Yes "
+		ls_mod = ls_mod + "customer_addressstatus.Update=Yes "
+		ls_mod = ls_mod + "customer_stayduration.Update=Yes "
+		ls_mod = ls_mod + "customer_offaddress.Update=Yes "
+		ls_mod = ls_mod + "customer_offphone.Update=Yes "
+		ls_mod = ls_mod + "customer_jobduration.Update=Yes "
+		ls_mod = ls_mod + "customer_pastpuroninst.Update=Yes "
+		ls_mod = ls_mod + "customer_pastinstcompany.Update=Yes "
+		ls_mod = ls_mod + "customer_descOfpastinstgoods.Update=Yes "
+		ls_mod = ls_mod + "customer_criticallimit.Update=Yes "
+		ls_mod = ls_mod + "customer_ReportDiscPerc.Update=Yes "
+		ls_mod = ls_mod + "customer_customersectorcode.Update=Yes "
+		ls_err = ldw_detail.modify(ls_mod)
+		if ls_err <> "" then
+			messagebox("DataWindow Modify Error", ls_err)
+		end if
+		li_rc = ldw_detail.update()
+		if li_rc = 1 then
+			if parent.id_cust_itemcat.update() = 1 then
+				SQL commit USING parent.it_transobject;
+				messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+				parent.is_aliasname = parent.dw_control.object.accounts_aliasname[ll_row]
+				parent.post event ue_close(1)
+			else
+				messagebox("Error on Commit", parent.it_transobject.sqlerrtext)
+				SQL rollback USING parent.it_transobject;
+				if lb_new_customer then
+					parent.dw_control.object.code[ll_row] = ll_null
+				end if
+			end if
+		else
+			messagebox("Update of Customer Table Failed", "Rolling back changes to " + "accounts  and Customer Tables")
+			if lb_new_customer then
+				parent.dw_control.object.code[ll_row] = ll_null
+			end if
+			SQL rollback USING parent.it_transobject;
+		end if
+	else
+		messagebox("Update of accounts Table Failed", "Rolling back changes to " + "accounts Table")
+		SQL rollback USING parent.it_transobject;
+		if lb_new_customer then
+			parent.dw_control.object.code[ll_row] = ll_null
+		end if
+		return ::message.returnvalue
+	end if
+	ls_mod = "accounts_accCode.Update=yes "
+	ls_mod = ls_mod + "accounts_name.Update=yes "
+	ls_mod = ls_mod + "accounts_SubCode.Update=yes "
+	ls_mod = ls_mod + "accounts_openingdate.Update=yes "
+	ls_mod = ls_mod + "accounts_alertcode.Update=yes "
+	ls_mod = ls_mod + "DataWindow.Table.UpdateTable='accounts' "
+	ls_mod = ls_mod + "accounts_aliasname.Update=yes "
+	ls_mod = ls_mod + "accounts_active.Update=yes "
+	ls_mod = ls_mod + "Accounts_acccode.Key=yes "
+	ls_mod = ls_mod + "code.Update=no "
+	ls_mod = ls_mod + "customer_CP.Update=no "
+	ls_mod = ls_mod + "customer_CP2.Update=no "
+	ls_mod = ls_mod + "customer_address1.Update=no "
+	ls_mod = ls_mod + "customer_address2.Update=no "
+	ls_mod = ls_mod + "customer_city.Update=no "
+	ls_mod = ls_mod + "customer_postcode.Update=no "
+	ls_mod = ls_mod + "customer_countycode.Update=no "
+	ls_mod = ls_mod + "customer_country.Update=no "
+	ls_mod = ls_mod + "customer_phone.Update=no "
+	ls_mod = ls_mod + "customer_fax.Update=no "
+	ls_mod = ls_mod + "customer_email.Update=no "
+	ls_mod = ls_mod + "customer_areacode.Update=no "
+	ls_mod = ls_mod + "customer_crlimit.Update=no "
+	ls_mod = ls_mod + "customer_dayslimit.Update=no "
+	ls_mod = ls_mod + "customer_custcatcode.Update=no "
+	ls_mod = ls_mod + "customer_licenceno.Update=no "
+	ls_mod = ls_mod + "customer_licenceexpiry.Update=no "
+	ls_mod = ls_mod + "code.Key=no "
+	ls_mod = ls_mod + "customer_SalesTaxRegNo.Update=No "
+	ls_mod = ls_mod + "customer_DefaultGST.Update=No "
+	ls_mod = ls_mod + "customer_InvDiscperc.Update=No "
+	ls_mod = ls_mod + "customer_DefaultSalePrice.Update=No "
+	ls_mod = ls_mod + "customer_DefaultItemDiscPerc.Update=No "
+	ls_mod = ls_mod + "customer_subareacode.Update=No "
+	ls_mod = ls_mod + "customer_BankName.Update=No "
+	ls_mod = ls_mod + "customer_BankAdd.Update=No "
+	ls_mod = ls_mod + "customer_messagecode.Update=No "
+	ls_mod = ls_mod + "customer_salesmancode.Update=No "
+	ls_mod = ls_mod + "customer_specialinstructions.Update=No "
+	ls_mod = ls_mod + "customer_allowsalebelowavgprice.Update=No "
+	ls_mod = ls_mod + "customer_schedforposting.Update=No "
+	ls_mod = ls_mod + "customer_designation.Update=No "
+	ls_mod = ls_mod + "customer_collectionpolicycode.Update=No "
+	ls_mod = ls_mod + "customer_associatedquotationcode.Update=No "
+	ls_mod = ls_mod + "customer_poassociatedquotationcode.Update=No "
+	ls_mod = ls_mod + "customer_saletypecode.Update=No "
+	ls_mod = ls_mod + "customer_gender.Update=No "
+	ls_mod = ls_mod + "customer_dob.Update=No "
+	ls_mod = ls_mod + "customer_nic.Update=No "
+	ls_mod = ls_mod + "customer_occupation.Update=No "
+	ls_mod = ls_mod + "customer_eduqualf.Update=No "
+	ls_mod = ls_mod + "customer_refno.Update=No "
+	ls_mod = ls_mod + "customer_considerinpo.Update=No "
+	ls_mod = ls_mod + "customer_MemberShipId.Update=No "
+	ls_mod = ls_mod + "customer_ntnno.Update=No "
+	ls_mod = ls_mod + "customer_printwaranty.Update=No "
+	ls_mod = ls_mod + "customer_gccode.Update=No "
+	ls_mod = ls_mod + "customer_associatedservicetemplatecode.Update=No "
+	ls_mod = ls_mod + "customer_printoutstandingserviceresult.Update=No "
+	ls_mod = ls_mod + "customer_printamtonserviceinv.Update=No "
+	ls_mod = ls_mod + "customer_printbalance.Update=No "
+	ls_mod = ls_mod + "customer_block.Update=No "
+	ls_mod = ls_mod + "customer_charges.Update=No "
+	ls_mod = ls_mod + "customer_fullname.Update=No "
+	ls_mod = ls_mod + "customer_owner.Update=No "
+	ls_mod = ls_mod + "customer_address.Update=No "
+	ls_mod = ls_mod + "customer_issuedlicenseno.Update=No "
+	ls_mod = ls_mod + "customer_miscchargesperc.Update=No "
+	ls_mod = ls_mod + "customer_ageinyears.Update=No "
+	ls_mod = ls_mod + "customer_married.Update=No "
+	ls_mod = ls_mod + "customer_noofdependents.Update=No "
+	ls_mod = ls_mod + "customer_monthlyincome.Update=No "
+	ls_mod = ls_mod + "customer_cellno.Update=No "
+	ls_mod = ls_mod + "customer_addressstatus.Update=No "
+	ls_mod = ls_mod + "customer_stayduration.Update=No "
+	ls_mod = ls_mod + "customer_offaddress.Update=No "
+	ls_mod = ls_mod + "customer_offphone.Update=No "
+	ls_mod = ls_mod + "customer_jobduration.Update=No "
+	ls_mod = ls_mod + "customer_pastpuroninst.Update=No "
+	ls_mod = ls_mod + "customer_pastinstcompany.Update=No "
+	ls_mod = ls_mod + "customer_descOfpastinstgoods.Update=No "
+	ls_mod = ls_mod + "customer_criticallimit.Update=No "
+	ls_mod = ls_mod + "customer_ReportDiscPerc.Update=No "
+	ls_mod = ls_mod + "customer_customersectorcode.Update=No "
+	ls_err = ldw_detail.modify(ls_mod)
+	if ls_err <> "" then
+		messagebox("DataWindow Modify Error", ls_err)
+	end if
+	parent.dw_control = ldw_detail
+	parent.dw_control.setitem(ll_row, "code", ll_null)
+	setpointer(arrow!)
+	return ::message.returnvalue
+
+// dw_control.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_control.itemchanged(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "accounts_aliasname"
+		if parent.wf_duplicatealiasname(data) then
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_control.itemerror(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "accounts_aliasname"
+		messagebox("Custmer Alias Name Validation", "Customer Alias Name Duplication Error~r~nPlease enter some other Alias Name")
+	end choose
+	return 1
+
+// dw_control.itemfocuschanged(long row, dwobject dwo) returns long
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue

@@ -1,0 +1,296 @@
+// window w_item_pricepolicy_form (multientryitemrespwin)  ancestor: window
+
+// w_item_pricepolicy_form.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		post event ue_close(-1)
+	end if
+	return ::message.returnvalue
+
+// w_item_pricepolicy_form.ue_close(integer ai_closemode) returns integer
+	long ll_currrow
+	long ll_counter
+	long[] ll_values
+	s_dw_header ls_dw_header
+	ll_currrow = this.id_header.getrow()
+	if ai_closemode = -1 and this.id_header.rowcount() < 1 then
+		ls_dw_header.i_closemode = -1
+		closewithreturn(this, ls_dw_header)
+		return -1
+	end if
+	if ai_closemode = -1 then
+		ls_dw_header.i_closemode = -1
+		if isnull(this.id_header.getitemnumber(ll_currrow, "qtylimit")) then
+			this.id_header.deleterow(ll_currrow)
+		end if
+		closewithreturn(this, ls_dw_header)
+		return -1
+	end if
+	if this.id_header.rowcount() > 0 then
+		if isnull(this.id_header.getitemnumber(ll_currrow, "qtylimit")) then
+			this.id_header.deleterow(ll_currrow)
+		end if
+		if f_validatedw(this.id_header) < 0 then
+			return 1
+		end if
+		if this.id_header.rowcount() > 0 then
+			this.il_currrow = this.id_header.rowcount()
+			this.id_header.setrow(this.il_currrow)
+			this.id_header.scrolltorow(this.il_currrow)
+			if this.ib_rowvalidated = false and wf_validateitem() = -1 then
+				return 1
+			end if
+			return
+		end if
+		for ll_counter = 1 to this.id_header.rowcount()
+			ll_values[ll_counter] = this.id_header.getitemnumber(ll_counter, "qtylimit")
+		next
+	end if
+	ls_dw_header.l_values = ll_values
+	ls_dw_header.dw_header = this.id_header
+	ls_dw_header.i_closemode = 1
+	closewithreturn(this, ls_dw_header)
+	return 0
+
+// w_item_pricepolicy_form.wf_validateitem() returns integer
+	long ll_qtylimit
+	long ll_icode
+	integer li_errcode
+	integer li_null
+	setnull(li_null)
+	ll_icode = this.il_icode
+	if this.il_currrow > this.id_header.rowcount() then
+		this.il_currrow = this.id_header.rowcount()
+	end if
+	ll_qtylimit = this.id_header.getitemnumber(this.il_currrow, "qtylimit")
+	if vf_dwdupcode1(this.id_header, "qtylimit", string(ll_qtylimit), this.il_currrow) = true then
+		messagebox("Duplication Error", "Current row is duplicate for Qty Limit")
+		li_errcode = -1
+		this.ib_rowvalidated = false
+	else
+		li_errcode = 0
+		this.ib_rowvalidated = true
+	end if
+	if li_errcode = -1 then
+		this.id_header.setcolumn("qtylimit")
+		this.id_header.scrolltorow(this.il_currrow)
+		this.id_header.setitem(this.il_currrow, "qtylimit", li_null)
+	else
+		wf_inititeminfo(ll_icode, this.il_currrow)
+		if this.il_currrow > 1 then
+			this.id_header.object.expirydate[this.il_currrow] = this.id_header.object.expirydate[this.il_currrow - 1]
+		end if
+	end if
+	return li_errcode
+
+// w_item_pricepolicy_form.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+
+// w_item_pricepolicy_form.wf_inititeminfo(long al_icode, long al_row) returns long
+	long ll_packunits
+	double ld_price
+	if al_icode > 0 then
+		SQL SELECT packunits , saleprice INTO :ll_packunits, :ld_price FROM DBO.Item WHERE ICode =:al_icode USING sqlca;
+		if sqlca.sqlcode = 0 then
+			this.dw_viewheader.object.price[al_row] = ld_price
+			this.dw_viewheader.object.packunits[al_row] = ll_packunits
+		end if
+	else
+		this.dw_viewheader.object.price[al_row] = this.id_price
+		this.dw_viewheader.object.packunits[al_row] = this.il_packunits
+	end if
+	return 0
+
+// w_item_pricepolicy_form.create() returns 0
+	this.cb_ok = create cb_ok
+	this.cb_cancel = create cb_cancel
+	this.dw_viewheader = create dw_viewheader
+	this.control = {this.cb_ok, this.cb_cancel, this.dw_viewheader}
+
+// w_item_pricepolicy_form.destroy() returns 0
+	destroy this.cb_ok
+	destroy this.cb_cancel
+	destroy this.dw_viewheader
+
+// w_item_pricepolicy_form.open() returns long
+	long ll_row
+	long ll_currrow
+	long ll_counter
+	string ls_saletype
+	integer li_protect
+	integer li_view_cashorcredit
+	datawindow ldw_header
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	s_dw_header ls_dw_header
+	ldw_header = create datawindow
+	ldw_header.settransobject(sqlca)
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	this.id_header = this.dw_viewheader
+	this.id_header.settransobject(sqlca)
+	ls_dw_header = message.powerobjectparm
+	ldw_header = ls_dw_header.dw_header
+	this.il_icode = ls_dw_header.l_code
+	this.is_aliasname = ls_dw_header.s_saletype
+	this.il_packunits = ls_dw_header.l_code2
+	this.id_price = ls_dw_header.d_value
+	ldw_header.sharedata(this.id_header)
+	if ldw_header.rowcount() = 0 then
+		ldw_header.insertrow(0)
+	elseif not isnull(ldw_header.getitemnumber(ldw_header.rowcount(), "qtylimit")) then
+		ldw_header.insertrow(0)
+	end if
+	f_setcolumnstyle(this.id_header, "Qty")
+	f_setcolumnstyle(ldw_header, "Qty")
+	this.id_header.scrolltorow(this.id_header.rowcount())
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		triggerevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// dw_viewheader.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ll_rowcount
+	if key = keyescape! then
+		parent.post event ue_close(-1)
+	end if
+	if keyflags = 2 then
+		if key = keyi! then
+			if parent.ib_rowvalidated = false and parent.wf_validateitem() = -1 then
+				return ::message.returnvalue
+			end if
+			if parent.id_header.rowcount() > 0 and f_validatedw(parent.id_header) < 0 then
+				return ::message.returnvalue
+			end if
+			ll_rowcount = parent.id_header.insertrow(0)
+			if ll_rowcount > 1 then
+				parent.id_header.scrolltorow(ll_rowcount)
+				parent.id_header.setfocus()
+			end if
+		end if
+		if key = keyd! then
+			parent.ib_rowvalidated = true
+			if parent.id_header.rowcount() > 0 then
+				parent.id_header.deleterow(0)
+			end if
+			ll_rowcount = parent.id_header.rowcount()
+			if ll_rowcount > 1 then
+				parent.id_header.scrolltorow(ll_rowcount)
+				parent.id_header.setfocus()
+			end if
+			parent.ib_rowvalidated = true
+		end if
+	end if
+	return ::message.returnvalue
+
+// dw_viewheader.ue_enterkey() returns long
+	long ll_rowcount
+	if getrow() = rowcount() and getcolumn() = integer(this.object.datawindow.column.count) then
+		if parent.id_header.rowcount() > 0 and f_validatedw(parent.id_header) < 0 then
+			return ::message.returnvalue
+		end if
+		if parent.ib_rowvalidated = false and parent.wf_validateitem() = -1 then
+			return 1
+		end if
+		ll_rowcount = parent.id_header.insertrow(0)
+		if ll_rowcount > 1 then
+			parent.id_header.scrolltorow(ll_rowcount)
+			parent.id_header.setfocus()
+		end if
+		return 1
+	end if
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_viewheader.itemerror(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "qtylimit"
+		if data = "" or isnull(data) or real(data) < 0.0 then
+			messagebox("Limit Validation", "Valid Value required for limit in current row")
+		end if
+	case "price"
+		if data = "" or isnull(data) or real(data) < 0.0 then
+			messagebox("Price Validation", "Valid value required for Price in current row")
+		end if
+	case "expirydate"
+		if data = "" or isnull(data) then
+			messagebox("Expiry Date Validation", "Value required for expiry date in current row")
+		end if
+	end choose
+	return 1
+
+// dw_viewheader.itemfocuschanged(long row, dwobject dwo) returns long
+	if parent.ib_rowvalidated = false and parent.wf_validateitem() = -1 then
+		return ::message.returnvalue
+	end if
+	if row > 0 and len(gettext()) > 0 then
+		selecttext(1, len(gettext()))
+	end if
+	return ::message.returnvalue
+
+// dw_viewheader.itemchanged(long row, dwobject dwo, string data) returns long
+	integer li_errcode
+	string ls_managername
+	choose case dwo.name
+	case "qtylimit"
+		parent.ib_rowvalidated = false
+		parent.il_currrow = row
+		if real(data) < 0.0 then
+			li_errcode = 1
+		else
+			li_errcode = 0
+		end if
+	case "price"
+		if real(data) < 0.0 then
+			li_errcode = 1
+			parent.ib_rowvalidated = false
+		else
+			parent.ib_rowvalidated = true
+		end if
+	case "expirydate"
+		if isnull(data) then
+			messagebox("Expiry Date Validation", "Policy Slab Expiry Date Error~n~rPlease enter Some valid Expiry Date")
+			li_errcode = 1
+		else
+			parent.ib_rowvalidated = true
+		end if
+	end choose
+	return li_errcode

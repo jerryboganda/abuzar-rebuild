@@ -1,0 +1,234 @@
+// window w_entry_primitives (components)  ancestor: window
+
+// w_entry_primitives.wf_save() returns integer
+	integer ret_val
+	if this.id_dwcontrol.update() > 0 then
+		SQL commit USING this.it_transobject;
+		ret_val = 1
+	else
+		SQL rollback USING this.it_transobject;
+		ret_val = 0
+	end if
+	return ret_val
+
+// w_entry_primitives.wf_first() returns long
+	long ret_val
+	if this.id_dwcontrol.rowcount() > 0 then
+		this.id_dwcontrol.scrolltorow(0)
+		ret_val = this.id_dwcontrol.getrow()
+		if ret_val > 0 then
+			ret_val = this.id_dwcontrol.object.code[this.id_dwcontrol.getrow()]
+		else
+			ret_val = this.id_dwcontrol.object.code[1]
+		end if
+	end if
+	return ret_val
+
+// w_entry_primitives.wf_last() returns long
+	long ret_val
+	this.id_dwcontrol.scrolltorow(this.id_dwcontrol.rowcount())
+	ret_val = this.id_dwcontrol.object.code[this.id_dwcontrol.getrow()]
+	return ret_val
+
+// w_entry_primitives.wf_next() returns long
+	long ret_val
+	this.id_dwcontrol.scrollnextrow()
+	ret_val = this.id_dwcontrol.object.code[this.id_dwcontrol.getrow()]
+	return ret_val
+
+// w_entry_primitives.wf_previous() returns long
+	long ret_val
+	this.id_dwcontrol.scrollpriorrow()
+	ret_val = this.id_dwcontrol.object.code[this.id_dwcontrol.getrow()]
+	return ret_val
+
+// w_entry_primitives.wf_new() returns integer
+	integer li_fetched_code
+	integer insertedrow
+	integer ret_val
+	SQL SELECT Max ( customer.code ) INTO :li_fetched_code FROM customer USING this.it_transobject;
+	if this.it_transobject.sqlcode >= 0 then
+		if isnull(li_fetched_code) then
+			li_fetched_code = 0
+		end if
+		li_fetched_code = li_fetched_code + 1
+		this.id_dwcontrol.reset()
+		if this.id_dwcontrol.insertrow(0) = -1 then
+			insertedrow = this.id_dwcontrol.getrow()
+			this.id_dwcontrol.setitem(insertedrow, "code", li_fetched_code)
+			this.id_dwcontrol.setfocus()
+			ret_val = insertedrow
+		end if
+	else
+		beep(1)
+		messagebox("Update Failure", "Could not add new row", exclamation!)
+		ret_val = 0
+	end if
+	return ret_val
+
+// w_entry_primitives.wf_settransobject(transaction a_transobject) returns 0
+	this.it_transobject = a_transobject
+
+// w_entry_primitives.wf_setdwcontrol(datawindow a_dwcontrol) returns 0
+	this.id_dwcontrol = a_dwcontrol
+
+// w_entry_primitives.wf_getserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+	datetime ldt_last_transdate
+	datetime ldt_current_serverdate
+	integer li_max_allow_days
+	string ls_hold_serverdate
+	date ld_datepart
+	time lt_timepart
+	ar_errtext = "Please verify Server DateTime"
+	li_max_allow_days = f_numberpreferences("MaxAllowDate")
+	if isnull(li_max_allow_days) then
+		li_max_allow_days = 4
+	end if
+	SQL rollback USING sqlca;
+	SQL SELECT LastTransDate INTO :ldt_last_transdate FROM ServerDate USING sqlca;
+	if sqlca.sqlcode = 0 then
+		sqlca.getdatetime(ldt_current_serverdate)
+		ar_server_datetime = ldt_current_serverdate
+		if sqlca.sqlcode = 0 then
+			if ldt_current_serverdate >= ldt_last_transdate and daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) <= li_max_allow_days then
+				ld_datepart = date(string(ldt_current_serverdate, "yyyy-mm-dd"))
+				lt_timepart = time(string(ldt_current_serverdate, "hh:mm:ss"))
+				ldt_current_serverdate = datetime(ld_datepart, lt_timepart)
+				SQL update ServerDate SET LastTransDate =:ldt_current_serverdate USING sqlca;
+				if sqlca.sqlcode = 0 then
+					SQL commit USING sqlca;
+					ar_server_datetime = ldt_current_serverdate
+					return true
+				else
+					SQL rollback USING sqlca;
+					return false
+				end if
+			elseif ldt_current_serverdate < ldt_last_transdate then
+				ar_errtext = "Back Date Invoice Check violates"
+				return false
+			elseif daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) > li_max_allow_days then
+				ar_errtext = "Forward Date Invoice Check violates"
+				return false
+			end if
+		else
+			SQL rollback USING sqlca;
+			ar_server_datetime = datetime(date(today()), time(today()))
+			return false
+		end if
+		return
+	end if
+	SQL rollback USING sqlca;
+	ar_server_datetime = datetime(date(today()), time(today()))
+	return false
+
+// w_entry_primitives.wf_validateserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+	datetime ldt_last_transdate
+	datetime ldt_current_serverdate
+	long li_max_allow_days
+	ar_errtext = "Invoice Date  Check violates"
+	li_max_allow_days = f_numberpreferences("MaxAllowDate")
+	if isnull(li_max_allow_days) then
+		li_max_allow_days = 4
+	end if
+	SQL SELECT LastTransDate INTO :ldt_last_transdate FROM ServerDate USING sqlca;
+	if sqlca.sqlcode = 0 then
+		sqlca.getdatetime(ldt_current_serverdate)
+		if sqlca.sqlcode = 0 then
+			if ldt_current_serverdate >= ldt_last_transdate and daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) <= li_max_allow_days then
+				ar_server_datetime = ldt_current_serverdate
+				return true
+			elseif ldt_current_serverdate < ldt_last_transdate then
+				ar_errtext = "Back Date Invoice Check violates"
+				return false
+			elseif daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) > li_max_allow_days then
+				ar_errtext = "Forward Date Invoice Check violates"
+				return false
+			end if
+		else
+			return false
+		end if
+		return
+	end if
+	return false
+
+// w_entry_primitives.wf_delete() returns integer
+	integer ret_val
+	this.id_dwcontrol.deleterow(0)
+	ret_val = this.id_dwcontrol.update()
+	if ret_val = 1 then
+		SQL commit USING this.it_transobject;
+	else
+		SQL rollback USING this.it_transobject;
+	end if
+	if this.it_transobject.sqlcode = -1 then
+		messagebox("Error", this.it_transobject.sqlerrtext, exclamation!)
+	end if
+	return ret_val
+
+// w_entry_primitives.wf_tabnewid(string as_tablename, long al_newid) returns long
+	long ll_rtcode
+	SQL SELECT TABMAXKEY INTO :al_newid FROM _TABMAXKEY WITH ( UPDLOCK HOLDLOCK ) WHERE _TABMAXKEY.TABName =:as_tablename USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		al_newid = al_newid + 1
+		SQL update dbo._tabmaxkey SET TABMAXKEY =:al_newid WHERE _TABMAXKEY.TABName =:as_tablename USING this.it_transobject;
+		if this.it_transobject.sqlcode = 0 then
+			ll_rtcode = this.it_transobject.sqlcode
+		else
+			ll_rtcode = this.it_transobject.sqlcode
+			al_newid = 0
+		end if
+	else
+		ll_rtcode = this.it_transobject.sqlcode
+		al_newid = 0
+	end if
+	return ll_rtcode
+
+// w_entry_primitives.wf_open_item_form_popup() returns 0
+	long ll_found
+	ll_found = gds_security.find("rightcode = 345", 1, gds_security.rowcount())
+	if ll_found > 0 then
+		openwithparm(w_item_form_popup, this, this)
+	end if
+
+// w_entry_primitives.wf_show_payment_info() returns long
+	return 0
+
+// w_entry_primitives.wf_retrieve() returns long
+	long rtcode
+	rtcode = this.id_dwcontrol.retrieve()
+	return rtcode
+
+// w_entry_primitives.wf_retrieve(long retrievalarg) returns long
+	return this.id_dwcontrol.retrieve(retrievalarg)
+
+// w_entry_primitives.wf_isvalid_string(string as_str, long al_pos, char ac_char) returns boolean
+	long ll_counter
+	long ll_length
+	char lc_hold
+	ll_length = len(as_str)
+	if ll_length > 0 then
+		for ll_counter = 1 to ll_length
+			lc_hold = mid(as_str, ll_counter, 1)
+			if lc_hold = "&" then
+				al_pos = ll_counter
+				ac_char = lc_hold
+				return false
+			elseif lc_hold = "~"" then
+				al_pos = ll_counter
+				ac_char = lc_hold
+				return false
+			elseif lc_hold = "'" then
+				al_pos = ll_counter
+				ac_char = lc_hold
+				return false
+			end if
+		next
+	end if
+	return true
+
+// w_entry_primitives.create() returns 0
+
+// w_entry_primitives.destroy() returns 0
+
+// w_entry_primitives.open() returns long
+	return ::message.returnvalue

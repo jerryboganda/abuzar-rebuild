@@ -1,0 +1,19 @@
+// window w_arg_sale_sdate_ldate (reports)  ancestor: w_arguements
+
+// w_arg_sale_sdate_ldate.create() returns 0
+	integer icurrent
+	call super::create
+	this.cbx_cash = create cbx_cash
+	this.cbx_credit = create cbx_credit
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.cbx_cash
+	this.control[icurrent + 2] = this.cbx_credit
+
+// w_arg_sale_sdate_ldate.destroy() returns 0
+	call super::destroy
+	destroy this.cbx_cash
+	destroy this.cbx_credit
+
+// w_arg_sale_sdate_ldate.ue_close(integer ai_stauts) returns 0
+	super::ue_close(ai_stauts)
+	closewithreturn(this, this.istr_arg)

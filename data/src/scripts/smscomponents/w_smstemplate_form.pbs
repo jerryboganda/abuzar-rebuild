@@ -1,0 +1,472 @@
+// window w_smstemplate_form (smscomponents)  ancestor: w_multi_entry
+
+// w_smstemplate_form.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM ContactGroup WHERE ContactGroup.name =:as_name USING this.it_transobject;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_smstemplate_form.wf_validateitem() returns integer
+	long ll_icode
+	long ll_row
+	integer li_errcode
+	string ls_managername
+	integer li_null
+	ll_row = this.id_detail.getrow()
+	if ll_row = 0 or isnull(ll_row) then
+		return 0
+	end if
+	ll_icode = this.id_detail.getitemnumber(ll_row, "ContactGroupCode")
+	if vf_dwdupcode1(this.id_detail, "ContactGroupCode", string(ll_icode), ll_row) = true then
+		ls_managername = ""
+		messagebox("Duplication Error", "Current row is duplicate")
+		li_errcode = -1
+	else
+		li_errcode = 0
+	end if
+	this.ib_itemvalidated = true
+	if li_errcode = -1 then
+		setnull(li_null)
+		this.id_detail.setcolumn("ContactGroupCode")
+		this.id_detail.scrolltorow(ll_row)
+		this.id_detail.object.contactgroupcode[ll_row] = li_null
+	end if
+	return li_errcode
+
+// w_smstemplate_form.wf_allow_smsdatacontent(integer ai_code) returns long
+	open(w_rightsmodification_key)
+	if message.doubleparm = -1.0 or message.doubleparm = 0.0 then
+		return -1
+	end if
+	openwithparm(w_smsdatacontent_enable_disable, ai_code)
+	return 0
+
+// w_smstemplate_form.wf_getcolumnname(string as_columnname) returns long
+	string ls_objectname
+	long ll_found
+	long ll_smsdatacode
+	long ll_null
+	s_arguements ls_arg
+	setnull(ll_null)
+	ll_smsdatacode = this.id_master.object.smsdatacode[1]
+	if isnull(ll_smsdatacode) then
+		return 0
+	end if
+	ll_found = this.idc_datadef.find("smsdatacode = " + trim(string(ll_smsdatacode)), 1, this.idc_datadef.rowcount())
+	if ll_found > 0 then
+		ls_objectname = this.idc_datadef.getitemstring(ll_found, "viewname")
+		if len(ls_objectname) > 0 then
+			openwithparm(w_arg_objectcolumnlist, ls_objectname)
+			ls_arg = message.powerobjectparm
+			if ls_arg.i_status = 1 then
+				ls_objectname = "«" + ls_arg.s_name1 + "»"
+				as_columnname = ls_objectname
+				return 1
+			end if
+			return
+		end if
+		return
+	end if
+	return 0
+
+// w_smstemplate_form.wf_initmodify(integer ai_protect) returns 0
+	long ll_code
+	long ll_counter
+	long ll_count
+	ll_code = this.id_master.getitemnumber(1, "code")
+	this.id_master.retrieve(ll_code)
+	wf_set_smsdata_info(this.id_master.object.smsdatacode[1])
+	if ai_protect = 0 then
+		this.ib_modify = true
+		this.im_menu.m_file.m_save.enabled = true
+		this.im_menu.m_file.m_new.enabled = false
+		this.im_menu.m_file.m_delete.enabled = false
+		this.im_menu.m_item.m_newitem.enabled = true
+		this.im_menu.m_item.m_deleteitem.enabled = true
+		this.im_menu.m_file.m_first.enabled = false
+		this.im_menu.m_file.m_next.enabled = false
+		this.im_menu.m_file.m_previous.enabled = false
+		this.im_menu.m_file.m_last.enabled = false
+		this.im_menu.m_file.m_retrieve.enabled = true
+		this.im_menu.m_file.m_retrieve.text = "Lis&t"
+		this.tab_retrieve.tabpage_detail.enabled = true
+	end if
+
+// w_smstemplate_form.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+
+// w_smstemplate_form.wf_deleteemptydetailrow() returns integer
+	long ll_rowcount
+	long ll_counter
+	long ll_code
+	integer li_rtcode
+	dwruntimeerror myexc
+	ll_rowcount = this.id_detail.rowcount()
+	ll_counter = 1
+	do while ll_counter <= this.id_detail.rowcount()
+		try
+			ll_code = this.id_detail.object.contactgroupcode[ll_counter]
+		catch (throwable myexc)
+		end try
+		if isnull(ll_code) then
+			this.id_detail.deleterow(ll_counter)
+			li_rtcode = 1
+			this.ib_itemslistopen = false
+			this.id_itemslist.hide()
+			setfocus()
+		else
+			ll_counter = ll_counter + 1
+		end if
+	loop
+	return li_rtcode
+
+// w_smstemplate_form.wf_set_smsdata_info(long al_code) returns long
+	long ll_row
+	long ll_found
+	long ll_module
+	ll_row = this.id_master.getrow()
+	if al_code > 0 then
+		SQL SELECT ModuleID INTO :ll_module FROM SMS_DataDefinition WHERE SMSDataCode =:al_code USING this.it_transobject;
+		if this.it_transobject.sqlcode = 0 then
+			this.id_master.object.moduleid[ll_row] = ll_module
+			this.idc_moduleevent.retrieve(ll_module)
+			if this.idc_moduleevent.rowcount() <= 0 then
+				this.idc_moduleevent.insertrow(0)
+				this.id_master.setitem(ll_row, "event", "")
+			end if
+		end if
+	elseif this.idc_moduleevent.rowcount() <= 0 then
+		this.idc_moduleevent.insertrow(0)
+		this.id_master.setitem(ll_row, "event", "")
+	end if
+	return 0
+
+// w_smstemplate_form.create() returns 0
+	integer icurrent
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_smstemplatemenu" then
+		this.menuid = create m_smstemplatemenu
+	end if
+
+// w_smstemplate_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_smstemplate_form.ue_save() returns 0
+	long ll_primarykey
+	long ll_row
+	long ll_counter
+	long ll_usercode
+	long ll_null
+	long ll_primarycode_old
+	string ls_smstemplate
+	boolean lb_commit
+	setnull(ll_null)
+	setpointer(hourglass!)
+	wf_deleteemptydetailrow()
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	ll_row = this.id_master.getrow()
+	ll_primarykey = this.id_master.object.code[this.id_master.getrow()]
+	ll_primarycode_old = ll_primarykey
+	ls_smstemplate = this.tab_retrieve.tabpage_detail.mle_smstemplate.text
+	this.id_master.object.smstemplate[this.id_master.getrow()] = ls_smstemplate
+	if isnull(ll_primarykey) then
+		ll_primarykey = 0
+		SQL rollback USING this.it_transobject;
+		wf_tabnewid("SMS_Template", ll_primarykey)
+		if this.it_transobject.sqlcode = 0 then
+			this.id_master.setitem(ll_row, "code", ll_primarykey)
+		else
+			SQL rollback USING this.it_transobject;
+			lb_commit = false
+			messagebox("SMS Template Problem", "Problem in Auto Generation of SMS Template Code~r~n Possibe Reason: " + this.it_transobject.sqlerrtext)
+		end if
+	end if
+	if this.id_detail.rowcount() > 0 then
+		for ll_counter = 1 to this.id_detail.rowcount()
+			this.id_detail.object.code[ll_counter] = ll_primarykey
+		next
+	end if
+	if lb_commit then
+		if this.id_master.update(true, false) < 0 then
+			SQL rollback USING this.it_transobject;
+			lb_commit = false
+			messagebox("SMS Template Problem", "Problem in updating SMS Template .")
+		end if
+		if lb_commit and this.id_detail.update(true, false) < 0 then
+		end if
+	end if
+	if lb_commit then
+		SQL commit USING this.it_transobject;
+		messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+		this.ib_commitok = true
+		this.id_master.resetupdate()
+		this.im_menu.m_file.m_new.enabled = true
+		this.editflag = false
+		if gd_recenttransdate < this.id_systemdate then
+			gd_recenttransdate = this.id_systemdate
+		end if
+	end if
+	if isnull(ll_primarycode_old) then
+		this.id_master.setitem(ll_row, "code", ll_null)
+	end if
+	setpointer(arrow!)
+
+// w_smstemplate_form.ue_newform() returns 0
+	setredraw(false)
+	this.i_editmode = 1
+	this.i_retrievemode = 2
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_new.enabled = false
+	this.im_menu.m_file.m_delete.enabled = false
+	this.im_menu.m_item.m_newitem.enabled = true
+	this.im_menu.m_item.m_deleteitem.enabled = true
+	this.im_menu.m_item.m_newitem.visible = true
+	this.im_menu.m_item.m_deleteitem.visible = true
+	this.im_menu.m_item.m_insertnewitem.enabled = true
+	this.im_menu.m_item.m_deletecurrentitem.enabled = true
+	this.im_menu.m_item.m_insertnewitem.visible = true
+	this.im_menu.m_item.m_deletecurrentitem.visible = true
+	this.im_menu.m_file.m_first.enabled = false
+	this.im_menu.m_file.m_next.enabled = false
+	this.im_menu.m_file.m_previous.enabled = false
+	this.im_menu.m_file.m_last.enabled = false
+	this.im_menu.m_file.m_print.enabled = false
+	this.im_menu.m_file.m_retrieve.enabled = true
+	this.im_menu.m_file.m_retrieve.text = "Lis&t"
+	this.tab_retrieve.tabpage_detail.enabled = true
+	if this.id_master.rowcount() > 0 then
+		this.id_master.reset()
+	end if
+	this.ib_focusdetail = false
+	this.id_master.insertrow(0)
+	this.id_detail.reset()
+	this.id_detail.insertrow(0)
+	this.id_master.setcolumn(1)
+	this.id_master.setfocus()
+	this.ids_itemrecyclebin.reset()
+	setredraw(true)
+	this.id_master.setfocus()
+	this.tab_retrieve.tabpage_detail.mle_smstemplate.enabled = true
+	this.tab_retrieve.tabpage_detail.mle_smstemplate.text = ""
+	this.id_master.selecttext(1, len(this.id_master.gettext()))
+
+// w_smstemplate_form.ue_detail() returns 0
+	long ll_code
+	integer li_protect
+	boolean lb_modify
+	string ls_smstemplate
+	call super::ue_detail
+	if this.id_list.getrow() > 0 then
+		ll_code = this.id_list.object.code[this.id_list.getrow()]
+	end if
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_delete.enabled = true
+	this.im_menu.m_file.m_first.enabled = true
+	this.im_menu.m_file.m_next.enabled = true
+	this.im_menu.m_file.m_last.enabled = true
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_menu.m_file.m_previous.enabled = true
+	this.im_menu.m_item.m_newitem.visible = true
+	this.im_menu.m_item.m_deleteitem.visible = true
+	this.im_menu.m_item.m_insertnewitem.visible = true
+	this.im_menu.m_item.m_deletecurrentitem.visible = true
+	this.im_menu.m_item.m_newitem.enabled = true
+	this.im_menu.m_item.m_deleteitem.enabled = true
+	this.im_menu.m_item.m_insertnewitem.enabled = true
+	this.im_menu.m_item.m_deletecurrentitem.enabled = true
+	lb_modify = true
+	this.editflag = false
+	li_protect = 0
+	wf_initmodify(li_protect)
+	wf_protectdw(this.id_master, li_protect)
+	wf_protectdw(this.id_detail, li_protect)
+	ls_smstemplate = this.id_master.object.smstemplate[1]
+	this.tab_retrieve.tabpage_detail.mle_smstemplate.text = ls_smstemplate
+	if li_protect > 0 then
+		this.tab_retrieve.tabpage_detail.mle_smstemplate.enabled = false
+	end if
+	setredraw(true)
+
+// w_smstemplate_form.ue_postopen() returns 0
+	long ll_rtncode
+	long ll_found
+	setredraw(false)
+	wf_connect()
+	this.id_master = this.tab_retrieve.tabpage_detail.dw_detail
+	this.id_detail = this.tab_retrieve.tabpage_detail.dw_itemsdetail
+	this.id_footer = this.tab_retrieve.tabpage_detail.dw_footer
+	this.id_list = this.tab_retrieve.tabpage_list.dw_list
+	this.id_itemslist = this.tab_retrieve.tabpage_detail.dw_itemslist
+	this.id_master.settransobject(this.it_transobject)
+	this.id_detail.settransobject(this.it_transobject)
+	this.id_list.settransobject(this.it_transobject)
+	this.id_footer.settransobject(this.it_transobject)
+	this.id_itemslist.settransobject(this.it_transobject)
+	this.id_dwcontrol = this.id_list
+	post wf_populate_ddlb(this.id_dwcontrol)
+	this.tab_retrieve.tabpage_list.dw_find.settransobject(this.it_transobject)
+	this.id_master.setfocus()
+	setredraw(true)
+	this.ids_itemrecyclebin = create datastore
+	this.ids_itemrecyclebin.tag = this.id_detail.dataobject
+	this.ids_itemrecyclebin.settransobject(this.it_transobject)
+	this.id_detail.getchild("contactgroupcode", this.idc_datadef)
+	this.idc_datadef.settransobject(this.it_transobject)
+	ll_rtncode = this.id_master.getchild("smsdatacode", this.idc_datadef)
+	if ll_rtncode = -1 then
+		messagebox("SMS Data Definition", "Problem in Retrieving SMS Data Definitions List")
+		close(this)
+		return
+	end if
+	this.idc_datadef.settransobject(this.it_transobject)
+	ll_rtncode = this.idc_datadef.retrieve()
+	if ll_rtncode < 0 then
+		messagebox("SMS Data Definition Validation", "Not Enough SMS Data Definitions Allowed~r~nPlease contact your system administrator")
+		close(this)
+		return
+	end if
+	ll_rtncode = this.id_master.getchild("event", this.idc_moduleevent)
+	if ll_rtncode = -1 then
+		messagebox("Function/Event Validation", "Problem in Retrieving Module Event")
+		close(this)
+		return
+	end if
+	this.idc_moduleevent.settransobject(this.it_transobject)
+	ll_rtncode = this.idc_moduleevent.insertrow(0)
+	if ll_rtncode < 0 then
+		messagebox("Function/Event Validation", "Not Enough Function/Event Allowed~r~nPlease contact your system administrator")
+		close(this)
+		return
+	end if
+
+// w_smstemplate_form.open() returns long
+	m_smstemplatemenu lm_menu
+	long ll_width
+	long ll_height
+	environment env
+	postevent("ue_postopen")
+	wf_setmenu(this.menuid)
+	lm_menu = this.menuid
+	lm_menu.dynamic mf_initsecurityapp(lm_menu)
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.tab_retrieve.width = ll_width * 0.99
+	this.tab_retrieve.height = ll_height * 0.83
+	this.tab_retrieve.tabpage_detail.dw_detail.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_itemsdetail.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_itemsdetail.height = this.tab_retrieve.height * 0.40
+	this.tab_retrieve.tabpage_detail.dw_footer.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_footer.y = this.tab_retrieve.height * 0.93 - this.tab_retrieve.tabpage_detail.dw_footer.height
+	this.tab_retrieve.tabpage_detail.mle_smstemplate.y = this.tab_retrieve.tabpage_detail.dw_itemsdetail.y + this.tab_retrieve.tabpage_detail.dw_itemsdetail.height
+	this.tab_retrieve.tabpage_detail.mle_smstemplate.height = this.tab_retrieve.height * 0.95 - this.tab_retrieve.tabpage_detail.dw_detail.height - this.tab_retrieve.tabpage_detail.dw_itemsdetail.height - this.tab_retrieve.tabpage_detail.dw_footer.height - 40
+	this.tab_retrieve.tabpage_detail.mle_smstemplate.width = this.tab_retrieve.tabpage_detail.dw_detail.width
+	this.tab_retrieve.tabpage_detail.dw_detail.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width
+	this.tab_retrieve.tabpage_detail.dw_footer.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width
+	this.tab_retrieve.tabpage_list.gb_fliter.width = ll_width * 0.97 - this.tab_retrieve.tabpage_list.gb_sort.width
+	this.tab_retrieve.tabpage_list.r_1.width = ll_width * 0.99
+	this.tab_retrieve.tabpage_list.r_1.height = ll_height * 0.765 - this.tab_retrieve.tabpage_list.gb_sort.height
+	this.tab_retrieve.tabpage_list.dw_list.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_list.dw_list.height = ll_height * 0.75 - this.tab_retrieve.tabpage_list.dw_list.y
+	this.tab_retrieve.tabpage_detail.dw_itemslist.height = ll_height * 0.6
+	this.tab_retrieve.tabpage_detail.dw_itemslist.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width * 0.67
+	this.tab_retrieve.tabpage_detail.dw_itemslist.x = 1150
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_smstemplate_form.ue_deleteitem() returns 0
+	long ll_currow
+	long ll_detailrows
+	long ll_icode
+	dwruntimeerror myexc
+	this.ib_itemvalidated = true
+	try
+		ll_icode = this.id_detail.object.icode[this.id_detail.getrow()]
+	catch (throwable myexc)
+	end try
+	if not isnull(ll_icode) then
+		this.id_detail.rowscopy(this.id_detail.getrow(), this.id_detail.getrow(), primary!, this.ids_itemrecyclebin, this.ids_itemrecyclebin.rowcount() + 1, primary!)
+	end if
+	ll_detailrows = this.id_detail.rowcount()
+	if ll_detailrows > 0 then
+		this.id_detail.deleterow(0)
+	end if
+	wf_grandtotal()
+
+// w_smstemplate_form.ue_deleteitem_row(long al_row) returns 0
+	long ll_currow
+	long ll_detailrows
+	long ll_icode
+	dwruntimeerror myexc
+	this.ib_itemvalidated = true
+	try
+		ll_icode = this.id_detail.object.icode[al_row]
+	catch (throwable myexc)
+	end try
+	this.id_detail.rowscopy(al_row, al_row, primary!, this.ids_itemrecyclebin, this.ids_itemrecyclebin.rowcount() + 1, primary!)
+	this.id_detail.deleterow(al_row)
+	ll_detailrows = this.id_detail.rowcount()
+	wf_grandtotal()
+
+// w_smstemplate_form.ue_list() returns 0
+	call super::ue_list
+	SQL rollback USING this.it_transobject;
+
+// w_smstemplate_form.ue_newitem() returns 0
+	long ll_rowcount
+	long ll_currentrow
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	if this.id_detail.rowcount() > 0 and f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	ll_currentrow = this.id_detail.getrow()
+	this.id_detail.setcolumn(1)
+	if ll_currentrow = this.id_detail.rowcount() then
+		this.id_detail.insertrow(0)
+		ll_rowcount = this.id_detail.rowcount()
+		if ll_rowcount > 1 then
+			this.id_detail.scrolltorow(ll_rowcount)
+			this.id_detail.setfocus()
+		end if
+	else
+		this.id_detail.insertrow(ll_currentrow)
+		this.id_detail.scrolltorow(ll_currentrow)
+		this.id_detail.setfocus()
+	end if
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_save.visible = true
+	this.ib_validatefullcode = true

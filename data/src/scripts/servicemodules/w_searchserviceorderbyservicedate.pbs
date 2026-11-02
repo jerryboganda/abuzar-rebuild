@@ -1,0 +1,201 @@
+// window w_searchserviceorderbyservicedate (servicemodules)  ancestor: window
+
+// w_searchserviceorderbyservicedate.ue_setfocus(char ac_type) returns 0
+	long ll_invcode
+	setnull(ll_invcode)
+	if ac_type = "S" then
+		this.dw_purordertemplate.setfocus()
+	end if
+
+// w_searchserviceorderbyservicedate.ue_postopen() returns 0
+	this.istr_template.b_userinput = false
+	this.dw_detail.settransobject(sqlca)
+	this.dw_detail.reset()
+	this.dw_purordertemplate.settransobject(sqlca)
+	this.dw_purordertemplate.retrieve()
+
+// w_searchserviceorderbyservicedate.create() returns 0
+	this.cbx_selectall = create cbx_selectall
+	this.cb_getdetail = create cb_getdetail
+	this.dw_detail = create dw_detail
+	this.dw_purordertemplate = create dw_purordertemplate
+	this.st_purchaseinvno = create st_purchaseinvno
+	this.rb_copyinvfromserviceorder = create rb_copyinvfromserviceorder
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.gb_1 = create gb_1
+	this.gb_2 = create gb_2
+	this.control = {this.cbx_selectall, this.cb_getdetail, this.dw_detail, this.dw_purordertemplate, this.st_purchaseinvno, this.rb_copyinvfromserviceorder, this.cb_cancel, this.cb_ok, this.gb_1, this.gb_2}
+
+// w_searchserviceorderbyservicedate.destroy() returns 0
+	destroy this.cbx_selectall
+	destroy this.cb_getdetail
+	destroy this.dw_detail
+	destroy this.dw_purordertemplate
+	destroy this.st_purchaseinvno
+	destroy this.rb_copyinvfromserviceorder
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.gb_1
+	destroy this.gb_2
+
+// w_searchserviceorderbyservicedate.open() returns long
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	post event ue_postopen()
+	return ::message.returnvalue
+
+// w_searchserviceorderbyservicedate.close() returns long
+	closewithreturn(this, this.istr_template)
+	return ::message.returnvalue
+
+// w_searchserviceorderbyservicedate.key(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		post event Close()
+	end if
+	return ::message.returnvalue
+
+// cbx_selectall.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// cb_getdetail.ue_key(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		post event clicked()
+		send(handle(this), 256, 9, long(90))
+		return 1
+	end if
+	return ::message.returnvalue
+
+// cb_getdetail.clicked() returns long
+	long ll_code
+	long ll_find
+	date ld_date
+	time lt_time
+	datetime ldt_startdate
+	datetime ldt_enddate
+	parent.dw_purordertemplate.accepttext()
+	ld_date = date(parent.dw_purordertemplate.getitemdatetime(parent.dw_purordertemplate.getrow(), "date"))
+	lt_time = time("00:00:00")
+	ldt_startdate = datetime(ld_date, lt_time)
+	lt_time = time("23:59:59")
+	ldt_enddate = datetime(ld_date, lt_time)
+	parent.dw_detail.reset()
+	parent.dw_detail.retrieve(ldt_startdate, ldt_enddate)
+	return ::message.returnvalue
+
+// dw_detail.rowfocuschanged(long currentrow) returns long
+	selectrow(0, false)
+	selectrow(currentrow, true)
+	return ::message.returnvalue
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "chkbox"
+		return 1
+	end choose
+	return ::message.returnvalue
+
+// dw_purordertemplate.ue_key(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		parent.post event Close()
+	end if
+	return ::message.returnvalue
+
+// dw_purordertemplate.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_purordertemplate.itemerror(long row, dwobject dwo, string data) returns long
+	messagebox("Service Order Code Validation", "Please enter valid Service Order Code")
+	return 1
+
+// rb_copyinvfromserviceorder.clicked() returns long
+	if parent.rb_copyinvfromserviceorder.checked then
+		parent.event ue_setfocus("S")
+	end if
+	return ::message.returnvalue
+
+// rb_copyinvfromserviceorder.getfocus() returns long
+	if parent.rb_copyinvfromserviceorder.checked then
+		parent.event ue_setfocus("S")
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.istr_template.b_userinput = false
+	parent.post event Close()
+	return ::message.returnvalue
+
+// cb_ok.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		post event clicked()
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	long ll_find
+	long ll_counter
+	long ll_rowcount
+	long[] lla_detailrows
+	long ll_custcode
+	long ll_serviceocode
+	integer li_index
+	boolean lb_firsttime
+	lb_firsttime = true
+	parent.istr_template.b_userinput = false
+	if parent.dw_purordertemplate.accepttext() = -1 then
+		parent.dw_purordertemplate.setfocus()
+		return ::message.returnvalue
+	end if
+	if parent.dw_detail.rowcount() <= 0 then
+		messagebox("Service Detail Validation", "Please select service from list.")
+		return ::message.returnvalue
+	else
+		ll_rowcount = parent.dw_detail.rowcount()
+		li_index = 0
+		for ll_counter = 1 to ll_rowcount
+			if parent.dw_detail.getitemstring(ll_counter, "chkbox") = "Y" then
+				if lb_firsttime then
+					ll_serviceocode = parent.dw_detail.getitemnumber(ll_counter, "serviceocode")
+					lla_detailrows[1] = ll_serviceocode
+					lb_firsttime = false
+				end if
+				if ll_serviceocode = parent.dw_detail.getitemnumber(ll_counter, "serviceocode") then
+					li_index = li_index + 1
+				else
+					messagebox("Service Order Validation", "Please select Orders belong to same Service Order.")
+					return ::message.returnvalue
+				end if
+				return
+			end if
+		next
+		if li_index = 0 then
+			messagebox("Service Order Validation", "Please select some Service Order from detail window.")
+			return ::message.returnvalue
+		end if
+	end if
+	parent.istr_template.c_copyinvfrom = "O"
+	parent.istr_template.l_detailrows = lla_detailrows
+	parent.istr_template.b_userinput = true
+	parent.post event Close()
+	return ::message.returnvalue
+
+// gb_2.ue_getfocus() returns long
+	parent.dw_detail.setfocus()
+	return ::message.returnvalue

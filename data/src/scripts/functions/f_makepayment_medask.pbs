@@ -1,0 +1,177 @@
+// function f_makepayment_medask (functions)  ancestor: function_object
+
+// f_makepayment_medask.f_makepayment_medask(string as_mrno, double ad_amt, string as_transcode, string as_otp, long al_statuscode, string as_statustext) returns long
+	integer li_ret
+	integer li_rc
+	long ll_retcode
+	long ll_startpos
+	long ll_endpos
+	string ls_reponsetype
+	string ls_response_text
+	string ls_transcode
+	string ls_otp
+	string ls_userid
+	string ls_password
+	string ls_url
+	string ls_temp
+	string ls_temp2
+	string ls_host
+	string ls_key
+	string ls_userdata
+	string ls_data
+	string ls_accesstoken
+	string ls_refreshtoken
+	string ls_csfrtoken
+	oleobject loo_xmlhttp
+	s_arguements lstr_arg
+	runtimeerror rte
+	as_statustext = space(1000) + "0"
+	ls_host = f_stringpreferences("CustomerPaymentAPIHost")
+	ls_key = f_stringpreferences("CustomerPaymentAPIKey")
+	ls_userid = f_stringpreferences("CustomerPaymentAPIUserName")
+	ls_password = f_stringpreferences("CustomerPaymentAPIPassword")
+	ls_userdata = "{~"username~": ~"" + ls_userid + "~",~"password~": ~"" + ls_password + "~"}"
+	setpointer(hourglass!)
+	if ad_amt > 0.0 and len(as_mrno) > 0 then
+		try
+			loo_xmlhttp = create oleobject
+			li_rc = loo_xmlhttp.connecttonewobject("MSXML2.ServerXMLHTTP.6.0")
+			if li_rc = 0 then
+				ls_url = ls_host + "api/login"
+				loo_xmlhttp.__invoke_method("open", 3, {"POST", ls_url, false}, true)
+				loo_xmlhttp.__invoke_method("setrequestheader", 2, {"Content-Type", "application/json"}, true)
+				loo_xmlhttp.__invoke_method("setrequestheader", 2, {"Authorization", ls_key}, true)
+				loo_xmlhttp.__invoke_method("send", 1, {ls_userdata}, true)
+				as_statustext = loo_xmlhttp.statustext
+				al_statuscode = loo_xmlhttp.status
+				ls_response_text = loo_xmlhttp.responsetext
+				ls_temp = loo_xmlhttp.__invoke_method("getallresponseheaders", 0, {}, true)
+				if al_statuscode >= 300 then
+					loo_xmlhttp.disconnectobject()
+					if isnull(ls_response_text) then
+						ls_response_text = ""
+					end if
+					as_statustext = string(al_statuscode) + "-" + as_statustext + "~r~n" + ls_response_text
+					return -1
+				else
+					ll_startpos = pos(ls_temp, "access_token=")
+					if ll_startpos > 0 then
+						ls_temp2 = mid(ls_temp, ll_startpos, len(ls_temp))
+						ll_endpos = pos(ls_temp2, "; expires")
+						ls_accesstoken = mid(ls_temp2, 14, ll_endpos - 14)
+					end if
+					ll_startpos = pos(ls_temp, "refresh_token=")
+					if ll_startpos > 0 then
+						ls_temp2 = mid(ls_temp, ll_startpos, len(ls_temp))
+						ll_endpos = pos(ls_temp2, "; expires")
+						if ll_endpos > 0 then
+							ls_refreshtoken = mid(ls_temp2, 15, ll_endpos - 15)
+						end if
+					end if
+					ll_startpos = pos(ls_temp, "csrftoken=")
+					if ll_startpos > 0 then
+						ls_temp2 = mid(ls_temp, ll_startpos, len(ls_temp))
+						ll_endpos = pos(ls_temp2, "; expires")
+						if ll_endpos > 0 then
+							ls_csfrtoken = mid(ls_temp2, 11, ll_endpos - 11)
+						end if
+					end if
+					if len(ls_accesstoken) > 0 and len(ls_refreshtoken) > 0 and len(ls_csfrtoken) > 0 then
+						ls_response_text = ""
+						as_statustext = ""
+						ls_temp = ""
+						setnull(al_statuscode)
+						ls_data = "{~"mr_number~": ~"" + as_mrno + "~", ~"amount~": ~"" + trim(string(ad_amt, "######0")) + "~"}"
+						ls_url = ls_host + "api/medicinepayment"
+						loo_xmlhttp.__invoke_method("open", 3, {"POST", ls_url, false}, true)
+						loo_xmlhttp.__invoke_method("setrequestheader", 2, {"Content-Type", "application/json"}, true)
+						loo_xmlhttp.__invoke_method("setrequestheader", 2, {"X-CSRFTOKEN", ls_csfrtoken}, true)
+						loo_xmlhttp.__invoke_method("setrequestheader", 2, {"Bearer", ls_accesstoken}, true)
+						loo_xmlhttp.__invoke_method("send", 1, {ls_data}, true)
+						as_statustext = loo_xmlhttp.statustext
+						al_statuscode = loo_xmlhttp.status
+						ls_response_text = loo_xmlhttp.responsetext
+						ls_temp = loo_xmlhttp.__invoke_method("getallresponseheaders", 0, {}, true)
+						if al_statuscode >= 300 then
+							loo_xmlhttp.disconnectobject()
+							if isnull(ls_response_text) then
+								ls_response_text = ""
+							end if
+							as_statustext = string(al_statuscode) + "-" + as_statustext + "~r~n" + ls_response_text
+							return -1
+						else
+							ll_startpos = pos(ls_response_text, "{~"transaction_number~":")
+							if ll_startpos > 0 then
+								ll_endpos = pos(ls_response_text, ",")
+								if ll_endpos > 0 and ll_endpos > ll_startpos then
+									ls_transcode = mid(ls_response_text, ll_startpos + 22, ll_endpos - 23)
+								end if
+							end if
+							ll_startpos = pos(ls_response_text, "~"otp~":~"")
+							if ll_startpos > 0 then
+								ll_endpos = pos(ls_response_text, "~"}")
+								if ll_endpos > 0 and ll_endpos > ll_startpos then
+									ls_otp = mid(ls_response_text, ll_startpos + 7, ll_endpos - ll_startpos - 7)
+								end if
+							end if
+							if len(ls_otp) > 0 and len(ls_transcode) > 0 then
+								lstr_arg.s_name1 = ls_transcode
+								lstr_arg.s_name2 = ls_otp
+								openwithparm(w_otp_verfication, lstr_arg)
+								lstr_arg = message.powerobjectparm
+								if lstr_arg.i_status = 1 then
+									ls_response_text = ""
+									as_statustext = ""
+									ls_temp = ""
+									setnull(al_statuscode)
+									ls_data = "{~"transaction_number~": " + ls_transcode + ", ~"otp~": ~"" + ls_otp + "~"}"
+									ls_url = ls_host + "api/medicinepaymentvalidation"
+									loo_xmlhttp.__invoke_method("open", 3, {"POST", ls_url, false}, true)
+									loo_xmlhttp.__invoke_method("setrequestheader", 2, {"Content-Type", "application/json"}, true)
+									loo_xmlhttp.__invoke_method("setrequestheader", 2, {"X-CSRFTOKEN", ls_csfrtoken}, true)
+									loo_xmlhttp.__invoke_method("setrequestheader", 2, {"Bearer", ls_accesstoken}, true)
+									loo_xmlhttp.__invoke_method("send", 1, {ls_data}, true)
+									as_statustext = loo_xmlhttp.statustext
+									al_statuscode = loo_xmlhttp.status
+									ls_response_text = loo_xmlhttp.responsetext
+									ls_temp = loo_xmlhttp.__invoke_method("getallresponseheaders", 0, {}, true)
+									if al_statuscode >= 300 then
+										loo_xmlhttp.disconnectobject()
+										if isnull(ls_response_text) then
+											ls_response_text = ""
+										end if
+										as_statustext = string(al_statuscode) + "-" + as_statustext + "~r~n" + ls_response_text
+										return -1
+									else
+										ll_startpos = pos(ls_response_text, "~"Paid Successfully~"")
+										if ll_startpos > 0 then
+											as_transcode = ls_transcode
+											as_otp = ls_otp
+											as_statustext = string(al_statuscode) + "-" + as_statustext + "~r~n" + ls_response_text
+											return 1
+										else
+											as_statustext = string(al_statuscode) + "-" + as_statustext + "~r~n" + ls_response_text
+											return -1
+										end if
+									end if
+								else
+									as_statustext = string(al_statuscode) + "-" + as_statustext + "~r~n" + ls_response_text + "~r~nOTP not verified by patient."
+									return -1
+								end if
+								return
+							end if
+						end if
+						return
+					end if
+				end if
+				return
+			end if
+		catch (throwable rte)
+			as_statustext = rte.getmessage()
+			loo_xmlhttp.disconnectobject()
+			return -1
+		end try
+		return 0
+	end if
+	setpointer(arrow!)
+	return ll_retcode

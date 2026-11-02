@@ -1,0 +1,81 @@
+// window w_copyprfrom (templates)  ancestor: window
+
+// w_copyprfrom.ue_postopen() returns 0
+	this.istr_template.b_userinput = false
+	this.dw_pur.settransobject(sqlca)
+	this.dw_pur.insertrow(0)
+	this.dw_pur.scrolltorow(0)
+	this.dw_pur.setrow(0)
+
+// w_copyprfrom.create() returns 0
+	this.dw_pur = create dw_pur
+	this.st_purchaseinvno = create st_purchaseinvno
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.gb_1 = create gb_1
+	this.control = {this.dw_pur, this.st_purchaseinvno, this.cb_cancel, this.cb_ok, this.gb_1}
+
+// w_copyprfrom.destroy() returns 0
+	destroy this.dw_pur
+	destroy this.st_purchaseinvno
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.gb_1
+
+// w_copyprfrom.open() returns long
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	post event ue_postopen()
+	this.dw_pur.setfocus()
+	return ::message.returnvalue
+
+// w_copyprfrom.close() returns long
+	closewithreturn(this, this.istr_template)
+	return ::message.returnvalue
+
+// w_copyprfrom.key(keycode key, unsignedlong keyflags) returns long
+	return ::message.returnvalue
+
+// dw_pur.ue_key(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		parent.post event Close()
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.istr_template.b_userinput = false
+	parent.post event Close()
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	long ll_find
+	long ll_invcode
+	parent.istr_template.b_userinput = false
+	if parent.dw_pur.accepttext() = -1 then
+		parent.dw_pur.setfocus()
+		return ::message.returnvalue
+	end if
+	ll_invcode = parent.dw_pur.getitemnumber(1, "prinvcode")
+	if ll_invcode < 0 then
+		messagebox("Purchase Return Invoice Code Validation", "Purchase Return Invoice Code does not exist")
+		parent.dw_pur.setfocus()
+		return ::message.returnvalue
+	end if
+	parent.istr_template.c_copyinvfrom = "P"
+	parent.istr_template.l_invtemplate = parent.dw_pur.getitemnumber(1, "prinvcode")
+	parent.istr_template.b_userinput = true
+	parent.post event Close()
+	return ::message.returnvalue

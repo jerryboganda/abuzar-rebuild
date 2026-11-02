@@ -1,0 +1,858 @@
+// window w_activitymonitor (graphcomponents)  ancestor: window
+
+// w_activitymonitor.wf_refresh() returns long
+	long ll_index
+	long ll_rowcount
+	long ll_series_num
+	long ll_counter
+	long ll_innercounter
+	long ll_groupcode
+	long ll_prints_left
+	long[] ll_docrowid
+	long ll_printable_count
+	long ll_min_refresh
+	boolean lb_continue
+	datetime ldt_startdate
+	if this.id_button.rowcount() = 0 then
+		return 0
+	end if
+	ll_min_refresh = this.id_button.object.activityperiod[1]
+	setpointer(hourglass!)
+	setredraw(false)
+	ll_groupcode = f_getgroupcode(gl_usercode)
+	ll_min_refresh = f_numberpreferences("ActMonPeriod")
+	if this.ib_editrefresh = false then
+		this.id_button.retrieve()
+		ldt_startdate = this.id_button.object.startdate[1]
+	else
+		ll_min_refresh = -1
+		ldt_startdate = this.id_button.object.startdate[1]
+	end if
+	this.id_summary.retrieve()
+	this.id_list.retrieve(ll_min_refresh, ldt_startdate, ll_groupcode, this.is_doctype)
+	ll_rowcount = this.id_list.rowcount()
+	wf_plotgraph_and_summary()
+	if this.ib_autoprint then
+		wf_print(1)
+	end if
+	setpointer(arrow!)
+	setredraw(true)
+	return 0
+
+// w_activitymonitor.wf_set_document_pref() returns long
+	long ll_found
+	long ll_index
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 652", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		ll_index = ll_index + 1
+		this.is_doctype[ll_index] = "SC"
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 703", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		ll_index = ll_index + 1
+		this.is_doctype[ll_index] = "ST"
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 653", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		ll_index = ll_index + 1
+		this.is_doctype[ll_index] = "SR"
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 654", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		ll_index = ll_index + 1
+		this.is_doctype[ll_index] = "PV"
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 655", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		ll_index = ll_index + 1
+		this.is_doctype[ll_index] = "PR"
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 656", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		ll_index = ll_index + 1
+		this.is_doctype[ll_index] = "VV"
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 657", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		ll_index = ll_index + 1
+		this.is_doctype[ll_index] = "NN"
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 658", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		ll_index = ll_index + 1
+		this.is_doctype[ll_index] = "IV"
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 659", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		ll_index = ll_index + 1
+		this.is_doctype[ll_index] = "RC"
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 660", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		ll_index = ll_index + 1
+		this.is_doctype[ll_index] = "AI"
+		ll_index = ll_index + 1
+		this.is_doctype[ll_index] = "AD"
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 661", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		ll_index = ll_index + 1
+		this.is_doctype[ll_index] = "GT"
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 662", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		ll_index = ll_index + 1
+		this.is_doctype[ll_index] = "PO"
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 663", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		ll_index = ll_index + 1
+		this.is_doctype[ll_index] = "SO"
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 664", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		ll_index = ll_index + 1
+		this.is_doctype[ll_index] = "QU"
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 669", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		ll_index = ll_index + 1
+		this.is_doctype[ll_index] = "RS"
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 670", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		ll_index = ll_index + 1
+		this.is_doctype[ll_index] = "RR"
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 671", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		ll_index = ll_index + 1
+		this.is_doctype[ll_index] = "VO"
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 5156", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		ll_index = ll_index + 1
+		this.is_doctype[ll_index] = "PD"
+	end if
+	return 0
+
+// w_activitymonitor.wf_set_autoprint() returns long
+	long ll_found
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 665", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.ib_autoprint = true
+	end if
+	return 0
+
+// w_activitymonitor.wf_filter() returns 0
+	string ls_null
+	setnull(ls_null)
+	this.id_list.scrolltorow(0)
+	this.id_list.setfilter(ls_null)
+	this.id_list.filter()
+	this.id_list.groupcalc()
+	wf_plotgraph_and_summary()
+
+// w_activitymonitor.wf_plotgraph_and_summary() returns integer
+	long ll_index
+	long ll_cat_index
+	long ll_rowcount
+	long ll_counter
+	long ll_innercounter
+	long ll_found
+	long ll_row
+	boolean lb_continue
+	integer li_series_num
+	integer li_cat_num
+	string ls_cat
+	string ls_documenttype
+	double ld_amount
+	double ld_oldamount
+	graph gr_1
+	gr_1 = this.tab_activitymonitor.tabpage_graph.gr_graph
+	setredraw(false)
+	this.id_summary.reset()
+	ll_rowcount = this.id_list.rowcount()
+	gr_1.reset(all!)
+	for ll_innercounter = 1 to ll_rowcount
+		ld_amount = round(this.id_list.getitemnumber(ll_innercounter, "amount"), 2)
+		ls_cat = this.id_list.getitemstring(ll_innercounter, "category")
+		ls_documenttype = this.id_list.object.documenttype[ll_innercounter]
+		if ls_documenttype = "SC" or ls_documenttype = "ST" then
+			ls_documenttype = "SV"
+		end if
+		ll_found = this.id_summary.find("doccategory = '" + ls_cat + "'", 1, this.id_summary.rowcount())
+		if ll_found > 0 then
+			ll_row = ll_found
+			this.id_summary.object.count[ll_row] = this.id_summary.object.count[ll_row] + 1
+			this.id_summary.object.amount[ll_row] = this.id_summary.object.amount[ll_row] + ld_amount
+		else
+			ll_row = this.id_summary.insertrow(0)
+			this.id_summary.object.doccategory[ll_row] = ls_cat
+			this.id_summary.object.count[ll_row] = 1
+			this.id_summary.object.amount[ll_row] = ld_amount
+			choose case ls_documenttype
+			case "SV"
+				this.id_summary.object.doctype[ll_row] = "Sales"
+			case "SR"
+				this.id_summary.object.doctype[ll_row] = "Sales Return"
+			case "PV"
+				this.id_summary.object.doctype[ll_row] = "Purchases"
+			case "PR"
+				this.id_summary.object.doctype[ll_row] = "Purchases Return"
+			case "AI", "AD"
+				this.id_summary.object.doctype[ll_row] = "Stock Adjustment"
+			case "IV"
+				this.id_summary.object.doctype[ll_row] = "Issue Document"
+			case "RC"
+				this.id_summary.object.doctype[ll_row] = "Receipt Document"
+			case "GT"
+				this.id_summary.object.doctype[ll_row] = "Inter Godown Transfer Document"
+			case "PO"
+				this.id_summary.object.doctype[ll_row] = "Purchase Order"
+			case "SO"
+				this.id_summary.object.doctype[ll_row] = "Sales Order"
+			case "NN"
+				this.id_summary.object.doctype[ll_row] = "Post Dated Cheque"
+			case "QU"
+				this.id_summary.object.doctype[ll_row] = "Quotation"
+			case "VV"
+				this.id_summary.object.doctype[ll_row] = "Accounting Voucher"
+			case "RS"
+				this.id_summary.object.doctype[ll_row] = "Service Sales"
+			case "RR"
+				this.id_summary.object.doctype[ll_row] = "Service Sales Return"
+			case "VO"
+				this.id_summary.object.doctype[ll_row] = "Service Order"
+			case "AP"
+				this.id_summary.object.doctype[ll_row] = "Average Price Adjustment"
+			end choose
+		end if
+	next
+	ll_counter = 0
+	for ll_counter = 1 to this.id_summary.rowcount()
+		ls_cat = this.id_summary.object.doccategory[ll_counter]
+		ld_amount = this.id_summary.object.amount[ll_counter]
+		li_series_num = gr_1.findseries(ls_cat)
+		if li_series_num = -1 then
+			li_series_num = gr_1.addseries(ls_cat)
+		end if
+		if li_series_num > 0 then
+			gr_1.adddata(li_series_num, ld_amount, ls_cat)
+		end if
+	next
+	this.id_summary.setredraw(false)
+	this.id_summary.sort()
+	this.id_summary.groupcalc()
+	this.id_summary.setredraw(true)
+	gr_1.textcolor = rgb(285, 105, 135)
+	this.tab_activitymonitor.tabpage_graph.gr_graph = gr_1
+	setpointer(arrow!)
+	setredraw(true)
+	return 0
+
+// w_activitymonitor.wf_print(integer ai_mode) returns long
+	long ll_rowcount
+	long ll_index
+	long ll_counter
+	long ll_printable_count
+	long[] ll_docrowid
+	long ll_max
+	boolean lb_continue
+	string ls_printer
+	string ls_defaultprinter
+	string ls_defaultinfo
+	ll_rowcount = this.id_list.rowcount()
+	if ll_rowcount > 0 then
+		if ai_mode = 0 then
+			if this.id_list.getrow() > 0 then
+				ll_index = 1
+				ll_docrowid[ll_index] = this.id_list.object.docrowid[this.id_list.getrow()]
+				wf_selectprintreport()
+				if this.ids_print.dataobject = "d_activitymon_printout2_alharmainlights" then
+					this.ids_print.retrieve(ll_docrowid, gl_usercode)
+				else
+					this.ids_print.retrieve(ll_docrowid)
+				end if
+				if this.ids_print.rowcount() > 0 then
+					ls_printer = f_stringpreferences("PrinterForActivityMonitor")
+					if trim(ls_printer) = "" or trim(ls_printer) = "<Default Printer>" then
+						this.ids_print.print()
+						wf_playsound()
+					elseif len(trim(ls_printer)) > 0 then
+						ls_defaultinfo = printgetprinter()
+						ls_defaultprinter = left(ls_defaultinfo, pos(ls_defaultinfo, "~t") - 1)
+						printsetprinter(trim(ls_printer))
+						this.ids_print.print()
+						printsetprinter(trim(ls_defaultprinter))
+						wf_playsound()
+					end if
+				end if
+			else
+				messagebox("Activity Monitor Print Request", "Please Select some Item From Activity List", stopsign!)
+			end if
+		elseif this.ib_autoprint then
+			ll_index = 0
+			for ll_counter = 1 to ll_rowcount
+				if this.id_list.object.printed[ll_counter] = "N" then
+					ll_index = ll_index + 1
+					ll_docrowid[ll_index] = this.id_list.object.docrowid[ll_counter]
+				end if
+			next
+			wf_selectprintreport()
+			ll_printable_count = upperbound(ll_docrowid)
+			if ll_printable_count > 0 then
+				if this.ids_print.dataobject = "d_activitymon_printout2_alharmainlights" then
+					this.ids_print.retrieve(ll_docrowid, gl_usercode)
+				else
+					this.ids_print.retrieve(ll_docrowid)
+				end if
+				if this.ids_print.rowcount() > 0 then
+					ls_printer = f_stringpreferences("PrinterForActivityMonitor")
+					if trim(ls_printer) = "" or trim(ls_printer) = "<Default Printer>" then
+						this.ids_print.print()
+						wf_playsound()
+					elseif len(trim(ls_printer)) > 0 then
+						ls_defaultinfo = printgetprinter()
+						ls_defaultprinter = left(ls_defaultinfo, pos(ls_defaultinfo, "~t") - 1)
+						printsetprinter(trim(ls_printer))
+						this.ids_print.print()
+						printsetprinter(trim(ls_defaultprinter))
+						wf_playsound()
+					end if
+					SQL rollback USING this.it_transobject;
+					for ll_counter = 1 to ll_printable_count
+						this.it_transobject.changeprintstatus_activitymonitor(ll_docrowid[ll_counter])
+						if this.it_transobject.sqlcode <> 0 then
+							lb_continue = false
+						end if
+						if lb_continue = false then
+							exit
+						end if
+					next
+					if lb_continue then
+						SQL commit USING this.it_transobject;
+					else
+						messagebox("Activity Monitor", "Problem in changing print status " + this.it_transobject.sqlerrtext)
+						SQL rollback USING this.it_transobject;
+					end if
+				end if
+			end if
+		end if
+	end if
+	return 0
+
+// w_activitymonitor.wf_preview() returns long
+	long ll_rowcount
+	long ll_index
+	long ll_counter
+	long ll_printable_count
+	long[] ll_docrowid
+	boolean lb_continue
+	string ls_printer
+	string ls_defaultprinter
+	string ls_defaultinfo
+	s_datastore lstr
+	ll_rowcount = this.id_list.rowcount()
+	if ll_rowcount > 0 then
+		if this.id_list.getrow() > 0 then
+			ll_index = 1
+			ll_docrowid[ll_index] = this.id_list.object.docrowid[this.id_list.getrow()]
+			wf_selectprintreport()
+			this.ids_print.retrieve(ll_docrowid)
+			if this.ids_print.rowcount() > 0 then
+				lstr.ds = this.ids_print
+				lstr.s_name1 = this.ids_print.dataobject
+				openwithparm(w_preview_invoices2, lstr)
+				lstr = message.powerobjectparm
+				if lstr.i_closemode = -1 then
+				end if
+			end if
+		else
+			messagebox("Activity Monitor Print Request", "Please Select some Item From Activity List", stopsign!)
+		end if
+	end if
+	return 0
+
+// w_activitymonitor.wf_sort() returns long
+	string ls_null
+	setnull(ls_null)
+	this.id_list.setsort(ls_null)
+	this.id_list.sort()
+	this.id_list.groupcalc()
+	return 0
+
+// w_activitymonitor.wf_clearactivitymonitorhistory() returns long
+	s_arguements lstr_arg
+	open(w_arg_sdate_ldate)
+	lstr_arg = message.powerobjectparm
+	if lstr_arg.i_status = 1 then
+		SQL rollback USING this.it_transobject;
+		this.it_transobject.clearactivitymonitorhistory(lstr_arg.d_sdate, lstr_arg.d_edate)
+		if this.it_transobject.sqlcode = 0 then
+			messagebox("Activity Monitor", "Activity Monitor History Cleared Successfull for the said period.", information!)
+		else
+			messagebox("Activity Monitor", "Problem Clearing Activity Monitor.~r~n" + this.it_transobject.sqlerrtext, stopsign!)
+		end if
+	end if
+	return 0
+
+// w_activitymonitor.wf_settimer(long ai_time) returns 0
+	timer(ai_time, this)
+
+// w_activitymonitor.wf_playsound() returns integer
+	unsignedinteger lui_numdevs
+	lui_numdevs = waveoutgetnumdevs()
+	if lui_numdevs > 0 then
+		sndplaysounda("Print.WAV", 0)
+	end if
+	return 0
+
+// w_activitymonitor.wf_selectprintreport() returns 0
+	long ll_listrow
+	long ll_docrowid
+	string ls_report
+	string ls_doctype
+	long ll_max_icatcode
+	ll_listrow = this.id_list.getrow()
+	if ll_listrow > 0 then
+		ls_doctype = this.id_list.object.documenttype[ll_listrow]
+		ll_docrowid = this.id_list.object.docrowid[ll_listrow]
+	end if
+	if gs_company = "ZAINMEDICINE" then
+		ls_report = "d_zainmedicine_activitymonitor_saleprint"
+	elseif gs_company = "MAXBURGER" then
+		ls_report = "d_maxburger_activitymonitor_saleprint"
+	elseif gs_company = "HAJICHARGHA" then
+		ls_report = "d_hajichargha_activitymonitor_saleprint"
+	elseif gs_company = "BAMBINOSTORE" then
+		ls_report = "d_bambinostore_activitymonitor_printout"
+	elseif gs_company = "KHYBER" then
+		ls_report = "d_khyber_activitymonitor_printout"
+	elseif gs_company = "ALKAUSAR" then
+		ls_report = "d_alkausar_activitymonitor_printout"
+	elseif gs_company = "BILAL" then
+		ls_report = "d_bilal_activitymon_printout"
+	elseif gs_company = "TM" then
+		if ls_doctype = "GT" then
+			ls_report = "d_tm_activitymon_transferinvreport"
+		end if
+	elseif gs_company = "ALHARMAINLIGHTS" then
+		if ls_doctype = "SR" then
+			ls_report = "d_activitymon_sr_printout_alharmainlight"
+		else
+			SQL SELECT MAX ( IC.ICatCode ) INTO :ll_max_icatcode FROM ItemCategory IC , Item I , ActivityMonitor AM , SaleDetail SD WHERE AM.DocRowID =:ll_docrowid AND AM.DocumentType IN ( 'SC' , 'ST' ) AND AM.DocumentCode =SD.SaleInvCode AND SD.ICode =I.ICode AND I.ICatCode =IC.ICatCode USING sqlca;
+			if sqlca.sqlcode = 0 then
+				if ll_max_icatcode = 1 then
+					ls_report = "d_activitymon_printout_alharmainlights"
+				else
+					ls_report = "d_activitymon_printout2_alharmainlights"
+				end if
+			else
+				ls_report = "d_activitymon_printout_alharmainlights"
+			end if
+		end if
+	end if
+	if ls_doctype = "PD" then
+		ls_report = "d_activitymonitor_productioninvreport"
+	end if
+	if ls_report = "" then
+		ls_report = "d_activitymon_printout_general"
+	end if
+	this.ids_print.dataobject = ls_report
+	this.ids_print.settransobject(this.it_transobject)
+
+// w_activitymonitor.create() returns 0
+	if this.menuname = "m_activitymonitor" then
+		this.menuid = create m_activitymonitor
+	end if
+	this.dw_buttons = create dw_buttons
+	this.tab_activitymonitor = create tab_activitymonitor
+	this.control = {this.dw_buttons, this.tab_activitymonitor}
+
+// w_activitymonitor.destroy() returns 0
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_buttons
+	destroy this.tab_activitymonitor
+
+// w_activitymonitor.open() returns long
+	datawindowchild ldc_headerno
+	datawindowchild ldc_retailsaleheader
+	datawindowchild ldc_creditsaleheader
+	long ll_counter
+	long ll_pos
+	long ll_rtcode
+	long ll_found
+	string ls_jobstarttime
+	string ls_hold
+	string ls_dwo
+	integer li_backuphr
+	boolean lb_advancedpurchase
+	w_entry w_parent
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	this.im_menu = this.menuid
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 666", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.im_menu.m_activitylist.m_clearactivitymonitorhistory.enabled = true
+		this.im_menu.m_activitylist.m_clearactivitymonitorhistory.visible = true
+	end if
+	this.ids_print = create u_ds_standard
+	this.it_transobject = create u_transaction
+	SQL start USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		messagebox("Connection Failure", "Unable to connect to the database", stopsign!)
+		close(this)
+		return ::message.returnvalue
+	end if
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width * 0.98
+		ll_height = ll_win_height * 0.96
+		this.width = ll_width
+		this.height = ll_height
+		this.tab_activitymonitor.width = ll_width * 0.98
+		this.tab_activitymonitor.height = ll_height * 0.83
+		this.dw_buttons.width = ll_width * 0.98
+		this.dw_buttons.y = this.tab_activitymonitor.y + this.tab_activitymonitor.height
+		this.tab_activitymonitor.tabpage_list.dw_list.width = this.tab_activitymonitor.width * 0.98
+		this.tab_activitymonitor.tabpage_list.dw_list.height = this.tab_activitymonitor.height * 0.91
+		this.tab_activitymonitor.tabpage_graph.gr_graph.width = this.tab_activitymonitor.width * 0.98
+		this.tab_activitymonitor.tabpage_graph.gr_graph.height = this.tab_activitymonitor.height * 0.91
+		this.tab_activitymonitor.tabpage_summary.dw_summary.width = this.tab_activitymonitor.width * 0.98
+		this.tab_activitymonitor.tabpage_summary.dw_summary.height = this.tab_activitymonitor.height * 0.91
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	if gs_company = "ZAINMEDICINE" then
+		ls_dwo = "d_zainmedicine_activitymonitorlist"
+	else
+		ls_dwo = "d_activitymonitorlist"
+	end if
+	this.tab_activitymonitor.tabpage_list.dw_list.dataobject = ls_dwo
+	this.tab_activitymonitor.tabpage_list.dw_list.settransobject(this.it_transobject)
+	this.id_list = this.tab_activitymonitor.tabpage_list.dw_list
+	this.id_list.settransobject(this.it_transobject)
+	this.id_summary = this.tab_activitymonitor.tabpage_summary.dw_summary
+	this.id_summary.settransobject(this.it_transobject)
+	this.id_summary.retrieve()
+	this.id_button = this.dw_buttons
+	this.id_button.settransobject(this.it_transobject)
+	this.id_button.retrieve()
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 667", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.id_button.object.refreshtime.protect = 0
+	else
+		this.id_button.object.refreshtime.protect = 1
+		this.id_button.object.refreshtime.background.color = this.backcolor
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 668", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.id_button.object.startdate.protect = 0
+	else
+		this.id_button.object.startdate.protect = 1
+		this.id_button.object.startdate.background.color = this.backcolor
+	end if
+	wf_set_document_pref()
+	wf_set_autoprint()
+	wf_selectprintreport()
+	wf_settimer(this.id_button.object.refreshtime[1])
+	wf_refresh()
+	this.id_list.setfocus()
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 684", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.tab_activitymonitor.tabpage_graph.enabled = true
+	else
+		this.tab_activitymonitor.tabpage_graph.enabled = false
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 685", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.tab_activitymonitor.tabpage_summary.enabled = true
+	else
+		this.tab_activitymonitor.tabpage_summary.enabled = false
+	end if
+	return ::message.returnvalue
+
+// w_activitymonitor.timer() returns long
+	wf_refresh()
+	return ::message.returnvalue
+
+// dw_buttons.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_buttons.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "refreshtime"
+		parent.ib_editrefresh = true
+		parent.wf_settimer(long(data))
+	case "startdate"
+		parent.ib_editrefresh = true
+	end choose
+	return ::message.returnvalue
+
+// tab_activitymonitor.create() returns 0
+	this.tabpage_list = create tabpage_list
+	this.tabpage_graph = create tabpage_graph
+	this.tabpage_summary = create tabpage_summary
+	this.control = {this.tabpage_list, this.tabpage_graph, this.tabpage_summary}
+
+// tab_activitymonitor.destroy() returns 0
+	destroy this.tabpage_list
+	destroy this.tabpage_graph
+	destroy this.tabpage_summary
+
+// tabpage_list.create() returns 0
+	this.dw_list = create dw_list
+	this.control = {this.dw_list}
+
+// tabpage_list.destroy() returns 0
+	destroy this.dw_list
+
+// dw_list.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_list.rowfocuschanged(long currentrow) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::rowfocuschanged(currentrow)
+	if currentrow > 0 then
+		selectrow(0, false)
+		setrow(currentrow)
+		scrolltorow(currentrow)
+		selectrow(currentrow, true)
+	end if
+	return ::message.returnvalue
+
+// dw_list.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keyf5! then
+		parent.parent.parent.wf_refresh()
+	elseif key = keyf6! then
+		parent.parent.parent.wf_filter()
+	end if
+	return ::message.returnvalue
+
+// tabpage_graph.create() returns 0
+	this.st_tooltip = create st_tooltip
+	this.gr_graph = create gr_graph
+	this.control = {this.st_tooltip, this.gr_graph}
+
+// tabpage_graph.destroy() returns 0
+	destroy this.st_tooltip
+	destroy this.gr_graph
+
+// gr_graph.create() returns 0
+	this.titledispattr = create grdispattr
+	this.legenddispattr = create grdispattr
+	this.piedispattr = create grdispattr
+	this.series = create graxis
+	this.series.dispattr = create grdispattr
+	this.series.labeldispattr = create grdispattr
+	this.category = create graxis
+	this.category.dispattr = create grdispattr
+	this.category.labeldispattr = create grdispattr
+	this.values = create graxis
+	this.values.dispattr = create grdispattr
+	this.values.labeldispattr = create grdispattr
+	this.titledispattr.textsize = 21
+	this.titledispattr.facename = "Arial"
+	this.titledispattr.underline = true
+	this.titledispattr.fontcharset = defaultcharset!
+	this.titledispattr.fontfamily = swiss!
+	this.titledispattr.fontpitch = variable!
+	this.titledispattr.alignment = center!
+	this.titledispattr.textcolor = 8388608
+	this.titledispattr.backcolor = 553648127
+	this.titledispattr.format = "[General]"
+	this.titledispattr.displayexpression = "title"
+	this.category.label = "Document Category"
+	this.category.autoscale = true
+	this.category.shadebackedge = true
+	this.category.secondaryline = transparent!
+	this.category.majorgridline = transparent!
+	this.category.minorgridline = transparent!
+	this.category.droplines = transparent!
+	this.category.originline = transparent!
+	this.category.majortic = outside!
+	this.category.datatype = adttext!
+	this.category.dispattr.textsize = 12
+	this.category.dispattr.facename = "Arial"
+	this.category.dispattr.fontcharset = defaultcharset!
+	this.category.dispattr.fontfamily = swiss!
+	this.category.dispattr.fontpitch = variable!
+	this.category.dispattr.alignment = center!
+	this.category.dispattr.backcolor = 536870912
+	this.category.dispattr.format = "[General]"
+	this.category.dispattr.displayexpression = "category"
+	this.category.dispattr.escapement = 900
+	this.category.labeldispattr.textsize = 16
+	this.category.labeldispattr.facename = "Arial"
+	this.category.labeldispattr.fontcharset = defaultcharset!
+	this.category.labeldispattr.fontfamily = swiss!
+	this.category.labeldispattr.fontpitch = variable!
+	this.category.labeldispattr.alignment = center!
+	this.category.labeldispattr.backcolor = 536870912
+	this.category.labeldispattr.format = "[General]"
+	this.category.labeldispattr.displayexpression = "categoryaxislabel"
+	this.values.label = "Amount"
+	this.values.autoscale = true
+	this.values.secondaryline = transparent!
+	this.values.majorgridline = transparent!
+	this.values.minorgridline = dot!
+	this.values.droplines = transparent!
+	this.values.majortic = outside!
+	this.values.datatype = adtdouble!
+	this.values.dispattr.textsize = 12
+	this.values.dispattr.facename = "Arial"
+	this.values.dispattr.fontcharset = defaultcharset!
+	this.values.dispattr.fontfamily = swiss!
+	this.values.dispattr.fontpitch = variable!
+	this.values.dispattr.alignment = right!
+	this.values.dispattr.backcolor = 536870912
+	this.values.dispattr.format = "[General]"
+	this.values.dispattr.displayexpression = "value"
+	this.values.labeldispattr.textsize = 16
+	this.values.labeldispattr.facename = "Arial"
+	this.values.labeldispattr.fontcharset = defaultcharset!
+	this.values.labeldispattr.fontfamily = swiss!
+	this.values.labeldispattr.fontpitch = variable!
+	this.values.labeldispattr.alignment = center!
+	this.values.labeldispattr.backcolor = 536870912
+	this.values.labeldispattr.format = "[General]"
+	this.values.labeldispattr.displayexpression = "valuesaxislabel"
+	this.values.labeldispattr.escapement = 900
+	this.series.label = "(None)"
+	this.series.autoscale = true
+	this.series.secondaryline = transparent!
+	this.series.majorgridline = transparent!
+	this.series.minorgridline = transparent!
+	this.series.droplines = transparent!
+	this.series.originline = transparent!
+	this.series.majortic = outside!
+	this.series.datatype = adttext!
+	this.series.dispattr.textsize = 13
+	this.series.dispattr.facename = "Arial"
+	this.series.dispattr.fontcharset = defaultcharset!
+	this.series.dispattr.fontfamily = swiss!
+	this.series.dispattr.fontpitch = variable!
+	this.series.dispattr.backcolor = 536870912
+	this.series.dispattr.format = "[General]"
+	this.series.dispattr.displayexpression = "series"
+	this.series.labeldispattr.textsize = 16
+	this.series.labeldispattr.facename = "Arial"
+	this.series.labeldispattr.fontcharset = defaultcharset!
+	this.series.labeldispattr.fontfamily = swiss!
+	this.series.labeldispattr.fontpitch = variable!
+	this.series.labeldispattr.alignment = center!
+	this.series.labeldispattr.backcolor = 536870912
+	this.series.labeldispattr.format = "[General]"
+	this.series.labeldispattr.displayexpression = "seriesaxislabel"
+	this.legenddispattr.textsize = 13
+	this.legenddispattr.facename = "Arial"
+	this.legenddispattr.fontcharset = defaultcharset!
+	this.legenddispattr.fontfamily = swiss!
+	this.legenddispattr.fontpitch = variable!
+	this.legenddispattr.backcolor = 536870912
+	this.legenddispattr.format = "[General]"
+	this.legenddispattr.displayexpression = "series"
+	this.piedispattr.weight = 400
+	this.piedispattr.facename = "Arial"
+	this.piedispattr.fontcharset = defaultcharset!
+	this.piedispattr.fontfamily = swiss!
+	this.piedispattr.fontpitch = variable!
+	this.piedispattr.backcolor = 536870912
+	this.piedispattr.format = "[General]"
+	this.piedispattr.displayexpression = "if(seriescount > 1, series,string(percentofseries,~"0.00%~"))"
+	this.piedispattr.autosize = true
+
+// gr_graph.destroy() returns 0
+	destroy this.titledispattr
+	destroy this.legenddispattr
+	destroy this.piedispattr
+	destroy this.series.dispattr
+	destroy this.series.labeldispattr
+	destroy this.series
+	destroy this.category.dispattr
+	destroy this.category.labeldispattr
+	destroy this.category
+	destroy this.values.dispattr
+	destroy this.values.labeldispattr
+	destroy this.values
+
+// gr_graph.ue_rbuttonup(unsignedlong flags, integer xpos, integer ypos) returns long
+	parent.parent.parent.tab_activitymonitor.tabpage_graph.st_tooltip.visible = false
+	return ::message.returnvalue
+
+// gr_graph.rbuttondown(unsignedlong flags, integer xpos, integer ypos) returns long
+	grobjecttype clickedobject
+	integer li_series
+	integer li_category
+	long ll_counter
+	clickedobject = objectatpointer(li_series, li_category)
+	if clickedobject = typedata! then
+		parent.st_tooltip.text = string(getdata(li_series, li_category), "###,###,##0.00")
+		parent.st_tooltip.x = parent.pointerx()
+		parent.st_tooltip.y = parent.pointery() - 65
+		parent.parent.parent.tab_activitymonitor.tabpage_graph.st_tooltip.visible = true
+	end if
+	return ::message.returnvalue
+
+// gr_graph.clicked() returns long
+	grobjecttype clickedobject
+	string ls_cat
+	integer li_series
+	integer li_category
+	clickedobject = objectatpointer(li_series, li_category)
+	if clickedobject = typedata! or clickedobject = typecategory! then
+		ls_cat = categoryname(li_category)
+	end if
+	return ::message.returnvalue
+
+// tabpage_summary.create() returns 0
+	this.dw_summary = create dw_summary
+	this.control = {this.dw_summary}
+
+// tabpage_summary.destroy() returns 0
+	destroy this.dw_summary

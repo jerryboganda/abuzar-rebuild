@@ -1,0 +1,233 @@
+// window w_dashboard_drilldown (dashboard)  ancestor: window
+
+// w_dashboard_drilldown.wf_settimer(long ai_time) returns integer
+	timer(ai_time, this)
+	return 0
+
+// w_dashboard_drilldown.create() returns 0
+	this.st_tooltip = create st_tooltip
+	this.dw_graph = create dw_graph
+	this.control = {this.st_tooltip, this.dw_graph}
+
+// w_dashboard_drilldown.destroy() returns 0
+	destroy this.st_tooltip
+	destroy this.dw_graph
+
+// w_dashboard_drilldown.open() returns long
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	long ll_days
+	environment env
+	date ld_currdate
+	string ls_text
+	datetime ldt_startdate
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width * 0.98
+		ll_height = ll_win_height * 0.96
+		this.width = ll_width
+		this.height = ll_height
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	this.istr_graphinfo = message.powerobjectparm
+	if this.istr_graphinfo.controlname = "dw_summary" then
+		this.dw_graph.title = this.istr_graphinfo.category + " Analysis"
+		this.is_dataobject = "d_dashboard_summary_drilldown"
+		ll_days = f_numberpreferences("Dashboard_SummaryAnlaysis")
+	elseif this.istr_graphinfo.controlname = "dw_summary2" then
+		this.is_dataobject = "d_dashboard_summary2_drilldown"
+		ll_days = f_numberpreferences("Dashboard_SummaryAnlaysis")
+	elseif this.istr_graphinfo.controlname = "dw_inventory" then
+		this.is_dataobject = "d_dashboard_inventory_drilldown"
+		this.is_inv_group = f_stringpreferences("Dashboard_InventoryBreakupCriteria")
+	elseif this.istr_graphinfo.controlname = "dw_inventory2" then
+		this.is_dataobject = "d_dashboard_inventory2_drilldown"
+		this.is_inv_group = f_stringpreferences("Dashboard_InventoryBreakupCriteria")
+	elseif this.istr_graphinfo.controlname = "dw_inventory3" then
+		this.is_dataobject = "d_dashboard_inventory3_drilldown"
+		this.is_inv_group = f_stringpreferences("Dashboard_InventoryBreakupCriteria")
+	elseif this.istr_graphinfo.controlname = "dw_inventory4" then
+		this.is_dataobject = "d_dashboard_inventory4_drilldown"
+		this.is_inv_group = f_stringpreferences("Dashboard_InventoryBreakupCriteria")
+		ll_days = f_numberpreferences("Dashboard_SummaryAnlaysis")
+	elseif this.istr_graphinfo.controlname = "dw_sales" then
+		this.is_dataobject = "d_dashboard_sales_drilldown"
+		ll_days = f_numberpreferences("Dashboard_SalesAnlaysis")
+	elseif this.istr_graphinfo.controlname = "dw_sales2" then
+		this.is_dataobject = "d_dashboard_sales2_drilldown"
+		ll_days = f_numberpreferences("Dashboard_SalesAnlaysis")
+	elseif this.istr_graphinfo.controlname = "dw_purchase" then
+		this.is_dataobject = "d_dashboard_purchase_drilldown"
+		ll_days = f_numberpreferences("Dashboard_PurAnlaysis")
+	elseif this.istr_graphinfo.controlname = "dw_purchase2" then
+		this.is_dataobject = "d_dashboard_purchase2_drilldown"
+		ll_days = f_numberpreferences("Dashboard_PurAnlaysis")
+	elseif this.istr_graphinfo.controlname = "dw_issue" then
+		this.is_dataobject = "d_dashboard_issue_recipient_drilldown"
+		ll_days = f_numberpreferences("Dashboard_IssueAnalysis")
+	elseif this.istr_graphinfo.controlname = "dw_issue2" then
+		this.is_dataobject = "d_dashboard_issue2_drilldown"
+		ll_days = f_numberpreferences("Dashboard_IssueAnalysis")
+	elseif this.istr_graphinfo.controlname = "dw_receipt" then
+		this.is_dataobject = "d_dashboard_receipt_drilldown"
+		ll_days = f_numberpreferences("Dashboard_ReceiptAnalysis")
+	elseif this.istr_graphinfo.controlname = "dw_receipt2" then
+		this.is_dataobject = "d_dashboard_receipt2_drilldown"
+		ll_days = f_numberpreferences("Dashboard_ReceiptAnalysis")
+	elseif this.istr_graphinfo.controlname = "dw_adj" then
+		this.is_dataobject = "d_dashboard_adj_drilldown"
+		ll_days = f_numberpreferences("Dashboard_AdjustmentAnalysis")
+	elseif this.istr_graphinfo.controlname = "dw_adj2" then
+		this.is_dataobject = "d_dashboard_adj2_drilldown"
+		ll_days = f_numberpreferences("Dashboard_AdjustmentAnalysis")
+	elseif this.istr_graphinfo.controlname = "dw_transfer" then
+		this.is_dataobject = "d_dashboard_igt_drilldown"
+		ll_days = f_numberpreferences("Dashboard_TransferAnalysis")
+	elseif this.istr_graphinfo.controlname = "dw_transfer2" then
+		this.is_dataobject = "d_dashboard_igt2_drilldown"
+		ll_days = f_numberpreferences("Dashboard_TransferAnalysis")
+	elseif this.istr_graphinfo.controlname = "dw_transfer3" then
+		this.is_dataobject = "d_dashboard_igt3_drilldown"
+		ll_days = f_numberpreferences("Dashboard_TransferAnalysis")
+	elseif this.istr_graphinfo.controlname = "dw_service" then
+		this.is_dataobject = "d_dashboard_service_drilldown"
+		ll_days = f_numberpreferences("Dashboard_ServiceAnalysis")
+	elseif this.istr_graphinfo.controlname = "dw_service2" then
+		this.is_dataobject = "d_dashboard_service2_drilldown"
+		ll_days = f_numberpreferences("Dashboard_ServiceAnalysis")
+	elseif this.istr_graphinfo.controlname = "dw_accounts" then
+		this.is_dataobject = "d_dashboard_accounts_drilldown"
+		ll_days = f_numberpreferences("Dashboard_AccountsAnalysis")
+	elseif this.istr_graphinfo.controlname = "dw_top10items" then
+		this.is_dataobject = "d_dashboard_top10sellingitem_drilldown"
+		ll_days = f_numberpreferences("Dashboard_SalesAnlaysis")
+	elseif this.istr_graphinfo.controlname = "dw_crs" then
+		this.is_dataobject = "d_dashboard_crs_stockposition_drilldown"
+		this.is_inv_group = f_stringpreferences("Dashboard_InventoryBreakupCriteria")
+	elseif this.istr_graphinfo.controlname = "dw_crs2" then
+		this.is_dataobject = "d_dashboard_crs_stockposition_drilldown2"
+		this.is_inv_group = f_stringpreferences("Dashboard_InventoryBreakupCriteria")
+	elseif this.istr_graphinfo.controlname = "dw_crs3" then
+		this.is_dataobject = "d_dashboard_crs_sales_drilldown"
+		ll_days = f_numberpreferences("Dashboard_SalesAnlaysis")
+	elseif this.istr_graphinfo.controlname = "dw_crs4" then
+		this.is_dataobject = "d_dashboard_crs_sales_drilldown2"
+		ll_days = f_numberpreferences("Dashboard_SalesAnlaysis")
+	end if
+	ld_currdate = today()
+	ls_text = string(ld_currdate, "dd/mm/yyyy")
+	this.istr_arg.d_sdate = datetime(date(trim(ls_text)), time("00:00:00"))
+	ls_text = string(ld_currdate, "dd/mm/yyyy")
+	this.istr_arg.d_edate = datetime(date(trim(ls_text)), time("23:59:59"))
+	this.dw_graph.x = 10
+	this.dw_graph.y = 0
+	this.dw_graph.width = this.width - 10
+	this.dw_graph.height = this.height - 10
+	this.dw_graph.dataobject = this.is_dataobject
+	this.dw_graph.settransobject(sqlca)
+	if this.istr_graphinfo.controlname = "dw_inventory4" then
+		this.dw_graph.retrieve(f_stringpreferences("Dashboard_InventoryBreakupCriteria"), this.istr_graphinfo.category, ll_days)
+	elseif left(this.istr_graphinfo.controlname, 12) = "dw_inventory" then
+		this.dw_graph.retrieve(f_stringpreferences("Dashboard_InventoryBreakupCriteria"), this.istr_graphinfo.category)
+	elseif this.istr_graphinfo.controlname = "dw_crs" or this.istr_graphinfo.controlname = "dw_crs2" then
+		this.dw_graph.retrieve(f_stringpreferences("Dashboard_InventoryBreakupCriteria"), this.istr_graphinfo.category)
+	else
+		this.dw_graph.retrieve(this.istr_graphinfo.category, ll_days)
+	end if
+	if this.istr_graphinfo.controlname = "dw_summary" then
+		this.dw_graph.object.gr_1.title = this.istr_graphinfo.category + " Summary"
+	elseif this.istr_graphinfo.controlname = "dw_summary2" then
+		this.dw_graph.object.gr_1.title = this.istr_graphinfo.category + " Count Summary"
+	elseif this.istr_graphinfo.controlname = "dw_inventory" then
+		this.dw_graph.object.gr_1.title = this.istr_graphinfo.category + " Inventory Break-up"
+	elseif this.istr_graphinfo.controlname = "dw_inventory2" then
+		this.dw_graph.object.gr_1.title = "Inventory Break-up for " + this.istr_graphinfo.category
+	elseif this.istr_graphinfo.controlname = "dw_inventory3" then
+		this.dw_graph.object.gr_1.title = "Inventory Break-up for Expiry Period " + this.istr_graphinfo.category
+	elseif this.istr_graphinfo.controlname = "dw_inventory4" then
+		this.dw_graph.object.gr_1.title = "Dumped Inventory Analysis for " + this.istr_graphinfo.category
+	elseif this.istr_graphinfo.controlname = "dw_sales" then
+		this.dw_graph.object.gr_1.title = this.istr_graphinfo.category + " Sales Analysis"
+	elseif this.istr_graphinfo.controlname = "dw_sales2" then
+		this.dw_graph.object.gr_1.title = "Sales Analysis For " + this.istr_graphinfo.category
+	elseif this.istr_graphinfo.controlname = "dw_purchase" then
+		this.dw_graph.object.gr_1.title = this.istr_graphinfo.category + " Purchase Analysis"
+	elseif this.istr_graphinfo.controlname = "dw_purchase2" then
+		this.dw_graph.object.gr_1.title = "Purchase Analysis For " + this.istr_graphinfo.category
+	elseif this.istr_graphinfo.controlname = "dw_issue" then
+		this.dw_graph.object.gr_1.title = this.istr_graphinfo.category + " Issue Analysis"
+	elseif this.istr_graphinfo.controlname = "dw_issue2" then
+		this.dw_graph.object.gr_1.title = "Issue Analysis For " + this.istr_graphinfo.category
+	elseif this.istr_graphinfo.controlname = "dw_receipt" then
+		this.dw_graph.object.gr_1.title = this.istr_graphinfo.category + " Receipt Analysis"
+	elseif this.istr_graphinfo.controlname = "dw_receipt2" then
+		this.dw_graph.object.gr_1.title = "Receipt Analysis For " + this.istr_graphinfo.category
+	elseif this.istr_graphinfo.controlname = "dw_adj" then
+		this.dw_graph.object.gr_1.title = this.istr_graphinfo.category + " Stock Adjustment Analysis"
+	elseif this.istr_graphinfo.controlname = "dw_adj2" then
+		this.dw_graph.object.gr_1.title = "Stock Adjustment Analysis For " + this.istr_graphinfo.category
+	elseif this.istr_graphinfo.controlname = "dw_transfer" then
+		this.dw_graph.object.gr_1.title = this.istr_graphinfo.category + " Inter Godown Transfer Analysis"
+	elseif this.istr_graphinfo.controlname = "dw_transfer2" then
+		this.dw_graph.object.gr_1.title = "Inter Godown Transfer Analysis For " + this.istr_graphinfo.category
+	elseif this.istr_graphinfo.controlname = "dw_transfer3" then
+		this.dw_graph.object.gr_1.title = "Inter Godown Transfer Analysis For " + this.istr_graphinfo.category
+	elseif this.istr_graphinfo.controlname = "dw_accounts" then
+		this.dw_graph.object.gr_1.title = "New " + this.istr_graphinfo.category + " Census Detail"
+	elseif this.istr_graphinfo.controlname = "dw_crs" then
+		this.dw_graph.object.gr_1.title = this.istr_graphinfo.category + " - Inventory Break-up"
+	elseif this.istr_graphinfo.controlname = "dw_crs2" then
+		this.dw_graph.object.gr_1.title = this.istr_graphinfo.category + " - Inventory Break-up"
+	elseif this.istr_graphinfo.controlname = "dw_crs3" then
+		this.dw_graph.object.gr_1.title = this.istr_graphinfo.category + " - Sales Analysis"
+	elseif this.istr_graphinfo.controlname = "dw_crs4" then
+		this.dw_graph.object.gr_1.title = this.istr_graphinfo.category + " - Sales Analysis"
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// dw_graph.ue_rbuttonup(unsignedlong flags, integer xpos, integer ypos) returns long
+	parent.st_tooltip.visible = false
+	return ::message.returnvalue
+
+// dw_graph.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	grobjecttype clickedobject
+	integer li_series
+	integer li_category
+	string ls_category
+	str_graphinfo lstr_graph
+	if dwo.name = "gr_1" then
+		clickedobject = objectatpointer("gr_1", li_series, li_category)
+		if clickedobject = typedata! or clickedobject = typecategory! then
+			ls_category = categoryname("gr_1", li_category)
+			lstr_graph.controlname = this.tag
+			lstr_graph.category = ls_category
+		end if
+	end if
+	return ::message.returnvalue
+
+// dw_graph.rbuttondown(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	grobjecttype clickedobject
+	integer li_series
+	integer li_category
+	long ll_counter
+	string ls_category
+	clickedobject = objectatpointer("gr_1", li_series, li_category)
+	if clickedobject = typedata! then
+		ls_category = categoryname("gr_1", li_category)
+		parent.st_tooltip.text = trim(string(getdata("gr_1", li_series, li_category), "###,###,##0.00"))
+		parent.st_tooltip.x = parent.pointerx()
+		parent.st_tooltip.y = parent.pointery()
+		parent.st_tooltip.visible = true
+	end if
+	return ::message.returnvalue

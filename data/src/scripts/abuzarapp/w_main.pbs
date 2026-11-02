@@ -1,0 +1,220 @@
+// window w_main (abuzarapp)  ancestor: window
+
+// w_main.ue_logoff() returns 0
+	this.ib_logoff = true
+	close(this)
+
+// w_main.ue_mdi_move() returns 0
+	integer wx
+	integer wy
+	integer wh
+	integer ww
+	wx = workspacex()
+	wy = workspacey()
+	wh = workspaceheight()
+	ww = workspacewidth()
+	if handle(w_bkg) > 0 then
+		w_bkg.width = this.width * 0.75
+		w_bkg.height = this.height * 0.75
+		w_bkg.p_1.width = this.width * 0.75
+		w_bkg.p_1.height = this.height * 0.75
+		if ww > w_bkg.width then
+			ww = integer((ww - w_bkg.width) / 2.0)
+		else
+			ww = 1
+		end if
+		if wh > w_bkg.height then
+			wh = integer((wh - w_bkg.height) / 2.0)
+		else
+			wh = 1
+		end if
+		w_bkg.move(ww, wh)
+	end if
+	setfocus()
+
+// w_main.wf_initsecurityapp(integer ai_user) returns integer
+	integer li_retcode
+	integer li_levelindex
+	integer li_status
+	integer abc
+	long ll_rowcount
+	long ll_counter
+	string ls_indicesstring
+	m_entry lm_menu
+	datastore lds_security
+	lm_menu = this.menuid
+	lds_security = create datastore
+	lds_security.dataobject = "d_security"
+	lds_security.settransobject(sqlca)
+	lds_security.retrieve(ai_user, "A")
+	ll_rowcount = lds_security.rowcount()
+	for ll_counter = 1 to ll_rowcount
+		li_levelindex = lds_security.object.levelindex[ll_counter]
+		li_status = lds_security.object.status[ll_counter]
+		ls_indicesstring = lds_security.object.indicesstring[ll_counter]
+		choose case li_levelindex
+		case 1
+			lm_menu.item[wf_findindex(1, ls_indicesstring)].visible = wf_getstatus(li_status)
+		case 2
+			lm_menu.item[wf_findindex(1, ls_indicesstring)].item[wf_findindex(2, ls_indicesstring)].visible = wf_getstatus(li_status)
+		case 3
+			lm_menu.item[wf_findindex(1, ls_indicesstring)].item[wf_findindex(2, ls_indicesstring)].item[wf_findindex(3, ls_indicesstring)].visible = wf_getstatus(li_status)
+		case 4
+			lm_menu.item[wf_findindex(1, ls_indicesstring)].item[wf_findindex(2, ls_indicesstring)].item[wf_findindex(3, ls_indicesstring)].item[wf_findindex(4, ls_indicesstring)].visible = wf_getstatus(li_status)
+		case 5
+			lm_menu.item[wf_findindex(1, ls_indicesstring)].item[wf_findindex(2, ls_indicesstring)].item[wf_findindex(3, ls_indicesstring)].item[wf_findindex(4, ls_indicesstring)].item[wf_findindex(5, ls_indicesstring)].visible = wf_getstatus(li_status)
+		case 6
+			lm_menu.item[wf_findindex(1, ls_indicesstring)].item[wf_findindex(2, ls_indicesstring)].item[wf_findindex(3, ls_indicesstring)].item[wf_findindex(4, ls_indicesstring)].item[wf_findindex(5, ls_indicesstring)].item[wf_findindex(6, ls_indicesstring)].visible = wf_getstatus(li_status)
+		end choose
+	next
+	return li_retcode
+
+// w_main.wf_getstatus(integer ai_status) returns boolean
+	if ai_status = 1 then
+		return true
+	end if
+	return false
+
+// w_main.wf_findindex(integer ai_indexno, string as_idicesstring) returns integer
+	integer li_countcommas
+	integer li_counter
+	integer li_index
+	long ll_startingstrpos
+	long ll_endingstrpos
+	li_countcommas = ai_indexno - 1
+	do while li_counter < li_countcommas
+		ll_startingstrpos = pos(as_idicesstring, ",", ll_startingstrpos)
+		ll_startingstrpos = ll_startingstrpos + 1
+		li_counter = li_counter + 1
+	loop
+	ll_endingstrpos = pos(as_idicesstring, ",", ll_startingstrpos)
+	li_index = integer(mid(as_idicesstring, ll_startingstrpos, ll_endingstrpos - ll_startingstrpos))
+	return li_index
+
+// w_main.wf_getappname(string as_appname) returns boolean
+	as_appname = f_stringpreferences("AppName")
+	return true
+
+// w_main.wf_settimer() returns long
+	long ll_groupcode
+	long ll_refreshminutes
+	u_ds_standard ds_groups
+	ll_groupcode = f_getgroupcode(gl_usercode)
+	ds_groups = create u_ds_standard
+	ds_groups.dataobject = "d_groups"
+	ds_groups.settransobject(sqlca)
+	ds_groups.retrieve(ll_groupcode)
+	if ds_groups.rowcount() > 0 and ds_groups.object.autorefreshitemlist[ds_groups.rowcount()] = "Y" then
+		ll_refreshminutes = ds_groups.object.autorefreshitemlisttime[ds_groups.rowcount()]
+	end if
+	if ll_refreshminutes >= 0 then
+		timer(ll_refreshminutes * 60, this)
+	end if
+	return 0
+
+// w_main.create() returns 0
+	if this.menuname = "m_entry" then
+		this.menuid = create m_entry
+	end if
+	this.mdi_1 = create mdi_1
+	this.control = {this.mdi_1}
+
+// w_main.destroy() returns 0
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.mdi_1
+
+// w_main.closequery() returns long
+	integer li_yesno
+	integer li_rtcode
+	integer i_count
+	integer idx
+	boolean bvalid
+	window wsheet
+	window[] w_sheet
+	wsheet = getfirstsheet()
+	if isvalid(wsheet) then
+		i_count = i_count + 1
+		w_sheet[i_count] = wsheet
+		do
+			wsheet = getnextsheet(wsheet)
+			if isvalid(wsheet) then
+				i_count = i_count + 1
+				w_sheet[i_count] = wsheet
+			end if
+			bvalid = isvalid(wsheet)
+		loop while bvalid
+	end if
+	if i_count > 0 then
+		for idx = 1 to i_count
+			close(w_sheet[idx])
+		next
+	end if
+	w_main.setmicrohelp("Ready")
+	if not this.ib_logoff then
+		li_yesno = messagebox("Application", "This will end your Application session", question!, okcancel!, 2)
+		if li_yesno = 2 then
+			li_rtcode = 1
+		end if
+	end if
+	return li_rtcode
+
+// w_main.open() returns long
+	integer li_usercode
+	integer i
+	integer j
+	m_entry lm_menu
+	boolean lb_enablerestricted
+	long ll_counter
+	long ll_found
+	string ls_appname
+	string ls_username
+	datetime ldt_logindate
+	li_usercode = integer(message.doubleparm)
+	SQL SELECT isnull ( userNAME , '' ) , d =getdate ( ) INTO :ls_username, :ldt_logindate FROM USERS WHERE usercode =:gl_usercode USING sqlca;
+	wf_getappname(ls_appname)
+	if isnull(ls_appname) then
+		ls_appname = ""
+	end if
+	this.title = "WASEELA   " + ls_appname + " : " + ls_username + " : " + string(ldt_logindate, "dd/mm/yy hh:mm:ss")
+	gds_security = create datastore
+	lb_enablerestricted = false
+	gds_security.dataobject = "d_security"
+	gds_security.settransobject(sqlca)
+	gds_security.retrieve(li_usercode, "A")
+	gl_securityrowcount = gds_security.rowcount()
+	gds_securitywindow = create datastore
+	gds_securitywindow.dataobject = "d_security"
+	gds_securitywindow.settransobject(sqlca)
+	gds_securitywindow.retrieve(li_usercode, "W")
+	for ll_counter = 1 to gds_securitywindow.rowcount()
+		if gds_securitywindow.object.rightcode[ll_counter] = 515 then
+			lb_enablerestricted = true
+		end if
+	next
+	if lb_enablerestricted = false and gl_remotegroup <> 5 then
+		i = gd_itemsinfo.setfilter("restricted = 'N' ")
+		gd_itemsinfo.filter()
+	end if
+	lm_menu = this.menuid
+	lm_menu.dynamic mf_initsecurityapp(lm_menu)
+	wf_settimer()
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_main.close() returns long
+	if this.ib_logoff then
+		open(w_login)
+	end if
+	return ::message.returnvalue
+
+// w_main.timer() returns long
+	f_refreshitemlist()
+	return 0
+
+// w_main.resize(unsignedlong sizetype, integer newwidth, integer newheight) returns long
+	triggerevent("ue_mdi_move")
+	return ::message.returnvalue

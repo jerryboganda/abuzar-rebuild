@@ -1,0 +1,178 @@
+// window w_graph_division (graphcomponents)  ancestor: w_center
+
+// w_graph_division.open() returns long
+	long ancestorreturnvalue
+	graphicobject lgro_hold
+	ancestorreturnvalue = super::open()
+	lgro_hold = message.powerobjectparm
+	this.dw_linestyle.settransobject(sqlca)
+	this.dw_linestyle.retrieve()
+	if lgro_hold.typeof() = graph! then
+		this.io_passed = graph!
+		this.igr_parm = message.powerobjectparm
+		this.em_1.text = string(this.igr_parm.values.majordivisions)
+		this.ii_original_1 = this.igr_parm.values.majordivisions
+		if this.igr_parm.values.majorgridline = continuous! then
+			this.ii_original_2 = 0
+		elseif this.igr_parm.values.majorgridline = dash! then
+			this.ii_original_2 = 1
+		elseif this.igr_parm.values.majorgridline = dashdot! then
+			this.ii_original_2 = 2
+		elseif this.igr_parm.values.majorgridline = dashdotdot! then
+			this.ii_original_2 = 3
+		elseif this.igr_parm.values.majorgridline = dot! then
+			this.ii_original_2 = 4
+		elseif this.igr_parm.values.majorgridline = transparent! then
+			this.ii_original_2 = 5
+		end if
+		this.dw_linestyle.object.linestyle[1] = this.ii_original_2
+	elseif lgro_hold.typeof() = datawindow! then
+		this.io_passed = datawindow!
+		this.idw_parm = message.powerobjectparm
+		this.em_1.text = this.idw_parm.object.igr_parm.values.majordivisions
+		this.ii_original_1 = integer(this.em_1.text)
+		if this.idw_parm.object.igr_parm.values.majorgridline = continuous! then
+			this.ii_original_2 = 0
+		elseif this.idw_parm.object.igr_parm.values.majorgridline = dash! then
+			this.ii_original_2 = 1
+		elseif this.idw_parm.object.igr_parm.values.majorgridline = dashdot! then
+			this.ii_original_2 = 2
+		elseif this.idw_parm.object.igr_parm.values.majorgridline = dashdotdot! then
+			this.ii_original_2 = 3
+		elseif this.idw_parm.object.igr_parm.values.majorgridline = dot! then
+			this.ii_original_2 = 4
+		elseif this.idw_parm.object.igr_parm.values.majorgridline = transparent! then
+			this.ii_original_2 = 5
+		end if
+		this.idw_parm.object.igr_parm.values.majorgridline = this.ii_original_2
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_graph_division.create() returns 0
+	integer icurrent
+	call super::create
+	this.dw_linestyle = create dw_linestyle
+	this.st_2 = create st_2
+	this.st_1 = create st_1
+	this.em_1 = create em_1
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_linestyle
+	this.control[icurrent + 2] = this.st_2
+	this.control[icurrent + 3] = this.st_1
+	this.control[icurrent + 4] = this.em_1
+	this.control[icurrent + 5] = this.cb_cancel
+	this.control[icurrent + 6] = this.cb_ok
+
+// w_graph_division.destroy() returns 0
+	call super::destroy
+	destroy this.dw_linestyle
+	destroy this.st_2
+	destroy this.st_1
+	destroy this.em_1
+	destroy this.cb_cancel
+	destroy this.cb_ok
+
+// dw_linestyle.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_linestyle.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	integer li_linestyle
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	li_linestyle = integer(data)
+	if parent.io_passed = graph! then
+		if li_linestyle = 0 then
+			parent.igr_parm.values.majorgridline = continuous!
+		elseif li_linestyle = 1 then
+			parent.igr_parm.values.majorgridline = dash!
+		elseif li_linestyle = 2 then
+			parent.igr_parm.values.majorgridline = dashdot!
+		elseif li_linestyle = 3 then
+			parent.igr_parm.values.majorgridline = dashdotdot!
+		elseif li_linestyle = 4 then
+			parent.igr_parm.values.majorgridline = dot!
+		elseif li_linestyle = 5 then
+			parent.igr_parm.values.majorgridline = transparent!
+		end if
+	elseif parent.io_passed = datawindow! then
+		if li_linestyle = 0 then
+			parent.idw_parm.object.igr_parm.values.majorgridline = continuous!
+		elseif li_linestyle = 1 then
+			parent.idw_parm.object.igr_parm.values.majorgridline = dash!
+		elseif li_linestyle = 2 then
+			parent.idw_parm.object.igr_parm.values.majorgridline = dashdot!
+		elseif li_linestyle = 3 then
+			parent.idw_parm.object.igr_parm.values.majorgridline = dashdotdot!
+		elseif li_linestyle = 4 then
+			parent.idw_parm.object.igr_parm.values.majorgridline = dot!
+		elseif li_linestyle = 5 then
+			parent.idw_parm.object.igr_parm.values.majorgridline = transparent!
+		end if
+	end if
+	return ::message.returnvalue
+
+// em_1.ue_enchange() returns long
+	if parent.io_passed = graph! then
+		parent.igr_parm.values.majordivisions = integer(parent.em_1.text)
+	elseif parent.io_passed = datawindow! then
+		parent.idw_parm.object.igr_parm.values.majordivisions = integer(parent.em_1.text)
+	end if
+	return ::message.returnvalue
+
+// em_1.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// cb_cancel.clicked() returns long
+	if parent.io_passed = graph! then
+		parent.igr_parm.rotation = parent.ii_original_1
+	elseif parent.io_passed = datawindow! then
+		parent.idw_parm.object.gr_1.rotation = string(parent.ii_original_1)
+	end if
+	close(parent)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	integer li_linestyle
+	li_linestyle = parent.dw_linestyle.object.linestyle[1]
+	if parent.io_passed = graph! then
+		parent.igr_parm.values.majordivisions = integer(parent.em_1.text)
+		if li_linestyle = 0 then
+			parent.igr_parm.values.majorgridline = continuous!
+		elseif li_linestyle = 1 then
+			parent.igr_parm.values.majorgridline = dash!
+		elseif li_linestyle = 2 then
+			parent.igr_parm.values.majorgridline = dashdot!
+		elseif li_linestyle = 3 then
+			parent.igr_parm.values.majorgridline = dashdotdot!
+		elseif li_linestyle = 4 then
+			parent.igr_parm.values.majorgridline = dot!
+		elseif li_linestyle = 5 then
+			parent.igr_parm.values.majorgridline = transparent!
+		end if
+	elseif parent.io_passed = datawindow! then
+		parent.idw_parm.object.igr_parm.values.majordivisions = integer(parent.em_1.text)
+		if li_linestyle = 0 then
+			parent.idw_parm.object.igr_parm.values.majorgridline = continuous!
+		elseif li_linestyle = 1 then
+			parent.idw_parm.object.igr_parm.values.majorgridline = dash!
+		elseif li_linestyle = 2 then
+			parent.idw_parm.object.igr_parm.values.majorgridline = dashdot!
+		elseif li_linestyle = 3 then
+			parent.idw_parm.object.igr_parm.values.majorgridline = dashdotdot!
+		elseif li_linestyle = 4 then
+			parent.idw_parm.object.igr_parm.values.majorgridline = dot!
+		elseif li_linestyle = 5 then
+			parent.idw_parm.object.igr_parm.values.majorgridline = transparent!
+		end if
+	end if
+	close(parent)
+	return ::message.returnvalue

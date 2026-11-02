@@ -1,0 +1,1020 @@
+// window w_servicepreturnallocation (servicepurcomponents)  ancestor: w_multi_entry
+
+// w_servicepreturnallocation.wf_deleteemptydetailrow() returns integer
+	long ll_rowcount
+	long ll_code
+	double ld_amt
+	integer li_rtcode
+	ll_rowcount = this.id_detail.rowcount()
+	ll_code = this.id_detail.getitemnumber(ll_rowcount, "servicepurinvcode")
+	ld_amt = this.id_detail.getitemdecimal(ll_rowcount, "amt")
+	if ll_rowcount > 1 and (isnull(ll_code) or ld_amt = 0.0 or isnull(ld_amt)) then
+		this.id_detail.deleterow(ll_rowcount)
+		li_rtcode = 1
+		setfocus()
+	end if
+	return li_rtcode
+
+// w_servicepreturnallocation.wf_populate_ddlb(datawindow dwcontrol) returns 0
+	integer li_column_count
+	integer li_counter
+	string ls_column_name
+	string ls_columntype
+	this.tab_retrieve.tabpage_list.ddlb_filter_column.reset()
+	this.tab_retrieve.tabpage_list.ddlb_sort.reset()
+	li_column_count = integer(dwcontrol.object.datawindow.column.count)
+	for li_counter = li_column_count to li_counter step -1
+		ls_column_name = dwcontrol.describe("#" + string(li_counter) + ".Name")
+		this.tab_retrieve.tabpage_list.ddlb_sort.additem(ls_column_name)
+		this.tab_retrieve.tabpage_list.ddlb_filter_column.additem(ls_column_name)
+	next
+	this.tab_retrieve.tabpage_list.ddlb_sort.text = ls_column_name
+	ls_columntype = this.id_dwcontrol.describe("#1.ColType")
+	if left(ls_columntype, 4) = "char" then
+		this.ii_type = 1
+	elseif left(ls_columntype, 4) = "date" then
+		this.ii_type = 3
+	else
+		this.ii_type = 2
+	end if
+	this.ii_colindex = 1
+	this.tab_retrieve.tabpage_list.rb_descending.checked = true
+	wf_sortdw(this.tab_retrieve.tabpage_list.ddlb_sort.text, this.is_sortsequence)
+	this.id_master.setfocus()
+
+// w_servicepreturnallocation.wf_deleteallemptydetailrows() returns integer
+	long ll_count
+	long ll_deletecount
+	long ll_code
+	double ld_amt
+	ll_deletecount = 0
+	for ll_count = 1 to this.id_detail.rowcount()
+		ll_code = this.id_detail.getitemnumber(ll_count, "servicepurinvcode")
+		ld_amt = this.id_detail.getitemdecimal(ll_count, "amt")
+		if isnull(ll_code) or ld_amt = 0.0 or isnull(ld_amt) then
+			ll_deletecount = ll_deletecount + 1
+			this.id_detail.deleterow(ll_count)
+		end if
+	next
+	for ll_count = 1 to this.id_detail.rowcount()
+		ll_code = this.id_detail.getitemnumber(ll_count, "servicepurinvcode")
+		ld_amt = this.id_detail.getitemdecimal(ll_count, "amt")
+		if isnull(ll_code) or ld_amt = 0.0 or isnull(ld_amt) then
+			ll_deletecount = ll_deletecount + 1
+			this.id_detail.deleterow(ll_count)
+		end if
+	next
+	return ll_deletecount
+
+// w_servicepreturnallocation.wf_deleteprallocation(long al_prallocationcode) returns integer
+	SQL Delete serviceprallocationdetail Where serviceprallocationdetail.servicePRAllocationCode =:al_prallocationcode USING this.it_transobject;
+	return this.it_transobject.sqlcode
+
+// w_servicepreturnallocation.wf_getprinvcode(long al_prallocationcode, long al_prinvcode) returns integer
+	SQL SELECT ServicePRInvCode INTO :al_prinvcode FROM ServicePRAllocationHeader WHERE ServicePRAllocationCode =:al_prallocationcode USING this.it_transobject;
+	return this.it_transobject.sqlcode
+
+// w_servicepreturnallocation.wf_getprinvinfo(long al_prallocationcode, double ad_amt) returns integer
+	SQL Select IsNull ( Sum ( Serviceprallocationdetail.amt ) , 0 ) INTO :ad_amt from Serviceprallocationdetail where Serviceprallocationdetail.Serviceprallocationcode =:al_prallocationcode USING this.it_transobject;
+	if isnull(ad_amt) then
+		ad_amt = 0
+	end if
+	return this.it_transobject.sqlcode
+
+// w_servicepreturnallocation.wf_initmodify(integer ai_protect) returns 0
+	long ll_prallocationcode
+	long ll_purinvcode
+	long ll_counter
+	long ll_count
+	double ld_balance
+	double ld_amt
+	double ld_oldamt
+	double ld_prbalance
+	string ls_itemtotalval
+	this.idc_invoices.settransobject(this.it_transobject)
+	ll_count = this.idc_invoices.retrieve(this.id_master.getitemnumber(1, "suppcode"), this.id_master.getitemnumber(1, "code"), this.is_module)
+	if ll_count <= 0 then
+		this.idc_invoices.retrieve(0, 0, this.is_module)
+	end if
+	if this.id_master.getitemstring(1, "posted") = "N" then
+		ll_prallocationcode = this.id_detail.getitemnumber(1, "code")
+		if wf_lockprallocationinvoice(ll_prallocationcode) = 0 then
+			this.id_master.retrieve(ll_prallocationcode)
+			this.id_detail.retrieve(ll_prallocationcode)
+			ld_prbalance = this.id_master.getitemdecimal(this.id_master.rowcount(), "returnoutstanding")
+			wf_getprinvinfo(ll_prallocationcode, ld_oldamt)
+			this.id_master.setitem(this.id_master.rowcount(), "returnoutstanding", ld_prbalance + ld_oldamt)
+			for ll_count = 1 to this.id_detail.rowcount()
+				ll_purinvcode = this.id_detail.getitemnumber(ll_count, "Servicepurinvcode")
+				ld_amt = this.id_detail.getitemdecimal(ll_count, "amt")
+				this.it_transobject.getpurinvbalance(ll_purinvcode, ld_balance)
+				if this.it_transobject.sqlcode <> 0 then
+					ai_protect = 0
+				else
+					this.id_detail.setitem(ll_count, "outstandingamt", ld_balance + ld_amt)
+				end if
+			next
+			if ai_protect = 0 then
+				this.ib_modify = true
+				this.im_menu.m_file.m_save.enabled = true
+				this.im_menu.m_file.m_new.enabled = false
+				this.im_menu.m_file.m_delete.enabled = false
+				this.im_menu.m_item.m_newitem.enabled = true
+				this.im_menu.m_item.m_deleteitem.enabled = true
+				this.im_menu.m_file.m_first.enabled = false
+				this.im_menu.m_file.m_next.enabled = false
+				this.im_menu.m_file.m_previous.enabled = false
+				this.im_menu.m_file.m_last.enabled = false
+				this.im_menu.m_file.m_retrieve.enabled = true
+				this.im_menu.m_file.m_retrieve.text = "Lis&t"
+				this.tab_retrieve.tabpage_detail.enabled = true
+			end if
+			return
+		end if
+		messagebox("Cannot Modify", "Purchase invoice is already in use")
+	end if
+
+// w_servicepreturnallocation.wf_lockprallocationinvoice(long al_prallocationcode) returns integer
+	integer li_count
+	this.it_transobject.dbparm = " Async =1, DBGetTime = 20"
+	this.it_transobject.lockserviceprallocationinvoice(al_prallocationcode)
+	this.it_transobject.dbparm = "Async =0, DBGetTime = 0"
+	return this.it_transobject.sqlcode
+
+// w_servicepreturnallocation.wf_lockprallocations(long al_sinvcode, long al_linvcode, long al_totalinvoice) returns integer
+	integer li_count
+	SQL Select count ( *) INTO :al_totalinvoice From ServicePRAllocationHeader WITH ( UPDLOCK HOLDLOCK ) Where ServicePRAllocationHeader.ServicePRAllocationCode Between :al_sinvcode AND :al_linvcode AND ServicePRAllocationHeader.Posted ='N' USING sqlca;
+	return sqlca.sqlcode
+
+// w_servicepreturnallocation.wf_lockprinvoice(long al_prinvcode) returns integer
+	integer li_count
+	this.it_transobject.dbparm = " Async =1, DBGetTime = 20"
+	this.it_transobject.lockserviceprinvoice(al_prinvcode)
+	this.it_transobject.dbparm = "Async =0, DBGetTime = 0"
+	return this.it_transobject.sqlcode
+
+// w_servicepreturnallocation.wf_lockpurinvoice(long al_purinvcode) returns integer
+	integer li_count
+	this.it_transobject.dbparm = " Async =1, DBGetTime = 20"
+	this.it_transobject.lockservicepurinvoice(al_purinvcode)
+	this.it_transobject.dbparm = "Async =0, DBGetTime = 0"
+	return this.it_transobject.sqlcode
+
+// w_servicepreturnallocation.wf_print() returns integer
+	integer li_errcode
+	long ll_salesmancode
+	long ll_saleinvcount
+	long ll_count
+	s_arguements lstr_arginfo
+	open(w_salesmanpassword)
+	ll_salesmancode = long(message.doubleparm)
+	setfocus()
+	if ll_salesmancode > 0 then
+		open(w_arg_sinvcode_linvcode)
+		lstr_arginfo = message.powerobjectparm
+		if lstr_arginfo.i_status = 1 then
+			setpointer(hourglass!)
+			for ll_count = lstr_arginfo.l_code1 to lstr_arginfo.l_code2
+				this.id_print.retrieve(ll_count)
+				if this.id_print.rowcount() > 0 then
+					if this.id_print.print() < 0 then
+						messagebox("Printing", "Can not Print Invoice", information!)
+					end if
+				else
+					messagebox("Printing Error", "Can not Print Invoice,~r~nNo rows are retrieved", information!)
+				end if
+			next
+		end if
+	else
+		setfocus()
+	end if
+	setpointer(arrow!)
+	return li_errcode
+
+// w_servicepreturnallocation.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+
+// w_servicepreturnallocation.wf_retrieveinvoicelist(long al_acccode, long al_code, string as_module) returns long
+	long ll_rtcode
+	this.idc_invoices.settransobject(this.it_transobject)
+	ll_rtcode = this.idc_invoices.retrieve(al_acccode, al_code, as_module)
+	if ll_rtcode > 0 then
+		if this.id_detail.rowcount() < 1 then
+			this.id_detail.insertrow(0)
+		end if
+	else
+		ll_rtcode = this.idc_invoices.retrieve(0, 0, as_module)
+	end if
+	return ll_rtcode
+
+// w_servicepreturnallocation.wf_returnprallocation(long al_invid, string as_errortext) returns boolean
+	long ll_prinvcode
+	long ll_purinvcode
+	long ll_counter
+	long ll_detailrows
+	long ll_masterrow
+	boolean lb_commitflag
+	double ld_amt
+	double ld_oldtotalamt
+	double ld_balance
+	double ld_prbalance
+	double ld_newprbalance
+	double ld_totalamt
+	double ld_newbalance
+	this.id_allocationdetail.retrieve(al_invid)
+	as_errortext = "Some database problem occur"
+	ll_detailrows = this.id_allocationdetail.rowcount()
+	ll_counter = 1
+	wf_getprinvinfo(al_invid, ld_oldtotalamt)
+	wf_getprinvcode(al_invid, ll_prinvcode)
+	if ll_prinvcode > 0 then
+		if wf_lockprinvoice(ll_prinvcode) = 0 then
+			this.it_transobject.getserviceprinvbalance(ll_prinvcode, ld_prbalance)
+			if this.it_transobject.sqlcode = 0 then
+				ld_newprbalance = ld_prbalance + ld_oldtotalamt
+				if ld_newprbalance >= 0.0 then
+					this.it_transobject.updateserviceprinvbalance(ll_prinvcode, ld_newprbalance)
+					if this.it_transobject.sqlcode <> 0 then
+						lb_commitflag = false
+						as_errortext = "Purchase Return Balance Updation Error:~r~n" + this.it_transobject.sqlerrtext
+					end if
+				else
+					as_errortext = "Not Enough Balance on Purchase Return to be allocated on Purchase Invoice(s)"
+					lb_commitflag = false
+				end if
+			else
+				as_errortext = "Purchase Return Invoice is used by another user"
+				lb_commitflag = false
+			end if
+		else
+			as_errortext = "Purchase Return Invoice is used by another user"
+			lb_commitflag = false
+		end if
+	else
+		as_errortext = "Please Enter Valid Purchase Return Invoice"
+		lb_commitflag = false
+	end if
+	do while ll_counter <= ll_detailrows and lb_commitflag
+		ll_purinvcode = this.id_allocationdetail.getitemnumber(ll_counter, "Servicepurinvcode")
+		ld_amt = this.id_allocationdetail.getitemdecimal(ll_counter, "amt")
+		if wf_lockpurinvoice(ll_purinvcode) = 0 then
+			this.it_transobject.getservicepurinvbalance(ll_purinvcode, ld_balance)
+			if this.it_transobject.sqlcode = 0 then
+				if ld_amt > 0.0 and lb_commitflag then
+					ld_newbalance = ld_balance + ld_amt
+					this.it_transobject.updateservicepurinvbalance(ll_purinvcode, ld_newbalance)
+					if this.it_transobject.sqlcode <> 0 then
+						lb_commitflag = false
+						as_errortext = "Balance Updation Error:~r~n" + this.it_transobject.sqlerrtext
+					end if
+				else
+					lb_commitflag = false
+					as_errortext = "Not Enough Balance On Purchase Invoice."
+				end if
+			else
+				lb_commitflag = false
+				as_errortext = "Balance Retrieval Error:~r~n" + this.it_transobject.sqlerrtext
+			end if
+		else
+			lb_commitflag = false
+			as_errortext = "Purchase Invoice is used by another user"
+		end if
+		ll_counter = ll_counter + 1
+	loop
+	if lb_commitflag and wf_deleteprallocation(al_invid) <> 0 then
+		lb_commitflag = false
+		as_errortext = "Some database problem occur during modification of this invoice"
+	end if
+	return lb_commitflag
+
+// w_servicepreturnallocation.wf_validateamt(long al_invcode, long al_row, double ad_amt) returns boolean
+	long ll_detailcount
+	long ll_masterrow
+	boolean lb_retval
+	double ld_amttotal
+	ll_detailcount = this.id_detail.rowcount()
+	ll_masterrow = this.id_master.rowcount()
+	if ll_detailcount > 0 then
+		if isnull(this.id_detail.getitemdecimal(1, "c_amt")) then
+			ld_amttotal = ad_amt
+		elseif isnull(this.id_detail.getitemdecimal(al_row, "amt")) then
+			ld_amttotal = this.id_detail.getitemdecimal(1, "c_amt") + ad_amt
+		else
+			ld_amttotal = this.id_detail.getitemdecimal(1, "c_amt") - this.id_detail.getitemdecimal(al_row, "amt") + ad_amt
+		end if
+	else
+		ld_amttotal = ad_amt
+	end if
+	if ll_masterrow > 0 then
+		if ld_amttotal > this.id_master.object.returnoutstanding[ll_masterrow] then
+			lb_retval = false
+		else
+			lb_retval = true
+		end if
+	else
+		lb_retval = false
+	end if
+	return lb_retval
+
+// w_servicepreturnallocation.wf_post() returns integer
+	integer li_errcode
+	long ll_usercode
+	long ll_invcount
+	long ll_counter
+	boolean lb_flag
+	s_arguements lstr_arginfo
+	open(w_salesmanpassword)
+	ll_usercode = long(message.doubleparm)
+	setfocus()
+	if ll_usercode > 0 then
+		open(w_arg_supp_sinv_linv)
+		lstr_arginfo = message.powerobjectparm
+		if lstr_arginfo.i_status = 1 then
+			setpointer(hourglass!)
+			SQL rollback USING sqlca;
+			li_errcode = wf_lockprallocations(lstr_arginfo.l_code1, lstr_arginfo.l_code2, ll_invcount)
+			if li_errcode = 0 then
+				sqlca.postserviceprallocationheader(lstr_arginfo.l_code1, lstr_arginfo.l_code2, ll_usercode, lstr_arginfo.l_code3, lstr_arginfo.l_code4)
+				if sqlca.sqlcode <> 0 then
+					li_errcode = -1
+				end if
+			else
+				li_errcode = -1
+			end if
+		end if
+		if li_errcode = 0 then
+			SQL commit USING sqlca;
+			if sqlca.sqlcode <> 0 then
+				li_errcode = -1
+			end if
+		else
+			SQL rollback USING sqlca;
+		end if
+	else
+		setfocus()
+	end if
+	setpointer(arrow!)
+	if ll_usercode > 0 then
+		if li_errcode <> 0 then
+			messagebox("Posting Fails", "Some database request fails, Please try again")
+		else
+			messagebox("Posting Successfull", "Total unposted rows were " + string(ll_invcount) + "~n~rAll rows have been posted successfully")
+		end if
+	end if
+	return li_errcode
+
+// w_servicepreturnallocation.wf_validatepurinvcode(long al_row, long al_purinvcode) returns integer
+	integer li_rtcode
+	long ll_servicepurinvcode
+	long ll_suppcode
+	long ll_prallocationcode
+	double ld_outstandingamt
+	double ld_purnetamt
+	double ld_oldamt
+	datetime ld_date
+	ll_suppcode = this.id_master.object.suppcode[this.id_master.rowcount()]
+	if vf_dwdupcode1(this.id_detail, "ServicePurInvCode", string(al_purinvcode), al_row) = true then
+		li_rtcode = 1
+		messagebox("Purchase Invoice Validation", "Duplicate Purchase Invoice, please select some other invoice")
+	else
+		if this.ib_modify then
+			SQL SELECT ServicePurHeader.ServicePurInvCode , ServicePurHeader.Date , ServicePurHeader.SuppCode , ServicePurHeader.OutstandingAmt , ServicePurHeader.InvTotal INTO :ll_servicepurinvcode, :ld_date, :ll_suppcode, :ld_outstandingamt, :ld_purnetamt FROM ServicePurHeader WHERE ServicePurHeader.ServicePurInvCode =:al_purinvcode AND ServicePurHeader.SuppCode =:ll_suppcode AND ServicePurHeader.Marked ='N' AND ServicePurHeader.Posted ='Y' USING sqlca;
+		else
+			SQL SELECT ServicePurHeader.ServicePurInvCode , ServicePurHeader.Date , ServicePurHeader.SuppCode , ServicePurHeader.OutstandingAmt , ServicePurHeader.InvTotal INTO :ll_servicepurinvcode, :ld_date, :ll_suppcode, :ld_outstandingamt, :ld_purnetamt FROM ServicePurHeader WHERE ServicePurHeader.ServicePurInvCode =:al_purinvcode AND ServicePurHeader.SuppCode =:ll_suppcode AND ServicePurHeader.Marked ='N' AND ServicePurHeader.OutstandingAmt > 0 AND ServicePurHeader.Posted ='Y' USING sqlca;
+		end if
+		if sqlca.sqlcode = 0 then
+			if ll_servicepurinvcode > 0 then
+				this.id_detail.object.servicepurinvcode[al_row] = ll_servicepurinvcode
+				this.id_detail.object.purdate[al_row] = ld_date
+				this.id_detail.object.netamt[al_row] = ld_purnetamt
+				if this.ib_modify then
+					ll_prallocationcode = this.id_master.object.code[this.id_master.rowcount()]
+					wf_getpurinvinfo(ll_prallocationcode, ll_servicepurinvcode, ld_oldamt)
+					if ld_oldamt >= 0.0 then
+						this.id_detail.object.outstandingamt[al_row] = ld_outstandingamt + ld_oldamt
+					else
+						li_rtcode = 1
+					end if
+				else
+					this.id_detail.object.outstandingamt[al_row] = ld_outstandingamt
+				end if
+				if this.id_detail.object.outstandingamt[al_row] <= 0 then
+					li_rtcode = 1
+				end if
+				this.id_detail.object.amt[al_row] = 0
+			else
+				li_rtcode = 1
+			end if
+		else
+			li_rtcode = 1
+		end if
+	end if
+	return li_rtcode
+
+// w_servicepreturnallocation.wf_validateprinvcode(long al_row, long al_prinvcode) returns integer
+	long ll_detailrows
+	long ll_suppcode
+	integer li_rtcode
+	integer li_result
+	datetime ld_datetime
+	boolean lb_rtflag
+	string ls_errtext
+	string ls_batch
+	dwitemstatus lrs_status
+	if not isnull(al_prinvcode) and al_prinvcode > 0 then
+		this.im_menu.m_file.m_options.enabled = true
+		ll_detailrows = this.id_detail.rowcount()
+		if ll_detailrows > 0 then
+			lrs_status = this.id_detail.getitemstatus(1, 0, primary!)
+			if lrs_status <> new! and not isnull(this.id_detail.getitemnumber(1, "servicepurinvcode")) then
+				li_result = messagebox("Warning", "Rows in Detail Window will be Lost", exclamation!, okcancel!, 2)
+				if li_result = 2 then
+					li_rtcode = 2
+				else
+					this.id_detail.setredraw(false)
+					this.id_detail.reset()
+					this.id_detail.insertrow(0)
+					this.id_detail.setfocus()
+					this.id_detail.setredraw(true)
+				end if
+			end if
+		end if
+		if li_rtcode = 0 then
+			li_rtcode = wf_setprinvinfo(al_prinvcode)
+			if li_rtcode = 0 then
+				this.ii_focusreturn = 1
+			else
+				li_rtcode = 1
+			end if
+		end if
+	else
+		li_rtcode = 1
+	end if
+	if li_rtcode <> 0 then
+		this.ii_focusreturn = 2
+	end if
+	return li_rtcode
+
+// w_servicepreturnallocation.wf_setprinvinfo(long al_prinvcode) returns integer
+	integer li_rtcode
+	long ll_row
+	long ll_purinvcode
+	long ll_serviceprinvcode
+	long ll_suppcode
+	double ld_returnamt
+	double ld_outstandingamt
+	double ld_oldamt
+	datetime ld_returndate
+	string ls_aliasname
+	string ls_name
+	if this.ib_modify then
+		SQL SELECT ServicePRHeader.ServicePRInvCode , ServicePRHeader.Date , ServicePRHeader.InvTotal , ServicePRHeader.OutStandingAmt , ServicePRHeader.ServicePurInvCode , Accounts.AliasName , Accounts.Name , ServicePRHeader.SuppCode INTO :ll_serviceprinvcode, :ld_returndate, :ld_returnamt, :ld_outstandingamt, :ll_purinvcode, :ls_aliasname, :ls_name, :ll_suppcode FROM ServicePRHeader , Accounts , Supplier WHERE ServicePRHeader.ServicePRInvCode =:al_prinvcode AND ServicePRHeader.Marked ='N' AND ServicePRHeader.Posted ='Y' AND ServicePRHeader.SuppCode =Supplier.SuppCode AND Supplier.SuppCode =Accounts.AccCode USING this.it_transobject;
+	else
+		SQL SELECT ServicePRHeader.ServicePRInvCode , ServicePRHeader.Date , ServicePRHeader.InvTotal , ServicePRHeader.OutStandingAmt , ServicePRHeader.ServicePurInvCode , Accounts.AliasName , Accounts.Name , ServicePRHeader.SuppCode INTO :ll_serviceprinvcode, :ld_returndate, :ld_returnamt, :ld_outstandingamt, :ll_purinvcode, :ls_aliasname, :ls_name, :ll_suppcode FROM ServicePRHeader , Accounts , Supplier WHERE ServicePRHeader.ServicePRInvCode =:al_prinvcode AND ServicePRHeader.Marked ='N' AND ServicePRHeader.Posted ='Y' AND ServicePRHeader.OutstandingAmt > 0 AND ServicePRHeader.SuppCode =Supplier.SuppCode AND Supplier.SuppCode =Accounts.AccCode USING this.it_transobject;
+	end if
+	ll_row = this.id_master.getrow()
+	li_rtcode = 0
+	if this.it_transobject.sqlcode = 0 then
+		if ll_serviceprinvcode > 0 then
+			this.id_master.object.returndate[ll_row] = ld_returndate
+			this.id_master.object.returnamt[ll_row] = ld_returnamt
+			if this.ib_modify then
+				wf_getprinvinfo(this.id_master.object.code[ll_row], ld_oldamt)
+				if ld_oldamt >= 0.0 then
+					this.id_master.object.returnoutstanding[ll_row] = ld_outstandingamt + ld_oldamt
+				else
+					li_rtcode = 1
+				end if
+			else
+				this.id_master.object.returnoutstanding[ll_row] = ld_outstandingamt
+			end if
+			if this.id_master.object.returnoutstanding[ll_row] <= 0 then
+				li_rtcode = 1
+			end if
+			this.id_master.object.servicepurinvcode[ll_row] = ll_purinvcode
+			this.id_master.object.suppcode[ll_row] = ll_suppcode
+			this.id_master.object.aliasname[ll_row] = ls_aliasname
+			this.id_master.object.name[ll_row] = ls_name
+		else
+			li_rtcode = 1
+		end if
+	else
+		li_rtcode = 1
+	end if
+	return li_rtcode
+
+// w_servicepreturnallocation.wf_getpurinvinfo(long al_prallocationcode, long al_purinvcode, double ad_amt) returns integer
+	SQL Select IsNull ( Sum ( Serviceprallocationdetail.amt ) , 0 ) INTO :ad_amt from Serviceprallocationdetail where Serviceprallocationdetail.Serviceprallocationcode =:al_prallocationcode and Serviceprallocationdetail.Servicepurinvcode =:al_purinvcode USING this.it_transobject;
+	if isnull(ad_amt) then
+		ad_amt = 0
+	end if
+	return this.it_transobject.sqlcode
+
+// w_servicepreturnallocation.wf_assigndatawindowobjects(string as_masterdw, string as_detaildw, string as_footerdw, string as_listdw, string as_printdw) returns 0
+	this.id_master.dataobject = as_masterdw
+	this.id_detail.dataobject = as_detaildw
+	this.id_footer.dataobject = as_footerdw
+	this.id_list.dataobject = as_listdw
+	this.id_print.dataobject = as_printdw
+	this.id_master.settransobject(this.it_transobject)
+	this.id_detail.settransobject(this.it_transobject)
+	this.id_footer.settransobject(this.it_transobject)
+	this.id_list.settransobject(this.it_transobject)
+	this.id_print.settransobject(this.it_transobject)
+
+// w_servicepreturnallocation.wf_populatedetail(long al_invid, datawindow ad_detail, string as_errortext, long al_errorrow) returns boolean
+	long ll_detailrows
+	long ll_errrowid
+	long ll_usercode
+	long ll_purinvcode
+	long ll_prinvcode
+	long ll_counter
+	long ll_masterrow
+	long ll_row
+	long ll_unpostedtrans
+	long ll_unpostedrtrans
+	double ld_amt
+	double ld_balance
+	double ld_newbalance
+	double ld_prbalance
+	double ld_totalamt
+	double ld_newprbalance
+	unsignedlong ul_rowcount
+	unsignedlong ul_maxutn
+	boolean lb_commitflag
+	string ls_msg
+	ls_msg = "000                                                                                                                                 "
+	ll_detailrows = this.id_detail.rowcount()
+	ll_counter = 1
+	as_errortext = "    Some database problem ocuurs         "
+	ll_masterrow = this.id_master.rowcount()
+	ll_prinvcode = this.id_master.getitemnumber(ll_masterrow, "Serviceprinvcode")
+	ld_totalamt = this.id_detail.getitemnumber(ll_masterrow, "c_amt")
+	if ll_prinvcode > 0 then
+		if wf_lockprinvoice(ll_prinvcode) = 0 then
+			this.it_transobject.checkunpostedserviceprinvintransactions(ll_prinvcode, al_invid, this.is_module, ll_unpostedrtrans, ls_msg)
+			if ll_unpostedrtrans > 0 then
+				lb_commitflag = false
+				as_errortext = "Unposted Transaction(s) Exist for this Purchase Return~r~n~r~n" + ls_msg
+			else
+				this.it_transobject.getserviceprinvbalance(ll_prinvcode, ld_prbalance)
+				if this.it_transobject.sqlcode = 0 then
+					if ld_prbalance > 0.0 and ld_totalamt <= ld_prbalance then
+						ld_newprbalance = ld_prbalance - ld_totalamt
+						this.it_transobject.updateserviceprinvbalance(ll_prinvcode, ld_newprbalance)
+						if this.it_transobject.sqlcode <> 0 then
+							lb_commitflag = false
+							as_errortext = "Purchase Return Balance Updation Error:~r~n" + this.it_transobject.sqlerrtext
+						end if
+					else
+						as_errortext = "Not Enough Balance on Purchase Return to be allocated on Purchase Invoice(s)"
+						lb_commitflag = false
+					end if
+				else
+					as_errortext = "Purchase Return Invoice not available for allocation."
+					lb_commitflag = false
+				end if
+			end if
+		else
+			as_errortext = "Purchase Return Invoice is used by another user"
+			lb_commitflag = false
+		end if
+	else
+		as_errortext = "Please Enter Valid Purchase Return Invoice"
+		lb_commitflag = false
+	end if
+	do while ll_counter <= ll_detailrows and lb_commitflag
+		ll_purinvcode = this.id_detail.getitemnumber(ll_counter, "Servicepurinvcode")
+		ld_amt = this.id_detail.getitemdecimal(ll_counter, "amt")
+		if wf_lockpurinvoice(ll_purinvcode) = 0 then
+			ls_msg = "000                                                                                                                                 "
+			this.it_transobject.checkunpostedservicepurinvintransactions(ll_purinvcode, al_invid, this.is_module, ll_unpostedtrans, ls_msg)
+			if ll_unpostedtrans > 0 then
+				lb_commitflag = false
+				as_errortext = "Unposted Transaction(s) Exist for this Purchase Invoice~r~n~r~n" + ls_msg
+			else
+				this.it_transobject.getservicepurinvbalance(ll_purinvcode, ld_balance)
+				if this.it_transobject.sqlcode = 0 then
+					if ld_amt > 0.0 and ld_amt <= ld_balance and lb_commitflag then
+						ll_row = ad_detail.insertrow(0)
+						ad_detail.setitem(ll_row, "code", al_invid)
+						ad_detail.setitem(ll_row, "servicepurinvcode", ll_purinvcode)
+						ad_detail.setitem(ll_row, "outstandingamt", ld_balance)
+						ad_detail.setitem(ll_row, "amt", ld_amt)
+						ld_newbalance = ld_balance - ld_amt
+						this.it_transobject.updateservicepurinvbalance(ll_purinvcode, ld_newbalance)
+						if this.it_transobject.sqlcode <> 0 then
+							lb_commitflag = false
+							as_errortext = "Balance Updation Error:~r~n" + this.it_transobject.sqlerrtext
+						end if
+					else
+						lb_commitflag = false
+						as_errortext = "Not Enough Balance On Purchase Invoice."
+					end if
+				else
+					lb_commitflag = false
+					as_errortext = "Purchase Invoice not available for allocation! Error:~r~n" + this.it_transobject.sqlerrtext
+				end if
+			end if
+		else
+			lb_commitflag = false
+			as_errortext = "Purchase Invoice Is Used by some other user"
+		end if
+		ll_counter = ll_counter + 1
+	loop
+	if lb_commitflag then
+		SQL rollback USING sqlca;
+		ul_rowcount = ad_detail.rowcount()
+		sqlca.getmaxutn(ul_rowcount, ul_maxutn)
+		if sqlca.sqlcode = 0 then
+			SQL commit USING sqlca;
+		else
+			SQL rollback USING sqlca;
+			messagebox("SAVING", " Error in generating Utn ")
+			return false
+		end if
+		for ll_counter = 1 to ad_detail.rowcount()
+			ad_detail.setitem(ll_counter, "Utn", ul_maxutn)
+			ul_maxutn = ul_maxutn + 1
+		next
+	else
+		al_errorrow = ll_counter - 1
+		messagebox("Database Error", as_errortext)
+	end if
+	return lb_commitflag
+
+// w_servicepreturnallocation.create() returns 0
+	integer icurrent
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_preturnallocation" then
+		this.menuid = create m_preturnallocation
+	end if
+	this.dw_saleinvrep = create dw_saleinvrep
+	this.dw_invdetail = create dw_invdetail
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_saleinvrep
+	this.control[icurrent + 2] = this.dw_invdetail
+
+// w_servicepreturnallocation.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_saleinvrep
+	destroy this.dw_invdetail
+
+// w_servicepreturnallocation.ue_save() returns 0
+	long ll_detailrows
+	long ll_mastercurrrow
+	long ll_footercurrrow
+	long ll_invid
+	long ll_icode
+	long ll_errrowid
+	long ll_usercode
+	long ll_gcode
+	long ll_counter
+	long ll_count
+	long ll_null
+	long ll_unpostedtrans
+	long ll_unpostedrtrans
+	boolean lb_commitflag
+	boolean lb_continue
+	integer li_counter
+	integer li_maxretcode
+	string ls_errtext
+	string ls_msg
+	unsignedlong ul_rowcount
+	unsignedlong ul_maxutn
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	ls_msg = "000                                                                                                                                 "
+	ll_detailrows = this.id_detail.rowcount()
+	if ll_detailrows > 0 then
+		for ll_counter = 1 to ll_detailrows
+			if isnull(this.id_detail.getitemnumber(ll_counter, "servicepurinvcode")) or this.id_detail.getitemnumber(ll_counter, "servicepurinvcode") = 0.0 then
+				this.id_detail.deleterow(ll_counter)
+			end if
+		next
+	end if
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	wf_deleteallemptydetailrows()
+	if this.id_detail.rowcount() < 1 then
+		messagebox("Rows Validation", "Please insert a row before proceeding")
+		return
+	end if
+	if this.id_master.rowcount() > 0 then
+		this.it_transobject.checkunpostedserviceprinvintransactions(this.id_master.object.serviceprinvcode[this.id_master.rowcount()], this.id_master.object.code[this.id_master.rowcount()], this.is_module, ll_unpostedrtrans, ls_msg)
+		if ll_unpostedtrans > 0 then
+			this.id_master.scrolltorow(this.id_master.rowcount())
+			this.id_master.setfocus()
+			messagebox("Purchase Return Validation Problem", "Unposted Transaction(s) Exist for this Purchase Return Invoice~r~nDetails Are:~r~n~r~n" + ls_msg)
+			return
+		end if
+		return
+	end if
+	ll_detailrows = this.id_detail.rowcount()
+	if this.id_detail.rowcount() > 0 then
+		for ll_counter = 1 to ll_detailrows
+			ls_msg = "000                                                                                                                                 "
+			this.it_transobject.checkunpostedservicepurinvintransactions(this.id_detail.object.servicepurinvcode[ll_counter], this.id_master.object.code[this.id_master.rowcount()], this.is_module, ll_unpostedtrans, ls_msg)
+			if ll_unpostedtrans > 0 then
+				this.id_detail.scrolltorow(ll_counter)
+				this.id_detail.setfocus()
+				messagebox("Purchase Invoice Validation Problem", "Unposted Transaction(s) Exist for this Purchase Invoice~r~n~r~n" + ls_msg)
+				return
+			end if
+		next
+	end if
+	setpointer(hourglass!)
+	if not wf_validateserverdatetime(ldt_server_datetime, ls_date_errtext) then
+		messagebox("Date Violation", ls_date_errtext, stopsign!)
+		return
+	end if
+	open(w_salesmanpassword)
+	ll_usercode = long(message.doubleparm)
+	setfocus()
+	if ll_usercode > 0 then
+		ll_mastercurrrow = this.id_master.getrow()
+		ll_invid = this.id_master.getitemnumber(ll_mastercurrrow, "code")
+		if isnull(ll_invid) then
+			li_maxretcode = wf_tabnewid("serviceprallocationheader", ll_invid)
+			if li_maxretcode < 0 then
+				SQL rollback USING this.it_transobject;
+				messagebox("DataBase Problem", "Transaction is Rollback Due to Problem in~r~n ~t~t~t~t~t~t~t~t~t~t~t~t~tgenerating InvCode")
+				return
+			end if
+			if ll_invid > 0 then
+				this.id_master.setitem(ll_mastercurrrow, "code", ll_invid)
+			end if
+		end if
+		if this.ib_modify then
+			if not wf_getserverdatetime(ldt_server_datetime, ls_date_errtext) then
+				messagebox("Date Violation", ls_date_errtext, stopsign!)
+				return
+			end if
+			this.id_master.setitem(ll_mastercurrrow, "modified", "Y")
+			this.id_master.setitem(ll_mastercurrrow, "modifiedby", ll_usercode)
+			this.id_master.setitem(ll_mastercurrrow, "date", ldt_server_datetime)
+			this.idt_server_datetime = ldt_server_datetime
+			if lb_continue then
+				lb_continue = wf_returnprallocation(ll_invid, ls_errtext)
+			end if
+		else
+			if not wf_getserverdatetime(ldt_server_datetime, ls_date_errtext) then
+				messagebox("Date Violation", ls_date_errtext, stopsign!)
+				return
+			end if
+			this.idt_server_datetime = ldt_server_datetime
+			this.id_master.setitem(ll_mastercurrrow, "usercode", ll_usercode)
+			this.id_master.setitem(ll_mastercurrrow, "date", ldt_server_datetime)
+		end if
+		if lb_continue then
+			this.id_allocationdetail.reset()
+			if not wf_populatedetail(ll_invid, this.id_allocationdetail, ls_errtext, ll_errrowid) then
+				lb_continue = false
+				this.id_detail.scrolltorow(ll_errrowid)
+				this.id_detail.setfocus()
+			else
+				this.id_detail = this.id_allocationdetail
+				call super::ue_save
+				this.id_detail = this.tab_retrieve.tabpage_detail.dw_itemsdetail
+				this.id_allocationdetail.reset()
+				if this.ib_commitok then
+					this.ib_modify = false
+				elseif this.ib_modify = false then
+					setnull(ll_null)
+					this.id_master.setitem(1, "Code", ll_null)
+					this.id_master.accepttext()
+				end if
+			end if
+		end if
+		if not lb_continue then
+			SQL rollback USING this.it_transobject;
+			if this.ib_modify = false then
+				setnull(ll_null)
+				this.id_master.setitem(1, "Code", ll_null)
+				this.id_master.accepttext()
+			end if
+			messagebox("Updation Error", ls_errtext + " in current row", stopsign!)
+		end if
+	else
+		setfocus()
+	end if
+	setpointer(arrow!)
+
+// w_servicepreturnallocation.ue_newform() returns 0
+	integer li_rtncode
+	this.im_menu.m_file.m_print.enabled = false
+	wf_protectdw(this.id_master, 0)
+	this.id_detail.setredraw(false)
+	wf_protectdw(this.id_detail, 0)
+	this.id_detail.setredraw(true)
+	this.ib_modify = false
+	this.idc_retinv.retrieve(0)
+	if li_rtncode <= 0 then
+		this.idc_retinv.insertrow(0)
+	end if
+	this.id_master.setcolumn("serviceprinvcode")
+	this.id_master.setfocus()
+	this.ii_focusreturn = 2
+	setredraw(false)
+	this.i_editmode = 1
+	this.i_retrievemode = 2
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_new.enabled = false
+	this.im_menu.m_file.m_delete.enabled = false
+	this.im_menu.m_item.m_newitem.enabled = true
+	this.im_menu.m_item.m_deleteitem.enabled = true
+	this.im_menu.m_file.m_first.enabled = false
+	this.im_menu.m_file.m_next.enabled = false
+	this.im_menu.m_file.m_previous.enabled = false
+	this.im_menu.m_file.m_last.enabled = false
+	this.im_menu.m_file.m_print.enabled = false
+	this.im_menu.m_file.m_retrieve.enabled = true
+	this.im_menu.m_file.m_retrieve.text = "Lis&t"
+	this.tab_retrieve.tabpage_detail.enabled = true
+	if this.id_master.rowcount() > 0 then
+		this.id_master.reset()
+	end if
+	this.ib_focusdetail = false
+	this.id_master.insertrow(0)
+	this.id_detail.reset()
+	this.id_master.setcolumn(1)
+	this.id_master.setfocus()
+	setredraw(true)
+
+// w_servicepreturnallocation.ue_detail() returns 0
+	integer li_rtncode
+	integer li_protect
+	integer li_ismodifysaleprice
+	integer li_ismodifyitemdiscperc
+	integer li_ismodifyitemflatdisc
+	integer li_modifysalestax
+	long ll_row
+	long ll_code
+	long ll_counter
+	long ll_suppcode
+	boolean lb_flag
+	boolean lb_modify
+	long ll_rowcount
+	long ll_validinv
+	double ld_code
+	m_preturnallocation lm_menu
+	lm_menu = this.menuid
+	ld_code = this.id_dwcontrol.borderstyle.code[this.il_selectedrow]
+	this.im_menu.m_file.m_retrieve.text = "Lis&t"
+	this.im_menu.m_file.m_print.enabled = true
+	this.i_editmode = 2
+	this.i_retrievemode = 2
+	this.id_dwcontrol = this.id_master
+	if this.idc_retinv.retrieve(ld_code) <= 0 then
+		this.idc_retinv.insertrow(0)
+	end if
+	ll_rowcount = wf_retrieve(ld_code)
+	this.id_master.setrow(1)
+	this.id_master.scrolltorow(1)
+	this.id_dwcontrol = this.id_detail
+	if this.idc_invoices.retrieve(this.id_master.object.suppcode[1], this.id_master.object.code[1], this.is_module) <= 0 then
+		this.idc_invoices.insertrow(0)
+	end if
+	wf_retrieve(ld_code)
+	this.id_master.setcolumn(1)
+	this.id_master.setfocus()
+	this.id_dwcontrol = this.id_list
+	setredraw(false)
+	this.im_menu.m_file.m_post.enabled = false
+	if this.id_master.getitemstring(this.id_master.getrow(), "Posted") = "N" then
+		lb_modify = true
+	end if
+	if not lb_modify then
+		this.im_menu.m_file.m_save.enabled = false
+		this.editflag = false
+	else
+		li_protect = 0
+		wf_initmodify(li_protect)
+	end if
+	wf_protectdw(this.id_master, li_protect)
+	wf_protectdw(this.id_detail, li_protect)
+	if li_protect = 0 then
+		lb_flag = true
+	end if
+	setredraw(true)
+
+// w_servicepreturnallocation.ue_newitem() returns 0
+	long ll_rowcount
+	long ll_rtcode
+	if this.id_detail.rowcount() = 0 then
+		this.idc_invoices.settransobject(this.it_transobject)
+		if this.id_master.object.suppcode[this.id_master.rowcount()] > 0 then
+			ll_rtcode = this.idc_invoices.retrieve(this.id_master.object.suppcode[this.id_master.rowcount()], this.id_master.object.code[this.id_master.rowcount()], this.is_module)
+			if ll_rtcode <= 0 then
+				return
+			end if
+		else
+			messagebox("Purchase Return Validation", "No Un-paid Invoice Exists for this Supplier")
+			return
+		end if
+	elseif this.id_detail.rowcount() > 0 and f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	this.id_detail.setcolumn("servicepurinvcode")
+	this.id_detail.insertrow(0)
+	ll_rowcount = this.id_detail.rowcount()
+	if ll_rowcount > 1 then
+		this.id_detail.scrolltorow(ll_rowcount)
+		this.id_detail.setfocus()
+	end if
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_print.enabled = true
+	this.ib_validatefullcode = true
+
+// w_servicepreturnallocation.close() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::close()
+	this.id_itemslist.sharedataoff()
+	return ::message.returnvalue
+
+// w_servicepreturnallocation.ue_list() returns 0
+	long ll_row
+	m_preturnallocation lm_menu
+	call super::ue_list
+	lm_menu = this.menuid
+	SQL rollback USING this.it_transobject;
+	this.im_menu.m_file.m_post.enabled = true
+	this.im_menu.m_file.m_print.enabled = false
+	this.ib_modify = false
+	this.id_itemslist.hide()
+	if this.id_detail.rowcount() > 0 then
+		postevent("ue_deleteitem")
+	end if
+	ll_row = wf_retrievelist()
+	wf_disabledetailtab(ll_row)
+
+// w_servicepreturnallocation.ue_refreshddw() returns 0
+	call super::ue_refreshddw
+	setpointer(hourglass!)
+	this.idc_retinv.retrieve(this.id_master.object.code[this.id_master.rowcount()])
+	setpointer(arrow!)
+
+// w_servicepreturnallocation.ue_new() returns 0
+	call super::ue_new
+	this.im_menu.m_file.m_post.enabled = false
+
+// w_servicepreturnallocation.ue_postopen() returns 0
+	integer li_rtncode
+	integer i
+	long ll_counter
+	long ll_pos
+	long ll_prow
+	long ll_pcode
+	m_preturnallocation lm_menu
+	call super::ue_postopen
+	lm_menu = this.menuid
+	setredraw(false)
+	this.id_print = this.dw_saleinvrep
+	this.id_allocationdetail = this.dw_invdetail
+	this.id_allocationdetail.settransobject(this.it_transobject)
+	wf_assigndatawindowobjects("d_ServicePRAllocationHeader", "d_ServicePRAllocationDetail", "", "d_ServicePRAllocationlist", "")
+	this.id_master.setitem(1, "serviceprinvcode", 0)
+	li_rtncode = this.id_master.getchild("serviceprinvcode", this.idc_retinv)
+	if li_rtncode = -1 then
+		messagebox("Error", "Can not get a DataWindowChild")
+		close(this)
+		return
+	end if
+	this.idc_retinv.settransobject(this.it_transobject)
+	li_rtncode = this.idc_retinv.retrieve(0)
+	if li_rtncode <= 0 then
+		this.idc_retinv.insertrow(0)
+	end if
+	li_rtncode = this.id_detail.getchild("servicepurinvcode", this.idc_invoices)
+	if li_rtncode = -1 then
+		messagebox("Error", "Can not get a DataWindowChild")
+		close(this)
+		return
+	end if
+	this.idc_invoices.settransobject(this.it_transobject)
+	li_rtncode = this.idc_invoices.retrieve(0, 0, this.is_module)
+	setredraw(true)

@@ -1,0 +1,611 @@
+// window w_change_item_basicdata_v2 (changeitemprice)  ancestor: w_multi_entry
+
+// w_change_item_basicdata_v2.ue_enableprint() returns 0
+	this.im_menu.m_file.m_print.enabled = false
+
+// w_change_item_basicdata_v2.wf_validateitem() returns integer
+	long ll_icode
+	long ll_count
+	long ll_null
+	string ls_fullcode
+	string ls_titleerrtext
+	string ls_errtext
+	integer li_errcode
+	boolean lb_dupitem
+	boolean lb_invalidrow
+	integer li_null
+	string ls_null
+	setnull(ll_null)
+	ll_icode = this.id_detail.getitemnumber(this.il_currrow, "icode")
+	if isnull(this.il_currrow) or this.il_currrow <= 0 then
+		lb_invalidrow = true
+		setnull(ll_icode)
+	else
+		ll_icode = this.id_detail.getitemnumber(this.il_currrow, "icode")
+	end if
+	if not isnull(ll_icode) then
+		if vf_dwdupcode1(this.id_detail, "icode", string(ll_icode), this.il_currrow) = true then
+			ls_titleerrtext = "Item Validation"
+			ls_errtext = "Duplicate item, please select some other item"
+			lb_dupitem = true
+			li_errcode = -1
+		elseif not wf_inititeminfo(ll_icode, this.il_currrow, li_errcode, ls_errtext) then
+			ls_titleerrtext = "Item Validation"
+		end if
+	end if
+	this.ib_itemvalidated = true
+	if li_errcode = -1 then
+		setnull(li_null)
+		setnull(ls_null)
+		ls_titleerrtext = "Item Validation"
+		if lb_dupitem = true then
+			this.id_detail.scrolltorow(this.il_currrow)
+			this.id_detail.object.icode[this.il_currrow] = li_null
+			this.id_detail.object.fullcode[this.il_currrow] = ls_null
+			this.id_detail.object.itemname[this.il_currrow] = ls_null
+			post event ue_deleteitem_row(this.il_currrow)
+			for ll_count = 1 to this.id_detail.rowcount()
+				if this.id_detail.getitemnumber(ll_count, "icode") = ll_icode then
+					exit
+				end if
+			next
+			messagebox(ls_titleerrtext, ls_errtext)
+		elseif lb_invalidrow = true then
+			li_errcode = -1
+		else
+			messagebox(ls_titleerrtext, ls_errtext)
+			if f_stringpreferences("itemcode") = "N" then
+				this.id_detail.setcolumn(this.is_columnitemname)
+				this.ib_itemslistopen = true
+				this.id_itemslist.show()
+			else
+				this.id_detail.setcolumn("fullcode")
+				this.id_detail.object.fullcode[this.il_currrow] = ls_null
+			end if
+			this.id_detail.scrolltorow(this.il_currrow)
+			this.id_detail.object.icode[this.il_currrow] = li_null
+			this.id_detail.object.itemname[this.il_currrow] = ls_null
+		end if
+	end if
+	return li_errcode
+
+// w_change_item_basicdata_v2.wf_findfullcode(string as_fullcode, long al_icode, string al_itemname) returns integer
+	integer ll_retflag
+	long ll_icode
+	long ll_groupcode
+	long ll_rowid
+	string ls_itemname
+	ll_groupcode = f_getgroupcode(gl_usercode)
+	if this.il_saleinvcode > 0 then
+		ll_rowid = this.id_itemslist.find("fullcode = '" + as_fullcode + "'", 1, this.id_itemslist.rowcount())
+		if ll_rowid > 0 and ll_rowid <= this.id_itemslist.rowcount() then
+			al_icode = this.id_itemslist.getitemnumber(ll_rowid, "icode")
+			al_itemname = this.id_itemslist.getitemstring(ll_rowid, "itemname")
+			this.id_itemslist.setrow(ll_rowid)
+			ll_retflag = 1
+		else
+			ll_retflag = 0
+		end if
+	else
+		if f_stringpreferences("GroupCategoryRights") = "Y" then
+			SQL SELECT item.icode , item.name INTO :ll_icode, :ls_itemname FROM item WHERE item.customicode =:as_fullcode AND ( item.Restricted ='N' OR ( Item.Restricted ='Y' AND Exists ( select *from grouprights where rightcode =515 and groupcode =:ll_groupcode ) ) ) AND item.Active =1 AND Item.ICatCode IN ( SELECT ICatCode FROM ItemCategory WHERE ICatCode IN ( SELECT ItemsCategoryCode FROM ItemsGroupCategory WHERE GroupCode IN ( SELECT GroupCode FROM UserGroups WHERE UserCode =:gl_usercode ) ) ) USING this.it_transobject;
+		else
+			SQL SELECT item.icode , item.name INTO :ll_icode, :ls_itemname FROM item WHERE item.customicode =:as_fullcode AND item.Active =1 AND ( item.Restricted ='N' OR ( Item.Restricted ='Y' AND Exists ( select *from grouprights where rightcode =515 and groupcode =:ll_groupcode ) ) ) USING this.it_transobject;
+		end if
+		if this.it_transobject.sqlcode = 0 then
+			al_icode = ll_icode
+			al_itemname = ls_itemname
+			if isnull(al_icode) then
+				ll_retflag = 0
+			else
+				ll_retflag = 1
+			end if
+		else
+			ll_retflag = -1
+		end if
+	end if
+	return ll_retflag
+
+// w_change_item_basicdata_v2.wf_deleteemptydetailrows() returns long
+	long ll_count
+	long ll_deletecount
+	ll_deletecount = 0
+	for ll_count = 1 to this.id_detail.rowcount()
+		if isnull(this.id_detail.getitemnumber(ll_count, "icode")) or this.id_detail.getitemnumber(ll_count, "icode") = 0.0 then
+			ll_deletecount = ll_deletecount + 1
+			this.id_detail.deleterow(ll_count)
+		end if
+	next
+	return ll_deletecount
+
+// w_change_item_basicdata_v2.wf_populatefiltereditems() returns long
+	integer li_rtcode
+	integer li_rtncode
+	long ll_rtcode
+	long ll_rowcount
+	long ll_count
+	long ll_icode
+	long ll_currentrow
+	long ll_found
+	string as_errortext
+	s_arguements lstr_selecteditems
+	datastore lds_selecteditems
+	if this.id_master.accepttext() = -1 then
+		return -1
+	end if
+	open(w_arg_item_populate2)
+	lstr_selecteditems = message.powerobjectparm
+	lds_selecteditems = create datastore
+	if lstr_selecteditems.s_name2 = "OR" then
+		lds_selecteditems.dataobject = "d_populateditems_active_stockitems"
+	else
+		lds_selecteditems.dataobject = "d_populateditems_and_active_stockitems"
+	end if
+	lds_selecteditems.settransobject(sqlca)
+	ll_rtcode = lds_selecteditems.retrieve(lstr_selecteditems.ia_integerlist, lstr_selecteditems.ia_integerlist1, lstr_selecteditems.ia_integerlist2, lstr_selecteditems.la_longlist, lstr_selecteditems.s_name1)
+	ll_rowcount = lds_selecteditems.rowcount()
+	wf_deleteemptydetailrow()
+	setpointer(hourglass!)
+	setredraw(false)
+	if this.id_detail.rowcount() > 0 and isnull(this.id_detail.object.icode[this.id_detail.rowcount()]) then
+		event ue_deleteitem()
+	end if
+	for ll_count = 1 to ll_rowcount
+		ll_icode = lds_selecteditems.object.icode[ll_count]
+		ll_found = this.id_detail.find("icode=" + string(ll_icode), 1, this.id_detail.rowcount())
+		if not (ll_found > 0) then
+			ll_currentrow = this.id_detail.insertrow(0)
+			if wf_inititeminfo(ll_icode, ll_currentrow, li_rtncode, as_errortext) then
+			end if
+		end if
+	next
+	if this.id_detail.rowcount() > 0 then
+		this.im_menu.m_file.m_save.enabled = true
+	end if
+	setredraw(true)
+	setpointer(arrow!)
+	return 0
+
+// w_change_item_basicdata_v2.wf_grandtotal() returns double
+	double ld_grandtotal
+	return ld_grandtotal
+
+// w_change_item_basicdata_v2.wf_filteritems() returns long
+	string ls_null
+	string ls_filter
+	setnull(ls_null)
+	this.id_detail.scrolltorow(0)
+	this.id_detail.setfilter(ls_null)
+	ls_filter = this.id_detail.object.datawindow.table.filter
+	if ls_filter = "" or ls_filter = "?" or isnull(ls_filter) then
+		this.id_detail.setfilter("")
+	else
+		this.id_detail.setfilter(ls_filter)
+	end if
+	this.id_detail.filter()
+	this.id_detail.groupcalc()
+	return 0
+
+// w_change_item_basicdata_v2.wf_inititeminfo(long al_icode, long al_row, integer ai_rtcode, string as_errortext) returns boolean
+	boolean retflag
+	double ld_rpp
+	double ld_purprice
+	double ld_flatdisc
+	double ld_invdiscperc
+	double ld_discperc2
+	double ld_discperc3
+	double ld_discperc4
+	double ld_saleprice
+	double ld_discperc
+	double ld_purdiscperc
+	double ld_avgprice
+	double ld_unitsalestax
+	double ld_gstperc1
+	double ld_gstperc2
+	double ld_packsalestax
+	double ld_saleprice2
+	double ld_saleprice3
+	double ld_saleprice4
+	double ld_saleprice5
+	double ld_discperc5
+	double ld_retailprice
+	double ld_godownstock
+	double ld_totalstock
+	long ll_packunits
+	long ll_godownstock
+	long ll_saleqty
+	long ll_totalstock
+	long ll_reorderqty
+	long li_discstatus
+	long ll_qtysale
+	long ll_bonus
+	long ll_itemdesc_status
+	integer li_gcode
+	integer li_defaultgcode
+	integer li_defaultgst
+	integer li_custcode
+	integer li_flatdiscstatus
+	integer li_itemdiscpercno
+	integer li_itempricetypeno
+	string ls_fullcode
+	string ls_name
+	string ls_null
+	string ls_antinorcotix
+	string ls_itemtotalval
+	string ls_locksaleprice
+	string ls_lockdiscperc
+	string ls_remarks
+	long ll_holdlooseqty
+	long ll_desiredbonus
+	setnull(ls_null)
+	SQL SELECT item.customicode , item.name , item.saleprice , item.packunits , item.salediscperc , item.saleprice2 , item.saleprice3 , item.saleprice4 , item.saleprice5 , item.avgprice , item.PurDiscPerc , item.antinorcotix , item.reorderqty , item.purprice , item.recentpurprice , round ( item.Packsalestax / item.packunits , 2 ) , item.gstperc1 , item.gstperc2 , qtysale =item.saleqty , bonus =item.bonusqty , ISNULL ( item.Packsalestax , 0 ) , item.flatdisc , item.locksaleprice , item.lockdiscperc , item.salediscperc2 , item.salediscperc3 , item.salediscperc4 , item.salediscperc5 , item.remarks , item.retailprice INTO :ls_fullcode, :ls_name, :ld_saleprice, :ll_packunits, :ld_discperc, :ld_saleprice2, :ld_saleprice3, :ld_saleprice4, :ld_saleprice5, :ld_avgprice, :ld_purdiscperc, :ls_antinorcotix, :ll_reorderqty, :ld_purprice, :ld_rpp, :ld_unitsalestax, :ld_gstperc1, :ld_gstperc2, :ll_qtysale, :ll_bonus, :ld_packsalestax, :ld_flatdisc, :ls_locksaleprice, :ls_lockdiscperc, :ld_discperc2, :ld_discperc3, :ld_discperc4, :ld_discperc5, :ls_remarks, :ld_retailprice FROM item WHERE item.icode =:al_icode USING this.it_transobject;
+	if ll_packunits < 1 or isnull(ll_packunits) then
+		ll_packunits = 1
+	end if
+	if this.it_transobject.sqlcode = -1 then
+		retflag = false
+		as_errortext = "Database Error: Item information can not be retrieved"
+	end if
+	this.it_transobject.getitemstockall(al_icode, ld_totalstock)
+	if this.it_transobject.sqlcode <> 0 then
+		retflag = false
+		as_errortext = "Database Error: Item information can not be retrieved"
+	end if
+	ls_itemtotalval = string(ld_saleprice, "######0.00") + " + " + string(ld_packsalestax, "######0.00") + " =  " + string(ld_saleprice + ld_packsalestax, "#####0.00")
+	li_itemdiscpercno = this.id_master.getitemnumber(1, "saledisctype")
+	li_itempricetypeno = this.id_master.getitemnumber(1, "salepricetype")
+	choose case li_itemdiscpercno
+	case 1
+		this.id_detail.setitem(al_row, "discperc", ld_discperc)
+	case 2
+		this.id_detail.setitem(al_row, "discperc", ld_discperc2)
+	case 3
+		this.id_detail.setitem(al_row, "discperc", ld_discperc3)
+	case 4
+		this.id_detail.setitem(al_row, "discperc", ld_discperc4)
+	case 5
+		this.id_detail.setitem(al_row, "discperc", ld_discperc5)
+	end choose
+	choose case li_itempricetypeno
+	case 1
+		this.id_detail.setitem(al_row, "saleprice", ld_saleprice)
+	case 2
+		this.id_detail.setitem(al_row, "saleprice", ld_saleprice2)
+	case 3
+		this.id_detail.setitem(al_row, "saleprice", ld_saleprice3)
+	case 7
+		this.id_detail.setitem(al_row, "saleprice", ld_saleprice4)
+	case 8
+		this.id_detail.setitem(al_row, "saleprice", ld_saleprice5)
+	case else
+		this.id_detail.setitem(al_row, "saleprice", ld_saleprice)
+	end choose
+	this.id_detail.setitem(al_row, "itemflatdisc", ld_flatdisc)
+	this.id_detail.setitem(al_row, "retailprice", ld_retailprice)
+	if retflag then
+		this.id_detail.setitem(al_row, this.is_columnitemname, ls_name)
+	else
+		retflag = false
+		as_errortext = "Item can not be sold, its Stock is Zero"
+	end if
+	return retflag
+
+// w_change_item_basicdata_v2.create() returns 0
+	integer icurrent
+	call super::create
+
+// w_change_item_basicdata_v2.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_change_item_basicdata_v2.ue_newitem() returns 0
+	long ll_rowcount
+	long ll_currentrow
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	if f_stringpreferences("itemcode") = "Y" then
+		this.id_detail.setcolumn("fullcode")
+	else
+		this.id_detail.setcolumn("itemname")
+	end if
+	if this.id_detail.rowcount() > 0 and f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	ll_currentrow = this.id_detail.getrow()
+	this.id_detail.setcolumn(3)
+	if ll_currentrow = this.id_detail.rowcount() then
+		this.id_detail.insertrow(0)
+		ll_rowcount = this.id_detail.rowcount()
+		if ll_rowcount > 1 then
+			this.id_detail.scrolltorow(ll_rowcount)
+			this.id_detail.setfocus()
+		end if
+	else
+		this.id_detail.insertrow(ll_currentrow)
+		this.id_detail.scrolltorow(ll_currentrow)
+		this.id_detail.setfocus()
+	end if
+	this.im_menu.m_file.m_save.enabled = true
+	this.ib_validatefullcode = true
+
+// w_change_item_basicdata_v2.ue_postopen() returns 0
+	boolean lb_found
+	integer li_rtncode
+	long ll_counter
+	long ll_found
+	long ll_groupcode
+	datawindowchild ldc_pricetypeno
+	call super::ue_postopen
+	gd_itemsinfo.sharedata(this.id_itemslist)
+	if f_stringpreferences("itemcode") = "N" then
+		this.id_detail.object.fullcode.visible = false
+	end if
+	this.id_itemslist.object.t_stock.visible = true
+	this.id_itemslist.object.stock.visible = true
+	this.id_itemslist.object.t_sstock.visible = false
+	this.id_itemslist.object.sstock.visible = false
+	this.id_itemslist.object.t_pstock.visible = false
+	this.id_itemslist.object.pstock.visible = false
+	this.im_menu.m_file.m_retrieve.enabled = false
+	this.im_menu.m_file.m_retrieve.visible = false
+	if f_stringpreferences("stock") = "N" then
+		this.id_itemslist.object.stock.visible = false
+	end if
+	if f_stringpreferences("manufacturer") = "N" then
+		this.id_itemslist.object.manufacturer.visible = false
+	end if
+	if f_stringpreferences("itemname") = "N" then
+		this.id_itemslist.object.itemname.visible = false
+	end if
+	if f_stringpreferences("packing") = "N" then
+		this.id_itemslist.object.packing.visible = false
+	end if
+	if f_stringpreferences("packunits") = "N" then
+		this.id_itemslist.object.packunits.visible = false
+	end if
+	if f_stringpreferences("saleprice") = "N" then
+		this.id_itemslist.object.saleprice.visible = false
+	end if
+	if f_stringpreferences("ShowTransitStockInItemList") = "N" then
+		this.id_itemslist.object.transitstock.visible = false
+	end if
+	if f_stringpreferences("showitemalertinitemlist") = "N" then
+		this.id_itemslist.object.itemalertcode.visible = false
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 587", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.id_itemslist.object.purprice.visible = true
+	else
+		this.id_itemslist.object.purprice.visible = false
+	end if
+	this.id_master.getchild("salepricetype", ldc_pricetypeno)
+	ldc_pricetypeno.setfilter("pricttypecode not in(4,5,6)")
+	ldc_pricetypeno.filter()
+	this.is_itemlist = this.id_itemslist.dataobject
+	f_setcolumnstyle(this.id_detail, "Qty")
+
+// w_change_item_basicdata_v2.ue_print() returns 0
+	call super::ue_print
+
+// w_change_item_basicdata_v2.ue_list() returns 0
+	call super::ue_list
+	SQL rollback USING this.it_transobject;
+	this.im_menu.m_file.m_print.enabled = false
+	post event ue_enableprint()
+
+// w_change_item_basicdata_v2.ue_save() returns 0
+	long ll_detailrows
+	long ll_counter2
+	long ll_mastercurrrow
+	long ll_footercurrrow
+	long ll_invid
+	long ll_icode
+	long ll_intimationretcode
+	long ll_errrowid
+	long ll_salesmancode
+	long ll_counter
+	long ll_count
+	long ll_null
+	long ll_modifycount
+	long ll_found
+	long ll_serialno
+	boolean lb_commitflag
+	boolean lb_continue
+	integer li_counter
+	integer li_filehandle
+	integer li_maxretcode
+	integer li_itemdiscpercno
+	integer li_itempricetypeno
+	string ls_errtext
+	string ls_holdstring
+	string ls_drawermessage
+	string ls_askuserpwd
+	string ls_batch
+	string ls_query
+	string ls_discperccolname
+	string ls_columnname
+	double ld_price
+	double ld_salediscperc
+	double ld_itemflatdisc
+	double ld_retailprice
+	s_salesman lstr_salesman
+	datetime ldt_expiry
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	string ls_itemname
+	string ls_messagetext
+	if this.tab_retrieve.selectedtab = 2 then
+		return
+	end if
+	if wf_iseditable() = false then
+		return
+	end if
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		this.id_detail.setfocus()
+		return
+	end if
+	wf_deleteemptydetailrow()
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	li_itemdiscpercno = this.id_master.getitemnumber(1, "saledisctype")
+	li_itempricetypeno = this.id_master.getitemnumber(1, "salepricetype")
+	choose case li_itemdiscpercno
+	case 1
+		ls_discperccolname = "SaleDiscPerc"
+	case 2
+		ls_discperccolname = "SaleDiscPerc2"
+	case 3
+		ls_discperccolname = "SaleDiscPerc3"
+	case 4
+		ls_discperccolname = "SaleDiscPerc4"
+	case 5
+		ls_discperccolname = "SaleDiscPerc5"
+	end choose
+	choose case li_itempricetypeno
+	case 1
+		ls_columnname = "SalePrice"
+	case 2
+		ls_columnname = "SalePrice2"
+	case 3
+		ls_columnname = "SalePrice3"
+	case 7
+		ls_columnname = "SalePrice4"
+	case 8
+		ls_columnname = "SalePrice5"
+	case else
+		ls_columnname = "SalePrice"
+	end choose
+	if this.id_detail.rowcount() < 1 then
+		messagebox("Rows Validation", "Please insert a row before proceeding")
+		return
+	end if
+	setpointer(hourglass!)
+	for ll_counter = 1 to this.id_detail.rowcount()
+		ll_icode = this.id_detail.getitemnumber(ll_counter, "icode")
+		ld_price = this.id_detail.getitemnumber(ll_counter, "saleprice")
+		ld_salediscperc = this.id_detail.getitemnumber(ll_counter, "discperc")
+		ld_itemflatdisc = this.id_detail.getitemnumber(ll_counter, "itemflatdisc")
+		ld_retailprice = this.id_detail.getitemnumber(ll_counter, "retailprice")
+		ls_query = ""
+		ls_query = "UPDATE ITEM SET " + ls_columnname + "=" + string(ld_price) + " , " + ls_discperccolname + "=" + string(ld_salediscperc) + " , " + "flatdisc=" + string(ld_itemflatdisc) + " , " + "retailprice=" + string(ld_retailprice) + " WHERE Icode=" + string(ll_icode)
+		SQL EXECUTE IMMEDIATE :ls_query USING this.it_transobject;
+		if this.it_transobject.sqlcode <> 0 then
+			SQL rollback USING this.it_transobject;
+			this.ib_commitok = false
+			exit
+		else
+			this.ib_commitok = true
+		end if
+	next
+	if this.ib_commitok then
+		SQL commit USING this.it_transobject;
+		messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+	else
+		messagebox("Saving Problem", "Changes do not effect in database~r~nReasons are:~r~n" + this.it_transobject.sqlerrtext, stopsign!, ok!, 1)
+	end if
+	setpointer(arrow!)
+
+// w_change_item_basicdata_v2.open() returns long
+	m_entry lm_menu
+	long ll_width
+	long ll_height
+	environment env
+	postevent("ue_postopen")
+	wf_setmenu(this.menuid)
+	lm_menu = this.menuid
+	lm_menu.dynamic mf_initsecurityapp(lm_menu)
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.tab_retrieve.width = ll_width * 0.99
+	this.tab_retrieve.height = ll_height * 0.83
+	this.tab_retrieve.tabpage_detail.dw_detail.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_itemsdetail.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_itemsdetail.height = this.tab_retrieve.height - this.tab_retrieve.tabpage_detail.dw_detail.height - this.tab_retrieve.tabpage_detail.dw_footer.height - 100
+	this.tab_retrieve.tabpage_detail.dw_detail.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width
+	this.tab_retrieve.tabpage_detail.dw_footer.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width
+	this.tab_retrieve.tabpage_list.gb_fliter.width = ll_width * 0.97 - this.tab_retrieve.tabpage_list.gb_sort.width
+	this.tab_retrieve.tabpage_list.r_1.width = ll_width * 0.99
+	this.tab_retrieve.tabpage_list.r_1.height = ll_height * 0.765 - this.tab_retrieve.tabpage_list.gb_sort.height
+	this.tab_retrieve.tabpage_list.dw_list.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_list.dw_list.height = ll_height * 0.75 - this.tab_retrieve.tabpage_list.dw_list.y
+	this.tab_retrieve.tabpage_detail.dw_itemslist.height = ll_height * 0.75
+	this.tab_retrieve.tabpage_detail.dw_itemslist.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width * 0.73
+	this.tab_retrieve.tabpage_list.enabled = false
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_change_item_basicdata_v2.ue_newform() returns 0
+	setredraw(false)
+	this.i_editmode = 1
+	this.i_retrievemode = 2
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_new.enabled = false
+	this.im_menu.m_file.m_delete.enabled = false
+	this.im_menu.m_item.m_newitem.enabled = true
+	this.im_menu.m_item.m_deleteitem.enabled = true
+	this.im_menu.m_item.m_insertnewitem.enabled = true
+	this.im_menu.m_item.m_deletecurrentitem.enabled = true
+	this.im_menu.m_file.m_first.enabled = false
+	this.im_menu.m_file.m_next.enabled = false
+	this.im_menu.m_file.m_previous.enabled = false
+	this.im_menu.m_file.m_last.enabled = false
+	this.im_menu.m_file.m_print.enabled = false
+	this.im_menu.m_file.m_retrieve.enabled = true
+	this.im_menu.m_file.m_retrieve.text = "Lis&t"
+	this.tab_retrieve.tabpage_detail.enabled = true
+	if this.id_master.rowcount() > 0 then
+		this.id_master.reset()
+	end if
+	this.ib_focusdetail = false
+	this.id_master.settransobject(this.it_transobject)
+	this.id_master.insertrow(0)
+	this.id_detail.settransobject(this.it_transobject)
+	this.id_detail.reset()
+	this.id_detail.insertrow(0)
+	this.id_footer.settransobject(this.it_transobject)
+	this.id_footer.reset()
+	this.id_footer.insertrow(0)
+	this.id_master.setfocus()
+	setredraw(true)
+
+// w_change_item_basicdata_v2.ue_detail() returns 0
+	long ll_code
+	long ll_rowcount
+	this.im_menu.m_file.m_retrieve.text = "Lis&t"
+	this.im_menu.m_file.m_print.enabled = true
+	this.i_editmode = 2
+	this.i_retrievemode = 2
+	if this.id_list.rowcount() > 0 then
+		ll_code = this.id_dwcontrol.borderstyle.code[this.il_selectedrow]
+	else
+		ll_code = 0
+	end if
+	this.id_dwcontrol = this.id_master
+	ll_rowcount = wf_retrieve(ll_code)
+	this.id_master.setrow(1)
+	this.id_master.scrolltorow(1)
+	this.id_dwcontrol = this.id_footer
+	wf_retrieve(ll_code)
+	this.id_footer.setrow(1)
+	this.id_footer.scrolltorow(1)
+	this.id_dwcontrol = this.id_detail
+	wf_retrieve(ll_code)
+	this.id_master.setcolumn(1)
+	this.id_master.setfocus()
+	this.id_dwcontrol = this.id_list
+	this.im_menu.m_item.m_newitem.enabled = true
+	this.im_menu.m_item.m_deleteitem.enabled = true
+	this.im_menu.m_item.m_insertnewitem.enabled = true
+	this.im_menu.m_item.m_deletecurrentitem.enabled = true

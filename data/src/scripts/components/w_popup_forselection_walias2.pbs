@@ -1,0 +1,102 @@
+// window w_popup_forselection_walias2 (components)  ancestor: w_popup_forselection2
+
+// w_popup_forselection_walias2.wf_inititem(string as_aliasname) returns boolean
+	long ll_counter
+	long ll_detailrows
+	long ll_found
+	long ll_retflag
+	long ll_icode
+	long ll_itemcodetype
+	double ld_qty
+	double ld_purprice
+	double ld_saleprice
+	string ls_itemname
+	ll_detailrows = this.id_selectionlist.rowcount()
+	setnull(ll_icode)
+	ls_itemname = "                                                            "
+	if this.ib_itemsearch then
+		sqlca.getaliasname_fromallitems(gl_usercode, as_aliasname, ll_icode, ls_itemname, ll_itemcodetype)
+		if sqlca.sqlcode = 0 then
+			if isnull(ll_icode) then
+				ll_retflag = 0
+			else
+				ll_retflag = 1
+			end if
+		else
+			ll_retflag = -1
+		end if
+	else
+		ll_retflag = 1
+	end if
+	if ll_retflag = 1 then
+		if this.ib_itemsearch then
+			ll_found = this.id_selectionlist.find("code=" + trim(string(ll_icode)), 1, ll_detailrows)
+		else
+			ll_found = this.id_selectionlist.find("lower(aliasname)='" + lower(as_aliasname) + "'", 1, ll_detailrows)
+		end if
+		if ll_found > 0 then
+			this.id_selected.setitem(this.id_selected.getrow(), "code", this.id_selectionlist.getitemnumber(ll_found, "code"))
+			this.id_selected.setitem(this.id_selected.getrow(), "aliasname", this.id_selectionlist.getitemstring(ll_found, "aliasname"))
+			this.id_selected.setitem(this.id_selected.getrow(), "name", this.id_selectionlist.getitemstring(ll_found, "name"))
+			return true
+		end if
+		return
+	end if
+	return false
+
+// w_popup_forselection_walias2.wf_inititem2(string as_aliasname) returns boolean
+	long ll_counter
+	long ll_detailrows
+	long ll_found
+	long ll_retflag
+	long ll_icode
+	long ll_itemcodetype
+	double ld_qty
+	double ld_purprice
+	double ld_saleprice
+	string ls_itemname
+	ll_detailrows = this.id_selectionlist2.rowcount()
+	setnull(ll_icode)
+	ls_itemname = "                                                            "
+	if this.ib_itemsearch2 then
+		sqlca.getaliasname_fromallitems(gl_usercode, as_aliasname, ll_icode, ls_itemname, ll_itemcodetype)
+		if sqlca.sqlcode = 0 then
+			if isnull(ll_icode) then
+				ll_retflag = 0
+			else
+				ll_retflag = 1
+			end if
+		else
+			ll_retflag = -1
+		end if
+	else
+		ll_retflag = 1
+	end if
+	if ll_retflag = 1 then
+		if this.ib_itemsearch2 then
+			ll_found = this.id_selectionlist2.find("code=" + trim(string(ll_icode)), 1, ll_detailrows)
+		else
+			ll_found = this.id_selectionlist2.find("lower(aliasname)='" + lower(as_aliasname) + "'", 1, ll_detailrows)
+		end if
+		if ll_found > 0 then
+			this.id_selected2.setitem(this.id_selected2.getrow(), "code", this.id_selectionlist2.getitemnumber(ll_found, "code"))
+			this.id_selected2.setitem(this.id_selected2.getrow(), "aliasname", this.id_selectionlist2.getitemstring(ll_found, "aliasname"))
+			this.id_selected2.setitem(this.id_selected2.getrow(), "name", this.id_selectionlist2.getitemstring(ll_found, "name"))
+			return true
+		end if
+		return
+	end if
+	return false
+
+// w_popup_forselection_walias2.create() returns 0
+	call super::create
+
+// w_popup_forselection_walias2.destroy() returns 0
+	call super::destroy
+
+// w_popup_forselection_walias2.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.id_selectionlist.retrieve()
+	this.id_selectionlist2.retrieve()
+	return ::message.returnvalue

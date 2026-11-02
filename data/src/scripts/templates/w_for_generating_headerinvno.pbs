@@ -1,0 +1,57 @@
+// window w_for_generating_headerinvno (templates)  ancestor: window
+
+// w_for_generating_headerinvno.create() returns 0
+	if this.menuname = "m_reviewreport" then
+		this.menuid = create m_reviewreport
+	end if
+	this.cb_retrieve = create cb_retrieve
+	this.cb_ok = create cb_ok
+	this.dw_invlist = create dw_invlist
+	this.control = {this.cb_retrieve, this.cb_ok, this.dw_invlist}
+
+// w_for_generating_headerinvno.destroy() returns 0
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.cb_retrieve
+	destroy this.cb_ok
+	destroy this.dw_invlist
+
+// w_for_generating_headerinvno.open() returns long
+	this.dw_invlist.settransobject(sqlca)
+	this.dw_invlist.retrieve()
+	messagebox("", string(this.dw_invlist.rowcount()))
+	return ::message.returnvalue
+
+// w_for_generating_headerinvno.activate() returns long
+	return ::message.returnvalue
+
+// cb_retrieve.clicked() returns long
+	parent.dw_invlist.retrieve()
+	messagebox("", string(parent.dw_invlist.rowcount()))
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	integer li_counter
+	integer li_findheaderno
+	integer li_maxheaderinvno
+	integer li_headerno
+	string ls_name
+	string ls_newname
+	li_findheaderno = 5
+	li_maxheaderinvno = 1
+	for li_counter = 1 to li_counter
+		li_headerno = parent.dw_invlist.getitemnumber(li_counter, "headerno")
+		if li_headerno = li_findheaderno then
+			parent.dw_invlist.setitem(li_counter, "headerinvno", li_maxheaderinvno)
+			li_maxheaderinvno = li_maxheaderinvno + 1
+		end if
+	next
+	parent.dw_invlist.accepttext()
+	if parent.dw_invlist.update() > 0 then
+		SQL commit USING sqlca;
+	else
+		messagebox("", "transaction is rolled back")
+		SQL rollback USING sqlca;
+	end if
+	return ::message.returnvalue

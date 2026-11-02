@@ -1,0 +1,173 @@
+// window w_cashiertemplate_form (multientry)  ancestor: w_multi_entry
+
+// w_cashiertemplate_form.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	return b_flag
+
+// w_cashiertemplate_form.wf_validateitem() returns integer
+	long ll_found
+	long ll_acccode
+	integer li_errcode
+	ll_acccode = this.id_detail.object.acccode[this.il_currrow]
+	if ll_acccode > 0 then
+		this.ib_itemvalidated = true
+	else
+		this.ib_itemvalidated = false
+		return -1
+	end if
+	return 0
+
+// w_cashiertemplate_form.wf_first() returns long
+	long ret_val
+	if this.id_dwcontrol.rowcount() > 0 then
+		this.id_dwcontrol.scrolltorow(0)
+		ret_val = this.id_dwcontrol.getrow()
+	end if
+	return ret_val
+
+// w_cashiertemplate_form.wf_retrieve_itemlist() returns long
+	if this.id_master.rowcount() > 0 then
+		this.idc_child.settransobject(this.it_transobject)
+		this.idc_child.retrieve(this.id_master.object.code[this.id_master.rowcount()])
+	else
+		this.idc_child.insertrow(0)
+		this.idc_child.scrolltorow(0)
+	end if
+	return 0
+
+// w_cashiertemplate_form.wf_populate_ddlb(datawindow dwcontrol) returns 0
+	integer li_column_count
+	integer li_counter
+	string ls_column_name
+	string ls_columntype
+	this.tab_retrieve.tabpage_list.ddlb_filter_column.reset()
+	this.tab_retrieve.tabpage_list.ddlb_sort.reset()
+	li_column_count = integer(dwcontrol.object.datawindow.column.count)
+	for li_counter = li_column_count to li_counter step -1
+		ls_column_name = dwcontrol.describe("#" + string(li_counter) + ".Name")
+		this.tab_retrieve.tabpage_list.ddlb_sort.additem(ls_column_name)
+		this.tab_retrieve.tabpage_list.ddlb_filter_column.additem(ls_column_name)
+	next
+	this.tab_retrieve.tabpage_list.ddlb_sort.text = "name"
+	ls_columntype = this.id_dwcontrol.describe("#1.ColType")
+	if left(ls_columntype, 4) = "char" then
+		this.ii_type = 1
+	elseif left(ls_columntype, 4) = "date" then
+		this.ii_type = 3
+	else
+		this.ii_type = 2
+	end if
+	this.ii_colindex = 1
+	this.tab_retrieve.tabpage_list.rb_ascending.checked = true
+	this.is_sortsequence = "A"
+	wf_sortdw(this.tab_retrieve.tabpage_list.ddlb_sort.text, this.is_sortsequence)
+	this.id_master.setfocus()
+
+// w_cashiertemplate_form.create() returns 0
+	call super::create
+
+// w_cashiertemplate_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_cashiertemplate_form.ue_save() returns 0
+	long ll_mastercurrrow
+	long ll_invid
+	long ll_detailrows
+	integer li_counter
+	integer ll_salesmancode
+	boolean lb_commitflag
+	dwitemstatus lds_rowstatus
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	setpointer(hourglass!)
+	ll_mastercurrrow = this.id_master.getrow()
+	ll_invid = this.id_master.object.code[ll_mastercurrrow]
+	if isnull(ll_invid) then
+		messagebox("Sales Interface Name Validation", "Select Valid Sales Interface")
+		return
+	end if
+	ll_detailrows = this.id_detail.rowcount()
+	li_counter = 1
+	do while li_counter <= ll_detailrows and lb_commitflag = true
+		lds_rowstatus = this.id_detail.getitemstatus(li_counter, 0, primary!)
+		if lds_rowstatus = newmodified! then
+			this.id_detail.setitem(li_counter, "code", ll_invid)
+			this.id_detail.setitem(li_counter, "rowid", this.id_detail.getitemnumber(li_counter, "c_rowid"))
+		end if
+		li_counter = li_counter + 1
+	loop
+	call super::ue_save
+	setpointer(arrow!)
+
+// w_cashiertemplate_form.ue_newform() returns 0
+	call super::ue_newform
+	this.id_master.setfocus()
+	wf_retrieve_itemlist()
+	this.id_detail.setfocus()
+	this.id_detail.setcolumn(1)
+	if this.id_detail.rowcount() > 0 then
+		this.id_detail.setrow(1)
+		this.id_detail.setcolumn("acccode")
+	end if
+
+// w_cashiertemplate_form.ue_newitem() returns 0
+	if this.id_detail.rowcount() > 0 and (isnull(this.id_detail.object.acccode[this.id_detail.rowcount()]) or isnull(this.id_detail.object.acccode[this.id_detail.rowcount()])) then
+		this.id_detail.setrow(this.id_detail.rowcount())
+		this.id_detail.setcolumn("acccode")
+		return
+	end if
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	call super::ue_newitem
+	this.id_detail.setcolumn("acccode")
+
+// w_cashiertemplate_form.ue_detail() returns 0
+	long ll_rowcount
+	long ll_code
+	this.im_menu.m_file.m_retrieve.text = "Lis&t"
+	this.im_menu.m_file.m_print.enabled = true
+	this.i_editmode = 2
+	this.i_retrievemode = 2
+	ll_code = this.id_dwcontrol.borderstyle.code[this.il_selectedrow]
+	this.id_dwcontrol = this.id_master
+	this.id_dwcontrol.retrieve(ll_code)
+	this.id_master.setrow(1)
+	this.id_master.scrolltorow(1)
+	wf_retrieve_itemlist()
+	this.id_dwcontrol = this.id_detail
+	this.id_dwcontrol.retrieve(ll_code)
+	this.id_master.setcolumn(1)
+	this.id_master.setfocus()
+	this.id_dwcontrol = this.id_list
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_delete.enabled = true
+	this.im_menu.m_file.m_first.enabled = true
+	this.im_menu.m_file.m_next.enabled = true
+	this.im_menu.m_file.m_last.enabled = true
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_menu.m_file.m_previous.enabled = true
+	this.im_menu.m_item.m_newitem.enabled = true
+	this.im_menu.m_item.m_deleteitem.enabled = true
+
+// w_cashiertemplate_form.ue_postopen() returns 0
+	call super::ue_postopen
+	this.id_detail.getchild("acccode", this.idc_child)
+	wf_retrieve_itemlist()
+
+// w_cashiertemplate_form.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.title = "Cashier Window Template"
+	return ::message.returnvalue

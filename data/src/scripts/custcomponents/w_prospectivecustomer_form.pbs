@@ -1,0 +1,61 @@
+// window w_prospectivecustomer_form (custcomponents)  ancestor: w_single_entry
+
+// w_prospectivecustomer_form.wf_duplicatealiasname(string as_aliasname) returns boolean
+	long ll_count
+	boolean b_flag
+	as_aliasname = trim(as_aliasname)
+	SQL SELECT count ( *) INTO :ll_count FROM ProspectiveCustomer WHERE ProspectiveCustomer.aliasname =:as_aliasname USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_prospectivecustomer_form.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM ProspectiveCustomer WHERE ProspectiveCustomer.name =:as_name USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_prospectivecustomer_form.wf_retrieve() returns long
+	long rtcode
+	rtcode = this.id_dwcontrol.retrieve(f_getgroupcode(gl_usercode))
+	return rtcode
+
+// w_prospectivecustomer_form.create() returns 0
+	call super::create
+
+// w_prospectivecustomer_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_prospectivecustomer_form.ue_newform() returns 0
+	long ll_rtncode
+	call super::ue_newform
+	ll_rtncode = this.id_detail.getchild("subareacode", this.idc_subarea)
+	if ll_rtncode = -1 then
+		messagebox("Error", "Can not get a DataWindowChild for Sub Area.")
+		close(this)
+	end if
+	this.idc_subarea.settransobject(this.it_transobject)
+	this.idc_subarea.retrieve()
+	this.idc_subarea.setfilter("areacode=1")
+	this.idc_subarea.filter()
+
+// w_prospectivecustomer_form.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.is_tablename = "ProspectiveCustomer"
+	return ::message.returnvalue
+
+// w_prospectivecustomer_form.ue_detail() returns 0
+	call super::ue_detail
+	this.idc_subarea.setredraw(false)
+	this.idc_subarea.setfilter("areacode=" + string(this.id_detail.getitemnumber(1, "areacode")))
+	this.idc_subarea.filter()
+	this.idc_subarea.setredraw(true)

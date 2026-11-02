@@ -1,0 +1,423 @@
+// window w_studentregisteration (studentcomponents)  ancestor: window
+
+// w_studentregisteration.ue_close(integer ai_status) returns 0
+	if ai_status = -1 then
+		setnull(this.is_regno)
+	end if
+	closewithreturn(this, this.is_regno)
+
+// w_studentregisteration.ue_postopen() returns 0
+	long ll_code
+	boolean lb_wardcode_enabled
+	this.il_groupcode = f_getgroupcode(gl_usercode)
+	this.dw_detail.settransobject(this.it_transobject)
+	ll_code = message.doubleparm
+	if ll_code <= 0 or isnull(ll_code) then
+		this.dw_detail.insertrow(0)
+	else
+		this.dw_detail.retrieve(ll_code)
+		this.dw_detail.setcolumn("feepaiduptill")
+		this.dw_detail.scrolltorow(1)
+		this.dw_detail.setfocus()
+	end if
+	wf_assign_master_cash_win_object()
+
+// w_studentregisteration.wf_validateserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+	datetime ldt_last_transdate
+	datetime ldt_current_serverdate
+	long li_max_allow_days
+	ar_errtext = "Invoice Date  Check violates"
+	li_max_allow_days = f_numberpreferences("MaxAllowDate")
+	if isnull(li_max_allow_days) then
+		li_max_allow_days = 4
+	end if
+	SQL SELECT LastTransDate INTO :ldt_last_transdate FROM ServerDate USING sqlca;
+	if sqlca.sqlcode = 0 then
+		sqlca.getdatetime(ldt_current_serverdate)
+		if sqlca.sqlcode = 0 then
+			if ldt_current_serverdate >= ldt_last_transdate and daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) <= li_max_allow_days then
+				ar_server_datetime = ldt_current_serverdate
+				return true
+			elseif ldt_current_serverdate < ldt_last_transdate then
+				ar_errtext = "Back Date Invoice Check violates"
+				return false
+			elseif daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) > li_max_allow_days then
+				ar_errtext = "Forward Date Invoice Check violates"
+				return false
+			end if
+		else
+			return false
+		end if
+		return
+	end if
+	return false
+
+// w_studentregisteration.wf_duplicateregno(string as_name) returns boolean
+	long ll_count
+	long ll_code
+	boolean b_flag
+	as_name = trim(as_name)
+	ll_code = this.dw_detail.object.code[this.dw_detail.rowcount()]
+	if isnull(ll_code) then
+		SQL SELECT count ( *) INTO :ll_count FROM Student WHERE Student.regno =:as_name USING sqlca;
+	else
+		SQL SELECT count ( *) INTO :ll_count FROM Student WHERE Student.regno =:as_name AND Student.StudentCode <> :ll_code USING sqlca;
+	end if
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_studentregisteration.wf_getserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+	datetime ldt_last_transdate
+	datetime ldt_current_serverdate
+	integer li_max_allow_days
+	string ls_hold_serverdate
+	date ld_datepart
+	time lt_timepart
+	ar_errtext = "Please verify Server DateTime"
+	li_max_allow_days = f_numberpreferences("MaxAllowDate")
+	if isnull(li_max_allow_days) then
+		li_max_allow_days = 4
+	end if
+	SQL rollback USING sqlca;
+	SQL SELECT LastTransDate INTO :ldt_last_transdate FROM ServerDate USING sqlca;
+	if sqlca.sqlcode = 0 then
+		sqlca.getdatetime(ldt_current_serverdate)
+		if sqlca.sqlcode = 0 then
+			if ldt_current_serverdate >= ldt_last_transdate and daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) <= li_max_allow_days then
+				ld_datepart = date(string(ldt_current_serverdate, "yyyy-mm-dd"))
+				lt_timepart = time(string(ldt_current_serverdate, "hh:mm:ss"))
+				ldt_current_serverdate = datetime(ld_datepart, lt_timepart)
+				SQL update ServerDate SET LastTransDate =:ldt_current_serverdate USING sqlca;
+				if sqlca.sqlcode = 0 then
+					SQL commit USING sqlca;
+					ar_server_datetime = ldt_current_serverdate
+					return true
+				else
+					SQL rollback USING sqlca;
+					return false
+				end if
+			elseif ldt_current_serverdate < ldt_last_transdate then
+				ar_errtext = "Back Date Invoice Check violates"
+				return false
+			elseif daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) > li_max_allow_days then
+				ar_errtext = "Forward Date Invoice Check violates"
+				return false
+			end if
+		else
+			SQL rollback USING sqlca;
+			return false
+		end if
+		return
+	end if
+	SQL rollback USING sqlca;
+	return false
+
+// w_studentregisteration.wf_assign_master_cash_win_object() returns 0
+
+// w_studentregisteration.wf_set_cashaccount() returns long
+	long ll_cashacccode
+	long ll_module
+	long ll_code
+	ll_module = 14
+	ll_code = this.dw_detail.object.code[this.dw_detail.rowcount()]
+	ll_cashacccode = f_is_group_module_cashaccount_allowed(this.il_groupcode, ll_module)
+	if ll_cashacccode <= 0 or isnull(ll_cashacccode) then
+		ll_cashacccode = 0
+		messagebox("Group Cash Account Problem", "No Cash Account Attached to the group of the user logged on~r~nKindly contact system administrator to do the needfull.", stopsign!, ok!)
+	elseif isnull(ll_code) or this.dw_detail.object.code[1] <= 0 then
+		this.dw_detail.object.cashacccode[this.dw_detail.rowcount()] = ll_cashacccode
+	else
+		ll_cashacccode = this.dw_detail.object.cashacccode[this.dw_detail.rowcount()]
+	end if
+	return ll_cashacccode
+
+// w_studentregisteration.wf_show_mastercashierwindow() returns integer
+	return 0
+
+// w_studentregisteration.wf_connect() returns long
+	this.it_transobject = create u_transaction
+	SQL start USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		return 0
+	end if
+	messagebox("Connection Problem", "Problem Connecting Database ... ~r~n" + this.it_transobject.sqlerrtext)
+	return -1
+
+// w_studentregisteration.wf_update_mastercashierwindow(long al_code, string as_type, long al_new_pat_reg) returns long
+	return 0
+
+// w_studentregisteration.create() returns 0
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.dw_detail = create dw_detail
+	this.control = {this.cb_cancel, this.cb_ok, this.dw_detail}
+
+// w_studentregisteration.destroy() returns 0
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.dw_detail
+
+// w_studentregisteration.open() returns long
+	long ll_row
+	long ll_width
+	long ll_height
+	environment env
+	if wf_connect() <> 0 then
+		close(this)
+		return ::message.returnvalue
+	end if
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.x = int((ll_width - this.width) / 2.0)
+	this.y = int((ll_height - this.height) / 2.0)
+	post event ue_postopen()
+	return ::message.returnvalue
+
+// cb_cancel.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	long ll_primarykey
+	long ll_row
+	long ll_usercode
+	long ll_found
+	long ll_null
+	long ll_primarycode_old
+	long ll_new_pat_reg
+	long ll_counter
+	long ll_classcode
+	integer li_patientcatcode
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	string ls_regno
+	string ls_rollno
+	boolean lb_commit
+	dwitemstatus ldw_admittedto
+	setnull(ll_null)
+	setpointer(hourglass!)
+	if f_validatedw(parent.dw_detail) < 0 then
+		return ::message.returnvalue
+	end if
+	parent.dw_detail.accepttext()
+	ll_row = parent.dw_detail.getrow()
+	ll_primarykey = parent.dw_detail.object.code[parent.dw_detail.getrow()]
+	ll_primarycode_old = ll_primarykey
+	if not parent.wf_validateserverdatetime(ldt_server_datetime, ls_date_errtext) then
+		messagebox("Date Violation", ls_date_errtext, stopsign!)
+		return ::message.returnvalue
+	end if
+	if gl_usercode > 0 then
+		ldw_admittedto = parent.dw_detail.getitemstatus(ll_row, "admittedto", primary!)
+		if parent.dw_detail.object.admittedto[ll_row] > 0 and (ldw_admittedto = datamodified! or ldw_admittedto = newmodified!) then
+			ll_classcode = parent.dw_detail.object.admittedto[ll_row]
+		end if
+		if ll_primarykey <= 0 then
+			parent.dw_detail.object.registeredby[ll_row] = gl_usercode
+		end if
+		parent.dw_detail.object.lastupdate[ll_row] = ldt_server_datetime
+		parent.dw_detail.object.lastupdateby[ll_row] = gl_usercode
+		if parent.dw_detail.object.admittedto[ll_row] > 0 then
+			parent.dw_detail.object.admittedby[ll_row] = gl_usercode
+		end if
+		if isnull(ll_primarykey) then
+			ll_new_pat_reg = 1
+			SQL rollback USING parent.it_transobject;
+			parent.it_transobject.gettabmaxkey("Student", ll_primarykey)
+			if parent.it_transobject.sqlcode = 0 then
+				parent.dw_detail.setitem(1, "code", ll_primarykey)
+			else
+				messagebox("Student Registration Problem", "Problem in Generation of Student Code~r~n Possibe Reason: " + sqlca.sqlerrtext)
+				return ::message.returnvalue
+			end if
+			return
+		end if
+		if lb_commit then
+			if parent.dw_detail.update() > 0 then
+				if ll_classcode > 0 then
+					parent.it_transobject.admit_student(ll_classcode, ll_primarykey, ls_rollno)
+					if parent.it_transobject.sqlcode = 0 then
+						SQL commit USING parent.it_transobject;
+						messagebox("Save Changes", "Changes take effect in database.~r~nStudent Admitted successfully.~r~n~r~nAllocated Roll No = " + ls_rollno, exclamation!, ok!, 1)
+						lb_commit = true
+					else
+						SQL rollback USING parent.it_transobject;
+						setpointer(arrow!)
+						messagebox("Save Changes", "Changes Rollback in database, ~n~rSome database problem occurs", exclamation!, ok!, 1)
+						lb_commit = false
+					end if
+				else
+					SQL commit USING parent.it_transobject;
+					messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+					lb_commit = true
+				end if
+			else
+				SQL rollback USING parent.it_transobject;
+				setpointer(arrow!)
+				messagebox("Save Changes", "Changes Rollback in database, ~n~rSome database problem occurs", exclamation!, ok!, 1)
+			end if
+			if lb_commit then
+				parent.is_regno = parent.dw_detail.object.regno[ll_row]
+				parent.post event ue_close(1)
+			end if
+		end if
+	end if
+	if isnull(ll_primarycode_old) then
+		parent.dw_detail.setitem(ll_row, "code", ll_null)
+	end if
+	setpointer(arrow!)
+	return ::message.returnvalue
+
+// dw_detail.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long
+	integer li_null
+	long ll_totdays
+	long ll_years
+	long ll_months
+	long ll_days
+	datetime ldt_date_null
+	setnull(ldt_date_null)
+	setnull(li_null)
+	choose case dwo.name
+	case "regno"
+		if parent.wf_duplicateregno(data) then
+			return 1
+		end if
+	case "dob"
+		if isdate(string(date(left(data, 10)))) then
+			ll_totdays = daysafter(date(string(date(left(data, 10)))), today())
+			ll_years = ll_totdays / 365.0
+			ll_months = ll_totdays mod 365 / 30.0
+			ll_days = ll_totdays mod 365 mod 30
+			setitem(row, "ageyears", ll_years)
+			setitem(row, "agemonths", ll_months)
+			setitem(row, "agedays", ll_days)
+		else
+			return 1
+		end if
+	case "ageyears"
+		ll_years = long(data)
+		if isnull(ll_years) then
+			ll_years = 0
+		end if
+		ll_months = this.object.agemonths[row]
+		if isnull(ll_months) then
+			ll_months = 0
+		end if
+		ll_days = this.object.agedays[row]
+		if isnull(ll_days) then
+			ll_days = 0
+		end if
+		ll_totdays = ll_years * 365 + ll_months * 30 + ll_days
+		if ll_totdays >= 0 then
+			setitem(row, "dob", relativedate(today(), -ll_totdays))
+		else
+			return 1
+		end if
+	case "agemonths"
+		ll_years = this.object.ageyears[row]
+		if isnull(ll_years) then
+			ll_years = 0
+		end if
+		ll_months = long(data)
+		if isnull(ll_months) then
+			ll_months = 0
+		end if
+		ll_days = this.object.agedays[row]
+		if isnull(ll_days) then
+			ll_days = 0
+		end if
+		ll_totdays = ll_years * 365 + ll_months * 30 + ll_days
+		if ll_totdays >= 0 then
+			setitem(row, "dob", relativedate(today(), -ll_totdays))
+		else
+			return 1
+		end if
+	case "agedays"
+		ll_years = this.object.ageyears[row]
+		if isnull(ll_years) then
+			ll_years = 0
+		end if
+		ll_months = this.object.agemonths[row]
+		if isnull(ll_months) then
+			ll_months = 0
+		end if
+		ll_days = long(data)
+		if isnull(ll_days) then
+			ll_days = 0
+		end if
+		ll_totdays = ll_years * 365 + ll_months * 30 + ll_days
+		if ll_totdays >= 0 then
+			setitem(row, "dob", relativedate(today(), -ll_totdays))
+		else
+			return 1
+		end if
+	case "recurringperiod"
+		if long(data) < 0 then
+			return 1
+		end if
+	case "admit"
+		if long(data) = 1 then
+			this.object.admissioncode_t.visible = true
+			this.object.admissioncode.visible = true
+			this.object.locationcode_t.visible = true
+			this.object.locationcode.visible = true
+			this.object.doctorcode_t.visible = true
+			this.object.doctorcode.visible = true
+			this.object.diseasecode_t.visible = true
+			this.object.diseasecode.visible = true
+			this.object.diagnosis_t.visible = true
+			this.object.diagnosis.visible = true
+		else
+			this.object.admissioncode_t.visible = false
+			this.object.admissioncode.visible = false
+			this.object.locationcode_t.visible = false
+			this.object.locationcode.visible = false
+			this.object.doctorcode_t.visible = false
+			this.object.doctorcode.visible = false
+			this.object.diseasecode_t.visible = false
+			this.object.diseasecode.visible = false
+			this.object.diagnosis_t.visible = false
+			this.object.diagnosis.visible = false
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "regno"
+		messagebox("ItemNo Validation", "Item Duplication Error~r~nPlease enter some other Reg No")
+	case "dob"
+		messagebox("Birth Date Validation", "Please enter some valid date")
+	case "age"
+		messagebox("Age Validation", "Please enter some valid age in years")
+	end choose
+	return 1
+
+// dw_detail.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	return ::message.returnvalue
+
+// dw_detail.getfocus() returns long
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue

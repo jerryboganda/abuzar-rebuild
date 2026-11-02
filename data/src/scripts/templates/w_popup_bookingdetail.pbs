@@ -1,0 +1,87 @@
+// window w_popup_bookingdetail (templates)  ancestor: window
+
+// w_popup_bookingdetail.ue_postopen() returns 0
+	datetime ldt_startdate
+	datetime ldt_enddate
+	long ll_servicecode
+	s_serviceorder ls_serviceorder
+	ls_serviceorder = message.powerobjectparm
+	ldt_startdate = ls_serviceorder.ldt_startdate
+	ldt_enddate = ls_serviceorder.ldt_enddate
+	ll_servicecode = ls_serviceorder.ll_code
+	if ll_servicecode > 0 then
+		this.dw_detail.settransobject(sqlca)
+		this.dw_detail.reset()
+		this.dw_detail.retrieve(ldt_startdate, ldt_enddate, ll_servicecode)
+		return
+	end if
+	this.dw_detail.dataobject = "d_booking_detail_allservices"
+	this.dw_detail.settransobject(sqlca)
+	this.dw_detail.reset()
+	this.dw_detail.retrieve(ldt_startdate, ldt_enddate)
+
+// w_popup_bookingdetail.wf_duplicateaccname(string as_accname) returns boolean
+	long ll_count
+	boolean b_flag
+	as_accname = trim(as_accname)
+	SQL SELECT count ( *) INTO :ll_count FROM Accounts WHERE Accounts.name =:as_accname USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_popup_bookingdetail.wf_duplicatealiasname(string as_aliasname) returns boolean
+	long ll_count
+	boolean b_flag
+	as_aliasname = trim(as_aliasname)
+	SQL SELECT count ( *) INTO :ll_count FROM Accounts WHERE Accounts.aliasname =:as_aliasname USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_popup_bookingdetail.create() returns 0
+	this.dw_detail = create dw_detail
+	this.gb_2 = create gb_2
+	this.control = {this.dw_detail, this.gb_2}
+
+// w_popup_bookingdetail.destroy() returns 0
+	destroy this.dw_detail
+	destroy this.gb_2
+
+// w_popup_bookingdetail.open() returns long
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	post event ue_postopen()
+	return ::message.returnvalue
+
+// w_popup_bookingdetail.close() returns long
+	closewithreturn(this, this.istr_template)
+	return ::message.returnvalue
+
+// w_popup_bookingdetail.key(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		post event Close()
+	end if
+	return ::message.returnvalue
+
+// dw_detail.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// gb_2.ue_getfocus() returns long
+	parent.dw_detail.setfocus()
+	return ::message.returnvalue

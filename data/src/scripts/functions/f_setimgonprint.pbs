@@ -1,0 +1,23 @@
+// function f_setimgonprint (functions)  ancestor: function_object
+
+// f_setimgonprint.f_setimgonprint(integer ai_writeorclear, datawindow adw_print) returns integer
+	integer li_retcode
+	blob lblob_sigonsaleinv
+	if f_stringpreferences("sigonsaleinv") = "Y" then
+		if ai_writeorclear = 1 then
+			SQL rollback USING sqlca;
+			SQL SelectBlob PrefImage INTO :lblob_sigonsaleinv From SoftwarePreferences Where lower ( name ) ='sigonsaleinvimg' USING sqlca;
+			if sqlca.sqlcode = 0 then
+				li_retcode = 1
+			else
+				li_retcode = -1
+			end if
+			SQL rollback USING sqlca;
+			f_writeimgtofile("c:\winim.jpg", lblob_sigonsaleinv)
+			adw_print.modify("p_sig.FileName='c:\winim.jpg'")
+		elseif ai_writeorclear = 0 then
+			lblob_sigonsaleinv = blob("0xoeqpxakvabl")
+			f_writeimgtofile("c:\winim.jpg", lblob_sigonsaleinv)
+		end if
+	end if
+	return li_retcode

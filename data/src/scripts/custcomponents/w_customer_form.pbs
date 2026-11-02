@@ -1,0 +1,600 @@
+// window w_customer_form (custcomponents)  ancestor: w_single_entry
+
+// w_customer_form.wf_duplicatealiasname(string as_aliasname) returns boolean
+	long ll_count
+	boolean b_flag
+	as_aliasname = trim(as_aliasname)
+	SQL SELECT count ( *) INTO :ll_count FROM Accounts WHERE Accounts.aliasname =:as_aliasname USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_customer_form.wf_duplicateaccname(string as_accname) returns boolean
+	long ll_count
+	boolean b_flag
+	as_accname = trim(as_accname)
+	SQL SELECT count ( *) INTO :ll_count FROM Accounts WHERE Accounts.name =:as_accname USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_customer_form.wf_set_itemcat_association() returns 0
+	s_dw_header lstr_header
+	lstr_header.dw_header = this.id_cust_itemcat_association
+	openwithparm(w_custitemcatassociation_form, lstr_header)
+
+// w_customer_form.wf_populateexistingcust() returns integer
+	long ll_custcode
+	long ll_null
+	long ll_retcode
+	string ls_null
+	s_arguements lstr_arg
+	datastore lds_customer
+	lds_customer = create datastore
+	lds_customer.dataobject = "d_customer_detail"
+	lds_customer.settransobject(sqlca)
+	open(w_arg_cust_v14)
+	lstr_arg = message.powerobjectparm
+	if lds_customer.retrieve(lstr_arg.l_code1) > 0 then
+		this.id_detail.setredraw(false)
+		if this.id_detail.deleterow(0) > 0 then
+			if lds_customer.rowscopy(1, 1, primary!, this.id_detail, 1, primary!) > 0 then
+				setnull(ll_null)
+				setnull(ls_null)
+				this.id_detail.setitem(1, "code", ll_null)
+				this.id_detail.setitem(1, "accounts_aliasname", ls_null)
+				this.id_detail.setredraw(true)
+			end if
+			destroy lds_customer
+		else
+			messagebox("Customer Information", "Problem in retrieving Customer Information")
+			return 0
+		end if
+	else
+		messagebox("Customer Information", "Problem in retrieving Customer Information")
+	end if
+	return 0
+
+// w_customer_form.wf_showaccountledger() returns 0
+	long ll_acccode
+	if this.tab_retrieve.selectedtab = 1 then
+		if this.id_detail.rowcount() > 0 and this.id_detail.getrow() > 0 then
+			ll_acccode = this.id_detail.object.code[this.id_detail.getrow()]
+		end if
+	elseif this.tab_retrieve.selectedtab = 2 and (this.id_list.rowcount() > 0 and this.id_list.getrow() > 0) then
+		ll_acccode = this.id_list.object.code[this.id_list.getrow()]
+	end if
+	if not isnull(ll_acccode) and ll_acccode <> 0 then
+		SQL rollback USING sqlca;
+		sqlca.virtualgl("A")
+		if sqlca.sqlcode = 0 then
+			SQL commit USING sqlca;
+		else
+			SQL rollback USING sqlca;
+		end if
+		openwithparm(w_account_ledger, ll_acccode)
+	end if
+
+// w_customer_form.wf_setprintout() returns long
+	string ls_report
+	if gs_company = "TOTALMEDICAL" then
+		ls_report = "d_customer_print_totalmedical"
+	else
+		ls_report = "d_customer_printout"
+	end if
+	this.id_print.dataobject = ls_report
+	return 0
+
+// w_customer_form.wf_set_guaranteeperson_association() returns 0
+	s_dw_header lstr_header
+	lstr_header.dw_header = this.id_cust_guranteeperson_association
+	openwithparm(w_custguaranteeperson_assoc_form, lstr_header)
+
+// w_customer_form.wf_retrieve() returns long
+	long rtcode
+	rtcode = this.id_dwcontrol.retrieve(f_getgroupcode(gl_usercode))
+	return rtcode
+
+// w_customer_form.wf_view_customercomments() returns long
+	long ll_custcode
+	if this.tab_retrieve.selectedtab = 1 then
+		if this.id_detail.rowcount() > 0 and this.id_detail.getrow() > 0 then
+			ll_custcode = this.id_detail.object.code[this.id_detail.getrow()]
+		end if
+	elseif this.tab_retrieve.selectedtab = 2 and (this.id_list.rowcount() > 0 and this.id_list.getrow() > 0) then
+		ll_custcode = this.id_list.object.code[this.id_list.getrow()]
+	end if
+	if not isnull(ll_custcode) and ll_custcode <> 0 then
+		openwithparm(w_customercomment_view, ll_custcode)
+	end if
+	return 0
+
+// w_customer_form.create() returns 0
+	integer icurrent
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_customer_form" then
+		this.menuid = create m_customer_form
+	end if
+	this.dw_cust_itemcat_association = create dw_cust_itemcat_association
+	this.dw_cust_guranteeperson_association = create dw_cust_guranteeperson_association
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_cust_itemcat_association
+	this.control[icurrent + 2] = this.dw_cust_guranteeperson_association
+
+// w_customer_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_cust_itemcat_association
+	destroy this.dw_cust_guranteeperson_association
+
+// w_customer_form.ue_save() returns 0
+	string ls_aliasname
+	long ll_newid
+	long ll_row
+	long ll_counter
+	boolean lb_newcustomer
+	boolean lb_autocreategodown
+	boolean lb_continue
+	string ls_errtext
+	integer li_rc
+	string ls_err
+	string ls_mod
+	datawindow ldw_detail
+	ll_row = this.id_detail.getrow()
+	if f_validatedw(this.tab_retrieve.tabpage_detail.dw_detail) < 0 then
+		return
+	end if
+	if this.id_detail.object.customer_criticallimit[1] < 0 then
+		messagebox("Critical Limit Validation", "Critical Limit Error~n~rCritical Limit must be greater than or equal to zero")
+		return
+	elseif this.id_detail.object.customer_criticallimit[1] < this.id_detail.object.customer_crlimit[1] then
+		messagebox("Critical Limit Validation", "Critical Limit Error~n~rCritical Limit must be greater than or equal to credit limit")
+		return
+	end if
+	ll_newid = this.id_detail.object.code[this.id_detail.getrow()]
+	if isnull(ll_newid) then
+		f_newtableid("Accounts", ll_newid)
+		this.id_detail.object.code[ll_row] = ll_newid
+		this.id_detail.object.accounts_acccode[ll_row] = ll_newid
+		lb_newcustomer = true
+		if f_rightexists(5063) then
+			lb_autocreategodown = true
+		end if
+	end if
+	ls_aliasname = this.id_detail.getitemstring(1, "accounts_aliasname")
+	if isnull(ls_aliasname) then
+		this.id_detail.setitem(this.id_detail.getrow(), "accounts_aliasname", string(ll_newid))
+	end if
+	if isnull(this.id_detail.getitemstring(1, "customer_membershipid")) then
+		this.id_detail.setitem(this.id_detail.getrow(), "customer_membershipid", string(ll_newid))
+	end if
+	for ll_counter = 1 to this.id_cust_itemcat_association.rowcount()
+		this.id_cust_itemcat_association.object.custcode[ll_counter] = ll_newid
+	next
+	for ll_counter = 1 to this.id_cust_guranteeperson_association.rowcount()
+		this.id_cust_guranteeperson_association.object.custcode[ll_counter] = ll_newid
+	next
+	ldw_detail = this.tab_retrieve.tabpage_detail.dw_detail
+	li_rc = ldw_detail.update(true, false)
+	if li_rc = 1 then
+		ls_mod = "accounts_acccode.Update=No "
+		ls_mod = ls_mod + "accounts_localaccountname.Update=No "
+		ls_mod = ls_mod + "accounts_name.Update=No "
+		ls_mod = ls_mod + "accounts_SubCode.Update=No "
+		ls_mod = ls_mod + "accounts_openingdate.Update=No "
+		ls_mod = ls_mod + "accounts_aliasname.Update=No "
+		ls_mod = ls_mod + "accounts_active.Update=No "
+		ls_mod = ls_mod + "accounts_alertcode.Update=No "
+		ls_mod = ls_mod + "accounts_acccode.Key=No "
+		ls_mod = ls_mod + "DataWindow.Table.UpdateTable='customer' "
+		ls_mod = ls_mod + "code.Key=Yes "
+		ls_mod = ls_mod + "code.Update=Yes "
+		ls_mod = ls_mod + "customer_CP.Update=Yes "
+		ls_mod = ls_mod + "customer_CP2.Update=Yes "
+		ls_mod = ls_mod + "customer_address1.Update=Yes "
+		ls_mod = ls_mod + "customer_address2.Update=Yes "
+		ls_mod = ls_mod + "customer_city.Update=Yes "
+		ls_mod = ls_mod + "customer_postcode.Update=Yes "
+		ls_mod = ls_mod + "customer_countycode.Update=Yes "
+		ls_mod = ls_mod + "customer_country.Update=Yes "
+		ls_mod = ls_mod + "customer_phone.Update=Yes "
+		ls_mod = ls_mod + "customer_fax.Update=Yes "
+		ls_mod = ls_mod + "customer_email.Update=Yes "
+		ls_mod = ls_mod + "customer_areacode.Update=Yes "
+		ls_mod = ls_mod + "customer_crlimit.Update=Yes "
+		ls_mod = ls_mod + "customer_dayslimit.Update=Yes "
+		ls_mod = ls_mod + "customer_custcatcode.Update=Yes "
+		ls_mod = ls_mod + "customer_licenceno.Update=Yes "
+		ls_mod = ls_mod + "customer_licenceexpiry.Update=Yes "
+		ls_mod = ls_mod + "customer_SalesTaxRegNo.Update=Yes "
+		ls_mod = ls_mod + "customer_DefaultGST.Update=Yes "
+		ls_mod = ls_mod + "customer_InvDiscperc.Update=Yes "
+		ls_mod = ls_mod + "customer_DefaultSalePrice.Update=Yes "
+		ls_mod = ls_mod + "customer_DefaultItemDiscperc.Update=Yes "
+		ls_mod = ls_mod + "customer_subareacode.Update=Yes "
+		ls_mod = ls_mod + "customer_BankName.Update=Yes "
+		ls_mod = ls_mod + "customer_BankAdd.Update=Yes "
+		ls_mod = ls_mod + "customer_messagecode.Update=Yes "
+		ls_mod = ls_mod + "customer_salesmancode.Update=Yes "
+		ls_mod = ls_mod + "customer_specialinstructions.Update=Yes "
+		ls_mod = ls_mod + "customer_allowsalebelowavgprice.Update=Yes "
+		ls_mod = ls_mod + "customer_schedforposting.Update=Yes "
+		ls_mod = ls_mod + "customer_designation.Update=Yes "
+		ls_mod = ls_mod + "customer_collectionpolicycode.Update=Yes "
+		ls_mod = ls_mod + "customer_associatedquotationcode.Update=Yes "
+		ls_mod = ls_mod + "customer_poassociatedquotationcode.Update=Yes "
+		ls_mod = ls_mod + "customer_saletypecode.Update=Yes "
+		ls_mod = ls_mod + "customer_gender.Update=Yes "
+		ls_mod = ls_mod + "customer_dob.Update=Yes "
+		ls_mod = ls_mod + "customer_nic.Update=Yes "
+		ls_mod = ls_mod + "customer_occupation.Update=Yes "
+		ls_mod = ls_mod + "customer_eduqualf.Update=Yes "
+		ls_mod = ls_mod + "customer_refno.Update=Yes "
+		ls_mod = ls_mod + "customer_considerinpo.Update=Yes "
+		ls_mod = ls_mod + "customer_membershipid.Update=Yes "
+		ls_mod = ls_mod + "customer_ntnno.Update=Yes "
+		ls_mod = ls_mod + "customer_printwaranty.Update=Yes "
+		ls_mod = ls_mod + "customer_gccode.Update=Yes "
+		ls_mod = ls_mod + "customer_associatedservicetemplatecode.Update=Yes "
+		ls_mod = ls_mod + "customer_printoutstandingserviceresult.Update=Yes "
+		ls_mod = ls_mod + "customer_printamtonserviceinv.Update=Yes "
+		ls_mod = ls_mod + "customer_printbalance.Update=Yes "
+		ls_mod = ls_mod + "customer_block.Update=Yes "
+		ls_mod = ls_mod + "customer_charges.Update=Yes "
+		ls_mod = ls_mod + "customer_fullname.Update=Yes "
+		ls_mod = ls_mod + "customer_owner.Update=Yes "
+		ls_mod = ls_mod + "customer_address.Update=Yes "
+		ls_mod = ls_mod + "customer_issuedlicenseno.Update=Yes "
+		ls_mod = ls_mod + "customer_miscchargesperc.Update=Yes "
+		ls_mod = ls_mod + "customer_ageinyears.Update=Yes "
+		ls_mod = ls_mod + "customer_married.Update=Yes "
+		ls_mod = ls_mod + "customer_noofdependents.Update=Yes "
+		ls_mod = ls_mod + "customer_monthlyincome.Update=Yes "
+		ls_mod = ls_mod + "customer_cellno.Update=Yes "
+		ls_mod = ls_mod + "customer_addressstatus.Update=Yes "
+		ls_mod = ls_mod + "customer_stayduration.Update=Yes "
+		ls_mod = ls_mod + "customer_offaddress.Update=Yes "
+		ls_mod = ls_mod + "customer_offphone.Update=Yes "
+		ls_mod = ls_mod + "customer_jobduration.Update=Yes "
+		ls_mod = ls_mod + "customer_pastpuroninst.Update=Yes "
+		ls_mod = ls_mod + "customer_pastinstcompany.Update=Yes "
+		ls_mod = ls_mod + "customer_descOfpastinstgoods.Update=Yes "
+		ls_mod = ls_mod + "customer_criticallimit.Update=Yes "
+		ls_mod = ls_mod + "customer_ReportDiscPerc.Update=Yes "
+		ls_mod = ls_mod + "customer_customersectorcode.Update=Yes "
+		ls_mod = ls_mod + "customer_taxcategorycode.Update=Yes "
+		ls_mod = ls_mod + "customer_salestaxexemption.Update=Yes "
+		ls_mod = ls_mod + "customer_paymentapi.Update=Yes "
+		ls_mod = ls_mod + "customer_fname.Update=Yes "
+		ls_mod = ls_mod + "customer_sitecode.Update=Yes "
+		ls_err = ldw_detail.modify(ls_mod)
+		if ls_err <> "" then
+			messagebox("DataWindow Modify Error", ls_err)
+		end if
+		li_rc = ldw_detail.update()
+		if li_rc = 1 then
+			if this.id_cust_itemcat_association.update() = 1 then
+				if lb_autocreategodown then
+					sqlca.autocreatecustomergodown(ll_newid)
+					if sqlca.sqlcode = 0 then
+						lb_continue = true
+					else
+						ls_errtext = sqlca.sqlerrtext
+						lb_continue = false
+					end if
+				else
+					lb_continue = true
+				end if
+				if this.id_cust_guranteeperson_association.update() = 1 then
+					lb_continue = true
+				else
+					lb_continue = false
+				end if
+				if lb_continue then
+					SQL commit USING sqlca;
+					messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+					this.ib_commitok = true
+					this.im_menu.m_file.m_new.enabled = true
+					this.editflag = false
+				else
+					messagebox("Error on Commit", sqlca.sqlerrtext)
+					SQL rollback USING sqlca;
+				end if
+			else
+				messagebox("Error on Commit", sqlca.sqlerrtext)
+				SQL rollback USING sqlca;
+			end if
+		else
+			messagebox("Update of Customer Table Failed", "Rolling back changes to " + "accounts  and Customer Tables")
+			SQL rollback USING sqlca;
+		end if
+	else
+		messagebox("Update of accounts Table Failed", "Rolling back changes to " + "accounts Table")
+		SQL rollback USING sqlca;
+		return
+	end if
+	ls_mod = "accounts_accCode.Update=yes "
+	ls_mod = ls_mod + "accounts_localaccountname.Update=yes "
+	ls_mod = ls_mod + "accounts_name.Update=yes "
+	ls_mod = ls_mod + "accounts_SubCode.Update=yes "
+	ls_mod = ls_mod + "accounts_openingdate.Update=yes "
+	ls_mod = ls_mod + "accounts_alertcode.Update=yes "
+	ls_mod = ls_mod + "DataWindow.Table.UpdateTable='accounts' "
+	ls_mod = ls_mod + "accounts_aliasname.Update=yes "
+	ls_mod = ls_mod + "accounts_active.Update=yes "
+	ls_mod = ls_mod + "Accounts_acccode.Key=yes "
+	ls_mod = ls_mod + "code.Update=no "
+	ls_mod = ls_mod + "customer_CP.Update=no "
+	ls_mod = ls_mod + "customer_CP2.Update=no "
+	ls_mod = ls_mod + "customer_address1.Update=no "
+	ls_mod = ls_mod + "customer_address2.Update=no "
+	ls_mod = ls_mod + "customer_city.Update=no "
+	ls_mod = ls_mod + "customer_postcode.Update=no "
+	ls_mod = ls_mod + "customer_countycode.Update=no "
+	ls_mod = ls_mod + "customer_country.Update=no "
+	ls_mod = ls_mod + "customer_phone.Update=no "
+	ls_mod = ls_mod + "customer_fax.Update=no "
+	ls_mod = ls_mod + "customer_email.Update=no "
+	ls_mod = ls_mod + "customer_areacode.Update=no "
+	ls_mod = ls_mod + "customer_crlimit.Update=no "
+	ls_mod = ls_mod + "customer_dayslimit.Update=no "
+	ls_mod = ls_mod + "customer_custcatcode.Update=no "
+	ls_mod = ls_mod + "customer_licenceno.Update=no "
+	ls_mod = ls_mod + "customer_licenceexpiry.Update=no "
+	ls_mod = ls_mod + "code.Key=no "
+	ls_mod = ls_mod + "customer_SalesTaxRegNo.Update=No "
+	ls_mod = ls_mod + "customer_DefaultGST.Update=No "
+	ls_mod = ls_mod + "customer_InvDiscperc.Update=No "
+	ls_mod = ls_mod + "customer_DefaultSalePrice.Update=No "
+	ls_mod = ls_mod + "customer_DefaultItemDiscPerc.Update=No "
+	ls_mod = ls_mod + "customer_subareacode.Update=No "
+	ls_mod = ls_mod + "customer_BankName.Update=No "
+	ls_mod = ls_mod + "customer_BankAdd.Update=No "
+	ls_mod = ls_mod + "customer_messagecode.Update=No "
+	ls_mod = ls_mod + "customer_salesmancode.Update=No "
+	ls_mod = ls_mod + "customer_specialinstructions.Update=No "
+	ls_mod = ls_mod + "customer_allowsalebelowavgprice.Update=No "
+	ls_mod = ls_mod + "customer_schedforposting.Update=No "
+	ls_mod = ls_mod + "customer_designation.Update=No "
+	ls_mod = ls_mod + "customer_collectionpolicycode.Update=No "
+	ls_mod = ls_mod + "customer_associatedquotationcode.Update=No "
+	ls_mod = ls_mod + "customer_poassociatedquotationcode.Update=No "
+	ls_mod = ls_mod + "customer_saletypecode.Update=No "
+	ls_mod = ls_mod + "customer_gender.Update=No "
+	ls_mod = ls_mod + "customer_dob.Update=No "
+	ls_mod = ls_mod + "customer_nic.Update=No "
+	ls_mod = ls_mod + "customer_occupation.Update=No "
+	ls_mod = ls_mod + "customer_eduqualf.Update=No "
+	ls_mod = ls_mod + "customer_refno.Update=No "
+	ls_mod = ls_mod + "customer_considerinpo.Update=No "
+	ls_mod = ls_mod + "customer_MemberShipId.Update=No "
+	ls_mod = ls_mod + "customer_ntnno.Update=No "
+	ls_mod = ls_mod + "customer_printwaranty.Update=No "
+	ls_mod = ls_mod + "customer_gccode.Update=No "
+	ls_mod = ls_mod + "customer_associatedservicetemplatecode.Update=No "
+	ls_mod = ls_mod + "customer_printoutstandingserviceresult.Update=No "
+	ls_mod = ls_mod + "customer_printamtonserviceinv.Update=No "
+	ls_mod = ls_mod + "customer_printbalance.Update=No "
+	ls_mod = ls_mod + "customer_block.Update=No "
+	ls_mod = ls_mod + "customer_charges.Update=No "
+	ls_mod = ls_mod + "customer_fullname.Update=No "
+	ls_mod = ls_mod + "customer_owner.Update=No "
+	ls_mod = ls_mod + "customer_address.Update=No "
+	ls_mod = ls_mod + "customer_issuedlicenseno.Update=No "
+	ls_mod = ls_mod + "customer_miscchargesperc.Update=No "
+	ls_mod = ls_mod + "customer_ageinyears.Update=No "
+	ls_mod = ls_mod + "customer_married.Update=No "
+	ls_mod = ls_mod + "customer_noofdependents.Update=No "
+	ls_mod = ls_mod + "customer_monthlyincome.Update=No "
+	ls_mod = ls_mod + "customer_cellno.Update=No "
+	ls_mod = ls_mod + "customer_addressstatus.Update=No "
+	ls_mod = ls_mod + "customer_stayduration.Update=No "
+	ls_mod = ls_mod + "customer_offaddress.Update=No "
+	ls_mod = ls_mod + "customer_offphone.Update=No "
+	ls_mod = ls_mod + "customer_jobduration.Update=No "
+	ls_mod = ls_mod + "customer_pastpuroninst.Update=No "
+	ls_mod = ls_mod + "customer_pastinstcompany.Update=No "
+	ls_mod = ls_mod + "customer_descOfpastinstgoods.Update=No "
+	ls_mod = ls_mod + "customer_criticallimit.Update=No "
+	ls_mod = ls_mod + "customer_ReportDiscPerc.Update=No "
+	ls_mod = ls_mod + "customer_customersectorcode.Update=No "
+	ls_mod = ls_mod + "customer_taxcategorycode.Update=No "
+	ls_mod = ls_mod + "customer_salestaxexemption.Update=No "
+	ls_mod = ls_mod + "customer_paymentapi.Update=No "
+	ls_mod = ls_mod + "customer_fname.Update=No "
+	ls_mod = ls_mod + "customer_sitecode.Update=No "
+	ls_err = ldw_detail.modify(ls_mod)
+	if ls_err <> "" then
+		messagebox("DataWindow Modify Error", ls_err)
+	end if
+
+// w_customer_form.ue_newform() returns 0
+	long ll_rtncode
+	call super::ue_newform
+	this.tab_retrieve.tabpage_detail.dw_detail.object.accounts_aliasname.protect = 0
+	this.tab_retrieve.tabpage_detail.dw_detail.object.customer_licenceexpiry.protect = 0
+	ll_rtncode = this.id_detail.getchild("customer_subareacode", this.idc_subarea)
+	if ll_rtncode = -1 then
+		messagebox("Error", "Can not get a DataWindowChild")
+		close(this)
+	end if
+	this.idc_subarea.settransobject(this.it_transobject)
+	this.idc_subarea.retrieve()
+	this.idc_subarea.setfilter("areacode=1")
+	this.idc_subarea.filter()
+	this.id_cust_itemcat_association.reset()
+	this.dw_cust_guranteeperson_association.reset()
+
+// w_customer_form.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.is_tablename = "Customer"
+	if f_stringpreferences("GroupCustCatInBasicData") = "Y" then
+		this.id_list.dataobject = "d_customer_list_groupcat"
+		this.id_list.settransobject(this.it_transobject)
+	end if
+	this.id_cust_itemcat_association = this.dw_cust_itemcat_association
+	this.id_cust_itemcat_association.settransobject(sqlca)
+	this.id_cust_guranteeperson_association = this.dw_cust_guranteeperson_association
+	this.id_cust_guranteeperson_association.settransobject(sqlca)
+	return ::message.returnvalue
+
+// w_customer_form.ue_detail() returns 0
+	long ll_counter
+	long ll_code
+	long ll_found
+	call super::ue_detail
+	if this.id_list.rowcount() > 0 and this.id_list.getrow() > 0 and this.il_selectedrow > 0 then
+		ll_code = this.id_list.object.code[this.il_selectedrow]
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 649", 1, gds_securitywindow.rowcount())
+	if ll_found <= 0 then
+		this.id_detail.reset()
+		messagebox("Customer Modification!", "Your do not have enough rights for customer data modification~r~nPlease Contact system administrator for your help", stopsign!)
+		this.tab_retrieve.selecttab(2)
+		return
+	end if
+	this.tab_retrieve.tabpage_detail.dw_detail.object.customer_licenceexpiry.protect = 1
+	this.tab_retrieve.tabpage_detail.dw_detail.object.accounts_aliasname.protect = 1
+	for ll_counter = 1 to gds_securitywindow.rowcount()
+		if gds_securitywindow.object.rightcode[ll_counter] = 525 then
+			this.tab_retrieve.tabpage_detail.dw_detail.object.accounts_aliasname.protect = 0
+		end if
+		if gds_securitywindow.object.rightcode[ll_counter] = 673 then
+			this.tab_retrieve.tabpage_detail.dw_detail.object.customer_licenceexpiry.protect = 0
+		end if
+	next
+	this.idc_subarea.setredraw(false)
+	this.idc_subarea.setfilter("areacode=" + string(this.id_detail.getitemnumber(1, "Customer_areacode")))
+	this.idc_subarea.filter()
+	this.idc_subarea.setredraw(true)
+	this.id_cust_itemcat_association.retrieve(this.id_detail.object.code[this.id_detail.getrow()])
+	this.dw_cust_guranteeperson_association.retrieve(this.id_detail.object.code[this.id_detail.getrow()])
+	if this.id_detail.rowcount() > 0 then
+		this.im_menu.m_file.m_print.enabled = true
+	end if
+
+// w_customer_form.ue_postopen() returns 0
+	integer li_xpos
+	integer li_ypos
+	integer li_xendpos
+	integer li_counter
+	integer li_taborder
+	integer li_visiblecolumns
+	integer li_sitecol
+	long ll_counter
+	long li_retcode
+	long ll_found
+	m_customer_form lm_menu
+	datastore lds_itemsetting
+	call super::ue_postopen
+	lm_menu = this.menuid
+	f_fetch_sites()
+	lds_itemsetting = create datastore
+	lds_itemsetting.dataobject = "d_interfacesettingcols"
+	lds_itemsetting.settransobject(this.it_transobject)
+	lds_itemsetting.retrieve(24, 3, 1)
+	li_visiblecolumns = lds_itemsetting.rowcount()
+	for li_counter = 1 to li_counter
+		this.colname[li_counter, 1] = lds_itemsetting.getitemstring(li_counter, "colname") + "_t"
+		this.colname[li_counter, 2] = lds_itemsetting.getitemstring(li_counter, "colname")
+		this.colwidth[li_counter, 1] = integer(this.id_detail.describe(this.colname[li_counter, 1] + ".Width"))
+		this.colwidth[li_counter, 2] = integer(this.id_detail.describe(this.colname[li_counter, 2] + ".Width"))
+		this.colheight[li_counter] = integer(this.id_detail.describe(this.colname[li_counter, 2] + ".Height"))
+	next
+	li_taborder = 10
+	li_counter = 1
+	li_ypos = 100
+	li_xendpos = 30000
+	do while li_counter <= li_visiblecolumns and li_ypos <= 2000000
+		li_xpos = 14
+		this.id_detail.modify(this.colname[li_counter, 1] + ".X=" + string(li_xpos))
+		this.id_detail.modify(this.colname[li_counter, 1] + ".Y=" + string(li_ypos))
+		this.id_detail.modify(this.colname[li_counter, 1] + ".Visible=1")
+		li_xpos = 617
+		this.id_detail.modify(this.colname[li_counter, 2] + ".X=" + string(li_xpos))
+		this.id_detail.modify(this.colname[li_counter, 2] + ".Y=" + string(li_ypos))
+		this.id_detail.modify(this.colname[li_counter, 2] + ".Visible=1")
+		this.id_detail.settaborder(this.colname[li_counter, 2], li_taborder)
+		if lower(this.colname[li_counter, 2]) = "customer_sitecode" then
+			li_sitecol = 1
+		end if
+		li_taborder = li_taborder + 1
+		li_ypos = li_ypos + this.colheight[li_counter] + 22
+		li_counter = li_counter + 1
+	loop
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 719", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		lm_menu.m_file.m_showaccountledger.visible = true
+		lm_menu.m_file.m_showaccountledger.enabled = true
+	end if
+	if gl_sitecode > 0 and gc_dropbox = "Y" then
+		if li_sitecol = 1 then
+			this.id_detail.object.customer_sitecode.visible = true
+			this.id_detail.object.customer_sitecode_t.visible = true
+		end if
+		return
+	end if
+	this.id_detail.object.customer_sitecode.visible = false
+	this.id_detail.object.customer_sitecode_t.visible = false
+
+// w_customer_form.ue_print() returns 0
+	long ll_code
+	boolean lb_listtab
+	s_datastore lstr
+	call super::ue_print
+	if this.tab_retrieve.selectedtab = 2 then
+		lb_listtab = true
+	end if
+	if this.im_menu.m_file.m_save.enabled = true and lb_listtab = false then
+		triggerevent("ue_save")
+		if wf_commitform() = false then
+			return
+		end if
+		return
+	end if
+	if lb_listtab then
+		if isnull(this.id_list.getrow()) or this.id_list.getrow() <= 0 then
+			messagebox("Rows Validation", "Kindly select any row from the list view.")
+			return
+		end if
+		ll_code = this.id_list.getitemnumber(this.id_list.getrow(), "code")
+		if isnull(ll_code) or ll_code <= 0 then
+			messagebox("Selection Validation", "Kindly select any row from the list view.")
+			return
+		end if
+	elseif this.id_detail.getrow() > 0 then
+		ll_code = this.id_detail.getitemnumber(this.id_detail.getrow(), "code")
+	end if
+	if ll_code > 0 then
+		wf_setprintout()
+		this.id_print.settransobject(sqlca)
+		this.id_print.retrieve(ll_code)
+		lstr.dw = this.id_print
+		lstr.s_name1 = this.id_print.dataobject
+		openwithparm(w_preview_invoices, lstr)
+		lstr = message.powerobjectparm
+		if lstr.i_closemode = -1 then
+			return
+		end if
+		if f_stringpreferences("PromptBeforePrinting") = "Y" and printsetup() < 0 then
+			messagebox("Printer", "Printing Error")
+			this.id_print.printcancel()
+		end if
+		if this.id_print.rowcount() > 0 then
+			if this.id_print.print() < 0 then
+				messagebox("Printing", "Can not Print Invoice", information!)
+			end if
+			return
+		end if
+		messagebox("Printing Error", "Can not Print Data,~r~nNo rows are retrieved", information!)
+	end if

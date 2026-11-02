@@ -1,0 +1,140 @@
+// window w_reprioritize_stock (templates)  ancestor: window
+
+// w_reprioritize_stock.ue_close(double ad_qty) returns 0
+	close(this)
+
+// w_reprioritize_stock.create() returns 0
+	this.hpb_progress = create hpb_progress
+	this.rb_shortexpiry = create rb_shortexpiry
+	this.rb_lifo = create rb_lifo
+	this.rb_fifo = create rb_fifo
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.gb_accrepository = create gb_accrepository
+	this.gb_progress = create gb_progress
+	this.control = {this.hpb_progress, this.rb_shortexpiry, this.rb_lifo, this.rb_fifo, this.cb_cancel, this.cb_ok, this.gb_accrepository, this.gb_progress}
+
+// w_reprioritize_stock.destroy() returns 0
+	destroy this.hpb_progress
+	destroy this.rb_shortexpiry
+	destroy this.rb_lifo
+	destroy this.rb_fifo
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.gb_accrepository
+	destroy this.gb_progress
+
+// w_reprioritize_stock.open() returns long
+	environment le_env
+	long ll_width
+	long ll_height
+	if getenvironment(le_env) = 1 then
+		ll_width = pixelstounits(le_env.screenwidth, xpixelstounits!) - this.width
+		ll_height = pixelstounits(le_env.screenheight, ypixelstounits!) - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width * 0.5
+			ll_height = ll_height * 0.5
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	string ls_messagetitle
+	string ls_message
+	string ls_selectedoption
+	string ls_grouping
+	string ls_grouplist
+	long ll_rtcode
+	long[] ll_arr
+	integer li_method
+	boolean lb_startoperation
+	s_arguements lstr_arg
+	u_transaction lt_transobject
+	open(w_selection_reprioritize_item_stock)
+	ls_selectedoption = upper(message.stringparm)
+	if ls_selectedoption = "G" then
+		open(w_selection_manf_cat_class_packing)
+		ls_grouping = message.stringparm
+		openwithparm(w_arg_grouping, ls_grouping)
+		lstr_arg = message.powerobjectparm
+		if lstr_arg.i_status = 1 then
+			ll_arr = lstr_arg.ia_integerlist
+			f_tostring(ll_arr, ls_grouplist, ",")
+			lb_startoperation = true
+		end if
+	else
+		lb_startoperation = true
+	end if
+	if lb_startoperation then
+		setpointer(hourglass!)
+		parent.gb_progress.visible = true
+		parent.hpb_progress.visible = true
+		parent.hpb_progress.stepit()
+		ls_messagetitle = "Process Result Intimation"
+		if parent.rb_shortexpiry.checked = true then
+			li_method = 1
+		elseif parent.rb_fifo.checked = true then
+			li_method = 2
+		elseif parent.rb_lifo.checked = true then
+			li_method = 3
+		end if
+		if li_method >= 1 and li_method <= 3 then
+			lt_transobject = create u_transaction
+			SQL start USING lt_transobject;
+			if lt_transobject.sqlcode = 0 then
+				parent.hpb_progress.stepit()
+				parent.hpb_progress.stepit()
+				parent.hpb_progress.stepit()
+				parent.hpb_progress.stepit()
+				if ls_selectedoption = "A" then
+					lt_transobject.reprioritizestockbatches(li_method)
+				else
+					lt_transobject.groupwise_reprioritizestockbatches(li_method, ls_grouping, ls_grouplist)
+				end if
+				if lt_transobject.sqlcode = 0 then
+					parent.hpb_progress.stepit()
+					parent.hpb_progress.stepit()
+					parent.hpb_progress.stepit()
+					parent.hpb_progress.stepit()
+					parent.hpb_progress.stepit()
+					ls_message = "Re-Prioritization Operation Completed Successfully!"
+					SQL commit USING lt_transobject;
+					ll_rtcode = 0
+				else
+					ls_message = "Re-Prioritization Operation Terminated Un-Successfully!~r~nReasons are:-~r~n" + lt_transobject.sqlerrtext
+					SQL rollback USING lt_transobject;
+					ll_rtcode = 1
+				end if
+			else
+				ls_message = "Unable To Connect to Database.~r~nRe-Prioritization Operation Terminated Un-Successfully!~r~nReasons are:-~r~n" + lt_transobject.sqlerrtext
+				SQL rollback USING lt_transobject;
+				ll_rtcode = 1
+			end if
+			destroy lt_transobject
+		end if
+		setpointer(arrow!)
+		messagebox(ls_messagetitle, ls_message)
+		if ll_rtcode = 0 then
+			parent.post event ue_close(1)
+		else
+			parent.gb_progress.visible = false
+			parent.hpb_progress.visible = false
+			if not isvalid(message) then
+				return 0
+			end if
+			return message.returnvalue
+		end if
+		return
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue

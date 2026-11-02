@@ -1,0 +1,190 @@
+// window w_studentclasstransfer_form (studentcomponents)  ancestor: w_single_entry
+
+// w_studentclasstransfer_form.wf_transferhistory() returns 0
+	long ll_studentcode
+	ll_studentcode = this.id_detail.object.studentcode[this.id_detail.rowcount()]
+	openwithparm(w_studenttransferhistory, ll_studentcode)
+
+// w_studentclasstransfer_form.wf_findstudentcode(string as_regno, long al_code) returns long
+	long ll_studentcode
+	long ll_retflag
+	string ls_itemname
+	ll_retflag = 0
+	SQL SELECT Student.Studentcode INTO :ll_studentcode FROM Student WHERE Student.regno =:as_regno USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		al_code = ll_studentcode
+		if isnull(al_code) then
+			ll_retflag = 0
+		else
+			ll_retflag = 1
+		end if
+	else
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_studentclasstransfer_form.wf_setstudentinfo(long al_code) returns long
+	long ll_doctcode
+	long ll_custcode
+	long ll_retcode
+	long ll_classcode
+	long ll_serviceinvcode
+	string ls_regno
+	string ls_aliasname
+	string ls_rollno
+	datetime ld_admissiondate
+	datetime ld_lastsrvdate
+	SQL SELECT Student.RegNo , Student.CustCode , Accounts.AliasName , SC.ClassCode , SC.AdmissionDate , SC.RollNo , SC.ServiceInvCode , SC.LastServiceInvDate INTO :ls_regno, :ll_custcode, :ls_aliasname, :ll_classcode, :ld_admissiondate, :ls_rollno, :ll_serviceinvcode, :ld_lastsrvdate FROM Student , Accounts , StudentClass SC WHERE Student.StudentCode =:al_code AND Student.StudentCode =SC.StudentCode AND Student.CustCode =Accounts.AccCode AND SC.ClassCode =Student.CurrentClass USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		this.id_detail.setitem(this.id_detail.rowcount(), "RegNo", ls_regno)
+		this.id_detail.setitem(this.id_detail.rowcount(), "SourceClass", ll_classcode)
+		this.id_detail.setitem(this.id_detail.rowcount(), "SourceClassRollNo", ls_rollno)
+		this.id_detail.setitem(this.id_detail.rowcount(), "SourceClassAdmissionDate", ld_admissiondate)
+		this.id_detail.setitem(this.id_detail.rowcount(), "SourceClassLastServiceInvCode", ll_serviceinvcode)
+		this.id_detail.setitem(this.id_detail.rowcount(), "SourceClassLastServiceInvDate", ld_lastsrvdate)
+		ll_retcode = 1
+	else
+		messagebox("Student Information", "Problem in retrieving corresponding customer")
+		ll_retcode = 0
+	end if
+	return ll_retcode
+
+// w_studentclasstransfer_form.create() returns 0
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_studenttransfermenu" then
+		this.menuid = create m_studenttransfermenu
+	end if
+
+// w_studentclasstransfer_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_studentclasstransfer_form.activate() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::activate()
+	this.windowstate = maximized!
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_studentclasstransfer_form.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.is_tablename = "StudentClassTransfer"
+	this.im_transfermenu = this.menuid
+	return ::message.returnvalue
+
+// w_studentclasstransfer_form.ue_save() returns 0
+	long ll_row
+	long ll_retcode
+	long ll_currentclass
+	long ll_newclass
+	long ll_usercode
+	long ll_studentcode
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	string ls_rollno
+	setpointer(hourglass!)
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	ll_row = this.id_detail.getrow()
+	ll_studentcode = this.id_detail.object.studentcode[ll_row]
+	ll_currentclass = this.id_detail.object.sourceclass[ll_row]
+	ll_newclass = this.id_detail.object.targetclass[ll_row]
+	if ll_currentclass < 0 or isnull(ll_currentclass) then
+		messagebox("Problem Saving", "Student is not enrolled in any active class at the moment.~r~nHence you can not transfer such a student to any other active class", stopsign!)
+		this.id_detail.setfocus()
+		this.id_detail.setcolumn("SourceClass")
+		return
+	end if
+	if ll_newclass < 0 or isnull(ll_newclass) then
+		messagebox("Problem Saving", "No New Class is selected for this Student. Select any active class for transfer to take place.", stopsign!)
+		this.id_detail.setfocus()
+		this.id_detail.setcolumn("targetClass")
+		return
+	end if
+	if ll_currentclass = ll_newclass then
+		messagebox("Problem Saving", "Current Class and New Class must be different.")
+		this.id_detail.setfocus()
+		this.id_detail.setcolumn("targetClass")
+		return
+	end if
+	open(w_salesmanpassword)
+	ll_usercode = long(message.doubleparm)
+	setfocus()
+	if ll_usercode <= 0 or isnull(ll_usercode) then
+		messagebox("User Validation", "Please Select Valid User", stopsign!)
+		return
+	end if
+	if not wf_validateserverdatetime(ldt_server_datetime, ls_date_errtext) then
+		messagebox("Date Violation", ls_date_errtext, stopsign!)
+		return
+	end if
+	this.id_detail.setitem(ll_row, "date", ldt_server_datetime)
+	this.id_detail.setitem(ll_row, "usercode", ll_usercode)
+	if this.id_detail.update() > 0 then
+		SQL DELETE DBO.StudentClass WHERE StudentCode =:ll_studentcode AND ClassCode =:ll_currentclass USING sqlca;
+		if sqlca.sqlcode = 0 then
+			sqlca.admit_student(ll_newclass, ll_studentcode, ls_rollno)
+			if sqlca.sqlcode = 0 then
+				SQL commit USING sqlca;
+				messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+				this.ib_commitok = true
+			else
+				SQL rollback USING sqlca;
+				setpointer(arrow!)
+				messagebox("Save Changes", "Changes Rollback in database, ~n~rSome database problem occurs~n~rDetails: -" + sqlca.sqlerrtext, exclamation!, ok!, 1)
+			end if
+		else
+			SQL rollback USING sqlca;
+			setpointer(arrow!)
+			messagebox("Save Changes", "Changes Rollback in database, ~n~rSome database problem occurs~n~rDetails: -" + sqlca.sqlerrtext, exclamation!, ok!, 1)
+		end if
+		this.editflag = false
+	else
+		SQL rollback USING sqlca;
+		setpointer(arrow!)
+		messagebox("Save Changes", "Changes Rollback in database, ~n~rSome database problem occurs~n~rDetails: -" + sqlca.sqlerrtext, exclamation!, ok!, 1)
+		return
+	end if
+	setpointer(arrow!)
+
+// w_studentclasstransfer_form.ue_detail() returns 0
+	long ll_code
+	this.im_menu.m_file.m_new.enabled = false
+	this.im_menu.m_file.m_save.enabled = false
+	this.im_menu.m_file.m_delete.enabled = true
+	this.im_menu.m_file.m_first.enabled = true
+	this.im_menu.m_file.m_next.enabled = true
+	this.im_menu.m_file.m_last.enabled = true
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_menu.m_file.m_previous.enabled = true
+	this.im_menu.m_file.m_retrieve.text = "Lis&t"
+	this.i_editmode = 2
+	this.i_retrievemode = 2
+	if this.tab_retrieve.tabpage_list.dw_list.rowcount() > 0 and this.il_selectedrow > 0 then
+		ll_code = this.id_dwcontrol.borderstyle.code[this.il_selectedrow]
+		this.id_dwcontrol = this.id_detail
+		wf_retrieve(ll_code)
+		this.id_dwcontrol = this.id_list
+		wf_protectdw(this.id_detail, 1)
+		this.tab_retrieve.tabpage_detail.dw_detail.setfocus()
+	end if
+
+// w_studentclasstransfer_form.ue_newform() returns 0
+	integer li_protect
+	long ll_retcode
+	call super::ue_newform
+	ll_retcode = this.id_detail.getchild("TargetClass", this.idc_location)
+	if ll_retcode = -1 then
+		messagebox("Error", "Can not Get Datawindow Child for Student Target Class", stopsign!)
+		close(this)
+	end if
+	this.idc_location.settransobject(sqlca)
+	this.idc_location.retrieve()
+	wf_protectdw(this.id_detail, li_protect)

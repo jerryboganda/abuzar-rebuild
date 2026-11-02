@@ -1,0 +1,306 @@
+// window w_saledocument (salerespwin)  ancestor: window
+
+// w_saledocument.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		post event ue_close(-1)
+	end if
+	return ::message.returnvalue
+
+// w_saledocument.ue_close(integer ai_closemode) returns integer
+	long ll_currrow
+	long ll_counter
+	long ll_ret
+	s_itemimage lstr_image
+	s_itemimage lstr_blank
+	lstr_image = this.istr_image
+	this.id_header.accepttext()
+	ll_currrow = this.id_header.getrow()
+	if ai_closemode = -1 then
+		this.istr_image.i_closemode = -1
+		closewithreturn(this, this.istr_image)
+		return -1
+	end if
+	if this.id_header.rowcount() > 0 then
+		if isnull(this.id_header.object.c_rowid[ll_currrow]) or isnull(this.id_header.object.docdescription[ll_currrow]) then
+			this.id_header.deleterow(ll_currrow)
+		end if
+		for ll_counter = 1 to this.id_header.rowcount()
+			if isnull(this.id_header.object.c_rowid[ll_counter]) or isnull(this.id_header.object.docdescription[ll_counter]) then
+				this.id_header.setrow(ll_counter)
+				this.id_header.setcolumn("docdescription")
+				this.id_header.setfocus()
+				messagebox("Description Validation", "Please enter some valid description for this row.", stopsign!)
+				return 1
+			end if
+		next
+		if f_validatedw(this.id_header) < 0 then
+			return 1
+		end if
+		this.il_currrow = this.id_header.rowcount()
+		if this.ib_rowvalidated = false and wf_validateitem() = -1 then
+			return 1
+		end if
+		this.istr_image = lstr_blank
+		for ll_counter = 1 to this.id_header.rowcount()
+			this.id_header.object.rowid[ll_counter] = this.id_header.object.c_rowid[ll_counter]
+			this.istr_image.ls_value[ll_counter, 1] = trim(string(this.id_header.object.rowid[ll_counter]))
+			this.istr_image.ls_value[ll_counter, 2] = this.id_header.object.docdescription[ll_counter]
+			this.istr_image.ls_value[ll_counter, 3] = this.id_header.object.documenttype[ll_counter]
+			this.istr_image.blob[ll_counter] = lstr_image.blob[ll_counter]
+		next
+	end if
+	if ai_closemode > 0 then
+		this.istr_image.selectedrow = ll_currrow
+	else
+		this.istr_image.selectedrow = 0
+	end if
+	this.istr_image.i_closemode = ai_closemode
+	closewithreturn(this, this.istr_image)
+	return 0
+
+// w_saledocument.wf_validateitem() returns integer
+	string ls_optionname
+	integer li_errcode
+	string ls_null
+	ls_optionname = this.id_header.getitemstring(this.il_currrow, "docdescription")
+	if vf_dwdupstring(this.id_header, "docdescription", ls_optionname, this.il_currrow) = true then
+		messagebox("Duplication Error", "Current row is duplicate")
+		li_errcode = -1
+		this.ib_rowvalidated = false
+	else
+		li_errcode = 0
+		this.ib_rowvalidated = true
+	end if
+	if li_errcode = -1 then
+		setnull(ls_null)
+		this.id_header.setcolumn("docdescription")
+		this.id_header.scrolltorow(this.il_currrow)
+		this.id_header.object.docdescription[this.il_currrow] = ls_null
+	end if
+	return li_errcode
+
+// w_saledocument.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+
+// w_saledocument.wf_show_image(integer al_row) returns long
+	s_item_blob lstr_blob
+	if al_row > 0 then
+		lstr_blob.lb_blob = this.istr_image.blob[al_row]
+		lstr_blob.s_name = this.dw_viewheader.object.documenttype[al_row]
+		openwithparm(w_saledocument_rowid, lstr_blob)
+		lstr_blob = message.powerobjectparm
+		if lstr_blob.i_closemode = 1 then
+			this.dw_viewheader.object.documenttype[al_row] = lstr_blob.s_name
+			this.istr_image.ls_value[al_row, 3] = lstr_blob.s_name
+			this.istr_image.blob[al_row] = lstr_blob.lb_blob
+		end if
+	end if
+	return 0
+
+// w_saledocument.wf_rearrange_data(long al_row) returns long
+	long ll_counter
+	if al_row > 0 then
+		for ll_counter = al_row to 199
+			this.istr_image.ls_value[ll_counter, 1] = this.istr_image.ls_value[ll_counter + 1, 1]
+			this.istr_image.ls_value[ll_counter, 2] = this.istr_image.ls_value[ll_counter + 1, 2]
+			this.istr_image.ls_value[ll_counter, 3] = this.istr_image.ls_value[ll_counter + 1, 3]
+			this.istr_image.blob[ll_counter] = this.istr_image.blob[ll_counter + 1]
+		next
+	end if
+	return 0
+
+// w_saledocument.wf_set_caption() returns integer
+	if this.id_header.rowcount() > 0 then
+		this.id_header.object.docdescription[this.id_header.rowcount()] = this.istr_image.s_caller + "-" + string(today(), "dd/mm/yyyy hh:mm:ss")
+	end if
+	return 0
+
+// w_saledocument.create() returns 0
+	this.cb_ok = create cb_ok
+	this.cb_cancel = create cb_cancel
+	this.dw_viewheader = create dw_viewheader
+	this.control = {this.cb_ok, this.cb_cancel, this.dw_viewheader}
+
+// w_saledocument.destroy() returns 0
+	destroy this.cb_ok
+	destroy this.cb_cancel
+	destroy this.dw_viewheader
+
+// w_saledocument.open() returns long
+	long ll_row
+	long ll_currrow
+	long ll_counter
+	string ls_saletype
+	integer li_protect
+	integer li_view_cashorcredit
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	this.id_header = this.dw_viewheader
+	this.id_header.settransobject(sqlca)
+	this.istr_image = message.powerobjectparm
+	if this.istr_image.s_caller = "" or isnull(this.istr_image.s_caller) then
+		this.istr_image.s_caller = ""
+	end if
+	if this.istr_image.ls_value[1, 1] <> "" and not isnull(this.istr_image.ls_value[1, 1]) then
+		for ll_counter = 1 to 200
+			if this.istr_image.ls_value[ll_counter, 1] <> "" and not isnull(this.istr_image.ls_value[ll_counter, 1]) then
+				ll_row = this.id_header.insertrow(0)
+				this.id_header.object.rowid[ll_row] = integer(this.istr_image.ls_value[ll_counter, 1])
+				this.id_header.object.docdescription[ll_row] = this.istr_image.ls_value[ll_counter, 2]
+				this.id_header.object.documenttype[ll_row] = this.istr_image.ls_value[ll_counter, 3]
+			end if
+		next
+	end if
+	if this.id_header.rowcount() = 0 then
+		this.id_header.insertrow(0)
+		wf_set_caption()
+	end if
+	this.id_header.scrolltorow(this.id_header.rowcount())
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		triggerevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// dw_viewheader.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ll_rowcount
+	long ll_row
+	blob lbl_null
+	setnull(lbl_null)
+	if key = keyescape! then
+		parent.post event ue_close(-1)
+	end if
+	if keyflags = 2 then
+		if key = keyi! then
+			if parent.ib_rowvalidated = false and parent.wf_validateitem() = -1 then
+				return ::message.returnvalue
+			end if
+			if parent.id_header.rowcount() > 0 and f_validatedw(parent.id_header) < 0 then
+				return ::message.returnvalue
+			end if
+			ll_rowcount = parent.id_header.insertrow(0)
+			parent.wf_set_caption()
+			if ll_rowcount > 1 then
+				parent.id_header.scrolltorow(ll_rowcount)
+				parent.id_header.setfocus()
+			end if
+			parent.istr_image.ls_value[ll_rowcount, 3] = ""
+			parent.istr_image.blob[ll_rowcount] = lbl_null
+		end if
+		if key = keyd! then
+			parent.ib_rowvalidated = true
+			ll_row = parent.id_header.getrow()
+			ll_rowcount = parent.id_header.rowcount()
+			if parent.id_header.rowcount() > 0 then
+				parent.id_header.deleterow(0)
+			end if
+			parent.istr_image.ls_value[ll_row, 3] = ""
+			parent.istr_image.blob[ll_row] = lbl_null
+			parent.wf_rearrange_data(ll_row)
+			ll_rowcount = parent.id_header.rowcount()
+			if ll_rowcount > 1 then
+				parent.id_header.scrolltorow(ll_rowcount)
+				parent.id_header.setfocus()
+			end if
+			parent.ib_rowvalidated = true
+		end if
+	end if
+	return ::message.returnvalue
+
+// dw_viewheader.ue_enterkey() returns long
+	long ll_rowcount
+	if getrow() = rowcount() and getcolumn() = integer(this.object.datawindow.column.count) then
+		if parent.id_header.rowcount() > 0 and f_validatedw(parent.id_header) < 0 then
+			return ::message.returnvalue
+		end if
+		if parent.ib_rowvalidated = false and parent.wf_validateitem() = -1 then
+			return 1
+		end if
+		if parent.id_header.object.docdescription[getrow()] = "" or isnull(parent.id_header.object.imagedescription[getrow()]) then
+			return ::message.returnvalue
+		else
+			ll_rowcount = parent.id_header.insertrow(0)
+			parent.wf_set_caption()
+		end if
+		if ll_rowcount > 1 then
+			parent.id_header.scrolltorow(ll_rowcount)
+			parent.id_header.setfocus()
+		end if
+		return 1
+	end if
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_viewheader.itemerror(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "docdescription"
+		if data = "" or isnull(data) then
+			messagebox("Description Validation", "Value required Description in current row")
+		end if
+	end choose
+	return 1
+
+// dw_viewheader.itemfocuschanged(long row, dwobject dwo) returns long
+	if parent.ib_rowvalidated = false and parent.wf_validateitem() = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_viewheader.itemchanged(long row, dwobject dwo, string data) returns long
+	integer li_errcode
+	choose case dwo.name
+	case "docdescription"
+		parent.ib_rowvalidated = false
+		parent.il_currrow = row
+		li_errcode = 0
+	case else
+		parent.ib_rowvalidated = true
+	end choose
+	return li_errcode
+
+// dw_viewheader.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	choose case dwo.name
+	case "b_image"
+		parent.wf_show_image(row)
+	end choose
+	return ::message.returnvalue

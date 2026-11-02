@@ -1,0 +1,145 @@
+// window w_itemflatdiscountcalculator (purchaseresponsewin)  ancestor: window
+
+// w_itemflatdiscountcalculator.ue_close(integer ai_status) returns 0
+	if ai_status = -1 then
+		this.istr_unittaxinputs.d_unittax = this.istr_oldunittaxinputs.d_unittax
+		this.istr_unittaxinputs.i_status = this.istr_oldunittaxinputs.i_status
+	end if
+	closewithreturn(this, this.istr_unittaxinputs)
+
+// w_itemflatdiscountcalculator.create() returns 0
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.dw_amountoninvoice = create dw_amountoninvoice
+	this.control = {this.cb_cancel, this.cb_ok, this.dw_amountoninvoice}
+
+// w_itemflatdiscountcalculator.destroy() returns 0
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.dw_amountoninvoice
+
+// w_itemflatdiscountcalculator.open() returns long
+	string ls_aliasname
+	string ls_name
+	decimal ld_saleprice
+	decimal ld_purprice
+	long ll_packunits
+	string ls_invcode
+	long ll_rtcode
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	this.istr_unittaxinputs = message.powerobjectparm
+	this.istr_oldunittaxinputs = this.istr_unittaxinputs
+	this.id_dw = this.dw_amountoninvoice
+	this.id_dw.settransobject(sqlca)
+	this.id_dw.retrieve(this.istr_unittaxinputs.l_icode, this.istr_unittaxinputs.d_price, this.istr_unittaxinputs.d_saleprice, this.istr_unittaxinputs.d_unittax)
+	if this.id_dw.rowcount() = 0 then
+		this.id_dw.insertrow(0)
+	end if
+	this.id_dw.object.discountvalue[1] = round(this.id_dw.object.totalqty[1] * this.id_dw.object.itemflatdisc[1], 2)
+	if this.id_dw.object.totalqty[1] <= 0 or isnull(this.id_dw.object.totalqty[1]) then
+		this.id_dw.object.itemflatdisc[1] = this.id_dw.object.discountvalue[1]
+	else
+		this.id_dw.object.itemflatdisc[1] = this.id_dw.object.discountvalue[1] / this.id_dw.object.totalqty[1]
+	end if
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	this.id_dw.setfocus()
+	this.id_dw.setcolumn("discountvalue")
+	this.id_dw.scrolltorow(1)
+	this.id_dw.selecttext(1, len(this.id_dw.gettext()))
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_itemflatdiscountcalculator.closequery() returns long
+	this.istr_unittaxinputs.i_status = -1
+	post event ue_close(-1)
+	return 0
+
+// cb_cancel.clicked() returns long
+	parent.istr_unittaxinputs.i_status = -1
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	if parent.id_dw.accepttext() = 1 then
+		if parent.id_dw.object.discountvalue[1] < 0 then
+			messagebox("Discount Value Validation!", "Please Enter Valid Discount Value")
+			parent.id_dw.setfocus()
+			parent.id_dw.setcolumn("discountvalue")
+			return ::message.returnvalue
+		end if
+		if parent.id_dw.object.itemflatdisc[1] < 0 or isnull(parent.id_dw.object.itemflatdisc[1]) then
+			messagebox("Item Flat Discount Validation!", "Please Enter Valid Item Flat Discount")
+			parent.id_dw.setfocus()
+			parent.id_dw.setcolumn("ItemFlatDisc")
+			return ::message.returnvalue
+		end if
+		parent.istr_unittaxinputs.d_price = parent.id_dw.object.purvalue[1]
+		parent.istr_unittaxinputs.d_saleprice = parent.id_dw.object.totalqty[1]
+		parent.istr_unittaxinputs.d_unittax = parent.id_dw.object.itemflatdisc[1]
+		parent.istr_unittaxinputs.i_status = 1
+		parent.post event ue_close(1)
+	end if
+	return ::message.returnvalue
+
+// dw_amountoninvoice.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	long ll_null
+	double ld_qty
+	double ld_itemflatdisc
+	double ld_discountvalue
+	integer li_errcode
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	setnull(ll_null)
+	choose case dwo.name
+	case "discountvalue"
+		if double(data) < 0.0 then
+			li_errcode = 1
+		else
+			ld_qty = this.object.totalqty[1]
+			if ld_qty <= 0.0 then
+				ld_qty = 1
+			end if
+			ld_itemflatdisc = round(double(data) / ld_qty, 2)
+			this.object.itemflatdisc[1] = ld_itemflatdisc
+			li_errcode = 0
+		end if
+	case "itemflatdisc"
+		if double(data) < 0.0 or double(data) > 100.0 then
+			li_errcode = 1
+		else
+			ld_qty = this.object.totalqty[1]
+			if ld_qty <= 0.0 then
+				ld_qty = 1
+			end if
+			ld_itemflatdisc = double(data)
+			ld_discountvalue = ld_itemflatdisc * ld_qty
+			this.object.discountvalue[1] = ld_discountvalue
+			li_errcode = 0
+		end if
+	end choose
+	return li_errcode
+
+// dw_amountoninvoice.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1

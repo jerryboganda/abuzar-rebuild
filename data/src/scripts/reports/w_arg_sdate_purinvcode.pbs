@@ -1,0 +1,32 @@
+// window w_arg_sdate_purinvcode (reports)  ancestor: w_arguements
+
+// w_arg_sdate_purinvcode.create() returns 0
+	integer icurrent
+	call super::create
+	this.dw_control2 = create dw_control2
+	this.st_4 = create st_4
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_control2
+	this.control[icurrent + 2] = this.st_4
+
+// w_arg_sdate_purinvcode.destroy() returns 0
+	call super::destroy
+	destroy this.dw_control2
+	destroy this.st_4
+
+// w_arg_sdate_purinvcode.ue_close(integer ai_stauts) returns 0
+	super::ue_close(ai_stauts)
+	closewithreturn(this, this.istr_arg)
+
+// w_arg_sdate_purinvcode.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.em_startdate.text = string(today(), "dd/mm/yyyy hh:mm:ss")
+	this.dw_control2.settransobject(sqlca)
+	this.dw_control2.insertrow(0)
+	this.dw_control2.scrolltorow(0)
+	return ::message.returnvalue
+
+// dw_control2.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return ::message.returnvalue

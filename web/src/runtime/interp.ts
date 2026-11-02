@@ -25,6 +25,8 @@ export interface SysFunc {
 export class Ref {
   get: () => unknown
   set: (v: unknown) => Promise<void> | void
+  name = '' // identifier the reference was made from
+  typ = '' // declared type of that identifier (windows opened through variables)
   constructor(get: () => unknown, set: (v: unknown) => Promise<void> | void) {
     this.get = get
     this.set = set
@@ -76,6 +78,15 @@ export class Runtime {
   sql: ((rt: Runtime, f: Frame, st: Extract<Stmt, { k: 'sql' }>) => Promise<void>) | null = null
   /** translated retrieve statement of a DataWindow (data/sql); set by the application shell */
   dwSql: ((name: string) => { sql: string; params: string[] } | undefined) | null = null
+  windowInstances = new Map<string, PBObject>() // open window by class name (global window variables such as w_main)
+  dwCatalog: import('../dw/def.ts').DwCatalog | null = null
+  closeWindow: (w: PBObject) => Promise<number> = async () => 0
+  /** translated embedded statement by normalised original text (data/sql) */
+  sqlStmt: ((key: string) => { sql: string; params: string[]; into?: string[] } | undefined) | null = null
+  /** opens a server session for a transaction object */
+  openDb: ((t: PBObject) => Promise<import('./wire.ts').Db>) | null = null
+  /** stored procedures callable through the transaction object (RPC declarations) */
+  procs: { call(t: PBObject, name: string, args: unknown[]): Promise<unknown> } | null = null
   /** run-time translation of a changed SELECT (modify datawindow.table.select) */
   translateSql: ((text: string) => { sql: string; params: string[] } | undefined) | null = null
   missing = new Map<string, number>() // unimplemented functions / members seen at run time
@@ -504,6 +515,7 @@ export class Runtime {
         const r = this.lookup(e.n, f)
         if (r.found) return r.value
         if (e.n === 'ancestorreturnvalue') return null
+        if (this.windowInstances.has(e.n)) return this.windowInstances.get(e.n)!
         this.noteMissing('var:' + e.n)
         return null
       }
@@ -519,7 +531,7 @@ export class Runtime {
         const o = await this.eval(e.o, f)
         const idx: unknown[] = []
         for (const x of e.i) idx.push(await this.eval(x, f))
-        return this.getIndex(o, idx)
+        return await this.getIndex(o, idx)
       }
       case 'call':
         return this.evalCall(e, f)
@@ -558,7 +570,17 @@ export class Runtime {
     // local type table: `create` of a name declared in the current frame's window as control
     const o = await this.instantiate(key, null)
     void f
+    if (o.native !== 'window') await this.fire(o, 'constructor')
+    await this.fireConstructors(o)
     return o
+  }
+
+  /** `constructor` events of all descendant controls (PowerBuilder runs them while a window / object is being created) */
+  async fireConstructors(o: PBObject): Promise<void> {
+    for (const c of o.children.values()) {
+      await this.fire(c, 'constructor')
+      await this.fireConstructors(c)
+    }
   }
 
   newStruct(cls: ClassDef): PBStruct {
@@ -710,6 +732,14 @@ export class Runtime {
 
   /** reference to an lvalue expression (for ref arguments) */
   refOf(e: Expr, f: Frame): Ref {
+    const r = this.refOf0(e, f)
+    if (e.k === 'id') {
+      r.name = e.n
+      r.typ = f.types.get(e.n) || this.gtypes.get(e.n) || ''
+    }
+    return r
+  }
+  private refOf0(e: Expr, f: Frame): Ref {
     return new Ref(
       () => {
         // synchronous read of variables only (the common case for ref arguments)

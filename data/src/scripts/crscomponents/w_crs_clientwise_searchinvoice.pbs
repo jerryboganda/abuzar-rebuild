@@ -1,0 +1,123 @@
+// window w_crs_clientwise_searchinvoice (crscomponents)  ancestor: window
+
+// w_crs_clientwise_searchinvoice.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		post event ue_close()
+	end if
+	return ::message.returnvalue
+
+// w_crs_clientwise_searchinvoice.ue_close() returns 0
+	closewithreturn(this, this.istr_arg)
+
+// w_crs_clientwise_searchinvoice.wf_assigndwobjects(string as_masterdw, string as_detaildw, string as_footerdw) returns 0
+	this.dw_master.dataobject = as_masterdw
+	this.dw_detail.dataobject = as_detaildw
+	this.dw_footer.dataobject = as_footerdw
+	this.dw_master.settransobject(sqlca)
+	this.dw_detail.settransobject(sqlca)
+	this.dw_footer.settransobject(sqlca)
+
+// w_crs_clientwise_searchinvoice.create() returns 0
+	this.cb_preview = create cb_preview
+	this.cb_startsearch = create cb_startsearch
+	this.dw_footer = create dw_footer
+	this.dw_master = create dw_master
+	this.dw_detail = create dw_detail
+	this.control = {this.cb_preview, this.cb_startsearch, this.dw_footer, this.dw_master, this.dw_detail}
+
+// w_crs_clientwise_searchinvoice.destroy() returns 0
+	destroy this.cb_preview
+	destroy this.cb_startsearch
+	destroy this.dw_footer
+	destroy this.dw_master
+	destroy this.dw_detail
+
+// w_crs_clientwise_searchinvoice.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	string ls_text
+	date ld_currdate
+	time lt_currtime
+	datetime ld_startdate
+	datetime ld_enddate
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		this.width = ll_win_width * 0.95
+		this.height = ll_win_height * 0.95
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+		this.dw_detail.width = this.width * 0.98
+		this.cb_preview.y = this.height - 250
+		this.dw_detail.height = this.cb_preview.y - this.dw_detail.y - 30
+	end if
+	this.title = "Search Sale/Return Invoice(s)"
+	wf_assigndwobjects("d_crs_clientwise_search_criteria", "d_crs_clientwise_searchinvoice", "")
+	this.dw_master.retrieve()
+	this.dw_master.setfocus()
+	this.dw_master.setcolumn(1)
+	ld_currdate = today()
+	ld_startdate = datetime(ld_currdate, time("00:00:00"))
+	this.dw_master.setitem(1, "startdate", ld_startdate)
+	ld_enddate = datetime(ld_currdate, time("23:59:59"))
+	this.dw_master.setitem(1, "enddate", ld_enddate)
+	return ::message.returnvalue
+
+// cb_preview.clicked() returns long
+	long ll_row
+	s_invdetail lsrt_invdetail
+	if parent.dw_detail.rowcount() > 0 and parent.dw_detail.getrow() > 0 then
+		ll_row = parent.dw_detail.getrow()
+		if parent.dw_detail.object.type[ll_row] = "S" then
+			lsrt_invdetail.i_module = 1
+		elseif parent.dw_detail.object.type[ll_row] = "R" then
+			lsrt_invdetail.i_module = 2
+		elseif parent.dw_detail.object.type[ll_row] = "P" then
+			lsrt_invdetail.i_module = 3
+		elseif parent.dw_detail.object.type[ll_row] = "PR" then
+			lsrt_invdetail.i_module = 4
+		end if
+		lsrt_invdetail.l_invcode = parent.dw_detail.object.invcode[ll_row]
+		lsrt_invdetail.l_clientinstanceid = parent.dw_detail.object.clientinstanceid[ll_row]
+		openwithparm(w_crs_invoicedetail, lsrt_invdetail)
+	end if
+	return ::message.returnvalue
+
+// cb_startsearch.clicked() returns long
+	long ll_instanceid
+	long ll_custcode
+	datetime ldt_startdate
+	datetime ldt_enddate
+	string ls_type
+	string ls_text
+	parent.dw_master.accepttext()
+	if parent.dw_master.rowcount() > 0 then
+		ll_instanceid = parent.dw_master.object.clientinstanceid[1]
+		if ll_instanceid = 0 or isnull(ll_instanceid) then
+			setnull(ll_instanceid)
+		end if
+		ls_type = parent.dw_master.object.type[1]
+		if ls_type = "" then
+			setnull(ls_type)
+		end if
+		ll_custcode = parent.dw_master.object.custcode[1]
+		ldt_startdate = parent.dw_master.object.startdate[1]
+		ldt_enddate = parent.dw_master.object.enddate[1]
+		ls_text = parent.dw_master.object.text[1]
+		if ls_text = "" then
+			setnull(ls_text)
+		end if
+		parent.dw_detail.retrieve(ll_instanceid, ls_type, ll_custcode, ldt_startdate, ldt_enddate, ls_text)
+	end if
+	return ::message.returnvalue

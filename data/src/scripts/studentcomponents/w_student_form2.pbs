@@ -1,0 +1,517 @@
+// window w_student_form2 (studentcomponents)  ancestor: w_single_entry
+
+// w_student_form2.wf_duplicateregno(string as_name) returns boolean
+	long ll_count
+	long ll_code
+	boolean b_flag
+	as_name = trim(as_name)
+	ll_code = this.id_detail.object.code[this.id_detail.rowcount()]
+	if isnull(ll_code) then
+		SQL SELECT count ( *) INTO :ll_count FROM Student WHERE Student.regno =:as_name USING sqlca;
+	else
+		SQL SELECT count ( *) INTO :ll_count FROM Student WHERE Student.regno =:as_name AND Student.StudentCode <> :ll_code USING sqlca;
+	end if
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_student_form2.wf_admitted(long al_patientcode) returns long
+	return 0
+
+// w_student_form2.wf_assign_master_cash_win_object() returns 0
+
+// w_student_form2.wf_set_cashaccount() returns long
+	long ll_cashacccode
+	long ll_module
+	long ll_code
+	ll_module = 14
+	ll_code = this.id_detail.object.code[this.id_detail.rowcount()]
+	ll_cashacccode = f_is_group_module_cashaccount_allowed(this.il_groupcode, ll_module)
+	if ll_cashacccode <= 0 or isnull(ll_cashacccode) then
+		ll_cashacccode = 0
+		messagebox("Group Cash Account Problem", "No Cash Account Attached to the group of the user logged on~r~nKindly contact system administrator to do the needfull.", stopsign!, ok!)
+	elseif isnull(ll_code) or this.id_detail.object.code[1] <= 0 then
+		this.id_detail.object.cashacccode[this.id_detail.rowcount()] = ll_cashacccode
+	else
+		ll_cashacccode = this.id_detail.object.cashacccode[this.id_detail.rowcount()]
+	end if
+	return ll_cashacccode
+
+// w_student_form2.wf_show_mastercashierwindow() returns long
+	return 0
+
+// w_student_form2.wf_update_mastercashierwindow(long al_code, string as_type, long al_new_pat_reg) returns long
+	return 0
+
+// w_student_form2.wf_setprintout() returns long
+	long ll_retcode
+	string ls_printout
+	m_studentmenu lm_menu
+	lm_menu = this.menuid
+	ls_printout = ""
+	if ls_printout = "" then
+		ls_printout = "d_Studentregisteration_print"
+	end if
+	this.id_print.dataobject = ls_printout
+	return ll_retcode
+
+// w_student_form2.wf_setimage() returns long
+	long ll_counter
+	long ll_code
+	long ll_row
+	s_itemimage lstr_image
+	for ll_counter = 1 to this.id_image.rowcount()
+		lstr_image.ls_value[ll_counter, 1] = trim(string(this.id_image.object.rowid[ll_counter]))
+		lstr_image.ls_value[ll_counter, 2] = this.id_image.object.imagedescription[ll_counter]
+		lstr_image.ls_value[ll_counter, 3] = this.id_image.object.imagetype[ll_counter]
+		lstr_image.blob[ll_counter] = this.istr_image.blob[ll_counter]
+	next
+	openwithparm(w_studentimage, lstr_image)
+	lstr_image = message.powerobjectparm
+	if lstr_image.i_closemode = 1 then
+		this.istr_image = lstr_image
+		this.id_image.reset()
+		ll_code = this.id_detail.object.code[this.id_detail.rowcount()]
+		for ll_counter = 1 to 200
+			if long(lstr_image.ls_value[ll_counter, 1]) > 0 then
+				ll_row = this.id_image.insertrow(0)
+				this.id_image.object.code[ll_row] = ll_code
+				this.id_image.object.rowid[ll_row] = long(lstr_image.ls_value[ll_counter, 1])
+				this.id_image.object.imagedescription[ll_row] = lstr_image.ls_value[ll_counter, 2]
+				this.id_image.object.imagetype[ll_row] = lstr_image.ls_value[ll_counter, 3]
+			end if
+			if ll_counter = 1 then
+				wf_set_firstimage()
+			end if
+		next
+	end if
+	return 0
+
+// w_student_form2.wf_populate_image() returns long
+	long ll_counter
+	long ll_rowcount
+	long ll_code
+	string ls_null
+	setnull(ls_null)
+	ll_rowcount = this.id_image.rowcount()
+	if ll_rowcount <= 0 then
+		this.id_detail.object.p_photo.filename = ls_null
+		return 0
+	end if
+	ll_code = this.id_image.object.code[1]
+	for ll_counter = 1 to ll_rowcount
+		this.istr_image.ls_value[ll_counter, 1] = trim(string(this.id_image.object.rowid[ll_counter]))
+		this.istr_image.ls_value[ll_counter, 2] = this.id_image.object.imagedescription[ll_counter]
+		this.istr_image.ls_value[ll_counter, 3] = this.id_image.object.imagetype[ll_counter]
+		wf_get_image(ll_code, ll_counter)
+		if ll_counter = 1 then
+			wf_set_firstimage()
+		end if
+	next
+	return 0
+
+// w_student_form2.wf_get_image(long al_code, long al_row) returns long
+	blob lbl_image
+	u_transaction lt_transobject
+	lt_transobject = create u_transaction
+	lt_transobject.autocommit = true
+	SQL start USING lt_transobject;
+	if lt_transobject.sqlcode <> 0 then
+		messagebox("Connection Error", "Unable to connect to DataBase server")
+		destroy lt_transobject
+		return -1
+	end if
+	SQL SelectBlob IMG INTO :lbl_image From StudentImage Where Studentcode =:al_code AND RowID =:al_row USING lt_transobject;
+	if lt_transobject.sqlcode <> 0 then
+		messagebox("Student Image/Picture ", "Unable to fetch Student Image.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext)
+	end if
+	SQL stop USING lt_transobject;
+	destroy lt_transobject
+	this.istr_image.blob[al_row] = lbl_image
+	return 0
+
+// w_student_form2.wf_update_image(long al_code) returns long
+	long ll_counter
+	long ll_code
+	long ll_rowid
+	string ls_desc
+	string ls_imgtype
+	u_transaction lt_transobject
+	ll_code = al_code
+	if al_code > 0 and this.id_image.rowcount() = 0 then
+		return 0
+	end if
+	lt_transobject = create u_transaction
+	lt_transobject.autocommit = true
+	SQL start USING lt_transobject;
+	if lt_transobject.sqlcode <> 0 then
+		messagebox("Connection Error", "Unable to connect to DataBase server for updating/inserting in StudentImage Table")
+		destroy lt_transobject
+		return -1
+	end if
+	SQL DELETE StudentImage WHERE StudentCode =:ll_code USING lt_transobject;
+	if lt_transobject.sqlcode <> 0 then
+		messagebox("Connection Error", "Unable to Delete Previous Student Image Record from database")
+		destroy lt_transobject
+		return -1
+	end if
+	for ll_counter = 1 to this.id_image.rowcount()
+		ll_rowid = this.id_image.object.rowid[ll_counter]
+		ls_desc = this.id_image.object.imagedescription[ll_counter]
+		ls_imgtype = this.id_image.object.imagetype[ll_counter]
+		SQL INSERT INTO StudentImage ( Studentcode , ImageDescription , RowID , ImageType ) VALUES ( :ll_code , :ls_desc , :ll_rowid , :ls_imgtype ) USING lt_transobject;
+		if lt_transobject.sqlcode <> 0 then
+			messagebox("Insert Error", "Unable to Insert Student Images Into Student Image Table.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext)
+			SQL stop USING lt_transobject;
+			destroy lt_transobject
+			return -1
+		end if
+		SQL UpdateBlob StudentImage Set IMG =:this.istr_image.blob[ll_counter] Where Studentcode =:ll_code and ROWID =:ll_rowid USING lt_transobject;
+		if lt_transobject.sqlcode <> 0 then
+			messagebox("Student Image ", "Unable to update Student image.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext)
+		end if
+	next
+	SQL stop USING lt_transobject;
+	destroy lt_transobject
+	return 0
+
+// w_student_form2.wf_set_firstimage() returns long
+	string ls_imagetype
+	blob blb_local
+	this.is_filename = gs_temp_img_filename
+	this.is_filename = left(this.is_filename, len(this.is_filename) - 4)
+	blb_local = this.istr_image.blob[1]
+	this.is_filename = this.is_filename + trim(string(1)) + "." + this.istr_image.ls_value[1, 3]
+	f_writeimgtofile(this.is_filename, blb_local)
+	this.id_detail.object.p_photo.filename = this.is_filename
+	return 0
+
+// w_student_form2.wf_print_firstimage(long al_studentcode) returns long
+	long ll_counter
+	long ll_rowcount
+	long ll_code
+	blob blb_local
+	this.id_image.retrieve(al_studentcode)
+	ll_rowcount = this.id_image.rowcount()
+	this.is_filename = ""
+	if ll_rowcount <= 0 then
+		return 0
+	end if
+	this.istr_image.ls_value[1, 1] = trim(string(this.id_image.object.rowid[1]))
+	this.istr_image.ls_value[1, 2] = this.id_image.object.imagedescription[1]
+	this.istr_image.ls_value[1, 3] = this.id_image.object.imagetype[1]
+	wf_get_image(al_studentcode, 1)
+	this.is_filename = gs_temp_img_filename
+	this.is_filename = left(this.is_filename, len(this.is_filename) - 4)
+	blb_local = this.istr_image.blob[1]
+	this.is_filename = this.is_filename + trim(string(1)) + "." + this.istr_image.ls_value[1, 3]
+	f_writeimgtofile(this.is_filename, blb_local)
+	this.id_print.object.p_photo.filename = this.is_filename
+	return 0
+
+// w_student_form2.wf_check_fathernic_students(string as_fathernic) returns integer
+	long ll_regcount
+	long ll_admittedcount
+	long ll_primarykey
+	long ll_res
+	ll_primarykey = this.id_detail.object.code[1]
+	if f_stringpreferences("PromptFatherNICStatisticsOnSaving") = "Y" and len(as_fathernic) > 0 and isnull(ll_primarykey) then
+		SQL SELECT Count ( FNIC ) INTO :ll_regcount FROM Student WHERE FNIC =:as_fathernic USING this.it_transobject;
+		if this.it_transobject.sqlcode = 0 then
+			SQL SELECT Count ( FNIC ) INTO :ll_admittedcount FROM Student WHERE FNIC =:as_fathernic AND CurrentClass > 0 AND Status ='A' USING this.it_transobject;
+			if this.it_transobject.sqlcode = 0 then
+				if ll_admittedcount <= 0 or isnull(ll_admittedcount) then
+					ll_admittedcount = 0
+				end if
+				if ll_regcount <= 0 or isnull(ll_regcount) then
+					ll_regcount = 0
+				end if
+				ll_res = messagebox("Father NIC Statistics", "Number of Students Registered against this Father NIC are :- " + string(ll_regcount) + "~r~nNumber of Students Admitted against this Father NIC are :- " + string(ll_admittedcount), question!, okcancel!, 1)
+				if ll_res = 2 then
+					return -1
+				end if
+			else
+				messagebox("Father NIC Statistics", "Error Fetching Father NIC Statistics for Student Admission~r~nReasons are:-" + this.it_transobject.sqlerrtext, stopsign!)
+				return -1
+			end if
+		else
+			messagebox("Father NIC Statistics", "Error Fetching Father NIC Statistics for Student Registration~r~nReasons are:-" + this.it_transobject.sqlerrtext, stopsign!)
+			return -1
+		end if
+		return
+	end if
+	return 0
+
+// w_student_form2.wf_show_studentledger() returns 0
+	long ll_studentcode
+	if this.tab_retrieve.selectedtab = 1 then
+		if this.id_detail.rowcount() > 0 and this.id_detail.getrow() > 0 then
+			ll_studentcode = this.id_detail.object.studentcode[this.id_detail.getrow()]
+		end if
+	elseif this.tab_retrieve.selectedtab = 2 and (this.id_list.rowcount() > 0 and this.id_list.getrow() > 0) then
+		ll_studentcode = this.id_list.object.code[this.id_list.getrow()]
+	end if
+	if not isnull(ll_studentcode) and ll_studentcode <> 0 then
+		SQL rollback USING sqlca;
+		sqlca.virtualgl("A")
+		if sqlca.sqlcode = 0 then
+			SQL commit USING sqlca;
+		else
+			SQL rollback USING sqlca;
+		end if
+		openwithparm(w_student_ledger, ll_studentcode)
+	end if
+
+// w_student_form2.create() returns 0
+	integer icurrent
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_studentmenu" then
+		this.menuid = create m_studentmenu
+	end if
+	this.dw_image = create dw_image
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_image
+
+// w_student_form2.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_image
+
+// w_student_form2.activate() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::activate()
+	this.windowstate = maximized!
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_student_form2.open() returns long
+	long ancestorreturnvalue
+	m_studentmenu lm_menu
+	ancestorreturnvalue = super::open()
+	wf_setmenu(this.menuid)
+	lm_menu = this.menuid
+	this.is_tablename = "student"
+	this.id_print.dataobject = "d_studentregisteration_print"
+	this.id_print.settransobject(sqlca)
+	this.id_image = this.dw_image
+	this.id_image.settransobject(this.it_transobject)
+	return ::message.returnvalue
+
+// w_student_form2.ue_save() returns 0
+	long ll_primarykey
+	long ll_row
+	long ll_usercode
+	long ll_found
+	long ll_null
+	long ll_primarycode_old
+	long ll_new_pat_reg
+	long ll_counter
+	long ll_classcode
+	long ll_res
+	long ll_studentcount
+	integer li_patientcatcode
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	string ls_regno
+	string ls_rollno
+	string ls_fnic
+	boolean lb_commit
+	dwitemstatus ldw_admittedto
+	setnull(ll_null)
+	setpointer(hourglass!)
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	this.id_detail.accepttext()
+	ll_row = this.id_detail.getrow()
+	ll_primarykey = this.id_detail.object.code[this.id_detail.getrow()]
+	ll_primarycode_old = ll_primarykey
+	if not wf_validateserverdatetime(ldt_server_datetime, ls_date_errtext) then
+		messagebox("Date Violation", ls_date_errtext, stopsign!)
+		return
+	end if
+	if this.id_detail.rowcount() > 0 then
+		if f_validate_mobile(this.id_detail, 1, "mobile") = false then
+			this.id_detail.setcolumn("mobile")
+			return
+		end if
+		ls_fnic = this.id_detail.object.fnic[1]
+	end if
+	if wf_check_fathernic_students(ls_fnic) < 0 then
+		return
+	end if
+	if gl_usercode > 0 then
+		ldw_admittedto = this.id_detail.getitemstatus(ll_row, "admittedto", primary!)
+		if this.id_detail.object.admittedto[ll_row] > 0 and (ldw_admittedto = datamodified! or ldw_admittedto = newmodified!) then
+			ll_classcode = this.id_detail.object.admittedto[ll_row]
+		end if
+		if ll_primarykey <= 0 then
+			this.id_detail.object.registeredby[ll_row] = gl_usercode
+		end if
+		this.id_detail.object.lastupdate[ll_row] = ldt_server_datetime
+		this.id_detail.object.lastupdateby[ll_row] = gl_usercode
+		if this.id_detail.object.admittedto[ll_row] > 0 then
+			this.id_detail.object.admittedby[ll_row] = gl_usercode
+		end if
+		if isnull(ll_primarykey) then
+			ll_new_pat_reg = 1
+			SQL rollback USING sqlca;
+			sqlca.gettabmaxkey(this.is_tablename, ll_primarykey)
+			if sqlca.sqlcode = 0 then
+				this.id_detail.setitem(1, "code", ll_primarykey)
+				for ll_counter = 1 to this.id_image.rowcount()
+					this.id_image.setitem(ll_counter, "code", ll_primarykey)
+				next
+			else
+				messagebox("Student Registration Problem", "Problem in Generation of Student Code~r~n Possibe Reason: " + sqlca.sqlerrtext)
+				return
+			end if
+			return
+		end if
+		if lb_commit then
+			if this.id_detail.update() > 0 then
+				if ll_classcode > 0 then
+					sqlca.admit_student(ll_classcode, ll_primarykey, ls_rollno)
+					if sqlca.sqlcode = 0 then
+						SQL commit USING sqlca;
+						messagebox("Save Changes", "Changes take effect in database.~r~nStudent Admitted successfully.~r~n~r~nAllocated Roll No = " + ls_rollno, exclamation!, ok!, 1)
+						this.ib_commitok = true
+					else
+						SQL rollback USING sqlca;
+						setpointer(arrow!)
+						messagebox("Save Changes", "Changes Rollback in database, ~n~rSome database problem occurs", exclamation!, ok!, 1)
+						this.ib_commitok = false
+					end if
+				else
+					SQL commit USING sqlca;
+					messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+					this.ib_commitok = true
+				end if
+				if this.ib_commitok = true then
+					this.im_menu.m_file.m_new.enabled = true
+					this.editflag = false
+					if wf_update_image(ll_primarykey) = 0 then
+						this.id_image.reset()
+						this.istr_image = this.istr_blank_image
+					end if
+				end if
+			else
+				SQL rollback USING sqlca;
+				setpointer(arrow!)
+				messagebox("Save Changes", "Changes Rollback in database, ~n~rSome database problem occurs", exclamation!, ok!, 1)
+			end if
+		end if
+	end if
+	if isnull(ll_primarycode_old) then
+		this.id_detail.setitem(ll_row, "code", ll_null)
+	end if
+	setpointer(arrow!)
+
+// w_student_form2.ue_detail() returns 0
+	call super::ue_detail
+	this.im_menu.m_file.m_print.enabled = true
+	if this.id_detail.object.code[this.id_detail.rowcount()] > 0 then
+		this.id_image.retrieve(this.id_detail.object.code[this.id_detail.rowcount()])
+		wf_populate_image()
+	else
+		wf_assign_master_cash_win_object()
+	end if
+	if this.id_detail.rowcount() > 0 then
+		if this.id_detail.object.status[this.id_detail.getrow()] = "L" then
+			wf_protectdw(this.id_detail, 1)
+			this.editflag = false
+			this.im_menu.m_file.m_print.enabled = false
+			this.im_menu.m_file.m_save.enabled = false
+		else
+			wf_protectdw(this.id_detail, 0)
+		end if
+		if this.id_detail.object.admittedto[this.id_detail.rowcount()] > 0 then
+			this.id_detail.object.admittedto.protect = "1"
+		end if
+	end if
+
+// w_student_form2.ue_newform() returns 0
+	long ll_code
+	call super::ue_newform
+	wf_assign_master_cash_win_object()
+	this.id_image.reset()
+	SQL SELECT code =ISNULL ( MAX ( StudentCode ) , 0 ) + 1 INTO :ll_code FROM DBO.Student USING sqlca;
+	if sqlca.sqlcode = 0 then
+		this.id_detail.object.regno[1] = trim(string(ll_code))
+	end if
+	this.id_detail.object.p_photo.filename = ""
+	this.id_detail.object.admittedto.protect = "0"
+	wf_protectdw(this.id_detail, 0)
+
+// w_student_form2.ue_postopen() returns 0
+	call super::ue_postopen
+	wf_assign_master_cash_win_object()
+	this.il_groupcode = f_getgroupcode(gl_usercode)
+
+// w_student_form2.ue_print() returns 0
+	long ll_code
+	long ll_row
+	long li_printretcode
+	string ls_printsize
+	boolean lb_listtab
+	s_datastore lstr
+	if this.tab_retrieve.selectedtab = 2 then
+		lb_listtab = true
+	end if
+	if this.im_menu.m_file.m_save.enabled = true and lb_listtab = false then
+		triggerevent("ue_save")
+		if wf_commitform() = false then
+			return
+		end if
+		return
+	end if
+	if lb_listtab then
+		if isnull(this.id_list.getrow()) or this.id_list.getrow() <= 0 then
+			messagebox("Rows Validation", "Kindly select any row from the list view.")
+			return
+		end if
+		ll_code = this.id_list.getitemnumber(this.id_list.getrow(), "code")
+		if isnull(ll_code) or ll_code <= 0 then
+			messagebox("Selection Validation", "Kindly select any row from the list view.")
+			return
+		end if
+	else
+		ll_code = this.id_detail.getitemnumber(1, "code")
+	end if
+	wf_setprintout()
+	this.id_print.settransobject(this.it_transobject)
+	this.id_print.retrieve(ll_code)
+	wf_print_firstimage(ll_code)
+	if lb_listtab then
+		lstr.s_name3 = "studentreg"
+		lstr.s_name4 = this.is_filename
+		lstr.dw = this.id_print
+		lstr.s_name1 = this.id_print.dataobject
+		openwithparm(w_preview_invoices, lstr)
+		lstr = message.powerobjectparm
+		if lstr.i_closemode = -1 then
+			return
+		end if
+		return
+	end if
+	if this.id_print.rowcount() > 0 then
+		if f_stringpreferences("PromptBeforePrinting") = "Y" and printsetup() < 0 then
+			messagebox("Printer", "Printing Error")
+			this.id_print.printcancel()
+		end if
+		li_printretcode = this.id_print.print()
+		if li_printretcode < 0 then
+			messagebox("Printing", "Can not Print Invoice", information!)
+		end if
+		if this.im_menu.m_file.m_save.enabled = true and lb_listtab = false then
+			postevent("ue_new")
+		end if
+		return
+	end if
+	messagebox("Printing Error", "Can not Print,~r~nNo rows are retrieved", information!)

@@ -1,0 +1,45 @@
+// window w_pendingdueinfo (salerespwin)  ancestor: window
+
+// w_pendingdueinfo.create() returns 0
+	this.dw_itemsalehistory = create dw_itemsalehistory
+	this.control = {this.dw_itemsalehistory}
+
+// w_pendingdueinfo.destroy() returns 0
+	destroy this.dw_itemsalehistory
+
+// w_pendingdueinfo.open() returns long
+	s_itemsalehistory ls_itemsalehistory
+	long ll_width
+	long ll_height
+	environment env
+	ls_itemsalehistory = message.powerobjectparm
+	if getenvironment(env) <> 1 then
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.width = ll_width * 0.98
+	this.height = ll_height * 0.65
+	this.y = int((ll_height - this.height) / 2.0)
+	this.dw_itemsalehistory.width = this.width - this.width * 0.02
+	this.dw_itemsalehistory.height = this.height - this.width * 0.05
+	this.dw_itemsalehistory.settransobject(sqlca)
+	this.dw_itemsalehistory.retrieve(ls_itemsalehistory.ar_icode)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_pendingdueinfo.close() returns long
+	close(this)
+	return ::message.returnvalue
+
+// w_pendingdueinfo.key(keycode key, unsignedlong keyflags) returns long
+	if keydown(keyescape!) then
+		close(this)
+	end if
+	return ::message.returnvalue

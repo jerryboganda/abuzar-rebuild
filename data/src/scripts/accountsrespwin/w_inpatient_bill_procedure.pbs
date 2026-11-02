@@ -1,0 +1,52 @@
+// window w_inpatient_bill_procedure (accountsrespwin)  ancestor: window
+
+// w_inpatient_bill_procedure.create() returns 0
+	this.dw_previnv = create dw_previnv
+	this.control = {this.dw_previnv}
+
+// w_inpatient_bill_procedure.destroy() returns 0
+	destroy this.dw_previnv
+
+// w_inpatient_bill_procedure.open() returns long
+	long ll_width
+	long ll_height
+	long ll_admissioncode
+	long ll_counter
+	long ll_rowcount
+	environment env
+	ll_admissioncode = message.doubleparm
+	if getenvironment(env) <> 1 then
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.width = ll_width * 0.98
+	this.height = ll_height * 0.80
+	this.y = int((ll_height - this.height) / 2.0)
+	this.dw_previnv.width = this.width - this.width * 0.02
+	this.dw_previnv.height = this.height - this.width * 0.05
+	this.dw_previnv.settransobject(sqlca)
+	ll_rowcount = this.dw_previnv.retrieve(ll_admissioncode)
+	setredraw(true)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_inpatient_bill_procedure.close() returns long
+	close(this)
+	return ::message.returnvalue
+
+// w_inpatient_bill_procedure.key(keycode key, unsignedlong keyflags) returns long
+	if keydown(keyescape!) then
+		close(this)
+	end if
+	return ::message.returnvalue
+
+// dw_previnv.getfocus() returns long
+	selecttext(1, len(gettext()) + 1)
+	return ::message.returnvalue

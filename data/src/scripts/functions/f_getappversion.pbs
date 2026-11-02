@@ -1,0 +1,28 @@
+// function f_getappversion (functions)  ancestor: function_object
+
+// f_getappversion.f_getappversion(string as_server, string as_dbname, string as_owner, long al_sequenceid, long al_appversion, long al_dbstatus) returns long
+	long ll_appversion
+	long ll_sequenceid
+	long ll_dbstatus
+	string ls_query
+	string ls_connsetting
+	u_transaction lt_transobject
+	ls_connsetting = "Set ANSI_NULLS ON Set ANSI_WARNINGS ON"
+	lt_transobject = create u_transaction
+	SQL start USING lt_transobject;
+	if lt_transobject.sqlcode <> 0 then
+		messagebox("Connection Problem", "Unable to connect to database.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext)
+		return 0
+	end if
+	SQL EXECUTE IMMEDIATE :ls_connsetting USING lt_transobject;
+	lt_transobject.getversioninfo(as_server, as_dbname, as_owner, ll_sequenceid, ll_appversion, ll_dbstatus)
+	if lt_transobject.sqlcode = 0 then
+		al_sequenceid = ll_sequenceid
+		al_appversion = ll_appversion
+		al_dbstatus = ll_dbstatus
+	else
+		messagebox("Problem!", "Problem Fetching Version Information~r~n" + "Server Name = " + upper(as_server) + "~r~nDatabase Name = " + upper(as_dbname) + "~r~nDetails are:~r~n~r~n" + lt_transobject.sqlerrtext)
+	end if
+	SQL stop USING lt_transobject;
+	destroy lt_transobject
+	return 0

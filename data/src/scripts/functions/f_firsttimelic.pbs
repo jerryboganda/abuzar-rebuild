@@ -1,0 +1,24 @@
+// function f_firsttimelic (functions)  ancestor: function_object
+
+// f_firsttimelic.f_firsttimelic() returns integer
+	string ls_query
+	long ll_invlimit
+	long al_duration
+	al_duration = gl_firsttimeduration + 3
+	SQL Select Max ( SaleInvCode ) + ( :al_duration *( Max ( SaleInvCode ) - Min ( Saleinvcode ) ) / ( Case DateDiff ( Month , Min ( Date ) , Max ( Date ) ) When 0 Then 1 Else DateDiff ( Month , Min ( Date ) , Max ( Date ) ) END ) ) INTO :ll_invlimit From SaleLedger USING sqlca;
+	if sqlca.sqlcode <> 0 then
+		return -1
+	end if
+	if isnull(ll_invlimit) or ll_invlimit <= 100 then
+		ll_invlimit = gl_firsttimeinvlimit
+	end if
+	ls_query = "if Not exists (select * from dbo.sysobjects where id = object_id(N'[systextcatalog]') and OBJECTPROPERTY(id, N'IsUserTable') = 1)" + " begin " + " Create Table systextcatalog ( textcatalogid Int Not Null Identity(1,1), textcatalog varchar(200) Not Null , cataloglength Int Not Null, textlength Int Not Null, status smallInt Not Null, cache smallInt Not Null)" + " Insert Into systextcatalog ( textcatalog, cataloglength, textlength, status, cache )" + " Values ('" + gs_key + "', " + gs_sdate + " , " + string(ll_invlimit) + " , 0 , 0 )" + " end "
+	SQL EXECUTE IMMEDIATE :ls_query USING sqlca;
+	if sqlca.sqlcode = 0 then
+		SQL commit USING sqlca;
+		return 0
+	else
+		SQL rollback USING sqlca;
+		return -1
+	end if
+	return 0

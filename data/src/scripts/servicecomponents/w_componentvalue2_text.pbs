@@ -1,0 +1,96 @@
+// window w_componentvalue2_text (servicecomponents)  ancestor: window
+
+// w_componentvalue2_text.of_getvalue() returns integer
+	this.dw_value.object.value_t.text = of_get_caption(this.is_compvalue.code)
+	this.dw_value.object.value[1] = this.is_compvalue.value2
+	return 0
+
+// w_componentvalue2_text.of_setvalue() returns long
+	this.is_compvalue.value2 = this.dw_value.object.value[1]
+	return 0
+
+// w_componentvalue2_text.of_get_caption(long al_code) returns string
+	string ls_name
+	if al_code > 0 then
+		SQL SELECT Name INTO :ls_name FROM ServiceComponent WHERE ServiceComponentCode =:al_code USING sqlca;
+		if sqlca.sqlcode = 0 then
+		end if
+	end if
+	return ls_name
+
+// w_componentvalue2_text.create() returns 0
+	this.dw_value = create dw_value
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.control = {this.dw_value, this.cb_cancel, this.cb_ok}
+
+// w_componentvalue2_text.destroy() returns 0
+	destroy this.dw_value
+	destroy this.cb_cancel
+	destroy this.cb_ok
+
+// w_componentvalue2_text.close() returns long
+	closewithreturn(this, this.is_compvalue)
+	return ::message.returnvalue
+
+// w_componentvalue2_text.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	this.is_compvalue = message.powerobjectparm
+	this.dw_value.settransobject(sqlca)
+	this.dw_value.insertrow(0)
+	this.dw_value.scrolltorow(0)
+	of_getvalue()
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_componentvalue2_text.key(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		this.is_compvalue.status = false
+	end if
+	return ::message.returnvalue
+
+// dw_value.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_value.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// cb_cancel.clicked() returns long
+	parent.is_compvalue.status = false
+	parent.triggerevent(close!)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	if parent.dw_value.accepttext() < 0 then
+		return ::message.returnvalue
+	end if
+	parent.of_setvalue()
+	parent.is_compvalue.status = true
+	parent.triggerevent(close!)
+	return ::message.returnvalue

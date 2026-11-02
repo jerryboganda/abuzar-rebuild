@@ -1,0 +1,104 @@
+// window w_filter_for_itemlist_rep (reportformat)  ancestor: window
+
+// w_filter_for_itemlist_rep.ue_close(integer ai_status) returns 0
+	if this.rb_allitem.checked then
+		this.is_selectedreport = "d_itemlist_rep"
+	elseif this.rb_companywise.checked then
+		this.is_selectedreport = "d_itemlist_manfwise"
+	elseif this.rb_categoryandcompanywise.checked then
+		this.is_selectedreport = "d_itemlist_catmanfwise"
+	elseif this.rb_categoryclassandcompanywise.checked then
+		this.is_selectedreport = "d_itemlist_catclassmanfwise"
+	elseif this.rb_manfwise2.checked then
+		this.is_selectedreport = "d_itemlist_manfwise_2"
+	elseif this.rb_manfwise3.checked then
+		this.is_selectedreport = "d_itemlist_manfwise_3"
+	elseif this.rb_manfwise4.checked then
+		this.is_selectedreport = "d_itemlist_manfwise_4"
+	elseif this.rb_categoryandcompanywise_markup.checked then
+		this.is_selectedreport = "d_itemlist_catmanfwise_markup"
+	elseif this.rb_catwise_alternate_itemalias.checked then
+		this.is_selectedreport = "d_itemlist_catwise_alternateitemalias"
+	elseif this.rb_categorywise.checked then
+		this.is_selectedreport = "d_itemlist_catwise_model_length_width"
+	elseif this.rb_categorywise_thickness.checked then
+		this.is_selectedreport = "d_itemlist_catwise_model_length_width2"
+	elseif this.rb_b.checked then
+		this.is_selectedreport = "d_groupwise_itemlist"
+	elseif this.rb_itemlist_pctcodewise.checked then
+		this.is_selectedreport = "d_itemlist_pctcodewise"
+	elseif this.rb_itemlist_schemeitems.checked then
+		this.is_selectedreport = "d_itemlist_schemeitems"
+	end if
+	if ai_status = 1 then
+		closewithreturn(this, this.is_selectedreport)
+	end if
+
+// w_filter_for_itemlist_rep.create() returns 0
+	this.rb_manfwise4 = create rb_manfwise4
+	this.rb_itemlist_schemeitems = create rb_itemlist_schemeitems
+	this.rb_itemlist_pctcodewise = create rb_itemlist_pctcodewise
+	this.rb_b = create rb_b
+	this.rb_categorywise_thickness = create rb_categorywise_thickness
+	this.rb_categorywise = create rb_categorywise
+	this.rb_catwise_alternate_itemalias = create rb_catwise_alternate_itemalias
+	this.rb_categoryandcompanywise_markup = create rb_categoryandcompanywise_markup
+	this.rb_manfwise3 = create rb_manfwise3
+	this.rb_manfwise2 = create rb_manfwise2
+	this.rb_categoryclassandcompanywise = create rb_categoryclassandcompanywise
+	this.rb_categoryandcompanywise = create rb_categoryandcompanywise
+	this.cb_ok = create cb_ok
+	this.rb_companywise = create rb_companywise
+	this.rb_allitem = create rb_allitem
+	this.gb_format = create gb_format
+	this.control = {this.rb_manfwise4, this.rb_itemlist_schemeitems, this.rb_itemlist_pctcodewise, this.rb_b, this.rb_categorywise_thickness, this.rb_categorywise, this.rb_catwise_alternate_itemalias, this.rb_categoryandcompanywise_markup, this.rb_manfwise3, this.rb_manfwise2, this.rb_categoryclassandcompanywise, this.rb_categoryandcompanywise, this.cb_ok, this.rb_companywise, this.rb_allitem, this.gb_format}
+
+// w_filter_for_itemlist_rep.destroy() returns 0
+	destroy this.rb_manfwise4
+	destroy this.rb_itemlist_schemeitems
+	destroy this.rb_itemlist_pctcodewise
+	destroy this.rb_b
+	destroy this.rb_categorywise_thickness
+	destroy this.rb_categorywise
+	destroy this.rb_catwise_alternate_itemalias
+	destroy this.rb_categoryandcompanywise_markup
+	destroy this.rb_manfwise3
+	destroy this.rb_manfwise2
+	destroy this.rb_categoryclassandcompanywise
+	destroy this.rb_categoryandcompanywise
+	destroy this.cb_ok
+	destroy this.rb_companywise
+	destroy this.rb_allitem
+	destroy this.gb_format
+
+// w_filter_for_itemlist_rep.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	return ::message.returnvalue
+
+// cb_ok.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	parent.post event ue_close(1)
+	return ::message.returnvalue

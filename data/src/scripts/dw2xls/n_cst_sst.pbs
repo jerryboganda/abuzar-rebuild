@@ -1,0 +1,143 @@
+// userobject n_cst_sst (dw2xls)  ancestor: nonvisualobject
+
+// n_cst_sst.of_add_string(string as_value) returns unsignedlong
+	return of_add_string(this.invo_unicode.of_ansi2unicode(as_value))
+
+// n_cst_sst.of_add_string(blob ab_value) returns unsignedlong
+	this.il_total_in_doc = this.il_total_in_doc + 1
+	if this.invo_hash.of_key_exists(ab_value) then
+		return this.invo_hash.of_get_value(ab_value) - 1
+	end if
+	this.il_total_unique = this.il_total_unique + 1
+	this.ib_st[this.il_total_unique] = ab_value
+	this.invo_hash.of_set_value(ab_value, this.il_total_unique)
+	return this.il_total_unique - 1
+
+// n_cst_sst.of_get_sst(unsignedlong al_offest) returns blob
+	blob lb_ret
+	unsignedlong ll_absolute_pos
+	unsignedinteger li_relative_pos
+	unsignedlong ll_i
+	unsignedlong ll_start
+	integer li_header_size
+	integer li_add_size
+	unsignedinteger li_new_size
+	blob lb_cur_portion
+	blob lb_header
+	boolean lb_first_portion
+	integer li_split_pos
+	blob lb_first_part
+	blob lb_last_part
+	st_extsst_item[] l_emp
+	this.i_extsst_items = l_emp
+	this.ii_extsst_count = 0
+	lb_cur_portion = blob("")
+	lb_ret = blob("")
+	ll_absolute_pos = li_header_size + al_offest
+	li_relative_pos = li_header_size
+	for ll_i = ll_start to this.il_total_unique
+		li_add_size = 3 + len(this.ib_st[ll_i])
+		li_new_size = li_relative_pos + li_add_size
+		if li_new_size > this.il_limit then
+			if this.il_limit - li_relative_pos < 5 then
+				if lb_first_portion then
+					lb_header = this.invo_sub.of_pack("v", 252) + this.invo_sub.of_pack("v", len(lb_cur_portion) + 8) + this.invo_sub.of_pack("V", this.il_total_in_doc) + this.invo_sub.of_pack("V", this.il_total_unique)
+				else
+					lb_header = this.invo_sub.of_pack("v", 60) + this.invo_sub.of_pack("v", len(lb_cur_portion))
+				end if
+				lb_ret = lb_header + lb_cur_portion + lb_ret
+				lb_first_portion = false
+				li_header_size = 4
+				lb_cur_portion = blob("")
+				li_relative_pos = li_header_size
+				ll_absolute_pos = ll_absolute_pos + li_header_size
+				lb_cur_portion = this.invo_sub.of_pack("v", integer(len(this.ib_st[ll_i]) / 2.0)) + this.invo_sub.of_pack("C", 1) + this.ib_st[ll_i] + lb_cur_portion
+				if (ll_i - 1) mod this.ii_string_per_extsst = 0 then
+					this.ii_extsst_count = this.ii_extsst_count + 1
+					this.i_extsst_items[this.ii_extsst_count].il_absolute_pos = ll_absolute_pos
+					this.i_extsst_items[this.ii_extsst_count].ii_relative_pos = li_relative_pos
+				end if
+				ll_absolute_pos = ll_absolute_pos + (3 + len(this.ib_st[ll_i]))
+				li_relative_pos = 3 + len(this.ib_st[ll_i]) + li_relative_pos
+			else
+				li_split_pos = this.il_limit - li_relative_pos - 3
+				if li_split_pos mod 2 = 1 then
+					li_split_pos = li_split_pos - 1
+				end if
+				lb_first_part = blobmid(this.ib_st[ll_i], 1, li_split_pos)
+				lb_last_part = blobmid(this.ib_st[ll_i], li_split_pos + 1, len(this.ib_st[ll_i]) - li_split_pos)
+				lb_cur_portion = this.invo_sub.of_pack("v", integer(len(this.ib_st[ll_i]) / 2.0)) + this.invo_sub.of_pack("C", 1) + lb_first_part + lb_cur_portion
+				if (ll_i - 1) mod this.ii_string_per_extsst = 0 then
+					this.ii_extsst_count = this.ii_extsst_count + 1
+					this.i_extsst_items[this.ii_extsst_count].il_absolute_pos = ll_absolute_pos
+					this.i_extsst_items[this.ii_extsst_count].ii_relative_pos = li_relative_pos
+				end if
+				ll_absolute_pos = ll_absolute_pos + (3 + len(lb_first_part))
+				li_relative_pos = 3 + len(lb_first_part) + li_relative_pos
+				if lb_first_portion then
+					lb_header = this.invo_sub.of_pack("v", 252) + this.invo_sub.of_pack("v", len(lb_cur_portion) + 8) + this.invo_sub.of_pack("V", this.il_total_in_doc) + this.invo_sub.of_pack("V", this.il_total_unique)
+				else
+					lb_header = this.invo_sub.of_pack("v", 60) + this.invo_sub.of_pack("v", len(lb_cur_portion))
+				end if
+				lb_ret = lb_header + lb_cur_portion + lb_ret
+				lb_first_portion = false
+				li_header_size = 4
+				lb_cur_portion = blob("")
+				li_relative_pos = li_header_size
+				ll_absolute_pos = ll_absolute_pos + li_header_size
+				lb_cur_portion = this.invo_sub.of_pack("C", 1) + lb_last_part + lb_cur_portion
+				ll_absolute_pos = ll_absolute_pos + (1 + len(lb_last_part))
+				li_relative_pos = 1 + len(lb_last_part) + li_relative_pos
+			end if
+		else
+			lb_cur_portion = this.invo_sub.of_pack("v", integer(len(this.ib_st[ll_i]) / 2.0)) + this.invo_sub.of_pack("C", 1) + this.ib_st[ll_i] + lb_cur_portion
+			if (ll_i - 1) mod this.ii_string_per_extsst = 0 then
+				this.ii_extsst_count = this.ii_extsst_count + 1
+				this.i_extsst_items[this.ii_extsst_count].il_absolute_pos = ll_absolute_pos
+				this.i_extsst_items[this.ii_extsst_count].ii_relative_pos = li_relative_pos
+			end if
+			ll_absolute_pos = ll_absolute_pos + (3 + len(this.ib_st[ll_i]))
+			li_relative_pos = 3 + len(this.ib_st[ll_i]) + li_relative_pos
+		end if
+	next
+	if len(lb_cur_portion) > 0 or lb_first_portion then
+		if lb_first_portion then
+			lb_header = this.invo_sub.of_pack("v", 252) + this.invo_sub.of_pack("v", len(lb_cur_portion) + 8) + this.invo_sub.of_pack("V", this.il_total_in_doc) + this.invo_sub.of_pack("V", this.il_total_unique)
+		else
+			lb_header = this.invo_sub.of_pack("v", 60) + this.invo_sub.of_pack("v", len(lb_cur_portion))
+		end if
+		lb_ret = lb_header + lb_cur_portion + lb_ret
+	end if
+	return lb_ret
+
+// n_cst_sst.of_get_extsst() returns blob
+	blob lb_ret
+	unsignedinteger li_cnt
+	unsignedinteger li_i
+	unsignedinteger li_start
+	li_cnt = upperbound(this.i_extsst_items)
+	lb_ret = this.invo_sub.of_pack("v", 255) + this.invo_sub.of_pack("v", li_cnt * 8 + 2) + this.invo_sub.of_pack("v", this.ii_string_per_extsst)
+	if li_cnt > 0 then
+		for li_i = li_start to li_cnt
+			lb_ret = this.invo_sub.of_pack("V", this.i_extsst_items[li_i].il_absolute_pos) + this.invo_sub.of_pack("v", this.i_extsst_items[li_i].ii_relative_pos) + this.invo_sub.of_pack("v", 0) + lb_ret
+		next
+	end if
+	return lb_ret
+
+// n_cst_sst.create() returns 0
+	call super::create
+	triggerevent("constructor")
+
+// n_cst_sst.destroy() returns 0
+	triggerevent("destructor")
+	call super::destroy
+
+// n_cst_sst.constructor() returns long
+	this.invo_hash = create n_cst_unicode_hash_long
+	this.invo_sub = create n_xls_subroutines_v97
+	return ::message.returnvalue
+
+// n_cst_sst.destructor() returns long
+	destroy this.invo_hash
+	destroy this.invo_sub
+	return ::message.returnvalue

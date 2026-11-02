@@ -1,0 +1,102 @@
+// userobject u_session (components)  ancestor: nonvisualobject
+
+// u_session.of_setdbname(string as_dbname) returns 0
+	this.is_dbname = as_dbname
+
+// u_session.of_setcompname(string as_compname) returns 0
+	this.is_compname = as_compname
+
+// u_session.of_settransobject(transaction as_transobject) returns 0
+	this.it_transobject = as_transobject
+
+// u_session.of_createtemptable() returns long
+	long ll_count
+	long ll_retcode
+	string ls_query
+	SQL Select Count ( *) INTO :ll_count From tempdb.dbo.sysconns USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		this.it_transobject.autocommit = true
+		ls_query = "Create Table tempdb.dbo.sysconns (id int not null)"
+		SQL EXECUTE IMMEDIATE :ls_query USING this.it_transobject;
+		if this.it_transobject.sqlcode = 0 then
+			ls_query = "Insert Into tempdb.dbo.sysconns values (0)"
+			SQL EXECUTE IMMEDIATE :ls_query USING this.it_transobject;
+			if this.it_transobject.sqlcode = 0 then
+				ll_retcode = 1
+			else
+				SQL rollback USING this.it_transobject;
+				ll_retcode = -1
+			end if
+		else
+			SQL rollback USING this.it_transobject;
+			ll_retcode = -1
+		end if
+	else
+		ll_retcode = 2
+	end if
+	this.it_transobject.autocommit = false
+	return ll_retcode
+
+// u_session.of_createsession() returns long
+	string ls_query
+	long ll_id
+	ls_query = "Update tempdb.dbo.sysconns Set id = ISNULL((select max(id) from tempdb.dbo.sysconns), 0) + 1 "
+	SQL EXECUTE IMMEDIATE :ls_query USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		return -1
+	else
+		SQL SELECT id INTO :ll_id FROM tempdb.dbo.sysconns USING this.it_transobject;
+		if this.it_transobject.sqlcode <> 0 then
+			return -1
+		else
+			gl_sessionid = ll_id
+		end if
+	end if
+	return 0
+
+// u_session.of_createsession_setup() returns long
+	long ll_noofclients
+	long ll_retcode
+	long ll_currentconnections
+	of_connect()
+	if of_createtemptable() <= 0 then
+		ll_retcode = -1
+	elseif of_createsession() = 0 then
+		SQL commit USING this.it_transobject;
+		ll_retcode = 0
+	else
+		SQL rollback USING this.it_transobject;
+		ll_retcode = -1
+	end if
+	of_disconnect()
+	return ll_retcode
+
+// u_session.of_connect() returns long
+	SQL start USING this.it_transobject;
+	return this.it_transobject.sqlcode
+
+// u_session.of_disconnect() returns long
+	SQL stop USING this.it_transobject;
+	return this.it_transobject.sqlcode
+
+// u_session.create() returns 0
+	call super::create
+	triggerevent("constructor")
+
+// u_session.destroy() returns 0
+	triggerevent("destructor")
+	call super::destroy
+
+// u_session.constructor() returns long
+	u_utilityservices lo_us
+	lo_us = create u_utilityservices
+	this.is_compname = lo_us.of_getcomputername()
+	this.is_dbname = gs_dbname
+	if pos(gs_servername, "\") > 0 then
+		this.is_servername = left(gs_servername, pos(gs_servername, "\") - 1)
+	else
+		this.is_servername = gs_servername
+	end if
+	this.it_transobject = create u_transaction
+	destroy u_utilityservices
+	return ::message.returnvalue

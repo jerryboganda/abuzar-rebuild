@@ -1,0 +1,297 @@
+// userobject n_dwr_line (dw2xls)  ancestor: n_dwr_field
+
+// n_dwr_line.of_get_y1(long al_row) returns long
+	long ll_ret
+	any la_tmp
+	al_row = al_row + this.ii_row_in_detail - 1
+	if al_row > this.il_dw_row_count then
+		return 0
+	end if
+	if this.is_expr_y1 = "" then
+		ll_ret = this.il_base_y + this.il_cached_y1 - of_get_pen_height(al_row) / 2.0
+	elseif this.is_expr_y1 = "-" then
+		this.il_cached_y1 = of_describe_expr(this.is_dwo_name + ".y1", al_row, this.is_expr_y1) - this.il_subband_y
+		this.il_cached_y2 = of_describe_expr(this.is_dwo_name + ".y2", al_row, this.is_expr_y2) - this.il_subband_y
+		if this.il_cached_y1 > this.il_cached_y2 then
+			la_tmp = this.il_cached_y1
+			this.il_cached_y1 = this.il_cached_y2
+			this.il_cached_y2 = la_tmp
+			la_tmp = this.is_expr_y1
+			this.is_expr_y1 = this.is_expr_y2
+			this.is_expr_y2 = la_tmp
+		end if
+		ll_ret = this.il_base_y + this.il_cached_y1 - of_get_pen_height(al_row) / 2.0
+	else
+		ll_ret = this.il_base_y + of_evaluate0(this.is_expr_y1, al_row) - of_get_pen_height(al_row) / 2.0 - this.il_subband_y
+	end if
+	return ll_ret
+
+// n_dwr_line.of_get_pen_width(long al_row) returns long
+	long ll_ret
+	if this.is_expr_pen_width = "" then
+		ll_ret = this.il_cached_pen_width
+	elseif this.is_expr_pen_width = "-" then
+		this.il_cached_pen_width = of_describe_expr(this.is_dwo_name + ".pen.width", al_row, this.is_expr_pen_width)
+		this.il_cached_pen_width = this.il_cached_pen_width * this.inv_sub.of_get_pen_width_coef(this.ii_units)
+		ll_ret = this.il_cached_pen_width
+	else
+		ll_ret = of_evaluate0(this.is_expr_pen_width, al_row)
+	end if
+	return ll_ret
+
+// n_dwr_line.of_get_y2(long al_row) returns long
+	long ll_ret
+	any la_tmp
+	al_row = al_row + this.ii_row_in_detail - 1
+	if al_row > this.il_dw_row_count then
+		return 0
+	end if
+	if this.is_expr_y2 = "" then
+		ll_ret = this.il_base_y + this.il_cached_y2 + of_get_pen_height(al_row) / 2.0
+	elseif this.is_expr_y2 = "-" then
+		this.il_cached_y1 = of_describe_expr(this.is_dwo_name + ".y1", al_row, this.is_expr_y1) - this.il_subband_y
+		this.il_cached_y2 = of_describe_expr(this.is_dwo_name + ".y2", al_row, this.is_expr_y2) - this.il_subband_y
+		if this.il_cached_y1 > this.il_cached_y2 then
+			la_tmp = this.il_cached_y1
+			this.il_cached_y1 = this.il_cached_y2
+			this.il_cached_y2 = la_tmp
+			la_tmp = this.is_expr_y1
+			this.is_expr_y1 = this.is_expr_y2
+			this.is_expr_y2 = la_tmp
+		end if
+		ll_ret = this.il_base_y + this.il_cached_y2 + of_get_pen_height(al_row) / 2.0
+	else
+		ll_ret = this.il_base_y + of_evaluate0(this.is_expr_y2, al_row) + of_get_pen_height(al_row) / 2.0 - this.il_subband_y
+	end if
+	return ll_ret
+
+// n_dwr_line.of_get_pen_height(long al_row) returns long
+	long ll_ret
+	if this.is_expr_pen_height = "" then
+		ll_ret = this.il_cached_pen_height
+	elseif this.is_expr_pen_height = "-" then
+		this.il_cached_pen_height = of_describe_expr(this.is_dwo_name + ".pen.width", al_row, this.is_expr_pen_height)
+		this.il_cached_pen_height = this.il_cached_pen_height * this.inv_sub.of_get_pen_height_coef(this.ii_units)
+		ll_ret = this.il_cached_pen_height
+	else
+		ll_ret = of_evaluate0(this.is_expr_pen_height, al_row)
+	end if
+	return ll_ret
+
+// n_dwr_line.of_get_x1(long al_row) returns long
+	long ll_ret
+	any la_tmp
+	if this.is_expr_x1 = "" then
+		ll_ret = this.il_base_x + this.il_cached_x1 - of_get_pen_width(al_row) / 2.0
+	elseif this.is_expr_x1 = "-" then
+		this.il_cached_x1 = of_describe_expr(this.is_dwo_name + ".x1", al_row, this.is_expr_x1)
+		this.il_cached_x2 = of_describe_expr(this.is_dwo_name + ".x2", al_row, this.is_expr_x2)
+		if this.il_cached_x1 > this.il_cached_x2 then
+			la_tmp = this.il_cached_x1
+			this.il_cached_x1 = this.il_cached_x2
+			this.il_cached_x2 = la_tmp
+			la_tmp = this.is_expr_x1
+			this.is_expr_x1 = this.is_expr_x2
+			this.is_expr_x2 = la_tmp
+		end if
+		ll_ret = this.il_base_x + this.il_cached_x1 - of_get_pen_width(al_row) / 2.0
+	else
+		ll_ret = this.il_base_x + of_evaluate0(this.is_expr_x1, al_row) - of_get_pen_width(al_row) / 2.0
+	end if
+	return ll_ret
+
+// n_dwr_line.of_get_x2(long al_row) returns long
+	long ll_ret
+	any la_tmp
+	if this.is_expr_x2 = "" then
+		ll_ret = this.il_base_x + this.il_cached_x2 + of_get_pen_width(al_row) / 2.0
+	elseif this.is_expr_x2 = "-" then
+		this.il_cached_x1 = of_describe_expr(this.is_dwo_name + ".x1", al_row, this.is_expr_x1)
+		this.il_cached_x2 = of_describe_expr(this.is_dwo_name + ".x2", al_row, this.is_expr_x2)
+		if this.il_cached_x1 > this.il_cached_x2 then
+			la_tmp = this.il_cached_x1
+			this.il_cached_x1 = this.il_cached_x2
+			this.il_cached_x2 = la_tmp
+			la_tmp = this.is_expr_x1
+			this.is_expr_x1 = this.is_expr_x2
+			this.is_expr_x2 = la_tmp
+		end if
+		ll_ret = this.il_base_x + this.il_cached_x2 + of_get_pen_width(al_row) / 2.0
+	else
+		ll_ret = this.il_base_x + of_evaluate0(this.is_expr_x2, al_row) + of_get_pen_width(al_row) / 2.0
+	end if
+	return ll_ret
+
+// n_dwr_line.of_get_height(long al_row) returns long
+	return of_get_y2(al_row) - of_get_y1(al_row)
+
+// n_dwr_line.of_get_width(long al_row) returns long
+	return of_get_x2(al_row) - of_get_x1(al_row)
+
+// n_dwr_line.of_getvalue(long al_row) returns any
+	return ""
+
+// n_dwr_line.of_descr_numformat() returns string
+	return "[General]"
+
+// n_dwr_line.of_setformat() returns integer
+	integer li_ret
+	string ls_format
+	integer li_color_index
+	long ll_color
+	string ls_border_style
+	this.inv_format = this.inv_book.of_createformat()
+	if li_ret = 1 then
+		ls_format = of_descr_numformat()
+		if ls_format = "" then
+			ls_format = "[General]"
+		end if
+		ls_format = of_change_format(ls_format, this.is_coltype)
+		this.inv_format.setnumformat(this.inv_format.handle, ls_format)
+		this.inv_format.setfontname(this.inv_format.handle, of_descr_font_face())
+		this.inv_format.setfontsize(this.inv_format.handle, of_descr_font_height())
+		if of_descr_font_italic() then
+			this.inv_format.setfontitalic(this.inv_format.handle, 1)
+		end if
+		this.inv_format.setfontunderline(this.inv_format.handle, of_descr_font_underline())
+		this.inv_format.setfontweight(this.inv_format.handle, of_descr_font_weight2())
+		this.inv_format.sethalign(this.inv_format.handle, of_descr_alignment2())
+		this.inv_format.setvalign(this.inv_format.handle, 0)
+		if this.is_coltype = "s" then
+			this.inv_format.setwrap(this.inv_format.handle, 1)
+		end if
+		ll_color = of_descr_color2()
+		this.inv_format.setfgcolor(this.inv_format.handle, ll_color)
+		ll_color = of_descr_bg_color2()
+		this.inv_format.setbgcolor(this.inv_format.handle, ll_color)
+		this.inv_format.setfontcharset(this.inv_format.handle, of_descr_font_charset())
+		this.inv_format.setfontfamily(this.inv_format.handle, of_descr_font_family())
+		this.inv_format.setrotation(this.inv_format.handle, of_descr_font_escapement())
+	end if
+	if li_ret = 1 then
+		ls_border_style = of_describe(this.is_dwo_name + ".Border")
+		if isnumber(ls_border_style) and integer(ls_border_style) > 0 then
+			this.inv_format.setborderstyle(this.inv_format.handle, 1)
+		elseif integer(of_describe("Datawindow.Processing")) = 1 then
+			this.inv_format.setborderstyle(this.inv_format.handle, 7)
+		end if
+		this.ib_custom_format = this.ib_color_expr or this.ib_bg_color_expr or this.ib_alignment_expr or this.ib_font_face_expr or this.ib_font_height_expr or this.ib_font_italic_expr or this.ib_font_underline_expr or this.ib_font_weight_expr or this.ib_format_expr or this.ib_font_escapement_expr
+		if not this.ib_custom_format then
+			this.il_format_ix = this.inv_book.of_addformat(this.inv_format)
+		end if
+	end if
+	return li_ret
+
+// n_dwr_line.of_get_visible(long al_row) returns integer
+	integer li_ret
+	al_row = al_row + this.ii_row_in_detail - 1
+	if al_row <= this.il_dw_row_count then
+		li_ret = of_describe_expr(this.is_dwo_name + ".pen.style", al_row)
+		if li_ret = 5 then
+			li_ret = 0
+		else
+			li_ret = 1
+		end if
+	end if
+	return li_ret
+
+// n_dwr_line.of_descr_bg_color2() returns long
+	integer li_ret
+	string ls_str
+	string ls_value
+	long ll_color
+	ll_color = 1073741824
+	li_ret = of_check_property("Pen.Color", this.ib_bg_color_expr, this.is_bg_color_expr, ls_value)
+	if li_ret = 1 and isnumber(ls_value) then
+		ll_color = long(ls_value)
+	end if
+	return ll_color
+
+// n_dwr_line.of_descr_color2() returns long
+	long ll_color
+	return ll_color
+
+// n_dwr_line.of_get_item_coltype() returns string
+	return "s"
+
+// n_dwr_line.of_get_column_display_type() returns integer
+	return 1
+
+// n_dwr_line.of_descr_alignment2() returns long
+	return 0
+
+// n_dwr_line.of_descr_font_face() returns string
+	return "Arial"
+
+// n_dwr_line.of_descr_font_italic() returns boolean
+	return false
+
+// n_dwr_line.of_descr_font_underline() returns integer
+	return 0
+
+// n_dwr_line.of_descr_font_weight() returns boolean
+	return false
+
+// n_dwr_line.of_get_y2() returns long
+	return of_get_y2(1)
+
+// n_dwr_line.of_get_x1() returns long
+	return of_get_x1(1)
+
+// n_dwr_line.of_descr_font_charset() returns long
+	return 0
+
+// n_dwr_line.of_descr_font_escapement() returns integer
+	return 0
+
+// n_dwr_line.of_descr_font_family() returns long
+	return 2
+
+// n_dwr_line.of_descr_font_weight2() returns integer
+	return 400
+
+// n_dwr_line.of_get_y1() returns long
+	return of_get_y1(1)
+
+// n_dwr_line.of_get_x2() returns long
+	return of_get_x2(1)
+
+// n_dwr_line.of_init(string as_dwo_name, integer ai_dwo_type) returns integer
+	integer li_ret
+	this.is_dwo_name = as_dwo_name
+	this.ii_dwo_type = ai_dwo_type
+	choose case this.ii_dwo_type
+	case 5
+		this.is_coltype = "s"
+		this.is_text = ""
+	case else
+		li_ret = -1
+	end choose
+	if li_ret = 1 then
+		choose case this.ipo_requestortype
+		case datawindow!
+			this.il_dw_row_count = this.idw_requestor.rowcount()
+		case datastore!
+			this.il_dw_row_count = this.ids_requestor.rowcount()
+		case datawindowchild!
+			this.il_dw_row_count = this.idwc_requestor.rowcount()
+		case else
+			li_ret = -1
+		end choose
+	end if
+	if li_ret = 1 then
+		this.ii_column_display_type = of_get_column_display_type()
+		li_ret = of_setformat()
+	end if
+	if li_ret = 1 then
+		this.ii_units = integer(of_describe("Datawindow.Units"))
+		this.inv_sub = create n_dwr_sub
+		this.inv_sub.of_set_cur_units(this.ii_units)
+	end if
+	return li_ret
+
+// n_dwr_line.create() returns 0
+	call super::create
+
+// n_dwr_line.destroy() returns 0
+	call super::destroy

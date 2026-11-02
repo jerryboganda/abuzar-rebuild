@@ -1,0 +1,82 @@
+// window w_arg_manufacturers_manfcatfilter (reports)  ancestor: w_listarguments
+
+// w_arg_manufacturers_manfcatfilter.create() returns 0
+	integer icurrent
+	call super::create
+	this.st_4 = create st_4
+	this.st_8 = create st_8
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_4
+	this.control[icurrent + 2] = this.st_8
+
+// w_arg_manufacturers_manfcatfilter.destroy() returns 0
+	call super::destroy
+	destroy this.st_4
+	destroy this.st_8
+
+// w_arg_manufacturers_manfcatfilter.open() returns long
+	string ls_text
+	string ls_manfcat
+	long ll_counter
+	long ll_rowcount
+	integer rtncode
+	date ld_currdate
+	time lt_currtime
+	datetime ld_startdate
+	datetime ld_enddate
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	this.istr_arg_parm = message.powerobjectparm
+	for ll_counter = 1 to upperbound(this.istr_arg_parm.ia_integerlist)
+		ls_manfcat = ls_manfcat + trim(string(this.istr_arg_parm.ia_integerlist[ll_counter])) + ","
+	next
+	if len(ls_manfcat) > 0 and right(ls_manfcat, 1) = "," then
+		ls_manfcat = left(ls_manfcat, len(ls_manfcat) - 1)
+	end if
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	ld_currdate = today()
+	if f_stringpreferences("ApplyArgSDate") = "N" then
+		ls_text = string(ld_currdate, "dd/mm/yyyy")
+		ls_text = trim(ls_text) + " 00:00:00"
+	else
+		ls_text = string(f_datepreferences("DefaultArgSDate"), "dd/mm/yyyy hh:mm:ss")
+	end if
+	this.em_startdate.text = ls_text
+	ls_text = string(ld_currdate, "dd/mm/yyyy")
+	ls_text = trim(ls_text) + " 23:59:59"
+	this.em_enddate.text = ls_text
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	rtncode = this.dw_control.getchild("manufacturers", this.idc_categories)
+	if rtncode = -1 then
+		messagebox("Error", "Not a DataWindowChild")
+	end if
+	this.idc_categories.settransobject(sqlca)
+	this.idc_categories.setfilter(" manfcatcode IN ( " + ls_manfcat + " )")
+	this.idc_categories.filter()
+	this.idc_categories.retrieve()
+	ll_rowcount = this.idc_categories.rowcount()
+	for ll_counter = 1 to ll_rowcount
+		this.lb_categories.additem(this.idc_categories.getitemstring(ll_counter, "name"))
+	next
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue

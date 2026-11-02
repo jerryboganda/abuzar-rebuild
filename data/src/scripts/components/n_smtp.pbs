@@ -1,0 +1,1372 @@
+// userobject n_smtp (components)  ancestor: n_winsock
+
+// n_smtp.of_setserver(string as_server) returns 0
+	this.is_server = as_server
+
+// n_smtp.of_setsubject(string as_subject) returns 0
+	this.is_subject = as_subject
+
+// n_smtp.of_setfrom(string as_email, string as_name) returns 0
+	this.istr_from.email = as_email
+	this.istr_from.name = as_name
+
+// n_smtp.of_addcc(string as_email) returns integer
+	return of_addcc(as_email, "")
+
+// n_smtp.of_addaddress(string as_email) returns integer
+	return of_addaddress(as_email, "")
+
+// n_smtp.of_sendmail() returns boolean
+	datetime ldt_current
+	ldt_current = datetime(today(), now())
+	of_logfile("of_SendMail Start: " + string(ldt_current) + "~r~n")
+	if not of_sendmail_logon() then
+		return false
+	end if
+	if not of_sendmail_send() then
+		return false
+	end if
+	if not of_sendmail_logoff() then
+		return false
+	end if
+	ldt_current = datetime(today(), now())
+	of_logfile("~r~n" + "of_SendMail End: " + string(ldt_current) + "~r~n")
+	return true
+
+// n_smtp.of_reset() returns 0
+	address[] lstr_emptyaddress
+	attachment[] lstr_emptyattachment
+	this.istr_address = lstr_emptyaddress
+	this.istr_cc = lstr_emptyaddress
+	this.istr_bcc = lstr_emptyaddress
+	this.istr_attach = lstr_emptyattachment
+
+// n_smtp.of_setlogin(string as_userid, string as_passwd) returns 0
+	this.is_userid = as_userid
+	this.is_passwd = as_passwd
+	this.ib_authenticate = true
+
+// n_smtp.of_setbody(string as_body, boolean ab_html) returns 0
+	this.is_body = as_body
+	this.ib_html = ab_html
+
+// n_smtp.of_setreceipt(boolean ab_receipt) returns 0
+	this.ib_receipt = ab_receipt
+
+// n_smtp.of_setfrom(string as_email) returns 0
+	of_setfrom(as_email, "")
+
+// n_smtp.of_addaddress(string as_email, string as_name) returns integer
+	integer li_next
+	li_next = upperbound(this.istr_address) + 1
+	this.istr_address[li_next].email = as_email
+	this.istr_address[li_next].name = as_name
+	return li_next
+
+// n_smtp.of_addcc(string as_email, string as_name) returns integer
+	integer li_next
+	li_next = upperbound(this.istr_cc) + 1
+	this.istr_cc[li_next].email = as_email
+	this.istr_cc[li_next].name = as_name
+	return li_next
+
+// n_smtp.of_addbcc(string as_email) returns integer
+	return of_addbcc(as_email, "")
+
+// n_smtp.of_addbcc(string as_email, string as_name) returns integer
+	integer li_next
+	li_next = upperbound(this.istr_bcc) + 1
+	this.istr_bcc[li_next].email = as_email
+	this.istr_bcc[li_next].name = as_name
+	return li_next
+
+// n_smtp.of_generate_guid() returns string
+	uuid lstr_uuid
+	long rpc_s_ok
+	long sz_uuid_len
+	unsignedlong lul_ptruuid
+	string ls_uuid
+	lstr_uuid.data4 = blob(space(8), encodingansi!)
+	if uuidcreate(lstr_uuid) = 0 and uuidtostring(lstr_uuid, lul_ptruuid) = 0 then
+		ls_uuid = space(36)
+		copymemory(ls_uuid, lul_ptruuid, 36 * 2)
+		rpcstringfree(lul_ptruuid)
+		ls_uuid = upper(ls_uuid)
+	end if
+	return ls_uuid
+
+// n_smtp.of_findmimefromdata(string as_filename, blob ablob_filedata) returns string
+	unsignedlong e_invalidarg
+	unsignedlong e_outofmemory
+	unsignedlong noerror
+	string ls_mimetype
+	string ls_errmsg
+	unsignedlong lul_ptr
+	unsignedlong lul_rtn
+	lul_rtn = findmimefromdata(0, as_filename, ablob_filedata, len(ablob_filedata), 0, 0, lul_ptr, 0)
+	if lul_rtn = 0 then
+		ls_mimetype = of_stringfromptr(lul_ptr)
+	else
+		choose case lul_rtn
+		case 2147942487
+			ls_errmsg = "One or more of the arguments passed to the function were invalid."
+		case 2147942414
+			ls_errmsg = "The function could not allocate enough memory to complete the call."
+		case else
+			ls_errmsg = "Undefined Error " + string(lul_rtn)
+		end choose
+		of_setlasterror("of_FindMimeFromData: " + ls_errmsg)
+		of_logerror(1, "of_FindMimeFromData: " + ls_errmsg)
+		setnull(ls_mimetype)
+	end if
+	return ls_mimetype
+
+// n_smtp.of_logerror(integer ai_msglevel, string as_msgtext) returns 0
+	if this.ib_eventlog then
+		of_eventlog(ai_msglevel, as_msgtext)
+	end if
+	if this.ib_jaguarlog then
+		of_jaguarlog(ai_msglevel, as_msgtext)
+	end if
+	if this.ib_messagebox then
+		of_messagebox(ai_msglevel, as_msgtext)
+	end if
+
+// n_smtp.of_setlogerror(boolean ab_eventlog, boolean ab_jaguarlog, boolean ab_messagebox) returns 0
+	this.ib_eventlog = ab_eventlog
+	this.ib_jaguarlog = ab_jaguarlog
+	this.ib_messagebox = ab_messagebox
+
+// n_smtp.of_timezoneoffset() returns string
+	time_zone_information lstr_tzi
+	integer li_hour
+	integer li_minute
+	long ll_rtn
+	long ll_bias
+	string ls_offset
+	ll_rtn = gettimezoneinformation(lstr_tzi)
+	if ll_rtn = 2 then
+		ll_bias = lstr_tzi.bias + lstr_tzi.daylightbias
+	else
+		ll_bias = lstr_tzi.bias
+	end if
+	li_hour = abs(ll_bias) / 60.0
+	li_minute = abs(ll_bias) - li_hour * 60
+	ls_offset = string(li_hour, "00") + string(li_minute, "00")
+	if ll_bias < 0 then
+		ls_offset = "+" + ls_offset
+	else
+		ls_offset = "-" + ls_offset
+	end if
+	return ls_offset
+
+// n_smtp.of_readfile(string as_filename, blob ablob_data) returns boolean
+	long invalid_handle_value
+	unsignedlong generic_read
+	unsignedlong generic_write
+	unsignedlong file_share_read
+	unsignedlong file_share_write
+	unsignedlong create_new
+	unsignedlong create_always
+	unsignedlong open_existing
+	unsignedlong open_always
+	unsignedlong truncate_existing
+	unsignedlong lul_bytes
+	unsignedlong lul_length
+	long ll_hfile
+	blob lblob_filedata
+	boolean lb_result
+	lul_length = filelength(as_filename)
+	ll_hfile = createfile(as_filename, 2147483648, 1, 0, 3, 0, 0)
+	if ll_hfile = -1 then
+		return false
+	end if
+	lblob_filedata = blob(space(lul_length), encodingansi!)
+	lb_result = readfile(ll_hfile, lblob_filedata, lul_length, lul_bytes, 0)
+	ablob_data = blobmid(lblob_filedata, 1, lul_length)
+	closehandle(ll_hfile)
+	return lb_result
+
+// n_smtp.of_addattachment(string as_filename, blob ablob_filedata, boolean ab_inline) returns integer
+	integer li_next
+	li_next = upperbound(this.istr_attach) + 1
+	this.istr_attach[li_next].filename = as_filename
+	this.istr_attach[li_next].filedata = ablob_filedata
+	this.istr_attach[li_next].inline = ab_inline
+	return li_next
+
+// n_smtp.of_addattachment(string as_filename, boolean ab_inline) returns integer
+	blob lblob_filedata
+	string ls_filename
+	if of_readfile(as_filename, lblob_filedata) then
+		ls_filename = mid(as_filename, lastpos(as_filename, "\") + 1)
+		return of_addattachment(ls_filename, lblob_filedata, ab_inline)
+	end if
+	return 0
+
+// n_smtp.of_addattachment(string as_filename, blob ablob_filedata) returns integer
+	return of_addattachment(as_filename, ablob_filedata, false)
+
+// n_smtp.of_addattachment(string as_filename) returns integer
+	return of_addattachment(as_filename, false)
+
+// n_smtp.of_setpriority(string as_priority) returns 0
+	choose case lower(as_priority)
+	case "high"
+		this.ii_priority = 1
+		return
+	case "low"
+		this.ii_priority = 5
+		return
+	end choose
+	this.ii_priority = 3
+
+// n_smtp.of_resetall() returns 0
+	address lstr_emptyaddress
+	string[] ls_empty
+	this.ib_html = false
+	this.ib_receipt = false
+	this.ib_authenticate = false
+	this.ib_eventlog = false
+	this.ib_jaguarlog = false
+	this.ib_messagebox = false
+	this.iui_port = 25
+	this.ii_priority = 3
+	this.is_userid = ""
+	this.is_passwd = ""
+	this.is_server = ""
+	this.is_subject = ""
+	this.is_body = ""
+	this.is_customhdr = ls_empty
+	this.is_replyto = ls_empty
+	this.istr_from = lstr_emptyaddress
+	of_reset()
+
+// n_smtp.of_addreplyto(string as_email) returns integer
+	integer li_next
+	li_next = upperbound(this.is_replyto) + 1
+	this.is_replyto[li_next] = as_email
+	return li_next
+
+// n_smtp.of_addcustomheader(string as_header) returns integer
+	integer li_next
+	li_next = upperbound(this.is_customhdr) + 1
+	this.is_customhdr[li_next] = as_header
+	return li_next
+
+// n_smtp.of_logfile(string as_logmsg) returns 0
+	integer li_fnum
+	if this.ib_debugviewer then
+		if isnull(as_logmsg) then
+			debugmsg("<null>")
+		else
+			debugmsg(as_logmsg)
+		end if
+	end if
+	if this.ib_logfile then
+		li_fnum = fileopen(this.is_logfile, linemode!, write!, shared!, append!)
+		if isnull(as_logmsg) then
+			filewrite(li_fnum, "<null>")
+		else
+			filewrite(li_fnum, as_logmsg)
+		end if
+		fileclose(li_fnum)
+	end if
+
+// n_smtp.of_setport(unsignedinteger aui_port) returns 0
+	this.iui_port = aui_port
+
+// n_smtp.of_sendmail_logoff() returns boolean
+	string ls_reply
+	string ls_msg
+	of_logfile("~r~n" + "Close Session")
+	ls_msg = "QUIT" + "~r~n"
+	of_send(this.iul_socket, ls_msg)
+	of_recv(this.iul_socket, ls_reply)
+	of_close(this.iul_socket)
+	return true
+
+// n_smtp.of_sendmail_logon() returns boolean
+	string reply_ready
+	string ls_msg
+	string ls_reply
+	of_setunicode(false, false)
+	of_startup()
+	of_logfile("~r~n" + "Connect to server")
+	this.iul_socket = of_connect(this.is_server, this.iui_port)
+	if this.iul_socket = 0 then
+		return false
+	end if
+	of_recv(this.iul_socket, ls_reply)
+	if left(ls_reply, 3) <> "220" then
+		of_setlasterror(ls_reply)
+		of_logerror(1, ls_reply)
+		return false
+	end if
+	of_logfile("S:" + ls_reply)
+	of_logfile("~r~n" + "Identify the server")
+	ls_msg = "EHLO " + of_gethostname() + "~r~n"
+	if not of_sendmsg(ls_msg, 250, ls_reply) then
+		of_sendmail_logoff()
+		return false
+	end if
+	if this.ib_authenticate then
+		of_logfile("~r~n" + "Login to server")
+		ls_msg = "AUTH LOGIN" + "~r~n"
+		if not of_sendmsg(ls_msg, 334, ls_reply) then
+			of_sendmail_logoff()
+			return false
+		end if
+		ls_msg = of_encode64(this.is_userid) + "~r~n"
+		if not of_sendmsg(ls_msg, 334, ls_reply) then
+			of_sendmail_logoff()
+			return false
+		end if
+		ls_msg = of_encode64(this.is_passwd) + "~r~n"
+		if not of_sendmsg(ls_msg, 235, ls_reply) then
+			of_sendmail_logoff()
+			return false
+		end if
+		return
+	end if
+	return true
+
+// n_smtp.of_sendmail_send() returns boolean
+	string ls_msg
+	string ls_reply
+	string ls_head
+	string ls_body
+	integer li_rc
+	integer li_idx
+	integer li_max
+	ls_head = of_dataheader()
+	ls_body = of_databody()
+	of_logfile("~r~n" + "From Email Address")
+	ls_msg = "MAIL FROM:<" + this.istr_from.email + ">" + "~r~n"
+	if not of_sendmsg(ls_msg, 250, ls_reply) then
+		of_close(this.iul_socket)
+		return false
+	end if
+	li_max = upperbound(this.istr_address)
+	if li_max > 0 then
+		of_logfile("~r~n" + "To Email Address")
+	end if
+	for li_idx = 1 to li_max
+		ls_msg = "RCPT TO:<" + this.istr_address[li_idx].email + ">" + "~r~n"
+		if not of_sendmsg(ls_msg, 250, ls_reply) then
+			of_close(this.iul_socket)
+			return false
+		end if
+	next
+	li_max = upperbound(this.istr_cc)
+	if li_max > 0 then
+		of_logfile("~r~n" + "Cc Email Address")
+	end if
+	for li_idx = 1 to li_max
+		ls_msg = "RCPT TO:<" + this.istr_cc[li_idx].email + ">" + "~r~n"
+		if not of_sendmsg(ls_msg, 250, ls_reply) then
+			of_close(this.iul_socket)
+			return false
+		end if
+	next
+	li_max = upperbound(this.istr_bcc)
+	if li_max > 0 then
+		of_logfile("~r~n" + "Bcc Email Address")
+	end if
+	for li_idx = 1 to li_max
+		ls_msg = "RCPT TO:<" + this.istr_bcc[li_idx].email + ">" + "~r~n"
+		if not of_sendmsg(ls_msg, 250, ls_reply) then
+			of_close(this.iul_socket)
+			return false
+		end if
+	next
+	of_logfile("~r~n" + "Data Header")
+	ls_msg = "DATA" + "~r~n"
+	if not of_sendmsg(ls_msg, 354, ls_reply) then
+		of_close(this.iul_socket)
+		return false
+	end if
+	of_logfile("~r~n" + "Send Data")
+	if not of_sendmsg(ls_head + ls_body, 250, ls_reply) then
+		of_close(this.iul_socket)
+		return false
+	end if
+	return true
+
+// n_smtp.of_stringfromptr(unsignedlong aul_ptr) returns string
+	return string(aul_ptr, "address")
+
+// n_smtp.of_dataheader() returns string
+	string ls_data
+	integer li_idx
+	integer li_max
+	datetime ldt_current
+	ls_data = "From: " + ls_data
+	if this.istr_from.name <> "" then
+		ls_data = of_utf8string(this.istr_from.name) + " " + ls_data
+	end if
+	ls_data = "<" + this.istr_from.email + ">" + "~r~n" + ls_data
+	li_max = upperbound(this.istr_address)
+	for li_idx = 1 to li_max
+		if li_idx = 1 then
+			ls_data = "To: " + ls_data
+		else
+			ls_data = "~t" + ls_data
+		end if
+		if this.istr_address[li_idx].name <> "" then
+			ls_data = of_utf8string(this.istr_address[li_idx].name) + " " + ls_data
+		end if
+		ls_data = "<" + this.istr_address[li_idx].email + ">" + ls_data
+		if li_idx < li_max then
+			ls_data = "," + ls_data
+		end if
+		ls_data = "~r~n" + ls_data
+	next
+	li_max = upperbound(this.istr_cc)
+	for li_idx = 1 to li_max
+		if li_idx = 1 then
+			ls_data = "Cc: " + ls_data
+		else
+			ls_data = "~t" + ls_data
+		end if
+		if this.istr_cc[li_idx].name <> "" then
+			ls_data = of_utf8string(this.istr_cc[li_idx].name) + " " + ls_data
+		end if
+		ls_data = "<" + this.istr_cc[li_idx].email + ">" + ls_data
+		if li_idx < li_max then
+			ls_data = "," + ls_data
+		end if
+		ls_data = "~r~n" + ls_data
+	next
+	li_max = upperbound(this.is_replyto)
+	if li_max = 0 then
+		ls_data = "Reply-To: <" + this.istr_from.email + ">" + "~r~n" + ls_data
+	else
+		ls_data = "Reply-To: <" + this.istr_from.email + ">," + "~r~n" + ls_data
+		for li_idx = 1 to li_max
+			ls_data = "~t" + ls_data
+			ls_data = "<" + this.is_replyto[li_idx] + ">" + ls_data
+			if li_idx < li_max then
+				ls_data = "," + ls_data
+			end if
+			ls_data = "~r~n" + ls_data
+		next
+	end if
+	if this.ib_receipt then
+		ls_data = "Disposition-Notification-To: " + ls_data
+		if this.istr_from.name <> "" then
+			ls_data = of_utf8string(this.istr_from.name) + " " + ls_data
+		end if
+		ls_data = "<" + this.istr_from.email + ">" + "~r~n" + ls_data
+	end if
+	ls_data = "Subject: " + of_utf8string(this.is_subject) + "~r~n" + ls_data
+	ldt_current = datetime(today(), now())
+	ls_data = "Date: " + string(ldt_current, "ddd, dd mmm yyyy hh:mm:ss") + ls_data
+	ls_data = " " + of_timezoneoffset() + "~r~n" + ls_data
+	ls_data = "MIME-Version: 1.0" + "~r~n" + ls_data
+	ls_data = "X-Mailer: TopWiz PowerBuilder SMTP Object" + "~r~n" + ls_data
+	ls_data = "Return-Path: " + this.istr_from.email + "~r~n" + ls_data
+	choose case this.ii_priority
+	case 1
+		ls_data = "X-Priority: 1" + "~r~n" + ls_data
+		ls_data = "X-MSMail-Priority: High" + "~r~n" + ls_data
+	case 5
+		ls_data = "X-Priority: 5" + "~r~n" + ls_data
+		ls_data = "X-MSMail-Priority: Low" + "~r~n" + ls_data
+	case else
+		ls_data = "X-Priority: 3" + "~r~n" + ls_data
+		ls_data = "X-MSMail-Priority: Normal" + "~r~n" + ls_data
+	end choose
+	li_max = upperbound(this.is_customhdr)
+	for li_idx = 1 to li_max
+		ls_data = this.is_customhdr[li_idx] + "~r~n" + ls_data
+	next
+	return ls_data
+
+// n_smtp.of_databody() returns string
+	string ls_guid
+	string ls_boundary
+	string ls_altboundary
+	string ls_encoding
+	string ls_charset
+	string ls_data
+	string ls_mimetype
+	string ls_contdisp
+	string ls_encoded
+	integer li_idx
+	integer li_max
+	datetime ldt_current
+	ls_guid = of_generate_guid()
+	ls_boundary = "000_" + ls_guid
+	ls_altboundary = "alt_" + ls_guid
+	if upperbound(this.istr_attach) > 0 then
+		if pos(lower(this.is_body), "cid:attach.") > 0 then
+			ls_data = "Content-Type: multipart/related;" + "~r~n" + ls_data
+		else
+			ls_data = "Content-Type: multipart/mixed;" + "~r~n" + ls_data
+		end if
+		ls_data = " boundary=~"" + ls_boundary + "~"" + "~r~n" + ls_data
+		ls_data = "~r~n" + ls_data
+		ls_data = "This is a multi-part message in MIME format." + "~r~n" + ls_data
+		ls_data = "--" + ls_boundary + "~r~n" + ls_data
+	end if
+	of_utf8body(this.is_body, ls_encoding, ls_charset)
+	if this.ib_html then
+		ls_data = "Content-Type: text/html;" + "~r~n" + ls_data
+		ls_data = "~tcharset=~"" + ls_charset + "~"" + "~r~n" + ls_data
+	else
+		ls_data = "Content-Type: text/plain;" + "~r~n" + ls_data
+		ls_data = "~tcharset=~"" + ls_charset + "~";format=flowed" + "~r~n" + ls_data
+	end if
+	ls_data = "Content-Transfer-Encoding: " + ls_encoding + "~r~n" + ls_data
+	ls_data = "~r~n" + this.is_body + "~r~n" + ls_data
+	if upperbound(this.istr_attach) > 0 then
+		li_max = upperbound(this.istr_attach)
+		for li_idx = 1 to li_max
+			ls_data = "~r~n" + "--" + ls_boundary + "~r~n" + ls_data
+			ls_mimetype = of_findmimefromdata(this.istr_attach[li_idx].filename, this.istr_attach[li_idx].filedata)
+			ls_data = "Content-Type: " + ls_mimetype + ";" + "~r~n" + ls_data
+			ls_data = "~tname=~"" + this.istr_attach[li_idx].filename + "~"" + "~r~n" + ls_data
+			if this.istr_attach[li_idx].inline then
+				ls_contdisp = "Content-Disposition: inline;"
+			else
+				ls_contdisp = "Content-Disposition: attachment;"
+			end if
+			if lower(left(ls_mimetype, 4)) = "text" then
+				ls_data = "Content-Transfer-Encoding: 7bit" + "~r~n" + ls_data
+				ls_data = ls_contdisp + "~r~n" + ls_data
+				ls_data = "~tfilename=~"" + this.istr_attach[li_idx].filename + "~"" + "~r~n" + ls_data
+				if this.istr_attach[li_idx].inline then
+					ls_data = "Content-ID: <attach." + this.istr_attach[li_idx].filename + ">" + "~r~n" + ls_data
+				end if
+				ls_data = "~r~n" + string(this.istr_attach[li_idx].filedata, encodingansi!) + "~r~n" + ls_data
+			else
+				ls_data = "Content-Transfer-Encoding: base64" + "~r~n" + ls_data
+				ls_data = ls_contdisp + "~r~n" + ls_data
+				ls_data = "~tfilename=~"" + this.istr_attach[li_idx].filename + "~"" + "~r~n" + ls_data
+				if this.istr_attach[li_idx].inline then
+					ls_data = "Content-ID: <attach." + this.istr_attach[li_idx].filename + ">" + "~r~n" + ls_data
+				end if
+				ls_encoded = of_encode64(this.istr_attach[li_idx].filedata)
+				ls_data = "~r~n" + ls_encoded + "~r~n" + ls_data
+			end if
+		next
+		ls_data = "--" + ls_boundary + "--" + ls_data
+	end if
+	ls_data = "~r~n" + "." + "~r~n" + ls_data
+	return ls_data
+
+// n_smtp.of_data() returns string
+	string ls_head
+	string ls_body
+	ls_head = of_dataheader()
+	ls_body = of_databody()
+	return ls_head + ls_body
+
+// n_smtp.of_crypterror(long al_retval) returns string
+	long crypt_attribute_errormessage
+	string ls_return
+	string ls_extended
+	integer li_strlen
+	long ll_retval
+	if al_retval = 0 then
+		return ""
+	end if
+	choose case al_retval
+	case -1
+		ls_return = "Bad argument - parameter 1"
+	case -2
+		ls_return = "Bad argument - parameter 2"
+	case -3
+		ls_return = "Bad argument - parameter 3"
+	case -4
+		ls_return = "Bad argument - parameter 4"
+	case -5
+		ls_return = "Bad argument - parameter 5"
+	case -6
+		ls_return = "Bad argument - parameter 6"
+	case -7
+		ls_return = "Bad argument - parameter 7"
+	case -10
+		ls_return = "Out of memory"
+	case -11
+		ls_return = "Data has not been initialised"
+	case -12
+		ls_return = "Data has already been init'd"
+	case -13
+		ls_return = "Operation not avail at requested sec level"
+	case -14
+		ls_return = "No reliable random data available"
+	case -15
+		ls_return = "Operation failed"
+	case -16
+		ls_return = "Internal consistency check failed"
+	case -20
+		ls_return = "This type of operation not available"
+	case -21
+		ls_return = "No permission to perform this operation"
+	case -22
+		ls_return = "Incorrect key used to decrypt data"
+	case -23
+		ls_return = "Operation incomplete/still in progress"
+	case -24
+		ls_return = "Operation complete/can't continue"
+	case -25
+		ls_return = "Operation timed out before completion"
+	case -26
+		ls_return = "Invalid/inconsistent information"
+	case -27
+		ls_return = "Resource destroyed by extnl.event"
+	case -30
+		ls_return = "Resources/space exhausted"
+	case -31
+		ls_return = "Not enough data available"
+	case -32
+		ls_return = "Bad/unrecognised data format"
+	case -33
+		ls_return = "Signature/integrity check failed"
+	case -40
+		ls_return = "Cannot open object"
+	case -41
+		ls_return = "Cannot read item from object"
+	case -42
+		ls_return = "Cannot write item to object"
+	case -43
+		ls_return = "Requested item not found in object"
+	case -44
+		ls_return = "Item already present in object"
+	case -50
+		ls_return = "Need resource to proceed"
+	case else
+		ls_return = "Unknown error code!"
+	end choose
+	li_strlen = 255
+	ls_extended = space(li_strlen)
+	ll_retval = cryptgetattributestring(this.il_session, 12, ls_extended, li_strlen)
+	if li_strlen > 0 then
+		ls_return = "~r~n~r~n" + ls_extended + ls_return
+	end if
+	return ls_return
+
+// n_smtp.of_sendsecmail_send() returns boolean
+	string ls_head
+	string ls_body
+	string ls_msg
+	string ls_reply
+	integer li_idx
+	integer li_max
+	ls_head = of_dataheader()
+	ls_body = of_databody()
+	of_logfile("~r~n" + "From Email Address")
+	ls_msg = "MAIL FROM:<" + this.istr_from.email + ">" + "~r~n"
+	if not of_sendmsg_crypt(ls_msg, 250, ls_reply) then
+		cryptend()
+		return false
+	end if
+	li_max = upperbound(this.istr_address)
+	if li_max > 0 then
+		of_logfile("~r~n" + "To Email Address")
+	end if
+	for li_idx = 1 to li_max
+		ls_msg = "RCPT TO:<" + this.istr_address[li_idx].email + ">" + "~r~n"
+		if not of_sendmsg_crypt(ls_msg, 250, ls_reply) then
+			cryptend()
+			return false
+		end if
+	next
+	li_max = upperbound(this.istr_cc)
+	if li_max > 0 then
+		of_logfile("~r~n" + "Cc Email Address")
+	end if
+	for li_idx = 1 to li_max
+		ls_msg = "RCPT TO:<" + this.istr_cc[li_idx].email + ">" + "~r~n"
+		if not of_sendmsg_crypt(ls_msg, 250, ls_reply) then
+			cryptend()
+			return false
+		end if
+	next
+	li_max = upperbound(this.istr_bcc)
+	if li_max > 0 then
+		of_logfile("~r~n" + "Bcc Email Address")
+	end if
+	for li_idx = 1 to li_max
+		ls_msg = "RCPT TO:<" + this.istr_bcc[li_idx].email + ">" + "~r~n"
+		if not of_sendmsg_crypt(ls_msg, 250, ls_reply) then
+			cryptend()
+			return false
+		end if
+	next
+	of_logfile("~r~n" + "Data Header")
+	ls_msg = "DATA" + "~r~n"
+	if not of_sendmsg_crypt(ls_msg, 354, ls_reply) then
+		cryptend()
+		return false
+	end if
+	of_logfile("~r~n" + "Send Data")
+	if not of_sendmsg_crypt(ls_head + ls_body, 250, ls_reply) then
+		cryptend()
+		return false
+	end if
+	return true
+
+// n_smtp.of_sendsecmail_logoff() returns boolean
+	string ls_msg
+	string ls_reply
+	of_logfile("~r~n" + "Close Session")
+	ls_msg = "QUIT" + "~r~n"
+	of_sendmsg_crypt(ls_msg, 221, ls_reply)
+	cryptdestroysession(this.il_session)
+	cryptend()
+	of_close(this.iul_socket)
+	return true
+
+// n_smtp.of_addto(string as_email) returns integer
+	return of_addaddress(as_email, "")
+
+// n_smtp.of_addto(string as_email, string as_name) returns integer
+	return of_addaddress(as_email, as_name)
+
+// n_smtp.of_addfile(string as_filename) returns integer
+	return of_addattachment(as_filename, false)
+
+// n_smtp.of_hex(unsignedlong aul_decimal) returns string
+	string ls_hex
+	char[] lch_hex
+	do
+		ls_hex = lch_hex[aul_decimal mod 16] + ls_hex
+		aul_decimal = 16.0 / aul_decimal
+	loop while aul_decimal <> 0
+	return ls_hex
+
+// n_smtp.of_utf8string(string as_string) returns string
+	string[] ls_char
+	string ls_result
+	string ls_base64
+	integer li_idx
+	integer li_max
+	boolean lb_encodeb
+	boolean lb_encodeq
+	unsignedinteger lui_codepoint
+	li_max = len(as_string)
+	for li_idx = 1 to li_max
+		ls_char[li_idx] = mid(as_string, li_idx, 1)
+		lui_codepoint = asc(ls_char[li_idx])
+		if lui_codepoint > 127 then
+			if lui_codepoint > 255 then
+				lb_encodeb = true
+			else
+				ls_char[li_idx] = "=" + of_hex(lui_codepoint)
+				lb_encodeq = true
+			end if
+		end if
+	next
+	if lb_encodeb then
+		ls_base64 = of_encode64(blob(as_string, encodingutf8!))
+		ls_result = "=?UTF-8?B?" + ls_base64 + "?="
+	elseif lb_encodeq then
+		ls_result = "=?iso-8859-1?Q?"
+		for li_idx = 1 to li_max
+			if ls_char[li_idx] = " " then
+				ls_result = "_" + ls_result
+			else
+				ls_result = ls_char[li_idx] + ls_result
+			end if
+		next
+		ls_result = "?=" + ls_result
+	else
+		ls_result = as_string
+	end if
+	return ls_result
+
+// n_smtp.of_utf8body(string as_string, string as_encoding, string as_charset) returns 0
+	string[] ls_char
+	integer li_idx
+	integer li_max
+	boolean lb_encodeb
+	boolean lb_encodeq
+	unsignedinteger lui_codepoint
+	li_max = len(as_string)
+	for li_idx = 1 to li_max
+		ls_char[li_idx] = mid(as_string, li_idx, 1)
+		lui_codepoint = asc(ls_char[li_idx])
+		if lui_codepoint > 127 then
+			if lui_codepoint > 255 then
+				lb_encodeb = true
+			else
+				ls_char[li_idx] = "=" + of_hex(lui_codepoint)
+				lb_encodeq = true
+			end if
+		end if
+	next
+	if lb_encodeb then
+		as_string = of_encode64(blob(as_string, encodingutf8!))
+		as_encoding = "base64"
+		as_charset = "UTF-8"
+		return
+	end if
+	if lb_encodeq then
+		as_string = ""
+		for li_idx = 1 to li_max
+			choose case ls_char[li_idx]
+			case "~t"
+				as_string = "=09" + as_string
+			case "~n"
+				as_string = "=0A" + as_string
+			case "~r"
+				as_string = "=0D" + as_string
+			case " "
+				as_string = "=20" + as_string
+			case "="
+				as_string = "=3D" + as_string
+			case else
+				as_string = ls_char[li_idx] + as_string
+			end choose
+		next
+		as_encoding = "quoted-printable"
+		as_charset = "iso-8859-1"
+		return
+	end if
+	as_encoding = "7bit"
+	as_charset = "iso-8859-1"
+
+// n_smtp.of_setlogfile(boolean ab_flag, string as_logfile) returns 0
+	this.ib_logfile = ab_flag
+	this.is_logfile = as_logfile
+
+// n_smtp.of_sendtlsmail_logon() returns boolean
+	string reply_ready
+	string ls_msg
+	string ls_reply
+	string ls_buffer
+	long ll_retval
+	long ll_replybytes
+	of_setunicode(false, false)
+	of_startup()
+	of_logfile("~r~n" + "Connect to server")
+	this.iul_socket = of_connect(this.is_server, this.iui_port)
+	if this.iul_socket = 0 then
+		return false
+	end if
+	of_recv(this.iul_socket, ls_reply)
+	if left(ls_reply, 3) <> "220" then
+		of_setlasterror(ls_reply)
+		of_logerror(1, ls_reply)
+		return false
+	end if
+	of_logfile("S:" + ls_reply)
+	ls_msg = "HELO " + of_gethostname() + "~r~n"
+	if not of_sendmsg(ls_msg, 250, ls_reply) then
+		of_close(this.iul_socket)
+		return false
+	end if
+	if not of_sendmsg("STARTTLS" + "~r~n", 220, ls_reply) then
+		of_close(this.iul_socket)
+		return false
+	end if
+	ll_retval = cryptinit()
+	if ll_retval <> 0 then
+		ls_msg = "cryptInit: " + of_crypterror(ll_retval)
+		of_setlasterror(ls_msg)
+		of_logerror(1, ls_msg)
+		return false
+	end if
+	of_logfile("~r~n" + "cryptInit: OK")
+	ll_retval = cryptcreatesession(this.il_session, -101, 3)
+	if ll_retval <> 0 then
+		ls_msg = "cryptCreateSession: " + of_crypterror(ll_retval)
+		of_setlasterror(ls_msg)
+		of_logerror(1, ls_msg)
+		cryptend()
+		return false
+	end if
+	of_logfile("cryptCreateSession: OK")
+	ll_retval = cryptsetattribute(this.il_session, 118, 0)
+	if ll_retval <> 0 then
+		ls_msg = "cryptSetAttribute (Set compliance level): " + of_crypterror(ll_retval)
+		of_setlasterror(ls_msg)
+		of_logerror(1, ls_msg)
+		cryptend()
+		return false
+	end if
+	of_logfile("cryptSetAttribute (Set compliance level): OK")
+	ll_retval = cryptsetattribute(this.il_session, 6014, this.iul_socket)
+	if ll_retval <> 0 then
+		ls_msg = "cryptSetAttribute (Set the socket): " + of_crypterror(ll_retval)
+		of_setlasterror(ls_msg)
+		of_logerror(1, ls_msg)
+		cryptend()
+		return false
+	end if
+	of_logfile("cryptSetAttribute (Set the socket): OK")
+	ll_retval = cryptsetattribute(this.il_session, 6001, 1)
+	if ll_retval <> 0 then
+		ls_msg = "cryptSetAttribute (Activate the session): " + of_crypterror(ll_retval)
+		of_setlasterror(ls_msg)
+		of_logerror(1, ls_msg)
+		cryptend()
+		return false
+	end if
+	of_logfile("cryptSetAttribute (Activate the session): OK")
+	ls_buffer = space(256)
+	ll_retval = cryptpopdata(this.il_session, ls_buffer, len(ls_buffer), ll_replybytes)
+	if ll_retval <> 0 then
+		ls_msg = "cryptPopData: " + of_crypterror(ll_retval)
+		of_setlasterror(ls_msg)
+		of_logerror(1, ls_msg)
+		of_sendsecmail_logoff()
+		return false
+	end if
+	if ll_replybytes > 0 then
+		ls_reply = left(ls_buffer, ll_replybytes)
+		of_logfile("S:" + ls_reply)
+	end if
+	ll_retval = cryptsetattribute(this.il_session, 138, 10)
+	if ll_retval <> 0 then
+		ls_msg = "cryptSetAttribute (Set timeout): " + of_crypterror(ll_retval)
+		of_setlasterror(ls_msg)
+		of_logerror(1, ls_msg)
+		of_sendsecmail_logoff()
+		return false
+	end if
+	of_logfile("cryptSetAttribute (Set timeout): OK")
+	of_logfile("~r~n" + "Identify the server")
+	ls_msg = "EHLO " + of_gethostname() + "~r~n"
+	if not of_sendmsg_crypt(ls_msg, 250, ls_reply) then
+		of_sendsecmail_logoff()
+		return false
+	end if
+	of_logfile("~r~n" + "Login to server")
+	ls_msg = "AUTH LOGIN" + "~r~n"
+	if not of_sendmsg_crypt(ls_msg, 334, ls_reply) then
+		of_sendsecmail_logoff()
+		return false
+	end if
+	ls_msg = of_encode64(this.is_userid) + "~r~n"
+	if not of_sendmsg_crypt(ls_msg, 334, ls_reply) then
+		of_sendsecmail_logoff()
+		return false
+	end if
+	ls_msg = of_encode64(this.is_passwd) + "~r~n"
+	if not of_sendmsg_crypt(ls_msg, 235, ls_reply) then
+		of_sendsecmail_logoff()
+		return false
+	end if
+	return true
+
+// n_smtp.of_sendsslmail_logon() returns boolean
+	string ls_msg
+	string ls_reply
+	string ls_buffer
+	long ll_retval
+	long ll_replybytes
+	long ll_next
+	ll_retval = cryptinit()
+	if ll_retval <> 0 then
+		ls_msg = "cryptInit: " + of_crypterror(ll_retval)
+		of_setlasterror(ls_msg)
+		of_logerror(1, ls_msg)
+		return false
+	end if
+	of_logfile("~r~n" + "cryptInit: OK")
+	ll_retval = cryptcreatesession(this.il_session, -101, 3)
+	if ll_retval <> 0 then
+		ls_msg = "cryptCreateSession: " + of_crypterror(ll_retval)
+		of_setlasterror(ls_msg)
+		of_logerror(1, ls_msg)
+		cryptend()
+		return false
+	end if
+	of_logfile("cryptCreateSession: OK")
+	ll_retval = cryptsetattribute(this.il_session, 118, 0)
+	if ll_retval <> 0 then
+		ls_msg = "cryptSetAttribute (Set compliance level): " + of_crypterror(ll_retval)
+		of_setlasterror(ls_msg)
+		of_logerror(1, ls_msg)
+		cryptend()
+		return false
+	end if
+	of_logfile("cryptSetAttribute (Set compliance level): OK")
+	ll_retval = cryptsetattributestring(this.il_session, 6008, this.is_server, len(this.is_server))
+	if ll_retval <> 0 then
+		ls_msg = "cryptSetAttributeString: " + of_crypterror(ll_retval)
+		of_setlasterror(ls_msg)
+		of_logerror(1, ls_msg)
+		cryptend()
+		return false
+	end if
+	of_logfile("cryptSetAttributeString (Add the server name): OK")
+	ll_retval = cryptsetattribute(this.il_session, 6009, this.iui_port)
+	if ll_retval <> 0 then
+		ls_msg = "cryptSetAttribute (Specify the Port): " + of_crypterror(ll_retval)
+		of_setlasterror(ls_msg)
+		of_logerror(1, ls_msg)
+		cryptend()
+		return false
+	end if
+	of_logfile("cryptSetAttribute (Specify the Port): OK")
+	ll_retval = cryptsetattribute(this.il_session, 6001, 1)
+	if ll_retval <> 0 then
+		ls_msg = "cryptSetAttribute (Activate the session): " + of_crypterror(ll_retval)
+		of_setlasterror(ls_msg)
+		of_logerror(1, ls_msg)
+		cryptend()
+		return false
+	end if
+	of_logfile("cryptSetAttribute (Activate the session): OK")
+	ll_retval = cryptsetattribute(this.il_session, 138, 10)
+	if ll_retval <> 0 then
+		ls_msg = "cryptSetAttribute (Set timeout): " + of_crypterror(ll_retval)
+		of_setlasterror(ls_msg)
+		of_logerror(1, ls_msg)
+		of_sendsecmail_logoff()
+		return false
+	end if
+	of_logfile("cryptSetAttribute (Set timeout): OK")
+	ls_buffer = space(256)
+	ll_retval = cryptpopdata(this.il_session, ls_buffer, len(ls_buffer), ll_replybytes)
+	if ll_retval <> 0 then
+		ls_msg = "cryptPopData: " + of_crypterror(ll_retval)
+		of_setlasterror(ls_msg)
+		of_logerror(1, ls_msg)
+		of_sendsecmail_logoff()
+		return false
+	end if
+	ls_reply = left(ls_buffer, ll_replybytes)
+	of_logfile("~r~n" + "Connect to server")
+	of_logfile("S:" + ls_reply)
+	of_logfile("~r~n" + "Identify the server")
+	ls_msg = "EHLO " + of_gethostname() + "~r~n"
+	if not of_sendmsg_crypt(ls_msg, 250, ls_reply) then
+		of_sendsecmail_logoff()
+		return false
+	end if
+	of_logfile("~r~n" + "Login to server")
+	ls_msg = "AUTH LOGIN" + "~r~n"
+	if not of_sendmsg_crypt(ls_msg, 334, ls_reply) then
+		of_sendsecmail_logoff()
+		return false
+	end if
+	ls_msg = of_encode64(this.is_userid) + "~r~n"
+	if not of_sendmsg_crypt(ls_msg, 334, ls_reply) then
+		of_sendsecmail_logoff()
+		return false
+	end if
+	ls_msg = of_encode64(this.is_passwd) + "~r~n"
+	if not of_sendmsg_crypt(ls_msg, 235, ls_reply) then
+		of_sendsecmail_logoff()
+		return false
+	end if
+	return true
+
+// n_smtp.of_sendtlsmail() returns boolean
+	datetime ldt_current
+	ldt_current = datetime(today(), now())
+	of_logfile("of_SendTLSMail Start: " + string(ldt_current) + "~r~n")
+	if not of_sendtlsmail_logon() then
+		return false
+	end if
+	if not of_sendsecmail_send() then
+		return false
+	end if
+	if not of_sendsecmail_logoff() then
+		return false
+	end if
+	ldt_current = datetime(today(), now())
+	of_logfile("~r~n" + "of_SendTLSMail End: " + string(ldt_current) + "~r~n")
+	return true
+
+// n_smtp.of_sendsslmail() returns boolean
+	datetime ldt_current
+	ldt_current = datetime(today(), now())
+	of_logfile("of_SendSSLMail Start: " + string(ldt_current) + "~r~n")
+	if not of_sendsslmail_logon() then
+		return false
+	end if
+	if not of_sendsecmail_send() then
+		return false
+	end if
+	if not of_sendsecmail_logoff() then
+		return false
+	end if
+	ldt_current = datetime(today(), now())
+	of_logfile("~r~n" + "of_SendSSLMail End: " + string(ldt_current) + "~r~n")
+	return true
+
+// n_smtp.of_validemail(string as_email, string as_errormsg) returns boolean
+	string ls_localpart
+	string ls_domain
+	string[] ls_domainpart
+	integer li_pos
+	integer li_idx
+	integer li_max
+	integer li_asc
+	if len(as_email) > 254 then
+		as_errormsg = "Email address cannot be more than 254 characters!"
+		return false
+	end if
+	li_pos = pos(as_email, "@")
+	if li_pos < 2 then
+		as_errormsg = "Email address must have an @ character!"
+		return false
+	end if
+	if lastpos(as_email, "@") > pos(as_email, "@") then
+		as_errormsg = "Email address cannot have more than one @ character!"
+		return false
+	end if
+	li_pos = pos(as_email, " ")
+	if li_pos > 0 then
+		as_errormsg = "Email address cannot have any spaces!"
+		return false
+	end if
+	li_pos = pos(as_email, "@")
+	ls_localpart = left(as_email, li_pos - 1)
+	ls_domain = mid(as_email, li_pos + 1)
+	if len(ls_localpart) > 64 then
+		as_errormsg = "The mailbox part of the email address cannot be more than 64 characters!"
+		return false
+	end if
+	if len(ls_domain) > 253 then
+		as_errormsg = "The domain part of the email address cannot be more than 253 characters!"
+		return false
+	end if
+	if left(ls_localpart, 1) = "." then
+		as_errormsg = "The mailbox part of the email address cannot start with a period!"
+		return false
+	end if
+	if right(ls_localpart, 1) = "." then
+		as_errormsg = "The mailbox part of the email address cannot end with a period!"
+		return false
+	end if
+	if pos(ls_localpart, "..") > 0 then
+		as_errormsg = "The mailbox part of the email address cannot have more than one period in a row!"
+		return false
+	end if
+	li_max = len(ls_localpart)
+	for li_idx = 1 to li_max
+		li_asc = asc(mid(ls_localpart, li_idx, 1))
+		choose case li_asc
+		case 65 to 90
+		case 97 to 122
+		case 48 to 57
+		case 33, 35 to 39, 42, 43, 45, 47, 61, 63, 94 to 96, 123 to 126
+		case 46
+		case else
+			as_errormsg = "The mailbox part of the email address contains invalid characters!"
+			return false
+		end choose
+	next
+	if left(ls_domain, 1) = "." then
+		as_errormsg = "The domain part of the email address cannot start with a period!"
+		return false
+	end if
+	if right(ls_domain, 1) = "." then
+		as_errormsg = "The domain part of the email address cannot end with a period!"
+		return false
+	end if
+	li_pos = pos(ls_domain, ".")
+	if li_pos = 0 then
+		as_errormsg = "The domain part of the email address must have at least one period!"
+		return false
+	end if
+	li_max = len(ls_domain)
+	for li_idx = 1 to li_max
+		li_asc = asc(mid(ls_domain, li_idx, 1))
+		choose case li_asc
+		case 65 to 90
+		case 97 to 122
+		case 48 to 57
+		case 45
+		case 46
+		case else
+			as_errormsg = "The domain part of the email address contains invalid characters!"
+			return false
+		end choose
+	next
+	li_max = of_parse(ls_domain, ".", ls_domainpart)
+	if li_max > 127 then
+		as_errormsg = "The domain part of the email address contains too many periods!"
+		return false
+	end if
+	for li_idx = 1 to li_max
+		if left(ls_domainpart[li_idx], 1) = "-" then
+			as_errormsg = "The domain part of the email address cannot have a hyphen and a period next to one another!"
+			return false
+		end if
+		if right(ls_domainpart[li_idx], 1) = "-" then
+			as_errormsg = "The domain part of the email address cannot have a hyphen and a period next to one another!"
+			return false
+		end if
+	next
+	return true
+
+// n_smtp.of_settimeout(integer ai_timeout) returns 0
+	if ai_timeout > 10 then
+		this.ii_timeout = ai_timeout
+		return
+	end if
+	this.ii_timeout = 10
+
+// n_smtp.of_performance_start() returns double
+	double ldbl_start
+	queryperformancecounter(ldbl_start)
+	return ldbl_start
+
+// n_smtp.of_performance_stop(double adbl_start) returns decimal
+	double ldbl_stop
+	decimal ldec_elapsed
+	queryperformancecounter(ldbl_stop)
+	if this.idbl_frequency > 0.0 then
+		ldec_elapsed = (ldbl_stop - adbl_start) / this.idbl_frequency
+	end if
+	return ldec_elapsed
+
+// n_smtp.of_sendmsg_crypt(string as_cmd, integer ai_okreturn, string as_reply) returns boolean
+	long max_buffer_len
+	string ls_msg
+	string ls_reply
+	string ls_buffer
+	long ll_retval
+	long ll_replybytes
+	long ll_sentbytes
+	long ll_length
+	long ll_totbytes
+	decimal ldec_elapsed
+	double ldbl_start
+	boolean lb_complete
+	if right(as_cmd, 2) = "~r~n" then
+		ls_msg = left(as_cmd, len(as_cmd) - 2)
+	else
+		ls_msg = as_cmd
+	end if
+	if isnull(ls_msg) then
+		ls_msg = "<null>"
+	end if
+	of_logfile("C:" + ls_msg)
+	as_reply = ""
+	ll_length = len(as_cmd)
+	do while ll_totbytes < ll_length
+		ls_buffer = mid(as_cmd, ll_totbytes + 1, 16000)
+		ll_retval = cryptpushdata(this.il_session, ls_buffer, len(ls_buffer), ll_sentbytes)
+		if ll_retval <> 0 then
+			ls_msg = "CryptPushData: " + of_crypterror(ll_retval)
+			of_setlasterror(ls_msg)
+			of_logerror(1, ls_msg)
+			return false
+		end if
+		if len(ls_buffer) <> ll_sentbytes then
+			ls_msg = string(ll_sentbytes) + " bytes sent, " + string(len(ls_buffer)) + " expected."
+			of_setlasterror(ls_msg)
+			of_logerror(1, ls_msg)
+			return false
+		end if
+		ll_totbytes = ll_totbytes + ll_sentbytes
+		ll_retval = cryptflushdata(this.il_session)
+		if ll_retval <> 0 then
+			ls_msg = "cryptFlushData: " + of_crypterror(ll_retval)
+			of_setlasterror(ls_msg)
+			of_logerror(1, ls_msg)
+			return false
+		end if
+		if ll_totbytes < ll_length then
+			sleepms(10)
+		end if
+	loop
+	do while lb_complete = false
+		ldbl_start = of_performance_start()
+		ls_buffer = space(256)
+		ll_retval = cryptpopdata(this.il_session, ls_buffer, len(ls_buffer), ll_replybytes)
+		if ll_retval <> 0 then
+			ls_msg = "cryptPopData: " + of_crypterror(ll_retval)
+			of_setlasterror(ls_msg)
+			of_logerror(1, ls_msg)
+			return false
+		end if
+		ldec_elapsed = of_performance_stop(ldbl_start)
+		if ldec_elapsed > this.ii_timeout then
+			ls_msg = "No response from server after " + string(this.ii_timeout) + " seconds."
+			of_setlasterror(ls_msg)
+			of_logerror(1, ls_msg)
+			return false
+		end if
+		if ll_replybytes > 0 then
+			ls_reply = left(ls_buffer, ll_replybytes) + ls_reply
+			if right(ls_reply, 2) = "~r~n" then
+				lb_complete = true
+			end if
+		end if
+	loop
+	as_reply = ls_reply
+	if right(ls_reply, 2) = "~r~n" then
+		ls_msg = left(ls_reply, len(ls_reply) - 2)
+	else
+		ls_msg = ls_reply
+	end if
+	if isnull(ls_msg) then
+		ls_msg = "<null>"
+	end if
+	if integer(left(ls_reply, 3)) = ai_okreturn then
+		of_logfile("S:" + ls_msg)
+		return true
+	elseif as_cmd = "QUIT" + "~r~n" then
+		of_logfile("S:" + ls_msg)
+		return true
+	else
+		ls_msg = "Command failed:" + "~r~n" + "~r~n" + as_cmd + "~r~n" + ls_reply
+		of_setlasterror(ls_msg)
+		of_logerror(1, ls_msg)
+	end if
+	return false
+
+// n_smtp.of_sendmsg(string as_cmd, integer ai_okreturn, string as_reply) returns boolean
+	string ls_msg
+	string ls_reply
+	if right(as_cmd, 2) = "~r~n" then
+		ls_msg = left(as_cmd, len(as_cmd) - 2)
+	else
+		ls_msg = as_cmd
+	end if
+	if isnull(ls_msg) then
+		ls_msg = "<null>"
+	end if
+	of_logfile("C:" + ls_msg)
+	as_reply = ""
+	if not of_send(this.iul_socket, as_cmd) then
+		return false
+	end if
+	of_recv(this.iul_socket, ls_reply)
+	as_reply = ls_reply
+	if right(ls_reply, 2) = "~r~n" then
+		ls_msg = left(ls_reply, len(ls_reply) - 2)
+	else
+		ls_msg = ls_reply
+	end if
+	if isnull(ls_msg) then
+		ls_msg = "<null>"
+	end if
+	if integer(left(ls_reply, 3)) = ai_okreturn then
+		of_logfile("S:" + ls_msg)
+		return true
+	elseif as_cmd = "QUIT" + "~r~n" then
+		of_logfile("S:" + ls_msg)
+		return true
+	else
+		ls_msg = "Command failed:" + "~r~n" + "~r~n" + as_cmd + "~r~n" + ls_reply
+		of_setlasterror(ls_msg)
+		of_logerror(1, ls_msg)
+	end if
+	return false
+
+// n_smtp.of_setdebugviewer(boolean ab_flag) returns 0
+	this.ib_debugviewer = ab_flag
+
+// n_smtp.create() returns 0
+	call super::create
+
+// n_smtp.destroy() returns 0
+	call super::destroy
+
+// n_smtp.constructor() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::constructor()
+	queryperformancefrequency(this.crypt_string_base64)
+	return ::message.returnvalue

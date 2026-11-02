@@ -1,0 +1,235 @@
+// window w_copyissueinvoicefrom (templates)  ancestor: window
+
+// w_copyissueinvoicefrom.ue_setfocus(char ac_type) returns 0
+	long ll_invcode
+	setnull(ll_invcode)
+	if ac_type = "I" then
+		this.dw_issuereq.enabled = true
+		this.dw_issuereq.setfocus()
+		this.rb_copyinvfromissuereq.checked = true
+		this.dw_purchaseinvtemplate.enabled = false
+		this.rb_copyinvfrompurchaseinvoice.checked = false
+		this.dw_receipt.enabled = false
+		this.rb_receipt.checked = false
+		return
+	end if
+	if ac_type = "R" then
+		this.dw_receipt.enabled = true
+		this.dw_receipt.setfocus()
+		this.rb_receipt.checked = true
+		this.dw_issuereq.enabled = false
+		this.rb_copyinvfromissuereq.checked = false
+		this.dw_purchaseinvtemplate.enabled = false
+		this.rb_copyinvfrompurchaseinvoice.checked = false
+		return
+	end if
+	if ac_type = "P" then
+		this.dw_issuereq.enabled = false
+		this.rb_copyinvfromissuereq.checked = false
+		this.dw_purchaseinvtemplate.enabled = true
+		this.dw_purchaseinvtemplate.setfocus()
+		this.rb_copyinvfrompurchaseinvoice.checked = true
+		this.dw_receipt.enabled = false
+		this.rb_receipt.checked = false
+	end if
+
+// w_copyissueinvoicefrom.ue_postopen() returns 0
+	long ll_invcode
+	long ll_startinginv
+	this.istr_template.b_userinput = false
+	ll_startinginv = 10
+	this.dw_issuereq.settransobject(sqlca)
+	if this.dw_issuereq.getchild("issuereqinvcode", this.idc_issuereq) <> 1 then
+		messagebox("DataWindow Child", "Can not get DataWindow Child reference for Issue Request.")
+		return
+	end if
+	this.idc_issuereq.settransobject(sqlca)
+	SQL Select Max ( IssueReqInvCode ) INTO :ll_invcode From IssueReqHeader USING sqlca;
+	if sqlca.sqlcode <> 0 then
+		messagebox("Fetch Error", "Unable to fetch Issue Request code.")
+		return
+	end if
+	this.idc_issuereq.retrieve(ll_invcode - ll_startinginv, ll_invcode)
+	this.dw_issuereq.insertrow(0)
+	this.dw_issuereq.scrolltorow(0)
+	this.dw_purchaseinvtemplate.settransobject(sqlca)
+	if this.dw_purchaseinvtemplate.getchild("purinvcode", this.idc_purchaseinvtemplate) <> 1 then
+		messagebox("DataWindow Child", "Can not get DataWindow Child reference for purchase invoice")
+		return
+	end if
+	this.idc_purchaseinvtemplate.settransobject(sqlca)
+	SQL Select Max ( PurInvcode ) INTO :ll_invcode From PurLedger USING sqlca;
+	if sqlca.sqlcode <> 0 then
+		messagebox("Fetch Error", "Unable to fetch Purchase Invoice code.")
+		return
+	end if
+	this.idc_purchaseinvtemplate.retrieve(ll_invcode - ll_startinginv, ll_invcode)
+	this.dw_purchaseinvtemplate.insertrow(0)
+	this.dw_purchaseinvtemplate.scrolltorow(0)
+	this.dw_receipt.settransobject(sqlca)
+	if this.dw_receipt.getchild("invcode", this.idc_receipt) <> 1 then
+		messagebox("DataWindow Child", "Can not get DataWindow Child reference for Receipt.")
+		return
+	end if
+	this.idc_receipt.settransobject(sqlca)
+	SQL Select Max ( ReceiptInvCode ) INTO :ll_invcode From ReceiptHeader USING sqlca;
+	if sqlca.sqlcode <> 0 then
+		messagebox("Fetch Error", "Unable to fetch Receipt code.")
+		return
+	end if
+	this.idc_receipt.retrieve()
+	this.dw_receipt.insertrow(0)
+	this.dw_receipt.scrolltorow(0)
+
+// w_copyissueinvoicefrom.create() returns 0
+	this.dw_receipt = create dw_receipt
+	this.st_receipt = create st_receipt
+	this.rb_receipt = create rb_receipt
+	this.dw_purchaseinvtemplate = create dw_purchaseinvtemplate
+	this.st_1 = create st_1
+	this.rb_copyinvfrompurchaseinvoice = create rb_copyinvfrompurchaseinvoice
+	this.dw_issuereq = create dw_issuereq
+	this.st_purchaseinvno = create st_purchaseinvno
+	this.rb_copyinvfromissuereq = create rb_copyinvfromissuereq
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.gb_1 = create gb_1
+	this.control = {this.dw_receipt, this.st_receipt, this.rb_receipt, this.dw_purchaseinvtemplate, this.st_1, this.rb_copyinvfrompurchaseinvoice, this.dw_issuereq, this.st_purchaseinvno, this.rb_copyinvfromissuereq, this.cb_cancel, this.cb_ok, this.gb_1}
+
+// w_copyissueinvoicefrom.destroy() returns 0
+	destroy this.dw_receipt
+	destroy this.st_receipt
+	destroy this.rb_receipt
+	destroy this.dw_purchaseinvtemplate
+	destroy this.st_1
+	destroy this.rb_copyinvfrompurchaseinvoice
+	destroy this.dw_issuereq
+	destroy this.st_purchaseinvno
+	destroy this.rb_copyinvfromissuereq
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.gb_1
+
+// w_copyissueinvoicefrom.open() returns long
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	post event ue_postopen()
+	return ::message.returnvalue
+
+// w_copyissueinvoicefrom.close() returns long
+	closewithreturn(this, this.istr_template)
+	return ::message.returnvalue
+
+// w_copyissueinvoicefrom.key(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		post event Close()
+	end if
+	return ::message.returnvalue
+
+// dw_receipt.ue_key(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		parent.post event Close()
+	end if
+	return ::message.returnvalue
+
+// dw_receipt.itemerror(long row, dwobject dwo, string data) returns long
+	messagebox("Purchase Invoice Code Validation", "Please enter valid Purchase Invoice Code")
+	return 1
+
+// rb_receipt.clicked() returns long
+	if this.checked then
+		parent.event ue_setfocus("R")
+	end if
+	return ::message.returnvalue
+
+// dw_purchaseinvtemplate.ue_key(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		parent.post event Close()
+	end if
+	return ::message.returnvalue
+
+// dw_purchaseinvtemplate.itemerror(long row, dwobject dwo, string data) returns long
+	messagebox("Purchase Invoice Code Validation", "Please enter valid Purchase Invoice Code")
+	return 1
+
+// rb_copyinvfrompurchaseinvoice.clicked() returns long
+	if parent.rb_copyinvfrompurchaseinvoice.checked then
+		parent.event ue_setfocus("P")
+	end if
+	return ::message.returnvalue
+
+// rb_copyinvfromissuereq.clicked() returns long
+	if parent.rb_copyinvfromissuereq.checked then
+		parent.event ue_setfocus("I")
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.istr_template.b_userinput = false
+	parent.post event Close()
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	long ll_find
+	long ll_invcode
+	parent.istr_template.b_userinput = false
+	if parent.rb_copyinvfromissuereq.checked then
+		if parent.dw_issuereq.accepttext() = -1 then
+			parent.dw_issuereq.setfocus()
+			return ::message.returnvalue
+		end if
+		ll_invcode = parent.dw_issuereq.getitemnumber(1, "issuereqinvcode")
+		SQL Select count ( *) INTO :ll_find From IssueReqheader Where IssueReqInvcode =:ll_invcode USING sqlca;
+		if ll_find <= 0 or sqlca.sqlcode <> 0 then
+			messagebox("Issue Request Code Validation", "Issue Request Code does not exist")
+			parent.dw_issuereq.setfocus()
+			return ::message.returnvalue
+		end if
+		parent.istr_template.c_copyinvfrom = "I"
+		parent.istr_template.l_invtemplate = parent.dw_issuereq.getitemnumber(1, "issuereqinvcode")
+	elseif parent.rb_copyinvfrompurchaseinvoice.checked then
+		if parent.dw_purchaseinvtemplate.accepttext() = -1 then
+			parent.dw_purchaseinvtemplate.setfocus()
+			return ::message.returnvalue
+		end if
+		ll_invcode = parent.dw_purchaseinvtemplate.getitemnumber(1, "purinvcode")
+		SQL Select count ( *) INTO :ll_find From PurLedger Where PurInvcode =:ll_invcode USING sqlca;
+		if ll_find <= 0 or sqlca.sqlcode <> 0 then
+			messagebox("Purchase Invoice Code Validation", "Purchase Invoice Code does not exist")
+			parent.dw_purchaseinvtemplate.setfocus()
+			return ::message.returnvalue
+		end if
+		parent.istr_template.c_copyinvfrom = "P"
+		parent.istr_template.l_invtemplate = parent.dw_purchaseinvtemplate.getitemnumber(1, "purinvcode")
+		parent.istr_template.i_invtype = parent.idc_purchaseinvtemplate.getitemnumber(parent.idc_purchaseinvtemplate.getrow(), "purcatcode")
+	elseif parent.rb_receipt.checked then
+		if parent.dw_receipt.accepttext() = -1 then
+			parent.dw_receipt.setfocus()
+			return ::message.returnvalue
+		end if
+		ll_invcode = parent.dw_receipt.getitemnumber(1, "invcode")
+		SQL Select count ( *) INTO :ll_find From receiptheader Where receiptInvcode =:ll_invcode USING sqlca;
+		if ll_find <= 0 or sqlca.sqlcode <> 0 then
+			messagebox("Receipt Code Validation", "Receipt Code does not exist")
+			parent.dw_receipt.setfocus()
+			return ::message.returnvalue
+		end if
+		parent.istr_template.c_copyinvfrom = "R"
+		parent.istr_template.l_invtemplate = parent.dw_receipt.getitemnumber(1, "invcode")
+	end if
+	parent.istr_template.b_userinput = true
+	parent.post event Close()
+	return ::message.returnvalue

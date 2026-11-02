@@ -1,0 +1,99 @@
+// window w_access (abuzarapp)  ancestor: window
+
+// w_access.create() returns 0
+	this.cb_1 = create cb_1
+	this.control = {this.cb_1}
+
+// w_access.destroy() returns 0
+	destroy this.cb_1
+
+// cb_1.clicked() returns long
+	long ll_counter
+	long ll_hrow
+	long ll_drow
+	long ll_row
+	long ll_invcounter
+	long ll_startinvcode
+	long ll_endinvcode
+	datastore lds_db_saleledger
+	datastore lds_db_saledetail
+	datastore lds_access_saleledger
+	datastore lds_access_saledetail
+	boolean lb_commit
+	u_transaction it_transobject
+	it_transobject = create u_transaction
+	it_transobject.dbms = "OLE DB"
+	it_transobject.logid = "Admin"
+	it_transobject.autocommit = false
+	it_transobject.dbparm = "PROVIDER='Microsoft.Jet.OLEDB.4.0',DATASOURCE='Data.mdb'"
+	SQL start USING it_transobject;
+	if it_transobject.sqlcode <> 0 then
+		messagebox("DataBase Connection", "Can not connect to a Data database~r~n." + it_transobject.sqlerrtext)
+		close(parent)
+		return ::message.returnvalue
+	else
+		lds_access_saleledger = create datastore
+		lds_access_saleledger.dataobject = "d_access_saleledger"
+		lds_access_saleledger.settransobject(it_transobject)
+		lds_access_saleledger.reset()
+		lds_db_saleledger = create datastore
+		lds_db_saleledger.dataobject = "d_access_saleledger"
+		lds_db_saleledger.settransobject(sqlca)
+		lds_access_saledetail = create datastore
+		lds_access_saledetail.dataobject = "d_access_saledetail_copy"
+		lds_access_saledetail.settransobject(it_transobject)
+		lds_access_saledetail.reset()
+		lds_db_saledetail = create datastore
+		lds_db_saledetail.dataobject = "d_access_saledetail"
+		lds_db_saledetail.settransobject(sqlca)
+		ll_startinvcode = 1550
+		ll_endinvcode = 1550
+		for ll_invcounter = ll_startinvcode to ll_endinvcode
+			if lb_commit = false then
+				exit
+			end if
+			lds_db_saleledger.retrieve(ll_invcounter)
+			ll_row = lds_db_saleledger.getrow()
+			ll_hrow = lds_access_saleledger.insertrow(0)
+			lds_access_saleledger.setitem(ll_hrow, "saleinvcode", lds_db_saleledger.getitemnumber(ll_row, "saleinvcode"))
+			lds_access_saleledger.setitem(ll_hrow, "discperc", lds_db_saleledger.getitemnumber(ll_row, "discperc"))
+			lds_access_saleledger.setitem(ll_hrow, "flatdisc", lds_db_saleledger.getitemnumber(ll_row, "flatdisc"))
+			lds_access_saleledger.setitem(ll_hrow, "misccharges", lds_db_saleledger.getitemnumber(ll_row, "misccharges"))
+			lds_access_saleledger.setitem(ll_hrow, "invgstperc1", lds_db_saleledger.getitemnumber(ll_row, "invgstperc1"))
+			if lds_access_saleledger.update() = 1 then
+				lds_db_saledetail.retrieve(ll_invcounter)
+				for ll_counter = 1 to lds_db_saleledger.rowcount()
+					ll_drow = lds_access_saledetail.insertrow(0)
+					lds_access_saledetail.setitem(ll_drow, "saleinvcode", lds_db_saledetail.getitemnumber(ll_counter, "saleinvcode"))
+					lds_access_saledetail.setitem(ll_drow, "rowid", lds_db_saledetail.getitemnumber(ll_counter, "rowid"))
+					lds_access_saledetail.setitem(ll_drow, "icode", lds_db_saledetail.getitemnumber(ll_counter, "icode"))
+					lds_access_saledetail.setitem(ll_drow, "gcode", lds_db_saledetail.getitemnumber(ll_counter, "gcode"))
+					lds_access_saledetail.setitem(ll_drow, "batch", lds_db_saledetail.getitemstring(ll_counter, "batch"))
+					lds_access_saledetail.setitem(ll_drow, "expiry", string(date(lds_db_saledetail.getitemdatetime(ll_counter, "expiry"))))
+					lds_access_saledetail.setitem(ll_drow, "looseqty", lds_db_saledetail.getitemnumber(ll_counter, "looseqty"))
+					lds_access_saledetail.setitem(ll_drow, "bonusqty", lds_db_saledetail.getitemnumber(ll_counter, "bonusqty"))
+					lds_access_saledetail.setitem(ll_drow, "saleprice", lds_db_saledetail.getitemnumber(ll_counter, "saleprice"))
+					lds_access_saledetail.setitem(ll_drow, "discperc", lds_db_saledetail.getitemnumber(ll_counter, "discperc"))
+					lds_access_saledetail.setitem(ll_drow, "itemflatdisc", lds_db_saledetail.getitemnumber(ll_counter, "itemflatdisc"))
+					lds_access_saledetail.setitem(ll_drow, "unitsalestax", lds_db_saledetail.getitemnumber(ll_counter, "unitsalestax"))
+					lds_access_saledetail.setitem(ll_drow, "gstperc", lds_db_saledetail.getitemnumber(ll_counter, "gstperc"))
+					lds_access_saledetail.setitem(ll_drow, "packunits", lds_db_saledetail.getitemnumber(ll_counter, "packunits"))
+					lds_access_saledetail.setitem(ll_drow, "rowgroup", lds_db_saledetail.getitemnumber(ll_counter, "rowgroup"))
+				next
+				if lds_access_saledetail.update() <> 1 then
+					messagebox("SaleDetail Validation", "Unable to insert saleinvoices for Sale Detail~r~n" + it_transobject.sqlerrtext)
+					lb_commit = false
+				end if
+			else
+				messagebox("SaleLedger Validation", "Unable to insert saleinvoices for Sale Ledger")
+				lb_commit = false
+			end if
+		next
+		if lb_commit = true then
+			SQL commit USING it_transobject;
+		else
+			SQL rollback USING it_transobject;
+		end if
+		SQL stop USING it_transobject;
+	end if
+	return ::message.returnvalue

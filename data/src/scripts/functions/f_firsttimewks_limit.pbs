@@ -1,0 +1,22 @@
+// function f_firsttimewks_limit (functions)  ancestor: function_object
+
+// f_firsttimewks_limit.f_firsttimewks_limit() returns long
+	string ls_query
+	ls_query = "IF Not Exists (Select * From Syscolumns where name = 'fcatlength' and id = object_id('syscatelog') ) " + " Begin " + " Alter Table SysCatelog Add fcatlength Numeric(3,0) Not Null Constraint DF_SysCatelog_fcatlength Default(0) " + " End "
+	SQL EXECUTE IMMEDIATE :ls_query USING sqlca;
+	if sqlca.sqlcode = 0 then
+		SQL commit USING sqlca;
+	else
+		SQL rollback USING sqlca;
+		return -1
+	end if
+	ls_query = "if Not Exists ( Select * From Syscatelog Where fcatid = 8 ) " + " begin " + " Insert Into syscatelog ( fcatid, stat, flag, fcatvalue, fcatlength )" + " Values (8 , 0 , 0, 0 , " + string(gi_wkslimit) + " )" + " end "
+	SQL EXECUTE IMMEDIATE :ls_query USING sqlca;
+	if sqlca.sqlcode = 0 then
+		SQL commit USING sqlca;
+		return 0
+	else
+		SQL rollback USING sqlca;
+		return -1
+	end if
+	return 0

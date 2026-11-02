@@ -1,0 +1,126 @@
+// window w_pump_purorder_purreturn_datacarrydb (datatransfercomponents)  ancestor: window
+
+// w_pump_purorder_purreturn_datacarrydb.ue_postopen() returns 0
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	this.dw_purreturn.settransobject(sqlca)
+	this.dw_purreturn.insertrow(0)
+	this.dw_purreturn.scrolltorow(0)
+	this.dw_saleorder.settransobject(sqlca)
+	this.dw_saleorder.insertrow(0)
+	this.dw_saleorder.scrolltorow(0)
+
+// w_pump_purorder_purreturn_datacarrydb.ue_close() returns 0
+	closewithreturn(this, this.istr_arguments)
+
+// w_pump_purorder_purreturn_datacarrydb.create() returns 0
+	this.st_6 = create st_6
+	this.st_5 = create st_5
+	this.dw_saleorder = create dw_saleorder
+	this.st_4 = create st_4
+	this.st_3 = create st_3
+	this.dw_purreturn = create dw_purreturn
+	this.st_2 = create st_2
+	this.st_1 = create st_1
+	this.dw_control = create dw_control
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.gb_1 = create gb_1
+	this.gb_2 = create gb_2
+	this.gb_3 = create gb_3
+	this.control = {this.st_6, this.st_5, this.dw_saleorder, this.st_4, this.st_3, this.dw_purreturn, this.st_2, this.st_1, this.dw_control, this.cb_cancel, this.cb_ok, this.gb_1, this.gb_2, this.gb_3}
+
+// w_pump_purorder_purreturn_datacarrydb.destroy() returns 0
+	destroy this.st_6
+	destroy this.st_5
+	destroy this.dw_saleorder
+	destroy this.st_4
+	destroy this.st_3
+	destroy this.dw_purreturn
+	destroy this.st_2
+	destroy this.st_1
+	destroy this.dw_control
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.gb_1
+	destroy this.gb_2
+	destroy this.gb_3
+
+// w_pump_purorder_purreturn_datacarrydb.open() returns long
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	post event ue_postopen()
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.istr_arguments.i_status = -1
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	string ls_connsetting
+	string ls_errtext
+	long ll_sinvno
+	long ll_linvno
+	long ll_sprcode
+	long ll_lprcode
+	long ll_ssocode
+	long ll_lsocode
+	u_transaction lt_transobject
+	ls_connsetting = "Set ANSI_NULLS ON Set ANSI_WARNINGS ON"
+	lt_transobject = create u_transaction
+	if parent.dw_control.accepttext() = -1 then
+		return ::message.returnvalue
+	end if
+	if parent.dw_purreturn.accepttext() = -1 then
+		return ::message.returnvalue
+	end if
+	setpointer(hourglass!)
+	lt_transobject.autocommit = true
+	SQL start USING lt_transobject;
+	SQL EXECUTE IMMEDIATE :ls_connsetting USING lt_transobject;
+	ll_sinvno = parent.dw_control.getitemnumber(1, "sinvcode")
+	ll_linvno = parent.dw_control.getitemnumber(1, "linvcode")
+	ll_sprcode = parent.dw_purreturn.getitemnumber(1, "sinvcode")
+	ll_lprcode = parent.dw_purreturn.getitemnumber(1, "linvcode")
+	ll_ssocode = parent.dw_saleorder.getitemnumber(1, "sinvcode")
+	ll_lsocode = parent.dw_saleorder.getitemnumber(1, "linvcode")
+	if isnull(ll_sinvno) then
+		ll_sinvno = 0
+	end if
+	if isnull(ll_linvno) then
+		ll_linvno = 0
+	end if
+	if isnull(ll_sprcode) then
+		ll_sprcode = 0
+	end if
+	if isnull(ll_lprcode) then
+		ll_lprcode = 0
+	end if
+	if isnull(ll_ssocode) then
+		ll_ssocode = 0
+	end if
+	if isnull(ll_lsocode) then
+		ll_lsocode = 0
+	end if
+	if f_pump_purorder_purreturn_to_datacarrydb(lt_transobject, ll_sinvno, ll_linvno, ll_sprcode, ll_lprcode, ll_ssocode, ll_lsocode) <= 0 then
+		SQL stop USING lt_transobject;
+		return -1
+	end if
+	SQL stop USING lt_transobject;
+	parent.post event ue_close()
+	return ::message.returnvalue

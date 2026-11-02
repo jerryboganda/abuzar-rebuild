@@ -1,0 +1,30 @@
+// function f_validate_mobile (functions)  ancestor: function_object
+
+// f_validate_mobile.f_validate_mobile(datawindow adw_dw, long al_row, string as_col) returns boolean
+	string ls_mobile
+	long ll_end
+	long ll_start
+	char lc_temp
+	boolean lb_mobileok
+	ls_mobile = adw_dw.getitemstring(al_row, as_col)
+	if len(ls_mobile) = 0 or isnull(ls_mobile) or ls_mobile = "" then
+		return lb_mobileok
+	end if
+	if len(ls_mobile) > 0 and match(ls_mobile, "[ A-Za-z+-.,;:~"\@#%^&*()]+$") then
+		messagebox("Mobile Number Validation", "Please enter valid mobile number", stopsign!)
+		lb_mobileok = false
+	end if
+	if len(ls_mobile) > 0 and lb_mobileok then
+		ll_end = len(ls_mobile)
+		for ll_start = 1 to ll_end
+			lc_temp = mid(ls_mobile, ll_start, 1)
+			if not (asc(lc_temp) = 44 or asc(lc_temp) > 47 and asc(lc_temp) < 58) then
+				lb_mobileok = false
+				exit
+			end if
+		next
+	end if
+	if lb_mobileok = false then
+		messagebox("Mobile Number Validation", "Invalid characters in mobile no are not allowed.~r~nPlease enter valid mobile number", stopsign!)
+	end if
+	return lb_mobileok

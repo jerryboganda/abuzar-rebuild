@@ -1,0 +1,152 @@
+// window w_findwindow (components)  ancestor: window
+
+// w_findwindow.ue_close() returns 0
+	closewithreturn(this, this.istr_arg)
+
+// w_findwindow.wf_populate_columnlist() returns long
+	integer li_column_count
+	integer li_counter
+	string ls_column_name
+	string ls_columntype
+	this.ddlb_collist.reset()
+	li_column_count = integer(this.id_dw.object.datawindow.column.count)
+	this.ddlb_collist.additem("<all>")
+	for li_counter = li_column_count to li_counter step -1
+		ls_column_name = this.id_dw.describe("#" + string(li_counter) + ".Name")
+		this.ddlb_collist.additem(ls_column_name)
+	next
+	this.ddlb_collist.selectitem(1)
+	return 0
+
+// w_findwindow.wf_find() returns 0
+	integer li_column_count
+	integer li_counter
+	long ll_found
+	string ls_column_name
+	string ls_columntype
+	string ls_find
+	this.istr_arg.i_status = 1
+	if this.istr_arg.s_name2 = "<all>" then
+		li_column_count = integer(this.id_dw.object.datawindow.column.count)
+		for li_counter = 1 to li_column_count
+			ls_column_name = this.id_dw.describe("#" + string(li_counter) + ".Name")
+			this.istr_arg.s_name2 = ls_column_name
+			ls_columntype = this.id_dw.describe(ls_column_name + ".ColType")
+			if left(ls_columntype, 4) = "char" then
+				ls_find = "MATCH(" + this.istr_arg.s_name2 + ", '" + this.istr_arg.s_name1 + "')"
+			elseif left(ls_columntype, 4) = "date" then
+				ls_find = "MATCH(String(" + this.istr_arg.s_name2 + ",'dd/mm/yyyy hh:mm:ss'), '" + this.istr_arg.s_name1 + "')"
+			else
+				ls_find = "MATCH(String(" + this.istr_arg.s_name2 + "), '" + this.istr_arg.s_name1 + "')"
+			end if
+			ll_found = this.id_dw.find(ls_find, this.il_row, this.id_dw.rowcount())
+			if ll_found > 0 and ll_found <= this.id_dw.rowcount() then
+				this.id_dw.setrow(ll_found)
+				this.id_dw.scrolltorow(ll_found)
+				this.id_dw.selectrow(0, false)
+				this.id_dw.selectrow(ll_found, true)
+				this.istr_arg.l_code1 = ll_found
+				this.il_row = ll_found + 1
+				exit
+			end if
+		next
+		return
+	end if
+	ls_column_name = this.istr_arg.s_name2
+	ls_columntype = this.id_dw.describe(ls_column_name + ".ColType")
+	if left(ls_columntype, 4) = "char" then
+		ls_find = "MATCH(" + this.istr_arg.s_name2 + ", '" + this.istr_arg.s_name1 + "')"
+	elseif left(ls_columntype, 4) = "date" then
+		ls_find = "MATCH(String(" + this.istr_arg.s_name2 + ",'dd/mm/yyyy hh:mm:ss'), '" + this.istr_arg.s_name1 + "')"
+	else
+		ls_find = "MATCH(String(" + this.istr_arg.s_name2 + "), '" + this.istr_arg.s_name1 + "')"
+	end if
+	ll_found = this.id_dw.find(ls_find, this.il_row, this.id_dw.rowcount())
+	if ll_found > 0 and ll_found <= this.id_dw.rowcount() then
+		this.id_dw.setrow(ll_found)
+		this.id_dw.scrolltorow(ll_found)
+		this.id_dw.selectrow(0, false)
+		this.id_dw.selectrow(ll_found, true)
+		this.istr_arg.l_code1 = ll_found
+		this.il_row = ll_found + 1
+	end if
+
+// w_findwindow.create() returns 0
+	this.cb_close = create cb_close
+	this.cb_next = create cb_next
+	this.cbx_sb = create cbx_sb
+	this.cbx_case = create cbx_case
+	this.ddlb_collist = create ddlb_collist
+	this.st_2 = create st_2
+	this.em_find = create em_find
+	this.st_1 = create st_1
+	this.control = {this.cb_close, this.cb_next, this.cbx_sb, this.cbx_case, this.ddlb_collist, this.st_2, this.em_find, this.st_1}
+
+// w_findwindow.destroy() returns 0
+	destroy this.cb_close
+	destroy this.cb_next
+	destroy this.cbx_sb
+	destroy this.cbx_case
+	destroy this.ddlb_collist
+	destroy this.st_2
+	destroy this.em_find
+	destroy this.st_1
+
+// w_findwindow.open() returns long
+	this.id_dw = create u_dwstandard
+	this.id_dw = message.powerobjectparm
+	this.id_dw.settransobject(sqlca)
+	wf_populate_columnlist()
+	if this.id_dw.rowcount() > 0 then
+		this.il_row = 1
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_findwindow.close() returns long
+	triggerevent("ue_close")
+	return ::message.returnvalue
+
+// cb_close.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return ::message.returnvalue
+
+// cb_close.clicked() returns long
+	parent.triggerevent("ue_close")
+	return ::message.returnvalue
+
+// cb_next.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return ::message.returnvalue
+
+// cb_next.clicked() returns long
+	parent.em_find.getdata(parent.istr_arg.s_name1)
+	parent.istr_arg.s_name2 = parent.ddlb_collist.text
+	parent.wf_find()
+	return ::message.returnvalue
+
+// cbx_sb.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return 1
+
+// cbx_case.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return 1
+
+// ddlb_collist.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// em_find.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue

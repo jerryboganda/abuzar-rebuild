@@ -1,0 +1,131 @@
+// function f_getbackupinfo (functions)  ancestor: function_object
+
+// f_getbackupinfo.f_getbackupinfo(transaction at_transobject, datastore ads_bkup, string[] as_bkupdevice) returns long
+	string backupname
+	string backupdescription
+	string username
+	string servername
+	string databasename
+	string machinename
+	string collation
+	string bindingid
+	string recoveryforkid
+	string familyguid
+	string firstrecoveryforkid
+	string recoverymodel
+	string differentialbaseguid
+	string backuptypedescription
+	string backupsetguid
+	long backuptype
+	long compressed
+	long position
+	long devicetype
+	long databaseversion
+	long sortorder
+	long codepage
+	long unicodelocaleid
+	long unicodecomparisonstyle
+	long compatibilitylevel
+	long softwarevendorid
+	long softwareversionmajor
+	long softwareversionminor
+	long softwareversionbuild
+	long flags
+	long hasbulkloggeddata
+	long issnapshot
+	long isreadonly
+	long issingleuser
+	long hasbackupchecksum
+	long isdamaged
+	long beginslogchain
+	long hascompletemetadata
+	long isforceoffline
+	long iscopyonly
+	long compressedbackupsize
+	long containment
+	datetime expirationdate
+	datetime databasecreationdate
+	datetime backupstartdate
+	datetime backupfinishdate
+	double backupsize
+	double firstlsn
+	double lastlsn
+	double checkpointlsn
+	double databasebackuplsn
+	double differentialbaselsn
+	double forkpointlsn
+	string ls_query
+	string ls_backupdevice
+	string ls_servername
+	long ll_counter
+	long ll_arraycount
+	long ll_row
+	long ll_pos
+	string ls_version_info
+	sqlca.dbms_version(ls_version_info)
+	ll_arraycount = upperbound(as_bkupdevice)
+	if ll_arraycount = 0 or isnull(ll_arraycount) then
+		return -1
+	end if
+	for ll_counter = 1 to ll_arraycount
+		backupname = ""
+		backupdescription = ""
+		username = ""
+		servername = ""
+		databasename = ""
+		machinename = ""
+		collation = ""
+		bindingid = ""
+		recoveryforkid = ""
+		setnull(expirationdate)
+		setnull(databasecreationdate)
+		setnull(backupstartdate)
+		setnull(backupfinishdate)
+		backupsize = 0
+		firstlsn = 0
+		lastlsn = 0
+		checkpointlsn = 0
+		differentialbaselsn = 0
+		ls_backupdevice = as_bkupdevice[ll_counter, 1]
+		ll_pos = pos(gs_servername, "\")
+		if ll_pos > 0 then
+			ls_servername = left(gs_servername, ll_pos - 1)
+		else
+			ls_servername = gs_servername
+		end if
+		ll_row = ads_bkup.insertrow(0)
+		ads_bkup.object.databasename[ll_row] = databasename
+		ads_bkup.object.backupname[ll_row] = as_bkupdevice[ll_counter, 1]
+		ads_bkup.object.backupdescription[ll_row] = as_bkupdevice[ll_counter, 2] + " (Not Found)"
+		if match(ls_version_info, "SQL Server 2012") = true then
+			ls_query = "Restore HeaderOnly FROM " + ls_backupdevice
+		else
+			ls_query = "Restore HeaderOnly FROM " + ls_backupdevice + " With PASSWORD = 'REDACTED" + lower(ls_servername) + "', MEDIAPASSWORD = 'REDACTED" + lower(ls_servername) + "'"
+		end if
+		SQL EXECUTE IMMEDIATE :ls_query USING at_transobject;
+		if at_transobject.sqlcode = 0 then
+			SQL EXECUTE sp_temp USING at_transobject; /* args: ls_query */
+			if at_transobject.sqlcode = 0 then
+				if match(ls_version_info, "SQL Server 2012") = true then
+					SQL FETCH sp_temp INTO :backupname, :backupdescription, :backuptype, :expirationdate, :compressed, :position, :devicetype, :username, :servername, :databasename, :databaseversion, :databasecreationdate, :backupsize, :firstlsn, :lastlsn, :checkpointlsn, :databasebackuplsn, :backupstartdate, :backupfinishdate, :sortorder, :codepage, :unicodelocaleid, :unicodecomparisonstyle, :compatibilitylevel, :softwarevendorid, :softwareversionmajor, :softwareversionminor, :softwareversionbuild, :machinename, :flags, :bindingid, :recoveryforkid, :collation, :familyguid, :hasbulkloggeddata, :issnapshot, :isreadonly, :issingleuser, :hasbackupchecksum, :isdamaged, :beginslogchain, :hascompletemetadata, :isforceoffline, :iscopyonly, :firstrecoveryforkid, :forkpointlsn, :recoverymodel, :differentialbaselsn, :differentialbaseguid, :backuptypedescription, :backupsetguid, :compressedbackupsize, :containment USING at_transobject;
+				else
+					SQL FETCH sp_temp INTO :backupname, :backupdescription, :backuptype, :expirationdate, :compressed, :position, :devicetype, :username, :servername, :databasename, :databaseversion, :databasecreationdate, :backupsize, :firstlsn, :lastlsn, :checkpointlsn, :differentialbaselsn, :backupstartdate, :backupfinishdate, :sortorder, :codepage, :unicodelocaleid, :unicodecomparisonstyle, :compatibilitylevel, :softwarevendorid, :softwareversionmajor, :softwareversionminor, :softwareversionbuild, :machinename, :flags, :bindingid, :recoveryforkid, :collation USING at_transobject;
+				end if
+				if at_transobject.sqlcode = 0 then
+					ads_bkup.object.backupdescription[ll_row] = as_bkupdevice[ll_counter, 2]
+					ads_bkup.object.backupstartdate[ll_row] = backupstartdate
+					ads_bkup.object.backupfinishdate[ll_row] = backupfinishdate
+					ads_bkup.object.backupsize[ll_row] = round(backupsize / 1024.0 / 1024.0, 2)
+					ads_bkup.object.machinename[ll_row] = machinename
+					ads_bkup.object.servername[ll_row] = servername
+					ads_bkup.object.physicallocation[ll_row] = ""
+					SQL CLOSE sp_temp USING at_transobject;
+				else
+					SQL CLOSE sp_temp USING at_transobject;
+				end if
+			else
+				SQL CLOSE sp_temp USING at_transobject;
+			end if
+		end if
+	next
+	return 0

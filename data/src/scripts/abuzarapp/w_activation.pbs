@@ -1,0 +1,299 @@
+// window w_activation (abuzarapp)  ancestor: window
+
+// w_activation.ue_close(integer ai_close) returns 0
+	closewithreturn(this, ai_close)
+
+// w_activation.wf_connect() returns long
+	this.it_transobject = create u_transaction
+	SQL start USING this.it_transobject;
+	return this.it_transobject.sqlcode
+
+// w_activation.wf_attempts() returns integer
+	integer li_cache
+	li_cache = 1
+	SQL update Systextcatalog Set cache =cache + :li_cache From systextcatalog , ( Select Max ( textcatalogid ) as id , Count ( textcatalogid ) as rcount From Systextcatalog ) t where systextcatalog.textcatalogid =t.id USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		SQL commit USING this.it_transobject;
+		return 0
+	end if
+	SQL rollback USING this.it_transobject;
+	return -1
+
+// w_activation.wf_newactivation(string as_licensekey, long al_duration) returns integer
+	long ll_date
+	long ll_invlimit
+	long ll_status
+	long ll_cache
+	string ls_date
+	datetime ldt_serverdatetime
+	ll_cache = 0
+	this.it_transobject.getdatetime(ldt_serverdatetime)
+	if this.it_transobject.sqlcode <> 0 then
+		return -1
+	end if
+	ls_date = string(ldt_serverdatetime, "mm/dd/yy")
+	SQL Select Convert ( Int , Convert ( DateTime , :ls_date ) ) INTO :ll_date From Sequence USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		return -1
+	end if
+	al_duration = al_duration + 1
+	SQL Select Max ( SaleInvCode ) + ( :al_duration *( Max ( SaleInvCode ) - Min ( Saleinvcode ) ) / ( Case DateDiff ( Month , Min ( Date ) , Max ( Date ) ) When 0 Then 1 Else DateDiff ( Month , Min ( Date ) , Max ( Date ) ) END ) ) INTO :ll_invlimit From SaleLedger USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		return -1
+	end if
+	ll_status = 0
+	if isnull(ll_invlimit) or ll_invlimit <= 0 then
+		ll_invlimit = gl_firsttimeinvlimit
+	end if
+	SQL rollback USING this.it_transobject;
+	SQL Insert Into systextcatalog ( textcatalog , cataloglength , textlength , status , cache ) values ( :as_licensekey , :ll_date , :ll_invlimit , :ll_status , :ll_cache ) USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		SQL commit USING this.it_transobject;
+		return 0
+	else
+		SQL rollback USING this.it_transobject;
+		return -1
+	end if
+	return -1
+
+// w_activation.create() returns 0
+	this.cb_helpme = create cb_helpme
+	this.st_lic = create st_lic
+	this.em_5 = create em_5
+	this.em_4 = create em_4
+	this.em_3 = create em_3
+	this.em_2 = create em_2
+	this.em_1 = create em_1
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.gb_key = create gb_key
+	this.gb_lic = create gb_lic
+	this.control = {this.cb_helpme, this.st_lic, this.em_5, this.em_4, this.em_3, this.em_2, this.em_1, this.cb_cancel, this.cb_ok, this.gb_key, this.gb_lic}
+
+// w_activation.destroy() returns 0
+	destroy this.cb_helpme
+	destroy this.st_lic
+	destroy this.em_5
+	destroy this.em_4
+	destroy this.em_3
+	destroy this.em_2
+	destroy this.em_1
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.gb_key
+	destroy this.gb_lic
+
+// w_activation.open() returns long
+	string ls_regid
+	string ls_appregid
+	string ls_licensekey
+	string ls_startdate
+	string ls_key
+	long ll_iteration
+	long ll_appver
+	long ll_seqid
+	long ll_duration
+	long ll_first
+	long ll_second
+	long ll_rows
+	long ll_cache
+	datetime ldt_startdate
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	if wf_connect() <> 0 then
+		post event ue_close(-1)
+	end if
+	SQL Select Appversion , Sequenceid INTO :this.il_appversion, :this.il_seqid From Sequence USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		messagebox("Connection Validation", "Unable to connect to server.")
+		post event ue_close(-1)
+	end if
+	SQL Select textcatalog , cache , t.rcount INTO :ls_licensekey, :ll_cache, :ll_rows From systextcatalog , ( Select Max ( textcatalogid ) as id , Count ( textcatalogid ) as rcount From Systextcatalog ) t where systextcatalog.textcatalogid =t.id USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		messagebox("Connection Validation", "Unable to connect to server.")
+		post event ue_close(-1)
+	end if
+	if ll_cache > 14 then
+		post event ue_close(-1)
+	end if
+	if f_getlicinfo(this.it_transobject, ls_licensekey, ldt_startdate, ll_duration, this.il_iteration, ll_first, ll_second, ls_key) = 0 then
+		this.is_appversion = gs_regid + "." + string(this.il_appversion) + "." + string(this.il_iteration) + "." + string(this.il_seqid)
+		if this.il_iteration <> ll_rows then
+			this.il_inconsistency = 1
+			this.cb_helpme.visible = true
+			this.cb_helpme.enabled = true
+		end if
+	else
+		post event ue_close(-1)
+	end if
+	this.st_lic.text = this.is_appversion
+	return ::message.returnvalue
+
+// cb_helpme.clicked() returns long
+	string ls_query
+	open(w_administrator_key)
+	if message.doubleparm = -1.0 or message.doubleparm = 0.0 then
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	ls_query = "Drop Table DBO.SysTextCatalog"
+	SQL rollback USING parent.it_transobject;
+	SQL EXECUTE IMMEDIATE :ls_query USING parent.it_transobject;
+	if parent.it_transobject.sqlcode = 0 then
+		SQL commit USING parent.it_transobject;
+		messagebox("Problem", "Problem Solved successfully.~r~nPlease Re-Run Waseela Application to proceed further.")
+	else
+		SQL rollback USING parent.it_transobject;
+	end if
+	parent.event ue_close(-1)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// em_5.getfocus() returns long
+	selecttext(1, len(this.text))
+	return ::message.returnvalue
+
+// em_4.getfocus() returns long
+	selecttext(1, len(this.text))
+	return ::message.returnvalue
+
+// em_3.getfocus() returns long
+	selecttext(1, len(this.text))
+	return ::message.returnvalue
+
+// em_2.getfocus() returns long
+	selecttext(1, len(this.text))
+	return ::message.returnvalue
+
+// em_1.getfocus() returns long
+	selecttext(1, len(this.text))
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	string ls_licensekey
+	string ls_hold
+	string ls_readfile
+	string ls_appversion
+	string ls_regid
+	string ls_appregid
+	string ls_textcatalog
+	string ls_startdate
+	string ls_usergivenkey
+	string ls_origkey
+	long ll_iteration
+	long ll_appver
+	long ll_seqid
+	long ll_duration
+	long ll_first
+	long ll_second
+	integer li_first
+	integer li_second
+	integer li_filenum
+	long ll_loop
+	long ll_maxdelay
+	long ll_date
+	datetime ldt_startdate
+	ll_maxdelay = 5000000
+	ls_hold = ""
+	parent.em_1.getdata(ls_hold)
+	ls_licensekey = ls_hold
+	ls_hold = ""
+	parent.em_2.getdata(ls_hold)
+	ls_licensekey = ls_licensekey + ls_hold
+	ls_hold = ""
+	parent.em_3.getdata(ls_hold)
+	ls_licensekey = ls_licensekey + ls_hold
+	ls_hold = ""
+	parent.em_4.getdata(ls_hold)
+	ls_licensekey = ls_licensekey + ls_hold
+	ls_hold = ""
+	parent.em_5.getdata(ls_hold)
+	ls_licensekey = ls_licensekey + ls_hold
+	if isnull(ls_licensekey) or ls_licensekey = "" or len(ls_licensekey) <> 20 then
+		messagebox("Key Validation", "Kindly enter valid license key.")
+		return -1
+	end if
+	if f_getlicinfo(parent.it_transobject, ls_licensekey, ldt_startdate, ll_duration, ll_iteration, ll_first, ll_second, ls_usergivenkey) = 0 then
+		if ll_iteration - parent.il_iteration <> 1 then
+			messagebox("Key Validation...", "Kindly enter valid license key.")
+			return -1
+		end if
+		if ll_duration > 12 or ll_duration <= 0 then
+			messagebox("Key Validation...", "Kindly enter valid license key.")
+			return -1
+		end if
+		if not fileexists("mdsys.exe") then
+			messagebox("License Validation", "Insufficient Resources.")
+			parent.post event ue_close(-1)
+			return -1
+		end if
+		ls_appversion = gs_regid + "." + string(parent.il_appversion) + "." + string(parent.il_iteration) + "." + string(parent.il_seqid)
+		if run("mdsys.exe -d" + ls_appversion + " -o~"sysdrv.dll~"", minimized!) = 1 then
+			for ll_loop = 1 to ll_maxdelay
+			next
+			li_filenum = fileopen("sysdrv.dll", linemode!, read!, lockreadwrite!, replace!)
+			if li_filenum > 0 then
+				fileread(li_filenum, ls_readfile)
+				fileclose(li_filenum)
+			else
+				return -1
+			end if
+		else
+			messagebox("License Validation Process", "Insufficient Resources.")
+			filedelete("sysdrv.dll")
+			parent.post event ue_close(-1)
+			return -1
+		end if
+		filedelete("sysdrv.dll")
+		if len(ls_readfile) = 32 then
+			ls_hold = reverse(mid(ls_readfile, 1, 25))
+			ls_readfile = ls_hold + reverse(mid(ls_readfile, 26, 32))
+			ls_readfile = left(ls_readfile, 20)
+			if len(ls_readfile) = 20 then
+				ls_origkey = ""
+				ls_origkey = mid(ls_readfile, 2, ll_first - 2)
+				ls_origkey = ls_origkey + mid(ls_readfile, ll_first + 4, 10 - (ll_first + 4))
+				ls_origkey = ls_origkey + mid(ls_readfile, 11, ll_second - 11)
+				ls_origkey = ls_origkey + mid(ls_readfile, ll_second + 5, 21 - (ll_second + 5))
+				if ls_origkey = ls_usergivenkey then
+					if parent.wf_newactivation(ls_licensekey, ll_duration) = 0 then
+						parent.post event ue_close(0)
+					else
+						parent.post event ue_close(-1)
+					end if
+				else
+					parent.wf_attempts()
+					parent.post event ue_close(-1)
+				end if
+			end if
+		else
+			messagebox("Activation Key", "Insufficient Information.")
+			return 0
+		end if
+	else
+		messagebox("Activation Key", "Insufficient Information..")
+		parent.wf_attempts()
+		parent.post event ue_close(-1)
+	end if
+	return 0

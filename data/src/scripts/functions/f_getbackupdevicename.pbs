@@ -1,0 +1,39 @@
+// function f_getbackupdevicename (functions)  ancestor: function_object
+
+// f_getbackupdevicename.f_getbackupdevicename(string as_backuptype) returns string
+	string ls_backupdevice
+	integer li_pos
+	integer li_pos2
+	li_pos = pos(upper(gs_dbname), "DATABASE")
+	ls_backupdevice = ""
+	if li_pos > 0 then
+		ls_backupdevice = left(gs_dbname, li_pos - 1)
+	else
+		ls_backupdevice = ""
+		messagebox("BackUp Device", "Unable to locate Database backup device.~r~n")
+	end if
+	if len(ls_backupdevice) > 0 then
+		if as_backuptype = "" or lower(as_backuptype) = "manual" then
+			if len(gs_dbname) - (li_pos + 7) > 0 then
+				ls_backupdevice = ls_backupdevice + right(gs_dbname, len(gs_dbname) - (li_pos + 7))
+			end if
+			ls_backupdevice = ls_backupdevice + "DBDump"
+		elseif lower(as_backuptype) = "autoclient" then
+			li_pos2 = pos(upper(gs_dbname), "DATABASEV")
+			ls_backupdevice = "AutoClient" + ls_backupdevice + "DBDump"
+			if len(gs_dbname) - (li_pos + 8) > 0 then
+				ls_backupdevice = ls_backupdevice + right(gs_dbname, len(gs_dbname) - (li_pos + 8))
+			else
+				ls_backupdevice = ls_backupdevice + "1"
+			end if
+		elseif lower(as_backuptype) = "autostartup" then
+			li_pos2 = pos(upper(gs_dbname), "DATABASEV")
+			ls_backupdevice = "AutoStartUp" + ls_backupdevice + "DBDump"
+			if len(gs_dbname) - (li_pos + 8) > 0 then
+				ls_backupdevice = ls_backupdevice + right(gs_dbname, len(gs_dbname) - (li_pos + 8))
+			else
+				ls_backupdevice = ls_backupdevice + "1"
+			end if
+		end if
+	end if
+	return ls_backupdevice

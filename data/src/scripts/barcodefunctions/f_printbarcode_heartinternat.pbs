@@ -1,0 +1,92 @@
+// function f_printbarcode_heartinternat (barcodefunctions)  ancestor: function_object
+
+// f_printbarcode_heartinternat.f_printbarcode_heartinternat(datawindow id_master, datawindow id_detail, boolean ib_printprice) returns long
+	long ll_totalrows
+	long ll_counter
+	long ll_innercounter
+	long ll_qty
+	long ll_currrow
+	long ll_tot_label_rows
+	integer li_startcell
+	integer li_stopcell
+	integer li_temp
+	integer li_file
+	string ls_clientname
+	string ls_clientname_25_char
+	string ls_itemname
+	string ls_aliasname
+	string ls_licno
+	string ls_instruction
+	string ls_price
+	string ls_expdate
+	string ls_format
+	string ls_xpos
+	string ls_printer
+	string ls_purprice
+	string ls_packing
+	string ls_batch
+	string ls_supplier
+	string ls_patient
+	string ls_doctor
+	long ll_headerno
+	long ll_labelno
+	long ll_labelpos
+	long ll_supply_cols_per_row
+	long ll_inscode
+	integer li_barcodeleninprint
+	ll_headerno = id_master.getitemnumber(id_master.getrow(), "headerno")
+	ls_clientname = trim(f_reportheaderinfo_wrt_headerno("clientname", ll_headerno))
+	li_barcodeleninprint = f_numberpreferences("BarCodeLenInPrint")
+	ls_licno = "Lic. #: " + f_reportheaderinfosale("druglicenceno", ll_headerno)
+	if isnull(id_master.object.suppliername[1]) then
+		ls_supplier = ""
+	else
+		ls_supplier = id_master.object.suppliername[1]
+	end if
+	if isnull(id_master.object.patientname[1]) then
+		ls_patient = ""
+	else
+		ls_patient = id_master.object.patientname[1]
+	end if
+	if isnull(id_master.object.doctorname[1]) then
+		ls_doctor = ""
+	else
+		ls_doctor = id_master.object.doctorname[1]
+	end if
+	ll_totalrows = id_detail.rowcount()
+	ls_printer = trim(id_master.object.barcodeprinter[1])
+	if lower(ls_printer) = lower("TSC TTP-244 Pro") and ll_totalrows > 0 then
+		ll_counter = 1
+		tsc_openport_new("TSC TTP-244 Pro")
+		tsc_setup_new("38", "28", "5", "10", "0", "3", "0")
+		tsc_sendcommand_new("DIRECTION 1,0")
+		tsc_sendcommand_new("CODEPAGE 850")
+		for ll_counter = 1 to ll_totalrows
+			if len(trim(id_detail.getitemstring(ll_counter, "fullcode"))) <= li_barcodeleninprint and id_detail.getitemnumber(ll_counter, "qty") > 0.0 then
+				ll_qty = id_detail.getitemnumber(ll_counter, "qty")
+				if isnull(id_detail.object.itemname[ll_counter]) then
+					ls_itemname = ""
+				else
+					ls_itemname = "Item: " + left(trim(id_detail.object.itemname[ll_counter]), 60)
+				end if
+				if isnull(id_master.object.date[1]) then
+					ls_expdate = ""
+				else
+					ls_expdate = "Date: " + trim(string(id_master.object.date[1], "dd/mm/yyyy"))
+				end if
+				ll_inscode = id_detail.object.inscode[ll_counter]
+				SQL SELECT Localinstruction INTO :ls_instruction FROM instruction WHERE inscode =:ll_inscode USING sqlca;
+				tsc_clearbuffer_new()
+				tsc_windowsfont_new(20, 4, 30, 0, 2, 0, "Arial", ls_clientname)
+				tsc_windowsfont_new(20, 39, 25, 0, 2, 0, "Arial", left(ls_patient, 30))
+				tsc_windowsfont_new(20, 61, 25, 0, 2, 0, "Arial", left(ls_doctor, 22))
+				tsc_windowsfont_new(20, 86, 25, 0, 2, 0, "Arial", left(ls_itemname, 22))
+				tsc_windowsfont_new(20, 108, 25, 0, 2, 0, "Arial", mid(ls_itemname, 23, 22))
+				tsc_windowsfont_new(20, 142, 25, 0, 2, 0, "Arial Unicode MS", ls_instruction)
+				tsc_windowsfont_new(20, 187, 25, 0, 2, 0, "Arial", ls_expdate)
+				tsc_printlabel_new("1", string(ll_qty))
+			end if
+		next
+		tsc_closeport_new()
+	end if
+	return 0

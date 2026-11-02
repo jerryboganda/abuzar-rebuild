@@ -1,0 +1,44 @@
+// window w_savesaleastemplate (templates)  ancestor: window
+
+// w_savesaleastemplate.ue_close(integer ai_status) returns 0
+	closewithreturn(this, this.istr_templateheader)
+
+// w_savesaleastemplate.create() returns 0
+	this.sle_templatedate = create sle_templatedate
+	this.sle_template = create sle_template
+	this.st_date = create st_date
+	this.st_template = create st_template
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.control = {this.sle_templatedate, this.sle_template, this.st_date, this.st_template, this.cb_cancel, this.cb_ok}
+
+// w_savesaleastemplate.destroy() returns 0
+	destroy this.sle_templatedate
+	destroy this.sle_template
+	destroy this.st_date
+	destroy this.st_template
+	destroy this.cb_cancel
+	destroy this.cb_ok
+
+// sle_templatedate.constructor() returns long
+	this.text = string(today(), "dd/mm/yy")
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	w_savesaleastemplate w_parent
+	setnull(parent.istr_templateheader.s_template)
+	w_parent = getparent()
+	w_parent.setfocus()
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	date ld_date
+	if isnull(parent.sle_template.text) then
+		return ::message.returnvalue
+	end if
+	ld_date = today()
+	parent.istr_templateheader.s_template = parent.sle_template.text
+	parent.istr_templateheader.dt_templatedate = datetime(ld_date)
+	parent.post event ue_close(1)
+	return ::message.returnvalue

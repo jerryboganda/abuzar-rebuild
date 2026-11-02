@@ -1,0 +1,207 @@
+// window w_qualifiedpersongallary (custcomponents)  ancestor: window
+
+// w_qualifiedpersongallary.ue_postopen() returns 0
+	long ll_code
+	long ll_rowid
+	this.il_icode = message.doubleparm
+	if isnull(this.il_icode) or this.il_icode <= 0 then
+		close(this)
+		return
+	end if
+	this.it_transobject = create u_transaction
+	this.it_transobject.autocommit = true
+	SQL start USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		messagebox("Connection Problem", "Problem in connecting database. Kindly Try Again", stopsign!)
+		close(this)
+		return
+	end if
+	this.ids_ds = create u_ds_standard
+	this.ids_ds.dataobject = "d_qualifiedpersongallary"
+	this.ids_ds.settransobject(sqlca)
+	this.ids_ds.retrieve(this.il_icode)
+	this.il_totrows = this.ids_ds.rowcount()
+	this.il_thisrow = this.il_totrows + 1
+	if this.il_totrows <= 0 then
+		messagebox("Qualified Person Image Gallary", "No Image Exists for this Qualified Person in the database.~r~nKindly Specify some other Qualified Person.", stopsign!)
+		close(this)
+		return
+	end if
+	this.cb_prev.event clicked()
+
+// w_qualifiedpersongallary.ue_close(integer ar_closearg) returns 0
+	string ls_file
+	ls_file = gs_temp_img_filename
+	ls_file = left(this.is_filename, len(this.is_filename) - 4)
+	ls_file = ls_file + "*.*"
+	filedelete(ls_file)
+	close(this)
+
+// w_qualifiedpersongallary.wf_set_image(blob ablb_image) returns long
+	string ls_imagetype
+	this.is_filename = gs_temp_img_filename
+	this.is_filename = left(this.is_filename, len(this.is_filename) - 4)
+	if this.il_thisrow > 0 then
+		this.is_filename = this.is_filename + trim(string(this.il_thisrow)) + "." + this.is_imgtype
+		f_writeimgtofile(this.is_filename, ablb_image)
+		this.p_image.setredraw(false)
+		this.p_image.picturename = this.is_filename
+		this.p_image.setredraw(true)
+	end if
+	return 0
+
+// w_qualifiedpersongallary.wf_set_image_details() returns long
+	if this.il_thisrow > 0 then
+		this.is_regno = trim(this.ids_ds.object.regno[this.il_thisrow])
+		this.is_name = trim(this.ids_ds.object.studentname[this.il_thisrow])
+		this.is_caption = trim(this.ids_ds.object.imagedescription[this.il_thisrow])
+		this.is_imgtype = trim(this.ids_ds.object.imagetype[this.il_thisrow])
+		this.st_imagecounter.text = "Image " + trim(string(this.il_thisrow)) + " of " + trim(string(this.il_totrows))
+		this.st_imagecaption.text = this.is_caption
+		this.st_name.text = "Qualified Person Name : " + this.is_name
+		this.st_code.text = "Qualified Person Code: " + this.is_regno
+		if wf_get_image(this.il_icode, this.il_thisrow) = 0 then
+			wf_set_image(this.ibl_image)
+		else
+			messagebox("Qualified Person Image Gallary", "Problem in fetching Qualified Person Image.", stopsign!)
+		end if
+	end if
+	return 0
+
+// w_qualifiedpersongallary.wf_get_image(long al_code, long al_row) returns long
+	if al_code > 0 and al_row > 0 then
+		SQL SelectBlob IMG INTO :this.ibl_image From QualifiedPersonImage Where QualifiedPersonCode =:al_code AND RowID =:al_row USING this.it_transobject;
+		if this.it_transobject.sqlcode <> 0 then
+			messagebox("Qualified Person Image/Picture ", "Unable to fetch Qualified Person Image.~r~nReasons are:~r~n" + this.it_transobject.sqlerrtext)
+			return -1
+		end if
+		return
+	end if
+	return 0
+
+// w_qualifiedpersongallary.wf_set_image_ole() returns string
+	string ls_filename
+	string ls_imagetype
+	ls_imagetype = this.is_imgtype
+	ls_filename = gs_temp_img_filename
+	ls_filename = left(ls_filename, len(ls_filename) - 4) + "_ole"
+	ls_filename = ls_filename + "." + ls_imagetype
+	f_writeimgtofile(ls_filename, this.ibl_image)
+	return ls_filename
+
+// w_qualifiedpersongallary.create() returns 0
+	this.ole_image = create ole_image
+	this.st_code = create st_code
+	this.st_name = create st_name
+	this.st_imagecounter = create st_imagecounter
+	this.cb_exit = create cb_exit
+	this.cb_next = create cb_next
+	this.cb_prev = create cb_prev
+	this.st_imagecaption = create st_imagecaption
+	this.p_image = create p_image
+	this.cb_slideshow = create cb_slideshow
+	this.control = {this.ole_image, this.st_code, this.st_name, this.st_imagecounter, this.cb_exit, this.cb_next, this.cb_prev, this.st_imagecaption, this.p_image, this.cb_slideshow}
+
+// w_qualifiedpersongallary.destroy() returns 0
+	destroy this.ole_image
+	destroy this.st_code
+	destroy this.st_name
+	destroy this.st_imagecounter
+	destroy this.cb_exit
+	destroy this.cb_next
+	destroy this.cb_prev
+	destroy this.st_imagecaption
+	destroy this.p_image
+	destroy this.cb_slideshow
+
+// w_qualifiedpersongallary.open() returns long
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		this.width = ll_win_width * 0.98
+		this.height = ll_win_height * 0.97
+		this.st_code.width = ll_win_width * 0.98 - 25
+		this.st_name.width = ll_win_width * 0.98 - 25
+		this.st_imagecounter.width = ll_win_width * 0.98 - 25
+		this.st_imagecounter.width = ll_win_width * 0.98 - 25
+		this.cb_next.x = ll_win_width * 0.98 - 25 - this.cb_next.width
+		this.cb_slideshow.x = (ll_win_width - this.cb_slideshow.width) / 2.0
+		this.st_imagecaption.width = ll_win_width * 0.98 - 25
+		this.cb_exit.x = ll_win_width * 0.98 - 25 - this.cb_exit.width
+		this.cb_exit.y = this.height - this.cb_exit.height - 100
+		this.st_imagecaption.y = this.cb_exit.y - 10 - this.st_imagecaption.height
+		this.p_image.width = ll_win_width - 150
+		this.p_image.height = this.st_imagecaption.y - this.p_image.y - 10
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	post event ue_postopen()
+	return ::message.returnvalue
+
+// w_qualifiedpersongallary.key(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		post event ue_close(-1)
+	end if
+	return ::message.returnvalue
+
+// w_qualifiedpersongallary.close() returns long
+	if fileexists(this.is_filename) then
+		filedelete(this.is_filename)
+	end if
+	return ::message.returnvalue
+
+// cb_exit.clicked() returns long
+	parent.post event ue_close(0)
+	return ::message.returnvalue
+
+// cb_next.clicked() returns long
+	if parent.il_thisrow < parent.il_totrows then
+		parent.il_thisrow = parent.il_thisrow + 1
+		parent.wf_set_image_details()
+	end if
+	return ::message.returnvalue
+
+// cb_prev.clicked() returns long
+	if parent.il_thisrow > 1 then
+		parent.il_thisrow = parent.il_thisrow - 1
+		parent.wf_set_image_details()
+	end if
+	return ::message.returnvalue
+
+// p_image.clicked() returns long
+	string ls_filename
+	string ls_cmd
+	if not (this.picturename = "" or isnull(this.picturename)) then
+		ls_filename = parent.wf_set_image_ole()
+		ls_cmd = "rundll32.exe shimgvw.dll,ImageView_Fullscreen " + ls_filename
+		run(ls_cmd)
+	end if
+	return ::message.returnvalue
+
+// cb_slideshow.clicked() returns long
+	long ll_counter
+	long i
+	this.enabled = false
+	parent.cb_next.enabled = false
+	parent.cb_prev.enabled = false
+	parent.il_thisrow = 0
+	do while parent.il_thisrow < parent.il_totrows
+		parent.il_thisrow = parent.il_thisrow + 1
+		parent.wf_set_image_details()
+		if parent.il_thisrow <> parent.il_totrows then
+			sleep(3)
+		end if
+	loop
+	parent.cb_next.enabled = true
+	parent.cb_prev.enabled = true
+	this.enabled = true
+	return ::message.returnvalue

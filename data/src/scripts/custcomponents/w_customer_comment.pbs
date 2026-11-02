@@ -1,0 +1,337 @@
+// window w_customer_comment (custcomponents)  ancestor: window
+
+// w_customer_comment.ue_close(integer ai_status) returns 0
+	if ai_status = -1 then
+		setnull(this.is_aliasname)
+	end if
+	close(this)
+
+// w_customer_comment.ue_postopen() returns 0
+	integer li_rtncode
+	this.it_transobject = create u_transaction
+	SQL start USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		messagebox("Connection Failure", "Unable to connect to database.~r~nReasons are:-" + this.it_transobject.sqlerrtext, stopsign!)
+		close(this)
+		return
+	end if
+	this.id_cust_itemcat = create datawindow
+	this.dw_control.settransobject(this.it_transobject)
+	this.id_cust_itemcat.dataobject = "d_custitemcatassociation"
+	this.id_cust_itemcat.settransobject(this.it_transobject)
+	this.dw_control.insertrow(0)
+	this.dw_control.setfocus()
+	this.dw_control.setcolumn("aliasname")
+
+// w_customer_comment.wf_validateserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+	datetime ldt_last_transdate
+	datetime ldt_current_serverdate
+	long li_max_allow_days
+	ar_errtext = "Invoice Date  Check violates"
+	li_max_allow_days = f_numberpreferences("MaxAllowDate")
+	if isnull(li_max_allow_days) then
+		li_max_allow_days = 4
+	end if
+	SQL SELECT LastTransDate INTO :ldt_last_transdate FROM ServerDate USING sqlca;
+	if sqlca.sqlcode = 0 then
+		sqlca.getdatetime(ldt_current_serverdate)
+		if sqlca.sqlcode = 0 then
+			if ldt_current_serverdate >= ldt_last_transdate and daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) <= li_max_allow_days then
+				ar_server_datetime = ldt_current_serverdate
+				return true
+			elseif ldt_current_serverdate < ldt_last_transdate then
+				ar_errtext = "Back Date Invoice Check violates"
+				return false
+			elseif daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) > li_max_allow_days then
+				ar_errtext = "Forward Date Invoice Check violates"
+				return false
+			end if
+		else
+			return false
+		end if
+		return
+	end if
+	return false
+
+// w_customer_comment.wf_getserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+	datetime ldt_last_transdate
+	datetime ldt_current_serverdate
+	integer li_max_allow_days
+	string ls_hold_serverdate
+	date ld_datepart
+	time lt_timepart
+	ar_errtext = "Please verify Server DateTime"
+	li_max_allow_days = f_numberpreferences("MaxAllowDate")
+	if isnull(li_max_allow_days) then
+		li_max_allow_days = 4
+	end if
+	SQL rollback USING sqlca;
+	SQL SELECT LastTransDate INTO :ldt_last_transdate FROM ServerDate USING sqlca;
+	if sqlca.sqlcode = 0 then
+		sqlca.getdatetime(ldt_current_serverdate)
+		if sqlca.sqlcode = 0 then
+			if ldt_current_serverdate >= ldt_last_transdate and daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) <= li_max_allow_days then
+				ld_datepart = date(string(ldt_current_serverdate, "yyyy-mm-dd"))
+				lt_timepart = time(string(ldt_current_serverdate, "hh:mm:ss"))
+				ldt_current_serverdate = datetime(ld_datepart, lt_timepart)
+				SQL update ServerDate SET LastTransDate =:ldt_current_serverdate USING sqlca;
+				if sqlca.sqlcode = 0 then
+					SQL commit USING sqlca;
+					ar_server_datetime = ldt_current_serverdate
+					return true
+				else
+					SQL rollback USING sqlca;
+					return false
+				end if
+			elseif ldt_current_serverdate < ldt_last_transdate then
+				ar_errtext = "Back Date Invoice Check violates"
+				return false
+			elseif daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) > li_max_allow_days then
+				ar_errtext = "Forward Date Invoice Check violates"
+				return false
+			end if
+		else
+			SQL rollback USING sqlca;
+			return false
+		end if
+		return
+	end if
+	SQL rollback USING sqlca;
+	return false
+
+// w_customer_comment.wf_duplicatealiasname(string as_name) returns boolean
+	long ll_count
+	long ll_acccode
+	boolean b_flag
+	as_name = trim(as_name)
+	ll_acccode = this.dw_control.object.code[this.dw_control.rowcount()]
+	if isnull(ll_acccode) then
+		SQL SELECT count ( *) INTO :ll_count FROM Accounts WHERE Accounts.AliasName =:as_name USING this.it_transobject;
+	else
+		SQL SELECT count ( *) INTO :ll_count FROM Accounts WHERE Accounts.AliasName =:as_name AND Accounts.AccCode <> :ll_acccode USING this.it_transobject;
+	end if
+	if this.it_transobject.sqlcode = 0 then
+		if ll_count > 0 then
+			b_flag = true
+		else
+			b_flag = false
+		end if
+	else
+		b_flag = false
+	end if
+	return b_flag
+
+// w_customer_comment.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	long ll_acccode
+	boolean b_flag
+	as_name = trim(as_name)
+	ll_acccode = this.dw_control.object.code[this.dw_control.rowcount()]
+	if isnull(ll_acccode) then
+		SQL SELECT count ( *) INTO :ll_count FROM Accounts WHERE Accounts.Name =:as_name USING this.it_transobject;
+	else
+		SQL SELECT count ( *) INTO :ll_count FROM Accounts WHERE Accounts.Name =:as_name AND Accounts.AccCode <> :ll_acccode USING this.it_transobject;
+	end if
+	if sqlca.sqlcode = 0 then
+		if ll_count > 0 then
+			b_flag = true
+		else
+			b_flag = false
+		end if
+	else
+		b_flag = false
+	end if
+	return b_flag
+
+// w_customer_comment.wf_findcustcode(string data, long al_custcode) returns long
+	long ll_custcode
+	SQL SELECT AccCode INTO :ll_custcode FROM Accounts WHERE SubCode =3 and AliasName =:data USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		al_custcode = ll_custcode
+		this.dw_control.object.custcode[1] = ll_custcode
+		return 0
+	end if
+	messagebox("Alias Name Validation", "Please enter valid alias name.~r~nDetails Are:-~r~n" + this.it_transobject.sqlerrtext, stopsign!)
+	return 1
+
+// w_customer_comment.wf_set_customerinfo(long al_custcode) returns long
+	long ll_custcode
+	string ls_aliasname
+	SQL SELECT AliasName INTO :ls_aliasname FROM Accounts WHERE SubCode =3 and AccCode =:al_custcode USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		this.dw_control.object.aliasname[1] = ls_aliasname
+		return 0
+	end if
+	messagebox("Customer Validation", "Please select valid Customer.~r~nDetails Are:-~r~n" + this.it_transobject.sqlerrtext, stopsign!)
+	return 1
+
+// w_customer_comment.create() returns 0
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.dw_control = create dw_control
+	this.control = {this.cb_cancel, this.cb_ok, this.dw_control}
+
+// w_customer_comment.destroy() returns 0
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.dw_control
+
+// w_customer_comment.open() returns long
+	long ll_row
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.x = int((ll_width - this.width) / 2.0)
+	this.y = int((ll_height - this.height) / 2.0)
+	post event ue_postopen()
+	return ::message.returnvalue
+
+// cb_cancel.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	long ll_row
+	long ll_null
+	long ll_salesmancode
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	string ls_aliasname
+	boolean lb_commit
+	boolean lb_new_customer
+	integer li_rc
+	string ls_err
+	string ls_mod
+	setpointer(hourglass!)
+	setnull(ll_null)
+	if f_validatedw(parent.dw_control) < 0 then
+		return ::message.returnvalue
+	end if
+	if isnull(parent.dw_control.object.custcode[1]) or parent.dw_control.object.custcode[1] <= 0 then
+		messagebox("Customer Validation", "Please select valid customer", stopsign!)
+	end if
+	ll_salesmancode = gl_usercode
+	if ll_salesmancode > 0 then
+		if isnull(parent.dw_control.object.commentedby[1]) then
+			parent.dw_control.object.commentedby[1] = ll_salesmancode
+			parent.dw_control.object.commentedon[1] = today()
+		end if
+		li_rc = parent.dw_control.update(true, false)
+		if li_rc = 1 then
+			SQL commit USING parent.it_transobject;
+			messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+			parent.post event ue_close(1)
+		else
+			messagebox("Error on Commit", parent.it_transobject.sqlerrtext)
+			SQL rollback USING parent.it_transobject;
+			if lb_new_customer then
+				parent.dw_control.object.code[ll_row] = ll_null
+			end if
+		end if
+	end if
+	setpointer(arrow!)
+	return ::message.returnvalue
+
+// dw_control.sqlpreview(sqlpreviewfunction request, sqlpreviewtype sqltype, string sqlsyntax, dwbuffer buffer, long row) returns long
+	long ancestorreturnvalue
+	string ls_sql
+	string ls_newsql
+	string ls_sql_part
+	long ll_pos
+	long ll_commacount
+	long ll_commapos
+	ancestorreturnvalue = super::sqlpreview(request, sqltype, sqlsyntax, buffer, row)
+	if sqltype = previewupdate! or sqltype = previewdelete! or sqltype = previewselect! then
+		ls_sql = sqlsyntax
+		ll_pos = pos(lower(ls_sql), " = '", 1)
+		if ll_pos > 0 then
+			ls_newsql = mid(ls_sql, 1, ll_pos - 1) + " = N'" + mid(ls_sql, ll_pos + 4)
+		else
+			ls_newsql = ls_sql
+		end if
+		setsqlpreview(ls_newsql)
+	elseif sqltype = previewinsert! then
+		ls_sql = sqlsyntax
+		ll_pos = pos(lower(ls_sql), ", '", 1)
+		if ll_pos > 0 then
+			ls_newsql = mid(ls_sql, 1, ll_pos - 1) + ", N'" + mid(ls_sql, ll_pos + 3)
+		else
+			ls_newsql = ls_sql
+		end if
+		setsqlpreview(ls_newsql)
+	end if
+	return 0
+
+// dw_control.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_control.itemerror(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "aliasname"
+		messagebox("Custmer Alias Name Validation", "Customer Alias Name Duplication Error~r~nPlease enter some other Alias Name")
+	end choose
+	return 1
+
+// dw_control.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	long ll_custcode
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "aliasname"
+		if not (data = "" or isnull(data)) then
+			return parent.wf_findcustcode(data, ll_custcode)
+		end if
+	case "custcode"
+		if data = "" or isnull(data) then
+			messagebox("Customer Validation", "Please select some valid customer", stopsign!)
+		else
+			return parent.wf_set_customerinfo(long(data))
+		end if
+		return
+	end choose
+	return 0
+
+// dw_control.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	if getcolumnname() = "comments" then
+		if keyflags = 2 and key = keyl! then
+			this.object.comments.alignment = 0
+		elseif keyflags = 2 and key = keyr! then
+			this.object.comments.alignment = 1
+		elseif keyflags = 2 and key = keyt! then
+			this.object.comments.alignment = 2
+		elseif keyflags = 2 and key = keyj! then
+			this.object.comments.alignment = 3
+		end if
+	end if
+	return ::message.returnvalue
+
+// dw_control.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	if getcolumnname() <> "comments" then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return 1

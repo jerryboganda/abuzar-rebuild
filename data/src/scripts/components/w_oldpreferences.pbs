@@ -1,0 +1,135 @@
+// window w_oldpreferences (components)  ancestor: window
+
+// w_oldpreferences.ue_close() returns 0
+
+// w_oldpreferences.closequery() returns long
+	if this.ib_close = false then
+		return 1
+	end if
+	return ::message.returnvalue
+
+// w_oldpreferences.create() returns 0
+	this.cb_ok = create cb_ok
+	this.cb_cancel = create cb_cancel
+	this.dw_newpreferences = create dw_newpreferences
+	this.control = {this.cb_ok, this.cb_cancel, this.dw_newpreferences}
+
+// w_oldpreferences.destroy() returns 0
+	destroy this.cb_ok
+	destroy this.cb_cancel
+	destroy this.dw_newpreferences
+
+// w_oldpreferences.open() returns long
+	this.id_newpreferences = this.dw_newpreferences
+	this.dw_newpreferences.settransobject(sqlca)
+	this.dw_newpreferences.retrieve()
+	return ::message.returnvalue
+
+// w_oldpreferences.close() returns long
+	hide()
+	return ::message.returnvalue
+
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	w_preferences w_parent
+	if f_validatedw(parent.id_newpreferences) < 0 then
+		return ::message.returnvalue
+	end if
+	parent.ib_close = true
+	w_parent = getparent()
+	if parent.id_newpreferences.update() > 0 then
+		SQL commit USING sqlca;
+		gds_preferences.retrieve()
+	else
+		messagebox("Datasase Error", "Some Database problem occur during saving")
+	end if
+	w_parent.setfocus()
+	close(w_preferences)
+	return ::message.returnvalue
+
+// cb_cancel.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	w_preferences w_parent
+	parent.ib_close = true
+	w_parent = getparent()
+	w_parent.setfocus()
+	close(w_preferences)
+	return ::message.returnvalue
+
+// dw_newpreferences.ue_close() returns 0
+	integer li_salesmancode
+	w_salesmanpassword w_parent
+	li_salesmancode = getitemnumber(1, "salesmancode")
+	w_parent = getparent()
+	closewithreturn(w_parent, li_salesmancode)
+
+// dw_newpreferences.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	integer li_salesmancode
+	integer li_null
+	string ls_salesman
+	string ls_password
+	string ls_null
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "salesmancode"
+		li_salesmancode = integer(data)
+		SQL SELECT dbo.salesman.name , dbo.salesman.password INTO :ls_salesman, :ls_password FROM dbo.salesman WHERE dbo.salesman.salesmancode =:li_salesmancode USING sqlca;
+		setnull(li_null)
+		if sqlca.sqlcode = 0 then
+			if isnull(ls_salesman) then
+				this.object.name[row] = ""
+				this.object.salesmancode[row] = li_null
+				messagebox("Salesman Validation", "Salesman code does not exist1")
+				return 1
+			else
+				this.object.name[row] = ls_salesman
+				parent.is_password = ls_password
+			end if
+		else
+			this.object.salesmancode[row] = li_null
+			messagebox("Salesman Validation", "Salesman code does not exist2")
+			return 1
+		end if
+	case "password"
+		setnull(ls_null)
+		if lower(data) <> lower(parent.is_password) then
+			this.object.password[row] = ls_null
+			messagebox("Password", "Password is not correct")
+			return 2
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_newpreferences.itemerror(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	integer li_salesmancode
+	string ls_salesman
+	string ls_password
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "salesmancode"
+		if isnull(data) then
+		end if
+	case "password"
+		if isnull(data) then
+			messagebox("Password Validation", "Enter some value for Password")
+		end if
+	end choose
+	return 1
+
+// dw_newpreferences.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1

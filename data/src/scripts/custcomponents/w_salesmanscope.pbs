@@ -1,0 +1,366 @@
+// window w_salesmanscope (custcomponents)  ancestor: window
+
+// w_salesmanscope.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		post event ue_close()
+	end if
+	return ::message.returnvalue
+
+// w_salesmanscope.ue_close() returns 0
+	close(this)
+
+// w_salesmanscope.wf_assigndwobjects(string as_masterdw, string as_detaildw, string as_footerdw) returns 0
+	this.dw_master.dataobject = as_masterdw
+	this.dw_detail.dataobject = as_detaildw
+	this.dw_footer.dataobject = as_footerdw
+	this.dw_master.settransobject(sqlca)
+	this.dw_detail.settransobject(sqlca)
+	this.dw_footer.settransobject(sqlca)
+
+// w_salesmanscope.wf_get_salesmanscope(string as_colname, long al_code) returns long
+	long ll_manfcode
+	long ll_salesmancode
+	long ll_null
+	long ll_found
+	long ll_counter
+	string ls_manflist
+	string ls_filter
+	this.dw_master.accepttext()
+	setnull(ll_null)
+	if lower(as_colname) = "salesmancode" then
+		ll_manfcode = this.dw_master.object.manfcode[1]
+		ll_salesmancode = al_code
+		if isnull(al_code) then
+			this.dw_detail.reset()
+			return 0
+		else
+			this.dw_detail.retrieve()
+			wf_plot_salesmanscope()
+			this.ib_editflag = false
+		end if
+	elseif lower(as_colname) = "manfcode" then
+		ll_manfcode = al_code
+		ll_salesmancode = this.dw_master.object.salesmancode[1]
+		if isnull(al_code) then
+			this.dw_detail.reset()
+			return 0
+		else
+			this.dw_detail.retrieve()
+			wf_plot_salesmanscope()
+			this.ib_editflag = false
+		end if
+	end if
+	return 0
+
+// w_salesmanscope.wf_plot_salesmanscope() returns long
+	long ll_salesmancode
+	long ll_manfcode
+	long ll_subareacode
+	long ll_weekdaycode
+	long ll_counter
+	long ll_rowcount
+	long ll_found
+	ll_salesmancode = this.dw_master.object.salesmancode[1]
+	ll_manfcode = this.dw_master.object.manfcode[1]
+	this.ids_detail.retrieve(ll_salesmancode, ll_manfcode)
+	ll_rowcount = this.ids_detail.rowcount()
+	if ll_rowcount > 0 then
+		for ll_counter = 1 to ll_rowcount
+			ll_subareacode = this.ids_detail.object.subareacode[ll_counter]
+			ll_weekdaycode = this.ids_detail.object.weekdaycode[ll_counter]
+			if ll_subareacode > 0 and ll_weekdaycode > 0 then
+				ll_found = this.dw_detail.find("subareacode = " + trim(string(ll_subareacode)), 1, this.dw_detail.rowcount())
+				if ll_found > 0 and ll_found <= this.dw_detail.rowcount() then
+					if ll_weekdaycode = 1 then
+						this.dw_detail.object.weekday_1[ll_found] = 1
+					end if
+					if ll_weekdaycode = 2 then
+						this.dw_detail.object.weekday_2[ll_found] = 1
+					end if
+					if ll_weekdaycode = 3 then
+						this.dw_detail.object.weekday_3[ll_found] = 1
+					end if
+					if ll_weekdaycode = 4 then
+						this.dw_detail.object.weekday_4[ll_found] = 1
+					end if
+					if ll_weekdaycode = 5 then
+						this.dw_detail.object.weekday_5[ll_found] = 1
+					end if
+					if ll_weekdaycode = 6 then
+						this.dw_detail.object.weekday_6[ll_found] = 1
+					end if
+					if ll_weekdaycode = 7 then
+						this.dw_detail.object.weekday_7[ll_found] = 1
+					end if
+				end if
+			end if
+		next
+	end if
+	return 0
+
+// w_salesmanscope.wf_save() returns long
+	long ll_salesmancode
+	long ll_manfcode
+	long ll_subareacode
+	long ll_weekdaycode
+	long ll_counter
+	long ll_rowcount
+	long ll_insrow
+	if this.dw_master.rowcount() > 0 then
+		ll_salesmancode = this.dw_master.object.salesmancode[1]
+		ll_manfcode = this.dw_master.object.manfcode[1]
+	end if
+	ll_rowcount = this.dw_detail.rowcount()
+	if ll_salesmancode > 0 and ll_manfcode > 0 and ll_rowcount > 0 then
+		this.ids_detail.reset()
+		for ll_counter = 1 to ll_rowcount
+			ll_subareacode = this.dw_detail.object.subareacode[ll_counter]
+			if this.dw_detail.object.weekday_1[ll_counter] = 1 then
+				ll_insrow = this.ids_detail.insertrow(0)
+				if ll_insrow > 0 then
+					this.ids_detail.object.salesmancode[ll_insrow] = ll_salesmancode
+					this.ids_detail.object.manfcode[ll_insrow] = ll_manfcode
+					this.ids_detail.object.subareacode[ll_insrow] = ll_subareacode
+					this.ids_detail.object.weekdaycode[ll_insrow] = 1
+				end if
+			end if
+			if this.dw_detail.object.weekday_2[ll_counter] = 1 then
+				ll_insrow = this.ids_detail.insertrow(0)
+				if ll_insrow > 0 then
+					this.ids_detail.object.salesmancode[ll_insrow] = ll_salesmancode
+					this.ids_detail.object.manfcode[ll_insrow] = ll_manfcode
+					this.ids_detail.object.subareacode[ll_insrow] = ll_subareacode
+					this.ids_detail.object.weekdaycode[ll_insrow] = 2
+				end if
+			end if
+			if this.dw_detail.object.weekday_3[ll_counter] = 1 then
+				ll_insrow = this.ids_detail.insertrow(0)
+				if ll_insrow > 0 then
+					this.ids_detail.object.salesmancode[ll_insrow] = ll_salesmancode
+					this.ids_detail.object.manfcode[ll_insrow] = ll_manfcode
+					this.ids_detail.object.subareacode[ll_insrow] = ll_subareacode
+					this.ids_detail.object.weekdaycode[ll_insrow] = 3
+				end if
+			end if
+			if this.dw_detail.object.weekday_4[ll_counter] = 1 then
+				ll_insrow = this.ids_detail.insertrow(0)
+				if ll_insrow > 0 then
+					this.ids_detail.object.salesmancode[ll_insrow] = ll_salesmancode
+					this.ids_detail.object.manfcode[ll_insrow] = ll_manfcode
+					this.ids_detail.object.subareacode[ll_insrow] = ll_subareacode
+					this.ids_detail.object.weekdaycode[ll_insrow] = 4
+				end if
+			end if
+			if this.dw_detail.object.weekday_5[ll_counter] = 1 then
+				ll_insrow = this.ids_detail.insertrow(0)
+				if ll_insrow > 0 then
+					this.ids_detail.object.salesmancode[ll_insrow] = ll_salesmancode
+					this.ids_detail.object.manfcode[ll_insrow] = ll_manfcode
+					this.ids_detail.object.subareacode[ll_insrow] = ll_subareacode
+					this.ids_detail.object.weekdaycode[ll_insrow] = 5
+				end if
+			end if
+			if this.dw_detail.object.weekday_6[ll_counter] = 1 then
+				ll_insrow = this.ids_detail.insertrow(0)
+				if ll_insrow > 0 then
+					this.ids_detail.object.salesmancode[ll_insrow] = ll_salesmancode
+					this.ids_detail.object.manfcode[ll_insrow] = ll_manfcode
+					this.ids_detail.object.subareacode[ll_insrow] = ll_subareacode
+					this.ids_detail.object.weekdaycode[ll_insrow] = 6
+				end if
+			end if
+			if this.dw_detail.object.weekday_7[ll_counter] = 1 then
+				ll_insrow = this.ids_detail.insertrow(0)
+				if ll_insrow > 0 then
+					this.ids_detail.object.salesmancode[ll_insrow] = ll_salesmancode
+					this.ids_detail.object.manfcode[ll_insrow] = ll_manfcode
+					this.ids_detail.object.subareacode[ll_insrow] = ll_subareacode
+					this.ids_detail.object.weekdaycode[ll_insrow] = 7
+				end if
+			end if
+		next
+		SQL DELETE DBO.SalesManScope WHERE Salesmancode =:ll_salesmancode AND ManfCode =:ll_manfcode USING sqlca;
+		if sqlca.sqlcode = 0 then
+			if this.ids_detail.update(true, true) > 0 then
+				SQL commit USING sqlca;
+				messagebox("Saving", "Changes Take Effect in Database", information!)
+			else
+				messagebox("Saving", "Changes Do Not Take Effect in Database.~r~nReasons are:-~r~n" + sqlca.sqlerrtext, stopsign!)
+				SQL rollback USING sqlca;
+			end if
+			return 0
+		end if
+	end if
+	return 0
+
+// w_salesmanscope.wf_validate_subarea(long al_subareacode) returns long
+	long ll_salesmancode
+	long ll_manfcode
+	long ll_salesman
+	string ls_salesman
+	ll_salesmancode = this.dw_master.object.salesmancode[1]
+	ll_manfcode = this.dw_master.object.manfcode[1]
+	if this.ib_salepersonscopeperarea then
+		return 0
+	end if
+	SQL SELECT ISNULL ( Count ( SalesManCode ) , 0 ) INTO :ll_salesman FROM DBO.SalesManScope WHERE SalesManCode <> :ll_salesmancode AND ManfCode =:ll_manfcode AND SubAreaCode =:al_subareacode USING sqlca;
+	if sqlca.sqlcode = 0 then
+		if isnull(ll_salesman) or ll_salesman = 0 then
+			return 0
+		else
+			SQL SELECT Name INTO :ls_salesman FROM SalesMan WHERE SalesManCode IN ( SELECT SalesManCode =MIN ( SalesManCode ) FROM DBO.SalesManScope WHERE SalesManCode <> :ll_salesmancode AND ManfCode =:ll_manfcode AND SubAreaCode =:al_subareacode ) USING sqlca;
+			if sqlca.sqlcode = 0 then
+				messagebox("Sub. Area Validation", "Problem in validating Sub. Area.~r~nThis Sub Area Already Allowed to " + ls_salesman, stopsign!)
+			end if
+			return -1
+		end if
+		return
+	end if
+	messagebox("Sub. Area Validation", "Problem in validating Sub. Area.~r~nReasons are:-~r~n" + sqlca.sqlerrtext, stopsign!)
+	return -1
+
+// w_salesmanscope.create() returns 0
+	this.cb_exit = create cb_exit
+	this.dw_footer = create dw_footer
+	this.dw_master = create dw_master
+	this.cb_retrieve = create cb_retrieve
+	this.cb_save = create cb_save
+	this.dw_detail = create dw_detail
+	this.control = {this.cb_exit, this.dw_footer, this.dw_master, this.cb_retrieve, this.cb_save, this.dw_detail}
+
+// w_salesmanscope.destroy() returns 0
+	destroy this.cb_exit
+	destroy this.dw_footer
+	destroy this.dw_master
+	destroy this.cb_retrieve
+	destroy this.cb_save
+	destroy this.dw_detail
+
+// w_salesmanscope.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	long ll_retcode
+	long ll_btn_start
+	string ls_date
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		this.width = ll_win_width * 0.98
+		this.height = ll_win_height * 0.95
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	if f_stringpreferences("SalesPersonScopePerArea") = "Y" then
+		this.ib_salepersonscopeperarea = true
+	else
+		this.ib_salepersonscopeperarea = false
+	end if
+	this.dw_master.width = this.width * 0.98
+	this.dw_detail.width = this.width * 0.98
+	this.dw_detail.height = this.height * 0.82
+	ll_btn_start = (this.width - (this.cb_save.width + this.cb_exit.width + this.cb_retrieve.width + 40)) / 2.0
+	this.cb_save.y = this.height * 0.90
+	this.cb_exit.y = this.height * 0.90
+	this.cb_retrieve.y = this.height * 0.90
+	this.cb_save.x = ll_btn_start
+	ll_btn_start = ll_btn_start + this.cb_save.width + 20
+	this.cb_exit.x = ll_btn_start
+	ll_btn_start = ll_btn_start + this.cb_exit.width + 20
+	this.cb_retrieve.x = ll_btn_start
+	wf_assigndwobjects("d_salesmanscope_header", "d_salesmanscope_detail", "")
+	this.dw_master.insertrow(0)
+	this.dw_master.scrolltorow(0)
+	this.dw_detail.reset()
+	this.ids_detail = create u_ds_standard
+	this.ids_detail.dataobject = "d_salesmanscope_detail_hidden"
+	this.ids_detail.settransobject(sqlca)
+	this.dw_master.setcolumn("salesmancode")
+	this.dw_master.setfocus()
+	return ::message.returnvalue
+
+// cb_exit.clicked() returns long
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// dw_master.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_master.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	long ll_code
+	long ll_retcode
+	long ll_res
+	string ls_null
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "salesmancode", "manfcode"
+		ll_code = long(data)
+		return parent.wf_get_salesmanscope(dwo.name, ll_code)
+	end choose
+	return ll_retcode
+
+// dw_master.losefocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::losefocus()
+	parent.dw_detail.event getfocus()
+	return ::message.returnvalue
+
+// cb_retrieve.clicked() returns long
+	parent.dw_detail.retrieve()
+	parent.wf_plot_salesmanscope()
+	return ::message.returnvalue
+
+// cb_save.clicked() returns long
+	parent.wf_save()
+	return ::message.returnvalue
+
+// dw_detail.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_detail.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	setcolumn("weekday_1")
+	return ::message.returnvalue
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	long ll_subareacode
+	long ll_retcode
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	parent.ib_editflag = true
+	ll_subareacode = this.object.subareacode[row]
+	choose case dwo.name
+	case "weekday_1", "weekday_2", "weekday_3", "weekday_4", "weekday_5", "weekday_6", "weekday_7"
+		if data = "1" then
+			if parent.wf_validate_subarea(ll_subareacode) = 0 then
+				ll_retcode = 0
+			else
+				ll_retcode = 1
+			end if
+		end if
+	end choose
+	return ll_retcode
+
+// dw_detail.editchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::editchanged(row, dwo, data)
+	parent.ib_editflag = true
+	return ::message.returnvalue

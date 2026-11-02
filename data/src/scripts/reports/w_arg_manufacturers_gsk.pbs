@@ -1,0 +1,65 @@
+// window w_arg_manufacturers_gsk (reports)  ancestor: w_listarguments
+
+// w_arg_manufacturers_gsk.create() returns 0
+	integer icurrent
+	call super::create
+	this.st_4 = create st_4
+	this.st_8 = create st_8
+	this.cbx_sale = create cbx_sale
+	this.cb_sale = create cb_sale
+	this.hpb_hpb = create hpb_hpb
+	this.em_dscode = create em_dscode
+	this.st_9 = create st_9
+	this.gb_txt = create gb_txt
+	this.gb_overallprogress = create gb_overallprogress
+	this.gb_5 = create gb_5
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_4
+	this.control[icurrent + 2] = this.st_8
+	this.control[icurrent + 3] = this.cbx_sale
+	this.control[icurrent + 4] = this.cb_sale
+	this.control[icurrent + 5] = this.hpb_hpb
+	this.control[icurrent + 6] = this.em_dscode
+	this.control[icurrent + 7] = this.st_9
+	this.control[icurrent + 8] = this.gb_txt
+	this.control[icurrent + 9] = this.gb_overallprogress
+	this.control[icurrent + 10] = this.gb_5
+
+// w_arg_manufacturers_gsk.destroy() returns 0
+	call super::destroy
+	destroy this.st_4
+	destroy this.st_8
+	destroy this.cbx_sale
+	destroy this.cb_sale
+	destroy this.hpb_hpb
+	destroy this.em_dscode
+	destroy this.st_9
+	destroy this.gb_txt
+	destroy this.gb_overallprogress
+	destroy this.gb_5
+
+// w_arg_manufacturers_gsk.open() returns long
+	long ancestorreturnvalue
+	long ll_counter
+	long ll_rowcount
+	integer rtncode
+	ancestorreturnvalue = super::open()
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	rtncode = this.dw_control.getchild("manufacturers", this.idc_categories)
+	if rtncode = -1 then
+		messagebox("Error", "Not a DataWindowChild")
+	end if
+	ll_rowcount = this.idc_categories.rowcount()
+	for ll_counter = 1 to ll_rowcount
+		this.lb_categories.additem(this.idc_categories.getitemstring(ll_counter, "name"))
+	next
+	this.is_sale = trim(f_stringpreferences("OutputFilePath")) + "GSKSale.Txt"
+	return ::message.returnvalue
+
+// cb_sale.clicked() returns long
+	string ls_named
+	integer li_value
+	li_value = getfilesavename("Select File Location", parent.is_sale, ls_named, "TXT", "All Files (*.*),*.*," + "All Files (*.*),*.*")
+	return ::message.returnvalue

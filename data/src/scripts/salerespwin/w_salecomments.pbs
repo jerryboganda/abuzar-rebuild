@@ -1,0 +1,81 @@
+// window w_salecomments (salerespwin)  ancestor: window
+
+// w_salecomments.create() returns 0
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.dw_quotationremarks = create dw_quotationremarks
+	this.control = {this.cb_cancel, this.cb_ok, this.dw_quotationremarks}
+
+// w_salecomments.destroy() returns 0
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.dw_quotationremarks
+
+// w_salecomments.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	this.is_quotationremarks = message.powerobjectparm
+	this.dw_quotationremarks.settransobject(sqlca)
+	this.dw_quotationremarks.insertrow(0)
+	this.dw_quotationremarks.setitem(1, "remarks2", this.is_quotationremarks.remarks2)
+	this.dw_quotationremarks.setitem(1, "remarks3", this.is_quotationremarks.remarks3)
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_salecomments.close() returns long
+	closewithreturn(this, this.is_quotationremarks)
+	return ::message.returnvalue
+
+// w_salecomments.key(keycode key, unsignedlong keyflags) returns long
+	if keydown(keyescape!) then
+		close(this)
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	closewithreturn(parent, parent.is_quotationremarks)
+	return ::message.returnvalue
+
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	parent.dw_quotationremarks.accepttext()
+	parent.is_quotationremarks.remarks2 = parent.dw_quotationremarks.getitemstring(1, "remarks2")
+	parent.is_quotationremarks.remarks3 = parent.dw_quotationremarks.getitemstring(1, "remarks3")
+	closewithreturn(parent, parent.is_quotationremarks)
+	return ::message.returnvalue
+
+// dw_quotationremarks.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1

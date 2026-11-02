@@ -1,0 +1,665 @@
+// window w_vaccine_followup (patientvaccinecomp)  ancestor: window
+
+// w_vaccine_followup.wf_settimer(long ai_time) returns 0
+	timer(ai_time, this)
+
+// w_vaccine_followup.wf_refresh(integer ai_mode) returns long
+	long ll_index
+	long ll_rowcount
+	long ll_series_num
+	long ll_counter
+	long ll_innercounter
+	long ll_groupcode
+	long ll_prints_left
+	long[] ll_docrowid
+	long ll_printable_count
+	long ll_min_refresh
+	boolean lb_continue
+	datetime ldt_startdate
+	setpointer(hourglass!)
+	setredraw(false)
+	if this.ib_editrefresh = false then
+	end if
+	if ai_mode = 1 then
+		this.id_vaccine.retrieve()
+		this.ib_editflag = false
+	elseif this.ib_editflag = false then
+		this.id_vaccine.retrieve()
+	end if
+	ll_rowcount = this.id_vaccine.rowcount()
+	setpointer(arrow!)
+	setredraw(true)
+	return 0
+
+// w_vaccine_followup.wf_select_printslip() returns 0
+	long ll_listrow
+	long ll_module
+	string ls_report
+	string ls_doctype
+	ll_listrow = this.id_vaccine.getrow()
+	if ll_listrow > 0 then
+		ll_module = this.id_vaccine.object.moduleid[ll_listrow]
+	end if
+	if ls_report = "" then
+		ls_report = "d_cashieractivitymonitor_printout"
+	end if
+	this.ids_print.dataobject = ls_report
+	this.ids_print.settransobject(this.it_transobject)
+
+// w_vaccine_followup.wf_selectprintreport(integer ai_module, long al_doccode) returns string
+	string ls_pagesize
+	string ls_report
+	long ll_currrow
+	boolean lb_printout
+	integer li_headerno
+	integer li_catcode
+	integer li_printformat
+	ll_currrow = this.id_vaccine.getrow()
+	if ll_currrow > 0 then
+		li_catcode = this.id_vaccine.object.catcode[ll_currrow]
+		if li_catcode = 1 then
+			lb_printout = true
+		end if
+		if ai_module = 1 then
+			SQL SELECT InvoiceSize , HeaderNo INTO :ls_pagesize, :li_headerno FROM SaleLedger WHERE SaleInvCode =:al_doccode USING this.it_transobject;
+			ls_report = f_getsaleprintout(ls_pagesize, lb_printout, li_headerno)
+			f_set_headerlogo(this.id_print, li_headerno)
+		elseif ai_module = 2 then
+			SQL SELECT PageSize , HeaderNo INTO :ls_pagesize, :li_headerno FROM SRLedger WHERE SRInvCode =:al_doccode USING this.it_transobject;
+			if ls_pagesize = "F" then
+				ls_report = "d_wholesaleretinvreport_full"
+			elseif ls_pagesize = "H" then
+				ls_report = "d_wholesaleretinvreport_half"
+			else
+				ls_report = "d_wholesaleretinvreport"
+			end if
+		else
+			li_printformat = f_numberpreferences("VoucherPrintingFormat")
+			ls_pagesize = f_stringpreferences("VoucherPrintingPageSize")
+			ls_report = "d_voucherprint"
+			choose case ls_pagesize
+			case "F"
+				choose case li_printformat
+				case 1
+					ls_report = "d_voucherprint"
+				case 2
+					ls_report = "d_voucherprint_format2"
+				case 3
+					ls_report = "d_voucherprint_patient"
+				case 4
+					ls_report = "d_voucherprint_standard2"
+				end choose
+			case "H"
+				choose case li_printformat
+				case 1
+					ls_report = "d_voucherprint_half"
+				case 2
+					ls_report = "d_voucherprint_half_format2"
+				case 3
+					ls_report = "d_voucherprint_half_patient"
+				case 4
+					ls_report = "d_voucherprint_half_standard2"
+				end choose
+			end choose
+		end if
+		this.id_print.dataobject = ls_report
+		this.id_print.settransobject(this.it_transobject)
+	end if
+	return ls_report
+
+// w_vaccine_followup.wf_set_preferences() returns long
+	long ll_refreshtime
+	return 0
+
+// w_vaccine_followup.wf_update_summary_and_graph() returns long
+	long ll_rowcount
+	long ll_counter
+	long ll_found
+	long ll_row
+	long ll_typecode
+	long ll_statuscount
+	integer li_series_num
+	integer li_cat_num
+	string ls_statusname
+	graph gr_1
+	gr_1 = this.tab_main.tabpage_graph.gr_graph
+	setredraw(false)
+	this.id_summary.retrieve()
+	ll_rowcount = this.id_vaccine.rowcount()
+	gr_1.reset(all!)
+	for ll_counter = 1 to ll_rowcount
+		ll_typecode = this.id_vaccine.object.vaccinestatuscode[ll_counter]
+		ll_found = this.id_summary.find("vaccinestatuscode = " + string(ll_typecode), 1, this.id_summary.rowcount())
+		if ll_found > 0 then
+			ll_row = ll_found
+			this.id_summary.object.counter[ll_row] = this.id_summary.object.counter[ll_row] + 1
+		end if
+	next
+	ll_counter = 0
+	for ll_counter = 1 to this.id_summary.rowcount()
+		ls_statusname = this.id_summary.object.name[ll_counter]
+		ll_statuscount = this.id_summary.object.counter[ll_counter]
+		li_series_num = gr_1.findseries(ls_statusname)
+		if li_series_num = -1 then
+			li_series_num = gr_1.addseries(ls_statusname)
+		end if
+		if li_series_num > 0 then
+			gr_1.adddata(li_series_num, ll_statuscount, ls_statusname)
+		end if
+	next
+	this.id_summary.setredraw(false)
+	this.id_summary.sort()
+	this.id_summary.groupcalc()
+	this.id_summary.setredraw(true)
+	gr_1.textcolor = rgb(285, 105, 135)
+	this.tab_main.tabpage_graph.gr_graph = gr_1
+	setpointer(arrow!)
+	setredraw(true)
+	return 0
+
+// w_vaccine_followup.wf_apply_rights() returns long
+	return 0
+
+// w_vaccine_followup.wf_retrieve() returns long
+	boolean lb_retrieve
+	long ll_res
+	s_arguements lstr_arg
+	if this.ib_editflag = false then
+		lb_retrieve = true
+	else
+		ll_res = messagebox("Save Changes", "Changes Made will be lost. Discard changes?", question!, yesno!, 2)
+		if ll_res = 1 then
+			lb_retrieve = true
+		else
+			lb_retrieve = false
+		end if
+	end if
+	if lb_retrieve then
+		open(w_arg_sdate_ldate)
+		lstr_arg = message.powerobjectparm
+		if lstr_arg.i_status = 1 then
+			this.id_vaccine.retrieve(lstr_arg.d_sdate, lstr_arg.d_edate)
+			this.ib_editflag = false
+		end if
+	end if
+	wf_update_summary_and_graph()
+	return 0
+
+// w_vaccine_followup.wf_print() returns long
+	long ll_row
+	long ll_patientcode
+	s_datastore lstr
+	if this.id_vaccine.rowcount() > 0 and this.id_vaccine.getrow() > 0 then
+		ll_row = this.id_vaccine.getrow()
+		ll_patientcode = this.id_vaccine.object.patientcode[ll_row]
+		this.id_print.dataobject = "d_patientvaccinefollowup_print"
+		this.id_print.settransobject(this.it_transobject)
+		this.id_print.retrieve()
+		if this.id_vaccine.rowcount() > 0 then
+			this.id_vaccine.rowscopy(1, this.id_vaccine.rowcount(), primary!, this.dw_print, 1, primary!)
+		end if
+		if this.dw_print.rowcount() > 0 then
+			lstr.dw = this.dw_print
+			lstr.s_name1 = this.dw_print.dataobject
+			openwithparm(w_preview_invoices, lstr)
+			lstr = message.powerobjectparm
+			if lstr.i_closemode = -1 then
+				return 0
+			end if
+			if f_stringpreferences("PromptBeforePrinting") = "Y" and printsetup() < 0 then
+				messagebox("Printer", "Printing Error")
+				this.dw_print.printcancel()
+			end if
+			if this.dw_print.print() < 0 then
+				messagebox("Printing", "Can not Print", information!)
+			end if
+		end if
+	end if
+	return 0
+
+// w_vaccine_followup.wf_populate_vaccine_schedule() returns long
+	datastore lds_vaccine_schedule
+	long ll_patientcode
+	long ll_ins_row
+	long ll_counter
+	s_arguements lstr_arg
+	dwitemstatus ldws_status
+	lds_vaccine_schedule = create datastore
+	lds_vaccine_schedule.dataobject = "d_vaccineschedule_details"
+	lds_vaccine_schedule.settransobject(this.it_transobject)
+	open(w_arg_patientonly)
+	lstr_arg = message.powerobjectparm
+	if lstr_arg.i_status = 1 then
+		ll_patientcode = lstr_arg.l_code1
+		lds_vaccine_schedule.retrieve(ll_patientcode)
+		if lds_vaccine_schedule.rowcount() > 0 then
+			for ll_counter = 1 to lds_vaccine_schedule.rowcount()
+				ll_ins_row = this.id_vaccine.insertrow(0)
+				if ll_ins_row > 0 then
+					this.id_vaccine.object.code[ll_ins_row] = lds_vaccine_schedule.object.code[ll_counter]
+					this.id_vaccine.object.patientcode[ll_ins_row] = lds_vaccine_schedule.object.patientcode[ll_counter]
+					this.id_vaccine.object.icode[ll_ins_row] = lds_vaccine_schedule.object.icode[ll_counter]
+					this.id_vaccine.object.fullcode[ll_ins_row] = lds_vaccine_schedule.object.fullcode[ll_counter]
+					this.id_vaccine.object.itemname[ll_ins_row] = lds_vaccine_schedule.object.itemname[ll_counter]
+					this.id_vaccine.object.currlistrow[ll_ins_row] = lds_vaccine_schedule.object.currlistrow[ll_counter]
+					this.id_vaccine.object.duedate[ll_ins_row] = lds_vaccine_schedule.object.duedate[ll_counter]
+					this.id_vaccine.object.vaccinestatuscode[ll_ins_row] = lds_vaccine_schedule.object.vaccinestatuscode[ll_counter]
+					this.id_vaccine.object.lastremindedon[ll_ins_row] = lds_vaccine_schedule.object.lastremindedon[ll_counter]
+					this.id_vaccine.object.lastremindedby[ll_ins_row] = lds_vaccine_schedule.object.lastremindedby[ll_counter]
+					this.id_vaccine.object.lastpendedon[ll_ins_row] = lds_vaccine_schedule.object.lastpendedon[ll_counter]
+					this.id_vaccine.object.lastpendedby[ll_ins_row] = lds_vaccine_schedule.object.lastpendedby[ll_counter]
+					this.id_vaccine.object.vaccinatedon[ll_ins_row] = lds_vaccine_schedule.object.vaccinatedon[ll_counter]
+					this.id_vaccine.object.vaccinatedby[ll_ins_row] = lds_vaccine_schedule.object.vaccinatedby[ll_counter]
+					this.id_vaccine.object.remarks[ll_ins_row] = lds_vaccine_schedule.object.remarks[ll_counter]
+					this.id_vaccine.object.doctcode[ll_ins_row] = lds_vaccine_schedule.object.doctcode[ll_counter]
+					wf_set_patientinfo(ll_patientcode)
+					this.id_vaccine.setitemstatus(ll_ins_row, 0, primary!, datamodified!)
+				end if
+			next
+		end if
+	end if
+	return 0
+
+// w_vaccine_followup.wf_save_vaccine_followup_as_excel() returns long
+	f_saveasexcel(this.id_vaccine)
+	return 0
+
+// w_vaccine_followup.wf_set_patientinfo(long al_code) returns long
+	string ls_regno
+	string ls_name
+	string ls_fname
+	string ls_mobileno1
+	string ls_mobileno2
+	string ls_mobileno3
+	long ll_row
+	ll_row = this.id_vaccine.getrow()
+	if ll_row > 0 then
+		SQL SELECT RegNo , Name , FName , MobileNo1 , MobileNo2 , MobileNo3 INTO :ls_regno, :ls_name, :ls_fname, :ls_mobileno1, :ls_mobileno2, :ls_mobileno3 FROM DBO.Patient WHERE PatientCode =:al_code USING this.it_transobject;
+		if this.it_transobject.sqlcode = 0 then
+			this.id_vaccine.object.regno[ll_row] = ls_regno
+			this.id_vaccine.object.patientname[ll_row] = ls_name
+			this.id_vaccine.object.patientfname[ll_row] = ls_fname
+			this.id_vaccine.object.mobileno1[ll_row] = ls_mobileno1
+			this.id_vaccine.object.mobileno2[ll_row] = ls_mobileno2
+			this.id_vaccine.object.mobileno3[ll_row] = ls_mobileno3
+			return 0
+		else
+			return -1
+		end if
+		return
+	end if
+	return -2
+
+// w_vaccine_followup.create() returns 0
+	if this.menuname = "m_vaccinefollowupmenu" then
+		this.menuid = create m_vaccinefollowupmenu
+	end if
+	this.dw_print = create dw_print
+	this.tab_main = create tab_main
+	this.control = {this.dw_print, this.tab_main}
+
+// w_vaccine_followup.destroy() returns 0
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_print
+	destroy this.tab_main
+
+// w_vaccine_followup.open() returns long
+	long ll_counter
+	long ll_pos
+	long ll_rtcode
+	long ll_found
+	long ll_groupcode
+	string ls_exp
+	string ls_exp2
+	string ls_username
+	w_entry w_parent
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	this.im_menu = this.menuid
+	this.it_transobject = create u_transaction
+	SQL start USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		messagebox("Connection Failure", "Unable to connect to the database", stopsign!)
+		close(this)
+		return ::message.returnvalue
+	end if
+	this.id_print = create datawindow
+	this.ids_print = create u_ds_standard
+	this.dw_print.dataobject = "d_patientvaccinefollowup_print"
+	this.dw_print.settransobject(this.it_transobject)
+	this.id_print = this.dw_print
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width * 0.98
+		ll_height = ll_win_height * 0.96
+		this.width = ll_width
+		this.height = ll_height
+		this.tab_main.width = ll_width * 0.98
+		this.tab_main.height = ll_height * 0.83
+		this.tab_main.tabpage_vaccine.dw_vaccine.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_vaccine.dw_vaccine.height = this.tab_main.height * 0.89 - 100
+		this.tab_main.tabpage_summary.dw_summary.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_summary.dw_summary.height = this.tab_main.height * 0.91 - 100
+		this.tab_main.tabpage_graph.gr_graph.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_graph.gr_graph.height = this.tab_main.height * 0.91
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	this.id_vaccine = this.tab_main.tabpage_vaccine.dw_vaccine
+	this.id_vaccine.settransobject(this.it_transobject)
+	this.id_summary = this.tab_main.tabpage_summary.dw_summary
+	this.id_summary.settransobject(this.it_transobject)
+	wf_apply_rights()
+	return ::message.returnvalue
+
+// w_vaccine_followup.timer() returns long
+	if this.ib_editrefresh = false then
+	end if
+	return ::message.returnvalue
+
+// tab_main.create() returns 0
+	this.tabpage_vaccine = create tabpage_vaccine
+	this.tabpage_summary = create tabpage_summary
+	this.tabpage_graph = create tabpage_graph
+	this.control = {this.tabpage_vaccine, this.tabpage_summary, this.tabpage_graph}
+
+// tab_main.destroy() returns 0
+	destroy this.tabpage_vaccine
+	destroy this.tabpage_summary
+	destroy this.tabpage_graph
+
+// tabpage_vaccine.create() returns 0
+	this.cb_save = create cb_save
+	this.cb_sort_outbox = create cb_sort_outbox
+	this.cb_filter_outbox = create cb_filter_outbox
+	this.cb_retrieve_outbox = create cb_retrieve_outbox
+	this.dw_vaccine = create dw_vaccine
+	this.control = {this.cb_save, this.cb_sort_outbox, this.cb_filter_outbox, this.cb_retrieve_outbox, this.dw_vaccine}
+
+// tabpage_vaccine.destroy() returns 0
+	destroy this.cb_save
+	destroy this.cb_sort_outbox
+	destroy this.cb_filter_outbox
+	destroy this.cb_retrieve_outbox
+	destroy this.dw_vaccine
+
+// cb_save.clicked() returns long
+	long ll_code
+	string ls_errtext
+	if parent.parent.parent.id_vaccine.getrow() > 0 then
+		if parent.parent.parent.id_vaccine.update(true) = 1 then
+			messagebox("Vaccine Followup Recod", "Vaccine Followup Recod Successfully updated")
+			SQL commit USING parent.parent.parent.it_transobject;
+		else
+			ls_errtext = "Vaccine Followup Recod Successfully updated.~r~nDetails are:-~r~n" + parent.parent.parent.it_transobject.sqlerrtext
+			SQL rollback USING parent.parent.parent.it_transobject;
+			messagebox("Vaccine Followup Recod", ls_errtext, stopsign!)
+		end if
+	end if
+	return 0
+
+// cb_sort_outbox.clicked() returns long
+	string ls_null
+	setnull(ls_null)
+	parent.parent.parent.id_vaccine.setsort(ls_null)
+	parent.parent.parent.id_vaccine.sort()
+	parent.parent.parent.id_vaccine.groupcalc()
+	return ::message.returnvalue
+
+// cb_filter_outbox.clicked() returns long
+	string ls_null
+	setnull(ls_null)
+	parent.parent.parent.id_vaccine.scrolltorow(0)
+	parent.parent.parent.id_vaccine.setfilter(ls_null)
+	parent.parent.parent.id_vaccine.filter()
+	parent.parent.parent.id_vaccine.groupcalc()
+	return ::message.returnvalue
+
+// cb_retrieve_outbox.clicked() returns long
+	parent.parent.parent.wf_retrieve()
+	return ::message.returnvalue
+
+// dw_vaccine.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_vaccine.rowfocuschanged(long currentrow) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::rowfocuschanged(currentrow)
+	if currentrow > 0 then
+		selectrow(0, false)
+		setrow(currentrow)
+		scrolltorow(currentrow)
+		selectrow(currentrow, true)
+	end if
+	return ::message.returnvalue
+
+// dw_vaccine.editchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::editchanged(row, dwo, data)
+	parent.parent.parent.ib_editflag = true
+	return ::message.returnvalue
+
+// dw_vaccine.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::doubleclicked(xpos, ypos, row, dwo)
+	return ::message.returnvalue
+
+// dw_vaccine.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "vaccinestatuscode"
+		if long(data) = 3 then
+			this.object.lastremindedon[row] = today()
+			this.object.lastremindedby[row] = gl_usercode
+		elseif long(data) = 2 then
+			this.object.lastpendedon[row] = today()
+			this.object.lastpendedby[row] = gl_usercode
+		elseif long(data) = 1 then
+			this.object.vaccinatedon[row] = today()
+			this.object.vaccinatedby[row] = gl_usercode
+		elseif long(data) = 5 then
+			this.object.stoppedon[row] = today()
+			this.object.stoppedby[row] = gl_usercode
+		end if
+	end choose
+	return ::message.returnvalue
+
+// tabpage_summary.create() returns 0
+	this.dw_summary = create dw_summary
+	this.control = {this.dw_summary}
+
+// tabpage_summary.destroy() returns 0
+	destroy this.dw_summary
+
+// tabpage_graph.create() returns 0
+	this.st_tooltip = create st_tooltip
+	this.gr_graph = create gr_graph
+	this.control = {this.st_tooltip, this.gr_graph}
+
+// tabpage_graph.destroy() returns 0
+	destroy this.st_tooltip
+	destroy this.gr_graph
+
+// gr_graph.create() returns 0
+	this.titledispattr = create grdispattr
+	this.legenddispattr = create grdispattr
+	this.piedispattr = create grdispattr
+	this.series = create graxis
+	this.series.dispattr = create grdispattr
+	this.series.labeldispattr = create grdispattr
+	this.category = create graxis
+	this.category.dispattr = create grdispattr
+	this.category.labeldispattr = create grdispattr
+	this.values = create graxis
+	this.values.dispattr = create grdispattr
+	this.values.labeldispattr = create grdispattr
+	this.titledispattr.textsize = 24
+	this.titledispattr.facename = "Tahoma"
+	this.titledispattr.underline = true
+	this.titledispattr.fontcharset = defaultcharset!
+	this.titledispattr.fontfamily = swiss!
+	this.titledispattr.fontpitch = variable!
+	this.titledispattr.alignment = center!
+	this.titledispattr.textcolor = 8388608
+	this.titledispattr.backcolor = 12639424
+	this.titledispattr.format = "[General]"
+	this.titledispattr.displayexpression = "title"
+	this.category.label = "Vaccine Status"
+	this.category.autoscale = true
+	this.category.shadebackedge = true
+	this.category.secondaryline = transparent!
+	this.category.majorgridline = transparent!
+	this.category.minorgridline = transparent!
+	this.category.droplines = transparent!
+	this.category.originline = transparent!
+	this.category.majortic = outside!
+	this.category.datatype = adttext!
+	this.category.dispattr.textsize = 13
+	this.category.dispattr.facename = "Tahoma"
+	this.category.dispattr.fontcharset = defaultcharset!
+	this.category.dispattr.fontfamily = swiss!
+	this.category.dispattr.fontpitch = variable!
+	this.category.dispattr.alignment = center!
+	this.category.dispattr.textcolor = 128
+	this.category.dispattr.backcolor = 536870912
+	this.category.dispattr.format = "[General]"
+	this.category.dispattr.displayexpression = "category"
+	this.category.labeldispattr.textsize = 16
+	this.category.labeldispattr.facename = "Arial"
+	this.category.labeldispattr.fontcharset = defaultcharset!
+	this.category.labeldispattr.fontfamily = swiss!
+	this.category.labeldispattr.fontpitch = variable!
+	this.category.labeldispattr.alignment = center!
+	this.category.labeldispattr.textcolor = 8388608
+	this.category.labeldispattr.backcolor = 15780518
+	this.category.labeldispattr.format = "[General]"
+	this.category.labeldispattr.displayexpression = "categoryaxislabel"
+	this.values.label = "No. of Patients"
+	this.values.autoscale = true
+	this.values.secondaryline = transparent!
+	this.values.majorgridline = transparent!
+	this.values.minorgridline = dot!
+	this.values.droplines = transparent!
+	this.values.majortic = outside!
+	this.values.datatype = adtdouble!
+	this.values.dispattr.textsize = 13
+	this.values.dispattr.facename = "Tahoma"
+	this.values.dispattr.fontcharset = defaultcharset!
+	this.values.dispattr.fontfamily = swiss!
+	this.values.dispattr.fontpitch = variable!
+	this.values.dispattr.alignment = right!
+	this.values.dispattr.textcolor = 128
+	this.values.dispattr.backcolor = 536870912
+	this.values.dispattr.format = "[General]"
+	this.values.dispattr.displayexpression = "value"
+	this.values.labeldispattr.textsize = 16
+	this.values.labeldispattr.facename = "Arial"
+	this.values.labeldispattr.fontcharset = defaultcharset!
+	this.values.labeldispattr.fontfamily = swiss!
+	this.values.labeldispattr.fontpitch = variable!
+	this.values.labeldispattr.alignment = center!
+	this.values.labeldispattr.textcolor = 8388608
+	this.values.labeldispattr.backcolor = 15780518
+	this.values.labeldispattr.format = "[General]"
+	this.values.labeldispattr.displayexpression = "valuesaxislabel"
+	this.values.labeldispattr.escapement = 900
+	this.series.label = "(None)"
+	this.series.autoscale = true
+	this.series.secondaryline = transparent!
+	this.series.majorgridline = transparent!
+	this.series.minorgridline = transparent!
+	this.series.droplines = transparent!
+	this.series.originline = transparent!
+	this.series.majortic = outside!
+	this.series.datatype = adttext!
+	this.series.dispattr.textsize = 13
+	this.series.dispattr.facename = "Arial"
+	this.series.dispattr.fontcharset = defaultcharset!
+	this.series.dispattr.fontfamily = swiss!
+	this.series.dispattr.fontpitch = variable!
+	this.series.dispattr.backcolor = 536870912
+	this.series.dispattr.format = "[General]"
+	this.series.dispattr.displayexpression = "series"
+	this.series.labeldispattr.textsize = 16
+	this.series.labeldispattr.facename = "Arial"
+	this.series.labeldispattr.fontcharset = defaultcharset!
+	this.series.labeldispattr.fontfamily = swiss!
+	this.series.labeldispattr.fontpitch = variable!
+	this.series.labeldispattr.alignment = center!
+	this.series.labeldispattr.backcolor = 536870912
+	this.series.labeldispattr.format = "[General]"
+	this.series.labeldispattr.displayexpression = "seriesaxislabel"
+	this.legenddispattr.textsize = 13
+	this.legenddispattr.facename = "Arial"
+	this.legenddispattr.fontcharset = defaultcharset!
+	this.legenddispattr.fontfamily = swiss!
+	this.legenddispattr.fontpitch = variable!
+	this.legenddispattr.backcolor = 536870912
+	this.legenddispattr.format = "[General]"
+	this.legenddispattr.displayexpression = "series"
+	this.piedispattr.weight = 400
+	this.piedispattr.facename = "Arial"
+	this.piedispattr.fontcharset = defaultcharset!
+	this.piedispattr.fontfamily = swiss!
+	this.piedispattr.fontpitch = variable!
+	this.piedispattr.backcolor = 536870912
+	this.piedispattr.format = "[General]"
+	this.piedispattr.displayexpression = "if(seriescount > 1, series,string(percentofseries,~"0.00%~"))"
+	this.piedispattr.autosize = true
+
+// gr_graph.destroy() returns 0
+	destroy this.titledispattr
+	destroy this.legenddispattr
+	destroy this.piedispattr
+	destroy this.series.dispattr
+	destroy this.series.labeldispattr
+	destroy this.series
+	destroy this.category.dispattr
+	destroy this.category.labeldispattr
+	destroy this.category
+	destroy this.values.dispattr
+	destroy this.values.labeldispattr
+	destroy this.values
+
+// gr_graph.ue_rbuttonup(unsignedlong flags, integer xpos, integer ypos) returns long
+	parent.parent.parent.tab_main.tabpage_graph.st_tooltip.visible = false
+	return ::message.returnvalue
+
+// gr_graph.clicked() returns long
+	grobjecttype clickedobject
+	string ls_cat
+	integer li_series
+	integer li_category
+	clickedobject = objectatpointer(li_series, li_category)
+	if clickedobject = typedata! or clickedobject = typecategory! then
+		ls_cat = categoryname(li_category)
+	end if
+	return ::message.returnvalue
+
+// gr_graph.rbuttondown(unsignedlong flags, integer xpos, integer ypos) returns long
+	grobjecttype clickedobject
+	integer li_series
+	integer li_category
+	long ll_counter
+	clickedobject = objectatpointer(li_series, li_category)
+	if clickedobject = typedata! then
+		parent.st_tooltip.text = string(getdata(li_series, li_category), "###,###,##0")
+		parent.st_tooltip.x = parent.pointerx()
+		parent.st_tooltip.y = parent.pointery() - 65
+		parent.parent.parent.tab_main.tabpage_graph.st_tooltip.visible = true
+	end if
+	return ::message.returnvalue

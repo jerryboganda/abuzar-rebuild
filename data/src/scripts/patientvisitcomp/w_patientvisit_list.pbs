@@ -1,0 +1,314 @@
+// window w_patientvisit_list (patientvisitcomp)  ancestor: w_listview_form
+
+// w_patientvisit_list.wf_openmywindow(long al_code) returns 0
+	s_datatype lstr_datatype
+	string ls_posted
+	long ll_code
+	long ll_visitcode
+	long ll_retcode
+	if this.id_list.rowcount() > 0 and this.id_list.getrow() > 0 and al_code > 0 then
+		ll_code = al_code
+		SQL SELECT Code =ISNULL ( VisitCode , - 1 ) , posted INTO :ll_visitcode, :ls_posted FROM Visit WHERE VisitCode =:ll_code USING sqlca;
+		if sqlca.sqlcode = 0 then
+			lstr_datatype.al_long = ll_code
+			if ls_posted = "Y" then
+				lstr_datatype.ai_int = 1
+			else
+				lstr_datatype.ai_int = 0
+			end if
+			openwithparm(w_patientvisit_form, lstr_datatype)
+		else
+			messagebox("Database Problem", "Problem Fetching Patient Visit Record.~r~nDetails are:- " + sqlca.sqlerrtext, stopsign!)
+		end if
+		return
+	end if
+	setnull(ll_code)
+	lstr_datatype.al_long = ll_code
+	lstr_datatype.ai_int = 0
+	openwithparm(w_patientvisit_form, lstr_datatype)
+
+// w_patientvisit_list.wf_setprintout() returns long
+	string ls_report
+	if gs_company = "DRQUDRATULLAH" then
+		ls_report = "d_visitprescription_print_drqudratullah"
+	elseif gs_company = "HABIBPH2" then
+		ls_report = "d_visitprescription_print_habibph2"
+	elseif gs_company = "FAMILYCAREHSP" then
+		ls_report = "d_familycarehsp_visitprescription_print"
+	elseif gs_company = "DRMAHVISH" then
+		ls_report = "d_visitprescription_drmahvish"
+	elseif gs_company = "PHARMACYHABAD" then
+		ls_report = "d_visitprescription_print_pharmacyhabad"
+	elseif gs_company = "ALSHAFAY" then
+		ls_report = "d_visitprescription_print_alshafay"
+	elseif gs_company = "DRWAJIDALI" then
+		ls_report = "d_visitprescription_print_drwajidali"
+	elseif gs_company = "TEM" or gs_company = "ABUZAR" then
+		ls_report = "d_visitprescription_print_alshafay"
+	elseif gs_company = "BAJWAHOSPITAL2" then
+		ls_report = "d_bajwahospital2_visitprescription_print"
+	elseif gs_company = "DRIRFANSB" then
+		ls_report = "d_visitprescription_print_drirfansb"
+	elseif gs_company = "DRSHUMAIL" then
+		ls_report = "d_visitprescription_print_drshumail"
+	elseif gs_company = "RASHIDNURSING" then
+		ls_report = "d_visitprescription_print_rashidnursing"
+	elseif gs_company = "DRRABNAWAZ" then
+		ls_report = "d_visitprescription_print_drrabnawazraja"
+	elseif gs_company = "KHALISMEDICAL" then
+		ls_report = "d_visitprescription_print_khalismedical"
+	elseif gs_company = "REALDOCTORPVT" then
+		ls_report = "d_visitprescription_print_realdoctorpvt"
+	elseif gs_company = "AMANCHILDCARE" then
+		ls_report = "d_visitprescription_print_amanchildcare"
+	elseif gs_company = "WAFIYACLINIC" then
+		ls_report = "d_visitprescription_print_wafiyaclinic"
+	elseif gs_company = "ALRAUFCLINIC" then
+		ls_report = "d_visitprescription_print_alraufclinic"
+	else
+		ls_report = "d_visitprescription_print"
+	end if
+	this.id_print.dataobject = ls_report
+	return 0
+
+// w_patientvisit_list.wf_new_patientregistration() returns string
+	string ls_regno
+	long ll_patientcode
+	long ll_found
+	long ll_row
+	dwobject dwo
+	if f_rightexists(5102) then
+		open(w_patientregistration)
+		ls_regno = message.stringparm
+		if not (ls_regno = "" or isnull(ls_regno)) then
+			this.id_list.setredraw(false)
+			this.id_list.retrieve()
+			this.id_list.setredraw(true)
+		end if
+	end if
+	return ls_regno
+
+// w_patientvisit_list.wf_upload_image() returns long
+	long ll_patientcode
+	long ll_admissioncode
+	long ll_rowid
+	long ll_null
+	string ls_imagedesc
+	s_item_blob lstr_blob
+	u_transaction lt_transobject
+	if this.id_list.getrow() > 0 then
+		ls_imagedesc = "ECG-" + string(today(), "dd/mm/yyyy hh:mm:ss")
+		setnull(ll_null)
+		ll_patientcode = this.id_list.object.code[this.id_list.getrow()]
+		ll_admissioncode = this.id_list.object.admissioncode[this.id_list.getrow()]
+		if ll_patientcode > 0 then
+			setnull(lstr_blob.lb_blob)
+			lstr_blob.s_name = "jpg"
+			openwithparm(w_patientimage_rowid, lstr_blob)
+			lstr_blob = message.powerobjectparm
+			if lstr_blob.i_closemode = 1 then
+				lt_transobject = create u_transaction
+				lt_transobject.autocommit = true
+				SQL start USING lt_transobject;
+				if lt_transobject.sqlcode <> 0 then
+					messagebox("Connection Error", "Unable to connect to DataBase server for updating/inserting in PatientImage Table")
+					SQL stop USING lt_transobject;
+					destroy lt_transobject
+					return -1
+				end if
+				SQL SELECT MAX ( RowID ) INTO :ll_rowid FROM PatientImage WHERE PatientCode =:ll_patientcode USING lt_transobject;
+				if lt_transobject.sqlcode = 0 then
+					if ll_rowid = 0 or isnull(ll_rowid) then
+						ll_rowid = 0
+					end if
+					ll_rowid = ll_rowid + 1
+					SQL INSERT INTO PatientImage ( PatientCode , ImageDescription , RowID , ImageType , AdmissionCode , VisitCode ) VALUES ( :ll_patientcode , :ls_imagedesc , :ll_rowid , :lstr_blob.s_name , :ll_admissioncode , :ll_null ) USING lt_transobject;
+					if lt_transobject.sqlcode = 0 then
+						SQL UpdateBlob PatientImage Set PatientImage =:lstr_blob.lb_blob Where Patientcode =:ll_patientcode and ROWID =:ll_rowid USING lt_transobject;
+						if lt_transobject.sqlcode <> 0 then
+							messagebox("Patient Image ", "Unable to update Patient image.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext)
+							SQL stop USING lt_transobject;
+							destroy lt_transobject
+							return -1
+						end if
+					else
+						messagebox("Insert Error", "Unable to Insert Patient Images Into Patient Image Table.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext)
+						SQL stop USING lt_transobject;
+						destroy lt_transobject
+						return -1
+					end if
+				else
+					messagebox("error", lt_transobject.sqlerrtext)
+				end if
+			end if
+		end if
+	end if
+	return 0
+
+// w_patientvisit_list.wf_retrieve() returns long
+	long rtcode
+	long ll_dayslimit
+	datetime ld_date
+	ll_dayslimit = f_numberpreferences("patientvisitretrievaldayslimit") * -1
+	ld_date = datetime(relativedate(today(), ll_dayslimit))
+	rtcode = this.id_list.retrieve(gl_usercode, ld_date)
+	return rtcode
+
+// w_patientvisit_list.wf_post() returns long
+	integer ll_errcode
+	long ll_usercode
+	long ll_postcount
+	long ll_counter
+	boolean lb_flag
+	s_arguements lstr_arginfo
+	open(w_salesmanpassword)
+	ll_usercode = long(message.doubleparm)
+	setfocus()
+	if ll_usercode > 0 then
+		open(w_arg_sinvcode_linvcode_onedoctor)
+		lstr_arginfo = message.powerobjectparm
+		if lstr_arginfo.i_status = 1 then
+			setpointer(hourglass!)
+			SQL rollback USING sqlca;
+			ll_errcode = wf_lockvisits(lstr_arginfo.l_code1, lstr_arginfo.l_code2, ll_postcount)
+			if ll_errcode = 0 then
+				sqlca.postvisit(lstr_arginfo.l_code1, lstr_arginfo.l_code2, ll_usercode, lstr_arginfo.l_code3)
+				if sqlca.sqlcode <> 0 then
+					ll_errcode = -1
+				end if
+			end if
+		end if
+		if ll_errcode = 0 then
+			SQL commit USING sqlca;
+			if sqlca.sqlcode <> 0 then
+				ll_errcode = -1
+			end if
+		else
+			SQL rollback USING sqlca;
+		end if
+	else
+		setfocus()
+	end if
+	setpointer(arrow!)
+	if ll_usercode > 0 then
+		if ll_errcode <> 0 then
+			messagebox("Posting Fails", "Some database request fails, Please try again")
+		else
+			messagebox("Posting Successfull", "Total unposted rows were " + string(ll_postcount) + "~n~rAll rows have been posted successfully")
+		end if
+	end if
+	return ll_errcode
+
+// w_patientvisit_list.wf_lockvisits(long al_sinvcode, long al_linvcode, long al_totalcount) returns integer
+	SQL Select count ( *) INTO :al_totalcount From Visit WITH ( UPDLOCK HOLDLOCK ) Where VisitCode Between :al_sinvcode AND :al_linvcode AND Posted ='N' USING sqlca;
+	return sqlca.sqlcode
+
+// w_patientvisit_list.wf_retrieve(long retrievalarg) returns long
+	long rtcode
+	long ll_dayslimit
+	datetime ld_date
+	ll_dayslimit = f_numberpreferences("patientvisitretrievaldayslimit") * -1
+	ld_date = datetime(relativedate(today(), ll_dayslimit))
+	rtcode = this.id_list.retrieve(gl_usercode, ld_date)
+	return rtcode
+
+// w_patientvisit_list.create() returns 0
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_patientvisitmenu" then
+		this.menuid = create m_patientvisitmenu
+	end if
+
+// w_patientvisit_list.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_patientvisit_list.ue_new() returns 0
+	long ll_code
+	call super::ue_new
+	setnull(ll_code)
+	wf_openmywindow(ll_code)
+
+// w_patientvisit_list.ue_list() returns 0
+	long ll_rtcode
+	m_patientvisitmenu lm_menu
+	call super::ue_list
+	wf_setmenu(this.menuid)
+	lm_menu = this.menuid
+	if this.id_list.rowcount() <= 0 then
+		ll_rtcode = wf_retrieve()
+	end if
+	wf_populate_ddlb(this.id_list)
+	if ll_rtcode > 0 then
+		lm_menu.m_file.m_new.enabled = true
+		lm_menu.m_file.m_save.enabled = false
+		lm_menu.m_file.m_delete.enabled = false
+		lm_menu.m_file.m_first.enabled = true
+		lm_menu.m_file.m_next.enabled = true
+		lm_menu.m_file.m_last.enabled = true
+		lm_menu.m_file.m_print.enabled = true
+		lm_menu.m_file.m_previous.enabled = true
+		lm_menu.m_file.m_retrieve.text = "De&tail"
+		this.i_retrievemode = 2
+		this.i_editmode = 2
+		if this.il_selectedrow = 0 then
+			wf_first()
+			wf_selectunselectrow(1)
+		end if
+		this.tab_retrieve.tabpage_list.dw_find.setfocus()
+		return
+	end if
+
+// w_patientvisit_list.open() returns long
+	m_patientvisitmenu lm_menu
+	long ll_width
+	long ll_height
+	long rtcode
+	long ll_dayslimit
+	datetime ld_date
+	environment env
+	ll_dayslimit = f_numberpreferences("patientvisitretrievaldayslimit") * -1
+	ld_date = datetime(relativedate(today(), ll_dayslimit))
+	this.it_transobject = sqlca
+	postevent("ue_postopen")
+	wf_setmenu(this.menuid)
+	lm_menu = this.menuid
+	lm_menu.mf_initsecurityapp(lm_menu)
+	this.im_menu.m_file.m_save.enabled = false
+	this.im_menu.m_file.m_delete.enabled = false
+	this.im_menu.m_file.m_previous.enabled = false
+	this.im_menu.m_file.m_retrieve.text = "De&tail"
+	this.id_list = this.tab_retrieve.tabpage_list.dw_list
+	this.id_list.settransobject(this.it_transobject)
+	this.id_list.retrieve(gl_usercode, ld_date)
+	this.dw_print.dataobject = this.tab_retrieve.tabpage_list.dw_list.dataobject
+	this.id_print = this.dw_print
+	this.id_printlist = this.dw_listprint
+	this.id_print.settransobject(this.it_transobject)
+	this.id_printlist.settransobject(this.it_transobject)
+	this.id_dwcontrol = this.id_list
+	wf_populate_ddlb(this.id_dwcontrol)
+	this.tab_retrieve.tabpage_list.dw_find.settransobject(this.it_transobject)
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.tab_retrieve.width = ll_width * 0.99
+	this.tab_retrieve.height = ll_height * 0.83
+	this.tab_retrieve.tabpage_list.gb_fliter.width = ll_width * 0.97 - this.tab_retrieve.tabpage_list.gb_sort.width
+	this.tab_retrieve.tabpage_list.r_1.width = ll_width * 0.99
+	this.tab_retrieve.tabpage_list.r_1.height = ll_height * 0.765 - this.tab_retrieve.tabpage_list.gb_sort.height
+	this.tab_retrieve.tabpage_list.dw_list.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_list.dw_list.height = ll_height * 0.75 - this.tab_retrieve.tabpage_list.dw_list.y
+	setredraw(true)
+	this.is_sortsequence = "D"
+	this.tab_retrieve.tabpage_list.rb_ascending.checked = false
+	this.tab_retrieve.tabpage_list.rb_descending.checked = true
+	wf_sortdw(this.tab_retrieve.tabpage_list.ddlb_sort.text, this.is_sortsequence)
+	return ::message.returnvalue

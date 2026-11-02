@@ -1,0 +1,198 @@
+// window w_itemcategorywise_updation (singleentryitem)  ancestor: window
+
+// w_itemcategorywise_updation.ue_close() returns 0
+	wf_disconnect()
+	close(this)
+
+// w_itemcategorywise_updation.wf_duplicatealiasname(string as_aliasname, long al_icode) returns boolean
+	long ll_count
+	long ll_icode
+	long ll_row
+	boolean b_flag
+	as_aliasname = trim(as_aliasname)
+	SQL SELECT count ( *) INTO :ll_count FROM item WHERE item.customicode =:as_aliasname and item.icode <> :al_icode USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_itemcategorywise_updation.wf_disconnect() returns 0
+	SQL stop USING this.it_transobject;
+	destroy this.it_transobject
+
+// w_itemcategorywise_updation.wf_connect() returns integer
+	this.it_transobject = create u_transaction
+	SQL start USING this.it_transobject;
+	return this.it_transobject.sqlcode
+
+// w_itemcategorywise_updation.wf_duplicatename(string as_name, long al_icode) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM item WHERE item.name =:as_name and item.icode <> :al_icode USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_itemcategorywise_updation.wf_duplicate_regno(string as_regno) returns long
+	long ll_icode
+	long ll_count
+	long ll_retcode
+	as_regno = trim(as_regno)
+	if this.dw_master.getrow() > 0 then
+		ll_icode = this.dw_master.object.code[this.dw_master.getrow()]
+	end if
+	if ll_icode > 0 then
+		SQL SELECT ISNULL ( count ( *) , 0 ) INTO :ll_count FROM item WHERE item.regdno =:as_regno and icode <> :ll_icode USING sqlca;
+	else
+		SQL SELECT ISNULL ( count ( *) , 0 ) INTO :ll_count FROM item WHERE item.regdno =:as_regno USING sqlca;
+	end if
+	if sqlca.sqlcode = 0 then
+		if ll_count > 0 then
+			ll_retcode = 1
+		else
+			ll_retcode = 0
+		end if
+	else
+		ll_retcode = 2
+	end if
+	return ll_retcode
+
+// w_itemcategorywise_updation.create() returns 0
+	this.cb_cancel = create cb_cancel
+	this.dw_master = create dw_master
+	this.cb_save = create cb_save
+	this.control = {this.cb_cancel, this.dw_master, this.cb_save}
+
+// w_itemcategorywise_updation.destroy() returns 0
+	destroy this.cb_cancel
+	destroy this.dw_master
+	destroy this.cb_save
+
+// w_itemcategorywise_updation.open() returns long
+	long ll_rtcode
+	long ll_code
+	long ll_counter
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	setredraw(false)
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width
+		ll_height = ll_win_height
+		this.width = ll_width * 0.99
+		this.height = ll_height * 0.90
+		this.dw_master.width = ll_width * 0.98
+		this.dw_master.height = this.height * 0.95 - 100 - this.cb_save.height
+		this.dw_master.x = 5
+		this.dw_master.y = 5
+		this.cb_save.y = this.height * 0.95 - this.cb_save.height - 70
+		this.cb_cancel.y = this.height * 0.95 - this.cb_save.height - 70
+		this.cb_save.x = 5
+		this.cb_cancel.x = 5 + this.cb_save.width + 20
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	wf_connect()
+	this.ids_itemcat = create u_ds_standard
+	this.ids_itemcat.dataobject = "d_itemcategorywiseupdation"
+	this.ids_itemcat.settransobject(this.it_transobject)
+	this.dw_master.settransobject(this.it_transobject)
+	this.dw_master.retrieve()
+	setredraw(true)
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.wf_disconnect()
+	close(parent)
+	return ::message.returnvalue
+
+// dw_master.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	integer li_movement
+	long ll_row
+	long ll_temp
+	string sl_columnname
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keypagedown! then
+		ll_row = parent.dw_master.scrollnextpage()
+	elseif key = keypageup! then
+		ll_row = parent.dw_master.scrollpriorpage()
+	elseif key = keyescape! then
+		if parent.ib_editflag then
+			SQL rollback USING parent.it_transobject;
+			if update(true, true) > 0 then
+				SQL commit USING parent.it_transobject;
+				parent.ib_editflag = false
+			else
+				SQL rollback USING parent.it_transobject;
+			end if
+		end if
+		parent.post event ue_close()
+	elseif key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+		return 1
+	end if
+	if ll_row > 0 and ll_row <= rowcount() then
+		parent.il_selectedrow = ll_row
+	end if
+	return ::message.returnvalue
+
+// dw_master.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	parent.ib_editflag = true
+	return ::message.returnvalue
+
+// cb_save.clicked() returns long
+	long li_rtcode
+	long ll_counter
+	long ll_insrow
+	if parent.ib_editflag then
+		SQL rollback USING parent.it_transobject;
+		SQL DELETE ItemCategoryWiseUpdation USING parent.it_transobject;
+		if parent.it_transobject.sqlcode = 0 then
+			for ll_counter = 1 to parent.dw_master.rowcount()
+				if parent.dw_master.object.updatepurprice[ll_counter] = "Y" or parent.dw_master.object.updatesaleprice[ll_counter] = "Y" or parent.dw_master.object.updatesaleprice2[ll_counter] = "Y" or parent.dw_master.object.updatesaleprice3[ll_counter] = "Y" or parent.dw_master.object.updatesaleprice4[ll_counter] = "Y" or parent.dw_master.object.updatesaleprice5[ll_counter] = "Y" or parent.dw_master.object.updatesalediscperc[ll_counter] = "Y" or parent.dw_master.object.updatesalediscperc2[ll_counter] = "Y" or parent.dw_master.object.updatesalediscperc3[ll_counter] = "Y" or parent.dw_master.object.updatesalediscperc4[ll_counter] = "Y" or parent.dw_master.object.updatesalediscperc5[ll_counter] = "Y" then
+					ll_insrow = parent.ids_itemcat.insertrow(0)
+					parent.ids_itemcat.object.icatcode[ll_insrow] = parent.dw_master.object.icatcode[ll_counter]
+					parent.ids_itemcat.object.name[ll_insrow] = parent.dw_master.object.name[ll_counter]
+					parent.ids_itemcat.object.updatepurprice[ll_insrow] = parent.dw_master.object.updatepurprice[ll_counter]
+					parent.ids_itemcat.object.updatesaleprice[ll_insrow] = parent.dw_master.object.updatesaleprice[ll_counter]
+					parent.ids_itemcat.object.updatesaleprice2[ll_insrow] = parent.dw_master.object.updatesaleprice2[ll_counter]
+					parent.ids_itemcat.object.updatesaleprice3[ll_insrow] = parent.dw_master.object.updatesaleprice3[ll_counter]
+					parent.ids_itemcat.object.updatesaleprice4[ll_insrow] = parent.dw_master.object.updatesaleprice4[ll_counter]
+					parent.ids_itemcat.object.updatesaleprice5[ll_insrow] = parent.dw_master.object.updatesaleprice5[ll_counter]
+					parent.ids_itemcat.object.updatesalediscperc[ll_insrow] = parent.dw_master.object.updatesalediscperc[ll_counter]
+					parent.ids_itemcat.object.updatesalediscperc2[ll_insrow] = parent.dw_master.object.updatesalediscperc2[ll_counter]
+					parent.ids_itemcat.object.updatesalediscperc3[ll_insrow] = parent.dw_master.object.updatesalediscperc3[ll_counter]
+					parent.ids_itemcat.object.updatesalediscperc4[ll_insrow] = parent.dw_master.object.updatesalediscperc4[ll_counter]
+					parent.ids_itemcat.object.updatesalediscperc5[ll_insrow] = parent.dw_master.object.updatesalediscperc5[ll_counter]
+				end if
+			next
+			if parent.ids_itemcat.update(true, true) > 0 then
+				SQL commit USING parent.it_transobject;
+				close(parent)
+				return ::message.returnvalue
+			else
+				SQL rollback USING parent.it_transobject;
+			end if
+		end if
+	else
+		close(parent)
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue

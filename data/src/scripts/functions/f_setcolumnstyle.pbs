@@ -1,0 +1,44 @@
+// function f_setcolumnstyle (functions)  ancestor: function_object
+
+// f_setcolumnstyle.f_setcolumnstyle(datawindow adw_dw, string as_col) returns long
+	string ls_temp
+	string ls_stylename
+	string ls_editstyle
+	string ls_names
+	string[] ls_colnames
+	string ls_thiscolumn
+	string ls_coltype
+	string ls_colstyle
+	long ll_totcols
+	long ll_len
+	long ll_lastpos
+	long ll_arrcount
+	long ll_counter
+	SQL SELECT styledesc , stylename INTO :ls_editstyle, :ls_stylename FROM ColumnEditStyle WHERE ColumnName =:as_col AND ColPrecision IN ( SELECT ColPrecision FROM DBO.ColumnPreferences WHERE ColumnName =:as_col ) USING sqlca;
+	ls_names = adw_dw.object.datawindow.objects
+	ll_len = len(ls_names)
+	ll_lastpos = 1
+	ll_arrcount = 1
+	for ll_counter = 1 to ll_len
+		if mid(ls_names, ll_counter, 1) = "~t" then
+			ls_colnames[ll_arrcount] = mid(ls_names, ll_lastpos, ll_counter - ll_lastpos)
+			ls_thiscolumn = trim(ls_colnames[ll_arrcount])
+			ls_coltype = adw_dw.describe(ls_thiscolumn + ".type")
+			if ls_coltype = "column" or ls_coltype = "compute" then
+				ls_colstyle = adw_dw.describe(ls_thiscolumn + ".edit.name")
+				if ls_colstyle = ls_stylename then
+					if ls_coltype = "column" then
+						ls_temp = ls_thiscolumn + ".EditMask.mask='" + trim(ls_editstyle) + "'"
+						adw_dw.modify(ls_temp)
+					end if
+					if ls_coltype = "column" or ls_coltype = "compute" then
+						ls_temp = ls_thiscolumn + ".Format='" + trim(ls_editstyle) + "'"
+						adw_dw.modify(ls_temp)
+					end if
+				end if
+			end if
+			ll_arrcount = ll_arrcount + 1
+			ll_lastpos = ll_counter + 1
+		end if
+	next
+	return 0

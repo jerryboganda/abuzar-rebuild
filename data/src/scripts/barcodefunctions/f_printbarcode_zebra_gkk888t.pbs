@@ -1,0 +1,458 @@
+// function f_printbarcode_zebra_gkk888t (barcodefunctions)  ancestor: function_object
+
+// f_printbarcode_zebra_gkk888t.f_printbarcode_zebra_gkk888t(datawindow id_master, datawindow id_detail, boolean ib_printprice) returns long
+	long ll_totalrows
+	long ll_counter
+	long ll_innercounter
+	long ll_qty
+	long ll_currrow
+	long ll_tot_label_rows
+	long ll_job
+	integer li_startcell
+	integer li_stopcell
+	integer li_temp
+	integer li_file
+	integer li_file2
+	string ls_clientname
+	string ls_clientname_25_char
+	string ls_itemname
+	string ls_aliasname
+	string ls_price
+	string ls_filecontent
+	string ls_seperator
+	string ls_date
+	string ls_format
+	string ls_xpos
+	string ls_infocode
+	string ls_printer
+	string ls_manufshortname
+	string ls_design
+	string ls_purprice
+	string ls_supp_alias
+	string ls_contents
+	string ls_expiry
+	string ls_manfdate
+	string ls_mfg_exp
+	long ll_headerno
+	long ll_labelno
+	long ll_labelpos
+	long ll_supply_cols_per_row
+	integer li_barcodeleninprint
+	ls_seperator = ";"
+	ls_supp_alias = id_master.object.aliasname[id_master.getrow()]
+	ll_headerno = id_master.getitemnumber(id_master.getrow(), "headerno")
+	ls_clientname = trim(f_reportheaderinfo_wrt_headerno("clientname", ll_headerno))
+	ls_clientname_25_char = upper(left(trim(f_reportheaderinfo_wrt_headerno("clientname", ll_headerno)), 25))
+	li_barcodeleninprint = f_numberpreferences("BarCodeLenInPrint")
+	ll_totalrows = id_detail.rowcount()
+	ls_printer = trim(id_master.object.barcodeprinter[1])
+	if lower(ls_printer) = lower("ZDesigner GK888t (EPL)") then
+		ls_format = id_master.object.labelformat[1]
+		if ls_format = "1" then
+			li_file = fileopen("label.prn", linemode!, write!, lockwrite!, replace!)
+			if li_file = -1 then
+				messagebox("Error", "Unable to locate file for Label printing")
+				return 0
+			else
+				ls_filecontent = ""
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "Q152,024"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "q863"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "rN"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "S3"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "D7"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "ZB"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "JF"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "OD"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "R305,0"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "f100"
+				filewrite(li_file, ls_filecontent)
+				for ll_counter = 1 to ll_totalrows
+					if id_detail.getitemnumber(ll_counter, "qty") > 0.0 then
+						ls_filecontent = ""
+						ls_itemname = ""
+						ls_aliasname = ""
+						ls_price = ""
+						ll_qty = 0
+						ll_qty = id_detail.getitemnumber(ll_counter, "qty")
+						ls_itemname = id_detail.getitemstring(ll_counter, "itemname")
+						ls_aliasname = left(trim(id_detail.getitemstring(ll_counter, "fullcode")), li_barcodeleninprint)
+						if ib_printprice then
+							ls_price = "Rs: " + trim(string(round(id_detail.getitemdecimal(ll_counter, "saleprice"), 2)))
+						else
+							ls_price = ""
+						end if
+						ls_filecontent = "A1,00,0,2,1,1,N,~"" + ls_clientname + "~""
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "B1,20,0,1,2,4,37,N,~"" + ls_aliasname + "~""
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "A1,61,0,2,1,1,N,~"" + ls_aliasname + "~""
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "A1,82,0,1,1,1,N,~"" + trim(left(ls_itemname, 22)) + "~""
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "A1,97,0,1,1,1,N,~"" + trim(mid(ls_itemname, 23, 22)) + "~""
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "A1,111,0,3,1,1,N,~"" + ls_price + "~""
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "P" + trim(string(ll_qty))
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "N"
+						filewrite(li_file, ls_filecontent)
+					end if
+				next
+				fileclose(li_file)
+				li_file2 = fileopen("label.prn", textmode!, read!, lockread!)
+				if li_file2 = -1 then
+					messagebox("Error", "Unable to locate file for Label printing")
+					return 0
+				else
+					filereadex(li_file2, ls_contents)
+					fileclose(li_file2)
+					printsetprinter("ZDesigner GK888t (EPL)")
+					ll_job = printopen("waseela", false)
+					if ll_job = -1 then
+						messagebox("Error", "Unable to Open Print Job for Label printing")
+					else
+						printsend(ll_job, ls_contents)
+						printclose(ll_job)
+					end if
+				end if
+			end if
+		elseif ls_format = "2" then
+			li_file = fileopen("label.prn", linemode!, write!, lockwrite!, replace!)
+			if li_file = -1 then
+				messagebox("Error", "Unable to locate file for Label printing")
+				return 0
+			else
+				ls_filecontent = ""
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "Q224,024"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "q880"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "rN"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "S4"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "D7"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "ZB"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "JF"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "OD"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "R270,0"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "f70"
+				filewrite(li_file, ls_filecontent)
+				for ll_counter = 1 to ll_totalrows
+					if id_detail.getitemnumber(ll_counter, "qty") > 0.0 then
+						ls_filecontent = ""
+						ls_itemname = ""
+						ls_aliasname = ""
+						ls_price = ""
+						ll_qty = 0
+						ll_qty = id_detail.getitemnumber(ll_counter, "qty")
+						ls_itemname = id_detail.getitemstring(ll_counter, "itemname")
+						ls_aliasname = left(trim(id_detail.getitemstring(ll_counter, "fullcode")), li_barcodeleninprint)
+						if ib_printprice then
+							ls_price = "Rs: " + trim(string(round(id_detail.getitemdecimal(ll_counter, "saleprice"), 2)))
+						else
+							ls_price = ""
+						end if
+						ls_manfdate = string(id_detail.object.manfdate[ll_counter], "dd-mmm-yy")
+						ls_expiry = string(id_detail.object.expiry[ll_counter], "dd-mmm-yy")
+						if isnull(ls_manfdate) then
+							ls_manfdate = ""
+						end if
+						if isnull(ls_expiry) then
+							ls_expiry = ""
+						end if
+						if ls_expiry = "" then
+							ls_mfg_exp = ""
+						else
+							ls_mfg_exp = "Exp:" + ls_expiry
+						end if
+						if ls_manfdate <> "" then
+							if len(ls_mfg_exp) > 0 then
+								ls_mfg_exp = ls_mfg_exp + "," + "Mfg:" + ls_manfdate
+							else
+								ls_mfg_exp = "Mfg:" + ls_manfdate
+							end if
+						end if
+						ls_filecontent = "A1,10,0,3,1,1,N,~"" + ls_clientname + "~""
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "B1,35,0,1,2,4,70,N,~"" + ls_aliasname + "~""
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "A1,110,0,3,1,1,N,~"" + ls_aliasname + "~""
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "A1,132,0,2,1,1,N,~"" + trim(left(ls_itemname, 22)) + "~""
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "A1,150,0,2,1,1,N,~"" + trim(mid(ls_itemname, 23, 22)) + "~""
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "A1,170,0,4,1,1,N,~"" + ls_price + "~""
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "A1,197,0,1,1,1,N,~"" + ls_mfg_exp + "~""
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "P" + trim(string(ll_qty))
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "N"
+						filewrite(li_file, ls_filecontent)
+					end if
+				next
+				fileclose(li_file)
+				li_file2 = fileopen("label.prn", textmode!, read!, lockread!)
+				if li_file2 = -1 then
+					messagebox("Error", "Unable to locate file for Label printing")
+					return 0
+				else
+					filereadex(li_file2, ls_contents)
+					fileclose(li_file2)
+					printsetprinter("ZDesigner GK888t (EPL)")
+					ll_job = printopen("waseela", false)
+					if ll_job = -1 then
+						messagebox("Error", "Unable to Open Print Job for Label printing")
+					else
+						printsend(ll_job, ls_contents)
+						printclose(ll_job)
+					end if
+				end if
+			end if
+		elseif ls_format = "3" then
+			li_file = fileopen("label.prn", linemode!, write!, lockwrite!, replace!)
+			if li_file = -1 then
+				messagebox("Error", "Unable to locate file for Label printing")
+				return 0
+			else
+				ls_filecontent = ""
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "Q320,024"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "q880"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "rN"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "S4"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "D7"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "ZB"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "JF"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "OD"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "R190,0"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "f70"
+				filewrite(li_file, ls_filecontent)
+				for ll_counter = 1 to ll_totalrows
+					if id_detail.getitemnumber(ll_counter, "qty") > 0.0 then
+						ls_filecontent = ""
+						ls_itemname = ""
+						ls_aliasname = ""
+						ls_price = ""
+						ll_qty = 0
+						ll_qty = id_detail.getitemnumber(ll_counter, "qty")
+						ls_itemname = id_detail.getitemstring(ll_counter, "itemname")
+						ls_aliasname = left(trim(id_detail.getitemstring(ll_counter, "fullcode")), li_barcodeleninprint)
+						if ib_printprice then
+							ls_price = "Rs:" + trim(string(round(id_detail.getitemdecimal(ll_counter, "saleprice"), 2)))
+						else
+							ls_price = ""
+						end if
+						ls_manfdate = string(id_detail.object.manfdate[ll_counter], "dd-mmm-yy")
+						ls_expiry = string(id_detail.object.expiry[ll_counter], "dd-mmm-yy")
+						if isnull(ls_manfdate) then
+							ls_manfdate = ""
+						end if
+						if isnull(ls_expiry) then
+							ls_expiry = ""
+						end if
+						if ls_expiry = "" then
+							ls_mfg_exp = ""
+						else
+							ls_mfg_exp = "Expiry:" + ls_expiry
+						end if
+						if ls_manfdate <> "" then
+							if len(ls_mfg_exp) > 0 then
+								ls_mfg_exp = ls_mfg_exp + "," + "Packed:" + ls_manfdate
+							else
+								ls_mfg_exp = "Packed:" + ls_manfdate
+							end if
+						end if
+						ls_filecontent = "A1,10,0,4,1,1,N,~"" + ls_clientname + "~""
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "B1,40,0,1,2,4,90,N,~"" + ls_aliasname + "~""
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "A1,132,0,4,1,1,N,~"" + ls_aliasname + "~""
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "A1,160,0,4,1,1,N,~"" + trim(left(ls_itemname, 28)) + "~""
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "A1,188,0,4,1,1,N,~"" + trim(mid(ls_itemname, 29, 28)) + "~""
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "A20,225,0,4,2,2,R,~"" + ls_price + "~""
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "A1,285,0,2,1,1,N,~"" + ls_mfg_exp + "~""
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "P" + trim(string(ll_qty))
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "N"
+						filewrite(li_file, ls_filecontent)
+					end if
+				next
+				fileclose(li_file)
+				li_file2 = fileopen("label.prn", textmode!, read!, lockread!)
+				if li_file2 = -1 then
+					messagebox("Error", "Unable to locate file for Label printing")
+					return 0
+				else
+					filereadex(li_file2, ls_contents)
+					fileclose(li_file2)
+					printsetprinter("ZDesigner GK888t (EPL)")
+					ll_job = printopen("waseela", false)
+					if ll_job = -1 then
+						messagebox("Error", "Unable to Open Print Job for Label printing")
+					else
+						printsend(ll_job, ls_contents)
+						printclose(ll_job)
+					end if
+				end if
+			end if
+		elseif ls_format = "4" then
+			ll_supply_cols_per_row = 3
+			li_file = fileopen("label.prn", linemode!, write!, lockwrite!, replace!)
+			if li_file = -1 then
+				messagebox("Error", "Unable to locate file for Label printing")
+				return 0
+			else
+				ls_filecontent = ""
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "Q200,024"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "q880"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "rN"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "S4"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "D7"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "ZB"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "JF"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "OD"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "R20,0"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "f70"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "N"
+				filewrite(li_file, ls_filecontent)
+				ll_labelno = 1
+				for ll_counter = 1 to ll_totalrows
+					if id_detail.getitemnumber(ll_counter, "qty") > 0.0 then
+						ls_filecontent = ""
+						ls_itemname = ""
+						ls_aliasname = ""
+						ls_price = ""
+						ll_qty = 0
+						ll_qty = id_detail.getitemnumber(ll_counter, "qty")
+						ls_itemname = id_detail.getitemstring(ll_counter, "itemname")
+						ls_aliasname = left(trim(id_detail.getitemstring(ll_counter, "fullcode")), li_barcodeleninprint)
+						if ib_printprice then
+							ls_price = "Rs: " + trim(string(round(id_detail.getitemdecimal(ll_counter, "saleprice"), 2)))
+						else
+							ls_price = ""
+						end if
+						ls_manfdate = string(id_detail.object.manfdate[ll_counter], "mmm-yy")
+						ls_expiry = string(id_detail.object.expiry[ll_counter], "mmm-yy")
+						if isnull(ls_manfdate) then
+							ls_manfdate = ""
+						end if
+						if isnull(ls_expiry) then
+							ls_expiry = ""
+						end if
+						if ls_expiry = "" then
+							ls_mfg_exp = ""
+						else
+							ls_mfg_exp = "Exp:" + ls_expiry
+						end if
+						if ls_manfdate <> "" then
+							if len(ls_mfg_exp) > 0 then
+								ls_mfg_exp = ls_mfg_exp + "," + "Mfg:" + ls_manfdate
+							else
+								ls_mfg_exp = "Mfg:" + ls_manfdate
+							end if
+						end if
+						for ll_innercounter = 1 to ll_qty
+							ll_labelpos = ll_labelno mod ll_supply_cols_per_row
+							if ll_labelpos = 1 then
+								ls_xpos = "16"
+							elseif ll_labelpos = 2 then
+								ls_xpos = "290"
+							else
+								ls_xpos = "560"
+							end if
+							ls_filecontent = "A" + ls_xpos + ",01,0,3,1,1,N,~"" + ls_clientname + "~""
+							filewrite(li_file, ls_filecontent)
+							ls_filecontent = "B" + ls_xpos + ",25,0,1,2,4,50,N,~"" + ls_aliasname + "~""
+							filewrite(li_file, ls_filecontent)
+							ls_filecontent = "A" + ls_xpos + ",80,0,3,1,1,N,~"" + ls_aliasname + "~""
+							filewrite(li_file, ls_filecontent)
+							ls_filecontent = "A" + ls_xpos + ",102,0,2,1,1,N,~"" + trim(left(ls_itemname, 20)) + "~""
+							filewrite(li_file, ls_filecontent)
+							ls_filecontent = "A" + ls_xpos + ",120,0,2,1,1,N,~"" + trim(mid(ls_itemname, 21, 20)) + "~""
+							filewrite(li_file, ls_filecontent)
+							ls_filecontent = "A" + ls_xpos + ",140,0,4,1,1,N,~"" + ls_price + "~""
+							filewrite(li_file, ls_filecontent)
+							ls_filecontent = "A" + ls_xpos + ",167,0,1,1,1,N,~"" + ls_mfg_exp + "~""
+							filewrite(li_file, ls_filecontent)
+							if ll_labelpos = 0 then
+								ls_filecontent = "P1"
+								filewrite(li_file, ls_filecontent)
+								ls_filecontent = "N"
+								filewrite(li_file, ls_filecontent)
+							end if
+							ll_labelno = ll_labelno + 1
+						next
+					end if
+				next
+				if ll_labelpos > 0 then
+					ls_filecontent = "P1"
+					filewrite(li_file, ls_filecontent)
+					ls_filecontent = "N"
+					filewrite(li_file, ls_filecontent)
+				end if
+				fileclose(li_file)
+				li_file2 = fileopen("label.prn", textmode!, read!, lockread!)
+				if li_file2 = -1 then
+					messagebox("Error", "Unable to locate file for Label printing")
+					return 0
+				else
+					filereadex(li_file2, ls_contents)
+					fileclose(li_file2)
+					printsetprinter("ZDesigner GK888t (EPL)")
+					ll_job = printopen("waseela", false)
+					if ll_job = -1 then
+						messagebox("Error", "Unable to Open Print Job for Label printing")
+					else
+						printsend(ll_job, ls_contents)
+						printclose(ll_job)
+					end if
+				end if
+			end if
+		end if
+	end if
+	return 0

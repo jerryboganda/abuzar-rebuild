@@ -1,0 +1,221 @@
+// window w_popup_customer (templates)  ancestor: window
+
+// w_popup_customer.ue_postopen() returns 0
+	long ll_rtncode
+	this.istr_template.b_userinput = false
+	this.dw_detail.settransobject(sqlca)
+	this.dw_detail.reset()
+	this.dw_detail.insertrow(0)
+	ll_rtncode = this.dw_detail.getchild("customer_subareacode", this.idc_subarea)
+	if ll_rtncode = -1 then
+		messagebox("Error", "Can not get a DataWindowChild")
+		close(this)
+	end if
+	this.idc_subarea.settransobject(sqlca)
+	this.idc_subarea.retrieve()
+	this.idc_subarea.setfilter("areacode=1")
+	this.idc_subarea.filter()
+
+// w_popup_customer.wf_duplicatealiasname(string as_aliasname) returns boolean
+	long ll_count
+	boolean b_flag
+	as_aliasname = trim(as_aliasname)
+	SQL SELECT count ( *) INTO :ll_count FROM Accounts WHERE Accounts.aliasname =:as_aliasname USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_popup_customer.wf_duplicateaccname(string as_accname) returns boolean
+	long ll_count
+	boolean b_flag
+	as_accname = trim(as_accname)
+	SQL SELECT count ( *) INTO :ll_count FROM Accounts WHERE Accounts.name =:as_accname USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_popup_customer.create() returns 0
+	this.dw_detail = create dw_detail
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.gb_2 = create gb_2
+	this.control = {this.dw_detail, this.cb_cancel, this.cb_ok, this.gb_2}
+
+// w_popup_customer.destroy() returns 0
+	destroy this.dw_detail
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.gb_2
+
+// w_popup_customer.open() returns long
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	post event ue_postopen()
+	return ::message.returnvalue
+
+// w_popup_customer.close() returns long
+	closewithreturn(this, this.istr_template)
+	return ::message.returnvalue
+
+// w_popup_customer.key(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		post event Close()
+	end if
+	return ::message.returnvalue
+
+// dw_detail.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long
+	long ll_null
+	choose case dwo.name
+	case "accounts_name"
+		if parent.wf_duplicateaccname(data) then
+			messagebox("Name Validation", "Duplication Name Error~n~rPlease Choose Some Other Name")
+			return 1
+		end if
+	case "accounts_aliasname"
+		if parent.wf_duplicatealiasname(data) then
+			messagebox("AliasName Validation", "Duplication AliasName Error~n~rPlease Choose Some Other Name")
+			return 1
+		end if
+	case "customer_areacode"
+		parent.idc_subarea.setredraw(false)
+		setnull(ll_null)
+		setitem(1, "customer_subareacode", ll_null)
+		if parent.idc_subarea.setfilter("areacode=" + data) = 1 then
+			parent.idc_subarea.filter()
+			parent.idc_subarea.setredraw(true)
+		else
+			messagebox("Sub Area Filter", "Unable to filter Sub Area Column")
+			return 1
+		end if
+		return
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "accounts_name"
+		if data = "" or isnull(data) then
+			messagebox("Customer Name Validation", "Please enter valid value for customer")
+		end if
+	end choose
+	return 1
+
+// cb_cancel.clicked() returns long
+	parent.istr_template.b_userinput = false
+	parent.post event Close()
+	return ::message.returnvalue
+
+// cb_ok.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		post event clicked()
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	long ll_find
+	long ll_counter
+	long ll_rowcount
+	long[] lla_detailrows
+	long ll_newid
+	long ll_row
+	integer li_index
+	integer li_rc
+	string ls_err
+	string ls_mod
+	boolean lb_commitok
+	datawindow ldw_detail
+	parent.istr_template.b_userinput = false
+	ll_row = parent.dw_detail.getrow()
+	if f_validatedw(parent.dw_detail) < 0 then
+		return ::message.returnvalue
+	end if
+	ll_newid = parent.dw_detail.object.code[ll_row]
+	if isnull(ll_newid) then
+		f_newtableid("Accounts", ll_newid)
+		parent.dw_detail.object.code[ll_row] = ll_newid
+		parent.dw_detail.object.accounts_acccode[ll_row] = ll_newid
+	end if
+	ldw_detail = parent.dw_detail
+	li_rc = ldw_detail.update(true, false)
+	if li_rc = 1 then
+		ls_mod = "accounts_acccode.Update=No "
+		ls_mod = ls_mod + "accounts_name.Update=No "
+		ls_mod = ls_mod + "accounts_SubCode.Update=No "
+		ls_mod = ls_mod + "accounts_openingdate.Update=No "
+		ls_mod = ls_mod + "accounts_aliasname.Update=No "
+		ls_mod = ls_mod + "accounts_active.Update=No "
+		ls_mod = ls_mod + "accounts_acccode.Key=No "
+		ls_mod = ls_mod + "DataWindow.Table.UpdateTable='customer' "
+		ls_mod = ls_mod + "code.Key=Yes "
+		ls_mod = ls_mod + "code.Update=Yes "
+		ls_mod = ls_mod + "customer_CP.Update=Yes "
+		ls_mod = ls_mod + "customer_address1.Update=Yes "
+		ls_mod = ls_mod + "customer_address2.Update=Yes "
+		ls_mod = ls_mod + "customer_city.Update=Yes "
+		ls_mod = ls_mod + "customer_country.Update=Yes "
+		ls_mod = ls_mod + "customer_phone.Update=Yes "
+		ls_mod = ls_mod + "customer_fax.Update=Yes "
+		ls_mod = ls_mod + "customer_email.Update=Yes "
+		ls_mod = ls_mod + "customer_areacode.Update=Yes "
+		ls_mod = ls_mod + "customer_crlimit.Update=Yes "
+		ls_mod = ls_mod + "customer_dayslimit.Update=Yes "
+		ls_mod = ls_mod + "customer_custcatcode.Update=Yes "
+		ls_mod = ls_mod + "customer_licenceno.Update=Yes "
+		ls_mod = ls_mod + "customer_licenceexpiry.Update=Yes "
+		ls_mod = ls_mod + "customer_SalesTaxRegNo.Update=Yes "
+		ls_mod = ls_mod + "customer_DefaultGST.Update=Yes "
+		ls_mod = ls_mod + "customer_InvDiscperc.Update=Yes "
+		ls_mod = ls_mod + "customer_messagecode.Update=Yes "
+		ls_mod = ls_mod + "customer_salesmancode.Update=Yes "
+		ls_mod = ls_mod + "customer_subareacode.Update=Yes "
+		ls_err = ldw_detail.modify(ls_mod)
+		if ls_err <> "" then
+			messagebox("DataWindow Modify Error", ls_err)
+		end if
+		li_rc = ldw_detail.update()
+		if li_rc = 1 then
+			SQL commit USING sqlca;
+			if sqlca.sqlcode <> 0 then
+				SQL rollback USING sqlca;
+				messagebox("Error on Saving", sqlca.sqlerrtext)
+			else
+				messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+				lb_commitok = true
+			end if
+		else
+			messagebox("Update of Customer Table Failed", "Rolling back changes to " + "accounts  and Customer Tables")
+			SQL rollback USING sqlca;
+		end if
+	else
+		messagebox("Update of accounts Table Failed", "Rolling back changes to " + "accounts Table")
+		SQL rollback USING sqlca;
+	end if
+	if lb_commitok = true then
+		parent.istr_template.b_userinput = true
+		parent.istr_template.l_invtemplate = ll_newid
+		parent.post event Close()
+	end if
+	return ::message.returnvalue
+
+// gb_2.ue_getfocus() returns long
+	parent.dw_detail.setfocus()
+	return ::message.returnvalue

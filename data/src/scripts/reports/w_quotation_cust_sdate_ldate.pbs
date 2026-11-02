@@ -1,0 +1,145 @@
+// window w_quotation_cust_sdate_ldate (reports)  ancestor: window
+
+// w_quotation_cust_sdate_ldate.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		post event ue_close()
+	end if
+	return ::message.returnvalue
+
+// w_quotation_cust_sdate_ldate.ue_close() returns 0
+	closewithreturn(this, this.istr_arg)
+
+// w_quotation_cust_sdate_ldate.wf_assigndwobjects(string as_masterdw, string as_detaildw, string as_footerdw) returns 0
+	this.dw_master.dataobject = as_masterdw
+	this.dw_detail.dataobject = as_detaildw
+	this.dw_footer.dataobject = as_footerdw
+	this.dw_master.settransobject(sqlca)
+	this.dw_detail.settransobject(sqlca)
+	this.dw_footer.settransobject(sqlca)
+
+// w_quotation_cust_sdate_ldate.create() returns 0
+	this.cb_cancel = create cb_cancel
+	this.dw_footer = create dw_footer
+	this.dw_master = create dw_master
+	this.cb_retrieve = create cb_retrieve
+	this.cb_ok = create cb_ok
+	this.dw_detail = create dw_detail
+	this.control = {this.cb_cancel, this.dw_footer, this.dw_master, this.cb_retrieve, this.cb_ok, this.dw_detail}
+
+// w_quotation_cust_sdate_ldate.destroy() returns 0
+	destroy this.cb_cancel
+	destroy this.dw_footer
+	destroy this.dw_master
+	destroy this.cb_retrieve
+	destroy this.cb_ok
+	destroy this.dw_detail
+
+// w_quotation_cust_sdate_ldate.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	long ll_custcode
+	string ls_date
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	wf_assigndwobjects("d_quotation_customer_sdate_ldate", "d_quotation_cust_sdate_ldate", "")
+	this.dw_master.insertrow(0)
+	this.dw_master.scrolltorow(0)
+	ls_date = string(date(this.dw_master.getitemdatetime(this.dw_master.getrow(), "startdate")), "mm/dd/yyyy")
+	this.dw_master.setitem(this.dw_master.getrow(), "startdate", datetime(date(ls_date), time(" 00:00:00")))
+	this.dw_master.setitem(this.dw_master.getrow(), "enddate", datetime(date(ls_date), time(" 23:59:59")))
+	this.dw_master.setcolumn("startdate")
+	this.dw_master.setfocus()
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.istr_arg.i_status = -1
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// dw_master.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// cb_retrieve.clicked() returns long
+	string ls_filter
+	datetime ldt_stardate
+	datetime ldt_enddate
+	long ll_masterrow
+	long ll_custcode
+	long ll_null
+	setnull(ll_null)
+	parent.dw_master.accepttext()
+	ll_masterrow = parent.dw_master.getrow()
+	if ll_masterrow > 0 then
+		if isnull(parent.dw_master.getitemnumber(ll_masterrow, "custcode")) then
+			ll_custcode = ll_null
+		else
+			ll_custcode = parent.dw_master.getitemnumber(ll_masterrow, "custcode")
+		end if
+		ldt_stardate = parent.dw_master.getitemdatetime(ll_masterrow, "startdate")
+		ldt_enddate = parent.dw_master.getitemdatetime(ll_masterrow, "enddate")
+	else
+		ll_custcode = ll_null
+	end if
+	if ldt_stardate <= ldt_enddate then
+		parent.dw_detail.retrieve(ll_custcode, ldt_stardate, ldt_enddate)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	long[] ll_invcode
+	long ll_rowcount
+	long ll_counter
+	long ll_arrindex
+	long ll_thiscode
+	boolean lb_flag
+	string ls_date
+	parent.istr_arg.l_code1 = parent.dw_master.getitemnumber(parent.dw_master.getrow(), "custcode")
+	parent.istr_arg.s_name1 = ""
+	ll_rowcount = parent.dw_detail.rowcount()
+	for ll_counter = 1 to ll_rowcount
+		if parent.dw_detail.getitemstring(ll_counter, "selected") = "Y" then
+			lb_flag = true
+			ll_arrindex = ll_arrindex + 1
+			ls_date = string(date(parent.dw_detail.getitemdatetime(ll_counter, "date")), "dd/mm/yyyy")
+			ll_thiscode = parent.dw_detail.getitemnumber(ll_counter, "quotationcode")
+			parent.istr_arg.ia_integerlist[ll_arrindex] = ll_thiscode
+			parent.istr_arg.s_name1 = parent.istr_arg.s_name1 + trim(string(ll_thiscode)) + ","
+		end if
+	next
+	if right(parent.istr_arg.s_name1, 1) = "," then
+		parent.istr_arg.s_name1 = left(parent.istr_arg.s_name1, len(parent.istr_arg.s_name1) - 1)
+	end if
+	if lb_flag then
+		parent.istr_arg.i_status = 1
+		parent.istr_arg.d_sdate = parent.dw_master.object.startdate[1]
+		parent.istr_arg.d_edate = parent.dw_master.object.enddate[1]
+	else
+		messagebox("Quotation Selection", "Please retrieve and select some valid quotations", stopsign!)
+		return ::message.returnvalue
+	end if
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// dw_detail.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1

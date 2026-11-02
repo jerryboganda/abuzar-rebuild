@@ -1,0 +1,33 @@
+// window w_alert_form (singleentry)  ancestor: w_single_entry
+
+// w_alert_form.ue_newform() returns 0
+	call super::ue_newform
+
+// w_alert_form.create() returns 0
+	integer icurrent
+	call super::create
+
+// w_alert_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_alert_form.activate() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::activate()
+	this.is_tablename = "Alert"
+	this.windowstate = maximized!
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_alert_form.ue_save() returns 0
+	long ll_newid
+	long ll_row
+	ll_row = this.id_detail.getrow()
+	ll_newid = this.id_detail.object.code[this.id_detail.getrow()]
+	if isnull(ll_newid) then
+		f_newtableid("Alert", ll_newid)
+		this.id_detail.object.code[ll_row] = ll_newid
+	end if
+	call super::ue_save

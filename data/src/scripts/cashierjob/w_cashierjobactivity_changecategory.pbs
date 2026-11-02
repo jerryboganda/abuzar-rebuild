@@ -1,0 +1,293 @@
+// window w_cashierjobactivity_changecategory (cashierjob)  ancestor: window
+
+// w_cashierjobactivity_changecategory.ue_close(integer ai_status) returns 0
+	closewithreturn(this, ai_status)
+
+// w_cashierjobactivity_changecategory.wf_filteraccounts(long al_groupcode) returns long
+	long ll_max_module
+	integer li_rtncode
+	string ls_custfilterstring
+	if f_stringpreferences("GroupCustomerCategory") = "Y" then
+		ls_custfilterstring = "0                                                                                                                                                                                                             "
+		this.it_transobject.getallowedgroupcustomercategory(al_groupcode, ls_custfilterstring)
+		if ls_custfilterstring = " " or ls_custfilterstring = "" or isnull(ls_custfilterstring) then
+			ls_custfilterstring = "0"
+			return 1
+		end if
+		this.idc_account.setfilter("custcatcode In (" + ls_custfilterstring + ")")
+		this.idc_account.filter()
+	else
+		this.idc_account.setfilter("subcode = 3")
+		this.idc_account.filter()
+	end if
+	return 0
+
+// w_cashierjobactivity_changecategory.wf_setbalance(long al_row, string as_col, double ad_amt) returns long
+	if as_col = "cashtendered" then
+		if ad_amt > this.id_dw.object.amount[al_row] then
+			this.id_dw.object.cashcharged[al_row] = this.id_dw.object.amount[al_row]
+			this.id_dw.object.cashback[al_row] = ad_amt - this.id_dw.object.cashcharged[al_row]
+		else
+			this.id_dw.object.cashcharged[al_row] = ad_amt
+			this.id_dw.object.cashback[al_row] = this.id_dw.object.cashcharged[al_row] - ad_amt
+		end if
+	elseif as_col = "cashcharged" then
+		if ad_amt > this.id_dw.object.cashtendered[al_row] then
+			this.id_dw.object.cashback[al_row] = 0
+		else
+			this.id_dw.object.cashback[al_row] = this.id_dw.object.cashtendered[al_row] - ad_amt
+		end if
+	end if
+	return 0
+
+// w_cashierjobactivity_changecategory.wf_supervise() returns long
+	long ll_row
+	long ll_doccode
+	long ll_rowid
+	long ll_retcode
+	long ll_headerinvno
+	integer li_moduleid
+	integer li_usercode
+	integer li_catcode
+	integer li_acccode
+	integer li_cashacccode
+	integer li_headerno
+	double ld_cashtendered
+	double ld_cashcharged
+	double ld_cashback
+	double ld_amount
+	string ls_remarks
+	string ls_errtext
+	string ls_category
+	string ls_machinename
+	char lc_printed
+	ll_row = this.id_dw.getrow()
+	if this.id_dw.getrow() > 0 then
+		ll_rowid = this.id_dw.object.rowid[ll_row]
+		li_moduleid = this.id_dw.object.moduleid[ll_row]
+		ll_doccode = this.id_dw.object.doccode[ll_row]
+		if isnull(ll_doccode) then
+			ll_doccode = 0
+		end if
+		li_catcode = this.id_dw.object.catcode[ll_row]
+		ls_category = this.id_dw.object.category[ll_row]
+		if li_moduleid = 101 then
+			li_catcode = 1
+			ls_category = "Cash Receipt"
+		elseif li_moduleid = 102 then
+			li_catcode = 1
+			ls_category = "Cash Receipt Against Sale"
+		elseif li_moduleid = 103 then
+			li_catcode = 1
+			ls_category = "Cash Payment"
+		elseif li_moduleid = 104 then
+			li_catcode = 1
+			ls_category = "Cash Payment Against Purchase"
+		end if
+		li_acccode = this.id_dw.object.acccode[ll_row]
+		li_usercode = this.id_dw.object.usercode[ll_row]
+		if isnull(li_usercode) then
+			li_usercode = gl_usercode
+		end if
+		ls_machinename = this.id_dw.object.machinename[ll_row]
+		if isnull(ls_machinename) or ls_machinename = "" then
+			ls_machinename = gs_localcomputername
+		end if
+		li_headerno = this.id_dw.object.headerno[ll_row]
+		if isnull(li_headerno) or li_headerno = 0 then
+			li_headerno = 1
+		end if
+		ll_headerinvno = this.id_dw.object.headerinvno[ll_row]
+		ld_amount = this.id_dw.object.amount[ll_row]
+		li_cashacccode = this.id_dw.object.cashacccode[ll_row]
+		ld_cashtendered = this.id_dw.object.cashtendered[ll_row]
+		ld_cashcharged = this.id_dw.object.cashcharged[ll_row]
+		ld_cashback = this.id_dw.object.cashback[ll_row]
+		ls_remarks = this.id_dw.object.remarks[ll_row]
+		lc_printed = this.id_dw.object.printed[ll_row]
+		if li_moduleid > 100 and isnull(ll_rowid) then
+			SQL rollback USING this.it_transobject;
+			this.it_transobject.insert_cashieractivity(li_moduleid, ll_doccode, li_catcode, ls_category, li_acccode, li_usercode, ls_machinename, li_headerno, ll_headerinvno, ld_amount, li_cashacccode, ld_cashtendered, ld_cashcharged, ld_cashback, ls_remarks, this.il_cashierjobcode, lc_printed, "N", ll_rowid)
+			if this.it_transobject.sqlcode = 0 then
+				SQL commit USING this.it_transobject;
+			else
+				messagebox("Error", this.it_transobject.sqlerrtext)
+				ll_retcode = 1
+			end if
+		end if
+		if ll_rowid > 0 and li_moduleid > 0 and this.id_dw.object.supervised[ll_row] = "Y" then
+			SQL rollback USING this.it_transobject;
+			this.it_transobject.supervise_cashieractivity(ll_rowid, li_moduleid, ll_doccode, li_catcode, li_acccode, li_cashacccode, ld_cashtendered, ld_cashcharged, ld_cashback, ls_remarks, this.il_cashierjobcode, lc_printed)
+			if this.it_transobject.sqlcode = 0 then
+				SQL commit USING this.it_transobject;
+				ll_retcode = 0
+			else
+				ls_errtext = this.it_transobject.sqlerrtext
+				ll_retcode = 1
+				SQL rollback USING this.it_transobject;
+				messagebox("Supervision Problem", "Some Database Problem Occured while supervision. Details are:-~r~n" + ls_errtext, stopsign!)
+			end if
+		end if
+	end if
+	this.id_dw.setfocus()
+	return ll_retcode
+
+// w_cashierjobactivity_changecategory.create() returns 0
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.dw_control = create dw_control
+	this.control = {this.cb_cancel, this.cb_ok, this.dw_control}
+
+// w_cashierjobactivity_changecategory.destroy() returns 0
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.dw_control
+
+// w_cashierjobactivity_changecategory.open() returns long
+	long ll_rtcode
+	long ll_rowid
+	long ll_groupcode
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	this.it_transobject = create u_transaction
+	SQL start USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		messagebox("Connection Failure", "Unable to connect to the database", stopsign!)
+		close(this)
+		return ::message.returnvalue
+	end if
+	SQL SELECT MAX ( CashierJobCode ) INTO :this.il_cashierjobcode FROM CashierJob WHERE Active ='Y' AND JobOwner =:gl_usercode USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		messagebox("Connection Failure", "Unable to connect to the database", stopsign!)
+		close(this)
+		return ::message.returnvalue
+	elseif this.il_cashierjobcode < 0 or isnull(this.il_cashierjobcode) then
+		messagebox("Cashier Job", "Unable to connect to the cashier job", stopsign!)
+		close(this)
+		return ::message.returnvalue
+	end if
+	ll_rowid = ::message.doubleparm
+	this.id_dw = this.dw_control
+	this.id_dw.settransobject(this.it_transobject)
+	ll_groupcode = f_getgroupcode(gl_usercode)
+	ll_rtcode = this.id_dw.getchild("acccode", this.idc_account)
+	if ll_rtcode = -1 then
+		messagebox("Error", "Can not get a DataWindowChild")
+		close(this)
+		return ::message.returnvalue
+	end if
+	this.idc_account.settransobject(this.it_transobject)
+	this.id_dw.retrieve(ll_rowid)
+	this.id_dw.scrolltorow(0)
+	wf_filteraccounts(ll_groupcode)
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	this.id_dw.setfocus()
+	this.id_dw.setcolumn("cashtendered")
+	this.id_dw.selecttext(1, len(this.id_dw.gettext()))
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	long ll_retcode
+	parent.id_dw.accepttext()
+	if parent.id_dw.object.supervised[1] = "Y" then
+		ll_retcode = parent.wf_supervise()
+		if ll_retcode = 0 then
+			parent.post event ue_close(1)
+		end if
+	elseif parent.id_dw.update(true) = 1 then
+		SQL commit USING parent.it_transobject;
+		parent.post event ue_close(1)
+	end if
+	return ::message.returnvalue
+
+// dw_control.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	integer li_errcode
+	long ll_null
+	long ll_res
+	long ll_unpostedtrans
+	string ls_null
+	string ls_msg
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	setnull(ll_null)
+	setnull(ls_null)
+	choose case dwo.name
+	case "catcode"
+		if long(data) = 1 then
+			this.object.acccode[row] = 19
+		else
+			this.object.acccode[row] = 22
+		end if
+		this.object.supervised[row] = "Y"
+	case "cashtendered"
+		if double(data) < 0.0 or data = "" or isnull(data) then
+			messagebox("Cash Tendered Validation!", "Please enter valid amount for Cash Tendered.", stopsign!)
+			return 1
+		end if
+		parent.wf_setbalance(row, dwo.name, double(data))
+		if this.object.amount[row] <> this.object.cashcharged[row] then
+			this.object.catcode[row] = 2
+			this.object.acccode[row] = 22
+		else
+			this.object.catcode[row] = 1
+			this.object.acccode[row] = 19
+		end if
+		this.object.supervised[row] = "Y"
+	case "cashcharged"
+		if double(data) < 0.0 or data = "" or isnull(data) then
+			messagebox("Cash Charged Validation!", "Please enter valid amount for Cash Charged.", stopsign!)
+			return 1
+		elseif double(data) > this.object.cashtendered[row] then
+			messagebox("Cash Charged Validation!", "Please enter valid amount for Cash Charged~r~nCash Charged must not exceed Cash Tendered.", stopsign!)
+			return 1
+		elseif double(data) > this.object.amount[row] then
+			if this.object.moduleid[row] = 1 then
+				ll_res = messagebox("Cash Charged Validation!", "Cash Charged is more than invoice amount~r~nIs Cash Charged a valid amount?.", question!, yesno!, 2)
+				if ll_res > 1 then
+					return 1
+				end if
+			else
+				messagebox("Cash Charged Validation!", "Cash Charged is more than invoice amount~r~nPlease cahrge a valid amount here?", question!, yesno!, 2)
+				return 1
+			end if
+			return
+		end if
+		parent.wf_setbalance(row, dwo.name, double(data))
+		if this.object.amount[row] <> double(data) then
+			this.object.catcode[row] = 2
+			this.object.acccode[row] = 22
+		else
+			this.object.catcode[row] = 1
+			this.object.acccode[row] = 19
+		end if
+		this.object.supervised[row] = "Y"
+		return li_errcode
+	end choose
+	return li_errcode
+
+// dw_control.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1

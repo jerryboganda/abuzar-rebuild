@@ -1,0 +1,68 @@
+// window w_selectformat_dc_taxinv_invoice (reportformat)  ancestor: window
+
+// w_selectformat_dc_taxinv_invoice.ue_close(integer ai_status) returns 0
+	this.istr_arg.i_status = 1
+	if this.cbx_dc.checked = true then
+		this.istr_arg.s_name1 = "Y"
+	else
+		this.istr_arg.s_name1 = "N"
+	end if
+	if this.cbx_taxinv.checked = true then
+		this.istr_arg.s_name2 = "Y"
+	else
+		this.istr_arg.s_name2 = "N"
+	end if
+	if this.cbx_invoice.checked = true then
+		this.istr_arg.s_name3 = "Y"
+	else
+		this.istr_arg.s_name3 = "N"
+	end if
+	closewithreturn(this, this.istr_arg)
+
+// w_selectformat_dc_taxinv_invoice.create() returns 0
+	this.cbx_invoice = create cbx_invoice
+	this.cbx_taxinv = create cbx_taxinv
+	this.cbx_dc = create cbx_dc
+	this.cb_ok = create cb_ok
+	this.gb_format = create gb_format
+	this.control = {this.cbx_invoice, this.cbx_taxinv, this.cbx_dc, this.cb_ok, this.gb_format}
+
+// w_selectformat_dc_taxinv_invoice.destroy() returns 0
+	destroy this.cbx_invoice
+	destroy this.cbx_taxinv
+	destroy this.cbx_dc
+	destroy this.cb_ok
+	destroy this.gb_format
+
+// w_selectformat_dc_taxinv_invoice.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	return ::message.returnvalue
+
+// cb_ok.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	parent.istr_arg.i_status = 1
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	parent.post event ue_close(1)
+	return ::message.returnvalue

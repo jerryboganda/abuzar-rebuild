@@ -1,0 +1,65 @@
+// window w_arg_supp_stock (reports)  ancestor: w_popup_forselection_walias
+
+// w_arg_supp_stock.create() returns 0
+	integer icurrent
+	call super::create
+	this.gb_2 = create gb_2
+	this.st_1 = create st_1
+	this.st_2 = create st_2
+	this.em_startdate = create em_startdate
+	this.em_enddate = create em_enddate
+	this.dw_price = create dw_price
+	this.gb_3 = create gb_3
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.gb_2
+	this.control[icurrent + 2] = this.st_1
+	this.control[icurrent + 3] = this.st_2
+	this.control[icurrent + 4] = this.em_startdate
+	this.control[icurrent + 5] = this.em_enddate
+	this.control[icurrent + 6] = this.dw_price
+	this.control[icurrent + 7] = this.gb_3
+
+// w_arg_supp_stock.destroy() returns 0
+	call super::destroy
+	destroy this.gb_2
+	destroy this.st_1
+	destroy this.st_2
+	destroy this.em_startdate
+	destroy this.em_enddate
+	destroy this.dw_price
+	destroy this.gb_3
+
+// w_arg_supp_stock.open() returns long
+	long ancestorreturnvalue
+	date ld_currdate
+	string ls_text
+	ancestorreturnvalue = super::open()
+	ld_currdate = today()
+	this.dw_price.settransobject(sqlca)
+	this.dw_price.insertrow(0)
+	ls_text = string(ld_currdate, "dd/mm/yyyy")
+	ls_text = trim(ls_text) + " 00:00:00"
+	this.em_startdate.text = ls_text
+	ls_text = string(ld_currdate, "dd/mm/yyyy")
+	ls_text = trim(ls_text) + " 23:59:59"
+	this.em_enddate.text = ls_text
+	return ::message.returnvalue
+
+// w_arg_supp_stock.ue_close() returns 0
+	closewithreturn(this, this.istr_arg)
+
+// em_startdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// em_enddate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// dw_price.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return ::message.returnvalue

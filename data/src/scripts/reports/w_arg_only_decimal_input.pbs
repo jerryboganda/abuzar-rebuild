@@ -1,0 +1,52 @@
+// window w_arg_only_decimal_input (reports)  ancestor: window
+
+// w_arg_only_decimal_input.ue_close(integer ai_status) returns 0
+	if ai_status <> 1 then
+		this.istr_arg.i_status = -1
+	end if
+	closewithreturn(this, this.istr_arg)
+
+// w_arg_only_decimal_input.create() returns 0
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.st_1 = create st_1
+	this.em_discperc = create em_discperc
+	this.control = {this.cb_cancel, this.cb_ok, this.st_1, this.em_discperc}
+
+// w_arg_only_decimal_input.destroy() returns 0
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.st_1
+	destroy this.em_discperc
+
+// cb_cancel.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	parent.em_discperc.getdata(parent.istr_arg.db_code1)
+	parent.istr_arg.i_status = 1
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// em_discperc.ue_leypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// em_discperc.getfocus() returns long
+	selecttext(1, len(this.text))
+	return ::message.returnvalue

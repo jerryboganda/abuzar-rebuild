@@ -1,0 +1,329 @@
+// window w_customer_update (custcomponents)  ancestor: window
+
+// w_customer_update.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	return ::message.returnvalue
+
+// w_customer_update.ue_close() returns 0
+	wf_disconnect()
+	close(this)
+
+// w_customer_update.wf_disconnect() returns 0
+	SQL stop USING this.it_transobject;
+	destroy this.it_transobject
+
+// w_customer_update.wf_duplicatealiasname(string as_aliasname, long al_accode) returns boolean
+	long ll_count
+	long ll_icode
+	long ll_row
+	boolean b_flag
+	as_aliasname = trim(as_aliasname)
+	SQL SELECT count ( *) INTO :ll_count FROM accounts WHERE accounts.aliasname =:as_aliasname and accounts.acccode <> :al_accode USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_customer_update.wf_duplicatename(string as_name, long al_accode) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM accounts WHERE accounts.name =:as_name and accounts.acccode <> :al_accode USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_customer_update.wf_connect() returns integer
+	this.it_transobject = create u_transaction
+	SQL start USING this.it_transobject;
+	return this.it_transobject.sqlcode
+
+// w_customer_update.wf_save() returns integer
+	integer li_retcode
+	string ls_err
+	string ls_mod
+	li_retcode = this.dw_master.update(true, false)
+	if li_retcode = 1 then
+		ls_mod = "accounts_acccode.Update=No "
+		ls_mod = ls_mod + "accounts_name.Update=No "
+		ls_mod = ls_mod + "accounts_SubCode.Update=No "
+		ls_mod = ls_mod + "accounts_openingdate.Update=No "
+		ls_mod = ls_mod + "accounts_aliasname.Update=No "
+		ls_mod = ls_mod + "accounts_active.Update=No "
+		ls_mod = ls_mod + "accounts_acccode.Key=No "
+		ls_mod = ls_mod + "DataWindow.Table.UpdateTable='customer' "
+		ls_mod = ls_mod + "code.Key=Yes "
+		ls_mod = ls_mod + "code.Update=Yes "
+		ls_mod = ls_mod + "customer_CP.Update=Yes "
+		ls_mod = ls_mod + "customer_address1.Update=Yes "
+		ls_mod = ls_mod + "customer_address2.Update=Yes "
+		ls_mod = ls_mod + "customer_city.Update=Yes "
+		ls_mod = ls_mod + "customer_country.Update=Yes "
+		ls_mod = ls_mod + "customer_phone.Update=Yes "
+		ls_mod = ls_mod + "customer_fax.Update=Yes "
+		ls_mod = ls_mod + "customer_email.Update=Yes "
+		ls_mod = ls_mod + "customer_areacode.Update=Yes "
+		ls_mod = ls_mod + "customer_crlimit.Update=Yes "
+		ls_mod = ls_mod + "customer_dayslimit.Update=Yes "
+		ls_mod = ls_mod + "customer_custcatcode.Update=Yes "
+		ls_mod = ls_mod + "customer_licenceno.Update=Yes "
+		ls_mod = ls_mod + "customer_licenceexpiry.Update=Yes "
+		ls_mod = ls_mod + "customer_SalesTaxRegNo.Update=Yes "
+		ls_mod = ls_mod + "customer_DefaultGST.Update=Yes "
+		ls_mod = ls_mod + "customer_InvDiscperc.Update=Yes "
+		ls_mod = ls_mod + "customer_DefaultSalePrice.Update=Yes "
+		ls_mod = ls_mod + "customer_DefaultItemDiscperc.Update=Yes "
+		ls_mod = ls_mod + "customer_subareacode.Update=Yes "
+		ls_mod = ls_mod + "customer_messagecode.Update=Yes "
+		ls_mod = ls_mod + "customer_salesmancode.Update=Yes "
+		ls_mod = ls_mod + "customer_specialinstructions.Update=Yes "
+		ls_mod = ls_mod + "customer_schedforposting.Update=Yes "
+		ls_mod = ls_mod + "customer_designation.Update=Yes "
+		ls_mod = ls_mod + "customer_collectionpolicycode.Update=Yes "
+		ls_mod = ls_mod + "customer_printwaranty.Update=Yes "
+		ls_mod = ls_mod + "customer_block.Update=Yes "
+		ls_mod = ls_mod + "customer_charges.Update=Yes "
+		ls_mod = ls_mod + "customer_criticallimit.Update=Yes "
+		ls_mod = ls_mod + "customer_countycode.Update=Yes "
+		ls_mod = ls_mod + "customer_owner.Update=Yes "
+		ls_mod = ls_mod + "customer_customersectorcode.Update=Yes "
+		ls_err = this.dw_master.modify(ls_mod)
+		if ls_err <> "" then
+			messagebox("DataWindow Modify Error", ls_err)
+		end if
+		li_retcode = this.dw_master.update(true, true)
+		if li_retcode = 1 then
+			SQL commit USING this.it_transobject;
+			if this.it_transobject.sqlcode <> 0 then
+				SQL rollback USING this.it_transobject;
+				messagebox("Error on Commit", this.it_transobject.sqlerrtext)
+				li_retcode = -1
+			else
+				this.ib_editflag = false
+				li_retcode = 1
+			end if
+		else
+			messagebox("Update of Customer Table Failed", "Rolling back changes to " + "accounts  and Customer Tables")
+			SQL rollback USING this.it_transobject;
+			li_retcode = -1
+		end if
+	else
+		messagebox("Update of accounts Table Failed", "Rolling back changes to " + "accounts Table")
+		SQL rollback USING this.it_transobject;
+		li_retcode = -1
+	end if
+	ls_mod = "accounts_accCode.Update=yes "
+	ls_mod = ls_mod + "accounts_name.Update=yes "
+	ls_mod = ls_mod + "accounts_SubCode.Update=yes "
+	ls_mod = ls_mod + "accounts_openingdate.Update=yes "
+	ls_mod = ls_mod + "DataWindow.Table.UpdateTable='accounts' "
+	ls_mod = ls_mod + "accounts_aliasname.Update=yes "
+	ls_mod = ls_mod + "accounts_active.Update=yes "
+	ls_mod = ls_mod + "Accounts_acccode.Key=yes "
+	ls_mod = ls_mod + "code.Update=no "
+	ls_mod = ls_mod + "customer_CP.Update=no "
+	ls_mod = ls_mod + "customer_address1.Update=no "
+	ls_mod = ls_mod + "customer_address2.Update=no "
+	ls_mod = ls_mod + "customer_city.Update=no "
+	ls_mod = ls_mod + "customer_country.Update=no "
+	ls_mod = ls_mod + "customer_phone.Update=no "
+	ls_mod = ls_mod + "customer_fax.Update=no "
+	ls_mod = ls_mod + "customer_email.Update=no "
+	ls_mod = ls_mod + "customer_areacode.Update=no "
+	ls_mod = ls_mod + "customer_crlimit.Update=no "
+	ls_mod = ls_mod + "customer_dayslimit.Update=no "
+	ls_mod = ls_mod + "customer_custcatcode.Update=no "
+	ls_mod = ls_mod + "customer_licenceno.Update=no "
+	ls_mod = ls_mod + "customer_licenceexpiry.Update=no "
+	ls_mod = ls_mod + "code.Key=no "
+	ls_mod = ls_mod + "customer_SalesTaxRegNo.Update=No "
+	ls_mod = ls_mod + "customer_DefaultGST.Update=No "
+	ls_mod = ls_mod + "customer_InvDiscperc.Update=No "
+	ls_mod = ls_mod + "customer_DefaultSalePrice.Update=No "
+	ls_mod = ls_mod + "customer_DefaultItemDiscPerc.Update=No "
+	ls_mod = ls_mod + "customer_subareacode.Update=No "
+	ls_mod = ls_mod + "customer_messagecode.Update=No "
+	ls_mod = ls_mod + "customer_salesmancode.Update=No "
+	ls_mod = ls_mod + "customer_specialinstructions.Update=No "
+	ls_mod = ls_mod + "customer_schedforposting.Update=No "
+	ls_mod = ls_mod + "customer_designation.Update=No "
+	ls_mod = ls_mod + "customer_collectionpolicycode.Update=No "
+	ls_mod = ls_mod + "customer_printwaranty.Update=No "
+	ls_mod = ls_mod + "customer_block.Update=No "
+	ls_mod = ls_mod + "customer_charges.Update=No "
+	ls_mod = ls_mod + "customer_criticallimit.Update=No "
+	ls_mod = ls_mod + "customer_countycode.Update=No "
+	ls_mod = ls_mod + "customer_owner.Update=No "
+	ls_mod = ls_mod + "customer_customersectorcode.Update=No "
+	ls_err = this.dw_master.modify(ls_mod)
+	if ls_err <> "" then
+		messagebox("DataWindow Modify Error", ls_err)
+	end if
+	return li_retcode
+
+// w_customer_update.create() returns 0
+	this.dw_master = create dw_master
+	this.control = {this.dw_master}
+
+// w_customer_update.destroy() returns 0
+	destroy this.dw_master
+
+// w_customer_update.open() returns long
+	long ll_rtcode
+	long ll_code
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	this.is_arg = message.powerobjectparm
+	setredraw(false)
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width
+		ll_height = ll_win_height
+		this.width = ll_width * 0.99
+		this.height = ll_height * 0.90
+		this.dw_master.width = ll_width * 0.98
+		this.dw_master.height = this.height * 0.95
+		this.dw_master.x = 5
+		this.dw_master.y = 5
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	wf_connect()
+	this.dw_master.settransobject(this.it_transobject)
+	ll_rtcode = this.dw_master.retrieve(this.is_arg.ia_integerlist, this.is_arg.ia_integerlist1)
+	setredraw(true)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// dw_master.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	return ::message.returnvalue
+
+// dw_master.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	integer li_icode
+	integer li_retcode
+	integer li_selected
+	long ll_qty
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "accounts_aliasname"
+		if parent.wf_duplicatealiasname(data, this.object.code[row]) then
+			messagebox("AliasName Validation", "Customer AliasName Duplication Error~r~nPlease enter some other AliasName")
+			li_retcode = 1
+		end if
+	case "accounts_name"
+		if parent.wf_duplicatename(data, this.object.code[row]) then
+			messagebox("Customer Name Validation", "Customer Name Duplication Error~r~nPlease enter some other Customer Name")
+			li_retcode = 1
+		end if
+	case "customer_criticallimit"
+		if double(data) < 0.0 then
+			messagebox("Customer Critical Limit Validation", "Customer Critical Limit Error~r~nPlease enter some possitive Customer Critical Limit")
+			li_retcode = 1
+		elseif double(data) < this.object.customer_crlimit[row] then
+			messagebox("Customer Critical Limit Validation", "Customer Critical Limit Error~r~nCustomer Critical Limit should not be less than credit limit.")
+			li_retcode = 1
+		else
+			li_retcode = 0
+		end if
+	case "customer_crlimit"
+		if double(data) < 0.0 then
+			messagebox("Customer Credit Limit Validation", "Customer Critical Limit Error~r~nPlease enter some possitive Customer Credit Limit")
+			li_retcode = 1
+		else
+			if double(data) > this.object.customer_criticallimit[row] then
+				this.object.customer_criticallimit[row] = double(data)
+			end if
+			li_retcode = 0
+		end if
+	end choose
+	if li_retcode = 0 then
+		parent.ib_editflag = true
+	end if
+	return li_retcode
+
+// dw_master.itemerror(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	string ls_errormessage
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	ls_errormessage = "Please enter valid value "
+	choose case dwo.name
+	case "accounts_aliasname"
+		ls_errormessage = ls_errormessage + " for Alias Name"
+	case "accounts_name"
+		ls_errormessage = ls_errormessage + " for Customer Name"
+	case else
+		ls_errormessage = ls_errormessage + " for " + trim(dwo.name)
+	end choose
+	ls_errormessage = ls_errormessage + " in row number " + string(row)
+	messagebox("Item Validation", ls_errormessage)
+	return 1
+
+// dw_master.rowfocuschanging(long currentrow, long newrow) returns long
+	long ancestorreturnvalue
+	long li_rtcode
+	ancestorreturnvalue = super::rowfocuschanging(currentrow, newrow)
+	if parent.ib_editflag then
+		SQL rollback USING parent.it_transobject;
+		if parent.wf_save() < 0 then
+			li_rtcode = 1
+		else
+			parent.ib_editflag = false
+		end if
+	end if
+	return li_rtcode
+
+// dw_master.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	integer li_movement
+	long ll_row
+	long ll_temp
+	string sl_columnname
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keypagedown! then
+		ll_row = parent.dw_master.scrollnextpage()
+	elseif key = keypageup! then
+		ll_row = parent.dw_master.scrollpriorpage()
+	elseif key = keyescape! then
+		if parent.ib_editflag then
+			SQL rollback USING parent.it_transobject;
+			if update(true, true) > 0 then
+				SQL commit USING parent.it_transobject;
+				parent.ib_editflag = false
+			else
+				SQL rollback USING parent.it_transobject;
+			end if
+		end if
+		parent.post event ue_close()
+	elseif key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+		return 1
+	end if
+	if ll_row > 0 and ll_row <= rowcount() then
+		parent.il_selectedrow = ll_row
+	end if
+	return ::message.returnvalue
+
+// dw_master.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if len(gettext()) > 0 then
+		selecttext(1, len(gettext()))
+	end if
+	return ::message.returnvalue

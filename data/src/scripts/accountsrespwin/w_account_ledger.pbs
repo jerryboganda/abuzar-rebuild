@@ -1,0 +1,125 @@
+// window w_account_ledger (accountsrespwin)  ancestor: window
+
+// w_account_ledger.create() returns 0
+	this.dw_previnv = create dw_previnv
+	this.control = {this.dw_previnv}
+
+// w_account_ledger.destroy() returns 0
+	destroy this.dw_previnv
+
+// w_account_ledger.open() returns long
+	long ll_width
+	long ll_height
+	long ll_acccode
+	long ll_counter
+	long ll_rowcount
+	environment env
+	ll_acccode = message.doubleparm
+	if getenvironment(env) <> 1 then
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.width = ll_width * 0.98
+	this.height = ll_height * 0.80
+	this.y = int((ll_height - this.height) / 2.0)
+	this.dw_previnv.width = this.width - this.width * 0.02
+	this.dw_previnv.height = this.height - this.width * 0.05
+	this.dw_previnv.settransobject(sqlca)
+	ll_rowcount = this.dw_previnv.retrieve(ll_acccode)
+	for ll_counter = 1 to ll_rowcount
+		if len(this.dw_previnv.getitemstring(ll_counter, "remarks")) >= 50 then
+			this.dw_previnv.setdetailheight(ll_counter, ll_counter, 134)
+		end if
+	next
+	this.dw_previnv.modify("DataWindow.Print.Preview=no")
+	this.dw_previnv.object.datawindow.print.buttons = "yes"
+	setredraw(true)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_account_ledger.close() returns long
+	close(this)
+	return ::message.returnvalue
+
+// w_account_ledger.key(keycode key, unsignedlong keyflags) returns long
+	if keydown(keyescape!) then
+		close(this)
+	end if
+	return ::message.returnvalue
+
+// dw_previnv.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	long ll_col
+	long ll_row
+	string ls_column
+	string ls_desc
+	string ls_exp
+	string ls_value
+	string ls_tag
+	string ls_name
+	string ls_type
+	string ls_band
+	ls_name = dwo.name
+	ls_type = dwo.type
+	ls_band = getbandatpointer()
+	if upper(left(ls_band, 7)) = "DETAIL" then
+		ll_row = row
+	elseif pos(ls_band, "~t") > 0 then
+		ll_row = long(mid(ls_band, pos(ls_band, "~t") + 1, len(ls_band)))
+	end if
+	if ll_row > 0 then
+		ll_col = getclickedcolumn()
+		if ll_col > 0 then
+			setcolumn(ll_col)
+			ls_desc = "#" + trim(string(ll_col)) + ".pointer"
+		elseif upper(left(ls_type, 6)) = "COLUMN" and len(ls_name) > 0 then
+			ls_column = ls_name
+			setcolumn(ls_column)
+			ls_desc = ls_column + ".pointer"
+		end if
+		ls_desc = describe(ls_desc)
+		if ls_desc = "~"HyperLink!~"" then
+			if ll_col > 0 then
+				ls_exp = describe("#" + trim(string(ll_col)) + ".coltype")
+				ls_tag = describe("#" + trim(string(ll_col)) + ".tag")
+			else
+				ls_exp = describe(ls_column + ".coltype")
+				ls_tag = describe(ls_column + ".tag")
+			end if
+			if upper(left(ls_exp, 4)) = "CHAR" then
+				if ll_col > 0 then
+					ls_value = getitemstring(ll_row, ll_col)
+				else
+					ls_value = getitemstring(ll_row, ls_column)
+				end if
+				if pos(ls_value, "-") <= 0 then
+					if ls_tag <> "" then
+						ls_value = ls_tag + "-" + ls_value
+					end if
+				end if
+				f_opentranaction(ls_value)
+			elseif upper(left(ls_exp, 4)) = "LONG" or upper(left(ls_exp, 6)) = "NUMBER" then
+				if ls_tag = "" or isnull(ls_tag) then
+					ls_tag = ""
+				end if
+				if ls_tag = "" then
+					ls_tag = ""
+				else
+					ls_tag = ls_tag + "-"
+				end if
+				if ll_col > 0 then
+					ls_value = ls_tag + trim(string(getitemnumber(ll_row, ll_col)))
+				else
+					ls_value = ls_tag + trim(string(getitemnumber(ll_row, ls_column)))
+				end if
+				f_opentranaction(ls_value)
+			end if
+		end if
+	end if
+	return 0

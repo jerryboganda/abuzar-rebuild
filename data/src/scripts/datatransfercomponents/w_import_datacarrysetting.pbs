@@ -1,0 +1,184 @@
+// window w_import_datacarrysetting (datatransfercomponents)  ancestor: window
+
+// w_import_datacarrysetting.ue_postopen() returns 0
+	long ll_found
+	this.dw_datacarry.settransobject(sqlca)
+	this.dw_datacarry.retrieve()
+	wf_checkrigths()
+	wf_setvisibility()
+
+// w_import_datacarrysetting.ue_close() returns 0
+	closewithreturn(this, this.istr_arguments)
+
+// w_import_datacarrysetting.wf_setvisibility() returns long
+	if this.ib_importnewitems or this.ib_importallitems then
+		this.dw_datacarry.object.items.visible = true
+		if this.ib_importnewitems and this.ib_importallitems then
+			this.dw_datacarry.clearvalues("itemoption")
+			this.dw_datacarry.setvalue("itemoption", 1, "New Items Only~tN")
+			this.dw_datacarry.setvalue("itemoption", 2, "All Items~tA")
+			this.dw_datacarry.object.itemoption[1] = "A"
+			this.dw_datacarry.object.itemoption.visible = true
+		elseif this.ib_importnewitems and this.ib_importallitems = false then
+			this.dw_datacarry.object.items.checkbox.text = "New Items Only"
+			this.dw_datacarry.object.itemoption.visible = false
+			this.dw_datacarry.object.itemoption[1] = "N"
+		elseif this.ib_importnewitems = false and this.ib_importallitems then
+			this.dw_datacarry.object.items.checkbox.text = "All Items"
+			this.dw_datacarry.object.itemoption.visible = false
+			this.dw_datacarry.object.itemoption[1] = "A"
+		end if
+	elseif this.ib_importnewitems = false and this.ib_importallitems = false then
+		this.dw_datacarry.object.items[1] = "N"
+		this.dw_datacarry.object.itemoption[1] = ""
+	end if
+	if this.ib_importaccounts then
+		this.dw_datacarry.object.accounts.visible = true
+	end if
+	if this.ib_security then
+		this.dw_datacarry.object.security.visible = true
+	else
+		this.dw_datacarry.object.security.visible = false
+	end if
+	if this.ib_patients then
+		this.dw_datacarry.object.patients.visible = true
+	end if
+	if this.ib_service then
+		this.dw_datacarry.object.service.visible = true
+	end if
+	return 0
+
+// w_import_datacarrysetting.wf_checkrigths() returns long
+	long ll_found
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 629", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.ib_importnewitems = true
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 630", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.ib_importallitems = true
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 631", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.ib_importaccounts = true
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 5073", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.ib_patients = true
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 711", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.ib_security = true
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 5168", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.ib_service = true
+	end if
+	return 0
+
+// w_import_datacarrysetting.create() returns 0
+	this.dw_datacarry = create dw_datacarry
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.control = {this.dw_datacarry, this.cb_cancel, this.cb_ok}
+
+// w_import_datacarrysetting.destroy() returns 0
+	destroy this.dw_datacarry
+	destroy this.cb_cancel
+	destroy this.cb_ok
+
+// w_import_datacarrysetting.open() returns long
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	post event ue_postopen()
+	return ::message.returnvalue
+
+// dw_datacarry.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "items"
+		if parent.ib_importnewitems and parent.ib_importallitems then
+			if data = "Y" then
+				this.object.itemoption.visible = true
+			else
+				this.object.itemoption.visible = false
+			end if
+		end if
+	end choose
+	return 0
+
+// cb_cancel.clicked() returns long
+	parent.istr_arguments.i_status = -1
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	string ls_connsetting
+	string ls_errtext
+	char lc_items
+	char lc_accounts
+	char lc_security
+	char lc_patients
+	char lc_service
+	u_transaction lt_transobject
+	ls_connsetting = "Set ANSI_NULLS ON Set ANSI_WARNINGS ON"
+	lt_transobject = create u_transaction
+	if parent.dw_datacarry.accepttext() = -1 then
+		return ::message.returnvalue
+	end if
+	setpointer(hourglass!)
+	lt_transobject.autocommit = true
+	SQL start USING lt_transobject;
+	SQL EXECUTE IMMEDIATE :ls_connsetting USING lt_transobject;
+	if parent.dw_datacarry.object.items[1] = "Y" then
+		lc_items = parent.dw_datacarry.object.itemoption[1]
+	else
+		lc_items = ""
+	end if
+	if parent.dw_datacarry.object.accounts[1] = "Y" then
+		lc_accounts = parent.dw_datacarry.object.accounts[1]
+	else
+		lc_accounts = "N"
+	end if
+	if parent.dw_datacarry.object.security[1] = "Y" then
+		lc_security = parent.dw_datacarry.object.security[1]
+	else
+		lc_security = "N"
+	end if
+	if parent.dw_datacarry.object.patients[1] = "Y" then
+		lc_patients = parent.dw_datacarry.object.patients[1]
+	else
+		lc_patients = "N"
+	end if
+	if parent.dw_datacarry.object.service[1] = "Y" then
+		lc_service = parent.dw_datacarry.object.service[1]
+	else
+		lc_service = "N"
+	end if
+	if f_importdata_from_datacarrydb(lc_items, lc_service, lc_accounts, lc_security, lc_patients, lt_transobject, gl_usercode) <= 0 then
+		SQL stop USING lt_transobject;
+		return -1
+	end if
+	SQL stop USING lt_transobject;
+	parent.post event ue_close()
+	return ::message.returnvalue

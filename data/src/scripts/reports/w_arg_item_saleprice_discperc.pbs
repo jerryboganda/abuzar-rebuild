@@ -1,0 +1,106 @@
+// window w_arg_item_saleprice_discperc (reports)  ancestor: w_popup_forselection_walias
+
+// w_arg_item_saleprice_discperc.wf_inititem(long al_code) returns boolean
+	long ll_counter
+	long ll_detailrows
+	double ld_saleprice
+	double ld_discperc
+	ll_detailrows = this.id_selectionlist.rowcount()
+	for ll_counter = 1 to ll_detailrows
+		if al_code = this.id_selectionlist.getitemnumber(ll_counter, "code") then
+			this.id_selected.setitem(this.id_selected.getrow(), "name", this.id_selectionlist.getitemstring(ll_counter, "name"))
+			SQL SELECT SalePrice / CASE WHEN PackUnits > 0 THEN Packunits ELSE 1 END , SaleDiscPerc INTO :ld_saleprice, :ld_discperc FROM Item WHERE Icode =:al_code USING sqlca;
+			if sqlca.sqlcode = 0 then
+				this.dw_price_disc.object.saleprice[1] = ld_saleprice
+				this.dw_price_disc.object.discperc[1] = ld_discperc
+			end if
+			return true
+		end if
+	next
+	return false
+
+// w_arg_item_saleprice_discperc.wf_inititem(string as_aliasname) returns boolean
+	long ll_counter
+	long ll_detailrows
+	long ll_found
+	double ld_saleprice
+	double ld_discperc
+	ll_detailrows = this.id_selectionlist.rowcount()
+	ll_found = this.id_selectionlist.find("lower(aliasname)='" + lower(as_aliasname) + "'", 1, ll_detailrows)
+	if ll_found > 0 then
+		this.id_selected.setitem(this.id_selected.getrow(), "code", this.id_selectionlist.getitemnumber(ll_found, "code"))
+		this.id_selected.setitem(this.id_selected.getrow(), "aliasname", this.id_selectionlist.getitemstring(ll_found, "aliasname"))
+		this.id_selected.setitem(this.id_selected.getrow(), "name", this.id_selectionlist.getitemstring(ll_found, "name"))
+		SQL SELECT SalePrice / CASE WHEN PackUnits > 0 THEN Packunits ELSE 1 END , SaleDiscPerc INTO :ld_saleprice, :ld_discperc FROM Item WHERE CustomICode =:as_aliasname USING sqlca;
+		if sqlca.sqlcode = 0 then
+			this.dw_price_disc.object.saleprice[1] = ld_saleprice
+			this.dw_price_disc.object.discperc[1] = ld_discperc
+		end if
+		return true
+	end if
+	return false
+
+// w_arg_item_saleprice_discperc.create() returns 0
+	integer icurrent
+	call super::create
+	this.gb_2 = create gb_2
+	this.st_1 = create st_1
+	this.st_2 = create st_2
+	this.em_startdate = create em_startdate
+	this.em_enddate = create em_enddate
+	this.dw_price_disc = create dw_price_disc
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.gb_2
+	this.control[icurrent + 2] = this.st_1
+	this.control[icurrent + 3] = this.st_2
+	this.control[icurrent + 4] = this.em_startdate
+	this.control[icurrent + 5] = this.em_enddate
+	this.control[icurrent + 6] = this.dw_price_disc
+
+// w_arg_item_saleprice_discperc.destroy() returns 0
+	call super::destroy
+	destroy this.gb_2
+	destroy this.st_1
+	destroy this.st_2
+	destroy this.em_startdate
+	destroy this.em_enddate
+	destroy this.dw_price_disc
+
+// w_arg_item_saleprice_discperc.open() returns long
+	long ancestorreturnvalue
+	date ld_currdate
+	string ls_text
+	ancestorreturnvalue = super::open()
+	gd_itemsinfo.sharedata(this.id_selectionlist)
+	ld_currdate = today()
+	ls_text = string(ld_currdate, "dd/mm/yyyy")
+	ls_text = trim(ls_text) + " 00:00:00"
+	this.em_startdate.text = ls_text
+	ls_text = string(ld_currdate, "dd/mm/yyyy")
+	ls_text = trim(ls_text) + " 23:59:59"
+	this.em_enddate.text = ls_text
+	this.dw_price_disc.settransobject(sqlca)
+	this.dw_price_disc.insertrow(0)
+	return ::message.returnvalue
+
+// w_arg_item_saleprice_discperc.ue_close() returns 0
+	closewithreturn(this, this.istr_arg)
+
+// em_startdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// em_enddate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// dw_price_disc.getfocus() returns long
+	selecttext(1, len(gettext()))
+	if parent.id_selected.rowcount() > 0 then
+		parent.wf_inititem(parent.id_selected.object.code[parent.id_selected.rowcount()])
+	end if
+	return ::message.returnvalue

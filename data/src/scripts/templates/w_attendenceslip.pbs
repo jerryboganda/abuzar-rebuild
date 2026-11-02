@@ -1,0 +1,54 @@
+// window w_attendenceslip (templates)  ancestor: window
+
+// w_attendenceslip.create() returns 0
+	this.cb_close = create cb_close
+	this.cb_print = create cb_print
+	this.dw_slip = create dw_slip
+	this.control = {this.cb_close, this.cb_print, this.dw_slip}
+
+// w_attendenceslip.destroy() returns 0
+	destroy this.cb_close
+	destroy this.cb_print
+	destroy this.dw_slip
+
+// w_attendenceslip.open() returns long
+	datetime ad_recentdate
+	datetime currentdatetime
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	this.it_transobject = create u_transaction
+	SQL start USING this.it_transobject;
+	this.it_transobject.getdatetime(currentdatetime)
+	this.dw_slip.settransobject(this.it_transobject)
+	this.dw_slip.retrieve(currentdatetime, gl_usercode)
+	return ::message.returnvalue
+
+// w_attendenceslip.close() returns long
+	SQL stop USING this.it_transobject;
+	destroy this.it_transobject
+	return ::message.returnvalue
+
+// cb_close.clicked() returns long
+	close(parent)
+	return ::message.returnvalue
+
+// cb_print.clicked() returns long
+	datetime currentdatetime
+	parent.it_transobject.getdatetime(currentdatetime)
+	parent.dw_slip.settransobject(parent.it_transobject)
+	parent.dw_slip.retrieve(currentdatetime, gl_usercode)
+	parent.dw_slip.print()
+	return ::message.returnvalue

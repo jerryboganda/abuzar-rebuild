@@ -1,0 +1,132 @@
+// userobject nv_retreival_arg (pbdwr125)  ancestor: nonvisualobject
+
+// nv_retreival_arg.of_parse_value(any aa_value) returns integer
+	integer li_datatype
+	integer li_result
+	boolean lb_isarray
+	li_datatype = of_get_arg_type(lb_isarray)
+	if li_datatype <> 6 then
+		if pos(this.is_passedvalue, "~t") <> 0 or lb_isarray then
+			li_result = of_parse_array_value(li_datatype, aa_value)
+		else
+			li_result = of_convert_value(this.is_passedvalue, li_datatype, aa_value)
+		end if
+	else
+		li_result = -1
+	end if
+	return li_result
+
+// nv_retreival_arg.of_parse_array_value(integer ai_argtype, any aa_newvalue) returns integer
+	integer li_result
+	integer li_index
+	integer li_pos
+	integer li_lastpos
+	string ls_value
+	any[] argvalues
+	li_index = 1
+	do
+		li_pos = pos(this.is_passedvalue, "~t", li_lastpos)
+		if li_pos > 0 then
+			ls_value = mid(this.is_passedvalue, li_lastpos, li_pos - li_lastpos)
+		else
+			ls_value = mid(this.is_passedvalue, li_lastpos)
+		end if
+		li_result = of_convert_value(ls_value, ai_argtype, argvalues[li_index])
+		li_lastpos = li_pos + 1
+		li_index = li_index + 1
+	loop while li_pos > 0 and li_result = 1
+	if li_result = 1 then
+		aa_newvalue = argvalues
+	end if
+	return li_result
+
+// nv_retreival_arg.of_get_arg_type(boolean ab_islist) returns integer
+	integer li_argtype
+	choose case this.is_argtype
+	case "stringlist"
+		li_argtype = 2
+		ab_islist = true
+	case "string"
+		li_argtype = 2
+		ab_islist = false
+	case "datelist"
+		li_argtype = 3
+		ab_islist = true
+	case "date"
+		li_argtype = 3
+		ab_islist = false
+	case "datetimelist"
+		li_argtype = 4
+		ab_islist = true
+	case "datetime"
+		li_argtype = 4
+		ab_islist = false
+	case "numberlist"
+		li_argtype = 1
+		ab_islist = true
+	case "number"
+		li_argtype = 1
+		ab_islist = false
+	case "timelist"
+		li_argtype = 5
+		ab_islist = true
+	case "time"
+		li_argtype = 5
+		ab_islist = false
+	case else
+		li_argtype = 6
+		ab_islist = false
+	end choose
+	return li_argtype
+
+// nv_retreival_arg.of_convert_value(string as_passedvalue, integer as_argtype, any aa_newvalue) returns integer
+	integer li_result
+	date ld_date
+	time lt_time
+	string ls_date
+	string ls_time
+	char[] c
+	long ll_loop
+	integer li_ndx
+	choose case as_argtype
+	case 1
+		aa_newvalue = double(as_passedvalue)
+	case 3
+		aa_newvalue = date(as_passedvalue)
+	case 4
+		c = as_passedvalue
+		ll_loop = upperbound(c)
+		do while li_ndx <= ll_loop
+			if c[li_ndx] = " " then
+				li_ndx = li_ndx + 1
+				exit
+			end if
+			ls_date = string(c[li_ndx]) + ls_date
+			li_ndx = li_ndx + 1
+		loop
+		do while li_ndx <= ll_loop
+			if c[li_ndx] = " " then
+				exit
+			end if
+			ls_time = string(c[li_ndx]) + ls_time
+			li_ndx = li_ndx + 1
+		loop
+		ld_date = date(ls_date)
+		lt_time = time(ls_time)
+		aa_newvalue = datetime(ld_date, lt_time)
+	case 5
+		aa_newvalue = time(as_passedvalue)
+	case 2
+		aa_newvalue = as_passedvalue
+	case else
+		li_result = -1
+	end choose
+	return li_result
+
+// nv_retreival_arg.create() returns 0
+	call super::create
+	triggerevent("constructor")
+
+// nv_retreival_arg.destroy() returns 0
+	triggerevent("destructor")
+	call super::destroy

@@ -1,0 +1,340 @@
+// window w_checkdb (abuzarapp)  ancestor: window
+
+// w_checkdb.ue_postopen() returns 0
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	this.it_transobject = create u_transaction
+	if this.il_mode = 1 then
+		this.it_transobject.autocommit = true
+	end if
+	SQL start USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		messagebox("Connection Failure", "Unable to connect to the database", stopsign!)
+		close(this)
+		return
+	end if
+	this.ids_print = create u_ds_standard
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width * 0.98
+		ll_height = ll_win_height * 0.96
+		this.width = ll_width
+		this.height = ll_height
+		this.tab_monitor.width = ll_width * 0.98
+		this.tab_monitor.height = ll_height * 0.90
+		this.tab_monitor.tabpage_list.width = this.tab_monitor.width * 0.98
+		this.tab_monitor.tabpage_list.height = this.tab_monitor.height * 0.90
+		this.tab_monitor.tabpage_list.dw_buttons.width = this.tab_monitor.tabpage_list.width
+		this.tab_monitor.tabpage_list.dw_buttons.y = this.tab_monitor.tabpage_list.height - this.tab_monitor.tabpage_list.dw_buttons.height
+		this.tab_monitor.tabpage_list.dw_list.width = this.tab_monitor.tabpage_list.width
+		this.tab_monitor.tabpage_list.dw_list.height = this.tab_monitor.tabpage_list.height - this.tab_monitor.tabpage_list.dw_buttons.height - 25
+		this.tab_monitor.tabpage_list.st_pleasewait.x = (this.tab_monitor.tabpage_list.width - this.tab_monitor.tabpage_list.st_pleasewait.width) / 2.0
+		this.tab_monitor.tabpage_list.st_pleasewait.y = (this.tab_monitor.tabpage_list.height - this.tab_monitor.tabpage_list.st_pleasewait.height) / 2.0
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	this.id_list = this.tab_monitor.tabpage_list.dw_list
+	this.id_list.settransobject(this.it_transobject)
+	this.id_button = this.tab_monitor.tabpage_list.dw_buttons
+	this.id_button.settransobject(this.it_transobject)
+	this.id_button.retrieve()
+	this.id_button.setfocus()
+
+// w_checkdb.wf_sort() returns long
+	string ls_null
+	setnull(ls_null)
+	this.id_list.setsort(ls_null)
+	this.id_list.sort()
+	this.id_list.groupcalc()
+	return 0
+
+// w_checkdb.wf_checkdb() returns long
+	long ll_index
+	long ll_rowcount
+	long ll_series_num
+	long ll_counter
+	long ll_innercounter
+	long ll_groupcode
+	long ll_prints_left
+	long[] ll_docrowid
+	long ll_printable_count
+	long ll_refreshrate
+	boolean lb_continue
+	datetime ldt_startdate
+	string ls_errtext
+	setpointer(hourglass!)
+	this.tab_monitor.tabpage_list.dw_list.visible = false
+	this.tab_monitor.tabpage_list.st_pleasewait.visible = true
+	this.it_transobject.checkdbintegrity(gs_dbname)
+	if this.it_transobject.sqlcode = 0 then
+		SQL commit USING this.it_transobject;
+	else
+		messagebox("Database Integrity Checking", "Problem found while Database Integrity Checking.~r~nReasons are:-~r~n" + this.it_transobject.sqlerrtext)
+		SQL rollback USING this.it_transobject;
+	end if
+	setredraw(false)
+	this.id_list.setsort("rowid")
+	this.id_list.retrieve(gs_dbname)
+	wf_showerrors()
+	this.tab_monitor.tabpage_list.st_pleasewait.visible = false
+	this.tab_monitor.tabpage_list.dw_list.visible = true
+	setpointer(arrow!)
+	setredraw(true)
+	return 0
+
+// w_checkdb.wf_showerrors() returns 0
+	string ls_null
+	setnull(ls_null)
+	this.id_list.scrolltorow(0)
+	this.id_list.setfilter("not isnull(repairlevel)")
+	this.id_list.filter()
+	this.id_list.groupcalc()
+	if this.il_mode <> 0 then
+		messagebox("Database Integrity Checking Alert", "Database Integrity Checking Process Found " + string(this.id_list.rowcount()) + " Problems", information!)
+		if this.id_list.rowcount() > 0 then
+			this.id_button.object.b_reindex.visible = true
+			this.id_button.object.b_repairtable.visible = true
+			this.id_button.object.b_repairdb.visible = true
+		else
+			this.id_button.object.b_reindex.visible = false
+			this.id_button.object.b_repairtable.visible = false
+			this.id_button.object.b_repairdb.visible = false
+		end if
+		return
+	end if
+	if this.id_list.rowcount() > 0 then
+		messagebox("Database Integrity Checking Alert", "Database Integrity Checking Process Found " + string(this.id_list.rowcount()) + " Problems~r~n~r~n" + "Please use the following procedure to resolve these Problems.~r~n~r~n" + "a) Exit From The Waseela Application from server machine and all workstations.~r~n" + "b) Make sure no other user is using the database either via waseela application or any other application.~r~n" + "c) Run Waseela Application from Server machine Only.~r~n" + "d) Invoke this process at logon window using {F5} and follow the process.", information!)
+		return
+	end if
+	messagebox("Database Integrity Checking Alert", "Database Integrity Checking Process Found " + string(this.id_list.rowcount()) + " Problems", information!)
+
+// w_checkdb.wf_show_complete_report() returns long
+	string ls_null
+	setnull(ls_null)
+	this.id_list.scrolltorow(0)
+	this.id_list.setfilter("")
+	this.id_list.filter()
+	this.id_list.groupcalc()
+	return 0
+
+// w_checkdb.wf_dbreindex() returns long
+	long ll_index
+	string ls_object
+	ll_index = this.id_list.getrow()
+	if ll_index > 0 then
+		ls_object = this.id_list.object.object[ll_index]
+		if not isnull(ls_object) then
+			setpointer(hourglass!)
+			setredraw(false)
+			this.it_transobject.dbreindex(ls_object)
+			if this.it_transobject.sqlcode = 0 then
+				SQL commit USING this.it_transobject;
+				messagebox("Database Integrity Checking", "Re-Indexing Completed Successfully.")
+				wf_checkdb()
+			else
+				messagebox("Database Integrity Checking", "Problem found while Re-Indexing Some Database Objects.~r~nReasons are:-~r~n" + this.it_transobject.sqlerrtext)
+				SQL rollback USING this.it_transobject;
+			end if
+			setpointer(arrow!)
+			setredraw(true)
+		end if
+	end if
+	return 0
+
+// w_checkdb.wf_repairdb() returns long
+	long ll_index
+	integer li_option
+	string ls_object
+	ll_index = this.id_list.getrow()
+	if ll_index > 0 then
+		open(w_select_repairdb_option)
+		li_option = message.doubleparm
+		if not isnull(li_option) then
+			setpointer(hourglass!)
+			this.tab_monitor.tabpage_list.dw_list.visible = false
+			this.tab_monitor.tabpage_list.st_pleasewait.visible = true
+			this.it_transobject.alterdb(gs_dbname, 1)
+			if this.it_transobject.sqlcode = 0 then
+				this.it_transobject.repairdb(gs_dbname, li_option)
+				if this.it_transobject.sqlcode = 0 then
+					SQL commit USING this.it_transobject;
+					this.it_transobject.alterdb(gs_dbname, 2)
+					if this.it_transobject.sqlcode = 0 then
+						wf_checkdb()
+					else
+						messagebox("Database Integrity Checking", "Problem found while Database Repairing.~r~nReasons are:-~r~n" + this.it_transobject.sqlerrtext)
+						SQL rollback USING this.it_transobject;
+					end if
+				else
+					messagebox("Database Integrity Checking", "Problem found while Database Repairing.~r~nReasons are:-~r~n" + this.it_transobject.sqlerrtext)
+					SQL rollback USING this.it_transobject;
+				end if
+			else
+				messagebox("Database Integrity Checking", "Problem found while Database Repairing.~r~nReasons are:-~r~n" + this.it_transobject.sqlerrtext)
+				SQL rollback USING this.it_transobject;
+			end if
+			setredraw(false)
+			this.id_list.retrieve(gs_dbname)
+			this.tab_monitor.tabpage_list.st_pleasewait.visible = false
+			this.tab_monitor.tabpage_list.dw_list.visible = true
+			setpointer(arrow!)
+			setredraw(true)
+		end if
+	end if
+	return 0
+
+// w_checkdb.wf_repairtable() returns long
+	long ll_index
+	integer li_option
+	string ls_object
+	ll_index = this.id_list.getrow()
+	if ll_index > 0 then
+		ls_object = this.id_list.object.object[ll_index]
+		if not isnull(ls_object) then
+			open(w_select_repairdb_option)
+			li_option = message.doubleparm
+			if not isnull(li_option) then
+				setpointer(hourglass!)
+				this.tab_monitor.tabpage_list.dw_list.visible = false
+				this.tab_monitor.tabpage_list.st_pleasewait.visible = true
+				this.it_transobject.alterdb(gs_dbname, 1)
+				if this.it_transobject.sqlcode = 0 then
+					this.it_transobject.checktable(gs_dbname, ls_object, li_option)
+					if this.it_transobject.sqlcode = 0 then
+						SQL commit USING this.it_transobject;
+						this.it_transobject.alterdb(gs_dbname, 2)
+						if this.it_transobject.sqlcode = 0 then
+							wf_checkdb()
+						else
+							messagebox("Database Integrity Checking", "Problem found while Repairing Database Table.~r~nReasons are:-~r~n" + this.it_transobject.sqlerrtext)
+							SQL rollback USING this.it_transobject;
+						end if
+					else
+						messagebox("Database Integrity Checking", "Problem found while Repairing Database Table.~r~nReasons are:-~r~n" + this.it_transobject.sqlerrtext)
+						SQL rollback USING this.it_transobject;
+					end if
+				else
+					messagebox("Database Integrity Checking", "Problem found while Repairing Database Table.~r~nReasons are:-~r~n" + this.it_transobject.sqlerrtext)
+					SQL rollback USING this.it_transobject;
+				end if
+				setredraw(false)
+				this.id_list.retrieve(gs_dbname)
+				this.tab_monitor.tabpage_list.st_pleasewait.visible = false
+				this.tab_monitor.tabpage_list.dw_list.visible = true
+				setpointer(arrow!)
+				setredraw(true)
+			end if
+		end if
+	end if
+	return 0
+
+// w_checkdb.create() returns 0
+	this.tab_monitor = create tab_monitor
+	this.control = {this.tab_monitor}
+
+// w_checkdb.destroy() returns 0
+	destroy this.tab_monitor
+
+// w_checkdb.open() returns long
+	long ll_discalimer
+	this.il_mode = message.doubleparm
+	if isnull(this.il_mode) then
+		this.il_mode = 0
+	end if
+	if this.il_mode = 1 then
+		open(w_disclaimerwindow)
+		if message.doubleparm = -1.0 or message.doubleparm = 0.0 then
+			close(this)
+			if not isvalid(message) then
+				return 0
+			end if
+			return message.returnvalue
+		end if
+		open(w_administrator_key)
+		if message.doubleparm = -1.0 or message.doubleparm = 0.0 then
+			close(this)
+			if not isvalid(message) then
+				return 0
+			end if
+			return message.returnvalue
+		end if
+		return
+	end if
+	triggerevent("ue_postopen")
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// tab_monitor.create() returns 0
+	this.tabpage_list = create tabpage_list
+	this.control = {this.tabpage_list}
+
+// tab_monitor.destroy() returns 0
+	destroy this.tabpage_list
+
+// tabpage_list.create() returns 0
+	this.st_pleasewait = create st_pleasewait
+	this.dw_buttons = create dw_buttons
+	this.dw_list = create dw_list
+	this.control = {this.st_pleasewait, this.dw_buttons, this.dw_list}
+
+// tabpage_list.destroy() returns 0
+	destroy this.st_pleasewait
+	destroy this.dw_buttons
+	destroy this.dw_list
+
+// dw_buttons.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_buttons.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	string ls_controlname
+	string ls_temp
+	ancestorreturnvalue = super::clicked(xpos, ypos, row, dwo)
+	if row > 0 then
+		choose case dwo.name
+		case "b_checknow"
+			parent.parent.parent.wf_checkdb()
+		case "b_reindex"
+			parent.parent.parent.wf_dbreindex()
+		case "b_repairtable"
+			parent.parent.parent.wf_repairtable()
+		case "b_repairdb"
+			parent.parent.parent.wf_repairdb()
+		end choose
+	end if
+	return ::message.returnvalue
+
+// dw_list.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_list.rowfocuschanged(long currentrow) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::rowfocuschanged(currentrow)
+	if currentrow > 0 then
+		selectrow(0, false)
+		setrow(currentrow)
+		scrolltorow(currentrow)
+		selectrow(currentrow, true)
+	end if
+	return ::message.returnvalue
+
+// dw_list.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	return ::message.returnvalue

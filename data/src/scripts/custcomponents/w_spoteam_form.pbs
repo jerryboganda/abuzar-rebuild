@@ -1,0 +1,663 @@
+// window w_spoteam_form (custcomponents)  ancestor: window
+
+// w_spoteam_form.ue_close() returns 0
+	SQL stop USING this.it_transobject;
+	close(this)
+
+// w_spoteam_form.wf_set_interface_adjustments() returns 0
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width * 0.95
+		ll_height = ll_win_height * 0.95
+		this.width = ll_width
+		this.height = ll_height
+		this.cb_ok.y = ll_height - this.cb_ok.height - 200
+		this.cb_cancel.y = ll_height - this.cb_cancel.height - 200
+		this.tab_main.width = ll_width * 0.98
+		this.tab_main.height = this.cb_ok.y - 50
+		this.tab_main.tabpage_1.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_1.height = this.tab_main.height - 500
+		this.tab_main.tabpage_1.dw_1.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_1.dw_1.height = this.tab_main.height - 500
+		this.tab_main.tabpage_2.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_2.height = this.tab_main.height - 500
+		this.tab_main.tabpage_2.dw_2.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_2.dw_2.height = this.tab_main.height - 500
+		this.tab_main.tabpage_3.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_3.height = this.tab_main.height - 500
+		this.tab_main.tabpage_3.dw_3.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_3.dw_3.height = this.tab_main.height - 500
+		this.tab_main.tabpage_4.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_4.height = this.tab_main.height - 500
+		this.tab_main.tabpage_4.dw_4.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_4.dw_4.height = this.tab_main.height - 500
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+
+// w_spoteam_form.wf_set_tab_visibility() returns long
+	wf_select_first_tab()
+	return 0
+
+// w_spoteam_form.wf_connect() returns long
+	SQL start USING this.it_transobject;
+	return this.it_transobject.sqlcode
+
+// w_spoteam_form.wf_tabnewid(string as_tablename, long al_newid) returns long
+	long ll_rtcode
+	SQL SELECT TABMAXKEY INTO :al_newid FROM _TABMAXKEY WITH ( UPDLOCK HOLDLOCK ) WHERE _TABMAXKEY.TABName =:as_tablename USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		al_newid = al_newid + 1
+		SQL update dbo._tabmaxkey SET TABMAXKEY =:al_newid WHERE _TABMAXKEY.TABName =:as_tablename USING this.it_transobject;
+		if this.it_transobject.sqlcode = 0 then
+			ll_rtcode = this.it_transobject.sqlcode
+		else
+			ll_rtcode = this.it_transobject.sqlcode
+			al_newid = 0
+		end if
+	else
+		ll_rtcode = this.it_transobject.sqlcode
+		al_newid = 0
+	end if
+	return ll_rtcode
+
+// w_spoteam_form.wf_retrieve_tabs() returns long
+	long ll_retcode
+	this.id_1 = this.tab_main.tabpage_1.dw_1
+	this.id_1.settransobject(this.it_transobject)
+	if this.il_code > 0 then
+		this.id_1.retrieve(this.il_code)
+	else
+		this.id_1.insertrow(0)
+	end if
+	this.id_2 = this.tab_main.tabpage_2.dw_2
+	this.id_2.settransobject(this.it_transobject)
+	if this.il_code > 0 then
+		this.id_2.retrieve(this.il_code)
+	end if
+	this.id_3 = this.tab_main.tabpage_3.dw_3
+	this.id_3.settransobject(this.it_transobject)
+	if this.il_code > 0 then
+		this.id_3.retrieve(this.il_code)
+	end if
+	this.id_4 = this.tab_main.tabpage_4.dw_4
+	this.id_4.settransobject(this.it_transobject)
+	if this.il_code > 0 then
+		this.id_4.retrieve(this.il_code)
+	end if
+	return 0
+
+// w_spoteam_form.wf_insert_row(datawindow adw_dw, integer ai_askpermit) returns long
+	long ll_row
+	long ll_res
+	ll_row = adw_dw.insertrow(0)
+	adw_dw.object.code[ll_row] = this.il_code
+	adw_dw.setrow(ll_row)
+	adw_dw.scrolltorow(ll_row)
+	return 0
+
+// w_spoteam_form.wf_delete_row(datawindow adw_dw, integer ai_askpermit) returns long
+	long ll_row
+	long ll_res
+	if adw_dw.rowcount() > 0 and adw_dw.getrow() > 0 then
+		ll_res = 1
+		if ll_res = 1 then
+			ll_row = adw_dw.getrow()
+			if adw_dw.deleterow(ll_row) = 1 and adw_dw.rowcount() > 0 then
+				adw_dw.setrow(1)
+				adw_dw.scrolltorow(1)
+			end if
+		end if
+	end if
+	return 0
+
+// w_spoteam_form.wf_goto_record(datawindow adw_dw) returns long
+	long ll_current
+	long ll_counter
+	long ll_row
+	datastore lds_ds
+	s_arguements lstr_arg
+	ll_current = adw_dw.getrow()
+	if adw_dw.rowcount() > 0 then
+		lds_ds = create datastore
+		lds_ds.dataobject = "d_emp_recordpointer"
+		lds_ds.settransobject(sqlca)
+		for ll_counter = 1 to adw_dw.rowcount()
+			ll_row = lds_ds.insertrow(0)
+			if ll_row = ll_current then
+				lds_ds.object.currentrow[ll_row] = 1
+			else
+				lds_ds.object.currentrow[ll_row] = 0
+			end if
+			lds_ds.object.rowid[ll_row] = adw_dw.object.rowid[ll_counter]
+			lds_ds.object.rowno[ll_row] = ll_counter
+		next
+		if lds_ds.rowcount() > 0 then
+			openwithparm(w_arg_emp_record_pointer, lds_ds)
+			lstr_arg = message.powerobjectparm
+			if lstr_arg.i_status = 1 and lstr_arg.l_code1 > 0 then
+				adw_dw.setrow(lstr_arg.l_code1)
+				adw_dw.scrolltorow(lstr_arg.l_code1)
+			end if
+		end if
+	end if
+	return 0
+
+// w_spoteam_form.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns integer
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+	return 0
+
+// w_spoteam_form.wf_apply_protect_setting() returns integer
+	return 0
+
+// w_spoteam_form.wf_save() returns long
+	this.cb_ok.triggerevent(clicked!)
+	return 0
+
+// w_spoteam_form.wf_print() returns long
+	wf_save()
+	return 0
+
+// w_spoteam_form.wf_select_first_tab() returns long
+	if this.tab_main.tabpage_1.visible = true then
+		this.tab_main.selecttab(1)
+		return 0
+	end if
+	if this.tab_main.tabpage_2.visible = true then
+		this.tab_main.selecttab(2)
+		return 0
+	end if
+	if this.tab_main.tabpage_3.visible = true then
+		this.tab_main.selecttab(3)
+		return 0
+	end if
+	if this.tab_main.tabpage_4.visible = true then
+		this.tab_main.selecttab(4)
+		return 0
+	end if
+	return 0
+
+// w_spoteam_form.wf_prepare_for_update() returns long
+	long ll_code
+	long ll_row
+	long ll_counter
+	long ll_null
+	setnull(ll_null)
+	ll_code = this.id_1.object.code[1]
+	if ll_code > 0 then
+		ll_row = this.id_1.rowcount()
+	else
+		wf_tabnewid("spoteam", ll_code)
+		this.id_1.object.code[1] = ll_code
+	end if
+	for ll_counter = 1 to this.id_2.rowcount()
+		this.id_2.object.code[ll_counter] = ll_code
+		if isnull(this.id_2.object.icatcode[ll_counter]) then
+			this.id_2.deleterow(ll_counter)
+		elseif vf_dwdupcode1(this.id_2, "icatcode", trim(string(this.id_2.object.icatcode[ll_counter])), ll_counter) then
+			messagebox("Duplicate Item Category", "Duplicate Item Category", stopsign!)
+			this.id_1.object.code[1] = ll_null
+			return -1
+		end if
+	next
+	for ll_counter = 1 to this.id_3.rowcount()
+		this.id_3.object.code[ll_counter] = ll_code
+		if isnull(this.id_3.object.subareacode[ll_counter]) then
+			this.id_3.deleterow(ll_counter)
+		elseif vf_dwdupcode1(this.id_3, "subareacode", trim(string(this.id_3.object.subareacode[ll_counter])), ll_counter) then
+			messagebox("Duplicate Item Sub Area ", "Duplicate Sub Area", stopsign!)
+			this.id_1.object.code[1] = ll_null
+			return -1
+		end if
+	next
+	for ll_counter = 1 to this.id_4.rowcount()
+		this.id_4.object.code[ll_counter] = ll_code
+		if isnull(this.id_4.object.spocode[ll_counter]) then
+			this.id_4.deleterow(ll_counter)
+		elseif vf_dwdupcode1(this.id_4, "spocode", trim(string(this.id_4.object.spocode[ll_counter])), ll_counter) then
+			messagebox("Duplicate SPO", "Duplicate SPO", stopsign!)
+			this.id_1.object.code[1] = ll_null
+			return -1
+		end if
+	next
+	if this.id_4.getitemnumber(1, "c_totalshareperc") <> 100.00 then
+		messagebox("Total Share Percentage Validation", "Total SPO Team Share should be 100%", stopsign!)
+		this.id_1.object.code[1] = ll_null
+		return -1
+	end if
+	return 0
+
+// w_spoteam_form.wf_show_employee_gallery() returns long
+	if this.il_code > 0 then
+		openwithparm(w_employeegallary, this.il_code)
+	end if
+	return 0
+
+// w_spoteam_form.wf_get_info(long al_code) returns long
+	long ll_empcode
+	string ls_empid
+	string ls_empname
+	string ls_fname
+	string ls_gender
+	SQL SELECT SPOTeamCode INTO :ll_empcode FROM SPOTeam WHERE SPOTeamCode =:al_code USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		this.il_code = ll_empcode
+		return 0
+	end if
+	return -1
+
+// w_spoteam_form.wf_duplicate_spoteam(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM SPOTeam WHERE name =:as_name USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_spoteam_form.create() returns 0
+	this.tab_main = create tab_main
+	this.cb_ok = create cb_ok
+	this.cb_cancel = create cb_cancel
+	this.control = {this.tab_main, this.cb_ok, this.cb_cancel}
+
+// w_spoteam_form.destroy() returns 0
+	destroy this.tab_main
+	destroy this.cb_ok
+	destroy this.cb_cancel
+
+// w_spoteam_form.open() returns long
+	integer li_xpos
+	integer li_ypos
+	integer li_xendpos
+	integer li_counter
+	integer li_taborder
+	integer li_visiblecolumns
+	integer li_zerotaborder
+	long ll_counter
+	long li_retcode
+	long li_rtncode
+	boolean lb_active
+	boolean lb_restricted
+	boolean lb_customicode
+	boolean lb_zerotabordercol
+	date ld_date
+	long ll_retcode
+	ld_date = today()
+	this.il_code = message.doubleparm
+	this.it_transobject = create u_transaction
+	if wf_connect() <> 0 then
+		messagebox("Connection Failure", "Unable to connect to the database", stopsign!)
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	wf_get_info(this.il_code)
+	wf_retrieve_tabs()
+	wf_apply_protect_setting()
+	wf_set_interface_adjustments()
+	wf_set_tab_visibility()
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// tab_main.create() returns 0
+	this.tabpage_1 = create tabpage_1
+	this.tabpage_2 = create tabpage_2
+	this.tabpage_3 = create tabpage_3
+	this.tabpage_4 = create tabpage_4
+	this.control = {this.tabpage_1, this.tabpage_2, this.tabpage_3, this.tabpage_4}
+
+// tab_main.destroy() returns 0
+	destroy this.tabpage_1
+	destroy this.tabpage_2
+	destroy this.tabpage_3
+	destroy this.tabpage_4
+
+// tab_main.selectionchanged(integer oldindex, integer newindex) returns long
+	if newindex = 1 then
+		parent.id_1.setfocus()
+		if parent.id_1.rowcount() = 0 then
+			parent.wf_insert_row(parent.id_1, 0)
+		end if
+	elseif newindex = 2 then
+		parent.id_2.setfocus()
+		if parent.id_2.rowcount() = 0 then
+			parent.wf_insert_row(parent.id_2, 0)
+		end if
+	elseif newindex = 3 then
+		parent.id_3.setfocus()
+		if parent.id_3.rowcount() = 0 then
+			parent.wf_insert_row(parent.id_3, 0)
+		end if
+	elseif newindex = 4 then
+		parent.id_4.setfocus()
+		if parent.id_4.rowcount() = 0 then
+			parent.wf_insert_row(parent.id_4, 0)
+		end if
+	end if
+	return ::message.returnvalue
+
+// tabpage_1.create() returns 0
+	this.dw_1 = create dw_1
+	this.control = {this.dw_1}
+
+// tabpage_1.destroy() returns 0
+	destroy this.dw_1
+
+// dw_1.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	setfocus()
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_1.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if len(gettext()) > 0 then
+		selecttext(1, len(gettext()))
+	end if
+	return ::message.returnvalue
+
+// dw_1.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_1.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	integer rt_code
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if parent.parent.parent.wf_duplicate_spoteam(data) then
+			messagebox("Name Validation", "Duplicate SPO Team Name Error~n~rPlease Choose Some Other Customer Name")
+			return 1
+		end if
+		return rt_code
+	end choose
+	return rt_code
+
+// tabpage_2.create() returns 0
+	this.dw_2 = create dw_2
+	this.control = {this.dw_2}
+
+// tabpage_2.destroy() returns 0
+	destroy this.dw_2
+
+// dw_2.ue_enterkey() returns long
+	long ancestorreturnvalue
+	long ll_rowcount
+	string ls_code
+	ancestorreturnvalue = super::ue_enterkey()
+	if getrow() = rowcount() and getcolumn() = integer(this.object.datawindow.column.count) then
+		if rowcount() > 0 and f_validatedw(this) < 0 then
+			return ::message.returnvalue
+		end if
+		ls_code = trim(string(this.object.icatcode[rowcount()]))
+		if isnull(ls_code) then
+			return 1
+		elseif vf_dwdupcode1(this, "icatcode", ls_code, rowcount()) then
+			messagebox("Duplicate", "Duplicate Item Category. This Item Category is Already Selected", stopsign!)
+			return 1
+		else
+			ll_rowcount = insertrow(0)
+			if ll_rowcount > 1 then
+				scrolltorow(ll_rowcount)
+				setfocus()
+			end if
+			return 1
+		end if
+		return
+	end if
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_2.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	setfocus()
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_2.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if len(gettext()) > 0 then
+		selecttext(1, len(gettext()))
+	end if
+	return ::message.returnvalue
+
+// dw_2.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key <> keyinsert! then
+		if keyflags = 2 and key = keyd! then
+			parent.parent.parent.wf_delete_row(parent.parent.parent.id_2, 1)
+		end if
+	end if
+	if key = keyf5! then
+		parent.parent.parent.wf_goto_record(parent.parent.parent.id_2)
+	end if
+	return ::message.returnvalue
+
+// tabpage_3.create() returns 0
+	this.dw_3 = create dw_3
+	this.control = {this.dw_3}
+
+// tabpage_3.destroy() returns 0
+	destroy this.dw_3
+
+// dw_3.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	setfocus()
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_3.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if len(gettext()) > 0 then
+		selecttext(1, len(gettext()))
+	end if
+	return ::message.returnvalue
+
+// dw_3.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key <> keyinsert! then
+		if keyflags = 2 and key = keyd! then
+			parent.parent.parent.wf_delete_row(parent.parent.parent.id_3, 1)
+		end if
+	end if
+	if key = keyf5! then
+		parent.parent.parent.wf_goto_record(parent.parent.parent.id_3)
+	end if
+	return ::message.returnvalue
+
+// dw_3.ue_enterkey() returns long
+	long ancestorreturnvalue
+	long ll_rowcount
+	string ls_code
+	ancestorreturnvalue = super::ue_enterkey()
+	if getrow() = rowcount() and getcolumn() = integer(this.object.datawindow.column.count) then
+		if rowcount() > 0 and f_validatedw(this) < 0 then
+			return ::message.returnvalue
+		end if
+		ls_code = trim(string(this.object.subareacode[rowcount()]))
+		if isnull(ls_code) then
+			return 1
+		elseif vf_dwdupcode1(this, "subareacode", ls_code, rowcount()) then
+			messagebox("Duplicate", "Duplicate Sup. Area. This Sub Area is Already Selected", stopsign!)
+			return 1
+		else
+			ll_rowcount = insertrow(0)
+			if ll_rowcount > 1 then
+				scrolltorow(ll_rowcount)
+				setfocus()
+			end if
+			return 1
+		end if
+		return
+	end if
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// tabpage_4.create() returns 0
+	this.dw_4 = create dw_4
+	this.control = {this.dw_4}
+
+// tabpage_4.destroy() returns 0
+	destroy this.dw_4
+
+// dw_4.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	setfocus()
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_4.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if len(gettext()) > 0 then
+		selecttext(1, len(gettext()))
+	end if
+	return ::message.returnvalue
+
+// dw_4.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key <> keyinsert! then
+		if keyflags = 2 and key = keyd! then
+			parent.parent.parent.wf_delete_row(parent.parent.parent.id_4, 1)
+		end if
+	end if
+	if key = keyf5! then
+		parent.parent.parent.wf_goto_record(parent.parent.parent.id_4)
+	end if
+	return ::message.returnvalue
+
+// dw_4.ue_enterkey() returns long
+	long ancestorreturnvalue
+	long ll_rowcount
+	string ls_code
+	ancestorreturnvalue = super::ue_enterkey()
+	if getrow() = rowcount() and getcolumn() = integer(this.object.datawindow.column.count) then
+		if rowcount() > 0 and f_validatedw(this) < 0 then
+			return ::message.returnvalue
+		end if
+		ls_code = trim(string(this.object.spocode[rowcount()]))
+		if isnull(ls_code) then
+			return 1
+		elseif vf_dwdupcode1(this, "spocode", ls_code, rowcount()) then
+			messagebox("Duplicate", "Duplicate SPO. This SPO is Already Selected", stopsign!)
+			return 1
+		else
+			ll_rowcount = insertrow(0)
+			if ll_rowcount > 1 then
+				scrolltorow(ll_rowcount)
+				setcolumn("spocode")
+				setfocus()
+			end if
+			return 1
+		end if
+		return
+	end if
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// cb_ok.ue_enterkry(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		triggerevent(clicked!)
+	end if
+	return 1
+
+// cb_ok.clicked() returns long
+	string ls_name
+	long ll_newid
+	long ll_row
+	long ll_counter
+	long ll_liccode
+	long li_rc
+	boolean lb_commitok
+	if f_validatedw(parent.id_1) < 0 then
+		parent.tab_main.selecttab(1)
+		return ::message.returnvalue
+	end if
+	if f_validatedw(parent.id_2) < 0 then
+		parent.tab_main.selecttab(2)
+		return ::message.returnvalue
+	end if
+	if f_validatedw(parent.id_3) < 0 then
+		parent.tab_main.selecttab(3)
+		return ::message.returnvalue
+	end if
+	if f_validatedw(parent.id_4) < 0 then
+		parent.tab_main.selecttab(4)
+		return ::message.returnvalue
+	end if
+	if parent.wf_prepare_for_update() < 0 then
+		SQL rollback USING parent.it_transobject;
+		return ::message.returnvalue
+	end if
+	if parent.id_1.update() = 1 then
+		if parent.id_2.update() = 1 then
+			if parent.id_3.update() = 1 then
+				if parent.id_4.update() = 1 then
+					SQL commit USING parent.it_transobject;
+					lb_commitok = true
+					parent.event ue_close()
+					return ::message.returnvalue
+				else
+					messagebox("SPO Team Member Update Problem", "Unable to update SPO Team Member Information" + "~r~nDetails Are:- " + parent.it_transobject.sqlerrtext, stopsign!)
+					SQL rollback USING parent.it_transobject;
+				end if
+			else
+				messagebox("SPO Team Sub Area Update Problem", "Unable to update SPO Team Sub Area Information" + "~r~nDetails Are:- " + parent.it_transobject.sqlerrtext, stopsign!)
+				SQL rollback USING parent.it_transobject;
+			end if
+		else
+			messagebox("SPO Team Category Update Problem", "Unable to update SPO Team Category Information" + "~r~nDetails Are:- " + parent.it_transobject.sqlerrtext, stopsign!)
+			SQL rollback USING parent.it_transobject;
+		end if
+	else
+		messagebox("SPO Team Update Problem", "Unable to update SPO Team Information" + "~r~nDetails Are:- " + parent.it_transobject.sqlerrtext, stopsign!)
+		SQL rollback USING parent.it_transobject;
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.postevent("ue_close")
+	return ::message.returnvalue

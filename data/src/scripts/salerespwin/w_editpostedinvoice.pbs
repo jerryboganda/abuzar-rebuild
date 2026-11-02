@@ -1,0 +1,530 @@
+// window w_editpostedinvoice (salerespwin)  ancestor: window
+
+// w_editpostedinvoice.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	long ll_option
+	if key = keyescape! then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// w_editpostedinvoice.ue_close() returns 0
+	close(this)
+
+// w_editpostedinvoice.ue_save() returns 0
+	long ll_retcode
+	string ls_errtext
+	if this.editflag = false then
+		return
+	end if
+	if f_validatedw(this.dw_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.dw_detail) < 0 then
+		return
+	end if
+	if f_validatedw(this.dw_footer) < 0 then
+		return
+	end if
+	this.dw_master.object.flatdisc[1] = this.dw_footer.object.flatdisc[1]
+	this.dw_master.object.discperc[1] = this.dw_footer.object.invdiscperc[1]
+	this.dw_master.object.misccharges[1] = this.dw_footer.object.misccharges[1]
+	this.dw_master.object.invgstperc1[1] = this.dw_footer.object.invgstperc1[1]
+	if this.istr_invdetail.i_module = 3 then
+		if this.ic_advancetaxonpur = "Y" then
+			this.dw_master.object.advancetaxamt[1] = this.dw_footer.object.advancetaxamt[1]
+		else
+			this.dw_master.object.advancetaxamt[1] = 0.00
+		end if
+	end if
+	this.dw_master.object.invtotal[1] = wf_grandtotal()
+	if this.dw_master.update(true, true) > 0 then
+		if this.dw_detail.update(true, false) > 0 then
+			ll_retcode = wf_cleanup_virtualgl(ls_errtext)
+			if ll_retcode = 0 then
+				SQL commit USING this.it_transobject;
+				messagebox("Saving", "Changes Take Effect in Database", information!)
+				this.editflag = false
+			else
+				SQL rollback USING this.it_transobject;
+				messagebox("DataBase Problem", "Changes Does not Take Effect in Database~r~nProblem while cleaning accounting repository for this invoice~r~nReason: " + ls_errtext, stopsign!)
+			end if
+		else
+			SQL rollback USING this.it_transobject;
+			messagebox("DataBase Problem", "Transaction is Rollback Due to a database problem~r~nReason:" + this.it_transobject.sqlerrtext, stopsign!)
+		end if
+		return
+	end if
+	SQL rollback USING this.it_transobject;
+	messagebox("DataBase Problem", "Transaction is Rollback Due to a database problem~r~nReason:" + this.it_transobject.sqlerrtext, stopsign!)
+
+// w_editpostedinvoice.wf_assigndwobjects(string as_masterdw, string as_detaildw, string as_footerdw) returns 0
+	this.dw_master.dataobject = as_masterdw
+	this.dw_detail.dataobject = as_detaildw
+	this.dw_footer.dataobject = as_footerdw
+	this.dw_master.settransobject(this.it_transobject)
+	this.dw_detail.settransobject(this.it_transobject)
+	this.dw_footer.settransobject(this.it_transobject)
+
+// w_editpostedinvoice.wf_grandtotal() returns double
+	double ld_grandtotal
+	if this.istr_invdetail.i_module = 1 then
+		ld_grandtotal = wf_grandtotal_sale()
+	elseif this.istr_invdetail.i_module = 2 then
+		ld_grandtotal = wf_grandtotal_salereturn()
+	elseif this.istr_invdetail.i_module = 3 then
+		ld_grandtotal = wf_grandtotal_pur()
+	elseif this.istr_invdetail.i_module = 4 then
+		ld_grandtotal = wf_grandtotal_purreturn()
+	end if
+	return ld_grandtotal
+
+// w_editpostedinvoice.wf_grandtotal_sale() returns double
+	double ld_grandtotal
+	double ld_detaildwtotal
+	double ld_discountvalue
+	double ld_invtaxperc1val
+	double ld_intaxperc1
+	double ld_totaltax
+	double ld_totalitemleveltax
+	real lr_discperc
+	real lr_flatdisc
+	real lr_misccharges
+	real lr_salestax
+	real lr_itemstotal
+	if this.dw_detail.rowcount() > 0 and this.dw_footer.rowcount() > 0 then
+		lr_discperc = this.dw_footer.object.invdiscperc[1]
+		lr_flatdisc = this.dw_footer.object.flatdisc[1]
+		lr_misccharges = this.dw_footer.object.misccharges[1]
+		lr_salestax = this.dw_footer.object.salestax[1]
+		ld_detaildwtotal = this.dw_detail.getitemnumber(1, "c_detaildwtotal")
+		ld_intaxperc1 = this.dw_footer.object.invgstperc1[1]
+		ld_totalitemleveltax = this.dw_detail.getitemnumber(1, "c_sumtaxval") + this.dw_detail.getitemnumber(1, "c_sumgstval")
+		this.dw_footer.object.t_discountvalue.text = string(ld_detaildwtotal * lr_discperc * 0.01, "########0.00")
+		ld_discountvalue = ld_detaildwtotal * lr_discperc * 0.01
+		ld_grandtotal = ld_detaildwtotal - ld_discountvalue - lr_flatdisc + lr_misccharges + lr_salestax
+		ld_invtaxperc1val = round((ld_detaildwtotal - ld_discountvalue - lr_flatdisc) * ld_intaxperc1 * 0.01, 2)
+		ld_totaltax = round(ld_invtaxperc1val + ld_totalitemleveltax, 0)
+		ld_grandtotal = round(ld_grandtotal, 0) + ld_totaltax
+		this.dw_footer.setitem(1, "total", ld_grandtotal)
+	end if
+	return ld_grandtotal
+
+// w_editpostedinvoice.wf_grandtotal_pur() returns double
+	long ll_counter
+	double ld_grandtotal
+	double ld_detaildwtotal
+	double ld_itemleveltax
+	double ld_invgstpercval
+	double ld_totalsalestax
+	double ld_invgstperc1
+	double ld_netrate
+	double ld_discperc
+	double ld_flatdisc
+	double ld_misccharges
+	double ld_salestax
+	double ld_itemstotal
+	double ld_invlevelvalues
+	double ld_discpercvalue
+	double ld_grossvalue
+	double ld_itemgrossvalue
+	double ld_advincometax
+	double ld_totqty
+	if this.dw_detail.rowcount() > 0 and this.dw_footer.rowcount() > 0 then
+		ld_discperc = round(this.dw_footer.getitemnumber(1, "invdiscperc"), 2)
+		ld_flatdisc = round(this.dw_footer.getitemnumber(1, "flatdisc"), 2)
+		ld_misccharges = round(this.dw_footer.getitemnumber(1, "misccharges"), 2)
+		ld_salestax = round(this.dw_footer.getitemnumber(1, "salestax"), 2)
+		ld_advincometax = this.dw_footer.object.advancetaxamt[1]
+		if this.ic_advancetaxonpur = "Y" then
+			if ld_advincometax > 0.0 then
+				ld_misccharges = ld_advincometax
+				this.dw_footer.object.misccharges[1] = ld_advincometax
+				this.dw_footer.object.advancetaxamt[1] = ld_advincometax
+			else
+				ld_misccharges = 0.00
+				this.dw_footer.object.misccharges[1] = 0.00
+				this.dw_footer.object.advancetaxamt[1] = 0.00
+			end if
+		else
+			ld_misccharges = this.dw_footer.object.misccharges[1]
+			this.dw_footer.object.advancetaxamt[1] = 0.00
+		end if
+		if isnull(ld_discperc) then
+			ld_discperc = 0.00
+		end if
+		if isnull(ld_flatdisc) then
+			ld_flatdisc = 0.00
+		end if
+		if isnull(ld_misccharges) then
+			ld_misccharges = 0.00
+		end if
+		if isnull(ld_salestax) then
+			ld_salestax = 0.00
+		end if
+		ld_detaildwtotal = this.dw_detail.getitemnumber(1, "d_detaildwtotal")
+		ld_invgstperc1 = this.dw_footer.getitemnumber(1, "invgstperc1")
+		ld_itemleveltax = this.dw_detail.object.c_sumtaxval[1] + this.dw_detail.object.c_sumgstval[1]
+		ld_invgstpercval = round((round(ld_detaildwtotal * (1.0 - 0.01 * ld_discperc), 2) - ld_flatdisc) * 0.01 * ld_invgstperc1, 2)
+		ld_discpercvalue = round(ld_detaildwtotal * ld_discperc * 0.01, 5)
+		ld_totalsalestax = round(ld_invgstpercval + ld_itemleveltax, 0)
+		ld_grandtotal = ld_detaildwtotal * (1.0 - ld_discperc * 0.01) - ld_flatdisc + ld_misccharges + ld_salestax
+		ld_grandtotal = round(ld_grandtotal, 0) + ld_totalsalestax
+		this.dw_footer.setitem(1, "total", ld_grandtotal)
+		ld_detaildwtotal = this.dw_footer.getitemnumber(1, "total")
+		ld_invlevelvalues = ld_invgstpercval + ld_misccharges - ld_flatdisc - ld_discpercvalue
+		if ld_invlevelvalues = 0.0 or isnull(ld_invlevelvalues) then
+			ld_invlevelvalues = 0
+		end if
+		ld_grossvalue = this.dw_detail.object.c_total_finalitemval[1]
+		if ld_grossvalue = 0.0 or isnull(ld_grossvalue) then
+			ld_grossvalue = 1
+		end if
+		if f_stringpreferences("ShowNetRateInPurchase") = "Y" then
+			for ll_counter = 1 to this.dw_detail.rowcount()
+				ld_totqty = this.dw_detail.object.looseqty[ll_counter] + this.dw_detail.object.packqty[ll_counter] + this.dw_detail.object.bonusqty[ll_counter]
+				if ld_totqty = 0.0 or isnull(ld_totqty) then
+					ld_totqty = 1
+				end if
+				ld_itemgrossvalue = this.dw_detail.object.c_finalitemval[ll_counter]
+				ld_netrate = (ld_itemgrossvalue / ld_grossvalue * ld_invlevelvalues + ld_itemgrossvalue) / ld_totqty
+				this.dw_detail.object.netrate[ll_counter] = round(ld_netrate, 5)
+			next
+		end if
+	end if
+	return ld_grandtotal
+
+// w_editpostedinvoice.wf_grandtotal_purreturn() returns double
+	double ld_grandtotal
+	double ld_detaildwtotal
+	double ld_invgstperc1
+	double ld_itemleveltax
+	double ld_totalsalestax
+	double ld_invgstpercval
+	real lr_discperc
+	real lr_flatdisc
+	real lr_misccharges
+	real lr_salestax
+	real lr_itemstotal
+	if this.dw_detail.rowcount() > 0 and this.dw_footer.rowcount() > 0 then
+		lr_discperc = this.dw_footer.object.invdiscperc[1]
+		lr_flatdisc = this.dw_footer.object.flatdisc[1]
+		lr_misccharges = this.dw_footer.object.misccharges[1]
+		ld_detaildwtotal = this.dw_detail.getitemnumber(1, "d_detaildwtotal")
+		ld_invgstperc1 = this.dw_footer.object.invgstperc1[1]
+		ld_itemleveltax = round(this.dw_detail.getitemnumber(1, "c_sumgstval"), 2) + round(this.dw_detail.getitemnumber(1, "c_sumtaxval"), 2)
+		ld_invgstpercval = round((round(ld_detaildwtotal * (1.0 - lr_discperc * 0.01), 2) - lr_flatdisc) * 0.01 * ld_invgstperc1, 2)
+		ld_totalsalestax = round(ld_invgstpercval + ld_itemleveltax, 0)
+		ld_grandtotal = ld_detaildwtotal * (1.0 - lr_discperc * 0.01) + lr_misccharges - lr_flatdisc + lr_salestax
+		ld_grandtotal = round(ld_grandtotal, 0) + ld_totalsalestax
+		this.dw_footer.setitem(1, "total", ld_grandtotal)
+		ld_detaildwtotal = this.dw_footer.getitemnumber(1, "total")
+	end if
+	return ld_grandtotal
+
+// w_editpostedinvoice.wf_grandtotal_salereturn() returns double
+	double ld_grandtotal
+	double ld_detaildwtotal
+	double ld_invtaxpercval
+	double ld_totaltax
+	double ld_itemleveltax
+	double ld_invtaxperc1
+	real lr_discperc
+	real lr_flatdisc
+	real lr_misccharges
+	real lr_salestax
+	real lr_itemstotal
+	if this.dw_detail.rowcount() > 0 and this.dw_footer.rowcount() > 0 then
+		lr_discperc = this.dw_footer.object.invdiscperc[1]
+		lr_flatdisc = this.dw_footer.object.flatdisc[1]
+		lr_misccharges = this.dw_footer.object.misccharges[1]
+		ld_detaildwtotal = this.dw_detail.getitemnumber(1, "c_detaildwtotal")
+		ld_invtaxperc1 = this.dw_footer.object.invgstperc1[1]
+		ld_invtaxpercval = round(ld_detaildwtotal * ld_invtaxperc1 * 0.01, 2)
+		ld_itemleveltax = this.dw_detail.getitemnumber(1, "c_sumgstval") + this.dw_detail.getitemnumber(1, "c_sumtaxval")
+		ld_totaltax = round(ld_invtaxpercval + ld_itemleveltax, 0)
+		ld_grandtotal = ld_detaildwtotal * (1.0 - lr_discperc * 0.01) - lr_flatdisc + lr_misccharges + lr_salestax
+		ld_grandtotal = round(ld_grandtotal, 0) + ld_totaltax
+		this.dw_footer.setitem(1, "total", ld_grandtotal)
+	end if
+	return ld_grandtotal
+
+// w_editpostedinvoice.wf_cleanup_virtualgl(string as_errtext) returns long
+	string ls_doctype
+	long ll_invcode
+	choose case this.istr_invdetail.i_module
+	case 1
+		ls_doctype = "SV"
+	case 2
+		ls_doctype = "SR"
+	case 3
+		ls_doctype = "PV"
+	case 4
+		ls_doctype = "PR"
+	case else
+		ls_doctype = ""
+	end choose
+	SQL DELETE VirtualGL WHERE DocumentType =:ls_doctype AND DocumentCode =:this.istr_invdetail.l_invcode USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		ll_invcode = this.istr_invdetail.l_invcode
+		this.it_transobject.insert_postedinvoiceeditinglog(ls_doctype, ll_invcode, gs_localcomputername, gl_usercode)
+		if this.it_transobject.sqlcode = 0 then
+			as_errtext = ""
+			return 0
+		else
+			as_errtext = this.it_transobject.sqlerrtext
+			return -2
+		end if
+		return
+	end if
+	as_errtext = this.it_transobject.sqlerrtext
+	return -1
+
+// w_editpostedinvoice.create() returns 0
+	this.dw_master = create dw_master
+	this.dw_detail = create dw_detail
+	this.dw_footer = create dw_footer
+	this.control = {this.dw_master, this.dw_detail, this.dw_footer}
+
+// w_editpostedinvoice.destroy() returns 0
+	destroy this.dw_master
+	destroy this.dw_detail
+	destroy this.dw_footer
+
+// w_editpostedinvoice.open() returns long
+	long ll_module
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	setredraw(false)
+	this.istr_invdetail = message.powerobjectparm
+	this.it_transobject = create u_transaction
+	SQL start USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		messagebox("Database Connection", "Some Problem occured in making connection with Database~r~nReasons are:-" + this.it_transobject.sqlerrtext)
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		this.width = ll_win_width * 0.90
+		this.height = ll_win_height * 0.95
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	choose case this.istr_invdetail.i_module
+	case 1
+		this.title = "Sale Invoice Detail"
+		wf_assigndwobjects("d_posted_saleheader", "d_posted_saledetail", "d_posted_salefooter")
+	case 2
+		this.title = "Sale Return Detail"
+		wf_assigndwobjects("d_posted_openwholesalereturn", "d_posted_openwholesalereturndetail", "d_posted_opensalereturnfooter")
+	case 3
+		this.title = "Purchase Invoice Detail"
+		wf_assigndwobjects("d_posted_purchaseheader", "d_posted_purchasedetail", "d_posted_purchasefooter")
+		this.ic_advancetaxonpur = f_stringpreferences("ApplyAdvanceIncomeTaxInPur")
+		if this.ic_advancetaxonpur = "" or isnull(this.ic_advancetaxonpur) then
+			this.ic_advancetaxonpur = "N"
+		end if
+	case 4
+		this.title = "Purchase Return Detail"
+		wf_assigndwobjects("d_posted_openpurchasereturn", "d_posted_openpurchasereturndetail", "d_posted_openpurchasereturnfooter")
+	case 8
+		this.title = "Inter Godown Transfer Detail"
+		wf_assigndwobjects("d_transfer_header_view", "d_transfer_detail_view", "d_transfer_footer_view")
+	end choose
+	f_setcolumnstyle(this.dw_detail, "Qty")
+	this.dw_master.x = 0
+	this.dw_detail.x = 0
+	this.dw_footer.x = 0
+	this.dw_master.width = this.width - 10
+	this.dw_detail.width = this.width - 10
+	this.dw_footer.width = this.width - 10
+	this.dw_detail.height = this.height - (this.dw_master.height + this.dw_footer.height) - 100
+	this.dw_footer.y = this.dw_detail.y + this.dw_detail.height + 5
+	this.dw_master.retrieve(this.istr_invdetail.l_invcode)
+	this.dw_detail.retrieve(this.istr_invdetail.l_invcode)
+	this.dw_footer.retrieve(this.istr_invdetail.l_invcode)
+	if this.istr_invdetail.i_module = 3 then
+		if this.ic_advancetaxonpur = "Y" then
+			this.dw_footer.settaborder("misccharges", 0)
+		else
+			this.dw_footer.object.advancetaxamt_t.visible = false
+			this.dw_footer.object.advancetaxamt.visible = false
+		end if
+	end if
+	setredraw(true)
+	this.dw_master.setfocus()
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_editpostedinvoice.closequery() returns long
+	long ll_option
+	if this.editflag = true then
+		ll_option = messagebox("Saving Validation", "Do you want to save changes", question!, yesno!, 1)
+		if ll_option = 1 then
+			event ue_save()
+		end if
+	end if
+	SQL stop USING this.it_transobject;
+	return ::message.returnvalue
+
+// dw_master.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_master.rowfocuschanged(long currentrow) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::rowfocuschanged(currentrow)
+	parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_master.rowfocuschanging(long currentrow, long newrow) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::rowfocuschanging(currentrow, newrow)
+	parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_master.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_master.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	parent.editflag = true
+	return ::message.returnvalue
+
+// dw_master.editchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::editchanged(row, dwo, data)
+	parent.editflag = true
+	return ::message.returnvalue
+
+// dw_master.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if keyflags = 2 and key = keys! then
+		parent.event ue_save()
+		parent.event ue_close()
+	end if
+	if keyflags = 2 and key = keyx! then
+		parent.event ue_close()
+	end if
+	return ::message.returnvalue
+
+// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_detail.rowfocuschanged(long currentrow) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::rowfocuschanged(currentrow)
+	parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_detail.rowfocuschanging(long currentrow, long newrow) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::rowfocuschanging(currentrow, newrow)
+	parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_detail.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	parent.editflag = true
+	return ::message.returnvalue
+
+// dw_detail.editchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::editchanged(row, dwo, data)
+	parent.editflag = true
+	return ::message.returnvalue
+
+// dw_detail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if keyflags = 2 and key = keys! then
+		parent.event ue_save()
+		parent.event ue_close()
+	end if
+	if keyflags = 2 and key = keyx! then
+		parent.event ue_close()
+	end if
+	return ::message.returnvalue
+
+// dw_footer.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_footer.rowfocuschanged(long currentrow) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::rowfocuschanged(currentrow)
+	parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_footer.rowfocuschanging(long currentrow, long newrow) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::rowfocuschanging(currentrow, newrow)
+	parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_footer.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_footer.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	parent.editflag = true
+	parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_footer.editchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::editchanged(row, dwo, data)
+	parent.editflag = true
+	return ::message.returnvalue
+
+// dw_footer.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if keyflags = 2 and key = keys! then
+		parent.event ue_save()
+		parent.event ue_close()
+	end if
+	if keyflags = 2 and key = keyx! then
+		parent.event ue_close()
+	end if
+	return ::message.returnvalue

@@ -1,0 +1,235 @@
+// window w_pointofsalepreferences (abuzarapp)  ancestor: window
+
+// w_pointofsalepreferences.create() returns 0
+	this.cbx_showcashierwindow = create cbx_showcashierwindow
+	this.cbx_checkduerightonpos_save = create cbx_checkduerightonpos_save
+	this.cbx_assocsaleinvlist = create cbx_assocsaleinvlist
+	this.cbx_autoproduction = create cbx_autoproduction
+	this.cbx_salesets = create cbx_salesets
+	this.cbx_promptzerostock = create cbx_promptzerostock
+	this.cbx_invflatdisc = create cbx_invflatdisc
+	this.cbx_invdiscperc = create cbx_invdiscperc
+	this.cbx_invsize = create cbx_invsize
+	this.cbx_salesman = create cbx_salesman
+	this.cbx_misccharges = create cbx_misccharges
+	this.cbx_invgstperc = create cbx_invgstperc
+	this.cbx_itemgstperc = create cbx_itemgstperc
+	this.cbx_itemunittax = create cbx_itemunittax
+	this.cbx_itemdiscperc = create cbx_itemdiscperc
+	this.cbx_itemflatdisc = create cbx_itemflatdisc
+	this.dw_preferences = create dw_preferences
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.gb_1 = create gb_1
+	this.control = {this.cbx_showcashierwindow, this.cbx_checkduerightonpos_save, this.cbx_assocsaleinvlist, this.cbx_autoproduction, this.cbx_salesets, this.cbx_promptzerostock, this.cbx_invflatdisc, this.cbx_invdiscperc, this.cbx_invsize, this.cbx_salesman, this.cbx_misccharges, this.cbx_invgstperc, this.cbx_itemgstperc, this.cbx_itemunittax, this.cbx_itemdiscperc, this.cbx_itemflatdisc, this.dw_preferences, this.cb_cancel, this.cb_ok, this.gb_1}
+
+// w_pointofsalepreferences.destroy() returns 0
+	destroy this.cbx_showcashierwindow
+	destroy this.cbx_checkduerightonpos_save
+	destroy this.cbx_assocsaleinvlist
+	destroy this.cbx_autoproduction
+	destroy this.cbx_salesets
+	destroy this.cbx_promptzerostock
+	destroy this.cbx_invflatdisc
+	destroy this.cbx_invdiscperc
+	destroy this.cbx_invsize
+	destroy this.cbx_salesman
+	destroy this.cbx_misccharges
+	destroy this.cbx_invgstperc
+	destroy this.cbx_itemgstperc
+	destroy this.cbx_itemunittax
+	destroy this.cbx_itemdiscperc
+	destroy this.cbx_itemflatdisc
+	destroy this.dw_preferences
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.gb_1
+
+// w_pointofsalepreferences.open() returns long
+	string ls_defaultcomport
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	this.id_preferences = this.dw_preferences
+	this.id_preferences.settransobject(sqlca)
+	this.id_preferences.retrieve()
+	if f_stringpreferences("POS_ItemFlatDisc") = "Y" then
+		this.cbx_itemflatdisc.checked = true
+	end if
+	if f_stringpreferences("POS_ItemGstPerc") = "Y" then
+		this.cbx_itemgstperc.checked = true
+	end if
+	if f_stringpreferences("POS_ItemUnitTax") = "Y" then
+		this.cbx_itemunittax.checked = true
+	end if
+	if f_stringpreferences("POS_ItemDiscPerc") = "Y" then
+		this.cbx_itemdiscperc.checked = true
+	end if
+	if f_stringpreferences("POS_InvGstPerc") = "Y" then
+		this.cbx_invgstperc.checked = true
+	end if
+	if f_stringpreferences("POS_SalesMan") = "Y" then
+		this.cbx_salesman.checked = true
+	end if
+	if f_stringpreferences("POS_InvSize") = "Y" then
+		this.cbx_invsize.checked = true
+	end if
+	if f_stringpreferences("POS_MiscCharges") = "Y" then
+		this.cbx_misccharges.checked = true
+	end if
+	if f_stringpreferences("POS_InvDiscPerc") = "Y" then
+		this.cbx_invdiscperc.checked = true
+	end if
+	if f_stringpreferences("POS_InvFlatDisc") = "Y" then
+		this.cbx_invflatdisc.checked = true
+	end if
+	if f_stringpreferences("PromptStockInPos") = "Y" then
+		this.cbx_promptzerostock.checked = true
+	end if
+	if f_stringpreferences("SaleSets") = "Y" then
+		this.cbx_salesets.checked = true
+	end if
+	if f_stringpreferences("AutoProductionInPOS") = "Y" then
+		this.cbx_autoproduction.checked = true
+	end if
+	if f_stringpreferences("AssocSaleInvListInPOS") = "Y" then
+		this.cbx_assocsaleinvlist.checked = true
+	end if
+	if f_stringpreferences("checkduerightonpos_save") = "Y" then
+		this.cbx_checkduerightonpos_save.checked = true
+	end if
+	if f_stringpreferences("CashierWindowOnPOS") = "Y" then
+		this.cbx_showcashierwindow.checked = true
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	close(parent)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	string ls_temp
+	w_pointofsalepreferences w_parent
+	if parent.cbx_itemflatdisc.checked = true then
+		ls_temp = "Y"
+	else
+		ls_temp = "N"
+	end if
+	f_set_preference_local(parent.id_preferences, "POS_ItemFlatDisc", ls_temp)
+	if parent.cbx_itemgstperc.checked = true then
+		ls_temp = "Y"
+	else
+		ls_temp = "N"
+	end if
+	f_set_preference_local(parent.id_preferences, "POS_ItemGstPerc", ls_temp)
+	if parent.cbx_itemunittax.checked = true then
+		ls_temp = "Y"
+	else
+		ls_temp = "N"
+	end if
+	f_set_preference_local(parent.id_preferences, "POS_ItemUnitTax", ls_temp)
+	if parent.cbx_invgstperc.checked = true then
+		ls_temp = "Y"
+	else
+		ls_temp = "N"
+	end if
+	f_set_preference_local(parent.id_preferences, "POS_InvGstPerc", ls_temp)
+	if parent.cbx_salesman.checked = true then
+		ls_temp = "Y"
+	else
+		ls_temp = "N"
+	end if
+	f_set_preference_local(parent.id_preferences, "POS_SalesMan", ls_temp)
+	if parent.cbx_invsize.checked = true then
+		ls_temp = "Y"
+	else
+		ls_temp = "N"
+	end if
+	f_set_preference_local(parent.id_preferences, "POS_InvSize", ls_temp)
+	if parent.cbx_itemdiscperc.checked = true then
+		ls_temp = "Y"
+	else
+		ls_temp = "N"
+	end if
+	f_set_preference_local(parent.id_preferences, "POS_ItemDiscPerc", ls_temp)
+	if parent.cbx_misccharges.checked = true then
+		ls_temp = "Y"
+	else
+		ls_temp = "N"
+	end if
+	f_set_preference_local(parent.id_preferences, "POS_MiscCharges", ls_temp)
+	if parent.cbx_invdiscperc.checked = true then
+		ls_temp = "Y"
+	else
+		ls_temp = "N"
+	end if
+	f_set_preference_local(parent.id_preferences, "POS_InvDiscPerc", ls_temp)
+	if parent.cbx_invflatdisc.checked = true then
+		ls_temp = "Y"
+	else
+		ls_temp = "N"
+	end if
+	f_set_preference_local(parent.id_preferences, "POS_InvFlatDisc", ls_temp)
+	if parent.cbx_promptzerostock.checked = true then
+		ls_temp = "Y"
+	else
+		ls_temp = "N"
+	end if
+	f_set_preference_local(parent.id_preferences, "PromptStockInPos", ls_temp)
+	if parent.cbx_salesets.checked = true then
+		ls_temp = "Y"
+	else
+		ls_temp = "N"
+	end if
+	f_set_preference_local(parent.id_preferences, "SaleSets", ls_temp)
+	if parent.cbx_autoproduction.checked = true then
+		ls_temp = "Y"
+	else
+		ls_temp = "N"
+	end if
+	f_set_preference_local(parent.id_preferences, "AutoProductionInPOS", ls_temp)
+	if parent.cbx_assocsaleinvlist.checked = true then
+		ls_temp = "Y"
+	else
+		ls_temp = "N"
+	end if
+	f_set_preference_local(parent.id_preferences, "AssocSaleInvListInPOS", ls_temp)
+	if parent.cbx_checkduerightonpos_save.checked = true then
+		ls_temp = "Y"
+	else
+		ls_temp = "N"
+	end if
+	f_set_preference_local(parent.id_preferences, "checkduerightonpos_save", ls_temp)
+	if parent.cbx_showcashierwindow.checked = true then
+		ls_temp = "Y"
+	else
+		ls_temp = "N"
+	end if
+	f_set_preference_local(parent.id_preferences, "CashierWindowOnPOS", ls_temp)
+	if f_validatedw(parent.id_preferences) < 0 then
+		return ::message.returnvalue
+	end if
+	w_parent = getparent()
+	if parent.id_preferences.update() > 0 then
+		SQL commit USING sqlca;
+		gds_preferences.retrieve()
+	else
+		messagebox("Datasase Error", "Some Database problem occur during saving")
+		SQL rollback USING sqlca;
+		setpointer(arrow!)
+	end if
+	w_parent.setfocus()
+	close(w_pointofsalepreferences)
+	return ::message.returnvalue

@@ -1,0 +1,51 @@
+// window w_view_effectable_items (singleentryitem)  ancestor: window
+
+// w_view_effectable_items.create() returns 0
+	this.dw_viewefftecteditems = create dw_viewefftecteditems
+	this.control = {this.dw_viewefftecteditems}
+
+// w_view_effectable_items.destroy() returns 0
+	destroy this.dw_viewefftecteditems
+
+// w_view_effectable_items.open() returns long
+	s_item_filter_criteria lstr_item_filter_criteria
+	long ll_width
+	long ll_height
+	environment env
+	lstr_item_filter_criteria = message.powerobjectparm
+	if getenvironment(env) <> 1 then
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.width = ll_width * 0.98
+	this.y = int((ll_height - this.height) / 2.0)
+	this.dw_viewefftecteditems.width = this.width - this.width * 0.02
+	this.dw_viewefftecteditems.height = this.height - this.width * 0.05
+	if lstr_item_filter_criteria.i_module = 1 then
+		this.dw_viewefftecteditems.dataobject = "d_viewitems_manf_cat_pack"
+		this.dw_viewefftecteditems.settransobject(sqlca)
+		this.dw_viewefftecteditems.retrieve(lstr_item_filter_criteria.l_code1, lstr_item_filter_criteria.l_code2, lstr_item_filter_criteria.l_code3, lstr_item_filter_criteria.i_code1, lstr_item_filter_criteria.d_price)
+	elseif lstr_item_filter_criteria.i_module = 2 then
+		this.dw_viewefftecteditems.dataobject = "d_viewitems_manf_cat_pack_class"
+		this.dw_viewefftecteditems.settransobject(sqlca)
+		this.dw_viewefftecteditems.retrieve(lstr_item_filter_criteria.l_code1, lstr_item_filter_criteria.l_code2, lstr_item_filter_criteria.l_code3, lstr_item_filter_criteria.l_code4, lstr_item_filter_criteria.i_code1, lstr_item_filter_criteria.d_price)
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_view_effectable_items.close() returns long
+	close(this)
+	return ::message.returnvalue
+
+// w_view_effectable_items.key(keycode key, unsignedlong keyflags) returns long
+	if keydown(keyescape!) then
+		close(this)
+	end if
+	return ::message.returnvalue

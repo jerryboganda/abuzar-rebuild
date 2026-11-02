@@ -1,0 +1,36 @@
+// function f_pumpdata_to_datacarrydb (functions)  ancestor: function_object
+
+// f_pumpdata_to_datacarrydb.f_pumpdata_to_datacarrydb(transaction at_transobject, long al_sinvcode, long al_linvcode, integer ai_custcode) returns long
+	datetime ldt_date
+	long ll_rtcode
+	string ls_errtext
+	u_transaction lt_transobject
+	lt_transobject = at_transobject
+	SQL rollback USING lt_transobject;
+	ll_rtcode = lt_transobject.empty_datacarrydb(gs_outlinkserver, gs_outlinkserverdb, gs_outlinkserverowner)
+	if ll_rtcode >= 0 and lt_transobject.sqlcode = 0 then
+		ll_rtcode = lt_transobject.insertbasicdata_to_datacarrydb(gs_outlinkserver, gs_outlinkserverdb, gs_outlinkserverowner, ai_custcode, ldt_date)
+		if ll_rtcode >= 0 and lt_transobject.sqlcode = 0 then
+			ll_rtcode = lt_transobject.insertsaledata_to_datacarrydb(gs_outlinkserver, gs_outlinkserverdb, gs_outlinkserverowner, al_sinvcode, al_linvcode, ai_custcode)
+			if ll_rtcode >= 0 and lt_transobject.sqlcode = 0 then
+				SQL commit USING lt_transobject;
+				messagebox("Data Transfer", "Successfull Data Transfer to DataCarryDB.")
+			else
+				ls_errtext = lt_transobject.sqlerrtext
+				SQL rollback USING lt_transobject;
+				messagebox("DataCarryDB Problem", "Error in Inserting Sale data from DataCarryDB.~r~nReasons are:~r~n" + ls_errtext)
+				return -1
+			end if
+		else
+			ls_errtext = lt_transobject.sqlerrtext
+			SQL rollback USING lt_transobject;
+			messagebox("DataCarryDB Problem", "Error in Inserting Basic data from DataCarryDB.~r~nReasons are:~r~n" + ls_errtext)
+			return -1
+		end if
+	else
+		ls_errtext = lt_transobject.sqlerrtext
+		SQL rollback USING lt_transobject;
+		messagebox("DataCarryDB Problem", "Error in Emptying data from DataCarryDB.~r~nReasons are:~r~n" + ls_errtext)
+		return -1
+	end if
+	return 1

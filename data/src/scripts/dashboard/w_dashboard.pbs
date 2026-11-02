@@ -1,0 +1,244 @@
+// window w_dashboard (dashboard)  ancestor: window
+
+// w_dashboard.wf_settimer(long ai_time) returns integer
+	timer(ai_time, this)
+	return 0
+
+// w_dashboard.wf_opengraph() returns 0
+
+// w_dashboard.create() returns 0
+	this.st_tooltip = create st_tooltip
+	this.dw_top10items = create dw_top10items
+	this.dw_purchase = create dw_purchase
+	this.dw_stock = create dw_stock
+	this.dw_sales = create dw_sales
+	this.control = {this.st_tooltip, this.dw_top10items, this.dw_purchase, this.dw_stock, this.dw_sales}
+
+// w_dashboard.destroy() returns 0
+	destroy this.st_tooltip
+	destroy this.dw_top10items
+	destroy this.dw_purchase
+	destroy this.dw_stock
+	destroy this.dw_sales
+
+// w_dashboard.open() returns long
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	date ld_currdate
+	string ls_text
+	datetime ldt_startdate
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width * 0.98
+		ll_height = ll_win_height * 0.96
+		this.width = ll_width
+		this.height = ll_height
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	ld_currdate = today()
+	ls_text = string(ld_currdate, "dd/mm/yyyy")
+	this.istr_arg.d_sdate = datetime(date(trim(ls_text)), time("00:00:00"))
+	ls_text = string(ld_currdate, "dd/mm/yyyy")
+	this.istr_arg.d_edate = datetime(date(trim(ls_text)), time("23:59:59"))
+	this.dw_sales.x = 10
+	this.dw_sales.y = 0
+	this.dw_sales.width = this.width / 2.0 - 10.0
+	this.dw_sales.height = this.height / 2.0 - 10.0
+	this.dw_stock.x = this.width / 2.0 + 10.0
+	this.dw_stock.y = 0
+	this.dw_stock.width = this.width / 2.0 - 10.0
+	this.dw_stock.height = this.height / 2.0 - 10.0
+	this.dw_purchase.x = 10
+	this.dw_purchase.y = this.height / 2.0 - 10.0
+	this.dw_purchase.width = this.width / 2.0 - 10.0
+	this.dw_purchase.height = this.height / 2.0 - 10.0
+	this.dw_top10items.x = this.width / 2.0 + 10.0
+	this.dw_top10items.y = this.height / 2.0 - 10.0
+	this.dw_top10items.width = this.width / 2.0 - 10.0
+	this.dw_top10items.height = this.height / 2.0 - 10.0
+	this.dw_sales.settransobject(sqlca)
+	this.dw_sales.retrieve(f_numberpreferences("Dashboard_CustCatWiseSalesAnlaysis"))
+	this.dw_stock.settransobject(sqlca)
+	this.dw_stock.retrieve(f_stringpreferences("Dashboard_InventoryBreakupCriteria"))
+	this.dw_purchase.settransobject(sqlca)
+	this.dw_purchase.retrieve(f_numberpreferences("Dashboard_SuppCatWisePurAnlaysis"))
+	this.dw_top10items.settransobject(sqlca)
+	this.dw_top10items.retrieve(f_numberpreferences("Dashboard_Top10SellingItems"))
+	wf_settimer(60)
+	return ::message.returnvalue
+
+// w_dashboard.timer() returns long
+	this.dw_sales.settransobject(sqlca)
+	this.dw_sales.retrieve(600)
+	this.dw_stock.settransobject(sqlca)
+	this.dw_stock.retrieve()
+	this.dw_purchase.settransobject(sqlca)
+	this.dw_purchase.retrieve(600)
+	this.dw_top10items.settransobject(sqlca)
+	this.dw_top10items.retrieve(600)
+	return ::message.returnvalue
+
+// dw_top10items.ue_rbuttonup(unsignedlong flags, integer xpos, integer ypos) returns long
+	parent.st_tooltip.visible = false
+	return ::message.returnvalue
+
+// dw_top10items.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	openwithparm(w_dashboard_zoomed, this)
+	return ::message.returnvalue
+
+// dw_top10items.rbuttondown(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	grobjecttype clickedobject
+	integer li_series
+	integer li_category
+	long ll_counter
+	clickedobject = objectatpointer("gr_1", li_series, li_category)
+	if clickedobject = typedata! then
+		parent.st_tooltip.text = string(getdata("gr_1", li_series, li_category), "###,###,##0.00")
+		parent.st_tooltip.x = parent.pointerx()
+		parent.st_tooltip.y = parent.pointery() - 65
+		parent.st_tooltip.visible = true
+	end if
+	return ::message.returnvalue
+
+// dw_top10items.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	grobjecttype clickedobject
+	integer li_series
+	integer li_category
+	string ls_category
+	str_graphinfo lstr_graph
+	if dwo.name = "gr_1" then
+		clickedobject = objectatpointer("gr_1", li_series, li_category)
+		if clickedobject = typedata! or clickedobject = typecategory! then
+			ls_category = categoryname("gr_1", li_category)
+			lstr_graph.controlname = "dw_top10items"
+			lstr_graph.category = ls_category
+			openwithparm(w_dashboard_drilldown, lstr_graph)
+		end if
+	end if
+	return ::message.returnvalue
+
+// dw_purchase.ue_rbuttonup(unsignedlong flags, integer xpos, integer ypos) returns long
+	parent.st_tooltip.visible = false
+	return ::message.returnvalue
+
+// dw_purchase.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	openwithparm(w_dashboard_zoomed, this)
+	return ::message.returnvalue
+
+// dw_purchase.rbuttondown(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	grobjecttype clickedobject
+	integer li_series
+	integer li_category
+	long ll_counter
+	clickedobject = objectatpointer("gr_1", li_series, li_category)
+	if clickedobject = typedata! then
+		parent.st_tooltip.text = string(getdata("gr_1", li_series, li_category), "###,###,##0.00")
+		parent.st_tooltip.x = parent.pointerx()
+		parent.st_tooltip.y = parent.pointery() - 65
+		parent.st_tooltip.visible = true
+	end if
+	return ::message.returnvalue
+
+// dw_purchase.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	grobjecttype clickedobject
+	integer li_series
+	integer li_category
+	string ls_category
+	str_graphinfo lstr_graph
+	if dwo.name = "gr_1" then
+		clickedobject = objectatpointer("gr_1", li_series, li_category)
+		if clickedobject = typedata! or clickedobject = typecategory! then
+			ls_category = categoryname("gr_1", li_category)
+			lstr_graph.controlname = "dw_purchase"
+			lstr_graph.category = ls_category
+			openwithparm(w_dashboard_drilldown, lstr_graph)
+		end if
+	end if
+	return ::message.returnvalue
+
+// dw_stock.ue_rbuttonup(unsignedlong flags, integer xpos, integer ypos) returns long
+	parent.st_tooltip.visible = false
+	return ::message.returnvalue
+
+// dw_stock.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	openwithparm(w_dashboard_zoomed, this)
+	return ::message.returnvalue
+
+// dw_stock.rbuttondown(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	grobjecttype clickedobject
+	integer li_series
+	integer li_category
+	long ll_counter
+	clickedobject = objectatpointer("gr_1", li_series, li_category)
+	if clickedobject = typedata! then
+		parent.st_tooltip.text = string(getdata("gr_1", li_series, li_category), "###,###,##0.00")
+		parent.st_tooltip.x = parent.pointerx()
+		parent.st_tooltip.y = parent.pointery() - 65
+		parent.st_tooltip.visible = true
+	end if
+	return ::message.returnvalue
+
+// dw_stock.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	grobjecttype clickedobject
+	integer li_series
+	integer li_category
+	string ls_category
+	str_graphinfo lstr_graph
+	if dwo.name = "gr_1" then
+		clickedobject = objectatpointer("gr_1", li_series, li_category)
+		if clickedobject = typedata! or clickedobject = typecategory! then
+			ls_category = categoryname("gr_1", li_category)
+			lstr_graph.controlname = "dw_stock"
+			lstr_graph.category = ls_category
+			openwithparm(w_dashboard_drilldown, lstr_graph)
+		end if
+	end if
+	return ::message.returnvalue
+
+// dw_sales.ue_rbuttonup(unsignedlong flags, integer xpos, integer ypos) returns long
+	parent.st_tooltip.visible = false
+	return ::message.returnvalue
+
+// dw_sales.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	openwithparm(w_dashboard_zoomed, this)
+	return ::message.returnvalue
+
+// dw_sales.rbuttondown(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	grobjecttype clickedobject
+	integer li_series
+	integer li_category
+	long ll_counter
+	clickedobject = objectatpointer("gr_1", li_series, li_category)
+	if clickedobject = typedata! then
+		parent.st_tooltip.text = string(getdata("gr_1", li_series, li_category), "###,###,##0.00")
+		parent.st_tooltip.x = parent.pointerx()
+		parent.st_tooltip.y = parent.pointery() - 65
+		parent.st_tooltip.visible = true
+	end if
+	return ::message.returnvalue
+
+// dw_sales.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	grobjecttype clickedobject
+	integer li_series
+	integer li_category
+	string ls_category
+	str_graphinfo lstr_graph
+	if dwo.name = "gr_1" then
+		clickedobject = objectatpointer("gr_1", li_series, li_category)
+		if clickedobject = typedata! or clickedobject = typecategory! then
+			ls_category = categoryname("gr_1", li_category)
+			lstr_graph.controlname = "dw_sales"
+			lstr_graph.category = ls_category
+			openwithparm(w_dashboard_drilldown, lstr_graph)
+		end if
+	end if
+	return ::message.returnvalue

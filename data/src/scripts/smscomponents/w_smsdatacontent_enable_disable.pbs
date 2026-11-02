@@ -1,0 +1,66 @@
+// window w_smsdatacontent_enable_disable (smscomponents)  ancestor: window
+
+// w_smsdatacontent_enable_disable.create() returns 0
+	this.dw_control = create dw_control
+	this.cb_save = create cb_save
+	this.control = {this.dw_control, this.cb_save}
+
+// w_smsdatacontent_enable_disable.destroy() returns 0
+	destroy this.dw_control
+	destroy this.cb_save
+
+// w_smsdatacontent_enable_disable.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	long ll_code
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	ll_code = message.doubleparm
+	if ll_code = 1 then
+		this.dw_control.dataobject = "d_sms_datadefinitions"
+	elseif ll_code = 2 then
+		this.dw_control.dataobject = "d_sms_templates"
+	end if
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.retrieve()
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_smsdatacontent_enable_disable.close() returns long
+	closewithreturn(this, this.is_selectedreport)
+	return ::message.returnvalue
+
+// w_smsdatacontent_enable_disable.key(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		event Close()
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// cb_save.clicked() returns long
+	if parent.dw_control.accepttext() = 1 then
+		if parent.dw_control.update() = 1 then
+			SQL commit USING sqlca;
+			close(parent)
+		else
+			SQL rollback USING sqlca;
+		end if
+	end if
+	return ::message.returnvalue

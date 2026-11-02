@@ -1,0 +1,52 @@
+// window w_select_categorycriteria (reportformat)  ancestor: window
+
+// w_select_categorycriteria.create() returns 0
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.rb_itemcat = create rb_itemcat
+	this.rb_custcat = create rb_custcat
+	this.gb_1 = create gb_1
+	this.control = {this.cb_cancel, this.cb_ok, this.rb_itemcat, this.rb_custcat, this.gb_1}
+
+// w_select_categorycriteria.destroy() returns 0
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.rb_itemcat
+	destroy this.rb_custcat
+	destroy this.gb_1
+
+// w_select_categorycriteria.close() returns long
+	closewithreturn(this, this.ic_category)
+	return ::message.returnvalue
+
+// w_select_categorycriteria.open() returns long
+	environment le_env
+	long ll_width
+	long ll_height
+	if getenvironment(le_env) = 1 then
+		ll_width = pixelstounits(le_env.screenwidth, xpixelstounits!) - this.width
+		ll_height = pixelstounits(le_env.screenheight, ypixelstounits!) - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width * 0.5
+			ll_height = ll_height * 0.5
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.ic_category = ""
+	parent.triggerevent(close!)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	if parent.rb_custcat.checked = true then
+		parent.ic_category = "C"
+	else
+		parent.ic_category = "I"
+	end if
+	parent.triggerevent(close!)
+	return ::message.returnvalue

@@ -1,0 +1,323 @@
+// window w_purpayment_for_purinvcode (accounts)  ancestor: window
+
+// w_purpayment_for_purinvcode.wf_select_unselect_row() returns long
+	long ll_oldrow
+	ll_oldrow = this.ii_currow
+	if this.dw_control.getrow() > 0 then
+		this.dw_control.selectrow(ll_oldrow, false)
+		this.ii_currow = this.dw_control.getrow()
+		this.dw_control.selectrow(this.ii_currow, true)
+		this.dw_control.setrow(this.ii_currow)
+		this.dw_control.scrolltorow(this.ii_currow)
+	end if
+	return this.ii_currow
+
+// w_purpayment_for_purinvcode.wf_select_printout() returns long
+	string ls_report
+	if gs_company = "DECENTPHWH" then
+		ls_report = "d_decentphwh_purpayment_print"
+	else
+		ls_report = "d_purpayment_print"
+	end if
+	this.dw_print.dataobject = ls_report
+	return 0
+
+// w_purpayment_for_purinvcode.wf_connect() returns long
+	SQL start USING this.it_transobject;
+	return this.it_transobject.sqlcode
+
+// w_purpayment_for_purinvcode.wf_post() returns boolean
+	boolean lb_commitflag
+	integer li_errcode
+	integer li_rtncode
+	long ll_detailrows
+	long ll_usercode
+	long ll_errrowid
+	long ll_counter
+	long ll_glvochcode
+	string ls_errortext
+	string ls_success_msg
+	long ll_rowcount
+	long ll_code
+	if this.dw_control.getrow() > 0 then
+		ll_code = this.dw_control.object.code[this.dw_control.getrow()]
+		if ll_code > 0 and this.dw_control.object.posted[this.dw_control.getrow()] = "N" then
+			open(w_salesmanpassword)
+			ll_usercode = long(message.doubleparm)
+			setfocus()
+			if ll_usercode > 0 then
+				setpointer(hourglass!)
+				li_errcode = 0
+				li_errcode = wf_lock_purpayment(ll_code)
+				if li_errcode <= 0 then
+					ls_success_msg = "Can not Lock Purchase Payment No : " + string(ll_code) + " (Posting Not Done)~r~n"
+					messagebox("Posting", ls_success_msg + "Purchase Payment No : " + string(ll_code) + "can not be posted.~r~n" + ls_errortext, information!)
+					return false
+				else
+					this.it_transobject.createvoucher_from_purpayment(ll_code, ll_usercode, ll_glvochcode)
+					if this.it_transobject.sqlcode = 0 then
+						SQL commit USING this.it_transobject;
+						ls_success_msg = "Purchase Payment Posted Successfully, General Voucher Code = " + trim(string(ll_glvochcode)) + " Created and posted Successfully"
+					else
+						ls_errortext = this.it_transobject.sqlerrtext
+						lb_commitflag = false
+						messagebox("Posting Failed", "Purcahse Payment Posting Failure~n~rReasons are:-~r~n" + ls_errortext)
+						SQL rollback USING this.it_transobject;
+					end if
+				end if
+			end if
+		end if
+	end if
+	setpointer(arrow!)
+	return lb_commitflag
+
+// w_purpayment_for_purinvcode.wf_lock_purpayment(long al_code) returns long
+	integer li_count
+	SQL SELECT count ( *) INTO :li_count FROM PurPayment WITH ( READPAST UPDLOCK ) WHERE PurPaymentCode =:al_code AND Posted ='N' USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		return this.it_transobject.sqlcode
+	end if
+	return li_count
+
+// w_purpayment_for_purinvcode.create() returns 0
+	this.cb_new = create cb_new
+	this.cb_post = create cb_post
+	this.dw_print = create dw_print
+	this.cb_print = create cb_print
+	this.cb_cancel = create cb_cancel
+	this.cb_select = create cb_select
+	this.dw_control = create dw_control
+	this.control = {this.cb_new, this.cb_post, this.dw_print, this.cb_print, this.cb_cancel, this.cb_select, this.dw_control}
+
+// w_purpayment_for_purinvcode.destroy() returns 0
+	destroy this.cb_new
+	destroy this.cb_post
+	destroy this.dw_print
+	destroy this.cb_print
+	destroy this.cb_cancel
+	destroy this.cb_select
+	destroy this.dw_control
+
+// w_purpayment_for_purinvcode.open() returns long
+	long ll_width
+	long ll_height
+	long ll_code
+	long ll_masteripartcode
+	environment env
+	this.istr_arg = message.powerobjectparm
+	if getenvironment(env) <> 1 then
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.width = ll_width * 0.98
+	this.height = ll_height * 0.90
+	this.y = int((ll_height - this.height) / 2.0)
+	this.dw_control.width = this.width * 0.98
+	this.dw_control.height = this.height * 0.85
+	this.cb_new.y = this.dw_control.y + this.dw_control.height + 10
+	this.cb_select.y = this.dw_control.y + this.dw_control.height + 10
+	this.cb_print.y = this.dw_control.y + this.dw_control.height + 10
+	this.cb_post.y = this.dw_control.y + this.dw_control.height + 10
+	this.cb_cancel.y = this.dw_control.y + this.dw_control.height + 10
+	this.it_transobject = create u_transaction
+	if wf_connect() <> 0 then
+		messagebox("Connection Failure . . .", "Unable to connect to the database", stopsign!)
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	this.dw_control.settransobject(this.it_transobject)
+	this.dw_control.retrieve(this.istr_arg.l_code2)
+	this.il_invcode = this.istr_arg.l_code2
+	if this.dw_control.rowcount() > 0 then
+		this.ii_currow = 1
+		wf_select_unselect_row()
+	else
+		this.ii_currow = 0
+	end if
+	this.dw_print.settransobject(this.it_transobject)
+	setredraw(true)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_purpayment_for_purinvcode.close() returns long
+	SQL stop USING this.it_transobject;
+	closewithreturn(this, this.istr_arg)
+	return ::message.returnvalue
+
+// cb_new.clicked() returns long
+	parent.istr_arg.i_status = 1
+	setnull(parent.istr_arg.l_code1)
+	parent.istr_arg.l_code2 = parent.il_invcode
+	parent.istr_arg.l_code3 = 0
+	parent.postevent(close!)
+	return ::message.returnvalue
+
+// cb_post.clicked() returns long
+	parent.wf_post()
+	parent.dw_control.retrieve(parent.il_invcode)
+	return ::message.returnvalue
+
+// cb_print.clicked() returns long
+	long ll_code
+	long ll_row
+	long li_printretcode
+	string ls_printsize
+	boolean lb_listtab
+	s_datastore lstr
+	if isnull(parent.dw_control.getrow()) or parent.dw_control.getrow() <= 0 then
+		messagebox("Rows Validation", "Kindly select any row first from the list")
+		return ::message.returnvalue
+	end if
+	ll_code = parent.dw_control.getitemnumber(parent.dw_control.getrow(), "code")
+	if isnull(ll_code) or ll_code <= 0 then
+		messagebox("Selection Validation", "Kindly select any valid row from the list.")
+		return ::message.returnvalue
+	end if
+	parent.wf_select_printout()
+	parent.dw_print.settransobject(parent.it_transobject)
+	parent.dw_print.retrieve(ll_code)
+	if ll_code > 0 then
+		lstr.dw = parent.dw_print
+		lstr.s_name1 = parent.dw_print.dataobject
+		openwithparm(w_preview_invoices, lstr)
+		lstr = ::message.powerobjectparm
+		if lstr.i_closemode = -1 then
+			return ::message.returnvalue
+		end if
+		return
+	end if
+	if parent.dw_control.rowcount() > 0 then
+		if f_stringpreferences("PromptBeforePrinting") = "Y" and printsetup() < 0 then
+			messagebox("Printer", "Printing Error")
+			parent.dw_print.printcancel()
+		end if
+		li_printretcode = parent.dw_print.print()
+		if li_printretcode < 0 then
+			messagebox("Printing", "Can not Print Invoice", information!)
+		end if
+	else
+		messagebox("Printing Error", "Can not Print,~r~nNo rows are retrieved", information!)
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.istr_arg.i_status = 0
+	parent.postevent(close!)
+	return ::message.returnvalue
+
+// cb_select.clicked() returns long
+	parent.istr_arg.i_status = 1
+	if parent.dw_control.getrow() > 0 then
+		parent.istr_arg.l_code1 = parent.dw_control.object.code[parent.dw_control.getrow()]
+		parent.istr_arg.l_code2 = parent.dw_control.object.purinvcode[parent.dw_control.getrow()]
+		if parent.dw_control.object.posted[parent.dw_control.getrow()] = "Y" then
+			parent.istr_arg.l_code3 = 1
+		else
+			parent.istr_arg.l_code3 = 0
+		end if
+	end if
+	parent.postevent(close!)
+	return ::message.returnvalue
+
+// dw_control.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	long ll_row
+	long ll_retcode
+	ancestorreturnvalue = super::doubleclicked(xpos, ypos, row, dwo)
+	ll_row = getrow()
+	if getrow() > 0 then
+		parent.istr_arg.i_status = 1
+		parent.istr_arg.l_code1 = this.object.code[getrow()]
+		parent.istr_arg.l_code2 = this.object.purinvcode[getrow()]
+		if this.object.posted[getrow()] = "Y" then
+			parent.istr_arg.l_code3 = 1
+		else
+			parent.istr_arg.l_code3 = 0
+		end if
+		parent.postevent(close!)
+	end if
+	return ll_retcode
+
+// dw_control.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	integer rt_code
+	long ll_currrow
+	long ll_listcurrrow
+	long ll_rowm
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	ll_rowm = getrow()
+	if key = keydownarrow! then
+		selectrow(0, false)
+		scrollnextrow()
+		ll_listcurrrow = getrow()
+		rt_code = 1
+	elseif key = keyuparrow! then
+		selectrow(0, false)
+		scrollpriorrow()
+		ll_listcurrrow = getrow()
+		rt_code = 1
+	elseif key = keypagedown! then
+		selectrow(0, false)
+		scrollnextpage()
+		ll_listcurrrow = getrow()
+		rt_code = 1
+	elseif key = keypageup! then
+		selectrow(0, false)
+		scrollpriorpage()
+		ll_listcurrrow = getrow()
+		rt_code = 1
+	elseif key = keyend! then
+		selectrow(0, false)
+		scrolltorow(99999)
+		ll_listcurrrow = getrow()
+		rt_code = 1
+	elseif key = keyenter! then
+		if rowcount() > 0 and getrow() <= 0 then
+			parent.ii_currow = 1
+			setrow(1)
+			scrolltorow(1)
+		end if
+		ll_listcurrrow = getrow()
+		rt_code = 1
+		if getrow() > 0 then
+			parent.istr_arg.l_code1 = this.object.code[getrow()]
+			parent.istr_arg.l_code2 = this.object.purinvcode[getrow()]
+			if this.object.posted[getrow()] = "Y" then
+				parent.istr_arg.l_code3 = 1
+			else
+				parent.istr_arg.l_code3 = 0
+			end if
+		end if
+		parent.cb_select.triggerevent(close!)
+	elseif key = keyhome! then
+		selectrow(0, false)
+		scrolltorow(1)
+		ll_listcurrrow = getrow()
+		rt_code = 1
+	end if
+	if rt_code = 1 then
+		parent.wf_select_unselect_row()
+	end if
+	return rt_code
+
+// dw_control.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked(xpos, ypos, row, dwo)
+	if row > 0 then
+		selectrow(0, false)
+		scrolltorow(row)
+		setrow(row)
+		parent.wf_select_unselect_row()
+		parent.ii_currow = row
+	end if
+	return ::message.returnvalue

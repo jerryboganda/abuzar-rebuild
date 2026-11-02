@@ -1,0 +1,55 @@
+// window w_arg_sinvcode_linvcode_onedoctor (reports)  ancestor: w_arguements
+
+// w_arg_sinvcode_linvcode_onedoctor.create() returns 0
+	integer icurrent
+	call super::create
+	this.st_4 = create st_4
+	this.dw_control2 = create dw_control2
+	this.st_5 = create st_5
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_4
+	this.control[icurrent + 2] = this.dw_control2
+	this.control[icurrent + 3] = this.st_5
+
+// w_arg_sinvcode_linvcode_onedoctor.destroy() returns 0
+	call super::destroy
+	destroy this.st_4
+	destroy this.dw_control2
+	destroy this.st_5
+
+// w_arg_sinvcode_linvcode_onedoctor.open() returns long
+	long ancestorreturnvalue
+	integer li_rtncode
+	ancestorreturnvalue = super::open()
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	this.dw_control2.settransobject(sqlca)
+	li_rtncode = this.dw_control2.getchild("doctorcode", this.idc_doctor)
+	if li_rtncode = -1 then
+		messagebox("Doctor List", "Can not retrieve doctors")
+		close(this)
+		return ::message.returnvalue
+	end if
+	this.idc_doctor.settransobject(sqlca)
+	li_rtncode = this.idc_doctor.retrieve(gl_usercode)
+	if li_rtncode <= 0 then
+		messagebox("Doctor List", "Not Enough Doctors Allowed, Please contact your system administrator")
+		close(this)
+		return ::message.returnvalue
+	else
+		this.dw_control2.object.doctorcode.initial = string(this.idc_doctor.getitemnumber(1, "doctcode"))
+	end if
+	this.dw_control2.retrieve()
+	this.dw_control2.scrolltorow(0)
+	return ::message.returnvalue
+
+// w_arg_sinvcode_linvcode_onedoctor.ue_close(integer ai_stauts) returns 0
+	super::ue_close(ai_stauts)
+	closewithreturn(this, this.istr_arg)
+
+// dw_control2.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1

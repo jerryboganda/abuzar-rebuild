@@ -1,0 +1,23 @@
+// function uf_save_dw_as_excel_parm (dw2xls)  ancestor: function_object
+
+// uf_save_dw_as_excel_parm.uf_save_dw_as_excel_parm(datawindow adw_dw, string as_filename, n_dwr_service_parm anvo_parm) returns integer
+	integer li_ret
+	n_dwr_nested_service_parm lnvo_nested_parm
+	n_dwr_service lnvo_dwr
+	n_dwr_workbook lnv_book
+	if isnull(anvo_parm) then
+		anvo_parm = create n_dwr_service_parm
+	end if
+	lnvo_dwr = create n_dwr_service
+	lnv_book = create n_dwr_workbook
+	li_ret = lnvo_dwr.of_create(adw_dw, lnv_book, as_filename, anvo_parm, lnvo_nested_parm)
+	if li_ret = 1 then
+		li_ret = lnvo_dwr.of_process()
+		lnvo_dwr.of_close()
+	end if
+	destroy lnv_book
+	destroy lnvo_dwr
+	if li_ret <> 1 then
+		filedelete(as_filename)
+	end if
+	return li_ret

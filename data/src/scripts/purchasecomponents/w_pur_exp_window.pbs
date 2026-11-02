@@ -1,0 +1,227 @@
+// window w_pur_exp_window (purchasecomponents)  ancestor: window
+
+// w_pur_exp_window.ue_close(integer ai_status) returns integer
+	long ll_headerrow
+	long ll_detailrow
+	long ll_footerrow
+	long ll_counter
+	s_mastercashwin lstr_cash
+	string ls_null
+	if ai_status = -1 then
+		this.istr_cash.i_status = -1
+		closewithreturn(this, this.istr_cash)
+		return -1
+	end if
+	setnull(ls_null)
+	if f_validatedw(this.dw_detail) < 0 then
+		return 1
+	end if
+	ll_detailrow = this.dw_detail.getrow()
+	for ll_counter = 1 to 100
+		this.istr_cash.l_acccode[ll_counter] = -1
+		this.istr_cash.s_remarks[ll_counter] = ls_null
+		this.istr_cash.d_amount[ll_counter] = -1
+		this.istr_cash.l_rowid[ll_counter] = -1
+	next
+	for ll_counter = 1 to this.dw_detail.rowcount()
+		if this.dw_detail.object.acccode[ll_counter] > 0 and this.dw_detail.object.amount[ll_counter] >= 0 then
+			this.dw_detail.object.rowid[ll_counter] = this.dw_detail.getitemnumber(ll_counter, "c_rowid")
+			this.istr_cash.l_acccode[ll_counter] = this.dw_detail.object.acccode[ll_counter]
+			this.istr_cash.s_remarks[ll_counter] = this.dw_detail.object.remarks[ll_counter]
+			this.istr_cash.d_amount[ll_counter] = this.dw_detail.object.amount[ll_counter]
+			this.istr_cash.l_rowid[ll_counter] = this.dw_detail.object.rowid[ll_counter]
+		end if
+	next
+	this.istr_cash.i_status = ai_status
+	closewithreturn(this, this.istr_cash)
+	return 0
+
+// w_pur_exp_window.wf_getglobalcode(string as_str) returns integer
+	integer ll_code
+	SQL SELECT Code INTO :ll_code FROM Global WHERE Name =:as_str USING sqlca;
+	if sqlca.sqlcode <> 0 then
+		ll_code = 0
+	end if
+	return ll_code
+
+// w_pur_exp_window.wf_pd_initialize() returns long
+	string ls_init_string
+	ls_init_string = char(27) + char(73) + char(12)
+	pd_writepd(ls_init_string, len(ls_init_string))
+	return 0
+
+// w_pur_exp_window.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns long
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+	return 0
+
+// w_pur_exp_window.wf_adopt_group_expense_template() returns long
+	long ll_counter
+	long ll_temp_rows
+	long ll_insrow
+	datastore lds_temp
+	lds_temp = create datastore
+	lds_temp.dataobject = "d_groupwisepurexptemplate"
+	lds_temp.settransobject(sqlca)
+	lds_temp.retrieve(this.il_groupcode)
+	ll_temp_rows = lds_temp.rowcount()
+	if ll_temp_rows > 0 then
+		for ll_counter = 1 to ll_temp_rows
+			ll_insrow = this.dw_detail.insertrow(0)
+			this.dw_detail.object.code[ll_insrow] = this.istr_cash.l_invcode
+			this.dw_detail.object.acccode[ll_insrow] = lds_temp.object.acccode[ll_counter]
+			this.dw_detail.object.remarks[ll_insrow] = lds_temp.object.remarks[ll_counter]
+			this.dw_detail.object.amount[ll_insrow] = 0.00
+			this.dw_detail.object.rowid[ll_insrow] = lds_temp.object.rowid[ll_counter]
+		next
+	end if
+	return 0
+
+// w_pur_exp_window.create() returns 0
+	this.dw_detail = create dw_detail
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.control = {this.dw_detail, this.cb_cancel, this.cb_ok}
+
+// w_pur_exp_window.destroy() returns 0
+	destroy this.dw_detail
+	destroy this.cb_cancel
+	destroy this.cb_ok
+
+// w_pur_exp_window.open() returns long
+	string ls_invcode
+	long ll_rtcode
+	long ll_headerrow
+	long ll_footerrow
+	long ll_counter
+	long ll_insrow
+	long ll_found
+	long ll_code
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	this.istr_cash = message.powerobjectparm
+	this.dw_detail.settransobject(sqlca)
+	this.il_groupcode = f_getgroupcode(gl_usercode)
+	ll_code = this.istr_cash.l_invcode
+	wf_adopt_group_expense_template()
+	for ll_counter = 1 to 100
+		if this.istr_cash.l_acccode[ll_counter] > 0 and this.istr_cash.d_amount[ll_counter] >= 0 and this.istr_cash.l_rowid[ll_counter] >= 0 then
+			ll_found = 0
+			if isnull(ll_code) then
+				ll_found = this.dw_detail.find(" acccode = " + trim(string(this.istr_cash.l_acccode[ll_counter])) + " AND RowID = " + trim(string(this.istr_cash.l_rowid[ll_counter])), 1, this.dw_detail.rowcount())
+			else
+				ll_found = this.dw_detail.find(" code = " + trim(string(ll_code)) + " AND acccode = " + trim(string(this.istr_cash.l_acccode[ll_counter])) + " AND RowID = " + trim(string(this.istr_cash.l_rowid[ll_counter])), 1, this.dw_detail.rowcount())
+			end if
+			if ll_found > 0 then
+				ll_insrow = ll_found
+			else
+				ll_insrow = this.dw_detail.insertrow(0)
+			end if
+			this.dw_detail.object.code[ll_insrow] = this.istr_cash.l_invcode
+			this.dw_detail.object.acccode[ll_insrow] = this.istr_cash.l_acccode[ll_counter]
+			this.dw_detail.object.remarks[ll_insrow] = this.istr_cash.s_remarks[ll_counter]
+			this.dw_detail.object.amount[ll_insrow] = this.istr_cash.d_amount[ll_counter]
+			this.dw_detail.object.rowid[ll_insrow] = this.istr_cash.l_rowid[ll_counter]
+		end if
+	next
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	if this.istr_cash.l_mode = 1 then
+		wf_protectdw(this.dw_detail, 1)
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	long ll_null
+	long ll_res
+	integer li_errcode
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	setnull(ll_null)
+	choose case dwo.name
+	case "amount"
+		if double(data) < 0.0 then
+			messagebox("Amount Validation!", "Please enter valid amount in the current row.", stopsign!)
+			return 1
+		end if
+	end choose
+	return li_errcode
+
+// dw_detail.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// cb_cancel.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		triggerevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.istr_cash.i_status = -1
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		triggerevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	double ld_totamt
+	long ll_res
+	if parent.istr_cash.l_mode = 1 then
+		parent.istr_cash.i_status = -1
+		parent.post event ue_close(-1)
+	end if
+	if parent.dw_detail.accepttext() < 1 then
+		return ::message.returnvalue
+	end if
+	if parent.dw_detail.rowcount() > 0 then
+		ld_totamt = parent.dw_detail.getitemnumber(1, "c_totalamt")
+	else
+		ld_totamt = 0
+	end if
+	parent.istr_cash.i_status = 1
+	parent.post event ue_close(1)
+	return ::message.returnvalue

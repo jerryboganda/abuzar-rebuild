@@ -1,0 +1,58 @@
+// window w_employee_list (employee)  ancestor: w_listview_form
+
+// w_employee_list.wf_openmywindow(long al_code) returns 0
+	long ll_code
+	long ll_retcode
+	if this.id_list.rowcount() > 0 and this.id_list.getrow() > 0 and al_code > 0 then
+		ll_code = al_code
+		openwithparm(w_emp_form, ll_code)
+		return
+	end if
+	setnull(ll_code)
+	openwithparm(w_emp_form, ll_code)
+
+// w_employee_list.wf_setprintout() returns long
+	this.id_print.dataobject = "d_emp_employee"
+	return 0
+
+// w_employee_list.create() returns 0
+	call super::create
+
+// w_employee_list.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_employee_list.ue_new() returns 0
+	long ll_code
+	call super::ue_new
+	setnull(ll_code)
+	wf_openmywindow(ll_code)
+
+// w_employee_list.ue_list() returns 0
+	long ll_rtcode
+	call super::ue_list
+	if this.id_list.rowcount() <= 0 then
+		ll_rtcode = wf_retrieve()
+	end if
+	wf_populate_ddlb(this.id_list)
+	if ll_rtcode > 0 then
+		this.im_menu.m_file.m_new.enabled = true
+		this.im_menu.m_file.m_save.enabled = false
+		this.im_menu.m_file.m_delete.enabled = false
+		this.im_menu.m_file.m_first.enabled = true
+		this.im_menu.m_file.m_next.enabled = true
+		this.im_menu.m_file.m_last.enabled = true
+		this.im_menu.m_file.m_print.enabled = true
+		this.im_menu.m_file.m_previous.enabled = true
+		this.im_menu.m_file.m_retrieve.text = "De&tail"
+		this.i_retrievemode = 2
+		this.i_editmode = 2
+		if this.il_selectedrow = 0 then
+			wf_first()
+			wf_selectunselectrow(1)
+		end if
+		this.tab_retrieve.tabpage_list.dw_find.setfocus()
+		return
+	end if

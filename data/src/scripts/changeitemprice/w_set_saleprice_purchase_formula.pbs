@@ -1,0 +1,54 @@
+// window w_set_saleprice_purchase_formula (changeitemprice)  ancestor: window
+
+// w_set_saleprice_purchase_formula.ue_close(double ad_value) returns 0
+	closewithreturn(this, ad_value)
+
+// w_set_saleprice_purchase_formula.create() returns 0
+	this.st_1 = create st_1
+	this.em_value = create em_value
+	this.st_qty = create st_qty
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.control = {this.st_1, this.em_value, this.st_qty, this.cb_cancel, this.cb_ok}
+
+// w_set_saleprice_purchase_formula.destroy() returns 0
+	destroy this.st_1
+	destroy this.em_value
+	destroy this.st_qty
+	destroy this.cb_cancel
+	destroy this.cb_ok
+
+// w_set_saleprice_purchase_formula.open() returns long
+	environment le_env
+	long ll_width
+	long ll_height
+	if getenvironment(le_env) = 1 then
+		ll_width = pixelstounits(le_env.screenwidth, xpixelstounits!) - this.width
+		ll_height = pixelstounits(le_env.screenheight, ypixelstounits!) - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width * 0.5
+			ll_height = ll_height * 0.5
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	this.em_value.selecttext(1, len(this.em_value.text))
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(0)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	double ld_value
+	parent.em_value.getdata(ld_value)
+	if long(ld_value) < 0 then
+		messagebox("Qty Validation", "Please Enter Valid Increase in Sale Price.")
+		parent.em_value.setfocus()
+		parent.em_value.selecttext(1, len(parent.em_value.text))
+		return ::message.returnvalue
+	end if
+	parent.post event ue_close(ld_value)
+	return ::message.returnvalue

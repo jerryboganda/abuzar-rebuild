@@ -1,0 +1,25 @@
+// window w_arg_sdate_ldate_projdays (reports)  ancestor: w_arguements
+
+// w_arg_sdate_ldate_projdays.create() returns 0
+	integer icurrent
+	call super::create
+	this.st_days = create st_days
+	this.em_days = create em_days
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_days
+	this.control[icurrent + 2] = this.em_days
+
+// w_arg_sdate_ldate_projdays.destroy() returns 0
+	call super::destroy
+	destroy this.st_days
+	destroy this.em_days
+
+// w_arg_sdate_ldate_projdays.ue_close(integer ai_stauts) returns 0
+	super::ue_close(ai_stauts)
+	closewithreturn(this, this.istr_arg)
+
+// em_days.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue

@@ -1,0 +1,834 @@
+// window w_dashboards (dashboard)  ancestor: window
+
+// w_dashboards.ue_close() returns 0
+	SQL stop USING this.it_transobject;
+	close(this)
+
+// w_dashboards.ue_postopen() returns 0
+	long ll_counter
+	long ll_pos
+	long ll_prow
+	long ll_pcode
+	integer li_rtncode
+	setredraw(true)
+
+// w_dashboards.wf_set_interface_adjustments() returns 0
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width * 0.95
+		ll_height = ll_win_height * 0.95
+		this.width = ll_width
+		this.height = ll_height
+		this.cb_close.y = ll_height - this.cb_close.height - 200
+		this.tab_main.width = ll_width - 100
+		this.tab_main.height = this.cb_close.y - 50
+		this.tab_main.tabpage_general.width = this.tab_main.width - 50
+		this.tab_main.tabpage_general.height = this.tab_main.height - 100
+		this.tab_main.tabpage_general.dw_summary.width = this.tab_main.tabpage_general.width - 20
+		this.tab_main.tabpage_general.dw_summary.height = (this.tab_main.tabpage_general.height - 10) / 2.0
+		this.tab_main.tabpage_general.dw_summary2.width = this.tab_main.tabpage_general.width - 20
+		this.tab_main.tabpage_general.dw_summary2.height = (this.tab_main.tabpage_general.height - 10) / 2.0
+		this.tab_main.tabpage_general.dw_summary2.y = this.tab_main.tabpage_general.dw_summary.y + this.tab_main.tabpage_general.dw_summary.height + 5
+		this.tab_main.tabpage_inventory.width = this.tab_main.width - 50
+		this.tab_main.tabpage_inventory.height = this.tab_main.height - 100
+		this.tab_main.tabpage_inventory.dw_inventory.width = (this.tab_main.tabpage_inventory.width - 20) / 2.0
+		this.tab_main.tabpage_inventory.dw_inventory.height = (this.tab_main.tabpage_inventory.height - 10) / 2.0
+		this.tab_main.tabpage_inventory.dw_inventory2.width = (this.tab_main.tabpage_inventory.width - 20) / 2.0
+		this.tab_main.tabpage_inventory.dw_inventory2.height = (this.tab_main.tabpage_inventory.height - 10) / 2.0
+		this.tab_main.tabpage_inventory.dw_inventory2.y = this.tab_main.tabpage_inventory.dw_inventory.y
+		this.tab_main.tabpage_inventory.dw_inventory2.x = this.tab_main.tabpage_inventory.dw_inventory.width + 5
+		this.tab_main.tabpage_inventory.dw_inventory3.width = (this.tab_main.tabpage_inventory.width - 20) / 2.0
+		this.tab_main.tabpage_inventory.dw_inventory3.height = (this.tab_main.tabpage_inventory.height - 10) / 2.0
+		this.tab_main.tabpage_inventory.dw_inventory3.y = this.tab_main.tabpage_inventory.dw_inventory.y + this.tab_main.tabpage_inventory.dw_inventory.height + 5
+		this.tab_main.tabpage_inventory.dw_inventory4.width = (this.tab_main.tabpage_inventory.width - 20) / 2.0
+		this.tab_main.tabpage_inventory.dw_inventory4.height = (this.tab_main.tabpage_inventory.height - 10) / 2.0
+		this.tab_main.tabpage_inventory.dw_inventory4.y = this.tab_main.tabpage_inventory.dw_inventory3.y
+		this.tab_main.tabpage_inventory.dw_inventory4.x = this.tab_main.tabpage_inventory.dw_inventory3.width + 5
+		this.tab_main.tabpage_sales.width = this.tab_main.width - 50
+		this.tab_main.tabpage_sales.height = this.tab_main.height - 100
+		this.tab_main.tabpage_sales.dw_sales.width = this.tab_main.tabpage_sales.width - 20
+		this.tab_main.tabpage_sales.dw_sales.height = (this.tab_main.tabpage_sales.height - 10) / 2.0
+		this.tab_main.tabpage_sales.dw_sales2.width = this.tab_main.tabpage_sales.width - 20
+		this.tab_main.tabpage_sales.dw_sales2.height = (this.tab_main.tabpage_sales.height - 10) / 2.0
+		this.tab_main.tabpage_sales.dw_sales2.y = this.tab_main.tabpage_sales.dw_sales.y + this.tab_main.tabpage_sales.dw_sales.height + 5
+		this.tab_main.tabpage_purhases.width = this.tab_main.width - 50
+		this.tab_main.tabpage_purhases.height = this.tab_main.height - 100
+		this.tab_main.tabpage_purhases.dw_purchase.width = this.tab_main.tabpage_purhases.width - 20
+		this.tab_main.tabpage_purhases.dw_purchase.height = (this.tab_main.tabpage_purhases.height - 10) / 2.0
+		this.tab_main.tabpage_purhases.dw_purchase2.width = this.tab_main.tabpage_purhases.width - 20
+		this.tab_main.tabpage_purhases.dw_purchase2.height = (this.tab_main.tabpage_purhases.height - 10) / 2.0
+		this.tab_main.tabpage_purhases.dw_purchase2.y = this.tab_main.tabpage_purhases.dw_purchase.y + this.tab_main.tabpage_purhases.dw_purchase.height + 5
+		this.tab_main.tabpage_issue.width = this.tab_main.width - 50
+		this.tab_main.tabpage_issue.height = this.tab_main.height - 100
+		this.tab_main.tabpage_issue.dw_issue.width = this.tab_main.tabpage_issue.width - 20
+		this.tab_main.tabpage_issue.dw_issue.height = (this.tab_main.tabpage_issue.height - 10) / 2.0
+		this.tab_main.tabpage_issue.dw_issue2.width = this.tab_main.tabpage_issue.width - 20
+		this.tab_main.tabpage_issue.dw_issue2.height = (this.tab_main.tabpage_issue.height - 10) / 2.0
+		this.tab_main.tabpage_issue.dw_issue2.y = this.tab_main.tabpage_issue.dw_issue.y + this.tab_main.tabpage_issue.dw_issue.height + 5
+		this.tab_main.tabpage_receipt.width = this.tab_main.width - 50
+		this.tab_main.tabpage_receipt.height = this.tab_main.height - 100
+		this.tab_main.tabpage_receipt.dw_receipt.width = this.tab_main.tabpage_receipt.width - 20
+		this.tab_main.tabpage_receipt.dw_receipt.height = (this.tab_main.tabpage_receipt.height - 10) / 2.0
+		this.tab_main.tabpage_receipt.dw_receipt2.width = this.tab_main.tabpage_receipt.width - 20
+		this.tab_main.tabpage_receipt.dw_receipt2.height = (this.tab_main.tabpage_receipt.height - 10) / 2.0
+		this.tab_main.tabpage_receipt.dw_receipt2.y = this.tab_main.tabpage_receipt.dw_receipt.y + this.tab_main.tabpage_receipt.dw_receipt.height + 5
+		this.tab_main.tabpage_adj.width = this.tab_main.width - 50
+		this.tab_main.tabpage_adj.height = this.tab_main.height - 100
+		this.tab_main.tabpage_adj.dw_adj.width = this.tab_main.tabpage_adj.width - 20
+		this.tab_main.tabpage_adj.dw_adj.height = (this.tab_main.tabpage_adj.height - 10) / 2.0
+		this.tab_main.tabpage_adj.dw_adj2.width = this.tab_main.tabpage_adj.width - 20
+		this.tab_main.tabpage_adj.dw_adj2.height = (this.tab_main.tabpage_adj.height - 10) / 2.0
+		this.tab_main.tabpage_adj.dw_adj2.y = this.tab_main.tabpage_adj.dw_adj.y + this.tab_main.tabpage_adj.dw_adj.height + 5
+		this.tab_main.tabpage_transfer.width = this.tab_main.width - 50
+		this.tab_main.tabpage_transfer.height = this.tab_main.height - 100
+		this.tab_main.tabpage_transfer.dw_transfer.width = (this.tab_main.tabpage_transfer.width - 20) / 2.0
+		this.tab_main.tabpage_transfer.dw_transfer.height = (this.tab_main.tabpage_transfer.height - 10) / 2.0
+		this.tab_main.tabpage_transfer.dw_transfer2.width = (this.tab_main.tabpage_transfer.width - 20) / 2.0
+		this.tab_main.tabpage_transfer.dw_transfer2.height = (this.tab_main.tabpage_transfer.height - 10) / 2.0
+		this.tab_main.tabpage_transfer.dw_transfer2.y = this.tab_main.tabpage_transfer.dw_transfer.y
+		this.tab_main.tabpage_transfer.dw_transfer2.x = this.tab_main.tabpage_transfer.dw_transfer.width + 5
+		this.tab_main.tabpage_transfer.dw_transfer3.width = this.tab_main.tabpage_transfer.width - 20
+		this.tab_main.tabpage_transfer.dw_transfer3.height = (this.tab_main.tabpage_transfer.height - 10) / 2.0
+		this.tab_main.tabpage_transfer.dw_transfer3.y = this.tab_main.tabpage_transfer.dw_transfer.y + this.tab_main.tabpage_transfer.dw_transfer.height + 5
+		this.tab_main.tabpage_service.width = this.tab_main.width - 50
+		this.tab_main.tabpage_service.height = this.tab_main.height - 100
+		this.tab_main.tabpage_service.dw_service.width = this.tab_main.tabpage_service.width - 20
+		this.tab_main.tabpage_service.dw_service.height = (this.tab_main.tabpage_service.height - 10) / 2.0
+		this.tab_main.tabpage_service.dw_service2.width = this.tab_main.tabpage_service.width - 20
+		this.tab_main.tabpage_service.dw_service2.height = (this.tab_main.tabpage_service.height - 10) / 2.0
+		this.tab_main.tabpage_service.dw_service2.y = this.tab_main.tabpage_service.dw_service.y + this.tab_main.tabpage_service.dw_service.height + 5
+		this.tab_main.tabpage_accounts.width = this.tab_main.width - 50
+		this.tab_main.tabpage_accounts.height = this.tab_main.height - 100
+		this.tab_main.tabpage_accounts.dw_accounts.width = this.tab_main.tabpage_accounts.width - 20
+		this.tab_main.tabpage_accounts.dw_accounts.height = (this.tab_main.tabpage_accounts.height - 10) / 2.0
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+		this.tab_main.tabpage_crs.width = this.tab_main.width - 50
+		this.tab_main.tabpage_crs.height = this.tab_main.height - 100
+		this.tab_main.tabpage_crs.dw_crs.width = (this.tab_main.tabpage_crs.width - 20) / 2.0
+		this.tab_main.tabpage_crs.dw_crs.height = (this.tab_main.tabpage_crs.height - 10) / 2.0
+		this.tab_main.tabpage_crs.dw_crs2.width = (this.tab_main.tabpage_crs.width - 20) / 2.0
+		this.tab_main.tabpage_crs.dw_crs2.height = (this.tab_main.tabpage_crs.height - 10) / 2.0
+		this.tab_main.tabpage_crs.dw_crs2.y = this.tab_main.tabpage_crs.dw_crs.y
+		this.tab_main.tabpage_crs.dw_crs2.x = this.tab_main.tabpage_crs.dw_crs.width + 5
+		this.tab_main.tabpage_crs.dw_crs3.width = (this.tab_main.tabpage_crs.width - 20) / 2.0
+		this.tab_main.tabpage_crs.dw_crs3.height = (this.tab_main.tabpage_crs.height - 10) / 2.0
+		this.tab_main.tabpage_crs.dw_crs3.y = this.tab_main.tabpage_crs.dw_crs.y + this.tab_main.tabpage_crs.dw_crs3.height + 5
+		this.tab_main.tabpage_crs.dw_crs4.width = (this.tab_main.tabpage_crs.width - 20) / 2.0
+		this.tab_main.tabpage_crs.dw_crs4.height = (this.tab_main.tabpage_crs.height - 10) / 2.0
+		this.tab_main.tabpage_crs.dw_crs4.y = this.tab_main.tabpage_crs.dw_crs3.y
+		this.tab_main.tabpage_crs.dw_crs4.x = this.tab_main.tabpage_crs.dw_crs3.width + 5
+	end if
+
+// w_dashboards.wf_set_tab_visibility() returns long
+	if f_rightexists(5225) = false then
+		this.tab_main.tabpage_general.visible = false
+		this.tab_main.tabpage_general.dw_summary.visible = false
+		this.tab_main.tabpage_general.dw_summary2.visible = false
+	end if
+	if f_rightexists(5226) = false then
+		this.tab_main.tabpage_inventory.visible = false
+		this.tab_main.tabpage_inventory.dw_inventory.visible = false
+		this.tab_main.tabpage_inventory.dw_inventory2.visible = false
+	end if
+	if f_rightexists(5227) = false then
+		this.tab_main.tabpage_sales.visible = false
+		this.tab_main.tabpage_sales.dw_sales.visible = false
+		this.tab_main.tabpage_sales.dw_sales2.visible = false
+	end if
+	if f_rightexists(5228) = false then
+		this.tab_main.tabpage_purhases.visible = false
+		this.tab_main.tabpage_purhases.dw_purchase.visible = false
+		this.tab_main.tabpage_purhases.dw_purchase2.visible = false
+	end if
+	if f_rightexists(5230) = false then
+		this.tab_main.tabpage_issue.visible = false
+		this.tab_main.tabpage_issue.dw_issue.visible = false
+		this.tab_main.tabpage_issue.dw_issue2.visible = false
+	end if
+	if f_rightexists(5231) = false then
+		this.tab_main.tabpage_receipt.visible = false
+		this.tab_main.tabpage_receipt.dw_receipt.visible = false
+		this.tab_main.tabpage_receipt.dw_receipt2.visible = false
+	end if
+	if f_rightexists(5232) = false then
+		this.tab_main.tabpage_adj.visible = false
+		this.tab_main.tabpage_adj.dw_adj.visible = false
+		this.tab_main.tabpage_adj.dw_adj2.visible = false
+	end if
+	if f_rightexists(5233) = false then
+		this.tab_main.tabpage_transfer.visible = false
+		this.tab_main.tabpage_transfer.dw_transfer.visible = false
+		this.tab_main.tabpage_transfer.dw_transfer2.visible = false
+		this.tab_main.tabpage_transfer.dw_transfer3.visible = false
+	end if
+	if f_rightexists(5234) = false then
+		this.tab_main.tabpage_service.visible = false
+		this.tab_main.tabpage_service.dw_service.visible = false
+		this.tab_main.tabpage_service.dw_service2.visible = false
+	end if
+	if f_rightexists(5235) = false then
+		this.tab_main.tabpage_accounts.visible = false
+		this.tab_main.tabpage_accounts.dw_accounts.visible = false
+	end if
+	if f_rightexists(5254) = false then
+		this.tab_main.tabpage_crs.visible = false
+		this.tab_main.tabpage_crs.dw_crs.visible = false
+		this.tab_main.tabpage_crs.dw_crs2.visible = false
+		this.tab_main.tabpage_crs.dw_crs3.visible = false
+		this.tab_main.tabpage_crs.dw_crs4.visible = false
+	end if
+	wf_select_first_tab()
+	return 0
+
+// w_dashboards.wf_connect() returns long
+	SQL start USING this.it_transobject;
+	return this.it_transobject.sqlcode
+
+// w_dashboards.wf_retrieve_tabs() returns long
+	long ll_retcode
+	if f_rightexists(5225) then
+		this.tab_main.tabpage_general.dw_summary.settransobject(this.it_transobject)
+		this.id_summary1 = create datawindow
+		this.id_summary1 = this.tab_main.tabpage_general.dw_summary
+		this.tab_main.tabpage_general.dw_summary2.settransobject(this.it_transobject)
+		this.id_summary2 = create datawindow
+		this.id_summary2 = this.tab_main.tabpage_general.dw_summary2
+	end if
+	if f_rightexists(5226) then
+		this.tab_main.tabpage_inventory.dw_inventory.settransobject(this.it_transobject)
+		this.id_inventory1 = create datawindow
+		this.id_inventory1 = this.tab_main.tabpage_inventory.dw_inventory
+		this.tab_main.tabpage_inventory.dw_inventory2.settransobject(this.it_transobject)
+		this.id_inventory2 = create datawindow
+		this.id_inventory2 = this.tab_main.tabpage_inventory.dw_inventory2
+		this.tab_main.tabpage_inventory.dw_inventory3.settransobject(this.it_transobject)
+		this.id_inventory3 = create datawindow
+		this.id_inventory3 = this.tab_main.tabpage_inventory.dw_inventory3
+		this.tab_main.tabpage_inventory.dw_inventory4.settransobject(this.it_transobject)
+		this.id_inventory4 = create datawindow
+		this.id_inventory4 = this.tab_main.tabpage_inventory.dw_inventory4
+	end if
+	if f_rightexists(5227) then
+		this.tab_main.tabpage_sales.dw_sales.settransobject(this.it_transobject)
+		this.id_sales1 = create datawindow
+		this.id_sales1 = this.tab_main.tabpage_sales.dw_sales
+		this.tab_main.tabpage_sales.dw_sales2.settransobject(this.it_transobject)
+		this.id_sales2 = create datawindow
+		this.id_sales2 = this.tab_main.tabpage_sales.dw_sales2
+	end if
+	if f_rightexists(5228) then
+		this.tab_main.tabpage_purhases.dw_purchase.settransobject(this.it_transobject)
+		this.id_purchase1 = create datawindow
+		this.id_purchase1 = this.tab_main.tabpage_purhases.dw_purchase
+		this.tab_main.tabpage_purhases.dw_purchase2.settransobject(this.it_transobject)
+		this.id_purchase2 = create datawindow
+		this.id_purchase2 = this.tab_main.tabpage_purhases.dw_purchase2
+	end if
+	if f_rightexists(5230) then
+		this.tab_main.tabpage_issue.dw_issue.settransobject(this.it_transobject)
+		this.id_issue1 = create datawindow
+		this.id_issue1 = this.tab_main.tabpage_issue.dw_issue
+		this.tab_main.tabpage_issue.dw_issue2.settransobject(this.it_transobject)
+		this.id_issue2 = create datawindow
+		this.id_issue2 = this.tab_main.tabpage_issue.dw_issue2
+	end if
+	if f_rightexists(5231) then
+		this.tab_main.tabpage_receipt.dw_receipt.settransobject(this.it_transobject)
+		this.id_receipt1 = create datawindow
+		this.id_receipt1 = this.tab_main.tabpage_receipt.dw_receipt
+		this.tab_main.tabpage_receipt.dw_receipt2.settransobject(this.it_transobject)
+		this.id_receipt2 = create datawindow
+		this.id_receipt2 = this.tab_main.tabpage_receipt.dw_receipt2
+	end if
+	if f_rightexists(5232) then
+		this.tab_main.tabpage_adj.dw_adj.settransobject(this.it_transobject)
+		this.id_adj1 = create datawindow
+		this.id_adj1 = this.tab_main.tabpage_adj.dw_adj
+		this.tab_main.tabpage_adj.dw_adj2.settransobject(this.it_transobject)
+		this.id_adj2 = create datawindow
+		this.id_adj2 = this.tab_main.tabpage_adj.dw_adj2
+	end if
+	if f_rightexists(5233) then
+		this.tab_main.tabpage_transfer.dw_transfer.settransobject(this.it_transobject)
+		this.id_transfer1 = create datawindow
+		this.id_transfer1 = this.tab_main.tabpage_transfer.dw_transfer
+		this.tab_main.tabpage_transfer.dw_transfer2.settransobject(this.it_transobject)
+		this.id_transfer2 = create datawindow
+		this.id_transfer2 = this.tab_main.tabpage_transfer.dw_transfer2
+		this.tab_main.tabpage_transfer.dw_transfer3.settransobject(this.it_transobject)
+		this.id_transfer3 = create datawindow
+		this.id_transfer3 = this.tab_main.tabpage_transfer.dw_transfer3
+	end if
+	if f_rightexists(5234) then
+		this.tab_main.tabpage_service.dw_service.settransobject(this.it_transobject)
+		this.id_service1 = create datawindow
+		this.id_service1 = this.tab_main.tabpage_service.dw_service
+		this.tab_main.tabpage_service.dw_service2.settransobject(this.it_transobject)
+		this.id_service2 = create datawindow
+		this.id_service2 = this.tab_main.tabpage_service.dw_service2
+	end if
+	if f_rightexists(5235) then
+		this.tab_main.tabpage_accounts.dw_accounts.settransobject(this.it_transobject)
+		this.id_accounts1 = create datawindow
+		this.id_accounts1 = this.tab_main.tabpage_accounts.dw_accounts
+	end if
+	if f_rightexists(5254) then
+		this.tab_main.tabpage_crs.dw_crs.settransobject(this.it_transobject)
+		this.id_crs1 = create datawindow
+		this.id_crs1 = this.tab_main.tabpage_crs.dw_crs
+		this.tab_main.tabpage_crs.dw_crs2.settransobject(this.it_transobject)
+		this.id_crs2 = create datawindow
+		this.id_crs2 = this.tab_main.tabpage_crs.dw_crs2
+		this.tab_main.tabpage_crs.dw_crs3.settransobject(this.it_transobject)
+		this.id_crs3 = create datawindow
+		this.id_crs3 = this.tab_main.tabpage_crs.dw_crs3
+		this.tab_main.tabpage_crs.dw_crs4.settransobject(this.it_transobject)
+		this.id_crs4 = create datawindow
+		this.id_crs4 = this.tab_main.tabpage_crs.dw_crs4
+	end if
+	return 0
+
+// w_dashboards.wf_insert_row(datawindow adw_dw, integer ai_askpermit) returns long
+	long ll_row
+	long ll_res
+	if ai_askpermit = 1 then
+		ll_res = messagebox("Insert New Record", "Do you want to Insert New Record?", question!, yesnocancel!, 2)
+	else
+		ll_res = 1
+	end if
+	if ll_res = 1 then
+		ll_row = adw_dw.insertrow(0)
+		adw_dw.setrow(ll_row)
+		adw_dw.scrolltorow(ll_row)
+	end if
+	return 0
+
+// w_dashboards.wf_delete_row(datawindow adw_dw, integer ai_askpermit) returns long
+	long ll_row
+	long ll_res
+	if adw_dw.rowcount() > 0 and adw_dw.getrow() > 0 then
+		if ai_askpermit = 1 then
+			ll_res = messagebox("Delete Record", "Do you want to delete this record?", question!, yesnocancel!, 2)
+		else
+			ll_res = 1
+		end if
+		if ll_res = 1 then
+			ll_row = adw_dw.getrow()
+			if adw_dw.deleterow(ll_row) = 1 and adw_dw.rowcount() > 0 then
+				adw_dw.setrow(1)
+				adw_dw.scrolltorow(1)
+			end if
+		end if
+	end if
+	return 0
+
+// w_dashboards.wf_goto_record(datawindow adw_dw) returns long
+	long ll_current
+	long ll_counter
+	long ll_row
+	datastore lds_ds
+	s_arguements lstr_arg
+	ll_current = adw_dw.getrow()
+	if adw_dw.rowcount() > 0 then
+		lds_ds = create datastore
+		lds_ds.dataobject = "d_mr_recordpointer"
+		lds_ds.settransobject(sqlca)
+		for ll_counter = 1 to adw_dw.rowcount()
+			ll_row = lds_ds.insertrow(0)
+			if ll_row = ll_current then
+				lds_ds.object.currentrow[ll_row] = 1
+			else
+				lds_ds.object.currentrow[ll_row] = 0
+			end if
+			lds_ds.object.rowid[ll_row] = adw_dw.object.rowid[ll_counter]
+			lds_ds.object.rowno[ll_row] = ll_counter
+			lds_ds.object.date[ll_row] = adw_dw.object.date[ll_counter]
+		next
+		if lds_ds.rowcount() > 0 then
+			openwithparm(w_arg_mr_record_pointer, lds_ds)
+			lstr_arg = message.powerobjectparm
+			if lstr_arg.i_status = 1 and lstr_arg.l_code1 > 0 then
+				adw_dw.setrow(lstr_arg.l_code1)
+				adw_dw.scrolltorow(lstr_arg.l_code1)
+			end if
+		end if
+	end if
+	return 0
+
+// w_dashboards.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns integer
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+	return 0
+
+// w_dashboards.wf_apply_protect_setting() returns integer
+	if this.il_protect = 1 then
+	end if
+	return 0
+
+// w_dashboards.wf_print() returns long
+	if this.il_protect = 0 then
+	end if
+	return 0
+
+// w_dashboards.wf_select_first_tab() returns long
+	if this.tab_main.tabpage_general.visible = true then
+		this.tab_main.selecttab(1)
+		return 0
+	end if
+	if this.tab_main.tabpage_inventory.visible = true then
+		this.tab_main.selecttab(2)
+		return 0
+	end if
+	if this.tab_main.tabpage_sales.visible = true then
+		this.tab_main.selecttab(3)
+		return 0
+	end if
+	if this.tab_main.tabpage_purhases.visible = true then
+		this.tab_main.selecttab(4)
+		return 0
+	end if
+	if this.tab_main.tabpage_issue.visible = true then
+		this.tab_main.selecttab(5)
+		return 0
+	end if
+	if this.tab_main.tabpage_receipt.visible = true then
+		this.tab_main.selecttab(6)
+		return 0
+	end if
+	if this.tab_main.tabpage_adj.visible = true then
+		this.tab_main.selecttab(7)
+		return 0
+	end if
+	if this.tab_main.tabpage_transfer.visible = true then
+		this.tab_main.selecttab(8)
+		return 0
+	end if
+	if this.tab_main.tabpage_service.visible = true then
+		this.tab_main.selecttab(9)
+		return 0
+	end if
+	if this.tab_main.tabpage_accounts.visible = true then
+		this.tab_main.selecttab(10)
+		return 0
+	end if
+	if this.tab_main.tabpage_crs.visible = true then
+		this.tab_main.selecttab(11)
+		return 0
+	end if
+	return 0
+
+// w_dashboards.wf_getserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+	datetime ldt_last_transdate
+	datetime ldt_current_serverdate
+	integer li_max_allow_days
+	string ls_hold_serverdate
+	date ld_datepart
+	time lt_timepart
+	ar_errtext = "Please verify Server DateTime"
+	li_max_allow_days = f_numberpreferences("MaxAllowDate")
+	if isnull(li_max_allow_days) then
+		li_max_allow_days = 4
+	end if
+	SQL rollback USING sqlca;
+	SQL SELECT LastTransDate INTO :ldt_last_transdate FROM ServerDate USING sqlca;
+	if sqlca.sqlcode = 0 then
+		sqlca.getdatetime(ldt_current_serverdate)
+		ar_server_datetime = ldt_current_serverdate
+		if sqlca.sqlcode = 0 then
+			if ldt_current_serverdate >= ldt_last_transdate and daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) <= li_max_allow_days then
+				ld_datepart = date(string(ldt_current_serverdate, "yyyy-mm-dd"))
+				lt_timepart = time(string(ldt_current_serverdate, "hh:mm:ss"))
+				ldt_current_serverdate = datetime(ld_datepart, lt_timepart)
+				SQL update ServerDate SET LastTransDate =:ldt_current_serverdate USING sqlca;
+				if sqlca.sqlcode = 0 then
+					SQL commit USING sqlca;
+					ar_server_datetime = ldt_current_serverdate
+					return true
+				else
+					SQL rollback USING sqlca;
+					return false
+				end if
+			elseif ldt_current_serverdate < ldt_last_transdate then
+				ar_errtext = "Back Date Invoice Check violates"
+				return false
+			elseif daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) > li_max_allow_days then
+				ar_errtext = "Forward Date Invoice Check violates"
+				return false
+			end if
+		else
+			SQL rollback USING sqlca;
+			ar_server_datetime = datetime(date(today()), time(today()))
+			return false
+		end if
+		return
+	end if
+	SQL rollback USING sqlca;
+	ar_server_datetime = datetime(date(today()), time(today()))
+	return false
+
+// w_dashboards.create() returns 0
+	this.cb_close = create cb_close
+	this.tab_main = create tab_main
+	this.control = {this.cb_close, this.tab_main}
+
+// w_dashboards.destroy() returns 0
+	destroy this.cb_close
+	destroy this.tab_main
+
+// w_dashboards.open() returns long
+	integer li_xpos
+	integer li_ypos
+	integer li_xendpos
+	integer li_counter
+	integer li_taborder
+	integer li_visiblecolumns
+	integer li_zerotaborder
+	long ll_counter
+	long li_retcode
+	long li_rtncode
+	boolean lb_active
+	boolean lb_restricted
+	boolean lb_customicode
+	boolean lb_zerotabordercol
+	date ld_date
+	long ll_retcode
+	ld_date = today()
+	this.it_transobject = create u_transaction
+	if wf_connect() <> 0 then
+		messagebox("Connection Failure", "Unable to connect to the database", stopsign!)
+		close(this)
+		return ::message.returnvalue
+	end if
+	wf_retrieve_tabs()
+	wf_set_tab_visibility()
+	wf_apply_protect_setting()
+	wf_set_interface_adjustments()
+	triggerevent("ue_postopen")
+	return ::message.returnvalue
+
+// cb_close.clicked() returns long
+	parent.postevent("ue_close")
+	return ::message.returnvalue
+
+// tab_main.create() returns 0
+	this.tabpage_general = create tabpage_general
+	this.tabpage_inventory = create tabpage_inventory
+	this.tabpage_sales = create tabpage_sales
+	this.tabpage_purhases = create tabpage_purhases
+	this.tabpage_issue = create tabpage_issue
+	this.tabpage_receipt = create tabpage_receipt
+	this.tabpage_adj = create tabpage_adj
+	this.tabpage_transfer = create tabpage_transfer
+	this.tabpage_service = create tabpage_service
+	this.tabpage_accounts = create tabpage_accounts
+	this.tabpage_crs = create tabpage_crs
+	this.control = {this.tabpage_general, this.tabpage_inventory, this.tabpage_sales, this.tabpage_purhases, this.tabpage_issue, this.tabpage_receipt, this.tabpage_adj, this.tabpage_transfer, this.tabpage_service, this.tabpage_accounts, this.tabpage_crs}
+
+// tab_main.destroy() returns 0
+	destroy this.tabpage_general
+	destroy this.tabpage_inventory
+	destroy this.tabpage_sales
+	destroy this.tabpage_purhases
+	destroy this.tabpage_issue
+	destroy this.tabpage_receipt
+	destroy this.tabpage_adj
+	destroy this.tabpage_transfer
+	destroy this.tabpage_service
+	destroy this.tabpage_accounts
+	destroy this.tabpage_crs
+
+// tab_main.selectionchanged(integer oldindex, integer newindex) returns long
+	if newindex = 1 then
+		if f_rightexists(5225) then
+			parent.id_summary1.retrieve(f_numberpreferences("Dashboard_SummaryAnlaysis"))
+			parent.id_summary2.retrieve(f_numberpreferences("Dashboard_SummaryAnlaysis"))
+		end if
+	elseif newindex = 2 then
+		if f_rightexists(5226) then
+			parent.id_inventory1.retrieve(f_stringpreferences("Dashboard_InventoryBreakupCriteria"))
+			parent.id_inventory2.retrieve()
+			parent.id_inventory3.retrieve()
+			parent.id_inventory4.retrieve(f_stringpreferences("Dashboard_InventoryBreakupCriteria"), f_numberpreferences("Dashboard_SummaryAnlaysis"))
+		end if
+	elseif newindex = 3 then
+		if f_rightexists(5227) then
+			parent.id_sales1.retrieve(f_numberpreferences("Dashboard_SalesAnlaysis"))
+			parent.id_sales2.retrieve(f_numberpreferences("Dashboard_SalesAnlaysis"))
+		end if
+	elseif newindex = 4 then
+		if f_rightexists(5228) then
+			parent.id_purchase1.retrieve(f_numberpreferences("Dashboard_PurAnlaysis"))
+			parent.id_purchase2.retrieve(f_numberpreferences("Dashboard_PurAnlaysis"))
+		end if
+	elseif newindex = 5 then
+		if f_rightexists(5230) then
+			parent.id_issue1.retrieve(f_numberpreferences("Dashboard_IssueAnalysis"))
+			parent.id_issue2.retrieve(f_numberpreferences("Dashboard_IssueAnalysis"))
+		end if
+	elseif newindex = 6 then
+		if f_rightexists(5231) then
+			parent.id_receipt1.retrieve(f_numberpreferences("Dashboard_ReceiptAnalysis"))
+			parent.id_receipt2.retrieve(f_numberpreferences("Dashboard_ReceiptAnalysis"))
+		end if
+	elseif newindex = 7 then
+		if f_rightexists(5232) then
+			parent.id_adj1.retrieve(f_numberpreferences("Dashboard_AdjustmentAnalysis"))
+			parent.id_adj2.retrieve(f_numberpreferences("Dashboard_AdjustmentAnalysis"))
+		end if
+	elseif newindex = 8 then
+		if f_rightexists(5233) then
+			parent.id_transfer1.retrieve(f_numberpreferences("Dashboard_TransferAnalysis"))
+			parent.id_transfer2.retrieve(f_numberpreferences("Dashboard_TransferAnalysis"))
+			parent.id_transfer3.retrieve(f_numberpreferences("Dashboard_TransferAnalysis"))
+		end if
+	elseif newindex = 9 then
+		if f_rightexists(5234) then
+			parent.id_service1.retrieve(f_numberpreferences("Dashboard_ServiceAnalysis"))
+			parent.id_service2.retrieve(f_numberpreferences("Dashboard_ServiceAnalysis"))
+		end if
+	elseif newindex = 10 then
+		if f_rightexists(5235) then
+			parent.id_accounts1.retrieve(f_numberpreferences("Dashboard_AccountsAnalysis"))
+		end if
+	elseif newindex = 11 and f_rightexists(5254) then
+		parent.id_crs1.retrieve()
+		parent.id_crs2.retrieve()
+		parent.id_crs3.retrieve(f_numberpreferences("Dashboard_SalesAnlaysis"))
+		parent.id_crs4.retrieve(f_numberpreferences("Dashboard_SalesAnlaysis"))
+	end if
+	return ::message.returnvalue
+
+// tabpage_general.create() returns 0
+	this.dw_summary2 = create dw_summary2
+	this.dw_summary = create dw_summary
+	this.control = {this.dw_summary2, this.dw_summary}
+
+// tabpage_general.destroy() returns 0
+	destroy this.dw_summary2
+	destroy this.dw_summary
+
+// dw_summary2.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	openwithparm(w_dashboard_zoomed, this)
+	return ::message.returnvalue
+
+// dw_summary.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	openwithparm(w_dashboard_zoomed, this)
+	return ::message.returnvalue
+
+// tabpage_inventory.create() returns 0
+	this.dw_inventory4 = create dw_inventory4
+	this.dw_inventory3 = create dw_inventory3
+	this.dw_inventory2 = create dw_inventory2
+	this.dw_inventory = create dw_inventory
+	this.control = {this.dw_inventory4, this.dw_inventory3, this.dw_inventory2, this.dw_inventory}
+
+// tabpage_inventory.destroy() returns 0
+	destroy this.dw_inventory4
+	destroy this.dw_inventory3
+	destroy this.dw_inventory2
+	destroy this.dw_inventory
+
+// dw_inventory4.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	openwithparm(w_dashboard_zoomed, this)
+	return ::message.returnvalue
+
+// dw_inventory3.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	openwithparm(w_dashboard_zoomed, this)
+	return ::message.returnvalue
+
+// dw_inventory2.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	openwithparm(w_dashboard_zoomed, this)
+	return ::message.returnvalue
+
+// dw_inventory.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	openwithparm(w_dashboard_zoomed, this)
+	return ::message.returnvalue
+
+// tabpage_sales.create() returns 0
+	this.dw_sales2 = create dw_sales2
+	this.dw_sales = create dw_sales
+	this.control = {this.dw_sales2, this.dw_sales}
+
+// tabpage_sales.destroy() returns 0
+	destroy this.dw_sales2
+	destroy this.dw_sales
+
+// dw_sales2.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	openwithparm(w_dashboard_zoomed, this)
+	return ::message.returnvalue
+
+// dw_sales.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	openwithparm(w_dashboard_zoomed, this)
+	return ::message.returnvalue
+
+// tabpage_purhases.create() returns 0
+	this.dw_purchase2 = create dw_purchase2
+	this.dw_purchase = create dw_purchase
+	this.control = {this.dw_purchase2, this.dw_purchase}
+
+// tabpage_purhases.destroy() returns 0
+	destroy this.dw_purchase2
+	destroy this.dw_purchase
+
+// dw_purchase2.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	openwithparm(w_dashboard_zoomed, this)
+	return ::message.returnvalue
+
+// dw_purchase.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	openwithparm(w_dashboard_zoomed, this)
+	return ::message.returnvalue
+
+// tabpage_issue.create() returns 0
+	this.dw_issue2 = create dw_issue2
+	this.dw_issue = create dw_issue
+	this.control = {this.dw_issue2, this.dw_issue}
+
+// tabpage_issue.destroy() returns 0
+	destroy this.dw_issue2
+	destroy this.dw_issue
+
+// dw_issue2.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	openwithparm(w_dashboard_zoomed, this)
+	return ::message.returnvalue
+
+// dw_issue.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	openwithparm(w_dashboard_zoomed, this)
+	return ::message.returnvalue
+
+// tabpage_receipt.create() returns 0
+	this.dw_receipt2 = create dw_receipt2
+	this.dw_receipt = create dw_receipt
+	this.control = {this.dw_receipt2, this.dw_receipt}
+
+// tabpage_receipt.destroy() returns 0
+	destroy this.dw_receipt2
+	destroy this.dw_receipt
+
+// dw_receipt2.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	openwithparm(w_dashboard_zoomed, this)
+	return ::message.returnvalue
+
+// dw_receipt.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	openwithparm(w_dashboard_zoomed, this)
+	return ::message.returnvalue
+
+// tabpage_adj.create() returns 0
+	this.dw_adj2 = create dw_adj2
+	this.dw_adj = create dw_adj
+	this.control = {this.dw_adj2, this.dw_adj}
+
+// tabpage_adj.destroy() returns 0
+	destroy this.dw_adj2
+	destroy this.dw_adj
+
+// dw_adj2.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	openwithparm(w_dashboard_zoomed, this)
+	return ::message.returnvalue
+
+// dw_adj.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	openwithparm(w_dashboard_zoomed, this)
+	return ::message.returnvalue
+
+// tabpage_transfer.create() returns 0
+	this.dw_transfer2 = create dw_transfer2
+	this.dw_transfer3 = create dw_transfer3
+	this.dw_transfer = create dw_transfer
+	this.control = {this.dw_transfer2, this.dw_transfer3, this.dw_transfer}
+
+// tabpage_transfer.destroy() returns 0
+	destroy this.dw_transfer2
+	destroy this.dw_transfer3
+	destroy this.dw_transfer
+
+// dw_transfer2.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	openwithparm(w_dashboard_zoomed, this)
+	return ::message.returnvalue
+
+// dw_transfer3.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	openwithparm(w_dashboard_zoomed, this)
+	return ::message.returnvalue
+
+// dw_transfer.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	openwithparm(w_dashboard_zoomed, this)
+	return ::message.returnvalue
+
+// tabpage_service.create() returns 0
+	this.dw_service2 = create dw_service2
+	this.dw_service = create dw_service
+	this.control = {this.dw_service2, this.dw_service}
+
+// tabpage_service.destroy() returns 0
+	destroy this.dw_service2
+	destroy this.dw_service
+
+// dw_service2.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	openwithparm(w_dashboard_zoomed, this)
+	return ::message.returnvalue
+
+// dw_service.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	openwithparm(w_dashboard_zoomed, this)
+	return ::message.returnvalue
+
+// tabpage_accounts.create() returns 0
+	this.dw_accounts = create dw_accounts
+	this.control = {this.dw_accounts}
+
+// tabpage_accounts.destroy() returns 0
+	destroy this.dw_accounts
+
+// dw_accounts.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	openwithparm(w_dashboard_zoomed, this)
+	return ::message.returnvalue
+
+// tabpage_crs.create() returns 0
+	this.dw_crs4 = create dw_crs4
+	this.dw_crs2 = create dw_crs2
+	this.dw_crs3 = create dw_crs3
+	this.dw_crs = create dw_crs
+	this.control = {this.dw_crs4, this.dw_crs2, this.dw_crs3, this.dw_crs}
+
+// tabpage_crs.destroy() returns 0
+	destroy this.dw_crs4
+	destroy this.dw_crs2
+	destroy this.dw_crs3
+	destroy this.dw_crs
+
+// dw_crs4.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	openwithparm(w_dashboard_zoomed, this)
+	return ::message.returnvalue
+
+// dw_crs2.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	openwithparm(w_dashboard_zoomed, this)
+	return ::message.returnvalue
+
+// dw_crs3.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	openwithparm(w_dashboard_zoomed, this)
+	return ::message.returnvalue
+
+// dw_crs.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	openwithparm(w_dashboard_zoomed, this)
+	return ::message.returnvalue

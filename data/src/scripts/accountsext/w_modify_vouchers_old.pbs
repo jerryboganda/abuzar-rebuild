@@ -1,0 +1,67 @@
+// window w_modify_vouchers_old (accountsext)  ancestor: w_single_entry
+
+// w_modify_vouchers_old.ue_newform() returns 0
+	setredraw(false)
+	this.i_editmode = 1
+	this.i_retrievemode = 2
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_new.enabled = false
+	this.im_menu.m_file.m_delete.enabled = false
+	this.im_menu.m_file.m_delete.enabled = false
+	this.im_menu.m_file.m_first.enabled = false
+	this.im_menu.m_file.m_next.enabled = false
+	this.im_menu.m_file.m_previous.enabled = false
+	this.im_menu.m_file.m_last.enabled = false
+	this.im_menu.m_file.m_print.enabled = false
+	this.im_menu.m_file.m_retrieve.enabled = true
+	this.im_menu.m_file.m_retrieve.text = "Lis&t"
+	this.tab_retrieve.tabpage_detail.enabled = true
+	this.id_detail.retrieve()
+	this.id_detail.insertrow(0)
+	this.id_detail.setcolumn(1)
+	this.id_detail.setfocus()
+	setredraw(true)
+
+// w_modify_vouchers_old.create() returns 0
+	integer icurrent
+	call super::create
+
+// w_modify_vouchers_old.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_modify_vouchers_old.activate() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::activate()
+	this.windowstate = maximized!
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_modify_vouchers_old.ue_save() returns 0
+	long ll_primarykey
+	long ll_row
+	setpointer(hourglass!)
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	if this.id_detail.update() > 0 then
+		SQL commit USING sqlca;
+		messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+		this.ib_commitok = true
+		this.im_menu.m_file.m_new.enabled = true
+		this.editflag = false
+	else
+		SQL rollback USING sqlca;
+		setpointer(arrow!)
+		messagebox("Save Changes", "Changes Rollback in database, ~n~rSome database problem occurs", exclamation!, ok!, 1)
+		return
+	end if
+	setpointer(arrow!)
+
+// w_modify_vouchers_old.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.tab_retrieve.tabpage_list.enabled = false
+	return ::message.returnvalue

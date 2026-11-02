@@ -1,0 +1,55 @@
+// window w_delete_due (duecomponents)  ancestor: w_multi_entry
+
+// w_delete_due.create() returns 0
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_deletedue1" then
+		this.menuid = create m_deletedue1
+	end if
+
+// w_delete_due.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_delete_due.ue_save() returns 0
+	long ll_counter
+	long ll_rowcount
+	integer il_checked
+	datetime ldt_datetime
+	date ld_date
+	time lt_time
+	ld_date = today()
+	lt_time = now()
+	ldt_datetime = datetime(ld_date, lt_time)
+	setredraw(false)
+	ll_rowcount = this.id_detail.rowcount()
+	for ll_counter = 1 to ll_rowcount
+		il_checked = this.id_detail.getitemnumber(ll_counter, "deletedue")
+		if il_checked = 1 then
+			this.id_detail.setitem(ll_counter, "Due", "X")
+			this.id_detail.setitem(ll_counter, "satisfieddate", ldt_datetime)
+			this.im_menu.m_file.m_save.enabled = false
+		end if
+	next
+	call super::ue_save
+	setredraw(true)
+
+// w_delete_due.ue_detail() returns 0
+	long ll_rowcount
+	long ll_counter
+	string ls_due
+	call super::ue_detail
+	ll_rowcount = this.id_detail.rowcount()
+	for ll_counter = 1 to ll_rowcount
+		ls_due = this.id_detail.getitemstring(ll_counter, "due")
+		if ls_due = "D" then
+			this.im_menu.m_file.m_save.enabled = true
+			return
+		else
+			this.im_menu.m_file.m_save.enabled = false
+		end if
+	next

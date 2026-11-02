@@ -1,0 +1,65 @@
+// window w_arg_sinvcode_linvcode_invselection (reports)  ancestor: w_arg_sinvcode_linvcode
+
+// w_arg_sinvcode_linvcode_invselection.create() returns 0
+	integer icurrent
+	call super::create
+	this.dw_invoiceselection = create dw_invoiceselection
+	this.cb_retrieve = create cb_retrieve
+	this.cbx_storekeepersummary = create cbx_storekeepersummary
+	this.cbx_billsummary = create cbx_billsummary
+	this.cbx_invoiceprinting = create cbx_invoiceprinting
+	this.gb_2 = create gb_2
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_invoiceselection
+	this.control[icurrent + 2] = this.cb_retrieve
+	this.control[icurrent + 3] = this.cbx_storekeepersummary
+	this.control[icurrent + 4] = this.cbx_billsummary
+	this.control[icurrent + 5] = this.cbx_invoiceprinting
+	this.control[icurrent + 6] = this.gb_2
+
+// w_arg_sinvcode_linvcode_invselection.destroy() returns 0
+	call super::destroy
+	destroy this.dw_invoiceselection
+	destroy this.cb_retrieve
+	destroy this.cbx_storekeepersummary
+	destroy this.cbx_billsummary
+	destroy this.cbx_invoiceprinting
+	destroy this.gb_2
+
+// w_arg_sinvcode_linvcode_invselection.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.dw_invoiceselection.settransobject(sqlca)
+	this.dw_invoiceselection.reset()
+	return ::message.returnvalue
+
+// dw_invoiceselection.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// cb_retrieve.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent("Clicked")
+	end if
+	return ::message.returnvalue
+
+// cb_retrieve.clicked() returns long
+	long ll_sinvcode
+	long ll_linvcode
+	long ll_custcode
+	parent.dw_control.accepttext()
+	ll_sinvcode = parent.dw_control.getitemnumber(parent.dw_control.getrow(), "sinvcode")
+	ll_linvcode = parent.dw_control.getitemnumber(parent.dw_control.getrow(), "linvcode")
+	if ll_sinvcode <= 0 or isnull(ll_sinvcode) then
+		messagebox("Starting Invoice Code Validation.", "Please provide starting invoice number")
+		parent.dw_control.setfocus()
+		return ::message.returnvalue
+	end if
+	if ll_linvcode <= 0 or isnull(ll_linvcode) then
+		messagebox("Ending Invoice Code Validation.", "Please provide ending invoice number")
+		parent.dw_control.setfocus()
+		return ::message.returnvalue
+	end if
+	parent.dw_invoiceselection.reset()
+	parent.dw_invoiceselection.retrieve(ll_sinvcode, ll_linvcode)
+	return ::message.returnvalue

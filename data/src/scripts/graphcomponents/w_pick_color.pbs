@@ -1,0 +1,45 @@
+// window w_pick_color (graphcomponents)  ancestor: w_center
+
+// w_pick_color.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.istr_color = message.powerobjectparm
+	this.uo_color_select.uf_set_rgb(this.istr_color.l_colorvalue)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_pick_color.create() returns 0
+	integer icurrent
+	call super::create
+	this.cb_cancel = create cb_cancel
+	this.uo_color_select = create uo_color_select
+	this.cb_ok = create cb_ok
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.cb_cancel
+	this.control[icurrent + 2] = this.uo_color_select
+	this.control[icurrent + 3] = this.cb_ok
+
+// w_pick_color.destroy() returns 0
+	call super::destroy
+	destroy this.cb_cancel
+	destroy this.uo_color_select
+	destroy this.cb_ok
+
+// cb_cancel.clicked() returns long
+	parent.istr_color.i_status = 0
+	closewithreturn(parent, parent.istr_color)
+	return ::message.returnvalue
+
+// uo_color_select.destroy() returns 0
+	call super::destroy
+
+// cb_ok.clicked() returns long
+	parent.istr_color.i_status = 1
+	parent.istr_color.l_colorvalue = parent.uo_color_select.uf_get_rgb()
+	parent.istr_color.i_red = parent.uo_color_select.uf_get_red()
+	parent.istr_color.i_green = parent.uo_color_select.uf_get_green()
+	parent.istr_color.i_blue = parent.uo_color_select.uf_get_blue()
+	closewithreturn(parent, parent.istr_color)
+	return ::message.returnvalue

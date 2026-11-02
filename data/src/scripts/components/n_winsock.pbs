@@ -1,0 +1,602 @@
+// userobject n_winsock (components)  ancestor: nonvisualobject
+
+// n_winsock.of_accept(unsignedlong aul_socket) returns unsignedlong
+	sockaddr lstr_sockaddr
+	long lul_socket
+	long ll_length
+	ll_length = 16
+	lstr_sockaddr.sin_zero[8] = ""
+	lul_socket = accept(aul_socket, lstr_sockaddr, ll_length)
+	if lul_socket = 4294967295 then
+		return 0
+	end if
+	return lul_socket
+
+// n_winsock.of_cleanup() returns boolean
+	if not this.ib_initialized then
+		if wsacleanup() = 0 then
+			this.ib_initialized = false
+		else
+			return false
+		end if
+		return
+	end if
+	return true
+
+// n_winsock.of_close(unsignedlong aul_socket) returns boolean
+	long ll_rc
+	if aul_socket <> 0 then
+		ll_rc = closesocket(aul_socket)
+		if ll_rc = 0 then
+			aul_socket = 0
+		else
+			return false
+		end if
+		return
+	end if
+	return true
+
+// n_winsock.of_connect(string as_hostname, unsignedinteger aui_port) returns unsignedlong
+	return of_connect(as_hostname, aui_port, 0)
+
+// n_winsock.of_connect(string as_hostname, unsignedinteger aui_port, unsignedlong aul_seconds) returns unsignedlong
+	hostent lstr_hostent
+	sockaddr lstr_sockaddr
+	timeval lstr_timeval
+	fd_set lstr_read
+	fd_set lstr_write
+	fd_set lstr_except
+	unsignedlong lul_socket
+	unsignedlong lul_ptr
+	unsignedlong lul_ipaddr
+	long ll_rc
+	lul_ptr = gethostbyname(as_hostname)
+	if lul_ptr > 0 then
+		copymemoryip(lstr_hostent, lul_ptr, 16)
+		copymemoryip(lul_ipaddr, lstr_hostent.h_addr_list, lstr_hostent.h_length)
+		copymemoryip(lstr_sockaddr.sin_addr, lul_ipaddr, lstr_hostent.h_length)
+		lstr_sockaddr.sin_family = 2
+		lstr_sockaddr.sin_port = htons(aui_port)
+		lul_socket = socket(2, 1, 6)
+		if lul_socket = 4294967295 then
+			lul_socket = 0
+		elseif aul_seconds = 0 then
+			ll_rc = connect_ws(lul_socket, lstr_sockaddr, 16)
+			if ll_rc = -1 then
+				of_setlasterror(of_getlasterror())
+				of_close(lul_socket)
+			end if
+		else
+			of_setblockingmode(lul_socket, false)
+			ll_rc = connect_ws(lul_socket, lstr_sockaddr, 16)
+			if ll_rc = -1 then
+				lstr_timeval.tv_sec = aul_seconds
+				lstr_write.fd_count = 1
+				lstr_write.fd_array[1] = lul_socket
+				ll_rc = select_ws(0, lstr_read, lstr_write, lstr_except, lstr_timeval)
+				choose case ll_rc
+				case 0
+					of_setlasterror("The connection attempt timed out.")
+					of_close(lul_socket)
+				case -1
+					of_setlasterror(of_getlasterror())
+					of_close(lul_socket)
+				case else
+					of_setblockingmode(lul_socket, true)
+				end choose
+			end if
+		end if
+	else
+		lul_socket = 0
+	end if
+	return lul_socket
+
+// n_winsock.of_eventlog(integer ai_msglevel, string as_msgtext) returns 0
+	unsignedlong lul_eventsource
+	string[] ls_errmsg
+	ls_errmsg[1] = as_msgtext
+	lul_eventsource = registereventsource(0, classname())
+	if lul_eventsource > 0 then
+		reportevent(lul_eventsource, ai_msglevel, 0, 0, 0, upperbound(ls_errmsg), 0, ls_errmsg, 0)
+		deregistereventsource(lul_eventsource)
+	end if
+
+// n_winsock.of_getdescription() returns string
+	blob lblob_desc
+	lblob_desc = blob(this.istr_wsadata.szdescription)
+	return string(lblob_desc, encodingansi!)
+
+// n_winsock.of_gethostname() returns string
+	string ls_hostname
+	string ls_errmsg
+	long ll_rc
+	long ll_namelen
+	ll_namelen = 50
+	ls_hostname = space(ll_namelen)
+	ll_rc = gethostname(ls_hostname, ll_namelen)
+	if ll_rc = -1 then
+		setnull(ls_hostname)
+	end if
+	return ls_hostname
+
+// n_winsock.of_gethostname(string as_ipaddress) returns string
+	string ls_hostname
+	unsignedlong lul_address
+	unsignedlong lul_ptr
+	blob lblb_host
+	hostent lstr_host
+	lul_address = inet_addr(as_ipaddress)
+	if lul_address > 0 then
+		lul_ptr = gethostbyaddr(lul_address, 4, 2)
+		if lul_ptr > 0 then
+			copymemoryip(lstr_host, lul_ptr, 16)
+			lblb_host = blob(space(250), encodingansi!)
+			copymemoryip(lblb_host, lstr_host.h_name, 250)
+			ls_hostname = string(lblb_host, encodingansi!)
+		else
+			setnull(ls_hostname)
+		end if
+	else
+		setnull(ls_hostname)
+	end if
+	return ls_hostname
+
+// n_winsock.of_getipaddress(string as_hostname) returns string
+	string ls_ipaddress
+	hostent lstr_host
+	unsignedlong lul_ptr
+	unsignedlong lul_ipaddr
+	in_addr lstr_addr
+	lul_ptr = gethostbyname(as_hostname)
+	if lul_ptr > 0 then
+		copymemoryip(lstr_host, lul_ptr, 16)
+		copymemoryip(lul_ipaddr, lstr_host.h_addr_list, 4)
+		copymemoryip(lstr_addr, lul_ipaddr, 4)
+		ls_ipaddress = string(blob(inet_ntoa(lstr_addr.s_addr)), encodingansi!)
+	else
+		setnull(ls_ipaddress)
+	end if
+	return ls_ipaddress
+
+// n_winsock.of_getlasterror() returns string
+	unsignedlong format_message_from_system
+	unsignedlong lang_neutral
+	string ls_errmsg
+	long ll_error
+	ll_error = wsagetlasterror()
+	choose case ll_error
+	case 0
+		if this.is_lasterror = "" then
+			ls_errmsg = "An unknown error has occurred!"
+		else
+			ls_errmsg = this.is_lasterror
+		end if
+	case else
+		ls_errmsg = space(250)
+		formatmessage(4096, 0, ll_error, 0, ls_errmsg, len(ls_errmsg), 0)
+		if right(ls_errmsg, 2) = "~r~n" then
+			ls_errmsg = left(ls_errmsg, len(ls_errmsg) - 2)
+		end if
+	end choose
+	wsasetlasterror(0)
+	return trim(ls_errmsg)
+
+// n_winsock.of_getpeername(unsignedlong aul_socket) returns string
+	sockaddr lstr_sockaddr
+	long ll_length
+	long ll_rtn
+	long ll_pos
+	long ll_strlen
+	string ls_ipaddress
+	ll_length = 16
+	lstr_sockaddr.sin_zero[8] = ""
+	ll_rtn = getpeername(aul_socket, lstr_sockaddr, ll_length)
+	if ll_rtn <> 0 then
+		setnull(ls_ipaddress)
+		return ls_ipaddress
+	end if
+	ll_strlen = 20
+	ls_ipaddress = space(ll_strlen)
+	ll_rtn = wsaaddresstostring(lstr_sockaddr, ll_length, 0, ls_ipaddress, ll_strlen)
+	if ll_rtn <> 0 then
+		setnull(ls_ipaddress)
+		return ls_ipaddress
+	end if
+	ll_pos = pos(ls_ipaddress, ":")
+	ls_ipaddress = left(ls_ipaddress, ll_pos - 1)
+	return ls_ipaddress
+
+// n_winsock.of_getsockopt(unsignedlong aul_socket, string as_optname) returns long
+	long sol_socket
+	long ll_optname
+	long ll_optvalue
+	long ll_buflen
+	ll_buflen = 4
+	choose case upper(as_optname)
+	case "SO_ERROR"
+		ll_optname = 4103
+	case "SO_RCVBUF"
+		ll_optname = 4098
+	case "SO_SNDBUF"
+		ll_optname = 4097
+	case "SO_TYPE"
+		ll_optname = 4104
+	case else
+		return -1
+	end choose
+	if getsockopt(aul_socket, 65535, ll_optname, ll_optvalue, ll_buflen) = 0 then
+		return ll_optvalue
+	end if
+	return -1
+
+// n_winsock.of_getuserid() returns string
+	string ls_userid
+	unsignedlong lul_result
+	unsignedlong lul_buflen
+	lul_buflen = 32
+	ls_userid = space(lul_buflen)
+	lul_result = wnetgetuser("", ls_userid, lul_buflen)
+	if lul_result <> 0 then
+		setnull(ls_userid)
+	end if
+	return ls_userid
+
+// n_winsock.of_ioctlsocket(unsignedlong aul_socket, string as_cmdname, unsignedlong aul_argp) returns boolean
+	unsignedlong fionbio
+	unsignedlong fionread
+	unsignedlong siocatmark
+	long ll_result
+	unsignedlong lul_cmd
+	choose case upper(as_cmdname)
+	case "FIONBIO"
+		lul_cmd = 2147772030
+	case "FIONREAD"
+		lul_cmd = 1074030207
+	case "SIOCATMARK"
+		lul_cmd = 1074033415
+	case else
+		return false
+	end choose
+	ll_result = ioctlsocket(aul_socket, lul_cmd, aul_argp)
+	if ll_result = -1 then
+		return false
+	end if
+	return true
+
+// n_winsock.of_jaguarlog(integer ai_msglevel, string as_msgtext) returns 0
+	string ls_msg
+	transactionserver lts_jag
+	errorlogging lel_jag
+	getcontextservice("TransactionServer", lts_jag)
+	getcontextservice("ErrorLogging", lel_jag)
+	choose case ai_msglevel
+	case 1
+		ls_msg = classname() + " (Error)->" + as_msgtext
+	case 2
+		ls_msg = classname() + " (Warning)->" + as_msgtext
+	case else
+		ls_msg = classname() + " (Info)->" + as_msgtext
+	end choose
+	lel_jag.log(ls_msg)
+
+// n_winsock.of_listen(unsignedinteger aui_port) returns unsignedlong
+	hostent lstr_hostent
+	sockaddr lstr_sockaddr
+	string ls_hostname
+	unsignedlong lul_socket
+	unsignedlong lul_ptr
+	unsignedlong lul_ipaddr
+	ls_hostname = of_gethostname()
+	lul_ptr = gethostbyname(ls_hostname)
+	if lul_ptr > 0 then
+		copymemoryip(lstr_hostent, lul_ptr, 16)
+		copymemoryip(lul_ipaddr, lstr_hostent.h_addr_list, lstr_hostent.h_length)
+		copymemoryip(lstr_sockaddr.sin_addr, lul_ipaddr, lstr_hostent.h_length)
+		lstr_sockaddr.sin_family = 2
+		lstr_sockaddr.sin_port = htons(aui_port)
+		lul_socket = socket(2, 1, 6)
+		if bind(lul_socket, lstr_sockaddr, 16) = -1 then
+			lul_socket = 0
+		elseif listen(lul_socket, 2147483647) = -1 then
+			lul_socket = 0
+		end if
+	else
+		lul_socket = 0
+	end if
+	return lul_socket
+
+// n_winsock.of_listen(unsignedinteger aui_port, long al_handle, integer ai_event) returns unsignedlong
+	integer wm_user
+	hostent lstr_hostent
+	sockaddr lstr_sockaddr
+	string ls_hostname
+	unsignedlong lul_socket
+	unsignedlong lul_ptr
+	unsignedlong lul_ipaddr
+	long ll_wsevent
+	ls_hostname = of_gethostname()
+	lul_ptr = gethostbyname(ls_hostname)
+	if lul_ptr > 0 then
+		copymemoryip(lstr_hostent, lul_ptr, 16)
+		copymemoryip(lul_ipaddr, lstr_hostent.h_addr_list, lstr_hostent.h_length)
+		copymemoryip(lstr_sockaddr.sin_addr, lul_ipaddr, lstr_hostent.h_length)
+		lstr_sockaddr.sin_family = 2
+		lstr_sockaddr.sin_port = htons(aui_port)
+		lul_socket = socket(2, 1, 6)
+		if bind(lul_socket, lstr_sockaddr, 16) = -1 then
+			lul_socket = 0
+		else
+			ll_wsevent = 8 + 1
+			if wsaasyncselect(lul_socket, al_handle, 1024 + (ai_event - 1), ll_wsevent) = -1 then
+				lul_socket = 0
+			elseif listen(lul_socket, 2147483647) = -1 then
+				lul_socket = 0
+			end if
+		end if
+	else
+		lul_socket = 0
+	end if
+	return lul_socket
+
+// n_winsock.of_messagebox(integer ai_msglevel, string as_msgtext) returns 0
+	choose case ai_msglevel
+	case 1
+		messagebox("Winsock Error", as_msgtext, stopsign!)
+		return
+	case 2
+		messagebox("Winsock Warning", as_msgtext, exclamation!)
+		return
+	end choose
+	messagebox("Winsock Message", as_msgtext, information!)
+
+// n_winsock.of_recv(unsignedlong aul_socket, blob ablob_data) returns boolean
+	long ll_bytes
+	long ll_maxbuffer
+	blob lblob_data
+	ll_maxbuffer = of_getsockopt(aul_socket, "SO_RCVBUF")
+	ll_bytes = ll_maxbuffer
+	do while ll_bytes = ll_maxbuffer
+		lblob_data = blob(space(ll_maxbuffer))
+		ll_bytes = recv(aul_socket, lblob_data, ll_maxbuffer, 0)
+		if ll_bytes = -1 then
+			setnull(ablob_data)
+			return false
+		else
+			ablob_data = blobmid(lblob_data, 1, ll_bytes) + ablob_data
+		end if
+	loop
+	return true
+
+// n_winsock.of_recv(unsignedlong aul_socket, string as_data) returns boolean
+	blob lblob_data
+	if of_recv(aul_socket, lblob_data) then
+		if this.ib_recv_unicode then
+			as_data = string(lblob_data)
+		else
+			as_data = string(lblob_data, encodingansi!)
+		end if
+	else
+		setnull(as_data)
+		return false
+	end if
+	return true
+
+// n_winsock.of_recvfrom(unsignedinteger aui_port, blob ablob_data, string as_ipaddress) returns boolean
+	sockaddr lstr_recvaddr
+	sockaddr lstr_senderaddr
+	unsignedlong lul_recvsocket
+	unsignedlong lul_ipaddr
+	long ll_bytes
+	long ll_buflen
+	long ll_senderaddrsize
+	string ls_ipaddress
+	string[] ls_part
+	ll_senderaddrsize = 16
+	ll_buflen = len(ablob_data)
+	lul_recvsocket = socket(2, 2, 17)
+	lstr_recvaddr.sin_family = 2
+	lstr_recvaddr.sin_port = htons(aui_port)
+	lstr_recvaddr.sin_addr.s_addr = htonl(0)
+	bind(lul_recvsocket, lstr_recvaddr, 16)
+	ll_bytes = recvfrom(lul_recvsocket, ablob_data, ll_buflen, 0, lstr_senderaddr, ll_senderaddrsize)
+	if ll_bytes = -1 then
+		closesocket(lul_recvsocket)
+		return false
+	else
+		ablob_data = blobmid(ablob_data, 1, ll_bytes)
+		lul_ipaddr = ntohl(lstr_senderaddr.sin_addr.s_addr)
+		ls_ipaddress = string(blob(inet_ntoa(lul_ipaddr)), encodingansi!)
+		of_parse(ls_ipaddress, ".", ls_part)
+		as_ipaddress = ls_part[4] + "." + ls_part[3] + "." + ls_part[2] + "." + ls_part[1]
+	end if
+	closesocket(lul_recvsocket)
+	return true
+
+// n_winsock.of_recvfrom(unsignedinteger aui_port, string as_data, string as_ipaddress) returns boolean
+	blob lblob_data
+	lblob_data = blob(as_data)
+	if of_recvfrom(aui_port, lblob_data, as_ipaddress) then
+		if this.ib_recv_unicode then
+			as_data = string(lblob_data)
+		else
+			as_data = string(lblob_data, encodingansi!)
+		end if
+	else
+		setnull(as_data)
+		return false
+	end if
+	return true
+
+// n_winsock.of_send(unsignedlong aul_socket, blob ablob_data) returns boolean
+	blob lblob_data
+	long ll_maxbuffer
+	long ll_totbytes
+	long ll_length
+	long ll_sendlen
+	long ll_rc
+	ll_maxbuffer = of_getsockopt(aul_socket, "SO_SNDBUF")
+	ll_length = len(ablob_data)
+	do while ll_totbytes < ll_length
+		lblob_data = blobmid(ablob_data, ll_totbytes + 1, ll_maxbuffer)
+		ll_sendlen = len(lblob_data)
+		ll_totbytes = ll_totbytes + ll_sendlen
+		ll_rc = send(aul_socket, lblob_data, ll_sendlen, 0)
+		if ll_rc = -1 then
+			return false
+		end if
+	loop
+	return true
+
+// n_winsock.of_send(unsignedlong aul_socket, string as_data) returns boolean
+	blob lblb_data
+	if this.ib_send_unicode then
+		lblb_data = blob(as_data)
+	else
+		lblb_data = blob(as_data, encodingansi!)
+	end if
+	return of_send(aul_socket, lblb_data)
+
+// n_winsock.of_sendto(string as_ipaddress, unsignedinteger aui_port, blob ablob_data) returns boolean
+	sockaddr lstr_recvaddr
+	unsignedlong lul_sendsocket
+	long ll_recvaddrsize
+	long ll_rc
+	long ll_buflen
+	string ls_errmsg
+	ll_recvaddrsize = 16
+	ll_buflen = len(ablob_data)
+	lul_sendsocket = socket(2, 2, 17)
+	lstr_recvaddr.sin_family = 2
+	lstr_recvaddr.sin_port = htons(aui_port)
+	lstr_recvaddr.sin_addr.s_addr = inet_addr(as_ipaddress)
+	ll_rc = sendto(lul_sendsocket, ablob_data, ll_buflen, 0, lstr_recvaddr, ll_recvaddrsize)
+	if ll_rc = -1 then
+		return false
+	end if
+	closesocket(lul_sendsocket)
+	return true
+
+// n_winsock.of_sendto(string as_ipaddress, unsignedinteger aui_port, string as_data) returns boolean
+	blob lblb_data
+	if this.ib_send_unicode then
+		lblb_data = blob(as_data)
+	else
+		lblb_data = blob(as_data, encodingansi!)
+	end if
+	return of_sendto(as_ipaddress, aui_port, lblb_data)
+
+// n_winsock.of_setblockingmode(unsignedlong aul_socket, boolean ab_blocking) returns boolean
+	unsignedlong lul_ioctl
+	if ab_blocking then
+		lul_ioctl = 0
+	else
+		lul_ioctl = 1
+	end if
+	return of_ioctlsocket(aul_socket, "FIONBIO", lul_ioctl)
+
+// n_winsock.of_setlasterror(string as_lasterror) returns 0
+	this.is_lasterror = as_lasterror
+	wsasetlasterror(0)
+
+// n_winsock.of_setsockopt(unsignedlong aul_socket, string as_optname, boolean ab_optvalue) returns boolean
+	long sol_socket
+	long ll_optname
+	long ll_buflen
+	string ls_errmsg
+	ll_buflen = 1
+	choose case upper(as_optname)
+	case "SO_BROADCAST"
+		ll_optname = 32
+	case "SO_DEBUG"
+		ll_optname = 1
+	case "SO_DONTROUTE"
+		ll_optname = 16
+	case "SO_KEEPALIVE"
+		ll_optname = 8
+	case "SO_OOBINLINE"
+		ll_optname = 256
+	case "SO_REUSEADDR"
+		ll_optname = 4
+	case "SO_LINGER"
+		ll_optname = 128
+	case else
+		return false
+	end choose
+	if setsockopt(aul_socket, 65535, ll_optname, ab_optvalue, ll_buflen) = 0 then
+		return true
+	end if
+	return false
+
+// n_winsock.of_setunicode(boolean ab_send, boolean ab_recv) returns 0
+	this.ib_send_unicode = ab_send
+	this.ib_recv_unicode = ab_recv
+
+// n_winsock.of_startup() returns boolean
+	if not this.ib_initialized then
+		if wsastartup(257, this.istr_wsadata) = 0 then
+			this.ib_initialized = true
+		else
+			return false
+		end if
+		return
+	end if
+	return true
+
+// n_winsock.of_decode64(string as_encoded) returns blob
+	blob lblob_data
+	unsignedlong lul_len
+	unsignedlong lul_buflen
+	unsignedlong lul_skip
+	unsignedlong lul_pflags
+	boolean lb_rtn
+	lul_len = len(as_encoded)
+	lul_buflen = lul_len
+	lblob_data = blob(space(lul_len))
+	lb_rtn = cryptstringtobinary(as_encoded, lul_len, 1, lblob_data, lul_buflen, lul_skip, lul_pflags)
+	return blobmid(lblob_data, 1, lul_buflen)
+
+// n_winsock.of_encode64(blob ablob_data) returns string
+	string ls_encoded
+	unsignedlong lul_len
+	unsignedlong lul_buflen
+	boolean lb_rtn
+	lul_len = len(ablob_data)
+	lb_rtn = cryptbinarytostring(ablob_data, lul_len, 1, 0, lul_buflen)
+	ls_encoded = space(lul_buflen)
+	lb_rtn = cryptbinarytostring(ablob_data, lul_len, 1, ls_encoded, lul_buflen)
+	if lb_rtn then
+		ls_encoded = left(ls_encoded, lul_buflen - 2)
+	else
+		setnull(ls_encoded)
+	end if
+	return ls_encoded
+
+// n_winsock.of_encode64(string as_data) returns string
+	return of_encode64(blob(as_data, encodingansi!))
+
+// n_winsock.of_parse(string as_string, string as_separator, string[] as_outarray) returns long
+	long ll_posend
+	long ll_posstart
+	long ll_separatorlen
+	long ll_counter
+	if upperbound(as_outarray) > 0 then
+		as_outarray = {""}
+	end if
+	ll_separatorlen = len(as_separator)
+	ll_posend = pos(as_string, as_separator, 1)
+	do while ll_posend > 0
+		as_outarray[ll_counter] = mid(as_string, ll_posstart, ll_posend - ll_posstart)
+		ll_posstart = ll_posend + ll_separatorlen
+		ll_posend = pos(as_string, as_separator, ll_posstart)
+		ll_counter = ll_counter + 1
+	loop
+	as_outarray[ll_counter] = right(as_string, len(as_string) - ll_posstart + 1)
+	return ll_counter
+
+// n_winsock.create() returns 0
+	call super::create
+	triggerevent("constructor")
+
+// n_winsock.destroy() returns 0
+	triggerevent("destructor")
+	call super::destroy

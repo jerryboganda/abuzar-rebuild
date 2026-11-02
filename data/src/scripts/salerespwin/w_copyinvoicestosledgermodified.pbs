@@ -1,0 +1,51 @@
+// window w_copyinvoicestosledgermodified (salerespwin)  ancestor: window
+
+// w_copyinvoicestosledgermodified.create() returns 0
+	this.cb_close = create cb_close
+	this.cb_transfer = create cb_transfer
+	this.control = {this.cb_close, this.cb_transfer}
+
+// w_copyinvoicestosledgermodified.destroy() returns 0
+	destroy this.cb_close
+	destroy this.cb_transfer
+
+// w_copyinvoicestosledgermodified.open() returns long
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	return ::message.returnvalue
+
+// cb_close.clicked() returns long
+	close(parent)
+	return ::message.returnvalue
+
+// cb_transfer.clicked() returns long
+	long ll_error
+	long ll_rows
+	SQL rollback USING sqlca;
+	ll_error = sqlca.copyinvoicestosledgermodified(ll_rows)
+	if sqlca.sqlcode <> 0 then
+		SQL rollback USING sqlca;
+		messagebox("Error", "Unable to copy invoices.~r~nPossible causes are: " + sqlca.sqlerrtext)
+	else
+		SQL commit USING sqlca;
+		if ll_rows = 0 then
+			messagebox("Copy Confirmation", "No Inoice exist for copy")
+		else
+			messagebox("Copy Confirmation", "All invoices successfully copied~r~n" + "Total Invoices copied are " + string(ll_rows))
+		end if
+		close(parent)
+	end if
+	return ::message.returnvalue

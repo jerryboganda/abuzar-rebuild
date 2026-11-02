@@ -1,0 +1,272 @@
+// window w_emp_biometricmachine_mgmt (employee)  ancestor: window
+
+// w_emp_biometricmachine_mgmt.ue_close(integer ai_status) returns 0
+	long ll_row
+	string ls_null
+	setnull(ls_null)
+	this.iole_device.__invoke_method("disconnect", 0, {}, true)
+	close(this)
+
+// w_emp_biometricmachine_mgmt.wf_insert_fingerprint(integer ai_finger, blob img, blob features) returns long
+	SQL INSERT INTO EMP_FingerPrint ( EmpCode , FingerCode ) VALUES ( :this.il_code , :ai_finger ) USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		messagebox("Insert Error", "Unable to Insert Employee Finger Images Into Database.~r~nReasons are:~r~n" + this.it_transobject.sqlerrtext)
+		return -1
+	end if
+	SQL UPDATEBLOB EMP_FingerPrint SET FingerPrint =:img WHERE EMPCode =:this.il_code AND FingerCode =:ai_finger USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		messagebox("Employee Finger Image Problem", "Unable to update Employee Finger Image.~r~nReasons are:~r~n" + this.it_transobject.sqlerrtext)
+	end if
+	SQL UPDATEBLOB EMP_FingerPrint SET Features =:features WHERE EMPCode =:this.il_code AND FingerCode =:ai_finger USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		messagebox("Employee Finger Image Features Problem", "Unable to update Employee Finger Image Features.~r~nReasons are:~r~n" + this.it_transobject.sqlerrtext)
+	end if
+	return 0
+
+// w_emp_biometricmachine_mgmt.create() returns 0
+	this.tab_main = create tab_main
+	this.cb_cancel = create cb_cancel
+	this.dw_control = create dw_control
+	this.control = {this.tab_main, this.cb_cancel, this.dw_control}
+
+// w_emp_biometricmachine_mgmt.destroy() returns 0
+	destroy this.tab_main
+	destroy this.cb_cancel
+	destroy this.dw_control
+
+// w_emp_biometricmachine_mgmt.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	long ll_err
+	long li_retcode
+	boolean lb_flag
+	this.il_code = message.doubleparm
+	this.it_transobject = create u_transaction
+	this.it_transobject.autocommit = true
+	SQL start USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		messagebox("Connection Problem", "Unable to connect to database.RNDetails are:-~r~n" + this.it_transobject.sqlerrtext, stopsign!)
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	this.iole_device = create oleobject
+	li_retcode = this.iole_device.connecttonewobject("zkemkeeper.ZKEM.1")
+	if li_retcode <> 0 then
+		messagebox("Error", "Cannot Connect to Remote Object", stopsign!)
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	this.dw_control.settransobject(this.it_transobject)
+	if this.il_code > 0 then
+		this.dw_control.retrieve(this.il_code)
+		if this.dw_control.rowcount() > 0 then
+			this.tab_main.tabpage_emp.dw_emp.settransobject(this.it_transobject)
+			this.tab_main.tabpage_emp.dw_emp.retrieve()
+			this.tab_main.tabpage_attendance.dw_attendance.settransobject(this.it_transobject)
+			this.is_deviceip = this.dw_control.object.ipaddress[1]
+			this.il_deviceport = this.dw_control.object.port[1]
+			if isnull(this.is_deviceip) or this.is_deviceip = "" or this.il_deviceport <= 0 or isnull(this.il_deviceport) then
+				triggerevent("ue_close")
+				if not isvalid(message) then
+					return 0
+				end if
+				return message.returnvalue
+			else
+				lb_flag = this.iole_device.__invoke_method("connect_net", 2, {this.is_deviceip, this.il_deviceport}, true)
+				if not lb_flag then
+					triggerevent("ue_close")
+					if not isvalid(message) then
+						return 0
+					end if
+					return message.returnvalue
+				end if
+			end if
+		else
+			triggerevent("ue_close")
+			if not isvalid(message) then
+				return 0
+			end if
+			return message.returnvalue
+		end if
+		return
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// tab_main.create() returns 0
+	this.tabpage_emp = create tabpage_emp
+	this.tabpage_attendance = create tabpage_attendance
+	this.control = {this.tabpage_emp, this.tabpage_attendance}
+
+// tab_main.destroy() returns 0
+	destroy this.tabpage_emp
+	destroy this.tabpage_attendance
+
+// tabpage_emp.create() returns 0
+	this.cb_update = create cb_update
+	this.cb_retrieve = create cb_retrieve
+	this.dw_emp = create dw_emp
+	this.control = {this.cb_update, this.cb_retrieve, this.dw_emp}
+
+// tabpage_emp.destroy() returns 0
+	destroy this.cb_update
+	destroy this.cb_retrieve
+	destroy this.dw_emp
+
+// cb_update.clicked() returns long
+	long ll_rows
+	long ll_row
+	long ll_code
+	long ll_count
+	string ls_selected
+	string ls_empid
+	string ls_name
+	string ls_category
+	string ls_dept
+	string ls_desig
+	string tmpdata
+	long tmplength
+	ll_rows = parent.parent.parent.tab_main.tabpage_emp.dw_emp.rowcount()
+	for ll_row = 1 to ll_rows
+		ls_selected = parent.parent.parent.tab_main.tabpage_emp.dw_emp.object.selected[ll_row]
+		if ls_selected = "Y" then
+			ll_code = parent.parent.parent.tab_main.tabpage_emp.dw_emp.object.code[ll_row]
+			ls_empid = parent.parent.parent.tab_main.tabpage_emp.dw_emp.object.empid[ll_row]
+			ls_name = parent.parent.parent.tab_main.tabpage_emp.dw_emp.object.fullname[ll_row]
+			ls_category = parent.parent.parent.tab_main.tabpage_emp.dw_emp.object.category[ll_row]
+			ls_dept = parent.parent.parent.tab_main.tabpage_emp.dw_emp.object.department[ll_row]
+			ls_desig = parent.parent.parent.tab_main.tabpage_emp.dw_emp.object.designation[ll_row]
+			parent.parent.parent.il_machineno = parent.parent.parent.iole_device.machinenumber
+			if parent.parent.parent.iole_device.__invoke_method("setstrcardnumber", 1, {ls_empid}, true) and parent.parent.parent.iole_device.__invoke_method("ssr_setuserinfo", 6, {parent.parent.parent.il_machineno, ls_empid, ls_name, ls_empid, 0, 1}, true) then
+				ll_count = ll_count + 1
+			end if
+		end if
+	next
+	if ll_count > 0 then
+		messagebox("Upload Successfull", trim(string(ll_count)) + " Records Uploaded Successfully", information!)
+	end if
+	return ::message.returnvalue
+
+// cb_retrieve.clicked() returns long
+	parent.parent.parent.tab_main.tabpage_emp.dw_emp.retrieve()
+	return ::message.returnvalue
+
+// tabpage_attendance.create() returns 0
+	this.cb_5 = create cb_5
+	this.dw_attendance = create dw_attendance
+	this.control = {this.cb_5, this.dw_attendance}
+
+// tabpage_attendance.destroy() returns 0
+	destroy this.cb_5
+	destroy this.dw_attendance
+
+// cb_5.clicked() returns long
+	long ll_rows
+	long ll_row
+	long ll_errcode
+	long ll_empcode
+	long ll_verifymode
+	long ll_inoutmode
+	long ll_year
+	long ll_month
+	long ll_day
+	long ll_hour
+	long ll_min
+	long ll_sec
+	long ll_workcode
+	long ll_del
+	long ll_fingercode
+	long ll_attendancecode
+	boolean lb_flag
+	boolean lb_ok
+	string ls_date
+	string ls_time
+	string ls_empid
+	datetime ldt_date
+	datetime ldt_attendancedate
+	parent.parent.parent.iole_device.__invoke_method("enabledevice", 2, {parent.parent.parent.il_machineno, false}, true)
+	if parent.parent.parent.iole_device.__invoke_method("readgenerallogdata", 1, {parent.parent.parent.il_machineno}, true) then
+		ll_rows = parent.parent.parent.tab_main.tabpage_attendance.dw_attendance.rowcount()
+		for ll_row = 1 to ll_rows
+			parent.parent.parent.tab_main.tabpage_attendance.dw_attendance.deleterow(0)
+		next
+		ll_row = 0
+		ll_rows = 0
+		do while parent.parent.parent.iole_device.__invoke_method("ssr_getgenerallogdata", 11, {parent.parent.parent.il_machineno, ls_empid, ll_verifymode, ll_inoutmode, ll_year, ll_month, ll_day, ll_hour, ll_min, ll_sec, ll_workcode}, true)
+			ll_row = parent.parent.parent.tab_main.tabpage_attendance.dw_attendance.insertrow(0)
+			parent.parent.parent.tab_main.tabpage_attendance.dw_attendance.object.empcode[ll_row] = ll_empcode
+			parent.parent.parent.tab_main.tabpage_attendance.dw_attendance.object.empid[ll_row] = ls_empid
+			parent.parent.parent.tab_main.tabpage_attendance.dw_attendance.object.verifymode[ll_row] = ll_verifymode
+			parent.parent.parent.tab_main.tabpage_attendance.dw_attendance.object.inoutmode[ll_row] = ll_inoutmode
+			ls_date = trim(string(ll_year)) + "-" + trim(string(ll_month)) + "-" + trim(string(ll_day))
+			ls_time = trim(string(ll_hour)) + ":" + trim(string(ll_min)) + ":" + trim(string(ll_sec))
+			ldt_date = datetime(date(ls_date), time(ls_time))
+			parent.parent.parent.tab_main.tabpage_attendance.dw_attendance.object.datetime[ll_row] = ldt_date
+			parent.parent.parent.tab_main.tabpage_attendance.dw_attendance.object.workcode[ll_row] = ll_workcode
+			ll_rows = ll_rows + 1
+		loop
+		if ll_rows > 0 then
+			ll_row = 0
+			for ll_row = 1 to ll_rows
+				ls_empid = parent.parent.parent.tab_main.tabpage_attendance.dw_attendance.object.empid[ll_row]
+				ldt_attendancedate = parent.parent.parent.tab_main.tabpage_attendance.dw_attendance.object.datetime[ll_row]
+				SQL SELECT EmpCode INTO :ll_empcode FROM EMP_Employee WHERE EmpID =:ls_empid USING parent.parent.parent.it_transobject;
+				if parent.parent.parent.it_transobject.sqlcode = 0 and ll_empcode > 0 then
+					parent.parent.parent.it_transobject.markattendance(ll_empcode, ll_fingercode, ll_attendancecode, ldt_attendancedate)
+					if parent.parent.parent.it_transobject.sqlcode <> 0 then
+						lb_ok = false
+						messagebox("Attendance Record Download", "Probelm Marking Attendance~r~nReasons are:-~r~n" + parent.parent.parent.it_transobject.sqlerrtext, stopsign!)
+						exit
+					end if
+				else
+					lb_ok = false
+					messagebox("Attendance Record Download", "Probelm Downloading Attendance Records~r~nProblem in fetching employee code", stopsign!)
+					exit
+				end if
+			next
+			if lb_ok then
+				ll_del = messagebox("Attendance Record Download", trim(string(ll_rows)) + " Attendance Records Downloaded Successfully.~r~nDelete Attenance Log from Device?", question!, yesno!, 2)
+				if ll_del = 1 then
+					parent.parent.parent.iole_device.__invoke_method("clearglog", 1, {parent.parent.parent.il_machineno}, true)
+				end if
+			end if
+		end if
+	else
+		parent.parent.parent.iole_device.__invoke_method("getlasterror", 1, {ll_errcode}, true)
+		if ll_errcode <> 0 then
+			messagebox("Error", "Reading data from terminal failed,ErrorCode: " + string(ll_errcode), stopsign!)
+		else
+			messagebox("Error", "No data from terminal returns! Error Code: " + string(ll_errcode), stopsign!)
+		end if
+	end if
+	parent.parent.parent.iole_device.__invoke_method("enabledevice", 2, {parent.parent.parent.il_machineno, true}, true)
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(0)
+	return ::message.returnvalue

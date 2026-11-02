@@ -1,0 +1,77 @@
+// window w_itempurchasehistory (purchaseresponsewin)  ancestor: window
+
+// w_itempurchasehistory.create() returns 0
+	this.dw_print = create dw_print
+	this.cb_print = create cb_print
+	this.dw_itempurchasehistory = create dw_itempurchasehistory
+	this.control = {this.dw_print, this.cb_print, this.dw_itempurchasehistory}
+
+// w_itempurchasehistory.destroy() returns 0
+	destroy this.dw_print
+	destroy this.cb_print
+	destroy this.dw_itempurchasehistory
+
+// w_itempurchasehistory.open() returns long
+	s_itempurchasehistory ls_itempurchasehistory
+	long ll_width
+	long ll_height
+	long ll_found
+	environment env
+	ls_itempurchasehistory = message.powerobjectparm
+	if getenvironment(env) <> 1 then
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.width = ll_width * 0.98
+	this.height = ll_height * 0.90
+	this.y = int((ll_height - this.height) / 2.0)
+	this.dw_itempurchasehistory.width = this.width - this.width * 0.02
+	this.dw_itempurchasehistory.height = this.height * 0.90
+	this.cb_print.y = this.dw_itempurchasehistory.height + 20
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 594", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.dw_itempurchasehistory.object.currency.visible = true
+		this.dw_itempurchasehistory.object.conversionfactor.visible = true
+		this.dw_itempurchasehistory.object.foreignprice.visible = true
+		this.dw_itempurchasehistory.object.c_foreigntotal.visible = true
+	else
+		this.dw_itempurchasehistory.object.currency.visible = false
+		this.dw_itempurchasehistory.object.conversionfactor.visible = false
+		this.dw_itempurchasehistory.object.foreignprice.visible = false
+		this.dw_itempurchasehistory.object.c_foreigntotal.visible = false
+	end if
+	this.dw_itempurchasehistory.settransobject(sqlca)
+	this.dw_itempurchasehistory.retrieve(ls_itempurchasehistory.ar_icode, ls_itempurchasehistory.ar_date)
+	this.dw_print.settransobject(sqlca)
+	this.dw_print.retrieve(ls_itempurchasehistory.ar_icode, ls_itempurchasehistory.ar_date)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_itempurchasehistory.close() returns long
+	close(this)
+	return ::message.returnvalue
+
+// w_itempurchasehistory.key(keycode key, unsignedlong keyflags) returns long
+	if keydown(keyescape!) then
+		close(this)
+	end if
+	return ::message.returnvalue
+
+// cb_print.clicked() returns long
+	if parent.dw_print.rowcount() > 0 then
+		if printsetup() < 0 then
+			messagebox("Printer", "Printing Error")
+			parent.dw_print.printcancel()
+		else
+			parent.dw_print.print()
+		end if
+	end if
+	return ::message.returnvalue

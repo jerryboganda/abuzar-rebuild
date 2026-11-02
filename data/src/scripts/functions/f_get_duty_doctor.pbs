@@ -1,0 +1,9 @@
+// function f_get_duty_doctor (functions)  ancestor: function_object
+
+// f_get_duty_doctor.f_get_duty_doctor() returns long
+	long ll_doctcode
+	SQL SELECT ISNULL ( MIN ( DoctCode ) , 1 ) INTO :ll_doctcode FROM DoctorDutyRosterDetail WHERE DoctorDutyRosterCode IN ( SELECT DoctorDutyRosterCode FROM DoctorDutyRoster WHERE Active ='Y' ) AND GETDATE ( ) BETWEEN StartDate AND EndDate USING sqlca;
+	if sqlca.sqlcode = 0 then
+		return ll_doctcode
+	end if
+	return 1

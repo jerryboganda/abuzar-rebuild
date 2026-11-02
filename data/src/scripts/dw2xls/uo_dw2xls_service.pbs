@@ -1,0 +1,97 @@
+// userobject uo_dw2xls_service (dw2xls)  ancestor: nonvisualobject
+
+// uo_dw2xls_service.f_gettextwidth(dragobject a_obj, string as_text) returns integer
+	integer li_size
+	integer li_len
+	integer li_return
+	integer li_wm_getfont
+	unsignedlong lul_hdc
+	unsignedlong lul_handle
+	unsignedlong lul_hfont
+	integer a_mode
+	os_size lstr_size
+	os_printer_defaults pr_def
+	unsignedlong printer_hdc
+	string sdev
+	string sdrv
+	string sout
+	devmode dm
+	setnull(sout)
+	li_len = len(as_text)
+	lul_handle = handle(a_obj)
+	lul_hdc = getdc(lul_handle)
+	lul_hfont = send(lul_handle, li_wm_getfont, 0, 0)
+	selectobject(lul_hdc, lul_hfont)
+	if not gettextextentpoint32a(lul_hdc, as_text, li_len, lstr_size) then
+		return -1
+	end if
+	releasedc(lul_handle, lul_hdc)
+	return pixelstounits(lstr_size.l_cx, xpixelstounits!)
+
+// uo_dw2xls_service.f_gettextsize(window aw_obj, string as_text, string as_fontface, integer ai_fontsize, boolean ab_bold, boolean ab_italic, boolean ab_underline, integer ai_height, integer ai_width) returns integer
+	integer li_size
+	integer li_len
+	integer li_return
+	integer li_wm_getfont
+	unsignedlong lul_hdc
+	unsignedlong lul_handle
+	unsignedlong lul_hfont
+	statictext lst_temp
+	os_size lstr_size
+	li_size = -1 * ai_fontsize
+	if isnull(aw_obj) or not isvalid(aw_obj) then
+		return -1
+	end if
+	li_return = aw_obj.openuserobject(lst_temp)
+	if li_return = 1 then
+		lst_temp.facename = as_fontface
+		lst_temp.textsize = li_size
+		if ab_bold then
+			lst_temp.weight = 700
+		else
+			lst_temp.weight = 400
+		end if
+		lst_temp.italic = ab_italic
+		lst_temp.underline = ab_underline
+		li_len = len(as_text)
+		lul_handle = handle(lst_temp)
+		lul_hdc = getdc(lul_handle)
+		lul_hfont = send(lul_handle, li_wm_getfont, 0, 0)
+		selectobject(lul_hdc, lul_hfont)
+		if not gettextextentpoint32a(lul_hdc, as_text, li_len, lstr_size) then
+			return -1
+		end if
+		ai_height = lstr_size.l_cy
+		ai_width = lstr_size.l_cx
+		releasedc(lul_handle, lul_hdc)
+		li_return = aw_obj.closeuserobject(lst_temp)
+	end if
+	return li_return
+
+// uo_dw2xls_service.f_gettextheight(dragobject a_obj, string as_text) returns integer
+	integer li_size
+	integer li_len
+	integer li_return
+	integer li_wm_getfont
+	unsignedlong lul_hdc
+	unsignedlong lul_handle
+	unsignedlong lul_hfont
+	os_size lstr_size
+	li_len = len(as_text)
+	lul_handle = handle(a_obj)
+	lul_hdc = getdc(lul_handle)
+	lul_hfont = send(lul_handle, li_wm_getfont, 0, 0)
+	selectobject(lul_hdc, lul_hfont)
+	if not gettextextentpoint32a(lul_hdc, as_text, li_len, lstr_size) then
+		return -1
+	end if
+	releasedc(lul_handle, lul_hdc)
+	return pixelstounits(lstr_size.l_cy, ypixelstounits!)
+
+// uo_dw2xls_service.create() returns 0
+	call super::create
+	triggerevent("constructor")
+
+// uo_dw2xls_service.destroy() returns 0
+	triggerevent("destructor")
+	call super::destroy

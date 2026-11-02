@@ -1,0 +1,313 @@
+// window w_popup_comprehensicesearch_selection2 (components)  ancestor: window
+
+// w_popup_comprehensicesearch_selection2.ue_close(integer ai_status) returns 0
+	this.is_popup_selection.l_code = ai_status
+	if this.dw_master.rowcount() > 0 then
+		this.is_popup_selection.l_code2 = this.dw_master.getitemnumber(this.dw_master.getrow(), "code")
+	else
+		this.is_popup_selection.l_code2 = 0
+	end if
+	closewithreturn(this, this.is_popup_selection)
+
+// w_popup_comprehensicesearch_selection2.wf_populatesearchcolumns() returns 0
+	string ls_colname
+	string ls_initial_column_selection
+	string ls_columntype
+	long ll_colcount
+	long ll_counter
+	long ll_row
+	boolean lb_flag
+	for ll_counter = 1 to ll_counter
+		ls_columntype = this.dw_master.describe("#" + string(ll_counter) + ".ColType")
+		ls_colname = this.dw_master.describe("#" + string(ll_counter) + ".Name")
+		if left(upper(ls_columntype), 4) = "CHAR" then
+			ll_row = this.idc_searchcol.insertrow(0)
+			this.idc_searchcol.setitem(ll_row, "columnname", ls_colname)
+			if this.is_inititalfocus = "" or isnull(this.is_inititalfocus) then
+				if match(upper(ls_colname), "NAME") and lb_flag = true then
+					lb_flag = false
+					ls_initial_column_selection = ls_colname
+				end if
+			else
+				ls_initial_column_selection = this.is_inititalfocus
+			end if
+		end if
+	next
+	this.dw_find.setitem(1, "searchon", ls_initial_column_selection)
+	this.dw_master.setsort(ls_initial_column_selection + this.is_sortorder)
+	this.dw_master.sort()
+
+// w_popup_comprehensicesearch_selection2.wf_search() returns integer
+	s_popup_selection lstr_selection
+	string ls_colname
+	string ls_searchtext
+	string ls_filterexp
+	string ls_temp
+	string ls_searchon
+	string ls_searchcriteria
+	long ll_colcount
+	long ll_counter
+	long ll_rowcount
+	long ll_logical
+	boolean lb_flag
+	ll_rowcount = this.dw_find.rowcount()
+	if ll_rowcount > 0 then
+		ls_filterexp = ""
+		for ll_counter = 1 to ll_rowcount
+			ls_searchon = ""
+			ls_searchcriteria = ""
+			ll_logical = 1
+			if len(trim(this.dw_find.object.searchon[ll_counter])) > 0 and len(trim(this.dw_find.object.searchcriteria[ll_counter])) > 0 then
+				ls_searchon = trim(this.dw_find.object.searchon[ll_counter])
+				ls_searchcriteria = trim(this.dw_find.object.searchcriteria[ll_counter])
+				ll_logical = this.dw_find.object.logical[ll_counter]
+				if ll_logical = 1 then
+					ls_filterexp = ls_filterexp + "match(lower(" + ls_searchon + "), '" + lower(ls_searchcriteria) + "')" + " AND "
+				else
+					ls_filterexp = ls_filterexp + "match(lower(" + ls_searchon + "), '" + lower(ls_searchcriteria) + "')" + " OR "
+				end if
+			end if
+		next
+		ls_filterexp = left(ls_filterexp, len(ls_filterexp) - 4)
+		this.dw_master.setfilter(ls_filterexp)
+		this.dw_master.filter()
+		if this.dw_master.rowcount() <= 0 then
+			messagebox("Search Result", "No Record(s) found matching with the~r~nspecified search criteria")
+			return -1
+		end if
+		return 0
+	end if
+	messagebox("Search Aborted", "Nothing To Search")
+	return -1
+
+// w_popup_comprehensicesearch_selection2.create() returns 0
+	this.cb_search = create cb_search
+	this.dw_find = create dw_find
+	this.cb_retrieve = create cb_retrieve
+	this.dw_master = create dw_master
+	this.control = {this.cb_search, this.dw_find, this.cb_retrieve, this.dw_master}
+
+// w_popup_comprehensicesearch_selection2.destroy() returns 0
+	destroy this.cb_search
+	destroy this.dw_find
+	destroy this.cb_retrieve
+	destroy this.dw_master
+
+// w_popup_comprehensicesearch_selection2.open() returns long
+	long ll_rtcode
+	long ll_code
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	this.istr_ds = message.powerobjectparm
+	this.is_dw = this.istr_ds.s_name1
+	this.is_inititalfocus = this.istr_ds.s_name2
+	setredraw(false)
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width
+		ll_height = ll_win_height
+		this.width = ll_width * 0.99
+		this.height = ll_height * 0.95
+		this.dw_master.width = ll_width * 0.98
+		this.dw_find.width = ll_width * 0.98
+		this.dw_master.height = (this.height - this.dw_find.height - this.cb_retrieve.height - 20) * 0.85
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	this.dw_find.settransobject(sqlca)
+	this.dw_find.insertrow(0)
+	this.dw_master.dataobject = this.istr_ds.s_name1
+	this.dw_master.settransobject(sqlca)
+	this.istr_ds.dw.sharedata(this.dw_master)
+	ll_rtcode = this.dw_master.rowcount()
+	this.dw_master.setfocus()
+	this.dw_master.setcolumn(1)
+	if ll_rtcode > 0 then
+		this.dw_master.selectrow(1, true)
+		this.dw_master.setrow(1)
+		this.dw_master.scrolltorow(1)
+	end if
+	ll_rtcode = this.dw_find.getchild("searchon", this.idc_searchcol)
+	if ll_rtcode <> 1 then
+		messagebox("DataWindow Child Validation", "Unable to get datawindow child.")
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	this.idc_searchcol.settransobject(sqlca)
+	this.idc_searchcol.retrieve()
+	this.idc_searchcol.deleterow(0)
+	wf_populatesearchcolumns()
+	this.dw_find.setfocus()
+	this.dw_find.setcolumn(2)
+	setredraw(true)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// cb_search.clicked() returns long
+	long ll_counter
+	long ll_rowcount
+	string ls_criteria
+	parent.dw_find.accepttext()
+	ll_rowcount = parent.dw_find.rowcount()
+	if ll_rowcount > 0 and (parent.dw_find.object.searchon[ll_rowcount] = "" or isnull(parent.dw_find.object.searchon[ll_rowcount])) then
+		parent.dw_find.deleterow(0)
+	end if
+	ll_rowcount = parent.dw_find.rowcount()
+	if ll_rowcount > 0 and (parent.dw_find.object.searchcriteria[ll_rowcount] = "" or isnull(parent.dw_find.object.searchcriteria[ll_rowcount])) then
+		parent.dw_find.deleterow(0)
+	end if
+	ll_rowcount = parent.dw_find.rowcount()
+	if ll_rowcount > 0 then
+		parent.wf_search()
+	end if
+	parent.dw_find.setfocus()
+	return ::message.returnvalue
+
+// dw_find.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	integer rt_code
+	long ll_currrow
+	long ll_listcurrrow
+	long ll_code
+	long ll_rowcount
+	long ll_rowm
+	string ls_filterexp
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	setredraw(false)
+	ll_rowm = getrow()
+	if keyflags = 2 then
+		if key = keyi! then
+			if getrow() > 0 then
+				if this.object.searchon[getrow()] = "" or isnull(this.object.searchon[getrow()]) then
+					return ::message.returnvalue
+				end if
+				if this.object.searchcriteria[getrow()] = "" or isnull(this.object.searchcriteria[getrow()]) then
+					return ::message.returnvalue
+				end if
+				return
+			end if
+			ll_rowcount = insertrow(0)
+			if ll_rowcount > 1 then
+				scrolltorow(ll_rowcount)
+				setcolumn("searchon")
+				setfocus()
+			end if
+		end if
+		if key = keyd! then
+			if rowcount() > 0 then
+				deleterow(0)
+			end if
+			ll_rowcount = rowcount()
+			if ll_rowcount > 1 then
+				scrolltorow(ll_rowcount)
+				setcolumn("searchon")
+				setfocus()
+			end if
+		end if
+	end if
+	if key = keyf12! then
+		parent.post event ue_close(1)
+	elseif key = keyescape! then
+		parent.post event ue_close(0)
+	else
+		setredraw(true)
+	end if
+	return rt_code
+
+// dw_find.ue_enterkey() returns long
+	long ancestorreturnvalue
+	long ll_rowcount
+	ancestorreturnvalue = super::ue_enterkey()
+	if getrow() = rowcount() and getcolumn() = integer(this.object.datawindow.column.count) then
+		if getrow() > 0 then
+			if this.object.searchon[getrow()] = "" or isnull(this.object.searchon[getrow()]) then
+				return 1
+			end if
+			if this.object.searchcriteria[getrow()] = "" or isnull(this.object.searchcriteria[getrow()]) then
+				return 1
+			end if
+			return
+		end if
+		ll_rowcount = insertrow(0)
+		if ll_rowcount > 1 then
+			scrolltorow(ll_rowcount)
+			setcolumn("searchon")
+			setfocus()
+		end if
+		return 1
+	end if
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// cb_retrieve.clicked() returns long
+	parent.dw_find.accepttext()
+	parent.dw_master.setfilter("")
+	parent.dw_master.filter()
+	parent.dw_master.retrieve()
+	parent.dw_master.selectrow(0, false)
+	parent.dw_master.scrolltorow(1)
+	parent.dw_master.selectrow(1, true)
+	parent.dw_find.setfocus()
+	return ::message.returnvalue
+
+// dw_master.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	parent.dw_find.setfocus()
+	return ::message.returnvalue
+
+// dw_master.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	string s_str
+	string s_t
+	integer i_len
+	s_str = string(dwo.name)
+	s_t = right(s_str, 2)
+	if s_t = "_t" then
+		i_len = len(s_str)
+		s_str = left(s_str, i_len - 2)
+		if this.s_previous <> s_str then
+			this.b_flag = true
+		end if
+		if this.b_flag = true then
+			parent.is_sortorder = " A"
+			setsort(s_str + parent.is_sortorder)
+			sort()
+			this.b_flag = false
+		else
+			parent.is_sortorder = " D"
+			setsort(s_str + parent.is_sortorder)
+			sort()
+			this.b_flag = true
+		end if
+	end if
+	this.s_previous = s_str
+	if row > 0 then
+		selectrow(0, false)
+		selectrow(row, true)
+		parent.dw_find.selecttext(1, len(parent.dw_find.gettext()))
+	end if
+	parent.dw_find.setfocus()
+	return ::message.returnvalue
+
+// dw_master.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::doubleclicked(xpos, ypos, row, dwo)
+	parent.post event ue_close(1)
+	return ::message.returnvalue

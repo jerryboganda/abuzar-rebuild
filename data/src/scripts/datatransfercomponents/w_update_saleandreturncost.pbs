@@ -1,0 +1,34 @@
+// window w_update_saleandreturncost (datatransfercomponents)  ancestor: w_arguements
+
+// w_update_saleandreturncost.create() returns 0
+	integer icurrent
+	call super::create
+	this.hpb_hpb = create hpb_hpb
+	this.gb_overallprogress = create gb_overallprogress
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.hpb_hpb
+	this.control[icurrent + 2] = this.gb_overallprogress
+
+// w_update_saleandreturncost.destroy() returns 0
+	call super::destroy
+	destroy this.hpb_hpb
+	destroy this.gb_overallprogress
+
+// w_update_saleandreturncost.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.it_mytrans = create u_transaction
+	this.it_mytrans.dbparm = "PROVIDER='SQLOLEDB',DATASOURCE='" + gs_servername + "',CommitOnDisconnect='No',PROVIDERSTRING='DataBase=master" + ";APP=" + gs_app + ";WSID=" + gs_localcomputername + "',PBTrimCharColumns='Yes',StripParmNames='Yes'"
+	SQL start USING this.it_mytrans;
+	if this.it_mytrans.sqlcode <> 0 then
+		messagebox("Connection Problem", "Problem Connecting Database", stopsign!)
+		close(this)
+	end if
+	this.dw_control.settransobject(this.it_mytrans)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	return ::message.returnvalue
+
+// w_update_saleandreturncost.ue_close(integer ai_stauts) returns 0
+	super::ue_close(ai_stauts)
+	close(this)

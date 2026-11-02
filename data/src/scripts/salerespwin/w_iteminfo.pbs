@@ -1,0 +1,295 @@
+// window w_iteminfo (salerespwin)  ancestor: window
+
+// w_iteminfo.wf_select_itemauthor() returns 0
+	s_dw_header lstr_header
+	lstr_header.dw_header = this.dw_itemauthor
+	lstr_header.l_code = this.dw_iteminfo.object.code[this.dw_iteminfo.getrow()]
+	openwithparm(w_itemauthor_form, lstr_header)
+	setfocus()
+
+// w_iteminfo.wf_set_item_association() returns 0
+	s_dw_header lstr_header
+	lstr_header.dw_header = this.dw_itemassociation
+	lstr_header.l_code = this.dw_iteminfo.object.code[this.dw_iteminfo.getrow()]
+	openwithparm(w_itemassociation_form, lstr_header)
+	setfocus()
+
+// w_iteminfo.wf_set_itemnotes() returns 0
+	s_arguements lstr_arg
+	lstr_arg.l_code1 = this.dw_iteminfo.object.code[this.dw_iteminfo.getrow()]
+	lstr_arg.l_code2 = 1
+	lstr_arg.s_name1 = string(this.iblob_notes)
+	messagebox("1", "in")
+	openwithparm(w_item_form_notes, lstr_arg)
+	lstr_arg = message.powerobjectparm
+	if lstr_arg.i_status = 1 then
+		this.iblob_notes = blob(lstr_arg.s_name1)
+	end if
+	setfocus()
+
+// w_iteminfo.wf_get_itemnotes(long al_icode) returns long
+	u_transaction lt_transobject
+	lt_transobject = create u_transaction
+	lt_transobject.autocommit = true
+	SQL start USING lt_transobject;
+	if lt_transobject.sqlcode <> 0 then
+		messagebox("Connection Error", "Unable to connect to DataBase server")
+		destroy lt_transobject
+		return -1
+	end if
+	SQL SelectBlob notes INTO :this.iblob_notes From ItemNotes Where Icode =:al_icode USING lt_transobject;
+	if lt_transobject.sqlcode <> 0 then
+		messagebox("Notes ", "Unable to fetch item notes.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext)
+	end if
+	SQL stop USING lt_transobject;
+	destroy lt_transobject
+	setfocus()
+	return 0
+
+// w_iteminfo.wf_selectmodels() returns 0
+	s_dw_header lstr_header
+	lstr_header.dw_header = this.dw_iteminmodel
+	openwithparm(w_iteminmodel_form, lstr_header)
+	setfocus()
+
+// w_iteminfo.create() returns 0
+	this.dw_item_supplier = create dw_item_supplier
+	this.dw_itemassociation = create dw_itemassociation
+	this.dw_itemauthor = create dw_itemauthor
+	this.dw_iteminmodel = create dw_iteminmodel
+	this.dw_iteminfo = create dw_iteminfo
+	this.control = {this.dw_item_supplier, this.dw_itemassociation, this.dw_itemauthor, this.dw_iteminmodel, this.dw_iteminfo}
+
+// w_iteminfo.destroy() returns 0
+	destroy this.dw_item_supplier
+	destroy this.dw_itemassociation
+	destroy this.dw_itemauthor
+	destroy this.dw_iteminmodel
+	destroy this.dw_iteminfo
+
+// w_iteminfo.open() returns long
+	long ll_code
+	long ll_colcount
+	long ll_counter
+	long ll_found
+	long ll_itemcolumn_row
+	long ll_width
+	long ll_height
+	string[] colname
+	integer[] colwidth
+	integer ii_visiblecolumns
+	environment env
+	integer li_xpos
+	integer li_ypos
+	integer li_xendpos
+	integer li_counter
+	integer li_taborder
+	integer li_visiblecolumns
+	long li_retcode
+	boolean lb_active
+	boolean lb_restricted
+	boolean lb_customicode
+	datawindowchild ldc_itemcategory
+	datastore lds_itemsetting
+	ll_code = long(message.doubleparm)
+	this.it_transobject = create u_transaction
+	this.it_transobject.autocommit = true
+	SQL start USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		messagebox("Connection Error", "Unable to connect to DataBase server")
+		destroy this.it_transobject
+		return -1
+	end if
+	if getenvironment(env) <> 1 then
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.width = ll_width * 0.98
+	this.height = ll_height * 0.80
+	this.y = int((ll_height - this.height) / 2.0)
+	this.dw_iteminfo.width = this.width * 0.98
+	this.dw_iteminfo.height = this.height * 0.72
+	this.dw_item_supplier.y = this.dw_iteminfo.y + this.dw_iteminfo.height + 5
+	this.dw_item_supplier.width = this.dw_iteminfo.width
+	this.dw_item_supplier.height = this.height * 0.20
+	this.dw_iteminfo.object.manfcode.initial = string(f_numberpreferences("ItemDefaultmanfcode"))
+	this.dw_iteminfo.object.iccode.initial = string(f_numberpreferences("ItemDefaultclass"))
+	this.dw_iteminfo.object.packcode.initial = string(f_numberpreferences("ItemDefaultPackcode"))
+	this.dw_iteminfo.object.gcode.initial = string(f_numberpreferences("ItemDefaultAssociatedGcode"))
+	this.dw_iteminfo.object.locksaleprice.initial = string(f_stringpreferences("DefaultItemlockSaleprice"))
+	this.dw_iteminfo.object.lockdiscperc.initial = string(f_stringpreferences("DefaultItemLockDiscPerc"))
+	f_setcolumnstyle(this.dw_iteminfo, "Qty")
+	lds_itemsetting = create datastore
+	lds_itemsetting.dataobject = "d_interfacesettingcols"
+	lds_itemsetting.settransobject(this.it_transobject)
+	lds_itemsetting.retrieve(9, 3, 1)
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 705", 1, gds_securitywindow.rowcount())
+	if ll_found <= 0 then
+		ll_itemcolumn_row = lds_itemsetting.find("colname = " + "'purprice'", 1, lds_itemsetting.rowcount())
+		if ll_itemcolumn_row > 0 then
+			lds_itemsetting.deleterow(ll_itemcolumn_row)
+		end if
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 706", 1, gds_securitywindow.rowcount())
+	if ll_found <= 0 then
+		ll_itemcolumn_row = lds_itemsetting.find("colname = " + "'avgprice'", 1, lds_itemsetting.rowcount())
+		if ll_itemcolumn_row > 0 then
+			lds_itemsetting.deleterow(ll_itemcolumn_row)
+		end if
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 707", 1, gds_securitywindow.rowcount())
+	if ll_found <= 0 then
+		ll_itemcolumn_row = lds_itemsetting.find("colname = " + "'recentpurprice'", 1, lds_itemsetting.rowcount())
+		if ll_itemcolumn_row > 0 then
+			lds_itemsetting.deleterow(ll_itemcolumn_row)
+		end if
+	end if
+	li_visiblecolumns = lds_itemsetting.rowcount()
+	for li_counter = 1 to li_counter
+		colname[li_counter, 1] = lds_itemsetting.getitemstring(li_counter, "colname") + "_t"
+		colname[li_counter, 2] = lds_itemsetting.getitemstring(li_counter, "colname")
+		colwidth[li_counter, 1] = integer(this.dw_iteminfo.describe(colname[li_counter, 1] + ".Width"))
+		colwidth[li_counter, 2] = integer(this.dw_iteminfo.describe(colname[li_counter, 2] + ".Width"))
+	next
+	li_taborder = 100
+	li_counter = 1
+	li_ypos = 100
+	li_xendpos = 2650
+	do while li_counter <= li_visiblecolumns and li_ypos <= 200000
+		li_xpos = 32
+		this.dw_iteminfo.modify(colname[li_counter, 1] + ".X=" + string(li_xpos))
+		this.dw_iteminfo.modify(colname[li_counter, 1] + ".Y=" + string(li_ypos))
+		this.dw_iteminfo.modify(colname[li_counter, 1] + ".Visible=1")
+		li_xpos = 750
+		this.dw_iteminfo.modify(colname[li_counter, 2] + ".X=" + string(li_xpos))
+		this.dw_iteminfo.modify(colname[li_counter, 2] + ".Y=" + string(li_ypos))
+		this.dw_iteminfo.modify(colname[li_counter, 2] + ".Visible=1")
+		this.dw_iteminfo.settaborder(colname[li_counter, 2], li_taborder)
+		li_taborder = li_taborder + 1
+		li_ypos = li_ypos + 85
+		li_counter = li_counter + 1
+	loop
+	for ll_counter = 1 to gds_securitywindow.rowcount()
+		if gds_securitywindow.object.rightcode[ll_counter] = 512 then
+			lb_active = true
+			if this.dw_iteminfo.object.active.visible = "1" then
+				this.dw_iteminfo.object.active.visible = true
+				this.dw_iteminfo.object.active_t.visible = true
+			end if
+		end if
+		if gds_securitywindow.object.rightcode[ll_counter] = 514 then
+			lb_restricted = true
+			if this.dw_iteminfo.object.restricted.visible = "1" then
+				this.dw_iteminfo.object.restricted.visible = true
+				this.dw_iteminfo.object.restricted_t.visible = true
+			end if
+		end if
+		if gds_securitywindow.object.rightcode[ll_counter] = 524 then
+			lb_customicode = true
+			if this.dw_iteminfo.object.customicode.visible = "1" then
+				this.dw_iteminfo.object.customicode.visible = true
+				this.dw_iteminfo.object.customicode_t.visible = true
+			end if
+		end if
+	next
+	if lb_active = false then
+		this.dw_iteminfo.object.active.visible = false
+		this.dw_iteminfo.object.active_t.visible = false
+	end if
+	if lb_restricted = false then
+		this.dw_iteminfo.object.restricted.visible = false
+		this.dw_iteminfo.object.restricted_t.visible = false
+	end if
+	if lb_customicode = false then
+		this.dw_iteminfo.object.customicode.visible = false
+		this.dw_iteminfo.object.customicode_t.visible = false
+	end if
+	if f_stringpreferences("bonusinsale") = "Y" then
+		if this.dw_iteminfo.object.bonusratio.visible = "1" then
+			this.dw_iteminfo.object.bonusratio_t.visible = true
+			this.dw_iteminfo.object.bonusratio.visible = true
+		end if
+		if this.dw_iteminfo.object.bonusqty.visible = "1" then
+			this.dw_iteminfo.object.bonusqty_t.visible = true
+			this.dw_iteminfo.object.bonusqty.visible = true
+		end if
+	end if
+	if f_stringpreferences("itemgstperc") = "Y" then
+		if this.dw_iteminfo.object.gstperc1.visible = "1" then
+			this.dw_iteminfo.object.gstperc1.visible = true
+			this.dw_iteminfo.object.gstperc1_t.visible = true
+		end if
+		if this.dw_iteminfo.object.gstperc2.visible = "1" then
+			this.dw_iteminfo.object.gstperc2.visible = true
+			this.dw_iteminfo.object.gstperc2_t.visible = true
+		end if
+	end if
+	li_retcode = this.dw_iteminfo.getchild("icatcode", ldc_itemcategory)
+	if li_retcode <> 1 then
+		messagebox("DataWindow Child Validation", "Unable to get datawindow child for item category.")
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	ldc_itemcategory.settransobject(this.it_transobject)
+	ldc_itemcategory.retrieve(f_getgroupcode(gl_usercode))
+	if f_stringpreferences("GroupItemCatInBasicData") = "Y" then
+		if ldc_itemcategory.rowcount() <= 0 then
+			messagebox("Group Item Category Rights", "Current User group doest not have enough permissions w.r.t item category.~r~nKindly consult your administrator for group item category rights.")
+			close(this)
+			if not isvalid(message) then
+				return 0
+			end if
+			return message.returnvalue
+		end if
+		this.dw_iteminfo.object.icatcode.initial = string(ldc_itemcategory.getitemnumber(ldc_itemcategory.getrow(), "icatcode"))
+	else
+		this.dw_iteminfo.object.icatcode.initial = string(f_numberpreferences("ItemDefaultcategory"))
+	end if
+	this.dw_iteminfo.settransobject(this.it_transobject)
+	this.dw_iteminmodel.settransobject(this.it_transobject)
+	this.dw_itemauthor.settransobject(this.it_transobject)
+	this.dw_itemassociation.settransobject(this.it_transobject)
+	this.dw_item_supplier.settransobject(this.it_transobject)
+	this.dw_iteminfo.retrieve(ll_code)
+	this.dw_iteminmodel.retrieve(ll_code)
+	this.dw_itemauthor.retrieve(ll_code)
+	this.dw_itemassociation.retrieve(ll_code)
+	this.dw_item_supplier.retrieve(ll_code)
+	wf_get_itemnotes(ll_code)
+	this.dw_iteminfo.object.avgprice.protect = 1
+	setredraw(true)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_iteminfo.close() returns long
+	close(this)
+	return ::message.returnvalue
+
+// w_iteminfo.key(keycode key, unsignedlong keyflags) returns long
+	choose case key
+	case keyescape!
+		close(this)
+	case keyf9!
+		wf_select_itemauthor()
+	case keyf8!
+		wf_set_itemnotes()
+	case keyf11!
+		wf_set_item_association()
+	case keyf12!
+		wf_selectmodels()
+	end choose
+	setfocus()
+	return ::message.returnvalue

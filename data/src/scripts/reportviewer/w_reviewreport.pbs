@@ -1,0 +1,1084 @@
+// window w_reviewreport (reportviewer)  ancestor: window
+
+// w_reviewreport.ue_startdisplay() returns 0
+	this.dw_report.hide()
+	this.st_placeholder.show()
+	if this.is_actual_reportinfo.i_value = 1 then
+		wf_retrievestartup()
+	else
+		wf_retrieve(0)
+	end if
+	wf_showruler()
+
+// w_reviewreport.wf_sort() returns 0
+	string ls_null
+	setnull(ls_null)
+	this.dw_report.setsort(ls_null)
+	this.dw_report.sort()
+	this.dw_report.groupcalc()
+
+// w_reviewreport.wf_pagedown() returns 0
+	string ls_thispage
+	string ls_lastpage
+	ls_thispage = this.dw_report.describe("Evaluate('Page ( )',0)")
+	ls_lastpage = this.dw_report.describe("Evaluate('PageCount ( )',0)")
+	if ls_thispage = ls_lastpage then
+		beep(1)
+		this.dw_report.setrow(this.dw_report.rowcount())
+		this.dw_report.scrolltorow(this.dw_report.rowcount())
+		return
+	end if
+	this.dw_report.scrollnextpage()
+
+// w_reviewreport.wf_pageup() returns 0
+	string ls_thispage
+	ls_thispage = this.dw_report.describe("Evaluate('Page ( )',0)")
+	if long(ls_thispage) = 1 then
+		beep(1)
+		return
+	end if
+	this.dw_report.scrollpriorpage()
+
+// w_reviewreport.wf_end() returns 0
+	this.dw_report.scrolltorow(this.dw_report.rowcount())
+	this.dw_report.setrow(this.dw_report.rowcount())
+
+// w_reviewreport.wf_srhidevalues(boolean ab_flag) returns 0
+	this.dw_report.object.gvalue_t.visible = ab_flag
+	this.dw_report.object.stvalue_t.visible = ab_flag
+	this.dw_report.object.totalvalue_t.visible = ab_flag
+	this.dw_report.object.gvalue.visible = ab_flag
+	this.dw_report.object.stvalue.visible = ab_flag
+	this.dw_report.object.totalvalue.visible = ab_flag
+
+// w_reviewreport.wf_zoomin() returns 0
+	string ls_zoom_info
+	this.ii_zoomfactor = this.ii_zoomfactor + 25
+	ls_zoom_info = "DataWindow.Print.Preview.Zoom=" + string(this.ii_zoomfactor)
+	this.dw_report.modify(ls_zoom_info)
+
+// w_reviewreport.wf_zoomout() returns 0
+	string ls_zoom_info
+	if this.ii_zoomfactor <= 25 then
+		beep(1)
+		return
+	end if
+	this.ii_zoomfactor = this.ii_zoomfactor - 25
+	ls_zoom_info = "DataWindow.Print.Preview.Zoom=" + string(this.ii_zoomfactor)
+	this.dw_report.modify(ls_zoom_info)
+
+// w_reviewreport.wf_preview(boolean b_flag) returns 0
+	if b_flag = true then
+		this.dw_report.modify("DataWindow.Print.Preview=yes DataWindow.Print.Preview.Rulers=yes")
+		return
+	end if
+	this.dw_report.modify("DataWindow.Print.Preview=no")
+
+// w_reviewreport.wf_visible() returns 0
+	s_dwinfo ls_dwinfo
+	ls_dwinfo.dw_control = this.dw_report
+	openwithparm(w_select, ls_dwinfo)
+
+// w_reviewreport.wf_home() returns 0
+	this.dw_report.scrolltorow(0)
+	if this.dw_report.rowcount() > 0 then
+		this.dw_report.setrow(1)
+		this.dw_report.scrolltorow(1)
+	end if
+
+// w_reviewreport.wf_stoptimer() returns 0
+	timer(0, this)
+
+// w_reviewreport.wf_settimer() returns 0
+	timer(60 * f_numberpreferences("refreshtime"), this)
+
+// w_reviewreport.wf_filter() returns 0
+	string ls_null
+	setnull(ls_null)
+	this.dw_report.scrolltorow(0)
+	this.dw_report.setfilter(ls_null)
+	this.dw_report.filter()
+	this.dw_report.groupcalc()
+
+// w_reviewreport.wf_invisiblebatchexpiry() returns 0
+	string ls_setting
+	ls_setting = this.dw_report.describe("batch.visible")
+	if f_stringpreferences("PurBatch") = "N" and ls_setting = "1" then
+		this.dw_report.object.t_batch.visible = 0
+		this.dw_report.object.batch.visible = 0
+		ls_setting = this.dw_report.describe("packing.visible")
+		if ls_setting = "0" then
+			this.dw_report.object.t_packing.visible = 1
+			this.dw_report.object.packing.visible = 1
+		end if
+	end if
+	ls_setting = ""
+	ls_setting = this.dw_report.describe("expiry.visible")
+	if f_stringpreferences("PurExpiry") = "N" and ls_setting = "1" then
+		this.dw_report.object.t_expiry.visible = 0
+		this.dw_report.object.expiry.visible = 0
+	end if
+	ls_setting = ""
+
+// w_reviewreport.wf_getnestedreport(datawindowchild adc_nested, datawindow adw_parentdatawindow, string as_nesteddatawindow) returns integer
+	integer li_rtncode
+	li_rtncode = adw_parentdatawindow.getchild(as_nesteddatawindow, adc_nested)
+	if li_rtncode <> -1 then
+		adc_nested.settransobject(sqlca)
+	end if
+	return li_rtncode
+
+// w_reviewreport.wf_print() returns 0
+	long ll_retcode
+	if this.dw_report.visible then
+		ll_retcode = printsetup()
+		if ll_retcode < 1 then
+			messagebox("Printer", "Printing Error")
+			this.dw_report.printcancel()
+			return
+		end if
+		openwithparm(w_printer, this.dw_report)
+	end if
+
+// w_reviewreport.wf_changeorientation() returns 0
+	string ls_currentorientation
+	ls_currentorientation = this.dw_report.describe("datawindow.print.orientation")
+	if integer(ls_currentorientation) = 0 or integer(ls_currentorientation) = 2 then
+		this.dw_report.object.datawindow.print.orientation = 1
+		return
+	end if
+	this.dw_report.object.datawindow.print.orientation = 2
+
+// w_reviewreport.wf_tostring(long[] al_arr, string as_arr, char ac_sep) returns 0
+	long ll_endelement
+	long ll_counter
+	as_arr = ""
+	ll_endelement = upperbound(al_arr)
+	for ll_counter = 1 to ll_endelement
+		as_arr = as_arr + trim(string(al_arr[ll_counter]))
+		if ll_counter <> ll_endelement then
+			as_arr = as_arr + ac_sep
+		end if
+	next
+
+// w_reviewreport.wf_pagewisetotal_summary() returns 0
+	long ll_pagecount
+	long ll_found
+	long ll_counter
+	long ll_rowcount
+	long ll_pageno
+	string ls_pagetotal
+	string ls_pageno
+	this.dw_report.modify("DataWindow.Print.Preview = yes")
+	if this.ib_first then
+		this.ii_summarybandheight = integer(this.dw_report.object.datawindow.summary.height)
+		this.ib_first = false
+	else
+		this.dw_report.object.datawindow.summary.height = this.ii_summarybandheight
+	end if
+	this.dw_report.modify("DataWindow.Print.Preview = yes")
+	ll_rowcount = this.dw_report.rowcount()
+	if ll_rowcount <= 0 or isnull(ll_rowcount) then
+		this.dw_report.object.t_showpageno.text = ""
+		this.dw_report.object.t_showpagetotal.text = ""
+		return
+	end if
+	this.dw_report.scrolltorow(ll_rowcount)
+	ll_pagecount = this.dw_report.object.c_pagecount[ll_rowcount]
+	if ll_pagecount = 1 then
+		this.dw_report.object.t_showpageno.text = ""
+		this.dw_report.object.t_showpagetotal.text = ""
+		return
+	end if
+	this.dw_report.scrolltorow(1)
+	for ll_counter = 1 to ll_pagecount
+		ll_found = this.dw_report.find("c_pageno = " + string(ll_counter), 1, this.dw_report.rowcount())
+		if ll_found > 0 then
+			this.dw_report.object.datawindow.summary.height = integer(this.dw_report.object.datawindow.summary.height) + integer(200)
+			this.dw_report.scrolltorow(ll_found)
+			ls_pageno = ls_pageno + "Page No (" + string(ll_counter) + "): " + " ~r~n "
+			ls_pagetotal = ls_pagetotal + string(this.dw_report.object.c_pagetotal[ll_found], "###,###,###,###,##0.00") + " ~r~n "
+		end if
+		ll_pageno = this.dw_report.object.c_pageno[ll_rowcount]
+		if ll_pageno > ll_pagecount then
+			ll_pagecount = ll_pageno
+		end if
+	next
+	this.dw_report.scrolltorow(ll_rowcount)
+	ls_pageno = ls_pageno + "Total Amount: ~r~n "
+	ls_pagetotal = ls_pagetotal + string(this.dw_report.object.c_totalamount[ll_rowcount], "###,###,###,###,##0.00") + " ~r~n "
+	if this.dw_report.object.c_discperc[ll_rowcount] > 0 then
+		ls_pageno = ls_pageno + "Disc(%): ~r~n "
+		ls_pagetotal = ls_pagetotal + string(this.dw_report.object.c_discperc[ll_rowcount]) + "(%) = " + string(this.dw_report.object.c_discvalue[ll_rowcount], "###,###,###,###,##0.00") + " ~r~n "
+	end if
+	ls_pageno = ls_pageno + "Total Net Amount: ~r~n "
+	ls_pagetotal = ls_pagetotal + string(this.dw_report.object.c_totalnetamount[ll_rowcount], "###,###,###,###,##0.00") + " ~r~n "
+	this.dw_report.object.datawindow.summary.height = integer(this.dw_report.object.datawindow.summary.height) + integer(600)
+	this.dw_report.object.t_showpageno.text = ls_pageno
+	this.dw_report.object.t_showpagetotal.text = ls_pagetotal
+	if ll_rowcount > 0 then
+		this.dw_report.scrolltorow(1)
+	end if
+
+// w_reviewreport.wf_saveas() returns 0
+	this.dw_report.saveas()
+
+// w_reviewreport.wf_retrieve(integer ai_mode) returns integer
+	string ls_name
+	string ls_list
+	string ls_qty
+	string ls_itemname
+	string ls_doctype
+	integer i_rtcode
+	integer li_retrieve1
+	integer il_gcode
+	long ll_count
+	long ll_rowcount
+	long ll_counter
+	long ll_tempcode
+	long ll_loopcounter
+	long ll_null
+	long[] ll_arr
+	double ld_openbalance
+	double ld_currbalance
+	double ld_debit
+	double ld_credit
+	double ld_purprice
+	double ld_openbalance2
+	setnull(ll_null)
+	this.dw_report.hide()
+	this.st_placeholder.show()
+	this.dw_report.getchild("icode", this.idc_itemdddw)
+	this.idc_itemdddw.settransobject(sqlca)
+	if gl_remotegroup <> 5 then
+		gd_itemsinfo.sharedata(this.idc_itemdddw)
+	end if
+	li_retrieve1 = f_retrieve_report(this.dw_report, this.is_reportinfo, this.is_reparg, this.il_format, this.is_type, ai_mode)
+	if li_retrieve1 = 0 then
+		li_retrieve1 = f_retrieve_report1(this.dw_report, this.is_reportinfo, this.is_reparg, this.il_format, this.is_type, ai_mode)
+	end if
+	if li_retrieve1 = 0 then
+		li_retrieve1 = f_retrieve_report2(this.dw_report, this.is_reportinfo, this.is_reparg, this.il_format, this.is_type, ai_mode)
+	end if
+	if li_retrieve1 = 0 then
+		li_retrieve1 = f_retrieve_report3(this.dw_report, this.is_reportinfo, this.is_reparg, this.il_format, this.is_type, ai_mode)
+	end if
+	if li_retrieve1 = 0 then
+		li_retrieve1 = f_retrieve_report4(this.dw_report, this.is_reportinfo, this.is_reparg, this.il_format, this.is_type, ai_mode)
+	end if
+	if li_retrieve1 = 0 then
+		li_retrieve1 = f_retrieve_report5(this.dw_report, this.is_reportinfo, this.is_reparg, this.il_format, this.is_type, ai_mode)
+	end if
+	if li_retrieve1 = 0 then
+		li_retrieve1 = f_retrieve_report6(this.dw_report, this.is_reportinfo, this.is_reparg, this.il_format, this.is_type, ai_mode)
+	end if
+	if li_retrieve1 = 0 then
+		li_retrieve1 = f_retrieve_report7(this.dw_report, this.is_reportinfo, this.is_reparg, this.il_format, this.is_type, ai_mode)
+	end if
+	if li_retrieve1 = 0 then
+		li_retrieve1 = f_retrieve_report8(this.dw_report, this.is_reportinfo, this.is_reparg, this.il_format, this.is_type, ai_mode)
+	end if
+	if li_retrieve1 = 0 then
+		li_retrieve1 = f_retrieve_report9(this.dw_report, this.is_reportinfo, this.is_reparg, this.il_format, this.is_type, ai_mode)
+	end if
+	if li_retrieve1 = 0 then
+		li_retrieve1 = wf_special_retrieve(ai_mode)
+	end if
+	choose case this.is_reportinfo.s_reportobject
+	case ""
+	case else
+		if li_retrieve1 = 0 then
+			this.dw_report.retrieve()
+		end if
+	end choose
+	choose case this.is_reportinfo.s_reportobject
+	case "d_dailysalesdetail", "d_dailysalesretdetail", "d_purchase_detail", "d_periodic_purchases", "d_itemwisepurchases", "d_purret_detail"
+		if f_stringpreferences("purbatch") = "N" and f_stringpreferences("purexpiry") = "N" then
+			wf_invisiblebatchexpiry()
+		end if
+	end choose
+	setfocus()
+	this.dw_report.modify("DataWindow.Print.Preview=yes")
+	this.dw_report.modify("DataWindow.Print.Preview.Zoom=" + string(this.ii_zoomfactor))
+	this.st_placeholder.hide()
+	this.dw_report.show()
+	setpointer(arrow!)
+	return i_rtcode
+
+// w_reviewreport.wf_savefilter() returns long
+	s_reportinfo lstr_repinfo
+	string ls_filter
+	ls_filter = this.dw_report.object.datawindow.table.filter
+	if ls_filter = "" or ls_filter = "?" or isnull(ls_filter) then
+		messagebox("Filter Selection", "No Filter Selected", information!)
+	else
+		this.is_filterinfo.s_reportobject = this.is_actual_reportinfo.s_reportobject
+		this.is_filterinfo.s_reporttitle = this.is_filterinfo.s_reporttitle
+		this.is_filterinfo.s_otherinfo = ls_filter
+		openwithparm(w_save_reportfilter, this.is_filterinfo)
+		lstr_repinfo = message.powerobjectparm
+		if lstr_repinfo.i_status = 1 then
+			this.is_filterinfo = lstr_repinfo
+		end if
+	end if
+	return 0
+
+// w_reviewreport.wf_retrievefilter() returns long
+	s_reportinfo lstr_repinfo
+	openwithparm(w_view_reportfilter, this.is_actual_reportinfo)
+	lstr_repinfo = message.powerobjectparm
+	if lstr_repinfo.i_status = 1 then
+		this.is_filterinfo = lstr_repinfo
+		this.dw_report.setfilter(this.is_filterinfo.s_otherinfo)
+		this.dw_report.filter()
+		this.dw_report.groupcalc()
+	end if
+	return 0
+
+// w_reviewreport.wf_saveasexcel() returns long
+	f_saveasexcel(this.dw_report)
+	return 0
+
+// w_reviewreport.wf_setpapersize() returns long
+	s_reportinfo lstr_repinfo
+	lstr_repinfo.s_reporttitle = this.dw_report.describe("DataWindow.Print.Paper.Size")
+	lstr_repinfo.s_reportobject = this.dw_report.describe("DataWindow.Print.CustomPage.Width")
+	lstr_repinfo.s_otherinfo = this.dw_report.describe("DataWindow.Print.CustomPage.Length")
+	lstr_repinfo.i_value = integer(this.dw_report.describe("DataWindow.Units"))
+	openwithparm(w_papersize, lstr_repinfo)
+	lstr_repinfo = message.powerobjectparm
+	if lstr_repinfo.i_status > 0 then
+		this.dw_report.modify("DataWindow.Print.Paper.Size = " + lstr_repinfo.s_reporttitle)
+		if lstr_repinfo.s_reporttitle = "256" then
+			this.dw_report.modify("DataWindow.Print.CustomPage.Width = " + lstr_repinfo.s_reportobject)
+			this.dw_report.modify("DataWindow.Print.CustomPage.Length = " + lstr_repinfo.s_otherinfo)
+		end if
+	end if
+	return 0
+
+// w_reviewreport.wf_showruler() returns long
+	string ls_desc
+	ls_desc = this.dw_report.describe("DataWindow.Print.Preview.Rulers")
+	if lower(ls_desc) = "no" then
+		this.dw_report.modify("DataWindow.Print.Preview=yes DataWindow.Print.Preview.Rulers=yes")
+	else
+		this.dw_report.modify("DataWindow.Print.Preview.Rulers=No")
+	end if
+	return 0
+
+// w_reviewreport.wf_retrievestartup() returns long
+	long ll_retcode
+	string ls_msg_title
+	string ls_msgtext
+	if not (isnull(this.is_reportinfo.s_format) or this.is_reportinfo.s_format = "") then
+		this.dw_report.dataobject = this.is_reportinfo.s_format
+		this.dw_report.settransobject(sqlca)
+	end if
+	ll_retcode = f_get_arguments(this.is_reparg, this.is_reportinfo.s_reportobject, this.is_reportinfo.s_format)
+	if ll_retcode = 0 then
+		wf_retrieve(this.ii_autorefresh)
+	end if
+	return 0
+
+// w_reviewreport.wf_save_arguments() returns long
+	long ll_retcode
+	ll_retcode = f_save_arguments(this.is_reparg, this.is_actual_reportinfo.s_reportobject, this.dw_report.dataobject)
+	return 0
+
+// w_reviewreport.wf_opengraph() returns 0
+	string ls_reporttitle
+	str_graphobjectatpoint lstr_gop
+	w_graphviewer lw_sheet
+	lstr_gop.dw_dw1 = this.dw_report
+	ls_reporttitle = this.is_actual_reportinfo.s_reporttitle
+	lstr_gop.title = ls_reporttitle
+	opensheetwithparm(lw_sheet, lstr_gop, this, 0, layered!)
+
+// w_reviewreport.wf_selectrow(long ll_row) returns long
+	string ls_temp
+	ls_temp = upper(this.dw_report.describe("DataWindow.Print.Preview"))
+	if ls_temp = "NO" and ll_row > 0 then
+		this.dw_report.selectrow(0, false)
+		this.dw_report.selectrow(ll_row, true)
+		this.dw_report.scrolltorow(ll_row)
+		this.dw_report.setrow(ll_row)
+	end if
+	return 0
+
+// w_reviewreport.wf_special_retrieve(integer ai_mode) returns integer
+	long ll_insertrow
+	long ll_rowcount
+	long ll_count
+	long ll_loopcounter
+	long ll_counter
+	long[] ll_arr
+	long ll_zeroqty
+	long ll_tempcode
+	long ll_lastrow
+	long ll_insrow
+	string ls_itemname
+	string ls_nestedreport
+	string ls_stringparam
+	string ls_name
+	string ls_cp
+	string ls_address
+	string ls_address2
+	string ls_city
+	string ls_ref
+	string ls_stringarr1
+	string ls_stringarr2
+	string ls_stringarr3
+	string ls_value
+	string ls_lastpage
+	integer i_rtcode
+	integer li_packunits
+	integer li_suppress
+	integer ll_format
+	double ld_saleprice
+	double ld_salediscperc
+	double ld_cols
+	double ld_ratediff
+	double ld_value
+	datawindowchild ldc_nested
+	datawindowchild ldc_nested1
+	datawindowchild ldc_detail
+	choose case this.is_reportinfo.s_reportobject
+	case "d_creditreceiptvoucher_cmh"
+		if ai_mode = 0 then
+			open(w_selectformat_creditreceiptvoucher)
+			this.il_format = message.doubleparm
+			if this.il_format = 6 then
+				open(w_arg_date_cust_discinput_less_amt)
+			elseif this.il_format = 20 then
+				open(w_arg_customers_sdate_ldate_v7)
+			elseif this.il_format = 21 then
+				open(w_arg_customers_sdate_ldate_v6)
+			else
+				open(w_arg_date_customer_discinput_dateoption)
+			end if
+			this.is_reparg = message.powerobjectparm
+			if this.il_format = 1 then
+				this.dw_report.dataobject = "d_creditreceiptvoucher_cmh"
+			elseif this.il_format = 2 then
+				this.dw_report.dataobject = "d_creditreceiptvoucher_cmh_format2"
+			elseif this.il_format = 3 then
+				this.dw_report.dataobject = "d_creditreceiptvoucher_cmh_format3"
+			elseif this.il_format = 4 then
+				this.dw_report.dataobject = "d_creditreceiptvoucher_cmh_format4"
+			elseif this.il_format = 5 then
+				this.dw_report.dataobject = "d_creditreceiptvoucher_cmh_format5"
+			elseif this.il_format = 6 then
+				this.dw_report.dataobject = "d_creditreceiptvoucher_cmh_format6"
+			elseif this.il_format = 7 then
+				this.dw_report.dataobject = "d_creditreceiptvoucher_cmh_format7"
+			elseif this.il_format = 8 then
+				this.dw_report.dataobject = "d_creditreceiptvoucher_cmh_format8"
+			elseif this.il_format = 9 then
+				this.dw_report.dataobject = "d_creditreceiptvoucher_cmh_format9"
+			elseif this.il_format = 10 then
+				this.dw_report.dataobject = "d_creditreceiptvoucher_cmh_format10"
+			elseif this.il_format = 11 then
+				this.dw_report.dataobject = "d_creditreceiptvoucher_cmh_format11"
+			elseif this.il_format = 12 then
+				this.dw_report.dataobject = "d_creditreceiptvoucher_cmh_format12"
+			elseif this.il_format = 13 then
+				this.dw_report.dataobject = "d_creditreceiptvoucher_cmh_format13"
+			elseif this.il_format = 14 then
+				this.dw_report.dataobject = "d_creditreceiptvoucher_cmh_format14"
+			elseif this.il_format = 15 then
+				this.dw_report.dataobject = "d_creditreceiptvoucher_cmh_format15"
+			elseif this.il_format = 16 then
+				this.dw_report.dataobject = "d_creditreceiptvoucher_cmh_format16"
+			elseif this.il_format = 17 then
+				this.dw_report.dataobject = "d_creditreceiptvoucher_cmh_format17"
+			elseif this.il_format = 18 then
+				this.dw_report.dataobject = "d_creditreceiptvoucher_cmh_format18"
+			elseif this.il_format = 19 then
+				this.dw_report.dataobject = "d_creditreceiptvoucher_cmh_format19"
+			elseif this.il_format = 20 then
+				this.dw_report.dataobject = "d_creditreceiptvoucher_cmh_format20"
+			elseif this.il_format = 21 then
+				this.dw_report.dataobject = "d_creditreceiptvoucher_cmh_format21"
+			end if
+			this.dw_report.settransobject(sqlca)
+		end if
+		setredraw(false)
+		if this.is_reparg.i_status = 1 then
+			SQL rollback USING sqlca;
+			SQL Select Accounts.Name , Customer.cp , Customer.address1 , Customer.city , Customer.refno INTO :ls_name, :ls_cp, :ls_address, :ls_city, :ls_ref From Customer , Accounts Where Customer.custcode =:this.is_reparg.ia_integerlist[1] AND Customer.custcode =Accounts.AccCode USING sqlca;
+			if sqlca.sqlcode = 0 then
+				SQL commit USING sqlca;
+			else
+				SQL rollback USING sqlca;
+			end if
+			if this.il_format = 1 or this.il_format = 12 or this.il_format = 14 or this.il_format = 17 then
+				i_rtcode = this.dw_report.retrieve(this.is_reparg.ia_integerlist, this.is_reparg.d_sdate, this.is_reparg.d_edate, this.is_reparg.db_code1, ls_city, this.is_reparg.s_name4, this.is_reparg.s_name1)
+			elseif this.il_format = 2 then
+				i_rtcode = this.dw_report.retrieve(this.is_reparg.s_name5, this.is_reparg.d_sdate, this.is_reparg.d_edate, this.is_reparg.db_code1, ls_city, this.is_reparg.s_name4, ls_ref, ls_cp)
+				if i_rtcode > 0 then
+					this.dw_hidden.dataobject = "d_creditreceiptvoucher_cmh_format2_a"
+					this.dw_hidden.settransobject(sqlca)
+					this.dw_hidden.retrieve(this.is_reparg.s_name5, this.is_reparg.d_sdate, this.is_reparg.d_edate, this.is_reparg.db_code1, ls_city, this.is_reparg.s_name4, ls_ref, ls_cp)
+					this.dw_hidden.modify("DataWindow.Print.Preview=yes")
+					i_rtcode = wf_getnestedreport(ldc_nested, this.dw_report, "dw_2")
+					if i_rtcode = -1 then
+						messagebox("Retrieve Error", "Problem in Retrieving Report")
+					end if
+					i_rtcode = ldc_nested.retrieve(this.is_reparg.db_code1)
+					ldc_nested.reset()
+					ls_lastpage = this.dw_hidden.describe("Evaluate('Pagecount ( )',0)")
+					for ll_counter = 1 to long(ls_lastpage)
+						ll_lastrow = long(this.dw_hidden.describe("DataWindow.LastRowOnPage"))
+						this.dw_hidden.setrow(ll_lastrow)
+						ls_value = this.dw_hidden.describe("Evaluate('c_pagetotal'," + trim(string(ll_lastrow)) + ")")
+						ld_value = double(ls_value)
+						ll_insrow = ldc_nested.insertrow(0)
+						if ll_insrow > 0 then
+							ldc_nested.setitem(ll_insrow, "salevalue", ld_value)
+						end if
+						this.dw_hidden.scrollnextpage()
+					next
+				end if
+			elseif this.il_format = 3 then
+				i_rtcode = this.dw_report.retrieve(this.is_reparg.s_name5, this.is_reparg.d_sdate, this.is_reparg.d_edate, this.is_reparg.db_code1, ls_city, ls_city, ls_ref, this.is_reparg.s_name4)
+			elseif this.il_format = 4 then
+				i_rtcode = this.dw_report.retrieve(this.is_reparg.ia_integerlist, this.is_reparg.d_sdate, this.is_reparg.d_edate, this.is_reparg.db_code1, ls_city, this.is_reparg.s_name4)
+			elseif this.il_format = 5 then
+				i_rtcode = this.dw_report.retrieve(this.is_reparg.s_name5, this.is_reparg.d_sdate, this.is_reparg.d_edate, this.is_reparg.db_code1, ls_city, this.is_reparg.s_name4, ls_ref, ls_cp, this.is_reparg.s_name1, this.is_reparg.s_name2)
+				if i_rtcode > 0 then
+					if this.il_format = 5 then
+						this.dw_hidden.dataobject = "d_creditreceiptvoucher_cmh_format5_a"
+					end if
+					this.dw_hidden.settransobject(sqlca)
+					this.dw_hidden.retrieve(this.is_reparg.s_name5, this.is_reparg.d_sdate, this.is_reparg.d_edate, this.is_reparg.db_code1, ls_city, this.is_reparg.s_name4, ls_ref, ls_cp, this.is_reparg.s_name1, this.is_reparg.s_name2)
+					this.dw_hidden.modify("DataWindow.Print.Preview=yes")
+					i_rtcode = wf_getnestedreport(ldc_nested, this.dw_report, "dw_2")
+					if i_rtcode = -1 then
+						messagebox("Retrieve Error", "Problem in Retrieving Report")
+					end if
+					i_rtcode = ldc_nested.retrieve(this.is_reparg.db_code1)
+					ldc_nested.reset()
+					ls_lastpage = this.dw_hidden.describe("Evaluate('Pagecount ()',0)")
+					for ll_counter = 1 to long(ls_lastpage)
+						ll_lastrow = long(this.dw_hidden.describe("DataWindow.LastRowOnPage"))
+						this.dw_hidden.setrow(ll_lastrow)
+						ls_value = this.dw_hidden.describe("Evaluate('c_pagetotal'," + trim(string(ll_lastrow)) + ")")
+						ld_value = double(ls_value)
+						ll_insrow = ldc_nested.insertrow(0)
+						if ll_insrow > 0 then
+							ldc_nested.setitem(ll_insrow, "salevalue", ld_value)
+						end if
+						this.dw_hidden.scrollnextpage()
+					next
+				end if
+			elseif this.il_format = 6 then
+				i_rtcode = this.dw_report.retrieve(this.is_reparg.s_name5, this.is_reparg.d_sdate, this.is_reparg.d_edate, this.is_reparg.db_code1, ls_city, this.is_reparg.s_name4, ls_ref, ls_cp, this.is_reparg.s_name1, this.is_reparg.s_name2, this.is_reparg.db_code2)
+			elseif this.il_format = 7 then
+				i_rtcode = this.dw_report.retrieve(this.is_reparg.ia_integerlist, this.is_reparg.d_sdate, this.is_reparg.d_edate, this.is_reparg.db_code1, ls_city, this.is_reparg.s_name4, this.is_reparg.s_name1, this.is_reparg.s_name2)
+			elseif this.il_format = 19 then
+				i_rtcode = this.dw_report.retrieve(this.is_reparg.ia_integerlist, this.is_reparg.d_sdate, this.is_reparg.d_edate, this.is_reparg.db_code1, ls_city, this.is_reparg.s_name4, this.is_reparg.s_name1, this.is_reparg.s_name2, this.is_reparg.s_name6)
+			elseif this.il_format = 8 then
+				i_rtcode = this.dw_report.retrieve(this.is_reparg.ia_integerlist, this.is_reparg.d_sdate, this.is_reparg.d_edate, this.is_reparg.db_code1, ls_city, this.is_reparg.s_name4, this.is_reparg.s_name1, this.is_reparg.s_name2)
+			elseif this.il_format = 9 then
+				i_rtcode = this.dw_report.retrieve(this.is_reparg.s_name5, this.is_reparg.d_sdate, this.is_reparg.d_edate, this.is_reparg.db_code1, ls_city, this.is_reparg.s_name4, ls_ref, ls_cp, this.is_reparg.s_name1, this.is_reparg.s_name2)
+				if i_rtcode > 0 then
+					this.dw_hidden.setredraw(false)
+					this.dw_hidden.dataobject = "d_creditreceiptvoucher_cmh_format9_a"
+					this.dw_hidden.settransobject(sqlca)
+					this.dw_hidden.retrieve(this.is_reparg.s_name5, this.is_reparg.d_sdate, this.is_reparg.d_edate, this.is_reparg.db_code1, ls_city, this.is_reparg.s_name4, ls_ref, ls_cp, this.is_reparg.s_name1, this.is_reparg.s_name2)
+					this.dw_hidden.modify("DataWindow.Print.Preview=yes")
+					this.dw_hidden.setredraw(true)
+					i_rtcode = wf_getnestedreport(ldc_nested, this.dw_report, "dw_2")
+					if i_rtcode = -1 then
+						messagebox("Retrieve Error", "Problem in Retrieving Report")
+					end if
+					i_rtcode = ldc_nested.retrieve(this.is_reparg.db_code1)
+					ldc_nested.reset()
+					ls_lastpage = this.dw_hidden.describe("Evaluate('Pagecount ()',0)")
+					for ll_counter = 1 to long(ls_lastpage)
+						ll_lastrow = long(this.dw_hidden.describe("DataWindow.LastRowOnPage"))
+						this.dw_hidden.setrow(ll_lastrow)
+						ls_value = this.dw_hidden.describe("Evaluate('c_pagetotal'," + trim(string(ll_lastrow)) + ")")
+						ld_value = double(ls_value)
+						ll_insrow = ldc_nested.insertrow(0)
+						if ll_insrow > 0 and ll_lastrow > 0 then
+							ldc_nested.setitem(ll_insrow, "Date", this.dw_hidden.object.date[ll_lastrow])
+						end if
+						if ll_insrow > 0 then
+							ldc_nested.setitem(ll_insrow, "salevalue", ld_value)
+						end if
+						this.dw_hidden.scrollnextpage()
+					next
+				end if
+			elseif this.il_format = 10 or this.il_format = 18 then
+				i_rtcode = this.dw_report.retrieve(this.is_reparg.s_name5, this.is_reparg.d_sdate, this.is_reparg.d_edate, this.is_reparg.db_code1, this.is_reparg.s_name4, this.is_reparg.s_name1, this.is_reparg.s_name2)
+				if i_rtcode > 0 then
+					if this.il_format = 10 then
+						this.dw_hidden.dataobject = "d_creditreceiptvoucher_cmh_format10_a"
+					else
+						this.dw_hidden.dataobject = "d_creditreceiptvoucher_cmh_format18_a"
+					end if
+					this.dw_hidden.settransobject(sqlca)
+					this.dw_hidden.retrieve(this.is_reparg.s_name5, this.is_reparg.d_sdate, this.is_reparg.d_edate, this.is_reparg.db_code1, this.is_reparg.s_name4, this.is_reparg.s_name1, this.is_reparg.s_name2)
+					this.dw_hidden.modify("DataWindow.Print.Preview=yes")
+					i_rtcode = wf_getnestedreport(ldc_nested, this.dw_report, "dw_2")
+					if i_rtcode = -1 then
+						messagebox("Retrieve Error", "Problem in Retrieving Report")
+					end if
+					i_rtcode = ldc_nested.retrieve(this.is_reparg.db_code1)
+					ldc_nested.reset()
+					ls_lastpage = this.dw_hidden.describe("Evaluate('Pagecount ( )',0)")
+					for ll_counter = 1 to long(ls_lastpage)
+						ll_lastrow = long(this.dw_hidden.describe("DataWindow.LastRowOnPage"))
+						this.dw_hidden.setrow(ll_lastrow)
+						ls_value = this.dw_hidden.describe("Evaluate('c_pagetotal'," + trim(string(ll_lastrow)) + ")")
+						ld_value = double(ls_value)
+						ll_insrow = ldc_nested.insertrow(0)
+						if ll_insrow > 0 and ll_lastrow > 0 then
+							ldc_nested.setitem(ll_insrow, "Date", this.dw_hidden.object.date[ll_lastrow])
+						end if
+						if ll_insrow > 0 then
+							ldc_nested.setitem(ll_insrow, "salevalue", ld_value)
+						end if
+						this.dw_hidden.scrollnextpage()
+					next
+				end if
+			elseif this.il_format = 11 or this.il_format = 13 then
+				if this.il_format = 11 then
+					i_rtcode = this.dw_report.retrieve(this.is_reparg.s_name5, this.is_reparg.d_sdate, this.is_reparg.d_edate, this.is_reparg.db_code1, this.is_reparg.s_name4, this.is_reparg.s_name1, this.is_reparg.s_name2)
+				elseif this.il_format = 13 then
+					i_rtcode = this.dw_report.retrieve(this.is_reparg.s_name5, this.is_reparg.d_sdate, this.is_reparg.d_edate, this.is_reparg.db_code1, this.is_reparg.s_name4, ls_name, ls_ref)
+				end if
+				if i_rtcode > 0 then
+					if this.il_format = 11 then
+						this.dw_hidden.dataobject = "d_creditreceiptvoucher_cmh_format11_a"
+					elseif this.il_format = 13 then
+						this.dw_hidden.dataobject = "d_creditreceiptvoucher_cmh_format13_a"
+					end if
+					this.dw_hidden.settransobject(sqlca)
+					if this.il_format = 11 then
+						this.dw_hidden.retrieve(this.is_reparg.s_name5, this.is_reparg.d_sdate, this.is_reparg.d_edate, this.is_reparg.db_code1, this.is_reparg.s_name4, this.is_reparg.s_name1, this.is_reparg.s_name2)
+					elseif this.il_format = 13 then
+						this.dw_hidden.retrieve(this.is_reparg.s_name5, this.is_reparg.d_sdate, this.is_reparg.d_edate, this.is_reparg.db_code1, this.is_reparg.s_name4, ls_name, ls_ref)
+					end if
+					this.dw_hidden.modify("DataWindow.Print.Preview=yes")
+					i_rtcode = wf_getnestedreport(ldc_nested, this.dw_report, "dw_2")
+					if i_rtcode = -1 then
+						messagebox("Retrieve Error", "Problem in Retrieving Report")
+					end if
+					i_rtcode = ldc_nested.retrieve(this.is_reparg.db_code1)
+					ldc_nested.reset()
+					ls_lastpage = this.dw_hidden.describe("Evaluate('Pagecount ( )',0)")
+					for ll_counter = 1 to long(ls_lastpage)
+						ll_lastrow = long(this.dw_hidden.describe("DataWindow.LastRowOnPage"))
+						this.dw_hidden.setrow(ll_lastrow)
+						ls_value = this.dw_hidden.describe("Evaluate('c_pagetotal'," + trim(string(ll_lastrow)) + ")")
+						ld_value = double(ls_value)
+						ll_insrow = ldc_nested.insertrow(0)
+						if ll_insrow > 0 and ll_lastrow > 0 then
+							ldc_nested.setitem(ll_insrow, "Date", this.dw_hidden.object.date[ll_lastrow])
+						end if
+						if ll_insrow > 0 then
+							ldc_nested.setitem(ll_insrow, "salevalue", ld_value)
+						end if
+						this.dw_hidden.scrollnextpage()
+					next
+				end if
+			elseif this.il_format = 15 then
+				i_rtcode = this.dw_report.retrieve(this.is_reparg.s_name5, this.is_reparg.d_sdate, this.is_reparg.d_edate, this.is_reparg.db_code1, ls_city, this.is_reparg.s_name4, ls_ref, ls_cp, this.is_reparg.s_name1, this.is_reparg.s_name2)
+				if i_rtcode > 0 then
+					this.dw_hidden.setredraw(false)
+					this.dw_hidden.dataobject = "d_creditreceiptvoucher_cmh_format15_a"
+					this.dw_hidden.settransobject(sqlca)
+					this.dw_hidden.retrieve(this.is_reparg.s_name5, this.is_reparg.d_sdate, this.is_reparg.d_edate, this.is_reparg.db_code1, ls_city, this.is_reparg.s_name4, ls_ref, ls_cp, this.is_reparg.s_name1, this.is_reparg.s_name2)
+					this.dw_hidden.modify("DataWindow.Print.Preview=yes")
+					this.dw_hidden.setredraw(true)
+					i_rtcode = wf_getnestedreport(ldc_nested, this.dw_report, "dw_2")
+					if i_rtcode = -1 then
+						messagebox("Retrieve Error", "Problem in Retrieving Report")
+					end if
+					i_rtcode = ldc_nested.retrieve(this.is_reparg.db_code1)
+					ldc_nested.reset()
+					ls_lastpage = this.dw_hidden.describe("Evaluate('Pagecount ()',0)")
+					for ll_counter = 1 to long(ls_lastpage)
+						ll_lastrow = long(this.dw_hidden.describe("DataWindow.LastRowOnPage"))
+						this.dw_hidden.setrow(ll_lastrow)
+						ls_value = this.dw_hidden.describe("Evaluate('c_pagetotal'," + trim(string(ll_lastrow)) + ")")
+						ld_value = double(ls_value)
+						ll_insrow = ldc_nested.insertrow(0)
+						if ll_insrow > 0 and ll_lastrow > 0 then
+							ldc_nested.setitem(ll_insrow, "Date", this.dw_hidden.object.date[ll_lastrow])
+						end if
+						if ll_insrow > 0 then
+							ldc_nested.setitem(ll_insrow, "salevalue", ld_value)
+						end if
+						this.dw_hidden.scrollnextpage()
+					next
+				end if
+			elseif this.il_format = 16 then
+				i_rtcode = this.dw_report.retrieve(this.is_reparg.ia_integerlist, this.is_reparg.d_sdate, this.is_reparg.d_edate, this.is_reparg.db_code1, ls_city, this.is_reparg.s_name4, this.is_reparg.s_name1, this.is_reparg.s_name2)
+			elseif this.il_format = 20 then
+				i_rtcode = this.dw_report.retrieve(this.is_reparg.ia_integerlist, this.is_reparg.d_sdate, this.is_reparg.d_edate, this.is_reparg.db_code1, this.is_reparg.s_name1, this.is_reparg.s_name2)
+			elseif this.il_format = 21 then
+				i_rtcode = this.dw_report.retrieve(this.is_reparg.ia_integerlist, this.is_reparg.d_sdate, this.is_reparg.d_edate, this.is_reparg.db_code1)
+			end if
+		end if
+		setredraw(true)
+	case "d_customerwise_patientsaledetail_cmh_3"
+		open(w_arg_cust_sdate_ldate_discperc_line_1_2)
+		this.is_reparg = message.powerobjectparm
+		open(w_selectformat_1_4)
+		this.il_format = message.doubleparm
+		if this.il_format = 1 or this.il_format = 4 then
+			if this.il_format = 1 then
+				this.dw_report.dataobject = "d_customerwise_patientsaledetail_cmh_3"
+			elseif this.il_format = 4 then
+				this.dw_report.dataobject = "d_customerwise_patientsaledetail_cmh_3_4"
+			end if
+			this.dw_report.settransobject(sqlca)
+			i_rtcode = this.dw_report.retrieve(this.is_reparg.d_sdate, this.is_reparg.d_edate, this.is_reparg.db_code1, this.is_reparg.l_code1, this.is_reparg.s_name1, this.is_reparg.s_name2)
+			if i_rtcode > 0 then
+				if this.il_format = 1 then
+					this.dw_hidden.dataobject = "d_customerwise_patientsaledetail_cmh_3_a"
+				elseif this.il_format = 4 then
+					this.dw_hidden.dataobject = "d_customerwise_patientsaledetail_cmh_3a4"
+				end if
+				this.dw_hidden.settransobject(sqlca)
+				this.dw_hidden.retrieve(this.is_reparg.l_code1, this.is_reparg.d_sdate, this.is_reparg.d_edate)
+				this.dw_hidden.modify("DataWindow.Print.Preview=yes")
+				i_rtcode = wf_getnestedreport(ldc_nested, this.dw_report, "dw_2")
+				if i_rtcode = -1 then
+					messagebox("Retrieve Error", "Problem in Retrieving Report")
+				end if
+				i_rtcode = ldc_nested.retrieve(this.is_reparg.db_code1, this.is_reparg.s_name1, this.is_reparg.s_name2)
+				ldc_nested.reset()
+				this.dw_report.getchild("dw_1", ldc_detail)
+				ls_lastpage = this.dw_hidden.describe("Evaluate('Pagecount ( )',0)")
+				for ll_counter = 1 to long(ls_lastpage)
+					ll_lastrow = long(this.dw_hidden.describe("DataWindow.LastRowOnPage"))
+					this.dw_hidden.setrow(ll_lastrow)
+					ls_value = this.dw_hidden.describe("Evaluate('c_pagetotal'," + trim(string(ll_lastrow)) + ")")
+					ld_value = double(ls_value)
+					ll_insrow = ldc_nested.insertrow(0)
+					if ll_insrow > 0 then
+						ldc_nested.setitem(ll_insrow, "salevalue", ld_value)
+					end if
+					this.dw_hidden.scrollnextpage()
+				next
+			end if
+		elseif this.il_format = 2 then
+			this.dw_report.object.dw_1.dataobject = "d_customerwise_patientsaledetail_cmh_3a2"
+			i_rtcode = this.dw_report.retrieve(this.is_reparg.d_sdate, this.is_reparg.d_edate, this.is_reparg.db_code1, this.is_reparg.l_code1, this.is_reparg.s_name1, this.is_reparg.s_name2)
+			if i_rtcode > 0 then
+				this.dw_hidden.dataobject = "d_customerwise_patientsaledetail_cmh_3a2"
+				this.dw_hidden.settransobject(sqlca)
+				this.dw_hidden.retrieve(this.is_reparg.l_code1, this.is_reparg.d_sdate, this.is_reparg.d_edate)
+				this.dw_hidden.modify("DataWindow.Print.Preview=yes")
+				i_rtcode = wf_getnestedreport(ldc_nested, this.dw_report, "dw_2")
+				if i_rtcode = -1 then
+					messagebox("Retrieve Error", "Problem in Retrieving Report")
+				end if
+				i_rtcode = ldc_nested.retrieve(this.is_reparg.db_code1, this.is_reparg.s_name1, this.is_reparg.s_name2)
+				ldc_nested.reset()
+				this.dw_report.getchild("dw_1", ldc_detail)
+				ls_lastpage = this.dw_hidden.describe("Evaluate('Pagecount ( )',0)")
+				for ll_counter = 1 to long(ls_lastpage)
+					ll_lastrow = long(this.dw_hidden.describe("DataWindow.LastRowOnPage"))
+					this.dw_hidden.setrow(ll_lastrow)
+					ls_value = this.dw_hidden.describe("Evaluate('c_pagetotal'," + trim(string(ll_lastrow)) + ")")
+					ld_value = double(ls_value)
+					ll_insrow = ldc_nested.insertrow(0)
+					if ll_insrow > 0 then
+						ldc_nested.setitem(ll_insrow, "salevalue", ld_value)
+					end if
+					this.dw_hidden.scrollnextpage()
+				next
+			end if
+		elseif this.il_format = 3 then
+			this.dw_report.object.dw_1.dataobject = "d_customerwise_patientsaledetail_cmh_3a3"
+			i_rtcode = this.dw_report.retrieve(this.is_reparg.d_sdate, this.is_reparg.d_edate, this.is_reparg.db_code1, this.is_reparg.l_code1, this.is_reparg.s_name1, this.is_reparg.s_name2)
+			if i_rtcode > 0 then
+				this.dw_hidden.dataobject = "d_customerwise_patientsaledetail_cmh_3a3"
+				this.dw_hidden.settransobject(sqlca)
+				this.dw_hidden.retrieve(this.is_reparg.l_code1, this.is_reparg.d_sdate, this.is_reparg.d_edate)
+				this.dw_hidden.modify("DataWindow.Print.Preview=yes")
+				i_rtcode = wf_getnestedreport(ldc_nested, this.dw_report, "dw_2")
+				if i_rtcode = -1 then
+					messagebox("Retrieve Error", "Problem in Retrieving Report")
+				end if
+				i_rtcode = ldc_nested.retrieve(this.is_reparg.db_code1, this.is_reparg.s_name1, this.is_reparg.s_name2)
+				ldc_nested.reset()
+				this.dw_report.getchild("dw_1", ldc_detail)
+				ls_lastpage = this.dw_hidden.describe("Evaluate('Pagecount ( )',0)")
+				for ll_counter = 1 to long(ls_lastpage)
+					ll_lastrow = long(this.dw_hidden.describe("DataWindow.LastRowOnPage"))
+					this.dw_hidden.setrow(ll_lastrow)
+					ls_value = this.dw_hidden.describe("Evaluate('c_pagetotal'," + trim(string(ll_lastrow)) + ")")
+					ld_value = double(ls_value)
+					ll_insrow = ldc_nested.insertrow(0)
+					if ll_insrow > 0 then
+						ldc_nested.setitem(ll_insrow, "salevalue", ld_value)
+					end if
+					this.dw_hidden.scrollnextpage()
+				next
+			end if
+		end if
+	case else
+		return 0
+	end choose
+	return 1
+
+// w_reviewreport.wf_saveaspdf() returns long
+	string ls_pdfpath
+	ls_pdfpath = f_stringpreferences("saveaspdflocation")
+	this.dw_report.saveas("", pdf!, false)
+	return 0
+
+// w_reviewreport.wf_sendmail() returns long
+	s_arguements lstr_arg
+	string ls_name
+	string ls_email
+	ls_name = this.dw_report.describe("name.coltype")
+	if upper(left(ls_name, 4)) = "CHAR" and this.dw_report.rowcount() > 0 then
+		lstr_arg.s_name1 = this.dw_report.object.name[1]
+	end if
+	ls_email = this.dw_report.describe("email.coltype")
+	if upper(left(ls_email, 4)) = "CHAR" and this.dw_report.rowcount() > 0 then
+		lstr_arg.s_name2 = this.dw_report.object.email[1]
+	end if
+	openwithparm(w_sendmail, lstr_arg)
+	return 0
+
+// w_reviewreport.create() returns 0
+	if this.menuname = "m_reviewreport" then
+		this.menuid = create m_reviewreport
+	end if
+	this.dw_hidden = create dw_hidden
+	this.st_placeholder = create st_placeholder
+	this.dw_report = create dw_report
+	this.control = {this.dw_hidden, this.st_placeholder, this.dw_report}
+
+// w_reviewreport.destroy() returns 0
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_hidden
+	destroy this.st_placeholder
+	destroy this.dw_report
+
+// w_reviewreport.open() returns long
+	m_reviewreport lm_menu
+	long ll_width
+	long ll_height
+	long ll_found
+	environment env
+	lm_menu = this.menuid
+	this.menuid.dynamic mf_initsecurityapp(lm_menu)
+	this.im_reportmenu = this.menuid
+	this.is_reportinfo = message.powerobjectparm
+	this.is_actual_reportinfo = this.is_reportinfo
+	this.title = this.title + ": " + this.is_reportinfo.s_reporttitle
+	if getenvironment(env) <> 1 then
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.dw_report.width = ll_width * 0.985
+	this.dw_report.height = ll_height * 0.80
+	this.dw_hidden.width = this.dw_report.width
+	this.dw_hidden.height = this.dw_report.height
+	this.st_placeholder.x = int(this.dw_report.width / 2.0 - this.st_placeholder.width / 2.0)
+	this.st_placeholder.y = int(this.dw_report.height / 2.0 - this.st_placeholder.height / 2.0)
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 637", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		lm_menu.m_file.m_saveas.visible = true
+		lm_menu.m_file.m_saveas.enabled = true
+		lm_menu.m_file.m_saveas.toolbaritemvisible = true
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 638", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		lm_menu.m_file.m_saveasexcel.visible = true
+		lm_menu.m_file.m_saveasexcel.enabled = true
+		lm_menu.m_file.m_saveasexcel.toolbaritemvisible = true
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 651", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		lm_menu.m_file.m_generategraph.visible = true
+		lm_menu.m_file.m_generategraph.enabled = true
+		lm_menu.m_file.m_generategraph.toolbaritemvisible = true
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 5217", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		lm_menu.m_file.m_print.visible = true
+		lm_menu.m_file.m_print.enabled = true
+		lm_menu.m_file.m_print.toolbaritemvisible = true
+	else
+		lm_menu.m_file.m_print.visible = false
+		lm_menu.m_file.m_print.enabled = false
+		lm_menu.m_file.m_print.toolbaritemvisible = false
+	end if
+	setredraw(true)
+	this.dw_report.dataobject = this.is_reportinfo.s_reportobject
+	this.dw_report.settransobject(sqlca)
+	postevent("ue_startdisplay")
+	this.dw_report.setfocus()
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_reviewreport.activate() returns long
+	this.windowstate = maximized!
+	return ::message.returnvalue
+
+// w_reviewreport.timer() returns long
+	wf_retrieve(this.ii_autorefresh)
+	return ::message.returnvalue
+
+// dw_report.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	long ll_row
+	string ls_temp
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	ls_temp = upper(describe("DataWindow.Print.Preview"))
+	if ls_temp = "NO" then
+		if key = keyhome! then
+			scrolltorow(0)
+			if rowcount() > 0 then
+				scrolltorow(1)
+				setrow(1)
+			end if
+			parent.wf_selectrow(1)
+		elseif key = keyend! then
+			scrolltorow(rowcount())
+			setrow(rowcount())
+			parent.wf_selectrow(rowcount())
+		elseif key = keyuparrow! then
+			if getrow() <= 0 then
+				scrolltorow(1)
+				setrow(1)
+			else
+				scrolltorow(getrow())
+				setrow(getrow())
+			end if
+			parent.wf_selectrow(getrow())
+		elseif key = keydownarrow! then
+			if getrow() > rowcount() then
+				scrolltorow(rowcount())
+				setrow(rowcount())
+			else
+				scrolltorow(getrow())
+				setrow(getrow())
+			end if
+			parent.wf_selectrow(getrow())
+		end if
+	elseif key = keyhome! then
+		scrolltorow(0)
+		if rowcount() > 0 then
+			scrolltorow(1)
+			setrow(1)
+		end if
+	elseif key = keyend! then
+		scrolltorow(rowcount())
+		setrow(rowcount())
+	end if
+	return ::message.returnvalue
+
+// dw_report.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	long ll_col
+	long ll_row
+	integer li_clientinstanceid
+	string ls_column
+	string ls_desc
+	string ls_exp
+	string ls_value
+	string ls_tag
+	string ls_name
+	string ls_type
+	string ls_band
+	string ls_dw
+	string ls_describe
+	boolean lb_crs
+	ls_dw = this.dataobject
+	ls_name = dwo.name
+	ls_type = dwo.type
+	ls_band = getbandatpointer()
+	if upper(left(ls_band, 7)) = "DETAIL" then
+		ll_row = row
+	elseif pos(ls_band, "~t") > 0 then
+		ll_row = long(mid(ls_band, pos(ls_band, "~t") + 1, len(ls_band)))
+	end if
+	if ll_row > 0 then
+		parent.wf_selectrow(ll_row)
+	end if
+	ll_col = getclickedcolumn()
+	if ll_col > 0 then
+		setcolumn(ll_col)
+		ls_desc = "#" + trim(string(ll_col)) + ".pointer"
+	elseif upper(left(ls_type, 6)) = "COLUMN" and len(ls_name) > 0 then
+		ls_column = ls_name
+		setcolumn(ls_column)
+		ls_desc = ls_column + ".pointer"
+	end if
+	ls_desc = describe(ls_desc)
+	if ls_desc = "~"HyperLink!~"" then
+		if match(ls_dw, "_crs_") then
+			lb_crs = true
+			ls_describe = describe("clientinstanceid.coltype")
+			if ls_describe = "number" then
+				li_clientinstanceid = getitemnumber(ll_row, "clientinstanceid")
+			end if
+		end if
+		if ll_col > 0 then
+			ls_exp = describe("#" + trim(string(ll_col)) + ".coltype")
+			ls_tag = describe("#" + trim(string(ll_col)) + ".tag")
+		else
+			ls_exp = describe(ls_column + ".coltype")
+			ls_tag = describe(ls_column + ".tag")
+		end if
+		if upper(left(ls_exp, 4)) = "CHAR" then
+			if ll_col > 0 then
+				ls_value = getitemstring(ll_row, ll_col)
+			else
+				ls_value = getitemstring(ll_row, ls_column)
+			end if
+			if pos(ls_value, "-") <= 0 then
+				if ls_tag <> "" then
+					ls_value = ls_tag + "-" + ls_value
+				end if
+			end if
+			if lb_crs then
+				f_crs_opentranaction(ls_value, li_clientinstanceid)
+			else
+				f_opentranaction(ls_value)
+			end if
+		elseif upper(left(ls_exp, 4)) = "LONG" or upper(left(ls_exp, 6)) = "NUMBER" then
+			if ls_tag = "" or isnull(ls_tag) then
+				ls_tag = ""
+			end if
+			if ls_tag = "" then
+				ls_tag = ""
+			else
+				ls_tag = ls_tag + "-"
+			end if
+			if ll_col > 0 then
+				ls_value = ls_tag + trim(string(getitemnumber(ll_row, ll_col)))
+			else
+				ls_value = ls_tag + trim(string(getitemnumber(ll_row, ls_column)))
+			end if
+			if lb_crs then
+				f_crs_opentranaction(ls_value, li_clientinstanceid)
+			else
+				f_opentranaction(ls_value)
+			end if
+		end if
+	end if
+	return 0

@@ -1,0 +1,64 @@
+// window w_arg_account_godown (reports)  ancestor: w_arg_manf
+
+// w_arg_account_godown.create() returns 0
+	call super::create
+
+// w_arg_account_godown.destroy() returns 0
+	call super::destroy
+
+// w_arg_account_godown.open() returns long
+	integer rtncode
+	string ls_text
+	date ld_currdate
+	time lt_currtime
+	datetime ld_startdate
+	datetime ld_enddate
+	long ll_acccode
+	long ll_rowcount
+	long ll_counter
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	ld_currdate = today()
+	if f_stringpreferences("ApplyArgSDate") = "N" then
+		ls_text = string(ld_currdate, "dd/mm/yyyy")
+		ls_text = trim(ls_text) + " 00:00:00"
+	else
+		ls_text = string(f_datepreferences("DefaultArgSDate"), "dd/mm/yyyy hh:mm:ss")
+	end if
+	this.em_startdate.text = ls_text
+	ls_text = string(ld_currdate, "dd/mm/yyyy")
+	ls_text = trim(ls_text) + " 23:59:59"
+	this.em_enddate.text = ls_text
+	ll_acccode = message.doubleparm
+	if ll_acccode > 0 then
+		this.dw_control.settransobject(sqlca)
+		rtncode = this.dw_control.getchild("gcode", this.idc_categories)
+		if rtncode = -1 then
+			messagebox("Error", "Not a DataWindowChild")
+		end if
+		this.idc_categories.settransobject(sqlca)
+		this.idc_categories.retrieve(ll_acccode)
+		this.dw_control.insertrow(0)
+		this.dw_control.scrolltorow(0)
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue

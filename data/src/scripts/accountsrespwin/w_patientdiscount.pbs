@@ -1,0 +1,155 @@
+// window w_patientdiscount (accountsrespwin)  ancestor: window
+
+// w_patientdiscount.wf_getpatientadmission(long al_patientcode) returns long
+	long ll_admissioncode
+	SQL SELECT AdmissionCode INTO :ll_admissioncode FROM DBO.PatientAdmission WHERE AdmissionCode IN ( SELECT Max ( AdmissionCode ) FROM DBO.PatientAdmission WHERE PatientCode =:al_patientcode ) USING sqlca;
+	if sqlca.sqlcode <> 0 then
+		ll_admissioncode = -1
+	end if
+	return ll_admissioncode
+
+// w_patientdiscount.create() returns 0
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.dw_discount = create dw_discount
+	this.dw_control = create dw_control
+	this.control = {this.cb_cancel, this.cb_ok, this.dw_discount, this.dw_control}
+
+// w_patientdiscount.destroy() returns 0
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.dw_discount
+	destroy this.dw_control
+
+// w_patientdiscount.open() returns long
+	long ll_code
+	long ll_found
+	long ll_admissioncode
+	long[] ll_patientcode
+	double ld_grandtotal
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	datetime ldt_startdatetime
+	datetime ldt_enddatetime
+	date ld_startdate
+	date ld_enddate
+	time lt_starttime
+	time lt_endtime
+	ll_code = message.doubleparm
+	if ll_code <= 0 then
+		messagebox("Patient Validation!", "Please Select a valid patient")
+		closewithreturn(this, -1)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width * 0.98
+		ll_height = ll_win_height * 0.80
+		this.width = ll_width
+		this.height = ll_height
+		this.y = int((ll_height - this.height) / 2.0)
+		this.dw_control.width = ll_width * 0.98
+		this.dw_control.height = ll_height * 0.65
+		this.dw_discount.width = ll_width * 0.98
+		this.dw_discount.y = this.dw_control.y + this.dw_control.height + 5
+		this.cb_ok.y = this.height - 300
+		this.cb_cancel.y = this.height - 300
+	end if
+	setredraw(false)
+	open(w_selectformat_inpatient_outpatient)
+	this.il_format = message.doubleparm
+	if this.il_format = 1 then
+		this.dw_control.dataobject = "d_inpatientbill_fatimapharmacy"
+		ll_admissioncode = wf_getpatientadmission(ll_code)
+		if ll_admissioncode > 0 then
+			this.dw_control.settransobject(sqlca)
+			this.dw_control.retrieve(ll_admissioncode)
+		else
+			messagebox("Patient Validation!", "Please Select a valid patient")
+			close(this)
+			if not isvalid(message) then
+				return 0
+			end if
+			return message.returnvalue
+		end if
+	else
+		ld_startdate = date("1900-01-01")
+		lt_starttime = time("00:00:00")
+		ldt_startdatetime = datetime(ld_startdate, lt_starttime)
+		ld_enddate = date(string(today(), "yyyy/mm/dd"))
+		lt_endtime = time("23:59:59")
+		ldt_enddatetime = datetime(ld_enddate, lt_endtime)
+		this.dw_control.dataobject = "d_opdpatientbill"
+		this.dw_control.settransobject(sqlca)
+		ll_patientcode[1] = ll_code
+		this.dw_control.retrieve(ll_patientcode, ldt_startdatetime, ldt_enddatetime, 0.00)
+	end if
+	if this.dw_control.rowcount() > 0 then
+		this.dw_discount.settransobject(sqlca)
+		this.dw_discount.insertrow(0)
+		ld_grandtotal = this.dw_control.object.c_grandtotal[1]
+		if ld_grandtotal <= 0.0 then
+			messagebox("Discount Validation!", "Patient Bill is not valid for discount purpose")
+			closewithreturn(this, -1)
+			if not isvalid(message) then
+				return 0
+			end if
+			return message.returnvalue
+		end if
+		this.dw_discount.object.grandtotal[1] = ld_grandtotal
+	else
+		messagebox("Patient Validation!", "No Billing exists for this Patient")
+		closewithreturn(this, -1)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	this.dw_control.modify("DataWindow.Print.Preview=yes")
+	this.dw_control.object.datawindow.print.buttons = "yes"
+	setredraw(true)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_patientdiscount.close() returns long
+	closewithreturn(this, this.id_disountvalue)
+	return ::message.returnvalue
+
+// w_patientdiscount.key(keycode key, unsignedlong keyflags) returns long
+	if keydown(keyescape!) then
+		this.id_disountvalue = -1
+		closewithreturn(this, this.id_disountvalue)
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.id_disountvalue = -1
+	closewithreturn(parent, parent.id_disountvalue)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	double ld_discountvalue
+	if parent.dw_discount.accepttext() = 1 then
+		if parent.dw_discount.getrow() > 0 then
+			ld_discountvalue = parent.dw_discount.object.c_tot_discount[parent.dw_discount.getrow()]
+			if ld_discountvalue >= 0.0 then
+				parent.id_disountvalue = ld_discountvalue
+				closewithreturn(parent, parent.id_disountvalue)
+				return ::message.returnvalue
+			end if
+		else
+			closewithreturn(parent, -1)
+			return ::message.returnvalue
+		end if
+		return
+	end if
+	return ::message.returnvalue

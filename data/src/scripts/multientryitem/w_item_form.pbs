@@ -1,0 +1,1278 @@
+// window w_item_form (multientryitem)  ancestor: w_multi_entry
+
+// w_item_form.ue_populate_newitem(long al_icode) returns 0
+	long ll_icode
+	long ll_count
+	string ls_null
+	setnull(ls_null)
+	setnull(ll_icode)
+	this.id_master.retrieve(al_icode)
+	this.id_detail.retrieve(al_icode)
+	this.id_master.setitemstatus(this.id_master.getrow(), 0, primary!, newmodified!)
+	this.id_master.setitem(this.id_master.getrow(), "code", ll_icode)
+	this.id_master.setitem(this.id_master.getrow(), "customicode", ls_null)
+	this.id_master.setitem(this.id_master.getrow(), "regdno", ls_null)
+	this.id_master.setitem(this.id_master.getrow(), "avgprice", 0)
+	this.id_master.setitem(this.id_master.getrow(), "recentpurprice", 0)
+	for ll_count = 1 to this.id_detail.rowcount()
+		this.id_detail.setitemstatus(ll_count, 0, primary!, newmodified!)
+	next
+
+// w_item_form.wf_duplicateitemno(string as_itemno) returns boolean
+	long ll_icode
+	long ll_found
+	boolean lb_duplicate
+	as_itemno = trim(as_itemno)
+	if this.id_detail.rowcount() > 0 then
+		ll_icode = this.id_detail.object.code[this.id_detail.rowcount()]
+	end if
+	ll_found = this.id_alternateitemalias.find("customicode = '" + upper(as_itemno) + "' ", 1, this.id_alternateitemalias.rowcount())
+	if ll_found = 0 or ll_found > this.id_alternateitemalias.rowcount() then
+		lb_duplicate = false
+	else
+		lb_duplicate = true
+	end if
+	if lb_duplicate = false then
+		if sqlca.checkuniquealiasname(ll_icode, as_itemno) = 0 then
+			lb_duplicate = false
+		else
+			lb_duplicate = true
+		end if
+	end if
+	return lb_duplicate
+
+// w_item_form.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+
+// w_item_form.wf_populate_ddlb(datawindow dwcontrol) returns 0
+	integer li_column_count
+	integer li_counter
+	string ls_column_name
+	string ls_columntype
+	this.tab_retrieve.tabpage_list.ddlb_filter_column.reset()
+	this.tab_retrieve.tabpage_list.ddlb_sort.reset()
+	li_column_count = integer(dwcontrol.object.datawindow.column.count)
+	for li_counter = li_column_count to li_counter step -1
+		ls_column_name = dwcontrol.describe("#" + string(li_counter) + ".Name")
+		this.tab_retrieve.tabpage_list.ddlb_sort.additem(ls_column_name)
+		this.tab_retrieve.tabpage_list.ddlb_filter_column.additem(ls_column_name)
+	next
+	this.tab_retrieve.tabpage_list.ddlb_sort.text = ls_column_name
+	ls_columntype = this.id_dwcontrol.describe("#1.ColType")
+	if left(ls_columntype, 4) = "char" then
+		this.ii_type = 1
+	elseif left(ls_columntype, 4) = "date" then
+		this.ii_type = 3
+	else
+		this.ii_type = 2
+	end if
+	this.ii_colindex = 1
+	this.tab_retrieve.tabpage_list.rb_ascending.checked = true
+	wf_sortdw(this.tab_retrieve.tabpage_list.ddlb_sort.text, this.is_sortsequence)
+	this.id_master.setfocus()
+
+// w_item_form.wf_populate_newitem() returns integer
+	long ll_code
+	long ll_rowcount
+	s_positem ls_positem
+	open(w_selectitem_with_cat_setting)
+	ls_positem = message.powerobjectparm
+	if ls_positem.l_icode > 0 then
+		event ue_new()
+		post event ue_populate_newitem(ls_positem.l_icode)
+	end if
+	return 1
+
+// w_item_form.wf_retrievelistall() returns long
+	return this.id_list.retrieve(f_getgroupcode(gl_usercode))
+
+// w_item_form.wf_validateitem() returns integer
+	long ll_icode
+	integer li_errcode
+	integer li_null
+	ll_icode = this.id_detail.getitemnumber(this.il_currrow, "suppcode")
+	if vf_dwdupcode1(this.id_detail, "suppcode", string(ll_icode), this.il_currrow) = true then
+		messagebox("Duplication Error", "Current row is duplicate")
+		li_errcode = -1
+	else
+		li_errcode = 0
+	end if
+	this.ib_itemvalidated = true
+	if li_errcode = -1 then
+		setnull(li_null)
+		this.id_detail.setcolumn("suppcode")
+		this.id_detail.scrolltorow(this.il_currrow)
+		this.id_detail.object.suppcode[this.il_currrow] = li_null
+	end if
+	return li_errcode
+
+// w_item_form.wf_selectmodels() returns 0
+	s_dw_header lstr_header
+	lstr_header.dw_header = this.id_iteminmodel
+	openwithparm(w_iteminmodel_form, lstr_header)
+
+// w_item_form.wf_retrievelist() returns long
+	long ll_rtcode
+	if this.ib_showiteminlist then
+		ll_rtcode = this.id_list.retrieve(f_getgroupcode(gl_usercode))
+	else
+		ll_rtcode = -1
+	end if
+	return ll_rtcode
+
+// w_item_form.wf_set_item_association() returns 0
+	s_dw_header lstr_header
+	lstr_header.dw_header = this.id_itemassociation
+	lstr_header.l_code = this.id_master.object.code[this.id_master.getrow()]
+	openwithparm(w_itemassociation_form, lstr_header)
+
+// w_item_form.wf_get_itemnotes(long al_icode) returns long
+	u_transaction lt_transobject
+	lt_transobject = create u_transaction
+	lt_transobject.autocommit = true
+	SQL start USING lt_transobject;
+	if lt_transobject.sqlcode <> 0 then
+		messagebox("Connection Error", "Unable to connect to DataBase server")
+		destroy lt_transobject
+		return -1
+	end if
+	SQL SelectBlob notes INTO :this.iblob_notes From ItemNotes Where Icode =:al_icode USING lt_transobject;
+	if lt_transobject.sqlcode <> 0 then
+		messagebox("Notes ", "Unable to fetch item notes.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext)
+	end if
+	SQL stop USING lt_transobject;
+	destroy lt_transobject
+	return 0
+
+// w_item_form.wf_insert_itemnotes(long al_icode, integer al_insert_update_mode) returns long
+	u_transaction lt_transobject
+	lt_transobject = create u_transaction
+	lt_transobject.autocommit = true
+	SQL start USING lt_transobject;
+	if lt_transobject.sqlcode <> 0 then
+		messagebox("Connection Error", "Unable to connect to DataBase server for updating/inserting in ItemNotes")
+		destroy lt_transobject
+		return -1
+	end if
+	if al_insert_update_mode = 0 then
+		SQL Insert Into ItemNotes ( ICode ) Values ( :al_icode ) USING lt_transobject;
+		if lt_transobject.sqlcode <> 0 then
+			messagebox("Insert Error", "Unable to Insert Item Into ItemNotes.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext)
+			SQL stop USING lt_transobject;
+			destroy lt_transobject
+			return -1
+		end if
+		return
+	end if
+	if not isnull(this.iblob_notes) then
+		SQL UpdateBlob ItemNotes Set Notes =:this.iblob_notes Where Icode =:al_icode USING lt_transobject;
+		if lt_transobject.sqlcode <> 0 then
+			messagebox("Notes ", "Unable to update item notes.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext)
+		end if
+	end if
+	SQL stop USING lt_transobject;
+	destroy lt_transobject
+	return 0
+
+// w_item_form.wf_set_itemnotes() returns 0
+	s_arguements lstr_arg
+	lstr_arg.l_code1 = this.id_master.object.code[this.id_master.getrow()]
+	lstr_arg.l_code2 = 1
+	lstr_arg.s_name1 = string(this.iblob_notes)
+	openwithparm(w_item_form_notes, lstr_arg)
+	lstr_arg = message.powerobjectparm
+	if lstr_arg.i_status = 1 then
+		this.iblob_notes = blob(lstr_arg.s_name1)
+	end if
+
+// w_item_form.wf_select_itemauthor() returns 0
+	s_dw_header lstr_header
+	lstr_header.dw_header = this.id_itemauthor
+	lstr_header.l_code = this.id_master.object.code[this.id_master.getrow()]
+	openwithparm(w_itemauthor_form, lstr_header)
+
+// w_item_form.wf_invoke_graments_wizard() returns long
+	if this.tab_retrieve.selectedtab = 2 then
+		open(w_item_garments_wizard)
+	end if
+	return 0
+
+// w_item_form.wf_select_alternateitemalias() returns 0
+	s_dw_header lstr_header
+	lstr_header.dw_header = this.id_alternateitemalias
+	lstr_header.l_code = this.id_master.object.code[this.id_master.getrow()]
+	lstr_header.s_saletype = this.id_master.object.customicode[this.id_master.getrow()]
+	openwithparm(w_alternate_item_aliasname_form, lstr_header)
+
+// w_item_form.wf_setimage() returns long
+	long ll_counter
+	long ll_code
+	long ll_row
+	s_itemimage lstr_itemimage
+	for ll_counter = 1 to this.id_itemimage.rowcount()
+		lstr_itemimage.ls_value[ll_counter, 1] = trim(string(this.id_itemimage.object.rowid[ll_counter]))
+		lstr_itemimage.ls_value[ll_counter, 2] = this.id_itemimage.object.imagedescription[ll_counter]
+		lstr_itemimage.ls_value[ll_counter, 3] = this.id_itemimage.object.imagetype[ll_counter]
+		lstr_itemimage.blob[ll_counter] = this.istr_itemimage.blob[ll_counter]
+	next
+	openwithparm(w_itemimage, lstr_itemimage)
+	lstr_itemimage = message.powerobjectparm
+	if lstr_itemimage.i_closemode = 1 then
+		this.istr_itemimage = lstr_itemimage
+		this.id_itemimage.reset()
+		ll_code = this.id_master.object.code[this.id_master.rowcount()]
+		for ll_counter = 1 to 200
+			if long(lstr_itemimage.ls_value[ll_counter, 1]) > 0 then
+				ll_row = this.id_itemimage.insertrow(0)
+				this.id_itemimage.object.code[ll_row] = ll_code
+				this.id_itemimage.object.rowid[ll_row] = long(lstr_itemimage.ls_value[ll_counter, 1])
+				this.id_itemimage.object.imagedescription[ll_row] = lstr_itemimage.ls_value[ll_counter, 2]
+				this.id_itemimage.object.imagetype[ll_row] = lstr_itemimage.ls_value[ll_counter, 3]
+			end if
+		next
+	end if
+	return 0
+
+// w_item_form.wf_get_itemimage(long al_icode, long al_row) returns long
+	blob lbl_image
+	u_transaction lt_transobject
+	lt_transobject = create u_transaction
+	lt_transobject.autocommit = true
+	SQL start USING lt_transobject;
+	if lt_transobject.sqlcode <> 0 then
+		messagebox("Connection Error", "Unable to connect to DataBase server")
+		destroy lt_transobject
+		return -1
+	end if
+	SQL SelectBlob ItemImage INTO :lbl_image From ItemImage Where Icode =:al_icode AND RowID =:al_row USING lt_transobject;
+	if lt_transobject.sqlcode <> 0 then
+		messagebox("Item Image/Picture ", "Unable to fetch item Image.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext)
+	end if
+	SQL stop USING lt_transobject;
+	destroy lt_transobject
+	this.istr_itemimage.blob[al_row] = lbl_image
+	return 0
+
+// w_item_form.wf_populate_itemimage() returns long
+	long ll_counter
+	long ll_rowcount
+	long ll_icode
+	ll_rowcount = this.id_itemimage.rowcount()
+	if ll_rowcount <= 0 then
+		return 0
+	end if
+	ll_icode = this.id_itemimage.object.code[1]
+	for ll_counter = 1 to ll_rowcount
+		this.istr_itemimage.ls_value[ll_counter, 1] = trim(string(this.id_itemimage.object.rowid[ll_counter]))
+		this.istr_itemimage.ls_value[ll_counter, 2] = this.id_itemimage.object.imagedescription[ll_counter]
+		this.istr_itemimage.ls_value[ll_counter, 3] = this.id_itemimage.object.imagetype[ll_counter]
+		wf_get_itemimage(ll_icode, ll_counter)
+	next
+	return 0
+
+// w_item_form.wf_update_itemimage(long al_code) returns long
+	long ll_counter
+	long ll_code
+	long ll_rowid
+	string ls_desc
+	string ls_imgtype
+	u_transaction lt_transobject
+	ll_code = al_code
+	if al_code > 0 and this.id_itemimage.rowcount() = 0 then
+		return 0
+	end if
+	lt_transobject = create u_transaction
+	lt_transobject.autocommit = true
+	SQL start USING lt_transobject;
+	if lt_transobject.sqlcode <> 0 then
+		messagebox("Connection Error", "Unable to connect to DataBase server for updating/inserting in ItemImage Table")
+		destroy lt_transobject
+		return -1
+	end if
+	SQL DELETE ItemImage WHERE ICode =:ll_code USING lt_transobject;
+	if lt_transobject.sqlcode <> 0 then
+		messagebox("Connection Error", "Unable to Delete Previous Item Image Record from database")
+		destroy lt_transobject
+		return -1
+	end if
+	for ll_counter = 1 to this.id_itemimage.rowcount()
+		ll_rowid = this.id_itemimage.object.rowid[ll_counter]
+		ls_desc = this.id_itemimage.object.imagedescription[ll_counter]
+		ls_imgtype = this.id_itemimage.object.imagetype[ll_counter]
+		SQL INSERT INTO ItemImage ( Icode , ImageDescription , RowID , ImageType ) VALUES ( :ll_code , :ls_desc , :ll_rowid , :ls_imgtype ) USING lt_transobject;
+		if lt_transobject.sqlcode <> 0 then
+			messagebox("Insert Error", "Unable to Insert Item Images Into Item Image Table.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext)
+			SQL stop USING lt_transobject;
+			destroy lt_transobject
+			return -1
+		end if
+		SQL UpdateBlob ItemImage Set ItemImage =:this.istr_itemimage.blob[ll_counter] Where Icode =:ll_code and ROWID =:ll_rowid USING lt_transobject;
+		if lt_transobject.sqlcode <> 0 then
+			messagebox("Item Image ", "Unable to update item image.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext)
+		end if
+	next
+	SQL stop USING lt_transobject;
+	destroy lt_transobject
+	return 0
+
+// w_item_form.wf_check_stock_and_unposted_trans(long ai_icode) returns long
+	double ld_stock
+	long ll_count
+	long ll_retcode
+	string ls_errtext
+	if isnull(ai_icode) then
+		ll_retcode = 0
+	else
+		this.it_transobject.getitemstockall(ai_icode, ld_stock)
+		if this.it_transobject.sqlcode = 0 then
+			if ld_stock = 0.0 then
+				this.it_transobject.checkunpostedtransactionofanitem(ai_icode, ll_count, ls_errtext)
+				if this.it_transobject.sqlcode = 0 then
+					if ll_count > 0 then
+						messagebox("Item Data Validation", "Some Unposted Stock Transactions exists for this item. Please do the needfull and try again.", stopsign!)
+						ll_retcode = 2
+					else
+						ll_retcode = 0
+					end if
+				end if
+			else
+				messagebox("Item Data Validation", "Item Stock exists for this item. Please do the needfull and try again.", stopsign!)
+				ll_retcode = 1
+			end if
+		else
+			messagebox("Item Data Validation", "Database Error: Item Stock information can not be retrieved", stopsign!)
+			ll_retcode = 3
+		end if
+	end if
+	return ll_retcode
+
+// w_item_form.wf_show_unpostedtransactionreport() returns long
+	long ll_icode
+	if this.id_master.getrow() > 0 then
+		ll_icode = this.id_master.object.code[this.id_master.getrow()]
+		if ll_icode > 0 then
+			openwithparm(w_showunpostedtransactionreport, ll_icode)
+		end if
+	end if
+	return 0
+
+// w_item_form.wf_select_itempricepolicy() returns long
+	s_dw_header lstr_header
+	lstr_header.dw_header = this.id_pricepolicydetail
+	lstr_header.l_code = this.id_master.object.code[this.id_master.getrow()]
+	lstr_header.l_code2 = this.id_master.object.packunits[this.id_master.getrow()]
+	if lstr_header.l_code2 <= 0 or isnull(lstr_header.l_code2) then
+		lstr_header.l_code2 = 1
+	end if
+	lstr_header.d_value = this.id_master.object.saleprice[this.id_master.getrow()]
+	lstr_header.s_saletype = this.id_master.object.customicode[this.id_master.getrow()]
+	openwithparm(w_item_pricepolicy_form, lstr_header)
+	return 0
+
+// w_item_form.wf_prepare_pricepolicy_for_saving(long al_icode, boolean ab_newitem) returns long
+	long ll_pricepolicycode
+	long ll_detailrows
+	long ll_counter
+	if this.id_pricepolicyheader.rowcount() <= 0 then
+		this.id_pricepolicyheader.insertrow(0)
+	end if
+	ll_pricepolicycode = this.id_pricepolicyheader.object.code[1]
+	if isnull(ll_pricepolicycode) or ll_pricepolicycode <= 0 then
+		wf_tabnewid("PricePolicy", ll_pricepolicycode)
+		this.id_pricepolicyheader.object.code[1] = ll_pricepolicycode
+	end if
+	ll_pricepolicycode = this.id_pricepolicyheader.object.code[1]
+	this.id_pricepolicyheader.object.icode[1] = al_icode
+	this.id_pricepolicyheader.object.name[1] = trim(string(al_icode)) + "."
+	ll_detailrows = this.id_pricepolicydetail.rowcount()
+	if ll_detailrows <= 0 then
+		this.id_pricepolicydetail.insertrow(0)
+		this.id_pricepolicydetail.object.code[1] = ll_pricepolicycode
+		this.id_pricepolicydetail.object.qtylimit[1] = 0
+		this.id_pricepolicydetail.object.price[1] = this.id_master.object.saleprice[1]
+		this.id_pricepolicydetail.object.packunits[1] = this.id_master.object.packunits[1]
+		this.id_pricepolicydetail.object.expirydate[1] = datetime(date("2012-12-12"), time("00:00:00"))
+	end if
+	ll_counter = 0
+	for ll_counter = 1 to this.id_pricepolicydetail.rowcount()
+		this.id_pricepolicydetail.object.code[ll_counter] = ll_pricepolicycode
+	next
+	return 0
+
+// w_item_form.wf_duplicate_regno(string as_regno) returns long
+	long ll_icode
+	long ll_count
+	long ll_retcode
+	as_regno = trim(as_regno)
+	if this.id_master.rowcount() > 0 then
+		ll_icode = this.id_master.object.code[this.id_master.rowcount()]
+	end if
+	if ll_icode > 0 then
+		SQL SELECT ISNULL ( count ( *) , 0 ) INTO :ll_count FROM item WHERE item.regdno =:as_regno and icode <> :ll_icode USING sqlca;
+	else
+		SQL SELECT ISNULL ( count ( *) , 0 ) INTO :ll_count FROM item WHERE item.regdno =:as_regno USING sqlca;
+	end if
+	if sqlca.sqlcode = 0 then
+		if ll_count > 0 then
+			ll_retcode = 1
+		else
+			ll_retcode = 0
+		end if
+	else
+		ll_retcode = 2
+	end if
+	return ll_retcode
+
+// w_item_form.wf_populate_itemregrequest() returns long
+	double ld_colvalue
+	long ll_counter
+	long ll_row
+	string ls_column
+	string ls_coltype
+	string ls_colvalue
+	datetime ldt_colvalue
+	s_arguements lstr_arg
+	u_ds_standard lds_itemreq
+	u_ds_standard lds_alteraliasreq
+	datastore lds_itemsetting
+	open(w_arg_itemregrequest)
+	lstr_arg = message.powerobjectparm
+	if lstr_arg.l_code1 > 0 and lstr_arg.i_status = 1 then
+		setnull(this.ii_itemregreqcode)
+		event ue_newform()
+		lds_itemreq = create u_ds_standard
+		lds_alteraliasreq = create u_ds_standard
+		lds_itemreq.dataobject = "d_itemregrequest_detail"
+		lds_itemreq.settransobject(this.it_transobject)
+		lds_alteraliasreq.dataobject = "d_alternateitemaliasrequest"
+		lds_alteraliasreq.settransobject(this.it_transobject)
+		lds_itemreq.retrieve(lstr_arg.l_code1)
+		if lds_itemreq.rowcount() > 0 then
+			lds_itemsetting = create datastore
+			lds_itemsetting.dataobject = "d_interfacesettingcols_withallcolumns"
+			lds_itemsetting.settransobject(this.it_transobject)
+			lds_itemsetting.retrieve(48, 3)
+			this.id_master.hide()
+			for ll_counter = 1 to lds_itemsetting.rowcount()
+				ls_column = lds_itemsetting.getitemstring(ll_counter, "colname")
+				ls_coltype = lds_itemreq.describe(ls_column + ".ColType")
+				if left(ls_coltype, 4) = "char" then
+					ls_colvalue = lds_itemreq.getitemstring(1, ls_column)
+					this.id_master.setitem(1, ls_column, ls_colvalue)
+				elseif left(ls_coltype, 4) = "date" then
+					ldt_colvalue = lds_itemreq.getitemdatetime(1, ls_column)
+					this.id_master.setitem(1, ls_column, ldt_colvalue)
+				else
+					ld_colvalue = lds_itemreq.getitemnumber(1, ls_column)
+					this.id_master.setitem(1, ls_column, ld_colvalue)
+				end if
+			next
+			this.id_master.show()
+			if wf_duplicateitemno(this.id_master.object.customicode[1]) then
+				messagebox("Item Alias Name Validation", "Item Alias Name Duplication Error~r~nPlease enter some other Item Alias Name")
+				return 1
+			end if
+			ll_counter = 0
+			this.id_alternateitemalias.reset()
+			lds_alteraliasreq.retrieve(lstr_arg.l_code1)
+			for ll_counter = 1 to lds_alteraliasreq.rowcount()
+				if wf_duplicateitemno(lds_alteraliasreq.object.customicode[ll_counter]) then
+					messagebox("Item Alternate Alias Name Validation", "Item Alternate Alias Name Duplication Error~r~nPlease enter some other Alternate Item Alias Name")
+					return 1
+				end if
+				ll_row = this.id_alternateitemalias.insertrow(0)
+				this.id_alternateitemalias.object.customicode[ll_row] = lds_alteraliasreq.object.customicode[ll_counter]
+				this.id_alternateitemalias.object.packingdesc[ll_row] = lds_alteraliasreq.object.packingdesc[ll_counter]
+				this.id_alternateitemalias.object.qty[ll_row] = lds_alteraliasreq.object.qty[ll_counter]
+				this.id_alternateitemalias.object.purprice[ll_row] = lds_alteraliasreq.object.purprice[ll_counter]
+				this.id_alternateitemalias.object.unitpurprice[ll_row] = lds_alteraliasreq.object.unitpurprice[ll_counter]
+				this.id_alternateitemalias.object.saleprice[ll_row] = lds_alteraliasreq.object.saleprice[ll_counter]
+				this.id_alternateitemalias.object.unitsaleprice[ll_row] = lds_alteraliasreq.object.unitsaleprice[ll_counter]
+			next
+			this.ii_itemregreqcode = lstr_arg.l_code1
+		end if
+	end if
+	return 0
+
+// w_item_form.wf_update_item_in_activequotations() returns long
+	long ll_icode
+	if this.tab_retrieve.selectedtab = 2 and this.id_list.getrow() > 0 then
+		ll_icode = this.id_list.object.code[this.id_list.getrow()]
+		if ll_icode > 0 then
+			openwithparm(w_update_item_in_activequotations, ll_icode)
+		end if
+	end if
+	return 0
+
+// w_item_form.wf_update_activequtations_for_newitem(boolean ab_newitem) returns long
+	double ld_saleprice
+	double ld_flatdisc
+	double ld_discperc
+	long ll_icode
+	long ll_packunits
+	if ab_newitem = false then
+		return 0
+	end if
+	ll_icode = this.id_master.object.code[1]
+	ld_saleprice = this.id_master.object.saleprice[1]
+	ll_packunits = this.id_master.object.packunits[1]
+	ld_flatdisc = this.id_master.object.flatdisc[1]
+	ld_discperc = this.id_master.object.salediscperc[1]
+	SQL INSERT INTO DBO.QuotationDetail ( QuotationCode , ICode , Qty , PackUnits , SalePrice , DiscPerc , SalesTax , itemflatdisc , BonusQty , GSTPerc , UnitSalesTax , ItemDescription , gcode , RemoteNetSaleQty , RemoteStock , PORate , PODiscPerc , SpecialRate , RefNo ) SELECT QuotationCode , ICode =:ll_icode , Qty =1 , PackUnits =:ll_packunits , SalePrice =CASE WHEN LoosePack =1 THEN Round ( :ld_saleprice / :ll_packunits , 2 ) ELSE 0 END , DiscPerc =:ld_saleprice , SalesTax =:ld_discperc , itemflatdisc =:ld_flatdisc , BonusQty =0 , GSTPerc =0 , UnitSalesTax =0 , ItemDescription =NULL , gcode =1 , RemoteNetSaleQty =0 , RemoteStock =0 , PORate =0 , PODiscPerc =0 , SpecialRate =0 , RefNo =NULL FROM QuotationHeader WHERE AutoInsertNewItems ='Y' USING this.it_transobject;   /* bind positions inferred */
+	if this.it_transobject.sqlcode = 0 then
+		return 0
+	end if
+	return -1
+
+// w_item_form.wf_set_changereason(string reason) returns integer
+	string ls_reason
+	if this.id_master.object.code[1] > 0 then
+		ls_reason = this.id_master.object.changereason[1]
+		if ls_reason = "New Item" or ls_reason = "Multiple Changes" then
+			ls_reason = ""
+		end if
+		if len(ls_reason) > 0 then
+			this.id_master.object.changereason[1] = this.id_master.object.changereason[1] + "," + reason
+		else
+			this.id_master.object.changereason[1] = reason
+		end if
+		ls_reason = this.id_master.object.changereason[1]
+		if len(ls_reason) > 100 then
+			this.id_master.object.changereason[1] = left(ls_reason, 100)
+		end if
+	end if
+	return 0
+
+// w_item_form.create() returns 0
+	integer icurrent
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_item_form" then
+		this.menuid = create m_item_form
+	end if
+	this.dw_itemassociation = create dw_itemassociation
+	this.dw_itemauthor = create dw_itemauthor
+	this.dw_alternatealias = create dw_alternatealias
+	this.dw_itemimage = create dw_itemimage
+	this.dw_pricepolicyheader = create dw_pricepolicyheader
+	this.dw_pricepolicydetail = create dw_pricepolicydetail
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_itemassociation
+	this.control[icurrent + 2] = this.dw_itemauthor
+	this.control[icurrent + 3] = this.dw_alternatealias
+	this.control[icurrent + 4] = this.dw_itemimage
+	this.control[icurrent + 5] = this.dw_pricepolicyheader
+	this.control[icurrent + 6] = this.dw_pricepolicydetail
+
+// w_item_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_itemassociation
+	destroy this.dw_itemauthor
+	destroy this.dw_alternatealias
+	destroy this.dw_itemimage
+	destroy this.dw_pricepolicyheader
+	destroy this.dw_pricepolicydetail
+
+// w_item_form.ue_save() returns 0
+	long ll_mastercurrrow
+	long ll_invid
+	long ll_detailrows
+	long ll_found
+	long ll_null
+	long ll_code
+	long ll_pk
+	long ll_charpos
+	integer li_counter
+	integer ll_salesmancode
+	boolean lb_commitflag
+	boolean lb_newitem
+	string ls_aliasname
+	string ls_itemname
+	string ls_errtext
+	string ls_reason
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	char lc_char
+	datastore lds_itemlist
+	dwitemstatus lds_rowstatus
+	lds_itemlist = create datastore
+	lds_itemlist.dataobject = "d_itemlist"
+	lds_itemlist.settransobject(this.it_transobject)
+	setnull(ll_null)
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	if not wf_isvalid_string(this.id_master.object.name[1], ll_charpos, lc_char) then
+		this.id_master.setcolumn("name")
+		messagebox("Item Name Validation", "Item Name Contain Un-Allowed Character [" + lc_char + "] at Position No. [" + trim(string(ll_charpos)) + "]. Please correct.", stopsign!)
+		return
+	end if
+	if this.id_alternateitemalias.rowcount() > 0 and (this.id_alternateitemalias.object.customicode[1] = "" or isnull(this.id_alternateitemalias.object.customicode[1])) then
+		this.id_alternateitemalias.deleterow(1)
+	end if
+	ll_pk = this.id_master.object.code[1]
+	lds_itemlist.retrieve()
+	if this.ib_modify = false then
+		ls_aliasname = this.id_master.getitemstring(this.id_master.getrow(), "CustomICode")
+		ll_found = lds_itemlist.find("fullcode='" + ls_aliasname + "'", 1, lds_itemlist.rowcount())
+		if ll_found > 0 then
+			messagebox("Item Alias Validation", "Item Alias already exists.~r~n" + "Kindly change the Item Alais Name.~r~nAlready existing Item Alias details are:~r~n" + "Item Name = " + lds_itemlist.getitemstring(ll_found, "itemname") + "~r~n" + "Alias Name = " + lds_itemlist.getitemstring(ll_found, "fullcode"))
+			this.id_master.setfocus()
+			this.id_master.setcolumn("customicode")
+			return
+		end if
+	else
+		ls_aliasname = this.id_master.getitemstring(this.id_master.getrow(), "CustomICode")
+		ll_code = this.id_master.getitemnumber(this.id_master.getrow(), "code")
+		ll_found = lds_itemlist.find("icode <> " + string(ll_code) + " AND fullcode='" + ls_aliasname + "'", 1, lds_itemlist.rowcount())
+		if ll_found > 0 then
+			messagebox("Item Alias Validation", "Item Alias already exists.~r~n" + "Kindly change the Item Alais Name.~r~nAlready existing Item Alias details are:~r~n" + "Item Name = " + lds_itemlist.getitemstring(ll_found, "itemname") + "~r~n" + "Alias Name = " + lds_itemlist.getitemstring(ll_found, "fullcode"))
+			this.id_master.setfocus()
+			this.id_master.setcolumn("customicode")
+			return
+		end if
+	end if
+	if this.ib_modify = false then
+		ls_itemname = this.id_master.getitemstring(this.id_master.getrow(), "name")
+		ll_found = lds_itemlist.find("itemname='" + ls_itemname + "'", 1, lds_itemlist.rowcount())
+		if ll_found > 0 then
+			messagebox("Item Validation", "Item with the same name already exists.~r~n" + "Kindly change the Item name.~r~nAlready existing Item details are:~r~n" + "Item Name = " + lds_itemlist.getitemstring(ll_found, "itemname") + "~r~n" + "Alias Name = " + lds_itemlist.getitemstring(ll_found, "fullcode"))
+			return
+		end if
+	else
+		ls_itemname = this.id_master.getitemstring(this.id_master.getrow(), "name")
+		ll_code = this.id_master.getitemnumber(this.id_master.getrow(), "code")
+		ll_found = lds_itemlist.find("icode <> " + string(ll_code) + " AND itemname='" + ls_itemname + "'", 1, lds_itemlist.rowcount())
+		if ll_found > 0 then
+			messagebox("Item Validation", "Item with the same name already exists.~r~n" + "Kindly change the Item name.~r~nAlready existing Item details are:~r~n" + "Item Name = " + lds_itemlist.getitemstring(ll_found, "itemname") + "~r~n" + "Alias Name = " + lds_itemlist.getitemstring(ll_found, "fullcode"))
+			return
+		end if
+	end if
+	setpointer(hourglass!)
+	if f_stringpreferences("AskUserPasswordInItem") = "Y" then
+		open(w_salesmanpassword)
+		ll_salesmancode = long(message.doubleparm)
+		setfocus()
+	else
+		ll_salesmancode = gl_usercode
+	end if
+	if ll_salesmancode > 0 then
+		ll_mastercurrrow = this.id_master.getrow()
+		ll_invid = this.id_master.object.code[ll_mastercurrrow]
+		if isnull(ll_invid) then
+			if this.ib_addnewitem = false then
+				messagebox("Add New Item", "You do not have permission to add/define a new item", stopsign!)
+				return
+			end if
+			lb_newitem = true
+			wf_tabnewid("item", ll_invid)
+			this.id_master.object.code[ll_mastercurrrow] = ll_invid
+			this.id_master.object.module[ll_mastercurrrow] = "Item Form"
+			this.id_master.object.changereason[ll_mastercurrrow] = "New Item"
+		end if
+		this.il_codevalue = ll_invid
+		if isnull(this.id_master.getitemnumber(this.id_master.getrow(), "packsalestax")) then
+			this.id_master.setitem(this.id_master.getrow(), "packsalestax", 0)
+		end if
+		ls_aliasname = this.id_master.getitemstring(this.id_master.getrow(), "CustomICode")
+		if isnull(ls_aliasname) then
+			if wf_duplicateitemno(string(ll_invid)) then
+				messagebox("Item Alias Validation", "Auto Generated Item Alias Name " + string(ll_invid) + " already exists for some other item.~r~nPlease enter some other item alias name for this item and save again.", stopsign!)
+				this.id_master.setfocus()
+				this.id_master.setcolumn("customicode")
+				if isnull(ll_pk) then
+					this.id_master.object.code[1] = ll_null
+				end if
+				SQL rollback USING this.it_transobject;
+				return
+			else
+				this.id_master.setitem(this.id_master.getrow(), "CustomICode", string(ll_invid))
+			end if
+		end if
+		if isnull(this.id_master.object.regdno[1]) or this.id_master.object.regdno[1] = "" then
+			this.id_master.object.regdno[1] = this.id_master.object.customicode[1]
+		end if
+		if wf_duplicate_regno(this.id_master.object.regdno[1]) > 0 then
+			messagebox("Item Regd. No. Validation", "Item Regd. No. " + string(this.id_master.object.regdno[1]) + " already exists for some other item.~r~nPlease enter some other item regd. no. for this item and save again.", stopsign!)
+			this.id_master.setfocus()
+			this.id_master.setcolumn("regdno")
+			if isnull(ll_pk) then
+				this.id_master.object.code[1] = ll_null
+			end if
+			SQL rollback USING this.it_transobject;
+			return
+		end if
+		ll_detailrows = this.id_detail.rowcount()
+		li_counter = 1
+		if not wf_validateserverdatetime(ldt_server_datetime, ls_date_errtext) then
+			messagebox("Date Violation", ls_date_errtext, stopsign!)
+			setpointer(arrow!)
+			if isnull(ll_pk) then
+				this.id_master.object.code[1] = ll_null
+			end if
+			SQL rollback USING this.it_transobject;
+			return
+		end if
+		if not wf_getserverdatetime(ldt_server_datetime, ls_date_errtext) then
+			messagebox("Date Violation", ls_date_errtext, stopsign!)
+			if isnull(ll_pk) then
+				this.id_master.object.code[1] = ll_null
+			end if
+			SQL rollback USING this.it_transobject;
+			return
+		end if
+		do while li_counter <= ll_detailrows and lb_commitflag = true
+			lds_rowstatus = this.id_detail.getitemstatus(li_counter, 0, primary!)
+			if lds_rowstatus = newmodified! then
+				this.id_detail.setitem(li_counter, "code", ll_invid)
+			end if
+			li_counter = li_counter + 1
+		loop
+		for li_counter = 1 to li_counter
+			if lb_commitflag = true then
+				this.id_iteminmodel.setitem(li_counter, "icode", ll_invid)
+			end if
+		next
+		for li_counter = 1 to li_counter
+			if lb_commitflag = true then
+				this.id_alternateitemalias.setitem(li_counter, "icode", ll_invid)
+			end if
+		next
+		for li_counter = 1 to li_counter
+			if lb_commitflag = true then
+				this.id_itemauthor.setitem(li_counter, "icode", ll_invid)
+			end if
+		next
+		for li_counter = 1 to li_counter
+			if lb_commitflag = true then
+				this.id_itemassociation.setitem(li_counter, "icode", ll_invid)
+			end if
+		next
+		for li_counter = 1 to li_counter
+			if lb_commitflag = true then
+				this.id_itemimage.setitem(li_counter, "code", ll_invid)
+			end if
+		next
+		wf_prepare_pricepolicy_for_saving(ll_invid, lb_newitem)
+		if this.ib_modify = true then
+			this.id_master.setitem(li_counter, "usercode", ll_salesmancode)
+			this.id_master.setitem(li_counter, "lastupdate", ldt_server_datetime)
+			this.id_master.setitem(li_counter, "module", "Item Form")
+			ls_reason = this.id_master.object.changereason[1]
+			if ls_reason = "New Item" then
+				this.id_master.setitem(li_counter, "changereason", "")
+			elseif len(ls_reason) > 20 or ls_reason = "Multiple Changes" then
+				this.id_master.setitem(li_counter, "changereason", "Multiple Changes")
+			end if
+			if f_generateitemlog(this.id_master, "item_basicdata", this.it_transobject, ldt_server_datetime) < 0 then
+				messagebox("Database Problem", "Some Database Problem Occured generating Item Log!.~r~nReasons are:~r~n" + this.it_transobject.sqlerrtext, stopsign!)
+				SQL rollback USING this.it_transobject;
+				setpointer(arrow!)
+				return
+			end if
+		else
+			this.id_master.setitem(li_counter, "usercode", ll_salesmancode)
+			this.id_master.setitem(li_counter, "lastupdate", ldt_server_datetime)
+		end if
+		if this.id_master.update(true, false) < 0 then
+			SQL rollback USING this.it_transobject;
+			if lb_newitem = true then
+				this.id_master.object.code[1] = ll_null
+			end if
+			setpointer(arrow!)
+			return
+		end if
+		if this.id_detail.update(true, false) > 0 then
+			if this.id_iteminmodel.update(true, false) > 0 then
+				if this.id_itemassociation.update(true, false) > 0 then
+					if this.id_itemauthor.update(true, false) > 0 then
+						if this.id_alternateitemalias.update(true, false) > 0 then
+							if this.id_pricepolicyheader.update(true, false) > 0 then
+								if this.id_pricepolicydetail.update() > 0 then
+									if wf_update_activequtations_for_newitem(lb_newitem) = 0 then
+										SQL commit USING this.it_transobject;
+										messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+										if this.ib_modify = true then
+											wf_insert_itemnotes(this.id_master.object.code[this.id_master.getrow()], 1)
+										else
+											wf_insert_itemnotes(this.id_master.object.code[this.id_master.getrow()], 0)
+										end if
+										if this.ii_itemregreqcode > 0 then
+											SQL update ItemRegRequest SET ICode =:ll_invid , Status ='R' WHERE ItemRegReqCode =:this.ii_itemregreqcode USING this.it_transobject;
+											if this.it_transobject.sqlcode = 0 then
+												SQL commit USING this.it_transobject;
+											else
+												messagebox("Item Reg. Request", "Problem is upding Item Reg. Request Record.~r~nReasons are:-~r~n" + this.it_transobject.sqlerrtext, stopsign!)
+												SQL rollback USING this.it_transobject;
+											end if
+										end if
+										if wf_update_itemimage(ll_invid) = 0 then
+											this.id_itemimage.reset()
+											this.istr_itemimage = this.istr_blank_itemimage
+										end if
+										this.ib_commitok = true
+										this.id_master.resetupdate()
+										this.id_detail.resetupdate()
+										this.id_iteminmodel.resetupdate()
+										this.id_itemassociation.resetupdate()
+										this.id_alternateitemalias.resetupdate()
+										this.id_pricepolicyheader.resetupdate()
+										this.im_menu.m_file.m_new.enabled = true
+										this.editflag = false
+										if gd_recenttransdate < this.id_systemdate then
+											gd_recenttransdate = this.id_systemdate
+										end if
+									else
+										ls_errtext = this.it_transobject.sqlerrtext
+										SQL rollback USING this.it_transobject;
+										messagebox("Database Problem", "Some Database Problem Occured in updating Quotations for New Items.~r~nDetails are:-~r~n" + ls_errtext, stopsign!)
+										setpointer(arrow!)
+									end if
+								else
+									ls_errtext = this.it_transobject.sqlerrtext
+									SQL rollback USING this.it_transobject;
+									messagebox("Database Problem", "Some Database Problem Occured in saving Price Policy Detail Information.~r~nDetails are:-~r~n" + ls_errtext, stopsign!)
+									setpointer(arrow!)
+								end if
+							else
+								ls_errtext = this.it_transobject.sqlerrtext
+								SQL rollback USING this.it_transobject;
+								messagebox("Database Problem", "Some Database Problem Occured in saving Price Policy Header Information.~r~nDetails are:-~r~n" + ls_errtext, stopsign!)
+								setpointer(arrow!)
+							end if
+						else
+							ls_errtext = this.it_transobject.sqlerrtext
+							SQL rollback USING this.it_transobject;
+							messagebox("Database Problem", "Some Database Problem Occured in saving Alternate Item Alias Name(s)!~r~nDetails are:-~r~n" + ls_errtext, stopsign!)
+							setpointer(arrow!)
+						end if
+					else
+						ls_errtext = this.it_transobject.sqlerrtext
+						SQL rollback USING this.it_transobject;
+						messagebox("Database Problem", "Some Database Problem Occured in saving Item Author(s)!~r~nDetails are:-~r~n" + ls_errtext, stopsign!)
+						setpointer(arrow!)
+					end if
+				else
+					ls_errtext = this.it_transobject.sqlerrtext
+					SQL rollback USING this.it_transobject;
+					messagebox("Database Problem", "Some Database Problem Occured in saving Item Association!~rDetails are:-~r~n" + ls_errtext, stopsign!)
+					setpointer(arrow!)
+				end if
+			else
+				ls_errtext = this.it_transobject.sqlerrtext
+				SQL rollback USING this.it_transobject;
+				messagebox("Database Problem", "Some Database Problem Occured in saving Item In Models!~r~nDetails are:-~r~n" + ls_errtext, stopsign!)
+				setpointer(arrow!)
+			end if
+		else
+			ls_errtext = this.it_transobject.sqlerrtext
+			SQL rollback USING this.it_transobject;
+			setpointer(arrow!)
+		end if
+	else
+		setfocus()
+	end if
+	if wf_commitform() = false then
+		if lb_newitem = true then
+			setnull(ll_null)
+			this.id_master.object.code[1] = ll_null
+		end if
+		return
+	end if
+	setpointer(arrow!)
+
+// w_item_form.ue_detail() returns 0
+	long ll_counter
+	long ll_pricepolicycode
+	long ll_icode
+	long ll_found
+	call super::ue_detail
+	this.im_menu.m_file.m_delete.enabled = true
+	this.im_menu.m_file.m_first.enabled = true
+	this.im_menu.m_file.m_next.enabled = true
+	this.im_menu.m_file.m_last.enabled = true
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_menu.m_file.m_previous.enabled = true
+	this.id_master.setredraw(false)
+	wf_protectdw(this.id_master, 1)
+	wf_protectdw(this.id_detail, 1)
+	this.ib_modify = true
+	for ll_counter = 1 to gds_securitywindow.rowcount()
+		if gds_securitywindow.object.rightcode[ll_counter] = 510 then
+			this.im_menu.m_file.m_save.enabled = true
+			this.im_menu.m_item.m_newitem.enabled = true
+			this.im_menu.m_item.m_deleteitem.enabled = true
+			wf_protectdw(this.id_master, 0)
+			wf_protectdw(this.id_detail, 0)
+		end if
+	next
+	this.id_master.setcolumn("name")
+	if this.id_master.rowcount() > 0 then
+		ll_icode = this.id_master.object.code[this.id_master.rowcount()]
+		SQL SELECT MAX ( PricePolicyCode ) INTO :ll_pricepolicycode FROM PricePolicy WHERE ICode =:ll_icode USING this.it_transobject;
+		if this.it_transobject.sqlcode <> 0 then
+			ll_pricepolicycode = 0
+		end if
+		this.id_pricepolicyheader.retrieve(ll_pricepolicycode)
+		this.id_pricepolicydetail.retrieve(ll_pricepolicycode)
+		this.id_alternateitemalias.retrieve(this.id_master.object.code[this.id_master.rowcount()])
+		this.id_iteminmodel.retrieve(this.id_master.object.code[this.id_master.rowcount()])
+		this.id_itemauthor.retrieve(this.id_master.object.code[this.id_master.rowcount()])
+		this.id_itemassociation.retrieve(this.id_master.object.code[this.id_master.rowcount()])
+		this.id_itemimage.retrieve(this.id_master.object.code[this.id_master.rowcount()])
+		wf_populate_itemimage()
+		wf_get_itemnotes(this.id_master.object.code[this.id_master.rowcount()])
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 524", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.id_master.object.customicode.protect = 0
+	else
+		this.id_master.object.customicode.protect = 1
+	end if
+	this.id_master.object.avgprice.protect = 1
+	setnull(this.ii_itemregreqcode)
+	this.id_master.setredraw(true)
+
+// w_item_form.ue_newitem() returns 0
+	long ll_rowcount
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	if this.id_detail.rowcount() > 0 and f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	this.id_detail.setcolumn("suppcode")
+	this.id_detail.insertrow(0)
+	ll_rowcount = this.id_detail.rowcount()
+	if ll_rowcount > 1 then
+		this.id_detail.scrolltorow(ll_rowcount)
+		this.id_detail.setfocus()
+	end if
+	this.im_menu.m_file.m_save.enabled = true
+	this.ib_validatefullcode = true
+
+// w_item_form.ue_newform() returns 0
+	long ll_counter
+	call super::ue_newform
+	this.id_master.object.customicode.protect = "0"
+	this.ib_modify = false
+	this.id_master.setfocus()
+	this.id_detail.setitem(1, "suppcode", 18)
+	wf_protectdw(this.id_master, 0)
+	wf_protectdw(this.id_detail, 0)
+	this.id_master.object.avgprice.protect = 1
+	this.id_pricepolicyheader.reset()
+	this.id_pricepolicydetail.reset()
+	this.id_itemassociation.reset()
+	this.id_iteminmodel.reset()
+	this.id_itemimage.reset()
+	this.id_itemauthor.reset()
+	this.id_alternateitemalias.reset()
+	setnull(this.iblob_notes)
+	setnull(this.ii_itemregreqcode)
+
+// w_item_form.ue_postopen() returns 0
+	long ll_found
+	long ll_itemcolumn_row
+	datawindowchild ldc_headerno
+	integer li_xpos
+	integer li_ypos
+	integer li_xendpos
+	integer li_counter
+	integer li_taborder
+	integer li_visiblecolumns
+	long ll_counter
+	long li_retcode
+	boolean lb_active
+	boolean lb_restricted
+	boolean lb_customicode
+	datawindowchild ldc_itemcategory
+	datastore lds_itemsetting
+	datastore lds_listsetting
+	call super::ue_postopen
+	this.is_sortsequence = "A"
+	this.id_master.object.manfcode.initial = string(f_numberpreferences("ItemDefaultmanfcode"))
+	this.id_master.object.iccode.initial = string(f_numberpreferences("ItemDefaultclass"))
+	this.id_master.object.packcode.initial = string(f_numberpreferences("ItemDefaultPackcode"))
+	this.id_master.object.gcode.initial = string(f_numberpreferences("ItemDefaultAssociatedGcode"))
+	this.id_master.object.locksaleprice.initial = string(f_stringpreferences("DefaultItemlockSaleprice"))
+	this.id_master.object.lockdiscperc.initial = string(f_stringpreferences("DefaultItemLockDiscPerc"))
+	this.id_master.object.allowdue.initial = f_stringpreferences("allowdueinbasicdata")
+	f_setcolumnstyle(this.id_master, "Qty")
+	lds_itemsetting = create datastore
+	lds_itemsetting.dataobject = "d_interfacesettingcols"
+	lds_itemsetting.settransobject(this.it_transobject)
+	lds_itemsetting.retrieve(9, 3, 1)
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 705", 1, gds_securitywindow.rowcount())
+	if ll_found <= 0 then
+		ll_itemcolumn_row = lds_itemsetting.find("colname = " + "'purprice'", 1, lds_itemsetting.rowcount())
+		if ll_itemcolumn_row > 0 then
+			lds_itemsetting.deleterow(ll_itemcolumn_row)
+		end if
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 706", 1, gds_securitywindow.rowcount())
+	if ll_found <= 0 then
+		ll_itemcolumn_row = lds_itemsetting.find("colname = " + "'avgprice'", 1, lds_itemsetting.rowcount())
+		if ll_itemcolumn_row > 0 then
+			lds_itemsetting.deleterow(ll_itemcolumn_row)
+		end if
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 707", 1, gds_securitywindow.rowcount())
+	if ll_found <= 0 then
+		ll_itemcolumn_row = lds_itemsetting.find("colname = " + "'recentpurprice'", 1, lds_itemsetting.rowcount())
+		if ll_itemcolumn_row > 0 then
+			lds_itemsetting.deleterow(ll_itemcolumn_row)
+		end if
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 1796", 1, gds_securitywindow.rowcount())
+	if ll_found <= 0 then
+		ll_itemcolumn_row = lds_itemsetting.find("colname = " + "'AllowSalePriceBelowAvgPrice'", 1, lds_itemsetting.rowcount())
+		if ll_itemcolumn_row > 0 then
+			lds_itemsetting.deleterow(ll_itemcolumn_row)
+		end if
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 5256", 1, gds_securitywindow.rowcount())
+	if ll_found <= 0 then
+		ll_itemcolumn_row = lds_itemsetting.find("colname = " + "'saleprice'", 1, lds_itemsetting.rowcount())
+		if ll_itemcolumn_row > 0 then
+			lds_itemsetting.deleterow(ll_itemcolumn_row)
+		end if
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 5257", 1, gds_securitywindow.rowcount())
+	if ll_found <= 0 then
+		ll_itemcolumn_row = lds_itemsetting.find("colname = " + "'salediscperc'", 1, lds_itemsetting.rowcount())
+		if ll_itemcolumn_row > 0 then
+			lds_itemsetting.deleterow(ll_itemcolumn_row)
+		end if
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 5258", 1, gds_securitywindow.rowcount())
+	if ll_found <= 0 then
+		ll_itemcolumn_row = lds_itemsetting.find("colname = " + "'flatdisc'", 1, lds_itemsetting.rowcount())
+		if ll_itemcolumn_row > 0 then
+			lds_itemsetting.deleterow(ll_itemcolumn_row)
+		end if
+	end if
+	li_visiblecolumns = lds_itemsetting.rowcount()
+	for li_counter = 1 to li_counter
+		this.colname[li_counter, 1] = lds_itemsetting.getitemstring(li_counter, "colname") + "_t"
+		this.colname[li_counter, 2] = lds_itemsetting.getitemstring(li_counter, "colname")
+		this.colwidth[li_counter, 1] = integer(this.id_master.describe(this.colname[li_counter, 1] + ".Width"))
+		this.colwidth[li_counter, 2] = integer(this.id_master.describe(this.colname[li_counter, 2] + ".Width"))
+	next
+	li_taborder = 100
+	li_counter = 1
+	li_ypos = 100
+	li_xendpos = 2650
+	do while li_counter <= li_visiblecolumns and li_ypos <= 200000
+		li_xpos = 12
+		this.id_master.modify(this.colname[li_counter, 1] + ".X=" + string(li_xpos))
+		this.id_master.modify(this.colname[li_counter, 1] + ".Y=" + string(li_ypos))
+		this.id_master.modify(this.colname[li_counter, 1] + ".Visible=1")
+		li_xpos = 750
+		this.id_master.modify(this.colname[li_counter, 2] + ".X=" + string(li_xpos))
+		this.id_master.modify(this.colname[li_counter, 2] + ".Y=" + string(li_ypos))
+		this.id_master.modify(this.colname[li_counter, 2] + ".Visible=1")
+		this.id_master.settaborder(this.colname[li_counter, 2], li_taborder)
+		if lower(this.colname[li_counter, 2]) = "avgprice" then
+			this.id_master.modify("c_margin_markup.X=" + string(li_xpos + integer(this.id_master.describe(this.colname[li_counter, 2] + ".Width")) + 50))
+			this.id_master.modify("c_margin_markup.Y=" + string(li_ypos))
+			this.id_master.modify("c_margin_markup.Visible=1")
+		end if
+		li_taborder = li_taborder + 1
+		li_ypos = li_ypos + integer(this.id_master.describe(this.colname[li_counter, 2] + ".Height")) + 25
+		li_counter = li_counter + 1
+	loop
+	for ll_counter = 1 to gds_securitywindow.rowcount()
+		if gds_securitywindow.object.rightcode[ll_counter] = 512 then
+			lb_active = true
+			if this.id_master.object.active.visible = "1" then
+				this.id_master.object.active.visible = true
+				this.id_master.object.active_t.visible = true
+			end if
+		end if
+		if gds_securitywindow.object.rightcode[ll_counter] = 514 then
+			lb_restricted = true
+			if this.id_master.object.restricted.visible = "1" then
+				this.id_master.object.restricted.visible = true
+				this.id_master.object.restricted_t.visible = true
+			end if
+		end if
+		if gds_securitywindow.object.rightcode[ll_counter] = 524 then
+			lb_customicode = true
+			if this.id_master.object.customicode.visible = "1" then
+				this.id_master.object.customicode.visible = true
+				this.id_master.object.customicode_t.visible = true
+			end if
+		end if
+	next
+	if lb_active = false then
+		this.id_master.object.active.visible = false
+		this.id_master.object.active_t.visible = false
+	end if
+	if lb_restricted = false then
+		this.id_master.object.restricted.visible = false
+		this.id_master.object.restricted_t.visible = false
+	end if
+	if lb_customicode = false then
+		this.id_master.object.customicode.visible = false
+		this.id_master.object.customicode_t.visible = false
+	end if
+	if f_stringpreferences("bonusinsale") = "Y" then
+		if this.id_master.object.bonusratio.visible = "1" then
+			this.id_master.object.bonusratio_t.visible = true
+			this.id_master.object.bonusratio.visible = true
+		end if
+		if this.id_master.object.bonusqty.visible = "1" then
+			this.id_master.object.bonusqty_t.visible = true
+			this.id_master.object.bonusqty.visible = true
+		end if
+	end if
+	if f_stringpreferences("itemgstperc") = "Y" then
+		if this.id_master.object.gstperc1.visible = "1" then
+			this.id_master.object.gstperc1.visible = true
+			this.id_master.object.gstperc1_t.visible = true
+		end if
+		if this.id_master.object.gstperc2.visible = "1" then
+			this.id_master.object.gstperc2.visible = true
+			this.id_master.object.gstperc2_t.visible = true
+		end if
+	end if
+	li_retcode = this.id_master.getchild("icatcode", ldc_itemcategory)
+	if li_retcode <> 1 then
+		messagebox("DataWindow Child Validation", "Unable to get datawindow child for item category.")
+		close(this)
+		return
+	end if
+	ldc_itemcategory.settransobject(this.it_transobject)
+	ldc_itemcategory.retrieve(f_getgroupcode(gl_usercode))
+	this.il_groupcode = f_getgroupcode(gl_usercode)
+	this.id_master.getchild("headerno", ldc_headerno)
+	for ll_counter = 1 to gds_reoprtheaderinfo.rowcount()
+		ldc_headerno.insertrow(0)
+		ldc_headerno.setitem(ll_counter, "code", gds_reoprtheaderinfo.object.headerno[ll_counter])
+		ldc_headerno.setitem(ll_counter, "name", gds_reoprtheaderinfo.object.clientname[ll_counter])
+		ldc_headerno.setitem(ll_counter, "headeralias", gds_reoprtheaderinfo.object.remarks[ll_counter])
+	next
+	if f_stringpreferences("GroupItemCatInBasicData") = "Y" then
+		if ldc_itemcategory.rowcount() <= 0 then
+			messagebox("Group Item Category Rights", "Current User group doest not have enough permissions w.r.t item category.~r~nKindly consult your administrator for group item category rights.")
+			close(this)
+			return
+		end if
+		this.id_list.dataobject = "d_item_list_groupitemcat"
+		this.id_list.settransobject(this.it_transobject)
+		this.id_master.object.icatcode.initial = string(ldc_itemcategory.getitemnumber(ldc_itemcategory.getrow(), "icatcode"))
+	else
+		this.id_master.object.icatcode.initial = string(f_numberpreferences("ItemDefaultcategory"))
+	end if
+	lds_listsetting = create datastore
+	lds_listsetting.dataobject = "d_interfacesettingcols"
+	lds_listsetting.settransobject(this.it_transobject)
+	lds_listsetting.retrieve(9, 4, 0)
+	for ll_counter = 1 to lds_listsetting.rowcount()
+		this.id_list.modify(lds_listsetting.getitemstring(ll_counter, "colname") + "_t" + ".Visible=0")
+		this.id_list.modify(lds_listsetting.getitemstring(ll_counter, "colname") + ".Visible=0")
+	next
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 566", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.ib_showiteminlist = true
+	else
+		this.ib_showiteminlist = false
+	end if
+	if f_rightexists(5101) then
+		this.ib_addnewitem = true
+	end if
+	this.id_pricepolicyheader = this.dw_pricepolicyheader
+	this.id_pricepolicyheader.settransobject(this.it_transobject)
+	this.id_pricepolicydetail = this.dw_pricepolicydetail
+	this.id_pricepolicydetail.settransobject(this.it_transobject)
+	this.id_iteminmodel = this.tab_retrieve.tabpage_detail.dw_iteminmodel
+	this.id_iteminmodel.settransobject(this.it_transobject)
+	this.id_itemimage = this.dw_itemimage
+	this.id_itemimage.settransobject(this.it_transobject)
+	f_setcolumnstyle(this.dw_alternatealias, "Qty")
+	this.id_alternateitemalias = this.dw_alternatealias
+	this.id_alternateitemalias.settransobject(this.it_transobject)
+	this.id_itemauthor = this.dw_itemauthor
+	this.id_itemauthor.settransobject(this.it_transobject)
+	this.id_itemassociation = this.dw_itemassociation
+	this.id_itemassociation.settransobject(this.it_transobject)
+	this.id_master.object.avgprice.protect = 1
+	this.id_master.object.code.protect = 1
+
+// w_item_form.ue_list() returns 0
+	call super::ue_list
+	setnull(this.ii_itemregreqcode)
+
+// w_item_form.open() returns long
+	m_entry lm_menu
+	long ll_width
+	long ll_height
+	environment env
+	postevent("ue_postopen")
+	wf_setmenu(this.menuid)
+	lm_menu = this.menuid
+	lm_menu.dynamic mf_initsecurityapp(lm_menu)
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.tab_retrieve.width = ll_width * 0.99
+	this.tab_retrieve.height = ll_height * 0.83
+	this.tab_retrieve.tabpage_detail.dw_detail.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_itemsdetail.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_footer.y = this.tab_retrieve.height * 0.90 - this.tab_retrieve.tabpage_detail.dw_footer.height
+	this.tab_retrieve.tabpage_detail.dw_detail.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width
+	this.tab_retrieve.tabpage_detail.dw_detail.height = this.tab_retrieve.tabpage_detail.height * 0.70
+	this.tab_retrieve.tabpage_detail.dw_footer.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width
+	this.tab_retrieve.tabpage_detail.dw_itemsdetail.height = this.tab_retrieve.tabpage_detail.height * 0.28
+	this.tab_retrieve.tabpage_detail.dw_itemsdetail.y = this.tab_retrieve.tabpage_detail.dw_detail.y + this.tab_retrieve.tabpage_detail.dw_detail.height + 10
+	this.tab_retrieve.tabpage_list.gb_fliter.width = ll_width * 0.97 - this.tab_retrieve.tabpage_list.gb_sort.width
+	this.tab_retrieve.tabpage_list.r_1.width = ll_width * 0.99
+	this.tab_retrieve.tabpage_list.r_1.height = ll_height * 0.765 - this.tab_retrieve.tabpage_list.gb_sort.height
+	this.tab_retrieve.tabpage_list.dw_list.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_list.dw_list.height = ll_height * 0.75 - this.tab_retrieve.tabpage_list.dw_list.y
+	if int(this.tab_retrieve.tabpage_list.ddlb_data.width / this.tab_retrieve.tabpage_list.width) < 26 then
+		this.tab_retrieve.tabpage_list.ddlb_data.width = int(this.tab_retrieve.tabpage_list.width * 0.26)
+	end if
+	this.tab_retrieve.tabpage_detail.dw_itemslist.height = ll_height * 0.6
+	this.tab_retrieve.tabpage_detail.dw_itemslist.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width * 0.67
+	this.tab_retrieve.tabpage_detail.dw_itemslist.x = 1150
+	setredraw(true)
+	return ::message.returnvalue

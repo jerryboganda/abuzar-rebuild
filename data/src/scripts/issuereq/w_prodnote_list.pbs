@@ -1,0 +1,115 @@
+// window w_prodnote_list (issuereq)  ancestor: w_listview_form
+
+// w_prodnote_list.wf_openmywindow(long al_code) returns 0
+	s_datatype lstr_datatype
+	long ll_code
+	long ll_retcode
+	long ll_protect
+	if this.id_list.rowcount() > 0 and this.id_list.getrow() > 0 and al_code > 0 then
+		ll_code = al_code
+		if this.id_list.object.posted[this.id_list.getrow()] = "Y" then
+			ll_protect = 1
+		end if
+	else
+		setnull(ll_code)
+	end if
+	lstr_datatype.al_long = ll_code
+	lstr_datatype.ai_int = ll_protect
+	openwithparm(w_prodnote_form, lstr_datatype)
+
+// w_prodnote_list.wf_setprintout() returns long
+	if gs_company = "ALNASEEB" then
+		this.id_print.dataobject = "d_alnaseeb_prodnote_print_full"
+	else
+		this.id_print.dataobject = "d_prodnote_print_full"
+	end if
+	return 0
+
+// w_prodnote_list.wf_post() returns long
+	long ll_code
+	long ll_usercode
+	string ls_err
+	u_transaction it_mytransobject
+	if this.id_list.getrow() > 0 then
+		ll_code = this.id_list.object.code[this.id_list.getrow()]
+		if ll_code > 0 then
+			open(w_salesmanpassword)
+			ll_usercode = long(message.doubleparm)
+			if ll_usercode > 0 then
+				it_mytransobject = create u_transaction
+				SQL start USING it_mytransobject;
+				if it_mytransobject.sqlcode = 0 then
+					it_mytransobject.postproductionnote(ll_code, ll_usercode)
+					if it_mytransobject.sqlcode = 0 then
+						SQL commit USING it_mytransobject;
+						messagebox("Production Note Posting", "Successfully Posted Production Note Code = " + trim(string(ll_code)), information!)
+					else
+						ls_err = it_mytransobject.sqlerrtext
+						SQL rollback USING it_mytransobject;
+						messagebox("Production Note Posting", "Problem isn Posting Production Note Code = " + trim(string(ll_code)) + "~r~nDetails are:-~r~n" + ls_err, information!)
+					end if
+				end if
+			end if
+		end if
+	end if
+	return 0
+
+// w_prodnote_list.create() returns 0
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_prodnote_menu" then
+		this.menuid = create m_prodnote_menu
+	end if
+
+// w_prodnote_list.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_prodnote_list.ue_new() returns 0
+	long ll_code
+	call super::ue_new
+	setnull(ll_code)
+	wf_openmywindow(ll_code)
+
+// w_prodnote_list.ue_list() returns 0
+	m_prodnote_menu lm_menu
+	long ll_rtcode
+	call super::ue_list
+	lm_menu = this.menuid
+	lm_menu.dynamic mf_initsecurityapp(lm_menu)
+	if this.id_list.rowcount() <= 0 then
+		ll_rtcode = wf_retrieve()
+	end if
+	wf_populate_ddlb(this.id_list)
+	if ll_rtcode > 0 then
+		lm_menu.m_file.m_new.enabled = true
+		lm_menu.m_file.m_save.enabled = false
+		lm_menu.m_file.m_delete.enabled = false
+		lm_menu.m_file.m_first.enabled = true
+		lm_menu.m_file.m_next.enabled = true
+		lm_menu.m_file.m_last.enabled = true
+		lm_menu.m_file.m_print.enabled = true
+		lm_menu.m_file.m_previous.enabled = true
+		lm_menu.m_file.m_post.enabled = true
+		lm_menu.m_file.m_post.visible = true
+		lm_menu.m_file.m_retrieve.text = "De&tail"
+		this.i_retrievemode = 2
+		this.i_editmode = 2
+		if this.il_selectedrow = 0 then
+			wf_first()
+			wf_selectunselectrow(1)
+		end if
+		this.tab_retrieve.tabpage_list.dw_find.setfocus()
+		return
+	end if
+
+// w_prodnote_list.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.tab_retrieve.tabpage_list.rb_descending.checked = true
+	this.tab_retrieve.tabpage_list.rb_descending.triggerevent(clicked!)
+	return ::message.returnvalue

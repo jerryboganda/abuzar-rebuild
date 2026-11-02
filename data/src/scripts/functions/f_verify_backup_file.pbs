@@ -1,0 +1,93 @@
+// function f_verify_backup_file (functions)  ancestor: function_object
+
+// f_verify_backup_file.f_verify_backup_file(string as_backuptype) returns integer
+	double backupsize
+	double backupsizeinbytes
+	double maxsize
+	double firstlsn
+	double lastlsn
+	double checkpointlsn
+	double databasebackuplsn
+	double forkpointlsn
+	long field
+	long blocksize
+	long filegroupid
+	long isreadonly
+	long ispresent
+	long createlsn
+	long droplsn
+	long readonlylsn
+	long readwritelsn
+	string ls_backupdevice_name
+	string ls_query
+	string ls_logicalname
+	string ls_physicalname
+	string ls_type
+	string ls_oldlogicaldb
+	string ls_oldlogicallog
+	string ls_servername
+	string ls_groupname
+	string uniqueid
+	string familyguid
+	string differentialbaseguid
+	string differentialbaselsn
+	string tdethumpprint
+	integer li_pos
+	string ls_version_info
+	u_transaction lt_transaction
+	sqlca.dbms_version(ls_version_info)
+	lt_transaction = create u_transaction
+	lt_transaction.autocommit = true
+	SQL start USING lt_transaction;
+	ls_backupdevice_name = as_backuptype
+	li_pos = pos(gs_servername, "\")
+	if li_pos > 0 then
+		ls_servername = left(gs_servername, li_pos - 1)
+	else
+		ls_servername = gs_servername
+	end if
+	ls_query = " if exists (select * from dbo.sysobjects where id = object_id(N'[dbo].[sp_executelocal]') and OBJECTPROPERTY(id, N'IsProcedure') = 1) drop procedure [dbo].[sp_executelocal] "
+	SQL EXECUTE IMMEDIATE :ls_query USING lt_transaction;
+	if match(ls_version_info, "SQL Server 2012") = true then
+		ls_query = "RESTORE FILELISTONLY FROM " + ls_backupdevice_name
+		SQL EXECUTE IMMEDIATE :"  Create Proc sp_executelocal @query Varchar(8000) AS TRUNCATE TABLE ReportData   INSERT INTO ReportData (Name1, Name2, Name3, Name4, BigValue1, BigValue2, Value1, Value2, Value3, Name5, Value4, Value5, BigValue3, Value6, Value7, Name6, Name8, Name7, Value8, Value9, Value10)    Execute(@query)    SELECT Name1, Name2, Name3, Name4, BigValue1, BigValue2, Value1, Value2, Value3, Name5, Value4, Value5, BigValue3, Value6, Value7, Name6, Name8, Name7, Value8, Value9, Value10 FROM ReportData " USING lt_transaction;
+	else
+		ls_query = "RESTORE FILELISTONLY FROM " + ls_backupdevice_name + " " + "WITH MEDIAPASSWORD='REDACTED" + lower(gs_servername) + "'" + "  , " + "PASSWORD='REDACTED" + lower(gs_servername) + "'"
+		SQL EXECUTE IMMEDIATE :"  Create Proc sp_executelocal @query Varchar(8000) As truncate table reportdata INSERT INTO ReportData(Name10,Name11,Name1,Name2,Value17,Value18)  Execute(@query)  select name10,name11,name1 from reportdata " USING lt_transaction;
+	end if
+	if lt_transaction.sqlcode = 0 then
+		SQL EXECUTE sp_temp USING lt_transaction; /* args: ls_query */
+		if lt_transaction.sqlcode = 0 then
+			do while lt_transaction.sqlcode = 0
+				if match(ls_version_info, "SQL Server 2012") = true then
+					SQL FETCH sp_temp INTO :ls_logicalname, :ls_physicalname, :ls_type, :ls_groupname, :backupsize, :maxsize, :field, :createlsn, :droplsn, :uniqueid, :readonlylsn, :readwritelsn, :backupsizeinbytes, :blocksize, :filegroupid, :familyguid, :differentialbaselsn, :differentialbaseguid, :isreadonly, :ispresent, :tdethumpprint USING lt_transaction;
+				else
+					SQL FETCH sp_temp INTO :ls_logicalname, :ls_physicalname, :ls_type USING lt_transaction;
+				end if
+				if ls_type = "D" then
+					ls_oldlogicaldb = ls_logicalname
+				else
+					ls_oldlogicallog = ls_logicalname
+				end if
+			loop
+			SQL CLOSE sp_temp USING lt_transaction;
+		else
+			messagebox("Logical File Error", "unable to find logical filename")
+			return 0
+		end if
+		return
+	end if
+	if match(ls_version_info, "SQL Server 2012") = true then
+		ls_query = "Restore DataBase " + "Verified" + gs_regid + "DataBase" + " from  " + ls_backupdevice_name + " WITH RECOVERY, REPLACE, " + "move '" + ls_oldlogicaldb + "' to '" + "c:\waseela_temp\" + "Verified" + gs_regid + "db.mdf' " + " , move '" + ls_oldlogicallog + "' to '" + "c:\waseela_temp\" + "Verified" + gs_regid + "log.ldf'"
+	else
+		ls_query = "Restore DataBase " + "Verified" + gs_regid + "DataBase" + " from  " + ls_backupdevice_name + " WITH MEDIAPASSWORD='REDACTED" + lower(ls_servername) + "' ,PASSWORD='REDACTED" + lower(ls_servername) + "'" + " , move '" + ls_oldlogicaldb + "' to '" + "c:\waseela_temp\" + "Verified" + gs_regid + "db.mdf' " + " , move '" + ls_oldlogicallog + "' to '" + "c:\waseela_temp\" + "Verified" + gs_regid + "log.ldf'"
+	end if
+	SQL EXECUTE IMMEDIATE :ls_query USING lt_transaction;
+	if lt_transaction.sqlcode = 0 then
+		messagebox("Backup Verification", "Backup File  Successfully verified")
+	else
+		messagebox("Backup Verification", "Problem in verifying backup file~r~n" + lt_transaction.sqlerrtext)
+	end if
+	SQL stop USING lt_transaction;
+	destroy lt_transaction
+	return 0

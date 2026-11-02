@@ -1,0 +1,56 @@
+// window w_datamigration_alert (datatransfercomponents)  ancestor: window
+
+// w_datamigration_alert.create() returns 0
+	this.cb_ok = create cb_ok
+	this.st_4 = create st_4
+	this.st_3 = create st_3
+	this.st_2 = create st_2
+	this.st_1 = create st_1
+	this.cb_cancel = create cb_cancel
+	this.gb_1 = create gb_1
+	this.control = {this.cb_ok, this.st_4, this.st_3, this.st_2, this.st_1, this.cb_cancel, this.gb_1}
+
+// w_datamigration_alert.destroy() returns 0
+	destroy this.cb_ok
+	destroy this.st_4
+	destroy this.st_3
+	destroy this.st_2
+	destroy this.st_1
+	destroy this.cb_cancel
+	destroy this.gb_1
+
+// w_datamigration_alert.close() returns long
+	closewithreturn(this, this.il_code)
+	return ::message.returnvalue
+
+// w_datamigration_alert.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	parent.il_code = 1
+	parent.triggerevent(close!)
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.il_code = 0
+	parent.triggerevent(close!)
+	return ::message.returnvalue

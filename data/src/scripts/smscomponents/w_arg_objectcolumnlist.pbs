@@ -1,0 +1,43 @@
+// window w_arg_objectcolumnlist (smscomponents)  ancestor: w_arguements
+
+// w_arg_objectcolumnlist.create() returns 0
+	integer icurrent
+	call super::create
+	this.st_gcode = create st_gcode
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_gcode
+
+// w_arg_objectcolumnlist.destroy() returns 0
+	call super::destroy
+	destroy this.st_gcode
+
+// w_arg_objectcolumnlist.open() returns long
+	long ancestorreturnvalue
+	string ls_objectname
+	integer rt_code
+	ancestorreturnvalue = super::open()
+	ls_objectname = message.stringparm
+	this.dw_price.settransobject(sqlca)
+	this.dw_price.insertrow(0)
+	this.dw_control.settransobject(sqlca)
+	rt_code = this.dw_control.getchild("columnname", this.idc_colname)
+	if rt_code = -1 then
+		messagebox("Error", "Data Window Child Error", stopsign!)
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	this.idc_colname.settransobject(sqlca)
+	this.idc_colname.retrieve(ls_objectname)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_arg_objectcolumnlist.ue_close(integer ai_stauts) returns 0
+	super::ue_close(ai_stauts)
+	closewithreturn(this, this.istr_arg)

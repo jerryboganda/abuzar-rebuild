@@ -1,0 +1,12 @@
+// function f_get_cloud_setting (functions)  ancestor: function_object
+
+// f_get_cloud_setting.f_get_cloud_setting(string as_value) returns integer
+	SQL SELECT Value INTO :as_value FROM ConfigSetting WHERE name ='CloudServerSettings' USING sqlca;
+	if sqlca.sqlcode <> 0 then
+		messagebox("Cloud Server Settings Error", "Unable to Fetch Cloud Server Settings ... ~r~n" + sqlca.sqlerrtext)
+		return -1
+	end if
+	if as_value = "N" or as_value = "" or isnull(as_value) then
+		return 0
+	end if
+	return 1

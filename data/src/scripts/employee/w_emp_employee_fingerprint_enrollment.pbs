@@ -1,0 +1,764 @@
+// window w_emp_employee_fingerprint_enrollment (employee)  ancestor: window
+
+// w_emp_employee_fingerprint_enrollment.ue_close(integer ai_status) returns 0
+	long ll_row
+	string ls_null
+	setnull(ls_null)
+	close(this)
+
+// w_emp_employee_fingerprint_enrollment.wf_insert_fingerprint(integer ai_finger, blob img, blob features) returns long
+	SQL INSERT INTO EMP_FingerPrint ( EmpCode , FingerCode ) VALUES ( :this.il_code , :ai_finger ) USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		messagebox("Insert Error", "Unable to Insert Employee Finger Images Into Database.~r~nReasons are:~r~n" + this.it_transobject.sqlerrtext)
+		return -1
+	end if
+	SQL UPDATEBLOB EMP_FingerPrint SET FingerPrint =:img WHERE EMPCode =:this.il_code AND FingerCode =:ai_finger USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		messagebox("Employee Finger Image Problem", "Unable to update Employee Finger Image.~r~nReasons are:~r~n" + this.it_transobject.sqlerrtext)
+	end if
+	SQL UPDATEBLOB EMP_FingerPrint SET Features =:features WHERE EMPCode =:this.il_code AND FingerCode =:ai_finger USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		messagebox("Employee Finger Image Features Problem", "Unable to update Employee Finger Image Features.~r~nReasons are:~r~n" + this.it_transobject.sqlerrtext)
+	end if
+	return 0
+
+// w_emp_employee_fingerprint_enrollment.create() returns 0
+	this.ole_zktfp = create ole_zktfp
+	this.p_lb = create p_lb
+	this.p_lr = create p_lr
+	this.p_lm = create p_lm
+	this.p_li = create p_li
+	this.p_lt = create p_lt
+	this.ole_grfinger = create ole_grfinger
+	this.st_10 = create st_10
+	this.st_9 = create st_9
+	this.st_8 = create st_8
+	this.st_7 = create st_7
+	this.st_6 = create st_6
+	this.st_5 = create st_5
+	this.st_4 = create st_4
+	this.st_3 = create st_3
+	this.st_2 = create st_2
+	this.st_1 = create st_1
+	this.p_rb = create p_rb
+	this.p_rr = create p_rr
+	this.p_rm = create p_rm
+	this.p_ri = create p_ri
+	this.p_rt = create p_rt
+	this.cb_cancel = create cb_cancel
+	this.dw_control = create dw_control
+	this.cb_ok = create cb_ok
+	this.gb_right = create gb_right
+	this.gb_left = create gb_left
+	this.control = {this.ole_zktfp, this.p_lb, this.p_lr, this.p_lm, this.p_li, this.p_lt, this.ole_grfinger, this.st_10, this.st_9, this.st_8, this.st_7, this.st_6, this.st_5, this.st_4, this.st_3, this.st_2, this.st_1, this.p_rb, this.p_rr, this.p_rm, this.p_ri, this.p_rt, this.cb_cancel, this.dw_control, this.cb_ok, this.gb_right, this.gb_left}
+
+// w_emp_employee_fingerprint_enrollment.destroy() returns 0
+	destroy this.ole_zktfp
+	destroy this.p_lb
+	destroy this.p_lr
+	destroy this.p_lm
+	destroy this.p_li
+	destroy this.p_lt
+	destroy this.ole_grfinger
+	destroy this.st_10
+	destroy this.st_9
+	destroy this.st_8
+	destroy this.st_7
+	destroy this.st_6
+	destroy this.st_5
+	destroy this.st_4
+	destroy this.st_3
+	destroy this.st_2
+	destroy this.st_1
+	destroy this.p_rb
+	destroy this.p_rr
+	destroy this.p_rm
+	destroy this.p_ri
+	destroy this.p_rt
+	destroy this.cb_cancel
+	destroy this.dw_control
+	destroy this.cb_ok
+	destroy this.gb_right
+	destroy this.gb_left
+
+// w_emp_employee_fingerprint_enrollment.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	long ll_err
+	this.is_tmp = gs_temp_directory + "\temp.bmp"
+	filedelete(this.is_tmp)
+	this.is_rt = gs_temp_directory + "\rt.bmp"
+	filedelete(this.is_rt)
+	this.is_ri = gs_temp_directory + "\ri.bmp"
+	filedelete(this.is_ri)
+	this.is_rm = gs_temp_directory + "\rm.bmp"
+	filedelete(this.is_rm)
+	this.is_rr = gs_temp_directory + "\rr.bmp"
+	filedelete(this.is_rr)
+	this.is_rb = gs_temp_directory + "\rb.bmp"
+	filedelete(this.is_rb)
+	this.is_lt = gs_temp_directory + "\lt.bmp"
+	filedelete(this.is_lt)
+	this.is_li = gs_temp_directory + "\li.bmp"
+	filedelete(this.is_li)
+	this.is_lm = gs_temp_directory + "\lm.bmp"
+	filedelete(this.is_lm)
+	this.is_lr = gs_temp_directory + "\lr.bmp"
+	filedelete(this.is_lr)
+	this.is_lb = gs_temp_directory + "\lb.bmp"
+	filedelete(this.is_lb)
+	this.il_code = message.doubleparm
+	this.it_transobject = create u_transaction
+	this.it_transobject.autocommit = true
+	SQL start USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		messagebox("Connection Problem", "Unable to connect to database.RNDetails are:-~r~n" + this.it_transobject.sqlerrtext, stopsign!)
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	this.dw_control.settransobject(this.it_transobject)
+	if this.il_code > 0 then
+		this.dw_control.retrieve(this.il_code)
+	end if
+	this.p_rt.setfocus()
+	this.p_rt.triggerevent(clicked!)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// ole_zktfp.onimagereceived(boolean aimagevalid) returns 0
+	long ll_ret
+	long ll_quality
+	blob rawimage
+	blob lb_img
+	string ls_ver
+	runtimeerror ex
+	try
+		filedelete(parent.is_tmp)
+		ls_ver = this.object.fpengineversion
+		ll_quality = long(string(this.object.lastquality))
+		if ll_quality >= 60 then
+			this.object.__invoke_method("savebitmap", 1, {parent.is_tmp}, true)
+			this.object.__invoke_method("getfingerimage", 1, {rawimage}, true)
+			lb_img = blob(string(this.object.__invoke_method("gettemplateex", 1, {ls_ver}, true)))
+			choose case parent.is_curr_fingure
+			case "p_rt"
+				parent.li_iteration = parent.li_iteration + 1
+				if parent.li_iteration <= parent.li_maxiteration then
+					if fileexists(parent.is_rt) then
+						filedelete(parent.is_rt)
+					end if
+					parent.p_rt.setredraw(false)
+					parent.iblb_rt = rawimage
+					if filecopy(parent.is_tmp, parent.is_rt, true) = 1 then
+						filedelete(parent.is_tmp)
+					end if
+					parent.p_rt.picturename = parent.is_rt
+					if parent.li_iteration = parent.li_maxiteration then
+						parent.iblb_rt_f = lb_img
+						parent.il_rt = 1
+					end if
+					parent.p_rt.setredraw(true)
+				else
+					parent.li_iteration = 0
+					parent.p_ri.setfocus()
+					parent.p_ri.triggerevent(clicked!)
+				end if
+			case "p_ri"
+				parent.li_iteration = parent.li_iteration + 1
+				if parent.li_iteration <= parent.li_maxiteration then
+					if fileexists(parent.is_ri) then
+						filedelete(parent.is_ri)
+					end if
+					parent.p_ri.setredraw(false)
+					parent.iblb_ri = rawimage
+					if filecopy(parent.is_tmp, parent.is_ri, true) = 1 then
+						filedelete(parent.is_tmp)
+					end if
+					parent.p_ri.picturename = parent.is_ri
+					if parent.li_iteration = parent.li_maxiteration then
+						parent.iblb_ri_f = lb_img
+						parent.il_ri = 1
+					end if
+					parent.p_ri.setredraw(true)
+				else
+					parent.li_iteration = 0
+					parent.p_rm.setfocus()
+					parent.p_rm.triggerevent(clicked!)
+				end if
+			case "p_rm"
+				parent.li_iteration = parent.li_iteration + 1
+				if parent.li_iteration <= parent.li_maxiteration then
+					if fileexists(parent.is_rm) then
+						filedelete(parent.is_rm)
+					end if
+					parent.p_rm.setredraw(false)
+					parent.iblb_rm = rawimage
+					if filecopy(parent.is_tmp, parent.is_rm, true) = 1 then
+						filedelete(parent.is_tmp)
+					end if
+					parent.p_rm.picturename = parent.is_rm
+					if parent.li_iteration = parent.li_maxiteration then
+						parent.iblb_rm_f = lb_img
+						parent.il_rm = 1
+					end if
+					parent.p_rm.setredraw(true)
+				else
+					parent.li_iteration = 0
+					parent.p_rr.setfocus()
+					parent.p_rr.triggerevent(clicked!)
+				end if
+			case "p_rr"
+				parent.li_iteration = parent.li_iteration + 1
+				if parent.li_iteration <= parent.li_maxiteration then
+					if fileexists(parent.is_rr) then
+						filedelete(parent.is_rr)
+					end if
+					parent.p_rr.setredraw(false)
+					parent.iblb_rr = rawimage
+					if filecopy(parent.is_tmp, parent.is_rr, true) = 1 then
+						filedelete(parent.is_tmp)
+					end if
+					parent.p_rr.picturename = parent.is_rr
+					if parent.li_iteration = parent.li_maxiteration then
+						parent.iblb_rr_f = lb_img
+						parent.il_rr = 1
+					end if
+					parent.p_rr.setredraw(true)
+				else
+					parent.li_iteration = 0
+					parent.p_rb.setfocus()
+					parent.p_rb.triggerevent(clicked!)
+				end if
+			case "p_rb"
+				parent.li_iteration = parent.li_iteration + 1
+				if parent.li_iteration <= parent.li_maxiteration then
+					if fileexists(parent.is_rb) then
+						filedelete(parent.is_rb)
+					end if
+					parent.p_rb.setredraw(false)
+					parent.iblb_rb = rawimage
+					if filecopy(parent.is_tmp, parent.is_rb, true) = 1 then
+						filedelete(parent.is_tmp)
+					end if
+					parent.p_rb.picturename = parent.is_rb
+					if parent.li_iteration = parent.li_maxiteration then
+						parent.iblb_rb_f = lb_img
+						parent.il_rb = 1
+					end if
+					parent.p_rb.setredraw(true)
+				else
+					parent.li_iteration = 0
+					parent.p_lt.setfocus()
+					parent.p_lt.triggerevent(clicked!)
+				end if
+			case "p_lt"
+				parent.li_iteration = parent.li_iteration + 1
+				if parent.li_iteration <= parent.li_maxiteration then
+					if fileexists(parent.is_lt) then
+						filedelete(parent.is_lt)
+					end if
+					parent.p_lt.setredraw(false)
+					parent.iblb_lt = rawimage
+					if filecopy(parent.is_tmp, parent.is_lt, true) = 1 then
+						filedelete(parent.is_tmp)
+					end if
+					parent.p_lt.picturename = parent.is_lt
+					if parent.li_iteration = parent.li_maxiteration then
+						parent.iblb_lt_f = lb_img
+						parent.il_lt = 1
+					end if
+					parent.p_lt.setredraw(true)
+				else
+					parent.li_iteration = 0
+					parent.p_li.setfocus()
+					parent.p_li.triggerevent(clicked!)
+				end if
+			case "p_li"
+				parent.li_iteration = parent.li_iteration + 1
+				if parent.li_iteration <= parent.li_maxiteration then
+					if fileexists(parent.is_li) then
+						filedelete(parent.is_li)
+					end if
+					parent.p_li.setredraw(false)
+					parent.iblb_li = rawimage
+					if filecopy(parent.is_tmp, parent.is_li, true) = 1 then
+						filedelete(parent.is_tmp)
+					end if
+					parent.p_li.picturename = parent.is_li
+					if parent.li_iteration = parent.li_maxiteration then
+						parent.iblb_li_f = lb_img
+						parent.il_li = 1
+					end if
+					parent.p_li.setredraw(true)
+				else
+					parent.li_iteration = 0
+					parent.p_lm.setfocus()
+					parent.p_lm.triggerevent(clicked!)
+				end if
+			case "p_lm"
+				parent.li_iteration = parent.li_iteration + 1
+				if parent.li_iteration <= parent.li_maxiteration then
+					if fileexists(parent.is_lm) then
+						filedelete(parent.is_lm)
+					end if
+					parent.p_lm.setredraw(false)
+					parent.iblb_lm = rawimage
+					if filecopy(parent.is_tmp, parent.is_lm, true) = 1 then
+						filedelete(parent.is_tmp)
+					end if
+					parent.p_lm.picturename = parent.is_lm
+					if parent.li_iteration = parent.li_maxiteration then
+						parent.iblb_lm_f = lb_img
+						parent.il_lm = 1
+					end if
+					parent.p_lm.setredraw(true)
+				else
+					parent.li_iteration = 0
+					parent.p_lr.setfocus()
+					parent.p_lr.triggerevent(clicked!)
+				end if
+			case "p_lr"
+				parent.li_iteration = parent.li_iteration + 1
+				if parent.li_iteration <= parent.li_maxiteration then
+					if fileexists(parent.is_lr) then
+						filedelete(parent.is_lr)
+					end if
+					parent.p_lr.setredraw(false)
+					parent.iblb_lr = rawimage
+					if filecopy(parent.is_tmp, parent.is_lr, true) = 1 then
+						filedelete(parent.is_tmp)
+					end if
+					parent.p_lr.picturename = parent.is_lr
+					if parent.li_iteration = parent.li_maxiteration then
+						parent.iblb_lr_f = lb_img
+						parent.il_lr = 1
+					end if
+					parent.p_lr.setredraw(true)
+				else
+					parent.li_iteration = 0
+					parent.p_lb.setfocus()
+					parent.p_lb.triggerevent(clicked!)
+				end if
+			case "p_lb"
+				parent.li_iteration = parent.li_iteration + 1
+				if parent.li_iteration <= parent.li_maxiteration then
+					if fileexists(parent.is_lb) then
+						filedelete(parent.is_lb)
+					end if
+					parent.p_lb.setredraw(false)
+					parent.iblb_lb = rawimage
+					if filecopy(parent.is_tmp, parent.is_lb, true) = 1 then
+						filedelete(parent.is_tmp)
+					end if
+					parent.p_lb.picturename = parent.is_lb
+					if parent.li_iteration = parent.li_maxiteration then
+						parent.iblb_lb_f = lb_img
+						parent.il_lb = 1
+					end if
+					parent.p_lb.setredraw(true)
+				else
+					parent.li_iteration = 0
+					parent.cb_ok.setfocus()
+				end if
+			end choose
+		else
+			messagebox("Feature Template Error", "Not a good quality feature extraction is possible from this fingerprint~r~nKindly Scan this fingure again~r~nQuality = " + string(ll_quality) + "%~r~nMin. Desired Quality = 60%", stopsign!)
+		end if
+	catch (throwable ex)
+		messagebox("Exception Occur", "Details are:~r~n" + ex.getmessage())
+	end try
+
+// ole_zktfp.constructor() returns long
+	long ll_retcode
+	runtimeerror ex
+	try
+		ll_retcode = this.object.__invoke_method("initengine", 0, {}, true)
+		if ll_retcode = 0 then
+			this.object.__invoke_method("beginenroll", 0, {}, true)
+		elseif ll_retcode = 1 then
+			messagebox("ZKT Fingerprint Device Error", "The loading of the fingerprint identification driver failed.", stopsign!)
+		elseif ll_retcode = 2 then
+			messagebox("ZKT Fingerprint Device Error", "Fingerprint Sensor has not been connected.", stopsign!)
+		elseif ll_retcode = 3 then
+			messagebox("ZKT Fingerprint Device Error", "The fingerprint Reader appointed by the property SensorIndex dose not exist.", stopsign!)
+		end if
+	catch (throwable ex)
+		messagebox("Exception Occur", "Details are:~r~n" + ex.getmessage())
+	end try
+	return ::message.returnvalue
+
+// ole_zktfp.destructor() returns long
+	runtimeerror ex
+	try
+		this.object.__invoke_method("cancelenroll", 0, {}, true)
+		this.object.__invoke_method("endengine", 0, {}, true)
+	catch (throwable ex)
+		messagebox("Exception Occur", "Details are:~r~n" + ex.getmessage())
+	end try
+	return ::message.returnvalue
+
+// p_lb.clicked() returns long
+	parent.is_curr_fingure = "p_lb"
+	parent.il_lb = 0
+	setnull(parent.iblb_lb)
+	setnull(parent.iblb_lb_f)
+	this.picturename = ""
+	return ::message.returnvalue
+
+// p_lr.clicked() returns long
+	parent.is_curr_fingure = "p_lr"
+	parent.il_lr = 0
+	setnull(parent.iblb_lr)
+	setnull(parent.iblb_lr_f)
+	this.picturename = ""
+	return ::message.returnvalue
+
+// p_lm.clicked() returns long
+	parent.is_curr_fingure = "p_lm"
+	parent.il_lm = 0
+	setnull(parent.iblb_lm)
+	setnull(parent.iblb_lm_f)
+	this.picturename = ""
+	return ::message.returnvalue
+
+// p_li.clicked() returns long
+	parent.is_curr_fingure = "p_li"
+	parent.il_li = 0
+	setnull(parent.iblb_li)
+	setnull(parent.iblb_li_f)
+	this.picturename = ""
+	return ::message.returnvalue
+
+// p_lt.clicked() returns long
+	parent.is_curr_fingure = "p_lt"
+	parent.il_lt = 0
+	setnull(parent.iblb_lt)
+	setnull(parent.iblb_lt_f)
+	this.picturename = ""
+	return ::message.returnvalue
+
+// ole_grfinger.sensorplug(string idsensor) returns 0
+	this.object.__invoke_method("capstartcapture", 1, {idsensor}, true)
+
+// ole_grfinger.sensorunplug(string idsensor) returns 0
+	this.object.__invoke_method("capstopcapture", 1, {idsensor}, true)
+
+// ole_grfinger.imageacquired(string idsensor, long ocx_width, long ocx_height, any rawimage, long res) returns 0
+	long ll_ret
+	long ll_format
+	long ll_quality
+	long ll_matchcontext
+	long ll_counter
+	long ll_size
+	blob lb_img
+	lb_img = blob(space(10000))
+	if fileexists(parent.is_tmp) then
+		filedelete(parent.is_tmp)
+	end if
+	ll_ret = this.object.__invoke_method("capsaverawimagetofile", 5, {rawimage, ocx_width, ocx_height, parent.is_tmp, 501}, true)
+	if ll_ret = 0 then
+		ll_quality = this.object.__invoke_method("extract", 7, {rawimage, ocx_width, ocx_height, res, lb_img, ll_size, parent.il_grcontextid}, true)
+		if ll_quality > 0 then
+			if ll_size <= 0 or isnull(ll_size) then
+				messagebox("Extraction Failed", "Extraction Failed")
+			else
+				choose case parent.is_curr_fingure
+				case "p_rt"
+					parent.iblb_rt = rawimage
+					parent.iblb_rt_f = lb_img
+					if fileexists(parent.is_rt) then
+						filedelete(parent.is_rt)
+					end if
+					if filecopy(parent.is_tmp, parent.is_rt, true) = 1 then
+						filedelete(parent.is_tmp)
+					end if
+					parent.p_rt.picturename = parent.is_rt
+					parent.il_rt = 1
+					parent.p_ri.setfocus()
+					parent.p_ri.triggerevent(clicked!)
+				case "p_ri"
+					parent.iblb_ri = rawimage
+					parent.iblb_ri_f = lb_img
+					if fileexists(parent.is_ri) then
+						filedelete(parent.is_ri)
+					end if
+					if filecopy(parent.is_tmp, parent.is_ri, true) = 1 then
+						filedelete(parent.is_tmp)
+					end if
+					parent.p_ri.picturename = parent.is_ri
+					parent.il_ri = 1
+					parent.p_rm.setfocus()
+					parent.p_rm.triggerevent(clicked!)
+				case "p_rm"
+					parent.iblb_rm = rawimage
+					parent.iblb_rm_f = lb_img
+					if fileexists(parent.is_rm) then
+						filedelete(parent.is_rm)
+					end if
+					if filecopy(parent.is_tmp, parent.is_rm, true) = 1 then
+						filedelete(parent.is_tmp)
+					end if
+					parent.p_rm.picturename = parent.is_rm
+					parent.il_rm = 1
+					parent.p_rr.setfocus()
+					parent.p_rr.triggerevent(clicked!)
+				case "p_rr"
+					parent.iblb_rr = rawimage
+					parent.iblb_rr_f = lb_img
+					if fileexists(parent.is_rr) then
+						filedelete(parent.is_rr)
+					end if
+					if filecopy(parent.is_tmp, parent.is_rr, true) = 1 then
+						filedelete(parent.is_tmp)
+					end if
+					parent.p_rr.picturename = parent.is_rr
+					parent.il_rr = 1
+					parent.p_rb.setfocus()
+					parent.p_rb.triggerevent(clicked!)
+				case "p_rb"
+					parent.iblb_rb = rawimage
+					parent.iblb_rb_f = lb_img
+					if fileexists(parent.is_rb) then
+						filedelete(parent.is_rb)
+					end if
+					if filecopy(parent.is_tmp, parent.is_rb, true) = 1 then
+						filedelete(parent.is_tmp)
+					end if
+					parent.p_rb.picturename = parent.is_rb
+					parent.il_rb = 1
+					parent.p_lt.setfocus()
+					parent.p_lt.triggerevent(clicked!)
+				case "p_lt"
+					parent.iblb_lt = rawimage
+					parent.iblb_lt_f = lb_img
+					if fileexists(parent.is_lt) then
+						filedelete(parent.is_lt)
+					end if
+					if filecopy(parent.is_tmp, parent.is_lt, true) = 1 then
+						filedelete(parent.is_tmp)
+					end if
+					parent.p_lt.picturename = parent.is_lt
+					parent.il_lt = 1
+					parent.p_li.setfocus()
+					parent.p_li.triggerevent(clicked!)
+				case "p_li"
+					parent.iblb_li = rawimage
+					parent.iblb_li_f = lb_img
+					if fileexists(parent.is_li) then
+						filedelete(parent.is_li)
+					end if
+					if filecopy(parent.is_tmp, parent.is_li, true) = 1 then
+						filedelete(parent.is_tmp)
+					end if
+					parent.p_li.picturename = parent.is_li
+					parent.il_li = 1
+					parent.p_lm.setfocus()
+					parent.p_lm.triggerevent(clicked!)
+				case "p_lm"
+					parent.iblb_lm = rawimage
+					parent.iblb_lm_f = lb_img
+					if fileexists(parent.is_lm) then
+						filedelete(parent.is_lm)
+					end if
+					if filecopy(parent.is_tmp, parent.is_lm, true) = 1 then
+						filedelete(parent.is_tmp)
+					end if
+					parent.p_lm.picturename = parent.is_lm
+					parent.il_lm = 1
+					parent.p_lr.setfocus()
+					parent.p_lr.triggerevent(clicked!)
+				case "p_lr"
+					parent.iblb_lr = rawimage
+					parent.iblb_lr_f = lb_img
+					if fileexists(parent.is_lr) then
+						filedelete(parent.is_lr)
+					end if
+					if filecopy(parent.is_tmp, parent.is_lr, true) = 1 then
+						filedelete(parent.is_tmp)
+					end if
+					parent.p_lr.picturename = parent.is_lr
+					parent.il_lr = 1
+					parent.p_lb.setfocus()
+					parent.p_lb.triggerevent(clicked!)
+				case "p_lb"
+					parent.iblb_lb = rawimage
+					parent.iblb_lb_f = lb_img
+					if fileexists(parent.is_lb) then
+						filedelete(parent.is_lb)
+					end if
+					if filecopy(parent.is_tmp, parent.is_lb, true) = 1 then
+						filedelete(parent.is_tmp)
+					end if
+					parent.p_lb.picturename = parent.is_lb
+					parent.il_lb = 1
+					parent.cb_ok.setfocus()
+				end choose
+			end if
+		else
+			messagebox("Feature Template Error", "Not a good quality feature extractionis possoble from this fingerprint~r~nKindly Scan this fingure again~r~nError Code = " + string(ll_quality), stopsign!)
+		end if
+		return
+	end if
+	messagebox("Image Saving Error", "Error in saving raw image to disk~r~nError Code = " + string(ll_ret), stopsign!)
+
+// ole_grfinger.constructor() returns long
+	long ll_err
+	ll_err = this.object.__invoke_method("createcontext", 1, {parent.il_grcontextid}, true)
+	ll_err = this.object.__invoke_method("initialize", 0, {}, true)
+	ll_err = this.object.__invoke_method("capinitialize", 0, {}, true)
+	return ::message.returnvalue
+
+// ole_grfinger.destructor() returns long
+	long ll_err
+	ll_err = this.object.__invoke_method("capfinalize", 0, {}, true)
+	ll_err = this.object.__invoke_method("finalize", 0, {}, true)
+	return ::message.returnvalue
+
+// p_rb.clicked() returns long
+	parent.is_curr_fingure = "p_rb"
+	parent.il_rb = 0
+	setnull(parent.iblb_rb)
+	setnull(parent.iblb_rb_f)
+	this.picturename = ""
+	return ::message.returnvalue
+
+// p_rr.clicked() returns long
+	parent.is_curr_fingure = "p_rr"
+	parent.il_rr = 0
+	setnull(parent.iblb_rr)
+	setnull(parent.iblb_rr_f)
+	this.picturename = ""
+	return ::message.returnvalue
+
+// p_rm.clicked() returns long
+	parent.is_curr_fingure = "p_rm"
+	parent.il_rm = 0
+	setnull(parent.iblb_rm)
+	setnull(parent.iblb_rm_f)
+	this.picturename = ""
+	return ::message.returnvalue
+
+// p_ri.clicked() returns long
+	parent.is_curr_fingure = "p_ri"
+	parent.il_ri = 0
+	setnull(parent.iblb_ri)
+	setnull(parent.iblb_ri_f)
+	this.picturename = ""
+	return ::message.returnvalue
+
+// p_rt.clicked() returns long
+	parent.is_curr_fingure = "p_rt"
+	parent.il_rt = 0
+	setnull(parent.iblb_rt)
+	setnull(parent.iblb_rt_f)
+	this.picturename = ""
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(0)
+	return ::message.returnvalue
+
+// dw_control.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_control.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	integer li_null
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	setnull(li_null)
+	choose case dwo.name
+	case "flatdisc"
+		if double(data) > this.object.misccharges[row] then
+			messagebox("Fine Waiver Amount", "Invalid Waiver Amount~r~nIt Must not exceed from the Amount Originally Fined", stopsign!)
+			return 1
+		else
+			if this.object.invtotal[row] - double(data) > 0 then
+				this.object.invtotal[row] = this.object.invtotal[row] - double(data)
+			else
+				this.object.invtotal[row] = 0.00
+			end if
+			if this.object.outstandingamt[row] - double(data) > 0 then
+				this.object.outstandingamt[row] = this.object.outstandingamt[row] - double(data)
+			else
+				this.object.outstandingamt[row] = 0.00
+			end if
+			return 0
+		end if
+		return
+	end choose
+	return ::message.returnvalue
+
+// dw_control.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// cb_ok.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	string ls_errtext
+	SQL DELETE DBO.EMP_FingerPrint WHERE EmpCode =:parent.il_code USING parent.it_transobject;
+	if parent.it_transobject.sqlcode = 0 then
+		if parent.il_rt = 1 then
+			parent.wf_insert_fingerprint(1, parent.iblb_rt, parent.iblb_rt_f)
+		end if
+		if parent.il_ri = 1 then
+			parent.wf_insert_fingerprint(2, parent.iblb_ri, parent.iblb_ri_f)
+		end if
+		if parent.il_rm = 1 then
+			parent.wf_insert_fingerprint(3, parent.iblb_rm, parent.iblb_rm_f)
+		end if
+		if parent.il_rr = 1 then
+			parent.wf_insert_fingerprint(4, parent.iblb_rr, parent.iblb_rr_f)
+		end if
+		if parent.il_rb = 1 then
+			parent.wf_insert_fingerprint(5, parent.iblb_rb, parent.iblb_rb_f)
+		end if
+		if parent.il_lt = 1 then
+			parent.wf_insert_fingerprint(6, parent.iblb_lt, parent.iblb_lt_f)
+		end if
+		if parent.il_li = 1 then
+			parent.wf_insert_fingerprint(7, parent.iblb_li, parent.iblb_li_f)
+		end if
+		if parent.il_lm = 1 then
+			parent.wf_insert_fingerprint(8, parent.iblb_lm, parent.iblb_lm_f)
+		end if
+		if parent.il_lr = 1 then
+			parent.wf_insert_fingerprint(9, parent.iblb_lr, parent.iblb_lr_f)
+		end if
+		if parent.il_lb = 1 then
+			parent.wf_insert_fingerprint(10, parent.iblb_lb, parent.iblb_lb_f)
+		end if
+		parent.triggerevent("ue_close")
+	end if
+	return ::message.returnvalue

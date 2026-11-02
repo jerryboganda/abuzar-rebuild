@@ -1,0 +1,89 @@
+// window w_patientadmission_form_popup (patientcomponents)  ancestor: w_patientadmission_form
+
+// w_patientadmission_form_popup.wf_retrievelist_datelimit() returns long
+	return 0
+
+// w_patientadmission_form_popup.wf_retrievelistall() returns long
+	return 0
+
+// w_patientadmission_form_popup.wf_retrieve() returns long
+	return 0
+
+// w_patientadmission_form_popup.wf_retrieve(long retrievalarg) returns long
+	return 0
+
+// w_patientadmission_form_popup.create() returns 0
+	integer icurrent
+	call super::create
+	this.cb_save = create cb_save
+	this.cb_cancel = create cb_cancel
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.cb_save
+	this.control[icurrent + 2] = this.cb_cancel
+
+// w_patientadmission_form_popup.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.cb_save
+	destroy this.cb_cancel
+
+// w_patientadmission_form_popup.open() returns long
+	m_entry lm_menu
+	long ll_width
+	long ll_height
+	environment env
+	postevent("ue_postopen")
+	this.iw_callingwindow = message.powerobjectparm
+	wf_setmenu(this.menuid)
+	lm_menu = this.menuid
+	if getenvironment(env) <> 1 then
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.tab_retrieve.width = ll_width * 0.99
+	this.tab_retrieve.height = ll_height * 0.83
+	this.tab_retrieve.tabpage_detail.dw_detail.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_itemsdetail.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_footer.y = this.tab_retrieve.height * 0.90 - this.tab_retrieve.tabpage_detail.dw_footer.height
+	this.tab_retrieve.tabpage_detail.dw_itemsdetail.height = this.tab_retrieve.tabpage_detail.dw_footer.y - this.tab_retrieve.tabpage_detail.dw_itemsdetail.y
+	this.tab_retrieve.tabpage_list.gb_fliter.width = ll_width * 0.97 - this.tab_retrieve.tabpage_list.gb_sort.width
+	this.tab_retrieve.tabpage_list.r_1.width = ll_width * 0.99
+	this.tab_retrieve.tabpage_list.r_1.height = ll_height * 0.765 - this.tab_retrieve.tabpage_list.gb_sort.height
+	this.tab_retrieve.tabpage_list.dw_list.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_list.dw_list.height = ll_height * 0.75 - this.tab_retrieve.tabpage_list.dw_list.y
+	this.tab_retrieve.tabpage_detail.dw_itemslist.height = ll_height * 0.6
+	this.tab_retrieve.tabpage_detail.dw_itemslist.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width * 0.73
+	this.cb_save.y = ll_height * 0.85
+	this.cb_cancel.y = ll_height * 0.85
+	this.cb_save.x = ll_width * 0.32
+	this.cb_cancel.x = ll_width * 0.52
+	setredraw(true)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_patientadmission_form_popup.ue_newform() returns 0
+	call super::ue_newform
+	this.im_admissionmenu.m_file.m_save.enabled = false
+
+// cb_save.clicked() returns long
+	if parent.tab_retrieve.selectedtab = 1 then
+		parent.event ue_save()
+		if parent.ib_commitok = true then
+			parent.iw_callingwindow.post event ue_callback_popupwindow(parent.il_codevalue)
+			close(parent)
+		end if
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	close(parent)
+	return ::message.returnvalue

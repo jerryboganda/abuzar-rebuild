@@ -1,0 +1,70 @@
+// window w_editissuereqform (issuereq)  ancestor: window
+
+// w_editissuereqform.ue_close(integer ai_status) returns 0
+	closewithreturn(this, this.istr_template)
+
+// w_editissuereqform.create() returns 0
+	this.rb_eqty = create rb_eqty
+	this.rb_totqty = create rb_totqty
+	this.st_template = create st_template
+	this.dw_template = create dw_template
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.gb_1 = create gb_1
+	this.control = {this.rb_eqty, this.rb_totqty, this.st_template, this.dw_template, this.cb_cancel, this.cb_ok, this.gb_1}
+
+// w_editissuereqform.destroy() returns 0
+	destroy this.rb_eqty
+	destroy this.rb_totqty
+	destroy this.st_template
+	destroy this.dw_template
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.gb_1
+
+// w_editissuereqform.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	this.dw_template.settransobject(sqlca)
+	this.dw_template.insertrow(0)
+	this.dw_template.scrolltorow(0)
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	w_editissuereqform w_parent
+	parent.istr_template.c_copyinvfrom = "N"
+	w_parent = getparent()
+	w_parent.setfocus()
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	if isnull(parent.dw_template.getitemnumber(1, "issuereqinvcode")) then
+		return ::message.returnvalue
+	end if
+	parent.istr_template.c_copyinvfrom = "T"
+	parent.istr_template.l_invtemplate = parent.dw_template.getitemnumber(1, "issuereqinvcode")
+	if parent.rb_eqty.checked = true then
+		parent.istr_template.i_invtype = 1
+	else
+		parent.istr_template.i_invtype = 0
+	end if
+	parent.post event ue_close(1)
+	return ::message.returnvalue

@@ -1,0 +1,339 @@
+// window w_sendsms (smscomponents)  ancestor: window
+
+// w_sendsms.wf_getports() returns long
+	long ll_portno
+	long ll_totalports
+	long ll_counter
+	long ll_insrow
+	boolean lb_portopen
+	string ls_portname
+	runtimeerror ex
+	setpointer(hourglass!)
+	for ll_counter = 1 to ll_totalports
+		ll_portno = ll_counter
+		ls_portname = "COM" + trim(string(ll_counter))
+		ll_insrow = this.dw_port.insertrow(0)
+		this.dw_port.object.portno[ll_insrow] = ll_counter
+		this.dw_port.object.portname[ll_insrow] = ls_portname
+		this.ole_mobile.object.commport = ll_portno
+		this.ole_mobile.object.settings = "9600,N,8,1"
+		this.ole_mobile.object.inputlen = 0
+		try
+			this.ole_mobile.object.portopen = true
+			sleep(500)
+			lb_portopen = true
+		catch (throwable ex)
+			lb_portopen = false
+		end try
+		if lb_portopen then
+			this.dw_port.object.portstatus[ll_insrow] = 1
+			this.ole_mobile.object.portopen = false
+		else
+			this.dw_port.object.portstatus[ll_insrow] = 0
+		end if
+	next
+	this.dw_port.setfilter("portstatus=1")
+	this.dw_port.filter()
+	wf_identifymodemports()
+	this.dw_port.setfilter("portstatus=1 and modemstatus=1")
+	this.dw_port.filter()
+	setpointer(arrow!)
+	return 0
+
+// w_sendsms.wf_identifymodemports() returns long
+	long ll_portno
+	long ll_totalrows
+	long ll_counter
+	long ll_insrow
+	long ll_waitcount
+	boolean lb_portopen
+	string ls_command
+	string ls_reponse
+	string ls_msgtitle
+	string ls_portname
+	runtimeerror ex
+	ls_command = ""
+	ll_totalrows = this.dw_port.rowcount()
+	for ll_counter = 1 to ll_totalrows
+		ll_portno = this.dw_port.object.portno[ll_counter]
+		ls_portname = this.dw_port.object.portname[ll_counter]
+		this.ole_mobile.object.commport = ll_portno
+		this.ole_mobile.object.settings = "9600,N,8,1"
+		this.ole_mobile.object.inputlen = 0
+		try
+			this.ole_mobile.object.portopen = true
+			sleep(300)
+			lb_portopen = true
+		catch (throwable ex)
+			lb_portopen = false
+			messagebox("Exception Occur", "Details are:~r~n" + ex.getmessage())
+			goto L580
+		end try
+		if lb_portopen then
+			this.dw_port.object.modemstatus[ll_counter] = wf_initialize()
+			this.dw_port.object.make[ll_counter] = wf_get_make()
+			this.dw_port.object.modelname[ll_counter] = wf_get_model()
+			this.ole_mobile.object.portopen = false
+		else
+			this.dw_port.object.modemstatus[ll_counter] = 0
+		end if
+	next
+	return 0
+
+// w_sendsms.wf_dial() returns long
+	long ll_portno
+	long ll_row
+	long ll_counter
+	long ll_insrow
+	long ll_waitcount
+	boolean lb_portopen
+	string ls_command
+	string ls_reponse
+	runtimeerror ex
+	setpointer(hourglass!)
+	ls_command = ""
+	ll_row = this.dw_port.getrow()
+	if ll_row > 0 then
+		ll_portno = this.dw_port.object.portno[ll_row]
+		this.ole_mobile.object.commport = ll_portno
+		this.ole_mobile.object.settings = "9600,N,8,1"
+		this.ole_mobile.object.inputlen = 0
+		try
+			this.ole_mobile.object.portopen = true
+			lb_portopen = true
+		catch (throwable ex)
+			lb_portopen = false
+		end try
+		if lb_portopen then
+			if wf_initialize() = 1 then
+				if match(this.dw_port.object.make[ll_row], "MOTOROLA") then
+					wf_set_motorola_textmode()
+				end if
+				ls_command = "ATD " + this.dw_message.object.phoneno[1] + ";" + this.is_cr + this.is_lf
+				this.ole_mobile.object.output = ls_command
+			end if
+		else
+			this.dw_port.object.modemstatus[ll_counter] = 0
+		end if
+		if lb_portopen then
+			this.ole_mobile.object.portopen = false
+		end if
+	end if
+	setpointer(arrow!)
+	return 0
+
+// w_sendsms.wf_get_make() returns string
+	string ls_make
+	string ls_command
+	string ls_reponse
+	long ll_counter
+	ls_command = "AT+GMI~r~n"
+	this.ole_mobile.object.output = ls_command
+	wf_wait()
+	ls_reponse = upper(this.ole_mobile.object.input)
+	ls_make = trim(left(ls_reponse, pos(ls_reponse, "OK") - 1))
+	return ls_make
+
+// w_sendsms.wf_initialize() returns long
+	string ls_command
+	string ls_reponse
+	long ll_counter
+	ls_command = "AT" + this.is_cr + this.is_lf
+	this.ole_mobile.object.output = ls_command
+	sleep(500)
+	ls_reponse = upper(this.ole_mobile.object.input)
+	if match(ls_reponse, "OK") then
+		return 1
+	end if
+	return 0
+
+// w_sendsms.wf_get_model() returns string
+	string ls_model
+	string ls_command
+	string ls_reponse
+	long ll_counter
+	ls_command = "AT+GMM~r~n"
+	this.ole_mobile.object.output = ls_command
+	wf_wait()
+	ls_reponse = upper(this.ole_mobile.object.input)
+	ls_model = trim(left(ls_reponse, pos(ls_reponse, "OK") - 1))
+	return ls_model
+
+// w_sendsms.wf_setportdetail(long al_row) returns long
+	if al_row > 0 then
+		this.dw_portdetail.object.portno[1] = this.dw_port.object.portno[al_row]
+		this.dw_portdetail.object.portname[1] = this.dw_port.object.portname[al_row]
+		this.dw_portdetail.object.make[1] = this.dw_port.object.make[al_row]
+		this.dw_portdetail.object.modelname[1] = this.dw_port.object.modelname[al_row]
+	end if
+	this.dw_port.selectrow(0, false)
+	this.dw_port.selectrow(al_row, true)
+	return 0
+
+// w_sendsms.wf_set_motorola_textmode() returns long
+	string ls_command
+	string ls_reponse
+	long ll_counter
+	ls_command = "AT+Mode=2" + this.is_cr + this.is_lf
+	this.ole_mobile.object.output = ls_command
+	ls_reponse = upper(this.ole_mobile.object.input)
+	for ll_counter = 1 to 999999
+	next
+	ls_reponse = upper(this.ole_mobile.object.input)
+	if match(ls_reponse, "OK") then
+		return 1
+	end if
+	return 0
+
+// w_sendsms.wf_sendsms() returns long
+	long ll_portno
+	long ll_row
+	long ll_counter
+	long ll_insrow
+	long ll_waitcount
+	boolean lb_portopen
+	string ls_command
+	string ls_reponse
+	string ls_msg
+	runtimeerror ex
+	setpointer(hourglass!)
+	ls_command = ""
+	ll_row = this.dw_port.getrow()
+	if ll_row > 0 then
+		ll_portno = this.dw_port.object.portno[ll_row]
+		this.ole_mobile.object.commport = ll_portno
+		this.ole_mobile.object.settings = "9600,N,8,1"
+		this.ole_mobile.object.inputlen = 0
+		try
+			this.ole_mobile.object.portopen = true
+			lb_portopen = true
+		catch (throwable ex)
+			lb_portopen = false
+		end try
+		if lb_portopen then
+			if wf_initialize() = 1 then
+				if match(this.dw_port.object.make[ll_row], "MOTOROLA") then
+					wf_set_motorola_textmode()
+				end if
+				ls_command = "AT+CMGF=1" + this.is_cr + this.is_lf
+				this.ole_mobile.object.output = ls_command
+				sleep(500)
+				ls_reponse = upper(this.ole_mobile.object.input)
+				if match(ls_reponse, "OK") then
+					ls_command = "AT+CMGS=~"" + this.dw_message.object.phoneno[1] + "~"" + this.is_cr + this.is_lf
+					this.ole_mobile.object.output = ls_command
+					sleep(500)
+					ls_msg = this.dw_message.object.smstext[1]
+					ls_command = ls_msg + "   " + this.is_ctrl_z
+					this.ole_mobile.object.output = ls_command
+					sleep(1000)
+					ls_reponse = upper(this.ole_mobile.object.input)
+				else
+					messagebox("Problem", "Send SMS Task Terminated Unsuccessfully..", stopsign!)
+				end if
+			end if
+		else
+			messagebox("Problem", "Send SMS Task Terminated Unsuccessfully", stopsign!)
+		end if
+		if lb_portopen then
+			this.ole_mobile.object.portopen = false
+		end if
+	end if
+	setpointer(arrow!)
+	return 0
+
+// w_sendsms.wf_wait() returns long
+	long ll_waitcount
+	for ll_waitcount = 1 to 9999999
+	next
+	return 0
+
+// w_sendsms.create() returns 0
+	this.cb_refresh = create cb_refresh
+	this.dw_portdetail = create dw_portdetail
+	this.ole_mobile = create ole_mobile
+	this.dw_message = create dw_message
+	this.dw_port = create dw_port
+	this.cb_sendsms = create cb_sendsms
+	this.cb_cancel = create cb_cancel
+	this.cb_dial = create cb_dial
+	this.gb_1 = create gb_1
+	this.gb_2 = create gb_2
+	this.control = {this.cb_refresh, this.dw_portdetail, this.ole_mobile, this.dw_message, this.dw_port, this.cb_sendsms, this.cb_cancel, this.cb_dial, this.gb_1, this.gb_2}
+
+// w_sendsms.destroy() returns 0
+	destroy this.cb_refresh
+	destroy this.dw_portdetail
+	destroy this.ole_mobile
+	destroy this.dw_message
+	destroy this.dw_port
+	destroy this.cb_sendsms
+	destroy this.cb_cancel
+	destroy this.cb_dial
+	destroy this.gb_1
+	destroy this.gb_2
+
+// w_sendsms.open() returns long
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	this.dw_port.settransobject(sqlca)
+	this.dw_port.reset()
+	this.dw_portdetail.settransobject(sqlca)
+	this.dw_portdetail.insertrow(0)
+	this.dw_message.settransobject(sqlca)
+	this.dw_message.insertrow(0)
+	wf_getports()
+	if this.dw_port.rowcount() > 0 then
+		this.dw_port.setrow(1)
+		wf_setportdetail(1)
+	end if
+	return ::message.returnvalue
+
+// w_sendsms.key(keycode key, unsignedlong keyflags) returns long
+	if key = keyf5! then
+		this.dw_port.reset()
+		wf_getports()
+		if this.dw_port.rowcount() > 0 then
+			this.dw_port.setrow(1)
+			wf_setportdetail(1)
+		end if
+	end if
+	return ::message.returnvalue
+
+// cb_refresh.clicked() returns long
+	parent.dw_port.reset()
+	parent.wf_getports()
+	if parent.dw_port.rowcount() > 0 then
+		parent.dw_port.setrow(1)
+		parent.wf_setportdetail(1)
+	end if
+	return ::message.returnvalue
+
+// dw_port.rowfocuschanged(long currentrow) returns long
+	parent.wf_setportdetail(currentrow)
+	return ::message.returnvalue
+
+// cb_sendsms.clicked() returns long
+	parent.wf_sendsms()
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	close(parent)
+	return ::message.returnvalue
+
+// cb_dial.clicked() returns long
+	parent.wf_dial()
+	return ::message.returnvalue

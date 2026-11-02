@@ -1,0 +1,2143 @@
+// userobject nv_remote_datawindow (pbdwr125)  ancestor: nonvisualobject
+
+// nv_remote_datawindow.activate() returns long
+	if this.ib_trace then
+		of_log("Activate()")
+	end if
+	this.ib_allowretrieve = true
+	this.ib_didupdate = false
+	this.ib_updatefailed = false
+	this.ib_dwobjectset = false
+	this.ib_transactionset = false
+	return ::message.returnvalue
+
+// nv_remote_datawindow.deactivate() returns long
+	if this.ib_trace then
+		of_log_enter("Deactivate()")
+	end if
+	if this.ib_trace then
+		of_log("resetting state")
+	end if
+	this.ids_datastore.reset()
+	if this.ib_trace then
+		of_log_exit("Deactivate()")
+	end if
+	return ::message.returnvalue
+
+// nv_remote_datawindow.of_lastpos(string string1, string string2) returns long
+	long ll_lastpos
+	long ll_curpos
+	ll_curpos = pos(string1, string2)
+	do while ll_curpos <> 0
+		ll_lastpos = ll_curpos
+		ll_curpos = pos(string1, string2, ll_lastpos + 1)
+	loop
+	return ll_lastpos
+
+// nv_remote_datawindow.of_continuework(boolean ballowcommit) returns 0
+	transactionserver servercontext
+	getcontextservice("TransactionServer", servercontext)
+	if isvalid(servercontext) then
+		if ballowcommit then
+			if this.ib_trace then
+				of_log("EnableCommit()")
+			end if
+			servercontext.enablecommit()
+			return
+		end if
+		if this.ib_trace then
+			of_log("DisableCommit()")
+		end if
+		servercontext.disablecommit()
+	end if
+
+// nv_remote_datawindow.of_completework() returns 0
+	transactionserver servercontext
+	getcontextservice("TransactionServer", servercontext)
+	if isvalid(servercontext) then
+		if this.ib_updatefailed then
+			if this.ib_trace then
+				of_log("SetAbort()")
+			end if
+			servercontext.setabort()
+			return
+		end if
+		if this.ib_serversidestate and not this.ib_didupdate then
+			if this.ib_trace then
+				of_log("EnableCommit()")
+			end if
+			servercontext.enablecommit()
+			return
+		end if
+		of_log("SetComplete()")
+		servercontext.setcomplete()
+	end if
+
+// nv_remote_datawindow.settrans(string dbms, string dbparm, string lock, string logid, string logpass, string database, string servername) returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("SetTrans()")
+	end if
+	if this.ib_allowretrieve then
+		if not this.ib_fixed then
+			sqlca.dbms = dbms
+			sqlca.dbparm = dbparm
+			sqlca.lock = lock
+			sqlca.logid = logid
+			sqlca.logpass = logpass
+			sqlca.database = database
+			sqlca.servername = servername
+			if this.ids_datastore.describe("datawindow.processing") = "5" then
+				SQL start USING sqlca;
+				if sqlca.sqlcode <> 0 then
+					of_log("SetTrans: ERROR - Could not connect to db for composite processing; DBCode = " + string(sqlca.sqldbcode) + "~r~n" + sqlca.sqlerrtext)
+					li_result = -1
+				else
+					li_result = this.ids_datastore.settransobject(sqlca)
+				end if
+			else
+				li_result = this.ids_datastore.settrans(sqlca)
+			end if
+		else
+			li_result = -1
+		end if
+	else
+		li_result = 1
+	end if
+	if li_result = 1 then
+		this.ib_transactionset = true
+	end if
+	if this.ib_trace then
+		of_log_exit("SetTrans() = " + string(li_result))
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.onetripex(string as_objectname, string as_argstring, string as_browsername, string as_selflink, string as_selflinkargs, string as_action, string as_context) returns string
+	string ls_result
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("OnTripEx()")
+	end if
+	ls_result = sethtmlobjectname(as_objectname)
+	if ls_result = "" then
+		ls_result = setbrowser(as_browsername)
+	end if
+	if ls_result = "" then
+		ls_result = setselflink(as_selflink, as_selflinkargs)
+	end if
+	if ls_result = "" then
+		li_result = retrieveex(as_argstring)
+		if li_result < 0 then
+			ls_result = getlasterrorstring()
+		end if
+	end if
+	if ls_result = "" then
+		li_result = setaction(as_action, as_context)
+		if li_result < 0 then
+			ls_result = getlasterrorstring()
+		end if
+	end if
+	ls_result = generate() + ls_result
+	if this.ib_trace then
+		of_log_exit("OneTripEx()")
+	end if
+	return ls_result
+
+// nv_remote_datawindow.generate() returns string
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("Generate()")
+	end if
+	ls_result = this.ids_datastore.describe("DataWindow.Data.HTML")
+	if this.ib_trace then
+		of_log_exit("Generate(), length = " + string(len(ls_result)))
+	end if
+	of_completework()
+	return ls_result
+
+// nv_remote_datawindow.of_readfile(string as_filename) returns string
+	string ls_data
+	string ls_temp
+	integer li_filenum
+	long ll_filelen
+	long ll_numloops
+	long ll_index
+	ll_filelen = filelength(as_filename)
+	li_filenum = fileopen(as_filename, streammode!)
+	if ll_filelen > 32765 then
+		if ll_filelen mod 32765 = 0 then
+			ll_numloops = ll_filelen / 32765.0
+		else
+			ll_numloops = ll_filelen / 32765.0 + 1.0
+		end if
+	else
+		ll_numloops = 1
+	end if
+	for ll_index = 1 to ll_numloops
+		fileread(li_filenum, ls_temp)
+		ls_data = ls_temp + ls_data
+	next
+	fileclose(li_filenum)
+	return ls_data
+
+// nv_remote_datawindow.of_load_property(contextkeyword atx_key, string as_prop) returns string
+	string ls_result
+	integer li_rc
+	string[] ls_values
+	li_rc = atx_key.getcontextkeywords(as_prop, ls_values)
+	if li_rc = 1 then
+		ls_result = ls_values[1]
+	end if
+	return ls_result
+
+// nv_remote_datawindow.of_escapequotes(string as_instring) returns string
+	long ll_inpos
+	long ll_outpos
+	long ll_length
+	string ls_output
+	char[] lc_inchars
+	char[] lc_outchars
+	char lc_inchar
+	lc_inchars = as_instring
+	ll_length = upperbound(lc_inchars)
+	ll_outpos = 1
+	for ll_inpos = 1 to ll_length
+		lc_inchar = lc_inchars[ll_inpos]
+		if lc_inchar = "~~" then
+			lc_outchars[ll_outpos] = "~~"
+			lc_outchars[ll_outpos + 1] = "~~"
+			ll_outpos = ll_outpos + 2
+		elseif lc_inchar = "~"" then
+			lc_outchars[ll_outpos] = "~~"
+			lc_outchars[ll_outpos + 1] = "~""
+			ll_outpos = ll_outpos + 2
+		elseif lc_inchar = "'" then
+			lc_outchars[ll_outpos] = "~~"
+			lc_outchars[ll_outpos + 1] = "'"
+			ll_outpos = ll_outpos + 2
+		else
+			lc_outchars[ll_outpos] = lc_inchar
+			ll_outpos = ll_outpos + 1
+		end if
+	next
+	return lc_outchars
+
+// nv_remote_datawindow.setbrowser(string as_browsername) returns string
+	string ls_modifystring
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("SetBrowser('" + as_browsername + "')")
+	end if
+	if not isnull(as_browsername) and as_browsername <> "" then
+		ls_modifystring = "DataWindow.htmlgen.Browser='" + of_escapequotes(as_browsername) + "'"
+		ls_result = this.ids_datastore.modify(ls_modifystring)
+	end if
+	if this.ib_trace then
+		of_log_exit("SetBrowser() = '" + ls_result + "'")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.setcolumnlink(string as_columnname, string as_link, string as_linkargs, string as_linktarget) returns string
+	string ls_modifystring
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("SetColumnLink('" + as_columnname + "','" + as_link + "','" + as_linkargs + "')")
+	end if
+	if not isnull(as_columnname) then
+		if not isnull(as_link) and as_link <> "" then
+			ls_modifystring = as_columnname + ".HTML.Link='" + of_escapequotes(as_link) + "'"
+			ls_result = this.ids_datastore.modify(ls_modifystring)
+		end if
+		if not isnull(as_linktarget) and as_link <> "" then
+			ls_modifystring = as_columnname + ".HTML.LinkTarget='" + of_escapequotes(as_linktarget) + "'"
+			ls_result = this.ids_datastore.modify(ls_modifystring) + ls_result
+		end if
+		if not isnull(as_linkargs) then
+			ls_modifystring = as_columnname + ".HTML.LinkArgs=~"" + of_escapequotes(as_linkargs) + "~""
+			ls_result = this.ids_datastore.modify(ls_modifystring) + ls_result
+		end if
+	end if
+	if this.ib_trace then
+		of_log_exit("SetColumnLink() = '" + ls_result + "'")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.sethtmlobjectname(string as_objectname) returns string
+	string ls_modifystring
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("SetHTMLObjectName('" + as_objectname + "')")
+	end if
+	if not isnull(as_objectname) and as_objectname <> "" then
+		ls_modifystring = "DataWindow.htmlgen.ObjectName='" + of_escapequotes(as_objectname) + "'"
+		ls_result = this.ids_datastore.modify(ls_modifystring)
+	end if
+	if this.ib_trace then
+		of_log_exit("SetHTMLObjectName() = '" + ls_result + "'")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.setpagesize(long al_pagesize) returns string
+	string ls_modifystring
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("SetPageSize(" + string(al_pagesize) + ")")
+	end if
+	if not isnull(al_pagesize) then
+		ls_modifystring = "DataWindow.htmlgen.PageSize='" + string(al_pagesize) + "'"
+		ls_result = this.ids_datastore.modify(ls_modifystring)
+	end if
+	if this.ib_trace then
+		of_log_exit("SetPageSize() = '" + ls_result + "'")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.setserversidestate(boolean bmaintainstate) returns string
+	string ls_result
+	if not isnull(bmaintainstate) then
+		this.ib_serversidestate = bmaintainstate
+	end if
+	return ls_result
+
+// nv_remote_datawindow.setweight(boolean ballowform, boolean bvalidation, boolean bevents, boolean bclientscriptable, boolean bclientformatting) returns string
+	string ls_modifystring
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("SetWeight()")
+	end if
+	if not isnull(ballowform) and not ballowform then
+		ls_modifystring = "DataWindow.print.preview=true"
+		ls_result = this.ids_datastore.modify(ls_modifystring)
+	end if
+	if not isnull(bvalidation) then
+		ls_modifystring = "DataWindow.htmlgen.ClientValidation='" + string(bvalidation) + "'"
+		ls_result = this.ids_datastore.modify(ls_modifystring) + ls_result
+	end if
+	if not isnull(bevents) then
+		ls_modifystring = "DataWindow.htmlgen.ClientEvents='" + string(bevents) + "'"
+		ls_result = this.ids_datastore.modify(ls_modifystring) + ls_result
+	end if
+	if not isnull(bclientscriptable) then
+		ls_modifystring = "DataWindow.htmlgen.ClientScriptable='" + string(bclientscriptable) + "'"
+		ls_result = this.ids_datastore.modify(ls_modifystring) + ls_result
+	end if
+	if not isnull(bclientformatting) then
+		ls_modifystring = "DataWindow.htmlgen.ClientFormatting='" + string(bclientformatting) + "'"
+		ls_result = this.ids_datastore.modify(ls_modifystring) + ls_result
+	end if
+	if this.ib_trace then
+		of_log_exit("SetWeight() = '" + ls_result + "'")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.getlasterrorstring() returns string
+	string ls_result
+	ls_result = this.ids_datastore.getlasterrorstring()
+	if this.ib_trace then
+		of_log("GetLastErrorString() = '" + ls_result + "'")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.setselflink(string as_selflink, string as_selflinkargs) returns string
+	string ls_modifystring
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("SetSelfLink('" + as_selflink + "','" + as_selflinkargs + "')")
+	end if
+	if not isnull(as_selflink) and as_selflink <> "" then
+		ls_modifystring = "DataWindow.htmlgen.SelfLink='" + of_escapequotes(as_selflink) + "'"
+		ls_result = this.ids_datastore.modify(ls_modifystring)
+	end if
+	if not isnull(as_selflinkargs) then
+		ls_modifystring = "DataWindow.htmlgen.SelfLinkArgs=~"" + of_escapequotes(as_selflinkargs) + "~""
+		ls_result = this.ids_datastore.modify(ls_modifystring) + ls_result
+	end if
+	if this.ib_trace then
+		of_log_exit("SetSelfLink() = '" + ls_result + "'")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.setserverserviceclasses(string as_serviceclassnames) returns integer
+	string ls_notfoundclasses
+	integer li_ret
+	if this.ib_trace then
+		of_log_enter("SetServerServiceClasses('" + as_serviceclassnames + "')")
+	end if
+	li_ret = this.ids_datastore.setserviceclasses(as_serviceclassnames, ls_notfoundclasses)
+	if li_ret <> 1 and this.ib_trace then
+		of_log("Could not find the following classes '" + ls_notfoundclasses + "'")
+	end if
+	if this.ib_trace then
+		of_log_exit("SetServerServiceClasses() = " + string(li_ret) + "")
+	end if
+	of_continuework(true)
+	return li_ret
+
+// nv_remote_datawindow.of_initializefromdeclarative() returns integer
+	integer li_rc
+	string ls_rc
+	boolean lb_oldfixed
+	if this.ib_trace then
+		of_log_enter("of_initializeFromDeclarative()")
+	end if
+	lb_oldfixed = this.ib_fixed
+	this.ib_fixed = false
+	if this.ib_dwobjectset then
+		if this.is_serviceclassnames <> "" then
+			setserverserviceclasses(this.is_serviceclassnames)
+		end if
+		if this.is_htmlobjectname <> "" then
+			ls_rc = sethtmlobjectname(this.is_htmlobjectname)
+			if ls_rc <> "" then
+				li_rc = -1
+			end if
+		end if
+		if li_rc = 1 and this.is_modifystring <> "" then
+			ls_rc = modify(this.is_modifystring)
+			if ls_rc <> "" then
+				li_rc = -1
+			end if
+		end if
+		if li_rc = 1 and not this.ib_transactionset and this.is_trans_dbms <> "" then
+			li_rc = settrans(this.is_trans_dbms, this.is_trans_dbparm, this.is_trans_lock, this.is_trans_logid, this.is_trans_logpass, this.is_trans_database, this.is_trans_servername)
+		end if
+	else
+		li_rc = -1
+	end if
+	this.ib_fixed = lb_oldfixed
+	if this.ib_trace then
+		of_log_exit("of_initializeFromDeclarative() = " + string(li_rc))
+	end if
+	return li_rc
+
+// nv_remote_datawindow.create(string as_dwsyntax) returns string
+	string ls_error
+	if this.ib_trace then
+		of_log_enter("Create()")
+	end if
+	if not this.ib_fixed then
+		if this.ids_datastore.create(as_dwsyntax, ls_error) = 1 then
+			ls_error = modify("DataWindow.htmldw='yes' DataWindow.NoUserPrompt='yes'")
+		end if
+	else
+		ls_error = "Component has been marked as fixed.  Cannot call Create()"
+	end if
+	if this.ib_trace then
+		of_log_exit("Create() = '" + ls_error + "'")
+	end if
+	of_continuework(true)
+	return ls_error
+
+// nv_remote_datawindow.getlasterror() returns long
+	long ll_result
+	ll_result = this.ids_datastore.getlasterror()
+	if this.ib_trace then
+		of_log("GetLastError() = " + string(ll_result))
+	end if
+	of_continuework(true)
+	return ll_result
+
+// nv_remote_datawindow.deletedcount() returns long
+	long ll_result
+	if this.ib_trace then
+		of_log_enter("DeletedCount()")
+	end if
+	ll_result = this.ids_datastore.deletedcount()
+	if this.ib_trace then
+		of_log_exit("DeletedCount()")
+	end if
+	of_continuework(true)
+	return ll_result
+
+// nv_remote_datawindow.getcolumn() returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("GetColumn()")
+	end if
+	li_result = this.ids_datastore.getcolumn()
+	if this.ib_trace then
+		of_log_exit("GetColumn()")
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.getcolumnname() returns string
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("GetColumnName()")
+	end if
+	ls_result = this.ids_datastore.getcolumnname()
+	if this.ib_trace then
+		of_log_exit("GetColumnName()")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.filteredcount() returns long
+	long ll_result
+	if this.ib_trace then
+		of_log_enter("FilteredCount()")
+	end if
+	ll_result = this.ids_datastore.filteredcount()
+	if this.ib_trace then
+		of_log_exit("FilteredCount()")
+	end if
+	of_continuework(true)
+	return ll_result
+
+// nv_remote_datawindow.getformat(string as_column) returns string
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("GetFormat('" + as_column + "')")
+	end if
+	ls_result = this.ids_datastore.getformat(as_column)
+	if this.ib_trace then
+		of_log_exit("GetFormat()")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.getvalidate(string as_column) returns string
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("GetValidate('" + as_column + "')")
+	end if
+	ls_result = this.ids_datastore.getvalidate(as_column)
+	if this.ib_trace then
+		of_log_exit("GetValidate()")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.getvalue(string as_column, integer ai_index) returns string
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("GetValue('" + as_column + ", " + string(ai_index) + "')")
+	end if
+	ls_result = this.ids_datastore.getvalue(as_column, ai_index)
+	if this.ib_trace then
+		of_log_exit("GetValue()")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.getrow() returns long
+	long ll_result
+	if this.ib_trace then
+		of_log_enter("GetRow()")
+	end if
+	ll_result = this.ids_datastore.getrow()
+	if this.ib_trace then
+		of_log_exit("GetRow()")
+	end if
+	of_continuework(true)
+	return ll_result
+
+// nv_remote_datawindow.groupcalc() returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("GroupCalc()")
+	end if
+	li_result = this.ids_datastore.groupcalc()
+	if this.ib_trace then
+		of_log_exit("GroupCalc()")
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.importstring(string as_string) returns long
+	long ll_result
+	if this.ib_trace then
+		of_log_enter("ImportString('" + as_string + "')")
+	end if
+	ll_result = this.ids_datastore.importstring(as_string)
+	if this.ib_trace then
+		of_log_exit("ImportString()")
+	end if
+	of_continuework(true)
+	return ll_result
+
+// nv_remote_datawindow.modifiedcount() returns long
+	long ll_result
+	if this.ib_trace then
+		of_log_enter("ModifiedCount()")
+	end if
+	ll_result = this.ids_datastore.modifiedcount()
+	if this.ib_trace then
+		of_log_exit("ModifiedCount()")
+	end if
+	of_continuework(true)
+	return ll_result
+
+// nv_remote_datawindow.reset() returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("Reset()")
+	end if
+	li_result = this.ids_datastore.reset()
+	if this.ib_trace then
+		of_log_exit("Reset()")
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.resetupdate() returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("ResetUpdate()")
+	end if
+	li_result = this.ids_datastore.resetupdate()
+	if this.ib_trace then
+		of_log_exit("ResetUpdate()")
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.rowcount() returns long
+	long ll_result
+	if this.ib_trace then
+		of_log_enter("RowCount()")
+	end if
+	ll_result = this.ids_datastore.rowcount()
+	if this.ib_trace then
+		of_log_exit("RowCount()")
+	end if
+	of_continuework(true)
+	return ll_result
+
+// nv_remote_datawindow.setcolumn(string as_column) returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("SetColumn('" + as_column + "')")
+	end if
+	li_result = this.ids_datastore.setcolumn(as_column)
+	if this.ib_trace then
+		of_log_exit("SetColumn()")
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.onetrip(string as_objectname, string as_browsername, string as_selflink, string as_selflinkargs, string as_action, string as_context) returns string
+	string ls_result
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("OneTrip()")
+	end if
+	if as_objectname <> "" then
+		ls_result = sethtmlobjectname(as_objectname)
+	end if
+	if ls_result = "" then
+		ls_result = setbrowser(as_browsername)
+	end if
+	if ls_result = "" then
+		ls_result = setselflink(as_selflink, as_selflinkargs)
+	end if
+	if ls_result = "" and this.ib_allowretrieve then
+		li_result = retrieve()
+		if li_result < 0 then
+			ls_result = getlasterrorstring()
+		end if
+	end if
+	if ls_result = "" then
+		li_result = setaction(as_action, as_context)
+		if li_result < 0 then
+			ls_result = getlasterrorstring()
+		end if
+	end if
+	if ls_result = "" then
+		ls_result = generate()
+	end if
+	if this.ib_trace then
+		of_log_exit("OneTrip()")
+	end if
+	return ls_result
+
+// nv_remote_datawindow.setfilter(string as_format) returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("SetFilter('" + as_format + "')")
+	end if
+	li_result = this.ids_datastore.setfilter(as_format)
+	if this.ib_trace then
+		of_log_exit("SetFilter()")
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.describe(string as_syntax) returns string
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("Describe('" + as_syntax + "')")
+	end if
+	ls_result = this.ids_datastore.describe(as_syntax)
+	if this.ib_trace then
+		of_log_exit("Describe()")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.clearvaluesbycolnum(integer ai_column) returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("ClearValuesByColNum(" + string(ai_column) + ")")
+	end if
+	li_result = this.ids_datastore.clearvalues(ai_column)
+	if this.ib_trace then
+		of_log_exit("ClearValuesByColNum()")
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.deleterow(long al_row) returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("DeleteRow(" + string(al_row) + ")")
+	end if
+	li_result = this.ids_datastore.deleterow(al_row)
+	if this.ib_trace then
+		of_log_exit("DeleteRow()")
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.find(string as_expression, long al_start, long al_end) returns long
+	long ll_result
+	if this.ib_trace then
+		of_log_enter("Find('" + as_expression + "', " + string(al_start) + ", " + string(al_end) + ")")
+	end if
+	ll_result = this.ids_datastore.find(as_expression, al_start, al_end)
+	if this.ib_trace then
+		of_log_exit("Find()")
+	end if
+	of_continuework(true)
+	return ll_result
+
+// nv_remote_datawindow.findgroupchange(long al_row, integer ai_level) returns long
+	long ll_result
+	if this.ib_trace then
+		of_log_enter("FindGroupChange(" + string(al_row) + ", " + string(ai_level) + ")")
+	end if
+	ll_result = this.ids_datastore.findgroupchange(al_row, ai_level)
+	if this.ib_trace then
+		of_log_exit("FindGroupChange()")
+	end if
+	of_continuework(true)
+	return ll_result
+
+// nv_remote_datawindow.getformatbycolnum(integer ai_column) returns string
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("GetFormatByColNum(" + string(ai_column) + ")")
+	end if
+	ls_result = this.ids_datastore.getformat(ai_column)
+	if this.ib_trace then
+		of_log_exit("GetFormatByColNum()")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.getitemnumber(long al_row, string as_column) returns double
+	double ld_result
+	if this.ib_trace then
+		of_log_enter("GetItemNumber(" + string(al_row) + ", '" + as_column + "')")
+	end if
+	ld_result = this.ids_datastore.getitemnumber(al_row, as_column)
+	if this.ib_trace then
+		of_log_exit("GetItemNumber()")
+	end if
+	of_continuework(true)
+	return ld_result
+
+// nv_remote_datawindow.getitemstring(long al_row, string as_column) returns string
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("GetItemString(" + string(al_row) + ", '" + as_column + "')")
+	end if
+	ls_result = this.ids_datastore.getitemstring(al_row, as_column)
+	if this.ib_trace then
+		of_log_exit("GetItemString()")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.getitemstringbycolnum(long al_row, integer ai_column) returns string
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("GetItemStringByColNum(" + string(al_row) + ", " + string(ai_column) + ")")
+	end if
+	ls_result = this.ids_datastore.getitemstring(al_row, ai_column)
+	if this.ib_trace then
+		of_log_exit("GetItemStringByColNum()")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.getvalidatebycolnum(integer ai_column) returns string
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("GetValidateByColNum(" + string(ai_column) + ")")
+	end if
+	ls_result = this.ids_datastore.getvalidate(ai_column)
+	if this.ib_trace then
+		of_log_exit("GetValidateByColNum()")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.getvaluebycolnum(integer ai_column, integer ai_index) returns string
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("GetValueByColNum(" + string(ai_column) + ", " + string(ai_index) + ")")
+	end if
+	ls_result = this.ids_datastore.getvalue(ai_column, ai_index)
+	if this.ib_trace then
+		of_log_exit("GetValueByColNum()")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.insertrow(long al_row) returns long
+	long ll_result
+	if this.ib_trace then
+		of_log_enter("InsertRow(" + string(al_row) + ")")
+	end if
+	ll_result = this.ids_datastore.insertrow(al_row)
+	if this.ib_trace then
+		of_log_exit("InsertRow()")
+	end if
+	of_continuework(true)
+	return ll_result
+
+// nv_remote_datawindow.reselectrow(long al_row) returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("ReselectRow(" + string(al_row) + ")")
+	end if
+	li_result = this.ids_datastore.reselectrow(al_row)
+	if this.ib_trace then
+		of_log_exit("ReselectRow()")
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.setcolumnbycolnum(integer ai_column) returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("SetColumnByColNum(" + string(ai_column) + ")")
+	end if
+	li_result = this.ids_datastore.setcolumn(ai_column)
+	if this.ib_trace then
+		of_log_exit("SetColumnByColNum()")
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.setformat(string as_column, string as_format) returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("SetFormat('" + as_column + "', '" + as_format + "')")
+	end if
+	li_result = this.ids_datastore.setformat(as_column, as_format)
+	if this.ib_trace then
+		of_log_exit("SetFormat()")
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.setformatbycolnum(integer ai_column, string as_format) returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("SetFormat(" + string(ai_column) + ", '" + as_format + "')")
+	end if
+	li_result = this.ids_datastore.setformat(ai_column, as_format)
+	if this.ib_trace then
+		of_log_exit("SetFormat()")
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.setitemnumber(long al_row, string as_column, double ad_value) returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("SetItemNumber(" + string(al_row) + ", '" + as_column + "', " + string(ad_value) + ")")
+	end if
+	li_result = this.ids_datastore.setitem(al_row, as_column, ad_value)
+	if this.ib_trace then
+		of_log_exit("SetItemNumber()")
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.setitemnumberbycolnum(long al_row, integer ai_column, double ad_value) returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("SetItemNumberByColNum(" + string(al_row) + ", " + string(ai_column) + ", " + string(ad_value) + ")")
+	end if
+	li_result = this.ids_datastore.setitem(al_row, ai_column, ad_value)
+	if this.ib_trace then
+		of_log_exit("SetItemNumberByColNum()")
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.setitemstring(long al_row, string as_column, string as_value) returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("SetItemString(" + string(al_row) + ", '" + as_column + "', '" + as_value + "')")
+	end if
+	li_result = this.ids_datastore.setitem(al_row, as_column, as_value)
+	if this.ib_trace then
+		of_log_exit("SetItemString()")
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.setitemstringbycolnum(long al_row, integer ai_column, string as_value) returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("SetItemStringByColNum(" + string(al_row) + ", '" + string(ai_column) + "', '" + as_value + "')")
+	end if
+	li_result = this.ids_datastore.setitem(al_row, ai_column, as_value)
+	if this.ib_trace then
+		of_log_exit("SetItemStringByColNum()")
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.setposition(string as_objectname, string as_band, boolean ab_bringtofront) returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("SetPosition('" + as_objectname + "', '" + as_band + "', " + string(ab_bringtofront) + ")")
+	end if
+	li_result = this.ids_datastore.setposition(as_objectname, as_band, ab_bringtofront)
+	if this.ib_trace then
+		of_log_exit("SetPosition()")
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.setrow(long al_row) returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("SetRow(" + string(al_row) + ")")
+	end if
+	li_result = this.ids_datastore.setrow(al_row)
+	if this.ib_trace then
+		of_log_exit("SetRow()")
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.setsort(string as_format) returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("SetSort('" + as_format + "')")
+	end if
+	li_result = this.ids_datastore.setsort(as_format)
+	if this.ib_trace then
+		of_log_exit("SetSort()")
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.setsqlselect(string as_statement) returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("SetSQLSelect('" + as_statement + "')")
+	end if
+	li_result = this.ids_datastore.setsqlselect(as_statement)
+	if this.ib_trace then
+		of_log_exit("SetSQLSelect()")
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.setvalidate(string as_column, string as_rule) returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("SetValidate('" + as_column + "', '" + as_rule + "')")
+	end if
+	li_result = this.ids_datastore.setvalidate(as_column, as_rule)
+	if this.ib_trace then
+		of_log_exit("SetValidate()")
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.setvalidatebycolnum(integer ai_column, string as_rule) returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("SetValidateByColNum(" + string(ai_column) + ", '" + as_rule + "')")
+	end if
+	li_result = this.ids_datastore.setvalidate(ai_column, as_rule)
+	if this.ib_trace then
+		of_log_exit("SetValidateByColNum()")
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.setvaluebycolnum(integer ai_column, integer ai_index, string as_value) returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("SetValueByColNum(" + string(ai_column) + ", " + string(ai_index) + ", '" + as_value + "')")
+	end if
+	li_result = this.ids_datastore.setvalue(ai_column, ai_index, as_value)
+	if this.ib_trace then
+		of_log_exit("SetValueByColNum()")
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.setvalue(string as_column, integer ai_index, string as_value) returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("SetValue('" + as_column + "', " + string(ai_index) + ", '" + as_value + "')")
+	end if
+	li_result = this.ids_datastore.setvalue(as_column, ai_index, as_value)
+	if this.ib_trace then
+		of_log_exit("SetValue()")
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.filter() returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("Filter()")
+	end if
+	li_result = this.ids_datastore.filter()
+	if this.ib_trace then
+		of_log_exit("Filter()")
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.sort() returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("Sort()")
+	end if
+	li_result = this.ids_datastore.sort()
+	if this.ib_trace then
+		of_log_exit("Sort()")
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.update() returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("Update()")
+	end if
+	this.ib_didupdate = true
+	li_result = this.ids_datastore.update()
+	if this.ib_trace then
+		of_log_exit("Update() = " + string(li_result))
+	end if
+	this.ib_updatefailed = li_result <> 1
+	of_continuework(not this.ib_updatefailed)
+	return li_result
+
+// nv_remote_datawindow.updateex(boolean ab_accept, boolean ab_resetflag) returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("UpdateEx(" + string(ab_accept) + ", " + string(ab_resetflag) + ")")
+	end if
+	this.ib_didupdate = true
+	li_result = this.ids_datastore.update(ab_accept, ab_resetflag)
+	if this.ib_trace then
+		of_log_exit("UpdateEx() = " + string(li_result))
+	end if
+	this.ib_updatefailed = li_result <> 1
+	of_continuework(not this.ib_updatefailed)
+	return li_result
+
+// nv_remote_datawindow.setdetailheight(long al_startrow, long al_endrow, long al_height) returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("SetDetailHeight(" + string(al_startrow) + ", " + string(al_endrow) + ", " + string(al_height) + ")")
+	end if
+	li_result = this.ids_datastore.setdetailheight(al_startrow, al_endrow, al_height)
+	if this.ib_trace then
+		of_log_exit("SetDetailHeight()")
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.modify(string as_modifysyntax) returns string
+	string ls_error
+	if this.ib_trace then
+		of_log_enter("Modify('" + as_modifysyntax + "')")
+	end if
+	if not this.ib_fixed then
+		ls_error = this.ids_datastore.modify(as_modifysyntax)
+	else
+		ls_error = "Component has been marked as fixed.  Cannot call Modify()"
+	end if
+	if this.ib_trace then
+		of_log_exit("Modify() = '" + ls_error + "'")
+	end if
+	of_continuework(true)
+	return ls_error
+
+// nv_remote_datawindow.of_convertdwitemstatustostring(dwitemstatus adwis_status) returns string
+	string ls_status
+	setnull(ls_status)
+	choose case adwis_status
+	case notmodified!
+		ls_status = "NotModified!"
+	case datamodified!
+		ls_status = "DataModified!"
+	case new!
+		ls_status = "New!"
+	case newmodified!
+		ls_status = "NewModified!"
+	end choose
+	return ls_status
+
+// nv_remote_datawindow.of_convertstringtodwitemstatus(string as_status) returns dwitemstatus
+	dwitemstatus ldwis_status
+	setnull(ldwis_status)
+	choose case upper(as_status)
+	case "NOTMODIFIED!", "NOTMODIFIED"
+		ldwis_status = notmodified!
+	case "DATAMODIFIED!", "DATAMODIFIED"
+		ldwis_status = datamodified!
+	case "NEW!", "NEW"
+		ldwis_status = new!
+	case "NEWMODIFIED", "NEWMODIFIED"
+		ldwis_status = newmodified!
+	end choose
+	return ldwis_status
+
+// nv_remote_datawindow.of_convertstringtodwbuffer(string as_dwbuffer) returns dwbuffer
+	dwbuffer ldwbuf_buffer
+	setnull(ldwbuf_buffer)
+	choose case upper(as_dwbuffer)
+	case "PRIMARY!", "PRIMARY"
+		ldwbuf_buffer = primary!
+	case "DELETE!", "DELETE"
+		ldwbuf_buffer = delete!
+	case "FILTER!", "FILTER"
+		ldwbuf_buffer = filter!
+	end choose
+	return ldwbuf_buffer
+
+// nv_remote_datawindow.getitemnumberbycolnum(long al_row, integer ai_column) returns double
+	double ld_result
+	if this.ib_trace then
+		of_log_enter("GetItemNumberByColNum(" + string(al_row) + ", " + string(ai_column) + ")")
+	end if
+	ld_result = this.ids_datastore.getitemnumber(al_row, ai_column)
+	if this.ib_trace then
+		of_log_exit("GetItemNumberByColNum()")
+	end if
+	of_continuework(true)
+	return ld_result
+
+// nv_remote_datawindow.getitemnumberbycolnumex(long al_row, integer ai_column, string as_dwbuffer, boolean ab_originalvalue) returns double
+	double ld_result
+	if this.ib_trace then
+		of_log_enter("GetItemNumberByColNumEx(" + string(al_row) + ", " + string(ai_column) + ", '" + as_dwbuffer + "', " + string(ab_originalvalue) + ")")
+	end if
+	ld_result = this.ids_datastore.getitemnumber(al_row, ai_column, of_convertstringtodwbuffer(as_dwbuffer), ab_originalvalue)
+	if this.ib_trace then
+		of_log_exit("GetItemNumberByColNumEx()")
+	end if
+	of_continuework(true)
+	return ld_result
+
+// nv_remote_datawindow.getitemnumberex(long al_row, string as_column, string as_dwbuffer, boolean ab_originalvalue) returns double
+	double ld_result
+	if this.ib_trace then
+		of_log_enter("GetItemNumberEx(" + string(al_row) + ", '" + as_column + "', '" + as_dwbuffer + "', " + string(ab_originalvalue) + ")")
+	end if
+	ld_result = this.ids_datastore.getitemnumber(al_row, as_column, of_convertstringtodwbuffer(as_dwbuffer), ab_originalvalue)
+	if this.ib_trace then
+		of_log_exit("GetItemNumberEx()")
+	end if
+	of_continuework(true)
+	return ld_result
+
+// nv_remote_datawindow.getitemstringex(long al_row, string as_column, string as_dwbuffer, boolean ab_originalvalue) returns string
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("GetItemStringEx(" + string(al_row) + ", '" + as_column + "', '" + as_dwbuffer + "', " + string(ab_originalvalue) + ")")
+	end if
+	ls_result = this.ids_datastore.getitemstring(al_row, as_column, of_convertstringtodwbuffer(as_dwbuffer), ab_originalvalue)
+	if this.ib_trace then
+		of_log_exit("GetItemStringEx()")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.getitemstringbycolnumex(long al_row, integer ai_column, string as_dwbuffer, boolean ab_originalvalue) returns string
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("GetItemStringByColNumEx(" + string(al_row) + ", " + string(ai_column) + ", '" + as_dwbuffer + "', " + string(ab_originalvalue) + ")")
+	end if
+	ls_result = this.ids_datastore.getitemstring(al_row, ai_column, of_convertstringtodwbuffer(as_dwbuffer), ab_originalvalue)
+	if this.ib_trace then
+		of_log_exit("GetItemStringByColNumEx()")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.getitemstatus(long al_row, string as_column, string as_dwbuffer) returns string
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("GetItemStatus(" + string(al_row) + ", '" + as_column + "', '" + as_dwbuffer + "')")
+	end if
+	ls_result = of_convertdwitemstatustostring(this.ids_datastore.getitemstatus(al_row, as_column, of_convertstringtodwbuffer(as_dwbuffer)))
+	if this.ib_trace then
+		of_log_exit("GetItemStatus()")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.getitemstatusbycolnum(long al_row, integer ai_column, string as_dwbuffer) returns string
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("GetItemStatusByColNum(" + string(al_row) + ", " + string(ai_column) + ", '" + as_dwbuffer + "')")
+	end if
+	ls_result = of_convertdwitemstatustostring(this.ids_datastore.getitemstatus(al_row, ai_column, of_convertstringtodwbuffer(as_dwbuffer)))
+	if this.ib_trace then
+		of_log_exit("GetItemStatusByColNum()")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.rowsdiscard(long al_startrow, long al_endrow, string as_dwbuffer) returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("RowsDiscard(" + string(al_startrow) + ", " + string(al_endrow) + ", '" + as_dwbuffer + "')")
+	end if
+	li_result = this.ids_datastore.rowsdiscard(al_startrow, al_endrow, of_convertstringtodwbuffer(as_dwbuffer))
+	if this.ib_trace then
+		of_log_exit("RowsDiscard()")
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.saveas(string as_filename, string as_saveastype, boolean ab_colheading) returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("SaveAs('" + as_filename + "', '" + as_saveastype + "', " + string(ab_colheading) + ")")
+	end if
+	li_result = this.ids_datastore.saveas(as_filename, of_convertstringtosaveastype(as_saveastype), ab_colheading)
+	if this.ib_trace then
+		of_log_exit("SaveAs()")
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.setitemstatus(long al_row, string as_column, string as_dwbuffer, string as_status) returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("SetItemStatus(" + string(al_row) + ", '" + as_column + "', '" + as_dwbuffer + "', '" + as_status + "')")
+	end if
+	li_result = this.ids_datastore.setitemstatus(al_row, as_column, of_convertstringtodwbuffer(as_dwbuffer), of_convertstringtodwitemstatus(as_status))
+	if this.ib_trace then
+		of_log_exit("SetItemStatus()")
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.setitemstatusbycolnum(long al_row, integer ai_column, string as_dwbuffer, string as_status) returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("SetItemStatusByColNum(" + string(al_row) + ", " + string(ai_column) + ", '" + as_dwbuffer + "', '" + as_status + "')")
+	end if
+	li_result = this.ids_datastore.setitemstatus(al_row, ai_column, of_convertstringtodwbuffer(as_dwbuffer), of_convertstringtodwitemstatus(as_status))
+	if this.ib_trace then
+		of_log_exit("SetItemStatusByColNum()")
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.setitemdate(long al_row, string as_column, string as_value) returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("SetItemDate(" + string(al_row) + ", '" + as_column + "', '" + as_value + "')")
+	end if
+	li_result = this.ids_datastore.setitem(al_row, as_column, date(as_value))
+	if this.ib_trace then
+		of_log_exit("SetItemDate()")
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.setitemdatebycolnum(long al_row, integer ai_column, string as_value) returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("SetItemDateByColNum(" + string(al_row) + ", '" + string(ai_column) + "', '" + as_value + "')")
+	end if
+	li_result = this.ids_datastore.setitem(al_row, ai_column, date(as_value))
+	if this.ib_trace then
+		of_log_exit("SetItemDateByColNum()")
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.setitemtime(long al_row, string as_column, string as_value) returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("SetItemTime(" + string(al_row) + ", '" + as_column + "', '" + as_value + "')")
+	end if
+	li_result = this.ids_datastore.setitem(al_row, as_column, time(as_value))
+	if this.ib_trace then
+		of_log_exit("SetItemTime()")
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.setitemtimebycolnum(long al_row, integer ai_column, string as_value) returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("SetItemTimeByColNum(" + string(al_row) + ", '" + string(ai_column) + "', '" + as_value + "')")
+	end if
+	li_result = this.ids_datastore.setitem(al_row, ai_column, time(as_value))
+	if this.ib_trace then
+		of_log_exit("SetItemTimeByColNum()")
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.setitemdatetimebycolnum(long al_row, integer ai_column, string as_value) returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("SetItemDateTimeByColNum(" + string(al_row) + ", '" + string(ai_column) + "', '" + as_value + "')")
+	end if
+	li_result = this.ids_datastore.setitem(al_row, ai_column, of_convertstringtodatetime(as_value))
+	if this.ib_trace then
+		of_log_exit("SetItemDateTimeByColNum()")
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.setitemdatetime(long al_row, string as_column, string as_value) returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("SetItemDateTime(" + string(al_row) + ", '" + as_column + "', '" + as_value + "')")
+	end if
+	li_result = this.ids_datastore.setitem(al_row, as_column, of_convertstringtodatetime(as_value))
+	if this.ib_trace then
+		of_log_exit("SetItemDateTime()")
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.getitemdatetimeex(long al_row, string as_column, string as_dwbuffer, boolean ab_originalvalue) returns string
+	datetime ldtm_result
+	if this.ib_trace then
+		of_log_enter("GetItemDateTimeEx(" + string(al_row) + ", '" + as_column + "', '" + as_dwbuffer + "', " + string(ab_originalvalue) + ")")
+	end if
+	ldtm_result = this.ids_datastore.getitemdatetime(al_row, as_column, of_convertstringtodwbuffer(as_dwbuffer), ab_originalvalue)
+	if this.ib_trace then
+		of_log_exit("GetItemDateTimeEx()")
+	end if
+	of_continuework(true)
+	return string(ldtm_result, "MMMM D, YYYY HH:MM:SS")
+
+// nv_remote_datawindow.getitemdatebycolnum(long al_row, integer ai_column) returns string
+	date ldt_result
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("GetItemDateByColNum(" + string(al_row) + ", " + string(ai_column) + ")")
+	end if
+	ldt_result = this.ids_datastore.getitemdate(al_row, ai_column)
+	ls_result = string(ldt_result, "MMMM D, YYYY")
+	if this.ib_trace then
+		of_log_exit("GetItemDateByColNum() = '" + ls_result + "'")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.getitemdate(long al_row, string as_column) returns string
+	date ldt_result
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("GetItemDate(" + string(al_row) + ", '" + as_column + "')")
+	end if
+	ldt_result = this.ids_datastore.getitemdate(al_row, as_column)
+	ls_result = string(ldt_result, "MMMM D, YYYY")
+	if this.ib_trace then
+		of_log_exit("GetItemDate() = '" + ls_result + "'")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.getitemdatebycolnumex(long al_row, integer ai_column, string as_dwbuffer, boolean ab_originalvalue) returns string
+	date ldt_result
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("GetItemDateByColNumEx(" + string(al_row) + ", " + string(ai_column) + ", '" + as_dwbuffer + "', " + string(ab_originalvalue) + ")")
+	end if
+	ldt_result = this.ids_datastore.getitemdate(al_row, ai_column, of_convertstringtodwbuffer(as_dwbuffer), ab_originalvalue)
+	ls_result = string(ldt_result, "MMMM D, YYYY")
+	if this.ib_trace then
+		of_log_exit("GetItemDateByColNumEx() = '" + ls_result + "'")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.getitemdateex(long al_row, string as_column, string as_dwbuffer, boolean ab_originalvalue) returns string
+	date ldt_result
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("GetItemDateEx(" + string(al_row) + ", '" + as_column + "', '" + as_dwbuffer + "', " + string(ab_originalvalue) + ")")
+	end if
+	ldt_result = this.ids_datastore.getitemdate(al_row, as_column, of_convertstringtodwbuffer(as_dwbuffer), ab_originalvalue)
+	ls_result = string(ldt_result, "MMMM D, YYYY")
+	if this.ib_trace then
+		of_log_exit("GetItemDateEx() = '" + ls_result + "'")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.getitemdatetime(long al_row, string as_column) returns string
+	datetime ldtm_result
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("GetItemDateTime(" + string(al_row) + ", '" + as_column + "')")
+	end if
+	ldtm_result = this.ids_datastore.getitemdatetime(al_row, as_column)
+	ls_result = string(ldtm_result, "MMMM D, YYYY HH:MM:SS")
+	if this.ib_trace then
+		of_log_exit("GetItemDateTime() = '" + ls_result + "'")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.getitemdatetimebycolnum(long al_row, integer ai_column) returns string
+	datetime ldtm_result
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("GetItemDateTimeByColNum(" + string(al_row) + ", " + string(ai_column) + ")")
+	end if
+	ldtm_result = this.ids_datastore.getitemdatetime(al_row, ai_column)
+	ls_result = string(ldtm_result, "MMMM D, YYYY HH:MM:SS")
+	if this.ib_trace then
+		of_log_exit("GetItemDateTimeByColNum() = '" + ls_result + "'")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.getitemdatetimebycolnumex(long al_row, integer ai_column, string as_dwbuffer, boolean ab_originalvalue) returns string
+	datetime ldtm_result
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("GetItemDateTimeByColNumEx(" + string(al_row) + ", " + string(ai_column) + ", '" + as_dwbuffer + "', " + string(ab_originalvalue) + ")")
+	end if
+	ldtm_result = this.ids_datastore.getitemdatetime(al_row, ai_column, of_convertstringtodwbuffer(as_dwbuffer), ab_originalvalue)
+	ls_result = string(ldtm_result, "MMMM D, YYYY HH:MM:SS")
+	if this.ib_trace then
+		of_log_exit("GetItemDateTimeByColNumEx() = '" + ls_result + "'")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.getitemtime(long al_row, string as_column) returns string
+	time ltm_result
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("GetItemTime(" + string(al_row) + ", '" + as_column + "')")
+	end if
+	ltm_result = this.ids_datastore.getitemtime(al_row, as_column)
+	ls_result = string(ltm_result, "HH:MM:SS")
+	if this.ib_trace then
+		of_log_exit("GetItemTime() = '" + ls_result + "'")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.getitemtimebycolnum(long al_row, integer ai_column) returns string
+	time ltm_result
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("GetItemTimeByColNum(" + string(al_row) + ", " + string(ai_column) + ")")
+	end if
+	ltm_result = this.ids_datastore.getitemtime(al_row, ai_column)
+	ls_result = string(ltm_result, "HH:MM:SS")
+	if this.ib_trace then
+		of_log_exit("GetItemTimeByColNum() = '" + ls_result + "'")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.getitemtimebycolnumex(long al_row, integer ai_column, string as_dwbuffer, boolean ab_originalvalue) returns string
+	time ltm_result
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("GetItemTimeByColNumEx(" + string(al_row) + ", " + string(ai_column) + ", '" + as_dwbuffer + "', " + string(ab_originalvalue) + ")")
+	end if
+	ltm_result = this.ids_datastore.getitemtime(al_row, ai_column, of_convertstringtodwbuffer(as_dwbuffer), ab_originalvalue)
+	ls_result = string(ltm_result, "HH:MM:SS")
+	if this.ib_trace then
+		of_log_exit("GetItemTimeByColNumEx() = '" + ls_result + "'")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.getitemtimeex(long al_row, string as_column, string as_dwbuffer, boolean ab_originalvalue) returns string
+	time ltm_result
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("GetItemTimeEx(" + string(al_row) + ", '" + as_column + "', '" + as_dwbuffer + "', " + string(ab_originalvalue) + ")")
+	end if
+	ltm_result = this.ids_datastore.getitemtime(al_row, as_column, of_convertstringtodwbuffer(as_dwbuffer), ab_originalvalue)
+	ls_result = string(ltm_result, "HH:MM:SS")
+	if this.ib_trace then
+		of_log_exit("GetItemTimeEx() = '" + ls_result + "'")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.of_getextension(string as_filename) returns string
+	string ls_extension
+	long ll_lastpos
+	ll_lastpos = of_lastpos(as_filename, ".")
+	if ll_lastpos > 0 then
+		ls_extension = mid(as_filename, ll_lastpos + 1, 3)
+		ls_extension = upper(ls_extension)
+	end if
+	return ls_extension
+
+// nv_remote_datawindow.of_log(string msg) returns 0
+	if this.ib_trace and isvalid(this.inv_logger) then
+		this.inv_logger.log("HTMLDW: " + space(this.il_indent * 3) + msg)
+	end if
+
+// nv_remote_datawindow.of_log_enter(string msg) returns 0
+	of_log("Entering " + msg)
+	this.il_indent = this.il_indent + 1
+
+// nv_remote_datawindow.of_log_exit(string msg) returns 0
+	this.il_indent = this.il_indent - 1
+	of_log("Exiting " + msg)
+
+// nv_remote_datawindow.setaction(string as_action, string as_context) returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("SetAction('" + as_action + "')")
+	end if
+	this.ib_didupdate = as_action = "Update"
+	li_result = this.ids_datastore.sethtmlaction(as_action, as_context)
+	if this.ib_trace then
+		of_log_exit("SetAction() = " + string(li_result))
+	end if
+	this.ib_updatefailed = this.ib_didupdate and li_result <> 1 and li_result <> -4
+	of_continuework(not this.ib_updatefailed)
+	return li_result
+
+// nv_remote_datawindow.clearvalues(string as_column) returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("ClearValues('" + as_column + "')")
+	end if
+	li_result = this.ids_datastore.clearvalues(as_column)
+	if this.ib_trace then
+		of_log_exit("ClearValues()")
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.of_parseargs(string argstring, any[] args) returns integer
+	integer li_result
+	integer li_index
+	integer li_maxindex
+	integer li_pos
+	integer li_lastpos
+	integer li_tabpos
+	nv_retreival_arg[] argrow
+	string argdesc
+	string dwarg
+	argdesc = this.ids_datastore.describe("datawindow.table.arguments")
+	li_index = 1
+	do
+		li_pos = pos(argdesc, "~n", li_lastpos)
+		if li_pos > 0 then
+			dwarg = mid(argdesc, li_lastpos, li_pos - li_lastpos)
+		else
+			dwarg = mid(argdesc, li_lastpos)
+		end if
+		li_tabpos = pos(dwarg, "~t")
+		if li_tabpos > 0 then
+			argrow[li_index].is_argtype = mid(dwarg, li_tabpos + 1)
+		end if
+		li_lastpos = li_pos + 1
+		li_index = li_index + 1
+	loop while li_pos > 0
+	li_index = 1
+	do
+		li_pos = pos(argstring, "~n", li_lastpos)
+		if li_pos > 0 then
+			argrow[li_index].is_passedvalue = mid(argstring, li_lastpos, li_pos - li_lastpos)
+		else
+			argrow[li_index].is_passedvalue = mid(argstring, li_lastpos)
+		end if
+		li_result = argrow[li_index].of_parse_value(args[li_index])
+		li_lastpos = li_pos + 1
+		li_index = li_index + 1
+	loop while li_pos > 0 and li_result = 1
+	return li_result
+
+// nv_remote_datawindow.retrieve() returns integer
+	long li_result
+	if this.ib_trace then
+		of_log_enter("Retrieve()")
+	end if
+	if this.ib_allowretrieve then
+		li_result = this.ids_datastore.retrieve()
+	else
+		if this.ib_trace then
+			of_log("Retrieve not allowed, returning row count")
+		end if
+		li_result = this.ids_datastore.rowcount()
+	end if
+	if this.ib_trace then
+		if li_result < 0 then
+			of_log("Retrieve Failed, DB message below")
+			of_log(this.ids_datastore.getlasterrorstring())
+		end if
+		of_log_exit("Retrieve() = " + string(li_result))
+	end if
+	of_continuework(true)
+	if li_result > 32767 then
+		li_result = 32767
+	end if
+	return li_result
+
+// nv_remote_datawindow.retrieveex(string argstring) returns integer
+	long li_result
+	any[] args
+	if this.ib_trace then
+		of_log_enter("RetrieveEx('" + argstring + "')")
+	end if
+	if this.ib_allowretrieve then
+		if not isnull(argstring) and argstring <> "" then
+			li_result = of_parseargs(argstring, args)
+		end if
+		if li_result = 1 then
+			choose case upperbound(args)
+			case 0
+				li_result = this.ids_datastore.retrieve()
+			case 1
+				li_result = this.ids_datastore.retrieve(args[1])
+			case 2
+				li_result = this.ids_datastore.retrieve(args[1], args[2])
+			case 3
+				li_result = this.ids_datastore.retrieve(args[1], args[2], args[3])
+			case 4
+				li_result = this.ids_datastore.retrieve(args[1], args[2], args[3], args[4])
+			case 5
+				li_result = this.ids_datastore.retrieve(args[1], args[2], args[3], args[4], args[5])
+			case 6
+				li_result = this.ids_datastore.retrieve(args[1], args[2], args[3], args[4], args[5], args[6])
+			case 7
+				li_result = this.ids_datastore.retrieve(args[1], args[2], args[3], args[4], args[5], args[6], args[7])
+			case 8
+				li_result = this.ids_datastore.retrieve(args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8])
+			case 9
+				li_result = this.ids_datastore.retrieve(args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9])
+			case 10
+				li_result = this.ids_datastore.retrieve(args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], args[10])
+			case 11
+				li_result = this.ids_datastore.retrieve(args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], args[10], args[11])
+			case 12
+				li_result = this.ids_datastore.retrieve(args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], args[10], args[11], args[12])
+			case 13
+				li_result = this.ids_datastore.retrieve(args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], args[10], args[11], args[12], args[13])
+			case 14
+				li_result = this.ids_datastore.retrieve(args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], args[10], args[11], args[12], args[13], args[14])
+			case 15
+				li_result = this.ids_datastore.retrieve(args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], args[10], args[11], args[12], args[13], args[14], args[15])
+			case 16
+				li_result = this.ids_datastore.retrieve(args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], args[10], args[11], args[12], args[13], args[14], args[15], args[16])
+			case else
+				li_result = -1
+			end choose
+		end if
+	else
+		li_result = 1
+	end if
+	if this.ib_trace then
+		if li_result < 0 then
+			of_log("RetrieveEX Failed, DB message below")
+			of_log(this.ids_datastore.getlasterrorstring())
+		end if
+		of_log_exit("RetrieveEx() = " + string(li_result))
+	end if
+	of_continuework(true)
+	if li_result > 32767 then
+		li_result = 32767
+	end if
+	return li_result
+
+// nv_remote_datawindow.of_convertstringtodatetime(string as_datetime) returns datetime
+	boolean lb_datetime_found
+	date ldt_date
+	datetime ldtm_datetime
+	long ll_length
+	long ll_pos
+	string ls_date
+	string ls_time
+	time ltm_time
+	string ls_currentchar
+	string ls_nextchar
+	ll_length = len(as_datetime)
+	setnull(ldt_date)
+	setnull(ltm_time)
+	for ll_pos = 4 to ll_length
+		ls_date = trim(left(as_datetime, ll_pos))
+		ls_time = trim(right(as_datetime, ll_length - ll_pos))
+		if isdate(ls_date) and istime(ls_time) then
+			if ll_pos < ll_length then
+				ls_currentchar = mid(as_datetime, ll_pos, 1)
+				ls_nextchar = mid(as_datetime, ll_pos + 1, 1)
+				if isnumber(ls_currentchar) and isnumber(ls_nextchar) then
+					goto L382
+				end if
+			else
+				ldt_date = date(ls_date)
+				ltm_time = time(ls_time)
+				lb_datetime_found = true
+				ll_pos = ll_length
+			end if
+		end if
+	next
+	if not lb_datetime_found then
+		ls_date = trim(as_datetime)
+		if isdate(ls_date) then
+			ldt_date = date(ls_date)
+			ltm_time = time("12:00 AM")
+			ll_pos = ll_length
+		end if
+	end if
+	ldtm_datetime = datetime(ldt_date, ltm_time)
+	return ldtm_datetime
+
+// nv_remote_datawindow.setdwobject(string as_sourcefilename, string as_dwobjectname) returns integer
+	integer li_result
+	string ls_extension
+	string liblist
+	string ls_source
+	string ls_result
+	string ls_error
+	if this.ib_trace then
+		of_log_enter("SetDWObject('" + as_sourcefilename + "','" + as_dwobjectname + "')")
+	end if
+	if not this.ib_fixed then
+		if not isnull(as_sourcefilename) then
+			ls_extension = of_getextension(as_sourcefilename)
+			choose case ls_extension
+			case "PBD", "PBL"
+				if this.ib_trace then
+					of_log("Doing PBL/PBD")
+				end if
+				if fileexists(as_sourcefilename) then
+					if pos(this.is_default_library_list, as_sourcefilename) = 0 then
+						liblist = this.is_default_library_list + "," + as_sourcefilename
+						li_result = addtolibrarylist(as_sourcefilename)
+						if this.ib_trace then
+							of_log("AddToLibraryList(" + as_sourcefilename + ") = " + string(li_result))
+						end if
+					else
+						liblist = this.is_default_library_list
+					end if
+					this.ids_datastore.dataobject = as_dwobjectname
+					if this.ids_datastore.describe("datawindow.units") = "" then
+						of_log("SetDWObject: ERROR - Could not find datawindow '" + as_dwobjectname + "' in library list '" + liblist + "'")
+						li_result = -1
+					else
+						li_result = 1
+					end if
+				else
+					of_log("SetDWObject: ERROR - Could not find library '" + as_sourcefilename + "'")
+				end if
+			case "PSR"
+				if this.ib_trace then
+					of_log("Doing PSR")
+				end if
+				if fileexists(as_sourcefilename) then
+					this.ids_datastore.dataobject = as_sourcefilename
+					this.ib_allowretrieve = false
+					li_result = 1
+				else
+					of_log("SetDWObject: ERROR - Could not find file '" + as_sourcefilename + "'")
+				end if
+			case "SRD"
+				if this.ib_trace then
+					of_log("Doing SRD")
+				end if
+				ls_source = of_readfile(as_sourcefilename)
+				if ls_source <> "" then
+					ls_result = create(ls_source)
+					if ls_result = "" then
+						li_result = 1
+					else
+						of_log("SetDWObject: ERROR - Create from SRD failed for '" + as_sourcefilename + "', Error String = '" + ls_result + "'")
+					end if
+				else
+					of_log("SetDWObject: ERROR - Could not read source '" + as_sourcefilename + "'")
+				end if
+			case ""
+				if as_sourcefilename = "" then
+					if this.ib_trace then
+						of_log("Unspecified library, assuming component specifies proper library list")
+					end if
+					this.ids_datastore.dataobject = as_dwobjectname
+					if this.ids_datastore.describe("datawindow.units") = "" then
+						of_log("SetDWObject: ERROR - Could not find datawindow '" + as_dwobjectname + "' in library list '" + this.is_default_library_list + "'")
+						li_result = -1
+					else
+						li_result = 1
+					end if
+				else
+					of_log("SetDWObject: ERROR - Unrecognized extension for '" + as_sourcefilename + "' Expecting one of (PBL, PBD, PSR or SRD)")
+				end if
+			case else
+				of_log("SetDWObject: ERROR - Unrecognized extension for '" + as_sourcefilename + "' Expecting one of (PBL, PBD, PSR or SRD)")
+			end choose
+		end if
+	else
+		of_log("SetDWObject: ERROR - Component is marked as fixed.  Cannot change DW definition")
+	end if
+	if li_result > 0 then
+		ls_error = modify("DataWindow.htmldw='yes' DataWindow.NoUserPrompt='yes'")
+		this.ib_dwobjectset = true
+		this.ib_transactionset = false
+		of_initializefromdeclarative()
+	end if
+	if this.ib_trace then
+		of_log_exit("SetDWObject() = " + string(li_result))
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.setdwobjectex(string as_dwobjectname) returns integer
+	integer li_result
+	string ls_error
+	if this.ib_trace then
+		of_log_enter("SetDWObjectEx('" + as_dwobjectname + "')")
+	end if
+	if not this.ib_fixed then
+		this.ids_datastore.dataobject = as_dwobjectname
+		if this.ids_datastore.describe("datawindow.units") = "" then
+			of_log("SetDWObjectEx: ERROR - Could not find datawindow '" + as_dwobjectname + "' in library list '" + this.is_default_library_list + "'")
+			li_result = -1
+		else
+			li_result = 1
+		end if
+	else
+		of_log("SetDWObjectEx: ERROR - Component is marked as fixed.  Cannot change DW definition")
+	end if
+	if li_result > 0 then
+		ls_error = modify("DataWindow.htmldw='yes' DataWindow.NoUserPrompt='yes'")
+		this.ib_dwobjectset = true
+		this.ib_transactionset = false
+		of_initializefromdeclarative()
+	end if
+	if this.ib_trace then
+		of_log_exit("SetDWObjectEx() = " + string(li_result))
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.of_convertstringtosaveastype(string as_saveastype) returns saveastype
+	saveastype sat_saveastype
+	setnull(sat_saveastype)
+	choose case upper(as_saveastype)
+	case "CLIPBOARD!", "CLIPBOARD"
+		sat_saveastype = clipboard!
+	case "CSV!", "CSV"
+		sat_saveastype = csv!
+	case "DBASE2!", "DBASE2"
+		sat_saveastype = dbase2!
+	case "DBASE3!", "DBASE3"
+		sat_saveastype = dbase3!
+	case "DIF!", "DIF"
+		sat_saveastype = dif!
+	case "EMF!", "EMF"
+		sat_saveastype = emf!
+	case "EXCEL!", "EXCEL"
+		sat_saveastype = excel!
+	case "EXCEL5!", "EXCEL5"
+		sat_saveastype = excel5!
+	case "EXCEL8!", "EXCEL8"
+		sat_saveastype = excel8!
+	case "HTMLTABLE!", "HTMLTABLE"
+		sat_saveastype = htmltable!
+	case "PDF!", "PDF"
+		sat_saveastype = pdf!
+	case "PSREPORT!", "PSREPORT"
+		sat_saveastype = psreport!
+	case "SQLINSERT!", "SQLINSERT"
+		sat_saveastype = sqlinsert!
+	case "SYLK!", "SYLK"
+		sat_saveastype = sylk!
+	case "TEXT!", "TEXT"
+		sat_saveastype = text!
+	case "WKS!", "WKS"
+		sat_saveastype = wks!
+	case "WK1!", "WK1"
+		sat_saveastype = wk1!
+	case "WMF!", "WMF"
+		sat_saveastype = wmf!
+	case "XML!", "XML"
+		sat_saveastype = xml!
+	case "XSLFO!", "XSLFO"
+		sat_saveastype = xslfo!
+	end choose
+	return sat_saveastype
+
+// nv_remote_datawindow.importstringex(string as_saveastype, string as_string, long al_startrow, long al_endrow, long al_startcolumn, long al_endcolumn, long al_dwstartcolumn) returns long
+	long ll_result
+	if this.ib_trace then
+		of_log_enter("ImportStringEx('" + as_saveastype + "', '" + as_string + "', " + string(al_startrow) + ", " + string(al_endrow) + ", " + string(al_startcolumn) + ", " + string(al_endcolumn) + ", " + string(al_dwstartcolumn) + ")")
+	end if
+	ll_result = this.ids_datastore.importstring(of_convertstringtosaveastype(as_saveastype), as_string, al_startrow, al_endrow, al_startcolumn, al_endcolumn, al_dwstartcolumn)
+	if this.ib_trace then
+		of_log_exit("ImportStringEx()")
+	end if
+	of_continuework(true)
+	return ll_result
+
+// nv_remote_datawindow.getitemformattedstring(long al_row, string as_column) returns string
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("GetItemFormattedString(" + string(al_row) + ", '" + as_column + "')")
+	end if
+	ls_result = this.ids_datastore.getitemformattedstring(al_row, as_column)
+	if this.ib_trace then
+		of_log_exit("GetItemFormattedString()")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.getitemformattedstringbycolnum(long al_row, integer ai_column) returns string
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("GetItemFormattedStringByColNum(" + string(al_row) + ", " + string(ai_column) + ")")
+	end if
+	ls_result = this.ids_datastore.getitemformattedstring(al_row, ai_column)
+	if this.ib_trace then
+		of_log_exit("GetItemFormattedStringByColNum()")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.getitemformattedstringbycolnumex(long al_row, integer ai_column, string as_dwbuffer, boolean ab_originalvalue) returns string
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("GetItemFormattedStringByColNumEx(" + string(al_row) + ", " + string(ai_column) + ", '" + as_dwbuffer + "', " + string(ab_originalvalue) + ")")
+	end if
+	ls_result = this.ids_datastore.getitemformattedstring(al_row, ai_column, of_convertstringtodwbuffer(as_dwbuffer), ab_originalvalue)
+	if this.ib_trace then
+		of_log_exit("GetItemFormattedStringByColNumEx()")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.getitemformattedstringex(long al_row, string as_column, string as_dwbuffer, boolean ab_originalvalue) returns string
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("GetItemFormattedStringEx(" + string(al_row) + ", '" + as_column + "', '" + as_dwbuffer + "', " + string(ab_originalvalue) + ")")
+	end if
+	ls_result = this.ids_datastore.getitemformattedstring(al_row, as_column, of_convertstringtodwbuffer(as_dwbuffer), ab_originalvalue)
+	if this.ib_trace then
+		of_log_exit("GetItemFormattedStringEx()")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.getitemunformattedstring(long al_row, string as_column) returns string
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("GetItemUnformattedString(" + string(al_row) + ", '" + as_column + "')")
+	end if
+	ls_result = this.ids_datastore.getitemunformattedstring(al_row, as_column)
+	if this.ib_trace then
+		of_log_exit("GetItemUnformattedString()")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.getitemunformattedstringbycolnum(long al_row, integer ai_column) returns string
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("GetItemUnformattedStringByColNum(" + string(al_row) + ", " + string(ai_column) + ")")
+	end if
+	ls_result = this.ids_datastore.getitemunformattedstring(al_row, ai_column)
+	if this.ib_trace then
+		of_log_exit("GetItemUnformattedStringByColNum()")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.getitemunformattedstringbycolnumex(long al_row, integer ai_column, string as_dwbuffer, boolean ab_originalvalue) returns string
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("GetItemUnformattedStringByColNumEx(" + string(al_row) + ", " + string(ai_column) + ", '" + as_dwbuffer + "', " + string(ab_originalvalue) + ")")
+	end if
+	ls_result = this.ids_datastore.getitemunformattedstring(al_row, ai_column, of_convertstringtodwbuffer(as_dwbuffer), ab_originalvalue)
+	if this.ib_trace then
+		of_log_exit("GetItemUnformattedStringByColNumEx()")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.getitemunformattedstringex(long al_row, string as_column, string as_dwbuffer, boolean ab_originalvalue) returns string
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("GetItemUnformattedStringEx(" + string(al_row) + ", '" + as_column + "', '" + as_dwbuffer + "', " + string(ab_originalvalue) + ")")
+	end if
+	ls_result = this.ids_datastore.getitemunformattedstring(al_row, as_column, of_convertstringtodwbuffer(as_dwbuffer), ab_originalvalue)
+	if this.ib_trace then
+		of_log_exit("GetItemUnformattedStringEx()")
+	end if
+	of_continuework(true)
+	return ls_result
+
+// nv_remote_datawindow.generatexhtml() returns string
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("GenerateXHTML()")
+	end if
+	ls_result = this.ids_datastore.describe("DataWindow.Data.XHTML")
+	if this.ib_trace then
+		of_log_exit("GenerateXHTML(), length = " + string(len(ls_result)))
+	end if
+	of_completework()
+	if this.ids_datastore.describe("datawindow.processing") = "5" then
+		SQL stop USING sqlca;
+	end if
+	return ls_result
+
+// nv_remote_datawindow.generatexmlweb() returns string
+	string ls_result
+	if this.ib_trace then
+		of_log_enter("GenerateXMLWeb()")
+	end if
+	ls_result = this.ids_datastore.describe("DataWindow.Data.XMLWeb")
+	if this.ib_trace then
+		of_log_exit("GenerateXMLWeb(), length = " + string(len(ls_result)))
+	end if
+	of_completework()
+	return ls_result
+
+// nv_remote_datawindow.saveasex(string as_filename, string as_saveastype, boolean ab_colheading, string as_encoding) returns integer
+	integer li_result
+	if this.ib_trace then
+		of_log_enter("SaveAsEx('" + as_filename + "', '" + as_saveastype + "', " + string(ab_colheading) + "', " + string(as_encoding) + ")")
+	end if
+	li_result = this.ids_datastore.saveas(as_filename, of_convertstringtosaveastype(as_saveastype), ab_colheading, of_convertstringtoencoding(as_encoding))
+	if this.ib_trace then
+		of_log_exit("SaveAsEx()")
+	end if
+	of_continuework(true)
+	return li_result
+
+// nv_remote_datawindow.of_convertstringtoencoding(string as_encoding) returns encoding
+	encoding ret_encoding
+	setnull(ret_encoding)
+	choose case upper(as_encoding)
+	case "ENCODINGANSI!", "ENCODINGANSI"
+		ret_encoding = encodingansi!
+	case "ENCODINGUTF16LE!", "ENCODINGUTF16LE"
+		ret_encoding = encodingutf16le!
+	case "ENCODINGUTF16BE!", "ENCODINGUTF16BE"
+		ret_encoding = encodingutf16be!
+	case "ENCODINGUTF8!", "ENCODINGUTF8"
+		ret_encoding = encodingutf8!
+	end choose
+	return ret_encoding
+
+// nv_remote_datawindow.create() returns 0
+	call super::create
+	triggerevent("constructor")
+
+// nv_remote_datawindow.destroy() returns 0
+	triggerevent("destructor")
+	call super::destroy
+
+// nv_remote_datawindow.constructor() returns long
+	contextkeyword lcx_key
+	string ls_temp
+	this.is_default_library_list = getlibrarylist()
+	this.ids_datastore = create nv_datastore
+	getcontextservice("Keyword", lcx_key)
+	if isvalid(lcx_key) then
+		ls_temp = of_load_property(lcx_key, this.is_prop_prefix + ".trace")
+		ls_temp = upper(ls_temp)
+		this.ib_trace = ls_temp = "YES" or ls_temp = "TRUE"
+		ls_temp = of_load_property(lcx_key, this.is_prop_prefix + ".fixed")
+		ls_temp = upper(ls_temp)
+		this.ib_fixed = ls_temp = "YES" or ls_temp = "TRUE"
+		ls_temp = of_load_property(lcx_key, this.is_prop_prefix + ".maintainServerSideState")
+		ls_temp = upper(ls_temp)
+		this.ib_serversidestate = ls_temp = "YES" or ls_temp = "TRUE"
+		this.is_sourcefilename = of_load_property(lcx_key, this.is_prop_prefix + ".sourceFileName")
+		this.is_dwobjectname = of_load_property(lcx_key, this.is_prop_prefix + ".dwObjectName")
+		this.is_htmlobjectname = of_load_property(lcx_key, this.is_prop_prefix + ".HTMLObjectName")
+		this.is_modifystring = of_load_property(lcx_key, this.is_prop_prefix + ".modifyString")
+		this.is_trans_dbms = of_load_property(lcx_key, this.is_prop_prefix + ".trans.dbms")
+		this.is_trans_dbparm = of_load_property(lcx_key, this.is_prop_prefix + ".trans.dbparm")
+		this.is_trans_lock = of_load_property(lcx_key, this.is_prop_prefix + ".trans.lock")
+		this.is_trans_logid = of_load_property(lcx_key, this.is_prop_prefix + ".trans.logid")
+		this.is_trans_logpass = of_load_property(lcx_key, this.is_prop_prefix + ".trans.logpass")
+		this.is_trans_database = of_load_property(lcx_key, this.is_prop_prefix + ".trans.database")
+		this.is_trans_servername = of_load_property(lcx_key, this.is_prop_prefix + ".trans.servername")
+		this.is_serviceclassnames = of_load_property(lcx_key, this.is_prop_prefix + ".serverServiceClasses")
+	end if
+	getcontextservice("ErrorLogging", this.inv_logger)
+	if not isvalid(this.inv_logger) then
+		this.ib_trace = false
+	end if
+	if this.ib_trace then
+		of_log("Remote DataWindow Component logging enabled")
+		of_log("Default Library List = '" + this.is_default_library_list + "'")
+		of_log("Loaded component properties:")
+		of_log("    sourceFileName = '" + this.is_sourcefilename + "'")
+		of_log("    dwObjectName = '" + this.is_dwobjectname + "'")
+		of_log("    HTMLObjectName = '" + this.is_htmlobjectname + "'")
+		of_log("    modifyString = '" + this.is_modifystring + "'")
+		if this.ib_fixed then
+			of_log("    fixed = 'yes'")
+		else
+			of_log("    fixed = 'no'")
+		end if
+		if this.ib_serversidestate then
+			of_log("    serverSideState = 'yes'")
+		else
+			of_log("    serverSideState = 'no'")
+		end if
+		of_log("    trans.dbms = '" + this.is_trans_dbms + "'")
+		of_log("    trans.dbparm = '" + this.is_trans_dbparm + "'")
+		of_log("    trans.lock = '" + this.is_trans_lock + "'")
+		of_log("    trans.logid = '" + this.is_trans_logid + "'")
+		of_log("    trans.logpass = '" + this.is_trans_logpass + "'")
+		of_log("    trans.database = '" + this.is_trans_database + "'")
+		of_log("    trans.servername = '" + this.is_trans_servername + "'")
+		of_log("    serverServiceClasses = '" + this.is_serviceclassnames + "'")
+	end if
+	if this.is_sourcefilename <> "" and this.is_dwobjectname <> "" then
+		setdwobject(this.is_sourcefilename, this.is_dwobjectname)
+	elseif this.is_dwobjectname <> "" then
+		setdwobjectex(this.is_dwobjectname)
+	end if
+	return ::message.returnvalue
+
+// nv_remote_datawindow.destructor() returns long
+	if this.ib_trace then
+		of_log("Destructor()")
+	end if
+	return ::message.returnvalue

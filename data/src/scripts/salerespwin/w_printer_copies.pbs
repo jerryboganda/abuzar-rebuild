@@ -1,0 +1,48 @@
+// window w_printer_copies (salerespwin)  ancestor: window
+
+// w_printer_copies.create() returns 0
+	this.em_copies = create em_copies
+	this.st_1 = create st_1
+	this.cb_ok = create cb_ok
+	this.control = {this.em_copies, this.st_1, this.cb_ok}
+
+// w_printer_copies.destroy() returns 0
+	destroy this.em_copies
+	destroy this.st_1
+	destroy this.cb_ok
+
+// w_printer_copies.close() returns long
+	return ::message.returnvalue
+
+// w_printer_copies.activate() returns long
+	this.em_copies.selecttext(1, 3)
+	return ::message.returnvalue
+
+// w_printer_copies.open() returns long
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	s_dberror ls_dberror
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	double ld_copies
+	parent.em_copies.getdata(ld_copies)
+	if ld_copies <= 0.0 then
+		messagebox("Copies Validation", "Kindly enter valid copies no.")
+		return ::message.returnvalue
+	end if
+	closewithreturn(parent, ld_copies)
+	return ::message.returnvalue

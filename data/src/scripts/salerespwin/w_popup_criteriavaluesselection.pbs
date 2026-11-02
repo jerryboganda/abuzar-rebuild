@@ -1,0 +1,57 @@
+// window w_popup_criteriavaluesselection (salerespwin)  ancestor: w_popup_forselection
+
+// w_popup_criteriavaluesselection.create() returns 0
+	call super::create
+
+// w_popup_criteriavaluesselection.destroy() returns 0
+	call super::destroy
+
+// w_popup_criteriavaluesselection.open() returns long
+	long ancestorreturnvalue
+	long ll_found
+	string ls_searchtype
+	ancestorreturnvalue = super::open()
+	this.is_popup_selection = message.powerobjectparm
+	this.id_selectionlist.retrieve(this.is_popup_selection.s_name2)
+	if this.id_selectionlist.rowcount() > 0 and f_stringpreferences("EnableQuickPrefferedSearch") = "Y" and this.is_popup_selection.s_name4 = "quicksearch" then
+		if not (this.is_popup_selection.s_name = "" or isnull(this.is_popup_selection)) then
+			ls_searchtype = f_stringpreferences("QuickPrefferedSearchType")
+			if upper(ls_searchtype) = "X" then
+				ll_found = this.id_selectionlist.find("name = '" + trim(this.is_popup_selection.s_name) + "' ", 1, this.id_selectionlist.rowcount())
+			else
+				if upper(ls_searchtype) = "S" then
+					this.id_selectionlist.setfilter("Match(name, '^" + trim(this.is_popup_selection.s_name) + "') ")
+				elseif upper(ls_searchtype) = "E" then
+					this.id_selectionlist.setfilter("Match(name, '" + trim(this.is_popup_selection.s_name) + "$') ")
+				elseif upper(ls_searchtype) = "A" then
+					this.id_selectionlist.setfilter("Match(name, '" + trim(this.is_popup_selection.s_name) + "') ")
+				end if
+				this.id_selectionlist.filter()
+				if this.id_selectionlist.rowcount() > 0 then
+					ll_found = 1
+				end if
+			end if
+			if ll_found > 0 then
+				if ll_found > this.id_selectionlist.rowcount() or ll_found <= 0 then
+					ll_found = 1
+				end if
+				this.il_itemlistfoundrow = ll_found
+				setredraw(false)
+				this.id_selectionlist.selectrow(0, false)
+				this.id_selectionlist.setrow(this.il_itemlistfoundrow)
+				this.id_selectionlist.scrolltorow(this.il_itemlistfoundrow)
+				this.id_selectionlist.selectrow(this.il_itemlistfoundrow, true)
+				this.id_selected.setitem(this.id_selected.rowcount(), "name", this.id_selectionlist.getitemstring(ll_found, "name"))
+				this.id_selected.setitem(this.id_selected.rowcount(), "code", this.id_selectionlist.getitemnumber(ll_found, "code"))
+				this.id_selected.accepttext()
+				setredraw(true)
+				if ls_searchtype = "X" then
+					this.cb_ok.triggerevent(clicked!)
+				end if
+			end if
+		end if
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue

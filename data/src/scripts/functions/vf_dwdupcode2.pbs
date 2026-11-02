@@ -1,0 +1,33 @@
+// function vf_dwdupcode2 (functions)  ancestor: function_object
+
+// vf_dwdupcode2.vf_dwdupcode2(datawindow ad_dwcontrol, string as_colname, long al_row) returns boolean
+	long rt_code
+	long ll_currow
+	long ll_code
+	boolean yesno
+	string ls_find
+	if ad_dwcontrol.rowcount() > 1 then
+		for ll_currow = 1 to ad_dwcontrol.rowcount()
+			ll_code = ad_dwcontrol.getitemnumber(ll_currow, as_colname)
+			ls_find = as_colname + " = " + trim(string(ll_code))
+			if ll_currow > 1 then
+				rt_code = ad_dwcontrol.find(ls_find, ll_currow - 1, 0)
+				if rt_code = 0 then
+					if ll_currow <> ad_dwcontrol.rowcount() then
+						rt_code = ad_dwcontrol.find(ls_find, ll_currow + 1, ad_dwcontrol.rowcount())
+						if rt_code <> 0 then
+							goto L406
+						end if
+						yesno = true
+						al_row = ll_currow
+						return yesno
+					end if
+					goto L438
+				end if
+				yesno = true
+				al_row = ll_currow
+				return yesno
+			end if
+		next
+	end if
+	return yesno

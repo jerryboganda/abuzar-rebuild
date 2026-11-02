@@ -1,0 +1,11 @@
+// function f_get_config_setting (functions)  ancestor: function_object
+
+// f_get_config_setting.f_get_config_setting(string as_name) returns string
+	string ls_value
+	string ls_null
+	setnull(ls_null)
+	SQL SELECT Value INTO :ls_value FROM DBO.ConfigSetting WHERE LOWER ( Name ) =LOWER ( :as_name ) USING sqlca;
+	if sqlca.sqlcode <> 0 then
+		ls_value = ls_null
+	end if
+	return ls_value

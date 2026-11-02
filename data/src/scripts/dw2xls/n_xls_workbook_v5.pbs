@@ -1,0 +1,651 @@
+// userobject n_xls_workbook_v5 (dw2xls)  ancestor: n_xls_workbook
+
+// n_xls_workbook_v5.of_create(string as_filename) returns integer
+	integer li_ret
+	this.invo_tmp_format = create n_xls_format_v5
+	of_reg_format(this.invo_tmp_format)
+	if handle(getapplication()) <> 0 then
+		open(w_dm_pb2xls)
+	end if
+	this.invo_url_format = of_add_format()
+	this.invo_url_format.of_set_color("blue")
+	this.invo_url_format.of_set_underline(1)
+	of_reg_format(this.invo_url_format)
+	if as_filename = "" or isnull(as_filename) then
+		messagebox("Error", "File name must be specified", stopsign!)
+		li_ret = -1
+	end if
+	if li_ret = 1 and not this.ib_fileclosed then
+		messagebox("Error", "Current workbook is not closed", stopsign!)
+		li_ret = -1
+	end if
+	if li_ret = 1 then
+		this.istg_doc = create olestorage
+		li_ret = this.istg_doc.open(as_filename, stgreadwrite!, stgexclusive!)
+		if li_ret < 0 then
+			messagebox("Error", "File sharing violation~r~n" + "Cannot open the file", stopsign!)
+			destroy this.istg_doc
+			li_ret = -1
+		else
+			this.ib_fileclosed = false
+			li_ret = 1
+		end if
+	end if
+	if li_ret = 1 then
+		li_ret = of_set_palette_xl97()
+	end if
+	return li_ret
+
+// n_xls_workbook_v5.of_close() returns integer
+	integer li_ret
+	if not this.ib_fileclosed then
+		li_ret = of_store_workbook()
+	end if
+	return li_ret
+
+// n_xls_workbook_v5.of_add_worksheet() returns n_xls_worksheet
+	return of_add_worksheet("")
+
+// n_xls_workbook_v5.of_add_worksheet(string as_worksheetname) returns n_xls_worksheet
+	integer li_ret
+	integer li_i
+	n_xls_worksheet_v5 lnvo_worksheet
+	do
+		if len(as_worksheetname) > 31 then
+			messagebox("Error", "Length of Worksheet name must be less then 31 symbols", stopsign!)
+			li_ret = -1
+			exit
+		end if
+		if match(as_worksheetname, "[:*?/\]") then
+			messagebox("Error", "Invalid worksheet name", stopsign!)
+			li_ret = -1
+			exit
+		end if
+		if trim(as_worksheetname) = "" then
+			as_worksheetname = this.is_sheetname + string(this.il_worksheetindex + 1)
+		end if
+		for li_i = 1 to li_i
+			if this.invo_worksheets[li_i].is_worksheetname = as_worksheetname then
+				messagebox("Error", "Duplicate worksheet name", stopsign!)
+				li_ret = -1
+				exit
+			end if
+		next
+		if li_ret <> 1 then
+			exit
+		end if
+		lnvo_worksheet = create n_xls_worksheet_v5
+		lnvo_worksheet.invo_url_format = this.invo_url_format
+		lnvo_worksheet.invo_workbook = this
+		lnvo_worksheet.is_worksheetname = as_worksheetname
+		this.il_worksheetindex = this.il_worksheetindex + 1
+		lnvo_worksheet.ii_index = this.il_worksheetindex
+		this.is_sheetnames[this.il_worksheetindex] = lnvo_worksheet.is_worksheetname
+		this.invo_worksheets[this.il_worksheetindex] = lnvo_worksheet
+	loop while not true
+	if li_ret <> 1 and not isnull(lnvo_worksheet) and isvalid(lnvo_worksheet) then
+		destroy lnvo_worksheet
+		setnull(lnvo_worksheet)
+	end if
+	return lnvo_worksheet
+
+// n_xls_workbook_v5.of_add_format() returns n_xls_format
+	n_xls_format_v5 lnvo_format
+	lnvo_format = create n_xls_format_v5
+	return lnvo_format
+
+// n_xls_workbook_v5.of_set_custom_color(integer ai_index, integer ai_red, integer ai_green, integer ai_blue) returns integer
+	if ai_index < 8 or ai_index > 64 then
+		messagebox("Error", "Color index " + string(ai_index) + " outside range: 8 <= index <= 64")
+		return -1
+	end if
+	if ai_red < 0 or ai_red > 255 or ai_green < 0 or ai_green > 255 or ai_blue < 0 or ai_blue > 255 then
+		messagebox("Error", "Color component outside range: 0 <= color <= 255")
+		return -1
+	end if
+	ai_index = 7 - ai_index
+	this.ii_palette[1, ai_index] = ai_red
+	this.ii_palette[2, ai_index] = ai_green
+	this.ii_palette[3, ai_index] = ai_blue
+	this.ii_palette[4, ai_index] = 0
+	return ai_index + 7
+
+// n_xls_workbook_v5.of_store_workbook() returns integer
+	long ll_i
+	n_xls_worksheet_v5 lnvo_sheet
+	if this.il_worksheetindex = 0 then
+		of_add_worksheet()
+	end if
+	if this.ii_activesheet = 0 then
+		lnvo_sheet = this.invo_worksheets[1]
+		lnvo_sheet.ib_selected = true
+	end if
+	for ll_i = 1 to this.il_worksheetindex
+		lnvo_sheet = this.invo_worksheets[ll_i]
+		if lnvo_sheet.ib_selected then
+			this.ii_selected = this.ii_selected + 1
+		end if
+		lnvo_sheet.of_close()
+	next
+	of_store_bof(5)
+	of_store_codepage()
+	of_store_externs()
+	of_store_names()
+	of_store_window1()
+	of_store_1904()
+	of_store_all_fonts()
+	of_store_all_num_formats()
+	of_store_all_xfs()
+	of_store_all_styles()
+	of_store_palette()
+	of_calc_sheet_offsets()
+	for ll_i = 1 to this.il_worksheetindex
+		lnvo_sheet = this.invo_worksheets[ll_i]
+		of_store_boundsheet(lnvo_sheet.is_worksheetname, lnvo_sheet.il_offset)
+	next
+	of_store_eof()
+	return of_store_ole_file()
+
+// n_xls_workbook_v5.of_append(blob ablb_header, blob ablb_data, blob ablb_add_data) returns integer
+	return of_append(ablb_header + ablb_data + ablb_add_data)
+
+// n_xls_workbook_v5.of_append(blob ablb_header, blob ablb_data) returns integer
+	return of_append(ablb_header + ablb_data)
+
+// n_xls_workbook_v5.of_append(blob ablb_data) returns integer
+	integer li_ret
+	if len(ablb_data) > this.iui_limit then
+		ablb_data = of_add_continue(ablb_data)
+	end if
+	this.il_datasize = this.il_datasize + len(ablb_data)
+	this.invo_data.of_append(ablb_data)
+	return li_ret
+
+// n_xls_workbook_v5.of_add_continue(blob ablb_data) returns blob
+	unsignedinteger lui_record
+	blob lblb_header
+	blob lblb_temp
+	long ll_len
+	lblb_temp = blobmid(ablb_data, 1, this.iui_limit)
+	ablb_data = blobmid(ablb_data, this.iui_limit + 1, len(ablb_data) - this.iui_limit)
+	blobedit(lblb_temp, 3, this.invo_sub.of_pack("v", this.iui_limit - 4))
+	do while len(ablb_data) > this.iui_limit
+		lblb_header = this.invo_sub.of_pack("v", lui_record) + this.invo_sub.of_pack("v", this.iui_limit)
+		lblb_temp = lblb_header + lblb_temp
+		lblb_temp = blobmid(ablb_data, 1, this.iui_limit) + lblb_temp
+		ablb_data = blobmid(ablb_data, this.iui_limit + 1, len(ablb_data) - this.iui_limit)
+	loop
+	lblb_header = this.invo_sub.of_pack("v", lui_record) + this.invo_sub.of_pack("v", len(ablb_data))
+	lblb_temp = lblb_header + lblb_temp
+	lblb_temp = ablb_data + lblb_temp
+	return lblb_temp
+
+// n_xls_workbook_v5.of_store_bof(integer ai_type) returns integer
+	unsignedinteger li_record
+	unsignedinteger li_len
+	unsignedinteger li_build
+	unsignedinteger li_year
+	blob lblb_header
+	blob lblb_data
+	lblb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_len)
+	lblb_data = this.invo_sub.of_pack("v", this.ii_biff_version) + this.invo_sub.of_pack("v", ai_type) + this.invo_sub.of_pack("v", li_build) + this.invo_sub.of_pack("v", li_year)
+	of_append(lblb_header + lblb_data)
+	return 1
+
+// n_xls_workbook_v5.of_store_codepage() returns integer
+	unsignedinteger li_record
+	unsignedinteger li_length
+	blob lblb_header
+	blob lblb_data
+	integer li_ret
+	lblb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	lblb_data = this.invo_sub.of_pack("v", this.iui_codepage)
+	li_ret = of_append(lblb_header, lblb_data)
+	return li_ret
+
+// n_xls_workbook_v5.of_store_externs() returns integer
+	unsignedinteger li_i
+	unsignedinteger li_cnt
+	unsignedinteger li_start
+	li_cnt = upperbound(this.is_sheetnames)
+	of_store_externcount(li_cnt)
+	for li_i = li_start to li_cnt
+		of_store_externsheet(this.is_sheetnames[li_i])
+	next
+	return 1
+
+// n_xls_workbook_v5.of_store_names() returns integer
+	integer li_ret
+	long ll_i
+	n_xls_worksheet_v5 lnvo_sheet
+	for ll_i = 1 to this.il_worksheetindex
+		lnvo_sheet = this.invo_worksheets[ll_i]
+		if not isnull(lnvo_sheet.ii_print_rowmin) then
+			of_store_name_short(ll_i - 1, 6, lnvo_sheet.ii_print_rowmin, lnvo_sheet.ii_print_rowmax, lnvo_sheet.ii_print_colmin, lnvo_sheet.ii_print_colmax)
+		end if
+	next
+	for ll_i = 1 to this.il_worksheetindex
+		lnvo_sheet = this.invo_worksheets[ll_i]
+		if not isnull(lnvo_sheet.ii_title_rowmin) and not isnull(lnvo_sheet.ii_title_colmin) then
+			of_store_name_long(ll_i - 1, 7, lnvo_sheet.ii_title_rowmin, lnvo_sheet.ii_title_rowmax, lnvo_sheet.ii_title_colmin, lnvo_sheet.ii_title_colmax)
+		elseif not isnull(lnvo_sheet.ii_title_rowmin) then
+			of_store_name_short(ll_i - 1, 7, lnvo_sheet.ii_title_rowmin, lnvo_sheet.ii_title_rowmax, 0, 255)
+		elseif not isnull(lnvo_sheet.ii_title_colmin) then
+			of_store_name_short(ll_i - 1, 7, 0, 16383, lnvo_sheet.ii_title_colmin, lnvo_sheet.ii_title_colmax)
+		end if
+	next
+	return li_ret
+
+// n_xls_workbook_v5.of_store_window1() returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	unsignedinteger li_xwn
+	unsignedinteger li_ywn
+	unsignedinteger li_dxwn
+	unsignedinteger li_dywn
+	unsignedinteger li_grbit
+	unsignedinteger li_wtabratio
+	blob lblb_header
+	blob lblb_data
+	lblb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	lblb_data = this.invo_sub.of_pack("v", li_xwn) + this.invo_sub.of_pack("v", li_ywn) + this.invo_sub.of_pack("v", li_dxwn) + this.invo_sub.of_pack("v", li_dywn) + this.invo_sub.of_pack("v", li_grbit) + this.invo_sub.of_pack("v", this.ii_activesheet) + this.invo_sub.of_pack("v", this.ii_firstsheet) + this.invo_sub.of_pack("v", this.ii_selected) + this.invo_sub.of_pack("v", li_wtabratio)
+	of_append(lblb_header, lblb_data)
+	return li_ret
+
+// n_xls_workbook_v5.of_store_1904() returns integer
+	unsignedinteger li_record
+	unsignedinteger li_length
+	integer li_ret
+	blob lblb_header
+	blob lblb_data
+	lblb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	if this.ib_1904 then
+		lblb_data = this.invo_sub.of_pack("v", 1)
+	else
+		lblb_data = this.invo_sub.of_pack("v", 0)
+	end if
+	li_ret = of_append(lblb_header, lblb_data)
+	return li_ret
+
+// n_xls_workbook_v5.of_store_all_fonts() returns integer
+	blob lb_font
+	string ls_key
+	string[] ls_font_keys
+	long ll_keys_cnt
+	long ll_format_cnt
+	long ll_i
+	long ll_j
+	long ll_key
+	integer li_ret
+	n_xls_format_v5 lnvo_format
+	lb_font = this.invo_tmp_format.of_get_font()
+	for ll_i = 1 to 5
+		of_append(lb_font)
+	next
+	ls_key = this.invo_tmp_format.of_get_font_key()
+	ll_keys_cnt = ll_keys_cnt + 1
+	ls_font_keys[ll_keys_cnt] = ls_key
+	ll_format_cnt = upperbound(this.invo_formats)
+	for ll_i = 1 to ll_format_cnt
+		lnvo_format = this.invo_formats[ll_i]
+		ls_key = lnvo_format.of_get_font_key()
+		ll_key = 0
+		for ll_j = 1 to ll_keys_cnt
+			if ls_font_keys[ll_j] = ls_key then
+				ll_key = ll_j
+				exit
+			end if
+		next
+		if ll_key = 0 then
+			ll_keys_cnt = ll_keys_cnt + 1
+			ls_font_keys[ll_keys_cnt] = ls_key
+			ll_key = ll_keys_cnt
+			lb_font = lnvo_format.of_get_font()
+			of_append(lb_font)
+		end if
+		if ll_key > 1 then
+			ll_key = ll_key + 4
+		else
+			ll_key = 0
+		end if
+		lnvo_format.ii_font_index = ll_key
+	next
+	return li_ret
+
+// n_xls_workbook_v5.of_is_zero_started_number(string as_str) returns boolean
+	integer li_i
+	integer li_cnt
+	string ls_ch
+	as_str = trim(as_str)
+	if right(as_str, 1) = "0" then
+		li_cnt = len(as_str)
+		if li_cnt < 2 then
+			return false
+		end if
+		for li_i = 2 to li_cnt
+			ls_ch = mid(as_str, li_i, 1)
+			choose case ls_ch
+			case "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"
+				goto L434
+			case else
+				return false
+			end choose
+		next
+		return true
+	end if
+	return false
+
+// n_xls_workbook_v5.of_is_number(string as_str) returns boolean
+	integer li_i
+	integer li_cnt
+	string ls_ch
+	as_str = trim(as_str)
+	li_cnt = len(as_str)
+	if li_cnt < 1 then
+		return false
+	end if
+	for li_i = 1 to li_cnt
+		ls_ch = mid(as_str, li_i, 1)
+		choose case ls_ch
+		case "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"
+			goto L390
+		case else
+			return false
+		end choose
+	next
+	return true
+
+// n_xls_workbook_v5.of_store_all_num_formats() returns integer
+	integer li_ret
+	string[] ls_formats
+	long ll_formats_cnt
+	long ll_i
+	long ll_j
+	long ll_used_format
+	string ls_format
+	integer li_format
+	n_xls_format_v5 invo_format
+	for ll_i = 1 to this.il_formatindex
+		invo_format = this.invo_formats[ll_i]
+		ls_format = invo_format.is_num_format
+		li_format = invo_format.ii_num_format
+		if not (ls_format = "" or isnull(ls_format)) then
+			ll_used_format = 0
+			for ll_j = 1 to ll_formats_cnt
+				if ls_formats[ll_j] = ls_format then
+					ll_used_format = ll_j
+					exit
+				end if
+			next
+			if ll_used_format > 0 then
+				invo_format.ii_num_format = ll_used_format + 164 - 1
+			else
+				ll_formats_cnt = ll_formats_cnt + 1
+				ls_formats[ll_formats_cnt] = ls_format
+				invo_format.ii_num_format = ll_formats_cnt + 164 - 1
+			end if
+		end if
+	next
+	for ll_i = 1 to ll_formats_cnt
+		of_store_num_format(ls_formats[ll_i], ll_i + 164 - 1)
+	next
+	return li_ret
+
+// n_xls_workbook_v5.of_store_num_format(string as_format, unsignedinteger ai_index) returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	integer li_len_format
+	blob lb_header
+	blob lb_data
+	li_len_format = len(as_format)
+	li_length = 3 + li_len_format
+	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	lb_data = this.invo_sub.of_pack("v", ai_index) + this.invo_sub.of_pack("C", li_len_format)
+	of_append(lb_header, lb_data, blob(as_format))
+	return li_ret
+
+// n_xls_workbook_v5.of_store_all_xfs() returns integer
+	integer li_ret
+	blob lb_xf
+	long ll_i
+	n_xls_format_v5 lnvo_format
+	lb_xf = this.invo_tmp_format.of_get_xf("style")
+	for ll_i = 1 to 15
+		of_append(lb_xf)
+	next
+	for ll_i = 1 to this.il_formatindex
+		lnvo_format = this.invo_formats[ll_i]
+		lb_xf = lnvo_format.of_get_xf("cell")
+		of_append(lb_xf)
+	next
+	return li_ret
+
+// n_xls_workbook_v5.of_store_all_styles() returns integer
+	integer li_ret
+	li_ret = of_store_style()
+	return li_ret
+
+// n_xls_workbook_v5.of_store_style() returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	unsignedinteger li_ixfe
+	integer li_builtin
+	integer li_ilevel
+	blob lb_header
+	blob lb_data
+	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	lb_data = this.invo_sub.of_pack("v", li_ixfe) + this.invo_sub.of_pack("C", li_builtin) + this.invo_sub.of_pack("C", li_ilevel)
+	of_append(lb_header, lb_data)
+	return li_ret
+
+// n_xls_workbook_v5.of_store_palette() returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	unsignedinteger li_ccv
+	unsignedinteger li_i
+	unsignedinteger li_start
+	blob lb_header
+	blob lb_data
+	blob lb_data_item
+	li_ccv = 56
+	li_length = 2 + 4 * li_ccv
+	for li_i = li_start to li_ccv
+		lb_data_item = this.invo_sub.of_pack("C", this.ii_palette[1, li_i]) + this.invo_sub.of_pack("C", this.ii_palette[2, li_i]) + this.invo_sub.of_pack("C", this.ii_palette[3, li_i]) + this.invo_sub.of_pack("C", this.ii_palette[4, li_i])
+		if li_i = 1 then
+			lb_data = lb_data_item
+		else
+			lb_data = lb_data_item + lb_data
+		end if
+	next
+	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length) + this.invo_sub.of_pack("v", li_ccv)
+	of_append(lb_header, lb_data)
+	return li_ret
+
+// n_xls_workbook_v5.of_calc_sheet_offsets() returns integer
+	integer li_ret
+	integer li_bof
+	integer li_eof
+	unsignedlong ll_offset
+	long ll_i
+	n_xls_worksheet_v5 lnvo_sheet
+	ll_offset = this.il_datasize
+	for ll_i = 1 to this.il_worksheetindex
+		ll_offset = ll_offset + (li_bof + len(this.invo_worksheets[ll_i].is_worksheetname))
+	next
+	ll_offset = ll_offset + li_eof
+	for ll_i = 1 to this.il_worksheetindex
+		lnvo_sheet = this.invo_worksheets[ll_i]
+		lnvo_sheet.il_offset = ll_offset
+		ll_offset = ll_offset + lnvo_sheet.il_datasize
+	next
+	this.il_biffsize = ll_offset
+	return li_ret
+
+// n_xls_workbook_v5.of_store_boundsheet(string as_sheetname, unsignedlong al_offset) returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	unsignedinteger li_grbit
+	unsignedinteger li_cch
+	blob lb_header
+	blob lb_data
+	li_cch = len(as_sheetname)
+	li_length = 7 + li_cch
+	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	lb_data = this.invo_sub.of_pack("V", al_offset) + this.invo_sub.of_pack("v", li_grbit) + this.invo_sub.of_pack("C", li_cch) + blob(as_sheetname)
+	of_append(lb_header, lb_data)
+	return li_ret
+
+// n_xls_workbook_v5.of_store_externcount(unsignedinteger ai_cxals) returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	blob lb_header
+	blob lb_data
+	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	lb_data = this.invo_sub.of_pack("v", ai_cxals)
+	of_append(lb_header, lb_data)
+	return li_ret
+
+// n_xls_workbook_v5.of_store_name_short(unsignedinteger ai_index, integer ai_type, unsignedinteger ai_rowmin, unsignedinteger ai_rowmax, integer ai_colmin, integer ai_colmax) returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	unsignedinteger li_grbit
+	integer li_chkey
+	integer li_cch
+	unsignedinteger li_cce
+	unsignedinteger li_ixals
+	unsignedinteger li_itab
+	integer li_cchcustmenu
+	integer li_cchdescription
+	integer li_cchhelptopic
+	integer li_cchstatustext
+	integer li_rgch
+	integer li_unknown03
+	unsignedinteger li_unknown04
+	unsignedinteger li_unknown05
+	unsignedinteger li_unknown06
+	unsignedinteger li_unknown07
+	unsignedinteger li_unknown08
+	blob lb_header
+	blob lb_data
+	li_ixals = ai_index + 1
+	li_itab = li_ixals
+	li_rgch = ai_type
+	li_unknown04 = 65535 - ai_index
+	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	lb_data = this.invo_sub.of_pack("v", li_grbit) + this.invo_sub.of_pack("C", li_chkey) + this.invo_sub.of_pack("C", li_cch) + this.invo_sub.of_pack("v", li_cce) + this.invo_sub.of_pack("v", li_ixals) + this.invo_sub.of_pack("v", li_itab) + this.invo_sub.of_pack("C", li_cchcustmenu) + this.invo_sub.of_pack("C", li_cchdescription) + this.invo_sub.of_pack("C", li_cchhelptopic) + this.invo_sub.of_pack("C", li_cchstatustext) + this.invo_sub.of_pack("C", li_rgch) + this.invo_sub.of_pack("C", li_unknown03) + this.invo_sub.of_pack("v", li_unknown04) + this.invo_sub.of_pack("v", li_unknown05) + this.invo_sub.of_pack("v", li_unknown06) + this.invo_sub.of_pack("v", li_unknown07) + this.invo_sub.of_pack("v", li_unknown08) + this.invo_sub.of_pack("v", ai_index) + this.invo_sub.of_pack("v", ai_index) + this.invo_sub.of_pack("v", ai_rowmin) + this.invo_sub.of_pack("v", ai_rowmax) + this.invo_sub.of_pack("C", ai_colmin) + this.invo_sub.of_pack("C", ai_colmax)
+	of_append(lb_header, lb_data)
+	return li_ret
+
+// n_xls_workbook_v5.of_store_eof() returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	blob lb_header
+	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	of_append(lb_header)
+	return li_ret
+
+// n_xls_workbook_v5.of_store_externsheet(string as_sheetname) returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	blob lb_header
+	blob lb_data
+	unsignedinteger li_cch
+	unsignedinteger li_rgch
+	li_length = 2 + len(as_sheetname)
+	li_cch = len(as_sheetname)
+	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	lb_data = this.invo_sub.of_pack("C", li_cch) + this.invo_sub.of_pack("C", li_rgch)
+	lb_data = lb_data + blob(as_sheetname)
+	of_append(lb_header + lb_data)
+	return li_ret
+
+// n_xls_workbook_v5.of_store_ole_file() returns integer
+	integer li_ret
+	integer li_i
+	olestream lstr_book
+	n_xls_worksheet_v5 lnvo_sheet
+	lstr_book = create olestream
+	li_ret = lstr_book.open(this.istg_doc, "Book", stgwrite!)
+	if li_ret < 0 then
+		li_ret = -1
+	else
+		li_ret = 1
+	end if
+	if li_ret = 1 then
+		this.invo_data.of_write(lstr_book)
+	end if
+	if li_ret = 1 then
+		for li_i = 1 to li_i
+			lnvo_sheet = this.invo_worksheets[li_i]
+			lnvo_sheet.of_write_data(lstr_book)
+		next
+	end if
+	if li_ret = 1 then
+		lstr_book.close()
+		this.istg_doc.close()
+	end if
+	return li_ret
+
+// n_xls_workbook_v5.of_store_name_long(unsignedinteger ai_index, unsignedinteger ai_type, unsignedinteger ai_rowmin, unsignedinteger ai_rowmax, unsignedinteger ai_colmin, unsignedinteger ai_colmax) returns integer
+	integer li_ret
+	unsignedinteger li_record
+	unsignedinteger li_length
+	blob lb_header
+	blob lb_data
+	unsignedinteger li_grbit
+	integer li_chkey
+	integer li_cch
+	unsignedinteger li_cce
+	unsignedinteger li_ixals
+	unsignedinteger li_itab
+	integer li_cchcustmenu
+	integer li_cchdescription
+	integer li_cchhelptopic
+	integer li_cchstatustext
+	integer li_unknown01
+	unsignedinteger li_unknown02
+	integer li_unknown03
+	unsignedinteger li_unknown04
+	unsignedinteger li_unknown05
+	unsignedinteger li_unknown06
+	unsignedinteger li_unknown07
+	unsignedinteger li_unknown08
+	li_ixals = ai_index + 1
+	li_itab = li_ixals
+	li_unknown04 = 65535 - ai_index
+	lb_header = this.invo_sub.of_pack("v", li_record) + this.invo_sub.of_pack("v", li_length)
+	lb_data = this.invo_sub.of_pack("v", li_grbit) + this.invo_sub.of_pack("C", li_chkey) + this.invo_sub.of_pack("C", li_cch) + this.invo_sub.of_pack("v", li_cce) + this.invo_sub.of_pack("v", li_ixals) + this.invo_sub.of_pack("v", li_itab) + this.invo_sub.of_pack("C", li_cchcustmenu) + this.invo_sub.of_pack("C", li_cchdescription) + this.invo_sub.of_pack("C", li_cchhelptopic) + this.invo_sub.of_pack("C", li_cchstatustext) + this.invo_sub.of_pack("C", ai_type) + this.invo_sub.of_pack("C", li_unknown01) + this.invo_sub.of_pack("v", li_unknown02)
+	lb_data = this.invo_sub.of_pack("C", li_unknown03) + this.invo_sub.of_pack("v", li_unknown04) + this.invo_sub.of_pack("v", li_unknown05) + this.invo_sub.of_pack("v", li_unknown06) + this.invo_sub.of_pack("v", li_unknown07) + this.invo_sub.of_pack("v", li_unknown08) + this.invo_sub.of_pack("v", ai_index) + this.invo_sub.of_pack("v", ai_index) + this.invo_sub.of_pack("v", 0) + this.invo_sub.of_pack("v", 16383) + this.invo_sub.of_pack("C", ai_colmin) + this.invo_sub.of_pack("C", ai_colmax) + lb_data
+	lb_data = this.invo_sub.of_pack("C", li_unknown03) + this.invo_sub.of_pack("v", li_unknown04) + this.invo_sub.of_pack("v", li_unknown05) + this.invo_sub.of_pack("v", li_unknown06) + this.invo_sub.of_pack("v", li_unknown07) + this.invo_sub.of_pack("v", li_unknown08) + this.invo_sub.of_pack("v", ai_index) + this.invo_sub.of_pack("v", ai_index) + this.invo_sub.of_pack("v", ai_rowmin) + this.invo_sub.of_pack("v", ai_rowmax) + this.invo_sub.of_pack("C", 0) + this.invo_sub.of_pack("C", 255) + lb_data
+	lb_data = this.invo_sub.of_pack("C", 16) + lb_data
+	of_append(lb_header + lb_data)
+	return li_ret
+
+// n_xls_workbook_v5.of_set_codepage(unsignedinteger aui_codepage) returns integer
+	this.iui_codepage = aui_codepage
+	return 1
+
+// n_xls_workbook_v5.of_set_palette_xl97() returns integer
+	this.ii_palette = {0, 0, 0, 0, 255, 255, 255, 0, 255, 0, 0, 0, 0, 255, 0, 0, 0, 0, 255, 0, 255, 255, 0, 0, 255, 0, 255, 0, 0, 255, 255, 0, 128, 0, 0, 0, 0, 128, 0, 0, 0, 0, 128, 0, 128, 128, 0, 0, 128, 0, 128, 0, 0, 128, 128, 0, 192, 192, 192, 0, 128, 128, 128, 0, 153, 153, 255, 0, 153, 51, 102, 0, 255, 255, 204, 0, 204, 255, 255, 0, 102, 0, 102, 0, 255, 128, 128, 0, 0, 102, 204, 0, 204, 204, 255, 0, 0, 0, 128, 0, 255, 0, 255, 0, 255, 255, 0, 0, 0, 255, 255, 0, 128, 0, 128, 0, 128, 0, 0, 0, 0, 128, 128, 0, 0, 0, 255, 0, 0, 204, 255, 0, 204, 255, 255, 0, 204, 255, 204, 0, 255, 255, 153, 0, 153, 204, 255, 0, 255, 153, 204, 0, 204, 153, 255, 0, 255, 204, 153, 0, 51, 102, 255, 0, 51, 204, 204, 0, 153, 204, 0, 0, 255, 204, 0, 0, 255, 153, 0, 0, 255, 102, 0, 0, 102, 102, 153, 0, 150, 150, 150, 0, 0, 51, 102, 0, 51, 153, 102, 0, 0, 51, 0, 0, 51, 51, 0, 0, 153, 51, 0, 0, 153, 51, 102, 0, 51, 51, 153, 0, 51, 51, 51, 0}
+	return 1
+
+// n_xls_workbook_v5.constructor() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::constructor()
+	this.invo_data = create n_xls_data
+	return ::message.returnvalue
+
+// n_xls_workbook_v5.create() returns 0
+	call super::create
+
+// n_xls_workbook_v5.destroy() returns 0
+	call super::destroy

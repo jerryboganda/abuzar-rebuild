@@ -1,0 +1,60 @@
+// window w_loyaltycard_form (custcomponents)  ancestor: w_single_entry
+
+// w_loyaltycard_form.wf_duplicatecardid(string as_id) returns boolean
+	long ll_count
+	boolean b_flag
+	as_id = trim(as_id)
+	SQL SELECT count ( *) INTO :ll_count FROM LoyaltyCard WHERE LoyaltyCardID =:as_id USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_loyaltycard_form.create() returns 0
+	call super::create
+
+// w_loyaltycard_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_loyaltycard_form.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.is_tablename = "LoyaltyCard"
+	return ::message.returnvalue
+
+// w_loyaltycard_form.ue_save() returns 0
+	long ll_primarykey
+	long ll_row
+	long ll_usercode
+	setpointer(hourglass!)
+	ll_usercode = gl_usercode
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	if ll_usercode > 0 then
+		ll_row = this.id_detail.getrow()
+		ll_primarykey = this.id_detail.object.code[this.id_detail.getrow()]
+		if isnull(ll_primarykey) then
+			ll_primarykey = 0
+			f_newtableid(this.is_tablename, ll_primarykey)
+			this.id_detail.setitem(ll_row, "code", ll_primarykey)
+		end if
+		this.id_detail.object.usercode[1] = ll_usercode
+		if this.id_detail.update() > 0 then
+			SQL commit USING sqlca;
+			messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+			this.ib_commitok = true
+			this.im_menu.m_file.m_new.enabled = true
+			this.editflag = false
+		else
+			SQL rollback USING sqlca;
+			setpointer(arrow!)
+			messagebox("Save Changes", "Changes Rollback in database, ~n~rSome database problem occurs", exclamation!, ok!, 1)
+			return
+		end if
+		return
+	end if
+	setpointer(arrow!)

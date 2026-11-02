@@ -1,0 +1,115 @@
+// window w_customersite_form_old (custcomponents)  ancestor: w_single_entry
+
+// w_customersite_form_old.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM ItemClass WHERE ItemClass.name =:as_name USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_customersite_form_old.wf_duplicateregno(string as_name) returns boolean
+	long ll_count
+	long ll_patientcode
+	boolean b_flag
+	as_name = trim(as_name)
+	ll_patientcode = this.id_detail.object.code[this.id_detail.rowcount()]
+	if isnull(ll_patientcode) then
+		SQL SELECT count ( *) INTO :ll_count FROM Patient WHERE patient.regno =:as_name USING sqlca;
+	else
+		SQL SELECT count ( *) INTO :ll_count FROM Patient WHERE patient.regno =:as_name AND Patient.PatientCode <> :ll_patientcode USING sqlca;
+	end if
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_customersite_form_old.wf_locationoccupied(long al_locationcode) returns long
+	long ll_retcode
+	SQL SELECT COUNT ( *) INTO :ll_retcode FROM ( SELECT LocationCode FROM PatientAdmission WHERE Discharged ='N' AND AdmissionCode NOT IN ( SELECT DISTINCT AdmissionCode FROM PatientTransfer ) UNION ALL SELECT LocationCode =TargetLocation FROM PatientTransfer WHERE TransferCode IN ( SELECT TransferCode =Max ( TransferCode ) FROM PatientTransfer WHERE AdmissionCode IN ( SELECT DISTINCT AdmissionCode FROM PatientAdmission WHERE Discharged ='N' ) GROUP BY AdmissionCode ) ) A WHERE LocationCode =:al_locationcode USING sqlca;
+	return ll_retcode
+
+// w_customersite_form_old.wf_admitted(long al_patientcode) returns long
+	long ll_count
+	SQL SELECT Count ( *) INTO :ll_count FROM PatientAdmission WHERE PatientAdmission.PatientCode =:al_patientcode AND PatientAdmission.Discharged ='N' USING sqlca;
+	return ll_count
+
+// w_customersite_form_old.create() returns 0
+	integer icurrent
+	call super::create
+	this.dw_admissiondetail = create dw_admissiondetail
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_admissiondetail
+
+// w_customersite_form_old.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_admissiondetail
+
+// w_customersite_form_old.activate() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::activate()
+	this.windowstate = maximized!
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_customersite_form_old.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.is_tablename = "patient"
+	this.dw_admissiondetail.settransobject(sqlca)
+	return ::message.returnvalue
+
+// w_customersite_form_old.ue_save() returns 0
+	long ll_primarykey
+	long ll_row
+	long ll_primarykey2
+	long ll_totrows
+	long ll_rowcounter
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	setpointer(hourglass!)
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	ll_row = this.id_detail.getrow()
+	ll_primarykey = this.id_detail.object.code[this.id_detail.getrow()]
+	this.id_detail.setitem(ll_row, "usercode", gl_usercode)
+	if not wf_validateserverdatetime(ldt_server_datetime, ls_date_errtext) then
+		messagebox("Date Violation", ls_date_errtext, stopsign!)
+		return
+	end if
+	this.id_detail.object.date[ll_row] = ldt_server_datetime
+	if isnull(ll_primarykey) then
+		ll_primarykey = 0
+		f_newtableid(this.is_tablename, ll_primarykey)
+		this.id_detail.setitem(ll_row, "code", ll_primarykey)
+	end if
+	this.id_detail.setitem(ll_row, "regno", string(ll_primarykey))
+	if this.id_detail.update() > 0 then
+		SQL commit USING sqlca;
+		messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+		this.ib_commitok = true
+		this.im_menu.m_file.m_new.enabled = true
+		this.editflag = false
+	else
+		SQL rollback USING sqlca;
+		setpointer(arrow!)
+		messagebox("Save Changes", "Changes Rollback in database, ~n~rSome database problem occurs", exclamation!, ok!, 1)
+		return
+	end if
+	setpointer(arrow!)
+
+// w_customersite_form_old.ue_detail() returns 0
+	call super::ue_detail
+	this.id_detail.object.active.visible = true
+	this.id_detail.object.active_t.visible = true
+
+// w_customersite_form_old.ue_newform() returns 0
+	call super::ue_newform
+	this.id_detail.object.active.visible = false
+	this.id_detail.object.active_t.visible = false

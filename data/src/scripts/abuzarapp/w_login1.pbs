@@ -1,0 +1,333 @@
+// window w_login1 (abuzarapp)  ancestor: window
+
+// w_login1.wf_invoke_repairwindow() returns long
+	long ll_pos
+	string ls_servername
+	ll_pos = pos(gs_servername, "\")
+	if ll_pos > 0 then
+		ls_servername = left(gs_servername, ll_pos - 1)
+	else
+		ls_servername = gs_servername
+	end if
+	if lower(ls_servername) = lower(gs_localcomputername) then
+		hide()
+		openwithparm(w_checkdb, 1)
+		show()
+		SQL stop USING sqlca;
+	end if
+	return 0
+
+// w_login1.create() returns 0
+	this.cbx_remote = create cbx_remote
+	this.dw_remote = create dw_remote
+	this.cb_ok = create cb_ok
+	this.cb_cancel = create cb_cancel
+	this.dw_password = create dw_password
+	this.control = {this.cbx_remote, this.dw_remote, this.cb_ok, this.cb_cancel, this.dw_password}
+
+// w_login1.destroy() returns 0
+	destroy this.cbx_remote
+	destroy this.dw_remote
+	destroy this.cb_ok
+	destroy this.cb_cancel
+	destroy this.dw_password
+
+// w_login1.open() returns long
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	this.id_password = this.dw_password
+	this.id_remote = this.dw_remote
+	this.id_password.settransobject(sqlca)
+	this.dw_password.insertrow(0)
+	this.id_remote.settransobject(sqlca)
+	this.dw_remote.insertrow(0)
+	return ::message.returnvalue
+
+// w_login1.key(keycode key, unsignedlong keyflags) returns long
+	if keydown(keyescape!) then
+		closewithreturn(this, 0)
+	end if
+	return ::message.returnvalue
+
+// cbx_remote.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// cbx_remote.clicked() returns long
+	if parent.cbx_remote.checked then
+		parent.id_remote.object.servername.visible = true
+		parent.id_remote.object.databasename.visible = true
+		parent.id_remote.object.servername_t.visible = true
+		parent.id_remote.object.databasename_t.visible = true
+	else
+		parent.id_remote.object.servername.visible = false
+		parent.id_remote.object.databasename.visible = false
+		parent.id_remote.object.servername_t.visible = false
+		parent.id_remote.object.databasename_t.visible = false
+	end if
+	return ::message.returnvalue
+
+// dw_remote.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	datawindowchild ldc_databasesname
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "servername"
+		parent.is_servername = data
+		choose case lower(parent.is_servername)
+		case "lhrpharmaplus"
+			gs_company = "LPP"
+			gs_password = ""
+		case "mainserver\abuzar2000"
+			gs_company = "LPP"
+			gs_password = ""
+		end choose
+		sqlca.dbms = "OLE DB"
+		sqlca.logid = "sa"
+		sqlca.lock = "RC"
+		sqlca.logpass = gs_password
+		sqlca.autocommit = false
+		sqlca.dbparm = "PROVIDER='SQLOLEDB',DATASOURCE='" + parent.is_servername + "',CommitOnDisconnect='No',PROVIDERSTRING='DataBase=master" + ";APP=" + gs_app + ";WSID=" + gs_localcomputername + "',PBTrimCharColumns='Yes',StripParmNames='Yes'"
+		SQL start USING sqlca;
+		if sqlca.sqlcode <> 0 then
+			messagebox("Remember Cannot Connect to Database", sqlca.sqlerrtext)
+			return ::message.returnvalue
+		end if
+		if parent.id_remote.getchild("databasename", ldc_databasesname) < 0 then
+			messagebox("DataWindow Child", "Can not get DataWindow Child for DataBases.")
+		end if
+		ldc_databasesname.settransobject(sqlca)
+		ldc_databasesname.retrieve()
+		SQL stop USING sqlca;
+	end choose
+	return ::message.returnvalue
+
+// dw_remote.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	setcolumn("servername")
+	return ::message.returnvalue
+
+// dw_remote.itemerror(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "servername"
+		if data = "" or isnull(data) then
+			messagebox("Server Name Validation", "Value required for " + upper("Server Name") + " in current row")
+		end if
+	case "databasename"
+		if data = "" or isnull(data) then
+			messagebox("Database Name Validation", "Value required for " + upper("DataBase Name") + " in current row")
+		end if
+	end choose
+	return 1
+
+// dw_remote.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	if getcolumn() = 2 then
+		parent.cb_ok.postevent(clicked!)
+	end if
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	long ancestorreturnvalue
+	long ll_counter
+	long ll_len
+	string ls_temp
+	char[] lc_char
+	datastore lds_reportserver_database_company
+	integer li_code
+	integer li_null
+	string ls_username
+	string ls_password
+	string s_password
+	string ls_null
+	ancestorreturnvalue = super::clicked()
+	if parent.cbx_remote.checked then
+		SQL stop USING sqlca;
+		if f_validatedw(parent.id_password) < 0 then
+			return ::message.returnvalue
+		end if
+		if f_validatedw(parent.id_remote) < 0 then
+			return ::message.returnvalue
+		end if
+		gs_servername = parent.id_remote.getitemstring(parent.id_remote.getrow(), "ServerName")
+		gs_dbname = parent.id_remote.getitemstring(parent.id_remote.getrow(), "Databasename")
+		choose case lower(gs_servername)
+		case "LhrPharmaPlus"
+			gs_company = "LPP"
+			gs_password = ""
+		end choose
+		ls_temp = right(gs_securitypath, len(gs_securitypath) - 2)
+		lc_char = ls_temp
+		ll_len = len(ls_temp)
+		for ll_counter = 1 to ll_len
+			if lc_char[ll_counter] = "\" then
+				ls_temp = right(ls_temp, ll_len - ll_counter)
+				exit
+			end if
+		next
+		gs_securitypath = "\\" + gs_servername + "\" + ls_temp
+		if gs_isreportserver = "Y" then
+			lds_reportserver_database_company = create datastore
+			lds_reportserver_database_company.dataobject = "d_reportserver_databasename_company"
+			lds_reportserver_database_company.settransobject(sqlca)
+			for ll_counter = 1 to lds_reportserver_database_company.rowcount()
+				if lower(lds_reportserver_database_company.getitemstring(ll_counter, "DataBasename")) = lower(gs_dbname) then
+					gs_company = lds_reportserver_database_company.getitemstring(ll_counter, "companyname")
+				end if
+			next
+			destroy lds_reportserver_database_company
+		end if
+	end if
+	sqlca.dbms = "OLE DB"
+	sqlca.logid = "sa"
+	sqlca.lock = "RC"
+	sqlca.logpass = gs_password
+	sqlca.autocommit = false
+	sqlca.dbparm = "PROVIDER='SQLOLEDB',DATASOURCE='" + gs_servername + "',CommitOnDisconnect='No',PROVIDERSTRING='DataBase=" + gs_dbname + ";APP=" + gs_app + ";WSID=" + gs_localcomputername + "',PBTrimCharColumns='Yes',StripParmNames='Yes'"
+	SQL start USING sqlca;
+	if sqlca.sqlcode <> 0 then
+		messagebox("Remember Cannot Connect to Database", sqlca.sqlerrtext)
+		close(w_startup)
+		halt close
+		return ::message.returnvalue
+	end if
+	parent.ii_row = parent.dw_password.getrow()
+	parent.dw_password.accepttext()
+	ls_username = parent.dw_password.getitemstring(parent.ii_row, "login")
+	if not (ls_username = "" or isnull(ls_username)) then
+		SQL SELECT usercode , password INTO :li_code, :ls_password FROM dbo.users WHERE username =:ls_username And Active ='Y' USING sqlca;
+		setnull(li_null)
+		if sqlca.sqlcode = 0 then
+			if isnull(li_code) then
+				parent.id_password.object.login[parent.ii_row] = ""
+				messagebox("User Validation", "User does not exist")
+				parent.dw_password.setcolumn("login")
+				parent.dw_password.setfocus()
+				SQL stop USING sqlca;
+				return ::message.returnvalue
+			else
+				parent.id_password.object.login[parent.ii_row] = ls_username
+				parent.is_password = ls_password
+				parent.ii_usercode = li_code
+				gl_usercode = li_code
+			end if
+		else
+			parent.id_password.object.login[parent.ii_row] = ""
+			messagebox("User Validation", "Either User name does not exist or User is marked InActive.")
+			parent.dw_password.setcolumn("login")
+			parent.dw_password.setfocus()
+			SQL stop USING sqlca;
+			return ::message.returnvalue
+		end if
+	else
+		messagebox("User Validation", "Plese enter User Name")
+		parent.dw_password.setcolumn("login")
+		parent.dw_password.setfocus()
+		SQL stop USING sqlca;
+		return ::message.returnvalue
+	end if
+	setnull(ls_null)
+	s_password = parent.dw_password.getitemstring(parent.ii_row, "password")
+	if not (s_password = "" or isnull(s_password)) then
+		if lower(s_password) <> lower(parent.is_password) then
+			parent.ii_tries = parent.ii_tries + 1
+			if parent.ii_tries > 2 then
+				parent.cb_cancel.postevent(clicked!)
+			else
+				messagebox("Password", "Password is not correct")
+				parent.dw_password.setcolumn("password")
+				parent.dw_password.setfocus()
+				SQL stop USING sqlca;
+			end if
+			parent.id_password.object.password[parent.ii_row] = ls_null
+			return 2
+		end if
+		closewithreturn(parent, 1)
+	else
+		messagebox("Password", "Please enter password")
+		parent.dw_password.setcolumn("password")
+		parent.dw_password.setfocus()
+		SQL stop USING sqlca;
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	closewithreturn(parent, 0)
+	return ::message.returnvalue
+
+// dw_password.ue_close() returns 0
+	integer li_salesmancode
+	w_salesmanpassword w_parent
+	li_salesmancode = getitemnumber(1, "salesmancode")
+	w_parent = getparent()
+	closewithreturn(w_parent, li_salesmancode)
+
+// dw_password.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "login"
+		parent.ii_row = row
+	end choose
+	return ::message.returnvalue
+
+// dw_password.itemerror(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	integer li_salesmancode
+	string ls_salesman
+	string ls_password
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	return ::message.returnvalue
+
+// dw_password.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	if parent.cbx_remote.visible = false and getcolumn() = 2 then
+		parent.cb_ok.postevent(clicked!)
+	end if
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_password.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if keyflags = 2 and key = keym! then
+		SQL start USING sqlca;
+		open(w_connectionmonitor)
+		SQL stop USING sqlca;
+	end if
+	if key = keyf5! then
+		parent.wf_invoke_repairwindow()
+	end if
+	return ::message.returnvalue

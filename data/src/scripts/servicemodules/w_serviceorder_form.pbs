@@ -1,0 +1,2689 @@
+// window w_serviceorder_form (servicemodules)  ancestor: window
+
+// w_serviceorder_form.ue_close() returns 0
+	SQL stop USING this.it_transobject;
+	close(this)
+
+// w_serviceorder_form.ue_postopen() returns 0
+	long ll_counter
+	long ll_pos
+	long ll_prow
+	long ll_pcode
+	integer li_rtncode
+	datawindowchild ldc_headerno
+	li_rtncode = this.id_svcheader.getchild("custcode", this.idc_customers)
+	if li_rtncode = -1 then
+		messagebox("Error", "Can not get a DataWindowChild")
+		close(this)
+	end if
+	this.idc_customers.settransobject(this.it_transobject)
+	li_rtncode = this.id_svcheader.getchild("patientcode", this.idc_patient)
+	if li_rtncode = -1 then
+		messagebox("Error", "Can not get a DataWindowChild")
+		close(this)
+	end if
+	this.idc_patient.settransobject(this.it_transobject)
+	this.idc_patient.retrieve()
+	ll_prow = this.idc_patient.insertrow(0)
+	setnull(ll_pcode)
+	this.idc_patient.setitem(ll_prow, "patientcode", ll_pcode)
+	this.idc_patient.setitem(ll_prow, "regno", "<NONE>")
+	this.idc_patient.setitem(ll_prow, "name", "<NONE>")
+	this.idc_patient.setitem(ll_prow, "customer", "<NONE>")
+	this.idc_patient.setitem(ll_prow, "city", "<NONE>")
+	this.idc_patient.setitem(ll_prow, "patient", "<NONE>")
+	this.idc_patient.scrolltorow(ll_prow)
+	if f_stringpreferences("patientOnCreditSale") = "N" then
+		this.id_svcheader.object.patientcode.visible = false
+		this.id_svcheader.object.t_patientcode.visible = false
+		this.id_svcheader.object.t_patientregno.visible = false
+		this.id_svcheader.object.patientregno.visible = false
+	end if
+	if f_stringpreferences("itemcode") = "N" then
+		this.id_svcdetail.object.fullcode.visible = false
+	end if
+	if f_stringpreferences("showheaderincreditservice") = "N" then
+		this.id_svcheader.object.headerno.visible = false
+		this.id_svcheader.object.t_headerno.visible = false
+	else
+		this.id_svcheader.getchild("headerno", ldc_headerno)
+		for ll_counter = 1 to gds_reoprtheaderinfo.rowcount()
+			ldc_headerno.insertrow(0)
+			ll_pos = pos(gds_reoprtheaderinfo.getitemstring(ll_counter, "clientname"), " ")
+			ldc_headerno.setitem(ll_counter, "name", left(gds_reoprtheaderinfo.getitemstring(ll_counter, "clientname"), ll_pos))
+			ldc_headerno.setitem(ll_counter, "code", gds_reoprtheaderinfo.getitemnumber(ll_counter, "headerno"))
+		next
+	end if
+	if f_stringpreferences("ShowRemarksInSvcOrder") = "N" then
+		this.id_svcheader.object.t_remarks.visible = false
+		this.id_svcheader.object.remarks.visible = false
+	end if
+	if f_stringpreferences("showmessageinserviceorder") = "N" then
+		this.id_svcheader.object.t_messagecode.visible = false
+		this.id_svcheader.object.messagecode.visible = false
+	end if
+	if f_stringpreferences("showserviceinvtypeinserviceorder") = "N" then
+		this.id_svcheader.object.t_serviceinvtypecode.visible = false
+		this.id_svcheader.object.serviceinvtypecode.visible = false
+	end if
+	if f_stringpreferences("showfullpatientnameinserviceorder") = "N" then
+		this.id_svcheader.object.t_fullpatientname.visible = false
+		this.id_svcheader.object.fullpatientname.visible = false
+	end if
+	if f_stringpreferences("showpatientageinserviceorder") = "N" then
+		this.id_svcheader.object.t_patientage.visible = false
+		this.id_svcheader.object.patientage.visible = false
+	end if
+	if f_stringpreferences("showpatientsexinserviceorder") = "N" then
+		this.id_svcheader.object.t_patientsex.visible = false
+		this.id_svcheader.object.patientsex.visible = false
+	end if
+	if f_stringpreferences("ShowPatientrefbyinserviceorder") = "N" then
+		this.id_svcheader.object.t_patientrefby.visible = false
+		this.id_svcheader.object.patientrefby.visible = false
+	end if
+	if f_stringpreferences("ShowRef1InSvcOrder") = "N" then
+		this.id_svcheader.object.t_reference1.visible = false
+		this.id_svcheader.object.reference1.visible = false
+	end if
+	if f_stringpreferences("showserviceinvgstpercinserviceorder") = "N" then
+		this.id_svcfooter.object.serviceinvgstperc_t.visible = false
+		this.id_svcfooter.object.serviceinvgstperc.visible = false
+	end if
+	if f_stringpreferences("ShowRef2InSvcOrder") = "N" then
+		this.id_svcheader.object.t_reference2.visible = false
+		this.id_svcheader.object.reference2.visible = false
+	end if
+	if f_stringpreferences("ShowRef3InSvcOrder") = "N" then
+		this.id_svcheader.object.t_reference3.visible = false
+		this.id_svcheader.object.reference3.visible = false
+	end if
+	if f_stringpreferences("ShowRef4InSvcOrder") = "N" then
+		this.id_svcheader.object.t_reference4.visible = false
+		this.id_svcheader.object.reference4.visible = false
+	end if
+	if f_stringpreferences("ShowRef5InSvcOrder") = "N" then
+		this.id_svcheader.object.t_reference5.visible = false
+		this.id_svcheader.object.reference5.visible = false
+	end if
+	if f_stringpreferences("ShowStatusInSvcOrder") = "N" then
+		this.id_svcheader.object.t_serviceorderstatuscode.visible = false
+		this.id_svcheader.object.serviceorderstatuscode.visible = false
+	end if
+	if f_stringpreferences("ShowOperatedOnInSvcOrder") = "N" then
+		this.id_svcheader.object.t_operationdate.visible = false
+		this.id_svcheader.object.operationdate.visible = false
+	end if
+	if f_stringpreferences("ShowDischargedOnInSvcOrder") = "N" then
+		this.id_svcheader.object.t_dischargedate.visible = false
+		this.id_svcheader.object.dischargedate.visible = false
+	end if
+	if f_stringpreferences("ShowNextOfKinsDetails") = "N" then
+		this.id_svcheader.object.gb_nextofkinsdetails.visible = false
+		this.id_svcheader.object.t_nextofkins.visible = false
+		this.id_svcheader.object.nextofkins.visible = false
+		this.id_svcheader.object.t_nextofkinsrelationcode.visible = false
+		this.id_svcheader.object.nextofkinsrelationcode.visible = false
+		this.id_svcheader.object.t_nextofkinscnic.visible = false
+		this.id_svcheader.object.nextofkinscnic.visible = false
+		this.id_svcheader.object.t_nextofkinsphone.visible = false
+		this.id_svcheader.object.nextofkinsphone.visible = false
+		this.id_svcheader.object.t_nextofkinsaddress.visible = false
+		this.id_svcheader.object.nextofkinsaddress.visible = false
+	end if
+	this.id_svcheader.object.t_fullpatientname.text = f_stringpreferences("PatientCaptionInService")
+	this.id_svcheader.object.t_patientage.text = f_stringpreferences("PatientAgeCaptionInService")
+	this.id_svcheader.object.t_patientrefby.text = f_stringpreferences("PatientRefByCaptionInService")
+	gd_itemsinfo.sharedata(this.id_selectionlist_req)
+	f_retrieve_servicelist(this.id_selectionlist, this.it_transobject)
+	this.id_svcdetail.object.smancode.initial = trim(string(f_numberpreferences("InitialSManCodeInService")))
+	if f_stringpreferences("showserviceflattaxinserviceorder") = "N" then
+		this.id_svcdetail.object.serviceflattax.visible = false
+		this.id_svcdetail.object.c_flattaxval.visible = false
+	end if
+	if f_stringpreferences("showservicegstpercinserviceorder") = "N" then
+		this.id_svcdetail.object.servicegstperc.visible = false
+		this.id_svcdetail.object.c_gstval.visible = false
+	end if
+	if f_stringpreferences("showclaimableinissue") = "N" then
+		this.id_itemreq.object.claimable.visible = false
+	end if
+	if f_stringpreferences("showclaimablediscpercinissue") = "N" then
+		this.id_itemreq.object.claimablediscperc.visible = false
+		this.id_itemreq.object.c_claimablevalue.visible = false
+	end if
+	setredraw(true)
+
+// w_serviceorder_form.wf_set_interface_adjustments() returns 0
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width * 0.95
+		ll_height = ll_win_height * 0.95
+		this.width = ll_width
+		this.height = ll_height
+		this.cb_ok.y = ll_height - this.cb_ok.height - 200
+		this.cb_cancel.y = ll_height - this.cb_cancel.height - 200
+		this.cb_printorder.y = ll_height - this.cb_printorder.height - 200
+		this.dw_netamt.y = ll_height - this.dw_netamt.height - 200
+		this.tab_main.width = ll_width - 100
+		this.tab_main.height = this.cb_ok.y - 50
+		this.tab_main.tabpage_header.width = this.tab_main.width - 50
+		this.tab_main.tabpage_header.height = this.tab_main.height - 100
+		this.tab_main.tabpage_header.dw_header.width = this.tab_main.tabpage_header.width - 20
+		this.tab_main.tabpage_header.dw_header.height = this.tab_main.tabpage_header.height - 100
+		this.tab_main.tabpage_checklist.width = this.tab_main.width - 50
+		this.tab_main.tabpage_checklist.height = this.tab_main.height - 100
+		this.tab_main.tabpage_checklist.dw_checklist.width = this.tab_main.tabpage_checklist.width - 20
+		this.tab_main.tabpage_checklist.dw_checklist.height = this.tab_main.tabpage_checklist.height - 100
+		this.tab_main.tabpage_detail.width = this.tab_main.width - 50
+		this.tab_main.tabpage_detail.height = this.tab_main.height - 100
+		this.tab_main.tabpage_detail.dw_detail.width = this.tab_main.tabpage_detail.width - 20
+		this.tab_main.tabpage_detail.dw_detail.height = this.tab_main.tabpage_detail.height - this.tab_main.tabpage_detail.dw_footer.height - 15
+		this.tab_main.tabpage_detail.dw_footer.width = this.tab_main.tabpage_detail.width - 20
+		this.tab_main.tabpage_detail.dw_footer.y = this.tab_main.tabpage_detail.height - this.tab_main.tabpage_detail.dw_footer.height - 10
+		this.tab_main.tabpage_detail.dw_selectionlist.height = this.tab_main.tabpage_detail.dw_detail.height * 0.80
+		this.tab_main.tabpage_detail.dw_selectionlist.width = this.tab_main.tabpage_detail.dw_detail.width * 0.80
+		this.tab_main.tabpage_itemreq.width = this.tab_main.width - 50
+		this.tab_main.tabpage_itemreq.height = this.tab_main.height - 100
+		this.tab_main.tabpage_itemreq.dw_itemreq.width = this.tab_main.tabpage_itemreq.width - 20
+		this.tab_main.tabpage_itemreq.dw_itemreq.height = this.tab_main.tabpage_itemreq.height - 100
+		this.tab_main.tabpage_itemreq.dw_selection_req.height = this.tab_main.tabpage_itemreq.dw_itemreq.height * 0.80
+		this.tab_main.tabpage_itemreq.dw_selection_req.width = this.tab_main.tabpage_itemreq.dw_itemreq.width * 0.80
+		this.tab_main.tabpage_issue.width = this.tab_main.width - 50
+		this.tab_main.tabpage_issue.height = this.tab_main.height - 100
+		this.tab_main.tabpage_issue.dw_issue.width = this.tab_main.tabpage_issue.width - 20
+		this.tab_main.tabpage_issue.dw_issue.height = this.tab_main.tabpage_issue.height - 100
+		this.tab_main.tabpage_service.width = this.tab_main.width - 50
+		this.tab_main.tabpage_service.height = this.tab_main.height - 100
+		this.tab_main.tabpage_service.dw_service.width = this.tab_main.tabpage_service.width - 20
+		this.tab_main.tabpage_service.dw_service.height = this.tab_main.tabpage_service.height - 100
+		this.tab_main.tabpage_sale.width = this.tab_main.width - 50
+		this.tab_main.tabpage_sale.height = this.tab_main.height - 100
+		this.tab_main.tabpage_sale.dw_sale.width = this.tab_main.tabpage_sale.width - 20
+		this.tab_main.tabpage_sale.dw_sale.height = this.tab_main.tabpage_sale.height - 100
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+
+// w_serviceorder_form.wf_set_tab_visibility() returns long
+	if f_rightexists(5199) = false then
+		this.tab_main.tabpage_detail.visible = false
+		this.tab_main.tabpage_detail.dw_detail.visible = false
+		this.tab_main.tabpage_detail.dw_footer.visible = false
+	end if
+	if f_rightexists(5200) = false then
+		this.tab_main.tabpage_checklist.visible = false
+		this.tab_main.tabpage_checklist.dw_checklist.visible = false
+	end if
+	if f_rightexists(5188) = false then
+		this.tab_main.tabpage_itemreq.visible = false
+		this.tab_main.tabpage_itemreq.dw_itemreq.visible = false
+	end if
+	if f_rightexists(5189) = false then
+		this.tab_main.tabpage_issue.visible = false
+		this.tab_main.tabpage_issue.dw_issue.visible = false
+	end if
+	if f_rightexists(5190) = false then
+		this.tab_main.tabpage_service.visible = false
+		this.tab_main.tabpage_service.dw_service.visible = false
+	end if
+	if f_rightexists(5191) = false then
+		this.tab_main.tabpage_sale.visible = false
+		this.tab_main.tabpage_sale.dw_sale.visible = false
+	end if
+	wf_select_first_tab()
+	return 0
+
+// w_serviceorder_form.wf_connect() returns long
+	SQL start USING this.it_transobject;
+	return this.it_transobject.sqlcode
+
+// w_serviceorder_form.wf_tabnewid(string as_tablename, long al_newid) returns long
+	long ll_rtcode
+	SQL SELECT TABMAXKEY INTO :al_newid FROM _TABMAXKEY WITH ( UPDLOCK HOLDLOCK ) WHERE _TABMAXKEY.TABName =:as_tablename USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		al_newid = al_newid + 1
+		SQL update dbo._tabmaxkey SET TABMAXKEY =:al_newid WHERE _TABMAXKEY.TABName =:as_tablename USING this.it_transobject;
+		if this.it_transobject.sqlcode < 0 then
+			ll_rtcode = this.it_transobject.sqlcode
+			al_newid = 0
+		end if
+	else
+		ll_rtcode = this.it_transobject.sqlcode
+		al_newid = 0
+	end if
+	return ll_rtcode
+
+// w_serviceorder_form.wf_get_patient_info(long al_code) returns long
+	long ll_patientcode
+	long ll_admissioncode
+	string ls_regno
+	string ls_patientname
+	string ls_fname
+	string ls_age
+	string ls_gender
+	SQL SELECT PatientCode , RegNo , Name , FName , Age =LTRIM ( RTRIM ( STR ( AgeYears ) ) ) + ' yrs ' + LTRIM ( RTRIM ( STR ( AgeMonths ) ) ) + ' month ' + LTRIM ( RTRIM ( STR ( AgeDays ) ) ) + ' days' , Gender INTO :ll_patientcode, :ls_regno, :ls_patientname, :ls_fname, :ls_age, :ls_gender FROM Patient WHERE PatientCode =:al_code USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		this.il_code = ll_patientcode
+		this.is_regno = ls_regno
+		this.is_patientname = ls_patientname
+		this.is_fhname = ls_fname
+		this.is_age = ls_age
+		this.is_gender = ls_gender
+		return 0
+	end if
+	return -1
+
+// w_serviceorder_form.wf_retrieve_tabs() returns long
+	long ll_retcode
+	this.tab_main.tabpage_header.dw_header.settransobject(this.it_transobject)
+	this.id_image = create datawindow
+	this.id_svcheader = create datawindow
+	this.id_svcdetail = create datawindow
+	this.id_svcfooter = create datawindow
+	this.id_issue = create datawindow
+	this.id_service = create datawindow
+	this.id_sale = create datawindow
+	this.id_itemreq = create datawindow
+	this.id_selectionlist = create datawindow
+	this.id_selectionlist_req = create datawindow
+	this.id_checklist = create datawindow
+	this.id_image = this.dw_image
+	this.id_image.settransobject(this.it_transobject)
+	if this.il_code > 0 then
+		ll_retcode = this.id_image.retrieve(this.il_code)
+		wf_populate_image()
+	end if
+	this.dw_netamt.settransobject(this.it_transobject)
+	ll_retcode = this.dw_netamt.retrieve()
+	if this.dw_netamt.rowcount() <= 0 then
+		this.dw_netamt.insertrow(0)
+	end if
+	this.id_svcheader = this.tab_main.tabpage_header.dw_header
+	this.id_svcheader.settransobject(this.it_transobject)
+	if this.il_code > 0 then
+		ll_retcode = this.id_svcheader.retrieve(this.il_code)
+	end if
+	this.id_svcfooter = this.tab_main.tabpage_detail.dw_footer
+	this.id_svcfooter.settransobject(this.it_transobject)
+	if this.il_code > 0 then
+		ll_retcode = this.id_svcfooter.retrieve(this.il_code)
+	else
+		this.id_svcfooter.insertrow(0)
+	end if
+	this.id_checklist = this.tab_main.tabpage_checklist.dw_checklist
+	this.id_checklist.settransobject(this.it_transobject)
+	if this.il_code > 0 then
+		ll_retcode = this.id_checklist.retrieve(this.il_code)
+	end if
+	this.id_svcdetail = this.tab_main.tabpage_detail.dw_detail
+	this.id_svcdetail.settransobject(this.it_transobject)
+	if this.il_code > 0 then
+		ll_retcode = this.id_svcdetail.retrieve(this.il_code)
+	end if
+	this.id_selectionlist = this.tab_main.tabpage_detail.dw_selectionlist
+	this.id_selectionlist.settransobject(this.it_transobject)
+	wf_servicelist_initialization()
+	this.ids_itemreq_header = create u_ds_standard
+	this.ids_itemreq_header.dataobject = "d_issuereqheader_serviceorder"
+	this.ids_itemreq_header.settransobject(this.it_transobject)
+	if this.il_code > 0 then
+		ll_retcode = this.ids_itemreq_header.retrieve(this.il_code)
+	end if
+	this.id_itemreq = this.tab_main.tabpage_itemreq.dw_itemreq
+	this.id_itemreq.settransobject(this.it_transobject)
+	if this.il_code > 0 then
+		ll_retcode = this.id_itemreq.retrieve(this.il_code)
+	end if
+	if f_stringpreferences("itemcode") = "N" then
+		this.id_itemreq.object.fullcode.visible = false
+	end if
+	this.id_selectionlist_req = this.tab_main.tabpage_itemreq.dw_selection_req
+	this.id_selectionlist_req.settransobject(this.it_transobject)
+	gd_popup_itemsinfo.sharedata(this.id_selectionlist_req)
+	wf_itemlist_initialization()
+	this.id_issue = this.tab_main.tabpage_issue.dw_issue
+	this.id_issue.settransobject(this.it_transobject)
+	if this.il_code > 0 then
+		ll_retcode = this.id_issue.retrieve(this.il_code)
+	end if
+	this.id_service = this.tab_main.tabpage_service.dw_service
+	this.id_service.settransobject(this.it_transobject)
+	if this.il_code > 0 then
+		ll_retcode = this.id_service.retrieve(this.il_code)
+	end if
+	this.id_sale = this.tab_main.tabpage_sale.dw_sale
+	this.id_sale.settransobject(this.it_transobject)
+	if this.il_code > 0 then
+		ll_retcode = this.id_sale.retrieve(this.il_code)
+	end if
+	return 0
+
+// w_serviceorder_form.wf_insert_row(datawindow adw_dw, integer ai_askpermit) returns long
+	long ll_row
+	long ll_res
+	if ai_askpermit = 1 then
+		ll_res = messagebox("Insert New Record", "Do you want to Insert New Record?", question!, yesnocancel!, 2)
+	else
+		ll_res = 1
+	end if
+	if ll_res = 1 then
+		ll_row = adw_dw.insertrow(0)
+		adw_dw.setrow(ll_row)
+		adw_dw.scrolltorow(ll_row)
+	end if
+	return 0
+
+// w_serviceorder_form.wf_delete_row(datawindow adw_dw, integer ai_askpermit) returns long
+	long ll_row
+	long ll_res
+	if adw_dw.rowcount() > 0 and adw_dw.getrow() > 0 then
+		if ai_askpermit = 1 then
+			ll_res = messagebox("Delete Record", "Do you want to delete this record?", question!, yesnocancel!, 2)
+		else
+			ll_res = 1
+		end if
+		if ll_res = 1 then
+			ll_row = adw_dw.getrow()
+			if adw_dw.deleterow(ll_row) = 1 and adw_dw.rowcount() > 0 then
+				adw_dw.setrow(1)
+				adw_dw.scrolltorow(1)
+			end if
+		end if
+	end if
+	return 0
+
+// w_serviceorder_form.wf_goto_record(datawindow adw_dw) returns long
+	long ll_current
+	long ll_counter
+	long ll_row
+	datastore lds_ds
+	s_arguements lstr_arg
+	ll_current = adw_dw.getrow()
+	if adw_dw.rowcount() > 0 then
+		lds_ds = create datastore
+		lds_ds.dataobject = "d_mr_recordpointer"
+		lds_ds.settransobject(sqlca)
+		for ll_counter = 1 to adw_dw.rowcount()
+			ll_row = lds_ds.insertrow(0)
+			if ll_row = ll_current then
+				lds_ds.object.currentrow[ll_row] = 1
+			else
+				lds_ds.object.currentrow[ll_row] = 0
+			end if
+			lds_ds.object.rowid[ll_row] = adw_dw.object.rowid[ll_counter]
+			lds_ds.object.rowno[ll_row] = ll_counter
+			lds_ds.object.date[ll_row] = adw_dw.object.date[ll_counter]
+		next
+		if lds_ds.rowcount() > 0 then
+			openwithparm(w_arg_mr_record_pointer, lds_ds)
+			lstr_arg = message.powerobjectparm
+			if lstr_arg.i_status = 1 and lstr_arg.l_code1 > 0 then
+				adw_dw.setrow(lstr_arg.l_code1)
+				adw_dw.scrolltorow(lstr_arg.l_code1)
+			end if
+		end if
+	end if
+	return 0
+
+// w_serviceorder_form.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns integer
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+	return 0
+
+// w_serviceorder_form.wf_apply_protect_setting() returns integer
+	if this.il_protect = 1 then
+		wf_protectdw(this.id_svcheader, this.il_protect)
+		wf_protectdw(this.id_checklist, this.il_protect)
+		wf_protectdw(this.id_svcdetail, this.il_protect)
+		wf_protectdw(this.id_svcfooter, this.il_protect)
+		wf_protectdw(this.id_itemreq, this.il_protect)
+		wf_protectdw(this.id_issue, this.il_protect)
+		wf_protectdw(this.id_service, this.il_protect)
+		wf_protectdw(this.id_sale, this.il_protect)
+		this.cb_ok.enabled = false
+	end if
+	return 0
+
+// w_serviceorder_form.wf_save() returns long
+	if this.il_protect = 0 then
+		this.cb_ok.triggerevent(clicked!)
+	end if
+	return 0
+
+// w_serviceorder_form.wf_print() returns long
+	if this.il_protect = 0 then
+		wf_save()
+	end if
+	return 0
+
+// w_serviceorder_form.wf_select_first_tab() returns long
+	if this.tab_main.tabpage_header.visible then
+		this.tab_main.selecttab(1)
+		return 0
+	end if
+	if this.tab_main.tabpage_checklist.visible = true then
+		this.tab_main.selecttab(2)
+		return 0
+	end if
+	if this.tab_main.tabpage_detail.visible = true then
+		this.tab_main.selecttab(3)
+		return 0
+	end if
+	if this.tab_main.tabpage_itemreq.visible = true then
+		this.tab_main.selecttab(4)
+		return 0
+	end if
+	if this.tab_main.tabpage_issue.visible = true then
+		this.tab_main.selecttab(5)
+		return 0
+	end if
+	if this.tab_main.tabpage_service.visible = true then
+		this.tab_main.selecttab(6)
+		return 0
+	end if
+	if this.tab_main.tabpage_sale.visible = true then
+		this.tab_main.selecttab(7)
+		return 0
+	end if
+	return 0
+
+// w_serviceorder_form.wf_get_image(long al_row) returns long
+	blob lbl_image
+	u_transaction lt_transobject
+	lt_transobject = create u_transaction
+	lt_transobject.autocommit = true
+	SQL start USING lt_transobject;
+	if lt_transobject.sqlcode <> 0 then
+		messagebox("Connection Error", "Unable to connect to DataBase server")
+		destroy lt_transobject
+		return -1
+	end if
+	SQL SelectBlob PatientImage INTO :lbl_image From PatientImage Where Patientcode =:this.il_code AND RowID =:al_row USING lt_transobject;
+	if lt_transobject.sqlcode <> 0 then
+		messagebox("Patient Image/Picture ", "Unable to fetch patient Image.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext)
+	end if
+	SQL stop USING lt_transobject;
+	destroy lt_transobject
+	this.istr_image.blob[al_row] = lbl_image
+	return 0
+
+// w_serviceorder_form.wf_populate_image() returns long
+	long ll_counter
+	long ll_rowcount
+	long ll_code
+	ll_rowcount = this.id_image.rowcount()
+	if ll_rowcount <= 0 then
+		return 0
+	end if
+	ll_code = this.id_image.object.code[1]
+	for ll_counter = 1 to ll_rowcount
+		this.istr_image.ls_value[ll_counter, 1] = trim(string(this.id_image.object.rowid[ll_counter]))
+		this.istr_image.ls_value[ll_counter, 2] = this.id_image.object.imagedescription[ll_counter]
+		this.istr_image.ls_value[ll_counter, 3] = this.id_image.object.imagetype[ll_counter]
+		wf_get_image(ll_counter)
+	next
+	return 0
+
+// w_serviceorder_form.wf_update_image() returns long
+	long ll_counter
+	long ll_code
+	long ll_rowid
+	string ls_desc
+	string ls_imgtype
+	u_transaction lt_transobject
+	ll_code = this.il_code
+	if ll_code > 0 and this.id_image.rowcount() = 0 then
+		return 0
+	end if
+	lt_transobject = create u_transaction
+	lt_transobject.autocommit = true
+	SQL start USING lt_transobject;
+	if lt_transobject.sqlcode <> 0 then
+		messagebox("Connection Error", "Unable to connect to DataBase server for updating/inserting in PatientImage Table")
+		destroy lt_transobject
+		return -1
+	end if
+	SQL DELETE PatientImage WHERE PatientCode =:this.il_code USING lt_transobject;
+	if lt_transobject.sqlcode <> 0 then
+		messagebox("Connection Error", "Unable to Delete Previous Patient Image Record from database")
+		destroy lt_transobject
+		return -1
+	end if
+	for ll_counter = 1 to this.id_image.rowcount()
+		ll_rowid = this.id_image.object.rowid[ll_counter]
+		ls_desc = this.id_image.object.imagedescription[ll_counter]
+		ls_imgtype = this.id_image.object.imagetype[ll_counter]
+		if lt_transobject.sqlcode <> 0 then
+			messagebox("Insert Error", "Unable to Insert Patient Images Into Patient Image Table.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext)
+			SQL stop USING lt_transobject;
+			destroy lt_transobject
+			return -1
+		end if
+		SQL UpdateBlob PatientImage Set PatientImage =:this.istr_image.blob[ll_counter] Where Patientcode =:ll_code and ROWID =:ll_rowid USING lt_transobject;
+		if lt_transobject.sqlcode <> 0 then
+			messagebox("Patient Image ", "Unable to update Patient image.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext)
+		end if
+	next
+	SQL stop USING lt_transobject;
+	destroy lt_transobject
+	return 0
+
+// w_serviceorder_form.wf_validateitem(long al_row) returns integer
+	long ll_icode
+	long ll_null
+	integer li_errcode
+	string ls_errortext
+	setnull(ll_null)
+	ll_icode = this.id_svcdetail.getitemnumber(al_row, "icode")
+	if isnull(ll_icode) then
+		this.ib_rowvalidated = false
+		this.ib_itemvalidated = false
+		messagebox("Validation Error!", "Please Enter Valid Item")
+		li_errcode = -1
+	elseif wf_inititeminfo(ll_icode, al_row, li_errcode, ls_errortext) then
+		li_errcode = 0
+		this.ib_rowvalidated = true
+		this.ib_itemvalidated = true
+	else
+		li_errcode = -1
+	end if
+	if li_errcode = -1 then
+		this.id_svcdetail.setcolumn("icode")
+		this.id_svcdetail.scrolltorow(al_row)
+		this.id_svcdetail.object.icode[al_row] = ll_null
+	end if
+	return li_errcode
+
+// w_serviceorder_form.wf_setimage(string as_caller) returns long
+	long ll_counter
+	long ll_code
+	long ll_row
+	s_itemimage lstr_image
+	lstr_image.s_caller = as_caller
+	for ll_counter = 1 to this.id_image.rowcount()
+		lstr_image.ls_value[ll_counter, 1] = trim(string(this.id_image.object.rowid[ll_counter]))
+		lstr_image.ls_value[ll_counter, 2] = this.id_image.object.imagedescription[ll_counter]
+		lstr_image.ls_value[ll_counter, 3] = this.id_image.object.imagetype[ll_counter]
+		lstr_image.blob[ll_counter] = this.istr_image.blob[ll_counter]
+	next
+	openwithparm(w_patientimage, lstr_image)
+	lstr_image = message.powerobjectparm
+	if lstr_image.i_closemode = 1 then
+		this.istr_image = lstr_image
+		this.id_image.reset()
+		ll_code = this.il_code
+		for ll_counter = 1 to 200
+			if long(lstr_image.ls_value[ll_counter, 1]) > 0 then
+				ll_row = this.id_image.insertrow(0)
+				this.id_image.object.code[ll_row] = ll_code
+				this.id_image.object.rowid[ll_row] = long(lstr_image.ls_value[ll_counter, 1])
+				this.id_image.object.imagedescription[ll_row] = lstr_image.ls_value[ll_counter, 2]
+				this.id_image.object.imagetype[ll_row] = lstr_image.ls_value[ll_counter, 3]
+			end if
+		next
+	end if
+	return 0
+
+// w_serviceorder_form.wf_show_patient_gallery() returns long
+	if this.il_code > 0 then
+		openwithparm(w_patientgallary, this.il_code)
+	end if
+	return 0
+
+// w_serviceorder_form.wf_validateserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+	datetime ldt_last_transdate
+	datetime ldt_current_serverdate
+	long li_max_allow_days
+	ar_errtext = "Invoice Date  Check violates"
+	li_max_allow_days = f_numberpreferences("MaxAllowDate")
+	if isnull(li_max_allow_days) then
+		li_max_allow_days = 4
+	end if
+	SQL SELECT LastTransDate INTO :ldt_last_transdate FROM ServerDate USING sqlca;
+	if sqlca.sqlcode = 0 then
+		sqlca.getdatetime(ldt_current_serverdate)
+		if sqlca.sqlcode = 0 then
+			if ldt_current_serverdate >= ldt_last_transdate and daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) <= li_max_allow_days then
+				ar_server_datetime = ldt_current_serverdate
+				return true
+			elseif ldt_current_serverdate < ldt_last_transdate then
+				ar_errtext = "Back Date Invoice Check violates"
+				return false
+			elseif daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) > li_max_allow_days then
+				ar_errtext = "Forward Date Invoice Check violates"
+				return false
+			end if
+		else
+			return false
+		end if
+		return
+	end if
+	return false
+
+// w_serviceorder_form.wf_print_dischargeslip() returns integer
+	return 0
+
+// w_serviceorder_form.wf_validate_service() returns long
+	long ll_currrow
+	long ll_counter
+	long ll_null
+	ll_currrow = this.id_svcdetail.getrow()
+	setnull(ll_null)
+	if this.id_svcdetail.rowcount() > 0 then
+		if isnull(this.id_svcdetail.getitemnumber(ll_currrow, "icode")) then
+			if isnull(this.id_svcdetail.getitemstring(ll_currrow, "itemname")) then
+				this.id_svcdetail.deleterow(ll_currrow)
+			elseif this.ib_itemvalidated = false then
+				messagebox("Item Validation", "Please Select Some Valid Item")
+				this.id_svcdetail.setcolumn("itemname")
+				this.id_svcdetail.scrolltorow(ll_currrow)
+				this.id_svcdetail.setfocus()
+				return 1
+			end if
+		elseif this.ib_itemvalidated = false then
+			messagebox("Item Validation", "Please Select Some Valid Item")
+			this.id_svcdetail.setcolumn("itemname")
+			this.id_svcdetail.scrolltorow(ll_currrow)
+			this.id_svcdetail.setfocus()
+			return 1
+		end if
+		if f_validatedw(this.id_svcdetail) < 0 then
+			return 1
+		end if
+		this.il_currrow = this.id_svcdetail.rowcount()
+		if this.ib_itemvalidated = false and wf_validateitem(ll_currrow) = -1 then
+			return 1
+		end if
+		return
+	end if
+	for ll_counter = 1 to this.id_svcdetail.rowcount()
+		this.id_svcdetail.object.code[ll_counter] = this.il_code
+	next
+	return 0
+
+// w_serviceorder_form.wf_findcustcode(long ai_custcode, string as_aliasname) returns long
+	integer li_custcode
+	integer ll_retflag
+	string ls_itemname
+	SQL SELECT accounts.acccode INTO :li_custcode FROM accounts , customer WHERE accounts.aliasname =:as_aliasname AND accounts.acccode =customer.custcode USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		ai_custcode = li_custcode
+		if isnull(ai_custcode) then
+			ll_retflag = 0
+		else
+			ll_retflag = 1
+		end if
+	else
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_serviceorder_form.wf_customerinfo(long al_custcode) returns long
+	string ls_address
+	string ls_city
+	string ls_phone
+	long ll_currow
+	double ld_currbalance
+	SQL SELECT customer.address1 , customer.city , customer.phone INTO :ls_address, :ls_city, :ls_phone FROM customer WHERE customer.custcode =:al_custcode USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+	end if
+	return this.it_transobject.sqlcode
+
+// w_serviceorder_form.wf_inititeminfo(long al_icode, long al_row, integer ai_rtcode, string as_errortext) returns boolean
+	boolean retflag
+	double ld_saleprice
+	double ld_discperc
+	double ld_flatdisc
+	double ld_serviceflattax
+	double ld_servicegstperc
+	string ls_fullcode
+	string ls_name
+	string ls_null
+	string ls_allowsaleindecimal
+	datetime ldt_date
+	dwitemstatus ldw_status
+	setnull(ls_null)
+	SQL SELECT service.aliasname , service.name , service.price , service.serviceflatdisc , allowsaleindecimal , ServiceFlatTax , ServiceGSTPerc INTO :ls_fullcode, :ls_name, :ld_saleprice, :ld_flatdisc, :ls_allowsaleindecimal, :ld_serviceflattax, :ld_servicegstperc FROM service WHERE service.servicecode =:al_icode USING this.it_transobject;
+	if this.it_transobject.sqlcode = -1 then
+		retflag = false
+		as_errortext = "Database Error: Service information can not be retrieved"
+	end if
+	if retflag then
+		this.id_svcdetail.setitem(al_row, "itemname", ls_name)
+		this.id_svcdetail.setitem(al_row, "fullcode", ls_fullcode)
+		this.id_svcdetail.setitem(al_row, "allowsaleindecimal", ls_allowsaleindecimal)
+		ldw_status = this.id_svcdetail.getitemstatus(al_row, "saleprice", primary!)
+		if this.id_svcdetail.getitemstatus(al_row, "saleprice", primary!) = notmodified! then
+			this.id_svcdetail.setitem(al_row, "saleprice", ld_saleprice)
+		end if
+		ldw_status = this.id_svcdetail.getitemstatus(al_row, "serviceflatdisc", primary!)
+		if this.id_svcdetail.getitemstatus(al_row, "serviceflatdisc", primary!) = notmodified! then
+			this.id_svcdetail.setitem(al_row, "serviceflatdisc", ld_flatdisc)
+		end if
+		ldw_status = this.id_svcdetail.getitemstatus(al_row, "ServiceFlatTax", primary!)
+		if this.id_svcdetail.getitemstatus(al_row, "ServiceFlatTax", primary!) = notmodified! then
+			this.id_svcdetail.setitem(al_row, "ServiceFlatTax", ld_serviceflattax)
+		end if
+		ldw_status = this.id_svcdetail.getitemstatus(al_row, "ServiceGSTPerc", primary!)
+		if this.id_svcdetail.getitemstatus(al_row, "ServiceGSTPerc", primary!) = notmodified! then
+			this.id_svcdetail.setitem(al_row, "ServiceGSTPerc", ld_servicegstperc)
+		end if
+		if al_row > 1 then
+			ldt_date = this.id_svcdetail.getitemdatetime(al_row - 1, "date")
+			this.id_svcdetail.setitem(al_row, "date", ldt_date)
+		end if
+		if al_icode <> this.id_svcdetail.getitemnumber(al_row, "itemcode") then
+			this.id_svcdetail.setitem(al_row, "saleprice", ld_saleprice)
+			this.id_svcdetail.setitem(al_row, "serviceflatdisc", ld_flatdisc)
+			this.id_svcdetail.setitem(al_row, "ServiceFlatTax", ld_serviceflattax)
+			this.id_svcdetail.setitem(al_row, "ServiceGSTPerc", ld_servicegstperc)
+		end if
+		this.id_svcdetail.setitem(al_row, "itemcode", al_icode)
+		this.id_svcdetail.setitem(al_row, "icode", al_icode)
+	else
+		retflag = false
+		as_errortext = "Unable to offer Service."
+	end if
+	return retflag
+
+// w_serviceorder_form.wf_find_service_fullcode(string as_aliasname, long al_servicecode, string as_servicename) returns long
+	long ll_retflag
+	setnull(al_servicecode)
+	as_servicename = "                                                                  "
+	this.it_transobject.getservice_aliasname(gl_usercode, as_aliasname, al_servicecode, as_servicename)
+	if this.it_transobject.sqlcode = 0 then
+		if isnull(al_servicecode) then
+			ll_retflag = 0
+		else
+			ll_retflag = 1
+		end if
+	else
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_serviceorder_form.wf_grandtotal() returns double
+	long ll_retcode
+	double ld_grandtotal
+	double ld_detaildwtotal
+	double ld_serviceadvance
+	double ld_invoiceadvance
+	double ld_servicegstperc
+	double ld_sumitemleveltaxval
+	double ld_suminvleveltaxval
+	double ld_totaltaxoninv
+	double ld_item_req_total
+	double ld_item_issue_total
+	real lr_discperc
+	real lr_flatdisc
+	real lr_misccharges
+	real lr_salestax
+	real lr_itemstotal
+	if this.id_svcdetail.rowcount() > 0 and this.id_svcfooter.rowcount() > 0 then
+		this.id_svcdetail.accepttext()
+		this.id_svcfooter.accepttext()
+		lr_discperc = this.id_svcfooter.object.invdiscperc[1]
+		lr_flatdisc = this.id_svcfooter.object.flatdisc[1]
+		lr_misccharges = this.id_svcfooter.object.misccharges[1]
+		ld_servicegstperc = this.id_svcfooter.object.serviceinvgstperc[1]
+		ld_detaildwtotal = this.id_svcdetail.getitemnumber(1, "c_detaildwtotal")
+		ld_grandtotal = round(ld_detaildwtotal * (1.0 - lr_discperc * 0.01) - lr_flatdisc + lr_misccharges + lr_salestax, 0)
+		ld_sumitemleveltaxval = this.id_svcdetail.getitemnumber(1, "c_sumflattaxval") + this.id_svcdetail.getitemnumber(1, "c_sumgstval")
+		ld_suminvleveltaxval = round((ld_detaildwtotal * (1.0 - lr_discperc * 0.01) - lr_flatdisc) * 0.01 * ld_servicegstperc, 2)
+		ld_totaltaxoninv = round(ld_sumitemleveltaxval + ld_suminvleveltaxval, 0)
+		ld_grandtotal = round(ld_grandtotal, 0)
+		ld_grandtotal = ld_grandtotal + ld_totaltaxoninv
+		this.id_svcfooter.setitem(1, "total", ld_grandtotal)
+		ld_serviceadvance = 0.00
+		ld_invoiceadvance = this.id_svcfooter.getitemnumber(1, "cashreceived")
+		this.id_svcfooter.setitem(1, "totaladvance", ld_serviceadvance + ld_invoiceadvance)
+		this.dw_netamt.retrieve()
+		this.id_issue.settransobject(this.it_transobject)
+		ll_retcode = this.id_issue.retrieve(this.il_code)
+		if this.dw_netamt.rowcount() > 0 then
+			if this.id_issue.rowcount() > 0 then
+				ld_item_issue_total = this.id_issue.getitemnumber(1, "c_amount_summary")
+				this.dw_netamt.object.estimatedamt[1] = ld_grandtotal + ld_item_issue_total
+			else
+				if this.id_itemreq.rowcount() > 0 then
+					ld_item_req_total = this.id_itemreq.getitemnumber(1, "c_detaildwtotal")
+				end if
+				this.dw_netamt.object.estimatedamt[1] = ld_grandtotal + ld_item_req_total
+			end if
+		end if
+	end if
+	return ld_grandtotal
+
+// w_serviceorder_form.wf_getserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+	datetime ldt_last_transdate
+	datetime ldt_current_serverdate
+	integer li_max_allow_days
+	string ls_hold_serverdate
+	date ld_datepart
+	time lt_timepart
+	ar_errtext = "Please verify Server DateTime"
+	li_max_allow_days = f_numberpreferences("MaxAllowDate")
+	if isnull(li_max_allow_days) then
+		li_max_allow_days = 4
+	end if
+	SQL rollback USING sqlca;
+	SQL SELECT LastTransDate INTO :ldt_last_transdate FROM ServerDate USING sqlca;
+	if sqlca.sqlcode = 0 then
+		sqlca.getdatetime(ldt_current_serverdate)
+		ar_server_datetime = ldt_current_serverdate
+		if sqlca.sqlcode = 0 then
+			if ldt_current_serverdate >= ldt_last_transdate and daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) <= li_max_allow_days then
+				ld_datepart = date(string(ldt_current_serverdate, "yyyy-mm-dd"))
+				lt_timepart = time(string(ldt_current_serverdate, "hh:mm:ss"))
+				ldt_current_serverdate = datetime(ld_datepart, lt_timepart)
+				SQL update ServerDate SET LastTransDate =:ldt_current_serverdate USING sqlca;
+				if sqlca.sqlcode = 0 then
+					SQL commit USING sqlca;
+					ar_server_datetime = ldt_current_serverdate
+					return true
+				else
+					SQL rollback USING sqlca;
+					return false
+				end if
+			elseif ldt_current_serverdate < ldt_last_transdate then
+				ar_errtext = "Back Date Invoice Check violates"
+				return false
+			elseif daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) > li_max_allow_days then
+				ar_errtext = "Forward Date Invoice Check violates"
+				return false
+			end if
+		else
+			SQL rollback USING sqlca;
+			ar_server_datetime = datetime(date(today()), time(today()))
+			return false
+		end if
+		return
+	end if
+	SQL rollback USING sqlca;
+	ar_server_datetime = datetime(date(today()), time(today()))
+	return false
+
+// w_serviceorder_form.wf_printorder() returns integer
+	s_datastore lstr
+	if this.ib_printorder = true then
+		this.dw_print.settransobject(sqlca)
+		this.dw_print.retrieve(this.il_code)
+		lstr.dw = this.dw_print
+		lstr.s_name1 = this.dw_print.dataobject
+		openwithparm(w_preview_invoices, lstr)
+		lstr = message.powerobjectparm
+		if lstr.i_closemode = -1 then
+			return 0
+		else
+			if f_stringpreferences("PromptBeforePrinting") = "Y" and printsetup() < 0 then
+				messagebox("Printer", "Printing Error")
+				this.dw_print.printcancel()
+			end if
+			if this.dw_print.rowcount() > 0 then
+				if this.dw_print.print() < 0 then
+					messagebox("Printing", "Can not Print Invoice", information!)
+				end if
+			else
+				messagebox("Printing Error", "Can not Print Data,~r~nNo rows are retrieved", information!)
+			end if
+		end if
+	end if
+	return 0
+
+// w_serviceorder_form.wf_new_customerregisteration() returns long
+	string ls_aliasname
+	long ll_acccode
+	long ll_found
+	long ll_row
+	dwobject dwo
+	open(w_customer_register)
+	ls_aliasname = message.stringparm
+	if not (ls_aliasname = "" or isnull(ls_aliasname)) then
+		wf_customer_retrieve()
+		ll_found = 0
+		ll_found = this.idc_customers.find("accounts_aliasname = '" + ls_aliasname + "'", 1, this.idc_customers.rowcount())
+		if ll_found > 0 then
+			this.id_svcheader.setitem(1, "custcode", this.idc_customers.getitemstring(ll_found, "accounts_aliasname"))
+			ll_acccode = this.idc_customers.getitemnumber(ll_found, "accounts_acccode")
+			this.id_svcheader.setitem(1, "custcode", ll_acccode)
+			dwo = this.id_svcheader.object.custcode
+			this.id_svcheader.post event itemchanged(1, dwo, string(ll_acccode))
+		end if
+	end if
+	return 0
+
+// w_serviceorder_form.wf_customer_retrieve() returns long
+	this.idc_customers.setredraw(false)
+	this.idc_customers.settransobject(this.it_transobject)
+	this.idc_customers.retrieve()
+	this.idc_customers.setredraw(true)
+	return 0
+
+// w_serviceorder_form.wf_findpatientcode(string as_regno, long al_patientcode) returns long
+	long ll_patientcode
+	long ll_retflag
+	string ls_itemname
+	SQL SELECT patient.patientcode INTO :ll_patientcode FROM patient WHERE patient.regno =:as_regno USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		al_patientcode = ll_patientcode
+		if isnull(al_patientcode) then
+			ll_retflag = 0
+		else
+			ll_retflag = 1
+		end if
+	else
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_serviceorder_form.wf_new_patientregistration() returns long
+	string ls_regno
+	long ll_patientcode
+	long ll_found
+	long ll_row
+	dwobject dwo
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 689", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		open(w_patientregistration)
+		ls_regno = message.stringparm
+		if not (ls_regno = "" or isnull(ls_regno)) then
+			wf_patient_retrieve()
+			ll_found = 0
+			ll_found = this.idc_patient.find("regno = '" + ls_regno + "'", 1, this.idc_patient.rowcount())
+			if ll_found > 0 then
+				this.id_svcheader.setitem(1, "patientregno", this.idc_patient.getitemstring(ll_found, "regno"))
+				ll_patientcode = this.idc_patient.getitemnumber(ll_found, "patientcode")
+				this.id_svcheader.setitem(1, "patientcode", ll_patientcode)
+				dwo = this.id_svcheader.object.patientcode
+				this.id_svcheader.post event itemchanged(1, dwo, string(ll_patientcode))
+			end if
+		end if
+	end if
+	return 0
+
+// w_serviceorder_form.wf_patient_retrieve() returns long
+	long ll_prow
+	long ll_pcode
+	this.idc_patient.retrieve(this.ii_patientmodule)
+	ll_prow = this.idc_patient.insertrow(0)
+	setnull(ll_pcode)
+	this.idc_patient.setitem(ll_prow, "patientcode", ll_pcode)
+	this.idc_patient.setitem(ll_prow, "regno", "<NONE>")
+	this.idc_patient.setitem(ll_prow, "name", "<NONE>")
+	this.idc_patient.setitem(ll_prow, "customer", "<NONE>")
+	this.idc_patient.setitem(ll_prow, "city", "<NONE>")
+	this.idc_patient.scrolltorow(ll_prow)
+	return 0
+
+// w_serviceorder_form.wf_comprehensive_search() returns long
+	s_popup_selection lstr_selection
+	openwithparm(w_popup_comprehensicesearch_selection, this.is_comprehensive_search_dataobject)
+	lstr_selection = message.powerobjectparm
+	if lstr_selection.l_code > 0 and lstr_selection.l_code2 > 0 then
+	end if
+	if lstr_selection.l_code2 < 0 then
+		lstr_selection.l_code2 = -1
+	end if
+	return lstr_selection.l_code2
+
+// w_serviceorder_form.wf_setpatientinfo(long al_patientcode) returns long
+	long ll_doctcode
+	long ll_custcode
+	long ll_retcode
+	string ls_regno
+	string ls_aliasname
+	SQL SELECT Patient.RegNo , Patient.doctcode , Patient.CustCode , Accounts.AliasName INTO :ls_regno, :ll_doctcode, :ll_custcode, :ls_aliasname FROM Patient , Accounts WHERE Patient.PatientCode =:al_patientcode AND Patient.Active ='Y' AND Patient.CustCode =Accounts.AccCode USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		this.id_svcheader.setitem(this.id_svcheader.rowcount(), "patientregno", ls_regno)
+		this.id_svcheader.setitem(this.id_svcheader.rowcount(), "doctcode", ll_doctcode)
+		this.id_svcheader.setitem(this.id_svcheader.rowcount(), "patientregno", ls_regno)
+		this.id_svcheader.setitem(this.id_svcheader.rowcount(), "custcode", ll_custcode)
+		this.id_svcheader.setitem(this.id_svcheader.rowcount(), "aliasname", ls_aliasname)
+		this.id_svcheader.object.custcode.protect = 1
+		this.id_svcheader.object.aliasname.protect = 1
+		ll_retcode = 1
+	else
+		messagebox("Patient Information", "Problem in retrieving corresponding customer")
+		ll_retcode = 0
+	end if
+	return ll_retcode
+
+// w_serviceorder_form.wf_show_patientgallery() returns long
+	long ll_code
+	if this.id_svcheader.rowcount() > 0 and this.id_svcheader.getrow() > 0 then
+		ll_code = this.id_svcheader.object.patientcode[this.id_svcheader.getrow()]
+		if ll_code > 0 then
+			f_show_patient_gallary(ll_code)
+		end if
+	end if
+	return 0
+
+// w_serviceorder_form.wf_servicelist_initialization() returns 0
+	long li_counter
+	long ll_startrow
+	long ll_rowcount
+	long ll_found
+	char lc_char
+	this.id_selectionlist.retrieve()
+	ll_rowcount = this.id_selectionlist.rowcount()
+	if ll_rowcount <= 0 or isnull(ll_rowcount) then
+		messagebox("Row Validation", "There are no rows to select in SelectionList.~r~nKindly try again.")
+		close(this)
+		return
+	end if
+	setredraw(false)
+	this.id_selectionlist.setsort("name A")
+	this.id_selectionlist.sort()
+	for li_counter = 65 to 90
+		lc_char = char(li_counter)
+		this.ia_llookuptable[li_counter] = this.id_selectionlist.find("Lower(itemname) >= Lower('" + char(li_counter) + "')", ll_startrow, 99999)
+		ll_startrow = this.ia_llookuptable[li_counter]
+	next
+	this.ia_llookuptable[92] = 99999
+	f_setserviceqtystyle(this.id_svcdetail, "qty")
+	setredraw(true)
+
+// w_serviceorder_form.wf_itemlist_initialization() returns 0
+	long li_counter
+	long ll_startrow
+	long ll_rowcount
+	long ll_found
+	char lc_char
+	this.id_selectionlist_req.retrieve()
+	ll_rowcount = this.id_selectionlist_req.rowcount()
+	if ll_rowcount <= 0 or isnull(ll_rowcount) then
+		messagebox("Row Validation", "There are no rows to select in SelectionList.~r~nKindly try again.")
+		close(this)
+		return
+	end if
+	setredraw(false)
+	this.id_selectionlist_req.setsort("name A")
+	this.id_selectionlist_req.sort()
+	for li_counter = 65 to 90
+		lc_char = char(li_counter)
+		this.ia_llookuptable_req[li_counter] = this.id_selectionlist_req.find("Lower(name) >= Lower('" + char(li_counter) + "')", ll_startrow, this.id_selectionlist_req.rowcount())
+		ll_startrow = this.ia_llookuptable_req[li_counter]
+	next
+	this.ia_llookuptable_req[92] = this.id_selectionlist_req.rowcount()
+	setredraw(true)
+
+// w_serviceorder_form.wf_validateitem_req(long al_row) returns long
+	long ll_icode
+	long ll_null
+	integer li_errcode
+	string ls_errortext
+	setnull(ll_null)
+	ll_icode = this.id_itemreq.getitemnumber(al_row, "icode")
+	if isnull(ll_icode) then
+		this.ib_rowvalidated_req = false
+		this.ib_itemvalidated_req = false
+		messagebox("Validation Error!", "Please Enter Valid Item")
+		li_errcode = -1
+	elseif vf_dwdupcode1(this.id_itemreq, "icode", string(ll_icode), al_row) = true then
+		messagebox("Duplication Error", "Current row is duplicate")
+		li_errcode = -1
+		this.ib_rowvalidated_req = false
+		this.ib_itemvalidated_req = false
+	elseif wf_inititeminfo_req(ll_icode, al_row, li_errcode, ls_errortext) then
+		li_errcode = 0
+		this.ib_rowvalidated_req = true
+		this.ib_itemvalidated_req = true
+	else
+		li_errcode = -1
+	end if
+	if li_errcode = -1 then
+		this.id_itemreq.setcolumn("icode")
+		this.id_itemreq.scrolltorow(al_row)
+		this.id_itemreq.object.icode[al_row] = ll_null
+	end if
+	return li_errcode
+
+// w_serviceorder_form.wf_inititeminfo_req(long al_icode, long al_row, integer ai_rtcode, string as_errortext) returns boolean
+	boolean retflag
+	double ld_saleprice
+	double ld_discperc
+	double ld_flatdisc
+	double ld_avgprice
+	long ll_packunits
+	string ls_fullcode
+	string ls_name
+	string ls_null
+	string ls_allowsaleindecimal
+	datetime ldt_date
+	setnull(ls_null)
+	SQL SELECT CustomICode , name , SalePrice =Round ( SalePrice / CASE WHEN PackUnits <= 0 THEN 1 ELSE PackUnits END , 2 ) , Packunits , avgprice INTO :ls_fullcode, :ls_name, :ld_saleprice, :ll_packunits, :ld_avgprice FROM Item WHERE ICode =:al_icode USING this.it_transobject;
+	if this.it_transobject.sqlcode = -1 then
+		retflag = false
+		as_errortext = "Database Error: Item information can not be retrieved"
+	end if
+	if retflag then
+		this.id_itemreq.setitem(al_row, "itemname", ls_name)
+		this.id_itemreq.setitem(al_row, "fullcode", ls_fullcode)
+		this.id_itemreq.setitem(al_row, "packunits", ll_packunits)
+		this.id_itemreq.setitem(al_row, "avgprice", ld_avgprice)
+		if this.id_itemreq.getitemstatus(al_row, "saleprice", primary!) = notmodified! then
+			this.id_itemreq.setitem(al_row, "saleprice", ld_saleprice)
+		end if
+		if al_icode <> this.id_itemreq.getitemnumber(al_row, "itemcode") then
+			this.id_itemreq.setitem(al_row, "saleprice", ld_saleprice)
+		end if
+		this.id_itemreq.setitem(al_row, "itemcode", al_icode)
+		this.id_itemreq.setitem(al_row, "icode", al_icode)
+	else
+		retflag = false
+		as_errortext = "Unable to Select Item."
+	end if
+	return retflag
+
+// w_serviceorder_form.wf_findfullcode(string as_fullcode, long al_icode, string as_itemname) returns long
+	long ll_icode
+	long ll_retflag
+	string ls_itemname
+	if f_stringpreferences("GroupCategoryRights") = "Y" then
+		SQL SELECT item.icode , item.name INTO :ll_icode, :ls_itemname FROM item WHERE item.customicode =:as_fullcode AND item.Active =1 AND Item.ICatCode IN ( SELECT ICatCode FROM ItemCategory WHERE ICatCode IN ( SELECT ItemsCategoryCode FROM ItemsGroupCategory WHERE GroupCode IN ( SELECT GroupCode FROM UserGroups WHERE UserCode =:gl_usercode ) ) ) USING this.it_transobject;
+	else
+		SQL SELECT item.icode , item.name INTO :ll_icode, :ls_itemname FROM item WHERE item.customicode =:as_fullcode AND item.Active =1 USING this.it_transobject;
+	end if
+	if this.it_transobject.sqlcode = 0 then
+		al_icode = ll_icode
+		as_itemname = ls_itemname
+		if isnull(al_icode) then
+			ll_retflag = 0
+		else
+			ll_retflag = 1
+		end if
+	else
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_serviceorder_form.wf_validate_req() returns long
+	long ll_currrow
+	long ll_counter
+	long ll_null
+	ll_currrow = this.id_itemreq.getrow()
+	setnull(ll_null)
+	if this.id_itemreq.rowcount() > 0 then
+		if isnull(this.id_itemreq.getitemnumber(ll_currrow, "icode")) then
+			if isnull(this.id_itemreq.getitemstring(ll_currrow, "itemname")) then
+				this.id_itemreq.deleterow(ll_currrow)
+			elseif this.ib_itemvalidated_req = false then
+				messagebox("Item Validation", "Please Select Some Valid Item")
+				this.id_itemreq.setcolumn("itemname")
+				this.id_itemreq.scrolltorow(ll_currrow)
+				this.id_itemreq.setfocus()
+				return 1
+			end if
+		elseif this.ib_itemvalidated_req = false then
+			messagebox("Item Validation", "Please Select Some Valid Item")
+			this.id_itemreq.setcolumn("itemname")
+			this.id_itemreq.scrolltorow(ll_currrow)
+			this.id_itemreq.setfocus()
+			return 1
+		end if
+		if f_validatedw(this.id_itemreq) < 0 then
+			return 1
+		end if
+		this.il_currrow_req = this.id_itemreq.rowcount()
+		if this.ib_itemvalidated_req = false and wf_validateitem_req(ll_currrow) = -1 then
+			return 1
+		end if
+		return
+	end if
+	return 0
+
+// w_serviceorder_form.wf_show_salehistory() returns long
+	s_itemsalehistory ls_itemsalehistory
+	if this.id_itemreq.rowcount() > 0 then
+		ls_itemsalehistory.ar_icode = this.id_itemreq.object.icode[this.id_itemreq.getrow()]
+		ls_itemsalehistory.ar_date = this.id_svcheader.object.date[this.id_svcheader.getrow()]
+		openwithparm(w_itemsalehistory, ls_itemsalehistory)
+	end if
+	return 0
+
+// w_serviceorder_form.wf_show_servicesalehistory() returns long
+	s_itemsalehistory ls_itemsalehistory
+	if this.id_svcdetail.rowcount() > 0 then
+		ls_itemsalehistory.ar_icode = this.id_svcdetail.object.icode[this.id_svcdetail.getrow()]
+		ls_itemsalehistory.ar_date = this.id_svcheader.object.date[this.id_svcheader.getrow()]
+		openwithparm(w_servicesalehistory, ls_itemsalehistory)
+	end if
+	return 0
+
+// w_serviceorder_form.wf_presave() returns long
+	long ll_counter
+	long ll_rows
+	long ll_row
+	long ll_code
+	ll_code = this.id_svcheader.object.code[1]
+	this.ids_checklist_hidden.dataobject = this.id_checklist.dataobject
+	this.ids_checklist_hidden.settransobject(this.it_transobject)
+	ll_counter = 0
+	for ll_counter = 1 to this.id_checklist.rowcount()
+		if this.id_checklist.object.selected[ll_counter] = "Y" then
+			ll_row = this.ids_checklist_hidden.insertrow(0)
+			if ll_row > 0 then
+				this.ids_checklist_hidden.object.code[ll_row] = ll_code
+				this.ids_checklist_hidden.object.checklistitemcode[ll_row] = this.id_checklist.object.checklistitemcode[ll_counter]
+				this.ids_checklist_hidden.object.qty[ll_row] = this.id_checklist.object.qty[ll_counter]
+				this.ids_checklist_hidden.object.description[ll_row] = this.id_checklist.object.description[ll_counter]
+			end if
+		end if
+	next
+	SQL DELETE SOCheckListItem WHERE ServiceOCode =:ll_code USING this.it_transobject;
+	return 0
+
+// w_serviceorder_form.create() returns 0
+	this.dw_netamt = create dw_netamt
+	this.cb_printorder = create cb_printorder
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.tab_main = create tab_main
+	this.dw_image = create dw_image
+	this.dw_print = create dw_print
+	this.dw_print2 = create dw_print2
+	this.control = {this.dw_netamt, this.cb_printorder, this.cb_cancel, this.cb_ok, this.tab_main, this.dw_image, this.dw_print, this.dw_print2}
+
+// w_serviceorder_form.destroy() returns 0
+	destroy this.dw_netamt
+	destroy this.cb_printorder
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.tab_main
+	destroy this.dw_image
+	destroy this.dw_print
+	destroy this.dw_print2
+
+// w_serviceorder_form.open() returns long
+	integer li_xpos
+	integer li_ypos
+	integer li_xendpos
+	integer li_counter
+	integer li_taborder
+	integer li_visiblecolumns
+	integer li_zerotaborder
+	long ll_counter
+	long li_retcode
+	long li_rtncode
+	boolean lb_active
+	boolean lb_restricted
+	boolean lb_customicode
+	boolean lb_zerotabordercol
+	date ld_date
+	long ll_retcode
+	ld_date = today()
+	this.istr_datatype = message.powerobjectparm
+	this.il_protect = this.istr_datatype.ai_int
+	this.il_code = this.istr_datatype.al_long
+	this.it_transobject = create u_transaction
+	if wf_connect() <> 0 then
+		messagebox("Connection Failure", "Unable to connect to the database", stopsign!)
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	this.ib_uploadimage = true
+	this.ib_viewimage = true
+	wf_retrieve_tabs()
+	wf_apply_protect_setting()
+	wf_set_interface_adjustments()
+	wf_set_tab_visibility()
+	this.ids_checklist_hidden = create u_ds_standard
+	this.ids_checklist_hidden.dataobject = this.id_checklist.dataobject
+	this.ids_checklist_hidden.settransobject(this.it_transobject)
+	triggerevent("ue_postopen")
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_serviceorder_form.key(keycode key, unsignedlong keyflags) returns long
+	if key = keyf8! and this.ib_viewimage then
+		wf_show_patient_gallery()
+	end if
+	if key = keyf9! and this.ib_uploadimage then
+		wf_setimage("ECG")
+	end if
+	return ::message.returnvalue
+
+// cb_printorder.clicked() returns long
+	parent.ib_printorder = true
+	parent.wf_save()
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.postevent("ue_close")
+	return ::message.returnvalue
+
+// cb_ok.ue_enterkry(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		triggerevent(clicked!)
+	end if
+	return 1
+
+// cb_ok.clicked() returns long
+	string ls_aliasname
+	long ll_newid
+	long ll_row
+	long ll_counter
+	long ll_liccode
+	long li_rc
+	long ll_pk
+	long ll_null
+	long ll_usercode
+	long ll_insrow
+	long ll_issuereqcode
+	boolean lb_commitok
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	setnull(ll_null)
+	if parent.il_protect = 1 then
+		return ::message.returnvalue
+	end if
+	if f_validatedw(parent.id_svcheader) < 0 then
+		parent.tab_main.selecttab(1)
+		return ::message.returnvalue
+	end if
+	if f_validatedw(parent.id_checklist) < 0 then
+		parent.tab_main.selecttab(2)
+		return ::message.returnvalue
+	end if
+	if f_validatedw(parent.id_svcdetail) < 0 then
+		parent.tab_main.selecttab(3)
+		return ::message.returnvalue
+	end if
+	if f_validatedw(parent.id_svcfooter) < 0 then
+		parent.tab_main.selecttab(3)
+		return ::message.returnvalue
+	end if
+	if parent.wf_validate_service() = 1 then
+		parent.tab_main.selecttab(3)
+		return ::message.returnvalue
+	end if
+	if parent.wf_validate_req() = 1 then
+		parent.tab_main.selecttab(4)
+		return ::message.returnvalue
+	end if
+	parent.wf_grandtotal()
+	if not parent.wf_validateserverdatetime(ldt_server_datetime, ls_date_errtext) then
+		messagebox("Date Violation", ls_date_errtext, stopsign!)
+		return ::message.returnvalue
+	end if
+	ll_pk = parent.id_svcheader.object.code[1]
+	if f_stringpreferences("ServiceSalesManWindow") = "Y" then
+		open(w_salesmanpassword)
+		ll_usercode = long(::message.doubleparm)
+		setfocus()
+	else
+		ll_usercode = gl_usercode
+	end if
+	if ll_usercode > 0 then
+		if not parent.wf_getserverdatetime(ldt_server_datetime, ls_date_errtext) then
+			messagebox("Date Violation", ls_date_errtext, stopsign!)
+			return ::message.returnvalue
+		end if
+		if isnull(ll_pk) then
+			parent.wf_tabnewid("ServiceOHeader", ll_newid)
+			if ll_newid > 0 then
+				parent.id_svcheader.object.code[1] = ll_newid
+			end if
+		else
+			ll_newid = parent.id_svcheader.object.code[1]
+		end if
+		if parent.id_svcheader.rowcount() > 0 and parent.id_svcfooter.rowcount() > 0 then
+			parent.id_svcheader.object.salesmancode[1] = ll_usercode
+			parent.id_svcheader.object.date[1] = ldt_server_datetime
+			parent.id_svcheader.object.flatdisc[1] = parent.id_svcfooter.object.flatdisc[1]
+			parent.id_svcheader.object.discperc[1] = parent.id_svcfooter.object.invdiscperc[1]
+			parent.id_svcheader.object.misccharges[1] = parent.id_svcfooter.object.misccharges[1]
+			parent.id_svcheader.object.cashreceived[1] = parent.id_svcfooter.object.cashreceived[1]
+			parent.id_svcheader.object.serviceinvgstperc[1] = parent.id_svcfooter.object.serviceinvgstperc[1]
+		end if
+		for ll_counter = 1 to parent.id_svcdetail.rowcount()
+			parent.id_svcdetail.object.code[ll_counter] = ll_newid
+		next
+		ll_counter = 0
+		for ll_counter = 1 to parent.id_checklist.rowcount()
+			parent.id_checklist.object.code[ll_counter] = ll_newid
+		next
+		parent.wf_presave()
+		if parent.id_itemreq.rowcount() > 0 and not isnull(parent.id_itemreq.object.icode[1]) then
+			if parent.ids_itemreq_header.rowcount() = 0 then
+				ll_insrow = parent.ids_itemreq_header.insertrow(0)
+				if ll_insrow > 0 then
+					parent.wf_tabnewid("IssueReqHeader", ll_issuereqcode)
+					if ll_issuereqcode > 0 then
+						parent.ids_itemreq_header.object.code[ll_insrow] = ll_issuereqcode
+						parent.ids_itemreq_header.object.originaldate[ll_insrow] = ldt_server_datetime
+					end if
+				end if
+			else
+				ll_insrow = parent.ids_itemreq_header.rowcount()
+			end if
+			if parent.ids_itemreq_header.rowcount() > 0 then
+				ll_issuereqcode = parent.ids_itemreq_header.object.code[ll_insrow]
+				parent.ids_itemreq_header.object.serviceocode[ll_insrow] = ll_newid
+				parent.ids_itemreq_header.object.remarks[ll_insrow] = "Issue Request Generated via Service Order No." + trim(string(ll_newid))
+				parent.ids_itemreq_header.object.date[ll_insrow] = ldt_server_datetime
+				parent.ids_itemreq_header.object.acccode[ll_insrow] = parent.id_svcheader.object.custcode[1]
+				parent.ids_itemreq_header.object.deptcode[ll_insrow] = 1
+				parent.ids_itemreq_header.object.salesmancode[ll_insrow] = ll_usercode
+				parent.ids_itemreq_header.object.posted[ll_insrow] = "N"
+				parent.ids_itemreq_header.object.areacode[ll_insrow] = 1
+			end if
+			ll_counter = 0
+			for ll_counter = 1 to parent.id_itemreq.rowcount()
+				parent.id_itemreq.object.code[ll_counter] = ll_issuereqcode
+			next
+		end if
+		if parent.id_svcheader.update() = 1 then
+			if parent.id_svcdetail.update() = 1 then
+				if parent.ids_itemreq_header.update() = 1 then
+					if parent.id_itemreq.update() = 1 then
+						if parent.ids_checklist_hidden.update() = 1 then
+							SQL commit USING parent.it_transobject;
+							parent.il_code = ll_newid
+							lb_commitok = true
+							if parent.ib_printorder then
+								parent.wf_printorder()
+							end if
+							parent.event ue_close()
+							return ::message.returnvalue
+						else
+							if isnull(ll_pk) then
+								parent.id_svcheader.object.code[1] = ll_null
+							end if
+							messagebox("Service Order Saving Problem", "Unable to update Service Order Record" + "~r~nDetails Are:- " + parent.it_transobject.sqlerrtext, stopsign!)
+							SQL rollback USING parent.it_transobject;
+						end if
+					else
+						if isnull(ll_pk) then
+							parent.id_svcheader.object.code[1] = ll_null
+						end if
+						messagebox("Service Order Saving Problem", "Unable to update Service Order Record" + "~r~nDetails Are:- " + parent.it_transobject.sqlerrtext, stopsign!)
+						SQL rollback USING parent.it_transobject;
+					end if
+				else
+					if isnull(ll_pk) then
+						parent.id_svcheader.object.code[1] = ll_null
+					end if
+					messagebox("Service Order Saving Problem", "Unable to update Service Order Record" + "~r~nDetails Are:- " + parent.it_transobject.sqlerrtext, stopsign!)
+					SQL rollback USING parent.it_transobject;
+				end if
+			else
+				if isnull(ll_pk) then
+					parent.id_svcheader.object.code[1] = ll_null
+				end if
+				messagebox("Service Order Saving Problem", "Unable to update Service Order Record" + "~r~nDetails Are:- " + parent.it_transobject.sqlerrtext, stopsign!)
+				SQL rollback USING parent.it_transobject;
+			end if
+		else
+			if isnull(ll_pk) then
+				parent.id_svcheader.object.code[1] = ll_null
+			end if
+			messagebox("Service Order Saving Problem", "Unable to update Service Order Record" + "~r~nDetails Are:- " + parent.it_transobject.sqlerrtext, stopsign!)
+			SQL rollback USING parent.it_transobject;
+		end if
+	end if
+	return ::message.returnvalue
+
+// tab_main.create() returns 0
+	this.tabpage_header = create tabpage_header
+	this.tabpage_checklist = create tabpage_checklist
+	this.tabpage_detail = create tabpage_detail
+	this.tabpage_itemreq = create tabpage_itemreq
+	this.tabpage_issue = create tabpage_issue
+	this.tabpage_service = create tabpage_service
+	this.tabpage_sale = create tabpage_sale
+	this.control = {this.tabpage_header, this.tabpage_checklist, this.tabpage_detail, this.tabpage_itemreq, this.tabpage_issue, this.tabpage_service, this.tabpage_sale}
+
+// tab_main.destroy() returns 0
+	destroy this.tabpage_header
+	destroy this.tabpage_checklist
+	destroy this.tabpage_detail
+	destroy this.tabpage_itemreq
+	destroy this.tabpage_issue
+	destroy this.tabpage_service
+	destroy this.tabpage_sale
+
+// tab_main.selectionchanged(integer oldindex, integer newindex) returns long
+	parent.wf_grandtotal()
+	if parent.il_protect = 0 then
+		if newindex = 1 then
+			parent.id_svcheader.setfocus()
+			if parent.id_svcheader.rowcount() = 0 then
+				parent.wf_insert_row(parent.id_svcheader, 0)
+			end if
+		elseif newindex = 2 then
+			parent.id_checklist.setfocus()
+			if parent.id_checklist.rowcount() = 0 then
+				parent.id_checklist.retrieve(parent.il_code)
+			end if
+		elseif newindex = 3 then
+			parent.id_svcdetail.setfocus()
+			if parent.id_svcdetail.rowcount() = 0 then
+				parent.wf_insert_row(parent.id_svcdetail, 0)
+			end if
+		elseif newindex = 4 then
+			parent.id_itemreq.setfocus()
+			if parent.id_itemreq.rowcount() = 0 then
+				parent.wf_insert_row(parent.id_itemreq, 0)
+			end if
+		elseif newindex = 5 then
+			parent.id_issue.setfocus()
+			parent.id_issue.retrieve(parent.il_code)
+		elseif newindex = 6 then
+			parent.id_service.setfocus()
+			parent.id_service.retrieve(parent.il_code)
+		elseif newindex = 7 then
+			parent.id_sale.setfocus()
+			parent.id_sale.retrieve(parent.il_code)
+		end if
+	end if
+	return ::message.returnvalue
+
+// tab_main.key(keycode key, unsignedlong keyflags) returns long
+	if key = keyf9! then
+		parent.wf_setimage("ECG")
+	end if
+	return ::message.returnvalue
+
+// tabpage_header.create() returns 0
+	this.dw_header = create dw_header
+	this.control = {this.dw_header}
+
+// tabpage_header.destroy() returns 0
+	destroy this.dw_header
+
+// dw_header.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ll_counter
+	long ll_foundcode
+	s_popup_selection lstr_selection
+	dwruntimeerror exdw
+	nullobjecterror exnullobj
+	runtimeerror ex
+	try
+		if getcolumnname() = "custcode" and key = keyf5! then
+			parent.parent.parent.wf_new_customerregisteration()
+		elseif getcolumnname() = "patientcode" and key = keyf5! then
+			parent.parent.parent.wf_new_patientregistration()
+		elseif getcolumnname() = "patientcode" and key = keyf6! then
+			parent.parent.parent.is_comprehensive_search_dataobject = "d_patient_comprehensive_list"
+			ll_foundcode = parent.parent.parent.wf_comprehensive_search()
+			if ll_foundcode >= 0 then
+				this.object.patientcode[1] = ll_foundcode
+				parent.parent.parent.wf_setpatientinfo(ll_foundcode)
+			end if
+		elseif getcolumnname() = "patientcode" and key = keyf8! then
+			openwithparm(w_popup_partialsearch_selection, "d_patient_list")
+			lstr_selection = message.powerobjectparm
+			if lstr_selection.l_code > 0 and lstr_selection.l_code2 > 0 then
+				ll_foundcode = lstr_selection.l_code2
+				this.object.patientcode[1] = ll_foundcode
+				parent.parent.parent.wf_setpatientinfo(ll_foundcode)
+			end if
+		elseif getcolumnname() = "patientcode" and key = keyf9! then
+			parent.parent.parent.wf_show_patientgallery()
+		end if
+	catch (throwable exdw)
+		messagebox("Exception Occur", "Details are:~r~n" + exdw.getmessage())
+	catch (throwable exnullobj)
+		messagebox("Exception Occur", "Details are:~r~n" + exnullobj.getmessage())
+	catch (throwable ex)
+		messagebox("Exception Occur", "Details are:~r~n" + ex.getmessage())
+		setnull(ll_counter)
+		parent.parent.parent.id_svcheader.setitem(1, "custcode", ll_counter)
+	end try
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// dw_header.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_header.getfocus() returns long
+	setfocus()
+	selecttext(1, len(gettext()))
+	parent.parent.parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_header.itemfocuschanged(long row, dwobject dwo) returns long
+	if len(gettext()) > 0 then
+		selecttext(1, len(gettext()))
+	end if
+	return ::message.returnvalue
+
+// dw_header.itemchanged(long row, dwobject dwo, string data) returns long
+	dwitemstatus lrs_status
+	long ll_code
+	long ll_detailrows
+	long ll_suppcode
+	long ll_custcode
+	long ll_counter
+	long ll_customerbalance
+	long ll_headerinvno
+	long ll_patientcode
+	integer rt_code
+	long ll_icode
+	long ld_saleprice1
+	long ld_saleprice2
+	long ld_saleprice3
+	long ld_avgprice
+	long li_packunits
+	string ls_result
+	string ls_null
+	string ls_aliasname
+	string ls_regno
+	datetime ld_currdate
+	date ld_datepart
+	time lt_timepart
+	char lc_newcustomer
+	integer li_res
+	choose case dwo.name
+	case "date"
+		if isdate(left(data, 10)) then
+			ld_datepart = date(left(data, 10))
+			if istime(mid(data, 12, 8)) then
+				lt_timepart = time(mid(data, 12, 8))
+				ld_currdate = datetime(ld_datepart, lt_timepart)
+			else
+				rt_code = 1
+			end if
+		else
+			rt_code = 1
+		end if
+	case "aliasname"
+		if not isnull(data) and data <> "" then
+			li_res = parent.parent.parent.wf_findcustcode(ll_custcode, data)
+			if li_res > 0 then
+				setitem(row, "custcode", ll_custcode)
+				rt_code = 0
+			else
+				messagebox("Customer Validation", "Customer with  Alias Name  " + data + "   does not exist")
+				rt_code = 1
+			end if
+		end if
+	case "custcode"
+		if not isnull(data) then
+			ll_code = long(data)
+			parent.setredraw(false)
+			if parent.parent.parent.wf_customerinfo(ll_code) <> 0 then
+				messagebox("Database Error", "Can not retrieve information of customer from database")
+				rt_code = 1
+			else
+				if accepttext() = -1 then
+					return 1
+				end if
+				ls_aliasname = parent.parent.parent.idc_customers.getitemstring(parent.parent.parent.idc_customers.getrow(), "accounts_aliasname")
+				setitem(row, "aliasname", ls_aliasname)
+			end if
+			parent.setredraw(true)
+		end if
+	case "patientregno"
+		if not isnull(data) and data <> "" then
+			li_res = parent.parent.parent.wf_findpatientcode(data, ll_patientcode)
+			if li_res > 0 then
+				setitem(row, "patientcode", ll_patientcode)
+				rt_code = 0
+				SQL SELECT acccode , aliasname INTO :ll_custcode, :ls_aliasname FROM patient , accounts WHERE patientcode =:ll_patientcode and custcode =acccode USING parent.parent.parent.it_transobject;
+				if parent.parent.parent.it_transobject.sqlcode = 0 then
+					setitem(row, "custcode", ll_custcode)
+					setitem(row, "aliasname", ls_aliasname)
+					this.object.custcode.protect = 1
+					this.object.aliasname.protect = 1
+				else
+					messagebox("Patient Information", "Problem in retrieving corresponding customer")
+					rt_code = 1
+				end if
+			else
+				messagebox("Patient Validation", "Patient with  RegNo  " + data + " does not exist")
+				rt_code = 1
+			end if
+		end if
+	case "patientcode"
+		ll_patientcode = long(data)
+		if isnull(data) then
+			this.object.custcode.protect = 0
+			this.object.aliasname.protect = 0
+			setitem(1, "custcode", 0)
+			setitem(1, "aliasname", "")
+		else
+			setitem(1, "patientregno", parent.parent.parent.idc_patient.getitemstring(parent.parent.parent.idc_patient.getrow(), "regno"))
+			SQL SELECT acccode , aliasname , regno INTO :ll_custcode, :ls_aliasname, :ls_regno FROM patient , accounts WHERE patientcode =:ll_patientcode and custcode =acccode USING parent.parent.parent.it_transobject;
+			if parent.parent.parent.it_transobject.sqlcode = 0 then
+				setitem(1, "patientregno", ls_regno)
+				setitem(1, "custcode", ll_custcode)
+				setitem(1, "aliasname", ls_aliasname)
+				this.object.custcode.protect = 1
+				this.object.aliasname.protect = 1
+				this.object.custcode.visible = true
+			else
+				messagebox("Patient Information", "Problem in retrieving corresponding customer")
+				rt_code = 1
+			end if
+		end if
+		return rt_code
+	end choose
+	return rt_code
+
+// tabpage_checklist.create() returns 0
+	this.dw_checklist = create dw_checklist
+	this.control = {this.dw_checklist}
+
+// tabpage_checklist.destroy() returns 0
+	destroy this.dw_checklist
+
+// dw_checklist.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	parent.parent.parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// tabpage_detail.create() returns 0
+	this.dw_footer = create dw_footer
+	this.dw_detail = create dw_detail
+	this.dw_selectionlist = create dw_selectionlist
+	this.control = {this.dw_footer, this.dw_detail, this.dw_selectionlist}
+
+// tabpage_detail.destroy() returns 0
+	destroy this.dw_footer
+	destroy this.dw_detail
+	destroy this.dw_selectionlist
+
+// dw_footer.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if getcolumnname() = "flatdisc" and key = keyuparrow! then
+		parent.parent.parent.id_svcdetail.setrow(parent.parent.parent.id_svcdetail.rowcount())
+		parent.parent.parent.id_svcdetail.scrolltorow(parent.parent.parent.id_svcdetail.rowcount())
+		parent.parent.parent.id_svcdetail.setfocus()
+		if f_stringpreferences("FullCode") = "N" then
+			parent.parent.parent.id_svcdetail.setcolumn("itemname")
+		else
+			parent.parent.parent.id_svcdetail.setcolumn("fullcode")
+		end if
+	end if
+	parent.parent.parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_footer.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_footer.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	if rowcount() > 0 then
+		parent.parent.parent.wf_grandtotal()
+	end if
+	return ::message.returnvalue
+
+// dw_detail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	integer rt_code
+	long ll_currrow
+	long ll_listcurrrow
+	long ll_rowm
+	long ll_rowcount
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keyf5! then
+		parent.parent.parent.wf_show_servicesalehistory()
+		return 1
+	end if
+	if parent.parent.parent.il_protect = 0 then
+		if keyflags = 2 and key = keyi! then
+			if parent.parent.parent.ib_rowvalidated = false and parent.parent.parent.wf_validateitem(getrow()) = -1 then
+				return ::message.returnvalue
+			end if
+			if rowcount() > 0 and f_validatedw(parent.parent.parent.id_svcdetail) < 0 then
+				return ::message.returnvalue
+			end if
+			ll_rowcount = insertrow(0)
+			parent.parent.parent.il_currrow = ll_rowcount
+			if ll_rowcount > 0 then
+				scrolltorow(ll_rowcount)
+				setcolumn("itemname")
+				setfocus()
+				parent.parent.parent.id_selectionlist.hide()
+			end if
+		end if
+		if keyflags = 2 and key = keyd! then
+			parent.parent.parent.ib_rowvalidated = true
+			if rowcount() > 0 then
+				deleterow(0)
+			end if
+			ll_rowcount = rowcount()
+			parent.parent.parent.il_currrow = ll_rowcount
+			if ll_rowcount > 1 then
+				scrolltorow(ll_rowcount)
+				setcolumn("itemname")
+				setfocus()
+				parent.parent.parent.id_selectionlist.hide()
+			end if
+			parent.parent.parent.ib_rowvalidated = true
+		end if
+	end if
+	if getcolumnname() = "itemname" then
+		ll_rowm = getrow()
+		setredraw(false)
+		if key = keydownarrow! then
+			parent.parent.parent.id_selectionlist.selectrow(0, false)
+			parent.parent.parent.id_selectionlist.scrollnextrow()
+			ll_listcurrrow = parent.parent.parent.id_selectionlist.getrow()
+			rt_code = 1
+		elseif key = keyuparrow! then
+			parent.parent.parent.id_selectionlist.selectrow(0, false)
+			parent.parent.parent.id_selectionlist.scrollpriorrow()
+			ll_listcurrrow = parent.parent.parent.id_selectionlist.getrow()
+			rt_code = 1
+		elseif key = keypagedown! then
+			parent.parent.parent.id_selectionlist.selectrow(0, false)
+			parent.parent.parent.id_selectionlist.scrollnextpage()
+			ll_listcurrrow = parent.parent.parent.id_selectionlist.getrow()
+			rt_code = 1
+		elseif key = keypageup! then
+			parent.parent.parent.id_selectionlist.selectrow(0, false)
+			parent.parent.parent.id_selectionlist.scrollpriorpage()
+			ll_listcurrrow = parent.parent.parent.id_selectionlist.getrow()
+			rt_code = 1
+		elseif key = keyend! then
+			parent.parent.parent.id_selectionlist.selectrow(0, false)
+			parent.parent.parent.id_selectionlist.scrolltorow(99999)
+			ll_listcurrrow = parent.parent.parent.id_selectionlist.getrow()
+			rt_code = 1
+		elseif key = keyhome! then
+			parent.parent.parent.id_selectionlist.selectrow(0, false)
+			parent.parent.parent.id_selectionlist.scrolltorow(1)
+			ll_listcurrrow = parent.parent.parent.id_selectionlist.getrow()
+			rt_code = 1
+		elseif key = keyback! then
+			parent.parent.parent.ib_bkspace = true
+			setredraw(true)
+		elseif key = keyescape! then
+			if parent.parent.parent.id_selectionlist.visible = false then
+				return ::message.returnvalue
+			end if
+			parent.parent.parent.id_selectionlist.hide()
+			setfocus()
+			setredraw(true)
+		elseif key = keyf4! then
+			parent.parent.parent.id_selectionlist.show()
+			parent.parent.parent.id_selectionlist.selectrow(0, false)
+			parent.parent.parent.id_selectionlist.scrolltorow(parent.parent.parent.id_selectionlist.getrow())
+			parent.parent.parent.id_selectionlist.selectrow(parent.parent.parent.id_selectionlist.getrow(), true)
+			setredraw(true)
+		elseif isnull(getitemnumber(parent.parent.parent.id_svcdetail.getrow(), "icode")) and key = keyenter! then
+			parent.parent.parent.id_selectionlist.hide()
+			parent.parent.parent.id_selectionlist.selectrow(0, false)
+			parent.parent.parent.id_selectionlist.scrolltorow(parent.parent.parent.id_selectionlist.getrow())
+			parent.parent.parent.id_selectionlist.selectrow(parent.parent.parent.id_selectionlist.getrow(), true)
+			ll_listcurrrow = parent.parent.parent.id_selectionlist.getrow()
+			setitem(ll_rowm, "icode", parent.parent.parent.id_selectionlist.getitemnumber(ll_listcurrrow, "icode"))
+			setitem(ll_rowm, "itemname", parent.parent.parent.id_selectionlist.getitemstring(ll_listcurrrow, "itemname"))
+			selecttext(1, len(gettext()))
+			parent.parent.parent.ib_itemvalidated = false
+			parent.parent.parent.ib_rowvalidated = false
+			setredraw(true)
+		else
+			setredraw(true)
+		end if
+		if rt_code = 1 then
+			parent.parent.parent.id_selectionlist.selectrow(ll_listcurrrow, true)
+			setitem(ll_rowm, "icode", parent.parent.parent.id_selectionlist.getitemnumber(ll_listcurrrow, "icode"))
+			setitem(ll_rowm, "itemname", parent.parent.parent.id_selectionlist.getitemstring(ll_listcurrrow, "itemname"))
+			selecttext(1, len(gettext()))
+			parent.parent.parent.ib_itemvalidated = false
+			parent.parent.parent.ib_rowvalidated = false
+			setredraw(true)
+		end if
+	end if
+	if getcolumnname() <> "itemname" and getrow() = rowcount() and key = keydownarrow! then
+		parent.parent.parent.id_svcfooter.setfocus()
+		parent.parent.parent.id_svcfooter.setcolumn("FlatDisc")
+	end if
+	if key = keyf8! and parent.parent.parent.ib_viewimage then
+		parent.parent.parent.wf_show_patient_gallery()
+	end if
+	if key = keyf9! and parent.parent.parent.ib_uploadimage then
+		parent.parent.parent.wf_setimage("ECG")
+	end if
+	return rt_code
+
+// dw_detail.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	setfocus()
+	selecttext(1, len(gettext()))
+	parent.parent.parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	integer li_rtcode
+	string ls_errortext
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem(row) = -1 then
+		parent.parent.parent.ib_itemvalidated = false
+		parent.parent.parent.ib_rowvalidated = false
+		return ::message.returnvalue
+	end if
+	choose case dwo.name
+	case "itemname"
+		if row > 0 then
+			parent.parent.parent.id_selectionlist.show()
+		end if
+	case else
+		if row > 0 then
+			parent.parent.parent.id_selectionlist.hide()
+		end if
+	end choose
+	parent.parent.parent.wf_grandtotal()
+	if len(gettext()) > 0 then
+		selecttext(1, len(gettext()))
+	end if
+	return ::message.returnvalue
+
+// dw_detail.ue_enterkey() returns long
+	long ancestorreturnvalue
+	long ll_rowcount
+	ancestorreturnvalue = super::ue_enterkey()
+	if getrow() = rowcount() and getcolumn() = integer(this.object.datawindow.column.count) then
+		if parent.parent.parent.id_svcdetail.rowcount() > 0 and f_validatedw(parent.parent.parent.id_svcdetail) < 0 then
+			return ::message.returnvalue
+		end if
+		if parent.parent.parent.ib_rowvalidated = false and parent.parent.parent.wf_validateitem(getrow()) = -1 then
+			return 1
+		end if
+		ll_rowcount = parent.parent.parent.id_svcdetail.insertrow(0)
+		if ll_rowcount > 1 then
+			parent.parent.parent.id_svcdetail.setrow(ll_rowcount)
+			parent.parent.parent.id_svcdetail.scrolltorow(ll_rowcount)
+			if f_stringpreferences("itemcode") = "N" then
+				parent.parent.parent.id_svcdetail.setcolumn("itemname")
+				parent.parent.parent.id_selectionlist.show()
+			else
+				parent.parent.parent.id_svcdetail.setcolumn("fullcode")
+				parent.parent.parent.id_selectionlist.hide()
+			end if
+			parent.parent.parent.id_svcdetail.setfocus()
+			parent.parent.parent.il_currrow = ll_rowcount
+		end if
+		return 1
+	end if
+	if getcolumnname() = "itemname" then
+		parent.parent.parent.id_selectionlist.show()
+		if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem(getrow()) = -1 then
+			return 1
+		end if
+		return
+	end if
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_detail.editchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	long ll_currrow
+	long ll_startrow
+	ancestorreturnvalue = super::editchanged(row, dwo, data)
+	ll_startrow = 0
+	choose case dwo.name
+	case "itemname"
+		if upper(left(data, 1)) >= "A" and upper(left(data, 1)) <= "Z" or left(data, 1) >= "0" and left(data, 1) <= "9" or left(data, 1) = "*" then
+			ll_currrow = parent.parent.parent.id_selectionlist.getrow()
+			if len(data) > 1 then
+				ll_startrow = ll_currrow
+			else
+				if left(data, 1) >= "0" and left(data, 1) <= "9" or left(data, 1) = "*" then
+					ll_startrow = 1
+				else
+					ll_startrow = parent.parent.parent.ia_llookuptable[asc(upper(data))]
+				end if
+				parent.parent.parent.ib_bkspace = false
+			end if
+			if parent.parent.parent.ib_bkspace then
+				parent.parent.parent.il_itemlistfoundrow = parent.parent.parent.id_selectionlist.find("Lower(itemname) <= '" + lower(data) + "'", ll_startrow, 0)
+				parent.parent.parent.il_itemlistfoundrow = parent.parent.parent.il_itemlistfoundrow + 1
+				parent.parent.parent.ib_bkspace = false
+			else
+				parent.parent.parent.il_itemlistfoundrow = parent.parent.parent.id_selectionlist.find("Lower(itemname) >= '" + lower(data) + "'", ll_startrow, 99999)
+			end if
+			if parent.parent.parent.il_itemlistfoundrow = 0 then
+				parent.parent.parent.il_itemlistfoundrow = parent.parent.parent.id_selectionlist.rowcount()
+			end if
+			if parent.parent.parent.il_itemlistfoundrow <> ll_currrow then
+				parent.parent.parent.id_selectionlist.selectrow(0, false)
+				parent.parent.parent.id_selectionlist.setrow(parent.parent.parent.il_itemlistfoundrow)
+				parent.parent.parent.id_selectionlist.scrolltorow(parent.parent.parent.il_itemlistfoundrow)
+				parent.parent.parent.id_selectionlist.selectrow(parent.parent.parent.il_itemlistfoundrow, true)
+				setfocus()
+			elseif parent.parent.parent.il_itemlistfoundrow = ll_currrow then
+				parent.parent.parent.id_selectionlist.selectrow(0, false)
+				parent.parent.parent.id_selectionlist.setrow(parent.parent.parent.il_itemlistfoundrow)
+				parent.parent.parent.id_selectionlist.scrolltorow(parent.parent.parent.il_itemlistfoundrow)
+				parent.parent.parent.id_selectionlist.selectrow(parent.parent.parent.il_itemlistfoundrow, true)
+				setfocus()
+			end if
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	long ll_icode
+	long ll_null
+	long ll_gcode
+	long ll_errcode
+	string ls_itemname
+	string ls_null
+	integer li_res
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	setnull(ll_null)
+	setnull(ls_null)
+	choose case dwo.name
+	case "fullcode"
+		if not isnull(data) and data <> "" then
+			li_res = parent.parent.parent.wf_find_service_fullcode(data, ll_icode, ls_itemname)
+			if li_res > 0 then
+				setitem(row, "icode", ll_icode)
+				setitem(row, "itemname", ls_itemname)
+				setitem(row, "qty", 1)
+				parent.parent.parent.ib_itemvalidated = false
+				parent.parent.parent.ib_rowvalidated = false
+				parent.parent.parent.il_currrow = row
+				ll_errcode = 0
+				if parent.parent.parent.wf_validateitem(row) = 0 then
+					ll_errcode = 0
+				else
+					ll_errcode = 1
+				end if
+			else
+				messagebox("Service Code/Alias Name Validation", "Service does not exist")
+				setitem(row, "icode", ll_null)
+				setitem(row, "fullcode", ls_null)
+				ll_errcode = 1
+			end if
+		else
+			setitem(row, "icode", ll_null)
+			setitem(row, "fullcode", ls_null)
+			ll_errcode = 2
+		end if
+	case "saleprice"
+		if real(data) < 0.0 then
+			return 1
+		end if
+	case "itemname"
+		setitem(row, "icode", parent.parent.parent.id_selectionlist.getitemnumber(parent.parent.parent.id_selectionlist.getrow(), "icode"))
+		setitem(row, "itemname", parent.parent.parent.id_selectionlist.getitemstring(parent.parent.parent.id_selectionlist.getrow(), "itemname"))
+		parent.parent.parent.ib_itemvalidated = false
+		parent.parent.parent.ib_rowvalidated = false
+		parent.parent.parent.il_currrow = row
+		ll_errcode = 2
+	case "qty"
+		if double(data) <= 0.0 then
+			messagebox("Qty Validation", "Please enter valid Qty", stopsign!)
+			ll_errcode = 1
+		end if
+	case else
+		parent.parent.parent.ib_rowvalidated = true
+	end choose
+	return ll_errcode
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "itemname"
+		messagebox("Name Validation", "Please enter value for service Name")
+	case "saleprice"
+		messagebox("Price Validation", "Please enter valid value for saleprice")
+	end choose
+	return 1
+
+// dw_detail.losefocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::losefocus()
+	parent.parent.parent.id_selectionlist.hide()
+	return ::message.returnvalue
+
+// dw_detail.rowfocuschanging(long currentrow, long newrow) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::rowfocuschanging(currentrow, newrow)
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem(getrow()) = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_selectionlist.ue_setfocus() returns 0
+	parent.parent.parent.id_svcdetail.setcolumn("itemname")
+	parent.parent.parent.id_svcdetail.setfocus()
+
+// dw_selectionlist.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::doubleclicked(xpos, ypos, row, dwo)
+	post event ue_setfocus()
+	return ::message.returnvalue
+
+// dw_selectionlist.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	long ll_rowmain
+	ancestorreturnvalue = super::clicked(xpos, ypos, row, dwo)
+	if row > 0 then
+		ll_rowmain = parent.parent.parent.id_svcdetail.getrow()
+		parent.parent.parent.id_svcdetail.setitem(ll_rowmain, "icode", parent.parent.parent.id_selectionlist.getitemnumber(row, "icode"))
+		parent.parent.parent.id_svcdetail.setitem(ll_rowmain, "itemname", parent.parent.parent.id_selectionlist.getitemstring(row, "itemname"))
+		parent.parent.parent.id_svcdetail.selecttext(1, len(gettext()))
+		parent.parent.parent.ib_itemvalidated = false
+		selectrow(0, false)
+		selectrow(row, true)
+		post event ue_setfocus()
+	end if
+	return ::message.returnvalue
+
+// tabpage_itemreq.create() returns 0
+	this.dw_selection_req = create dw_selection_req
+	this.dw_itemreq = create dw_itemreq
+	this.control = {this.dw_selection_req, this.dw_itemreq}
+
+// tabpage_itemreq.destroy() returns 0
+	destroy this.dw_selection_req
+	destroy this.dw_itemreq
+
+// dw_selection_req.ue_setfocus() returns 0
+	parent.parent.parent.id_itemreq.setcolumn("itemname")
+	parent.parent.parent.id_itemreq.setfocus()
+
+// dw_selection_req.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	long ll_rowmain
+	ancestorreturnvalue = super::clicked(xpos, ypos, row, dwo)
+	if row > 0 then
+		ll_rowmain = parent.parent.parent.id_itemreq.getrow()
+		parent.parent.parent.id_itemreq.setitem(ll_rowmain, "icode", parent.parent.parent.id_selectionlist_req.getitemnumber(row, "code"))
+		parent.parent.parent.id_itemreq.setitem(ll_rowmain, "itemname", parent.parent.parent.id_selectionlist_req.getitemstring(row, "name"))
+		parent.parent.parent.id_itemreq.selecttext(1, len(gettext()))
+		parent.parent.parent.ib_itemvalidated_req = false
+		selectrow(0, false)
+		selectrow(row, true)
+		post event ue_setfocus()
+	end if
+	return ::message.returnvalue
+
+// dw_selection_req.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::doubleclicked(xpos, ypos, row, dwo)
+	post event ue_setfocus()
+	return ::message.returnvalue
+
+// dw_itemreq.editchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	long ll_currrow
+	long ll_startrow
+	ancestorreturnvalue = super::editchanged(row, dwo, data)
+	ll_startrow = 0
+	choose case dwo.name
+	case "itemname"
+		if upper(left(data, 1)) >= "A" and upper(left(data, 1)) <= "Z" or left(data, 1) >= "0" and left(data, 1) <= "9" or left(data, 1) = "*" then
+			ll_currrow = parent.parent.parent.id_selectionlist_req.getrow()
+			if len(data) > 1 then
+				ll_startrow = ll_currrow
+			else
+				if left(data, 1) >= "0" and left(data, 1) <= "9" or left(data, 1) = "*" then
+					ll_startrow = 1
+				else
+					ll_startrow = parent.parent.parent.ia_llookuptable_req[asc(upper(data))]
+				end if
+				parent.parent.parent.ib_bkspace_req = false
+			end if
+			if parent.parent.parent.ib_bkspace_req then
+				parent.parent.parent.il_itemlistfoundrow_req = parent.parent.parent.id_selectionlist_req.find("Lower(name) <= '" + lower(data) + "'", ll_startrow, 0)
+				parent.parent.parent.il_itemlistfoundrow_req = parent.parent.parent.il_itemlistfoundrow_req + 1
+				parent.parent.parent.ib_bkspace_req = false
+			else
+				parent.parent.parent.il_itemlistfoundrow_req = parent.parent.parent.id_selectionlist_req.find("Lower(name) >= '" + lower(data) + "'", ll_startrow, parent.parent.parent.id_selectionlist_req.rowcount())
+			end if
+			if parent.parent.parent.il_itemlistfoundrow_req = 0 then
+				parent.parent.parent.il_itemlistfoundrow_req = parent.parent.parent.id_selectionlist_req.rowcount()
+			end if
+			if parent.parent.parent.il_itemlistfoundrow_req <> ll_currrow then
+				parent.parent.parent.id_selectionlist_req.selectrow(0, false)
+				parent.parent.parent.id_selectionlist_req.setrow(parent.parent.parent.il_itemlistfoundrow_req)
+				parent.parent.parent.id_selectionlist_req.scrolltorow(parent.parent.parent.il_itemlistfoundrow_req)
+				parent.parent.parent.id_selectionlist_req.selectrow(parent.parent.parent.il_itemlistfoundrow_req, true)
+				setfocus()
+			elseif parent.parent.parent.il_itemlistfoundrow_req = ll_currrow then
+				parent.parent.parent.id_selectionlist_req.selectrow(0, false)
+				parent.parent.parent.id_selectionlist_req.setrow(parent.parent.parent.il_itemlistfoundrow_req)
+				parent.parent.parent.id_selectionlist_req.scrolltorow(parent.parent.parent.il_itemlistfoundrow_req)
+				parent.parent.parent.id_selectionlist_req.selectrow(parent.parent.parent.il_itemlistfoundrow_req, true)
+				setfocus()
+			end if
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_itemreq.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	if parent.parent.parent.il_protect = 0 then
+		if f_stringpreferences("itemcode") = "N" then
+			parent.parent.parent.id_selectionlist_req.show()
+		end if
+	else
+		parent.parent.parent.id_selectionlist_req.hide()
+	end if
+	setfocus()
+	selecttext(1, len(gettext()))
+	parent.parent.parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_itemreq.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	integer li_retcode
+	integer li_res
+	long ll_icode
+	long ll_null
+	long ll_gcode
+	string ls_itemname
+	string ls_null
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	setnull(ll_null)
+	setnull(ls_null)
+	choose case dwo.name
+	case "itemname"
+		setitem(row, "icode", parent.parent.parent.id_selectionlist_req.getitemnumber(parent.parent.parent.id_selectionlist_req.getrow(), "code"))
+		setitem(row, "itemname", parent.parent.parent.id_selectionlist_req.getitemstring(parent.parent.parent.id_selectionlist_req.getrow(), "name"))
+		parent.parent.parent.ib_itemvalidated_req = false
+		parent.parent.parent.ib_rowvalidated_req = false
+		parent.parent.parent.il_currrow_req = row
+		li_retcode = 1
+	case "fullcode"
+		if not isnull(data) and data <> "" then
+			li_res = parent.parent.parent.wf_findfullcode(data, ll_icode, ls_itemname)
+			if li_res > 0 then
+				setitem(row, "icode", ll_icode)
+				setitem(row, "itemname", ls_itemname)
+				parent.parent.parent.ib_itemvalidated_req = false
+				parent.parent.parent.ib_rowvalidated_req = false
+				parent.parent.parent.il_currrow_req = row
+				li_retcode = 0
+			else
+				messagebox("ItemNumber Validation", "Item does not exist")
+				setitem(row, "icode", ll_null)
+				setitem(row, "fullcode", ls_null)
+				li_retcode = 1
+			end if
+		else
+			setitem(row, "icode", ll_null)
+			setitem(row, "fullcode", ls_null)
+			setitem(row, "itemname", "")
+			parent.parent.parent.id_selectionlist_req.show()
+			li_retcode = 2
+		end if
+	case "qty"
+		if double(data) <= 0.0 then
+			messagebox("Qty Validation!", "Please enter valid Qty")
+			return 1
+		end if
+	case else
+		parent.parent.parent.ib_rowvalidated_req = true
+	end choose
+	return li_retcode
+
+// dw_itemreq.itemerror(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "itemname"
+		messagebox("Item Validation", "Please enter valid Item Name")
+	case "qty"
+		messagebox("Qty Validation", "Please enter valid Qty")
+	case "duration"
+		messagebox("Duration Validation", "Please enter valid duration")
+	end choose
+	return 1
+
+// dw_itemreq.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	string ls_itemname
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if parent.parent.parent.ib_itemvalidated_req = false and parent.parent.parent.wf_validateitem_req(row) = -1 then
+		parent.parent.parent.ib_itemvalidated_req = false
+		parent.parent.parent.ib_rowvalidated_req = false
+		return ::message.returnvalue
+	end if
+	if row > 0 then
+		choose case dwo.name
+		case "fullcode"
+			if isnull(getitemnumber(row, "icode")) then
+				parent.parent.parent.id_selectionlist.show()
+			end if
+		case "itemname"
+			if isnull(getitemstring(row, "fullcode")) or getitemstring(row, "fullcode") = "" then
+				parent.parent.parent.id_selectionlist.show()
+			end if
+			if isnull(getitemnumber(row, "icode")) then
+				parent.parent.parent.id_selectionlist.show()
+			else
+				ls_itemname = this.object.itemname[row]
+				if isnull(ls_itemname) then
+					ls_itemname = ""
+				end if
+				parent.parent.parent.il_itemlistfoundrow_req = parent.parent.parent.id_selectionlist_req.find("name = '" + ls_itemname + "'", 1, parent.parent.parent.id_selectionlist_req.rowcount())
+				if parent.parent.parent.il_itemlistfoundrow_req > parent.parent.parent.id_selectionlist_req.rowcount() then
+					parent.parent.parent.il_itemlistfoundrow_req = parent.parent.parent.id_selectionlist_req.rowcount()
+				elseif isnull(parent.parent.parent.il_itemlistfoundrow_req) or parent.parent.parent.il_itemlistfoundrow_req = 0 then
+					parent.parent.parent.il_itemlistfoundrow_req = 1
+				end if
+				parent.parent.parent.id_selectionlist_req.show()
+				parent.parent.parent.id_selectionlist_req.selectrow(0, false)
+				parent.parent.parent.id_selectionlist_req.scrolltorow(parent.parent.parent.il_itemlistfoundrow_req)
+				parent.parent.parent.id_selectionlist_req.selectrow(parent.parent.parent.il_itemlistfoundrow_req, true)
+			end if
+		case else
+			parent.parent.parent.id_selectionlist_req.hide()
+		end choose
+	end if
+	parent.parent.parent.wf_grandtotal()
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_itemreq.losefocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::losefocus()
+	parent.parent.parent.id_selectionlist_req.hide()
+	return ::message.returnvalue
+
+// dw_itemreq.rowfocuschanged(long currentrow) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::rowfocuschanged(currentrow)
+	if parent.parent.parent.ib_itemvalidated_req = false and parent.parent.parent.wf_validateitem_req(getrow()) = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_itemreq.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	integer rt_code
+	long ll_currrow
+	long ll_listcurrrow
+	long ll_rowm
+	long ll_rowcount
+	long ll_icode
+	long ll_found
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keyf5! then
+		parent.parent.parent.wf_show_salehistory()
+		return 1
+	end if
+	if parent.parent.parent.il_protect = 0 then
+		if keyflags = 2 then
+			if key = keyi! then
+				if parent.parent.parent.ib_rowvalidated_req = false and parent.parent.parent.wf_validateitem_req(getrow()) = -1 then
+					return ::message.returnvalue
+				end if
+				if getrow() > 0 and isnull(this.object.icode[getrow()]) then
+					return ::message.returnvalue
+				end if
+				if rowcount() > 0 and f_validatedw(this) < 0 then
+					return ::message.returnvalue
+				end if
+				ll_rowcount = insertrow(0)
+				if ll_rowcount > 0 then
+					scrolltorow(ll_rowcount)
+					if f_stringpreferences("ItemCode") = "Y" then
+						setcolumn(1)
+					else
+						setcolumn(2)
+						parent.parent.parent.id_selectionlist_req.show()
+					end if
+					setfocus()
+					parent.parent.parent.il_currrow_req = ll_rowcount
+				end if
+			elseif key = keyd! then
+				parent.parent.parent.ib_rowvalidated_req = true
+				if rowcount() > 0 then
+					deleterow(0)
+				end if
+				ll_rowcount = rowcount()
+				parent.parent.parent.il_currrow_req = ll_rowcount
+				if ll_rowcount > 1 then
+					scrolltorow(ll_rowcount)
+					setcolumn("itemname")
+					setfocus()
+					parent.parent.parent.id_selectionlist_req.hide()
+				end if
+				parent.parent.parent.ib_rowvalidated_req = true
+			end if
+		end if
+		if getcolumnname() = "itemname" then
+			ll_rowm = getrow()
+			setredraw(false)
+			if key = keydownarrow! then
+				parent.parent.parent.id_selectionlist_req.selectrow(0, false)
+				parent.parent.parent.id_selectionlist_req.scrollnextrow()
+				ll_listcurrrow = parent.parent.parent.id_selectionlist_req.getrow()
+				rt_code = 1
+			elseif key = keyuparrow! then
+				parent.parent.parent.id_selectionlist_req.selectrow(0, false)
+				parent.parent.parent.id_selectionlist_req.scrollpriorrow()
+				ll_listcurrrow = parent.parent.parent.id_selectionlist_req.getrow()
+				rt_code = 1
+			elseif key = keypagedown! then
+				parent.parent.parent.id_selectionlist_req.selectrow(0, false)
+				parent.parent.parent.id_selectionlist_req.scrollnextpage()
+				ll_listcurrrow = parent.parent.parent.id_selectionlist_req.getrow()
+				rt_code = 1
+			elseif key = keypageup! then
+				parent.parent.parent.id_selectionlist_req.selectrow(0, false)
+				parent.parent.parent.id_selectionlist_req.scrollpriorpage()
+				ll_listcurrrow = parent.parent.parent.id_selectionlist_req.getrow()
+				rt_code = 1
+			elseif key = keyend! then
+				parent.parent.parent.id_selectionlist_req.selectrow(0, false)
+				parent.parent.parent.id_selectionlist_req.scrolltorow(parent.parent.parent.id_selectionlist_req.rowcount())
+				ll_listcurrrow = parent.parent.parent.id_selectionlist_req.getrow()
+				rt_code = 1
+			elseif key = keyhome! then
+				parent.parent.parent.id_selectionlist_req.selectrow(0, false)
+				parent.parent.parent.id_selectionlist_req.scrolltorow(1)
+				ll_listcurrrow = parent.parent.parent.id_selectionlist_req.getrow()
+				rt_code = 1
+			elseif key = keyback! then
+				parent.parent.parent.ib_bkspace_req = true
+				setredraw(true)
+			elseif key = keyescape! then
+				if parent.parent.parent.id_selectionlist_req.visible = false then
+					return ::message.returnvalue
+				end if
+				parent.parent.parent.id_selectionlist_req.hide()
+				setfocus()
+				setredraw(true)
+			elseif key = keyf4! then
+				parent.parent.parent.id_selectionlist_req.show()
+				parent.parent.parent.id_selectionlist_req.selectrow(0, false)
+				parent.parent.parent.id_selectionlist_req.scrolltorow(parent.parent.parent.il_itemlistfoundrow_req)
+				parent.parent.parent.id_selectionlist_req.selectrow(parent.parent.parent.il_itemlistfoundrow_req, true)
+				setredraw(true)
+			elseif key = keyf5! then
+				parent.parent.parent.id_selectionlist_req.hide()
+				setredraw(true)
+				ll_icode = f_drilldown_itemsearch("criteriasearch", 1)
+				parent.parent.parent.id_selectionlist_req.setfilter("")
+				parent.parent.parent.id_selectionlist_req.filter()
+				if ll_icode > 0 then
+					ll_found = parent.parent.parent.id_selectionlist_req.find("code = " + string(ll_icode), 1, parent.parent.parent.id_selectionlist_req.rowcount())
+					if ll_found > 0 then
+						ll_listcurrrow = ll_found
+						parent.parent.parent.id_selectionlist_req.selectrow(0, false)
+						parent.parent.parent.id_selectionlist_req.selectrow(ll_listcurrrow, true)
+						rt_code = 1
+					end if
+				end if
+				setfocus()
+			elseif key = keyf6! then
+				parent.parent.parent.id_selectionlist_req.hide()
+				setredraw(true)
+				ll_icode = f_drilldown_itemsearch("namesearch", 1)
+				parent.parent.parent.id_selectionlist_req.setfilter("")
+				parent.parent.parent.id_selectionlist_req.filter()
+				if ll_icode > 0 then
+					ll_found = parent.parent.parent.id_selectionlist_req.find("code = " + string(ll_icode), 1, parent.parent.parent.id_selectionlist_req.rowcount())
+					if ll_found > 0 then
+						ll_listcurrrow = ll_found
+						parent.parent.parent.id_selectionlist_req.selectrow(0, false)
+						rt_code = 1
+					end if
+				end if
+				setfocus()
+			elseif key = keyf7! then
+				if not isnull(getitemnumber(ll_rowm, "icode")) then
+					ll_icode = getitemnumber(ll_rowm, "icode")
+					parent.parent.parent.id_selectionlist_req.hide()
+					setredraw(true)
+					ll_icode = f_prefered_itemsearch(ll_icode)
+					parent.parent.parent.id_selectionlist_req.setfilter("")
+					parent.parent.parent.id_selectionlist_req.filter()
+					if ll_icode > 0 then
+						ll_found = parent.parent.parent.id_selectionlist_req.find("code = " + string(ll_icode), 1, parent.parent.parent.id_selectionlist_req.rowcount())
+						if ll_found > 0 then
+							ll_listcurrrow = ll_found
+							parent.parent.parent.id_selectionlist_req.selectrow(0, false)
+							rt_code = 1
+						end if
+					end if
+				end if
+				setfocus()
+			elseif isnull(getitemnumber(getrow(), "icode")) and key = keyenter! then
+				parent.parent.parent.id_selectionlist_req.hide()
+				parent.parent.parent.id_selectionlist_req.selectrow(0, false)
+				parent.parent.parent.id_selectionlist_req.scrolltorow(parent.parent.parent.id_selectionlist_req.getrow())
+				parent.parent.parent.id_selectionlist_req.selectrow(parent.parent.parent.id_selectionlist_req.getrow(), true)
+				ll_listcurrrow = parent.parent.parent.id_selectionlist_req.getrow()
+				setitem(ll_rowm, "icode", parent.parent.parent.id_selectionlist_req.getitemnumber(ll_listcurrrow, "code"))
+				setitem(ll_rowm, "itemname", parent.parent.parent.id_selectionlist_req.getitemstring(ll_listcurrrow, "name"))
+				selecttext(1, len(gettext()))
+				parent.parent.parent.ib_itemvalidated_req = false
+				parent.parent.parent.ib_rowvalidated_req = false
+				setredraw(true)
+			else
+				setredraw(true)
+			end if
+			if rt_code = 1 then
+				parent.parent.parent.id_selectionlist_req.selectrow(0, false)
+				parent.parent.parent.id_selectionlist_req.selectrow(ll_listcurrrow, true)
+				parent.parent.parent.il_itemlistfoundrow_req = ll_listcurrrow
+				setitem(ll_rowm, "icode", parent.parent.parent.id_selectionlist_req.getitemnumber(ll_listcurrrow, "code"))
+				setitem(ll_rowm, "itemname", parent.parent.parent.id_selectionlist_req.getitemstring(ll_listcurrrow, "name"))
+				selecttext(1, len(gettext()))
+				parent.parent.parent.ib_itemvalidated_req = false
+				parent.parent.parent.ib_rowvalidated_req = false
+				setredraw(true)
+			end if
+		end if
+	end if
+	setfocus()
+	return rt_code
+
+// dw_itemreq.ue_enterkey() returns long
+	long ancestorreturnvalue
+	long ll_rowcount
+	ancestorreturnvalue = super::ue_enterkey()
+	if getrow() = rowcount() and getcolumn() = integer(this.object.datawindow.column.count) then
+		if rowcount() > 0 and f_validatedw(this) < 0 then
+			return ::message.returnvalue
+		end if
+		if parent.parent.parent.ib_rowvalidated_req = false and parent.parent.parent.wf_validateitem_req(getrow()) = -1 then
+			return 1
+		end if
+		ll_rowcount = insertrow(0)
+		if ll_rowcount > 1 then
+			if f_stringpreferences("itemcode") = "N" then
+				parent.parent.parent.id_selectionlist_req.show()
+				setcolumn(2)
+			else
+				setcolumn(1)
+			end if
+			scrolltorow(ll_rowcount)
+			setfocus()
+		end if
+		return 1
+	end if
+	if getcolumnname() = "itemname" or getcolumnname() = "fullcode" then
+		parent.parent.parent.id_selectionlist_req.show()
+		if parent.parent.parent.ib_itemvalidated_req = false and parent.parent.parent.wf_validateitem_req(getrow()) = -1 then
+			return 1
+		end if
+		return
+	end if
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// tabpage_issue.create() returns 0
+	this.dw_issue = create dw_issue
+	this.control = {this.dw_issue}
+
+// tabpage_issue.destroy() returns 0
+	destroy this.dw_issue
+
+// dw_issue.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	parent.parent.parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// tabpage_service.create() returns 0
+	this.dw_service = create dw_service
+	this.control = {this.dw_service}
+
+// tabpage_service.destroy() returns 0
+	destroy this.dw_service
+
+// dw_service.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	parent.parent.parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// tabpage_sale.create() returns 0
+	this.dw_sale = create dw_sale
+	this.control = {this.dw_sale}
+
+// tabpage_sale.destroy() returns 0
+	destroy this.dw_sale
+
+// dw_sale.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	parent.parent.parent.wf_grandtotal()
+	return ::message.returnvalue

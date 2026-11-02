@@ -1,0 +1,52 @@
+// window w_arg_patient_admission (reports)  ancestor: w_popup_forselection_walias
+
+// w_arg_patient_admission.create() returns 0
+	integer icurrent
+	call super::create
+	this.dw_admissions = create dw_admissions
+	this.st_1 = create st_1
+	this.gb_2 = create gb_2
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_admissions
+	this.control[icurrent + 2] = this.st_1
+	this.control[icurrent + 3] = this.gb_2
+
+// w_arg_patient_admission.destroy() returns 0
+	call super::destroy
+	destroy this.dw_admissions
+	destroy this.st_1
+	destroy this.gb_2
+
+// w_arg_patient_admission.open() returns long
+	long ancestorreturnvalue
+	long ll_retcode
+	ancestorreturnvalue = super::open()
+	ll_retcode = this.dw_admissions.getchild("admissioncode", this.iddwc_admission)
+	if ll_retcode = -1 then
+		messagebox("Error", "Can not get a DataWindowChild")
+		this.istr_arg.i_status = 0
+		post event ue_close()
+	end if
+	this.iddwc_admission.settransobject(sqlca)
+	ll_retcode = this.iddwc_admission.retrieve(-1)
+	this.dw_admissions.insertrow(0)
+	return ::message.returnvalue
+
+// w_arg_patient_admission.ue_close() returns 0
+	closewithreturn(this, this.istr_arg)
+
+// dw_admissions.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_admissions.getfocus() returns long
+	long ll_totrows
+	long ll_admissioncode
+	if not isnull(parent.id_selected.getitemnumber(parent.id_selected.getrow(), "code")) then
+		ll_totrows = parent.iddwc_admission.retrieve(parent.id_selected.getitemnumber(parent.id_selected.getrow(), "code"))
+		if ll_totrows > 0 then
+			ll_admissioncode = parent.iddwc_admission.getitemnumber(1, "admissioncode")
+			setitem(1, "admissioncode", ll_admissioncode)
+		end if
+	end if
+	return ::message.returnvalue

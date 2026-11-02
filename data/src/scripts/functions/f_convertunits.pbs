@@ -1,0 +1,98 @@
+// function f_convertunits (functions)  ancestor: function_object
+
+// f_convertunits.f_convertunits(integer ai_src_unit, double ad_src_value, string as_src_direction, integer ai_tgt_unit) returns double
+	double ld_retvalue
+	if ai_src_unit = 0 then
+		if ai_tgt_unit = 0 then
+			ld_retvalue = ad_src_value
+		elseif ai_tgt_unit = 1 then
+			if as_src_direction = "X" then
+				ld_retvalue = unitstopixels(ad_src_value, xunitstopixels!)
+			else
+				ld_retvalue = unitstopixels(ad_src_value, yunitstopixels!)
+			end if
+		elseif ai_tgt_unit = 2 then
+			if as_src_direction = "X" then
+				ld_retvalue = ad_src_value / 439.0
+			else
+				ld_retvalue = ad_src_value / 384.0
+			end if
+		elseif ai_tgt_unit = 3 then
+			if as_src_direction = "X" then
+				ld_retvalue = ad_src_value * 1000.0 / 439.0
+			else
+				ld_retvalue = ad_src_value * 1000.0 / 384.0
+			end if
+		elseif ai_tgt_unit = 4 then
+			if as_src_direction = "X" then
+				ld_retvalue = ad_src_value / 439.0 * 25.4
+			else
+				ld_retvalue = ad_src_value / 384.0 * 25.4
+			end if
+		end if
+	elseif ai_src_unit = 1 then
+		if ai_tgt_unit = 0 then
+			if as_src_direction = "X" then
+				ld_retvalue = pixelstounits(ad_src_value, xpixelstounits!)
+			else
+				ld_retvalue = pixelstounits(ad_src_value, ypixelstounits!)
+			end if
+		elseif ai_tgt_unit = 1 then
+			ld_retvalue = ad_src_value
+		elseif ai_tgt_unit = 2 then
+			ld_retvalue = ad_src_value / 96.0
+		elseif ai_tgt_unit = 3 then
+			ld_retvalue = ad_src_value / 96.0 * 1000.0
+		elseif ai_tgt_unit = 4 then
+			ld_retvalue = ad_src_value / 96.0 * 25.4
+		end if
+	elseif ai_src_unit = 2 then
+		if ai_tgt_unit = 0 then
+			if as_src_direction = "X" then
+				ld_retvalue = ad_src_value * 439.0
+			else
+				ld_retvalue = ad_src_value * 384.0
+			end if
+		elseif ai_tgt_unit = 1 then
+			ld_retvalue = ad_src_value * 96.0
+		elseif ai_tgt_unit = 2 then
+			ld_retvalue = ad_src_value
+		elseif ai_tgt_unit = 3 then
+			ld_retvalue = ad_src_value * 1000.0
+		elseif ai_tgt_unit = 4 then
+			ld_retvalue = ad_src_value * 25.4
+		end if
+	elseif ai_src_unit = 3 then
+		if ai_tgt_unit = 0 then
+			if as_src_direction = "X" then
+				ld_retvalue = ad_src_value / 1000.0 * 439.0
+			else
+				ld_retvalue = ad_src_value / 1000.0 * 384.0
+			end if
+		elseif ai_tgt_unit = 1 then
+			ld_retvalue = ad_src_value / 1000.0 * 96.0
+		elseif ai_tgt_unit = 2 then
+			ld_retvalue = ad_src_value / 1000.0
+		elseif ai_tgt_unit = 3 then
+			ld_retvalue = ad_src_value
+		elseif ai_tgt_unit = 4 then
+			ld_retvalue = ad_src_value / 1000.0 * 25.4
+		end if
+	elseif ai_src_unit = 4 then
+		if ai_tgt_unit = 0 then
+			if as_src_direction = "X" then
+				ld_retvalue = ad_src_value / 25.4 * 439.0
+			else
+				ld_retvalue = ad_src_value / 25.4 * 384.0
+			end if
+		elseif ai_tgt_unit = 1 then
+			ld_retvalue = ad_src_value / 25.4 * 96.0
+		elseif ai_tgt_unit = 2 then
+			ld_retvalue = ad_src_value / 25.4
+		elseif ai_tgt_unit = 3 then
+			ld_retvalue = ad_src_value / 25.4 * 1000.0
+		elseif ai_tgt_unit = 4 then
+			ld_retvalue = ad_src_value
+		end if
+	end if
+	return ld_retvalue

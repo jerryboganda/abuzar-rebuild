@@ -1,0 +1,1099 @@
+// window w_packingjob (packingmodule)  ancestor: w_multi_entry
+
+// w_packingjob.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM ItemCategory WHERE Name =:as_name USING this.it_transobject;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_packingjob.wf_validateitem() returns integer
+	long ll_doccode
+	long rt_code
+	integer li_errcode
+	integer li_null
+	boolean ib_yesno
+	setnull(li_null)
+	ll_doccode = this.id_detail.getitemnumber(this.il_currrow, "doccode")
+	if this.id_detail.rowcount() > 1 then
+		if this.il_currrow > 1 then
+			rt_code = this.id_detail.find("doccode = " + trim(string(ll_doccode)), this.il_currrow - 1, 0)
+		end if
+		if rt_code = 0 then
+			if this.il_currrow <> this.id_detail.rowcount() then
+				rt_code = this.id_detail.find("doccode = " + trim(string(ll_doccode)), this.il_currrow + 1, this.id_detail.rowcount())
+			end if
+			if rt_code <> 0 then
+				ib_yesno = true
+			end if
+		else
+			ib_yesno = true
+		end if
+	end if
+	if ib_yesno = true then
+		messagebox("Duplication Error", "Current row is duplicate")
+		li_errcode = -1
+	else
+		li_errcode = 0
+	end if
+	this.ib_itemvalidated = true
+	if li_errcode = -1 then
+		this.id_detail.setcolumn("doccode")
+		this.id_detail.scrolltorow(this.il_currrow)
+		this.id_detail.object.doccode[this.il_currrow] = li_null
+	end if
+	return li_errcode
+
+// w_packingjob.wf_validatedoccode(integer ai_module, long al_doccode) returns long
+	long ll_doccode
+	long ll_retcode
+	if ai_module = 1 then
+		SQL SELECT SaleInvCode INTO :ll_doccode FROM SaleLedger WHERE SaleInvCode =:al_doccode AND Posted ='Y' USING this.it_transobject;
+		if this.it_transobject.sqlcode = 0 then
+			if ll_doccode = al_doccode then
+				ll_retcode = 0
+			else
+				ll_retcode = 1
+			end if
+		else
+			ll_retcode = 0
+		end if
+	end if
+	if ll_retcode = 0 then
+		wf_populateitem()
+	end if
+	return ll_retcode
+
+// w_packingjob.wf_populateitem() returns long
+	long[] ll_inv
+	long ll_counter
+	long ll_insrow
+	datastore lds_item
+	lds_item = create datastore
+	lds_item.dataobject = "d_packingjob_itemppoulation"
+	lds_item.settransobject(this.it_transobject)
+	this.id_detail.accepttext()
+	for ll_counter = 1 to this.id_detail.rowcount()
+		ll_inv[ll_counter] = this.id_detail.object.doccode[ll_counter]
+	next
+	this.id_pending.reset()
+	this.id_packed.reset()
+	this.id_packed.insertrow(0)
+	wf_empty_packingtree()
+	lds_item.retrieve(ll_inv)
+	if lds_item.rowcount() > 0 then
+		for ll_counter = 1 to lds_item.rowcount()
+			ll_insrow = this.id_pending.insertrow(0)
+			this.id_pending.object.icode[ll_insrow] = lds_item.object.icode[ll_counter]
+			this.id_pending.object.aliasname[ll_insrow] = lds_item.object.aliasname[ll_counter]
+			this.id_pending.object.itemname[ll_insrow] = lds_item.object.itemname[ll_counter]
+			this.id_pending.object.batch[ll_insrow] = lds_item.object.batch[ll_counter]
+			this.id_pending.object.expiry[ll_insrow] = lds_item.object.expiry[ll_counter]
+			this.id_pending.object.icatcode[ll_insrow] = lds_item.object.icatcode[ll_counter]
+			this.id_pending.object.itemcategory[ll_insrow] = lds_item.object.itemcategory[ll_counter]
+			this.id_pending.object.iccode[ll_insrow] = lds_item.object.iccode[ll_counter]
+			this.id_pending.object.itemclass[ll_insrow] = lds_item.object.itemclass[ll_counter]
+			this.id_pending.object.packcode[ll_insrow] = lds_item.object.packcode[ll_counter]
+			this.id_pending.object.itempacking[ll_insrow] = lds_item.object.itempacking[ll_counter]
+			this.id_pending.object.qty[ll_insrow] = lds_item.object.qty[ll_counter]
+		next
+	end if
+	this.id_pending.sort()
+	return 0
+
+// w_packingjob.wf_filterpendingitem() returns long
+	long ll_icatcode
+	long ll_iccode
+	long ll_packcode
+	string ls_filter
+	if this.id_footer.accepttext() = 1 then
+		ll_icatcode = this.id_footer.object.icatcode[1]
+		ll_iccode = this.id_footer.object.iccode[1]
+		ll_packcode = this.id_footer.object.packcode[1]
+		if isnull(ll_icatcode) then
+			ls_filter = ""
+		else
+			ls_filter = ls_filter + " icatcode = " + string(ll_icatcode)
+		end if
+		if not isnull(ll_iccode) then
+			if ls_filter = "" then
+				ls_filter = ls_filter + " iccode = " + string(ll_iccode)
+			else
+				ls_filter = ls_filter + " AND iccode = " + string(ll_iccode)
+			end if
+		end if
+		if not isnull(ll_packcode) then
+			if ls_filter = "" then
+				ls_filter = ls_filter + " packcode = " + string(ll_packcode)
+			else
+				ls_filter = ls_filter + " AND packcode = " + string(ll_packcode)
+			end if
+		end if
+		this.id_pending.setfilter(ls_filter)
+		this.id_pending.filter()
+		this.id_pending.sort()
+	end if
+	return 0
+
+// w_packingjob.wf_empty_packingtree() returns integer
+	long tvi_hdl
+	do while this.tab_retrieve.tabpage_detail.tv_packinglist.finditem(roottreeitem!, 0) <> -1
+		this.tab_retrieve.tabpage_detail.tv_packinglist.deleteitem(tvi_hdl)
+	loop
+	this.il_oc_count = 0
+	this.il_mc_count = 0
+	this.il_sc_count = 0
+	this.id_packednodes.reset()
+	wf_insertrootitem()
+	return 0
+
+// w_packingjob.wf_selectrootitem() returns integer
+	long ll_roothandle
+	ll_roothandle = this.tab_retrieve.tabpage_detail.tv_packinglist.finditem(roottreeitem!, 0)
+	this.tab_retrieve.tabpage_detail.tv_packinglist.selectitem(ll_roothandle)
+	return 0
+
+// w_packingjob.wf_insertrootitem() returns long
+	long ll_iteminserted
+	datetime ldt_null
+	treeviewitem ltvi_item
+	setnull(ldt_null)
+	ltvi_item.label = "Packing Item List"
+	ltvi_item.pictureindex = 1
+	ltvi_item.selectedpictureindex = 1
+	ltvi_item.data = "0"
+	ltvi_item.children = true
+	ll_iteminserted = this.tab_retrieve.tabpage_detail.tv_packinglist.insertitemlast(0, ltvi_item)
+	this.tab_retrieve.tabpage_detail.tv_packinglist.selectitem(ll_iteminserted)
+	this.il_oc_count = 0
+	this.il_mc_count = 0
+	this.il_sc_count = 0
+	ltvi_item.selected = true
+	wf_insert_packednode_entry(ll_iteminserted, ltvi_item.label, ltvi_item.data, 100, 100, 0, ".", ldt_null, 0, 0, 0)
+	return 0
+
+// w_packingjob.wf_selectparent() returns long
+	long ll_parenthandle
+	long ll_handle
+	ll_handle = this.tab_retrieve.tabpage_detail.tv_packinglist.finditem(currenttreeitem!, 0)
+	ll_parenthandle = this.tab_retrieve.tabpage_detail.tv_packinglist.finditem(parenttreeitem!, ll_handle)
+	this.tab_retrieve.tabpage_detail.tv_packinglist.selectitem(ll_parenthandle)
+	return 0
+
+// w_packingjob.wf_insert_item() returns long
+	long ll_handle
+	long ll_roothandle
+	long ll_parenthandle
+	long ll_iteminserted
+	long ll_counter
+	long ll_rowcount
+	long ll_selectedrow
+	long ll_icode
+	long ll_oclimit
+	long ll_mclimit
+	long ll_sclimit
+	long ll_currcaselimit
+	long ll_qty
+	long ll_packedqty
+	long ll_totqty
+	double ld_spaceused
+	double ld_thisitemperc
+	integer li_icatcode
+	integer li_packcode
+	boolean lb_continue_insert
+	string ls_itemname
+	string ls_parentname
+	string ls_batch
+	datetime ldt_null
+	datetime ldt_expiry
+	treeviewitem ltvi_item
+	treeviewitem ltvi_temp
+	setnull(ldt_null)
+	ll_rowcount = this.id_pending.rowcount()
+	ll_selectedrow = 1
+	if ll_rowcount > 0 then
+		ll_handle = this.tab_retrieve.tabpage_detail.tv_packinglist.finditem(currenttreeitem!, 0)
+		if this.tab_retrieve.tabpage_detail.tv_packinglist.getitem(ll_handle, ltvi_temp) > 0 then
+			if left(ltvi_temp.data, 2) = "IT" then
+				lb_continue_insert = false
+			end if
+		else
+			lb_continue_insert = false
+		end if
+		if lb_continue_insert then
+			ll_roothandle = this.tab_retrieve.tabpage_detail.tv_packinglist.finditem(roottreeitem!, 0)
+			if ll_handle = ll_roothandle then
+				lb_continue_insert = false
+			end if
+		end if
+		if lb_continue_insert then
+			for ll_counter = 1 to ll_rowcount
+				ll_handle = this.tab_retrieve.tabpage_detail.tv_packinglist.finditem(currenttreeitem!, 0)
+				wf_select_packednode(ll_handle)
+				ll_parenthandle = this.tab_retrieve.tabpage_detail.tv_packinglist.finditem(parenttreeitem!, ll_handle)
+				if this.tab_retrieve.tabpage_detail.tv_packinglist.getitem(ll_handle, ltvi_temp) > 0 then
+					ls_parentname = string(ltvi_temp.data)
+					ld_spaceused = this.id_packednodes.object.spaceused[this.id_packednodes.getrow()]
+					ll_totqty = this.id_packednodes.object.qty[this.id_packednodes.getrow()]
+					if isnull(ll_totqty) then
+						ll_totqty = 0
+					end if
+				end if
+				this.id_pending.setrow(ll_selectedrow)
+				ll_qty = this.id_pending.object.qty[ll_selectedrow]
+				ll_icode = this.id_pending.object.icode[ll_selectedrow]
+				ls_itemname = this.id_pending.object.itemname[ll_selectedrow]
+				ls_batch = this.id_pending.object.batch[ll_selectedrow]
+				ldt_expiry = this.id_pending.object.expiry[ll_selectedrow]
+				this.it_transobject.getmaxlimitforpackcase(ll_icode, li_icatcode, li_packcode, ll_oclimit, ll_mclimit, ll_sclimit)
+				if upper(left(ltvi_temp.label, 6)) = "CARTON" then
+					ll_currcaselimit = ll_sclimit
+				elseif upper(left(ltvi_temp.label, 13)) = "MASTER CARTON" then
+					ll_currcaselimit = ll_mclimit
+				elseif upper(left(ltvi_temp.label, 10)) = "OUTER CASE" then
+					ll_currcaselimit = ll_oclimit
+				end if
+				if this.id_pending.object.selected[ll_selectedrow] = "Y" and ll_qty > 0 and ld_spaceused < 100.0 and ll_currcaselimit > 0 then
+					ld_thisitemperc = round(ll_qty / ll_currcaselimit * 100.0, 15)
+					if ld_spaceused + ld_thisitemperc <= 100.0 then
+						ld_spaceused = ld_spaceused + ld_thisitemperc
+						ll_packedqty = ll_qty
+						ll_qty = 0
+					else
+						ld_thisitemperc = 100.00 - ld_spaceused
+						ll_packedqty = long(round(ll_currcaselimit * ld_thisitemperc / 100.00, 15))
+						if ll_packedqty > 0 then
+							ld_spaceused = 100.00
+							ll_qty = ll_qty - ll_packedqty
+						end if
+					end if
+					ll_totqty = ll_totqty + ll_packedqty
+					this.id_pending.object.qty[ll_selectedrow] = ll_qty
+					this.id_packednodes.object.spaceused[this.id_packednodes.getrow()] = ld_spaceused
+					this.id_packednodes.object.qty[this.id_packednodes.getrow()] = ll_totqty
+					this.id_packednodes.object.batch[this.id_packednodes.getrow()] = ls_batch
+					this.id_packednodes.object.expiry[this.id_packednodes.getrow()] = ldt_expiry
+					if ll_packedqty > 0 then
+						ltvi_item.data = "IT-" + trim(string(ll_icode)) + "-" + ls_parentname + "-"
+						ltvi_item.label = "[" + ls_itemname + "]  Packed Qty: «" + trim(string(ll_packedqty, "#####0")) + "»"
+						ltvi_item.children = false
+						ltvi_item.expanded = false
+						ltvi_item.pictureindex = 8
+						ltvi_item.selectedpictureindex = 8
+						ll_iteminserted = this.tab_retrieve.tabpage_detail.tv_packinglist.insertitemlast(ll_handle, ltvi_item)
+						if ll_iteminserted > 0 then
+							wf_insert_packednode_entry(ll_iteminserted, ltvi_item.label, ltvi_item.data, 100, 100, ll_packedqty, ls_batch, ldt_expiry, ld_thisitemperc, ll_handle, 1)
+							wf_select_packednode(ll_handle)
+						end if
+					end if
+				else
+					ll_selectedrow = ll_selectedrow + 1
+				end if
+				if ll_qty <= 0 then
+					this.id_pending.deleterow(ll_selectedrow)
+				else
+					return 0
+				end if
+			next
+		end if
+	end if
+	return 0
+
+// w_packingjob.wf_select_packednode(long al_nodeid) returns long
+	long ll_found
+	if al_nodeid > 0 then
+		ll_found = this.id_packednodes.find("nodeid = " + trim(string(al_nodeid)), 1, this.id_packednodes.rowcount())
+		if ll_found > 0 and ll_found <= this.id_packednodes.rowcount() then
+			this.id_packednodes.scrolltorow(ll_found)
+		end if
+	end if
+	return 0
+
+// w_packingjob.wf_insert_carton(integer ai_packinglayout, double ad_parentweight, double ad_spaceused) returns integer
+	long ll_handle
+	long ll_parenthandle
+	long ll_iteminserted
+	datetime ldt_null
+	treeviewitem ltvi_item
+	treeviewitem ltvi_temp
+	setnull(ldt_null)
+	this.il_sc_count = this.il_sc_count + 1
+	ll_handle = this.tab_retrieve.tabpage_detail.tv_packinglist.finditem(currenttreeitem!, 0)
+	ll_parenthandle = this.tab_retrieve.tabpage_detail.tv_packinglist.finditem(parenttreeitem!, ll_handle)
+	this.tab_retrieve.tabpage_detail.tv_packinglist.getitem(ll_handle, ltvi_temp)
+	if ltvi_temp.data = "0" then
+		ltvi_item.data = "PL" + trim(string(ai_packinglayout)) + "-SC" + trim(string(this.il_sc_count))
+	else
+		ltvi_item.data = ltvi_temp.data + "-SC" + trim(string(this.il_sc_count))
+	end if
+	ltvi_item.label = "Carton" + trim(string(this.il_sc_count))
+	ltvi_item.pictureindex = 6
+	ltvi_item.selectedpictureindex = 6
+	ltvi_item.children = true
+	ll_iteminserted = this.tab_retrieve.tabpage_detail.tv_packinglist.insertitemlast(ll_handle, ltvi_item)
+	if ll_iteminserted > 0 then
+		wf_insert_packednode_entry(ll_iteminserted, ltvi_item.label, ltvi_item.data, 100, ad_spaceused, 0, ".", ldt_null, ad_parentweight, ll_handle, 0)
+	end if
+	return 0
+
+// w_packingjob.wf_insert_mastercarton(integer ai_packinglayout, double ad_parentweight, double ad_spaceused) returns integer
+	long ll_handle
+	long ll_parenthandle
+	long ll_iteminserted
+	datetime ldt_null
+	treeviewitem ltvi_item
+	setnull(ldt_null)
+	this.il_mc_count = this.il_mc_count + 1
+	ll_handle = this.tab_retrieve.tabpage_detail.tv_packinglist.finditem(currenttreeitem!, 0)
+	ll_parenthandle = this.tab_retrieve.tabpage_detail.tv_packinglist.finditem(parenttreeitem!, 0)
+	this.tab_retrieve.tabpage_detail.tv_packinglist.getitem(ll_handle, ltvi_item)
+	if ltvi_item.data = "0" then
+		ltvi_item.data = "PL" + trim(string(ai_packinglayout)) + "-MC" + trim(string(this.il_mc_count))
+	else
+		ltvi_item.data = ltvi_item.data + "-MC" + trim(string(this.il_mc_count))
+	end if
+	ltvi_item.label = "Master Carton" + trim(string(this.il_mc_count))
+	ltvi_item.pictureindex = 4
+	ltvi_item.selectedpictureindex = 4
+	ll_iteminserted = this.tab_retrieve.tabpage_detail.tv_packinglist.insertitemlast(ll_handle, ltvi_item)
+	this.tab_retrieve.tabpage_detail.tv_packinglist.selectitem(ll_iteminserted)
+	if ll_iteminserted > 0 then
+		wf_insert_packednode_entry(ll_iteminserted, ltvi_item.label, ltvi_item.data, 100, ad_spaceused, 0, ".", ldt_null, ad_parentweight, ll_handle, 0)
+	end if
+	return 0
+
+// w_packingjob.wf_insert_outercase(integer ai_packinglayout, double ad_spaceused) returns integer
+	long ll_handle
+	long ll_parenthandle
+	long ll_iteminserted
+	datetime ldt_null
+	treeviewitem ltvi_item
+	setnull(ldt_null)
+	ll_handle = this.tab_retrieve.tabpage_detail.tv_packinglist.finditem(currenttreeitem!, 0)
+	ll_parenthandle = this.tab_retrieve.tabpage_detail.tv_packinglist.finditem(roottreeitem!, 0)
+	this.tab_retrieve.tabpage_detail.tv_packinglist.getitem(ll_handle, ltvi_item)
+	this.il_oc_count = this.il_oc_count + 1
+	ltvi_item.label = "Outer Case" + trim(string(this.il_oc_count))
+	ltvi_item.pictureindex = 2
+	ltvi_item.selectedpictureindex = 2
+	ltvi_item.data = "PL" + trim(string(ai_packinglayout)) + "-OC" + trim(string(this.il_oc_count))
+	ltvi_item.children = true
+	ll_iteminserted = this.tab_retrieve.tabpage_detail.tv_packinglist.insertitemlast(ll_parenthandle, ltvi_item)
+	this.tab_retrieve.tabpage_detail.tv_packinglist.selectitem(ll_iteminserted)
+	if ll_iteminserted > 0 then
+		wf_insert_packednode_entry(ll_iteminserted, ltvi_item.label, ltvi_item.data, 100, ad_spaceused, 0, ".", ldt_null, 0, ll_handle, 0)
+	end if
+	return 0
+
+// w_packingjob.wf_populate_packinglayout(long al_packinglayout, integer ai_times) returns long
+	integer li_counter
+	setpointer(hourglass!)
+	if al_packinglayout = 1 then
+		for li_counter = 1 to ai_times
+			wf_selectrootitem()
+			wf_insert_outercase(al_packinglayout, 100.00)
+			wf_insert_mastercarton(al_packinglayout, 50, 100.00)
+			wf_insert_carton(al_packinglayout, 50.0 / 3.0, 0.00)
+			wf_insert_carton(al_packinglayout, 50.0 / 3.0, 0.00)
+			wf_insert_carton(al_packinglayout, 50.0 / 3.0, 0.00)
+			wf_selectparent()
+			wf_insert_mastercarton(al_packinglayout, 50, 100.00)
+			wf_insert_carton(al_packinglayout, 50.0 / 3.0, 0.00)
+			wf_insert_carton(al_packinglayout, 50.0 / 3.0, 0.00)
+			wf_insert_carton(al_packinglayout, 50.0 / 3.0, 0.00)
+			wf_selectrootitem()
+		next
+	elseif al_packinglayout = 2 then
+		for li_counter = 1 to ai_times
+			wf_selectrootitem()
+			wf_insert_outercase(al_packinglayout, 100.00)
+			wf_insert_mastercarton(al_packinglayout, 50, 0.00)
+			wf_selectparent()
+			wf_insert_mastercarton(al_packinglayout, 50, 0.00)
+			wf_selectrootitem()
+		next
+	elseif al_packinglayout = 3 then
+		for li_counter = 1 to ai_times
+			wf_selectrootitem()
+			wf_insert_outercase(al_packinglayout, 100.00)
+			wf_insert_carton(al_packinglayout, 100.0 / 6.0, 0.00)
+			wf_insert_carton(al_packinglayout, 100.0 / 6.0, 0.00)
+			wf_insert_carton(al_packinglayout, 100.0 / 6.0, 0.00)
+			wf_insert_carton(al_packinglayout, 100.0 / 6.0, 0.00)
+			wf_insert_carton(al_packinglayout, 100.0 / 6.0, 0.00)
+			wf_insert_carton(al_packinglayout, 100.0 / 6.0, 0.00)
+			wf_selectrootitem()
+		next
+	elseif al_packinglayout = 4 then
+		for li_counter = 1 to ai_times
+			wf_selectrootitem()
+			wf_insert_outercase(al_packinglayout, 0.00)
+			wf_selectrootitem()
+		next
+	elseif al_packinglayout = 5 then
+		for li_counter = 1 to ai_times
+			wf_selectrootitem()
+			wf_insert_mastercarton(al_packinglayout, 0, 100.00)
+			wf_insert_carton(al_packinglayout, 100.0 / 3.0, 0.00)
+			wf_insert_carton(al_packinglayout, 100.0 / 3.0, 0.00)
+			wf_insert_carton(al_packinglayout, 100.0 / 3.0, 0.00)
+			wf_selectrootitem()
+		next
+	elseif al_packinglayout = 6 then
+		for li_counter = 1 to ai_times
+			wf_selectrootitem()
+			wf_insert_mastercarton(al_packinglayout, 0, 0.00)
+			wf_selectrootitem()
+		next
+	elseif al_packinglayout = 7 then
+		for li_counter = 1 to ai_times
+			wf_selectrootitem()
+			wf_insert_carton(al_packinglayout, 0, 0.00)
+			wf_selectrootitem()
+		next
+	elseif al_packinglayout = 8 then
+		for li_counter = 1 to ai_times
+			wf_selectrootitem()
+			wf_insert_outercase(al_packinglayout, 100.00)
+			wf_insert_carton(al_packinglayout, 100.0 / 4.0, 0.00)
+			wf_insert_carton(al_packinglayout, 100.0 / 4.0, 0.00)
+			wf_insert_carton(al_packinglayout, 100.0 / 4.0, 0.00)
+			wf_insert_carton(al_packinglayout, 100.0 / 4.0, 0.00)
+			wf_selectrootitem()
+		next
+	end if
+	setpointer(arrow!)
+	return 0
+
+// w_packingjob.wf_get_current_treeitem() returns long
+	long ll_tvi
+	ll_tvi = this.tab_retrieve.tabpage_detail.tv_packinglist.finditem(currenttreeitem!, 0)
+	return ll_tvi
+
+// w_packingjob.wf_updateallnodes(treeview tv_tree) returns long
+	long[] ll_handle
+	long ll_found
+	long ll_packedqty
+	long ld_totpackedqty
+	long ld_sapceused
+	long ld_totalsapceused
+	long ld_parentweight
+	long ld_totalweight
+	integer li_count
+	treeviewitem lt_tvi
+	li_count = 1
+	ll_handle[1] = tv_tree.finditem(roottreeitem!, 0)
+	do while li_count > 0
+		if tv_tree.getitem(ll_handle[li_count], lt_tvi) = -1 then
+			li_count = -1
+		else
+			if lt_tvi.children then
+				li_count = li_count + 1
+				ll_handle[li_count] = tv_tree.finditem(childtreeitem!, ll_handle[li_count - 1])
+			else
+				ll_handle[li_count] = tv_tree.finditem(nexttreeitem!, ll_handle[li_count])
+			end if
+			do while ll_handle[li_count] <= 0
+				li_count = li_count - 1
+				if li_count = 0 then
+					exit
+				end if
+				ll_handle[li_count] = tv_tree.finditem(nexttreeitem!, ll_handle[li_count])
+			loop
+		end if
+	loop
+	return 0
+
+// w_packingjob.wf_deletepackingjob(long al_code) returns boolean
+	boolean lb_retflag
+	SQL DELETE DBO.PackingJobDetail WHERE PackingJobCode =:al_code USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		lb_retflag = false
+	end if
+	if lb_retflag then
+		SQL DELETE DBO.PackingJobPending WHERE PackingJobCode =:al_code USING this.it_transobject;
+		if this.it_transobject.sqlcode <> 0 then
+			lb_retflag = false
+		end if
+	end if
+	if lb_retflag then
+		SQL DELETE DBO.PackingJobSource WHERE PackingJobCode =:al_code USING this.it_transobject;
+		if this.it_transobject.sqlcode <> 0 then
+			lb_retflag = false
+		end if
+	end if
+	return lb_retflag
+
+// w_packingjob.wf_prepare_packed_itemlist() returns long
+	long ll_rows
+	long ll_retcode
+	long ll_counter
+	long ll_icode
+	long ll_lasthyphen
+	long ll_caseno
+	long ll_mcno
+	long ll_scno
+	long ll_start
+	long ll_qty
+	long ll_insrow
+	long ll_packjobcode
+	integer li_packlayout
+	string ls_nodedata
+	string ls_temp
+	string ls_itemdetail
+	string ls_batch
+	datetime ldt_expiry
+	this.id_packednodes.setfilter("leaf = 1")
+	this.id_packednodes.filter()
+	ll_rows = this.id_packednodes.rowcount()
+	if this.id_master.rowcount() > 0 then
+		ll_packjobcode = this.id_master.object.code[1]
+	end if
+	if ll_rows > 0 then
+		this.id_packed.reset()
+		for ll_counter = 1 to ll_rows
+			ls_nodedata = this.id_packednodes.object.nodedata[ll_counter]
+			ls_itemdetail = this.id_packednodes.object.nodename[ll_counter]
+			ls_batch = this.id_packednodes.object.batch[ll_counter]
+			ldt_expiry = this.id_packednodes.object.expiry[ll_counter]
+			ll_caseno = 0
+			ll_mcno = 0
+			ll_scno = 0
+			if left(ls_nodedata, 3) = "IT-" then
+				ll_qty = this.id_packednodes.object.qty[ll_counter]
+				ll_start = 4
+				ll_lasthyphen = pos(ls_nodedata, "-", ll_start)
+				ls_temp = mid(ls_nodedata, ll_start, ll_lasthyphen - ll_start)
+				ll_icode = long(ls_temp)
+				ll_start = ll_lasthyphen + 1
+				ll_lasthyphen = pos(ls_nodedata, "-", ll_start)
+				ls_temp = mid(ls_nodedata, ll_start, ll_lasthyphen - ll_start)
+				li_packlayout = long(right(ls_temp, 1))
+				ll_start = ll_lasthyphen + 1
+				ll_lasthyphen = pos(ls_nodedata, "-", ll_start)
+				if isnull(ll_lasthyphen) then
+					ll_lasthyphen = 0
+				end if
+				do while ll_lasthyphen > 0
+					ls_temp = mid(ls_nodedata, ll_start, ll_lasthyphen - ll_start)
+					if left(ls_temp, 2) = "OC" then
+						ll_caseno = long(mid(ls_temp, 3, len(ls_temp) - 2))
+					elseif left(ls_temp, 2) = "MC" then
+						ll_mcno = long(mid(ls_temp, 3, len(ls_temp) - 2))
+					elseif left(ls_temp, 2) = "SC" then
+						ll_scno = long(mid(ls_temp, 3, len(ls_temp) - 2))
+					end if
+					ll_start = ll_lasthyphen + 1
+					ll_lasthyphen = pos(ls_nodedata, "-", ll_start)
+					if isnull(ll_lasthyphen) then
+						ll_lasthyphen = 0
+					end if
+				loop
+				ll_insrow = this.id_packed.insertrow(0)
+				if ll_insrow > 0 then
+					this.id_packed.object.code[ll_insrow] = ll_packjobcode
+					this.id_packed.object.packinglayoutcode[ll_insrow] = li_packlayout
+					this.id_packed.object.caseno[ll_insrow] = ll_caseno
+					this.id_packed.object.mastercartonno[ll_insrow] = ll_mcno
+					this.id_packed.object.cartonno[ll_insrow] = ll_scno
+					this.id_packed.object.icode[ll_insrow] = ll_icode
+					this.id_packed.object.qty[ll_insrow] = ll_qty
+					this.id_packed.object.batch[ll_insrow] = ls_batch
+					this.id_packed.object.expiry[ll_insrow] = ldt_expiry
+				end if
+			end if
+		next
+	else
+		ll_retcode = 0
+	end if
+	return ll_retcode
+
+// w_packingjob.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+
+// w_packingjob.wf_deletetreeitem(long al_handle) returns long
+	treeviewitem ltvi_treeitem
+	treeviewitem ltvi_temp
+	string ls_treeitemdata
+	string ls_temp
+	string ls_category
+	string ls_class
+	string ls_packing
+	string ls_itemname
+	string ls_aliasname
+	string ls_parentname
+	string ls_batch
+	long ll_icode
+	long ll_start
+	long ll_qty
+	long ll_lasthyphen
+	long ll_icatcode
+	long ll_iccode
+	long ll_packcode
+	long ll_insrow
+	long ll_parenthandle
+	long ll_parentrow
+	long ll_totqty
+	long ll_thisrow
+	long ll_found
+	double ld_spaceused
+	double ld_parentweight
+	datetime ldt_expiry
+	if al_handle = 1 then
+		return 0
+	end if
+	if this.tab_retrieve.tabpage_detail.tv_packinglist.getitem(al_handle, ltvi_treeitem) > 0 then
+		ls_treeitemdata = string(ltvi_treeitem.data)
+		if left(ls_treeitemdata, 3) = "IT-" then
+			ll_parenthandle = this.tab_retrieve.tabpage_detail.tv_packinglist.finditem(parenttreeitem!, al_handle)
+			if this.tab_retrieve.tabpage_detail.tv_packinglist.getitem(ll_parenthandle, ltvi_temp) > 0 then
+				wf_select_packednode(ll_parenthandle)
+				ll_parentrow = this.id_packednodes.getrow()
+				ls_parentname = string(ltvi_temp.data)
+				ld_spaceused = this.id_packednodes.object.spaceused[ll_parentrow]
+				ll_totqty = this.id_packednodes.object.qty[ll_parentrow]
+				if isnull(ll_totqty) then
+					ll_totqty = 0
+				end if
+			end if
+			wf_select_packednode(al_handle)
+			ll_thisrow = this.id_packednodes.getrow()
+			ll_qty = this.id_packednodes.object.qty[ll_thisrow]
+			ls_batch = this.id_packednodes.object.batch[ll_thisrow]
+			ldt_expiry = this.id_packednodes.object.expiry[ll_thisrow]
+			ld_parentweight = this.id_packednodes.object.parentweight[ll_thisrow]
+			ld_spaceused = ld_spaceused - ld_parentweight
+			this.id_packednodes.object.spaceused[ll_parentrow] = ld_spaceused
+			this.id_packednodes.object.qty[ll_parentrow] = ll_totqty - ll_qty
+			ll_start = 4
+			ll_lasthyphen = pos(ls_treeitemdata, "-", ll_start)
+			ls_temp = mid(ls_treeitemdata, ll_start, ll_lasthyphen - ll_start)
+			ll_icode = long(ls_temp)
+			SQL SELECT I.CustomICode , I.Name , I.ICatCode , I.ICCode , I.PackCode , IC.Name , IL.Name , P.Name INTO :ls_aliasname, :ls_itemname, :ll_icatcode, :ll_iccode, :ll_packcode, :ls_category, :ls_class, :ls_packing FROM Item I , ItemCategory IC , ItemClass IL , ItemPacking P WHERE I.ICode =:ll_icode AND I.ICatCode =IC.ICatCode AND I.ICCode =IL.ICCode AND I.PackCode =P.PackCode USING this.it_transobject;
+			if this.it_transobject.sqlcode = 0 then
+				ll_found = this.id_pending.find("icode = " + trim(string(ll_icode)) + " AND batch = '" + ls_batch + "' AND Expiry = Date('" + string(ldt_expiry, "yyyy-mm-dd") + "')", 1, this.id_pending.rowcount())
+				if ll_found > 0 and ll_found <= this.id_pending.rowcount() then
+					this.id_pending.object.qty[ll_found] = this.id_pending.object.qty[ll_found] + ll_qty
+					this.id_pending.object.selected[ll_found] = "Y"
+				else
+					ll_insrow = this.id_pending.insertrow(0)
+					this.id_pending.object.icode[ll_insrow] = ll_icode
+					this.id_pending.object.aliasname[ll_insrow] = ls_aliasname
+					this.id_pending.object.itemname[ll_insrow] = ls_itemname
+					this.id_pending.object.itemcategory[ll_insrow] = ls_category
+					this.id_pending.object.itemclass[ll_insrow] = ls_class
+					this.id_pending.object.itempacking[ll_insrow] = ls_packing
+					this.id_pending.object.qty[ll_insrow] = ll_qty
+					this.id_pending.object.batch[ll_insrow] = ls_batch
+					this.id_pending.object.expiry[ll_insrow] = ldt_expiry
+					this.id_pending.object.selected[ll_insrow] = "Y"
+				end if
+				this.id_packednodes.deleterow(ll_thisrow)
+				this.tab_retrieve.tabpage_detail.tv_packinglist.deleteitem(al_handle)
+				this.id_pending.sort()
+			end if
+		end if
+	end if
+	return 0
+
+// w_packingjob.wf_select_printformat() returns long
+	long ll_format
+	open(w_selectformat_1_2)
+	ll_format = message.doubleparm
+	if ll_format = 1 then
+		this.dw_print.dataobject = "d_packingjob_printout"
+	else
+		this.dw_print.dataobject = "d_packingjob_printout2"
+	end if
+	return 0
+
+// w_packingjob.wf_insert_packednode_entry(long al_nodeid, string as_nodename, string as_nodedata, double ad_totalspace, double ad_spaceused, long al_qty, string as_batch, datetime adt_expiry, double ad_parentweight, long al_parentid, integer ai_leaf) returns long
+	long ll_insrow
+	ll_insrow = this.id_packednodes.insertrow(0)
+	if ll_insrow > 0 then
+		this.id_packednodes.object.nodeid[ll_insrow] = al_nodeid
+		this.id_packednodes.object.nodename[ll_insrow] = as_nodename
+		this.id_packednodes.object.nodedata[ll_insrow] = as_nodedata
+		this.id_packednodes.object.totalspace[ll_insrow] = ad_totalspace
+		this.id_packednodes.object.spaceused[ll_insrow] = ad_spaceused
+		this.id_packednodes.object.qty[ll_insrow] = al_qty
+		this.id_packednodes.object.batch[ll_insrow] = as_batch
+		this.id_packednodes.object.expiry[ll_insrow] = adt_expiry
+		this.id_packednodes.object.parentweight[ll_insrow] = ad_parentweight
+		this.id_packednodes.object.parentid[ll_insrow] = al_parentid
+		this.id_packednodes.object.leaf[ll_insrow] = ai_leaf
+	end if
+	this.id_packednodes.scrolltorow(ll_insrow)
+	this.id_packednodes.setrow(ll_insrow)
+	return 0
+
+// w_packingjob.create() returns 0
+	integer icurrent
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_packjob" then
+		this.menuid = create m_packjob
+	end if
+	this.dw_print = create dw_print
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_print
+
+// w_packingjob.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_print
+
+// w_packingjob.ue_save() returns 0
+	long ll_mastercurrrow
+	long ll_invid
+	long ll_detailrows
+	long ll_usercode
+	long ll_null
+	long ll_res
+	integer li_counter
+	integer ll_salesmancode
+	boolean lb_commitflag
+	boolean lb_modify
+	boolean lb_continue
+	datetime ldt_server_datetime
+	string ls_errortext
+	string ls_date_errtext
+	dwitemstatus lds_rowstatus
+	if this.id_master.getrow() > 0 and this.id_master.object.code[1] > 0 then
+		return
+	end if
+	setnull(ll_null)
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	if this.id_pending.rowcount() > 0 then
+		ll_res = messagebox("Pack Job Validation", "Incomplete Packing Job!~r~nSome items are Still Pending and Not Packed Yet.~r~nAre you sure to save it anyway?", question!, yesno!, 2)
+		if ll_res >= 2 then
+			return
+		end if
+		return
+	end if
+	if this.id_detail.rowcount() > 0 then
+		if this.id_detail.object.doccode[this.id_detail.rowcount()] <= 0 then
+			this.id_detail.deleterow(this.id_detail.rowcount())
+		end if
+	end if
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_pending) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_packed) < 0 then
+		return
+	end if
+	setpointer(hourglass!)
+	ll_mastercurrrow = this.id_master.getrow()
+	if ll_mastercurrrow <= 0 then
+		return
+	end if
+	if this.id_master.object.code[ll_mastercurrrow] > 0 then
+		lb_modify = true
+	end if
+	open(w_salesmanpassword)
+	ll_usercode = long(message.doubleparm)
+	setfocus()
+	if ll_usercode > 0 then
+		if not wf_validateserverdatetime(ldt_server_datetime, ls_date_errtext) then
+			messagebox("Date Violation", ls_date_errtext, stopsign!)
+			return
+		end if
+		if not wf_getserverdatetime(ldt_server_datetime, ls_date_errtext) then
+			messagebox("Date Violation", ls_date_errtext, stopsign!)
+			return
+		end if
+		ll_invid = this.id_master.object.code[ll_mastercurrrow]
+		if isnull(ll_invid) then
+			wf_tabnewid("packingjob", ll_invid)
+			this.id_master.object.code[ll_mastercurrrow] = ll_invid
+		end if
+		this.id_master.setitem(ll_mastercurrrow, "date", ldt_server_datetime)
+		this.id_master.setitem(ll_mastercurrrow, "postdate", ldt_server_datetime)
+		this.id_master.setitem(ll_mastercurrrow, "usercode", ll_usercode)
+		this.id_master.setitem(ll_mastercurrrow, "postedby", ll_usercode)
+		ll_detailrows = this.id_detail.rowcount()
+		li_counter = 1
+		do while li_counter <= ll_detailrows and lb_commitflag = true
+			lds_rowstatus = this.id_detail.getitemstatus(li_counter, 0, primary!)
+			if lds_rowstatus = newmodified! then
+				this.id_detail.setitem(li_counter, "code", ll_invid)
+			end if
+			li_counter = li_counter + 1
+		loop
+		ll_detailrows = this.id_pending.rowcount()
+		li_counter = 1
+		do while li_counter <= ll_detailrows and lb_commitflag = true
+			lds_rowstatus = this.id_pending.getitemstatus(li_counter, 0, primary!)
+			if lds_rowstatus = newmodified! then
+				this.id_pending.setitem(li_counter, "code", ll_invid)
+			end if
+			li_counter = li_counter + 1
+		loop
+		if lb_modify then
+			lb_continue = wf_deletepackingjob(ll_invid)
+			ls_errortext = "Problem Occurred while deleting packing job old information.~r~n" + this.it_transobject.sqlerrtext
+			lb_commitflag = false
+		end if
+		if wf_prepare_packed_itemlist() < 0 then
+			lb_continue = false
+			ls_errortext = "Problem Occurred while preparing packing job information.~r~n" + this.it_transobject.sqlerrtext
+			lb_commitflag = false
+		end if
+		if lb_continue then
+			if this.id_master.update(true, false) > 0 then
+				if this.id_detail.update() > 0 then
+					if this.id_pending.update() > 0 then
+						if this.id_packed.update() > 0 then
+							lb_commitflag = true
+						else
+							ls_errortext = "Problem Occurred while updating packing job packed items detail information.~r~n" + this.it_transobject.sqlerrtext
+							lb_commitflag = false
+						end if
+					else
+						ls_errortext = "Problem Occurred while updating packing job pending items detail information.~r~n" + this.it_transobject.sqlerrtext
+						lb_commitflag = false
+					end if
+				else
+					ls_errortext = "Problem Occurred while updating packing job source detail information.~r~n" + this.it_transobject.sqlerrtext
+					lb_commitflag = false
+				end if
+			else
+				ls_errortext = "Problem Occurred while updating packing job information.~r~n" + this.it_transobject.sqlerrtext
+				lb_commitflag = false
+			end if
+		else
+			ls_errortext = "Problem Occurred while deletion of old packing job information.~r~n" + this.it_transobject.sqlerrtext
+			lb_commitflag = false
+		end if
+		if lb_commitflag then
+			SQL commit USING this.it_transobject;
+			messagebox("Saving", "Changes Take Effect in Database", information!)
+			this.id_master.reset()
+			this.id_detail.reset()
+			this.id_pending.reset()
+			this.id_packed.reset()
+			this.id_packednodes.reset()
+			wf_empty_packingtree()
+		else
+			SQL rollback USING this.it_transobject;
+			messagebox("Saving Problem", "Problem Occured whilde Saving Packing Job. Details Are:-~r~n" + ls_errortext, stopsign!)
+			if lb_modify = false then
+				this.id_master.object.code[ll_mastercurrrow] = ll_null
+			end if
+		end if
+	end if
+	setpointer(arrow!)
+
+// w_packingjob.ue_newform() returns 0
+	integer li_protect
+	call super::ue_newform
+	this.id_footer.reset()
+	this.id_footer.insertrow(0)
+	this.id_pending.reset()
+	this.id_packed.reset()
+	this.id_packed.insertrow(0)
+	this.id_packednodes.reset()
+	this.id_master.setfocus()
+	wf_empty_packingtree()
+	this.id_packed.visible = false
+	this.id_packednodes.visible = true
+	this.tab_retrieve.tabpage_detail.tv_packinglist.visible = true
+	wf_protectdw(this.id_master, li_protect)
+	wf_protectdw(this.id_detail, li_protect)
+	wf_protectdw(this.id_footer, li_protect)
+	wf_protectdw(this.id_packed, li_protect)
+	wf_protectdw(this.id_pending, li_protect)
+	this.im_menu.m_file.m_print.enabled = true
+
+// w_packingjob.ue_newitem() returns 0
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	call super::ue_newitem
+	this.id_detail.setcolumn("doccode")
+
+// w_packingjob.ue_detail() returns 0
+	long ll_code
+	integer li_protect
+	string ls_posted
+	call super::ue_detail
+	this.im_menu.m_file.m_delete.enabled = true
+	this.im_menu.m_file.m_first.enabled = true
+	this.im_menu.m_file.m_next.enabled = true
+	this.im_menu.m_file.m_last.enabled = true
+	this.im_menu.m_file.m_previous.enabled = true
+	this.im_menu.m_file.m_save.enabled = false
+	this.im_menu.m_file.m_print.enabled = false
+	this.im_menu.m_item.m_newitem.enabled = false
+	this.im_menu.m_item.m_deleteitem.enabled = false
+	if this.id_list.getrow() > 0 then
+		ll_code = this.id_list.object.code[this.id_list.getrow()]
+		ls_posted = this.id_list.object.posted[this.id_list.getrow()]
+	end if
+	if ls_posted = "Y" then
+		this.id_packed.visible = true
+		this.id_packednodes.visible = false
+		this.tab_retrieve.tabpage_detail.tv_packinglist.visible = false
+		li_protect = 1
+	else
+		li_protect = 0
+	end if
+	this.id_packed.retrieve(ll_code)
+	wf_protectdw(this.id_master, li_protect)
+	wf_protectdw(this.id_detail, li_protect)
+	wf_protectdw(this.id_footer, li_protect)
+	wf_protectdw(this.id_packed, li_protect)
+	wf_protectdw(this.id_pending, li_protect)
+
+// w_packingjob.open() returns long
+	m_packjob lm_menu
+	long ll_width
+	long ll_height
+	environment env
+	postevent("ue_postopen")
+	wf_setmenu(this.menuid)
+	lm_menu = this.menuid
+	lm_menu.dynamic mf_initsecurityapp(lm_menu)
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.tab_retrieve.width = ll_width * 0.99
+	this.tab_retrieve.height = ll_height * 0.83
+	this.tab_retrieve.tabpage_detail.dw_detail.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_itemsdetail.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_footer.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_detail.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_pending.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_packed.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.tv_packinglist.width = ll_width * 0.98 / 2 - 5
+	this.tab_retrieve.tabpage_detail.dw_packednodes.width = ll_width * 0.98 / 2 - 5
+	this.tab_retrieve.tabpage_detail.dw_pending.height = (this.tab_retrieve.tabpage_detail.height - (this.tab_retrieve.tabpage_detail.dw_footer.y + this.tab_retrieve.tabpage_detail.dw_footer.height)) * 0.33 - 10
+	this.tab_retrieve.tabpage_detail.dw_packed.height = this.tab_retrieve.tabpage_detail.dw_pending.height * 2
+	this.tab_retrieve.tabpage_detail.tv_packinglist.height = this.tab_retrieve.tabpage_detail.dw_pending.height * 2
+	this.tab_retrieve.tabpage_detail.dw_packed.y = this.tab_retrieve.tabpage_detail.dw_pending.y + this.tab_retrieve.tabpage_detail.dw_pending.height + 5
+	this.tab_retrieve.tabpage_detail.tv_packinglist.y = this.tab_retrieve.tabpage_detail.dw_pending.y + this.tab_retrieve.tabpage_detail.dw_pending.height + 5
+	this.tab_retrieve.tabpage_detail.dw_packednodes.y = this.tab_retrieve.tabpage_detail.tv_packinglist.y
+	this.tab_retrieve.tabpage_detail.dw_packednodes.x = this.tab_retrieve.tabpage_detail.tv_packinglist.x + this.tab_retrieve.tabpage_detail.tv_packinglist.width + 5
+	this.tab_retrieve.tabpage_detail.dw_packednodes.height = this.tab_retrieve.tabpage_detail.tv_packinglist.height
+	this.tab_retrieve.tabpage_list.gb_fliter.width = ll_width * 0.97 - this.tab_retrieve.tabpage_list.gb_sort.width
+	this.tab_retrieve.tabpage_list.r_1.width = ll_width * 0.99
+	this.tab_retrieve.tabpage_list.r_1.height = ll_height * 0.765 - this.tab_retrieve.tabpage_list.gb_sort.height
+	this.tab_retrieve.tabpage_list.dw_list.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_list.dw_list.height = ll_height * 0.75 - this.tab_retrieve.tabpage_list.dw_list.y
+	this.tab_retrieve.tabpage_detail.dw_itemslist.height = ll_height * 0.6
+	this.tab_retrieve.tabpage_detail.dw_itemslist.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width * 0.73
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_packingjob.ue_postopen() returns 0
+	call super::ue_postopen
+	this.id_pending = this.tab_retrieve.tabpage_detail.dw_pending
+	this.id_packed = this.tab_retrieve.tabpage_detail.dw_packed
+	this.id_packednodes = this.tab_retrieve.tabpage_detail.dw_packednodes
+	this.id_print = this.dw_print
+	this.id_pending.settransobject(this.it_transobject)
+	this.id_packed.settransobject(this.it_transobject)
+	this.id_packednodes.settransobject(this.it_transobject)
+	this.id_print.settransobject(this.it_transobject)
+
+// w_packingjob.ue_deleteitem() returns 0
+	call super::ue_deleteitem
+	wf_populateitem()
+
+// w_packingjob.ue_list() returns 0
+	call super::ue_list
+	SQL rollback USING this.it_transobject;
+	this.editflag = false
+	this.im_menu.m_file.m_print.enabled = true
+
+// w_packingjob.ue_print() returns 0
+	integer li_option
+	long ll_row
+	long ll_printretcode
+	long ll_invcode
+	boolean lb_listtab
+	s_datastore lstr
+	call super::ue_print
+	if this.tab_retrieve.selectedtab = 2 then
+		lb_listtab = true
+	end if
+	if this.im_menu.m_file.m_save.enabled = true and lb_listtab = false then
+		triggerevent("ue_save")
+		if wf_commitform() = false then
+			return
+		end if
+		return
+	end if
+	if lb_listtab then
+		if isnull(this.id_list.getrow()) or this.id_list.getrow() <= 0 then
+			messagebox("Rows Validation", "Kindly select any row from the list view.")
+			return
+		end if
+		ll_invcode = this.id_list.getitemnumber(this.id_list.getrow(), "code")
+		if isnull(ll_invcode) or ll_invcode <= 0 then
+			messagebox("Selection Validation", "Kindly select any row from the list view.")
+			return
+		end if
+	else
+		ll_invcode = this.id_master.getitemnumber(1, "code")
+	end if
+	this.id_print = this.dw_print
+	this.id_print.settransobject(this.it_transobject)
+	this.id_print.retrieve(ll_invcode)
+	if lb_listtab then
+		lstr.dw = this.id_print
+		lstr.s_name1 = this.id_print.dataobject
+		openwithparm(w_preview_invoices, lstr)
+		lstr = message.powerobjectparm
+		if lstr.i_closemode = -1 then
+			return
+		end if
+		return
+	end if
+	if f_stringpreferences("PromptBeforePrinting") = "Y" and printsetup() < 0 then
+		messagebox("Printer", "Printing Error")
+		this.id_print.printcancel()
+	end if
+	if this.id_print.rowcount() > 0 then
+		ll_printretcode = this.id_print.print()
+		if ll_printretcode < 0 then
+			messagebox("Printing", "Can not Print", information!)
+		end if
+		if this.im_menu.m_file.m_save.enabled = true then
+			postevent("ue_new")
+		end if
+		return
+	end if
+	messagebox("Printing Error.", "Can not Print,~r~nNo rows are retrieved", information!)

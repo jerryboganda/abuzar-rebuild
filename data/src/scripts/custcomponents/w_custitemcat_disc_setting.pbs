@@ -1,0 +1,222 @@
+// window w_custitemcat_disc_setting (custcomponents)  ancestor: w_multi_entry
+
+// w_custitemcat_disc_setting.wf_validateitem() returns integer
+	long ll_catcode
+	long ll_code
+	integer li_errcode
+	string ls_colname
+	integer li_null
+	if this.ic_category = "C" then
+		ls_colname = "icatcode"
+	else
+		ls_colname = "custcatcode"
+	end if
+	ll_code = this.id_detail.getitemnumber(this.il_currrow, ls_colname)
+	ll_catcode = this.id_detail.getitemnumber(this.il_currrow, ls_colname)
+	if vf_dwdupcode1(this.id_detail, ls_colname, string(ll_catcode), this.il_currrow) = true then
+		messagebox("Duplication Error", "Current row is duplicate")
+		li_errcode = -1
+	else
+		li_errcode = 0
+	end if
+	this.ib_itemvalidated = true
+	if li_errcode = -1 then
+		setnull(li_null)
+		this.id_detail.setcolumn(ls_colname)
+		this.id_detail.scrolltorow(this.il_currrow)
+		this.id_detail.setitem(this.il_currrow, ls_colname, li_null)
+	end if
+	return li_errcode
+
+// w_custitemcat_disc_setting.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	choose case this.ic_category
+	case "C"
+		SQL SELECT count ( *) INTO :ll_count FROM CustomerCategory WHERE CustomerCategory.name =:as_name USING this.it_transobject;
+	case "I"
+		SQL SELECT count ( *) INTO :ll_count FROM ItemCategory WHERE ItemCategory.name =:as_name USING this.it_transobject;
+	end choose
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_custitemcat_disc_setting.wf_assigndatawindowobjects(string as_masterdw, string as_detaildw, string as_listdw) returns 0
+	this.id_master.dataobject = as_masterdw
+	this.id_detail.dataobject = as_detaildw
+	this.id_list.dataobject = as_listdw
+	this.id_master.settransobject(this.it_transobject)
+	this.id_detail.settransobject(this.it_transobject)
+	this.id_list.settransobject(this.it_transobject)
+
+// w_custitemcat_disc_setting.wf_custitemcatwisediscountposition() returns 0
+	open(w_custitemcatwisediscountposition)
+
+// w_custitemcat_disc_setting.wf_populatecategories() returns 0
+	long ll_detailrows
+	long ll_count
+	long ll_lastelement
+	long ll_row
+	integer li_result
+	integer li_rtncode
+	boolean populateflag
+	s_arguements lstr_selectedcats
+	long ll_rowcount
+	long ll_rtcode
+	long ll_icode
+	long ll_gcode
+	long ll_stock
+	long ll_packunits
+	long ll_retrievecount
+	long ll_lockedcount
+	double ld_purprice
+	double ld_discperc
+	double ld_avgprice
+	double ld_saleprice
+	double ld_packsalestax
+	double ld_gstperc
+	string ls_fullcode
+	this.id_detail.setredraw(false)
+	setpointer(hourglass!)
+	ll_detailrows = this.id_detail.rowcount()
+	if ll_detailrows > 0 then
+		if not isnull(this.id_detail.object.code[1]) then
+			li_result = messagebox("Warning", "Rows in Detail Window will Lost", exclamation!, okcancel!, 2)
+			if li_result = 1 then
+				for ll_count = 1 to ll_detailrows
+					this.id_detail.deleterow(0)
+				next
+			else
+				populateflag = false
+			end if
+		else
+			this.id_detail.deleterow(0)
+		end if
+	end if
+	if populateflag = true then
+		if this.ic_category = "C" then
+			open(w_arg_itemcategories)
+		else
+			open(w_arg_custcategories)
+		end if
+		lstr_selectedcats = message.powerobjectparm
+		ll_lastelement = upperbound(lstr_selectedcats.ia_integerlist)
+		for ll_count = 1 to ll_lastelement
+			ll_row = this.id_detail.insertrow(0)
+			if this.ic_category = "C" then
+				this.id_detail.object.icatcode[ll_row] = lstr_selectedcats.ia_integerlist[ll_count]
+			else
+				this.id_detail.object.custcatcode[ll_row] = lstr_selectedcats.ia_integerlist[ll_count]
+			end if
+			this.id_detail.object.discperc[ll_row] = 0
+		next
+		if ll_lastelement > 0 then
+			messagebox("Result", string(ll_lastelement) + " Categories are populated. ")
+		end if
+	end if
+	setpointer(arrow!)
+	this.id_detail.setredraw(true)
+
+// w_custitemcat_disc_setting.create() returns 0
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_custitemcat_disc_setting" then
+		this.menuid = create m_custitemcat_disc_setting
+	end if
+
+// w_custitemcat_disc_setting.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_custitemcat_disc_setting.ue_save() returns 0
+	long ll_mastercurrrow
+	long ll_invid
+	long ll_detailrows
+	integer li_counter
+	integer ll_salesmancode
+	boolean lb_commitflag
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	setpointer(hourglass!)
+	ll_mastercurrrow = this.id_master.getrow()
+	ll_invid = this.id_master.object.code[ll_mastercurrrow]
+	if isnull(this.id_master.getitemnumber(1, "code")) then
+		messagebox("Validation", "Kindly select from the list window~r~nthan populate it with categoriees")
+		return
+	end if
+	ll_detailrows = this.id_detail.rowcount()
+	li_counter = 1
+	do while li_counter <= ll_detailrows
+		this.id_detail.setitem(li_counter, "code", ll_invid)
+		li_counter = li_counter + 1
+	loop
+	call super::ue_save
+	setpointer(arrow!)
+
+// w_custitemcat_disc_setting.ue_newform() returns 0
+	call super::ue_newform
+	this.id_master.setfocus()
+
+// w_custitemcat_disc_setting.ue_newitem() returns 0
+	long ll_rowcount
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	if this.id_detail.rowcount() > 0 and f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	this.id_detail.setcolumn(2)
+	this.id_detail.insertrow(0)
+	ll_rowcount = this.id_detail.rowcount()
+	if ll_rowcount > 1 then
+		this.id_detail.scrolltorow(ll_rowcount)
+		this.id_detail.setfocus()
+	end if
+	this.im_menu.m_file.m_save.enabled = true
+	this.ib_validatefullcode = true
+
+// w_custitemcat_disc_setting.ue_detail() returns 0
+	call super::ue_detail
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_delete.enabled = true
+	this.im_menu.m_file.m_first.enabled = true
+	this.im_menu.m_file.m_next.enabled = true
+	this.im_menu.m_file.m_last.enabled = true
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_menu.m_file.m_previous.enabled = true
+	this.im_menu.m_item.m_newitem.enabled = true
+	this.im_menu.m_item.m_deleteitem.enabled = true
+
+// w_custitemcat_disc_setting.ue_postopen() returns 0
+	call super::ue_postopen
+	this.ic_category = message.stringparm
+	choose case this.ic_category
+	case "C"
+		this.title = "Customer Category / Item Category Wise Discount Settings"
+		wf_assigndatawindowobjects("d_customercategory_header", "d_custcat_itemcat_discperc_detail", "d_customer_category_list")
+		return
+	case "I"
+		this.title = "Item Category / Customer Category Wise Discount Settings"
+		wf_assigndatawindowobjects("d_itemcategory_header", "d_itemcat_custcat_discperc_detail", "d_item_category_list")
+	end choose
+
+// w_custitemcat_disc_setting.ue_deleteitem() returns 0
+	long ll_currow
+	long ll_detailrows
+	this.ib_itemvalidated = true
+	this.id_detail.deleterow(0)
+	ll_detailrows = this.id_detail.rowcount()
+	wf_grandtotal()

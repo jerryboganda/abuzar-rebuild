@@ -1,0 +1,124 @@
+// function f_printbarcode_naqshelasani2 (barcodefunctions)  ancestor: function_object
+
+// f_printbarcode_naqshelasani2.f_printbarcode_naqshelasani2(datawindow id_master, datawindow id_detail, boolean ib_printprice) returns long
+	long ll_totalrows
+	long ll_counter
+	long ll_innercounter
+	long ll_qty
+	long ll_currrow
+	long ll_tot_label_rows
+	integer li_startcell
+	integer li_stopcell
+	integer li_temp
+	integer li_file
+	string ls_clientname
+	string ls_clientname_25_char
+	string ls_itemname
+	string ls_aliasname
+	string ls_price
+	string ls_filecontent
+	string ls_seperator
+	string ls_date
+	string ls_format
+	string ls_xpos
+	string ls_printer
+	string ls_purprice
+	string ls_supp_alias
+	string ls_packing
+	string ls_expdate
+	string ls_expiry
+	string ls_mfg
+	string ls_model
+	string ls_remarks
+	string ls_size
+	string ls_logofile
+	long ll_headerno
+	long ll_labelno
+	long ll_labelpos
+	long ll_supply_cols_per_row
+	integer li_barcodeleninprint
+	ls_logofile = getcurrentdirectory() + "\logo1.bmp"
+	ls_seperator = ";"
+	ls_date = "PD:" + trim(string(today(), "dd-mm-yy"))
+	ls_supp_alias = id_master.object.aliasname[id_master.getrow()]
+	ll_headerno = id_master.getitemnumber(id_master.getrow(), "headerno")
+	ls_clientname = f_reportheaderinfo_wrt_headerno("clientname", ll_headerno)
+	ls_clientname_25_char = upper(left(trim(f_reportheaderinfo_wrt_headerno("clientname", ll_headerno)), 25))
+	li_barcodeleninprint = f_numberpreferences("BarCodeLenInPrint")
+	ll_totalrows = id_detail.rowcount()
+	ls_printer = trim(id_master.object.barcodeprinter[1])
+	if upper(ls_printer) = "TSC TE200" then
+		ls_format = id_master.object.labelformat[1]
+		if ll_totalrows > 0 then
+			ll_counter = 1
+			tsc_openport_new("TSC TE200")
+			tsc_setup_new("106", "104.9", "5", "12", "0", "3", "0")
+			tsc_sendcommand_new("SIZE 106 mm, 104.9 mm")
+			tsc_sendcommand_new("GAP 3 mm, 0 mm")
+			tsc_sendcommand_new("DIRECTION 0,0")
+			tsc_sendcommand_new("REFERENCE 0,0")
+			tsc_sendcommand_new("OFFSET 0 mm")
+			tsc_sendcommand_new("SPEED 4")
+			tsc_sendcommand_new("DENSITY 7")
+			tsc_sendcommand_new("SET PEEL OFF")
+			tsc_sendcommand_new("SET CUTTER OFF")
+			tsc_sendcommand_new("SET TEAR ON")
+			tsc_sendcommand_new("CLS")
+			tsc_sendcommand_new("CODEPAGE 850")
+			for ll_counter = 1 to ll_totalrows
+				if len(trim(id_detail.getitemstring(ll_counter, "fullcode"))) <= li_barcodeleninprint and id_detail.getitemnumber(ll_counter, "qty") > 0.0 then
+					ll_qty = id_detail.getitemnumber(ll_counter, "qty")
+					ls_itemname = trim(id_detail.getitemstring(ll_counter, "itemname"))
+					ls_aliasname = left(trim(id_detail.getitemstring(ll_counter, "fullcode")), li_barcodeleninprint)
+					ls_model = upper(id_detail.getitemstring(ll_counter, "modeldescription"))
+					if isnull(ls_model) then
+						ls_model = ""
+					end if
+					ls_size = upper(id_detail.getitemstring(ll_counter, "sizedescription"))
+					if isnull(ls_size) then
+						ls_size = ""
+					end if
+					ls_remarks = upper(id_detail.getitemstring(ll_counter, "remarks"))
+					if isnull(ls_remarks) then
+						ls_remarks = ""
+					end if
+					ls_packing = upper(id_detail.getitemstring(ll_counter, "packingdesc"))
+					if isnull(ls_packing) then
+						ls_packing = ""
+					end if
+					ls_expiry = "Exp:" + string(id_detail.object.expiry[ll_counter], "dd/mm/yyyy")
+					ls_mfg = "Mfg:" + string(id_detail.object.manfdate[ll_counter], "dd/mm/yyyy")
+					if isnull(ls_mfg) then
+						ls_mfg = ""
+					end if
+					if isnull(ls_expiry) then
+						ls_expiry = ""
+					end if
+					if len(ls_mfg) > 0 then
+						ls_expiry = ls_mfg + space(2) + ls_expiry
+					end if
+					if ib_printprice then
+						ls_price = "Rs: " + trim(string(round(id_detail.getitemdecimal(ll_counter, "saleprice"), 2)))
+					else
+						ls_price = ""
+					end if
+					ls_packing = left(trim(id_detail.getitemstring(ll_counter, "packing")), 30)
+					tsc_clearbuffer_new()
+					tsc_sendcommand_new("PUTBMP 42,649,~"logo1.bmp~"")
+					tsc_windowsfont_new(450, 750, 50, 180, 2, 0, "Arial", left(ls_itemname, 15))
+					tsc_windowsfont_new(450, 700, 50, 180, 2, 0, "Arial", mid(ls_itemname, 16, 15))
+					tsc_windowsfont_new(450, 650, 50, 180, 2, 0, "Arial", mid(ls_itemname, 31, 15))
+					tsc_windowsfont_new(450, 600, 50, 180, 2, 0, "Arial", mid(ls_itemname, 46, 15))
+					tsc_barcode_new("765", "550", "128", "170", "1", "180", "3", "7", ls_aliasname)
+					tsc_windowsfont_new(765, 350, 40, 180, 2, 0, "Arial", "MODEL : " + ls_remarks)
+					tsc_windowsfont_new(765, 300, 40, 180, 2, 0, "Arial", "POWER : " + ls_packing)
+					tsc_windowsfont_new(765, 250, 40, 180, 2, 0, "Arial", "INPUT : " + ls_model)
+					tsc_windowsfont_new(765, 200, 40, 180, 2, 0, "Arial", "OUTPUT : " + ls_size)
+					tsc_windowsfont_new(765, 125, 50, 180, 2, 0, "Arial", ls_clientname)
+					tsc_printlabel_new("1", string(ll_qty))
+				end if
+			next
+			tsc_closeport_new()
+		end if
+	end if
+	return 0

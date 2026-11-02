@@ -1,0 +1,185 @@
+// window w_supplier_form (singleentry)  ancestor: w_single_entry
+
+// w_supplier_form.ue_downarrow(keycode key, unsignedlong keyflags) returns long
+	return ::message.returnvalue
+
+// w_supplier_form.wf_duplicateaccname(string as_accname) returns boolean
+	long ll_count
+	boolean b_flag
+	as_accname = trim(as_accname)
+	SQL SELECT count ( *) INTO :ll_count FROM Accounts WHERE Accounts.name =:as_accname USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_supplier_form.wf_setprintout() returns long
+	if gs_company = "TOTALMEDICAL" then
+		this.id_print.dataobject = "d_supplier_print_totalmedical"
+	end if
+	return 0
+
+// w_supplier_form.create() returns 0
+	call super::create
+
+// w_supplier_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_supplier_form.ue_newform() returns 0
+	call super::ue_newform
+
+// w_supplier_form.ue_save() returns 0
+	long ll_newid
+	long ll_row
+	integer li_rc
+	string ls_err
+	string ls_mod
+	datawindow ldw_detail
+	ll_row = this.id_detail.getrow()
+	ll_newid = this.id_detail.object.code[this.id_detail.getrow()]
+	if isnull(ll_newid) then
+		f_newtableid("Accounts", ll_newid)
+		this.id_detail.object.code[ll_row] = ll_newid
+		this.id_detail.object.accounts_acccode[ll_row] = ll_newid
+	end if
+	if f_validatedw(this.tab_retrieve.tabpage_detail.dw_detail) < 0 then
+		return
+	end if
+	ldw_detail = this.tab_retrieve.tabpage_detail.dw_detail
+	li_rc = ldw_detail.update(true, false)
+	if li_rc = 1 then
+		ls_mod = "accounts_acccode.Update=No "
+		ls_mod = ls_mod + "accounts_name.Update=No "
+		ls_mod = ls_mod + "accounts_SubCode.Update=No "
+		ls_mod = ls_mod + "accounts_active.Update=No "
+		ls_mod = ls_mod + "accounts_aliasname.Update=No "
+		ls_mod = ls_mod + "accounts_acccode.Key=No "
+		ls_mod = ls_mod + "DataWindow.Table.UpdateTable='supplier' "
+		ls_mod = ls_mod + "code.Key=Yes "
+		ls_mod = ls_mod + "code.Update=Yes "
+		ls_mod = ls_mod + "supplier_cp.Update=Yes "
+		ls_mod = ls_mod + "supplier_address.Update=Yes "
+		ls_mod = ls_mod + "supplier_city.Update=Yes "
+		ls_mod = ls_mod + "supplier_country.Update=Yes "
+		ls_mod = ls_mod + "supplier_phone.Update=Yes "
+		ls_mod = ls_mod + "supplier_fax.Update=Yes "
+		ls_mod = ls_mod + "supplier_email.Update=Yes "
+		ls_mod = ls_mod + "supplier_address2.Update=Yes "
+		ls_mod = ls_mod + "suppcatcode.Update=Yes "
+		ls_mod = ls_mod + "supplier_salestaxregno.Update=Yes "
+		ls_mod = ls_mod + "supplier_ntnno.Update=Yes "
+		ls_err = ldw_detail.modify(ls_mod)
+		if ls_err <> "" then
+			messagebox("DataWindow Modify Error", ls_err)
+		end if
+		li_rc = ldw_detail.update()
+		if li_rc = 1 then
+			SQL commit USING sqlca;
+			if sqlca.sqlcode <> 0 then
+				SQL rollback USING sqlca;
+				messagebox("Error on Commit", sqlca.sqlerrtext)
+			else
+				messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+				this.ib_commitok = true
+				this.im_menu.m_file.m_new.enabled = true
+				this.editflag = false
+			end if
+		else
+			messagebox("Update of supplier Table Failed", "Rolling back changes to " + "accounts  and supplier Tables")
+			SQL rollback USING sqlca;
+		end if
+	else
+		messagebox("Update of accounts Table Failed", "Rolling back changes to " + "accounts Table")
+		SQL rollback USING sqlca;
+		return
+	end if
+	ls_mod = "accounts_accCode.Update=yes "
+	ls_mod = ls_mod + "accounts_name.Update=yes "
+	ls_mod = ls_mod + "accounts_SubCode.Update=yes "
+	ls_mod = ls_mod + "accounts_active.Update=yes "
+	ls_mod = ls_mod + "accounts_aliasname.Update=yes "
+	ls_mod = ls_mod + "DataWindow.Table.UpdateTable='accounts' "
+	ls_mod = ls_mod + "Accounts_acccode.Key=yes "
+	ls_mod = ls_mod + "code.Update=no "
+	ls_mod = ls_mod + "supplier_CP.Update=no "
+	ls_mod = ls_mod + "supplier_address.Update=no "
+	ls_mod = ls_mod + "supplier_city.Update=no "
+	ls_mod = ls_mod + "supplier_country.Update=no "
+	ls_mod = ls_mod + "supplier_phone.Update=no "
+	ls_mod = ls_mod + "supplier_fax.Update=no "
+	ls_mod = ls_mod + "supplier_email.Update=no "
+	ls_mod = ls_mod + "supplier_address2.Update=no "
+	ls_mod = ls_mod + "code.Key=no "
+	ls_mod = ls_mod + "suppcatcode.Update=no "
+	ls_mod = ls_mod + "supplier_salestaxregno.Update=Yes "
+	ls_mod = ls_mod + "supplier_ntnno.Update=Yes "
+	ls_err = ldw_detail.modify(ls_mod)
+	if ls_err <> "" then
+		messagebox("DataWindow Modify Error", ls_err)
+	end if
+
+// w_supplier_form.activate() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::activate()
+	this.windowstate = maximized!
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_supplier_form.ue_detail() returns 0
+	long ll_code
+	long ll_found
+	call super::ue_detail
+	if this.id_list.rowcount() > 0 and this.id_list.getrow() > 0 and this.il_selectedrow > 0 then
+		ll_code = this.id_list.object.code[this.il_selectedrow]
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 650", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		return
+	end if
+	this.id_detail.reset()
+	messagebox("Supplier Modification!", "Your do not have enough rights for supplier data modification~r~nPlease Contact system administrator for your help", stopsign!)
+	this.tab_retrieve.selecttab(2)
+
+// w_supplier_form.ue_print() returns 0
+	long ll_code
+	boolean lb_listtab
+	s_datastore lstr
+	if this.tab_retrieve.selectedtab = 2 then
+		lb_listtab = true
+	end if
+	if lb_listtab then
+		if isnull(this.id_list.getrow()) or this.id_list.getrow() <= 0 then
+			messagebox("Rows Validation", "Kindly select any row from the list view.")
+			return
+		end if
+		ll_code = this.id_list.getitemnumber(this.id_list.getrow(), "code")
+		if isnull(ll_code) or ll_code <= 0 then
+			messagebox("Selection Validation", "Kindly select any row from the list view.")
+			return
+		end if
+		wf_setprintout()
+		this.id_print.settransobject(sqlca)
+		this.id_print.retrieve(ll_code)
+		lstr.dw = this.id_print
+		lstr.s_name1 = this.id_print.dataobject
+		openwithparm(w_preview_invoices, lstr)
+		lstr = message.powerobjectparm
+		if lstr.i_closemode = -1 then
+			return
+		end if
+		if f_stringpreferences("PromptBeforePrinting") = "Y" and printsetup() < 0 then
+			messagebox("Printer", "Printing Error")
+			this.id_print.printcancel()
+		end if
+		if this.id_print.rowcount() > 0 then
+			if this.id_print.print() < 0 then
+				messagebox("Printing", "Can not Print Invoice", information!)
+			end if
+			return
+		end if
+		messagebox("Printing Error", "Can not Print Data,~r~nNo rows are retrieved", information!)
+	end if

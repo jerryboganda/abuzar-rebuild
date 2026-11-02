@@ -1,0 +1,986 @@
+// window w_issuelicense_form (custcomponents)  ancestor: window
+
+// w_issuelicense_form.ue_close() returns 0
+	close(this)
+
+// w_issuelicense_form.wf_set_interface_adjustments() returns 0
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width * 0.95
+		ll_height = ll_win_height * 0.95
+		this.width = ll_width
+		this.height = ll_height
+		this.cb_ok.y = ll_height - this.cb_ok.height - 120
+		this.cb_cancel.y = ll_height - this.cb_cancel.height - 120
+		this.tab_main.width = ll_width * 0.98
+		this.tab_main.height = this.cb_ok.y - 50
+		this.tab_main.tabpage_medicalstore.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_medicalstore.height = this.tab_main.height - 200
+		this.tab_main.tabpage_medicalstore.dw_customer.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_medicalstore.dw_customer.height = this.tab_main.height - 200
+		this.tab_main.tabpage_qp.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_qp.height = this.tab_main.height - 200
+		this.tab_main.tabpage_qp.dw_qp.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_qp.dw_qp.height = this.tab_main.height - 200
+		this.tab_main.tabpage_liccat.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_liccat.height = this.tab_main.height - 200
+		this.tab_main.tabpage_liccat.dw_liccat.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_liccat.dw_liccat.height = this.tab_main.height - 200
+		this.tab_main.tabpage_license.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_license.height = this.tab_main.height - 200
+		this.tab_main.tabpage_license.dw_lic.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_license.dw_lic.height = this.tab_main.height - 200
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+
+// w_issuelicense_form.wf_set_tab_visibility() returns long
+	if f_rightexists(5057) = false then
+		this.tab_main.tabpage_medicalstore.visible = false
+		this.tab_main.tabpage_medicalstore.dw_customer.visible = false
+	end if
+	if f_rightexists(5058) = false then
+		this.tab_main.tabpage_qp.visible = false
+		this.tab_main.tabpage_qp.dw_qp.visible = false
+	end if
+	if f_rightexists(5059) = false then
+		this.tab_main.tabpage_liccat.visible = false
+		this.tab_main.tabpage_liccat.dw_liccat.visible = false
+	end if
+	if f_rightexists(5060) = false then
+		this.tab_main.tabpage_license.visible = false
+		this.tab_main.tabpage_license.dw_lic.visible = false
+	end if
+	return 0
+
+// w_issuelicense_form.wf_validate_qp() returns long
+	long ll_code
+	long ll_row
+	long ll_pcode
+	long ll_count
+	string ls_colname
+	string ls_accname
+	integer li_errcode
+	integer li_null
+	ls_colname = "qualifiedpersoncode"
+	ll_row = this.id_cust_qp.getrow()
+	if ll_row <= 0 then
+		return 0
+	end if
+	ll_code = this.id_cust_qp.getitemnumber(ll_row, ls_colname)
+	ll_pcode = this.id_customer.object.code[1]
+	if ll_code > 0 then
+		if vf_dwdupcode1(this.id_cust_qp, ls_colname, string(ll_code), ll_row) = true then
+			messagebox("Duplication Error", "Current row is duplicate")
+			li_errcode = -1
+			this.ib_qp_validated = false
+		else
+			li_errcode = 0
+			this.ib_qp_validated = true
+		end if
+		this.il_qp_row = ll_row
+		if li_errcode = -1 then
+			setnull(li_null)
+			this.id_cust_qp.setcolumn(ls_colname)
+			this.id_cust_qp.scrolltorow(ll_row)
+			this.id_cust_qp.setitem(ll_row, ls_colname, li_null)
+		end if
+	else
+		this.il_qp_row = ll_row
+		this.ib_qp_validated = false
+		li_errcode = 0
+	end if
+	return li_errcode
+
+// w_issuelicense_form.wf_validate_liccat() returns integer
+	long ll_code
+	long ll_row
+	string ls_colname
+	integer li_errcode
+	integer li_null
+	ls_colname = "licensecategorycode"
+	ll_row = this.id_cust_liccat.getrow()
+	if ll_row <= 0 then
+		return 0
+	end if
+	ll_code = this.id_cust_liccat.getitemnumber(ll_row, ls_colname)
+	if ll_code > 0 then
+		if vf_dwdupcode1(this.id_cust_liccat, ls_colname, string(ll_code), ll_row) = true then
+			messagebox("Duplication Error", "Current row is duplicate")
+			li_errcode = -1
+			this.ib_liccat_validated = false
+		else
+			li_errcode = 0
+			this.ib_liccat_validated = true
+		end if
+		this.il_liccat_row = ll_row
+		if li_errcode = -1 then
+			setnull(li_null)
+			this.id_cust_liccat.setcolumn(ls_colname)
+			this.id_cust_liccat.scrolltorow(ll_row)
+			this.id_cust_liccat.setitem(ll_row, ls_colname, li_null)
+		end if
+	else
+		this.il_liccat_row = ll_row
+		this.ib_liccat_validated = false
+		li_errcode = 0
+	end if
+	return li_errcode
+
+// w_issuelicense_form.wf_connect() returns long
+	SQL start USING this.it_transobject;
+	return this.it_transobject.sqlcode
+
+// w_issuelicense_form.wf_tabnewid(string as_tablename, long al_newid) returns long
+	long ll_rtcode
+	SQL SELECT TABMAXKEY INTO :al_newid FROM _TABMAXKEY WITH ( UPDLOCK HOLDLOCK ) WHERE _TABMAXKEY.TABName =:as_tablename USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		al_newid = al_newid + 1
+		SQL update dbo._tabmaxkey SET TABMAXKEY =:al_newid WHERE _TABMAXKEY.TABName =:as_tablename USING this.it_transobject;
+		if this.it_transobject.sqlcode < 0 then
+			ll_rtcode = this.it_transobject.sqlcode
+			al_newid = 0
+		end if
+	else
+		ll_rtcode = this.it_transobject.sqlcode
+		al_newid = 0
+	end if
+	return ll_rtcode
+
+// w_issuelicense_form.wf_deleteemptyrows() returns long
+	long ll_counter
+	if this.id_cust_qp.rowcount() > 0 and isnull(this.id_cust_qp.object.qualifiedpersoncode[this.id_cust_qp.rowcount()]) then
+		this.id_cust_qp.deleterow(this.id_cust_qp.rowcount())
+	end if
+	if this.id_cust_liccat.rowcount() > 0 and isnull(this.id_cust_liccat.object.licensecategorycode[this.id_cust_liccat.rowcount()]) then
+		this.id_cust_liccat.deleterow(this.id_cust_liccat.rowcount())
+	end if
+	return 0
+
+// w_issuelicense_form.wf_validate_qualifiedperson() returns long
+	long ll_code
+	long ll_qualifiedpersoncode
+	long ll_counter
+	long ll_retcode
+	long ll_count
+	string ls_accname
+	ll_code = this.id_customer.object.code[1]
+	if this.id_cust_qp.rowcount() > 0 then
+		for ll_counter = 1 to this.id_cust_qp.rowcount()
+			ll_qualifiedpersoncode = this.id_cust_qp.object.qualifiedpersoncode[ll_counter]
+			if ll_code > 0 then
+				SQL SELECT ISNULL ( COUNT ( *) , 0 ) , AC =( SELECT A.Name FROM Accounts A WHERE A.AccCode =MAX ( CustQualPerson.CustCode ) ) INTO :ll_count, :ls_accname FROM DBO.CustQualPerson WHERE QualifiedPersonCode =:ll_qualifiedpersoncode AND CustCode <> :ll_code USING this.it_transobject;
+			else
+				SQL SELECT ISNULL ( COUNT ( *) , 0 ) , AC =( SELECT A.Name FROM Accounts A WHERE A.AccCode =MAX ( CustQualPerson.CustCode ) ) INTO :ll_count, :ls_accname FROM DBO.CustQualPerson WHERE QualifiedPersonCode =:ll_qualifiedpersoncode USING this.it_transobject;
+			end if
+			if this.it_transobject.sqlcode = 0 then
+				if ll_count > 0 then
+					messagebox("Qualified Person Validation", "You can not associate this qualified person.~r~nThis Qualified Person is already associated.~r~nEither change its association or enter some othe person.~r~nAssociated A/c Name = " + ls_accname)
+					this.tab_main.selecttab(2)
+					this.id_cust_qp.setrow(ll_counter)
+					this.id_cust_qp.setfocus()
+					ll_retcode = 1
+					return ll_retcode
+				else
+					ll_retcode = 0
+				end if
+			else
+				ll_retcode = 1
+			end if
+		next
+	end if
+	return ll_retcode
+
+// w_issuelicense_form.wf_prepare_log() returns long
+	long ll_row
+	long ll_code
+	long ll_insrow
+	string ls_colname
+	string ls_oldvalue
+	string ls_newvalue
+	dwitemstatus ldw_status
+	this.id_log.settransobject(this.it_transobject)
+	this.id_log.reset()
+	ll_code = this.id_customer.object.code[1]
+	if ll_code > 0 then
+		ls_colname = "customer_address"
+		ldw_status = this.id_customer.getitemstatus(1, ls_colname, primary!)
+		if ldw_status = datamodified! then
+			ll_insrow = this.id_log.insertrow(0)
+			this.id_log.object.code[ll_insrow] = ll_code
+			this.id_log.object.columnname[ll_insrow] = ls_colname
+			ls_oldvalue = this.id_customer.getitemstring(1, ls_colname, primary!, true)
+			ls_newvalue = this.id_customer.getitemstring(1, ls_colname, primary!, false)
+			this.id_log.object.lastvalue[ll_insrow] = ls_oldvalue
+			this.id_log.object.newvalue[ll_insrow] = ls_newvalue
+			this.id_log.object.usercode[ll_insrow] = gl_usercode
+		end if
+		ls_colname = "qualifiedpersoncode"
+		if this.id_cust_qp.rowcount() > 0 then
+			for ll_row = 1 to this.id_cust_qp.rowcount()
+				ldw_status = this.id_cust_qp.getitemstatus(1, ls_colname, primary!)
+				if ldw_status = datamodified! then
+					ls_oldvalue = trim(string(this.id_cust_qp.getitemnumber(1, ls_colname, primary!, true)))
+					ls_newvalue = trim(string(this.id_cust_qp.getitemnumber(1, ls_colname, primary!, false)))
+					if ls_oldvalue <> ls_newvalue then
+						ll_insrow = this.id_log.insertrow(0)
+						this.id_log.object.code[ll_insrow] = ll_code
+						this.id_log.object.columnname[ll_insrow] = ls_colname
+						this.id_log.object.lastvalue[ll_insrow] = ls_oldvalue
+						this.id_log.object.newvalue[ll_insrow] = ls_newvalue
+						this.id_log.object.usercode[ll_insrow] = gl_usercode
+					end if
+				end if
+			next
+			ll_row = 1
+			for ll_row = 1 to this.id_cust_qp.deletedcount()
+				ldw_status = this.id_cust_qp.getitemstatus(1, ls_colname, delete!)
+				if ldw_status = datamodified! or ldw_status = notmodified! then
+					ll_insrow = this.id_log.insertrow(0)
+					this.id_log.object.code[ll_insrow] = ll_code
+					this.id_log.object.columnname[ll_insrow] = ls_colname
+					ls_oldvalue = trim(string(this.id_cust_qp.getitemnumber(1, ls_colname, delete!, true)))
+					ls_newvalue = trim(string(this.id_cust_qp.getitemnumber(1, ls_colname, delete!, false)))
+					this.id_log.object.lastvalue[ll_insrow] = ls_oldvalue
+					this.id_log.object.newvalue[ll_insrow] = ls_newvalue
+					this.id_log.object.usercode[ll_insrow] = gl_usercode
+				end if
+			next
+		end if
+	end if
+	return 0
+
+// w_issuelicense_form.create() returns 0
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.tab_main = create tab_main
+	this.control = {this.cb_cancel, this.cb_ok, this.tab_main}
+
+// w_issuelicense_form.destroy() returns 0
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.tab_main
+
+// w_issuelicense_form.open() returns long
+	long ll_retcode
+	date ld_date
+	this.id_log = create datastore
+	ld_date = today()
+	this.li_code = message.doubleparm
+	this.it_transobject = create u_transaction
+	if wf_connect() <> 0 then
+		messagebox("Connection Failure", "Unable to connect to the database", stopsign!)
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	wf_set_interface_adjustments()
+	this.id_customer = this.tab_main.tabpage_medicalstore.dw_customer
+	this.id_customer.settransobject(this.it_transobject)
+	if this.li_code > 0 then
+		this.id_customer.retrieve(this.li_code)
+	else
+		this.id_customer.insertrow(0)
+	end if
+	ll_retcode = this.id_customer.getchild("customer_subareacode", this.idc_subarea)
+	if ll_retcode = -1 then
+		messagebox("Sub Area Retrieval Error", "Can not Retrieve Sub Area List")
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	this.idc_subarea.settransobject(this.it_transobject)
+	this.idc_subarea.retrieve()
+	this.idc_subarea.setfilter("areacode=1")
+	this.idc_subarea.filter()
+	this.id_cust_qp = this.tab_main.tabpage_qp.dw_qp
+	this.id_cust_qp.settransobject(this.it_transobject)
+	if this.li_code > 0 then
+		this.id_cust_qp.retrieve(this.li_code)
+	else
+		this.id_cust_qp.insertrow(0)
+	end if
+	this.id_cust_liccat = this.tab_main.tabpage_liccat.dw_liccat
+	this.id_cust_liccat.settransobject(this.it_transobject)
+	if this.li_code > 0 then
+		this.id_cust_liccat.retrieve(this.li_code)
+	else
+		this.id_cust_liccat.insertrow(0)
+	end if
+	this.id_license = this.tab_main.tabpage_license.dw_lic
+	this.id_license.settransobject(this.it_transobject)
+	this.id_license.object.validupto.initial = string(relativedate(ld_date, 365))
+	if this.li_code > 0 then
+		this.id_license.retrieve(this.li_code)
+	end if
+	this.id_log.settransobject(this.it_transobject)
+	this.id_log.dataobject = "d_customer_log"
+	wf_set_tab_visibility()
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.postevent("ue_close")
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	string ls_aliasname
+	long ll_newid
+	long ll_row
+	long ll_counter
+	long ll_liccode
+	boolean lb_commitok
+	integer li_rc
+	string ls_err
+	string ls_mod
+	datawindow ldw_detail
+	ll_row = parent.id_customer.getrow()
+	parent.wf_deleteemptyrows()
+	if f_validatedw(parent.id_customer) < 0 then
+		parent.tab_main.selecttab(1)
+		return ::message.returnvalue
+	end if
+	if f_validatedw(parent.id_cust_qp) < 0 then
+		parent.tab_main.selecttab(2)
+		return ::message.returnvalue
+	end if
+	if f_validatedw(parent.id_cust_liccat) < 0 then
+		parent.tab_main.selecttab(3)
+		return ::message.returnvalue
+	end if
+	if f_validatedw(parent.id_license) < 0 then
+		parent.tab_main.selecttab(4)
+		return ::message.returnvalue
+	end if
+	if parent.wf_validate_qualifiedperson() <> 0 then
+		return ::message.returnvalue
+	end if
+	ll_newid = parent.id_customer.object.code[parent.id_customer.getrow()]
+	parent.wf_prepare_log()
+	if isnull(ll_newid) then
+		parent.wf_tabnewid("Accounts", ll_newid)
+		parent.id_customer.object.code[ll_row] = ll_newid
+		parent.id_customer.object.accounts_acccode[ll_row] = ll_newid
+	end if
+	ls_aliasname = parent.id_customer.getitemstring(1, "accounts_aliasname")
+	if isnull(ls_aliasname) then
+		parent.id_customer.setitem(parent.id_customer.getrow(), "accounts_aliasname", string(ll_newid))
+	end if
+	if isnull(parent.id_customer.getitemstring(1, "customer_membershipid")) then
+		parent.id_customer.setitem(parent.id_customer.getrow(), "customer_membershipid", string(ll_newid))
+	end if
+	parent.id_customer.setitem(parent.id_customer.getrow(), "accounts_name", upper(parent.id_customer.object.customer_fullname[1] + "(" + trim(string(ll_newid)) + ")"))
+	for ll_counter = 1 to parent.id_cust_qp.rowcount()
+		if isnull(parent.id_cust_qp.object.code[ll_counter]) then
+			parent.id_cust_qp.object.code[ll_counter] = ll_newid
+		end if
+	next
+	for ll_counter = 1 to parent.id_cust_liccat.rowcount()
+		if isnull(parent.id_cust_liccat.object.code[ll_counter]) then
+			parent.id_cust_liccat.object.code[ll_counter] = ll_newid
+		end if
+	next
+	for ll_counter = 1 to parent.id_license.rowcount()
+		ll_liccode = parent.id_license.object.licensecode[ll_counter]
+		if isnull(ll_liccode) or ll_liccode < 0 then
+			parent.wf_tabnewid("License", ll_liccode)
+			parent.id_license.object.licensecode[ll_counter] = ll_liccode
+			parent.id_license.object.usercode[ll_counter] = gl_usercode
+			parent.id_license.object.date[ll_counter] = today()
+			parent.id_license.object.custcode[ll_counter] = ll_newid
+		end if
+	next
+	ldw_detail = parent.id_customer
+	li_rc = ldw_detail.update(true, false)
+	if li_rc = 1 then
+		ls_mod = "accounts_acccode.Update=No "
+		ls_mod = ls_mod + "accounts_name.Update=No "
+		ls_mod = ls_mod + "accounts_SubCode.Update=No "
+		ls_mod = ls_mod + "accounts_openingdate.Update=No "
+		ls_mod = ls_mod + "accounts_aliasname.Update=No "
+		ls_mod = ls_mod + "accounts_active.Update=No "
+		ls_mod = ls_mod + "accounts_alertcode.Update=No "
+		ls_mod = ls_mod + "accounts_acccode.Key=No "
+		ls_mod = ls_mod + "DataWindow.Table.UpdateTable='customer' "
+		ls_mod = ls_mod + "code.Key=Yes "
+		ls_mod = ls_mod + "code.Update=Yes "
+		ls_mod = ls_mod + "customer_CP.Update=Yes "
+		ls_mod = ls_mod + "customer_CP2.Update=Yes "
+		ls_mod = ls_mod + "customer_address1.Update=Yes "
+		ls_mod = ls_mod + "customer_address2.Update=Yes "
+		ls_mod = ls_mod + "customer_city.Update=Yes "
+		ls_mod = ls_mod + "customer_postcode.Update=Yes "
+		ls_mod = ls_mod + "customer_countycode.Update=Yes "
+		ls_mod = ls_mod + "customer_country.Update=Yes "
+		ls_mod = ls_mod + "customer_phone.Update=Yes "
+		ls_mod = ls_mod + "customer_fax.Update=Yes "
+		ls_mod = ls_mod + "customer_email.Update=Yes "
+		ls_mod = ls_mod + "customer_areacode.Update=Yes "
+		ls_mod = ls_mod + "customer_crlimit.Update=Yes "
+		ls_mod = ls_mod + "customer_dayslimit.Update=Yes "
+		ls_mod = ls_mod + "customer_custcatcode.Update=Yes "
+		ls_mod = ls_mod + "customer_licenceno.Update=Yes "
+		ls_mod = ls_mod + "customer_licenceexpiry.Update=Yes "
+		ls_mod = ls_mod + "customer_SalesTaxRegNo.Update=Yes "
+		ls_mod = ls_mod + "customer_DefaultGST.Update=Yes "
+		ls_mod = ls_mod + "customer_InvDiscperc.Update=Yes "
+		ls_mod = ls_mod + "customer_DefaultSalePrice.Update=Yes "
+		ls_mod = ls_mod + "customer_DefaultItemDiscperc.Update=Yes "
+		ls_mod = ls_mod + "customer_subareacode.Update=Yes "
+		ls_mod = ls_mod + "customer_BankName.Update=Yes "
+		ls_mod = ls_mod + "customer_BankAdd.Update=Yes "
+		ls_mod = ls_mod + "customer_messagecode.Update=Yes "
+		ls_mod = ls_mod + "customer_salesmancode.Update=Yes "
+		ls_mod = ls_mod + "customer_specialinstructions.Update=Yes "
+		ls_mod = ls_mod + "customer_allowsalebelowavgprice.Update=Yes "
+		ls_mod = ls_mod + "customer_schedforposting.Update=Yes "
+		ls_mod = ls_mod + "customer_designation.Update=Yes "
+		ls_mod = ls_mod + "customer_collectionpolicycode.Update=Yes "
+		ls_mod = ls_mod + "customer_associatedquotationcode.Update=Yes "
+		ls_mod = ls_mod + "customer_poassociatedquotationcode.Update=Yes "
+		ls_mod = ls_mod + "customer_saletypecode.Update=Yes "
+		ls_mod = ls_mod + "customer_gender.Update=Yes "
+		ls_mod = ls_mod + "customer_dob.Update=Yes "
+		ls_mod = ls_mod + "customer_nic.Update=Yes "
+		ls_mod = ls_mod + "customer_occupation.Update=Yes "
+		ls_mod = ls_mod + "customer_eduqualf.Update=Yes "
+		ls_mod = ls_mod + "customer_refno.Update=Yes "
+		ls_mod = ls_mod + "customer_considerinpo.Update=Yes "
+		ls_mod = ls_mod + "customer_membershipid.Update=Yes "
+		ls_mod = ls_mod + "customer_ntnno.Update=Yes "
+		ls_mod = ls_mod + "customer_printwaranty.Update=Yes "
+		ls_mod = ls_mod + "customer_gccode.Update=Yes "
+		ls_mod = ls_mod + "customer_associatedservicetemplatecode.Update=Yes "
+		ls_mod = ls_mod + "customer_printoutstandingserviceresult.Update=Yes "
+		ls_mod = ls_mod + "customer_printamtonserviceinv.Update=Yes "
+		ls_mod = ls_mod + "customer_printbalance.Update=Yes "
+		ls_mod = ls_mod + "customer_block.Update=Yes "
+		ls_mod = ls_mod + "customer_charges.Update=Yes "
+		ls_mod = ls_mod + "customer_fullname.Update=Yes "
+		ls_mod = ls_mod + "customer_address.Update=Yes "
+		ls_mod = ls_mod + "customer_owner.Update=Yes "
+		ls_mod = ls_mod + "customer_issuedlicenseno.Update=Yes "
+		ls_err = ldw_detail.modify(ls_mod)
+		if ls_err <> "" then
+			messagebox("DataWindow Modify Error", ls_err)
+		end if
+		li_rc = ldw_detail.update()
+		if li_rc = 1 then
+			if parent.id_cust_qp.update() = 1 then
+				if parent.id_cust_liccat.update() = 1 then
+					if parent.id_license.update() = 1 then
+						if parent.id_log.update() = 1 then
+							SQL commit USING parent.it_transobject;
+							messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+							lb_commitok = true
+							close(parent)
+							return ::message.returnvalue
+						else
+							messagebox("Log Saving Problem", "Unable to update Log Record" + "~r~nDetails Are:- " + parent.it_transobject.sqlerrtext)
+							SQL rollback USING parent.it_transobject;
+						end if
+					else
+						messagebox("License Saving Problem", "Unable to update Issued License(s)" + "~r~nDetails Are:- " + parent.it_transobject.sqlerrtext)
+						SQL rollback USING parent.it_transobject;
+					end if
+				else
+					messagebox("License Category Saving Problem", "Unable to update License Category" + "~r~nDetails Are:- " + parent.it_transobject.sqlerrtext)
+					SQL rollback USING parent.it_transobject;
+				end if
+			else
+				messagebox("Qualified Person Person Saving Problem", "Unable to update Qualified Person Person" + "~r~nDetails Are:- " + parent.it_transobject.sqlerrtext)
+				SQL rollback USING parent.it_transobject;
+			end if
+		else
+			messagebox("Update of Customer Table Failed", "Rolling back changes to " + "accounts  and Customer Tables")
+			SQL rollback USING parent.it_transobject;
+		end if
+	else
+		messagebox("Update of accounts Table Failed", "Rolling back changes to " + "accounts Table")
+		SQL rollback USING parent.it_transobject;
+		return ::message.returnvalue
+	end if
+	ls_mod = "accounts_accCode.Update=yes "
+	ls_mod = ls_mod + "accounts_name.Update=yes "
+	ls_mod = ls_mod + "accounts_SubCode.Update=yes "
+	ls_mod = ls_mod + "accounts_openingdate.Update=yes "
+	ls_mod = ls_mod + "accounts_alertcode.Update=yes "
+	ls_mod = ls_mod + "DataWindow.Table.UpdateTable='accounts' "
+	ls_mod = ls_mod + "accounts_aliasname.Update=yes "
+	ls_mod = ls_mod + "accounts_active.Update=yes "
+	ls_mod = ls_mod + "Accounts_acccode.Key=yes "
+	ls_mod = ls_mod + "code.Update=no "
+	ls_mod = ls_mod + "customer_CP.Update=no "
+	ls_mod = ls_mod + "customer_CP2.Update=no "
+	ls_mod = ls_mod + "customer_address1.Update=no "
+	ls_mod = ls_mod + "customer_address2.Update=no "
+	ls_mod = ls_mod + "customer_city.Update=no "
+	ls_mod = ls_mod + "customer_postcode.Update=no "
+	ls_mod = ls_mod + "customer_countycode.Update=no "
+	ls_mod = ls_mod + "customer_country.Update=no "
+	ls_mod = ls_mod + "customer_phone.Update=no "
+	ls_mod = ls_mod + "customer_fax.Update=no "
+	ls_mod = ls_mod + "customer_email.Update=no "
+	ls_mod = ls_mod + "customer_areacode.Update=no "
+	ls_mod = ls_mod + "customer_crlimit.Update=no "
+	ls_mod = ls_mod + "customer_dayslimit.Update=no "
+	ls_mod = ls_mod + "customer_custcatcode.Update=no "
+	ls_mod = ls_mod + "customer_licenceno.Update=no "
+	ls_mod = ls_mod + "customer_licenceexpiry.Update=no "
+	ls_mod = ls_mod + "code.Key=no "
+	ls_mod = ls_mod + "customer_SalesTaxRegNo.Update=No "
+	ls_mod = ls_mod + "customer_DefaultGST.Update=No "
+	ls_mod = ls_mod + "customer_InvDiscperc.Update=No "
+	ls_mod = ls_mod + "customer_DefaultSalePrice.Update=No "
+	ls_mod = ls_mod + "customer_DefaultItemDiscPerc.Update=No "
+	ls_mod = ls_mod + "customer_subareacode.Update=No "
+	ls_mod = ls_mod + "customer_BankName.Update=No "
+	ls_mod = ls_mod + "customer_BankAdd.Update=No "
+	ls_mod = ls_mod + "customer_messagecode.Update=No "
+	ls_mod = ls_mod + "customer_salesmancode.Update=No "
+	ls_mod = ls_mod + "customer_specialinstructions.Update=No "
+	ls_mod = ls_mod + "customer_allowsalebelowavgprice.Update=No "
+	ls_mod = ls_mod + "customer_schedforposting.Update=No "
+	ls_mod = ls_mod + "customer_designation.Update=No "
+	ls_mod = ls_mod + "customer_collectionpolicycode.Update=No "
+	ls_mod = ls_mod + "customer_associatedquotationcode.Update=No "
+	ls_mod = ls_mod + "customer_poassociatedquotationcode.Update=No "
+	ls_mod = ls_mod + "customer_saletypecode.Update=No "
+	ls_mod = ls_mod + "customer_gender.Update=No "
+	ls_mod = ls_mod + "customer_dob.Update=No "
+	ls_mod = ls_mod + "customer_nic.Update=No "
+	ls_mod = ls_mod + "customer_occupation.Update=No "
+	ls_mod = ls_mod + "customer_eduqualf.Update=No "
+	ls_mod = ls_mod + "customer_refno.Update=No "
+	ls_mod = ls_mod + "customer_considerinpo.Update=No "
+	ls_mod = ls_mod + "customer_MemberShipId.Update=No "
+	ls_mod = ls_mod + "customer_ntnno.Update=No "
+	ls_mod = ls_mod + "customer_printwaranty.Update=No "
+	ls_mod = ls_mod + "customer_gccode.Update=No "
+	ls_mod = ls_mod + "customer_associatedservicetemplatecode.Update=No "
+	ls_mod = ls_mod + "customer_printoutstandingserviceresult.Update=No "
+	ls_mod = ls_mod + "customer_printamtonserviceinv.Update=No "
+	ls_mod = ls_mod + "customer_printbalance.Update=No "
+	ls_mod = ls_mod + "customer_block.Update=No "
+	ls_mod = ls_mod + "customer_charges.Update=No "
+	ls_mod = ls_mod + "customer_fullname.Update=No "
+	ls_mod = ls_mod + "customer_address.Update=No "
+	ls_mod = ls_mod + "customer_owner.Update=No "
+	ls_mod = ls_mod + "customer_issuedlicenseno.Update=No "
+	ls_err = ldw_detail.modify(ls_mod)
+	if ls_err <> "" then
+		messagebox("DataWindow Modify Error", ls_err)
+	end if
+	return ::message.returnvalue
+
+// tab_main.create() returns 0
+	this.tabpage_medicalstore = create tabpage_medicalstore
+	this.tabpage_qp = create tabpage_qp
+	this.tabpage_liccat = create tabpage_liccat
+	this.tabpage_license = create tabpage_license
+	this.control = {this.tabpage_medicalstore, this.tabpage_qp, this.tabpage_liccat, this.tabpage_license}
+
+// tab_main.destroy() returns 0
+	destroy this.tabpage_medicalstore
+	destroy this.tabpage_qp
+	destroy this.tabpage_liccat
+	destroy this.tabpage_license
+
+// tab_main.selectionchanged(integer oldindex, integer newindex) returns long
+	if newindex = 1 then
+		parent.id_customer.setfocus()
+	elseif newindex = 2 then
+		parent.id_cust_qp.setfocus()
+	elseif newindex = 3 then
+		parent.id_cust_liccat.setfocus()
+	elseif newindex = 4 then
+		parent.id_license.setfocus()
+	end if
+	return ::message.returnvalue
+
+// tabpage_medicalstore.create() returns 0
+	this.dw_customer = create dw_customer
+	this.control = {this.dw_customer}
+
+// tabpage_medicalstore.destroy() returns 0
+	destroy this.dw_customer
+
+// dw_customer.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_customer.itemchanged(long row, dwobject dwo, string data) returns long
+	long ll_null
+	choose case dwo.name
+	case "customer_fullname"
+		if data = "" or isnull(data) or len(data) = 0 then
+			messagebox("Full Name Validation", "Please enter fulll customer name")
+			return 1
+		end if
+	case "customer_issuedlicenseno"
+		if data = "" or isnull(data) or len(data) = 0 then
+			return 1
+		end if
+	case "customer_areacode"
+		setnull(ll_null)
+		parent.parent.parent.id_customer.setitem(1, "customer_subareacode", ll_null)
+		if parent.parent.parent.idc_subarea.setfilter("areacode=" + data) = 1 then
+			parent.parent.parent.idc_subarea.setredraw(false)
+			parent.parent.parent.idc_subarea.filter()
+			parent.parent.parent.idc_subarea.setredraw(true)
+		else
+			messagebox("Sub Area Filter", "Unable to filter Sub Area Column")
+			return 1
+		end if
+		return
+	end choose
+	return 0
+
+// dw_customer.itemerror(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "customer_fullname"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for Name in current row")
+		end if
+	case "customer_issuedlicenseno"
+		if data = "" or isnull(data) then
+			messagebox("License No. Validation", "Value required for License No. in current row")
+		end if
+	case "customer_owner"
+		if data = "" or isnull(data) then
+			messagebox("Owner Name Validation", "Value required for Owner Name in current row")
+		end if
+	case "customer_nic"
+		if data = "" or isnull(data) then
+			messagebox("Owner CNIC No. Validation", "Value required for Owner CNIC No. in current row")
+		end if
+	case "accounts_name"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for Name in current row")
+		end if
+	case "customer_address"
+		if data = "" or isnull(data) then
+			messagebox("Address Validation", "Value required for Address in current row")
+		end if
+	case "customer_areacode"
+		if data = "" or isnull(data) then
+			messagebox("Area Name Validation", "Value required for Area Name in current row")
+		end if
+	case "customer_city"
+		if data = "" or isnull(data) then
+			messagebox("City Validation", "Value required for City in current row")
+		end if
+	case "customer_Phone"
+		if data = "" or isnull(data) then
+			messagebox("Phone Validation", "Value required for Phone in current row")
+		end if
+	case "customer_email"
+		if data = "" or isnull(data) then
+			messagebox("Email Validation", "Value required for Email in current row")
+		end if
+	case "customer_licenceno"
+		if data = "" or isnull(data) then
+			messagebox("LicenceNo Validation", "Value required for LicenceNO in current row")
+		end if
+	case "customer_licenceexpiry"
+		if data = "" or isnull(data) then
+			messagebox("LicenceExpiry Validation", "Value required for LicenceExpiry in current row")
+		end if
+	case "customer_cp"
+		if data = "" or isnull(data) then
+			messagebox("Contact Person Validation", "Value required for Contact Person in current row")
+		end if
+	case "customer_country"
+	case "customer_fax"
+		if data = "" or isnull(data) then
+			messagebox("Fax Validation", "Value required for Fax in current row")
+		end if
+	end choose
+	return 1
+
+// tabpage_qp.create() returns 0
+	this.dw_qp = create dw_qp
+	this.control = {this.dw_qp}
+
+// tabpage_qp.destroy() returns 0
+	destroy this.dw_qp
+
+// dw_qp.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ll_rowcount
+	if keyflags = 2 then
+		if key = keyi! then
+			if getrow() > 0 and rowcount() > 0 and parent.parent.parent.wf_validate_qp() = -1 then
+				return ::message.returnvalue
+			end if
+			if parent.parent.parent.id_cust_qp.rowcount() > 0 and f_validatedw(parent.parent.parent.id_cust_qp) < 0 then
+				return ::message.returnvalue
+			end if
+			ll_rowcount = parent.parent.parent.id_cust_qp.insertrow(0)
+			if ll_rowcount > 1 then
+				parent.parent.parent.id_cust_qp.scrolltorow(ll_rowcount)
+				parent.parent.parent.id_cust_qp.setfocus()
+			end if
+		end if
+		if key = keyd! then
+			if parent.parent.parent.id_cust_qp.rowcount() > 0 then
+				parent.parent.parent.id_cust_qp.deleterow(0)
+			end if
+			ll_rowcount = parent.parent.parent.id_cust_qp.rowcount()
+			if ll_rowcount > 1 then
+				parent.parent.parent.id_cust_qp.scrolltorow(ll_rowcount)
+				parent.parent.parent.id_cust_qp.setfocus()
+			end if
+		end if
+	end if
+	return ::message.returnvalue
+
+// dw_qp.ue_enterkey() returns long
+	long ll_rowcount
+	if getrow() = rowcount() and getcolumn() = integer(this.object.datawindow.column.count) then
+		if parent.parent.parent.id_cust_qp.rowcount() > 0 and f_validatedw(parent.parent.parent.id_cust_qp) < 0 then
+			return ::message.returnvalue
+		end if
+		if getrow() > 0 and parent.parent.parent.wf_validate_qp() = -1 then
+			return 1
+		end if
+		ll_rowcount = parent.parent.parent.id_cust_qp.insertrow(0)
+		if ll_rowcount > 1 then
+			parent.parent.parent.id_cust_qp.scrolltorow(ll_rowcount)
+			parent.parent.parent.id_cust_qp.setfocus()
+		end if
+		return 1
+	end if
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_qp.itemerror(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "qualifiedpersoncode"
+		if data = "" or isnull(data) then
+			messagebox("Qualified Person Name Validation", "Value required for Qualified Person Name in current row")
+		end if
+	end choose
+	return 1
+
+// dw_qp.itemfocuschanged(long row, dwobject dwo) returns long
+	if row > 0 and parent.parent.parent.wf_validate_qp() = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_qp.itemchanged(long row, dwobject dwo, string data) returns long
+	integer li_errcode
+	choose case dwo.name
+	case "qualifiedpersoncode"
+		parent.parent.parent.ib_qp_validated = false
+		parent.parent.parent.il_qp_row = row
+		li_errcode = 0
+		return li_errcode
+	end choose
+	return li_errcode
+
+// dw_qp.editchanged(long row, dwobject dwo, string data) returns long
+	return ::message.returnvalue
+
+// tabpage_liccat.create() returns 0
+	this.dw_liccat = create dw_liccat
+	this.control = {this.dw_liccat}
+
+// tabpage_liccat.destroy() returns 0
+	destroy this.dw_liccat
+
+// dw_liccat.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ll_rowcount
+	if keyflags = 2 then
+		if key = keyi! then
+			if getrow() > 0 and rowcount() > 0 and parent.parent.parent.wf_validate_liccat() = -1 then
+				return ::message.returnvalue
+			end if
+			if parent.parent.parent.id_cust_liccat.rowcount() > 0 and f_validatedw(parent.parent.parent.id_cust_liccat) < 0 then
+				return ::message.returnvalue
+			end if
+			ll_rowcount = parent.parent.parent.id_cust_liccat.insertrow(0)
+			if ll_rowcount > 1 then
+				parent.parent.parent.id_cust_liccat.scrolltorow(ll_rowcount)
+				parent.parent.parent.id_cust_liccat.setfocus()
+			end if
+		end if
+		if key = keyd! then
+			if parent.parent.parent.id_cust_liccat.rowcount() > 0 then
+				parent.parent.parent.id_cust_liccat.deleterow(0)
+			end if
+			ll_rowcount = parent.parent.parent.id_cust_liccat.rowcount()
+			if ll_rowcount > 1 then
+				parent.parent.parent.id_cust_liccat.scrolltorow(ll_rowcount)
+				parent.parent.parent.id_cust_liccat.setfocus()
+			end if
+		end if
+	end if
+	return ::message.returnvalue
+
+// dw_liccat.ue_enterkey() returns long
+	long ll_rowcount
+	if getrow() = rowcount() and getcolumn() = integer(this.object.datawindow.column.count) then
+		if parent.parent.parent.id_cust_liccat.rowcount() > 0 and f_validatedw(parent.parent.parent.id_cust_liccat) < 0 then
+			return ::message.returnvalue
+		end if
+		if getrow() > 0 and parent.parent.parent.wf_validate_liccat() = -1 then
+			return 1
+		end if
+		ll_rowcount = parent.parent.parent.id_cust_liccat.insertrow(0)
+		if ll_rowcount > 1 then
+			parent.parent.parent.id_cust_liccat.scrolltorow(ll_rowcount)
+			parent.parent.parent.id_cust_liccat.setfocus()
+		end if
+		return 1
+	end if
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_liccat.itemchanged(long row, dwobject dwo, string data) returns long
+	integer li_errcode
+	choose case dwo.name
+	case "licensecategorycode"
+		parent.parent.parent.ib_liccat_validated = false
+		parent.parent.parent.il_liccat_row = row
+		li_errcode = 0
+		return li_errcode
+	end choose
+	return li_errcode
+
+// dw_liccat.itemerror(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "licensecategorycode"
+		if data = "" or isnull(data) then
+			messagebox("License Category Validation", "Value required for License Category in current row")
+		end if
+	end choose
+	return 1
+
+// dw_liccat.itemfocuschanged(long row, dwobject dwo) returns long
+	if row > 0 and parent.parent.parent.wf_validate_liccat() = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_liccat.getfocus() returns long
+	setcolumn("licensecategorycode")
+	setfocus()
+	return ::message.returnvalue
+
+// tabpage_license.create() returns 0
+	this.dw_lic = create dw_lic
+	this.control = {this.dw_lic}
+
+// tabpage_license.destroy() returns 0
+	destroy this.dw_lic
+
+// dw_lic.ue_enterkey() returns long
+	long ll_rowcount
+	if getrow() = rowcount() and getcolumn() = integer(this.object.datawindow.column.count) then
+		if rowcount() > 0 and f_validatedw(this) < 0 then
+			return ::message.returnvalue
+		end if
+		ll_rowcount = insertrow(0)
+		if ll_rowcount > 1 then
+			scrolltorow(ll_rowcount)
+			setcolumn("validfrom")
+			setfocus()
+		end if
+		return 1
+	end if
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_lic.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ll_rowcount
+	if keyflags = 2 then
+		if key = keyi! then
+			if rowcount() > 0 and f_validatedw(this) < 0 then
+				return ::message.returnvalue
+			end if
+			ll_rowcount = insertrow(0)
+			if ll_rowcount > 1 then
+				scrolltorow(ll_rowcount)
+				setfocus()
+			end if
+		end if
+		if key = keyd! then
+			if rowcount() > 0 then
+				deleterow(0)
+			end if
+			ll_rowcount = rowcount()
+			if ll_rowcount > 1 then
+				scrolltorow(ll_rowcount)
+				setfocus()
+			end if
+		end if
+	end if
+	return ::message.returnvalue
+
+// dw_lic.itemerror(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "validfrom"
+		if data = "" or isnull(data) then
+			messagebox("License Start Date Validation", "Value required for License Start Date in current row")
+		elseif datetime(data) > this.object.validupto[row] then
+			messagebox("License Start Date Validation", "License Start Date must be lesss than End Date in current row")
+		end if
+	case "validupto"
+		if data = "" or isnull(data) then
+			messagebox("License End Date Validation", "Value required for License End Date in current row")
+		elseif datetime(data) < this.object.validfrom[row] then
+			messagebox("License End Date Validation", "License End Date can not be lesss than Start Date in current row")
+		end if
+	end choose
+	return 1
+
+// dw_lic.itemchanged(long row, dwobject dwo, string data) returns long
+	date ld_dt
+	time lt_tm
+	choose case dwo.name
+	case "validfrom"
+		ld_dt = date(left(data, 10))
+		lt_tm = time(mid(data, 12, 20))
+		if data = "" or isnull(data) then
+			return 1
+		elseif datetime(ld_dt, lt_tm) > this.object.validupto[row] then
+			return 1
+		else
+			return 0
+		end if
+	case "validupto"
+		ld_dt = date(left(data, 10))
+		lt_tm = time(mid(data, 12, 20))
+		if data = "" or isnull(data) then
+			return 1
+		elseif datetime(ld_dt, lt_tm) < this.object.validupto[row] then
+			return 1
+		else
+			return 0
+		end if
+	case else
+		return 0
+	end choose
+	return 0
+
+// dw_lic.getfocus() returns long
+	setcolumn("validfrom")
+	setfocus()
+	return ::message.returnvalue

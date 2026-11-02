@@ -1,0 +1,70 @@
+// window w_selectformat_sale_or_all (reportformat)  ancestor: window
+
+// w_selectformat_sale_or_all.ue_close(integer ai_status) returns 0
+	if this.rb_format1.checked = true then
+		closewithreturn(this, 1)
+		return
+	end if
+	closewithreturn(this, 2)
+
+// w_selectformat_sale_or_all.create() returns 0
+	this.cb_ok = create cb_ok
+	this.rb_format2 = create rb_format2
+	this.rb_format1 = create rb_format1
+	this.gb_format = create gb_format
+	this.control = {this.cb_ok, this.rb_format2, this.rb_format1, this.gb_format}
+
+// w_selectformat_sale_or_all.destroy() returns 0
+	destroy this.cb_ok
+	destroy this.rb_format2
+	destroy this.rb_format1
+	destroy this.gb_format
+
+// w_selectformat_sale_or_all.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	this.is_group = message.stringparm
+	if this.is_group = "M" then
+		this.rb_format1.text = "Manufacturers having Sales"
+		this.rb_format2.text = "All Manufacturers"
+	elseif this.is_group = "C" then
+		this.rb_format1.text = "Categories having Sales"
+		this.rb_format2.text = "All Categories"
+	elseif this.is_group = "L" then
+		this.rb_format1.text = "Classes having Sales"
+		this.rb_format2.text = "All Classes"
+	elseif this.is_group = "P" then
+		this.rb_format1.text = "Packing having Sales"
+		this.rb_format2.text = "All Packings"
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// cb_ok.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	parent.post event ue_close(1)
+	return ::message.returnvalue

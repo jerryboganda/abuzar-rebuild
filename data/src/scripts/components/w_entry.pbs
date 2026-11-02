@@ -1,0 +1,608 @@
+// window w_entry (components)  ancestor: w_entry_primitives
+
+// w_entry.ue_getfocus() returns 0
+	this.tab_retrieve.tabpage_list.sle_find.setfocus()
+
+// w_entry.wf_confirm_changes() returns 0
+	integer li_yesno
+	if this.editflag = true then
+		li_yesno = messagebox("Confirm Changes", "Ok to loose any unsaved changes that you've typed", question!, yesno!, 2)
+		this.editflag = false
+	end if
+	this.i_editmode = 2
+	if li_yesno = 2 then
+		if this.tab_retrieve.tabpage_detail.dw_detail.update() > 0 then
+			SQL commit USING sqlca;
+			return
+		end if
+		SQL rollback USING sqlca;
+		messagebox("Error", "changes Cancel", exclamation!, ok!, 1)
+	end if
+
+// w_entry.wf_populate_ddlb(datawindow dwcontrol) returns 0
+	integer li_column_count
+	integer li_counter
+	string ls_column_name
+	string ls_columntype
+	this.tab_retrieve.tabpage_list.ddlb_filter_column.reset()
+	this.tab_retrieve.tabpage_list.ddlb_sort.reset()
+	li_column_count = integer(dwcontrol.object.datawindow.column.count)
+	for li_counter = li_column_count to li_counter step -1
+		ls_column_name = dwcontrol.describe("#" + string(li_counter) + ".Name")
+		this.tab_retrieve.tabpage_list.ddlb_sort.additem(ls_column_name)
+		this.tab_retrieve.tabpage_list.ddlb_filter_column.additem(ls_column_name)
+	next
+	this.tab_retrieve.tabpage_list.ddlb_sort.text = ls_column_name
+	ls_columntype = this.id_dwcontrol.describe("#1.ColType")
+	if left(ls_columntype, 4) = "char" then
+		this.ii_type = 1
+	elseif left(ls_columntype, 4) = "date" then
+		this.ii_type = 3
+	else
+		this.ii_type = 2
+	end if
+	this.ii_colindex = 1
+	this.tab_retrieve.tabpage_list.rb_ascending.checked = true
+	wf_sortdw(this.tab_retrieve.tabpage_list.ddlb_sort.text, this.is_sortsequence)
+
+// w_entry.wf_sortdw(string a_column_name, char a_order) returns 0
+	this.id_dwcontrol.setredraw(false)
+	this.id_dwcontrol.selectrow(0, false)
+	this.id_dwcontrol.setredraw(true)
+	this.il_selectedrow = 0
+	this.is_filter = ""
+	this.id_dwcontrol.setsort(a_column_name + " " + a_order)
+	this.id_dwcontrol.sort()
+	this.tab_retrieve.tabpage_list.sle_find.text = ""
+	this.tab_retrieve.tabpage_list.sle_find.setfocus()
+
+// w_entry.wf_filter() returns 0
+	string ls_quote
+	string ls_column_name
+	string ls_match_data
+	string ls_filter
+	string ls_columntype
+	ls_columntype = this.id_dwcontrol.describe(this.tab_retrieve.tabpage_list.ddlb_filter_column.text + ".ColType")
+	if left(ls_columntype, 4) = "char" then
+		ls_quote = "'"
+		ls_column_name = "upper(" + trim(this.tab_retrieve.tabpage_list.ddlb_filter_column.text) + ")"
+		ls_match_data = upper(this.tab_retrieve.tabpage_list.ddlb_data.text)
+	elseif left(ls_columntype, 4) <> "date" then
+		ls_quote = ""
+		ls_column_name = trim(this.tab_retrieve.tabpage_list.ddlb_filter_column.text)
+		ls_match_data = this.tab_retrieve.tabpage_list.ddlb_data.text
+	end if
+	ls_filter = ls_column_name + this.tab_retrieve.tabpage_list.ddlb_op.text + ls_quote + ls_match_data + ls_quote
+	this.tab_retrieve.tabpage_list.dw_list.setfilter(ls_filter)
+	this.tab_retrieve.tabpage_list.dw_list.filter()
+
+// w_entry.wf_setmenu(menu a_menu) returns 0
+	this.im_menu = a_menu
+
+// w_entry.wf_selectunselectrow(long row) returns 0
+	this.tab_retrieve.tabpage_detail.enabled = true
+	this.im_menu.m_file.m_retrieve.enabled = true
+	this.il_selectedrow = row
+	if this.il_selectedrow <> 0 then
+		this.tab_retrieve.tabpage_list.dw_list.selectrow(0, false)
+		this.id_dwcontrol.selectrow(this.il_selectedrow, true)
+		if this.ii_type = 1 then
+			this.tab_retrieve.tabpage_list.sle_find.text = this.id_dwcontrol.getitemstring(this.il_selectedrow, this.ii_colindex)
+		else
+			this.tab_retrieve.tabpage_list.sle_find.text = string(this.id_dwcontrol.getitemnumber(this.il_selectedrow, this.ii_colindex))
+			this.is_filter = this.tab_retrieve.tabpage_list.sle_find.text
+		end if
+	end if
+	this.tab_retrieve.tabpage_list.sle_find.setfocus()
+
+// w_entry.create() returns 0
+	integer icurrent
+	call super::create
+	if this.menuname = "m_single_entry" then
+		this.menuid = create m_single_entry
+	end if
+	this.tab_retrieve = create tab_retrieve
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.tab_retrieve
+
+// w_entry.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.tab_retrieve
+
+// w_entry.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	wf_setmenu(this.menuid)
+	this.im_menu.m_file.m_save.enabled = false
+	this.im_menu.m_file.m_delete.enabled = false
+	this.im_menu.m_file.m_previous.enabled = false
+	this.im_menu.m_file.m_retrieve.text = "De&tail"
+	this.tab_retrieve.tabpage_detail.dw_detail.settransobject(sqlca)
+	this.tab_retrieve.tabpage_list.dw_list.settransobject(sqlca)
+	this.it_transobject = sqlca
+	this.id_dwcontrol = this.tab_retrieve.tabpage_list.dw_list
+	wf_populate_ddlb(this.id_dwcontrol)
+	wf_retrieve()
+	event ue_first()
+	return ::message.returnvalue
+
+// w_entry.ue_detail() returns 0
+	long li_customer_code
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_delete.enabled = true
+	this.im_menu.m_file.m_first.enabled = true
+	this.im_menu.m_file.m_next.enabled = true
+	this.im_menu.m_file.m_last.enabled = true
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_menu.m_file.m_previous.enabled = false
+	this.im_menu.m_file.m_retrieve.text = "Lis&t"
+	this.i_editmode = 2
+	this.i_retrievemode = 2
+	li_customer_code = this.id_dwcontrol.object.code[this.id_dwcontrol.getselectedrow(0)]
+	this.id_dwcontrol = this.tab_retrieve.tabpage_detail.dw_detail
+	wf_retrieve(li_customer_code)
+	this.id_dwcontrol = this.tab_retrieve.tabpage_list.dw_list
+	this.tab_retrieve.tabpage_detail.dw_detail.setfocus()
+
+// w_entry.ue_list() returns 0
+	call super::ue_list
+	wf_confirm_changes()
+	this.im_menu.m_file.m_new.enabled = true
+	this.im_menu.m_file.m_save.enabled = false
+	this.im_menu.m_file.m_delete.enabled = false
+	this.im_menu.m_file.m_first.enabled = true
+	this.im_menu.m_file.m_next.enabled = true
+	this.im_menu.m_file.m_last.enabled = true
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_menu.m_file.m_previous.enabled = false
+	this.im_menu.m_file.m_retrieve.text = "De&tail"
+	this.i_retrievemode = 1
+	this.tab_retrieve.tabpage_list.sle_find.setfocus()
+
+// w_entry.ue_new() returns 0
+	call super::ue_new
+	this.i_editmode = 1
+	this.tab_retrieve.selectedtab = 2
+	this.tab_retrieve.tabpage_detail.dw_detail.setfocus()
+
+// w_entry.ue_retrieve() returns 0
+	call super::ue_retrieve
+	if this.i_retrievemode = 1 then
+		this.i_editmode = 2
+		this.tab_retrieve.selectedtab = 2
+		return
+	end if
+	this.tab_retrieve.selectedtab = 1
+
+// w_entry.ue_save() returns 0
+	if f_validatedw(this.tab_retrieve.tabpage_detail.dw_detail) < 0 then
+		return
+	end if
+	this.im_menu.m_file.m_new.enabled = true
+	this.editflag = false
+	this.id_dwcontrol = this.tab_retrieve.tabpage_detail.dw_detail
+	if wf_save() > 0 then
+		this.im_menu.m_file.m_save.enabled = false
+	end if
+	this.id_dwcontrol = this.tab_retrieve.tabpage_list.dw_list
+
+// w_entry.ue_first() returns 0
+	long li_customer_code
+	call super::ue_first
+	li_customer_code = wf_first()
+	wf_selectunselectrow(1)
+	this.im_menu.m_file.m_next.enabled = true
+	this.im_menu.m_file.m_previous.enabled = false
+	if this.i_retrievemode <> 1 then
+		wf_confirm_changes()
+		this.id_dwcontrol = this.tab_retrieve.tabpage_detail.dw_detail
+		wf_retrieve(li_customer_code)
+		this.id_dwcontrol = this.tab_retrieve.tabpage_list.dw_list
+	end if
+
+// w_entry.ue_last() returns 0
+	long li_customer_code
+	call super::ue_last
+	li_customer_code = wf_last()
+	wf_selectunselectrow(this.id_dwcontrol.rowcount())
+	this.im_menu.m_file.m_next.enabled = false
+	this.im_menu.m_file.m_previous.enabled = true
+	if this.i_retrievemode <> 1 then
+		wf_confirm_changes()
+		this.id_dwcontrol = this.tab_retrieve.tabpage_detail.dw_detail
+		wf_retrieve(li_customer_code)
+		this.id_dwcontrol = this.tab_retrieve.tabpage_list.dw_list
+	end if
+
+// w_entry.ue_next() returns 0
+	long li_customer_code
+	call super::ue_next
+	li_customer_code = wf_next()
+	wf_selectunselectrow(this.id_dwcontrol.getrow())
+	if this.id_dwcontrol.getselectedrow(0) = this.id_dwcontrol.rowcount() then
+		this.im_menu.m_file.m_next.enabled = false
+	end if
+	this.im_menu.m_file.m_previous.enabled = true
+	if this.i_retrievemode <> 1 then
+		wf_confirm_changes()
+		this.id_dwcontrol = this.tab_retrieve.tabpage_detail.dw_detail
+		wf_retrieve(li_customer_code)
+		this.id_dwcontrol = this.tab_retrieve.tabpage_list.dw_list
+	end if
+
+// w_entry.ue_previous() returns 0
+	long li_customer_code
+	call super::ue_previous
+	li_customer_code = wf_previous()
+	wf_selectunselectrow(this.id_dwcontrol.getrow())
+	if this.id_dwcontrol.getselectedrow(0) = 1 then
+		this.im_menu.m_file.m_previous.enabled = false
+	end if
+	this.im_menu.m_file.m_next.enabled = true
+	if this.i_retrievemode <> 1 then
+		wf_confirm_changes()
+		this.id_dwcontrol = this.tab_retrieve.tabpage_detail.dw_detail
+		wf_retrieve(li_customer_code)
+		this.id_dwcontrol = this.tab_retrieve.tabpage_list.dw_list
+	end if
+
+// w_entry.ue_newform() returns 0
+	call super::ue_newform
+	wf_confirm_changes()
+	this.id_dwcontrol = this.tab_retrieve.tabpage_detail.dw_detail
+	if wf_new() > 0 then
+		this.i_editmode = 1
+		this.i_retrievemode = 2
+		this.im_menu.m_file.m_save.enabled = true
+		this.im_menu.m_file.m_new.enabled = false
+		this.im_menu.m_file.m_delete.enabled = false
+		this.im_menu.m_file.m_delete.enabled = false
+		this.im_menu.m_file.m_first.enabled = false
+		this.im_menu.m_file.m_next.enabled = false
+		this.im_menu.m_file.m_previous.enabled = false
+		this.im_menu.m_file.m_last.enabled = false
+		this.im_menu.m_file.m_print.enabled = false
+		this.im_menu.m_file.m_retrieve.enabled = true
+		this.im_menu.m_file.m_retrieve.text = "Lis&t"
+		this.tab_retrieve.tabpage_detail.enabled = true
+	end if
+	this.id_dwcontrol.reset()
+	this.id_dwcontrol.insertrow(0)
+	this.id_dwcontrol = this.tab_retrieve.tabpage_list.dw_list
+
+// w_entry.ue_exit() returns 0
+	call super::ue_exit
+
+// tab_retrieve.selectionchanged(integer oldindex, integer newindex) returns long
+	if newindex = 2 and parent.i_editmode = 2 then
+		parent.event ue_detail()
+	elseif newindex = 2 and parent.i_editmode = 1 then
+		parent.event ue_newform()
+	else
+		parent.event ue_list()
+	end if
+	return ::message.returnvalue
+
+// tab_retrieve.create() returns 0
+	this.tabpage_list = create tabpage_list
+	this.tabpage_detail = create tabpage_detail
+	this.control = {this.tabpage_list, this.tabpage_detail}
+
+// tab_retrieve.destroy() returns 0
+	destroy this.tabpage_list
+	destroy this.tabpage_detail
+
+// tabpage_list.create() returns 0
+	this.gb_sort = create gb_sort
+	this.gb_fliter = create gb_fliter
+	this.ddlb_sort = create ddlb_sort
+	this.rb_ascending = create rb_ascending
+	this.rb_descending = create rb_descending
+	this.ddlb_filter_column = create ddlb_filter_column
+	this.ddlb_op = create ddlb_op
+	this.ddlb_data = create ddlb_data
+	this.cb_filter = create cb_filter
+	this.dw_list = create dw_list
+	this.r_1 = create r_1
+	this.sle_find = create sle_find
+	this.st_find = create st_find
+	this.control = {this.gb_sort, this.gb_fliter, this.ddlb_sort, this.rb_ascending, this.rb_descending, this.ddlb_filter_column, this.ddlb_op, this.ddlb_data, this.cb_filter, this.dw_list, this.r_1, this.sle_find, this.st_find}
+
+// tabpage_list.destroy() returns 0
+	destroy this.gb_sort
+	destroy this.gb_fliter
+	destroy this.ddlb_sort
+	destroy this.rb_ascending
+	destroy this.rb_descending
+	destroy this.ddlb_filter_column
+	destroy this.ddlb_op
+	destroy this.ddlb_data
+	destroy this.cb_filter
+	destroy this.dw_list
+	destroy this.r_1
+	destroy this.sle_find
+	destroy this.st_find
+
+// ddlb_sort.selectionchanged(integer index) returns long
+	string ls_columntype
+	integer temp1
+	integer temp2
+	parent.parent.parent.ii_colindex = integer(parent.parent.parent.id_dwcontrol.describe(parent.ddlb_sort.text + ".ID"))
+	ls_columntype = parent.parent.parent.id_dwcontrol.describe("#" + string(parent.parent.parent.ii_colindex) + ".ColType")
+	if left(ls_columntype, 4) = "char" then
+		parent.parent.parent.ii_type = 1
+	elseif left(ls_columntype, 4) = "date" then
+		parent.parent.parent.ii_type = 3
+	else
+		parent.parent.parent.ii_type = 2
+	end if
+	parent.parent.parent.im_menu.m_file.m_next.enabled = false
+	parent.parent.parent.im_menu.m_file.m_previous.enabled = false
+	parent.parent.parent.im_menu.m_file.m_retrieve.enabled = false
+	parent.parent.parent.tab_retrieve.tabpage_detail.enabled = false
+	parent.parent.parent.wf_sortdw(parent.ddlb_sort.text, parent.parent.parent.is_sortsequence)
+	return ::message.returnvalue
+
+// rb_ascending.clicked() returns long
+	parent.parent.parent.tab_retrieve.tabpage_detail.enabled = false
+	parent.parent.parent.im_menu.m_file.m_retrieve.enabled = false
+	parent.parent.parent.im_menu.m_file.m_next.enabled = false
+	parent.parent.parent.im_menu.m_file.m_previous.enabled = false
+	parent.parent.parent.is_sortsequence = "A"
+	parent.parent.parent.tab_retrieve.tabpage_list.rb_descending.checked = false
+	parent.parent.parent.wf_sortdw(parent.ddlb_sort.text, parent.parent.parent.is_sortsequence)
+	return ::message.returnvalue
+
+// rb_descending.clicked() returns long
+	parent.parent.parent.tab_retrieve.tabpage_detail.enabled = false
+	parent.parent.parent.im_menu.m_file.m_retrieve.enabled = false
+	parent.parent.parent.im_menu.m_file.m_next.enabled = false
+	parent.parent.parent.im_menu.m_file.m_previous.enabled = false
+	parent.parent.parent.is_sortsequence = "D"
+	parent.parent.parent.tab_retrieve.tabpage_list.rb_ascending.checked = false
+	parent.parent.parent.wf_sortdw(parent.ddlb_sort.text, parent.parent.parent.is_sortsequence)
+	return ::message.returnvalue
+
+// ddlb_filter_column.selectionchanged(integer index) returns long
+	dwbuffer le_buffertype
+	integer li_buffers
+	integer li_items
+	integer li_index
+	long ll_row_counter
+	long ll_rows_buffer
+	string ls_column_name
+	string ls_col_type
+	string ls_insert_item
+	string ls_buffertype
+	setpointer(hourglass!)
+	if parent.parent.parent.tab_retrieve.tabpage_list.cb_filter.text = "Un&filter" then
+		parent.parent.parent.tab_retrieve.tabpage_list.cb_filter.triggerevent(clicked!)
+	end if
+	ls_column_name = parent.parent.parent.tab_retrieve.tabpage_list.ddlb_filter_column.text
+	parent.ddlb_data.reset()
+	ls_col_type = parent.parent.parent.id_dwcontrol.describe(ls_column_name + ".ColType")
+	le_buffertype = primary!
+	ll_rows_buffer = parent.parent.parent.id_dwcontrol.rowcount()
+	for li_buffers = 1 to li_buffers
+		for ll_row_counter = 1 to ll_rows_buffer
+			if left(ls_col_type, 4) = "char" then
+				ls_insert_item = trim(parent.parent.parent.id_dwcontrol.getitemstring(ll_row_counter, ls_column_name, le_buffertype, false))
+			elseif left(ls_col_type, 4) = "date" then
+				ls_insert_item = string(parent.parent.parent.id_dwcontrol.getitemdate(ll_row_counter, ls_column_name, le_buffertype, false), "d/m/yy")
+			else
+				ls_insert_item = string(parent.parent.parent.id_dwcontrol.getitemnumber(ll_row_counter, ls_column_name, le_buffertype, false))
+			end if
+			parent.parent.parent.tab_retrieve.tabpage_list.ddlb_data.insertitem(ls_insert_item, 1)
+		next
+		le_buffertype = filter!
+		ll_rows_buffer = parent.parent.parent.id_dwcontrol.filteredcount()
+	next
+	parent.ddlb_data.sorted = true
+	parent.ddlb_data.visible = true
+	li_items = parent.parent.parent.tab_retrieve.tabpage_list.ddlb_data.totalitems()
+	li_index = 1
+	do while li_index <= li_items - 1
+		if parent.parent.parent.tab_retrieve.tabpage_list.ddlb_data.text(li_index) = parent.parent.parent.tab_retrieve.tabpage_list.ddlb_data.text(li_index + 1) then
+			li_items = parent.parent.parent.tab_retrieve.tabpage_list.ddlb_data.deleteitem(li_index)
+		else
+			li_index = li_index + 1
+		end if
+	loop
+	return ::message.returnvalue
+
+// ddlb_op.selectionchanged(integer index) returns long
+	if parent.parent.parent.tab_retrieve.tabpage_list.cb_filter.text = "Un&filter" then
+		parent.cb_filter.triggerevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// ddlb_data.selectionchanged(integer index) returns long
+	if parent.cb_filter.text = "Un&filter" then
+		parent.parent.parent.wf_filter()
+	end if
+	return ::message.returnvalue
+
+// cb_filter.clicked() returns long
+	string filt
+	string quote
+	string ls_column_name
+	string ls_match_data
+	parent.parent.parent.tab_retrieve.tabpage_detail.enabled = false
+	parent.parent.parent.im_menu.m_file.m_retrieve.enabled = false
+	parent.parent.parent.im_menu.m_file.m_next.enabled = false
+	parent.parent.parent.im_menu.m_file.m_previous.enabled = false
+	if parent.cb_filter.text = "Un&filter" then
+		parent.cb_filter.text = "&Filter"
+		filt = ""
+		parent.parent.parent.tab_retrieve.tabpage_list.dw_list.setfilter(filt)
+		parent.parent.parent.id_dwcontrol.filter()
+	else
+		parent.cb_filter.text = "Un&filter"
+		parent.parent.parent.wf_filter()
+	end if
+	return ::message.returnvalue
+
+// dw_list.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked(xpos, ypos, row, dwo)
+	if row = 1 then
+		parent.parent.parent.im_menu.m_file.m_previous.enabled = false
+		parent.parent.parent.im_menu.m_file.m_next.enabled = true
+	elseif row = parent.parent.parent.id_dwcontrol.rowcount() then
+		parent.parent.parent.im_menu.m_file.m_next.enabled = false
+		parent.parent.parent.im_menu.m_file.m_previous.enabled = true
+	else
+		parent.parent.parent.im_menu.m_file.m_next.enabled = true
+		parent.parent.parent.im_menu.m_file.m_previous.enabled = true
+	end if
+	parent.parent.parent.wf_selectunselectrow(row)
+	parent.postevent("ue_getfoucs")
+	return ::message.returnvalue
+
+// dw_list.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::doubleclicked(xpos, ypos, row, dwo)
+	parent.parent.parent.tab_retrieve.selectedtab = 2
+	return ::message.returnvalue
+
+// dw_list.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	parent.postevent("ue_getfoucs")
+	return ::message.returnvalue
+
+// dw_list.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	parent.postevent("ue_getfoucs")
+	return ::message.returnvalue
+
+// sle_find.keypressed(keycode key, unsignedlong keyflags) returns long
+	integer li_movement
+	long ll_row
+	string sl_columnname
+	string ls_character
+	long ll_found_row
+	integer li_num_chars
+	string str
+	if keydown(keyuparrow!) then
+		li_movement = -1
+	elseif keydown(keydownarrow!) then
+		li_movement = 1
+	elseif keydown(keyenter!) and len(parent.parent.parent.is_filter) > 0 then
+		parent.parent.parent.i_editmode = 2
+		parent.parent.parent.tab_retrieve.selectedtab = 2
+		return ::message.returnvalue
+	end if
+	if li_movement <> 0 then
+		parent.parent.parent.id_dwcontrol.setredraw(false)
+		ll_row = parent.parent.parent.id_dwcontrol.getselectedrow(0)
+		ll_row = ll_row + li_movement
+		if ll_row < 1 or ll_row > parent.parent.parent.id_dwcontrol.rowcount() then
+			beep(1)
+			return ::message.returnvalue
+		end if
+		parent.parent.parent.tab_retrieve.tabpage_detail.enabled = true
+		parent.parent.parent.im_menu.m_file.m_retrieve.enabled = true
+		parent.parent.parent.id_dwcontrol.selectrow(0, false)
+		parent.parent.parent.id_dwcontrol.selectrow(ll_row, true)
+		parent.parent.parent.id_dwcontrol.scrolltorow(ll_row)
+		if parent.parent.parent.ii_type = 1 then
+			parent.sle_find.text = parent.parent.parent.id_dwcontrol.getitemstring(ll_row, parent.parent.parent.ii_colindex)
+			parent.parent.parent.is_filter = parent.sle_find.text
+		else
+			parent.parent.parent.is_filter = string(parent.parent.parent.id_dwcontrol.getitemnumber(ll_row, parent.parent.parent.ii_colindex))
+			parent.sle_find.text = trim(parent.parent.parent.is_filter)
+		end if
+		parent.parent.parent.il_selectedrow = ll_row
+		parent.parent.parent.id_dwcontrol.setredraw(true)
+		parent.sle_find.selecttext(len(parent.sle_find.text) + 1, 0)
+		::message.processed = true
+		return ::message.returnvalue
+	end if
+	ls_character = char(::message.wordparm)
+	if lower(ls_character) < "a" and lower(ls_character) > "z" and (ls_character < "0" and ls_character > "9") and ls_character <> char(8) then
+		::message.processed = true
+		return ::message.returnvalue
+	end if
+	if ::message.wordparm = 8 then
+		li_num_chars = len(parent.parent.parent.is_filter)
+		if li_num_chars > 0 then
+			parent.parent.parent.is_filter = left(parent.parent.parent.is_filter, li_num_chars - 1)
+		end if
+	else
+		parent.parent.parent.is_filter = parent.parent.parent.is_filter + ls_character
+		str = parent.parent.parent.is_filter
+	end if
+	if len(parent.parent.parent.is_filter) > 0 then
+		sl_columnname = parent.parent.parent.id_dwcontrol.describe("#" + string(parent.parent.parent.ii_colindex) + ".name")
+		if parent.parent.parent.is_sortsequence = "A" then
+			if parent.parent.parent.ii_type = 1 then
+				ll_found_row = parent.parent.parent.id_dwcontrol.find("Lower(" + sl_columnname + ") >='" + lower(parent.parent.parent.is_filter) + "'", 1, 99999)
+			else
+				ll_found_row = parent.parent.parent.id_dwcontrol.find(sl_columnname + " >=Integer(~"" + parent.parent.parent.is_filter + "~")", 1, 99999)
+			end if
+		elseif parent.parent.parent.ii_type = 1 then
+			ll_found_row = parent.parent.parent.id_dwcontrol.find("'" + lower(parent.parent.parent.is_filter) + "' >= " + "Lower(" + sl_columnname + ")", 1, 99999)
+			ll_found_row = ll_found_row - 1
+		else
+			ll_found_row = parent.parent.parent.id_dwcontrol.find(sl_columnname + " <=Integer(~"" + parent.parent.parent.is_filter + "~")", 1, 99999)
+		end if
+		if ll_found_row > 0 then
+			parent.parent.parent.tab_retrieve.tabpage_detail.enabled = true
+			parent.parent.parent.im_menu.m_file.m_retrieve.enabled = true
+			parent.parent.parent.id_dwcontrol.setredraw(false)
+			parent.parent.parent.id_dwcontrol.selectrow(0, false)
+			parent.parent.parent.id_dwcontrol.scrolltorow(ll_found_row)
+			parent.parent.parent.id_dwcontrol.selectrow(ll_found_row, true)
+			parent.parent.parent.id_dwcontrol.setredraw(true)
+		else
+			li_num_chars = len(parent.parent.parent.is_filter)
+			if li_num_chars > 0 then
+				parent.parent.parent.is_filter = left(parent.parent.parent.is_filter, li_num_chars - 1)
+			end if
+			::message.processed = true
+		end if
+	else
+		parent.parent.parent.id_dwcontrol.selectrow(0, false)
+		parent.parent.parent.tab_retrieve.tabpage_detail.enabled = false
+		parent.parent.parent.im_menu.m_file.m_retrieve.enabled = false
+		parent.parent.parent.im_menu.m_file.m_next.enabled = false
+		parent.parent.parent.im_menu.m_file.m_previous.enabled = false
+	end if
+	parent.parent.parent.il_selectedrow = ll_found_row
+	return ::message.returnvalue
+
+// tabpage_detail.create() returns 0
+	this.dw_detail = create dw_detail
+	this.control = {this.dw_detail}
+
+// tabpage_detail.destroy() returns 0
+	destroy this.dw_detail
+
+// dw_detail.editchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::editchanged(row, dwo, data)
+	if parent.parent.parent.editflag = false then
+		parent.parent.parent.editflag = true
+		parent.parent.parent.im_menu.m_file.m_save.enabled = true
+	end if
+	return ::message.returnvalue
+
+// dw_detail.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	if parent.parent.parent.i_editmode = 2 then
+		parent.parent.parent.tab_retrieve.tabpage_detail.dw_detail.object.code.tabsequence = 0
+	else
+		parent.parent.parent.tab_retrieve.tabpage_detail.dw_detail.object.code.tabsequence = 10
+	end if
+	return ::message.returnvalue
+
+// dw_detail.losefocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::losefocus()
+	return ::message.returnvalue

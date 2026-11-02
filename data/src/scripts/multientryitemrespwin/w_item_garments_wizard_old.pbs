@@ -1,0 +1,547 @@
+// window w_item_garments_wizard_old (multientryitemrespwin)  ancestor: window
+
+// w_item_garments_wizard_old.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	return ::message.returnvalue
+
+// w_item_garments_wizard_old.ue_close() returns 0
+	wf_disconnect()
+	close(this)
+
+// w_item_garments_wizard_old.wf_duplicatealiasname(string as_aliasname, long al_icode) returns boolean
+	long ll_count
+	long ll_icode
+	long ll_row
+	boolean b_flag
+	as_aliasname = trim(as_aliasname)
+	SQL SELECT count ( *) INTO :ll_count FROM item WHERE item.customicode =:as_aliasname and item.icode <> :al_icode USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_item_garments_wizard_old.wf_disconnect() returns 0
+	SQL stop USING this.it_transobject;
+	destroy this.it_transobject
+
+// w_item_garments_wizard_old.wf_connect() returns integer
+	this.it_transobject = create u_transaction
+	SQL start USING this.it_transobject;
+	return this.it_transobject.sqlcode
+
+// w_item_garments_wizard_old.wf_duplicatename(string as_name, long al_icode) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM item WHERE item.name =:as_name and item.icode <> :al_icode USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_item_garments_wizard_old.wf_validateserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+	datetime ldt_last_transdate
+	datetime ldt_current_serverdate
+	long li_max_allow_days
+	ar_errtext = "Invoice Date  Check violates"
+	li_max_allow_days = f_numberpreferences("MaxAllowDate")
+	if isnull(li_max_allow_days) then
+		li_max_allow_days = 4
+	end if
+	SQL SELECT LastTransDate INTO :ldt_last_transdate FROM ServerDate USING sqlca;
+	if sqlca.sqlcode = 0 then
+		sqlca.getdatetime(ldt_current_serverdate)
+		if sqlca.sqlcode = 0 then
+			if ldt_current_serverdate >= ldt_last_transdate and daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) <= li_max_allow_days then
+				ar_server_datetime = ldt_current_serverdate
+				return true
+			elseif ldt_current_serverdate < ldt_last_transdate then
+				ar_errtext = "Back Date Invoice Check violates"
+				return false
+			elseif daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) > li_max_allow_days then
+				ar_errtext = "Forward Date Invoice Check violates"
+				return false
+			end if
+		else
+			return false
+		end if
+		return
+	end if
+	return false
+
+// w_item_garments_wizard_old.wf_insert_itemnotes(long al_icode, integer al_insert_update_mode) returns long
+	u_transaction lt_transobject
+	lt_transobject = create u_transaction
+	lt_transobject.autocommit = true
+	SQL start USING lt_transobject;
+	if lt_transobject.sqlcode <> 0 then
+		messagebox("Connection Error", "Unable to connect to DataBase server for updating/inserting in ItemNotes")
+		destroy lt_transobject
+		return -1
+	end if
+	if al_insert_update_mode = 0 then
+		SQL Insert Into ItemNotes ( ICode ) Values ( :al_icode ) USING lt_transobject;
+		if lt_transobject.sqlcode <> 0 then
+			messagebox("Insert Error", "Unable to Insert Item Into ItemNotes.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext)
+			SQL stop USING lt_transobject;
+			destroy lt_transobject
+			return -1
+		end if
+		return
+	end if
+	if not isnull(this.iblob_notes) then
+		SQL UpdateBlob ItemNotes Set Notes =:this.iblob_notes Where Icode =:al_icode USING lt_transobject;
+		if lt_transobject.sqlcode <> 0 then
+			messagebox("Notes ", "Unable to update item notes.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext)
+		end if
+	end if
+	SQL stop USING lt_transobject;
+	destroy lt_transobject
+	return 0
+
+// w_item_garments_wizard_old.wf_get_itemnotes(long al_icode) returns long
+	u_transaction lt_transobject
+	lt_transobject = create u_transaction
+	lt_transobject.autocommit = true
+	SQL start USING lt_transobject;
+	if lt_transobject.sqlcode <> 0 then
+		messagebox("Connection Error", "Unable to connect to DataBase server")
+		destroy lt_transobject
+		return -1
+	end if
+	SQL SelectBlob notes INTO :this.iblob_notes From ItemNotes Where Icode =:al_icode USING lt_transobject;
+	if lt_transobject.sqlcode <> 0 then
+		messagebox("Notes ", "Unable to fetch item notes.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext)
+	end if
+	SQL stop USING lt_transobject;
+	destroy lt_transobject
+	return 0
+
+// w_item_garments_wizard_old.wf_setitemname(string as_col, string as_val) returns long
+	string ls_primaryname
+	string ls_design
+	string ls_color
+	string ls_size
+	string ls_sleeve
+	long ll_designcode
+	long ll_colorcode
+	long ll_sizecode
+	long ll_sleevecode
+	long ll_masterrow
+	long ll_retcode
+	ll_masterrow = this.dw_master.rowcount()
+	if as_col = "remarks" then
+		ls_primaryname = as_val
+	elseif as_col = "itemdesigncode" then
+		ll_designcode = long(as_val)
+	elseif as_col = "isleevecode" then
+		ll_sleevecode = long(as_val)
+	elseif as_col = "icolourcode" then
+		ll_colorcode = long(as_val)
+	elseif as_col = "isizecode" then
+		ll_sizecode = long(as_val)
+	end if
+	if as_col <> "remarks" then
+		ls_primaryname = upper(trim(this.dw_master.object.remarks[ll_masterrow]))
+	end if
+	if as_col <> "itemdesigncode" then
+		ll_designcode = this.dw_master.object.itemdesigncode[ll_masterrow]
+	end if
+	if as_col <> "icolourcode" then
+		ll_colorcode = this.dw_master.object.icolourcode[ll_masterrow]
+	end if
+	if as_col <> "isizecode" then
+		ll_sizecode = this.dw_master.object.isizecode[ll_masterrow]
+	end if
+	if as_col <> "isleevecode" then
+		ll_sleevecode = this.dw_master.object.isleevecode[ll_masterrow]
+	end if
+	SQL SELECT Design =( SELECT UPPER ( Name ) FROM DBO.ItemDesign WHERE ItemDesignCode =:ll_designcode ) , Color =( SELECT UPPER ( Name ) FROM DBO.ItemColour WHERE IColourCode =:ll_colorcode ) , Size =( SELECT UPPER ( Name ) FROM DBO.ItemSize WHERE ISizeCode =:ll_sizecode ) , Sleeve =( SELECT UPPER ( Name ) FROM DBO.ItemSleeve WHERE ISleeveCode =:ll_sleevecode ) INTO :ls_design, :ls_color, :ls_size, :ls_sleeve FROM ( SELECT date =GETDATE ( ) ) d USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		if ls_primaryname = "" or isnull(ls_primaryname) then
+			ls_primaryname = ""
+		else
+			ls_primaryname = ls_primaryname + " "
+		end if
+		this.dw_master.object.name[ll_masterrow] = ls_primaryname + ls_design + " " + ls_color + " " + ls_size + " " + ls_sleeve
+		ll_retcode = 0
+	else
+		messagebox("Data fetch Error", "Some Database Problem Occured while retrieving item info.", stopsign!)
+		ll_retcode = 1
+	end if
+	return ll_retcode
+
+// w_item_garments_wizard_old.wf_edititem() returns long
+	s_arguements lstr_arg
+	open(w_arg_item)
+	lstr_arg = message.powerobjectparm
+	if lstr_arg.i_status = 1 then
+		this.dw_master.retrieve(lstr_arg.l_code1)
+		wf_get_itemnotes(lstr_arg.l_code1)
+		this.ib_editflag = true
+		this.dw_master.setcolumn("remarks")
+		this.dw_master.setfocus()
+	end if
+	return 0
+
+// w_item_garments_wizard_old.wf_newform() returns long
+	this.dw_master.insertrow(0)
+	setnull(this.iblob_notes)
+	wf_setitemname("", "")
+	return 0
+
+// w_item_garments_wizard_old.create() returns 0
+	this.cb_find = create cb_find
+	this.cb_exit = create cb_exit
+	this.cb_save = create cb_save
+	this.dw_master = create dw_master
+	this.control = {this.cb_find, this.cb_exit, this.cb_save, this.dw_master}
+
+// w_item_garments_wizard_old.destroy() returns 0
+	destroy this.cb_find
+	destroy this.cb_exit
+	destroy this.cb_save
+	destroy this.dw_master
+
+// w_item_garments_wizard_old.open() returns long
+	long ll_rtcode
+	long ll_code
+	long ll_counter
+	datawindowchild ldc_itemcategory
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	setredraw(false)
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width
+		ll_height = ll_win_height
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	wf_connect()
+	this.dw_master.settransobject(this.it_transobject)
+	ldc_itemcategory.settransobject(this.it_transobject)
+	ll_rtcode = this.dw_master.getchild("icatcode", ldc_itemcategory)
+	if ll_rtcode <> 1 then
+		messagebox("DataWindow Child Validation", "Unable to get datawindow child for item category.")
+		close(this)
+		return ::message.returnvalue
+	end if
+	ldc_itemcategory.settransobject(this.it_transobject)
+	ldc_itemcategory.retrieve(f_getgroupcode(gl_usercode))
+	wf_newform()
+	f_setcolumnstyle(this.dw_master, "Qty")
+	setredraw(true)
+	return ::message.returnvalue
+
+// cb_find.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		triggerevent(clicked!)
+	end if
+	return 1
+
+// cb_find.clicked() returns long
+	if parent.ib_editflag then
+		parent.cb_save.event clicked()
+	end if
+	parent.wf_edititem()
+	return ::message.returnvalue
+
+// cb_exit.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		triggerevent(clicked!)
+	end if
+	return 1
+
+// cb_exit.clicked() returns long
+	long ll_option
+	if parent.ib_editflag then
+		ll_option = messagebox("Save Changes and Exit", "Save Changes?", question!, yesno!, 1)
+		if ll_option = 1 then
+			parent.cb_save.event clicked()
+		end if
+	end if
+	parent.triggerevent("ue_close")
+	return ::message.returnvalue
+
+// cb_save.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		triggerevent(clicked!)
+	end if
+	return 1
+
+// cb_save.clicked() returns long
+	long ll_mastercurrrow
+	long ll_invid
+	long ll_detailrows
+	long ll_found
+	long ll_code
+	integer li_counter
+	integer ll_salesmancode
+	boolean lb_commitflag
+	string ls_aliasname
+	string ls_itemname
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	boolean lb_modify
+	datastore lds_itemlist
+	lds_itemlist = create datastore
+	lds_itemlist.dataobject = "d_itemlist"
+	lds_itemlist.settransobject(parent.it_transobject)
+	ll_mastercurrrow = parent.dw_master.getrow()
+	if f_validatedw(parent.dw_master) < 0 then
+		return ::message.returnvalue
+	end if
+	lds_itemlist.retrieve()
+	if parent.dw_master.object.code[ll_mastercurrrow] > 0 then
+		lb_modify = true
+	end if
+	if lb_modify then
+		ls_itemname = parent.dw_master.getitemstring(ll_mastercurrrow, "name")
+		ll_code = parent.dw_master.getitemnumber(ll_mastercurrrow, "code")
+		ll_found = lds_itemlist.find("icode <> " + string(ll_code) + " AND itemname='" + ls_itemname + "'", 1, lds_itemlist.rowcount())
+		if ll_found > 0 then
+			messagebox("Item Validation", "Item with the same name already exists.~r~n" + "Kindly change the Item name.~r~nAlready existing Item details are:~r~n" + "Item Name = " + lds_itemlist.getitemstring(ll_found, "itemname") + "~r~n" + "Alias Name = " + lds_itemlist.getitemstring(ll_found, "fullcode"))
+			return ::message.returnvalue
+		end if
+	else
+		ls_itemname = parent.dw_master.getitemstring(ll_mastercurrrow, "name")
+		ll_found = lds_itemlist.find("itemname='" + ls_itemname + "'", 1, lds_itemlist.rowcount())
+		if ll_found > 0 then
+			messagebox("Item Validation...", "Item with the same name already exists.~r~n" + "Kindly change the Item name.~r~nAlready existing Item details are:~r~n" + "Item Name = " + lds_itemlist.getitemstring(ll_found, "itemname") + "~r~n" + "Alias Name = " + lds_itemlist.getitemstring(ll_found, "fullcode"))
+			return 1
+		end if
+	end if
+	setpointer(hourglass!)
+	if f_stringpreferences("AskUserPasswordInItem") = "Y" then
+		open(w_salesmanpassword)
+		ll_salesmancode = long(::message.doubleparm)
+		parent.setfocus()
+	else
+		ll_salesmancode = gl_usercode
+	end if
+	if ll_salesmancode > 0 then
+		ll_invid = parent.dw_master.object.code[ll_mastercurrrow]
+		if isnull(ll_invid) then
+			f_newtableid("item", ll_invid)
+			parent.dw_master.object.code[ll_mastercurrrow] = ll_invid
+		end if
+		if isnull(parent.dw_master.getitemnumber(ll_mastercurrrow, "packsalestax")) then
+			parent.dw_master.setitem(ll_mastercurrrow, "packsalestax", 0)
+		end if
+		ls_aliasname = parent.dw_master.getitemstring(ll_mastercurrrow, "CustomICode")
+		if isnull(ls_aliasname) then
+			parent.dw_master.setitem(parent.dw_master.getrow(), "CustomICode", string(ll_invid))
+		end if
+		li_counter = 1
+		if not parent.wf_validateserverdatetime(ldt_server_datetime, ls_date_errtext) then
+			messagebox("Date Violation", ls_date_errtext, stopsign!)
+			setpointer(arrow!)
+			return ::message.returnvalue
+		end if
+		if lb_modify then
+			SQL rollback USING parent.it_transobject;
+			if f_generateitemlog(parent.dw_master, "item_basicdata", parent.it_transobject, ldt_server_datetime) < 0 then
+				messagebox("Database Problem", "Some Database Problem Occured generating Item Log!.~r~nReasons are:~r~n" + parent.it_transobject.sqlerrtext, stopsign!)
+				SQL rollback USING parent.it_transobject;
+				setpointer(arrow!)
+				return ::message.returnvalue
+			end if
+			return
+		end if
+		parent.dw_master.setitem(li_counter, "usercode", ll_salesmancode)
+		parent.dw_master.setitem(li_counter, "lastupdate", ldt_server_datetime)
+		if parent.dw_master.update(true, false) < 0 then
+			SQL rollback USING parent.it_transobject;
+			setpointer(arrow!)
+			return ::message.returnvalue
+		else
+			SQL commit USING parent.it_transobject;
+			messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+			if lb_modify then
+				parent.wf_insert_itemnotes(parent.dw_master.object.code[ll_mastercurrrow], 1)
+			else
+				parent.wf_insert_itemnotes(parent.dw_master.object.code[ll_mastercurrrow], 0)
+			end if
+			parent.dw_master.resetupdate()
+			parent.dw_master.reset()
+			parent.wf_newform()
+			parent.ib_editflag = false
+		end if
+	else
+		parent.setfocus()
+	end if
+	setpointer(arrow!)
+	return ::message.returnvalue
+
+// dw_master.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	return ::message.returnvalue
+
+// dw_master.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	integer li_retcode
+	integer li_selected
+	long ll_icode
+	double ld_qty
+	double ld_price
+	double ld_discperc
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "customicode"
+		if parent.wf_duplicatealiasname(data, this.object.code[row]) then
+			messagebox("AliasName Validation", "Item AliasName Duplication Error~r~nPlease enter some other Item AliasName")
+			li_retcode = 1
+		end if
+	case "name"
+		if parent.wf_duplicatename(data, this.object.code[row]) then
+			messagebox("Item Name Validation", "Item Name Duplication Error~r~nPlease enter some other Item Name")
+			li_retcode = 1
+		end if
+	case "active"
+		if integer(data) = 0 then
+			ll_icode = getitemnumber(row, "code")
+			SQL SELECT ISNULL ( sum ( currqty ) , 0 ) INTO :ld_qty FROM godowndetail WHERE icode =:ll_icode USING sqlca;
+			if sqlca.sqlcode = -1 then
+				messagebox("", "Database Error: Item information can not be retrieved")
+				li_retcode = 1
+			end if
+			if ld_qty > 0.0 and li_retcode = 0 then
+				li_selected = messagebox("Active", "Stock exist for this item~r~nYou Cann't Mark it InActive", question!, yesno!, 2)
+				if li_selected = 1 then
+					li_retcode = 0
+				else
+					li_retcode = 1
+				end if
+			end if
+		end if
+	case "saleprice"
+		if long(data) >= 0 and not isnull(long(data)) then
+			setitem(row, "discountedsaleprice", round(double(data) * (1.0 - getitemnumber(row, "salediscperc") * 0.01), 2))
+		end if
+	case "salediscperc"
+		if long(data) >= 0 and not isnull(long(data)) then
+			setitem(row, "discountedsaleprice", round(getitemnumber(row, "saleprice") * (1.0 - double(data) * 0.01), 2))
+		end if
+	case "purprice"
+		if long(data) >= 0 and not isnull(long(data)) then
+			setitem(row, "discountedpurprice", round(double(data) * (1.0 - getitemnumber(row, "purdiscperc") * 0.01), 2))
+		end if
+	case "purdiscperc"
+		if long(data) >= 0 and not isnull(long(data)) then
+			setitem(row, "discountedpurprice", round(getitemnumber(row, "purprice") * (1.0 - double(data) * 0.01), 2))
+		end if
+	case "discountedsaleprice"
+		ld_price = getitemnumber(row, "saleprice")
+		if ld_price = 0.0 then
+			ld_price = 1
+		end if
+		if long(data) >= 0 and not isnull(long(data)) and long(data) <= ld_price then
+			ld_discperc = (ld_price - double(data)) / ld_price * 100.0
+			setitem(row, "salediscperc", ld_discperc)
+		elseif long(data) < 0 then
+			messagebox("Discounted Sale Price Validation!", "Negative Discounted Sale Price is not acceptable")
+			return 1
+		else
+			messagebox("Discounted Sale Price Validation!", "Discounted Sale Price should not be greater than Sale Price")
+			return 1
+		end if
+	case "discountedpurprice"
+		ld_price = getitemnumber(row, "purprice")
+		if ld_price = 0.0 then
+			ld_price = 1
+		end if
+		if long(data) >= 0 and not isnull(long(data)) and long(data) <= ld_price then
+			ld_discperc = (ld_price - double(data)) / ld_price * 100.0
+			setitem(row, "purdiscperc", ld_discperc)
+		elseif long(data) < 0 then
+			messagebox("Discounted Purchase Price Validation!", "Negative Discounted Purchase Price is not acceptable")
+			return 1
+		else
+			messagebox("Discounted Purchase Price Validation!", "Discounted Purchase Price should not be greater than Purchase Price")
+			return 1
+		end if
+	case "icolourcode", "isizecode", "isleevecode", "itemdesigncode", "remarks"
+		return parent.wf_setitemname(dwo.name, data)
+	end choose
+	if li_retcode = 0 then
+		parent.ib_editflag = true
+	end if
+	return li_retcode
+
+// dw_master.itemerror(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	string ls_errormessage
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	ls_errormessage = "Please enter valid value "
+	choose case dwo.name
+	case "customicode"
+		ls_errormessage = ls_errormessage + " for Item Alias Name"
+	case "name"
+		ls_errormessage = ls_errormessage + " for Item Name"
+	case "saleprice"
+		ls_errormessage = ls_errormessage + " for Item SalePrice 1"
+	case "saleprice2"
+		ls_errormessage = ls_errormessage + " for Item SalePrice 2"
+	case "saleprice3"
+		ls_errormessage = ls_errormessage + " for Item SalePrice 3"
+	case "purprice"
+		ls_errormessage = ls_errormessage + " for Item PurchasePrice"
+	case "salediscperc"
+		ls_errormessage = ls_errormessage + " for Item Sale Discount Percentage"
+	case "purdiscperc"
+		ls_errormessage = ls_errormessage + " for Item Purchase Discount Percentage"
+	case "packsalestax"
+		ls_errormessage = ls_errormessage + " for Item Pack SalesTax"
+	case "gstperc1"
+		ls_errormessage = ls_errormessage + " for Item SalesTax 1"
+	case "gstperc2"
+		ls_errormessage = ls_errormessage + " for Item SalesTax 2"
+	case "reorderqty"
+		ls_errormessage = ls_errormessage + " for Item Reorder Quantity"
+	case "optimumqty"
+		ls_errormessage = ls_errormessage + " for Item Optimum Quantity"
+	case "packunits"
+		ls_errormessage = ls_errormessage + " for Item Packing Cost"
+	case "packingcost"
+		ls_errormessage = ls_errormessage + " for Item Packing Cost"
+	end choose
+	ls_errormessage = ls_errormessage + " in row number " + string(row)
+	messagebox("Item Validation", ls_errormessage)
+	return 1
+
+// dw_master.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	integer li_movement
+	long ll_row
+	long ll_temp
+	string sl_columnname
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keyescape! then
+		return 1
+	elseif key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+		return 1
+	end if
+	if ll_row > 0 and ll_row <= rowcount() then
+		parent.il_selectedrow = ll_row
+	end if
+	return ::message.returnvalue
+
+// dw_master.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue

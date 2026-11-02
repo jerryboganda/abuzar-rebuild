@@ -1,0 +1,111 @@
+// window w_arg_patient_sdate_ldate_cashcredit (reports)  ancestor: w_popup_forselection_walias
+
+// w_arg_patient_sdate_ldate_cashcredit.create() returns 0
+	integer icurrent
+	call super::create
+	this.gb_2 = create gb_2
+	this.st_1 = create st_1
+	this.st_2 = create st_2
+	this.em_startdate = create em_startdate
+	this.em_enddate = create em_enddate
+	this.cbx_cash = create cbx_cash
+	this.cbx_credit = create cbx_credit
+	this.rb_allheader = create rb_allheader
+	this.rb_singleheader = create rb_singleheader
+	this.dw_customer = create dw_customer
+	this.gb_4 = create gb_4
+	this.gb_3 = create gb_3
+	this.dw_header = create dw_header
+	this.rb_allcustomer = create rb_allcustomer
+	this.rb_singlecustomer = create rb_singlecustomer
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.gb_2
+	this.control[icurrent + 2] = this.st_1
+	this.control[icurrent + 3] = this.st_2
+	this.control[icurrent + 4] = this.em_startdate
+	this.control[icurrent + 5] = this.em_enddate
+	this.control[icurrent + 6] = this.cbx_cash
+	this.control[icurrent + 7] = this.cbx_credit
+	this.control[icurrent + 8] = this.rb_allheader
+	this.control[icurrent + 9] = this.rb_singleheader
+	this.control[icurrent + 10] = this.dw_customer
+	this.control[icurrent + 11] = this.gb_4
+	this.control[icurrent + 12] = this.gb_3
+	this.control[icurrent + 13] = this.dw_header
+	this.control[icurrent + 14] = this.rb_allcustomer
+	this.control[icurrent + 15] = this.rb_singlecustomer
+
+// w_arg_patient_sdate_ldate_cashcredit.destroy() returns 0
+	call super::destroy
+	destroy this.gb_2
+	destroy this.st_1
+	destroy this.st_2
+	destroy this.em_startdate
+	destroy this.em_enddate
+	destroy this.cbx_cash
+	destroy this.cbx_credit
+	destroy this.rb_allheader
+	destroy this.rb_singleheader
+	destroy this.dw_customer
+	destroy this.gb_4
+	destroy this.gb_3
+	destroy this.dw_header
+	destroy this.rb_allcustomer
+	destroy this.rb_singlecustomer
+
+// w_arg_patient_sdate_ldate_cashcredit.open() returns long
+	long ancestorreturnvalue
+	date ld_currdate
+	string ls_text
+	long ll_counter
+	datawindowchild ldc_header
+	ancestorreturnvalue = super::open()
+	ld_currdate = today()
+	ls_text = string(ld_currdate, "dd/mm/yyyy")
+	ls_text = trim(ls_text) + " 00:00:00"
+	this.em_startdate.text = ls_text
+	ls_text = string(ld_currdate, "dd/mm/yyyy")
+	ls_text = trim(ls_text) + " 23:59:59"
+	this.em_enddate.text = ls_text
+	this.dw_customer.settransobject(sqlca)
+	this.dw_customer.insertrow(0)
+	this.dw_header.settransobject(sqlca)
+	this.dw_header.insertrow(0)
+	this.dw_header.getchild("headerno", ldc_header)
+	for ll_counter = 1 to gds_reoprtheaderinfo.rowcount()
+		ldc_header.insertrow(0)
+		ldc_header.setitem(ll_counter, "name", gds_reoprtheaderinfo.getitemstring(ll_counter, "clientname"))
+		ldc_header.setitem(ll_counter, "code", gds_reoprtheaderinfo.getitemnumber(ll_counter, "headerno"))
+	next
+	return ::message.returnvalue
+
+// w_arg_patient_sdate_ldate_cashcredit.ue_close() returns 0
+	closewithreturn(this, this.istr_arg)
+
+// em_startdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// em_enddate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// rb_allheader.clicked() returns long
+	parent.dw_header.visible = false
+	return ::message.returnvalue
+
+// rb_singleheader.clicked() returns long
+	parent.dw_header.visible = true
+	return ::message.returnvalue
+
+// rb_allcustomer.clicked() returns long
+	parent.dw_customer.visible = false
+	return ::message.returnvalue
+
+// rb_singlecustomer.clicked() returns long
+	parent.dw_customer.visible = true
+	return ::message.returnvalue

@@ -1,0 +1,849 @@
+// window w_installmentsale (salewin)  ancestor: w_multi_entry
+
+// w_installmentsale.wf_validateitem() returns integer
+	datetime ldt_date
+	datetime ldt_null
+	integer li_errcode
+	setnull(ldt_null)
+	if this.il_currrow > this.id_detail.rowcount() then
+		this.il_currrow = this.id_detail.rowcount()
+	end if
+	ldt_date = this.id_detail.object.date[this.il_currrow]
+	if vf_dwdupdate(this.id_detail, "date", ldt_date, this.il_currrow) = true then
+		messagebox("Duplication Error", "Current row is duplicate for Qty Limit")
+		li_errcode = -1
+	else
+		li_errcode = 0
+	end if
+	this.ib_itemvalidated = true
+	if li_errcode = -1 then
+		this.id_detail.setcolumn("date")
+		this.id_detail.scrolltorow(this.il_currrow)
+		this.id_detail.setitem(this.il_currrow, "date", ldt_null)
+	end if
+	return li_errcode
+
+// w_installmentsale.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	long ll_masterrow
+	long ll_code
+	boolean b_flag
+	ll_masterrow = this.id_master.getrow()
+	if ll_masterrow > 0 then
+		ll_code = this.id_master.object.code[ll_masterrow]
+	end if
+	as_name = trim(as_name)
+	if isnull(ll_code) then
+		SQL SELECT count ( *) INTO :ll_count FROM PricePolicy WHERE PricePolicy.name =:as_name USING this.it_transobject;
+	else
+		SQL SELECT count ( *) INTO :ll_count FROM PricePolicy WHERE PricePolicy.name =:as_name AND PricePolicy.PricePolicyCode <> :ll_code USING this.it_transobject;
+	end if
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_installmentsale.wf_duplicateitemname(long al_icode) returns boolean
+	long ll_count
+	long ll_masterrow
+	long ll_code
+	boolean b_flag
+	ll_masterrow = this.id_master.getrow()
+	if ll_masterrow > 0 then
+		ll_code = this.id_master.object.code[ll_masterrow]
+	end if
+	if isnull(ll_code) then
+		SQL SELECT count ( *) INTO :ll_count FROM PricePolicy WHERE PricePolicy.Icode =:al_icode USING this.it_transobject;
+	else
+		SQL SELECT count ( *) INTO :ll_count FROM PricePolicy WHERE PricePolicy.Icode =:al_icode AND PricePolicy.PricePolicyCode <> :ll_code USING this.it_transobject;
+	end if
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_installmentsale.wf_inititeminfo(long al_icode, long al_row) returns long
+	long ll_packunits
+	double ld_price
+	double ld_stock
+	SQL SELECT packunits , saleprice INTO :ll_packunits, :ld_price FROM DBO.Item WHERE ICode =:al_icode USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		if ll_packunits = 0 or isnull(ll_packunits) then
+			ll_packunits = 1
+		end if
+		this.id_master.object.packunits[al_row] = ll_packunits
+		this.id_master.object.saleprice[al_row] = round(ld_price / ll_packunits, 2)
+		this.it_transobject.getitemstocktotal(this.id_master.object.gcode[1], al_icode, ld_stock)
+		if this.it_transobject.sqlcode = 0 then
+			this.id_master.object.godownstock[1] = ld_stock
+		end if
+	end if
+	return 0
+
+// w_installmentsale.wf_grandtotal() returns double
+	return 0
+
+// w_installmentsale.wf_calculate_installment(string col, string data, long row) returns long
+	long ll_counter
+	long ll_insrow
+	long ll_freq
+	long ll_installments
+	double ld_balanceamt
+	double ld_installment
+	double ld_markupamt
+	double ld_amt
+	datetime ldt_firstduedate
+	date ld_date
+	time lt_time
+	if this.id_master.getrow() > 0 and this.id_master.object.posted[row] = "N" then
+		if col = "noofinstallments" then
+			ll_installments = long(data)
+		else
+			ll_installments = this.id_master.object.noofinstallments[row]
+		end if
+		if col = "installmentfrequency" then
+			ll_freq = long(data)
+		else
+			ll_freq = this.id_master.object.installmentfrequency[row]
+		end if
+		if col = "firstduedate" then
+			ld_date = date(left(data, 10))
+			lt_time = time(data)
+			ldt_firstduedate = datetime(ld_date, lt_time)
+		else
+			ldt_firstduedate = this.id_master.object.firstduedate[row]
+		end if
+		ld_balanceamt = this.id_master.getitemnumber(row, "c_balanceamt")
+		if ld_balanceamt >= 0.0 and ll_installments > 0 then
+			if this.id_detail.rowcount() > 0 then
+				this.id_detail.reset()
+			end if
+			ld_installment = round(ld_balanceamt / ll_installments, 2)
+			for ll_counter = row to ll_installments
+				ll_insrow = this.id_detail.insertrow(0)
+				if ll_insrow > 0 then
+					if ll_insrow = 1 then
+						this.id_detail.object.date[ll_insrow] = ldt_firstduedate
+					elseif ll_insrow - 1 > 0 then
+						this.id_detail.object.date[ll_insrow] = relativedate(date(this.id_detail.object.date[ll_insrow - 1]), ll_freq)
+					end if
+					this.id_detail.object.amount[ll_insrow] = ld_installment
+				end if
+			next
+		end if
+	end if
+	return 0
+
+// w_installmentsale.wf_find_item(string as_aliasname, long al_icode) returns long
+	SQL SELECT ICode INTO :al_icode FROM Item WHERE CustomICode =:as_aliasname USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		this.id_master.object.icode[1] = al_icode
+		wf_inititeminfo(al_icode, 1)
+		return 0
+	end if
+	return 1
+
+// w_installmentsale.wf_find_customer(string as_aliasname, long al_custcode) returns long
+	SQL SELECT Acccode INTO :al_custcode FROM Accounts WHERE AliasName =:as_aliasname USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		this.id_master.object.custcode[1] = al_custcode
+		return 0
+	end if
+	return 1
+
+// w_installmentsale.wf_set_item_alias(long al_icode, string as_aliasname) returns long
+	SQL SELECT CustomICode INTO :as_aliasname FROM Item WHERE ICode =:al_icode USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		this.id_master.object.customicode[1] = as_aliasname
+		wf_inititeminfo(al_icode, 1)
+		return 0
+	end if
+	return 1
+
+// w_installmentsale.wf_set_customer_alias(long al_custcode, string as_aliasname) returns long
+	SQL SELECT AliasName INTO :as_aliasname FROM Accounts WHERE Acccode =:al_custcode USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		this.id_master.object.aliasname[1] = as_aliasname
+		return 0
+	end if
+	return 1
+
+// w_installmentsale.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+
+// w_installmentsale.wf_post() returns long
+	integer li_errcode
+	long ll_salesmancode
+	long ll_code
+	long ll_saleinvcode
+	string ls_msgtext
+	if this.id_list.getrow() > 0 and this.id_list.rowcount() > 0 then
+		ll_code = this.id_list.object.code[this.id_list.getrow()]
+	else
+		ll_code = -1
+	end if
+	if ll_code > 0 then
+		open(w_salesmanpassword)
+		ll_salesmancode = long(message.doubleparm)
+		if ll_salesmancode > 0 then
+			this.it_transobject.postinstallment(ll_code, ll_salesmancode, ll_saleinvcode)
+			if this.it_transobject.sqlcode <> 0 then
+				li_errcode = this.it_transobject.sqlcode
+				ls_msgtext = this.it_transobject.sqlerrtext
+			else
+				li_errcode = this.it_transobject.sqlcode
+			end if
+			if li_errcode = 0 then
+				SQL commit USING this.it_transobject;
+				if this.it_transobject.sqlcode <> 0 then
+					ls_msgtext = this.it_transobject.sqlerrtext
+					li_errcode = this.it_transobject.sqlcode
+				end if
+			else
+				SQL rollback USING this.it_transobject;
+			end if
+		else
+			setfocus()
+		end if
+		setpointer(arrow!)
+		if ll_salesmancode > 0 then
+			if li_errcode <> 0 then
+				messagebox("Posting Fails", "Some database request fails, Please try again.~r~nReasons Are:-~r~n" + ls_msgtext + "~r~nError Code = " + string(li_errcode))
+			else
+				messagebox("Posting Successfull", "Installment code " + string(ll_code) + "has been posted successfully")
+			end if
+		end if
+	end if
+	return li_errcode
+
+// w_installmentsale.wf_populate_singleamt() returns integer
+	long ll_counter
+	double ld_amt
+	double ld_balance
+	double ld_ins_tot
+	open(w_arg_amount)
+	ld_amt = message.doubleparm
+	if ld_amt > 0.0 then
+		for ll_counter = 1 to this.id_detail.rowcount()
+			this.id_detail.object.amount[ll_counter] = ld_amt
+		next
+		ld_balance = this.id_master.getitemnumber(1, "c_balanceamt")
+		ld_ins_tot = this.id_detail.getitemnumber(1, "c_installmenttotal")
+		if ld_balance - ld_ins_tot > 0.0 then
+			this.id_detail.object.amount[this.id_detail.rowcount()] = ld_amt + (ld_balance - ld_ins_tot)
+		end if
+	end if
+	return 0
+
+// w_installmentsale.wf_assigndatawindowobjects(string as_masterdw, string as_detaildw, string as_listdw, string as_printdw) returns 0
+	this.id_master.dataobject = as_masterdw
+	this.id_detail.dataobject = as_detaildw
+	this.id_list.dataobject = as_listdw
+	this.id_print.dataobject = as_printdw
+	this.id_master.settransobject(this.it_transobject)
+	this.id_detail.settransobject(this.it_transobject)
+	this.id_list.settransobject(this.it_transobject)
+	this.id_print.settransobject(this.it_transobject)
+
+// w_installmentsale.wf_approve() returns long
+	integer li_errcode
+	long ll_salesmancode
+	string ls_msgtext
+	s_arguements lstr_arg
+	open(w_salesmanpassword)
+	ll_salesmancode = long(message.doubleparm)
+	if ll_salesmancode > 0 then
+		open(w_arg_sinvcode_linvcode)
+		lstr_arg = message.powerobjectparm
+		if lstr_arg.i_status = 1 then
+			this.it_transobject.approveinstallment(lstr_arg.l_code1, lstr_arg.l_code2, ll_salesmancode)
+			if this.it_transobject.sqlcode <> 0 then
+				li_errcode = this.it_transobject.sqlcode
+				ls_msgtext = this.it_transobject.sqlerrtext
+			else
+				li_errcode = this.it_transobject.sqlcode
+			end if
+			if li_errcode = 0 then
+				SQL commit USING this.it_transobject;
+				if this.it_transobject.sqlcode <> 0 then
+					ls_msgtext = this.it_transobject.sqlerrtext
+					li_errcode = this.it_transobject.sqlcode
+				end if
+			else
+				SQL rollback USING this.it_transobject;
+			end if
+		end if
+	else
+		setfocus()
+	end if
+	setpointer(arrow!)
+	if ll_salesmancode > 0 then
+		if li_errcode <> 0 then
+			messagebox("Approval Fails", "Specified Installment Estimates have not been Approved, Please try again.~r~nReasons Are:-~r~n" + ls_msgtext + "~r~nError Code = " + string(li_errcode))
+		else
+			messagebox("Approval Successfull", "Specified Installment Estimates have been Approved successfully")
+		end if
+	end if
+	return li_errcode
+
+// w_installmentsale.wf_set_guarantors() returns long
+	s_dw_header lstr_header
+	if this.tab_retrieve.selectedtab = 2 then
+		return 0
+	end if
+	if this.ii_modulemode = 1 then
+		if this.id_master.object.posted[1] = "Y" then
+			lstr_header.i_protectdw = 1
+		elseif this.id_master.object.approved[1] = "Y" then
+			lstr_header.i_protectdw = 1
+		else
+			lstr_header.i_protectdw = 0
+		end if
+	elseif this.id_master.object.posted[1] = "Y" then
+		lstr_header.i_protectdw = 1
+	else
+		lstr_header.i_protectdw = 0
+	end if
+	lstr_header.dw_header = this.dw_guarantor
+	openwithparm(w_installmentguarantor_form, lstr_header)
+	return 0
+
+// w_installmentsale.wf_reject() returns integer
+	integer li_errcode
+	long ll_salesmancode
+	string ls_msgtext
+	s_arguements lstr_arg
+	open(w_salesmanpassword)
+	ll_salesmancode = long(message.doubleparm)
+	if ll_salesmancode > 0 then
+		open(w_arg_sinvcode_linvcode)
+		lstr_arg = message.powerobjectparm
+		if lstr_arg.i_status = 1 then
+			this.it_transobject.rejectinstallment(lstr_arg.l_code1, lstr_arg.l_code2, ll_salesmancode)
+			if this.it_transobject.sqlcode <> 0 then
+				li_errcode = this.it_transobject.sqlcode
+				ls_msgtext = this.it_transobject.sqlerrtext
+			else
+				li_errcode = this.it_transobject.sqlcode
+			end if
+			if li_errcode = 0 then
+				SQL commit USING this.it_transobject;
+				if this.it_transobject.sqlcode <> 0 then
+					ls_msgtext = this.it_transobject.sqlerrtext
+					li_errcode = this.it_transobject.sqlcode
+				end if
+			else
+				SQL rollback USING this.it_transobject;
+			end if
+		end if
+	else
+		setfocus()
+	end if
+	setpointer(arrow!)
+	if ll_salesmancode > 0 then
+		if li_errcode <> 0 then
+			messagebox("Rejection Fails", "Specified Installment Estimates have not been Rejected, Please try again.~r~nReasons Are:-~r~n" + ls_msgtext + "~r~nError Code = " + string(li_errcode))
+		else
+			messagebox("Rejection Successfull", "Specified Installment Estimates have been Rejected successfully")
+		end if
+	end if
+	return li_errcode
+
+// w_installmentsale.wf_new_customerregisteration() returns long
+	string ls_aliasname
+	long ll_acccode
+	long ll_found
+	long ll_row
+	dwobject dwo
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 694", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		open(w_customer_register)
+		ls_aliasname = message.stringparm
+		if not (ls_aliasname = "" or isnull(ls_aliasname)) then
+			this.idc_customers.retrieve()
+			ll_found = 0
+			ll_found = this.idc_customers.find("accounts_aliasname = '" + ls_aliasname + "'", 1, this.idc_customers.rowcount())
+			if ll_found > 0 then
+				this.id_master.setitem(1, "custcode", this.idc_customers.getitemstring(ll_found, "accounts_aliasname"))
+				ll_acccode = this.idc_customers.getitemnumber(ll_found, "accounts_acccode")
+				this.id_master.setitem(1, "custcode", ll_acccode)
+				dwo = this.id_master.object.custcode
+				this.id_master.post event itemchanged(1, dwo, string(ll_acccode))
+			end if
+		end if
+	end if
+	return 0
+
+// w_installmentsale.wf_set_security_details() returns long
+	s_dw_header lstr_header
+	if this.tab_retrieve.selectedtab = 2 then
+		return 0
+	end if
+	if this.ii_modulemode = 1 then
+		if this.id_master.object.posted[1] = "Y" then
+			lstr_header.i_protectdw = 1
+		elseif this.id_master.object.approved[1] = "Y" then
+			lstr_header.i_protectdw = 1
+		else
+			lstr_header.i_protectdw = 0
+		end if
+	elseif this.id_master.object.posted[1] = "Y" then
+		lstr_header.i_protectdw = 1
+	else
+		lstr_header.i_protectdw = 0
+	end if
+	lstr_header.dw_header = this.dw_security
+	openwithparm(w_installmentsecurity_form, lstr_header)
+	return 0
+
+// w_installmentsale.create() returns 0
+	integer icurrent
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_installmentsale" then
+		this.menuid = create m_installmentsale
+	end if
+	this.dw_print = create dw_print
+	this.dw_guarantor = create dw_guarantor
+	this.dw_security = create dw_security
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_print
+	this.control[icurrent + 2] = this.dw_guarantor
+	this.control[icurrent + 3] = this.dw_security
+
+// w_installmentsale.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_print
+	destroy this.dw_guarantor
+	destroy this.dw_security
+
+// w_installmentsale.ue_save() returns 0
+	long ll_mastercurrrow
+	long ll_invid
+	long ll_detailrows
+	long ll_counter
+	long ll_icode
+	long ll_null
+	integer ll_usercode
+	integer li_modifycount
+	boolean lb_commitflag
+	boolean lb_modify
+	string ls_itemname
+	u_ds_standard lds_detail
+	lds_detail = create u_ds_standard
+	lds_detail.dataobject = this.id_detail.dataobject
+	lds_detail.settransobject(this.it_transobject)
+	setnull(ll_null)
+	if wf_validateitem() = -1 then
+		return
+	end if
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	setpointer(hourglass!)
+	ll_mastercurrrow = this.id_master.getrow()
+	ll_icode = this.id_master.object.icode[ll_mastercurrrow]
+	ll_invid = this.id_master.object.code[ll_mastercurrrow]
+	if this.id_detail.rowcount() > 0 and round(this.id_detail.getitemnumber(1, "c_installmenttotal"), 0) <> round(this.id_master.getitemnumber(1, "c_balanceamt"), 0) then
+		messagebox("Installment Validation", "Installment Total Must Exactly Match the Balance Amount")
+		return
+	end if
+	open(w_salesmanpassword)
+	ll_usercode = long(message.doubleparm)
+	setfocus()
+	if ll_usercode > 0 then
+		if isnull(ll_invid) then
+			wf_tabnewid("InstallmentHeader", ll_invid)
+			this.id_master.object.code[ll_mastercurrrow] = ll_invid
+			ll_detailrows = this.id_detail.rowcount()
+			for ll_counter = 1 to ll_detailrows
+				this.id_detail.setitem(ll_counter, "code", ll_invid)
+			next
+		else
+			lb_modify = true
+		end if
+		this.id_master.object.usercode[ll_mastercurrrow] = ll_usercode
+		if lb_modify then
+			li_modifycount = this.id_master.object.modifycount[ll_mastercurrrow]
+			if isnull(li_modifycount) then
+				li_modifycount = 0
+			end if
+			li_modifycount = li_modifycount + 1
+			this.id_master.object.modifiedby[ll_mastercurrrow] = ll_usercode
+			this.id_master.object.modifycount[ll_mastercurrrow] = li_modifycount
+		end if
+		ll_detailrows = this.id_detail.rowcount()
+		ll_counter = 1
+		do while ll_counter <= ll_detailrows
+			this.id_detail.setitem(ll_counter, "code", ll_invid)
+			ll_counter = ll_counter + 1
+		loop
+		ll_counter = 0
+		do while ll_counter <= this.dw_guarantor.rowcount()
+			this.dw_guarantor.setitem(ll_counter, "code", ll_invid)
+			ll_counter = ll_counter + 1
+		loop
+		do while ll_counter <= this.dw_security.rowcount()
+			this.dw_security.setitem(ll_counter, "code", ll_invid)
+			ll_counter = ll_counter + 1
+		loop
+		if lb_modify then
+			SQL DELETE installmentDetail WHERE Installmentcode =:ll_invid USING this.it_transobject;
+			if this.it_transobject.sqlcode <> 0 then
+				messagebox("Saving Problem", "Problem is deletion of old installment record", stopsign!)
+				return
+			end if
+			return
+		end if
+		if this.id_master.update(true, false) < 0 then
+			SQL rollback USING this.it_transobject;
+			setpointer(arrow!)
+			ll_invid = ll_null
+			if lb_modify = false then
+				this.id_master.object.code[ll_mastercurrrow] = ll_null
+			end if
+			return
+		end if
+		if this.dw_guarantor.update() < 1 then
+			SQL rollback USING this.it_transobject;
+			setpointer(arrow!)
+			ll_invid = ll_null
+			if lb_modify = false then
+				this.id_master.object.code[ll_mastercurrrow] = ll_null
+			end if
+			return
+		end if
+		if this.dw_security.update() < 1 then
+			SQL rollback USING this.it_transobject;
+			setpointer(arrow!)
+			ll_invid = ll_null
+			if lb_modify = false then
+				this.id_master.object.code[ll_mastercurrrow] = ll_null
+			end if
+			return
+		end if
+		this.id_detail.rowscopy(1, this.id_detail.rowcount(), primary!, lds_detail, 1, primary!)
+		if lds_detail.update() > 0 then
+			SQL commit USING this.it_transobject;
+			messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+			this.ib_commitok = true
+			this.id_master.resetupdate()
+			this.im_menu.m_file.m_new.enabled = true
+			this.editflag = false
+			if gd_recenttransdate < this.id_systemdate then
+				gd_recenttransdate = this.id_systemdate
+			end if
+		else
+			SQL rollback USING this.it_transobject;
+			setpointer(arrow!)
+			if lb_modify = false then
+				this.id_master.object.code[ll_mastercurrrow] = ll_null
+			end if
+			return
+		end if
+		ll_invid = ll_null
+		if lb_modify = false then
+			this.id_master.object.code[ll_mastercurrrow] = ll_null
+		end if
+	end if
+	setpointer(arrow!)
+
+// w_installmentsale.ue_newform() returns 0
+	m_installmentsale lm_menu
+	call super::ue_newform
+	lm_menu = this.menuid
+	wf_protectdw(this.id_master, 0)
+	wf_protectdw(this.id_detail, 0)
+	this.id_master.setcolumn("aliasname")
+	this.id_master.setfocus()
+	this.dw_guarantor.reset()
+	this.dw_security.reset()
+
+// w_installmentsale.ue_newitem() returns 0
+	long ll_rowcount
+	long ll_icode
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	if this.id_detail.rowcount() > 0 and f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	this.id_detail.setcolumn(2)
+	this.id_detail.insertrow(0)
+	ll_rowcount = this.id_detail.rowcount()
+	if ll_rowcount > 1 then
+		this.id_detail.scrolltorow(ll_rowcount)
+		this.id_detail.setfocus()
+	end if
+	this.im_menu.m_file.m_save.enabled = true
+	this.ib_validatefullcode = true
+
+// w_installmentsale.ue_detail() returns 0
+	m_installmentsale lm_menu
+	integer li_protect
+	call super::ue_detail
+	lm_menu = this.menuid
+	this.im_menu.m_file.m_delete.enabled = true
+	this.im_menu.m_file.m_first.enabled = true
+	this.im_menu.m_file.m_next.enabled = true
+	this.im_menu.m_file.m_last.enabled = true
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_menu.m_file.m_print.visible = true
+	this.im_menu.m_file.m_previous.enabled = true
+	lm_menu.m_file.m_post.enabled = false
+	lm_menu.m_file.m_post.visible = false
+	lm_menu.m_file.m_approve.enabled = false
+	lm_menu.m_file.m_approve.visible = false
+	lm_menu.m_file.m_approve.toolbaritemvisible = false
+	if this.id_list.getrow() > 0 then
+		if this.id_list.object.posted[this.id_list.getrow()] = "Y" or this.id_list.object.rejected[this.id_list.getrow()] = "Y" then
+			this.im_menu.m_item.m_newitem.enabled = false
+			this.im_menu.m_item.m_deleteitem.enabled = false
+			this.im_menu.m_file.m_save.enabled = false
+			this.im_menu.m_file.m_save.visible = false
+			li_protect = 1
+		elseif this.ii_modulemode = 1 and this.id_list.object.approved[this.id_list.getrow()] = "N" then
+			this.im_menu.m_item.m_newitem.enabled = true
+			this.im_menu.m_item.m_deleteitem.enabled = true
+			this.im_menu.m_file.m_save.enabled = true
+			this.im_menu.m_file.m_save.visible = true
+			li_protect = 0
+		elseif this.ii_modulemode = 1 and this.id_list.object.approved[this.id_list.getrow()] = "Y" then
+			this.im_menu.m_item.m_newitem.enabled = false
+			this.im_menu.m_item.m_deleteitem.enabled = false
+			this.im_menu.m_file.m_save.enabled = false
+			this.im_menu.m_file.m_save.visible = false
+			li_protect = 1
+		elseif this.ii_modulemode <> 1 then
+			this.im_menu.m_item.m_newitem.enabled = true
+			this.im_menu.m_item.m_deleteitem.enabled = true
+			this.im_menu.m_file.m_save.enabled = true
+			this.im_menu.m_file.m_save.visible = true
+			li_protect = 0
+		end if
+		this.dw_guarantor.retrieve(this.id_list.object.code[this.id_list.getrow()])
+		this.dw_security.retrieve(this.id_list.object.code[this.id_list.getrow()])
+	end if
+	wf_protectdw(this.id_master, li_protect)
+	wf_protectdw(this.id_detail, li_protect)
+
+// w_installmentsale.ue_deleteitem() returns 0
+	long ll_currow
+	long ll_detailrows
+	this.ib_itemvalidated = true
+	this.id_detail.deleterow(0)
+	ll_detailrows = this.id_detail.rowcount()
+	if ll_detailrows < 1 then
+		this.im_menu.m_file.m_save.enabled = false
+	end if
+	wf_grandtotal()
+
+// w_installmentsale.ue_postopen() returns 0
+	integer li_rtncode
+	m_installmentsale lm_menu
+	call super::ue_postopen
+	lm_menu = this.menuid
+	this.ii_modulemode = message.doubleparm
+	this.dw_guarantor.dataobject = "d_installmentguarantor"
+	this.dw_guarantor.settransobject(this.it_transobject)
+	this.dw_security.dataobject = "d_installment_security"
+	this.dw_security.settransobject(this.it_transobject)
+	this.id_print = this.dw_print
+	if this.ii_modulemode = 1 then
+		this.title = "Installment Estimate"
+		wf_assigndatawindowobjects("d_installment_header", "d_installment_detail", "d_instrallment_list", "d_instrallmentprint")
+	else
+		this.title = "Installment Approval"
+		wf_assigndatawindowobjects("d_installment_header", "d_installment_detail", "d_instrallment_list_approved", "d_instrallmentprint")
+	end if
+	li_rtncode = this.id_master.getchild("custcode", this.idc_customers)
+	if li_rtncode = -1 then
+		messagebox("Error", "Can not get a DataWindowChild")
+		close(this)
+	end if
+	this.idc_customers.settransobject(this.it_transobject)
+	this.idc_customers.retrieve()
+	f_setcolumnstyle(this.id_master, "Qty")
+	if this.ii_modulemode = 1 then
+		if f_rightexists(5171) then
+			this.ib_rejection = true
+		else
+			this.ib_rejection = false
+		end if
+		this.ib_approval = false
+		this.ib_posting = false
+		return
+	end if
+	if f_rightexists(5135) then
+		this.ib_posting = true
+	else
+		this.ib_posting = false
+	end if
+	if f_rightexists(5147) then
+		this.ib_approval = true
+		return
+	end if
+	this.ib_approval = false
+
+// w_installmentsale.ue_list() returns 0
+	m_installmentsale lm_menu
+	long ll_rtcode
+	lm_menu = this.menuid
+	if this.id_list.rowcount() <= 0 then
+		ll_rtcode = wf_retrievelist()
+		if ll_rtcode = 0 then
+			ll_rtcode = wf_retrievelistall()
+		end if
+	end if
+	if ll_rtcode > 0 then
+		lm_menu.m_file.m_new.enabled = true
+		lm_menu.m_file.m_save.enabled = false
+		lm_menu.m_file.m_delete.enabled = false
+		lm_menu.m_item.m_newitem.enabled = false
+		lm_menu.m_item.m_deleteitem.enabled = false
+		lm_menu.m_item.m_insertnewitem.enabled = false
+		lm_menu.m_item.m_deletecurrentitem.enabled = false
+		lm_menu.m_file.m_first.enabled = true
+		lm_menu.m_file.m_next.enabled = true
+		lm_menu.m_file.m_last.enabled = true
+		lm_menu.m_file.m_print.visible = true
+		lm_menu.m_file.m_print.enabled = true
+		lm_menu.m_file.m_previous.enabled = true
+		if this.ii_modulemode = 1 then
+			lm_menu.m_file.m_post.enabled = false
+			lm_menu.m_file.m_post.visible = false
+			lm_menu.m_file.m_approve.enabled = false
+			lm_menu.m_file.m_approve.visible = false
+			if this.ib_rejection then
+				lm_menu.m_file.m_reject.visible = true
+				lm_menu.m_file.m_reject.enabled = true
+				lm_menu.m_file.m_reject.toolbaritemvisible = true
+			else
+				lm_menu.m_file.m_reject.visible = false
+				lm_menu.m_file.m_reject.enabled = false
+				lm_menu.m_file.m_reject.toolbaritemvisible = false
+			end if
+		else
+			if this.ib_posting then
+				lm_menu.m_file.m_post.enabled = true
+				lm_menu.m_file.m_post.visible = true
+			else
+				lm_menu.m_file.m_post.enabled = false
+				lm_menu.m_file.m_post.visible = false
+			end if
+			if this.ib_approval then
+				lm_menu.m_file.m_approve.enabled = true
+				lm_menu.m_file.m_approve.visible = true
+				lm_menu.m_file.m_approve.toolbaritemvisible = true
+			else
+				lm_menu.m_file.m_approve.enabled = false
+				lm_menu.m_file.m_approve.visible = false
+				lm_menu.m_file.m_approve.toolbaritemvisible = false
+			end if
+			lm_menu.m_file.m_reject.visible = false
+			lm_menu.m_file.m_reject.enabled = false
+			lm_menu.m_file.m_reject.toolbaritemvisible = false
+		end if
+		lm_menu.m_file.m_retrieve.text = "De&tail"
+		this.i_retrievemode = 2
+		this.i_editmode = 2
+		if this.il_selectedrow = 0 then
+			wf_first()
+			wf_selectunselectrow(1)
+		else
+			this.il_selectedrow = 1
+		end if
+		this.tab_retrieve.tabpage_list.dw_find.setfocus()
+		return
+	end if
+	messagebox("Result", "No rows or retrieved possible empty table~r~nInsert some rows first")
+	postevent("ue_new")
+
+// w_installmentsale.ue_print() returns 0
+	long ll_row
+	long ll_invcode
+	long ll_option
+	boolean lb_listtab
+	s_datastore lstr
+	call super::ue_print
+	if this.tab_retrieve.selectedtab = 2 then
+		lb_listtab = true
+	end if
+	if this.im_menu.m_file.m_save.enabled = true and lb_listtab = false then
+		triggerevent("ue_save")
+		if wf_commitform() = false then
+			return
+		end if
+		return
+	end if
+	if lb_listtab then
+		if isnull(this.id_list.getrow()) or this.id_list.getrow() <= 0 then
+			messagebox("Rows Validation", "Kindly select any row from the list view.")
+			return
+		end if
+		ll_invcode = this.id_list.getitemnumber(this.id_list.getrow(), "code")
+		if isnull(ll_invcode) or ll_invcode <= 0 then
+			messagebox("Selection Validation", "Kindly select any row from the list view.")
+			return
+		end if
+	else
+		ll_invcode = this.id_master.getitemnumber(1, "code")
+	end if
+	if gs_company = "REHMANVALLEY" then
+		this.id_print.dataobject = "d_rehmanvalley_installmentprint"
+	elseif gs_company = "JAMEELTRADERS" then
+		this.id_print.dataobject = "d_jameeltraders_installmentprint"
+	else
+		this.id_print.dataobject = "d_installmentprint"
+	end if
+	this.id_print.settransobject(this.it_transobject)
+	this.id_print.retrieve(ll_invcode)
+	if lb_listtab then
+		lstr.dw = this.id_print
+		lstr.s_name1 = this.id_print.dataobject
+		openwithparm(w_preview_invoices, lstr)
+		lstr = message.powerobjectparm
+		if lstr.i_closemode = -1 then
+			return
+		end if
+		return
+	end if
+	if f_stringpreferences("saleaskforcopies") = "Y" then
+		open(w_printer_copies)
+		this.id_print.object.datawindow.print.copies = string(message.doubleparm)
+	end if
+	if f_stringpreferences("PromptBeforePrinting") = "Y" and printsetup() < 0 then
+		messagebox("Printer", "Printing Error")
+		this.id_print.printcancel()
+	end if
+	if this.id_print.rowcount() > 0 then
+		this.id_print.print()
+		if this.im_menu.m_file.m_save.enabled = true and lb_listtab = false then
+			postevent("ue_new")
+		end if
+		return
+	end if
+	messagebox("Printing Error", "Can not Print Invoice,~r~nNo rows are retrieved", information!)

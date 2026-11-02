@@ -1,0 +1,36 @@
+// window w_arg_printers (reports)  ancestor: w_arg_manf
+
+// w_arg_printers.create() returns 0
+	call super::create
+
+// w_arg_printers.destroy() returns 0
+	call super::destroy
+
+// w_arg_printers.open() returns long
+	long ancestorreturnvalue
+	singlelineedit sle
+	long ll_rows
+	long ll_found
+	string ls_printer
+	string ls_prntrs
+	datawindowchild state_child
+	integer rtncode
+	ancestorreturnvalue = super::open()
+	ls_prntrs = printgetprinters()
+	ls_printer = message.stringparm
+	rtncode = this.dw_control.getchild("printername", state_child)
+	if rtncode = -1 then
+		messagebox("Error", "Not a DataWindowChild")
+	end if
+	state_child.settransobject(sqlca)
+	state_child.importstring(ls_prntrs)
+	if len(ls_printer) > 0 then
+		ll_found = state_child.find("name >= '" + ls_printer + "'", 1, state_child.rowcount())
+		if ll_found > 0 and ll_found <= state_child.rowcount() then
+			this.dw_control.setitem(1, "printername", state_child.getitemstring(ll_found, "name"))
+		end if
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue

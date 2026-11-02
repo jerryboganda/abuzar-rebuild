@@ -1,0 +1,113 @@
+// window w_vehicle (multientry)  ancestor: w_multi_entry
+
+// w_vehicle.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM Vehicle WHERE name =:as_name USING this.it_transobject;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_vehicle.wf_validateitem() returns integer
+	long ll_icode
+	integer li_errcode
+	string ls_managername
+	integer li_null
+	ll_icode = this.id_detail.getitemnumber(this.il_currrow, "transportroutecode")
+	if vf_dwdupcode1(this.id_detail, "transportroutecode", string(ll_icode), this.il_currrow) = true then
+		ls_managername = ""
+		messagebox("Duplication Error", "Current row is duplicate")
+		li_errcode = -1
+	else
+		li_errcode = 0
+	end if
+	this.ib_itemvalidated = true
+	if li_errcode = -1 then
+		setnull(li_null)
+		this.id_detail.setcolumn("transportroutecode")
+		this.id_detail.scrolltorow(this.il_currrow)
+		this.id_detail.object.transportroutecode[this.il_currrow] = li_null
+	end if
+	return li_errcode
+
+// w_vehicle.create() returns 0
+	call super::create
+
+// w_vehicle.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_vehicle.ue_save() returns 0
+	long ll_mastercurrrow
+	long ll_invid
+	long ll_detailrows
+	integer li_counter
+	integer ll_salesmancode
+	boolean lb_commitflag
+	dwitemstatus lds_rowstatus
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	if this.id_detail.rowcount() > 0 and isnull(this.id_detail.object.transportroutecode[1]) then
+		this.id_detail.setrow(1)
+		this.id_detail.deleterow(1)
+	end if
+	if this.id_detail.rowcount() > 0 and isnull(this.id_detail.object.transportroutecode[this.id_detail.rowcount()]) then
+		this.id_detail.setrow(this.id_detail.rowcount())
+		this.id_detail.deleterow(this.id_detail.rowcount())
+	end if
+	setpointer(hourglass!)
+	ll_mastercurrrow = this.id_master.getrow()
+	ll_invid = this.id_master.object.code[ll_mastercurrrow]
+	if isnull(ll_invid) then
+		f_newtableid("vehicle", ll_invid)
+		this.id_master.object.code[ll_mastercurrrow] = ll_invid
+	end if
+	ll_detailrows = this.id_detail.rowcount()
+	li_counter = 1
+	do while li_counter <= ll_detailrows and lb_commitflag = true
+		lds_rowstatus = this.id_detail.getitemstatus(li_counter, 0, primary!)
+		if lds_rowstatus = newmodified! then
+			this.id_detail.setitem(li_counter, "code", ll_invid)
+		end if
+		li_counter = li_counter + 1
+	loop
+	call super::ue_save
+	setpointer(arrow!)
+
+// w_vehicle.ue_newform() returns 0
+	call super::ue_newform
+	this.id_master.setfocus()
+
+// w_vehicle.ue_newitem() returns 0
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	call super::ue_newitem
+
+// w_vehicle.ue_detail() returns 0
+	call super::ue_detail
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_delete.enabled = true
+	this.im_menu.m_file.m_first.enabled = true
+	this.im_menu.m_file.m_next.enabled = true
+	this.im_menu.m_file.m_last.enabled = true
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_menu.m_file.m_previous.enabled = true
+	this.im_menu.m_item.m_newitem.enabled = true
+	this.im_menu.m_item.m_deleteitem.enabled = true
+
+// w_vehicle.ue_postopen() returns 0
+	call super::ue_postopen
+	this.id_detail.getchild("transportroutecode", this.idc_child)
+	this.idc_child.settransobject(this.it_transobject)

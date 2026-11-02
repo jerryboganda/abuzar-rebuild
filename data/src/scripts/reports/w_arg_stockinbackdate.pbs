@@ -1,0 +1,89 @@
+// window w_arg_stockinbackdate (reports)  ancestor: w_listarguments
+
+// w_arg_stockinbackdate.create() returns 0
+	integer icurrent
+	call super::create
+	this.st_selectable = create st_selectable
+	this.st_selected = create st_selected
+	this.st_9 = create st_9
+	this.dw_date = create dw_date
+	this.dw_godown = create dw_godown
+	this.st_4 = create st_4
+	this.cbx_allgodown = create cbx_allgodown
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_selectable
+	this.control[icurrent + 2] = this.st_selected
+	this.control[icurrent + 3] = this.st_9
+	this.control[icurrent + 4] = this.dw_date
+	this.control[icurrent + 5] = this.dw_godown
+	this.control[icurrent + 6] = this.st_4
+	this.control[icurrent + 7] = this.cbx_allgodown
+
+// w_arg_stockinbackdate.destroy() returns 0
+	call super::destroy
+	destroy this.st_selectable
+	destroy this.st_selected
+	destroy this.st_9
+	destroy this.dw_date
+	destroy this.dw_godown
+	destroy this.st_4
+	destroy this.cbx_allgodown
+
+// w_arg_stockinbackdate.open() returns long
+	long ancestorreturnvalue
+	long ll_counter
+	long ll_rowcount
+	integer rtncode
+	ancestorreturnvalue = super::open()
+	this.is_stringparam = message.stringparm
+	if this.is_stringparam = "M" then
+		this.is_dataobject = "d_manufacturers"
+		this.is_colname = "manufacturers"
+		this.is_childcolname = "manfcode"
+		this.st_selectable.text = "Manufacturer(s)"
+		this.st_selected.text = "Manufacturer(s)"
+	elseif this.is_stringparam = "C" then
+		this.is_dataobject = "d_itemcategories"
+		this.is_colname = "categories"
+		this.is_childcolname = "icatcode"
+		this.st_selectable.text = "Item Categories"
+		this.st_selected.text = "Item Categories"
+	elseif this.is_stringparam = "L" then
+		this.is_dataobject = "d_arg_class"
+		this.is_colname = "iccode"
+		this.is_childcolname = "iccode"
+		this.st_selectable.text = "Item Class(s)"
+		this.st_selected.text = "Item Class(s)"
+	end if
+	this.dw_control.dataobject = this.is_dataobject
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	this.dw_godown.settransobject(sqlca)
+	this.dw_godown.insertrow(0)
+	this.dw_godown.scrolltorow(0)
+	rtncode = this.dw_control.getchild(this.is_colname, this.idc_categories)
+	if rtncode = -1 then
+		messagebox("Error", "Not a DataWindowChild")
+	end if
+	ll_rowcount = this.idc_categories.rowcount()
+	for ll_counter = 1 to ll_rowcount
+		this.lb_categories.additem(this.idc_categories.getitemstring(ll_counter, "name"))
+	next
+	this.dw_date.settransobject(sqlca)
+	this.dw_date.insertrow(0)
+	this.dw_date.scrolltorow(0)
+	this.dw_price.insertrow(0)
+	this.dw_price.scrolltorow(0)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// dw_date.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_godown.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1

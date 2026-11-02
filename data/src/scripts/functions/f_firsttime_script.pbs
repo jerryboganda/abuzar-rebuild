@@ -1,0 +1,14 @@
+// function f_firsttime_script (functions)  ancestor: function_object
+
+// f_firsttime_script.f_firsttime_script() returns long
+	string ls_query
+	ls_query = "IF Not Exists (Select Name From SysColumns Where Lower(Name) = 'active' And ID = object_id('users') )  " + " begin " + " Alter Table Users Add Active Char(1) Not Null Constraint DF_Users_Active Default('Y') " + " end "
+	SQL EXECUTE IMMEDIATE :ls_query USING sqlca;
+	if sqlca.sqlcode = 0 then
+		SQL commit USING sqlca;
+		return 0
+	else
+		SQL rollback USING sqlca;
+		return -1
+	end if
+	return 0

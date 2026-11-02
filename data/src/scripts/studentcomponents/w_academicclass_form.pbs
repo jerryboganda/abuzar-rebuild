@@ -1,0 +1,81 @@
+// window w_academicclass_form (studentcomponents)  ancestor: w_single_entry
+
+// w_academicclass_form.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT COUNT ( *) INTO :ll_count FROM Class WHERE name =:as_name USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_academicclass_form.create() returns 0
+	call super::create
+
+// w_academicclass_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_academicclass_form.activate() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::activate()
+	this.windowstate = maximized!
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_academicclass_form.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.is_tablename = "Class"
+	this.id_detail.object.classyear.initial = trim(string(year(today())))
+	return ::message.returnvalue
+
+// w_academicclass_form.ue_save() returns 0
+	long ll_primarykey
+	long ll_row
+	long ll_count
+	long ll_classcode
+	setpointer(hourglass!)
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	if this.id_detail.object.active[1] = "N" and this.id_detail.object.classcode[1] > 0 then
+		ll_classcode = this.id_detail.object.classcode[1]
+		SQL SELECT COUNT ( StudentCode ) INTO :ll_count FROM StudentClass WHERE ClassCode =:ll_classcode USING sqlca;
+		if sqlca.sqlcode = 0 then
+			if ll_count > 0 then
+				messagebox("Class Status Change Problem", "Can Not Mark this Class as In-Active. There are " + trim(string(ll_count)) + " Students enrolled in this class. Either Promote or Graduate Them First To do so.", stopsign!)
+				return
+			end if
+		else
+			messagebox("Database Problem", "Some Database Problem occured.~r~nReasons are:-~r~n" + sqlca.sqlerrtext, stopsign!)
+			return
+		end if
+		return
+	end if
+	if this.id_detail.update() > 0 then
+		SQL commit USING sqlca;
+		messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+		this.ib_commitok = true
+		this.im_menu.m_file.m_new.enabled = true
+		this.editflag = false
+	else
+		SQL rollback USING sqlca;
+		setpointer(arrow!)
+		messagebox("Save Changes", "Changes Rollback in database, ~n~rSome database problem occurs", exclamation!, ok!, 1)
+		return
+	end if
+	setpointer(arrow!)
+
+// w_academicclass_form.ue_newform() returns 0
+	call super::ue_newform
+	if this.id_detail.rowcount() > 0 then
+		this.id_detail.object.classyear.initial = trim(string(year(today())))
+	end if
+
+// w_academicclass_form.ue_new() returns 0
+	call super::ue_new
+	this.id_detail.object.classyear.initial = trim(string(year(today())))

@@ -1,0 +1,82 @@
+// window w_arg_item_find_and_replace_salinvgroup (reports)  ancestor: w_popup_forselection_walias2
+
+// w_arg_item_find_and_replace_salinvgroup.create() returns 0
+	integer icurrent
+	call super::create
+	this.st_1 = create st_1
+	this.st_2 = create st_2
+	this.em_startdate = create em_startdate
+	this.em_enddate = create em_enddate
+	this.dw_find_saleprice = create dw_find_saleprice
+	this.dw_replace_saleprice = create dw_replace_saleprice
+	this.gb_3 = create gb_3
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_1
+	this.control[icurrent + 2] = this.st_2
+	this.control[icurrent + 3] = this.em_startdate
+	this.control[icurrent + 4] = this.em_enddate
+	this.control[icurrent + 5] = this.dw_find_saleprice
+	this.control[icurrent + 6] = this.dw_replace_saleprice
+	this.control[icurrent + 7] = this.gb_3
+
+// w_arg_item_find_and_replace_salinvgroup.destroy() returns 0
+	call super::destroy
+	destroy this.st_1
+	destroy this.st_2
+	destroy this.em_startdate
+	destroy this.em_enddate
+	destroy this.dw_find_saleprice
+	destroy this.dw_replace_saleprice
+	destroy this.gb_3
+
+// w_arg_item_find_and_replace_salinvgroup.open() returns long
+	long ancestorreturnvalue
+	date ld_currdate
+	string ls_text
+	ancestorreturnvalue = super::open()
+	gd_itemsinfo.sharedata(this.id_selectionlist)
+	gd_itemsinfo.sharedata(this.id_selectionlist2)
+	this.dw_find_saleprice.settransobject(sqlca)
+	this.dw_find_saleprice.retrieve()
+	this.dw_replace_saleprice.settransobject(sqlca)
+	this.dw_replace_saleprice.retrieve()
+	ld_currdate = today()
+	ls_text = string(ld_currdate, "dd/mm/yyyy")
+	ls_text = trim(ls_text) + " 00:00:00"
+	this.em_startdate.text = ls_text
+	ls_text = string(ld_currdate, "dd/mm/yyyy")
+	ls_text = trim(ls_text) + " 23:59:59"
+	this.em_enddate.text = ls_text
+	return ::message.returnvalue
+
+// w_arg_item_find_and_replace_salinvgroup.ue_close() returns 0
+	closewithreturn(this, this.istr_arg)
+
+// em_startdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// em_enddate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// dw_replace_saleprice.getfocus() returns long
+	long ancestorreturnvalue
+	long ll_icode
+	double ld_saleprice
+	ancestorreturnvalue = super::getfocus()
+	parent.id_selected2.accepttext()
+	if parent.id_selected2.getrow() > 0 and parent.id_selected2.object.code[parent.id_selected2.getrow()] > 0 then
+		ll_icode = parent.id_selected2.object.code[parent.id_selected2.getrow()]
+		if ll_icode > 0 then
+			SQL SELECT SalePrice =Round ( SalePrice / CASE WHEN PackUnits > 0 THEN Packunits ELSE 1 END , 2 ) INTO :ld_saleprice FROM Item WHERE ICode =:ll_icode USING sqlca;
+			if sqlca.sqlcode = 0 then
+				this.object.saleprice[1] = ld_saleprice
+			end if
+		end if
+	end if
+	return ::message.returnvalue

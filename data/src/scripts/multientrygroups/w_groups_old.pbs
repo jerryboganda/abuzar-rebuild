@@ -1,0 +1,285 @@
+// window w_groups_old (multientrygroups)  ancestor: w_multi_entry
+
+// w_groups_old.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	long ll_code
+	boolean b_flag
+	as_name = trim(as_name)
+	if this.id_master.rowcount() > 0 then
+		ll_code = this.id_master.object.code[1]
+	end if
+	if ll_code > 0 then
+		SQL SELECT count ( *) INTO :ll_count FROM Groups WHERE Groups.groupname =:as_name AND Groups.GroupCode <> :ll_code USING this.it_transobject;
+	else
+		SQL SELECT count ( *) INTO :ll_count FROM Groups WHERE Groups.groupname =:as_name USING this.it_transobject;
+	end if
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_groups_old.wf_validateitem() returns integer
+	long ll_icode
+	integer li_errcode
+	integer li_null
+	ll_icode = this.id_detail.getitemnumber(this.il_currrow, "rightcode")
+	if vf_dwdupcode1(this.id_detail, "rightcode", string(ll_icode), this.il_currrow) = true then
+		messagebox("Duplication Error", "Current row is duplicate")
+		li_errcode = -1
+	else
+		li_errcode = 0
+	end if
+	this.ib_itemvalidated = true
+	if li_errcode = -1 then
+		setnull(li_null)
+		this.id_detail.setitem(this.il_currrow, "rightcode", li_null)
+	end if
+	return li_errcode
+
+// w_groups_old.wf_populategrouprights() returns long
+	long ll_retcode
+	long ll_counter
+	long ll_rowcount
+	datastore lds_groupright
+	s_arguements lstr_arg
+	lds_groupright = create datastore
+	lds_groupright.dataobject = "d_groupright"
+	lds_groupright.settransobject(sqlca)
+	open(w_arg_group)
+	lstr_arg = message.powerobjectparm
+	if lstr_arg.i_status = 1 then
+		lds_groupright.retrieve(lstr_arg.l_code3)
+		ll_rowcount = lds_groupright.rowcount()
+		if ll_rowcount > 0 and this.id_detail.rowcount() > 0 then
+			for ll_counter = 1 to this.id_detail.rowcount()
+				if lds_groupright.find("RightCode = " + string(this.id_detail.object.rightcode[ll_counter]), 1, ll_rowcount) > 0 then
+					this.id_detail.setitem(ll_counter, "checked", "Y")
+				end if
+			next
+		end if
+	end if
+	return ll_retcode
+
+// w_groups_old.create() returns 0
+	integer icurrent
+	call super::create
+	this.dw_rights = create dw_rights
+	this.dw_groupgodowns = create dw_groupgodowns
+	this.dw_groupheaders = create dw_groupheaders
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_rights
+	this.control[icurrent + 2] = this.dw_groupgodowns
+	this.control[icurrent + 3] = this.dw_groupheaders
+
+// w_groups_old.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_rights
+	destroy this.dw_groupgodowns
+	destroy this.dw_groupheaders
+
+// w_groups_old.ue_save() returns 0
+	long ll_mastercurrrow
+	long ll_invid
+	long ll_detailrows
+	long ll_counter
+	integer li_counter
+	integer ll_salesmancode
+	integer li_ldsrow
+	boolean lb_commitflag
+	boolean lb_modify
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	setpointer(hourglass!)
+	ll_mastercurrrow = this.id_master.getrow()
+	if this.id_master.object.accumdiscperccaution[ll_mastercurrrow] > this.id_master.object.accumulateddiscperc[ll_mastercurrrow] then
+		this.id_master.setcolumn("accumdiscperccaution")
+		this.id_master.setfocus()
+		return
+	end if
+	ll_invid = this.id_master.object.code[ll_mastercurrrow]
+	if isnull(ll_invid) then
+		f_newtableid("Groups", ll_invid)
+		this.id_master.object.code[ll_mastercurrrow] = ll_invid
+		lb_modify = false
+	else
+		lb_modify = true
+	end if
+	ll_detailrows = this.id_detail.rowcount()
+	li_counter = 1
+	if lb_modify then
+		SQL Delete grouprights Where groupcode =:ll_invid USING this.it_transobject;
+		if this.it_transobject.sqlcode <> 0 then
+			lb_commitflag = false
+		end if
+	end if
+	this.id_rights.reset()
+	do while li_counter <= ll_detailrows and lb_commitflag = true
+		if this.id_detail.getitemstring(li_counter, "checked") = "Y" then
+			this.id_rights.insertrow(0)
+			this.id_rights.setitem(li_ldsrow, "groupcode", ll_invid)
+			this.id_rights.setitem(li_ldsrow, "rightcode", this.id_detail.getitemnumber(li_counter, "rightcode"))
+			this.id_rights.setitem(li_ldsrow, "status", 1)
+			li_ldsrow = li_ldsrow + 1
+		end if
+		li_counter = li_counter + 1
+	loop
+	this.id_detail = this.id_rights
+	if lb_commitflag then
+		setpointer(hourglass!)
+		if this.id_master.update(true, false) < 0 then
+			SQL rollback USING this.it_transobject;
+			messagebox("Problem Saving", "Can not save group level settings~r~nDetails: - " + this.it_transobject.sqlerrtext, exclamation!, ok!, 1)
+			this.id_detail = this.tab_retrieve.tabpage_detail.dw_itemsdetail
+			setpointer(arrow!)
+			return
+		end if
+		if not lb_modify then
+			for ll_counter = 1 to 8
+				this.dw_groupgodowns.insertrow(0)
+				this.dw_groupgodowns.scrolltorow(0)
+				this.dw_groupgodowns.setitem(ll_counter, "groupcode", ll_invid)
+				this.dw_groupgodowns.setitem(ll_counter, "godown", "")
+				this.dw_groupgodowns.setitem(ll_counter, "gcode", 1)
+				this.dw_groupgodowns.setitem(ll_counter, "allowed", 1)
+				this.dw_groupgodowns.setitem(ll_counter, "module", ll_counter)
+				this.dw_groupgodowns.setitem(ll_counter, "priority", 10)
+				this.dw_groupheaders.insertrow(0)
+				this.dw_groupheaders.scrolltorow(0)
+				this.dw_groupheaders.setitem(ll_counter, "groupcode", ll_invid)
+				this.dw_groupheaders.setitem(ll_counter, "headercode", 1)
+				this.dw_groupheaders.setitem(ll_counter, "allowed", 1)
+				this.dw_groupheaders.setitem(ll_counter, "module", ll_counter)
+				this.dw_groupheaders.setitem(ll_counter, "priority", 10)
+			next
+			if this.dw_groupgodowns.update() < 0 then
+				messagebox("Problem Saving", "Can not save default group Settings", exclamation!, ok!, 1)
+				setpointer(arrow!)
+				return
+			end if
+			if this.dw_groupheaders.update() < 0 then
+				messagebox("Problem Saving", "Can not save default header Settings", exclamation!, ok!, 1)
+				setpointer(arrow!)
+				return
+			end if
+			return
+		end if
+		if this.id_detail.update() > 0 then
+			SQL commit USING this.it_transobject;
+			messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+			this.ib_commitok = true
+			this.id_master.resetupdate()
+			this.im_menu.m_file.m_new.enabled = true
+			this.editflag = false
+		else
+			SQL rollback USING this.it_transobject;
+			messagebox("Problem Saving", "Can not save group level rights~r~nDetails: - " + this.it_transobject.sqlerrtext, exclamation!, ok!, 1)
+			setpointer(arrow!)
+			this.id_detail = this.tab_retrieve.tabpage_detail.dw_itemsdetail
+			return
+		end if
+	else
+		SQL rollback USING this.it_transobject;
+		messagebox("Problem Saving", "Can not save changes to database~r~nDetails: - " + this.it_transobject.sqlerrtext, exclamation!, ok!, 1)
+		setpointer(arrow!)
+		this.id_detail = this.tab_retrieve.tabpage_detail.dw_itemsdetail
+		return
+	end if
+	this.id_detail = this.tab_retrieve.tabpage_detail.dw_itemsdetail
+	this.id_rights.reset()
+	setpointer(arrow!)
+
+// w_groups_old.ue_newitem() returns 0
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	call super::ue_newitem
+
+// w_groups_old.ue_detail() returns 0
+	integer li_counter
+	integer li_count
+	integer li_detailrowcount
+	integer li_rightscount
+	long ll_row
+	call super::ue_detail
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_delete.enabled = true
+	this.im_menu.m_file.m_first.enabled = true
+	this.im_menu.m_file.m_next.enabled = true
+	this.im_menu.m_file.m_last.enabled = true
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_menu.m_file.m_previous.enabled = true
+	this.im_menu.m_item.m_newitem.enabled = true
+	this.im_menu.m_item.m_deleteitem.enabled = true
+	ll_row = this.id_master.getrow()
+	if this.id_master.object.code[ll_row] = 2 then
+		this.id_detail.object.checked.protect = 1
+	else
+		this.id_detail.object.checked.protect = 0
+	end if
+	if this.id_master.object.code[ll_row] = 5 then
+		this.id_master.object.groupname.protect = 1
+	else
+		this.id_master.object.groupname.protect = 0
+	end if
+	this.id_rights.retrieve(this.id_master.getitemnumber(ll_row, "code"))
+	li_detailrowcount = this.id_detail.rowcount()
+	li_rightscount = this.id_rights.rowcount()
+	for li_counter = 1 to li_detailrowcount
+		if this.id_rights.find("RightCode = " + string(this.id_detail.object.rightcode[li_counter]), 1, li_rightscount) > 0 then
+			this.id_detail.setitem(li_counter, "checked", "Y")
+		end if
+	next
+
+// w_groups_old.ue_postopen() returns 0
+	call super::ue_postopen
+	this.id_rights = this.dw_rights
+	this.id_rights.settransobject(this.it_transobject)
+	this.dw_groupgodowns.settransobject(this.it_transobject)
+	this.dw_groupheaders.settransobject(this.it_transobject)
+
+// w_groups_old.ue_newform() returns 0
+	call super::ue_newform
+	this.id_detail.retrieve()
+	this.im_menu.m_item.m_newitem.toolbaritemvisible = false
+	this.im_menu.m_item.m_deleteitem.toolbaritemvisible = false
+
+// w_groups_old.open() returns long
+	m_entry lm_menu
+	long ll_width
+	long ll_height
+	environment env
+	postevent("ue_postopen")
+	wf_setmenu(this.menuid)
+	lm_menu = this.menuid
+	lm_menu.dynamic mf_initsecurityapp(lm_menu)
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.tab_retrieve.width = ll_width * 0.99
+	this.tab_retrieve.height = ll_height * 0.83
+	this.tab_retrieve.tabpage_detail.dw_detail.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_itemsdetail.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_footer.y = this.tab_retrieve.height * 0.98 - this.tab_retrieve.tabpage_detail.dw_footer.height
+	this.tab_retrieve.tabpage_detail.dw_detail.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width
+	this.tab_retrieve.tabpage_detail.dw_footer.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width
+	this.tab_retrieve.tabpage_detail.dw_itemsdetail.height = this.tab_retrieve.tabpage_detail.dw_footer.y - this.tab_retrieve.tabpage_detail.dw_itemsdetail.y
+	this.tab_retrieve.tabpage_list.gb_fliter.width = ll_width * 0.97 - this.tab_retrieve.tabpage_list.gb_sort.width
+	this.tab_retrieve.tabpage_list.r_1.width = ll_width * 0.99
+	this.tab_retrieve.tabpage_list.r_1.height = ll_height * 0.765 - this.tab_retrieve.tabpage_list.gb_sort.height
+	this.tab_retrieve.tabpage_list.dw_list.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_list.dw_list.height = ll_height * 0.75 - this.tab_retrieve.tabpage_list.dw_list.y
+	this.tab_retrieve.tabpage_detail.dw_itemslist.height = ll_height * 0.6
+	this.tab_retrieve.tabpage_detail.dw_itemslist.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width * 0.67
+	this.tab_retrieve.tabpage_detail.dw_itemslist.x = 1150
+	setredraw(true)
+	return ::message.returnvalue

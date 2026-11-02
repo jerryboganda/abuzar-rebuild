@@ -1,0 +1,614 @@
+// window w_dueadj (duecomponents)  ancestor: w_multi_entry
+
+// w_dueadj.wf_duplicaterow(datawindow adw_detail, long al_gcode, long al_icode, string as_batch, datetime ad_expiry) returns boolean
+	long ll_count
+	boolean b_flag
+	long ll_counter
+	long ll_gcode
+	long ll_icode
+	string ls_batch
+	datetime ld_expiry
+	for ll_counter = 1 to adw_detail.rowcount()
+		ll_gcode = adw_detail.getitemnumber(ll_counter, "gcode")
+		ll_icode = adw_detail.getitemnumber(ll_counter, "icode")
+		ls_batch = adw_detail.getitemstring(ll_counter, "batch")
+		ld_expiry = adw_detail.getitemdatetime(ll_counter, "expiry")
+		if ll_gcode = al_gcode and ll_icode = al_icode and upper(trim(ls_batch)) = upper(trim(as_batch)) and ld_expiry = ad_expiry then
+			b_flag = true
+		end if
+	next
+	return b_flag
+
+// w_dueadj.wf_post() returns integer
+	long ll_invid
+	long ll_errrowid
+	string ls_errtext
+	integer li_errcode
+	long ll_salesmancode
+	long ll_saleinvcount
+	s_arguements lstr_arginfo
+	open(w_salesmanpassword)
+	ll_salesmancode = long(message.doubleparm)
+	setfocus()
+	if ll_salesmancode > 0 then
+		this.id_saleinvdetail.reset()
+		if this.id_master.getitemstring(this.id_master.getrow(), "posted") = "Y" then
+			ll_invid = this.id_master.getitemnumber(this.id_master.getrow(), "code")
+			if not wf_populatesaledetail(ll_invid, this.id_saleinvdetail, ls_errtext, ll_errrowid) then
+				SQL rollback USING this.it_transobject;
+				messagebox("Save Changes", "Changes Rollback in database, ~n~rSome database problem occurs", exclamation!, ok!, 1)
+				this.id_detail.scrolltorow(ll_errrowid)
+				this.id_detail.setfocus()
+			else
+				if this.id_saleinvdetail.update() > 0 then
+					SQL commit USING this.it_transobject;
+					messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+					this.im_menu.m_file.m_post.enabled = false
+					this.ib_commitok = true
+					this.editflag = false
+				else
+					SQL rollback USING this.it_transobject;
+					messagebox("Save Changes", "Changes Rollback in database, ~n~rSome database problem occurs", exclamation!, ok!, 1)
+				end if
+				this.id_saleinvdetail.reset()
+				if this.ib_commitok then
+					this.ib_modify = false
+				end if
+			end if
+		else
+			messagebox("Post", "This invoice is unposted")
+		end if
+	end if
+	setpointer(arrow!)
+	return li_errcode
+
+// w_dueadj.wf_deletesaledetailrow(long al_saleinvcode, long al_icode, integer al_gcode, string as_batch, datetime ad_expiry) returns integer
+	SQL Delete SaleDetail Where SaleDetail.SaleInvCode =:al_saleinvcode AND SaleDetail.icode =:al_icode AND SaleDetail.gcode =:al_gcode AND SaleDetail.batch =:as_batch AND SaleDetail.expiry =:ad_expiry USING this.it_transobject;
+	return this.it_transobject.sqlcode
+
+// w_dueadj.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+
+// w_dueadj.wf_findsaleinv(long al_saleinvcode, string as_errtext) returns boolean
+	boolean lb_rtflag
+	long ll_countsaleinvcode
+	SQL SELECT Count ( *) INTO :ll_countsaleinvcode FROM saleLedger , saledetail WHERE saleLedger.saleinvcode =:al_saleinvcode AND saleLedger.saleinvcode =saledetail.saleinvcode AND saleLedger.Posted ='Y' AND saledetail.Due ='D' AND saleLedger.saleCatCode IN ( 1 , 2 , 3 ) USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		if ll_countsaleinvcode > 0 then
+			lb_rtflag = true
+		else
+			as_errtext = "Invoice is Unposted OR Invoice don't have due item"
+		end if
+	else
+		as_errtext = "Database Error, Some database request fails"
+	end if
+	return lb_rtflag
+
+// w_dueadj.wf_locksaleinvoice(long al_saleinvcode) returns integer
+	integer li_count
+	SQL Select count ( *) INTO :li_count From saleledger WITH ( UPDLOCK HOLDLOCK ) Where saleledger.saleinvcode =:al_saleinvcode USING this.it_transobject;
+	return this.it_transobject.sqlcode
+
+// w_dueadj.wf_locksaledetailrow(long al_saleinvcode, long al_icode, integer al_gcode, string as_batch, datetime ad_expiry, char ac_due, long al_salerowid) returns integer
+	SQL SELECT SaleDetail.Due INTO :ac_due FROM SaleDetail WITH ( UPDLOCK HOLDLOCK ) WHERE SaleDetail.SaleInvCode =:al_saleinvcode AND SaleDetail.icode =:al_icode AND SaleDetail.gcode =:al_gcode AND SaleDetail.batch =:as_batch AND SaleDetail.expiry =:ad_expiry AND SaleDetail.RowId =:al_salerowid USING this.it_transobject;
+	return this.it_transobject.sqlcode
+
+// w_dueadj.wf_finddupitem(datawindow ad_dwcontrol, long al_icode, long al_salerowid, long al_row) returns boolean
+	long rt_code
+	boolean yesno
+	if ad_dwcontrol.rowcount() > 1 then
+		if al_row > 1 then
+			rt_code = ad_dwcontrol.find(" icode = " + string(al_icode) + " and salerowid = " + string(al_salerowid), al_row - 1, 0)
+		end if
+		if rt_code = 0 then
+			if al_row <> ad_dwcontrol.rowcount() then
+				rt_code = ad_dwcontrol.find(" icode = " + string(al_icode) + " and salerowid = " + string(al_salerowid), al_row + 1, ad_dwcontrol.rowcount())
+			end if
+			if rt_code <> 0 then
+				yesno = true
+			end if
+		else
+			yesno = true
+		end if
+	end if
+	return yesno
+
+// w_dueadj.wf_validateitem() returns integer
+	long ll_icode
+	long ll_salerowid
+	string ls_fullcode
+	string ls_titleerrtext
+	string ls_errtext
+	integer li_errcode
+	integer li_null
+	string ls_null
+	ll_icode = this.id_detail.getitemnumber(this.il_currrow, "icode")
+	ll_salerowid = this.id_detail.getitemnumber(this.il_currrow, "salerowid")
+	if wf_finddupitem(this.id_detail, ll_icode, ll_salerowid, this.il_currrow) = true then
+		ls_titleerrtext = "Item Validation"
+		ls_errtext = "Duplicate item, please select some other item"
+		li_errcode = -1
+	end if
+	this.ib_itemvalidated = true
+	if li_errcode = -1 then
+		setnull(li_null)
+		setnull(ls_null)
+		messagebox(ls_titleerrtext, ls_errtext)
+		this.id_detail.setcolumn("icode")
+		this.id_detail.scrolltorow(this.il_currrow)
+		this.id_detail.object.icode[this.il_currrow] = li_null
+	end if
+	return li_errcode
+
+// w_dueadj.wf_populatesaledetail(long al_invid, datawindow ad_saledetail, string as_errortext, long al_errorrow) returns boolean
+	long ll_saleinvcode
+	long ll_detailrows
+	long ll_gcode
+	long ll_icode
+	long ll_packunits
+	long ll_errrowid
+	long ll_customeracc
+	long ll_salesmancode
+	long li_counter
+	long li_innercounter
+	long ll_insertedrows
+	long ll_itemsdetailrowcount
+	long ll_row
+	long ll_salerowid
+	unsignedlong ul_rowcount
+	unsignedlong ul_maxutn
+	char lc_due
+	double ld_rate
+	double ld_avgprice
+	double ld_saleprice
+	double ld_discperc
+	boolean lb_commitflag
+	string ls_batch
+	datetime ld_expiry
+	double ld_stock
+	double ld_newstock
+	double ld_salelooseqty
+	double ld_looseqty
+	double ld_dueqty
+	double ld_duesatisfyqty
+	double ld_totalsatisfyqty
+	ll_detailrows = this.id_detail.rowcount()
+	li_counter = 1
+	ll_itemsdetailrowcount = 0
+	lc_due = "D"
+	as_errortext = "    Some database problem ocuurs         "
+	ll_saleinvcode = this.id_master.getitemnumber(this.id_master.getrow(), "saleinvcode")
+	do while li_counter <= ll_detailrows and lb_commitflag
+		ll_gcode = this.id_detail.getitemnumber(li_counter, "gcode")
+		ll_icode = this.id_detail.getitemnumber(li_counter, "icode")
+		ls_batch = this.id_detail.getitemstring(li_counter, "batch")
+		ld_expiry = this.id_detail.getitemdatetime(li_counter, "expiry")
+		ld_dueqty = this.id_detail.getitemnumber(li_counter, "dueqty")
+		ld_duesatisfyqty = this.id_detail.getitemnumber(li_counter, "duesatisfyqty")
+		ld_totalsatisfyqty = this.id_detail.getitemnumber(li_counter, "totalsatisfyqty")
+		ll_salerowid = this.id_detail.getitemnumber(li_counter, "salerowid")
+		if wf_locksaledetailrow(ll_saleinvcode, ll_icode, ll_gcode, ls_batch, ld_expiry, lc_due, ll_salerowid) = 0 then
+			if ld_dueqty = ld_totalsatisfyqty + ld_duesatisfyqty then
+				lc_due = "S"
+				this.it_transobject.updatesaledetail(ll_saleinvcode, ll_gcode, ll_icode, lc_due, ll_salerowid)
+				if this.it_transobject.sqlcode <> 0 then
+					lb_commitflag = false
+				end if
+			end if
+			if lb_commitflag then
+				if wf_selectitembatches(ll_gcode, ll_icode, ld_duesatisfyqty, ad_saledetail, ll_insertedrows, as_errortext) = 0 then
+					for li_innercounter = 1 to ll_insertedrows
+						ll_row = ll_itemsdetailrowcount + li_innercounter
+						ad_saledetail.setitem(ll_row, "code", al_invid)
+						ad_saledetail.setitem(ll_row, "salerowid", ll_salerowid)
+						ls_batch = ad_saledetail.getitemstring(ll_row, "batch")
+						ld_expiry = ad_saledetail.getitemdatetime(ll_row, "expiry")
+						ld_duesatisfyqty = ad_saledetail.getitemnumber(ll_row, "duesatisfyqty")
+						ld_stock = ad_saledetail.getitemnumber(ll_row, "stock")
+						ll_gcode = ad_saledetail.getitemnumber(ll_row, "gcode")
+						ll_icode = ad_saledetail.getitemnumber(ll_row, "icode")
+						this.it_transobject.getitemavgpriceforsale(ll_icode, ld_avgprice)
+						if this.it_transobject.sqlcode = 0 then
+							ad_saledetail.setitem(ll_row, "AvgPrice", ld_avgprice)
+						else
+							return false
+						end if
+						ld_newstock = ld_stock - ld_duesatisfyqty
+						if ld_newstock > 0.0 then
+							this.it_transobject.saleupdateitemstockbatch(ll_gcode, ll_icode, ls_batch, ld_expiry, ld_newstock, ld_stock)
+						else
+							this.it_transobject.deleteitemstockbatch(ll_gcode, ll_icode, ls_batch, ld_expiry, ld_stock)
+						end if
+						if this.it_transobject.sqlcode <> 0 then
+							lb_commitflag = false
+							as_errortext = "Stock Updation Error:~r~n" + this.it_transobject.sqlerrtext
+						end if
+					next
+					ll_itemsdetailrowcount = ll_itemsdetailrowcount + ll_insertedrows
+				else
+					lb_commitflag = false
+				end if
+			end if
+		else
+			lb_commitflag = false
+		end if
+		li_counter = li_counter + 1
+	loop
+	if not lb_commitflag then
+		al_errorrow = li_counter - 1
+		messagebox("Database Error", as_errortext)
+	end if
+	SQL rollback USING sqlca;
+	ul_rowcount = ad_saledetail.rowcount()
+	sqlca.getmaxutn(ul_rowcount, ul_maxutn)
+	if sqlca.sqlcode = 0 then
+		SQL commit USING sqlca;
+	else
+		SQL rollback USING sqlca;
+		messagebox("SAVING", " Error in generating Utn ")
+		return false
+	end if
+	for li_counter = 1 to ad_saledetail.rowcount()
+		ad_saledetail.setitem(li_counter, "duesatisfyUtn", ul_maxutn)
+		ul_maxutn = ul_maxutn + 1
+	next
+	return lb_commitflag
+
+// w_dueadj.wf_getitem_prevsatisfiableqty(long al_icode, long al_gcode) returns long
+	long ll_counter
+	long ll_rowcount
+	double ld_prevsatisfiableqty
+	ll_rowcount = this.id_detail.rowcount() - 1
+	for ll_counter = 1 to ll_rowcount
+		if this.id_detail.getitemnumber(ll_counter, "icode") = al_icode and this.id_detail.getitemnumber(ll_counter, "gcode") = al_gcode then
+			ld_prevsatisfiableqty = ld_prevsatisfiableqty + this.id_detail.getitemnumber(ll_counter, "satisfiableqty")
+		end if
+	next
+	return ld_prevsatisfiableqty
+
+// w_dueadj.wf_populatesatisfiableitems() returns long
+	datastore lds_satisfiableitems
+	long ll_counter
+	long ll_currentrow
+	double ld_satisfiableqty
+	double ld_stock
+	double ld_prevsatisfiableqty
+	datetime ldt_startdate
+	datetime ldt_enddate
+	string ls_grouping
+	s_arguements lstr_arg
+	if this.tab_retrieve.selectedtab = 2 or this.editflag = false then
+		return 0
+	end if
+	if this.id_master.accepttext() = -1 then
+		return -1
+	end if
+	ldt_startdate = this.id_master.getitemdatetime(this.id_master.getrow(), "startdate")
+	ldt_enddate = this.id_master.getitemdatetime(this.id_master.getrow(), "enddate")
+	if ldt_startdate > ldt_enddate then
+		messagebox("Date Validation", "Please enter valid datetime.~r~nStart DateTime should be less than or equal to End datetime.")
+		return -1
+	end if
+	if messagebox("Rows Validation", "Are you sure you want to delete all rows?", question!, yesno!, 2) = 1 then
+		for ll_counter = 1 to this.id_detail.rowcount()
+			event ue_deleteitem()
+		next
+	else
+		return 0
+	end if
+	open(w_selection_manf_cat_class_packing)
+	ls_grouping = message.stringparm
+	openwithparm(w_arg_grouping, ls_grouping)
+	lstr_arg = message.powerobjectparm
+	if lstr_arg.i_status = 1 then
+		lds_satisfiableitems = create datastore
+		lds_satisfiableitems.dataobject = "d_dueadj_selected_satisfiableitems"
+		lds_satisfiableitems.settransobject(this.it_transobject)
+		lds_satisfiableitems.retrieve(ldt_startdate, ldt_enddate, ls_grouping, lstr_arg.ia_integerlist)
+		for ll_counter = 1 to lds_satisfiableitems.rowcount()
+			ll_currentrow = this.id_detail.insertrow(0)
+			this.id_detail.setitem(ll_currentrow, "saleinvcode", lds_satisfiableitems.object.saleinvcode[ll_counter])
+			this.id_detail.setitem(ll_currentrow, "icode", lds_satisfiableitems.object.icode[ll_counter])
+			this.id_detail.setitem(ll_currentrow, "gcode", lds_satisfiableitems.object.gcode[ll_counter])
+			this.id_detail.setitem(ll_currentrow, "salerowid", lds_satisfiableitems.object.rowid[ll_counter])
+			this.id_detail.setitem(ll_currentrow, "itemname", lds_satisfiableitems.object.itemname[ll_counter])
+			this.id_detail.setitem(ll_currentrow, "dueqty", lds_satisfiableitems.object.dueqty[ll_counter])
+			this.id_detail.setitem(ll_currentrow, "satisfiedqty", lds_satisfiableitems.object.satisfiedqty[ll_counter])
+			ld_satisfiableqty = lds_satisfiableitems.object.dueqty[ll_counter] - lds_satisfiableitems.object.satisfiedqty[ll_counter]
+			ld_stock = 0
+			this.it_transobject.getitemstocktotal(lds_satisfiableitems.object.gcode[ll_counter], lds_satisfiableitems.object.icode[ll_counter], ld_stock)
+			if this.it_transobject.sqlcode <> 0 then
+				messagebox("Stock Validation", "Unable to fetch Item Stock.")
+				ld_stock = 0
+			end if
+			ld_prevsatisfiableqty = wf_getitem_prevsatisfiableqty(this.id_detail.getitemnumber(ll_currentrow, "icode"), this.id_detail.getitemnumber(ll_currentrow, "gcode"))
+			ld_stock = ld_stock - ld_prevsatisfiableqty
+			if ld_stock < 0.0 then
+				ld_stock = 0
+			end if
+			if ld_satisfiableqty > ld_stock then
+				ld_satisfiableqty = ld_stock
+			end if
+			this.id_detail.setitem(ll_currentrow, "stock", ld_stock)
+			this.id_detail.setitem(ll_currentrow, "satisfiableqty", ld_satisfiableqty)
+		next
+	end if
+	if this.id_detail.rowcount() > 0 then
+		this.im_menu.m_file.m_save.enabled = true
+	else
+		this.im_menu.m_file.m_save.enabled = false
+	end if
+	destroy lds_satisfiableitems
+	return 0
+
+// w_dueadj.wf_selectitembatches(long al_gcode, long al_icode, double ad_qty, datawindow ad_itemsdetail, long al_rowscount, string al_errortext) returns integer
+	datastore lds_itemstockinfo
+	long ll_counter
+	long ll_detailrowcount
+	long ll_packunits
+	boolean lb_flag
+	integer li_errcode
+	double ld_saleprice
+	double ld_saleqty
+	double ld_reqqty
+	double ld_totalstock
+	double ld_batchqty
+	lds_itemstockinfo = create datastore
+	lds_itemstockinfo.dataobject = "d_itemstockinfo"
+	lds_itemstockinfo.settransobject(this.it_transobject)
+	if lds_itemstockinfo.retrieve(al_gcode, al_icode) > 0 then
+		ld_totalstock = lds_itemstockinfo.getitemnumber(1, "c_totalstock")
+		if ld_totalstock >= ad_qty then
+			ld_reqqty = ad_qty
+			ll_detailrowcount = ad_itemsdetail.rowcount()
+			ll_counter = 1
+			do while ll_counter <= lds_itemstockinfo.rowcount() and not lb_flag
+				ld_batchqty = lds_itemstockinfo.getitemnumber(ll_counter, "currqty")
+				if ld_batchqty >= ld_reqqty then
+					ld_saleqty = ld_reqqty
+					lb_flag = true
+				else
+					ld_saleqty = ld_batchqty
+					ld_reqqty = ld_reqqty - ld_batchqty
+				end if
+				ad_itemsdetail.insertrow(0)
+				ll_detailrowcount = ll_detailrowcount + 1
+				ad_itemsdetail.setitem(ll_detailrowcount, "gcode", al_gcode)
+				ad_itemsdetail.setitem(ll_detailrowcount, "icode", al_icode)
+				ad_itemsdetail.setitem(ll_detailrowcount, "batch", lds_itemstockinfo.getitemstring(ll_counter, "batch"))
+				ad_itemsdetail.setitem(ll_detailrowcount, "expiry", lds_itemstockinfo.getitemdatetime(ll_counter, "expiry"))
+				ad_itemsdetail.setitem(ll_detailrowcount, "stock", ld_batchqty)
+				ad_itemsdetail.setitem(ll_detailrowcount, "totalstock", ld_totalstock)
+				ad_itemsdetail.setitem(ll_detailrowcount, "duesatisfyqty", ld_saleqty)
+				SQL SELECT dbo.item.saleprice , dbo.item.packunits INTO :ld_saleprice, :ll_packunits FROM dbo.item WHERE dbo.item.icode =:al_icode USING sqlca;
+				ad_itemsdetail.setitem(ll_detailrowcount, "packunits", ll_packunits)
+				ad_itemsdetail.setitem(ll_detailrowcount, "packsaleprice", ld_saleprice)
+				ll_counter = ll_counter + 1
+			loop
+			al_rowscount = ll_counter - 1
+		else
+			li_errcode = 1
+			al_rowscount = ld_totalstock
+			al_errortext = "Stock has been decreased for this item   "
+		end if
+	else
+		li_errcode = 1
+		al_rowscount = ld_totalstock
+		al_errortext = "Stock is zero for this item   "
+	end if
+	destroy lds_itemstockinfo
+	return li_errcode
+
+// w_dueadj.create() returns 0
+	integer icurrent
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_dueadjustment" then
+		this.menuid = create m_dueadjustment
+	end if
+	this.dw_saleinvdetail = create dw_saleinvdetail
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_saleinvdetail
+
+// w_dueadj.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_saleinvdetail
+
+// w_dueadj.ue_detail() returns 0
+	long li_counter
+	long li_rowcount
+	long li_rtncode
+	string ls_due
+	call super::ue_detail
+	setredraw(false)
+	this.im_menu.m_file.m_save.enabled = false
+	this.im_menu.m_file.m_print.enabled = false
+	wf_protectdw(this.id_master, 1)
+	wf_protectdw(this.id_detail, 1)
+	setredraw(true)
+
+// w_dueadj.ue_list() returns 0
+	call super::ue_list
+	this.im_menu.m_file.m_post.enabled = false
+	this.im_menu.m_item.m_deleteitem.enabled = false
+	this.im_menu.m_file.m_print.enabled = false
+
+// w_dueadj.ue_postopen() returns 0
+	long li_rtncode
+	call super::ue_postopen
+	this.id_saleinvdetail = this.dw_saleinvdetail
+	this.id_saleinvdetail.settransobject(this.it_transobject)
+	this.im_menu.m_file.m_print.enabled = false
+	f_setcolumnstyle(this.id_detail, "Qty")
+
+// w_dueadj.ue_save() returns 0
+	long ll_invid
+	long ll_errrowid
+	long ll_counter
+	long ll_gcode
+	long ll_icode
+	long ll_saleinvcode
+	long ll_salerowid
+	long ll_rtcode
+	long ll_found
+	string ls_batch
+	datetime ld_expiry
+	boolean lb_commitflag
+	char lc_due
+	string ls_errtext
+	integer li_errcode
+	integer ll_mastercurrrow
+	long ll_salesmancode
+	long ll_saleinvcount
+	s_arguements lstr_arginfo
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	ll_mastercurrrow = this.id_master.getrow()
+	ll_found = 0
+	ll_found = this.id_detail.find(" satisfiableqty <= 0 And duedelete = 'N' ", 1, this.id_detail.rowcount())
+	if ll_found > 0 then
+		messagebox("Satisfiable Qty Validation", "Kindly enter satisfiable qty greater than zero at row no: " + string(ll_found))
+		this.id_detail.scrolltorow(ll_found)
+		this.id_detail.setcolumn("satisfiableqty")
+		this.id_detail.setfocus()
+		return
+	end if
+	setpointer(hourglass!)
+	if not wf_validateserverdatetime(ldt_server_datetime, ls_date_errtext) then
+		messagebox("Date Violation", ls_date_errtext, stopsign!)
+		return
+	end if
+	open(w_salesmanpassword)
+	ll_salesmancode = long(message.doubleparm)
+	setfocus()
+	if ll_salesmancode > 0 then
+		ll_invid = this.id_master.getitemnumber(ll_mastercurrrow, "code")
+		if isnull(ll_invid) then
+			f_newtableid("DueAdjHeader", ll_invid)
+			if ll_invid > 0 then
+				this.id_master.setitem(ll_mastercurrrow, "code", ll_invid)
+			end if
+		end if
+		if not wf_getserverdatetime(ldt_server_datetime, ls_date_errtext) then
+			messagebox("Date Violation", ls_date_errtext, stopsign!)
+			return
+		end if
+		this.id_master.setitem(ll_mastercurrrow, "date", ldt_server_datetime)
+		this.id_master.setitem(ll_mastercurrrow, "usercode", ll_salesmancode)
+		ll_invid = this.id_master.getitemnumber(this.id_master.getrow(), "code")
+		for ll_counter = 1 to this.id_detail.rowcount()
+			this.id_detail.setitem(ll_counter, "code", ll_invid)
+		next
+		if lb_commitflag then
+			if this.id_master.update(true, false) < 0 then
+				SQL rollback USING this.it_transobject;
+				setpointer(arrow!)
+				return
+			end if
+			if this.id_detail.update(true, false) > 0 then
+				ll_rtcode = this.it_transobject.satisfydueinbulk(ll_invid, ll_salesmancode, ldt_server_datetime)
+				if this.it_transobject.sqlcode = 0 and ll_rtcode >= 0 then
+					SQL commit USING this.it_transobject;
+					messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+					this.ib_commitok = true
+					this.id_master.resetupdate()
+					this.id_detail.resetupdate()
+					this.im_menu.m_file.m_new.enabled = true
+					this.editflag = false
+				else
+					messagebox("Stock Validation", "Possible Reasons are:~r~n" + this.it_transobject.sqlerrtext)
+					SQL rollback USING this.it_transobject;
+					setpointer(arrow!)
+					return
+				end if
+			else
+				SQL rollback USING this.it_transobject;
+				setpointer(arrow!)
+				return
+			end if
+			setpointer(arrow!)
+		end if
+	end if
+	setpointer(arrow!)
+
+// w_dueadj.ue_newitem() returns 0
+	long ll_rowcount
+	if this.id_detail.rowcount() > 0 and f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	this.id_detail.setcolumn("icode")
+	this.id_detail.insertrow(0)
+	ll_rowcount = this.id_detail.rowcount()
+	if ll_rowcount > 1 then
+		this.id_detail.scrolltorow(ll_rowcount)
+		this.id_detail.setfocus()
+	end if
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_print.enabled = true
+
+// w_dueadj.ue_newform() returns 0
+	integer li_null
+	call super::ue_newform
+	setredraw(false)
+	setredraw(false)
+	this.i_editmode = 1
+	this.i_retrievemode = 2
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_new.enabled = false
+	this.im_menu.m_file.m_delete.enabled = false
+	this.im_menu.m_item.m_newitem.enabled = true
+	this.im_menu.m_item.m_deleteitem.enabled = true
+	this.im_menu.m_file.m_first.enabled = false
+	this.im_menu.m_file.m_next.enabled = false
+	this.im_menu.m_file.m_previous.enabled = false
+	this.im_menu.m_file.m_last.enabled = false
+	this.im_menu.m_file.m_print.enabled = false
+	this.im_menu.m_file.m_retrieve.enabled = true
+	this.im_menu.m_file.m_retrieve.text = "Lis&t"
+	this.tab_retrieve.tabpage_detail.enabled = true
+	if this.id_master.rowcount() > 0 then
+		this.id_master.reset()
+	end if
+	this.ib_focusdetail = false
+	this.id_master.insertrow(0)
+	this.id_detail.reset()
+	this.id_detail.insertrow(0)
+	this.id_master.setcolumn(1)
+	this.id_master.setfocus()
+	setredraw(true)
+	this.im_menu.m_file.m_print.enabled = true
+	wf_protectdw(this.id_master, 0)
+	wf_protectdw(this.id_detail, 0)
+	this.ib_modify = false
+	setredraw(true)

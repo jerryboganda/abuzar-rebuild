@@ -1,0 +1,133 @@
+// window w_groupwisepurexptemp (purchasecomponents)  ancestor: w_multi_entry
+
+// w_groupwisepurexptemp.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM Groups WHERE GroupName =:as_name USING this.it_transobject;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_groupwisepurexptemp.wf_validateitem() returns integer
+	long ll_module
+	long ll_acccode
+	long rt_code
+	integer li_errcode
+	integer li_null
+	boolean ib_yesno
+	setnull(li_null)
+	ll_acccode = this.id_detail.getitemnumber(this.il_currrow, "acccode")
+	if ll_acccode = 0 or isnull(ll_acccode) then
+		messagebox("Expense Account Validation", "Please select a valid Expense Account", stopsign!)
+		return -1
+	end if
+	if wf_findduplicaterow(this.id_detail, ll_acccode, this.il_currrow) then
+		messagebox("Duplication Error", "Current row is duplicate")
+		li_errcode = -1
+	else
+		li_errcode = 0
+	end if
+	this.ib_itemvalidated = true
+	if li_errcode = -1 then
+		this.id_detail.setcolumn("acccode")
+		this.id_detail.scrolltorow(this.il_currrow)
+		this.id_detail.object.acccode[this.il_currrow] = li_null
+	end if
+	return li_errcode
+
+// w_groupwisepurexptemp.wf_findduplicaterow(datawindow ad_dwcontrol, long al_acccode, long al_row) returns boolean
+	long rt_code
+	long ll_currow
+	boolean yesno
+	if ad_dwcontrol.rowcount() > 1 then
+		if al_row > 1 then
+			rt_code = ad_dwcontrol.find("acccode = long('" + trim(string(al_acccode)) + "')", al_row - 1, 0)
+		end if
+		if rt_code = 0 then
+			if al_row <> ad_dwcontrol.rowcount() then
+				rt_code = ad_dwcontrol.find("acccode = long('" + trim(string(al_acccode)) + "')", al_row + 1, ad_dwcontrol.rowcount())
+			end if
+			if rt_code <> 0 then
+				yesno = true
+			end if
+		else
+			yesno = true
+		end if
+	end if
+	return yesno
+
+// w_groupwisepurexptemp.create() returns 0
+	call super::create
+
+// w_groupwisepurexptemp.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_groupwisepurexptemp.ue_save() returns 0
+	long ll_mastercurrrow
+	long ll_invid
+	long ll_detailrows
+	integer li_counter
+	boolean lb_commitflag
+	dwitemstatus lds_rowstatus
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	setpointer(hourglass!)
+	ll_mastercurrrow = this.id_master.getrow()
+	ll_invid = this.id_master.object.code[ll_mastercurrrow]
+	if isnull(ll_invid) then
+		return
+	end if
+	ll_detailrows = this.id_detail.rowcount()
+	li_counter = 1
+	do while li_counter <= ll_detailrows and lb_commitflag = true
+		lds_rowstatus = this.id_detail.getitemstatus(li_counter, 0, primary!)
+		if lds_rowstatus = newmodified! then
+			this.id_detail.setitem(li_counter, "code", ll_invid)
+		end if
+		li_counter = li_counter + 1
+	loop
+	call super::ue_save
+	setpointer(arrow!)
+
+// w_groupwisepurexptemp.ue_newform() returns 0
+	call super::ue_newform
+	this.id_detail.setfocus()
+	this.id_detail.setcolumn("acccode")
+
+// w_groupwisepurexptemp.ue_newitem() returns 0
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	call super::ue_newitem
+	this.id_detail.setrow(this.id_detail.getrow())
+	this.id_detail.setcolumn("acccode")
+
+// w_groupwisepurexptemp.ue_detail() returns 0
+	call super::ue_detail
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_delete.enabled = true
+	this.im_menu.m_file.m_first.enabled = true
+	this.im_menu.m_file.m_next.enabled = true
+	this.im_menu.m_file.m_last.enabled = true
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_menu.m_file.m_previous.enabled = true
+	this.im_menu.m_item.m_newitem.enabled = true
+	this.im_menu.m_item.m_deleteitem.enabled = true
+	if this.id_detail.rowcount() > 0 then
+		this.id_detail.setrow(this.id_detail.rowcount())
+		if this.id_detail.object.acccode[this.id_detail.rowcount()] > 0 then
+			this.id_detail.setcolumn("acccode")
+		end if
+	end if

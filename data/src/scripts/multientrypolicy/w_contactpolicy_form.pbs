@@ -1,0 +1,210 @@
+// window w_contactpolicy_form (multientrypolicy)  ancestor: w_multi_entry
+
+// w_contactpolicy_form.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM ContactPolicy WHERE ContactPolicy.name =:as_name USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_contactpolicy_form.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	if not isnull(ad_dwcontrol.dataobject) then
+		li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+		for li_counter = li_colcount to li_counter step -1
+			ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+			if ai_doundo = 1 then
+				ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+			else
+				ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+			end if
+		next
+	end if
+
+// w_contactpolicy_form.wf_duplicatealiasname(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM ContactPolicy WHERE ContactPolicy.AliasName =:as_name USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_contactpolicy_form.wf_populate_contactpolicy(datawindow ad_sourcedw, datawindow ad_targetdw) returns long
+	string ls_column
+	long ll_totrows
+	long ll_row
+	long ll_newrow
+	long ll_innercounter
+	ll_totrows = ad_sourcedw.rowcount()
+	ll_row = 1
+	ls_column = "week1"
+	do while ll_totrows <> 0 and ll_row <= ll_totrows
+		ll_innercounter = 1
+		for ll_innercounter = 1 to 5
+			ls_column = "week" + trim(string(ll_innercounter))
+			if ad_sourcedw.getitemnumber(ll_row, ls_column) = 1.0 then
+				ll_newrow = ad_targetdw.insertrow(0)
+				ad_targetdw.object.code[ll_newrow] = ad_sourcedw.object.code[ll_row]
+				ad_targetdw.object.weekdaycode[ll_newrow] = ad_sourcedw.object.weekdaycode[ll_row]
+				ad_targetdw.object.weekofmonth[ll_newrow] = ll_innercounter
+			end if
+		next
+		ll_row = ll_row + 1
+	loop
+	return 1
+
+// w_contactpolicy_form.create() returns 0
+	integer icurrent
+	call super::create
+
+// w_contactpolicy_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_contactpolicy_form.ue_newform() returns 0
+	setredraw(false)
+	this.i_editmode = 1
+	this.i_retrievemode = 2
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_new.enabled = false
+	this.im_menu.m_file.m_delete.enabled = false
+	this.im_menu.m_item.m_newitem.enabled = false
+	this.im_menu.m_item.m_deleteitem.enabled = false
+	this.im_menu.m_file.m_first.enabled = false
+	this.im_menu.m_file.m_next.enabled = false
+	this.im_menu.m_file.m_previous.enabled = false
+	this.im_menu.m_file.m_last.enabled = false
+	this.im_menu.m_file.m_print.enabled = false
+	this.im_menu.m_file.m_retrieve.enabled = true
+	this.im_menu.m_file.m_retrieve.text = "Lis&t"
+	this.tab_retrieve.tabpage_detail.enabled = true
+	if this.id_master.rowcount() > 0 then
+		this.id_master.reset()
+	end if
+	this.ib_focusdetail = false
+	this.id_master.insertrow(0)
+	this.id_detail.reset()
+	this.id_detail.retrieve(-1)
+	wf_protectdw(this.id_master, 0)
+	wf_protectdw(this.id_detail, 0)
+	setredraw(true)
+
+// w_contactpolicy_form.ue_detail() returns 0
+	integer li_protect
+	call super::ue_detail
+	this.im_menu.m_file.m_save.enabled = true
+
+// w_contactpolicy_form.ue_save() returns 0
+	long ll_invid
+	long ll_mastercurrrow
+	long ll_counter
+	long ll_rows
+	long ll_null
+	long ll_innercounter
+	boolean lb_updatedetail
+	boolean lb_updatefooter
+	boolean lb_commit
+	boolean lb_flag
+	string ls_null
+	string ls_column
+	setnull(ls_null)
+	setnull(ll_null)
+	setpointer(hourglass!)
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	ll_mastercurrrow = this.id_master.getrow()
+	if isnull(this.id_master.object.name[ll_mastercurrrow]) then
+		messagebox("Contact Policy Name Validation!", "Please Enter Some Valid Contact Policy Name")
+		this.id_master.setcolumn("name")
+		this.id_master.setfocus()
+		return
+	end if
+	lb_flag = false
+	ls_column = "week1"
+	for ll_counter = 1 to this.id_detail.rowcount()
+		ll_innercounter = 1
+		for ll_innercounter = 1 to 5
+			ls_column = "week" + trim(string(ll_innercounter))
+			if this.id_detail.getitemnumber(ll_counter, ls_column) = 1.0 then
+				lb_flag = true
+				exit
+			end if
+		next
+		if lb_flag = true then
+			exit
+		end if
+	next
+	if not lb_flag then
+		messagebox("Validation Problem", "Please Select Some Weekday/Week of Month")
+		this.id_detail.setfocus()
+		this.id_detail.setcolumn(ls_column)
+		this.id_detail.scrolltorow(1)
+		return
+	end if
+	ll_invid = this.id_master.object.code[ll_mastercurrrow]
+	wf_populate_contactpolicy(this.id_detail, this.id_detaildw)
+	if isnull(ll_invid) then
+		wf_tabnewid("ContactPolicy", ll_invid)
+		this.id_master.object.code[ll_mastercurrrow] = ll_invid
+		if isnull(this.id_master.object.aliasname[ll_mastercurrrow]) or this.id_master.object.aliasname[ll_mastercurrrow] = "" then
+			this.id_master.object.aliasname[ll_mastercurrrow] = trim(string(ll_invid))
+		end if
+		ll_rows = this.id_detaildw.rowcount()
+		for ll_counter = 1 to ll_rows
+			this.id_detaildw.setitem(ll_counter, "code", ll_invid)
+		next
+	else
+		SQL DELETE ContactPolicyDetail WHERE ContactPolicyCode =:ll_invid USING this.it_transobject;
+		if this.it_transobject.sqlcode <> 0 then
+			lb_commit = false
+		end if
+	end if
+	if lb_commit then
+		if this.id_master.update(true, false) < 0 then
+			SQL rollback USING this.it_transobject;
+			setpointer(arrow!)
+			return
+		end if
+		if this.id_detaildw.update() < 0 then
+			SQL rollback USING this.it_transobject;
+			setpointer(arrow!)
+			return
+		end if
+		SQL commit USING this.it_transobject;
+		messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+		this.ib_commitok = true
+		this.id_master.resetupdate()
+		this.im_menu.m_file.m_new.enabled = true
+		this.editflag = false
+		if gd_recenttransdate < this.id_systemdate then
+			gd_recenttransdate = this.id_systemdate
+		end if
+	else
+		SQL rollback USING this.it_transobject;
+		setpointer(arrow!)
+		return
+	end if
+	this.id_detaildw.reset()
+	setpointer(arrow!)
+
+// w_contactpolicy_form.ue_postopen() returns 0
+	m_multi_entry lm_menu
+	call super::ue_postopen
+	lm_menu = this.menuid
+	this.id_detaildw = this.tab_retrieve.tabpage_detail.dw_detaildw
+	this.id_detaildw.settransobject(this.it_transobject)

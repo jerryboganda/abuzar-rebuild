@@ -1,0 +1,21 @@
+// userobject u_mutex (components)  ancestor: nonvisualobject
+
+// u_mutex.of_isrunning() returns boolean
+	string ls_name
+	if handle(getapplication()) > 0 then
+		ls_name = getapplication().microhelp + char(0)
+		gl_mutexhandle = createmutex(0, true, ls_name)
+		if getlasterror() = 183 then
+			return true
+		end if
+		return
+	end if
+	return false
+
+// u_mutex.create() returns 0
+	call super::create
+	triggerevent("constructor")
+
+// u_mutex.destroy() returns 0
+	triggerevent("destructor")
+	call super::destroy

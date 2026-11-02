@@ -1,0 +1,93 @@
+// window w_arg_purorder_sdate_ldate_onesupp (reports)  ancestor: w_arg_sinvcode_linvcode
+
+// w_arg_purorder_sdate_ldate_onesupp.create() returns 0
+	integer icurrent
+	call super::create
+	this.dw_supplier = create dw_supplier
+	this.st_5 = create st_5
+	this.dw_invoiceselection = create dw_invoiceselection
+	this.cb_retrieve = create cb_retrieve
+	this.st_6 = create st_6
+	this.em_totalnetamount = create em_totalnetamount
+	this.st_7 = create st_7
+	this.em_discperc = create em_discperc
+	this.gb_2 = create gb_2
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_supplier
+	this.control[icurrent + 2] = this.st_5
+	this.control[icurrent + 3] = this.dw_invoiceselection
+	this.control[icurrent + 4] = this.cb_retrieve
+	this.control[icurrent + 5] = this.st_6
+	this.control[icurrent + 6] = this.em_totalnetamount
+	this.control[icurrent + 7] = this.st_7
+	this.control[icurrent + 8] = this.em_discperc
+	this.control[icurrent + 9] = this.gb_2
+
+// w_arg_purorder_sdate_ldate_onesupp.destroy() returns 0
+	call super::destroy
+	destroy this.dw_supplier
+	destroy this.st_5
+	destroy this.dw_invoiceselection
+	destroy this.cb_retrieve
+	destroy this.st_6
+	destroy this.em_totalnetamount
+	destroy this.st_7
+	destroy this.em_discperc
+	destroy this.gb_2
+
+// w_arg_purorder_sdate_ldate_onesupp.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.dw_supplier.settransobject(sqlca)
+	this.dw_supplier.insertrow(0)
+	this.dw_supplier.scrolltorow(0)
+	this.dw_invoiceselection.settransobject(sqlca)
+	this.dw_invoiceselection.reset()
+	return ::message.returnvalue
+
+// dw_supplier.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_invoiceselection.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_invoiceselection.itemchanged(long row, dwobject dwo, string data) returns long
+	long ll_counter
+	long ll_rowcount
+	double ld_totalnetamount
+	choose case dwo.name
+	case "invselect"
+	end choose
+	return ::message.returnvalue
+
+// cb_retrieve.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent("Clicked")
+	end if
+	return ::message.returnvalue
+
+// cb_retrieve.clicked() returns long
+	long ll_suppcode
+	datetime ldt_sdate
+	datetime ldt_edate
+	parent.em_startdate.getdata(ldt_sdate)
+	parent.em_enddate.getdata(ldt_edate)
+	ll_suppcode = parent.dw_supplier.getitemnumber(parent.dw_supplier.getrow(), "suppcode")
+	if ll_suppcode <= 0 or isnull(ll_suppcode) then
+		messagebox("Supplier Validation.", "Please select some supplier from the list")
+		parent.dw_supplier.setfocus()
+		return ::message.returnvalue
+	end if
+	parent.dw_invoiceselection.reset()
+	parent.dw_invoiceselection.retrieve(ldt_sdate, ldt_edate, ll_suppcode)
+	parent.em_totalnetamount.text = "0.00"
+	return ::message.returnvalue
+
+// em_discperc.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+		return 1
+	end if
+	return ::message.returnvalue

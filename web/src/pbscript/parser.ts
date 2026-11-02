@@ -241,7 +241,7 @@ export class ExprParser {
     }
     if (c.t === 'id') {
       const lc = c.v.toLowerCase()
-      if (lc === 'create') {
+      if (lc === 'create' && this.t[this.p + 1].v !== '(') {
         this.p++
         if (this.isKw('using')) {
           this.p++

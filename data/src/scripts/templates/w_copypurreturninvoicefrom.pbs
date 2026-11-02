@@ -1,0 +1,276 @@
+// window w_copypurreturninvoicefrom (templates)  ancestor: window
+
+// w_copypurreturninvoicefrom.ue_setfocus(char ac_type) returns 0
+	long ll_invcode
+	setnull(ll_invcode)
+	if ac_type = "P" then
+		this.dw_salereturninvtemplate.setitem(1, "srinvcode", ll_invcode)
+		this.dw_salereturninvtemplate.enabled = false
+		this.dw_purchaseinvtemplate.enabled = true
+		this.dw_trans.enabled = false
+		this.dw_purchaseinvtemplate.setfocus()
+		this.rb_copyinvfrompurchaseinvoice.checked = true
+		return
+	end if
+	if ac_type = "R" then
+		this.dw_purchaseinvtemplate.setitem(1, "purinvcode", ll_invcode)
+		this.dw_purchaseinvtemplate.enabled = false
+		this.dw_salereturninvtemplate.enabled = true
+		this.dw_trans.enabled = false
+		this.dw_salereturninvtemplate.setfocus()
+		this.rb_copyinvfromsalereturninvoice.checked = true
+		return
+	end if
+	if ac_type = "N" then
+		this.dw_purchaseinvtemplate.enabled = false
+		this.dw_salereturninvtemplate.enabled = false
+		this.rb_copyinvfromsalereturninvoice.checked = false
+		this.dw_trans.enabled = true
+		this.dw_trans.setitem(1, "transcode", ll_invcode)
+		this.dw_trans.setfocus()
+	end if
+
+// w_copypurreturninvoicefrom.ue_postopen() returns 0
+	long ll_invcode
+	this.istr_template.b_userinput = false
+	this.dw_purchaseinvtemplate.settransobject(sqlca)
+	if this.dw_purchaseinvtemplate.getchild("purinvcode", this.idc_purchaseinvtemplate) <> 1 then
+		messagebox("DataWindow Child", "Can not get DataWindow Child reference for purchase invoice")
+		return
+	end if
+	this.idc_purchaseinvtemplate.settransobject(sqlca)
+	SQL Select Max ( PurInvCode ) INTO :ll_invcode FROM PurLedger USING sqlca;
+	if sqlca.sqlcode <> 0 then
+		messagebox("Fetch Error", "Unable to fetch Purchase Invoices.")
+		return
+	end if
+	this.idc_purchaseinvtemplate.retrieve(1, ll_invcode)
+	this.dw_purchaseinvtemplate.insertrow(0)
+	this.dw_purchaseinvtemplate.scrolltorow(0)
+	this.dw_salereturninvtemplate.settransobject(sqlca)
+	if this.dw_salereturninvtemplate.getchild("srinvcode", this.idc_salereturninvtemplate) <> 1 then
+		messagebox("DataWindow Child", "Can not get DataWindow Child reference for sale return invoice")
+		return
+	end if
+	SQL Select Max ( SrInvCode ) INTO :ll_invcode From SrLedger USING sqlca;
+	this.idc_salereturninvtemplate.settransobject(sqlca)
+	if sqlca.sqlcode <> 0 then
+		messagebox("Fetch Error", "Unable to fetch Sale Return Invoices.")
+		return
+	end if
+	this.idc_salereturninvtemplate.retrieve(1, ll_invcode)
+	this.dw_salereturninvtemplate.insertrow(0)
+	this.dw_salereturninvtemplate.scrolltorow(0)
+	this.dw_expiryintimation_pur.settransobject(sqlca)
+	if this.dw_expiryintimation_pur.getchild("intimationcode", this.idc_expintimation) <> 1 then
+		messagebox("DataWindow Child", "Can not get DataWindow Child reference for Expiry Intimation - Purchase Based")
+		return
+	end if
+	SQL Select Max ( IntimationCode ) INTO :ll_invcode From ExpiryIntimation WHERE Posted ='Y' USING sqlca;
+	this.idc_expintimation.settransobject(sqlca)
+	if sqlca.sqlcode <> 0 then
+		messagebox("Fetch Error", "Unable to fetch Purchase Based Expiry Intimation Documents.")
+		return
+	end if
+	this.idc_expintimation.retrieve()
+	this.dw_expiryintimation_pur.insertrow(0)
+	this.dw_expiryintimation_pur.scrolltorow(0)
+	this.dw_trans.settransobject(sqlca)
+	if this.dw_trans.getchild("transcode", this.idc_transfer) <> 1 then
+		messagebox("DataWindow Child", "Can not get DataWindow Child reference for inter godown transfers")
+		return
+	end if
+	this.idc_transfer.settransobject(sqlca)
+	this.idc_transfer.retrieve()
+	this.dw_trans.insertrow(0)
+	this.dw_trans.scrolltorow(0)
+
+// w_copypurreturninvoicefrom.create() returns 0
+	this.rb_transfer = create rb_transfer
+	this.dw_trans = create dw_trans
+	this.dw_expiryintimation_pur = create dw_expiryintimation_pur
+	this.rb_expiryintimation_pur = create rb_expiryintimation_pur
+	this.dw_salereturninvtemplate = create dw_salereturninvtemplate
+	this.st_1 = create st_1
+	this.rb_copyinvfromsalereturninvoice = create rb_copyinvfromsalereturninvoice
+	this.dw_purchaseinvtemplate = create dw_purchaseinvtemplate
+	this.st_purchaseinvno = create st_purchaseinvno
+	this.rb_copyinvfrompurchaseinvoice = create rb_copyinvfrompurchaseinvoice
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.gb_1 = create gb_1
+	this.control = {this.rb_transfer, this.dw_trans, this.dw_expiryintimation_pur, this.rb_expiryintimation_pur, this.dw_salereturninvtemplate, this.st_1, this.rb_copyinvfromsalereturninvoice, this.dw_purchaseinvtemplate, this.st_purchaseinvno, this.rb_copyinvfrompurchaseinvoice, this.cb_cancel, this.cb_ok, this.gb_1}
+
+// w_copypurreturninvoicefrom.destroy() returns 0
+	destroy this.rb_transfer
+	destroy this.dw_trans
+	destroy this.dw_expiryintimation_pur
+	destroy this.rb_expiryintimation_pur
+	destroy this.dw_salereturninvtemplate
+	destroy this.st_1
+	destroy this.rb_copyinvfromsalereturninvoice
+	destroy this.dw_purchaseinvtemplate
+	destroy this.st_purchaseinvno
+	destroy this.rb_copyinvfrompurchaseinvoice
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.gb_1
+
+// w_copypurreturninvoicefrom.open() returns long
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	post event ue_postopen()
+	return ::message.returnvalue
+
+// w_copypurreturninvoicefrom.close() returns long
+	closewithreturn(this, this.istr_template)
+	return ::message.returnvalue
+
+// w_copypurreturninvoicefrom.key(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		post event Close()
+	end if
+	return ::message.returnvalue
+
+// rb_transfer.clicked() returns long
+	if this.checked then
+		parent.event ue_setfocus("N")
+	end if
+	return ::message.returnvalue
+
+// dw_trans.key(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		parent.post event Close()
+	end if
+	return ::message.returnvalue
+
+// dw_trans.itemerror(long row, dwobject dwo, string data) returns long
+	messagebox("Expiry Intimation - Purchase Based", "Please enter valid Expiry Intimation Code")
+	return 1
+
+// dw_expiryintimation_pur.key(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		parent.post event Close()
+	end if
+	return ::message.returnvalue
+
+// dw_expiryintimation_pur.itemerror(long row, dwobject dwo, string data) returns long
+	messagebox("Expiry Intimation - Purchase Based", "Please enter valid Expiry Intimation Code")
+	return 1
+
+// rb_expiryintimation_pur.clicked() returns long
+	if this.checked then
+		parent.event ue_setfocus("E")
+	end if
+	return ::message.returnvalue
+
+// dw_salereturninvtemplate.key(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		parent.post event Close()
+	end if
+	return ::message.returnvalue
+
+// dw_salereturninvtemplate.itemerror(long row, dwobject dwo, string data) returns long
+	messagebox("Sale Return Invoice Code Validation", "Please enter valid Sale Return Invoice Code")
+	return 1
+
+// rb_copyinvfromsalereturninvoice.clicked() returns long
+	if parent.rb_copyinvfromsalereturninvoice.checked then
+		parent.event ue_setfocus("R")
+	end if
+	return ::message.returnvalue
+
+// dw_purchaseinvtemplate.ue_key(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		parent.post event Close()
+	end if
+	return ::message.returnvalue
+
+// dw_purchaseinvtemplate.itemerror(long row, dwobject dwo, string data) returns long
+	messagebox("Purchase Invoice Code Validation", "Please enter valid Purchase Invoice Code")
+	return 1
+
+// rb_copyinvfrompurchaseinvoice.clicked() returns long
+	if parent.rb_copyinvfrompurchaseinvoice.checked then
+		parent.event ue_setfocus("P")
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.istr_template.b_userinput = false
+	parent.post event Close()
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	long ll_find
+	parent.istr_template.b_userinput = false
+	if parent.rb_copyinvfrompurchaseinvoice.checked then
+		if parent.dw_purchaseinvtemplate.accepttext() = -1 then
+			parent.dw_purchaseinvtemplate.setfocus()
+			return ::message.returnvalue
+		end if
+		ll_find = parent.idc_purchaseinvtemplate.find("purinvcode=" + string(parent.dw_purchaseinvtemplate.getitemnumber(1, "purinvcode")), 1, parent.idc_purchaseinvtemplate.rowcount())
+		if ll_find <= 0 then
+			messagebox("Purchase Invoice Code Validation", "Purchase Invoice Code does not exist")
+			parent.dw_purchaseinvtemplate.setfocus()
+			return ::message.returnvalue
+		end if
+		parent.istr_template.c_copyinvfrom = "P"
+		parent.istr_template.l_invtemplate = parent.dw_purchaseinvtemplate.getitemnumber(1, "purinvcode")
+		parent.istr_template.i_invtype = parent.idc_purchaseinvtemplate.getitemnumber(parent.idc_purchaseinvtemplate.getrow(), "purcatcode")
+	elseif parent.rb_copyinvfromsalereturninvoice.checked then
+		if parent.dw_salereturninvtemplate.accepttext() = -1 then
+			parent.dw_salereturninvtemplate.setfocus()
+			return ::message.returnvalue
+		end if
+		ll_find = parent.idc_salereturninvtemplate.find("srinvcode=" + string(parent.dw_salereturninvtemplate.getitemnumber(1, "srinvcode")), 1, parent.idc_salereturninvtemplate.rowcount())
+		if ll_find <= 0 then
+			messagebox("Sale Return Invoice Code Validation", "Sale Return Invoice Code does not exist")
+			parent.dw_salereturninvtemplate.setfocus()
+			return ::message.returnvalue
+		end if
+		parent.istr_template.c_copyinvfrom = "R"
+		parent.istr_template.l_invtemplate = parent.dw_salereturninvtemplate.getitemnumber(1, "srinvcode")
+	elseif parent.rb_expiryintimation_pur.checked then
+		if parent.dw_expiryintimation_pur.accepttext() = -1 then
+			parent.dw_expiryintimation_pur.setfocus()
+			return ::message.returnvalue
+		end if
+		ll_find = parent.idc_expintimation.find("code=" + string(parent.dw_expiryintimation_pur.getitemnumber(1, "intimationcode")), 1, parent.idc_expintimation.rowcount())
+		if ll_find <= 0 then
+			messagebox("Sale Return Invoice Code Validation", "Sale Return Invoice Code does not exist")
+			parent.dw_expiryintimation_pur.setfocus()
+			return ::message.returnvalue
+		end if
+		parent.istr_template.c_copyinvfrom = "E"
+		parent.istr_template.l_invtemplate = parent.dw_expiryintimation_pur.getitemnumber(1, "intimationcode")
+	elseif parent.rb_transfer.checked then
+		if parent.dw_trans.accepttext() = -1 then
+			parent.dw_trans.setfocus()
+			return ::message.returnvalue
+		end if
+		ll_find = parent.idc_transfer.find("code=" + string(parent.dw_trans.getitemnumber(1, "transcode")), 1, parent.idc_transfer.rowcount())
+		if ll_find <= 0 then
+			messagebox("Transfer Document Code Validation", "Transfer Document Code does not exist")
+			parent.dw_trans.setfocus()
+			return ::message.returnvalue
+		end if
+		parent.istr_template.c_copyinvfrom = "N"
+		parent.istr_template.l_invtemplate = parent.dw_trans.getitemnumber(1, "transcode")
+	end if
+	parent.istr_template.b_userinput = true
+	parent.post event Close()
+	return ::message.returnvalue

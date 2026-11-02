@@ -1,0 +1,55 @@
+// window w_measuringunit_form (singleentryitem)  ancestor: w_single_entry
+
+// w_measuringunit_form.wf_duplicatecode(string as_packcode) returns boolean
+	integer li_packcode
+	integer li_duppackcode
+	li_packcode = integer(as_packcode)
+	SQL SELECT ItemPacking.Packcode INTO :li_duppackcode FROM ItemPacking WHERE ItemPacking.Packcode =:li_packcode USING sqlca;
+	if li_duppackcode = li_packcode then
+		return true
+	end if
+	return false
+
+// w_measuringunit_form.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	long ll_code
+	boolean b_flag
+	ll_code = this.id_detail.object.code[this.id_detail.getrow()]
+	as_name = trim(as_name)
+	if ll_code > 0 then
+		SQL SELECT count ( *) INTO :ll_count FROM MeasuringUnit WHERE MeasuringUnit.name =:as_name AND MeasuringUnit.MeasureUnitCode <> :ll_code USING sqlca;
+	else
+		SQL SELECT count ( *) INTO :ll_count FROM MeasuringUnit WHERE MeasuringUnit.name =:as_name USING sqlca;
+	end if
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_measuringunit_form.create() returns 0
+	call super::create
+
+// w_measuringunit_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_measuringunit_form.activate() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::activate()
+	this.windowstate = maximized!
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_measuringunit_form.ue_detail() returns 0
+	call super::ue_detail
+
+// w_measuringunit_form.ue_newform() returns 0
+	call super::ue_newform
+
+// w_measuringunit_form.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.is_tablename = "MeasuringUnit"
+	return ::message.returnvalue

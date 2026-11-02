@@ -1,0 +1,175 @@
+// window w_arg_customers_sdate_ldate_comments2 (reports_cust)  ancestor: w_popup_forselection_walias
+
+// w_arg_customers_sdate_ldate_comments2.create() returns 0
+	integer icurrent
+	call super::create
+	this.gb_3 = create gb_3
+	this.gb_2 = create gb_2
+	this.st_1 = create st_1
+	this.st_2 = create st_2
+	this.em_startdate = create em_startdate
+	this.em_enddate = create em_enddate
+	this.lb_selected = create lb_selected
+	this.cbx_all = create cbx_all
+	this.em_note2 = create em_note2
+	this.em_note3 = create em_note3
+	this.em_note4 = create em_note4
+	this.st_4 = create st_4
+	this.em_note1 = create em_note1
+	this.st_3 = create st_3
+	this.st_5 = create st_5
+	this.sle_unit = create sle_unit
+	this.sle_sta = create sle_sta
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.gb_3
+	this.control[icurrent + 2] = this.gb_2
+	this.control[icurrent + 3] = this.st_1
+	this.control[icurrent + 4] = this.st_2
+	this.control[icurrent + 5] = this.em_startdate
+	this.control[icurrent + 6] = this.em_enddate
+	this.control[icurrent + 7] = this.lb_selected
+	this.control[icurrent + 8] = this.cbx_all
+	this.control[icurrent + 9] = this.em_note2
+	this.control[icurrent + 10] = this.em_note3
+	this.control[icurrent + 11] = this.em_note4
+	this.control[icurrent + 12] = this.st_4
+	this.control[icurrent + 13] = this.em_note1
+	this.control[icurrent + 14] = this.st_3
+	this.control[icurrent + 15] = this.st_5
+	this.control[icurrent + 16] = this.sle_unit
+	this.control[icurrent + 17] = this.sle_sta
+
+// w_arg_customers_sdate_ldate_comments2.destroy() returns 0
+	call super::destroy
+	destroy this.gb_3
+	destroy this.gb_2
+	destroy this.st_1
+	destroy this.st_2
+	destroy this.em_startdate
+	destroy this.em_enddate
+	destroy this.lb_selected
+	destroy this.cbx_all
+	destroy this.em_note2
+	destroy this.em_note3
+	destroy this.em_note4
+	destroy this.st_4
+	destroy this.em_note1
+	destroy this.st_3
+	destroy this.st_5
+	destroy this.sle_unit
+	destroy this.sle_sta
+
+// w_arg_customers_sdate_ldate_comments2.open() returns long
+	long ancestorreturnvalue
+	date ld_currdate
+	string ls_text
+	ancestorreturnvalue = super::open()
+	ld_currdate = today()
+	if f_stringpreferences("ApplyArgSDate") = "N" then
+		ls_text = string(ld_currdate, "dd/mm/yyyy")
+		ls_text = trim(ls_text) + " 00:00:00"
+	else
+		ls_text = string(f_datepreferences("DefaultArgSDate"), "dd/mm/yyyy hh:mm:ss")
+	end if
+	this.em_startdate.text = ls_text
+	ls_text = string(ld_currdate, "dd/mm/yyyy")
+	ls_text = trim(ls_text) + " 23:59:59"
+	this.em_enddate.text = ls_text
+	this.ids_hold = create datastore
+	this.ids_hold.dataobject = "d_popup_customerselection"
+	this.ids_hold.settransobject(sqlca)
+	this.ids_allcustomers = create datastore
+	this.ids_allcustomers.dataobject = "d_popup_customerselection"
+	this.ids_allcustomers.settransobject(sqlca)
+	this.ids_allcustomers.retrieve()
+	return ::message.returnvalue
+
+// w_arg_customers_sdate_ldate_comments2.ue_close() returns 0
+	closewithreturn(this, this.istr_arg)
+
+// em_startdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// em_enddate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// lb_selected.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		post event doubleclicked(selectedindex())
+	end if
+	return ::message.returnvalue
+
+// lb_selected.doubleclicked(integer index) returns long
+	string ls_name
+	long ll_selectedindex
+	long ll_found
+	long ll_currentrow
+	long ll_found1
+	ll_selectedindex = selectedindex()
+	ls_name = string(selecteditem())
+	if not isnull(ls_name) and index >= 1 then
+		ll_currentrow = parent.id_selectionlist.insertrow(0)
+		ll_found = parent.ids_hold.find("name='" + ls_name + "'", 1, parent.ids_hold.rowcount())
+		if ll_found > 0 then
+			parent.id_selectionlist.setredraw(false)
+			ll_currentrow = parent.id_selectionlist.insertrow(0)
+			parent.id_selectionlist.setrow(ll_currentrow)
+			parent.id_selectionlist.setitem(ll_currentrow, "code", parent.ids_hold.object.code[ll_found])
+			parent.id_selectionlist.setitem(ll_currentrow, "name", parent.ids_hold.object.name[ll_found])
+			parent.id_selectionlist.setitem(ll_currentrow, "aliasname", parent.ids_hold.object.aliasname[ll_found])
+			parent.id_selectionlist.setitem(ll_currentrow, "address1", parent.ids_hold.object.address1[ll_found])
+			parent.id_selectionlist.setitem(ll_currentrow, "city", parent.ids_hold.object.city[ll_found])
+			parent.id_selectionlist.setsort("name A")
+			parent.id_selectionlist.sort()
+			parent.ids_hold.deleterow(ll_found)
+			parent.ids_hold.accepttext()
+			parent.id_selectionlist.deleterow(0)
+			parent.id_selectionlist.accepttext()
+			parent.id_selectionlist.setredraw(true)
+			deleteitem(index)
+		end if
+	else
+		messagebox("Selection Validation", "Please select some value from selected listbox")
+	end if
+	return ::message.returnvalue
+
+// lb_selected.getfocus() returns long
+	selectitem(0)
+	selectitem(1)
+	return ::message.returnvalue
+
+// cbx_all.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// em_note2.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// em_note3.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// em_note4.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// em_note1.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue

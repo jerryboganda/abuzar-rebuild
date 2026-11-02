@@ -1,0 +1,92 @@
+// function f_datatransfer_in_dest (functions)  ancestor: function_object
+
+// f_datatransfer_in_dest.f_datatransfer_in_dest(transaction at_transobject) returns integer
+	string ls_errtext
+	string ls_tablename
+	string ls_autoinsert
+	string ls_autoupdate
+	string ls_autodelete
+	string ls_updatetabmaxkey
+	string[] ls_transferabledata
+	long ll_transferabletables
+	long ll_rows
+	long ll_counter
+	u_transaction lt_transobject
+	lt_transobject = at_transobject
+	setpointer(hourglass!)
+	SQL rollback USING lt_transobject;
+	SQL OPEN transferabledata_cursor USING lt_transobject;
+	SQL FETCH transferabledata_cursor INTO :ls_tablename, :ls_autoinsert, :ls_autoupdate, :ls_autodelete, :ls_updatetabmaxkey USING lt_transobject;
+	do while lt_transobject.sqlcode = 0
+		ll_transferabletables = ll_transferabletables + 1
+		ls_transferabledata[ll_transferabletables, 1] = ls_tablename
+		ls_transferabledata[ll_transferabletables, 2] = ls_autoinsert
+		ls_transferabledata[ll_transferabletables, 3] = ls_autoupdate
+		ls_transferabledata[ll_transferabletables, 4] = ls_autodelete
+		ls_transferabledata[ll_transferabletables, 5] = ls_updatetabmaxkey
+		SQL FETCH transferabledata_cursor INTO :ls_tablename, :ls_autoinsert, :ls_autoupdate, :ls_autodelete, :ls_updatetabmaxkey USING lt_transobject;
+	loop
+	SQL CLOSE transferabledata_cursor USING lt_transobject;
+	SQL update TransferableData Set AutoInsert ='N' , AutoUpdate ='N' , AutoDelete ='N' , UpdateTabmaxkey ='N' WHERE Enable ='Y' USING lt_transobject;
+	if lt_transobject.sqlcode <> 0 then
+		messagebox("TransferableData Selection.", "Unable to Update TransferableData.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext)
+		SQL rollback USING lt_transobject;
+		return -1
+	end if
+	ll_rows = lt_transobject.generateitemlog_datacarrydb(gs_inlinkserver, gs_inlinkserverdb, gs_inlinkserverowner)
+	if lt_transobject.sqlcode <> 0 then
+		messagebox("TransferableData ItemLog Generation", "Unable to generate ItemLog for TransferableData.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext)
+		SQL rollback USING lt_transobject;
+		return -1
+	end if
+	for ll_counter = 1 to ll_transferabletables
+		SQL update TransferableData Set AutoInsert =:ls_transferabledata[ll_counter, 2] , AutoUpdate =:ls_transferabledata[ll_counter, 3] , AutoDelete =:ls_transferabledata[ll_counter, 4] , UpdateTabmaxkey =:ls_transferabledata[ll_counter, 5] Where Enable ='Y' AND TableName =:ls_transferabledata[ll_counter, 1] USING lt_transobject;
+		if lt_transobject.sqlcode <> 0 then
+			messagebox("TransferableData Selection..", "Unable to Update TransferableData for single attribute values.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext)
+			SQL rollback USING lt_transobject;
+			return -1
+		else
+			ll_rows = lt_transobject.deletebasicdata(gs_inlinkserver, gs_inlinkserverdb, gs_inlinkserverowner)
+			if lt_transobject.sqlcode <> 0 then
+				ls_errtext = "Deletion Problem in Basic Data: ~r~n" + lt_transobject.sqlerrtext
+				SQL rollback USING lt_transobject;
+				messagebox("Basic Data Transfer", ls_errtext)
+				return -1
+			else
+				ll_rows = lt_transobject.updatebasicdata(gs_inlinkserver, gs_inlinkserverdb, gs_inlinkserverowner)
+				if lt_transobject.sqlcode <> 0 then
+					ls_errtext = "Update Problem in Transfering Basic Data: ~r~n" + lt_transobject.sqlerrtext
+					SQL rollback USING lt_transobject;
+					messagebox("Basic Data Transfer", ls_errtext)
+					return -1
+				else
+					ll_rows = lt_transobject.insertbasicdata(gs_inlinkserver, gs_inlinkserverdb, gs_inlinkserverowner)
+					if lt_transobject.sqlcode <> 0 then
+						ls_errtext = "Insert Problem in Transfering Basic Data: ~r~n" + lt_transobject.sqlerrtext
+						SQL rollback USING lt_transobject;
+						messagebox("Basic Data Transfer", ls_errtext)
+						return -1
+					else
+						SQL update TransferableData Set AutoInsert ='N' , AutoUpdate ='N' , AutoDelete ='N' , UpdateTabmaxkey ='N' WHERE Enable ='Y' USING lt_transobject;
+						if lt_transobject.sqlcode <> 0 then
+							messagebox("TransferableData Updation...", "Unable to update values from TransferableData.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext)
+							SQL rollback USING lt_transobject;
+							return -1
+						end if
+					end if
+				end if
+			end if
+		end if
+	next
+	for ll_counter = 1 to ll_transferabletables
+		SQL update TransferableData Set AutoInsert =:ls_transferabledata[ll_counter, 2] , AutoUpdate =:ls_transferabledata[ll_counter, 3] , AutoDelete =:ls_transferabledata[ll_counter, 4] , UpdateTabmaxkey =:ls_transferabledata[ll_counter, 5] Where Enable ='Y' AND TableName =:ls_transferabledata[ll_counter, 1] USING lt_transobject;
+		if lt_transobject.sqlcode <> 0 then
+			messagebox("TransferableData Selection....", "Unable to Update TransferableData for single attribute values.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext)
+			SQL rollback USING lt_transobject;
+			return -1
+		end if
+	next
+	SQL commit USING lt_transobject;
+	setpointer(arrow!)
+	messagebox("Successfull", "Successfull updation of Basic Data.")
+	return 1

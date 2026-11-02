@@ -1,0 +1,42 @@
+// window w_arg_sinv_linv_manf_cat_class_pack (reports)  ancestor: w_arguements
+
+// w_arg_sinv_linv_manf_cat_class_pack.create() returns 0
+	integer icurrent
+	call super::create
+	this.gb_2 = create gb_2
+	this.st_4 = create st_4
+	this.rb_manf = create rb_manf
+	this.rb_category = create rb_category
+	this.rb_class = create rb_class
+	this.rb_packing = create rb_packing
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.gb_2
+	this.control[icurrent + 2] = this.st_4
+	this.control[icurrent + 3] = this.rb_manf
+	this.control[icurrent + 4] = this.rb_category
+	this.control[icurrent + 5] = this.rb_class
+	this.control[icurrent + 6] = this.rb_packing
+
+// w_arg_sinv_linv_manf_cat_class_pack.destroy() returns 0
+	call super::destroy
+	destroy this.gb_2
+	destroy this.st_4
+	destroy this.rb_manf
+	destroy this.rb_category
+	destroy this.rb_class
+	destroy this.rb_packing
+
+// w_arg_sinv_linv_manf_cat_class_pack.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	this.dw_price.settransobject(sqlca)
+	this.dw_price.insertrow(0)
+	this.dw_price.scrolltorow(0)
+	return ::message.returnvalue
+
+// w_arg_sinv_linv_manf_cat_class_pack.ue_close(integer ai_stauts) returns 0
+	super::ue_close(ai_stauts)
+	closewithreturn(this, this.istr_arg)

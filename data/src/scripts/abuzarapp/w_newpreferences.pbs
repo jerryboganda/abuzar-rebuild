@@ -1,0 +1,1792 @@
+// window w_newpreferences (abuzarapp)  ancestor: window
+
+// w_newpreferences.wf_assigndatawindowchild(datawindow adw_parent, datawindowchild adwc_child) returns long
+	long ll_rtcode
+	ll_rtcode = adw_parent.getchild("acccode", adwc_child)
+	if ll_rtcode <> -1 then
+		adwc_child.settransobject(sqlca)
+		adwc_child.retrieve(f_getglobalcode("GT_CashSub"))
+	end if
+	return ll_rtcode
+
+// w_newpreferences.wf_insertandscrollto(datawindow adw_dw) returns 0
+	adw_dw.insertrow(0)
+	adw_dw.scrolltorow(0)
+
+// w_newpreferences.wf_showerrmessage(long al_rtcode) returns 0
+	if al_rtcode = -1 then
+		messagebox("Error", "Can not get a DataWindowChild")
+	end if
+
+// w_newpreferences.wf_updatesigfile() returns integer
+	integer fh
+	u_transaction it_transobject
+	blob lblob_holdimg
+	string ls_sigfile
+	if this.ib_issigfilechanged then
+		ls_sigfile = this.tab_preferences.tabpage_sale.dw_sale.object.t_sigfile.text
+		if trim(ls_sigfile) = "" or isnull(ls_sigfile) then
+			messagebox("Image File Validation In Sales Tab", "Kindly specify the signature image file.")
+			return -1
+		end if
+		if fileexists(ls_sigfile) then
+			fh = fileopen(ls_sigfile, streammode!)
+			if fh <> -1 then
+				fileread(fh, lblob_holdimg)
+				fileclose(fh)
+				it_transobject = create u_transaction
+				it_transobject.autocommit = true
+				SQL start USING it_transobject;
+				SQL UpdateBlob Preferences Set SigOnSaleInvImg =:lblob_holdimg Where userid =1 USING it_transobject;
+				if it_transobject.sqlnrows > 0 then
+					SQL commit USING it_transobject;
+				else
+					SQL rollback USING it_transobject;
+					messagebox("Image File Validation In Sales Tab", "Unable to load image data into database from the specified file.")
+					return -1
+				end if
+				SQL stop USING it_transobject;
+				destroy it_transobject
+			else
+				messagebox("Image File Validation In Sales Tab", "Unable to load image data from the specified file.")
+				return -1
+			end if
+		else
+			messagebox("Image File Validation In Sales Tab", "File does not exist on the path you specified for SaleInv. Signature.")
+			return -1
+		end if
+	else
+		return 0
+	end if
+	return 1
+
+// w_newpreferences.wf_assigndatawindow(datawindow adw_source, datawindow adw_target) returns 0
+	adw_target = adw_source
+	adw_target.settransobject(sqlca)
+
+// w_newpreferences.wf_setadvancepurchasepref(boolean ab_visibility) returns 0
+	long ll_rows
+	ll_rows = this.id_purchase.rowcount()
+	this.id_purchase.object.gb_advpurdetail.visible = ab_visibility
+	this.id_purchase.object.gb_advpurheader.visible = ab_visibility
+	this.id_purchase.object.gb_advpuroptions.visible = ab_visibility
+	this.id_purchase.object.purprice2inadvpur.visible = ab_visibility
+	this.id_purchase.object.t_purprice2inadvpur.visible = ab_visibility
+	this.id_purchase.object.purprice3inadvpur.visible = ab_visibility
+	this.id_purchase.object.t_purprice3inadvpur.visible = ab_visibility
+	this.id_purchase.object.purprice4inadvpur.visible = ab_visibility
+	this.id_purchase.object.t_purprice4inadvpur.visible = ab_visibility
+	this.id_purchase.object.totpurpriceinadvpur.visible = ab_visibility
+	this.id_purchase.object.t_totpurpriceinadvpur.visible = ab_visibility
+	this.id_purchase.object.itemflatdiscinadvpur.visible = ab_visibility
+	this.id_purchase.object.t_itemflatdiscinadvpur.visible = ab_visibility
+	this.id_purchase.object.itmflatdisaftdisprcinadvpur.visible = ab_visibility
+	this.id_purchase.object.t_itmflatdisaftdisprcinadvpur.visible = ab_visibility
+	this.id_purchase.object.itemflatdisc2inadvpur.visible = ab_visibility
+	this.id_purchase.object.t_itemflatdisc2inadvpur.visible = ab_visibility
+	this.id_purchase.object.discperc2inadvpur.visible = ab_visibility
+	this.id_purchase.object.t_discperc2inadvpur.visible = ab_visibility
+	this.id_purchase.object.unittaxrulecodeinadvpur.visible = ab_visibility
+	this.id_purchase.object.t_unittaxrulecodeinadvpur.visible = ab_visibility
+	this.id_purchase.object.defaultunittaxruleinadvpur.visible = ab_visibility
+	this.id_purchase.object.t_defaultunittaxruleinadvpur.visible = ab_visibility
+	this.id_purchase.object.gstrulecodeinadvpur.visible = ab_visibility
+	this.id_purchase.object.t_gstrulecodeinadvpur.visible = ab_visibility
+	this.id_purchase.object.defaultgstruleinadvpur.visible = ab_visibility
+	this.id_purchase.object.t_defaultgstruleinadvpur.visible = ab_visibility
+	this.id_purchase.object.valuedisconiteminadvpur.visible = ab_visibility
+	this.id_purchase.object.t_valuedisconiteminadvpur.visible = ab_visibility
+	this.id_purchase.object.showmeasuringunitinadvpur.visible = ab_visibility
+	this.id_purchase.object.t_showmeasuringunitinadvpur.visible = ab_visibility
+	this.id_purchase.object.showgsttypeinadvpur.visible = ab_visibility
+	this.id_purchase.object.t_showgsttypeinadvpur.visible = ab_visibility
+	this.id_purchase.object.flatdisc2inadvpur.visible = ab_visibility
+	this.id_purchase.object.t_flatdisc2inadvpur.visible = ab_visibility
+	this.id_purchase.object.misccharges2inadvpur.visible = ab_visibility
+	this.id_purchase.object.t_misccharges2inadvpur.visible = ab_visibility
+	this.id_purchase.object.autocreatepurinvoicefromadvpur.visible = ab_visibility
+	this.id_purchase.object.t_autocreatepurinvoicefromadvpur.visible = ab_visibility
+	this.id_purchase.object.autopostpurinvoicefromadvpur.visible = ab_visibility
+	this.id_purchase.object.t_autopostpurinvoicefromadvpur.visible = ab_visibility
+
+// w_newpreferences.create() returns 0
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.tab_preferences = create tab_preferences
+	this.control = {this.cb_cancel, this.cb_ok, this.tab_preferences}
+
+// w_newpreferences.destroy() returns 0
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.tab_preferences
+
+// w_newpreferences.open() returns long
+	datawindowchild ldc_headerno
+	datawindowchild ldc_retailsaleheader
+	datawindowchild ldc_creditsaleheader
+	long ll_counter
+	long ll_pos
+	long ll_rtcode
+	long ll_found
+	string ls_jobstarttime
+	string ls_hold
+	integer li_backuphr
+	boolean lb_advancedpurchase
+	w_entry w_parent
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	integer li_enabled
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	this.id_general1 = this.tab_preferences.tabpage_general.dw_general1
+	this.id_general1.settransobject(sqlca)
+	this.id_general1.retrieve()
+	this.id_sale = this.tab_preferences.tabpage_sale.dw_sale
+	this.id_sale.settransobject(sqlca)
+	this.id_sale.retrieve()
+	this.id_purchase = this.tab_preferences.tabpage_purchase.dw_purchase
+	this.id_purchase.settransobject(sqlca)
+	this.id_purchase.retrieve()
+	this.id_report = this.tab_preferences.tabpage_report.dw_reportpreferences
+	this.id_report.settransobject(sqlca)
+	this.id_report.retrieve()
+	this.id_quotationterms = this.tab_preferences.tabpage_quotation.dw_quotationterms
+	this.id_quotationterms.settransobject(sqlca)
+	this.id_quotationterms.retrieve()
+	this.id_default_itemsetting = this.tab_preferences.tabpage_basicdata.dw_default_itemsetting
+	this.id_default_itemsetting.settransobject(sqlca)
+	this.id_default_itemsetting.retrieve()
+	this.id_purorderterms = this.tab_preferences.tabpage_purorder.dw_purorderterms
+	this.id_purorderterms.settransobject(sqlca)
+	this.id_purorderterms.retrieve()
+	this.id_issuepref = this.tab_preferences.tabpage_issue.dw_issuepreferences
+	this.id_issuepref.settransobject(sqlca)
+	this.id_issuepref.retrieve()
+	this.id_receiptpref = this.tab_preferences.tabpage_receipt.dw_receiptpreferences
+	this.id_receiptpref.settransobject(sqlca)
+	this.id_receiptpref.retrieve()
+	this.id_adjustment = this.tab_preferences.tabpage_adjustment.dw_adjustmentpreferences
+	this.id_adjustment.settransobject(sqlca)
+	this.id_adjustment.retrieve()
+	this.id_transfer = this.tab_preferences.tabpage_transfer.dw_transferpreferences
+	this.id_transfer.settransobject(sqlca)
+	this.id_transfer.retrieve()
+	this.id_servicepref = this.tab_preferences.tabpage_service.dw_servicepreferences
+	this.id_servicepref.settransobject(sqlca)
+	this.id_servicepref.retrieve()
+	this.id_salereturn = this.tab_preferences.tabpage_salereturn.dw_salereturn
+	this.id_salereturn.settransobject(sqlca)
+	this.id_salereturn.retrieve()
+	this.id_accountpref = this.tab_preferences.tabpage_account.dw_accountpreferences
+	this.id_accountpref.settransobject(sqlca)
+	this.id_accountpref.retrieve()
+	this.id_otherpref = this.tab_preferences.tabpage_others.dw_otherspref
+	this.id_otherpref.settransobject(sqlca)
+	this.id_otherpref.retrieve()
+	this.id_itempriceadjpref = this.tab_preferences.tabpage_itempriceadj.dw_itempriceadj
+	this.id_itempriceadjpref.settransobject(sqlca)
+	this.id_itempriceadjpref.retrieve()
+	this.id_purret = this.tab_preferences.tabpage_purchasereturn.dw_purchasereturn
+	this.id_purret.settransobject(sqlca)
+	this.id_purret.retrieve()
+	this.id_barcode = this.tab_preferences.tabpage_barcode.dw_barcode
+	this.id_barcode.settransobject(sqlca)
+	this.id_barcode.retrieve()
+	this.id_saleorder = this.tab_preferences.tabpage_saleorder.dw_saleorder
+	this.id_saleorder.settransobject(sqlca)
+	this.id_saleorder.retrieve()
+	this.id_recipe = this.tab_preferences.tabpage_recipe.dw_recipe
+	this.id_recipe.settransobject(sqlca)
+	this.id_recipe.retrieve()
+	this.id_production = this.tab_preferences.tabpage_production.dw_production
+	this.id_production.settransobject(sqlca)
+	this.id_production.retrieve()
+	this.id_patientpref = this.tab_preferences.tabpage_patientpref.dw_patientpref
+	this.id_patientpref.settransobject(sqlca)
+	this.id_patientpref.retrieve()
+	wf_assigndatawindow(this.tab_preferences.tabpage_purchasereturn.dw_prretamountoninv, this.id_pramountoninv)
+	ll_rtcode = wf_assigndatawindowchild(this.id_pramountoninv, this.idc_pracccode)
+	if ll_rtcode = -1 then
+		wf_showerrmessage(ll_rtcode)
+	end if
+	if ll_rtcode = -1 then
+		close(this)
+		return ::message.returnvalue
+	end if
+	wf_insertandscrollto(this.id_pramountoninv)
+	wf_assigndatawindow(this.tab_preferences.tabpage_purchase.dw_puramountoninv, this.id_puramountoninv)
+	ll_rtcode = wf_assigndatawindowchild(this.id_puramountoninv, this.idc_puracccode)
+	if ll_rtcode = -1 then
+		wf_showerrmessage(ll_rtcode)
+	end if
+	if ll_rtcode = -1 then
+		close(this)
+		return ::message.returnvalue
+	end if
+	wf_insertandscrollto(this.id_puramountoninv)
+	wf_assigndatawindow(this.tab_preferences.tabpage_salereturn.dw_sretamountoninv, this.id_sramountoninv)
+	ll_rtcode = wf_assigndatawindowchild(this.id_sramountoninv, this.idc_sracccode)
+	if ll_rtcode = -1 then
+		wf_showerrmessage(ll_rtcode)
+	end if
+	if ll_rtcode = -1 then
+		close(this)
+		return ::message.returnvalue
+	end if
+	wf_insertandscrollto(this.id_sramountoninv)
+	wf_assigndatawindow(this.tab_preferences.tabpage_sale.dw_saleamountoninv, this.id_saleamountoninv)
+	ll_rtcode = wf_assigndatawindowchild(this.id_saleamountoninv, this.idc_saleacccode)
+	if ll_rtcode = -1 then
+		wf_showerrmessage(ll_rtcode)
+	end if
+	if ll_rtcode = -1 then
+		close(this)
+		return ::message.returnvalue
+	end if
+	wf_insertandscrollto(this.id_saleamountoninv)
+	ll_found = 0
+	SQL SELECT Count ( RightCode ) INTO :ll_found FROM RIGHTS WHERE RightCode =953 USING sqlca;
+	if isnull(ll_found) then
+		ll_found = 0
+	end if
+	if ll_found > 0 then
+		lb_advancedpurchase = true
+	else
+		lb_advancedpurchase = false
+	end if
+	wf_setadvancepurchasepref(lb_advancedpurchase)
+	setnull(ll_found)
+	SQL SELECT Count ( RightCode ) INTO :ll_found FROM RIGHTS WHERE RightCode =618 USING sqlca;
+	if isnull(ll_found) then
+		ll_found = 0
+	end if
+	if ll_found > 0 then
+		this.tab_preferences.tabpage_sale.dw_sale.object.printheaderonsaleprintout.visible = true
+		this.tab_preferences.tabpage_sale.dw_sale.object.printheaderonsaleprintout_t.visible = true
+	else
+		this.tab_preferences.tabpage_sale.dw_sale.object.printheaderonsaleprintout.visible = false
+		this.tab_preferences.tabpage_sale.dw_sale.object.printheaderonsaleprintout_t.visible = false
+	end if
+	if this.id_general1.getitemstring(1, "AskAmtOnPurchaseReturn") = "Y" then
+		this.tab_preferences.tabpage_purchasereturn.cbx_askamtonpurchasereturn.checked = true
+		this.id_pramountoninv.visible = true
+	else
+		this.tab_preferences.tabpage_purchasereturn.cbx_askamtonpurchasereturn.checked = false
+		this.id_pramountoninv.visible = false
+	end if
+	if this.id_general1.getitemstring(1, "CashSaleAllowNullPatient") = "Y" then
+		this.tab_preferences.tabpage_sale.cbx_cashsaleallownullpatient.checked = true
+	end if
+	if this.id_general1.getitemstring(1, "CreditSaleAllowNullPatient") = "Y" then
+		this.tab_preferences.tabpage_sale.cbx_creditsaleallownullpatient.checked = true
+	end if
+	this.id_pramountoninv.object.paymentmode[1] = this.id_general1.getitemstring(1, "PurchaseReturnPaymentMode")
+	this.id_pramountoninv.object.acccode[1] = this.id_general1.getitemnumber(1, "PurchaseReturnPaymentAccCode")
+	if this.id_general1.getitemstring(1, "PurchaseReturnPaymentMode") = "C" then
+		this.idc_pracccode.retrieve(f_getglobalcode("GT_CashSub"))
+	else
+		this.idc_pracccode.retrieve(f_getglobalcode("GT_BankSub"))
+	end if
+	if this.id_general1.getitemstring(1, "AskAmtOnPurchase") = "Y" then
+		this.tab_preferences.tabpage_purchase.cbx_askamtonpurchase.checked = true
+		this.id_puramountoninv.visible = true
+	else
+		this.tab_preferences.tabpage_purchase.cbx_askamtonpurchase.checked = false
+		this.id_puramountoninv.visible = false
+	end if
+	this.id_puramountoninv.object.paymentmode[1] = this.id_general1.getitemstring(1, "PurchasePaymentMode")
+	this.id_puramountoninv.object.acccode[1] = this.id_general1.getitemnumber(1, "PurchasePaymentAccCode")
+	if this.id_general1.getitemstring(1, "PurchasePaymentMode") = "C" then
+		this.idc_puracccode.retrieve(f_getglobalcode("GT_CashSub"))
+	else
+		this.idc_puracccode.retrieve(f_getglobalcode("GT_BankSub"))
+	end if
+	if this.id_general1.getitemstring(1, "AskAmtOnCreditSaleReturn") = "Y" then
+		this.tab_preferences.tabpage_salereturn.cbx_askamtoncreditsalereturn.checked = true
+		this.id_sramountoninv.visible = true
+	else
+		this.tab_preferences.tabpage_salereturn.cbx_askamtoncreditsalereturn.checked = false
+		this.id_sramountoninv.visible = false
+	end if
+	this.id_sramountoninv.object.paymentmode[1] = this.id_general1.getitemstring(1, "SaleReturnPaymentMode")
+	this.id_sramountoninv.object.acccode[1] = this.id_general1.getitemnumber(1, "SaleReturnPaymentAccCode")
+	if this.id_general1.getitemstring(1, "SaleReturnPaymentMode") = "C" then
+		this.idc_sracccode.retrieve(f_getglobalcode("GT_CashSub"))
+	else
+		this.idc_sracccode.retrieve(f_getglobalcode("GT_BankSub"))
+	end if
+	if this.id_general1.getitemstring(1, "AskAmtOnCreditSale") = "Y" then
+		this.tab_preferences.tabpage_sale.cbx_askamtoncreditsale.checked = true
+		this.id_saleamountoninv.visible = true
+	else
+		this.tab_preferences.tabpage_sale.cbx_askamtoncreditsale.checked = false
+		this.id_saleamountoninv.visible = false
+	end if
+	this.id_saleamountoninv.object.paymentmode[1] = this.id_general1.getitemstring(1, "SalePaymentMode")
+	this.id_saleamountoninv.object.acccode[1] = this.id_general1.getitemnumber(1, "SalePaymentAccCode")
+	if this.id_general1.getitemstring(1, "SalePaymentMode") = "C" then
+		this.idc_saleacccode.retrieve(f_getglobalcode("GT_CashSub"))
+	else
+		this.idc_saleacccode.retrieve(f_getglobalcode("GT_BankSub"))
+	end if
+	if this.id_general1.getitemstring(1, "SigOnSaleInv") = "Y" then
+		this.tab_preferences.tabpage_sale.dw_sale.object.t_sigfile.visible = true
+		this.tab_preferences.tabpage_sale.dw_sale.object.b_sigfile.visible = true
+	else
+		this.tab_preferences.tabpage_sale.dw_sale.object.t_sigfile.visible = false
+		this.tab_preferences.tabpage_sale.dw_sale.object.b_sigfile.visible = false
+	end if
+	if this.id_general1.getitemstring(1, "PatientOnRetailSale") = "Y" then
+		this.tab_preferences.tabpage_sale.rb_sale_patientretailsale_headerwindow.checked = true
+	elseif this.id_general1.getitemstring(1, "PatientOnRetailSalePopUpWindow") = "Y" then
+		this.tab_preferences.tabpage_sale.rb_sale_patientretailsale_popupwindow.checked = true
+	else
+		this.tab_preferences.tabpage_sale.rb_sale_patientretailsale_none.checked = true
+	end if
+	if this.id_general1.getitemstring(1, "PatientOnCreditSale") = "Y" then
+		this.tab_preferences.tabpage_sale.rb_sale_patientcreditsale_headerwindow.checked = true
+	elseif this.id_general1.getitemstring(1, "PatientOnCreditSalePopUpWindow") = "Y" then
+		this.tab_preferences.tabpage_sale.rb_sale_patientcreditsale_popupwindow.checked = true
+	else
+		this.tab_preferences.tabpage_sale.rb_sale_patientcreditsale_none.checked = true
+	end if
+	this.id_report.getchild("headerno", ldc_headerno)
+	for ll_counter = 1 to gds_reoprtheaderinfo.rowcount()
+		ldc_headerno.insertrow(0)
+		ldc_headerno.setitem(ll_counter, "name", gds_reoprtheaderinfo.getitemstring(ll_counter, "clientname"))
+		ldc_headerno.setitem(ll_counter, "code", gds_reoprtheaderinfo.getitemnumber(ll_counter, "headerno"))
+	next
+	this.id_sale.getchild("DefaultHeaderOnRetailSale", ldc_retailsaleheader)
+	this.id_sale.getchild("DefaultHeaderOnCreditSale", ldc_creditsaleheader)
+	for ll_counter = 1 to gds_reoprtheaderinfo.rowcount()
+		ldc_retailsaleheader.insertrow(0)
+		ldc_creditsaleheader.insertrow(0)
+		ldc_retailsaleheader.setitem(ll_counter, "name", gds_reoprtheaderinfo.getitemstring(ll_counter, "clientname"))
+		ldc_retailsaleheader.setitem(ll_counter, "code", gds_reoprtheaderinfo.getitemnumber(ll_counter, "headerno"))
+		ldc_creditsaleheader.setitem(ll_counter, "name", gds_reoprtheaderinfo.getitemstring(ll_counter, "clientname"))
+		ldc_creditsaleheader.setitem(ll_counter, "code", gds_reoprtheaderinfo.getitemnumber(ll_counter, "headerno"))
+	next
+	this.it_jobtransobject = create u_transaction
+	this.it_jobtransobject.autocommit = true
+	this.it_jobtransobject.dbparm = "PROVIDER='SQLOLEDB',DATASOURCE='" + gs_servername + "',CommitOnDisconnect='No',PROVIDERSTRING='DataBase=MSDB" + ";APP=" + gs_app + ";WSID=" + gs_localcomputername + "',PBTrimCharColumns='Yes',StripParmNames='Yes'"
+	SQL start USING this.it_jobtransobject;
+	this.tab_preferences.tabpage_schedule.dw_backupschedule.settransobject(this.it_jobtransobject)
+	this.tab_preferences.tabpage_schedule.dw_backupschedule.retrieve(gs_clientjob, gs_clientjobschedule)
+	SQL Select enabled INTO :li_enabled From SysJobs Where Name =:gs_clientjob USING this.it_jobtransobject;
+	if this.it_jobtransobject.sqlcode = 0 then
+		if li_enabled = 1 then
+			this.tab_preferences.tabpage_schedule.cbx_activateautobackup.checked = true
+			if this.tab_preferences.tabpage_schedule.dw_backupschedule.getitemnumber(1, "unit") = 1.0 then
+				this.tab_preferences.tabpage_schedule.rb_backuponce.checked = true
+				ls_jobstarttime = string(this.tab_preferences.tabpage_schedule.dw_backupschedule.getitemnumber(1, "occurancetime"))
+				li_backuphr = integer(left(ls_jobstarttime, len(ls_jobstarttime) - 4))
+				ls_hold = left(right(ls_jobstarttime, 4), len(right(ls_jobstarttime, 4)) - 2)
+				if isnull(ls_hold) or ls_hold = "" then
+					ls_hold = "00"
+				elseif len(ls_hold) = 1 then
+					ls_hold = "0" + ls_hold
+				end if
+				this.tab_preferences.tabpage_schedule.ddlb_backupmin.selectitem(ls_hold, 0)
+				ls_hold = right(ls_jobstarttime, 2)
+				if isnull(ls_hold) or ls_hold = "" then
+					ls_hold = "00"
+				elseif len(ls_hold) = 1 then
+					ls_hold = "0" + ls_hold
+				end if
+				this.tab_preferences.tabpage_schedule.ddlb_backupsec.selectitem(ls_hold, 0)
+				if li_backuphr > 12 then
+					this.tab_preferences.tabpage_schedule.ddlb_backuphr.selectitem(string(li_backuphr - 12), 0)
+					this.tab_preferences.tabpage_schedule.ddlb_backuptime.selectitem("PM", 0)
+				elseif li_backuphr = 12 then
+					this.tab_preferences.tabpage_schedule.ddlb_backuphr.selectitem("12", 0)
+					this.tab_preferences.tabpage_schedule.ddlb_backuptime.selectitem("PM", 0)
+				else
+					if isnull(li_backuphr) or li_backuphr = 0 then
+						this.tab_preferences.tabpage_schedule.ddlb_backuphr.selectitem("12", 0)
+					else
+						this.tab_preferences.tabpage_schedule.ddlb_backuphr.selectitem(string(li_backuphr), 0)
+					end if
+					this.tab_preferences.tabpage_schedule.ddlb_backuptime.selectitem("AM", 0)
+				end if
+				this.tab_preferences.tabpage_schedule.dw_backupschedule.enabled = false
+			else
+				this.tab_preferences.tabpage_schedule.rb_backupevery.checked = true
+				this.tab_preferences.tabpage_schedule.ddlb_backuphr.enabled = false
+				this.tab_preferences.tabpage_schedule.ddlb_backupmin.enabled = false
+				this.tab_preferences.tabpage_schedule.ddlb_backupsec.enabled = false
+				this.tab_preferences.tabpage_schedule.ddlb_backuptime.enabled = false
+			end if
+		else
+			this.tab_preferences.tabpage_schedule.cbx_activateautobackup.checked = false
+			this.tab_preferences.tabpage_schedule.rb_backupevery.enabled = false
+			this.tab_preferences.tabpage_schedule.dw_backupschedule.enabled = false
+			this.tab_preferences.tabpage_schedule.rb_backuponce.enabled = false
+			this.tab_preferences.tabpage_schedule.ddlb_backuphr.enabled = false
+			this.tab_preferences.tabpage_schedule.ddlb_backupmin.enabled = false
+			this.tab_preferences.tabpage_schedule.ddlb_backupsec.enabled = false
+			this.tab_preferences.tabpage_schedule.ddlb_backuptime.enabled = false
+		end if
+	else
+		messagebox("Job", "Unable to fetch backup job status.")
+	end if
+	this.tab_preferences.tabpage_schedule.dw_autocashsalepostingschedule.settransobject(this.it_jobtransobject)
+	this.tab_preferences.tabpage_schedule.dw_autocashsalepostingschedule.retrieve(gs_autocashsalepostingjob, gs_autocashsalepostingjobschedule)
+	SQL Select enabled INTO :li_enabled From SysJobs Where Name =:gs_autocashsalepostingjob USING this.it_jobtransobject;
+	if this.it_jobtransobject.sqlcode = 0 then
+		this.tab_preferences.tabpage_schedule.em_autocashsalepostingtime.text = string(this.id_general1.getitemnumber(this.id_general1.getrow(), "cashsaleautopostingtime"))
+		if li_enabled = 1 then
+			this.tab_preferences.tabpage_schedule.cbx_activateautocashsaleposting.checked = true
+		else
+			this.tab_preferences.tabpage_schedule.cbx_activateautocashsaleposting.checked = false
+			this.tab_preferences.tabpage_schedule.em_autocashsalepostingtime.enabled = false
+			this.tab_preferences.tabpage_schedule.dw_autocashsalepostingschedule.enabled = false
+			this.tab_preferences.tabpage_schedule.em_autocashsalepostingtime.enabled = false
+		end if
+	else
+		messagebox("Job", "Unable to fetch cash sale posting job status.")
+	end if
+	this.tab_preferences.tabpage_schedule.dw_autocreditsalepostingschedule.settransobject(this.it_jobtransobject)
+	this.tab_preferences.tabpage_schedule.dw_autocreditsalepostingschedule.retrieve(gs_autocreditsalepostingjob, gs_autocreditsalepostingjobschedule)
+	SQL Select enabled INTO :li_enabled From SysJobs Where Name =:gs_autocreditsalepostingjob USING this.it_jobtransobject;
+	if this.it_jobtransobject.sqlcode = 0 then
+		this.tab_preferences.tabpage_schedule.em_autocreditsalepostingtime.text = string(this.id_general1.getitemnumber(this.id_general1.getrow(), "creditsaleautopostingtime"))
+		if li_enabled = 1 then
+			this.tab_preferences.tabpage_schedule.cbx_activateautocreditsaleposting.checked = true
+		else
+			this.tab_preferences.tabpage_schedule.cbx_activateautocreditsaleposting.checked = false
+			this.tab_preferences.tabpage_schedule.em_autocreditsalepostingtime.enabled = false
+			this.tab_preferences.tabpage_schedule.dw_autocreditsalepostingschedule.enabled = false
+		end if
+	else
+		messagebox("Job", "Unable to fetch credit sale posting job status.")
+	end if
+	this.tab_preferences.tabpage_schedule.dw_inpatientrecurringservice.settransobject(this.it_jobtransobject)
+	this.tab_preferences.tabpage_schedule.dw_inpatientrecurringservice.retrieve(gs_autoinpatientservicesjob, gs_autoinpatientservicesjobschedule)
+	SQL Select enabled INTO :li_enabled From SysJobs Where Name =:gs_autoinpatientservicesjob USING this.it_jobtransobject;
+	if this.it_jobtransobject.sqlcode = 0 then
+		if li_enabled = 1 then
+			this.tab_preferences.tabpage_schedule.cbx_inpatientrecurringservices.checked = true
+			if this.tab_preferences.tabpage_schedule.dw_inpatientrecurringservice.getitemnumber(1, "unit") = 1.0 then
+				ls_jobstarttime = string(this.tab_preferences.tabpage_schedule.dw_inpatientrecurringservice.getitemnumber(1, "occurancetime"))
+				li_backuphr = integer(left(ls_jobstarttime, len(ls_jobstarttime) - 4))
+				ls_hold = left(right(ls_jobstarttime, 4), len(right(ls_jobstarttime, 4)) - 2)
+				if isnull(ls_hold) or ls_hold = "" then
+					ls_hold = "00"
+				elseif len(ls_hold) = 1 then
+					ls_hold = "0" + ls_hold
+				end if
+				this.tab_preferences.tabpage_schedule.ddlb_inpatientrecurringservicemin.selectitem(ls_hold, 0)
+				ls_hold = right(ls_jobstarttime, 2)
+				if isnull(ls_hold) or ls_hold = "" then
+					ls_hold = "00"
+				elseif len(ls_hold) = 1 then
+					ls_hold = "0" + ls_hold
+				end if
+				this.tab_preferences.tabpage_schedule.ddlb_inpatientrecurringservicesec.selectitem(ls_hold, 0)
+				if li_backuphr > 12 then
+					this.tab_preferences.tabpage_schedule.ddlb_inpatientrecurringservicehr.selectitem(string(li_backuphr - 12), 0)
+					this.tab_preferences.tabpage_schedule.ddlb_inpatientrecurringservicetime.selectitem("PM", 0)
+				elseif li_backuphr = 12 then
+					this.tab_preferences.tabpage_schedule.ddlb_inpatientrecurringservicehr.selectitem("12", 0)
+					this.tab_preferences.tabpage_schedule.ddlb_inpatientrecurringservicetime.selectitem("PM", 0)
+				else
+					if isnull(li_backuphr) or li_backuphr = 0 then
+						this.tab_preferences.tabpage_schedule.ddlb_inpatientrecurringservicehr.selectitem("12", 0)
+					else
+						this.tab_preferences.tabpage_schedule.ddlb_inpatientrecurringservicehr.selectitem(string(li_backuphr), 0)
+					end if
+					this.tab_preferences.tabpage_schedule.ddlb_inpatientrecurringservicetime.selectitem("AM", 0)
+				end if
+				this.tab_preferences.tabpage_schedule.dw_inpatientrecurringservice.enabled = false
+			else
+				this.tab_preferences.tabpage_schedule.st_inpatientrecurringservicesonce.visible = false
+				this.tab_preferences.tabpage_schedule.ddlb_inpatientrecurringservicehr.enabled = false
+				this.tab_preferences.tabpage_schedule.ddlb_inpatientrecurringservicemin.enabled = false
+				this.tab_preferences.tabpage_schedule.ddlb_inpatientrecurringservicesec.enabled = false
+				this.tab_preferences.tabpage_schedule.ddlb_inpatientrecurringservicetime.enabled = false
+			end if
+		else
+			this.tab_preferences.tabpage_schedule.cbx_inpatientrecurringservices.checked = false
+			this.tab_preferences.tabpage_schedule.dw_inpatientrecurringservice.enabled = false
+			this.tab_preferences.tabpage_schedule.ddlb_inpatientrecurringservicehr.enabled = false
+			this.tab_preferences.tabpage_schedule.ddlb_inpatientrecurringservicemin.enabled = false
+			this.tab_preferences.tabpage_schedule.ddlb_inpatientrecurringservicesec.enabled = false
+			this.tab_preferences.tabpage_schedule.ddlb_inpatientrecurringservicetime.enabled = false
+		end if
+	else
+		messagebox("Job", "Unable to fetch backup job status.")
+	end if
+	return ::message.returnvalue
+
+// w_newpreferences.systemkey(keycode key, unsignedlong keyflags) returns long
+	if keyflags = 1 and key = keys! and this.tab_preferences.selectedtab = 4 then
+		f_startup_rightsmodification()
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		triggerevent(clicked!)
+	end if
+	return 1
+
+// cb_cancel.clicked() returns long
+	close(parent)
+	return ::message.returnvalue
+
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		triggerevent(clicked!)
+	end if
+	return 1
+
+// cb_ok.clicked() returns long
+	double ld_expirydays
+	integer li_cashsalepostingtime
+	integer li_creditsalepostingtime
+	integer li_counter
+	long ll_retcode
+	long ll_accepttext
+	boolean lb_commitok
+	string ls_errtext
+	string ls_errtitle
+	string ls_errmodule
+	string ls_string
+	w_newpreferences w_parent
+	string ls_jobname
+	string ls_schedulename
+	string ls_hr
+	string ls_min
+	string ls_sec
+	string ls_activetime
+	string ls_ampm
+	integer li_unitvalue
+	integer li_unit
+	integer li_hr
+	long ll_activetime
+	if parent.tab_preferences.tabpage_purchasereturn.cbx_askamtonpurchasereturn.checked = true then
+		parent.id_general1.setitem(1, "AskAmtOnPurchaseReturn", "Y")
+	else
+		parent.id_general1.setitem(1, "AskAmtOnPurchaseReturn", "N")
+	end if
+	parent.id_general1.setitem(1, "PurchaseReturnPaymentMode", parent.id_pramountoninv.object.paymentmode[1])
+	parent.id_general1.setitem(1, "PurchaseReturnPaymentAcccode", parent.id_pramountoninv.object.acccode[1])
+	if parent.tab_preferences.tabpage_purchase.cbx_askamtonpurchase.checked = true then
+		parent.id_general1.setitem(1, "AskAmtOnPurchase", "Y")
+	else
+		parent.id_general1.setitem(1, "AskAmtOnPurchase", "N")
+	end if
+	parent.id_general1.setitem(1, "PurchasePaymentMode", parent.id_puramountoninv.object.paymentmode[1])
+	parent.id_general1.setitem(1, "PurchasePaymentAcccode", parent.id_puramountoninv.object.acccode[1])
+	if parent.tab_preferences.tabpage_salereturn.cbx_askamtoncreditsalereturn.checked = true then
+		parent.id_general1.setitem(1, "AskAmtOnCreditSaleReturn", "Y")
+	else
+		parent.id_general1.setitem(1, "AskAmtOnCreditSaleReturn", "N")
+	end if
+	parent.id_general1.setitem(1, "SaleReturnPaymentMode", parent.id_sramountoninv.object.paymentmode[1])
+	parent.id_general1.setitem(1, "SaleReturnPaymentAcccode", parent.id_sramountoninv.object.acccode[1])
+	if parent.tab_preferences.tabpage_sale.cbx_askamtoncreditsale.checked = true then
+		parent.id_general1.setitem(1, "AskAmtOnCreditSale", "Y")
+	else
+		parent.id_general1.setitem(1, "AskAmtOnCreditSale", "N")
+	end if
+	parent.id_general1.setitem(1, "SalePaymentMode", parent.id_saleamountoninv.object.paymentmode[1])
+	parent.id_general1.setitem(1, "SalePaymentAcccode", parent.id_saleamountoninv.object.acccode[1])
+	if parent.tab_preferences.tabpage_sale.rb_sale_patientretailsale_headerwindow.checked then
+		parent.id_general1.setitem(1, "PatientOnRetailSale", "Y")
+		parent.id_general1.setitem(1, "PatientOnRetailSalePopUpWindow", "N")
+	elseif parent.tab_preferences.tabpage_sale.rb_sale_patientretailsale_popupwindow.checked then
+		parent.id_general1.setitem(1, "PatientOnRetailSale", "N")
+		parent.id_general1.setitem(1, "PatientOnRetailSalePopUpWindow", "Y")
+	else
+		parent.id_general1.setitem(1, "PatientOnRetailSale", "N")
+		parent.id_general1.setitem(1, "PatientOnRetailSalePopUpWindow", "N")
+	end if
+	if parent.tab_preferences.tabpage_sale.rb_sale_patientcreditsale_headerwindow.checked then
+		parent.id_general1.setitem(1, "PatientOnCreditSale", "Y")
+		parent.id_general1.setitem(1, "PatientOnCreditSalePopUpWindow", "N")
+	elseif parent.tab_preferences.tabpage_sale.rb_sale_patientcreditsale_popupwindow.checked then
+		parent.id_general1.setitem(1, "PatientOnCreditSale", "N")
+		parent.id_general1.setitem(1, "PatientOnCreditSalePopUpWindow", "Y")
+	else
+		parent.id_general1.setitem(1, "PatientOnCreditSale", "N")
+		parent.id_general1.setitem(1, "PatientOnCreditSalePopUpWindow", "N")
+	end if
+	if parent.tab_preferences.tabpage_sale.cbx_cashsaleallownullpatient.checked then
+		parent.id_general1.setitem(1, "CashSaleAllowNullPatient", "Y")
+	else
+		parent.id_general1.setitem(1, "CashSaleAllowNullPatient", "N")
+	end if
+	if parent.tab_preferences.tabpage_sale.cbx_creditsaleallownullpatient.checked then
+		parent.id_general1.setitem(1, "CreditSaleAllowNullPatient", "Y")
+	else
+		parent.id_general1.setitem(1, "CreditSaleAllowNullPatient", "N")
+	end if
+	if parent.tab_preferences.tabpage_schedule.cbx_activateautocashsaleposting.checked = true then
+		li_cashsalepostingtime = integer(parent.tab_preferences.tabpage_schedule.em_autocashsalepostingtime.text)
+		if isnull(li_cashsalepostingtime) or not (li_cashsalepostingtime >= 1 and li_cashsalepostingtime <= 1440) then
+			messagebox("Cash Sale Posting Time Validation", "Please enter cash sale auto posting time value between 1 and 1440 minutes.")
+			return ::message.returnvalue
+		end if
+		parent.id_general1.setitem(parent.id_general1.getrow(), "cashsaleautopostingtime", li_cashsalepostingtime)
+	end if
+	if parent.tab_preferences.tabpage_schedule.cbx_activateautocreditsaleposting.checked = true then
+		li_creditsalepostingtime = integer(parent.tab_preferences.tabpage_schedule.em_autocreditsalepostingtime.text)
+		if isnull(li_creditsalepostingtime) or not (li_creditsalepostingtime >= 1 and li_creditsalepostingtime <= 1440) then
+			messagebox("Credit Sale Posting Time Validation", "Please enter credit sale auto posting time value between 1 and 1440 minutes.")
+			return ::message.returnvalue
+		end if
+		parent.id_general1.setitem(parent.id_general1.getrow(), "creditsaleautopostingtime", li_creditsalepostingtime)
+	end if
+	if f_validatedw(parent.id_general1) < 0 then
+		return ::message.returnvalue
+	end if
+	w_parent = getparent()
+	do while lb_commitok and li_counter <= 22
+		if li_counter = 1 then
+			ll_accepttext = parent.id_general1.accepttext()
+			if ll_accepttext <= 0 then
+				parent.tab_preferences.selecttab("tabpage_general1")
+				parent.id_general1.setfocus()
+				exit
+			end if
+			ll_retcode = parent.id_general1.update()
+			ls_errmodule = "General"
+		elseif li_counter = 2 then
+			ll_accepttext = parent.id_sale.accepttext()
+			if ll_accepttext <= 0 then
+				parent.tab_preferences.selecttab("tabpage_sale")
+				parent.id_sale.setfocus()
+				exit
+			end if
+			ll_retcode = parent.id_sale.update()
+			ls_errmodule = "Sales"
+		elseif li_counter = 3 then
+			ll_accepttext = parent.id_salereturn.accepttext()
+			if ll_accepttext <= 0 then
+				parent.tab_preferences.selecttab("tabpage_salereturn")
+				parent.id_salereturn.setfocus()
+				exit
+			end if
+			ll_retcode = parent.id_salereturn.update()
+			ls_errmodule = "Sale Return"
+		elseif li_counter = 4 then
+			ll_accepttext = parent.id_issuepref.accepttext()
+			if ll_accepttext <= 0 then
+				parent.tab_preferences.selecttab("tabpage_issue")
+				parent.id_issuepref.setfocus()
+				exit
+			end if
+			ll_retcode = parent.id_issuepref.update()
+			ls_errmodule = "Issue"
+		elseif li_counter = 5 then
+			ll_accepttext = parent.id_receiptpref.accepttext()
+			if ll_accepttext <= 0 then
+				parent.tab_preferences.selecttab("tabpage_receipt")
+				parent.id_receiptpref.setfocus()
+				exit
+			end if
+			ll_retcode = parent.id_receiptpref.update()
+			ls_errmodule = "Receipt"
+		elseif li_counter = 6 then
+			ll_accepttext = parent.id_default_itemsetting.accepttext()
+			if ll_accepttext <= 0 then
+				parent.tab_preferences.selecttab("tabpage_basicdata")
+				parent.id_default_itemsetting.setfocus()
+				exit
+			end if
+			ll_retcode = parent.id_default_itemsetting.update()
+			ls_errmodule = "Basic Data"
+		elseif li_counter = 7 then
+			ll_accepttext = parent.id_accountpref.accepttext()
+			if ll_accepttext <= 0 then
+				parent.tab_preferences.selecttab("tabpage_account")
+				parent.id_accountpref.setfocus()
+				exit
+			end if
+			ll_retcode = parent.id_accountpref.update()
+			ls_errmodule = "Accounts"
+		elseif li_counter = 8 then
+			ll_accepttext = parent.id_quotationterms.accepttext()
+			if ll_accepttext <= 0 then
+				parent.tab_preferences.selecttab("tabpage_quotation")
+				parent.id_quotationterms.setfocus()
+				exit
+			end if
+			ll_retcode = parent.id_quotationterms.update()
+			ls_errmodule = "Quotation"
+		elseif li_counter = 9 then
+			ll_accepttext = parent.id_otherpref.accepttext()
+			if ll_accepttext <= 0 then
+				parent.tab_preferences.selecttab("tabpage_others")
+				parent.id_otherpref.setfocus()
+				exit
+			end if
+			ll_retcode = parent.id_otherpref.update()
+			ls_errmodule = "Others"
+		elseif li_counter = 10 then
+			ll_accepttext = parent.id_purorderterms.accepttext()
+			if ll_accepttext <= 0 then
+				parent.tab_preferences.selecttab("tabpage_purorder")
+				parent.id_purorderterms.setfocus()
+				exit
+			end if
+			ll_retcode = parent.id_purorderterms.update()
+			ls_errmodule = "Purchase Order"
+		elseif li_counter = 11 then
+			ll_accepttext = parent.id_adjustment.accepttext()
+			if ll_accepttext <= 0 then
+				parent.tab_preferences.selecttab("tabpage_adjustment")
+				parent.id_adjustment.setfocus()
+				exit
+			end if
+			ll_retcode = parent.id_adjustment.update()
+			ls_errmodule = "Adjustment"
+		elseif li_counter = 12 then
+			ll_accepttext = parent.id_transfer.accepttext()
+			if ll_accepttext <= 0 then
+				parent.tab_preferences.selecttab("tabpage_transfer")
+				parent.id_transfer.setfocus()
+				exit
+			end if
+			ll_retcode = parent.id_transfer.update()
+			ls_errmodule = "Transfer"
+		elseif li_counter = 13 then
+			ll_accepttext = parent.id_servicepref.accepttext()
+			if ll_accepttext <= 0 then
+				parent.tab_preferences.selecttab("tabpage_service")
+				parent.id_servicepref.setfocus()
+				exit
+			end if
+			ll_retcode = parent.id_servicepref.update()
+			ls_errmodule = "Service"
+		elseif li_counter = 14 then
+			ll_accepttext = parent.id_report.accepttext()
+			if ll_accepttext <= 0 then
+				parent.tab_preferences.selecttab("tabpage_report")
+				parent.id_report.setfocus()
+				exit
+			end if
+			ll_retcode = parent.id_report.update()
+			ls_errmodule = "Report"
+		elseif li_counter = 15 then
+			ll_accepttext = parent.id_itempriceadjpref.accepttext()
+			if ll_accepttext <= 0 then
+				parent.tab_preferences.selecttab("tabpage_itempriceadj")
+				parent.id_itempriceadjpref.setfocus()
+				exit
+			end if
+			ll_retcode = parent.id_itempriceadjpref.update()
+			ls_errmodule = "Item Price Adjustment"
+		elseif li_counter = 16 then
+			ll_accepttext = parent.id_purchase.accepttext()
+			if ll_accepttext <= 0 then
+				parent.tab_preferences.selecttab("tabpage_purchase")
+				parent.id_purchase.setfocus()
+				exit
+			end if
+			ll_retcode = parent.id_purchase.update()
+			ls_errmodule = "Purchase"
+		elseif li_counter = 17 then
+			ll_accepttext = parent.id_purret.accepttext()
+			if ll_accepttext <= 0 then
+				parent.tab_preferences.selecttab("tabpage_purchasereturn")
+				parent.id_purret.setfocus()
+				exit
+			end if
+			ll_retcode = parent.id_purret.update()
+			ls_errmodule = "Purchase Return"
+		elseif li_counter = 18 then
+			ll_accepttext = parent.id_barcode.accepttext()
+			if ll_accepttext <= 0 then
+				parent.tab_preferences.selecttab("tabpage_barcode")
+				parent.id_barcode.setfocus()
+				exit
+			end if
+			ll_retcode = parent.id_barcode.update()
+			ls_errmodule = "BarCode"
+		elseif li_counter = 19 then
+			ll_accepttext = parent.id_saleorder.accepttext()
+			if ll_accepttext <= 0 then
+				parent.tab_preferences.selecttab("tabpage_saleorder")
+				parent.id_saleorder.setfocus()
+				exit
+			end if
+			ll_retcode = parent.id_saleorder.update()
+			ls_errmodule = "Sales Order"
+		elseif li_counter = 20 then
+			ll_accepttext = parent.id_recipe.accepttext()
+			if ll_accepttext <= 0 then
+				parent.tab_preferences.selecttab("tabpage_recipe")
+				parent.id_recipe.setfocus()
+				exit
+			end if
+			ll_retcode = parent.id_recipe.update()
+			ls_errmodule = "Recipe"
+		elseif li_counter = 21 then
+			ll_accepttext = parent.id_production.accepttext()
+			if ll_accepttext <= 0 then
+				parent.tab_preferences.selecttab("tabpage_production")
+				parent.id_production.setfocus()
+				exit
+			end if
+			ll_retcode = parent.id_production.update()
+			ls_errmodule = "Production"
+		elseif li_counter = 22 then
+			ll_accepttext = parent.id_patientpref.accepttext()
+			if ll_accepttext <= 0 then
+				parent.tab_preferences.selecttab("tabpage_patientpref")
+				parent.id_patientpref.setfocus()
+				exit
+			end if
+			ll_retcode = parent.id_patientpref.update()
+			ls_errmodule = "Patient"
+		end if
+		if ll_retcode < 1 then
+			lb_commitok = false
+			ls_errtitle = "Datasase Error"
+			ls_errtext = "Some Database problem occur while saving " + ls_errmodule + " preferences"
+		end if
+		li_counter = li_counter + 1
+	loop
+	if ll_accepttext <= 0 or ll_retcode < 1 then
+		lb_commitok = false
+	end if
+	if lb_commitok then
+		SQL commit USING sqlca;
+		gds_preferences.retrieve()
+	end if
+	if lb_commitok then
+		ls_jobname = gs_clientjob
+		ls_schedulename = gs_clientjobschedule
+		if parent.tab_preferences.tabpage_schedule.cbx_activateautobackup.checked = true then
+			if parent.tab_preferences.tabpage_schedule.rb_backuponce.checked = true then
+				ls_hr = parent.tab_preferences.tabpage_schedule.ddlb_backuphr.text
+				ls_min = parent.tab_preferences.tabpage_schedule.ddlb_backupmin.text
+				ls_sec = parent.tab_preferences.tabpage_schedule.ddlb_backupsec.text
+				ls_ampm = parent.tab_preferences.tabpage_schedule.ddlb_backuptime.text
+				if isnull(ls_hr) or ls_hr = "" or ls_hr = "none" then
+					messagebox("BackUp Time Validation", "Please select hours from dropdown box.")
+					parent.tab_preferences.tabpage_schedule.ddlb_backuphr.setfocus()
+					return ::message.returnvalue
+				elseif isnull(ls_min) or ls_min = "" or ls_min = "none" then
+					messagebox("BackUp Time Validation", "Please select minutes from dropdown box.")
+					parent.tab_preferences.tabpage_schedule.ddlb_backupmin.setfocus()
+					return ::message.returnvalue
+				elseif isnull(ls_sec) or ls_sec = "" or ls_sec = "none" then
+					messagebox("BackUp Time Validation", "Please select seconds from dropdown box.")
+					parent.tab_preferences.tabpage_schedule.ddlb_backupsec.setfocus()
+					return ::message.returnvalue
+				elseif isnull(ls_ampm) or ls_ampm = "" or ls_ampm = "none" then
+					messagebox("BackUp Time Validation", "Please select AM/PM from dropdown box.")
+					parent.tab_preferences.tabpage_schedule.ddlb_backuptime.setfocus()
+					return ::message.returnvalue
+				end if
+				li_hr = integer(ls_hr)
+				if ls_ampm = "PM" then
+					if li_hr < 12 then
+						li_hr = li_hr + 12
+					end if
+				elseif li_hr = 12 then
+					li_hr = 0
+				end if
+				ls_activetime = string(li_hr) + ls_min + ls_sec
+				ll_activetime = long(ls_activetime)
+				li_unit = 1
+				li_unitvalue = 0
+			else
+				if parent.tab_preferences.tabpage_schedule.dw_backupschedule.accepttext() = 1 then
+					li_unitvalue = parent.tab_preferences.tabpage_schedule.dw_backupschedule.getitemnumber(1, "unitvalue")
+					li_unit = parent.tab_preferences.tabpage_schedule.dw_backupschedule.getitemnumber(1, "unit")
+					if li_unit = 4 then
+						if not (li_unitvalue >= 1 and li_unitvalue <= 1440) then
+							messagebox("BackUp Time Validation", "Please enter valid value for minutes between 1 and 1440.")
+							parent.tab_preferences.tabpage_schedule.dw_backupschedule.setcolumn(1)
+							parent.tab_preferences.tabpage_schedule.dw_backupschedule.setfocus()
+							return ::message.returnvalue
+						end if
+					elseif li_unit = 8 then
+						if not (li_unitvalue >= 1 and li_unitvalue <= 24) then
+							messagebox("BackUp Time Validation", "Please enter valid value for hours between 1 and 24.")
+							parent.tab_preferences.tabpage_schedule.dw_backupschedule.setcolumn(2)
+							parent.tab_preferences.tabpage_schedule.dw_backupschedule.setfocus()
+							return ::message.returnvalue
+						end if
+					else
+						messagebox("BackUp Time Validation", "Please select minutes/hours from dropdown list box")
+						parent.tab_preferences.tabpage_schedule.dw_backupschedule.setcolumn(2)
+						parent.tab_preferences.tabpage_schedule.dw_backupschedule.setfocus()
+						return ::message.returnvalue
+					end if
+				else
+					messagebox("BackUp Time Validation", "Please enter valid value for a unit.")
+					parent.tab_preferences.tabpage_schedule.dw_backupschedule.setcolumn(1)
+					parent.tab_preferences.tabpage_schedule.dw_backupschedule.setfocus()
+					return ::message.returnvalue
+				end if
+				ll_activetime = 0
+			end if
+			sqlca.adjustjobschedule(ls_jobname, ls_schedulename, ll_activetime, li_unit, li_unitvalue)
+			sqlca.activatejob(ls_jobname, 1)
+		else
+			sqlca.activatejob(ls_jobname, 0)
+		end if
+		ls_jobname = gs_autoinpatientservicesjob
+		ls_schedulename = gs_autoinpatientservicesjobschedule
+		if parent.tab_preferences.tabpage_schedule.cbx_inpatientrecurringservices.checked = true then
+			ls_hr = parent.tab_preferences.tabpage_schedule.ddlb_inpatientrecurringservicehr.text
+			ls_min = parent.tab_preferences.tabpage_schedule.ddlb_inpatientrecurringservicemin.text
+			ls_sec = parent.tab_preferences.tabpage_schedule.ddlb_inpatientrecurringservicesec.text
+			ls_ampm = parent.tab_preferences.tabpage_schedule.ddlb_inpatientrecurringservicetime.text
+			if isnull(ls_hr) or ls_hr = "" or ls_hr = "none" then
+				messagebox("BackUp Time Validation", "Please select hours from dropdown box.")
+				parent.tab_preferences.tabpage_schedule.ddlb_inpatientrecurringservicehr.setfocus()
+				return ::message.returnvalue
+			elseif isnull(ls_min) or ls_min = "" or ls_min = "none" then
+				messagebox("BackUp Time Validation", "Please select minutes from dropdown box.")
+				parent.tab_preferences.tabpage_schedule.ddlb_inpatientrecurringservicemin.setfocus()
+				return ::message.returnvalue
+			elseif isnull(ls_sec) or ls_sec = "" or ls_sec = "none" then
+				messagebox("BackUp Time Validation", "Please select seconds from dropdown box.")
+				parent.tab_preferences.tabpage_schedule.ddlb_inpatientrecurringservicesec.setfocus()
+				return ::message.returnvalue
+			elseif isnull(ls_ampm) or ls_ampm = "" or ls_ampm = "none" then
+				messagebox("BackUp Time Validation", "Please select AM/PM from dropdown box.")
+				parent.tab_preferences.tabpage_schedule.ddlb_inpatientrecurringservicetime.setfocus()
+				return ::message.returnvalue
+			end if
+			li_hr = integer(ls_hr)
+			if ls_ampm = "PM" then
+				if li_hr < 12 then
+					li_hr = li_hr + 12
+				end if
+			elseif li_hr = 12 then
+				li_hr = 0
+			end if
+			ls_activetime = string(li_hr) + ls_min + ls_sec
+			ll_activetime = long(ls_activetime)
+			li_unit = 1
+			li_unitvalue = 0
+			sqlca.adjustjobschedule(ls_jobname, ls_schedulename, ll_activetime, li_unit, li_unitvalue)
+			sqlca.activatejob(ls_jobname, 1)
+		else
+			sqlca.activatejob(ls_jobname, 0)
+		end if
+		ls_jobname = gs_autocashsalepostingjob
+		ls_schedulename = gs_autocashsalepostingjobschedule
+		if sqlca.sqlcode = 0 then
+			if parent.tab_preferences.tabpage_schedule.cbx_activateautocashsaleposting.checked = true then
+				if parent.tab_preferences.tabpage_schedule.dw_autocashsalepostingschedule.accepttext() = 1 then
+					li_unitvalue = parent.tab_preferences.tabpage_schedule.dw_autocashsalepostingschedule.getitemnumber(1, "unitvalue")
+					li_unit = parent.tab_preferences.tabpage_schedule.dw_autocashsalepostingschedule.getitemnumber(1, "unit")
+					if li_unit = 4 then
+						if not (li_unitvalue >= 1 and li_unitvalue <= 1440) then
+							messagebox("Cash Sale Posting Time Validation", "Please enter valid value for minutes between 1 and 1440 for auto cash sale posting.")
+							parent.tab_preferences.tabpage_schedule.dw_autocashsalepostingschedule.setcolumn(1)
+							parent.tab_preferences.tabpage_schedule.dw_autocashsalepostingschedule.setfocus()
+							return ::message.returnvalue
+						end if
+					elseif li_unit = 8 then
+						if not (li_unitvalue >= 1 and li_unitvalue <= 24) then
+							messagebox("Cash Sale Posting Time Validation", "Please enter valid value for hours between 1 and 24 for auto cash sale posting.")
+							parent.tab_preferences.tabpage_schedule.dw_autocashsalepostingschedule.setcolumn(2)
+							parent.tab_preferences.tabpage_schedule.dw_autocashsalepostingschedule.setfocus()
+							return ::message.returnvalue
+						end if
+					else
+						messagebox("Cash Sale Posting Time Validation", "Please select minutes/hours from dropdown list box of auto cash sale posting.")
+						parent.tab_preferences.tabpage_schedule.dw_autocashsalepostingschedule.setcolumn(2)
+						parent.tab_preferences.tabpage_schedule.dw_autocashsalepostingschedule.setfocus()
+						return ::message.returnvalue
+					end if
+				else
+					messagebox("Cash Sale Posting Validation", "Please enter valid value of a unit for auto cash sale posting.")
+					parent.tab_preferences.tabpage_schedule.dw_autocashsalepostingschedule.setcolumn(1)
+					parent.tab_preferences.tabpage_schedule.dw_autocashsalepostingschedule.setfocus()
+					return ::message.returnvalue
+				end if
+				ll_activetime = 0
+				sqlca.adjustjobschedule(ls_jobname, ls_schedulename, ll_activetime, li_unit, li_unitvalue)
+				sqlca.activatejob(ls_jobname, 1)
+			else
+				sqlca.activatejob(ls_jobname, 0)
+			end if
+			ls_jobname = gs_autocreditsalepostingjob
+			ls_schedulename = gs_autocreditsalepostingjobschedule
+			if sqlca.sqlcode = 0 then
+				if parent.tab_preferences.tabpage_schedule.cbx_activateautocreditsaleposting.checked = true then
+					if parent.tab_preferences.tabpage_schedule.dw_autocreditsalepostingschedule.accepttext() = 1 then
+						li_unitvalue = parent.tab_preferences.tabpage_schedule.dw_autocreditsalepostingschedule.getitemnumber(1, "unitvalue")
+						li_unit = parent.tab_preferences.tabpage_schedule.dw_autocreditsalepostingschedule.getitemnumber(1, "unit")
+						if li_unit = 4 then
+							if not (li_unitvalue >= 1 and li_unitvalue <= 1440) then
+								messagebox("Credit Sale Posting Time Validation", "Please enter valid value for minutes between 1 and 1440 for auto credit sale posting.")
+								parent.tab_preferences.tabpage_schedule.dw_autocreditsalepostingschedule.setcolumn(1)
+								parent.tab_preferences.tabpage_schedule.dw_autocreditsalepostingschedule.setfocus()
+								return ::message.returnvalue
+							end if
+						elseif li_unit = 8 then
+							if not (li_unitvalue >= 1 and li_unitvalue <= 24) then
+								messagebox("Credit Sale Posting Time Validation", "Please enter valid value for hours between 1 and 24 for auto credit sale posting.")
+								parent.tab_preferences.tabpage_schedule.dw_autocreditsalepostingschedule.setcolumn(2)
+								parent.tab_preferences.tabpage_schedule.dw_autocreditsalepostingschedule.setfocus()
+								return ::message.returnvalue
+							end if
+						else
+							messagebox("Credit Sale Posting Time Validation", "Please select minutes/hours from dropdown list box of auto credit sale posting.")
+							parent.tab_preferences.tabpage_schedule.dw_autocreditsalepostingschedule.setcolumn(2)
+							parent.tab_preferences.tabpage_schedule.dw_autocreditsalepostingschedule.setfocus()
+							return ::message.returnvalue
+						end if
+					else
+						messagebox("Credit Sale Posting Validation", "Please enter valid value of a unit for auto credit sale posting.")
+						parent.tab_preferences.tabpage_schedule.dw_autocreditsalepostingschedule.setcolumn(1)
+						parent.tab_preferences.tabpage_schedule.dw_autocreditsalepostingschedule.setfocus()
+						return ::message.returnvalue
+					end if
+					ll_activetime = 0
+					sqlca.adjustjobschedule(ls_jobname, ls_schedulename, ll_activetime, li_unit, li_unitvalue)
+					sqlca.activatejob(ls_jobname, 1)
+				else
+					sqlca.activatejob(ls_jobname, 0)
+				end if
+				if sqlca.sqlcode = 0 then
+					SQL commit USING sqlca;
+					gds_preferences.retrieve()
+				else
+					SQL rollback USING sqlca;
+					messagebox("Job Error", "Unable to update credit sale posting job status.")
+					setpointer(arrow!)
+				end if
+			else
+				SQL rollback USING sqlca;
+				messagebox("Job Error", "Unable to update cash sale posting job status.")
+				setpointer(arrow!)
+			end if
+		else
+			SQL rollback USING sqlca;
+			messagebox("Job Error", "Unable to update backup job status.")
+			setpointer(arrow!)
+		end if
+	else
+		SQL rollback USING sqlca;
+		return ::message.returnvalue
+	end if
+	if parent.wf_updatesigfile() = -1 then
+		return ::message.returnvalue
+	end if
+	setpointer(arrow!)
+	w_parent.setfocus()
+	close(w_newpreferences)
+	return ::message.returnvalue
+
+// tab_preferences.create() returns 0
+	this.tabpage_general = create tabpage_general
+	this.tabpage_sale = create tabpage_sale
+	this.tabpage_salereturn = create tabpage_salereturn
+	this.tabpage_purchase = create tabpage_purchase
+	this.tabpage_purchasereturn = create tabpage_purchasereturn
+	this.tabpage_account = create tabpage_account
+	this.tabpage_report = create tabpage_report
+	this.tabpage_basicdata = create tabpage_basicdata
+	this.tabpage_quotation = create tabpage_quotation
+	this.tabpage_service = create tabpage_service
+	this.tabpage_issue = create tabpage_issue
+	this.tabpage_schedule = create tabpage_schedule
+	this.tabpage_adjustment = create tabpage_adjustment
+	this.tabpage_transfer = create tabpage_transfer
+	this.tabpage_receipt = create tabpage_receipt
+	this.tabpage_purorder = create tabpage_purorder
+	this.tabpage_others = create tabpage_others
+	this.tabpage_barcode = create tabpage_barcode
+	this.tabpage_itempriceadj = create tabpage_itempriceadj
+	this.tabpage_saleorder = create tabpage_saleorder
+	this.tabpage_recipe = create tabpage_recipe
+	this.tabpage_production = create tabpage_production
+	this.tabpage_patientpref = create tabpage_patientpref
+	this.control = {this.tabpage_general, this.tabpage_sale, this.tabpage_salereturn, this.tabpage_purchase, this.tabpage_purchasereturn, this.tabpage_account, this.tabpage_report, this.tabpage_basicdata, this.tabpage_quotation, this.tabpage_service, this.tabpage_issue, this.tabpage_schedule, this.tabpage_adjustment, this.tabpage_transfer, this.tabpage_receipt, this.tabpage_purorder, this.tabpage_others, this.tabpage_barcode, this.tabpage_itempriceadj, this.tabpage_saleorder, this.tabpage_recipe, this.tabpage_production, this.tabpage_patientpref}
+
+// tab_preferences.destroy() returns 0
+	destroy this.tabpage_general
+	destroy this.tabpage_sale
+	destroy this.tabpage_salereturn
+	destroy this.tabpage_purchase
+	destroy this.tabpage_purchasereturn
+	destroy this.tabpage_account
+	destroy this.tabpage_report
+	destroy this.tabpage_basicdata
+	destroy this.tabpage_quotation
+	destroy this.tabpage_service
+	destroy this.tabpage_issue
+	destroy this.tabpage_schedule
+	destroy this.tabpage_adjustment
+	destroy this.tabpage_transfer
+	destroy this.tabpage_receipt
+	destroy this.tabpage_purorder
+	destroy this.tabpage_others
+	destroy this.tabpage_barcode
+	destroy this.tabpage_itempriceadj
+	destroy this.tabpage_saleorder
+	destroy this.tabpage_recipe
+	destroy this.tabpage_production
+	destroy this.tabpage_patientpref
+
+// tabpage_general.create() returns 0
+	this.dw_general1 = create dw_general1
+	this.control = {this.dw_general1}
+
+// tabpage_general.destroy() returns 0
+	destroy this.dw_general1
+
+// dw_general1.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// tabpage_sale.create() returns 0
+	this.cbx_cashsaleallownullpatient = create cbx_cashsaleallownullpatient
+	this.cbx_creditsaleallownullpatient = create cbx_creditsaleallownullpatient
+	this.dw_saleamountoninv = create dw_saleamountoninv
+	this.cbx_askamtoncreditsale = create cbx_askamtoncreditsale
+	this.rb_sale_patientcreditsale_none = create rb_sale_patientcreditsale_none
+	this.rb_sale_patientcreditsale_popupwindow = create rb_sale_patientcreditsale_popupwindow
+	this.rb_sale_patientcreditsale_headerwindow = create rb_sale_patientcreditsale_headerwindow
+	this.rb_sale_patientretailsale_none = create rb_sale_patientretailsale_none
+	this.rb_sale_patientretailsale_popupwindow = create rb_sale_patientretailsale_popupwindow
+	this.rb_sale_patientretailsale_headerwindow = create rb_sale_patientretailsale_headerwindow
+	this.dw_sale = create dw_sale
+	this.gb_4 = create gb_4
+	this.gb_5 = create gb_5
+	this.control = {this.cbx_cashsaleallownullpatient, this.cbx_creditsaleallownullpatient, this.dw_saleamountoninv, this.cbx_askamtoncreditsale, this.rb_sale_patientcreditsale_none, this.rb_sale_patientcreditsale_popupwindow, this.rb_sale_patientcreditsale_headerwindow, this.rb_sale_patientretailsale_none, this.rb_sale_patientretailsale_popupwindow, this.rb_sale_patientretailsale_headerwindow, this.dw_sale, this.gb_4, this.gb_5}
+
+// tabpage_sale.destroy() returns 0
+	destroy this.cbx_cashsaleallownullpatient
+	destroy this.cbx_creditsaleallownullpatient
+	destroy this.dw_saleamountoninv
+	destroy this.cbx_askamtoncreditsale
+	destroy this.rb_sale_patientcreditsale_none
+	destroy this.rb_sale_patientcreditsale_popupwindow
+	destroy this.rb_sale_patientcreditsale_headerwindow
+	destroy this.rb_sale_patientretailsale_none
+	destroy this.rb_sale_patientretailsale_popupwindow
+	destroy this.rb_sale_patientretailsale_headerwindow
+	destroy this.dw_sale
+	destroy this.gb_4
+	destroy this.gb_5
+
+// dw_saleamountoninv.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_saleamountoninv.itemchanged(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "paymentmode"
+		if data = "C" then
+			parent.parent.parent.idc_saleacccode.retrieve(f_getglobalcode("GT_CashSub"))
+			parent.parent.parent.id_saleamountoninv.object.acccode[1] = parent.parent.parent.idc_saleacccode.getitemnumber(1, "acccode")
+		else
+			parent.parent.parent.idc_saleacccode.retrieve(f_getglobalcode("GT_BankSub"))
+			parent.parent.parent.id_saleamountoninv.object.acccode[1] = parent.parent.parent.idc_saleacccode.getitemnumber(1, "acccode")
+		end if
+	end choose
+	return ::message.returnvalue
+
+// cbx_askamtoncreditsale.clicked() returns long
+	if this.checked = true then
+		parent.parent.parent.id_saleamountoninv.visible = true
+	else
+		parent.parent.parent.id_saleamountoninv.visible = false
+	end if
+	return ::message.returnvalue
+
+// dw_sale.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_sale.buttonclicked(long row, long actionreturncode, dwobject dwo) returns long
+	long ancestorreturnvalue
+	integer fh
+	integer ret
+	string ls_sigfile
+	string ls_sigfilename
+	string ls_defaultext
+	string ls_sigfilefilter
+	ancestorreturnvalue = super::buttonclicked(row, actionreturncode, dwo)
+	ret = getfileopenname("Select File", ls_sigfile, ls_sigfilename, ls_defaultext, ls_sigfilefilter)
+	if ret = 1 then
+		this.object.t_sigfile.text = ls_sigfile
+		parent.parent.parent.ib_issigfilechanged = true
+	end if
+	return ::message.returnvalue
+
+// dw_sale.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "sigonsaleinv"
+		if data = "Y" then
+			this.object.t_sigfile.visible = true
+			this.object.b_sigfile.visible = true
+		else
+			this.object.t_sigfile.visible = false
+			this.object.b_sigfile.visible = false
+		end if
+	end choose
+	return ::message.returnvalue
+
+// tabpage_salereturn.create() returns 0
+	this.dw_salereturn = create dw_salereturn
+	this.dw_sretamountoninv = create dw_sretamountoninv
+	this.cbx_askamtoncreditsalereturn = create cbx_askamtoncreditsalereturn
+	this.control = {this.dw_salereturn, this.dw_sretamountoninv, this.cbx_askamtoncreditsalereturn}
+
+// tabpage_salereturn.destroy() returns 0
+	destroy this.dw_salereturn
+	destroy this.dw_sretamountoninv
+	destroy this.cbx_askamtoncreditsalereturn
+
+// dw_salereturn.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_sretamountoninv.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_sretamountoninv.itemchanged(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "paymentmode"
+		if data = "C" then
+			parent.parent.parent.idc_sracccode.retrieve(f_getglobalcode("GT_CashSub"))
+			parent.parent.parent.id_sramountoninv.object.acccode[1] = parent.parent.parent.idc_sracccode.getitemnumber(1, "acccode")
+		else
+			parent.parent.parent.idc_sracccode.retrieve(f_getglobalcode("GT_BankSub"))
+			parent.parent.parent.id_sramountoninv.object.acccode[1] = parent.parent.parent.idc_sracccode.getitemnumber(1, "acccode")
+		end if
+	end choose
+	return ::message.returnvalue
+
+// cbx_askamtoncreditsalereturn.clicked() returns long
+	if this.checked = true then
+		parent.parent.parent.id_sramountoninv.visible = true
+	else
+		parent.parent.parent.id_sramountoninv.visible = false
+	end if
+	return ::message.returnvalue
+
+// tabpage_purchase.create() returns 0
+	this.dw_purchase = create dw_purchase
+	this.dw_puramountoninv = create dw_puramountoninv
+	this.cbx_askamtonpurchase = create cbx_askamtonpurchase
+	this.cbx_porb = create cbx_porb
+	this.control = {this.dw_purchase, this.dw_puramountoninv, this.cbx_askamtonpurchase, this.cbx_porb}
+
+// tabpage_purchase.destroy() returns 0
+	destroy this.dw_purchase
+	destroy this.dw_puramountoninv
+	destroy this.cbx_askamtonpurchase
+	destroy this.cbx_porb
+
+// dw_purchase.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_purchase.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "purreplaceitemsaledisc"
+		if data = "Y" then
+			this.object.purreplaceitemsalediscno.visible = true
+		else
+			this.object.purreplaceitemsalediscno.visible = false
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_purchase.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	if parent.parent.parent.id_purchase.object.purreplaceitemsaledisc[parent.parent.parent.id_purchase.rowcount()] = "Y" then
+		parent.parent.parent.id_purchase.object.purreplaceitemsalediscno.visible = true
+	else
+		parent.parent.parent.id_purchase.object.purreplaceitemsalediscno.visible = false
+	end if
+	return ::message.returnvalue
+
+// dw_puramountoninv.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_puramountoninv.itemchanged(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "paymentmode"
+		if data = "C" then
+			parent.parent.parent.idc_puracccode.retrieve(f_getglobalcode("GT_CashSub"))
+			parent.parent.parent.id_puramountoninv.object.acccode[1] = parent.parent.parent.idc_puracccode.getitemnumber(1, "acccode")
+		else
+			parent.parent.parent.idc_puracccode.retrieve(f_getglobalcode("GT_BankSub"))
+			parent.parent.parent.id_puramountoninv.object.acccode[1] = parent.parent.parent.idc_puracccode.getitemnumber(1, "acccode")
+		end if
+	end choose
+	return ::message.returnvalue
+
+// cbx_askamtonpurchase.clicked() returns long
+	if this.checked = true then
+		parent.parent.parent.id_puramountoninv.visible = true
+	else
+		parent.parent.parent.id_puramountoninv.visible = false
+	end if
+	return ::message.returnvalue
+
+// tabpage_purchasereturn.create() returns 0
+	this.dw_purchasereturn = create dw_purchasereturn
+	this.dw_prretamountoninv = create dw_prretamountoninv
+	this.cbx_askamtonpurchasereturn = create cbx_askamtonpurchasereturn
+	this.control = {this.dw_purchasereturn, this.dw_prretamountoninv, this.cbx_askamtonpurchasereturn}
+
+// tabpage_purchasereturn.destroy() returns 0
+	destroy this.dw_purchasereturn
+	destroy this.dw_prretamountoninv
+	destroy this.cbx_askamtonpurchasereturn
+
+// dw_purchasereturn.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_prretamountoninv.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_prretamountoninv.itemchanged(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "paymentmode"
+		if data = "C" then
+			parent.parent.parent.idc_pracccode.retrieve(f_getglobalcode("GT_CashSub"))
+			parent.parent.parent.id_pramountoninv.object.acccode[1] = parent.parent.parent.idc_pracccode.getitemnumber(1, "acccode")
+		else
+			parent.parent.parent.idc_pracccode.retrieve(f_getglobalcode("GT_BankSub"))
+			parent.parent.parent.id_pramountoninv.object.acccode[1] = parent.parent.parent.idc_pracccode.getitemnumber(1, "acccode")
+		end if
+	end choose
+	return ::message.returnvalue
+
+// cbx_askamtonpurchasereturn.clicked() returns long
+	if this.checked = true then
+		parent.parent.parent.id_pramountoninv.visible = true
+	else
+		parent.parent.parent.id_pramountoninv.visible = false
+	end if
+	return ::message.returnvalue
+
+// tabpage_account.create() returns 0
+	this.dw_accountpreferences = create dw_accountpreferences
+	this.control = {this.dw_accountpreferences}
+
+// tabpage_account.destroy() returns 0
+	destroy this.dw_accountpreferences
+
+// dw_accountpreferences.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// tabpage_report.create() returns 0
+	this.dw_reportpreferences = create dw_reportpreferences
+	this.control = {this.dw_reportpreferences}
+
+// tabpage_report.destroy() returns 0
+	destroy this.dw_reportpreferences
+
+// dw_reportpreferences.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// tabpage_basicdata.create() returns 0
+	this.dw_default_itemsetting = create dw_default_itemsetting
+	this.control = {this.dw_default_itemsetting}
+
+// tabpage_basicdata.destroy() returns 0
+	destroy this.dw_default_itemsetting
+
+// dw_default_itemsetting.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// tabpage_quotation.create() returns 0
+	this.dw_quotationterms = create dw_quotationterms
+	this.control = {this.dw_quotationterms}
+
+// tabpage_quotation.destroy() returns 0
+	destroy this.dw_quotationterms
+
+// dw_quotationterms.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// tabpage_service.create() returns 0
+	this.dw_servicepreferences = create dw_servicepreferences
+	this.control = {this.dw_servicepreferences}
+
+// tabpage_service.destroy() returns 0
+	destroy this.dw_servicepreferences
+
+// dw_servicepreferences.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// tabpage_issue.create() returns 0
+	this.dw_issuepreferences = create dw_issuepreferences
+	this.control = {this.dw_issuepreferences}
+
+// tabpage_issue.destroy() returns 0
+	destroy this.dw_issuepreferences
+
+// dw_issuepreferences.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// tabpage_schedule.create() returns 0
+	this.ddlb_inpatientrecurringservicemin = create ddlb_inpatientrecurringservicemin
+	this.dw_inpatientrecurringservice = create dw_inpatientrecurringservice
+	this.st_inpatientrecurringservicesec = create st_inpatientrecurringservicesec
+	this.st_inpatientrecurringservicemin = create st_inpatientrecurringservicemin
+	this.cbx_inpatientrecurringservices = create cbx_inpatientrecurringservices
+	this.dw_autocreditsalepostingschedule = create dw_autocreditsalepostingschedule
+	this.dw_autocashsalepostingschedule = create dw_autocashsalepostingschedule
+	this.st_creditsalepostingoccursevery = create st_creditsalepostingoccursevery
+	this.st_cashsalepostingoccursevery = create st_cashsalepostingoccursevery
+	this.st_creditsaleminutesold = create st_creditsaleminutesold
+	this.em_autocreditsalepostingtime = create em_autocreditsalepostingtime
+	this.st_cashsaleminutesold = create st_cashsaleminutesold
+	this.em_autocashsalepostingtime = create em_autocashsalepostingtime
+	this.st_creditsaleinvoices = create st_creditsaleinvoices
+	this.st_cashsaleinvoices = create st_cashsaleinvoices
+	this.gb_10 = create gb_10
+	this.gb_9 = create gb_9
+	this.cbx_activateautocreditsaleposting = create cbx_activateautocreditsaleposting
+	this.cbx_activateautocashsaleposting = create cbx_activateautocashsaleposting
+	this.st_backupsec = create st_backupsec
+	this.st_backupmin = create st_backupmin
+	this.st_backuphr = create st_backuphr
+	this.dw_backupschedule = create dw_backupschedule
+	this.rb_backupevery = create rb_backupevery
+	this.rb_backuponce = create rb_backuponce
+	this.cbx_activateautobackup = create cbx_activateautobackup
+	this.gb_3 = create gb_3
+	this.gb_2 = create gb_2
+	this.gb_7 = create gb_7
+	this.gb_8 = create gb_8
+	this.gb_6 = create gb_6
+	this.gb_1 = create gb_1
+	this.ddlb_backuptime = create ddlb_backuptime
+	this.ddlb_backupsec = create ddlb_backupsec
+	this.ddlb_backupmin = create ddlb_backupmin
+	this.ddlb_backuphr = create ddlb_backuphr
+	this.st_inpatientrecurringserviceshr = create st_inpatientrecurringserviceshr
+	this.st_inpatientrecurringservicesonce = create st_inpatientrecurringservicesonce
+	this.ddlb_inpatientrecurringservicehr = create ddlb_inpatientrecurringservicehr
+	this.ddlb_inpatientrecurringservicesec = create ddlb_inpatientrecurringservicesec
+	this.ddlb_inpatientrecurringservicetime = create ddlb_inpatientrecurringservicetime
+	this.control = {this.ddlb_inpatientrecurringservicemin, this.dw_inpatientrecurringservice, this.st_inpatientrecurringservicesec, this.st_inpatientrecurringservicemin, this.cbx_inpatientrecurringservices, this.dw_autocreditsalepostingschedule, this.dw_autocashsalepostingschedule, this.st_creditsalepostingoccursevery, this.st_cashsalepostingoccursevery, this.st_creditsaleminutesold, this.em_autocreditsalepostingtime, this.st_cashsaleminutesold, this.em_autocashsalepostingtime, this.st_creditsaleinvoices, this.st_cashsaleinvoices, this.gb_10, this.gb_9, this.cbx_activateautocreditsaleposting, this.cbx_activateautocashsaleposting, this.st_backupsec, this.st_backupmin, this.st_backuphr, this.dw_backupschedule, this.rb_backupevery, this.rb_backuponce, this.cbx_activateautobackup, this.gb_3, this.gb_2, this.gb_7, this.gb_8, this.gb_6, this.gb_1, this.ddlb_backuptime, this.ddlb_backupsec, this.ddlb_backupmin, this.ddlb_backuphr, this.st_inpatientrecurringserviceshr, this.st_inpatientrecurringservicesonce, this.ddlb_inpatientrecurringservicehr, this.ddlb_inpatientrecurringservicesec, this.ddlb_inpatientrecurringservicetime}
+
+// tabpage_schedule.destroy() returns 0
+	destroy this.ddlb_inpatientrecurringservicemin
+	destroy this.dw_inpatientrecurringservice
+	destroy this.st_inpatientrecurringservicesec
+	destroy this.st_inpatientrecurringservicemin
+	destroy this.cbx_inpatientrecurringservices
+	destroy this.dw_autocreditsalepostingschedule
+	destroy this.dw_autocashsalepostingschedule
+	destroy this.st_creditsalepostingoccursevery
+	destroy this.st_cashsalepostingoccursevery
+	destroy this.st_creditsaleminutesold
+	destroy this.em_autocreditsalepostingtime
+	destroy this.st_cashsaleminutesold
+	destroy this.em_autocashsalepostingtime
+	destroy this.st_creditsaleinvoices
+	destroy this.st_cashsaleinvoices
+	destroy this.gb_10
+	destroy this.gb_9
+	destroy this.cbx_activateautocreditsaleposting
+	destroy this.cbx_activateautocashsaleposting
+	destroy this.st_backupsec
+	destroy this.st_backupmin
+	destroy this.st_backuphr
+	destroy this.dw_backupschedule
+	destroy this.rb_backupevery
+	destroy this.rb_backuponce
+	destroy this.cbx_activateautobackup
+	destroy this.gb_3
+	destroy this.gb_2
+	destroy this.gb_7
+	destroy this.gb_8
+	destroy this.gb_6
+	destroy this.gb_1
+	destroy this.ddlb_backuptime
+	destroy this.ddlb_backupsec
+	destroy this.ddlb_backupmin
+	destroy this.ddlb_backuphr
+	destroy this.st_inpatientrecurringserviceshr
+	destroy this.st_inpatientrecurringservicesonce
+	destroy this.ddlb_inpatientrecurringservicehr
+	destroy this.ddlb_inpatientrecurringservicesec
+	destroy this.ddlb_inpatientrecurringservicetime
+
+// cbx_inpatientrecurringservices.clicked() returns long
+	if this.checked = true then
+		parent.parent.parent.tab_preferences.tabpage_schedule.st_inpatientrecurringservicesonce.visible = true
+		parent.parent.parent.tab_preferences.tabpage_schedule.ddlb_inpatientrecurringservicehr.enabled = true
+		parent.parent.parent.tab_preferences.tabpage_schedule.ddlb_inpatientrecurringservicemin.enabled = true
+		parent.parent.parent.tab_preferences.tabpage_schedule.ddlb_inpatientrecurringservicesec.enabled = true
+		parent.parent.parent.tab_preferences.tabpage_schedule.ddlb_inpatientrecurringservicetime.enabled = true
+	else
+		parent.parent.parent.tab_preferences.tabpage_schedule.ddlb_inpatientrecurringservicehr.enabled = false
+		parent.parent.parent.tab_preferences.tabpage_schedule.ddlb_inpatientrecurringservicemin.enabled = false
+		parent.parent.parent.tab_preferences.tabpage_schedule.ddlb_inpatientrecurringservicesec.enabled = false
+		parent.parent.parent.tab_preferences.tabpage_schedule.ddlb_inpatientrecurringservicetime.enabled = false
+	end if
+	return ::message.returnvalue
+
+// cbx_activateautocreditsaleposting.clicked() returns long
+	if this.checked = true then
+		parent.parent.parent.tab_preferences.tabpage_schedule.dw_autocreditsalepostingschedule.enabled = true
+		parent.parent.parent.tab_preferences.tabpage_schedule.em_autocreditsalepostingtime.enabled = true
+	else
+		parent.parent.parent.tab_preferences.tabpage_schedule.dw_autocreditsalepostingschedule.enabled = false
+		parent.parent.parent.tab_preferences.tabpage_schedule.em_autocreditsalepostingtime.enabled = false
+	end if
+	return ::message.returnvalue
+
+// cbx_activateautocashsaleposting.clicked() returns long
+	if this.checked = true then
+		parent.parent.parent.tab_preferences.tabpage_schedule.dw_autocashsalepostingschedule.enabled = true
+		parent.parent.parent.tab_preferences.tabpage_schedule.em_autocashsalepostingtime.enabled = true
+	else
+		parent.parent.parent.tab_preferences.tabpage_schedule.dw_autocashsalepostingschedule.enabled = false
+		parent.parent.parent.tab_preferences.tabpage_schedule.em_autocashsalepostingtime.enabled = false
+	end if
+	return ::message.returnvalue
+
+// rb_backupevery.clicked() returns long
+	if this.checked = true then
+		parent.parent.parent.tab_preferences.tabpage_schedule.dw_backupschedule.enabled = true
+		parent.parent.parent.tab_preferences.tabpage_schedule.ddlb_backuphr.enabled = false
+		parent.parent.parent.tab_preferences.tabpage_schedule.ddlb_backupmin.enabled = false
+		parent.parent.parent.tab_preferences.tabpage_schedule.ddlb_backupsec.enabled = false
+		parent.parent.parent.tab_preferences.tabpage_schedule.ddlb_backuptime.enabled = false
+	end if
+	return ::message.returnvalue
+
+// rb_backuponce.clicked() returns long
+	if this.checked = true then
+		parent.parent.parent.tab_preferences.tabpage_schedule.dw_backupschedule.enabled = false
+		parent.parent.parent.tab_preferences.tabpage_schedule.ddlb_backuphr.enabled = true
+		parent.parent.parent.tab_preferences.tabpage_schedule.ddlb_backupmin.enabled = true
+		parent.parent.parent.tab_preferences.tabpage_schedule.ddlb_backupsec.enabled = true
+		parent.parent.parent.tab_preferences.tabpage_schedule.ddlb_backuptime.enabled = true
+	end if
+	return ::message.returnvalue
+
+// cbx_activateautobackup.clicked() returns long
+	if this.checked = true then
+		parent.parent.parent.tab_preferences.tabpage_schedule.rb_backuponce.enabled = true
+		parent.parent.parent.tab_preferences.tabpage_schedule.rb_backuponce.checked = true
+		parent.parent.parent.tab_preferences.tabpage_schedule.rb_backupevery.enabled = true
+		parent.parent.parent.tab_preferences.tabpage_schedule.dw_backupschedule.enabled = false
+		parent.parent.parent.tab_preferences.tabpage_schedule.ddlb_backuphr.enabled = true
+		parent.parent.parent.tab_preferences.tabpage_schedule.ddlb_backupmin.enabled = true
+		parent.parent.parent.tab_preferences.tabpage_schedule.ddlb_backupsec.enabled = true
+		parent.parent.parent.tab_preferences.tabpage_schedule.ddlb_backuptime.enabled = true
+	else
+		parent.parent.parent.tab_preferences.tabpage_schedule.rb_backupevery.enabled = false
+		parent.parent.parent.tab_preferences.tabpage_schedule.rb_backuponce.enabled = false
+		parent.parent.parent.tab_preferences.tabpage_schedule.dw_backupschedule.enabled = false
+		parent.parent.parent.tab_preferences.tabpage_schedule.ddlb_backuphr.enabled = false
+		parent.parent.parent.tab_preferences.tabpage_schedule.ddlb_backupmin.enabled = false
+		parent.parent.parent.tab_preferences.tabpage_schedule.ddlb_backupsec.enabled = false
+		parent.parent.parent.tab_preferences.tabpage_schedule.ddlb_backuptime.enabled = false
+	end if
+	return ::message.returnvalue
+
+// tabpage_adjustment.create() returns 0
+	this.dw_adjustmentpreferences = create dw_adjustmentpreferences
+	this.control = {this.dw_adjustmentpreferences}
+
+// tabpage_adjustment.destroy() returns 0
+	destroy this.dw_adjustmentpreferences
+
+// dw_adjustmentpreferences.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// tabpage_transfer.create() returns 0
+	this.dw_transferpreferences = create dw_transferpreferences
+	this.control = {this.dw_transferpreferences}
+
+// tabpage_transfer.destroy() returns 0
+	destroy this.dw_transferpreferences
+
+// dw_transferpreferences.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// tabpage_receipt.create() returns 0
+	this.dw_receiptpreferences = create dw_receiptpreferences
+	this.control = {this.dw_receiptpreferences}
+
+// tabpage_receipt.destroy() returns 0
+	destroy this.dw_receiptpreferences
+
+// dw_receiptpreferences.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// tabpage_purorder.create() returns 0
+	this.dw_purorderterms = create dw_purorderterms
+	this.control = {this.dw_purorderterms}
+
+// tabpage_purorder.destroy() returns 0
+	destroy this.dw_purorderterms
+
+// dw_purorderterms.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// tabpage_others.create() returns 0
+	this.dw_otherspref = create dw_otherspref
+	this.control = {this.dw_otherspref}
+
+// tabpage_others.destroy() returns 0
+	destroy this.dw_otherspref
+
+// dw_otherspref.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_otherspref.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	string ls_docname
+	string ls_named
+	string ls_path
+	integer li_value
+	string ls_s
+	ls_s = dwo.name
+	choose case dwo.name
+	case "b_browse"
+		ls_docname = this.object.outputfilepath[1]
+		li_value = getfileopenname("Select File Location", ls_docname, ls_named, "TXT", "All Files (*.*),*.*," + "All Files (*.*),*.*")
+		if li_value = 1 then
+			ls_path = left(ls_docname, len(ls_docname) - pos(reverse(ls_docname), "\") + 1)
+			this.object.outputfilepath[1] = ls_path
+		end if
+	end choose
+	return ::message.returnvalue
+
+// tabpage_barcode.create() returns 0
+	this.dw_barcode = create dw_barcode
+	this.control = {this.dw_barcode}
+
+// tabpage_barcode.destroy() returns 0
+	destroy this.dw_barcode
+
+// dw_barcode.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// tabpage_itempriceadj.create() returns 0
+	this.dw_itempriceadj = create dw_itempriceadj
+	this.control = {this.dw_itempriceadj}
+
+// tabpage_itempriceadj.destroy() returns 0
+	destroy this.dw_itempriceadj
+
+// dw_itempriceadj.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// tabpage_saleorder.create() returns 0
+	this.dw_saleorder = create dw_saleorder
+	this.control = {this.dw_saleorder}
+
+// tabpage_saleorder.destroy() returns 0
+	destroy this.dw_saleorder
+
+// dw_saleorder.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// tabpage_recipe.create() returns 0
+	this.dw_recipe = create dw_recipe
+	this.control = {this.dw_recipe}
+
+// tabpage_recipe.destroy() returns 0
+	destroy this.dw_recipe
+
+// dw_recipe.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// tabpage_production.create() returns 0
+	this.dw_production = create dw_production
+	this.control = {this.dw_production}
+
+// tabpage_production.destroy() returns 0
+	destroy this.dw_production
+
+// dw_production.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// tabpage_patientpref.create() returns 0
+	this.dw_patientpref = create dw_patientpref
+	this.control = {this.dw_patientpref}
+
+// tabpage_patientpref.destroy() returns 0
+	destroy this.dw_patientpref

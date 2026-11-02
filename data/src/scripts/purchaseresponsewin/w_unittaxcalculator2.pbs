@@ -1,0 +1,133 @@
+// window w_unittaxcalculator2 (purchaseresponsewin)  ancestor: window
+
+// w_unittaxcalculator2.ue_close(integer ai_status) returns 0
+	if ai_status = -1 then
+		this.istr_unittaxinputs.d_unittax = this.istr_oldunittaxinputs.d_unittax
+		this.istr_unittaxinputs.i_status = this.istr_oldunittaxinputs.i_status
+	end if
+	closewithreturn(this, this.istr_unittaxinputs)
+
+// w_unittaxcalculator2.wf_update_unittax(double ad_tax) returns long
+	this.id_dw.object.unittax[1] = round(ad_tax / this.id_dw.object.qty[1], 2)
+	return 0
+
+// w_unittaxcalculator2.wf_update_totaltax(integer ai_unittax) returns long
+	this.id_dw.object.totaltax[1] = round(this.id_dw.object.unittax[1] * this.id_dw.object.qty[1], 2)
+	return 0
+
+// w_unittaxcalculator2.create() returns 0
+	this.dw_amountoninvoice = create dw_amountoninvoice
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.control = {this.dw_amountoninvoice, this.cb_cancel, this.cb_ok}
+
+// w_unittaxcalculator2.destroy() returns 0
+	destroy this.dw_amountoninvoice
+	destroy this.cb_cancel
+	destroy this.cb_ok
+
+// w_unittaxcalculator2.open() returns long
+	string ls_aliasname
+	string ls_name
+	decimal ld_saleprice
+	decimal ld_purprice
+	long ll_packunits
+	string ls_invcode
+	long ll_rtcode
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	this.istr_unittaxinputs = message.powerobjectparm
+	this.istr_oldunittaxinputs = this.istr_unittaxinputs
+	this.id_dw = this.dw_amountoninvoice
+	this.id_dw.settransobject(sqlca)
+	this.id_dw.retrieve(this.istr_unittaxinputs.l_icode, this.istr_unittaxinputs.d_unittax, this.istr_unittaxinputs.d_qty)
+	if this.id_dw.rowcount() = 0 then
+		this.id_dw.insertrow(0)
+	end if
+	this.id_dw.object.totaltax[1] = this.id_dw.object.unittax[1] * this.id_dw.object.qty[1]
+	this.id_dw.object.unittax[1] = this.id_dw.object.totaltax[1] / this.id_dw.object.qty[1]
+	this.id_dw.scrolltorow(1)
+	this.id_dw.selecttext(1, len(this.id_dw.gettext()))
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// dw_amountoninvoice.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_amountoninvoice.itemchanged(long row, dwobject dwo, string data) returns long
+	long ll_null
+	integer li_errcode
+	setnull(ll_null)
+	choose case dwo.name
+	case "totaltax"
+		if double(data) < 0.0 then
+			li_errcode = 1
+		else
+			parent.wf_update_unittax(double(data))
+		end if
+	case "unittax"
+		if double(data) < 0.0 then
+			li_errcode = 1
+		else
+			parent.wf_update_totaltax(double(data))
+		end if
+	end choose
+	return li_errcode
+
+// dw_amountoninvoice.itemerror(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "unitax"
+		messagebox("Unit Tax Validation!", "Please Enter Valid Amount for Unit Tax")
+	case "totaltax"
+		messagebox("Total Tax Validation!", "Please Enter Valid Amount for Toital Tax")
+	end choose
+	return ::message.returnvalue
+
+// dw_amountoninvoice.itemfocuschanged(long row, dwobject dwo) returns long
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.istr_unittaxinputs.i_status = -1
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	if parent.id_dw.accepttext() = 1 then
+		if parent.id_dw.object.unittax[1] < 0 then
+			messagebox("Unit Tax Validation!", "Please Enter Valid Unit Tax")
+			parent.id_dw.setfocus()
+			parent.id_dw.setcolumn("unittax")
+			return ::message.returnvalue
+		end if
+		if parent.id_dw.object.totaltax[1] < 0 then
+			messagebox("Total Tax Validation!", "Please Enter Valid Total Tax")
+			parent.id_dw.setfocus()
+			parent.id_dw.setcolumn("totaltax")
+			return ::message.returnvalue
+		end if
+		parent.istr_unittaxinputs.d_unittax = parent.id_dw.object.unittax[1]
+		parent.istr_unittaxinputs.i_status = 1
+		parent.post event ue_close(1)
+	end if
+	return ::message.returnvalue

@@ -1,0 +1,443 @@
+// window w_supplier_manf (multientry)  ancestor: w_multi_entry
+
+// w_supplier_manf.wf_validateitem() returns integer
+	long ll_manfcode
+	integer li_errcode
+	integer li_manfcode
+	ll_manfcode = this.id_detail.getitemnumber(this.il_currrow, "manfcode")
+	if vf_dwdupcode1(this.id_detail, "manfcode", string(ll_manfcode), this.il_currrow) = true then
+		messagebox("Duplicate Manufacturer Name", "Manufacturer has already been selected")
+		li_errcode = -1
+	end if
+	this.ib_itemvalidated = true
+	if li_errcode = -1 then
+		setnull(li_manfcode)
+		this.id_detail.setcolumn("manfcode")
+		this.id_detail.setitem(this.il_currrow, "manfcode", li_manfcode)
+		this.id_detail.scrolltorow(this.il_currrow)
+	end if
+	return li_errcode
+
+// w_supplier_manf.wf_duplicateaccname(string as_accname) returns boolean
+	long ll_count
+	boolean bb_flag
+	as_accname = trim(as_accname)
+	SQL SELECT count ( *) INTO :ll_count FROM Accounts WHERE Accounts.name =:as_accname USING this.it_transobject;
+	if ll_count > 0 then
+		bb_flag = true
+	end if
+	return bb_flag
+
+// w_supplier_manf.wf_duplicatealiasname(string as_aliasname) returns boolean
+	long ll_count
+	boolean bb_flag
+	as_aliasname = trim(as_aliasname)
+	SQL SELECT count ( *) INTO :ll_count FROM Accounts WHERE Accounts.aliasname =:as_aliasname USING this.it_transobject;
+	if ll_count > 0 then
+		bb_flag = true
+	end if
+	return bb_flag
+
+// w_supplier_manf.wf_showaccountledger() returns 0
+	long ll_acccode
+	if this.tab_retrieve.selectedtab = 1 then
+		if this.id_master.rowcount() > 0 and this.id_master.getrow() > 0 then
+			ll_acccode = this.id_master.object.code[this.id_master.getrow()]
+		end if
+	elseif this.tab_retrieve.selectedtab = 2 and (this.id_list.rowcount() > 0 and this.id_list.getrow() > 0) then
+		ll_acccode = this.id_list.object.code[this.id_list.getrow()]
+	end if
+	if not isnull(ll_acccode) and ll_acccode <> 0 then
+		SQL rollback USING sqlca;
+		sqlca.virtualgl("A")
+		if sqlca.sqlcode = 0 then
+			SQL commit USING sqlca;
+		else
+			SQL rollback USING sqlca;
+		end if
+		openwithparm(w_account_ledger, ll_acccode)
+	end if
+
+// w_supplier_manf.wf_set_printout() returns long
+	if gs_company = "TOTALMEDICAL" then
+		this.id_print.dataobject = "d_supplier_print_totalmedical"
+	end if
+	return 0
+
+// w_supplier_manf.wf_retrieve() returns long
+	long rtcode
+	if f_stringpreferences("GroupSuppCatInBasicData") = "Y" then
+		rtcode = this.id_dwcontrol.retrieve(f_getgroupcode(gl_usercode))
+	else
+		rtcode = this.id_dwcontrol.retrieve()
+	end if
+	return rtcode
+
+// w_supplier_manf.wf_retrievelistall() returns long
+	long rtcode
+	if f_stringpreferences("GroupSuppCatInBasicData") = "Y" then
+		rtcode = this.id_dwcontrol.retrieve(f_getgroupcode(gl_usercode))
+	else
+		rtcode = this.id_dwcontrol.retrieve()
+	end if
+	return rtcode
+
+// w_supplier_manf.create() returns 0
+	integer icurrent
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_supplier_manf" then
+		this.menuid = create m_supplier_manf
+	end if
+	this.dw_print = create dw_print
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_print
+
+// w_supplier_manf.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_print
+
+// w_supplier_manf.ue_save() returns 0
+	integer li_counter
+	string ls_aliasname
+	boolean lb_commitflag
+	long ll_newid
+	long ll_row
+	long ll_detailrows
+	long ll_baseperiod
+	long ll_projperiod
+	long ll_popolicycode
+	long ll_manfcode
+	long ll_pk
+	long ll_null
+	integer li_rc
+	string ls_err
+	string ls_mod
+	datawindow ldw_detail
+	dwitemstatus lds_rowstatus
+	setnull(ll_null)
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	ll_row = this.id_master.getrow()
+	ll_newid = this.id_master.object.code[this.id_master.getrow()]
+	ll_pk = this.id_master.object.code[this.id_master.getrow()]
+	if isnull(ll_newid) then
+		f_newtableid("Accounts", ll_newid)
+		this.id_master.object.code[ll_row] = ll_newid
+		this.id_master.object.accounts_acccode[ll_row] = ll_newid
+	end if
+	ls_aliasname = this.id_master.object.accounts_aliasname[1]
+	if isnull(ls_aliasname) then
+		this.id_master.object.accounts_aliasname[1] = string(ll_newid)
+	end if
+	if f_validatedw(this.tab_retrieve.tabpage_detail.dw_detail) < 0 then
+		return
+	end if
+	ldw_detail = this.tab_retrieve.tabpage_detail.dw_detail
+	li_rc = ldw_detail.update(true, false)
+	if li_rc = 1 then
+		ls_mod = "accounts_acccode.Update=No "
+		ls_mod = ls_mod + "accounts_localaccountname.Update=No "
+		ls_mod = ls_mod + "accounts_name.Update=No "
+		ls_mod = ls_mod + "accounts_SubCode.Update=No "
+		ls_mod = ls_mod + "accounts_active.Update=No "
+		ls_mod = ls_mod + "accounts_openingdate.Update=No "
+		ls_mod = ls_mod + "accounts_aliasname.Update=No "
+		ls_mod = ls_mod + "accounts_acccode.Key=No "
+		ls_mod = ls_mod + "DataWindow.Table.UpdateTable='supplier' "
+		ls_mod = ls_mod + "code.Key=Yes "
+		ls_mod = ls_mod + "code.Update=Yes "
+		ls_mod = ls_mod + "supplier_cp.Update=Yes "
+		ls_mod = ls_mod + "supplier_address1.Update=Yes "
+		ls_mod = ls_mod + "supplier_city.Update=Yes "
+		ls_mod = ls_mod + "supplier_CountyCode.Update=Yes "
+		ls_mod = ls_mod + "supplier_postCode.Update=Yes "
+		ls_mod = ls_mod + "supplier_country.Update=Yes "
+		ls_mod = ls_mod + "supplier_phone.Update=Yes "
+		ls_mod = ls_mod + "supplier_fax.Update=Yes "
+		ls_mod = ls_mod + "supplier_email.Update=Yes "
+		ls_mod = ls_mod + "supplier_address2.Update=Yes "
+		ls_mod = ls_mod + "supplier_defaultgst.Update=Yes "
+		ls_mod = ls_mod + "supplier_specialinstructions.Update=Yes "
+		ls_mod = ls_mod + "supplier_dayslimit.Update=Yes "
+		ls_mod = ls_mod + "suppcatcode.Update=Yes "
+		ls_mod = ls_mod + "supplier_salestaxregno.Update=Yes "
+		ls_mod = ls_mod + "supplier_ntnno.Update=Yes "
+		ls_mod = ls_mod + "supplier_cnic.Update=Yes "
+		ls_mod = ls_mod + "supplier_mobileno.Update=Yes "
+		ls_mod = ls_mod + "supplier_websiteadd.Update=Yes "
+		ls_mod = ls_mod + "supplier_phone2.Update=Yes "
+		ls_mod = ls_mod + "supplier_email2.Update=Yes "
+		ls_mod = ls_mod + "supplier_email3.Update=Yes "
+		ls_mod = ls_mod + "supplier_bankacc.Update=Yes "
+		ls_mod = ls_mod + "supplier_whperc.Update=Yes "
+		ls_mod = ls_mod + "supplier_PurQuotationCode.Update=Yes "
+		ls_mod = ls_mod + "supplier_SiteCode.Update=Yes "
+		ls_err = ldw_detail.modify(ls_mod)
+		if ls_err <> "" then
+			messagebox("DataWindow Modify Error", ls_err)
+		end if
+		li_rc = ldw_detail.update()
+		if li_rc < 0 then
+			messagebox("Update of supplier Table Failed", "Rolling back changes to " + "accounts  and supplier Tables")
+			SQL rollback USING this.it_transobject;
+		else
+			ll_detailrows = this.id_detail.rowcount()
+			li_counter = 1
+			do while li_counter <= ll_detailrows and lb_commitflag = true
+				lds_rowstatus = this.id_detail.getitemstatus(li_counter, 0, primary!)
+				if lds_rowstatus = newmodified! then
+					this.id_detail.setitem(li_counter, "suppcode", this.id_master.object.code[ll_row])
+				end if
+				ll_manfcode = this.id_detail.object.manfcode[li_counter]
+				ll_baseperiod = this.id_detail.object.purorderbaseperioddays[li_counter]
+				ll_projperiod = this.id_detail.object.purorderprojperioddays[li_counter]
+				ll_popolicycode = this.id_detail.object.popolicycode[li_counter]
+				SQL update Manufacturer SET PurOrderProjPeriodDays =:ll_projperiod , PurOrderBasePeriodDays =:ll_baseperiod , POPolicyCode =:ll_popolicycode WHERE ManfCode =:ll_manfcode USING this.it_transobject;
+				if this.it_transobject.sqlcode <> 0 then
+					if isnull(ll_pk) then
+						this.id_master.object.code[1] = ll_null
+					end if
+					messagebox("Update of Supplier Manufacture Table Failed", "Rolling back changes to Accounts  and Supplier Tables", stopsign!)
+					SQL rollback USING this.it_transobject;
+				end if
+				li_counter = li_counter + 1
+			loop
+			if this.id_detail.update() > 0 then
+				SQL commit USING this.it_transobject;
+				messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+				this.ib_commitok = true
+				this.id_master.resetupdate()
+				this.im_menu.m_file.m_new.enabled = true
+				this.editflag = false
+			else
+				SQL rollback USING this.it_transobject;
+				setpointer(arrow!)
+				return
+			end if
+		end if
+	else
+		messagebox("Update of accounts Table Failed", "Rolling back changes to " + "accounts Table")
+		SQL rollback USING this.it_transobject;
+		return
+	end if
+	ls_mod = "accounts_accCode.Update=yes "
+	ls_mod = ls_mod + "accounts_localaccountname.Update=yes "
+	ls_mod = ls_mod + "accounts_name.Update=yes "
+	ls_mod = ls_mod + "accounts_SubCode.Update=yes "
+	ls_mod = ls_mod + "accounts_active.Update=yes "
+	ls_mod = ls_mod + "accounts_openingdate.Update=yes "
+	ls_mod = ls_mod + "accounts_aliasname.Update=yes "
+	ls_mod = ls_mod + "DataWindow.Table.UpdateTable='accounts' "
+	ls_mod = ls_mod + "Accounts_acccode.Key=yes "
+	ls_mod = ls_mod + "code.Update=no "
+	ls_mod = ls_mod + "supplier_CP.Update=no "
+	ls_mod = ls_mod + "supplier_address1.Update=no "
+	ls_mod = ls_mod + "supplier_city.Update=no "
+	ls_mod = ls_mod + "supplier_CountyCode.Update=no "
+	ls_mod = ls_mod + "supplier_postCode.Update=no "
+	ls_mod = ls_mod + "supplier_country.Update=no "
+	ls_mod = ls_mod + "supplier_phone.Update=no "
+	ls_mod = ls_mod + "supplier_fax.Update=no "
+	ls_mod = ls_mod + "supplier_email.Update=no "
+	ls_mod = ls_mod + "supplier_address2.Update=no "
+	ls_mod = ls_mod + "supplier_defaultgst.Update=no "
+	ls_mod = ls_mod + "supplier_specialinstructions.Update=no "
+	ls_mod = ls_mod + "supplier_dayslimit.Update=no "
+	ls_mod = ls_mod + "suppcatcode.Update=no "
+	ls_mod = ls_mod + "code.Key=no "
+	ls_mod = ls_mod + "supplier_salestaxregno.Update=no "
+	ls_mod = ls_mod + "supplier_ntnno.Update=no "
+	ls_mod = ls_mod + "supplier_cnic.Update=no "
+	ls_mod = ls_mod + "supplier_mobileno.Update=no "
+	ls_mod = ls_mod + "supplier_websiteadd.Update=no "
+	ls_mod = ls_mod + "supplier_phone2.Update=no "
+	ls_mod = ls_mod + "supplier_email2.Update=no "
+	ls_mod = ls_mod + "supplier_email3.Update=no "
+	ls_mod = ls_mod + "supplier_bankacc.Update=no "
+	ls_mod = ls_mod + "supplier_whperc.Update=no "
+	ls_mod = ls_mod + "supplier_PurQuotationCode.Update=no "
+	ls_mod = ls_mod + "supplier_SiteCode.Update=no "
+	ls_err = ldw_detail.modify(ls_mod)
+	if ls_err <> "" then
+		messagebox("DataWindow Modify Error", ls_err)
+	end if
+	setpointer(arrow!)
+
+// w_supplier_manf.ue_newform() returns 0
+	long ll_counter
+	call super::ue_newform
+	this.id_master.object.accounts_aliasname.visible = true
+	this.id_master.object.accounts_aliasname_t.visible = true
+	this.id_master.setfocus()
+
+// w_supplier_manf.ue_newitem() returns 0
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	call super::ue_newitem
+
+// w_supplier_manf.ue_detail() returns 0
+	long ll_counter
+	long ll_code
+	long ll_found
+	call super::ue_detail
+	if this.id_list.rowcount() > 0 and this.id_list.getrow() > 0 and this.il_selectedrow > 0 then
+		ll_code = this.id_list.object.code[this.il_selectedrow]
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 650", 1, gds_securitywindow.rowcount())
+	if ll_found <= 0 then
+		this.id_detail.reset()
+		messagebox("Supplier Modification!", "Your do not have enough rights for supplier data modification~r~nPlease Contact system administrator for your help", stopsign!)
+		this.tab_retrieve.selecttab(2)
+		return
+	end if
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_delete.enabled = true
+	this.im_menu.m_file.m_first.enabled = true
+	this.im_menu.m_file.m_next.enabled = true
+	this.im_menu.m_file.m_last.enabled = true
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_menu.m_file.m_previous.enabled = true
+	this.im_menu.m_item.m_newitem.enabled = true
+	this.im_menu.m_item.m_deleteitem.enabled = true
+	this.id_master.object.accounts_aliasname.visible = false
+	this.id_master.object.accounts_aliasname_t.visible = false
+	for ll_counter = 1 to gds_securitywindow.rowcount()
+		if gds_securitywindow.object.rightcode[ll_counter] = 526 then
+			this.id_master.object.accounts_aliasname.visible = true
+			this.id_master.object.accounts_aliasname_t.visible = true
+		end if
+	next
+
+// w_supplier_manf.ue_postopen() returns 0
+	long ll_found
+	m_supplier_manf lm_menu
+	call super::ue_postopen
+	lm_menu = this.menuid
+	f_fetch_sites()
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 720", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		lm_menu.m_file.m_showaccountledger.visible = true
+		lm_menu.m_file.m_showaccountledger.enabled = true
+	end if
+	if f_stringpreferences("GroupSuppCatInBasicData") = "Y" then
+		this.id_list.dataobject = "d_supplier_list_groupwise"
+		this.id_list.settransobject(this.it_transobject)
+		this.id_list.retrieve(f_getgroupcode(gl_usercode))
+	else
+		this.id_list.settransobject(this.it_transobject)
+		this.id_list.retrieve()
+	end if
+	if gl_sitecode > 0 and gc_dropbox = "Y" then
+		this.id_master.object.supplier_sitecode.visible = true
+		this.id_master.object.supplier_sitecode_t.visible = true
+		return
+	end if
+	this.id_master.object.supplier_sitecode.visible = false
+	this.id_master.object.supplier_sitecode_t.visible = false
+
+// w_supplier_manf.ue_print() returns 0
+	long ll_code
+	boolean lb_listtab
+	s_datastore lstr
+	call super::ue_print
+	if this.tab_retrieve.selectedtab = 2 then
+		lb_listtab = true
+	end if
+	if this.im_menu.m_file.m_save.enabled = true and lb_listtab = false then
+		triggerevent("ue_save")
+		if wf_commitform() = false then
+			return
+		end if
+		return
+	end if
+	if lb_listtab then
+		if isnull(this.id_list.getrow()) or this.id_list.getrow() <= 0 then
+			messagebox("Rows Validation", "Kindly select any row from the list view.")
+			return
+		end if
+		ll_code = this.id_list.getitemnumber(this.id_list.getrow(), "code")
+		if isnull(ll_code) or ll_code <= 0 then
+			messagebox("Selection Validation", "Kindly select any row from the list view.")
+			return
+		end if
+	else
+		ll_code = this.id_master.getitemnumber(this.id_master.getrow(), "code")
+	end if
+	if ll_code > 0 then
+		this.id_print = this.dw_print
+		this.id_print.dataobject = this.dw_print.dataobject
+		this.id_print.settransobject(sqlca)
+		wf_set_printout()
+		this.id_print.settransobject(sqlca)
+		this.id_print.retrieve(ll_code)
+		lstr.dw = this.id_print
+		lstr.s_name1 = this.id_print.dataobject
+		openwithparm(w_preview_invoices, lstr)
+		lstr = message.powerobjectparm
+		if lstr.i_closemode = -1 then
+			return
+		end if
+		if f_stringpreferences("PromptBeforePrinting") = "Y" and printsetup() < 0 then
+			messagebox("Printer", "Printing Error")
+			this.id_print.printcancel()
+		end if
+		if this.id_print.rowcount() > 0 then
+			if this.id_print.print() < 0 then
+				messagebox("Printing", "Can not Print Invoice", information!)
+			end if
+			return
+		end if
+		messagebox("Printing Error", "Can not Print Data,~r~nNo rows are retrieved", information!)
+	end if
+
+// w_supplier_manf.open() returns long
+	m_entry lm_menu
+	long ll_width
+	long ll_height
+	environment env
+	postevent("ue_postopen")
+	wf_setmenu(this.menuid)
+	lm_menu = this.menuid
+	lm_menu.dynamic mf_initsecurityapp(lm_menu)
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.tab_retrieve.width = ll_width * 0.99
+	this.tab_retrieve.height = ll_height * 0.83
+	this.tab_retrieve.tabpage_detail.dw_detail.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_itemsdetail.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_footer.y = this.tab_retrieve.height * 0.90 - this.tab_retrieve.tabpage_detail.dw_footer.height
+	this.tab_retrieve.tabpage_detail.dw_detail.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width
+	this.tab_retrieve.tabpage_detail.dw_footer.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width
+	this.tab_retrieve.tabpage_detail.dw_detail.height = this.tab_retrieve.height * 0.70
+	this.tab_retrieve.tabpage_detail.dw_itemsdetail.height = this.tab_retrieve.height * 0.28
+	this.tab_retrieve.tabpage_detail.dw_itemsdetail.y = this.tab_retrieve.tabpage_detail.dw_detail.y + this.tab_retrieve.tabpage_detail.dw_detail.height + 10
+	this.tab_retrieve.tabpage_list.gb_fliter.width = ll_width * 0.97 - this.tab_retrieve.tabpage_list.gb_sort.width
+	this.tab_retrieve.tabpage_list.r_1.width = ll_width * 0.99
+	this.tab_retrieve.tabpage_list.r_1.height = ll_height * 0.765 - this.tab_retrieve.tabpage_list.gb_sort.height
+	this.tab_retrieve.tabpage_list.dw_list.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_list.dw_list.height = ll_height * 0.75 - this.tab_retrieve.tabpage_list.dw_list.y
+	this.tab_retrieve.tabpage_detail.dw_itemslist.height = ll_height * 0.6
+	this.tab_retrieve.tabpage_detail.dw_itemslist.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width * 0.67
+	this.tab_retrieve.tabpage_detail.dw_itemslist.x = 1150
+	setredraw(true)
+	return ::message.returnvalue

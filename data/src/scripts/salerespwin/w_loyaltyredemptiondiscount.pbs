@@ -1,0 +1,100 @@
+// window w_loyaltyredemptiondiscount (salerespwin)  ancestor: window
+
+// w_loyaltyredemptiondiscount.wf_set_loyaltypoints(long al_acccode) returns long
+	datetime ldt_balancedate
+	long ll_layaltypointsbalance
+	long ll_retcode
+	double ld_layaltypointsvalue
+	SQL SELECT GETDATE ( ) INTO :ldt_balancedate FROM _Utn USING sqlca;
+	if sqlca.sqlcode = 0 and al_acccode > 0 then
+		sqlca.getaccountloyaltybalance(al_acccode, ldt_balancedate, ll_layaltypointsbalance, ld_layaltypointsvalue)
+		if sqlca.sqlcode = 0 then
+			this.dw_report.object.loyaltypointsbalance[1] = ll_layaltypointsbalance
+			this.dw_report.object.loyaltypointsvalue[1] = ld_layaltypointsvalue
+		else
+			messagebox("Loyalty Points Balance", "Loyalty Points Fetching Error.~r~nDetails are:-~r~n" + sqlca.sqlerrtext)
+			ll_retcode = -1
+		end if
+	end if
+	return ll_retcode
+
+// w_loyaltyredemptiondiscount.create() returns 0
+	this.cb_redeemlater = create cb_redeemlater
+	this.cb_close = create cb_close
+	this.cb_redeemnow = create cb_redeemnow
+	this.dw_report = create dw_report
+	this.control = {this.cb_redeemlater, this.cb_close, this.cb_redeemnow, this.dw_report}
+
+// w_loyaltyredemptiondiscount.destroy() returns 0
+	destroy this.cb_redeemlater
+	destroy this.cb_close
+	destroy this.cb_redeemnow
+	destroy this.dw_report
+
+// w_loyaltyredemptiondiscount.open() returns long
+	datastore lds_items
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	long ll_counter
+	long ll_currentrow
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	lds_items = create datastore
+	lds_items.settransobject(sqlca)
+	this.dw_report.settransobject(sqlca)
+	lds_items = message.powerobjectparm
+	lds_items.sharedata(this.dw_report)
+	this.dw_report.sort()
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_loyaltyredemptiondiscount.key(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		closewithreturn(this, -1)
+	end if
+	return ::message.returnvalue
+
+// cb_redeemlater.clicked() returns long
+	long ll_counter
+	for ll_counter = 1 to parent.dw_report.rowcount()
+		parent.dw_report.object.redemptiondiscperc[ll_counter] = 0.00
+	next
+	closewithreturn(parent, 1)
+	return ::message.returnvalue
+
+// cb_close.clicked() returns long
+	closewithreturn(parent, -1)
+	return ::message.returnvalue
+
+// cb_redeemnow.clicked() returns long
+	if parent.dw_report.accepttext() = 1 then
+		if parent.dw_report.object.loyaltypointsvalue[1] < parent.dw_report.getitemdecimal(1, "c_redeemableamt") then
+			messagebox("Redemption Validation", "Redemption Discount Value Exceeds Availabe Points Value.~r~nPlease adjust accordingly.", stopsign!)
+			return ::message.returnvalue
+		end if
+		closewithreturn(parent, 1)
+	end if
+	return ::message.returnvalue
+
+// dw_report.getfocus() returns long
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_report.itemfocuschanged(long row, dwobject dwo) returns long
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue

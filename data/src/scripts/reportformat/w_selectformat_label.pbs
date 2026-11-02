@@ -1,0 +1,55 @@
+// window w_selectformat_label (reportformat)  ancestor: window
+
+// w_selectformat_label.ue_close(integer ai_status) returns 0
+	if this.rb_portrait.checked = true then
+		closewithreturn(this, 1)
+		return
+	end if
+	if this.rb_landscape.checked = true then
+		closewithreturn(this, 2)
+	end if
+
+// w_selectformat_label.create() returns 0
+	this.rb_landscape = create rb_landscape
+	this.cb_ok = create cb_ok
+	this.rb_portrait = create rb_portrait
+	this.gb_format = create gb_format
+	this.control = {this.rb_landscape, this.cb_ok, this.rb_portrait, this.gb_format}
+
+// w_selectformat_label.destroy() returns 0
+	destroy this.rb_landscape
+	destroy this.cb_ok
+	destroy this.rb_portrait
+	destroy this.gb_format
+
+// w_selectformat_label.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	return ::message.returnvalue
+
+// cb_ok.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	parent.post event ue_close(1)
+	return ::message.returnvalue

@@ -1,0 +1,23 @@
+// function vf_dwdup_refvalue (functions)  ancestor: function_object
+
+// vf_dwdup_refvalue.vf_dwdup_refvalue(datawindow ad_dwcontrol, string as_gender, string as_ageunit, long ai_gestationcode, long ai_testmachinecode, long ai_loweragelimit, long ai_upperagelimit, long al_row) returns boolean
+	long rt_code
+	boolean yesno
+	string ls_find_exp
+	if ad_dwcontrol.rowcount() > 1 then
+		ls_find_exp = "  gender = '" + as_gender + "' AND AgeUnit = '" + as_ageunit + "' AND GestationCode = " + trim(string(ai_gestationcode)) + " AND TestMachineCode = " + trim(string(ai_testmachinecode)) + " AND LowerAgeLimit = " + trim(string(ai_loweragelimit)) + " AND UpperAgeLimit = " + trim(string(ai_upperagelimit))
+		if al_row > 1 then
+			rt_code = ad_dwcontrol.find(ls_find_exp, al_row - 1, 0)
+		end if
+		if rt_code = 0 then
+			if al_row <> ad_dwcontrol.rowcount() then
+				rt_code = ad_dwcontrol.find(ls_find_exp, al_row + 1, ad_dwcontrol.rowcount())
+			end if
+			if rt_code <> 0 then
+				yesno = true
+			end if
+		else
+			yesno = true
+		end if
+	end if
+	return yesno

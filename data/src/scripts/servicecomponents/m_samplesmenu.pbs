@@ -1,0 +1,86 @@
+// menu m_samplesmenu (servicecomponents)  ancestor: m_entry
+
+// m_samplesmenu.create() returns 0
+	m_samplesmenu = this
+	call super::create
+	this.text = "m_samplesmenu"
+	this.m_item = create m_item
+	this.item[upperbound(this.item) + 1] = this.m_item
+
+// m_samplesmenu.destroy() returns 0
+	call super::destroy
+	destroy this.m_item
+
+// m_item.create() returns 0
+	call super::create
+	this.text = "&Item"
+	this.m_newitem = create m_newitem
+	this.m_deleteitem = create m_deleteitem
+	this.m_insertnewitem = create m_insertnewitem
+	this.m_deletecurrentitem = create m_deletecurrentitem
+	this.item[upperbound(this.item) + 1] = this.m_newitem
+	this.item[upperbound(this.item) + 1] = this.m_deleteitem
+	this.item[upperbound(this.item) + 1] = this.m_insertnewitem
+	this.item[upperbound(this.item) + 1] = this.m_deletecurrentitem
+
+// m_item.destroy() returns 0
+	call super::destroy
+	destroy this.m_newitem
+	destroy this.m_deleteitem
+	destroy this.m_insertnewitem
+	destroy this.m_deletecurrentitem
+
+// m_newitem.create() returns 0
+	call super::create
+	this.text = "&New Item~tCtrl+I"
+	this.shortcut = 329
+	this.microhelp = "Add Item to Invoice"
+	this.toolbaritemname = "Update!"
+	this.toolbaritemtext = "New Item"
+	this.toolbaritemorder = 4
+	this.toolbaritemspace = 1
+
+// m_newitem.clicked() returns 0
+	this.parentwindow.triggerevent("ue_newitem")
+
+// m_newitem.destroy() returns 0
+	call super::destroy
+
+// m_deleteitem.create() returns 0
+	call super::create
+	this.text = "&Delete Item     ~tCtrl+D"
+	this.shortcut = 324
+	this.microhelp = "Delete Item from Invoice"
+	this.toolbaritemname = "Retrieve!"
+	this.toolbaritemtext = "Delete Item"
+	this.toolbaritemorder = 5
+
+// m_deleteitem.clicked() returns 0
+	this.parentwindow.triggerevent("ue_deleteitem")
+
+// m_deleteitem.destroy() returns 0
+	call super::destroy
+
+// m_insertnewitem.clicked() returns 0
+	this.parentwindow.triggerevent("ue_newitem")
+
+// m_insertnewitem.create() returns 0
+	call super::create
+	this.visible = false
+	this.text = "Insert New Item~tF2"
+	this.shortcut = 113
+
+// m_insertnewitem.destroy() returns 0
+	call super::destroy
+
+// m_deletecurrentitem.clicked() returns 0
+	this.parentwindow.triggerevent("ue_deleteitem")
+
+// m_deletecurrentitem.create() returns 0
+	call super::create
+	this.visible = false
+	this.text = "Delete Current Item~tF3"
+	this.shortcut = 114
+
+// m_deletecurrentitem.destroy() returns 0
+	call super::destroy

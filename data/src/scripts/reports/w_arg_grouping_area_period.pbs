@@ -1,0 +1,155 @@
+// window w_arg_grouping_area_period (reports)  ancestor: w_listarguments
+
+// w_arg_grouping_area_period.create() returns 0
+	integer icurrent
+	call super::create
+	this.st_selectable = create st_selectable
+	this.st_selected = create st_selected
+	this.st_selectablearea = create st_selectablearea
+	this.st_selectedarea = create st_selectedarea
+	this.lb_selectablearea = create lb_selectablearea
+	this.lb_selectedarea = create lb_selectedarea
+	this.cbx_allarea = create cbx_allarea
+	this.dw_control3 = create dw_control3
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_selectable
+	this.control[icurrent + 2] = this.st_selected
+	this.control[icurrent + 3] = this.st_selectablearea
+	this.control[icurrent + 4] = this.st_selectedarea
+	this.control[icurrent + 5] = this.lb_selectablearea
+	this.control[icurrent + 6] = this.lb_selectedarea
+	this.control[icurrent + 7] = this.cbx_allarea
+	this.control[icurrent + 8] = this.dw_control3
+
+// w_arg_grouping_area_period.destroy() returns 0
+	call super::destroy
+	destroy this.st_selectable
+	destroy this.st_selected
+	destroy this.st_selectablearea
+	destroy this.st_selectedarea
+	destroy this.lb_selectablearea
+	destroy this.lb_selectedarea
+	destroy this.cbx_allarea
+	destroy this.dw_control3
+
+// w_arg_grouping_area_period.open() returns long
+	long ancestorreturnvalue
+	long ll_counter
+	long ll_rowcount
+	integer rtncode
+	ancestorreturnvalue = super::open()
+	this.is_stringparam = message.stringparm
+	if this.is_stringparam = "M" then
+		this.is_dataobject = "d_manufacturers"
+		this.is_colname = "manufacturers"
+		this.is_childcolname = "manfcode"
+		this.st_selectable.text = "Manufacturer(s)"
+		this.st_selected.text = "Manufacturer(s)"
+	elseif this.is_stringparam = "C" then
+		this.is_dataobject = "d_itemcategories"
+		this.is_colname = "categories"
+		this.is_childcolname = "icatcode"
+		this.st_selectable.text = "Item Categories"
+		this.st_selected.text = "Item Categories"
+	elseif this.is_stringparam = "L" then
+		this.is_dataobject = "d_arg_class"
+		this.is_colname = "iccode"
+		this.is_childcolname = "iccode"
+		this.st_selectable.text = "Item Class(s)"
+		this.st_selected.text = "Item Class(s)"
+	elseif this.is_stringparam = "P" then
+		this.is_dataobject = "d_arg_packing"
+		this.is_colname = "packcode"
+		this.is_childcolname = "packcode"
+		this.st_selectable.text = "Item Packing(s)"
+		this.st_selected.text = "Item Packing(s)"
+	end if
+	this.dw_control.dataobject = this.is_dataobject
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	rtncode = this.dw_control.getchild(this.is_colname, this.idc_categories)
+	if rtncode = -1 then
+		messagebox("Error", "Not a DataWindowChild")
+	end if
+	ll_rowcount = this.idc_categories.rowcount()
+	for ll_counter = 1 to ll_rowcount
+		this.lb_categories.additem(this.idc_categories.getitemstring(ll_counter, "name"))
+	next
+	this.dw_control3.settransobject(sqlca)
+	this.dw_control3.insertrow(0)
+	this.dw_control3.scrolltorow(0)
+	rtncode = this.dw_control3.getchild("areacode", this.idc_child)
+	if rtncode = -1 then
+		messagebox("Error", "Not a DataWindowChild")
+	end if
+	ll_rowcount = this.idc_child.rowcount()
+	for ll_counter = 1 to ll_rowcount
+		this.lb_selectablearea.additem(this.idc_child.getitemstring(ll_counter, "name"))
+	next
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// lb_selectablearea.ue_keypress(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		post event doubleclicked(selectedindex())
+	end if
+	return ::message.returnvalue
+
+// lb_selectablearea.doubleclicked(integer index) returns long
+	string ls_item
+	long ll_selectedindex
+	ls_item = string(selecteditem())
+	ll_selectedindex = selectedindex()
+	if not isnull(ls_item) and index >= 1 then
+		parent.lb_selectedarea.additem(ls_item)
+		deleteitem(index)
+		if ll_selectedindex > 1 then
+			if totalitems() < ll_selectedindex then
+				selectitem(totalitems())
+			else
+				selectitem(ll_selectedindex)
+			end if
+		else
+			selectitem(1)
+		end if
+	else
+		messagebox("Selection Validation", "Please select some value from selectable listbox")
+	end if
+	return ::message.returnvalue
+
+// lb_selectablearea.getfocus() returns long
+	selectitem(0)
+	selectitem(1)
+	return ::message.returnvalue
+
+// lb_selectedarea.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		post event doubleclicked(selectedindex())
+	end if
+	return ::message.returnvalue
+
+// lb_selectedarea.doubleclicked(integer index) returns long
+	string ls_item
+	long ll_selectedindex
+	ll_selectedindex = selectedindex()
+	ls_item = string(selecteditem())
+	if not isnull(ls_item) and index >= 1 then
+		parent.lb_selectablearea.additem(ls_item)
+		deleteitem(index)
+		if totalitems() < ll_selectedindex then
+			selectitem(totalitems())
+		else
+			selectitem(ll_selectedindex)
+		end if
+	else
+		messagebox("Selection Validation", "Please select some value from selected listbox")
+	end if
+	return ::message.returnvalue
+
+// lb_selectedarea.getfocus() returns long
+	selectitem(0)
+	selectitem(1)
+	return ::message.returnvalue

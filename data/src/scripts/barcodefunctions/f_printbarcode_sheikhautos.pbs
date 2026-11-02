@@ -1,0 +1,130 @@
+// function f_printbarcode_sheikhautos (barcodefunctions)  ancestor: function_object
+
+// f_printbarcode_sheikhautos.f_printbarcode_sheikhautos(datawindow id_master, datawindow id_detail, boolean ib_printprice) returns long
+	long ll_totalrows
+	long ll_counter
+	long ll_innercounter
+	long ll_qty
+	long ll_currrow
+	long ll_tot_label_rows
+	long ll_job
+	integer li_startcell
+	integer li_stopcell
+	integer li_temp
+	integer li_file
+	integer li_file2
+	string ls_clientname
+	string ls_clientname_25_char
+	string ls_itemname
+	string ls_aliasname
+	string ls_price
+	string ls_filecontent
+	string ls_seperator
+	string ls_date
+	string ls_format
+	string ls_xpos
+	string ls_infocode
+	string ls_printer
+	string ls_manufshortname
+	string ls_design
+	string ls_purprice
+	string ls_supp_alias
+	string ls_contents
+	string ls_purinvcode
+	string ls_location
+	long ll_headerno
+	long ll_labelno
+	long ll_labelpos
+	long ll_supply_cols_per_row
+	integer li_barcodeleninprint
+	ls_seperator = ";"
+	ls_supp_alias = id_master.object.aliasname[id_master.getrow()]
+	ll_headerno = id_master.getitemnumber(id_master.getrow(), "headerno")
+	ls_clientname = trim(f_reportheaderinfo_wrt_headerno("clientname", ll_headerno))
+	ls_clientname_25_char = upper(left(trim(f_reportheaderinfo_wrt_headerno("clientname", ll_headerno)), 25))
+	li_barcodeleninprint = f_numberpreferences("BarCodeLenInPrint")
+	ll_totalrows = id_detail.rowcount()
+	ls_printer = trim(id_master.object.barcodeprinter[1])
+	if lower(ls_printer) = lower("Zebra GK420d") then
+		ls_format = id_master.object.labelformat[1]
+		li_file = fileopen("label.prn", linemode!, write!, lockwrite!, replace!)
+		if li_file = -1 then
+			messagebox("Error", "Unable to locate file for Label printing")
+			return 0
+		else
+			ls_filecontent = "CT~~~~CD,~~CC^~~CT~~"
+			filewrite(li_file, ls_filecontent)
+			ls_filecontent = "^XA~~TA000~~JSN^LT0^MNW^MTD^PON^PMN^LH0,0^JMA^PR5,5~~SD15^JUS^LRN^CI0^XZ"
+			filewrite(li_file, ls_filecontent)
+			for ll_counter = 1 to ll_totalrows
+				if id_detail.getitemnumber(ll_counter, "qty") > 0.0 then
+					ls_filecontent = ""
+					ls_itemname = ""
+					ls_aliasname = ""
+					ls_price = ""
+					ll_qty = 0
+					ll_qty = id_detail.getitemnumber(ll_counter, "qty")
+					ls_itemname = id_detail.getitemstring(ll_counter, "itemname")
+					ls_aliasname = left(trim(id_detail.getitemstring(ll_counter, "fullcode")), li_barcodeleninprint)
+					ls_purinvcode = trim(string(id_master.getitemnumber(1, "code")))
+					if isnull(ls_purinvcode) then
+						ls_purinvcode = ""
+					end if
+					if len(ls_purinvcode) = 0 then
+						ls_purinvcode = space(10)
+					end if
+					ls_location = id_detail.getitemstring(ll_counter, "location")
+					if isnull(ls_location) then
+						ls_location = ""
+					end if
+					if ib_printprice then
+						ls_price = "Rs: " + trim(string(round(id_detail.getitemdecimal(ll_counter, "saleprice"), 2), "##,###,###.00"))
+					else
+						ls_price = ""
+					end if
+					ls_filecontent = "^XA"
+					filewrite(li_file, ls_filecontent)
+					ls_filecontent = "^MMT"
+					filewrite(li_file, ls_filecontent)
+					ls_filecontent = "^PW336"
+					filewrite(li_file, ls_filecontent)
+					ls_filecontent = "^LL0240"
+					filewrite(li_file, ls_filecontent)
+					ls_filecontent = "^LS0"
+					filewrite(li_file, ls_filecontent)
+					ls_filecontent = "^FT28,42^A0N,40,26^FH\^FD" + ls_clientname + "^FS"
+					filewrite(li_file, ls_filecontent)
+					ls_filecontent = "^BY1,3,100^FT28,160^B3N,,N,N"
+					filewrite(li_file, ls_filecontent)
+					ls_filecontent = "^FD>" + ls_aliasname + "^FS"
+					filewrite(li_file, ls_filecontent)
+					ls_filecontent = "^FT28,187^A0N,26,26^FH\^FD" + ls_aliasname + "^FS"
+					filewrite(li_file, ls_filecontent)
+					ls_filecontent = "^FT28,218^A0N,26,26^FH\^FD" + ls_purinvcode + "^FS"
+					filewrite(li_file, ls_filecontent)
+					ls_filecontent = "^FT135,218^A0N,26,20^FH\^FD" + ls_location + "^FS"
+					filewrite(li_file, ls_filecontent)
+					ls_filecontent = "^PQ" + trim(string(ll_qty)) + ",0,1,Y^XZ"
+					filewrite(li_file, ls_filecontent)
+				end if
+			next
+			fileclose(li_file)
+			li_file2 = fileopen("label.prn", textmode!, read!, lockread!)
+			if li_file2 = -1 then
+				messagebox("Error", "Unable to locate file for Label printing")
+				return 0
+			else
+				filereadex(li_file2, ls_contents)
+				fileclose(li_file2)
+				printsetprinter("Zebra GK420d")
+				ll_job = printopen("waseela", false)
+				if ll_job = -1 then
+					messagebox("Error", "Unable to Open Print Job for Label printing")
+				else
+					printsend(ll_job, ls_contents)
+					printclose(ll_job)
+				end if
+			end if
+		end if
+	end if
+	return 0

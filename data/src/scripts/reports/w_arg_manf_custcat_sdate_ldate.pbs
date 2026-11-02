@@ -1,0 +1,36 @@
+// window w_arg_manf_custcat_sdate_ldate (reports)  ancestor: w_arguements
+
+// w_arg_manf_custcat_sdate_ldate.create() returns 0
+	integer icurrent
+	call super::create
+	this.st_4 = create st_4
+	this.dw_control2 = create dw_control2
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_4
+	this.control[icurrent + 2] = this.dw_control2
+
+// w_arg_manf_custcat_sdate_ldate.destroy() returns 0
+	call super::destroy
+	destroy this.st_4
+	destroy this.dw_control2
+
+// w_arg_manf_custcat_sdate_ldate.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	this.dw_control2.settransobject(sqlca)
+	this.dw_control2.insertrow(0)
+	this.dw_control2.scrolltorow(0)
+	return ::message.returnvalue
+
+// w_arg_manf_custcat_sdate_ldate.ue_close(integer ai_stauts) returns 0
+	super::ue_close(ai_stauts)
+	closewithreturn(this, this.istr_arg)
+
+// dw_control2.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1

@@ -1,0 +1,140 @@
+// window w_arg_manf_sdate_ldate_amsonpharma (reports)  ancestor: w_arguements
+
+// w_arg_manf_sdate_ldate_amsonpharma.create() returns 0
+	integer icurrent
+	call super::create
+	this.cbx_cust = create cbx_cust
+	this.cbx_stock = create cbx_stock
+	this.gb_2 = create gb_2
+	this.cbx_trans = create cbx_trans
+	this.cb_trans = create cb_trans
+	this.cb_cust = create cb_cust
+	this.cb_stock = create cb_stock
+	this.hpb_hpb = create hpb_hpb
+	this.dw_control2 = create dw_control2
+	this.cbx_prod = create cbx_prod
+	this.cb_prod = create cb_prod
+	this.cbx_summ = create cbx_summ
+	this.cb_summ = create cb_summ
+	this.gb_overallprogress = create gb_overallprogress
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.cbx_cust
+	this.control[icurrent + 2] = this.cbx_stock
+	this.control[icurrent + 3] = this.gb_2
+	this.control[icurrent + 4] = this.cbx_trans
+	this.control[icurrent + 5] = this.cb_trans
+	this.control[icurrent + 6] = this.cb_cust
+	this.control[icurrent + 7] = this.cb_stock
+	this.control[icurrent + 8] = this.hpb_hpb
+	this.control[icurrent + 9] = this.dw_control2
+	this.control[icurrent + 10] = this.cbx_prod
+	this.control[icurrent + 11] = this.cb_prod
+	this.control[icurrent + 12] = this.cbx_summ
+	this.control[icurrent + 13] = this.cb_summ
+	this.control[icurrent + 14] = this.gb_overallprogress
+
+// w_arg_manf_sdate_ldate_amsonpharma.destroy() returns 0
+	call super::destroy
+	destroy this.cbx_cust
+	destroy this.cbx_stock
+	destroy this.gb_2
+	destroy this.cbx_trans
+	destroy this.cb_trans
+	destroy this.cb_cust
+	destroy this.cb_stock
+	destroy this.hpb_hpb
+	destroy this.dw_control2
+	destroy this.cbx_prod
+	destroy this.cb_prod
+	destroy this.cbx_summ
+	destroy this.cb_summ
+	destroy this.gb_overallprogress
+
+// w_arg_manf_sdate_ldate_amsonpharma.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	this.dw_control2.settransobject(sqlca)
+	this.dw_control2.retrieve()
+	this.dw_control2.scrolltorow(0)
+	this.is_trans = trim(f_stringpreferences("OutputFilePath")) + "Transaction.TXT"
+	this.is_cust = trim(f_stringpreferences("OutputFilePath")) + "Customer.TXT"
+	this.is_stock = trim(f_stringpreferences("OutputFilePath")) + "SSSS.TXT"
+	this.is_prod = trim(f_stringpreferences("OutputFilePath")) + "Product.TXT"
+	this.is_summ = trim(f_stringpreferences("OutputFilePath")) + "SalesValue.TXT"
+	this.dw_control2.object.distcode[1] = f_stringpreferences("MerckDistCode")
+	return ::message.returnvalue
+
+// w_arg_manf_sdate_ldate_amsonpharma.ue_close(integer ai_stauts) returns 0
+	super::ue_close(ai_stauts)
+	closewithreturn(this, this.istr_arg)
+
+// cb_trans.clicked() returns long
+	string ls_named
+	integer li_value
+	li_value = getfilesavename("Select File Location", parent.is_trans, ls_named, "TXT", "All Files (*.*),*.*," + "All Files (*.*),*.*")
+	return ::message.returnvalue
+
+// cb_cust.clicked() returns long
+	string ls_named
+	integer li_value
+	li_value = getfilesavename("Select File Location", parent.is_cust, ls_named, "TXT", "All Files (*.*),*.*," + "All Files (*.*),*.*")
+	return ::message.returnvalue
+
+// cb_stock.clicked() returns long
+	string ls_named
+	integer li_value
+	li_value = getfilesavename("Select File Location", parent.is_stock, ls_named, "TXT", "All Files (*.*),*.*," + "All Files (*.*),*.*")
+	return ::message.returnvalue
+
+// dw_control2.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_control2.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	string ls_distcode
+	string ls_sys
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "distcode"
+		ls_sys = this.object.targetsys[row]
+		if ls_sys <> "SAS" then
+			parent.is_trans = trim(f_stringpreferences("OutputFilePath")) + "Transaction.TXT"
+			parent.is_cust = trim(f_stringpreferences("OutputFilePath")) + "Customer.TXT"
+			parent.is_stock = trim(f_stringpreferences("OutputFilePath")) + "SSS.TXT"
+			parent.is_prod = trim(f_stringpreferences("OutputFilePath")) + "Product.TXT"
+			parent.is_summ = trim(f_stringpreferences("OutputFilePath")) + "SalesValue.TXT"
+		end if
+	case "targetsys"
+		ls_distcode = this.object.distcode[row]
+		if data = "SAS" then
+			parent.cbx_prod.visible = false
+			parent.cb_prod.visible = false
+		else
+			parent.is_trans = trim(f_stringpreferences("OutputFilePath")) + "Transaction.TXT"
+			parent.is_cust = trim(f_stringpreferences("OutputFilePath")) + "Customer.TXT"
+			parent.is_stock = trim(f_stringpreferences("OutputFilePath")) + "SSS.TXT"
+			parent.is_prod = trim(f_stringpreferences("OutputFilePath")) + "Product.TXT"
+			parent.is_summ = trim(f_stringpreferences("OutputFilePath")) + "SalesValue.TXT"
+			parent.cbx_prod.visible = true
+			parent.cb_prod.visible = true
+		end if
+	end choose
+	return 0
+
+// cb_prod.clicked() returns long
+	string ls_named
+	integer li_value
+	li_value = getfilesavename("Select File Location", parent.is_prod, ls_named, "TXT", "All Files (*.*),*.*," + "All Files (*.*),*.*")
+	return ::message.returnvalue
+
+// cb_summ.clicked() returns long
+	string ls_named
+	integer li_value
+	li_value = getfilesavename("Select File Location", parent.is_summ, ls_named, "TXT", "All Files (*.*),*.*," + "All Files (*.*),*.*")
+	return ::message.returnvalue

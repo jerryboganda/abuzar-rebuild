@@ -1,0 +1,335 @@
+// window w_selectitem (multientryitemrespwin)  ancestor: window
+
+// w_selectitem.ue_setbuttonfocus() returns 0
+	this.cb_ok.setfocus()
+
+// w_selectitem.wf_findfullcode(string as_aliasname, long al_icode, string as_itemname, integer ai_qty, long al_gcode) returns integer
+	long ll_counter
+	long ll_detailrows
+	ll_detailrows = this.id_itemlist.rowcount()
+	for ll_counter = 1 to ll_detailrows
+		if as_aliasname = this.id_itemlist.getitemstring(ll_counter, "fullcode") then
+			al_icode = this.id_itemlist.getitemnumber(ll_counter, "icode")
+			as_itemname = this.id_itemlist.getitemstring(ll_counter, "itemname")
+			return ll_counter
+		end if
+	next
+	return -1
+
+// w_selectitem.wf_inititem(long al_icode) returns boolean
+	long ll_counter
+	long ll_detailrows
+	ll_detailrows = this.id_itemlist.rowcount()
+	for ll_counter = 1 to ll_detailrows
+		if al_icode = this.id_itemlist.getitemnumber(ll_counter, "icode") then
+			this.id_item.setitem(this.id_item.getrow(), "icode", this.id_itemlist.getitemnumber(ll_counter, "icode"))
+			this.id_item.setitem(this.id_item.getrow(), "fullcode", this.id_itemlist.getitemstring(ll_counter, "fullcode"))
+			this.id_item.setitem(this.id_item.getrow(), "itemname", this.id_itemlist.getitemstring(ll_counter, "itemname"))
+			return true
+		end if
+	next
+	return false
+
+// w_selectitem.create() returns 0
+	this.dw_item = create dw_item
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.gb_1 = create gb_1
+	this.dw_itemlist = create dw_itemlist
+	this.control = {this.dw_item, this.cb_cancel, this.cb_ok, this.gb_1, this.dw_itemlist}
+
+// w_selectitem.destroy() returns 0
+	destroy this.dw_item
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.gb_1
+	destroy this.dw_itemlist
+
+// w_selectitem.open() returns long
+	integer li_rtncode
+	integer li_counter
+	integer li_holdqty
+	long ll_detailrows
+	long ll_gcode
+	long ll_icode
+	long ll_found
+	long ll_innercounter
+	long ll_startrow
+	boolean lb_isitemexists
+	char lc_char
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	this.id_item = create datawindow
+	this.id_item.settransobject(sqlca)
+	this.id_item = this.dw_item
+	this.id_itemlist = create datawindow
+	this.id_itemlist = this.dw_itemlist
+	this.id_itemlist.settransobject(sqlca)
+	this.id_item.reset()
+	this.id_item.insertrow(0)
+	setpointer(hourglass!)
+	this.id_itemlist.retrieve()
+	for li_counter = 65 to li_counter
+		lc_char = char(li_counter)
+		this.ia_llookuptable[li_counter] = this.id_itemlist.find("Lower(itemname) >= Lower('" + char(li_counter) + "')", ll_startrow, 99999)
+		ll_startrow = this.ia_llookuptable[li_counter]
+	next
+	this.ia_llookuptable[92] = 99999
+	setpointer(arrow!)
+	return ::message.returnvalue
+
+// dw_item.ue_enterkey() returns long
+	if getcolumnname() = "itemname" then
+		post event ue_inititem()
+	end if
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_item.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	integer rt_code
+	long ll_currrow
+	long ll_listcurrrow
+	long ll_rowm
+	if getcolumnname() = "itemname" then
+		setredraw(false)
+		ll_rowm = getrow()
+		if key = keydownarrow! then
+			parent.id_itemlist.selectrow(0, false)
+			parent.id_itemlist.scrollnextrow()
+			ll_listcurrrow = parent.id_itemlist.getrow()
+			rt_code = 1
+		elseif key = keyuparrow! then
+			parent.id_itemlist.selectrow(0, false)
+			parent.id_itemlist.scrollpriorrow()
+			ll_listcurrrow = parent.id_itemlist.getrow()
+			rt_code = 1
+		elseif key = keypagedown! then
+			parent.id_itemlist.selectrow(0, false)
+			parent.id_itemlist.scrollnextpage()
+			ll_listcurrrow = parent.id_itemlist.getrow()
+			rt_code = 1
+		elseif key = keypageup! then
+			parent.id_itemlist.selectrow(0, false)
+			parent.id_itemlist.scrollpriorpage()
+			ll_listcurrrow = parent.id_itemlist.getrow()
+			rt_code = 1
+		elseif key = keyend! then
+			parent.id_itemlist.selectrow(0, false)
+			parent.id_itemlist.scrolltorow(99999)
+			ll_listcurrrow = parent.id_itemlist.getrow()
+			rt_code = 1
+		elseif key = keyhome! then
+			parent.id_itemlist.selectrow(0, false)
+			parent.id_itemlist.scrolltorow(1)
+			ll_listcurrrow = parent.id_itemlist.getrow()
+			rt_code = 1
+		elseif key = keyback! then
+			parent.ib_bkspace = true
+			setredraw(true)
+		elseif key = keyescape! then
+			parent.id_itemlist.hide()
+			setfocus()
+			setredraw(true)
+		elseif key = keyf4! then
+			parent.id_itemlist.show()
+			parent.id_itemlist.selectrow(0, false)
+			parent.id_itemlist.scrolltorow(parent.id_itemlist.getrow())
+			parent.id_itemlist.selectrow(parent.id_itemlist.getrow(), true)
+			setredraw(true)
+		else
+			setredraw(true)
+		end if
+		if rt_code = 1 then
+			parent.id_itemlist.selectrow(ll_listcurrrow, true)
+			setitem(ll_rowm, "fullcode", parent.id_itemlist.getitemstring(ll_listcurrrow, "fullcode"))
+			setitem(ll_rowm, "icode", parent.id_itemlist.getitemnumber(ll_listcurrrow, "icode"))
+			setitem(ll_rowm, "itemname", parent.id_itemlist.getitemstring(ll_listcurrrow, "itemname"))
+			selecttext(1, len(gettext()))
+			setredraw(true)
+		end if
+	end if
+	return rt_code
+
+// dw_item.ue_inititem() returns 0
+	parent.wf_inititem(getitemnumber(getrow(), "icode"))
+
+// dw_item.itemchanged(long row, dwobject dwo, string data) returns long
+	integer li_qty
+	long ll_icode
+	long ll_null
+	long ll_gcode
+	string ls_itemname
+	string ls_null
+	integer li_res
+	setnull(ll_null)
+	setnull(ls_null)
+	choose case dwo.name
+	case "fullcode"
+		if not isnull(data) and data <> "" then
+			li_res = parent.wf_findfullcode(data, ll_icode, ls_itemname, li_qty, ll_gcode)
+			if li_res > 0 then
+				setitem(row, "icode", ll_icode)
+				setitem(row, "itemname", ls_itemname)
+				parent.ib_itemvalidated = true
+				parent.post event ue_setbuttonfocus()
+				return 0
+			else
+				setitem(row, "icode", ll_null)
+				setitem(row, "fullcode", ls_null)
+				return 1
+			end if
+		else
+			setitem(row, "icode", ll_null)
+			setitem(row, "fullcode", ls_null)
+			return 2
+		end if
+	case "itemname"
+		setitem(row, "icode", parent.id_itemlist.getitemnumber(parent.id_itemlist.getrow(), "icode"))
+		setitem(row, "fullcode", parent.id_itemlist.getitemstring(parent.id_itemlist.getrow(), "fullcode"))
+		parent.ib_itemvalidated = false
+	end choose
+	return ::message.returnvalue
+
+// dw_item.itemfocuschanged(long row, dwobject dwo) returns long
+	choose case dwo.name
+	case "fullcode"
+		parent.id_itemlist.hide()
+		if parent.ib_itemvalidated = false then
+			parent.wf_inititem(getitemnumber(getrow(), "icode"))
+		end if
+	case "itemname"
+		if isnull(getitemstring(row, "fullcode")) then
+			parent.id_itemlist.show()
+		end if
+	end choose
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_item.editchanged(long row, dwobject dwo, string data) returns long
+	long ll_currrow
+	long ll_startrow
+	ll_startrow = 0
+	choose case dwo.name
+	case "itemname"
+		if upper(left(data, 1)) >= "A" and upper(left(data, 1)) <= "Z" or left(data, 1) >= "0" and left(data, 1) <= "9" or left(data, 1) = "*" then
+			ll_currrow = parent.id_itemlist.getrow()
+			if len(data) > 1 then
+				ll_startrow = ll_currrow
+			else
+				if left(data, 1) >= "0" and left(data, 1) <= "9" or left(data, 1) = "*" then
+					ll_startrow = 1
+				else
+					ll_startrow = parent.ia_llookuptable[asc(upper(data))]
+				end if
+				parent.ib_bkspace = false
+			end if
+			if parent.ib_bkspace then
+				parent.il_itemlistfoundrow = parent.id_itemlist.find("Lower(itemname) <= '" + lower(data) + "'", ll_startrow, 0)
+				parent.il_itemlistfoundrow = parent.il_itemlistfoundrow + 1
+				parent.ib_bkspace = false
+			else
+				parent.il_itemlistfoundrow = parent.id_itemlist.find("Lower(itemname) >= '" + lower(data) + "'", ll_startrow, 99999)
+			end if
+			if parent.il_itemlistfoundrow = 0 then
+				parent.il_itemlistfoundrow = parent.id_itemlist.rowcount()
+			end if
+			if parent.il_itemlistfoundrow <> ll_currrow then
+				parent.id_itemlist.selectrow(0, false)
+				parent.id_itemlist.setrow(parent.il_itemlistfoundrow)
+				parent.id_itemlist.scrolltorow(parent.il_itemlistfoundrow)
+				parent.id_itemlist.selectrow(parent.il_itemlistfoundrow, true)
+				setfocus()
+			elseif parent.il_itemlistfoundrow = ll_currrow then
+				parent.id_itemlist.selectrow(0, false)
+				parent.id_itemlist.setrow(parent.il_itemlistfoundrow)
+				parent.id_itemlist.scrolltorow(parent.il_itemlistfoundrow)
+				parent.id_itemlist.selectrow(parent.il_itemlistfoundrow, true)
+				setfocus()
+			end if
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_item.itemerror(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "fullcode"
+		messagebox("Item Validation", "AliasName does not exist~r~nPlease try some other AliasName")
+	case "itemname"
+		messagebox("Item Validation", "Please enter value for Item Name")
+	end choose
+	return 1
+
+// cb_cancel.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	s_positem ls_positem
+	ls_positem.l_icode = 0
+	closewithreturn(parent, ls_positem)
+	return ::message.returnvalue
+
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	s_positem ls_positem
+	integer li_pos
+	integer li_code
+	if parent.id_item.accepttext() = -1 then
+		parent.id_item.setfocus()
+		return ::message.returnvalue
+	elseif isnull(parent.id_item.getitemnumber(parent.id_item.getrow(), "icode")) then
+		messagebox("Item Validation", "Please enter valid value for AliasName")
+		parent.id_item.setcolumn(1)
+		parent.id_item.setfocus()
+		return ::message.returnvalue
+	end if
+	ls_positem.l_icode = parent.id_item.getitemnumber(parent.id_item.getrow(), "icode")
+	closewithreturn(parent, ls_positem)
+	return ::message.returnvalue
+
+// cb_ok.getfocus() returns long
+	parent.id_itemlist.hide()
+	return ::message.returnvalue
+
+// dw_itemlist.ue_setfocus() returns 0
+	parent.id_item.setcolumn("itemname")
+	parent.id_item.setfocus()
+
+// dw_itemlist.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	long ll_rowmain
+	if row > 0 then
+		ll_rowmain = parent.id_item.getrow()
+		parent.id_item.setitem(ll_rowmain, "icode", parent.id_itemlist.getitemnumber(row, "icode"))
+		parent.id_item.setitem(ll_rowmain, "fullcode", parent.id_itemlist.getitemstring(row, "fullcode"))
+		parent.id_item.setitem(ll_rowmain, "itemname", parent.id_itemlist.getitemstring(row, "itemname"))
+		parent.id_item.selecttext(1, len(gettext()))
+		parent.ib_itemvalidated = false
+		selectrow(0, false)
+		selectrow(row, true)
+		parent.post event ue_setbuttonfocus()
+	end if
+	return ::message.returnvalue
+
+// dw_itemlist.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	post event ue_setfocus()
+	return ::message.returnvalue

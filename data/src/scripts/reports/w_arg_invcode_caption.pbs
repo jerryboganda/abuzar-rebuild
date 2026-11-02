@@ -1,0 +1,33 @@
+// window w_arg_invcode_caption (reports)  ancestor: w_arguements
+
+// w_arg_invcode_caption.create() returns 0
+	integer icurrent
+	call super::create
+	this.sle_remarks = create sle_remarks
+	this.st_4 = create st_4
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.sle_remarks
+	this.control[icurrent + 2] = this.st_4
+
+// w_arg_invcode_caption.destroy() returns 0
+	call super::destroy
+	destroy this.sle_remarks
+	destroy this.st_4
+
+// w_arg_invcode_caption.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	return ::message.returnvalue
+
+// w_arg_invcode_caption.ue_close(integer ai_stauts) returns 0
+	super::ue_close(ai_stauts)
+	closewithreturn(this, this.istr_arg)
+
+// sle_remarks.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue

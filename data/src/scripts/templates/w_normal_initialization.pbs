@@ -1,0 +1,422 @@
+// window w_normal_initialization (templates)  ancestor: window
+
+// w_normal_initialization.ue_close(integer ai_retcode) returns 0
+	SQL stop USING this.it_transobject;
+	destroy this.it_transobject
+	close(this)
+
+// w_normal_initialization.ue_postopen() returns 0
+	long ll_rowcount
+	string ls_already_initialized
+	this.it_transobject = create u_transaction
+	SQL start USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		messagebox("Remember Cannot Connect to Database", sqlca.sqlerrtext)
+		close(this)
+	end if
+	SQL Select count ( *) INTO :ll_rowcount From patientadmission USING this.it_transobject;
+	if ll_rowcount > 0 then
+		this.cbx_patientadmission.visible = true
+	end if
+	ll_rowcount = 0
+	SQL Select ISNULL ( count ( *) , 0 ) INTO :ll_rowcount From loyaltycard USING this.it_transobject;
+	if ll_rowcount > 0 then
+		this.cbx_loyaltypoints.visible = true
+	end if
+	SQL Select Prefvalue INTO :ls_already_initialized from Softwarepreferences where prefid =25 USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		if upper(ls_already_initialized) = "Y" then
+			messagebox("Information", "This Software Version is already initialized")
+			event ue_close(1)
+			return
+		end if
+	else
+		messagebox("Database Error", this.it_transobject.sqlerrtext)
+		event ue_close(1)
+		return
+	end if
+	this.dw_drives.settransobject(this.it_transobject)
+	this.dw_drives.insertrow(0)
+
+// w_normal_initialization.create() returns 0
+	this.cbx_loyaltypoints = create cbx_loyaltypoints
+	this.cbx_patientadmission = create cbx_patientadmission
+	this.st_2 = create st_2
+	this.dw_drives = create dw_drives
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.cbx_transferstock = create cbx_transferstock
+	this.cbx_accountsbalances = create cbx_accountsbalances
+	this.st_1 = create st_1
+	this.control = {this.cbx_loyaltypoints, this.cbx_patientadmission, this.st_2, this.dw_drives, this.cb_cancel, this.cb_ok, this.cbx_transferstock, this.cbx_accountsbalances, this.st_1}
+
+// w_normal_initialization.destroy() returns 0
+	destroy this.cbx_loyaltypoints
+	destroy this.cbx_patientadmission
+	destroy this.st_2
+	destroy this.dw_drives
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.cbx_transferstock
+	destroy this.cbx_accountsbalances
+	destroy this.st_1
+
+// w_normal_initialization.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	postevent("ue_postopen")
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	char lc_transferbalances
+	char lc_transferstock
+	char lc_patient_addmission_mod
+	char lc_loyalty
+	string ls_temp
+	string ls_custcode
+	integer li_mypos
+	integer li_retcode
+	integer li_pos
+	integer li_pos_of_e
+	long ll_rowcount
+	string ls_error
+	string ls_olddbname
+	string ls_newver
+	string ls_newdbname
+	string ls_path
+	string ls_query
+	string ls_oldlogicaldb
+	string ls_oldlogicallog
+	string ls_new_data_file
+	string ls_new_log_file
+	string ls_server_name
+	string ls_backup_device
+	string ls_already_initialized
+	string ls_software_no
+	string ls_eventtype
+	string ls_module
+	string ls_detail
+	string ls_iscloud
+	string ls_value
+	string ls_suffix
+	integer li_rtcode
+	string ls_version_info
+	string ls_type
+	string ls_filegroupname
+	string ls_logicalname
+	string ls_physicalname
+	blob ll_size
+	blob ll_maxsize
+	ls_iscloud = "N"
+	li_rtcode = f_get_cloud_setting(ls_iscloud)
+	if li_rtcode < 0 then
+		messagebox("Database Problem", "Enable to fetch information~r~n" + sqlca.sqlerrtext, stopsign!)
+		return ::message.returnvalue
+	end if
+	SQL Select Prefvalue INTO :ls_already_initialized from Softwarepreferences where prefid =25 USING parent.it_transobject;
+	if parent.it_transobject.sqlcode = 0 then
+		if upper(ls_already_initialized) = "Y" then
+			messagebox("Information", "This Software Version is already initialized")
+			parent.event ue_close(1)
+			return ::message.returnvalue
+		end if
+	else
+		messagebox("Database Error", parent.it_transobject.sqlerrtext)
+		parent.event ue_close(1)
+		return ::message.returnvalue
+	end if
+	if messagebox("Warning", "Your are going to perform a critical Operation~r~n Please make sure you have taken the backup of database~r~nDo you want to continue", exclamation!, yesno!, 1) = 2 then
+		parent.event ue_close(1)
+		return ::message.returnvalue
+	end if
+	SQL SELECT Ver =@@Version INTO :ls_version_info FROM ( SELECT A =1 ) AS T USING sqlca;
+	if sqlca.sqlcode <> 0 then
+		messagebox("", "Unable to Fetch SQL Server Version Information. Details are:-~r~n" + sqlca.sqlerrtext)
+		return ::message.returnvalue
+	end if
+	parent.cb_cancel.enabled = false
+	parent.cb_ok.enabled = false
+	setpointer(hourglass!)
+	li_pos = pos(gs_servername, "\")
+	if li_pos > 0 then
+		ls_server_name = left(gs_servername, li_pos - 1)
+	else
+		ls_server_name = gs_servername
+	end if
+	li_pos = 0
+	ls_olddbname = gs_dbname
+	if parent.dw_drives.accepttext() <> 1 then
+		messagebox("Drive Name", "Please Choose Drive Letter from drop down")
+		parent.cb_cancel.enabled = true
+		parent.cb_ok.enabled = true
+		return ::message.returnvalue
+	end if
+	ls_path = parent.dw_drives.getitemstring(1, "version")
+	li_pos = pos(upper(ls_olddbname), "DATABASEV")
+	if li_pos = 0 then
+		ls_newdbname = ls_olddbname + "V2"
+		ls_path = ls_path + "V2_"
+		ls_new_data_file = left(ls_olddbname, pos(lower(ls_olddbname), "database") - 1) + "V2DB.mdf"
+		ls_new_log_file = left(ls_olddbname, pos(lower(ls_olddbname), "database") - 1) + "V2Log.ldf"
+		ls_newver = "2"
+	else
+		ls_newver = string(integer(right(ls_olddbname, len(ls_olddbname) - (pos(lower(ls_olddbname), "databasev") + 8))) + 1)
+		ls_newdbname = left(ls_olddbname, li_pos + 8) + ls_newver
+		ls_path = ls_path + "V" + string(ls_newver) + "_"
+		ls_new_data_file = left(ls_newdbname, pos(lower(ls_newdbname), "database") - 1) + "V" + ls_newver + "DB.mdf"
+		ls_new_log_file = left(ls_newdbname, pos(lower(ls_newdbname), "database") - 1) + "V" + ls_newver + "Log.ldf"
+	end if
+	ls_path = ls_path + "AbuzarSoftWare"
+	parent.it_transobject.autocommit = true
+	ls_query = "use " + ls_olddbname + " if exists (select * from dbo.sysobjects where id = object_id(N'[dbo].[sp_executelocal]') and OBJECTPROPERTY(id, N'IsProcedure') = 1) drop procedure [dbo].[sp_executelocal] "
+	SQL EXECUTE IMMEDIATE :ls_query USING parent.it_transobject;
+	if match(ls_version_info, "SQL Server 2012") = true then
+		SQL EXECUTE IMMEDIATE :"  CREATE Procedure dbo.sp_executelocal @query Varchar(8000) As truncate table reportdata DECLARE @VersionInfo varchar(4000), @DBVersion VARCHAR(100), @RC INT EXEC @RC = SP_DBMS_Version @VersionInfo OUTPUT  IF CHARINDEX('Microsoft SQL Server 2012', @VersionInfo, 1) > 0  SET @DBVersion = '2012' ELSE SET @DBVersion = '2000' IF @DBVersion = '2012' BEGIN INSERT INTO ReportData(Name10,Name11,Name1,Name2,Value17,Value18,Value1,Value2,Value3,Name3,Value4,Value5,Value6,Value7,Value8,Name4,Name5,Name6,Name7,Name8,Value10) Execute(@query) END ELSE BEGIN INSERT INTO ReportData(Name10,Name11,Name1,Name2,Value17,Value18) Execute(@query) END select name10,name11,name1 from reportdata  " USING parent.it_transobject;
+	else
+		SQL EXECUTE IMMEDIATE :"  Create Proc sp_executelocal @query Varchar(8000) As truncate table reportdata INSERT INTO ReportData(Name10,Name11,Name1,Name2,Value17,Value18)  Execute(@query)  select name10,name11,name1 from reportdata " USING parent.it_transobject;
+	end if
+	if parent.it_transobject.sqlcode = 0 then
+		ls_filegroupname = space(500)
+		ls_logicalname = space(500)
+		ls_physicalname = space(500)
+		if match(ls_version_info, "SQL Server 2012") = true then
+			ls_query = "RESTORE FILELISTONLY FROM " + f_getbackupdevicename("manual")
+		else
+			ls_query = "RESTORE FILELISTONLY FROM " + f_getbackupdevicename("manual") + " WITH MEDIAPASSWORD='REDACTED" + lower(ls_server_name) + "' ,PASSWORD='REDACTED" + lower(ls_server_name) + "' "
+		end if
+		if parent.it_transobject.sqlcode = 0 then
+			SQL EXECUTE sp_temp USING parent.it_transobject; /* args: ls_query */
+			if parent.it_transobject.sqlcode = 0 then
+				do while parent.it_transobject.sqlcode = 0
+					SQL FETCH sp_temp INTO :ls_logicalname, :ls_physicalname, :ls_type USING parent.it_transobject;
+					if ls_type = "D" then
+						ls_oldlogicaldb = ls_logicalname
+					else
+						ls_oldlogicallog = ls_logicalname
+					end if
+				loop
+				SQL CLOSE sp_temp USING parent.it_transobject;
+			else
+				messagebox("Logical File Error", "unable to find logical filename")
+				return ::message.returnvalue
+			end if
+			return
+		end if
+		return
+	end if
+	if ls_iscloud = "Y" then
+		li_pos = pos(lower(ls_physicalname), "abuzarsoftware", 4)
+		ls_path = right(ls_path, len(ls_path) - 3)
+		ls_path = left(ls_physicalname, lastpos(left(ls_physicalname, li_pos - 1), "\")) + ls_path
+	else
+		ls_software_no = "1"
+		li_pos = pos(ls_physicalname, "\", 4)
+		if lower(right(left(lower(ls_physicalname), li_pos - 1), 1)) <> "e" then
+			li_pos_of_e = pos(lower(ls_physicalname), "e")
+			ls_software_no = right(lower(left(ls_physicalname, li_pos - 1)), li_pos - (li_pos_of_e + 1))
+			ls_path = ls_path + ls_software_no
+		end if
+	end if
+	ls_query = "Use msdb"
+	SQL EXECUTE IMMEDIATE :ls_query USING parent.it_transobject;
+	if parent.it_transobject.sqlcode <> 0 then
+		ls_query = "restore database msdb from disk='msdb.bak'"
+		SQL EXECUTE IMMEDIATE :ls_query USING parent.it_transobject;
+	end if
+	if match(ls_version_info, "SQL Server 2012") = true then
+		ls_query = "Restore DataBase " + ls_newdbname + " from  " + f_getbackupdevicename("manual") + " WITH move '" + ls_oldlogicaldb + "' to '" + ls_path + "\Data\" + ls_new_data_file + "', move '" + ls_oldlogicallog + "' to '" + ls_path + "\Data\" + ls_new_log_file + "'"
+	else
+		ls_query = "Restore DataBase " + ls_newdbname + " from  " + f_getbackupdevicename("manual") + " WITH MEDIAPASSWORD='REDACTED" + lower(ls_server_name) + "' ,PASSWORD='REDACTED" + lower(ls_server_name) + "'" + " , move '" + ls_oldlogicaldb + "' to '" + ls_path + "\Data\" + ls_new_data_file + "', move '" + ls_oldlogicallog + "' to '" + ls_path + "\Data\" + ls_new_log_file + "'"
+	end if
+	SQL EXECUTE IMMEDIATE :ls_query USING parent.it_transobject;
+	if parent.it_transobject.sqlcode <> 0 then
+		messagebox("Restore Error", parent.it_transobject.sqlerrtext)
+		parent.event ue_close(1)
+		return ::message.returnvalue
+	end if
+	ls_query = "Use " + " " + ls_newdbname
+	SQL EXECUTE IMMEDIATE :ls_query USING parent.it_transobject;
+	li_retcode = 0
+	if parent.cbx_accountsbalances.checked then
+		lc_transferbalances = "Y"
+	else
+		lc_transferbalances = "N"
+	end if
+	if parent.cbx_transferstock.checked then
+		lc_transferstock = "Y"
+	else
+		lc_transferstock = "N"
+	end if
+	if parent.cbx_patientadmission.checked then
+		lc_patient_addmission_mod = "Y"
+	else
+		lc_patient_addmission_mod = "N"
+	end if
+	if parent.cbx_loyaltypoints.checked then
+		lc_loyalty = "Y"
+	else
+		lc_loyalty = "N"
+	end if
+	parent.it_transobject.init_fetch_lastpurchasehistory()
+	if parent.it_transobject.sqlcode <> 0 then
+		messagebox("Purchase History", "Unable to Fetch Latest Purchase History.~r~nReasons are:-~r~n" + parent.it_transobject.sqlerrtext, information!)
+	end if
+	parent.it_transobject.autocommit = false
+	parent.it_transobject.init_delete_table(lc_transferstock, lc_transferbalances, lc_patient_addmission_mod, lc_loyalty)
+	if parent.it_transobject.sqlcode = 0 then
+		li_retcode = 0
+		if lc_transferstock = "Y" then
+			parent.it_transobject.init_opening_pur()
+		else
+			SQL update _utn set utn =1 USING parent.it_transobject;
+		end if
+		if parent.it_transobject.sqlcode = 0 then
+			if lc_loyalty = "Y" then
+				li_retcode = 0
+				parent.it_transobject.init_loyaltypoints()
+				if parent.it_transobject.sqlcode <> 0 then
+					li_retcode = -1
+					ls_error = parent.it_transobject.sqlerrtext
+				end if
+			end if
+			if lc_transferbalances = "Y" and li_retcode = 0 then
+				parent.it_transobject.init_customers_balances()
+				if parent.it_transobject.sqlcode = 0 then
+					li_retcode = 0
+					parent.it_transobject.init_suppliers_balances()
+					if parent.it_transobject.sqlcode = 0 then
+						li_retcode = 0
+						parent.it_transobject.init_others_balances()
+						if parent.it_transobject.sqlcode = 0 then
+							li_retcode = 0
+							parent.it_transobject.init_after_opening_voch()
+							if parent.it_transobject.sqlcode = 0 then
+								li_retcode = 0
+							else
+								li_retcode = -1
+								ls_error = parent.it_transobject.sqlerrtext
+							end if
+						else
+							li_retcode = -1
+							ls_error = parent.it_transobject.sqlerrtext
+						end if
+					else
+						li_retcode = -1
+						ls_error = parent.it_transobject.sqlerrtext
+					end if
+				else
+					li_retcode = -1
+					ls_error = parent.it_transobject.sqlerrtext
+				end if
+			end if
+			if li_retcode = 0 then
+				parent.it_transobject.init_update_tabmaxkey()
+				if parent.it_transobject.sqlcode = 0 then
+					li_retcode = 0
+					parent.it_transobject.init_update_headertabmaxkey()
+					if parent.it_transobject.sqlcode = 0 then
+						li_retcode = 0
+					else
+						li_retcode = -1
+						ls_error = parent.it_transobject.sqlerrtext
+					end if
+				else
+					li_retcode = -1
+					ls_error = parent.it_transobject.sqlerrtext
+				end if
+			else
+				li_retcode = -1
+				ls_error = parent.it_transobject.sqlerrtext
+			end if
+		else
+			li_retcode = -1
+			ls_error = parent.it_transobject.sqlerrtext
+		end if
+	else
+		li_retcode = -1
+		ls_error = parent.it_transobject.sqlerrtext
+	end if
+	if li_retcode = 0 then
+		SQL commit USING parent.it_transobject;
+	else
+		SQL rollback USING parent.it_transobject;
+		parent.it_transobject.autocommit = true
+		messagebox("Error", ls_error)
+		ls_query = "use master drop database" + " " + ls_newdbname
+		SQL EXECUTE IMMEDIATE :ls_query USING parent.it_transobject;
+		if parent.it_transobject.sqlcode <> 0 then
+			messagebox("Database Deletion", "Unable to delete new database reason~r~n" + parent.it_transobject.sqlerrtext)
+		end if
+		parent.event ue_close(1)
+		return ::message.returnvalue
+	end if
+	parent.it_transobject.autocommit = true
+	ls_query = "drop table systextcatalog"
+	SQL EXECUTE IMMEDIATE :ls_query USING parent.it_transobject;
+	ls_query = "Use msdb" + " " + "exec sp_update_jobstep @job_name = '" + gs_autocashsalepostingjob + "',@step_id = " + ls_software_no + ",@database_name ='" + ls_newdbname + "'" + "  " + "exec sp_update_jobstep @job_name = '" + gs_autocreditsalepostingjob + "',@step_id = " + ls_software_no + ",@database_name ='" + ls_newdbname + "'" + "  " + "exec sp_update_jobstep @job_name = '" + gs_stockledgerjob + "',@step_id = " + ls_software_no + ",@database_name ='" + ls_newdbname + "'" + "  " + "exec sp_update_jobstep @job_name = '" + gs_stockreportjob + "',@step_id = " + ls_software_no + ",@database_name ='" + ls_newdbname + "'" + "  " + "exec sp_update_jobstep @job_name = '" + gs_autoinpatientservicesjob + "',@step_id = " + ls_software_no + ",@database_name ='" + ls_newdbname + "'" + "  " + "exec sp_update_jobstep @job_name = '" + gs_autopatientrecservice + "',@step_id = " + ls_software_no + ",@database_name ='" + ls_newdbname + "'" + "  " + "exec sp_update_jobstep @job_name = '" + gs_autocreatescheduledsmsjob + "',@step_id = " + ls_software_no + ",@database_name ='" + ls_newdbname + "'" + " " + "exec sp_update_jobstep @job_name = '" + gs_autorestrictselectedclassitems + "',@step_id = " + ls_software_no + ",@database_name ='" + ls_newdbname + "'" + " " + "exec sp_update_jobstep @job_name = '" + gs_autocheckedinguestservicesjob + "',@step_id = " + ls_software_no + ",@database_name ='" + ls_newdbname + "'" + " " + "exec sp_update_jobstep @job_name = '" + gs_autoemployeetimout + "',@step_id = " + ls_software_no + ",@database_name ='" + ls_newdbname + "'" + " " + "exec sp_update_jobstep @job_name = '" + gs_autosatisfyduejob + "',@step_id = " + ls_software_no + ",@database_name ='" + ls_newdbname + "'" + " " + "exec sp_update_jobstep @job_name = '" + gs_stockverificationjob + "',@step_id = " + ls_software_no + ",@database_name ='" + ls_newdbname + "'"
+	SQL EXECUTE IMMEDIATE :ls_query USING parent.it_transobject;
+	ls_query = "Use" + " " + ls_newdbname
+	SQL EXECUTE IMMEDIATE :ls_query USING parent.it_transobject;
+	ls_query = "dbcc shrinkfile(2)"
+	SQL EXECUTE IMMEDIATE :ls_query USING parent.it_transobject;
+	ls_query = "dbcc shrinkfile(1)"
+	SQL EXECUTE IMMEDIATE :ls_query USING parent.it_transobject;
+	ls_backup_device = left(ls_newdbname, pos(lower(ls_newdbname), "database") - 1)
+	ls_query = "exec sp_addumpdevice  'Disk' ,   '" + ls_backup_device + "V" + ls_newver + "DBDump" + "' , '" + ls_path + "\BackUp\" + ls_backup_device + "V" + ls_newver + "DBDump.BAK" + "'" + "  " + "exec sp_addumpdevice  'Disk' ,   '" + "AutoStartUp" + ls_backup_device + "DBDump" + ls_newver + "' , '" + ls_path + "\AutoBackUp\" + "AutoStartUp" + ls_backup_device + "DBDump" + ls_newver + ".BAK" + "'" + "  " + "exec sp_addumpdevice  'Disk' ,   '" + "AutoClient" + ls_backup_device + "DBDump" + ls_newver + "' , '" + ls_path + "\AutoBackUp\" + "AutoClient" + ls_backup_device + "DBDump" + ls_newver + ".BAK" + "'"
+	SQL EXECUTE IMMEDIATE :ls_query USING parent.it_transobject;
+	ls_query = "Use " + ls_olddbname + "  " + " update _tabmaxkey set tabmaxkey=tabmaxkey - 10 where tabname in ('saleledger','purledger','serviceheader')"
+	SQL EXECUTE IMMEDIATE :ls_query USING parent.it_transobject;
+	if match(ls_version_info, "SQL Server 2012") = true then
+		ls_query = "backup database master to disk='master.bak' with init"
+	else
+		ls_query = "backup database master to disk='master.bak' with init, mediapassword='REDACTED" + lower(ls_server_name) + "', password='REDACTED" + lower(ls_server_name) + "'"
+	end if
+	SQL EXECUTE IMMEDIATE :ls_query USING parent.it_transobject;
+	if parent.it_transobject.sqlcode <> 0 then
+		messagebox("Master Database backup", "Unable to to take backup of master database.~r~n" + parent.it_transobject.sqlerrtext)
+	end if
+	ls_query = "backup database msdb to disk='msdb.bak' with init"
+	SQL EXECUTE IMMEDIATE :ls_query USING parent.it_transobject;
+	if parent.it_transobject.sqlcode <> 0 then
+		messagebox("msdb Database backup", "Unable to to take backup of msdb database.~r~n" + parent.it_transobject.sqlerrtext)
+	end if
+	if li_retcode = 0 then
+		ls_query = "TRUNCATE TABLE DBO.EventLog"
+		SQL EXECUTE IMMEDIATE :ls_query USING parent.it_transobject;
+		ls_eventtype = "Alert"
+		ls_module = "Normal Initialization"
+		ls_detail = "Event Log Truncation Performed."
+		parent.it_transobject.insert_eventlog(ls_eventtype, ls_module, ls_detail, gl_usercode)
+		ls_eventtype = "Alert"
+		ls_module = "Normal Initialization"
+		ls_detail = "Normal Initialization Performed."
+		parent.it_transobject.insert_eventlog(ls_eventtype, ls_module, ls_detail, gl_usercode)
+		SQL update Softwarepreferences set Prefvalue ='Y' , Prefvalue2 ='Yes' where prefid =25 USING parent.it_transobject;
+		if parent.it_transobject.sqlcode <> 0 then
+			messagebox("Database Problem", "Unable to mark initialized status to current software version.")
+		end if
+		messagebox("Information", "Operation has been completed Successfully")
+	end if
+	parent.post event ue_close(1)
+	return ::message.returnvalue

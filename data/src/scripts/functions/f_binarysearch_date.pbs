@@ -1,0 +1,30 @@
+// function f_binarysearch_date (functions)  ancestor: function_object
+
+// f_binarysearch_date.f_binarysearch_date(string as_date, datawindow d_data, string as_columnname) returns long
+	long l_low
+	long l_mid
+	long l_high
+	long l_row
+	long l_date1
+	long l_date2
+	date d_date
+	date ad_date
+	datetime d_d
+	ad_date = date(as_date)
+	l_date1 = year(ad_date) * 12 + month(ad_date) * 30 + day(ad_date)
+	l_low = 1
+	l_high = d_data.rowcount()
+	do while l_low <= l_high
+		l_mid = (l_low + l_high) / 2.0
+		d_d = d_data.getitemdatetime(l_mid, as_columnname)
+		d_date = date(d_d)
+		l_date2 = year(d_date) * 12 + month(d_date) * 30 + day(d_date)
+		if l_date1 < l_date2 then
+			l_high = l_mid - 1
+		elseif l_date1 > l_date2 then
+			l_low = l_mid + 1
+		else
+			return l_mid
+		end if
+	loop
+	return -1

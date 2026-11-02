@@ -1,0 +1,292 @@
+// window w_view_saleorderheader (saleorder)  ancestor: window
+
+// w_view_saleorderheader.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		post event ue_close(-1)
+	end if
+	return ::message.returnvalue
+
+// w_view_saleorderheader.ue_close(integer ai_closemode) returns integer
+	long ll_currrow
+	string[] ls_values
+	s_dw_header ls_dw_header
+	ll_currrow = this.id_header.getrow()
+	if ai_closemode = -1 then
+		ls_dw_header.i_closemode = -1
+		closewithreturn(this, ls_dw_header)
+		return -1
+	end if
+	if f_validatedw(this.id_header) < 0 then
+		return 1
+	end if
+	ls_values[1] = this.id_header.getitemstring(ll_currrow, "patientregno")
+	ls_values[2] = string(this.id_header.getitemnumber(ll_currrow, "patientcode"))
+	ls_values[3] = string(this.id_header.getitemnumber(ll_currrow, "doctcode"))
+	ls_values[4] = string(this.id_header.getitemnumber(ll_currrow, "relationcode"))
+	ls_values[5] = string(this.id_header.getitemnumber(ll_currrow, "wardcode"))
+	ls_values[6] = string(this.id_header.getitemnumber(ll_currrow, "diseasecode"))
+	ls_values[7] = this.id_header.getitemstring(ll_currrow, "invoicesize")
+	ls_values[8] = string(this.id_header.getitemnumber(ll_currrow, "smancode"))
+	ls_values[9] = this.id_header.getitemstring(ll_currrow, "custrefno2")
+	ls_values[10] = this.id_header.getitemstring(ll_currrow, "custrefno3")
+	ls_values[11] = this.id_header.getitemstring(ll_currrow, "custrefno4")
+	ls_values[12] = string(this.id_header.getitemnumber(ll_currrow, "deliveredby"))
+	ls_values[13] = string(this.id_header.getitemdatetime(ll_currrow, "billingdate"), "yyyy/mm/dd")
+	ls_values[14] = string(this.id_header.getitemdatetime(ll_currrow, "billingdate"), "hh:mm:ss")
+	ls_values[15] = string(this.id_header.getitemnumber(ll_currrow, "pptcustcode"))
+	ls_values[16] = string(this.id_header.getitemnumber(ll_currrow, "custsitecode"))
+	ls_dw_header.values = ls_values
+	ls_dw_header.dw_header = this.id_header
+	ls_dw_header.i_closemode = 1
+	closewithreturn(this, ls_dw_header)
+	return 0
+
+// w_view_saleorderheader.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+
+// w_view_saleorderheader.wf_findpatientcode(string as_regno, integer ai_patientcode) returns integer
+	integer li_patientcode
+	integer ll_retflag
+	string ls_itemname
+	SQL SELECT patient.patientcode INTO :li_patientcode FROM patient WHERE patient.regno =:as_regno USING sqlca;
+	if sqlca.sqlcode = 0 then
+		ai_patientcode = li_patientcode
+		if isnull(ai_patientcode) then
+			ll_retflag = 0
+		else
+			ll_retflag = 1
+		end if
+	else
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_view_saleorderheader.create() returns 0
+	this.cb_ok = create cb_ok
+	this.cb_cancel = create cb_cancel
+	this.dw_viewheader = create dw_viewheader
+	this.control = {this.cb_ok, this.cb_cancel, this.dw_viewheader}
+
+// w_view_saleorderheader.destroy() returns 0
+	destroy this.cb_ok
+	destroy this.cb_cancel
+	destroy this.dw_viewheader
+
+// w_view_saleorderheader.open() returns long
+	long ll_row
+	long ll_currrow
+	long ll_counter
+	string ls_saletype
+	integer li_protect
+	integer li_view_cashorcredit
+	datawindow ldw_header
+	datawindowchild ldc_headerno
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	s_dw_header ls_dw_header
+	string[] colname
+	string holdcolname
+	integer[] colwidth
+	integer ii_visiblecolumns
+	integer li_xpos
+	integer li_ypos
+	integer li_xendpos
+	integer li_counter
+	integer li_taborder
+	integer li_visiblecolumns
+	integer li_start_xpos
+	boolean lb_active
+	boolean lb_restricted
+	boolean lb_customicode
+	datastore lds_itemsetting
+	ldw_header = create datawindow
+	ldw_header.settransobject(sqlca)
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	this.id_header = this.dw_viewheader
+	this.id_header.settransobject(sqlca)
+	this.id_header.retrieve(2)
+	ls_dw_header = message.powerobjectparm
+	ldw_header = ls_dw_header.dw_header
+	ls_saletype = ls_dw_header.s_saletype
+	li_protect = ls_dw_header.i_protectdw
+	this.id_header.reset()
+	ll_row = this.id_header.insertrow(0)
+	ll_currrow = ldw_header.getrow()
+	if this.id_header.getchild("patientcode", this.idc_patient) <> 1 then
+		messagebox("Patient", "Unable to fetch Patient child datawindow.")
+	end if
+	this.idc_patient.settransobject(sqlca)
+	this.id_header.setitem(ll_row, "patientregno", ldw_header.getitemstring(ll_currrow, "patientregno"))
+	this.id_header.setitem(ll_row, "patientcode", ldw_header.getitemnumber(ll_currrow, "patientcode"))
+	this.id_header.setitem(ll_row, "doctcode", ldw_header.getitemnumber(ll_currrow, "doctcode"))
+	this.id_header.setitem(ll_row, "relationcode", ldw_header.getitemnumber(ll_currrow, "relationcode"))
+	this.id_header.setitem(ll_row, "wardcode", ldw_header.getitemnumber(ll_currrow, "wardcode"))
+	this.id_header.setitem(ll_row, "diseasecode", ldw_header.getitemnumber(ll_currrow, "diseasecode"))
+	this.id_header.setitem(ll_row, "invoicesize", ldw_header.getitemstring(ll_currrow, "invoicesize"))
+	this.id_header.setitem(ll_row, "smancode", ldw_header.getitemnumber(ll_currrow, "smancode"))
+	this.id_header.setitem(ll_row, "username", ldw_header.getitemstring(ll_currrow, "username"))
+	this.id_header.setitem(ll_row, "pptcustcode", ldw_header.getitemnumber(ll_currrow, "pptcustcode"))
+	this.id_header.setitem(ll_row, "Deliveredby", ldw_header.getitemnumber(ll_currrow, "deliveredby"))
+	this.id_header.setitem(ll_row, "custsitecode", ldw_header.getitemnumber(ll_currrow, "custsitecode"))
+	if ls_saletype = "Credit" then
+		this.id_header.setitem(ll_row, "custrefno2", ldw_header.getitemstring(ll_currrow, "custrefno2"))
+		this.id_header.setitem(ll_row, "custrefno3", ldw_header.getitemstring(ll_currrow, "custrefno3"))
+		this.id_header.setitem(ll_row, "custrefno4", ldw_header.getitemstring(ll_currrow, "custrefno4"))
+	end if
+	this.id_header.setitem(ll_row, "billingdate", ldw_header.getitemdatetime(ll_currrow, "billingdate"))
+	if ls_saletype = "Cash" then
+		li_view_cashorcredit = 12
+	elseif ls_saletype = "Credit" then
+		li_view_cashorcredit = 12
+	end if
+	lds_itemsetting = create datastore
+	lds_itemsetting.dataobject = "d_interfacesettingcols"
+	lds_itemsetting.settransobject(sqlca)
+	lds_itemsetting.retrieve(li_view_cashorcredit, 2, 1)
+	li_visiblecolumns = lds_itemsetting.rowcount()
+	for li_counter = 1 to li_counter
+		colname[li_counter, 1] = lds_itemsetting.getitemstring(li_counter, "colname") + "_t"
+		colname[li_counter, 2] = lds_itemsetting.getitemstring(li_counter, "colname")
+		colwidth[li_counter, 1] = integer(this.id_header.describe(colname[li_counter, 1] + ".Width"))
+		colwidth[li_counter, 2] = integer(this.id_header.describe(colname[li_counter, 2] + ".Width"))
+	next
+	li_taborder = 100
+	li_counter = 1
+	li_start_xpos = 10
+	li_ypos = 88
+	li_xendpos = 2410
+	li_xpos = li_start_xpos
+	do while li_counter <= li_visiblecolumns and li_ypos <= 20000
+		if colwidth[li_counter, 1] + colwidth[li_counter, 2] <= li_xendpos - li_xpos then
+			if li_xpos = li_start_xpos then
+				li_xpos = 540
+				this.id_header.modify(colname[li_counter, 1] + ".X=" + string(li_xpos - colwidth[li_counter, 1] - 5))
+				this.id_header.modify(colname[li_counter, 1] + ".Y=" + string(li_ypos))
+				this.id_header.modify(colname[li_counter, 1] + ".Visible=1")
+				this.id_header.modify(colname[li_counter, 2] + ".X=" + string(li_xpos))
+				this.id_header.modify(colname[li_counter, 2] + ".Y=" + string(li_ypos))
+				this.id_header.modify(colname[li_counter, 2] + ".Visible=1")
+				this.id_header.settaborder(colname[li_counter, 2], li_taborder)
+				li_taborder = li_taborder + 1
+				li_xpos = li_xpos + colwidth[li_counter, 2] + 30
+			else
+				this.id_header.modify(colname[li_counter, 1] + ".X=" + string(li_xpos))
+				this.id_header.modify(colname[li_counter, 1] + ".Y=" + string(li_ypos))
+				this.id_header.modify(colname[li_counter, 1] + ".Visible=1")
+				li_xpos = li_xpos + colwidth[li_counter, 1] + 10
+				this.id_header.modify(colname[li_counter, 2] + ".X=" + string(li_xpos))
+				this.id_header.modify(colname[li_counter, 2] + ".Y=" + string(li_ypos))
+				this.id_header.modify(colname[li_counter, 2] + ".Visible=1")
+				this.id_header.settaborder(colname[li_counter, 2], li_taborder)
+				li_taborder = li_taborder + 1
+				li_xpos = li_xpos + colwidth[li_counter, 2] + 30
+			end if
+			if li_xpos >= li_xendpos then
+				li_ypos = li_ypos + 85
+				li_xpos = li_start_xpos
+			end if
+			li_counter = li_counter + 1
+		else
+			li_ypos = li_ypos + 85
+			li_xpos = li_start_xpos
+		end if
+	loop
+	lds_itemsetting.retrieve(li_view_cashorcredit, 2, 0)
+	for li_counter = 1 to li_counter
+		holdcolname = lds_itemsetting.getitemstring(li_counter, "colname")
+		this.id_header.modify(holdcolname + ".Edit.Required='No'")
+	next
+	if ls_saletype = "Cash" then
+		if f_stringpreferences("PatientOnRetailSale") <> "P" then
+			this.id_header.object.patientregno.visible = false
+			this.id_header.object.patientregno_t.visible = false
+			this.id_header.object.patientcode.visible = false
+			this.id_header.object.patientcode_t.visible = false
+			this.id_header.object.patientcode.edit.required = "No"
+		end if
+	elseif ls_saletype = "Credit" and f_stringpreferences("PatientOnCreditSale") <> "P" then
+		this.id_header.object.patientregno.visible = false
+		this.id_header.object.patientregno_t.visible = false
+		this.id_header.object.patientcode.visible = false
+		this.id_header.object.patientcode_t.visible = false
+		this.id_header.object.patientcode.edit.required = "No"
+	end if
+	wf_protectdw(this.id_header, li_protect)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		triggerevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// dw_viewheader.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		parent.post event ue_close(-1)
+	end if
+	return ::message.returnvalue
+
+// dw_viewheader.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_viewheader.itemchanged(long row, dwobject dwo, string data) returns long
+	integer li_res
+	integer rt_code
+	integer li_patientcode
+	choose case dwo.name
+	case "patientregno"
+		if not isnull(data) and data <> "" then
+			li_res = parent.wf_findpatientcode(data, li_patientcode)
+			if li_res > 0 then
+				setitem(row, "patientcode", li_patientcode)
+				rt_code = 0
+			else
+				messagebox("Patient Validation", "Patient with  RegNo  " + data + " does not exist")
+				rt_code = 1
+			end if
+		end if
+	case "patientcode"
+		parent.id_header.setitem(row, "patientregno", parent.idc_patient.getitemstring(parent.idc_patient.getrow(), "regno"))
+	end choose
+	return ::message.returnvalue
+
+// dw_viewheader.itemerror(long row, dwobject dwo, string data) returns long
+	return 1

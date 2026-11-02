@@ -1,0 +1,75 @@
+// window w_crs_branch_itemstockposition (salerespwin)  ancestor: window
+
+// w_crs_branch_itemstockposition.create() returns 0
+	this.dw_print = create dw_print
+	this.cb_print = create cb_print
+	this.dw_control = create dw_control
+	this.control = {this.dw_print, this.cb_print, this.dw_control}
+
+// w_crs_branch_itemstockposition.destroy() returns 0
+	destroy this.dw_print
+	destroy this.cb_print
+	destroy this.dw_control
+
+// w_crs_branch_itemstockposition.open() returns long
+	s_itemsalehistory ls_itemsalehistory
+	long ll_width
+	long ll_height
+	u_transaction lt_transobject
+	environment env
+	ls_itemsalehistory = message.powerobjectparm
+	lt_transobject = create u_transaction
+	lt_transobject.autocommit = true
+	SQL start USING lt_transobject;
+	if lt_transobject.sqlcode = 0 then
+		if getenvironment(env) <> 1 then
+			if not isvalid(message) then
+				return 0
+			end if
+			return message.returnvalue
+		end if
+		ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+		setredraw(false)
+		this.width = ll_width * 0.98
+		this.height = ll_height * 0.90
+		this.y = int((ll_height - this.height) / 2.0)
+		this.dw_control.width = this.width - this.width * 0.02
+		this.dw_control.height = this.height * 0.90
+		this.cb_print.y = this.dw_control.height + 20
+		this.dw_control.settransobject(lt_transobject)
+		this.dw_control.retrieve(ls_itemsalehistory.ar_icode)
+		this.dw_print.settransobject(lt_transobject)
+		this.dw_print.retrieve(ls_itemsalehistory.ar_icode)
+	else
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_crs_branch_itemstockposition.close() returns long
+	close(this)
+	return ::message.returnvalue
+
+// w_crs_branch_itemstockposition.key(keycode key, unsignedlong keyflags) returns long
+	if keydown(keyescape!) then
+		close(this)
+	end if
+	return ::message.returnvalue
+
+// cb_print.clicked() returns long
+	if parent.dw_print.rowcount() > 0 then
+		if printsetup() < 0 then
+			messagebox("Printer", "Printing Error")
+			parent.dw_print.printcancel()
+		else
+			parent.dw_print.print()
+		end if
+	end if
+	return ::message.returnvalue

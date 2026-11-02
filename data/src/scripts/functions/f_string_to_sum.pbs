@@ -1,0 +1,22 @@
+// function f_string_to_sum (functions)  ancestor: function_object
+
+// f_string_to_sum.f_string_to_sum(string as_string, char ac_sep) returns double
+	integer li_strlen
+	integer li_startpos
+	integer li_endpos
+	double ld_totamt
+	double ld_amt
+	li_strlen = len(as_string)
+	li_startpos = 1
+	do while li_startpos <= li_strlen
+		li_endpos = pos(as_string, ac_sep, li_startpos)
+		if li_endpos = 0 or isnull(li_endpos) then
+			ld_amt = double(mid(as_string, li_startpos, li_strlen + 1 - li_startpos))
+			li_startpos = li_strlen + 1
+		else
+			ld_amt = double(mid(as_string, li_startpos, li_endpos - li_startpos))
+			li_startpos = li_endpos + 1
+		end if
+		ld_totamt = ld_totamt + ld_amt
+	loop
+	return ld_totamt

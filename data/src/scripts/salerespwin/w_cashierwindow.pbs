@@ -1,0 +1,566 @@
+// window w_cashierwindow (salerespwin)  ancestor: window
+
+// w_cashierwindow.ue_close(integer ai_status) returns integer
+	long ll_headerrow
+	long ll_detailrow
+	long ll_footerrow
+	long ll_counter
+	s_mastercashwin lstr_cash
+	string ls_null
+	if ai_status = -1 then
+		this.istr_cash.i_status = -1
+		closewithreturn(this, this.istr_cash)
+		return -1
+	end if
+	setnull(ls_null)
+	if f_validatedw(this.dw_header) < 0 then
+		return 1
+	end if
+	if f_validatedw(this.dw_detail) < 0 then
+		return 1
+	end if
+	if f_validatedw(this.dw_footer) < 0 then
+		return 1
+	end if
+	ll_headerrow = this.dw_header.getrow()
+	ll_detailrow = this.dw_detail.getrow()
+	ll_footerrow = this.dw_footer.getrow()
+	this.istr_cash.l_invcode = this.dw_header.object.saleinvcode[ll_headerrow]
+	this.istr_cash.l_cashacccode = this.dw_header.object.cashacccode[ll_headerrow]
+	this.istr_cash.d_cashtendered = this.dw_header.object.cashtendered[ll_headerrow]
+	this.istr_cash.d_cashcharged = this.dw_header.object.cashcharged[ll_headerrow]
+	this.istr_cash.d_cashback = this.dw_header.object.cashback[ll_headerrow]
+	this.istr_cash.d_netamt = this.dw_header.object.invtotal[ll_footerrow]
+	this.istr_cash.d_invbalance = this.dw_footer.object.invbalance[ll_footerrow]
+	for ll_counter = 1 to 100
+		this.istr_cash.l_acccode[ll_counter] = -1
+		this.istr_cash.s_remarks[ll_counter] = ls_null
+		this.istr_cash.d_amount[ll_counter] = -1
+		this.istr_cash.l_rowid[ll_counter] = -1
+	next
+	for ll_counter = 1 to this.dw_detail.rowcount()
+		if this.dw_detail.object.acccode[ll_counter] > 0 and this.dw_detail.object.amount[ll_counter] >= 0 then
+			this.dw_detail.object.rowid[ll_counter] = this.dw_detail.getitemnumber(ll_counter, "c_rowid")
+			this.istr_cash.l_acccode[ll_counter] = this.dw_detail.object.acccode[ll_counter]
+			this.istr_cash.s_remarks[ll_counter] = this.dw_detail.object.remarks[ll_counter]
+			this.istr_cash.d_amount[ll_counter] = this.dw_detail.object.amount[ll_counter]
+			this.istr_cash.l_rowid[ll_counter] = this.dw_detail.object.rowid[ll_counter]
+		end if
+	next
+	this.istr_cash.i_status = ai_status
+	closewithreturn(this, this.istr_cash)
+	return 0
+
+// w_cashierwindow.wf_getglobalcode(string as_str) returns integer
+	integer ll_code
+	SQL SELECT Code INTO :ll_code FROM Global WHERE Name =:as_str USING sqlca;
+	if sqlca.sqlcode <> 0 then
+		ll_code = 0
+	end if
+	return ll_code
+
+// w_cashierwindow.wf_setbalance(string as_col, double ad_amt) returns 0
+	if as_col = "cashtendered" then
+		if ad_amt > this.dw_header.object.invtotal[1] then
+			this.dw_header.object.cashcharged[1] = this.dw_header.object.invtotal[1]
+			this.dw_header.object.cashback[1] = ad_amt - this.dw_header.object.invtotal[1]
+		else
+			this.dw_header.object.cashcharged[1] = ad_amt
+			this.dw_header.object.cashback[1] = 0
+		end if
+		if this.dw_detail.rowcount() > 0 then
+			if this.dw_header.object.invtotal[1] - this.dw_header.object.cashcharged[1] - this.dw_detail.getitemnumber(1, "c_totalamt") >= 0 then
+				this.dw_footer.object.invbalance[1] = this.dw_header.object.invtotal[1] - this.dw_header.object.cashcharged[1] - this.dw_detail.getitemnumber(1, "c_totalamt")
+			else
+				this.dw_footer.object.invbalance[1] = 0
+			end if
+		elseif this.dw_header.object.invtotal[1] - this.dw_header.object.cashcharged[1] >= 0 then
+			this.dw_footer.object.invbalance[1] = this.dw_header.object.invtotal[1] - this.dw_header.object.cashcharged[1]
+		else
+			this.dw_footer.object.invbalance[1] = 0
+		end if
+		this.is_lcditem = "CASH TENDERED :"
+		this.is_lcditem2 = string(ad_amt, "###,###,##0.00")
+		return
+	end if
+	if as_col = "cashcharged" then
+		if ad_amt > this.dw_header.object.cashtendered[1] then
+			this.dw_header.object.cashback[1] = 0
+		else
+			this.dw_header.object.cashback[1] = this.dw_header.object.cashtendered[1] - ad_amt
+		end if
+		if this.dw_detail.rowcount() > 0 then
+			if this.dw_header.object.invtotal[1] - ad_amt - this.dw_detail.getitemnumber(1, "c_totalamt") >= 0 then
+				this.dw_footer.object.invbalance[1] = this.dw_header.object.invtotal[1] - ad_amt - this.dw_detail.getitemnumber(1, "c_totalamt")
+			else
+				this.dw_footer.object.invbalance[1] = 0
+			end if
+		elseif this.dw_header.object.invtotal[1] - ad_amt >= 0 then
+			this.dw_footer.object.invbalance[1] = this.dw_header.object.invtotal[1] - ad_amt
+		else
+			this.dw_footer.object.invbalance[1] = 0
+		end if
+		this.is_lcditem = "CASH CHARGED : "
+		this.is_lcditem2 = string(ad_amt, "#,###,##0.00")
+	end if
+
+// w_cashierwindow.wf_adopt_cashwindowtemplate() returns long
+	long ll_counter
+	long ll_temp_rows
+	long ll_insrow
+	datastore lds_cashtemp
+	lds_cashtemp = create datastore
+	lds_cashtemp.dataobject = "d_cashierwindowtemplate_detail1"
+	lds_cashtemp.settransobject(sqlca)
+	lds_cashtemp.retrieve(this.istr_cash.i_interfacecode)
+	ll_temp_rows = lds_cashtemp.rowcount()
+	if ll_temp_rows > 0 then
+		for ll_counter = 1 to ll_temp_rows
+			ll_insrow = this.dw_detail.insertrow(0)
+			this.dw_detail.object.saleinvcode[ll_insrow] = this.istr_cash.l_invcode
+			this.dw_detail.object.acccode[ll_insrow] = lds_cashtemp.object.acccode[ll_counter]
+			this.dw_detail.object.remarks[ll_insrow] = lds_cashtemp.object.remarks[ll_counter]
+			this.dw_detail.object.amount[ll_insrow] = 0.00
+			this.dw_detail.object.rowid[ll_insrow] = lds_cashtemp.object.rowid[ll_counter]
+		next
+	end if
+	return 0
+
+// w_cashierwindow.wf_set_invbalance() returns long
+	this.dw_detail.accepttext()
+	if this.dw_detail.rowcount() > 0 then
+		if this.dw_header.object.invtotal[1] - this.dw_header.object.cashcharged[1] - this.dw_detail.getitemnumber(1, "c_totalamt") >= 0 then
+			this.dw_footer.object.invbalance[1] = this.dw_header.object.invtotal[1] - this.dw_header.object.cashcharged[1] - this.dw_detail.getitemnumber(1, "c_totalamt")
+		else
+			this.dw_footer.object.invbalance[1] = 0
+		end if
+	end if
+	return 0
+
+// w_cashierwindow.wf_pd_initialize() returns long
+	string ls_init_string
+	ls_init_string = char(27) + char(73) + char(12)
+	pd_writepd(ls_init_string, len(ls_init_string))
+	return 0
+
+// w_cashierwindow.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns long
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+	return 0
+
+// w_cashierwindow.create() returns 0
+	this.ic_comport = create ic_comport
+	this.dw_footer = create dw_footer
+	this.dw_header = create dw_header
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.dw_detail = create dw_detail
+	this.control = {this.ic_comport, this.dw_footer, this.dw_header, this.cb_cancel, this.cb_ok, this.dw_detail}
+
+// w_cashierwindow.destroy() returns 0
+	destroy this.ic_comport
+	destroy this.dw_footer
+	destroy this.dw_header
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.dw_detail
+
+// w_cashierwindow.open() returns long
+	string ls_invcode
+	long ll_rtcode
+	long ll_headerrow
+	long ll_footerrow
+	long ll_counter
+	long ll_insrow
+	long ll_found
+	long ll_code
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	this.istr_cash = message.powerobjectparm
+	ll_rtcode = this.dw_header.getchild("cashacccode", this.idc_cashacc)
+	if ll_rtcode = -1 then
+		messagebox("Error", "Not a DataWindowChild")
+	end if
+	this.dw_header.settransobject(sqlca)
+	this.idc_cashacc.settransobject(sqlca)
+	this.idc_cashacc.retrieve(this.istr_cash.l_groupcode, this.istr_cash.l_module)
+	this.dw_header.insertrow(0)
+	this.dw_header.scrolltorow(0)
+	this.dw_detail.settransobject(sqlca)
+	this.dw_footer.settransobject(sqlca)
+	this.dw_footer.insertrow(0)
+	this.dw_footer.scrolltorow(0)
+	ll_headerrow = this.dw_header.rowcount()
+	ll_footerrow = this.dw_footer.rowcount()
+	ll_code = this.istr_cash.l_invcode
+	this.dw_header.object.saleinvcode[ll_headerrow] = this.istr_cash.l_invcode
+	this.dw_header.object.cashacccode[ll_headerrow] = this.istr_cash.l_cashacccode
+	this.dw_header.object.cashtendered[ll_headerrow] = this.istr_cash.d_cashtendered
+	this.dw_header.object.cashcharged[ll_headerrow] = this.istr_cash.d_cashcharged
+	this.dw_header.object.cashback[ll_headerrow] = this.istr_cash.d_cashback
+	this.dw_header.object.invtotal[ll_footerrow] = this.istr_cash.d_netamt
+	this.dw_footer.object.invbalance[ll_footerrow] = this.istr_cash.d_invbalance
+	wf_adopt_cashwindowtemplate()
+	for ll_counter = 1 to 100
+		if this.istr_cash.l_acccode[ll_counter] > 0 and this.istr_cash.d_amount[ll_counter] >= 0 and this.istr_cash.l_rowid[ll_counter] >= 0 then
+			ll_found = 0
+			ll_found = this.dw_detail.find(" saleinvcode = " + trim(string(ll_code)) + " AND acccode = " + trim(string(this.istr_cash.l_acccode[ll_counter])) + " AND RowID = " + trim(string(this.istr_cash.l_rowid[ll_counter])), 1, this.dw_detail.rowcount())
+			if ll_found > 0 then
+				ll_insrow = ll_found
+			else
+				ll_insrow = this.dw_detail.insertrow(0)
+			end if
+			this.dw_detail.object.saleinvcode[ll_insrow] = this.istr_cash.l_invcode
+			this.dw_detail.object.acccode[ll_insrow] = this.istr_cash.l_acccode[ll_counter]
+			this.dw_detail.object.remarks[ll_insrow] = this.istr_cash.s_remarks[ll_counter]
+			this.dw_detail.object.amount[ll_insrow] = this.istr_cash.d_amount[ll_counter]
+			this.dw_detail.object.rowid[ll_insrow] = this.istr_cash.l_rowid[ll_counter]
+		end if
+	next
+	this.dw_header.setcolumn("cashtendered")
+	this.dw_header.setfocus()
+	this.dw_header.selecttext(1, len(this.dw_header.gettext()))
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	if this.istr_cash.l_mode = 1 then
+		wf_protectdw(this.dw_header, 1)
+		wf_protectdw(this.dw_detail, 1)
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// ic_comport.ue_show() returns long
+	string ls_line
+	dwruntimeerror exdw
+	nullobjecterror exnullobj
+	runtimeerror ex
+	try
+		if isnull(parent.is_lcditem) then
+			return 1
+		end if
+		if upper(f_stringpreferences("DisplayPoolCompany")) = "POSIFLEX PD-2600 SERIES" then
+			parent.wf_pd_initialize()
+			pd_writepd(ls_line, len(ls_line))
+			if not isnull(parent.is_lcditem) then
+				pd_writepd(parent.is_lcditem, len(parent.is_lcditem))
+			end if
+			ls_line = char(27) + char(72) + char(20)
+			pd_writepd(ls_line, len(ls_line))
+			if not isnull(parent.is_lcditem2) then
+				pd_writepd(parent.is_lcditem2, len(parent.is_lcditem2))
+			end if
+		elseif upper(f_stringpreferences("DisplayPoolCompany")) = "TYSSO VFD-860-A" then
+			this.object.portopen = true
+			this.object.output = parent.is_lcditem
+			this.object.portopen = false
+		end if
+	catch (throwable exdw)
+		messagebox("Exception Occur", "Details are:~r~n" + exdw.getmessage())
+	catch (throwable exnullobj)
+		messagebox("Exception Occur", "Details are:~r~n" + exnullobj.getmessage())
+	catch (throwable ex)
+		messagebox("Exception Occur", "Details are:~r~n" + ex.getmessage())
+	end try
+	return 1
+
+// ic_comport.constructor() returns long
+	integer li_defaultcomport
+	integer li_status
+	dwruntimeerror exdw
+	nullobjecterror exnullobj
+	runtimeerror ex
+	try
+		if f_stringpreferences("DisplayPool") = "Y" then
+			if upper(f_stringpreferences("DisplayPoolCompany")) = "POSIFLEX PD-2600 SERIES" then
+				pd_openusbpd()
+				li_status = pd_pdstate()
+				if li_status = 0 then
+					parent.wf_pd_initialize()
+				end if
+			end if
+		elseif upper(f_stringpreferences("DisplayPoolCompany")) = "TYSSO VFD-860-A" then
+			li_defaultcomport = f_numberpreferences("DefaultComPort")
+			if isnull(li_defaultcomport) then
+				li_defaultcomport = 1
+			end if
+			this.object.commport = li_defaultcomport
+			this.object.settings = "9600,N,8,1"
+			this.object.inputlen = 0
+		end if
+	catch (throwable exdw)
+		messagebox("Exception Occur", "Details are:~r~n" + exdw.getmessage())
+	catch (throwable exnullobj)
+		messagebox("Exception Occur", "Details are:~r~n" + exnullobj.getmessage())
+	catch (throwable ex)
+		messagebox("Exception Occur", "Details are:~r~n" + ex.getmessage())
+	end try
+	return ::message.returnvalue
+
+// dw_header.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	selecttext(1, len(gettext()))
+	if f_stringpreferences("DisplayPool") = "Y" and upper(f_stringpreferences("DisplayPoolCompany")) = "POSIFLEX PD-2600 SERIES" then
+		parent.ic_comport.postevent("ue_show")
+	end if
+	return ::message.returnvalue
+
+// dw_header.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	long ll_null
+	long ll_res
+	integer li_errcode
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	setnull(ll_null)
+	choose case dwo.name
+	case "cashtendered"
+		if double(data) < 0.0 or data = "" or isnull(data) then
+			messagebox("Cash Tendered Validation!", "Please enter valid amount for Cash Tendered.", stopsign!)
+			return 1
+		end if
+		parent.wf_setbalance(dwo.name, double(data))
+	case "cashcharged"
+		if double(data) < 0.0 or data = "" or isnull(data) then
+			messagebox("Cash Charged Validation!", "Please enter valid amount for Cash Charged.", stopsign!)
+			return 1
+		elseif double(data) > this.object.cashtendered[row] then
+			messagebox("Cash Charged Validation!", "Please enter valid amount for Cash Charged~r~nCash Charged must not exceed Cash Tendered.", stopsign!)
+			return 1
+		elseif double(data) > this.object.invtotal[row] then
+			ll_res = messagebox("Cash Charged Validation!", "Cash Charged is more than invoice amount~r~nIs Cash Charged a valid amount?.", question!, yesno!, 2)
+			if ll_res > 1 then
+				return 1
+			end if
+			return
+		end if
+		parent.wf_setbalance(dwo.name, double(data))
+		return li_errcode
+	end choose
+	return li_errcode
+
+// dw_header.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_header.losefocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::losefocus()
+	if f_stringpreferences("DisplayPool") = "Y" then
+		parent.is_lcditem = "CASH BACK = "
+		parent.is_lcditem2 = string(this.object.cashback[1], "#,###,##0.00")
+		if upper(f_stringpreferences("DisplayPoolCompany")) = "POSIFLEX PD-2600 SERIES" then
+			parent.ic_comport.postevent("ue_show")
+		end if
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		triggerevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.istr_cash.i_status = -1
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		triggerevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	double ld_totamt
+	long ll_res
+	if parent.istr_cash.l_mode = 1 then
+		parent.istr_cash.i_status = -1
+		parent.post event ue_close(-1)
+	end if
+	if parent.dw_header.accepttext() < 1 then
+		return ::message.returnvalue
+	end if
+	if parent.dw_detail.accepttext() < 1 then
+		return ::message.returnvalue
+	end if
+	if parent.dw_footer.accepttext() < 1 then
+		return ::message.returnvalue
+	end if
+	if parent.dw_detail.rowcount() > 0 then
+		ld_totamt = parent.dw_detail.getitemnumber(1, "c_totalamt")
+	else
+		ld_totamt = 0
+	end if
+	if parent.dw_header.object.cashacccode[1] <= 0 or isnull(parent.dw_header.object.cashacccode[1]) then
+		messagebox("Cash Account Validation", "In order to proceed futher, Select Valid Cash Account", stopsign!)
+		parent.dw_header.setfocus()
+		parent.dw_header.setcolumn("cashacccode")
+		return ::message.returnvalue
+	end if
+	if parent.dw_header.object.cashtendered[1] < 0 then
+		messagebox("Cash Tendered Amount Validation", "In order to proceed futher, Cash Tendered can not be -ve", stopsign!)
+		return ::message.returnvalue
+	end if
+	if parent.dw_header.object.cashcharged[1] < 0 then
+		messagebox("Cash Charged Amount Validation", "In order to proceed futher, Cash Charged can not be -ve", stopsign!)
+		return ::message.returnvalue
+	end if
+	if parent.dw_header.object.cashcharged[1] > parent.dw_header.object.cashtendered[1] then
+		messagebox("Cash Charged Amount Validation", "In order to proceed futher, Cash Charged can not be more than cash tendered.", stopsign!)
+		return ::message.returnvalue
+	end if
+	if parent.dw_header.object.cashback[1] < 0 then
+		messagebox("Cash Back Amount", "In order to proceed futher, Cash Back can not be -ve", stopsign!)
+		return ::message.returnvalue
+	end if
+	if parent.istr_cash.i_interfacecode <= 2 then
+		if f_stringpreferences("allowovercharginginsales") = "N" and parent.dw_header.object.invtotal[1] - parent.dw_header.object.cashcharged[1] - ld_totamt < 0 then
+			messagebox("Over Charging Problem", "Over Charging is not allowed at the moment.", stopsign!)
+			return ::message.returnvalue
+		end if
+		if parent.dw_footer.object.invbalance[1] <> 0 then
+			if f_stringpreferences("allowpartialcashreceiptinsale") = "Y" then
+				if parent.dw_header.object.cashcharged[1] <> parent.dw_header.object.invtotal[1] then
+					ll_res = messagebox("Cash Charged Amount", "This invoice can not be saved as Cash Invoice~r~nShould It be saved as Credit Invoice?", question!, yesno!, 2)
+					if ll_res <> 1 then
+						return ::message.returnvalue
+					end if
+				elseif ld_totamt <> 0.0 then
+					ll_res = messagebox("Amount Validation", "This invoice can not be saved as Cash Invoice~r~nShould It be saved as Credit Invoice?", question!, yesno!, 2)
+					if ll_res <> 1 then
+						return ::message.returnvalue
+					end if
+					return
+				end if
+			elseif parent.dw_header.object.cashcharged[1] < parent.dw_header.object.invtotal[1] then
+				messagebox("Cash Charged Amount", "Partial Cash Receipt is not allowed at the moment.", stopsign!)
+				return ::message.returnvalue
+			elseif parent.dw_header.object.cashcharged[1] > parent.dw_header.object.invtotal[1] then
+				messagebox("Cash Charged Amount", "Over Cash Receipt is not allowed at the moment.", stopsign!)
+				return ::message.returnvalue
+			end if
+			return
+		end if
+		return
+	end if
+	parent.istr_cash.d_cashtendered = parent.dw_header.object.cashtendered[1]
+	parent.istr_cash.d_cashcharged = parent.dw_header.object.cashcharged[1]
+	parent.istr_cash.d_cashback = parent.dw_header.object.cashback[1]
+	parent.istr_cash.i_status = 1
+	parent.is_lcditem = "INVOICE BALANCE :"
+	parent.is_lcditem2 = string(parent.dw_footer.object.invbalance[1], "###,###,##0.00")
+	if f_stringpreferences("DisplayPool") = "Y" then
+		if upper(f_stringpreferences("DisplayPoolCompany")) = "POSIFLEX PD-2600 SERIES" then
+			parent.ic_comport.postevent("ue_show")
+		elseif upper(f_stringpreferences("DisplayPoolCompany")) = "TYSSO VFD-860-A" then
+			parent.is_lcditem = "BALANCE  :" + space(9 - len(string(parent.dw_footer.object.invbalance[1], "###,###,##0.00"))) + string(parent.dw_footer.object.invbalance[1], "###,###,##0.00") + space(20)
+			parent.is_lcditem = left(parent.is_lcditem, 40)
+			parent.ic_comport.postevent("ue_show")
+		end if
+	end if
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	long ll_null
+	long ll_res
+	integer li_errcode
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	setnull(ll_null)
+	choose case dwo.name
+	case "amount"
+		if double(data) < 0.0 then
+			messagebox("Amount Validation!", "Please enter valid amount in the current row.", stopsign!)
+			return 1
+		elseif getitemnumber(1, "c_totalamt") >= 0.0 then
+			parent.is_lcditem = "CREDIT CARD CHARGED :"
+			parent.is_lcditem2 = string(getitemnumber(1, "c_totalamt"), "###,###,##0.00")
+		end if
+		parent.wf_setbalance(dwo.name, double(data))
+	end choose
+	return li_errcode
+
+// dw_detail.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_detail.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	parent.wf_set_invbalance()
+	return ::message.returnvalue
+
+// dw_detail.losefocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::losefocus()
+	parent.wf_set_invbalance()
+	if f_stringpreferences("DisplayPool") = "Y" and upper(f_stringpreferences("DisplayPoolCompany")) = "POSIFLEX PD-2600 SERIES" then
+		if rowcount() > 0 and getitemnumber(1, "c_totalamt") >= 0.0 then
+			parent.is_lcditem = "CREDIT CARD CHARGED :"
+			parent.is_lcditem2 = string(getitemnumber(1, "c_totalamt"), "###,###,##0.00")
+		end if
+		parent.ic_comport.postevent("ue_show")
+	end if
+	return ::message.returnvalue
+
+// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	parent.wf_set_invbalance()
+	selecttext(1, len(gettext()))
+	if f_stringpreferences("DisplayPool") = "Y" and upper(f_stringpreferences("DisplayPoolCompany")) = "POSIFLEX PD-2600 SERIES" and rowcount() > 0 then
+		if getitemnumber(1, "c_totalamt") >= 0.0 then
+			parent.is_lcditem = "CREDIT CARD CHARGED :"
+			parent.is_lcditem2 = string(getitemnumber(1, "c_totalamt"), "###,###,##0.00")
+		end if
+		parent.ic_comport.postevent("ue_show")
+	end if
+	return ::message.returnvalue
+
+// dw_detail.rowfocuschanging(long currentrow, long newrow) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::rowfocuschanging(currentrow, newrow)
+	if f_stringpreferences("DisplayPool") = "Y" and upper(f_stringpreferences("DisplayPoolCompany")) = "POSIFLEX PD-2600 SERIES" and rowcount() > 0 then
+		if getitemnumber(1, "c_totalamt") >= 0.0 then
+			parent.is_lcditem = "CREDIT CARD CHARGED :"
+			parent.is_lcditem2 = string(getitemnumber(1, "c_totalamt"), "###,###,##0.00")
+		end if
+		parent.ic_comport.postevent("ue_show")
+	end if
+	return ::message.returnvalue

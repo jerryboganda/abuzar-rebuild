@@ -1,0 +1,108 @@
+// window w_serviceresult_rowid_comments (serviceresult)  ancestor: window
+
+// w_serviceresult_rowid_comments.ue_postopen() returns 0
+	string ls_text
+	long ll_code
+	long ll_rowid
+	this.istr_comments = message.powerobjectparm
+	ls_text = this.istr_comments.s_comment
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	this.dw_control.object.comments[1] = ls_text
+	this.dw_control.setfocus()
+	this.dw_control.setcolumn("comments")
+
+// w_serviceresult_rowid_comments.ue_close(integer ar_closearg) returns 0
+	if ar_closearg = -1 then
+		this.istr_comments.i_closemode = -1
+	else
+		this.istr_comments.i_closemode = 1
+	end if
+	closewithreturn(this, this.istr_comments)
+
+// w_serviceresult_rowid_comments.wf_show_comments() returns long
+	long ll_counter
+	long ll_code
+	long ll_row
+	s_comments lstr_comments
+	datastore lds_comments
+	lds_comments = create datastore
+	lds_comments.dataobject = "d_servicecomponent_comments"
+	lds_comments.settransobject(sqlca)
+	lds_comments.retrieve(this.istr_comments.code)
+	for ll_counter = 1 to lds_comments.rowcount()
+		this.istr_comments.ls_value[ll_counter, 1] = trim(string(lds_comments.object.rowid[ll_counter]))
+		this.istr_comments.ls_value[ll_counter, 2] = lds_comments.object.description[ll_counter]
+		this.istr_comments.ls_value[ll_counter, 3] = lds_comments.object.comments[ll_counter]
+	next
+	openwithparm(w_servicecomponent_comments, this.istr_comments)
+	this.istr_comments = message.powerobjectparm
+	if this.istr_comments.i_closemode = 1 then
+		lds_comments.reset()
+		ll_code = this.istr_comments.code
+		if this.istr_comments.selectedrow > 0 then
+			this.dw_control.object.comments[1] = this.istr_comments.ls_value[this.istr_comments.selectedrow, 3]
+		end if
+	end if
+	return 0
+
+// w_serviceresult_rowid_comments.create() returns 0
+	this.dw_control = create dw_control
+	this.cb_ok = create cb_ok
+	this.cb_cancel = create cb_cancel
+	this.control = {this.dw_control, this.cb_ok, this.cb_cancel}
+
+// w_serviceresult_rowid_comments.destroy() returns 0
+	destroy this.dw_control
+	destroy this.cb_ok
+	destroy this.cb_cancel
+
+// w_serviceresult_rowid_comments.open() returns long
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	post event ue_postopen()
+	return ::message.returnvalue
+
+// w_serviceresult_rowid_comments.key(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		post event ue_close(-1)
+	elseif key = keyf4! then
+		wf_show_comments()
+	end if
+	return ::message.returnvalue
+
+// dw_control.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keyescape! then
+		parent.post event ue_close(-1)
+	elseif key = keyf4! then
+		parent.wf_show_comments()
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	string ls_text
+	parent.dw_control.accepttext()
+	ls_text = parent.dw_control.object.comments[1]
+	parent.istr_comments.s_comment = ls_text
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(-1)
+	return ::message.returnvalue

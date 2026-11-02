@@ -1,0 +1,53 @@
+// window w_supplierinfo (purchaseresponsewin)  ancestor: window
+
+// w_supplierinfo.create() returns 0
+	this.dw_supplierinfo = create dw_supplierinfo
+	this.control = {this.dw_supplierinfo}
+
+// w_supplierinfo.destroy() returns 0
+	destroy this.dw_supplierinfo
+
+// w_supplierinfo.open() returns long
+	long ll_suppcode
+	long ll_colcount
+	long ll_counter
+	long ll_width
+	long ll_height
+	environment env
+	ll_suppcode = long(message.doubleparm)
+	if getenvironment(env) <> 1 then
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.width = ll_width * 0.98
+	this.height = ll_height * 0.75
+	this.y = int((ll_height - this.height) / 2.0)
+	this.dw_supplierinfo.width = this.width - this.width * 0.02
+	this.dw_supplierinfo.height = this.height - this.width * 0.05
+	this.dw_supplierinfo.object.accounts_aliasname_t.visible = true
+	this.dw_supplierinfo.object.accounts_aliasname.visible = true
+	ll_colcount = long(this.dw_supplierinfo.object.datawindow.column.count)
+	for ll_counter = 1 to ll_colcount
+		this.dw_supplierinfo.settaborder(ll_counter, 0)
+	next
+	this.dw_supplierinfo.settransobject(sqlca)
+	this.dw_supplierinfo.retrieve(ll_suppcode)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_supplierinfo.close() returns long
+	close(this)
+	return ::message.returnvalue
+
+// w_supplierinfo.key(keycode key, unsignedlong keyflags) returns long
+	if keydown(keyescape!) then
+		close(this)
+	end if
+	return ::message.returnvalue

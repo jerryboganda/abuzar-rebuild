@@ -1,0 +1,133 @@
+// window w_login (abuzarapp)  ancestor: window
+
+// w_login.create() returns 0
+	this.cb_ok = create cb_ok
+	this.cb_cancel = create cb_cancel
+	this.dw_password = create dw_password
+	this.control = {this.cb_ok, this.cb_cancel, this.dw_password}
+
+// w_login.destroy() returns 0
+	destroy this.cb_ok
+	destroy this.cb_cancel
+	destroy this.dw_password
+
+// w_login.open() returns long
+	this.id_password = this.dw_password
+	this.id_password.settransobject(sqlca)
+	this.dw_password.insertrow(0)
+	return ::message.returnvalue
+
+// w_login.key(keycode key, unsignedlong keyflags) returns long
+	if keydown(keyescape!) then
+		close(this)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	integer li_code
+	integer li_null
+	string ls_username
+	string ls_password
+	string s_password
+	string ls_null
+	parent.ii_row = parent.dw_password.getrow()
+	parent.dw_password.accepttext()
+	ls_username = parent.dw_password.getitemstring(parent.ii_row, "login")
+	if not (ls_username = "" or isnull(ls_username)) then
+		SQL SELECT dbo.users.usercode , dbo.users.password INTO :li_code, :ls_password FROM dbo.users WHERE dbo.users.username =:ls_username USING sqlca;
+		setnull(li_null)
+		if sqlca.sqlcode = 0 then
+			if isnull(li_code) then
+				parent.id_password.object.login[parent.ii_row] = ""
+				messagebox("User Validation", "User does not exist")
+				parent.dw_password.setcolumn("login")
+				parent.dw_password.setfocus()
+				return ::message.returnvalue
+			else
+				parent.id_password.object.login[parent.ii_row] = ls_username
+				parent.is_password = ls_password
+				parent.ii_usercode = li_code
+			end if
+		else
+			parent.id_password.object.login[parent.ii_row] = ""
+			messagebox("User Validation", "User name does not exist")
+			parent.dw_password.setcolumn("login")
+			parent.dw_password.setfocus()
+			return ::message.returnvalue
+		end if
+	else
+		messagebox("User Validation", "Plese enter User Name")
+		parent.dw_password.setcolumn("login")
+		parent.dw_password.setfocus()
+		return ::message.returnvalue
+	end if
+	setnull(ls_null)
+	s_password = parent.dw_password.getitemstring(parent.ii_row, "password")
+	if not (s_password = "" or isnull(s_password)) then
+		if lower(s_password) <> lower(parent.is_password) then
+			parent.ii_tries = parent.ii_tries + 1
+			if parent.ii_tries > 2 then
+				parent.cb_cancel.postevent(clicked!)
+			else
+				messagebox("Password", "Password is not correct")
+				parent.dw_password.setcolumn("password")
+				parent.dw_password.setfocus()
+			end if
+			parent.id_password.object.password[parent.ii_row] = ls_null
+			return 2
+		end if
+		openwithparm(w_main, parent.ii_usercode)
+		close(parent)
+	else
+		messagebox("Password", "Please enter password")
+		parent.dw_password.setcolumn("password")
+		parent.dw_password.setfocus()
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	close(parent)
+	return ::message.returnvalue
+
+// dw_password.ue_close() returns 0
+	integer li_salesmancode
+	w_salesmanpassword w_parent
+	li_salesmancode = getitemnumber(1, "salesmancode")
+	w_parent = getparent()
+	closewithreturn(w_parent, li_salesmancode)
+
+// dw_password.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "login"
+		parent.ii_row = row
+	end choose
+	return ::message.returnvalue
+
+// dw_password.itemerror(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	integer li_salesmancode
+	string ls_salesman
+	string ls_password
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	return ::message.returnvalue
+
+// dw_password.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1

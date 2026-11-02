@@ -1,0 +1,54 @@
+// userobject u_ds_standard (components)  ancestor: datastore
+
+// u_ds_standard.uevent_dberr_reqmissing(dwbuffer adwb_buffer, long al_row) returns 0
+
+// u_ds_standard.uevent_dberr_message(long al_errorcode, string as_errortext, long al_row, dwbuffer adwb_buffer) returns 0
+	s_dberror ls_dberror
+	choose case al_errorcode
+	case -193
+		beep(1)
+		ls_dberror.s_apperrormessage = "One of the columns in Row No: " + string(al_row) + " have duplicate values and the same column values are used by an existing row.~r~n" + "Possible suggestions are try to give column values in Row No: " + string(al_row) + " that are  unique and does not match with any existing rows."
+		ls_dberror.s_sqlerrormessage = "Error Code: " + string(al_errorcode) + "~r~n" + as_errortext + "~r~n~r~n" + "Please call the Abuzar Consultancy support team."
+	case -194
+		beep(1)
+		ls_dberror.s_apperrormessage = "One of the columns in Row No: " + string(al_row) + " referes to some other table in the Database. Actually there is not a related row in the other table.~r~n" + "Possible suggestions are check you column values in Row No: " + string(al_row) + " for accuracy and make any needed corrections if necessary."
+		ls_dberror.s_sqlerrormessage = "Error Code: " + string(al_errorcode) + "~r~n" + as_errortext + "~r~n~r~n" + "Please call the Abuzar Consultancy support team."
+	case -195
+		beep(1)
+		ls_dberror.s_apperrormessage = "You may left one or more column values empty in Row No: " + string(al_row) + " .~r~nSo kindly fill in the required column values in Row No: " + string(al_row) + " and than try again."
+		ls_dberror.s_sqlerrormessage = "Error Code: " + string(al_errorcode) + "~r~n" + as_errortext + "~r~n~r~n" + "Please call the Abuzar Consultancy support team."
+		event uevent_dberr_reqmissing(adwb_buffer, al_row)
+	case -198
+		beep(1)
+		ls_dberror.s_apperrormessage = "Row No: " + string(al_row) + " has association with other tables in the Database. This means you can't delete this row or change its value.~r~n" + "Possible suggestions are delete the related rows in those other tables first (or modify them so that they don't refer to your target Row No :" + string(al_row) + "."
+		ls_dberror.s_sqlerrormessage = "Error Code: " + string(al_errorcode) + "~r~n" + as_errortext + "~r~n~r~n" + "Please call the Abuzar Consultancy support team."
+	case -209
+		beep(1)
+		ls_dberror.s_apperrormessage = "One or more of your columns in Row No: " + string(al_row) + " have values that are not allowed.~r~nSo kindly check the column values in Row No: " + string(al_row) + " for accuracy and make any needed corrections if necessary."
+		ls_dberror.s_sqlerrormessage = "Error Code: " + string(al_errorcode) + "~r~n" + as_errortext + "~r~n~r~n" + "Please call the Abuzar Consultancy support team."
+	case -3
+		beep(1)
+		ls_dberror.s_apperrormessage = "Row No: " + string(al_row) + " values have changed since the last retrieval.~r~nMay be some other user has modified this row before your request.~r~nSo kindly retrieve these rows again."
+		ls_dberror.s_sqlerrormessage = "Error Code: " + string(al_errorcode) + "~r~n" + as_errortext + "~r~n~r~n" + "Please call the Abuzar Consultancy support team."
+	case else
+		beep(1)
+		ls_dberror.s_apperrormessage = "Some unidentifiable problem has occured in Row No: " + string(al_row) + " while your request was being processed.~r~nSo kindly close the current module and reopen it to try again.~r~n"
+		ls_dberror.s_sqlerrormessage = "Error Code: " + string(al_errorcode) + "~r~n" + as_errortext + "~r~n~r~n" + "Please call the Abuzar Consultancy support team."
+	end choose
+	openwithparm(w_dberror, ls_dberror)
+
+// u_ds_standard.uevent_dberr_initial() returns 0
+
+// u_ds_standard.create() returns 0
+	call super::create
+	triggerevent("constructor")
+
+// u_ds_standard.destroy() returns 0
+	triggerevent("destructor")
+	call super::destroy
+
+// u_ds_standard.dberror(long sqldbcode, string sqlerrtext, string sqlsyntax, dwbuffer buffer, long row) returns long
+	event uevent_dberr_initial()
+	post event uevent_dberr_message(sqldbcode, sqlerrtext, row, buffer)
+	SQL rollback USING sqlca;
+	return 1

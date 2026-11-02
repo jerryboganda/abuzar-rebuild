@@ -1,0 +1,46 @@
+// window w_arg_taxcategory (reports)  ancestor: w_listarguments
+
+// w_arg_taxcategory.create() returns 0
+	integer icurrent
+	call super::create
+	this.st_4 = create st_4
+	this.st_8 = create st_8
+	this.rb_summaryreport = create rb_summaryreport
+	this.rb_detailreport = create rb_detailreport
+	this.gb_5 = create gb_5
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_4
+	this.control[icurrent + 2] = this.st_8
+	this.control[icurrent + 3] = this.rb_summaryreport
+	this.control[icurrent + 4] = this.rb_detailreport
+	this.control[icurrent + 5] = this.gb_5
+
+// w_arg_taxcategory.destroy() returns 0
+	call super::destroy
+	destroy this.st_4
+	destroy this.st_8
+	destroy this.rb_summaryreport
+	destroy this.rb_detailreport
+	destroy this.gb_5
+
+// w_arg_taxcategory.open() returns long
+	long ancestorreturnvalue
+	string ls_stringparam
+	string ls_filter
+	long ll_counter
+	long ll_rowcount
+	integer rtncode
+	listviewitem l_lvi
+	ancestorreturnvalue = super::open()
+	this.dw_control.settransobject(sqlca)
+	rtncode = this.dw_control.retrieve()
+	if rtncode = -1 then
+		messagebox("Error", "No Tax Category to select")
+	else
+		ll_rowcount = this.dw_control.rowcount()
+		ll_counter = 1
+		for ll_counter = 1 to ll_rowcount
+			this.lb_categories.additem(this.dw_control.getitemstring(ll_counter, "name"))
+		next
+	end if
+	return ::message.returnvalue

@@ -1,0 +1,49 @@
+// window w_customercomment_view (custcomponents)  ancestor: window
+
+// w_customercomment_view.create() returns 0
+	this.dw_customerinfo = create dw_customerinfo
+	this.control = {this.dw_customerinfo}
+
+// w_customercomment_view.destroy() returns 0
+	destroy this.dw_customerinfo
+
+// w_customercomment_view.open() returns long
+	long ll_custcode
+	long ll_colcount
+	long ll_counter
+	long ll_width
+	long ll_height
+	environment env
+	ll_custcode = message.doubleparm
+	if getenvironment(env) <> 1 then
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	this.width = ll_width * 0.98
+	this.height = ll_height * 0.80
+	this.y = int((ll_height - this.height) / 2.0)
+	this.dw_customerinfo.width = this.width - this.width * 0.02
+	this.dw_customerinfo.height = this.height - this.width * 0.05
+	setredraw(false)
+	this.y = int((ll_height - this.height) / 2.0)
+	this.x = int((ll_width - this.width) / 2.0)
+	this.dw_customerinfo.settransobject(sqlca)
+	this.dw_customerinfo.retrieve(ll_custcode)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_customercomment_view.close() returns long
+	close(this)
+	return ::message.returnvalue
+
+// w_customercomment_view.key(keycode key, unsignedlong keyflags) returns long
+	if keydown(keyescape!) then
+		close(this)
+	end if
+	return ::message.returnvalue

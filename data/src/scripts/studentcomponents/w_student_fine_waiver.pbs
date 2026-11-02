@@ -1,0 +1,129 @@
+// window w_student_fine_waiver (studentcomponents)  ancestor: window
+
+// w_student_fine_waiver.ue_close(integer ai_status) returns 0
+	long ll_row
+	string ls_null
+	setnull(ls_null)
+	this.dw_control.accepttext()
+	this.il_retvalue = ai_status
+	closewithreturn(this, this.il_retvalue)
+
+// w_student_fine_waiver.create() returns 0
+	this.cb_cancel = create cb_cancel
+	this.dw_control = create dw_control
+	this.cb_ok = create cb_ok
+	this.control = {this.cb_cancel, this.dw_control, this.cb_ok}
+
+// w_student_fine_waiver.destroy() returns 0
+	destroy this.cb_cancel
+	destroy this.dw_control
+	destroy this.cb_ok
+
+// w_student_fine_waiver.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	long ll_invcode
+	ll_invcode = message.doubleparm
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	this.dw_control.settransobject(sqlca)
+	if ll_invcode > 0 then
+		this.dw_control.retrieve(ll_invcode)
+	else
+		this.dw_control.insertrow(0)
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(0)
+	return ::message.returnvalue
+
+// dw_control.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_control.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	integer li_null
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	setnull(li_null)
+	choose case dwo.name
+	case "flatdisc"
+		if double(data) > this.object.misccharges[row] then
+			messagebox("Fine Waiver Amount", "Invalid Waiver Amount~r~nIt Must not exceed from the Amount Originally Fined", stopsign!)
+			return 1
+		else
+			if this.object.invtotal[row] - double(data) > 0 then
+				this.object.invtotal[row] = this.object.invtotal[row] - double(data)
+			else
+				this.object.invtotal[row] = 0.00
+			end if
+			if this.object.outstandingamt[row] - double(data) > 0 then
+				this.object.outstandingamt[row] = this.object.outstandingamt[row] - double(data)
+			else
+				this.object.outstandingamt[row] = 0.00
+			end if
+			return 0
+		end if
+		return
+	end choose
+	return ::message.returnvalue
+
+// dw_control.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// cb_ok.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	string ls_errtext
+	long ll_invcode
+	ll_invcode = parent.dw_control.object.serviceinvcode[1]
+	if parent.dw_control.accepttext() < 1 then
+		return ::message.returnvalue
+	end if
+	SQL rollback USING sqlca;
+	if parent.dw_control.update(true, true) = 1 then
+		SQL DELETE VirtualGL WHERE DocumentType ='RS' AND DocumentCode =:ll_invcode USING sqlca;
+		if sqlca.sqlcode = 0 then
+			SQL commit USING sqlca;
+			parent.post event ue_close(1)
+		else
+			ls_errtext = sqlca.sqlerrtext
+			SQL rollback USING sqlca;
+			messagebox("Fine Waiver", "Unable to update waiver amount on Virtual GL")
+			return ::message.returnvalue
+		end if
+	else
+		ls_errtext = sqlca.sqlerrtext
+		SQL rollback USING sqlca;
+		messagebox("Fine Waiver", "Unable to update waiver amount on service invoice")
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue

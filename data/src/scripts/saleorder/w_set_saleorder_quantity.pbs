@@ -1,0 +1,58 @@
+// window w_set_saleorder_quantity (saleorder)  ancestor: window
+
+// w_set_saleorder_quantity.ue_close(double ad_qty) returns 0
+	closewithreturn(this, ad_qty)
+
+// w_set_saleorder_quantity.create() returns 0
+	this.em_qty = create em_qty
+	this.st_qty = create st_qty
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.control = {this.em_qty, this.st_qty, this.cb_cancel, this.cb_ok}
+
+// w_set_saleorder_quantity.destroy() returns 0
+	destroy this.em_qty
+	destroy this.st_qty
+	destroy this.cb_cancel
+	destroy this.cb_ok
+
+// w_set_saleorder_quantity.open() returns long
+	environment le_env
+	long ll_width
+	long ll_height
+	double ld_qty
+	if getenvironment(le_env) = 1 then
+		ll_width = pixelstounits(le_env.screenwidth, xpixelstounits!) - this.width
+		ll_height = pixelstounits(le_env.screenheight, ypixelstounits!) - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width * 0.5
+			ll_height = ll_height * 0.5
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	ld_qty = message.doubleparm
+	this.em_qty.text = trim(string(long(ld_qty)))
+	this.em_qty.selecttext(1, len(this.em_qty.text))
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(0)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	double ld_qty
+	parent.em_qty.getdata(ld_qty)
+	if long(ld_qty) <= 0 then
+		messagebox("Qty Validation", "Please Enter Valid Qty.")
+		parent.em_qty.setfocus()
+		parent.em_qty.selecttext(1, len(parent.em_qty.text))
+		return ::message.returnvalue
+	end if
+	parent.post event ue_close(ld_qty)
+	return ::message.returnvalue

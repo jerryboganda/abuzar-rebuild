@@ -1,0 +1,184 @@
+// window w_itemgallary (multientryitemrespwin)  ancestor: window
+
+// w_itemgallary.ue_postopen() returns 0
+	long ll_code
+	long ll_rowid
+	this.il_icode = message.doubleparm
+	if isnull(this.il_icode) or this.il_icode <= 0 then
+		close(this)
+		return
+	end if
+	this.it_transobject = create u_transaction
+	this.it_transobject.autocommit = true
+	SQL start USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		messagebox("Connection Problem", "Problem in connecting database. Kindly Try Again", stopsign!)
+		close(this)
+		return
+	end if
+	this.ids_ds = create u_ds_standard
+	this.ids_ds.dataobject = "d_itemgallary"
+	this.ids_ds.settransobject(sqlca)
+	this.ids_ds.retrieve(this.il_icode)
+	this.il_totrows = this.ids_ds.rowcount()
+	if this.il_totrows <= 0 then
+		messagebox("Item Image Gallary", "No Item Image Exists for this item in the database.~r~nKindly Specify some other item.", stopsign!)
+		close(this)
+		return
+	end if
+	this.cb_next.event clicked()
+
+// w_itemgallary.ue_close(integer ar_closearg) returns 0
+	string ls_file
+	ls_file = gs_temp_img_filename
+	ls_file = left(this.is_filename, len(this.is_filename) - 4)
+	ls_file = ls_file + "*.*"
+	filedelete(ls_file)
+	close(this)
+
+// w_itemgallary.wf_get_image(long al_icode, long al_row) returns long
+	if al_icode > 0 and al_row > 0 then
+		SQL SelectBlob ItemImage INTO :this.ibl_image From ItemImage Where Icode =:al_icode AND RowID =:al_row USING this.it_transobject;
+		if this.it_transobject.sqlcode <> 0 then
+			messagebox("Item Image/Picture ", "Unable to fetch item Image.~r~nReasons are:~r~n" + this.it_transobject.sqlerrtext)
+			return -1
+		end if
+		return
+	end if
+	return 0
+
+// w_itemgallary.wf_set_image(blob ablb_image) returns long
+	string ls_imagetype
+	this.is_filename = gs_temp_img_filename
+	this.is_filename = left(this.is_filename, len(this.is_filename) - 4)
+	if this.il_thisrow > 0 then
+		this.is_filename = this.is_filename + trim(string(this.il_thisrow)) + "." + this.is_imgtype
+		f_writeimgtofile(this.is_filename, ablb_image)
+		this.p_image.setredraw(false)
+		this.p_image.picturename = this.is_filename
+		this.p_image.setredraw(true)
+	end if
+	return 0
+
+// w_itemgallary.wf_set_image_details() returns long
+	if this.il_thisrow > 0 then
+		this.is_aliasname = trim(this.ids_ds.object.aliasname[this.il_thisrow])
+		this.is_name = trim(this.ids_ds.object.itemname[this.il_thisrow])
+		this.is_caption = trim(this.ids_ds.object.imagedescription[this.il_thisrow])
+		this.is_imgtype = trim(this.ids_ds.object.imagetype[this.il_thisrow])
+		this.st_imagecounter.text = "Image " + trim(string(this.il_thisrow)) + " of " + trim(string(this.il_totrows))
+		this.st_imagecaption.text = this.is_caption
+		this.st_itemname.text = "Item Name : " + this.is_name
+		this.st_aliasname.text = "Alias Name : " + this.is_aliasname
+		if wf_get_image(this.il_icode, this.il_thisrow) = 0 then
+			wf_set_image(this.ibl_image)
+		else
+			messagebox("Item Image Gallary", "Problem in fetching item image.", stopsign!)
+		end if
+	end if
+	return 0
+
+// w_itemgallary.create() returns 0
+	this.st_aliasname = create st_aliasname
+	this.st_itemname = create st_itemname
+	this.st_imagecounter = create st_imagecounter
+	this.cb_exit = create cb_exit
+	this.cb_next = create cb_next
+	this.cb_prev = create cb_prev
+	this.st_imagecaption = create st_imagecaption
+	this.p_image = create p_image
+	this.cb_slideshow = create cb_slideshow
+	this.control = {this.st_aliasname, this.st_itemname, this.st_imagecounter, this.cb_exit, this.cb_next, this.cb_prev, this.st_imagecaption, this.p_image, this.cb_slideshow}
+
+// w_itemgallary.destroy() returns 0
+	destroy this.st_aliasname
+	destroy this.st_itemname
+	destroy this.st_imagecounter
+	destroy this.cb_exit
+	destroy this.cb_next
+	destroy this.cb_prev
+	destroy this.st_imagecaption
+	destroy this.p_image
+	destroy this.cb_slideshow
+
+// w_itemgallary.open() returns long
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		this.width = ll_win_width * 0.98
+		this.height = ll_win_height * 0.97
+		this.st_aliasname.width = ll_win_width * 0.98 - 25
+		this.st_itemname.width = ll_win_width * 0.98 - 25
+		this.st_imagecounter.width = ll_win_width * 0.98 - 25
+		this.st_imagecounter.width = ll_win_width * 0.98 - 25
+		this.cb_next.x = ll_win_width * 0.98 - 25 - this.cb_next.width
+		this.cb_slideshow.x = (ll_win_width - this.cb_slideshow.width) / 2.0
+		this.st_imagecaption.width = ll_win_width * 0.98 - 25
+		this.cb_exit.x = ll_win_width * 0.98 - 25 - this.cb_exit.width
+		this.cb_exit.y = this.height - this.cb_exit.height - 100
+		this.st_imagecaption.y = this.cb_exit.y - 10 - this.st_imagecaption.height
+		this.p_image.width = ll_win_width - 150
+		this.p_image.height = this.st_imagecaption.y - this.p_image.y - 10
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	post event ue_postopen()
+	return ::message.returnvalue
+
+// w_itemgallary.key(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		post event ue_close(-1)
+	end if
+	return ::message.returnvalue
+
+// w_itemgallary.close() returns long
+	if fileexists(this.is_filename) then
+		filedelete(this.is_filename)
+	end if
+	return ::message.returnvalue
+
+// cb_exit.clicked() returns long
+	parent.post event ue_close(0)
+	return ::message.returnvalue
+
+// cb_next.clicked() returns long
+	if parent.il_thisrow < parent.il_totrows then
+		parent.il_thisrow = parent.il_thisrow + 1
+		parent.wf_set_image_details()
+	end if
+	return ::message.returnvalue
+
+// cb_prev.clicked() returns long
+	if parent.il_thisrow > 0 then
+		parent.il_thisrow = parent.il_thisrow - 1
+		parent.wf_set_image_details()
+	end if
+	return ::message.returnvalue
+
+// cb_slideshow.clicked() returns long
+	long ll_counter
+	long i
+	this.enabled = false
+	parent.cb_next.enabled = false
+	parent.cb_prev.enabled = false
+	parent.il_thisrow = 0
+	do while parent.il_thisrow < parent.il_totrows
+		parent.il_thisrow = parent.il_thisrow + 1
+		parent.wf_set_image_details()
+		if parent.il_thisrow <> parent.il_totrows then
+			sleep(3)
+		end if
+	loop
+	parent.cb_next.enabled = true
+	parent.cb_prev.enabled = true
+	this.enabled = true
+	return ::message.returnvalue

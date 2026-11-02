@@ -1,0 +1,225 @@
+// window w_itembatchpricing (multientryitem)  ancestor: w_multi_entry
+
+// w_itembatchpricing.wf_populate_ddlb(datawindow dwcontrol) returns 0
+	integer li_column_count
+	integer li_counter
+	string ls_column_name
+	string ls_columntype
+	this.tab_retrieve.tabpage_list.ddlb_filter_column.reset()
+	this.tab_retrieve.tabpage_list.ddlb_sort.reset()
+	li_column_count = integer(dwcontrol.object.datawindow.column.count)
+	for li_counter = li_column_count to li_counter step -1
+		ls_column_name = dwcontrol.describe("#" + string(li_counter) + ".Name")
+		this.tab_retrieve.tabpage_list.ddlb_sort.additem(ls_column_name)
+		this.tab_retrieve.tabpage_list.ddlb_filter_column.additem(ls_column_name)
+	next
+	this.tab_retrieve.tabpage_list.ddlb_sort.text = ls_column_name
+	ls_columntype = this.id_dwcontrol.describe("#1.ColType")
+	if left(ls_columntype, 4) = "char" then
+		this.ii_type = 1
+	elseif left(ls_columntype, 4) = "date" then
+		this.ii_type = 3
+	else
+		this.ii_type = 2
+	end if
+	this.ii_colindex = 1
+	this.tab_retrieve.tabpage_list.rb_ascending.checked = true
+	wf_sortdw(this.tab_retrieve.tabpage_list.ddlb_sort.text, this.is_sortsequence)
+	this.id_master.setfocus()
+	this.tab_retrieve.selectedtab = 2
+
+// w_itembatchpricing.wf_retrievelist() returns long
+	return this.id_list.retrieve(f_getgroupcode(gl_usercode))
+
+// w_itembatchpricing.wf_retrievelistall() returns long
+	return this.id_list.retrieve(f_getgroupcode(gl_usercode))
+
+// w_itembatchpricing.wf_retrievedetail(long al_icode, long al_groupcode) returns long
+	return this.id_dwcontrol.retrieve(al_icode)
+
+// w_itembatchpricing.wf_populate_possible_item_batches() returns long
+	long ll_code
+	long ll_retcode
+	long ll_rowcount
+	long ll_insrow
+	long ll_counter
+	datastore lds_batches
+	lds_batches = create datastore
+	lds_batches.dataobject = "d_populate_possible_item_batches"
+	lds_batches.settransobject(this.it_transobject)
+	ll_code = this.id_master.object.code[1]
+	if ll_code > 0 then
+		this.id_detail.setredraw(false)
+		ll_retcode = lds_batches.retrieve(ll_code)
+		ll_rowcount = lds_batches.rowcount()
+		if ll_retcode > 0 and ll_rowcount > 0 then
+			for ll_counter = 1 to ll_rowcount
+				ll_insrow = this.id_detail.insertrow(0)
+				if ll_insrow > 0 then
+					this.id_detail.object.icode[ll_insrow] = lds_batches.object.icode[ll_counter]
+					this.id_detail.object.batch[ll_insrow] = lds_batches.object.batch[ll_counter]
+					this.id_detail.object.expiry[ll_insrow] = lds_batches.object.expiry[ll_counter]
+					this.id_detail.object.saleprice[ll_insrow] = lds_batches.object.saleprice[ll_counter]
+					this.id_detail.object.stock[ll_insrow] = lds_batches.object.stock[ll_counter]
+					this.id_detail.object.priority[ll_insrow] = lds_batches.object.priority[ll_counter]
+					this.id_detail.object.arrivedon[ll_insrow] = lds_batches.object.arrivedon[ll_counter]
+				end if
+			next
+		end if
+		this.id_detail.setredraw(true)
+	end if
+	return 0
+
+// w_itembatchpricing.wf_populate_alll_item_batches() returns integer
+	SQL rollback USING this.it_transobject;
+	this.it_transobject.update_itembatchprices()
+	if this.it_transobject.sqlcode = 0 then
+		SQL commit USING this.it_transobject;
+	else
+		SQL rollback USING this.it_transobject;
+	end if
+	return 0
+
+// w_itembatchpricing.create() returns 0
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_itembatchpricing" then
+		this.menuid = create m_itembatchpricing
+	end if
+
+// w_itembatchpricing.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_itembatchpricing.ue_save() returns 0
+	long ll_code
+	long ll_counter
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	ll_code = this.id_master.object.code[1]
+	if not wf_validateserverdatetime(ldt_server_datetime, ls_date_errtext) then
+		messagebox("Date Violation", ls_date_errtext, stopsign!)
+		setpointer(arrow!)
+		if isnull(ll_code) then
+			SQL rollback USING this.it_transobject;
+		end if
+		return
+	end if
+	setpointer(hourglass!)
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	if ll_code > 0 then
+		for ll_counter = 1 to this.id_detail.rowcount()
+			this.id_detail.object.icode[ll_counter] = ll_code
+			if isnull(this.id_detail.object.usercode[ll_counter]) then
+				this.id_detail.object.usercode[ll_counter] = gl_usercode
+			elseif this.id_detail.getitemstatus(ll_counter, "saleprice", primary!) = datamodified! then
+				this.id_detail.object.lastmodified[ll_counter] = ldt_server_datetime
+				this.id_detail.object.lastmodifiedby[ll_counter] = gl_usercode
+			end if
+		next
+	end if
+	if this.id_detail.update(true, false) = 1 then
+		SQL commit USING this.it_transobject;
+		messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+		this.ib_commitok = true
+		this.id_detail.resetupdate()
+		this.im_menu.m_file.m_new.enabled = true
+		this.editflag = false
+	else
+		SQL rollback USING this.it_transobject;
+		messagebox("Save Changes Fail", "Changes do not take effect in database~n~r Some database problem occur", exclamation!, ok!, 1)
+		setpointer(arrow!)
+	end if
+	setpointer(arrow!)
+
+// w_itembatchpricing.ue_detail() returns 0
+	long ll_code
+	long ll_rowcount
+	long ll_counter
+	this.im_menu.m_file.m_retrieve.text = "Lis&t"
+	this.im_menu.m_file.m_print.enabled = true
+	this.i_editmode = 2
+	this.i_retrievemode = 2
+	ll_code = this.id_dwcontrol.borderstyle.code[this.il_selectedrow]
+	this.id_dwcontrol = this.id_master
+	ll_rowcount = wf_retrieve(ll_code)
+	this.id_master.setrow(1)
+	this.id_master.scrolltorow(1)
+	this.id_dwcontrol = this.id_detail
+	wf_retrievedetail(ll_code, f_getgroupcode(gl_usercode))
+	if f_numberpreferences("inventorymovementmethod") = 2 then
+		this.id_detail.setsort("priority asc, expiry asc, batch asc")
+	elseif f_numberpreferences("inventorymovementmethod") = 3 then
+		this.id_detail.setsort("priority desc, expiry asc, batch asc")
+	else
+		this.id_detail.setsort("priority, expiry, batch")
+	end if
+	this.id_detail.sort()
+	this.id_master.setrow(1)
+	this.id_master.scrolltorow(1)
+	this.id_master.setcolumn(1)
+	this.id_master.setfocus()
+	this.id_dwcontrol = this.id_list
+	this.im_menu.m_file.m_save.enabled = true
+	for ll_counter = 1 to this.id_detail.rowcount()
+		this.id_detail.setitemstatus(ll_counter, 1, primary!, datamodified!)
+	next
+	this.id_detail.object.batch.protect = 1
+	this.id_detail.object.expiry.protect = 1
+	for ll_counter = 1 to gds_securitywindow.rowcount()
+		if gds_securitywindow.object.rightcode[ll_counter] = 548 then
+			this.id_detail.object.batch.protect = 0
+			this.id_detail.object.expiry.protect = 0
+		end if
+	next
+
+// w_itembatchpricing.ue_newform() returns 0
+	call super::ue_newform
+	this.im_menu.m_item.m_newitem.enabled = false
+	this.im_menu.m_item.m_deleteitem.enabled = false
+
+// w_itembatchpricing.ue_postopen() returns 0
+	call super::ue_postopen
+	this.im_menu.m_file.m_new.visible = false
+
+// w_itembatchpricing.ue_getfocus() returns 0
+
+// w_itembatchpricing.ue_list() returns 0
+	long ll_rtcode
+	if this.id_list.rowcount() <= 0 then
+		ll_rtcode = wf_retrievelist()
+		if ll_rtcode = 0 then
+			ll_rtcode = wf_retrievelistall()
+		end if
+	end if
+	if ll_rtcode > 0 then
+		this.im_menu.m_file.m_new.enabled = true
+		this.im_menu.m_file.m_save.enabled = false
+		this.im_menu.m_file.m_delete.enabled = false
+		this.im_menu.m_item.m_newitem.enabled = false
+		this.im_menu.m_item.m_deleteitem.enabled = false
+		this.im_menu.m_file.m_first.enabled = true
+		this.im_menu.m_file.m_next.enabled = true
+		this.im_menu.m_file.m_last.enabled = true
+		this.im_menu.m_file.m_print.enabled = true
+		this.im_menu.m_file.m_previous.enabled = true
+		this.im_menu.m_file.m_retrieve.text = "De&tail"
+		this.i_retrievemode = 2
+		this.i_editmode = 2
+		if this.il_selectedrow = 0 then
+			wf_first()
+			wf_selectunselectrow(1)
+		else
+			this.il_selectedrow = 1
+		end if
+		this.tab_retrieve.tabpage_list.dw_find.setfocus()
+		return
+	end if
+	messagebox("Result", "No rows or retrieved possible empty table~r~nInsert some rows first")
+	postevent("ue_new")

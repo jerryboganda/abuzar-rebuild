@@ -1,0 +1,798 @@
+// window w_custservicetemplate (custcomponents)  ancestor: w_multi_entry
+
+// w_custservicetemplate.wf_visible(boolean ab_flag) returns 0
+	this.id_footer.object.stock.visible = ab_flag
+	this.id_footer.object.t_stock.visible = ab_flag
+
+// w_custservicetemplate.wf_genfullcode(long al_icode, string as_fullcode) returns integer
+	integer li_retflag
+	string ls_fullcode
+	long icode
+	long iccode
+	long icatcode
+	long packcode
+	long manfcode
+	SQL SELECT AliasName INTO :ls_fullcode FROM Accounts WHERE AccCode =:al_icode AND Active ='Y' USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		li_retflag = 1
+		as_fullcode = ls_fullcode
+	else
+		li_retflag = this.it_transobject.sqlcode
+	end if
+	return li_retflag
+
+// w_custservicetemplate.wf_selectprintreport() returns string
+	string ls_report
+	if ls_report = "" or isnull(ls_report) then
+		if gs_company = "ABUZAR" then
+			ls_report = "d_abuzar_customerservicetemplate_print"
+		else
+			ls_report = "d_customerservicetemplate_print"
+		end if
+	end if
+	this.id_print.dataobject = ls_report
+	this.id_print.settransobject(this.it_transobject)
+	return ls_report
+
+// w_custservicetemplate.wf_assigndatawindowobjects(string as_masterdw, string as_detaildw, string as_footerdw, string as_listdw, string as_printdw) returns 0
+	this.id_master.dataobject = as_masterdw
+	this.id_detail.dataobject = as_detaildw
+	this.id_footer.dataobject = as_footerdw
+	this.id_list.dataobject = as_listdw
+	this.id_print.dataobject = as_printdw
+	this.id_master.settransobject(this.it_transobject)
+	this.id_detail.settransobject(this.it_transobject)
+	this.id_footer.settransobject(this.it_transobject)
+	this.id_list.settransobject(this.it_transobject)
+	this.id_print.settransobject(this.it_transobject)
+
+// w_custservicetemplate.wf_closelist() returns 0
+	this.ib_itemslistopen = false
+	this.id_itemslist.hide()
+
+// w_custservicetemplate.wf_post() returns integer
+	long ll_code
+	long ll_usercode
+	string ls_err
+	string ls_posted
+	if this.id_list.getrow() > 0 then
+		ll_code = this.id_list.object.code[this.id_list.getrow()]
+		ls_posted = this.id_list.object.posted[this.id_list.getrow()]
+		if ll_code > 0 and ls_posted = "N" then
+			open(w_salesmanpassword)
+			ll_usercode = long(message.doubleparm)
+			if ll_usercode > 0 then
+				SQL update CustomerServiceTemplate SET Posted ='Y' , PostDate =GetDate ( ) , PostedBy =:ll_usercode WHERE CustomerServiceTemplateCode =:ll_code USING this.it_transobject;
+				if this.it_transobject.sqlcode = 0 then
+					SQL commit USING this.it_transobject;
+					messagebox("Posting", "Successfully Posted (Code = " + trim(string(ll_code)) + ")", information!)
+				else
+					ls_err = this.it_transobject.sqlerrtext
+					SQL rollback USING this.it_transobject;
+					messagebox("Posting", "Problem in Posting (Code = " + trim(string(ll_code)) + ")~r~nDetails are:-~r~n" + ls_err, information!)
+				end if
+			end if
+		end if
+	end if
+	return 0
+
+// w_custservicetemplate.wf_validatefullcode(string as_custicode, long al_currrow) returns boolean
+	long ll_icode
+	long ll_stock
+	long ll_totalstock
+	string ls_fullcode
+	string ls_titleerrtext
+	string ls_errtext
+	integer li_errcode
+	integer li_assgcode
+	integer li_option
+	boolean lb_rtflag
+	boolean ib_due
+	integer li_null
+	string ls_null
+	ls_titleerrtext = "Customer Validation"
+	if vf_dwdupcode1(this.id_detail, "icode", string(ll_icode), al_currrow) = true then
+		ls_errtext = "Duplicate item, please select some other customer"
+		li_errcode = -1
+	elseif wf_inititeminfo(ll_icode, this.il_currrow, li_errcode, ls_errtext) then
+		if li_errcode = -2 then
+			li_option = messagebox("Customer Validation", "Item stock does not exist~n~rDo You want to due this item", information!, yesno!, 2)
+			if li_option = 1 then
+				this.id_detail.setitem(this.il_currrow, "looseqty", 1)
+				this.id_detail.setitem(this.il_currrow, "dueqty", 1)
+				ib_due = true
+			else
+				li_errcode = -1
+			end if
+		end if
+	else
+		li_errcode = -1
+		ls_titleerrtext = "Customer Validation"
+	end if
+	if li_errcode = -1 and not ib_due then
+		lb_rtflag = false
+		messagebox(ls_titleerrtext, ls_errtext)
+		setnull(li_null)
+		setnull(ls_null)
+		this.id_detail.setitem(al_currrow, this.is_columnitemname, ls_null)
+		this.id_detail.setitem(al_currrow, "icode", li_null)
+		this.id_detail.selecttext(1, len(this.id_detail.gettext()))
+	end if
+	return lb_rtflag
+
+// w_custservicetemplate.wf_grandtotal() returns double
+	double ld_grandtotal
+	ld_grandtotal = 0
+	return ld_grandtotal
+
+// w_custservicetemplate.wf_initmodify(integer ai_protect) returns 0
+	long ll_code
+	ll_code = this.id_master.getitemnumber(1, "code")
+	this.id_master.retrieve(ll_code)
+	this.id_detail.retrieve(ll_code)
+	if ai_protect = 0 then
+		this.ib_modify = true
+		this.im_menu.m_file.m_save.enabled = true
+		this.im_menu.m_file.m_new.enabled = false
+		this.im_menu.m_file.m_delete.enabled = false
+		this.im_menu.m_item.m_newitem.enabled = true
+		this.im_menu.m_item.m_deleteitem.enabled = true
+		this.im_menu.m_file.m_first.enabled = false
+		this.im_menu.m_file.m_next.enabled = false
+		this.im_menu.m_file.m_previous.enabled = false
+		this.im_menu.m_file.m_last.enabled = false
+		this.im_menu.m_file.m_retrieve.enabled = true
+		this.im_menu.m_file.m_retrieve.text = "Lis&t"
+		this.tab_retrieve.tabpage_detail.enabled = true
+		return
+	end if
+	this.ib_modify = false
+	this.im_menu.m_file.m_save.enabled = false
+	this.im_menu.m_file.m_new.enabled = true
+	this.im_menu.m_file.m_delete.enabled = false
+	this.im_menu.m_item.m_newitem.enabled = false
+	this.im_menu.m_item.m_deleteitem.enabled = false
+	this.im_menu.m_file.m_first.enabled = false
+	this.im_menu.m_file.m_next.enabled = false
+	this.im_menu.m_file.m_previous.enabled = false
+	this.im_menu.m_file.m_last.enabled = false
+	this.im_menu.m_file.m_retrieve.enabled = true
+	this.im_menu.m_file.m_retrieve.text = "Lis&t"
+	this.tab_retrieve.tabpage_detail.enabled = true
+
+// w_custservicetemplate.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+
+// w_custservicetemplate.wf_validateitem(boolean ab_flag) returns integer
+	long ll_icode
+	long ll_stock
+	long ll_totalstock
+	string ls_fullcode
+	string ls_titleerrtext
+	string ls_errtext
+	integer li_errcode
+	integer li_assgcode
+	integer li_option
+	boolean ib_due
+	integer li_null
+	string ls_null
+	ll_icode = this.id_detail.getitemnumber(this.il_currrow, "icode")
+	if not isnull(ll_icode) then
+		if vf_dwdupcode1(this.id_detail, "icode", string(ll_icode), this.il_currrow) = true then
+			ls_titleerrtext = "Customer Validation"
+			ls_errtext = "Duplicate Customer, please select some other Customer"
+			li_errcode = -1
+		elseif wf_inititeminfo(ll_icode, this.il_currrow, li_errcode, ls_errtext) then
+			if li_errcode = -2 then
+				li_errcode = -1
+			end if
+		else
+			li_errcode = -1
+			ls_titleerrtext = "Customer Validation"
+		end if
+	end if
+	if ab_flag then
+		this.ib_itemvalidated = true
+	end if
+	if li_errcode = -1 then
+		setnull(li_null)
+		setnull(ls_null)
+		ls_titleerrtext = "Customer Validation"
+		messagebox(ls_titleerrtext, ls_errtext)
+		this.id_detail.setcolumn("fullcode")
+		this.id_detail.object.fullcode[this.il_currrow] = ls_null
+		this.id_detail.scrolltorow(this.il_currrow)
+		this.id_detail.object.icode[this.il_currrow] = li_null
+		this.id_detail.object.itemname[this.il_currrow] = ls_null
+	end if
+	return li_errcode
+
+// w_custservicetemplate.wf_findfullcode(string as_fullcode, long al_icode, string al_itemname) returns integer
+	integer ll_icode
+	integer ll_retflag
+	integer ll_classcode
+	string ls_itemname
+	string ls_class
+	ll_classcode = this.id_master.object.code[1]
+	SQL SELECT Customer.CustCode , Accounts.name + ' (' + Accounts.AliasName + ')' INTO :ll_icode, :ls_itemname FROM Customer , Accounts WHERE Accounts.AliasName =:as_fullcode AND Accounts.Active ='Y' AND Accounts.AccCode =Customer.CustCode USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		al_icode = ll_icode
+		al_itemname = ls_itemname
+		if isnull(al_icode) then
+			ll_retflag = 0
+		else
+			ll_retflag = 1
+		end if
+	else
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_custservicetemplate.wf_inititeminfo(long al_icode, long al_row, integer ai_rtcode, string as_errortext) returns boolean
+	boolean retflag
+	long ll_packunits
+	long ll_saleinvcode
+	long ll_classcode
+	double ld_saleprice
+	double ld_saleprice2
+	double ld_saleprice3
+	double ld_avgprice
+	double ld_mrpp
+	double ld_purprice
+	double ld_godownstock
+	char lc_status
+	integer li_gcode
+	string ls_fullcode
+	string ls_name
+	string ls_null
+	string ls_fname
+	string ls_class
+	setnull(ls_null)
+	SQL SELECT Accounts.AliasName , name =Accounts.name + ' (' + Accounts.AliasName + ')' , Accounts.Active INTO :ls_fullcode, :ls_name, :lc_status FROM Customer , Accounts WHERE Accounts.AccCode =:al_icode AND Accounts.Active ='Y' AND Customer.Custcode =Accounts.AccCode USING this.it_transobject;
+	if this.it_transobject.sqlcode = -1 then
+		retflag = false
+		as_errortext = "Database Error: Student information can not be retrieved"
+	end if
+	if retflag then
+		this.id_detail.setitem(al_row, this.is_columnitemname, ls_name)
+		this.id_detail.setitem(al_row, "fullcode", ls_fullcode)
+		this.id_detail.setitem(al_row, "icode", al_icode)
+		this.id_detail.setitem(al_row, "status", lc_status)
+	else
+		retflag = false
+		as_errortext = "Database Error: Student information can not be retrieved"
+	end if
+	return retflag
+
+// w_custservicetemplate.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM CustomerServiceTemplate WHERE name =:as_name USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_custservicetemplate.wf_validate_transportroutecode(long al_code, long al_row) returns integer
+	double ld_charges
+	SQL SELECT TransportCharges INTO :ld_charges FROM TransportRoute WHERE TransportRouteCode =:al_code USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		if isnull(ld_charges) or ld_charges <= 0.0 then
+			ld_charges = 0
+		end if
+		this.id_detail.object.charges[al_row] = ld_charges
+		this.idc_vehicle.retrieve(al_code)
+		if this.idc_vehicle.rowcount() > 0 then
+			this.id_detail.object.vehiclename[al_row] = this.idc_vehicle.getitemstring(1, "name")
+		end if
+		return 0
+	end if
+	return 1
+
+// w_custservicetemplate.wf_inherit_from_another_template() returns long
+	long ll_counter
+	long ll_insrow
+	boolean lb_listtab
+	string ls_errtext
+	s_arguements lstr_arg
+	datastore lds_header
+	datastore lds_detail
+	if this.tab_retrieve.selectedtab = 2 then
+		lb_listtab = true
+	end if
+	if lb_listtab = false and wf_iseditable() = true then
+		if this.id_detail.rowcount() > 0 and isnull(this.id_detail.object.icode[this.id_detail.rowcount()]) then
+			event ue_deleteitem()
+		end if
+		open(w_arg_customerservicetemplate)
+		lstr_arg = message.powerobjectparm
+		if lstr_arg.i_status = 1 then
+			lds_header = create datastore
+			lds_detail = create datastore
+			lds_header.dataobject = this.id_master.dataobject
+			lds_detail.dataobject = this.id_detail.dataobject
+			lds_header.settransobject(this.it_transobject)
+			lds_detail.settransobject(this.it_transobject)
+			lds_header.retrieve(lstr_arg.l_code1)
+			if lds_header.rowcount() > 0 then
+				lds_detail.retrieve(lstr_arg.l_code1)
+				if lds_detail.rowcount() > 0 then
+					this.id_master.object.name[1] = lds_header.object.name[1] + "."
+					this.id_master.object.servicecode[1] = lds_header.object.servicecode[1]
+					for ll_counter = 1 to lds_detail.rowcount()
+						ll_insrow = this.id_detail.insertrow(0)
+						this.id_detail.object.icode[ll_insrow] = lds_detail.object.icode[ll_counter]
+						this.id_detail.object.fullcode[ll_insrow] = lds_detail.object.fullcode[ll_counter]
+						this.id_detail.object.itemname[ll_insrow] = lds_detail.object.itemname[ll_counter]
+						this.id_detail.object.transportroutecode[ll_insrow] = lds_detail.object.transportroutecode[ll_counter]
+						this.id_detail.object.remarks[ll_insrow] = lds_detail.object.remarks[ll_counter]
+						this.id_detail.object.status[ll_insrow] = lds_detail.object.status[ll_counter]
+						this.id_detail.object.qty[ll_insrow] = lds_detail.object.qty[ll_counter]
+						this.id_detail.object.charges[ll_insrow] = lds_detail.object.charges[ll_counter]
+						this.id_detail.object.discperc[ll_insrow] = lds_detail.object.discperc[ll_counter]
+						this.id_detail.object.serviceflatdisc[ll_insrow] = lds_detail.object.serviceflatdisc[ll_counter]
+					next
+				end if
+			end if
+		end if
+	end if
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_save.visible = true
+	return 0
+
+// w_custservicetemplate.wf_populate_customer_area_city_wise() returns long
+	long ll_counter
+	long ll_insrow
+	boolean lb_listtab
+	string ls_errtext
+	s_arguements lstr_arg
+	s_arguements lstr_arg2
+	datastore lds_custdetail
+	if this.tab_retrieve.selectedtab = 2 then
+		lb_listtab = true
+	end if
+	if lb_listtab = false and wf_iseditable() = true then
+		if this.id_detail.rowcount() > 0 and isnull(this.id_detail.object.icode[this.id_detail.rowcount()]) then
+			event ue_deleteitem()
+		end if
+		open(w_arg_areas)
+		lstr_arg = message.powerobjectparm
+		if lstr_arg.i_status = 1 then
+			open(w_arg_citycounty)
+			lstr_arg2 = message.powerobjectparm
+			if lstr_arg2.i_status = 1 then
+				lds_custdetail = create datastore
+				lds_custdetail.dataobject = "d_populate_customers_area_city_wise"
+				lds_custdetail.settransobject(this.it_transobject)
+				lds_custdetail.retrieve(lstr_arg.ia_integerlist, lstr_arg2.ia_integerlist)
+				if lds_custdetail.rowcount() > 0 then
+					for ll_counter = 1 to lds_custdetail.rowcount()
+						ll_insrow = this.id_detail.insertrow(0)
+						this.id_detail.object.icode[ll_insrow] = lds_custdetail.object.icode[ll_counter]
+						this.id_detail.object.fullcode[ll_insrow] = lds_custdetail.object.fullcode[ll_counter]
+						this.id_detail.object.itemname[ll_insrow] = lds_custdetail.object.itemname[ll_counter]
+						this.id_detail.object.transportroutecode[ll_insrow] = lds_custdetail.object.transportroutecode[ll_counter]
+						this.id_detail.object.remarks[ll_insrow] = lds_custdetail.object.remarks[ll_counter]
+						this.id_detail.object.qty[ll_insrow] = lds_custdetail.object.qty[ll_counter]
+						this.id_detail.object.charges[ll_insrow] = lds_custdetail.object.charges[ll_counter]
+						this.id_detail.object.discperc[ll_insrow] = lds_custdetail.object.discperc[ll_counter]
+						this.id_detail.object.serviceflatdisc[ll_insrow] = lds_custdetail.object.serviceflatdisc[ll_counter]
+					next
+				end if
+			end if
+		end if
+	end if
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_save.visible = true
+	return 0
+
+// w_custservicetemplate.wf_set_column_value() returns long
+	long ll_counter
+	s_item_filter_criteria lstr_criteria
+	string[] ls_rem
+	double[] ld_disc
+	open(w_set_student_columnvalue)
+	lstr_criteria = message.powerobjectparm
+	if lstr_criteria.i_status = 1 then
+		if lstr_criteria.s_name1 = "Remarks" then
+			for ll_counter = 1 to this.id_detail.rowcount()
+				ls_rem[ll_counter] = lstr_criteria.s_name2
+			next
+			this.id_detail.object.remarks[1, this.id_detail.rowcount()] = ls_rem
+		end if
+		if lstr_criteria.s_name1 = "DiscPerc" then
+			for ll_counter = 1 to this.id_detail.rowcount()
+				ld_disc[ll_counter] = lstr_criteria.d_value1
+			next
+			this.id_detail.object.discperc[1, this.id_detail.rowcount()] = ld_disc
+		end if
+		if lstr_criteria.s_name1 = "ServiceFlatDisc" then
+			for ll_counter = 1 to this.id_detail.rowcount()
+				ld_disc[ll_counter] = lstr_criteria.d_value1
+			next
+			this.id_detail.object.serviceflatdisc[1, this.id_detail.rowcount()] = ld_disc
+		end if
+	end if
+	return 0
+
+// w_custservicetemplate.wf_get_vehiclecode(string as_name) returns long
+	long ll_vehiclecode
+	SQL SELECT vehiclecode INTO :ll_vehiclecode FROM vehicle WHERE name =:as_name USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		if ll_vehiclecode > 0 then
+			ll_vehiclecode = ll_vehiclecode
+		else
+			setnull(ll_vehiclecode)
+		end if
+	else
+		setnull(ll_vehiclecode)
+	end if
+	return ll_vehiclecode
+
+// w_custservicetemplate.create() returns 0
+	integer icurrent
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_custservicetemp" then
+		this.menuid = create m_custservicetemp
+	end if
+	this.dw_saleinvrep = create dw_saleinvrep
+	this.dw_saleinvdetail = create dw_saleinvdetail
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_saleinvrep
+	this.control[icurrent + 2] = this.dw_saleinvdetail
+
+// w_custservicetemplate.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_saleinvrep
+	destroy this.dw_saleinvdetail
+
+// w_custservicetemplate.ue_save() returns 0
+	long ll_detailrows
+	long ll_counter
+	long ll_count
+	long ll_salesmancode
+	long ll_mastercurrrow
+	long ll_row
+	long ll_code
+	long ll_insrow
+	long ll_null
+	long ll_pk
+	boolean lb_commitflag
+	boolean lb_continue
+	integer li_counter
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	string ls_errtext
+	string ll_rollno
+	setnull(ll_null)
+	if not wf_validateserverdatetime(ldt_server_datetime, ls_date_errtext) then
+		messagebox("Date Violation", ls_date_errtext, stopsign!)
+		return
+	end if
+	if this.ib_itemvalidated = false and wf_validateitem(true) = -1 then
+		this.id_detail.setfocus()
+		return
+	end if
+	wf_deleteemptydetailrow()
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	setpointer(hourglass!)
+	ll_salesmancode = gl_usercode
+	ll_pk = this.id_master.getitemnumber(1, "code")
+	ll_code = this.id_master.getitemnumber(1, "code")
+	if ll_salesmancode > 0 then
+		if isnull(ll_pk) then
+			wf_tabnewid("CustomerServiceTemplate", ll_code)
+			this.id_master.object.code[1] = ll_code
+		end if
+		this.id_master.object.date[1] = ldt_server_datetime
+		this.id_master.object.usercode[1] = ll_salesmancode
+		for ll_counter = 1 to this.id_detail.rowcount()
+			this.id_detail.object.code[ll_counter] = ll_code
+			this.id_detail.object.vehiclecode[ll_counter] = wf_get_vehiclecode(this.id_detail.object.vehiclename[ll_counter])
+		next
+		if this.id_master.update(true, true) > 0 then
+			if this.id_detail.update(true, true) > 0 then
+				SQL commit USING this.it_transobject;
+				messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+				this.ib_commitok = true
+				this.id_master.resetupdate()
+				this.im_menu.m_file.m_new.enabled = true
+				this.dw_saleinvdetail.reset()
+				this.id_detail = this.tab_retrieve.tabpage_detail.dw_itemsdetail
+				this.editflag = false
+				if gd_recenttransdate < this.id_systemdate then
+					gd_recenttransdate = this.id_systemdate
+				end if
+			else
+				if isnull(ll_pk) then
+					this.id_master.object.code[1] = ll_null
+				end if
+				SQL rollback USING this.it_transobject;
+				setpointer(arrow!)
+				return
+			end if
+		else
+			if isnull(ll_pk) then
+				this.id_master.object.code[1] = ll_null
+			end if
+			SQL rollback USING this.it_transobject;
+			this.ib_commitok = false
+			setpointer(arrow!)
+		end if
+		if this.ib_commitok then
+			this.ib_modify = false
+		end if
+	else
+		setfocus()
+	end if
+	setpointer(arrow!)
+
+// w_custservicetemplate.ue_newform() returns 0
+	integer rtncode
+	long li_fetched_code
+	long row
+	long ll_manfcode
+	long ll_newrollno
+	m_custservicetemp lm_menu
+	lm_menu = this.menuid
+	setredraw(false)
+	call super::ue_newform
+	this.id_footer.reset()
+	this.id_footer.insertrow(0)
+	this.id_footer.scrolltorow(0)
+	this.im_menu.m_file.m_print.enabled = false
+	this.im_menu.m_file.m_post.enabled = false
+	wf_protectdw(this.id_master, 0)
+	wf_protectdw(this.id_detail, 0)
+	wf_protectdw(this.id_footer, 0)
+	this.ib_modify = false
+	this.id_master.setcolumn(1)
+	this.id_master.setfocus()
+	this.idc_vehicle.retrieve(1)
+	wf_visible(true)
+	setredraw(true)
+
+// w_custservicetemplate.ue_detail() returns 0
+	integer li_rtncode
+	integer li_protect
+	long ll_row
+	long ll_code
+	long ll_deptcode
+	long ll_rowcount
+	boolean lb_flag
+	boolean lb_modify
+	m_multi_entry lm_menu
+	call super::ue_detail
+	lm_menu = this.menuid
+	setredraw(false)
+	this.im_menu.m_file.m_post.enabled = false
+	this.im_menu.m_file.m_print.visible = true
+	this.im_menu.m_file.m_print.enabled = true
+	ll_code = this.id_master.object.code[this.id_master.rowcount()]
+	li_protect = 0
+	if this.id_list.getrow() > 0 then
+		if this.id_list.object.posted[this.id_list.getrow()] = "N" then
+			li_protect = 0
+		else
+			li_protect = 1
+			this.editflag = false
+		end if
+	end if
+	wf_initmodify(li_protect)
+	wf_protectdw(this.id_master, li_protect)
+	wf_protectdw(this.id_detail, li_protect)
+	wf_grandtotal()
+	if this.id_detail.rowcount() > 0 and li_protect = 0 then
+		this.im_menu.m_file.m_save.enabled = true
+	else
+		this.im_menu.m_file.m_save.enabled = false
+	end if
+	this.idc_vehicle.retrieve(1)
+	setredraw(true)
+
+// w_custservicetemplate.ue_newitem() returns 0
+	long ll_insrow
+	long ll_rowcount
+	long ll_newrollno
+	if this.ib_itemvalidated = false and wf_validateitem(true) = -1 then
+		this.id_detail.setfocus()
+		return
+	end if
+	if this.id_detail.rowcount() > 0 and f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	this.id_detail.setcolumn("fullcode")
+	ll_insrow = this.id_detail.insertrow(0)
+	if ll_insrow > 1 then
+		this.id_detail.object.transportroutecode[ll_insrow] = this.id_detail.object.transportroutecode[ll_insrow - 1]
+		this.id_detail.object.charges[ll_insrow] = this.id_detail.object.charges[ll_insrow - 1]
+		this.id_detail.object.remarks[ll_insrow] = this.id_detail.object.remarks[ll_insrow - 1]
+	end if
+	ll_rowcount = this.id_detail.rowcount()
+	if ll_rowcount > 1 then
+		this.id_detail.scrolltorow(ll_rowcount)
+		this.id_detail.setfocus()
+	end if
+	this.im_menu.m_file.m_save.enabled = true
+	this.ib_validatefullcode = true
+
+// w_custservicetemplate.close() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::close()
+	return ::message.returnvalue
+
+// w_custservicetemplate.ue_list() returns 0
+	m_custservicetemp lm_menu
+	call super::ue_list
+	lm_menu = this.menuid
+	SQL rollback USING this.it_transobject;
+	lm_menu.m_file.m_post.enabled = true
+	lm_menu.m_file.m_print.visible = true
+	lm_menu.m_file.m_print.enabled = true
+	lm_menu.m_file.m_print.toolbaritemvisible = true
+	this.ib_modify = false
+	this.id_itemslist.hide()
+	if this.id_detail.rowcount() > 0 then
+		postevent("ue_deleteitem")
+	end if
+	wf_retrievelist()
+
+// w_custservicetemplate.ue_print() returns 0
+	long ll_code
+	long ll_row
+	long li_printretcode
+	string ls_printsize
+	boolean lb_listtab
+	s_datastore lstr
+	call super::ue_print
+	if this.tab_retrieve.selectedtab = 2 then
+		lb_listtab = true
+	end if
+	if this.im_menu.m_file.m_save.enabled = true and lb_listtab = false then
+		triggerevent("ue_save")
+		if wf_commitform() = false then
+			return
+		end if
+		return
+	end if
+	if lb_listtab then
+		if isnull(this.id_list.getrow()) or this.id_list.getrow() <= 0 then
+			messagebox("Rows Validation", "Kindly select any row from the list view.")
+			return
+		end if
+		ll_code = this.id_list.getitemnumber(this.id_list.getrow(), "code")
+		if isnull(ll_code) or ll_code <= 0 then
+			messagebox("Selection Validation", "Kindly select any row from the list view.")
+			return
+		end if
+	else
+		ll_code = this.id_detail.getitemnumber(1, "code")
+	end if
+	wf_selectprintreport()
+	this.id_print.settransobject(this.it_transobject)
+	this.id_print.retrieve(ll_code)
+	if lb_listtab then
+		lstr.dw = this.id_print
+		lstr.s_name1 = this.id_print.dataobject
+		openwithparm(w_preview_invoices, lstr)
+		lstr = message.powerobjectparm
+		if lstr.i_closemode = -1 then
+			return
+		end if
+		return
+	end if
+	if this.id_print.rowcount() > 0 then
+		if f_stringpreferences("PromptBeforePrinting") = "Y" and printsetup() < 0 then
+			messagebox("Printer", "Printing Error")
+			this.id_print.printcancel()
+		end if
+		li_printretcode = this.id_print.print()
+		if li_printretcode < 0 then
+			messagebox("Printing", "Can not Print Invoice", information!)
+		end if
+		if this.im_menu.m_file.m_save.enabled = true and lb_listtab = false then
+			postevent("ue_new")
+		end if
+		return
+	end if
+	messagebox("Printing Error", "Can not Print,~r~nNo rows are retrieved", information!)
+
+// w_custservicetemplate.ue_new() returns 0
+	call super::ue_new
+	this.im_menu.m_file.m_post.enabled = false
+
+// w_custservicetemplate.ue_postopen() returns 0
+	m_custservicetemp lm_menu
+	integer li_rtncode
+	long ll_counter
+	long ll_pos
+	long ll_found
+	long li_count
+	long ll_startrow
+	char lc_char
+	lm_menu = this.menuid
+	setredraw(false)
+	wf_connect()
+	this.id_master = this.tab_retrieve.tabpage_detail.dw_detail
+	this.id_detail = this.tab_retrieve.tabpage_detail.dw_itemsdetail
+	this.id_footer = this.tab_retrieve.tabpage_detail.dw_footer
+	this.id_list = this.tab_retrieve.tabpage_list.dw_list
+	this.id_itemslist = this.tab_retrieve.tabpage_detail.dw_itemslist
+	this.id_master.settransobject(this.it_transobject)
+	this.id_detail.settransobject(this.it_transobject)
+	this.id_list.settransobject(this.it_transobject)
+	this.id_footer.settransobject(this.it_transobject)
+	this.id_itemslist.settransobject(this.it_transobject)
+	this.id_dwcontrol = this.id_list
+	post wf_populate_ddlb(this.id_dwcontrol)
+	this.tab_retrieve.tabpage_list.dw_find.settransobject(this.it_transobject)
+	this.id_master.setfocus()
+	setredraw(true)
+	this.ids_itemrecyclebin = create datastore
+	this.ids_itemrecyclebin.tag = this.id_detail.dataobject
+	this.ids_itemrecyclebin.settransobject(this.it_transobject)
+	setredraw(false)
+	this.id_print = this.dw_saleinvrep
+	li_rtncode = this.id_detail.getchild("vehiclename", this.idc_vehicle)
+	if li_rtncode = -1 then
+		messagebox("datawindow child error", "can not get data window child for vehicle list", stopsign!)
+		close(this)
+		return
+	end if
+	this.idc_vehicle.settransobject(this.it_transobject)
+	this.idc_vehicle.retrieve(1)
+	this.id_itemslist.retrieve()
+	for li_count = 65 to 90
+		lc_char = char(li_count)
+		this.ia_llookuptable[li_count] = this.id_itemslist.find("Lower(itemname) >= Lower('" + char(li_count) + "')", ll_startrow, 999999)
+		ll_startrow = this.ia_llookuptable[li_count]
+	next
+	this.ia_llookuptable[92] = 999999
+	this.id_footer.reset()
+	this.id_footer.insertrow(0)
+	this.id_footer.scrolltorow(0)
+	setredraw(true)
+
+// w_custservicetemplate.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	return ::message.returnvalue
+
+// w_custservicetemplate.ue_refreshddw() returns 0
+	long li_count
+	long ll_startrow
+	char lc_char
+	call super::ue_refreshddw
+	this.id_itemslist.retrieve()
+	for li_count = 65 to 90
+		lc_char = char(li_count)
+		this.ia_llookuptable[li_count] = this.id_itemslist.find("Lower(itemname) >= Lower('" + char(li_count) + "')", ll_startrow, 999999)
+		ll_startrow = this.ia_llookuptable[li_count]
+	next
+	this.ia_llookuptable[92] = 999999

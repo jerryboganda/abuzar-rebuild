@@ -1,0 +1,68 @@
+// window w_due_itemlist (salerespwin)  ancestor: window
+
+// w_due_itemlist.ue_close(integer ai_closemode) returns 0
+	this.istr_arg.i_closemode = ai_closemode
+	closewithreturn(this, this.istr_arg)
+
+// w_due_itemlist.create() returns 0
+	this.cb_save = create cb_save
+	this.cb_print = create cb_print
+	this.cb_continue = create cb_continue
+	this.dw_report = create dw_report
+	this.control = {this.cb_save, this.cb_print, this.cb_continue, this.dw_report}
+
+// w_due_itemlist.destroy() returns 0
+	destroy this.cb_save
+	destroy this.cb_print
+	destroy this.cb_continue
+	destroy this.dw_report
+
+// w_due_itemlist.open() returns long
+	datastore lds_items
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	long ll_counter
+	long ll_currentrow
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	lds_items = create datastore
+	this.istr_arg = message.powerobjectparm
+	this.istr_arg.i_closemode = -1
+	lds_items.settransobject(sqlca)
+	lds_items = this.istr_arg.ds
+	this.dw_report.settransobject(sqlca)
+	lds_items.sharedata(this.dw_report)
+	this.dw_report.modify("DataWindow.Print.Preview=yes")
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// cb_save.clicked() returns long
+	parent.dw_report.saveas()
+	return ::message.returnvalue
+
+// cb_print.clicked() returns long
+	if parent.dw_report.visible then
+		if printsetup() < 0 then
+			messagebox("Printer", "Printing Error")
+			parent.dw_report.printcancel()
+		end if
+		parent.dw_report.print()
+	end if
+	return ::message.returnvalue
+
+// cb_continue.clicked() returns long
+	parent.post event ue_close(-1)
+	return ::message.returnvalue

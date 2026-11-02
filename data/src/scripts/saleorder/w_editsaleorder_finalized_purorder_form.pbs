@@ -1,0 +1,75 @@
+// window w_editsaleorder_finalized_purorder_form (saleorder)  ancestor: window
+
+// w_editsaleorder_finalized_purorder_form.ue_close(integer ai_status) returns 0
+	closewithreturn(this, this.istr_template)
+
+// w_editsaleorder_finalized_purorder_form.create() returns 0
+	this.cbx_considerstock = create cbx_considerstock
+	this.rb_totqty = create rb_totqty
+	this.rb_eqty = create rb_eqty
+	this.st_template = create st_template
+	this.dw_template = create dw_template
+	this.cb_ok = create cb_ok
+	this.gb_1 = create gb_1
+	this.control = {this.cbx_considerstock, this.rb_totqty, this.rb_eqty, this.st_template, this.dw_template, this.cb_ok, this.gb_1}
+
+// w_editsaleorder_finalized_purorder_form.destroy() returns 0
+	destroy this.cbx_considerstock
+	destroy this.rb_totqty
+	destroy this.rb_eqty
+	destroy this.st_template
+	destroy this.dw_template
+	destroy this.cb_ok
+	destroy this.gb_1
+
+// w_editsaleorder_finalized_purorder_form.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	this.dw_template.settransobject(sqlca)
+	this.dw_template.insertrow(0)
+	this.dw_template.scrolltorow(0)
+	return ::message.returnvalue
+
+// w_editsaleorder_finalized_purorder_form.key(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		this.istr_template.c_copyinvfrom = "N"
+		this.istr_template.l_invtemplate = -1
+		post event ue_close(1)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	if isnull(parent.dw_template.getitemnumber(1, "saleordercode")) then
+		return ::message.returnvalue
+	end if
+	parent.istr_template.c_copyinvfrom = "T"
+	parent.istr_template.l_invtemplate = parent.dw_template.getitemnumber(1, "saleordercode")
+	if parent.rb_eqty.checked = true then
+		parent.istr_template.i_invtype = 1
+	else
+		parent.istr_template.i_invtype = 0
+	end if
+	if parent.cbx_considerstock.checked = true then
+		parent.istr_template.b_userinput = true
+	else
+		parent.istr_template.b_userinput = false
+	end if
+	parent.post event ue_close(1)
+	return ::message.returnvalue

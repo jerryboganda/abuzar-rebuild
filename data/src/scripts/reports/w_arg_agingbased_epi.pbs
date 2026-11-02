@@ -1,0 +1,193 @@
+// window w_arg_agingbased_epi (reports)  ancestor: w_listarguments
+
+// w_arg_agingbased_epi.create() returns 0
+	integer icurrent
+	call super::create
+	this.lb_cust = create lb_cust
+	this.cbx_allcust = create cbx_allcust
+	this.lb_selectedcust = create lb_selectedcust
+	this.st_10 = create st_10
+	this.st_11 = create st_11
+	this.st_4 = create st_4
+	this.dw_area = create dw_area
+	this.st_8 = create st_8
+	this.st_9 = create st_9
+	this.em_aginglimit = create em_aginglimit
+	this.em_agingdate = create em_agingdate
+	this.st_12 = create st_12
+	this.em_epi = create em_epi
+	this.gb_5 = create gb_5
+	this.gb_6 = create gb_6
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.lb_cust
+	this.control[icurrent + 2] = this.cbx_allcust
+	this.control[icurrent + 3] = this.lb_selectedcust
+	this.control[icurrent + 4] = this.st_10
+	this.control[icurrent + 5] = this.st_11
+	this.control[icurrent + 6] = this.st_4
+	this.control[icurrent + 7] = this.dw_area
+	this.control[icurrent + 8] = this.st_8
+	this.control[icurrent + 9] = this.st_9
+	this.control[icurrent + 10] = this.em_aginglimit
+	this.control[icurrent + 11] = this.em_agingdate
+	this.control[icurrent + 12] = this.st_12
+	this.control[icurrent + 13] = this.em_epi
+	this.control[icurrent + 14] = this.gb_5
+	this.control[icurrent + 15] = this.gb_6
+
+// w_arg_agingbased_epi.destroy() returns 0
+	call super::destroy
+	destroy this.lb_cust
+	destroy this.cbx_allcust
+	destroy this.lb_selectedcust
+	destroy this.st_10
+	destroy this.st_11
+	destroy this.st_4
+	destroy this.dw_area
+	destroy this.st_8
+	destroy this.st_9
+	destroy this.em_aginglimit
+	destroy this.em_agingdate
+	destroy this.st_12
+	destroy this.em_epi
+	destroy this.gb_5
+	destroy this.gb_6
+
+// w_arg_agingbased_epi.open() returns long
+	long ancestorreturnvalue
+	long ll_counter
+	long ll_rowcount
+	integer rtncode
+	ancestorreturnvalue = super::open()
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	this.dw_control.setitem(1, "vochcatcode", 1)
+	this.dw_area.settransobject(sqlca)
+	this.dw_area.insertrow(0)
+	this.dw_area.scrolltorow(0)
+	this.dw_area.setitem(1, "areacode", 1)
+	this.dw_startendinvoice.settransobject(sqlca)
+	this.dw_startendinvoice.insertrow(0)
+	this.dw_startendinvoice.scrolltorow(0)
+	this.dw_startendinvoice.setitem(1, "scode", 1)
+	this.dw_startendinvoice.setitem(1, "lcode", 1)
+	rtncode = this.dw_control.getchild("vochcatcode", this.idc_child)
+	if rtncode = -1 then
+		messagebox("Error", "Not a DataWindowChild")
+	end if
+	ll_rowcount = this.idc_child.rowcount()
+	for ll_counter = 1 to ll_rowcount
+		this.lb_cust.additem(this.idc_child.getitemstring(ll_counter, "name"))
+	next
+	this.em_agingdate.text = this.em_enddate.text
+	return ::message.returnvalue
+
+// lb_cust.ue_keypress(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		post event doubleclicked(selectedindex())
+	end if
+	return ::message.returnvalue
+
+// lb_cust.doubleclicked(integer index) returns long
+	string ls_item
+	long ll_selectedindex
+	ls_item = string(selecteditem())
+	ll_selectedindex = selectedindex()
+	if not isnull(ls_item) and index >= 1 then
+		parent.lb_selectedcust.additem(ls_item)
+		deleteitem(index)
+		if ll_selectedindex > 1 then
+			if totalitems() < ll_selectedindex then
+				selectitem(totalitems())
+			else
+				selectitem(ll_selectedindex)
+			end if
+		else
+			selectitem(1)
+		end if
+	else
+		messagebox("Selection Validation", "Please select some value from selectable listbox")
+	end if
+	return ::message.returnvalue
+
+// lb_cust.getfocus() returns long
+	return ::message.returnvalue
+
+// lb_selectedcust.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		post event doubleclicked(selectedindex())
+	end if
+	return ::message.returnvalue
+
+// lb_selectedcust.doubleclicked(integer index) returns long
+	string ls_item
+	long ll_selectedindex
+	ll_selectedindex = selectedindex()
+	ls_item = string(selecteditem())
+	if not isnull(ls_item) and index >= 1 then
+		parent.lb_cust.additem(ls_item)
+		deleteitem(index)
+		if totalitems() < ll_selectedindex then
+			selectitem(totalitems())
+		else
+			selectitem(ll_selectedindex)
+		end if
+	else
+		messagebox("Selection Validation", "Please select some value from selected listbox")
+	end if
+	return ::message.returnvalue
+
+// lb_selectedcust.getfocus() returns long
+	return ::message.returnvalue
+
+// dw_area.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return ::message.returnvalue
+
+// em_aginglimit.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// em_aginglimit.getfocus() returns long
+	selecttext(1, len(this.text))
+	return ::message.returnvalue
+
+// em_agingdate.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	string ls_date
+	string ls_temp
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	if key = keyf4! then
+		ls_temp = this.text
+		ls_date = left(ls_temp, 10)
+		openwithparm(w_calendar, ls_date)
+		ls_date = message.stringparm
+		if not (ls_date = "" or isnull(ls_date)) then
+			ls_temp = ls_date + " " + right(ls_temp, 8)
+			this.text = ls_temp
+		end if
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// em_agingdate.getfocus() returns long
+	selecttext(1, len(this.text))
+	return ::message.returnvalue
+
+// em_epi.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// em_epi.getfocus() returns long
+	selecttext(1, len(this.text))
+	return ::message.returnvalue

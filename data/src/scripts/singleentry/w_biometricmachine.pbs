@@ -1,0 +1,26 @@
+// window w_biometricmachine (singleentry)  ancestor: w_single_entry
+
+// w_biometricmachine.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM biometricmachine WHERE name =:as_name USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_biometricmachine.create() returns 0
+	call super::create
+
+// w_biometricmachine.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_biometricmachine.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.is_tablename = "biometricmachine"
+	return ::message.returnvalue

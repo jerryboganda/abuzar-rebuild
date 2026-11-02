@@ -1,0 +1,318 @@
+// window w_motorvehicle (multientry)  ancestor: window
+
+// w_motorvehicle.ue_close(integer ai_status) returns 0
+	if ai_status = -1 then
+		setnull(this.is_chasisno)
+	end if
+	closewithreturn(this, this.is_chasisno)
+
+// w_motorvehicle.ue_postopen() returns 0
+	boolean lb_wardcode_enabled
+	string ls_custcode
+	string ls_setting
+	long ll_custcode
+	integer li_rtncode
+	this.il_groupcode = f_getgroupcode(gl_usercode)
+	this.dw_detail.settransobject(this.it_transobject)
+	this.dw_detail.insertrow(0)
+
+// w_motorvehicle.wf_validateserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+	datetime ldt_last_transdate
+	datetime ldt_current_serverdate
+	long li_max_allow_days
+	ar_errtext = "Invoice Date  Check violates"
+	li_max_allow_days = f_numberpreferences("MaxAllowDate")
+	if isnull(li_max_allow_days) then
+		li_max_allow_days = 4
+	end if
+	SQL SELECT LastTransDate INTO :ldt_last_transdate FROM ServerDate USING sqlca;
+	if sqlca.sqlcode = 0 then
+		sqlca.getdatetime(ldt_current_serverdate)
+		if sqlca.sqlcode = 0 then
+			if ldt_current_serverdate >= ldt_last_transdate and daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) <= li_max_allow_days then
+				ar_server_datetime = ldt_current_serverdate
+				return true
+			elseif ldt_current_serverdate < ldt_last_transdate then
+				ar_errtext = "Back Date Invoice Check violates"
+				return false
+			elseif daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) > li_max_allow_days then
+				ar_errtext = "Forward Date Invoice Check violates"
+				return false
+			end if
+		else
+			return false
+		end if
+		return
+	end if
+	return false
+
+// w_motorvehicle.wf_getserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+	datetime ldt_last_transdate
+	datetime ldt_current_serverdate
+	integer li_max_allow_days
+	string ls_hold_serverdate
+	date ld_datepart
+	time lt_timepart
+	ar_errtext = "Please verify Server DateTime"
+	li_max_allow_days = f_numberpreferences("MaxAllowDate")
+	if isnull(li_max_allow_days) then
+		li_max_allow_days = 4
+	end if
+	SQL rollback USING sqlca;
+	SQL SELECT LastTransDate INTO :ldt_last_transdate FROM ServerDate USING sqlca;
+	if sqlca.sqlcode = 0 then
+		sqlca.getdatetime(ldt_current_serverdate)
+		if sqlca.sqlcode = 0 then
+			if ldt_current_serverdate >= ldt_last_transdate and daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) <= li_max_allow_days then
+				ld_datepart = date(string(ldt_current_serverdate, "yyyy-mm-dd"))
+				lt_timepart = time(string(ldt_current_serverdate, "hh:mm:ss"))
+				ldt_current_serverdate = datetime(ld_datepart, lt_timepart)
+				SQL update ServerDate SET LastTransDate =:ldt_current_serverdate USING sqlca;
+				if sqlca.sqlcode = 0 then
+					SQL commit USING sqlca;
+					ar_server_datetime = ldt_current_serverdate
+					return true
+				else
+					SQL rollback USING sqlca;
+					return false
+				end if
+			elseif ldt_current_serverdate < ldt_last_transdate then
+				ar_errtext = "Back Date Invoice Check violates"
+				return false
+			elseif daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) > li_max_allow_days then
+				ar_errtext = "Forward Date Invoice Check violates"
+				return false
+			end if
+		else
+			SQL rollback USING sqlca;
+			return false
+		end if
+		return
+	end if
+	SQL rollback USING sqlca;
+	return false
+
+// w_motorvehicle.wf_connect() returns long
+	this.it_transobject = create u_transaction
+	SQL start USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		return 0
+	end if
+	messagebox("Connection Problem", "Problem Connecting Database ... ~r~n" + this.it_transobject.sqlerrtext)
+	return -1
+
+// w_motorvehicle.wf_print() returns long
+	long ll_code
+	long li_printretcode
+	string ls_format
+	ll_code = this.dw_detail.getitemnumber(1, "code")
+	if not (ll_code = 0 or isnull(ll_code)) then
+		ls_format = f_set_patientprintout()
+		if ls_format = "" or isnull(ls_format) then
+			ls_format = "d_motorvehicle_detail"
+		end if
+		this.dw_print.dataobject = ls_format
+		this.dw_print.settransobject(this.it_transobject)
+		this.dw_print.retrieve(ll_code)
+		if this.dw_print.rowcount() > 0 then
+			if f_stringpreferences("PromptBeforePrinting") = "Y" and printsetup() < 0 then
+				messagebox("Printer", "Printing Error")
+				this.dw_print.printcancel()
+			end if
+			li_printretcode = this.dw_print.print()
+			if li_printretcode < 0 then
+				messagebox("Printing", "Can not Print Invoice", information!)
+			end if
+		else
+			messagebox("Printing Error", "Can not Print,~r~nNo rows are retrieved", information!)
+		end if
+	end if
+	return 0
+
+// w_motorvehicle.wf_duplicatechasisno(string as_chasisno) returns boolean
+	long ll_count
+	long ll_code
+	boolean b_flag
+	as_chasisno = trim(as_chasisno)
+	ll_code = this.dw_detail.object.code[this.dw_detail.rowcount()]
+	if isnull(ll_code) then
+		SQL SELECT count ( *) INTO :ll_count FROM MotorVehicle WHERE Chasisno =:as_chasisno USING this.it_transobject;
+	else
+		SQL SELECT count ( *) INTO :ll_count FROM MotorVehicle WHERE Chasisno =:as_chasisno USING this.it_transobject;
+	end if
+	if this.it_transobject.sqlcode = 0 then
+		if ll_count > 0 then
+			b_flag = true
+		else
+			b_flag = false
+		end if
+	else
+		b_flag = false
+	end if
+	return b_flag
+
+// w_motorvehicle.create() returns 0
+	this.dw_print = create dw_print
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.dw_detail = create dw_detail
+	this.control = {this.dw_print, this.cb_cancel, this.cb_ok, this.dw_detail}
+
+// w_motorvehicle.destroy() returns 0
+	destroy this.dw_print
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.dw_detail
+
+// w_motorvehicle.open() returns long
+	long ll_row
+	long ll_width
+	long ll_height
+	environment env
+	if wf_connect() <> 0 then
+		close(this)
+		return ::message.returnvalue
+	end if
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.x = int((ll_width - this.width) / 2.0)
+	this.y = int((ll_height - this.height) / 2.0)
+	post event ue_postopen()
+	return ::message.returnvalue
+
+// cb_cancel.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	long ll_primarykey
+	long ll_row
+	long ll_null
+	long ll_new_reg
+	long ll_primarykey_old
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	string ls_regno
+	string ls_code
+	string ls_errtext
+	dwitemstatus ldw_active
+	boolean lb_commit
+	setpointer(hourglass!)
+	setnull(ll_null)
+	if f_validatedw(parent.dw_detail) < 0 then
+		return ::message.returnvalue
+	end if
+	ll_row = parent.dw_detail.getrow()
+	ll_primarykey = parent.dw_detail.object.code[ll_row]
+	ll_primarykey_old = ll_primarykey
+	if isnull(ll_primarykey) and not f_rightexists(5024) then
+		messagebox("Problem Saving", "You do not have the Right to enter New Patient~r~nPlease ask system administrator to do the needfull.")
+		parent.dw_detail.setfocus()
+		parent.dw_detail.setcolumn("chasisno")
+		return ::message.returnvalue
+	end if
+	if not parent.wf_getserverdatetime(ldt_server_datetime, ls_date_errtext) then
+		messagebox("Date Violation", ls_date_errtext, stopsign!)
+		return ::message.returnvalue
+	end if
+	parent.dw_detail.object.date[ll_row] = ldt_server_datetime
+	if isnull(ll_primarykey) then
+		ll_primarykey = 0
+		ll_new_reg = 1
+		SQL rollback USING parent.it_transobject;
+		parent.it_transobject.gettabmaxkey("MotorVehicle", ll_primarykey)
+		if parent.it_transobject.sqlcode = 0 then
+			parent.dw_detail.setitem(ll_row, "code", ll_primarykey)
+			parent.dw_detail.object.originaldate[ll_row] = ldt_server_datetime
+		else
+			SQL rollback USING parent.it_transobject;
+			lb_commit = false
+			parent.dw_detail.setitem(ll_row, "code", ll_null)
+			messagebox("Motor Vehicle Registration Problem", "Problem in Motor Vehicle Registration.~r~n Possibe Reason: " + parent.it_transobject.sqlerrtext)
+		end if
+	end if
+	if lb_commit then
+		parent.dw_detail.accepttext()
+		if parent.dw_detail.update() > 0 then
+			SQL commit USING parent.it_transobject;
+			if parent.ib_print then
+				parent.wf_print()
+			end if
+			if ll_new_reg = 1 then
+				ls_code = trim(string(ll_primarykey))
+				SQL commit USING parent.it_transobject;
+			end if
+			messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+			parent.is_chasisno = parent.dw_detail.object.chasisno[ll_row]
+		else
+			SQL rollback USING parent.it_transobject;
+			setpointer(arrow!)
+			if isnull(ll_primarykey_old) then
+				parent.dw_detail.setitem(ll_row, "code", ll_null)
+			end if
+			messagebox("Save Changes", "Changes Rollback in database, ~n~rSome database problem occurs", exclamation!, ok!, 1)
+			return ::message.returnvalue
+		end if
+		setpointer(arrow!)
+		parent.post event ue_close(1)
+	end if
+	if isnull(ll_primarykey_old) then
+		parent.dw_detail.setitem(ll_row, "code", ll_null)
+	end if
+	setpointer(arrow!)
+	return ::message.returnvalue
+
+// dw_detail.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	long ll_totdays
+	long ll_years
+	long ll_months
+	long ll_days
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "chasisno"
+		if parent.wf_duplicatechasisno(data) then
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "chasisno"
+		messagebox("Chasis No Validation", "Chasis No. Duplication Error~r~nPlease enter some other Chasis No.")
+	end choose
+	return 1
+
+// dw_detail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if keyflags = 2 and key = keyp! then
+		parent.ib_print = true
+		parent.cb_ok.triggerevent(clicked!)
+	end if
+	return ::message.returnvalue

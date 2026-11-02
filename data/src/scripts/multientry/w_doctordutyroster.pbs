@@ -1,0 +1,120 @@
+// window w_doctordutyroster (multientry)  ancestor: w_multi_entry
+
+// w_doctordutyroster.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM DoctorDutyRoster WHERE name =:as_name USING this.it_transobject;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_doctordutyroster.wf_validateitem() returns integer
+	long ll_icode
+	integer li_errcode
+	integer li_null
+	ll_icode = this.id_detail.getitemnumber(this.il_currrow, "doctcode")
+	this.ib_itemvalidated = true
+	if li_errcode = -1 then
+		setnull(li_null)
+		this.id_detail.setcolumn("doctcode")
+		this.id_detail.scrolltorow(this.il_currrow)
+		this.id_detail.object.doctcode[this.il_currrow] = li_null
+	end if
+	return li_errcode
+
+// w_doctordutyroster.create() returns 0
+	call super::create
+
+// w_doctordutyroster.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_doctordutyroster.ue_save() returns 0
+	long ll_mastercurrrow
+	long ll_invid
+	long ll_detailrows
+	integer li_counter
+	integer ll_salesmancode
+	boolean lb_commitflag
+	dwitemstatus lds_rowstatus
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	setpointer(hourglass!)
+	ll_mastercurrrow = this.id_master.getrow()
+	ll_invid = this.id_master.object.code[ll_mastercurrrow]
+	if isnull(ll_invid) then
+		f_newtableid("DoctorDutyRoster", ll_invid)
+		this.id_master.object.code[ll_mastercurrrow] = ll_invid
+	end if
+	this.id_master.object.usercode[ll_mastercurrrow] = gl_usercode
+	ll_detailrows = this.id_detail.rowcount()
+	li_counter = 1
+	do while li_counter <= ll_detailrows and lb_commitflag = true
+		lds_rowstatus = this.id_detail.getitemstatus(li_counter, 0, primary!)
+		if lds_rowstatus = newmodified! then
+			this.id_detail.setitem(li_counter, "code", ll_invid)
+		end if
+		li_counter = li_counter + 1
+	loop
+	call super::ue_save
+	setpointer(arrow!)
+
+// w_doctordutyroster.ue_newform() returns 0
+	call super::ue_newform
+	this.id_master.setfocus()
+	if this.id_master.rowcount() > 0 then
+		if this.id_master.object.code[this.id_master.rowcount()] <= 0 then
+			this.id_master.object.usercode[this.id_master.rowcount()] = gl_usercode
+		end if
+	end if
+	this.id_master.object.active.protect = 1
+
+// w_doctordutyroster.ue_newitem() returns 0
+	string ls_date
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	call super::ue_newitem
+	this.id_detail.setcolumn("doctcode")
+	if this.id_detail.rowcount() > 1 then
+		this.id_detail.object.startdate[this.id_detail.rowcount()] = datetime(relativedate(date(this.id_detail.object.enddate[this.id_detail.rowcount() - 1]), 1), time("00:00:00"))
+		this.id_detail.object.enddate[this.id_detail.rowcount()] = datetime(date(this.id_detail.object.startdate[this.id_detail.rowcount()]), time("23:59:59"))
+		return
+	end if
+	if this.id_detail.rowcount() = 1 then
+		this.id_detail.object.startdate[this.id_detail.rowcount()] = this.id_master.object.startdate[1]
+		this.id_detail.object.enddate[this.id_detail.rowcount()] = datetime(date(this.id_master.object.startdate[1]), time("23:59:59"))
+	end if
+
+// w_doctordutyroster.ue_detail() returns 0
+	call super::ue_detail
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_delete.enabled = true
+	this.im_menu.m_file.m_first.enabled = true
+	this.im_menu.m_file.m_next.enabled = true
+	this.im_menu.m_file.m_last.enabled = true
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_menu.m_file.m_previous.enabled = true
+	this.im_menu.m_item.m_newitem.enabled = true
+	this.im_menu.m_item.m_deleteitem.enabled = true
+	this.id_master.object.active.protect = 0
+
+// w_doctordutyroster.ue_postopen() returns 0
+	call super::ue_postopen
+	this.id_detail.getchild("doctcode", this.idc_doctor)
+	this.idc_doctor.settransobject(this.it_transobject)
+
+// w_doctordutyroster.ue_refreshddw() returns 0
+	call super::ue_refreshddw
+	this.idc_doctor.retrieve()

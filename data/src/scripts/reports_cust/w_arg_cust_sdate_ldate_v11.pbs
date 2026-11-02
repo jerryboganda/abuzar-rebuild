@@ -1,0 +1,93 @@
+// window w_arg_cust_sdate_ldate_v11 (reports_cust)  ancestor: w_popup_forselection_walias
+
+// w_arg_cust_sdate_ldate_v11.create() returns 0
+	integer icurrent
+	call super::create
+	this.gb_2 = create gb_2
+	this.st_1 = create st_1
+	this.st_2 = create st_2
+	this.em_startdate = create em_startdate
+	this.em_enddate = create em_enddate
+	this.st_4 = create st_4
+	this.em_caption = create em_caption
+	this.em_caption2 = create em_caption2
+	this.st_5 = create st_5
+	this.em_caption3 = create em_caption3
+	this.st_3 = create st_3
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.gb_2
+	this.control[icurrent + 2] = this.st_1
+	this.control[icurrent + 3] = this.st_2
+	this.control[icurrent + 4] = this.em_startdate
+	this.control[icurrent + 5] = this.em_enddate
+	this.control[icurrent + 6] = this.st_4
+	this.control[icurrent + 7] = this.em_caption
+	this.control[icurrent + 8] = this.em_caption2
+	this.control[icurrent + 9] = this.st_5
+	this.control[icurrent + 10] = this.em_caption3
+	this.control[icurrent + 11] = this.st_3
+
+// w_arg_cust_sdate_ldate_v11.destroy() returns 0
+	call super::destroy
+	destroy this.gb_2
+	destroy this.st_1
+	destroy this.st_2
+	destroy this.em_startdate
+	destroy this.em_enddate
+	destroy this.st_4
+	destroy this.em_caption
+	destroy this.em_caption2
+	destroy this.st_5
+	destroy this.em_caption3
+	destroy this.st_3
+
+// w_arg_cust_sdate_ldate_v11.open() returns long
+	long ancestorreturnvalue
+	date ld_currdate
+	string ls_text
+	ancestorreturnvalue = super::open()
+	ld_currdate = today()
+	if f_stringpreferences("ApplyArgSDate") = "N" then
+		ls_text = string(ld_currdate, "dd/mm/yyyy")
+		ls_text = trim(ls_text) + " 00:00:00"
+	else
+		ls_text = string(f_datepreferences("DefaultArgSDate"), "dd/mm/yyyy hh:mm:ss")
+	end if
+	this.em_startdate.text = ls_text
+	ls_text = string(ld_currdate, "dd/mm/yyyy")
+	ls_text = trim(ls_text) + " 23:59:59"
+	this.em_enddate.text = ls_text
+	return ::message.returnvalue
+
+// w_arg_cust_sdate_ldate_v11.ue_close() returns 0
+	closewithreturn(this, this.istr_arg)
+
+// em_startdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// em_enddate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// em_caption.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// em_caption2.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// em_caption3.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue

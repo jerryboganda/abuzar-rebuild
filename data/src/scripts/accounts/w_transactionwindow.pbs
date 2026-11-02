@@ -1,0 +1,968 @@
+// window w_transactionwindow (accounts)  ancestor: window
+
+// w_transactionwindow.ue_close(integer ai_status) returns integer
+	closewithreturn(this, this.il_code)
+	return 0
+
+// w_transactionwindow.ue_postopen() returns 0
+	long ll_rtcode
+	long ll_headerrow
+	long ll_footerrow
+	long ll_counter
+	long ll_insrow
+	long ll_found
+	long ll_code
+	this.il_module_open_value = message.doubleparm
+	this.il_groupcode = f_getgroupcode(gl_usercode)
+	if this.il_module_open_value = 1 or this.il_module_open_value = 3 then
+		this.il_transactioncatcode = 1
+	else
+		this.il_transactioncatcode = 2
+	end if
+	if this.il_transactioncatcode = 1 then
+		this.il_module = 37
+		this.il_interfacecode = 18
+		this.title = "Receipt Transaction"
+	elseif this.il_transactioncatcode = 2 then
+		this.il_module = 38
+		this.il_interfacecode = 19
+		this.title = "Payment Transaction"
+	end if
+	this.ids_print = create u_ds_standard
+	setnull(this.il_code)
+
+// w_transactionwindow.ue_newform() returns 0
+	long ll_rtcode
+	long ll_headerrow
+	long ll_footerrow
+	this.dw_header.reset()
+	this.dw_detail.reset()
+	this.dw_footer.reset()
+	this.ids_print.reset()
+	setpointer(hourglass!)
+	SQL rollback USING sqlca;
+	sqlca.virtualgl("A")
+	if sqlca.sqlcode = 0 then
+		SQL commit USING sqlca;
+	else
+		SQL rollback USING sqlca;
+	end if
+	this.dw_header.settransobject(this.it_transobject)
+	ll_rtcode = this.dw_header.getchild("cashacccode", this.idc_cashacc)
+	if ll_rtcode = -1 then
+		messagebox("Error", "Not a DataWindowChild")
+		close(this)
+		return
+	end if
+	this.idc_cashacc.settransobject(this.it_transobject)
+	this.idc_cashacc.retrieve(this.il_groupcode, this.il_module)
+	ll_rtcode = this.dw_header.getchild("transactiontypecode", this.idc_transtype)
+	if ll_rtcode = -1 then
+		messagebox("Error", "Not a DataWindowChild")
+		close(this)
+		return
+	end if
+	this.idc_transtype.settransobject(this.it_transobject)
+	this.idc_transtype.retrieve(this.il_transactioncatcode)
+	ll_rtcode = this.dw_header.getchild("patientcode", this.idc_patient)
+	if ll_rtcode = -1 then
+		messagebox("Error", "Not a DataWindowChild")
+		close(this)
+		return
+	end if
+	this.idc_patient.settransobject(this.it_transobject)
+	this.idc_patient.retrieve(this.il_module)
+	this.dw_detail.settransobject(this.it_transobject)
+	this.dw_footer.settransobject(this.it_transobject)
+	this.dw_footer.insertrow(0)
+	this.dw_footer.scrolltorow(0)
+	this.dw_header.insertrow(0)
+	this.dw_header.scrolltorow(0)
+	this.ids_print.settransobject(this.it_transobject)
+	this.dw_header.object.transactiontypecode[1] = this.idc_transtype.getitemnumber(1, "transactiontypecode")
+	ll_headerrow = this.dw_header.rowcount()
+	ll_footerrow = this.dw_footer.rowcount()
+	wf_adopt_cashwindowtemplate()
+	this.dw_header.setfocus()
+	this.dw_header.selecttext(1, len(this.dw_header.gettext()))
+	if f_stringpreferences("askpatientintransrecpaymentwindow") = "N" then
+		this.dw_header.object.regno.visible = false
+		this.dw_header.object.regno_t.visible = false
+		this.dw_header.object.patientcode.visible = false
+		this.dw_header.object.patientcode_t.visible = false
+		this.dw_header.object.c_patientbalance.visible = false
+		this.dw_header.object.patientbalance_t.visible = false
+	else
+		this.dw_header.object.regno.visible = true
+		this.dw_header.object.regno_t.visible = true
+		this.dw_header.object.patientcode.visible = true
+		this.dw_header.object.patientcode_t.visible = true
+		this.dw_header.object.c_patientbalance.visible = true
+		this.dw_header.object.patientbalance_t.visible = true
+	end if
+	this.editflag = false
+	wf_setlasttransaction()
+	wf_grandtotal()
+	wf_protectdw(this.dw_header, 0)
+	wf_protectdw(this.dw_detail, 0)
+	setpointer(arrow!)
+
+// w_transactionwindow.wf_getglobalcode(string as_str) returns integer
+	integer ll_code
+	SQL SELECT Code INTO :ll_code FROM Global WHERE Name =:as_str USING sqlca;
+	if sqlca.sqlcode <> 0 then
+		ll_code = 0
+	end if
+	return ll_code
+
+// w_transactionwindow.wf_setbalance(string as_col, double ad_amt) returns 0
+	if as_col = "cashtendered" then
+		this.dw_header.object.cashcharged[1] = ad_amt
+		this.dw_header.object.cashback[1] = 0
+		return
+	end if
+	if as_col = "cashcharged" then
+		if ad_amt > this.dw_header.object.cashtendered[1] then
+			this.dw_header.object.cashback[1] = 0
+			return
+		end if
+		this.dw_header.object.cashback[1] = this.dw_header.object.cashtendered[1] - ad_amt
+	end if
+
+// w_transactionwindow.wf_adopt_cashwindowtemplate() returns long
+	long ll_counter
+	long ll_temp_rows
+	long ll_insrow
+	datastore lds_cashtemp
+	lds_cashtemp = create datastore
+	lds_cashtemp.dataobject = "d_cashierwindowtemplate_detail"
+	lds_cashtemp.settransobject(sqlca)
+	lds_cashtemp.retrieve(this.il_interfacecode)
+	ll_temp_rows = lds_cashtemp.rowcount()
+	if ll_temp_rows > 0 then
+		for ll_counter = 1 to ll_temp_rows
+			ll_insrow = this.dw_detail.insertrow(0)
+			this.dw_detail.object.acccode[ll_insrow] = lds_cashtemp.object.acccode[ll_counter]
+			this.dw_detail.object.remarks[ll_insrow] = lds_cashtemp.object.remarks[ll_counter]
+			this.dw_detail.object.amount[ll_insrow] = 0.00
+		next
+	end if
+	return 0
+
+// w_transactionwindow.wf_connect() returns long
+	SQL start USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		return 0
+	end if
+	messagebox("Database Connection Problem", "Unable To Connect to database.~r~nDetails are:-  " + this.it_transobject.sqlerrtext)
+	return this.it_transobject.sqlcode
+
+// w_transactionwindow.wf_getpatientinfo(string as_regno) returns long
+	long ll_patientcode
+	long ll_retflag
+	long ll_admissioncode
+	long ll_custcode
+	string ls_itemname
+	string ls_aliasname
+	char lc_active
+	ll_retflag = 0
+	SQL SELECT patientcode , active , admissioncode =( select MAX ( pa.admissioncode ) from patientadmission pa where pa.patientcode =patient.patientcode and pa.discharged1 ='N' ) , custcode , aliasname =( select a.aliasname from accounts a where a.acccode =patient.custcode ) INTO :ll_patientcode, :lc_active, :ll_admissioncode, :ll_custcode, :ls_aliasname FROM patient WHERE regno =:as_regno and active ='Y' USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		if isnull(ll_patientcode) then
+			ll_retflag = 0
+			this.dw_header.object.aliasname.protect = 0
+			this.dw_header.object.acccode.protect = 0
+		elseif lc_active = "Y" then
+			ll_retflag = 1
+			this.dw_header.object.patientcode[1] = ll_patientcode
+			this.dw_header.object.aliasname[1] = ls_aliasname
+			this.dw_header.object.acccode[1] = ll_custcode
+			wf_patientopeningbalance(ll_patientcode)
+			wf_getaccountbalance(ll_custcode)
+			this.dw_header.object.aliasname.protect = 1
+			this.dw_header.object.acccode.protect = 1
+		else
+			ll_retflag = -2
+		end if
+	else
+		this.dw_header.object.aliasname.protect = 0
+		this.dw_header.object.acccode.protect = 0
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_transactionwindow.wf_getpatientinfo(long al_patientcode) returns long
+	long ll_patientcode
+	long ll_retflag
+	long ll_admissioncode
+	long ll_custcode
+	string ls_itemname
+	string ls_aliasname
+	string ls_regno
+	char lc_active
+	ll_retflag = 0
+	SQL SELECT patientcode , regno , active , admissioncode =( select MAX ( pa.admissioncode ) from patientadmission pa where pa.patientcode =patient.patientcode and pa.discharged1 ='N' ) , custcode , aliasname =( select a.aliasname from accounts a where a.acccode =patient.custcode ) INTO :ll_patientcode, :ls_regno, :lc_active, :ll_admissioncode, :ll_custcode, :ls_aliasname FROM patient WHERE patientcode =:al_patientcode and active ='Y' USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		if isnull(ll_patientcode) then
+			ll_retflag = 0
+			this.dw_header.object.aliasname.protect = 0
+			this.dw_header.object.acccode.protect = 0
+		elseif lc_active = "Y" then
+			ll_retflag = 1
+			this.dw_header.object.patientcode[1] = ll_patientcode
+			this.dw_header.object.regno[1] = ls_regno
+			this.dw_header.object.aliasname[1] = ls_aliasname
+			this.dw_header.object.acccode[1] = ll_custcode
+			wf_patientopeningbalance(ll_patientcode)
+			wf_getaccountbalance(ll_custcode)
+			this.dw_header.object.aliasname.protect = 1
+			this.dw_header.object.acccode.protect = 1
+		else
+			ll_retflag = -2
+		end if
+	else
+		this.dw_header.object.aliasname.protect = 0
+		this.dw_header.object.acccode.protect = 0
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_transactionwindow.wf_getaccountinfo(string as_aliasname) returns long
+	long ll_acccode
+	long ll_retflag
+	long ll_null
+	string ls_aliasname
+	string ls_null
+	setnull(ll_null)
+	setnull(ls_null)
+	ll_retflag = 0
+	SQL SELECT acccode , aliasname INTO :ll_acccode, :ls_aliasname FROM Accounts WHERE AliasName =:as_aliasname and active ='Y' USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		if isnull(ll_acccode) then
+			ll_retflag = 0
+			this.dw_header.object.aliasname.protect = 0
+			this.dw_header.object.acccode.protect = 0
+		else
+			ll_retflag = 1
+			this.dw_header.object.patientcode[1] = ll_null
+			this.dw_header.object.regno[1] = ls_null
+			this.dw_header.object.aliasname[1] = ls_aliasname
+			this.dw_header.object.acccode[1] = ll_acccode
+			wf_getaccountbalance(ll_acccode)
+			this.dw_header.object.aliasname.protect = 0
+			this.dw_header.object.acccode.protect = 0
+		end if
+	else
+		this.dw_header.object.aliasname.protect = 0
+		this.dw_header.object.acccode.protect = 0
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_transactionwindow.wf_getaccountinfo(long al_acccode) returns long
+	long ll_acccode
+	long ll_retflag
+	long ll_null
+	string ls_aliasname
+	string ls_null
+	setnull(ll_null)
+	setnull(ls_null)
+	ll_retflag = 0
+	SQL SELECT acccode , aliasname INTO :ll_acccode, :ls_aliasname FROM Accounts WHERE AccCode =:al_acccode and active ='Y' USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		if isnull(ll_acccode) then
+			ll_retflag = 0
+			this.dw_header.object.aliasname.protect = 0
+			this.dw_header.object.acccode.protect = 0
+		else
+			ll_retflag = 1
+			this.dw_header.object.patientcode[1] = ll_null
+			this.dw_header.object.regno[1] = ls_null
+			this.dw_header.object.aliasname[1] = ls_aliasname
+			this.dw_header.object.acccode[1] = ll_acccode
+			wf_getaccountbalance(ll_acccode)
+			this.dw_header.object.aliasname.protect = 0
+			this.dw_header.object.acccode.protect = 0
+		end if
+	else
+		this.dw_header.object.aliasname.protect = 0
+		this.dw_header.object.acccode.protect = 0
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_transactionwindow.wf_getserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+	datetime ldt_last_transdate
+	datetime ldt_current_serverdate
+	integer li_max_allow_days
+	string ls_hold_serverdate
+	date ld_datepart
+	time lt_timepart
+	ar_errtext = "Please verify Server DateTime"
+	li_max_allow_days = f_numberpreferences("MaxAllowDate")
+	if isnull(li_max_allow_days) then
+		li_max_allow_days = 4
+	end if
+	SQL rollback USING sqlca;
+	SQL SELECT LastTransDate INTO :ldt_last_transdate FROM ServerDate USING sqlca;
+	if sqlca.sqlcode = 0 then
+		sqlca.getdatetime(ldt_current_serverdate)
+		ar_server_datetime = ldt_current_serverdate
+		if sqlca.sqlcode = 0 then
+			if ldt_current_serverdate >= ldt_last_transdate and daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) <= li_max_allow_days then
+				ld_datepart = date(string(ldt_current_serverdate, "yyyy-mm-dd"))
+				lt_timepart = time(string(ldt_current_serverdate, "hh:mm:ss"))
+				ldt_current_serverdate = datetime(ld_datepart, lt_timepart)
+				SQL update ServerDate SET LastTransDate =:ldt_current_serverdate USING sqlca;
+				if sqlca.sqlcode = 0 then
+					SQL commit USING sqlca;
+					ar_server_datetime = ldt_current_serverdate
+					return true
+				else
+					SQL rollback USING sqlca;
+					return false
+				end if
+			elseif ldt_current_serverdate < ldt_last_transdate then
+				ar_errtext = "Back Date Invoice Check violates"
+				return false
+			elseif daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) > li_max_allow_days then
+				ar_errtext = "Forward Date Invoice Check violates"
+				return false
+			end if
+		else
+			SQL rollback USING sqlca;
+			ar_server_datetime = datetime(date(today()), time(today()))
+			return false
+		end if
+		return
+	end if
+	SQL rollback USING sqlca;
+	ar_server_datetime = datetime(date(today()), time(today()))
+	return false
+
+// w_transactionwindow.wf_set_autopost(long al_transactiontypecode) returns long
+	string ls_autopost
+	if al_transactiontypecode > 0 then
+		SQL SELECT autopost INTO :ls_autopost FROM TransactionType WHERE TransactionTypeCode =:al_transactiontypecode USING this.it_transobject;
+		if this.it_transobject.sqlcode = 0 then
+			this.dw_header.object.posted[1] = ls_autopost
+			return 0
+		else
+			return -1
+		end if
+		return
+	end if
+	return -1
+
+// w_transactionwindow.wf_grandtotal() returns long
+	double ld_totalamt
+	this.dw_header.accepttext()
+	this.dw_detail.accepttext()
+	ld_totalamt = this.dw_header.object.cashcharged[1]
+	if this.dw_detail.rowcount() > 0 then
+		ld_totalamt = ld_totalamt + this.dw_detail.getitemnumber(1, "c_totalamt")
+	end if
+	this.dw_footer.object.totalamount[1] = ld_totalamt
+	return 0
+
+// w_transactionwindow.wf_getaccountbalance(long al_acccode) returns long
+	datetime ldt_datetime
+	double ld_balance
+	ldt_datetime = datetime(date(today()), time(today()))
+	sqlca.accountopeningbalance(al_acccode, ldt_datetime, ld_balance)
+	if sqlca.sqlcode = 0 then
+		this.dw_header.object.accbalance[1] = ld_balance
+		return 0
+	end if
+	return -1
+
+// w_transactionwindow.wf_patientopeningbalance(long al_patientcode) returns long
+	datetime ldt_datetime
+	double ld_balance
+	ldt_datetime = datetime(date(today()), time(today()))
+	sqlca.patientopeningbalance(al_patientcode, ldt_datetime, ld_balance)
+	if sqlca.sqlcode = 0 then
+		this.dw_header.object.patientbalance[1] = ld_balance
+		return 0
+	end if
+	return -1
+
+// w_transactionwindow.wf_setlasttransaction() returns long
+	if this.il_code = 0 or isnull(this.il_code) then
+		this.sle_lasttrans.text = "Last Transaction Code = N/A"
+	else
+		this.sle_lasttrans.text = "Last Transaction Code = " + string(this.il_code, "###,###,##0")
+	end if
+	return 0
+
+// w_transactionwindow.wf_save() returns long
+	double ld_totamt
+	long ll_res
+	long ll_pk
+	long ll_counter
+	long ll_transactiontypecode
+	long ll_transcode
+	boolean lb_continue_save
+	boolean lb_modify
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	if this.dw_header.accepttext() < 1 then
+		return -1
+	end if
+	if this.dw_detail.accepttext() < 1 then
+		return -1
+	end if
+	if this.dw_footer.accepttext() < 1 then
+		return -1
+	end if
+	if this.dw_header.object.code[1] > 0 then
+		lb_modify = true
+	end if
+	if lb_modify and this.dw_header.object.posted[1] = "Y" then
+		this.il_code = this.dw_header.object.code[1]
+		return 0
+	end if
+	if this.dw_header.object.acccode[1] = 0 or isnull(this.dw_header.object.acccode[1]) then
+		messagebox("Account Name Validation", "Please select a valid account name")
+		this.dw_header.setfocus()
+		this.dw_header.setcolumn("acccode")
+		return -1
+	end if
+	if this.dw_detail.rowcount() > 0 then
+		ld_totamt = this.dw_detail.getitemnumber(1, "c_totalamt")
+	else
+		ld_totamt = 0
+	end if
+	ld_totamt = ld_totamt + this.dw_header.object.cashcharged[1]
+	if ld_totamt = 0.0 then
+		messagebox("Cash Amount Validation", "Total Amount must be greater than zero in order to save this transaction", stopsign!)
+		this.dw_header.setfocus()
+		this.dw_header.setcolumn("cashcharged")
+		return -1
+	end if
+	if this.dw_header.object.cashacccode[1] <= 0 or isnull(this.dw_header.object.cashacccode[1]) then
+		messagebox("Cash Account Validation", "In order to proceed further, Select Valid Cash Account", stopsign!)
+		this.dw_header.setfocus()
+		this.dw_header.setcolumn("cashacccode")
+		return -1
+	end if
+	if this.dw_header.object.cashtendered[1] < 0 then
+		messagebox("Cash Tendered Amount Validation", "In order to proceed further, Cash Tendered can not be -ve", stopsign!)
+		return -1
+	end if
+	if this.dw_header.object.cashcharged[1] < 0 then
+		messagebox("Cash Charged Amount Validation", "In order to proceed further, Cash Charged can not be -ve", stopsign!)
+		return -1
+	end if
+	if this.dw_header.object.cashcharged[1] > this.dw_header.object.cashtendered[1] then
+		messagebox("Cash Charged Amount Validation", "In order to proceed further, Cash Charged can not be more than cash tendered.", stopsign!)
+		return -1
+	end if
+	if this.dw_header.object.cashback[1] < 0 then
+		messagebox("Cash Back Amount", "In order to proceed further, Cash Back can not be -ve", stopsign!)
+		return -1
+	end if
+	if not wf_getserverdatetime(ldt_server_datetime, ls_date_errtext) then
+		messagebox("Date Violation", ls_date_errtext, stopsign!)
+		return -1
+	end if
+	if wf_set_autopost(this.dw_header.object.transactiontypecode[1]) < 0 then
+		messagebox("Auto Post Setting Error", "Database Problem Occurred while fetching auto post setting for the concerned transaction type", stopsign!)
+		return -1
+	end if
+	ll_pk = this.dw_header.object.code[1]
+	if ll_pk <= 0 or isnull(ll_pk) then
+		if this.it_transobject.gettabmaxkey("TransactionHeader", ll_pk) < 0 then
+			messagebox("Saving Problem", "Changes not saved in database while generating document code~r~n" + this.it_transobject.sqlerrtext, information!)
+			lb_continue_save = false
+			return -1
+		end if
+		return
+	end if
+	if lb_continue_save then
+		ll_transactiontypecode = this.dw_header.object.transactiontypecode[1]
+		ll_transcode = this.dw_header.object.transactioncode[1]
+		if ll_transcode <= 0 or isnull(ll_transcode) then
+			if this.it_transobject.gettransactioncode(ll_transactiontypecode, ll_transcode) < 0 then
+				messagebox("Saving Problem", "Changes not saved in database while generating transaction code~r~n" + this.it_transobject.sqlerrtext, information!)
+				lb_continue_save = false
+				return -1
+			end if
+			return
+		end if
+		this.dw_header.object.code[1] = ll_pk
+		this.dw_header.object.transactioncode[1] = ll_transcode
+		for ll_counter = 1 to this.dw_detail.rowcount()
+			this.dw_detail.object.code[ll_counter] = ll_pk
+			this.dw_detail.object.rowid[ll_counter] = this.dw_detail.getitemnumber(ll_counter, "c_serialno")
+		next
+		this.dw_header.object.usercode[1] = gl_usercode
+		this.dw_header.object.postedby[1] = gl_usercode
+		this.dw_header.object.date[1] = ldt_server_datetime
+		this.dw_header.object.postdate[1] = ldt_server_datetime
+		if this.dw_header.update(true, true) = 1 then
+			if this.dw_detail.update(true, true) = 1 then
+				SQL commit USING this.it_transobject;
+				if this.it_transobject.sqlcode = 0 then
+					this.il_code = ll_pk
+					messagebox("Saving", "Changes saved in database", information!)
+					this.dw_header.reset()
+					this.dw_detail.reset()
+					triggerevent("ue_newform")
+					return 0
+				else
+					SQL rollback USING this.it_transobject;
+					messagebox("Saving Problem", "Changes not saved in database. Reasons are:-" + this.it_transobject.sqlerrtext, information!)
+					return -1
+				end if
+			else
+				SQL rollback USING this.it_transobject;
+				messagebox("Saving Problem", "Changes not saved in database. Reasons are:-" + this.it_transobject.sqlerrtext, information!)
+				return -1
+			end if
+		else
+			SQL rollback USING this.it_transobject;
+			messagebox("Saving Problem", "Changes not saved in database. Reasons are:-" + this.it_transobject.sqlerrtext, information!)
+			return -1
+		end if
+		return
+	end if
+	SQL rollback USING this.it_transobject;
+	messagebox("Saving Problem", "Changes not saved in database. Reasons are:-" + this.it_transobject.sqlerrtext, information!)
+	return -1
+
+// w_transactionwindow.wf_edit() returns long
+	long ll_res
+	long ll_selection
+	long ll_code
+	s_arguements lstr_arg
+	if this.editflag = true then
+		ll_res = messagebox("Save Changes", "Some Changes made are not yet saved in database.~r~nDiscard these changes and proceed with edit operation?", question!, yesno!, 2)
+		if ll_res = 2 then
+			return -1
+		end if
+		return
+	end if
+	if this.il_code > 0 then
+		open(w_selectformat_lasttrans_selection)
+		ll_selection = message.doubleparm
+	else
+		ll_selection = 2
+	end if
+	if ll_selection = 1 then
+		ll_code = this.il_code
+	else
+		openwithparm(w_arg_transactionwindow, this.il_transactioncatcode)
+		lstr_arg = message.powerobjectparm
+		if lstr_arg.i_status = 1 then
+			ll_code = lstr_arg.l_code1
+		else
+			ll_code = 0
+		end if
+	end if
+	if ll_code > 0 then
+		triggerevent("ue_newform")
+		this.dw_header.retrieve(ll_code)
+		this.dw_detail.retrieve(ll_code)
+		this.dw_header.setfocus()
+		if this.dw_header.rowcount() > 0 then
+			if this.dw_header.object.posted[1] = "Y" then
+				wf_protectdw(this.dw_header, 1)
+				wf_protectdw(this.dw_detail, 1)
+				this.editflag = false
+			else
+				this.editflag = true
+				wf_protectdw(this.dw_header, 0)
+				wf_protectdw(this.dw_detail, 0)
+			end if
+		end if
+	end if
+	return 0
+
+// w_transactionwindow.wf_selectprintreport() returns long
+	string ls_report
+	if gs_company = "IHSCHILDRENHSP" then
+		ls_report = "d_ihs_transaction_printout"
+	elseif gs_company = "NUSRATHOSPITAL" then
+		ls_report = "d_nusrathospital_trans_printout_full"
+	elseif gs_company = "WAHINTHSP" then
+		ls_report = "d_wahinthsp_transaction_printout"
+	elseif gs_company = "NAZEERHSP" then
+		ls_report = "d_nazeerhsp_transaction_printout_f"
+	else
+		ls_report = "d_transaction_printout_quarter"
+	end if
+	this.ids_print.dataobject = ls_report
+	this.ids_print.settransobject(this.it_transobject)
+	return 0
+
+// w_transactionwindow.wf_print() returns long
+	boolean lb_print
+	boolean lb_printthisone
+	long ll_res
+	long ll_selection
+	long ll_code
+	s_arguements lstr_arg
+	if this.editflag = true then
+		if wf_save() < 0 then
+			return -1
+		else
+			lb_printthisone = true
+		end if
+	elseif this.dw_header.object.code[1] > 0 and this.dw_header.object.posted[1] = "Y" then
+		this.il_code = this.dw_header.object.code[1]
+		lb_printthisone = true
+	end if
+	if this.il_code > 0 then
+		if lb_printthisone then
+			ll_selection = 1
+		else
+			open(w_selectformat_lasttrans_selection)
+			ll_selection = message.doubleparm
+		end if
+	else
+		ll_selection = 2
+	end if
+	if ll_selection = 1 then
+		ll_code = this.il_code
+	else
+		openwithparm(w_arg_transactionwindow, this.il_transactioncatcode)
+		lstr_arg = message.powerobjectparm
+		if lstr_arg.i_status = 1 then
+			ll_code = lstr_arg.l_code1
+		else
+			ll_code = 0
+		end if
+	end if
+	if ll_code > 0 then
+		wf_selectprintreport()
+		this.ids_print.retrieve(ll_code)
+		if this.ids_print.rowcount() > 0 then
+			this.ids_print.print()
+		else
+			messagebox("Printing Error", "Specified Document can not be retrieved for printing", stopsign!)
+		end if
+	end if
+	triggerevent("ue_newform")
+	return 0
+
+// w_transactionwindow.wf_post() returns long
+	boolean lb_print
+	boolean lb_postthisone
+	long ll_selection
+	long ll_code
+	long ll_code2
+	s_arguements lstr_arg
+	if this.editflag = true then
+		if wf_save() < 0 then
+			return -1
+		else
+			lb_postthisone = true
+		end if
+	end if
+	if this.il_code > 0 then
+		if lb_postthisone then
+			ll_selection = 1
+		else
+			open(w_selectformat_lasttrans_selection)
+			ll_selection = message.doubleparm
+		end if
+	else
+		ll_selection = 2
+	end if
+	if ll_selection = 1 then
+		ll_code = this.il_code
+		ll_code2 = this.il_code
+	else
+		openwithparm(w_arg_transactionwindow_post, this.il_transactioncatcode)
+		lstr_arg = message.powerobjectparm
+		if lstr_arg.i_status = 1 then
+			ll_code = lstr_arg.l_code1
+			ll_code2 = lstr_arg.l_code2
+		else
+			ll_code = 0
+		end if
+	end if
+	if ll_code > 0 and ll_code2 > 0 then
+		SQL update DBO.TransactionHeader SET Posted ='Y' , PostedBy =:gl_usercode , PostDate =GETDATE ( ) FROM TransactionHeader , TransactionType TT WHERE TransactionHeader.Posted ='N' AND TransactionHeader.DocumentCode BETWEEN :ll_code AND :ll_code2 AND TransactionHeader.TransactionTypeCode =TT.TransactionTypeCode AND TT.TransactionCatCode =:this.il_transactioncatcode USING this.it_transobject;
+		if this.it_transobject.sqlcode = 0 then
+			SQL commit USING this.it_transobject;
+			messagebox("Posting", "All transactions posted successfully", information!)
+		else
+			SQL rollback USING this.it_transobject;
+			messagebox("Posting Error", "Specified Document(s) can not be posted", stopsign!)
+		end if
+	end if
+	if lb_postthisone then
+		triggerevent("ue_newform")
+	end if
+	return 0
+
+// w_transactionwindow.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+
+// w_transactionwindow.create() returns 0
+	this.sle_lasttrans = create sle_lasttrans
+	this.cb_post = create cb_post
+	this.dw_footer = create dw_footer
+	this.dw_detail = create dw_detail
+	this.dw_header = create dw_header
+	this.cb_exit = create cb_exit
+	this.cb_save = create cb_save
+	this.cb_print = create cb_print
+	this.cb_edit = create cb_edit
+	this.control = {this.sle_lasttrans, this.cb_post, this.dw_footer, this.dw_detail, this.dw_header, this.cb_exit, this.cb_save, this.cb_print, this.cb_edit}
+
+// w_transactionwindow.destroy() returns 0
+	destroy this.sle_lasttrans
+	destroy this.cb_post
+	destroy this.dw_footer
+	destroy this.dw_detail
+	destroy this.dw_header
+	destroy this.cb_exit
+	destroy this.cb_save
+	destroy this.cb_print
+	destroy this.cb_edit
+
+// w_transactionwindow.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	this.it_transobject = create u_transaction
+	if wf_connect() > 0 then
+		close(this)
+		return ::message.returnvalue
+	end if
+	triggerevent("ue_postopen")
+	triggerevent("ue_newform")
+	return ::message.returnvalue
+
+// cb_post.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		triggerevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_post.clicked() returns long
+	parent.wf_post()
+	return ::message.returnvalue
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	long ll_null
+	long ll_res
+	integer li_errcode
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	parent.editflag = true
+	setnull(ll_null)
+	choose case dwo.name
+	case "amount"
+		if double(data) < 0.0 then
+			messagebox("Amount Validation!", "Please enter valid amount in the current row.", stopsign!)
+			return 1
+		end if
+		parent.wf_setbalance(dwo.name, double(data))
+		parent.wf_grandtotal()
+	end choose
+	return li_errcode
+
+// dw_detail.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_detail.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_detail.losefocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::losefocus()
+	parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	parent.wf_grandtotal()
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_detail.editchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::editchanged(row, dwo, data)
+	parent.editflag = true
+	return ::message.returnvalue
+
+// dw_header.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	parent.wf_grandtotal()
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_header.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	long ll_null
+	long ll_res
+	long ll_result
+	integer li_errcode
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	parent.editflag = true
+	setnull(ll_null)
+	choose case dwo.name
+	case "cashtendered"
+		if double(data) < 0.0 or data = "" or isnull(data) then
+			messagebox("Cash Tendered Validation!", "Please enter valid amount for Cash Tendered.", stopsign!)
+			return 1
+		end if
+		parent.wf_setbalance(dwo.name, double(data))
+	case "cashcharged"
+		if double(data) < 0.0 or data = "" or isnull(data) then
+			messagebox("Cash Charged Validation!", "Please enter valid amount for Cash Charged.", stopsign!)
+			return 1
+		elseif double(data) > this.object.cashtendered[row] then
+			messagebox("Cash Charged Validation!", "Please enter valid amount for Cash Charged~r~nCash Charged must not exceed Cash Tendered.", stopsign!)
+			return 1
+		end if
+		parent.wf_setbalance(dwo.name, double(data))
+	case "regno"
+		if len(data) > 0 then
+			ll_result = parent.wf_getpatientinfo(data)
+			if ll_result < 0 then
+				messagebox("Patient Reg. No. Validation", "This is not a valid patient reg. no.~r~nPlease enter a valid patient reg. no.")
+				return 1
+			end if
+		else
+			parent.dw_header.object.aliasname.protect = 0
+			parent.dw_header.object.acccode.protect = 0
+		end if
+	case "patientcode"
+		if len(data) > 0 then
+			ll_result = parent.wf_getpatientinfo(long(data))
+			if ll_result < 0 then
+				messagebox("Patient Reg. No. Validation", "This is not a valid patient reg. no.~r~nPlease enter a valid patient reg. no.")
+				return 1
+			end if
+		else
+			parent.dw_header.object.aliasname.protect = 0
+			parent.dw_header.object.acccode.protect = 0
+		end if
+	case "aliasname"
+		if len(data) > 0 then
+			ll_result = parent.wf_getaccountinfo(data)
+			if ll_result < 0 then
+				messagebox("Alias Name Validation", "This is not a valid Alias Name.~r~nPlease enter a valid Account Alias Name.")
+				return 1
+			end if
+		else
+			parent.dw_header.object.aliasname.protect = 0
+			parent.dw_header.object.acccode.protect = 0
+		end if
+	case "acccode"
+		if len(data) > 0 then
+			ll_result = parent.wf_getaccountinfo(long(data))
+			if ll_result < 0 then
+				messagebox("Account Name Validation", "This is not a valid Account Name.~r~nPlease enter a valid Account Name.")
+				return 1
+			end if
+		else
+			parent.dw_header.object.aliasname.protect = 0
+			parent.dw_header.object.acccode.protect = 0
+		end if
+		return li_errcode
+	end choose
+	return li_errcode
+
+// dw_header.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_header.editchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::editchanged(row, dwo, data)
+	parent.editflag = true
+	return ::message.returnvalue
+
+// cb_exit.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		triggerevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_exit.clicked() returns long
+	long ll_res
+	if parent.editflag = true then
+		ll_res = messagebox("Save Changes", "Changes Not Saved in Database.~r~nChanges will be discarded. Are you still want to exit?", question!, yesno!, 2)
+		if ll_res = 2 then
+			return ::message.returnvalue
+		end if
+		return
+	end if
+	parent.post event ue_close(parent.il_code)
+	return ::message.returnvalue
+
+// cb_save.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		triggerevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_save.clicked() returns long
+	parent.wf_save()
+	return ::message.returnvalue
+
+// cb_print.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		triggerevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_print.clicked() returns long
+	parent.wf_print()
+	return ::message.returnvalue
+
+// cb_edit.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		triggerevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_edit.clicked() returns long
+	parent.wf_edit()
+	return ::message.returnvalue

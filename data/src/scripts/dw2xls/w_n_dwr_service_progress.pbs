@@ -1,0 +1,90 @@
+// window w_n_dwr_service_progress (dw2xls)  ancestor: window
+
+// w_n_dwr_service_progress.ue_show_progress(integer ai_progress) returns integer
+	long ll_cur_s
+	long ll_total_rem_s
+	long ll_rem_s
+	long ll_rem_m
+	long ll_rem_h
+	string ls_str
+	datetime ldt_now
+	ldt_now = datetime(today(), now())
+	if this.invo_dt_srv.of_secondsafter(this.idt_last, ldt_now) > 5 then
+		this.idt_last = ldt_now
+		ll_cur_s = this.invo_dt_srv.of_secondsafter(this.idt_start, ldt_now)
+		if ll_cur_s > 3 and ai_progress > 0 then
+			ll_total_rem_s = truncate(round(ll_cur_s * 100 / ai_progress - ll_cur_s, 0), 0)
+			ll_total_rem_s = round(ll_total_rem_s / 5.0, 0) * 5
+			ll_rem_s = ll_total_rem_s mod 60
+			ll_total_rem_s = truncate(ll_total_rem_s / 60.0, 0)
+			ll_rem_m = ll_total_rem_s mod 60
+			ll_rem_h = truncate(ll_total_rem_s / 60.0, 0)
+			ls_str = ""
+			if ll_rem_h = 1 then
+				ls_str = string(ll_rem_h) + " Hour " + ls_str
+			end if
+			if ll_rem_h > 1 then
+				ls_str = string(ll_rem_h) + " Hours " + ls_str
+			end if
+			if ll_rem_m = 1 then
+				ls_str = string(ll_rem_m) + " Minute " + ls_str
+			elseif ll_rem_m > 1 or ll_rem_h > 0 then
+				ls_str = string(ll_rem_m) + " Minutes " + ls_str
+			end if
+			if ll_rem_s = 1 then
+				ls_str = string(ll_rem_s) + " Second " + ls_str
+			elseif ll_rem_s > 1 or ll_rem_h > 0 or ll_rem_m > 0 then
+				ls_str = string(ll_rem_s) + " Seconds " + ls_str
+			end if
+			if ls_str <> "" then
+				ls_str = "Remaining" + ls_str
+			end if
+			this.st_remain.text = ls_str
+		end if
+	end if
+	this.hpb_1.position = ai_progress
+	return 1
+
+// w_n_dwr_service_progress.open() returns long
+	environment l_env
+	this.parm = message.powerobjectparm
+	this.title = "Save as Excel"
+	if getenvironment(l_env) <> 1 then
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	this.x = (pixelstounits(l_env.screenwidth, xpixelstounits!) - this.width) / 2.0
+	this.y = (pixelstounits(l_env.screenheight, ypixelstounits!) - this.height) / 2.0
+	this.hpb_1.minposition = 1
+	this.hpb_1.maxposition = 100
+	this.idt_start = datetime(today(), now())
+	this.idt_last = this.idt_start
+	this.parm.postevent("ue_process_work")
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_n_dwr_service_progress.create() returns 0
+	this.st_title = create st_title
+	this.st_remain = create st_remain
+	this.cb_cancel = create cb_cancel
+	this.hpb_1 = create hpb_1
+	this.control = {this.st_title, this.st_remain, this.cb_cancel, this.hpb_1}
+
+// w_n_dwr_service_progress.destroy() returns 0
+	destroy this.st_title
+	destroy this.st_remain
+	destroy this.cb_cancel
+	destroy this.hpb_1
+
+// cb_cancel.clicked() returns long
+	this.enabled = false
+	parent.parm.triggerevent("ue_cancel")
+	return ::message.returnvalue
+
+// cb_cancel.constructor() returns long
+	this.text = "Cancel"
+	return ::message.returnvalue

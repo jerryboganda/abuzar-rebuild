@@ -1,0 +1,136 @@
+// window w_cashierdeclaration (reports)  ancestor: window
+
+// w_cashierdeclaration.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		post event ue_close()
+	end if
+	return ::message.returnvalue
+
+// w_cashierdeclaration.ue_close() returns 0
+	closewithreturn(this, this.istr_arg)
+
+// w_cashierdeclaration.create() returns 0
+	this.cb_cancel = create cb_cancel
+	this.dw_master = create dw_master
+	this.cb_ok = create cb_ok
+	this.control = {this.cb_cancel, this.dw_master, this.cb_ok}
+
+// w_cashierdeclaration.destroy() returns 0
+	destroy this.cb_cancel
+	destroy this.dw_master
+	destroy this.cb_ok
+
+// w_cashierdeclaration.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	long ll_custcode
+	string ls_date
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	this.dw_master.settransobject(sqlca)
+	this.dw_master.insertrow(0)
+	this.dw_master.scrolltorow(0)
+	ls_date = string(date(this.dw_master.getitemdatetime(this.dw_master.getrow(), "startdate")), "mm/dd/yyyy")
+	this.dw_master.setitem(this.dw_master.getrow(), "startdate", datetime(date(ls_date), time(" 00:00:00")))
+	this.dw_master.setitem(this.dw_master.getrow(), "enddate", datetime(date(ls_date), time(" 23:59:59")))
+	this.dw_master.object.machine[1] = gs_localcomputername
+	this.dw_master.setfocus()
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.istr_arg.i_status = -1
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// dw_master.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_master.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if len(gettext()) > 0 then
+		selecttext(1, len(gettext()))
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	long[] ll_invcode
+	long ll_rowcount
+	long ll_counter
+	long ll_arrindex
+	long ll_thiscode
+	boolean lb_flag
+	string ls_date
+	if parent.dw_master.accepttext() < 1 then
+		return ::message.returnvalue
+	end if
+	parent.istr_arg.s_name1 = parent.dw_master.object.cashier[parent.dw_master.getrow()]
+	if parent.istr_arg.s_name1 = "" or isnull(parent.istr_arg.s_name1) then
+		messagebox("Cashier Name Validation", "Please Enter Valid Cahier Name")
+		parent.dw_master.setcolumn("cashier")
+		parent.dw_master.setfocus()
+		return ::message.returnvalue
+	end if
+	parent.istr_arg.s_name2 = parent.dw_master.object.machine[parent.dw_master.getrow()]
+	if parent.istr_arg.s_name2 = "" or isnull(parent.istr_arg.s_name2) then
+		messagebox("Machine Name Validation", "Please Enter Valid Machine Name")
+		parent.dw_master.setcolumn("machine")
+		parent.dw_master.setfocus()
+		return ::message.returnvalue
+	end if
+	parent.istr_arg.s_name3 = parent.dw_master.object.shift[parent.dw_master.getrow()]
+	if parent.istr_arg.s_name3 = "" or isnull(parent.istr_arg.s_name3) then
+		messagebox("Shift Name Validation", "Please Enter Valid Shift Name")
+		parent.dw_master.setcolumn("shift")
+		parent.dw_master.setfocus()
+		return ::message.returnvalue
+	end if
+	parent.istr_arg.db_code1 = parent.dw_master.object.openingcash[parent.dw_master.getrow()]
+	if isnull(parent.istr_arg.db_code1) or parent.istr_arg.db_code1 < 0.0 then
+		messagebox("Opening Cash Validation", "Please Enter Valid Opening Cash")
+		parent.dw_master.setcolumn("shift")
+		parent.dw_master.setfocus()
+		return ::message.returnvalue
+	end if
+	parent.istr_arg.db_code2 = parent.dw_master.object.exepenses[parent.dw_master.getrow()]
+	if isnull(parent.istr_arg.db_code2) or parent.istr_arg.db_code2 < 0.0 then
+		messagebox("Expenses Amount Validation", "Please Enter Valid Expenses Amount")
+		parent.dw_master.setcolumn("expenses")
+		parent.dw_master.setfocus()
+		return ::message.returnvalue
+	end if
+	parent.istr_arg.db_code3 = parent.dw_master.object.cashdeclared[parent.dw_master.getrow()]
+	if isnull(parent.istr_arg.db_code3) or parent.istr_arg.db_code3 < 0.0 then
+		messagebox("Cash Declared Amount Validation", "Please Enter Valid Cash Declared Amount")
+		parent.dw_master.setcolumn("CashDeclared")
+		parent.dw_master.setfocus()
+		return ::message.returnvalue
+	end if
+	parent.istr_arg.d_sdate = parent.dw_master.object.startdate[parent.dw_master.getrow()]
+	parent.istr_arg.d_edate = parent.dw_master.object.enddate[parent.dw_master.getrow()]
+	if parent.istr_arg.d_edate < parent.istr_arg.d_sdate then
+		messagebox("Period Validation", "Please Enter Valid Period")
+		parent.dw_master.setcolumn("startdate")
+		parent.dw_master.setfocus()
+	end if
+	parent.istr_arg.i_status = 1
+	parent.post event ue_close()
+	return ::message.returnvalue

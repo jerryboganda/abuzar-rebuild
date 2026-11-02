@@ -1,0 +1,369 @@
+// window w_invoicedetail (datatransferapp)  ancestor: window
+
+// w_invoicedetail.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		post event ue_close()
+	end if
+	return ::message.returnvalue
+
+// w_invoicedetail.ue_close() returns 0
+	closewithreturn(this, 0)
+
+// w_invoicedetail.wf_assigndwobjects(string as_masterdw, string as_detaildw, string as_footerdw) returns 0
+	this.dw_master.dataobject = as_masterdw
+	this.dw_detail.dataobject = as_detaildw
+	this.dw_footer.dataobject = as_footerdw
+	this.dw_master.settransobject(sqlca)
+	this.dw_detail.settransobject(sqlca)
+	this.dw_footer.settransobject(sqlca)
+
+// w_invoicedetail.wf_setvouchervisibility() returns long
+	if f_stringpreferences("ShowCurrentBalanceInTrans") = "N" then
+		this.dw_detail.object.c_balance.visible = false
+		this.dw_detail.object.c_balance_type.visible = false
+	end if
+	if f_stringpreferences("ShowEffectiveBalanceInTrans") = "N" then
+		this.dw_detail.object.c_effective_balance.visible = false
+		this.dw_detail.object.c_effective_balance_type.visible = false
+	end if
+	if f_stringpreferences("ShowCurrencyInVouchers") = "N" then
+		this.dw_master.object.currencycode.visible = false
+		this.dw_master.object.currencycode_t.visible = false
+		this.dw_master.object.conversionrate.visible = false
+		this.dw_master.object.conversionrate_t.visible = false
+		this.dw_detail.object.foreignamt.visible = false
+	end if
+	if f_stringpreferences("PatientInTransaction") = "N" then
+		this.dw_detail.object.regno.visible = false
+		this.dw_detail.object.patient.visible = false
+	end if
+	if f_stringpreferences("GuestInTransaction") = "N" then
+		this.dw_detail.object.guestregno.visible = false
+		this.dw_detail.object.guest.visible = false
+	end if
+	if f_stringpreferences("StudentInTransaction") = "N" then
+		this.dw_detail.object.studentregno.visible = false
+		this.dw_detail.object.student.visible = false
+	end if
+	if f_stringpreferences("SalePersonInTrans") = "Y" then
+		this.dw_master.object.smancode.visible = true
+		this.dw_master.object.smancode_t.visible = true
+	end if
+	return 0
+
+// w_invoicedetail.wf_setsalevisibility() returns long
+	boolean lb_visible
+	if f_stringpreferences("patientOnRetailSale") = "H" or f_stringpreferences("patientOnCreditSale") = "H" then
+		lb_visible = true
+	end if
+	this.dw_master.object.patientcode.visible = lb_visible
+	this.dw_master.object.t_regno.visible = lb_visible
+	this.dw_master.object.patientcode_t.visible = lb_visible
+	this.dw_master.object.patientregno.visible = lb_visible
+	this.dw_master.object.patientbalance.visible = lb_visible
+	this.dw_master.object.t_patientbalance.visible = lb_visible
+	this.dw_master.object.c_patientbalancedrcr.visible = lb_visible
+	if f_stringpreferences("StudentOnCashSale") = "H" or f_stringpreferences("StudentOnCreditSale") = "H" then
+		lb_visible = true
+	end if
+	this.dw_master.object.studentcode.visible = lb_visible
+	this.dw_master.object.studentregno_t.visible = lb_visible
+	this.dw_master.object.studentcode_t.visible = lb_visible
+	this.dw_master.object.studentregno.visible = lb_visible
+	this.dw_master.object.studentbalance.visible = lb_visible
+	this.dw_master.object.t_studentbalance.visible = lb_visible
+	this.dw_master.object.c_studentbalance_drcr.visible = lb_visible
+	if f_stringpreferences("GuestOnCashSale") = "H" or f_stringpreferences("GuestOnCreditSale") = "H" then
+		lb_visible = true
+	end if
+	this.dw_master.object.guestcode.visible = lb_visible
+	this.dw_master.object.guestregno_t.visible = lb_visible
+	this.dw_master.object.guestcode_t.visible = lb_visible
+	this.dw_master.object.guestregno.visible = lb_visible
+	this.dw_master.object.guestbalance.visible = lb_visible
+	this.dw_master.object.t_guestbalance.visible = lb_visible
+	this.dw_master.object.c_guestbalance_drcr.visible = lb_visible
+	if f_stringpreferences("ShowAccountForinSale") = "Y" then
+		this.dw_master.object.accountfor.visible = true
+		this.dw_master.object.t_accountfor.visible = true
+	else
+		this.dw_master.object.accountfor.visible = false
+		this.dw_master.object.t_accountfor.visible = false
+	end if
+	if f_stringpreferences("ShowGoodsCompanyInSale") = "N" then
+		this.dw_master.object.gccode.visible = false
+		this.dw_master.object.gccode_t.visible = false
+	end if
+	if f_stringpreferences("saledoctid") = "N" then
+		this.dw_master.object.doctcode.visible = false
+		this.dw_master.object.doctcode_t.visible = false
+	end if
+	if f_stringpreferences("ShowVehicleInSale") = "N" then
+		this.dw_master.object.vehicle.visible = false
+		this.dw_master.object.vehicle_t.visible = false
+	end if
+	if f_stringpreferences("ShowShipToInSale") = "N" then
+		this.dw_master.object.shipto.visible = false
+		this.dw_master.object.shipto_t.visible = false
+	end if
+	if f_stringpreferences("showguaranteepersoninsale") = "N" then
+		this.dw_master.object.guaranteepersoncode.visible = false
+		this.dw_master.object.guaranteepersoncode_t.visible = false
+	end if
+	if f_stringpreferences("headeronsaleinv") = "N" then
+		this.dw_master.object.headerno.visible = false
+		this.dw_master.object.t_headerno.visible = false
+	end if
+	if f_stringpreferences("showsaletypeinsale") = "Y" then
+		this.dw_master.object.saletypecode.visible = true
+		this.dw_master.object.t_saletypecode.visible = true
+		this.dw_master.object.saletypeinvno.visible = true
+		this.dw_master.object.saletypeinvno_t.visible = true
+	end if
+	if f_stringpreferences("messageinsale") = "N" then
+		this.dw_master.object.messagecode.visible = false
+		this.dw_master.object.t_message.visible = false
+	end if
+	if f_stringpreferences("salesmaninsale") = "N" then
+		this.dw_master.object.smancode.visible = false
+		this.dw_master.object.t_salesman.visible = false
+	end if
+	if f_stringpreferences("SaleDisplayItemDiscPerc") = "Y" then
+		this.dw_master.object.itemdiscpercno.visible = true
+		this.dw_master.object.t_itemdiscpercno.visible = true
+	end if
+	if f_stringpreferences("ShowLoyaltyPointBalanceInSale") = "Y" then
+		this.dw_master.object.t_pointsbalance.visible = true
+		this.dw_master.object.pointsbalance.visible = true
+	end if
+	if f_stringpreferences("showcurrencyinsale") = "N" then
+		this.dw_master.object.currencycode.visible = false
+		this.dw_master.object.currencycode_t.visible = false
+		this.dw_master.object.conversionrate.visible = false
+		this.dw_master.object.conversionrate_t.visible = false
+	end if
+	if f_stringpreferences("ShowAssociatedPurInvCodeInSale") = "N" then
+		this.dw_master.object.associatedpurinvcode.visible = false
+		this.dw_master.object.associatedpurinvcode_t.visible = false
+	end if
+	if f_stringpreferences("ShowSuppInvCodeInSale") = "N" then
+		this.dw_master.object.suppinvcode.visible = false
+		this.dw_master.object.suppinvcode_t.visible = false
+	end if
+	if f_stringpreferences("bonusinsale") = "N" then
+		this.dw_detail.object.bonusqty.visible = false
+	end if
+	if f_stringpreferences("ShowItemMeterInSale") = "N" then
+		this.dw_detail.object.itemmetername.visible = false
+		this.dw_detail.object.meterreading.visible = false
+	end if
+	if f_stringpreferences("AlternateCustomICodeInSale") = "N" then
+		this.dw_detail.object.alternatecustomicode.visible = false
+	end if
+	if f_stringpreferences("prediscpercinsale") = "N" then
+		this.dw_detail.object.prediscperc.visible = false
+	end if
+	if f_stringpreferences("Itemflatdisc") = "N" then
+		this.dw_detail.object.itemflatdisc.visible = false
+	end if
+	if f_stringpreferences("ExtraTaxPercInSale") = "N" then
+		this.dw_detail.object.extrataxperc.visible = false
+	end if
+	if f_stringpreferences("ShowPurUnitRateInSale") = "N" then
+		this.dw_detail.object.purunitrate.visible = false
+	end if
+	if f_stringpreferences("ShowUnitWeightInSale") = "N" then
+		this.dw_detail.object.unitweight.visible = false
+		this.dw_detail.object.c_item_unitweight.visible = false
+	else
+		this.dw_detail.object.unitweight.visible = true
+		this.dw_detail.object.c_item_unitweight.visible = true
+	end if
+	if f_stringpreferences("ShowPackingFactorInSale") = "N" then
+		this.dw_detail.object.packingfactor.visible = false
+		this.dw_detail.object.c_item_packingfactor.visible = false
+	else
+		this.dw_detail.object.packingfactor.visible = true
+		this.dw_detail.object.c_item_packingfactor.visible = true
+	end if
+	if f_stringpreferences("DisplayTotalPiecesInSale") = "N" then
+		this.dw_detail.object.piecesinhand.visible = false
+		this.dw_detail.object.totalpieces.visible = false
+		this.dw_detail.object.totalpieces.initial = "0"
+		this.dw_detail.object.totalpieces.validation = "Real (GetText()) >= 0"
+	end if
+	if f_stringpreferences("enablequickprefferedsearch") = "Y" then
+		this.dw_detail.object.quicksearch.visible = true
+	else
+		this.dw_detail.object.quicksearch.visible = false
+	end if
+	if f_stringpreferences("showiteminstruction") = "N" then
+		this.dw_detail.object.inscode.visible = false
+	end if
+	if f_stringpreferences("SaleItemdescription") = "N" then
+		this.dw_detail.object.saleitemdescription.visible = false
+	end if
+	if f_stringpreferences("allowemptyitemdescinsale") = "N" and f_stringpreferences("SaleItemdescription") = "Y" then
+		this.dw_detail.object.saleitemdescription.edit.required = "yes"
+	end if
+	if f_stringpreferences("itempackingsale") = "N" then
+		this.dw_detail.object.itempacking.visible = false
+	end if
+	if f_stringpreferences("packingdescinsale") = "N" then
+		this.dw_detail.object.packingdesc.visible = false
+	end if
+	if f_stringpreferences("Saleclaimable") = "N" then
+		this.dw_detail.object.claimable.visible = false
+	end if
+	if f_stringpreferences("ShowClaimableDiscPercInSale") = "N" then
+		this.dw_detail.object.claimablediscperc.visible = false
+	end if
+	if f_stringpreferences("itemunittax") = "N" then
+		this.dw_detail.object.unitsalestax.visible = false
+		this.dw_detail.object.taxperunit_t.visible = false
+		this.dw_detail.object.c_sumtaxval.visible = false
+		this.dw_detail.object.c_taxval.visible = false
+		this.dw_detail.object.taxval_t.visible = false
+	end if
+	if f_stringpreferences("itemgstperc") = "N" then
+		this.dw_detail.object.gstperc.visible = false
+		this.dw_detail.object.gstperc_t.visible = false
+		this.dw_detail.object.c_sumgstval.visible = false
+		this.dw_detail.object.c_gstval.visible = false
+		this.dw_detail.object.gstval_t.visible = false
+	end if
+	if f_stringpreferences("discpriceinsale") = "N" then
+		this.dw_detail.object.discprice.visible = false
+	end if
+	if f_stringpreferences("ShowPackCapacityInSale") = "N" then
+		this.dw_detail.object.packcapacity.visible = false
+	end if
+	if f_stringpreferences("ShowAreaVolumeInSale") = "N" then
+		this.dw_detail.object.areavolume.visible = false
+	end if
+	if f_stringpreferences("ShowPackCoverageInSale") = "N" then
+		this.dw_detail.object.c_packcoverage.visible = false
+	end if
+	if f_stringpreferences("ShowPCSInSale") = "N" then
+		this.dw_detail.object.pcs.visible = false
+	end if
+	if f_stringpreferences("ShowCartonsInSale") = "N" then
+		this.dw_detail.object.cartons.visible = false
+	end if
+	if f_stringpreferences("ShowRatePerLength") = "N" then
+		this.dw_detail.object.rateperlength.visible = false
+	end if
+	if f_stringpreferences("YourLotNoInSale") = "N" then
+		this.dw_detail.object.yourlotno.visible = false
+	end if
+	if f_stringpreferences("YourExpiryInSale") = "N" then
+		this.dw_detail.object.yourexpiry.visible = false
+	end if
+	if f_stringpreferences("YourPacking") = "N" then
+		this.dw_detail.object.yourpacking.visible = false
+	end if
+	return 0
+
+// w_invoicedetail.create() returns 0
+	this.dw_footer = create dw_footer
+	this.dw_detail = create dw_detail
+	this.dw_master = create dw_master
+	this.control = {this.dw_footer, this.dw_detail, this.dw_master}
+
+// w_invoicedetail.destroy() returns 0
+	destroy this.dw_footer
+	destroy this.dw_detail
+	destroy this.dw_master
+
+// w_invoicedetail.open() returns long
+	long ll_module
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	this.istr_invdetail = message.powerobjectparm
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		this.width = ll_win_width * 0.90
+		this.height = ll_win_height * 0.95
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	choose case this.istr_invdetail.i_module
+	case 1
+		this.title = "Sale Invoice Detail"
+		wf_assigndwobjects("d_saleheader_view", "d_saledetail_view", "d_salefooter_view")
+		wf_setsalevisibility()
+	case 2
+		this.title = "Sale Return Detail"
+		wf_assigndwobjects("d_salereturn_view", "d_salereturndetail_view", "d_salereturnfooter_view")
+	case 3
+		this.title = "Purchase Invoice Detail"
+		wf_assigndwobjects("d_purchaseheader_view", "d_purchasedetail_view", "d_purchasefooter_view")
+	case 4
+		this.title = "Purchase Return Detail"
+		wf_assigndwobjects("d_purchasereturn_view", "d_purchasereturndetail_view", "d_purchasereturnfooter_view")
+	case 5
+		this.title = "Issue/Delivery Challan"
+		wf_assigndwobjects("d_issueheader_view", "d_issuedetail_view", "d_issuefooter_view")
+	case 6
+		this.title = "Receipt"
+		wf_assigndwobjects("d_receiptheader_view", "d_receiptdetail_view", "d_receiptfooter_view")
+	case 7
+		this.title = "Stock Adjustment"
+		wf_assigndwobjects("d_adjheader_view", "d_adjdetail_view", "d_adjfooter_view")
+	case 8
+		this.title = "Inter Godown Transfer Detail"
+		wf_assigndwobjects("d_transfer_header_view", "d_transfer_detail_view", "d_transfer_footer_view")
+	case 22
+		this.title = "Services Sales"
+		wf_assigndwobjects("d_serviceheader_view", "d_servicedetail_view", "d_servicefooter_view")
+	case 28
+		this.title = "Services Sales Return"
+		wf_assigndwobjects("d_serviceRheader_view", "d_serviceRdetail_view", "d_serviceRfooter_view")
+	case 43
+		this.title = "Services Purchases"
+		wf_assigndwobjects("d_servicepurheader_view", "d_servicepurdetail_view", "d_servicepurfooter_view")
+	case 44
+		this.title = "Services P/R"
+		wf_assigndwobjects("d_serviceprheader_view", "d_serviceprdetail_view", "d_serviceprfooter_view")
+	case 1001
+		this.title = "Note Receivable/Payable"
+		wf_assigndwobjects("d_notesheader_view", "d_notedetail_view", "d_notefooter_view")
+	case 1002
+		this.title = "Due Satisfy"
+		wf_assigndwobjects("d_duesatisfy_header_view", "d_duesatisfy_detail_view", "d_duesatisfy_footer_view")
+	case 1003
+		this.title = "Due Satisfy"
+		wf_assigndwobjects("d_duesatisfy_header_view", "d_duedelete_detail_view", "d_duesatisfy_footer_view")
+	case else
+		this.title = "A/C Vouchers"
+		wf_assigndwobjects("d_voucherheader_view", "d_voucherdetail_view", "d_voucherfooter_view")
+		wf_setvouchervisibility()
+	end choose
+	f_setcolumnstyle(this.dw_detail, "Qty")
+	this.dw_master.retrieve(this.istr_invdetail.l_invcode)
+	this.dw_detail.retrieve(this.istr_invdetail.l_invcode)
+	this.dw_footer.retrieve(this.istr_invdetail.l_invcode)
+	this.dw_master.x = 0
+	this.dw_detail.x = 0
+	this.dw_footer.x = 0
+	this.dw_master.width = this.width - 10
+	this.dw_detail.width = this.width - 10
+	this.dw_footer.width = this.width - 10
+	this.dw_detail.height = this.height - (this.dw_master.height + this.dw_footer.height) - 100
+	this.dw_footer.y = this.dw_detail.y + this.dw_detail.height + 5
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue

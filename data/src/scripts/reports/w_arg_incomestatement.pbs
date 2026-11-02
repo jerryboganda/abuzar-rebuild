@@ -1,0 +1,110 @@
+// window w_arg_incomestatement (reports)  ancestor: window
+
+// w_arg_incomestatement.create() returns 0
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.rb_3 = create rb_3
+	this.rb_2 = create rb_2
+	this.rb_1 = create rb_1
+	this.rb_0 = create rb_0
+	this.em_enddate = create em_enddate
+	this.em_startdate = create em_startdate
+	this.st_3 = create st_3
+	this.st_2 = create st_2
+	this.st_1 = create st_1
+	this.gb_1 = create gb_1
+	this.control = {this.cb_cancel, this.cb_ok, this.rb_3, this.rb_2, this.rb_1, this.rb_0, this.em_enddate, this.em_startdate, this.st_3, this.st_2, this.st_1, this.gb_1}
+
+// w_arg_incomestatement.destroy() returns 0
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.rb_3
+	destroy this.rb_2
+	destroy this.rb_1
+	destroy this.rb_0
+	destroy this.em_enddate
+	destroy this.em_startdate
+	destroy this.st_3
+	destroy this.st_2
+	destroy this.st_1
+	destroy this.gb_1
+
+// w_arg_incomestatement.open() returns long
+	string ls_text
+	date ld_currdate
+	time lt_currtime
+	datetime ld_startdate
+	datetime ld_enddate
+	environment le_env
+	long ll_width
+	long ll_height
+	if getenvironment(le_env) = 1 then
+		ll_width = pixelstounits(le_env.screenwidth, xpixelstounits!) - this.width
+		ll_height = pixelstounits(le_env.screenheight, ypixelstounits!) - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width * 0.5
+			ll_height = ll_height * 0.5
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	ld_currdate = today()
+	if f_stringpreferences("ApplyArgSDate") = "N" then
+		ls_text = string(ld_currdate, "dd/mm/yyyy")
+		ls_text = trim(ls_text) + " 00:00:00"
+	else
+		ls_text = string(f_datepreferences("DefaultArgSDate"), "dd/mm/yyyy hh:mm:ss")
+	end if
+	this.em_startdate.text = ls_text
+	ls_text = string(ld_currdate, "dd/mm/yyyy")
+	ls_text = trim(ls_text) + " 23:59:59"
+	this.em_enddate.text = ls_text
+	return ::message.returnvalue
+
+// cb_cancel.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	closewithreturn(parent, parent.istr_arg)
+	return ::message.returnvalue
+
+// cb_ok.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	string ls_enddate
+	date ld_date
+	if parent.rb_0.checked = true then
+		parent.istr_arg.s_name1 = "0"
+	elseif parent.rb_1.checked = true then
+		parent.istr_arg.s_name1 = "1"
+	elseif parent.rb_2.checked = true then
+		parent.istr_arg.s_name1 = "2"
+	else
+		parent.istr_arg.s_name1 = "3"
+	end if
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	parent.istr_arg.i_status = 1
+	closewithreturn(parent, parent.istr_arg)
+	return ::message.returnvalue
+
+// em_enddate.keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// em_startdate.keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue

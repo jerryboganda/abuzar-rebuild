@@ -1,0 +1,132 @@
+// window w_graph_type (graphcomponents)  ancestor: w_center
+
+// w_graph_type.open() returns long
+	long ancestorreturnvalue
+	graphicobject lgro_hold
+	ancestorreturnvalue = super::open()
+	lgro_hold = message.powerobjectparm
+	if lgro_hold.typeof() = graph! then
+		this.io_passed = graph!
+		this.igr_parm = message.powerobjectparm
+	elseif lgro_hold.typeof() = datawindow! then
+		this.io_passed = datawindow!
+		this.idw_parm = message.powerobjectparm
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_graph_type.create() returns 0
+	integer icurrent
+	call super::create
+	this.uo_1 = create uo_1
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.uo_1
+
+// w_graph_type.destroy() returns 0
+	call super::destroy
+	destroy this.uo_1
+
+// uo_1.gallery_ok(unsignedlong wparam, long lparam) returns long
+	long ancestorreturnvalue
+	integer li_col
+	integer li_row
+	integer li_ret
+	string ls_graph_type
+	ancestorreturnvalue = super::gallery_ok(wparam, lparam)
+	li_ret = uf_query_gallery(li_row, li_col, ls_graph_type)
+	if li_ret = 0 then
+		messagebox("Sorry!", "Clicked on invalid type")
+		return ::message.returnvalue
+	end if
+	if parent.io_passed = graph! then
+		choose case ls_graph_type
+		case "area3d"
+			parent.igr_parm.graphtype = area3d!
+		case "areagraph"
+			parent.igr_parm.graphtype = areagraph!
+		case "bar3dobjgraph"
+			parent.igr_parm.graphtype = bar3dobjgraph!
+		case "barstack3dobjgraph"
+			parent.igr_parm.graphtype = barstack3dobjgraph!
+		case "bargraph"
+			parent.igr_parm.graphtype = bargraph!
+		case "bar3dgraph"
+			parent.igr_parm.graphtype = bar3dgraph!
+		case "barstackgraph"
+			parent.igr_parm.graphtype = barstackgraph!
+		case "col3dgraph"
+			parent.igr_parm.graphtype = col3dgraph!
+		case "col3dobjgraph"
+			parent.igr_parm.graphtype = col3dobjgraph!
+		case "colgraph"
+			parent.igr_parm.graphtype = colgraph!
+		case "colstack3dobjgraph"
+			parent.igr_parm.graphtype = colstack3dobjgraph!
+		case "colstackgraph"
+			parent.igr_parm.graphtype = colstackgraph!
+		case "line3d"
+			parent.igr_parm.graphtype = line3d!
+		case "linegraph"
+			parent.igr_parm.graphtype = linegraph!
+		case "pie3d"
+			parent.igr_parm.graphtype = pie3d!
+		case "piegraph"
+			parent.igr_parm.graphtype = piegraph!
+		case "scattergraph"
+			parent.igr_parm.graphtype = scattergraph!
+		case else
+			messagebox("Error!", "Invalid Graph Type")
+		end choose
+	elseif parent.io_passed = datawindow! then
+		choose case ls_graph_type
+		case "area3d"
+			parent.idw_parm.object.gr_1.graphtype = 15
+		case "areagraph"
+			parent.idw_parm.object.gr_1.graphtype = 1
+		case "bar3dobjgraph"
+			parent.idw_parm.object.gr_1.graphtype = 4
+		case "barstack3dobjgraph"
+			parent.idw_parm.object.gr_1.graphtype = 6
+		case "bargraph"
+			parent.idw_parm.object.gr_1.graphtype = 2
+		case "bar3dgraph"
+			parent.idw_parm.object.gr_1.graphtype = 3
+		case "barstackgraph"
+			parent.idw_parm.object.gr_1.graphtype = 5
+		case "col3dgraph"
+			parent.idw_parm.object.gr_1.graphtype = 8
+		case "col3dobjgraph"
+			parent.idw_parm.object.gr_1.graphtype = 9
+		case "colgraph"
+			parent.idw_parm.object.gr_1.graphtype = 7
+		case "colstack3dobjgraph"
+			parent.idw_parm.object.gr_1.graphtype = 11
+		case "colstackgraph"
+			parent.idw_parm.object.gr_1.graphtype = 10
+		case "line3d"
+			parent.idw_parm.object.gr_1.graphtype = 16
+		case "linegraph"
+			parent.idw_parm.object.gr_1.graphtype = 12
+		case "pie3d"
+			parent.idw_parm.object.gr_1.graphtype = 17
+		case "piegraph"
+			parent.idw_parm.object.gr_1.graphtype = 13
+		case "scattergraph"
+			parent.idw_parm.object.gr_1.graphtype = 14
+		case else
+			messagebox("Error!", "Invalid Graph Type")
+		end choose
+	end if
+	close(parent)
+	return ::message.returnvalue
+
+// uo_1.gallery_cancel(unsignedlong +wparam, long +lparam) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::gallery_cancel(+wparam, +lparam)
+	close(parent)
+	return ::message.returnvalue
+
+// uo_1.destroy() returns 0
+	call super::destroy

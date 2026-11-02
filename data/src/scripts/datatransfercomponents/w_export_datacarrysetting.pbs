@@ -1,0 +1,634 @@
+// window w_export_datacarrysetting (datatransfercomponents)  ancestor: window
+
+// w_export_datacarrysetting.ue_postopen() returns 0
+	this.dw_datacarry.settransobject(sqlca)
+	this.dw_datacarry.retrieve(0)
+	this.dw_datacarry.scrolltorow(0)
+	wf_checkrights()
+	wf_setvisibility()
+	if this.ib_cust_oriented_datacarry then
+		this.dw_datacarry.setcolumn("custcode")
+	end if
+	this.dw_datacarry.setfocus()
+
+// w_export_datacarrysetting.ue_close() returns 0
+	closewithreturn(this, this.istr_arguments)
+
+// w_export_datacarrysetting.wf_setvisibility() returns long
+	if this.ib_exportbasicdata then
+		this.dw_datacarry.object.basicdata.visible = true
+	end if
+	if this.ib_stockinhand then
+		this.dw_datacarry.object.stockinhand.visible = true
+	end if
+	if this.ib_exportsale then
+		this.dw_datacarry.object.sale.visible = true
+	end if
+	if this.ib_exportpo then
+		this.dw_datacarry.object.po.visible = true
+	end if
+	if this.ib_exportpr then
+		this.dw_datacarry.object.pr.visible = true
+	end if
+	if this.ib_exportso then
+		this.dw_datacarry.object.so.visible = true
+	end if
+	if this.ib_exportissue then
+		this.dw_datacarry.object.issue.visible = true
+	end if
+	if this.ib_servicesales then
+		this.dw_datacarry.object.servicesales.visible = true
+	end if
+	if this.ib_exportpur then
+		this.dw_datacarry.object.pur.visible = true
+	end if
+	if this.ib_exportquot then
+		this.dw_datacarry.object.quot.visible = true
+	end if
+	if this.ib_purexpintimation then
+		this.dw_datacarry.object.pexpintimation.visible = true
+	end if
+	if this.ib_saleexpintimation then
+		this.dw_datacarry.object.sexpintimation.visible = true
+	end if
+	if this.ib_cust_oriented_datacarry then
+		this.dw_datacarry.object.t_custcode.visible = true
+		this.dw_datacarry.object.custcode.visible = true
+		this.dw_datacarry.object.l_custcode.visible = true
+	end if
+	return 0
+
+// w_export_datacarrysetting.wf_checkrights() returns long
+	long ll_found
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 624", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.ib_exportbasicdata = true
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 625", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.ib_exportsale = true
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 626", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.ib_exportpo = true
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 627", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.ib_exportpr = true
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 628", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.ib_exportso = true
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 688", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.ib_exportissue = true
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 5009", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.ib_cust_oriented_datacarry = true
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 5142", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.ib_stockinhand = true
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 5167", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.ib_servicesales = true
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 5173", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.ib_exportpur = true
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 5174", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.ib_exportquot = true
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 5186", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.ib_purexpintimation = true
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 5187", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.ib_saleexpintimation = true
+	end if
+	return 0
+
+// w_export_datacarrysetting.wf_check_issue_posting(long al_sno, long al_eno) returns long
+	long ll_count
+	SQL SELECT ISNULL ( Count ( Issueinvcode ) , 0 ) INTO :ll_count FROM IssueHeader WHERE IssueInvCode BETWEEN :al_sno AND :al_eno AND Posted ='N' USING sqlca;
+	if sqlca.sqlcode = 0 then
+		if ll_count > 0 then
+			messagebox("Issue Invoice Status", "Some Issue Invoices are Not Posted.~r~nCannot send Un-posted Issue Invoices.~r~nKindly Post them and try again." + sqlca.sqlerrtext, stopsign!)
+			return -1
+		end if
+	else
+		messagebox("Database Problem", "Problem in Verification of Issue Invoice Status. Reasons are:-~r~n" + sqlca.sqlerrtext, stopsign!)
+		return -1
+	end if
+	return 0
+
+// w_export_datacarrysetting.wf_check_sale_posting(long al_sno, long al_eno, long al_custcode) returns long
+	long ll_count
+	if al_custcode > 0 then
+		SQL SELECT ISNULL ( Count ( saleinvcode ) , 0 ) INTO :ll_count FROM SaleLedger WHERE SaleInvCode BETWEEN :al_sno AND :al_eno AND Posted ='N' AND custcode =:al_custcode USING sqlca;
+	else
+		SQL SELECT ISNULL ( Count ( saleinvcode ) , 0 ) INTO :ll_count FROM SaleLedger WHERE SaleInvCode BETWEEN :al_sno AND :al_eno AND Posted ='N' USING sqlca;
+	end if
+	if sqlca.sqlcode = 0 then
+		if ll_count > 0 then
+			messagebox("Sale Invoice Status", "Some Sale Invoices are Not Posted.~r~nCannot send Un-posted Sale Invoices.~r~nKindly Post them and try again." + sqlca.sqlerrtext, stopsign!)
+			return -1
+		end if
+	else
+		messagebox("Database Problem", "Problem in Verification of Sale Invoice Status. Reasons are:-~r~n" + sqlca.sqlerrtext, stopsign!)
+		return -1
+	end if
+	return 0
+
+// w_export_datacarrysetting.create() returns 0
+	this.st_1 = create st_1
+	this.dw_datacarry = create dw_datacarry
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.control = {this.st_1, this.dw_datacarry, this.cb_cancel, this.cb_ok}
+
+// w_export_datacarrysetting.destroy() returns 0
+	destroy this.st_1
+	destroy this.dw_datacarry
+	destroy this.cb_cancel
+	destroy this.cb_ok
+
+// w_export_datacarrysetting.open() returns long
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	post event ue_postopen()
+	return ::message.returnvalue
+
+// dw_datacarry.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_datacarry.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "sale"
+		if data = "Y" then
+			this.object.t_sale1.visible = true
+			this.object.startsaleinvcode.visible = true
+			this.object.t_sale2.visible = true
+			this.object.endsaleinvcode.visible = true
+			this.object.t_salecustomer.visible = true
+			this.object.salecustomer.visible = true
+			parent.ib_exportsale = true
+		else
+			this.object.t_sale1.visible = false
+			this.object.startsaleinvcode.visible = false
+			this.object.t_sale2.visible = false
+			this.object.endsaleinvcode.visible = false
+			this.object.t_salecustomer.visible = false
+			this.object.salecustomer.visible = false
+			parent.ib_exportsale = false
+		end if
+	case "po"
+		if data = "Y" then
+			this.object.t_po1.visible = true
+			this.object.startpocode.visible = true
+			this.object.t_po2.visible = true
+			this.object.endpocode.visible = true
+		else
+			this.object.t_po1.visible = false
+			this.object.startpocode.visible = false
+			this.object.t_po2.visible = false
+			this.object.endpocode.visible = false
+		end if
+	case "pur"
+		if data = "Y" then
+			this.object.t_startpurinvcode.visible = true
+			this.object.startpurcode.visible = true
+			this.object.t_endpurinvcode.visible = true
+			this.object.endpurcode.visible = true
+		else
+			this.object.t_startpurinvcode.visible = false
+			this.object.startpurcode.visible = false
+			this.object.t_endpurinvcode.visible = false
+			this.object.endpurcode.visible = false
+		end if
+	case "pr"
+		if data = "Y" then
+			this.object.t_pr1.visible = true
+			this.object.startprcode.visible = true
+			this.object.t_pr2.visible = true
+			this.object.endprcode.visible = true
+		else
+			this.object.t_pr1.visible = false
+			this.object.startprcode.visible = false
+			this.object.t_pr2.visible = false
+			this.object.endprcode.visible = false
+		end if
+	case "quot"
+		if data = "Y" then
+			this.object.t_startquotcode.visible = true
+			this.object.startquotcode.visible = true
+			this.object.t_endquotcode.visible = true
+			this.object.endquotcode.visible = true
+		else
+			this.object.t_startquotcode.visible = false
+			this.object.startquotcode.visible = false
+			this.object.t_endquotcode.visible = false
+			this.object.endquotcode.visible = false
+		end if
+	case "so"
+		if data = "Y" then
+			this.object.t_so1.visible = true
+			this.object.startsocode.visible = true
+			this.object.t_so2.visible = true
+			this.object.endsocode.visible = true
+		else
+			this.object.t_so1.visible = false
+			this.object.startsocode.visible = false
+			this.object.t_so2.visible = false
+			this.object.endsocode.visible = false
+		end if
+	case "issue"
+		if data = "Y" then
+			this.object.t_issue1.visible = true
+			this.object.startissueinvcode.visible = true
+			this.object.t_issue2.visible = true
+			this.object.endissueinvcode.visible = true
+			parent.ib_exportissue = true
+		else
+			this.object.t_issue1.visible = false
+			this.object.startissueinvcode.visible = false
+			this.object.t_issue2.visible = false
+			this.object.endissueinvcode.visible = false
+			parent.ib_exportissue = false
+		end if
+	end choose
+	return 0
+
+// dw_datacarry.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	integer rt_code
+	long ll_counter
+	long ll_found
+	long ll_code
+	long ll_row
+	long ll_null
+	string ls_colname
+	s_arguements ls_arg
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	ls_colname = getcolumnname()
+	setnull(ll_null)
+	if key = keyf4! then
+		if ls_colname = "startsaleinvcode" or ls_colname = "endsaleinvcode" then
+			open(w_arg_saleinvcode_all)
+		elseif ls_colname = "startpocode" or ls_colname = "endpocode" then
+			open(w_arg_purorder)
+		elseif ls_colname = "startprcode" or ls_colname = "endprcode" then
+			open(w_arg_pur_return)
+		elseif ls_colname = "startsocode" or ls_colname = "endsocode" then
+			open(w_arg_saleorder)
+		elseif ls_colname = "startissueinvcode" or ls_colname = "endissueinvcode" then
+			open(w_arg_issue)
+		else
+			ls_colname = ""
+		end if
+		if ls_colname <> "" then
+			ls_arg = message.powerobjectparm
+			if ls_arg.i_status = 1 and (not isnull(ls_arg.l_code1) and ls_arg.l_code1 > 0) then
+				setitem(1, ls_colname, ls_arg.l_code1)
+			end if
+		end if
+	end if
+	setfocus()
+	return rt_code
+
+// cb_cancel.clicked() returns long
+	parent.istr_arguments.i_status = -1
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	string ls_connsetting
+	string ls_errtext
+	char lc_basicdata
+	char lc_exportstockinhand
+	datetime ldt_exportitemchangessince
+	long ll_startsaleinvcode
+	long ll_endsaleinvcode
+	long ll_salecustomer
+	long ll_startpocode
+	long ll_endpocode
+	long ll_startprcode
+	long ll_endprcode
+	long ll_startsocode
+	long ll_endsocode
+	long ll_startissueinvcode
+	long ll_endissueinvcode
+	long ll_startservicesaleinvcode
+	long ll_endservicesaleinvcode
+	long ll_startpurinvcode
+	long ll_endpurinvcode
+	long ll_startquotcode
+	long ll_endquotcode
+	long ll_pstartexpintimationcode
+	long ll_pendexpintimationcode
+	long ll_sstartexpintimationcode
+	long ll_sendexpintimationcode
+	long[] ll_invcode
+	u_transaction lt_transobject
+	ls_connsetting = "Set ANSI_NULLS ON Set ANSI_WARNINGS ON"
+	lt_transobject = create u_transaction
+	if parent.dw_datacarry.accepttext() = -1 then
+		return ::message.returnvalue
+	end if
+	parent.ii_custcode = parent.dw_datacarry.object.custcode[1]
+	ldt_exportitemchangessince = parent.dw_datacarry.object.exportitemchangessince[1]
+	setpointer(hourglass!)
+	lt_transobject.autocommit = true
+	SQL start USING lt_transobject;
+	SQL EXECUTE IMMEDIATE :ls_connsetting USING lt_transobject;
+	ll_startsaleinvcode = parent.dw_datacarry.getitemnumber(1, "startsaleinvcode")
+	ll_endsaleinvcode = parent.dw_datacarry.getitemnumber(1, "endsaleinvcode")
+	ll_salecustomer = parent.dw_datacarry.getitemnumber(1, "salecustomer")
+	if parent.ib_exportsale then
+		if ll_startsaleinvcode > ll_endsaleinvcode then
+			messagebox("Starting Sale Invoice Validation!", "Please enter valid starting Sales Invoice code")
+			parent.dw_datacarry.setfocus()
+			parent.dw_datacarry.setcolumn("startsaleinvcode")
+			return ::message.returnvalue
+		end if
+		if parent.wf_check_sale_posting(ll_startsaleinvcode, ll_endsaleinvcode, ll_salecustomer) < 0 then
+			parent.dw_datacarry.setfocus()
+			parent.dw_datacarry.setcolumn("startsaleinvcode")
+			return ::message.returnvalue
+		end if
+		return
+	end if
+	ll_startpocode = parent.dw_datacarry.getitemnumber(1, "startpocode")
+	ll_endpocode = parent.dw_datacarry.getitemnumber(1, "endpocode")
+	if ll_startpocode > ll_endpocode then
+		messagebox("Starting Purchase Order Validation!", "Please enter valid starting Purchase Order Code")
+		parent.dw_datacarry.setfocus()
+		parent.dw_datacarry.setcolumn("startpocode")
+		return ::message.returnvalue
+	end if
+	ll_startprcode = parent.dw_datacarry.getitemnumber(1, "startprcode")
+	ll_endprcode = parent.dw_datacarry.getitemnumber(1, "endprcode")
+	if ll_startprcode > ll_endprcode then
+		messagebox("Starting Purchase Return Validation!", "Please enter valid starting Purchase Return Code")
+		parent.dw_datacarry.setfocus()
+		parent.dw_datacarry.setcolumn("startprcode")
+		return ::message.returnvalue
+	end if
+	ll_startsocode = parent.dw_datacarry.getitemnumber(1, "startsocode")
+	ll_endsocode = parent.dw_datacarry.getitemnumber(1, "endsocode")
+	if ll_startsocode > ll_endsocode then
+		messagebox("Starting Sales Order Validation!", "Please enter valid starting Sales Order Code")
+		parent.dw_datacarry.setfocus()
+		parent.dw_datacarry.setcolumn("startsocode")
+		return ::message.returnvalue
+	end if
+	ll_startissueinvcode = parent.dw_datacarry.getitemnumber(1, "startissueinvcode")
+	ll_endissueinvcode = parent.dw_datacarry.getitemnumber(1, "endissueinvcode")
+	if parent.ib_exportissue then
+		if ll_startissueinvcode > ll_endissueinvcode then
+			messagebox("Starting Issue/Delivery Challan Validation!", "Please enter valid starting Issue / Delivery Challan Code")
+			parent.dw_datacarry.setfocus()
+			parent.dw_datacarry.setcolumn("startissueinvcode")
+			return ::message.returnvalue
+		end if
+		if parent.wf_check_issue_posting(ll_startissueinvcode, ll_endissueinvcode) < 0 then
+			parent.dw_datacarry.setfocus()
+			parent.dw_datacarry.setcolumn("startissueinvcode")
+			return ::message.returnvalue
+		end if
+		return
+	end if
+	if parent.ib_exportissue and parent.ib_exportsale and (ll_startsaleinvcode > 0 and ll_startissueinvcode > 0 or ll_endsaleinvcode > 0 and ll_endissueinvcode > 0) then
+		messagebox("Sale and Issue/Delivery Challan Validation!", "Both sales and Issue/Delivery Challan can not be exported in the same datacarry", stopsign!)
+		parent.dw_datacarry.setfocus()
+		parent.dw_datacarry.setcolumn("startsaleinvcode")
+		return ::message.returnvalue
+	end if
+	ll_startservicesaleinvcode = parent.dw_datacarry.getitemnumber(1, "StartServicInvCode")
+	ll_endservicesaleinvcode = parent.dw_datacarry.getitemnumber(1, "EndServicInvCode")
+	if parent.ib_servicesales and ll_startservicesaleinvcode > ll_endservicesaleinvcode then
+		messagebox("Starting Service Sales Validation!", "Please enter valid starting Service Sales Invoice Code")
+		parent.dw_datacarry.setfocus()
+		parent.dw_datacarry.setcolumn("startservicesaleinvcode")
+		return ::message.returnvalue
+	end if
+	if parent.ib_exportpur then
+		ll_startpurinvcode = parent.dw_datacarry.getitemnumber(1, "StartPurCode")
+		ll_endpurinvcode = parent.dw_datacarry.getitemnumber(1, "EndPurCode")
+		if ll_startpurinvcode > ll_endpurinvcode then
+			messagebox("Starting Purchase Invoice Validation!", "Please enter valid starting Purchase Invoice code")
+			parent.dw_datacarry.setfocus()
+			parent.dw_datacarry.setcolumn("startpurcode")
+			return ::message.returnvalue
+		end if
+		return
+	end if
+	if parent.ib_exportquot then
+		ll_startquotcode = parent.dw_datacarry.getitemnumber(1, "StartQuotCode")
+		ll_endquotcode = parent.dw_datacarry.getitemnumber(1, "EndQuotCode")
+		if ll_startquotcode > ll_endquotcode then
+			messagebox("Starting Purchase Invoice Validation!", "Please enter valid starting Purchase Invoice code")
+			parent.dw_datacarry.setfocus()
+			parent.dw_datacarry.setcolumn("startquotcode")
+			return ::message.returnvalue
+		end if
+		return
+	end if
+	if parent.ib_purexpintimation then
+		ll_pstartexpintimationcode = parent.dw_datacarry.getitemnumber(1, "startpexpintimationcode")
+		ll_pendexpintimationcode = parent.dw_datacarry.getitemnumber(1, "endpexpintimationcode")
+		if ll_pstartexpintimationcode > ll_pendexpintimationcode then
+			messagebox("Validation for Starting Expiry Intimation - Purchase Based!", "Please enter valid starting code for Expiry Intimation - Purchase Based")
+			parent.dw_datacarry.setfocus()
+			parent.dw_datacarry.setcolumn("startpexpintimationcode")
+			return ::message.returnvalue
+		end if
+		return
+	end if
+	if parent.ib_saleexpintimation then
+		ll_sstartexpintimationcode = parent.dw_datacarry.getitemnumber(1, "startsexpintimationcode")
+		ll_sendexpintimationcode = parent.dw_datacarry.getitemnumber(1, "endsexpintimationcode")
+		if ll_sstartexpintimationcode > ll_sendexpintimationcode then
+			messagebox("Validation for Starting Expiry Intimation - Sale Based!", "Please enter valid starting code for Expiry Intimation - Sale Based")
+			parent.dw_datacarry.setfocus()
+			parent.dw_datacarry.setcolumn("startsexpintimationcode")
+			return ::message.returnvalue
+		end if
+		return
+	end if
+	if isnull(ll_startsaleinvcode) then
+		ll_startsaleinvcode = 0
+	end if
+	if isnull(ll_endsaleinvcode) then
+		ll_endsaleinvcode = 0
+	end if
+	if isnull(ll_startpocode) then
+		ll_startpocode = 0
+	end if
+	if isnull(ll_endpocode) then
+		ll_endpocode = 0
+	end if
+	if isnull(ll_startpurinvcode) then
+		ll_startpurinvcode = 0
+	end if
+	if isnull(ll_endpurinvcode) then
+		ll_endpurinvcode = 0
+	end if
+	if isnull(ll_startprcode) then
+		ll_startprcode = 0
+	end if
+	if isnull(ll_endprcode) then
+		ll_endprcode = 0
+	end if
+	if isnull(ll_startquotcode) then
+		ll_startquotcode = 0
+	end if
+	if isnull(ll_endquotcode) then
+		ll_endquotcode = 0
+	end if
+	if isnull(ll_startsocode) then
+		ll_startsocode = 0
+	end if
+	if isnull(ll_endsocode) then
+		ll_endsocode = 0
+	end if
+	if isnull(ll_startissueinvcode) then
+		ll_startissueinvcode = 0
+	end if
+	if isnull(ll_endissueinvcode) then
+		ll_endissueinvcode = 0
+	end if
+	if isnull(ll_startservicesaleinvcode) then
+		ll_startservicesaleinvcode = 0
+	end if
+	if isnull(ll_endservicesaleinvcode) then
+		ll_endservicesaleinvcode = 0
+	end if
+	if isnull(ll_pstartexpintimationcode) then
+		ll_pstartexpintimationcode = 0
+	end if
+	if isnull(ll_pendexpintimationcode) then
+		ll_pendexpintimationcode = 0
+	end if
+	if isnull(ll_sstartexpintimationcode) then
+		ll_sstartexpintimationcode = 0
+	end if
+	if isnull(ll_sendexpintimationcode) then
+		ll_sendexpintimationcode = 0
+	end if
+	if parent.ib_exportsale then
+		ll_invcode[1] = ll_startsaleinvcode
+		ll_invcode[2] = ll_endsaleinvcode
+		if ll_salecustomer > 0 then
+			ll_invcode[3] = ll_salecustomer
+		else
+			setnull(ll_invcode[3])
+		end if
+	else
+		ll_invcode[1] = 0
+		ll_invcode[2] = 0
+		setnull(ll_invcode[3])
+	end if
+	ll_invcode[4] = ll_startpocode
+	ll_invcode[5] = ll_endpocode
+	setnull(ll_invcode[6])
+	ll_invcode[7] = ll_startprcode
+	ll_invcode[8] = ll_endprcode
+	setnull(ll_invcode[9])
+	ll_invcode[10] = ll_startsocode
+	ll_invcode[11] = ll_endsocode
+	setnull(ll_invcode[12])
+	if parent.ib_exportissue then
+		ll_invcode[13] = ll_startissueinvcode
+		ll_invcode[14] = ll_endissueinvcode
+	else
+		ll_invcode[13] = 0
+		ll_invcode[14] = 0
+	end if
+	setnull(ll_invcode[15])
+	if parent.ib_servicesales then
+		ll_invcode[16] = ll_startservicesaleinvcode
+		ll_invcode[17] = ll_endservicesaleinvcode
+	else
+		ll_invcode[16] = 0
+		ll_invcode[17] = 0
+	end if
+	setnull(ll_invcode[18])
+	if parent.ib_exportpur then
+		ll_invcode[19] = ll_startpurinvcode
+		ll_invcode[20] = ll_endpurinvcode
+	else
+		ll_invcode[19] = 0
+		ll_invcode[20] = 0
+	end if
+	setnull(ll_invcode[21])
+	if parent.ib_exportquot then
+		ll_invcode[22] = ll_startquotcode
+		ll_invcode[23] = ll_endquotcode
+	else
+		ll_invcode[22] = 0
+		ll_invcode[23] = 0
+	end if
+	setnull(ll_invcode[24])
+	if parent.ib_purexpintimation then
+		ll_invcode[25] = ll_pstartexpintimationcode
+		ll_invcode[26] = ll_pendexpintimationcode
+	else
+		ll_invcode[25] = 0
+		ll_invcode[26] = 0
+	end if
+	setnull(ll_invcode[27])
+	if parent.ib_saleexpintimation then
+		ll_invcode[28] = ll_sstartexpintimationcode
+		ll_invcode[29] = ll_sendexpintimationcode
+	else
+		ll_invcode[28] = 0
+		ll_invcode[29] = 0
+	end if
+	setnull(ll_invcode[30])
+	lc_basicdata = parent.dw_datacarry.object.basicdata[1]
+	lc_exportstockinhand = parent.dw_datacarry.object.stockinhand[1]
+	if f_exportdata_to_datacarrydb(lt_transobject, lc_basicdata, lc_exportstockinhand, ll_invcode, parent.ii_custcode, ldt_exportitemchangessince) <= 0 then
+		SQL stop USING lt_transobject;
+		return -1
+	end if
+	SQL stop USING lt_transobject;
+	parent.post event ue_close()
+	return ::message.returnvalue

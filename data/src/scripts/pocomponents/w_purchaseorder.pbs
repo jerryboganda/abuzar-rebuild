@@ -1,0 +1,4011 @@
+// window w_purchaseorder (pocomponents)  ancestor: w_multi_entry
+
+// w_purchaseorder.ue_generatepo() returns 0
+	datastore lds_po
+	datastore lds_suppitems
+	long ll_counter
+	long ll_endrow
+	long ll_rows
+	long ll_porow
+	long ll_days
+	long ll_projectiondays
+	long ll_minqty
+	long ll_suppitemrows
+	long ll_insrow
+	long ll_found
+	long ll_packunits
+	long ll_icode
+	long ll_code
+	long ll_orderlevel_type
+	integer li_allrows
+	double ld_avgqty
+	double ld_packqty
+	double ld_purdiscperc
+	double ld_bonusqty
+	double ld_packstock
+	string ls_fullcode
+	string ls_name
+	boolean lb_suppitems
+	boolean lb_insertrow
+	boolean lb_suppitemsonly
+	double ld_tmpqty
+	double ld_tmpbonus
+	double ld_transitstock
+	double ld_stock
+	double ld_forecastqty
+	double ld_looseqty
+	double ld_saleorderrequest
+	s_saletemplate lstr_template
+	s_arguements lstr_tmp
+	m_purchaseordermenu lm_menu
+	s_arguements lstr_arg
+	wf_setmenu(this.menuid)
+	lm_menu = this.menuid
+	if wf_iseditable() = false then
+		return
+	end if
+	if this.id_master.getitemnumber(1, "code") > 0.0 and this.id_master.getitemstring(1, "Posted") = "Y" then
+		return
+	end if
+	if this.id_master.accepttext() = -1 then
+		return
+	end if
+	if this.id_master.object.purordercatcode[1] = 2 then
+		ll_days = daysafter(date(this.id_master.object.startdate[this.id_master.getrow()]), date(this.id_master.object.enddate[this.id_master.getrow()])) + 1
+		ll_projectiondays = this.id_master.getitemnumber(1, "projectionperiod")
+		if ll_days = 0 or ll_projectiondays = 0 or isnull(ll_days) or isnull(ll_projectiondays) then
+			messagebox("Problem Generating Order", "Please Select Valid Base Period and Projection Days.")
+			return
+		end if
+		if this.id_master.object.startdate[this.id_master.getrow()] > this.id_master.object.enddate[this.id_master.getrow()] then
+			messagebox("Problem Generating Order", "Please Select Valid Base Period.")
+			return
+		end if
+		return
+	end if
+	if lm_menu.m_file.m_supplieritemsonly.checked = true and not isnull(this.id_master.object.suppcode[1]) then
+		lds_suppitems = create datastore
+		lds_suppitems.dataobject = "d_item_suppliers"
+		lds_suppitems.settransobject(sqlca)
+		lb_suppitemsonly = true
+		ll_suppitemrows = lds_suppitems.retrieve(this.id_master.object.suppcode[1])
+		if ll_suppitemrows > 0 then
+			lb_suppitems = true
+		else
+			lb_suppitems = false
+		end if
+	else
+		lb_suppitems = false
+	end if
+	lds_po = create datastore
+	open(w_arg_item_populate2)
+	lstr_arg = message.powerobjectparm
+	if lstr_arg.i_status = 1 then
+		this.id_detail.setredraw(false)
+		ll_counter = 1
+		for ll_counter = this.id_detail.rowcount() to 1 step -1
+			this.id_detail.deleterow(ll_counter)
+		next
+		if this.id_master.object.purordercatcode[1] = 1 then
+			if lstr_arg.i_status = 1 then
+				open(w_select_purorder_reorderlevel)
+				ll_orderlevel_type = message.doubleparm
+				if ll_orderlevel_type = 2 then
+					open(w_arg_godown)
+					lstr_tmp = message.powerobjectparm
+				end if
+				li_allrows = 0
+				li_allrows = this.id_master.getitemnumber(this.id_master.getrow(), "zeroqty")
+				if ll_orderlevel_type = 1 then
+					if lstr_arg.s_name2 = "AND" then
+						lds_po.dataobject = "d_dspodetail_and"
+						lds_po.settransobject(sqlca)
+						ll_rows = lds_po.retrieve(lstr_arg.ia_integerlist, lstr_arg.ia_integerlist1, lstr_arg.ia_integerlist2, lstr_arg.la_longlist, li_allrows)
+					else
+						lds_po.dataobject = "d_dspodetail"
+						lds_po.settransobject(sqlca)
+						ll_rows = lds_po.retrieve(lstr_arg.ia_integerlist, lstr_arg.ia_integerlist1, lstr_arg.ia_integerlist2, lstr_arg.la_longlist, lstr_arg.s_name1, li_allrows)
+					end if
+				elseif lstr_arg.s_name2 = "AND" then
+					lds_po.dataobject = "d_dspodetail_godownwise_and"
+					lds_po.settransobject(sqlca)
+					ll_rows = lds_po.retrieve(lstr_arg.ia_integerlist, lstr_arg.ia_integerlist1, lstr_arg.ia_integerlist2, lstr_arg.la_longlist, lstr_tmp.l_code3, li_allrows)
+				else
+					lds_po.dataobject = "d_dspodetail_godownwise"
+					lds_po.settransobject(sqlca)
+					ll_rows = lds_po.retrieve(lstr_arg.ia_integerlist, lstr_arg.ia_integerlist1, lstr_arg.ia_integerlist2, lstr_arg.la_longlist, lstr_arg.s_name1, lstr_tmp.l_code3, li_allrows)
+				end if
+			end if
+			if ll_rows >= 0 then
+				ll_endrow = lds_po.rowcount()
+				setpointer(hourglass!)
+				ll_insrow = 0
+				for ll_counter = 1 to ll_endrow
+					ll_packunits = lds_po.object.packunits[ll_counter]
+					if ll_packunits = 0 then
+						ll_packunits = 1
+					end if
+					ld_transitstock = lds_po.object.transitstock[ll_counter]
+					if this.ic_reqpackqtyfractiontreatment_inpo = "R" then
+						ld_packqty = round((lds_po.object.optimumqty[ll_counter] - (lds_po.object.currqty[ll_counter] + ld_transitstock)) / ll_packunits, 0)
+					else
+						ld_packqty = ceiling((lds_po.object.optimumqty[ll_counter] - (lds_po.object.currqty[ll_counter] + ld_transitstock)) / ll_packunits)
+					end if
+					if lb_suppitems then
+						ll_found = lds_suppitems.find("icode = " + trim(string(lds_po.getitemnumber(ll_counter, "icode"))), 1, ll_suppitemrows)
+						if ll_found > 0 then
+							lb_insertrow = true
+							ll_insrow = ll_insrow + 1
+						else
+							lb_insertrow = false
+						end if
+					else
+						this.id_detail.insertrow(0)
+						lb_insertrow = true
+						ll_insrow = ll_insrow + 1
+					end if
+					if lb_insertrow = true then
+						ll_icode = lds_po.object.icode[ll_counter]
+						if ll_icode > 0 then
+							SQL SELECT purdiscperc INTO :ld_purdiscperc FROM ITEM WHERE Icode =:ll_icode USING sqlca;
+							this.id_detail.object.icode[ll_insrow] = ll_icode
+							this.id_detail.object.looseqty[ll_insrow] = lds_po.object.optimumqty[ll_counter] - (lds_po.object.currqty[ll_counter] + ld_transitstock)
+							this.id_detail.object.packunits[ll_insrow] = lds_po.object.packunits[ll_counter]
+							this.id_detail.object.saleorderrequest[ll_insrow] = 0
+							this.id_detail.object.qty[ll_insrow] = ld_packqty
+							this.id_detail.object.allowedqty[ll_insrow] = ld_packqty
+							this.id_detail.object.transitstock[ll_insrow] = ld_transitstock
+							this.id_detail.object.rate[ll_insrow] = lds_po.object.rate[ll_counter]
+							this.id_detail.object.minqty[ll_insrow] = lds_po.object.minqty[ll_counter]
+							this.id_detail.object.reorderqty[ll_insrow] = lds_po.object.reorderqty[ll_counter]
+							this.id_detail.object.optimumqty[ll_insrow] = lds_po.object.optimumqty[ll_counter]
+							this.id_detail.object.stock[ll_insrow] = lds_po.object.currqty[ll_counter]
+							this.id_detail.object.itemname[ll_insrow] = lds_po.object.item[ll_counter]
+							this.id_detail.object.manufname[ll_insrow] = lds_po.object.manufacturer[ll_counter]
+							this.id_detail.object.itemcategory[ll_insrow] = lds_po.object.itemcategory[ll_counter]
+							this.id_detail.object.itemclass[ll_insrow] = lds_po.object.itemclass[ll_counter]
+							this.id_detail.object.itempacking[ll_insrow] = lds_po.object.itempacking[ll_counter]
+							this.id_detail.object.genericitem[ll_insrow] = lds_po.object.genericitem[ll_counter]
+							this.id_detail.object.fullcode[ll_insrow] = lds_po.object.aliasname[ll_counter]
+							this.id_detail.object.discperc[ll_insrow] = ld_purdiscperc
+							this.id_detail.object.purprice[ll_insrow] = lds_po.object.purprice[ll_counter]
+							this.id_detail.object.saleprice[ll_insrow] = lds_po.object.saleprice[ll_counter]
+							this.id_detail.object.rpp[ll_insrow] = lds_po.object.rpp[ll_counter]
+							this.id_detail.object.packavgprice[ll_insrow] = lds_po.object.packavgprice[ll_counter]
+							this.id_detail.object.lastpurinvcode[ll_insrow] = lds_po.object.lastpurinvcode[ll_counter]
+							this.id_detail.object.lastpurdate[ll_insrow] = lds_po.object.lastpurdate[ll_counter]
+							if f_stringpreferences("ItemGSTPercInPO") = "N" then
+								this.id_detail.object.gstperc[ll_insrow] = 0
+							else
+								this.id_detail.object.gstperc[ll_insrow] = lds_po.object.gstperc[ll_counter]
+							end if
+							if f_stringpreferences("ItemUnitTaxInPO") = "N" then
+								this.id_detail.object.packsalestax[ll_insrow] = 0
+							else
+								this.id_detail.object.packsalestax[ll_insrow] = lds_po.object.packsalestax[ll_counter]
+							end if
+							wf_apply_supp_assoc_purquot(ll_icode, ll_insrow)
+						end if
+					end if
+				next
+				this.id_detail.scrolltorow(0)
+				setpointer(arrow!)
+			else
+				messagebox("Retrieve Fail", "Can not Generate Purchase Order", exclamation!, ok!, 1)
+			end if
+		elseif this.id_master.object.purordercatcode[1] = 2 then
+			if lstr_arg.i_status = 1 then
+				if lstr_arg.s_name2 = "AND" then
+					lds_po.dataobject = "d_dspodetail_baseperiod_and"
+					lds_po.settransobject(sqlca)
+					ll_rows = lds_po.retrieve(lstr_arg.ia_integerlist, lstr_arg.ia_integerlist1, lstr_arg.ia_integerlist2, lstr_arg.la_longlist, this.id_master.object.startdate[this.id_master.getrow()], this.id_master.object.enddate[this.id_master.getrow()])
+				else
+					lds_po.dataobject = "d_dspodetail_baseperiod"
+					lds_po.settransobject(sqlca)
+					ll_rows = lds_po.retrieve(lstr_arg.ia_integerlist, lstr_arg.ia_integerlist1, lstr_arg.ia_integerlist2, lstr_arg.la_longlist, lstr_arg.s_name1, this.id_master.object.startdate[this.id_master.getrow()], this.id_master.object.enddate[this.id_master.getrow()])
+				end if
+			end if
+			if ll_rows >= 0 then
+				ll_endrow = lds_po.rowcount()
+				setpointer(hourglass!)
+				ll_days = daysafter(date(this.id_master.object.startdate[this.id_master.getrow()]), date(this.id_master.object.enddate[this.id_master.getrow()]))
+				ll_projectiondays = this.id_master.getitemnumber(1, "projectionperiod")
+				li_allrows = this.id_master.getitemnumber(this.id_master.getrow(), "zeroqty")
+				ll_porow = 0
+				if ll_days = 0 then
+					ll_days = 1
+				end if
+				for ll_counter = 1 to ll_endrow
+					ld_transitstock = lds_po.object.transitstock[ll_counter]
+					ld_stock = lds_po.getitemnumber(ll_counter, "stock")
+					ld_avgqty = (lds_po.getitemnumber(ll_counter, "soldqty") - lds_po.getitemnumber(ll_counter, "Returnqty")) / ll_days
+					ld_forecastqty = ld_avgqty * ll_projectiondays
+					ll_minqty = lds_po.getitemnumber(ll_counter, "minqty")
+					if ld_forecastqty > ld_stock + ld_transitstock then
+						ld_looseqty = ld_forecastqty - (ld_stock + ld_transitstock)
+						if ld_forecastqty < ll_minqty then
+							ld_looseqty = ll_minqty - (ld_stock + ld_transitstock)
+						end if
+					else
+						ld_looseqty = 0
+						if ld_stock + ld_transitstock < ll_minqty then
+							ld_looseqty = ll_minqty - (ld_stock + ld_transitstock)
+						end if
+					end if
+					ll_packunits = lds_po.getitemnumber(ll_counter, "packunits")
+					if ll_packunits = 0 then
+						ll_packunits = 1
+					end if
+					if this.ic_reqpackqtyfractiontreatment_inpo = "R" then
+						ld_packqty = round(ld_looseqty / ll_packunits, 0)
+					else
+						ld_packqty = ceiling(ld_looseqty / ll_packunits)
+					end if
+					if ld_packqty > 0.0 or li_allrows = 1 then
+						if lb_suppitems then
+							ll_found = lds_suppitems.find("icode = " + trim(string(lds_po.getitemnumber(ll_counter, "icode"))), 1, ll_suppitemrows)
+							if ll_found > 0 then
+								this.id_detail.insertrow(0)
+								lb_insertrow = true
+								ll_insrow = ll_insrow + 1
+							else
+								lb_insertrow = false
+							end if
+						else
+							this.id_detail.insertrow(0)
+							lb_insertrow = true
+							ll_insrow = ll_insrow + 1
+						end if
+						if lb_insertrow = true then
+							ll_icode = lds_po.object.icode[ll_counter]
+							if ll_icode > 0 then
+								SQL SELECT purdiscperc INTO :ld_purdiscperc FROM ITEM WHERE Icode =:ll_icode USING sqlca;
+								this.id_detail.setitem(ll_insrow, "icode", lds_po.getitemnumber(ll_counter, "icode"))
+								this.id_detail.setitem(ll_insrow, "rate", lds_po.getitemnumber(ll_counter, "purprice"))
+								this.id_detail.setitem(ll_insrow, "stock", lds_po.getitemnumber(ll_counter, "stock"))
+								this.id_detail.setitem(ll_insrow, "transitstock", lds_po.getitemnumber(ll_counter, "transitstock"))
+								this.id_detail.object.saleorderrequest[ll_insrow] = 0
+								this.id_detail.setitem(ll_insrow, "soldqty", lds_po.getitemnumber(ll_counter, "soldqty"))
+								this.id_detail.setitem(ll_insrow, "returnqty", lds_po.getitemnumber(ll_counter, "returnqty"))
+								this.id_detail.setitem(ll_insrow, "netsaleqty", lds_po.getitemnumber(ll_counter, "soldqty") - lds_po.getitemnumber(ll_counter, "returnqty"))
+								this.id_detail.setitem(ll_insrow, "packunits", lds_po.getitemnumber(ll_counter, "packunits"))
+								this.id_detail.setitem(ll_insrow, "minqty", lds_po.getitemnumber(ll_counter, "minqty"))
+								this.id_detail.setitem(ll_insrow, "avgsaleqty", ld_avgqty)
+								this.id_detail.setitem(ll_insrow, "forecastqty", ld_forecastqty)
+								this.id_detail.setitem(ll_insrow, "looseqty", ld_looseqty)
+								this.id_detail.setitem(ll_insrow, "qty", ld_packqty)
+								this.id_detail.setitem(ll_insrow, "allowedqty", ld_packqty)
+								this.id_detail.setitem(ll_insrow, "fullcode", lds_po.getitemstring(ll_counter, "aliasname"))
+								this.id_detail.setitem(ll_insrow, "itemname", lds_po.getitemstring(ll_counter, "item"))
+								this.id_detail.setitem(ll_insrow, "manufname", lds_po.getitemstring(ll_counter, "manufacturer"))
+								this.id_detail.object.itemcategory[ll_insrow] = lds_po.object.itemcategory[ll_counter]
+								this.id_detail.object.itemclass[ll_insrow] = lds_po.object.itemclass[ll_counter]
+								this.id_detail.object.itempacking[ll_insrow] = lds_po.object.itempacking[ll_counter]
+								this.id_detail.object.genericitem[ll_insrow] = lds_po.object.genericitem[ll_counter]
+								this.id_detail.object.discperc[ll_insrow] = ld_purdiscperc
+								this.id_detail.object.purprice[ll_insrow] = lds_po.object.purprice[ll_counter]
+								this.id_detail.object.saleprice[ll_insrow] = lds_po.object.saleprice[ll_counter]
+								this.id_detail.object.rpp[ll_insrow] = lds_po.object.rpp[ll_counter]
+								this.id_detail.object.packavgprice[ll_insrow] = lds_po.object.packavgprice[ll_counter]
+								this.id_detail.object.lastpurinvcode[ll_insrow] = lds_po.object.lastpurinvcode[ll_counter]
+								this.id_detail.object.lastpurdate[ll_insrow] = lds_po.object.lastpurdate[ll_counter]
+								if f_stringpreferences("ItemGSTPercInPO") = "N" then
+									this.id_detail.object.gstperc[ll_insrow] = 0
+								else
+									this.id_detail.object.gstperc[ll_insrow] = lds_po.object.gstperc[ll_counter]
+								end if
+								if f_stringpreferences("ItemUnitTaxInPO") = "N" then
+									this.id_detail.object.packsalestax[ll_insrow] = 0
+								else
+									this.id_detail.object.packsalestax[ll_insrow] = lds_po.object.packsalestax[ll_counter]
+								end if
+								wf_apply_supp_assoc_purquot(ll_icode, ll_insrow)
+							end if
+						end if
+					end if
+				next
+				this.id_detail.scrolltorow(0)
+				setpointer(arrow!)
+				this.im_menu.m_file.m_options.enabled = true
+				this.im_menu.m_file.m_save.enabled = true
+				this.im_menu.m_file.m_print.enabled = true
+			else
+				messagebox("Retrieve Fail", "Can not Generate Purchase Order", exclamation!, ok!, 1)
+			end if
+		elseif this.id_master.object.purordercatcode[1] = 3 then
+			open(w_editsaleorder_finalized_purorder_form)
+			lstr_template = message.powerobjectparm
+			if lstr_template.c_copyinvfrom = "T" then
+				ll_counter = 1
+				for ll_counter = this.id_detail.rowcount() to 1 step -1
+					this.id_detail.deleterow(ll_counter)
+				next
+				if lstr_arg.s_name2 = "AND" then
+					lds_po.dataobject = "d_dspodetail_saleorder_and"
+					lds_po.settransobject(sqlca)
+					ll_rows = lds_po.retrieve(lstr_template.l_invtemplate, lstr_arg.ia_integerlist, lstr_arg.ia_integerlist1, lstr_arg.ia_integerlist2, lstr_arg.la_longlist)
+				else
+					lds_po.dataobject = "d_dspodetail_saleorder"
+					lds_po.settransobject(sqlca)
+					ll_rows = lds_po.retrieve(lstr_template.l_invtemplate, lstr_arg.ia_integerlist, lstr_arg.ia_integerlist1, lstr_arg.ia_integerlist2, lstr_arg.la_longlist, lstr_arg.s_name1)
+				end if
+				if ll_rows >= 0 then
+					ll_endrow = lds_po.rowcount()
+					setpointer(hourglass!)
+					ll_insrow = 0
+					for ll_counter = 1 to ll_endrow
+						lb_insertrow = false
+						ld_tmpqty = 0
+						ll_code = this.id_master.getitemnumber(this.id_master.getrow(), "code")
+						ll_icode = lds_po.object.icode[ll_counter]
+						ll_packunits = lds_po.object.packunits[ll_counter]
+						ll_minqty = lds_po.object.minqty[ll_counter]
+						if ll_packunits = 0 then
+							ll_packunits = 1
+						end if
+						if lstr_template.i_invtype = 0 then
+							lb_insertrow = true
+						else
+							if not isnull(ll_code) then
+								SQL SELECT sum ( qty *packunits ) INTO :ld_tmpqty FROM PurOrderDetail WHERE Icode =:ll_icode AND POcode =:ll_code USING sqlca;
+								if sqlca.sqlcode <> 0 then
+									lb_insertrow = false
+								end if
+							end if
+							if isnull(ld_tmpqty) then
+								ld_tmpqty = 0
+							end if
+							if lds_po.getitemnumber(ll_counter, "looseqty") + lds_po.getitemnumber(ll_counter, "bonusqty") - lds_po.getitemnumber(ll_counter, "purchaseordered") + ld_tmpqty > 0.0 then
+								lb_insertrow = true
+							end if
+						end if
+						ld_saleorderrequest = 0
+						if lb_insertrow then
+							ll_icode = lds_po.object.icode[ll_counter]
+							SQL SELECT purdiscperc INTO :ld_purdiscperc FROM ITEM WHERE Icode =:ll_icode USING sqlca;
+							if lstr_template.i_invtype = 0 then
+								ld_looseqty = lds_po.object.looseqty[ll_counter] + lds_po.object.bonusqty[ll_counter]
+								ld_saleorderrequest = ld_looseqty
+							else
+								ld_looseqty = lds_po.object.looseqty[ll_counter] + lds_po.object.bonusqty[ll_counter] - lds_po.getitemnumber(ll_counter, "purchaseordered") + ld_tmpqty
+								ld_saleorderrequest = ld_looseqty
+							end if
+							if lstr_template.b_userinput = true then
+								ld_looseqty = ld_looseqty + ll_minqty
+								if ld_looseqty >= lds_po.object.currqty[ll_counter] + lds_po.object.transitstock[ll_counter] then
+									ld_looseqty = ld_looseqty - (lds_po.object.currqty[ll_counter] + lds_po.object.transitstock[ll_counter])
+								else
+									ld_looseqty = 0
+								end if
+							end if
+							if ld_looseqty < 0.0 then
+								ld_looseqty = 0
+							end if
+							if this.ic_reqpackqtyfractiontreatment_inpo = "R" then
+								ld_packqty = round(ld_looseqty / ll_packunits, 0)
+							else
+								ld_packqty = ceiling(ld_looseqty / ll_packunits)
+							end if
+							if ld_packqty > 0.0 then
+								if lb_suppitemsonly = true then
+									if ll_suppitemrows > 0 then
+										ll_found = lds_suppitems.find("icode = " + trim(string(lds_po.getitemnumber(ll_counter, "icode"))), 1, ll_suppitemrows)
+										if ll_found > 0 then
+											lb_insertrow = true
+											ll_insrow = ll_insrow + 1
+										else
+											lb_insertrow = false
+										end if
+									else
+										lb_insertrow = false
+									end if
+								else
+									this.id_detail.insertrow(0)
+									lb_insertrow = true
+									ll_insrow = ll_insrow + 1
+								end if
+							else
+								lb_insertrow = false
+							end if
+							if lb_insertrow = true then
+								this.id_detail.object.icode[ll_insrow] = ll_icode
+								this.id_detail.object.saleorderrequest[ll_insrow] = ld_saleorderrequest
+								this.id_detail.object.packunits[ll_insrow] = ll_packunits
+								this.id_detail.object.minqty[ll_insrow] = ll_minqty
+								this.id_detail.object.qty[ll_insrow] = ld_packqty
+								this.id_detail.object.allowedqty[ll_insrow] = long(ld_packqty)
+								this.id_detail.object.rate[ll_insrow] = lds_po.object.rate[ll_counter]
+								this.id_detail.object.reorderqty[ll_insrow] = lds_po.object.reorderqty[ll_counter]
+								this.id_detail.object.optimumqty[ll_insrow] = lds_po.object.optimumqty[ll_counter]
+								this.id_detail.object.stock[ll_insrow] = lds_po.object.currqty[ll_counter]
+								this.id_detail.object.transitstock[ll_insrow] = lds_po.object.transitstock[ll_counter]
+								this.id_detail.object.itemname[ll_insrow] = lds_po.object.item[ll_counter]
+								this.id_detail.object.manufname[ll_insrow] = lds_po.object.manufacturer[ll_counter]
+								this.id_detail.object.itemcategory[ll_insrow] = lds_po.object.itemcategory[ll_counter]
+								this.id_detail.object.itemclass[ll_insrow] = lds_po.object.itemclass[ll_counter]
+								this.id_detail.object.itempacking[ll_insrow] = lds_po.object.itempacking[ll_counter]
+								this.id_detail.object.genericitem[ll_insrow] = lds_po.object.genericitem[ll_counter]
+								this.id_detail.object.fullcode[ll_insrow] = lds_po.object.aliasname[ll_counter]
+								this.id_detail.object.discperc[ll_insrow] = ld_purdiscperc
+								this.id_detail.object.purprice[ll_insrow] = lds_po.object.purprice[ll_counter]
+								this.id_detail.object.saleprice[ll_insrow] = lds_po.object.saleprice[ll_counter]
+								this.id_detail.object.rpp[ll_insrow] = lds_po.object.rpp[ll_counter]
+								this.id_detail.object.packavgprice[ll_insrow] = lds_po.object.packavgprice[ll_counter]
+								this.id_detail.object.lastpurinvcode[ll_insrow] = lds_po.object.lastpurinvcode[ll_counter]
+								this.id_detail.object.lastpurdate[ll_insrow] = lds_po.object.lastpurdate[ll_counter]
+								if f_stringpreferences("ItemGSTPercInPO") = "N" then
+									this.id_detail.object.gstperc[ll_insrow] = 0
+								else
+									this.id_detail.object.gstperc[ll_insrow] = lds_po.object.gstperc[ll_counter]
+								end if
+								if f_stringpreferences("ItemUnitTaxInPO") = "N" then
+									this.id_detail.object.packsalestax[ll_insrow] = 0
+								else
+									this.id_detail.object.packsalestax[ll_insrow] = lds_po.object.packsalestax[ll_counter]
+								end if
+								wf_apply_supp_assoc_purquot(ll_icode, ll_insrow)
+							end if
+						end if
+					next
+					if ll_insrow > 0 then
+						this.id_master.setitem(this.id_master.getrow(), "saleordercode", lstr_template.l_invtemplate)
+					end if
+					this.id_detail.scrolltorow(0)
+					setpointer(arrow!)
+					this.im_menu.m_file.m_options.enabled = true
+					this.im_menu.m_file.m_save.enabled = true
+					this.im_menu.m_file.m_print.enabled = true
+				else
+					messagebox("Retrieve Fail", "Can not Generate Purchase Order", exclamation!, ok!, 1)
+				end if
+			end if
+		elseif this.id_master.object.purordercatcode[1] = 4 then
+			open(w_editpurquot_posted_purorder_form)
+			lstr_template = message.powerobjectparm
+			if lstr_template.c_copyinvfrom = "T" then
+				ll_counter = 1
+				for ll_counter = this.id_detail.rowcount() to 1 step -1
+					this.id_detail.deleterow(ll_counter)
+				next
+				if lstr_arg.s_name2 = "AND" then
+					lds_po.dataobject = "d_dspodetail_purquot_and"
+					lds_po.settransobject(sqlca)
+					ll_rows = lds_po.retrieve(lstr_template.l_invtemplate, lstr_arg.ia_integerlist, lstr_arg.ia_integerlist1, lstr_arg.ia_integerlist2, lstr_arg.la_longlist)
+				else
+					lds_po.dataobject = "d_dspodetail_purquot"
+					lds_po.settransobject(sqlca)
+					ll_rows = lds_po.retrieve(lstr_template.l_invtemplate, lstr_arg.ia_integerlist, lstr_arg.ia_integerlist1, lstr_arg.ia_integerlist2, lstr_arg.la_longlist, lstr_arg.s_name1)
+				end if
+				if ll_rows >= 0 then
+					ll_endrow = lds_po.rowcount()
+					setpointer(hourglass!)
+					ll_insrow = 0
+					for ll_counter = 1 to ll_endrow
+						lb_insertrow = false
+						ld_tmpqty = 0
+						ll_code = this.id_master.getitemnumber(this.id_master.getrow(), "code")
+						ll_icode = lds_po.object.icode[ll_counter]
+						ll_packunits = lds_po.object.packunits[ll_counter]
+						ll_minqty = lds_po.object.minqty[ll_counter]
+						if ll_packunits = 0 then
+							ll_packunits = 1
+						end if
+						if lstr_template.i_invtype = 0 then
+							lb_insertrow = true
+						else
+							if not isnull(ll_code) then
+								SQL SELECT sum ( qty ) , sum ( bonusqty ) INTO :ld_tmpqty, :ld_tmpbonus FROM PurOrderDetail WHERE Icode =:ll_icode AND POcode =:ll_code USING sqlca;
+								if sqlca.sqlcode <> 0 then
+									lb_insertrow = false
+								end if
+							end if
+							if isnull(ld_tmpqty) then
+								ld_tmpqty = 0
+							end if
+							if lds_po.object.qty[ll_counter] - lds_po.object.poqty[ll_counter] + ld_tmpqty > 0 then
+								lb_insertrow = true
+							elseif lds_po.object.bonusqty[ll_counter] - lds_po.object.pobonus[ll_counter] + ld_tmpbonus > 0 then
+								lb_insertrow = true
+							end if
+						end if
+						if lb_insertrow then
+							ll_icode = lds_po.object.icode[ll_counter]
+							if lstr_template.i_invtype = 0 then
+								ld_packqty = lds_po.object.qty[ll_counter]
+								ld_bonusqty = lds_po.object.bonusqty[ll_counter]
+							else
+								if lds_po.object.qty[ll_counter] - lds_po.object.poqty[ll_counter] + ld_tmpqty > 0 then
+									ld_packqty = lds_po.object.qty[ll_counter] - lds_po.object.poqty[ll_counter] + ld_tmpqty
+								else
+									ld_packqty = 0
+								end if
+								if lds_po.object.bonusqty[ll_counter] - lds_po.object.pobonus[ll_counter] + ld_tmpbonus > 0 then
+									ld_bonusqty = lds_po.object.bonusqty[ll_counter] - lds_po.object.pobonus[ll_counter] + ld_tmpbonus
+								else
+									ld_bonusqty = 0
+								end if
+							end if
+							if lstr_template.b_userinput = true then
+								ld_packqty = ld_packqty + ll_minqty
+								if ll_packunits > 0 then
+									ld_packstock = (lds_po.object.currqty[ll_counter] + lds_po.object.transitstock[ll_counter]) / ll_packunits
+								else
+									ld_packstock = lds_po.object.currqty[ll_counter] + lds_po.object.transitstock[ll_counter]
+								end if
+								if ld_packqty >= ld_packstock then
+									ld_packqty = ld_packqty - ld_packstock
+								else
+									ld_packqty = 0
+								end if
+							end if
+							if ld_packqty < 0.0 then
+								ld_packqty = 0
+							end if
+							if this.ic_reqpackqtyfractiontreatment_inpo = "R" then
+								ld_packqty = round(ld_packqty, 0)
+							else
+								ld_packqty = ceiling(ld_packqty)
+							end if
+							if ld_packqty > 0.0 then
+								if lb_suppitemsonly = true then
+									if ll_suppitemrows > 0 then
+										ll_found = lds_suppitems.find("icode = " + trim(string(lds_po.getitemnumber(ll_counter, "icode"))), 1, ll_suppitemrows)
+										if ll_found > 0 then
+											lb_insertrow = true
+											ll_insrow = ll_insrow + 1
+										else
+											lb_insertrow = false
+										end if
+									else
+										lb_insertrow = false
+									end if
+								else
+									this.id_detail.insertrow(0)
+									lb_insertrow = true
+									ll_insrow = ll_insrow + 1
+								end if
+							else
+								lb_insertrow = false
+							end if
+							if lb_insertrow = true then
+								this.id_detail.object.icode[ll_insrow] = ll_icode
+								this.id_detail.object.saleorderrequest[ll_insrow] = 0
+								this.id_detail.object.packunits[ll_insrow] = ll_packunits
+								this.id_detail.object.minqty[ll_insrow] = ll_minqty
+								this.id_detail.object.qty[ll_insrow] = ld_packqty
+								this.id_detail.object.allowedqty[ll_insrow] = long(ld_packqty)
+								this.id_detail.object.rate[ll_insrow] = lds_po.object.rate[ll_counter]
+								this.id_detail.object.reorderqty[ll_insrow] = lds_po.object.reorderqty[ll_counter]
+								this.id_detail.object.optimumqty[ll_insrow] = lds_po.object.optimumqty[ll_counter]
+								this.id_detail.object.stock[ll_insrow] = lds_po.object.currqty[ll_counter]
+								this.id_detail.object.transitstock[ll_insrow] = lds_po.object.transitstock[ll_counter]
+								this.id_detail.object.itemname[ll_insrow] = lds_po.object.item[ll_counter]
+								this.id_detail.object.manufname[ll_insrow] = lds_po.object.manufacturer[ll_counter]
+								this.id_detail.object.itemcategory[ll_insrow] = lds_po.object.itemcategory[ll_counter]
+								this.id_detail.object.itemclass[ll_insrow] = lds_po.object.itemclass[ll_counter]
+								this.id_detail.object.itempacking[ll_insrow] = lds_po.object.itempacking[ll_counter]
+								this.id_detail.object.genericitem[ll_insrow] = lds_po.object.genericitem[ll_counter]
+								this.id_detail.object.fullcode[ll_insrow] = lds_po.object.aliasname[ll_counter]
+								this.id_detail.object.discperc[ll_insrow] = lds_po.object.discperc[ll_counter]
+								this.id_detail.object.purprice[ll_insrow] = lds_po.object.purprice[ll_counter]
+								this.id_detail.object.saleprice[ll_insrow] = lds_po.object.saleprice[ll_counter]
+								this.id_detail.object.rpp[ll_insrow] = lds_po.object.rpp[ll_counter]
+								this.id_detail.object.packavgprice[ll_insrow] = lds_po.object.packavgprice[ll_counter]
+								this.id_detail.object.lastpurinvcode[ll_insrow] = lds_po.object.lastpurinvcode[ll_counter]
+								this.id_detail.object.lastpurdate[ll_insrow] = lds_po.object.lastpurdate[ll_counter]
+								if f_stringpreferences("ItemGSTPercInPO") = "N" then
+									this.id_detail.object.gstperc[ll_insrow] = 0
+								else
+									this.id_detail.object.gstperc[ll_insrow] = lds_po.object.gstperc[ll_counter]
+								end if
+								if f_stringpreferences("ItemUnitTaxInPO") = "N" then
+									this.id_detail.object.packsalestax[ll_insrow] = 0
+								else
+									this.id_detail.object.packsalestax[ll_insrow] = lds_po.object.packsalestax[ll_counter]
+								end if
+								wf_apply_supp_assoc_purquot(ll_icode, ll_insrow)
+							end if
+						end if
+					next
+					if ll_insrow > 0 then
+						this.id_master.setitem(this.id_master.getrow(), "purquotationcode", lstr_template.l_invtemplate)
+					end if
+					this.id_detail.scrolltorow(0)
+					setpointer(arrow!)
+					this.im_menu.m_file.m_options.enabled = true
+					this.im_menu.m_file.m_save.enabled = true
+					this.im_menu.m_file.m_print.enabled = true
+				else
+					messagebox("Retrieve Fail", "Can not Generate Purchase Order", exclamation!, ok!, 1)
+				end if
+			end if
+		end if
+		this.id_detail.setredraw(true)
+	end if
+	wf_grandtotal()
+	destroy lds_po
+	destroy lds_suppitems
+
+// w_purchaseorder.ue_generatepo_policybased() returns 0
+	datastore lds_po
+	datastore lds_suppitems
+	long ll_counter
+	long ll_endrow
+	long ll_rows
+	long ll_porow
+	long ll_days
+	long ll_projectiondays
+	long ll_minqty
+	long ll_suppitemrows
+	long ll_insrow
+	long ll_found
+	long ll_packunits
+	long ll_icode
+	long ll_code
+	integer li_allrows
+	double ld_avgqty
+	double ld_packqty
+	double ld_purdiscperc
+	double ld_gstperc
+	double ld_packsalestax
+	string ls_fullcode
+	string ls_name
+	string ls_po_mode
+	boolean lb_suppitems
+	boolean lb_insertrow
+	boolean lb_suppitemsonly
+	double ld_looseqty
+	double ld_transitstock
+	double ld_stock
+	double ld_forecastqty
+	boolean lb_manftypebased
+	m_purchaseordermenu lm_menu
+	s_arguements lstr_arg
+	s_arguements lstr_arg2
+	wf_setmenu(this.menuid)
+	lm_menu = this.menuid
+	if wf_iseditable() = false then
+		return
+	end if
+	if this.id_master.getitemnumber(1, "code") > 0.0 and this.id_master.getitemstring(1, "Posted") = "Y" then
+		return
+	end if
+	if this.id_master.accepttext() = -1 then
+		return
+	end if
+	if lm_menu.m_file.m_supplieritemsonly.checked = true and not isnull(this.id_master.object.suppcode[1]) then
+		lds_suppitems = create datastore
+		lds_suppitems.dataobject = "d_item_suppliers"
+		lds_suppitems.settransobject(sqlca)
+		lb_suppitemsonly = true
+		ll_suppitemrows = lds_suppitems.retrieve(this.id_master.object.suppcode[1])
+		if ll_suppitemrows > 0 then
+			lb_suppitems = true
+		else
+			lb_suppitems = false
+		end if
+	else
+		lb_suppitems = false
+	end if
+	lds_po = create datastore
+	this.id_detail.setredraw(false)
+	if this.id_master.object.purordercatcode[1] < 3 then
+		open(w_arg_po_generate_sdate_ldate)
+		lstr_arg = message.powerobjectparm
+		if lstr_arg.i_status = 1 then
+			if wf_check_manufacturertypes() > 1 then
+				open(w_arg_manufacturertype)
+				lstr_arg2 = message.powerobjectparm
+				if lstr_arg2.i_status = 1 then
+					lb_manftypebased = true
+					lstr_arg.ia_integerlist = lstr_arg2.ia_integerlist
+				end if
+			end if
+			ll_counter = 1
+			for ll_counter = this.id_detail.rowcount() to 1 step -1
+				this.id_detail.deleterow(ll_counter)
+			next
+			if this.id_master.object.purordercatcode[1] = 1 then
+				if lstr_arg.i_status = 1 then
+					if lb_manftypebased then
+						lds_po.dataobject = "d_dspodetail_policybased_manftypebased"
+						lds_po.settransobject(sqlca)
+						ll_rows = lds_po.retrieve(lstr_arg.d_edate, lstr_arg.ia_integerlist)
+					else
+						lds_po.dataobject = "d_dspodetail_policybased"
+						lds_po.settransobject(sqlca)
+						ll_rows = lds_po.retrieve(lstr_arg.d_edate)
+					end if
+				end if
+				if ll_rows >= 0 then
+					ll_endrow = lds_po.rowcount()
+					setpointer(hourglass!)
+					ll_insrow = 0
+					for ll_counter = 1 to ll_endrow
+						ll_packunits = lds_po.object.packunits[ll_counter]
+						if ll_packunits = 0 then
+							ll_packunits = 1
+						end if
+						ld_transitstock = lds_po.object.transitstock[ll_counter]
+						if this.ic_reqpackqtyfractiontreatment_inpo = "R" then
+							ld_packqty = round((lds_po.object.optimumqty[ll_counter] - (lds_po.object.currqty[ll_counter] + ld_transitstock)) / ll_packunits, 0)
+						else
+							ld_packqty = ceiling((lds_po.object.optimumqty[ll_counter] - (lds_po.object.currqty[ll_counter] + ld_transitstock)) / ll_packunits)
+						end if
+						if lb_suppitems then
+							ll_found = lds_suppitems.find("icode = " + trim(string(lds_po.getitemnumber(ll_counter, "icode"))), 1, ll_suppitemrows)
+							if ll_found > 0 then
+								lb_insertrow = true
+								ll_insrow = ll_insrow + 1
+							else
+								lb_insertrow = false
+							end if
+						else
+							this.id_detail.insertrow(0)
+							lb_insertrow = true
+							ll_insrow = ll_insrow + 1
+						end if
+						if lb_insertrow = true then
+							ll_icode = lds_po.object.icode[ll_counter]
+							SQL SELECT purdiscperc INTO :ld_purdiscperc FROM ITEM WHERE Icode =:ll_icode USING sqlca;
+							this.id_detail.object.icode[ll_insrow] = ll_icode
+							this.id_detail.object.looseqty[ll_insrow] = lds_po.object.optimumqty[ll_counter] - (lds_po.object.currqty[ll_counter] + ld_transitstock)
+							this.id_detail.object.packunits[ll_insrow] = lds_po.object.packunits[ll_counter]
+							this.id_detail.object.saleorderrequest[ll_insrow] = 0
+							this.id_detail.object.qty[ll_insrow] = ld_packqty
+							this.id_detail.object.allowedqty[ll_insrow] = ld_packqty
+							this.id_detail.object.transitstock[ll_insrow] = ld_transitstock
+							this.id_detail.object.rate[ll_insrow] = lds_po.object.rate[ll_counter]
+							this.id_detail.object.reorderqty[ll_insrow] = lds_po.object.reorderqty[ll_counter]
+							this.id_detail.object.optimumqty[ll_insrow] = lds_po.object.optimumqty[ll_counter]
+							this.id_detail.object.stock[ll_insrow] = lds_po.object.currqty[ll_counter]
+							this.id_detail.object.itemname[ll_insrow] = lds_po.object.item[ll_counter]
+							this.id_detail.object.manufname[ll_insrow] = lds_po.object.manufacturer[ll_counter]
+							this.id_detail.object.itemcategory[ll_insrow] = lds_po.object.itemcategory[ll_counter]
+							this.id_detail.object.itemclass[ll_insrow] = lds_po.object.itemclass[ll_counter]
+							this.id_detail.object.itempacking[ll_insrow] = lds_po.object.itempacking[ll_counter]
+							this.id_detail.object.genericitem[ll_insrow] = lds_po.object.genericitem[ll_counter]
+							this.id_detail.object.fullcode[ll_insrow] = lds_po.object.aliasname[ll_counter]
+							this.id_detail.object.discperc[ll_insrow] = ld_purdiscperc
+							this.id_detail.object.purprice[ll_insrow] = lds_po.object.purprice[ll_counter]
+							this.id_detail.object.saleprice[ll_insrow] = lds_po.object.saleprice[ll_counter]
+							this.id_detail.object.rpp[ll_insrow] = lds_po.object.rpp[ll_counter]
+							this.id_detail.object.packavgprice[ll_insrow] = lds_po.object.packavgprice[ll_counter]
+							this.id_detail.object.lastpurinvcode[ll_insrow] = lds_po.object.lastpurinvcode[ll_counter]
+							this.id_detail.object.lastpurdate[ll_insrow] = lds_po.object.lastpurdate[ll_counter]
+							if f_stringpreferences("ItemGSTPercInPO") = "N" then
+								this.id_detail.object.gstperc[ll_insrow] = 0
+							else
+								this.id_detail.object.gstperc[ll_insrow] = lds_po.object.gstperc[ll_counter]
+							end if
+							if f_stringpreferences("ItemUnitTaxInPO") = "N" then
+								this.id_detail.object.packsalestax[ll_insrow] = 0
+							else
+								this.id_detail.object.packsalestax[ll_insrow] = lds_po.object.packsalestax[ll_counter]
+							end if
+							wf_apply_supp_assoc_purquot(ll_icode, ll_insrow)
+						end if
+					next
+					this.id_detail.scrolltorow(0)
+					setpointer(arrow!)
+				else
+					messagebox("Retrieve Fail", "Can not Generate Purchase Order", exclamation!, ok!, 1)
+				end if
+			elseif this.id_master.object.purordercatcode[1] = 2 then
+				if lstr_arg.i_status = 1 then
+					if lb_manftypebased then
+						lds_po.dataobject = "d_dspodetail_baseperiod_policybased_mt"
+						lds_po.settransobject(sqlca)
+						ll_rows = lds_po.retrieve(lstr_arg.d_sdate, lstr_arg.d_edate, lstr_arg.ia_integerlist)
+					else
+						lds_po.dataobject = "d_dspodetail_baseperiod_policybased"
+						lds_po.settransobject(sqlca)
+						ll_rows = lds_po.retrieve(lstr_arg.d_sdate, lstr_arg.d_edate)
+					end if
+				end if
+				if ll_rows >= 0 then
+					ll_endrow = lds_po.rowcount()
+					setpointer(hourglass!)
+					li_allrows = this.id_master.getitemnumber(this.id_master.getrow(), "zeroqty")
+					ll_porow = 0
+					for ll_counter = 1 to ll_endrow
+						ll_days = lds_po.object.purorderbaseperioddays[ll_counter]
+						if isnull(ll_days) or ll_days = 0 then
+							ll_days = 1
+						end if
+						ll_projectiondays = lds_po.object.purorderprojperioddays[ll_counter]
+						if isnull(ll_projectiondays) or ll_projectiondays = 0 then
+							ll_projectiondays = 1
+						end if
+						ld_transitstock = lds_po.object.transitstock[ll_counter]
+						ld_stock = lds_po.getitemnumber(ll_counter, "stock")
+						ld_avgqty = (lds_po.getitemnumber(ll_counter, "soldqty") - lds_po.getitemnumber(ll_counter, "Returnqty")) / ll_days
+						ld_forecastqty = ld_avgqty * ll_projectiondays
+						ll_minqty = lds_po.getitemnumber(ll_counter, "minqty")
+						if ld_forecastqty > ld_stock + ld_transitstock then
+							ld_looseqty = ld_forecastqty - (ld_stock + ld_transitstock)
+							if ld_forecastqty < ll_minqty then
+								ld_looseqty = ll_minqty - (ld_stock + ld_transitstock)
+							end if
+						else
+							ld_looseqty = 0
+							if ld_stock + ld_transitstock < ll_minqty then
+								ld_looseqty = ll_minqty - (ld_stock + ld_transitstock)
+							end if
+						end if
+						ll_packunits = lds_po.getitemnumber(ll_counter, "packunits")
+						if ll_packunits = 0 then
+							ll_packunits = 1
+						end if
+						if this.ic_reqpackqtyfractiontreatment_inpo = "R" then
+							ld_packqty = round(ld_looseqty / ll_packunits, 0)
+						else
+							ld_packqty = ceiling(ld_looseqty / ll_packunits)
+						end if
+						if ld_packqty > 0.0 or li_allrows = 1 then
+							if lb_suppitems then
+								ll_found = lds_suppitems.find("icode = " + trim(string(lds_po.getitemnumber(ll_counter, "icode"))), 1, ll_suppitemrows)
+								if ll_found > 0 then
+									this.id_detail.insertrow(0)
+									lb_insertrow = true
+									ll_insrow = ll_insrow + 1
+								else
+									lb_insertrow = false
+								end if
+							else
+								this.id_detail.insertrow(0)
+								lb_insertrow = true
+								ll_insrow = ll_insrow + 1
+							end if
+							if lb_insertrow = true then
+								ll_icode = lds_po.object.icode[ll_counter]
+								SQL SELECT purdiscperc INTO :ld_purdiscperc FROM ITEM WHERE Icode =:ll_icode USING sqlca;
+								this.id_detail.setitem(ll_insrow, "icode", lds_po.getitemnumber(ll_counter, "icode"))
+								this.id_detail.setitem(ll_insrow, "rate", lds_po.getitemnumber(ll_counter, "purprice"))
+								this.id_detail.setitem(ll_insrow, "stock", lds_po.getitemnumber(ll_counter, "stock"))
+								this.id_detail.setitem(ll_insrow, "transitstock", lds_po.getitemnumber(ll_counter, "transitstock"))
+								this.id_detail.object.saleorderrequest[ll_insrow] = 0
+								this.id_detail.setitem(ll_insrow, "soldqty", lds_po.getitemnumber(ll_counter, "soldqty"))
+								this.id_detail.setitem(ll_insrow, "returnqty", lds_po.getitemnumber(ll_counter, "returnqty"))
+								this.id_detail.setitem(ll_insrow, "netsaleqty", lds_po.getitemnumber(ll_counter, "soldqty") - lds_po.getitemnumber(ll_counter, "returnqty"))
+								this.id_detail.setitem(ll_insrow, "packunits", lds_po.getitemnumber(ll_counter, "packunits"))
+								this.id_detail.setitem(ll_insrow, "minqty", lds_po.getitemnumber(ll_counter, "minqty"))
+								this.id_detail.setitem(ll_insrow, "avgsaleqty", ld_avgqty)
+								this.id_detail.setitem(ll_insrow, "forecastqty", ld_forecastqty)
+								this.id_detail.setitem(ll_insrow, "looseqty", ld_looseqty)
+								this.id_detail.setitem(ll_insrow, "qty", ld_packqty)
+								this.id_detail.setitem(ll_insrow, "allowedqty", ld_packqty)
+								this.id_detail.setitem(ll_insrow, "fullcode", lds_po.getitemstring(ll_counter, "aliasname"))
+								this.id_detail.setitem(ll_insrow, "itemname", lds_po.getitemstring(ll_counter, "item"))
+								this.id_detail.setitem(ll_insrow, "manufname", lds_po.getitemstring(ll_counter, "manufacturer"))
+								this.id_detail.object.itemcategory[ll_insrow] = lds_po.object.itemcategory[ll_counter]
+								this.id_detail.object.itemclass[ll_insrow] = lds_po.object.itemclass[ll_counter]
+								this.id_detail.object.itempacking[ll_insrow] = lds_po.object.itempacking[ll_counter]
+								this.id_detail.object.genericitem[ll_insrow] = lds_po.object.genericitem[ll_counter]
+								this.id_detail.object.discperc[ll_insrow] = ld_purdiscperc
+								this.id_detail.object.purprice[ll_insrow] = lds_po.object.purprice[ll_counter]
+								this.id_detail.object.saleprice[ll_insrow] = lds_po.object.saleprice[ll_counter]
+								this.id_detail.object.rpp[ll_insrow] = lds_po.object.rpp[ll_counter]
+								this.id_detail.object.packavgprice[ll_insrow] = lds_po.object.packavgprice[ll_counter]
+								this.id_detail.object.lastpurinvcode[ll_insrow] = lds_po.object.lastpurinvcode[ll_counter]
+								this.id_detail.object.lastpurdate[ll_insrow] = lds_po.object.lastpurdate[ll_counter]
+								if f_stringpreferences("ItemGSTPercInPO") = "N" then
+									this.id_detail.object.gstperc[ll_insrow] = 0
+								else
+									this.id_detail.object.gstperc[ll_insrow] = lds_po.object.gstperc[ll_counter]
+								end if
+								if f_stringpreferences("ItemUnitTaxInPO") = "N" then
+									this.id_detail.object.packsalestax[ll_insrow] = 0
+								else
+									this.id_detail.object.packsalestax[ll_insrow] = lds_po.object.packsalestax[ll_counter]
+								end if
+								wf_apply_supp_assoc_purquot(ll_icode, ll_insrow)
+							end if
+						end if
+					next
+					this.id_detail.scrolltorow(0)
+					setpointer(arrow!)
+					this.im_menu.m_file.m_options.enabled = true
+					this.im_menu.m_file.m_save.enabled = true
+					this.im_menu.m_file.m_print.enabled = true
+				else
+					messagebox("Retrieve Fail", "Can not Generate Purchase Order", exclamation!, ok!, 1)
+				end if
+			end if
+		end if
+	end if
+	this.id_detail.setredraw(true)
+	wf_grandtotal()
+	destroy lds_po
+	destroy lds_suppitems
+
+// w_purchaseorder.ue_filter_po_items() returns 0
+	datastore lds_group_selected
+	long ll_counter
+	long ll_rows
+	long ll_porow
+	long ll_found
+	string ls_filterstr
+	string ls_filter_criteria
+	m_purchaseordermenu lm_menu
+	s_arguements lstr_arg
+	wf_setmenu(this.menuid)
+	lm_menu = this.menuid
+	if wf_iseditable() = false then
+		return
+	end if
+	if this.id_master.getitemnumber(1, "code") > 0.0 and this.id_master.getitemstring(1, "Posted") = "Y" then
+		return
+	end if
+	if this.id_master.accepttext() = -1 then
+		return
+	end if
+	open(w_selection_manf_cat_class_packing)
+	ls_filter_criteria = message.stringparm
+	if not isnull(ls_filter_criteria) then
+		openwithparm(w_arg_grouping, ls_filter_criteria)
+		lstr_arg = message.powerobjectparm
+		if lstr_arg.i_status = 1 then
+			lds_group_selected = create datastore
+			lds_group_selected.dataobject = "d_groupcriteria_selected"
+			lds_group_selected.settransobject(sqlca)
+			ll_rows = lds_group_selected.retrieve(ls_filter_criteria, lstr_arg.ia_integerlist)
+			ll_counter = 1
+			ls_filterstr = ""
+			this.id_detail.setredraw(false)
+			this.id_detail.setfilter("")
+			this.id_detail.filter()
+			this.id_detail.setredraw(true)
+			if ls_filter_criteria = "M" then
+				ls_filterstr = ls_filterstr + " manufname IN ("
+			elseif ls_filter_criteria = "C" then
+				ls_filterstr = ls_filterstr + " itemcategory IN ("
+			elseif ls_filter_criteria = "L" then
+				ls_filterstr = ls_filterstr + " itemclass IN ("
+			elseif ls_filter_criteria = "P" then
+				ls_filterstr = ls_filterstr + " itempacking IN ("
+			end if
+			for ll_counter = 1 to ll_rows
+				ls_filterstr = ls_filterstr + "'" + trim(lds_group_selected.object.groupname[ll_counter]) + "',"
+			next
+			ls_filterstr = ls_filterstr + "'')"
+			this.id_detail.setredraw(false)
+			this.id_detail.setfilter(ls_filterstr)
+			this.id_detail.filter()
+			this.id_detail.setredraw(true)
+			destroy lds_group_selected
+		end if
+	end if
+	wf_grandtotal()
+
+// w_purchaseorder.ue_resetfilter() returns 0
+	this.id_detail.setredraw(false)
+	this.id_detail.setfilter("")
+	this.id_detail.filter()
+	this.id_detail.setredraw(true)
+
+// w_purchaseorder.ue_supp_manf_po_wizard() returns 0
+	long ll_endrow
+	long ll_insrow
+	long ll_counter
+	long ll_packunits
+	long ll_icode
+	long ll_null
+	boolean lb_insertrow
+	double ld_transitstock
+	double ld_packqty
+	double ld_purdiscperc
+	s_datastore ls_ds
+	u_ds_standard lds_ds
+	setnull(ll_null)
+	if wf_iseditable() = false then
+		return
+	end if
+	if this.id_master.rowcount() > 1 and this.id_master.getitemnumber(1, "code") > 0.0 and this.id_master.getitemstring(1, "Posted") = "Y" then
+		return
+	end if
+	if this.id_master.accepttext() = -1 then
+		return
+	end if
+	lds_ds = create u_ds_standard
+	lds_ds.dataobject = "d_supp_manf_po_generate_detail"
+	lds_ds.settransobject(sqlca)
+	ls_ds.s_name1 = string(this.id_master.object.suppcode[1])
+	ls_ds.s_name2 = string(this.id_master.object.manfcode[1])
+	openwithparm(w_supp_manf_po_generate, ls_ds)
+	ls_ds = message.powerobjectparm
+	if ls_ds.i_closemode = 0 then
+		lds_ds = ls_ds.ds
+		this.id_master.object.purordercatcode[1] = 1
+		wf_setordersettings(this.id_master.object.purordercatcode[1])
+		if isnull(ls_ds.s_name1) then
+			this.id_master.object.suppcode[1] = ll_null
+		else
+			this.id_master.object.suppcode[1] = long(ls_ds.s_name1)
+		end if
+		if isnull(ls_ds.s_name2) then
+			this.id_master.object.manfcode[1] = ll_null
+		else
+			this.id_master.object.manfcode[1] = long(ls_ds.s_name2)
+		end if
+		ll_endrow = lds_ds.rowcount()
+		setpointer(hourglass!)
+		ll_insrow = 0
+		for ll_counter = 1 to ll_endrow
+			ll_packunits = lds_ds.object.packunits[ll_counter]
+			if ll_packunits = 0 then
+				ll_packunits = 1
+			end if
+			ld_transitstock = lds_ds.object.transitstock[ll_counter]
+			ld_packqty = lds_ds.object.qty[ll_counter]
+			this.id_detail.insertrow(0)
+			lb_insertrow = true
+			ll_insrow = ll_insrow + 1
+			ll_icode = lds_ds.object.icode[ll_counter]
+			SQL SELECT purdiscperc INTO :ld_purdiscperc FROM ITEM WHERE Icode =:ll_icode USING sqlca;
+			this.id_detail.object.icode[ll_insrow] = ll_icode
+			this.id_detail.object.looseqty[ll_insrow] = lds_ds.object.optimumqty[ll_counter] - (lds_ds.object.stockinhand[ll_counter] + ld_transitstock)
+			this.id_detail.object.packunits[ll_insrow] = lds_ds.object.packunits[ll_counter]
+			this.id_detail.object.saleorderrequest[ll_insrow] = 0
+			this.id_detail.object.qty[ll_insrow] = ld_packqty
+			this.id_detail.object.allowedqty[ll_insrow] = ld_packqty
+			this.id_detail.object.transitstock[ll_insrow] = ld_transitstock
+			this.id_detail.object.rate[ll_insrow] = lds_ds.object.purprice[ll_counter]
+			this.id_detail.object.minqty[ll_insrow] = lds_ds.object.minqty[ll_counter]
+			this.id_detail.object.reorderqty[ll_insrow] = lds_ds.object.reorderqty[ll_counter]
+			this.id_detail.object.optimumqty[ll_insrow] = lds_ds.object.optimumqty[ll_counter]
+			this.id_detail.object.stock[ll_insrow] = lds_ds.object.stockinhand[ll_counter]
+			this.id_detail.object.itemname[ll_insrow] = lds_ds.object.itemname[ll_counter]
+			this.id_detail.object.manufname[ll_insrow] = lds_ds.object.manufacturer[ll_counter]
+			this.id_detail.object.itemcategory[ll_insrow] = lds_ds.object.itemcategory[ll_counter]
+			this.id_detail.object.itemclass[ll_insrow] = lds_ds.object.itemclass[ll_counter]
+			this.id_detail.object.itempacking[ll_insrow] = lds_ds.object.itempacking[ll_counter]
+			this.id_detail.object.genericitem[ll_insrow] = lds_ds.object.genericitem[ll_counter]
+			this.id_detail.object.fullcode[ll_insrow] = lds_ds.object.itemaliasname[ll_counter]
+			this.id_detail.object.discperc[ll_insrow] = ld_purdiscperc
+			this.id_detail.object.purprice[ll_insrow] = lds_ds.object.purprice[ll_counter]
+			this.id_detail.object.saleprice[ll_insrow] = lds_ds.object.saleprice[ll_counter]
+			this.id_detail.object.rpp[ll_insrow] = lds_ds.object.rpp[ll_counter]
+			this.id_detail.object.packavgprice[ll_insrow] = lds_ds.object.packavgprice[ll_counter]
+			this.id_detail.object.lastpurinvcode[ll_insrow] = lds_ds.object.lastpurinvcode[ll_counter]
+			this.id_detail.object.lastpurdate[ll_insrow] = lds_ds.object.lastpurdate[ll_counter]
+			if f_stringpreferences("ItemGSTPercInPO") = "N" then
+				this.id_detail.object.gstperc[ll_insrow] = 0
+			else
+				this.id_detail.object.gstperc[ll_insrow] = lds_ds.object.gstperc[ll_counter]
+			end if
+			if f_stringpreferences("ItemUnitTaxInPO") = "N" then
+				this.id_detail.object.packsalestax[ll_insrow] = 0
+			else
+				this.id_detail.object.packsalestax[ll_insrow] = lds_ds.object.packsalestax[ll_counter]
+			end if
+		next
+		this.id_detail.scrolltorow(0)
+		setpointer(arrow!)
+	end if
+	wf_grandtotal()
+	destroy lds_ds
+
+// w_purchaseorder.ue_generate_minqty() returns 0
+	datastore lds_po
+	datastore lds_suppitems
+	long ll_counter
+	long ll_endrow
+	long ll_rows
+	long ll_porow
+	long ll_days
+	long ll_projectiondays
+	long ll_minqty
+	long ll_suppitemrows
+	long ll_insrow
+	long ll_found
+	long ll_packunits
+	long ll_icode
+	long ll_code
+	long ll_orderlevel_type
+	integer li_allrows
+	double ld_avgqty
+	double ld_packqty
+	double ld_purdiscperc
+	double ld_bonusqty
+	double ld_packstock
+	string ls_fullcode
+	string ls_name
+	boolean lb_suppitems
+	boolean lb_insertrow
+	boolean lb_suppitemsonly
+	double ld_tmpqty
+	double ld_tmpbonus
+	double ld_transitstock
+	double ld_stock
+	double ld_forecastqty
+	double ld_looseqty
+	double ld_saleorderrequest
+	s_saletemplate lstr_template
+	s_arguements lstr_tmp
+	m_purchaseordermenu lm_menu
+	s_arguements lstr_arg
+	wf_setmenu(this.menuid)
+	lm_menu = this.menuid
+	this.id_master.setitem(1, "purordercatcode", 1)
+	wf_setordersettings(1)
+	if wf_iseditable() = false then
+		return
+	end if
+	if this.id_master.getitemnumber(1, "code") > 0.0 and this.id_master.getitemstring(1, "Posted") = "Y" then
+		return
+	end if
+	if this.id_master.accepttext() = -1 then
+		return
+	end if
+	if lm_menu.m_file.m_supplieritemsonly.checked = true and not isnull(this.id_master.object.suppcode[1]) then
+		lds_suppitems = create datastore
+		lds_suppitems.dataobject = "d_item_suppliers"
+		lds_suppitems.settransobject(sqlca)
+		lb_suppitemsonly = true
+		ll_suppitemrows = lds_suppitems.retrieve(this.id_master.object.suppcode[1])
+		lb_suppitems = true
+		if ll_suppitemrows > 0 then
+			lb_suppitems = true
+		else
+			lb_suppitems = false
+		end if
+	else
+		lb_suppitems = false
+	end if
+	lds_po = create datastore
+	open(w_arg_item_populate2)
+	lstr_arg = message.powerobjectparm
+	if lstr_arg.i_status = 1 then
+		this.id_detail.setredraw(false)
+		ll_counter = 1
+		for ll_counter = this.id_detail.rowcount() to 1 step -1
+			this.id_detail.deleterow(ll_counter)
+		next
+		if lstr_arg.i_status = 1 then
+			open(w_select_purorder_reorderlevel)
+			ll_orderlevel_type = message.doubleparm
+			if ll_orderlevel_type = 2 then
+				open(w_arg_godown)
+				lstr_tmp = message.powerobjectparm
+			end if
+			if ll_orderlevel_type = 1 then
+				if lstr_arg.s_name2 = "AND" then
+					lds_po.dataobject = "d_dspodetail_minqty_and"
+					lds_po.settransobject(sqlca)
+					ll_rows = lds_po.retrieve(lstr_arg.ia_integerlist, lstr_arg.ia_integerlist1, lstr_arg.ia_integerlist2, lstr_arg.la_longlist)
+				else
+					lds_po.dataobject = "d_dspodetail_minqty"
+					lds_po.settransobject(sqlca)
+					ll_rows = lds_po.retrieve(lstr_arg.ia_integerlist, lstr_arg.ia_integerlist1, lstr_arg.ia_integerlist2, lstr_arg.la_longlist, lstr_arg.s_name1)
+				end if
+			elseif lstr_arg.s_name2 = "AND" then
+				lds_po.dataobject = "d_dspodetail_godownwise_minqty_and"
+				lds_po.settransobject(sqlca)
+				ll_rows = lds_po.retrieve(lstr_arg.ia_integerlist, lstr_arg.ia_integerlist1, lstr_arg.ia_integerlist2, lstr_arg.la_longlist, lstr_tmp.l_code3)
+			else
+				lds_po.dataobject = "d_dspodetail_godownwise_minqty"
+				lds_po.settransobject(sqlca)
+				ll_rows = lds_po.retrieve(lstr_arg.ia_integerlist, lstr_arg.ia_integerlist1, lstr_arg.ia_integerlist2, lstr_arg.la_longlist, lstr_arg.s_name1, lstr_tmp.l_code3)
+			end if
+		end if
+		if ll_rows >= 0 then
+			ll_endrow = lds_po.rowcount()
+			setpointer(hourglass!)
+			ll_insrow = 0
+			for ll_counter = 1 to ll_endrow
+				ll_packunits = lds_po.object.packunits[ll_counter]
+				if ll_packunits = 0 then
+					ll_packunits = 1
+				end if
+				ld_transitstock = lds_po.object.transitstock[ll_counter]
+				if this.ic_reqpackqtyfractiontreatment_inpo = "R" then
+					ld_packqty = round((lds_po.object.optimumqty[ll_counter] - (lds_po.object.currqty[ll_counter] + ld_transitstock)) / ll_packunits, 0)
+				else
+					ld_packqty = ceiling((lds_po.object.optimumqty[ll_counter] - (lds_po.object.currqty[ll_counter] + ld_transitstock)) / ll_packunits)
+				end if
+				if lb_suppitems then
+					ll_found = lds_suppitems.find("icode = " + trim(string(lds_po.getitemnumber(ll_counter, "icode"))), 1, ll_suppitemrows)
+					if ll_found > 0 then
+						lb_insertrow = true
+						ll_insrow = ll_insrow + 1
+					else
+						lb_insertrow = false
+					end if
+				else
+					this.id_detail.insertrow(0)
+					lb_insertrow = true
+					ll_insrow = ll_insrow + 1
+				end if
+				if lb_insertrow = true then
+					ll_icode = lds_po.object.icode[ll_counter]
+					SQL SELECT purdiscperc INTO :ld_purdiscperc FROM ITEM WHERE Icode =:ll_icode USING sqlca;
+					this.id_detail.object.icode[ll_insrow] = ll_icode
+					this.id_detail.object.looseqty[ll_insrow] = lds_po.object.optimumqty[ll_counter] - (lds_po.object.currqty[ll_counter] + ld_transitstock)
+					this.id_detail.object.packunits[ll_insrow] = lds_po.object.packunits[ll_counter]
+					this.id_detail.object.saleorderrequest[ll_insrow] = 0
+					this.id_detail.object.qty[ll_insrow] = ld_packqty
+					this.id_detail.object.allowedqty[ll_insrow] = ld_packqty
+					this.id_detail.object.transitstock[ll_insrow] = ld_transitstock
+					this.id_detail.object.rate[ll_insrow] = lds_po.object.rate[ll_counter]
+					this.id_detail.object.minqty[ll_insrow] = lds_po.object.minqty[ll_counter]
+					this.id_detail.object.reorderqty[ll_insrow] = lds_po.object.reorderqty[ll_counter]
+					this.id_detail.object.optimumqty[ll_insrow] = lds_po.object.optimumqty[ll_counter]
+					this.id_detail.object.stock[ll_insrow] = lds_po.object.currqty[ll_counter]
+					this.id_detail.object.itemname[ll_insrow] = lds_po.object.item[ll_counter]
+					this.id_detail.object.manufname[ll_insrow] = lds_po.object.manufacturer[ll_counter]
+					this.id_detail.object.itemcategory[ll_insrow] = lds_po.object.itemcategory[ll_counter]
+					this.id_detail.object.itemclass[ll_insrow] = lds_po.object.itemclass[ll_counter]
+					this.id_detail.object.itempacking[ll_insrow] = lds_po.object.itempacking[ll_counter]
+					this.id_detail.object.genericitem[ll_insrow] = lds_po.object.genericitem[ll_counter]
+					this.id_detail.object.fullcode[ll_insrow] = lds_po.object.aliasname[ll_counter]
+					this.id_detail.object.discperc[ll_insrow] = ld_purdiscperc
+					this.id_detail.object.purprice[ll_insrow] = lds_po.object.purprice[ll_counter]
+					this.id_detail.object.saleprice[ll_insrow] = lds_po.object.saleprice[ll_counter]
+					this.id_detail.object.rpp[ll_insrow] = lds_po.object.rpp[ll_counter]
+					this.id_detail.object.packavgprice[ll_insrow] = lds_po.object.packavgprice[ll_counter]
+					this.id_detail.object.lastpurinvcode[ll_insrow] = lds_po.object.lastpurinvcode[ll_counter]
+					this.id_detail.object.lastpurdate[ll_insrow] = lds_po.object.lastpurdate[ll_counter]
+					if f_stringpreferences("ItemGSTPercInPO") = "N" then
+						this.id_detail.object.gstperc[ll_insrow] = 0
+					else
+						this.id_detail.object.gstperc[ll_insrow] = lds_po.object.gstperc[ll_counter]
+					end if
+					if f_stringpreferences("ItemUnitTaxInPO") = "N" then
+						this.id_detail.object.packsalestax[ll_insrow] = 0
+					else
+						this.id_detail.object.packsalestax[ll_insrow] = lds_po.object.packsalestax[ll_counter]
+					end if
+				end if
+			next
+			this.id_detail.scrolltorow(0)
+			setpointer(arrow!)
+		else
+			messagebox("Retrieve Fail", "Can not Generate Purchase Order", exclamation!, ok!, 1)
+		end if
+		this.id_detail.setredraw(true)
+	end if
+	wf_grandtotal()
+	destroy lds_po
+	destroy lds_suppitems
+
+// w_purchaseorder.wf_findcode(long al_icode) returns boolean
+	long ll_foundrow
+	boolean retflag
+	ll_foundrow = this.idc_itemdddw.find("icode =long('" + string(al_icode) + "')", 1, this.idc_itemdddw.rowcount())
+	if ll_foundrow < 0 then
+		messagebox("Find", "Find Fail")
+		retflag = false
+	elseif ll_foundrow = 0 then
+		retflag = false
+	end if
+	return retflag
+
+// w_purchaseorder.wf_findfullcode(string as_fullcode, long al_icode, string al_itemname) returns integer
+	long ll_icode
+	long ll_retflag
+	string ls_itemname
+	if f_stringpreferences("GroupCategoryRights") = "Y" then
+		SQL SELECT item.icode , item.name INTO :ll_icode, :ls_itemname FROM item WHERE item.customicode =:as_fullcode AND item.Active =1 AND Item.ICatCode IN ( SELECT ICatCode FROM ItemCategory WHERE ICatCode IN ( SELECT ItemsCategoryCode FROM ItemsGroupCategory WHERE GroupCode IN ( SELECT GroupCode FROM UserGroups WHERE UserCode =:gl_usercode ) ) ) USING this.it_transobject;
+	else
+		SQL SELECT item.icode , item.name INTO :ll_icode, :ls_itemname FROM item WHERE item.customicode =:as_fullcode AND item.Active =1 USING this.it_transobject;
+	end if
+	if this.it_transobject.sqlcode = 0 then
+		al_icode = ll_icode
+		al_itemname = ls_itemname
+		if isnull(al_icode) then
+			ll_retflag = 0
+		else
+			ll_retflag = 1
+		end if
+	else
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_purchaseorder.wf_finditem(long al_icode) returns boolean
+	long ll_foundrow
+	boolean retflag
+	ll_foundrow = this.idc_itemdddw.find("icode =long('" + string(al_icode) + "')", 1, this.idc_itemdddw.rowcount())
+	if ll_foundrow < 0 then
+		messagebox("Find", "Find Fail")
+		retflag = false
+	elseif ll_foundrow = 0 then
+		retflag = false
+	end if
+	return retflag
+
+// w_purchaseorder.wf_genfullcode(long al_icode, string as_fullcode) returns integer
+	integer li_retflag
+	string ls_fullcode
+	long icode
+	long iccode
+	long icatcode
+	long packcode
+	long manfcode
+	SQL SELECT customicode INTO :ls_fullcode FROM item WHERE item.icode =:al_icode USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		li_retflag = 1
+		as_fullcode = ls_fullcode
+	else
+		li_retflag = this.it_transobject.sqlcode
+	end if
+	return li_retflag
+
+// w_purchaseorder.wf_getitempurprice(long al_icode, double ad_purprice) returns integer
+	SQL SELECT item.purprice INTO :ad_purprice FROM item WHERE item.icode =:al_icode USING sqlca;
+	if isnull(ad_purprice) then
+		ad_purprice = 0
+	end if
+	return sqlca.sqlcode
+
+// w_purchaseorder.wf_grandtotal() returns double
+	long ll_counter
+	long ll_totqty
+	double ld_grandtotal
+	double ld_detaildwtotal
+	double ld_itemleveltax
+	double ld_invgstpercval
+	double ld_totalsalestax
+	double ld_invgstperc1
+	double ld_netrate
+	double ld_discperc
+	double ld_flatdisc
+	double ld_misccharges
+	double ld_salestax
+	double ld_itemstotal
+	double ld_invlevelvalues
+	double ld_discpercvalue
+	double ld_grossvalue
+	double ld_itemgrossvalue
+	if this.id_detail.rowcount() > 0 and this.id_footer.rowcount() > 0 then
+		ld_discperc = round(this.id_footer.getitemnumber(1, "discperc"), 2)
+		ld_flatdisc = round(this.id_footer.getitemnumber(1, "flatdisc"), 2)
+		ld_misccharges = round(this.id_footer.getitemnumber(1, "misccharges"), 2)
+		ld_invgstperc1 = this.id_footer.getitemnumber(1, "invgstperc1")
+		if isnull(ld_discperc) then
+			ld_discperc = 0.00
+		end if
+		if isnull(ld_flatdisc) then
+			ld_flatdisc = 0.00
+		end if
+		if isnull(ld_misccharges) then
+			ld_misccharges = 0.00
+		end if
+		if isnull(ld_invgstperc1) then
+			ld_invgstperc1 = 0.00
+		end if
+		ld_detaildwtotal = this.id_detail.getitemnumber(1, "c_grandtotal")
+		ld_itemleveltax = this.id_detail.object.c_sumtaxval[1] + this.id_detail.object.c_sumgstval[1]
+		ld_invgstpercval = round((round(ld_detaildwtotal * (1.0 - 0.01 * ld_discperc), 2) - ld_flatdisc) * 0.01 * ld_invgstperc1, 2)
+		ld_discpercvalue = round(ld_detaildwtotal * ld_discperc * 0.01, 2)
+		ld_totalsalestax = round(ld_invgstpercval + ld_itemleveltax, 0)
+		ld_grandtotal = ld_detaildwtotal * (1.0 - ld_discperc * 0.01) - ld_flatdisc + ld_misccharges
+		ld_grandtotal = ld_grandtotal - this.id_detail.getitemnumber(1, "c_sum_discperc2_value")
+		ld_grandtotal = round(ld_grandtotal, 0) + ld_totalsalestax
+		this.id_footer.setitem(1, "total", ld_grandtotal)
+		ld_detaildwtotal = this.id_footer.getitemnumber(1, "total")
+		ld_invlevelvalues = ld_invgstpercval + ld_misccharges - ld_flatdisc - ld_discpercvalue
+		if ld_invlevelvalues = 0.0 or isnull(ld_invlevelvalues) then
+			ld_invlevelvalues = 0
+		end if
+		this.id_footer.setitem(1, "invdiscvalue", ld_discpercvalue)
+		this.id_footer.setitem(1, "invgstvalue", ld_invgstpercval)
+	end if
+	return ld_grandtotal
+
+// w_purchaseorder.wf_isinvoiceinuse(long al_invoiceno) returns boolean
+	long ll_found
+	SQL Select count ( *) INTO :ll_found From PurOrderHeader Where POCode =:al_invoiceno and Posted ='Y' USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		if ll_found = 0 or isnull(ll_found) then
+			ll_found = 0
+			SQL Select count ( *) INTO :ll_found From PurOrderHeader With ( ReadPast , RowLock , UpdLock ) Where POCode =:al_invoiceno USING this.it_transobject;
+			if this.it_transobject.sqlcode = 0 then
+				if ll_found = 0 then
+					return true
+				else
+					return false
+				end if
+			else
+				return false
+			end if
+		else
+			return false
+		end if
+		return
+	end if
+	return false
+
+// w_purchaseorder.wf_lockpurorders(long al_sinvcode, long al_linvcode) returns long
+	integer li_count
+	SQL Select count ( *) INTO :li_count From PurOrderHeader WITH ( UPDLOCK HOLDLOCK ) Where PurOrderHeader.pocode Between :al_sinvcode AND :al_linvcode AND PurOrderHeader.Posted ='N' USING sqlca;
+	return sqlca.sqlcode
+
+// w_purchaseorder.wf_post() returns integer
+	integer li_errcode
+	long ll_salesmancode
+	long ll_saleinvcount
+	long ll_counter
+	boolean lb_flag
+	s_arguements lstr_arginfo
+	open(w_salesmanpassword)
+	ll_salesmancode = long(message.doubleparm)
+	setfocus()
+	if ll_salesmancode > 0 then
+		open(w_arg_sinvcode_linvcode)
+		lstr_arginfo = message.powerobjectparm
+		if lstr_arginfo.i_status = 1 then
+			setpointer(hourglass!)
+			SQL rollback USING sqlca;
+			li_errcode = wf_lockpurorders(lstr_arginfo.l_code1, lstr_arginfo.l_code2)
+			if li_errcode = 0 then
+				sqlca.postpurorder(lstr_arginfo.l_code1, lstr_arginfo.l_code2, ll_salesmancode)
+				if sqlca.sqlcode <> 0 then
+					li_errcode = -1
+					messagebox("Purchase Order Posting", "Some Problem Faced during P/O Posting.~r~nDetails are:-~r~n" + sqlca.sqlerrtext)
+				end if
+			end if
+		end if
+		if li_errcode = 0 then
+			SQL commit USING sqlca;
+		else
+			SQL rollback USING sqlca;
+		end if
+	else
+		setfocus()
+	end if
+	setpointer(arrow!)
+	if ll_salesmancode > 0 then
+		if li_errcode <> 0 then
+			messagebox("Posting Fails", "Some database request fails, Please try again")
+		else
+			messagebox("Posting Successfull", "All rows have been posted successfully")
+		end if
+	end if
+	return li_errcode
+
+// w_purchaseorder.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+
+// w_purchaseorder.wf_setterms() returns integer
+	s_quotationremarks ls_quotationremarks
+	ls_quotationremarks.remarks2 = this.id_master.getitemstring(1, "PurOrderterms1")
+	ls_quotationremarks.remarks3 = this.id_master.getitemstring(1, "PurOrderterms2")
+	ls_quotationremarks.remarks4 = this.id_master.getitemstring(1, "PurOrderterms3")
+	ls_quotationremarks.remarks5 = this.id_master.getitemstring(1, "PurOrderterms4")
+	ls_quotationremarks.remarks6 = this.id_master.getitemstring(1, "PurOrderterms5")
+	ls_quotationremarks.remarks7 = this.id_master.getitemstring(1, "PurOrderterms6")
+	ls_quotationremarks.remarks8 = this.id_master.getitemstring(1, "PurOrderterms7")
+	ls_quotationremarks.remarks9 = this.id_master.getitemstring(1, "PurOrderterms8")
+	ls_quotationremarks.module = "PurOrder"
+	openwithparm(w_quotationremarks, ls_quotationremarks)
+	ls_quotationremarks = message.powerobjectparm
+	this.id_master.setitem(1, "PurOrderterms1", ls_quotationremarks.remarks2)
+	this.id_master.setitem(1, "PurOrderterms2", ls_quotationremarks.remarks3)
+	this.id_master.setitem(1, "PurOrderterms3", ls_quotationremarks.remarks4)
+	this.id_master.setitem(1, "PurOrderterms4", ls_quotationremarks.remarks5)
+	this.id_master.setitem(1, "PurOrderterms5", ls_quotationremarks.remarks6)
+	this.id_master.setitem(1, "PurOrderterms6", ls_quotationremarks.remarks7)
+	this.id_master.setitem(1, "PurOrderterms7", ls_quotationremarks.remarks8)
+	this.id_master.setitem(1, "PurOrderterms8", ls_quotationremarks.remarks9)
+	return 1
+
+// w_purchaseorder.wf_sortorderitems() returns 0
+	string ls_null
+	setnull(ls_null)
+	this.id_detail.setsort(ls_null)
+	this.id_detail.sort()
+
+// w_purchaseorder.wf_supplieritemsonly() returns 0
+	long ll_counter
+	long ll_rowcount
+	if isnull(this.id_master.object.suppcode[1]) then
+		messagebox("Supplier Validation", "Please select a supplier first")
+		this.id_master.setcolumn("suppcode")
+		this.id_master.setfocus()
+		return
+	end if
+
+// w_purchaseorder.wf_validateitem() returns integer
+	long ll_icode
+	long ll_count
+	double ld_price
+	string ls_fullcode
+	integer il_errcode
+	integer li_null
+	string ls_null
+	ll_icode = this.id_detail.object.icode[this.il_currrow]
+	if vf_dwdupcode1(this.id_detail, "icode", string(ll_icode), this.il_currrow) = true then
+		messagebox("Item Validation", "Duplicate item, please select some other item")
+		il_errcode = -1
+	elseif wf_inititeminfo(ll_icode, this.il_currrow) then
+		wf_grandtotal()
+	else
+		messagebox("Database Error", "Item information can not retrieve~n~rPossible Causes: ~n~r               Item does not exist~n~r               Item has been deleted")
+		il_errcode = -1
+	end if
+	this.ib_itemvalidated = true
+	if il_errcode = -1 then
+		setnull(li_null)
+		setnull(ls_null)
+		this.id_detail.scrolltorow(this.il_currrow)
+		this.id_detail.object.icode[this.il_currrow] = li_null
+		this.id_detail.setitem(this.il_currrow, "itemname", ls_null)
+		post event ue_deleteitem_row(this.il_currrow)
+		for ll_count = 1 to this.id_detail.rowcount()
+			if this.id_detail.getitemnumber(ll_count, "icode") = ll_icode then
+				post event ue_scrolltorow(ll_count, "qty")
+				return il_errcode
+			end if
+		next
+	end if
+	return il_errcode
+
+// w_purchaseorder.wf_viewheader() returns integer
+	s_dw_header ls_dw_header
+	string[] ls_values
+	string ls_posted
+	long ll_row
+	long ll_currrow
+	integer li_protectdw
+	date ld_date
+	time lt_time
+	if this.tab_retrieve.selectedtab <> 1 then
+		return -1
+	end if
+	ls_dw_header.dw_header = this.id_master
+	openwithparm(w_view_poheader, ls_dw_header)
+	ls_dw_header = message.powerobjectparm
+	if ls_dw_header.i_closemode = -1 then
+		return -1
+	end if
+	ll_row = this.id_master.getrow()
+	ls_values = ls_dw_header.values
+	this.id_master.setitem(ll_row, "custcode", long(ls_values[1]))
+	this.id_master.setitem(ll_row, "dated", datetime(date(ls_values[2])))
+	this.id_master.setitem(ll_row, "amount", double(ls_values[3]))
+	this.id_master.setitem(ll_row, "demanddraftno", ls_values[4])
+	return 1
+
+// w_purchaseorder.wf_inititeminfo(long al_icode, long al_row) returns boolean
+	boolean retflag
+	double ld_purprice
+	double ld_discperc
+	double ld_saleprice
+	double ld_avgsaleqty
+	double ld_purdiscperc
+	double ld_packsalestax
+	double ld_gstperc
+	long ll_packunits
+	long ll_reorderqty
+	long ll_optimumqty
+	long ll_minqty
+	long ll_null
+	long ll_lastpurinvcode
+	long ll_itemalertcode
+	double ld_stock
+	double ld_looseqty
+	double ld_qty
+	double ld_soldqty
+	double ld_returnqty
+	double ld_forecastqty
+	double ld_transitstock
+	double ld_rpp
+	double ld_packavgprice
+	double ld_foreignprice
+	double ld_conversionfactor
+	integer li_gcode
+	string ls_fullcode
+	string ls_name
+	string ls_manufname
+	string ls_itemcategory
+	string ls_itemclass
+	string ls_itempacking
+	string ls_genericitem
+	string ls_remarks
+	string ls_alternatecustomicode
+	string ls_null
+	date ld_startdate
+	date ld_enddate
+	datetime ldt_startdate
+	datetime ldt_enddate
+	datetime ldt_lastpurdate
+	setnull(ll_null)
+	setnull(ls_null)
+	if this.ic_fetchlastpurinfo = "N" then
+		SQL SELECT item.customicode , item.name , item.purprice , item.packunits , item.purdiscperc , item.gcode , manufname =( select manufacturer.name from manufacturer where manufacturer.manfcode =item.manfcode ) , reorderqty , optimumqty , minqty , itemcategory =( select itemcategory.name from itemcategory where itemcategory.icatcode =item.icatcode ) , itemclass =( select itemclass.name from itemclass where itemclass.iccode =item.iccode ) , item.purdiscperc , transitstock , itempacking =( select itempacking.name from itempacking where itempacking.packcode =item.packcode ) , item.packsalestax , item.gstperc1 , item.saleprice , item.recentpurprice , Round ( item.avgprice *item.packunits , 2 ) , genericitem =( select genericitem.name from genericitem where genericitem.genericcode =item.genericcode ) , item.remarks , item.foreignprice , LastPurInvCode =NULL , LastPurDate =NULL , Item.ItemAlertCode INTO :ls_fullcode, :ls_name, :ld_purprice, :ll_packunits, :ld_discperc, :li_gcode, :ls_manufname, :ll_reorderqty, :ll_optimumqty, :ll_minqty, :ls_itemcategory, :ls_itemclass, :ld_purdiscperc, :ld_transitstock, :ls_itempacking, :ld_packsalestax, :ld_gstperc, :ld_saleprice, :ld_rpp, :ld_packavgprice, :ls_genericitem, :ls_remarks, :ld_foreignprice, :ll_lastpurinvcode, :ldt_lastpurdate, :ll_itemalertcode FROM item WHERE item.icode =:al_icode USING this.it_transobject;
+	else
+		SQL SELECT item.customicode , item.name , item.purprice , item.packunits , item.purdiscperc , item.gcode , manufname =( select manufacturer.name from manufacturer where manufacturer.manfcode =item.manfcode ) , reorderqty , optimumqty , minqty , itemcategory =( select itemcategory.name from itemcategory where itemcategory.icatcode =item.icatcode ) , itemclass =( select itemclass.name from itemclass where itemclass.iccode =item.iccode ) , item.purdiscperc , transitstock , itempacking =( select itempacking.name from itempacking where itempacking.packcode =item.packcode ) , item.packsalestax , item.gstperc1 , item.saleprice , item.recentpurprice , Round ( item.avgprice *item.packunits , 2 ) , genericitem =( select genericitem.name from genericitem where genericitem.genericcode =item.genericcode ) , item.remarks , item.foreignprice , LastPurInvCode =CASE WHEN :this.ic_fetchlastpurinfo ='Y' THEN ( SELECT MAX ( P.PurInvCode ) FROM PurDetail D , PurLedger P WHERE D.ICode =:al_icode AND P.PurInvCode =D.PurInvCode AND P.Posted ='Y' ) ELSE NULL END , LastPurDate =CASE WHEN :this.ic_fetchlastpurinfo ='Y' THEN ( SELECT MAX ( P.Date ) FROM PurDetail D , PurLedger P WHERE D.ICode =:al_icode AND P.PurInvCode =D.PurInvCode AND P.Posted ='Y' ) ELSE NULL END , Item.itemalertcode INTO :ls_fullcode, :ls_name, :ld_purprice, :ll_packunits, :ld_discperc, :li_gcode, :ls_manufname, :ll_reorderqty, :ll_optimumqty, :ll_minqty, :ls_itemcategory, :ls_itemclass, :ld_purdiscperc, :ld_transitstock, :ls_itempacking, :ld_packsalestax, :ld_gstperc, :ld_saleprice, :ld_rpp, :ld_packavgprice, :ls_genericitem, :ls_remarks, :ld_foreignprice, :ll_lastpurinvcode, :ldt_lastpurdate, :ll_itemalertcode FROM item WHERE item.icode =:al_icode USING this.it_transobject;
+	end if
+	if ll_packunits < 1 or isnull(ll_packunits) then
+		ll_packunits = 1
+	end if
+	if this.it_transobject.sqlcode = -1 then
+		retflag = false
+	end if
+	if this.it_transobject.sqlcode = -1 then
+		retflag = false
+	end if
+	ls_alternatecustomicode = this.id_detail.object.alternatecustomicode[al_row]
+	if isnull(ls_alternatecustomicode) then
+		ls_alternatecustomicode = ""
+	end if
+	if lower(ls_fullcode) = lower(ls_alternatecustomicode) then
+		ls_alternatecustomicode = ls_null
+		this.id_detail.object.alternatecustomicode[al_row] = ls_null
+	end if
+	ld_conversionfactor = this.id_master.object.conversionfactor[1]
+	this.id_detail.setitem(al_row, "icode", al_icode)
+	this.id_detail.setitem(al_row, this.is_columnitemname, ls_name)
+	this.id_detail.setitem(al_row, "fullcode", ls_fullcode)
+	if len(ls_alternatecustomicode) = 0 or isnull(ls_alternatecustomicode) or this.id_detail.object.packunits[al_row] <= 0 then
+		if ld_foreignprice <> 0.0 then
+			this.id_detail.setitem(al_row, "rate", ld_foreignprice * ld_conversionfactor)
+		else
+			this.id_detail.setitem(al_row, "rate", ld_purprice)
+		end if
+	end if
+	this.it_transobject.getitemstock_for_consideredgodowns(al_icode, ld_stock)
+	if this.it_transobject.sqlcode <> 0 then
+		messagebox("Database Error", "Item information can not be retrieved")
+		return false
+	end if
+	if len(ls_alternatecustomicode) = 0 or isnull(ls_alternatecustomicode) or this.id_detail.object.packunits[al_row] <= 0 then
+		this.id_detail.setitem(al_row, "packunits", ll_packunits)
+	end if
+	ll_packunits = this.id_detail.object.packunits[al_row]
+	if ll_packunits < 1 or isnull(ll_packunits) then
+		ll_packunits = 1
+	end if
+	this.id_detail.setitem(al_row, "stock", ld_stock)
+	this.id_detail.setitem(al_row, "batch", f_stringpreferences("defaultbatch"))
+	this.id_detail.setitem(al_row, "manufname", ls_manufname)
+	this.id_detail.setitem(al_row, "itemcategory", ls_itemcategory)
+	this.id_detail.setitem(al_row, "genericitem", ls_genericitem)
+	this.id_detail.setitem(al_row, "itemclass", ls_itemclass)
+	this.id_detail.setitem(al_row, "itempacking", ls_itempacking)
+	this.id_detail.setitem(al_row, "discperc", ld_purdiscperc)
+	this.id_detail.setitem(al_row, "transitstock", ld_transitstock)
+	this.id_detail.setitem(al_row, "foreignprice", ld_foreignprice)
+	if len(ls_alternatecustomicode) = 0 or isnull(ls_alternatecustomicode) then
+		this.id_detail.setitem(al_row, "purprice", ld_purprice)
+		this.id_detail.setitem(al_row, "saleprice", ld_saleprice)
+	end if
+	this.id_detail.setitem(al_row, "rpp", ld_rpp)
+	this.id_detail.setitem(al_row, "packavgprice", ld_packavgprice)
+	this.id_detail.setitem(al_row, "lastpurinvcode", ll_lastpurinvcode)
+	this.id_detail.setitem(al_row, "lastpurdate", ldt_lastpurdate)
+	this.id_detail.setitem(al_row, "itemalertcode", ll_itemalertcode)
+	if f_stringpreferences("ItemUnitTaxInPO") = "N" then
+		this.id_detail.setitem(al_row, "packsalestax", 0)
+	else
+		this.id_detail.setitem(al_row, "packsalestax", ld_packsalestax)
+	end if
+	if f_stringpreferences("ItemGSTPercInPO") = "N" then
+		this.id_detail.setitem(al_row, "gstperc", 0)
+	else
+		this.id_detail.setitem(al_row, "gstperc", ld_gstperc)
+	end if
+	if f_stringpreferences("po_copyremarksinitemdesc") = "Y" and this.id_detail.getitemstatus(al_row, "remarks", primary!) = notmodified! then
+		this.id_detail.setitem(al_row, "remarks", ls_remarks)
+	end if
+	if this.id_master.object.purordercatcode[1] = 1 then
+		if ll_optimumqty - (ld_stock + ld_transitstock) > 0.0 then
+			ld_looseqty = ll_optimumqty - (ld_stock + ld_transitstock)
+		else
+			ld_looseqty = 0
+		end if
+		ld_qty = ceiling(ld_looseqty / ll_packunits)
+		this.id_detail.setitem(al_row, "minqty", ll_minqty)
+		this.id_detail.setitem(al_row, "reorderqty", ll_reorderqty)
+		this.id_detail.setitem(al_row, "optimumqty", ll_optimumqty)
+		this.id_detail.setitem(al_row, "looseqty", ll_reorderqty - (ld_stock + ld_transitstock))
+		this.id_detail.setitem(al_row, "qty", ld_qty)
+	elseif this.id_master.object.purordercatcode[1] = 2 then
+		ld_startdate = date(this.id_master.object.startdate[this.id_master.getrow()])
+		ld_enddate = date(this.id_master.object.enddate[this.id_master.getrow()])
+		ldt_startdate = datetime(ld_startdate, time(0, 0, 0, 0))
+		ldt_enddate = datetime(ld_enddate, time(23, 59, 59, 0))
+		if isnull(ldt_startdate) or isnull(ldt_startdate) then
+			messagebox("Date Validation!", "Please Enter Valid Start and End Date")
+			return false
+		end if
+		if isnull(this.id_master.getitemnumber(1, "projectionperiod")) or this.id_master.getitemnumber(1, "projectionperiod") = 0.0 then
+			messagebox("Date Validation!", "Please Enter Valid Projection Period")
+			return false
+		end if
+		if isnull(ls_alternatecustomicode) or ls_alternatecustomicode = "" then
+			SQL SELECT solqty =isnull ( ( select sum ( looseqty ) from saleledger , saledetail where saleledger.date BETWEEN :ldt_startdate AND :ldt_enddate AND saleledger.ConsiderInPO ='Y' AND saledetail.icode =item.icode AND saleledger.saleinvcode =saledetail.saleinvcode ) , 0 ) , returnqty =isnull ( ( select sum ( looseqty ) from srledger , srdetail where srledger.date BETWEEN :ldt_startdate and :ldt_enddate and srledger.ConsiderInPO ='Y' AND srdetail.icode =item.icode and srledger.srinvcode =srdetail.srinvcode ) , 0 ) INTO :ld_soldqty, :ld_returnqty FROM item WHERE item.icode =:al_icode USING this.it_transobject;
+		else
+			SQL SELECT solqty =isnull ( ( select sum ( looseqty ) from saleledger , saledetail where saleledger.date BETWEEN :ldt_startdate AND :ldt_enddate AND saleledger.ConsiderInPO ='Y' AND saledetail.icode =item.icode AND saledetail.alternatecustomicode =:ls_alternatecustomicode AND saleledger.saleinvcode =saledetail.saleinvcode ) , 0 ) , returnqty =isnull ( ( select sum ( looseqty ) from srledger , srdetail where srledger.date BETWEEN :ldt_startdate and :ldt_enddate and srledger.ConsiderInPO ='Y' AND srdetail.icode =item.icode and srdetail.alternatecustomicode =:ls_alternatecustomicode AND srledger.srinvcode =srdetail.srinvcode ) , 0 ) INTO :ld_soldqty, :ld_returnqty FROM item WHERE item.icode =:al_icode USING this.it_transobject;
+		end if
+		if this.it_transobject.sqlcode <> 0 then
+			this.id_detail.setitem(al_row, "minqty", ll_minqty)
+			this.id_detail.setitem(al_row, "soldqty", 0)
+			this.id_detail.setitem(al_row, "returnqty", 0)
+			this.id_detail.setitem(al_row, "netsaleqty", 0)
+			this.id_detail.setitem(al_row, "avgsaleqty", 0)
+			this.id_detail.setitem(al_row, "forecastqty", 0)
+			this.id_detail.setitem(al_row, "looseqty", 0)
+			this.id_detail.setitem(al_row, "qty", 0)
+			this.id_detail.setitem(al_row, "transitstock", 0)
+		else
+			if daysafter(date(this.id_master.object.startdate[this.id_master.getrow()]), date(this.id_master.object.enddate[this.id_master.getrow()])) = 0 then
+				ld_avgsaleqty = ld_soldqty - ld_returnqty
+			else
+				ld_avgsaleqty = (ld_soldqty - ld_returnqty) / daysafter(date(this.id_master.object.startdate[this.id_master.getrow()]), date(this.id_master.object.enddate[this.id_master.getrow()]))
+			end if
+			ld_forecastqty = ceiling(ld_avgsaleqty * this.id_master.getitemnumber(1, "projectionperiod"))
+			if ld_forecastqty > ld_stock + ld_transitstock then
+				ld_looseqty = ld_forecastqty - (ld_stock + ld_transitstock)
+				if ld_forecastqty < ll_minqty then
+					ld_looseqty = ll_minqty - (ld_stock + ld_transitstock)
+				end if
+			else
+				ld_looseqty = 0
+				if ld_stock + ld_transitstock < ll_minqty then
+					ld_looseqty = ll_minqty - (ld_stock + ld_transitstock)
+				end if
+			end if
+			ld_qty = ceiling(ld_looseqty / ll_packunits)
+			this.id_detail.setitem(al_row, "minqty", ll_minqty)
+			this.id_detail.setitem(al_row, "soldqty", ld_soldqty)
+			this.id_detail.setitem(al_row, "returnqty", ld_returnqty)
+			this.id_detail.setitem(al_row, "netsaleqty", ld_soldqty - ld_returnqty)
+			this.id_detail.setitem(al_row, "avgsaleqty", ld_avgsaleqty)
+			this.id_detail.setitem(al_row, "forecastqty", ld_forecastqty)
+			this.id_detail.setitem(al_row, "looseqty", ld_looseqty)
+			this.id_detail.setitem(al_row, "qty", ld_qty)
+			this.id_detail.setitem(al_row, "transitstock", ld_transitstock)
+		end if
+		this.id_detail.setitem(al_row, "minqty", ll_minqty)
+	else
+		ld_looseqty = ll_optimumqty - (ld_stock + ld_transitstock)
+		ld_qty = ceiling(ld_looseqty / ll_packunits)
+		if ld_qty < 0.0 then
+			ld_qty = 0
+		end if
+		this.id_detail.setitem(al_row, "minqty", ll_minqty)
+		this.id_detail.setitem(al_row, "reorderqty", ll_reorderqty)
+		this.id_detail.setitem(al_row, "optimumqty", ll_optimumqty)
+		this.id_detail.setitem(al_row, "looseqty", ll_reorderqty - (ld_stock + ld_transitstock))
+		this.id_detail.setitem(al_row, "qty", ld_qty)
+		this.id_detail.setitem(al_row, "transitstock", ld_transitstock)
+	end if
+	wf_apply_supp_assoc_purquot(al_icode, al_row)
+	return retflag
+
+// w_purchaseorder.wf_assigndatawindowobjects(string as_masterdw, string as_detaildw, string as_listdw) returns 0
+	this.id_master.dataobject = as_masterdw
+	this.id_detail.dataobject = as_detaildw
+	this.id_list.dataobject = as_listdw
+	this.id_master.settransobject(this.it_transobject)
+	this.id_detail.settransobject(this.it_transobject)
+	this.id_list.settransobject(this.it_transobject)
+
+// w_purchaseorder.wf_setordersettings(integer ai_value) returns 0
+	boolean lb_value
+	string ls_dataobject
+	long ll_row
+	long ll_totrows
+	long ll_found
+	if ai_value = 1 or ai_value = 3 or ai_value = 4 then
+		lb_value = false
+	elseif ai_value = 2 then
+		lb_value = true
+	end if
+	setredraw(false)
+	ls_dataobject = this.id_detail.dataobject
+	this.id_detail.dataobject = ls_dataobject
+	this.id_detail.settransobject(this.it_transobject)
+	f_setcolumnstyle(this.id_detail, "Qty")
+	ll_totrows = this.id_detail.rowcount()
+	ll_row = 0
+	do while ll_totrows > 0 and ll_row <= ll_totrows
+		this.id_detail.deleterow(ll_row)
+		ll_row = ll_row + 1
+	loop
+	this.id_master.object.startdate.visible = lb_value
+	this.id_master.object.startdate_t.visible = lb_value
+	this.id_master.object.enddate.visible = lb_value
+	this.id_master.object.enddate_t.visible = lb_value
+	this.id_master.object.projectionperiod.visible = lb_value
+	this.id_master.object.projectionperiod_t.visible = lb_value
+	if ai_value = 1 then
+		lb_value = true
+	end if
+	this.id_master.object.zeroqty.visible = lb_value
+	this.id_master.object.zeroqty_t.visible = lb_value
+	if f_stringpreferences("ShowSuppRefInPurOrder") = "N" then
+		this.id_master.object.supplierreference.visible = false
+		this.id_master.object.supplierreference_t.visible = false
+	else
+		this.id_master.object.supplierreference.visible = true
+		this.id_master.object.supplierreference_t.visible = true
+	end if
+	if f_stringpreferences("ShowDeliveryLocationInPurOrder") = "N" then
+		this.id_master.object.deliverylocation.visible = false
+		this.id_master.object.deliverylocation_t.visible = false
+	else
+		this.id_master.object.deliverylocation.visible = true
+		this.id_master.object.deliverylocation_t.visible = true
+	end if
+	if f_stringpreferences("ShowUsageLocationInPurOrder") = "N" then
+		this.id_master.object.usagelocation.visible = false
+		this.id_master.object.usagelocation_t.visible = false
+	else
+		this.id_master.object.usagelocation.visible = true
+		this.id_master.object.usagelocation_t.visible = true
+	end if
+	if f_stringpreferences("ShowReqDateInPurOrder") = "N" then
+		this.id_master.object.requireddate.visible = false
+		this.id_master.object.requireddate_t.visible = false
+	else
+		this.id_master.object.requireddate.visible = true
+		this.id_master.object.requireddate_t.visible = true
+	end if
+	if f_stringpreferences("ShowRemarks2InPO") = "N" then
+		this.id_master.object.remarks2.visible = false
+		this.id_master.object.remarks2_t.visible = false
+	else
+		this.id_master.object.remarks2.visible = true
+		this.id_master.object.remarks2_t.visible = true
+	end if
+	if f_stringpreferences("ShowRemarks3InPO") = "N" then
+		this.id_master.object.remarks3.visible = false
+		this.id_master.object.remarks3_t.visible = false
+	else
+		this.id_master.object.remarks3.visible = true
+		this.id_master.object.remarks3_t.visible = true
+	end if
+	wf_apply_interfacesetting(ai_value)
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 594", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.id_master.object.currencycode.visible = true
+		this.id_master.object.currencycode_t.visible = true
+		this.id_master.object.conversionfactor.visible = true
+		this.id_master.object.conversionfactor_t.visible = true
+	else
+		this.id_master.object.currencycode.visible = false
+		this.id_master.object.currencycode_t.visible = false
+		this.id_master.object.conversionfactor.visible = false
+		this.id_master.object.conversionfactor_t.visible = false
+	end if
+	if this.ib_discperc2inpo = false then
+		this.id_detail.object.discperc2.visible = false
+	end if
+	if this.ib_itemflatdiscinpo = false then
+		this.id_detail.object.itemflatdisc.visible = false
+	end if
+	if this.ib_itemunittaxinpo = false then
+		this.id_detail.object.packsalestax.visible = false
+		this.id_detail.object.c_taxval.visible = false
+	end if
+	if this.ib_itemgstpercinpo = false then
+		this.id_detail.object.gstperc.visible = false
+		this.id_detail.object.c_gstval.visible = false
+	end if
+	if this.ib_itemunittaxinpo = false and this.ib_itemgstpercinpo = false then
+		this.id_detail.object.c_finalitemval.visible = false
+	end if
+	if f_stringpreferences("ShowItemRemarksInPurOrder") = "N" then
+		this.id_detail.object.remarks.visible = false
+		this.id_detail.object.remarks_t.visible = false
+	else
+		this.id_detail.object.remarks.visible = true
+		this.id_detail.object.remarks_t.visible = true
+	end if
+	if ai_value = 2 and isnull(this.id_master.getitemnumber(1, "Code")) then
+		this.id_master.object.startdate[1] = relativedate(today(), -45)
+		this.id_master.object.enddate[1] = today()
+		this.id_master.object.projectionperiod[1] = 30
+		this.id_master.object.zeroqty[1] = 0
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 617", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.id_detail.object.rate.protect = 0
+	else
+		this.id_detail.object.rate.protect = 1
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 632", 1, gds_securitywindow.rowcount())
+	if ll_found <= 0 then
+		this.id_detail.object.minqty.tabsequence = 0
+		this.id_detail.object.minqty.protect = 1
+		this.id_detail.object.minqty.background.color = this.backcolor
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 633", 1, gds_securitywindow.rowcount())
+	if ll_found <= 0 then
+		this.id_detail.object.reorderqty.tabsequence = 0
+		this.id_detail.object.reorderqty.protect = 1
+		this.id_detail.object.reorderqty.background.color = this.backcolor
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 634", 1, gds_securitywindow.rowcount())
+	if ll_found <= 0 then
+		this.id_detail.object.optimumqty.tabsequence = 0
+		this.id_detail.object.optimumqty.protect = 1
+		this.id_detail.object.optimumqty.background.color = this.backcolor
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 691", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.id_detail.object.qty.protect = 0
+	else
+		this.id_detail.object.qty.protect = 1
+	end if
+	if f_stringpreferences("showitemalertinpo") = "N" then
+		this.id_detail.object.itemalertcode.visible = false
+	else
+		this.id_detail.object.itemalertcode.visible = true
+	end if
+	if this.id_detail.rowcount() <= 0 then
+		event ue_newitem()
+	end if
+	setredraw(true)
+
+// w_purchaseorder.wf_apply_interfacesetting(integer ai_value) returns 0
+	long ll_counter
+	long ll_found
+	datastore lds_listsetting
+	this.id_detail.setredraw(false)
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 594", 1, gds_securitywindow.rowcount())
+	lds_listsetting = create datastore
+	lds_listsetting.dataobject = "d_interfacesetting_group"
+	lds_listsetting.settransobject(this.it_transobject)
+	lds_listsetting.retrieve(16, 3)
+	for ll_counter = 1 to lds_listsetting.rowcount()
+		this.id_detail.modify(lds_listsetting.getitemstring(ll_counter, "colname") + ".Visible=0")
+	next
+	lds_listsetting.dataobject = "d_interfacesettingcols_group"
+	lds_listsetting.settransobject(this.it_transobject)
+	lds_listsetting.retrieve(16, 3, 1)
+	lds_listsetting.setfilter("")
+	lds_listsetting.filter()
+	lds_listsetting.setfilter("interfacegroup in (0 , " + trim(string(ai_value)) + ")")
+	lds_listsetting.filter()
+	for ll_counter = 1 to lds_listsetting.rowcount()
+		this.id_detail.modify(lds_listsetting.getitemstring(ll_counter, "colname") + ".Visible=1")
+		if ll_found > 0 and lower(lds_listsetting.getitemstring(ll_counter, "colname")) = "foreignprice" then
+			this.id_detail.object.c_foreigntotal.visible = true
+		end if
+	next
+	this.id_detail.setredraw(true)
+
+// w_purchaseorder.wf_update_minqty(long al_icode, long al_qty, string as_errtext) returns long
+	long ll_retcode
+	if f_stringpreferences("UpdateMinQty_PO_Save") = "Y" then
+		ll_retcode = this.it_transobject.update_item_minqty(al_icode, al_qty)
+	else
+		ll_retcode = 0
+	end if
+	if ll_retcode <> 0 then
+		as_errtext = this.it_transobject.sqlerrtext
+		return -1
+	end if
+	return 0
+
+// w_purchaseorder.wf_update_optimumqty(long al_icode, long al_qty, string as_errtext) returns long
+	long ll_retcode
+	if f_stringpreferences("UpdateOptQty_PO_Save") = "Y" then
+		ll_retcode = this.it_transobject.update_item_optimumqty(al_icode, al_qty)
+	else
+		ll_retcode = 0
+	end if
+	if ll_retcode <> 0 then
+		as_errtext = this.it_transobject.sqlerrtext
+		return -1
+	end if
+	return 0
+
+// w_purchaseorder.wf_update_reorderqty(long al_icode, long al_qty, string as_errtext) returns long
+	long ll_retcode
+	if f_stringpreferences("UpdateReorderQty_PO_Save") = "Y" then
+		ll_retcode = this.it_transobject.update_item_reorderqty(al_icode, al_qty)
+	else
+		ll_retcode = 0
+	end if
+	if ll_retcode <> 0 then
+		as_errtext = this.it_transobject.sqlerrtext
+		return -1
+	end if
+	return 0
+
+// w_purchaseorder.wf_modify_purchaseorder() returns long
+	if this.tab_retrieve.selectedtab <> 2 then
+		return 0
+	end if
+	open(w_modify_purorderheader)
+	return 0
+
+// w_purchaseorder.wf_itempurchasehistory() returns 0
+	s_itempurchasehistory ls_itempurchasehistory
+	if this.id_detail = getfocus() and this.id_detail.rowcount() > 0 then
+		ls_itempurchasehistory.ar_icode = this.id_detail.getitemnumber(this.id_detail.getrow(), "icode")
+		ls_itempurchasehistory.ar_date = this.id_master.getitemdatetime(this.id_master.getrow(), "date")
+		openwithparm(w_itempurchasehistory, ls_itempurchasehistory)
+	end if
+
+// w_purchaseorder.wf_showaccountledger() returns 0
+	long ll_acccode
+	ll_acccode = 0
+	if this.tab_retrieve.selectedtab = 1 then
+		ll_acccode = this.id_master.getitemnumber(this.id_master.getrow(), "suppcode")
+		if not isnull(ll_acccode) and this.id_master.rowcount() > 0 then
+			openwithparm(w_account_ledger, ll_acccode)
+		end if
+	end if
+
+// w_purchaseorder.wf_getsupplierinfo() returns 0
+	long ll_suppcode
+	if this.id_master = getfocus() and this.id_master.rowcount() > 0 then
+		ll_suppcode = this.id_master.getitemnumber(this.id_master.getrow(), "suppcode")
+		openwithparm(w_supplierinfo, ll_suppcode)
+	end if
+
+// w_purchaseorder.wf_show_unposted_pr_reminder() returns long
+	long ll_suppcode
+	long ll_retcode
+	s_datastore lstr
+	datastore ds
+	ds = create datastore
+	if this.id_master.getrow() > 0 then
+		ll_suppcode = this.id_master.object.suppcode[this.id_master.getrow()]
+	else
+		return ll_retcode
+	end if
+	if f_stringpreferences("ShowUnPostedPReturnOnPOSaving") = "Y" then
+		if ll_suppcode = 0 or isnull(ll_suppcode) then
+			return ll_retcode
+		else
+			ds.dataobject = "d_purret_detail_supp_unposted_inv"
+			ds.settransobject(sqlca)
+			ds.retrieve(ll_suppcode)
+		end if
+		if ds.rowcount() > 0 then
+			lstr.ds = ds
+			lstr.s_name1 = ds.dataobject
+			openwithparm(w_unposted_preturn_reminder_in_po, lstr)
+		end if
+	end if
+	return ll_retcode
+
+// w_purchaseorder.wf_findsuppcode(string as_aliasname, long al_suppcode) returns long
+	long ll_suppcode
+	long ll_retflag
+	string ls_itemname
+	SQL SELECT accounts.acccode INTO :ll_suppcode FROM accounts , supplier WHERE accounts.aliasname =:as_aliasname AND accounts.acccode =supplier.suppcode USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		al_suppcode = ll_suppcode
+		if isnull(al_suppcode) then
+			ll_retflag = 0
+		else
+			ll_retflag = 1
+		end if
+	else
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_purchaseorder.wf_supplierinfo(long al_suppcode) returns long
+	string ls_address
+	string ls_city
+	string ls_phone
+	string ls_aliasname
+	long ll_currow
+	long ll_sitecode
+	double ld_currbalance
+	SQL SELECT supplier.address1 , supplier.city , supplier.phone , accounts.aliasname , supplier.sitecode INTO :ls_address, :ls_city, :ls_phone, :ls_aliasname, :ll_sitecode FROM supplier , accounts WHERE supplier.suppcode =:al_suppcode and supplier.suppcode =accounts.acccode USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		ll_currow = this.id_master.getrow()
+		this.id_master.object.aliasname[ll_currow] = ls_aliasname
+		this.id_master.object.targetsitecode[ll_currow] = ll_sitecode
+	end if
+	return this.it_transobject.sqlcode
+
+// w_purchaseorder.wf_get_associatedquotation(long al_custcode) returns long
+	long ll_retcode
+	long ll_quotationcode
+	if al_custcode = 0 or isnull(al_custcode) then
+		ll_retcode = -1
+		return ll_retcode
+	else
+		SQL SELECT POAssociatedQuotationCode INTO :ll_quotationcode FROM DBO.Customer WHERE CustCode =:al_custcode USING sqlca;
+		if sqlca.sqlcode = 0 then
+			if ll_quotationcode = 0 or isnull(ll_quotationcode) then
+				ll_retcode = 0
+			else
+				ll_retcode = ll_quotationcode
+			end if
+		else
+			ll_retcode = -2
+		end if
+	end if
+	return ll_retcode
+
+// w_purchaseorder.wf_apply_associated_quotation(integer ai_mode) returns long
+	long ll_custcode
+	long ll_masterrow
+	long ll_quotationcode
+	long ll_detailrows
+	long ll_qheaderrow
+	long ll_quotationrows
+	long ll_found
+	long ll_loosepack
+	long ll_rowcount
+	long ll_quotpackunits
+	long ll_icode
+	long ll_notfound_itemcount
+	double ld_quotprice
+	double ld_quotdiscperc
+	double ld_quotitemflatdisc
+	double ld_quotqty
+	double ld_quotbonusqty
+	double ld_qty
+	double ld_bonusqty
+	double ld_bonusfactor
+	string ls_msgtitle
+	string ls_itemname
+	string ls_msgdetail
+	boolean lb_editsaleprice
+	boolean lb_editsalediscperc
+	boolean lb_editbonusqty
+	boolean lb_edititewflatdisc
+	datastore lds_quotationdetail
+	datastore lds_quotationheader
+	if wf_iseditable() = false then
+		return 0
+	end if
+	ll_masterrow = this.id_master.rowcount()
+	ll_custcode = this.id_master.getitemnumber(ll_masterrow, "custcode")
+	if ll_custcode = 0 or isnull(ll_custcode) then
+		messagebox(ls_msgtitle, "Please Select Valid Customer", stopsign!)
+		return 0
+	end if
+	ll_detailrows = this.id_detail.rowcount()
+	if ll_detailrows = 0 then
+		messagebox(ls_msgtitle, "Please Enter Some Items before applying Customers' Associated Quotation", stopsign!)
+		return 0
+	end if
+	ll_quotationcode = wf_get_associatedquotation(ll_custcode)
+	if ll_quotationcode < 0 then
+		if ll_quotationcode = -1 then
+			messagebox(ls_msgtitle, "Please Select Valid Customer", stopsign!)
+			return 0
+		else
+			messagebox(ls_msgtitle, "Problem in retrieving Associated Quotation of Customer", stopsign!)
+			return 0
+		end if
+	elseif ll_quotationcode = 0 then
+		if ai_mode = 0 then
+			messagebox(ls_msgtitle, "No Associated Quotation found for this Customer", stopsign!)
+			return 0
+		else
+			return 1
+		end if
+		return
+	end if
+	lds_quotationdetail = create datastore
+	lds_quotationheader = create datastore
+	lds_quotationdetail.dataobject = "d_quotationdetail_retrieve"
+	lds_quotationdetail.settransobject(this.it_transobject)
+	lds_quotationheader.dataobject = "d_quotationheader"
+	lds_quotationheader.settransobject(this.it_transobject)
+	ll_qheaderrow = lds_quotationheader.retrieve(ll_quotationcode)
+	if ll_qheaderrow < 0 then
+		messagebox(ls_msgtitle, "Associated Quotation Header Retrieval Problem", stopsign!)
+		return 0
+	else
+		ll_qheaderrow = lds_quotationheader.rowcount()
+		if ll_qheaderrow = 0 then
+			messagebox(ls_msgtitle, "Associated Quotation Does not Exist", stopsign!)
+			return 0
+		end if
+	end if
+	ll_quotationrows = lds_quotationdetail.retrieve(ll_quotationcode)
+	if ll_quotationrows < 0 then
+		messagebox(ls_msgtitle, "Associated Quotation Detail Retrieval Problem", stopsign!)
+		return 0
+	else
+		ll_quotationrows = lds_quotationdetail.rowcount()
+		if ll_quotationrows = 0 then
+			if ai_mode = 0 then
+				messagebox(ls_msgtitle, "Associated Quotation contain no rows", stopsign!)
+				return 0
+			else
+				return 1
+			end if
+			return
+		end if
+	end if
+	ll_loosepack = lds_quotationheader.getitemnumber(ll_qheaderrow, "loosepack")
+	setredraw(false)
+	for ll_rowcount = 1 to ll_detailrows
+		ll_icode = this.id_detail.getitemnumber(ll_rowcount, "icode")
+		ls_itemname = this.id_detail.getitemstring(ll_rowcount, "itemname")
+		ll_found = 0
+		ll_found = lds_quotationdetail.find("icode = " + trim(string(ll_icode)), 1, ll_quotationrows)
+		if ll_found > 0 then
+			ll_quotpackunits = lds_quotationdetail.getitemnumber(ll_found, "packunits")
+			ld_quotdiscperc = lds_quotationdetail.getitemnumber(ll_found, "podiscperc")
+			ld_quotitemflatdisc = lds_quotationdetail.getitemnumber(ll_found, "itemflatdisc")
+			if ll_quotpackunits = 0 then
+				ll_quotpackunits = 1
+			end if
+			ld_quotqty = lds_quotationdetail.getitemnumber(ll_found, "looseqty")
+			ld_quotbonusqty = lds_quotationdetail.getitemnumber(ll_found, "bonusqty")
+			if ll_loosepack = 1 then
+				ld_quotprice = lds_quotationdetail.getitemnumber(ll_found, "porate") * ll_quotpackunits
+			else
+				ld_quotprice = lds_quotationdetail.getitemnumber(ll_found, "porate")
+			end if
+			if ld_quotqty <= 0.0 then
+				ld_quotqty = 1
+			end if
+			this.id_detail.setitem(ll_rowcount, "rate", ld_quotprice)
+			this.id_detail.setitem(ll_rowcount, "discperc", ld_quotdiscperc)
+			this.id_detail.setitem(ll_rowcount, "itemflatdisc", ld_quotitemflatdisc)
+		else
+			ls_msgdetail = ls_msgdetail + "~r~nRow #: " + string(ll_rowcount) + "~t Item Name:  " + ls_itemname
+			ll_notfound_itemcount = ll_notfound_itemcount + 1
+		end if
+	next
+	setredraw(true)
+	wf_grandtotal()
+	if ll_notfound_itemcount > 0 and ai_mode = 0 then
+		messagebox(ls_msgtitle, "No Guidelines Exist for Following " + trim(string(ll_notfound_itemcount)) + " item(s) in Associated Quotation/Pricing Contract~r~n" + ls_msgdetail, information!)
+	end if
+	return 1
+
+// w_purchaseorder.wf_applycurrency(double ad_conversionfactor) returns long
+	long ll_detail_rowcount
+	long ll_counter
+	long ld_purprice
+	long ll_packunits
+	long ll_retcode
+	long ll_icode
+	integer li_retmsgcode
+	double ld_foreignprice
+	double ld_newprice
+	ll_detail_rowcount = this.id_detail.rowcount()
+	ll_retcode = 1
+	if ll_detail_rowcount > 0 then
+		wf_deleteemptydetailrow()
+		for ll_counter = 1 to ll_detail_rowcount
+			ll_icode = this.id_detail.object.icode[ll_counter]
+			ld_purprice = this.id_detail.object.rate[ll_counter]
+			ld_foreignprice = this.id_detail.object.foreignprice[ll_counter]
+			ll_packunits = this.id_detail.object.packunits[ll_counter]
+			if ll_packunits = 0 or isnull(ll_packunits) then
+				ll_packunits = 1
+			end if
+			ld_newprice = round(ld_foreignprice * ad_conversionfactor, 2)
+			if ll_retcode = 1 then
+				this.id_detail.object.rate[ll_counter] = ld_newprice
+			end if
+		next
+	end if
+	wf_grandtotal()
+	return ll_retcode
+
+// w_purchaseorder.wf_setcurrency(long al_currencycode) returns long
+	long ll_currow
+	long ll_retcode
+	double ld_conversionfactor
+	SQL SELECT ConversionFactor INTO :ld_conversionfactor FROM Currency WHERE Currency.Currencycode =:al_currencycode USING this.it_transobject;
+	ll_retcode = 1
+	if this.it_transobject.sqlcode = 0 then
+		if ld_conversionfactor < 0.0 then
+			ll_retcode = 0
+		else
+			ll_currow = this.id_master.getrow()
+			ll_currow = 1
+			this.id_master.object.conversionfactor[ll_currow] = ld_conversionfactor
+			if wf_applycurrency(ld_conversionfactor) <= 0 then
+				ll_retcode = 0
+			end if
+		end if
+	else
+		ll_retcode = 0
+	end if
+	wf_grandtotal()
+	return ll_retcode
+
+// w_purchaseorder.wf_check_supplier_items() returns long
+	long ll_suppitemrows
+	long ll_retcode
+	long ll_suppcode
+	long ll_icode
+	long ll_rowcount
+	long ll_itemfound
+	long ll_counter
+	string ls_itemname
+	datastore lds_suppitems
+	if f_stringpreferences("enforceitemsupplierassociationonposaving") = "N" then
+		ll_retcode = 0
+		return ll_retcode
+	end if
+	lds_suppitems = create datastore
+	lds_suppitems.dataobject = "d_item_suppliers"
+	lds_suppitems.settransobject(sqlca)
+	ll_suppcode = this.id_master.object.suppcode[1]
+	ll_rowcount = this.id_detail.rowcount()
+	if ll_rowcount > 0 and ll_suppcode > 0 then
+		ll_suppitemrows = lds_suppitems.retrieve(ll_suppcode)
+		if ll_suppitemrows > 0 then
+			for ll_counter = 1 to ll_rowcount
+				ll_icode = this.id_detail.object.icode[ll_counter]
+				ls_itemname = this.id_detail.object.itemname[ll_counter]
+				ll_itemfound = lds_suppitems.find("icode= " + trim(string(ll_icode)), 1, ll_suppitemrows)
+				if ll_itemfound = 0 or ll_itemfound > ll_suppitemrows then
+					messagebox("Supplier/Item Association", "Can not save Purchase Order!~r~n~r~nSome Items in this Order Do not conform to supplier/item association in basic data~r~n" + "Item Name = " + ls_itemname + "~r~n" + "Please check associated supplier list for this item in basic data or~r~nContact your system adminstrator to do the needfull.", stopsign!)
+					this.id_detail.setrow(ll_counter)
+					this.id_detail.scrolltorow(ll_counter)
+					this.id_detail.setcolumn("itemname")
+					ll_retcode = 1
+					exit
+				end if
+			next
+		else
+			ll_icode = this.id_detail.object.icode[1]
+			ls_itemname = this.id_detail.object.itemname[1]
+			messagebox("Supplier/Item Association", "Can not save Purchase Order!~r~n~r~nSome Items in this Order Do not conform to supplier/item association in basic data~r~n" + "Item Name = " + ls_itemname + "~r~n" + "Please check associated supplier list for this item in basic data or~r~nContact your system adminstrator to do the needfull.", stopsign!)
+			this.id_detail.setrow(1)
+			this.id_detail.scrolltorow(1)
+			this.id_detail.setcolumn("itemname")
+			ll_retcode = 1
+		end if
+	else
+		ll_retcode = 0
+	end if
+	return ll_retcode
+
+// w_purchaseorder.wf_selectprintreport() returns 0
+	string ls_report
+	ls_report = this.id_print.dataobject
+	if f_stringpreferences("POPrintPageSize") = "F" then
+		if gs_company = "CLINIXMS" or gs_company = "CLINIXSMARKET" or gs_company = "C1WAREHOUSE" then
+			ls_report = "d_clinixms_poreport_full"
+		elseif left(gs_company, 6) = "MEDASK" then
+			ls_report = "d_medask_poreport_full"
+		elseif gs_company = "LEADERAUTOS" then
+			ls_report = "d_leaderautos_poreport_full"
+		else
+			ls_report = "d_poreport_full"
+		end if
+	elseif f_stringpreferences("POPrintPageSize") = "H" then
+		ls_report = "d_poreport_half"
+	elseif f_stringpreferences("POPrintPageSize") = "Q" then
+		if gs_company = "AZEEMMEDICALHAL" then
+			ls_report = "d_azeemmedicalhall_poreport"
+		elseif gs_company = "PHARMIDPHARMACY" then
+			ls_report = "d_pharmidpharmacy_poreport"
+		elseif gs_company = "DAWNAUTOS" then
+			ls_report = "d_dawnautos_poreport"
+		else
+			ls_report = "d_poreport"
+		end if
+	elseif f_stringpreferences("POPrintPageSize") = "T" then
+		if gs_company = "MMTRUSTHSP" then
+			ls_report = "d_mmtrusthsp_poreport_3inches"
+		else
+			ls_report = "d_poreport_3inches"
+		end if
+	end if
+	if gs_company = "AHYPHARMADIST" then
+		ls_report = "d_ahypharmadist_poreport"
+	elseif gs_company = "ONCOLINKPHARMA" then
+		ls_report = "d_oncolinkpharma_purchaseorderprint"
+	elseif gs_company = "SAH" then
+		ls_report = "d_sah_poreport"
+	elseif gs_company = "WAQASAUTO" then
+		ls_report = "d_waqasauto_poreport"
+	elseif gs_company = "NMGHARISHAHU" or gs_company = "MAHMOODLWH" then
+		ls_report = "d_poreport_catwise"
+	elseif gs_company = "ABUZAR" then
+		ls_report = "d_qarshi_poreport"
+	elseif gs_company = "HIMONTLINKROAD" then
+		ls_report = "d_himontlinkroad_poreport"
+	elseif gs_company = "HIMONTAKBARCHWK" or gs_company = "HIMONTIQBALTOWN" or gs_company = "HIMONTGHRISHAHU" or gs_company = "HIMONTGUJRANWAL" or gs_company = "HIMONTMMARKET" or gs_company = "HIMONTMULTAN" or gs_company = "HIMONTSADDARLHR" or gs_company = "HIMONTSHADBAGH" or gs_company = "HIMONTSHADMAN" or gs_company = "HIMONTTHOKAR" then
+		this.id_print.dataobject = "d_himont_poreport"
+	elseif gs_company = "MARIWELFARE" then
+		ls_report = "d_meriwelfare_poreport"
+	elseif gs_company = "MGCLCLUB" then
+		ls_report = "d_merigass_mgclclub_poreport"
+	elseif gs_company = "CARDIACCARE" then
+		ls_report = "d_cardiaccare_poreport"
+	elseif gs_company = "ALSHAFADRUGSTR" then
+		ls_report = "d_alshafadrugstr_poreport"
+	elseif gs_company = "CHILDH" then
+		ls_report = "d_childh_poreport"
+	elseif gs_company = "ALKAUSAR" then
+		ls_report = "d_alkausar_poreport"
+	elseif gs_company = "GHAFFARMEDICAL" then
+		ls_report = "d_ghaffarmedical_poreport"
+	elseif gs_company = "GHAFFARMEDICAL2" then
+		ls_report = "d_ghaffarmedical2_poreport"
+	elseif gs_company = "JINNAHMODEL" then
+		ls_report = "d_jinnahmodel_poreport"
+	elseif gs_company = "MEDCINSUPERSTOR" then
+		ls_report = "d_medcinsuperstor_poreport"
+	elseif gs_company = "KHURSHEDMEDICOS" or gs_company = "MIANLGH" or gs_company = "RAJAPHARMACY" or gs_company = "ALPHAPHARMACY" then
+		ls_report = "d_thermal_poreport"
+	elseif gs_company = "BBIKHI" then
+		ls_report = "d_bbikhi_poreport"
+	elseif gs_company = "PP" or gs_company = "PP2" or gs_company = "PP3" or gs_company = "POTPOURRIWHOUSE" then
+		ls_report = "d_pp_poreport"
+	elseif gs_company = "HARMAINHOMOEO" or gs_company = "MEHRIAHOMOEO" or gs_company = "MEHRIAHOMOEO2" or gs_company = "MEHRIAHOMOEO3" or gs_company = "HARMAINHOMOEOWH" or gs_company = "MEHRIA11" then
+		ls_report = "d_harmainhomoeo_poreport"
+	elseif gs_company = "ADNANPHARMACY" or gs_company = "HDPHARMALITE" or gs_company = "KARAMPHARMACY" or gs_company = "ALREHMANCHEMIST" then
+		ls_report = "d_poreport_3inches"
+	elseif gs_company = "GUARDIANMANMRKT" or gs_company = "GUARDIANMAIN" or gs_company = "GUARDIANTOWNSHP" or gs_company = "GUARDIANDHA" or gs_company = "GUARDIANWAPDA" or gs_company = "GUARDIANSDHCANT" or gs_company = "GUARDIANRAJPUR" or gs_company = "GUARDIANGULSHAN" or gs_company = "GUARDIANALLEFAT" or gs_company = "GUARDIANLINKROD" or gs_company = "GUARDIANMMALAM" or gs_company = "GUARDIANIQBLTWN" or gs_company = "GUARDIANGRDNTWN" or gs_company = "GUARDIANGTROAD" then
+		ls_report = "d_guardian_poreport"
+	elseif gs_company = "FZ" then
+		ls_report = "d_fazaldin2000_poreport"
+	elseif gs_company = "NISAPHARMACY" then
+		ls_report = "d_nisa_poreport"
+	elseif gs_company = "KIHPHARMACY2" then
+		ls_report = "d_kihpharmacy2_poreport"
+	elseif gs_company = "ALQAMARPHARMCY2" then
+		ls_report = "d_alqamarpharmacy2_poreport"
+	elseif gs_company = "HASEENSUPERMRKT" then
+		ls_report = "d_haseensupermart_po_print"
+	elseif gs_company = "UNITEDMEDICINE2" then
+		ls_report = "d_unitedmedicine2_poreport"
+	elseif gs_company = "SANTEPHARMACY" then
+		ls_report = "d_santepharmacy_poreport"
+	elseif gs_company = "HASSANDIESEL" then
+		ls_report = "d_hassandiesel_poreport_full"
+	elseif left(gs_company, 11) = "CARDCOMPANY" then
+		ls_report = "d_cardcompany_poreport"
+	elseif gs_company = "DILLONPHARMACY" then
+		ls_report = "d_dillonpharmacy_poreport"
+	elseif gs_company = "NPR" or gs_company = "KOHINOORMLTN" or gs_company = "KKM" or gs_company = "KBBS" or gs_company = "KLM" then
+		ls_report = "d_npr_poreport_full"
+	elseif gs_company = "SKYLINEPHARMA" then
+		ls_report = "d_skylinepharma_poreport_full"
+	elseif gs_company = "SAFEWAYSYSTEMS" then
+		ls_report = "d_safewaysystems_poinvreport"
+	elseif gs_company = "PWMPHARMACY" then
+		ls_report = "d_pwmspharmacy_poreport"
+	elseif gs_company = "RAHATBAKERS" then
+		ls_report = "d_rahatbakers_poreport"
+	elseif gs_company = "HYPERMALL" then
+		ls_report = "d_hypermall_poreport"
+	elseif gs_company = "QUALITYMEDICAL" then
+		ls_report = "d_qualitymedical_poreport_full"
+	elseif gs_company = "SAEEDNSONS" then
+		ls_report = "d_saeednsons_poreport_full"
+	elseif gs_company = "ALIBRAHIMIHSP" then
+		ls_report = "d_alibrahimihsp_poreport"
+	elseif gs_company = "SAMISBMEDPLUS" then
+		ls_report = "d_samisbmedplus_poreport"
+	elseif gs_company = "AZAMMEDICINE" then
+		ls_report = "d_azammedicine_poreport_3inches"
+	elseif gs_company = "MMHSP" then
+		ls_report = "d_mmhsp_poreport_full"
+	elseif gs_company = "WELCOMEPH" then
+		ls_report = "d_welcomeph_poreport_3inches"
+	elseif gs_company = "THEPHARMACIT" then
+		ls_report = "d_thepharmacit_poreport"
+	elseif gs_company = "PHARMAPLUSINT" then
+		ls_report = "d_pharmaplusint_poreport_full"
+	elseif gs_company = "GINUMCANCERHSP" then
+		ls_report = "d_ginumcancerhsp_poreport_full"
+	elseif gs_company = "NEWREHMANIMS" then
+		ls_report = "d_newrehmanims_poreport_3inches"
+	end if
+	this.id_print.dataobject = ls_report
+	this.id_print.settransobject(this.it_transobject)
+
+// w_purchaseorder.wf_populate_purorder() returns long
+	datastore lds_itemselected
+	datastore lds_poheader
+	integer li_result
+	integer li_rtncode
+	boolean populateflag
+	s_saletemplate lstr_template
+	string ls_itemtotalval
+	string ls_fullcode
+	string ls_errortext
+	long ll_rowcount
+	long ll_rtcode
+	long ll_icode
+	long ll_gcode
+	long ll_packunits
+	long ll_retrievecount
+	long ll_lockedcount
+	long ll_detailrows
+	long ll_count
+	long ll_duplrows
+	long ll_purordercount
+	double ld_purprice
+	double ld_discperc
+	double ld_avgprice
+	double ld_saleprice
+	double ld_packsalestax
+	double ld_gstperc
+	double ld_unitsalestax
+	double ld_godownstock
+	double ld_allgodownstock
+	double ld_stock
+	if this.id_master.object.posted[1] = "Y" then
+		messagebox("Problem", "Can not pouplate items after posting!")
+		return 0
+	end if
+	setpointer(hourglass!)
+	this.id_detail.setredraw(false)
+	ll_detailrows = this.id_detail.rowcount()
+	if ll_detailrows > 0 then
+		if not isnull(this.id_detail.object.icode[1]) then
+			li_result = messagebox("Warning", "Rows in Detail Window will Lost", exclamation!, okcancel!, 2)
+			if li_result = 1 then
+				for ll_count = 1 to ll_detailrows
+					this.id_detail.deleterow(0)
+				next
+				if this.id_detail.update() <> 1 then
+					messagebox("DataBase Problem", "Problem in Deleting Rows")
+					return 0
+				end if
+			else
+				populateflag = false
+			end if
+		else
+			this.id_detail.reset()
+		end if
+	end if
+	if populateflag = true then
+		open(w_editpurchaseorderform)
+		lstr_template = message.powerobjectparm
+		if lstr_template.l_invtemplate > 0 then
+			setpointer(hourglass!)
+			lds_poheader = create datastore
+			lds_poheader.dataobject = "d_purchaseorderheader"
+			lds_poheader.settransobject(this.it_transobject)
+			lds_poheader.retrieve(lstr_template.l_invtemplate)
+			if lds_poheader.rowcount() > 0 then
+				this.id_master.object.suppcode[1] = lds_poheader.object.suppcode[1]
+				this.id_master.object.requireddate[1] = lds_poheader.object.requireddate[1]
+				this.id_master.object.purordercatcode[1] = lds_poheader.object.purordercatcode[1]
+				this.id_master.object.remarks[1] = lds_poheader.object.remarks[1]
+				this.id_master.object.remarks2[1] = lds_poheader.object.remarks2[1]
+				this.id_master.object.remarks3[1] = lds_poheader.object.remarks3[1]
+				this.id_master.object.supplierreference[1] = lds_poheader.object.supplierreference[1]
+				this.id_master.object.startdate[1] = lds_poheader.object.startdate[1]
+				this.id_master.object.enddate[1] = lds_poheader.object.enddate[1]
+				this.id_master.object.usagelocation[1] = lds_poheader.object.usagelocation[1]
+				this.id_master.object.deliverylocation[1] = lds_poheader.object.deliverylocation[1]
+				this.id_master.object.projectionperiod[1] = lds_poheader.object.projectionperiod[1]
+				this.id_master.object.zeroqty[1] = lds_poheader.object.zeroqty[1]
+				this.id_master.object.currencycode[1] = lds_poheader.object.currencycode[1]
+				this.id_master.object.conversionfactor[1] = lds_poheader.object.conversionfactor[1]
+				this.id_master.object.manfcode[1] = lds_poheader.object.manfcode[1]
+				this.id_master.object.purorderterms1[1] = lds_poheader.object.purorderterms1[1]
+				this.id_master.object.purorderterms2[1] = lds_poheader.object.purorderterms2[1]
+				this.id_master.object.purorderterms3[1] = lds_poheader.object.purorderterms3[1]
+				this.id_master.object.purorderterms4[1] = lds_poheader.object.purorderterms4[1]
+				this.id_master.object.purorderterms5[1] = lds_poheader.object.purorderterms5[1]
+				this.id_master.object.purorderterms6[1] = lds_poheader.object.purorderterms6[1]
+				this.id_master.object.purorderterms7[1] = lds_poheader.object.purorderterms7[1]
+				this.id_master.object.purorderterms8[1] = lds_poheader.object.purorderterms8[1]
+				this.id_master.object.custcode[1] = lds_poheader.object.custcode[1]
+				this.id_master.object.demanddraftno[1] = lds_poheader.object.demanddraftno[1]
+				this.id_master.object.dated[1] = lds_poheader.object.dated[1]
+				this.id_master.object.amount[1] = lds_poheader.object.amount[1]
+				this.id_master.object.discperc[1] = lds_poheader.object.discperc[1]
+				this.id_master.object.invgstperc1[1] = lds_poheader.object.invgstperc1[1]
+				this.id_master.object.flatdisc[1] = lds_poheader.object.flatdisc[1]
+				this.id_master.object.misccharges[1] = lds_poheader.object.misccharges[1]
+			end if
+			lds_itemselected = create datastore
+			lds_itemselected.dataobject = "d_populatepurorder"
+			lds_itemselected.settransobject(this.it_transobject)
+			this.id_detail.reset()
+			ll_rtcode = lds_itemselected.retrieve(lstr_template.l_invtemplate)
+			ll_rowcount = lds_itemselected.rowcount()
+			for ll_count = 1 to ll_rowcount
+				this.id_detail.insertrow(0)
+				ll_icode = lds_itemselected.object.icode[ll_count]
+				ll_gcode = lds_itemselected.object.gcode[ll_count]
+				if wf_inititeminfo(ll_icode, ll_count) then
+					this.id_detail.object.alternatecustomicode[ll_count] = lds_itemselected.object.alternatecustomicode[ll_count]
+					this.id_detail.object.qty[ll_count] = lds_itemselected.object.qty[ll_count]
+					this.id_detail.object.purprice[ll_count] = lds_itemselected.object.rate[ll_count]
+					this.id_detail.object.discperc[ll_count] = lds_itemselected.object.discperc[ll_count]
+					this.id_detail.object.bonusqty[ll_count] = lds_itemselected.object.bonusqty[ll_count]
+					this.id_detail.object.foreignprice[ll_count] = lds_itemselected.object.foreignprice[ll_count]
+					this.id_detail.object.saleprice[ll_count] = lds_itemselected.object.saleprice[ll_count]
+					this.id_detail.object.packsalestax[ll_count] = lds_itemselected.object.packsalestax[ll_count]
+					this.id_detail.object.gstperc[ll_count] = lds_itemselected.object.gstperc[ll_count]
+					this.id_detail.setitemstatus(ll_count, "rate", primary!, notmodified!)
+					ll_retrievecount = ll_retrievecount + 1
+				end if
+			next
+			destroy lds_itemselected
+		end if
+		if ll_retrievecount = ll_rowcount then
+			messagebox("Result", string(ll_rowcount) + " Items are populated. ")
+		else
+			messagebox("Result", "Total records were " + string(ll_rowcount) + "~n~r" + string(ll_rowcount - ll_lockedcount) + " records are retrieved successfully~n~r" + string(ll_lockedcount) + " records are in error")
+		end if
+	end if
+	ll_detailrows = this.id_detail.rowcount()
+	if ll_detailrows > 0 then
+		this.im_menu.m_file.m_save.enabled = true
+	else
+		this.im_menu.m_file.m_save.enabled = false
+	end if
+	setpointer(arrow!)
+	this.id_detail.setredraw(true)
+	return ll_retrievecount
+
+// w_purchaseorder.wf_apply_interfacesetting_list() returns integer
+	long ll_counter
+	datastore lds_listsetting
+	lds_listsetting = create datastore
+	lds_listsetting.dataobject = "d_interfacesettingcols"
+	lds_listsetting.settransobject(this.it_transobject)
+	lds_listsetting.retrieve(16, 4, 0)
+	for ll_counter = 1 to lds_listsetting.rowcount()
+		this.id_list.modify(lds_listsetting.getitemstring(ll_counter, "colname") + "_t" + ".Visible=0")
+		this.id_list.modify(lds_listsetting.getitemstring(ll_counter, "colname") + ".Visible=0")
+	next
+	return 0
+
+// w_purchaseorder.wf_populate_purchase_po_disparity_items() returns long
+	datastore lds_itemselected
+	datastore lds_poheader
+	integer li_result
+	integer li_rtncode
+	boolean populateflag
+	s_arguements ls_arg
+	string ls_itemtotalval
+	string ls_fullcode
+	string ls_errortext
+	long ll_rowcount
+	long ll_rtcode
+	long ll_icode
+	long ll_gcode
+	long ll_packunits
+	long ll_retrievecount
+	long ll_lockedcount
+	long ll_detailrows
+	long ll_count
+	long ll_duplrows
+	long ll_purordercount
+	double ld_purprice
+	double ld_discperc
+	double ld_avgprice
+	double ld_saleprice
+	double ld_packsalestax
+	double ld_gstperc
+	double ld_unitsalestax
+	double ld_godownstock
+	double ld_allgodownstock
+	double ld_stock
+	if this.id_master.object.posted[1] = "Y" then
+		messagebox("Problem", "Can not pouplate items after posting!")
+		return 0
+	end if
+	setpointer(hourglass!)
+	this.id_detail.setredraw(false)
+	ll_detailrows = this.id_detail.rowcount()
+	if ll_detailrows > 0 then
+		if not isnull(this.id_detail.object.icode[1]) then
+			li_result = messagebox("Warning", "Rows in Detail Window will Lost", exclamation!, okcancel!, 2)
+			if li_result = 1 then
+				for ll_count = 1 to ll_detailrows
+					this.id_detail.deleterow(0)
+				next
+				if this.id_detail.update() <> 1 then
+					messagebox("DataBase Problem", "Problem in Deleting Rows")
+					return 0
+				end if
+			else
+				populateflag = false
+			end if
+		else
+			this.id_detail.reset()
+		end if
+	end if
+	if populateflag = true then
+		open(w_purinvoices_supp_sdate_ldate)
+		ls_arg = message.powerobjectparm
+		if ls_arg.i_status = 1 then
+			setpointer(hourglass!)
+			lds_itemselected = create datastore
+			lds_itemselected.dataobject = "d_populate_purchase_po_disparity"
+			lds_itemselected.settransobject(this.it_transobject)
+			this.id_detail.reset()
+			ll_rtcode = lds_itemselected.retrieve(ls_arg.ia_integerlist, ls_arg.d_sdate, ls_arg.d_edate)
+			ll_rowcount = lds_itemselected.rowcount()
+			for ll_count = 1 to ll_rowcount
+				this.id_detail.insertrow(0)
+				ll_icode = lds_itemselected.object.icode[ll_count]
+				if wf_inititeminfo(ll_icode, ll_count) then
+					this.id_detail.object.qty[ll_count] = lds_itemselected.object.netqty[ll_count]
+					this.id_detail.object.bonusqty[ll_count] = lds_itemselected.object.netbonus[ll_count]
+					this.id_detail.setitemstatus(ll_count, "rate", primary!, notmodified!)
+					ll_retrievecount = ll_retrievecount + 1
+				end if
+			next
+			destroy lds_itemselected
+		end if
+		if ll_retrievecount = ll_rowcount then
+			messagebox("Result", string(ll_rowcount) + " Items are populated. ")
+		else
+			messagebox("Result", "Total records were " + string(ll_rowcount) + "~n~r" + string(ll_rowcount - ll_lockedcount) + " records are retrieved successfully~n~r" + string(ll_lockedcount) + " records are in error")
+		end if
+	end if
+	ll_detailrows = this.id_detail.rowcount()
+	if ll_detailrows > 0 then
+		this.im_menu.m_file.m_save.enabled = true
+	else
+		this.im_menu.m_file.m_save.enabled = false
+	end if
+	setpointer(arrow!)
+	this.id_detail.setredraw(true)
+	return ll_retrievecount
+
+// w_purchaseorder.wf_populate_netsales_as_po() returns long
+	datastore lds_po
+	datastore lds_suppitems
+	long ll_counter
+	long ll_endrow
+	long ll_rows
+	long ll_porow
+	long ll_days
+	long ll_projectiondays
+	long ll_minqty
+	long ll_suppitemrows
+	long ll_insrow
+	long ll_found
+	long ll_packunits
+	long ll_icode
+	long ll_code
+	long ll_orderlevel_type
+	integer li_allrows
+	double ld_avgqty
+	double ld_packqty
+	double ld_purdiscperc
+	double ld_bonusqty
+	double ld_packstock
+	string ls_fullcode
+	string ls_name
+	boolean lb_suppitems
+	boolean lb_insertrow
+	boolean lb_suppitemsonly
+	double ld_tmpqty
+	double ld_tmpbonus
+	double ld_transitstock
+	double ld_stock
+	double ld_forecastqty
+	double ld_looseqty
+	double ld_saleorderrequest
+	m_purchaseordermenu lm_menu
+	s_arguements lstr_arg
+	wf_setmenu(this.menuid)
+	lm_menu = this.menuid
+	if wf_iseditable() = false then
+		return 0
+	end if
+	if this.id_master.getitemnumber(1, "code") > 0.0 and this.id_master.getitemstring(1, "Posted") = "Y" then
+		messagebox("Problem", "Can not pouplate items after posting!")
+		return 0
+	end if
+	if this.id_master.object.purordercatcode[1] <> 2 then
+		messagebox("Problem", "This Option can only be used in Porjection Based Purchase Order as it requires sales and return qty.", information!)
+		return 0
+	end if
+	if this.id_master.accepttext() = -1 then
+		return 0
+	end if
+	if this.id_master.object.purordercatcode[1] = 2 then
+		ll_days = daysafter(date(this.id_master.object.startdate[this.id_master.getrow()]), date(this.id_master.object.enddate[this.id_master.getrow()])) + 1
+		ll_projectiondays = this.id_master.getitemnumber(1, "projectionperiod")
+		if ll_days = 0 or ll_projectiondays = 0 or isnull(ll_days) or isnull(ll_projectiondays) then
+			messagebox("Problem Generating Order", "Please Select Valid Base Period and Projection Days.")
+			return 0
+		end if
+		if this.id_master.object.startdate[this.id_master.getrow()] > this.id_master.object.enddate[this.id_master.getrow()] then
+			messagebox("Problem Generating Order", "Please Select Valid Base Period.")
+			return 0
+		end if
+		return
+	end if
+	if lm_menu.m_file.m_supplieritemsonly.checked = true and not isnull(this.id_master.object.suppcode[1]) then
+		lds_suppitems = create datastore
+		lds_suppitems.dataobject = "d_item_suppliers"
+		lds_suppitems.settransobject(sqlca)
+		lb_suppitemsonly = true
+		ll_suppitemrows = lds_suppitems.retrieve(this.id_master.object.suppcode[1])
+		if ll_suppitemrows > 0 then
+			lb_suppitems = true
+		else
+			lb_suppitems = false
+		end if
+	else
+		lb_suppitems = false
+	end if
+	lds_po = create datastore
+	lstr_arg.i_status = 1
+	if lstr_arg.i_status = 1 then
+		ll_counter = 1
+		for ll_counter = this.id_detail.rowcount() to 1 step -1
+			this.id_detail.deleterow(ll_counter)
+		next
+		if lstr_arg.i_status = 1 then
+			lds_po.dataobject = "d_populate_netsaleqty_as_po"
+			lds_po.settransobject(sqlca)
+			ll_rows = lds_po.retrieve(this.id_master.object.startdate[this.id_master.getrow()], this.id_master.object.enddate[this.id_master.getrow()])
+		end if
+		if ll_rows >= 0 then
+			ll_endrow = lds_po.rowcount()
+			setpointer(hourglass!)
+			ll_days = daysafter(date(this.id_master.object.startdate[this.id_master.getrow()]), date(this.id_master.object.enddate[this.id_master.getrow()]))
+			ll_projectiondays = this.id_master.getitemnumber(1, "projectionperiod")
+			li_allrows = 0
+			ll_porow = 0
+			if ll_days = 0 then
+				ll_days = 1
+			end if
+			for ll_counter = 1 to ll_endrow
+				ld_transitstock = lds_po.object.transitstock[ll_counter]
+				ld_stock = lds_po.getitemnumber(ll_counter, "stock")
+				ld_avgqty = (lds_po.getitemnumber(ll_counter, "soldqty") - lds_po.getitemnumber(ll_counter, "Returnqty")) / ll_days
+				ld_forecastqty = ceiling(ld_avgqty * ll_projectiondays)
+				ll_minqty = lds_po.getitemnumber(ll_counter, "minqty")
+				ld_looseqty = lds_po.getitemnumber(ll_counter, "soldqty") - lds_po.getitemnumber(ll_counter, "Returnqty")
+				ll_packunits = lds_po.getitemnumber(ll_counter, "packunits")
+				if ll_packunits = 0 then
+					ll_packunits = 1
+				end if
+				ld_packqty = ceiling(ld_looseqty / ll_packunits)
+				if ld_packqty > 0.0 or li_allrows = 1 then
+					if lb_suppitems then
+						ll_found = lds_suppitems.find("icode = " + trim(string(lds_po.getitemnumber(ll_counter, "icode"))), 1, ll_suppitemrows)
+						if ll_found > 0 then
+							this.id_detail.insertrow(0)
+							lb_insertrow = true
+							ll_insrow = ll_insrow + 1
+						else
+							lb_insertrow = false
+						end if
+					else
+						this.id_detail.insertrow(0)
+						lb_insertrow = true
+						ll_insrow = ll_insrow + 1
+					end if
+					if lb_insertrow = true then
+						ll_icode = lds_po.object.icode[ll_counter]
+						SQL SELECT purdiscperc INTO :ld_purdiscperc FROM ITEM WHERE Icode =:ll_icode USING sqlca;
+						this.id_detail.setitem(ll_insrow, "icode", lds_po.getitemnumber(ll_counter, "icode"))
+						this.id_detail.setitem(ll_insrow, "rate", lds_po.getitemnumber(ll_counter, "purprice"))
+						this.id_detail.setitem(ll_insrow, "stock", lds_po.getitemnumber(ll_counter, "stock"))
+						this.id_detail.setitem(ll_insrow, "transitstock", lds_po.getitemnumber(ll_counter, "transitstock"))
+						this.id_detail.object.saleorderrequest[ll_insrow] = 0
+						this.id_detail.setitem(ll_insrow, "soldqty", lds_po.getitemnumber(ll_counter, "soldqty"))
+						this.id_detail.setitem(ll_insrow, "returnqty", lds_po.getitemnumber(ll_counter, "returnqty"))
+						this.id_detail.setitem(ll_insrow, "netsaleqty", lds_po.getitemnumber(ll_counter, "soldqty") - lds_po.getitemnumber(ll_counter, "returnqty"))
+						this.id_detail.setitem(ll_insrow, "packunits", lds_po.getitemnumber(ll_counter, "packunits"))
+						this.id_detail.setitem(ll_insrow, "minqty", lds_po.getitemnumber(ll_counter, "minqty"))
+						this.id_detail.setitem(ll_insrow, "avgsaleqty", ld_avgqty)
+						this.id_detail.setitem(ll_insrow, "forecastqty", ld_forecastqty)
+						this.id_detail.setitem(ll_insrow, "looseqty", ld_looseqty)
+						this.id_detail.setitem(ll_insrow, "qty", ld_packqty)
+						this.id_detail.setitem(ll_insrow, "allowedqty", ld_packqty)
+						this.id_detail.setitem(ll_insrow, "fullcode", lds_po.getitemstring(ll_counter, "aliasname"))
+						this.id_detail.setitem(ll_insrow, "itemname", lds_po.getitemstring(ll_counter, "item"))
+						this.id_detail.setitem(ll_insrow, "manufname", lds_po.getitemstring(ll_counter, "manufacturer"))
+						this.id_detail.object.itemcategory[ll_insrow] = lds_po.object.itemcategory[ll_counter]
+						this.id_detail.object.itemclass[ll_insrow] = lds_po.object.itemclass[ll_counter]
+						this.id_detail.object.itempacking[ll_insrow] = lds_po.object.itempacking[ll_counter]
+						this.id_detail.object.genericitem[ll_insrow] = lds_po.object.genericitem[ll_counter]
+						this.id_detail.object.discperc[ll_insrow] = ld_purdiscperc
+						this.id_detail.object.purprice[ll_insrow] = lds_po.object.purprice[ll_counter]
+						this.id_detail.object.saleprice[ll_insrow] = lds_po.object.saleprice[ll_counter]
+						this.id_detail.object.rpp[ll_insrow] = lds_po.object.rpp[ll_counter]
+						this.id_detail.object.packavgprice[ll_insrow] = lds_po.object.packavgprice[ll_counter]
+						this.id_detail.object.lastpurinvcode[ll_insrow] = lds_po.object.lastpurinvcode[ll_counter]
+						this.id_detail.object.lastpurdate[ll_insrow] = lds_po.object.lastpurdate[ll_counter]
+						if f_stringpreferences("ItemGSTPercInPO") = "N" then
+							this.id_detail.object.gstperc[ll_insrow] = 0
+						else
+							this.id_detail.object.gstperc[ll_insrow] = lds_po.object.gstperc[ll_counter]
+						end if
+						if f_stringpreferences("ItemUnitTaxInPO") = "N" then
+							this.id_detail.object.packsalestax[ll_insrow] = 0
+						else
+							this.id_detail.object.packsalestax[ll_insrow] = lds_po.object.packsalestax[ll_counter]
+						end if
+					end if
+				end if
+			next
+			this.id_detail.scrolltorow(0)
+			setpointer(arrow!)
+			this.im_menu.m_file.m_options.enabled = true
+			this.im_menu.m_file.m_save.enabled = true
+			this.im_menu.m_file.m_print.enabled = true
+		else
+			messagebox("Retrieve Fail", "Can not Generate Purchase Order", exclamation!, ok!, 1)
+		end if
+	end if
+	wf_grandtotal()
+	destroy lds_po
+	destroy lds_suppitems
+	return 0
+
+// w_purchaseorder.wf_show_popolicybased_supplierlist() returns long
+	boolean lb_listtab
+	string ls_orderdate
+	s_arguements lstr_arg
+	if wf_iseditable() then
+		return 0
+	end if
+	if this.tab_retrieve.selectedtab = 2 then
+		lb_listtab = true
+	end if
+	if lb_listtab = false then
+		return 0
+	end if
+	if this.id_list.rowcount() > 0 and this.id_list.getrow() > 0 then
+		open(w_arg_po_generate_sdate_ldate)
+		lstr_arg = message.powerobjectparm
+		if lstr_arg.i_status = 1 then
+			openwithparm(w_purorder_policybased_supplierinfo, lstr_arg)
+		end if
+	end if
+	return 0
+
+// w_purchaseorder.wf_check_groupsuppliercategory() returns long
+	long ll_acccode
+	long ll_found
+	long ll_code
+	long ll_counter
+	long ll_rowcount
+	long ll_groupcode
+	long ll_suppcatcode
+	boolean lb_groupcustcat
+	if f_stringpreferences("GroupSuppCatInPurAndPR") = "N" then
+		return 0
+	end if
+	ll_groupcode = f_getgroupcode(gl_usercode)
+	ll_rowcount = this.id_detail.rowcount()
+	ll_acccode = this.id_master.getitemnumber(1, "suppcode")
+	SQL Select MAX ( SuppCode ) , MAX ( SuppCatCode ) INTO :ll_found, :ll_suppcatcode From dbo.supplier Where suppcode =:ll_acccode USING this.it_transobject;
+	if ll_found > 0 and ll_suppcatcode > 0 and this.it_transobject.sqlcode = 0 then
+		ll_found = 0
+		SQL SELECT count ( suppcatcode ) INTO :ll_found FROM GroupSupplierCategory WHERE SuppCatCode =:ll_suppcatcode AND GroupCode =:ll_groupcode USING this.it_transobject;
+		if this.it_transobject.sqlcode = 0 and ll_found < 1 then
+			return -1
+		end if
+		return
+	end if
+	return 0
+
+// w_purchaseorder.wf_apply_groupsuppliercategory() returns long
+	long ll_counter
+	integer li_rtncode
+	string ls_filterstring
+	datastore lds_groupsuppcategory
+	if f_stringpreferences("GroupSuppCatInPurAndPR") = "Y" then
+		lds_groupsuppcategory = create datastore
+		lds_groupsuppcategory.dataobject = "d_groupsuppcategory_detail"
+		lds_groupsuppcategory.settransobject(this.it_transobject)
+		this.il_groupcode = f_getgroupcode(gl_usercode)
+		lds_groupsuppcategory.retrieve(this.il_groupcode)
+		ls_filterstring = ""
+		for ll_counter = 1 to lds_groupsuppcategory.rowcount()
+			ls_filterstring = ls_filterstring + trim(string(lds_groupsuppcategory.object.suppcatcode[ll_counter])) + ","
+		next
+		if right(ls_filterstring, 1) = "," then
+			ls_filterstring = left(ls_filterstring, len(ls_filterstring) - 1)
+		end if
+		if ls_filterstring = "" then
+			ls_filterstring = "-1"
+		end if
+		this.idc_supplierlist.setfilter("suppcatcode In (" + ls_filterstring + ") ")
+		this.idc_supplierlist.filter()
+	end if
+	return 0
+
+// w_purchaseorder.wf_item_po_history() returns 0
+	s_itempurchasehistory ls_itempurchasehistory
+	if this.id_detail = getfocus() and this.id_detail.rowcount() > 0 then
+		ls_itempurchasehistory.ar_icode = this.id_detail.getitemnumber(this.id_detail.getrow(), "icode")
+		ls_itempurchasehistory.ar_date = this.id_master.getitemdatetime(this.id_master.getrow(), "date")
+		openwithparm(w_item_po_history, ls_itempurchasehistory)
+	end if
+
+// w_purchaseorder.wf_consider_refusedsales() returns long
+	long ll_retcode
+	long ll_counter
+	long ll_rowcount
+	long ll_icode
+	long ll_insrow
+	long ll_found
+	integer li_rtcode
+	string ls_type
+	string ls_errortext
+	s_arguements ls_reparg
+	datastore lds_store
+	lds_store = create datastore
+	lds_store.dataobject = "d_populate_refusedsales"
+	lds_store.settransobject(sqlca)
+	open(w_arg_sdate_ldate)
+	ls_reparg = message.powerobjectparm
+	if ls_reparg.i_status = 1 then
+		ll_retcode = lds_store.retrieve(ls_reparg.d_sdate, ls_reparg.d_edate)
+		ll_rowcount = lds_store.rowcount()
+		if ll_rowcount > 0 then
+			for ll_counter = 1 to ll_rowcount
+				ll_icode = lds_store.object.icode[ll_counter]
+				ll_found = this.id_detail.find("icode = " + trim(string(ll_icode)), 1, ll_rowcount)
+				if not (ll_found > 0 and ll_found <= ll_rowcount) then
+					ll_insrow = this.id_detail.insertrow(0)
+					wf_inititeminfo(ll_icode, ll_insrow)
+					this.id_detail.object.qty[ll_insrow] = 1
+				end if
+			next
+		end if
+	end if
+	return ll_retcode
+
+// w_purchaseorder.wf_update_itemalert(long al_icode, long al_itemalertcode) returns boolean
+	boolean retflag
+	if not isnull(al_itemalertcode) then
+		SQL update item SET item.itemalertcode =:al_itemalertcode WHERE item.icode =:al_icode USING this.it_transobject;
+		if this.it_transobject.sqlcode = -1 then
+			retflag = false
+		end if
+	end if
+	return retflag
+
+// w_purchaseorder.wf_get_supp_associated_quotation(long al_suppcode) returns long
+	long ll_retcode
+	long ll_quotationcode
+	if al_suppcode = 0 or isnull(al_suppcode) then
+		ll_retcode = -1
+		return ll_retcode
+	else
+		SQL SELECT PurQuotationCode INTO :ll_quotationcode FROM DBO.Supplier WHERE SuppCode =:al_suppcode USING sqlca;
+		if sqlca.sqlcode = 0 then
+			if ll_quotationcode = 0 or isnull(ll_quotationcode) then
+				ll_retcode = 0
+			else
+				ll_retcode = ll_quotationcode
+			end if
+		else
+			ll_retcode = -2
+		end if
+	end if
+	return ll_retcode
+
+// w_purchaseorder.wf_apply_supplier_quotation(integer ai_mode) returns integer
+	long ll_suppcode
+	long ll_masterrow
+	long ll_quotationcode
+	long ll_detailrows
+	long ll_qheaderrow
+	long ll_quotationrows
+	long ll_found
+	long ll_loosepack
+	long ll_rowcount
+	long ll_quotpackunits
+	long ll_icode
+	long ll_notfound_itemcount
+	double ld_quotprice
+	double ld_quotdiscperc
+	double ld_quotitemflatdisc
+	double ld_quotqty
+	double ld_quotbonusqty
+	double ld_qty
+	double ld_bonusqty
+	double ld_bonusfactor
+	string ls_msgtitle
+	string ls_itemname
+	string ls_msgdetail
+	boolean lb_editsaleprice
+	boolean lb_editsalediscperc
+	boolean lb_editbonusqty
+	boolean lb_edititewflatdisc
+	datastore lds_quotationdetail
+	if wf_iseditable() = false then
+		return 0
+	end if
+	if f_stringpreferences("applysupplierassociatedquotationinpo") = "N" then
+		return 0
+	end if
+	ll_masterrow = this.id_master.rowcount()
+	ll_suppcode = this.id_master.getitemnumber(ll_masterrow, "suppcode")
+	if ll_suppcode = 0 or isnull(ll_suppcode) then
+		messagebox(ls_msgtitle, "Please Select Valid Supplier", stopsign!)
+		return 0
+	end if
+	ll_detailrows = this.id_detail.rowcount()
+	if ll_detailrows = 0 then
+		messagebox(ls_msgtitle, "Please Enter Some Items before applying Suppliers' Associated Quotation", stopsign!)
+		return 0
+	end if
+	ll_quotationcode = wf_get_supp_associated_quotation(ll_suppcode)
+	if ll_quotationcode < 0 then
+		if ll_quotationcode = -1 then
+			messagebox(ls_msgtitle, "Please Select Valid Supplier", stopsign!)
+			return 0
+		else
+			messagebox(ls_msgtitle, "Problem in retrieving Associated Quotation of Supplier", stopsign!)
+			return 0
+		end if
+	elseif ll_quotationcode = 0 then
+		if ai_mode = 0 then
+			messagebox(ls_msgtitle, "No Associated Quotation found for this Supplier", stopsign!)
+			return 0
+		else
+			return 1
+		end if
+		return
+	end if
+	lds_quotationdetail = create datastore
+	lds_quotationdetail.dataobject = "d_purquotationdetail_retrieve"
+	lds_quotationdetail.settransobject(this.it_transobject)
+	ll_quotationrows = lds_quotationdetail.retrieve(ll_quotationcode)
+	if ll_quotationrows < 0 then
+		messagebox(ls_msgtitle, "Associated Quotation Detail Retrieval Problem", stopsign!)
+		return 0
+	else
+		ll_quotationrows = lds_quotationdetail.rowcount()
+		if ll_quotationrows = 0 then
+			if ai_mode = 0 then
+				messagebox(ls_msgtitle, "Associated Quotation contain no rows", stopsign!)
+				return 0
+			else
+				return 1
+			end if
+			return
+		end if
+	end if
+	setredraw(false)
+	for ll_rowcount = 1 to ll_detailrows
+		ll_icode = this.id_detail.getitemnumber(ll_rowcount, "icode")
+		ls_itemname = this.id_detail.getitemstring(ll_rowcount, "itemname")
+		ll_found = 0
+		ll_found = lds_quotationdetail.find("icode = " + trim(string(ll_icode)), 1, ll_quotationrows)
+		if ll_found > 0 then
+			ll_quotpackunits = lds_quotationdetail.getitemnumber(ll_found, "packunits")
+			ld_quotdiscperc = lds_quotationdetail.getitemnumber(ll_found, "discperc")
+			if ll_quotpackunits = 0 then
+				ll_quotpackunits = 1
+			end if
+			ld_quotqty = lds_quotationdetail.getitemnumber(ll_found, "qty")
+			ld_quotbonusqty = lds_quotationdetail.getitemnumber(ll_found, "bonusqty")
+			ld_quotprice = lds_quotationdetail.getitemnumber(ll_found, "purprice")
+			if ld_quotqty <= 0.0 then
+				ld_quotqty = 1
+			end if
+			this.id_detail.setitem(ll_rowcount, "rate", ld_quotprice)
+			this.id_detail.setitem(ll_rowcount, "discperc", ld_quotdiscperc)
+			this.id_detail.setitem(ll_rowcount, "packsalestax", lds_quotationdetail.getitemnumber(ll_found, "unitsalestax"))
+			this.id_detail.setitem(ll_rowcount, "gstperc", lds_quotationdetail.getitemnumber(ll_found, "gstperc"))
+		else
+			ls_msgdetail = ls_msgdetail + "~r~nRow #: " + string(ll_rowcount) + "~t Item Name:  " + ls_itemname
+			ll_notfound_itemcount = ll_notfound_itemcount + 1
+		end if
+	next
+	setredraw(true)
+	wf_grandtotal()
+	if ll_notfound_itemcount > 0 and ai_mode = 0 then
+		messagebox(ls_msgtitle, "No Guidelines Exist for Following " + trim(string(ll_notfound_itemcount)) + " item(s) in Associated Quotation/Pricing Contract~r~n" + ls_msgdetail, information!)
+	end if
+	return 1
+
+// w_purchaseorder.wf_apply_supp_assoc_purquot(long al_icode, long al_row) returns long
+	long ll_suppcode
+	long ll_masterrow
+	long ll_quotationcode
+	long ll_detailrows
+	long ll_quotationrows
+	long ll_found
+	long ll_quotpackunits
+	long ll_icode
+	double ld_quotprice
+	double ld_quotdiscperc
+	double ld_quotqty
+	double ld_quotbonusqty
+	double ld_qty
+	double ld_bonusqty
+	string ls_msgtitle
+	string ls_itemname
+	string ls_msgdetail
+	boolean lb_editsaleprice
+	boolean lb_editsalediscperc
+	boolean lb_editbonusqty
+	boolean lb_edititewflatdisc
+	datastore lds_quotationdetail
+	if wf_iseditable() = false then
+		return 0
+	end if
+	if f_stringpreferences("applysupplierassociatedquotationinpo") = "N" then
+		return 0
+	end if
+	ll_masterrow = this.id_master.rowcount()
+	ll_suppcode = this.id_master.getitemnumber(ll_masterrow, "suppcode")
+	if ll_suppcode = 0 or isnull(ll_suppcode) then
+		messagebox(ls_msgtitle, "Please Select Valid Supplier", stopsign!)
+		return 0
+	end if
+	ll_detailrows = this.id_detail.rowcount()
+	if ll_detailrows = 0 then
+		return 0
+	end if
+	ll_quotationcode = wf_get_supp_associated_quotation(ll_suppcode)
+	if ll_quotationcode < 0 then
+		if ll_quotationcode = -1 then
+			return 0
+		else
+			return 0
+		end if
+	elseif ll_quotationcode = 0 then
+		return 0
+	end if
+	lds_quotationdetail = create datastore
+	lds_quotationdetail.dataobject = "d_purquotationdetail_retrieve"
+	lds_quotationdetail.settransobject(this.it_transobject)
+	ll_quotationrows = lds_quotationdetail.retrieve(ll_quotationcode)
+	if ll_quotationrows < 0 then
+		return 0
+	else
+		ll_quotationrows = lds_quotationdetail.rowcount()
+		if ll_quotationrows = 0 then
+			return 0
+		end if
+	end if
+	setredraw(false)
+	if al_row > 0 and al_icode > 0 then
+		ll_icode = al_icode
+		ls_itemname = this.id_detail.getitemstring(al_row, "itemname")
+		ll_found = 0
+		ll_found = lds_quotationdetail.find("icode = " + trim(string(ll_icode)), 1, ll_quotationrows)
+		if ll_found > 0 then
+			ll_quotpackunits = lds_quotationdetail.getitemnumber(ll_found, "packunits")
+			ld_quotdiscperc = lds_quotationdetail.getitemnumber(ll_found, "discperc")
+			if ll_quotpackunits = 0 then
+				ll_quotpackunits = 1
+			end if
+			ld_quotqty = lds_quotationdetail.getitemnumber(ll_found, "qty")
+			ld_quotbonusqty = lds_quotationdetail.getitemnumber(ll_found, "bonusqty")
+			ld_quotprice = lds_quotationdetail.getitemnumber(ll_found, "purprice")
+			if ld_quotqty <= 0.0 then
+				ld_quotqty = 1
+			end if
+			this.id_detail.setitem(al_row, "rate", ld_quotprice)
+			this.id_detail.setitem(al_row, "discperc", ld_quotdiscperc)
+			this.id_detail.setitem(al_row, "packsalestax", lds_quotationdetail.getitemnumber(ll_found, "unitsalestax"))
+			this.id_detail.setitem(al_row, "gstperc", lds_quotationdetail.getitemnumber(ll_found, "gstperc"))
+		end if
+	end if
+	setredraw(true)
+	wf_grandtotal()
+	return 1
+
+// w_purchaseorder.wf_push_po_to_dropbox() returns long
+	integer li_errcode
+	long ll_salesmancode
+	long ll_saleinvcount
+	long ll_counter
+	boolean lb_flag
+	string ls_msgtext
+	s_arguements lstr_arginfo
+	open(w_salesmanpassword)
+	ll_salesmancode = long(message.doubleparm)
+	if ll_salesmancode > 0 then
+		open(w_arg_sinvcode_linvcode)
+		lstr_arginfo = message.powerobjectparm
+		if lstr_arginfo.i_status = 1 then
+			setpointer(hourglass!)
+			li_errcode = this.it_transobject.pushpotodropbox(lstr_arginfo.l_code1, lstr_arginfo.l_code2, ll_salesmancode, gs_dropbox_server, gs_dropbox_db, "DBO", ll_saleinvcount)
+			if li_errcode <> 0 then
+				li_errcode = this.it_transobject.sqlcode
+				ls_msgtext = this.it_transobject.sqlerrtext
+			end if
+		end if
+		if li_errcode = 0 then
+			SQL commit USING this.it_transobject;
+			if this.it_transobject.sqlcode <> 0 then
+				ls_msgtext = this.it_transobject.sqlerrtext
+				li_errcode = this.it_transobject.sqlcode
+			end if
+		else
+			SQL rollback USING this.it_transobject;
+		end if
+	else
+		setfocus()
+	end if
+	setpointer(arrow!)
+	if ll_salesmancode > 0 then
+		if li_errcode <> 0 then
+			messagebox("Push P/O To Drop Box Fails", "Some database request fails, Please try again.~r~nReasons Are:-~r~n" + ls_msgtext + "~r~nError Code = " + string(li_errcode), stopsign!)
+		else
+			messagebox("Push to Drop Box Successfull", "Total Invoices to push were " + string(ll_saleinvcount) + "~n~rAll Invoices have been pushed successfully to drop box.", information!)
+		end if
+	end if
+	return li_errcode
+
+// w_purchaseorder.wf_check_manufacturertypes() returns long
+	long ll_count
+	SQL SELECT ISNULL ( Count ( *) , 0 ) INTO :ll_count FROM ManufacturerType USING sqlca;
+	if sqlca.sqlcode = 0 then
+		if ll_count > 0 then
+			return ll_count
+		else
+			return 0
+		end if
+		return
+	end if
+	return -1
+
+// w_purchaseorder.create() returns 0
+	integer icurrent
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_purchaseordermenu" then
+		this.menuid = create m_purchaseordermenu
+	end if
+	this.dw_print = create dw_print
+	this.dw_orderdetail = create dw_orderdetail
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_print
+	this.control[icurrent + 2] = this.dw_orderdetail
+
+// w_purchaseorder.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_print
+	destroy this.dw_orderdetail
+
+// w_purchaseorder.ue_detail() returns 0
+	integer li_rtncode
+	integer li_protect
+	datawindowchild ldc_itemdddw
+	long ll_counter
+	long ll_icode
+	long ll_manfcode
+	long ll_count
+	long ll_code
+	integer[] li_manf
+	integer li_index
+	boolean lb_flag
+	call super::ue_detail
+	ll_code = this.id_dwcontrol.borderstyle.code[this.il_selectedrow]
+	if wf_isinvoiceinuse(ll_code) = true then
+		messagebox("Invoice Validation", "Purchase Order already in use by some other user.~r~nKindly try again after sometime or open some other order.")
+		this.tab_retrieve.selecttab(2)
+		return
+	end if
+	if wf_check_groupsuppliercategory() <> 0 then
+		messagebox("Group Wise Supplier Category Validation", "Current user group does not have enough permissions w.r.t supplier.~r~nPossible Reasons are:~r~nSupllier is not allowed to the current user group.")
+		this.tab_retrieve.selecttab(2)
+		return
+	end if
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_new.enabled = true
+	this.im_menu.m_file.m_delete.enabled = false
+	this.im_menu.m_item.m_newitem.enabled = true
+	this.im_menu.m_item.m_deleteitem.enabled = true
+	this.im_menu.m_file.m_first.enabled = false
+	this.im_menu.m_file.m_next.enabled = false
+	this.im_menu.m_file.m_previous.enabled = false
+	this.im_menu.m_file.m_last.enabled = false
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_menu.m_file.m_retrieve.enabled = true
+	this.im_menu.m_file.m_retrieve.text = "Lis&t"
+	this.tab_retrieve.tabpage_detail.enabled = true
+	this.id_footer.retrieve(this.id_master.object.code[1])
+	this.id_footer.setrow(1)
+	this.id_footer.scrolltorow(1)
+	wf_setordersettings(this.id_master.object.purordercatcode[1])
+	this.id_detail.retrieve(this.id_master.object.code[1])
+	if this.id_master.object.purordercatcode[1] = 2 then
+		ll_count = this.id_detail.rowcount()
+		for ll_counter = 1 to ll_count
+			if this.id_detail.object.forecastqty[ll_counter] > this.id_detail.object.stock[ll_counter] then
+				this.id_detail.object.looseqty[ll_counter] = this.id_detail.object.forecastqty[ll_counter] - this.id_detail.object.stock[ll_counter]
+				if this.id_detail.object.minqty[ll_counter] > this.id_detail.object.forecastqty[ll_counter] then
+					this.id_detail.object.looseqty[ll_counter] = this.id_detail.object.minqty[ll_counter] - this.id_detail.object.stock[ll_counter]
+				end if
+			else
+				this.id_detail.object.looseqty[ll_counter] = 0
+				if this.id_detail.object.minqty[ll_counter] > this.id_detail.object.stock[ll_counter] then
+					this.id_detail.object.looseqty[ll_counter] = this.id_detail.object.minqty[ll_counter] - this.id_detail.object.stock[ll_counter]
+				end if
+			end if
+		next
+	end if
+	li_protect = 1
+	for ll_counter = 1 to gds_securitywindow.rowcount()
+		if gds_securitywindow.object.rightcode[ll_counter] = 549 then
+			li_protect = 0
+		end if
+	next
+	if this.id_master.object.posted[1] = "Y" then
+		this.im_menu.m_file.m_save.enabled = false
+		this.im_menu.m_file.m_delete.enabled = false
+		this.im_menu.m_item.m_newitem.enabled = false
+		this.im_menu.m_item.m_deleteitem.enabled = false
+		this.im_menu.m_file.m_options.enabled = false
+		wf_protectdw(this.id_master, 1)
+		wf_protectdw(this.id_detail, 1)
+		wf_protectdw(this.id_footer, 1)
+		this.editflag = false
+	else
+		if li_protect = 1 then
+			this.im_menu.m_file.m_save.enabled = false
+			this.im_menu.m_file.m_delete.enabled = false
+			this.im_menu.m_item.m_newitem.enabled = false
+			this.im_menu.m_item.m_deleteitem.enabled = false
+			this.im_menu.m_file.m_options.enabled = false
+			wf_protectdw(this.id_master, li_protect)
+			wf_protectdw(this.id_detail, li_protect)
+			wf_protectdw(this.id_footer, li_protect)
+			this.editflag = false
+		else
+			this.id_master.setitem(1, "sitecode", gl_sitecode)
+			this.im_menu.m_file.m_options.enabled = true
+			this.im_menu.m_item.m_deleteitem.enabled = true
+			this.editflag = true
+		end if
+		this.im_menu.m_file.m_new.enabled = false
+	end if
+	this.im_menu.m_file.m_post.enabled = false
+	wf_grandtotal()
+
+// w_purchaseorder.ue_newform() returns 0
+	integer li_rtncode
+	long ll_found
+	this.id_footer.reset()
+	this.id_footer.insertrow(0)
+	this.id_footer.scrolltorow(0)
+	this.im_menu.item[3].item[1].enabled = true
+	this.id_master.scrolltorow(1)
+	this.id_master.setcolumn(1)
+	this.id_master.setfocus()
+	if f_stringpreferences("itemcode") = "N" then
+		setredraw(false)
+		this.id_detail.object.fullcode.visible = false
+		setredraw(true)
+	end if
+	call super::ue_newform
+	this.id_master.setitem(1, "PurOrderTerms1", f_stringpreferences("PurOrderTerms1"))
+	this.id_master.setitem(1, "PurOrderTerms2", f_stringpreferences("PurOrderTerms2"))
+	this.id_master.setitem(1, "PurOrderTerms3", f_stringpreferences("PurOrderTerms3"))
+	this.id_master.setitem(1, "PurOrderTerms4", f_stringpreferences("PurOrderTerms4"))
+	this.id_master.setitem(1, "PurOrderTerms5", f_stringpreferences("PurOrderTerms5"))
+	this.id_master.setitem(1, "PurOrderTerms6", f_stringpreferences("PurOrderTerms6"))
+	this.id_master.setitem(1, "PurOrderTerms7", f_stringpreferences("PurOrderTerms7"))
+	this.id_master.setitem(1, "PurOrderTerms8", f_stringpreferences("PurOrderTerms8"))
+	wf_protectdw(this.id_master, 0)
+	wf_protectdw(this.id_detail, 0)
+	wf_protectdw(this.id_footer, 0)
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_menu.m_file.m_options.enabled = true
+	this.im_menu.m_file.m_post.enabled = false
+	this.id_master.object.purordercatcode[1] = f_numberpreferences("POCategoryDefault")
+	wf_setordersettings(this.id_master.object.purordercatcode[1])
+
+// w_purchaseorder.ue_save() returns 0
+	long ll_invid
+	long ll_icode
+	long ll_minqty
+	long ll_reorderqty
+	long ll_optimumqty
+	long ll_counter
+	long ll_detailrows
+	long ll_mastercurrrow
+	long ll_salesmancode
+	long ll_itemalertcode
+	double ld_discperc
+	double ld_misccharges
+	double ld_flatdisc
+	double ld_invgstperc1
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	string ls_errtext
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		this.id_detail.setfocus()
+		return
+	end if
+	wf_deleteemptydetailrow()
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_footer) < 0 then
+		return
+	end if
+	if wf_check_groupsuppliercategory() <> 0 then
+		messagebox("Group Wise Supplier Category Validation", "Current user group does not have enough permissions w.r.t supplier.~r~nPossible Reasons are:~r~nSupllier is not allowed to the current user group.")
+		this.id_master.setcolumn("suppcode")
+		this.id_master.setfocus()
+		return
+	end if
+	ll_detailrows = this.id_detail.rowcount()
+	for ll_counter = 1 to ll_detailrows
+		if isnull(this.id_detail.object.icode[ll_counter]) then
+			return
+		end if
+		if this.id_detail.object.qty[ll_counter] < 0 then
+			this.id_detail.setitem(ll_counter, "qty", 0)
+		end if
+	next
+	if wf_check_supplier_items() <> 0 then
+		return
+	end if
+	if f_stringpreferences("ApplyAssociatedQuotation_On_Save") = "Y" and wf_apply_associated_quotation(1) <= 0 then
+		messagebox("Customer Associated Quotation", "Problem in using associated quotation")
+		return
+	end if
+	if ll_detailrows >= 1 then
+		for ll_counter = 1 to ll_detailrows
+			if isnull(this.id_detail.object.icode[ll_counter]) then
+				return
+			end if
+			if this.id_detail.object.qty[ll_counter] + this.id_detail.object.bonusqty[ll_counter] < 0 then
+				this.id_detail.setfocus()
+				this.id_detail.scrolltorow(ll_counter)
+				this.id_detail.setcolumn("qty")
+				messagebox("Item Validation", "Item Validation Error, please enter some valid quantity")
+				return
+			end if
+		next
+	elseif ll_detailrows <= 0 then
+		messagebox("Purchase Order Validation", "There are no rows to save for this purchase order.~r~nKindly insert some rows than try again.")
+		return
+	end if
+	ll_counter = 0
+	if this.id_master.object.purordercatcode[1] = 1 then
+		this.id_master.object.startdate[1] = today()
+		this.id_master.object.enddate[1] = today()
+		this.id_master.object.projectionperiod[1] = 0
+		this.id_master.object.zeroqty[1] = 0
+	end if
+	wf_show_unposted_pr_reminder()
+	if f_stringpreferences("puruserwindow") = "Y" then
+		open(w_salesmanpassword)
+		ll_salesmancode = long(message.doubleparm)
+		setfocus()
+	else
+		ll_salesmancode = gl_usercode
+	end if
+	setfocus()
+	if ll_salesmancode > 0 then
+		setpointer(hourglass!)
+		ll_mastercurrrow = this.id_master.getrow()
+		ll_invid = this.id_master.object.code[ll_mastercurrrow]
+		if isnull(ll_invid) then
+			f_newtableid("purorderheader", ll_invid)
+			this.id_master.object.code[ll_mastercurrrow] = ll_invid
+		else
+			SQL Delete FROM purorderdetail where pocode =:ll_invid USING this.it_transobject;
+			if this.it_transobject.sqlcode <> 0 then
+				messagebox("Updation Problem", "Updation Problem " + this.it_transobject.sqlerrtext)
+			end if
+		end if
+		this.id_master.setitem(ll_mastercurrrow, "salesmancode", ll_salesmancode)
+		if not wf_getserverdatetime(ldt_server_datetime, ls_date_errtext) then
+			messagebox("Date Violation", ls_date_errtext, stopsign!)
+			return
+		end if
+		this.id_master.setitem(ll_mastercurrrow, "date", ldt_server_datetime)
+		ld_discperc = this.id_footer.getitemdecimal(this.id_footer.getrow(), "discperc")
+		ld_invgstperc1 = this.id_footer.getitemdecimal(this.id_footer.getrow(), "invgstperc1")
+		ld_flatdisc = this.id_footer.getitemdecimal(this.id_footer.getrow(), "flatdisc")
+		ld_misccharges = this.id_footer.getitemdecimal(this.id_footer.getrow(), "misccharges")
+		this.id_master.setitem(ll_mastercurrrow, "discperc", ld_discperc)
+		this.id_master.setitem(ll_mastercurrrow, "invgstperc1", ld_invgstperc1)
+		this.id_master.setitem(ll_mastercurrrow, "flatdisc", ld_flatdisc)
+		this.id_master.setitem(ll_mastercurrrow, "misccharges", ld_misccharges)
+		ll_detailrows = this.id_detail.rowcount()
+		this.dw_orderdetail.reset()
+		for ll_counter = 1 to ll_detailrows
+			this.id_detail.setitem(ll_counter, "code", ll_invid)
+			this.dw_orderdetail.insertrow(0)
+			ll_icode = this.id_detail.getitemnumber(ll_counter, "icode")
+			ll_minqty = this.id_detail.getitemnumber(ll_counter, "minqty")
+			ll_reorderqty = this.id_detail.getitemnumber(ll_counter, "reorderqty")
+			ll_optimumqty = this.id_detail.getitemnumber(ll_counter, "optimumqty")
+			ll_itemalertcode = this.id_detail.getitemnumber(ll_counter, "itemalertcode")
+			this.dw_orderdetail.setitem(ll_counter, "code", this.id_detail.getitemnumber(ll_counter, "code"))
+			this.dw_orderdetail.setitem(ll_counter, "icode", this.id_detail.getitemnumber(ll_counter, "icode"))
+			this.dw_orderdetail.setitem(ll_counter, "itemname", this.id_detail.getitemstring(ll_counter, "itemname"))
+			this.dw_orderdetail.setitem(ll_counter, "alternatecustomicode", this.id_detail.getitemstring(ll_counter, "alternatecustomicode"))
+			this.dw_orderdetail.setitem(ll_counter, "qty", this.id_detail.getitemnumber(ll_counter, "qty"))
+			this.dw_orderdetail.setitem(ll_counter, "bonusqty", this.id_detail.getitemnumber(ll_counter, "bonusqty"))
+			this.dw_orderdetail.setitem(ll_counter, "reorderqty", this.id_detail.getitemnumber(ll_counter, "reorderqty"))
+			this.dw_orderdetail.setitem(ll_counter, "optimumqty", this.id_detail.getitemnumber(ll_counter, "optimumqty"))
+			this.dw_orderdetail.setitem(ll_counter, "minqty", this.id_detail.getitemnumber(ll_counter, "minqty"))
+			this.dw_orderdetail.setitem(ll_counter, "stock", this.id_detail.getitemnumber(ll_counter, "stock"))
+			this.dw_orderdetail.setitem(ll_counter, "transitstock", this.id_detail.getitemnumber(ll_counter, "transitstock"))
+			this.dw_orderdetail.setitem(ll_counter, "packunits", this.id_detail.getitemnumber(ll_counter, "packunits"))
+			this.dw_orderdetail.setitem(ll_counter, "saleorderrequest", this.id_detail.getitemnumber(ll_counter, "saleorderrequest"))
+			this.dw_orderdetail.setitem(ll_counter, "soldqty", this.id_detail.getitemnumber(ll_counter, "soldqty"))
+			this.dw_orderdetail.setitem(ll_counter, "returnqty", this.id_detail.getitemnumber(ll_counter, "returnqty"))
+			this.dw_orderdetail.setitem(ll_counter, "discperc", this.id_detail.getitemnumber(ll_counter, "discperc"))
+			this.dw_orderdetail.setitem(ll_counter, "foreignprice", this.id_detail.getitemnumber(ll_counter, "foreignprice"))
+			this.dw_orderdetail.setitem(ll_counter, "rate", this.id_detail.getitemnumber(ll_counter, "rate"))
+			this.dw_orderdetail.setitem(ll_counter, "remarks", this.id_detail.getitemstring(ll_counter, "remarks"))
+			this.dw_orderdetail.setitem(ll_counter, "discperc2", this.id_detail.getitemnumber(ll_counter, "discperc2"))
+			this.dw_orderdetail.setitem(ll_counter, "purprice", this.id_detail.getitemnumber(ll_counter, "purprice"))
+			this.dw_orderdetail.setitem(ll_counter, "saleprice", this.id_detail.getitemnumber(ll_counter, "saleprice"))
+			this.dw_orderdetail.setitem(ll_counter, "rpp", this.id_detail.getitemnumber(ll_counter, "rpp"))
+			this.dw_orderdetail.setitem(ll_counter, "packavgprice", this.id_detail.getitemnumber(ll_counter, "packavgprice"))
+			this.dw_orderdetail.setitem(ll_counter, "itemflatdisc", this.id_detail.getitemnumber(ll_counter, "itemflatdisc"))
+			this.dw_orderdetail.setitem(ll_counter, "packsalestax", this.id_detail.getitemnumber(ll_counter, "packsalestax"))
+			this.dw_orderdetail.setitem(ll_counter, "gstperc", this.id_detail.getitemnumber(ll_counter, "gstperc"))
+			if wf_update_itemalert(ll_icode, ll_itemalertcode) = false then
+				SQL rollback USING this.it_transobject;
+				messagebox("Item Alert Update Problem", "Problem while updating Item Alert in row " + string(ll_counter) + ". Reasons are:~r~n" + ls_errtext)
+				this.id_detail.setfocus()
+				this.id_detail.setcolumn("qty")
+				this.id_detail.setrow(ll_counter)
+				this.id_detail.scrolltorow(ll_counter)
+				return
+			end if
+			if wf_update_minqty(ll_icode, ll_minqty, ls_errtext) <> 0 then
+				SQL rollback USING this.it_transobject;
+				messagebox("Item Minimum Qty Update Problem", "Problem while updating Minimum qty in row " + string(ll_counter) + ". Reasons are:~r~n" + ls_errtext)
+				this.id_detail.setfocus()
+				this.id_detail.setcolumn("qty")
+				this.id_detail.setrow(ll_counter)
+				this.id_detail.scrolltorow(ll_counter)
+				return
+			end if
+			if wf_update_reorderqty(ll_icode, ll_reorderqty, ls_errtext) <> 0 then
+				SQL rollback USING this.it_transobject;
+				messagebox("Item Reorder Qty Update Problem", "Problem while updating Reorder qty in row " + string(ll_counter) + ". Reasons are:~r~n" + ls_errtext)
+				this.id_detail.setfocus()
+				this.id_detail.setcolumn("qty")
+				this.id_detail.setrow(ll_counter)
+				this.id_detail.scrolltorow(ll_counter)
+				return
+			end if
+			if wf_update_optimumqty(ll_icode, ll_optimumqty, ls_errtext) <> 0 then
+				SQL rollback USING this.it_transobject;
+				messagebox("Item Optimum Qty Update Problem", "Problem while updating Optimum qty in row " + string(ll_counter) + ". Reasons are:~r~n" + ls_errtext)
+				this.id_detail.setfocus()
+				this.id_detail.setcolumn("qty")
+				this.id_detail.setrow(ll_counter)
+				this.id_detail.scrolltorow(ll_counter)
+				return
+			end if
+		next
+		this.id_detail = this.dw_orderdetail
+		call super::ue_save
+		if f_stringpreferences("IncPOInActMonitor") = "Y" then
+			this.it_transobject.updateactivitymonitor("PO", ll_invid)
+			if this.it_transobject.sqlcode <> 0 then
+				SQL rollback USING this.it_transobject;
+				messagebox("Activity Monitor", "Problem in updating activity monitor.~r~nReasons are:- " + this.it_transobject.sqlerrtext)
+			else
+				SQL commit USING this.it_transobject;
+			end if
+		end if
+		this.id_detail = this.tab_retrieve.tabpage_detail.dw_itemsdetail
+		this.id_detail.reset()
+		return
+	end if
+	setfocus()
+
+// w_purchaseorder.ue_newitem() returns 0
+	long ll_rowcount
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		this.id_detail.setfocus()
+		return
+	end if
+	if this.id_detail.rowcount() > 0 and f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	if f_stringpreferences("itemcode") = "N" then
+		this.id_detail.setcolumn(this.is_columnitemname)
+	else
+		this.id_detail.setcolumn("fullcode")
+	end if
+	this.id_detail.insertrow(0)
+	ll_rowcount = this.id_detail.rowcount()
+	if ll_rowcount > 1 then
+		this.id_detail.scrolltorow(ll_rowcount)
+		this.id_detail.setfocus()
+	end if
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_print.enabled = true
+	this.ib_validatefullcode = true
+
+// w_purchaseorder.ue_print() returns 0
+	long ll_row
+	long ll_invcode
+	integer li_option
+	boolean lb_listtab
+	s_datastore lstr
+	call super::ue_print
+	if this.tab_retrieve.selectedtab = 2 then
+		lb_listtab = true
+	end if
+	if this.im_menu.m_file.m_save.enabled = true and lb_listtab = false then
+		li_option = messagebox("Save Changes", "Do you want to save Purchase Order", information!, yesno!, 2)
+		if li_option = 1 then
+			triggerevent("ue_save")
+			if wf_commitform() = false then
+				return
+			end if
+			return
+		end if
+		return
+	end if
+	if lb_listtab then
+		if isnull(this.id_list.getrow()) or this.id_list.getrow() <= 0 then
+			messagebox("Rows Validation", "Kindly select any row from the list view.")
+			return
+		end if
+		ll_invcode = this.id_list.getitemnumber(this.id_list.getrow(), "code")
+		if isnull(ll_invcode) or ll_invcode <= 0 then
+			messagebox("Selection Validation", "Kindly select any row from the list view.")
+			return
+		end if
+	else
+		ll_invcode = this.id_master.getitemnumber(1, "code")
+	end if
+	wf_selectprintreport()
+	this.id_print.retrieve(ll_invcode)
+	if lb_listtab then
+		lstr.dw = this.id_print
+		lstr.s_name1 = this.id_print.dataobject
+		openwithparm(w_preview_invoices, lstr)
+		lstr = message.powerobjectparm
+		if lstr.i_closemode = -1 then
+			return
+		end if
+		return
+	end if
+	if this.id_print.rowcount() > 0 then
+		if f_stringpreferences("PromptBeforePrinting") = "Y" and printsetup() < 0 then
+			messagebox("Printer", "Printing Error")
+			this.id_print.printcancel()
+		end if
+		if this.id_print.print() < 0 then
+			messagebox("Printing", "Can not Print Purchase Order", information!)
+		end if
+		if this.im_menu.m_file.m_save.enabled = true then
+			postevent("ue_new")
+		end if
+		return
+	end if
+	messagebox("Printing Error", "Can not Print Purchase Order,~r~nNo rows are retrieved", information!)
+
+// w_purchaseorder.ue_postopen() returns 0
+	integer li_rtncode
+	long ll_found
+	m_purchaseordermenu lm_menu
+	call super::ue_postopen
+	setredraw(false)
+	f_fetch_sites()
+	lm_menu = this.menuid
+	this.id_print = this.dw_print
+	this.id_print.settransobject(sqlca)
+	li_rtncode = this.id_master.getchild("suppcode", this.idc_supplierlist)
+	if li_rtncode = -1 then
+		messagebox("Error", "Can not get a DataWindowChild")
+	end if
+	this.idc_supplierlist.settransobject(this.it_transobject)
+	this.idc_supplierlist.retrieve()
+	wf_apply_groupsuppliercategory()
+	if f_stringpreferences("POApplySuppItemOnly") = "Y" then
+		lm_menu.m_file.m_supplieritemsonly.checked = true
+	else
+		lm_menu.m_file.m_supplieritemsonly.checked = false
+	end if
+	if f_stringpreferences("fetchlastpurinfoinpo") = "Y" then
+		this.ic_fetchlastpurinfo = "Y"
+	end if
+	if f_stringpreferences("ReqPackQtyFractionTreatment_InPO") = "R" then
+		this.ic_reqpackqtyfractiontreatment_inpo = "R"
+	else
+		this.ic_reqpackqtyfractiontreatment_inpo = "C"
+	end if
+	this.dw_orderdetail.settransobject(this.it_transobject)
+	this.id_master.object.startdate.initial = string(relativedate(today(), -45))
+	this.id_detail.object.batch.initial = f_stringpreferences("defaultbatch")
+	if f_stringpreferences("itemdiscperc2inpo") = "N" then
+		this.ib_discperc2inpo = false
+	end if
+	if f_stringpreferences("ItemFlatDiscInPO") = "N" then
+		this.ib_itemflatdiscinpo = false
+	end if
+	if f_stringpreferences("ItemUnitTaxInPO") = "N" then
+		this.ib_itemunittaxinpo = false
+	end if
+	if f_stringpreferences("ItemGSTPercInPO") = "N" then
+		this.ib_itemgstpercinpo = false
+	end if
+	if f_stringpreferences("itemcode") = "N" then
+		this.id_detail.object.fullcode.visible = false
+	end if
+	if f_stringpreferences("manufacturer") = "N" then
+		this.id_itemslist.object.manufacturer.visible = false
+	end if
+	if f_stringpreferences("itemname") = "N" then
+		this.id_itemslist.object.itemname.visible = false
+	end if
+	if f_stringpreferences("packing") = "N" then
+		this.id_itemslist.object.packing.visible = false
+	end if
+	if f_stringpreferences("packunits") = "N" then
+		this.id_itemslist.object.packunits.visible = false
+	end if
+	if f_stringpreferences("saleprice") = "N" then
+		this.id_itemslist.object.saleprice.visible = false
+	end if
+	if f_stringpreferences("stock") = "N" then
+		this.id_itemslist.object.stock.visible = false
+	end if
+	if f_stringpreferences("ShowTransitStockInItemList") = "N" then
+		this.id_itemslist.object.transitstock.visible = false
+	end if
+	if f_stringpreferences("showitemalertinitemlist") = "N" then
+		this.id_itemslist.object.itemalertcode.visible = false
+	end if
+	if f_stringpreferences("ShowPurchaeTypeInOrder") = "N" then
+		this.id_master.object.purtypecode.visible = false
+		this.id_master.object.purtypecode_t.visible = false
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 594", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.id_master.object.currencycode.visible = true
+		this.id_master.object.currencycode_t.visible = true
+		this.id_master.object.conversionfactor.visible = true
+		this.id_master.object.conversionfactor_t.visible = true
+		this.id_detail.object.foreignprice.visible = true
+		this.id_detail.object.c_foreigntotal.visible = true
+	else
+		this.id_master.object.currencycode.visible = false
+		this.id_master.object.currencycode_t.visible = false
+		this.id_master.object.conversionfactor.visible = false
+		this.id_master.object.conversionfactor_t.visible = false
+		this.id_detail.object.foreignprice.visible = false
+		this.id_detail.object.c_foreigntotal.visible = false
+	end if
+	if gl_sitecode > 0 and gc_dropbox = "Y" then
+		this.id_master.object.sitecode.initial = trim(string(gl_sitecode))
+		this.id_master.object.targetsitecode.visible = true
+		this.id_master.object.t_targetsitecode.visible = true
+	else
+		this.id_master.object.targetsitecode.visible = false
+		this.id_master.object.t_targetsitecode.visible = false
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 587", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.id_itemslist.object.purprice.visible = true
+	else
+		this.id_itemslist.object.purprice.visible = false
+	end if
+	this.id_itemslist.object.t_sstock.visible = false
+	this.id_itemslist.object.sstock.visible = false
+	this.id_itemslist.object.t_pstock.visible = false
+	this.id_itemslist.object.pstock.visible = false
+	gd_itemsinfo.sharedata(this.id_itemslist)
+	this.id_footer.insertrow(0)
+	this.id_footer.scrolltorow(0)
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 614", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.ib_allowchangeincalculatedpacks = true
+	else
+		this.ib_allowchangeincalculatedpacks = false
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 617", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.id_detail.object.rate.protect = 0
+	else
+		this.id_detail.object.rate.protect = 1
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 691", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.id_detail.object.qty.protect = 0
+	else
+		this.id_detail.object.qty.protect = 1
+	end if
+	if f_stringpreferences("InvDiscPercInPO") = "N" then
+		this.id_footer.object.discperc.visible = false
+		this.id_footer.object.discperc_t.visible = false
+		this.id_footer.object.invdiscvalue.visible = false
+		this.id_footer.object.invdiscvalue_t.visible = false
+	end if
+	if f_stringpreferences("InvGSTPercInPO") = "N" then
+		this.id_footer.object.invgstperc1.visible = false
+		this.id_footer.object.invgstperc1_t.visible = false
+		this.id_footer.object.invgstvalue.visible = false
+		this.id_footer.object.invgstvalue_t.visible = false
+	end if
+	if f_stringpreferences("InvMiscChargesInPO") = "N" then
+		this.id_footer.object.misccharges.visible = false
+		this.id_footer.object.misccharges_t.visible = false
+	end if
+	if f_stringpreferences("InvFlatDiscInPO") = "N" then
+		this.id_footer.object.flatdisc.visible = false
+		this.id_footer.object.flatdisc_t.visible = false
+	end if
+	if f_stringpreferences("ShowGrandTotalInPO") = "N" then
+		this.id_footer.object.total.visible = false
+		this.id_footer.object.total_t.visible = false
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 687", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		lm_menu.m_file.m_applyassociatedquotation.visible = true
+		lm_menu.m_file.m_applyassociatedquotation.enabled = true
+	end if
+	if not f_rightexists(5274) then
+		lm_menu.m_file.m_pushpotodropbox.enabled = false
+		lm_menu.m_file.m_pushpotodropbox.visible = false
+		this.id_list.object.pushed.visible = false
+		this.id_list.object.pushedon.visible = false
+		this.id_list.object.pushedby.visible = false
+		this.id_list.object.pushedfor.visible = false
+	end if
+	wf_apply_interfacesetting_list()
+	setredraw(true)
+
+// w_purchaseorder.ue_list() returns 0
+	call super::ue_list
+	SQL rollback USING this.it_transobject;
+	this.im_menu.m_file.m_options.enabled = false
+	this.im_menu.m_file.m_post.enabled = true
+
+// w_purchaseorder.ue_deleteitem_row(long al_row) returns 0
+	long ll_row
+	long ll_footerrow
+	super::ue_deleteitem_row(al_row)
+	ll_row = this.id_detail.getrow()
+	ll_footerrow = this.id_footer.getrow()
+	if this.id_detail.rowcount() > 0 then
+		return
+	end if
+	this.im_menu.m_file.m_print.enabled = false
+	this.im_menu.m_file.m_save.enabled = false
+
+// w_purchaseorder.ue_refreshddw() returns 0
+	call super::ue_refreshddw
+	setpointer(hourglass!)
+	this.idc_supplierlist.setredraw(false)
+	this.idc_supplierlist.settransobject(this.it_transobject)
+	this.idc_supplierlist.reset()
+	this.idc_supplierlist.retrieve()
+	wf_apply_groupsuppliercategory()
+	this.idc_supplierlist.setredraw(true)
+	setpointer(arrow!)

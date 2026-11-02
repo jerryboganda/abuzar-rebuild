@@ -1,0 +1,88 @@
+// window w_crs_invoicedetail (crscomponents)  ancestor: window
+
+// w_crs_invoicedetail.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		post event ue_close()
+	end if
+	return ::message.returnvalue
+
+// w_crs_invoicedetail.ue_close() returns 0
+	closewithreturn(this, 0)
+
+// w_crs_invoicedetail.wf_assigndwobjects(string as_masterdw, string as_detaildw, string as_footerdw) returns 0
+	this.dw_master.dataobject = as_masterdw
+	this.dw_detail.dataobject = as_detaildw
+	this.dw_footer.dataobject = as_footerdw
+	this.dw_master.settransobject(sqlca)
+	this.dw_detail.settransobject(sqlca)
+	this.dw_footer.settransobject(sqlca)
+
+// w_crs_invoicedetail.create() returns 0
+	this.dw_footer = create dw_footer
+	this.dw_detail = create dw_detail
+	this.dw_master = create dw_master
+	this.control = {this.dw_footer, this.dw_detail, this.dw_master}
+
+// w_crs_invoicedetail.destroy() returns 0
+	destroy this.dw_footer
+	destroy this.dw_detail
+	destroy this.dw_master
+
+// w_crs_invoicedetail.open() returns long
+	long ll_module
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	this.istr_invdetail = message.powerobjectparm
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	choose case this.istr_invdetail.i_module
+	case 1
+		this.title = "Sale Invoice Detail"
+		wf_assigndwobjects("d_crs_saleheader_view", "d_crs_saledetail_view", "d_crs_salefooter_view")
+	case 2
+		this.title = "Sale Return Detail"
+		wf_assigndwobjects("d_crs_srheader_view", "d_crs_srdetail_view", "d_crs_srfooter_view")
+	case 3
+		this.title = "Purchase Invoice Detail"
+		wf_assigndwobjects("d_crs_purchaseheader_view", "d_crs_purchasedetail_view", "d_crs_purchasefooter_view")
+	case 4
+		this.title = "Purchase Return Detail"
+		wf_assigndwobjects("d_purchasereturn_view", "d_crs_purchasereturndetail_view", "d_crs_purchasereturnfooter_view")
+	case 8
+		this.title = "Inter Godown Transfer Detail"
+		wf_assigndwobjects("d_purchasereturn_view", "d_crs_purchasereturndetail_view", "d_crs_purchasereturnfooter_view")
+	case else
+		this.title = "A/C Vouchers"
+		wf_assigndwobjects("d_crs_voucherheader_view", "d_crs_voucherdetail_view", "d_crs_voucherfooter_view")
+	end choose
+	f_setcolumnstyle(this.dw_detail, "Qty")
+	this.dw_master.retrieve(this.istr_invdetail.l_clientinstanceid, this.istr_invdetail.l_invcode)
+	this.dw_detail.retrieve(this.istr_invdetail.l_clientinstanceid, this.istr_invdetail.l_invcode)
+	this.dw_footer.retrieve(this.istr_invdetail.l_clientinstanceid, this.istr_invdetail.l_invcode)
+	this.dw_master.x = 0
+	this.dw_detail.x = 0
+	this.dw_footer.x = 0
+	this.dw_master.width = this.width - 10
+	this.dw_detail.width = this.width - 10
+	this.dw_footer.width = this.width - 10
+	this.dw_detail.height = this.height - (this.dw_master.height + this.dw_footer.height) - 100
+	this.dw_footer.y = this.dw_detail.y + this.dw_detail.height + 5
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue

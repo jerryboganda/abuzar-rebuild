@@ -1,0 +1,674 @@
+// window w_soreceipt_form (accounts)  ancestor: window
+
+// w_soreceipt_form.ue_close() returns 0
+	SQL stop USING this.it_transobject;
+	close(this)
+
+// w_soreceipt_form.ue_postopen() returns 0
+	long ll_counter
+	long ll_pos
+	long ll_prow
+	long ll_pcode
+	integer li_rtncode
+	datawindowchild ldc_headerno
+	li_rtncode = this.id_header.getchild("receiptacccode", this.idc_account)
+	if li_rtncode = -1 then
+		messagebox("Error", "Can not get a DataWindowChild")
+		close(this)
+	end if
+	this.idc_account.settransobject(this.it_transobject)
+	this.idc_account.retrieve()
+	setredraw(true)
+	this.id_detail = create datawindow
+	this.id_detail = this.dw_purpayment
+	this.id_detail.settransobject(this.it_transobject)
+
+// w_soreceipt_form.wf_set_interface_adjustments() returns 0
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width * 0.95
+		ll_height = ll_win_height * 0.95
+		this.width = ll_width
+		this.height = ll_height
+		this.cb_ok.y = ll_height - this.cb_ok.height - 200
+		this.cb_cancel.y = ll_height - this.cb_cancel.height - 200
+		this.cb_printorder.y = ll_height - this.cb_printorder.height - 200
+		this.tab_main.width = ll_width - 100
+		this.tab_main.height = this.cb_ok.y - 50
+		this.tab_main.tabpage_header.width = this.tab_main.width - 50
+		this.tab_main.tabpage_header.height = this.tab_main.height - 100
+		this.tab_main.tabpage_header.dw_header.width = this.tab_main.tabpage_header.width - 20
+		this.tab_main.tabpage_header.dw_header.height = this.tab_main.tabpage_header.height - 100
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+
+// w_soreceipt_form.wf_set_tab_visibility() returns long
+	wf_select_first_tab()
+	return 0
+
+// w_soreceipt_form.wf_connect() returns long
+	SQL start USING this.it_transobject;
+	return this.it_transobject.sqlcode
+
+// w_soreceipt_form.wf_tabnewid(string as_tablename, long al_newid) returns long
+	long ll_rtcode
+	SQL SELECT TABMAXKEY INTO :al_newid FROM _TABMAXKEY WITH ( UPDLOCK HOLDLOCK ) WHERE _TABMAXKEY.TABName =:as_tablename USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		al_newid = al_newid + 1
+		SQL update dbo._tabmaxkey SET TABMAXKEY =:al_newid WHERE _TABMAXKEY.TABName =:as_tablename USING this.it_transobject;
+		if this.it_transobject.sqlcode < 0 then
+			ll_rtcode = this.it_transobject.sqlcode
+			al_newid = 0
+		end if
+	else
+		ll_rtcode = this.it_transobject.sqlcode
+		al_newid = 0
+	end if
+	return ll_rtcode
+
+// w_soreceipt_form.wf_retrieve_tabs() returns long
+	long ll_retrieve
+	long ll_insrow
+	this.tab_main.tabpage_header.dw_header.settransobject(this.it_transobject)
+	this.id_header = create datawindow
+	this.id_header = this.tab_main.tabpage_header.dw_header
+	this.id_header.settransobject(this.it_transobject)
+	if this.il_code > 0 then
+		this.id_header.retrieve(this.il_code)
+		this.id_header.setfocus()
+	else
+		this.id_header.setfocus()
+		ll_insrow = this.id_header.insertrow(0)
+		if ll_insrow > 0 then
+			this.id_header.object.serviceocode[ll_insrow] = this.istr_arg.l_code2
+			this.id_header.object.acccode[ll_insrow] = this.istr_arg.l_code4
+			this.id_header.object.patientcode[ll_insrow] = this.istr_arg.l_code5
+			this.id_header.object.soamt[ll_insrow] = this.istr_arg.db_code1
+		end if
+	end if
+	this.idc_account.reset()
+	ll_retrieve = this.idc_account.retrieve()
+	if this.id_header.object.receiptmode[this.id_header.rowcount()] = "C" then
+		this.idc_account.setfilter("subcode=2")
+	else
+		this.idc_account.setfilter("subcode=4")
+	end if
+	this.idc_account.filter()
+	return 0
+
+// w_soreceipt_form.wf_insert_row(datawindow adw_dw, integer ai_askpermit) returns long
+	long ll_row
+	long ll_res
+	if ai_askpermit = 1 then
+		ll_res = messagebox("Insert New Record", "Do you want to Insert New Record?", question!, yesnocancel!, 2)
+	else
+		ll_res = 1
+	end if
+	if ll_res = 1 then
+		ll_row = adw_dw.insertrow(0)
+		adw_dw.setrow(ll_row)
+		adw_dw.scrolltorow(ll_row)
+	end if
+	return 0
+
+// w_soreceipt_form.wf_delete_row(datawindow adw_dw, integer ai_askpermit) returns long
+	long ll_row
+	long ll_res
+	if adw_dw.rowcount() > 0 and adw_dw.getrow() > 0 then
+		if ai_askpermit = 1 then
+			ll_res = messagebox("Delete Record", "Do you want to delete this record?", question!, yesnocancel!, 2)
+		else
+			ll_res = 1
+		end if
+		if ll_res = 1 then
+			ll_row = adw_dw.getrow()
+			if adw_dw.deleterow(ll_row) = 1 and adw_dw.rowcount() > 0 then
+				adw_dw.setrow(1)
+				adw_dw.scrolltorow(1)
+			end if
+		end if
+	end if
+	return 0
+
+// w_soreceipt_form.wf_goto_record(datawindow adw_dw) returns long
+	long ll_current
+	long ll_counter
+	long ll_row
+	datastore lds_ds
+	s_arguements lstr_arg
+	ll_current = adw_dw.getrow()
+	if adw_dw.rowcount() > 0 then
+		lds_ds = create datastore
+		lds_ds.dataobject = "d_mr_recordpointer"
+		lds_ds.settransobject(sqlca)
+		for ll_counter = 1 to adw_dw.rowcount()
+			ll_row = lds_ds.insertrow(0)
+			if ll_row = ll_current then
+				lds_ds.object.currentrow[ll_row] = 1
+			else
+				lds_ds.object.currentrow[ll_row] = 0
+			end if
+			lds_ds.object.rowid[ll_row] = adw_dw.object.rowid[ll_counter]
+			lds_ds.object.rowno[ll_row] = ll_counter
+			lds_ds.object.date[ll_row] = adw_dw.object.date[ll_counter]
+		next
+		if lds_ds.rowcount() > 0 then
+			openwithparm(w_arg_mr_record_pointer, lds_ds)
+			lstr_arg = message.powerobjectparm
+			if lstr_arg.i_status = 1 and lstr_arg.l_code1 > 0 then
+				adw_dw.setrow(lstr_arg.l_code1)
+				adw_dw.scrolltorow(lstr_arg.l_code1)
+			end if
+		end if
+	end if
+	return 0
+
+// w_soreceipt_form.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns integer
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+	return 0
+
+// w_soreceipt_form.wf_apply_protect_setting() returns integer
+	if this.il_protect = 1 then
+		wf_protectdw(this.id_header, this.il_protect)
+		this.cb_ok.enabled = false
+	end if
+	return 0
+
+// w_soreceipt_form.wf_save() returns long
+	if this.il_protect = 0 then
+		this.cb_ok.triggerevent(clicked!)
+	elseif this.ib_print then
+		wf_printorder()
+	end if
+	return 0
+
+// w_soreceipt_form.wf_print() returns long
+	if this.il_protect = 0 then
+		wf_save()
+	end if
+	return 0
+
+// w_soreceipt_form.wf_select_first_tab() returns long
+	if this.tab_main.tabpage_header.visible then
+		this.tab_main.selecttab(1)
+		return 0
+	end if
+	return 0
+
+// w_soreceipt_form.wf_show_patient_gallery() returns long
+	if this.il_code > 0 then
+		openwithparm(w_patientgallary, this.il_code)
+	end if
+	return 0
+
+// w_soreceipt_form.wf_validateserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+	datetime ldt_last_transdate
+	datetime ldt_current_serverdate
+	long li_max_allow_days
+	ar_errtext = "Invoice Date  Check violates"
+	li_max_allow_days = f_numberpreferences("MaxAllowDate")
+	if isnull(li_max_allow_days) then
+		li_max_allow_days = 4
+	end if
+	SQL SELECT LastTransDate INTO :ldt_last_transdate FROM ServerDate USING sqlca;
+	if sqlca.sqlcode = 0 then
+		sqlca.getdatetime(ldt_current_serverdate)
+		if sqlca.sqlcode = 0 then
+			if ldt_current_serverdate >= ldt_last_transdate and daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) <= li_max_allow_days then
+				ar_server_datetime = ldt_current_serverdate
+				return true
+			elseif ldt_current_serverdate < ldt_last_transdate then
+				ar_errtext = "Back Date Invoice Check violates"
+				return false
+			elseif daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) > li_max_allow_days then
+				ar_errtext = "Forward Date Invoice Check violates"
+				return false
+			end if
+		else
+			return false
+		end if
+		return
+	end if
+	return false
+
+// w_soreceipt_form.wf_print_dischargeslip() returns integer
+	return 0
+
+// w_soreceipt_form.wf_findcustcode(long ai_custcode, string as_aliasname) returns long
+	integer li_custcode
+	integer ll_retflag
+	string ls_itemname
+	SQL SELECT accounts.acccode INTO :li_custcode FROM accounts , customer WHERE accounts.aliasname =:as_aliasname AND accounts.acccode =customer.custcode USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		ai_custcode = li_custcode
+		if isnull(ai_custcode) then
+			ll_retflag = 0
+		else
+			ll_retflag = 1
+		end if
+	else
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_soreceipt_form.wf_customerinfo(long al_custcode) returns long
+	string ls_address
+	string ls_city
+	string ls_phone
+	long ll_currow
+	double ld_currbalance
+	SQL SELECT customer.address1 , customer.city , customer.phone INTO :ls_address, :ls_city, :ls_phone FROM customer WHERE customer.custcode =:al_custcode USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+	end if
+	return this.it_transobject.sqlcode
+
+// w_soreceipt_form.wf_find_service_fullcode(string as_aliasname, long al_servicecode, string as_servicename) returns long
+	long ll_retflag
+	setnull(al_servicecode)
+	as_servicename = "                                                                  "
+	this.it_transobject.getservice_aliasname(gl_usercode, as_aliasname, al_servicecode, as_servicename)
+	if this.it_transobject.sqlcode = 0 then
+		if isnull(al_servicecode) then
+			ll_retflag = 0
+		else
+			ll_retflag = 1
+		end if
+	else
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_soreceipt_form.wf_getserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+	datetime ldt_last_transdate
+	datetime ldt_current_serverdate
+	integer li_max_allow_days
+	string ls_hold_serverdate
+	date ld_datepart
+	time lt_timepart
+	ar_errtext = "Please verify Server DateTime"
+	li_max_allow_days = f_numberpreferences("MaxAllowDate")
+	if isnull(li_max_allow_days) then
+		li_max_allow_days = 4
+	end if
+	SQL rollback USING sqlca;
+	SQL SELECT LastTransDate INTO :ldt_last_transdate FROM ServerDate USING sqlca;
+	if sqlca.sqlcode = 0 then
+		sqlca.getdatetime(ldt_current_serverdate)
+		ar_server_datetime = ldt_current_serverdate
+		if sqlca.sqlcode = 0 then
+			if ldt_current_serverdate >= ldt_last_transdate and daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) <= li_max_allow_days then
+				ld_datepart = date(string(ldt_current_serverdate, "yyyy-mm-dd"))
+				lt_timepart = time(string(ldt_current_serverdate, "hh:mm:ss"))
+				ldt_current_serverdate = datetime(ld_datepart, lt_timepart)
+				SQL update ServerDate SET LastTransDate =:ldt_current_serverdate USING sqlca;
+				if sqlca.sqlcode = 0 then
+					SQL commit USING sqlca;
+					ar_server_datetime = ldt_current_serverdate
+					return true
+				else
+					SQL rollback USING sqlca;
+					return false
+				end if
+			elseif ldt_current_serverdate < ldt_last_transdate then
+				ar_errtext = "Back Date Invoice Check violates"
+				return false
+			elseif daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) > li_max_allow_days then
+				ar_errtext = "Forward Date Invoice Check violates"
+				return false
+			end if
+		else
+			SQL rollback USING sqlca;
+			ar_server_datetime = datetime(date(today()), time(today()))
+			return false
+		end if
+		return
+	end if
+	SQL rollback USING sqlca;
+	ar_server_datetime = datetime(date(today()), time(today()))
+	return false
+
+// w_soreceipt_form.wf_printorder() returns integer
+	s_datastore lstr
+	if this.ib_print = true then
+		this.dw_print.settransobject(sqlca)
+		this.dw_print.retrieve(this.il_code)
+		lstr.dw = this.dw_print
+		lstr.s_name1 = this.dw_print.dataobject
+		openwithparm(w_preview_invoices, lstr)
+		lstr = message.powerobjectparm
+		if lstr.i_closemode = -1 then
+			return 0
+		else
+			if f_stringpreferences("PromptBeforePrinting") = "Y" and printsetup() < 0 then
+				messagebox("Printer", "Printing Error")
+				this.dw_print.printcancel()
+			end if
+			if this.dw_print.rowcount() > 0 then
+				if this.dw_print.print() < 0 then
+					messagebox("Printing", "Can not Print Invoice", information!)
+				end if
+			else
+				messagebox("Printing Error", "Can not Print Data,~r~nNo rows are retrieved", information!)
+			end if
+		end if
+	end if
+	return 0
+
+// w_soreceipt_form.wf_findpatientcode(string as_regno, long al_patientcode) returns long
+	long ll_patientcode
+	long ll_retflag
+	string ls_itemname
+	SQL SELECT patient.patientcode INTO :ll_patientcode FROM patient WHERE patient.regno =:as_regno USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		al_patientcode = ll_patientcode
+		if isnull(al_patientcode) then
+			ll_retflag = 0
+		else
+			ll_retflag = 1
+		end if
+	else
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_soreceipt_form.wf_findfullcode(string as_fullcode, long al_icode, string as_itemname) returns long
+	long ll_icode
+	long ll_retflag
+	string ls_itemname
+	if f_stringpreferences("GroupCategoryRights") = "Y" then
+		SQL SELECT item.icode , item.name INTO :ll_icode, :ls_itemname FROM item WHERE item.customicode =:as_fullcode AND item.Active =1 AND Item.ICatCode IN ( SELECT ICatCode FROM ItemCategory WHERE ICatCode IN ( SELECT ItemsCategoryCode FROM ItemsGroupCategory WHERE GroupCode IN ( SELECT GroupCode FROM UserGroups WHERE UserCode =:gl_usercode ) ) ) USING this.it_transobject;
+	else
+		SQL SELECT item.icode , item.name INTO :ll_icode, :ls_itemname FROM item WHERE item.customicode =:as_fullcode AND item.Active =1 USING this.it_transobject;
+	end if
+	if this.it_transobject.sqlcode = 0 then
+		al_icode = ll_icode
+		as_itemname = ls_itemname
+		if isnull(al_icode) then
+			ll_retflag = 0
+		else
+			ll_retflag = 1
+		end if
+	else
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_soreceipt_form.wf_set_deductionamt(integer ai_deduction, integer ai_perc_or_base, double ad_data) returns long
+	if ai_perc_or_base = 1 then
+		if ai_deduction = 1 then
+			this.id_header.object.whtaxamt[1] = ad_data * this.id_header.object.whtaxbaseamt[1] / 100
+		end if
+	elseif ai_deduction = 1 then
+		this.id_header.object.whtaxamt[1] = ad_data * this.id_header.object.whtaxperc[1] / 100
+	end if
+	return 0
+
+// w_soreceipt_form.wf_return_payment(long al_invid, string as_errortext) returns boolean
+	return true
+
+// w_soreceipt_form.wf_populatedetail(long al_invid, string as_errortext) returns boolean
+	boolean lb_commitflag
+	return lb_commitflag
+
+// w_soreceipt_form.create() returns 0
+	this.dw_purpayment = create dw_purpayment
+	this.cb_printorder = create cb_printorder
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.tab_main = create tab_main
+	this.dw_print = create dw_print
+	this.control = {this.dw_purpayment, this.cb_printorder, this.cb_cancel, this.cb_ok, this.tab_main, this.dw_print}
+
+// w_soreceipt_form.destroy() returns 0
+	destroy this.dw_purpayment
+	destroy this.cb_printorder
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.tab_main
+	destroy this.dw_print
+
+// w_soreceipt_form.open() returns long
+	integer li_xpos
+	integer li_ypos
+	integer li_xendpos
+	integer li_counter
+	integer li_taborder
+	integer li_visiblecolumns
+	integer li_zerotaborder
+	long ll_counter
+	long li_retcode
+	long li_rtncode
+	boolean lb_active
+	boolean lb_restricted
+	boolean lb_customicode
+	boolean lb_zerotabordercol
+	date ld_date
+	long ll_retcode
+	ld_date = today()
+	this.istr_arg = message.powerobjectparm
+	this.il_code = this.istr_arg.l_code1
+	this.il_socode = this.istr_arg.l_code2
+	this.il_protect = this.istr_arg.l_code3
+	this.it_transobject = create u_transaction
+	if wf_connect() <> 0 then
+		messagebox("Connection Failure!", "Unable to connect to the database", stopsign!)
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	wf_retrieve_tabs()
+	wf_apply_protect_setting()
+	wf_set_interface_adjustments()
+	wf_set_tab_visibility()
+	triggerevent("ue_postopen")
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// cb_printorder.clicked() returns long
+	parent.ib_print = true
+	parent.wf_save()
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.postevent("ue_close")
+	return ::message.returnvalue
+
+// cb_ok.ue_enterkry(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		triggerevent(clicked!)
+	end if
+	return 1
+
+// cb_ok.clicked() returns long
+	string ls_aliasname
+	long ll_newid
+	long ll_row
+	long ll_counter
+	long ll_liccode
+	long li_rc
+	long ll_pk
+	long ll_null
+	long ll_usercode
+	long ll_insrow
+	long ll_unpostedtrans
+	long ll_invcode
+	boolean lb_commitok
+	boolean lb_continue
+	datetime ldt_server_datetime
+	string ls_msg
+	string ls_errortext
+	string ls_date_errtext
+	double ld_receiptamt
+	double ld_whtaxamt
+	setnull(ll_null)
+	if parent.il_protect = 1 then
+		return ::message.returnvalue
+	end if
+	if f_validatedw(parent.id_header) < 0 then
+		parent.tab_main.selecttab(1)
+		return ::message.returnvalue
+	end if
+	if not parent.wf_validateserverdatetime(ldt_server_datetime, ls_date_errtext) then
+		messagebox("Date Violation", ls_date_errtext, stopsign!)
+		return ::message.returnvalue
+	end if
+	ll_pk = parent.id_header.object.code[1]
+	open(w_salesmanpassword)
+	ll_usercode = long(::message.doubleparm)
+	setfocus()
+	ld_receiptamt = parent.id_header.object.receiptamt[1]
+	if isnull(ld_receiptamt) then
+		ld_receiptamt = 0
+	end if
+	ld_whtaxamt = parent.id_header.object.whtaxamt[1]
+	if isnull(ld_whtaxamt) then
+		ld_whtaxamt = 0
+	end if
+	if ld_receiptamt + ld_whtaxamt <= 0.0 then
+		messagebox("Receipt Validation", "Receipt Amount is not valid", stopsign!)
+		return ::message.returnvalue
+	end if
+	if ll_usercode > 0 then
+		if not parent.wf_getserverdatetime(ldt_server_datetime, ls_date_errtext) then
+			messagebox("Date Violation", ls_date_errtext, stopsign!)
+			return ::message.returnvalue
+		end if
+		if isnull(ll_pk) then
+			parent.wf_tabnewid("SOReceipt", ll_newid)
+			if ll_newid > 0 then
+				parent.id_header.object.code[1] = ll_newid
+			end if
+		else
+			ll_newid = parent.id_header.object.code[1]
+		end if
+		if parent.id_header.rowcount() > 0 then
+			parent.id_header.object.usercode[1] = ll_usercode
+			parent.id_header.object.date[1] = ldt_server_datetime
+		end if
+		if lb_continue then
+			if parent.id_header.update(true, false) = 1 then
+				SQL commit USING parent.it_transobject;
+				parent.il_code = ll_newid
+				lb_commitok = true
+				if parent.ib_print then
+					parent.wf_printorder()
+				end if
+				parent.event ue_close()
+				return ::message.returnvalue
+			else
+				if isnull(ll_pk) then
+					parent.id_header.object.code[1] = ll_null
+				end if
+				messagebox("Receipt Saving Problem", "Unable to update Receipt  Record" + "~r~nDetails Are:- " + parent.it_transobject.sqlerrtext, stopsign!)
+				SQL rollback USING parent.it_transobject;
+			end if
+		end if
+	end if
+	return ::message.returnvalue
+
+// tab_main.create() returns 0
+	this.tabpage_header = create tabpage_header
+	this.control = {this.tabpage_header}
+
+// tab_main.destroy() returns 0
+	destroy this.tabpage_header
+
+// tab_main.selectionchanged(integer oldindex, integer newindex) returns long
+	if parent.il_protect = 0 and newindex = 1 then
+		parent.id_header.setfocus()
+		if parent.id_header.rowcount() = 0 then
+			parent.wf_insert_row(parent.id_header, 0)
+		end if
+	end if
+	return ::message.returnvalue
+
+// tabpage_header.create() returns 0
+	this.dw_header = create dw_header
+	this.control = {this.dw_header}
+
+// tabpage_header.destroy() returns 0
+	destroy this.dw_header
+
+// dw_header.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_header.getfocus() returns long
+	setfocus()
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_header.itemfocuschanged(long row, dwobject dwo) returns long
+	long ll_retcode
+	double ld_balance
+	if len(gettext()) > 0 then
+		selecttext(1, len(gettext()))
+	end if
+	choose case dwo.name
+	case "receiptmode", "receiptacccode"
+		if this.object.receiptmode[row] = "C" then
+			parent.parent.parent.idc_account.setfilter("subcode=2")
+		else
+			parent.parent.parent.idc_account.setfilter("subcode=4")
+		end if
+		parent.parent.parent.idc_account.filter()
+		return 0
+	end choose
+	return ll_retcode
+
+// dw_header.itemchanged(long row, dwobject dwo, string data) returns long
+	long ll_retcode
+	double ld_balance
+	choose case dwo.name
+	case "receiptmode"
+		if data = "C" then
+			parent.parent.parent.idc_account.setfilter("subcode=2")
+		else
+			parent.parent.parent.idc_account.setfilter("subcode=4")
+		end if
+		parent.parent.parent.idc_account.filter()
+		return 0
+	case "whtaxperc"
+		if data = "" or isnull(data) then
+			return 0
+		else
+			return parent.parent.parent.wf_set_deductionamt(1, 1, double(data))
+		end if
+	case "whtaxbaseamt"
+		if data = "" or isnull(data) then
+			return 0
+		else
+			return parent.parent.parent.wf_set_deductionamt(1, 2, double(data))
+		end if
+		return
+	end choose
+	return ll_retcode

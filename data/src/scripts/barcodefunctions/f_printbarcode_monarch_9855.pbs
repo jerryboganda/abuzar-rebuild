@@ -1,0 +1,144 @@
+// function f_printbarcode_monarch_9855 (barcodefunctions)  ancestor: function_object
+
+// f_printbarcode_monarch_9855.f_printbarcode_monarch_9855(datawindow id_master, datawindow id_detail, boolean ib_printprice) returns long
+	long ll_totalrows
+	long ll_counter
+	long ll_innercounter
+	long ll_currrow
+	long ll_tot_label_rows
+	integer li_startcell
+	integer li_stopcell
+	integer li_temp
+	integer li_file
+	string ls_clientname
+	string ls_clientname_25_char
+	string ls_itemname
+	string ls_aliasname
+	string ls_price
+	string ls_filecontent
+	string ls_seperator
+	string ls_date
+	string ls_format
+	string ls_xpos
+	string ls_infocode
+	string ls_printer
+	string ls_purprice
+	string ls_supp_alias
+	long ll_headerno
+	long ll_labelno
+	long ll_labelpos
+	long ll_supply_cols_per_row
+	integer li_barcodeleninprint
+	double ld_qty
+	ls_seperator = ";"
+	ls_supp_alias = id_master.object.aliasname[id_master.getrow()]
+	ll_headerno = id_master.getitemnumber(id_master.getrow(), "headerno")
+	ls_clientname = left(trim(f_reportheaderinfo_wrt_headerno("clientname", ll_headerno)), 21)
+	ls_clientname_25_char = upper(left(trim(f_reportheaderinfo_wrt_headerno("clientname", ll_headerno)), 25))
+	li_barcodeleninprint = f_numberpreferences("BarCodeLenInPrint")
+	ll_totalrows = id_detail.rowcount()
+	ls_printer = trim(id_master.object.barcodeprinter[1])
+	if lower(ls_printer) = lower("Monarch 9855") then
+		li_file = fileopen("label.prn", linemode!, write!, lockwrite!, replace!)
+		if li_file = -1 then
+			messagebox("Error", "Unable to locate file for Label printing")
+		else
+			ls_filecontent = "{"
+			filewrite(li_file, ls_filecontent)
+			ls_filecontent = "F,1,A,R,M,0211,0640,~"ONLINE~"|"
+			filewrite(li_file, ls_filecontent)
+			ls_filecontent = "T,001,10,V,0165,0040,0,1,1,2,B,L,0,0|"
+			filewrite(li_file, ls_filecontent)
+			ls_filecontent = "T,002,03,V,0005,0040,0,2,2,2,B,L,0,0|"
+			filewrite(li_file, ls_filecontent)
+			ls_filecontent = "B,003,08,V,0090,0050,8,8,0075,8,L,0|"
+			filewrite(li_file, ls_filecontent)
+			ls_filecontent = "T,004,08,V,0070,0070,0,2,1,2,B,L,0,0|"
+			filewrite(li_file, ls_filecontent)
+			ls_filecontent = "T,005,25,V,0045,0025,2,2,1,1,B,L,0,0|"
+			filewrite(li_file, ls_filecontent)
+			ls_filecontent = "T,006,08,V,0005,0095,0,2,2,2,B,L,0,0|"
+			filewrite(li_file, ls_filecontent)
+			ls_filecontent = "T,007,10,V,0165,0350,0,1,1,2,B,L,0,0|"
+			filewrite(li_file, ls_filecontent)
+			ls_filecontent = "T,008,03,V,0005,0360,0,2,2,2,B,L,0,0|"
+			filewrite(li_file, ls_filecontent)
+			ls_filecontent = "B,009,08,V,0090,0350,8,8,0075,8,L,0|"
+			filewrite(li_file, ls_filecontent)
+			ls_filecontent = "T,010,08,V,0070,0365,0,2,1,2,B,L,0,0|"
+			filewrite(li_file, ls_filecontent)
+			ls_filecontent = "T,011,25,V,0045,0335,2,2,1,1,B,L,0,0|"
+			filewrite(li_file, ls_filecontent)
+			ls_filecontent = "T,012,08,V,0005,0405,0,2,2,2,B,L,0,0|"
+			filewrite(li_file, ls_filecontent)
+			ls_filecontent = "T,013,08,V,0025,0290,0,2,1,2,B,L,0,1|"
+			filewrite(li_file, ls_filecontent)
+			ls_filecontent = "T,014,08,V,0025,0590,0,2,1,2,B,L,0,1|"
+			filewrite(li_file, ls_filecontent)
+			ls_filecontent = "}"
+			filewrite(li_file, ls_filecontent)
+			ls_filecontent = ""
+			filewrite(li_file, ls_filecontent)
+			ls_filecontent = ""
+			filewrite(li_file, ls_filecontent)
+			ls_filecontent = ""
+			filewrite(li_file, ls_filecontent)
+			for ll_counter = 1 to ll_totalrows
+				if id_detail.getitemnumber(ll_counter, "qty") > 0.0 then
+					ld_qty = id_detail.getitemnumber(ll_counter, "qty")
+					ls_itemname = left(trim(id_detail.getitemstring(ll_counter, "itemname")), 25)
+					ls_aliasname = trim(left(trim(id_detail.getitemstring(ll_counter, "fullcode")), 8))
+					if ib_printprice then
+						ls_price = trim(string(round(id_detail.getitemdecimal(ll_counter, "saleprice"), 2)))
+					else
+						ls_price = ""
+					end if
+					if id_master.getitemnumber(1, "code") > 0.0 then
+						ls_infocode = trim(string(id_master.getitemnumber(1, "code")))
+					else
+						ls_infocode = "*******"
+					end if
+					ll_tot_label_rows = ceiling(ld_qty / 2.0)
+					for ll_innercounter = 1 to ll_tot_label_rows
+						ls_filecontent = "{"
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "B,1,N,1|"
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "001,~"" + ls_clientname_25_char + "~"|"
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "002,~"Rs.~"|"
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "003,~"" + ls_aliasname + "~"|"
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "004,~"" + ls_aliasname + "~"|"
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "005,~"" + ls_itemname + "~"|"
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "006,~"" + ls_price + "~"|"
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "007,~"" + ls_clientname_25_char + "~"|"
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "008,~"Rs.~"|"
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "009,~"" + ls_aliasname + "~"|"
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "010,~"" + ls_aliasname + "~"|"
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "011,~"" + ls_itemname + "~"|"
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "012,~"" + ls_price + "~"|"
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "013,~"" + ls_infocode + "~"|"
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "014,~"" + ls_infocode + "~"|"
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "}"
+						filewrite(li_file, ls_filecontent)
+					next
+				end if
+			next
+			fileclose(li_file)
+			run("..\BarcodePrint\BP.bat", normal!)
+		end if
+	end if
+	return 0

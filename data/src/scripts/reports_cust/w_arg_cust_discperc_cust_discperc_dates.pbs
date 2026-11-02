@@ -1,0 +1,31 @@
+// window w_arg_cust_discperc_cust_discperc_dates (reports_cust)  ancestor: w_arguements
+
+// w_arg_cust_discperc_cust_discperc_dates.wf_getdiscperc(long al_custcode, integer ai_custno) returns long
+	double ld_discperc
+	SQL SELECT ReportDiscPerc INTO :ld_discperc FROM Customer WHERE CustCode =:al_custcode USING sqlca;
+	if sqlca.sqlcode = 0 then
+		if ai_custno = 1 then
+			this.dw_control.object.discperc[1] = ld_discperc
+		else
+			this.dw_control.object.discperc2[1] = ld_discperc
+		end if
+	end if
+	return 0
+
+// w_arg_cust_discperc_cust_discperc_dates.create() returns 0
+	call super::create
+
+// w_arg_cust_discperc_cust_discperc_dates.destroy() returns 0
+	call super::destroy
+
+// w_arg_cust_discperc_cust_discperc_dates.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	return ::message.returnvalue
+
+// w_arg_cust_discperc_cust_discperc_dates.ue_close(integer ai_stauts) returns 0
+	super::ue_close(ai_stauts)
+	closewithreturn(this, this.istr_arg)

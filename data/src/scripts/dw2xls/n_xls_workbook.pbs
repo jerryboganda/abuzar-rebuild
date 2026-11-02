@@ -1,0 +1,107 @@
+// userobject n_xls_workbook (dw2xls)  ancestor: nonvisualobject
+
+// n_xls_workbook.of_create(string as_filename) returns integer
+	integer retvar
+	return retvar
+
+// n_xls_workbook.of_close() returns integer
+	integer retvar
+	return retvar
+
+// n_xls_workbook.of_addworksheet() returns n_xls_worksheet
+	return of_add_worksheet()
+
+// n_xls_workbook.of_addworksheet(blob ab_worksheetname) returns n_xls_worksheet
+	return of_add_worksheet(ab_worksheetname)
+
+// n_xls_workbook.of_addworksheet(string as_worksheetname) returns n_xls_worksheet
+	return of_add_worksheet(as_worksheetname)
+
+// n_xls_workbook.of_add_worksheet() returns n_xls_worksheet
+	n_xls_worksheet retvar
+	return retvar
+
+// n_xls_workbook.of_add_worksheet(blob ab_worksheetname) returns n_xls_worksheet
+	return of_add_worksheet(this.invo_sub.to_ansi(ab_worksheetname))
+
+// n_xls_workbook.of_add_worksheet(string as_worksheetname) returns n_xls_worksheet
+	n_xls_worksheet retvar
+	return retvar
+
+// n_xls_workbook.of_addformat() returns n_xls_format
+	return of_add_format()
+
+// n_xls_workbook.of_add_format() returns n_xls_format
+	n_xls_format retvar
+	return retvar
+
+// n_xls_workbook.of_set_custom_color(integer ai_index, integer ai_red, integer ai_green, integer ai_blue) returns integer
+	integer retvar
+	return retvar
+
+// n_xls_workbook.of_set_temp_dir(string as_tempdir) returns integer
+	integer retvar
+	return retvar
+
+// n_xls_workbook.of_set_codepage(unsignedinteger aui_codepage) returns integer
+	integer retvar
+	return retvar
+
+// n_xls_workbook.of_set_palette_xl97() returns integer
+	integer retvar
+	return retvar
+
+// n_xls_workbook.of_reg_format(n_xls_format anvo_format) returns long
+	string ls_key
+	long li_ret
+	if anvo_format.ii_xf_index > 0 then
+		li_ret = anvo_format.ii_xf_index
+	else
+		ls_key = anvo_format.of_get_format_key()
+		if this.invo_xfs.of_key_exists(ls_key) then
+			li_ret = this.invo_xfs.of_get_value(ls_key)
+		else
+			this.ii_xf_index = this.ii_xf_index + 1
+			this.il_formatindex = this.il_formatindex + 1
+			this.invo_formats[this.il_formatindex] = anvo_format
+			this.invo_xfs.of_set_value(ls_key, this.ii_xf_index)
+			anvo_format.ii_xf_index = this.ii_xf_index
+			li_ret = this.ii_xf_index
+		end if
+	end if
+	return li_ret
+
+// n_xls_workbook.of_get_xf(n_xls_format anvo_format) returns long
+	string ls_key
+	long li_ret
+	if anvo_format.ii_xf_index > 0 then
+		return anvo_format.ii_xf_index
+	end if
+	ls_key = anvo_format.of_get_format_key()
+	if this.invo_xfs.of_key_exists(ls_key) then
+		li_ret = this.invo_xfs.of_get_value(ls_key)
+	else
+		li_ret = 15
+	end if
+	return li_ret
+
+// n_xls_workbook.of_get_format(long ai_format) returns n_xls_format
+	return this.invo_formats[ai_format]
+
+// n_xls_workbook.create() returns 0
+	call super::create
+	triggerevent("constructor")
+
+// n_xls_workbook.destroy() returns 0
+	triggerevent("destructor")
+	call super::destroy
+
+// n_xls_workbook.constructor() returns long
+	this.invo_sub = create n_xls_subroutines_v97
+	this.invo_xfs = create n_cst_hash_long
+	return ::message.returnvalue
+
+// n_xls_workbook.destructor() returns long
+	destroy this.invo_sub
+	destroy this.invo_xfs
+	return ::message.returnvalue

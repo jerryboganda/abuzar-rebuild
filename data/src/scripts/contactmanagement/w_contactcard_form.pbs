@@ -1,0 +1,340 @@
+// window w_contactcard_form (contactmanagement)  ancestor: w_multi_entry
+
+// w_contactcard_form.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+
+// w_contactcard_form.wf_initmodify(integer ai_protect) returns 0
+	long ll_code
+	long ll_counter
+	long ll_count
+	ll_code = this.id_master.getitemnumber(1, "code")
+	this.id_master.retrieve(ll_code)
+	if ai_protect = 0 then
+		this.ib_modify = true
+		this.im_menu.m_file.m_save.enabled = true
+		this.im_menu.m_file.m_new.enabled = false
+		this.im_menu.m_file.m_delete.enabled = false
+		this.im_menu.m_item.m_newitem.enabled = false
+		this.im_menu.m_item.m_deleteitem.enabled = false
+		this.im_menu.m_file.m_first.enabled = false
+		this.im_menu.m_file.m_next.enabled = false
+		this.im_menu.m_file.m_previous.enabled = false
+		this.im_menu.m_file.m_last.enabled = false
+		this.im_menu.m_file.m_retrieve.enabled = true
+		this.im_menu.m_file.m_retrieve.text = "Lis&t"
+		this.tab_retrieve.tabpage_detail.enabled = true
+	end if
+
+// w_contactcard_form.wf_validateaccount(long al_acccode) returns long
+	string ls_name
+	string ls_address
+	string ls_phone
+	string ls_fax
+	string ls_email
+	string ls_web
+	string ls_mobile
+	integer li_subcode
+	if al_acccode > 0 then
+		SQL SELECT SubCode INTO :li_subcode FROM Accounts WHERE AccCode =:al_acccode USING this.it_transobject;
+		if this.it_transobject.sqlcode = 0 then
+			if li_subcode = 3 then
+				SQL SELECT Name =ISNULL ( CP , ( SELECT A.Name FROM Accounts A WHERE A.AccCode =:al_acccode ) ) , Address =ISNULL ( Address1 + ' ' , '' ) + ISNULL ( Address2 + ' ' , '' ) + ISNULL ( City + ' ' , '' ) + ISNULL ( Country , '' ) , Phone =Phone , Fax =Fax , Email =Email INTO :ls_name, :ls_address, :ls_phone, :ls_fax, :ls_email FROM Customer WHERE CustCode =:al_acccode USING this.it_transobject;
+			elseif li_subcode = 7 then
+				SQL SELECT Name =ISNULL ( CP , ( SELECT A.Name FROM Accounts A WHERE A.AccCode =:al_acccode ) ) , Address =ISNULL ( Address1 + ' ' , '' ) + ISNULL ( Address2 + ' ' , '' ) + ISNULL ( City + ' ' , '' ) + ISNULL ( Country , '' ) , Phone =Phone , Fax =Fax , Email =Email INTO :ls_name, :ls_address, :ls_phone, :ls_fax, :ls_email FROM Supplier WHERE suppCode =:al_acccode USING this.it_transobject;
+			end if
+			if this.it_transobject.sqlcode <> 0 then
+				messagebox("Account Information", "Problem Fetching Account Information from Database~r~nPossible Reason:-~r~n" + this.it_transobject.sqlerrtext, stopsign!)
+			end if
+		else
+			messagebox("Account Information", "Problem Fetching Account Information~r~nPossible Reason:-~r~n" + this.it_transobject.sqlerrtext, stopsign!)
+		end if
+	end if
+	this.id_master.object.name[1] = ls_name
+	this.id_master.object.address[1] = ls_address
+	this.id_master.object.phone[1] = ls_phone
+	this.id_master.object.fax[1] = ls_fax
+	this.id_master.object.email[1] = ls_email
+	this.id_master.object.web[1] = ""
+	this.id_master.object.mobile[1] = ls_phone
+	this.id_master.object.useforsms[1] = "N"
+	return 0
+
+// w_contactcard_form.create() returns 0
+	integer icurrent
+	call super::create
+
+// w_contactcard_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_contactcard_form.open() returns long
+	m_entry lm_menu
+	long ll_width
+	long ll_height
+	environment env
+	postevent("ue_postopen")
+	wf_setmenu(this.menuid)
+	lm_menu = this.menuid
+	lm_menu.dynamic mf_initsecurityapp(lm_menu)
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.tab_retrieve.width = ll_width * 0.99
+	this.tab_retrieve.height = ll_height * 0.83
+	this.tab_retrieve.tabpage_detail.dw_detail.width = ll_width * 0.97
+	this.tab_retrieve.tabpage_detail.dw_footer.width = ll_width * 0.97
+	this.tab_retrieve.tabpage_detail.dw_footer.y = this.tab_retrieve.height * 0.90 - this.tab_retrieve.tabpage_detail.dw_footer.height
+	this.tab_retrieve.tabpage_detail.dw_detail.height = this.tab_retrieve.tabpage_detail.dw_footer.y - this.tab_retrieve.tabpage_detail.dw_detail.y - 5
+	this.tab_retrieve.tabpage_list.gb_fliter.width = ll_width * 0.97 - this.tab_retrieve.tabpage_list.gb_sort.width
+	this.tab_retrieve.tabpage_list.r_1.width = ll_width * 0.99
+	this.tab_retrieve.tabpage_list.r_1.height = ll_height * 0.765 - this.tab_retrieve.tabpage_list.gb_sort.height
+	this.tab_retrieve.tabpage_list.dw_list.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_list.dw_list.height = ll_height * 0.75 - this.tab_retrieve.tabpage_list.dw_list.y
+	this.tab_retrieve.tabpage_detail.dw_itemslist.height = ll_height * 0.6
+	this.tab_retrieve.tabpage_detail.dw_itemslist.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width * 0.73
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_contactcard_form.ue_postopen() returns 0
+	long ll_rtncode
+	long ll_found
+	setredraw(false)
+	wf_connect()
+	this.id_master = this.tab_retrieve.tabpage_detail.dw_detail
+	this.id_detail = this.tab_retrieve.tabpage_detail.dw_itemsdetail
+	this.id_footer = this.tab_retrieve.tabpage_detail.dw_footer
+	this.id_list = this.tab_retrieve.tabpage_list.dw_list
+	this.id_itemslist = this.tab_retrieve.tabpage_detail.dw_itemslist
+	this.id_master.settransobject(this.it_transobject)
+	this.id_detail.settransobject(this.it_transobject)
+	this.id_list.settransobject(this.it_transobject)
+	this.id_footer.settransobject(this.it_transobject)
+	this.id_itemslist.settransobject(this.it_transobject)
+	this.id_dwcontrol = this.id_list
+	post wf_populate_ddlb(this.id_dwcontrol)
+	this.tab_retrieve.tabpage_list.dw_find.settransobject(this.it_transobject)
+	this.id_master.setfocus()
+	setredraw(true)
+	ll_found = gds_securitywindow.find("rightcode = 5012", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.ib_modifydate = true
+	end if
+	this.id_print = this.tab_retrieve.tabpage_detail.dw_print
+	this.id_print.settransobject(sqlca)
+
+// w_contactcard_form.ue_save() returns 0
+	long ll_primarykey
+	long ll_row
+	long ll_counter
+	long ll_usercode
+	long ll_null
+	long ll_primarycode_old
+	long ll_start
+	long ll_end
+	string ls_mobile
+	string ls_email
+	char lc_temp
+	boolean lb_commit
+	boolean lb_mobileok
+	setnull(ll_null)
+	setpointer(hourglass!)
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	ll_row = this.id_master.getrow()
+	ll_primarykey = this.id_master.object.code[this.id_master.getrow()]
+	ll_primarycode_old = ll_primarykey
+	ls_mobile = this.id_master.object.mobile[1]
+	if len(ls_mobile) > 0 and match(ls_mobile, "[ A-Za-z+-.,;:~"\@#%^&*()]+$") then
+		messagebox("Mobile Number Validation", "Please enter valid mobile number", stopsign!)
+		this.id_master.setcolumn("mobile")
+		return
+	end if
+	if len(ls_mobile) > 0 then
+		ll_end = len(ls_mobile)
+		for ll_start = 1 to ll_end
+			lc_temp = mid(ls_mobile, ll_start, 1)
+			if not (asc(lc_temp) = 44 or asc(lc_temp) > 47 and asc(lc_temp) < 58) then
+				lb_mobileok = false
+				exit
+			end if
+		next
+	end if
+	if lb_mobileok = false then
+		messagebox("Mobile Number Validation", "Invalid characters in mobile no are not allowed.~r~nPlease enter valid mobile number", stopsign!)
+		this.id_master.setcolumn("mobile")
+		return
+	end if
+	ls_email = this.id_master.object.email[1]
+	if len(ls_email) > 0 and pos(ls_email, "@", 1) <= 0 then
+		messagebox("Email Address Validation", "Please enter valid Email Address", stopsign!)
+		this.id_master.setcolumn("email")
+		return
+	end if
+	if isnull(ll_primarykey) then
+		ll_primarykey = 0
+		SQL rollback USING this.it_transobject;
+		wf_tabnewid("ContactCard", ll_primarykey)
+		if this.it_transobject.sqlcode = 0 then
+			this.id_master.setitem(ll_row, "code", ll_primarykey)
+		else
+			SQL rollback USING this.it_transobject;
+			lb_commit = false
+			messagebox("Contact Card Saving Problem", "Problem in Auto Generation of Contact Card Code~r~n Possibe Reason: " + this.it_transobject.sqlerrtext)
+		end if
+	end if
+	if lb_commit and this.id_master.update(true, false) < 0 then
+		SQL rollback USING this.it_transobject;
+		lb_commit = false
+		messagebox("Contact Card Saving Problem", "Problem in updating Contact Card.")
+	end if
+	if lb_commit then
+		SQL commit USING this.it_transobject;
+		messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+		this.ib_commitok = true
+		this.id_master.resetupdate()
+		this.im_menu.m_file.m_new.enabled = true
+		this.editflag = false
+		if gd_recenttransdate < this.id_systemdate then
+			gd_recenttransdate = this.id_systemdate
+		end if
+	end if
+	if isnull(ll_primarycode_old) then
+		this.id_master.setitem(ll_row, "code", ll_null)
+	end if
+	setpointer(arrow!)
+
+// w_contactcard_form.ue_newitem() returns 0
+
+// w_contactcard_form.ue_newform() returns 0
+	string ls_date_errtext
+	datetime ldt_server_datetime
+	setredraw(false)
+	this.i_editmode = 1
+	this.i_retrievemode = 2
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_new.enabled = false
+	this.im_menu.m_file.m_delete.enabled = false
+	this.im_menu.m_file.m_first.enabled = false
+	this.im_menu.m_file.m_next.enabled = false
+	this.im_menu.m_file.m_previous.enabled = false
+	this.im_menu.m_file.m_last.enabled = false
+	this.im_menu.m_file.m_print.enabled = false
+	this.im_menu.m_file.m_retrieve.enabled = true
+	this.im_menu.m_file.m_retrieve.text = "Lis&t"
+	this.tab_retrieve.tabpage_detail.enabled = true
+	if this.id_master.rowcount() > 0 then
+		this.id_master.reset()
+	end if
+	this.ib_focusdetail = false
+	this.id_master.insertrow(0)
+	this.id_master.setcolumn(1)
+	this.id_master.setfocus()
+	this.id_master.selecttext(1, len(this.id_master.gettext()))
+	setredraw(true)
+
+// w_contactcard_form.ue_detail() returns 0
+	long ll_code
+	integer li_protect
+	boolean lb_modify
+	string ls_smstemplate
+	call super::ue_detail
+	if this.id_list.getrow() > 0 then
+		ll_code = this.id_list.object.code[this.id_list.getrow()]
+	end if
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_menu.m_file.m_post.enabled = false
+	lb_modify = true
+	if not lb_modify then
+		this.im_menu.m_file.m_save.enabled = false
+		this.editflag = false
+	else
+		li_protect = 0
+	end if
+	wf_initmodify(li_protect)
+	wf_protectdw(this.id_master, li_protect)
+	setredraw(true)
+
+// w_contactcard_form.ue_list() returns 0
+	call super::ue_list
+	SQL rollback USING this.it_transobject;
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_menu.m_file.m_post.enabled = true
+
+// w_contactcard_form.ue_print() returns 0
+	long ll_code
+	long ll_row
+	long li_printretcode
+	string ls_printsize
+	boolean lb_listtab
+	s_datastore lstr
+	call super::ue_print
+	if this.tab_retrieve.selectedtab = 2 then
+		lb_listtab = true
+	end if
+	if this.im_menu.m_file.m_save.enabled = true and lb_listtab = false then
+		triggerevent("ue_save")
+		if wf_commitform() = false then
+			return
+		end if
+		return
+	end if
+	if lb_listtab then
+		if isnull(this.id_list.getrow()) or this.id_list.getrow() <= 0 then
+			messagebox("Rows Validation", "Kindly select any row from the list view.")
+			return
+		end if
+		ll_code = this.id_list.getitemnumber(this.id_list.getrow(), "code")
+		if isnull(ll_code) or ll_code <= 0 then
+			messagebox("Selection Validation", "Kindly select any row from the list view.")
+			return
+		end if
+	else
+		ll_code = this.id_detail.getitemnumber(1, "code")
+	end if
+	this.id_print.retrieve(ll_code)
+	if lb_listtab then
+		lstr.dw = this.id_print
+		lstr.s_name1 = this.id_print.dataobject
+		openwithparm(w_preview_invoices, lstr)
+		lstr = message.powerobjectparm
+		if lstr.i_closemode = -1 then
+			return
+		end if
+		return
+	end if
+	if this.id_print.rowcount() > 0 then
+		if f_stringpreferences("PromptBeforePrinting") = "Y" and printsetup() < 0 then
+			messagebox("Printer", "Printing Error")
+			this.id_print.printcancel()
+		end if
+		li_printretcode = this.id_print.print()
+		if li_printretcode < 0 then
+			messagebox("Printing", "Can not Print Invoice", information!)
+		end if
+		if this.im_menu.m_file.m_save.enabled = true and lb_listtab = false then
+			postevent("ue_new")
+		end if
+		return
+	end if
+	messagebox("Printing Error", "Can not Print,~r~nNo rows are retrieved", information!)

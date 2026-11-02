@@ -1,0 +1,31 @@
+// function f_getean8_barcode (functions)  ancestor: function_object
+
+// f_getean8_barcode.f_getean8_barcode(string as_code1, string as_code2, string as_code3, string as_barcode, string as_errtext) returns long
+	long ll_counter
+	long ll_retcode
+	double ld_total
+	double ld_nearest_multiple_of_10
+	string ls_barcode
+	string ls_ean8
+	char lc_this_char
+	integer[] li_weight
+	integer[] li_value
+	integer li_this
+	ls_barcode = left(trim(as_code1) + trim(as_code2) + trim(as_code3), 12)
+	for ll_counter = 1 to 7
+		lc_this_char = mid(ls_barcode, ll_counter, 1)
+		if asc(lc_this_char) >= 48 and asc(lc_this_char) <= 57 then
+			li_this = integer(lc_this_char)
+			li_value[ll_counter] = li_this * li_weight[ll_counter]
+			ld_total = ld_total + li_value[ll_counter]
+		else
+			ll_retcode = -1
+			as_errtext = "Invalid Character in barcode.~r~nCharacter = " + lc_this_char
+		end if
+	next
+	if ll_retcode = 0 then
+		ld_nearest_multiple_of_10 = ceiling(ld_total / 10.0) * 10.0
+		ls_ean8 = ls_barcode + trim(string(integer(ld_nearest_multiple_of_10 - ld_total)))
+		as_barcode = ls_ean8
+	end if
+	return ll_retcode

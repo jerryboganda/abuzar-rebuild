@@ -1,0 +1,182 @@
+// window w_packcasecapacity (packingmodule)  ancestor: w_multi_entry
+
+// w_packcasecapacity.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM ItemCategory WHERE Name =:as_name USING this.it_transobject;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_packcasecapacity.wf_validateitem() returns integer
+	long ll_catcode
+	long ll_packcode
+	long rt_code
+	integer li_errcode
+	integer li_null
+	boolean ib_yesno
+	setnull(li_null)
+	ll_packcode = this.id_detail.getitemnumber(this.il_currrow, "packcode")
+	if this.id_detail.rowcount() > 1 then
+		if this.il_currrow > 1 then
+			rt_code = this.id_detail.find("packcode = " + trim(string(ll_packcode)), this.il_currrow - 1, 0)
+		end if
+		if rt_code = 0 then
+			if this.il_currrow <> this.id_detail.rowcount() then
+				rt_code = this.id_detail.find("packcode = " + trim(string(ll_packcode)), this.il_currrow + 1, this.id_detail.rowcount())
+			end if
+			if rt_code <> 0 then
+				ib_yesno = true
+			end if
+		else
+			ib_yesno = true
+		end if
+	end if
+	if ib_yesno = true then
+		messagebox("Duplication Error", "Current row is duplicate")
+		li_errcode = -1
+	else
+		li_errcode = 0
+	end if
+	this.ib_itemvalidated = true
+	if li_errcode = -1 then
+		this.id_detail.setcolumn("packcode")
+		this.id_detail.scrolltorow(this.il_currrow)
+		this.id_detail.object.packcode[this.il_currrow] = li_null
+	end if
+	return li_errcode
+
+// w_packcasecapacity.wf_populate_possible_packs() returns long
+	long ll_retcode
+	long ll_rowcount
+	long ll_counter
+	long ll_res
+	long ll_newrow
+	datastore lds_packs
+	lds_packs = create datastore
+	lds_packs.dataobject = "ddd_itempacking"
+	lds_packs.settransobject(this.it_transobject)
+	lds_packs.retrieve()
+	ll_res = messagebox("Populate Packings", "Populate all Possible Packings?~r~n~r~nExisting Rows will be lost before population", question!, yesnocancel!, 2)
+	if ll_res = 1 then
+		for ll_rowcount = 1 to this.id_detail.rowcount()
+			event ue_deleteitem()
+		next
+		ll_rowcount = lds_packs.rowcount()
+		for ll_counter = 1 to ll_rowcount
+			ll_newrow = this.id_detail.insertrow(0)
+			this.id_detail.object.packcode[ll_newrow] = lds_packs.object.packcode[ll_counter]
+		next
+	end if
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_save.visible = true
+	return 0
+
+// w_packcasecapacity.wf_populate_packing_for_this_category() returns long
+	long ll_retcode
+	long ll_rowcount
+	long ll_counter
+	long ll_res
+	long ll_newrow
+	long ll_icatcode
+	datastore lds_packs
+	ll_icatcode = this.id_master.object.code[1]
+	if ll_icatcode <= 0 then
+		return 0
+	end if
+	lds_packs = create datastore
+	lds_packs.dataobject = "ddd_packinglist_for_a_category"
+	lds_packs.settransobject(this.it_transobject)
+	lds_packs.retrieve(ll_icatcode)
+	ll_res = messagebox("Populate Packings", "Populate all Possible Packings for the selected category?~r~n~r~nExisting Rows will be lost before population", question!, yesnocancel!, 2)
+	if ll_res = 1 then
+		for ll_rowcount = 1 to this.id_detail.rowcount()
+			event ue_deleteitem()
+		next
+		ll_rowcount = lds_packs.rowcount()
+		for ll_counter = 1 to ll_rowcount
+			ll_newrow = this.id_detail.insertrow(0)
+			this.id_detail.object.packcode[ll_newrow] = lds_packs.object.packcode[ll_counter]
+		next
+	end if
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_save.visible = true
+	return 0
+
+// w_packcasecapacity.create() returns 0
+	call super::create
+
+// w_packcasecapacity.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_packcasecapacity.ue_save() returns 0
+	long ll_mastercurrrow
+	long ll_invid
+	long ll_detailrows
+	integer li_counter
+	integer ll_salesmancode
+	boolean lb_commitflag
+	dwitemstatus lds_rowstatus
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	setpointer(hourglass!)
+	ll_mastercurrrow = this.id_master.getrow()
+	if ll_mastercurrrow > 0 then
+		if isnull(this.id_master.object.code[ll_mastercurrrow]) then
+			messagebox("Item Category Validation", "No Item Category Selected from List View.~r~nPlease select a valid Item Category from List View and then define packing cases capacities.")
+			return
+		end if
+	else
+		return
+	end if
+	ll_invid = this.id_master.object.code[ll_mastercurrrow]
+	if isnull(ll_invid) then
+		f_newtableid("itemcategory", ll_invid)
+		this.id_master.object.code[ll_mastercurrrow] = ll_invid
+	end if
+	ll_detailrows = this.id_detail.rowcount()
+	li_counter = 1
+	do while li_counter <= ll_detailrows and lb_commitflag = true
+		lds_rowstatus = this.id_detail.getitemstatus(li_counter, 0, primary!)
+		if lds_rowstatus = newmodified! then
+			this.id_detail.setitem(li_counter, "code", ll_invid)
+		end if
+		li_counter = li_counter + 1
+	loop
+	call super::ue_save
+	setpointer(arrow!)
+
+// w_packcasecapacity.ue_newform() returns 0
+	call super::ue_newform
+	this.id_master.setfocus()
+
+// w_packcasecapacity.ue_newitem() returns 0
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	call super::ue_newitem
+	this.id_detail.setcolumn("packcode")
+
+// w_packcasecapacity.ue_detail() returns 0
+	call super::ue_detail
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_delete.enabled = true
+	this.im_menu.m_file.m_first.enabled = true
+	this.im_menu.m_file.m_next.enabled = true
+	this.im_menu.m_file.m_last.enabled = true
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_menu.m_file.m_previous.enabled = true
+	this.im_menu.m_item.m_newitem.enabled = true
+	this.im_menu.m_item.m_deleteitem.enabled = true

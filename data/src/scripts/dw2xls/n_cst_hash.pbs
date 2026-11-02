@@ -1,0 +1,230 @@
+// userobject n_cst_hash (dw2xls)  ancestor: nonvisualobject
+
+// n_cst_hash.of_key_exists(string as_key) returns boolean
+	unsignedlong ll_h
+	unsignedlong ll_i
+	n_cst_hash_entry lnvo_entry
+	ll_h = of_hash(as_key)
+	ll_i = ll_h mod this.il_field_max_value + 1
+	lnvo_entry = this.invo_fields[ll_i]
+	do while not isnull(lnvo_entry)
+		if lnvo_entry.il_hash = ll_h and lnvo_entry.is_key = as_key then
+			return true
+		end if
+		lnvo_entry = lnvo_entry.invo_next
+	loop
+	return false
+
+// n_cst_hash.of_get_capacity() returns long
+	return this.il_field_max_value + 1
+
+// n_cst_hash.of_get_keys(string[] as_keys) returns long
+	string[] ls_ret
+	long ll_cnt
+	long ll_i
+	n_cst_hash_entry lnvo_cur_entry
+	ll_cnt = 0
+	for ll_i = 1 to this.il_field_max_value + 1
+		lnvo_cur_entry = this.invo_fields[ll_i]
+		do while not isnull(lnvo_cur_entry)
+			ll_cnt = ll_cnt + 1
+			ls_ret[ll_cnt] = lnvo_cur_entry.is_key
+			lnvo_cur_entry = lnvo_cur_entry.invo_next
+		loop
+	next
+	as_keys = ls_ret
+	return ll_cnt
+
+// n_cst_hash.of_create_entry() returns n_cst_hash_entry
+	n_cst_hash_entry ret
+	setnull(ret)
+	return ret
+
+// n_cst_hash.of_extend_hash(long al_power) returns integer
+	unsignedlong ll_i
+	unsignedlong ll_old_size
+	unsignedlong ll_new_size
+	unsignedlong ll_new_pos
+	unsignedlong ll_start
+	n_cst_hash_entry lnvo_cur_entry
+	n_cst_hash_entry lnvo_prev_entry
+	n_cst_hash_entry lnvo_next_entry
+	ll_old_size = this.il_field_max_value + 1
+	ll_new_size = ll_old_size * 2 ^ al_power
+	if ll_new_size > this.il_max_capacity and this.il_max_capacity <> -1 then
+		return -1
+	end if
+	this.il_field_max_value = ll_new_size - 1
+	for ll_i = ll_old_size + 1 to ll_new_size
+		setnull(this.invo_fields[ll_i])
+	next
+	for ll_i = ll_start to ll_old_size
+		lnvo_cur_entry = this.invo_fields[ll_i]
+		setnull(lnvo_prev_entry)
+		do while not isnull(lnvo_cur_entry)
+			ll_new_pos = lnvo_cur_entry.il_hash mod this.il_field_max_value + 1
+			if ll_new_pos <> ll_i then
+				if lnvo_cur_entry = this.invo_fields[ll_i] then
+					this.invo_fields[ll_i] = lnvo_cur_entry.invo_next
+					lnvo_next_entry = lnvo_cur_entry.invo_next
+				else
+					lnvo_prev_entry.invo_next = lnvo_cur_entry.invo_next
+					lnvo_next_entry = lnvo_cur_entry.invo_next
+				end if
+				lnvo_cur_entry.invo_next = this.invo_fields[ll_new_pos]
+				this.invo_fields[ll_new_pos] = lnvo_cur_entry
+			else
+				lnvo_prev_entry = lnvo_cur_entry
+				lnvo_next_entry = lnvo_cur_entry.invo_next
+			end if
+			lnvo_cur_entry = lnvo_next_entry
+		loop
+	next
+	return 1
+
+// n_cst_hash.of_set_capacity(long al_new_capacity) returns integer
+	long ll_power
+	long ll_capacity
+	ll_capacity = of_get_capacity()
+	if al_new_capacity > ll_capacity then
+		ll_power = 1 + truncate(log(al_new_capacity - 1) / log(2) - log(ll_capacity) / log(2) + 0.00001, 0)
+		if ll_power > 0 then
+			return of_extend_hash(ll_power)
+		end if
+		return
+	end if
+	return 1
+
+// n_cst_hash.of_set_max_capacity(long al_new_max_capacity) returns integer
+	long ll_capacity
+	if al_new_max_capacity < 0 then
+		this.il_max_capacity = -1
+	else
+		ll_capacity = of_get_capacity()
+		if al_new_max_capacity < ll_capacity then
+			this.il_max_capacity = ll_capacity
+		else
+			this.il_max_capacity = al_new_max_capacity
+		end if
+	end if
+	return 1
+
+// n_cst_hash.of_delete_key(string as_key) returns integer
+	n_cst_hash_entry lnvo_cur_entry
+	n_cst_hash_entry lnvo_prev_entry
+	n_cst_hash_entry lnvo_next_entry
+	unsignedlong ll_h
+	unsignedlong ll_i
+	ll_h = of_hash(as_key)
+	ll_i = ll_h mod this.il_field_max_value + 1
+	lnvo_cur_entry = this.invo_fields[ll_i]
+	setnull(lnvo_prev_entry)
+	do while not isnull(lnvo_cur_entry)
+		if lnvo_cur_entry.il_hash = ll_h then
+			if lnvo_cur_entry.is_key = as_key then
+				if lnvo_cur_entry = this.invo_fields[ll_i] then
+					this.invo_fields[ll_i] = lnvo_cur_entry.invo_next
+					lnvo_next_entry = lnvo_cur_entry.invo_next
+				else
+					lnvo_prev_entry.invo_next = lnvo_cur_entry.invo_next
+					lnvo_next_entry = lnvo_cur_entry.invo_next
+				end if
+				this.il_field_count = this.il_field_count - 1
+				destroy lnvo_cur_entry
+			else
+				lnvo_prev_entry = lnvo_cur_entry
+				lnvo_next_entry = lnvo_cur_entry.invo_next
+			end if
+		else
+			lnvo_prev_entry = lnvo_cur_entry
+			lnvo_next_entry = lnvo_cur_entry.invo_next
+		end if
+		lnvo_cur_entry = lnvo_next_entry
+	loop
+	return 1
+
+// n_cst_hash.of_find_hash_entry(string as_key) returns n_cst_hash_entry
+	unsignedlong ll_h
+	unsignedlong ll_i
+	n_cst_hash_entry lnvo_cur_entry
+	n_cst_hash_entry ret
+	setnull(ret)
+	ll_h = of_hash(as_key)
+	ll_i = ll_h mod this.il_field_max_value + 1
+	lnvo_cur_entry = this.invo_fields[ll_i]
+	do while not isnull(lnvo_cur_entry)
+		if lnvo_cur_entry.il_hash = ll_h and lnvo_cur_entry.is_key = as_key then
+			ret = lnvo_cur_entry
+			return ret
+		end if
+		lnvo_cur_entry = lnvo_cur_entry.invo_next
+	loop
+	return ret
+
+// n_cst_hash.of_get_hash_entry(string as_key) returns n_cst_hash_entry
+	unsignedlong ll_h
+	unsignedlong ll_i
+	n_cst_hash_entry lnvo_cur_entry
+	n_cst_hash_entry ret
+	setnull(ret)
+	if this.il_field_count > this.il_field_max_value then
+		of_extend_hash(1)
+	end if
+	ll_h = of_hash(as_key)
+	ll_i = ll_h mod this.il_field_max_value + 1
+	lnvo_cur_entry = this.invo_fields[ll_i]
+	do while not isnull(lnvo_cur_entry)
+		if lnvo_cur_entry.il_hash = ll_h and lnvo_cur_entry.is_key = as_key then
+			ret = lnvo_cur_entry
+			exit
+		end if
+		lnvo_cur_entry = lnvo_cur_entry.invo_next
+	loop
+	if isnull(ret) then
+		ret = of_create_entry()
+		this.il_field_count = this.il_field_count + 1
+		ret.invo_next = this.invo_fields[ll_i]
+		ret.il_hash = ll_h
+		ret.is_key = as_key
+		this.invo_fields[ll_i] = ret
+	end if
+	return ret
+
+// n_cst_hash.of_hash(string as_key) returns unsignedlong
+	unsignedlong ll_i
+	unsignedlong ll_len
+	unsignedlong ll_start
+	unsignedlong ll_ret
+	ll_len = len(as_key)
+	for ll_i = ll_start to ll_len
+		ll_ret = 33 * ll_ret + asc(mid(as_key, ll_i, 1))
+	next
+	ll_ret = ll_ret / 32.0 + ll_ret
+	return ll_ret
+
+// n_cst_hash.create() returns 0
+	call super::create
+	triggerevent("constructor")
+
+// n_cst_hash.destroy() returns 0
+	triggerevent("destructor")
+	call super::destroy
+
+// n_cst_hash.constructor() returns long
+	long ll_i
+	for ll_i = 1 to this.il_field_max_value + 1
+		setnull(this.invo_fields[ll_i])
+	next
+	return ::message.returnvalue
+
+// n_cst_hash.destructor() returns long
+	long ll_i
+	n_cst_hash_entry lnvo_cur_entry
+	for ll_i = 1 to this.il_field_max_value + 1
+		do while not isnull(this.invo_fields[ll_i]) and isvalid(this.invo_fields[ll_i])
+			lnvo_cur_entry = this.invo_fields[ll_i]
+			this.invo_fields[ll_i] = lnvo_cur_entry.invo_next
+			destroy lnvo_cur_entry
+		loop
+	next
+	return 1

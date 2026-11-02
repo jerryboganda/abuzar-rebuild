@@ -1,0 +1,520 @@
+// userobject n_dwr_datetime (dw2xls)  ancestor: nonvisualobject
+
+// n_dwr_datetime.of_gregorian(long al_julian) returns date
+	date ldt_null
+	long ll_numqc
+	long ll_numq
+	long ll_numc
+	long ll_cent
+	long ll_quad
+	integer li_year
+	integer li_month
+	integer li_day
+	integer[] li_daysinmonth
+	if isnull(al_julian) then
+		setnull(ldt_null)
+		return ldt_null
+	end if
+	ll_numqc = al_julian / 146097.0
+	li_year = ll_numqc * 400
+	al_julian = al_julian - 146097 * ll_numqc
+	ll_numc = 0
+	if al_julian > ll_cent + 1 then
+		al_julian = al_julian - (ll_cent + 1)
+		li_year = 100 + li_year
+		ll_numc = al_julian / ll_cent
+		li_year = ll_numc * 100 + li_year
+		al_julian = al_julian - ll_numc * ll_cent
+		ll_numc = ll_numc + 1
+	end if
+	if ll_numc > 0 and al_julian > ll_quad - 1 then
+		al_julian = al_julian - (ll_quad - 1)
+		li_year = 4 + li_year
+	end if
+	ll_numq = al_julian / ll_quad
+	li_year = ll_numq * 4 + li_year
+	al_julian = al_julian - ll_numq * ll_quad
+	if of_isleapyear(date(li_year, 1, 1)) then
+		if al_julian >= 366 then
+			al_julian = al_julian - 366
+			li_year = li_year + 1
+		elseif al_julian = 59 then
+			li_month = 2
+			li_day = 29
+			return date(li_year, li_month, li_day)
+		elseif al_julian > 59 then
+			al_julian = al_julian - 1
+		end if
+	end if
+	do while al_julian >= 365
+		al_julian = al_julian - 365
+		li_year = li_year + 1
+	loop
+	li_month = 0
+	do while li_daysinmonth[li_month + 1] <= al_julian
+		al_julian = al_julian - li_daysinmonth[li_month + 1]
+		li_month = li_month + 1
+	loop
+	li_month = li_month + 1
+	li_day = al_julian + 1
+	return date(li_year, li_month, li_day)
+
+// n_dwr_datetime.of_days(long al_seconds) returns long
+	long ll_result
+	long ll_null
+	if isnull(al_seconds) then
+		setnull(ll_null)
+		return ll_null
+	end if
+	if al_seconds < 0 then
+		return -1
+	end if
+	ll_result = al_seconds / 3600.0 / 24.0
+	return ll_result
+
+// n_dwr_datetime.of_hours(long al_seconds) returns long
+	long ll_result
+	long ll_null
+	if isnull(al_seconds) then
+		setnull(ll_null)
+		return ll_null
+	end if
+	if al_seconds < 0 then
+		return -1
+	end if
+	ll_result = al_seconds / 3600.0
+	return ll_result
+
+// n_dwr_datetime.of_yearsafter(date ad_start, date ad_end) returns long
+	date ld_temp
+	integer li_year
+	integer li_mult
+	double adb_start
+	double adb_end
+	long ll_null
+	if isnull(ad_start) or isnull(ad_end) or not of_isvalid(ad_start) or not of_isvalid(ad_end) then
+		setnull(ll_null)
+		return ll_null
+	end if
+	if ad_start > ad_end then
+		ld_temp = ad_start
+		ad_start = ad_end
+		ad_end = ld_temp
+		li_mult = -1
+	else
+		li_mult = 1
+	end if
+	li_year = year(ad_end) - year(ad_start)
+	adb_start = month(ad_start)
+	adb_start = adb_start + day(ad_start) / 100.0
+	adb_end = month(ad_end)
+	adb_end = adb_end + day(ad_end) / 100.0
+	if adb_start > adb_end then
+		li_year = li_year - 1
+	end if
+	return li_year * li_mult
+
+// n_dwr_datetime.of_weeksafter(date ad_start, date ad_end) returns long
+	long ll_null
+	if isnull(ad_start) or isnull(ad_end) or not of_isvalid(ad_start) or not of_isvalid(ad_end) then
+		setnull(ll_null)
+		return ll_null
+	end if
+	return daysafter(ad_start, ad_end) / 7.0
+
+// n_dwr_datetime.of_millisecsafter(time atm_start, time atm_end) returns long
+	long ll_start
+	long ll_end
+	long ll_temp
+	long ll_null
+	if isnull(atm_start) or isnull(atm_end) then
+		setnull(ll_null)
+		return ll_null
+	end if
+	ll_start = long(string(atm_start, "fff"))
+	ll_temp = second(atm_start) * 1000
+	ll_start = ll_start + ll_temp
+	ll_temp = minute(atm_start) * 60000
+	ll_start = ll_start + ll_temp
+	ll_temp = hour(atm_start) * 3600000
+	ll_start = ll_start + ll_temp
+	ll_end = long(string(atm_end, "fff"))
+	ll_temp = second(atm_end) * 1000
+	ll_end = ll_end + ll_temp
+	ll_temp = minute(atm_end) * 60000
+	ll_end = ll_end + ll_temp
+	ll_temp = hour(atm_end) * 3600000
+	ll_end = ll_end + ll_temp
+	return ll_end - ll_start
+
+// n_dwr_datetime.of_wait(datetime adtm_target) returns integer
+	date ldt_value
+	long ll_null
+	if isnull(adtm_target) then
+		setnull(ll_null)
+		return ll_null
+	end if
+	ldt_value = date(adtm_target)
+	if not of_isvalid(ldt_value) then
+		return -1
+	end if
+	do while datetime(today(), now()) < adtm_target
+		yield()
+	loop
+	return 1
+
+// n_dwr_datetime.of_wait(unsignedlong al_seconds) returns integer
+	datetime ldtm_target
+	integer li_ret
+	if isnull(al_seconds) then
+		return al_seconds
+	end if
+	if al_seconds <= 0 then
+		return -1
+	end if
+	ldtm_target = of_relativedatetime(datetime(today(), now()), al_seconds)
+	li_ret = of_wait(ldtm_target)
+	return li_ret
+
+// n_dwr_datetime.of_isvalid(datetime adtm_source) returns boolean
+	date ldt_value
+	date ldt_invalid
+	if isnull(adtm_source) then
+		return false
+	end if
+	ldt_value = date(adtm_source)
+	if not of_isvalid(ldt_value) then
+		return false
+	end if
+	return true
+
+// n_dwr_datetime.of_firstdayofmonth(date ad_source) returns date
+	date ldt_null
+	if isnull(ad_source) then
+		setnull(ldt_null)
+		return ldt_null
+	end if
+	if not of_isvalid(ad_source) then
+		return ad_source
+	end if
+	return date(year(ad_source), month(ad_source), 1)
+
+// n_dwr_datetime.of_isleapyear(date ad_source) returns boolean
+	integer li_year
+	boolean lb_null
+	setnull(lb_null)
+	if isnull(ad_source) then
+		return lb_null
+	end if
+	if not of_isvalid(ad_source) then
+		return lb_null
+	end if
+	li_year = integer(string(ad_source, "yyyy"))
+	if li_year mod 4 = 0 and li_year mod 100 <> 0 or li_year mod 400 = 0 then
+		return true
+	end if
+	return false
+
+// n_dwr_datetime.of_isvalid(date ad_source) returns boolean
+	date ldt_invalid
+	integer li_year
+	integer li_month
+	integer li_day
+	boolean ret
+	ldt_invalid = date("50/50/1900")
+	li_year = year(ad_source)
+	li_month = month(ad_source)
+	li_day = day(ad_source)
+	if isnull(ad_source) or isnull(li_year) or isnull(li_month) or isnull(li_day) then
+		return false
+	end if
+	if string(ad_source, "dd.mm.yyyy") = string(ldt_invalid, "dd.mm.yyyy") or li_year <= 0 or li_month <= 0 or li_day <= 0 then
+		return false
+	end if
+	return true
+
+// n_dwr_datetime.of_isweekday(date ad_source) returns boolean
+	boolean lb_null
+	if isnull(ad_source) or not of_isvalid(ad_source) then
+		setnull(lb_null)
+		return lb_null
+	end if
+	if daynumber(ad_source) > 1 and daynumber(ad_source) < 7 then
+		return true
+	end if
+	return false
+
+// n_dwr_datetime.of_isweekend(date ad_source) returns boolean
+	boolean lb_null
+	if isnull(ad_source) or not of_isvalid(ad_source) then
+		setnull(lb_null)
+		return lb_null
+	end if
+	return not of_isweekday(ad_source)
+
+// n_dwr_datetime.of_julian(date ad_source) returns long
+	long ll_null
+	if isnull(ad_source) then
+		setnull(ll_null)
+		return ll_null
+	end if
+	if not of_isvalid(ad_source) then
+		return -1
+	end if
+	return daysafter(date(0, 1, 1), ad_source)
+
+// n_dwr_datetime.of_juliandaynumber(date ad_source) returns long
+	long ll_null
+	if isnull(ad_source) then
+		setnull(ll_null)
+		return ll_null
+	end if
+	if not of_isvalid(ad_source) then
+		return -1
+	end if
+	return daysafter(date(year(ad_source) - 1, 12, 31), ad_source)
+
+// n_dwr_datetime.of_lastdayofmonth(date ad_source) returns date
+	integer li_year
+	integer li_month
+	integer li_day
+	boolean ret
+	date ldt_null
+	if isnull(ad_source) then
+		setnull(ldt_null)
+		return ldt_null
+	end if
+	if not of_isvalid(ad_source) then
+		return ad_source
+	end if
+	li_year = year(ad_source)
+	li_month = month(ad_source)
+	li_day = 31
+	ret = of_isvalid(date(li_year, li_month, li_day))
+	do while not ret and li_day > 0
+		li_day = li_day - 1
+		ret = of_isvalid(date(li_year, li_month, li_day))
+	loop
+	return date(li_year, li_month, li_day)
+
+// n_dwr_datetime.of_relativedatetime(datetime adtm_start, long al_offset) returns datetime
+	datetime ldt_null
+	date ld_sdate
+	time lt_stime
+	long ll_date_adjust
+	long ll_time_adjust
+	long ll_time_test
+	if isnull(adtm_start) or isnull(al_offset) then
+		setnull(ldt_null)
+		return ldt_null
+	end if
+	if not of_isvalid(adtm_start) then
+		return ldt_null
+	end if
+	ld_sdate = date(adtm_start)
+	lt_stime = time(adtm_start)
+	ll_date_adjust = al_offset / 86400.0
+	ll_time_adjust = al_offset mod 86400
+	ld_sdate = relativedate(ld_sdate, ll_date_adjust)
+	if ll_time_adjust > 0 then
+		ll_time_test = secondsafter(lt_stime, time("23:59:59"))
+		if ll_time_test < ll_time_adjust then
+			ld_sdate = relativedate(ld_sdate, 1)
+			ll_time_adjust = ll_time_adjust - ll_time_test - 1
+			lt_stime = time("00:00:00")
+		end if
+		lt_stime = relativetime(lt_stime, ll_time_adjust)
+	elseif ll_time_adjust < 0 then
+		ll_time_test = secondsafter(lt_stime, time("00:00:00"))
+		if ll_time_test > ll_time_adjust then
+			ld_sdate = relativedate(ld_sdate, -1)
+			ll_time_adjust = ll_time_adjust - ll_time_test + 1
+			lt_stime = time("23:59:59")
+		end if
+		lt_stime = relativetime(lt_stime, ll_time_adjust)
+	end if
+	return datetime(ld_sdate, lt_stime)
+
+// n_dwr_datetime.of_secondsafter(datetime adtm_start, datetime adtm_end) returns long
+	long ll_total_seconds
+	long ll_day_adjust
+	date ld_sdate
+	date ld_edate
+	time lt_stime
+	time lt_etime
+	long ll_null
+	if isnull(adtm_start) or isnull(adtm_end) or not of_isvalid(adtm_start) or not of_isvalid(adtm_end) then
+		setnull(ll_null)
+		return ll_null
+	end if
+	ld_sdate = date(adtm_start)
+	ld_edate = date(adtm_end)
+	lt_stime = time(adtm_start)
+	lt_etime = time(adtm_end)
+	if ld_sdate = ld_edate then
+		ll_total_seconds = secondsafter(lt_stime, lt_etime)
+	elseif ld_sdate < ld_edate then
+		ll_total_seconds = secondsafter(lt_stime, time("23:59:59"))
+		ll_day_adjust = daysafter(ld_sdate, ld_edate) - 1
+		if ll_day_adjust > 0 then
+			ll_total_seconds = ll_total_seconds + 86400 * ll_day_adjust
+		end if
+		ll_total_seconds = ll_total_seconds + secondsafter(time("00:00:00"), lt_etime) + 1
+	else
+		ll_total_seconds = secondsafter(lt_stime, time("00:00:00"))
+		ll_day_adjust = daysafter(ld_sdate, ld_edate) + 1
+		if ll_day_adjust < 0 then
+			ll_total_seconds = ll_total_seconds + 86400 * ll_day_adjust
+		end if
+		ll_total_seconds = ll_total_seconds + secondsafter(time("23:59:59"), lt_etime) - 1
+	end if
+	return ll_total_seconds
+
+// n_dwr_datetime.of_relativemonth(date ad_source, long al_month) returns date
+	integer li_adjust_months
+	integer li_adjust_years
+	integer li_month
+	integer li_year
+	integer li_day
+	integer li_temp_month
+	date ldt_null
+	if isnull(ad_source) or isnull(al_month) then
+		setnull(ldt_null)
+		return ldt_null
+	end if
+	if not of_isvalid(ad_source) then
+		return ad_source
+	end if
+	li_adjust_months = al_month mod 12
+	li_adjust_years = al_month / 12.0
+	li_temp_month = month(ad_source) + li_adjust_months
+	if li_temp_month > 12 then
+		li_month = li_temp_month - 12
+		li_adjust_years = li_adjust_years + 1
+	elseif li_temp_month <= 0 then
+		li_month = li_temp_month + 12
+		li_adjust_years = li_adjust_years - 1
+	else
+		li_month = li_temp_month
+	end if
+	li_year = year(ad_source) + li_adjust_years
+	li_day = day(ad_source)
+	do while not of_isvalid(date(li_year, li_month, li_day)) and li_day > 0
+		li_day = li_day - 1
+	loop
+	return date(li_year, li_month, li_day)
+
+// n_dwr_datetime.of_relativeyear(date ad_source, long al_years) returns date
+	integer li_year
+	integer li_month
+	integer li_day
+	date ldt_null
+	if isnull(ad_source) or isnull(al_years) then
+		setnull(ldt_null)
+		return ldt_null
+	end if
+	if not of_isvalid(ad_source) then
+		return ad_source
+	end if
+	li_year = year(ad_source) + al_years
+	li_month = month(ad_source)
+	li_day = day(ad_source)
+	do while not of_isvalid(date(li_year, li_month, li_day)) and li_day > 0
+		li_day = li_day - 1
+	loop
+	return date(li_year, li_month, li_day)
+
+// n_dwr_datetime.of_weeknumber(date ad_source) returns long
+	date ld_first_ofyear
+	integer li_weeknumber
+	integer li_leftover_days
+	integer li_dayofweek
+	long ll_null
+	if isnull(ad_source) then
+		setnull(ll_null)
+		return ll_null
+	end if
+	if not of_isvalid(ad_source) then
+		return -1
+	end if
+	ld_first_ofyear = date(year(ad_source), 1, 1)
+	li_weeknumber = of_weeksafter(ld_first_ofyear, ad_source) + 1
+	li_leftover_days = daysafter(ld_first_ofyear, ad_source) mod 7
+	if of_dayofweek(ld_first_ofyear) + li_leftover_days >= 8 then
+		li_weeknumber = li_weeknumber + 1
+	end if
+	return li_weeknumber
+
+// n_dwr_datetime.of_dayofweek(date ad_source) returns integer
+	long ll_null
+	if isnull(ad_source) then
+		setnull(ll_null)
+		return ll_null
+	end if
+	if not of_isvalid(ad_source) then
+		return -1
+	end if
+	return daynumber(ad_source)
+
+// n_dwr_datetime.of_monthsafter(date ad_start, date ad_end) returns long
+	date ld_temp
+	integer li_year
+	integer li_month
+	integer li_mult
+	double adb_start
+	double adb_end
+	long ll_null
+	if isnull(ad_start) or isnull(ad_end) or not of_isvalid(ad_start) or not of_isvalid(ad_end) then
+		setnull(ll_null)
+		return ll_null
+	end if
+	if ad_start > ad_end then
+		ld_temp = ad_start
+		ad_start = ad_end
+		ad_end = ld_temp
+		li_mult = -1
+	else
+		li_mult = 1
+	end if
+	li_month = (year(ad_end) - year(ad_start)) * 12
+	li_month = li_month + month(ad_end) - month(ad_start)
+	if day(ad_start) > day(ad_end) then
+		li_month = li_month - 1
+	end if
+	return li_month * li_mult
+
+// n_dwr_datetime.of_monthname(integer ai_monthnumber) returns string
+	if isnull(ai_monthnumber) or ai_monthnumber < 0 or ai_monthnumber > 12 then
+		return "!"
+	end if
+	return this.is_month[ai_monthnumber]
+
+// n_dwr_datetime.of_monthname(date ad_source) returns string
+	if isnull(ad_source) then
+		return "!"
+	end if
+	if not of_isvalid(ad_source) then
+		return "!"
+	end if
+	return of_monthname(month(ad_source))
+
+// n_dwr_datetime.of_isvalid(time atm_source) returns boolean
+	integer li_hour
+	integer li_minute
+	integer li_second
+	li_hour = hour(atm_source)
+	li_minute = minute(atm_source)
+	li_second = second(atm_source)
+	if isnull(atm_source) or isnull(li_hour) or isnull(li_minute) or isnull(li_second) then
+		return false
+	end if
+	if li_hour < 0 or li_minute < 0 or li_second < 0 then
+		return false
+	end if
+	return true
+
+// n_dwr_datetime.create() returns 0
+	triggerevent("constructor")
+
+// n_dwr_datetime.destroy() returns 0
+	triggerevent("destructor")

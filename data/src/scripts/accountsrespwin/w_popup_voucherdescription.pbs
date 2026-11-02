@@ -1,0 +1,120 @@
+// window w_popup_voucherdescription (accountsrespwin)  ancestor: window
+
+// w_popup_voucherdescription.ue_postopen() returns 0
+	long ll_counter
+	long ll_invcode
+	ll_invcode = message.doubleparm
+	SQL rollback USING sqlca;
+	this.dw_detail.settransobject(sqlca)
+	this.dw_detail.retrieve(ll_invcode)
+	if this.dw_detail.rowcount() > 0 then
+		for ll_counter = 1 to this.dw_detail.rowcount()
+			this.dw_detail.setitemstatus(ll_counter, 1, primary!, datamodified!)
+		next
+		return
+	end if
+	messagebox("Item Validation", "Invoice does not contain any item")
+	post event Close()
+
+// w_popup_voucherdescription.create() returns 0
+	this.cb_cancel = create cb_cancel
+	this.cb_save = create cb_save
+	this.dw_detail = create dw_detail
+	this.control = {this.cb_cancel, this.cb_save, this.dw_detail}
+
+// w_popup_voucherdescription.destroy() returns 0
+	destroy this.cb_cancel
+	destroy this.cb_save
+	destroy this.dw_detail
+
+// w_popup_voucherdescription.open() returns long
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	post event ue_postopen()
+	return ::message.returnvalue
+
+// w_popup_voucherdescription.close() returns long
+	close(this)
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event Close()
+	return ::message.returnvalue
+
+// cb_save.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		triggerevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_save.clicked() returns long
+	setpointer(hourglass!)
+	if parent.dw_detail.update(true, false) = 1 then
+		SQL commit USING sqlca;
+		parent.post event Close()
+	else
+		SQL rollback USING sqlca;
+		messagebox("Save Changes Fail", "Changes do not take effect in database.~n~rPress Ok to view possible reasons.", exclamation!, ok!, 1)
+		setpointer(arrow!)
+	end if
+	setpointer(arrow!)
+	return ::message.returnvalue
+
+// dw_detail.ue_enterkey() returns long
+	if getrow() = rowcount() and getcolumn() = integer(this.object.datawindow.column.count) then
+		return 1
+	end if
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_detail.uevent_dberr_message(long al_errorcode, string as_errortext, long al_row, dwbuffer adwb_buffer) returns 0
+	s_dberror ls_dberror
+	choose case al_errorcode
+	case -193
+		beep(1)
+		ls_dberror.s_apperrormessage = "One of the columns in Row No: " + string(al_row) + " have duplicate values and the same column values are used by an existing row.~r~n" + "Possible suggestions are try to give column values in Row No: " + string(al_row) + " that are  unique and does not match with any existing rows."
+		ls_dberror.s_sqlerrormessage = "Error Code: " + string(al_errorcode) + "~r~n" + as_errortext + "~r~n~r~n" + "Please call the Abuzar Consultancy support team."
+	case -194
+		beep(1)
+		ls_dberror.s_apperrormessage = "One of the columns in Row No: " + string(al_row) + " referes to some other table in the Database. Actually there is not a related row in the other table.~r~n" + "Possible suggestions are check you column values in Row No: " + string(al_row) + " for accuracy and make any needed corrections if necessary."
+		ls_dberror.s_sqlerrormessage = "Error Code: " + string(al_errorcode) + "~r~n" + as_errortext + "~r~n~r~n" + "Please call the Abuzar Consultancy support team."
+	case -195
+		beep(1)
+		ls_dberror.s_apperrormessage = "You may left one or more column values empty in Row No: " + string(al_row) + " .~r~nSo kindly fill in the required column values in Row No: " + string(al_row) + " and than try again."
+		ls_dberror.s_sqlerrormessage = "Error Code: " + string(al_errorcode) + "~r~n" + as_errortext + "~r~n~r~n" + "Please call the Abuzar Consultancy support team."
+	case -198
+		beep(1)
+		ls_dberror.s_apperrormessage = "Row No: " + string(al_row) + " has association with other tables in the Database. This means you can't delete this row or change its value.~r~n" + "Possible suggestions are delete the related rows in those other tables first (or modify them so that they don't refer to your target Row No :" + string(al_row) + "."
+		ls_dberror.s_sqlerrormessage = "Error Code: " + string(al_errorcode) + "~r~n" + as_errortext + "~r~n~r~n" + "Please call the Abuzar Consultancy support team."
+	case -209
+		beep(1)
+		ls_dberror.s_apperrormessage = "One or more of your columns in Row No: " + string(al_row) + " have values that are not allowed.~r~nSo kindly check the column values in Row No: " + string(al_row) + " for accuracy and make any needed corrections if necessary."
+		ls_dberror.s_sqlerrormessage = "Error Code: " + string(al_errorcode) + "~r~n" + as_errortext + "~r~n~r~n" + "Please call the Abuzar Consultancy support team."
+	case -3
+		beep(1)
+		ls_dberror.s_apperrormessage = "Row No: " + string(al_row) + " values have changed since the last retrieval.~r~nMay be some other user has modified this row before your request.~r~nSo kindly retrieve these rows again."
+		ls_dberror.s_sqlerrormessage = "Error Code: " + string(al_errorcode) + "~r~n" + as_errortext + "~r~n~r~n" + "Please call the Abuzar Consultancy support team."
+	case else
+		beep(1)
+		ls_dberror.s_apperrormessage = "Some unidentifiable problem has occured in Row No: " + string(al_row) + " while your request was being processed.~r~nSo kindly close the current module and reopen it to try again.~r~n"
+		ls_dberror.s_sqlerrormessage = "Error Code: " + string(al_errorcode) + "~r~n" + as_errortext + "~r~n~r~n" + "Please call the Abuzar Consultancy support team."
+	end choose
+	openwithparm(w_dberror, ls_dberror)
+
+// dw_detail.dberror(long sqldbcode, string sqlerrtext, string sqlsyntax, dwbuffer buffer, long row) returns long
+	post event uevent_dberr_message(sqldbcode, sqlerrtext, row, buffer)
+	SQL rollback USING sqlca;
+	return 1

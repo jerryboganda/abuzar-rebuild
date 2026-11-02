@@ -1,0 +1,72 @@
+// window w_item_form2 (singleentryitem)  ancestor: w_single_entry
+
+// w_item_form2.wf_duplicateitemno(string as_itemno) returns boolean
+	long ll_count
+	boolean b_flag
+	as_itemno = trim(as_itemno)
+	SQL SELECT count ( *) INTO :ll_count FROM item WHERE item.customicode =:as_itemno USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_item_form2.ue_newform() returns 0
+	call super::ue_newform
+	this.id_detail.setcolumn(1)
+
+// w_item_form2.create() returns 0
+	call super::create
+
+// w_item_form2.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_item_form2.activate() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::activate()
+	this.windowstate = maximized!
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_item_form2.ue_detail() returns 0
+	call super::ue_detail
+
+// w_item_form2.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.is_tablename = "Item"
+	return ::message.returnvalue
+
+// w_item_form2.ue_save() returns 0
+	long ll_primarykey
+	long ll_row
+	string s_customicode
+	setpointer(hourglass!)
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	ll_row = this.id_detail.getrow()
+	ll_primarykey = this.id_detail.object.code[this.id_detail.getrow()]
+	if isnull(ll_primarykey) then
+		ll_primarykey = 0
+		f_newtableid(this.is_tablename, ll_primarykey)
+		this.id_detail.setitem(ll_row, "code", ll_primarykey)
+		s_customicode = string(ll_primarykey)
+	else
+		s_customicode = this.id_detail.getitemstring(ll_row, "customicode")
+	end if
+	if this.id_detail.update() > 0 then
+		SQL commit USING sqlca;
+		messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+		this.ib_commitok = true
+		this.im_menu.m_file.m_new.enabled = true
+		this.editflag = false
+	else
+		SQL rollback USING sqlca;
+		setpointer(arrow!)
+		messagebox("Save Changes", "Changes Rollback in database, ~n~rSome database problem occurs", exclamation!, ok!, 1)
+		return
+	end if
+	setpointer(arrow!)

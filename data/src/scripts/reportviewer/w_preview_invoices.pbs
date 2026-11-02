@@ -1,0 +1,312 @@
+// window w_preview_invoices (reportviewer)  ancestor: window
+
+// w_preview_invoices.wf_getmargininfo() returns long
+	this.s_margininfo.i_code[1] = long(this.dw_preview.describe("DataWindow.Units"))
+	this.s_margininfo.i_code[2] = long(this.dw_preview.object.datawindow.print.margin.top)
+	this.s_margininfo.i_code[3] = long(this.dw_preview.object.datawindow.print.margin.left)
+	this.s_margininfo.i_code[4] = long(this.dw_preview.object.datawindow.print.margin.right)
+	this.s_margininfo.i_code[5] = long(this.dw_preview.object.datawindow.print.margin.bottom)
+	return 0
+
+// w_preview_invoices.wf_setmargininfo() returns long
+	string ls_mod
+	ls_mod = "DataWindow.Print.Preview=No DataWindow.Units=" + trim(string(this.s_margininfo.i_code[1]))
+	this.dw_preview.modify(ls_mod)
+	this.dw_preview.object.datawindow.print.margin.top = this.s_margininfo.i_code[2]
+	this.dw_preview.object.datawindow.print.margin.left = this.s_margininfo.i_code[3]
+	this.dw_preview.object.datawindow.print.margin.right = this.s_margininfo.i_code[4]
+	this.dw_preview.object.datawindow.print.margin.bottom = this.s_margininfo.i_code[5]
+	this.dw_preview.modify("DataWindow.Print.Preview=yes DataWindow.Print.Preview.Rulers=yes")
+	return 0
+
+// w_preview_invoices.wf_saveasexcel() returns long
+	f_saveasexcel(this.dw_preview)
+	return 0
+
+// w_preview_invoices.wf_changeorientation() returns 0
+	string ls_currentorientation
+	ls_currentorientation = this.dw_preview.describe("datawindow.print.orientation")
+	if integer(ls_currentorientation) = 0 or integer(ls_currentorientation) = 2 then
+		this.dw_preview.object.datawindow.print.orientation = 1
+		return
+	end if
+	this.dw_preview.object.datawindow.print.orientation = 2
+
+// w_preview_invoices.wf_visible() returns 0
+	s_dwinfo ls_dwinfo
+	ls_dwinfo.dw_control = this.dw_preview
+	openwithparm(w_select, ls_dwinfo)
+	ls_dwinfo.dw_control = this.dw_preview
+
+// w_preview_invoices.wf_set_studentimage() returns long
+	u_transaction lt_mytrans
+	long ll_counter
+	long ll_studentcode
+	string ls_filepath
+	blob lb_photo
+	if this.dw_preview.rowcount() > 0 then
+		lt_mytrans = create u_transaction
+		lt_mytrans.autocommit = true
+		SQL start USING lt_mytrans;
+		for ll_counter = 1 to this.dw_preview.rowcount()
+			setnull(lb_photo)
+			ll_studentcode = this.dw_preview.object.studentcode[ll_counter]
+			ls_filepath = this.dw_preview.object.filename[ll_counter]
+			if ll_studentcode > 0 then
+				SQL SELECTBLOB Img INTO :lb_photo FROM StudentImage WHERE StudentCode =:ll_studentcode AND RowID IN ( SELECT MIN ( SI.RowID ) FROM StudentImage SI WHERE SI.StudentCode =:ll_studentcode ) USING lt_mytrans;
+				if lt_mytrans.sqlcode <> 0 then
+					setnull(lb_photo)
+				end if
+				f_writeimgtofile(ls_filepath, lb_photo)
+			end if
+		next
+		SQL stop USING lt_mytrans;
+	end if
+	return 0
+
+// w_preview_invoices.wf_getnestedreport(datawindowchild adc_nested, datawindow adw_parentdatawindow, string as_nesteddatawindow) returns long
+	integer li_rtncode
+	li_rtncode = adw_parentdatawindow.getchild(as_nesteddatawindow, adc_nested)
+	if li_rtncode <> -1 then
+		adc_nested.settransobject(sqlca)
+	end if
+	return li_rtncode
+
+// w_preview_invoices.wf_gen_qrcode() returns integer
+	string ls_qr_method
+	string ls_setting
+	long ll_rows
+	ls_qr_method = f_stringpreferences("qrcodeprintingmethodinsale")
+	ls_setting = this.dw_preview.describe("p_qrcode.filename")
+	ll_rows = this.dw_preview.rowcount()
+	if ls_setting = "!" then
+		ls_setting = this.dw_preview.object.dw_1[ll_rows].object.p_qrcode.filename
+		if ls_setting <> "!" then
+			if ls_qr_method = "G" then
+				this.dw_preview.object.dw_1[ll_rows].object.p_qrcode.filename = "qrcode.gif"
+			elseif ls_qr_method = "H" then
+				this.dw_preview.object.dw_1[ll_rows].object.p_qrcode.filename = "qrcode.gif"
+			elseif ls_qr_method <> "I" then
+				if ls_qr_method = "M" then
+					this.dw_preview.object.dw_1[ll_rows].object.p_qrcode.filename = "qrcode.bmp"
+				elseif ls_qr_method = "Q" then
+					this.dw_preview.object.dw_1[ll_rows].object.p_qrcode.filename = "qrcode.bmp"
+				end if
+			end if
+		end if
+	elseif ls_qr_method = "G" then
+		this.dw_preview.object.p_qrcode.filename = "qrcode.gif"
+	elseif ls_qr_method = "H" then
+		this.dw_preview.object.p_qrcode.filename = "qrcode.gif"
+	elseif ls_qr_method <> "I" then
+		if ls_qr_method = "M" then
+			this.dw_preview.object.p_qrcode.filename = "qrcode.bmp"
+		elseif ls_qr_method = "Q" then
+			this.dw_preview.object.p_qrcode.filename = "qrcode.bmp"
+		end if
+	end if
+	return 0
+
+// w_preview_invoices.create() returns 0
+	this.cb_hidevisible = create cb_hidevisible
+	this.cb_orientation = create cb_orientation
+	this.cb_saveexcel = create cb_saveexcel
+	this.cb_printsetup = create cb_printsetup
+	this.cb_filter = create cb_filter
+	this.cb_sort = create cb_sort
+	this.cb_saveas = create cb_saveas
+	this.dw_preview = create dw_preview
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.control = {this.cb_hidevisible, this.cb_orientation, this.cb_saveexcel, this.cb_printsetup, this.cb_filter, this.cb_sort, this.cb_saveas, this.dw_preview, this.cb_cancel, this.cb_ok}
+
+// w_preview_invoices.destroy() returns 0
+	destroy this.cb_hidevisible
+	destroy this.cb_orientation
+	destroy this.cb_saveexcel
+	destroy this.cb_printsetup
+	destroy this.cb_filter
+	destroy this.cb_sort
+	destroy this.cb_saveas
+	destroy this.dw_preview
+	destroy this.cb_cancel
+	destroy this.cb_ok
+
+// w_preview_invoices.open() returns long
+	long cll_buttondiff
+	long ll_temp
+	string ls_str
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	long ll_found
+	long ll_ret
+	environment env
+	s_dberror ls_dberror
+	s_datastore lstr
+	datastore lds_ds
+	runtimeerror ex
+	lds_ds = create datastore
+	setredraw(false)
+	if getenvironment(env) = 1 then
+		ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+		this.width = ll_width * 0.98
+		this.height = ll_height * 0.98
+		this.dw_preview.width = ll_width * 0.95
+		this.dw_preview.height = ll_height * 0.80
+		this.cb_filter.x = ll_width * 0.10
+		this.cb_filter.y = ll_height * 0.85
+		this.cb_sort.x = this.cb_filter.x + this.cb_filter.width + 1
+		this.cb_sort.y = this.cb_filter.y
+		this.cb_hidevisible.x = this.cb_sort.x + this.cb_sort.width + 1
+		this.cb_hidevisible.y = this.cb_sort.y
+		this.cb_orientation.x = this.cb_hidevisible.x + this.cb_hidevisible.width + 1
+		this.cb_orientation.y = this.cb_hidevisible.y
+		this.cb_printsetup.x = this.cb_orientation.x + this.cb_orientation.width + 1
+		this.cb_printsetup.y = this.cb_orientation.y
+		this.cb_ok.x = this.cb_printsetup.x + this.cb_printsetup.width + 1
+		this.cb_ok.y = this.cb_printsetup.y
+		this.cb_cancel.x = this.cb_ok.x + this.cb_ok.width + 1
+		this.cb_cancel.y = this.cb_ok.y
+		this.cb_saveas.x = this.cb_cancel.x + this.cb_cancel.width + 1
+		this.cb_saveas.y = this.cb_cancel.y
+		this.cb_saveexcel.x = this.cb_saveas.x + this.cb_saveas.width + 1
+		this.cb_saveexcel.y = this.cb_saveas.y
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	if f_stringpreferences("AllowPrintSetupButton") = "Y" then
+		this.cb_printsetup.enabled = true
+		this.cb_printsetup.visible = true
+	else
+		this.cb_printsetup.enabled = false
+		this.cb_printsetup.visible = false
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 637", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.cb_saveas.visible = true
+		this.cb_saveas.enabled = true
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 638", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.cb_saveexcel.visible = true
+		this.cb_saveexcel.enabled = true
+	end if
+	lstr = message.powerobjectparm
+	this.dw_preview.dataobject = lstr.s_name1
+	this.dw_preview.settransobject(sqlca)
+	this.dw_preview.setredraw(false)
+	ls_str = this.dw_preview.object.datawindow.processing
+	this.dw_preview.modify("DataWindow.Print.Preview=yes DataWindow.Print.Preview.Rulers=yes")
+	if lstr.s_name1 = "d_marginpreview_report" or lstr.s_name1 = "d_visit_prescription_value" or lstr.s_name1 = "d_pressales_showpurchaselist" then
+		lstr.ds.sharedata(this.dw_preview)
+		this.cb_cancel.visible = false
+		this.cb_cancel.enabled = false
+	elseif lstr.s_name1 = "d_po_purchase_disparity" or lstr.s_name1 = "d_agingdetail" then
+		lstr.ds.sharedata(this.dw_preview)
+	elseif lstr.s_name1 = "d_prevmargin_deviations_report" then
+		lstr.ds.sharedata(this.dw_preview)
+	elseif ls_str <> "5" then
+		lstr.dw.sharedata(this.dw_preview)
+	end if
+	if lstr.s_name3 = "studentreg" or lstr.s_name3 = "qualifiedperson" then
+		this.dw_preview.object.p_photo.filename = lstr.s_name4
+	end if
+	if lstr.s_module = "sale" or lstr.s_module = "S/R" then
+		if lstr.s_module = "sale" or lstr.s_module = "S/R" then
+			try
+				wf_gen_qrcode()
+			catch (throwable ex)
+			end try
+		end if
+		if this.dw_preview.rowcount() > 0 then
+			f_set_headerlogo(this.dw_preview, this.dw_preview.object.headerno[1])
+		end if
+	end if
+	if lstr.s_name1 = "d_studentcard_print" then
+		wf_set_studentimage()
+	end if
+	if ls_str = "5" then
+		ll_temp = lstr.d_value
+		this.dw_preview.retrieve(ll_temp)
+	end if
+	this.dw_preview.setfocus()
+	this.dw_preview.setredraw(true)
+	setredraw(true)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_preview_invoices.key(keycode key, unsignedlong keyflags) returns long
+	if keydown(keyescape!) then
+		this.cb_cancel.postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_hidevisible.clicked() returns long
+	parent.wf_visible()
+	return ::message.returnvalue
+
+// cb_orientation.clicked() returns long
+	parent.wf_changeorientation()
+	return ::message.returnvalue
+
+// cb_saveexcel.clicked() returns long
+	parent.wf_saveasexcel()
+	return ::message.returnvalue
+
+// cb_printsetup.clicked() returns long
+	openwithparm(w_printer, parent.dw_preview)
+	return ::message.returnvalue
+
+// cb_filter.clicked() returns long
+	string ls_null
+	setnull(ls_null)
+	parent.dw_preview.scrolltorow(0)
+	parent.dw_preview.setfilter(ls_null)
+	parent.dw_preview.filter()
+	parent.dw_preview.groupcalc()
+	return ::message.returnvalue
+
+// cb_sort.clicked() returns long
+	string ls_null
+	setnull(ls_null)
+	parent.dw_preview.setsort(ls_null)
+	parent.dw_preview.sort()
+	parent.dw_preview.groupcalc()
+	return ::message.returnvalue
+
+// cb_saveas.clicked() returns long
+	parent.dw_preview.saveas()
+	return ::message.returnvalue
+
+// dw_preview.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyhome! then
+		scrolltorow(0)
+	elseif key = keyend! then
+		scrolltorow(rowcount())
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	s_datastore lstr
+	lstr.i_closemode = -1
+	closewithreturn(parent, lstr)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	s_datastore lstr
+	lstr.i_closemode = 1
+	closewithreturn(parent, lstr)
+	return ::message.returnvalue

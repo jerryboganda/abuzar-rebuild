@@ -1,0 +1,66 @@
+// userobject n_dwr_picture (dw2xls)  ancestor: n_dwr_field
+
+// n_dwr_picture.of_descr_filename() returns string
+	integer li_ret
+	string ls_value
+	li_ret = of_check_property("filename", this.ib_picture_expr, this.is_picture_expr, ls_value)
+	if li_ret = 1 then
+		return ls_value
+	end if
+	return ""
+
+// n_dwr_picture.of_init(string as_dwo_name, integer ai_dwo_type) returns integer
+	integer li_ret
+	this.is_dwo_name = as_dwo_name
+	this.ii_dwo_type = ai_dwo_type
+	choose case this.ii_dwo_type
+	case 8
+		this.is_coltype = "s"
+		this.is_text = ""
+	case else
+		li_ret = -1
+	end choose
+	if li_ret = 1 then
+		choose case this.ipo_requestortype
+		case datawindow!
+			this.il_dw_row_count = this.idw_requestor.rowcount()
+		case datastore!
+			this.il_dw_row_count = this.ids_requestor.rowcount()
+		case datawindowchild!
+			this.il_dw_row_count = this.idwc_requestor.rowcount()
+		case else
+			li_ret = -1
+		end choose
+	end if
+	if li_ret = 1 then
+		this.ii_column_display_type = of_get_column_display_type()
+		li_ret = of_setformat()
+	end if
+	if li_ret = 1 then
+		this.ii_units = integer(of_describe("Datawindow.Units"))
+		this.inv_sub = create n_dwr_sub
+		this.inv_sub.of_set_cur_units(this.ii_units)
+	end if
+	return li_ret
+
+// n_dwr_picture.of_setformat() returns integer
+	integer li_ret
+	string ls_format
+	integer li_color_index
+	long ll_color
+	string ls_border_style
+	this.inv_format = this.inv_book.of_createformat()
+	ls_border_style = of_describe(this.is_dwo_name + ".Border")
+	if isnumber(ls_border_style) and integer(ls_border_style) > 0 then
+		this.inv_format.setborderstyle(this.inv_format.handle, 1)
+	elseif integer(of_describe("Datawindow.Processing")) = 1 then
+		this.inv_format.setborderstyle(this.inv_format.handle, 7)
+	end if
+	this.il_format_ix = this.inv_book.of_addformat(this.inv_format)
+	return li_ret
+
+// n_dwr_picture.create() returns 0
+	call super::create
+
+// n_dwr_picture.destroy() returns 0
+	call super::destroy

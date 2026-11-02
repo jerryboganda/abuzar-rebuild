@@ -1,0 +1,50 @@
+// window w_fetch_linkservers (datatransfercomponents)  ancestor: w_arguements
+
+// w_fetch_linkservers.create() returns 0
+	call super::create
+
+// w_fetch_linkservers.destroy() returns 0
+	call super::destroy
+
+// w_fetch_linkservers.open() returns long
+	long ancestorreturnvalue
+	long ll_retcode
+	long ll_rows
+	datastore lds_ds
+	ancestorreturnvalue = super::open()
+	this.it_mytrans = create u_transaction
+	this.it_mytrans.dbparm = "PROVIDER='SQLOLEDB',DATASOURCE='" + gs_servername + "',CommitOnDisconnect='No',PROVIDERSTRING='DataBase=master" + ";APP=" + gs_app + ";WSID=" + gs_localcomputername + "',PBTrimCharColumns='Yes',StripParmNames='Yes'"
+	SQL start USING this.it_mytrans;
+	if this.it_mytrans.sqlcode <> 0 then
+		messagebox("Connection Problem", "Problem Connecting Database", stopsign!)
+		close(this)
+	end if
+	lds_ds = create datastore
+	lds_ds.dataobject = "d_linkedservers"
+	lds_ds.settrans(this.it_mytrans)
+	lds_ds.retrieve()
+	ll_rows = lds_ds.rowcount()
+	if ll_rows = 0 then
+		messagebox("Linked Server Validation", "No Linked Server Exist.", stopsign!)
+		this.istr_arg.i_status = -1
+		closewithreturn(this, this.istr_arg)
+		return ::message.returnvalue
+	elseif ll_rows = 1 then
+		this.istr_arg.i_status = 1
+		this.istr_arg.s_name1 = lds_ds.object.srvname[1]
+		this.istr_arg.s_name2 = lds_ds.object.catalog[1]
+		this.istr_arg.s_name3 = lds_ds.object.datasource[1]
+		closewithreturn(this, this.istr_arg)
+		return ::message.returnvalue
+	end if
+	this.dw_control.settransobject(this.it_mytrans)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	ll_retcode = this.dw_control.getchild("servername", this.idc_child)
+	this.idc_child.settransobject(this.it_mytrans)
+	this.idc_child.retrieve()
+	return ::message.returnvalue
+
+// w_fetch_linkservers.ue_close(integer ai_stauts) returns 0
+	super::ue_close(ai_stauts)
+	closewithreturn(this, this.istr_arg)

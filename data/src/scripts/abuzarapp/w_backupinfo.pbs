@@ -1,0 +1,98 @@
+// window w_backupinfo (abuzarapp)  ancestor: window
+
+// w_backupinfo.ue_postopen() returns 0
+	string ls_query
+	string ls_backupdevice
+	string ls_servername
+	string[] ls_bkupdevice
+	long ll_row
+	long ll_counter
+	long ll_retvalue
+	integer li_counter
+	environment env
+	u_transaction it_transobject
+	this.ids_bkup = create datastore
+	it_transobject = create u_transaction
+	it_transobject.autocommit = true
+	SQL start USING it_transobject;
+	this.dw_backupinfo.settransobject(it_transobject)
+	this.ids_bkup.dataobject = this.dw_backupinfo.dataobject
+	this.ids_bkup.settransobject(it_transobject)
+	ls_bkupdevice[1, 2] = "Manual Backup"
+	ls_bkupdevice[1, 3] = "manual"
+	ls_bkupdevice[2, 2] = "Auto Client Backup"
+	ls_bkupdevice[2, 3] = "autoclient"
+	ls_bkupdevice[3, 2] = "Auto StartUp Backup"
+	ls_bkupdevice[3, 3] = "autostartup"
+	for ll_counter = 1 to 3
+		ls_backupdevice = f_getbackupdevicename(ls_bkupdevice[ll_counter, 3])
+		ls_bkupdevice[ll_counter, 1] = ls_backupdevice
+	next
+	f_getbackupinfo(it_transobject, this.ids_bkup, ls_bkupdevice)
+	this.ids_bkup.sharedata(this.dw_backupinfo)
+	if this.dw_backupinfo.rowcount() = 0 then
+		messagebox("Backup Information", "No Backup exists on any backup device(s)~r~nTherefore no Backup Information Available To display")
+		SQL stop USING it_transobject;
+		destroy it_transobject
+		close(this)
+		return
+	else
+		this.dw_backupinfo.setrow(1)
+		this.dw_backupinfo.scrolltorow(1)
+		this.dw_backupinfo.setcolumn("backupdescription")
+		this.dw_backupinfo.setfocus()
+	end if
+	setfocus()
+	SQL stop USING it_transobject;
+	destroy it_transobject
+	setfocus()
+
+// w_backupinfo.create() returns 0
+	this.dw_backupinfo = create dw_backupinfo
+	this.st_2 = create st_2
+	this.st_1 = create st_1
+	this.cb_close = create cb_close
+	this.r_above1day = create r_above1day
+	this.r_above3hr = create r_above3hr
+	this.r_below1day = create r_below1day
+	this.st_3 = create st_3
+	this.control = {this.dw_backupinfo, this.st_2, this.st_1, this.cb_close, this.r_above1day, this.r_above3hr, this.r_below1day, this.st_3}
+
+// w_backupinfo.destroy() returns 0
+	destroy this.dw_backupinfo
+	destroy this.st_2
+	destroy this.st_1
+	destroy this.cb_close
+	destroy this.r_above1day
+	destroy this.r_above3hr
+	destroy this.r_below1day
+	destroy this.st_3
+
+// w_backupinfo.close() returns long
+	return ::message.returnvalue
+
+// w_backupinfo.open() returns long
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	this.r_above1day.fillcolor = rgb(225, 100, 100)
+	this.r_above3hr.fillcolor = rgb(255, 245, 175)
+	this.r_below1day.fillcolor = rgb(50, 155, 125)
+	triggerevent("ue_postopen")
+	return ::message.returnvalue
+
+// cb_close.clicked() returns long
+	close(parent)
+	return ::message.returnvalue

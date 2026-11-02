@@ -1,0 +1,118 @@
+// window w_virtualgl_repair (templates)  ancestor: window
+
+// w_virtualgl_repair.ue_close(double ad_qty) returns 0
+	close(this)
+
+// w_virtualgl_repair.create() returns 0
+	this.hpb_progress = create hpb_progress
+	this.rb_purgeonly = create rb_purgeonly
+	this.rb_update = create rb_update
+	this.rb_purgeandupdate = create rb_purgeandupdate
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.gb_accrepository = create gb_accrepository
+	this.gb_progress = create gb_progress
+	this.control = {this.hpb_progress, this.rb_purgeonly, this.rb_update, this.rb_purgeandupdate, this.cb_cancel, this.cb_ok, this.gb_accrepository, this.gb_progress}
+
+// w_virtualgl_repair.destroy() returns 0
+	destroy this.hpb_progress
+	destroy this.rb_purgeonly
+	destroy this.rb_update
+	destroy this.rb_purgeandupdate
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.gb_accrepository
+	destroy this.gb_progress
+
+// w_virtualgl_repair.open() returns long
+	environment le_env
+	long ll_width
+	long ll_height
+	if getenvironment(le_env) = 1 then
+		ll_width = pixelstounits(le_env.screenwidth, xpixelstounits!) - this.width
+		ll_height = pixelstounits(le_env.screenheight, ypixelstounits!) - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width * 0.5
+			ll_height = ll_height * 0.5
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	string ls_messagetitle
+	string ls_message
+	string ls_truncate
+	string ls_eventtype
+	string ls_module
+	string ls_detail
+	long ll_rtcode
+	ls_truncate = "TRUNCATE TABLE DBO.VirtualGl"
+	ls_eventtype = "Alert"
+	ls_module = "Upgrade Accounting Repository"
+	ls_detail = "Upgrade Accounting Repository"
+	setpointer(hourglass!)
+	parent.gb_progress.visible = true
+	parent.hpb_progress.visible = true
+	parent.hpb_progress.stepit()
+	ls_messagetitle = "Process Result Intimation"
+	if parent.rb_purgeonly.checked = true then
+		SQL rollback USING sqlca;
+		SQL EXECUTE IMMEDIATE :ls_truncate USING sqlca;
+		parent.hpb_progress.stepit()
+		ll_rtcode = sqlca.sqlcode
+		if ll_rtcode = 0 then
+			ls_message = "Purge Operation Completed Successfully!"
+			ls_detail = "Purge Operation Completed Successfully!"
+		else
+			ls_message = "Purge Operation Failed.~r~nPlease try later!"
+		end if
+	elseif parent.rb_purgeandupdate.checked = true then
+		SQL rollback USING sqlca;
+		SQL EXECUTE IMMEDIATE :ls_truncate USING sqlca;
+		ll_rtcode = sqlca.sqlcode
+		if ll_rtcode = 0 then
+			parent.hpb_progress.stepit()
+			sqlca.virtualgl("A")
+			ll_rtcode = sqlca.sqlcode
+			if ll_rtcode = 0 then
+				ls_message = "Both Purge and Update Operations~r~nCompleted Successfully!"
+				ls_detail = "Both Purge and Update Operations Completed Successfully!"
+			else
+				ls_message = "Purge and Update Operation Failed.~r~nPlease try later!"
+			end if
+		else
+			ls_message = "Purge Operation Falied.~r~nPlease try later!"
+		end if
+	else
+		parent.hpb_progress.stepit()
+		SQL rollback USING sqlca;
+		sqlca.virtualgl("A")
+		ll_rtcode = sqlca.sqlcode
+		if ll_rtcode = 0 then
+			ls_message = "Update Operations Completed Successfully!"
+			ls_detail = "Update Operation Completed Successfully!"
+		else
+			ls_message = "Update Operation Failed.~r~nPlease try later!"
+		end if
+	end if
+	if ll_rtcode = 0 then
+		parent.hpb_progress.stepit()
+		parent.hpb_progress.stepit()
+		parent.hpb_progress.stepit()
+		sqlca.insert_eventlog(ls_eventtype, ls_module, ls_detail, gl_usercode)
+		SQL commit USING sqlca;
+	else
+		SQL rollback USING sqlca;
+	end if
+	setpointer(arrow!)
+	messagebox(ls_messagetitle, ls_message)
+	parent.post event ue_close(1)
+	return ::message.returnvalue

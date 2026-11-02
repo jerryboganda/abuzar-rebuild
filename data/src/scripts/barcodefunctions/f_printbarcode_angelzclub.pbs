@@ -1,0 +1,157 @@
+// function f_printbarcode_angelzclub (barcodefunctions)  ancestor: function_object
+
+// f_printbarcode_angelzclub.f_printbarcode_angelzclub(datawindow id_master, datawindow id_detail, boolean ib_printprice) returns long
+	long ll_totalrows
+	long ll_counter
+	long ll_innercounter
+	long ll_qty
+	long ll_currrow
+	long ll_tot_label_rows
+	integer li_startcell
+	integer li_stopcell
+	integer li_temp
+	integer li_file
+	string ls_clientname
+	string ls_clientname_25_char
+	string ls_itemname
+	string ls_aliasname
+	string ls_price
+	string ls_filecontent
+	string ls_seperator
+	string ls_date
+	string ls_format
+	string ls_xpos
+	string ls_infocode
+	string ls_printer
+	string ls_manuf
+	string ls_design
+	string ls_purprice
+	string ls_supp_alias
+	string ls_packing
+	string ls_batch
+	long ll_headerno
+	long ll_labelno
+	long ll_labelpos
+	long ll_supply_cols_per_row
+	integer li_barcodeleninprint
+	ls_seperator = ";"
+	ls_supp_alias = id_master.object.aliasname[id_master.getrow()]
+	ll_headerno = id_master.getitemnumber(id_master.getrow(), "headerno")
+	ls_clientname = trim(f_reportheaderinfo_wrt_headerno("clientname", ll_headerno))
+	ls_clientname_25_char = upper(left(trim(f_reportheaderinfo_wrt_headerno("clientname", ll_headerno)), 25))
+	li_barcodeleninprint = f_numberpreferences("BarCodeLenInPrint")
+	ll_totalrows = id_detail.rowcount()
+	ls_printer = trim(id_master.object.barcodeprinter[1])
+	if lower(ls_printer) = lower("TSC TTP-244 PLUS") then
+		if ll_totalrows > 0 then
+			ll_supply_cols_per_row = 2
+			ll_labelno = 1
+			if ll_totalrows > 0 then
+				ll_counter = 1
+				tsc_openport_new("TSC TTP-244 PLUS")
+				tsc_setup_new("105", "26", "4", "8", "0", "0", "0")
+				tsc_sendcommand_new("GAP 3 mm, 0 mm")
+				tsc_sendcommand_new("SPEED 4")
+				tsc_sendcommand_new("DENSITY 7")
+				tsc_sendcommand_new("DIRECTION 0,0")
+				tsc_sendcommand_new("REFERENCE 0,0")
+				tsc_sendcommand_new("OFFSET 0 mm")
+				tsc_sendcommand_new("SHIFT 0")
+				tsc_sendcommand_new("SET PEEL OFF")
+				tsc_sendcommand_new("SET CUTTER ON")
+				tsc_sendcommand_new("SET TEAR ON")
+				tsc_sendcommand_new("CLS")
+				tsc_sendcommand_new("CODEPAGE 850")
+				for ll_counter = 1 to ll_totalrows
+					if len(trim(id_detail.getitemstring(ll_counter, "fullcode"))) <= li_barcodeleninprint and id_detail.getitemnumber(ll_counter, "qty") > 0.0 then
+						ll_qty = id_detail.getitemnumber(ll_counter, "qty")
+						ls_itemname = left(trim(id_detail.getitemstring(ll_counter, "itemname")), 37)
+						ls_aliasname = left(trim(id_detail.getitemstring(ll_counter, "fullcode")), 15)
+						if ib_printprice then
+							ls_price = "Rs. " + trim(string(round(id_detail.getitemdecimal(ll_counter, "saleprice"), 2)))
+						else
+							ls_price = ""
+						end if
+						tsc_clearbuffer_new()
+						ll_tot_label_rows = ceiling(ll_qty / ll_supply_cols_per_row)
+						tsc_printerfont_new("821", "207", "0", "180", "18", "10", ls_clientname)
+						tsc_printerfont_new("393", "207", "0", "180", "18", "10", ls_clientname)
+						tsc_barcode_new("821", "177", "39", "80", "1", "180", "2", "4", ls_aliasname)
+						tsc_barcode_new("393", "177", "39", "80", "1", "180", "2", "4", ls_aliasname)
+						tsc_printerfont_new("821", "67", "0", "180", "8", "6", ls_itemname)
+						tsc_printerfont_new("393", "67", "0", "180", "8", "6", ls_itemname)
+						tsc_printerfont_new("821", "47", "0", "180", "10", "10", ls_price)
+						tsc_printerfont_new("393", "47", "0", "180", "10", "10", ls_price)
+						tsc_printlabel_new("1", trim(string(ll_tot_label_rows)))
+					end if
+				next
+				tsc_closeport_new()
+			end if
+		end if
+	elseif lower(ls_printer) = lower("TSC  B-2404") then
+		ls_format = id_master.object.labelformat[1]
+		ll_supply_cols_per_row = 2
+		ll_labelno = 1
+		if ll_totalrows > 0 then
+			ll_counter = 1
+			bcp_openport_new("TSC  B-2404")
+			bcp_setup_new("60", "40", "4", "8", "0", "0", "0")
+			bcp_sendcommand_new("GAP 3 mm, 0 mm")
+			bcp_sendcommand_new("SPEED 4")
+			bcp_sendcommand_new("DENSITY 7")
+			bcp_sendcommand_new("DIRECTION 0,0")
+			bcp_sendcommand_new("REFERENCE 0,0")
+			bcp_sendcommand_new("OFFSET 0 mm")
+			bcp_sendcommand_new("SHIFT 0")
+			bcp_sendcommand_new("SET PEEL OFF")
+			bcp_sendcommand_new("SET CUTTER ON")
+			bcp_sendcommand_new("SET TEAR ON")
+			bcp_sendcommand_new("CLS")
+			bcp_sendcommand_new("CODEPAGE 850")
+			for ll_counter = 1 to ll_totalrows
+				if id_detail.getitemnumber(ll_counter, "qty") > 0.0 then
+					ls_batch = id_detail.getitemstring(ll_counter, "batch")
+					if isnull(ls_batch) then
+						ls_batch = ""
+					end if
+					ls_manuf = "Made By: " + id_detail.getitemstring(ll_counter, "manufacturer")
+					if isnull(ls_manuf) then
+						ls_manuf = ""
+					end if
+					ll_qty = id_detail.getitemnumber(ll_counter, "qty")
+					ls_itemname = trim(id_detail.getitemstring(ll_counter, "remarks"))
+					if isnull(ls_itemname) then
+						ls_itemname = ""
+					end if
+					if ls_itemname = "" then
+						ls_itemname = ""
+					else
+						ls_itemname = "Color: " + ls_itemname
+					end if
+					ls_aliasname = left(trim(id_detail.getitemstring(ll_counter, "fullcode")), li_barcodeleninprint)
+					if ib_printprice then
+						ls_price = "Rs. " + trim(string(round(id_detail.getitemdecimal(ll_counter, "saleprice"), 2)))
+					else
+						ls_price = ""
+					end if
+					bcp_clearbuffer_new()
+					bcp_printerfont_new("455", "322", "0", "180", "15", "15", ls_clientname)
+					if len(ls_batch) > 0 then
+						bcp_barcode_new("455", "282", "128", "110", "1", "180", "2", "3", ls_batch)
+					end if
+					if len(ls_manuf) > 0 then
+						bcp_printerfont_new("455", "148", "0", "180", "9", "9", ls_manuf)
+					end if
+					if len(ls_itemname) > 0 then
+						bcp_printerfont_new("455", "125", "0", "180", "9", "9", ls_itemname)
+					end if
+					if len(ls_aliasname) > 0 then
+						bcp_barcode_new("455", "100", "128", "50", "1", "180", "2", "3", ls_aliasname)
+					end if
+					bcp_printlabel_new("1", trim(string(ll_qty)))
+				end if
+			next
+			bcp_closeport_new()
+		end if
+	end if
+	return 0

@@ -1,0 +1,375 @@
+// window w_contactcard_quick (contactmanagement)  ancestor: window
+
+// w_contactcard_quick.ue_close(integer ai_status) returns 0
+	if ai_status = -1 then
+		setnull(this.il_code)
+	end if
+	closewithreturn(this, this.il_code)
+
+// w_contactcard_quick.ue_postopen() returns 0
+	boolean lb_wardcode_enabled
+	string ls_custcode
+	long ll_custcode
+	integer li_rtncode
+	this.dw_detail.settransobject(this.it_transobject)
+	if this.il_code > 0 then
+		this.dw_detail.retrieve(this.il_code)
+	else
+		this.dw_detail.insertrow(0)
+	end if
+	if this.dw_detail.rowcount() > 0 then
+	end if
+
+// w_contactcard_quick.wf_validateserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+	datetime ldt_last_transdate
+	datetime ldt_current_serverdate
+	long li_max_allow_days
+	ar_errtext = "Invoice Date  Check violates"
+	li_max_allow_days = f_numberpreferences("MaxAllowDate")
+	if isnull(li_max_allow_days) then
+		li_max_allow_days = 4
+	end if
+	SQL SELECT LastTransDate INTO :ldt_last_transdate FROM ServerDate USING sqlca;
+	if sqlca.sqlcode = 0 then
+		sqlca.getdatetime(ldt_current_serverdate)
+		if sqlca.sqlcode = 0 then
+			if ldt_current_serverdate >= ldt_last_transdate and daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) <= li_max_allow_days then
+				ar_server_datetime = ldt_current_serverdate
+				return true
+			elseif ldt_current_serverdate < ldt_last_transdate then
+				ar_errtext = "Back Date Invoice Check violates"
+				return false
+			elseif daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) > li_max_allow_days then
+				ar_errtext = "Forward Date Invoice Check violates"
+				return false
+			end if
+		else
+			return false
+		end if
+		return
+	end if
+	return false
+
+// w_contactcard_quick.wf_getserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+	datetime ldt_last_transdate
+	datetime ldt_current_serverdate
+	integer li_max_allow_days
+	string ls_hold_serverdate
+	date ld_datepart
+	time lt_timepart
+	ar_errtext = "Please verify Server DateTime"
+	li_max_allow_days = f_numberpreferences("MaxAllowDate")
+	if isnull(li_max_allow_days) then
+		li_max_allow_days = 4
+	end if
+	SQL rollback USING sqlca;
+	SQL SELECT LastTransDate INTO :ldt_last_transdate FROM ServerDate USING sqlca;
+	if sqlca.sqlcode = 0 then
+		sqlca.getdatetime(ldt_current_serverdate)
+		if sqlca.sqlcode = 0 then
+			if ldt_current_serverdate >= ldt_last_transdate and daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) <= li_max_allow_days then
+				ld_datepart = date(string(ldt_current_serverdate, "yyyy-mm-dd"))
+				lt_timepart = time(string(ldt_current_serverdate, "hh:mm:ss"))
+				ldt_current_serverdate = datetime(ld_datepart, lt_timepart)
+				SQL update ServerDate SET LastTransDate =:ldt_current_serverdate USING sqlca;
+				if sqlca.sqlcode = 0 then
+					SQL commit USING sqlca;
+					ar_server_datetime = ldt_current_serverdate
+					return true
+				else
+					SQL rollback USING sqlca;
+					return false
+				end if
+			elseif ldt_current_serverdate < ldt_last_transdate then
+				ar_errtext = "Back Date Invoice Check violates"
+				return false
+			elseif daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) > li_max_allow_days then
+				ar_errtext = "Forward Date Invoice Check violates"
+				return false
+			end if
+		else
+			SQL rollback USING sqlca;
+			return false
+		end if
+		return
+	end if
+	SQL rollback USING sqlca;
+	return false
+
+// w_contactcard_quick.wf_connect() returns long
+	this.it_transobject = create u_transaction
+	SQL start USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		return 0
+	end if
+	messagebox("Connection Problem", "Problem Connecting Database ... ~r~n" + this.it_transobject.sqlerrtext)
+	return -1
+
+// w_contactcard_quick.wf_print() returns long
+	long ll_code
+	long li_printretcode
+	string ls_format
+	ll_code = this.dw_detail.getitemnumber(1, "code")
+	if not (ll_code = 0 or isnull(ll_code)) then
+		ls_format = f_set_patientprintout()
+		if ls_format = "" or isnull(ls_format) then
+			ls_format = "d_contactcard_print"
+		end if
+		this.dw_print.dataobject = ls_format
+		this.dw_print.settransobject(this.it_transobject)
+		this.dw_print.retrieve(ll_code)
+		if this.dw_print.rowcount() > 0 then
+			if f_stringpreferences("PromptBeforePrinting") = "Y" and printsetup() < 0 then
+				messagebox("Printer", "Printing Error")
+				this.dw_print.printcancel()
+			end if
+			li_printretcode = this.dw_print.print()
+			if li_printretcode < 0 then
+				messagebox("Printing", "Can not Print Invoice", information!)
+			end if
+		else
+			messagebox("Printing Error", "Can not Print,~r~nNo rows are retrieved", information!)
+		end if
+	end if
+	return 0
+
+// w_contactcard_quick.wf_validate_mobileno(string as_no) returns long
+	datastore lds_ds
+	s_arguements lstr_arg
+	lds_ds = create datastore
+	lds_ds.dataobject = "d_contactcarddetail_mobilesearch"
+	lds_ds.settransobject(this.it_transobject)
+	lds_ds.retrieve(as_no)
+	if lds_ds.rowcount() = 0 then
+		return 0
+	elseif lds_ds.rowcount() = 1 then
+		this.dw_detail.retrieve(lds_ds.object.code[1])
+		return 0
+	else
+		lstr_arg.s_name1 = as_no
+		openwithparm(w_contactcard_mobilesearchresult, lstr_arg)
+		lstr_arg = message.powerobjectparm
+		if lstr_arg.i_status = 1 then
+			this.dw_detail.retrieve(lstr_arg.l_code1)
+			return 0
+		end if
+	end if
+	return 0
+
+// w_contactcard_quick.create() returns 0
+	this.dw_print = create dw_print
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.dw_detail = create dw_detail
+	this.control = {this.dw_print, this.cb_cancel, this.cb_ok, this.dw_detail}
+
+// w_contactcard_quick.destroy() returns 0
+	destroy this.dw_print
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.dw_detail
+
+// w_contactcard_quick.open() returns long
+	long ll_row
+	long ll_width
+	long ll_height
+	environment env
+	if wf_connect() <> 0 then
+		close(this)
+		return ::message.returnvalue
+	end if
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.x = int((ll_width - this.width) / 2.0)
+	this.y = int((ll_height - this.height) / 2.0)
+	this.il_code = ::message.doubleparm
+	post event ue_postopen()
+	this.dw_detail.setfocus()
+	this.dw_detail.setcolumn("mobile")
+	return ::message.returnvalue
+
+// cb_cancel.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	long ll_primarykey
+	long ll_row
+	long ll_usercode
+	long ll_null
+	long ll_new_reg
+	long ll_primarykey_old
+	long ll_start
+	long ll_end
+	integer li_patientcatcode
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	string ls_mobile
+	char lc_temp
+	dwitemstatus ldw_active
+	boolean lb_commit
+	boolean lb_mobileok
+	setpointer(hourglass!)
+	setnull(ll_null)
+	if f_validatedw(parent.dw_detail) < 0 then
+		return ::message.returnvalue
+	end if
+	ll_row = parent.dw_detail.getrow()
+	ll_primarykey = parent.dw_detail.object.code[ll_row]
+	ll_primarykey_old = ll_primarykey
+	ls_mobile = parent.dw_detail.object.mobile[ll_row]
+	if len(ls_mobile) > 0 and match(ls_mobile, "[ A-Za-z+-.,;:~"\@#%^&*()]+$") then
+		messagebox("Mobile Number Validation", "Please enter valid mobile number", stopsign!)
+		parent.dw_detail.setcolumn("mobile")
+		return ::message.returnvalue
+	end if
+	if len(ls_mobile) > 0 then
+		if len(ls_mobile) < 12 then
+			messagebox("Mobile Number Validation", "Please enter valid mobile number", stopsign!)
+			parent.dw_detail.setcolumn("mobile")
+			return ::message.returnvalue
+		end if
+		ll_end = len(ls_mobile)
+		for ll_start = 1 to ll_end
+			lc_temp = mid(ls_mobile, ll_start, 1)
+			if not (asc(lc_temp) = 44 or asc(lc_temp) > 47 and asc(lc_temp) < 58) then
+				lb_mobileok = false
+				exit
+			end if
+		next
+	end if
+	if lb_mobileok = false then
+		messagebox("Mobile Number Validation", "Invalid characters in mobile no are not allowed.~r~nPlease enter valid mobile number", stopsign!)
+		parent.dw_detail.setcolumn("mobile")
+		return ::message.returnvalue
+	end if
+	if isnull(ll_primarykey) then
+		ll_primarykey = 0
+		ll_new_reg = 1
+		SQL rollback USING parent.it_transobject;
+		parent.it_transobject.gettabmaxkey("ContactCard", ll_primarykey)
+		if parent.it_transobject.sqlcode = 0 then
+			parent.dw_detail.setitem(ll_row, "code", ll_primarykey)
+		else
+			SQL rollback USING parent.it_transobject;
+			lb_commit = false
+			parent.dw_detail.setitem(ll_row, "code", ll_null)
+			messagebox("Contact Registration Problem", "Problem in Auto Generation of Contact ~r~n Possibe Reason: " + parent.it_transobject.sqlerrtext)
+		end if
+	end if
+	if lb_commit then
+		if parent.dw_detail.update() > 0 then
+			SQL commit USING parent.it_transobject;
+			parent.il_code = ll_primarykey
+			if parent.ib_print then
+				parent.wf_print()
+			end if
+		else
+			SQL rollback USING parent.it_transobject;
+			setpointer(arrow!)
+			if isnull(ll_primarykey_old) then
+				parent.dw_detail.setitem(ll_row, "code", ll_null)
+			end if
+			messagebox("Save Changes", "Changes Rollback in database, ~n~rSome database problem occurs", exclamation!, ok!, 1)
+			return ::message.returnvalue
+		end if
+		setpointer(arrow!)
+		parent.post event ue_close(1)
+	end if
+	if isnull(ll_primarykey_old) then
+		parent.dw_detail.setitem(ll_row, "code", ll_null)
+	end if
+	setpointer(arrow!)
+	return ::message.returnvalue
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	long ll_retcode
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "mobile"
+		if len(data) > 0 then
+			return parent.wf_validate_mobileno(data)
+		else
+			messagebox("Mobile No.", "Please enter Mobile No.", stopsign!)
+			return 1
+		end if
+	case else
+		ll_retcode = 0
+	end choose
+	return ll_retcode
+
+// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	string ls_col
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	ls_col = getcolumnname()
+	if ls_col = "mobile" then
+		selecttext(5, 1)
+	else
+		selecttext(1, len(gettext()))
+	end if
+	return ::message.returnvalue
+
+// dw_detail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	s_datastore lstr_ds
+	s_popup_selection lstr_selection
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if keyflags = 2 and key = keyp! then
+		parent.ib_print = true
+		parent.cb_ok.triggerevent(clicked!)
+	end if
+	if key = keyf5! and (getcolumnname() = "mobile" or getcolumnname() = "name") then
+		setredraw(true)
+		accepttext()
+		lstr_ds.s_name1 = "ddd_contactcardsearchlist"
+		lstr_ds.s_name2 = getcolumnname()
+		lstr_ds.s_name3 = getcolumnname()
+		lstr_ds.s_name4 = this.object.datawindow.table.updatetable
+		lstr_ds.s_name5 = getitemstring(getrow(), getcolumnname())
+		lstr_ds.s_name6 = getcolumnname()
+		openwithparm(w_popup_responsivesearch_contactcard, lstr_ds)
+		lstr_selection = message.powerobjectparm
+		if lstr_selection.l_code2 > 0 and getrow() > 0 then
+			setitem(getrow(), getcolumnname(), lstr_selection.s_name)
+			retrieve(lstr_selection.l_code2)
+		end if
+		setfocus()
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// dw_detail.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_detail.getfocus() returns long
+	string ls_col
+	ls_col = getcolumnname()
+	if ls_col = "mobile" then
+		selecttext(5, 1)
+	else
+		selecttext(1, len(gettext()))
+	end if
+	return ::message.returnvalue

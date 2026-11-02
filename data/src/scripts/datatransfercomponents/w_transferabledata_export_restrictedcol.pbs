@@ -1,0 +1,163 @@
+// window w_transferabledata_export_restrictedcol (datatransfercomponents)  ancestor: w_multi_entry
+
+// w_transferabledata_export_restrictedcol.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	return b_flag
+
+// w_transferabledata_export_restrictedcol.wf_validateitem() returns integer
+	long ll_found
+	integer li_errcode
+	string ls_itemname
+	string ls_null
+	ls_itemname = this.id_detail.object.itemname[this.il_currrow]
+	ll_found = 0
+	ll_found = this.id_detail.find("itemname = '" + ls_itemname + "'", 1, this.id_detail.rowcount())
+	if this.il_currrow <> ll_found then
+		messagebox("Duplication Error", "Current row is duplicate")
+		li_errcode = -1
+	else
+		li_errcode = 0
+	end if
+	this.ib_itemvalidated = true
+	if li_errcode = -1 then
+		setnull(ls_null)
+		this.id_detail.setcolumn("itemname")
+		this.id_detail.scrolltorow(this.il_currrow)
+		this.id_detail.object.itemname[this.il_currrow] = ls_null
+	end if
+	return li_errcode
+
+// w_transferabledata_export_restrictedcol.wf_first() returns long
+	long ret_val
+	if this.id_dwcontrol.rowcount() > 0 then
+		this.id_dwcontrol.scrolltorow(0)
+		ret_val = this.id_dwcontrol.getrow()
+	end if
+	return ret_val
+
+// w_transferabledata_export_restrictedcol.wf_retrieve_itemlist() returns long
+	if this.id_master.rowcount() > 0 then
+		this.idc_child.settransobject(this.it_transobject)
+		this.idc_child.retrieve(this.id_master.object.tablename[this.id_master.rowcount()])
+	else
+		this.idc_child.insertrow(0)
+		this.idc_child.scrolltorow(0)
+	end if
+	return 0
+
+// w_transferabledata_export_restrictedcol.create() returns 0
+	call super::create
+
+// w_transferabledata_export_restrictedcol.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_transferabledata_export_restrictedcol.ue_save() returns 0
+	long ll_mastercurrrow
+	long ll_invid
+	long ll_detailrows
+	integer li_counter
+	integer ll_salesmancode
+	boolean lb_commitflag
+	string ls_tablename
+	dwitemstatus lds_rowstatus
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	setpointer(hourglass!)
+	ll_mastercurrrow = this.id_master.getrow()
+	ls_tablename = this.id_master.object.tablename[ll_mastercurrrow]
+	if isnull(ls_tablename) then
+		messagebox("Table Name Validation", "Select Valid Tabl Name")
+		return
+	end if
+	ll_detailrows = this.id_detail.rowcount()
+	li_counter = 1
+	do while li_counter <= ll_detailrows and lb_commitflag = true
+		lds_rowstatus = this.id_detail.getitemstatus(li_counter, 0, primary!)
+		if lds_rowstatus = newmodified! then
+			this.id_detail.setitem(li_counter, "tablename", ls_tablename)
+		end if
+		li_counter = li_counter + 1
+	loop
+	call super::ue_save
+	setpointer(arrow!)
+
+// w_transferabledata_export_restrictedcol.ue_newform() returns 0
+	call super::ue_newform
+	this.id_master.setfocus()
+	wf_retrieve_itemlist()
+
+// w_transferabledata_export_restrictedcol.ue_newitem() returns 0
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	call super::ue_newitem
+
+// w_transferabledata_export_restrictedcol.ue_detail() returns 0
+	long ll_rowcount
+	string ls_itemname
+	this.im_menu.m_file.m_retrieve.text = "Lis&t"
+	this.im_menu.m_file.m_print.enabled = true
+	this.i_editmode = 2
+	this.i_retrievemode = 2
+	ls_itemname = this.id_dwcontrol.borderstyle.tablename[this.il_selectedrow]
+	this.id_dwcontrol = this.id_master
+	this.id_dwcontrol.retrieve(ls_itemname)
+	this.id_master.setrow(1)
+	this.id_master.scrolltorow(1)
+	wf_retrieve_itemlist()
+	this.id_dwcontrol = this.id_detail
+	this.id_dwcontrol.retrieve(ls_itemname)
+	this.id_master.setcolumn(1)
+	this.id_master.setfocus()
+	this.id_dwcontrol = this.id_list
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_delete.enabled = true
+	this.im_menu.m_file.m_first.enabled = true
+	this.im_menu.m_file.m_next.enabled = true
+	this.im_menu.m_file.m_last.enabled = true
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_menu.m_file.m_previous.enabled = true
+	this.im_menu.m_item.m_newitem.enabled = true
+	this.im_menu.m_item.m_deleteitem.enabled = true
+
+// w_transferabledata_export_restrictedcol.ue_postopen() returns 0
+	call super::ue_postopen
+	this.id_detail.getchild("itemname", this.idc_child)
+	wf_retrieve_itemlist()
+
+// w_transferabledata_export_restrictedcol.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.title = "Restricted Columns List for Data Export"
+	return ::message.returnvalue
+
+// w_transferabledata_export_restrictedcol.ue_deleteitem() returns 0
+	long ll_currow
+	long ll_detailrows
+	long ll_icode
+	dwruntimeerror myexc
+	this.ib_itemvalidated = true
+	try
+		ll_icode = this.id_detail.object.icode[this.id_detail.getrow()]
+	catch (throwable myexc)
+	end try
+	if not isnull(ll_icode) then
+		this.id_detail.rowscopy(this.id_detail.getrow(), this.id_detail.getrow(), primary!, this.ids_itemrecyclebin, this.ids_itemrecyclebin.rowcount() + 1, primary!)
+	end if
+	this.id_detail.deleterow(0)
+	ll_detailrows = this.id_detail.rowcount()
+	if ll_detailrows < 1 and isnull(this.id_master.object.tablename[1]) then
+		this.im_menu.m_file.m_save.enabled = false
+	end if
+	wf_grandtotal()

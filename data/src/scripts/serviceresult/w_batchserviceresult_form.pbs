@@ -1,0 +1,1208 @@
+// window w_batchserviceresult_form (serviceresult)  ancestor: w_multi_entry
+
+// w_batchserviceresult_form.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM ServiceComponent WHERE ServiceComponent.name =:as_name USING this.it_transobject;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_batchserviceresult_form.wf_validateitem() returns integer
+	long ll_icode
+	integer li_errcode
+	string ls_managername
+	string ls_errtext
+	integer li_null
+	ll_icode = this.id_detail.getitemnumber(this.il_currrow, "servicerowid")
+	if vf_dwdupcode1(this.id_detail, "srvrowid", string(ll_icode), this.il_currrow) = true then
+		ls_managername = ""
+		messagebox("Duplication Error", "Current row is duplicate")
+		li_errcode = -1
+	else
+		li_errcode = 0
+	end if
+	this.ib_itemvalidated = true
+	if li_errcode = -1 then
+		setnull(li_null)
+		this.id_detail.setcolumn("srvrowid")
+		this.id_detail.scrolltorow(this.il_currrow)
+		this.id_detail.object.srvrowid[this.il_currrow] = li_null
+	else
+		li_errcode = wf_getserviceinfo(ll_icode, ls_errtext)
+		messagebox("Service Invoice Code Validation", ls_errtext)
+	end if
+	return li_errcode
+
+// w_batchserviceresult_form.wf_set_service_info(long al_serviceinvcode) returns long
+	long ll_patientcode
+	long ll_custcode
+	long ll_admissioncode
+	long ll_patientlocation
+	long ll_retcode
+	long ll_gestationcode
+	integer li_ageyears
+	integer li_agemonths
+	integer li_agedays
+	datetime ldt_servicedate
+	datetime ldt_dob
+	string ls_regno
+	string ls_patientname
+	string ls_fname
+	string ls_address1
+	string ls_address2
+	string ls_phone
+	char lc_gender
+	ls_regno = "                                                                                       "
+	ls_patientname = "                                                                                       "
+	ls_fname = "                                                                                       "
+	ls_address1 = "                                                                                       "
+	ls_address2 = "                                                                                       "
+	ls_phone = "                                                                                       "
+	if al_serviceinvcode > 0 then
+		sqlca.getserviceinfo(al_serviceinvcode, ldt_servicedate, ll_patientcode, ls_regno, ls_patientname, ls_fname, ldt_dob, lc_gender, ll_custcode, ls_address1, ls_address2, ls_phone, li_ageyears, li_agemonths, li_agedays, ll_admissioncode, ll_patientlocation)
+		if sqlca.sqlcode = 0 then
+			this.id_master.object.servicedate[1] = ldt_servicedate
+			this.id_master.object.patientcode[1] = ll_patientcode
+			this.id_master.object.patientregno[1] = ls_regno
+			this.id_master.object.gender[1] = lc_gender
+			this.id_master.object.admissioncode[1] = ll_admissioncode
+			this.id_master.object.locationcode[1] = ll_patientlocation
+			this.id_master.object.ageyears[1] = li_ageyears
+			this.id_master.object.agemonths[1] = li_agemonths
+			this.id_master.object.agedays[1] = li_agedays
+			wf_set_patient_gestation(ll_patientcode)
+			if wf_populate_services(al_serviceinvcode) = 0 then
+				ll_retcode = 0
+			else
+				ll_retcode = 1
+			end if
+		else
+			messagebox("Service Info. Fetch Error", sqlca.sqlerrtext)
+			ll_retcode = 1
+		end if
+	else
+		ll_retcode = 1
+	end if
+	return ll_retcode
+
+// w_batchserviceresult_form.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	if not isnull(ad_dwcontrol.dataobject) then
+		li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+		for li_counter = li_colcount to li_counter step -1
+			ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+			if ai_doundo = 1 then
+				ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+			else
+				ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+			end if
+		next
+	end if
+
+// w_batchserviceresult_form.wf_populate_services(long al_serviceinvcode) returns long
+	long ll_option
+	long ll_counter
+	long ll_row
+	long ll_servicecode
+	long ll_retcode
+	long ll_servicerowid
+	long ll_result_template
+	u_ds_standard lds_service
+	lds_service = create u_ds_standard
+	lds_service.dataobject = "d_serviceinv_service_result_required"
+	lds_service.settransobject(this.it_transobject)
+	lds_service.retrieve(al_serviceinvcode)
+	if this.id_detail.rowcount() > 0 then
+		ll_option = messagebox("Confirm Row Deletion!", "Rows in service component detail window will lost~r~nAre you sure to do this?", question!, yesno!, 2)
+		if ll_option = 2 then
+			ll_retcode = 1
+			return ll_retcode
+		else
+			this.id_detail.reset()
+		end if
+	end if
+	this.id_detail.setredraw(false)
+	if lds_service.rowcount() > 0 then
+		for ll_counter = 1 to lds_service.rowcount()
+			ll_servicecode = lds_service.object.servicecode[ll_counter]
+			ll_servicerowid = lds_service.object.srvrowid[ll_counter]
+			ll_result_template = lds_service.object.serviceresulttemplate[ll_counter]
+			if wf_populate_servicecomponent(al_serviceinvcode, ll_servicecode, ll_servicerowid, ll_result_template) = 0 then
+				ll_retcode = 0
+			else
+				ll_retcode = 1
+			end if
+		next
+	else
+		ll_retcode = 1
+	end if
+	this.id_detail.groupcalc()
+	this.id_detail.setsort("code, servicerowid, priority, servicehead, rowid")
+	this.id_detail.sort()
+	this.id_detail.setredraw(true)
+	return ll_retcode
+
+// w_batchserviceresult_form.wf_set_ref_value(long al_compcode, long al_row) returns long
+	long ll_counter
+	long ll_row
+	long ll_loweragelimit
+	long ll_upperagelimit
+	long ll_ageyears
+	long ll_agedays
+	long ll_agemonths
+	long ll_gestationcode
+	long ll_testmachinecode
+	long ll_patient_gestation
+	long ll_patient_testmachine
+	char lc_gender
+	char lc_ageunit
+	char lc_patient_gender
+	string ls_refvalue1
+	string ls_refvalue2
+	u_ds_standard lds_svccomp_refvalue
+	if al_row > 0 then
+		lc_patient_gender = this.id_detail.object.gender[al_row]
+		ll_ageyears = this.id_detail.object.ageyears[al_row]
+		ll_agemonths = this.id_detail.object.agemonths[al_row]
+		ll_agedays = this.id_detail.object.agedays[al_row]
+		ll_patient_gestation = this.id_detail.object.gestationcode[al_row]
+		ll_patient_testmachine = this.id_detail.object.testmachinecode[al_row]
+	end if
+	lds_svccomp_refvalue = create u_ds_standard
+	lds_svccomp_refvalue.dataobject = "d_servicecomponent_refvalue"
+	lds_svccomp_refvalue.settransobject(this.it_transobject)
+	lds_svccomp_refvalue.retrieve(al_compcode)
+	if lds_svccomp_refvalue.rowcount() > 0 then
+		for ll_counter = 1 to lds_svccomp_refvalue.rowcount()
+			lc_gender = lds_svccomp_refvalue.object.gender[ll_counter]
+			lc_ageunit = lds_svccomp_refvalue.object.ageunit[ll_counter]
+			ll_gestationcode = lds_svccomp_refvalue.object.gestationcode[ll_counter]
+			ll_testmachinecode = lds_svccomp_refvalue.object.testmachinecode[ll_counter]
+			ll_loweragelimit = lds_svccomp_refvalue.object.loweragelimit[ll_counter]
+			ll_upperagelimit = lds_svccomp_refvalue.object.upperagelimit[ll_counter]
+			ls_refvalue1 = lds_svccomp_refvalue.object.lowerreferencevalue[ll_counter]
+			ls_refvalue2 = lds_svccomp_refvalue.object.upperreferencevalue[ll_counter]
+			if lc_gender = lc_patient_gender and ll_testmachinecode = ll_patient_testmachine and ll_patient_gestation = ll_gestationcode and lc_ageunit = "Y" and ll_ageyears > 0 and ll_ageyears <= ll_upperagelimit and ll_ageyears >= ll_loweragelimit then
+				ll_row = ll_counter
+				exit
+			elseif lc_gender = lc_patient_gender and ll_testmachinecode = ll_patient_testmachine and ll_patient_gestation = ll_gestationcode and lc_ageunit = "M" and ll_agemonths > 0 and ll_agemonths <= ll_upperagelimit and ll_agemonths >= ll_loweragelimit then
+				ll_row = ll_counter
+				exit
+			elseif lc_gender = lc_patient_gender and ll_testmachinecode = ll_patient_testmachine and ll_patient_gestation = ll_gestationcode and lc_ageunit = "D" and ll_agedays > 0 and ll_agedays <= ll_upperagelimit and ll_agedays >= ll_loweragelimit then
+				ll_row = ll_counter
+				exit
+			end if
+		next
+		if ll_row <= 0 then
+			ll_row = 1
+		end if
+		if ll_row > 0 then
+			ls_refvalue1 = lds_svccomp_refvalue.object.lowerreferencevalue[ll_row]
+			ls_refvalue2 = lds_svccomp_refvalue.object.upperreferencevalue[ll_row]
+			this.id_detail.object.lowerreferencevalue[al_row] = ls_refvalue1
+			this.id_detail.object.upperreferencevalue[al_row] = ls_refvalue2
+		end if
+	else
+		return 0
+	end if
+	return 0
+
+// w_batchserviceresult_form.wf_check_options(long al_compcode) returns long
+	u_ds_standard lds_servicecomoption
+	if al_compcode > 0 then
+		lds_servicecomoption = create u_ds_standard
+		lds_servicecomoption.dataobject = "d_servicecomponent_options"
+		lds_servicecomoption.settransobject(this.it_transobject)
+		lds_servicecomoption.retrieve(al_compcode)
+		if lds_servicecomoption.rowcount() <= 0 then
+			return 0
+		end if
+	else
+		return 0
+	end if
+	return lds_servicecomoption.rowcount()
+
+// w_batchserviceresult_form.wf_deleteemptydetailrow() returns integer
+	long ll_rowcount
+	integer li_rtcode
+	ll_rowcount = this.id_detail.rowcount()
+	if ll_rowcount > 1 and isnull(this.id_detail.getitemnumber(ll_rowcount, "servicecomponentcode")) then
+		this.id_detail.deleterow(ll_rowcount)
+		li_rtcode = 1
+		this.ib_itemslistopen = false
+		this.id_itemslist.hide()
+		setfocus()
+	end if
+	return li_rtcode
+
+// w_batchserviceresult_form.wf_edit_comments(long al_compcode, long al_row) returns long
+	long ll_counter
+	long ll_code
+	long ll_row
+	long ll_comptypesetting
+	char lc_askunit
+	char lc_askcomments
+	s_comments lstr_comments
+	if al_compcode > 0 and al_row > 0 then
+		ll_comptypesetting = wf_get_servicecomponenttype_info(this.id_detail.object.servicecomponenttypecode[al_row], lc_askunit, lc_askcomments)
+		if upper(lc_askcomments) = "Y" then
+			lstr_comments.s_comment = this.id_detail.object.comments[al_row]
+			lstr_comments.code = al_compcode
+			openwithparm(w_serviceresult_rowid_comments, lstr_comments)
+			lstr_comments = message.powerobjectparm
+			if lstr_comments.i_closemode = 1 then
+				this.id_detail.object.comments[al_row] = lstr_comments.s_comment
+			end if
+		end if
+	end if
+	return 0
+
+// w_batchserviceresult_form.wf_edit_componentvalue(datawindow adw_object, long al_row) returns long
+	long ll_servicecompcode
+	long ll_options
+	long ll_comptypesetting
+	long ll_typecode
+	long ll_servicecode
+	long ll_compvalue
+	long ll_ref1
+	long ll_ref2
+	string ls_compvalue
+	string ls_ref1
+	string ls_ref2
+	double ld_compvalue
+	double ld_ref1
+	double ld_ref2
+	string ls_objectname
+	char lc_askunit
+	char lc_askcomments
+	s_compvalue lstr_value
+	if upper(this.id_master.object.posted[1]) = "Y" then
+		return 0
+	end if
+	if al_row > 0 then
+		adw_object.setrow(al_row)
+		adw_object.scrolltorow(al_row)
+		ll_servicecode = adw_object.object.servicecode[al_row]
+		ll_servicecompcode = adw_object.object.servicecomponentcode[al_row]
+		ll_typecode = adw_object.object.servicecomponenttypecode[al_row]
+		lstr_value.code = ll_servicecompcode
+		lstr_value.id = adw_object.object.rowid[al_row]
+		lstr_value.datatype = adw_object.object.valuetype[al_row]
+		lstr_value.value = adw_object.object.componentvalue[al_row]
+		ll_options = wf_check_options(ll_servicecompcode)
+		ll_comptypesetting = wf_get_servicecomponenttype_info(ll_typecode, lc_askunit, lc_askcomments)
+		if upper(lc_askunit) = "Y" then
+			if ll_options > 0 then
+				openwithparm(w_componentvalue_dropdown, lstr_value)
+			elseif ll_options = 0 and lstr_value.datatype = "S" then
+				openwithparm(w_componentvalue_text, lstr_value)
+			elseif ll_options = 0 and lstr_value.datatype = "N" then
+				openwithparm(w_componentvalue_long, lstr_value)
+			elseif ll_options = 0 and lstr_value.datatype = "D" then
+				openwithparm(w_componentvalue_decimal, lstr_value)
+			else
+				openwithparm(w_componentvalue_text, lstr_value)
+			end if
+			lstr_value = message.powerobjectparm
+			if lstr_value.status then
+				lstr_value = lstr_value
+				adw_object.object.componentvalue[al_row] = lstr_value.value
+				wf_set_remarks(al_row)
+			end if
+		end if
+	end if
+	return 0
+
+// w_batchserviceresult_form.wf_get_servicecomponenttype_info(long al_typecode, char ac_askunit, char ac_askcomments) returns long
+	SQL SELECT AskUnit , AskComments INTO :ac_askunit, :ac_askcomments FROM DBO.ServiceComponentType WHERE ServiceComponentTypeCode =:al_typecode USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		if isnull(ac_askunit) then
+			ac_askunit = "N"
+		end if
+		if isnull(ac_askcomments) then
+			ac_askcomments = "N"
+		end if
+		ac_askcomments = "Y"
+		return 0
+	end if
+	return -1
+
+// w_batchserviceresult_form.wf_initmodify(integer ai_protect) returns 0
+	long ll_counter
+	long ll_count
+	string ls_errtext
+	if this.id_master.getitemstring(1, "posted") = "N" then
+		wf_getserviceinfo(this.id_master.object.servicerowid[1], ls_errtext)
+		if ai_protect = 0 then
+			this.ib_modify = true
+			this.editflag = true
+			this.im_menu.m_file.m_save.enabled = true
+			this.im_menu.m_file.m_new.enabled = false
+			this.im_menu.m_file.m_delete.enabled = false
+			this.im_menu.m_item.m_newitem.enabled = true
+			this.im_menu.m_item.m_deleteitem.enabled = true
+			this.im_menu.m_file.m_first.enabled = false
+			this.im_menu.m_file.m_next.enabled = false
+			this.im_menu.m_file.m_previous.enabled = false
+			this.im_menu.m_file.m_last.enabled = false
+			this.im_menu.m_file.m_retrieve.enabled = true
+			this.im_menu.m_file.m_retrieve.text = "Lis&t"
+			this.tab_retrieve.tabpage_detail.enabled = true
+		end if
+	end if
+
+// w_batchserviceresult_form.wf_set_patient_gestation(long al_patientcode) returns long
+	long ll_gestationcode
+	SQL SELECT GestationCode INTO :ll_gestationcode FROM DBO.Patient WHERE PatientCode =:al_patientcode USING sqlca;
+	if sqlca.sqlcode = 0 then
+		this.id_master.object.gestationcode[1] = ll_gestationcode
+		return 0
+	end if
+	return 1
+
+// w_batchserviceresult_form.wf_getserviceinfo(long al_code, string as_errtext) returns long
+	datetime ldt_servicedate
+	datetime ldt_dob
+	datetime ldt_deliverydate
+	long ll_retcode
+	long ll_rowcount
+	long ll_counter
+	long ll_res
+	long ll_row
+	long ll_servicecount
+	long ll_serviceinvcode
+	long ll_resultcode
+	char lc_posted
+	datastore lds_services
+	SQL SELECT POSTED INTO :lc_posted FROM DBO.ServiceHeader WHERE ServiceInvCode =:al_code USING sqlca;
+	if sqlca.sqlcode = 0 and upper(lc_posted) = "N" then
+		as_errtext = "Service Invoice not yet posted.~r~nKindly make sure it is posted first and then try to enter service result."
+		return 1
+	end if
+	SQL SELECT serviceinvcode , resultcode =( select max ( SRH.ServiceResultcode ) FROM ServiceResultHeader SRH WHERE ServiceInvCode =:al_code ) INTO :ll_serviceinvcode, :ll_resultcode FROM DBO.ServiceHeader WHERE ServiceInvCode =:al_code AND Posted ='Y' AND ServiceInvCode IN ( SELECT SRH.ServiceInvCode FROM ServiceResultHeader SRH WHERE SRH.ServiceInvCode =:al_code ) USING sqlca;
+	if sqlca.sqlcode = 0 and ll_serviceinvcode > 0 then
+		if ll_resultcode > 0 then
+			as_errtext = "Result For this Service Invoice already entered.~r~nService Result Code=" + trim(string(ll_resultcode))
+		else
+			as_errtext = "Result For this Service Invoice already entered."
+		end if
+		return 1
+	end if
+	lds_services = create datastore
+	lds_services.dataobject = "d_serviceinv_service_result_required"
+	lds_services.settransobject(sqlca)
+	SQL SELECT servicecount =( SELECT COUNT ( SD.ServiceCode ) FROM ServiceDetail SD , Service SV WHERE SD.ServiceInvCode =:al_code AND SD.ServiceCode =SV.ServiceCode AND SV.ResultRequired ='Y' ) INTO :ll_servicecount FROM DBO.ServiceHeader WHERE ServiceInvCode =:al_code AND Posted ='Y' AND ServiceInvCode NOT IN ( SELECT SRH.ServiceInvCode FROM ServiceResultHeader SRH WHERE SRH.ServiceInvCode =:al_code ) USING sqlca;
+	if sqlca.sqlcode = 0 then
+		if isnull(ll_servicecount) or ll_servicecount = 0 then
+			as_errtext = "This Service Invoice Does not contain any service for which service result is required~r~nPlease enter a valid service invoice code."
+			ll_retcode = 1
+		else
+			if this.id_detail.rowcount() > 0 then
+				ll_res = messagebox("", "Detail Rows will lost. Are you sure to populated Services?", question!, yesno!, 1)
+				if ll_res = 1 then
+					this.id_detail.reset()
+					ll_retcode = 0
+				else
+					ll_retcode = 1
+				end if
+			end if
+			ll_retcode = 0
+		end if
+	else
+		as_errtext = "Service Info. Retrieval Error.~r~nProblem in retrieval of Service Information.~r~nReasons are:-" + sqlca.sqlerrtext
+		ll_retcode = 1
+	end if
+	if ll_retcode = 0 then
+		lds_services.retrieve(al_code)
+		if lds_services.rowcount() > 0 then
+			ll_retcode = wf_set_service_info(al_code)
+			if ll_retcode = 0 then
+				this.id_detail.setredraw(false)
+				this.id_detail.sort()
+				this.id_detail.groupcalc()
+				this.id_detail.setredraw(true)
+			end if
+		else
+			as_errtext = "No Service Selected From Service List~r~nPerhaps this Service Invoice Does not contain any service for which service result is required~r~nPlease enter a valid service invoice code"
+			ll_retcode = 1
+		end if
+	end if
+	return ll_retcode
+
+// w_batchserviceresult_form.wf_lock_service_result(long al_sinvcode, long al_linvcode, long al_totalinvoice) returns long
+	integer li_count
+	SQL Select count ( *) INTO :al_totalinvoice From ServiceResultHeader WITH ( UPDLOCK HOLDLOCK ) Where ServiceResultCode Between :al_sinvcode AND :al_linvcode AND Posted ='N' USING sqlca;
+	return sqlca.sqlcode
+
+// w_batchserviceresult_form.wf_post() returns long
+	integer li_errcode
+	long ll_usercode
+	long ll_invcount
+	long ll_counter
+	boolean lb_flag
+	s_arguements lstr_arginfo
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	if this.tab_retrieve.selectedtab = 1 then
+		return 0
+	end if
+	open(w_salesmanpassword)
+	ll_usercode = long(message.doubleparm)
+	setfocus()
+	if ll_usercode > 0 then
+		open(w_arg_sinvcode_linvcode)
+		lstr_arginfo = message.powerobjectparm
+		if lstr_arginfo.i_status = 1 then
+			setpointer(hourglass!)
+			if not wf_getserverdatetime(ldt_server_datetime, ls_date_errtext) then
+				messagebox("Date Violation", ls_date_errtext, stopsign!)
+				return -1
+			end if
+			SQL rollback USING sqlca;
+			li_errcode = wf_lock_service_result(lstr_arginfo.l_code1, lstr_arginfo.l_code2, ll_invcount)
+			if li_errcode = 0 then
+				SQL update ServiceResultHeader SET Posted ='Y' , PostDate =:ldt_server_datetime , PostedBy =:ll_usercode WHERE Posted ='N' AND ServiceResultCode BETWEEN :lstr_arginfo.l_code1 AND :lstr_arginfo.l_code2 USING sqlca;
+				if sqlca.sqlcode <> 0 then
+					li_errcode = -1
+				end if
+			end if
+		end if
+		if li_errcode = 0 then
+			SQL commit USING sqlca;
+			if sqlca.sqlcode <> 0 then
+				li_errcode = -1
+			end if
+		else
+			SQL rollback USING sqlca;
+		end if
+	else
+		setfocus()
+	end if
+	setpointer(arrow!)
+	if li_errcode <> 0 then
+		messagebox("Service Result Posting", "Some database request fails, Please try again")
+	else
+		messagebox("Service Result Posting", "Total Un-Posted Service Results were " + string(ll_invcount) + "~n~rAll service results in range have been Posted successfully")
+	end if
+	return li_errcode
+
+// w_batchserviceresult_form.wf_set_machine_based_ref_value(long al_testmachinecode, long al_row) returns long
+	long ll_counter
+	long ll_row
+	long ll_loweragelimit
+	long ll_upperagelimit
+	long ll_ageyears
+	long ll_agedays
+	long ll_agemonths
+	long ll_gestationcode
+	long ll_testmachinecode
+	long ll_patient_gestation
+	long ll_patient_testmachine
+	long ll_compcode
+	char lc_gender
+	char lc_ageunit
+	char lc_patient_gender
+	string ls_refvalue1
+	string ls_refvalue2
+	u_ds_standard lds_svccomp_refvalue
+	if al_row > 0 and al_testmachinecode > 0 then
+		lc_patient_gender = this.id_detail.object.gender[al_row]
+		ll_ageyears = this.id_detail.object.ageyears[al_row]
+		ll_agemonths = this.id_detail.object.agemonths[al_row]
+		ll_agedays = this.id_detail.object.agedays[al_row]
+		ll_patient_gestation = this.id_detail.object.gestationcode[al_row]
+		ll_patient_testmachine = al_testmachinecode
+		ll_compcode = this.id_detail.object.servicecomponentcode[al_row]
+	else
+		return 1
+	end if
+	lds_svccomp_refvalue = create u_ds_standard
+	lds_svccomp_refvalue.dataobject = "d_servicecomponent_refvalue"
+	lds_svccomp_refvalue.settransobject(this.it_transobject)
+	lds_svccomp_refvalue.retrieve(ll_compcode)
+	if lds_svccomp_refvalue.rowcount() > 0 then
+		for ll_counter = 1 to lds_svccomp_refvalue.rowcount()
+			lc_gender = lds_svccomp_refvalue.object.gender[ll_counter]
+			lc_ageunit = lds_svccomp_refvalue.object.ageunit[ll_counter]
+			ll_gestationcode = lds_svccomp_refvalue.object.gestationcode[ll_counter]
+			ll_testmachinecode = lds_svccomp_refvalue.object.testmachinecode[ll_counter]
+			ll_loweragelimit = lds_svccomp_refvalue.object.loweragelimit[ll_counter]
+			ll_upperagelimit = lds_svccomp_refvalue.object.upperagelimit[ll_counter]
+			ls_refvalue1 = lds_svccomp_refvalue.object.lowerreferencevalue[ll_counter]
+			ls_refvalue2 = lds_svccomp_refvalue.object.upperreferencevalue[ll_counter]
+			if lc_gender = lc_patient_gender and ll_testmachinecode = ll_patient_testmachine and ll_patient_gestation = ll_gestationcode and lc_ageunit = "Y" and ll_ageyears > 0 and ll_ageyears <= ll_upperagelimit and ll_ageyears >= ll_loweragelimit then
+				ll_row = ll_counter
+				exit
+			elseif lc_gender = lc_patient_gender and ll_testmachinecode = ll_patient_testmachine and ll_patient_gestation = ll_gestationcode and lc_ageunit = "M" and ll_agemonths > 0 and ll_agemonths <= ll_upperagelimit and ll_agemonths >= ll_loweragelimit then
+				ll_row = ll_counter
+				exit
+			elseif lc_gender = lc_patient_gender and ll_testmachinecode = ll_patient_testmachine and ll_patient_gestation = ll_gestationcode and lc_ageunit = "D" and ll_agedays > 0 and ll_agedays <= ll_upperagelimit and ll_agedays >= ll_loweragelimit then
+				ll_row = ll_counter
+				exit
+			end if
+		next
+		if ll_row <= 0 then
+			ll_row = 1
+		end if
+		if ll_row > 0 then
+			ls_refvalue1 = lds_svccomp_refvalue.object.lowerreferencevalue[ll_row]
+			ls_refvalue2 = lds_svccomp_refvalue.object.upperreferencevalue[ll_row]
+			this.id_detail.object.lowerreferencevalue[al_row] = ls_refvalue1
+			this.id_detail.object.upperreferencevalue[al_row] = ls_refvalue2
+		end if
+	else
+		return 0
+	end if
+	return 0
+
+// w_batchserviceresult_form.wf_populate_ddlb(datawindow dwcontrol) returns 0
+	integer li_column_count
+	integer li_counter
+	string ls_column_name
+	string ls_columntype
+	this.tab_retrieve.tabpage_list.ddlb_filter_column.reset()
+	this.tab_retrieve.tabpage_list.ddlb_sort.reset()
+	li_column_count = integer(dwcontrol.object.datawindow.column.count)
+	for li_counter = li_column_count to li_counter step -1
+		ls_column_name = dwcontrol.describe("#" + string(li_counter) + ".Name")
+		this.tab_retrieve.tabpage_list.ddlb_sort.additem(ls_column_name)
+		this.tab_retrieve.tabpage_list.ddlb_filter_column.additem(ls_column_name)
+	next
+	this.tab_retrieve.tabpage_list.ddlb_sort.text = ls_column_name
+	ls_columntype = this.id_dwcontrol.describe("#1.ColType")
+	if left(ls_columntype, 4) = "char" then
+		this.ii_type = 1
+	elseif left(ls_columntype, 4) = "date" then
+		this.ii_type = 3
+	else
+		this.ii_type = 2
+	end if
+	this.ii_colindex = 1
+	this.tab_retrieve.tabpage_list.rb_descending.checked = true
+	this.is_sortsequence = "D"
+	wf_sortdw(this.tab_retrieve.tabpage_list.ddlb_sort.text, this.is_sortsequence)
+	this.id_master.setfocus()
+
+// w_batchserviceresult_form.wf_set_remarks(long al_row) returns long
+	long ll_compvalue
+	long ll_ref1
+	long ll_ref2
+	string ls_compvalue
+	string ls_ref1
+	string ls_ref2
+	string ls_datatype
+	double ld_compvalue
+	double ld_ref1
+	double ld_ref2
+	if upper(this.id_master.object.posted[1]) = "Y" then
+		return 0
+	end if
+	if al_row > 0 then
+		if this.id_detail.object.valuetype[al_row] = "N" then
+			ll_compvalue = long(this.id_detail.object.componentvalue[al_row])
+			ll_ref1 = long(this.id_detail.object.lowerreferencevalue[al_row])
+			ll_ref2 = long(this.id_detail.object.upperreferencevalue[al_row])
+			if ll_compvalue < ll_ref1 then
+				this.id_detail.object.remarks[al_row] = "Low"
+			elseif ll_compvalue >= ll_ref1 and ll_compvalue <= ll_ref2 then
+				this.id_detail.object.remarks[al_row] = "Normal"
+			elseif ll_compvalue > ll_ref2 then
+				this.id_detail.object.remarks[al_row] = "High"
+			end if
+		elseif this.id_detail.object.valuetype[al_row] = "D" then
+			ld_compvalue = double(this.id_detail.object.componentvalue[al_row])
+			ld_ref1 = double(this.id_detail.object.lowerreferencevalue[al_row])
+			ld_ref2 = double(this.id_detail.object.upperreferencevalue[al_row])
+			if ld_compvalue < ld_ref1 then
+				this.id_detail.object.remarks[al_row] = "Low"
+			elseif ld_compvalue >= ld_ref1 and ld_compvalue <= ld_ref2 then
+				this.id_detail.object.remarks[al_row] = "Normal"
+			elseif ld_compvalue > ld_ref2 then
+				this.id_detail.object.remarks[al_row] = "High"
+			end if
+			return 0
+		end if
+	end if
+	return 0
+
+// w_batchserviceresult_form.wf_set_servicecomponent_comments(long al_compcode, long al_row) returns long
+	long ll_counter
+	long ll_row
+	string ls_comments
+	u_ds_standard lds_svccomp_comments
+	lds_svccomp_comments = create u_ds_standard
+	lds_svccomp_comments.dataobject = "d_servicecomponent_comments"
+	lds_svccomp_comments.settransobject(this.it_transobject)
+	lds_svccomp_comments.retrieve(al_compcode)
+	if lds_svccomp_comments.rowcount() > 0 then
+		ls_comments = lds_svccomp_comments.object.comments[1]
+		this.id_detail.object.comments[al_row] = ls_comments
+	else
+		return 0
+	end if
+	return 0
+
+// w_batchserviceresult_form.wf_set_template_result(long al_resulttemplate, long al_servicecode, long al_compcode, long al_row) returns long
+	u_ds_standard lds_result_template
+	lds_result_template = create u_ds_standard
+	lds_result_template.dataobject = "d_service_result_template"
+	lds_result_template.settransobject(this.it_transobject)
+	lds_result_template.retrieve(al_resulttemplate, al_servicecode, al_compcode)
+	if lds_result_template.rowcount() > 0 then
+		this.id_detail.object.componentvalue[al_row] = lds_result_template.object.componentvalue[1]
+		this.id_detail.object.componentvalue2[al_row] = lds_result_template.object.componentvalue2[1]
+	end if
+	return 0
+
+// w_batchserviceresult_form.wf_edit_componentvalue2(datawindow adw_object, long al_row) returns long
+	long ll_servicecompcode
+	long ll_options
+	long ll_comptypesetting
+	long ll_typecode
+	long ll_servicecode
+	long ll_compvalue
+	long ll_ref1
+	long ll_ref2
+	string ls_compvalue
+	string ls_ref1
+	string ls_ref2
+	double ld_compvalue
+	double ld_ref1
+	double ld_ref2
+	string ls_objectname
+	char lc_askunit
+	char lc_askcomments
+	s_compvalue lstr_value
+	if upper(this.id_master.object.posted[1]) = "Y" then
+		return 0
+	end if
+	if al_row > 0 then
+		adw_object.setrow(al_row)
+		adw_object.scrolltorow(al_row)
+		ll_servicecode = adw_object.object.servicecode[al_row]
+		ll_servicecompcode = adw_object.object.servicecomponentcode[al_row]
+		ll_typecode = adw_object.object.servicecomponenttypecode[al_row]
+		lstr_value.code = ll_servicecompcode
+		lstr_value.id = adw_object.object.rowid[al_row]
+		lstr_value.datatype = adw_object.object.valuetype[al_row]
+		lstr_value.value = adw_object.object.componentvalue[al_row]
+		lstr_value.value2 = adw_object.object.componentvalue2[al_row]
+		ll_options = wf_check_options(ll_servicecompcode)
+		ll_comptypesetting = wf_get_servicecomponenttype_info(ll_typecode, lc_askunit, lc_askcomments)
+		openwithparm(w_componentvalue2_text, lstr_value)
+		lstr_value = message.powerobjectparm
+		if lstr_value.status then
+			lstr_value = lstr_value
+			adw_object.object.componentvalue2[al_row] = lstr_value.value2
+		end if
+	end if
+	return 0
+
+// w_batchserviceresult_form.wf_set_servicebalance(long al_serviceinvcode, long al_transactioncode) returns long
+	long ll_retcode
+	double ld_trans_amount
+	double ld_service_outstandingamt
+	double ld_service_balance
+	SQL rollback USING this.it_transobject;
+	this.it_transobject.gettransactionamount(al_transactioncode, ld_trans_amount)
+	if this.it_transobject.sqlcode = 0 then
+		this.it_transobject.getserviceinvbalance(al_serviceinvcode, ld_service_outstandingamt)
+		if this.it_transobject.sqlcode = 0 then
+			if ld_service_outstandingamt > 0.0 and ld_trans_amount > 0.0 then
+				if ld_service_outstandingamt >= ld_trans_amount then
+					ld_service_balance = ld_service_outstandingamt - ld_trans_amount
+				else
+					ld_service_balance = 0.00
+				end if
+				this.it_transobject.updateserviceinvbalance(al_serviceinvcode, ld_service_balance)
+				if this.it_transobject.sqlcode = 0 then
+					SQL commit USING this.it_transobject;
+					ll_retcode = 0
+				else
+					ll_retcode = -1
+				end if
+			else
+				ll_retcode = 0
+			end if
+		else
+			ll_retcode = -1
+		end if
+	else
+		ll_retcode = -1
+	end if
+	if ll_retcode = -1 then
+		messagebox("Service Invoice Balance Updation", "Problem in Updation of Service Invoice Balance. Reason:-~r~n" + this.it_transobject.sqlerrtext)
+		SQL rollback USING this.it_transobject;
+	end if
+	return ll_retcode
+
+// w_batchserviceresult_form.wf_set_form_values() returns long
+	long ll_counter
+	if this.id_detail.rowcount() > 0 then
+		this.id_master.object.deliverydate[1] = this.id_detail.object.deliverydate[1]
+		for ll_counter = 1 to this.id_detail.rowcount()
+			wf_set_ref_value(this.id_detail.object.servicecomponentcode[ll_counter], ll_counter)
+		next
+	end if
+	return 0
+
+// w_batchserviceresult_form.wf_sortdw(string a_column_name, char a_order) returns 0
+
+// w_batchserviceresult_form.wf_set_printout(string as_styledefaultdw) returns string
+	string ls_format
+	string ls_company
+	ls_company = gs_company
+	choose case as_styledefaultdw
+	case "d_batchserviceresult_full_print"
+		if ls_company = "AHMEDICALSTORE" then
+			ls_format = "d_ahmedicalstore_batchsvcresult"
+		elseif ls_company = "ZINISLABS" then
+			ls_format = "d_zinis_batchserviceresult_full_print"
+		elseif ls_company = "DWATSONDC" then
+			ls_format = "d_dwatsondc_batchserviceresult_print"
+		elseif ls_company = "MIDCITYLAB" then
+			ls_format = "d_midcity_batchserviceresult_full_print"
+		elseif gs_company = "ISBINTHSP" then
+			ls_format = "d_isbinthsp_batchresult_general"
+		else
+			ls_format = "d_batchserviceresult_full_print"
+		end if
+	case "d_batchserviceresult_comments_print"
+		if ls_company = "AHMEDICALSTORE" then
+			ls_format = "d_ahmedicalstore_batchsvcresult_comments"
+		elseif ls_company = "ZINISLABS" then
+			ls_format = "d_zinis_batchsvcresult_comments_print"
+		elseif gs_company = "ISBINTHSP" then
+			ls_format = "d_isbinthsp_batchresult_comments_print"
+		else
+			ls_format = "d_batchserviceresult_comments_print"
+		end if
+	case "d_batchserviceresult_commentsonly_print"
+		if ls_company = "AHMEDICALSTORE" then
+			ls_format = "d_ahmedicalstore_batchsvcrsult_comntonly"
+		elseif ls_company = "ZINISLABS" then
+			ls_format = "d_zinis_batchsvcresult_comentonly_print"
+		elseif gs_company = "ISBINTHSP" then
+			ls_format = "d_isbinthsp_batchresult_commentsonly"
+		else
+			ls_format = "d_batchserviceresult_commentsonly_print"
+		end if
+	case "d_batchserviceresult_widal_print"
+		if ls_company = "AHMEDICALSTORE" then
+			ls_format = "d_ahmedicalstore_batchsrvcresult_widal"
+		elseif ls_company = "ZINISLABS" then
+			ls_format = "d_zinis_batchserviceresult_widal_print"
+		elseif gs_company = "ISBINTHSP" then
+			ls_format = "d_isbinthsp_batchresult_widal"
+		else
+			ls_format = "d_batchserviceresult_widal_print"
+		end if
+	case else
+		ls_format = "d_batchserviceresult_full_print"
+	end choose
+	return ls_format
+
+// w_batchserviceresult_form.wf_populate_servicecomponent(long al_serviceinvcode, long al_servicecode, long al_servicerowid, long al_resulttemplate) returns long
+	long ll_counter
+	long ll_row
+	long ll_comptypesetting
+	string ls_comments
+	char lc_askunit
+	char lc_askcomments
+	u_ds_standard lds_servicecomp
+	lds_servicecomp = create u_ds_standard
+	lds_servicecomp.dataobject = "d_servicebreakup"
+	lds_servicecomp.settransobject(this.it_transobject)
+	lds_servicecomp.retrieve(al_servicecode)
+	setnull(ls_comments)
+	if lds_servicecomp.rowcount() > 0 then
+		for ll_counter = 1 to lds_servicecomp.rowcount()
+			ll_row = this.id_detail.insertrow(0)
+			this.id_detail.object.serviceinvcode[ll_row] = al_serviceinvcode
+			this.id_detail.object.servicecode[ll_row] = al_servicecode
+			this.id_detail.object.servicecomponentcode[ll_row] = lds_servicecomp.object.servicecomponentcode[ll_counter]
+			this.id_detail.object.servicerowid[ll_row] = al_servicerowid
+			this.id_detail.object.rowid[ll_row] = lds_servicecomp.object.rowid[ll_counter]
+			this.id_detail.object.servicecomponentunitcode[ll_row] = lds_servicecomp.object.servicecomponentunitcode[ll_counter]
+			this.id_detail.object.servicecomponenttypecode[ll_row] = lds_servicecomp.object.servicecomponenttypecode[ll_counter]
+			this.id_detail.object.servicehead[ll_row] = lds_servicecomp.object.servicehead[ll_counter]
+			this.id_detail.object.costprice[ll_row] = lds_servicecomp.object.costprice[ll_counter]
+			this.id_detail.object.saleprice[ll_row] = lds_servicecomp.object.saleprice[ll_counter]
+			this.id_detail.object.valuetype[ll_row] = lds_servicecomp.object.valuetype[ll_counter]
+			this.id_detail.object.priority[ll_row] = lds_servicecomp.object.priority[ll_counter]
+			this.id_detail.object.printonreport[ll_row] = lds_servicecomp.object.printonreport[ll_counter]
+			wf_set_ref_value(lds_servicecomp.object.servicecomponentcode[ll_counter], ll_row)
+			ll_comptypesetting = wf_get_servicecomponenttype_info(this.id_detail.object.servicecomponenttypecode[ll_counter], lc_askunit, lc_askcomments)
+			this.id_detail.object.askcomments[ll_row] = "Y"
+			wf_set_servicecomponent_comments(lds_servicecomp.object.servicecomponentcode[ll_counter], ll_row)
+			wf_set_template_result(al_resulttemplate, al_servicecode, this.id_detail.object.servicecomponentcode[ll_row], ll_row)
+		next
+	else
+		return -1
+	end if
+	return 0
+
+// w_batchserviceresult_form.wf_retrievelistall() returns long
+	setnull(this.ist_date)
+	return this.id_list.retrieve(this.ist_date)
+
+// w_batchserviceresult_form.wf_retrievelist() returns long
+	long rtcode
+	string lst_dt
+	s_arguements lstr_arg
+	open(w_arg_serviceresult_deliverydate)
+	lstr_arg = message.powerobjectparm
+	if lstr_arg.i_status = 1 then
+		lst_dt = lstr_arg.s_name1
+	else
+		lst_dt = "1900-01-01 00:00:00"
+	end if
+	this.ist_date = lst_dt
+	rtcode = this.id_dwcontrol.retrieve(this.ist_date)
+	return rtcode
+
+// w_batchserviceresult_form.wf_set_delivery_date_retrieval() returns 0
+	long rtcode
+	string lst_dt
+	s_arguements lstr_arg
+	open(w_arg_serviceresult_deliverydate)
+	lstr_arg = message.powerobjectparm
+	if lstr_arg.i_status = 1 then
+		lst_dt = lstr_arg.s_name1
+	else
+		lst_dt = "1900-01-01 00:00:00"
+	end if
+	this.ist_date = lst_dt
+
+// w_batchserviceresult_form.wf_retrieve() returns long
+	long rtcode
+	rtcode = this.id_dwcontrol.retrieve(this.ist_date)
+	return rtcode
+
+// w_batchserviceresult_form.create() returns 0
+	integer icurrent
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_batchserviceresultmenu" then
+		this.menuid = create m_batchserviceresultmenu
+	end if
+
+// w_batchserviceresult_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_batchserviceresult_form.ue_save() returns 0
+	long ll_mastercurrrow
+	long ll_invid
+	long ll_detailrows
+	long ll_usercode
+	long ll_servicerowid
+	integer li_counter
+	boolean lb_commitflag
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	if this.id_master.rowcount() > 0 and (isnull(this.id_master.object.serviceinvcode[1]) or this.id_master.object.serviceinvcode[1] = 0) then
+		this.id_master.setcolumn("serviceinvcode")
+		this.id_master.setfocus()
+		return
+	end if
+	if this.id_detail.rowcount() > 0 and (isnull(this.id_detail.object.servicerowid[1]) or isnull(this.id_detail.object.servicecomponentcode[1])) then
+		this.id_detail.setrow(1)
+		this.id_detail.scrolltorow(1)
+		event ue_deleteitem()
+	end if
+	if this.id_detail.rowcount() = 0 then
+		messagebox("Service Result Validation", "No Service Result entered~r~nPerhaps this Service Invoice Does not contain any service for which service result is required~r~nPlease enter a valid service invoice code", stopsign!)
+		setpointer(arrow!)
+		return
+	end if
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	setpointer(hourglass!)
+	ll_mastercurrrow = this.id_master.getrow()
+	ll_invid = this.id_master.object.code[ll_mastercurrrow]
+	ll_usercode = gl_usercode
+	if isnull(ll_invid) then
+		return
+	end if
+	if not wf_validateserverdatetime(ldt_server_datetime, ls_date_errtext) then
+		messagebox("Date Violation", ls_date_errtext, stopsign!)
+		setpointer(arrow!)
+		return
+	end if
+	if isnull(ll_invid) then
+		f_newtableid("serviceresultheader", ll_invid)
+		this.id_master.object.code[ll_mastercurrrow] = ll_invid
+		this.id_master.setitem(ll_mastercurrrow, "usercode", ll_usercode)
+		this.id_master.setitem(ll_mastercurrrow, "date", ldt_server_datetime)
+	end if
+	ll_detailrows = this.id_detail.rowcount()
+	li_counter = 1
+	if this.id_detail.update() > 0 then
+		SQL commit USING this.it_transobject;
+		messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+		this.ib_commitok = true
+		this.id_master.resetupdate()
+		this.im_menu.m_file.m_new.enabled = true
+		this.editflag = false
+		if gd_recenttransdate < this.id_systemdate then
+			gd_recenttransdate = this.id_systemdate
+		end if
+	else
+		SQL rollback USING this.it_transobject;
+		messagebox("Database Problem", "Some Database Problem Occured in saving Service Result Detail!", stopsign!)
+		setpointer(arrow!)
+		return
+	end if
+	setpointer(arrow!)
+
+// w_batchserviceresult_form.ue_newform() returns 0
+	long ll_null
+	call super::ue_newform
+	this.id_master.setfocus()
+	wf_protectdw(this.id_master, 0)
+	wf_protectdw(this.id_detail, 0)
+	setnull(ll_null)
+	this.id_detail.setcolumn("testmachinecode")
+	this.id_detail.setfocus()
+
+// w_batchserviceresult_form.ue_newitem() returns 0
+	long ll_rowcount
+	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
+		return
+	end if
+	if this.id_detail.rowcount() > 0 and f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	this.id_detail.insertrow(0)
+	this.id_detail.setcolumn("servicerowid")
+	ll_rowcount = this.id_detail.rowcount()
+	if ll_rowcount > 1 then
+		this.id_detail.scrolltorow(ll_rowcount)
+		this.id_detail.setfocus()
+	end if
+	this.im_menu.m_file.m_save.enabled = true
+	this.ib_validatefullcode = true
+
+// w_batchserviceresult_form.ue_detail() returns 0
+	datetime ldt_deliverydate
+	m_batchserviceresultmenu lm_menu
+	integer li_protect
+	long ll_code
+	long ll_rowcount
+	lm_menu = this.menuid
+	if this.id_list.rowcount() > 0 and this.id_list.getrow() > 0 and this.id_master.rowcount() > 0 and this.il_selectedrow > 0 then
+		this.im_menu.m_file.m_print.visible = true
+		this.im_menu.m_file.m_print.enabled = true
+		ldt_deliverydate = this.id_list.object.deliverydate[this.il_selectedrow]
+		if this.id_master.object.posted[1] = "Y" then
+			li_protect = 1
+			this.im_menu.m_file.m_save.visible = false
+			this.im_menu.m_file.m_save.enabled = false
+		else
+			this.im_menu.m_file.m_save.visible = true
+			this.im_menu.m_file.m_save.enabled = true
+			this.im_menu.m_file.m_post.enabled = false
+			li_protect = 0
+		end if
+		wf_protectdw(this.id_master, li_protect)
+		wf_protectdw(this.id_detail, li_protect)
+	end if
+	this.im_menu.m_file.m_retrieve.text = "Lis&t"
+	this.im_menu.m_file.m_print.enabled = true
+	this.i_editmode = 2
+	this.i_retrievemode = 2
+	ll_code = this.id_dwcontrol.borderstyle.code[this.il_selectedrow]
+	this.id_dwcontrol = this.id_master
+	ll_rowcount = wf_retrieve(ll_code)
+	this.id_master.setrow(1)
+	this.id_master.scrolltorow(1)
+	this.id_dwcontrol = this.id_footer
+	wf_retrieve(ll_code)
+	this.id_footer.setrow(1)
+	this.id_footer.scrolltorow(1)
+	this.id_dwcontrol = this.id_detail
+	this.id_dwcontrol.retrieve(ldt_deliverydate)
+	this.id_master.setcolumn(1)
+	this.id_master.setfocus()
+	this.id_dwcontrol = this.id_list
+	wf_set_form_values()
+	if this.id_detail.rowcount() > 0 then
+		this.id_detail.setfocus()
+		this.id_detail.setcolumn(1)
+		this.id_detail.setrow(1)
+		this.id_detail.selectrow(1, true)
+	end if
+
+// w_batchserviceresult_form.ue_postopen() returns 0
+	long ll_null
+	call super::ue_postopen
+	setnull(ll_null)
+	this.id_detail.object.askcomments.initial = "Y"
+	this.id_detail.object.b_comments.visible = false
+	if f_stringpreferences("showserviceinvnoinserviceresult") = "N" then
+		this.id_detail.object.serviceinvcode.visible = false
+	end if
+	if f_stringpreferences("showserviceheadinserviceresult") = "N" then
+		this.id_detail.object.servicehead.visible = false
+	end if
+	if f_stringpreferences("showmachineinserviceresult") = "N" then
+		this.id_detail.object.testmachinecode.visible = false
+	end if
+	if f_stringpreferences("showresultvalue2") = "N" then
+		this.id_detail.object.componentvalue2.visible = false
+	end if
+	if f_stringpreferences("showremarksinserviceresult") = "N" then
+		this.id_detail.object.remarks.visible = false
+	end if
+	this.id_detail.object.b_comments.visible = true
+	if f_rightexists(5050) then
+		this.ib_regen_serviceresult = true
+		return
+	end if
+	this.ib_regen_serviceresult = false
+
+// w_batchserviceresult_form.ue_deleteitem() returns 0
+
+// w_batchserviceresult_form.ue_list() returns 0
+	m_batchserviceresultmenu lm_menu
+	call super::ue_list
+	lm_menu = this.menuid
+	lm_menu.m_file.m_save.enabled = false
+	lm_menu.m_file.m_post.enabled = true
+
+// w_batchserviceresult_form.ue_new() returns 0
+	long ll_null
+	setnull(ll_null)
+	this.i_editmode = 1
+	this.ib_commitok = false
+	this.tab_retrieve.selectedtab = 1
+	this.id_detail.setfocus()
+
+// w_batchserviceresult_form.ue_print() returns 0
+	integer li_option
+	integer li_printcode
+	long[] ll_servicerowid
+	long ll_counter
+	long ll_arr_count
+	long ll_format
+	boolean lb_listtab
+	string ls_styleformat
+	string ls_seleted_styleformat
+	s_datastore lstr
+	s_arguements lstr_arg
+	call super::ue_print
+	if this.tab_retrieve.selectedtab = 2 then
+		lb_listtab = true
+	end if
+	if this.im_menu.m_file.m_save.enabled = true and lb_listtab = false then
+		return
+	end if
+	if lb_listtab then
+		open(w_arg_serviceresultstyle)
+		lstr_arg = message.powerobjectparm
+		if lstr_arg.i_status = 1 then
+			ll_format = lstr_arg.l_code1
+			ls_styleformat = lstr_arg.s_name1
+			if isnull(this.id_list.getrow()) or this.id_list.getrow() <= 0 then
+				messagebox("Rows Validation", "Kindly select any row from the list view.")
+				return
+			end if
+			for ll_counter = 1 to this.id_list.rowcount()
+				if this.id_list.object.printreport[ll_counter] = "Y" then
+					ll_arr_count = ll_arr_count + 1
+					ll_servicerowid[ll_arr_count] = this.id_list.object.servicerowid[ll_counter]
+				end if
+			next
+			if isnull(ll_arr_count) or ll_arr_count <= 0 then
+				messagebox("Selection Validation", "Kindly select any row from the list view.")
+				return
+			end if
+		else
+			return
+		end if
+	else
+		return
+	end if
+	this.id_print = this.tab_retrieve.tabpage_detail.dw_print
+	ls_seleted_styleformat = wf_set_printout(ls_styleformat)
+	this.id_print.dataobject = ls_seleted_styleformat
+	this.id_print.settransobject(sqlca)
+	this.id_print.retrieve(ll_servicerowid, ll_format)
+	if lb_listtab then
+		lstr.dw = this.id_print
+		lstr.s_name1 = this.id_print.dataobject
+		openwithparm(w_preview_invoices, lstr)
+		lstr = message.powerobjectparm
+		if lstr.i_closemode = -1 then
+			return
+		end if
+		return
+	end if
+	if f_stringpreferences("PromptBeforePrinting") = "Y" then
+		li_printcode = printsetup()
+		if li_printcode < 0 then
+			messagebox("Printer", "Printing Error")
+			this.id_print.printcancel()
+		end if
+	end if
+	if this.id_print.rowcount() > 0 and li_printcode > 0 then
+		if this.id_print.print() < 0 then
+			messagebox("Printing", "Can not Print Invoice", information!)
+		end if
+	else
+		messagebox("Printing Error", "Can not Print Data,~r~nNo rows are retrieved", information!)
+	end if
+	if this.im_menu.m_file.m_save.enabled = true and lb_listtab = false then
+		postevent("ue_new")
+	end if
+
+// w_batchserviceresult_form.open() returns long
+	m_entry lm_menu
+	long ll_width
+	long ll_height
+	environment env
+	postevent("ue_postopen")
+	wf_setmenu(this.menuid)
+	lm_menu = this.menuid
+	lm_menu.dynamic mf_initsecurityapp(lm_menu)
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.tab_retrieve.width = ll_width * 0.99
+	this.tab_retrieve.height = ll_height * 0.83
+	this.tab_retrieve.tabpage_detail.dw_detail.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_itemsdetail.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_detail.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width
+	this.tab_retrieve.tabpage_detail.dw_footer.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width
+	this.tab_retrieve.tabpage_detail.dw_itemsdetail.height = this.tab_retrieve.tabpage_detail.height * 0.95 - this.tab_retrieve.tabpage_detail.dw_itemsdetail.y
+	this.tab_retrieve.tabpage_list.gb_fliter.width = ll_width * 0.97 - this.tab_retrieve.tabpage_list.gb_sort.width
+	this.tab_retrieve.tabpage_list.r_1.width = ll_width * 0.99
+	this.tab_retrieve.tabpage_list.r_1.height = ll_height * 0.765 - this.tab_retrieve.tabpage_list.gb_sort.height
+	this.tab_retrieve.tabpage_list.dw_list.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_list.dw_list.height = ll_height * 0.75 - this.tab_retrieve.tabpage_list.dw_list.y
+	this.tab_retrieve.tabpage_detail.dw_itemslist.height = ll_height * 0.6
+	this.tab_retrieve.tabpage_detail.dw_itemslist.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width * 0.73
+	setredraw(true)
+	return ::message.returnvalue

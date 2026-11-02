@@ -1,0 +1,62 @@
+// window w_cataccounts_form (singleentry)  ancestor: w_single_entry
+
+// w_cataccounts_form.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM CategoryAccounts WHERE CategoryAccounts.name =:as_name USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_cataccounts_form.wf_checkfortransactions(long al_catacccode) returns boolean
+	long ll_newcode
+	SQL Select CatAccCode INTO :ll_newcode From SubAccounts Where CatAccCode =:al_catacccode USING sqlca;
+	if ll_newcode <> 0 then
+		return true
+	end if
+	return false
+
+// w_cataccounts_form.ue_newform() returns 0
+	call super::ue_newform
+	this.id_detail.object.name.protect = 0
+	this.id_detail.object.main_acc_code.protect = 0
+
+// w_cataccounts_form.create() returns 0
+	call super::create
+
+// w_cataccounts_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_cataccounts_form.ue_detail() returns 0
+	long ll_row
+	long ll_newcode
+	long ll_catacccode
+	call super::ue_detail
+	ll_row = this.id_detail.getrow()
+	ll_catacccode = this.id_detail.object.code[ll_row]
+	SQL SELECT code INTO :ll_newcode FROM global WHERE lower ( rtrim ( ltrim ( tablename ) ) ) ='categoryaccounts' and code =:ll_catacccode USING sqlca;
+	if ll_newcode <> 0 then
+		this.id_detail.object.name.protect = 1
+		this.id_detail.object.main_acc_code.protect = 1
+		return
+	end if
+	this.id_detail.object.name.protect = 0
+	this.id_detail.object.main_acc_code.protect = 0
+
+// w_cataccounts_form.activate() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::activate()
+	this.windowstate = maximized!
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_cataccounts_form.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.is_tablename = "CategoryAccounts"
+	return ::message.returnvalue

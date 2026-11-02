@@ -1,0 +1,135 @@
+// window w_arg_sinvcode_linvcode_cust_v4 (reports)  ancestor: w_arguements
+
+// w_arg_sinvcode_linvcode_cust_v4.wf_set_headersetting() returns integer
+	integer li_rtncode
+	long ll_counter
+	long ll_found
+	datastore lds_headers
+	datawindowchild ldc_headerno
+	lds_headers = create datastore
+	lds_headers.dataobject = "d_groupallowedmoduleheader"
+	lds_headers.settransobject(sqlca)
+	li_rtncode = lds_headers.retrieve(2, 1)
+	if li_rtncode <= 0 then
+		return li_rtncode
+	end if
+	this.dw_header.object.headerno.initial = string(lds_headers.getitemnumber(1, "headercode"))
+	this.dw_header.setitem(1, "headerno", this.dw_header.object.headerno.initial)
+	this.dw_header.getchild("headerno", ldc_headerno)
+	for ll_counter = 1 to lds_headers.rowcount()
+		ldc_headerno.insertrow(0)
+		ldc_headerno.setitem(ll_counter, "code", lds_headers.getitemnumber(ll_counter, "headercode"))
+		ldc_headerno.setitem(ll_counter, "name", "")
+		ll_found = 0
+		ll_found = gds_reoprtheaderinfo.find("headerno=" + string(lds_headers.getitemnumber(ll_counter, "headercode")), 1, gds_reoprtheaderinfo.rowcount())
+		if ll_found > 0 then
+			if isnull(gds_reoprtheaderinfo.getitemstring(ll_found, "Remarks")) then
+				ldc_headerno.setitem(ll_counter, "headeralias", trim(string(gds_reoprtheaderinfo.getitemnumber(ll_found, "headerno"))))
+			else
+				ldc_headerno.setitem(ll_counter, "headeralias", trim(gds_reoprtheaderinfo.getitemstring(ll_found, "Remarks")) + " (" + trim(string(gds_reoprtheaderinfo.getitemnumber(ll_found, "headerno"))) + ")")
+			end if
+		end if
+	next
+	return 1
+
+// w_arg_sinvcode_linvcode_cust_v4.create() returns 0
+	integer icurrent
+	call super::create
+	this.gb_2 = create gb_2
+	this.st_4 = create st_4
+	this.dw_customer = create dw_customer
+	this.st_5 = create st_5
+	this.st_6 = create st_6
+	this.dw_pagesize = create dw_pagesize
+	this.dw_header = create dw_header
+	this.st_7 = create st_7
+	this.st_8 = create st_8
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.gb_2
+	this.control[icurrent + 2] = this.st_4
+	this.control[icurrent + 3] = this.dw_customer
+	this.control[icurrent + 4] = this.st_5
+	this.control[icurrent + 5] = this.st_6
+	this.control[icurrent + 6] = this.dw_pagesize
+	this.control[icurrent + 7] = this.dw_header
+	this.control[icurrent + 8] = this.st_7
+	this.control[icurrent + 9] = this.st_8
+
+// w_arg_sinvcode_linvcode_cust_v4.destroy() returns 0
+	call super::destroy
+	destroy this.gb_2
+	destroy this.st_4
+	destroy this.dw_customer
+	destroy this.st_5
+	destroy this.st_6
+	destroy this.dw_pagesize
+	destroy this.dw_header
+	destroy this.st_7
+	destroy this.st_8
+
+// w_arg_sinvcode_linvcode_cust_v4.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	this.dw_customer.settransobject(sqlca)
+	this.dw_customer.insertrow(0)
+	this.dw_customer.scrolltorow(0)
+	this.dw_pagesize.settransobject(sqlca)
+	this.dw_pagesize.insertrow(0)
+	this.dw_pagesize.scrolltorow(0)
+	this.dw_header.settransobject(sqlca)
+	this.dw_header.insertrow(0)
+	this.dw_header.scrolltorow(0)
+	this.dw_price.settransobject(sqlca)
+	this.dw_price.insertrow(0)
+	this.dw_price.scrolltorow(0)
+	wf_set_headersetting()
+	return ::message.returnvalue
+
+// w_arg_sinvcode_linvcode_cust_v4.ue_close(integer ai_stauts) returns 0
+	super::ue_close(ai_stauts)
+	closewithreturn(this, this.istr_arg)
+
+// dw_customer.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_customer.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	string ls_filter
+	datawindowchild ldc_dddlookupstart
+	datawindowchild ldc_dddlookupend
+	integer li_null
+	integer li_rtcode
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	setnull(li_null)
+	li_rtcode = parent.dw_control.getchild("sinvcode", ldc_dddlookupstart)
+	if li_rtcode = -1 then
+		messagebox("Error", "Can not get a lookup DataWindowChild")
+		close(parent)
+	end if
+	li_rtcode = parent.dw_control.getchild("linvcode", ldc_dddlookupend)
+	if li_rtcode = -1 then
+		messagebox("Error", "Can not get a lookup DataWindowChild")
+		close(parent)
+	end if
+	if not isnull(data) then
+		ls_filter = "custcode = Long('" + data + "')"
+		ldc_dddlookupstart.setfilter(ls_filter)
+		ldc_dddlookupstart.filter()
+		ldc_dddlookupend.setfilter(ls_filter)
+		ldc_dddlookupend.filter()
+		parent.dw_control.setitem(1, "sinvcode", li_null)
+		parent.dw_control.setitem(1, "linvcode", li_null)
+	end if
+	return ::message.returnvalue
+
+// dw_pagesize.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1

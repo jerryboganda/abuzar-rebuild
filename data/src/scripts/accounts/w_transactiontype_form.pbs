@@ -1,0 +1,53 @@
+// window w_transactiontype_form (accounts)  ancestor: w_single_entry
+
+// w_transactiontype_form.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM TransactionType WHERE name =:as_name USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_transactiontype_form.wf_duplicateshortname(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM TransactionType WHERE shortname =:as_name USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_transactiontype_form.create() returns 0
+	call super::create
+
+// w_transactiontype_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_transactiontype_form.activate() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::activate()
+	this.windowstate = maximized!
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_transactiontype_form.ue_detail() returns 0
+	call super::ue_detail
+	if this.id_list.getrow() > 0 and this.id_list.object.posted[this.id_list.getrow()] = "Y" then
+		wf_protectdw(this.id_detail, 1)
+		this.id_detail.object.autopost.protect = 0
+	end if
+
+// w_transactiontype_form.ue_newform() returns 0
+	call super::ue_newform
+
+// w_transactiontype_form.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.is_tablename = "TransactionType"
+	return ::message.returnvalue

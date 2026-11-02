@@ -1,0 +1,219 @@
+// window w_pointofsalesettings (abuzarapp)  ancestor: window
+
+// w_pointofsalesettings.create() returns 0
+	this.ddlb_cashdrawercomport = create ddlb_cashdrawercomport
+	this.ddlb_defaultcomport = create ddlb_defaultcomport
+	this.st_2 = create st_2
+	this.ddlb_barcodeprinter = create ddlb_barcodeprinter
+	this.st_barcodeprinter = create st_barcodeprinter
+	this.cbx_barcodeprinter = create cbx_barcodeprinter
+	this.st_1 = create st_1
+	this.ddlb_lcddisplaycompany = create ddlb_lcddisplaycompany
+	this.st_lcddisplaycompany = create st_lcddisplaycompany
+	this.sle_cashdrawerprinter = create sle_cashdrawerprinter
+	this.st_cashdrawerprinter = create st_cashdrawerprinter
+	this.cbx_cashdrawerwithprinter = create cbx_cashdrawerwithprinter
+	this.cbx_cashdrawer = create cbx_cashdrawer
+	this.cbx_lcddisplay = create cbx_lcddisplay
+	this.dw_preferences = create dw_preferences
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.gb_2 = create gb_2
+	this.gb_3 = create gb_3
+	this.gb_4 = create gb_4
+	this.gb_1 = create gb_1
+	this.control = {this.ddlb_cashdrawercomport, this.ddlb_defaultcomport, this.st_2, this.ddlb_barcodeprinter, this.st_barcodeprinter, this.cbx_barcodeprinter, this.st_1, this.ddlb_lcddisplaycompany, this.st_lcddisplaycompany, this.sle_cashdrawerprinter, this.st_cashdrawerprinter, this.cbx_cashdrawerwithprinter, this.cbx_cashdrawer, this.cbx_lcddisplay, this.dw_preferences, this.cb_cancel, this.cb_ok, this.gb_2, this.gb_3, this.gb_4, this.gb_1}
+
+// w_pointofsalesettings.destroy() returns 0
+	destroy this.ddlb_cashdrawercomport
+	destroy this.ddlb_defaultcomport
+	destroy this.st_2
+	destroy this.ddlb_barcodeprinter
+	destroy this.st_barcodeprinter
+	destroy this.cbx_barcodeprinter
+	destroy this.st_1
+	destroy this.ddlb_lcddisplaycompany
+	destroy this.st_lcddisplaycompany
+	destroy this.sle_cashdrawerprinter
+	destroy this.st_cashdrawerprinter
+	destroy this.cbx_cashdrawerwithprinter
+	destroy this.cbx_cashdrawer
+	destroy this.cbx_lcddisplay
+	destroy this.dw_preferences
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.gb_2
+	destroy this.gb_3
+	destroy this.gb_4
+	destroy this.gb_1
+
+// w_pointofsalesettings.open() returns long
+	string ls_defaultcomport
+	string ls_cashdrawercomport
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	this.id_preferences = this.dw_preferences
+	this.id_preferences.settransobject(sqlca)
+	this.id_preferences.retrieve()
+	ls_defaultcomport = string(f_numberpreferences("DefaultComPort"))
+	if ls_defaultcomport = "" or isnull(ls_defaultcomport) then
+		ls_defaultcomport = "2"
+	end if
+	this.ddlb_defaultcomport.selectitem(ls_defaultcomport, 0)
+	if integer(ls_defaultcomport) > 2 then
+		this.ddlb_defaultcomport.text = ls_defaultcomport
+	end if
+	ls_cashdrawercomport = string(f_numberpreferences("CashDrawerComPort"))
+	if ls_cashdrawercomport = "" or isnull(ls_cashdrawercomport) then
+		ls_cashdrawercomport = "1"
+	end if
+	this.ddlb_cashdrawercomport.selectitem(ls_cashdrawercomport, 0)
+	if integer(ls_cashdrawercomport) > 2 then
+		this.ddlb_cashdrawercomport.text = ls_cashdrawercomport
+	end if
+	if f_stringpreferences("DisplayPool") = "Y" then
+		this.cbx_lcddisplay.checked = true
+		this.ddlb_lcddisplaycompany.selectitem(f_stringpreferences("DisplayPoolCompany"), 0)
+		this.ddlb_lcddisplaycompany.visible = true
+		this.st_lcddisplaycompany.visible = true
+	end if
+	if f_stringpreferences("CashDrawer") = "Y" then
+		this.cbx_cashdrawer.checked = true
+	end if
+	if f_stringpreferences("CashDrawerWithPrinter") = "Y" then
+		this.cbx_cashdrawerwithprinter.checked = true
+		this.sle_cashdrawerprinter.text = f_stringpreferences("CashDrawerPrinter")
+		this.sle_cashdrawerprinter.visible = true
+		this.st_cashdrawerprinter.visible = true
+	end if
+	if f_stringpreferences("UseBarCodePrinter") = "Y" then
+		this.cbx_barcodeprinter.checked = true
+		this.ddlb_barcodeprinter.selectitem(f_stringpreferences("BarCodePrinterName"), 0)
+		this.ddlb_barcodeprinter.visible = true
+		this.st_barcodeprinter.visible = true
+	end if
+	return ::message.returnvalue
+
+// cbx_barcodeprinter.clicked() returns long
+	if this.checked then
+		parent.ddlb_barcodeprinter.visible = true
+		parent.st_barcodeprinter.visible = true
+	else
+		parent.ddlb_barcodeprinter.visible = false
+		parent.st_barcodeprinter.visible = false
+	end if
+	return ::message.returnvalue
+
+// cbx_cashdrawerwithprinter.clicked() returns long
+	if this.checked then
+		parent.sle_cashdrawerprinter.visible = true
+		parent.st_cashdrawerprinter.visible = true
+	else
+		parent.sle_cashdrawerprinter.visible = false
+		parent.st_cashdrawerprinter.visible = false
+	end if
+	return ::message.returnvalue
+
+// cbx_lcddisplay.clicked() returns long
+	if this.checked then
+		parent.ddlb_lcddisplaycompany.visible = true
+		parent.st_lcddisplaycompany.visible = true
+	else
+		parent.ddlb_lcddisplaycompany.visible = false
+		parent.st_lcddisplaycompany.visible = false
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	close(parent)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	string ls_cashdrawerprinter
+	string ls_lcddisplaycompany
+	string ls_defaultcomport
+	string ls_barcodeprinter
+	string ls_cashdrawercomport
+	w_pointofsalesettings w_parent
+	ls_defaultcomport = trim(parent.ddlb_defaultcomport.text)
+	ls_cashdrawercomport = trim(parent.ddlb_cashdrawercomport.text)
+	if ls_defaultcomport = "" or isnull(ls_defaultcomport) or not isnumber(ls_defaultcomport) then
+		messagebox("Default Com Port Validation", "Please select valid LCD com port from listbox.")
+		return ::message.returnvalue
+	end if
+	if ls_cashdrawercomport = "" or isnull(ls_cashdrawercomport) or not isnumber(ls_cashdrawercomport) then
+		messagebox("Cash Drawer Com Port Validation", "Please select valid cash drawer com port from drop down listbox.")
+		return ::message.returnvalue
+	end if
+	if integer(ls_cashdrawercomport) = integer(ls_defaultcomport) then
+		messagebox("Port Validation", "Kindly select different ports for LCD display and Cash Drawer.")
+		return ::message.returnvalue
+	end if
+	f_set_preference_local(parent.id_preferences, "DefaultComPort", ls_defaultcomport)
+	f_set_preference_local(parent.id_preferences, "CashDrawerComPort", ls_defaultcomport)
+	if parent.cbx_lcddisplay.checked then
+		f_set_preference_local(parent.id_preferences, "DisplayPool", "Y")
+		ls_lcddisplaycompany = parent.ddlb_lcddisplaycompany.text
+		if not (gs_company = "PP") and (isnull(ls_lcddisplaycompany) or ls_lcddisplaycompany = "") then
+			messagebox("LCD Company Validation", "Please provide some company name for LCD display.")
+			return ::message.returnvalue
+		end if
+		parent.id_preferences.setitem(1, "DisplayPoolCompany", ls_lcddisplaycompany)
+	else
+		f_set_preference_local(parent.id_preferences, "DisplayPool", "N")
+	end if
+	if parent.cbx_cashdrawer.checked then
+		f_set_preference_local(parent.id_preferences, "CashDrawer", "Y")
+	else
+		f_set_preference_local(parent.id_preferences, "CashDrawer", "N")
+	end if
+	if parent.cbx_cashdrawerwithprinter.checked then
+		f_set_preference_local(parent.id_preferences, "CashDrawerWithPrinter", "Y")
+		ls_cashdrawerprinter = trim(parent.sle_cashdrawerprinter.text)
+		if isnull(ls_cashdrawerprinter) or ls_cashdrawerprinter = "" then
+			messagebox("Printer Validation", "Please provide some printer for cash drawer printer.")
+			return ::message.returnvalue
+		end if
+		f_set_preference_local(parent.id_preferences, "CashDrawerPrinter", ls_cashdrawerprinter)
+	else
+		f_set_preference_local(parent.id_preferences, "CashDrawerPrinter", "N")
+	end if
+	if parent.cbx_barcodeprinter.checked then
+		f_set_preference_local(parent.id_preferences, "UseBarCodePrinter", "Y")
+		ls_barcodeprinter = trim(parent.ddlb_barcodeprinter.text)
+		if isnull(ls_barcodeprinter) or ls_barcodeprinter = "" then
+			messagebox("BarCode Validation", "Please select name for BarCode printer.")
+			return ::message.returnvalue
+		end if
+		f_set_preference_local(parent.id_preferences, "BarCodePrinterName", ls_barcodeprinter)
+	else
+		f_set_preference_local(parent.id_preferences, "UseBarCodePrinter", "N")
+	end if
+	if f_validatedw(parent.id_preferences) < 0 then
+		return ::message.returnvalue
+	end if
+	w_parent = getparent()
+	if parent.id_preferences.update() > 0 then
+		SQL commit USING sqlca;
+		gds_preferences.retrieve()
+	else
+		messagebox("Datasase Error", "Some Database problem occur during saving")
+		SQL rollback USING sqlca;
+		setpointer(arrow!)
+	end if
+	w_parent.setfocus()
+	close(w_pointofsalesettings)
+	return ::message.returnvalue

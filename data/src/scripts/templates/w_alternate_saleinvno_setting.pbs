@@ -1,0 +1,151 @@
+// window w_alternate_saleinvno_setting (templates)  ancestor: window
+
+// w_alternate_saleinvno_setting.ue_postopen() returns 0
+	char lc_automonth
+	char lc_sepcounters
+	this.em_sinvno.text = "1"
+	this.em_screditinvno.text = "1"
+	this.dw_pref.settransobject(sqlca)
+	this.dw_pref.retrieve()
+	lc_automonth = f_stringpreferences("AutoMonthSaleInvCode")
+	lc_sepcounters = f_stringpreferences("SepSaleInvCounterForCashCredit")
+	if lc_automonth = "Y" then
+		this.rb_automonth.checked = true
+		this.rb_autoday.checked = false
+	else
+		this.rb_automonth.checked = false
+		this.rb_autoday.checked = true
+	end if
+	if lc_sepcounters = "Y" then
+		this.cbx_sepcountercashcredit.checked = true
+	else
+		this.cbx_sepcountercashcredit.checked = false
+	end if
+
+// w_alternate_saleinvno_setting.ue_close() returns 0
+	close(this)
+
+// w_alternate_saleinvno_setting.create() returns 0
+	this.rb_autoday = create rb_autoday
+	this.rb_automonth = create rb_automonth
+	this.dw_pref = create dw_pref
+	this.cbx_sepcountercashcredit = create cbx_sepcountercashcredit
+	this.em_screditinvno = create em_screditinvno
+	this.cbx_initcreditcounter = create cbx_initcreditcounter
+	this.cbx_initcounter = create cbx_initcounter
+	this.em_sinvno = create em_sinvno
+	this.cbx_automonth = create cbx_automonth
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.gb_1 = create gb_1
+	this.control = {this.rb_autoday, this.rb_automonth, this.dw_pref, this.cbx_sepcountercashcredit, this.em_screditinvno, this.cbx_initcreditcounter, this.cbx_initcounter, this.em_sinvno, this.cbx_automonth, this.cb_cancel, this.cb_ok, this.gb_1}
+
+// w_alternate_saleinvno_setting.destroy() returns 0
+	destroy this.rb_autoday
+	destroy this.rb_automonth
+	destroy this.dw_pref
+	destroy this.cbx_sepcountercashcredit
+	destroy this.em_screditinvno
+	destroy this.cbx_initcreditcounter
+	destroy this.cbx_initcounter
+	destroy this.em_sinvno
+	destroy this.cbx_automonth
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.gb_1
+
+// w_alternate_saleinvno_setting.open() returns long
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	post event ue_postopen()
+	return ::message.returnvalue
+
+// cbx_initcreditcounter.clicked() returns long
+	if this.checked then
+		parent.em_screditinvno.enabled = true
+	else
+		parent.em_screditinvno.enabled = false
+	end if
+	return ::message.returnvalue
+
+// cbx_initcounter.clicked() returns long
+	if this.checked then
+		parent.em_sinvno.enabled = true
+	else
+		parent.em_sinvno.enabled = false
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	char lc_automonth
+	char lc_sepcounters
+	long ll_sinvno
+	long ll_screditinvno
+	if parent.rb_automonth.checked then
+		lc_automonth = "Y"
+	else
+		lc_automonth = "N"
+	end if
+	if parent.cbx_sepcountercashcredit.checked then
+		lc_sepcounters = "Y"
+	else
+		lc_sepcounters = "N"
+	end if
+	SQL rollback USING sqlca;
+	if parent.cbx_initcounter.checked then
+		ll_sinvno = long(parent.em_sinvno.text)
+		ll_sinvno = ll_sinvno - 1
+		if isnull(ll_sinvno) or ll_sinvno < 0 then
+			messagebox("Initialize Counter Validation", "Kindly enter counter value greater than or equal to zero.")
+			return ::message.returnvalue
+		end if
+		SQL update _tabmaxkey Set TabMaxKey =:ll_sinvno Where TabName ='SaleLedgerCashDummy' USING sqlca;
+		if sqlca.sqlcode <> 0 then
+			SQL rollback USING sqlca;
+			return ::message.returnvalue
+		end if
+		return
+	end if
+	if parent.cbx_initcreditcounter.checked then
+		ll_screditinvno = long(parent.em_screditinvno.text)
+		ll_screditinvno = ll_screditinvno - 1
+		if isnull(ll_screditinvno) or ll_screditinvno < 0 then
+			messagebox("Initialize Credit Counter Validation", "Kindly enter counter value greater than or equal to zero.")
+			return ::message.returnvalue
+		end if
+		SQL update _tabmaxkey Set TabMaxKey =:ll_screditinvno Where TabName ='SaleLedgerCreditDummy' USING sqlca;
+		if sqlca.sqlcode <> 0 then
+			SQL rollback USING sqlca;
+			return ::message.returnvalue
+		end if
+		return
+	end if
+	f_set_preference_local(parent.dw_pref, "AutoMonthSaleInvCode", lc_automonth)
+	f_set_preference_local(parent.dw_pref, "SepSaleInvCounterForCashCredit", lc_sepcounters)
+	if parent.dw_pref.update() < 1 then
+		SQL rollback USING sqlca;
+		messagebox("", "Problem in updating preferences. Reason(s):~r~n" + sqlca.sqlerrtext)
+		return ::message.returnvalue
+	else
+		SQL commit USING sqlca;
+	end if
+	gds_preferences.retrieve()
+	parent.post event ue_close()
+	return ::message.returnvalue

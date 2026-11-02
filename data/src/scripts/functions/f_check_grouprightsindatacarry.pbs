@@ -1,0 +1,45 @@
+// function f_check_grouprightsindatacarry (functions)  ancestor: function_object
+
+// f_check_grouprightsindatacarry.f_check_grouprightsindatacarry() returns long
+	string ls_connsetting
+	string ls_query
+	string ls_newsyntax
+	string ls_error_syntax
+	long ll_rowcount
+	datastore lds_ds
+	u_transaction lt_transobject
+	lt_transobject = create u_transaction
+	SQL start USING lt_transobject;
+	if lt_transobject.sqlcode <> 0 then
+		messagebox("Connection Problem", "Unable to connect to database.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext)
+		return -1
+	end if
+	SQL EXECUTE IMMEDIATE :ls_connsetting USING lt_transobject;
+	if lt_transobject.sqlcode = 0 then
+		setpointer(hourglass!)
+		lds_ds = create datastore
+		ls_query = "Select ~tGroupCode, RightCode, Status From ~t" + gs_inlinkserver + "." + gs_inlinkserverdb + "." + gs_inlinkserverowner + "." + "GroupRights "
+		ls_newsyntax = lt_transobject.syntaxfromsql(ls_query, "", ls_error_syntax)
+		if len(ls_error_syntax) > 0 then
+			SQL stop USING lt_transobject;
+			messagebox("Syntax Validation", "Syntax Error For GroupRights DataStore")
+			return -1
+		else
+			ls_error_syntax = ""
+			lds_ds.create(ls_newsyntax, ls_error_syntax)
+			if len(ls_error_syntax) > 0 then
+				SQL stop USING lt_transobject;
+				messagebox("Create Validation", "Create Error For GroupRights DataStore")
+				return -1
+			end if
+		end if
+		lds_ds.settransobject(lt_transobject)
+		if lds_ds.retrieve() <= 0 then
+			SQL stop USING lt_transobject;
+			return -1
+		else
+			ll_rowcount = lds_ds.rowcount()
+		end if
+	end if
+	SQL stop USING lt_transobject;
+	return ll_rowcount

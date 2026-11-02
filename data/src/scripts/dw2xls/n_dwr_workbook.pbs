@@ -1,0 +1,92 @@
+// userobject n_dwr_workbook (dw2xls)  ancestor: nonvisualobject
+
+// n_dwr_workbook.of_addworksheet(string as_sheetname) returns n_dwr_worksheet
+	n_dwr_worksheet lnv_sheet
+	lnv_sheet = create n_dwr_worksheet
+	lnv_sheet.handle = addworksheet(this.handle, as_sheetname)
+	if lnv_sheet.handle = 0 then
+		setnull(lnv_sheet)
+	else
+		this.invo_worksheets[upperbound(this.invo_worksheets) + 1] = lnv_sheet
+		lnv_sheet.of_initunitconvertor()
+	end if
+	return lnv_sheet
+
+// n_dwr_workbook.of_create(string as_format, string as_file, boolean ab_overwrite) returns long
+	long ll_errorcode
+	string as_dll
+	string ls_dll
+	long hmodule
+	ls_dll = of_getexedir() + "\" + as_dll
+	if of_iswidepb() then
+		hmodule = loadlibraryw(ls_dll)
+	else
+		hmodule = loadlibrarya(ls_dll)
+	end if
+	checkdemo()
+	this.handle = createworkbook(as_format, as_file, ab_overwrite, ll_errorcode)
+	if hmodule > 0 then
+		freelibrary(hmodule)
+	end if
+	return ll_errorcode
+
+// n_dwr_workbook.of_iswidepb() returns boolean
+	return len(blob("*")) = 2
+
+// n_dwr_workbook.of_getexedir() returns string
+	string ls_path
+	long li_max
+	long li_pos
+	long apphandle
+	classdefinition lcd
+	apphandle = handle(getapplication())
+	if apphandle = 0 then
+		lcd = getclassdefinition()
+		ls_path = lcd.getlibraryname()
+	else
+		ls_path = space(li_max)
+		if of_iswidepb() then
+			getmodulefilenamew(apphandle, ls_path, li_max)
+		else
+			getmodulefilenamea(apphandle, ls_path, li_max)
+		end if
+	end if
+	li_pos = pos(reverse(ls_path), "\")
+	if li_pos > 0 then
+		ls_path = left(ls_path, len(ls_path) - li_pos)
+	else
+		ls_path = "."
+	end if
+	return ls_path
+
+// n_dwr_workbook.of_createformat() returns n_dwr_format
+	n_dwr_format lnv_format
+	lnv_format = create n_dwr_format
+	lnv_format.handle = createformat(this.handle)
+	return lnv_format
+
+// n_dwr_workbook.of_addformat(n_dwr_format anv_format) returns long
+	return addformat(this.handle, anv_format.handle)
+
+// n_dwr_workbook.create() returns 0
+	call super::create
+	triggerevent("constructor")
+
+// n_dwr_workbook.destroy() returns 0
+	triggerevent("destructor")
+	call super::destroy
+
+// n_dwr_workbook.destructor() returns long
+	if isvalid(this.ws) and not isnull(this.ws) then
+		close(this.ws)
+	end if
+	if this.handle > 0 then
+		_destroy(this.handle)
+		this.handle = 0
+	end if
+	return ::message.returnvalue
+
+// n_dwr_workbook.constructor() returns long
+	this.inv_const = create n_dwr_const
+	this.invo_height = create n_dwr_height
+	return ::message.returnvalue

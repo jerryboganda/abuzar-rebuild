@@ -1,0 +1,29 @@
+// window w_arg_sdate_ldate_margin (reports)  ancestor: w_arguements
+
+// w_arg_sdate_ldate_margin.create() returns 0
+	integer icurrent
+	call super::create
+	this.st_9 = create st_9
+	this.em_perc = create em_perc
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_9
+	this.control[icurrent + 2] = this.em_perc
+
+// w_arg_sdate_ldate_margin.destroy() returns 0
+	call super::destroy
+	destroy this.st_9
+	destroy this.em_perc
+
+// w_arg_sdate_ldate_margin.ue_close(integer ai_stauts) returns 0
+	super::ue_close(ai_stauts)
+	closewithreturn(this, this.istr_arg)
+
+// em_perc.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// em_perc.getfocus() returns long
+	selecttext(1, len(this.text))
+	return ::message.returnvalue

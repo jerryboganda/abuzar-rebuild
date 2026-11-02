@@ -1,0 +1,164 @@
+// window w_generate_visitpresctiption_labels (reports)  ancestor: window
+
+// w_generate_visitpresctiption_labels.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		post event ue_close()
+	end if
+	return ::message.returnvalue
+
+// w_generate_visitpresctiption_labels.ue_close() returns 0
+	closewithreturn(this, this.istr_arg)
+
+// w_generate_visitpresctiption_labels.create() returns 0
+	this.dw_print = create dw_print
+	this.dw_footer = create dw_footer
+	this.dw_master = create dw_master
+	this.cb_retrieve = create cb_retrieve
+	this.cb_ok = create cb_ok
+	this.dw_detail = create dw_detail
+	this.control = {this.dw_print, this.dw_footer, this.dw_master, this.cb_retrieve, this.cb_ok, this.dw_detail}
+
+// w_generate_visitpresctiption_labels.destroy() returns 0
+	destroy this.dw_print
+	destroy this.dw_footer
+	destroy this.dw_master
+	destroy this.cb_retrieve
+	destroy this.cb_ok
+	destroy this.dw_detail
+
+// w_generate_visitpresctiption_labels.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	this.istr_arg = message.powerobjectparm
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		this.width = ll_win_width * 0.98
+		this.height = ll_win_height * 0.90
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	this.dw_detail.width = this.width * 0.98
+	this.dw_detail.height = this.height - this.dw_master.height - 230
+	this.cb_retrieve.y = this.height - 200
+	this.cb_ok.y = this.height - 200
+	this.dw_master.settransobject(sqlca)
+	this.dw_detail.settransobject(sqlca)
+	this.dw_footer.settransobject(sqlca)
+	this.dw_print.settransobject(sqlca)
+	this.dw_master.insertrow(0)
+	this.dw_master.scrolltorow(0)
+	this.dw_master.setfocus()
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// dw_master.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_master.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "visitcode"
+		if long(data) > 0 then
+			parent.dw_detail.retrieve(long(data))
+		else
+			return 0
+		end if
+		return 0
+	end choose
+	return 0
+
+// cb_retrieve.clicked() returns long
+	string ls_filter
+	long ll_masterrow
+	parent.dw_master.accepttext()
+	ll_masterrow = parent.dw_master.getrow()
+	if parent.dw_master.getitemnumber(ll_masterrow, "VisitCode") > 0.0 then
+		parent.dw_detail.setredraw(false)
+		parent.dw_detail.retrieve(parent.dw_master.getitemnumber(ll_masterrow, "VisitCode"))
+		parent.dw_detail.setredraw(true)
+	else
+		messagebox("Validation!", "Plese Select Valid Visit Code.")
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	long ll_rowcount
+	long ll_counter
+	long[] ll_rowid
+	long ll_code
+	double ld_fee
+	double ld_discperc
+	double ld_flatdisc
+	string ls_remarks
+	string ls_studentname
+	string ls_classname
+	string ls_servicename
+	boolean lb_ok
+	boolean lb_omitspecialcharges
+	string ls_date
+	s_datastore lstr
+	if parent.dw_master.rowcount() > 0 then
+		ll_code = parent.dw_master.object.visitcode[1]
+		ll_rowcount = parent.dw_detail.rowcount()
+		for ll_counter = 1 to ll_rowcount
+			if parent.dw_detail.object.selected[ll_counter] = "Y" then
+				ll_rowid[ll_counter] = parent.dw_detail.object.rowid[ll_counter]
+			end if
+		next
+		parent.dw_print.settransobject(sqlca)
+		parent.dw_print.retrieve(ll_code, ll_rowid)
+		lstr.s_module = "visitprescriptionlabel"
+		lstr.dw = parent.dw_print
+		lstr.s_name1 = parent.dw_print.dataobject
+		openwithparm(w_preview_invoices, lstr)
+		lstr = message.powerobjectparm
+		if lstr.i_closemode = -1 then
+			if not isvalid(message) then
+				return 0
+			end if
+			return message.returnvalue
+		end if
+		if parent.dw_print.rowcount() > 0 then
+			parent.dw_print.print()
+		end if
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// dw_detail.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_detail.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue

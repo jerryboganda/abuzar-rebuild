@@ -1,0 +1,35 @@
+// window w_arg_sale_outstanding_a_customer (reports)  ancestor: w_arguements
+
+// w_arg_sale_outstanding_a_customer.create() returns 0
+	call super::create
+
+// w_arg_sale_outstanding_a_customer.destroy() returns 0
+	call super::destroy
+
+// w_arg_sale_outstanding_a_customer.open() returns long
+	long ancestorreturnvalue
+	long ll_retcode
+	long ll_custcode
+	ancestorreturnvalue = super::open()
+	ll_custcode = message.doubleparm
+	ll_retcode = this.dw_control.getchild("invcode", this.idc_dw)
+	if ll_retcode = -1 then
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	this.idc_dw.settransobject(sqlca)
+	this.idc_dw.retrieve(ll_custcode)
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.retrieve()
+	this.dw_control.scrolltorow(0)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_arg_sale_outstanding_a_customer.ue_close(integer ai_stauts) returns 0
+	super::ue_close(ai_stauts)
+	closewithreturn(this, this.istr_arg)

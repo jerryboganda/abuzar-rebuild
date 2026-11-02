@@ -1,0 +1,83 @@
+// window w_patientfirstcontacthistory (patientcomponents)  ancestor: window
+
+// w_patientfirstcontacthistory.create() returns 0
+	this.dw_control = create dw_control
+	this.cb_print = create cb_print
+	this.dw_detail = create dw_detail
+	this.control = {this.dw_control, this.cb_print, this.dw_detail}
+
+// w_patientfirstcontacthistory.destroy() returns 0
+	destroy this.dw_control
+	destroy this.cb_print
+	destroy this.dw_detail
+
+// w_patientfirstcontacthistory.open() returns long
+	long ll_width
+	long ll_height
+	long ll_patientcode
+	long ll_retcode
+	datawindowchild ldwc_pfc
+	environment env
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	ll_patientcode = ::message.doubleparm
+	this.width = ll_width * 0.98
+	this.height = ll_height * 0.85
+	this.y = int((ll_height - this.height) / 2.0)
+	this.dw_control.width = this.width - this.width * 0.02
+	this.dw_detail.width = this.width - this.width * 0.02
+	this.cb_print.y = this.height - this.cb_print.height - 140
+	this.dw_detail.height = this.cb_print.y - this.dw_detail.y - 40
+	this.dw_control.settransobject(sqlca)
+	ll_retcode = this.dw_control.getchild("rowid", ldwc_pfc)
+	if ll_retcode = -1 then
+		messagebox("dw error", "Can not Get Datawindow child")
+		close(this)
+		return ::message.returnvalue
+	end if
+	ldwc_pfc.settransobject(sqlca)
+	ldwc_pfc.retrieve(ll_patientcode)
+	if ldwc_pfc.rowcount() <= 0 then
+		ldwc_pfc.insertrow(0)
+	end if
+	this.dw_control.retrieve()
+	this.dw_detail.settransobject(sqlca)
+	if ldwc_pfc.rowcount() > 0 and this.dw_control.rowcount() > 0 then
+		this.dw_control.object.rowid[1] = ldwc_pfc.getitemnumber(1, "rowid")
+		this.dw_detail.retrieve(this.dw_control.object.rowid[1])
+	end if
+	return ::message.returnvalue
+
+// w_patientfirstcontacthistory.close() returns long
+	close(this)
+	return ::message.returnvalue
+
+// w_patientfirstcontacthistory.key(keycode key, unsignedlong keyflags) returns long
+	if keydown(keyescape!) then
+		close(this)
+	end if
+	return ::message.returnvalue
+
+// dw_control.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "rowid"
+		parent.dw_detail.retrieve(long(data))
+		return 0
+	end choose
+	return ::message.returnvalue
+
+// cb_print.clicked() returns long
+	if parent.dw_detail.visible then
+		if printsetup() < 0 then
+			messagebox("Printer", "Printing Error")
+			parent.dw_detail.printcancel()
+		end if
+		parent.dw_detail.print()
+	end if
+	return ::message.returnvalue

@@ -1,0 +1,29 @@
+// window w_arg_sale_sdate_ldate_avgprice_rpp (reports)  ancestor: w_arguements
+
+// w_arg_sale_sdate_ldate_avgprice_rpp.create() returns 0
+	integer icurrent
+	call super::create
+	this.cbx_cash = create cbx_cash
+	this.cbx_credit = create cbx_credit
+	this.st_4 = create st_4
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.cbx_cash
+	this.control[icurrent + 2] = this.cbx_credit
+	this.control[icurrent + 3] = this.st_4
+
+// w_arg_sale_sdate_ldate_avgprice_rpp.destroy() returns 0
+	call super::destroy
+	destroy this.cbx_cash
+	destroy this.cbx_credit
+	destroy this.st_4
+
+// w_arg_sale_sdate_ldate_avgprice_rpp.ue_close(integer ai_stauts) returns 0
+	super::ue_close(ai_stauts)
+	closewithreturn(this, this.istr_arg)
+
+// w_arg_sale_sdate_ldate_avgprice_rpp.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.dw_price.settransobject(sqlca)
+	this.dw_price.insertrow(0)
+	return ::message.returnvalue

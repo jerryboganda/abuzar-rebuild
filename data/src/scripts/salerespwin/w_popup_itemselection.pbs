@@ -1,0 +1,193 @@
+// window w_popup_itemselection (salerespwin)  ancestor: w_popup_forselection
+
+// w_popup_itemselection.wf_getitems(string as_search_col, string as_items, long al_code) returns long
+	long ll_rtcode
+	long ll_counter
+	long ll_rowcount
+	datastore lds_itemlist
+	lds_itemlist = create datastore
+	if as_search_col = "modelcode" then
+		lds_itemlist.dataobject = "d_model_items"
+	elseif as_search_col = "authorcode" then
+		lds_itemlist.dataobject = "d_author_items"
+	elseif as_search_col = "masteripartcode" then
+		lds_itemlist.dataobject = "d_masteripartcode_items"
+	elseif as_search_col = "diseasecode" then
+		lds_itemlist.dataobject = "d_diseasetreatmenttemp_items"
+	elseif as_search_col = "diseasetypecode" then
+		lds_itemlist.dataobject = "d_diseasetypetreatmenttemp_items"
+	end if
+	lds_itemlist.settransobject(sqlca)
+	ll_rtcode = lds_itemlist.retrieve(al_code)
+	ll_rowcount = lds_itemlist.rowcount()
+	if ll_rtcode > 0 then
+		for ll_counter = 1 to ll_rowcount
+			as_items = as_items + trim(string(lds_itemlist.object.icode[ll_counter]))
+			if ll_counter <> ll_rowcount then
+				as_items = as_items + " ,"
+			end if
+		next
+	end if
+	return ll_rtcode
+
+// w_popup_itemselection.wf_set_column_visibility() returns integer
+	string ls_describe
+	long ll_found
+	if f_stringpreferences("aliasname") = "N" then
+		this.id_selectionlist.object.aliasname.visible = false
+	end if
+	if f_stringpreferences("itemname") = "N" then
+		this.id_selectionlist.object.itemname.visible = false
+	end if
+	if f_stringpreferences("localitemname") = "N" then
+		ls_describe = trim(this.id_selectionlist.describe("localitemname.visible"))
+		if ls_describe = "1" then
+			this.id_selectionlist.object.localitemname.visible = false
+		end if
+	end if
+	if f_stringpreferences("manufacturer") = "N" then
+		this.id_selectionlist.object.manufacturer.visible = false
+	end if
+	if f_stringpreferences("packing") = "N" then
+		this.id_selectionlist.object.packing.visible = false
+	end if
+	if f_stringpreferences("itempackingdesc") = "N" then
+		this.id_selectionlist.object.packingdesc.visible = false
+	end if
+	if f_stringpreferences("itemlocation") = "N" then
+		this.id_selectionlist.object.location.visible = false
+	end if
+	if f_stringpreferences("packunits") = "N" then
+		this.id_selectionlist.object.packunits.visible = false
+	end if
+	if f_stringpreferences("saleprice") = "N" then
+		this.id_selectionlist.object.saleprice.visible = false
+	end if
+	if f_stringpreferences("ShowTransitStockInItemList") = "N" then
+		this.id_selectionlist.object.transitstock.visible = false
+	end if
+	if f_stringpreferences("showitemalertinitemlist") = "N" then
+		this.id_selectionlist.object.itemalertcode.visible = false
+	end if
+	if f_stringpreferences("stock") = "N" then
+		this.id_selectionlist.object.sstock.visible = false
+		this.id_selectionlist.object.pstock.visible = false
+		this.id_selectionlist.object.stock.visible = false
+	else
+		this.id_selectionlist.object.stock.visible = false
+		this.id_selectionlist.object.sstock.visible = true
+		this.id_selectionlist.object.pstock.visible = false
+	end if
+	if f_stringpreferences("GenericItemName") = "N" and this.id_selectionlist.describe("genericname.visible") <> "!" then
+		this.id_selectionlist.object.genericname.visible = false
+	end if
+	if this.id_selectionlist.describe("c_pack_sstock.visible") <> "!" then
+		if f_stringpreferences("PackStock") = "Y" then
+			this.id_selectionlist.object.c_pack_sstock.visible = true
+		else
+			this.id_selectionlist.object.c_pack_sstock.visible = false
+		end if
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 587", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.id_selectionlist.object.purprice.visible = true
+	else
+		this.id_selectionlist.object.purprice.visible = false
+	end if
+	return 0
+
+// w_popup_itemselection.create() returns 0
+	call super::create
+
+// w_popup_itemselection.destroy() returns 0
+	call super::destroy
+
+// w_popup_itemselection.open() returns long
+	long ancestorreturnvalue
+	long li_groupcode
+	long ll_code
+	long ll_found
+	string ls_selection
+	string ls_searchtype
+	string ls_items
+	boolean lb_restricteditems
+	ancestorreturnvalue = super::open()
+	this.is_popup_selection = message.powerobjectparm
+	li_groupcode = f_getgroupcode(gl_usercode)
+	ll_code = this.is_popup_selection.l_code
+	ls_selection = this.is_popup_selection.s_name2
+	ls_searchtype = this.is_popup_selection.s_name3
+	setredraw(false)
+	gd_popup_itemsinfo.sharedata(this.id_selectionlist)
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 587", 1, gds_securitywindow.rowcount())
+	if ll_found <= 0 then
+		this.id_selectionlist.object.purprice.visible = false
+	end if
+	ll_found = gds_securitywindow.find(" rightcode = 515 ", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		lb_restricteditems = true
+	end if
+	if lb_restricteditems then
+		if ls_searchtype = "criteriasearch" then
+			if ls_selection = "modelcode" or ls_selection = "masteripartcode" or ls_selection = "diseasecode" or ls_selection = "diseasetypecode" or ls_selection = "authorcode" then
+				if wf_getitems(ls_selection, ls_items, ll_code) > 0 then
+					this.id_selectionlist.setfilter(" Code IN (" + ls_items + ")")
+				else
+					this.id_selectionlist.setfilter(" Code = -1")
+				end if
+			else
+				this.id_selectionlist.setfilter(ls_selection + " = " + string(ll_code))
+			end if
+		elseif ls_searchtype = "namesearch" then
+			this.id_selectionlist.setfilter("name like '" + ls_selection + "'")
+		elseif ls_searchtype = "aliasnamesearch" then
+			this.id_selectionlist.setfilter("aliasname like '" + ls_selection + "'")
+		end if
+	elseif ls_searchtype = "criteriasearch" then
+		if ls_selection = "modelcode" or ls_selection = "masteripartcode" or ls_selection = "authorcode" then
+			if wf_getitems(ls_selection, ls_items, ll_code) > 0 then
+				this.id_selectionlist.setfilter(" Code IN (" + ls_items + ") And restricted = 'N' ")
+			else
+				this.id_selectionlist.setfilter(" Code = -1")
+			end if
+		else
+			this.id_selectionlist.setfilter(ls_selection + " = " + string(ll_code) + " And restricted = 'N' ")
+		end if
+	elseif ls_searchtype = "namesearch" then
+		this.id_selectionlist.setfilter("restricted = 'N' AND name like ('" + ls_selection + "') ")
+	elseif ls_searchtype = "aliasnamesearch" then
+		this.id_selectionlist.setfilter("restricted = 'N' AND aliasname like ('" + ls_selection + "') ")
+	end if
+	this.id_selectionlist.filter()
+	setredraw(true)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_popup_itemselection.ue_postopen() returns 0
+	long li_counter
+	long ll_startrow
+	long ll_rowcount
+	long ll_found
+	char lc_char
+	ll_rowcount = this.id_selectionlist.rowcount()
+	if ll_rowcount <= 0 or isnull(ll_rowcount) then
+		messagebox("Row Validation", "There are no rows to select in SelectionList.~r~nKindly try again.")
+		this.is_popup_selection.l_code = -1
+		closewithreturn(this, this.is_popup_selection)
+		return
+	end if
+	setredraw(false)
+	this.id_selectionlist.setsort("name A")
+	this.id_selectionlist.sort()
+	for li_counter = 65 to 90
+		lc_char = char(li_counter)
+		this.ia_llookuptable[li_counter] = this.id_selectionlist.find("Lower(name) >= Lower('" + char(li_counter) + "')", ll_startrow, this.id_selectionlist.rowcount())
+		ll_startrow = this.ia_llookuptable[li_counter]
+	next
+	this.ia_llookuptable[92] = this.id_selectionlist.rowcount()
+	wf_set_column_visibility()
+	setredraw(true)

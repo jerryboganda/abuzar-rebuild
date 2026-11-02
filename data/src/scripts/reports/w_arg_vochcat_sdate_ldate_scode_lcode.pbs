@@ -1,0 +1,119 @@
+// window w_arg_vochcat_sdate_ldate_scode_lcode (reports)  ancestor: w_listarguments
+
+// w_arg_vochcat_sdate_ldate_scode_lcode.create() returns 0
+	integer icurrent
+	call super::create
+	this.rb_period = create rb_period
+	this.rb_range = create rb_range
+	this.rb_both = create rb_both
+	this.lb_cust = create lb_cust
+	this.cbx_allcust = create cbx_allcust
+	this.lb_selectedcust = create lb_selectedcust
+	this.st_10 = create st_10
+	this.st_11 = create st_11
+	this.gb_5 = create gb_5
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.rb_period
+	this.control[icurrent + 2] = this.rb_range
+	this.control[icurrent + 3] = this.rb_both
+	this.control[icurrent + 4] = this.lb_cust
+	this.control[icurrent + 5] = this.cbx_allcust
+	this.control[icurrent + 6] = this.lb_selectedcust
+	this.control[icurrent + 7] = this.st_10
+	this.control[icurrent + 8] = this.st_11
+	this.control[icurrent + 9] = this.gb_5
+
+// w_arg_vochcat_sdate_ldate_scode_lcode.destroy() returns 0
+	call super::destroy
+	destroy this.rb_period
+	destroy this.rb_range
+	destroy this.rb_both
+	destroy this.lb_cust
+	destroy this.cbx_allcust
+	destroy this.lb_selectedcust
+	destroy this.st_10
+	destroy this.st_11
+	destroy this.gb_5
+
+// w_arg_vochcat_sdate_ldate_scode_lcode.open() returns long
+	long ancestorreturnvalue
+	long ll_counter
+	long ll_rowcount
+	integer rtncode
+	ancestorreturnvalue = super::open()
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	this.dw_control.setitem(1, "vochcatcode", 1)
+	this.dw_startendinvoice.settransobject(sqlca)
+	this.dw_startendinvoice.insertrow(0)
+	this.dw_startendinvoice.scrolltorow(0)
+	this.dw_startendinvoice.setitem(1, "scode", 1)
+	this.dw_startendinvoice.setitem(1, "lcode", 1)
+	rtncode = this.dw_control.getchild("vochcatcode", this.idc_child)
+	if rtncode = -1 then
+		messagebox("Error", "Not a DataWindowChild")
+	end if
+	ll_rowcount = this.idc_child.rowcount()
+	for ll_counter = 1 to ll_rowcount
+		this.lb_cust.additem(this.idc_child.getitemstring(ll_counter, "name"))
+	next
+	return ::message.returnvalue
+
+// lb_cust.ue_keypress(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		post event doubleclicked(selectedindex())
+	end if
+	return ::message.returnvalue
+
+// lb_cust.doubleclicked(integer index) returns long
+	string ls_item
+	long ll_selectedindex
+	ls_item = string(selecteditem())
+	ll_selectedindex = selectedindex()
+	if not isnull(ls_item) and index >= 1 then
+		parent.lb_selectedcust.additem(ls_item)
+		deleteitem(index)
+		if ll_selectedindex > 1 then
+			if totalitems() < ll_selectedindex then
+				selectitem(totalitems())
+			else
+				selectitem(ll_selectedindex)
+			end if
+		else
+			selectitem(1)
+		end if
+	else
+		messagebox("Selection Validation", "Please select some value from selectable listbox")
+	end if
+	return ::message.returnvalue
+
+// lb_cust.getfocus() returns long
+	return ::message.returnvalue
+
+// lb_selectedcust.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		post event doubleclicked(selectedindex())
+	end if
+	return ::message.returnvalue
+
+// lb_selectedcust.doubleclicked(integer index) returns long
+	string ls_item
+	long ll_selectedindex
+	ll_selectedindex = selectedindex()
+	ls_item = string(selecteditem())
+	if not isnull(ls_item) and index >= 1 then
+		parent.lb_cust.additem(ls_item)
+		deleteitem(index)
+		if totalitems() < ll_selectedindex then
+			selectitem(totalitems())
+		else
+			selectitem(ll_selectedindex)
+		end if
+	else
+		messagebox("Selection Validation", "Please select some value from selected listbox")
+	end if
+	return ::message.returnvalue
+
+// lb_selectedcust.getfocus() returns long
+	return ::message.returnvalue

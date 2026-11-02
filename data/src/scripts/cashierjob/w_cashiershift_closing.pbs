@@ -1,0 +1,570 @@
+// window w_cashiershift_closing (cashierjob)  ancestor: window
+
+// w_cashiershift_closing.ue_close(integer ai_status) returns 0
+	close(this)
+
+// w_cashiershift_closing.ue_postopen() returns 0
+	datastore lds_denominations
+	long ll_counter
+	long ll_insrow
+	this.dw_detail.settransobject(this.it_transobject)
+	this.dw_cash.settransobject(this.it_transobject)
+	this.dw_figures.settransobject(this.it_transobject)
+	this.dw_detail.retrieve(this.il_code)
+	if this.dw_detail.rowcount() > 0 then
+		this.dw_cash.retrieve(this.il_code)
+		if this.dw_cash.rowcount() = 0 then
+			lds_denominations = create datastore
+			lds_denominations.dataobject = "d_currency_denominations"
+			lds_denominations.settransobject(this.it_transobject)
+			lds_denominations.retrieve(1)
+			if lds_denominations.rowcount() > 0 then
+				for ll_counter = 1 to lds_denominations.rowcount()
+					ll_insrow = this.dw_cash.insertrow(0)
+					if ll_insrow > 0 then
+						this.dw_cash.object.code[ll_insrow] = this.il_code
+						this.dw_cash.object.currencycode[ll_insrow] = lds_denominations.object.code[ll_counter]
+						this.dw_cash.object.type[ll_insrow] = lds_denominations.object.type[ll_counter]
+						this.dw_cash.object.name[ll_insrow] = lds_denominations.object.name[ll_counter]
+						this.dw_cash.object.denomination[ll_insrow] = lds_denominations.object.denomination[ll_counter]
+					end if
+				next
+			end if
+		end if
+	end if
+	this.dw_figures.retrieve(this.il_code)
+	if this.dw_figures.rowcount() > 0 then
+		this.dw_figures.object.difftransferedto[1] = 42
+	end if
+	if this.dw_cash.rowcount() > 0 then
+		this.dw_cash.setrow(1)
+		this.dw_cash.scrolltorow(1)
+		this.dw_cash.setcolumn("Qty")
+	end if
+	wf_protectdw(this.dw_detail, this.il_protect)
+	wf_protectdw(this.dw_cash, this.il_protect)
+	wf_protectdw(this.dw_figures, this.il_protect)
+	if this.il_protect = 1 then
+		this.cb_ok.enabled = false
+	end if
+
+// w_cashiershift_closing.wf_validateserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+	datetime ldt_last_transdate
+	datetime ldt_current_serverdate
+	long li_max_allow_days
+	ar_errtext = "Invoice Date  Check violates"
+	li_max_allow_days = f_numberpreferences("MaxAllowDate")
+	if isnull(li_max_allow_days) then
+		li_max_allow_days = 4
+	end if
+	SQL SELECT LastTransDate INTO :ldt_last_transdate FROM ServerDate USING sqlca;
+	if sqlca.sqlcode = 0 then
+		sqlca.getdatetime(ldt_current_serverdate)
+		if sqlca.sqlcode = 0 then
+			if ldt_current_serverdate >= ldt_last_transdate and daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) <= li_max_allow_days then
+				ar_server_datetime = ldt_current_serverdate
+				return true
+			elseif ldt_current_serverdate < ldt_last_transdate then
+				ar_errtext = "Back Date Invoice Check violates"
+				return false
+			elseif daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) > li_max_allow_days then
+				ar_errtext = "Forward Date Invoice Check violates"
+				return false
+			end if
+		else
+			return false
+		end if
+		return
+	end if
+	return false
+
+// w_cashiershift_closing.wf_duplicateregno(string as_name) returns boolean
+	long ll_count
+	long ll_patientcode
+	boolean b_flag
+	as_name = trim(as_name)
+	ll_patientcode = this.dw_detail.object.code[this.dw_detail.rowcount()]
+	if isnull(ll_patientcode) then
+		SQL SELECT count ( *) INTO :ll_count FROM Patient WHERE patient.regno =:as_name USING this.it_transobject;
+	else
+		SQL SELECT count ( *) INTO :ll_count FROM Patient WHERE patient.regno =:as_name AND Patient.PatientCode <> :ll_patientcode USING this.it_transobject;
+	end if
+	if this.it_transobject.sqlcode = 0 then
+		if ll_count > 0 then
+			b_flag = true
+		else
+			b_flag = false
+		end if
+	else
+		b_flag = false
+	end if
+	return b_flag
+
+// w_cashiershift_closing.wf_getserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+	datetime ldt_last_transdate
+	datetime ldt_current_serverdate
+	integer li_max_allow_days
+	string ls_hold_serverdate
+	date ld_datepart
+	time lt_timepart
+	ar_errtext = "Please verify Server DateTime"
+	li_max_allow_days = f_numberpreferences("MaxAllowDate")
+	if isnull(li_max_allow_days) then
+		li_max_allow_days = 4
+	end if
+	SQL rollback USING sqlca;
+	SQL SELECT LastTransDate INTO :ldt_last_transdate FROM ServerDate USING sqlca;
+	if sqlca.sqlcode = 0 then
+		sqlca.getdatetime(ldt_current_serverdate)
+		if sqlca.sqlcode = 0 then
+			if ldt_current_serverdate >= ldt_last_transdate and daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) <= li_max_allow_days then
+				ld_datepart = date(string(ldt_current_serverdate, "yyyy-mm-dd"))
+				lt_timepart = time(string(ldt_current_serverdate, "hh:mm:ss"))
+				ldt_current_serverdate = datetime(ld_datepart, lt_timepart)
+				SQL update ServerDate SET LastTransDate =:ldt_current_serverdate USING sqlca;
+				if sqlca.sqlcode = 0 then
+					SQL commit USING sqlca;
+					ar_server_datetime = ldt_current_serverdate
+					return true
+				else
+					SQL rollback USING sqlca;
+					return false
+				end if
+			elseif ldt_current_serverdate < ldt_last_transdate then
+				ar_errtext = "Back Date Invoice Check violates"
+				return false
+			elseif daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) > li_max_allow_days then
+				ar_errtext = "Forward Date Invoice Check violates"
+				return false
+			end if
+		else
+			SQL rollback USING sqlca;
+			return false
+		end if
+		return
+	end if
+	SQL rollback USING sqlca;
+	return false
+
+// w_cashiershift_closing.wf_connect() returns long
+	this.it_transobject = create u_transaction
+	SQL start USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		return 0
+	end if
+	messagebox("Connection Problem", "Problem Connecting Database ... ~r~n" + this.it_transobject.sqlerrtext)
+	return -1
+
+// w_cashiershift_closing.wf_updatetotals() returns double
+	double ld_totamount
+	double ld_openingbalance
+	this.dw_detail.accepttext()
+	this.dw_cash.accepttext()
+	this.dw_figures.accepttext()
+	if this.il_protect = 1 then
+		return 0
+	end if
+	if this.dw_cash.rowcount() > 0 then
+		ld_totamount = this.dw_cash.getitemnumber(1, "c_totalamount")
+	end if
+	if this.dw_detail.rowcount() > 0 then
+		ld_openingbalance = this.dw_detail.object.openingbalance[1]
+	end if
+	if ld_totamount = 0.0 or isnull(ld_totamount) then
+		ld_totamount = 0
+	end if
+	if ld_openingbalance = 0.0 or isnull(ld_openingbalance) then
+		ld_openingbalance = 0
+	end if
+	if this.dw_figures.rowcount() > 0 then
+		this.dw_figures.object.totalamount[1] = ld_totamount
+		this.dw_figures.object.netamt[1] = this.dw_figures.object.cashsales[1] + this.dw_figures.object.cashservice[1] - this.dw_figures.object.cashsr[1] - this.dw_figures.object.cashservicereturn[1] + this.dw_figures.object.totalreceipts[1] - this.dw_figures.object.totalpayments[1]
+		this.dw_figures.object.diffamt[1] = this.dw_figures.object.totalamount[1] + this.dw_figures.object.amttransfered[1] - this.dw_figures.object.netamt[1] - this.dw_figures.object.openingbalance[1]
+	end if
+	return 0
+
+// w_cashiershift_closing.wf_check_unposted_transactions() returns long
+	long ll_counter
+	string ls_unpoted_tran_details
+	datastore lds_unpostedtran
+	lds_unpostedtran = create datastore
+	lds_unpostedtran.dataobject = "d_cashiershift_unpostedtrans"
+	lds_unpostedtran.settransobject(this.it_transobject)
+	lds_unpostedtran.retrieve(this.il_code)
+	if lds_unpostedtran.rowcount() > 0 then
+		for ll_counter = 1 to lds_unpostedtran.rowcount()
+			ls_unpoted_tran_details = lds_unpostedtran.object.invcode[ll_counter] + "~r~n"
+		next
+		messagebox("Un-Posted Transaction Alert", "There are some unposted transactions. Please Post them and try again.~r~nDetails are:-~r~n" + ls_unpoted_tran_details)
+		return 1
+	end if
+	return 0
+
+// w_cashiershift_closing.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+
+// w_cashiershift_closing.create() returns 0
+	this.dw_figures = create dw_figures
+	this.dw_cash = create dw_cash
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.dw_detail = create dw_detail
+	this.control = {this.dw_figures, this.dw_cash, this.cb_cancel, this.cb_ok, this.dw_detail}
+
+// w_cashiershift_closing.destroy() returns 0
+	destroy this.dw_figures
+	destroy this.dw_cash
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.dw_detail
+
+// w_cashiershift_closing.open() returns long
+	long ll_row
+	long ll_width
+	long ll_height
+	long ll_counter
+	long ll_shiftcode
+	string ls_unpoted_tran_details
+	string ls_shiftstatus
+	environment env
+	if wf_connect() <> 0 then
+		close(this)
+		return ::message.returnvalue
+	end if
+	this.il_code = ::message.doubleparm
+	SQL SELECT CashierShiftCode , ShiftStatus INTO :ll_shiftcode, :ls_shiftstatus FROM CashierShift WHERE CashierShiftCode =:this.il_code USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		if ls_shiftstatus = "C" then
+			this.il_protect = 1
+		else
+			this.il_protect = 0
+		end if
+	end if
+	if wf_check_unposted_transactions() > 0 then
+		close(this)
+		return ::message.returnvalue
+	end if
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.x = int((ll_width - this.width) / 2.0)
+	this.y = int((ll_height - this.height) / 2.0)
+	post event ue_postopen()
+	return ::message.returnvalue
+
+// dw_figures.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	parent.wf_updatetotals()
+	selecttext(1, len(gettext()) + 1)
+	return ::message.returnvalue
+
+// dw_figures.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	parent.wf_updatetotals()
+	selecttext(1, len(gettext()) + 1)
+	return ::message.returnvalue
+
+// dw_figures.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_cash.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	parent.wf_updatetotals()
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_cash.rowfocuschanged(long currentrow) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::rowfocuschanged(currentrow)
+	selecttext(1, len(gettext()) + 1)
+	return ::message.returnvalue
+
+// dw_cash.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	parent.wf_updatetotals()
+	setfocus()
+	setcolumn("qty")
+	selecttext(1, len(gettext()) + 1)
+	return ::message.returnvalue
+
+// dw_cash.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// cb_cancel.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	long ll_row
+	long ll_usercode
+	long ll_null
+	long ll_counter
+	long ll_amttransferedto
+	double ld_amttransfered
+	datetime ldt_server_datetime
+	datetime ldt_amt_transfer_on
+	string ls_date_errtext
+	string ls_remarks
+	string ls_refno
+	boolean lb_commit
+	setpointer(hourglass!)
+	setnull(ll_null)
+	if f_validatedw(parent.dw_detail) < 0 then
+		return ::message.returnvalue
+	end if
+	if f_validatedw(parent.dw_cash) < 0 then
+		return ::message.returnvalue
+	end if
+	if f_validatedw(parent.dw_figures) < 0 then
+		return ::message.returnvalue
+	end if
+	open(w_salesmanpassword)
+	ll_usercode = long(::message.doubleparm)
+	setfocus()
+	if ll_usercode > 0 and parent.dw_detail.rowcount() > 0 then
+		if parent.dw_figures.rowcount() > 0 then
+			ld_amttransfered = parent.dw_figures.object.amttransfered[1]
+			ll_amttransferedto = parent.dw_figures.object.amttransferedto[1]
+			ls_remarks = parent.dw_figures.object.remarks[1]
+			ls_refno = parent.dw_figures.object.refno[1]
+			if ld_amttransfered > 0.0 and isnull(parent.dw_figures.object.amttransferedto[1]) then
+				messagebox("Amount Transfer Account Validation", "Please select Valid Account for Amount Transfer", stopsign!)
+				return ::message.returnvalue
+			end if
+			return
+		end if
+		if parent.wf_check_unposted_transactions() = 1 then
+			return ::message.returnvalue
+		end if
+		if not parent.wf_getserverdatetime(ldt_server_datetime, ls_date_errtext) then
+			messagebox("Date Violation", ls_date_errtext, stopsign!)
+			return ::message.returnvalue
+		end if
+		if isnull(parent.dw_detail.object.code[1]) then
+			return ::message.returnvalue
+		end if
+		if parent.dw_cash.rowcount() > 0 then
+			if isnull(parent.dw_cash.object.code[1]) then
+				return ::message.returnvalue
+			end if
+			if parent.dw_cash.getitemnumber(1, "c_totalamount") < 0.0 then
+				return ::message.returnvalue
+			end if
+			return
+		end if
+		if parent.dw_figures.rowcount() > 0 then
+			ld_amttransfered = parent.dw_figures.object.amttransfered[1]
+			ll_amttransferedto = parent.dw_figures.object.amttransferedto[1]
+			ls_remarks = parent.dw_figures.object.remarks[1]
+			ls_refno = parent.dw_figures.object.refno[1]
+		end if
+		parent.dw_figures.retrieve(parent.il_code)
+		if parent.dw_figures.rowcount() > 0 then
+			if isnull(parent.dw_figures.object.code[1]) then
+				return ::message.returnvalue
+			end if
+			parent.dw_figures.object.amttransfered[1] = ld_amttransfered
+			parent.dw_figures.object.amttransferedto[1] = ll_amttransferedto
+			parent.dw_figures.object.remarks[1] = ls_remarks
+			parent.dw_figures.object.refno[1] = ls_refno
+			parent.dw_figures.object.closedby[1] = ll_usercode
+			if parent.dw_figures.object.amttransfered[1] > 0 and isnull(parent.dw_figures.object.amttransfered[1]) then
+				messagebox("Amount Transferred Account Validation", "Amount Transferred Account Validation~r~nAmount Transferred To Account is missing", stopsign!)
+				return ::message.returnvalue
+			end if
+			parent.dw_figures.object.difftransferedto[1] = 42
+			parent.dw_figures.object.closedon[1] = ldt_server_datetime
+			parent.dw_figures.object.shiftstatus[1] = "C"
+			parent.dw_figures.object.amttransferedon[1] = ldt_server_datetime
+			parent.wf_updatetotals()
+			if parent.dw_figures.rowcount() > 0 then
+				parent.dw_detail.object.closedon[1] = parent.dw_figures.object.closedon[1]
+				parent.dw_detail.object.closedby[1] = parent.dw_figures.object.closedby[1]
+				parent.dw_detail.object.shiftstatus[1] = parent.dw_figures.object.shiftstatus[1]
+				parent.dw_detail.object.amttransfered[1] = parent.dw_figures.object.amttransfered[1]
+				parent.dw_detail.object.amttransferedto[1] = parent.dw_figures.object.amttransferedto[1]
+				parent.dw_detail.object.amttransferedon[1] = parent.dw_figures.object.amttransferedon[1]
+				parent.dw_detail.object.remarks[1] = parent.dw_figures.object.remarks[1]
+				parent.dw_detail.object.refno[1] = parent.dw_figures.object.refno[1]
+				parent.dw_detail.object.totalamount[1] = parent.dw_figures.object.totalamount[1]
+				parent.dw_detail.object.cashsales[1] = parent.dw_figures.object.cashsales[1]
+				parent.dw_detail.object.creditsales[1] = parent.dw_figures.object.creditsales[1]
+				parent.dw_detail.object.cashservice[1] = parent.dw_figures.object.cashservice[1]
+				parent.dw_detail.object.creditservice[1] = parent.dw_figures.object.creditservice[1]
+				parent.dw_detail.object.cashsr[1] = parent.dw_figures.object.cashsr[1]
+				parent.dw_detail.object.creditsr[1] = parent.dw_figures.object.creditsr[1]
+				parent.dw_detail.object.cashservicereturn[1] = parent.dw_figures.object.cashservicereturn[1]
+				parent.dw_detail.object.creditservicereturn[1] = parent.dw_figures.object.creditservicereturn[1]
+				parent.dw_detail.object.totalreceipts[1] = parent.dw_figures.object.totalreceipts[1]
+				parent.dw_detail.object.totalpayments[1] = parent.dw_figures.object.totalpayments[1]
+				parent.dw_detail.object.netamt[1] = parent.dw_figures.object.netamt[1]
+				parent.dw_detail.object.diffamt[1] = parent.dw_figures.object.diffamt[1]
+				parent.dw_detail.object.difftransferedto[1] = parent.dw_figures.object.difftransferedto[1]
+			end if
+			if parent.dw_detail.update(true) > 0 then
+				if parent.dw_cash.update(true) > 0 then
+					SQL commit USING parent.it_transobject;
+					messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+					parent.post event ue_close(1)
+				else
+					SQL rollback USING parent.it_transobject;
+					setpointer(arrow!)
+					messagebox("Save Changes", "Changes Rollback in database, ~n~rSome database problem occurs", exclamation!, ok!, 1)
+					return ::message.returnvalue
+				end if
+			else
+				SQL rollback USING parent.it_transobject;
+				setpointer(arrow!)
+				messagebox("Save Changes", "Changes Rollback in database, ~n~rSome database problem occurs", exclamation!, ok!, 1)
+				return ::message.returnvalue
+			end if
+			return
+		end if
+		setpointer(arrow!)
+	end if
+	setpointer(arrow!)
+	return ::message.returnvalue
+
+// dw_detail.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long
+	long ll_totdays
+	long ll_years
+	long ll_months
+	long ll_days
+	choose case dwo.name
+	case "gender"
+		if upper(data) = "M" then
+			this.object.fname_t.protect = "1"
+			this.object.fname_t[row] = "F"
+		else
+			this.object.fname_t.protect = "0"
+			this.object.fname_t[row] = "F"
+		end if
+	case "regno"
+		if parent.wf_duplicateregno(data) then
+			return 1
+		end if
+	case "dob"
+		if isdate(string(date(left(data, 10)))) then
+			ll_totdays = daysafter(date(string(date(left(data, 10)))), today())
+			ll_years = ll_totdays / 365.0
+			ll_months = ll_totdays mod 365 / 30.0
+			ll_days = ll_totdays mod 365 mod 30
+			setitem(row, "ageyears", ll_years)
+			setitem(row, "agemonths", ll_months)
+			setitem(row, "agedays", ll_days)
+		else
+			return 1
+		end if
+	case "ageyears"
+		ll_years = long(data)
+		if isnull(ll_years) then
+			ll_years = 0
+		end if
+		ll_months = this.object.agemonths[row]
+		if isnull(ll_months) then
+			ll_months = 0
+		end if
+		ll_days = this.object.agedays[row]
+		if isnull(ll_days) then
+			ll_days = 0
+		end if
+		ll_totdays = ll_years * 365 + ll_months * 30 + ll_days
+		if ll_totdays >= 0 then
+			setitem(row, "dob", relativedate(today(), -ll_totdays))
+		else
+			return 1
+		end if
+	case "agemonths"
+		ll_years = this.object.ageyears[row]
+		if isnull(ll_years) then
+			ll_years = 0
+		end if
+		ll_months = long(data)
+		if isnull(ll_months) then
+			ll_months = 0
+		end if
+		ll_days = this.object.agedays[row]
+		if isnull(ll_days) then
+			ll_days = 0
+		end if
+		ll_totdays = ll_years * 365 + ll_months * 30 + ll_days
+		if ll_totdays >= 0 then
+			setitem(row, "dob", relativedate(today(), -ll_totdays))
+		else
+			return 1
+		end if
+	case "agedays"
+		ll_years = this.object.ageyears[row]
+		if isnull(ll_years) then
+			ll_years = 0
+		end if
+		ll_months = this.object.agemonths[row]
+		if isnull(ll_months) then
+			ll_months = 0
+		end if
+		ll_days = long(data)
+		if isnull(ll_days) then
+			ll_days = 0
+		end if
+		ll_totdays = ll_years * 365 + ll_months * 30 + ll_days
+		if ll_totdays >= 0 then
+			setitem(row, "dob", relativedate(today(), -ll_totdays))
+		else
+			return 1
+		end if
+	case "recurringperiod"
+		if long(data) < 0 then
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "regno"
+		messagebox("ItemNo Validation", "Item Duplication Error~r~nPlease enter some other Reg No")
+	end choose
+	return 1

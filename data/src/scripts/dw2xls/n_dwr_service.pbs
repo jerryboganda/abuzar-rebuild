@@ -1,0 +1,1087 @@
+// userobject n_dwr_service (dw2xls)  ancestor: n_dwr_service_base
+
+// n_dwr_service.of_addband(string as_band_name, integer ai_band_type, integer ai_group_level) returns integer
+	return of_splitband(as_band_name, ai_band_type, ai_group_level)
+
+// n_dwr_service.of_addbands() returns integer
+	integer li_groupcount
+	integer li_processing
+	integer li_i
+	integer li_ret
+	string ls_bands
+	string[] ls_band_arr
+	string ls_level_band
+	integer li_band_cnt
+	n_dwr_string lnvo_strsrv
+	li_groupcount = of_groupcount()
+	li_processing = integer(of_describe("Datawindow.Processing"))
+	if this.ib_grid then
+		this.il_grid_width = of_find_grid_detail_width()
+	end if
+	ls_bands = of_describe("datawindow.bands")
+	li_band_cnt = lnvo_strsrv.of_stringtoarray(ls_bands, "~t", ls_band_arr)
+	if this.invo_parm.ib_group_trailer then
+		for li_i = li_groupcount to li_i step -1
+			of_addband("trailer." + string(li_i), 4, li_i)
+		next
+	end if
+	if li_processing = 8 or li_processing = 9 then
+		ls_level_band = "tree.level."
+	end if
+	for li_i = 1 to li_band_cnt
+		if left(ls_band_arr[li_i], 6) = "header" and left(ls_band_arr[li_i], 7) <> ls_level_band and this.invo_parm.ib_header then
+			of_addband(ls_band_arr[li_i], 1, 0)
+		end if
+	next
+	if this.invo_parm.ib_group_header then
+		for li_i = 1 to li_groupcount
+			of_addband(ls_level_band + string(li_i), 2, li_i)
+		next
+	end if
+	if this.invo_parm.ib_detail then
+		of_addband("detail", 3, li_groupcount)
+	end if
+	if this.invo_parm.ib_summary then
+		of_addband("summary", 5, 0)
+	end if
+	if this.invo_parm.ib_footer then
+		of_addband("footer", 6, 0)
+	end if
+	for li_i = 1 to this.ii_band_count
+		this.invo_bands[li_i].of_set_bg_x(this.il_base_x, this.il_bg_x2)
+	next
+	if this.ib_show_progress then
+		of_set_yield(true)
+	end if
+	return li_ret
+
+// n_dwr_service.of_getband(string as_bandname, n_dwr_band anvo_band) returns integer
+	long ll_i
+	if as_bandname = "foreground" then
+		if not this.invo_parm.ib_foreground then
+			return -1
+		end if
+		as_bandname = "header"
+	end if
+	if as_bandname = "background" then
+		if not this.invo_parm.ib_background then
+			return -1
+		end if
+		as_bandname = "header"
+	end if
+	for ll_i = 1 to ll_i
+		if this.invo_bands[ll_i].is_band_name = as_bandname then
+			anvo_band = this.invo_bands[ll_i]
+			return 1
+		end if
+	next
+	return -1
+
+// n_dwr_service.of_groupcount() returns integer
+	integer li_i
+	integer li_cnt
+	string ls_bandname
+	string ls_syntax
+	long ll_pos_1
+	long ll_pos_2
+	string ls_group_syn
+	boolean lb_newpage
+	do
+		if isnumber(of_describe("datawindow.header." + string(li_cnt + 1) + ".Height")) then
+			li_cnt = li_cnt + 1
+		else
+			exit
+		end if
+	loop while true
+	if li_cnt > 0 then
+		ls_syntax = of_describe("DataWindow.Syntax")
+		for li_i = 1 to li_cnt
+			lb_newpage = false
+			ll_pos_1 = pos(ls_syntax, "group(level=" + string(li_i))
+			if ll_pos_1 > 0 then
+				ll_pos_2 = pos(ls_syntax, "by=(", ll_pos_1)
+				if ll_pos_2 > 0 then
+					ll_pos_2 = pos(ls_syntax, ")", ll_pos_2 + 3)
+					if ll_pos_2 > 0 then
+						ll_pos_2 = pos(ls_syntax, ")", ll_pos_2 + 1)
+					end if
+				end if
+				if ll_pos_2 > 0 then
+					ls_group_syn = lower(mid(ls_syntax, ll_pos_1, ll_pos_2 - ll_pos_1 + 1))
+					if pos(ls_group_syn, "newpage=y") > 0 then
+						lb_newpage = true
+					end if
+				end if
+			end if
+			this.ib_group_newpage[li_i] = lb_newpage
+		next
+	end if
+	return li_cnt
+
+// n_dwr_service.of_process_work() returns integer
+	long ll_i
+	long ll_writer_row
+	long ll_new_writer_rows
+	long ll_obj_written
+	long ll_dw_row
+	long ll_dw_row_cnt
+	integer li_cur_band
+	integer li_ret
+	integer li_i
+	integer li_progress
+	boolean lb_newpage
+	long ll_row_y
+	if this.ib_nested then
+		if this.invo_parm.ib_nested_workaround then
+			this.il_requestor_rowcount = this.invo_nested_parm.il_requestor_rowcount
+			of_register_dynamic2(this.invo_nested_parm.ipo_dynamic_requestor, of_rowcount())
+		else
+			of_register_dynamic(this.invo_nested_parm.ipo_dynamic_requestor)
+		end if
+		this.ipo_progress = this.invo_nested_parm.ipo_progress
+		this.ib_defer_update_y = true
+	end if
+	this.il_rowcount = of_rowcount()
+	ll_dw_row_cnt = this.il_rowcount + 1
+	if not this.ib_nested then
+		if this.ib_show_progress then
+			this.ipo_progress.il_percent_of_analyse = 5
+			if this.ib_modemultisheet then
+				this.ipo_progress.iw_progress.st_title.text = "Sheet ~"" + this.invo_parm.is_sheet_name + "~""
+			end if
+		end if
+		if this.ib_show_progress then
+			li_ret = of_analyse_dw(this.ipo_progress.il_percent_of_analyse)
+		else
+			li_ret = of_analyse_dw(0)
+		end if
+		if li_ret <> 1 then
+			return li_ret
+		end if
+		of_store_header()
+	end if
+	if this.ib_multidw then
+		return 1
+	end if
+	if not this.ib_nested then
+		this.ib_static_markup = of_do_static_x_markup(this.inv_sheet) = 1
+		if this.ib_show_progress then
+			this.ipo_progress.il_progress_rown = ll_dw_row_cnt + of_countnested() * this.il_nested_weight
+			this.ipo_progress.il_percent_of_process = 70
+			if this.ib_static_markup then
+				this.ipo_progress.il_percent_of_process = this.ipo_progress.il_percent_of_process + (25 - 1)
+			end if
+			this.ipo_progress.il_change_progress_each = long(round(this.ipo_progress.il_progress_rown / this.ipo_progress.il_percent_of_process, 0))
+			if this.invo_parm.il_max_progress_rows_per_change <> 0 and this.ipo_progress.il_change_progress_each > this.invo_parm.il_max_progress_rows_per_change then
+				this.ipo_progress.il_change_progress_each = this.invo_parm.il_max_progress_rows_per_change
+			end if
+			this.ipo_progress.il_progress_row = 1
+		end if
+	end if
+	ll_dw_row = 1
+	ll_row_y = this.il_base_y
+	do while ll_dw_row <= ll_dw_row_cnt
+		lb_newpage = of_is_newpage(ll_dw_row)
+		for li_cur_band = 1 to this.ii_band_count
+			if this.ib_defer_update_y then
+				this.inv_sheet.beginband(this.inv_sheet.handle)
+			end if
+			ll_obj_written = this.invo_bands[li_cur_band].of_check_process_row(ll_dw_row, ll_row_y, lb_newpage, this.ipo_progress)
+			if this.ib_cancel then
+				li_ret = -1
+				exit
+			end if
+			if this.ib_defer_update_y then
+				if ll_obj_written > 0 then
+					ll_row_y = this.inv_sheet.endband(this.inv_sheet.handle, this.ii_units)
+				else
+					this.inv_sheet.endband(this.inv_sheet.handle, this.ii_units)
+				end if
+			else
+				this.inv_sheet.updatey(this.inv_sheet.handle, this.ib_enable_merge_cells)
+				ll_row_y = 0
+			end if
+		next
+		if li_ret <> 1 then
+			exit
+		end if
+		if this.ib_show_progress then
+			this.ipo_progress.il_cur_change_progress = this.ipo_progress.il_cur_change_progress + 1
+			if this.ipo_progress.il_cur_change_progress >= this.ipo_progress.il_change_progress_each then
+				if this.ib_nested then
+					li_progress = integer(round((this.ipo_progress.il_progress_row + ll_dw_row * this.il_nested_weight / ll_dw_row_cnt) * this.ipo_progress.il_percent_of_process / this.ipo_progress.il_progress_rown, 0))
+				else
+					li_progress = integer(round(this.ipo_progress.il_progress_row * this.ipo_progress.il_percent_of_process / this.ipo_progress.il_progress_rown, 0))
+				end if
+				of_show_progress(this.ipo_progress.il_percent_of_analyse + li_progress)
+				this.ipo_progress.il_cur_change_progress = 0
+			end if
+		end if
+		ll_dw_row = ll_dw_row + this.ii_rows_per_detail
+		if not this.ib_nested then
+			if this.ib_show_progress then
+				this.ipo_progress.il_progress_row = this.ipo_progress.il_progress_row + this.ii_rows_per_detail
+			end if
+		end if
+		if this.ii_rows_per_detail > 1 and (ll_dw_row > ll_dw_row_cnt and ll_dw_row - this.ii_rows_per_detail < ll_dw_row_cnt) then
+			ll_dw_row = ll_dw_row_cnt
+		end if
+		ll_i = ll_i + 1
+		if ll_i = 50 then
+			ll_i = 0
+			garbagecollect()
+		end if
+	loop
+	if not this.ib_nested and li_ret = 1 then
+		of_finish_work()
+	end if
+	if this.ib_nested and li_ret = 1 then
+		for li_i = 1 to li_i
+			this.invo_bands[li_i].il_groupchangerow = 1
+		next
+	end if
+	if this.ib_show_progress and not this.ib_nested then
+		of_close_progress()
+	end if
+	if this.ib_nested then
+		this.invo_nested_parm.il_writer_row = ll_writer_row
+		if this.ib_show_progress then
+			this.ipo_progress.il_progress_row = this.ipo_progress.il_progress_row + this.il_nested_weight
+		end if
+	end if
+	return li_ret
+
+// n_dwr_service.of_process() returns integer
+	integer li_ret
+	w_n_dwr_service_progress w
+	if this.invo_parm.ib_show_progress and (not this.ib_multidw or this.ib_multidw_progress) then
+		this.ib_show_progress = true
+		this.ipo_progress = create n_dwr_progress
+		this.ipo_progress.iw_progress = w
+		openwithparm(this.ipo_progress.iw_progress, this)
+		if this.ib_cancel then
+			li_ret = -1
+		end if
+	elseif this.ib_multidw then
+		if this.ib_multidw_progress then
+			li_ret = of_process_multidw()
+		end if
+	else
+		li_ret = of_process_work()
+	end if
+	return li_ret
+
+// n_dwr_service.of_close() returns integer
+	if not isnull(this.inv_book) and isvalid(this.inv_book) then
+		this.inv_book.save(this.inv_book.handle)
+	end if
+	this.ib_multisheet = false
+	of_dispose()
+	return 1
+
+// n_dwr_service.of_show_progress(integer ai_progress) returns integer
+	if this.ib_show_progress then
+		this.ipo_progress.iw_progress.event ue_show_progress(ai_progress)
+	end if
+	return 1
+
+// n_dwr_service.of_cancel() returns integer
+	integer li_i
+	this.ib_cancel = true
+	if this.ii_band_count > 0 then
+		for li_i = 1 to this.ii_band_count
+			this.invo_bands[li_i].of_cancel()
+		next
+	end if
+	return 1
+
+// n_dwr_service.of_set_yield(boolean ab_yield_status) returns integer
+	integer li_i
+	if this.ii_band_count > 0 then
+		for li_i = 1 to this.ii_band_count
+			this.invo_bands[li_i].ib_yield_enable = ab_yield_status
+		next
+	end if
+	return 1
+
+// n_dwr_service.of_is_newpage(long al_row) returns boolean
+	boolean lb_newpage
+	integer li_i
+	for li_i = 1 to this.ii_band_count
+		if this.invo_bands[li_i].ii_band_type = 2 and (al_row = this.invo_bands[li_i].il_groupchangerow and al_row > 1 and this.invo_bands[li_i].ib_newpage) then
+			lb_newpage = true
+		end if
+	next
+	return lb_newpage
+
+// n_dwr_service.of_describe(string as_expr) returns string
+	choose case this.ipo_requestortype
+	case datawindow!
+		return this.idw_requestor.describe(as_expr)
+	case datastore!
+		return this.ids_requestor.describe(as_expr)
+	case datawindowchild!
+		return this.idwc_requestor.describe(as_expr)
+	end choose
+	return "!"
+
+// n_dwr_service.of_create(powerobject apo_requestor, n_dwr_workbook anv_book, string as_filename) returns integer
+	n_dwr_service_parm lnvo_parm
+	n_dwr_nested_service_parm lnvo_nested_parm
+	lnvo_parm = create n_dwr_service_parm
+	return of_create(apo_requestor, anv_book, as_filename, lnvo_parm, lnvo_nested_parm)
+
+// n_dwr_service.of_create(powerobject apo_requestor, n_dwr_workbook anv_book, string as_filename, n_dwr_service_parm anvo_parm, n_dwr_nested_service_parm anvo_nested_parm) returns integer
+	integer li_ret
+	string ls_tmp_dir
+	boolean[] lb_null
+	n_dwr_band[] lnvo_null
+	long ll_error
+	integer li_processing
+	this.ipo_requestor = apo_requestor
+	of_reset_metadata_cache()
+	anv_book.invo_parm = anvo_parm
+	if not anvo_parm.ib_nonvisual_calc_height then
+		open(anv_book.ws)
+	end if
+	if not isnull(this.ipo_requestor) then
+		if isvalid(this.ipo_requestor) then
+			this.ipo_requestortype = this.ipo_requestor.typeof()
+			choose case this.ipo_requestortype
+			case datawindow!
+				this.idw_requestor = this.ipo_requestor
+			case datastore!
+				this.ids_requestor = this.ipo_requestor
+			case datawindowchild!
+				this.idwc_requestor = this.ipo_requestor
+			case else
+				messagebox("Error", "Object type is not supported", stopsign!)
+				li_ret = -1
+			end choose
+			if li_ret = 1 and of_describe("Datawindow.Syntax") = "" then
+				messagebox("Error", "Report is empty", stopsign!)
+				li_ret = -1
+			end if
+		else
+			messagebox("Error", "Report is empty", stopsign!)
+			li_ret = -1
+		end if
+	else
+		messagebox("Error", "Report is empty", stopsign!)
+		li_ret = -1
+	end if
+	if not isnull(anvo_nested_parm) and isvalid(anvo_nested_parm) then
+		this.ib_nested = true
+	end if
+	if li_ret = 1 then
+		li_processing = integer(of_describe("Datawindow.Processing"))
+		choose case li_processing
+		case 0, 8, 9
+		case 1
+			this.ib_grid = true
+		case 2
+			messagebox("Error", "Label presentation style is not supported", stopsign!)
+			li_ret = -1
+		case 3
+			messagebox("Error", "Graph presentation style is not supported", stopsign!)
+			li_ret = -1
+		case 4
+			of_modify("DataWindow.Crosstab.StaticMode=Yes")
+		case 5
+		case else
+			messagebox("Error", "This presentation style is not supported", stopsign!)
+			li_ret = -1
+		end choose
+	end if
+	if li_ret = 1 and this.ib_nested then
+		this.il_requestor_rowcount = anvo_nested_parm.il_requestor_rowcount
+	end if
+	if li_ret = 1 and not this.ib_nested then
+		this.il_rowcount = of_rowcount()
+		if this.il_rowcount < 1 and li_processing <> 5 then
+			messagebox("Error", "Rows not found", stopsign!)
+			li_ret = -1
+		end if
+	end if
+	if li_ret = 1 then
+		this.inv_book = anv_book
+		this.ii_band_count = 0
+		this.il_cur_writer_row = 0
+		this.ib_show_progress = false
+		this.ii_analyse_as_rowcount = 10
+		this.ib_cancel = false
+		this.ii_rows_per_detail = 1
+		this.ib_group_newpage = lb_null
+		this.invo_bands = lnvo_null
+		this.invo_parm = anvo_parm
+		this.ib_enable_merge_cells = this.invo_parm.ib_enable_merge_cells
+		this.invo_nested_parm = anvo_nested_parm
+		this.ii_units = integer(of_describe("Datawindow.Units"))
+		this.invo_sub = create n_dwr_sub
+		this.invo_sub.of_set_cur_units(this.ii_units)
+		if this.ib_nested then
+			this.invo_global_vgrid = anvo_nested_parm.invo_global_vgrid
+			this.invo_colors = anvo_nested_parm.invo_colors
+			this.inv_sheet = anvo_nested_parm.inv_sheet
+			if isvalid(anvo_nested_parm.ipo_progress) then
+				this.ib_show_progress = true
+			else
+				this.ib_show_progress = false
+			end if
+		else
+			anvo_parm.il_nested_instance_count = 0
+			this.invo_global_vgrid = create n_dwr_grid
+			this.invo_global_vgrid.ii_round_ratio = this.invo_global_vgrid.ii_round_init_ratio * this.invo_sub.of_get_conv_x()
+			if not this.ib_multisheet then
+				ll_error = this.inv_book.of_create(anvo_parm.is_version, as_filename, true)
+				if ll_error <> 0 then
+					li_ret = -1
+				else
+					li_ret = 1
+				end if
+			end if
+			if li_ret <> 1 then
+				return li_ret
+			end if
+			this.inv_sheet = this.inv_book.of_addworksheet(this.invo_parm.is_sheet_name)
+			this.inv_sheet.ib_fixdatebase = this.invo_parm.ib_fix_date_base
+			this.inv_sheet.setalign(this.inv_sheet.handle, anvo_parm.id_min_width, anvo_parm.id_min_height)
+			if not this.ib_multisheet or isnull(this.invo_colors) or not isvalid(this.invo_colors) then
+				this.invo_colors = create n_dwr_colors
+			end if
+		end if
+		if this.ib_modemultisheet then
+			this.ib_multisheet = true
+		end if
+	end if
+	return li_ret
+
+// n_dwr_service.of_analyse_dw(integer ai_percent_of_analyse) returns integer
+	integer li_ret
+	n_dwr_string lnvo_str_srv
+	string ls_objects
+	string[] ls_object
+	long ll_objectcount
+	long ll_i
+	string ls_bandname
+	n_dwr_band lnvo_band
+	long ll_change_progress_each
+	long ll_cur_change_progress
+	integer li_progress
+	if this.ib_nested then
+		this.il_base_x = this.invo_nested_parm.il_nested_x
+		this.il_base_y = this.invo_nested_parm.il_nested_y
+	end if
+	do
+		if this.ib_show_progress and not this.ib_nested then
+			of_show_progress(0)
+		end if
+		this.ii_rows_per_detail = integer(of_describe("DataWindow.rows_per_detail"))
+		if this.ii_rows_per_detail < 1 or isnull(this.ii_rows_per_detail) then
+			this.ii_rows_per_detail = 1
+		end if
+		li_ret = of_addbands()
+		if li_ret <> 1 then
+			exit
+		end if
+		if this.ib_show_progress and not this.ib_nested then
+			of_show_progress(ai_percent_of_analyse)
+		end if
+	loop while not true
+	this.ib_defer_update_y = false
+	return li_ret
+
+// n_dwr_service.of_register_dynamic(powerobject apo_requestor) returns integer
+	long li_band
+	this.ipo_requestor = apo_requestor
+	this.ipo_requestortype = this.ipo_requestor.typeof()
+	choose case this.ipo_requestortype
+	case datawindow!
+		this.idw_requestor = this.ipo_requestor
+	case datastore!
+		this.ids_requestor = this.ipo_requestor
+	case datawindowchild!
+		this.idwc_requestor = this.ipo_requestor
+	case else
+		return -1
+	end choose
+	for li_band = 1 to li_band
+		this.invo_bands[li_band].of_register_dynamic(this.ipo_requestor)
+	next
+	return 1
+
+// n_dwr_service.of_set_col_width() returns integer
+	long ll_col_count
+	long ll_i
+	integer li_ret
+	return li_ret
+
+// n_dwr_service.of_modify(string as_expr) returns string
+	choose case this.ipo_requestortype
+	case datawindow!
+		return this.idw_requestor.modify(as_expr)
+	case datastore!
+		return this.ids_requestor.modify(as_expr)
+	case datawindowchild!
+		return this.idwc_requestor.modify(as_expr)
+	end choose
+	return "!"
+
+// n_dwr_service.of_rowcount() returns long
+	if this.il_requestor_rowcount = -1 then
+		choose case this.ipo_requestortype
+		case datawindow!
+			return this.idw_requestor.rowcount()
+		case datastore!
+			return this.ids_requestor.rowcount()
+		case datawindowchild!
+			return this.idwc_requestor.rowcount()
+		case else
+			return 0
+		end choose
+		return
+	end if
+	return this.il_requestor_rowcount
+
+// n_dwr_service.of_cache_metadata() returns 0
+	integer li_processing
+	string ls_objects
+	string[] ls_object
+	string ls_bandname
+	string ls_type
+	long li_object
+	long li_used_object
+	n_dwr_string s
+	if this.il_objectcount >= 0 then
+		return
+	end if
+	li_processing = integer(of_describe("Datawindow.Processing"))
+	ls_objects = of_describe("DataWindow.Objects")
+	this.il_objectcount = s.of_parsetoarray(ls_objects, "~t", ls_object)
+	li_used_object = 0
+	for li_object = 1 to this.il_objectcount
+		ls_bandname = of_describe(ls_object[li_object] + ".band")
+		ls_type = of_describe(ls_object[li_object] + ".type")
+		if ls_type = "report" then
+			this.invo_parm.il_nested_instance_count = this.invo_parm.il_nested_instance_count + 1
+		end if
+		if ls_bandname = "foreground" then
+			if not this.invo_parm.ib_foreground then
+				goto L734
+			end if
+			if li_processing = 4 then
+				ls_bandname = "header[1]"
+			else
+				ls_bandname = "header"
+			end if
+		end if
+		if ls_bandname = "background" then
+			if not this.invo_parm.ib_background then
+				goto L734
+			end if
+			if li_processing = 4 then
+				ls_bandname = "header[1]"
+			else
+				ls_bandname = "header"
+			end if
+		end if
+		li_used_object = li_used_object + 1
+		this.is_object[li_used_object] = ls_object[li_object]
+		this.is_object_band[li_used_object] = ls_bandname
+		this.il_object_nested_id[li_used_object] = this.invo_parm.il_nested_instance_count
+	next
+	this.il_objectcount = upperbound(this.is_object)
+
+// n_dwr_service.of_describe_expr(string as_expr, long al_row, string as_prop_expr) returns long
+	string ls_val
+	long ll_pos
+	n_dwr_string lnvo_str
+	choose case this.ipo_requestortype
+	case datawindow!
+		ls_val = this.idw_requestor.describe(as_expr)
+	case datastore!
+		ls_val = this.ids_requestor.describe(as_expr)
+	case datawindowchild!
+		ls_val = this.idwc_requestor.describe(as_expr)
+	case else
+		return -1
+	end choose
+	ll_pos = pos(ls_val, "~t")
+	if ll_pos > 0 then
+		ls_val = mid(ls_val, ll_pos + 1, len(ls_val) - ll_pos - 1)
+		ls_val = lnvo_str.of_globalreplace(ls_val, "'", "~~'")
+		as_prop_expr = ls_val
+		choose case this.ipo_requestortype
+		case datawindow!
+			ls_val = this.idw_requestor.describe("evaluate(~"" + ls_val + "~", " + string(al_row) + ")")
+		case datastore!
+			ls_val = this.ids_requestor.describe("evaluate(~"" + ls_val + "~", " + string(al_row) + ")")
+		case datawindowchild!
+			ls_val = this.idwc_requestor.describe("evaluate(~"" + ls_val + "~", " + string(al_row) + ")")
+		case else
+			return -1
+		end choose
+		if isnumber(ls_val) then
+			return long(ls_val)
+		end if
+	else
+		as_prop_expr = ""
+		if isnumber(ls_val) then
+			return long(ls_val)
+		end if
+	end if
+	return -1
+
+// n_dwr_service.of_describe_str_expr(string as_expr, long al_row) returns string
+	string ls_val
+	long ll_pos
+	choose case this.ipo_requestortype
+	case datawindow!
+		ls_val = this.idw_requestor.describe(as_expr)
+	case datastore!
+		ls_val = this.ids_requestor.describe(as_expr)
+	case datawindowchild!
+		ls_val = this.idwc_requestor.describe(as_expr)
+	case else
+		return ""
+	end choose
+	ll_pos = pos(ls_val, "~t")
+	if ll_pos > 0 then
+		ls_val = mid(ls_val, ll_pos + 1, len(ls_val) - ll_pos - 1)
+		choose case this.ipo_requestortype
+		case datawindow!
+			ls_val = this.idw_requestor.describe("evaluate(~"" + ls_val + "~", " + string(al_row) + ")")
+		case datastore!
+			ls_val = this.ids_requestor.describe("evaluate(~"" + ls_val + "~", " + string(al_row) + ")")
+		case datawindowchild!
+			ls_val = this.idwc_requestor.describe("evaluate(~"" + ls_val + "~", " + string(al_row) + ")")
+		case else
+			return ""
+		end choose
+		return ls_val
+	end if
+	return ls_val
+
+// n_dwr_service.of_splitband(string as_band_name, integer ai_band_type, integer ai_group_level) returns integer
+	long li_object
+	long li_band_object
+	long li_y
+	long li_band
+	long li_ret
+	n_dwr_band[] lnvo_bands
+	n_dwr_field lnvo_field
+	long li_subband_y
+	datastore lds_sort
+	string ls_expr
+	n_dwr_band lnvo_band
+	of_cache_metadata()
+	if of_describe("datawindow." + as_band_name + ".height.autosize") <> "yes" and of_describe("datawindow." + as_band_name + ".height") = "0" then
+		return 1
+	end if
+	lds_sort = create datastore
+	lds_sort.dataobject = "d_dw2xls_object_sort"
+	li_band_object = 0
+	for li_object = 1 to this.il_objectcount
+		if this.is_object_band[li_object] = as_band_name then
+			li_band_object = li_band_object + 1
+			lds_sort.insertrow(li_band_object)
+			lds_sort.setitem(li_band_object, "index", li_object)
+			li_y = of_describe_expr(this.is_object[li_object] + ".y", 1, ls_expr)
+			lds_sort.setitem(li_band_object, "sort_key", li_y)
+		end if
+	next
+	lds_sort.setsort("sort_key a")
+	lds_sort.sort()
+	li_subband_y = 0
+	li_band = 1
+	lnvo_bands[li_band] = of_createband(as_band_name, ai_band_type, ai_group_level, li_subband_y)
+	li_band_object = 1
+	do while li_band_object <= lds_sort.rowcount()
+		li_object = lds_sort.getitemdecimal(li_band_object, "index")
+		setnull(lnvo_field)
+		li_ret = lnvo_bands[li_band].of_add_field(this.is_object[li_object], this.il_object_nested_id[li_object], lnvo_field)
+		choose case li_ret
+		case 1
+		case -3
+			li_subband_y = li_subband_y + lnvo_field.of_get_band_y1()
+			lnvo_bands[li_band].ib_newpage = false
+			li_band = li_band + 1
+			lnvo_bands[li_band] = of_createband(as_band_name, ai_band_type, ai_group_level, li_subband_y)
+			lnvo_field.of_setsubbandy(li_subband_y)
+			li_ret = lnvo_bands[li_band].of_add_field(this.is_object[li_object], this.il_object_nested_id[li_object], lnvo_field)
+		case -2
+			exit
+		case -1
+		case 2
+		end choose
+		li_band_object = li_band_object + 1
+		if not isnull(lnvo_field) then
+			this.il_bg_x2 = max(this.il_bg_x2, lnvo_field.of_get_x2())
+		end if
+	loop
+	destroy lds_sort
+	for li_band = 1 to upperbound(lnvo_bands)
+		if upperbound(lnvo_bands[li_band].invo_fields) <> 0 then
+			this.ii_band_count = this.ii_band_count + 1
+			this.invo_bands[this.ii_band_count] = lnvo_bands[li_band]
+		end if
+	next
+	return 1
+
+// n_dwr_service.of_createband(string as_band_name, integer ai_band_type, integer ai_group_level, long al_subband_y) returns n_dwr_band
+	n_dwr_band lnvo_band
+	integer li_ret
+	boolean lb_newpage
+	lnvo_band = create n_dwr_band
+	do
+		lnvo_band.id_x_coef = this.invo_sub.of_get_cur_coef_x()
+		lnvo_band.id_y_coef = this.invo_sub.of_get_cur_coef_y()
+		lnvo_band.id_conv = this.invo_sub.of_get_conv_x()
+		lnvo_band.ii_units = this.ii_units
+		lnvo_band.ib_nested = this.ib_nested
+		lnvo_band.ipo_progress = this.ipo_progress
+		lnvo_band.invo_nested_parm = this.invo_nested_parm
+		lnvo_band.il_grid_detail_width = this.il_grid_width
+		li_ret = lnvo_band.of_register(this.ipo_requestor, this.inv_book, this.inv_sheet, this.invo_parm, this.invo_colors, this.ii_rows_per_detail, this.il_base_x, 0, al_subband_y)
+		if li_ret <> 1 then
+			exit
+		end if
+		if ai_group_level > 0 then
+			lb_newpage = this.ib_group_newpage[ai_group_level]
+		end if
+		li_ret = lnvo_band.of_init(as_band_name, ai_band_type, ai_group_level, lb_newpage, this.invo_global_vgrid)
+		if li_ret <> 1 then
+			exit
+		end if
+		return lnvo_band
+	loop while not true
+	setnull(lnvo_band)
+	return lnvo_band
+
+// n_dwr_service.of_countnested() returns long
+	long li_band
+	long li_bandn
+	long li_field
+	long li_fieldn
+	long li_nestedn
+	n_dwr_band lnv_band
+	li_bandn = upperbound(this.invo_bands)
+	for li_band = 1 to li_bandn
+		lnv_band = this.invo_bands[li_band]
+		li_fieldn = upperbound(lnv_band.invo_fields)
+		for li_field = 1 to li_fieldn
+			if lnv_band.invo_fields[li_field].ii_dwo_type = 4 then
+				li_nestedn = li_nestedn + 1
+			end if
+		next
+	next
+	return li_nestedn
+
+// n_dwr_service.of_reset_metadata_cache() returns 0
+	string[] ls_empty
+	long[] li_empty
+	this.is_object = ls_empty
+	this.is_object_band = ls_empty
+	this.il_object_nested_id = li_empty
+	this.il_objectcount = -1
+
+// n_dwr_service.of_store_header() returns 0
+	n_dwr_format lnv_format
+	unsignedlong ll_color
+	long ll_format_ix
+	long ll_x1
+	long ll_x2
+	long ll_y1
+	long ll_y2
+	long ll_page_width
+	if this.invo_parm.is_title_text = "" then
+		return
+	end if
+	lnv_format = this.inv_book.of_createformat()
+	lnv_format.setnumformat(lnv_format.handle, "@")
+	lnv_format.setfontname(lnv_format.handle, this.invo_parm.is_title_font)
+	lnv_format.setfontsize(lnv_format.handle, this.invo_parm.il_title_font_size)
+	if this.invo_parm.ib_title_font_italic then
+		lnv_format.setfontitalic(lnv_format.handle, 1)
+	end if
+	if this.invo_parm.ib_title_font_underline then
+		lnv_format.setfontunderline(lnv_format.handle, 1)
+	end if
+	if this.invo_parm.ib_title_font_bold then
+		lnv_format.setfontweight(lnv_format.handle, 700)
+	end if
+	lnv_format.sethalign(lnv_format.handle, lnv_format.of_str2alignment(this.invo_parm.is_title_text_align))
+	lnv_format.setvalign(lnv_format.handle, 0)
+	lnv_format.setwrap(lnv_format.handle, 1)
+	lnv_format.setfgcolor(lnv_format.handle, this.invo_parm.il_title_fg_color)
+	lnv_format.setbgcolor(lnv_format.handle, this.invo_parm.il_title_bg_color)
+	lnv_format.setfontcharset(lnv_format.handle, this.invo_parm.il_title_font_charset)
+	lnv_format.setfontfamily(lnv_format.handle, this.invo_parm.il_title_font_family)
+	ll_format_ix = this.inv_book.of_addformat(lnv_format)
+	ll_page_width = of_getpagewidthinpbunits()
+	choose case lower(this.invo_parm.is_title_text_align)
+	case "left"
+		ll_x1 = 0
+	case "center"
+		ll_x1 = (ll_page_width - min(ll_page_width, this.invo_parm.il_title_width)) / 2.0
+	case "right"
+		ll_x1 = ll_page_width - min(ll_page_width, this.invo_parm.il_title_width)
+	case else
+		ll_x1 = 0
+	end choose
+	ll_y1 = 0
+	ll_x2 = ll_x1 + this.invo_parm.il_title_width
+	ll_y2 = ll_y1 + this.invo_parm.il_title_height
+	this.inv_sheet.of_create_cell(ll_x1, ll_x2, ll_y1, ll_y2, this.invo_parm.is_title_text, ll_format_ix, 0)
+	if this.invo_parm.il_title_separator_height > 0 then
+		lnv_format = this.inv_book.of_createformat()
+		ll_format_ix = this.inv_book.of_addformat(lnv_format)
+		ll_y1 = ll_y1 + this.invo_parm.il_title_height
+		ll_y2 = ll_y1 + this.invo_parm.il_title_separator_height
+		this.inv_sheet.of_create_cell(ll_x1, ll_x2, ll_y1, ll_y2, "", ll_format_ix, 0)
+	end if
+	this.inv_sheet.updatey(this.inv_sheet.handle, this.ib_enable_merge_cells)
+
+// n_dwr_service.of_getpagewidthinpbunits() returns long
+	return 2800
+
+// n_dwr_service.of_export_to_current_sheet(powerobject apo_requestor) returns integer
+	integer li_ret
+	this.ipo_multidw_requestor = apo_requestor
+	this.ib_multidw_progress = true
+	li_ret = of_process()
+	return li_ret
+
+// n_dwr_service.of_close_progress() returns integer
+	if this.ib_cancel then
+		close(this.ipo_progress.iw_progress)
+	else
+		of_show_progress(100)
+		close(this.ipo_progress.iw_progress)
+	end if
+	this.ib_show_progress = false
+	setnull(this.ipo_progress.iw_progress)
+	return 1
+
+// n_dwr_service.of_finish_work() returns integer
+	integer li_progress
+	long li_celln
+	long li_cell
+	this.inv_sheet.updatey(this.inv_sheet.handle, this.ib_enable_merge_cells)
+	this.inv_sheet.updatex(this.inv_sheet.handle, false)
+	li_celln = this.inv_sheet.getcellcount(this.inv_sheet.handle)
+	if this.ib_show_progress then
+		this.ipo_progress.il_progress_rown = li_celln
+		if this.ib_static_markup then
+			this.ipo_progress.il_percent_of_process = 1
+		else
+			this.ipo_progress.il_percent_of_process = 25
+		end if
+		this.ipo_progress.il_change_progress_each = max(1, long(round(this.ipo_progress.il_progress_rown / this.ipo_progress.il_percent_of_process, 0)))
+		this.ipo_progress.il_cur_change_progress = 0
+		li_cell = 0
+		do while li_cell < li_celln
+			this.inv_sheet.writecells(this.inv_sheet.handle, li_cell, li_cell + this.ipo_progress.il_change_progress_each, 0, this.ib_enable_merge_cells)
+			li_progress = integer(round(li_cell * this.ipo_progress.il_percent_of_process / this.ipo_progress.il_progress_rown, 0))
+			of_show_progress(5 + 70 + li_progress)
+			this.ipo_progress.il_cur_change_progress = 0
+			li_cell = li_cell + this.ipo_progress.il_change_progress_each
+		loop
+	else
+		this.inv_sheet.writecells(this.inv_sheet.handle, 0, li_celln, 0, this.ib_enable_merge_cells)
+	end if
+	if this.invo_parm.ib_hide_grid then
+		this.inv_sheet.setprintgridlines(this.inv_sheet.handle, false)
+		this.inv_sheet.setscreengridlines(this.inv_sheet.handle, false)
+	end if
+	choose case of_describe("DataWindow.Print.Orientation")
+	case "1"
+		this.inv_sheet.of_set_landscape()
+	case "2"
+		this.inv_sheet.of_set_portrait()
+		return 1
+	end choose
+	return 1
+
+// n_dwr_service.of_create_multidw(n_dwr_workbook anv_book, string as_filename, n_dwr_service_parm anvo_parm) returns integer
+	integer li_ret
+	datastore lds_dummy
+	n_dwr_nested_service_parm lnvo_nested_parm
+	lds_dummy = create datastore
+	li_ret = lds_dummy.create("release 5;~r~ndatawindow(processing=0  )~r~nsummary(height=0 color=~"536870912~" )~r~nfooter(height=0 color=~"536870912~" )~r~ndetail(height=32 color=~"536870912~" )~r~ntable(column=(type=long updatewhereclause=yes name=a dbname=~"a~" )~r~n)~r~ndata(1) ~r~n")
+	if li_ret = 1 then
+		this.ib_multidw = true
+		li_ret = of_create(lds_dummy, anv_book, as_filename, anvo_parm, lnvo_nested_parm)
+	end if
+	if li_ret = 1 then
+		li_ret = of_finish_work()
+	end if
+	return li_ret
+
+// n_dwr_service.of_store_multidw() returns integer
+	integer li_ret
+	of_multidw_endln()
+	of_finish_work()
+	if this.ib_show_progress then
+		of_close_progress()
+	end if
+	return 1
+
+// n_dwr_service.of_multidw_endln() returns integer
+	this.inv_sheet.updatey(this.inv_sheet.handle, this.ib_enable_merge_cells)
+	this.il_last_multidw_base_x = this.il_multidw_base_x
+	this.il_multidw_base_x = 0
+	return 1
+
+// n_dwr_service.of_get_bg_x2() returns long
+	return this.il_bg_x2
+
+// n_dwr_service.of_multidw_add_hspacer(long al_width) returns integer
+	this.il_multidw_base_x = this.il_multidw_base_x + al_width
+	return 1
+
+// n_dwr_service.of_multidw_add_vspacer(long al_height) returns integer
+	n_dwr_format lnv_format
+	unsignedlong ll_color
+	long ll_format_ix
+	long ll_x1
+	long ll_x2
+	long ll_y1
+	long ll_y2
+	of_multidw_endln()
+	lnv_format = this.inv_book.of_createformat()
+	ll_format_ix = this.inv_book.of_addformat(lnv_format)
+	if this.il_last_multidw_base_x <= 0 then
+		this.il_last_multidw_base_x = 100
+	end if
+	ll_x1 = 0
+	ll_x2 = this.il_last_multidw_base_x
+	ll_y1 = 0
+	ll_y2 = ll_y1 + al_height
+	this.inv_sheet.of_create_cell(ll_x1, ll_x2, ll_y1, ll_y2, "", ll_format_ix, this.ii_units)
+	of_multidw_endln()
+	return 1
+
+// n_dwr_service.of_process_multidw() returns integer
+	integer li_ret
+	n_dwr_nested_service_parm lnvo_nested_parm
+	n_dwr_service lnvo_nestedservice
+	lnvo_nested_parm = create n_dwr_nested_service_parm
+	lnvo_nested_parm.inv_sheet = this.inv_sheet
+	lnvo_nested_parm.invo_colors = this.invo_colors
+	lnvo_nested_parm.ipo_progress = this.ipo_progress
+	lnvo_nested_parm.il_nested_x = this.il_multidw_base_x
+	lnvo_nested_parm.il_nested_y = 0
+	lnvo_nested_parm.il_writer_row = 1
+	lnvo_nested_parm.il_parent_row = 1
+	lnvo_nested_parm.ipo_dynamic_requestor = this.ipo_multidw_requestor
+	lnvo_nested_parm.ib_multidw = true
+	lnvo_nestedservice = create n_dwr_service
+	li_ret = lnvo_nestedservice.of_create(this.ipo_multidw_requestor, this.inv_book, ":not applicable:", this.invo_parm, lnvo_nested_parm)
+	if this.ib_show_progress then
+		this.ipo_progress.il_percent_of_analyse = 5
+		if this.ib_modemultisheet then
+			this.ipo_progress.iw_progress.st_title.text = "Sheet ~"" + this.invo_parm.is_sheet_name + "~""
+		end if
+		this.ipo_progress.il_progress_rown = lnvo_nestedservice.of_rowcount()
+		this.ipo_progress.il_percent_of_process = 100
+		this.ipo_progress.il_change_progress_each = long(round(this.ipo_progress.il_progress_rown / this.ipo_progress.il_percent_of_process, 0))
+		this.ipo_progress.il_progress_row = 1
+	end if
+	if li_ret = 1 then
+		li_ret = lnvo_nestedservice.of_analyse_dw(0)
+	end if
+	if li_ret = 1 then
+		li_ret = lnvo_nestedservice.of_process_work()
+	end if
+	if li_ret = 1 then
+		this.il_multidw_base_x = lnvo_nestedservice.of_get_bg_x2()
+		this.ii_units = lnvo_nestedservice.ii_units
+	end if
+	if this.ib_show_progress then
+		of_close_progress()
+	end if
+	return li_ret
+
+// n_dwr_service.of_find_grid_detail_width() returns long
+	string ls_expr
+	long ll_object
+	long ll_w
+	of_cache_metadata()
+	for ll_object = 1 to this.il_objectcount
+		if this.is_object_band[ll_object] = "detail" then
+			if not (of_describe(this.is_object[ll_object] + ".type") <> "column" and of_describe(this.is_object[ll_object] + ".type") <> "compute") then
+				if not (of_describe(this.is_object[ll_object] + ".visible") = "0" and not this.invo_parm.ib_export_invisible) then
+					if of_describe(this.is_object[ll_object] + ".width") <> "0" then
+						ll_w = max(ll_w, of_describe_expr(this.is_object[ll_object] + ".x", 1, ls_expr) + of_describe_expr(this.is_object[ll_object] + ".width", 1, ls_expr))
+					end if
+				end if
+			end if
+		end if
+	next
+	return ll_w
+
+// n_dwr_service.of_dispose() returns 0
+	long ll_i
+	n_dwr_band[] e
+	for ll_i = 1 to upperbound(this.invo_bands)
+		if isvalid(this.invo_bands[ll_i]) then
+			this.invo_bands[ll_i].of_dispose()
+		end if
+	next
+	this.invo_bands = e
+
+// n_dwr_service.of_do_static_x_markup(n_dwr_worksheet anv_sheet) returns integer
+	integer li_ret
+	integer li_band
+	for li_band = 1 to this.ii_band_count
+		if this.invo_bands[li_band].of_do_static_x_markup(anv_sheet) <> 1 then
+			li_ret = -1
+			exit
+		end if
+	next
+	if li_ret = 1 and not this.ib_nested then
+		anv_sheet.updatex(anv_sheet.handle, true)
+	end if
+	return li_ret
+
+// n_dwr_service.of_register_dynamic2(powerobject apo_requestor, long al_rowcount) returns integer
+	long li_band
+	this.ipo_requestor = apo_requestor
+	this.ipo_requestortype = this.ipo_requestor.typeof()
+	choose case this.ipo_requestortype
+	case datawindow!
+		this.idw_requestor = this.ipo_requestor
+	case datastore!
+		this.ids_requestor = this.ipo_requestor
+	case datawindowchild!
+		this.idwc_requestor = this.ipo_requestor
+	case else
+		return -1
+	end choose
+	for li_band = 1 to li_band
+		this.invo_bands[li_band].of_register_dynamic2(this.ipo_requestor, al_rowcount)
+	next
+	return 1
+
+// n_dwr_service.ue_process_work() returns 0
+	if this.ib_multidw then
+		of_process_multidw()
+		return
+	end if
+	of_process_work()
+
+// n_dwr_service.ue_cancel() returns 0
+	of_cancel()
+
+// n_dwr_service.create() returns 0
+	call super::create
+
+// n_dwr_service.destroy() returns 0
+	call super::destroy
+
+// n_dwr_service.constructor() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::constructor()
+	this.inv_const = create n_dwr_const
+	return ::message.returnvalue

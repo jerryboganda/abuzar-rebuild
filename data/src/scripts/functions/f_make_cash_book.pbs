@@ -1,0 +1,131 @@
+// function f_make_cash_book (functions)  ancestor: function_object
+
+// f_make_cash_book.f_make_cash_book(s_arguements as_reparg, datawindow adw_report) returns long
+	long ll_rowcount
+	long ll_counter
+	long ll_insrow
+	long ll_acccode
+	long ll_found
+	double ld_amount
+	double ld_subamount
+	datastore lds_data
+	lds_data = create datastore
+	lds_data.dataobject = "d_cashflow_taccount_temp"
+	lds_data.settransobject(sqlca)
+	lds_data.retrieve(as_reparg.d_sdate, as_reparg.d_edate, as_reparg.l_code1, as_reparg.l_code2)
+	ll_rowcount = lds_data.rowcount()
+	if ll_rowcount > 0 then
+		ll_acccode = -1
+		for ll_counter = 1 to ll_rowcount
+			if ll_acccode <> lds_data.object.acccode[ll_counter] then
+				ll_insrow = adw_report.insertrow(0)
+				ll_acccode = lds_data.object.acccode[ll_counter]
+				adw_report.object.acccode[ll_insrow] = lds_data.object.acccode[ll_counter]
+				adw_report.object.rowid[ll_insrow] = ll_insrow
+			end if
+			ld_amount = lds_data.object.amount[ll_counter]
+			ld_subamount = lds_data.object.subamount[ll_counter]
+			if ld_amount > 0.0 then
+				ll_found = adw_report.find("acccode = " + string(ll_acccode) + " and debitamount=0", 1, adw_report.rowcount())
+				if ll_found > 0 and ll_found <= adw_report.rowcount() then
+					ll_insrow = ll_found
+				else
+					ll_insrow = adw_report.insertrow(0)
+					adw_report.object.rowid[ll_insrow] = ll_insrow
+					adw_report.object.acccode[ll_insrow] = lds_data.object.acccode[ll_counter]
+				end if
+				adw_report.object.startdate[ll_insrow] = as_reparg.d_sdate
+				adw_report.object.enddate[ll_insrow] = as_reparg.d_edate
+				adw_report.object.cashbank[ll_insrow] = as_reparg.l_code1
+				adw_report.object.transacconly[ll_insrow] = as_reparg.l_code2
+				adw_report.object.acccode[ll_insrow] = lds_data.object.acccode[ll_counter]
+				adw_report.object.account[ll_insrow] = lds_data.object.account[ll_counter]
+				adw_report.object.subcode[ll_insrow] = lds_data.object.subcode[ll_counter]
+				if isnull(trim(lds_data.object.remarks[ll_counter])) then
+					adw_report.object.debitsource[ll_insrow] = lds_data.object.source[ll_counter]
+				else
+					adw_report.object.debitsource[ll_insrow] = lds_data.object.source[ll_counter] + " - " + trim(lds_data.object.remarks[ll_counter])
+				end if
+				adw_report.object.debitamount[ll_insrow] = lds_data.object.amount[ll_counter]
+				adw_report.object.debittype[ll_insrow] = lds_data.object.type[ll_counter]
+				adw_report.object.debitcheckno[ll_insrow] = lds_data.object.checkno[ll_counter]
+				adw_report.object.debitid[ll_insrow] = lds_data.object.id[ll_counter]
+			elseif ld_amount < 0.0 then
+				ll_found = adw_report.find("acccode = " + string(ll_acccode) + " and creditamount=0", 1, adw_report.rowcount())
+				if ll_found > 0 and ll_found <= adw_report.rowcount() then
+					ll_insrow = ll_found
+				else
+					ll_insrow = adw_report.insertrow(0)
+					adw_report.object.rowid[ll_insrow] = ll_insrow
+					adw_report.object.acccode[ll_insrow] = lds_data.object.acccode[ll_counter]
+				end if
+				adw_report.object.startdate[ll_insrow] = as_reparg.d_sdate
+				adw_report.object.enddate[ll_insrow] = as_reparg.d_edate
+				adw_report.object.cashbank[ll_insrow] = as_reparg.l_code1
+				adw_report.object.transacconly[ll_insrow] = as_reparg.l_code2
+				adw_report.object.acccode[ll_insrow] = lds_data.object.acccode[ll_counter]
+				adw_report.object.account[ll_insrow] = lds_data.object.account[ll_counter]
+				adw_report.object.subcode[ll_insrow] = lds_data.object.subcode[ll_counter]
+				if isnull(trim(lds_data.object.remarks[ll_counter])) then
+					adw_report.object.creditsource[ll_insrow] = lds_data.object.source[ll_counter]
+				else
+					adw_report.object.creditsource[ll_insrow] = lds_data.object.source[ll_counter] + " - " + trim(lds_data.object.remarks[ll_counter])
+				end if
+				adw_report.object.creditamount[ll_insrow] = abs(lds_data.object.amount[ll_counter])
+				adw_report.object.credittype[ll_insrow] = lds_data.object.type[ll_counter]
+				adw_report.object.creditcheckno[ll_insrow] = lds_data.object.checkno[ll_counter]
+				adw_report.object.creditid[ll_insrow] = lds_data.object.id[ll_counter]
+			end if
+			if ld_amount = 0.0 and ld_subamount <> 0.0 then
+				if ld_subamount > 0.0 then
+					ll_found = adw_report.find("acccode = " + string(ll_acccode) + " and debitsubamount=0", 1, adw_report.rowcount())
+				else
+					ll_found = adw_report.find("acccode = " + string(ll_acccode) + " and creditsubamount=0", 1, adw_report.rowcount())
+				end if
+				if ll_found > 0 and ll_found <= adw_report.rowcount() then
+					ll_insrow = ll_found
+				else
+					ll_insrow = adw_report.insertrow(0)
+					adw_report.object.rowid[ll_insrow] = ll_insrow
+					adw_report.object.acccode[ll_insrow] = lds_data.object.acccode[ll_counter]
+				end if
+				adw_report.object.startdate[ll_insrow] = as_reparg.d_sdate
+				adw_report.object.enddate[ll_insrow] = as_reparg.d_edate
+				adw_report.object.cashbank[ll_insrow] = as_reparg.l_code1
+				adw_report.object.transacconly[ll_insrow] = as_reparg.l_code2
+				adw_report.object.acccode[ll_insrow] = lds_data.object.acccode[ll_counter]
+				adw_report.object.account[ll_insrow] = lds_data.object.account[ll_counter]
+				adw_report.object.subcode[ll_insrow] = lds_data.object.subcode[ll_counter]
+				if isnull(trim(lds_data.object.remarks[ll_counter])) then
+					if ld_subamount > 0.0 then
+						adw_report.object.debitsource[ll_insrow] = lds_data.object.source[ll_counter]
+					else
+						adw_report.object.creditsource[ll_insrow] = lds_data.object.source[ll_counter]
+					end if
+				elseif ld_subamount > 0.0 then
+					adw_report.object.debitsource[ll_insrow] = lds_data.object.source[ll_counter] + " - " + trim(lds_data.object.remarks[ll_counter])
+				else
+					adw_report.object.creditsource[ll_insrow] = lds_data.object.source[ll_counter] + " - " + trim(lds_data.object.remarks[ll_counter])
+				end if
+				if ld_subamount > 0.0 then
+					adw_report.object.debitamount[ll_insrow] = lds_data.object.amount[ll_counter]
+					adw_report.object.debittype[ll_insrow] = lds_data.object.type[ll_counter]
+					adw_report.object.debitcheckno[ll_insrow] = lds_data.object.checkno[ll_counter]
+					adw_report.object.debitid[ll_insrow] = lds_data.object.id[ll_counter]
+					if lds_data.object.source[ll_counter] = "Credit Sales" then
+						adw_report.object.debitsubamount[ll_insrow] = lds_data.object.subamount[ll_counter]
+					end if
+				else
+					adw_report.object.creditamount[ll_insrow] = abs(lds_data.object.subamount[ll_counter])
+					adw_report.object.credittype[ll_insrow] = lds_data.object.type[ll_counter]
+					adw_report.object.creditcheckno[ll_insrow] = lds_data.object.checkno[ll_counter]
+					adw_report.object.creditid[ll_insrow] = lds_data.object.id[ll_counter]
+					if lds_data.object.source[ll_counter] = "Credit S/Return" then
+						adw_report.object.creditsubamount[ll_insrow] = abs(lds_data.object.subamount[ll_counter])
+						adw_report.object.creditamount[ll_insrow] = 0
+					end if
+				end if
+			end if
+		next
+	end if
+	return 0

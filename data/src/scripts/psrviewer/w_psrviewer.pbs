@@ -1,0 +1,319 @@
+// window w_psrviewer (psrviewer)  ancestor: window
+
+// w_psrviewer.ue_startdisplay() returns 0
+	wf_showreport()
+
+// w_psrviewer.wf_sort() returns 0
+	string ls_null
+	setnull(ls_null)
+	this.dw_report.setsort(ls_null)
+	this.dw_report.sort()
+	this.dw_report.groupcalc()
+
+// w_psrviewer.wf_pagedown() returns 0
+	string ls_thispage
+	string ls_lastpage
+	ls_thispage = this.dw_report.describe("Evaluate('Page ( )',0)")
+	ls_lastpage = this.dw_report.describe("Evaluate('PageCount ( )',0)")
+	if ls_thispage = ls_lastpage then
+		beep(1)
+		return
+	end if
+	this.dw_report.scrollnextpage()
+
+// w_psrviewer.wf_pageup() returns 0
+	string ls_thispage
+	ls_thispage = this.dw_report.describe("Evaluate('Page ( )',0)")
+	if long(ls_thispage) = 1 then
+		beep(1)
+		return
+	end if
+	this.dw_report.scrollpriorpage()
+
+// w_psrviewer.wf_end() returns 0
+	this.dw_report.scrolltorow(this.dw_report.rowcount())
+
+// w_psrviewer.wf_srhidevalues(boolean ab_flag) returns 0
+	this.dw_report.object.gvalue_t.visible = ab_flag
+	this.dw_report.object.stvalue_t.visible = ab_flag
+	this.dw_report.object.totalvalue_t.visible = ab_flag
+	this.dw_report.object.gvalue.visible = ab_flag
+	this.dw_report.object.stvalue.visible = ab_flag
+	this.dw_report.object.totalvalue.visible = ab_flag
+
+// w_psrviewer.wf_zoomin() returns 0
+	string ls_zoom_info
+	this.ii_zoomfactor = this.ii_zoomfactor + 25
+	ls_zoom_info = "DataWindow.Print.Preview.Zoom=" + string(this.ii_zoomfactor)
+	this.dw_report.modify(ls_zoom_info)
+
+// w_psrviewer.wf_zoomout() returns 0
+	string ls_zoom_info
+	if this.ii_zoomfactor <= 25 then
+		beep(1)
+		return
+	end if
+	this.ii_zoomfactor = this.ii_zoomfactor - 25
+	ls_zoom_info = "DataWindow.Print.Preview.Zoom=" + string(this.ii_zoomfactor)
+	this.dw_report.modify(ls_zoom_info)
+
+// w_psrviewer.wf_preview(boolean b_flag) returns 0
+	if b_flag = true then
+		this.dw_report.modify("DataWindow.Print.Preview=yes DataWindow.Print.Preview.Rulers=yes")
+		return
+	end if
+	this.dw_report.modify("DataWindow.Print.Preview=no")
+
+// w_psrviewer.wf_visible() returns 0
+	s_dwinfo ls_dwinfo
+	ls_dwinfo.dw_control = this.dw_report
+	openwithparm(w_select, ls_dwinfo)
+
+// w_psrviewer.wf_home() returns 0
+	this.dw_report.scrolltorow(0)
+
+// w_psrviewer.wf_stoptimer() returns 0
+	timer(0, this)
+
+// w_psrviewer.wf_settimer() returns 0
+	timer(60 * f_numberpreferences("refreshtime"), this)
+
+// w_psrviewer.wf_filter() returns 0
+	string ls_null
+	setnull(ls_null)
+	this.dw_report.scrolltorow(0)
+	this.dw_report.setfilter(ls_null)
+	this.dw_report.filter()
+	this.dw_report.groupcalc()
+
+// w_psrviewer.wf_invisiblebatchexpiry() returns 0
+	if this.dw_report.dataobject <> "d_itemwisepurchases_summary" then
+		this.dw_report.object.t_batch.visible = 0
+		this.dw_report.object.batch.visible = 0
+		this.dw_report.object.t_expiry.visible = 0
+		this.dw_report.object.expiry.visible = 0
+		this.dw_report.object.t_packing.visible = 1
+		this.dw_report.object.packing.visible = 1
+	end if
+
+// w_psrviewer.wf_getnestedreport(datawindowchild adc_nested, datawindow adw_parentdatawindow, string as_nesteddatawindow) returns integer
+	integer li_rtncode
+	li_rtncode = adw_parentdatawindow.getchild(as_nesteddatawindow, adc_nested)
+	if li_rtncode <> -1 then
+		adc_nested.settransobject(sqlca)
+	end if
+	return li_rtncode
+
+// w_psrviewer.wf_print() returns 0
+	if this.dw_report.visible then
+		if printsetup() < 0 then
+			messagebox("Printer", "Printing Error")
+			this.dw_report.printcancel()
+		end if
+		openwithparm(w_printer, this.dw_report)
+	end if
+
+// w_psrviewer.wf_changeorientation() returns 0
+	string ls_currentorientation
+	ls_currentorientation = this.dw_report.describe("datawindow.print.orientation")
+	if integer(ls_currentorientation) = 0 or integer(ls_currentorientation) = 2 then
+		this.dw_report.object.datawindow.print.orientation = 1
+		return
+	end if
+	this.dw_report.object.datawindow.print.orientation = 2
+
+// w_psrviewer.wf_tostring(long[] al_arr, string as_arr, char ac_sep) returns 0
+	long ll_endelement
+	long ll_counter
+	as_arr = ""
+	ll_endelement = upperbound(al_arr)
+	for ll_counter = 1 to ll_endelement
+		as_arr = as_arr + trim(string(al_arr[ll_counter]))
+		if ll_counter <> ll_endelement then
+			as_arr = as_arr + ac_sep
+		end if
+	next
+
+// w_psrviewer.wf_pagewisetotal_summary() returns 0
+	long ll_pagecount
+	long ll_found
+	long ll_counter
+	long ll_rowcount
+	long ll_pageno
+	string ls_pagetotal
+	string ls_pageno
+	this.dw_report.modify("DataWindow.Print.Preview = yes")
+	if this.ib_first then
+		this.ii_summarybandheight = integer(this.dw_report.object.datawindow.summary.height)
+		this.ib_first = false
+	else
+		this.dw_report.object.datawindow.summary.height = this.ii_summarybandheight
+	end if
+	this.dw_report.modify("DataWindow.Print.Preview = yes")
+	ll_rowcount = this.dw_report.rowcount()
+	if ll_rowcount <= 0 or isnull(ll_rowcount) then
+		this.dw_report.object.t_showpageno.text = ""
+		this.dw_report.object.t_showpagetotal.text = ""
+		return
+	end if
+	this.dw_report.scrolltorow(ll_rowcount)
+	ll_pagecount = this.dw_report.object.c_pagecount[ll_rowcount]
+	if ll_pagecount = 1 then
+		this.dw_report.object.t_showpageno.text = ""
+		this.dw_report.object.t_showpagetotal.text = ""
+		return
+	end if
+	this.dw_report.scrolltorow(1)
+	for ll_counter = 1 to ll_pagecount
+		ll_found = this.dw_report.find("c_pageno = " + string(ll_counter), 1, this.dw_report.rowcount())
+		if ll_found > 0 then
+			this.dw_report.object.datawindow.summary.height = integer(this.dw_report.object.datawindow.summary.height) + integer(200)
+			this.dw_report.scrolltorow(ll_found)
+			ls_pageno = ls_pageno + "Page No (" + string(ll_counter) + "): " + " ~r~n "
+			ls_pagetotal = ls_pagetotal + string(this.dw_report.object.c_pagetotal[ll_found], "###,###,###,###,##0.00") + " ~r~n "
+		end if
+		ll_pageno = this.dw_report.object.c_pageno[ll_rowcount]
+		if ll_pageno > ll_pagecount then
+			ll_pagecount = ll_pageno
+		end if
+	next
+	this.dw_report.scrolltorow(ll_rowcount)
+	ls_pageno = ls_pageno + "Total Amount: ~r~n "
+	ls_pagetotal = ls_pagetotal + string(this.dw_report.object.c_totalamount[ll_rowcount], "###,###,###,###,##0.00") + " ~r~n "
+	if this.dw_report.object.c_discperc[ll_rowcount] > 0 then
+		ls_pageno = ls_pageno + "Disc(%): ~r~n "
+		ls_pagetotal = ls_pagetotal + string(this.dw_report.object.c_discperc[ll_rowcount]) + "(%) = " + string(this.dw_report.object.c_discvalue[ll_rowcount], "###,###,###,###,##0.00") + " ~r~n "
+	end if
+	ls_pageno = ls_pageno + "Total Net Amount: ~r~n "
+	ls_pagetotal = ls_pagetotal + string(this.dw_report.object.c_totalnetamount[ll_rowcount], "###,###,###,###,##0.00") + " ~r~n "
+	this.dw_report.object.datawindow.summary.height = integer(this.dw_report.object.datawindow.summary.height) + integer(600)
+	this.dw_report.object.t_showpageno.text = ls_pageno
+	this.dw_report.object.t_showpagetotal.text = ls_pagetotal
+	if ll_rowcount > 0 then
+		this.dw_report.scrolltorow(1)
+	end if
+
+// w_psrviewer.wf_saveas() returns 0
+	this.dw_report.saveas()
+
+// w_psrviewer.wf_savefilter() returns long
+	s_reportinfo lstr_repinfo
+	string ls_filter
+	ls_filter = this.dw_report.object.datawindow.table.filter
+	if ls_filter = "" or ls_filter = "?" or isnull(ls_filter) then
+		messagebox("Filter Selection", "No Filter Selected", information!)
+	else
+		this.is_filterinfo.s_reportobject = this.is_actual_reportinfo.s_reportobject
+		this.is_filterinfo.s_reporttitle = this.is_filterinfo.s_reporttitle
+		this.is_filterinfo.s_otherinfo = ls_filter
+		openwithparm(w_save_reportfilter, this.is_filterinfo)
+		lstr_repinfo = message.powerobjectparm
+		if lstr_repinfo.i_status = 1 then
+			this.is_filterinfo = lstr_repinfo
+		end if
+	end if
+	return 0
+
+// w_psrviewer.wf_retrievefilter() returns long
+	s_reportinfo lstr_repinfo
+	openwithparm(w_view_reportfilter, this.is_actual_reportinfo)
+	lstr_repinfo = message.powerobjectparm
+	if lstr_repinfo.i_status = 1 then
+		this.is_filterinfo = lstr_repinfo
+		this.dw_report.setfilter(this.is_filterinfo.s_otherinfo)
+		this.dw_report.filter()
+		this.dw_report.groupcalc()
+	end if
+	return 0
+
+// w_psrviewer.wf_saveasexcel() returns long
+	f_saveasexcel(this.dw_report)
+	return 0
+
+// w_psrviewer.wf_openfile() returns long
+	string ls_path
+	string ls_file
+	string ls_filter
+	long ll_value
+	long ll_ret
+	ls_path = "report.psr"
+	ll_value = getfileopenname("Select Powersoft Report File", ls_path, ls_file, "PSR", "Powersoft Report Files (*.psr),*.psr")
+	setpointer(hourglass!)
+	this.dw_report.dataobject = ls_path
+	wf_showreport()
+	setpointer(arrow!)
+	return ll_ret
+
+// w_psrviewer.wf_showreport() returns long
+	setfocus()
+	this.dw_report.modify("DataWindow.Print.Preview=yes DataWindow.Print.Preview.Rulers=yes")
+	this.dw_report.modify("DataWindow.Print.Preview.Zoom=" + string(this.ii_zoomfactor))
+	this.dw_report.show()
+	return 0
+
+// w_psrviewer.create() returns 0
+	if this.menuname = "m_psrviewer" then
+		this.menuid = create m_psrviewer
+	end if
+	this.dw_hidden = create dw_hidden
+	this.dw_report = create dw_report
+	this.control = {this.dw_hidden, this.dw_report}
+
+// w_psrviewer.destroy() returns 0
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_hidden
+	destroy this.dw_report
+
+// w_psrviewer.open() returns long
+	m_psrviewer lm_menu
+	long ll_width
+	long ll_height
+	long ll_found
+	environment env
+	lm_menu = this.menuid
+	this.menuid.dynamic mf_initsecurityapp(lm_menu)
+	this.im_reportmenu = this.menuid
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.dw_report.width = ll_width * 0.985
+	this.dw_report.height = ll_height * 0.80
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 637", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		lm_menu.m_file.m_saveas.visible = true
+		lm_menu.m_file.m_saveas.enabled = true
+		lm_menu.m_file.m_saveas.toolbaritemvisible = true
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 638", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		lm_menu.m_file.m_saveasexcel.visible = true
+		lm_menu.m_file.m_saveasexcel.enabled = true
+		lm_menu.m_file.m_saveasexcel.toolbaritemvisible = true
+	end if
+	setredraw(true)
+	postevent("ue_startdisplay")
+	return ::message.returnvalue
+
+// w_psrviewer.activate() returns long
+	this.windowstate = maximized!
+	return ::message.returnvalue
+
+// dw_report.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keyhome! then
+		scrolltorow(0)
+	elseif key = keyend! then
+		scrolltorow(rowcount())
+	end if
+	return ::message.returnvalue
+
+// dw_report.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	return ::message.returnvalue

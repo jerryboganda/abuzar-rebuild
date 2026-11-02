@@ -1,0 +1,26 @@
+// function f_validatedw (functions)  ancestor: function_object
+
+// f_validatedw.f_validatedw(datawindow adw_control) returns integer
+	integer li_colnbr
+	long ll_row
+	string ls_colname
+	string ls_textname
+	string ls_columnname
+	if adw_control.accepttext() = -1 then
+		adw_control.setfocus()
+		return -2
+	end if
+	ll_row = adw_control.rowcount()
+	if adw_control.findrequired(primary!, ll_row, li_colnbr, ls_colname, false) < 0 then
+		return -2
+	end if
+	if ll_row <> 0 then
+		ls_textname = ls_colname + "_t.Text"
+		ls_colname = adw_control.describe(ls_textname)
+		messagebox("Validation Error", "Please enter a value for '" + ls_colname + ".", stopsign!)
+		adw_control.setcolumn(li_colnbr)
+		adw_control.scrolltorow(ll_row)
+		adw_control.setfocus()
+		return -1
+	end if
+	return 1

@@ -1,0 +1,51 @@
+// window w_arg_serviceinvoice_services (reports)  ancestor: w_listarguments
+
+// w_arg_serviceinvoice_services.create() returns 0
+	integer icurrent
+	call super::create
+	this.st_4 = create st_4
+	this.st_8 = create st_8
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_4
+	this.control[icurrent + 2] = this.st_8
+
+// w_arg_serviceinvoice_services.destroy() returns 0
+	call super::destroy
+	destroy this.st_4
+	destroy this.st_8
+
+// w_arg_serviceinvoice_services.open() returns long
+	long ancestorreturnvalue
+	long ll_counter
+	long ll_rowcount
+	long ll_serviceinvcode
+	integer rtncode
+	ancestorreturnvalue = super::open()
+	ll_serviceinvcode = message.doubleparm
+	if ll_serviceinvcode <= 0 or isnull(ll_serviceinvcode) then
+		messagebox("Service Invoice Validation", "Please Select a valid Service Invoice Code")
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	this.dw_control.settransobject(sqlca)
+	rtncode = this.dw_control.getchild("servicerowid", this.idc_categories)
+	if rtncode = -1 then
+		messagebox("Error", "Not a DataWindowChild")
+	end if
+	this.idc_categories.settransobject(sqlca)
+	this.idc_categories.retrieve(ll_serviceinvcode)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	this.dw_price.insertrow(0)
+	this.dw_price.scrolltorow(0)
+	ll_rowcount = this.idc_categories.rowcount()
+	for ll_counter = 1 to ll_rowcount
+		this.lb_categories.additem(this.idc_categories.getitemstring(ll_counter, "servicename"))
+	next
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue

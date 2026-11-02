@@ -1,0 +1,97 @@
+// function f_printbarcode_bixolon_samsung_srp_770 (barcodefunctions)  ancestor: function_object
+
+// f_printbarcode_bixolon_samsung_srp_770.f_printbarcode_bixolon_samsung_srp_770(datawindow id_master, datawindow id_detail, boolean ib_printprice) returns long
+	long ll_totalrows
+	long ll_counter
+	long ll_innercounter
+	long ll_qty
+	long ll_currrow
+	long ll_tot_label_rows
+	integer li_startcell
+	integer li_stopcell
+	integer li_temp
+	integer li_file
+	string ls_clientname
+	string ls_clientname_25_char
+	string ls_itemname
+	string ls_aliasname
+	string ls_price
+	string ls_filecontent
+	string ls_seperator
+	string ls_date
+	string ls_format
+	string ls_xpos
+	string ls_infocode
+	string ls_printer
+	string ls_manufshortname
+	string ls_design
+	string ls_purprice
+	string ls_supp_alias
+	long ll_headerno
+	long ll_labelno
+	long ll_labelpos
+	long ll_supply_cols_per_row
+	integer li_barcodeleninprint
+	ls_seperator = ";"
+	ls_supp_alias = id_master.object.aliasname[id_master.getrow()]
+	ll_headerno = id_master.getitemnumber(id_master.getrow(), "headerno")
+	ls_clientname = left(trim(f_reportheaderinfo_wrt_headerno("clientname", ll_headerno)), 21)
+	ls_clientname_25_char = upper(left(trim(f_reportheaderinfo_wrt_headerno("clientname", ll_headerno)), 25))
+	li_barcodeleninprint = f_numberpreferences("BarCodeLenInPrint")
+	ll_totalrows = id_detail.rowcount()
+	ls_printer = trim(id_master.object.barcodeprinter[1])
+	if lower(ls_printer) = lower("Bixolon SAMSUNG SRP 770II") then
+		li_file = fileopen("label.prn", linemode!, write!, lockwrite!, replace!)
+		if li_file = -1 then
+			messagebox("Error", "Unable to locate file for Label printing")
+		else
+			ls_filecontent = "CB"
+			filewrite(li_file, ls_filecontent)
+			ls_filecontent = "SB0"
+			filewrite(li_file, ls_filecontent)
+			ls_filecontent = "SD20"
+			filewrite(li_file, ls_filecontent)
+			ls_filecontent = "SW224"
+			filewrite(li_file, ls_filecontent)
+			ls_filecontent = "SL152,16,G"
+			filewrite(li_file, ls_filecontent)
+			ls_filecontent = "SM0,0"
+			filewrite(li_file, ls_filecontent)
+			ls_filecontent = "SOT"
+			filewrite(li_file, ls_filecontent)
+			ls_filecontent = "CS0,0"
+			filewrite(li_file, ls_filecontent)
+			ls_filecontent = ""
+			filewrite(li_file, ls_filecontent)
+			ls_filecontent = ""
+			filewrite(li_file, ls_filecontent)
+			for ll_counter = 1 to ll_totalrows
+				ls_filecontent = "T37,2,1,1,1,0,0,N,N,'" + ls_clientname_25_char + "'"
+				filewrite(li_file, ls_filecontent)
+				ls_itemname = left(trim(id_detail.getitemstring(ll_counter, "itemname")), 22)
+				ls_aliasname = left(trim(id_detail.getitemstring(ll_counter, "fullcode")), 9)
+				if ib_printprice then
+					ls_price = "Rs:" + trim(string(round(id_detail.getitemdecimal(ll_counter, "saleprice"), 2)))
+				else
+					ls_price = ""
+				end if
+				ls_date = string(today(), "yyyymmdd")
+				ll_qty = id_detail.getitemnumber(ll_counter, "qty")
+				ls_filecontent = "T19,106,0,1,1,0,0,N,N,'" + ls_itemname + "'"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "T19,126,0,1,1,0,0,N,N,'" + ls_price + "'"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "T145,126,0,1,1,0,0,N,N,'" + ls_date + "'"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "B118,28,1,2,4,58,0,1,0,'" + ls_aliasname + "'"
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "CUTy," + trim(string(ll_qty))
+				filewrite(li_file, ls_filecontent)
+				ls_filecontent = "P1," + trim(string(ll_qty))
+				filewrite(li_file, ls_filecontent)
+			next
+			fileclose(li_file)
+			run("..\BarcodePrint\BP.bat", normal!)
+		end if
+	end if
+	return 0

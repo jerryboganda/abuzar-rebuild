@@ -1,0 +1,59 @@
+// window w_select_pagesize (reportformat)  ancestor: window
+
+// w_select_pagesize.create() returns 0
+	this.rb_quarter = create rb_quarter
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.rb_half = create rb_half
+	this.rb_full = create rb_full
+	this.gb_1 = create gb_1
+	this.control = {this.rb_quarter, this.cb_cancel, this.cb_ok, this.rb_half, this.rb_full, this.gb_1}
+
+// w_select_pagesize.destroy() returns 0
+	destroy this.rb_quarter
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.rb_half
+	destroy this.rb_full
+	destroy this.gb_1
+
+// w_select_pagesize.close() returns long
+	closewithreturn(this, this.is_selectedreport)
+	return ::message.returnvalue
+
+// w_select_pagesize.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.triggerevent(close!)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	if parent.rb_full.checked = true then
+		parent.is_selectedreport = "F"
+	elseif parent.rb_half.checked = true then
+		parent.is_selectedreport = "H"
+	else
+		parent.is_selectedreport = "Q"
+	end if
+	parent.triggerevent(close!)
+	return ::message.returnvalue

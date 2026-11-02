@@ -1,0 +1,1123 @@
+// window w_cashieractivitymonitor (cashierjob)  ancestor: window
+
+// w_cashieractivitymonitor.wf_set_autoprint() returns long
+	long ll_found
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 5026", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.ib_autoprint = true
+	end if
+	return 0
+
+// w_cashieractivitymonitor.wf_filter() returns 0
+	string ls_null
+	setnull(ls_null)
+	if this.ic_filter = "N" then
+		this.id_list.scrolltorow(0)
+		if this.is_filterexp = "" or isnull(this.is_filterexp) then
+			setnull(this.is_filterexp)
+		end if
+		this.id_list.setfilter(this.is_filterexp)
+		this.id_list.filter()
+		this.id_button.object.b_filter.text = "Un-Filter [F2]"
+		this.ic_filter = "Y"
+	else
+		this.id_button.object.b_filter.text = "Filter [F2]"
+		this.id_list.setfilter("")
+		this.id_list.filter()
+		this.ic_filter = "N"
+	end if
+	this.id_list.groupcalc()
+	this.id_list.setfocus()
+
+// w_cashieractivitymonitor.wf_preview() returns long
+	long ll_rowcount
+	long ll_docrowid
+	long ll_doccode
+	long ll_moduleid
+	integer li_printretcode
+	boolean lb_continue
+	string ls_report
+	s_datastore lstr
+	ll_rowcount = this.id_list.rowcount()
+	if ll_rowcount > 0 then
+		if this.id_list.getrow() > 0 then
+			ll_docrowid = this.id_list.object.rowid[this.id_list.getrow()]
+			ll_moduleid = this.id_list.object.moduleid[this.id_list.getrow()]
+			if ll_moduleid < 100 then
+				ll_doccode = this.id_list.object.doccode[this.id_list.getrow()]
+			else
+				ll_doccode = this.id_list.object.glvochcode[this.id_list.getrow()]
+			end if
+			ls_report = wf_selectprintreport(ll_moduleid, ll_doccode)
+			this.id_print.dataobject = ls_report
+			this.id_print.settransobject(this.it_transobject)
+			this.id_print.retrieve(ll_doccode)
+			if this.id_print.rowcount() > 0 then
+				if ll_moduleid <= 11 then
+					lstr.s_module = "sale"
+				elseif ll_moduleid <= 32 then
+					lstr.s_module = "sale return"
+				else
+					lstr.s_module = "voucher"
+				end if
+				lstr.dw = this.id_print
+				lstr.s_name1 = this.id_print.dataobject
+				openwithparm(w_preview_invoices, lstr)
+				lstr = message.powerobjectparm
+				if lstr.i_closemode = -1 then
+					return 0
+				end if
+				if f_stringpreferences("saleaskforcopies") = "Y" then
+					open(w_printer_copies)
+					this.id_print.object.datawindow.print.copies = string(message.doubleparm)
+				end if
+				if f_stringpreferences("PromptBeforePrinting") = "Y" and printsetup() < 0 then
+					messagebox("Printer", "Printing Error")
+					this.id_print.printcancel()
+				end if
+				if this.id_print.rowcount() > 0 then
+					li_printretcode = this.id_print.print()
+					if li_printretcode < 0 then
+						messagebox("Printing", "Can not Print Invoice", information!)
+					end if
+				else
+					messagebox("Printing Error", "Can not Print Invoice,~r~nNo rows are retrieved", information!)
+				end if
+			end if
+		else
+			messagebox("Cashier Activity Print Request", "Please Select some Valdid Item From List", stopsign!)
+		end if
+	end if
+	return 0
+
+// w_cashieractivitymonitor.wf_sort() returns long
+	string ls_null
+	setnull(ls_null)
+	this.id_list.setsort(ls_null)
+	this.id_list.sort()
+	this.id_list.groupcalc()
+	this.id_list.setfocus()
+	return 0
+
+// w_cashieractivitymonitor.wf_settimer(long ai_time) returns 0
+	timer(ai_time, this)
+
+// w_cashieractivitymonitor.wf_setbalance(long al_row, string as_col, double ad_amt) returns long
+	if as_col = "cashtendered" then
+		if ad_amt > this.id_list.object.amount[al_row] then
+			this.id_list.object.cashcharged[al_row] = this.id_list.object.amount[al_row]
+			this.id_list.object.cashback[al_row] = ad_amt - this.id_list.object.cashcharged[al_row]
+		else
+			this.id_list.object.cashcharged[al_row] = ad_amt
+			this.id_list.object.cashback[al_row] = this.id_list.object.cashcharged[al_row] - ad_amt
+		end if
+	elseif as_col = "cashcharged" then
+		if ad_amt > this.id_list.object.cashtendered[al_row] then
+			this.id_list.object.cashback[al_row] = 0
+		else
+			this.id_list.object.cashback[al_row] = this.id_list.object.cashtendered[al_row] - ad_amt
+		end if
+	end if
+	return 0
+
+// w_cashieractivitymonitor.wf_supervise() returns long
+	long ll_row
+	long ll_doccode
+	long ll_rowid
+	long ll_retcode
+	long ll_headerinvno
+	integer li_moduleid
+	integer li_usercode
+	integer li_catcode
+	integer li_acccode
+	integer li_cashacccode
+	integer li_headerno
+	double ld_cashtendered
+	double ld_cashcharged
+	double ld_cashback
+	double ld_amount
+	string ls_remarks
+	string ls_errtext
+	string ls_category
+	string ls_machinename
+	char lc_printed
+	ll_row = this.id_list.getrow()
+	if this.id_list.getrow() > 0 then
+		ll_rowid = this.id_list.object.rowid[ll_row]
+		li_moduleid = this.id_list.object.moduleid[ll_row]
+		ll_doccode = this.id_list.object.doccode[ll_row]
+		if isnull(ll_doccode) then
+			ll_doccode = 0
+		end if
+		li_catcode = this.id_list.object.catcode[ll_row]
+		ls_category = this.id_list.object.category[ll_row]
+		if li_moduleid = 101 then
+			li_catcode = 1
+			ls_category = "Cash Receipt"
+		elseif li_moduleid = 102 then
+			li_catcode = 1
+			ls_category = "Cash Receipt Against Sale"
+		elseif li_moduleid = 103 then
+			li_catcode = 1
+			ls_category = "Cash Payment"
+		elseif li_moduleid = 104 then
+			li_catcode = 1
+			ls_category = "Cash Payment Against Purchase"
+		end if
+		li_acccode = this.id_list.object.acccode[ll_row]
+		li_usercode = this.id_list.object.usercode[ll_row]
+		if isnull(li_usercode) then
+			li_usercode = gl_usercode
+		end if
+		ls_machinename = this.id_list.object.machinename[ll_row]
+		if isnull(ls_machinename) or ls_machinename = "" then
+			ls_machinename = gs_localcomputername
+		end if
+		li_headerno = this.id_list.object.headerno[ll_row]
+		if isnull(li_headerno) or li_headerno = 0 then
+			li_headerno = 1
+		end if
+		ll_headerinvno = this.id_list.object.headerinvno[ll_row]
+		ld_amount = this.id_list.object.amount[ll_row]
+		li_cashacccode = this.id_list.object.cashacccode[ll_row]
+		ld_cashtendered = this.id_list.object.cashtendered[ll_row]
+		ld_cashcharged = this.id_list.object.cashcharged[ll_row]
+		ld_cashback = this.id_list.object.cashback[ll_row]
+		ls_remarks = this.id_list.object.remarks[ll_row]
+		lc_printed = this.id_list.object.printed[ll_row]
+		if li_moduleid > 100 and isnull(ll_rowid) then
+			SQL rollback USING this.it_transobject;
+			this.it_transobject.insert_cashieractivity(li_moduleid, ll_doccode, li_catcode, ls_category, li_acccode, li_usercode, ls_machinename, li_headerno, ll_headerinvno, ld_amount, li_cashacccode, ld_cashtendered, ld_cashcharged, ld_cashback, ls_remarks, this.il_cashierjobcode, lc_printed, "N", ll_rowid)
+			if this.it_transobject.sqlcode = 0 then
+				SQL commit USING this.it_transobject;
+			else
+				messagebox("Error", this.it_transobject.sqlerrtext)
+				ll_retcode = 1
+			end if
+		end if
+		if ll_rowid > 0 and li_moduleid > 0 and this.id_list.object.supervised[ll_row] = "N" then
+			SQL rollback USING this.it_transobject;
+			this.it_transobject.supervise_cashieractivity(ll_rowid, li_moduleid, ll_doccode, li_catcode, li_acccode, li_cashacccode, ld_cashtendered, ld_cashcharged, ld_cashback, ls_remarks, this.il_cashierjobcode, lc_printed)
+			if this.it_transobject.sqlcode = 0 then
+				SQL commit USING this.it_transobject;
+				this.ib_editflag = false
+				ll_retcode = 0
+				if this.ib_autoprint then
+					wf_printslip(1, ll_rowid)
+				end if
+			else
+				ls_errtext = this.it_transobject.sqlerrtext
+				ll_retcode = 1
+				SQL rollback USING this.it_transobject;
+				messagebox("Supervision Problem", "Some Database Problem Occured while supervision. Details are:-~r~n" + ls_errtext, stopsign!)
+			end if
+		end if
+	end if
+	this.id_list.setfocus()
+	return ll_retcode
+
+// w_cashieractivitymonitor.wf_refresh(integer ai_mode) returns long
+	long ll_index
+	long ll_rowcount
+	long ll_series_num
+	long ll_counter
+	long ll_innercounter
+	long ll_groupcode
+	long ll_prints_left
+	long[] ll_docrowid
+	long ll_printable_count
+	long ll_min_refresh
+	boolean lb_continue
+	datetime ldt_startdate
+	if this.id_button.rowcount() = 0 then
+		return 0
+	end if
+	setpointer(hourglass!)
+	setredraw(false)
+	if ai_mode = 1 then
+		this.id_list.retrieve(this.il_cashierjobcode)
+		this.ib_editflag = false
+	elseif this.ib_editflag = false then
+		this.id_list.retrieve(this.il_cashierjobcode)
+	end if
+	ll_rowcount = this.id_list.rowcount()
+	setpointer(arrow!)
+	setredraw(true)
+	return 0
+
+// w_cashieractivitymonitor.wf_select_printslip() returns 0
+	long ll_listrow
+	long ll_module
+	string ls_report
+	string ls_doctype
+	ll_listrow = this.id_list.getrow()
+	if ll_listrow > 0 then
+		ll_module = this.id_list.object.moduleid[ll_listrow]
+	end if
+	if ls_report = "" then
+		ls_report = "d_cashieractivitymonitor_printout"
+	end if
+	this.ids_print.dataobject = ls_report
+	this.ids_print.settransobject(this.it_transobject)
+
+// w_cashieractivitymonitor.wf_selectprintreport(integer ai_module, long al_doccode) returns string
+	string ls_pagesize
+	string ls_report
+	long ll_currrow
+	boolean lb_printout
+	integer li_headerno
+	integer li_catcode
+	integer li_printformat
+	ll_currrow = this.id_list.getrow()
+	if ll_currrow > 0 then
+		li_catcode = this.id_list.object.catcode[ll_currrow]
+		if li_catcode = 1 then
+			lb_printout = true
+		end if
+		if ai_module <= 11 then
+			SQL SELECT InvoiceSize , HeaderNo INTO :ls_pagesize, :li_headerno FROM SaleLedger WHERE SaleInvCode =:al_doccode USING this.it_transobject;
+			ls_report = f_getsaleprintout(ls_pagesize, lb_printout, li_headerno)
+			f_set_headerlogo(this.id_print, li_headerno)
+		elseif ai_module <= 32 then
+			SQL SELECT PageSize , HeaderNo INTO :ls_pagesize, :li_headerno FROM SRLedger WHERE SRInvCode =:al_doccode USING this.it_transobject;
+			if ls_pagesize = "F" then
+				ls_report = "d_wholesaleretinvreport_full"
+			elseif ls_pagesize = "H" then
+				ls_report = "d_wholesaleretinvreport_half"
+			else
+				ls_report = "d_wholesaleretinvreport"
+			end if
+		else
+			li_printformat = f_numberpreferences("VoucherPrintingFormat")
+			ls_pagesize = f_stringpreferences("VoucherPrintingPageSize")
+			ls_report = "d_voucherprint"
+			choose case ls_pagesize
+			case "F"
+				choose case li_printformat
+				case 1
+					ls_report = "d_voucherprint"
+				case 2
+					ls_report = "d_voucherprint_format2"
+				case 3
+					ls_report = "d_voucherprint_patient"
+				case 4
+					ls_report = "d_voucherprint_standard2"
+				end choose
+			case "H"
+				choose case li_printformat
+				case 1
+					ls_report = "d_voucherprint_half"
+				case 2
+					ls_report = "d_voucherprint_half_format2"
+				case 3
+					ls_report = "d_voucherprint_half_patient"
+				case 4
+					ls_report = "d_voucherprint_half_standard2"
+				end choose
+			end choose
+		end if
+		this.id_print.dataobject = ls_report
+		this.id_print.settransobject(this.it_transobject)
+	end if
+	return ls_report
+
+// w_cashieractivitymonitor.wf_printslip(integer ai_mode, long al_row) returns long
+	long ll_rowcount
+	long ll_index
+	long ll_counter
+	long ll_printable_count
+	long ll_docrowid
+	boolean lb_continue
+	ll_rowcount = this.id_list.rowcount()
+	if ll_rowcount > 0 then
+		if ai_mode = 0 then
+			if this.id_list.getrow() > 0 then
+				ll_docrowid = this.id_list.object.rowid[this.id_list.getrow()]
+				wf_select_printslip()
+				this.ids_print.retrieve(ll_docrowid)
+				if this.ids_print.rowcount() > 0 then
+					this.ids_print.print()
+				end if
+			else
+				messagebox("Cashier Activity Print Request", "Please Select some Valdid Item From List", stopsign!)
+			end if
+		elseif this.ib_autoprint then
+			ll_docrowid = al_row
+			wf_select_printslip()
+			if ll_docrowid > 0 then
+				this.ids_print.retrieve(ll_docrowid)
+				if this.ids_print.rowcount() > 0 then
+					this.ids_print.print()
+					SQL rollback USING this.it_transobject;
+					for ll_counter = 1 to ll_printable_count
+						this.it_transobject.changeprintstatus_cashieractivity(ll_docrowid)
+						if this.it_transobject.sqlcode <> 0 then
+							lb_continue = false
+						end if
+						if lb_continue = false then
+							exit
+						end if
+					next
+					if lb_continue then
+						SQL commit USING this.it_transobject;
+					else
+						messagebox("Cashier Activity", "Problem in changing print status. Details are:-~r~n" + this.it_transobject.sqlerrtext)
+						SQL rollback USING this.it_transobject;
+					end if
+				end if
+			end if
+		end if
+	end if
+	return 0
+
+// w_cashieractivitymonitor.wf_insert_voucher() returns long
+	long ll_row
+	long ll_retcode
+	s_arguements lstr_arg
+	this.id_list.setredraw(false)
+	openwithparm(w_select_cashierjob_voucher, this.il_cashierjobcode)
+	lstr_arg = message.powerobjectparm
+	if lstr_arg.i_status = 1 and lstr_arg.l_code1 > 100 then
+		ll_row = this.id_list.insertrow(0)
+		if ll_row > 0 then
+			this.ib_editflag = true
+			this.id_list.object.date[ll_row] = today()
+			this.id_list.object.moduleid[ll_row] = lstr_arg.l_code1
+			this.id_list.scrolltorow(ll_row)
+			this.id_list.setrow(ll_row)
+			this.id_list.setcolumn("doccode")
+			ll_retcode = 0
+		end if
+	end if
+	this.id_list.sort()
+	this.id_list.setredraw(true)
+	return ll_retcode
+
+// w_cashieractivitymonitor.wf_validateinvcode(long al_row, long al_invcode) returns integer
+	integer li_rtcode
+	long ll_invcode
+	long ll_acccode
+	long ll_glvochcode
+	long ll_patientcode
+	long ll_unpostedrows
+	long ll_moduleid
+	long ll_headerno
+	long ll_headerinvcode
+	long ll_usercode
+	double ld_outstandingamt
+	double ld_netamt
+	double ld_oldamt
+	double ld_balance
+	datetime ld_date
+	string ls_aliasname
+	string ls_regno
+	string ls_machine
+	ll_moduleid = this.id_list.object.moduleid[al_row]
+	if ll_moduleid = 101 or ll_moduleid = 102 then
+		SQL SELECT SaleLedger.SaleInvCode , RegNo =( SELECT Patient.RegNo FROM Patient WHERE Patient.PatientCode =SaleLedger.PatientCode ) , SaleLedger.PatientCode , SaleLedger.Date , SaleLedger.CustCode , Accounts.AliasName , SaleLedger.OutstandingAmt , SaleLedger.InvTotal , SaleLedger.Headerno , SaleLedger.HeaderinvNo , SaleLedger.SalesmanCode , SaleLedger.MachineName INTO :ll_invcode, :ls_regno, :ll_patientcode, :ld_date, :ll_acccode, :ls_aliasname, :ld_outstandingamt, :ld_netamt, :ll_headerno, :ll_headerinvcode, :ll_usercode, :ls_machine FROM SaleLedger , Accounts WHERE SaleLedger.SaleInvCode =:al_invcode AND SaleLedger.AccountFor ='Y' AND SaleLedger.Marked ='N' AND SaleLedger.Posted ='Y' AND SaleLedger.OutstandingAmt > 0 AND SaleLedger.CustCode =Accounts.AccCode AND SaleLedger.SaleCatCode IN ( 2 ) USING sqlca;
+	elseif ll_moduleid = 103 or ll_moduleid = 104 then
+		SQL SELECT PurLedger.PurInvCode , PurLedger.Date , PurLedger.SuppCode , Accounts.AliasName , PurLedger.OutstandingAmt , PurLedger.InvTotal , PurLedger.Headerno , PurLedger.headerinvNo , PurLedger.Salesmancode , MachineName =NUll INTO :ll_invcode, :ld_date, :ll_acccode, :ls_aliasname, :ld_outstandingamt, :ld_netamt, :ll_headerno, :ll_headerinvcode, :ll_usercode, :ls_machine FROM PurLedger , Accounts WHERE PurLedger.PurInvCode =:al_invcode AND PurLedger.AccountFor ='Y' AND PurLedger.Marked ='N' AND PurLedger.OutstandingAmt > 0 AND PurLedger.SuppCode =Accounts.AccCode AND PurLedger.Posted ='Y' USING sqlca;
+	end if
+	if sqlca.sqlcode = 0 then
+		if ll_invcode > 0 then
+			if ld_outstandingamt = 0.0 and (ll_moduleid = 102 or ll_moduleid = 104) then
+				li_rtcode = 1
+			else
+				this.id_list.object.acccode[al_row] = ll_acccode
+				this.id_list.object.doccode[al_row] = ll_invcode
+				this.id_list.object.amount[al_row] = ld_outstandingamt
+				this.id_list.object.headerno[al_row] = ll_headerno
+				this.id_list.object.headerinvno[al_row] = ll_headerinvcode
+				this.id_list.object.usercode[al_row] = ll_usercode
+				this.id_list.object.machinename[al_row] = ls_machine
+			end if
+		else
+			li_rtcode = 1
+		end if
+	else
+		li_rtcode = 1
+	end if
+	return li_rtcode
+
+// w_cashieractivitymonitor.wf_set_preferences() returns long
+	long ll_refreshtime
+	if f_stringpreferences("ShowDateINCashierAct") = "N" then
+		this.id_list.object.date.visible = false
+	end if
+	if f_stringpreferences("showtypeincashieract") = "N" then
+		this.id_list.object.moduleid.visible = false
+	end if
+	if f_stringpreferences("showinvnoincashieract") = "N" then
+		this.id_list.object.doccode.visible = false
+	end if
+	if f_stringpreferences("showheaderinvnoincashieract") = "N" then
+		this.id_list.object.c_headerinvno.visible = false
+	end if
+	if f_stringpreferences("showamountincashieract") = "N" then
+		this.id_list.object.amount.visible = false
+	end if
+	if f_stringpreferences("showcashtenderedincashieract") = "N" then
+		this.id_list.object.cashtendered.visible = false
+	end if
+	if f_stringpreferences("showcashchargedincashieract") = "N" then
+		this.id_list.object.cashcharged.visible = false
+	end if
+	if f_stringpreferences("showbalanceincashieract") = "N" then
+		this.id_list.object.cashback.visible = false
+	end if
+	if f_stringpreferences("showcashaccincashieract") = "N" then
+		this.id_list.object.cashacccode.visible = false
+	end if
+	if f_stringpreferences("showcategoryincashieract") = "N" then
+		this.id_list.object.catcode.visible = false
+	end if
+	if f_stringpreferences("showAccCodeincashieract") = "N" then
+		this.id_list.object.acccode.visible = false
+	end if
+	if f_stringpreferences("showsupervisedincashieract") = "N" then
+		this.id_list.object.supervised.visible = false
+	end if
+	if f_stringpreferences("showremarksincashieract") = "N" then
+		this.id_list.object.remarks.visible = false
+	end if
+	if f_stringpreferences("showuserincashieract") = "N" then
+		this.id_list.object.usercode.visible = false
+	end if
+	if f_stringpreferences("showmachineincashieract") = "N" then
+		this.id_list.object.machinename.visible = false
+	end if
+	if f_stringpreferences("showpostedincashieract") = "N" then
+		this.id_list.object.posted.visible = false
+	end if
+	if f_stringpreferences("showglcodeincashieract") = "N" then
+		this.id_list.object.glvochcode.visible = false
+	end if
+	if f_stringpreferences("showselectedincashieract") = "N" then
+		this.id_list.object.selected.visible = false
+	end if
+	ll_refreshtime = f_numberpreferences("defaultrefreshtimeincashieract")
+	this.id_button.object.refreshtime[1] = ll_refreshtime
+	return 0
+
+// w_cashieractivitymonitor.wf_printjobactivity() returns long
+	if this.il_cashierjobcode > 0 then
+		openwithparm(w_cashieractivity_for_a_job, this.il_cashierjobcode)
+	end if
+	return 0
+
+// w_cashieractivitymonitor.wf_superviseall() returns long
+	long ll_counter
+	long ll_retcode
+	long ll_unsupervised_count
+	long ll_supvised_count
+	long ll_res
+	ll_res = messagebox("Supervise All", "Do you want to Supervise All Un-Supervised Documents?", question!, yesnocancel!, 2)
+	if ll_res = 1 then
+		for ll_counter = 1 to this.id_list.rowcount()
+			if upper(this.id_list.object.supervised[ll_counter]) = "N" then
+				ll_unsupervised_count = ll_unsupervised_count + 1
+				this.id_list.setrow(ll_counter)
+				this.id_list.scrolltorow(ll_counter)
+				ll_retcode = wf_supervise()
+				if ll_retcode <> 0 then
+					exit
+				else
+					ll_supvised_count = ll_supvised_count + 1
+				end if
+			end if
+		next
+		if ll_counter > 1 then
+			messagebox("Supervision Intimation", "Un-supervised documents = " + string(ll_unsupervised_count) + "~r~nSupervised Documents   = " + string(ll_supvised_count), information!)
+			wf_refresh(1)
+		end if
+	end if
+	this.id_list.setfocus()
+	return 0
+
+// w_cashieractivitymonitor.wf_printsummarystatistics() returns long
+	if this.il_cashierjobcode > 0 then
+		openwithparm(w_cashieractivity_summarystatistics, this.il_cashierjobcode)
+	end if
+	return 0
+
+// w_cashieractivitymonitor.wf_filteraccounts(long al_groupcode) returns long
+	long ll_max_module
+	integer li_rtncode
+	string ls_custfilterstring
+	SQL SELECT ISNULL ( MAX ( ModuleID ) , 0 ) INTO :ll_max_module FROM CashierJobModule WHERE CashierJobCode =:this.il_cashierjobcode USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		messagebox("Back end Problem", "Encountered Some backend Problem while Fetching Cashier Job Modules.~r~nDetails Are:-~r~n" + this.it_transobject.sqlerrtext)
+	end if
+	if ll_max_module <= 32 then
+		if f_stringpreferences("GroupCustomerCategory") = "Y" then
+			ls_custfilterstring = "0                                                                                                                                                                                                             "
+			this.it_transobject.getallowedgroupcustomercategory(al_groupcode, ls_custfilterstring)
+			if ls_custfilterstring = " " or ls_custfilterstring = "" or isnull(ls_custfilterstring) then
+				ls_custfilterstring = "0"
+				return 1
+			end if
+			this.idc_account.setfilter("custcatcode In (" + ls_custfilterstring + ")")
+			this.idc_account.filter()
+		else
+			this.idc_account.setfilter("subcode = 3")
+			this.idc_account.filter()
+		end if
+	else
+		this.idc_account.setfilter("")
+		this.idc_account.filter()
+	end if
+	return 0
+
+// w_cashieractivitymonitor.wf_supervise_selected() returns long
+	long ll_counter
+	long ll_retcode
+	long ll_unsupervised_count
+	long ll_supvised_count
+	long ll_res
+	ll_res = messagebox("Supervise Selected Document(s)", "Do you want to Supervise All Un-Supervised Selected Documents?", question!, yesnocancel!, 2)
+	if ll_res > 1 then
+		return 0
+	end if
+	for ll_counter = 1 to this.id_list.rowcount()
+		if upper(this.id_list.object.supervised[ll_counter]) = "N" and upper(this.id_list.object.selected[ll_counter]) = "Y" then
+			ll_unsupervised_count = ll_unsupervised_count + 1
+			this.id_list.setrow(ll_counter)
+			this.id_list.scrolltorow(ll_counter)
+			ll_retcode = wf_supervise()
+			if ll_retcode <> 0 then
+				exit
+			else
+				ll_supvised_count = ll_supvised_count + 1
+			end if
+		end if
+	next
+	if ll_counter > 1 then
+		messagebox("Supervision Intimation", "Un-supervised documents = " + string(ll_unsupervised_count) + "~r~nSupervised Documents   = " + string(ll_supvised_count), information!)
+		wf_refresh(1)
+	end if
+	this.id_list.setfocus()
+	return 0
+
+// w_cashieractivitymonitor.wf_supervise_current() returns long
+	long ll_counter
+	long ll_retcode
+	long ll_unsupervised_count
+	long ll_supvised_count
+	ll_counter = this.id_list.getrow()
+	if this.id_list.rowcount() > 0 and ll_counter > 0 and upper(this.id_list.object.supervised[ll_counter]) = "N" then
+		ll_unsupervised_count = ll_unsupervised_count + 1
+		this.id_list.setrow(ll_counter)
+		this.id_list.scrolltorow(ll_counter)
+		ll_retcode = wf_supervise()
+		if ll_retcode = 0 then
+			ll_supvised_count = ll_supvised_count + 1
+		end if
+	end if
+	if ll_counter > 1 then
+		messagebox("Supervision Intimation", "Un-supervised documents = " + string(ll_unsupervised_count) + "~r~nSupervised Documents   = " + string(ll_supvised_count), information!)
+		wf_refresh(1)
+	end if
+	this.id_list.setfocus()
+	return 0
+
+// w_cashieractivitymonitor.wf_show_cashtenderedwindow() returns long
+	long ll_rowid
+	long ll_retcode
+	long ll_moduleid
+	this.ib_editflag = true
+	if this.id_list.rowcount() > 0 and this.id_list.getrow() > 0 then
+		ll_rowid = this.id_list.object.rowid[this.id_list.getrow()]
+		ll_moduleid = this.id_list.object.moduleid[this.id_list.getrow()]
+		if ll_rowid > 0 and ll_moduleid < 100 then
+			openwithparm(w_cashierjobactivity_cashtendered, ll_rowid)
+			ll_retcode = message.doubleparm
+			if ll_retcode = 1 then
+				wf_refresh(1)
+			end if
+		end if
+	end if
+	return 0
+
+// w_cashieractivitymonitor.wf_change_category() returns long
+	long ll_rowid
+	long ll_retcode
+	long ll_moduleid
+	this.ib_editflag = true
+	if this.id_list.rowcount() > 0 and this.id_list.getrow() > 0 then
+		ll_rowid = this.id_list.object.rowid[this.id_list.getrow()]
+		ll_moduleid = this.id_list.object.moduleid[this.id_list.getrow()]
+		if ll_rowid > 0 and ll_moduleid < 100 then
+			openwithparm(w_cashierjobactivity_changecategory, ll_rowid)
+			ll_retcode = message.doubleparm
+			if ll_retcode = 1 then
+				wf_refresh(1)
+			end if
+		end if
+	end if
+	return 0
+
+// w_cashieractivitymonitor.wf_set_filter() returns 0
+	string ls_null
+	setnull(ls_null)
+	this.id_list.scrolltorow(0)
+	this.id_list.setfilter(ls_null)
+	this.id_list.filter()
+	this.id_list.groupcalc()
+	this.id_list.setfocus()
+
+// w_cashieractivitymonitor.wf_first() returns long
+	if this.id_list.rowcount() > 0 then
+		this.id_list.selectrow(0, false)
+		this.id_list.setrow(1)
+		this.id_list.scrolltorow(1)
+		this.id_list.selectrow(1, true)
+	end if
+	return 0
+
+// w_cashieractivitymonitor.wf_previous() returns long
+	long ll_current
+	if this.id_list.rowcount() > 0 then
+		if this.id_list.getrow() > 1 then
+			ll_current = this.id_list.getrow()
+			this.id_list.selectrow(0, false)
+			this.id_list.setrow(ll_current - 1)
+			this.id_list.scrolltorow(ll_current - 1)
+			this.id_list.selectrow(ll_current - 1, true)
+		end if
+	end if
+	return 0
+
+// w_cashieractivitymonitor.wf_last() returns long
+	if this.id_list.rowcount() > 0 then
+		this.id_list.selectrow(0, false)
+		this.id_list.setrow(this.id_list.rowcount())
+		this.id_list.scrolltorow(this.id_list.rowcount())
+		this.id_list.selectrow(this.id_list.rowcount(), true)
+	end if
+	return 0
+
+// w_cashieractivitymonitor.wf_next() returns long
+	long ll_current
+	if this.id_list.rowcount() > 0 then
+		if this.id_list.getrow() <> this.id_list.rowcount() then
+			ll_current = this.id_list.getrow()
+			this.id_list.selectrow(0, false)
+			this.id_list.setrow(ll_current + 1)
+			this.id_list.scrolltorow(ll_current + 1)
+			this.id_list.selectrow(ll_current + 1, true)
+		end if
+	end if
+	return 0
+
+// w_cashieractivitymonitor.create() returns 0
+	if this.menuname = "m_cashieractivitymenu" then
+		this.menuid = create m_cashieractivitymenu
+	end if
+	this.dw_print = create dw_print
+	this.dw_buttons = create dw_buttons
+	this.tab_activitymonitor = create tab_activitymonitor
+	this.control = {this.dw_print, this.dw_buttons, this.tab_activitymonitor}
+
+// w_cashieractivitymonitor.destroy() returns 0
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_print
+	destroy this.dw_buttons
+	destroy this.tab_activitymonitor
+
+// w_cashieractivitymonitor.open() returns long
+	long ll_counter
+	long ll_pos
+	long ll_rtcode
+	long ll_found
+	long ll_groupcode
+	long ll_retcode
+	string ls_exp
+	string ls_exp2
+	string ls_username
+	w_entry w_parent
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	this.im_menu = this.menuid
+	this.it_transobject = create u_transaction
+	SQL start USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		messagebox("Connection Failure", "Unable to connect to the database", stopsign!)
+		close(this)
+		return ::message.returnvalue
+	end if
+	this.id_print = create datawindow
+	this.ids_print = create u_ds_standard
+	this.dw_print.dataobject = "d_khyber_thermal_saleinvrep"
+	this.dw_print.settransobject(this.it_transobject)
+	this.id_print = this.dw_print
+	SQL SELECT MAX ( CashierJobCode ) , useranme =( SELECT UserName FROM Users WHERE UserCode =:gl_usercode ) , DefaultFilterCriteria INTO :this.il_cashierjobcode, :ls_username, :this.is_filterexp FROM CashierJob WHERE Active ='Y' AND JobOwner =:gl_usercode GROUP BY DefaultFilterCriteria USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		if this.il_cashierjobcode <= 0 then
+			messagebox("Cashier Job Status", "No Currently Active Cashier Job Associated to you right now.~r~nPlease Consult System Administrator to do the needfull.", stopsign!)
+			close(this)
+			return ::message.returnvalue
+		end if
+	else
+		messagebox("Cashier Job Status", "Unable to fetch cashier job data from database", stopsign!)
+		close(this)
+		return ::message.returnvalue
+	end if
+	ll_groupcode = f_getgroupcode(gl_usercode)
+	this.title = "Activity for : " + ls_username + ", Cashier Job #:  " + trim(string(this.il_cashierjobcode))
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width * 0.98
+		ll_height = ll_win_height * 0.96
+		this.width = ll_width
+		this.height = ll_height
+		this.tab_activitymonitor.width = ll_width * 0.98
+		this.tab_activitymonitor.height = ll_height * 0.83
+		this.dw_buttons.width = ll_width * 0.98
+		this.dw_buttons.y = this.tab_activitymonitor.y + this.tab_activitymonitor.height
+		this.tab_activitymonitor.tabpage_list.dw_list.width = this.tab_activitymonitor.width * 0.98
+		this.tab_activitymonitor.tabpage_list.dw_list.height = this.tab_activitymonitor.height * 0.91
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	this.id_list = this.tab_activitymonitor.tabpage_list.dw_list
+	ll_retcode = this.id_list.getchild("acccode", this.idc_account)
+	if ll_retcode = -1 then
+		messagebox("Problem", "Can not get Datawindow Child")
+		close(this)
+		return ::message.returnvalue
+	end if
+	this.idc_account.settransobject(this.it_transobject)
+	this.id_list.settransobject(this.it_transobject)
+	this.idc_account.retrieve()
+	wf_filteraccounts(ll_groupcode)
+	this.id_button = this.dw_buttons
+	this.id_button.settransobject(this.it_transobject)
+	this.id_button.retrieve()
+	this.id_button.object.refreshtime.protect = 0
+	if f_stringpreferences("cashieractivitymode") = "A" then
+		ls_exp = "1~tIf(supervised='N',0,1)"
+		this.id_list.object.cashacccode.protect = ls_exp
+		this.id_list.object.catcode.protect = ls_exp
+		this.id_list.object.supervised.protect = ls_exp
+		this.id_list.object.remarks.protect = ls_exp
+		ls_exp2 = "1~tIf((moduleid = 102 OR moduleid = 104) and supervised='N',0,1)"
+		this.id_list.object.doccode.protect = ls_exp2
+		ls_exp2 = "1~tIf((moduleid = 102 OR moduleid = 104), 1, IF(supervised='N',0,1))"
+		this.id_list.object.acccode.protect = ls_exp
+		ls_exp2 = "1~tIf((moduleid = 101 OR moduleid = 103) and supervised='N',0,1)"
+		this.id_list.object.amount.protect = ls_exp2
+		ls_exp2 = "1~tIf((moduleid = 101 OR moduleid = 103) and supervised='N',1,if(supervised='N',0,1))"
+		this.id_list.object.cashtendered.protect = ls_exp2
+		this.id_list.object.cashcharged.protect = ls_exp2
+	else
+		this.id_list.object.doccode.protect = "1"
+		this.id_list.object.cashacccode.protect = "1"
+		this.id_list.object.catcode.protect = "1"
+		this.id_list.object.supervised.protect = "1"
+		this.id_list.object.remarks.protect = "1"
+		this.id_list.object.acccode.protect = "1"
+		this.id_list.object.amount.protect = "1"
+		this.id_list.object.cashtendered.protect = "1"
+		this.id_list.object.cashcharged.protect = "1"
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 5027", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.im_menu.m_activitylist.m_preview.visible = true
+		this.im_menu.m_activitylist.m_preview.enabled = true
+		this.id_button.object.b_preview.visible = true
+	else
+		this.im_menu.m_activitylist.m_preview.visible = false
+		this.im_menu.m_activitylist.m_preview.enabled = false
+		this.id_button.object.b_preview.visible = false
+	end if
+	if f_rightexists(5064) then
+		this.im_menu.m_activitylist.m_superviseall.visible = true
+		this.im_menu.m_activitylist.m_superviseall.enabled = true
+		this.id_button.object.b_superviseall.visible = true
+	else
+		this.im_menu.m_activitylist.m_superviseall.visible = false
+		this.im_menu.m_activitylist.m_superviseall.enabled = false
+		this.id_button.object.b_superviseall.visible = false
+	end if
+	if f_rightexists(5065) then
+		this.im_menu.m_activitylist.m_superviseselection.visible = true
+		this.im_menu.m_activitylist.m_superviseselection.enabled = true
+		this.id_button.object.b_superviseselected.visible = true
+	else
+		this.im_menu.m_activitylist.m_superviseselection.visible = false
+		this.im_menu.m_activitylist.m_superviseselection.enabled = false
+		this.id_button.object.b_superviseselected.visible = false
+	end if
+	if f_rightexists(5066) then
+		this.im_menu.m_activitylist.m_showcashtenderedwindow.visible = true
+		this.im_menu.m_activitylist.m_showcashtenderedwindow.enabled = true
+		this.id_button.object.b_multiplecash.visible = true
+	else
+		this.im_menu.m_activitylist.m_showcashtenderedwindow.visible = false
+		this.im_menu.m_activitylist.m_showcashtenderedwindow.enabled = false
+		this.id_button.object.b_multiplecash.visible = false
+	end if
+	if f_rightexists(5067) then
+		this.im_menu.m_activitylist.m_supervisecurrent.visible = true
+		this.im_menu.m_activitylist.m_supervisecurrent.enabled = true
+		this.id_button.object.b_supervise.visible = true
+	else
+		this.im_menu.m_activitylist.m_supervisecurrent.visible = false
+		this.im_menu.m_activitylist.m_supervisecurrent.enabled = false
+		this.id_button.object.b_supervise.visible = false
+	end if
+	if f_rightexists(5068) then
+		this.im_menu.m_activitylist.m_changecategory.visible = true
+		this.im_menu.m_activitylist.m_changecategory.enabled = true
+		this.id_button.object.b_changecategory.visible = true
+	else
+		this.im_menu.m_activitylist.m_changecategory.visible = false
+		this.im_menu.m_activitylist.m_changecategory.enabled = false
+		this.id_button.object.b_changecategory.visible = false
+	end if
+	if f_rightexists(5250) then
+		this.id_list.object.t_total.visible = true
+		this.id_list.object.c_amount.visible = true
+		this.id_list.object.c_tendered.visible = true
+		this.id_list.object.c_charged.visible = true
+		this.id_list.object.c_balance.visible = true
+	else
+		this.id_list.object.t_total.visible = false
+		this.id_list.object.c_amount.visible = false
+		this.id_list.object.c_tendered.visible = false
+		this.id_list.object.c_charged.visible = false
+		this.id_list.object.c_balance.visible = false
+	end if
+	wf_set_preferences()
+	wf_set_autoprint()
+	wf_settimer(this.id_button.object.refreshtime[1])
+	wf_refresh(0)
+	this.id_list.setfocus()
+	if f_stringpreferences("KeepCashWindowAlwaysOpen") = "Y" then
+		wf_show_cashtenderedwindow()
+	end if
+	return ::message.returnvalue
+
+// w_cashieractivitymonitor.timer() returns long
+	wf_refresh(0)
+	return ::message.returnvalue
+
+// dw_buttons.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_buttons.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	long ll_retcode
+	long ll_found
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "invoicecode"
+		if long(data) > 0 then
+			ll_found = parent.id_list.find("doccode = " + data, 1, parent.id_list.rowcount())
+			if ll_found > 0 and ll_found <= parent.id_list.rowcount() then
+				parent.id_list.selectrow(0, false)
+				parent.id_list.setrow(ll_found)
+				parent.id_list.scrolltorow(ll_found)
+				parent.id_list.selectrow(ll_found, true)
+			end if
+		else
+			return 1
+		end if
+	case "refreshtime"
+		parent.ib_editrefresh = true
+		parent.wf_settimer(long(data))
+	case "startdate"
+		parent.ib_editrefresh = true
+	end choose
+	return ll_retcode
+
+// dw_buttons.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	long ll_retcode
+	ancestorreturnvalue = super::clicked(xpos, ypos, row, dwo)
+	choose case dwo.name
+	case "b_first"
+		parent.wf_first()
+	case "b_next"
+		parent.wf_next()
+	case "b_prev"
+		parent.wf_previous()
+	case "b_last"
+		parent.wf_last()
+	case "b_filter"
+		parent.wf_filter()
+	case "b_preview"
+		parent.wf_preview()
+	case "b_refresh"
+		parent.wf_refresh(1)
+	case "b_multiplecash"
+		parent.wf_show_cashtenderedwindow()
+	case "b_supervise"
+		parent.wf_supervise_current()
+	case "b_superviseselected"
+		parent.wf_supervise_selected()
+	case "b_superviseall"
+		parent.wf_superviseall()
+	case "b_changecategory"
+		parent.wf_change_category()
+		return ll_retcode
+	end choose
+	return ll_retcode
+
+// tab_activitymonitor.create() returns 0
+	this.tabpage_list = create tabpage_list
+	this.control = {this.tabpage_list}
+
+// tab_activitymonitor.destroy() returns 0
+	destroy this.tabpage_list
+
+// tabpage_list.create() returns 0
+	this.dw_list = create dw_list
+	this.control = {this.dw_list}
+
+// tabpage_list.destroy() returns 0
+	destroy this.dw_list
+
+// dw_list.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_list.rowfocuschanged(long currentrow) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::rowfocuschanged(currentrow)
+	if currentrow > 0 then
+		selectrow(0, false)
+		setrow(currentrow)
+		scrolltorow(currentrow)
+		selectrow(currentrow, true)
+	end if
+	return ::message.returnvalue
+
+// dw_list.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keyf3! then
+		parent.parent.parent.wf_insert_voucher()
+	elseif key = keyf5! then
+		parent.parent.parent.wf_refresh(1)
+	end if
+	return ::message.returnvalue
+
+// dw_list.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	integer li_errcode
+	long ll_null
+	long ll_res
+	long ll_unpostedtrans
+	string ls_null
+	string ls_msg
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	setnull(ll_null)
+	setnull(ls_null)
+	choose case dwo.name
+	case "selected"
+		parent.parent.parent.ib_editflag = true
+		return 0
+	case "amount"
+		if double(data) >= 0.0 then
+			this.object.cashtendered[row] = round(double(data), 2)
+			this.object.cashcharged[row] = round(double(data), 2)
+			this.object.cashback[row] = 0.00
+		else
+			messagebox("Amount Validation!", "Please enter valid Amount.", stopsign!)
+			return 1
+		end if
+	case "doccode"
+		if long(data) <= 0 then
+			messagebox("Document Code Validation!", "Please enter valid Document Code.", stopsign!)
+			return 1
+		else
+			li_errcode = parent.parent.parent.wf_validateinvcode(row, long(data))
+			if li_errcode = 0 then
+				if this.object.moduleid[row] = 101 or this.object.moduleid[row] = 102 then
+					parent.parent.parent.it_transobject.checkunpostedsaleinvintransactions(long(data), ll_null, "V", ll_unpostedtrans, ls_msg)
+				elseif this.object.moduleid[row] = 103 or this.object.moduleid[row] = 104 then
+					parent.parent.parent.it_transobject.checkunpostedpurinvintransactions(long(data), ll_null, "V", ll_unpostedtrans, ls_msg)
+				end if
+				if ll_unpostedtrans > 0 then
+					messagebox("Invoice Validation Problem", "Unposted Transaction(s) Exist for this Invoice~r~n~r~n" + trim(ls_msg))
+					li_errcode = 1
+				end if
+			else
+				li_errcode = 1
+			end if
+		end if
+	case "supervised"
+		if data = "N" then
+			return 0
+		else
+			return parent.parent.parent.wf_supervise()
+		end if
+	case "cashtendered"
+		if double(data) < 0.0 or data = "" or isnull(data) then
+			messagebox("Cash Tendered Validation!", "Please enter valid amount for Cash Tendered.", stopsign!)
+			return 1
+		end if
+		parent.parent.parent.wf_setbalance(row, dwo.name, double(data))
+		if this.object.amount[row] <> this.object.cashcharged[row] then
+			this.object.catcode[row] = 2
+		else
+			this.object.catcode[row] = 1
+		end if
+	case "cashcharged"
+		if double(data) < 0.0 or data = "" or isnull(data) then
+			messagebox("Cash Charged Validation!", "Please enter valid amount for Cash Charged.", stopsign!)
+			return 1
+		elseif double(data) > this.object.cashtendered[row] then
+			messagebox("Cash Charged Validation!", "Please enter valid amount for Cash Charged~r~nCash Charged must not exceed Cash Tendered.", stopsign!)
+			return 1
+		elseif double(data) > this.object.amount[row] then
+			if this.object.moduleid[row] = 1 then
+				ll_res = messagebox("Cash Charged Validation!", "Cash Charged is more than invoice amount~r~nIs Cash Charged a valid amount?.", question!, yesno!, 2)
+				if ll_res > 1 then
+					return 1
+				end if
+			else
+				messagebox("Cash Charged Validation!", "Cash Charged is more than invoice amount~r~nPlease cahrge a valid amount here?", question!, yesno!, 2)
+				return 1
+			end if
+			return
+		end if
+		parent.parent.parent.wf_setbalance(row, dwo.name, double(data))
+		if this.object.amount[row] <> double(data) then
+			this.object.catcode[row] = 2
+		else
+			this.object.catcode[row] = 1
+		end if
+		return li_errcode
+	end choose
+	return li_errcode
+
+// dw_list.editchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::editchanged(row, dwo, data)
+	parent.parent.parent.ib_editflag = true
+	return ::message.returnvalue
+
+// dw_list.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue

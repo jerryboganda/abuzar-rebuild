@@ -1,0 +1,307 @@
+// window w_sale_margin_markup_auditing (changeitemprice)  ancestor: w_multi_entry
+
+// w_sale_margin_markup_auditing.ue_changeitemclass() returns 0
+	long ll_counter
+	long ll_endrow
+	long ll_rows
+	long ll_porow
+	long ll_days
+	long ll_projectiondays
+	long ll_stock
+	long ll_forecastqty
+	long ll_looseqty
+	long ll_packqty
+	integer li_allrows
+	double ld_avgqty
+	double ld_packqty
+	string ls_fullcode
+	string ls_name
+	s_arguements lstr_arg
+	open(w_arg_class)
+	lstr_arg = message.powerobjectparm
+	this.id_detail.setredraw(false)
+	for ll_counter = 1 to this.id_detail.rowcount()
+		this.id_detail.setitem(ll_counter, "item_iccode", lstr_arg.l_code1)
+	next
+	this.id_detail.setredraw(true)
+
+// w_sale_margin_markup_auditing.ue_set_column_value() returns 0
+	long ll_counter
+	long ll_endrow
+	long ll_rows
+	long ll_porow
+	long ll_days
+	long ll_projectiondays
+	long ll_stock
+	long ll_forecastqty
+	long ll_looseqty
+	long ll_packqty
+	integer li_allrows
+	double ld_avgqty
+	double ld_packqty
+	double ld_val
+	string ls_fullcode
+	string ls_name
+	string ls_type
+	string ls_colname
+	s_arguements lstr_arg
+	open(w_selection_manf_cat_class_packing_mdisc)
+	ls_type = message.stringparm
+	if ls_type = "" or isnull(ls_type) then
+		return
+	end if
+	if ls_type = "item_maxsalediscperc" then
+		this.id_detail.setredraw(false)
+		openwithparm(w_arg_decimal_val, "Max Sale Disc(%):")
+		ld_val = message.doubleparm
+		if ld_val <> -1.0 then
+			for ll_counter = 1 to this.id_detail.rowcount()
+				this.id_detail.setitem(ll_counter, ls_type, ld_val)
+			next
+			this.id_detail.setredraw(true)
+		else
+			return
+		end if
+		return
+	end if
+	openwithparm(w_arg_oneval_class_manf_pack_cat, ls_type)
+	lstr_arg = message.powerobjectparm
+	if lstr_arg.i_status = 1 then
+		this.id_detail.setredraw(false)
+		if ls_type = "M" then
+			ls_colname = "item_manfcode"
+		elseif ls_type = "C" then
+			ls_colname = "item_icatcode"
+		elseif ls_type = "L" then
+			ls_colname = "item_iccode"
+		else
+			ls_colname = "item_packcode"
+		end if
+		for ll_counter = 1 to this.id_detail.rowcount()
+			this.id_detail.setitem(ll_counter, ls_colname, lstr_arg.l_code1)
+		next
+	end if
+	this.id_detail.setredraw(true)
+
+// w_sale_margin_markup_auditing.wf_assigndatawindow(string as_masterdw, string as_detaildw, string as_listdw) returns 0
+	this.id_master.dataobject = as_masterdw
+	this.id_detail.dataobject = as_detaildw
+	this.id_list.dataobject = as_listdw
+	this.id_master.settransobject(this.it_transobject)
+	this.id_detail.settransobject(this.it_transobject)
+	this.id_list.settransobject(this.it_transobject)
+
+// w_sale_margin_markup_auditing.wf_updatesaleprice_purprice() returns long
+	long ll_rows
+	long ll_counter
+	double ld_value
+	ll_rows = this.id_detail.rowcount()
+	if ll_rows > 0 then
+		openwithparm(w_set_saleprice_purchase_formula, ld_value)
+		ld_value = message.doubleparm
+		if ld_value > 0.0 then
+			for ll_counter = 1 to ll_rows
+				this.id_detail.object.item_saleprice[ll_counter] = round(this.id_detail.object.item_purprice[ll_counter] + this.id_detail.object.item_purprice[ll_counter] * ld_value * 0.01, 2)
+			next
+		end if
+	end if
+	return 0
+
+// w_sale_margin_markup_auditing.wf_copy_source_target_column() returns long
+	long ll_rows
+	long ll_counter
+	s_item_filter_criteria s_price
+	ll_rows = this.id_detail.rowcount()
+	if ll_rows > 0 then
+		open(w_set_price_from_another_price)
+		s_price = message.powerobjectparm
+		if s_price.i_status = 1 then
+			for ll_counter = 1 to ll_rows
+				this.id_detail.setitem(ll_counter, s_price.s_name2, this.id_detail.getitemnumber(ll_counter, s_price.s_name1))
+			next
+		end if
+	end if
+	return 0
+
+// w_sale_margin_markup_auditing.wf_set_columnvalue() returns long
+	long ll_rows
+	long ll_counter
+	double ld_value
+	string ls_column
+	s_item_filter_criteria s_price
+	ll_rows = this.id_detail.rowcount()
+	if ll_rows > 0 then
+		open(w_set_columnvalue)
+		s_price = message.powerobjectparm
+		if s_price.i_status = 1 then
+			ls_column = s_price.s_name1
+			ld_value = round(s_price.d_value1, 2)
+			for ll_counter = 1 to ll_rows
+				this.id_detail.setitem(ll_counter, ls_column, ld_value)
+			next
+		end if
+	end if
+	return 0
+
+// w_sale_margin_markup_auditing.wf_set_purprice_from_saleprice_saledisc() returns long
+	long ll_rows
+	long ll_counter
+	double ld_value
+	double ld_saleprice
+	string ls_column
+	s_item_filter_criteria s_price
+	ll_rows = this.id_detail.rowcount()
+	if ll_rows > 0 then
+		open(w_set_purprice_from_saleprice_saledisc)
+		s_price = message.powerobjectparm
+		if s_price.i_status = 1 then
+			ls_column = s_price.s_name1
+			ld_value = round(s_price.d_value1, 2)
+			for ll_counter = 1 to ll_rows
+				ld_saleprice = this.id_detail.getitemdecimal(ll_counter, ls_column)
+				this.id_detail.setitem(ll_counter, "item_purprice", ld_saleprice - round(ld_saleprice * ld_value * 0.01, 2))
+			next
+		end if
+	end if
+	return 0
+
+// w_sale_margin_markup_auditing.wf_filter_items() returns 0
+	string ls_null
+	setnull(ls_null)
+	this.id_detail.scrolltorow(0)
+	this.id_detail.setfilter(ls_null)
+	this.id_detail.filter()
+	this.id_detail.groupcalc()
+
+// w_sale_margin_markup_auditing.wf_update_saleprice_with_saleprice() returns long
+	long ll_rows
+	long ll_counter
+	double ld_value
+	ll_rows = this.id_detail.rowcount()
+	if ll_rows > 0 then
+		openwithparm(w_set_saleprice_formula, ld_value)
+		ld_value = message.doubleparm
+		if ld_value > 0.0 then
+			for ll_counter = 1 to ll_rows
+				this.id_detail.object.item_saleprice[ll_counter] = round(this.id_detail.object.item_saleprice[ll_counter] + this.id_detail.object.item_saleprice[ll_counter] * ld_value * 0.01, 2)
+			next
+		end if
+	end if
+	return 0
+
+// w_sale_margin_markup_auditing.create() returns 0
+	call super::create
+
+// w_sale_margin_markup_auditing.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_sale_margin_markup_auditing.ue_detail() returns 0
+	call super::ue_detail
+	this.id_detail.setfilter("")
+	this.id_detail.filter()
+	this.id_detail.setfocus()
+	this.im_menu.m_file.m_save.enabled = true
+	this.id_detail.retrieve(this.istr_arg.d_sdate, this.istr_arg.d_edate, this.istr_arg.s_name1, this.istr_arg.db_code1, this.istr_arg.db_code2)
+
+// w_sale_margin_markup_auditing.ue_postopen() returns 0
+	call super::ue_postopen
+	this.istr_arg = message.powerobjectparm
+	this.title = "Change Item Price (Purchase Based)"
+	wf_assigndatawindow("d_changeitem_price_purinvbased", "d_sale_margin_markup_auditing_detail", "d_changeitem_price_purinvbased_list")
+
+// w_sale_margin_markup_auditing.ue_save() returns 0
+	long ll_salesmancode
+	long ll_rowcount
+	long ll_counter
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	dwitemstatus lds_rowstatus
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	ll_rowcount = this.id_detail.rowcount()
+	if ll_rowcount > 0 then
+		if not wf_validateserverdatetime(ldt_server_datetime, ls_date_errtext) then
+			messagebox("Date Violation", ls_date_errtext, stopsign!)
+			return
+		end if
+		ll_salesmancode = gl_usercode
+		do while ll_counter <= ll_rowcount
+			lds_rowstatus = this.id_detail.getitemstatus(ll_counter, 0, primary!)
+			if lds_rowstatus = datamodified! then
+				this.id_detail.setitem(ll_counter, "item_usercode", ll_salesmancode)
+				this.id_detail.setitem(ll_counter, "item_lastupdate", ldt_server_datetime)
+				this.id_detail.setitem(ll_counter, "ChangeReason", "Multiple Changes")
+				this.id_detail.setitem(ll_counter, "Module", this.title)
+			end if
+			ll_counter = ll_counter + 1
+		loop
+		SQL rollback USING this.it_transobject;
+		if f_generateitemlog(this.id_detail, "sale_margin_markup_auditing", this.it_transobject, ldt_server_datetime) >= 0 then
+			if this.id_detail.update() > 0 then
+				SQL commit USING this.it_transobject;
+				messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+				this.ib_commitok = true
+				this.id_master.resetupdate()
+				this.im_menu.m_file.m_new.enabled = true
+				this.editflag = false
+				if gd_recenttransdate < this.id_systemdate then
+					gd_recenttransdate = this.id_systemdate
+				end if
+				this.id_detail.reset()
+			else
+				SQL rollback USING this.it_transobject;
+				setpointer(arrow!)
+				return
+			end if
+		else
+			SQL rollback USING this.it_transobject;
+			messagebox("Database Problem", "Some Database problem occured generating Item Log!", stopsign!)
+			return
+		end if
+		return
+	end if
+	messagebox("Updataion Problem", "No rows to Update!", stopsign!)
+
+// w_sale_margin_markup_auditing.open() returns long
+	long ancestorreturnvalue
+	m_entry lm_menu
+	long ll_width
+	long ll_height
+	environment env
+	ancestorreturnvalue = super::open()
+	postevent("ue_postopen")
+	wf_setmenu(this.menuid)
+	lm_menu = this.menuid
+	lm_menu.dynamic mf_initsecurityapp(lm_menu)
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.tab_retrieve.width = ll_width * 0.99
+	this.tab_retrieve.height = ll_height * 0.83
+	this.tab_retrieve.tabpage_detail.dw_itemsdetail.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_itemsdetail.height = this.tab_retrieve.tabpage_detail.height - 300
+	this.tab_retrieve.tabpage_list.gb_fliter.width = ll_width * 0.97 - this.tab_retrieve.tabpage_list.gb_sort.width
+	this.tab_retrieve.tabpage_list.r_1.width = ll_width * 0.99
+	this.tab_retrieve.tabpage_list.r_1.height = ll_height * 0.765 - this.tab_retrieve.tabpage_list.gb_sort.height
+	this.tab_retrieve.tabpage_list.dw_list.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_list.dw_list.height = ll_height * 0.75 - this.tab_retrieve.tabpage_list.dw_list.y
+	this.tab_retrieve.tabpage_detail.dw_itemslist.height = ll_height * 0.6
+	this.tab_retrieve.tabpage_detail.dw_itemslist.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width * 0.67
+	this.tab_retrieve.tabpage_detail.dw_itemslist.x = 1150
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_sale_margin_markup_auditing.ue_newform() returns 0
+	call super::ue_newform
+	this.id_detail.retrieve(this.istr_arg.d_sdate, this.istr_arg.d_edate, this.istr_arg.s_name1, this.istr_arg.db_code1, this.istr_arg.db_code2)
+
+// w_sale_margin_markup_auditing.ue_newitem() returns 0
+
+// w_sale_margin_markup_auditing.ue_deleteitem() returns 0

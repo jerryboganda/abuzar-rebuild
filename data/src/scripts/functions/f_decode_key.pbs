@@ -1,0 +1,35 @@
+// function f_decode_key (functions)  ancestor: function_object
+
+// f_decode_key.f_decode_key() returns long
+	datetime ldt_current_serverdate
+	datetime ldt_licenseexpiredate
+	datetime ldt_lastaccessdate
+	long ll_additionaldays
+	long ll_daysleft
+	long ll_invoicecounter
+	long ll_invoicelimit
+	long ll_additionalinvoices
+	long ll_rows
+	long ll_duration
+	long ll_iteration
+	long ll_first
+	long ll_second
+	integer li_retcode
+	integer li_status
+	string ls_date
+	string ls_licensekey
+	string ls_key
+	date ld_coushindate
+	ll_additionaldays = gl_additionaldays
+	ll_additionalinvoices = gl_additionalinvoices
+	SQL Select textcatalog , Convert ( DateTime , cataloglength ) , textlength , status , t.rcount INTO :ls_licensekey, :ldt_lastaccessdate, :ll_invoicelimit, :li_status, :ll_rows From systextcatalog , ( Select Max ( textcatalogid ) as id , Count ( textcatalogid ) as rcount From Systextcatalog ) t where systextcatalog.textcatalogid =t.id USING sqlca;
+	if sqlca.sqlcode = -1 then
+		return -2
+	end if
+	if isnull(ll_rows) or ll_rows <= 0 then
+		return -2
+	end if
+	f_getlicinfo(sqlca, ls_licensekey, ldt_licenseexpiredate, ll_duration, ll_iteration, ll_first, ll_second, ls_key)
+	messagebox("Key Value", "key= " + ls_licensekey + "~r~nDate= " + string(ldt_licenseexpiredate, "mm/dd/yyyy") + "~r~nDuration= " + string(ll_duration) + "~r~nIteration= " + string(ll_iteration) + "~r~nFirst= " + string(ll_first) + "~r~nSecond= " + string(ll_second) + "~r~nLast Access Date= " + string(ldt_lastaccessdate))
+	li_retcode = 0
+	return li_retcode

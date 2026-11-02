@@ -1,0 +1,154 @@
+// window w_changeitem_min_reorder_optimum_qty (changeitemprice)  ancestor: window
+
+// w_changeitem_min_reorder_optimum_qty.ue_close() returns 0
+	closewithreturn(this, this.istr_arg)
+
+// w_changeitem_min_reorder_optimum_qty.wf_visibleabsoluteorcomputed(integer ar_type) returns 0
+	if ar_type = 1 then
+		this.st_absolutevalue.visible = true
+		this.em_absolutevalue.visible = true
+		this.st_computedvalue.visible = false
+		this.st_avgqty.visible = false
+		this.em_projecteddays.visible = false
+		this.st_indays.visible = false
+		this.st_absolutepackunits.visible = false
+		this.st_absolutepack.visible = false
+		this.em_absolutepack.visible = false
+		return
+	end if
+	if ar_type = 2 then
+		this.st_absolutevalue.visible = false
+		this.em_absolutevalue.visible = false
+		this.st_computedvalue.visible = true
+		this.st_avgqty.visible = true
+		this.em_projecteddays.visible = true
+		this.st_indays.visible = true
+		this.st_absolutepackunits.visible = false
+		this.st_absolutepack.visible = false
+		this.em_absolutepack.visible = false
+		return
+	end if
+	if ar_type = 3 then
+		this.st_absolutevalue.visible = false
+		this.em_absolutevalue.visible = false
+		this.st_computedvalue.visible = false
+		this.st_avgqty.visible = false
+		this.em_projecteddays.visible = false
+		this.st_indays.visible = false
+		this.st_absolutepackunits.visible = true
+		this.st_absolutepack.visible = true
+		this.em_absolutepack.visible = true
+	end if
+
+// w_changeitem_min_reorder_optimum_qty.create() returns 0
+	this.em_absolutepack = create em_absolutepack
+	this.st_absolutepack = create st_absolutepack
+	this.st_absolutepackunits = create st_absolutepackunits
+	this.rb_absolutepack = create rb_absolutepack
+	this.st_indays = create st_indays
+	this.em_absolutevalue = create em_absolutevalue
+	this.em_projecteddays = create em_projecteddays
+	this.st_avgqty = create st_avgqty
+	this.st_computedvalue = create st_computedvalue
+	this.st_absolutevalue = create st_absolutevalue
+	this.rb_computed = create rb_computed
+	this.rb_absolute = create rb_absolute
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.gb_1 = create gb_1
+	this.control = {this.em_absolutepack, this.st_absolutepack, this.st_absolutepackunits, this.rb_absolutepack, this.st_indays, this.em_absolutevalue, this.em_projecteddays, this.st_avgqty, this.st_computedvalue, this.st_absolutevalue, this.rb_computed, this.rb_absolute, this.cb_cancel, this.cb_ok, this.gb_1}
+
+// w_changeitem_min_reorder_optimum_qty.destroy() returns 0
+	destroy this.em_absolutepack
+	destroy this.st_absolutepack
+	destroy this.st_absolutepackunits
+	destroy this.rb_absolutepack
+	destroy this.st_indays
+	destroy this.em_absolutevalue
+	destroy this.em_projecteddays
+	destroy this.st_avgqty
+	destroy this.st_computedvalue
+	destroy this.st_absolutevalue
+	destroy this.rb_computed
+	destroy this.rb_absolute
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.gb_1
+
+// w_changeitem_min_reorder_optimum_qty.open() returns long
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	wf_visibleabsoluteorcomputed(1)
+	return ::message.returnvalue
+
+// rb_absolutepack.clicked() returns long
+	if this.checked then
+		parent.wf_visibleabsoluteorcomputed(3)
+	end if
+	return ::message.returnvalue
+
+// em_absolutevalue.getfocus() returns long
+	selecttext(1, len(this.text))
+	return ::message.returnvalue
+
+// em_projecteddays.getfocus() returns long
+	selecttext(1, len(this.text))
+	return ::message.returnvalue
+
+// rb_computed.clicked() returns long
+	if this.checked then
+		parent.wf_visibleabsoluteorcomputed(2)
+	end if
+	return ::message.returnvalue
+
+// rb_absolute.clicked() returns long
+	if this.checked then
+		parent.wf_visibleabsoluteorcomputed(1)
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	string ls_value
+	if parent.rb_absolute.checked then
+		parent.istr_arg.l_code1 = 1
+		parent.istr_arg.l_code2 = long(parent.em_absolutevalue.text)
+		if parent.istr_arg.l_code2 < 0 or isnull(parent.istr_arg.l_code2) then
+			messagebox("Qty Validation", "Please enter valid value for qty")
+			return ::message.returnvalue
+		end if
+	elseif parent.rb_computed.checked then
+		parent.istr_arg.l_code1 = 2
+		parent.istr_arg.l_code2 = long(parent.em_projecteddays.text)
+		if parent.istr_arg.l_code2 <= 0 or isnull(parent.istr_arg.l_code2) then
+			messagebox("Qty Validation", "Please enter valid value for qty")
+			return ::message.returnvalue
+		end if
+	elseif parent.rb_absolutepack.checked then
+		parent.istr_arg.l_code1 = 3
+		parent.istr_arg.l_code2 = long(parent.em_absolutepack.text)
+		if parent.istr_arg.l_code2 <= 0 or isnull(parent.istr_arg.l_code2) then
+			messagebox("Qty Validation", "Please enter valid value for qty")
+			return ::message.returnvalue
+		end if
+		return
+	end if
+	parent.istr_arg.i_status = 1
+	parent.post event ue_close()
+	return ::message.returnvalue

@@ -1,0 +1,57 @@
+// userobject nc_urlencode (components)  ancestor: nonvisualobject
+
+// nc_urlencode.of_nbr2hex(unsignedlong aul_number, integer ai_digit) returns string
+	unsignedlong lul_temp0
+	unsignedlong lul_temp1
+	char lc_ret
+	if ai_digit > 0 then
+		lul_temp0 = abs(aul_number / 16 ^ (ai_digit - 1))
+		lul_temp1 = lul_temp0 * 16 ^ (ai_digit - 1)
+		if lul_temp0 > 9 then
+			lc_ret = char(lul_temp0 + 55)
+		else
+			lc_ret = char(lul_temp0 + 48)
+		end if
+		return lc_ret + of_nbr2hex(aul_number - lul_temp1, ai_digit - 1)
+	end if
+	return ""
+
+// nc_urlencode.of_hex2nbr(string as_hex) returns long
+	integer li_work
+	string ls_code
+	string ls_hex
+	long ll_rc
+	long ll_lp
+	ls_code = reverse(upper(as_hex))
+	ll_rc = len(ls_code)
+	for ll_lp = 1 to ll_rc
+		li_work = li_work + pos(ls_hex, mid(ls_code, ll_lp, 1), 1) * 16 ^ (ll_lp - 1)
+	next
+	return li_work
+
+// nc_urlencode.of_urlencode(string as_string) returns string
+	string ls_result
+	string ls_character
+	integer li_ascii
+	integer li_curchr
+	li_curchr = 1
+	do while li_curchr - 1 <> len(as_string)
+		ls_character = mid(as_string, li_curchr, 1)
+		li_ascii = asca(ls_character)
+		choose case li_ascii
+		case 48 to 57, 65 to 90, 97 to 122
+			ls_result = ls_character + ls_result
+		case else
+			ls_result = ls_result + "%" + of_nbr2hex(asca(ls_character), 2)
+		end choose
+		li_curchr = li_curchr + 1
+	loop
+	return ls_result
+
+// nc_urlencode.create() returns 0
+	call super::create
+	triggerevent("constructor")
+
+// nc_urlencode.destroy() returns 0
+	triggerevent("destructor")
+	call super::destroy

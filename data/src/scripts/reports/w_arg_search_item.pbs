@@ -1,0 +1,27 @@
+// window w_arg_search_item (reports)  ancestor: w_popup_forselection_walias
+
+// w_arg_search_item.create() returns 0
+	integer icurrent
+	call super::create
+	this.dw_1 = create dw_1
+	this.dw_2 = create dw_2
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_1
+	this.control[icurrent + 2] = this.dw_2
+
+// w_arg_search_item.destroy() returns 0
+	call super::destroy
+	destroy this.dw_1
+	destroy this.dw_2
+
+// w_arg_search_item.open() returns long
+	long ancestorreturnvalue
+	date ld_currdate
+	string ls_text
+	ancestorreturnvalue = super::open()
+	gd_itemsinfo.sharedata(this.id_selectionlist)
+	ld_currdate = today()
+	return ::message.returnvalue
+
+// w_arg_search_item.ue_close() returns 0
+	closewithreturn(this, this.istr_arg)

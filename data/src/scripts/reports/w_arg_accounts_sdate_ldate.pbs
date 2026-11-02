@@ -1,0 +1,60 @@
+// window w_arg_accounts_sdate_ldate (reports)  ancestor: w_listarguments
+
+// w_arg_accounts_sdate_ldate.create() returns 0
+	integer icurrent
+	call super::create
+	this.st_4 = create st_4
+	this.st_8 = create st_8
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_4
+	this.control[icurrent + 2] = this.st_8
+
+// w_arg_accounts_sdate_ldate.destroy() returns 0
+	call super::destroy
+	destroy this.st_4
+	destroy this.st_8
+
+// w_arg_accounts_sdate_ldate.open() returns long
+	long ancestorreturnvalue
+	string ls_stringparam
+	string ls_filter
+	long ll_counter
+	long ll_rowcount
+	integer rtncode
+	listviewitem l_lvi
+	ancestorreturnvalue = super::open()
+	ls_stringparam = message.stringparm
+	this.dw_control.settransobject(sqlca)
+	rtncode = this.dw_control.retrieve()
+	if rtncode = -1 then
+		messagebox("Error", "No Account(s) To Select")
+	else
+		ls_filter = "restricted='N' AND "
+		if f_rightexists(533) then
+			ls_filter = ""
+		end if
+		if ls_stringparam = "C" then
+			ls_filter = ls_filter + "subcode=3"
+		elseif ls_stringparam = "S" then
+			ls_filter = ls_filter + "subcode=7"
+		elseif ls_stringparam = "O" then
+			ls_filter = ls_filter + "subcode<>3 AND subcode<>7"
+		elseif ls_stringparam = "CSH" then
+			ls_filter = ls_filter + "subcode=2"
+		elseif ls_stringparam = "BNK" then
+			ls_filter = ls_filter + "subcode=4"
+		else
+			ls_filter = ls_filter + ""
+		end if
+		this.dw_control.setfilter(ls_filter)
+		this.dw_control.filter()
+		ll_rowcount = this.dw_control.rowcount()
+		ll_counter = 1
+		for ll_counter = 1 to ll_rowcount
+			this.lb_categories.additem(this.dw_control.getitemstring(ll_counter, "name"))
+		next
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue

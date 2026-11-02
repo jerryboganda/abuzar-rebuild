@@ -1,0 +1,61 @@
+// function f_getlicinfo (functions)  ancestor: function_object
+
+// f_getlicinfo.f_getlicinfo(transaction at_transobject, string as_textcatalog, datetime adt_startdate, long al_duration, long al_iteration, long al_first, long al_second, string as_key) returns long
+	long ll_first
+	long ll_second
+	long ll_startdate
+	integer li_hold1
+	integer li_hold2
+	integer li_hold3
+	integer li_hold4
+	integer li_hold5
+	string ls_duration
+	string ls_iteration
+	string ls_key
+	if len(as_textcatalog) <> 20 then
+		return -1
+	end if
+	ll_first = f_findrepch(char(left(as_textcatalog, 1)))
+	ll_second = f_findrepch(char(mid(as_textcatalog, 10, 1)))
+	if ll_first < 0 or ll_first > 9 then
+		return -1
+	end if
+	if ll_second < 0 or ll_second > 9 then
+		return -1
+	end if
+	ll_second = ll_second + 10
+	al_first = ll_first
+	al_second = ll_second
+	ls_key = mid(as_textcatalog, 2, ll_first - 2)
+	ls_key = ls_key + mid(as_textcatalog, ll_first + 4, 10 - (ll_first + 4))
+	ls_key = ls_key + mid(as_textcatalog, 11, ll_second - 11)
+	ls_key = ls_key + mid(as_textcatalog, ll_second + 5, 21 - (ll_second + 5))
+	as_key = ls_key
+	ls_duration = mid(as_textcatalog, ll_first, 2)
+	ls_iteration = mid(as_textcatalog, ll_first + 2, 2)
+	li_hold1 = f_findrepch(char(mid(as_textcatalog, ll_second, 1)))
+	li_hold2 = f_findrepch(char(mid(as_textcatalog, ll_second + 1, 1)))
+	li_hold3 = f_findrepch(char(mid(as_textcatalog, ll_second + 2, 1)))
+	li_hold4 = f_findrepch(char(mid(as_textcatalog, ll_second + 3, 1)))
+	li_hold5 = f_findrepch(char(mid(as_textcatalog, ll_second + 4, 1)))
+	if li_hold1 < 0 or li_hold2 < 0 or li_hold3 < 0 or li_hold4 < 0 or li_hold5 < 0 then
+		return -1
+	end if
+	ll_startdate = long(string(li_hold1) + string(li_hold2) + string(li_hold3) + string(li_hold4) + string(li_hold5))
+	li_hold1 = f_findrepch(char(left(ls_duration, 1)))
+	li_hold2 = f_findrepch(char(right(ls_duration, 1)))
+	if li_hold1 < 0 or li_hold2 < 0 then
+		return -1
+	end if
+	al_duration = integer(string(li_hold1) + string(li_hold2))
+	li_hold1 = f_findrepch(char(left(ls_iteration, 1)))
+	li_hold2 = f_findrepch(char(right(ls_iteration, 1)))
+	if li_hold1 < 0 or li_hold2 < 0 then
+		return -1
+	end if
+	al_iteration = integer(string(li_hold1) + string(li_hold2))
+	SQL Select Convert ( datetime , DateAdd ( month , :al_duration , Convert ( datetime , :ll_startdate ) ) ) INTO :adt_startdate From Sequence USING at_transobject;
+	if at_transobject.sqlcode <> 0 then
+		return -1
+	end if
+	return 0

@@ -1,0 +1,211 @@
+// window w_amountoninvoice (accountsrespwin)  ancestor: window
+
+// w_amountoninvoice.ue_close(integer ai_status) returns 0
+	if ai_status = -1 then
+		this.istr_amountoninvoice.d_amt = this.istr_oldamountoninvoice.d_amt
+		this.istr_amountoninvoice.c_paymentmode = this.istr_oldamountoninvoice.c_paymentmode
+		this.istr_amountoninvoice.i_acccode = this.istr_oldamountoninvoice.i_acccode
+		this.istr_amountoninvoice.s_reference = this.istr_oldamountoninvoice.s_reference
+		this.istr_amountoninvoice.i_status = this.istr_oldamountoninvoice.i_status
+	end if
+	closewithreturn(this, this.istr_amountoninvoice)
+
+// w_amountoninvoice.wf_setbalance(decimal ad_amt) returns 0
+	this.id_dw.setitem(1, "balance", this.id_dw.getitemdecimal(1, "netamt") - ad_amt)
+
+// w_amountoninvoice.wf_paymentmodesetting(char ac_pm) returns 0
+	if ac_pm = "C" then
+		this.idc_account.retrieve(wf_getglobalcode("GT_CashSub"))
+		return
+	end if
+	this.idc_account.retrieve(wf_getglobalcode("GT_BankSub"))
+
+// w_amountoninvoice.wf_getglobalcode(string as_str) returns integer
+	integer ll_code
+	SQL SELECT Code INTO :ll_code FROM Global WHERE Name =:as_str USING sqlca;
+	if sqlca.sqlcode <> 0 then
+		ll_code = 0
+	end if
+	return ll_code
+
+// w_amountoninvoice.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns long
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+	return 0
+
+// w_amountoninvoice.create() returns 0
+	this.dw_amountoninvoice = create dw_amountoninvoice
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.control = {this.dw_amountoninvoice, this.cb_cancel, this.cb_ok}
+
+// w_amountoninvoice.destroy() returns 0
+	destroy this.dw_amountoninvoice
+	destroy this.cb_cancel
+	destroy this.cb_ok
+
+// w_amountoninvoice.open() returns long
+	string ls_invcode
+	long ll_rtcode
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	this.istr_amountoninvoice = message.powerobjectparm
+	this.istr_oldamountoninvoice = this.istr_amountoninvoice
+	choose case this.istr_amountoninvoice.s_module
+	case "salesorder"
+		this.title = "Amount Received on Sale Order"
+	case "sales"
+		this.title = "Amount Received on Sales"
+	case "salereturn"
+		this.title = "Amount Paid on Sales Return"
+	case "purchase"
+		this.title = "Amount Paid on Purchase"
+	case "purchasereturn"
+		this.title = "Amount Received on Purchase Return"
+	end choose
+	this.id_dw = this.dw_amountoninvoice
+	this.id_dw.settransobject(sqlca)
+	ll_rtcode = this.id_dw.getchild("acccode", this.idc_account)
+	if ll_rtcode = -1 then
+		messagebox("Error", "Can not get a DataWindowChild")
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	this.idc_account.settransobject(sqlca)
+	if this.istr_amountoninvoice.c_paymentmode = "C" then
+		this.idc_account.retrieve(wf_getglobalcode("GT_CashSub"))
+	else
+		this.idc_account.retrieve(wf_getglobalcode("GT_BankSub"))
+	end if
+	this.id_dw.insertrow(0)
+	this.id_dw.scrolltorow(0)
+	this.id_dw.setitem(1, "invcode", this.istr_amountoninvoice.l_invcode)
+	this.id_dw.setitem(1, "netamt", this.istr_amountoninvoice.d_netamt)
+	this.id_dw.setitem(1, "amt", this.istr_amountoninvoice.d_amt)
+	this.id_dw.setitem(1, "balance", this.istr_amountoninvoice.d_balance)
+	this.id_dw.setitem(1, "paymentmode", this.istr_amountoninvoice.c_paymentmode)
+	this.id_dw.setitem(1, "acccode", this.istr_amountoninvoice.i_acccode)
+	this.id_dw.setitem(1, "ref", this.istr_amountoninvoice.s_reference)
+	wf_paymentmodesetting(this.istr_amountoninvoice.c_paymentmode)
+	this.id_dw.selecttext(1, len(this.id_dw.gettext()))
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	if this.istr_amountoninvoice.l_mode = 1 then
+		wf_protectdw(this.id_dw, 1)
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// dw_amountoninvoice.itemchanged(long row, dwobject dwo, string data) returns long
+	long ll_null
+	integer li_errcode
+	setnull(ll_null)
+	choose case dwo.name
+	case "amt"
+		if long(data) < 0 then
+			li_errcode = 1
+		elseif parent.istr_amountoninvoice.s_module = "sales" or parent.istr_amountoninvoice.s_module = "salesorder" then
+			parent.wf_setbalance(long(data))
+		elseif long(data) > parent.istr_amountoninvoice.d_netamt then
+			li_errcode = 1
+		else
+			parent.wf_setbalance(long(data))
+		end if
+	case "paymentmode"
+		if data = "C" then
+			parent.idc_account.retrieve(parent.wf_getglobalcode("GT_CashSub"))
+		else
+			parent.idc_account.retrieve(parent.wf_getglobalcode("GT_BankSub"))
+		end if
+		parent.id_dw.setitem(1, "acccode", ll_null)
+	end choose
+	return li_errcode
+
+// dw_amountoninvoice.itemerror(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "amt"
+		messagebox("Amount Validation!", "Please Enter Valid Amount")
+	case "paymentmode"
+		messagebox("Payment Mode Validation!", "Please Enter Valid Payment Mode")
+	end choose
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.istr_amountoninvoice.i_status = -1
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	if parent.istr_amountoninvoice.l_mode = 1 then
+		parent.post event ue_close(-1)
+		return ::message.returnvalue
+	end if
+	if parent.id_dw.accepttext() = 1 then
+		if parent.id_dw.getitemdecimal(1, "amt") < 0 then
+			messagebox("Amount Validation!", "Please Enter Valid Amount")
+			parent.id_dw.setfocus()
+			parent.id_dw.setcolumn("amt")
+			return ::message.returnvalue
+		end if
+		if parent.id_dw.getitemdecimal(1, "balance") < 0 then
+			if not (parent.istr_amountoninvoice.s_module = "sales" or parent.istr_amountoninvoice.s_module = "salesorder") then
+				messagebox("Amount Validation!", "Please Enter Valid Amount")
+				parent.id_dw.setfocus()
+				parent.id_dw.setcolumn("amt")
+				return ::message.returnvalue
+			end if
+			return
+		end if
+		if isnull(parent.id_dw.getitemstring(1, "paymentmode")) then
+			messagebox("Payment Mode Validation!", "Please select valid Payment Mode")
+			parent.id_dw.setfocus()
+			parent.id_dw.setcolumn("paymentmode")
+			return ::message.returnvalue
+		end if
+		if isnull(parent.id_dw.getitemnumber(1, "acccode")) or parent.id_dw.getitemnumber(1, "acccode") = 0.0 then
+			messagebox("Account Validation!", "Please select valid account")
+			parent.id_dw.setfocus()
+			parent.id_dw.setcolumn("acccode")
+			return ::message.returnvalue
+		end if
+		parent.istr_amountoninvoice.d_amt = parent.id_dw.getitemdecimal(1, "amt")
+		parent.istr_amountoninvoice.c_paymentmode = parent.id_dw.getitemstring(1, "paymentmode")
+		parent.istr_amountoninvoice.i_acccode = parent.id_dw.getitemnumber(1, "acccode")
+		parent.istr_amountoninvoice.s_reference = parent.id_dw.getitemstring(1, "ref")
+		parent.istr_amountoninvoice.i_status = 1
+		parent.post event ue_close(1)
+	end if
+	return ::message.returnvalue

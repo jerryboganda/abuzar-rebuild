@@ -1,0 +1,226 @@
+// window w_serviceticketscanner (servicemodules)  ancestor: window
+
+// w_serviceticketscanner.wf_validate_serviceticket(long al_code, string as_errortext) returns long
+	long al_serviceinvcode
+	long al_servicecode
+	long ll_retcode
+	long ll_null
+	integer ai_servicecatcode
+	integer ai_usercode
+	string ls_errortext
+	string ls_errortext2
+	datetime adt_date
+	datetime adt_ticketusedon
+	datetime adt_expireson
+	double ad_price
+	char lc_ticketused
+	setnull(ll_null)
+	ls_errortext = "                                                                                                                                                                                                                                            0"
+	SQL rollback USING this.it_transobject;
+	ll_retcode = this.it_transobject.validateserviceticket(al_code, adt_date, al_serviceinvcode, al_servicecode, ai_servicecatcode, lc_ticketused, adt_ticketusedon, ai_usercode, adt_expireson, ad_price, ls_errortext)
+	as_errortext = this.it_transobject.sqlerrtext
+	if isnull(lc_ticketused) then
+		lc_ticketused = "N"
+	end if
+	this.dw_control.object.serviceticketno[1] = al_code
+	this.dw_control.object.date[1] = adt_date
+	this.dw_control.object.serviceinvcode[1] = al_serviceinvcode
+	this.dw_control.object.servicecode[1] = al_servicecode
+	this.dw_control.object.servicecatcode[1] = ai_servicecatcode
+	this.dw_control.object.ticketused[1] = lc_ticketused
+	this.dw_control.object.ticketusedon[1] = adt_ticketusedon
+	this.dw_control.object.usercode[1] = ai_usercode
+	this.dw_control.object.expireson[1] = adt_expireson
+	this.dw_control.object.price[1] = ad_price
+	this.dw_control.object.visible[1] = "Y"
+	if this.it_transobject.sqlcode = 0 then
+		if ll_retcode = 0 then
+			SQL commit USING this.it_transobject;
+		else
+			if ll_retcode <> 0 then
+			end if
+			SQL rollback USING this.it_transobject;
+		end if
+	else
+		SQL rollback USING this.it_transobject;
+		ll_retcode = -1
+	end if
+	return ll_retcode
+
+// w_serviceticketscanner.wf_initialize_ticketing() returns long
+	long ll_startcode
+	long ll_retcode
+	string ls_errortext
+	s_arguements ls_arg
+	ls_errortext = "                                                                                                                                                                                                                                            0"
+	if this.ib_allowinitialize = false then
+		return 0
+	end if
+	open(w_arg_code)
+	ls_arg = message.powerobjectparm
+	ll_startcode = ls_arg.l_code1
+	if ll_startcode < 0 then
+		messagebox("Starting Ticket Validation", "Starting Ticket No. is not valid")
+		return 0
+	end if
+	if isnull(ll_startcode) then
+		ll_startcode = 0
+	end if
+	if ls_arg.i_status = 1 then
+		SQL rollback USING this.it_transobject;
+		ll_retcode = this.it_transobject.initializeserviceticketing(ll_startcode)
+		ls_errortext = this.it_transobject.sqlerrtext
+		if this.it_transobject.sqlcode = 0 then
+			if ll_retcode = 0 then
+				SQL commit USING this.it_transobject;
+				messagebox("Service Ticket Initialization", "Service Ticket Initialization Completed Successfully.")
+				ll_retcode = 0
+			else
+				messagebox("Service Ticket Initialization", "Service Ticket Initialization Was Un-Success.~r~nReasons are:-~r~n" + ls_errortext)
+				SQL rollback USING this.it_transobject;
+			end if
+		else
+			SQL rollback USING this.it_transobject;
+			messagebox("Service Ticket Initialization", "Problem in Service Ticket Initialization.~r~nService Ticket Initialization Was Un-Success.~r~nReasons are:-~r~n" + ls_errortext)
+			ll_retcode = -1
+		end if
+	else
+		ll_retcode = 0
+	end if
+	return ll_retcode
+
+// w_serviceticketscanner.create() returns 0
+	this.cb_clear = create cb_clear
+	this.dw_control = create dw_control
+	this.control = {this.cb_clear, this.dw_control}
+
+// w_serviceticketscanner.destroy() returns 0
+	destroy this.cb_clear
+	destroy this.dw_control
+
+// w_serviceticketscanner.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	long ll_found
+	this.it_transobject = create u_transaction
+	SQL start USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		messagebox("Connection Problem", "Problem in connecting to the database, Please try Later", stopsign!)
+		close(this)
+	end if
+	this.dw_control.settransobject(this.it_transobject)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	this.dw_control.setfocus()
+	this.dw_control.setcolumn(1)
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 5018", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.ib_allowinitialize = true
+	end if
+	return ::message.returnvalue
+
+// w_serviceticketscanner.key(keycode key, unsignedlong keyflags) returns long
+	if key = keyf10! then
+		wf_initialize_ticketing()
+	end if
+	return 0
+
+// cb_clear.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_clear.clicked() returns long
+	parent.dw_control.reset()
+	parent.dw_control.insertrow(0)
+	parent.dw_control.setrow(0)
+	parent.dw_control.setcolumn(1)
+	parent.dw_control.setfocus()
+	return ::message.returnvalue
+
+// dw_control.ue_enterkey() returns long
+	long ancestorreturnvalue
+	long ll_null
+	ancestorreturnvalue = super::ue_enterkey()
+	setnull(ll_null)
+	send(handle(this), 256, 9, long(90))
+	this.object.serviceticketcode[1] = ll_null
+	return 1
+
+// dw_control.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	integer li_errcode
+	long ll_code
+	long ll_null
+	string ls_null
+	string ls_error
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	setnull(ll_null)
+	setnull(ls_null)
+	choose case dwo.name
+	case "serviceticketcode"
+		if long(data) > 0 then
+			if parent.wf_validate_serviceticket(long(data), ls_error) >= 0 then
+				li_errcode = 0
+			else
+				messagebox("Service Ticket Validation", ls_error, information!)
+				li_errcode = 1
+			end if
+		else
+			li_errcode = 1
+		end if
+		return li_errcode
+	end choose
+	return li_errcode
+
+// dw_control.itemerror(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	integer li_errcode
+	long ll_code
+	long ll_null
+	string ls_null
+	string ls_error
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	setnull(ll_null)
+	setnull(ls_null)
+	choose case dwo.name
+	case "serviceticketcode"
+		if long(data) < 0 or isnull(data) or data = "" then
+			messagebox("Service Ticket Validation", "Please enter a valid Service Ticket Code")
+		end if
+		return 1
+	end choose
+	return 1
+
+// dw_control.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_control.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keyf11! then
+		parent.wf_initialize_ticketing()
+	end if
+	return 0

@@ -1,0 +1,37 @@
+// window w_arg_saletemplate (reports)  ancestor: w_listarguments
+
+// w_arg_saletemplate.create() returns 0
+	integer icurrent
+	call super::create
+	this.st_selectable = create st_selectable
+	this.st_selected = create st_selected
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_selectable
+	this.control[icurrent + 2] = this.st_selected
+
+// w_arg_saletemplate.destroy() returns 0
+	call super::destroy
+	destroy this.st_selectable
+	destroy this.st_selected
+
+// w_arg_saletemplate.open() returns long
+	long ancestorreturnvalue
+	long ll_counter
+	long ll_rowcount
+	integer rtncode
+	ancestorreturnvalue = super::open()
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	rtncode = this.dw_control.getchild("saletemplatecode", this.idc_categories)
+	if rtncode = -1 then
+		messagebox("Error", "Not a DataWindowChild")
+	end if
+	ll_rowcount = this.idc_categories.rowcount()
+	for ll_counter = 1 to ll_rowcount
+		this.lb_categories.additem(this.idc_categories.getitemstring(ll_counter, "name"))
+	next
+	this.dw_control.setitem(1, "saletemplatecode", this.idc_categories.getitemnumber(1, "saletemplatecode"))
+	this.dw_price.insertrow(0)
+	this.dw_price.scrolltorow(0)
+	return ::message.returnvalue

@@ -1,0 +1,68 @@
+// window w_set_lasttransdate (templates)  ancestor: window
+
+// w_set_lasttransdate.open() returns long
+	string ls_text
+	date ld_currdate
+	time lt_currtime
+	datetime ld_startdate
+	integer li_counter
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	this.it_transobject = create u_transaction
+	SQL start USING this.it_transobject;
+	ld_currdate = today()
+	ls_text = string(ld_currdate, "dd/mm/yyyy")
+	ls_text = trim(ls_text) + " 00:00:00"
+	this.em_date.text = ls_text
+	if f_islicenseexpire() = -1 then
+		close(this)
+	end if
+	return ::message.returnvalue
+
+// w_set_lasttransdate.create() returns 0
+	this.em_date = create em_date
+	this.cb_ok = create cb_ok
+	this.cb_cancel = create cb_cancel
+	this.control = {this.em_date, this.cb_ok, this.cb_cancel}
+
+// w_set_lasttransdate.destroy() returns 0
+	destroy this.em_date
+	destroy this.cb_ok
+	destroy this.cb_cancel
+
+// w_set_lasttransdate.close() returns long
+	SQL stop USING this.it_transobject;
+	destroy this.it_transobject
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	datetime ldt_userdate
+	string ls_date
+	parent.em_date.getdata(ldt_userdate)
+	SQL update serverdate SET lasttransdate =:ldt_userdate USING parent.it_transobject;
+	if parent.it_transobject.sqlcode = 0 then
+		SQL commit USING parent.it_transobject;
+		messagebox("Date Setting", "The last Transaction Date has been changed")
+	else
+		SQL rollback USING parent.it_transobject;
+		messagebox("DataBase Error", parent.it_transobject.sqlerrtext)
+	end if
+	close(parent)
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	close(parent)
+	return ::message.returnvalue

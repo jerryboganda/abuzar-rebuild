@@ -1,0 +1,106 @@
+// window w_salepromotion_form (custcomponents)  ancestor: w_single_entry
+
+// w_salepromotion_form.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM SalePromotion WHERE SalePromotion.name =:as_name USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_salepromotion_form.create() returns 0
+	call super::create
+
+// w_salepromotion_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_salepromotion_form.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.is_tablename = "SalePromotion"
+	return ::message.returnvalue
+
+// w_salepromotion_form.ue_save() returns 0
+	long ll_primarykey
+	long ll_row
+	long ll_weekday
+	long ll_itemdiscperc
+	long ll_custgroupcode
+	long ll_dayvalid
+	char lc_active
+	datetime ldt_startdate
+	datetime ldt_enddate
+	datetime ldt_today
+	date ld_date
+	string ls_date
+	setpointer(hourglass!)
+	ldt_today = datetime(today(), now())
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	ll_row = this.id_detail.getrow()
+	ll_primarykey = this.id_detail.object.code[this.id_detail.getrow()]
+	if isnull(ll_primarykey) then
+		ll_primarykey = 0
+		f_newtableid(this.is_tablename, ll_primarykey)
+		this.id_detail.setitem(ll_row, "code", ll_primarykey)
+	end if
+	ls_date = string(ldt_today, "yyyy-mm-dd")
+	ld_date = date(ls_date)
+	ldt_startdate = this.id_detail.object.startdate[ll_row]
+	ldt_enddate = this.id_detail.object.enddate[ll_row]
+	lc_active = this.id_detail.object.active[ll_row]
+	ll_weekday = this.id_detail.object.weekdaycode[ll_row]
+	ll_itemdiscperc = this.id_detail.object.defaultitemdiscperc[ll_row]
+	ll_custgroupcode = this.id_detail.object.customergroupcode[ll_row]
+	if ll_weekday = 0 or daynumber(ld_date) = ll_weekday then
+		ll_dayvalid = 1
+	end if
+	if this.id_detail.update() > 0 then
+		if lc_active = "Y" and ldt_today >= ldt_startdate and ldt_today <= ldt_enddate and ll_custgroupcode > 0 and ll_dayvalid = 1 then
+			SQL update DBO.Customer SET DefaultItemDiscPerc =:ll_itemdiscperc FROM CustomerGroupDetail D , Customer C WHERE D.CustCode =C.CustCode AND D.CustomerGroupCode =:ll_custgroupcode USING sqlca;
+			if sqlca.sqlcode = 0 then
+			end if
+		end if
+		SQL commit USING sqlca;
+		messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+		this.ib_commitok = true
+		this.im_menu.m_file.m_new.enabled = true
+		this.editflag = false
+	else
+		SQL rollback USING sqlca;
+		setpointer(arrow!)
+		messagebox("Save Changes", "Changes Rollback in database, ~n~rSome database problem occurs", exclamation!, ok!, 1)
+		return
+	end if
+	setpointer(arrow!)
+
+// w_salepromotion_form.ue_newform() returns 0
+	setredraw(false)
+	this.i_editmode = 1
+	this.i_retrievemode = 2
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_new.enabled = false
+	this.im_menu.m_file.m_delete.enabled = false
+	this.im_menu.m_file.m_delete.enabled = false
+	this.im_menu.m_file.m_first.enabled = false
+	this.im_menu.m_file.m_next.enabled = false
+	this.im_menu.m_file.m_previous.enabled = false
+	this.im_menu.m_file.m_last.enabled = false
+	this.im_menu.m_file.m_print.enabled = false
+	this.im_menu.m_file.m_retrieve.enabled = true
+	this.im_menu.m_file.m_retrieve.text = "Lis&t"
+	this.tab_retrieve.tabpage_detail.enabled = true
+	this.id_detail.object.enddate.initial = string(relativedate(today(), 365))
+	if this.id_detail.rowcount() > 0 then
+		this.id_detail.reset()
+	end if
+	this.id_detail.insertrow(0)
+	this.id_detail.setcolumn(1)
+	this.id_detail.setfocus()
+	setredraw(true)

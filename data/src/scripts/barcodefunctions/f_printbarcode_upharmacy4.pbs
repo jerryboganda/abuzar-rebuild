@@ -1,0 +1,99 @@
+// function f_printbarcode_upharmacy4 (barcodefunctions)  ancestor: function_object
+
+// f_printbarcode_upharmacy4.f_printbarcode_upharmacy4(datawindow id_master, datawindow id_detail, boolean ib_printprice) returns long
+	long ll_totalrows
+	long ll_counter
+	long ll_innercounter
+	long ll_qty
+	long ll_currrow
+	long ll_tot_label_rows
+	integer li_startcell
+	integer li_stopcell
+	integer li_temp
+	integer li_file
+	string ls_clientname
+	string ls_clientname_25_char
+	string ls_itemname
+	string ls_aliasname
+	string ls_price
+	string ls_filecontent
+	string ls_seperator
+	string ls_date
+	string ls_format
+	string ls_xpos
+	string ls_infocode
+	string ls_printer
+	string ls_manufshortname
+	string ls_design
+	string ls_purprice
+	string ls_supp_alias
+	string ls_packing
+	string ls_batch
+	string ls_expiry
+	long ll_headerno
+	long ll_labelno
+	long ll_labelpos
+	long ll_supply_cols_per_row
+	integer li_barcodeleninprint
+	ls_seperator = ";"
+	ls_supp_alias = id_master.object.aliasname[id_master.getrow()]
+	ll_headerno = id_master.getitemnumber(id_master.getrow(), "headerno")
+	ls_clientname = left(trim(f_reportheaderinfo_wrt_headerno("clientname", ll_headerno)), 21)
+	ls_clientname_25_char = upper(left(trim(f_reportheaderinfo_wrt_headerno("clientname", ll_headerno)), 25))
+	li_barcodeleninprint = f_numberpreferences("BarCodeLenInPrint")
+	ll_totalrows = id_detail.rowcount()
+	ls_printer = trim(id_master.object.barcodeprinter[1])
+	if upper(ls_printer) = "TSC TTP-244 PRO" then
+		ll_supply_cols_per_row = 2
+		ll_labelno = 1
+		if ll_totalrows > 0 then
+			ll_counter = 1
+			tsc_openport_new("TSC TTP-244 PRO")
+			tsc_setup_new("76.10", "28.7", "4", "8", "0", "0", "0")
+			tsc_sendcommand_new("GAP 3 mm, 0 mm")
+			tsc_sendcommand_new("SPEED 4")
+			tsc_sendcommand_new("DENSITY 7")
+			tsc_sendcommand_new("DIRECTION 0,0")
+			tsc_sendcommand_new("REFERENCE 0,0")
+			tsc_sendcommand_new("OFFSET 0 mm")
+			tsc_sendcommand_new("SHIFT 0")
+			tsc_sendcommand_new("SET PEEL OFF")
+			tsc_sendcommand_new("SET CUTTER ON")
+			tsc_sendcommand_new("SET TEAR ON")
+			tsc_sendcommand_new("CLS")
+			tsc_sendcommand_new("CODEPAGE 850")
+			for ll_counter = 1 to ll_totalrows
+				if len(trim(id_detail.getitemstring(ll_counter, "fullcode"))) <= li_barcodeleninprint and id_detail.getitemnumber(ll_counter, "qty") > 0.0 then
+					ll_qty = id_detail.getitemnumber(ll_counter, "qty")
+					ls_itemname = left(trim(id_detail.getitemstring(ll_counter, "itemname")), 25)
+					ls_aliasname = left(trim(id_detail.getitemstring(ll_counter, "fullcode")), li_barcodeleninprint)
+					ls_expiry = "Expiry: " + string(id_detail.object.expiry[ll_counter], "mm/yyyy")
+					if id_detail.getitemstring(ll_counter, "batch") = "" or isnull(id_detail.getitemstring(ll_counter, "batch")) then
+						ls_batch = ""
+					else
+						ls_batch = "Batch:" + id_detail.getitemstring(ll_counter, "batch")
+					end if
+					if ib_printprice then
+						ls_price = "Rs. " + trim(string(round(id_detail.getitemdecimal(ll_counter, "saleprice"), 2)))
+					else
+						ls_price = ""
+					end if
+					tsc_clearbuffer_new()
+					ll_tot_label_rows = ceiling(ll_qty / ll_supply_cols_per_row)
+					tsc_printerfont_new("604", "212", "0", "180", "15", "7", "U.Pharmacy G.4")
+					tsc_printerfont_new("275", "212", "0", "180", "15", "7", "U.Pharmacy G.4")
+					tsc_barcode_new("604", "185", "128", "70", "1", "180", "2", "3", ls_aliasname)
+					tsc_barcode_new("275", "185", "128", "70", "1", "180", "2", "3", ls_aliasname)
+					tsc_printerfont_new("604", "88", "0", "180", "8", "6", ls_itemname)
+					tsc_printerfont_new("275", "88", "0", "180", "8", "6", ls_itemname)
+					tsc_printerfont_new("604", "61", "0", "180", "10", "10", ls_price)
+					tsc_printerfont_new("275", "61", "0", "180", "10", "10", ls_price)
+					tsc_printerfont_new("604", "32", "0", "180", "8", "8", ls_batch)
+					tsc_printerfont_new("275", "32", "0", "180", "8", "8", ls_batch)
+					tsc_printlabel_new("1", trim(string(ll_tot_label_rows)))
+				end if
+			next
+			tsc_closeport_new()
+		end if
+	end if
+	return 0

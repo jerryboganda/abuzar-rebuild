@@ -1,0 +1,179 @@
+// window w_inplace_initialization (templates)  ancestor: window
+
+// w_inplace_initialization.ue_close(integer ai_retcode) returns 0
+	SQL stop USING this.it_transobject;
+	destroy this.it_transobject
+	close(this)
+
+// w_inplace_initialization.ue_postopen() returns 0
+	long ll_rowcount
+	this.it_transobject = create u_transaction
+	SQL start USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		messagebox("Remember Cannot Connect to Database", sqlca.sqlerrtext)
+		close(this)
+	end if
+	SQL Select ISNULL ( count ( *) , 0 ) INTO :ll_rowcount From loyaltycard USING this.it_transobject;
+	if ll_rowcount > 0 then
+		this.cbx_loyaltypoints.visible = true
+	end if
+
+// w_inplace_initialization.create() returns 0
+	this.cbx_loyaltypoints = create cbx_loyaltypoints
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.cbx_transferstock = create cbx_transferstock
+	this.cbx_accountsbalances = create cbx_accountsbalances
+	this.control = {this.cbx_loyaltypoints, this.cb_cancel, this.cb_ok, this.cbx_transferstock, this.cbx_accountsbalances}
+
+// w_inplace_initialization.destroy() returns 0
+	destroy this.cbx_loyaltypoints
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.cbx_transferstock
+	destroy this.cbx_accountsbalances
+
+// w_inplace_initialization.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	postevent("ue_postopen")
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	char lc_transferbalances
+	char lc_transferstock
+	char lc_loyalty
+	integer li_retcode
+	string ls_error
+	string ls_eventtype
+	string ls_module
+	string ls_detail
+	parent.cb_cancel.enabled = false
+	parent.cb_ok.enabled = false
+	setpointer(hourglass!)
+	li_retcode = 0
+	if parent.cbx_accountsbalances.checked then
+		lc_transferbalances = "Y"
+	else
+		lc_transferbalances = "N"
+	end if
+	if parent.cbx_transferstock.checked then
+		lc_transferstock = "Y"
+	else
+		lc_transferstock = "N"
+	end if
+	if parent.cbx_loyaltypoints.checked then
+		lc_loyalty = "Y"
+	else
+		lc_loyalty = "N"
+	end if
+	if messagebox("Warning", "Your are going to perform a critical Operation~r~n Please make sure you have taken the backup of database~r~nDo you want to continue", exclamation!, yesno!, 1) = 2 then
+		parent.event ue_close(1)
+		return ::message.returnvalue
+	end if
+	if parent.it_transobject.init_delete_table(lc_transferstock, lc_transferbalances, "N", lc_loyalty) = 0 then
+		li_retcode = 0
+		if li_retcode = 0 then
+			if lc_transferstock = "Y" then
+				parent.it_transobject.init_opening_pur()
+			else
+				SQL update _utn set utn =1 USING parent.it_transobject;
+			end if
+			if parent.it_transobject.sqlcode = 0 then
+				if lc_loyalty = "Y" then
+					li_retcode = 0
+					parent.it_transobject.init_loyaltypoints()
+					if parent.it_transobject.sqlcode <> 0 then
+						li_retcode = -1
+						ls_error = parent.it_transobject.sqlerrtext
+					end if
+				end if
+				if lc_transferbalances = "Y" and li_retcode = 0 then
+					if parent.it_transobject.init_customers_balances() = 0 then
+						li_retcode = 0
+						if parent.it_transobject.init_suppliers_balances() = 0 then
+							li_retcode = 0
+							if parent.it_transobject.init_others_balances() = 0 then
+								li_retcode = 0
+								if parent.it_transobject.sqlcode = 0 then
+									li_retcode = 0
+									if parent.it_transobject.init_after_opening_voch() = 0 then
+										li_retcode = 0
+									else
+										li_retcode = -1
+										ls_error = parent.it_transobject.sqlerrtext
+									end if
+								else
+									li_retcode = -1
+									ls_error = parent.it_transobject.sqlerrtext
+								end if
+							else
+								li_retcode = -1
+								ls_error = parent.it_transobject.sqlerrtext
+							end if
+						else
+							li_retcode = -1
+							ls_error = parent.it_transobject.sqlerrtext
+						end if
+					else
+						li_retcode = -1
+						ls_error = parent.it_transobject.sqlerrtext
+					end if
+				end if
+				if li_retcode = 0 then
+					if parent.it_transobject.init_update_tabmaxkey() = 0 then
+						li_retcode = 0
+						if parent.it_transobject.init_update_headertabmaxkey() = 0 then
+							li_retcode = 0
+						else
+							li_retcode = -1
+							ls_error = parent.it_transobject.sqlerrtext
+						end if
+					else
+						li_retcode = -1
+						ls_error = parent.it_transobject.sqlerrtext
+					end if
+				end if
+			else
+				li_retcode = -1
+				ls_error = parent.it_transobject.sqlerrtext
+			end if
+		end if
+	else
+		li_retcode = -1
+		ls_error = parent.it_transobject.sqlerrtext
+	end if
+	if li_retcode = 0 then
+		ls_eventtype = "Alert"
+		ls_module = "Inplace Initialization"
+		ls_detail = "Inplace Initialization Performed."
+		parent.it_transobject.insert_eventlog(ls_eventtype, ls_module, ls_detail, gl_usercode)
+		SQL commit USING parent.it_transobject;
+		messagebox("Information", "Operation has been completed Successfully")
+	else
+		SQL rollback USING parent.it_transobject;
+		messagebox("Error", ls_error)
+	end if
+	parent.post event ue_close(1)
+	return ::message.returnvalue

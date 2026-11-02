@@ -1,0 +1,115 @@
+// window w_arg_voucherdetails (reports)  ancestor: w_listarguments
+
+// w_arg_voucherdetails.create() returns 0
+	integer icurrent
+	call super::create
+	this.cbx_cr = create cbx_cr
+	this.cbx_cp = create cbx_cp
+	this.cbx_bp = create cbx_bp
+	this.cbx_jv = create cbx_jv
+	this.cbx_br = create cbx_br
+	this.cbx_others = create cbx_others
+	this.cbx_posted = create cbx_posted
+	this.cbx_unposted = create cbx_unposted
+	this.st_4 = create st_4
+	this.st_8 = create st_8
+	this.gb_5 = create gb_5
+	this.gb_6 = create gb_6
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.cbx_cr
+	this.control[icurrent + 2] = this.cbx_cp
+	this.control[icurrent + 3] = this.cbx_bp
+	this.control[icurrent + 4] = this.cbx_jv
+	this.control[icurrent + 5] = this.cbx_br
+	this.control[icurrent + 6] = this.cbx_others
+	this.control[icurrent + 7] = this.cbx_posted
+	this.control[icurrent + 8] = this.cbx_unposted
+	this.control[icurrent + 9] = this.st_4
+	this.control[icurrent + 10] = this.st_8
+	this.control[icurrent + 11] = this.gb_5
+	this.control[icurrent + 12] = this.gb_6
+
+// w_arg_voucherdetails.destroy() returns 0
+	call super::destroy
+	destroy this.cbx_cr
+	destroy this.cbx_cp
+	destroy this.cbx_bp
+	destroy this.cbx_jv
+	destroy this.cbx_br
+	destroy this.cbx_others
+	destroy this.cbx_posted
+	destroy this.cbx_unposted
+	destroy this.st_4
+	destroy this.st_8
+	destroy this.gb_5
+	destroy this.gb_6
+
+// w_arg_voucherdetails.open() returns long
+	long ancestorreturnvalue
+	long ll_counter
+	long ll_rowcount
+	integer rtncode
+	ancestorreturnvalue = super::open()
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	rtncode = this.dw_control.getchild("usercode", this.idc_categories)
+	if rtncode = -1 then
+		messagebox("Error", "Not a DataWindowChild")
+	end if
+	ll_rowcount = this.idc_categories.rowcount()
+	for ll_counter = 1 to ll_rowcount
+		this.lb_categories.additem(this.idc_categories.getitemstring(ll_counter, "username"))
+	next
+	this.dw_startendinvoice.settransobject(sqlca)
+	this.dw_startendinvoice.insertrow(0)
+	this.dw_startendinvoice.scrolltorow(0)
+	return ::message.returnvalue
+
+// cbx_cr.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// cbx_cp.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// cbx_bp.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// cbx_jv.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// cbx_br.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// cbx_others.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// cbx_posted.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// cbx_unposted.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue

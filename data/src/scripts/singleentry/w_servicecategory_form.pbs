@@ -1,0 +1,143 @@
+// window w_servicecategory_form (singleentry)  ancestor: w_single_entry
+
+// w_servicecategory_form.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM ServiceCategory WHERE ServiceCategory.name =:as_name USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_servicecategory_form.wf_get_servicelogo() returns 0
+	long fh
+	long ret
+	long ll_fbytes
+	string ls_file
+	string ls_filename
+	string ls_defaultext
+	string ls_temp
+	string ls_filefilter
+	ls_temp = gs_temp_directory
+	ls_file = left(ls_temp, len(ls_temp) - pos(reverse(ls_temp), "\") + 1)
+	ls_filename = mid(ls_temp, len(ls_temp) - pos(reverse(ls_temp), "\") + 2)
+	ret = getfileopenname("Select File", ls_file, ls_filename, ls_defaultext, ls_filefilter, ls_temp)
+	if ret = 1 then
+		this.id_detail.object.p_servicelogo.filename = ls_file
+		fh = fileopen(ls_file, streammode!, read!, lockread!)
+		if fh <> -1 then
+			ll_fbytes = filereadex(fh, this.i_blob_servicelogo)
+			fileclose(fh)
+		end if
+	end if
+
+// w_servicecategory_form.create() returns 0
+	call super::create
+
+// w_servicecategory_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_servicecategory_form.activate() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::activate()
+	this.windowstate = maximized!
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_servicecategory_form.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.is_tablename = "ServiceCategory"
+	return ::message.returnvalue
+
+// w_servicecategory_form.ue_save() returns 0
+	long ll_primarykey
+	long ll_row
+	setpointer(hourglass!)
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	ll_row = this.id_detail.getrow()
+	ll_primarykey = this.id_detail.object.code[this.id_detail.getrow()]
+	if isnull(ll_primarykey) then
+		ll_primarykey = 0
+		f_newtableid(this.is_tablename, ll_primarykey)
+		this.id_detail.setitem(ll_row, "code", ll_primarykey)
+	end if
+	if this.id_detail.update() > 0 then
+		SQL commit USING sqlca;
+		SQL UPDATEBLOB DBO.ServiceCategory SET ServiceLogo =:this.i_blob_servicelogo WHERE ServiceCatCode =:ll_primarykey USING sqlca;
+		if sqlca.sqlnrows > 0 then
+			SQL commit USING sqlca;
+		end if
+		messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+		this.ib_commitok = true
+		this.im_menu.m_file.m_new.enabled = true
+		this.editflag = false
+		if fileexists(gs_temp_img_filename) then
+			filedelete(gs_temp_img_filename)
+		end if
+	else
+		SQL rollback USING sqlca;
+		setpointer(arrow!)
+		messagebox("Save Changes", "Changes Rollback in database, ~n~rSome database problem occurs", exclamation!, ok!, 1)
+		if fileexists(gs_temp_img_filename) then
+			filedelete(gs_temp_img_filename)
+		end if
+		return
+	end if
+	setpointer(arrow!)
+
+// w_servicecategory_form.ue_newform() returns 0
+	string ls_null
+	call super::ue_newform
+	setnull(this.i_blob_servicelogo)
+	setnull(ls_null)
+	this.id_detail.object.p_servicelogo.filename = ls_null
+
+// w_servicecategory_form.ue_detail() returns 0
+	long ll_code
+	long ll_found
+	long ll_logosize
+	this.im_menu.m_file.m_save.enabled = true
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 579", 1, gds_securitywindow.rowcount())
+	if ll_found <= 0 then
+		this.im_menu.m_file.m_delete.enabled = false
+	else
+		this.im_menu.m_file.m_delete.enabled = true
+	end if
+	this.im_menu.m_file.m_first.enabled = true
+	this.im_menu.m_file.m_next.enabled = true
+	this.im_menu.m_file.m_last.enabled = true
+	this.im_menu.m_file.m_print.enabled = false
+	this.im_menu.m_file.m_previous.enabled = true
+	this.im_menu.m_file.m_retrieve.text = "Lis&t"
+	this.i_editmode = 2
+	this.i_retrievemode = 2
+	if this.tab_retrieve.tabpage_list.dw_list.rowcount() > 0 and this.il_selectedrow > 0 then
+		ll_code = this.id_dwcontrol.borderstyle.code[this.il_selectedrow]
+		this.id_dwcontrol = this.id_detail
+		wf_retrieve(ll_code)
+		this.id_dwcontrol = this.id_list
+		SQL SELECTBLOB ServiceLogo INTO :this.i_blob_servicelogo FROM DBO.ServiceCategory WHERE ServiceCatCode =:ll_code USING sqlca;
+		if sqlca.sqlcode = 0 then
+			f_writeimgtofile(gs_temp_img_filename, this.i_blob_servicelogo)
+			this.id_detail.object.p_servicelogo.filename = gs_temp_img_filename
+		else
+			messagebox("Image File Retrieval Problem", "Error Fetching Image File. Reasons are:-~r~n" + sqlca.sqlerrtext)
+		end if
+		this.tab_retrieve.tabpage_detail.dw_detail.setfocus()
+	end if
+
+// w_servicecategory_form.close() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::close()
+	if fileexists(gs_temp_img_filename) then
+		filedelete(gs_temp_img_filename)
+	end if
+	return ::message.returnvalue

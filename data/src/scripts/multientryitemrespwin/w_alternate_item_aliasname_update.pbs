@@ -1,0 +1,304 @@
+// window w_alternate_item_aliasname_update (multientryitemrespwin)  ancestor: window
+
+// w_alternate_item_aliasname_update.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		post event ue_close(-1)
+	end if
+	return ::message.returnvalue
+
+// w_alternate_item_aliasname_update.ue_close(integer ai_closemode) returns integer
+	long ll_currrow
+	long ll_counter
+	string[] ls_values
+	ll_currrow = this.id_header.getrow()
+	if ai_closemode = -1 or this.ib_modifyalternatealias = false then
+		close(this)
+		return -1
+	end if
+	if this.id_header.rowcount() > 0 then
+		if isnull(this.id_header.getitemstring(ll_currrow, "customicode")) then
+			this.id_header.deleterow(ll_currrow)
+		end if
+		if f_validatedw(this.id_header) < 0 then
+			return 1
+		end if
+		if this.id_header.rowcount() > 0 and this.id_header.update() = 1 then
+			SQL commit USING sqlca;
+		end if
+	end if
+	close(this)
+	return 0
+
+// w_alternate_item_aliasname_update.wf_validateitem() returns integer
+	long ll_icode
+	integer li_errcode
+	string ls_customicode
+	double ld_purprice
+	double ld_saleprice
+	string ls_null
+	ll_icode = this.il_icode
+	if this.il_currrow > this.id_header.rowcount() then
+		this.il_currrow = this.id_header.rowcount()
+	end if
+	ls_customicode = this.id_header.getitemstring(this.il_currrow, "customicode")
+	if vf_dwdupstring(this.id_header, "customicode", ls_customicode, this.il_currrow) = true then
+		messagebox("Duplication Error", "Current row is duplicate")
+		li_errcode = -1
+		this.ib_rowvalidated = false
+	elseif upper(ls_customicode) = upper(this.is_aliasname) then
+		li_errcode = -1
+		this.ib_rowvalidated = false
+		messagebox("Duplicate Alias Name", "This alias name is already in use by primary aliasname for this item.~r~nKindly enter any other unique alternate alias name for this item.")
+	elseif sqlca.checkuniquealiasname(ll_icode, ls_customicode) >= 0 then
+		li_errcode = 0
+		this.ib_rowvalidated = true
+		SQL SELECT PurPrice , SalePrice INTO :ld_purprice, :ld_saleprice FROM Item WHERE ICode =:ll_icode USING sqlca;
+		if sqlca.sqlcode = 0 then
+			this.id_header.object.purprice[this.il_currrow] = ld_purprice
+			this.id_header.object.saleprice[this.il_currrow] = ld_saleprice
+		end if
+	else
+		messagebox("Duplicate Alias Name", "This alias name is already in use by some other item.~r~nKindly enter any other unique alternate alias name for this item.")
+		li_errcode = -1
+		this.ib_rowvalidated = false
+	end if
+	if li_errcode = -1 then
+		setnull(ls_null)
+		this.id_header.setcolumn("customicode")
+		this.id_header.scrolltorow(this.il_currrow)
+		this.id_header.object.customicode[this.il_currrow] = ls_null
+	end if
+	return li_errcode
+
+// w_alternate_item_aliasname_update.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+
+// w_alternate_item_aliasname_update.create() returns 0
+	this.cb_ok = create cb_ok
+	this.cb_cancel = create cb_cancel
+	this.dw_viewheader = create dw_viewheader
+	this.control = {this.cb_ok, this.cb_cancel, this.dw_viewheader}
+
+// w_alternate_item_aliasname_update.destroy() returns 0
+	destroy this.cb_ok
+	destroy this.cb_cancel
+	destroy this.dw_viewheader
+
+// w_alternate_item_aliasname_update.open() returns long
+	long ll_row
+	long ll_currrow
+	long ll_counter
+	long ll_found
+	string ls_saletype
+	integer li_protect
+	integer li_view_cashorcredit
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		this.width = ll_win_width * 0.90
+		this.height = ll_win_height * 0.70
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+		this.dw_viewheader.width = this.width * 0.98
+		this.dw_viewheader.height = this.height * 0.85
+		this.cb_ok.y = this.dw_viewheader.height + this.dw_viewheader.y
+		this.cb_cancel.y = this.dw_viewheader.height + this.dw_viewheader.y
+	end if
+	this.il_icode = message.doubleparm
+	this.id_header = this.dw_viewheader
+	this.id_header.settransobject(sqlca)
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 5157", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.ib_modifyalternatealias = true
+	else
+		this.ib_modifyalternatealias = false
+	end if
+	if isnull(this.il_icode) or this.il_icode < 0 then
+		this.ib_modifyalternatealias = true
+	end if
+	this.id_header.retrieve(this.il_icode)
+	if this.ib_modifyalternatealias then
+		wf_protectdw(this.id_header, 0)
+	else
+		wf_protectdw(this.id_header, 1)
+	end if
+	f_setcolumnstyle(this.id_header, "Qty")
+	this.id_header.scrolltorow(this.id_header.rowcount())
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		triggerevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// dw_viewheader.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ll_rowcount
+	if key = keyescape! then
+		parent.post event ue_close(-1)
+	end if
+	return ::message.returnvalue
+
+// dw_viewheader.ue_enterkey() returns long
+	long ll_rowcount
+	if getrow() = rowcount() and getcolumn() = integer(this.object.datawindow.column.count) then
+		if parent.id_header.rowcount() > 0 and f_validatedw(parent.id_header) < 0 then
+			return ::message.returnvalue
+		end if
+		if parent.ib_rowvalidated = false and parent.wf_validateitem() = -1 then
+			return 1
+		end if
+		if ll_rowcount > 1 then
+			parent.id_header.scrolltorow(ll_rowcount)
+			parent.id_header.setfocus()
+		end if
+		return 1
+	end if
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_viewheader.itemerror(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "customicode"
+		if data = "" or isnull(data) then
+			messagebox("Alternate Alias Name Validation", "Value required for Alternate Alias Name in current row")
+		end if
+	end choose
+	return 1
+
+// dw_viewheader.itemfocuschanged(long row, dwobject dwo) returns long
+	if parent.ib_rowvalidated = false and parent.wf_validateitem() = -1 then
+		return ::message.returnvalue
+	end if
+	if row > 0 and len(gettext()) > 0 then
+		selecttext(1, len(gettext()))
+	end if
+	return ::message.returnvalue
+
+// dw_viewheader.itemchanged(long row, dwobject dwo, string data) returns long
+	integer li_errcode
+	choose case dwo.name
+	case "customicode"
+		parent.ib_rowvalidated = false
+		parent.il_currrow = row
+		li_errcode = 0
+	case "qty"
+		if double(data) > 0.0 then
+			this.object.purprice[row] = round(double(data) * this.object.unitpurprice[row], 2)
+			this.object.saleprice[row] = round(double(data) * this.object.unitsaleprice[row], 2)
+			if this.object.saleprice[row] > 0 then
+				this.object.marginperc[row] = round((this.object.saleprice[row] - this.object.purprice[row]) / this.object.saleprice[row] * 100, 2)
+			else
+				this.object.marginperc[row] = round((this.object.saleprice[row] - this.object.purprice[row]) / 1 * 100, 2)
+			end if
+			li_errcode = 0
+		else
+			li_errcode = 1
+		end if
+	case "unitpurprice"
+		if double(data) > 0.0 then
+			this.object.purprice[row] = round(double(data) * this.object.qty[row], 2)
+			if this.object.saleprice[row] > 0 then
+				this.object.marginperc[row] = round((this.object.saleprice[row] - this.object.purprice[row]) / this.object.saleprice[row] * 100, 2)
+			else
+				this.object.marginperc[row] = round((this.object.saleprice[row] - this.object.purprice[row]) / 1 * 100, 2)
+			end if
+			li_errcode = 0
+		else
+			li_errcode = 1
+		end if
+	case "purprice"
+		if double(data) > 0.0 then
+			if this.object.qty[row] > 0 then
+				this.object.unitpurprice[row] = round(double(data) / this.object.qty[row], 2)
+			else
+				this.object.unitpurprice[row] = round(double(data) / 1.0, 2)
+			end if
+			if this.object.saleprice[row] > 0 then
+				this.object.marginperc[row] = round((this.object.saleprice[row] - double(data)) / this.object.saleprice[row] * 100, 2)
+			else
+				this.object.marginperc[row] = round((this.object.saleprice[row] - double(data)) / 1 * 100, 2)
+			end if
+			li_errcode = 0
+		else
+			li_errcode = 1
+		end if
+	case "unitsaleprice"
+		if double(data) > 0.0 then
+			this.object.saleprice[row] = round(double(data) * this.object.qty[row], 2)
+			if this.object.saleprice[row] > 0 then
+				this.object.marginperc[row] = round((this.object.saleprice[row] - this.object.purprice[row]) / this.object.saleprice[row] * 100, 2)
+			else
+				this.object.marginperc[row] = round((this.object.saleprice[row] - this.object.purprice[row]) / 1 * 100, 2)
+			end if
+			li_errcode = 0
+		else
+			li_errcode = 1
+		end if
+	case "saleprice"
+		if double(data) > 0.0 then
+			if this.object.qty[row] > 0 then
+				this.object.unitsaleprice[row] = round(double(data) / this.object.qty[row], 2)
+			else
+				this.object.unitsaleprice[row] = round(double(data) / 1.0, 2)
+			end if
+			if double(data) > 0.0 then
+				this.object.marginperc[row] = round((double(data) - this.object.purprice[row]) / double(data) * 100, 2)
+			else
+				this.object.marginperc[row] = round((double(data) - this.object.purprice[row]) / 1 * 100, 2)
+			end if
+			li_errcode = 0
+		else
+			li_errcode = 1
+		end if
+	case "marginperc"
+		if double(data) > 0.0 then
+			this.object.saleprice[row] = round(this.object.purprice[row] / (1.0 - double(data) / 100.0), 2)
+			if this.object.qty[row] > 0 then
+				this.object.unitsaleprice[row] = round(this.object.saleprice[row] / this.object.qty[row], 2)
+			else
+				this.object.unitsaleprice[row] = this.object.saleprice[row]
+			end if
+			li_errcode = 0
+		else
+			li_errcode = 1
+		end if
+	case else
+		parent.ib_rowvalidated = true
+	end choose
+	return li_errcode

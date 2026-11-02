@@ -1,0 +1,31 @@
+// window w_componentvalue_decimal (servicecomponents)  ancestor: w_componentvalue_text
+
+// w_componentvalue_decimal.of_getvalue() returns integer
+	this.dw_value.object.value_t.text = of_get_caption(this.is_compvalue.code)
+	if len(this.is_compvalue.value) > pos(this.is_compvalue.value, ".") then
+		this.dw_value.object.value[1] = round(double(this.is_compvalue.value), len(this.is_compvalue.value) - pos(this.is_compvalue.value, "."))
+	else
+		this.dw_value.object.value[1] = round(double(this.is_compvalue.value), 0)
+	end if
+	return 0
+
+// w_componentvalue_decimal.of_setvalue() returns long
+	this.dw_value.accepttext()
+	if round(this.dw_value.object.value[1], 0) = this.dw_value.object.value[1] then
+		this.is_compvalue.value = trim(string(this.dw_value.object.value[1], "##,###,##0"))
+	elseif round(this.dw_value.object.value[1], 1) = this.dw_value.object.value[1] then
+		this.is_compvalue.value = trim(string(this.dw_value.object.value[1], "##,###,##0.0"))
+	elseif round(this.dw_value.object.value[1], 2) = this.dw_value.object.value[1] then
+		this.is_compvalue.value = trim(string(this.dw_value.object.value[1], "##,###,##0.00"))
+	elseif round(this.dw_value.object.value[1], 3) = this.dw_value.object.value[1] then
+		this.is_compvalue.value = trim(string(this.dw_value.object.value[1], "##,###,##0.000"))
+	else
+		this.is_compvalue.value = trim(string(this.dw_value.object.value[1], "##,###,##0.0000"))
+	end if
+	return 0
+
+// w_componentvalue_decimal.create() returns 0
+	call super::create
+
+// w_componentvalue_decimal.destroy() returns 0
+	call super::destroy

@@ -1,0 +1,150 @@
+// window w_arg_cust_patient_sdate_ldate (reports_cust)  ancestor: w_popup_forselection_walias
+
+// w_arg_cust_patient_sdate_ldate.create() returns 0
+	integer icurrent
+	call super::create
+	this.gb_3 = create gb_3
+	this.gb_2 = create gb_2
+	this.st_1 = create st_1
+	this.st_2 = create st_2
+	this.em_startdate = create em_startdate
+	this.em_enddate = create em_enddate
+	this.st_3 = create st_3
+	this.st_4 = create st_4
+	this.em_caption = create em_caption
+	this.em_discperc = create em_discperc
+	this.rb_originaldate = create rb_originaldate
+	this.rb_lastsavingdate = create rb_lastsavingdate
+	this.rb_billingdate = create rb_billingdate
+	this.em_term1 = create em_term1
+	this.em_term2 = create em_term2
+	this.st_5 = create st_5
+	this.st_6 = create st_6
+	this.cbx_suppressheader = create cbx_suppressheader
+	this.st_7 = create st_7
+	this.dw_patient = create dw_patient
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.gb_3
+	this.control[icurrent + 2] = this.gb_2
+	this.control[icurrent + 3] = this.st_1
+	this.control[icurrent + 4] = this.st_2
+	this.control[icurrent + 5] = this.em_startdate
+	this.control[icurrent + 6] = this.em_enddate
+	this.control[icurrent + 7] = this.st_3
+	this.control[icurrent + 8] = this.st_4
+	this.control[icurrent + 9] = this.em_caption
+	this.control[icurrent + 10] = this.em_discperc
+	this.control[icurrent + 11] = this.rb_originaldate
+	this.control[icurrent + 12] = this.rb_lastsavingdate
+	this.control[icurrent + 13] = this.rb_billingdate
+	this.control[icurrent + 14] = this.em_term1
+	this.control[icurrent + 15] = this.em_term2
+	this.control[icurrent + 16] = this.st_5
+	this.control[icurrent + 17] = this.st_6
+	this.control[icurrent + 18] = this.cbx_suppressheader
+	this.control[icurrent + 19] = this.st_7
+	this.control[icurrent + 20] = this.dw_patient
+
+// w_arg_cust_patient_sdate_ldate.destroy() returns 0
+	call super::destroy
+	destroy this.gb_3
+	destroy this.gb_2
+	destroy this.st_1
+	destroy this.st_2
+	destroy this.em_startdate
+	destroy this.em_enddate
+	destroy this.st_3
+	destroy this.st_4
+	destroy this.em_caption
+	destroy this.em_discperc
+	destroy this.rb_originaldate
+	destroy this.rb_lastsavingdate
+	destroy this.rb_billingdate
+	destroy this.em_term1
+	destroy this.em_term2
+	destroy this.st_5
+	destroy this.st_6
+	destroy this.cbx_suppressheader
+	destroy this.st_7
+	destroy this.dw_patient
+
+// w_arg_cust_patient_sdate_ldate.open() returns long
+	long ancestorreturnvalue
+	date ld_currdate
+	string ls_text
+	ancestorreturnvalue = super::open()
+	ld_currdate = today()
+	if f_stringpreferences("ApplyArgSDate") = "N" then
+		ls_text = string(ld_currdate, "dd/mm/yyyy")
+		ls_text = trim(ls_text) + " 00:00:00"
+	else
+		ls_text = string(f_datepreferences("DefaultArgSDate"), "dd/mm/yyyy hh:mm:ss")
+	end if
+	this.em_startdate.text = ls_text
+	ls_text = string(ld_currdate, "dd/mm/yyyy")
+	ls_text = trim(ls_text) + " 23:59:59"
+	this.em_enddate.text = ls_text
+	return ::message.returnvalue
+
+// w_arg_cust_patient_sdate_ldate.ue_close() returns 0
+	closewithreturn(this, this.istr_arg)
+
+// w_arg_cust_patient_sdate_ldate.ue_postopen() returns 0
+	call super::ue_postopen
+	this.dw_patient.settransobject(sqlca)
+	this.dw_patient.insertrow(0)
+	this.dw_patient.scrolltorow(0)
+
+// em_startdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// em_enddate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// em_caption.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// em_discperc.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// rb_originaldate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// rb_lastsavingdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// em_term1.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// em_term2.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// cbx_suppressheader.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue

@@ -1,0 +1,934 @@
+// window w_vaccineschedule_form (patientvaccinecomp)  ancestor: w_multi_entry
+
+// w_vaccineschedule_form.ue_printdo() returns 0
+	long ll_custcode
+	long ll_row
+	string ls_custname
+	if this.im_menu.m_file.m_save.enabled = true then
+		triggerevent("ue_save")
+		if wf_commitform() = false then
+			return
+		end if
+		return
+	end if
+	this.id_print.dataobject = "d_deliveryorder_half"
+	this.id_print.settransobject(this.it_transobject)
+	this.id_print.retrieve(this.id_master.getitemnumber(1, "code"))
+	if this.id_print.rowcount() > 0 then
+		if this.id_print.print() < 0 then
+			messagebox("Printing", "Can not Print Invoice", information!)
+		end if
+		if this.im_menu.m_file.m_save.enabled = true then
+			postevent("ue_new")
+		end if
+		return
+	end if
+	messagebox("Printing Error", "Can not Print Invoice,~r~nNo rows are retrieved", information!)
+
+// w_vaccineschedule_form.wf_visible(boolean ab_flag) returns 0
+	this.id_footer.object.stock.visible = ab_flag
+	this.id_footer.object.t_stock.visible = ab_flag
+
+// w_vaccineschedule_form.wf_genfullcode(long al_icode, string as_fullcode) returns integer
+	integer li_retflag
+	string ls_fullcode
+	long icode
+	long iccode
+	long icatcode
+	long packcode
+	long manfcode
+	SQL SELECT customicode INTO :ls_fullcode FROM item WHERE item.icode =:al_icode USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		li_retflag = 1
+		as_fullcode = ls_fullcode
+	else
+		li_retflag = this.it_transobject.sqlcode
+	end if
+	return li_retflag
+
+// w_vaccineschedule_form.wf_getmaxdate(datetime ad_date) returns integer
+	SQL Select Max ( Date ) INTO :ad_date From saleledger USING this.it_transobject;
+	return this.it_transobject.sqlcode
+
+// w_vaccineschedule_form.wf_getsalesstockinfo(long al_saleinvcode, long al_gcode, long al_icode, long al_saleqty) returns integer
+	SQL Select IsNull ( Sum ( saledetail.looseqty ) , 0 ) INTO :al_saleqty from saledetail where saledetail.saleinvcode =:al_saleinvcode and saledetail.gcode =:al_gcode and saledetail.icode =:al_icode USING this.it_transobject;
+	if isnull(al_saleqty) then
+		al_saleqty = 0
+	end if
+	return this.it_transobject.sqlcode
+
+// w_vaccineschedule_form.wf_selectprintreport() returns string
+	string ls_pagesize
+	string ls_report
+	ls_report = "d_retailsaleinvreport_full"
+	this.id_print.dataobject = ls_report
+	this.id_print.settransobject(this.it_transobject)
+	return ls_report
+
+// w_vaccineschedule_form.wf_getitemassociategcode(long la_icode) returns integer
+	integer li_gcode
+	SQL Select Gcode INTO :li_gcode From item Where icode =:la_icode USING this.it_transobject;
+	return li_gcode
+
+// w_vaccineschedule_form.wf_print() returns integer
+	integer li_errcode
+	long ll_salesmancode
+	long ll_saleinvcount
+	long ll_count
+	s_arguements lstr_arginfo
+	open(w_salesmanpassword)
+	ll_salesmancode = long(message.doubleparm)
+	setfocus()
+	if ll_salesmancode > 0 then
+		open(w_arg_sinvcode_linvcode)
+		lstr_arginfo = message.powerobjectparm
+		if lstr_arginfo.i_status = 1 then
+			setpointer(hourglass!)
+			for ll_count = lstr_arginfo.l_code1 to lstr_arginfo.l_code2
+				this.id_print.retrieve(ll_count)
+				if this.id_print.rowcount() > 0 then
+					if this.id_print.print() < 0 then
+						messagebox("Printing", "Can not Print Invoice", information!)
+					end if
+				else
+					messagebox("Printing Error", "Can not Print Invoice,~r~nNo rows are retrieved", information!)
+				end if
+			next
+		end if
+	else
+		setfocus()
+	end if
+	setpointer(arrow!)
+	return li_errcode
+
+// w_vaccineschedule_form.wf_validatefullcode(string as_custicode, long al_currrow) returns boolean
+	long ll_icode
+	long ll_stock
+	long ll_totalstock
+	string ls_fullcode
+	string ls_titleerrtext
+	string ls_errtext
+	integer li_errcode
+	integer li_assgcode
+	integer li_option
+	boolean lb_rtflag
+	boolean ib_due
+	integer li_null
+	string ls_null
+	ls_titleerrtext = "Item Validation"
+	if vf_dwdupcode1(this.id_detail, "icode", string(ll_icode), al_currrow) = true then
+		ls_errtext = "Duplicate item, please select some other item"
+		li_errcode = -1
+	elseif wf_inititeminfo(ll_icode, this.il_currrow, li_errcode, ls_errtext) then
+		if li_errcode = -2 then
+			li_option = messagebox("Item Validation", "Item stock does not exist~n~rDo You want to due this item", information!, yesno!, 2)
+			if li_option = 1 then
+				this.id_detail.setitem(this.il_currrow, "looseqty", 1)
+				this.id_detail.setitem(this.il_currrow, "dueqty", 1)
+				ib_due = true
+			else
+				li_errcode = -1
+			end if
+		end if
+	else
+		li_errcode = -1
+		ls_titleerrtext = "Item Validation"
+	end if
+	if li_errcode = -1 and not ib_due then
+		lb_rtflag = false
+		messagebox(ls_titleerrtext, ls_errtext)
+		setnull(li_null)
+		setnull(ls_null)
+		this.id_detail.setitem(al_currrow, this.is_columnitemname, ls_null)
+		this.id_detail.setitem(al_currrow, "icode", li_null)
+		this.id_detail.selecttext(1, len(this.id_detail.gettext()))
+	end if
+	return lb_rtflag
+
+// w_vaccineschedule_form.wf_grandtotal() returns double
+	double ld_grandtotal
+	ld_grandtotal = 0
+	return ld_grandtotal
+
+// w_vaccineschedule_form.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+
+// w_vaccineschedule_form.wf_validateitem(boolean ab_flag) returns integer
+	long ll_icode
+	long ll_stock
+	long ll_totalstock
+	string ls_fullcode
+	string ls_titleerrtext
+	string ls_errtext
+	integer li_errcode
+	integer li_assgcode
+	integer li_option
+	boolean ib_due
+	integer li_null
+	string ls_null
+	ll_icode = this.id_detail.getitemnumber(this.il_currrow, "icode")
+	if not isnull(ll_icode) then
+		if wf_inititeminfo(ll_icode, this.il_currrow, li_errcode, ls_errtext) then
+			if li_errcode = -2 then
+				li_errcode = -1
+			end if
+		else
+			ls_titleerrtext = "Item Validation"
+		end if
+	end if
+	if ab_flag then
+		this.ib_itemvalidated = true
+	end if
+	if li_errcode = -1 then
+		setnull(li_null)
+		setnull(ls_null)
+		ls_titleerrtext = "Item Validation"
+		messagebox(ls_titleerrtext, ls_errtext)
+		if f_stringpreferences("itemcode") = "N" then
+			this.id_detail.setcolumn(this.is_columnitemname)
+			this.ib_itemslistopen = true
+			this.id_itemslist.show()
+		else
+			this.id_detail.setcolumn("fullcode")
+			this.id_detail.object.fullcode[this.il_currrow] = ls_null
+		end if
+		this.id_detail.scrolltorow(this.il_currrow)
+		this.id_detail.object.icode[this.il_currrow] = li_null
+		this.id_detail.object.itemname[this.il_currrow] = ls_null
+	end if
+	return li_errcode
+
+// w_vaccineschedule_form.wf_findfullcode(string as_fullcode, long al_icode, string al_itemname) returns integer
+	integer ll_icode
+	integer ll_retflag
+	string ls_itemname
+	if f_stringpreferences("GroupCategoryRights") = "Y" then
+		SQL SELECT item.icode , item.name INTO :ll_icode, :ls_itemname FROM item WHERE item.customicode =:as_fullcode AND item.Active =1 AND Item.ICatCode IN ( SELECT ICatCode FROM ItemCategory WHERE ICatCode IN ( SELECT ItemsCategoryCode FROM ItemsGroupCategory WHERE GroupCode IN ( SELECT GroupCode FROM UserGroups WHERE UserCode =:gl_usercode ) ) ) USING this.it_transobject;
+	else
+		SQL SELECT item.icode , item.name INTO :ll_icode, :ls_itemname FROM item WHERE item.customicode =:as_fullcode AND item.Active =1 USING this.it_transobject;
+	end if
+	if this.it_transobject.sqlcode = 0 then
+		al_icode = ll_icode
+		al_itemname = ls_itemname
+		if isnull(al_icode) then
+			ll_retflag = 0
+		else
+			ll_retflag = 1
+		end if
+	else
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_vaccineschedule_form.wf_inititeminfo(long al_icode, long al_row, integer ai_rtcode, string as_errortext) returns boolean
+	boolean retflag
+	double ld_saleprice
+	long ll_packunits
+	long ll_godownstock
+	long ll_saleqty
+	long ll_saleinvcode
+	long ll_totalstock
+	double ld_saleprice2
+	double ld_saleprice3
+	double ld_avgprice
+	double ld_mrpp
+	double ld_purprice
+	integer li_gcode
+	string ls_fullcode
+	string ls_name
+	string ls_null
+	setnull(ls_null)
+	SQL SELECT item.customicode , item.name INTO :ls_fullcode, :ls_name FROM item WHERE item.icode =:al_icode USING this.it_transobject;
+	if this.it_transobject.sqlcode = -1 then
+		retflag = false
+		as_errortext = "Database Error: Item information can not be retrieved"
+	end if
+	if retflag then
+		this.id_detail.setitem(al_row, this.is_columnitemname, ls_name)
+		this.id_detail.setitem(al_row, "fullcode", ls_fullcode)
+		this.id_detail.setitem(al_row, "icode", al_icode)
+	else
+		retflag = false
+		as_errortext = "Database Error: Item information can not be retrieved"
+	end if
+	return retflag
+
+// w_vaccineschedule_form.wf_findpatientcode(string as_regno, long al_patientcode) returns long
+	long ll_patientcode
+	long ll_retflag
+	string ls_itemname
+	SQL SELECT patient.patientcode INTO :ll_patientcode FROM patient WHERE patient.regno =:as_regno AND patient.active ='Y' AND patientcatcode in ( SELECT DISTINCT patientcatcode FROM patientcatallowedmodule WHERE moduleid =:this.ii_module ) USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		al_patientcode = ll_patientcode
+		if isnull(al_patientcode) then
+			ll_retflag = 0
+		else
+			ll_retflag = 1
+		end if
+	else
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_vaccineschedule_form.wf_closelist() returns 0
+	this.ib_itemslistopen = false
+	this.id_itemslist.hide()
+
+// w_vaccineschedule_form.wf_set_admission(long al_patientcode) returns long
+	long ll_admissioncode
+	SQL Select Max ( AdmissionCode ) INTO :ll_admissioncode From PatientAdmission Where patientcode =:al_patientcode And discharged1 ='N' USING sqlca;
+	if sqlca.sqlcode = 0 then
+		return ll_admissioncode
+	end if
+	return -1
+
+// w_vaccineschedule_form.wf_locksaleinvoices(long al_sinvcode, long al_linvcode, long al_totalinvoice) returns integer
+	integer li_count
+	SQL Select count ( *) INTO :al_totalinvoice From PrescriptionHeader WITH ( UPDLOCK HOLDLOCK ) Where PrescriptionHeader.Prescode Between :al_sinvcode AND :al_linvcode AND PrescriptionHeader.Posted ='N' USING sqlca;
+	return sqlca.sqlcode
+
+// w_vaccineschedule_form.wf_locksaleinvoice(long al_saleinvcode) returns integer
+	integer li_count
+	SQL Select count ( *) INTO :li_count From PrescriptionHeader WITH ( UPDLOCK HOLDLOCK ) Where PrescriptionHeader.Prescode =:al_saleinvcode USING this.it_transobject;
+	return this.it_transobject.sqlcode
+
+// w_vaccineschedule_form.wf_isinvoiceinuse(long al_invoiceno) returns boolean
+	long ll_found
+	SQL Select count ( *) INTO :ll_found From PrescriptionHeader Where PresCode =:al_invoiceno and Posted ='Y' USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		if ll_found = 0 or isnull(ll_found) then
+			ll_found = 0
+			SQL Select count ( *) INTO :ll_found From PrescriptionHeader With ( ReadPast , RowLock , UpdLock ) Where PresCode =:al_invoiceno USING this.it_transobject;
+			if this.it_transobject.sqlcode = 0 then
+				if ll_found = 0 then
+					return true
+				else
+					return false
+				end if
+			else
+				return false
+			end if
+		else
+			return false
+		end if
+		return
+	end if
+	return false
+
+// w_vaccineschedule_form.wf_initmodify(integer ai_protect) returns 0
+	long ll_code
+	ll_code = this.id_master.getitemnumber(1, "patientcode")
+	this.id_master.retrieve(ll_code)
+	this.id_detail.retrieve(ll_code)
+	if ai_protect = 0 then
+		this.ib_modify = true
+		this.im_menu.m_file.m_save.enabled = true
+		this.im_menu.m_file.m_new.enabled = false
+		this.im_menu.m_file.m_delete.enabled = false
+		this.im_menu.m_item.m_newitem.enabled = true
+		this.im_menu.m_item.m_deleteitem.enabled = true
+		this.im_menu.m_file.m_first.enabled = false
+		this.im_menu.m_file.m_next.enabled = false
+		this.im_menu.m_file.m_previous.enabled = false
+		this.im_menu.m_file.m_last.enabled = false
+		this.im_menu.m_file.m_retrieve.enabled = true
+		this.im_menu.m_file.m_retrieve.text = "Lis&t"
+		this.tab_retrieve.tabpage_detail.enabled = true
+	end if
+
+// w_vaccineschedule_form.wf_assigndatawindowobjects(string as_masterdw, string as_detaildw, string as_footerdw, string as_listdw, string as_printdw) returns 0
+	this.id_master.dataobject = as_masterdw
+	this.id_detail.dataobject = as_detaildw
+	this.id_footer.dataobject = as_footerdw
+	this.id_list.dataobject = as_listdw
+	this.id_print.dataobject = as_printdw
+	this.id_master.settransobject(this.it_transobject)
+	this.id_detail.settransobject(this.it_transobject)
+	this.id_footer.settransobject(this.it_transobject)
+	this.id_list.settransobject(this.it_transobject)
+	this.id_print.settransobject(this.it_transobject)
+
+// w_vaccineschedule_form.wf_post() returns integer
+	integer li_errcode
+	long ll_salesmancode
+	long ll_saleinvcount
+	long ll_counter
+	boolean lb_flag
+	s_arguements lstr_arginfo
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	open(w_salesmanpassword)
+	ll_salesmancode = long(message.doubleparm)
+	setfocus()
+	if ll_salesmancode > 0 then
+		open(w_arg_sinvcode_linvcode)
+		lstr_arginfo = message.powerobjectparm
+		if lstr_arginfo.i_status = 1 then
+			if not wf_getserverdatetime(ldt_server_datetime, ls_date_errtext) then
+				messagebox("Date Violation", ls_date_errtext, stopsign!)
+				return -1
+			end if
+			setpointer(hourglass!)
+			SQL rollback USING sqlca;
+			li_errcode = wf_locksaleinvoices(lstr_arginfo.l_code1, lstr_arginfo.l_code2, ll_saleinvcount)
+			if li_errcode = 0 then
+				sqlca.postpresheader(lstr_arginfo.l_code1, lstr_arginfo.l_code2, ll_salesmancode)
+				if sqlca.sqlcode <> 0 then
+					li_errcode = -1
+				end if
+			end if
+		end if
+		if li_errcode = 0 then
+			SQL commit USING sqlca;
+			if sqlca.sqlcode <> 0 then
+				li_errcode = -1
+			end if
+		else
+			SQL rollback USING sqlca;
+		end if
+	else
+		setfocus()
+	end if
+	setpointer(arrow!)
+	if li_errcode <> 0 then
+		messagebox("Posting Fails", "Some database request fails, Please try again")
+	else
+		messagebox("Posting Successfull", "All rows have been posted successfully")
+	end if
+	return li_errcode
+
+// w_vaccineschedule_form.wf_checkdiscontinueditems() returns long
+	long ll_found
+	long ll_detail_rowcount
+	ll_detail_rowcount = this.id_detail.rowcount()
+	if ll_detail_rowcount > 0 then
+		ll_found = this.id_detail.find("discontinued='Y'", 1, this.id_detail.rowcount())
+		if ll_found <= 0 then
+			ll_found = 0
+		end if
+	end if
+	return ll_found
+
+// w_vaccineschedule_form.wf_patient_retrieve() returns long
+	long ll_prow
+	long ll_pcode
+	this.idc_patient.retrieve()
+	return 0
+
+// w_vaccineschedule_form.wf_set_patientinfo(long al_code) returns long
+	long ll_retflag
+	long ll_custcode
+	string ls_regno
+	string ls_name
+	string ls_fname
+	string ls_gender
+	string ls_mob1
+	string ls_mob2
+	string ls_mob3
+	datetime ldt_dob
+	SQL SELECT regno , name , fname , gender , dob , custcode , mobileno1 , mobileno2 , mobileno3 INTO :ls_regno, :ls_name, :ls_fname, :ls_gender, :ldt_dob, :ll_custcode, :ls_mob1, :ls_mob2, :ls_mob3 FROM patient WHERE patient.patientcode =:al_code AND patient.active ='Y' USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		if isnull(al_code) then
+			ll_retflag = 1
+		else
+			this.id_master.object.regno[1] = ls_regno
+			this.id_master.object.fname[1] = ls_fname
+			this.id_master.object.gender[1] = ls_gender
+			this.id_master.object.dob[1] = ldt_dob
+			this.id_master.object.mobileno1[1] = ls_mob1
+			this.id_master.object.mobileno2[1] = ls_mob2
+			this.id_master.object.mobileno3[1] = ls_mob3
+			this.id_master.object.custcode[1] = ll_custcode
+			this.id_detail.retrieve(al_code)
+			ll_retflag = 0
+		end if
+	else
+		ll_retflag = 1
+	end if
+	return ll_retflag
+
+// w_vaccineschedule_form.wf_populate_saletemplate() returns long
+	datastore lds_saletemplatedetail
+	datastore lds_saletemplateheader
+	s_saletemplate lstr_template
+	s_arguements lstr_arg
+	string ls_errortext
+	boolean lb_isitemexists
+	boolean lb_enablesave
+	boolean lb_bonus
+	boolean lb_salepricefromtemplate
+	long ll_totalrows
+	long ll_counter
+	long ll_detailrows
+	long ll_icode
+	long ll_insertedrows
+	long ll_packunits
+	long ll_found
+	long ll_innercounter
+	long ll_choice
+	long ll_insrow
+	integer li_retcode
+	integer li_errcode
+	integer li_counter
+	integer li_holdqty
+	integer li_addbonusinqty
+	double ld_looseqty
+	double ld_holdbonusqty
+	if wf_iseditable() = false then
+		return 0
+	end if
+	ll_detailrows = this.id_detail.rowcount()
+	if ll_detailrows > 0 then
+		ll_choice = messagebox("Data Lost Alert", "Vaccine Schedule information maintained will be lost,~r~nif you opt to populate this template.~r~nPopulate Anyway?", question!, yesnocancel!, 2)
+	else
+		ll_choice = 1
+	end if
+	if ll_choice = 1 then
+		lds_saletemplatedetail = create datastore
+		lds_saletemplateheader = create datastore
+		open(w_arg_saletemplate)
+		lstr_arg = message.powerobjectparm
+		if lstr_arg.i_status <> 1 then
+			destroy lds_saletemplatedetail
+			return -1
+		end if
+		lds_saletemplatedetail.dataobject = "d_saletemplate_detail_bulk"
+		lds_saletemplatedetail.settransobject(this.it_transobject)
+		ll_totalrows = lds_saletemplatedetail.retrieve(lstr_arg.ia_integerlist)
+		if ll_totalrows < 0 then
+			li_retcode = -1
+		end if
+		ll_totalrows = lds_saletemplatedetail.rowcount()
+		if ll_totalrows > 0 then
+			lb_enablesave = true
+		end if
+		for li_counter = 1 to li_counter
+			event ue_deleteitem()
+		next
+		for ll_counter = 1 to ll_totalrows
+			ll_insrow = this.id_detail.insertrow(0)
+			wf_inititeminfo(lds_saletemplatedetail.getitemnumber(ll_counter, "icode"), ll_insrow, li_errcode, ls_errortext)
+			this.id_detail.object.saletemplaterowid[ll_insrow] = lds_saletemplatedetail.object.rowid[ll_counter]
+		next
+		this.im_menu.m_file.m_save.enabled = true
+	end if
+	return 0
+
+// w_vaccineschedule_form.wf_mark_as_stopped() returns integer
+	long ll_res
+	long ll_counter
+	long ll_detailrows
+	long ll_vaccinestatuscode
+	if this.id_master.object.patientcode[1] > 0 then
+		ll_res = messagebox("Please Confirm", "Are you sure that you want all the Non-Vaccinated Items in this schedule to be stopped?", question!, yesnocancel!, 2)
+		if ll_res = 1 then
+			ll_detailrows = this.id_detail.rowcount()
+			if ll_detailrows > 0 then
+				for ll_counter = 1 to ll_detailrows
+					ll_vaccinestatuscode = this.id_detail.object.vaccinestatuscode[ll_counter]
+					if ll_vaccinestatuscode <> 1 then
+						this.id_detail.object.vaccinestatuscode[ll_counter] = 5
+						this.id_detail.object.stoppedon[ll_counter] = today()
+						this.id_detail.object.stoppedby[ll_counter] = gl_usercode
+					end if
+				next
+			end if
+		end if
+	end if
+	return 0
+
+// w_vaccineschedule_form.wf_mark_as_unstopped() returns integer
+	long ll_res
+	long ll_counter
+	long ll_detailrows
+	long ll_vaccinestatuscode
+	if this.id_master.object.patientcode[1] > 0 then
+		ll_res = messagebox("Please Confirm", "Are you sure that you want all the Non-Vaccinated Items in this schedule to be un-stopped/resumed?", question!, yesnocancel!, 2)
+		if ll_res = 1 then
+			ll_detailrows = this.id_detail.rowcount()
+			if ll_detailrows > 0 then
+				for ll_counter = 1 to ll_detailrows
+					ll_vaccinestatuscode = this.id_detail.object.vaccinestatuscode[ll_counter]
+					if ll_vaccinestatuscode <> 1 then
+						this.id_detail.object.vaccinestatuscode[ll_counter] = 4
+					end if
+				next
+			end if
+		end if
+	end if
+	return 0
+
+// w_vaccineschedule_form.create() returns 0
+	integer icurrent
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_vaccineshedulemenu" then
+		this.menuid = create m_vaccineshedulemenu
+	end if
+	this.dw_print = create dw_print
+	this.dw_saleinvdetail = create dw_saleinvdetail
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_print
+	this.control[icurrent + 2] = this.dw_saleinvdetail
+
+// w_vaccineschedule_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_print
+	destroy this.dw_saleinvdetail
+
+// w_vaccineschedule_form.ue_save() returns 0
+	long ll_detailrows
+	long ll_counter
+	long ll_count
+	long ll_salesmancode
+	long ll_mastercurrrow
+	long ll_invid
+	long ll_modifycounter
+	long ll_null
+	long ll_discontinueditem
+	long ll_code
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	string ls_errtext
+	integer li_maxretcode
+	dwitemstatus ldw_status
+	ll_mastercurrrow = this.id_master.getrow()
+	ll_invid = this.id_master.object.patientcode[ll_mastercurrrow]
+	if isnull(ll_invid) then
+		messagebox("Patient Validation", "Plese select a valid patient", stopsign!)
+		return
+	end if
+	if this.ib_itemvalidated = false and wf_validateitem(true) = -1 then
+		this.id_detail.setfocus()
+		return
+	end if
+	wf_deleteemptydetailrow()
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	open(w_salesmanpassword)
+	ll_salesmancode = long(message.doubleparm)
+	setfocus()
+	if ll_salesmancode > 0 then
+		setpointer(hourglass!)
+		ll_detailrows = this.id_detail.rowcount()
+		for ll_counter = 1 to ll_detailrows
+			ldw_status = this.id_detail.getitemstatus(ll_counter, 0, primary!)
+			ll_code = this.id_detail.object.code[ll_counter]
+			if ll_code > 0 and ldw_status = datamodified! then
+				this.id_detail.object.modifiedby[ll_counter] = ll_salesmancode
+				this.id_detail.object.modifiedon[ll_counter] = today()
+			end if
+			this.id_detail.setitem(ll_counter, "patientcode", ll_invid)
+		next
+		if this.id_detail.update(true, true) = 1 then
+			this.ib_commitok = true
+		else
+			this.ib_commitok = false
+		end if
+		if this.ib_commitok then
+			SQL commit USING this.it_transobject;
+			messagebox("Vaccine Schedule", "Vaccine Schedule Successfully Saved in database")
+		else
+			ls_errtext = "Some Database Problem Occurred in databaase.~r~nVaccine Schedule not Successfully Saved.~r~nPossible Reasons:-~r~n" + this.it_transobject.sqlerrtext
+			SQL rollback USING this.it_transobject;
+			messagebox("Vaccine Schedule", ls_errtext, stopsign!)
+		end if
+	end if
+	setpointer(arrow!)
+
+// w_vaccineschedule_form.ue_newform() returns 0
+	integer rtncode
+	long li_fetched_code
+	long row
+	long ll_manfcode
+	setredraw(false)
+	call super::ue_newform
+	this.id_footer.reset()
+	this.id_footer.insertrow(0)
+	this.id_footer.scrolltorow(0)
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_menu.m_file.m_post.enabled = true
+	wf_protectdw(this.id_master, 0)
+	wf_protectdw(this.id_detail, 0)
+	wf_protectdw(this.id_footer, 0)
+	this.ib_modify = false
+	this.id_master.setcolumn(1)
+	this.id_master.setfocus()
+	wf_visible(true)
+	setredraw(true)
+
+// w_vaccineschedule_form.ue_detail() returns 0
+	integer li_rtncode
+	integer li_protect
+	long ll_row
+	long ll_code
+	long ll_deptcode
+	long ll_rowcount
+	boolean lb_flag
+	boolean lb_modify
+	call super::ue_detail
+	setredraw(false)
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_menu.m_file.m_post.enabled = false
+	ll_code = this.id_master.object.patientcode[this.id_master.rowcount()]
+	li_protect = 0
+	wf_initmodify(li_protect)
+	wf_protectdw(this.id_master, li_protect)
+	wf_protectdw(this.id_detail, li_protect)
+	wf_protectdw(this.id_footer, li_protect)
+	wf_grandtotal()
+	setredraw(true)
+
+// w_vaccineschedule_form.ue_newitem() returns 0
+	long ll_insrow
+	long ll_rowcount
+	if this.ib_itemvalidated = false and wf_validateitem(true) = -1 then
+		this.id_detail.setfocus()
+		return
+	end if
+	if this.id_detail.rowcount() > 0 and f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	if f_stringpreferences("itemcode") = "N" then
+		this.id_detail.setcolumn(this.is_columnitemname)
+	else
+		this.id_detail.setcolumn("fullcode")
+	end if
+	ll_insrow = this.id_detail.insertrow(0)
+	this.id_detail.object.usercode[ll_insrow] = gl_usercode
+	ll_rowcount = this.id_detail.rowcount()
+	if ll_rowcount > 1 then
+		this.id_detail.scrolltorow(ll_rowcount)
+		this.id_detail.setfocus()
+	end if
+	this.im_menu.m_file.m_save.enabled = true
+	this.ib_validatefullcode = true
+
+// w_vaccineschedule_form.ue_deleteitem() returns 0
+	long ll_currow
+	long ll_detailrows
+	long ll_icode
+	long ll_statuscode
+	long ll_row
+	long ll_footerrow
+	dwruntimeerror myexc
+	ll_row = this.id_detail.getrow()
+	ll_footerrow = this.id_footer.getrow()
+	if ll_row > 0 then
+		ll_statuscode = this.id_detail.object.vaccinestatuscode[ll_row]
+		if ll_statuscode = 4 then
+			this.ib_itemvalidated = true
+			try
+				ll_icode = this.id_detail.object.icode[ll_row]
+			catch (throwable myexc)
+			end try
+			if not isnull(ll_icode) then
+				this.id_detail.rowscopy(ll_row, ll_row, primary!, this.ids_itemrecyclebin, this.ids_itemrecyclebin.rowcount() + 1, primary!)
+			end if
+			this.id_detail.deleterow(0)
+			ll_detailrows = this.id_detail.rowcount()
+			if ll_detailrows < 1 then
+				this.im_menu.m_file.m_save.enabled = false
+			end if
+			wf_grandtotal()
+		end if
+	end if
+
+// w_vaccineschedule_form.close() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::close()
+	this.id_itemslist.sharedataoff()
+	return ::message.returnvalue
+
+// w_vaccineschedule_form.ue_list() returns 0
+	call super::ue_list
+	SQL rollback USING this.it_transobject;
+	this.im_menu.m_file.m_print.enabled = false
+	this.ib_modify = false
+	if this.ib_posting then
+		this.im_menu.m_file.m_post.visible = true
+		this.im_menu.m_file.m_post.enabled = true
+	else
+		this.im_menu.m_file.m_post.visible = false
+		this.im_menu.m_file.m_post.enabled = false
+	end if
+	this.im_menu.m_file.m_print.visible = true
+	this.im_menu.m_file.m_print.enabled = true
+	this.id_itemslist.hide()
+	if this.id_detail.rowcount() > 0 then
+		postevent("ue_deleteitem")
+	end if
+	wf_retrievelist()
+
+// w_vaccineschedule_form.ue_print() returns 0
+	long ll_code
+	long ll_counter
+	long ll_rowcount
+	long ll_billsummarytype
+	integer li_option
+	boolean lb_listtab
+	s_datastore lstr
+	call super::ue_print
+	if this.tab_retrieve.selectedtab = 2 then
+		lb_listtab = true
+	end if
+	if this.im_menu.m_file.m_save.enabled = true and lb_listtab = false then
+		li_option = messagebox("Save Changes", "Do you want to save changes", information!, yesno!, 2)
+		if li_option = 1 then
+			triggerevent("ue_save")
+			if wf_commitform() = false then
+				return
+			end if
+			return
+		end if
+		return
+	end if
+	if lb_listtab then
+		if isnull(this.id_list.getrow()) or this.id_list.getrow() <= 0 then
+			messagebox("Rows Validation", "Kindly select any row from the list view.")
+			return
+		end if
+		ll_code = this.id_list.getitemnumber(this.id_list.getrow(), "code")
+		if isnull(ll_code) or ll_code <= 0 then
+			messagebox("Selection Validation", "Kindly select any row from the list view.")
+			return
+		end if
+	else
+		ll_code = this.id_master.getitemnumber(1, "patientcode")
+	end if
+	this.dw_print.dataobject = "d_patientvaccineschedule_print"
+	this.dw_print.settransobject(this.it_transobject)
+	ll_rowcount = this.dw_print.retrieve(ll_code)
+	if lb_listtab then
+		lstr.dw = this.dw_print
+		lstr.s_name1 = this.dw_print.dataobject
+		openwithparm(w_preview_invoices, lstr)
+		lstr = message.powerobjectparm
+		if lstr.i_closemode = -1 then
+			return
+		end if
+		return
+	end if
+	if ll_rowcount > 0 then
+		if f_stringpreferences("PromptBeforePrinting") = "Y" and printsetup() < 0 then
+			messagebox("Printer", "Printing Error")
+			this.dw_print.printcancel()
+		end if
+		if this.dw_print.print() < 0 then
+			messagebox("Printing", "Can not Print", information!)
+		end if
+		if this.im_menu.m_file.m_save.enabled = true then
+			postevent("ue_new")
+		end if
+		return
+	end if
+	messagebox("Printing Error", "Can not Print,~r~nNo rows are retrieved", information!)
+
+// w_vaccineschedule_form.ue_refreshddw() returns 0
+	call super::ue_refreshddw
+	setpointer(hourglass!)
+	if this.ii_saletype <> 3 then
+		this.idc_customers.setredraw(false)
+		this.idc_customers.settransobject(this.it_transobject)
+		this.idc_customers.retrieve()
+		this.idc_customers.setredraw(true)
+	end if
+	this.idc_patient.setredraw(false)
+	this.idc_patient.settransobject(this.it_transobject)
+	wf_patient_retrieve()
+	this.idc_patient.setredraw(true)
+	setpointer(arrow!)
+
+// w_vaccineschedule_form.ue_postopen() returns 0
+	integer li_rtncode
+	long ll_counter
+	long ll_pos
+	long ll_found
+	m_vaccineshedulemenu lm_menu
+	call super::ue_postopen
+	lm_menu = this.menuid
+	setredraw(false)
+	this.id_saleinvdetail = this.dw_saleinvdetail
+	this.id_saleinvdetail.settransobject(this.it_transobject)
+	this.id_itemslist.object.t_stock.visible = false
+	this.id_itemslist.object.stock.visible = false
+	this.id_itemslist.object.t_sstock.visible = true
+	this.id_itemslist.object.sstock.visible = true
+	this.id_itemslist.object.t_pstock.visible = false
+	this.id_itemslist.object.pstock.visible = false
+	if f_stringpreferences("manufacturer") = "N" then
+		this.id_itemslist.object.manufacturer.visible = false
+	end if
+	if f_stringpreferences("itemname") = "N" then
+		this.id_itemslist.object.itemname.visible = false
+	end if
+	if f_stringpreferences("packing") = "N" then
+		this.id_itemslist.object.packing.visible = false
+	end if
+	if f_stringpreferences("packunits") = "N" then
+		this.id_itemslist.object.packunits.visible = false
+	end if
+	if f_stringpreferences("saleprice") = "N" then
+		this.id_itemslist.object.saleprice.visible = false
+	end if
+	if f_stringpreferences("stock") = "N" then
+		this.id_itemslist.object.sstock.visible = false
+	end if
+	if f_stringpreferences("ShowTransitStockInItemList") = "N" then
+		this.id_itemslist.object.transitstock.visible = false
+	end if
+	if f_stringpreferences("showitemalertinitemlist") = "N" then
+		this.id_itemslist.object.itemalertcode.visible = false
+	end if
+	this.id_detail.object.usercode.initial = trim(string(gl_usercode))
+	if f_stringpreferences("itemcode") = "N" then
+		this.id_detail.object.fullcode.visible = false
+	end if
+	li_rtncode = this.id_master.getchild("patientcode", this.idc_patient)
+	if li_rtncode = -1 then
+		messagebox("Error", "Can not get a DataWindowChild")
+		close(this)
+		return
+	end if
+	this.idc_patient.settransobject(this.it_transobject)
+	wf_patient_retrieve()
+	gd_itemsinfo.sharedata(this.id_itemslist)
+	this.id_footer.reset()
+	this.id_footer.insertrow(0)
+	this.id_footer.scrolltorow(0)
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 586", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.ib_posting = true
+	else
+		this.ib_posting = false
+	end if
+	setredraw(true)
+
+// w_vaccineschedule_form.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	return ::message.returnvalue

@@ -1,0 +1,51 @@
+// userobject uo_dwr_progressbar (dw2xls)  ancestor: userobject
+
+// uo_dwr_progressbar.initialize() returns 0
+	setrange(this.minvalue, this.maxvalue)
+	setstep(this.stepvalue)
+
+// uo_dwr_progressbar.stepit() returns 0
+	event valuechanged(this.value, this.value + this.stepvalue)
+	this.value = this.value + this.stepvalue
+	send(this.hhwnd, 1029, 0, 0)
+
+// uo_dwr_progressbar.setstep(unsignedinteger stepval) returns 0
+	this.stepvalue = stepval
+	send(this.hhwnd, 1028, this.stepvalue, 0)
+
+// uo_dwr_progressbar.setrange(long min, long max) returns 0
+	this.minvalue = min
+	this.maxvalue = max
+	send(this.hhwnd, 1025, 0, long(this.minvalue, this.maxvalue))
+
+// uo_dwr_progressbar.setvalue(long newvalue) returns 0
+	event valuechanged(this.value, newvalue)
+	this.value = newvalue
+	send(this.hhwnd, 1026, this.value, 0)
+
+// uo_dwr_progressbar.create() returns 0
+
+// uo_dwr_progressbar.destroy() returns 0
+
+// uo_dwr_progressbar.constructor() returns long
+	long ll_x
+	long ll_y
+	long ll_width
+	long ll_height
+	long hparent
+	long hinstance
+	initcommoncontrols()
+	ll_x = unitstopixels(this.x, xunitstopixels!)
+	ll_y = unitstopixels(this.y, yunitstopixels!)
+	ll_width = unitstopixels(this.width, xunitstopixels!)
+	ll_height = unitstopixels(this.height, yunitstopixels!)
+	hparent = handle(parent)
+	hinstance = handle(getapplication())
+	this.hhwnd = createwindowexw(0, "msctls_progress32", 0, 1073741824 + 268435456, ll_x, ll_y, ll_width, ll_height, hparent, 0, hinstance, 0)
+	this.visible = false
+	post initialize()
+	return ::message.returnvalue
+
+// uo_dwr_progressbar.destructor() returns long
+	destroywindow(this.hhwnd)
+	return ::message.returnvalue

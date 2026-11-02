@@ -1,0 +1,108 @@
+// window w_purmisccharges_breakup (purchaseresponsewin)  ancestor: window
+
+// w_purmisccharges_breakup.create() returns 0
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.dw_control = create dw_control
+	this.control = {this.cb_cancel, this.cb_ok, this.dw_control}
+
+// w_purmisccharges_breakup.destroy() returns 0
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.dw_control
+
+// w_purmisccharges_breakup.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	this.is_values = message.powerobjectparm
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.object.misccharges1[1] = this.is_values.d_value1
+	this.dw_control.object.misccharges2[1] = this.is_values.d_value2
+	this.dw_control.object.misccharges3[1] = this.is_values.d_value3
+	this.dw_control.object.misccharges4[1] = this.is_values.d_value4
+	this.dw_control.object.misccharges5[1] = this.is_values.d_value5
+	this.dw_control.object.misccharges1_t.text = f_stringpreferences("MisCharges1CaptionInSale")
+	this.dw_control.object.misccharges2_t.text = f_stringpreferences("MisCharges2CaptionInSale")
+	this.dw_control.object.misccharges3_t.text = f_stringpreferences("MisCharges3CaptionInSale")
+	this.dw_control.object.misccharges4_t.text = f_stringpreferences("MisCharges4CaptionInSale")
+	this.dw_control.object.misccharges5_t.text = f_stringpreferences("MisCharges5CaptionInSale")
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_purmisccharges_breakup.close() returns long
+	closewithreturn(this, this.is_values)
+	return ::message.returnvalue
+
+// w_purmisccharges_breakup.key(keycode key, unsignedlong keyflags) returns long
+	if keydown(keyescape!) then
+		close(this)
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.is_values.i_status = -1
+	closewithreturn(parent, parent.is_values)
+	return ::message.returnvalue
+
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	if parent.dw_control.accepttext() = -1 then
+		return ::message.returnvalue
+	end if
+	parent.is_values.d_value1 = parent.dw_control.object.misccharges1[1]
+	parent.is_values.d_value2 = parent.dw_control.object.misccharges2[1]
+	parent.is_values.d_value3 = parent.dw_control.object.misccharges3[1]
+	parent.is_values.d_value4 = parent.dw_control.object.misccharges4[1]
+	parent.is_values.d_value5 = parent.dw_control.object.misccharges5[1]
+	parent.is_values.i_status = 1
+	closewithreturn(parent, parent.is_values)
+	return ::message.returnvalue
+
+// dw_control.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_control.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_control.getfocus() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue

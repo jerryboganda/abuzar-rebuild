@@ -1,0 +1,93 @@
+// function f_towords_gbp (functions)  ancestor: function_object
+
+// f_towords_gbp.f_towords_gbp(decimal ad_amount, string as_amountinwords, integer ai_firstcall) returns string
+	long ll_number
+	long ll_numberpart
+	long ll_decimalpart
+	long ll_count
+	long i
+	long k
+	double[] la_value
+	string[] sa_string
+	ll_numberpart = truncate(abs(ad_amount), 0)
+	ll_decimalpart = round(abs(ad_amount) - truncate(abs(ad_amount), 0), 2) * 100
+	la_value = {1000000000, 1000000, 1000, 100, 90, 80, 70, 60, 50, 40, 30, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
+	sa_string = {"BILLION", "MILLION", "THOUSAND", "HUNDRED", "NINETY", "EIGHTY", "SEVENTY", "SIXTY", "FIFTY", "FORTY", "THIRTY", "TWENTY", "NINETEEN", "EIGHTEEN", "SEVENTEEN", "SIXTEEN", "FIFTEEN", "FOURTEEN", "THIRTEEN", "TWELVE", "ELEVEN", "TEN", "NINE", "EIGHT", "SEVEN", "SIX", "FIVE", "FOUR", "THREE", "TWO", "ONE"}
+	ll_count = 1
+	do while ll_numberpart <> 0
+		k = 1
+		do while ll_numberpart <> la_value[k]
+			k = k + 1
+			if k > 31 then
+				exit
+			end if
+		loop
+		if k <= 31 then
+			if k <= 2 then
+				as_amountinwords = as_amountinwords + "ONE " + sa_string[k]
+			else
+				as_amountinwords = as_amountinwords + sa_string[k]
+			end if
+			exit
+		end if
+		ll_number = ll_numberpart / la_value[ll_count]
+		do while ll_number < 1
+			ll_count = ll_count + 1
+			ll_number = ll_numberpart / la_value[ll_count]
+		loop
+		if la_value[ll_count] > 10.0 and la_value[ll_count] < 100.0 then
+			as_amountinwords = as_amountinwords + sa_string[ll_count] + " "
+		elseif ll_number > 20 then
+			as_amountinwords = f_towords(ll_number, as_amountinwords, 0)
+			as_amountinwords = as_amountinwords + " " + sa_string[ll_count] + " "
+		else
+			as_amountinwords = as_amountinwords + sa_string[32 - ll_number] + " " + sa_string[ll_count] + " "
+		end if
+		ll_numberpart = ll_numberpart - ll_number * la_value[ll_count]
+		ll_count = 1
+	loop
+	if ai_firstcall = 1 then
+		if truncate(abs(ad_amount), 0) > 0 then
+			as_amountinwords = as_amountinwords + " GBP(£) "
+		end if
+		if abs(ad_amount) - truncate(abs(ad_amount), 0) > 0 then
+			as_amountinwords = as_amountinwords + " AND "
+		end if
+		ll_count = 1
+		do while ll_decimalpart <> 0
+			k = 1
+			do while ll_decimalpart <> la_value[k]
+				k = k + 1
+				if k > 31 then
+					exit
+				end if
+			loop
+			if k <= 31 then
+				if k <= 2 then
+					as_amountinwords = as_amountinwords + "ONE " + sa_string[k]
+				else
+					as_amountinwords = as_amountinwords + sa_string[k]
+				end if
+				exit
+			end if
+			ll_number = ll_decimalpart / la_value[ll_count]
+			do while ll_number < 1
+				ll_count = ll_count + 1
+				ll_number = ll_decimalpart / la_value[ll_count]
+			loop
+			if la_value[ll_count] > 10.0 and la_value[ll_count] < 100.0 then
+				as_amountinwords = as_amountinwords + sa_string[ll_count] + " "
+			else
+				as_amountinwords = as_amountinwords + sa_string[32 - ll_number] + " " + sa_string[ll_count] + " "
+			end if
+			ll_decimalpart = ll_decimalpart - ll_number * la_value[ll_count]
+			ll_count = 1
+		loop
+		if abs(ad_amount) - truncate(abs(ad_amount), 0) > 0 then
+			as_amountinwords = as_amountinwords + " PENCE"
+		end if
+		as_amountinwords = trim(as_amountinwords) + " ONLY"
+	else
+		as_amountinwords = trim(as_amountinwords)
+	end if
+	return as_amountinwords

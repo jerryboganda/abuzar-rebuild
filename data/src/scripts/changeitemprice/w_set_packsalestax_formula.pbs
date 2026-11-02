@@ -1,0 +1,104 @@
+// window w_set_packsalestax_formula (changeitemprice)  ancestor: window
+
+// w_set_packsalestax_formula.ue_close(double ad_value) returns 0
+	double ld_value
+	this.dw_price.accepttext()
+	this.s_price.i_status = ad_value
+	this.em_value.getdata(ld_value)
+	this.s_price.d_value1 = ld_value
+	this.s_price.s_name1 = this.dw_price.object.sourcecolumn[this.dw_price.rowcount()]
+	closewithreturn(this, this.s_price)
+
+// w_set_packsalestax_formula.create() returns 0
+	this.st_4 = create st_4
+	this.st_3 = create st_3
+	this.st_percofprice = create st_percofprice
+	this.em_value = create em_value
+	this.st_qty = create st_qty
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.dw_price = create dw_price
+	this.control = {this.st_4, this.st_3, this.st_percofprice, this.em_value, this.st_qty, this.cb_cancel, this.cb_ok, this.dw_price}
+
+// w_set_packsalestax_formula.destroy() returns 0
+	destroy this.st_4
+	destroy this.st_3
+	destroy this.st_percofprice
+	destroy this.em_value
+	destroy this.st_qty
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.dw_price
+
+// w_set_packsalestax_formula.open() returns long
+	environment le_env
+	long ll_width
+	long ll_height
+	if getenvironment(le_env) = 1 then
+		ll_width = pixelstounits(le_env.screenwidth, xpixelstounits!) - this.width
+		ll_height = pixelstounits(le_env.screenheight, ypixelstounits!) - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width * 0.5
+			ll_height = ll_height * 0.5
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	this.dw_price.settransobject(sqlca)
+	this.dw_price.insertrow(0)
+	this.em_value.selecttext(1, len(this.em_value.text))
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(0)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	long ll_row
+	double ld_value
+	parent.dw_price.accepttext()
+	ll_row = parent.dw_price.rowcount()
+	if isnull(parent.dw_price.object.sourcecolumn[ll_row]) then
+		messagebox("Source Column Validation", "Please Enter Valid Value For Source Column.")
+		parent.dw_price.setfocus()
+		parent.dw_price.setcolumn("sourcecolumn")
+		return ::message.returnvalue
+	end if
+	parent.em_value.getdata(ld_value)
+	if long(ld_value) < 0 or ld_value > 100.0 then
+		messagebox("Validation", "Please Enter Valid Perc, Rang [0-100].")
+		parent.em_value.setfocus()
+		parent.em_value.selecttext(1, len(parent.em_value.text))
+		return ::message.returnvalue
+	end if
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// dw_price.itemchanged(long row, dwobject dwo, string data) returns long
+	long ll_res
+	integer li_null
+	setnull(li_null)
+	choose case dwo.name
+	case "sourcecolumn"
+		if isnull(data) or len(data) = 0 then
+			return 1
+		else
+			if data = "item_saleprice" then
+				parent.st_percofprice.text = "% of Sale Price"
+			elseif data = "item_saleprice2" then
+				parent.st_percofprice.text = "% of Sale Price 2"
+			elseif data = "item_saleprice3" then
+				parent.st_percofprice.text = "% of Sale Price 3"
+			elseif data = "item_saleprice4" then
+				parent.st_percofprice.text = "% of Sale Price 4"
+			elseif data = "item_saleprice5" then
+				parent.st_percofprice.text = "% of Sale Price 5"
+			elseif data = "item_retailprice" then
+				parent.st_percofprice.text = "% of Retail Price"
+			end if
+			return 0
+		end if
+	end choose
+	return ::message.returnvalue

@@ -1,0 +1,174 @@
+// userobject u_stockledger (templates)  ancestor: userobject
+
+// u_stockledger.constructor() returns long
+	this.it_transobject = create u_transaction
+	SQL start USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		this.dw_inputs.settransobject(this.it_transobject)
+		this.dw_inputs.retrieve()
+		this.dw_inputs.setfocus()
+	else
+		messagebox("Database Connection", "Problem in Connecting with database. Details are:-~r~n" + this.it_transobject.sqlerrtext, stopsign!)
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// u_stockledger.create() returns 0
+	this.dw_end = create dw_end
+	this.dw_current = create dw_current
+	this.dw_start = create dw_start
+	this.st_details = create st_details
+	this.hpb_progress = create hpb_progress
+	this.cb_ok = create cb_ok
+	this.dw_inputs = create dw_inputs
+	this.gb_progress = create gb_progress
+	this.control = {this.dw_end, this.dw_current, this.dw_start, this.st_details, this.hpb_progress, this.cb_ok, this.dw_inputs, this.gb_progress}
+
+// u_stockledger.destroy() returns 0
+	destroy this.dw_end
+	destroy this.dw_current
+	destroy this.dw_start
+	destroy this.st_details
+	destroy this.hpb_progress
+	destroy this.cb_ok
+	destroy this.dw_inputs
+	destroy this.gb_progress
+
+// u_stockledger.destructor() returns long
+	SQL stop USING this.it_transobject;
+	destroy this.it_transobject
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	string ls_messagetitle
+	string ls_message
+	string ls_truncate
+	string ls_itemname
+	string ls_eventtype
+	string ls_module
+	string ls_detail
+	char lc_updatebasetables
+	long ll_rtcode
+	long ll_retcode
+	long ll_rowcount
+	long ll_counter
+	long ll_icode
+	long ll_stepafter
+	long ll_thisstep
+	datastore lds_items
+	ls_eventtype = "Alert"
+	ls_module = "Update Item Stock Ledgers"
+	ls_detail = "Update Item Stock Ledgers"
+	parent.dw_inputs.accepttext()
+	ls_truncate = "TRUNCATE TABLE DBO.StockLedger"
+	parent.dw_start.settransobject(parent.it_transobject)
+	parent.dw_current.settransobject(parent.it_transobject)
+	parent.dw_end.settransobject(parent.it_transobject)
+	parent.gb_progress.visible = true
+	parent.st_details.visible = true
+	parent.hpb_progress.visible = true
+	parent.dw_start.visible = true
+	parent.dw_end.visible = true
+	parent.dw_current.visible = true
+	parent.dw_start.retrieve()
+	parent.dw_end.retrieve()
+	parent.dw_current.retrieve()
+	setpointer(hourglass!)
+	if parent.dw_inputs.object.purgestockledger[1] = "Y" then
+		SQL rollback USING parent.it_transobject;
+		parent.dw_current.retrieve()
+		ls_message = trim(string(today(), "dd/mm/yyyy hh:mm:ss")) + " Item Stock Ledger Purge Operation in progress . . ."
+		parent.st_details.text = ls_message
+		SQL EXECUTE IMMEDIATE :ls_truncate USING parent.it_transobject;
+		ll_rtcode = parent.it_transobject.sqlcode
+		if ll_rtcode = 0 then
+			parent.dw_current.retrieve()
+			ls_message = trim(string(today(), "dd/mm/yyyy hh:mm:ss")) + " Item Stock Ledger Purge Operation Completed Successfully!"
+			parent.st_details.text = ls_message
+			ls_detail = ls_message
+			parent.it_transobject.insert_eventlog(ls_eventtype, ls_module, ls_detail, gl_usercode)
+			SQL commit USING parent.it_transobject;
+		else
+			messagebox("Item Stock Ledger Purge", "Item Stock Ledger Purge Operation Failed.~r~nPlease try later! Reasons are:-~r~n" + parent.it_transobject.sqlerrtext, stopsign!)
+			SQL rollback USING parent.it_transobject;
+			return ::message.returnvalue
+		end if
+		return
+	end if
+	parent.dw_current.retrieve()
+	ls_message = trim(string(today(), "dd/mm/yyyy hh:mm:ss")) + " Item Stock Ledger Bulk Log Generation Operation in progress . . ."
+	parent.st_details.text = ls_message
+	parent.it_transobject.stockledger()
+	if parent.it_transobject.sqlcode = 0 then
+		parent.dw_current.retrieve()
+		ls_message = trim(string(today(), "dd/mm/yyyy hh:mm:ss")) + " Item Stock Ledger Bulk Log Generated Successfully!"
+		parent.st_details.text = ls_message
+		ls_detail = ls_message
+		parent.it_transobject.insert_eventlog(ls_eventtype, ls_module, ls_detail, gl_usercode)
+		SQL commit USING parent.it_transobject;
+	else
+		messagebox("Item Stock Ledger Generation", "Item Stock Ledger Generation Operation Failed.~r~nPlease try later! Reasons are:-~r~n" + parent.it_transobject.sqlerrtext, stopsign!)
+		SQL rollback USING parent.it_transobject;
+		return ::message.returnvalue
+	end if
+	SQL rollback USING parent.it_transobject;
+	lds_items = create datastore
+	lds_items.dataobject = "d_generateable_stockledger_items"
+	lds_items.settransobject(parent.it_transobject)
+	ll_retcode = lds_items.retrieve()
+	if ll_retcode > 0 then
+		ll_rowcount = lds_items.rowcount()
+		if ll_rowcount > 0 then
+			ll_stepafter = round(ll_rowcount / 100.0, 0)
+			lc_updatebasetables = parent.dw_inputs.object.updatebasetables[1]
+			if isnull(lc_updatebasetables) or lc_updatebasetables = "" then
+				lc_updatebasetables = "N"
+			end if
+			parent.dw_current.retrieve()
+			ls_message = trim(string(today(), "dd/mm/yyyy hh:mm:ss")) + " Preparing to update Stock Ledger for each item individually..."
+			parent.st_details.text = ls_message
+			parent.dw_current.retrieve()
+			ls_message = trim(string(today(), "dd/mm/yyyy hh:mm:ss")) + " Total Items to Generate = " + trim(string(ll_rowcount))
+			parent.st_details.text = ls_message
+			parent.dw_current.retrieve()
+			for ll_counter = 1 to ll_rowcount
+				ll_icode = lds_items.object.icode[ll_counter]
+				ls_itemname = lds_items.object.name[ll_counter]
+				if ll_icode >= 0 then
+					parent.dw_current.retrieve()
+					ls_message = trim(string(today(), "dd/mm/yyyy hh:mm:ss")) + " Updating Item Name : " + ls_itemname + ", Code : " + trim(string(ll_icode)) + "  . . . "
+					parent.st_details.text = ls_message
+					ll_rtcode = parent.it_transobject.updateitemstockledger(ll_icode, lc_updatebasetables)
+					if ll_rtcode = 0 then
+						parent.dw_current.retrieve()
+						ls_message = trim(string(today(), "dd/mm/yyyy hh:mm:ss")) + " Item Name : " + ls_itemname + ", Code : " + trim(string(ll_icode)) + " Updated Successfully!"
+						parent.st_details.text = ls_message
+						ll_thisstep = ll_thisstep + 1
+						if ll_thisstep = ll_stepafter then
+							parent.dw_current.retrieve()
+							ll_thisstep = 0
+							parent.hpb_progress.stepit()
+						end if
+					else
+						ls_message = trim(string(today(), "dd/mm/yyyy hh:mm:ss")) + " Item Name : " + ls_itemname + ", Code : " + trim(string(ll_icode)) + " Not Updated Successfully!"
+						parent.st_details.text = ls_message
+						SQL rollback USING parent.it_transobject;
+						messagebox("Item Stock Ledger", ls_message, stopsign!)
+						return ::message.returnvalue
+					end if
+					return
+				end if
+			next
+		end if
+	end if
+	setpointer(arrow!)
+	if ll_rtcode = 0 then
+		ls_message = trim(string(today(), "dd/mm/yyyy hh:mm:ss")) + " Stock Ledgers Generation done for all the items successfully"
+		parent.st_details.text = ls_message
+		ls_detail = ls_message
+		parent.it_transobject.insert_eventlog(ls_eventtype, ls_module, ls_detail, gl_usercode)
+		SQL commit USING parent.it_transobject;
+		messagebox("Item Stock Ledger", "Stock Ledgers Generation done for all the items successfully", information!)
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue

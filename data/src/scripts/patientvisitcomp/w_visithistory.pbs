@@ -1,0 +1,244 @@
+// window w_visithistory (patientvisitcomp)  ancestor: window
+
+// w_visithistory.wf_select_unselect_row() returns long
+	long ll_oldrow
+	ll_oldrow = this.ii_currow
+	if this.dw_control.getrow() > 0 then
+		this.dw_control.selectrow(ll_oldrow, false)
+		this.ii_currow = this.dw_control.getrow()
+		this.dw_control.selectrow(this.ii_currow, true)
+		this.dw_control.setrow(this.ii_currow)
+		this.dw_control.scrolltorow(this.ii_currow)
+	end if
+	return this.ii_currow
+
+// w_visithistory.wf_show_patientgallery() returns integer
+	long ll_code
+	if this.dw_control.rowcount() > 0 and this.dw_control.getrow() > 0 then
+		ll_code = this.dw_control.object.patientcode[this.dw_control.getrow()]
+		if ll_code > 0 then
+			f_show_patient_gallary(ll_code)
+		end if
+	end if
+	return 0
+
+// w_visithistory.wf_select_printout() returns long
+	string ls_report
+	if gs_company = "DRWAJIDALI" then
+		ls_report = "d_visitprescription_print_drwajidali"
+	elseif gs_company = "DRIRFANSB" then
+		ls_report = "d_visitprescription_print_drirfansb"
+	elseif gs_company = "DRSHUMAIL" then
+		ls_report = "d_visitprescription_print_drshumail"
+	elseif gs_company = "RASHIDNURSING" then
+		ls_report = "d_visitprescription_print_rashidnursing"
+	else
+		ls_report = "d_visitprescription_print"
+	end if
+	this.dw_print.dataobject = ls_report
+	return 0
+
+// w_visithistory.create() returns 0
+	this.cb_patientimage = create cb_patientimage
+	this.dw_print = create dw_print
+	this.cb_details = create cb_details
+	this.cb_cancel = create cb_cancel
+	this.cb_select = create cb_select
+	this.dw_control = create dw_control
+	this.control = {this.cb_patientimage, this.dw_print, this.cb_details, this.cb_cancel, this.cb_select, this.dw_control}
+
+// w_visithistory.destroy() returns 0
+	destroy this.cb_patientimage
+	destroy this.dw_print
+	destroy this.cb_details
+	destroy this.cb_cancel
+	destroy this.cb_select
+	destroy this.dw_control
+
+// w_visithistory.open() returns long
+	long ll_width
+	long ll_height
+	long ll_code
+	long ll_masteripartcode
+	environment env
+	this.is_arguements = message.powerobjectparm
+	if getenvironment(env) <> 1 then
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.width = ll_width * 0.98
+	this.height = ll_height * 0.90
+	this.y = int((ll_height - this.height) / 2.0)
+	this.dw_control.width = this.width * 0.98
+	this.dw_control.height = this.height * 0.85
+	this.cb_select.y = this.dw_control.y + this.dw_control.height + 10
+	this.cb_details.y = this.dw_control.y + this.dw_control.height + 10
+	this.cb_cancel.y = this.dw_control.y + this.dw_control.height + 10
+	this.cb_patientimage.y = this.dw_control.y + this.dw_control.height + 10
+	this.cb_details.x = this.cb_select.x + this.cb_select.width + 20
+	this.cb_cancel.x = this.cb_details.x + this.cb_details.width + 20
+	this.cb_patientimage.x = this.cb_cancel.x + this.cb_cancel.width + 20
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.retrieve(this.is_arguements.l_code1)
+	if this.dw_control.rowcount() > 0 then
+		this.ii_currow = 1
+		wf_select_unselect_row()
+	else
+		this.ii_currow = 0
+	end if
+	this.dw_print.settransobject(sqlca)
+	setredraw(true)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_visithistory.close() returns long
+	closewithreturn(this, this.is_arguements)
+	return ::message.returnvalue
+
+// cb_patientimage.clicked() returns long
+	parent.wf_show_patientgallery()
+	return ::message.returnvalue
+
+// cb_details.clicked() returns long
+	long ll_code
+	long ll_row
+	long li_printretcode
+	string ls_printsize
+	boolean lb_listtab
+	s_datastore lstr
+	if isnull(parent.dw_control.getrow()) or parent.dw_control.getrow() <= 0 then
+		messagebox("Rows Validation", "Kindly select any row first from the list")
+		return ::message.returnvalue
+	end if
+	ll_code = parent.dw_control.getitemnumber(parent.dw_control.getrow(), "visitcode")
+	if isnull(ll_code) or ll_code <= 0 then
+		messagebox("Selection Validation", "Kindly select any valid row from the list.")
+		return ::message.returnvalue
+	end if
+	parent.wf_select_printout()
+	parent.dw_print.settransobject(sqlca)
+	parent.dw_print.retrieve(ll_code)
+	if ll_code > 0 then
+		lstr.dw = parent.dw_print
+		lstr.s_name1 = parent.dw_print.dataobject
+		openwithparm(w_preview_invoices, lstr)
+		lstr = ::message.powerobjectparm
+		if lstr.i_closemode = -1 then
+			return ::message.returnvalue
+		end if
+		return
+	end if
+	if parent.dw_control.rowcount() > 0 then
+		if f_stringpreferences("PromptBeforePrinting") = "Y" and printsetup() < 0 then
+			messagebox("Printer", "Printing Error")
+			parent.dw_print.printcancel()
+		end if
+		li_printretcode = parent.dw_print.print()
+		if li_printretcode < 0 then
+			messagebox("Printing", "Can not Print Invoice", information!)
+		end if
+	else
+		messagebox("Printing Error", "Can not Print,~r~nNo rows are retrieved", information!)
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.is_arguements.i_status = 0
+	parent.postevent(close!)
+	return ::message.returnvalue
+
+// cb_select.clicked() returns long
+	parent.is_arguements.i_status = 1
+	if parent.dw_control.getrow() > 0 then
+		parent.is_arguements.l_code1 = parent.dw_control.object.visitcode[parent.dw_control.getrow()]
+	end if
+	parent.postevent(close!)
+	return ::message.returnvalue
+
+// dw_control.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	long ll_row
+	long ll_retcode
+	ancestorreturnvalue = super::doubleclicked(xpos, ypos, row, dwo)
+	ll_row = getrow()
+	if getrow() > 0 then
+		parent.is_arguements.i_status = 1
+		parent.is_arguements.l_code1 = this.object.visitcode[getrow()]
+		parent.postevent(close!)
+	end if
+	return ll_retcode
+
+// dw_control.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ancestorreturnvalue
+	integer rt_code
+	long ll_currrow
+	long ll_listcurrrow
+	long ll_rowm
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	ll_rowm = getrow()
+	if key = keydownarrow! then
+		selectrow(0, false)
+		scrollnextrow()
+		ll_listcurrrow = getrow()
+		rt_code = 1
+	elseif key = keyuparrow! then
+		selectrow(0, false)
+		scrollpriorrow()
+		ll_listcurrrow = getrow()
+		rt_code = 1
+	elseif key = keypagedown! then
+		selectrow(0, false)
+		scrollnextpage()
+		ll_listcurrrow = getrow()
+		rt_code = 1
+	elseif key = keypageup! then
+		selectrow(0, false)
+		scrollpriorpage()
+		ll_listcurrrow = getrow()
+		rt_code = 1
+	elseif key = keyend! then
+		selectrow(0, false)
+		scrolltorow(99999)
+		ll_listcurrrow = getrow()
+		rt_code = 1
+	elseif key = keyenter! then
+		if rowcount() > 0 and getrow() <= 0 then
+			parent.ii_currow = 1
+			setrow(1)
+			scrolltorow(1)
+		end if
+		ll_listcurrrow = getrow()
+		rt_code = 1
+		if getrow() > 0 then
+			parent.is_arguements.l_code1 = this.object.visitcode[getrow()]
+		end if
+		parent.cb_select.triggerevent(close!)
+	elseif key = keyhome! then
+		selectrow(0, false)
+		scrolltorow(1)
+		ll_listcurrrow = getrow()
+		rt_code = 1
+	end if
+	if rt_code = 1 then
+		parent.wf_select_unselect_row()
+	end if
+	return rt_code
+
+// dw_control.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked(xpos, ypos, row, dwo)
+	if row > 0 then
+		selectrow(0, false)
+		scrolltorow(row)
+		setrow(row)
+		parent.wf_select_unselect_row()
+		parent.ii_currow = row
+	end if
+	return ::message.returnvalue

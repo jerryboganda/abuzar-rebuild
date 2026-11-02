@@ -1,0 +1,76 @@
+// window w_sys (dw2xls)  ancestor: window
+
+// w_sys.wf_get_col_height_font(integer ai_col_width, string str, string font_name, boolean font_italic, integer font_underline, integer font_weight, integer font_size, integer units) returns long
+	string ls_val
+	integer ret
+	datawindow ldw
+	ldw = wf_get_dw(units)
+	ldw.object.str_col.height = 0
+	ldw.object.str_col.width = ai_col_width
+	ldw.object.datawindow.detail.height = 0
+	ldw.object.str_col.font.face = font_name
+	ldw.object.str_col.font.italic = font_italic
+	if font_underline = 0 then
+		ldw.object.str_col.font.underline = false
+	else
+		ldw.object.str_col.font.underline = true
+	end if
+	ldw.object.str_col.font.weight = font_weight
+	ldw.object.str_col.font.height = -abs(font_size)
+	ldw.object.str_col[1] = str
+	ret = long(ldw.describe("evaluate('rowheight()', 1)"))
+	ret = pixelstounits(unitstopixels(ret, yunitstopixels!), ypixelstounits!) + 7
+	return ret
+
+// w_sys.wf_get_dw(integer ai_units) returns datawindow
+	choose case ai_units
+	case 0
+		return this.dw_sys_0
+	case 1
+		return this.dw_sys_1
+	case 2
+		return this.dw_sys_2
+	case 3
+		return this.dw_sys_3
+	end choose
+	return this.dw_sys_0
+
+// w_sys.create() returns 0
+	this.dw_sys_3 = create dw_sys_3
+	this.dw_sys_2 = create dw_sys_2
+	this.dw_sys_0 = create dw_sys_0
+	this.dw_sys_1 = create dw_sys_1
+	this.st_temp = create st_temp
+	this.control = {this.dw_sys_3, this.dw_sys_2, this.dw_sys_0, this.dw_sys_1, this.st_temp}
+
+// w_sys.destroy() returns 0
+	destroy this.dw_sys_3
+	destroy this.dw_sys_2
+	destroy this.dw_sys_0
+	destroy this.dw_sys_1
+	destroy this.st_temp
+
+// w_sys.open() returns long
+	integer li_ret
+	string ls_syntax
+	ls_syntax = "~trelease 5;~r~n" + "~tdatawindow(units=0 processing=0)~r~n" + "~tsummary(height=0 color=~"536870912~" )~r~n" + "~tfooter(height=0 color=~"536870912~" )~r~n" + "~tdetail(height=0 color=~"536870912~"  height.autosize=yes)~r~n" + "~ttable(column=(type=char(32000) updatewhereclause=yes name=str_col dbname=~"str_col~" )~r~n" + "~t )~r~n" + "~tcolumn(band=detail id=1 alignment=~"0~" tabsequence=10 border=~"0~" color=~"33554432~" x=~"5~" y=~"4~" height=~"76~" width=~"302~" format=~"[general]~" name=str_col visible=~"1~" height.autosize=yes edit.limit=0 edit.case=any edit.focusrectangle=no edit.autoselect=yes edit.autohscroll=yes edit.imemode=0  font.face=~"Arial~" font.height=~"-10~" font.weight=~"400~"  font.family=~"2~" font.pitch=~"2~" font.charset=~"0~" background.mode=~"1~" background.color=~"536870912~")"
+	li_ret = this.dw_sys_0.create(ls_syntax)
+	if li_ret = 1 and this.dw_sys_0.rowcount() = 0 then
+		this.dw_sys_0.insertrow(0)
+	end if
+	ls_syntax = "~trelease 5;~r~n" + "~tdatawindow(units=1 processing=0)~r~n" + "~tsummary(height=0 color=~"536870912~" )~r~n" + "~tfooter(height=0 color=~"536870912~" )~r~n" + "~tdetail(height=0 color=~"536870912~"  height.autosize=yes)~r~n" + "~ttable(column=(type=char(32000) updatewhereclause=yes name=str_col dbname=~"str_col~" )~r~n" + "~t )~r~n" + "~tcolumn(band=detail id=1 alignment=~"0~" tabsequence=10 border=~"0~" color=~"33554432~" x=~"1~" y=~"1~" height=~"19~" width=~"66~" format=~"[general]~" name=str_col visible=~"1~" height.autosize=yes edit.limit=0 edit.case=any edit.focusrectangle=no edit.autoselect=yes edit.autohscroll=yes edit.imemode=0  font.face=~"Arial~" font.height=~"-10~" font.weight=~"400~"  font.family=~"2~" font.pitch=~"2~" font.charset=~"0~" background.mode=~"1~" background.color=~"536870912~")"
+	li_ret = this.dw_sys_1.create(ls_syntax)
+	if li_ret = 1 and this.dw_sys_1.rowcount() = 0 then
+		this.dw_sys_1.insertrow(0)
+	end if
+	ls_syntax = "~trelease 5;~r~n" + "~tdatawindow(units=2 processing=0)~r~n" + "~tsummary(height=0 color=~"536870912~" )~r~n" + "~tfooter(height=0 color=~"536870912~" )~r~n" + "~tdetail(height=0 color=~"536870912~"  height.autosize=yes)~r~n" + "~ttable(column=(type=char(32000) updatewhereclause=yes name=str_col dbname=~"str_col~" )~r~n" + "~t )~r~n" + "~tcolumn(band=detail id=1 alignment=~"0~" tabsequence=10 border=~"0~" color=~"33554432~" x=~"10~" y=~"10~" height=~"197~" width=~"687~" format=~"[general]~" name=str_col visible=~"1~" height.autosize=yes edit.limit=0 edit.case=any edit.focusrectangle=no edit.autoselect=yes edit.autohscroll=yes edit.imemode=0  font.face=~"Arial~" font.height=~"-10~" font.weight=~"400~"  font.family=~"2~" font.pitch=~"2~" font.charset=~"0~" background.mode=~"1~" background.color=~"536870912~")"
+	li_ret = this.dw_sys_2.create(ls_syntax)
+	if li_ret = 1 and this.dw_sys_2.rowcount() = 0 then
+		this.dw_sys_2.insertrow(0)
+	end if
+	ls_syntax = "~trelease 5;~r~n" + "~tdatawindow(units=3 processing=0)~r~n" + "~tsummary(height=0 color=~"536870912~" )~r~n" + "~tfooter(height=0 color=~"536870912~" )~r~n" + "~tdetail(height=0 color=~"536870912~"  height.autosize=yes)~r~n" + "~ttable(column=(type=char(32000) updatewhereclause=yes name=str_col dbname=~"str_col~" )~r~n" + "~t )~r~n" + "~tcolumn(band=detail id=1 alignment=~"0~" tabsequence=10 border=~"0~" color=~"33554432~" x=~"26~" y=~"27~" height=~"502~" width=~"1746~" format=~"[general]~" name=str_col visible=~"1~" height.autosize=yes edit.limit=0 edit.case=any edit.focusrectangle=no edit.autoselect=yes edit.autohscroll=yes edit.imemode=0  font.face=~"Arial~" font.height=~"-10~" font.weight=~"400~"  font.family=~"2~" font.pitch=~"2~" font.charset=~"0~" background.mode=~"1~" background.color=~"536870912~")"
+	li_ret = this.dw_sys_3.create(ls_syntax)
+	if li_ret = 1 and this.dw_sys_3.rowcount() = 0 then
+		this.dw_sys_3.insertrow(0)
+	end if
+	return ::message.returnvalue

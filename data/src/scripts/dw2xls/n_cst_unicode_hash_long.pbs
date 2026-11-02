@@ -1,0 +1,34 @@
+// userobject n_cst_unicode_hash_long (dw2xls)  ancestor: n_cst_hash_blob
+
+// n_cst_unicode_hash_long.of_set_value(blob ab_key, unsignedlong al_value) returns integer
+	integer li_ret
+	n_cst_unicode_hash_long_entry lnvo_cur_entry
+	lnvo_cur_entry = event ue_get_hash_entry(ab_key)
+	if not isnull(lnvo_cur_entry) then
+		lnvo_cur_entry.il_value = al_value
+	else
+		li_ret = -1
+	end if
+	return li_ret
+
+// n_cst_unicode_hash_long.of_get_value(blob ab_key) returns unsignedlong
+	long li_ret
+	n_cst_unicode_hash_long_entry lnvo_cur_entry
+	lnvo_cur_entry = of_find_hash_entry(ab_key)
+	if not isnull(lnvo_cur_entry) then
+		li_ret = lnvo_cur_entry.il_value
+	else
+		setnull(li_ret)
+	end if
+	return li_ret
+
+// n_cst_unicode_hash_long.create() returns 0
+	call super::create
+
+// n_cst_unicode_hash_long.destroy() returns 0
+	call super::destroy
+
+// n_cst_unicode_hash_long.ue_create_entry() returns n_cst_hash_blob_entry
+	n_cst_unicode_hash_long_entry lnvo_entry
+	lnvo_entry = create n_cst_unicode_hash_long_entry
+	return lnvo_entry

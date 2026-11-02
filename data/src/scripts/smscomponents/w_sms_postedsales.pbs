@@ -1,0 +1,117 @@
+// window w_sms_postedsales (smscomponents)  ancestor: window
+
+// w_sms_postedsales.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		this.istr_arg.i_status = -1
+		post event ue_close()
+	end if
+	return ::message.returnvalue
+
+// w_sms_postedsales.ue_close() returns 0
+	closewithreturn(this, this.istr_arg)
+
+// w_sms_postedsales.wf_assigndwobjects(string as_masterdw, string as_detaildw, string as_footerdw) returns 0
+	this.dw_master.dataobject = as_masterdw
+	this.dw_detail.dataobject = as_detaildw
+	this.dw_footer.dataobject = as_footerdw
+	this.dw_master.settransobject(sqlca)
+	this.dw_detail.settransobject(sqlca)
+	this.dw_footer.settransobject(sqlca)
+
+// w_sms_postedsales.create() returns 0
+	this.cb_ok = create cb_ok
+	this.dw_footer = create dw_footer
+	this.dw_detail = create dw_detail
+	this.dw_master = create dw_master
+	this.control = {this.cb_ok, this.dw_footer, this.dw_detail, this.dw_master}
+
+// w_sms_postedsales.destroy() returns 0
+	destroy this.cb_ok
+	destroy this.dw_footer
+	destroy this.dw_detail
+	destroy this.dw_master
+
+// w_sms_postedsales.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	long ll_custcode
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	this.dw_master.settransobject(sqlca)
+	this.dw_detail.settransobject(sqlca)
+	this.dw_master.retrieve()
+	if this.dw_master.rowcount() > 0 then
+		this.dw_detail.retrieve(this.dw_master.object.custcode[1], this.dw_master.object.startdate[1], this.dw_master.object.enddate[1])
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	long[] ll_invcode
+	long ll_rowcount
+	long ll_counter
+	long ll_arrindex
+	long ll_thiscode
+	boolean lb_remarks
+	boolean lb_invoiceexists
+	string ls_date
+	ll_rowcount = parent.dw_detail.rowcount()
+	parent.istr_arg.s_name1 = ""
+	for ll_counter = 1 to ll_rowcount
+		if parent.dw_detail.getitemstring(ll_counter, "selected") = "Y" then
+			lb_invoiceexists = true
+			ll_arrindex = ll_arrindex + 1
+			ll_thiscode = parent.dw_detail.getitemnumber(ll_counter, "saleinvcode")
+			parent.istr_arg.ia_integerlist[ll_arrindex] = ll_thiscode
+			parent.istr_arg.s_name1 = parent.istr_arg.s_name1 + trim(string(ll_thiscode)) + ","
+		end if
+	next
+	if right(parent.istr_arg.s_name1, 1) = "," then
+		parent.istr_arg.s_name1 = left(parent.istr_arg.s_name1, len(parent.istr_arg.s_name1) - 1)
+	end if
+	if lb_invoiceexists then
+		parent.istr_arg.i_status = 1
+	end if
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// dw_master.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	datetime ldt_startdate
+	datetime ldt_enddate
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "custcode"
+		ldt_startdate = this.object.startdate[row]
+		ldt_enddate = this.object.enddate[row]
+		parent.dw_detail.retrieve(long(data), ldt_startdate, ldt_enddate)
+	case "startdate"
+		ldt_startdate = datetime(date(data), time(data))
+		ldt_enddate = this.object.enddate[row]
+		parent.dw_detail.retrieve(this.object.custcode[row], ldt_startdate, ldt_enddate)
+	case "enddate"
+		ldt_startdate = this.object.startdate[row]
+		ldt_enddate = datetime(date(data), time(data))
+		parent.dw_detail.retrieve(this.object.custcode[row], ldt_startdate, ldt_enddate)
+	end choose
+	return ::message.returnvalue
+
+// dw_master.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1

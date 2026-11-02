@@ -1,0 +1,50 @@
+// window w_arg_disease_diseasetype (reports)  ancestor: w_arguements
+
+// w_arg_disease_diseasetype.create() returns 0
+	integer icurrent
+	call super::create
+	this.st_godown = create st_godown
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_godown
+
+// w_arg_disease_diseasetype.destroy() returns 0
+	call super::destroy
+	destroy this.st_godown
+
+// w_arg_disease_diseasetype.open() returns long
+	long ancestorreturnvalue
+	long ll_code
+	long rtncode
+	ancestorreturnvalue = super::open()
+	ll_code = message.doubleparm
+	if ll_code > 0 then
+		this.dw_control.settransobject(sqlca)
+		rtncode = this.dw_control.getchild("diseasecode", this.idwc_child)
+		if rtncode = -1 then
+			messagebox("Error", "Not a DataWindowChild")
+			close(this)
+			if not isvalid(message) then
+				return 0
+			end if
+			return message.returnvalue
+		end if
+		this.idwc_child.settransobject(sqlca)
+		this.idwc_child.retrieve(ll_code)
+		this.dw_control.insertrow(0)
+		this.dw_control.scrolltorow(0)
+	else
+		messagebox("Error", "Please Select a valid disease type")
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_arg_disease_diseasetype.ue_close(integer ai_stauts) returns 0
+	super::ue_close(ai_stauts)
+	closewithreturn(this, this.istr_arg)

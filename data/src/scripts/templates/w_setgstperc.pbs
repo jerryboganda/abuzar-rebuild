@@ -1,0 +1,52 @@
+// window w_setgstperc (templates)  ancestor: window
+
+// w_setgstperc.ue_close(double ad_gstperc) returns 0
+	closewithreturn(this, ad_gstperc)
+
+// w_setgstperc.create() returns 0
+	this.em_gstperc = create em_gstperc
+	this.st_gstperc = create st_gstperc
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.control = {this.em_gstperc, this.st_gstperc, this.cb_cancel, this.cb_ok}
+
+// w_setgstperc.destroy() returns 0
+	destroy this.em_gstperc
+	destroy this.st_gstperc
+	destroy this.cb_cancel
+	destroy this.cb_ok
+
+// w_setgstperc.open() returns long
+	environment le_env
+	long ll_width
+	long ll_height
+	if getenvironment(le_env) = 1 then
+		ll_width = pixelstounits(le_env.screenwidth, xpixelstounits!) - this.width
+		ll_height = pixelstounits(le_env.screenheight, ypixelstounits!) - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width * 0.5
+			ll_height = ll_height * 0.5
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	this.em_gstperc.selecttext(1, len(this.em_gstperc.text))
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(0)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	double ld_gstperc
+	parent.em_gstperc.getdata(ld_gstperc)
+	if double(ld_gstperc) <= 0.0 then
+		messagebox("GST (%) Validation", "Please Enter Valid GST (%).")
+		parent.em_gstperc.setfocus()
+		parent.em_gstperc.selecttext(1, len(parent.em_gstperc.text))
+		return ::message.returnvalue
+	end if
+	parent.post event ue_close(ld_gstperc)
+	return ::message.returnvalue

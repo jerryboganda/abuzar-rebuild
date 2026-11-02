@@ -1,0 +1,41 @@
+// window w_sampletype_form (servicecomponents)  ancestor: w_single_entry
+
+// w_sampletype_form.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	long ll_code
+	boolean b_flag
+	if this.id_detail.rowcount() > 0 then
+		ll_code = this.id_detail.object.code[this.id_detail.rowcount()]
+	end if
+	as_name = trim(as_name)
+	if isnull(ll_code) or ll_code = 0 then
+		SQL SELECT count ( *) INTO :ll_count FROM SampleType WHERE name =:as_name USING sqlca;
+	else
+		SQL SELECT count ( *) INTO :ll_count FROM SampleType WHERE name =:as_name AND SampleTypeCode <> :ll_code USING sqlca;
+	end if
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_sampletype_form.create() returns 0
+	call super::create
+
+// w_sampletype_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_sampletype_form.activate() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::activate()
+	this.windowstate = maximized!
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_sampletype_form.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.is_tablename = "SampleType"
+	return ::message.returnvalue

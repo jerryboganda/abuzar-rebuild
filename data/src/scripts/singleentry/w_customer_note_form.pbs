@@ -1,0 +1,162 @@
+// window w_customer_note_form (singleentry)  ancestor: w_single_entry
+
+// w_customer_note_form.wf_post() returns integer
+	integer li_errcode
+	long ll_salesmancode
+	long ll_saleinvcount
+	s_arguements lstr_arginfo
+	open(w_salesmanpassword)
+	ll_salesmancode = long(message.doubleparm)
+	setfocus()
+	if ll_salesmancode > 0 then
+		open(w_arg_sinvcode_linvcode)
+		lstr_arginfo = message.powerobjectparm
+		if lstr_arginfo.i_status = 1 then
+			setpointer(hourglass!)
+			SQL rollback USING sqlca;
+			li_errcode = wf_locknotes(lstr_arginfo.l_code1, lstr_arginfo.l_code2, ll_saleinvcount)
+			if li_errcode = 0 then
+				sqlca.postnotes(lstr_arginfo.l_code1, lstr_arginfo.l_code2)
+				if sqlca.sqlcode <> 0 then
+					li_errcode = -1
+				end if
+			end if
+		end if
+		if li_errcode = 0 then
+			SQL commit USING sqlca;
+			if sqlca.sqlcode <> 0 then
+				li_errcode = -1
+			end if
+		else
+			SQL rollback USING sqlca;
+		end if
+	else
+		setfocus()
+	end if
+	setpointer(arrow!)
+	if li_errcode <> 0 then
+		messagebox("Posting Fails", "Some database request fails, Please try again")
+	else
+		messagebox("Posting Successfull", "Total unposted rows were " + string(ll_saleinvcount) + "~n~rAll rows have been posted successfully")
+	end if
+	return li_errcode
+
+// w_customer_note_form.wf_locknotes(long al_sinvcode, long al_linvcode, long al_totalinvoice) returns integer
+	integer li_count
+	SQL Select count ( *) INTO :al_totalinvoice From Notes WITH ( UPDLOCK HOLDLOCK ) Where Notes.notecode Between :al_sinvcode AND :al_linvcode AND Notes.Posted ='N' USING sqlca;
+	return sqlca.sqlcode
+
+// w_customer_note_form.wf_locknote(long al_invcode) returns integer
+	integer li_count
+	SQL Select count ( *) INTO :li_count From Notes WITH ( UPDLOCK HOLDLOCK ) Where Notes.NoteCode =:al_invcode USING this.it_transobject;
+	return this.it_transobject.sqlcode
+
+// w_customer_note_form.wf_initmodify(integer ai_protect) returns 0
+	long ll_notecode
+	long ll_counter
+	if this.id_detail.getitemstring(1, "posted") = "N" then
+		ll_notecode = this.id_detail.getitemnumber(1, "code")
+		if wf_locknote(ll_notecode) = 0 then
+			this.id_detail.retrieve(ll_notecode)
+			ai_protect = 0
+			this.ib_modify = true
+			this.im_menu.m_file.m_save.enabled = true
+			this.im_menu.m_file.m_new.enabled = false
+			this.im_menu.m_file.m_delete.enabled = false
+			this.im_menu.m_file.m_first.enabled = false
+			this.im_menu.m_file.m_next.enabled = false
+			this.im_menu.m_file.m_previous.enabled = false
+			this.im_menu.m_file.m_last.enabled = false
+			this.im_menu.m_file.m_print.enabled = false
+			this.im_menu.m_file.m_retrieve.enabled = true
+			this.im_menu.m_file.m_retrieve.text = "Lis&t"
+			this.tab_retrieve.tabpage_detail.enabled = true
+		end if
+	end if
+
+// w_customer_note_form.create() returns 0
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_notes" then
+		this.menuid = create m_notes
+	end if
+
+// w_customer_note_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_customer_note_form.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.is_tablename = "Notes"
+	this.ii_billtype = integer(message.doubleparm)
+	choose case this.ii_billtype
+	case 1
+		this.id_detail.dataobject = "d_notescustomer_detail"
+		this.id_list.dataobject = "d_notescustomer_list"
+		this.id_detail.settransobject(sqlca)
+		this.id_list.settransobject(sqlca)
+		this.title = "Bills Receivable"
+	case 2
+		this.id_detail.dataobject = "d_notessupplier_detail"
+		this.id_list.dataobject = "d_notessupplier_list"
+		this.id_detail.settransobject(sqlca)
+		this.id_list.settransobject(sqlca)
+		this.id_dwcontrol = this.id_list
+		wf_populate_ddlb(this.id_dwcontrol)
+		this.title = "Bills Payable"
+	end choose
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_customer_note_form.ue_save() returns 0
+	long ll_salesmancode
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	open(w_salesmanpassword)
+	ll_salesmancode = long(message.doubleparm)
+	setfocus()
+	if ll_salesmancode > 0 then
+		this.id_detail.setitem(this.id_detail.getrow(), "salesmancode", ll_salesmancode)
+		call super::ue_save
+		if this.ib_commitok then
+			this.ib_modify = false
+		end if
+		return
+	end if
+	setfocus()
+
+// w_customer_note_form.ue_newform() returns 0
+	integer rtncode
+	long li_fetched_code
+	long row
+	long ll_manfcode
+	call super::ue_newform
+	setredraw(false)
+	wf_protectdw(this.id_detail, 0)
+	this.ib_modify = false
+	this.im_menu.m_file.m_options.enabled = false
+	setredraw(true)
+
+// w_customer_note_form.ue_detail() returns 0
+	integer li_rtncode
+	integer li_protect
+	long ll_row
+	call super::ue_detail
+	setredraw(false)
+	wf_initmodify(li_protect)
+	wf_protectdw(this.id_detail, li_protect)
+	this.im_menu.m_file.m_options.enabled = false
+	setredraw(true)
+
+// w_customer_note_form.ue_list() returns 0
+	call super::ue_list
+	this.im_menu.m_file.m_options.enabled = true
+	this.ib_modify = true

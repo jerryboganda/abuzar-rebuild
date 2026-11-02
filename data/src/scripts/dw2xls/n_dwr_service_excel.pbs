@@ -1,0 +1,127 @@
+// userobject n_dwr_service_excel (dw2xls)  ancestor: nonvisualobject
+
+// n_dwr_service_excel.of_close_wb() returns integer
+	integer li_ret
+	if this.ib_init then
+		li_ret = this.invo_dwr.of_close()
+		destroy this.invo_writer
+		destroy this.invo_dwr
+		if li_ret <> 1 then
+			filedelete(this.is_filename)
+		end if
+		this.ib_init = false
+	else
+		messagebox("DW2XLS-Error", "Workbook was not created!")
+	end if
+	return li_ret
+
+// n_dwr_service_excel.of_create_wb(string as_filename, n_dwr_service_parm anvo_parm) returns integer
+	integer li_ret
+	long ll_error
+	if not this.ib_init then
+		if isnull(anvo_parm) and not isvalid(anvo_parm) then
+			anvo_parm = create n_dwr_service_parm
+		end if
+		this.invo_dwr = create n_dwr_service
+		this.invo_dwr.ib_multisheet = true
+		this.inv_book = create n_dwr_workbook
+		this.inv_book.invo_parm = anvo_parm
+		if not anvo_parm.ib_nonvisual_calc_height then
+			open(this.inv_book.ws)
+		end if
+		this.invo_writer = this.inv_book
+		ll_error = this.inv_book.of_create(anvo_parm.is_version, as_filename, true)
+		if ll_error <> 0 then
+			return -1
+		end if
+		this.is_filename = as_filename
+		this.ib_init = true
+	else
+		messagebox("DW2XLS Error", "Workbook already created!")
+	end if
+	return li_ret
+
+// n_dwr_service_excel.of_save_dw2sheet(datawindow adw_dw, n_dwr_service_parm anvo_parm) returns integer
+	integer li_ret
+	n_dwr_nested_service_parm lnvo_nested_parm
+	if this.ib_init then
+		li_ret = this.invo_dwr.of_create(adw_dw, this.inv_book, this.is_filename, anvo_parm, lnvo_nested_parm)
+		if li_ret = 1 then
+			li_ret = this.invo_dwr.of_process()
+		end if
+	else
+		messagebox("DW2XLS-Error", "There is no created Workbook!")
+		li_ret = -1
+	end if
+	return li_ret
+
+// n_dwr_service_excel.of_save_ds2sheet(datastore ads_ds, n_dwr_service_parm anvo_parm) returns integer
+	integer li_ret
+	n_dwr_nested_service_parm lnvo_nested_parm
+	if this.ib_init then
+		li_ret = this.invo_dwr.of_create(ads_ds, this.inv_book, this.is_filename, anvo_parm, lnvo_nested_parm)
+		if li_ret = 1 then
+			li_ret = this.invo_dwr.of_process()
+		end if
+	else
+		messagebox("DW2XLS-Error", "There is no created Workbook!")
+		li_ret = -1
+	end if
+	return li_ret
+
+// n_dwr_service_excel.of_store_multidw_sheet() returns integer
+	integer li_ret
+	if this.ib_init then
+		li_ret = this.invo_dwr.of_store_multidw()
+	else
+		messagebox("DW2XLS-Error", "There is no created Workbook!")
+		li_ret = -1
+	end if
+	return li_ret
+
+// n_dwr_service_excel.of_save_2cursheet(powerobject apo_requestor) returns integer
+	integer li_ret
+	if this.ib_init then
+		li_ret = this.invo_dwr.of_export_to_current_sheet(apo_requestor)
+	else
+		messagebox("DW2XLS-Error", "There is no created Workbook!")
+		li_ret = -1
+	end if
+	return li_ret
+
+// n_dwr_service_excel.of_save_dw2cursheet(datawindow adw_dw) returns integer
+	return of_save_2cursheet(adw_dw)
+
+// n_dwr_service_excel.of_save_ds2cursheet(datastore ads_ds) returns integer
+	return of_save_2cursheet(ads_ds)
+
+// n_dwr_service_excel.of_end_multidw_line() returns integer
+	return this.invo_dwr.of_multidw_endln()
+
+// n_dwr_service_excel.of_add_multidw_vspacer(long al_height) returns integer
+	return this.invo_dwr.of_multidw_add_vspacer(al_height)
+
+// n_dwr_service_excel.of_add_multidw_hspacer(long al_width) returns integer
+	return this.invo_dwr.of_multidw_add_hspacer(al_width)
+
+// n_dwr_service_excel.of_create_multidw_sheet(n_dwr_service_parm anvo_parm) returns integer
+	integer li_ret
+	if this.ib_init then
+		li_ret = this.invo_dwr.of_create_multidw(this.inv_book, this.is_filename, anvo_parm)
+	else
+		messagebox("DW2XLS-Error", "There is no created Workbook!")
+		li_ret = -1
+	end if
+	return li_ret
+
+// n_dwr_service_excel.create() returns 0
+	call super::create
+	triggerevent("constructor")
+
+// n_dwr_service_excel.destroy() returns 0
+	triggerevent("destructor")
+	call super::destroy
+
+// n_dwr_service_excel.constructor() returns long
+	this.inv_const = create n_dwr_const
+	return ::message.returnvalue

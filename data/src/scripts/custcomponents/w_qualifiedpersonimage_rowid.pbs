@@ -1,0 +1,141 @@
+// window w_qualifiedpersonimage_rowid (custcomponents)  ancestor: window
+
+// w_qualifiedpersonimage_rowid.ue_close(integer ar_closearg) returns 0
+	if ar_closearg = -1 then
+		this.istr_blob.i_closemode = -1
+	else
+		this.istr_blob.i_closemode = 1
+	end if
+	if fileexists(this.is_filename) then
+		filedelete(this.is_filename)
+	end if
+	closewithreturn(this, this.istr_blob)
+
+// w_qualifiedpersonimage_rowid.wf_get_image() returns 0
+	long fh
+	long ret
+	long ll_fbytes
+	string ls_file
+	string ls_filename
+	string ls_defaultext
+	string ls_temp
+	string ls_filefilter
+	ls_temp = gs_temp_directory
+	ls_file = left(ls_temp, len(ls_temp) - pos(reverse(ls_temp), "\") + 1)
+	ls_filename = mid(ls_temp, len(ls_temp) - pos(reverse(ls_temp), "\") + 2)
+	ret = getfileopenname("Select File", ls_file, ls_filename, ls_defaultext, ls_filefilter, ls_temp)
+	if ret = 1 then
+		this.dw_image.object.p_image.filename = ls_file
+		fh = fileopen(ls_file, streammode!, read!, lockread!)
+		if fh <> -1 then
+			ll_fbytes = filereadex(fh, this.istr_blob.lb_blob)
+			fileclose(fh)
+			this.istr_blob.s_name = right(ls_file, 3)
+		end if
+	end if
+
+// w_qualifiedpersonimage_rowid.create() returns 0
+	this.cb_change = create cb_change
+	this.cb_ok = create cb_ok
+	this.cb_cancel = create cb_cancel
+	this.dw_image = create dw_image
+	this.control = {this.cb_change, this.cb_ok, this.cb_cancel, this.dw_image}
+
+// w_qualifiedpersonimage_rowid.destroy() returns 0
+	destroy this.cb_change
+	destroy this.cb_ok
+	destroy this.cb_cancel
+	destroy this.dw_image
+
+// w_qualifiedpersonimage_rowid.open() returns long
+	long ll_imagew
+	long ll_imageh
+	long ll_code
+	long ll_rowid
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	string ls_temp
+	environment env
+	this.is_filename = gs_temp_img_filename
+	this.is_filename = left(this.is_filename, len(this.is_filename) - 3)
+	this.dw_image.dataobject = "d_qualifiedpersonimage_rowid"
+	this.dw_image.settransobject(sqlca)
+	this.dw_image.insertrow(0)
+	this.istr_blob = message.powerobjectparm
+	if isnull(this.istr_blob.s_name) or this.istr_blob.s_name = "" then
+		this.is_filename = this.is_filename + "jpg"
+	else
+		this.is_filename = this.is_filename + this.istr_blob.s_name
+	end if
+	if isnull(this.istr_blob.lb_blob) then
+		this.cb_change.text = "&Select"
+	else
+		this.cb_change.text = "&Change"
+	end if
+	f_writeimgtofile(this.is_filename, this.istr_blob.lb_blob)
+	this.dw_image.object.p_image.filename = this.is_filename
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		this.width = ll_win_width * 0.99
+		this.height = ll_win_height * 0.96
+		this.dw_image.setredraw(false)
+		this.dw_image.height = this.height - 200
+		this.dw_image.width = this.width * 0.99
+		ll_imagew = this.dw_image.width
+		ll_imageh = this.dw_image.height
+		this.dw_image.object.datawindow.detail.height = string(ll_imageh - 20)
+		this.dw_image.object.p_image.visible = false
+		this.dw_image.object.p_image.x = 1
+		this.dw_image.object.p_image.y = 1
+		ll_imagew = ll_imagew - 10
+		ll_imageh = ll_imageh - 10
+		this.dw_image.object.p_image.width = ll_imagew
+		this.dw_image.object.p_image.height = ll_imageh
+		this.dw_image.object.p_image.visible = true
+		this.dw_image.setfocus()
+		this.dw_image.setredraw(true)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	this.cb_change.y = this.dw_image.y + this.dw_image.height + 15
+	this.cb_ok.y = this.dw_image.y + this.dw_image.height + 15
+	this.cb_cancel.y = this.dw_image.y + this.dw_image.height + 15
+	post event ue_postopen()
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_qualifiedpersonimage_rowid.key(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		post event ue_close(-1)
+	end if
+	return ::message.returnvalue
+
+// w_qualifiedpersonimage_rowid.close() returns long
+	if fileexists(this.is_filename) then
+		filedelete(this.is_filename)
+	end if
+	return ::message.returnvalue
+
+// cb_change.clicked() returns long
+	parent.wf_get_image()
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// dw_image.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	return ::message.returnvalue

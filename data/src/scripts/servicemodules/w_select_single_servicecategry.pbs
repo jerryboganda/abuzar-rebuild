@@ -1,0 +1,78 @@
+// window w_select_single_servicecategry (servicemodules)  ancestor: window
+
+// w_select_single_servicecategry.create() returns 0
+	this.lv_1 = create lv_1
+	this.gb_1 = create gb_1
+	this.control = {this.lv_1, this.gb_1}
+
+// w_select_single_servicecategry.destroy() returns 0
+	destroy this.lv_1
+	destroy this.gb_1
+
+// w_select_single_servicecategry.close() returns long
+	closewithreturn(this, this.is_selectedreport)
+	return ::message.returnvalue
+
+// w_select_single_servicecategry.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	long ll_code
+	long ll_pic_index
+	string ls_file
+	string ls_name
+	blob l_blob_logo
+	listviewitem l_lvi
+	long ll_counter
+	datastore lds_ds
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	lds_ds = create datastore
+	lds_ds.dataobject = "d_servicecategory_list"
+	lds_ds.settransobject(sqlca)
+	lds_ds.setsort("name asc")
+	lds_ds.retrieve()
+	lds_ds.sort()
+	this.lv_1.visible = false
+	ll_pic_index = 1
+	for ll_counter = 1 to lds_ds.rowcount()
+		setnull(l_blob_logo)
+		ll_code = lds_ds.object.code[ll_counter]
+		ls_name = lds_ds.object.name[ll_counter]
+		ls_file = gs_temp_img_filename
+		SQL SELECTBLOB ServiceLogo INTO :l_blob_logo FROM DBO.ServiceCategory WHERE ServiceCatCode =:ll_code USING sqlca;
+		this.lv_1.largepicturewidth = 32
+		this.lv_1.largepictureheight = 32
+		l_lvi.label = ls_name
+		l_lvi.data = trim(string(ll_code))
+		f_writeimgtofile(ls_file, l_blob_logo)
+		ll_pic_index = this.lv_1.addlargepicture(ls_file)
+		this.lv_1.addsmallpicture(ls_file)
+		l_lvi.pictureindex = ll_pic_index
+		this.lv_1.additem(l_lvi)
+	next
+	this.lv_1.visible = true
+	return ::message.returnvalue
+
+// lv_1.clicked(integer index) returns long
+	listviewitem l_lvi
+	if index > 0 then
+		getitem(index, l_lvi)
+		parent.is_selectedreport = l_lvi.label
+		parent.event Close()
+	end if
+	return ::message.returnvalue

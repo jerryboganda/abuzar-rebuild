@@ -1,0 +1,66 @@
+// window w_arg_salesman_month_year (reports)  ancestor: w_listarguments
+
+// w_arg_salesman_month_year.create() returns 0
+	integer icurrent
+	call super::create
+	this.st_4 = create st_4
+	this.st_8 = create st_8
+	this.dw_month = create dw_month
+	this.dw_year = create dw_year
+	this.st_9 = create st_9
+	this.st_10 = create st_10
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_4
+	this.control[icurrent + 2] = this.st_8
+	this.control[icurrent + 3] = this.dw_month
+	this.control[icurrent + 4] = this.dw_year
+	this.control[icurrent + 5] = this.st_9
+	this.control[icurrent + 6] = this.st_10
+
+// w_arg_salesman_month_year.destroy() returns 0
+	call super::destroy
+	destroy this.st_4
+	destroy this.st_8
+	destroy this.dw_month
+	destroy this.dw_year
+	destroy this.st_9
+	destroy this.st_10
+
+// w_arg_salesman_month_year.open() returns long
+	long ancestorreturnvalue
+	long ll_counter
+	long ll_rowcount
+	integer rtncode
+	ancestorreturnvalue = super::open()
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	rtncode = this.dw_control.getchild("salesman", this.idc_categories)
+	if rtncode = -1 then
+		messagebox("Error", "Not a DataWindowChild")
+	end if
+	ll_rowcount = this.idc_categories.rowcount()
+	for ll_counter = 1 to ll_rowcount
+		this.lb_categories.additem(this.idc_categories.getitemstring(ll_counter, "name"))
+	next
+	this.dw_month.settransobject(sqlca)
+	this.dw_month.insertrow(0)
+	this.dw_month.scrolltorow(0)
+	this.dw_month.setitem(1, "month", month(today()))
+	this.dw_year.settransobject(sqlca)
+	this.dw_year.insertrow(0)
+	this.dw_year.scrolltorow(0)
+	this.dw_year.setitem(1, "year", year(today()))
+	return ::message.returnvalue
+
+// dw_month.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_year.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1

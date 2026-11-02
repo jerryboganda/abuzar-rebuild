@@ -1,0 +1,1471 @@
+// window w_patientadmission_form (patientcomponents)  ancestor: w_multi_entry
+
+// w_patientadmission_form.ue_save_withnocommit() returns long
+	setpointer(hourglass!)
+	if f_validatedw(this.id_master) < 0 then
+		return -1
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return -2
+	end if
+	if this.id_master.update(true, false) < 0 then
+		SQL rollback USING this.it_transobject;
+		setpointer(arrow!)
+		return -3
+	end if
+	if this.id_detail.update() < 0 then
+		SQL rollback USING this.it_transobject;
+		setpointer(arrow!)
+		return -4
+	end if
+	setpointer(arrow!)
+	return 0
+
+// w_patientadmission_form.wf_print() returns integer
+	integer li_errcode
+	long ll_salesmancode
+	long ll_saleinvcount
+	long ll_count
+	s_arguements lstr_arginfo
+	open(w_salesmanpassword)
+	ll_salesmancode = long(message.doubleparm)
+	setfocus()
+	if ll_salesmancode > 0 then
+		open(w_arg_sinvcode_linvcode)
+		lstr_arginfo = message.powerobjectparm
+		if lstr_arginfo.i_status = 1 then
+			setpointer(hourglass!)
+			for ll_count = lstr_arginfo.l_code1 to lstr_arginfo.l_code2
+				this.id_print.retrieve(ll_count)
+				if this.id_print.rowcount() > 0 then
+					if this.id_print.print() < 0 then
+						messagebox("Printing", "Can not Print Invoice", information!)
+					end if
+				else
+					messagebox("Printing Error", "Can not Print Invoice,~r~nNo rows are retrieved", information!)
+				end if
+			next
+		end if
+	else
+		setfocus()
+	end if
+	setpointer(arrow!)
+	return li_errcode
+
+// w_patientadmission_form.wf_retrievelist() returns long
+	long rtcode
+	long ll_days
+	datetime ldt_invdate
+	ll_days = f_numberpreferences("patientadmission_listviewretrievaldays") * -1
+	ldt_invdate = datetime(relativedate(today(), ll_days))
+	rtcode = this.id_dwcontrol.retrieve(ldt_invdate)
+	return rtcode
+
+// w_patientadmission_form.wf_retrievelistall() returns long
+	long rtcode
+	long ll_days
+	datetime ldt_invdate
+	ll_days = f_numberpreferences("patientadmission_listviewretrievaldays") * -1
+	ldt_invdate = datetime(relativedate(today(), ll_days))
+	rtcode = this.id_dwcontrol.retrieve(ldt_invdate)
+	return rtcode
+
+// w_patientadmission_form.wf_returnsaleinvoice(long al_invid, string as_errtext) returns boolean
+	long ll_saleinvcode
+	long ll_gcode
+	long ll_icode
+	long ll_looseqty
+	long ll_stock
+	long ll_newstock
+	long ll_counter
+	long ll_detailrows
+	string ls_batch
+	string ls_due
+	datetime ld_expiry
+	boolean lb_commitflag
+	double ld_avgprice
+	if lb_commitflag then
+		if wf_deleteserviceinvoice(al_invid) <> 0 then
+			lb_commitflag = false
+			as_errtext = "    Some database problem occur"
+		end if
+	else
+		as_errtext = "    Some database problem occur"
+	end if
+	return lb_commitflag
+
+// w_patientadmission_form.wf_visible(boolean ab_flag) returns 0
+
+// w_patientadmission_form.wf_validateitemnew() returns integer
+	long ll_icode
+	long ll_stock
+	long ll_totalstock
+	string ls_fullcode
+	string ls_titleerrtext
+	string ls_errtext
+	integer li_errcode
+	integer li_assgcode
+	ll_icode = this.id_detail.getitemnumber(this.il_currrow, "icode")
+	if vf_dwdupcode1(this.id_detail, "icode", string(ll_icode), this.il_currrow) = true then
+		ls_titleerrtext = "Item Validation"
+		ls_errtext = "Duplicate item, please select some other item"
+		li_errcode = -1
+		messagebox(ls_titleerrtext, ls_errtext)
+	elseif not wf_inititeminfo(ll_icode, this.il_currrow, li_errcode, ls_errtext) then
+		ls_titleerrtext = "Item Validation"
+		li_errcode = -2
+	end if
+	this.ib_itemvalidated = true
+	return li_errcode
+
+// w_patientadmission_form.wf_validatefullcode(string as_custicode, long al_currrow) returns boolean
+	long ll_icode
+	long ll_stock
+	long ll_totalstock
+	string ls_fullcode
+	string ls_titleerrtext
+	string ls_errtext
+	integer li_errcode
+	integer li_assgcode
+	integer li_option
+	boolean lb_rtflag
+	boolean ib_due
+	integer li_null
+	string ls_null
+	ls_titleerrtext = "Item Validation"
+	if vf_dwdupcode1(this.id_detail, "icode", string(ll_icode), al_currrow) = true then
+		ls_errtext = "Duplicate item, please select some other item"
+		li_errcode = -1
+	elseif wf_inititeminfo(ll_icode, this.il_currrow, li_errcode, ls_errtext) then
+		if li_errcode = -2 then
+			li_option = messagebox("Item Validation", "Item stock does not exist~n~rDo You want to due this item", information!, yesno!, 2)
+			if li_option = 1 then
+				this.id_detail.setitem(this.il_currrow, "qty", 1)
+				ib_due = true
+			else
+				li_errcode = -1
+			end if
+		end if
+	else
+		li_errcode = -1
+		ls_titleerrtext = "Item Validation"
+	end if
+	if li_errcode = -1 and not ib_due then
+		lb_rtflag = false
+		messagebox(ls_titleerrtext, ls_errtext)
+		setnull(li_null)
+		setnull(ls_null)
+		this.id_detail.setitem(al_currrow, this.is_columnitemname, ls_null)
+		this.id_detail.setitem(al_currrow, "icode", li_null)
+		this.id_detail.selecttext(1, len(this.id_detail.gettext()))
+	end if
+	return lb_rtflag
+
+// w_patientadmission_form.wf_duplicatetemplatename(string as_name) returns any
+	long ll_count
+	long ll_invcode
+	boolean b_flag
+	ll_invcode = this.id_master.getitemnumber(this.id_master.getrow(), "code")
+	as_name = trim(as_name)
+	if this.ib_modify then
+		SQL SELECT count ( *) INTO :ll_count FROM ServiceTemplateHeader WHERE ServiceTemplateHeader.name =:as_name AND ServiceTemplateHeader.ServiceTemplateCode <> :ll_invcode USING this.it_transobject;
+	else
+		SQL SELECT count ( *) INTO :ll_count FROM ServiceTemplateHeader WHERE ServiceTemplateHeader.name =:as_name USING this.it_transobject;
+	end if
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_patientadmission_form.wf_getmaxdate(datetime ad_date) returns integer
+	SQL Select Max ( Date ) INTO :ad_date From saleledger USING this.it_transobject;
+	return this.it_transobject.sqlcode
+
+// w_patientadmission_form.wf_getwardcode(long al_locationcode) returns long
+	long ll_wardcode
+	SQL SELECT patientlocation.wardcode INTO :ll_wardcode FROM patientlocation WHERE patientlocation.locationcode =:al_locationcode USING sqlca;
+	return ll_wardcode
+
+// w_patientadmission_form.wf_grandtotal() returns double
+	double ld_grandtotal
+	return ld_grandtotal
+
+// w_patientadmission_form.wf_inititeminfo(long al_icode, long al_row, integer ai_rtcode, string as_errortext) returns boolean
+	boolean retflag
+	double ld_saleprice
+	double ld_discperc
+	double ld_flatdisc
+	long ll_packunits
+	long ll_godownstock
+	long ll_saleqty
+	long ll_saleinvcode
+	long ll_totalstock
+	long ld_saleprice2
+	long ld_saleprice3
+	long ld_avgprice
+	integer li_gcode
+	string ls_fullcode
+	string ls_name
+	string ls_null
+	string ls_allowsaleindecimal
+	datetime ldt_date
+	setnull(ls_null)
+	SQL SELECT service.name , service.price , serviceflatdisc , allowsaleindecimal INTO :ls_name, :ld_saleprice, :ld_flatdisc, :ls_allowsaleindecimal FROM service WHERE service.servicecode =:al_icode USING this.it_transobject;
+	if this.it_transobject.sqlcode = -1 then
+		retflag = false
+		as_errortext = "Database Error: Service information can not be retrieved"
+	end if
+	if retflag then
+		this.id_detail.setitem(al_row, this.is_columnitemname, ls_name)
+		if this.id_detail.getitemstatus(al_row, "saleprice", primary!) = notmodified! then
+			this.id_detail.setitem(al_row, "saleprice", ld_saleprice)
+		end if
+		if this.id_detail.getitemstatus(al_row, "serviceflatdisc", primary!) = notmodified! then
+			this.id_detail.setitem(al_row, "serviceflatdisc", ld_flatdisc)
+		end if
+		this.id_detail.setitem(al_row, "allowsaleindecimal", ls_allowsaleindecimal)
+		if al_icode <> this.id_detail.getitemnumber(al_row, "itemcode") then
+			this.id_detail.setitem(al_row, "saleprice", ld_saleprice)
+		end if
+		this.id_detail.setitem(al_row, "itemcode", al_icode)
+		this.id_detail.setitem(al_row, "icode", al_icode)
+	end if
+	return retflag
+
+// w_patientadmission_form.wf_initmodify(integer ai_protect) returns 0
+	long ll_saleinvcode
+	long ll_gcode
+	long ll_icode
+	long ll_looseqty
+	long ll_stock
+	long ll_counter
+	long ll_count
+	if ai_protect = 0 then
+		this.ib_modify = true
+		this.editflag = true
+		this.im_menu.m_file.m_save.enabled = true
+		this.im_menu.m_file.m_new.enabled = false
+		this.im_menu.m_file.m_delete.enabled = false
+		this.im_menu.m_item.m_newitem.enabled = true
+		this.im_menu.m_item.m_deleteitem.enabled = true
+		this.im_menu.m_file.m_first.enabled = false
+		this.im_menu.m_file.m_next.enabled = false
+		this.im_menu.m_file.m_previous.enabled = false
+		this.im_menu.m_file.m_last.enabled = false
+		this.im_menu.m_file.m_retrieve.enabled = true
+		this.im_menu.m_file.m_retrieve.text = "Lis&t"
+		this.tab_retrieve.tabpage_detail.enabled = true
+	end if
+
+// w_patientadmission_form.wf_lockserviceinvoices(long al_sinvcode, long al_linvcode, long al_totalinvoice) returns integer
+	integer li_count
+	SQL Select count ( *) INTO :al_totalinvoice From ServiceTemplateHeader WITH ( UPDLOCK HOLDLOCK ) Where ServiceTemplateHeader.ServiceTemplatecode Between :al_sinvcode AND :al_linvcode USING sqlca;
+	return sqlca.sqlcode
+
+// w_patientadmission_form.wf_validateitem(boolean ab_flag) returns integer
+	long ll_icode
+	long ll_stock
+	long ll_totalstock
+	string ls_fullcode
+	string ls_titleerrtext
+	string ls_errtext
+	integer li_errcode
+	integer li_assgcode
+	integer li_option
+	boolean ib_due
+	integer li_null
+	string ls_null
+	ll_icode = this.id_detail.getitemnumber(this.il_currrow, "icode")
+	if not isnull(ll_icode) then
+		wf_inititeminfo(ll_icode, this.il_currrow, li_errcode, ls_errtext)
+	end if
+	if ab_flag then
+		this.ib_itemvalidated = true
+	end if
+	if li_errcode = -1 then
+		setnull(li_null)
+		setnull(ls_null)
+		ls_titleerrtext = "Item Validation"
+		messagebox(ls_titleerrtext, ls_errtext)
+		this.id_detail.setcolumn(this.is_columnitemname)
+		this.id_detail.scrolltorow(this.il_currrow)
+		this.id_detail.object.icode[this.il_currrow] = li_null
+		this.id_detail.object.itemname[this.il_currrow] = ls_null
+	end if
+	return li_errcode
+
+// w_patientadmission_form.wf_validategodown() returns integer
+	long ll_icode
+	long ll_gcode
+	long ll_stock
+	long ll_counter
+	string ls_fullcode
+	string ls_titleerrtext
+	string ls_errtext
+	string ls_null
+	integer li_errcode
+	integer li_null
+	integer li_option
+	integer li_duperr
+	boolean ib_due
+	ll_icode = this.id_detail.getitemnumber(this.il_currrow, "icode")
+	if wf_inititeminfo(ll_icode, this.il_currrow, li_errcode, ls_errtext) and li_errcode = -2 then
+	end if
+	this.ib_godownvalidated = true
+	if li_errcode = -1 and not ib_due then
+		messagebox(ls_titleerrtext, ls_errtext)
+		setnull(li_null)
+		this.id_detail.setfocus()
+		this.id_detail.setcolumn("gcode")
+		this.id_detail.scrolltorow(this.il_currrow)
+		this.id_detail.object.gcode[this.il_currrow] = li_null
+	end if
+	if li_duperr = -2 and not ib_due then
+		ls_titleerrtext = "Item Validation"
+		ls_errtext = "Duplicate Item, please select some other item"
+		messagebox(ls_titleerrtext, ls_errtext)
+		setnull(li_null)
+		setnull(ls_null)
+		this.id_detail.setcolumn(this.is_columnitemname)
+		this.id_detail.scrolltorow(this.il_currrow)
+		this.id_detail.object.gcode[this.il_currrow] = li_null
+		this.id_detail.object.icode[this.il_currrow] = li_null
+		this.id_detail.object.itemname[this.il_currrow] = ls_null
+		this.ib_itemslistopen = true
+		this.id_itemslist.show()
+		li_errcode = -1
+	end if
+	return li_errcode
+
+// w_patientadmission_form.wf_deleteemptydetailrow() returns integer
+	long ll_rowcount
+	integer li_rtcode
+	ll_rowcount = this.id_detail.rowcount()
+	if ll_rowcount > 0 and isnull(this.id_detail.getitemnumber(ll_rowcount, "icode")) then
+		this.id_detail.deleterow(ll_rowcount)
+		li_rtcode = 1
+		this.ib_itemslistopen = false
+		this.id_itemslist.hide()
+		setfocus()
+	end if
+	return li_rtcode
+
+// w_patientadmission_form.wf_populate_group_servicetemplate() returns 0
+	long ll_groupcode
+	long ll_rtcode
+	long ll_rowcount
+	long ll_counter
+	long ll_icode
+	integer li_retcode
+	string ls_errortext
+	datastore lds_recservices
+	if wf_iseditable() = false then
+		return
+	end if
+	lds_recservices = create datastore
+	ll_groupcode = f_getgroupcode(gl_usercode)
+	lds_recservices.dataobject = "d_group_servicetemplate"
+	lds_recservices.settransobject(this.it_transobject)
+	ll_rtcode = lds_recservices.retrieve(ll_groupcode)
+	if ll_rtcode > 0 then
+		for ll_counter = this.id_detail.rowcount() to 1 step -1
+			event ue_deleteitem()
+		next
+		ll_counter = 0
+		ll_rowcount = lds_recservices.rowcount()
+		if ll_rowcount > 0 then
+			for ll_counter = 1 to ll_rowcount
+				this.id_detail.insertrow(0)
+				ll_icode = lds_recservices.getitemnumber(ll_counter, "servicecode")
+				wf_inititeminfo(ll_icode, ll_counter, li_retcode, ls_errortext)
+				this.id_detail.setitem(ll_counter, "icode", lds_recservices.getitemnumber(ll_counter, "servicecode"))
+				this.id_detail.setitem(ll_counter, "smancode", lds_recservices.getitemnumber(ll_counter, "smancode"))
+				this.id_detail.setitem(ll_counter, "itemcode", lds_recservices.getitemnumber(ll_counter, "servicecode"))
+				this.id_detail.setitem(ll_counter, "itemname", lds_recservices.getitemstring(ll_counter, "servicename"))
+				this.id_detail.setitem(ll_counter, "qty", lds_recservices.getitemnumber(ll_counter, "qty"))
+				this.id_detail.setitem(ll_counter, "serviceflatdisc", lds_recservices.getitemnumber(ll_counter, "serviceflatdisc"))
+				this.id_detail.setitem(ll_counter, "saleprice", lds_recservices.getitemnumber(ll_counter, "saleprice"))
+				this.id_detail.setitem(ll_counter, "discperc", lds_recservices.getitemnumber(ll_counter, "discperc"))
+			next
+			this.im_menu.m_file.m_save.enabled = true
+		end if
+	end if
+
+// w_patientadmission_form.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	integer li_protectspecial
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	if this.id_master.getitemstring(this.id_master.rowcount(), "Discharged1") = "N" and this.id_master.getitemstring(this.id_master.rowcount(), "Discharged") = "N" and this.ib_modify then
+		li_protectspecial = 1
+	else
+		li_protectspecial = 0
+	end if
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		elseif (ls_colname = "regno" or ls_colname = "patientcode" or ls_colname = "locationcode") and li_protectspecial = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+
+// w_patientadmission_form.wf_closelist() returns 0
+	this.ib_itemslistopen = false
+	this.id_itemslist.hide()
+
+// w_patientadmission_form.wf_deleteserviceinvoice(long al_admissioncode) returns integer
+	SQL Delete AdmittedPatientRecurringServices Where AdmittedPatientRecurringServices.AdmissionCode =:al_admissioncode USING this.it_transobject;
+	return this.it_transobject.sqlcode
+
+// w_patientadmission_form.wf_findpatientcode(string as_regno) returns long
+	long ll_patientcode
+	long ll_custcode
+	long ll_doctcode
+	SQL SELECT PatientCode , CustCode , DoctCode INTO :ll_patientcode, :ll_custcode, :ll_doctcode FROM Patient WHERE Patient.RegNo =:as_regno USING sqlca;
+	if sqlca.sqlcode = 0 then
+		this.id_master.object.custcode[1] = ll_custcode
+		this.id_master.object.doctorcode[1] = ll_doctcode
+	end if
+	return ll_patientcode
+
+// w_patientadmission_form.wf_findregno(long al_patientcode) returns string
+	string ls_regno
+	long ll_custcode
+	long ll_doctcode
+	SQL SELECT RegNo , CustCode , DoctCode INTO :ls_regno, :ll_custcode, :ll_doctcode FROM Patient WHERE Patient.PatientCode =:al_patientcode USING sqlca;
+	if sqlca.sqlcode = 0 then
+		this.id_master.object.custcode[1] = ll_custcode
+		this.id_master.object.doctorcode[1] = ll_doctcode
+	end if
+	return ls_regno
+
+// w_patientadmission_form.wf_locationoccupied(long al_locationcode) returns integer
+	long ll_retcode
+	long ll_code
+	ll_code = this.id_master.object.code[this.id_master.rowcount()]
+	if isnull(ll_code) then
+		SQL SELECT COUNT ( *) INTO :ll_retcode FROM ( SELECT LocationCode FROM PatientAdmission WHERE Discharged1 ='N' AND AdmissionCode NOT IN ( SELECT DISTINCT AdmissionCode FROM PatientTransfer ) UNION ALL SELECT LocationCode =TargetLocation FROM PatientTransfer WHERE TransferCode IN ( SELECT TransferCode =Max ( TransferCode ) FROM PatientTransfer WHERE AdmissionCode IN ( SELECT DISTINCT AdmissionCode FROM PatientAdmission WHERE Discharged1 ='N' ) GROUP BY AdmissionCode ) ) A WHERE LocationCode =:al_locationcode USING sqlca;
+	else
+		SQL SELECT COUNT ( *) INTO :ll_retcode FROM ( SELECT LocationCode FROM PatientAdmission WHERE Discharged1 ='N' AND Admissioncode <> :ll_code AND AdmissionCode NOT IN ( SELECT DISTINCT AdmissionCode FROM PatientTransfer ) UNION ALL SELECT LocationCode =TargetLocation FROM PatientTransfer WHERE TransferCode IN ( SELECT TransferCode =Max ( TransferCode ) FROM PatientTransfer WHERE AdmissionCode IN ( SELECT DISTINCT AdmissionCode FROM PatientAdmission WHERE Discharged1 ='N' AND AdmissionCode <> :ll_code ) GROUP BY AdmissionCode ) ) A WHERE LocationCode =:al_locationcode USING sqlca;
+	end if
+	return ll_retcode
+
+// w_patientadmission_form.wf_registerpatient() returns string
+	string ls_regno
+	if this.ib_modify then
+		return ""
+	end if
+	open(w_patientregistration)
+	ls_regno = message.stringparm
+	this.id_master.object.regno[this.id_master.rowcount()] = ls_regno
+	setpointer(hourglass!)
+	this.idc_patient.setredraw(false)
+	this.idc_patient.settransobject(this.it_transobject)
+	this.idc_patient.retrieve()
+	this.idc_patient.setredraw(true)
+	setpointer(arrow!)
+	this.id_master.object.patientcode[this.id_master.rowcount()] = wf_findpatientcode(ls_regno)
+	return ls_regno
+
+// w_patientadmission_form.wf_assign_master_cash_win_object() returns 0
+	this.ids_cashwin = create u_ds_standard
+	this.ids_cashwin.dataobject = "d_mastercashierwindow_detail"
+	this.ids_cashwin.settransobject(this.it_transobject)
+
+// w_patientadmission_form.wf_set_cashaccount() returns long
+	long ll_cashacccode
+	long ll_module
+	long ll_code
+	ll_module = 36
+	ll_code = this.id_master.object.code[this.id_master.rowcount()]
+	ll_cashacccode = f_is_group_module_cashaccount_allowed(this.il_groupcode, ll_module)
+	if ll_cashacccode <= 0 or isnull(ll_cashacccode) then
+		ll_cashacccode = 0
+		messagebox("Group Cash Account Problem", "No Cash Account Attached to the group of the user logged on~r~nKindly contact system administrator to do the needfull.", stopsign!, ok!)
+	elseif isnull(ll_code) or this.id_master.object.code[1] <= 0 then
+		this.id_master.object.cashacccode[this.id_master.rowcount()] = ll_cashacccode
+	else
+		ll_cashacccode = this.id_master.object.cashacccode[this.id_master.rowcount()]
+	end if
+	return ll_cashacccode
+
+// w_patientadmission_form.wf_show_mastercashierwindow() returns long
+	long ll_counter
+	long ll_code
+	long ll_row
+	long ll_insrow
+	long ll_module
+	long ll_cashacccode
+	double ld_tot_acc_amt
+	s_mastercashwin_all lstr_values
+	lstr_values.i_interfacecode = 17
+	if f_stringpreferences("askmastercashwin_in_patientadm") = "N" then
+		return 1
+	end if
+	ll_module = 36
+	ll_code = this.id_master.object.code[this.id_master.rowcount()]
+	ll_cashacccode = this.id_master.object.cashacccode[this.id_master.rowcount()]
+	if ll_cashacccode <= 0 or isnull(ll_cashacccode) then
+		messagebox("Group Cash Account Problem", "No Cash Account Attached to the group of the user logged on~r~nKindly contact system administrator to do the needfull.", stopsign!, ok!)
+		return 0
+	end if
+	lstr_values.l_doccode = ll_code
+	lstr_values.s_doctype = this.is_doctype
+	lstr_values.l_cashacccode = ll_cashacccode
+	lstr_values.l_groupcode = this.il_groupcode
+	lstr_values.l_module = ll_module
+	lstr_values.d_netamt = wf_grandtotal()
+	lstr_values.d_cashtendered = this.id_master.object.cashtendered[this.id_master.rowcount()]
+	lstr_values.d_cashcharged = this.id_master.object.cashcharged[this.id_master.rowcount()]
+	lstr_values.d_cashback = this.id_master.object.cashback[this.id_master.rowcount()]
+	for ll_counter = 1 to this.ids_cashwin.rowcount()
+		lstr_values.l_acccode[ll_counter] = this.ids_cashwin.object.acccode[ll_counter]
+		lstr_values.s_remarks[ll_counter] = this.ids_cashwin.object.remarks[ll_counter]
+		lstr_values.d_amount[ll_counter] = this.ids_cashwin.object.amount[ll_counter]
+		lstr_values.l_rowid[ll_counter] = this.ids_cashwin.object.rowid[ll_counter]
+		ld_tot_acc_amt = ld_tot_acc_amt + this.ids_cashwin.object.amount[ll_counter]
+	next
+	if lstr_values.d_netamt >= lstr_values.d_cashcharged then
+		lstr_values.d_docbalance = lstr_values.d_netamt - lstr_values.d_cashcharged - ld_tot_acc_amt
+	else
+		lstr_values.d_docbalance = 0
+	end if
+	for ll_counter = 1 to 100
+		if lstr_values.l_rowid[ll_counter] <= 0 then
+			lstr_values.l_rowid[ll_counter] = -1
+		end if
+	next
+	openwithparm(w_mastercashierwindow, lstr_values)
+	lstr_values = message.powerobjectparm
+	if lstr_values.i_status = 1 then
+		this.ids_cashwin.reset()
+		ld_tot_acc_amt = 0
+		for ll_counter = 1 to 100
+			if lstr_values.l_acccode[ll_counter] > 0 and lstr_values.d_amount[ll_counter] > 0 and lstr_values.l_rowid[ll_counter] > 0 then
+				ll_insrow = this.ids_cashwin.insertrow(0)
+				this.ids_cashwin.object.documentcode[ll_insrow] = ll_code
+				this.ids_cashwin.object.documenttype[ll_insrow] = this.is_doctype
+				this.ids_cashwin.object.acccode[ll_insrow] = lstr_values.l_acccode[ll_counter]
+				this.ids_cashwin.object.remarks[ll_insrow] = lstr_values.s_remarks[ll_counter]
+				this.ids_cashwin.object.amount[ll_insrow] = lstr_values.d_amount[ll_counter]
+				this.ids_cashwin.object.rowid[ll_insrow] = lstr_values.l_rowid[ll_counter]
+			end if
+		next
+		this.id_master.object.cashacccode[this.id_master.rowcount()] = lstr_values.l_cashacccode
+		this.id_master.object.cashtendered[this.id_master.rowcount()] = lstr_values.d_cashtendered
+		this.id_master.object.cashcharged[this.id_master.rowcount()] = lstr_values.d_cashcharged
+		this.id_master.object.cashback[this.id_master.rowcount()] = lstr_values.d_cashback
+		return 1
+	end if
+	return 0
+
+// w_patientadmission_form.wf_update_mastercashierwindow(long al_code, string as_type, long al_new_pat_adm) returns long
+	long ll_counter
+	if al_new_pat_adm = 1 then
+		for ll_counter = 1 to this.ids_cashwin.rowcount()
+			this.ids_cashwin.object.documentcode[ll_counter] = al_code
+			this.ids_cashwin.object.documenttype[ll_counter] = as_type
+			this.ids_cashwin.object.date[ll_counter] = this.id_master.object.date[1]
+		next
+		SQL DELETE DBO.MasterCashWin WHERE DocumentCode =:al_code AND DocumentType =:as_type USING this.it_transobject;
+		if this.it_transobject.sqlcode = 0 then
+			if this.ids_cashwin.update() > 0 then
+				return 0
+			else
+				return -1
+			end if
+		else
+			return -1
+		end if
+		return
+	end if
+	return 0
+
+// w_patientadmission_form.wf_retrievelist_datelimit() returns long
+	long rtcode
+	datetime ldt_invdate
+	s_arguements lstr_arg
+	open(w_arg_sdate)
+	lstr_arg = message.powerobjectparm
+	if lstr_arg.i_status = 1 then
+		ldt_invdate = lstr_arg.d_sdate
+	else
+		return 0
+	end if
+	rtcode = this.id_dwcontrol.retrieve(ldt_invdate)
+	return rtcode
+
+// w_patientadmission_form.wf_admitted(long al_patientcode) returns long
+	long ll_count
+	long ll_code
+	string ls_regno
+	ll_code = this.id_master.object.code[this.id_master.rowcount()]
+	if isnull(ll_code) then
+		SQL SELECT Count ( *) INTO :ll_count FROM PatientAdmission WHERE PatientAdmission.PatientCode =:al_patientcode AND PatientAdmission.Discharged ='N' USING sqlca;
+	else
+		SQL SELECT Count ( *) INTO :ll_count FROM PatientAdmission WHERE PatientAdmission.PatientCode =:al_patientcode AND PatientAdmission.AdmissionCode <> :ll_code AND PatientAdmission.Discharged ='N' USING sqlca;
+	end if
+	return ll_count
+
+// w_patientadmission_form.wf_populate_servicetemplate() returns long
+	long ll_rtcode
+	long ll_rowcount
+	long ll_counter
+	long ll_icode
+	long ll_templatecode
+	integer li_retcode
+	string ls_errortext
+	s_arguements lstr_arg
+	datastore lds_servicetemplate
+	if this.tab_retrieve.selectedtab = 2 then
+		return 0
+	end if
+	if wf_iseditable() = false then
+		return 0
+	end if
+	if this.id_master.object.patientcode.protect = "1" then
+		return 0
+	end if
+	open(w_arg_single_servicetemplate)
+	lstr_arg = message.powerobjectparm
+	ll_templatecode = lstr_arg.l_code1
+	if lstr_arg.i_status = 1 and ll_templatecode > 0 then
+		lds_servicetemplate = create datastore
+		lds_servicetemplate.dataobject = "d_servicetemplate_detail"
+		lds_servicetemplate.settransobject(this.it_transobject)
+		ll_rtcode = lds_servicetemplate.retrieve(ll_templatecode)
+		if ll_rtcode > 0 and lds_servicetemplate.rowcount() > 0 then
+			for ll_counter = this.id_detail.rowcount() to 1 step -1
+				event ue_deleteitem()
+			next
+			ll_counter = 0
+			ll_rowcount = lds_servicetemplate.rowcount()
+			if ll_rowcount > 0 then
+				for ll_counter = 1 to ll_rowcount
+					this.id_detail.insertrow(0)
+					ll_icode = lds_servicetemplate.getitemnumber(ll_counter, "icode")
+					wf_inititeminfo(ll_icode, ll_counter, li_retcode, ls_errortext)
+					this.id_detail.setitem(ll_counter, "icode", lds_servicetemplate.getitemnumber(ll_counter, "icode"))
+					this.id_detail.setitem(ll_counter, "smancode", lds_servicetemplate.getitemnumber(ll_counter, "smancode"))
+					this.id_detail.setitem(ll_counter, "itemcode", lds_servicetemplate.getitemnumber(ll_counter, "icode"))
+					this.id_detail.setitem(ll_counter, "itemname", lds_servicetemplate.getitemstring(ll_counter, "itemname"))
+					this.id_detail.setitem(ll_counter, "qty", lds_servicetemplate.getitemnumber(ll_counter, "qty"))
+					this.id_detail.setitem(ll_counter, "serviceflatdisc", lds_servicetemplate.getitemnumber(ll_counter, "serviceflatdisc"))
+					this.id_detail.setitem(ll_counter, "saleprice", lds_servicetemplate.getitemnumber(ll_counter, "saleprice"))
+					this.id_detail.setitem(ll_counter, "discperc", lds_servicetemplate.getitemnumber(ll_counter, "discperc"))
+				next
+				this.im_menu.m_file.m_save.enabled = true
+			end if
+		end if
+	end if
+	return 0
+
+// w_patientadmission_form.wf_get_startdate() returns string
+	datetime ldt_pref_datetime
+	string lstr_datetime
+	ldt_pref_datetime = f_datepreferences("recurringservicesdefaulttimeinpatientadmission")
+	SQL SELECT Dt =CAST ( CONVERT ( VARCHAR ( 100 ) , GETDATE ( ) , 111 ) + ' ' + CONVERT ( VARCHAR ( 100 ) , :ldt_pref_datetime , 114 ) AS DATETIME ) INTO :ldt_pref_datetime FROM ServerDate USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		lstr_datetime = string(ldt_pref_datetime)
+	else
+		lstr_datetime = ""
+	end if
+	return lstr_datetime
+
+// w_patientadmission_form.wf_retrieve() returns long
+	long rtcode
+	long ll_days
+	datetime ldt_invdate
+	ll_days = f_numberpreferences("patientadmission_listviewretrievaldays") * -1
+	ldt_invdate = datetime(relativedate(today(), ll_days))
+	rtcode = this.id_dwcontrol.retrieve(ldt_invdate)
+	return rtcode
+
+// w_patientadmission_form.wf_show_inpatientbill() returns long
+	long ll_admissioncode
+	if this.tab_retrieve.selectedtab = 1 then
+		if this.id_master.rowcount() > 0 and this.id_master.getrow() > 0 then
+			ll_admissioncode = this.id_master.object.code[this.id_master.getrow()]
+		end if
+	elseif this.tab_retrieve.selectedtab = 2 and (this.id_list.rowcount() > 0 and this.id_list.getrow() > 0) then
+		ll_admissioncode = this.id_list.object.code[this.id_list.getrow()]
+	end if
+	if not isnull(ll_admissioncode) and ll_admissioncode <> 0 then
+		SQL rollback USING sqlca;
+		sqlca.virtualgl("A")
+		if sqlca.sqlcode = 0 then
+			SQL commit USING sqlca;
+		else
+			SQL rollback USING sqlca;
+		end if
+		openwithparm(w_inpatient_bill, ll_admissioncode)
+	end if
+	return 0
+
+// w_patientadmission_form.wf_select_diseasetype_disease() returns long
+	s_arguements lstr_arg
+	s_arguements lstr_temp
+	open(w_arg_diseasetype)
+	lstr_temp = message.powerobjectparm
+	if lstr_temp.i_status = 1 then
+		openwithparm(w_arg_disease_diseasetype, lstr_temp.l_code1)
+		lstr_arg = message.powerobjectparm
+		if lstr_arg.i_status = 1 and lstr_arg.l_code1 > 0 then
+			this.id_master.object.diseasecode[1] = lstr_arg.l_code1
+		end if
+	end if
+	return 0
+
+// w_patientadmission_form.wf_update_customer(long al_patientcode, long al_custcode) returns long
+	long ll_custcode
+	long ll_retcode
+	if al_custcode > 0 and al_patientcode > 0 then
+		SQL SELECT CustCode INTO :ll_custcode FROM Patient WHERE PatientCode =:al_patientcode USING this.it_transobject;
+		if this.it_transobject.sqlcode = 0 then
+			if ll_custcode > 0 and ll_custcode <> al_custcode then
+				SQL update Patient SET CustCode =:al_custcode WHERE PatientCode =:al_patientcode USING this.it_transobject;
+				if this.it_transobject.sqlcode = 0 then
+					ll_retcode = 0
+				else
+					messagebox("Database Problem", "Unable to update customer of this patient.~r~nReasons are:- " + this.it_transobject.sqlerrtext, stopsign!)
+					ll_retcode = -1
+				end if
+			end if
+		else
+			messagebox("Database Problem", "Unable to fetch customer of this patient.~r~nReasons are:- " + this.it_transobject.sqlerrtext, stopsign!)
+			ll_retcode = -1
+		end if
+	end if
+	return ll_retcode
+
+// w_patientadmission_form.wf_show_patientinfo() returns long
+	long ll_patientcode
+	if this.id_master.rowcount() > 0 then
+		ll_patientcode = this.id_master.object.patientcode[1]
+		if ll_patientcode > 0 and not isnull(ll_patientcode) then
+			openwithparm(w_patientinfo, ll_patientcode)
+		end if
+	end if
+	return 0
+
+// w_patientadmission_form.wf_fetch_procedure_info(long al_code) returns long
+	double ld_price
+	double ld_servicegstperc
+	SQL SELECT Price , ServiceGSTPerc INTO :ld_price, :ld_servicegstperc FROM Service WHERE ServiceCode =:al_code USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		this.id_master.object.procedurecharges[1] = ld_price
+		this.id_master.object.proceduregstperc[1] = ld_servicegstperc
+	end if
+	return 0
+
+// w_patientadmission_form.wf_patient_retrieve() returns integer
+	long ll_prow
+	long ll_pcode
+	long ll_retcode
+	long ll_rtncode
+	this.ic_retrievepatientlist = f_stringpreferences("RetrievePatientListInPatientVisit")
+	if this.ic_retrievepatientlist = "N" then
+		ll_retcode = 0
+	else
+		ll_rtncode = this.idc_patient.retrieve()
+	end if
+	if this.idc_patient.rowcount() <= 0 then
+		ll_prow = this.idc_patient.insertrow(0)
+		setnull(ll_pcode)
+		this.idc_patient.setitem(ll_prow, "patientcode", ll_pcode)
+		this.idc_patient.setitem(ll_prow, "regno", "<NONE>")
+		this.idc_patient.setitem(ll_prow, "name", "<NONE>")
+		this.idc_patient.setitem(ll_prow, "customer", "<NONE>")
+		this.idc_patient.setitem(ll_prow, "city", "<NONE>")
+		this.idc_patient.scrolltorow(ll_prow)
+	end if
+	if ll_rtncode < 0 then
+		return -1
+	end if
+	return 0
+
+// w_patientadmission_form.wf_validate_patient(string as_regno) returns long
+	u_transaction it_mytrans
+	string ls_name
+	string ls_regno
+	string ls_city
+	string ls_nic
+	string ls_customer
+	string ls_patient
+	string ls_ref
+	long ll_patientcode
+	long ll_relationcode
+	long ll_doctcode
+	long ll_wardcode
+	long ll_recperiod
+	long ll_prow
+	long ll_found
+	long ll_pcode
+	it_mytrans = create u_transaction
+	SQL start USING it_mytrans;
+	if this.ic_retrievepatientlist = "N" then
+		SQL SELECT Name =P.name , Regno =P.regno , patientcode =P.patientcode , City =P.city , NIC =P.NationalIDCard , relationcode =P.relationcode , doctcode =P.doctcode , wardcode =P.wardcode , customer =A.name , patient =LTRIM ( RTRIM ( P.Name ) ) + ' (' + LTRIM ( RTRIM ( P.RegNo ) ) + ')' , RecurringPeriod =ISNULL ( P.RecurringPeriod , 0 ) , Reference =P.Reference INTO :ls_name, :ls_regno, :ll_patientcode, :ls_city, :ls_nic, :ll_relationcode, :ll_doctcode, :ll_wardcode, :ls_customer, :ls_patient, :ll_recperiod, :ls_ref FROM Patient P , Accounts A WHERE P.RegNo =:as_regno AND P.CustCode =A.AccCode USING it_mytrans;
+		if it_mytrans.sqlcode = 0 then
+			ll_found = this.idc_patient.find("regno = '" + as_regno + "'", 1, this.idc_patient.rowcount())
+			if ll_found > 0 and ll_found <= this.idc_patient.rowcount() then
+				ll_prow = ll_found
+			else
+				ll_prow = this.idc_patient.insertrow(0)
+			end if
+			setnull(ll_pcode)
+			this.idc_patient.setitem(ll_prow, "name", ls_name)
+			this.idc_patient.setitem(ll_prow, "regno", ls_regno)
+			this.idc_patient.setitem(ll_prow, "patientcode", ll_patientcode)
+			this.idc_patient.setitem(ll_prow, "city", ls_city)
+			this.idc_patient.setitem(ll_prow, "relationcode", ll_relationcode)
+			this.idc_patient.setitem(ll_prow, "doctcode", ll_doctcode)
+			this.idc_patient.setitem(ll_prow, "wardcode", ll_wardcode)
+			this.idc_patient.setitem(ll_prow, "customer", ls_customer)
+			this.idc_patient.setitem(ll_prow, "patient", ls_patient)
+			this.idc_patient.setitem(ll_prow, "RecurringPeriod", ll_recperiod)
+			this.idc_patient.scrolltorow(ll_prow)
+			this.id_master.setredraw(false)
+			this.id_master.object.regno[1] = ls_regno
+			this.id_master.object.patientcode[1] = ll_patientcode
+			this.id_master.setredraw(true)
+		end if
+	else
+		this.idc_patient.retrieve()
+	end if
+	this.idc_patient.setredraw(true)
+	destroy it_mytrans
+	return 0
+
+// w_patientadmission_form.wf_patientsearch() returns string
+	string ls_regno
+	long ll_res
+	long ll_null
+	s_arguements ls_arguements
+	setnull(ll_null)
+	open(w_patientsearch)
+	ls_arguements = message.powerobjectparm
+	if ls_arguements.i_status = 1 then
+		openwithparm(w_patientsearchresult, ls_arguements)
+		ls_arguements = message.powerobjectparm
+		if ls_arguements.i_status = 1 and ls_arguements.l_code1 > 0 then
+			ll_res = wf_find_patient_regno(ls_arguements.l_code1, ls_regno)
+			wf_validate_patient(ls_regno)
+		end if
+	end if
+	return ls_regno
+
+// w_patientadmission_form.wf_find_patient_regno(long al_patientcode, string as_regno) returns long
+	long ll_retflag
+	char lc_active
+	ll_retflag = 0
+	SQL SELECT patient.regno , patient.active INTO :as_regno, :lc_active FROM patient WHERE patient.patientcode =:al_patientcode USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		if isnull(as_regno) then
+			ll_retflag = 0
+		elseif lc_active = "Y" then
+			ll_retflag = 1
+		else
+			ll_retflag = -2
+		end if
+	else
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_patientadmission_form.create() returns 0
+	integer icurrent
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_admissionmenu" then
+		this.menuid = create m_admissionmenu
+	end if
+	this.dw_saleinvrep = create dw_saleinvrep
+	this.dw_saleinvdetail = create dw_saleinvdetail
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_saleinvrep
+	this.control[icurrent + 2] = this.dw_saleinvdetail
+
+// w_patientadmission_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_saleinvrep
+	destroy this.dw_saleinvdetail
+
+// w_patientadmission_form.ue_save() returns 0
+	boolean lb_commitflag
+	boolean lb_continue
+	integer li_counter
+	string ls_errtext
+	string ls_invlist
+	string ls_date_errtext
+	double ld_rate
+	double ld_avgprice
+	double ld_saleprice
+	double ld_discperc
+	double ld_invdiscperc
+	double ld_flatdisc
+	double ld_salestax
+	double ld_misccharges
+	double ld_cashreceived
+	datetime ldt_server_datetime
+	long ll_detailrows
+	long ll_mastercurrrow
+	long ll_footercurrrow
+	long ll_invid
+	long ll_stock
+	long ll_newstock
+	long ll_icode
+	long ll_salelooseqty
+	long ll_packunits
+	long ll_errrowid
+	long ll_customeracc
+	long ll_salesmancode
+	long ll_gcode
+	long ll_headerno
+	long ll_headerinvno
+	long ll_counter
+	long ll_count
+	long ll_statusrow
+	long ll_custcode
+	long ll_patientcode
+	long ll_saveresult
+	long ll_new_pat_adm
+	long ll_null
+	long ll_locationcode
+	setnull(ll_null)
+	setnull(ll_patientcode)
+	ll_mastercurrrow = this.id_master.getrow()
+	ll_locationcode = this.id_master.object.locationcode[ll_mastercurrrow]
+	this.id_master.object.usercode[ll_mastercurrrow] = gl_usercode
+	if wf_admitted(this.id_master.object.patientcode[ll_mastercurrrow]) > 0 then
+		messagebox("Problem Saving", "Patient Already Admitted.~r~nPlease Select some other patient")
+		this.id_master.setfocus()
+		this.id_master.setcolumn("patientcode")
+		return
+	end if
+	if wf_locationoccupied(ll_locationcode) > 0 then
+		messagebox("Problem Saving", "Location is already occupied by some patient.")
+		this.id_master.setfocus()
+		this.id_master.setcolumn("locationcode")
+		return
+	end if
+	if this.ib_itemvalidated = false and wf_validateitem(true) = -1 then
+		this.id_detail.setfocus()
+		return
+	end if
+	if this.ib_godownvalidated = false and wf_validategodown() = -1 then
+		return
+	end if
+	wf_deleteemptydetailrow()
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	if f_stringpreferences("patientadmission_recurringservicescompulsion") = "Y" and this.id_detail.rowcount() <= 0 then
+		messagebox("Patient Admission", "Recurring Services Compulsion is ON~r~n~r~nEach Patient Admission must contain some recurring services.~r~nPlease specify at-least one recurring services that this patient will utilize.", stopsign!)
+		return
+	end if
+	setpointer(hourglass!)
+	if not this.ib_modify and not wf_validateserverdatetime(ldt_server_datetime, ls_date_errtext) then
+		messagebox("Date Violation", ls_date_errtext, stopsign!)
+		return
+	end if
+	if wf_set_cashaccount() = 0 then
+		return
+	end if
+	ll_salesmancode = gl_usercode
+	if ll_salesmancode > 0 then
+		ll_mastercurrrow = this.id_master.getrow()
+		ll_custcode = this.id_master.object.custcode[ll_mastercurrrow]
+		ll_patientcode = this.id_master.object.patientcode[ll_mastercurrrow]
+		if wf_update_customer(ll_patientcode, ll_custcode) < 0 then
+			return
+		end if
+		ll_invid = this.id_master.getitemnumber(ll_mastercurrrow, "code")
+		if isnull(ll_invid) then
+			ll_new_pat_adm = 1
+			if wf_show_mastercashierwindow() = 0 then
+				return
+			end if
+			wf_tabnewid("PatientAdmission", ll_invid)
+			if ll_invid > 0 then
+				this.id_master.setitem(ll_mastercurrrow, "code", ll_invid)
+			end if
+		end if
+		if this.ib_modify then
+			lb_continue = wf_returnsaleinvoice(ll_invid, ls_errtext)
+		else
+			if not this.ib_modifydate then
+				if not wf_getserverdatetime(ldt_server_datetime, ls_date_errtext) then
+					messagebox("Date Violation", ls_date_errtext, stopsign!)
+					return
+				end if
+			else
+				ldt_server_datetime = this.id_master.getitemdatetime(ll_mastercurrrow, "date")
+			end if
+			this.id_master.setitem(ll_mastercurrrow, "date", ldt_server_datetime)
+		end if
+		this.id_master.setitem(ll_mastercurrrow, "usercode", ll_salesmancode)
+		if f_stringpreferences("askmastercashwin_in_patientadm") = "N" then
+			this.id_master.object.cashtendered[1] = 0
+			this.id_master.object.cashcharged[1] = 0
+			this.id_master.object.cashback[1] = 0
+			this.id_master.accepttext()
+		end if
+		if lb_continue then
+			this.id_saleinvdetail.reset()
+			for ll_counter = 1 to this.id_detail.rowcount()
+				this.id_saleinvdetail.insertrow(0)
+				this.id_saleinvdetail.setitem(ll_counter, "code", ll_invid)
+				this.id_saleinvdetail.setitem(ll_counter, "icode", this.id_detail.getitemnumber(ll_counter, "icode"))
+				this.id_saleinvdetail.setitem(ll_counter, "qty", this.id_detail.getitemnumber(ll_counter, "qty"))
+				this.id_saleinvdetail.setitem(ll_counter, "saleprice", this.id_detail.getitemnumber(ll_counter, "saleprice"))
+				this.id_saleinvdetail.setitem(ll_counter, "serviceflatdisc", this.id_detail.getitemnumber(ll_counter, "serviceflatdisc"))
+				this.id_saleinvdetail.setitem(ll_counter, "allowsaleindecimal", this.id_detail.getitemstring(ll_counter, "allowsaleindecimal"))
+				this.id_saleinvdetail.setitem(ll_counter, "discperc", this.id_detail.getitemnumber(ll_counter, "discperc"))
+				this.id_saleinvdetail.setitem(ll_counter, "smancode", this.id_detail.getitemnumber(ll_counter, "smancode"))
+				this.id_saleinvdetail.setitem(ll_counter, "frequencyhrs", this.id_detail.getitemnumber(ll_counter, "frequencyhrs"))
+				this.id_saleinvdetail.setitem(ll_counter, "startdate", this.id_detail.getitemdatetime(ll_counter, "startdate"))
+				this.id_saleinvdetail.setitem(ll_counter, "nextrunon", this.id_detail.getitemdatetime(ll_counter, "nextrunon"))
+			next
+			this.id_detail = this.id_saleinvdetail
+			ll_saveresult = event ue_save_withnocommit()
+			if ll_saveresult = 0 then
+				if wf_update_mastercashierwindow(ll_invid, this.is_doctype, ll_new_pat_adm) = 0 then
+					SQL commit USING this.it_transobject;
+					messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+					this.ib_commitok = true
+					this.id_master.resetupdate()
+					this.im_menu.m_file.m_new.enabled = true
+					this.editflag = false
+					this.il_codevalue = ll_invid
+					if gd_recenttransdate < this.id_systemdate then
+						gd_recenttransdate = this.id_systemdate
+					end if
+					if ll_new_pat_adm = 1 and gs_allowsmsfunctions = "Y" then
+						ls_invlist = trim(string(ll_invid))
+						this.it_transobject.createautotriggersms(ls_invlist, 36, "Admission")
+						if this.it_transobject.sqlcode <> 0 then
+							ls_errtext = "Problem in Generating Auto Triggered SMS.~r~nReasons are:- " + this.it_transobject.sqlerrtext
+							SQL rollback USING this.it_transobject;
+							messagebox("Auto Triggered SMS", ls_errtext)
+						else
+							SQL commit USING this.it_transobject;
+						end if
+					end if
+				else
+					messagebox("Saving Problem", "Changes Not Saved in database for Master Cashier Window transactions.", stopsign!, ok!, 1)
+					this.ib_commitok = false
+				end if
+			else
+				messagebox("Saving Problem", "Changes Not Saved in database while saving service record.", stopsign!, ok!, 1)
+				this.ib_commitok = false
+			end if
+			if this.ib_modify = false and this.ib_commitok = false then
+				this.id_master.setitem(1, "Code", ll_null)
+				this.id_master.accepttext()
+			end if
+			this.id_detail = this.tab_retrieve.tabpage_detail.dw_itemsdetail
+			this.id_saleinvdetail.reset()
+			if this.ib_commitok then
+				this.ib_modify = false
+			end if
+		end if
+		if not lb_continue then
+			SQL rollback USING this.it_transobject;
+			messagebox("Updation Error", ls_errtext + " in current row", stopsign!)
+		end if
+	else
+		setfocus()
+	end if
+	setpointer(arrow!)
+
+// w_patientadmission_form.ue_newform() returns 0
+	integer rtncode
+	long li_fetched_code
+	long row
+	long ll_manfcode
+	long ll_found
+	call super::ue_newform
+	setredraw(false)
+	this.id_footer.reset()
+	this.id_footer.insertrow(0)
+	this.id_footer.scrolltorow(0)
+	this.idc_location.settransobject(this.it_transobject)
+	this.idc_location.retrieve()
+	this.idc_patient.settransobject(this.it_transobject)
+	if wf_patient_retrieve() < 0 then
+		messagebox("Patient Admission", "Problem in Retrieving Patient List")
+		close(this)
+		return
+	end if
+	this.im_menu.m_file.m_print.enabled = true
+	this.im_admissionmenu.m_file.m_registerpatient.enabled = true
+	wf_protectdw(this.id_master, 0)
+	wf_protectdw(this.id_detail, 0)
+	wf_protectdw(this.id_footer, 0)
+	wf_populate_group_servicetemplate()
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 726", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.id_detail.object.saleprice.protect = "0"
+		this.id_detail.object.discperc.protect = "0"
+		this.id_detail.object.serviceflatdisc.protect = "0"
+	else
+		this.id_detail.object.saleprice.protect = "1"
+		this.id_detail.object.discperc.protect = "1"
+		this.id_detail.object.serviceflatdisc.protect = "1"
+	end if
+	this.ib_modify = false
+	this.id_itemslist.hide()
+	this.id_master.setcolumn(1)
+	this.id_master.setfocus()
+	wf_visible(true)
+	wf_assign_master_cash_win_object()
+	if f_stringpreferences("patientadmission_diseasetypefilter") = "Y" then
+		wf_select_diseasetype_disease()
+	end if
+	setredraw(true)
+
+// w_patientadmission_form.ue_detail() returns 0
+	integer li_rtncode
+	integer li_protect
+	long ll_row
+	long ll_code
+	long ll_found
+	boolean lb_flag
+	boolean lb_modify
+	call super::ue_detail
+	setredraw(false)
+	if this.id_master.getitemstring(this.id_master.getrow(), "Discharged1") = "N" and this.id_master.getitemstring(this.id_master.getrow(), "Discharged") = "N" then
+		if f_rightexists(5140) then
+			li_protect = 0
+			wf_initmodify(li_protect)
+			this.im_menu.m_file.m_save.enabled = true
+			this.ib_modify = true
+		else
+			this.editflag = false
+			li_protect = 1
+			this.im_menu.m_file.m_save.enabled = false
+		end if
+	else
+		this.im_menu.m_file.m_save.enabled = false
+	end if
+	if this.id_master.object.code[this.id_master.rowcount()] > 0 then
+		this.ids_cashwin.retrieve(this.id_master.object.code[1], this.is_doctype)
+	else
+		wf_assign_master_cash_win_object()
+	end if
+	wf_protectdw(this.id_master, li_protect)
+	wf_protectdw(this.id_detail, li_protect)
+	if this.id_master.getitemstring(this.id_master.getrow(), "Discharged1") = "N" and this.id_master.getitemstring(this.id_master.getrow(), "Discharged") = "N" then
+		ll_found = 0
+		ll_found = gds_securitywindow.find("rightcode = 726", 1, gds_securitywindow.rowcount())
+		if ll_found > 0 then
+			if f_rightexists(5140) then
+				this.id_detail.object.saleprice.protect = "0"
+				this.id_detail.object.discperc.protect = "0"
+			else
+				this.id_detail.object.saleprice.protect = "1"
+				this.id_detail.object.discperc.protect = "1"
+			end if
+		else
+			this.id_detail.object.saleprice.protect = "1"
+			this.id_detail.object.discperc.protect = "1"
+		end if
+	end if
+	if li_protect = 0 then
+		lb_flag = true
+	end if
+	wf_visible(lb_flag)
+	wf_grandtotal()
+	this.im_admissionmenu.m_file.m_registerpatient.enabled = false
+	setredraw(true)
+
+// w_patientadmission_form.ue_newitem() returns 0
+	long ll_rowcount
+	if this.ib_itemvalidated = false and wf_validateitem(true) = -1 then
+		this.id_detail.setfocus()
+		return
+	end if
+	if this.id_detail.rowcount() > 0 and f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	this.id_detail.setcolumn("itemname")
+	this.id_detail.insertrow(0)
+	this.ib_focusdetail = true
+	this.id_itemslist.show()
+	ll_rowcount = this.id_detail.rowcount()
+	if ll_rowcount > 1 then
+		this.id_detail.scrolltorow(ll_rowcount)
+		this.id_detail.setfocus()
+	end if
+	this.im_menu.m_file.m_save.enabled = true
+	this.ib_validatefullcode = true
+
+// w_patientadmission_form.ue_deleteitem() returns 0
+	long ll_currow
+	long ll_detailrows
+	call super::ue_deleteitem
+	this.ib_itemvalidated = true
+	wf_grandtotal()
+
+// w_patientadmission_form.close() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::close()
+	this.id_itemslist.sharedataoff()
+	return ::message.returnvalue
+
+// w_patientadmission_form.ue_list() returns 0
+	call super::ue_list
+	SQL rollback USING this.it_transobject;
+	this.im_menu.m_file.m_print.enabled = true
+	this.ib_modify = false
+	this.id_itemslist.hide()
+	if this.id_detail.rowcount() > 0 then
+		postevent("ue_deleteitem")
+	end if
+	wf_retrievelist()
+
+// w_patientadmission_form.ue_print() returns 0
+	long ll_custcode
+	long ll_row
+	long ll_code
+	long i
+	long li_printretcode
+	string ls_custname
+	integer li_option
+	boolean lb_listtab
+	s_datastore lstr
+	call super::ue_print
+	if this.tab_retrieve.selectedtab = 2 then
+		lb_listtab = true
+	end if
+	if this.im_menu.m_file.m_save.enabled = true and lb_listtab = false then
+		if this.ib_modify then
+			li_option = messagebox("Save Changes", "Do you want to save", information!, yesno!, 2)
+			if li_option = 1 then
+				triggerevent("ue_save")
+				if wf_commitform() = false then
+					return
+				end if
+				return
+			end if
+		else
+			triggerevent("ue_save")
+			if wf_commitform() = false then
+				return
+			end if
+		end if
+		return
+	end if
+	if lb_listtab then
+		if isnull(this.id_list.getrow()) or this.id_list.getrow() <= 0 then
+			messagebox("Rows Validation", "Kindly select any row from the list view.")
+			return
+		end if
+		ll_code = this.id_list.getitemnumber(this.id_list.getrow(), "code")
+		if isnull(ll_code) or ll_code <= 0 then
+			messagebox("Selection Validation", "Kindly select any row from the list view.")
+			return
+		end if
+	else
+		ll_code = this.id_master.getitemnumber(1, "code")
+	end if
+	if gs_company = "FATIMAPHARMACY" then
+		this.id_print.dataobject = "d_patientadmission_fatimapharmacy"
+	elseif gs_company = "MEHARHSP" then
+		this.id_print.dataobject = "d_patientadmission_meharhsp_print"
+	elseif gs_company = "NAZEERHSP" then
+		this.id_print.dataobject = "d_patientadmission_nazeerhsp_print"
+	elseif gs_company = "AMANCHILDCARE" then
+		this.id_print.dataobject = "d_amanchildcare_patientadmission_p"
+	else
+		this.id_print.dataobject = "d_patientadmission_print"
+	end if
+	this.id_print.settransobject(this.it_transobject)
+	this.id_print.retrieve(ll_code)
+	if lb_listtab then
+		lstr.dw = this.id_print
+		lstr.s_name1 = this.id_print.dataobject
+		openwithparm(w_preview_invoices, lstr)
+		lstr = message.powerobjectparm
+		if lstr.i_closemode = -1 then
+			return
+		end if
+		return
+	end if
+	if this.id_print.rowcount() > 0 then
+		if f_stringpreferences("PromptBeforePrinting") = "Y" and printsetup() < 0 then
+			messagebox("Printer", "Printing Error")
+			this.id_print.printcancel()
+		end if
+		li_printretcode = this.id_print.print()
+		if li_printretcode < 0 then
+			messagebox("Printing", "Can not Print", information!)
+		end if
+		if this.im_menu.m_file.m_save.enabled = true and lb_listtab = false then
+			postevent("ue_new")
+		end if
+		return
+	end if
+	messagebox("Printing Error", "Can not Print,~r~nNo rows are retrieved", information!)
+
+// w_patientadmission_form.ue_refreshddw() returns 0
+	call super::ue_refreshddw
+	setpointer(hourglass!)
+	this.idc_salesman.settransobject(this.it_transobject)
+	this.idc_salesman.retrieve()
+	this.idc_patient.setredraw(false)
+	this.idc_patient.settransobject(this.it_transobject)
+	this.idc_patient.retrieve()
+	this.idc_patient.setredraw(true)
+	this.idc_location.settransobject(this.it_transobject)
+	this.idc_location.retrieve()
+	setpointer(arrow!)
+
+// w_patientadmission_form.ue_new() returns 0
+	call super::ue_new
+
+// w_patientadmission_form.ue_postopen() returns 0
+	integer li_rtncode
+	long ll_counter
+	long ll_pos
+	long ll_pcode
+	long ll_prow
+	long ll_found
+	long li_count
+	long ll_startrow
+	char lc_char
+	call super::ue_postopen
+	this.im_admissionmenu = this.menuid
+	wf_assign_master_cash_win_object()
+	this.il_groupcode = f_getgroupcode(gl_usercode)
+	setredraw(false)
+	this.id_print = this.dw_saleinvrep
+	this.id_saleinvdetail = this.dw_saleinvdetail
+	this.id_saleinvdetail.settransobject(this.it_transobject)
+	li_rtncode = this.id_detail.getchild("smancode", this.idc_salesman)
+	if li_rtncode = -1 then
+		messagebox("Error", "Can not get a DataWindowChild for SalesMan in detail datawindow")
+		close(this)
+	end if
+	this.idc_salesman.settransobject(this.it_transobject)
+	li_rtncode = this.id_master.getchild("patientcode", this.idc_patient)
+	if li_rtncode = -1 then
+		messagebox("Error", "Can not get a DataWindowChild")
+		close(this)
+	end if
+	li_rtncode = this.id_master.getchild("locationcode", this.idc_location)
+	if li_rtncode = -1 then
+		messagebox("Error", "Can not get a DataWindowChild for Patient Location in detail datawindow")
+		close(this)
+	end if
+	this.idc_location.settransobject(this.it_transobject)
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 1696", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.id_master.object.date.protect = 0
+		this.id_master.object.date.background.color = rgb(255, 255, 255)
+		this.id_master.settaborder("date", 1)
+		this.ib_modifydate = true
+	end if
+	if not this.ib_modifydate then
+		this.id_master.object.date.protect = 1
+		this.id_master.settaborder("date", 0)
+	end if
+	this.id_itemslist.retrieve()
+	this.id_detail.object.smancode.initial = trim(string(f_numberpreferences("InitialSManCodeInService")))
+	if f_stringpreferences("showsalepersoninpatientadmission") = "N" then
+		this.id_detail.object.smancode.visible = false
+	end if
+	if f_stringpreferences("showqtyinpatientadmission") = "N" then
+		this.id_detail.object.qty.visible = false
+	end if
+	if f_stringpreferences("showsalepriceinpatientadmission") = "N" then
+		this.id_detail.object.saleprice.visible = false
+	end if
+	if f_stringpreferences("showflatdiscinpatientadmission") = "N" then
+		this.id_detail.object.serviceflatdisc.visible = false
+	end if
+	if f_stringpreferences("showdiscpercinpatientadmission") = "N" then
+		this.id_detail.object.discperc.visible = false
+	end if
+	if f_stringpreferences("showtotalinpatientadmission") = "N" then
+		this.id_detail.object.c_total.visible = false
+	end if
+	if f_stringpreferences("showstartdateinpatientadmission") = "N" then
+		this.id_detail.object.startdate.visible = false
+	end if
+	if f_stringpreferences("showfrequencyinpatientadmission") = "N" then
+		this.id_detail.object.frequencyhrs.visible = false
+	end if
+	if f_stringpreferences("shownextrunoninpatientadmission") = "N" then
+		this.id_detail.object.nextrunon.visible = false
+	end if
+	this.id_itemslist.object.fullcode.visible = false
+	this.id_itemslist.object.location.visible = false
+	for li_count = 65 to 90
+		lc_char = char(li_count)
+		this.ia_llookuptable[li_count] = this.id_itemslist.find("Lower(itemname) >= Lower('" + char(li_count) + "')", ll_startrow, 99999)
+		ll_startrow = this.ia_llookuptable[li_count]
+	next
+	this.ia_llookuptable[92] = 99999
+	this.id_footer.reset()
+	this.id_footer.insertrow(0)
+	this.id_footer.scrolltorow(0)
+	this.id_detail.object.startdate.initial = wf_get_startdate()
+	f_setserviceqtystyle(this.id_detail, "qty")
+	setredraw(true)
+
+// w_patientadmission_form.open() returns long
+	m_entry lm_menu
+	long ll_width
+	long ll_height
+	environment env
+	postevent("ue_postopen")
+	wf_setmenu(this.menuid)
+	lm_menu = this.menuid
+	lm_menu.dynamic mf_initsecurityapp(lm_menu)
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.tab_retrieve.width = ll_width * 0.99
+	this.tab_retrieve.height = ll_height * 0.83
+	this.tab_retrieve.tabpage_detail.dw_detail.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_itemsdetail.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_footer.y = this.tab_retrieve.height * 0.90 - this.tab_retrieve.tabpage_detail.dw_footer.height
+	this.tab_retrieve.tabpage_detail.dw_detail.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width
+	this.tab_retrieve.tabpage_detail.dw_footer.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width
+	this.tab_retrieve.tabpage_detail.dw_detail.height = this.tab_retrieve.tabpage_detail.height * 0.70 - 20
+	this.tab_retrieve.tabpage_detail.dw_itemsdetail.height = this.tab_retrieve.tabpage_detail.height * 0.30 - 20
+	this.tab_retrieve.tabpage_detail.dw_itemsdetail.y = this.tab_retrieve.tabpage_detail.dw_detail.y + this.tab_retrieve.tabpage_detail.dw_detail.height + 20
+	this.tab_retrieve.tabpage_list.gb_fliter.width = ll_width * 0.97 - this.tab_retrieve.tabpage_list.gb_sort.width
+	this.tab_retrieve.tabpage_list.r_1.width = ll_width * 0.99
+	this.tab_retrieve.tabpage_list.r_1.height = ll_height * 0.765 - this.tab_retrieve.tabpage_list.gb_sort.height
+	this.tab_retrieve.tabpage_list.dw_list.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_list.dw_list.height = ll_height * 0.75 - this.tab_retrieve.tabpage_list.dw_list.y
+	if int(this.tab_retrieve.tabpage_list.ddlb_data.width / this.tab_retrieve.tabpage_list.width) < 26 then
+		this.tab_retrieve.tabpage_list.ddlb_data.width = int(this.tab_retrieve.tabpage_list.width * 0.26)
+	end if
+	this.tab_retrieve.tabpage_detail.dw_itemslist.height = ll_height * 0.6
+	this.tab_retrieve.tabpage_detail.dw_itemslist.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width * 0.67
+	this.tab_retrieve.tabpage_detail.dw_itemslist.x = 1150
+	setredraw(true)
+	return ::message.returnvalue

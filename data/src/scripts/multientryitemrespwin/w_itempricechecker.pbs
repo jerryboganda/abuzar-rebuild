@@ -1,0 +1,390 @@
+// window w_itempricechecker (multientryitemrespwin)  ancestor: window
+
+// w_itempricechecker.wf_validateitem(string as_fullcode, string as_errortext) returns long
+	long ll_retflag
+	long ll_icode
+	long ll_itemcodetype
+	long ll_packunits
+	string ls_itemname
+	string ls_packingdesc
+	double ld_retailprice
+	double ld_purprice
+	double ld_saleprice
+	double ld_stock
+	double ld_flatdisc
+	double ld_godownstock
+	double ld_salediscperc
+	double ld_qty
+	setnull(ll_icode)
+	ls_itemname = "                                                            "
+	this.it_transobject.getaliasname_withqtyprice(gl_usercode, as_fullcode, ll_icode, ls_itemname, ll_itemcodetype, ld_qty, ld_purprice, ld_saleprice)
+	if this.it_transobject.sqlcode = 0 then
+		if isnull(ll_icode) then
+			ll_retflag = 1
+			as_errortext = "Item Code/Alias Name Not Found~r~nReasons are:-~r~n" + this.it_transobject.sqlerrtext
+		else
+			if ll_itemcodetype = 2 then
+				if this.ib_applyalternatealiasprice then
+					SQL SELECT I.Name , AI.PackingDesc , AI.RetailPrice , AI.SalePrice , Qty =1 , TotalStock =ISNULL ( ( SELECT SUM ( G.CurrQty ) FROM GodownDetail G WHERE G.ICode =:ll_icode ) , 0 ) , GodownStock =ISNULL ( ( SELECT SUM ( G.CurrQty ) FROM GodownDetail G WHERE G.ICode =:ll_icode AND G.GCode IN ( SELECT GAG.GCode FROM GroupAllowedGodown GAG WHERE GAG.GroupCode =:this.il_groupcode and module IN ( 1 , 2 ) ) ) , 0 ) , I.FlatDisc , I.SaleDiscPerc INTO :ls_itemname, :ls_packingdesc, :ld_retailprice, :ld_saleprice, :ll_packunits, :ld_stock, :ld_godownstock, :ld_flatdisc, :ld_salediscperc FROM Item I , AlternateItemAlias AI WHERE I.Icode =:ll_icode AND I.ICode =AI.ICode AND AI.CustomICode =:as_fullcode USING this.it_transobject;
+				else
+					SQL SELECT Name , PackingDesc , RetailPrice , SalePrice , Packunits , TotalStock =ISNULL ( ( SELECT SUM ( G.CurrQty ) FROM GodownDetail G WHERE G.ICode =:ll_icode ) , 0 ) , GodownStock =ISNULL ( ( SELECT SUM ( G.CurrQty ) FROM GodownDetail G WHERE G.ICode =:ll_icode AND G.GCode IN ( SELECT GAG.GCode FROM GroupAllowedGodown GAG WHERE GAG.GroupCode =:this.il_groupcode and module IN ( 1 , 2 ) ) ) , 0 ) , FlatDisc , SaleDiscPerc INTO :ls_itemname, :ls_packingdesc, :ld_retailprice, :ld_saleprice, :ll_packunits, :ld_stock, :ld_godownstock, :ld_flatdisc, :ld_salediscperc FROM Item WHERE Icode =:ll_icode USING this.it_transobject;
+				end if
+			else
+				SQL SELECT Name , PackingDesc , RetailPrice , SalePrice , Packunits , TotalStock =ISNULL ( ( SELECT SUM ( G.CurrQty ) FROM GodownDetail G WHERE G.ICode =:ll_icode ) , 0 ) , GodownStock =ISNULL ( ( SELECT SUM ( G.CurrQty ) FROM GodownDetail G WHERE G.ICode =:ll_icode AND G.GCode IN ( SELECT GAG.GCode FROM GroupAllowedGodown GAG WHERE GAG.GroupCode =:this.il_groupcode and module IN ( 1 , 2 ) ) ) , 0 ) , FlatDisc , SaleDiscPerc INTO :ls_itemname, :ls_packingdesc, :ld_retailprice, :ld_saleprice, :ll_packunits, :ld_stock, :ld_godownstock, :ld_flatdisc, :ld_salediscperc FROM Item WHERE Icode =:ll_icode USING this.it_transobject;
+			end if
+			if this.it_transobject.sqlcode = 0 then
+				this.dw_control.object.icode[1] = ll_icode
+				this.dw_control.object.name[1] = ls_itemname
+				this.dw_control.object.packingdesc[1] = ls_packingdesc
+				this.dw_control.object.saleprice[1] = ld_saleprice
+				this.dw_control.object.retailprice[1] = ld_retailprice
+				if isnull(ll_packunits) or ll_packunits = 0 then
+					ll_packunits = 1
+				end if
+				this.dw_control.object.packunits[1] = ll_packunits
+				this.dw_control.object.stock[1] = ld_godownstock
+				this.dw_control.object.salediscperc[1] = ld_salediscperc
+				this.dw_control.object.flatdisc[1] = round(ld_flatdisc, 2)
+				if f_stringpreferences("pricecheckerformat") = "1" then
+					this.dw_control.object.discount[1] = round(ld_flatdisc + ld_salediscperc * (ld_saleprice / ll_packunits) * 0.01, 2)
+				elseif f_stringpreferences("pricecheckerformat") = "2" then
+					this.dw_control.object.discount[1] = round(ld_flatdisc + ld_salediscperc * (ld_saleprice / ll_packunits) * 0.01, 2) + round((ld_retailprice - ld_saleprice) / ll_packunits, 2)
+				end if
+				ll_retflag = 0
+			else
+				ll_retflag = 1
+				as_errortext = "Item Code/Alias Name Not Found~r~nReasons are:-~r~n" + this.it_transobject.sqlerrtext
+			end if
+		end if
+	else
+		as_errortext = "Item Code/Alias Name Not Found~r~nReasons are:-~r~n" + this.it_transobject.sqlerrtext
+		ll_retflag = 1
+	end if
+	return ll_retflag
+
+// w_itempricechecker.wf_timer() returns integer
+	setpointer(hourglass!)
+	timer(this.li_refreshafter)
+	return 0
+
+// w_itempricechecker.wf_set_preferences() returns long
+	long ll_refreshtime
+	if f_stringpreferences("applysalepriceforalternatealiasname") = "Y" then
+		this.ib_applyalternatealiasprice = true
+	end if
+	if f_stringpreferences("showstockcaptioninpricechecker") = "N" then
+		this.dw_control.object.stock_t.visible = false
+	end if
+	if f_stringpreferences("showstockinpricechecker") = "N" then
+		this.dw_control.object.stock.visible = false
+	end if
+	if f_stringpreferences("showretailinpricechecker") = "N" then
+		this.dw_control.object.c_retailprice.visible = false
+		this.dw_control.object.c_retailprice_t.visible = false
+	end if
+	if f_stringpreferences("showsalediscpercinpricechecker") = "N" then
+		this.dw_control.object.salediscperc.visible = false
+		this.dw_control.object.salediscperc_t.visible = false
+	end if
+	if f_stringpreferences("showflatdiscinpricechecker") = "N" then
+		this.dw_control.object.flatdisc.visible = false
+		this.dw_control.object.flatdisc_t.visible = false
+	end if
+	if f_stringpreferences("showdiscountinpricechecker") = "N" then
+		this.dw_control.object.discount.visible = false
+		this.dw_control.object.discount_t.visible = false
+	end if
+	if f_stringpreferences("showsalepriceinpricechecker") = "N" then
+		this.dw_control.object.c_saleprice.visible = false
+		this.dw_control.object.c_saleprice_t.visible = false
+	end if
+	this.li_refreshafter = f_numberpreferences("cleartimeinpricechecker")
+	return 0
+
+// w_itempricechecker.wf_print_purlabels() returns long
+	long ll_icode
+	long ll_row
+	long ll_count
+	long ll_insrow
+	long ll_qty
+	double ld_price
+	string ls_label_format
+	s_datastore lstr
+	datastore lds_purlabel
+	ls_label_format = "d_purlabel_for_purinvoice"
+	lds_purlabel = create datastore
+	lds_purlabel.dataobject = wf_select_label_format()
+	lds_purlabel.settransobject(sqlca)
+	ll_count = this.dw_control.rowcount()
+	if ll_count > 0 then
+		for ll_row = 1 to ll_count
+			ll_icode = this.dw_control.object.icode[ll_row]
+			ll_insrow = lds_purlabel.insertrow(0)
+			lds_purlabel.object.aliasname[ll_insrow] = "*" + this.dw_control.object.customicode[ll_row] + "*"
+			lds_purlabel.object.aliasname2[ll_insrow] = this.dw_control.object.customicode[ll_row]
+			lds_purlabel.object.name[ll_insrow] = this.dw_control.object.name[ll_row]
+			lds_purlabel.object.packingdesc[ll_insrow] = this.dw_control.object.packingdesc[ll_row]
+			SQL SELECT saleprice INTO :ld_price FROM Item WHERE ICode =:ll_icode USING sqlca;
+			lds_purlabel.object.saleprice[ll_insrow] = ld_price
+			lds_purlabel.object.qty[ll_insrow] = ll_qty
+		next
+		if lds_purlabel.rowcount() > 0 then
+			lds_purlabel.print()
+		end if
+	end if
+	return 0
+
+// w_itempricechecker.wf_printbarcode() returns long
+	long ll_qty
+	open(w_setquantity)
+	ll_qty = message.doubleparm
+	if ll_qty <= 0 then
+		return 0
+	end if
+	if gs_company = "COSMOSTORES" then
+		wf_printbarcode_cosmostores(ll_qty)
+	end if
+	return 0
+
+// w_itempricechecker.wf_printbarcode_cosmostores(long al_qty) returns long
+	long ll_totalrows
+	long ll_counter
+	long ll_innercounter
+	long ll_qty
+	long ll_currrow
+	long ll_tot_label_rows
+	long ll_packunits
+	integer li_startcell
+	integer li_stopcell
+	integer li_temp
+	integer li_file
+	string ls_clientname
+	string ls_phone
+	string ls_itemname
+	string ls_aliasname
+	string ls_price
+	string ls_filecontent
+	string ls_seperator
+	string ls_date
+	string ls_format
+	string ls_xpos
+	string ls_infocode
+	string ls_printer
+	string ls_manufshortname
+	string ls_design
+	string ls_purprice
+	string ls_supp_alias
+	string ls_packing
+	long ll_headerno
+	long ll_labelno
+	long ll_labelpos
+	long ll_supply_cols_per_row
+	integer li_barcodeleninprint
+	ls_seperator = ";"
+	li_barcodeleninprint = 25
+	ll_totalrows = this.dw_control.rowcount()
+	ls_printer = trim(f_stringpreferences("BarCodePrinterName"))
+	if lower(ls_printer) = lower("TSC TTP-244 PLUS") and ll_totalrows > 0 then
+		ls_date = string(today(), "yymmdd..")
+		ll_counter = 1
+		tsc_openport("TSC TTP-244 Plus")
+		tsc_setup("38", "28", "4", "7", "0", "4", "0")
+		tsc_sendcommand("GAP 4 mm, 0 mm")
+		tsc_sendcommand("SPEED 4")
+		tsc_sendcommand("DENSITY 7")
+		tsc_sendcommand("DIRECTION 0,0")
+		tsc_sendcommand("REFERENCE 0,0")
+		tsc_sendcommand("OFFSET 0 mm")
+		tsc_sendcommand("SHIFT 0")
+		tsc_sendcommand("SET TEAR OFF")
+		tsc_sendcommand("SET PEEL OFF")
+		tsc_sendcommand("SET CUTTER OFF")
+		tsc_sendcommand("CLS")
+		tsc_sendcommand("CODEPAGE 850")
+		for ll_counter = 1 to ll_totalrows
+			if len(trim(this.dw_control.getitemstring(ll_counter, "customicode"))) <= li_barcodeleninprint and al_qty > 0 then
+				ll_packunits = this.dw_control.getitemnumber(ll_counter, "packunits")
+				if ll_packunits = 0 or isnull(ll_packunits) then
+					ll_packunits = 1
+				end if
+				ls_itemname = left(trim(this.dw_control.getitemstring(ll_counter, "name")), 60)
+				ls_aliasname = left(trim(this.dw_control.getitemstring(ll_counter, "customicode")), li_barcodeleninprint)
+				ls_packing = left(trim(this.dw_control.getitemstring(ll_counter, "packingdesc")), 30)
+				ls_price = "Rs: " + trim(string(round(this.dw_control.getitemdecimal(ll_counter, "saleprice") / ll_packunits, 2), "###,##0.00"))
+				tsc_clearbuffer()
+				tsc_printerfont("295", "185", "0", "180", "10", "7", left(ls_itemname, 30))
+				tsc_barcode("295", "150", "39", "80", "0", "180", "2", "3", ls_aliasname)
+				tsc_printerfont("295", "67", "0", "180", "10", "8", ls_aliasname)
+				tsc_printerfont("295", "40", "0", "180", "15", "14", ls_price)
+				tsc_printlabel("1", string(al_qty))
+			end if
+		next
+		tsc_closeport()
+	end if
+	return 0
+
+// w_itempricechecker.wf_select_label_format() returns string
+	string ls_rep
+	if gs_company = "DWATSONF10" or gs_company = "DWSSUPERF7" or gs_company = "DWBLUEAREA20082" or gs_company = "DWATSONCHAKWAL" or gs_company = "DWSBARAKAHU" or gs_company = "DWATSONSCHEME3" then
+		ls_rep = "d_dwatson_purlabel_for_purinvoice"
+	else
+		ls_rep = "d_purlabel_for_purinvoice"
+	end if
+	return ls_rep
+
+// w_itempricechecker.create() returns 0
+	this.dw_comment = create dw_comment
+	this.cb_clear = create cb_clear
+	this.dw_control = create dw_control
+	this.control = {this.dw_comment, this.cb_clear, this.dw_control}
+
+// w_itempricechecker.destroy() returns 0
+	destroy this.dw_comment
+	destroy this.cb_clear
+	destroy this.dw_control
+
+// w_itempricechecker.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	long ll_found
+	this.it_transobject = create u_transaction
+	SQL start USING this.it_transobject;
+	if this.it_transobject.sqlcode <> 0 then
+		messagebox("Connection Problem", "Problem in connecting to the database, Please try Later", stopsign!)
+		close(this)
+	end if
+	if f_stringpreferences("pricecheckerformat") = "1" then
+		this.dw_control.dataobject = "d_itempricechecker"
+	elseif f_stringpreferences("pricecheckerformat") = "2" then
+		this.dw_control.dataobject = "d_itempricechecker2"
+	end if
+	this.dw_control.settransobject(this.it_transobject)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	this.dw_control.setfocus()
+	this.dw_control.setcolumn(1)
+	this.dw_comment.settransobject(this.it_transobject)
+	this.dw_comment.retrieve()
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	this.il_groupcode = f_getgroupcode(gl_usercode)
+	wf_set_preferences()
+	return ::message.returnvalue
+
+// w_itempricechecker.timer() returns long
+	this.cb_clear.triggerevent(clicked!)
+	return ::message.returnvalue
+
+// w_itempricechecker.key(keycode key, unsignedlong keyflags) returns long
+	long ll_icode
+	if key = keyf7! and f_rightexists(5053) then
+		this.dw_control.accepttext()
+		if not isnull(this.dw_control.object.icode[this.dw_control.getrow()]) then
+			wf_printbarcode()
+		end if
+	end if
+	if key = keyf8! and f_rightexists(5054) then
+		this.dw_control.accepttext()
+		if not isnull(this.dw_control.object.icode[this.dw_control.getrow()]) then
+			wf_print_purlabels()
+		end if
+	end if
+	return 0
+
+// cb_clear.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_clear.clicked() returns long
+	parent.dw_control.reset()
+	parent.dw_control.insertrow(0)
+	parent.dw_control.setrow(0)
+	parent.dw_control.setcolumn(1)
+	parent.dw_control.setfocus()
+	timer(0)
+	return ::message.returnvalue
+
+// dw_control.ue_enterkey() returns long
+	long ancestorreturnvalue
+	string ls_null
+	ancestorreturnvalue = super::ue_enterkey()
+	setnull(ls_null)
+	send(handle(this), 256, 9, long(90))
+	if accepttext() = 1 then
+		parent.wf_timer()
+	end if
+	return 1
+
+// dw_control.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	integer li_errcode
+	long ll_code
+	long ll_null
+	string ls_null
+	string ls_error
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	setnull(ll_null)
+	setnull(ls_null)
+	choose case dwo.name
+	case "customicode"
+		if len(data) > 0 then
+			if parent.wf_validateitem(data, ls_error) = 0 then
+				parent.ib_editflag = false
+				li_errcode = 0
+			else
+				messagebox("Item Validation", "Item Does not exists, Please Try Again!", information!)
+				li_errcode = 1
+			end if
+		else
+			li_errcode = 1
+		end if
+		return li_errcode
+	end choose
+	return li_errcode
+
+// dw_control.itemerror(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	integer li_errcode
+	long ll_code
+	long ll_null
+	string ls_null
+	string ls_error
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	setnull(ll_null)
+	setnull(ls_null)
+	choose case dwo.name
+	case "serviceticketcode"
+		if long(data) < 0 or isnull(data) or data = "" then
+		end if
+		return 1
+	end choose
+	return 1
+
+// dw_control.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_control.editchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::editchanged(row, dwo, data)
+	parent.ib_editflag = true
+	return ::message.returnvalue

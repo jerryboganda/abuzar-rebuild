@@ -1,0 +1,325 @@
+// window w_change_item_prices2 (singleentryitem)  ancestor: w_single_entry
+
+// w_change_item_prices2.wf_changeprices() returns integer
+	long ll_salesmancode
+	long ll_rowcount
+	long ll_counter
+	long ll_retcode
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	double ld_saleretail
+	dwitemstatus lds_rowstatus
+	dwitemstatus lds_columnstatus
+	if f_validatedw(this.id_detail) < 0 then
+		return ll_retcode
+	end if
+	if f_validatedw(this.id_detail2) < 0 then
+		return ll_retcode
+	end if
+	ll_rowcount = this.id_detail2.rowcount()
+	if ll_rowcount > 0 then
+		if not wf_validateserverdatetime(ldt_server_datetime, ls_date_errtext) then
+			messagebox("Date Violation", ls_date_errtext, stopsign!)
+			return ll_retcode
+		end if
+		ll_salesmancode = gl_usercode
+		do while ll_counter <= ll_rowcount
+			lds_rowstatus = this.id_detail2.getitemstatus(ll_counter, 0, primary!)
+			lds_columnstatus = this.id_detail2.getitemstatus(ll_counter, "saleretail", primary!)
+			if lds_columnstatus = datamodified! then
+				ld_saleretail = this.id_detail2.object.saleretail[ll_counter]
+				this.id_detail2.setitem(ll_counter, "item_saleprice", ld_saleretail)
+				this.id_detail2.setitem(ll_counter, "item_retailprice", ld_saleretail)
+				this.id_detail2.setitem(ll_counter, "ChangeReason", "Sale/Retail Price")
+				this.id_detail2.setitem(ll_counter, "Module", this.title)
+			end if
+			if lds_rowstatus = datamodified! then
+				this.id_detail2.setitem(ll_counter, "item_usercode", ll_salesmancode)
+				this.id_detail2.setitem(ll_counter, "item_lastupdate", ldt_server_datetime)
+				this.id_detail2.setitem(ll_counter, "ChangeReason", "Multiple Changes")
+				this.id_detail2.setitem(ll_counter, "Module", this.title)
+			end if
+			ll_counter = ll_counter + 1
+		loop
+		SQL rollback USING this.it_transobject;
+		if f_generateitemlog(this.id_detail2, "item_changeprice", this.it_transobject, ldt_server_datetime) >= 0 then
+			if this.id_detail2.update(true, true) > 0 then
+				SQL commit USING this.it_transobject;
+				messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+				this.ib_commitok = true
+				this.im_menu.m_file.m_new.enabled = true
+				this.editflag = false
+				this.id_detail2.reset()
+			else
+				SQL rollback USING this.it_transobject;
+				setpointer(arrow!)
+				messagebox("Save Changes", "Changes Rollback in database, ~n~rSome database problem occurs", exclamation!, ok!, 1)
+				return ll_retcode
+			end if
+			setpointer(arrow!)
+		else
+			SQL rollback USING this.it_transobject;
+			messagebox("Database Problem", "Some Database problem occured generating Item Log!", stopsign!)
+			return ll_retcode
+		end if
+	else
+		messagebox("Updataion Problem", "No rows to Update!", stopsign!)
+		return ll_retcode
+	end if
+	return ll_retcode
+
+// w_change_item_prices2.wf_showeffectableitem() returns 0
+	s_item_filter_criteria lstr_item_filter_criteria
+	if this.id_detail = getfocus() and this.id_detail.rowcount() > 0 and this.id_detail.accepttext() > 0 then
+		lstr_item_filter_criteria.i_module = 2
+		lstr_item_filter_criteria.l_code1 = this.id_detail.getitemnumber(1, "manfcode")
+		lstr_item_filter_criteria.l_code2 = this.id_detail.getitemnumber(1, "icatcode")
+		lstr_item_filter_criteria.l_code3 = this.id_detail.getitemnumber(1, "packcode")
+		lstr_item_filter_criteria.l_code4 = this.id_detail.getitemnumber(1, "iccode")
+		lstr_item_filter_criteria.i_code1 = 1
+		lstr_item_filter_criteria.d_price = this.id_detail.getitemdecimal(this.id_detail.getrow(), "price")
+		openwithparm(w_view_effectable_items, lstr_item_filter_criteria)
+	end if
+
+// w_change_item_prices2.wf_fetch_price(string as_col, string as_data) returns long
+	long ll_icatcode
+	long ll_iccode
+	long ll_packcode
+	long ll_manfcode
+	double ld_price
+	double ld_purprice
+	choose case as_col
+	case "icatcode"
+		if long(as_data) > 0 then
+			ll_icatcode = long(as_data)
+		end if
+	case "iccode"
+		if long(as_data) > 0 then
+			ll_iccode = long(as_data)
+		end if
+	case "packcode"
+		if long(as_data) > 0 then
+			ll_packcode = long(as_data)
+		end if
+	case "manfcode"
+		if long(as_data) > 0 then
+			ll_manfcode = long(as_data)
+		end if
+	end choose
+	if ll_icatcode <= 0 or isnull(ll_icatcode) then
+		ll_icatcode = this.id_detail.getitemnumber(1, "icatcode")
+	end if
+	if ll_packcode <= 0 or isnull(ll_packcode) then
+		ll_packcode = this.id_detail.getitemnumber(1, "packcode")
+	end if
+	if ll_manfcode <= 0 or isnull(ll_manfcode) then
+		ll_manfcode = this.id_detail.getitemnumber(1, "manfcode")
+	end if
+	if ll_iccode <= 0 or isnull(ll_iccode) then
+		ll_iccode = this.id_detail.getitemnumber(1, "iccode")
+	end if
+	SQL SELECT MAX ( item.saleprice ) , MAX ( item.purprice ) INTO :ld_price, :ld_purprice FROM item WHERE item.icatcode =:ll_icatcode and item.packcode =:ll_packcode and item.manfcode =:ll_manfcode and item.iccode =:ll_iccode and item.active =1 USING sqlca;
+	this.id_detail.setitem(1, "saleprice", ld_price)
+	this.id_detail.setitem(1, "price", ld_price)
+	this.id_detail.setitem(1, "purprice", ld_purprice)
+	return 0
+
+// w_change_item_prices2.wf_set_columnvalue() returns long
+	long ll_rows
+	long ll_counter
+	double ld_value
+	string ls_column
+	s_item_filter_criteria s_price
+	ll_rows = this.id_detail2.rowcount()
+	if ll_rows > 0 then
+		open(w_set_columnvalue)
+		s_price = message.powerobjectparm
+		if s_price.i_status = 1 then
+			ls_column = s_price.s_name1
+			ld_value = round(s_price.d_value1, 2)
+			for ll_counter = 1 to ll_rows
+				this.id_detail2.setitem(ll_counter, ls_column, ld_value)
+			next
+		end if
+	end if
+	return 0
+
+// w_change_item_prices2.wf_retrieve_detail(string as_col, long al_code) returns long
+	long ll_counter
+	this.id_detail.accepttext()
+	this.id_detail2.retrieve(this.id_detail.object.icatcode[1], this.id_detail.object.packcode[1], this.id_detail.object.manfcode[1], this.id_detail.object.iccode[1])
+	this.editflag = true
+	return 0
+
+// w_change_item_prices2.wf_updatesaleprice_purprice() returns long
+	long ll_rows
+	long ll_counter
+	double ld_value
+	ll_rows = this.id_detail2.rowcount()
+	if ll_rows > 0 then
+		openwithparm(w_set_saleprice_purchase_formula, ld_value)
+		ld_value = message.doubleparm
+		if ld_value > 0.0 then
+			for ll_counter = 1 to ll_rows
+				this.id_detail2.object.item_saleprice[ll_counter] = round(this.id_detail2.object.item_purprice[ll_counter] + this.id_detail2.object.item_purprice[ll_counter] * ld_value * 0.01, 2)
+			next
+		end if
+	end if
+	return 0
+
+// w_change_item_prices2.wf_copy_source_target_column() returns long
+	long ll_rows
+	long ll_counter
+	s_item_filter_criteria s_price
+	ll_rows = this.id_detail2.rowcount()
+	if ll_rows > 0 then
+		open(w_set_price_from_another_price)
+		s_price = message.powerobjectparm
+		if s_price.i_status = 1 then
+			for ll_counter = 1 to ll_rows
+				this.id_detail2.setitem(ll_counter, s_price.s_name2, this.id_detail2.getitemnumber(ll_counter, s_price.s_name1))
+			next
+		end if
+	end if
+	return 0
+
+// w_change_item_prices2.wf_duplicatealiasname(string as_aliasname, long al_icode) returns boolean
+	long ll_count
+	long ll_icode
+	long ll_row
+	boolean b_flag
+	as_aliasname = trim(as_aliasname)
+	SQL SELECT COUNT ( *) INTO :ll_count FROM item WHERE item.customicode =:as_aliasname and item.icode <> :al_icode USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+		return b_flag
+	end if
+	SQL SELECT COUNT ( *) INTO :ll_count FROM AlternateItemAlias WHERE customicode =:as_aliasname and icode <> :al_icode USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+		return b_flag
+	end if
+	return b_flag
+
+// w_change_item_prices2.wf_set_saleprice_areavolume() returns integer
+	long ll_rows
+	long ll_counter
+	long ll_int_invtotal
+	double ld_value
+	double ld_areavolume
+	double ld_diff
+	string ls_column
+	s_item_filter_criteria s_price
+	ll_rows = this.id_detail2.rowcount()
+	if ll_rows > 0 then
+		open(w_set_columnvalue_areavolume)
+		s_price = message.powerobjectparm
+		if s_price.i_status = 1 then
+			ls_column = s_price.s_name1
+			ld_value = round(s_price.d_value1, 2)
+			for ll_counter = 1 to ll_rows
+				ld_value = round(s_price.d_value1, 2)
+				ld_areavolume = this.id_detail2.object.item_areavolume[ll_counter]
+				ld_value = round(ld_value * ld_areavolume, 0)
+				ll_int_invtotal = long(ld_value / 5.0)
+				if ld_value <> double(ll_int_invtotal * 5) then
+					ld_diff = ld_value - double(ll_int_invtotal * 5)
+					if ld_diff >= 2.50 then
+						ld_value = double((ll_int_invtotal + 1) * 5)
+					else
+						ld_value = double(ll_int_invtotal * 5)
+					end if
+				end if
+				this.id_detail2.setitem(ll_counter, ls_column, ld_value)
+			next
+		end if
+	end if
+	return 0
+
+// w_change_item_prices2.create() returns 0
+	integer icurrent
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_changeitemsprice" then
+		this.menuid = create m_changeitemsprice
+	end if
+
+// w_change_item_prices2.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_change_item_prices2.activate() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::activate()
+	this.windowstate = maximized!
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_change_item_prices2.closequery() returns long
+	return ::message.returnvalue
+
+// w_change_item_prices2.ue_save() returns 0
+	wf_changeprices()
+
+// w_change_item_prices2.open() returns long
+	long ancestorreturnvalue
+	environment env
+	long ll_width
+	long ll_height
+	long li_visiblecolumns
+	long li_counter
+	long li_taborder
+	boolean lb_zerotabordercol
+	datastore lds_itemsetting
+	ancestorreturnvalue = super::open()
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.tab_retrieve.width = ll_width * 0.99
+	this.tab_retrieve.height = ll_height * 0.83
+	this.tab_retrieve.tabpage_detail.dw_detail.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_detail.height = this.tab_retrieve.tabpage_detail.dw_detail.height
+	this.tab_retrieve.tabpage_detail.dw_detail2.width = ll_width * 0.96
+	this.tab_retrieve.tabpage_detail.dw_detail2.height = ll_height * 0.55
+	this.id_detail2 = this.tab_retrieve.tabpage_detail.dw_detail2
+	this.id_detail2.settransobject(this.it_transobject)
+	lds_itemsetting = create datastore
+	lds_itemsetting.dataobject = "d_interfacesettingcols"
+	lds_itemsetting.settransobject(this.it_transobject)
+	lds_itemsetting.retrieve(53, 3, 1)
+	li_visiblecolumns = lds_itemsetting.rowcount()
+	for li_counter = 1 to lds_itemsetting.rowcount()
+		this.colname[li_counter, 1] = lds_itemsetting.getitemstring(li_counter, "colname") + "_t"
+		this.colname[li_counter, 2] = lds_itemsetting.getitemstring(li_counter, "colname")
+		this.colwidth[li_counter, 1] = integer(this.id_detail2.describe(this.colname[li_counter, 1] + ".Width"))
+		this.colwidth[li_counter, 2] = integer(this.id_detail2.describe(this.colname[li_counter, 2] + ".Width"))
+	next
+	li_counter = 1
+	li_taborder = 1
+	do while li_counter <= li_visiblecolumns
+		if this.colname[li_counter, 2] = "item_avgprice" or this.colname[li_counter, 2] = "item_packunits" or this.colname[li_counter, 2] = "item_margin" then
+			lb_zerotabordercol = true
+		else
+			lb_zerotabordercol = false
+		end if
+		this.id_detail2.modify(this.colname[li_counter, 2] + ".Visible=1")
+		if lb_zerotabordercol then
+			this.id_detail2.modify(this.colname[li_counter, 2] + ".protect=1")
+		else
+			this.id_detail2.settaborder(this.colname[li_counter, 2], li_taborder)
+		end if
+		li_taborder = li_taborder + 1
+		li_counter = li_counter + 1
+	loop
+	return ::message.returnvalue
+
+// w_change_item_prices2.ue_detail() returns 0
+	call super::ue_detail
+	wf_retrieve_detail("icatcode", this.id_detail.object.icatcode[1])

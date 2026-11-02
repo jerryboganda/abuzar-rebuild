@@ -1,0 +1,539 @@
+// window w_summaryaccount_form (accounts)  ancestor: w_multi_entry
+
+// w_summaryaccount_form.wf_closelist() returns 0
+	this.ib_itemslistopen = false
+	this.id_itemslist.hide()
+
+// w_summaryaccount_form.wf_grandtotal() returns double
+	double ld_grandtotal
+	ld_grandtotal = 0
+	return ld_grandtotal
+
+// w_summaryaccount_form.wf_initmodify(integer ai_protect) returns 0
+	long ll_code
+	long ll_gcode
+	long ll_icode
+	long ll_looseqty
+	long ll_stock
+	long ll_counter
+	long ll_count
+	ll_code = this.id_master.getitemnumber(1, "code")
+	this.id_master.retrieve(ll_code)
+	this.id_detail.retrieve(ll_code)
+	this.ib_modify = true
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_new.enabled = false
+	this.im_menu.m_file.m_delete.enabled = false
+	this.im_menu.m_item.m_newitem.enabled = true
+	this.im_menu.m_item.m_deleteitem.enabled = true
+	this.im_menu.m_file.m_first.enabled = false
+	this.im_menu.m_file.m_next.enabled = false
+	this.im_menu.m_file.m_previous.enabled = false
+	this.im_menu.m_file.m_last.enabled = false
+	this.im_menu.m_file.m_retrieve.enabled = true
+	this.im_menu.m_file.m_retrieve.text = "Lis&t"
+	this.tab_retrieve.tabpage_detail.enabled = true
+
+// w_summaryaccount_form.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+
+// w_summaryaccount_form.wf_validateitemnew() returns integer
+	long ll_acccode
+	string ls_fullcode
+	string ls_titleerrtext
+	string ls_errtext
+	integer li_errcode
+	ll_acccode = this.id_detail.getitemnumber(this.il_currrow, "acccode")
+	if vf_dwdupcode1(this.id_detail, "acccode", string(ll_acccode), this.il_currrow) = true then
+		ls_titleerrtext = "Account Validation"
+		ls_errtext = "Duplicate Account, please select some other Account"
+		li_errcode = -1
+		messagebox(ls_titleerrtext, ls_errtext)
+	elseif not wf_inititeminfo(ll_acccode, this.il_currrow, li_errcode, ls_errtext) then
+		ls_titleerrtext = "Account Validation"
+		li_errcode = -2
+	end if
+	this.ib_itemvalidated = true
+	return li_errcode
+
+// w_summaryaccount_form.wf_genfullcode(long al_acccode, string as_fullcode) returns integer
+	integer li_retflag
+	string ls_fullcode
+	SQL SELECT AliasName INTO :ls_fullcode FROM Accounts WHERE Accounts.Acccode =:al_acccode USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		li_retflag = 1
+		as_fullcode = ls_fullcode
+	else
+		li_retflag = this.it_transobject.sqlcode
+	end if
+	return li_retflag
+
+// w_summaryaccount_form.wf_findfullcode(string as_fullcode, long al_acccode, string al_accname) returns integer
+	integer ll_acccode
+	integer ll_retflag
+	string ls_accname
+	SQL SELECT Accounts.acccode , Accounts.name INTO :ll_acccode, :ls_accname FROM Accounts WHERE Accounts.aliasname =:as_fullcode USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		al_acccode = ll_acccode
+		al_accname = ls_accname
+		if isnull(al_acccode) then
+			ll_retflag = 0
+		else
+			ll_retflag = 1
+		end if
+	else
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_summaryaccount_form.wf_duplicate_summaliasname(string as_summaliasname) returns boolean
+	long ll_count
+	boolean b_flag
+	as_summaliasname = trim(as_summaliasname)
+	SQL SELECT count ( *) INTO :ll_count FROM SummaryAccount WHERE SummaryAccount.AliasName =:as_summaliasname USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_summaryaccount_form.wf_duplicate_summaccname(string as_sumaccname) returns boolean
+	long ll_count
+	boolean b_flag
+	as_sumaccname = trim(as_sumaccname)
+	SQL SELECT count ( *) INTO :ll_count FROM SummaryAccount WHERE SummaryAccount.name =:as_sumaccname USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_summaryaccount_form.wf_customerinfo(long al_custcode) returns integer
+	string ls_address
+	string ls_city
+	string ls_phone
+	long ll_currow
+	double ld_currbalance
+	SQL SELECT customer.address1 , customer.city , customer.phone INTO :ls_address, :ls_city, :ls_phone FROM customer WHERE customer.custcode =:al_custcode USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		ll_currow = this.id_master.getrow()
+		this.id_master.object.address[ll_currow] = ls_address
+		this.id_master.object.city[ll_currow] = ls_city
+		this.id_master.object.phone[ll_currow] = ls_phone
+	end if
+	return this.it_transobject.sqlcode
+
+// w_summaryaccount_form.wf_deleteemptydetailrow() returns integer
+	long ll_rowcount
+	integer li_rtcode
+	ll_rowcount = this.id_detail.rowcount()
+	if ll_rowcount > 1 and isnull(this.id_detail.getitemnumber(ll_rowcount, "acccode")) then
+		this.id_detail.deleterow(ll_rowcount)
+		li_rtcode = 1
+		this.ib_itemslistopen = false
+		this.id_itemslist.hide()
+		setfocus()
+	end if
+	return li_rtcode
+
+// w_summaryaccount_form.wf_validatefullcode(string as_fullcode, long al_currrow) returns boolean
+	long ll_acccode
+	long ll_summacccode
+	long ll_validity_status
+	string ls_fullcode
+	string ls_titleerrtext
+	string ls_errtext
+	integer li_errcode
+	integer li_option
+	boolean lb_rtflag
+	integer li_null
+	string ls_null
+	ls_titleerrtext = "Account Validation"
+	if vf_dwdupcode1(this.id_detail, "acccode", string(ll_acccode), al_currrow) = true then
+		ls_errtext = "Duplicate Account, please select some other account"
+		li_errcode = -1
+	elseif not wf_inititeminfo(ll_acccode, this.il_currrow, li_errcode, ls_errtext) then
+		li_errcode = -1
+	end if
+	if li_errcode <> 0 then
+		ll_summacccode = this.id_master.getitemnumber(this.id_master.rowcount(), "code")
+		ll_validity_status = wf_isvalid_account(ll_summacccode, ll_acccode)
+		if ll_validity_status = -1 then
+			ls_errtext = "Account already selected in some other summary Account"
+			li_errcode = -1
+		elseif ll_validity_status = -2 then
+			ls_errtext = "Problem in Cheking Account Validity for summary Accounts"
+			li_errcode = -1
+		end if
+	end if
+	if li_errcode = -1 then
+		lb_rtflag = false
+		messagebox(ls_titleerrtext, ls_errtext)
+		setnull(li_null)
+		setnull(ls_null)
+		this.id_detail.setitem(al_currrow, this.is_columnitemname, ls_null)
+		this.id_detail.setitem(al_currrow, "acccode", li_null)
+		this.id_detail.selecttext(1, len(this.id_detail.gettext()))
+	end if
+	return lb_rtflag
+
+// w_summaryaccount_form.wf_validateitem(boolean ab_flag) returns integer
+	long ll_acccode
+	long ll_summacccode
+	long ll_validity_status
+	string ls_fullcode
+	string ls_titleerrtext
+	string ls_errtext
+	integer li_errcode
+	integer li_option
+	boolean ib_due
+	integer li_null
+	string ls_null
+	ll_acccode = this.id_detail.getitemnumber(this.il_currrow, "acccode")
+	ls_titleerrtext = "Account Validation"
+	if not isnull(ll_acccode) then
+		if vf_dwdupcode1(this.id_detail, "acccode", string(ll_acccode), this.il_currrow) = true then
+			ls_errtext = "Duplicate Account, please select some other Account"
+			li_errcode = -1
+		elseif wf_inititeminfo(ll_acccode, this.il_currrow, li_errcode, ls_errtext) and li_errcode = -2 then
+			li_errcode = -1
+		end if
+	end if
+	if li_errcode <> 0 then
+		ll_summacccode = this.id_master.getitemnumber(this.id_master.rowcount(), "code")
+		ll_validity_status = wf_isvalid_account(ll_summacccode, ll_acccode)
+		if ll_validity_status = -1 then
+			ls_errtext = "Account already selected in some other summary Account"
+			li_errcode = -1
+		elseif ll_validity_status = -2 then
+			ls_errtext = "Problem in Cheking Account Validity for summary Accounts"
+			li_errcode = -1
+		end if
+	end if
+	if ab_flag then
+		this.ib_itemvalidated = true
+	end if
+	if li_errcode = -1 then
+		setnull(li_null)
+		setnull(ls_null)
+		messagebox(ls_titleerrtext, ls_errtext)
+		if f_stringpreferences("itemcode") = "N" then
+			this.id_detail.setcolumn(this.is_columnitemname)
+			this.ib_itemslistopen = true
+			this.id_itemslist.show()
+		else
+			this.id_detail.setcolumn("fullcode")
+			this.id_detail.object.fullcode[this.il_currrow] = ls_null
+		end if
+		this.id_detail.scrolltorow(this.il_currrow)
+		this.id_detail.object.acccode[this.il_currrow] = li_null
+		this.id_detail.object.accountname[this.il_currrow] = ls_null
+	end if
+	return li_errcode
+
+// w_summaryaccount_form.wf_refreshitemslist() returns 0
+	long ll_counter
+	boolean lb_enablerestricted
+	long li_count
+	long ll_startrow
+	char lc_char
+	gd_itemsinfo.reset()
+	gd_itemsinfo.setfilter("")
+	gd_itemsinfo.filter()
+	this.id_itemslist.retrieve()
+	for li_count = 65 to 90
+		lc_char = char(li_count)
+		ga_llookuptable[li_count] = gd_itemsinfo.find("Lower(accountname) >= Lower('" + char(li_count) + "')", ll_startrow, 99999)
+		ll_startrow = ga_llookuptable[li_count]
+	next
+	ga_llookuptable[92] = 99999
+
+// w_summaryaccount_form.wf_isvalid_account(long al_summaryacccode, long al_acccode) returns long
+	long ll_retcode
+	long ll_acc_count
+	if isnull(al_summaryacccode) then
+		SQL SELECT Count =Count ( AccCode ) INTO :ll_acc_count FROM SummaryAccountDetail WHERE AccCode =:al_acccode USING sqlca;
+	else
+		SQL SELECT Count =Count ( AccCode ) INTO :ll_acc_count FROM SummaryAccountDetail WHERE SummaryAccCode <> :al_summaryacccode AND AccCode =:al_acccode USING sqlca;
+	end if
+	if sqlca.sqlcode = 0 then
+		if isnull(ll_acc_count) or ll_acc_count = 0 then
+			ll_retcode = 0
+		else
+			ll_retcode = -1
+		end if
+	else
+		ll_retcode = -2
+	end if
+	return ll_retcode
+
+// w_summaryaccount_form.wf_assigndatawindowobjects(string as_masterdw, string as_detaildw, string as_footerdw, string as_listdw, string as_printdw) returns 0
+	this.id_master.dataobject = as_masterdw
+	this.id_detail.dataobject = as_detaildw
+	this.id_footer.dataobject = as_footerdw
+	this.id_list.dataobject = as_listdw
+	this.id_print.dataobject = as_printdw
+	this.id_master.settransobject(this.it_transobject)
+	this.id_detail.settransobject(this.it_transobject)
+	this.id_footer.settransobject(this.it_transobject)
+	this.id_list.settransobject(this.it_transobject)
+	this.id_print.settransobject(this.it_transobject)
+
+// w_summaryaccount_form.wf_inititeminfo(long al_acccode, long al_row, integer ai_rtcode, string as_errortext) returns boolean
+	boolean retflag
+	string ls_fullcode
+	string ls_name
+	string ls_null
+	long ll_subcode
+	setnull(ls_null)
+	SQL SELECT Accounts.AliasName , Accounts.name , Accounts.SubCode INTO :ls_fullcode, :ls_name, :ll_subcode FROM Accounts WHERE Accounts.acccode =:al_acccode USING this.it_transobject;
+	if this.it_transobject.sqlcode = -1 then
+		retflag = false
+		as_errortext = "Database Error: Item information can not be retrieved"
+	end if
+	if retflag then
+		this.id_detail.setitem(al_row, this.is_columnitemname, ls_name)
+		this.id_detail.setitem(al_row, "fullcode", ls_fullcode)
+		this.id_detail.setitem(al_row, "acccode", al_acccode)
+		this.id_detail.setitem(al_row, "subcode", ll_subcode)
+	else
+		retflag = false
+		as_errortext = "Database Error: Item information can not be retrieved"
+	end if
+	return retflag
+
+// w_summaryaccount_form.create() returns 0
+	integer icurrent
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_summaccmenu" then
+		this.menuid = create m_summaccmenu
+	end if
+	this.dw_saleinvrep = create dw_saleinvrep
+	this.dw_saleinvdetail = create dw_saleinvdetail
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_saleinvrep
+	this.control[icurrent + 2] = this.dw_saleinvdetail
+
+// w_summaryaccount_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_saleinvrep
+	destroy this.dw_saleinvdetail
+
+// w_summaryaccount_form.ue_save() returns 0
+	long ll_detailrows
+	long ll_counter
+	long ll_count
+	long ll_salesmancode
+	long ll_mastercurrrow
+	long li_maxretcode
+	long ll_invid
+	long ll_null
+	string ls_date_errtext
+	datetime ldt_server_datetime
+	boolean lb_commitflag
+	boolean lb_continue
+	integer li_counter
+	string ls_errtext
+	if this.ib_itemvalidated = false and wf_validateitem(true) = -1 then
+		this.id_detail.setfocus()
+		return
+	end if
+	wf_deleteemptydetailrow()
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	setpointer(hourglass!)
+	ll_salesmancode = gl_usercode
+	if ll_salesmancode > 0 then
+		setpointer(hourglass!)
+		ll_mastercurrrow = this.id_master.getrow()
+		ll_invid = this.id_master.object.code[ll_mastercurrrow]
+		if isnull(ll_invid) then
+			li_maxretcode = wf_tabnewid("SummaryAccount", ll_invid)
+			if li_maxretcode < 0 then
+				SQL rollback USING this.it_transobject;
+				messagebox("DataBase Problem", "Transaction is Rollback Due to Problem in~r~n ~t~t~t~t~t~t~t~t~t~t~t~t~tgenerating Summary Account Code")
+				return
+			end if
+			this.id_master.object.code[ll_mastercurrrow] = ll_invid
+		end if
+		ll_detailrows = this.id_detail.rowcount()
+		for ll_counter = 1 to ll_detailrows
+			this.id_detail.setitem(ll_counter, "code", ll_invid)
+		next
+		if this.ib_modify then
+		end if
+		call super::ue_save
+		if this.ib_commitok then
+			this.ib_modify = false
+		elseif this.ib_modify = false then
+			setnull(ll_null)
+			this.id_master.setitem(1, "Code", ll_null)
+			this.id_master.accepttext()
+		end if
+	else
+		setfocus()
+	end if
+	setpointer(arrow!)
+
+// w_summaryaccount_form.ue_newform() returns 0
+	integer rtncode
+	long li_fetched_code
+	long row
+	long ll_manfcode
+	setredraw(false)
+	call super::ue_newform
+	this.id_footer.reset()
+	this.id_footer.insertrow(0)
+	this.id_footer.scrolltorow(0)
+	this.im_menu.m_file.m_print.enabled = false
+	this.im_menu.m_file.m_post.enabled = false
+	wf_protectdw(this.id_master, 0)
+	wf_protectdw(this.id_detail, 0)
+	wf_protectdw(this.id_footer, 0)
+	this.ib_modify = false
+	this.id_master.setcolumn(1)
+	this.id_master.setfocus()
+	this.id_itemslist.dataobject = "ddd_allaccountslist"
+	this.id_itemslist.settransobject(sqlca)
+	this.id_itemslist.retrieve()
+	setredraw(true)
+
+// w_summaryaccount_form.ue_detail() returns 0
+	integer li_rtncode
+	integer li_protect
+	long ll_row
+	long ll_code
+	long ll_deptcode
+	long ll_rowcount
+	boolean lb_flag
+	boolean lb_modify
+	m_summaccmenu lm_menu
+	call super::ue_detail
+	lm_menu = this.menuid
+	setredraw(false)
+	this.im_menu.m_file.m_post.enabled = false
+	this.im_menu.m_file.m_print.enabled = false
+	ll_code = this.id_master.object.code[this.id_master.rowcount()]
+	li_protect = 0
+	wf_initmodify(li_protect)
+	wf_grandtotal()
+	if this.id_detail.rowcount() > 0 then
+		this.im_menu.m_file.m_save.enabled = true
+	else
+		this.im_menu.m_file.m_save.enabled = false
+	end if
+	setredraw(true)
+
+// w_summaryaccount_form.ue_newitem() returns 0
+	long ll_rowcount
+	if this.ib_itemvalidated = false and wf_validateitem(true) = -1 then
+		this.id_detail.setfocus()
+		return
+	end if
+	if this.id_detail.rowcount() > 0 and f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	if f_stringpreferences("itemcode") = "N" then
+		this.id_detail.setcolumn(this.is_columnitemname)
+	else
+		this.id_detail.setcolumn("fullcode")
+	end if
+	this.id_detail.insertrow(0)
+	ll_rowcount = this.id_detail.rowcount()
+	if ll_rowcount > 1 then
+		this.id_detail.scrolltorow(ll_rowcount)
+		this.id_detail.setfocus()
+	end if
+	this.im_menu.m_file.m_save.enabled = true
+	this.ib_validatefullcode = true
+
+// w_summaryaccount_form.ue_deleteitem() returns 0
+	long ll_row
+	long ll_footerrow
+	call super::ue_deleteitem
+	ll_row = this.id_detail.getrow()
+	ll_footerrow = this.id_footer.getrow()
+	if this.id_detail.rowcount() <= 0 then
+		this.im_menu.m_file.m_print.enabled = false
+		this.im_menu.m_file.m_save.enabled = false
+	end if
+
+// w_summaryaccount_form.close() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::close()
+	this.id_itemslist.sharedataoff()
+	return ::message.returnvalue
+
+// w_summaryaccount_form.ue_list() returns 0
+	call super::ue_list
+	SQL rollback USING this.it_transobject;
+	this.im_menu.m_file.m_post.enabled = false
+	this.im_menu.m_file.m_print.enabled = false
+	this.ib_modify = false
+	this.id_itemslist.hide()
+	if this.id_detail.rowcount() > 0 then
+		postevent("ue_deleteitem")
+	end if
+	wf_retrievelist()
+
+// w_summaryaccount_form.ue_print() returns 0
+	call super::ue_print
+
+// w_summaryaccount_form.ue_new() returns 0
+	call super::ue_new
+	this.im_menu.m_file.m_post.enabled = false
+
+// w_summaryaccount_form.ue_postopen() returns 0
+	m_summaccmenu lm_menu
+	integer li_rtncode
+	long ll_counter
+	long ll_pos
+	long ll_startrow
+	char lc_char
+	call super::ue_postopen
+	setredraw(false)
+	this.is_columnitemname = "accountname"
+	if f_stringpreferences("itemcode") = "N" then
+		this.id_detail.object.fullcode.visible = false
+	end if
+	this.id_itemslist.dataobject = "ddd_allaccountslist"
+	this.id_itemslist.settransobject(sqlca)
+	this.id_itemslist.retrieve()
+	this.id_footer.reset()
+	this.id_footer.insertrow(0)
+	this.id_footer.scrolltorow(0)
+	for ll_counter = 65 to 90
+		lc_char = char(ll_counter)
+		this.ia_llookuptable[ll_counter] = this.id_itemslist.find("Lower(accountname) >= Lower('" + char(ll_counter) + "')", ll_startrow, 99999)
+		ll_startrow = this.ia_llookuptable[ll_counter]
+	next
+	this.ia_llookuptable[92] = 99999
+	setredraw(true)
+
+// w_summaryaccount_form.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.is_columnitemname = "accountname"
+	return ::message.returnvalue

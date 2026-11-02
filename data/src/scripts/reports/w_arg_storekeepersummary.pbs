@@ -1,0 +1,68 @@
+// window w_arg_storekeepersummary (reports)  ancestor: w_listarguments
+
+// w_arg_storekeepersummary.create() returns 0
+	integer icurrent
+	call super::create
+	this.cbx_posted = create cbx_posted
+	this.cbx_unposted = create cbx_unposted
+	this.st_4 = create st_4
+	this.st_8 = create st_8
+	this.dw_grouping = create dw_grouping
+	this.gb_5 = create gb_5
+	this.gb_6 = create gb_6
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.cbx_posted
+	this.control[icurrent + 2] = this.cbx_unposted
+	this.control[icurrent + 3] = this.st_4
+	this.control[icurrent + 4] = this.st_8
+	this.control[icurrent + 5] = this.dw_grouping
+	this.control[icurrent + 6] = this.gb_5
+	this.control[icurrent + 7] = this.gb_6
+
+// w_arg_storekeepersummary.destroy() returns 0
+	call super::destroy
+	destroy this.cbx_posted
+	destroy this.cbx_unposted
+	destroy this.st_4
+	destroy this.st_8
+	destroy this.dw_grouping
+	destroy this.gb_5
+	destroy this.gb_6
+
+// w_arg_storekeepersummary.open() returns long
+	long ancestorreturnvalue
+	long ll_counter
+	long ll_rowcount
+	integer rtncode
+	ancestorreturnvalue = super::open()
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	this.dw_grouping.settransobject(sqlca)
+	this.dw_grouping.insertrow(0)
+	this.dw_grouping.scrolltorow(0)
+	this.dw_grouping.setitem(1, "grouping", 1)
+	rtncode = this.dw_control.getchild("usercode", this.idc_categories)
+	if rtncode = -1 then
+		messagebox("Error", "Not a DataWindowChild")
+	end if
+	ll_rowcount = this.idc_categories.rowcount()
+	for ll_counter = 1 to ll_rowcount
+		this.lb_categories.additem(this.idc_categories.getitemstring(ll_counter, "username"))
+	next
+	this.dw_startendinvoice.settransobject(sqlca)
+	this.dw_startendinvoice.insertrow(0)
+	this.dw_startendinvoice.scrolltorow(0)
+	return ::message.returnvalue
+
+// cbx_posted.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// cbx_unposted.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue

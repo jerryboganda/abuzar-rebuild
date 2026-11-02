@@ -1,0 +1,43 @@
+// window w_arg_sdate_ldate_clinix (reports)  ancestor: w_arguements
+
+// w_arg_sdate_ldate_clinix.create() returns 0
+	integer icurrent
+	call super::create
+	this.cbx_trans = create cbx_trans
+	this.cb_trans = create cb_trans
+	this.hpb_hpb = create hpb_hpb
+	this.gb_overallprogress = create gb_overallprogress
+	this.gb_2 = create gb_2
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.cbx_trans
+	this.control[icurrent + 2] = this.cb_trans
+	this.control[icurrent + 3] = this.hpb_hpb
+	this.control[icurrent + 4] = this.gb_overallprogress
+	this.control[icurrent + 5] = this.gb_2
+
+// w_arg_sdate_ldate_clinix.destroy() returns 0
+	call super::destroy
+	destroy this.cbx_trans
+	destroy this.cb_trans
+	destroy this.hpb_hpb
+	destroy this.gb_overallprogress
+	destroy this.gb_2
+
+// w_arg_sdate_ldate_clinix.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	this.is_trans = trim(f_stringpreferences("OutputFilePath")) + gs_regid + ".xls"
+	return ::message.returnvalue
+
+// w_arg_sdate_ldate_clinix.ue_close(integer ai_stauts) returns 0
+	super::ue_close(ai_stauts)
+	closewithreturn(this, this.istr_arg)
+
+// cb_trans.clicked() returns long
+	string ls_named
+	integer li_value
+	li_value = getfilesavename("Select File Location", parent.is_trans, ls_named, "XLS", "All Files (*.*),*.*," + "All Files (*.*),*.*")
+	return ::message.returnvalue

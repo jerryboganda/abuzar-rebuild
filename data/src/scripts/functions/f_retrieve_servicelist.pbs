@@ -1,0 +1,14 @@
+// function f_retrieve_servicelist (functions)  ancestor: function_object
+
+// f_retrieve_servicelist.f_retrieve_servicelist(datawindow adw_dw, transaction at_transobject) returns 0
+	long ll_groupcode
+	if f_stringpreferences("EnableServiceCatRights") = "Y" then
+		ll_groupcode = f_getgroupcode(gl_usercode)
+		if ll_groupcode > 0 then
+			adw_dw.dataobject = "ddd_groupservicecat_servicenames"
+			adw_dw.settransobject(at_transobject)
+			adw_dw.retrieve(ll_groupcode)
+		end if
+	else
+		adw_dw.retrieve()
+	end if

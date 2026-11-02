@@ -1,0 +1,169 @@
+// window w_pref_get_dropdown (preferences)  ancestor: window
+
+// w_pref_get_dropdown.of_getvalue() returns integer
+	this.dw_pref.object.prefvalue_t.text = this.is_preference.caption
+	this.dw_pref.object.prefvalue[1] = trim(this.is_preference.value)
+	return 0
+
+// w_pref_get_dropdown.of_setvalue() returns long
+	string ls_find
+	string ls_foundstr
+	long ll_found
+	this.is_preference.value = this.dw_pref.object.prefvalue[1]
+	ls_find = "datavalue = '" + this.is_preference.value + "'"
+	ll_found = this.idc_child.find(ls_find, 1, this.idc_child.rowcount())
+	if ll_found > 0 then
+		ls_foundstr = trim(this.idc_child.getitemstring(ll_found, "displayvalue"))
+		this.is_preference.value2 = ls_foundstr
+	else
+		this.is_preference.value2 = trim(this.is_preference.value)
+	end if
+	return 0
+
+// w_pref_get_dropdown.create() returns 0
+	this.dw_pref = create dw_pref
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.control = {this.dw_pref, this.cb_cancel, this.cb_ok}
+
+// w_pref_get_dropdown.destroy() returns 0
+	destroy this.dw_pref
+	destroy this.cb_cancel
+	destroy this.cb_ok
+
+// w_pref_get_dropdown.close() returns long
+	closewithreturn(this, this.is_preference)
+	return ::message.returnvalue
+
+// w_pref_get_dropdown.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	long ll_counter
+	integer li_retcode
+	string ls_temp
+	long ll_place
+	long i
+	long k
+	long row
+	string ls_left
+	string ls_prntrs
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	this.is_preference = message.powerobjectparm
+	this.dw_pref.object.prefvalue.dddw.name = this.is_preference.userobject
+	this.dw_pref.object.prefvalue.dddw.autoretrieve = "Yes"
+	this.dw_pref.object.prefvalue.dddw.allowedit = "No"
+	this.dw_pref.object.prefvalue.dddw.datacolumn = "datavalue"
+	this.dw_pref.object.prefvalue.dddw.displaycolumn = "displayvalue"
+	li_retcode = this.dw_pref.getchild("prefvalue", this.idc_child)
+	if li_retcode = -1 then
+		messagebox("Error", "Not a DataWindowChild")
+	end if
+	this.idc_child.settransobject(sqlca)
+	choose case this.is_preference.userobject
+	case "ddd_pref_printeractivitymonitor"
+		this.idc_child.retrieve()
+		ls_prntrs = printgetprinters()
+		ll_place = pos(ls_prntrs, "~n")
+		do while ll_place > 0 and not isnull(ll_place)
+			ls_left = left(ls_prntrs, ll_place - 1)
+			ls_left = left(ls_left, pos(ls_left, "~t") - 1)
+			ls_prntrs = mid(ls_prntrs, ll_place + 1)
+			row = this.idc_child.insertrow(0)
+			this.idc_child.setitem(row, "displayvalue", ls_left)
+			this.idc_child.setitem(row, "datavalue", ls_left)
+			ll_place = pos(ls_prntrs, "~n")
+		loop
+	case "ddd_pref_headerno"
+		this.idc_child.retrieve()
+		for ll_counter = 1 to gds_reoprtheaderinfo.rowcount()
+			this.idc_child.insertrow(0)
+			this.idc_child.setitem(ll_counter, "headeralias", gds_reoprtheaderinfo.getitemstring(ll_counter, "remarks"))
+			this.idc_child.setitem(ll_counter, "displayvalue", gds_reoprtheaderinfo.getitemstring(ll_counter, "clientname"))
+			this.idc_child.setitem(ll_counter, "datavalue", trim(string(gds_reoprtheaderinfo.getitemnumber(ll_counter, "headerno"))))
+		next
+	case "ddd_pref_paymentacccode"
+		if this.is_preference.assocprefvalue = "C" then
+			this.idc_child.retrieve(2)
+		else
+			this.idc_child.retrieve(4)
+		end if
+	case "ddd_pref_voucherheaderaccounts"
+		if this.is_preference.name = "defaultcashacc_inbillsum" then
+			if this.is_preference.assocprefvalue = "1" then
+				this.idc_child.retrieve(2)
+			else
+				this.idc_child.retrieve(12)
+			end if
+		elseif this.is_preference.name = "defaultbankacc_inbillsum" then
+			if this.is_preference.assocprefvalue = "1" then
+				this.idc_child.retrieve(4)
+			else
+				this.idc_child.retrieve(13)
+			end if
+		elseif this.is_preference.name = "defaultdrnoteacc_inbillsum" then
+			if this.is_preference.assocprefvalue = "1" then
+				this.idc_child.retrieve(19)
+			else
+				this.idc_child.retrieve(21)
+			end if
+		elseif this.is_preference.name = "defaultcrnoteacc_inbillsum" then
+			if this.is_preference.assocprefvalue = "1" then
+				this.idc_child.retrieve(20)
+			else
+				this.idc_child.retrieve(22)
+			end if
+		end if
+	end choose
+	this.dw_pref.settransobject(sqlca)
+	this.dw_pref.insertrow(0)
+	this.dw_pref.scrolltorow(0)
+	of_getvalue()
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_pref_get_dropdown.key(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		this.is_preference.status = false
+	end if
+	return ::message.returnvalue
+
+// dw_pref.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_pref.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.is_preference.status = false
+	parent.triggerevent(close!)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	if parent.dw_pref.accepttext() < 1 then
+		return ::message.returnvalue
+	end if
+	parent.of_setvalue()
+	parent.is_preference.status = true
+	parent.triggerevent(close!)
+	return ::message.returnvalue

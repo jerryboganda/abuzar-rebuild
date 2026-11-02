@@ -1,0 +1,33 @@
+// window w_arg_sdate_ldate_admit_discharge (reports)  ancestor: w_arguements
+
+// w_arg_sdate_ldate_admit_discharge.create() returns 0
+	integer icurrent
+	call super::create
+	this.dw_admitdischarge = create dw_admitdischarge
+	this.st_4 = create st_4
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_admitdischarge
+	this.control[icurrent + 2] = this.st_4
+
+// w_arg_sdate_ldate_admit_discharge.destroy() returns 0
+	call super::destroy
+	destroy this.dw_admitdischarge
+	destroy this.st_4
+
+// w_arg_sdate_ldate_admit_discharge.ue_close(integer ai_stauts) returns 0
+	super::ue_close(ai_stauts)
+	closewithreturn(this, this.istr_arg)
+
+// w_arg_sdate_ldate_admit_discharge.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.dw_admitdischarge.settransobject(sqlca)
+	this.dw_admitdischarge.retrieve()
+	this.dw_admitdischarge.scrolltorow(0)
+	return ::message.returnvalue
+
+// dw_admitdischarge.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue

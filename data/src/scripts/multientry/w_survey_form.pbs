@@ -1,0 +1,1132 @@
+// window w_survey_form (multientry)  ancestor: w_multi_entry
+
+// w_survey_form.ue_printdo() returns 0
+	long ll_custcode
+	long ll_row
+	string ls_custname
+	if this.im_menu.m_file.m_save.enabled = true then
+		triggerevent("ue_save")
+		if wf_commitform() = false then
+			return
+		end if
+		return
+	end if
+	this.id_print.dataobject = "d_deliveryorder_half"
+	this.id_print.settransobject(this.it_transobject)
+	this.id_print.retrieve(this.id_master.getitemnumber(1, "code"))
+	if this.id_print.rowcount() > 0 then
+		if this.id_print.print() < 0 then
+			messagebox("Printing", "Can not Print Invoice", information!)
+		end if
+		if this.im_menu.m_file.m_save.enabled = true then
+			postevent("ue_new")
+		end if
+		return
+	end if
+	messagebox("Printing Error", "Can not Print Invoice,~r~nNo rows are retrieved", information!)
+
+// w_survey_form.wf_customerinfo(long al_custcode) returns integer
+	string ls_address
+	string ls_city
+	string ls_phone
+	long ll_currow
+	double ld_currbalance
+	SQL SELECT customer.address1 , customer.city , customer.phone INTO :ls_address, :ls_city, :ls_phone FROM customer WHERE customer.custcode =:al_custcode USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		ll_currow = this.id_master.getrow()
+		this.id_master.object.address[ll_currow] = ls_address
+		this.id_master.object.city[ll_currow] = ls_city
+		this.id_master.object.phone[ll_currow] = ls_phone
+	end if
+	return this.it_transobject.sqlcode
+
+// w_survey_form.wf_visible(boolean ab_flag) returns 0
+	this.id_footer.object.stock.visible = ab_flag
+	this.id_footer.object.t_stock.visible = ab_flag
+
+// w_survey_form.wf_genfullcode(long al_icode, string as_fullcode) returns integer
+	integer li_retflag
+	string ls_fullcode
+	long icode
+	long iccode
+	long icatcode
+	long packcode
+	long manfcode
+	SQL SELECT customicode INTO :ls_fullcode FROM item WHERE item.icode =:al_icode USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		li_retflag = 1
+		as_fullcode = ls_fullcode
+	else
+		li_retflag = this.it_transobject.sqlcode
+	end if
+	return li_retflag
+
+// w_survey_form.wf_getmaxdate(datetime ad_date) returns integer
+	SQL Select Max ( Date ) INTO :ad_date From saleledger USING this.it_transobject;
+	return this.it_transobject.sqlcode
+
+// w_survey_form.wf_savastemplate() returns integer
+	s_saletemplateheader lstr_templateheader
+	long ll_invid
+	integer li_retcode
+	long ll_code
+	long ll_qty
+	long ll_icode
+	long ll_totalrows
+	long ll_rowcount
+	open(w_savesaleastemplate)
+	lstr_templateheader = message.powerobjectparm
+	f_newtableid("SaleTemplateHeader", ll_invid)
+	SQL INSERT INTO SaleTemplateHeader ( saletemplatecode , date , modified , name ) values ( :ll_invid , :lstr_templateheader.dt_templatedate , :lstr_templateheader.dt_templatedate , :lstr_templateheader.s_template ) USING this.it_transobject;
+	ll_totalrows = this.id_detail.rowcount()
+	for ll_rowcount = 1 to ll_totalrows
+		ll_code = ll_invid
+		ll_icode = this.id_detail.getitemnumber(ll_rowcount, "icode")
+		ll_qty = this.id_detail.getitemnumber(ll_rowcount, "looseqty")
+		SQL insert into saletemplatedetail ( saletemplatecode , icode , looseqty ) values ( :ll_code , :ll_icode , :ll_qty ) USING this.it_transobject;
+	next
+	setpointer(hourglass!)
+	if this.it_transobject.sqlcode < 0 then
+		SQL rollback USING this.it_transobject;
+		setpointer(arrow!)
+		return li_retcode
+	else
+		SQL commit USING this.it_transobject;
+		messagebox("Save Changes", "Template saved", exclamation!, ok!, 1)
+	end if
+	return li_retcode
+
+// w_survey_form.wf_validateitemnew() returns integer
+	long ll_icode
+	long ll_stock
+	long ll_totalstock
+	string ls_fullcode
+	string ls_titleerrtext
+	string ls_errtext
+	integer li_errcode
+	integer li_assgcode
+	ll_icode = this.id_detail.getitemnumber(this.il_currrow, "icode")
+	if vf_dwdupcode1(this.id_detail, "icode", string(ll_icode), this.il_currrow) = true then
+		ls_titleerrtext = "Item Validation"
+		ls_errtext = "Duplicate item, please select some other item"
+		li_errcode = -1
+		messagebox(ls_titleerrtext, ls_errtext)
+	elseif not wf_inititeminfo(ll_icode, this.il_currrow, li_errcode, ls_errtext) then
+		ls_titleerrtext = "Item Validation"
+		li_errcode = -2
+	end if
+	this.ib_itemvalidated = true
+	return li_errcode
+
+// w_survey_form.wf_editquotation() returns integer
+	datastore lds_quotationdetail
+	datastore lds_quotationheader
+	s_saletemplate lstr_template
+	long ll_totalrows
+	long ll_rowcount
+	long ll_row
+	long ll_mrow
+	integer li_retcode
+	integer li_errcode
+	string ls_errortext
+	lds_quotationdetail = create datastore
+	lds_quotationheader = create datastore
+	open(w_editquotationform)
+	lstr_template = message.powerobjectparm
+	if lstr_template.c_copyinvfrom = "T" then
+		lds_quotationdetail.dataobject = "d_quotationdetail"
+		lds_quotationdetail.settransobject(this.it_transobject)
+		lds_quotationheader.dataobject = "d_quotationheader"
+		lds_quotationheader.settransobject(this.it_transobject)
+		ll_row = lds_quotationheader.retrieve(lstr_template.l_invtemplate)
+		lds_quotationdetail.retrieve(lstr_template.l_invtemplate)
+		ll_totalrows = lds_quotationheader.retrieve(lstr_template.l_invtemplate)
+		if ll_row < 0 then
+			li_retcode = -1
+		end if
+		ll_mrow = this.id_master.getrow()
+		this.id_master.setitem(ll_mrow, "quotationno", lstr_template.l_invtemplate)
+		this.id_master.setitem(ll_mrow, "custcode", lds_quotationheader.getitemnumber(lds_quotationheader.getrow(), "custcode"))
+		this.id_master.setitem(ll_mrow, "sprice", lds_quotationheader.getitemnumber(lds_quotationheader.getrow(), "sprice"))
+		this.id_master.setitem(ll_mrow, "remarks", lds_quotationheader.getitemstring(lds_quotationheader.getrow(), "remarks"))
+		this.id_master.setitem(ll_mrow, "headerno", lds_quotationheader.getitemnumber(lds_quotationheader.getrow(), "headerno"))
+		this.id_footer.setitem(ll_mrow, "misccharges", lds_quotationheader.getitemnumber(lds_quotationheader.getrow(), "misccharges"))
+		this.id_footer.setitem(ll_mrow, "invdiscperc", lds_quotationheader.getitemnumber(lds_quotationheader.getrow(), "discperc"))
+		this.id_footer.setitem(ll_mrow, "flatdisc", lds_quotationheader.getitemnumber(lds_quotationheader.getrow(), "flatdisc"))
+		ll_totalrows = lds_quotationdetail.rowcount()
+		this.id_detail.reset()
+		for ll_rowcount = 1 to ll_totalrows
+			this.id_detail.insertrow(0)
+			wf_inititeminfo(lds_quotationdetail.getitemnumber(ll_rowcount, "icode"), ll_rowcount, li_errcode, ls_errortext)
+			this.id_detail.setitem(ll_rowcount, "packunits", lds_quotationdetail.getitemnumber(ll_rowcount, "packunits"))
+			this.id_detail.setitem(ll_rowcount, "discperc", lds_quotationdetail.getitemnumber(ll_rowcount, "discperc"))
+			this.id_detail.setitem(ll_rowcount, "saleprice", lds_quotationdetail.getitemnumber(ll_rowcount, "saleprice"))
+			this.id_detail.setitem(ll_rowcount, "looseqty", lds_quotationdetail.getitemnumber(ll_rowcount, "looseqty"))
+		next
+	end if
+	return li_retcode
+
+// w_survey_form.wf_dueitem() returns 0
+
+// w_survey_form.wf_deletesaleinvoice(long al_saleinvcode) returns integer
+	SQL Delete IssueDetail Where IssueDetail.IssueInvCode =:al_saleinvcode USING this.it_transobject;
+	return this.it_transobject.sqlcode
+
+// w_survey_form.wf_selectprintreport() returns string
+	string ls_pagesize
+	string ls_report
+	ls_pagesize = f_stringpreferences("pagesize")
+	if ls_pagesize = "Q" and this.ii_saletype = 3 then
+		if gs_company = "ZA" or gs_company = "CLINIX" then
+			ls_report = "d_retailsaleinvreportwh"
+		else
+			ls_report = "d_retailsaleinvreport"
+		end if
+	elseif ls_pagesize = "Q" and this.ii_saletype = 2 then
+		if gs_company = "ZA" or gs_company = "CLINIX" then
+			ls_report = "d_wholesaleinvreportwh"
+		else
+			ls_report = "d_wholesaleinvreport"
+		end if
+	elseif ls_pagesize = "F" and this.ii_saletype = 3 then
+		if gs_company = "SA" then
+			ls_report = "d_sa_retailsaleinvreport_full"
+		else
+			ls_report = "d_retailsaleinvreport_full"
+		end if
+	elseif ls_pagesize = "F" and this.ii_saletype = 2 then
+		if gs_company = "SA" then
+			ls_report = "d_sa_wholesaleinvreport_full"
+		else
+			ls_report = "d_wholesaleinvreport_full"
+		end if
+	else
+		ls_report = "d_retailsaleinvreport_full"
+	end if
+	this.id_print.dataobject = ls_report
+	this.id_print.settransobject(this.it_transobject)
+	return ls_report
+
+// w_survey_form.wf_returnsaleinvoice(long al_invid, string as_errtext) returns boolean
+	long ll_saleinvcode
+	long ll_gcode
+	long ll_icode
+	long ll_counter
+	long ll_detailrows
+	double ld_looseqty
+	double ld_stock
+	double ld_newstock
+	string ls_batch
+	string ls_due
+	datetime ld_expiry
+	boolean lb_commitflag
+	double ld_avgprice
+	this.id_saleinvdetail.retrieve(al_invid)
+	ll_detailrows = this.id_saleinvdetail.rowcount()
+	ll_counter = 1
+	do while ll_counter <= ll_detailrows and lb_commitflag
+		ll_gcode = this.id_saleinvdetail.getitemnumber(ll_counter, "gcode")
+		ll_icode = this.id_saleinvdetail.getitemnumber(ll_counter, "icode")
+		ls_batch = this.id_saleinvdetail.getitemstring(ll_counter, "batch")
+		ld_expiry = this.id_saleinvdetail.getitemdatetime(ll_counter, "expiry")
+		ld_looseqty = this.id_saleinvdetail.getitemnumber(ll_counter, "qty")
+		this.it_transobject.getitemavgprice(ll_icode, ld_avgprice)
+		if this.it_transobject.sqlcode = 0 then
+			this.it_transobject.getitemstockbatch(ll_gcode, ll_icode, ls_batch, ld_expiry, ld_stock)
+			if this.it_transobject.sqlcode = 0 then
+				ld_newstock = ld_stock + ld_looseqty
+				this.it_transobject.updateitemstockbatch(ll_gcode, ll_icode, ls_batch, ld_expiry, ld_newstock)
+				if this.it_transobject.sqlcode <> 0 then
+					lb_commitflag = false
+				end if
+				if ld_stock = 0.0 then
+					SQL update GodownDetail Set Priority =1 Where GodownDetail.GCode =:ll_gcode and GodownDetail.ICode =:ll_icode and GodownDetail.Batch =:ls_batch and GodownDetail.Expiry =:ld_expiry USING this.it_transobject;
+				end if
+			else
+				lb_commitflag = false
+			end if
+		else
+			lb_commitflag = false
+		end if
+		ll_counter = ll_counter + 1
+	loop
+	if lb_commitflag then
+		if wf_deletesaleinvoice(al_invid) <> 0 then
+			lb_commitflag = false
+			as_errtext = "    Some database problem occur"
+		end if
+	else
+		as_errtext = "    Some database problem occur"
+	end if
+	return lb_commitflag
+
+// w_survey_form.wf_assigndatawindowobjects(string as_masterdw, string as_detaildw, string as_footerdw, string as_listdw, string as_printdw) returns 0
+	this.id_master.dataobject = as_masterdw
+	this.id_detail.dataobject = as_detaildw
+	this.id_footer.dataobject = as_footerdw
+	this.id_list.dataobject = as_listdw
+	this.id_print.dataobject = as_printdw
+	this.id_master.settransobject(this.it_transobject)
+	this.id_detail.settransobject(this.it_transobject)
+	this.id_footer.settransobject(this.it_transobject)
+	this.id_list.settransobject(this.it_transobject)
+	this.id_print.settransobject(this.it_transobject)
+
+// w_survey_form.wf_closelist() returns 0
+	this.ib_itemslistopen = false
+	this.id_itemslist.hide()
+
+// w_survey_form.wf_getitemassociategcode(long la_icode) returns integer
+	integer li_gcode
+	SQL Select Gcode INTO :li_gcode From item Where icode =:la_icode USING this.it_transobject;
+	return li_gcode
+
+// w_survey_form.wf_locksaleinvoice(long al_saleinvcode) returns integer
+	integer li_count
+	SQL Select count ( *) INTO :li_count From IssueHeader WITH ( UPDLOCK HOLDLOCK ) Where IssueHeader.Issueinvcode =:al_saleinvcode USING this.it_transobject;
+	return this.it_transobject.sqlcode
+
+// w_survey_form.wf_locksaleinvoices(long al_sinvcode, long al_linvcode, long al_totalinvoice) returns integer
+	integer li_count
+	SQL Select count ( *) INTO :al_totalinvoice From IssueHeader WITH ( UPDLOCK HOLDLOCK ) Where IssueHeader.Issueinvcode Between :al_sinvcode AND :al_linvcode AND IssueHeader.Posted ='N' USING sqlca;
+	return sqlca.sqlcode
+
+// w_survey_form.wf_post() returns integer
+	return 0
+
+// w_survey_form.wf_preinvinfo() returns 0
+	s_previnvinfo ls_previnvinfo
+	if this.id_detail = getfocus() and this.id_detail.rowcount() > 0 then
+		ls_previnvinfo.ar_customer = this.id_master.getitemnumber(this.id_master.getrow(), "custcode")
+		ls_previnvinfo.ar_icode = this.id_detail.getitemnumber(this.id_detail.getrow(), "icode")
+		openwithparm(w_previnvinfo, ls_previnvinfo)
+	end if
+
+// w_survey_form.wf_print() returns integer
+	integer li_errcode
+	long ll_salesmancode
+	long ll_saleinvcount
+	long ll_count
+	s_arguements lstr_arginfo
+	open(w_salesmanpassword)
+	ll_salesmancode = long(message.doubleparm)
+	setfocus()
+	if ll_salesmancode > 0 then
+		open(w_arg_sinvcode_linvcode)
+		lstr_arginfo = message.powerobjectparm
+		if lstr_arginfo.i_status = 1 then
+			setpointer(hourglass!)
+			for ll_count = lstr_arginfo.l_code1 to lstr_arginfo.l_code2
+				this.id_print.retrieve(ll_count)
+				if this.id_print.rowcount() > 0 then
+					if this.id_print.print() < 0 then
+						messagebox("Printing", "Can not Print Invoice", information!)
+					end if
+				else
+					messagebox("Printing Error", "Can not Print Invoice,~r~nNo rows are retrieved", information!)
+				end if
+			next
+		end if
+	else
+		setfocus()
+	end if
+	setpointer(arrow!)
+	return li_errcode
+
+// w_survey_form.wf_setsaletype(integer ai_saletype) returns 0
+	this.ii_saletype = ai_saletype
+
+// w_survey_form.wf_setsuppinfo(long al_suppcode, datawindow ad_master) returns 0
+	string ls_address
+	string ls_city
+	string ls_phone
+	long ll_currow
+	SQL SELECT supplier.address1 , supplier.city , supplier.phone INTO :ls_address, :ls_city, :ls_phone FROM supplier WHERE supplier.suppcode =:al_suppcode USING this.it_transobject;
+	ll_currow = ad_master.getrow()
+	ad_master.object.supplier_address[ll_currow] = ls_address
+	ad_master.object.supplier_city[ll_currow] = ls_city
+	ad_master.object.supplier_phone[ll_currow] = ls_phone
+
+// w_survey_form.wf_updatesaleprice(long al_icode, double ad_saleprice) returns integer
+	SQL update Item SET saleprice =:ad_saleprice WHERE Item.icode =:al_icode USING this.it_transobject;
+	return this.it_transobject.sqlcode
+
+// w_survey_form.wf_validatefullcode(string as_custicode, long al_currrow) returns boolean
+	long ll_icode
+	long ll_stock
+	long ll_totalstock
+	string ls_fullcode
+	string ls_titleerrtext
+	string ls_errtext
+	integer li_errcode
+	integer li_assgcode
+	integer li_option
+	boolean lb_rtflag
+	boolean ib_due
+	integer li_null
+	string ls_null
+	ls_titleerrtext = "Item Validation"
+	if vf_dwdupcode1(this.id_detail, "icode", string(ll_icode), al_currrow) = true then
+		ls_errtext = "Duplicate item, please select some other item"
+		li_errcode = -1
+	elseif wf_inititeminfo(ll_icode, this.il_currrow, li_errcode, ls_errtext) then
+		if li_errcode = -2 then
+			li_option = messagebox("Item Validation", "Item stock does not exist~n~rDo You want to due this item", information!, yesno!, 2)
+			if li_option = 1 then
+				this.id_detail.setitem(this.il_currrow, "looseqty", 1)
+				this.id_detail.setitem(this.il_currrow, "dueqty", 1)
+				ib_due = true
+			else
+				li_errcode = -1
+			end if
+		end if
+	else
+		li_errcode = -1
+		ls_titleerrtext = "Item Validation"
+	end if
+	if li_errcode = -1 and not ib_due then
+		lb_rtflag = false
+		messagebox(ls_titleerrtext, ls_errtext)
+		setnull(li_null)
+		setnull(ls_null)
+		this.id_detail.setitem(al_currrow, this.is_columnitemname, ls_null)
+		this.id_detail.setitem(al_currrow, "icode", li_null)
+		this.id_detail.selecttext(1, len(this.id_detail.gettext()))
+	end if
+	return lb_rtflag
+
+// w_survey_form.wf_validategodown() returns integer
+	long ll_icode
+	long ll_gcode
+	long ll_stock
+	long ll_counter
+	string ls_fullcode
+	string ls_titleerrtext
+	string ls_errtext
+	string ls_null
+	integer li_errcode
+	integer li_null
+	integer li_option
+	integer li_duperr
+	boolean ib_due
+	ll_icode = this.id_detail.getitemnumber(this.il_currrow, "icode")
+	this.ii_defaultgcode = this.id_detail.getitemnumber(this.il_currrow, "gcode")
+	if wf_inititeminfo(ll_icode, this.il_currrow, li_errcode, ls_errtext) then
+		if li_errcode <> -2 then
+			for ll_counter = 1 to this.id_detail.rowcount()
+				if this.il_currrow <> ll_counter and (ll_icode = this.id_detail.getitemnumber(ll_counter, "icode") and this.ii_defaultgcode = this.id_detail.getitemnumber(ll_counter, "gcode")) then
+					li_duperr = -2
+				end if
+			next
+		end if
+	end if
+	this.ib_godownvalidated = true
+	if li_errcode = -1 and not ib_due then
+		messagebox(ls_titleerrtext, ls_errtext)
+		setnull(li_null)
+		this.id_detail.setfocus()
+		this.id_detail.setcolumn("gcode")
+		this.id_detail.scrolltorow(this.il_currrow)
+		this.id_detail.object.gcode[this.il_currrow] = li_null
+	end if
+	if li_duperr = -2 and not ib_due then
+		ls_titleerrtext = "Item Validation"
+		ls_errtext = "Duplicate Item, please select some other item"
+		messagebox(ls_titleerrtext, ls_errtext)
+		setnull(li_null)
+		setnull(ls_null)
+		this.id_detail.setcolumn(this.is_columnitemname)
+		this.id_detail.scrolltorow(this.il_currrow)
+		this.id_detail.object.gcode[this.il_currrow] = li_null
+		this.id_detail.object.icode[this.il_currrow] = li_null
+		this.id_detail.object.itemname[this.il_currrow] = ls_null
+		this.ib_itemslistopen = true
+		this.id_itemslist.show()
+		li_errcode = -1
+	end if
+	return li_errcode
+
+// w_survey_form.wf_retrievelist() returns long
+	string[] ls_posted
+	integer li_salecategory
+	integer li_invforlastdays
+	datetime ld_invdate
+	ld_invdate = datetime(relativedate(today(), li_invforlastdays))
+	ls_posted[1] = "N"
+	ls_posted[2] = "Y"
+	if this.ii_saletype = 2 then
+		li_salecategory = this.ii_salecategory
+	else
+		li_salecategory = this.ii_saletype
+	end if
+	return this.id_list.retrieve(li_salecategory, ls_posted, ld_invdate, this.il_groupcode, this.ii_module)
+
+// w_survey_form.wf_retrievelistall() returns long
+	string[] ls_posted
+	integer li_salecategory
+	datetime ld_invdate
+	ld_invdate = datetime(date("12/12/1998"), time("00:00:00"))
+	ls_posted[1] = "N"
+	ls_posted[2] = "Y"
+	if this.ii_saletype = 2 then
+		li_salecategory = this.ii_salecategory
+	else
+		li_salecategory = this.ii_saletype
+	end if
+	return this.id_list.retrieve(li_salecategory, ls_posted, ld_invdate, this.il_groupcode, this.ii_module)
+
+// w_survey_form.wf_copyinvoice() returns integer
+	datastore lds_issuereqheader
+	datastore lds_issuereqdetail
+	datawindowchild ldc_section
+	s_saletemplate lstr_template
+	long ll_totalrows
+	long ll_rowcount
+	long ll_deptcode
+	integer li_retcode
+	integer li_errcode
+	string ls_errortext
+	if this.editflag = true then
+		open(w_copyissueinvoicefrom)
+		lstr_template = message.powerobjectparm
+		if lstr_template.b_userinput = true then
+			lds_issuereqheader = create datastore
+			lds_issuereqheader.dataobject = "d_issuereqheader"
+			lds_issuereqheader.settransobject(this.it_transobject)
+			lds_issuereqheader.retrieve(lstr_template.l_invtemplate)
+			ll_deptcode = lds_issuereqheader.object.deptcode[1]
+			this.id_master.object.deptcode[1] = lds_issuereqheader.object.deptcode[1]
+			this.id_master.object.areacode[1] = lds_issuereqheader.object.areacode[1]
+			this.id_master.object.smancode[1] = lds_issuereqheader.object.smancode[1]
+			this.id_master.object.remarks[1] = lds_issuereqheader.object.remarks[1]
+			this.id_detail.reset()
+			lds_issuereqdetail = create datastore
+			lds_issuereqdetail.dataobject = "d_issuereqdetail"
+			lds_issuereqdetail.settransobject(this.it_transobject)
+			lds_issuereqdetail.getchild("sectcode", ldc_section)
+			ldc_section.settransobject(this.it_transobject)
+			ldc_section.retrieve(ll_deptcode)
+			if ldc_section.rowcount() = 0 then
+				ldc_section.insertrow(0)
+			end if
+			this.idc_section.retrieve(ll_deptcode)
+			if this.idc_section.rowcount() = 0 then
+				this.idc_section.insertrow(0)
+			end if
+			ll_totalrows = lds_issuereqdetail.retrieve(lstr_template.l_invtemplate)
+			if ll_totalrows < 0 then
+				li_retcode = -1
+			end if
+			ll_totalrows = lds_issuereqdetail.rowcount()
+			for ll_rowcount = 1 to ll_totalrows
+				this.id_detail.insertrow(0)
+				wf_inititeminfo(lds_issuereqdetail.getitemnumber(ll_rowcount, "icode"), ll_rowcount, li_errcode, ls_errortext)
+				this.id_detail.setitem(ll_rowcount, "qty", lds_issuereqdetail.getitemnumber(ll_rowcount, "qty"))
+				this.id_detail.setitem(ll_rowcount, "sectcode", lds_issuereqdetail.getitemnumber(ll_rowcount, "sectcode"))
+			next
+		end if
+	end if
+	return li_retcode
+
+// w_survey_form.wf_setgodownoption() returns 0
+	this.ii_salegodown = this.id_detail.getitemnumber(1, "gcode")
+	if this.il_strategy = 2 or this.il_strategy = 1 and this.il_godowncount = 1 then
+		this.id_detail.modify("gcode" + ".Protect=1")
+		this.id_detail.object.gcode.background.color = this.backcolor
+	end if
+
+// w_survey_form.wf_grandtotal() returns double
+	double ld_grandtotal
+	ld_grandtotal = 0
+	return ld_grandtotal
+
+// w_survey_form.wf_initmodify(integer ai_protect) returns 0
+	long ll_code
+	long ll_gcode
+	long ll_icode
+	long ll_counter
+	long ll_count
+	ll_code = this.id_master.getitemnumber(1, "code")
+	this.id_master.retrieve(ll_code)
+	this.id_detail.retrieve(ll_code)
+	this.ib_modify = true
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_new.enabled = false
+	this.im_menu.m_file.m_delete.enabled = false
+	this.im_menu.m_item.m_newitem.enabled = true
+	this.im_menu.m_item.m_deleteitem.enabled = true
+	this.im_menu.m_file.m_first.enabled = false
+	this.im_menu.m_file.m_next.enabled = false
+	this.im_menu.m_file.m_previous.enabled = false
+	this.im_menu.m_file.m_last.enabled = false
+	this.im_menu.m_file.m_retrieve.enabled = true
+	this.im_menu.m_file.m_retrieve.text = "Lis&t"
+	this.tab_retrieve.tabpage_detail.enabled = true
+
+// w_survey_form.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_start
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_start step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+
+// w_survey_form.wf_validateitem(boolean ab_flag) returns integer
+	long ll_icode
+	long ll_stock
+	long ll_totalstock
+	string ls_fullcode
+	string ls_titleerrtext
+	string ls_errtext
+	integer li_errcode
+	integer li_assgcode
+	integer li_option
+	boolean ib_due
+	integer li_null
+	string ls_null
+	ll_icode = this.id_detail.getitemnumber(this.il_currrow, "icode")
+	if not isnull(ll_icode) then
+		if vf_dwdupcode1(this.id_detail, "icode", string(ll_icode), this.il_currrow) = true then
+			ls_titleerrtext = "Item Validation"
+			ls_errtext = "Duplicate item, please select some other item"
+			li_errcode = -1
+		elseif wf_inititeminfo(ll_icode, this.il_currrow, li_errcode, ls_errtext) then
+			if li_errcode = -2 then
+				li_errcode = -1
+			end if
+		else
+			ls_titleerrtext = "Item Validation"
+		end if
+	end if
+	if ab_flag then
+		this.ib_itemvalidated = true
+	end if
+	if li_errcode = -1 then
+		setnull(li_null)
+		setnull(ls_null)
+		ls_titleerrtext = "Item Validation"
+		messagebox(ls_titleerrtext, ls_errtext)
+		if f_stringpreferences("itemcode") = "N" then
+			this.id_detail.setcolumn(this.is_columnitemname)
+			this.ib_itemslistopen = true
+			this.id_itemslist.show()
+		else
+			this.id_detail.setcolumn("fullcode")
+			this.id_detail.object.fullcode[this.il_currrow] = ls_null
+		end if
+		this.id_detail.scrolltorow(this.il_currrow)
+		this.id_detail.object.icode[this.il_currrow] = li_null
+		this.id_detail.object.itemname[this.il_currrow] = ls_null
+	end if
+	return li_errcode
+
+// w_survey_form.wf_findfullcode(string as_fullcode, long al_icode, string al_itemname) returns integer
+	integer ll_icode
+	integer ll_retflag
+	string ls_itemname
+	if f_stringpreferences("GroupCategoryRights") = "Y" then
+		SQL SELECT item.icode , item.name INTO :ll_icode, :ls_itemname FROM item WHERE item.customicode =:as_fullcode AND item.Active =1 AND Item.ICatCode IN ( SELECT ICatCode FROM ItemCategory WHERE ICatCode IN ( SELECT ItemsCategoryCode FROM ItemsGroupCategory WHERE GroupCode IN ( SELECT GroupCode FROM UserGroups WHERE UserCode =:gl_usercode ) ) ) USING this.it_transobject;
+	else
+		SQL SELECT item.icode , item.name INTO :ll_icode, :ls_itemname FROM item WHERE item.customicode =:as_fullcode AND item.Active =1 USING this.it_transobject;
+	end if
+	if this.it_transobject.sqlcode = 0 then
+		al_icode = ll_icode
+		al_itemname = ls_itemname
+		if isnull(al_icode) then
+			ll_retflag = 0
+		else
+			ll_retflag = 1
+		end if
+	else
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_survey_form.wf_setqty(integer ai_type) returns integer
+	long ll_count
+	long ll_rowcount
+	long ll_qty
+	string as_col
+	open(w_setquantity)
+	ll_qty = message.doubleparm
+	if ai_type = 2 then
+		as_col = "optimumqty"
+	else
+		as_col = "reorderqty"
+	end if
+	setredraw(false)
+	for ll_count = 1 to this.id_detail.rowcount()
+		this.id_detail.setitem(ll_count, as_col, ll_qty)
+	next
+	setredraw(true)
+	return 0
+
+// w_survey_form.wf_populateitems() returns integer
+	integer li_rtcode
+	long ll_rtcode
+	long ll_rowcount
+	long ll_count
+	long ll_icode
+	long ll_currentrow
+	long ll_found
+	string as_errortext
+	s_arguements lstr_selecteditems
+	datastore lds_selecteditems
+	open(w_arg_item_populate2)
+	lstr_selecteditems = message.powerobjectparm
+	lds_selecteditems = create datastore
+	lds_selecteditems.dataobject = "d_populateditems_active"
+	lds_selecteditems.settransobject(sqlca)
+	ll_rtcode = lds_selecteditems.retrieve(lstr_selecteditems.ia_integerlist, lstr_selecteditems.ia_integerlist1, lstr_selecteditems.ia_integerlist2, lstr_selecteditems.l_code1, lstr_selecteditems.s_name1)
+	ll_rowcount = lds_selecteditems.rowcount()
+	wf_deleteemptydetailrow()
+	if this.id_detail.rowcount() > 0 and isnull(this.id_detail.object.icode[this.id_detail.rowcount()]) then
+		event ue_deleteitem()
+	end if
+	for ll_count = 1 to ll_rowcount
+		ll_icode = lds_selecteditems.object.icode[ll_count]
+		ll_found = this.id_detail.find("icode=" + string(ll_icode), 1, this.id_detail.rowcount())
+		if not (ll_found > 0) then
+			ll_currentrow = this.id_detail.insertrow(0)
+			wf_inititeminfo(ll_icode, ll_currentrow, li_rtcode, as_errortext)
+		end if
+	next
+	if this.id_detail.rowcount() > 0 then
+		this.im_menu.m_file.m_save.enabled = true
+	end if
+	return 0
+
+// w_survey_form.wf_allowissuemodification(double ad_invoicecode, long al_groupcode, integer ai_strategy) returns long
+	long ll_disallowedcount
+	SQL SELECT DISTINCT GCode =ISNull ( Count ( GCode ) , 0 ) INTO :ll_disallowedcount FROM IssueDetail WHERE IssueInvCode =:ad_invoicecode AND GCode NOT IN ( SELECT Godown.GCode FROM Godown WHERE GCode IN ( CASE :ai_strategy WHEN 2 THEN ( SELECT G.GCode From Godown G WHERE G.GCode =Godown.GCode ) ELSE ( SELECT G.GCode From GroupAllowedGodown G WHERE G.GroupCode =:al_groupcode AND G.Module =:this.ii_module AND Godown.GCode =G.GCode ) END ) ) USING sqlca;
+	return ll_disallowedcount
+
+// w_survey_form.wf_inititeminfo(long al_icode, long al_row, integer ai_rtcode, string as_errortext) returns boolean
+	boolean retflag
+	double ld_saleprice
+	long ll_packunits
+	long ll_godownstock
+	long ll_saleqty
+	long ll_saleinvcode
+	long ll_totalstock
+	double ld_saleprice2
+	double ld_saleprice3
+	double ld_avgprice
+	double ld_mrpp
+	double ld_purprice
+	integer li_gcode
+	string ls_fullcode
+	string ls_name
+	string ls_null
+	setnull(ls_null)
+	SQL SELECT item.customicode , item.name , saleprice , packunits INTO :ls_fullcode, :ls_name, :ld_saleprice, :ll_packunits FROM item WHERE item.icode =:al_icode USING this.it_transobject;
+	if this.it_transobject.sqlcode = -1 then
+		retflag = false
+		as_errortext = "Database Error: Item information can not be retrieved"
+	end if
+	if ll_packunits = 0 or isnull(ll_packunits) then
+		ll_packunits = 1
+	end if
+	ld_saleprice = round(ld_saleprice / ll_packunits, 2)
+	if retflag then
+		this.id_detail.setitem(al_row, this.is_columnitemname, ls_name)
+		this.id_detail.setitem(al_row, "fullcode", ls_fullcode)
+		this.id_detail.setitem(al_row, "icode", al_icode)
+		if this.id_detail.getitemstatus(al_row, "price1", primary!) = notmodified! then
+			this.id_detail.setitem(al_row, "price1", ld_saleprice)
+		end if
+		if this.id_detail.getitemstatus(al_row, "price2", primary!) = notmodified! then
+			this.id_detail.setitem(al_row, "price2", ld_saleprice)
+		end if
+		if al_icode <> this.id_detail.getitemnumber(al_row, "itemcode") then
+			this.id_detail.setitem(al_row, "price1", ld_saleprice)
+			this.id_detail.setitem(al_row, "price2", ld_saleprice)
+		end if
+		this.id_detail.setitem(al_row, "itemcode", al_icode)
+	else
+		retflag = false
+		as_errortext = "Database Error: Item information can not be retrieved"
+	end if
+	return retflag
+
+// w_survey_form.wf_getsalesstockinfo(long al_saleinvcode, long al_gcode, long al_icode, double ad_saleqty) returns integer
+	SQL Select IsNull ( Sum ( saledetail.looseqty ) , 0 ) INTO :ad_saleqty from saledetail where saledetail.saleinvcode =:al_saleinvcode and saledetail.gcode =:al_gcode and saledetail.icode =:al_icode USING this.it_transobject;
+	if isnull(ad_saleqty) then
+		ad_saleqty = 0
+	end if
+	return this.it_transobject.sqlcode
+
+// w_survey_form.wf_selectitembatches(long al_gcode, long al_icode, double ad_qty, datawindow ad_itemsdetail, long al_rowscount, string al_errortext) returns integer
+	datastore lds_itemstockinfo
+	long ll_counter
+	long ll_saleqty
+	long ll_reqqty
+	long ll_totalstock
+	long ll_batchqty
+	long ll_detailrowcount
+	boolean lb_flag
+	integer li_errcode
+	lds_itemstockinfo = create datastore
+	lds_itemstockinfo.dataobject = "d_itemstockinfo"
+	lds_itemstockinfo.settransobject(this.it_transobject)
+	if lds_itemstockinfo.retrieve(al_gcode, al_icode) > 0 then
+		ll_totalstock = lds_itemstockinfo.getitemnumber(1, "c_totalstock")
+		if ll_totalstock >= ad_qty then
+			ll_reqqty = ad_qty
+			ll_detailrowcount = ad_itemsdetail.rowcount()
+			ll_counter = 1
+			do while ll_counter <= lds_itemstockinfo.rowcount() and not lb_flag
+				ll_batchqty = lds_itemstockinfo.getitemnumber(ll_counter, "currqty")
+				if ll_batchqty >= ll_reqqty then
+					ll_saleqty = ll_reqqty
+					lb_flag = true
+				else
+					ll_saleqty = ll_batchqty
+					ll_reqqty = ll_reqqty - ll_batchqty
+				end if
+				ad_itemsdetail.insertrow(0)
+				ll_detailrowcount = ll_detailrowcount + 1
+				ad_itemsdetail.setitem(ll_detailrowcount, "gcode", al_gcode)
+				ad_itemsdetail.setitem(ll_detailrowcount, "icode", al_icode)
+				ad_itemsdetail.setitem(ll_detailrowcount, "batch", lds_itemstockinfo.getitemstring(ll_counter, "batch"))
+				ad_itemsdetail.setitem(ll_detailrowcount, "expiry", lds_itemstockinfo.getitemdatetime(ll_counter, "expiry"))
+				ad_itemsdetail.setitem(ll_detailrowcount, "stock", ll_batchqty)
+				ad_itemsdetail.setitem(ll_detailrowcount, "totalstock", ll_totalstock)
+				ad_itemsdetail.setitem(ll_detailrowcount, "qty", ll_saleqty)
+				ll_counter = ll_counter + 1
+			loop
+			al_rowscount = ll_counter - 1
+		else
+			li_errcode = 1
+			al_rowscount = ll_totalstock
+			al_errortext = "Stock has been decreased for this item   "
+		end if
+	else
+		li_errcode = 1
+		al_rowscount = ll_totalstock
+		al_errortext = "Stock does not exist for this item   "
+	end if
+	destroy lds_itemstockinfo
+	return li_errcode
+
+// w_survey_form.wf_setiteminfo(long al_icode, long al_row, double ad_saleprice, double ad_discperc, double ad_stock, double ad_avgprice, double ad_totalstock, double ad_purdiscperc) returns 0
+	this.id_detail.setitem(al_row, "saleprice", ad_saleprice)
+	if this.ii_saletype = 2 then
+		this.id_detail.setitem(al_row, "discperc", ad_discperc)
+	else
+		this.id_detail.setitem(al_row, "discperc", 0.0)
+	end if
+	this.id_detail.setitem(al_row, "rate", ad_saleprice)
+	this.id_detail.setitem(al_row, "avgprice", ad_avgprice)
+	this.id_footer.object.icode[this.id_footer.getrow()] = al_icode
+	this.id_footer.object.stock[this.id_footer.getrow()] = ad_stock
+
+// w_survey_form.create() returns 0
+	integer icurrent
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_survey_form" then
+		this.menuid = create m_survey_form
+	end if
+	this.dw_saleinvrep = create dw_saleinvrep
+	this.dw_saleinvdetail = create dw_saleinvdetail
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_saleinvrep
+	this.control[icurrent + 2] = this.dw_saleinvdetail
+
+// w_survey_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_saleinvrep
+	destroy this.dw_saleinvdetail
+
+// w_survey_form.ue_save() returns 0
+	long ll_detailrows
+	long ll_counter
+	long ll_count
+	long ll_salesmancode
+	long ll_mastercurrrow
+	long li_maxretcode
+	long ll_invid
+	long ll_null
+	string ls_date_errtext
+	datetime ldt_server_datetime
+	boolean lb_commitflag
+	boolean lb_continue
+	integer li_counter
+	string ls_errtext
+	if this.ib_itemvalidated = false and wf_validateitem(true) = -1 then
+		this.id_detail.setfocus()
+		return
+	end if
+	wf_deleteemptydetailrow()
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	setpointer(hourglass!)
+	ll_salesmancode = gl_usercode
+	if ll_salesmancode > 0 then
+		setpointer(hourglass!)
+		ll_mastercurrrow = this.id_master.getrow()
+		ll_invid = this.id_master.object.code[ll_mastercurrrow]
+		if isnull(ll_invid) then
+			li_maxretcode = wf_tabnewid("SurveyHeader", ll_invid)
+			if li_maxretcode < 0 then
+				SQL rollback USING this.it_transobject;
+				messagebox("DataBase Problem", "Transaction is Rollback Due to Problem in~r~n ~t~t~t~t~t~t~t~t~t~t~t~t~tgenerating Survey Code")
+				return
+			end if
+			this.id_master.object.code[ll_mastercurrrow] = ll_invid
+		end if
+		ll_detailrows = this.id_detail.rowcount()
+		for ll_counter = 1 to ll_detailrows
+			this.id_detail.setitem(ll_counter, "code", ll_invid)
+		next
+		if this.ib_modify then
+			this.id_master.setitem(ll_mastercurrrow, "modifiedby", ll_salesmancode)
+			if not wf_getserverdatetime(ldt_server_datetime, ls_date_errtext) then
+				messagebox("Date Violation", ls_date_errtext, stopsign!)
+				return
+			end if
+			this.id_master.setitem(ll_mastercurrrow, "date", ldt_server_datetime)
+		else
+			if not wf_getserverdatetime(ldt_server_datetime, ls_date_errtext) then
+				messagebox("Date Violation", ls_date_errtext, stopsign!)
+				return
+			end if
+			this.id_master.setitem(ll_mastercurrrow, "originaldate", ldt_server_datetime)
+			this.id_master.setitem(ll_mastercurrrow, "date", ldt_server_datetime)
+			this.id_master.setitem(ll_mastercurrrow, "createdby", ll_salesmancode)
+		end if
+		call super::ue_save
+		if this.ib_commitok then
+			this.ib_modify = false
+		elseif this.ib_modify = false then
+			setnull(ll_null)
+			this.id_master.setitem(1, "Code", ll_null)
+			this.id_master.accepttext()
+		end if
+	else
+		setfocus()
+	end if
+	setpointer(arrow!)
+
+// w_survey_form.ue_newform() returns 0
+	integer rtncode
+	long li_fetched_code
+	long row
+	long ll_manfcode
+	setredraw(false)
+	call super::ue_newform
+	this.id_footer.reset()
+	this.id_footer.insertrow(0)
+	this.id_footer.scrolltorow(0)
+	this.im_menu.m_file.m_print.enabled = false
+	this.im_menu.m_file.m_post.enabled = false
+	wf_protectdw(this.id_master, 0)
+	wf_protectdw(this.id_detail, 0)
+	wf_protectdw(this.id_footer, 0)
+	this.ib_modify = false
+	this.id_master.setcolumn(1)
+	this.id_master.setfocus()
+	wf_visible(true)
+	setredraw(true)
+
+// w_survey_form.ue_detail() returns 0
+	integer li_rtncode
+	integer li_protect
+	long ll_row
+	long ll_code
+	long ll_deptcode
+	long ll_rowcount
+	boolean lb_flag
+	boolean lb_modify
+	m_survey_form lm_menu
+	call super::ue_detail
+	lm_menu = this.menuid
+	setredraw(false)
+	this.im_menu.m_file.m_post.enabled = false
+	this.im_menu.m_file.m_print.enabled = false
+	ll_code = this.id_master.object.code[this.id_master.rowcount()]
+	li_protect = 0
+	wf_initmodify(li_protect)
+	wf_grandtotal()
+	if this.id_detail.rowcount() > 0 then
+		this.im_menu.m_file.m_save.enabled = true
+	else
+		this.im_menu.m_file.m_save.enabled = false
+	end if
+	setredraw(true)
+
+// w_survey_form.ue_newitem() returns 0
+	long ll_rowcount
+	if this.ib_itemvalidated = false and wf_validateitem(true) = -1 then
+		this.id_detail.setfocus()
+		return
+	end if
+	if this.id_detail.rowcount() > 0 and f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	if f_stringpreferences("itemcode") = "N" then
+		this.id_detail.setcolumn(this.is_columnitemname)
+	else
+		this.id_detail.setcolumn("fullcode")
+	end if
+	this.id_detail.insertrow(0)
+	ll_rowcount = this.id_detail.rowcount()
+	if ll_rowcount > 1 then
+		this.id_detail.scrolltorow(ll_rowcount)
+		this.id_detail.setfocus()
+	end if
+	this.im_menu.m_file.m_save.enabled = true
+	this.ib_validatefullcode = true
+	this.ii_defaultgcode = this.ii_salegodown
+
+// w_survey_form.ue_deleteitem() returns 0
+	long ll_row
+	long ll_footerrow
+	call super::ue_deleteitem
+	ll_row = this.id_detail.getrow()
+	ll_footerrow = this.id_footer.getrow()
+	if this.id_detail.rowcount() <= 0 then
+		this.im_menu.m_file.m_print.enabled = false
+		this.im_menu.m_file.m_save.enabled = false
+	end if
+
+// w_survey_form.close() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::close()
+	this.id_itemslist.sharedataoff()
+	return ::message.returnvalue
+
+// w_survey_form.ue_list() returns 0
+	call super::ue_list
+	SQL rollback USING this.it_transobject;
+	this.im_menu.m_file.m_post.enabled = false
+	this.im_menu.m_file.m_print.enabled = false
+	this.ib_modify = false
+	this.id_itemslist.hide()
+	if this.id_detail.rowcount() > 0 then
+		postevent("ue_deleteitem")
+	end if
+	wf_retrievelist()
+
+// w_survey_form.ue_print() returns 0
+	long ll_custcode
+	long ll_row
+	string ls_custname
+	integer li_option
+	long job
+	call super::ue_print
+	if this.im_menu.m_file.m_save.enabled = true then
+		if this.ib_modify then
+			li_option = messagebox("Save Changes", "Do you want to save invoice", information!, yesno!, 2)
+			if li_option = 1 then
+				triggerevent("ue_save")
+				if wf_commitform() = false then
+					return
+				end if
+				return
+			end if
+		else
+			triggerevent("ue_save")
+			if wf_commitform() = false then
+				return
+			end if
+		end if
+		return
+	end if
+	if f_stringpreferences("PurBatch") = "Y" and f_stringpreferences("PurExpiry") = "Y" then
+		this.id_print.dataobject = "d_issueinvreport_batchexpiry_half"
+	else
+		this.id_print.dataobject = "d_issueinvreport_half"
+	end if
+	this.id_print.settransobject(this.it_transobject)
+	this.id_print.retrieve(this.id_master.getitemnumber(1, "code"))
+	if this.id_print.rowcount() <= 0 then
+		messagebox("Printing", "no rows retrieve")
+		return
+	end if
+	job = printopen()
+	if printdatawindow(job, this.id_print) > 0 then
+		messagebox("Printing", "Print Invoice Completed")
+	else
+		messagebox("Printing", "Print Invoice Not Completed")
+	end if
+	printclose(job)
+
+// w_survey_form.ue_refreshddw() returns 0
+	call super::ue_refreshddw
+	if this.ii_saletype <> 3 then
+		setpointer(hourglass!)
+		this.idc_customers.setredraw(false)
+		this.idc_customers.settransobject(this.it_transobject)
+		this.idc_customers.retrieve()
+		this.idc_customers.setredraw(true)
+		setpointer(arrow!)
+	end if
+
+// w_survey_form.ue_new() returns 0
+	call super::ue_new
+	this.im_menu.m_file.m_post.enabled = false
+
+// w_survey_form.ue_postopen() returns 0
+	m_survey_form lm_menu
+	integer li_rtncode
+	long ll_counter
+	long ll_pos
+	call super::ue_postopen
+	setredraw(false)
+	this.id_itemslist.object.t_stock.visible = false
+	this.id_itemslist.object.stock.visible = false
+	this.id_itemslist.object.t_sstock.visible = true
+	this.id_itemslist.object.sstock.visible = true
+	this.id_itemslist.object.t_pstock.visible = false
+	this.id_itemslist.object.pstock.visible = false
+	if f_stringpreferences("manufacturer") = "N" then
+		this.id_itemslist.object.manufacturer.visible = false
+	end if
+	if f_stringpreferences("itemname") = "N" then
+		this.id_itemslist.object.itemname.visible = false
+	end if
+	if f_stringpreferences("packing") = "N" then
+		this.id_itemslist.object.packing.visible = false
+	end if
+	if f_stringpreferences("packunits") = "N" then
+		this.id_itemslist.object.packunits.visible = false
+	end if
+	if f_stringpreferences("saleprice") = "N" then
+		this.id_itemslist.object.saleprice.visible = false
+	end if
+	if f_stringpreferences("stock") = "N" then
+		this.id_itemslist.object.sstock.visible = false
+	end if
+	if f_stringpreferences("itemcode") = "N" then
+		this.id_detail.object.fullcode.visible = false
+	end if
+	gd_itemsinfo.sharedata(this.id_itemslist)
+	this.id_footer.reset()
+	this.id_footer.insertrow(0)
+	this.id_footer.scrolltorow(0)
+	setredraw(true)
+
+// w_survey_form.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	return ::message.returnvalue

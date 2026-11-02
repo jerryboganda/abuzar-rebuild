@@ -1,0 +1,62 @@
+// window w_arg_areas_for_a_zone_region (reports_cust)  ancestor: w_listarguments
+
+// w_arg_areas_for_a_zone_region.create() returns 0
+	integer icurrent
+	call super::create
+	this.st_selectable = create st_selectable
+	this.st_selected = create st_selected
+	this.rb_posted = create rb_posted
+	this.rb_unposted = create rb_unposted
+	this.rb_both = create rb_both
+	this.gb_5 = create gb_5
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_selectable
+	this.control[icurrent + 2] = this.st_selected
+	this.control[icurrent + 3] = this.rb_posted
+	this.control[icurrent + 4] = this.rb_unposted
+	this.control[icurrent + 5] = this.rb_both
+	this.control[icurrent + 6] = this.gb_5
+
+// w_arg_areas_for_a_zone_region.destroy() returns 0
+	call super::destroy
+	destroy this.st_selectable
+	destroy this.st_selected
+	destroy this.rb_posted
+	destroy this.rb_unposted
+	destroy this.rb_both
+	destroy this.gb_5
+
+// w_arg_areas_for_a_zone_region.open() returns long
+	long ancestorreturnvalue
+	long ll_counter
+	long ll_rowcount
+	integer rtncode
+	ancestorreturnvalue = super::open()
+	this.istr_arg = message.powerobjectparm
+	this.is_dataobject = "d_arg_areas_for_a_region_zone"
+	this.is_colname = "areacode"
+	this.is_childcolname = "areacode"
+	this.st_selectable.text = "Area(s)"
+	this.st_selected.text = "Area(s)"
+	this.dw_control.dataobject = this.is_dataobject
+	this.dw_control.settransobject(sqlca)
+	rtncode = this.dw_control.getchild(this.is_colname, this.idc_categories)
+	if rtncode = -1 then
+		messagebox("Error", "Not a DataWindowChild")
+	end if
+	this.idc_categories.settransobject(sqlca)
+	this.idc_categories.retrieve(this.istr_arg.l_code1, this.istr_arg.s_name1)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	this.dw_price.settransobject(sqlca)
+	this.dw_price.insertrow(0)
+	this.dw_price.scrolltorow(0)
+	this.dw_price.setitem(1, "price", 1)
+	ll_rowcount = this.idc_categories.rowcount()
+	for ll_counter = 1 to ll_rowcount
+		this.lb_categories.additem(this.idc_categories.getitemstring(ll_counter, "name"))
+	next
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue

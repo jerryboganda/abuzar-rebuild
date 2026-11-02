@@ -1,0 +1,30 @@
+// window w_ds2xls (dw2xls)  ancestor: window
+
+// w_ds2xls.of_register_ds(datastore ads_ds) returns integer
+	integer li_ret
+	string ls_syntax
+	string ls_err
+	ls_syntax = ads_ds.describe("DataWindow.Syntax")
+	if len(ls_syntax) > 1 then
+		li_ret = this.dw_1.create(ls_syntax, ls_err)
+		if li_ret <> 1 then
+			messagebox("DW2XLS-Error", "Invalid syntax DS!~n" + ls_err)
+		end if
+	else
+		li_ret = -1
+	end if
+	if li_ret = 1 then
+		ads_ds.sharedata(this.dw_1)
+	end if
+	return li_ret
+
+// w_ds2xls.of_unregister_ds(datastore ads_ds) returns integer
+	ads_ds.sharedataoff()
+	return 1
+
+// w_ds2xls.create() returns 0
+	this.dw_1 = create dw_1
+	this.control = {this.dw_1}
+
+// w_ds2xls.destroy() returns 0
+	destroy this.dw_1

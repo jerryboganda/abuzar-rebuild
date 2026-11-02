@@ -1,0 +1,71 @@
+// userobject n_associated_ulong_srv (dw2xls)  ancestor: nonvisualobject
+
+// n_associated_ulong_srv.of_add_key(unsignedlong al_val) returns unsignedlong
+	unsignedlong ll_index
+	if isnull(al_val) then
+		return 0
+	end if
+	this.il_key_count = this.il_key_count + 1
+	this.il_keys[this.il_key_count] = al_val
+	return this.il_key_count
+
+// n_associated_ulong_srv.of_find_key(unsignedlong al_val) returns unsignedlong
+	return of_get_key_index(al_val)
+
+// n_associated_ulong_srv.of_get_key_index(unsignedlong al_val) returns unsignedlong
+	unsignedlong ll_i
+	unsignedlong ll_start
+	for ll_i = ll_start to this.il_key_count
+		if this.il_keys[ll_i] = al_val then
+			return ll_i
+		end if
+	next
+	return 0
+
+// n_associated_ulong_srv.of_get_index_min_key(unsignedlong al_from_key) returns unsignedlong
+	unsignedlong ll_ret
+	unsignedlong ll_start
+	unsignedlong ll_i
+	unsignedlong ll_min_key
+	for ll_i = ll_start to this.il_key_count
+		if this.il_keys[ll_i] >= al_from_key and this.il_keys[ll_i] <= ll_min_key then
+			ll_ret = ll_i
+			ll_min_key = this.il_keys[ll_i]
+		end if
+	next
+	return ll_ret
+
+// n_associated_ulong_srv.of_sort_keys() returns integer
+	integer li_ret
+	unsignedlong ll_i
+	unsignedlong ll_cnt
+	unsignedlong[] ll_new_keys
+	unsignedlong ll_start_key
+	ll_cnt = this.il_key_count
+	do while true
+		ll_i = of_get_index_min_key(ll_start_key)
+		if ll_i > 0 then
+			ll_cnt = ll_cnt + 1
+			ll_new_keys[ll_cnt] = this.il_keys[ll_i]
+			ll_start_key = this.il_keys[ll_i] + 1
+		else
+			exit
+		end if
+	loop
+	this.il_keys = ll_new_keys
+	this.il_key_count = upperbound(this.il_keys)
+	return li_ret
+
+// n_associated_ulong_srv.of_get_keys_count() returns unsignedlong
+	return this.il_key_count
+
+// n_associated_ulong_srv.of_get_key(unsignedlong al_index) returns unsignedlong
+	return this.il_keys[al_index]
+
+// n_associated_ulong_srv.create() returns 0
+	call super::create
+	triggerevent("constructor")
+
+// n_associated_ulong_srv.destroy() returns 0
+	triggerevent("destructor")
+	call super::destroy

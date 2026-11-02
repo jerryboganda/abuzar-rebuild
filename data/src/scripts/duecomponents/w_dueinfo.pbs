@@ -1,0 +1,123 @@
+// window w_dueinfo (duecomponents)  ancestor: window
+
+// w_dueinfo.create() returns 0
+	this.dw_due = create dw_due
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.control = {this.dw_due, this.cb_cancel, this.cb_ok}
+
+// w_dueinfo.destroy() returns 0
+	destroy this.dw_due
+	destroy this.cb_cancel
+	destroy this.cb_ok
+
+// w_dueinfo.open() returns long
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	this.is_due = message.powerobjectparm
+	this.dw_due.settransobject(sqlca)
+	this.dw_due.insertrow(0)
+	this.dw_due.setitem(1, "itemname", this.is_due.itemname)
+	this.dw_due.setitem(1, "dueqty", this.is_due.dueqty)
+	this.dw_due.setitem(1, "actualqty", this.is_due.qty)
+	this.dw_due.setitem(1, "totalqty", this.is_due.qty + this.is_due.dueqty)
+	this.dw_due.setitem(1, "stock", this.is_due.stock)
+	f_setcolumnstyle(this.dw_due, "Qty")
+	this.is_due.properclose = false
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_dueinfo.close() returns long
+	closewithreturn(this, this.is_due)
+	return ::message.returnvalue
+
+// dw_due.itemerror(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "dueqty"
+		if data = "" or isnull(data) then
+			messagebox("Due Quantity Validation", "Value required for Due Qty in current row")
+		end if
+	case "actualqty"
+		if data = "" or isnull(data) then
+			messagebox("Sale Quantity Validation", "Value required for Sale Qty in current row")
+		end if
+	end choose
+	return 1
+
+// dw_due.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	double ld_totalqty
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "dueqty"
+		ld_totalqty = getitemnumber(row, "actualqty") + double(data)
+		setitem(row, "totalqty", ld_totalqty)
+	case "actualqty"
+		ld_totalqty = getitemnumber(row, "dueqty") + double(data)
+		setitem(row, "totalqty", ld_totalqty)
+	end choose
+	return ::message.returnvalue
+
+// dw_due.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// cb_cancel.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.is_due.properclose = true
+	parent.is_due.qty = -1
+	parent.is_due.dueqty = -1
+	closewithreturn(parent, parent.is_due)
+	return ::message.returnvalue
+
+// cb_ok.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	double ld_totalqty
+	double ld_dueqty
+	double ld_actualqty
+	boolean lb_flag
+	parent.dw_due.accepttext()
+	ld_dueqty = parent.dw_due.getitemnumber(1, "dueqty")
+	ld_actualqty = parent.dw_due.getitemnumber(1, "actualqty")
+	ld_totalqty = ld_actualqty + ld_dueqty
+	if ld_actualqty <= parent.dw_due.getitemnumber(1, "stock") then
+		parent.is_due.qty = ld_totalqty
+		parent.is_due.dueqty = ld_dueqty
+		lb_flag = true
+	else
+		messagebox("Stock Validation", "Quantity exceeds stock")
+	end if
+	parent.is_due.properclose = true
+	if lb_flag = true then
+		closewithreturn(parent, parent.is_due)
+	end if
+	return ::message.returnvalue

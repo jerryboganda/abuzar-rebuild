@@ -1,0 +1,209 @@
+// window w_unittaxcalculator (purchaseresponsewin)  ancestor: window
+
+// w_unittaxcalculator.ue_close(integer ai_status) returns 0
+	if ai_status = -1 then
+		this.istr_unittaxinputs.d_unittax = this.istr_oldunittaxinputs.d_unittax
+		this.istr_unittaxinputs.i_status = this.istr_oldunittaxinputs.i_status
+	end if
+	closewithreturn(this, this.istr_unittaxinputs)
+
+// w_unittaxcalculator.wf_update_taxperc(double ad_unittax) returns long
+	double ld_saleprice
+	if this.id_dw.object.taxtype[1] = 1 then
+		if this.id_dw.object.invpurprice[1] = 0 then
+			this.id_dw.object.taxperc[1] = ad_unittax / 1.0 * 100.0
+		else
+			this.id_dw.object.taxperc[1] = ad_unittax / this.id_dw.object.invpurprice[1] * 100
+		end if
+	elseif this.id_dw.object.taxtype[1] = 2 then
+		if this.id_dw.object.invpurprice[1] = 0 then
+			this.id_dw.object.taxperc[1] = ad_unittax / 1.0 * 100.0
+		else
+			this.id_dw.object.taxperc[1] = ad_unittax / this.id_dw.object.invsaleprice[1] * 100
+		end if
+	elseif this.id_dw.object.taxtype[1] = 3 then
+		ld_saleprice = this.id_dw.object.retailprice[1] - ad_unittax
+		if ld_saleprice = 0.0 then
+			this.id_dw.object.taxperc[1] = round(ad_unittax / 1.0 * 100.0, 2)
+		else
+			this.id_dw.object.taxperc[1] = round(ad_unittax / ld_saleprice * 100.0, 2)
+		end if
+	elseif this.id_dw.object.taxtype[1] = 4 then
+		if this.id_dw.object.retailprice[1] = 0 then
+			this.id_dw.object.taxperc[1] = round(ad_unittax / 1.0 * 100.0, 2)
+		else
+			this.id_dw.object.taxperc[1] = round(ad_unittax / this.id_dw.object.retailprice[1] * 100, 2)
+		end if
+	end if
+	return 0
+
+// w_unittaxcalculator.wf_update_unittax(double ad_taxperc) returns long
+	if this.id_dw.object.taxtype[1] = 1 then
+		this.id_dw.object.invunittax[1] = ad_taxperc * this.id_dw.object.invpurprice[1] * 0.01
+	elseif this.id_dw.object.taxtype[1] = 2 then
+		this.id_dw.object.invunittax[1] = ad_taxperc * this.id_dw.object.invsaleprice[1] * 0.01
+	elseif this.id_dw.object.taxtype[1] = 3 then
+		this.id_dw.object.invunittax[1] = this.id_dw.object.retailprice[1] * ad_taxperc / (100.0 + ad_taxperc)
+	elseif this.id_dw.object.taxtype[1] = 4 then
+		this.id_dw.object.invunittax[1] = this.id_dw.object.retailprice[1] * ad_taxperc / 100
+	end if
+	return 0
+
+// w_unittaxcalculator.wf_update_taxdetail(integer ai_taxtype) returns long
+	double ld_saleprice
+	if ai_taxtype = 1 then
+		if this.id_dw.object.invunittax[1] <> 0 then
+			if this.id_dw.object.invpurprice[1] = 0 then
+				this.id_dw.object.taxperc[1] = this.id_dw.object.invunittax[1] / 1 * 100
+			else
+				this.id_dw.object.taxperc[1] = this.id_dw.object.invunittax[1] / this.id_dw.object.invpurprice[1] * 100
+			end if
+		else
+			this.id_dw.object.invunittax[1] = this.id_dw.object.taxperc[1] * this.id_dw.object.invpurprice[1] * 0.01
+		end if
+	elseif ai_taxtype = 2 then
+		if this.id_dw.object.invunittax[1] <> 0 then
+			if this.id_dw.object.invsaleprice[1] = 0 then
+				this.id_dw.object.taxperc[1] = this.id_dw.object.invunittax[1] / 1 * 100
+			else
+				this.id_dw.object.taxperc[1] = this.id_dw.object.invunittax[1] / this.id_dw.object.invsaleprice[1] * 100
+			end if
+		else
+			this.id_dw.object.invunittax[1] = this.id_dw.object.taxperc[1] * this.id_dw.object.invsaleprice[1] * 0.01
+		end if
+	elseif ai_taxtype = 3 then
+		ld_saleprice = this.id_dw.object.retailprice[1] - this.id_dw.object.invunittax[1]
+		if ld_saleprice = 0.0 then
+			ld_saleprice = 1
+		end if
+		this.id_dw.object.taxperc[1] = this.id_dw.object.invunittax[1] / ld_saleprice * 100
+	elseif ai_taxtype = 4 then
+		if this.id_dw.object.invunittax[1] <> 0 then
+			if this.id_dw.object.retailprice[1] = 0 then
+				this.id_dw.object.taxperc[1] = this.id_dw.object.invunittax[1] / 1 * 100
+			else
+				this.id_dw.object.taxperc[1] = this.id_dw.object.invunittax[1] / this.id_dw.object.retailprice[1] * 100
+			end if
+		else
+			this.id_dw.object.invunittax[1] = this.id_dw.object.taxperc[1] * this.id_dw.object.retailprice[1] * 0.01
+		end if
+	end if
+	return 0
+
+// w_unittaxcalculator.create() returns 0
+	this.dw_amountoninvoice = create dw_amountoninvoice
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.control = {this.dw_amountoninvoice, this.cb_cancel, this.cb_ok}
+
+// w_unittaxcalculator.destroy() returns 0
+	destroy this.dw_amountoninvoice
+	destroy this.cb_cancel
+	destroy this.cb_ok
+
+// w_unittaxcalculator.open() returns long
+	string ls_aliasname
+	string ls_name
+	decimal ld_saleprice
+	decimal ld_purprice
+	long ll_packunits
+	string ls_invcode
+	long ll_rtcode
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	this.istr_unittaxinputs = message.powerobjectparm
+	this.istr_oldunittaxinputs = this.istr_unittaxinputs
+	this.id_dw = this.dw_amountoninvoice
+	this.id_dw.settransobject(sqlca)
+	this.id_dw.retrieve(this.istr_unittaxinputs.l_icode, this.istr_unittaxinputs.d_price, this.istr_unittaxinputs.d_saleprice, this.istr_unittaxinputs.d_unittax, this.istr_unittaxinputs.d_retailprice)
+	if this.id_dw.rowcount() = 0 then
+		this.id_dw.insertrow(0)
+	end if
+	if this.id_dw.object.invpurprice[1] <> 0 then
+		this.id_dw.object.taxperc[1] = this.id_dw.object.invunittax[1] / this.id_dw.object.invpurprice[1] * 100
+	else
+		this.id_dw.object.taxperc[1] = this.id_dw.object.invunittax[1] * 100
+	end if
+	this.id_dw.scrolltorow(1)
+	this.id_dw.selecttext(1, len(this.id_dw.gettext()))
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// dw_amountoninvoice.itemchanged(long row, dwobject dwo, string data) returns long
+	long ll_null
+	integer li_errcode
+	setnull(ll_null)
+	choose case dwo.name
+	case "taxtype"
+		parent.wf_update_taxdetail(integer(data))
+	case "invunittax"
+		if double(data) < 0.0 then
+			li_errcode = 1
+		else
+			parent.wf_update_taxperc(double(data))
+		end if
+	case "taxperc"
+		if double(data) < 0.0 or double(data) > 100.0 then
+			li_errcode = 1
+		else
+			parent.wf_update_unittax(double(data))
+		end if
+	end choose
+	return li_errcode
+
+// dw_amountoninvoice.itemerror(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "invunitax"
+		messagebox("Unit Tax Validation!", "Please Enter Valid Unit Tax")
+	case "taxperc"
+		messagebox("Tax Percentage Validation!", "Please Enter Valid Tax Percentage")
+	end choose
+	return ::message.returnvalue
+
+// dw_amountoninvoice.itemfocuschanged(long row, dwobject dwo) returns long
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.istr_unittaxinputs.i_status = -1
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	if parent.id_dw.accepttext() = 1 then
+		if parent.id_dw.object.invunittax[1] < 0 then
+			messagebox("Unit Tax Validation!", "Please Enter Valid Unit Tax")
+			parent.id_dw.setfocus()
+			parent.id_dw.setcolumn("invunittax")
+			return ::message.returnvalue
+		end if
+		if parent.id_dw.object.taxperc[1] < 0 or parent.id_dw.object.taxperc[1] > 100 then
+			messagebox("Tax Percentage Validation!", "Please Enter Valid Tax Percentage ")
+			parent.id_dw.setfocus()
+			parent.id_dw.setcolumn("taxperc")
+			return ::message.returnvalue
+		end if
+		parent.istr_unittaxinputs.d_unittax = parent.id_dw.object.invunittax[1]
+		parent.istr_unittaxinputs.i_status = 1
+		parent.post event ue_close(1)
+	end if
+	return ::message.returnvalue

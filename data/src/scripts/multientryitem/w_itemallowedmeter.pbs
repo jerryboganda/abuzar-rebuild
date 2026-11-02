@@ -1,0 +1,147 @@
+// window w_itemallowedmeter (multientryitem)  ancestor: w_multi_entry
+
+// w_itemallowedmeter.wf_validate() returns integer
+	long ll_code
+	integer li_errcode
+	integer li_code
+	ll_code = this.id_detail.getitemnumber(this.il_currrow, "itemmetercode")
+	if vf_dwdupcode1(this.id_detail, "itemmetercode", string(ll_code), this.il_currrow) = true then
+		messagebox("Duplicate Item Meter Name", "This Item Meter has already been selected")
+		li_errcode = -1
+	end if
+	this.ib_itemvalidated = true
+	if li_errcode = -1 then
+		setnull(li_code)
+		this.id_detail.setcolumn("itemmetercode")
+		this.id_detail.setitem(this.il_currrow, "itemmetercode", li_code)
+		this.id_detail.scrolltorow(this.il_currrow)
+	end if
+	return li_errcode
+
+// w_itemallowedmeter.create() returns 0
+	call super::create
+
+// w_itemallowedmeter.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_itemallowedmeter.ue_save() returns 0
+	long ll_counter
+	long ll_code
+	long ll_itemmetercode
+	long ll_icode
+	long ll_count
+	string ls_itemname
+	setpointer(hourglass!)
+	if this.ib_itemvalidated = false and wf_validate() = -1 then
+		return
+	end if
+	ll_code = this.id_master.getitemnumber(this.id_master.getrow(), "code")
+	if isnull(ll_code) then
+		return
+	end if
+	for ll_counter = 1 to this.id_detail.rowcount()
+		this.id_detail.setitem(ll_counter, "code", ll_code)
+		ll_itemmetercode = this.id_detail.object.itemmetercode[ll_counter]
+		SQL SELECT ISNULL ( COUNT ( *) , 0 ) INTO :ll_count FROM ItemAllowedMeter WHERE ItemMeterCode =:ll_itemmetercode AND ICode <> :ll_code USING sqlca;
+		if sqlca.sqlcode = 0 then
+			if ll_count > 0 then
+				SQL SELECT ICode , ItemName =ISNULL ( ( SELECT Item.Name FROM Item WHERE Item.ICode =ItemAllowedMeter.ICode ) , '' ) INTO :ll_icode, :ls_itemname FROM ItemAllowedMeter WHERE ItemMeterCode =:ll_itemmetercode AND ICode <> :ll_code USING sqlca;
+				if sqlca.sqlcode = 0 then
+					if isnull(ll_icode) then
+						ll_icode = ll_code
+					end if
+					if ll_icode <> ll_code then
+						messagebox("Item Meter Validation", "This Item Meter is associated with some other item.~r~nItem Name = " + ls_itemname, stopsign!)
+						return
+					end if
+				else
+					messagebox("Item Meter Validation.", "Item Meter Validation Error.~r~nReasons are:-~r~n" + sqlca.sqlerrtext, stopsign!)
+					return
+				end if
+				return
+			end if
+		else
+			messagebox("Item Meter Validation", "Item Meter Validation Error.~r~nReasons are:-~r~n" + sqlca.sqlerrtext, stopsign!)
+			return
+		end if
+	next
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	if this.id_detail.update(true, false) < 0 then
+		SQL rollback USING this.it_transobject;
+		messagebox("Save Changes Fail", "Changes do not take effect in database~n~r Some database problem occur", exclamation!, ok!, 1)
+		setpointer(arrow!)
+	else
+		SQL commit USING this.it_transobject;
+		messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+		this.ib_commitok = true
+		this.id_detail.resetupdate()
+		this.im_menu.m_file.m_new.enabled = true
+		this.editflag = false
+	end if
+	setpointer(arrow!)
+
+// w_itemallowedmeter.ue_newform() returns 0
+	call super::ue_newform
+	this.im_menu.m_item.m_newitem.enabled = true
+	this.im_menu.m_item.m_deleteitem.enabled = true
+	this.id_master.setfocus()
+
+// w_itemallowedmeter.ue_newitem() returns 0
+	long ll_rowcount
+	long ll_currentrow
+	if this.ib_itemvalidated = false and wf_validate() = -1 then
+		return
+	end if
+	if this.id_detail.rowcount() > 0 and f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	ll_currentrow = this.id_detail.getrow()
+	this.id_detail.setcolumn(1)
+	if ll_currentrow = this.id_detail.rowcount() then
+		this.id_detail.insertrow(0)
+		ll_rowcount = this.id_detail.rowcount()
+		if ll_rowcount > 1 then
+			this.id_detail.scrolltorow(ll_rowcount)
+			this.id_detail.setfocus()
+		end if
+	else
+		this.id_detail.insertrow(ll_currentrow)
+		this.id_detail.scrolltorow(ll_currentrow)
+		this.id_detail.setcolumn("itemmetercode")
+		this.id_detail.setfocus()
+	end if
+	this.im_menu.m_file.m_save.enabled = true
+	this.ib_validatefullcode = true
+
+// w_itemallowedmeter.ue_detail() returns 0
+	long ll_code
+	long ll_rowcount
+	call super::ue_detail
+	this.im_menu.m_file.m_retrieve.text = "Lis&t"
+	this.im_menu.m_file.m_print.enabled = true
+	this.i_editmode = 2
+	this.i_retrievemode = 2
+	ll_code = this.id_dwcontrol.borderstyle.code[this.il_selectedrow]
+	this.id_dwcontrol = this.id_master
+	ll_rowcount = wf_retrieve(ll_code)
+	this.id_dwcontrol = this.id_detail
+	wf_retrieve(ll_code)
+	this.id_detail.setrow(1)
+	this.id_detail.scrolltorow(1)
+	this.id_detail.setcolumn("itemmetercode")
+	this.id_detail.setfocus()
+	this.id_dwcontrol = this.id_list
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_new.visible = false
+	this.im_menu.m_item.m_newitem.enabled = true
+	this.im_menu.m_item.m_deleteitem.enabled = true
+
+// w_itemallowedmeter.ue_postopen() returns 0
+	call super::ue_postopen
+	this.id_detail.getchild("itemmetercode", this.idc_itemmeter)
+	this.idc_itemmeter.settransobject(this.it_transobject)

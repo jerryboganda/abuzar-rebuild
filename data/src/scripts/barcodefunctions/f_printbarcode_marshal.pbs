@@ -1,0 +1,252 @@
+// function f_printbarcode_marshal (barcodefunctions)  ancestor: function_object
+
+// f_printbarcode_marshal.f_printbarcode_marshal(datawindow id_master, datawindow id_detail, boolean ib_printprice) returns long
+	long ll_totalrows
+	long ll_counter
+	long ll_innercounter
+	long ll_qty
+	long ll_currrow
+	long ll_tot_label_rows
+	long li_file2
+	long ll_job
+	integer li_startcell
+	integer li_stopcell
+	integer li_temp
+	integer li_file
+	string ls_clientname
+	string ls_clientname_25_char
+	string ls_itemname
+	string ls_aliasname
+	string ls_price
+	string ls_filecontent
+	string ls_seperator
+	string ls_date
+	string ls_format
+	string ls_xpos
+	string ls_infocode
+	string ls_printer
+	string ls_manufshortname
+	string ls_design
+	string ls_purprice
+	string ls_supp_alias
+	string ls_batch
+	string ls_contents
+	string ls_defaultinfo
+	string ls_defaultprinter
+	long ll_headerno
+	long ll_labelno
+	long ll_labelpos
+	long ll_supply_cols_per_row
+	integer li_barcodeleninprint
+	ls_seperator = ";"
+	ls_supp_alias = id_master.object.aliasname[id_master.getrow()]
+	ll_headerno = id_master.getitemnumber(id_master.getrow(), "headerno")
+	ls_clientname = trim(f_reportheaderinfo_wrt_headerno("clientname", ll_headerno))
+	ls_clientname_25_char = upper(left(trim(f_reportheaderinfo_wrt_headerno("clientname", ll_headerno)), 25))
+	li_barcodeleninprint = f_numberpreferences("BarCodeLenInPrint")
+	ll_totalrows = id_detail.rowcount()
+	ls_printer = trim(id_master.object.barcodeprinter[1])
+	if ls_printer = "Zebra ZM 400 (200dpi)" and ll_totalrows > 0 then
+		ll_counter = 1
+		li_file = fileopen("label.prn", linemode!, write!, lockwrite!, replace!)
+		if li_file = -1 then
+			messagebox("Error", "Unable to locate file for Label printing")
+		else
+			ls_format = id_master.object.labelformat[1]
+			if ls_format = "1" then
+				ll_supply_cols_per_row = 2
+				filewrite(li_file, "^XATA000JSN^LT0^MNW^MTT^PON^PMN^LH0,0^JMA^PR2,2^MD10^JUN^LRN^CI0^XZ")
+				ll_labelno = 1
+				for ll_counter = 1 to ll_totalrows
+					if id_detail.getitemnumber(ll_counter, "qty") > 0.0 then
+						ll_qty = id_detail.getitemnumber(ll_counter, "qty")
+						ls_itemname = left(trim(id_detail.getitemstring(ll_counter, "itemname")), 37)
+						ls_aliasname = left(trim(id_detail.getitemstring(ll_counter, "fullcode")), li_barcodeleninprint)
+						ls_batch = id_detail.getitemstring(ll_counter, "batch")
+						if ls_batch = "" or isnull(ls_batch) then
+							ls_batch = ""
+						else
+							ls_batch = "Qty: " + ls_batch
+						end if
+						if ib_printprice then
+							ls_price = "Rs:" + trim(string(round(id_detail.getitemdecimal(ll_counter, "saleprice"), 2), "##,###,###.00"))
+						else
+							ls_price = ""
+						end if
+						ls_date = string(today(), "dd/mm")
+						for ll_innercounter = 1 to ll_qty
+							ll_labelpos = ll_labelno mod ll_supply_cols_per_row
+							if ll_labelpos = 1 then
+								filewrite(li_file, "^XA")
+								filewrite(li_file, "^MMT")
+								filewrite(li_file, "^LL0184")
+								filewrite(li_file, "^PW799")
+								filewrite(li_file, "^LS0")
+							end if
+							if ll_labelpos = 1 then
+								ls_xpos = "86"
+							elseif ll_labelpos = 0 then
+								ls_xpos = "502"
+							end if
+							ls_filecontent = "^FT" + ls_xpos + ",42^A0N,35,64^FH\^FD" + ls_clientname + "^FS"
+							filewrite(li_file, ls_filecontent)
+							if ll_labelpos = 1 then
+								ls_xpos = "285"
+							elseif ll_labelpos = 0 then
+								ls_xpos = "701"
+							end if
+							ls_filecontent = "^FT" + ls_xpos + ",35^A0N,25,45^FH\^FD\A9^FS"
+							filewrite(li_file, ls_filecontent)
+							if ll_labelpos = 1 then
+								ls_xpos = "11"
+							elseif ll_labelpos = 0 then
+								ls_xpos = "435"
+							end if
+							ls_filecontent = "^BY2,3,57^FT" + ls_xpos + ",105^BCN,N,N,N,N"
+							filewrite(li_file, ls_filecontent)
+							filewrite(li_file, "^FD>:" + ls_aliasname + "^FS")
+							if ll_labelpos = 1 then
+								ls_xpos = "11"
+							elseif ll_labelpos = 0 then
+								ls_xpos = "435"
+							end if
+							ls_filecontent = "^FT" + ls_xpos + ",137^A0N,37,27^FH\^FD" + ls_aliasname + "^FS"
+							filewrite(li_file, ls_filecontent)
+							if ll_labelpos = 1 then
+								ls_xpos = "11"
+							elseif ll_labelpos = 0 then
+								ls_xpos = "435"
+							end if
+							ls_filecontent = "^FT" + ls_xpos + ",165^A0N,32,20^FH\^FD" + ls_itemname + "^FS"
+							filewrite(li_file, ls_filecontent)
+							if ll_labelpos = 1 then
+								ls_xpos = "11"
+							elseif ll_labelpos = 0 then
+								ls_xpos = "435"
+							end if
+							ls_filecontent = "^FT" + ls_xpos + ",190^A0N,27,35^FH\^FD" + ls_price + "^FS"
+							filewrite(li_file, ls_filecontent)
+							if ll_labelpos = 1 then
+								ls_xpos = "225"
+							elseif ll_labelpos = 0 then
+								ls_xpos = "653"
+							end if
+							ls_filecontent = "^FT" + ls_xpos + ",190^A0N,24,22^FH\^FD" + ls_batch + "^FS"
+							filewrite(li_file, ls_filecontent)
+							if ll_labelpos = 0 then
+								filewrite(li_file, "^PQ1,0,1,Y^XZ")
+							end if
+							ll_labelno = ll_labelno + 1
+						next
+					end if
+				next
+			elseif ls_format = "2" then
+				filewrite(li_file, "^XATA000JSN^LT0^MNW^MTT^PON^PMN^LH0,0^JMA^PR2,2^MD10^JUN^LRN^CI0^XZ")
+				ll_labelno = 1
+				for ll_counter = 1 to ll_totalrows
+					if id_detail.getitemnumber(ll_counter, "qty") > 0.0 then
+						ll_qty = id_detail.getitemnumber(ll_counter, "qty")
+						ls_itemname = left(trim(id_detail.getitemstring(ll_counter, "itemname")), 37)
+						ls_aliasname = left(trim(id_detail.getitemstring(ll_counter, "fullcode")), li_barcodeleninprint)
+						ls_batch = id_detail.getitemstring(ll_counter, "batch")
+						if ls_batch = "" or isnull(ls_batch) then
+							ls_batch = ""
+						else
+							ls_batch = "Qty: " + ls_batch
+						end if
+						if ib_printprice then
+							ls_price = "Rs: " + trim(string(round(id_detail.getitemdecimal(ll_counter, "saleprice"), 2), "##,###,###.00"))
+						else
+							ls_price = ""
+						end if
+						ls_date = string(today(), "dd/mm")
+						filewrite(li_file, "^XA")
+						filewrite(li_file, "^MMT")
+						filewrite(li_file, "^LL0404")
+						filewrite(li_file, "^PW623")
+						filewrite(li_file, "^LS0")
+						ls_filecontent = "^FT230,60^A0N,55,64^FH\^FD" + ls_clientname + "^FS"
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "^FT422,55^A0N,45,50^FH\^FD\A9^FS"
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "^BY3,3,85^FT31,160^BCN,N,N,N,N"
+						filewrite(li_file, ls_filecontent)
+						filewrite(li_file, "^FD>:" + ls_aliasname + "^FS")
+						ls_filecontent = "^FT31,198^A0N,38,62^FH\^FD" + ls_aliasname + "^FS"
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "^FT31,245^A0N,42,33^FH\^FD" + ls_itemname + "^FS"
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "^FT31,285^A0N,40,45^FH\^FD" + ls_price + "^FS"
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "^FT340,285^A0N,35,35^FH\^FD" + ls_batch + "^FS"
+						filewrite(li_file, ls_filecontent)
+						filewrite(li_file, "^PQ" + trim(string(ll_qty)) + ",0,1,Y^XZ")
+					end if
+				next
+			elseif ls_format = "3" then
+				ll_supply_cols_per_row = 1
+				filewrite(li_file, "^XATA000JSN^LT0^MNW^MTT^PON^PMN^LH0,0^JMA^PR3,3^MD10^JUS^LRN^CI0^XZ")
+				for ll_counter = 1 to ll_totalrows
+					if id_detail.getitemnumber(ll_counter, "qty") > 0.0 then
+						ll_qty = id_detail.getitemnumber(ll_counter, "qty")
+						ls_itemname = left(id_detail.getitemstring(ll_counter, "itemname"), 50)
+						ls_aliasname = left(trim(id_detail.getitemstring(ll_counter, "fullcode")), li_barcodeleninprint)
+						ls_batch = id_detail.getitemstring(ll_counter, "batch")
+						if ls_batch = "" or isnull(ls_batch) then
+							ls_batch = ""
+						else
+							ls_batch = "Qty: " + ls_batch
+						end if
+						if ib_printprice then
+							ls_price = "Rs: " + trim(string(round(id_detail.getitemdecimal(ll_counter, "saleprice"), 2), "##,###,###.00"))
+						else
+							ls_price = ""
+						end if
+						filewrite(li_file, "^XA")
+						filewrite(li_file, "^MMT")
+						filewrite(li_file, "^LL0400")
+						filewrite(li_file, "^PW799")
+						filewrite(li_file, "^LS0")
+						ls_filecontent = "^FT214,67^A0N,46,117^FH\^FD" + ls_clientname + "^FS"
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "^BY2,3,160^FT24,247^BCN,N,N,N,N"
+						filewrite(li_file, ls_filecontent)
+						filewrite(li_file, "^FD" + ls_aliasname + "^FS")
+						ls_filecontent = "^FT24,290^A0N,42,45^FH\^FD" + ls_aliasname + "^FS"
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "^FT24,345^A0N,50,35^FH\^FD" + ls_itemname + "^FS"
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "^FT24,395^A0N,55,45^FH\^FD" + ls_price + "^FS"
+						filewrite(li_file, ls_filecontent)
+						ls_filecontent = "^FT520,395^A0N,39,33^FH\^FD" + ls_batch + "^FS"
+						filewrite(li_file, ls_filecontent)
+						filewrite(li_file, "^PQ" + trim(string(ll_qty)) + ",0,1,Y^XZ")
+					end if
+				next
+			end if
+			if ll_labelpos > 0 then
+				filewrite(li_file, "^PQ1,0,1,Y^XZ")
+			end if
+			fileclose(li_file)
+			li_file2 = fileopen("label.prn", textmode!, read!, lockread!)
+			if li_file2 = -1 then
+				messagebox("Error", "Unable to locate file for Label printing")
+				return 0
+			else
+				filereadex(li_file2, ls_contents)
+				fileclose(li_file2)
+				ls_defaultinfo = printgetprinter()
+				ls_defaultprinter = left(ls_defaultinfo, pos(ls_defaultinfo, "~t") - 1)
+				printsetprinter("Zebra ZM 400 (200dpi)")
+				ll_job = printopen("waseela", false)
+				if ll_job = -1 then
+					messagebox("Error", "Unable to Open Print Job for Label printing")
+				else
+					printsend(ll_job, ls_contents)
+					printclose(ll_job)
+				end if
+				printsetprinter(trim(ls_defaultprinter))
+			end if
+		end if
+	end if
+	return 0

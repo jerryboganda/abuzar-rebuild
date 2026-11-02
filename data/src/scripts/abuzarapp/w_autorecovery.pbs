@@ -1,0 +1,332 @@
+// window w_autorecovery (abuzarapp)  ancestor: window
+
+// w_autorecovery.ue_postopen() returns 0
+	string backupname
+	string backupdescription
+	string username
+	string servername
+	string databasename
+	string machinename
+	string collation
+	string bindingid
+	string recoveryforkid
+	string familyguid
+	string firstrecoveryforkid
+	string recoverymodel
+	string differentialbaseguid
+	string backuptypedescription
+	string backupsetguid
+	long backuptype
+	long compressed
+	long position
+	long devicetype
+	long databaseversion
+	long sortorder
+	long codepage
+	long unicodelocaleid
+	long unicodecomparisonstyle
+	long compatibilitylevel
+	long softwarevendorid
+	long softwareversionmajor
+	long compressedbackupsize
+	long containment
+	long softwareversionminor
+	long softwareversionbuild
+	long flags
+	long hasbulkloggeddata
+	long issnapshot
+	long is_readonly
+	long issingleuser
+	long hasbackupchecksums
+	long isdamaged
+	long beginslogchain
+	long hasincompletemetadata
+	long isforceoffline
+	long iscopyonly
+	datetime expirationdate
+	datetime databasecreationdate
+	datetime backupstartdate
+	datetime backupfinishdate
+	datetime ldt_today
+	double backupsize
+	double firstlsn
+	double lastlsn
+	double checkpointlsn
+	double differentialbaselsn
+	double dabasebackuplsn
+	double forkpointlsn
+	string ls_query
+	string ls_backupdevice
+	long ll_counter
+	long ll_arraycount
+	long ll_row
+	long ll_pos
+	long ll_retcode
+	long ll_firstvalidbackup
+	string ls_version_info
+	open(w_disclaimerwindow)
+	if message.doubleparm = -1.0 or message.doubleparm = 0.0 then
+		close(this)
+		return
+	end if
+	setfocus()
+	open(w_administrator_key)
+	if message.doubleparm = -1.0 or message.doubleparm = 0.0 then
+		close(this)
+		return
+	end if
+	setfocus()
+	this.dw_backupinfo.settransobject(sqlca)
+	this.is_bkupdevice[1, 2] = "Manual Backup"
+	this.is_bkupdevice[1, 3] = "manual"
+	this.is_bkupdevice[2, 2] = "Auto Client Backup"
+	this.is_bkupdevice[2, 3] = "autoclient"
+	this.is_bkupdevice[3, 2] = "Auto StartUp Backup"
+	this.is_bkupdevice[3, 3] = "autostartup"
+	ll_pos = pos(gs_servername, "\")
+	if ll_pos > 0 then
+		this.is_servername = left(gs_servername, ll_pos - 1)
+	else
+		this.is_servername = gs_servername
+	end if
+	SQL SELECT Ver =@@Version INTO :ls_version_info FROM ( SELECT A =1 ) AS T USING sqlca;
+	if sqlca.sqlcode <> 0 then
+		messagebox("", "Unable to Fetch SQL Server Version Information. Details are:-~r~n" + sqlca.sqlerrtext)
+		close(this)
+		return
+	end if
+	for ll_counter = 1 to 3
+		ls_backupdevice = f_getbackupdevicename(this.is_bkupdevice[ll_counter, 3])
+		this.is_bkupdevice[ll_counter, 1] = ls_backupdevice
+	next
+	ll_counter = 1
+	ls_query = "USE tempdb          if exists (select * from dbo.sysobjects where id = object_id(N'[dbo].[sp_execute_temp]') and OBJECTPROPERTY(id, N'IsProcedure') = 1)    DROP PROCEDURE dbo.sp_execute_temp "
+	SQL EXECUTE IMMEDIATE :ls_query USING sqlca;
+	if sqlca.sqlcode = 0 then
+		ls_query = "CREATE PROCEDURE dbo.sp_execute_temp @qry VarChar(8000) As Execute (@Qry)"
+		SQL EXECUTE IMMEDIATE :ls_query USING sqlca;
+	end if
+	for ll_counter = 1 to 3
+		backupname = ""
+		backupdescription = ""
+		username = ""
+		servername = ""
+		databasename = ""
+		machinename = ""
+		collation = ""
+		bindingid = ""
+		recoveryforkid = ""
+		familyguid = ""
+		firstrecoveryforkid = ""
+		recoverymodel = ""
+		differentialbaseguid = ""
+		backuptypedescription = ""
+		backupsetguid = ""
+		setnull(expirationdate)
+		setnull(databasecreationdate)
+		setnull(backupstartdate)
+		setnull(backupfinishdate)
+		backupsize = 0
+		firstlsn = 0
+		lastlsn = 0
+		checkpointlsn = 0
+		differentialbaselsn = 0
+		dabasebackuplsn = 0
+		forkpointlsn = 0
+		ls_backupdevice = this.is_bkupdevice[ll_counter, 1]
+		ll_row = this.dw_backupinfo.insertrow(0)
+		this.dw_backupinfo.object.databasename[ll_row] = databasename
+		this.dw_backupinfo.object.backupname[ll_row] = this.is_bkupdevice[ll_counter, 1]
+		this.dw_backupinfo.object.backupdescription[ll_row] = this.is_bkupdevice[ll_counter, 2] + " (Not Found)"
+		if match(ls_version_info, "SQL Server 2012") = true then
+			ls_query = "Restore HeaderOnly FROM " + ls_backupdevice
+		else
+			ls_query = "Restore HeaderOnly FROM " + ls_backupdevice + " With PASSWORD = 'REDACTED" + lower(this.is_servername) + "', MEDIAPASSWORD = 'REDACTED" + lower(this.is_servername) + "'"
+		end if
+		SQL EXECUTE IMMEDIATE :ls_query USING sqlca;
+		if sqlca.sqlcode = 0 then
+			SQL EXECUTE sp_temp USING sqlca; /* args: ls_query */
+			if sqlca.sqlcode = 0 then
+				if match(ls_version_info, "SQL Server 2012") = true then
+					SQL FETCH sp_temp INTO :backupname, :backupdescription, :backuptype, :expirationdate, :compressed, :position, :devicetype, :username, :servername, :databasename, :databaseversion, :databasecreationdate, :backupsize, :firstlsn, :lastlsn, :checkpointlsn, :dabasebackuplsn, :backupstartdate, :backupfinishdate, :sortorder, :codepage, :unicodelocaleid, :unicodecomparisonstyle, :compatibilitylevel, :softwarevendorid, :softwareversionmajor, :softwareversionminor, :softwareversionbuild, :machinename, :flags, :bindingid, :recoveryforkid, :collation, :familyguid, :hasbulkloggeddata, :issnapshot, :is_readonly, :issingleuser, :hasbackupchecksums, :isdamaged, :beginslogchain, :hasincompletemetadata, :isforceoffline, :iscopyonly, :firstrecoveryforkid, :forkpointlsn, :recoverymodel, :differentialbaselsn, :differentialbaseguid, :backuptypedescription, :backupsetguid, :compressedbackupsize, :containment USING sqlca;
+				else
+					SQL FETCH sp_temp INTO :backupname, :backupdescription, :backuptype, :expirationdate, :compressed, :position, :devicetype, :username, :servername, :databasename, :databaseversion, :databasecreationdate, :backupsize, :firstlsn, :lastlsn, :checkpointlsn, :differentialbaselsn, :backupstartdate, :backupfinishdate, :sortorder, :codepage, :unicodelocaleid, :unicodecomparisonstyle, :compatibilitylevel, :softwarevendorid, :softwareversionmajor, :softwareversionminor, :softwareversionbuild, :machinename, :flags, :bindingid, :recoveryforkid, :collation USING sqlca;
+				end if
+				if sqlca.sqlcode = 0 then
+					this.dw_backupinfo.object.backupdescription[ll_row] = this.is_bkupdevice[ll_counter, 2]
+					this.dw_backupinfo.object.backupstartdate[ll_row] = backupstartdate
+					this.dw_backupinfo.object.backupfinishdate[ll_row] = backupfinishdate
+					this.dw_backupinfo.object.backupsize[ll_row] = round(backupsize / 1024.00 / 1024.00, 2)
+					this.dw_backupinfo.object.machinename[ll_row] = machinename
+					this.dw_backupinfo.object.servername[ll_row] = servername
+					this.dw_backupinfo.object.physicallocation[ll_row] = ""
+					SQL CLOSE sp_temp USING sqlca;
+				else
+					SQL CLOSE sp_temp USING sqlca;
+				end if
+			else
+				SQL CLOSE sp_temp USING sqlca;
+			end if
+		end if
+	next
+	if this.dw_backupinfo.rowcount() = 0 then
+		messagebox("Auto Restore/Recovery Information", "No Backup exists on any backup device(s)~r~nTherefore no Backup Available To display or recover")
+		close(this)
+		return
+	end if
+	ll_counter = 1
+	this.dw_backupinfo.sort()
+	for ll_counter = 1 to this.dw_backupinfo.rowcount()
+		if not isnull(this.dw_backupinfo.object.backupfinishdate[ll_counter]) and ll_firstvalidbackup = 0 then
+			ll_firstvalidbackup = ll_counter
+		end if
+	next
+	if ll_firstvalidbackup = 0 then
+		messagebox("Auto Restore/Recovery Information", "Database Recovery Failure.~r~n" + "No Backup exists on any backup device(s)~r~n" + "Therefore No Backup Available to Restore.~r~n~r~n" + "Kindly Consult Abuzar Consultancy Support Team", stopsign!)
+		close(this)
+		return
+	end if
+	if this.dw_backupinfo.rowcount() > 0 and ll_firstvalidbackup > 0 then
+		this.dw_backupinfo.setrow(ll_firstvalidbackup)
+		this.dw_backupinfo.scrolltorow(ll_firstvalidbackup)
+		this.dw_backupinfo.setcolumn("backupdescription")
+		this.dw_backupinfo.setfocus()
+		ldt_today = datetime(today(), now())
+		this.st_status.text = "Best Possible Option:~r~n" + "    Backup Name : " + this.dw_backupinfo.object.backupname[ll_firstvalidbackup] + "~r~n" + "    Backup Size : " + string(this.dw_backupinfo.object.backupsize[ll_firstvalidbackup], "##,###,###,##0.00") + "~r~n" + "    Backup Date : " + string(this.dw_backupinfo.object.backupfinishdate[ll_firstvalidbackup], "dd-mmm-yyyy hh:mm:ss am/pm") + "~r~n" + "    Current Date : " + string(ldt_today, "dd-mmm-yyyy hh:mm:ss am/pm") + "~r~n" + "    Estimated Data Loss : " + this.dw_backupinfo.object.c_backupage[ll_firstvalidbackup]
+		this.gb_restore.visible = true
+		this.st_status.visible = true
+	end if
+	setfocus()
+
+// w_autorecovery.create() returns 0
+	this.hpb_restore = create hpb_restore
+	this.st_status = create st_status
+	this.cb_start = create cb_start
+	this.dw_backupinfo = create dw_backupinfo
+	this.st_2 = create st_2
+	this.st_1 = create st_1
+	this.cb_close = create cb_close
+	this.r_above1day = create r_above1day
+	this.r_above3hr = create r_above3hr
+	this.r_below1day = create r_below1day
+	this.st_3 = create st_3
+	this.gb_restore = create gb_restore
+	this.control = {this.hpb_restore, this.st_status, this.cb_start, this.dw_backupinfo, this.st_2, this.st_1, this.cb_close, this.r_above1day, this.r_above3hr, this.r_below1day, this.st_3, this.gb_restore}
+
+// w_autorecovery.destroy() returns 0
+	destroy this.hpb_restore
+	destroy this.st_status
+	destroy this.cb_start
+	destroy this.dw_backupinfo
+	destroy this.st_2
+	destroy this.st_1
+	destroy this.cb_close
+	destroy this.r_above1day
+	destroy this.r_above3hr
+	destroy this.r_below1day
+	destroy this.st_3
+	destroy this.gb_restore
+
+// w_autorecovery.close() returns long
+	return ::message.returnvalue
+
+// w_autorecovery.open() returns long
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	this.r_above1day.fillcolor = rgb(225, 100, 100)
+	this.r_above3hr.fillcolor = rgb(255, 245, 175)
+	this.r_below1day.fillcolor = rgb(50, 155, 125)
+	triggerevent("ue_postopen")
+	return ::message.returnvalue
+
+// cb_start.clicked() returns long
+	long ll_counter
+	long ll_validbackupcount
+	long ll_retcode
+	string ls_backupname
+	string ls_query
+	string ls_backupage
+	string ls_errtext
+	string ls_eventtype
+	string ls_module
+	string ls_detail
+	datetime ldt_backupdatetime
+	datetime ldt_today
+	double ld_size
+	string ls_version_info
+	SQL SELECT Ver =@@Version INTO :ls_version_info FROM ( SELECT A =1 ) AS T USING sqlca;
+	if sqlca.sqlcode <> 0 then
+		messagebox("", "Unable to Fetch SQL Server Version Information. Details are:-~r~n" + sqlca.sqlerrtext)
+		close(parent)
+		return ::message.returnvalue
+	end if
+	parent.gb_restore.visible = true
+	parent.st_status.visible = true
+	parent.hpb_restore.visible = true
+	ll_counter = 1
+	parent.dw_backupinfo.sort()
+	for ll_counter = 1 to parent.dw_backupinfo.rowcount()
+		if not isnull(parent.dw_backupinfo.object.backupfinishdate[ll_counter]) and parent.dw_backupinfo.object.backupsize[ll_counter] > 0 then
+			ls_backupname = parent.dw_backupinfo.object.backupname[ll_counter]
+			ldt_backupdatetime = parent.dw_backupinfo.object.backupfinishdate[ll_counter]
+			ld_size = parent.dw_backupinfo.object.backupsize[ll_counter]
+			ls_backupage = parent.dw_backupinfo.object.c_backupage[ll_counter]
+			ldt_today = datetime(today(), now())
+			parent.st_status.text = "Best Possible Option:~r~n" + "    Backup Name : " + ls_backupname + "~r~n" + "    Backup Size : " + string(ld_size, "##,###,###,##0.00") + "~r~n" + "    Backup Date : " + string(ldt_backupdatetime, "dd-mmm-yyyy hh:mm:ss am/pm") + "~r~n" + "    Current Date : " + string(ldt_today, "dd-mmm-yyyy hh:mm:ss am/pm") + "~r~n" + "    Estimated Data loss : " + ls_backupage
+			ll_validbackupcount = ll_validbackupcount + 1
+			parent.hpb_restore.stepit()
+			parent.hpb_restore.stepit()
+			parent.hpb_restore.stepit()
+			parent.hpb_restore.stepit()
+			if match(ls_version_info, "SQL Server 2012") = true then
+				ls_query = "RESTORE DATABASE " + gs_dbname + " FROM " + parent.dw_backupinfo.object.backupname[ll_counter] + " With RECOVERY, REPLACE "
+			else
+				ls_query = "RESTORE DATABASE " + gs_dbname + " FROM " + parent.dw_backupinfo.object.backupname[ll_counter] + " With RECOVERY, REPLACE, PASSWORD = 'REDACTED" + lower(parent.is_servername) + "', MEDIAPASSWORD = 'REDACTED" + lower(parent.is_servername) + "'"
+			end if
+			SQL EXECUTE IMMEDIATE :ls_query USING sqlca;
+			parent.hpb_restore.stepit()
+			parent.hpb_restore.stepit()
+			if sqlca.sqlcode = 0 then
+				parent.hpb_restore.stepit()
+				parent.hpb_restore.stepit()
+				parent.hpb_restore.stepit()
+				ls_errtext = sqlca.sqlerrtext
+				ll_retcode = 1
+				ls_query = "Use " + gs_dbname
+				SQL EXECUTE IMMEDIATE :ls_query USING sqlca;
+				gl_usercode = 1
+				ls_eventtype = "Alert"
+				ls_module = "Auto Restore/Recovery"
+				ls_detail = "Auto Database Recovery Resulted in Success. Backup Restored = " + ls_backupname
+				sqlca.insert_eventlog(ls_eventtype, ls_module, ls_detail, gl_usercode)
+				messagebox("Auto Restore/Recovery Information", "Auto Database Recovery Resulted in Success.~r~n" + "Details Are: - ~r~n" + ls_errtext + "~r~n" + "Database Recoverd = " + gs_dbname + "~r~n" + "Backup Restored = " + ls_backupname + "~r~n" + "Backup FinishDate = " + string(ldt_backupdatetime, "dd/mmm/yyyy hh:mm:ss") + "~r~n" + "Backup Size = " + string(ld_size, "###,###,##0.00") + " MB~r~n~r~n~r~n" + "Kindly Run Waseela Application Again.~r~n" + "If problem is still un-resolved then Kindly Consult Abuzar Consultancy Support Team", information!)
+				exit
+			else
+				parent.hpb_restore.position = 10
+				ls_errtext = sqlca.sqlerrtext
+				messagebox("Auto Restore/Recovery Information", "Database Recovery Failure.~r~n" + ls_errtext + "~r~n" + "Kindly Consult Abuzar Consultancy Support Team", stopsign!)
+				ll_retcode = -1
+			end if
+		end if
+	next
+	if ll_retcode = 1 then
+		close(parent)
+	end if
+	return ::message.returnvalue
+
+// cb_close.clicked() returns long
+	close(parent)
+	return ::message.returnvalue

@@ -1,0 +1,57 @@
+// function f_drilldown_itemsearch (functions)  ancestor: function_object
+
+// f_drilldown_itemsearch.f_drilldown_itemsearch(string as_searchtype, integer ai_module) returns long
+	s_popup_selection lstr_selection
+	if as_searchtype = "criteriasearch" then
+		open(w_popup_criteriaselection)
+		lstr_selection = message.powerobjectparm
+		if lstr_selection.l_code > 0 then
+			openwithparm(w_popup_criteriavaluesselection, lstr_selection)
+			lstr_selection = message.powerobjectparm
+			if lstr_selection.l_code > 0 then
+				openwithparm(w_popup_itemselection, lstr_selection)
+				lstr_selection = message.powerobjectparm
+				if lstr_selection.l_code > 0 then
+					return lstr_selection.l_code
+				end if
+				return
+			end if
+			return
+		end if
+	elseif as_searchtype = "namesearch" then
+		open(w_popup_itemsearchcriteriaselection)
+		lstr_selection = message.powerobjectparm
+		if lstr_selection.l_code > 0 then
+			openwithparm(w_popup_itemselection, lstr_selection)
+			lstr_selection = message.powerobjectparm
+			if lstr_selection.l_code > 0 then
+				return lstr_selection.l_code
+			end if
+			return
+		end if
+	elseif as_searchtype = "aliasnamesearch" then
+		open(w_popup_itemsearchcriteriaselection)
+		lstr_selection = message.powerobjectparm
+		lstr_selection.s_name3 = "aliasnamesearch"
+		if lstr_selection.l_code > 0 then
+			openwithparm(w_popup_itemselection, lstr_selection)
+			lstr_selection = message.powerobjectparm
+			if lstr_selection.l_code > 0 then
+				return lstr_selection.l_code
+			end if
+			return
+		end if
+	elseif as_searchtype = "itemsearch" then
+		open(w_popup_itemsearch_criteria)
+		lstr_selection = message.powerobjectparm
+		if lstr_selection.l_code > 0 then
+			openwithparm(w_popup_itemsearch_selection, lstr_selection)
+			lstr_selection = message.powerobjectparm
+			if lstr_selection.l_code > 0 then
+				return lstr_selection.l_code
+			end if
+			return
+		end if
+		return
+	end if
+	return 0

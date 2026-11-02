@@ -1,0 +1,311 @@
+// window w_graphviewer (graphcomponents)  ancestor: window
+
+// w_graphviewer.ue_startdisplay() returns 0
+	wf_plotgraph()
+
+// w_graphviewer.ue_graph_type() returns 0
+	setpointer(hourglass!)
+	openwithparm(w_graph_type, this.gr_mygraph)
+
+// w_graphviewer.ue_graph_color() returns 0
+	setpointer(hourglass!)
+	openwithparm(w_graph_color, this.gr_mygraph)
+
+// w_graphviewer.ue_graph_title() returns 0
+	setpointer(hourglass!)
+	openwithparm(w_graph_title, this.gr_mygraph)
+	this.istr_gop.title = this.gr_mygraph.title
+
+// w_graphviewer.ue_graph_spacing() returns 0
+	setpointer(hourglass!)
+	openwithparm(w_graph_spacing, this.gr_mygraph)
+
+// w_graphviewer.ue_graph_division() returns 0
+	setpointer(hourglass!)
+	openwithparm(w_graph_division, this.gr_mygraph)
+
+// w_graphviewer.ue_graph_rotation() returns 0
+	setpointer(hourglass!)
+	openwithparm(w_graph_rotation, this.gr_mygraph)
+
+// w_graphviewer.ue_copy_to_clipboard(unsignedlong wparam, long lparam) returns long
+	this.gr_mygraph.clipboard()
+	return ::message.returnvalue
+
+// w_graphviewer.wf_print() returns 0
+	long ll_printjob
+	ll_printjob = printopen("Graph Printing")
+	if printsetup() < 0 then
+		messagebox("Printer", "Printing Error")
+		printcancel(ll_printjob)
+	end if
+	this.gr_mygraph.print(ll_printjob, 1000, printy(ll_printjob) + 500, 6000, 4500)
+	printclose(ll_printjob)
+
+// w_graphviewer.wf_saveas() returns 0
+	this.gr_mygraph.saveas()
+
+// w_graphviewer.wf_plotgraph() returns long
+	long ll_index
+	long ll_rowcount
+	long ll_series_num
+	long ll_counter
+	long ll_innercounter
+	s_arguements lstr_arg
+	this.istr_gop.graphicobject = this.gr_mygraph
+	openwithparm(w_graph_series, this.istr_gop)
+	lstr_arg = message.powerobjectparm
+	setredraw(false)
+	if lstr_arg.i_status = 1 then
+		setpointer(hourglass!)
+		this.gr_mygraph.reset(all!)
+		this.gr_mygraph.title = this.istr_gop.title
+		this.istr_gop.categorycolumn = lstr_arg.s_name1
+		this.gr_mygraph.category.label = lstr_arg.s_name2
+		this.gr_mygraph.values.label = lstr_arg.s_name3
+		if lstr_arg.s_name4 = "U" then
+			this.gr_mygraph.categorysort = unsorted!
+		elseif lstr_arg.s_name4 = "A" then
+			this.gr_mygraph.categorysort = ascending!
+		elseif lstr_arg.s_name4 = "D" then
+			this.gr_mygraph.categorysort = descending!
+		end if
+		ll_rowcount = this.istr_gop.dw_dw1.rowcount()
+		if upperbound(lstr_arg.sa_stringlist) > 0 then
+			for ll_counter = 1 to upperbound(lstr_arg.sa_stringlist)
+				ll_series_num = this.gr_mygraph.addseries(lstr_arg.sa_stringlist[ll_counter])
+				if ll_series_num > 0 then
+					for ll_innercounter = 1 to ll_rowcount
+						this.gr_mygraph.adddata(ll_series_num, this.istr_gop.dw_dw1.getitemnumber(ll_innercounter, lstr_arg.sa_stringlist[ll_counter]), this.istr_gop.dw_dw1.getitemstring(ll_innercounter, lstr_arg.s_name1))
+					next
+				end if
+			next
+		else
+			ll_series_num = this.gr_mygraph.addseries("count")
+			if ll_series_num > 0 then
+				for ll_innercounter = 1 to ll_rowcount
+					this.gr_mygraph.adddata(ll_series_num, 1, this.istr_gop.dw_dw1.getitemstring(ll_innercounter, lstr_arg.s_name1))
+				next
+			end if
+		end if
+		setpointer(arrow!)
+	end if
+	setredraw(true)
+	return 0
+
+// w_graphviewer.create() returns 0
+	if this.menuname = "m_graphviewer" then
+		this.menuid = create m_graphviewer
+	end if
+	this.st_tooltip = create st_tooltip
+	this.dw_hidden = create dw_hidden
+	this.gr_mygraph = create gr_mygraph
+	this.control = {this.st_tooltip, this.dw_hidden, this.gr_mygraph}
+
+// w_graphviewer.destroy() returns 0
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.st_tooltip
+	destroy this.dw_hidden
+	destroy this.gr_mygraph
+
+// w_graphviewer.open() returns long
+	m_graphviewer lm_menu
+	long ll_width
+	long ll_height
+	long ll_found
+	environment env
+	this.istr_gop = message.powerobjectparm
+	if not isvalid(this.istr_gop.dw_dw1) then
+		messagebox("Message", "Datawindow is not valid")
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	lm_menu = this.menuid
+	this.menuid.dynamic mf_initsecurityapp(lm_menu)
+	this.im_reportmenu = this.menuid
+	if getenvironment(env) <> 1 then
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.gr_mygraph.width = ll_width * 0.985
+	this.gr_mygraph.height = ll_height * 0.80
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 637", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		lm_menu.m_file.m_saveas.visible = true
+		lm_menu.m_file.m_saveas.enabled = true
+		lm_menu.m_file.m_saveas.toolbaritemvisible = true
+	end if
+	setredraw(true)
+	postevent("ue_startdisplay")
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_graphviewer.activate() returns long
+	this.windowstate = maximized!
+	return ::message.returnvalue
+
+// gr_mygraph.create() returns 0
+	this.titledispattr = create grdispattr
+	this.legenddispattr = create grdispattr
+	this.piedispattr = create grdispattr
+	this.series = create graxis
+	this.series.dispattr = create grdispattr
+	this.series.labeldispattr = create grdispattr
+	this.category = create graxis
+	this.category.dispattr = create grdispattr
+	this.category.labeldispattr = create grdispattr
+	this.values = create graxis
+	this.values.dispattr = create grdispattr
+	this.values.labeldispattr = create grdispattr
+	this.titledispattr.textsize = 21
+	this.titledispattr.facename = "Arial"
+	this.titledispattr.fontcharset = defaultcharset!
+	this.titledispattr.fontfamily = swiss!
+	this.titledispattr.fontpitch = variable!
+	this.titledispattr.alignment = center!
+	this.titledispattr.backcolor = 536870912
+	this.titledispattr.format = "[General]"
+	this.titledispattr.displayexpression = "title"
+	this.category.label = "Category"
+	this.category.autoscale = true
+	this.category.shadebackedge = true
+	this.category.secondaryline = transparent!
+	this.category.majorgridline = transparent!
+	this.category.minorgridline = transparent!
+	this.category.droplines = transparent!
+	this.category.originline = transparent!
+	this.category.majortic = outside!
+	this.category.datatype = adttext!
+	this.category.dispattr.textsize = 13
+	this.category.dispattr.facename = "Arial"
+	this.category.dispattr.fontcharset = defaultcharset!
+	this.category.dispattr.fontfamily = swiss!
+	this.category.dispattr.fontpitch = variable!
+	this.category.dispattr.alignment = center!
+	this.category.dispattr.backcolor = 536870912
+	this.category.dispattr.format = "[General]"
+	this.category.dispattr.displayexpression = "category"
+	this.category.dispattr.escapement = 900
+	this.category.labeldispattr.textsize = 18
+	this.category.labeldispattr.facename = "Arial"
+	this.category.labeldispattr.fontcharset = defaultcharset!
+	this.category.labeldispattr.fontfamily = swiss!
+	this.category.labeldispattr.fontpitch = variable!
+	this.category.labeldispattr.alignment = center!
+	this.category.labeldispattr.backcolor = 536870912
+	this.category.labeldispattr.format = "[General]"
+	this.category.labeldispattr.displayexpression = "categoryaxislabel"
+	this.values.label = "Value"
+	this.values.autoscale = true
+	this.values.secondaryline = transparent!
+	this.values.majorgridline = transparent!
+	this.values.minorgridline = transparent!
+	this.values.droplines = transparent!
+	this.values.majortic = outside!
+	this.values.datatype = adtdouble!
+	this.values.dispattr.textsize = 13
+	this.values.dispattr.facename = "Arial"
+	this.values.dispattr.fontcharset = defaultcharset!
+	this.values.dispattr.fontfamily = swiss!
+	this.values.dispattr.fontpitch = variable!
+	this.values.dispattr.alignment = right!
+	this.values.dispattr.backcolor = 536870912
+	this.values.dispattr.format = "[General]"
+	this.values.dispattr.displayexpression = "value"
+	this.values.labeldispattr.textsize = 18
+	this.values.labeldispattr.facename = "Arial"
+	this.values.labeldispattr.fontcharset = defaultcharset!
+	this.values.labeldispattr.fontfamily = swiss!
+	this.values.labeldispattr.fontpitch = variable!
+	this.values.labeldispattr.alignment = center!
+	this.values.labeldispattr.backcolor = 536870912
+	this.values.labeldispattr.format = "[General]"
+	this.values.labeldispattr.displayexpression = "valuesaxislabel"
+	this.values.labeldispattr.escapement = 900
+	this.series.label = "(None)"
+	this.series.autoscale = true
+	this.series.secondaryline = transparent!
+	this.series.majorgridline = transparent!
+	this.series.minorgridline = transparent!
+	this.series.droplines = transparent!
+	this.series.originline = transparent!
+	this.series.majortic = outside!
+	this.series.datatype = adttext!
+	this.series.dispattr.textsize = 13
+	this.series.dispattr.facename = "Arial"
+	this.series.dispattr.fontcharset = defaultcharset!
+	this.series.dispattr.fontfamily = swiss!
+	this.series.dispattr.fontpitch = variable!
+	this.series.dispattr.backcolor = 536870912
+	this.series.dispattr.format = "[General]"
+	this.series.dispattr.displayexpression = "series"
+	this.series.labeldispattr.textsize = 19
+	this.series.labeldispattr.facename = "Arial"
+	this.series.labeldispattr.fontcharset = defaultcharset!
+	this.series.labeldispattr.fontfamily = swiss!
+	this.series.labeldispattr.fontpitch = variable!
+	this.series.labeldispattr.alignment = center!
+	this.series.labeldispattr.backcolor = 536870912
+	this.series.labeldispattr.format = "[General]"
+	this.series.labeldispattr.displayexpression = "seriesaxislabel"
+	this.legenddispattr.textsize = 16
+	this.legenddispattr.facename = "Arial"
+	this.legenddispattr.fontcharset = defaultcharset!
+	this.legenddispattr.fontfamily = swiss!
+	this.legenddispattr.fontpitch = variable!
+	this.legenddispattr.backcolor = 536870912
+	this.legenddispattr.format = "[General]"
+	this.legenddispattr.displayexpression = "series"
+	this.piedispattr.weight = 400
+	this.piedispattr.facename = "Arial"
+	this.piedispattr.fontcharset = defaultcharset!
+	this.piedispattr.fontfamily = swiss!
+	this.piedispattr.fontpitch = variable!
+	this.piedispattr.backcolor = 536870912
+	this.piedispattr.format = "[General]"
+	this.piedispattr.displayexpression = "if(seriescount > 1, series,string(percentofseries,~"0.00%~"))"
+	this.piedispattr.autosize = true
+
+// gr_mygraph.destroy() returns 0
+	destroy this.titledispattr
+	destroy this.legenddispattr
+	destroy this.piedispattr
+	destroy this.series.dispattr
+	destroy this.series.labeldispattr
+	destroy this.series
+	destroy this.category.dispattr
+	destroy this.category.labeldispattr
+	destroy this.category
+	destroy this.values.dispattr
+	destroy this.values.labeldispattr
+	destroy this.values
+
+// gr_mygraph.ue_rbuttonup(unsignedlong flags, integer xpos, integer ypos) returns long
+	parent.st_tooltip.visible = false
+	return ::message.returnvalue
+
+// gr_mygraph.rbuttondown(unsignedlong flags, integer xpos, integer ypos) returns long
+	grobjecttype clickedobject
+	integer li_series
+	integer li_category
+	clickedobject = objectatpointer(li_series, li_category)
+	if clickedobject = typedata! then
+		parent.st_tooltip.text = string(getdata(li_series, li_category), "###,###,##0.00")
+		parent.st_tooltip.x = parent.pointerx()
+		parent.st_tooltip.y = parent.pointery() - 65
+		parent.st_tooltip.visible = true
+	end if
+	return ::message.returnvalue

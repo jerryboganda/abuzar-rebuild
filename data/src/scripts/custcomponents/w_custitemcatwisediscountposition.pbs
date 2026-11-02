@@ -1,0 +1,56 @@
+// window w_custitemcatwisediscountposition (custcomponents)  ancestor: window
+
+// w_custitemcatwisediscountposition.create() returns 0
+	this.dw_print = create dw_print
+	this.cb_print = create cb_print
+	this.dw_control = create dw_control
+	this.control = {this.dw_print, this.cb_print, this.dw_control}
+
+// w_custitemcatwisediscountposition.destroy() returns 0
+	destroy this.dw_print
+	destroy this.cb_print
+	destroy this.dw_control
+
+// w_custitemcatwisediscountposition.open() returns long
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.width = ll_width * 0.98
+	this.height = ll_height * 0.90
+	this.y = int((ll_height - this.height) / 2.0)
+	this.dw_control.width = this.width - this.width * 0.02
+	this.dw_control.height = this.height * 0.90
+	this.cb_print.y = this.dw_control.height + 20
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.retrieve()
+	this.dw_control.modify("printpreview='yes'")
+	return ::message.returnvalue
+
+// w_custitemcatwisediscountposition.close() returns long
+	close(this)
+	return ::message.returnvalue
+
+// w_custitemcatwisediscountposition.key(keycode key, unsignedlong keyflags) returns long
+	if keydown(keyescape!) then
+		close(this)
+	end if
+	return ::message.returnvalue
+
+// cb_print.clicked() returns long
+	parent.dw_print.settransobject(sqlca)
+	parent.dw_print.retrieve()
+	if parent.dw_print.rowcount() > 0 then
+		if printsetup() < 0 then
+			messagebox("Printer", "Printing Error")
+			parent.dw_print.printcancel()
+		else
+			parent.dw_print.print()
+		end if
+	end if
+	return ::message.returnvalue

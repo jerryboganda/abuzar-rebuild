@@ -1,0 +1,143 @@
+// window w_packcatclass (singleentryitem)  ancestor: window
+
+// w_packcatclass.wf_duplicatecode(string as_code) returns boolean
+	integer li_packcode
+	integer li_duppackcode
+	li_packcode = integer(as_code)
+	SQL SELECT ItemPacking.icatcode INTO :li_duppackcode FROM ItemPacking WHERE ItemPacking.Packcode =:li_packcode USING sqlca;
+	if li_duppackcode = li_packcode then
+		return true
+	end if
+	return false
+
+// w_packcatclass.wf_manfduplicatecode(string as_code) returns boolean
+	integer li_manfcode
+	integer li_dupmanfcode
+	li_manfcode = integer(as_code)
+	SQL SELECT Manufacturer.Manfcode INTO :li_dupmanfcode FROM Manufacturer WHERE Manufacturer.Manfcode =:li_manfcode USING sqlca;
+	if li_dupmanfcode = li_manfcode then
+		return true
+	end if
+	return false
+
+// w_packcatclass.wf_packduplicatecode(string as_code) returns boolean
+	integer li_packcode
+	integer li_duppackcode
+	li_packcode = integer(as_code)
+	SQL SELECT ItemPacking.Packcode INTO :li_duppackcode FROM ItemPacking WHERE ItemPacking.Packcode =:li_packcode USING sqlca;
+	if li_duppackcode = li_packcode then
+		return true
+	end if
+	return false
+
+// w_packcatclass.wf_catduplicatecode(string as_code) returns boolean
+	integer li_catcode
+	integer li_dupcatcode
+	li_catcode = integer(as_code)
+	SQL SELECT ItemCategory.Packcode INTO :li_dupcatcode FROM ItemCategory WHERE ItemCategory.Catcode =:li_catcode USING sqlca;
+	if li_dupcatcode = li_catcode then
+		return true
+	end if
+	return false
+
+// w_packcatclass.wf_classduplicatecode(string as_code) returns boolean
+	integer li_classcode
+	integer li_dupclasscode
+	li_classcode = integer(as_code)
+	SQL SELECT ItemClass.iccode INTO :li_dupclasscode FROM ItemClass WHERE ItemClass.Catcode =:li_classcode USING sqlca;
+	if li_dupclasscode = li_classcode then
+		return true
+	end if
+	return false
+
+// w_packcatclass.create() returns 0
+	this.cb_cancel = create cb_cancel
+	this.cb_save = create cb_save
+	this.dw_1 = create dw_1
+	this.control = {this.cb_cancel, this.cb_save, this.dw_1}
+
+// w_packcatclass.destroy() returns 0
+	destroy this.cb_cancel
+	destroy this.cb_save
+	destroy this.dw_1
+
+// w_packcatclass.open() returns long
+	this.dw_1.setfocus()
+	this.dw_1.settransobject(sqlca)
+	choose case message.stringparm
+	case "packing"
+		this.title = "New Packing"
+		this.dw_1.dataobject = "d_item_packing"
+		this.dw_1.insertrow(0)
+	case "category"
+		this.title = "New Category"
+		this.dw_1.dataobject = "d_item_category"
+		this.dw_1.insertrow(0)
+	case "class"
+		this.title = "New Class"
+		this.dw_1.dataobject = "d_item_class"
+		this.dw_1.insertrow(0)
+	case "manufacturer"
+		this.title = "New Manufacturer"
+		this.dw_1.dataobject = "d_manufacturer_detail"
+		this.dw_1.insertrow(0)
+	end choose
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_packcatclass.close() returns long
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	close(parent)
+	return ::message.returnvalue
+
+// cb_save.clicked() returns long
+	string ls_code
+	ls_code = string(parent.dw_1.getitemnumber(1, 1))
+	if f_validatedw(parent.dw_1) < 0 then
+		return ::message.returnvalue
+	end if
+	parent.dw_1.settransobject(sqlca)
+	if parent.dw_1.update() > 0 then
+		SQL commit USING sqlca;
+	else
+		SQL rollback USING sqlca;
+	end if
+	close(parent)
+	return ::message.returnvalue
+
+// dw_1.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "ManfCode"
+		if parent.wf_manfduplicatecode(data) then
+			return 1
+		end if
+	case "PackCode"
+		if parent.wf_packduplicatecode(data) then
+			return 1
+		end if
+	case "CatCode"
+		if parent.wf_catduplicatecode(data) then
+			return 1
+		end if
+	case "ClassCode"
+		if parent.wf_classduplicatecode(data) then
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_1.itemerror(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "ManfCode"
+		messagebox("Error", "DuplicateCode")
+		return 1
+	end choose
+	return ::message.returnvalue

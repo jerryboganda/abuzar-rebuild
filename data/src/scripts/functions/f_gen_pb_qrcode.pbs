@@ -1,0 +1,32 @@
+// function f_gen_pb_qrcode (functions)  ancestor: function_object
+
+// f_gen_pb_qrcode.f_gen_pb_qrcode(string as_info) returns long
+	long ll_retcode
+	nv_qrcode lnv_qrcode
+	string ls_fname
+	if len(as_info) > 0 then
+		if fileexists(ls_fname) then
+			filedelete(ls_fname)
+		end if
+		ll_retcode = lnv_qrcode.get_qr_code_bitmap(ls_fname, as_info, 1, 4, 4)
+		if ll_retcode <> 0 then
+			if ll_retcode = 1 then
+				messagebox("Error Generating QRCode", "Error fileName, or incorrect path, or error opening file", stopsign!)
+			elseif ll_retcode = 2 then
+				messagebox("Error Generating QRCode", "Error text, incorrect length of the encoded text", stopsign!)
+			elseif ll_retcode = 3 then
+				messagebox("Error Generating QRCode", "Error errCorLvl, wrong level of error correction", stopsign!)
+			elseif ll_retcode = 4 then
+				messagebox("Error Generating QRCode", "Error borderSize, wrong border size", stopsign!)
+			elseif ll_retcode = 5 then
+				messagebox("Error Generating QRCode", "Error scale, incorrect module size", stopsign!)
+			elseif ll_retcode = 6 then
+				messagebox("Error Generating QRCode", "Error converting the encoding of the encoded text", stopsign!)
+			elseif ll_retcode = 7 then
+				messagebox("Error Generating QRCode", "Error receiving QR code", stopsign!)
+			else
+				messagebox("Error Generating QRCode", "Un-Known Error", stopsign!)
+			end if
+		end if
+	end if
+	return ll_retcode

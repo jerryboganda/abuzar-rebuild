@@ -1,0 +1,85 @@
+// window w_set_price_staxschedule_formula (changeitemprice)  ancestor: window
+
+// w_set_price_staxschedule_formula.ue_close(double ad_value) returns 0
+	this.istr_values.i_status = ad_value
+	closewithreturn(this, this.istr_values)
+
+// w_set_price_staxschedule_formula.create() returns 0
+	this.dw_stax = create dw_stax
+	this.st_1 = create st_1
+	this.dw_base = create dw_base
+	this.dw_update = create dw_update
+	this.st_3 = create st_3
+	this.st_2 = create st_2
+	this.st_qty = create st_qty
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.control = {this.dw_stax, this.st_1, this.dw_base, this.dw_update, this.st_3, this.st_2, this.st_qty, this.cb_cancel, this.cb_ok}
+
+// w_set_price_staxschedule_formula.destroy() returns 0
+	destroy this.dw_stax
+	destroy this.st_1
+	destroy this.dw_base
+	destroy this.dw_update
+	destroy this.st_3
+	destroy this.st_2
+	destroy this.st_qty
+	destroy this.cb_cancel
+	destroy this.cb_ok
+
+// w_set_price_staxschedule_formula.open() returns long
+	environment le_env
+	long ll_width
+	long ll_height
+	if getenvironment(le_env) = 1 then
+		ll_width = pixelstounits(le_env.screenwidth, xpixelstounits!) - this.width
+		ll_height = pixelstounits(le_env.screenheight, ypixelstounits!) - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width * 0.5
+			ll_height = ll_height * 0.5
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	this.dw_update.settransobject(sqlca)
+	this.dw_update.insertrow(0)
+	this.dw_base.settransobject(sqlca)
+	this.dw_base.insertrow(0)
+	this.dw_stax.settransobject(sqlca)
+	this.dw_stax.insertrow(0)
+	return ::message.returnvalue
+
+// dw_stax.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_base.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_update.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(0)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	double ld_value
+	parent.dw_update.accepttext()
+	parent.dw_base.accepttext()
+	parent.dw_stax.accepttext()
+	parent.istr_values.s_update = parent.dw_update.object.columnname[1]
+	parent.istr_values.s_base = parent.dw_base.object.columnname[1]
+	parent.istr_values.l_code = parent.dw_stax.object.salestaxschedulecode[1]
+	parent.post event ue_close(1)
+	return ::message.returnvalue

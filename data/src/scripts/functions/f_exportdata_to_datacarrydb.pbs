@@ -1,0 +1,190 @@
+// function f_exportdata_to_datacarrydb (functions)  ancestor: function_object
+
+// f_exportdata_to_datacarrydb.f_exportdata_to_datacarrydb(transaction at_transobject, char ac_exportbasicdata, char ac_exportstock, long[] al_invcode, integer ai_custcode, datetime adt_exportitemchangessince) returns long
+	long ll_rtcode
+	string ls_errtext
+	string ls_query_reset
+	string ls_query_newitemsonly
+	string ls_query_allitems
+	string ls_query_accounts1
+	string ls_query_accounts2
+	string ls_query_patients
+	u_transaction lt_transobject
+	boolean lb_commitok
+	lt_transobject = at_transobject
+	ls_query_reset = "Update TransferableData Set AutoInsert = 'N', AutoUpdate = 'N', AutoDelete = 'N', UpdateTabMaxKey = 'N' WHERE Enable='Y' "
+	ls_query_allitems = "Update TransferableData Set AutoInsert = 'Y', AutoUpdate = 'Y', " + "AutoDelete = CASE TableName WHEN 'POPolicyDetail' THEN 'Y' WHEN 'GroupRights' THEN 'Y' WHEN 'AlternateItemAlias' THEN 'Y' WHEN 'PackingCaseCapacity' THEN 'Y' WHEN 'DiscountPolicyDetail' THEN 'Y' WHEN 'ServiceBreakUp' THEN 'Y' WHEN 'ServiceComponentOption' THEN 'Y' WHEN 'ServiceComponentComment' THEN 'Y' WHEN 'ServiceComponentRefValue' THEN 'Y' ELSE 'N' END, " + "UpdateTabMaxKey = 'Y' " + "Where Enable='Y' AND TableName In ('Item','CategorySegment','ItemCategory','SITE','PCT','SalesTaxSchedule','ItemClass','ItemPacking','ItemAlert','Manufacturer','ManufacturerCategory','ManufacturerType','GenericItemType','GenericItem','POPolicy','POPolicyDetail','DiscountPolicy','DiscountPolicyDetail','MeasuringUnit','Groups','GroupRights','AlternateItemAlias','PackingCaseCapacity','Service','ServiceType','ServiceCategory','ServiceBreakUp','ServiceComponent','ServiceComponentType','ServiceComponentUnit','ServiceComponentComment','ServiceComponentOption','ServiceComponentRefValue','ServiceResultStamp','ServiceSampleRequirement','LockReason')"
+	ls_query_accounts1 = "Update TransferableData Set AutoInsert = 'Y', AutoUpdate = 'Y', AutoDelete = 'N', UpdateTabMaxKey = 'Y' Where Enable='Y' AND TableName In ('TaxCategory','Alert','SupplierCategory','CustomerSector','CustomerSegment','CustomerGroup','CustomerCategory', 'SalesMan','County', 'Area', 'SubArea', 'CategoryAccounts', 'SubAccounts', 'Accounts', 'Supplier', 'Customer', 'MeasuringUnit', 'ContactPolicy', 'Region', 'Zone', 'SalesTeam', 'SummaryAccount', 'GroupSummaryAccount', 'VocherCategory', 'VocherCategoryHeader', 'Message', 'SaleType')"
+	ls_query_accounts2 = "Update TransferableData Set AutoInsert = 'Y', AutoUpdate = 'Y', AutoDelete = 'Y', UpdateTabMaxKey = 'N' Where Enable='Y' AND TableName In ('SupplierManufacturers' , 'ItemSuppliers', 'SalesTeamMember','CustomerGroupDetail','CustItemCatWiseSaleDiscount','ContactPolicyDetail','ZoneAreas','SummaryAccountDetail','VocherCategoryDetail')"
+	ls_query_patients = "Update TransferableData Set AutoInsert = 'Y', AutoUpdate = 'Y', AutoDelete = 'N', UpdateTabMaxKey = 'Y' Where Enable='Y' AND TableName In ('Gestation','Rank','Unit','Relation','DoctorCategory','Doctors','Ward','DiseaseType','Disease','Patient','PatientLocation','PatientCategory')"
+	setpointer(hourglass!)
+	SQL rollback USING lt_transobject;
+	SQL EXECUTE IMMEDIATE :ls_query_reset USING lt_transobject;
+	if lt_transobject.sqlcode = 0 then
+		SQL EXECUTE IMMEDIATE :ls_query_allitems USING lt_transobject;
+		if lt_transobject.sqlcode <> 0 then
+			ls_errtext = "Problem in Export of all items.~r~nExport Setting Initialization Failed~r~nReasons Are:-~r~n" + lt_transobject.sqlerrtext
+			lb_commitok = false
+		end if
+		if lb_commitok then
+			SQL EXECUTE IMMEDIATE :ls_query_accounts1 USING lt_transobject;
+			if lt_transobject.sqlcode <> 0 then
+				ls_errtext = "Problem in Export of accounts.~r~nExport Setting Initialization Failed (1st step)~r~nReasons Are:-~r~n" + lt_transobject.sqlerrtext
+				lb_commitok = false
+			else
+				SQL EXECUTE IMMEDIATE :ls_query_accounts2 USING lt_transobject;
+				if lt_transobject.sqlcode <> 0 then
+					ls_errtext = "Problem in Export of accounts.~r~nExport Setting Initialization Failed (2nd step)~r~nReasons Are:-~r~n" + lt_transobject.sqlerrtext
+					lb_commitok = false
+				end if
+			end if
+		end if
+		if lb_commitok then
+			SQL EXECUTE IMMEDIATE :ls_query_patients USING lt_transobject;
+			if lt_transobject.sqlcode <> 0 then
+				ls_errtext = "Problem in Export of patients.~r~nExport Setting Initialization Failed~r~nReasons Are:-~r~n" + lt_transobject.sqlerrtext
+				lb_commitok = false
+			end if
+		end if
+		if not lb_commitok then
+			SQL rollback USING lt_transobject;
+			messagebox("Export Data To DataCarryDB", ls_errtext, stopsign!)
+			return -1
+		end if
+	else
+		lb_commitok = false
+		messagebox("Export Data To DataCarryDB", "Unable to reset previous Export settings at start of fresh Export.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext, stopsign!)
+		SQL rollback USING lt_transobject;
+		return -1
+	end if
+	if lb_commitok then
+		ll_rtcode = lt_transobject.empty_datacarrydb(gs_outlinkserver, gs_outlinkserverdb, gs_outlinkserverowner)
+		if ll_rtcode >= 0 and lt_transobject.sqlcode = 0 then
+			if ac_exportstock = "Y" then
+				ll_rtcode = lt_transobject.export_stock_to_datacarrydb(gs_outlinkserver, gs_outlinkserverdb, gs_outlinkserverowner, ac_exportstock)
+				if ll_rtcode >= 0 and lt_transobject.sqlcode = 0 then
+					lb_commitok = true
+				else
+					ls_errtext = "Error in Exporting Stock In Hand To DataCarryDB.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext
+					lb_commitok = false
+				end if
+			end if
+			if ac_exportbasicdata = "Y" then
+				ll_rtcode = lt_transobject.insertbasicdata_to_datacarrydb(gs_outlinkserver, gs_outlinkserverdb, gs_outlinkserverowner, ai_custcode, adt_exportitemchangessince)
+				if ll_rtcode >= 0 and lt_transobject.sqlcode = 0 then
+					lb_commitok = true
+				else
+					ls_errtext = "Error in Inserting Basic data To DataCarryDB.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext
+					lb_commitok = false
+				end if
+			end if
+			if lb_commitok and (al_invcode[1] > 0 and al_invcode[2] > 0) then
+				ll_rtcode = lt_transobject.insertsaledata_to_datacarrydb(gs_outlinkserver, gs_outlinkserverdb, gs_outlinkserverowner, al_invcode[1], al_invcode[2], al_invcode[3])
+				if ll_rtcode >= 0 and lt_transobject.sqlcode = 0 then
+					lb_commitok = true
+				else
+					ls_errtext = "Error in Inserting Sale data To DataCarryDB.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext
+					lb_commitok = false
+				end if
+			end if
+			if lb_commitok and (al_invcode[4] > 0 and al_invcode[5] > 0) then
+				ll_rtcode = lt_transobject.insertpo_to_datacarrydb(gs_outlinkserver, gs_outlinkserverdb, gs_outlinkserverowner, al_invcode[4], al_invcode[5])
+				if ll_rtcode >= 0 and lt_transobject.sqlcode = 0 then
+					lb_commitok = true
+				else
+					ls_errtext = "Error in Inserting Purchase Order data To DataCarryDB.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext
+					lb_commitok = false
+				end if
+			end if
+			if lb_commitok and (al_invcode[7] > 0 and al_invcode[8] > 0) then
+				ll_rtcode = lt_transobject.insertpr_to_datacarrydb(gs_outlinkserver, gs_outlinkserverdb, gs_outlinkserverowner, al_invcode[7], al_invcode[8])
+				if ll_rtcode >= 0 and lt_transobject.sqlcode = 0 then
+					lb_commitok = true
+				else
+					ls_errtext = "Error in Inserting Purchase Return data To DataCarryDB.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext
+					lb_commitok = false
+				end if
+			end if
+			if lb_commitok and (al_invcode[10] > 0 and al_invcode[11] > 0) then
+				ll_rtcode = lt_transobject.insertso_to_datacarrydb(gs_outlinkserver, gs_outlinkserverdb, gs_outlinkserverowner, al_invcode[10], al_invcode[11], ai_custcode)
+				if ll_rtcode >= 0 and lt_transobject.sqlcode = 0 then
+					lb_commitok = true
+				else
+					ls_errtext = "Error in Inserting Sales Order data To DataCarryDB.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext
+					lb_commitok = false
+				end if
+			end if
+			if lb_commitok and (al_invcode[13] > 0 and al_invcode[14] > 0) then
+				ll_rtcode = lt_transobject.insertissuedata_to_datacarrydb(gs_outlinkserver, gs_outlinkserverdb, gs_outlinkserverowner, al_invcode[13], al_invcode[14], ai_custcode)
+				if ll_rtcode >= 0 and lt_transobject.sqlcode = 0 then
+					lb_commitok = true
+				else
+					ls_errtext = "Error in Inserting Issue/Delivery Challan data To DataCarryDB.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext
+					lb_commitok = false
+				end if
+			end if
+			if lb_commitok and (al_invcode[16] > 0 and al_invcode[17] > 0) then
+				ll_rtcode = lt_transobject.insertservicesale_to_datacarrydb(gs_outlinkserver, gs_outlinkserverdb, gs_outlinkserverowner, al_invcode[16], al_invcode[17], ai_custcode)
+				if ll_rtcode >= 0 and lt_transobject.sqlcode = 0 then
+					lb_commitok = true
+				else
+					ls_errtext = "Error in Inserting Service Sales data To DataCarryDB.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext
+					lb_commitok = false
+				end if
+			end if
+			if lb_commitok and (al_invcode[19] > 0 and al_invcode[20] > 0) then
+				ll_rtcode = lt_transobject.insertpur_to_datacarrydb(gs_outlinkserver, gs_outlinkserverdb, gs_outlinkserverowner, al_invcode[19], al_invcode[20])
+				if ll_rtcode >= 0 and lt_transobject.sqlcode = 0 then
+					lb_commitok = true
+				else
+					ls_errtext = "Error in Inserting Purcahse data To DataCarryDB.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext
+					lb_commitok = false
+				end if
+			end if
+			if lb_commitok and (al_invcode[22] > 0 and al_invcode[23] > 0) then
+				ll_rtcode = lt_transobject.insertquot_to_datacarrydb(gs_outlinkserver, gs_outlinkserverdb, gs_outlinkserverowner, al_invcode[22], al_invcode[23])
+				if ll_rtcode >= 0 and lt_transobject.sqlcode = 0 then
+					lb_commitok = true
+				else
+					ls_errtext = "Error in Inserting Purcahse data To DataCarryDB.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext
+					lb_commitok = false
+				end if
+			end if
+			if lb_commitok and (al_invcode[25] > 0 and al_invcode[26] > 0) then
+				ll_rtcode = lt_transobject.insertexpintimation_to_datacarrydb(gs_outlinkserver, gs_outlinkserverdb, gs_outlinkserverowner, al_invcode[25], al_invcode[26], 1)
+				if ll_rtcode >= 0 and lt_transobject.sqlcode = 0 then
+					lb_commitok = true
+				else
+					ls_errtext = "Error in Inserting Expiry Intimation - Purchase Based To DataCarryDB.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext
+					lb_commitok = false
+				end if
+			end if
+			if lb_commitok and (al_invcode[28] > 0 and al_invcode[29] > 0) then
+				ll_rtcode = lt_transobject.insertexpintimation_to_datacarrydb(gs_outlinkserver, gs_outlinkserverdb, gs_outlinkserverowner, al_invcode[28], al_invcode[29], 2)
+				if ll_rtcode >= 0 and lt_transobject.sqlcode = 0 then
+					lb_commitok = true
+				else
+					ls_errtext = "Error in Inserting Expiry Intimation - Sales Based To DataCarryDB.~r~nReasons are:~r~n" + lt_transobject.sqlerrtext
+					lb_commitok = false
+				end if
+			end if
+			if lb_commitok then
+				SQL commit USING lt_transobject;
+				messagebox("Export Data To DataCarryDB", "Successfull Data Export to DataCarryDB.", information!)
+			else
+				SQL rollback USING lt_transobject;
+				messagebox("Export Data To DataCarryDB", "Un-Successfull Data Export to DataCarryDB.~r~n" + ls_errtext, stopsign!)
+				return -1
+			end if
+		else
+			ls_errtext = lt_transobject.sqlerrtext
+			SQL rollback USING lt_transobject;
+			messagebox("Export Data To DataCarryDB", "Error in Emptying data from DataCarryDB.~r~nReasons are:~r~n" + ls_errtext, stopsign!)
+			return -1
+		end if
+	else
+		SQL rollback USING lt_transobject;
+		messagebox("Export Data To DataCarryDB!!", ls_errtext, stopsign!)
+		return -1
+	end if
+	return 1

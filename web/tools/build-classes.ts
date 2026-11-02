@@ -16,12 +16,12 @@ const errors: string[] = []
 
 function routinesOf(lib: string, name: string): Plain {
   const p = join(scrRoot, lib, name + '.pbs')
-  const res: Plain = {}
+  const res: Plain = Object.create(null)
   if (!existsSync(p)) return res
   const { file, errors: errs } = parseScriptFile(readFileSync(p, 'utf8'))
   for (const e of errs) errors.push(`${lib}/${name}: ${e}`)
   for (const r of file.routines) {
-    const o = (res[r.owner] ||= {})
+    const o = (res[r.owner] ||= Object.create(null))
     const slim = { ...r } as Partial<Routine>
     delete slim.owner
     delete slim.name

@@ -1,0 +1,137 @@
+// window w_serviceinvpurtemplate_popup (servicepurcomponents)  ancestor: w_serviceinvpurtemplate
+
+// w_serviceinvpurtemplate_popup.ue_fetch_buffer_value() returns 0
+	integer li_result
+	long ll_listrow
+	long ll_custcode
+	long ll_code
+	if this.iw_callingwindow.istr_buffer.i_status = 1 then
+		this.istr_buffer = this.iw_callingwindow.istr_buffer
+		if not isnull(this.iw_callingwindow.istr_buffer.l_code1) then
+			ll_listrow = this.id_list.insertrow(0)
+			this.il_selectedrow = ll_listrow
+			this.id_list.object.code[ll_listrow] = this.iw_callingwindow.istr_buffer.l_code1
+			this.id_list.object.posted[ll_listrow] = this.iw_callingwindow.istr_buffer.s_name1
+			this.id_master.retrieve(this.iw_callingwindow.istr_buffer.l_code1)
+			if this.id_master.rowcount() > 0 then
+				postevent("ue_detail")
+				return
+			end if
+			return
+		end if
+		return
+	end if
+
+// w_serviceinvpurtemplate_popup.wf_post() returns long
+	boolean lb_listtab
+	string ls_errtext
+	if this.id_list.rowcount() > 0 and this.id_list.getrow() > 0 and (this.id_list.object.code[this.id_list.getrow()] > 0 and this.id_list.object.posted[this.id_list.getrow()] = "N") then
+		if wf_generate_service_purchases(this.id_list.object.code[this.id_list.getrow()], gl_usercode) = 0 then
+			SQL commit USING this.it_transobject;
+			messagebox("Service Inv. Purchase Template", "Posting of Service Inv. Purchase Template is successfull.")
+		else
+			ls_errtext = this.it_transobject.sqlerrtext
+			SQL rollback USING this.it_transobject;
+			messagebox("Service Inv. Purchase Template", "Posting of Service Inv. Purchase Template failed.~r~nDetails Are:-~r~n" + ls_errtext)
+		end if
+	end if
+	return 0
+
+// w_serviceinvpurtemplate_popup.create() returns 0
+	integer icurrent
+	call super::create
+	this.cb_save = create cb_save
+	this.cb_cancel = create cb_cancel
+	this.cb_post = create cb_post
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.cb_save
+	this.control[icurrent + 2] = this.cb_cancel
+	this.control[icurrent + 3] = this.cb_post
+
+// w_serviceinvpurtemplate_popup.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.cb_save
+	destroy this.cb_cancel
+	destroy this.cb_post
+
+// w_serviceinvpurtemplate_popup.open() returns long
+	m_entry lm_menu
+	long ll_width
+	long ll_height
+	environment env
+	postevent("ue_postopen")
+	this.iw_callingwindow = message.powerobjectparm
+	wf_setmenu(this.menuid)
+	lm_menu = this.menuid
+	lm_menu.dynamic mf_initsecurityapp(lm_menu)
+	if getenvironment(env) <> 1 then
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.tab_retrieve.width = ll_width * 0.99
+	this.tab_retrieve.height = ll_height * 0.83
+	this.tab_retrieve.tabpage_detail.dw_detail.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_itemsdetail.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_footer.y = this.tab_retrieve.height * 0.90 - this.tab_retrieve.tabpage_detail.dw_footer.height
+	this.tab_retrieve.tabpage_detail.dw_detail.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width
+	this.tab_retrieve.tabpage_detail.dw_footer.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width
+	this.tab_retrieve.tabpage_detail.dw_itemsdetail.height = this.tab_retrieve.tabpage_detail.dw_footer.y - this.tab_retrieve.tabpage_detail.dw_itemsdetail.y
+	this.tab_retrieve.tabpage_list.gb_fliter.width = ll_width * 0.97 - this.tab_retrieve.tabpage_list.gb_sort.width
+	this.tab_retrieve.tabpage_list.r_1.width = ll_width * 0.99
+	this.tab_retrieve.tabpage_list.r_1.height = ll_height * 0.765 - this.tab_retrieve.tabpage_list.gb_sort.height
+	this.tab_retrieve.tabpage_list.dw_list.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_list.dw_list.height = ll_height * 0.75 - this.tab_retrieve.tabpage_list.dw_list.y
+	if int(this.tab_retrieve.tabpage_list.ddlb_data.width / this.tab_retrieve.tabpage_list.width) < 26 then
+		this.tab_retrieve.tabpage_list.ddlb_data.width = int(this.tab_retrieve.tabpage_list.width * 0.26)
+	end if
+	this.tab_retrieve.tabpage_detail.dw_itemslist.height = ll_height * 0.6
+	this.tab_retrieve.tabpage_detail.dw_itemslist.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width * 0.67
+	this.tab_retrieve.tabpage_detail.dw_itemslist.x = 1150
+	this.tab_retrieve.tabpage_list.enabled = false
+	this.cb_save.y = ll_height * 0.85
+	this.cb_post.y = ll_height * 0.85
+	this.cb_cancel.y = ll_height * 0.85
+	if this.iw_callingwindow.istr_buffer.s_name1 = "Y" then
+		this.cb_save.enabled = false
+		this.cb_post.enabled = false
+	end if
+	setredraw(true)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_serviceinvpurtemplate_popup.ue_postopen() returns 0
+	call super::ue_postopen
+	postevent("ue_fetch_buffer_value")
+
+// cb_save.clicked() returns long
+	if parent.tab_retrieve.selectedtab = 1 then
+		parent.event ue_save()
+		if parent.ib_commitok = true then
+			close(parent)
+		end if
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	close(parent)
+	return ::message.returnvalue
+
+// cb_post.clicked() returns long
+	if parent.tab_retrieve.selectedtab = 1 then
+		parent.event ue_save()
+		if parent.ib_commitok = true then
+			parent.wf_post()
+			close(parent)
+		end if
+	end if
+	return ::message.returnvalue

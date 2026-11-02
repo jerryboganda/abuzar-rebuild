@@ -1,0 +1,49 @@
+// window w_for_removing_hyphen (templates)  ancestor: window
+
+// w_for_removing_hyphen.create() returns 0
+	if this.menuname = "m_reviewreport" then
+		this.menuid = create m_reviewreport
+	end if
+	this.cb_retrieve = create cb_retrieve
+	this.cb_ok = create cb_ok
+	this.dw_item = create dw_item
+	this.control = {this.cb_retrieve, this.cb_ok, this.dw_item}
+
+// w_for_removing_hyphen.destroy() returns 0
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.cb_retrieve
+	destroy this.cb_ok
+	destroy this.dw_item
+
+// w_for_removing_hyphen.open() returns long
+	this.dw_item.settransobject(sqlca)
+	this.dw_item.retrieve()
+	messagebox("", string(this.dw_item.rowcount()))
+	return ::message.returnvalue
+
+// w_for_removing_hyphen.activate() returns long
+	return ::message.returnvalue
+
+// cb_retrieve.clicked() returns long
+	parent.dw_item.retrieve()
+	messagebox("", string(parent.dw_item.rowcount()))
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	integer i
+	string ls_name
+	string ls_newname
+	for i = 1 to i
+		ls_name = parent.dw_item.getitemstring(i, "name")
+		ls_newname = replace(ls_name, pos(ls_name, "-", 1), 1, " ")
+		parent.dw_item.setitem(i, "name", ls_newname)
+	next
+	if parent.dw_item.update() > 0 then
+		SQL commit USING sqlca;
+	else
+		messagebox("", "transaction is rolled back")
+		SQL rollback USING sqlca;
+	end if
+	return ::message.returnvalue

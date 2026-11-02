@@ -1,0 +1,94 @@
+// window w_items_select_documentfiltered (reports)  ancestor: window
+
+// w_items_select_documentfiltered.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		post event ue_close()
+	end if
+	return ::message.returnvalue
+
+// w_items_select_documentfiltered.ue_close() returns 0
+	closewithreturn(this, this.istr_arg)
+
+// w_items_select_documentfiltered.create() returns 0
+	this.cb_cancel = create cb_cancel
+	this.dw_footer = create dw_footer
+	this.cb_ok = create cb_ok
+	this.dw_detail = create dw_detail
+	this.control = {this.cb_cancel, this.dw_footer, this.cb_ok, this.dw_detail}
+
+// w_items_select_documentfiltered.destroy() returns 0
+	destroy this.cb_cancel
+	destroy this.dw_footer
+	destroy this.cb_ok
+	destroy this.dw_detail
+
+// w_items_select_documentfiltered.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	long ll_custcode
+	string ls_date
+	this.istr_arg = message.powerobjectparm
+	if getenvironment(le_env) = 1 then
+		ll_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		setredraw(false)
+		this.width = ll_width * 0.98
+		this.height = ll_height * 0.90
+		this.y = int((ll_height - this.height) / 2.0)
+		this.dw_detail.width = this.width - this.width * 0.02
+		this.dw_detail.height = this.height * 0.90
+		this.cb_ok.y = this.dw_detail.height + 50
+		this.cb_cancel.y = this.dw_detail.height + 50
+	end if
+	this.dw_detail.settransobject(sqlca)
+	this.dw_detail.retrieve(this.istr_arg.l_code1, this.istr_arg.l_code2)
+	this.dw_detail.setcolumn("selected")
+	this.dw_detail.setfocus()
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.istr_arg.i_status = -1
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	long[] ll_invcode
+	long ll_rowcount
+	long ll_counter
+	long ll_arrindex
+	long ll_thiscode
+	boolean lb_flag
+	string ls_date
+	ll_rowcount = parent.dw_detail.rowcount()
+	for ll_counter = 1 to ll_rowcount
+		if parent.dw_detail.getitemstring(ll_counter, "selected") = "Y" then
+			lb_flag = true
+			ll_arrindex = ll_arrindex + 1
+			ll_thiscode = parent.dw_detail.getitemnumber(ll_counter, "icode")
+			parent.istr_arg.ia_integerlist[ll_arrindex] = ll_thiscode
+			parent.istr_arg.s_name1 = parent.istr_arg.s_name1 + trim(string(ll_thiscode)) + ","
+		end if
+	next
+	if right(parent.istr_arg.s_name1, 1) = "," then
+		parent.istr_arg.s_name1 = left(parent.istr_arg.s_name1, len(parent.istr_arg.s_name1) - 1)
+	end if
+	if lb_flag then
+		parent.istr_arg.i_status = 1
+	else
+		messagebox("Item Selection", "Please Select some valid Items", stopsign!)
+		return ::message.returnvalue
+	end if
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// dw_detail.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1

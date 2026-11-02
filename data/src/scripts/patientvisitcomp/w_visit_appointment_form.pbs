@@ -1,0 +1,633 @@
+// window w_visit_appointment_form (patientvisitcomp)  ancestor: w_single_entry
+
+// w_visit_appointment_form.wf_duplicatename(string as_name) returns boolean
+	long ll_count
+	boolean b_flag
+	as_name = trim(as_name)
+	SQL SELECT count ( *) INTO :ll_count FROM ItemClass WHERE ItemClass.name =:as_name USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_visit_appointment_form.wf_duplicateregno(string as_name) returns boolean
+	long ll_count
+	long ll_patientcode
+	boolean b_flag
+	as_name = trim(as_name)
+	ll_patientcode = this.id_detail.object.code[this.id_detail.rowcount()]
+	if isnull(ll_patientcode) then
+		SQL SELECT count ( *) INTO :ll_count FROM Patient WHERE patient.regno =:as_name USING sqlca;
+	else
+		SQL SELECT count ( *) INTO :ll_count FROM Patient WHERE patient.regno =:as_name AND Patient.PatientCode <> :ll_patientcode USING sqlca;
+	end if
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_visit_appointment_form.wf_admitted(long al_patientcode) returns long
+	long ll_count
+	SQL SELECT Count ( *) INTO :ll_count FROM PatientAdmission WHERE PatientAdmission.PatientCode =:al_patientcode AND PatientAdmission.Discharged ='N' USING sqlca;
+	return ll_count
+
+// w_visit_appointment_form.wf_locationoccupied(long al_locationcode) returns long
+	long ll_retcode
+	SQL SELECT COUNT ( *) INTO :ll_retcode FROM ( SELECT LocationCode FROM PatientAdmission WHERE Discharged ='N' AND AdmissionCode NOT IN ( SELECT DISTINCT AdmissionCode FROM PatientTransfer ) UNION ALL SELECT LocationCode =TargetLocation FROM PatientTransfer WHERE TransferCode IN ( SELECT TransferCode =Max ( TransferCode ) FROM PatientTransfer WHERE AdmissionCode IN ( SELECT DISTINCT AdmissionCode FROM PatientAdmission WHERE Discharged ='N' ) GROUP BY AdmissionCode ) ) A WHERE LocationCode =:al_locationcode USING sqlca;
+	return ll_retcode
+
+// w_visit_appointment_form.wf_findpatientcode(string as_regno, long al_patientcode) returns long
+	long ll_patientcode
+	long ll_retflag
+	string ls_itemname
+	char lc_active
+	ll_retflag = 0
+	SQL SELECT patient.patientcode , patient.active INTO :ll_patientcode, :lc_active FROM patient WHERE patient.regno =:as_regno and patientcatcode in ( select distinct patientcatcode from patientcatallowedmodule where moduleid =:this.ii_module ) USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		al_patientcode = ll_patientcode
+		if isnull(al_patientcode) then
+			ll_retflag = 0
+		elseif lc_active = "Y" then
+			ll_retflag = 1
+		else
+			ll_retflag = -2
+		end if
+	else
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_visit_appointment_form.wf_validate_token(long al_token) returns long
+	long ll_retcode
+	long ll_doctcode
+	long ll_count
+	if al_token > 0 then
+		ll_doctcode = this.id_detail.object.doctcode[this.id_detail.rowcount()]
+		if ll_doctcode > 0 then
+			SQL SELECT ISNULL ( count ( *) , 0 ) INTO :ll_count FROM VisitAppointMent WHERE doctcode =:ll_doctcode AND TokenNo =:al_token AND CONVERT ( VARCHAR ( 12 ) , GETDATE ( ) , 103 ) =CONVERT ( VARCHAR ( 12 ) , DATE , 103 ) USING sqlca;
+			if sqlca.sqlcode = 0 then
+				if isnull(ll_count) or ll_count = 0 then
+					ll_retcode = 0
+				else
+					ll_retcode = 1
+				end if
+			end if
+		else
+			ll_retcode = 1
+		end if
+	elseif al_token = 0 then
+		ll_retcode = 0
+	else
+		ll_retcode = 1
+	end if
+	return ll_retcode
+
+// w_visit_appointment_form.wf_get_newtoken(long al_token) returns long
+	long ll_retcode
+	long ll_doctcode
+	datetime ldt_duedate
+	ll_doctcode = this.id_detail.object.doctcode[this.id_detail.rowcount()]
+	ldt_duedate = this.id_detail.object.duedate[this.id_detail.rowcount()]
+	if ll_doctcode > 0 then
+		SQL SELECT ISNULL ( MAX ( LastToken ) , 0 ) + 1 INTO :al_token FROM ( SELECT LastToken =ISNULL ( MAX ( TokenNo ) , 0 ) FROM VisitAppointMent WHERE DoctCode =:ll_doctcode AND CONVERT ( VARCHAR ( 12 ) , :ldt_duedate , 103 ) =CONVERT ( VARCHAR ( 12 ) , DUEDATE , 103 ) UNION SELECT LastToken =ISNULL ( MAX ( TokenNo ) , 0 ) FROM ServiceHeader WHERE DoctCode =:ll_doctcode AND CONVERT ( VARCHAR ( 12 ) , :ldt_duedate , 103 ) =CONVERT ( VARCHAR ( 12 ) , DATE , 103 ) ) T USING sqlca;
+		if sqlca.sqlcode = 0 then
+			if isnull(al_token) or al_token = 0 then
+				al_token = 1
+			end if
+			ll_retcode = 0
+		end if
+	else
+		ll_retcode = 1
+	end if
+	return ll_retcode
+
+// w_visit_appointment_form.wf_registerpatient() returns string
+	string ls_regno
+	long ll_res
+	long ll_patientcode
+	s_datatype lstr_datatype
+	lstr_datatype.al_long = 0
+	openwithparm(w_patientregistration, lstr_datatype)
+	ls_regno = message.stringparm
+	this.id_detail.object.regno[this.id_detail.rowcount()] = ls_regno
+	setpointer(hourglass!)
+	this.idc_patient.setredraw(false)
+	this.idc_patient.settransobject(this.it_transobject)
+	this.idc_patient.retrieve(this.ii_module)
+	this.idc_patient.setredraw(true)
+	setpointer(arrow!)
+	if ls_regno <> "" and not isnull(ls_regno) then
+		ll_res = wf_findpatientcode(ls_regno, ll_patientcode)
+		if ll_res > 0 then
+			this.id_detail.object.patientcode[this.id_detail.rowcount()] = ll_patientcode
+		end if
+	end if
+	return ls_regno
+
+// w_visit_appointment_form.wf_find_patient_regno(long al_patientcode, string as_regno) returns long
+	long ll_retflag
+	char lc_active
+	ll_retflag = 0
+	SQL SELECT patient.regno , patient.active INTO :as_regno, :lc_active FROM patient WHERE patient.patientcode =:al_patientcode and patientcatcode in ( select distinct patientcatcode from patientcatallowedmodule where moduleid =:this.ii_module ) USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		if isnull(as_regno) then
+			ll_retflag = 0
+		elseif lc_active = "Y" then
+			ll_retflag = 1
+		else
+			ll_retflag = -2
+		end if
+	else
+		ll_retflag = -1
+	end if
+	return ll_retflag
+
+// w_visit_appointment_form.wf_post() returns long
+	integer ll_errcode
+	long ll_usercode
+	long ll_postcount
+	long ll_counter
+	boolean lb_flag
+	s_arguements lstr_arginfo
+	if this.tab_retrieve.selectedtab = 1 then
+		return 0
+	end if
+	open(w_salesmanpassword)
+	ll_usercode = long(message.doubleparm)
+	setfocus()
+	if ll_usercode > 0 then
+		open(w_arg_sinvcode_linvcode_onedoctor)
+		lstr_arginfo = message.powerobjectparm
+		if lstr_arginfo.i_status = 1 then
+			setpointer(hourglass!)
+			SQL rollback USING sqlca;
+			ll_errcode = wf_lockappointments(lstr_arginfo.l_code1, lstr_arginfo.l_code2, ll_postcount)
+			if ll_errcode = 0 then
+				sqlca.postvisitappointment(lstr_arginfo.l_code1, lstr_arginfo.l_code2, ll_usercode, lstr_arginfo.l_code3)
+				if sqlca.sqlcode <> 0 then
+					ll_errcode = -1
+				end if
+			end if
+		end if
+		if ll_errcode = 0 then
+			SQL commit USING sqlca;
+			if sqlca.sqlcode <> 0 then
+				ll_errcode = -1
+			end if
+		else
+			SQL rollback USING sqlca;
+		end if
+	else
+		setfocus()
+	end if
+	setpointer(arrow!)
+	if ll_usercode > 0 then
+		if ll_errcode <> 0 then
+			messagebox("Posting Fails", "Some database request fails, Please try again")
+		else
+			messagebox("Posting Successfull", "Total unposted rows were " + string(ll_postcount) + "~n~rAll rows have been posted successfully")
+		end if
+	end if
+	return ll_errcode
+
+// w_visit_appointment_form.wf_lockappointments(long al_sinvcode, long al_linvcode, long al_totalcount) returns long
+	SQL Select count ( *) INTO :al_totalcount From VisitAppointment WITH ( UPDLOCK HOLDLOCK ) Where AppointmentCode Between :al_sinvcode AND :al_linvcode AND Posted ='N' USING sqlca;
+	return sqlca.sqlcode
+
+// w_visit_appointment_form.wf_retrieve() returns long
+	long rtcode
+	rtcode = this.id_list.retrieve(gl_usercode)
+	return rtcode
+
+// w_visit_appointment_form.wf_show_appointments() returns long
+	long ll_code
+	long ll_temp
+	long ll_doctcode
+	datetime ldt_mindate
+	datetime ldt_maxdate
+	datetime ldt_duedate
+	boolean lb_listtab
+	s_arguements lstr_arg
+	if this.tab_retrieve.selectedtab = 2 then
+		lb_listtab = true
+	end if
+	if lb_listtab then
+		if this.id_list.rowcount() > 0 and this.id_list.getrow() > 0 then
+			ldt_mindate = datetime(date(this.id_list.object.duedate[this.id_list.getrow()]), time("00:00:00"))
+			ldt_maxdate = datetime(date(this.id_list.object.duedate[this.id_list.getrow()]), time("23:59:59"))
+			ll_doctcode = this.id_list.object.doctcode[this.id_list.getrow()]
+		end if
+	else
+		ldt_mindate = datetime(date(this.id_detail.object.duedate[1]), time("00:00:00"))
+		ldt_maxdate = datetime(date(this.id_detail.object.duedate[1]), time("23:59:59"))
+		ll_doctcode = this.id_detail.object.doctcode[1]
+	end if
+	lstr_arg.i_status = 1
+	lstr_arg.l_code1 = ll_doctcode
+	lstr_arg.d_sdate = ldt_mindate
+	lstr_arg.d_edate = ldt_maxdate
+	openwithparm(w_appointments_for_a_period, lstr_arg)
+	return 0
+
+// w_visit_appointment_form.wf_validate_duedate(datetime adt_proposed_duedate) returns long
+	long ll_code
+	long ll_temp
+	long ll_doctcode
+	datetime ldt_mindate
+	datetime ldt_maxdate
+	datetime ldt_min_duedate
+	datetime ldt_max_duedate
+	datetime ldt_temp
+	ll_doctcode = this.id_detail.object.doctcode[1]
+	ll_code = this.id_detail.object.code[1]
+	if ll_doctcode > 0 then
+		ldt_mindate = datetime(date(adt_proposed_duedate), time("00:00:00"))
+		ldt_maxdate = datetime(date(adt_proposed_duedate), time("23:59:59"))
+		SQL SELECT Max ( DueDate ) INTO :ldt_min_duedate FROM VisitAppointment WHERE DoctCode =:ll_doctcode AND DueDate <= :adt_proposed_duedate USING sqlca;
+		if sqlca.sqlcode <> 0 then
+			messagebox("Database Error", "Problem Fetching Appointment Date.~r~nDetails are:-~r~n" + sqlca.sqlerrtext, stopsign!)
+		end if
+		SQL SELECT Min ( DueDate ) INTO :ldt_max_duedate FROM VisitAppointment WHERE DoctCode =:ll_doctcode AND DueDate >= :adt_proposed_duedate USING sqlca;
+		if sqlca.sqlcode <> 0 then
+			messagebox("Database Error", "Problem Fetching Appointment Date.~r~nDetails are:-~r~n" + sqlca.sqlerrtext, stopsign!)
+		end if
+		if adt_proposed_duedate = ldt_min_duedate or adt_proposed_duedate = ldt_max_duedate then
+			messagebox("Due Date Validation", "Appointment Date/Time Slot Already Engaged.", stopsign!)
+			return 1
+		end if
+		return
+	end if
+	return 0
+
+// w_visit_appointment_form.wf_set_next_timeslot(datetime adt_proposed_duedate) returns long
+	long ll_code
+	long ll_temp
+	long ll_doctcode
+	datetime ldt_mindate
+	datetime ldt_maxdate
+	datetime ldt_min_duedate
+	datetime ldt_max_duedate
+	datetime ldt_temp
+	ll_doctcode = this.id_detail.object.doctcode[1]
+	ll_code = this.id_detail.object.code[1]
+	if ll_doctcode > 0 then
+		ldt_mindate = datetime(date(adt_proposed_duedate), time("00:00:00"))
+		ldt_maxdate = datetime(date(adt_proposed_duedate), time("23:59:59"))
+		SQL SELECT DATEADD ( minute , ISNULL ( ( SELECT TimeSlotInterval FROM Doctors WHERE DoctCode =:ll_doctcode ) , 15 ) , Max ( DueDate ) ) INTO :ldt_max_duedate FROM VisitAppointment WHERE DoctCode =:ll_doctcode AND DueDate BETWEEN :ldt_mindate AND :ldt_maxdate USING sqlca;
+		if sqlca.sqlcode = 0 then
+			if isnull(ldt_max_duedate) then
+				this.id_detail.object.dtime[1] = ldt_mindate
+				this.id_detail.object.duedate[1] = ldt_mindate
+			else
+				this.id_detail.object.dtime[1] = ldt_max_duedate
+				this.id_detail.object.duedate[1] = ldt_max_duedate
+			end if
+		else
+			messagebox("Database Error", "Problem Fetching Appointment Date.~r~nDetails are:-~r~n" + sqlca.sqlerrtext, stopsign!)
+		end if
+	end if
+	return 0
+
+// w_visit_appointment_form.wf_validate_timeslot(datetime adt_proposed_duedate) returns long
+	long ll_code
+	long ll_temp
+	long ll_doctcode
+	long ll_retcode
+	datetime ldt_mindate
+	datetime ldt_maxdate
+	datetime ldt_min_duedate
+	datetime ldt_max_duedate
+	datetime ldt_temp
+	ll_doctcode = this.id_detail.object.doctcode[1]
+	ll_code = this.id_detail.object.code[1]
+	if ll_doctcode > 0 then
+		ldt_mindate = datetime(date(adt_proposed_duedate), time("00:00:00"))
+		ldt_maxdate = datetime(date(adt_proposed_duedate), time("23:59:59"))
+		SQL SELECT DATEADD ( minute , ISNULL ( ( SELECT TimeSlotInterval FROM Doctors WHERE DoctCode =:ll_doctcode ) , 15 ) , Max ( DueDate ) ) INTO :ldt_max_duedate FROM VisitAppointment WHERE DoctCode =:ll_doctcode AND DueDate BETWEEN :ldt_mindate AND :ldt_maxdate USING sqlca;
+		if sqlca.sqlcode = 0 then
+			if adt_proposed_duedate < ldt_max_duedate then
+				ll_retcode = messagebox("Time Slot Validation", "Allocated Time Slot does not seem to comply with per patient time interval.~r~nContinue Anyway?", question!, yesno!, 1)
+				if ll_retcode = 1 then
+					return 0
+				else
+					return 1
+				end if
+				return
+			end if
+		else
+			messagebox("Database Error", "Problem Fetching Appointment Date.~r~nDetails are:-~r~n" + sqlca.sqlerrtext, stopsign!)
+		end if
+	end if
+	return 0
+
+// w_visit_appointment_form.create() returns 0
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_visit_appointment" then
+		this.menuid = create m_visit_appointment
+	end if
+
+// w_visit_appointment_form.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_visit_appointment_form.activate() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::activate()
+	this.windowstate = maximized!
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_visit_appointment_form.open() returns long
+	long ancestorreturnvalue
+	long ll_rtncode
+	long ll_found
+	ancestorreturnvalue = super::open()
+	ll_found = gds_securitywindow.find("rightcode = 5013", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		this.ib_modifydate = true
+	end if
+	ll_rtncode = this.id_detail.getchild("patientcode", this.idc_patient)
+	if ll_rtncode = -1 then
+		messagebox("Patient Visit Appointment Error", "Problem in Retrieving Patient List")
+		close(this)
+		return ::message.returnvalue
+	end if
+	this.idc_patient.settransobject(sqlca)
+	ll_rtncode = this.idc_patient.retrieve(this.ii_module)
+	if ll_rtncode < 0 then
+		messagebox("Patient Profile", "Not Enough Patient Categories Allowed, Please contact your system administrator")
+		close(this)
+		return ::message.returnvalue
+	end if
+	ll_rtncode = this.id_detail.getchild("doctcode", this.idc_doctor)
+	if ll_rtncode = -1 then
+		messagebox("Patient Visit Appointment Error", "Problem in Retrieving Doctors List")
+		close(this)
+		return ::message.returnvalue
+	end if
+	this.idc_doctor.settransobject(sqlca)
+	ll_rtncode = this.idc_doctor.retrieve(gl_usercode)
+	if ll_rtncode <= 0 then
+		messagebox("Patient Visit Appointment", "Not Enough Doctor Allowed, Please contact your system administrator")
+		close(this)
+		return ::message.returnvalue
+	else
+		this.id_detail.object.doctcode.initial = string(this.idc_doctor.getitemnumber(1, "doctcode"))
+	end if
+	this.is_tablename = "visitappointment"
+	if gs_company = "SURGICALCENTRE" then
+		this.id_print.dataobject = "d_surgicalcentre_visitappointment_print"
+	else
+		this.id_print.dataobject = "d_visitappointment_print"
+	end if
+	this.id_print.settransobject(sqlca)
+	return ::message.returnvalue
+
+// w_visit_appointment_form.ue_save() returns 0
+	long ll_primarykey
+	long ll_row
+	long ll_primarykey2
+	long ll_totrows
+	long ll_rowcounter
+	long ll_usercode
+	long ll_found
+	long ll_null
+	long ll_primarycode_old
+	long ll_tokenno
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	string ls_regno
+	string ls_invlist
+	string ls_errtext
+	boolean lb_commit
+	boolean lb_newappointment
+	dwitemstatus ldw_active
+	setnull(ll_null)
+	setpointer(hourglass!)
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	ll_row = this.id_detail.getrow()
+	ll_primarykey = this.id_detail.object.code[this.id_detail.getrow()]
+	ll_primarycode_old = ll_primarykey
+	if isnull(this.id_detail.object.tokenno[ll_row]) or this.id_detail.object.tokenno[ll_row] = 0 then
+		if wf_get_newtoken(ll_tokenno) <> 0 then
+			messagebox("Patient Profile Problem Saving", "Please Select a doctor first to generate a valid token no.")
+			this.id_detail.setfocus()
+			this.id_detail.setcolumn("tokenno")
+			return
+		else
+			this.id_detail.object.tokenno[ll_row] = ll_tokenno
+		end if
+	end if
+	if not this.ib_modifydate then
+		if not wf_validateserverdatetime(ldt_server_datetime, ls_date_errtext) then
+			messagebox("Date Violation", ls_date_errtext, stopsign!)
+			return
+		end if
+		this.id_detail.object.date[ll_row] = ldt_server_datetime
+	end if
+	if f_stringpreferences("askuserpwdinpatientreg") = "Y" then
+		open(w_salesmanpassword)
+		ll_usercode = long(message.doubleparm)
+		setfocus()
+	else
+		ll_usercode = gl_usercode
+	end if
+	if ll_usercode > 0 then
+		if isnull(ll_primarykey) then
+			ll_primarykey = 0
+			SQL rollback USING sqlca;
+			sqlca.gettabmaxkey(this.is_tablename, ll_primarykey)
+			if sqlca.sqlcode = 0 then
+				this.id_detail.setitem(ll_row, "code", ll_primarykey)
+				lb_newappointment = true
+			else
+				SQL rollback USING sqlca;
+				lb_commit = false
+				messagebox("Patient Visit Appointment Problem", "Problem in Auto Generation of Patient Appointment Code~r~n Possibe Reason: " + sqlca.sqlerrtext)
+			end if
+		end if
+		if lb_commit then
+			this.id_detail.setitem(ll_row, "usercode", ll_usercode)
+			if this.id_detail.update() > 0 then
+				SQL commit USING sqlca;
+				if lb_newappointment = true and gs_allowsmsfunctions = "Y" then
+					ls_invlist = trim(string(ll_primarykey))
+					this.it_transobject.createautotriggersms(ls_invlist, this.ii_module, "Saving")
+					if this.it_transobject.sqlcode <> 0 then
+						ls_errtext = "Problem in Generating Auto Triggered SMS.~r~nReasons are:- " + this.it_transobject.sqlerrtext
+						SQL rollback USING this.it_transobject;
+						messagebox("Auto Triggered SMS", ls_errtext)
+					else
+						SQL commit USING this.it_transobject;
+					end if
+				end if
+				messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+				this.ib_commitok = true
+				this.im_menu.m_file.m_new.enabled = true
+				this.editflag = false
+			else
+				SQL rollback USING sqlca;
+				setpointer(arrow!)
+				messagebox("Save Changes", "Changes Rollback in database, ~n~rSome database problem occurs", exclamation!, ok!, 1)
+			end if
+		end if
+	end if
+	if isnull(ll_primarycode_old) then
+		this.id_detail.setitem(ll_row, "code", ll_null)
+	end if
+	setpointer(arrow!)
+
+// w_visit_appointment_form.ue_detail() returns 0
+	m_visit_appointment lm_menu
+	call super::ue_detail
+	lm_menu = this.menuid
+	lm_menu.m_file.m_print.enabled = true
+	lm_menu.m_file.m_post.enabled = false
+	if this.id_list.rowcount() > 0 and this.id_list.getrow() > 0 and this.id_list.object.code[this.id_list.getrow()] > 0 then
+		if f_rightexists(5148) then
+			this.id_detail.object.tokenno.protect = 0
+		else
+			this.id_detail.object.tokenno.protect = 1
+		end if
+		if f_rightexists(5149) then
+			this.id_detail.object.regno.protect = 0
+			this.id_detail.object.patientcode.protect = 0
+			return
+		end if
+		this.id_detail.object.regno.protect = 1
+		this.id_detail.object.patientcode.protect = 1
+	end if
+
+// w_visit_appointment_form.ue_print() returns 0
+	long ll_code
+	long ll_row
+	long li_printretcode
+	string ls_printsize
+	boolean lb_listtab
+	s_datastore lstr
+	if this.tab_retrieve.selectedtab = 2 then
+		lb_listtab = true
+	end if
+	if this.im_menu.m_file.m_save.enabled = true and lb_listtab = false then
+		triggerevent("ue_save")
+		if wf_commitform() = false then
+			return
+		end if
+		return
+	end if
+	if lb_listtab then
+		if isnull(this.id_list.getrow()) or this.id_list.getrow() <= 0 then
+			messagebox("Rows Validation", "Kindly select any row from the list view.")
+			return
+		end if
+		ll_code = this.id_list.getitemnumber(this.id_list.getrow(), "code")
+		if isnull(ll_code) or ll_code <= 0 then
+			messagebox("Selection Validation", "Kindly select any row from the list view.")
+			return
+		end if
+	else
+		ll_code = this.id_detail.getitemnumber(1, "code")
+	end if
+	if gs_company = "DRWAJIDALI" then
+		this.id_print.dataobject = "d_visitappointment_print_drwajidali"
+	elseif gs_company = "MUBARAKMC" then
+		this.id_print.dataobject = "d_visitappointment_print_mubarakmc"
+	elseif gs_company = "FAMILYCAREHSP" then
+		this.id_print.dataobject = "d_visitappointment_print_familycarehsp"
+	end if
+	this.id_print.settransobject(sqlca)
+	this.id_print.retrieve(ll_code)
+	if lb_listtab then
+		lstr.dw = this.id_print
+		lstr.s_name1 = this.id_print.dataobject
+		openwithparm(w_preview_invoices, lstr)
+		lstr = message.powerobjectparm
+		if lstr.i_closemode = -1 then
+			return
+		end if
+		return
+	end if
+	if this.id_print.rowcount() > 0 then
+		if f_stringpreferences("PromptBeforePrinting") = "Y" and printsetup() < 0 then
+			messagebox("Printer", "Printing Error")
+			this.id_print.printcancel()
+		end if
+		li_printretcode = this.id_print.print()
+		if li_printretcode < 0 then
+			messagebox("Printing", "Can not Print Invoice", information!)
+		end if
+		if this.im_menu.m_file.m_save.enabled = true and lb_listtab = false then
+			postevent("ue_new")
+		end if
+		return
+	end if
+	messagebox("Printing Error", "Can not Print,~r~nNo rows are retrieved", information!)
+
+// w_visit_appointment_form.ue_list() returns 0
+	m_visit_appointment lm_menu
+	call super::ue_list
+	lm_menu = this.menuid
+	lm_menu.m_file.m_print.enabled = true
+	lm_menu.m_file.m_post.enabled = true
+
+// w_visit_appointment_form.ue_newform() returns 0
+	string ls_date_errtext
+	datetime ldt_server_datetime
+	long ll_days
+	m_visit_appointment lm_menu
+	call super::ue_newform
+	lm_menu = this.menuid
+	if not f_rightexists(5268) then
+		lm_menu.m_file.m_showappointments.visible = false
+		lm_menu.m_file.m_showappointments.enabled = false
+	end if
+	this.il_responsetime_sec = f_longpreferences("VisitAppointmentDueTime")
+	if this.il_responsetime_sec < 0 or isnull(this.il_responsetime_sec) then
+		this.il_responsetime_sec = 0
+	end if
+	this.il_responsetime_sec = this.il_responsetime_sec * 60
+	if this.id_detail.rowcount() > 0 then
+		if isnull(this.id_detail.object.date[1]) then
+			if this.il_responsetime_sec < 86400 then
+				this.id_detail.object.duedate[1] = datetime(today(), relativetime(time(now()), this.il_responsetime_sec))
+				this.id_detail.object.ddate[1] = datetime(today(), relativetime(time(now()), this.il_responsetime_sec))
+				this.id_detail.object.dtime[1] = datetime(today(), relativetime(time(now()), this.il_responsetime_sec))
+			else
+				ll_days = long(this.il_responsetime_sec / 86400.0)
+				if ll_days > 1 then
+					this.il_responsetime_sec = this.il_responsetime_sec - ll_days * 86400
+					this.id_detail.object.duedate[1] = datetime(relativedate(today(), ll_days), relativetime(time(now()), this.il_responsetime_sec))
+					this.id_detail.object.ddate[1] = datetime(relativedate(today(), ll_days), relativetime(time(now()), this.il_responsetime_sec))
+					this.id_detail.object.dtime[1] = datetime(relativedate(today(), ll_days), relativetime(time(now()), this.il_responsetime_sec))
+				else
+					this.id_detail.object.duedate[1] = datetime(today(), relativetime(time(now()), this.il_responsetime_sec))
+					this.id_detail.object.ddate[1] = datetime(today(), relativetime(time(now()), this.il_responsetime_sec))
+					this.id_detail.object.dtime[1] = datetime(today(), relativetime(time(now()), this.il_responsetime_sec))
+				end if
+			end if
+		else
+			this.id_detail.object.duedate[1] = this.id_detail.object.date[1]
+			this.id_detail.object.ddate[1] = this.id_detail.object.date[1]
+			this.id_detail.object.dtime[1] = this.id_detail.object.date[1]
+		end if
+		if this.ib_modifydate then
+			this.id_detail.object.date.protect = 0
+		else
+			this.id_detail.object.date.protect = 1
+			this.id_detail.object.date.background.color = this.backcolor
+			this.id_detail.settaborder("date", 0)
+		end if
+		wf_getserverdatetime(ldt_server_datetime, ls_date_errtext)
+		this.id_detail.setitem(this.id_detail.getrow(), "date", ldt_server_datetime)
+	end if
+	this.id_detail.selecttext(1, len(this.id_detail.gettext()))
+	this.id_detail.object.tokenno.protect = 0
+	this.id_detail.object.regno.protect = 0
+	this.id_detail.object.patientcode.protect = 0

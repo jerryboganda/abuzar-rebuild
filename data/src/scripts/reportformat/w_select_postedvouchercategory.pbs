@@ -1,0 +1,52 @@
+// window w_select_postedvouchercategory (reportformat)  ancestor: w_arguements
+
+// w_select_postedvouchercategory.create() returns 0
+	call super::create
+
+// w_select_postedvouchercategory.destroy() returns 0
+	call super::destroy
+
+// w_select_postedvouchercategory.open() returns long
+	long ancestorreturnvalue
+	integer li_rtncode
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	ancestorreturnvalue = super::open()
+	li_rtncode = this.dw_control.getchild("vochcatcode", this.idc_vochcat)
+	if li_rtncode = -1 then
+		messagebox("Error", "Problem is Retrieving Voucher Categories")
+		post event ue_close(-1)
+		return ::message.returnvalue
+	end if
+	this.idc_vochcat.settransobject(sqlca)
+	li_rtncode = this.idc_vochcat.retrieve(f_getgroupcode(gl_usercode))
+	if this.idc_vochcat.rowcount() <= 0 then
+		messagebox("Error", "No Voucher Category Allowed to current User Group~r~nPlease assign some Voucher Category and try again.")
+		post event ue_close(-1)
+	else
+		this.dw_control.settransobject(sqlca)
+		this.dw_control.insertrow(0)
+		this.dw_control.scrolltorow(0)
+	end if
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	return ::message.returnvalue
+
+// w_select_postedvouchercategory.ue_close(integer ai_stauts) returns 0
+	super::ue_close(ai_stauts)
+	closewithreturn(this, this.istr_arg)

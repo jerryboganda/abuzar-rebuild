@@ -1,0 +1,277 @@
+// window w_guestregistration (guestcomponents)  ancestor: window
+
+// w_guestregistration.ue_close(integer ai_status) returns 0
+	if ai_status = -1 then
+		setnull(this.is_regno)
+	end if
+	closewithreturn(this, this.is_regno)
+
+// w_guestregistration.ue_postopen() returns 0
+	integer li_rtncode
+	this.il_groupcode = f_getgroupcode(gl_usercode)
+	this.dw_detail.settransobject(this.it_transobject)
+	this.dw_detail.insertrow(0)
+	if f_stringpreferences("autogenguestregno") = "Y" then
+		this.dw_detail.object.regno.edit.displayonly = "yes"
+		this.dw_detail.object.regno.edit.required = "no"
+		this.dw_detail.setcolumn("name")
+	end if
+	this.dw_detail.object.active.protect = 1
+
+// w_guestregistration.wf_validateserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+	datetime ldt_last_transdate
+	datetime ldt_current_serverdate
+	long li_max_allow_days
+	ar_errtext = "Invoice Date  Check violates"
+	li_max_allow_days = f_numberpreferences("MaxAllowDate")
+	if isnull(li_max_allow_days) then
+		li_max_allow_days = 4
+	end if
+	SQL SELECT LastTransDate INTO :ldt_last_transdate FROM ServerDate USING sqlca;
+	if sqlca.sqlcode = 0 then
+		sqlca.getdatetime(ldt_current_serverdate)
+		if sqlca.sqlcode = 0 then
+			if ldt_current_serverdate >= ldt_last_transdate and daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) <= li_max_allow_days then
+				ar_server_datetime = ldt_current_serverdate
+				return true
+			elseif ldt_current_serverdate < ldt_last_transdate then
+				ar_errtext = "Back Date Invoice Check violates"
+				return false
+			elseif daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) > li_max_allow_days then
+				ar_errtext = "Forward Date Invoice Check violates"
+				return false
+			end if
+		else
+			return false
+		end if
+		return
+	end if
+	return false
+
+// w_guestregistration.wf_duplicateregno(string as_name) returns boolean
+	long ll_count
+	long ll_guestcode
+	boolean b_flag
+	as_name = trim(as_name)
+	ll_guestcode = this.dw_detail.object.code[this.dw_detail.rowcount()]
+	if isnull(ll_guestcode) then
+		SQL SELECT count ( *) INTO :ll_count FROM Guest WHERE Guest.regno =:as_name USING this.it_transobject;
+	else
+		SQL SELECT count ( *) INTO :ll_count FROM Guest WHERE Guest.regno =:as_name AND Guest.GuestCode <> :ll_guestcode USING this.it_transobject;
+	end if
+	if this.it_transobject.sqlcode = 0 then
+		if ll_count > 0 then
+			b_flag = true
+		else
+			b_flag = false
+		end if
+	else
+		b_flag = false
+	end if
+	return b_flag
+
+// w_guestregistration.wf_getserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+	datetime ldt_last_transdate
+	datetime ldt_current_serverdate
+	integer li_max_allow_days
+	string ls_hold_serverdate
+	date ld_datepart
+	time lt_timepart
+	ar_errtext = "Please verify Server DateTime"
+	li_max_allow_days = f_numberpreferences("MaxAllowDate")
+	if isnull(li_max_allow_days) then
+		li_max_allow_days = 4
+	end if
+	SQL rollback USING sqlca;
+	SQL SELECT LastTransDate INTO :ldt_last_transdate FROM ServerDate USING sqlca;
+	if sqlca.sqlcode = 0 then
+		sqlca.getdatetime(ldt_current_serverdate)
+		if sqlca.sqlcode = 0 then
+			if ldt_current_serverdate >= ldt_last_transdate and daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) <= li_max_allow_days then
+				ld_datepart = date(string(ldt_current_serverdate, "yyyy-mm-dd"))
+				lt_timepart = time(string(ldt_current_serverdate, "hh:mm:ss"))
+				ldt_current_serverdate = datetime(ld_datepart, lt_timepart)
+				SQL update ServerDate SET LastTransDate =:ldt_current_serverdate USING sqlca;
+				if sqlca.sqlcode = 0 then
+					SQL commit USING sqlca;
+					ar_server_datetime = ldt_current_serverdate
+					return true
+				else
+					SQL rollback USING sqlca;
+					return false
+				end if
+			elseif ldt_current_serverdate < ldt_last_transdate then
+				ar_errtext = "Back Date Invoice Check violates"
+				return false
+			elseif daysafter(date(ldt_last_transdate), date(ldt_current_serverdate)) > li_max_allow_days then
+				ar_errtext = "Forward Date Invoice Check violates"
+				return false
+			end if
+		else
+			SQL rollback USING sqlca;
+			return false
+		end if
+		return
+	end if
+	SQL rollback USING sqlca;
+	return false
+
+// w_guestregistration.wf_connect() returns long
+	this.it_transobject = create u_transaction
+	SQL start USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		return 0
+	end if
+	messagebox("Connection Problem", "Problem Connecting Database ... ~r~n" + this.it_transobject.sqlerrtext)
+	return -1
+
+// w_guestregistration.create() returns 0
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.dw_detail = create dw_detail
+	this.control = {this.cb_cancel, this.cb_ok, this.dw_detail}
+
+// w_guestregistration.destroy() returns 0
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.dw_detail
+
+// w_guestregistration.open() returns long
+	long ll_row
+	long ll_width
+	long ll_height
+	environment env
+	if wf_connect() <> 0 then
+		close(this)
+		return ::message.returnvalue
+	end if
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.x = int((ll_width - this.width) / 2.0)
+	this.y = int((ll_height - this.height) / 2.0)
+	post event ue_postopen()
+	return ::message.returnvalue
+
+// cb_cancel.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.ue_keydown(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	long ll_primarykey
+	long ll_row
+	long ll_usercode
+	long ll_null
+	long ll_new_pat_reg
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	string ls_regno
+	dwitemstatus ldw_active
+	boolean lb_commit
+	setpointer(hourglass!)
+	setnull(ll_null)
+	if f_validatedw(parent.dw_detail) < 0 then
+		return ::message.returnvalue
+	end if
+	ll_row = parent.dw_detail.getrow()
+	ll_primarykey = parent.dw_detail.object.code[ll_row]
+	if f_stringpreferences("AutoGenGuestRegNo") = "N" and parent.wf_duplicateregno(parent.dw_detail.object.regno[ll_row]) then
+		messagebox("Problem Saving", "Duplicate Guest Reg. No.~r~nPlease give some other Reg. No.")
+		parent.dw_detail.setfocus()
+		parent.dw_detail.setcolumn("regno")
+		return ::message.returnvalue
+	end if
+	ll_usercode = gl_usercode
+	setfocus()
+	if ll_usercode > 0 then
+		parent.dw_detail.setitem(ll_row, "usercode", ll_usercode)
+		if not parent.wf_getserverdatetime(ldt_server_datetime, ls_date_errtext) then
+			messagebox("Date Violation", ls_date_errtext, stopsign!)
+			return ::message.returnvalue
+		end if
+		parent.dw_detail.object.date[ll_row] = ldt_server_datetime
+		if isnull(ll_primarykey) then
+			ll_primarykey = 0
+			ll_new_pat_reg = 1
+			SQL rollback USING parent.it_transobject;
+			parent.it_transobject.gettabmaxkey("Guest", ll_primarykey)
+			if parent.it_transobject.sqlcode = 0 then
+				parent.dw_detail.setitem(ll_row, "code", ll_primarykey)
+				parent.dw_detail.object.date[ll_row] = ldt_server_datetime
+				parent.dw_detail.object.usercode[ll_row] = ll_usercode
+				if f_stringpreferences("AutoGenGuestRegNo") = "Y" then
+					parent.dw_detail.object.regno[ll_row] = trim(string(ll_primarykey))
+				elseif parent.dw_detail.object.regno[ll_row] = "" or isnull(parent.dw_detail.object.regno[ll_row]) then
+					parent.dw_detail.object.regno[ll_row] = trim(string(ll_primarykey))
+				end if
+			else
+				SQL rollback USING parent.it_transobject;
+				lb_commit = false
+				messagebox("Guest Registration Problem", "Problem in Auto Generation of Guest Reg. No.~r~n Possibe Reason: " + parent.it_transobject.sqlerrtext)
+			end if
+		end if
+		if lb_commit then
+			ldw_active = parent.dw_detail.getitemstatus(ll_row, "active", primary!)
+			if parent.dw_detail.object.active[ll_row] = "N" and (ldw_active = datamodified! or ldw_active = newmodified!) then
+			end if
+			parent.dw_detail.accepttext()
+			if parent.dw_detail.update() > 0 then
+				SQL commit USING parent.it_transobject;
+				messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+				parent.is_regno = parent.dw_detail.object.regno[ll_row]
+			else
+				SQL rollback USING parent.it_transobject;
+				setpointer(arrow!)
+				messagebox("Save Changes", "Changes Rollback in database, ~n~rSome database problem occurs", exclamation!, ok!, 1)
+				return ::message.returnvalue
+			end if
+			setpointer(arrow!)
+			parent.post event ue_close(1)
+		end if
+	end if
+	parent.dw_detail.setitem(ll_row, "code", ll_null)
+	setpointer(arrow!)
+	return ::message.returnvalue
+
+// dw_detail.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long
+	long ll_totdays
+	long ll_years
+	long ll_months
+	long ll_days
+	choose case dwo.name
+	case "regno"
+		if parent.wf_duplicateregno(data) then
+			return 1
+		end if
+	case "recurringperiod"
+		if long(data) < 0 then
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "regno"
+		messagebox("ItemNo Validation", "Item Duplication Error~r~nPlease enter some other Reg No")
+	end choose
+	return 1

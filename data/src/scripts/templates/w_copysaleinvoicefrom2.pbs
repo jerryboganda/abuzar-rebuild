@@ -1,0 +1,506 @@
+// window w_copysaleinvoicefrom2 (templates)  ancestor: window
+
+// w_copysaleinvoicefrom2.ue_setfocus(char ac_type) returns 0
+	long ll_invcode
+	setnull(ll_invcode)
+	if ac_type = "S" then
+		this.dw_purchaseinvtemplate.setitem(1, "purinvcode", ll_invcode)
+		this.dw_purchaseinvtemplate.enabled = false
+		this.dw_salereturninvtemplate.setitem(1, "srinvcode", ll_invcode)
+		this.dw_salereturninvtemplate.enabled = false
+		this.dw_template.enabled = false
+		this.dw_issuerequest.setitem(1, "issuereqinvcode", ll_invcode)
+		this.dw_issuerequest.enabled = false
+		this.dw_saleinvtemplate.enabled = true
+		this.dw_saleinvtemplate.setfocus()
+		this.dw_trans.enabled = false
+		return
+	end if
+	if ac_type = "T" then
+		this.dw_saleinvtemplate.setitem(1, "saleinvcode", ll_invcode)
+		this.dw_saleinvtemplate.enabled = false
+		this.dw_purchaseinvtemplate.setitem(1, "purinvcode", ll_invcode)
+		this.dw_purchaseinvtemplate.enabled = false
+		this.dw_salereturninvtemplate.setitem(1, "srinvcode", ll_invcode)
+		this.dw_salereturninvtemplate.enabled = false
+		this.dw_issuerequest.setitem(1, "issuereqinvcode", ll_invcode)
+		this.dw_issuerequest.enabled = false
+		this.dw_template.enabled = true
+		this.dw_template.setfocus()
+		this.dw_trans.enabled = false
+		return
+	end if
+	if ac_type = "P" then
+		this.dw_saleinvtemplate.setitem(1, "saleinvcode", ll_invcode)
+		this.dw_saleinvtemplate.enabled = false
+		this.dw_salereturninvtemplate.setitem(1, "srinvcode", ll_invcode)
+		this.dw_salereturninvtemplate.enabled = false
+		this.dw_template.enabled = false
+		this.dw_issuerequest.setitem(1, "issuereqinvcode", ll_invcode)
+		this.dw_issuerequest.enabled = false
+		this.dw_purchaseinvtemplate.enabled = true
+		this.dw_purchaseinvtemplate.setfocus()
+		this.dw_trans.enabled = false
+		return
+	end if
+	if ac_type = "R" then
+		this.dw_saleinvtemplate.setitem(1, "saleinvcode", ll_invcode)
+		this.dw_saleinvtemplate.enabled = false
+		this.dw_purchaseinvtemplate.setitem(1, "purinvcode", ll_invcode)
+		this.dw_purchaseinvtemplate.enabled = false
+		this.dw_template.enabled = false
+		this.dw_saleinvtemplate.enabled = false
+		this.dw_issuerequest.setitem(1, "issuereqinvcode", ll_invcode)
+		this.dw_issuerequest.enabled = false
+		this.dw_salereturninvtemplate.enabled = true
+		this.dw_salereturninvtemplate.setfocus()
+		this.dw_trans.enabled = false
+		return
+	end if
+	if ac_type = "A" then
+		this.dw_saleinvtemplate.setitem(1, "saleinvcode", ll_invcode)
+		this.dw_saleinvtemplate.enabled = false
+		this.dw_purchaseinvtemplate.setitem(1, "purinvcode", ll_invcode)
+		this.dw_purchaseinvtemplate.enabled = false
+		this.dw_salereturninvtemplate.setitem(1, "srinvcode", ll_invcode)
+		this.dw_salereturninvtemplate.enabled = false
+		this.dw_template.enabled = false
+		this.dw_issuerequest.enabled = true
+		this.dw_issuerequest.setfocus()
+		this.dw_trans.enabled = false
+		return
+	end if
+	if ac_type = "N" then
+		this.dw_saleinvtemplate.setitem(1, "saleinvcode", ll_invcode)
+		this.dw_saleinvtemplate.enabled = false
+		this.dw_purchaseinvtemplate.setitem(1, "purinvcode", ll_invcode)
+		this.dw_purchaseinvtemplate.enabled = false
+		this.dw_salereturninvtemplate.setitem(1, "srinvcode", ll_invcode)
+		this.dw_salereturninvtemplate.enabled = false
+		this.dw_template.enabled = false
+		this.dw_issuerequest.enabled = false
+		this.dw_trans.enabled = true
+		this.dw_trans.setfocus()
+	end if
+
+// w_copysaleinvoicefrom2.ue_postopen() returns 0
+	long ll_invcode
+	long ll_startinginv
+	this.istr_template.b_userinput = false
+	this.dw_template.settransobject(sqlca)
+	this.dw_template.insertrow(0)
+	this.dw_template.scrolltorow(0)
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	ll_startinginv = 10
+	this.dw_saleinvtemplate.settransobject(sqlca)
+	if this.dw_saleinvtemplate.getchild("saleinvcode", this.idc_saleinvtemplate) <> 1 then
+		messagebox("DataWindow Child", "Can not get DataWindow Child reference for sale invoice")
+		return
+	end if
+	this.idc_saleinvtemplate.settransobject(sqlca)
+	SQL Select Max ( SaleInvCode ) INTO :ll_invcode From SaleLedger USING sqlca;
+	if sqlca.sqlcode <> 0 then
+		messagebox("Fetch Error", "Unable to fetch Sale Invoice code.")
+		return
+	end if
+	this.idc_saleinvtemplate.retrieve(ll_invcode - ll_startinginv, ll_invcode)
+	this.dw_saleinvtemplate.insertrow(0)
+	this.dw_saleinvtemplate.scrolltorow(0)
+	this.dw_purchaseinvtemplate.settransobject(sqlca)
+	if this.dw_purchaseinvtemplate.getchild("purinvcode", this.idc_purchaseinvtemplate) <> 1 then
+		messagebox("DataWindow Child", "Can not get DataWindow Child reference for purchase invoice")
+		return
+	end if
+	this.idc_purchaseinvtemplate.settransobject(sqlca)
+	SQL Select Max ( PurInvcode ) INTO :ll_invcode From PurLedger USING sqlca;
+	if sqlca.sqlcode <> 0 then
+		messagebox("Fetch Error", "Unable to fetch Purchase Invoice code.")
+		return
+	end if
+	this.idc_purchaseinvtemplate.retrieve(ll_invcode - ll_startinginv, ll_invcode)
+	this.dw_purchaseinvtemplate.insertrow(0)
+	this.dw_purchaseinvtemplate.scrolltorow(0)
+	this.dw_salereturninvtemplate.settransobject(sqlca)
+	if this.dw_salereturninvtemplate.getchild("srinvcode", this.idc_salereturninvtemplate) <> 1 then
+		messagebox("DataWindow Child", "Can not get DataWindow Child reference for sale return invoice")
+		return
+	end if
+	this.idc_salereturninvtemplate.settransobject(sqlca)
+	SQL Select Max ( SrInvCode ) INTO :ll_invcode From SrLedger USING sqlca;
+	if sqlca.sqlcode <> 0 then
+		messagebox("Fetch Error", "Unable to fetch Sale Return Invoice code.")
+		return
+	end if
+	this.idc_salereturninvtemplate.retrieve(ll_invcode - ll_startinginv, ll_invcode)
+	this.dw_salereturninvtemplate.insertrow(0)
+	this.dw_salereturninvtemplate.scrolltorow(0)
+	this.dw_issuerequest.settransobject(sqlca)
+	if this.dw_issuerequest.getchild("issuereqinvcode", this.idc_issuereqtemplate) <> 1 then
+		messagebox("DataWindow Child", "Can not get DataWindow Child reference for Issue Request invoice")
+		return
+	end if
+	this.idc_issuereqtemplate.settransobject(sqlca)
+	SQL Select Max ( IssueReqInvCode ) INTO :ll_invcode From IssueReqHeader USING sqlca;
+	if sqlca.sqlcode <> 0 then
+		messagebox("Fetch Error", "Unable to fetch Issue Request code.")
+		return
+	end if
+	this.idc_issuereqtemplate.retrieve(ll_invcode - ll_startinginv, ll_invcode)
+	this.dw_issuerequest.insertrow(0)
+	this.dw_issuerequest.scrolltorow(0)
+	this.dw_trans.settransobject(sqlca)
+	this.dw_trans.insertrow(0)
+	this.dw_trans.scrolltorow(0)
+	this.dw_receipt.settransobject(sqlca)
+	if this.dw_receipt.getchild("invcode", this.idc_receipt) <> 1 then
+		messagebox("DataWindow Child", "Can not get DataWindow Child reference for Receipt Document")
+		return
+	end if
+	this.idc_receipt.settransobject(sqlca)
+	SQL Select Max ( ReceiptInvcode ) INTO :ll_invcode From ReceiptHeader USING sqlca;
+	if sqlca.sqlcode <> 0 then
+		messagebox("Fetch Error", "Unable to fetch Receipt Document code.")
+		return
+	end if
+	this.idc_receipt.retrieve(ll_invcode - ll_startinginv, ll_invcode)
+	this.dw_receipt.insertrow(0)
+	this.dw_receipt.scrolltorow(0)
+	this.dw_po.settransobject(sqlca)
+	this.dw_po.insertrow(0)
+	this.dw_po.scrolltorow(0)
+	this.dw_control.object.doctypecode[1] = 1
+	this.dw_control.accepttext()
+	wf_set_dw_visible(this.dw_control.object.doctypecode[1])
+	this.dw_control.setfocus()
+
+// w_copysaleinvoicefrom2.wf_set_dw_visible(integer ai_code) returns long
+	if ai_code = 1 then
+		this.dw_template.visible = true
+		this.dw_saleinvtemplate.visible = false
+		this.dw_purchaseinvtemplate.visible = false
+		this.dw_salereturninvtemplate.visible = false
+		this.dw_issuerequest.visible = false
+		this.dw_trans.visible = false
+		this.dw_receipt.visible = false
+		this.dw_po.visible = false
+	elseif ai_code = 2 then
+		this.dw_template.visible = false
+		this.dw_saleinvtemplate.visible = true
+		this.dw_purchaseinvtemplate.visible = false
+		this.dw_salereturninvtemplate.visible = false
+		this.dw_issuerequest.visible = false
+		this.dw_trans.visible = false
+		this.dw_receipt.visible = false
+		this.dw_po.visible = false
+	elseif ai_code = 3 then
+		this.dw_template.visible = false
+		this.dw_saleinvtemplate.visible = false
+		this.dw_purchaseinvtemplate.visible = true
+		this.dw_salereturninvtemplate.visible = false
+		this.dw_issuerequest.visible = false
+		this.dw_trans.visible = false
+		this.dw_receipt.visible = false
+		this.dw_po.visible = false
+	elseif ai_code = 4 then
+		this.dw_template.visible = false
+		this.dw_saleinvtemplate.visible = false
+		this.dw_purchaseinvtemplate.visible = false
+		this.dw_salereturninvtemplate.visible = true
+		this.dw_issuerequest.visible = false
+		this.dw_trans.visible = false
+		this.dw_receipt.visible = false
+		this.dw_po.visible = false
+	elseif ai_code = 5 then
+		this.dw_template.visible = false
+		this.dw_saleinvtemplate.visible = false
+		this.dw_purchaseinvtemplate.visible = false
+		this.dw_salereturninvtemplate.visible = false
+		this.dw_issuerequest.visible = true
+		this.dw_trans.visible = false
+		this.dw_receipt.visible = false
+		this.dw_po.visible = false
+	elseif ai_code = 6 then
+		this.dw_template.visible = false
+		this.dw_saleinvtemplate.visible = false
+		this.dw_purchaseinvtemplate.visible = false
+		this.dw_salereturninvtemplate.visible = false
+		this.dw_issuerequest.visible = false
+		this.dw_trans.visible = true
+		this.dw_receipt.visible = false
+		this.dw_po.visible = false
+	elseif ai_code = 7 then
+		this.dw_template.visible = false
+		this.dw_saleinvtemplate.visible = false
+		this.dw_purchaseinvtemplate.visible = false
+		this.dw_salereturninvtemplate.visible = false
+		this.dw_issuerequest.visible = false
+		this.dw_trans.visible = false
+		this.dw_receipt.visible = true
+		this.dw_po.visible = false
+	elseif ai_code = 8 then
+		this.dw_template.visible = false
+		this.dw_saleinvtemplate.visible = false
+		this.dw_purchaseinvtemplate.visible = false
+		this.dw_salereturninvtemplate.visible = false
+		this.dw_issuerequest.visible = false
+		this.dw_trans.visible = false
+		this.dw_receipt.visible = false
+		this.dw_po.visible = true
+	end if
+	return 0
+
+// w_copysaleinvoicefrom2.create() returns 0
+	this.dw_control = create dw_control
+	this.st_4 = create st_4
+	this.st_saleinvno = create st_saleinvno
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.dw_template = create dw_template
+	this.dw_trans = create dw_trans
+	this.dw_issuerequest = create dw_issuerequest
+	this.dw_salereturninvtemplate = create dw_salereturninvtemplate
+	this.dw_purchaseinvtemplate = create dw_purchaseinvtemplate
+	this.dw_saleinvtemplate = create dw_saleinvtemplate
+	this.gb_1 = create gb_1
+	this.dw_po = create dw_po
+	this.dw_receipt = create dw_receipt
+	this.control = {this.dw_control, this.st_4, this.st_saleinvno, this.cb_cancel, this.cb_ok, this.dw_template, this.dw_trans, this.dw_issuerequest, this.dw_salereturninvtemplate, this.dw_purchaseinvtemplate, this.dw_saleinvtemplate, this.gb_1, this.dw_po, this.dw_receipt}
+
+// w_copysaleinvoicefrom2.destroy() returns 0
+	destroy this.dw_control
+	destroy this.st_4
+	destroy this.st_saleinvno
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.dw_template
+	destroy this.dw_trans
+	destroy this.dw_issuerequest
+	destroy this.dw_salereturninvtemplate
+	destroy this.dw_purchaseinvtemplate
+	destroy this.dw_saleinvtemplate
+	destroy this.gb_1
+	destroy this.dw_po
+	destroy this.dw_receipt
+
+// w_copysaleinvoicefrom2.open() returns long
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	post event ue_postopen()
+	return ::message.returnvalue
+
+// w_copysaleinvoicefrom2.close() returns long
+	closewithreturn(this, this.istr_template)
+	return ::message.returnvalue
+
+// w_copysaleinvoicefrom2.key(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		post event Close()
+	end if
+	return ::message.returnvalue
+
+// dw_control.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "doctypecode"
+		parent.wf_set_dw_visible(long(data))
+	end choose
+	return 0
+
+// dw_control.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// cb_cancel.clicked() returns long
+	parent.istr_template.b_userinput = false
+	parent.post event Close()
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	long ll_find
+	long ll_invcode
+	parent.istr_template.b_userinput = false
+	if parent.dw_control.object.doctypecode[1] = 1 then
+		if isnull(parent.dw_template.getitemnumber(1, "template")) then
+			return ::message.returnvalue
+		end if
+		parent.istr_template.c_copyinvfrom = "T"
+		parent.istr_template.l_invtemplate = parent.dw_template.getitemnumber(1, "template")
+		parent.istr_template.l_moduleid = 39
+		parent.istr_template.l_doccode = parent.dw_template.getitemnumber(1, "template")
+	elseif parent.dw_control.object.doctypecode[1] = 2 then
+		if parent.dw_saleinvtemplate.accepttext() = -1 then
+			parent.dw_saleinvtemplate.setfocus()
+			return ::message.returnvalue
+		end if
+		ll_invcode = parent.dw_saleinvtemplate.getitemnumber(1, "saleinvcode")
+		SQL Select count ( *) INTO :ll_find From SaleLedger Where SaleInvcode =:ll_invcode USING sqlca;
+		if ll_find <= 0 or sqlca.sqlcode <> 0 then
+			messagebox("Sale Invoice Code Validation", "Sale Invoice Code does not exist")
+			parent.dw_saleinvtemplate.setfocus()
+			return ::message.returnvalue
+		end if
+		parent.istr_template.c_copyinvfrom = "I"
+		parent.istr_template.l_invtemplate = parent.dw_saleinvtemplate.getitemnumber(1, "saleinvcode")
+		parent.istr_template.l_moduleid = 1
+		parent.istr_template.l_doccode = ll_invcode
+	elseif parent.dw_control.object.doctypecode[1] = 3 then
+		if parent.dw_purchaseinvtemplate.accepttext() = -1 then
+			parent.dw_purchaseinvtemplate.setfocus()
+			return ::message.returnvalue
+		end if
+		ll_invcode = parent.dw_purchaseinvtemplate.getitemnumber(1, "purinvcode")
+		SQL Select count ( *) INTO :ll_find From PurLedger Where PurInvcode =:ll_invcode USING sqlca;
+		if ll_find <= 0 or sqlca.sqlcode <> 0 then
+			messagebox("Purchase Invoice Code Validation", "Purchase Invoice Code does not exist")
+			parent.dw_purchaseinvtemplate.setfocus()
+			return ::message.returnvalue
+		end if
+		parent.istr_template.c_copyinvfrom = "P"
+		parent.istr_template.l_invtemplate = parent.dw_purchaseinvtemplate.getitemnumber(1, "purinvcode")
+		parent.istr_template.i_invtype = parent.idc_purchaseinvtemplate.getitemnumber(parent.idc_purchaseinvtemplate.getrow(), "purcatcode")
+		parent.istr_template.l_moduleid = 3
+		parent.istr_template.l_doccode = ll_invcode
+	elseif parent.dw_control.object.doctypecode[1] = 4 then
+		if parent.dw_salereturninvtemplate.accepttext() = -1 then
+			parent.dw_salereturninvtemplate.setfocus()
+			return ::message.returnvalue
+		end if
+		ll_invcode = parent.dw_salereturninvtemplate.getitemnumber(1, "srinvcode")
+		SQL Select Count ( *) INTO :ll_find From SrLedger Where SrInvCode =:ll_invcode USING sqlca;
+		if ll_find <= 0 or sqlca.sqlcode <> 0 then
+			messagebox("Sale Return Invoice Code Validation", "Sale Return Invoice Code does not exist")
+			parent.dw_salereturninvtemplate.setfocus()
+			return ::message.returnvalue
+		end if
+		parent.istr_template.c_copyinvfrom = "R"
+		parent.istr_template.l_invtemplate = parent.dw_salereturninvtemplate.getitemnumber(1, "srinvcode")
+		parent.istr_template.l_moduleid = 2
+		parent.istr_template.l_doccode = ll_invcode
+	elseif parent.dw_control.object.doctypecode[1] = 5 then
+		if parent.dw_issuerequest.accepttext() = -1 then
+			parent.dw_issuerequest.setfocus()
+			return ::message.returnvalue
+		end if
+		ll_invcode = parent.dw_issuerequest.getitemnumber(1, "issuereqinvcode")
+		SQL Select count ( *) INTO :ll_find From IssueReqheader Where IssueReqInvcode =:ll_invcode USING sqlca;
+		if ll_find <= 0 or sqlca.sqlcode <> 0 then
+			messagebox("Issue Request Code Validation", "Issue Request Code does not exist")
+			parent.dw_issuerequest.setfocus()
+			return ::message.returnvalue
+		end if
+		parent.istr_template.c_copyinvfrom = "A"
+		parent.istr_template.l_invtemplate = parent.dw_issuerequest.getitemnumber(1, "issuereqinvcode")
+		parent.istr_template.l_moduleid = 40
+		parent.istr_template.l_doccode = ll_invcode
+	elseif parent.dw_control.object.doctypecode[1] = 6 then
+		if parent.dw_trans.accepttext() = -1 then
+			parent.dw_trans.setfocus()
+			return ::message.returnvalue
+		end if
+		ll_invcode = parent.dw_trans.getitemnumber(1, "transcode")
+		SQL Select count ( *) INTO :ll_find From Theader Where Transcode =:ll_invcode USING sqlca;
+		if ll_find <= 0 or sqlca.sqlcode <> 0 then
+			messagebox("Transfer Code Validation", "Transfer Code does not exist")
+			parent.dw_trans.setfocus()
+			return ::message.returnvalue
+		end if
+		parent.istr_template.c_copyinvfrom = "N"
+		parent.istr_template.l_invtemplate = parent.dw_trans.getitemnumber(1, "transcode")
+		parent.istr_template.l_moduleid = 8
+		parent.istr_template.l_doccode = ll_invcode
+	elseif parent.dw_control.object.doctypecode[1] = 7 then
+		if parent.dw_receipt.accepttext() = -1 then
+			parent.dw_receipt.setfocus()
+			return ::message.returnvalue
+		end if
+		ll_invcode = parent.dw_receipt.getitemnumber(1, "Invcode")
+		SQL Select count ( *) INTO :ll_find From ReceiptHeader Where ReceiptInvcode =:ll_invcode USING sqlca;
+		if ll_find <= 0 or sqlca.sqlcode <> 0 then
+			messagebox("Receipt Document Code Validation", "Receipt Document Code does not exist")
+			parent.dw_receipt.setfocus()
+			return ::message.returnvalue
+		end if
+		parent.istr_template.c_copyinvfrom = "C"
+		parent.istr_template.l_invtemplate = parent.dw_receipt.getitemnumber(1, "invcode")
+		parent.istr_template.l_moduleid = 6
+		parent.istr_template.l_doccode = ll_invcode
+	elseif parent.dw_control.object.doctypecode[1] = 8 then
+		if parent.dw_po.accepttext() = -1 then
+			parent.dw_po.setfocus()
+			return ::message.returnvalue
+		end if
+		ll_invcode = parent.dw_po.getitemnumber(1, "ordercode")
+		SQL Select count ( *) INTO :ll_find From PurOrderHeader Where POcode =:ll_invcode USING sqlca;
+		if ll_find <= 0 or sqlca.sqlcode <> 0 then
+			messagebox("Purchase Order Code Validation", "Purchase Order Code does not exist")
+			parent.dw_po.setfocus()
+			return ::message.returnvalue
+		end if
+		parent.istr_template.c_copyinvfrom = "O"
+		parent.istr_template.l_invtemplate = parent.dw_po.getitemnumber(1, "ordercode")
+		parent.istr_template.l_moduleid = 16
+		parent.istr_template.l_doccode = ll_invcode
+	end if
+	parent.istr_template.b_userinput = true
+	parent.post event Close()
+	return ::message.returnvalue
+
+// dw_template.ue_key(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		parent.post event Close()
+	end if
+	return ::message.returnvalue
+
+// dw_template.itemerror(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	messagebox("Template Validation", "Please select some Template from dropdown")
+	return 1
+
+// dw_salereturninvtemplate.key(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		parent.post event Close()
+	end if
+	return ::message.returnvalue
+
+// dw_salereturninvtemplate.itemerror(long row, dwobject dwo, string data) returns long
+	messagebox("Sale Return Invoice Code Validation", "Please enter valid Sale Return Invoice Code")
+	return 1
+
+// dw_purchaseinvtemplate.ue_key(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		parent.post event Close()
+	end if
+	return ::message.returnvalue
+
+// dw_purchaseinvtemplate.itemerror(long row, dwobject dwo, string data) returns long
+	messagebox("Purchase Invoice Code Validation", "Please enter valid Purchase Invoice Code")
+	return 1
+
+// dw_saleinvtemplate.key(keycode key, unsignedlong keyflags) returns long
+	if key = keyescape! then
+		parent.post event Close()
+	end if
+	return ::message.returnvalue
+
+// dw_saleinvtemplate.itemerror(long row, dwobject dwo, string data) returns long
+	messagebox("Sale Invoice Code Validation", "Please enter valid Sale Invoice Code")
+	return 1

@@ -1,0 +1,364 @@
+// window w_dispatch (multientry)  ancestor: w_multi_entry
+
+// w_dispatch.wf_post() returns integer
+	integer li_errcode
+	long ll_counter
+	long ll_salesmancode
+	boolean lb_flag
+	s_arguements lstr_arginfo
+	open(w_salesmanpassword)
+	ll_salesmancode = long(message.doubleparm)
+	setfocus()
+	if ll_salesmancode > 0 then
+		open(w_arg_sinvcode_linvcode)
+		lstr_arginfo = message.powerobjectparm
+		if lstr_arginfo.i_status = 1 then
+			setpointer(hourglass!)
+			SQL rollback USING sqlca;
+			SQL Select count ( *) INTO :ll_counter From dispatchheader WITH ( UPDLOCK HOLDLOCK ) Where dispatchheader.dispcode Between :lstr_arginfo.l_code1 AND :lstr_arginfo.l_code2 AND dispatchheader.Posted ='N' USING sqlca;
+			li_errcode = sqlca.sqlcode
+			if li_errcode = 0 then
+				SQL update dispatchheader Set Posted ='Y' , postdate =getdate ( ) , postedby =:ll_salesmancode Where dispatchheader.dispcode Between :lstr_arginfo.l_code1 AND :lstr_arginfo.l_code2 AND dispatchheader.Posted ='N' USING sqlca;
+				li_errcode = sqlca.sqlcode
+			end if
+		end if
+		if li_errcode = 0 then
+			SQL commit USING sqlca;
+		else
+			SQL rollback USING sqlca;
+		end if
+	else
+		setfocus()
+	end if
+	setpointer(arrow!)
+	if li_errcode <> 0 then
+		messagebox("Posting Fails", "Some database request fails, Please try again")
+	else
+		messagebox("Posting Successfull", "Total unposted rows were " + string(ll_counter) + "~n~rAll rows have been posted successfully")
+	end if
+	return li_errcode
+
+// w_dispatch.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns 0
+	integer li_colcount
+	integer li_counter
+	integer li_temp
+	string ls_colname
+	string ls_rtnstring
+	li_colcount = integer(ad_dwcontrol.object.datawindow.column.count)
+	for li_counter = li_colcount to li_counter step -1
+		ls_colname = ad_dwcontrol.describe("#" + string(li_counter) + ".Name")
+		if ai_doundo = 1 then
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=1")
+		else
+			ls_rtnstring = ad_dwcontrol.modify(ls_colname + ".Protect=0")
+		end if
+	next
+
+// w_dispatch.wf_deleteemptydetailrow() returns integer
+	long ll_rowcount
+	integer li_rtcode
+	ll_rowcount = this.id_detail.rowcount()
+	if ll_rowcount > 1 and isnull(this.id_detail.getitemnumber(ll_rowcount, "saleinvcode")) then
+		this.id_detail.deleterow(ll_rowcount)
+		li_rtcode = 1
+		this.ib_itemslistopen = false
+		this.id_itemslist.hide()
+		setfocus()
+	end if
+	return li_rtcode
+
+// w_dispatch.wf_saleinvamt(long al_saleinvcode) returns double
+	double ld_saleinvamt
+	SQL SELECT Round ( Sum ( ( dbo.saledetail.looseqty *( dbo.saledetail.saleprice - dbo.saledetail.itemflatdisc ) ) *( 1 - dbo.saledetail.discperc / 100 ) *( 1 - dbo.saleledger.discperc / 100 ) ) + dbo.saleledger.misccharges - dbo.saleledger.flatdisc , 0 ) INTO :ld_saleinvamt FROM dbo.saledetail , dbo.saleledger WHERE ( dbo.saleledger.saleinvcode =dbo.saledetail.saleinvcode ) and ( dbo.saleledger.saleinvcode =:al_saleinvcode ) GROUP BY dbo.saleledger.saleinvcode , dbo.saleledger.misccharges , dbo.saleledger.flatdisc , dbo.saleledger.discperc USING sqlca;
+	return ld_saleinvamt
+
+// w_dispatch.wf_populateinvoices() returns long
+	s_arguements lstr_arg
+	long ll_totalrows
+	long ll_row
+	long ll_detailrows
+	long ll_icode
+	long ll_custcode
+	long ll_counter
+	integer li_retcode
+	integer li_errcode
+	string ls_errortext
+	boolean lb_enablesave
+	ll_custcode = this.id_master.getitemnumber(1, "custcode")
+	if isnull(ll_custcode) or ll_custcode = 0 then
+		messagebox("Customer Validation", "Can not populate sale invoices~r~nPlease Select Valid Customer")
+		this.id_master.setcolumn("custcode")
+		this.id_master.setfocus()
+		return -1
+	end if
+	if wf_iseditable() = false then
+		return 0
+	end if
+	openwithparm(w_populateinvoices_cust_sdate_ldate, ll_custcode)
+	lstr_arg = message.powerobjectparm
+	if lstr_arg.i_status = 1 then
+		ll_totalrows = upperbound(lstr_arg.ia_integerlist)
+		if ll_totalrows < 0 then
+			li_retcode = -1
+		end if
+		if ll_totalrows > 0 then
+			lb_enablesave = true
+		end if
+		ll_counter = 0
+		ll_detailrows = this.id_detail.rowcount()
+		for ll_counter = 1 to ll_detailrows
+			event ue_deleteitem()
+		next
+		if this.id_master.getitemnumber(1, "custcode") <> lstr_arg.l_code1 then
+			this.id_master.setitem(1, "custcode", lstr_arg.l_code1)
+		end if
+		ll_counter = 0
+		for ll_counter = 1 to ll_totalrows
+			ll_row = this.id_detail.insertrow(0)
+			this.id_detail.setitem(ll_row, "saleinvcode", lstr_arg.ia_integerlist[ll_row])
+			if wf_validatesaleinv(lstr_arg.ia_integerlist[ll_row], ll_counter) <> 0 then
+				event ue_deleteitem()
+			end if
+		next
+	else
+		li_retcode = -1
+	end if
+	if lb_enablesave then
+		this.im_menu.m_file.m_save.enabled = true
+		this.im_menu.m_file.m_print.enabled = true
+	end if
+	return li_retcode
+
+// w_dispatch.wf_validateitem(boolean ab_flag) returns integer
+	long ll_icode
+	long ll_stock
+	long ll_totalstock
+	string ls_fullcode
+	string ls_titleerrtext
+	string ls_errtext
+	integer li_errcode
+	integer li_assgcode
+	integer li_option
+	boolean ib_due
+	integer li_null
+	string ls_null
+	this.id_detail.accepttext()
+	ll_icode = this.id_detail.getitemnumber(this.il_currrow, "saleinvcode")
+	if not isnull(ll_icode) and vf_dwdupcode1(this.id_detail, "saleinvcode", string(ll_icode), this.il_currrow) = true then
+		ls_titleerrtext = "Item Validation"
+		ls_errtext = "Duplicate item, please select some other item"
+		li_errcode = -1
+	end if
+	if ab_flag then
+		this.ib_itemvalidated = true
+	end if
+	if li_errcode = -1 then
+		setnull(li_null)
+		setnull(ls_null)
+		ls_titleerrtext = "Item Validation"
+		messagebox(ls_titleerrtext, ls_errtext)
+		this.id_detail.setcolumn("saleinvcode")
+		this.id_detail.scrolltorow(this.il_currrow)
+		this.id_detail.object.saleinvcode[this.il_currrow] = li_null
+		this.id_detail.object.customer[this.il_currrow] = ls_null
+		this.id_detail.object.address[this.il_currrow] = ls_null
+		this.id_detail.object.area[this.il_currrow] = ls_null
+		this.id_detail.object.remarks[this.il_currrow] = ls_null
+		this.id_detail.object.saleinvamt[this.il_currrow] = li_null
+	end if
+	return li_errcode
+
+// w_dispatch.wf_validatesaleinv(long al_saleinvcode, long al_row) returns long
+	long ll_invcode
+	long ll_retcode
+	string ls_customer
+	string ls_address
+	string ls_area
+	string ls_remarks
+	double ld_saleinvamt
+	integer yesno
+	integer li_custcode
+	this.il_currrow = al_row
+	if isnull(al_saleinvcode) or al_saleinvcode < 1 then
+		return 1
+	else
+		SQL Select saleledger.saleinvcode , accounts.name , saleledger.custcode , address =rtrim ( ltrim ( customer.address1 ) ) + ' ' + rtrim ( ltrim ( customer.address2 ) ) , area =area.name , remarks =dbo.saleledger.remarks , NetAmt =Round ( Sum ( ( dbo.saledetail.looseqty *( dbo.saledetail.saleprice - dbo.saledetail.itemflatdisc ) ) *( 1 - dbo.saledetail.discperc / 100 ) *( 1 - dbo.saleledger.discperc / 100 ) ) + dbo.saleledger.misccharges - dbo.saleledger.flatdisc , 0 ) INTO :ll_retcode, :ls_customer, :li_custcode, :ls_address, :ls_area, :ls_remarks, :ld_saleinvamt From SaleLedger , accounts , saledetail , customer , area Where saleledger.saleinvcode =:al_saleinvcode and saleledger.saleinvcode =saledetail.saleinvcode and saleledger.custcode =accounts.acccode and accounts.acccode =customer.custcode and customer.areacode =area.areacode and saleledger.deleted ='N' GROUP BY saleledger.saleinvcode , accounts.name , customer.address1 , customer.address2 , area.name , saleledger.custcode , saleledger.misccharges , saleledger.flatdisc , saleledger.discperc , saleledger.remarks USING sqlca;
+		if sqlca.sqlcode <> 0 then
+			messagebox("Error", "Sale Invoice not found~r~nReason: Either it does not exists or Deleted earlier", exclamation!)
+			return 1
+		elseif wf_validateitem(false) = -1 then
+			return 1
+		end if
+		if not (li_custcode = this.id_master.getitemnumber(this.id_master.getrow(), "custcode")) then
+			yesno = messagebox("Sale Invoice Code Validation", "This Sale Invoice doesn't belong ~r~n to the selected customer~r~nAre you sure you want to continue?", question!, yesno!, 2)
+			if yesno = 1 then
+				this.id_detail.setitem(al_row, "customer", ls_customer)
+				this.id_detail.setitem(al_row, "saleinvamt", ld_saleinvamt)
+			else
+				return 1
+			end if
+		else
+			this.id_detail.setitem(al_row, "customer", ls_customer)
+			this.id_detail.setitem(al_row, "address", ls_address)
+			this.id_detail.setitem(al_row, "area", ls_area)
+			this.id_detail.setitem(al_row, "remarks", ls_remarks)
+			this.id_detail.setitem(al_row, "saleinvamt", ld_saleinvamt)
+		end if
+	end if
+	return 0
+
+// w_dispatch.create() returns 0
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_dispatchmenu" then
+		this.menuid = create m_dispatchmenu
+	end if
+
+// w_dispatch.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_dispatch.activate() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::activate()
+	this.windowstate = maximized!
+	return ::message.returnvalue
+
+// w_dispatch.ue_save() returns 0
+	long ll_mastercurrrow
+	long ll_invid
+	long ll_detailrows
+	integer li_counter
+	integer ll_salesmancode
+	boolean lb_commitflag
+	datetime ldt_server_datetime
+	string ls_date_errtext
+	dwitemstatus lds_rowstatus
+	if wf_validateitem(true) = -1 then
+		messagebox("", "testing")
+		this.id_detail.setfocus()
+		return
+	end if
+	wf_deleteemptydetailrow()
+	if f_validatedw(this.id_master) < 0 then
+		return
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	setpointer(hourglass!)
+	open(w_salesmanpassword)
+	ll_salesmancode = long(message.doubleparm)
+	if ll_salesmancode > 0 then
+		ll_mastercurrrow = this.id_master.getrow()
+		ll_invid = this.id_master.object.code[ll_mastercurrrow]
+		if isnull(ll_invid) then
+			f_newtableid("dispatchheader", ll_invid)
+			this.id_master.object.code[ll_mastercurrrow] = ll_invid
+			if not wf_getserverdatetime(ldt_server_datetime, ls_date_errtext) then
+				messagebox("Date Violation", ls_date_errtext, stopsign!)
+				return
+			end if
+			this.id_master.setitem(ll_mastercurrrow, "date", ldt_server_datetime)
+		end if
+		ll_detailrows = this.id_detail.rowcount()
+		li_counter = 1
+		do while li_counter <= ll_detailrows and lb_commitflag = true
+			lds_rowstatus = this.id_detail.getitemstatus(li_counter, 0, primary!)
+			if lds_rowstatus = newmodified! then
+				this.id_detail.setitem(li_counter, "code", ll_invid)
+			end if
+			li_counter = li_counter + 1
+		loop
+		call super::ue_save
+	else
+		setfocus()
+	end if
+	setpointer(arrow!)
+
+// w_dispatch.ue_newform() returns 0
+	call super::ue_newform
+	wf_protectdw(this.id_master, 0)
+	wf_protectdw(this.id_detail, 0)
+	this.id_detail.object.customer.protect = 1
+	this.id_detail.object.saleinvamt.protect = 1
+	this.id_master.setcolumn(1)
+	this.id_master.setfocus()
+	if not wf_validatedate() then
+		close(this)
+	end if
+
+// w_dispatch.ue_detail() returns 0
+	integer li_rtncode
+	integer li_protect
+	long ll_row
+	long ll_code
+	boolean lb_flag
+	boolean lb_modify
+	m_dispatchmenu lm_menu
+	call super::ue_detail
+	lm_menu = this.menuid
+	setredraw(false)
+	this.im_menu.m_file.m_post.enabled = false
+	if this.id_master.getitemstring(this.id_master.getrow(), "Posted") = "N" then
+		lb_modify = true
+		this.editflag = true
+	end if
+	if not lb_modify then
+		this.im_menu.m_file.m_save.enabled = false
+		this.editflag = false
+	else
+		li_protect = 0
+		this.im_menu.m_file.m_save.enabled = true
+		this.im_menu.m_file.m_new.enabled = false
+		this.im_menu.m_file.m_delete.enabled = false
+		this.im_menu.m_item.m_newitem.enabled = true
+		this.im_menu.m_item.m_deleteitem.enabled = true
+		this.im_menu.m_file.m_first.enabled = false
+		this.im_menu.m_file.m_next.enabled = false
+		this.im_menu.m_file.m_previous.enabled = false
+		this.im_menu.m_file.m_last.enabled = false
+		this.im_menu.m_file.m_retrieve.enabled = true
+		this.im_menu.m_file.m_retrieve.text = "Lis&t"
+		this.tab_retrieve.tabpage_detail.enabled = true
+	end if
+	wf_protectdw(this.id_master, li_protect)
+	this.id_detail.modify("saleinvcode" + ".Protect=" + string(li_protect))
+	wf_grandtotal()
+	setredraw(true)
+
+// w_dispatch.ue_list() returns 0
+	call super::ue_list
+	this.im_menu.m_file.m_print.enabled = false
+	this.im_menu.m_file.m_post.enabled = true
+
+// w_dispatch.ue_refreshddw() returns 0
+	call super::ue_refreshddw
+	this.idc_customers.setredraw(false)
+	this.idc_customers.settransobject(this.it_transobject)
+	this.idc_customers.retrieve()
+	this.idc_customers.setredraw(true)
+	this.idc_agency.setredraw(false)
+	this.idc_agency.settransobject(this.it_transobject)
+	this.idc_agency.retrieve()
+	this.idc_agency.setredraw(true)
+
+// w_dispatch.ue_postopen() returns 0
+	integer li_rtncode
+	call super::ue_postopen
+	li_rtncode = this.id_master.getchild("custcode", this.idc_customers)
+	if li_rtncode = -1 then
+		messagebox("Error", "Can not get a DataWindowChild")
+		close(this)
+	end if
+	this.idc_customers.settransobject(this.it_transobject)
+	li_rtncode = this.id_master.getchild("GCCode", this.idc_agency)
+	if li_rtncode = -1 then
+		messagebox("Error", "Can not get a DataWindowChild")
+		close(this)
+	end if
+	this.idc_agency.settransobject(this.it_transobject)

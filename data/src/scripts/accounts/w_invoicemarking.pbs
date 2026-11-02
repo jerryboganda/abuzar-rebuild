@@ -1,0 +1,546 @@
+// window w_invoicemarking (accounts)  ancestor: w_multi_entry
+
+// w_invoicemarking.wf_deleteallemptydetailrows() returns integer
+	long ll_count
+	long ll_deletecount
+	long ll_code
+	long ll_rowcount
+	ll_deletecount = 0
+	ll_rowcount = this.id_detail.rowcount()
+	for ll_count = 1 to this.id_detail.rowcount()
+		ll_code = this.id_detail.getitemnumber(ll_count, "invoicecode")
+		if isnull(ll_code) then
+			ll_deletecount = ll_deletecount + 1
+			this.id_detail.deleterow(ll_count)
+		end if
+	next
+	for ll_count = 1 to this.id_detail.rowcount()
+		ll_code = this.id_detail.getitemnumber(ll_count, "invoicecode")
+		if isnull(ll_code) then
+			ll_deletecount = ll_deletecount + 1
+			this.id_detail.deleterow(ll_count)
+		end if
+	next
+	return ll_deletecount
+
+// w_invoicemarking.wf_deleteemptydetailrow() returns integer
+	long ll_rowcount
+	long ll_code
+	integer li_rtcode
+	ll_rowcount = this.id_detail.rowcount()
+	ll_code = this.id_detail.getitemnumber(ll_rowcount, "invoicecode")
+	if ll_rowcount > 1 and isnull(ll_code) then
+		this.id_detail.deleterow(ll_rowcount)
+		li_rtcode = 1
+		setfocus()
+	end if
+	return li_rtcode
+
+// w_invoicemarking.wf_lockinvoice(long al_invcode) returns integer
+	integer li_count
+	this.it_transobject.dbparm = " Async =1, DBGetTime = 20"
+	choose case this.ii_invtype
+	case 1
+		this.it_transobject.locksaleinvoice(al_invcode)
+	case 2
+		this.it_transobject.lockpurinvoice(al_invcode)
+	case 3
+		this.it_transobject.locksrinvoice(al_invcode)
+	case 4
+		this.it_transobject.lockprinvoice(al_invcode)
+	case 5
+		this.it_transobject.lockserviceinvoice(al_invcode)
+	case 6
+		this.it_transobject.lockservicepurinvoice(al_invcode)
+	case 7
+		this.it_transobject.lockservicesrinvoice(al_invcode)
+	case 8
+		this.it_transobject.lockserviceprinvoice(al_invcode)
+	end choose
+	this.it_transobject.dbparm = "Async =0, DBGetTime = 0"
+	return this.it_transobject.sqlcode
+
+// w_invoicemarking.wf_populatedetail(long al_errrowid, string as_errtext) returns long
+	long ll_detailrows
+	long ll_counter
+	long ll_invcode
+	long ll_updateablerows
+	long ll_rtcode
+	long ll_find
+	long ll_elements
+	long i
+	string ls_marked
+	string ls_oldmarked
+	string ls_str
+	long[] lla_invoices
+	boolean lb_continue
+	ll_detailrows = this.id_detail.rowcount()
+	this.id_invdetail.reset()
+	for ll_counter = 1 to ll_detailrows
+		ll_invcode = this.id_detail.object.invoicecode[ll_counter]
+		ls_marked = this.id_detail.object.marked[ll_counter]
+		ls_oldmarked = this.id_detail.object.oldmarked[ll_counter]
+		if ls_marked <> ls_oldmarked then
+			ll_updateablerows = ll_updateablerows + 1
+			lla_invoices[ll_updateablerows] = ll_invcode
+		end if
+	next
+	if ll_updateablerows > 0 then
+		ll_rtcode = this.id_invdetail.retrieve(lla_invoices)
+		if ll_rtcode > 0 then
+			ll_counter = 1
+			do while ll_counter <= ll_rtcode and lb_continue
+				ll_invcode = this.id_invdetail.getitemnumber(ll_counter, "invoicecode")
+				ls_str = "invoicecode = " + string(ll_invcode)
+				ll_find = this.id_detail.find(ls_str, 1, this.id_detail.rowcount())
+				if ll_find > 0 then
+					if this.id_invdetail.object.marked[ll_counter] = this.id_detail.object.marked[ll_find] then
+						al_errrowid = ll_find
+						as_errtext = "Marked Status is Changed between Retrieve and Update"
+						lb_continue = false
+					else
+						this.id_invdetail.object.marked[ll_counter] = this.id_detail.object.marked[ll_find]
+					end if
+				else
+					al_errrowid = 1
+					as_errtext = "Marked Status is Changed between Retrieve and Update"
+					lb_continue = false
+				end if
+				ll_counter = ll_counter + 1
+			loop
+		else
+			al_errrowid = 1
+			as_errtext = "No invoice available for marking"
+			lb_continue = false
+		end if
+	else
+		as_errtext = "No invoice available for marking, Please Mark atleast one invoice"
+		ll_updateablerows = 0
+		lb_continue = false
+	end if
+	if not lb_continue then
+		ll_updateablerows = 0
+	end if
+	return ll_updateablerows
+
+// w_invoicemarking.wf_populateinvoices() returns long
+	datastore lds_invselected
+	long ll_detailrows
+	long ll_count
+	long ll_duplrows
+	long ll_invcode
+	long ll_row
+	integer li_result
+	integer li_rtncode
+	boolean populateflag
+	s_arguements lstr_selectedinvoices
+	long ll_rowcount
+	long ll_rtcode
+	long ll_retrievecount
+	long ll_lockedcount
+	string ls_fullcode
+	this.id_detail.setredraw(false)
+	setpointer(hourglass!)
+	ll_detailrows = this.id_detail.rowcount()
+	if ll_detailrows > 0 then
+		if not isnull(this.id_detail.object.invoicecode[1]) then
+			li_result = messagebox("Warning", "Rows in Detail Window will Lost", exclamation!, okcancel!, 2)
+			if li_result = 1 then
+				for ll_count = 1 to ll_detailrows
+					this.id_detail.deleterow(0)
+				next
+				if this.id_detail.update() <> 1 then
+					messagebox("DataBase Problem", "Problem in Deleting Rows")
+					return 0
+				end if
+			else
+				populateflag = false
+			end if
+		else
+			this.id_detail.reset()
+		end if
+	end if
+	if populateflag = true then
+		if this.ii_invtype = 1 or this.ii_invtype = 3 or this.ii_invtype = 5 or this.ii_invtype = 7 then
+			openwithparm(w_arg_cust_sinv_linv, lstr_selectedinvoices)
+		else
+			openwithparm(w_arg_supp_sinv_linv, lstr_selectedinvoices)
+		end if
+		lstr_selectedinvoices = message.powerobjectparm
+		this.id_detail.reset()
+		lds_invselected = create datastore
+		choose case this.ii_invtype
+		case 1
+			lds_invselected.dataobject = "d_creditsaleinvoices_formarking"
+		case 2
+			lds_invselected.dataobject = "d_purinvoices_formarking"
+		case 3
+			lds_invselected.dataobject = "d_creditsalereturns_formarking"
+		case 4
+			lds_invselected.dataobject = "d_Prinvoices_formarking"
+		case 5
+			lds_invselected.dataobject = "d_serviceinvoices_formarking"
+		case 6
+			lds_invselected.dataobject = "d_servicepurchase_formarking"
+		case 7
+			lds_invselected.dataobject = "d_servicereturns_formarking"
+		case 8
+			lds_invselected.dataobject = "d_servicepreturn_formarking"
+		end choose
+		lds_invselected.settransobject(this.it_transobject)
+		this.id_detail.reset()
+		ll_rtcode = lds_invselected.retrieve(lstr_selectedinvoices.l_code1, lstr_selectedinvoices.l_code2, lstr_selectedinvoices.l_code3, lstr_selectedinvoices.l_code4)
+		ll_rowcount = lds_invselected.rowcount()
+		for ll_count = 1 to ll_rowcount
+			ll_invcode = lds_invselected.object.invcode[ll_count]
+			ll_row = this.id_detail.insertrow(0)
+			if wf_validateinvcode(ll_row, ll_invcode) = 0 then
+				ll_retrievecount = ll_retrievecount + 1
+			else
+				this.id_detail.deleterow(ll_row)
+			end if
+		next
+		destroy lds_invselected
+		if ll_retrievecount = ll_rowcount then
+			messagebox("Result", string(ll_rowcount) + " Invoices are populated. ")
+		else
+			messagebox("Result", "Total invoices were " + string(ll_rowcount) + "~n~r" + string(ll_rowcount - ll_duplrows - ll_lockedcount) + " invoices populated successfully~n~r" + string(ll_duplrows) + " invoices are not populated successfully~n~r" + string(ll_lockedcount) + " records are in error")
+		end if
+	end if
+	ll_detailrows = this.id_detail.rowcount()
+	if ll_detailrows > 0 then
+		this.im_menu.m_file.m_save.enabled = true
+	else
+		this.im_menu.m_file.m_save.enabled = false
+	end if
+	setpointer(arrow!)
+	this.id_detail.setredraw(true)
+	return ll_retrievecount
+
+// w_invoicemarking.wf_validateinvcode(long al_row, long al_invcode) returns integer
+	integer li_rtcode
+	long ll_invcode
+	long ll_acccode
+	long ll_notecode
+	long ll_headerno
+	long ll_headerinvno
+	double ld_outstandingamt
+	double ld_netamt
+	datetime ld_date
+	string ls_marked
+	string ls_aliasname
+	string ls_name
+	string ls_accountfor
+	if vf_dwdupcode1(this.id_detail, "invoicecode", string(al_invcode), al_row) = true then
+		li_rtcode = 1
+		messagebox("Invoice Validation", "Duplicate Invoice, please select some other invoice")
+	else
+		choose case this.ii_invtype
+		case 1
+			SQL SELECT SaleLedger.SaleInvCode , SaleLedger.HeaderNo , SaleLedger.HeaderInvNo , SaleLedger.Marked , SaleLedger.InvTotal , SaleLedger.OutstandingAmt , SaleLedger.Date , Accounts.AliasName , Accounts.Name , SaleLedger.CustCode , SaleLedger.AccountFor INTO :ll_invcode, :ll_headerno, :ll_headerinvno, :ls_marked, :ld_netamt, :ld_outstandingamt, :ld_date, :ls_aliasname, :ls_name, :ll_acccode, :ls_accountfor FROM SaleLedger , Accounts WHERE SaleLedger.SaleInvCode =:al_invcode AND SaleLedger.CustCode =Accounts.AccCode AND SaleLedger.AccountFor ='Y' AND SaleLedger.Posted ='Y' AND SaleLedger.SaleCatCode IN ( 2 ) USING sqlca;
+		case 2
+			SQL SELECT PurLedger.PurInvCode , PurLedger.HeaderNo , PurLedger.HeaderInvNo , PurLedger.Marked , PurLedger.InvTotal , PurLedger.OutstandingAmt , PurLedger.Date , Accounts.AliasName , Accounts.Name , PurLedger.SuppCode , PurLedger.AccountFor INTO :ll_invcode, :ll_headerno, :ll_headerinvno, :ls_marked, :ld_netamt, :ld_outstandingamt, :ld_date, :ls_aliasname, :ls_name, :ll_acccode, :ls_accountfor FROM PurLedger , Accounts WHERE PurLedger.PurInvCode =:al_invcode AND PurLedger.SuppCode =Accounts.AccCode AND PurLedger.AccountFor ='Y' AND PurLedger.Posted ='Y' USING sqlca;
+		case 3
+			SQL SELECT SRLedger.SRInvCode , SRLedger.HeaderNo , SRLedger.HeaderInvNo , SRLedger.Marked , SRLedger.InvTotal , SRLedger.OutstandingAmt , SRLedger.Date , Accounts.AliasName , Accounts.Name , SRLedger.CustCode , SRLedger.AccountFor INTO :ll_invcode, :ll_headerno, :ll_headerinvno, :ls_marked, :ld_netamt, :ld_outstandingamt, :ld_date, :ls_aliasname, :ls_name, :ll_acccode, :ls_accountfor FROM SRLedger , Accounts WHERE SRLedger.SRInvCode =:al_invcode AND SRLedger.CustCode =Accounts.AccCode AND SRLedger.AccountFor ='Y' AND SRLedger.Posted ='Y' AND SRLedger.SRCatCode IN ( 7 ) USING sqlca;
+		case 4
+			SQL SELECT PRLedger.PRInvCode , PRLedger.HeaderNo , PRLedger.HeaderInvNo , PRLedger.Marked , PRLedger.InvTotal , PRLedger.OutstandingAmt , PRLedger.Date , Accounts.AliasName , Accounts.Name , PRLedger.SuppCode , PRLedger.AccountFor INTO :ll_invcode, :ll_headerno, :ll_headerinvno, :ls_marked, :ld_netamt, :ld_outstandingamt, :ld_date, :ls_aliasname, :ls_name, :ll_acccode, :ls_accountfor FROM PRLedger , Accounts WHERE PRLedger.PRInvCode =:al_invcode AND PRLedger.SuppCode =Accounts.AccCode AND PRLedger.AccountFor ='Y' AND PRLedger.Posted ='Y' USING sqlca;
+		case 5
+			SQL SELECT ServiceHeader.ServiceInvCode , ServiceHeader.HeaderNo , HeaderInvNo =NULL , ServiceHeader.Marked , ServiceHeader.InvTotal , ServiceHeader.OutstandingAmt , ServiceHeader.Date , Accounts.AliasName , Accounts.Name , ServiceHeader.CustCode INTO :ll_invcode, :ll_headerno, :ll_headerinvno, :ls_marked, :ld_netamt, :ld_outstandingamt, :ld_date, :ls_aliasname, :ls_name, :ll_acccode FROM ServiceHeader , Accounts WHERE ServiceHeader.ServiceInvCode =:al_invcode AND ServiceHeader.CustCode =Accounts.AccCode AND ServiceHeader.Posted ='Y' USING sqlca;
+		case 6
+			SQL SELECT ServicePurHeader.ServicePurInvCode , ServicePurHeader.HeaderNo , HeaderInvNo =NULL , ServicePurHeader.Marked , ServicePurHeader.InvTotal , ServicePurHeader.OutstandingAmt , ServicePurHeader.Date , Accounts.AliasName , Accounts.Name , ServicePurHeader.SuppCode INTO :ll_invcode, :ll_headerno, :ll_headerinvno, :ls_marked, :ld_netamt, :ld_outstandingamt, :ld_date, :ls_aliasname, :ls_name, :ll_acccode FROM ServicePurHeader , Accounts WHERE ServicePurHeader.ServicePurInvCode =:al_invcode AND ServicePurHeader.SuppCode =Accounts.AccCode AND ServicePurHeader.Posted ='Y' USING sqlca;
+		case 7
+			SQL SELECT ServiceRHeader.ServiceRInvCode , ServiceRHeader.HeaderNo , HeaderInvNo =NULL , ServiceRHeader.Marked , ServiceRHeader.InvTotal , ServiceRHeader.OutstandingAmt , ServiceRHeader.Date , Accounts.AliasName , Accounts.Name , ServiceRHeader.CustCode INTO :ll_invcode, :ll_headerno, :ll_headerinvno, :ls_marked, :ld_netamt, :ld_outstandingamt, :ld_date, :ls_aliasname, :ls_name, :ll_acccode FROM ServiceRHeader , Accounts WHERE ServiceRHeader.ServiceRInvCode =:al_invcode AND ServiceRHeader.CustCode =Accounts.AccCode AND ServiceRHeader.Posted ='Y' USING sqlca;
+		case 8
+			SQL SELECT ServicePrHeader.ServicePrInvCode , ServicePrHeader.HeaderNo , HeaderInvNo =NULL , ServicePrHeader.Marked , ServicePrHeader.InvTotal , ServicePrHeader.OutstandingAmt , ServicePrHeader.Date , Accounts.AliasName , Accounts.Name , ServicePrHeader.SuppCode INTO :ll_invcode, :ll_headerno, :ll_headerinvno, :ls_marked, :ld_netamt, :ld_outstandingamt, :ld_date, :ls_aliasname, :ls_name, :ll_acccode FROM ServicePrHeader , Accounts WHERE ServicePrHeader.ServicePrInvCode =:al_invcode AND ServicePrHeader.SuppCode =Accounts.AccCode AND ServicePrHeader.Posted ='Y' USING sqlca;
+		end choose
+		if sqlca.sqlcode = 0 then
+			if ll_invcode > 0 then
+				this.id_detail.object.invoicecode[al_row] = ll_invcode
+				this.id_detail.object.headerno[al_row] = ll_headerno
+				this.id_detail.object.headerinvno[al_row] = ll_headerinvno
+				this.id_detail.object.marked[al_row] = ls_marked
+				this.id_detail.object.oldmarked[al_row] = ls_marked
+				this.id_detail.object.netamt[al_row] = ld_netamt
+				this.id_detail.object.outstandingamt[al_row] = ld_outstandingamt
+				this.id_detail.object.date[al_row] = ld_date
+				this.id_detail.object.aliasname[al_row] = ls_aliasname
+				this.id_detail.object.name[al_row] = ls_name
+				this.id_detail.object.acccode[al_row] = ll_acccode
+				this.id_detail.object.accountfor[al_row] = ls_accountfor
+			else
+				li_rtcode = 1
+			end if
+		else
+			li_rtcode = 1
+		end if
+	end if
+	return li_rtcode
+
+// w_invoicemarking.wf_assigndatawindowobjects(string as_detaildw, string as_hiddendw) returns 0
+	this.id_detail.dataobject = as_detaildw
+	this.id_detail.settransobject(this.it_transobject)
+	this.dw_invdetail.dataobject = as_hiddendw
+	this.id_invdetail = this.dw_invdetail
+	this.id_invdetail.settransobject(this.it_transobject)
+
+// w_invoicemarking.wf_savedetail(long al_errrowid, string as_errtext) returns boolean
+	long ll_detailrows
+	long ll_counter
+	long ll_invcode
+	long ll_rowscount
+	long ll_null
+	boolean lb_continue
+	string ls_marked
+	string ls_msg
+	ls_msg = "000                                                                                                                                                                "
+	setnull(ll_null)
+	ll_detailrows = wf_populatedetail(al_errrowid, as_errtext)
+	ll_counter = 1
+	if ll_detailrows > 0 then
+		do while ll_counter <= ll_detailrows and lb_continue
+			ll_invcode = this.id_invdetail.object.invoicecode[ll_counter]
+			ls_marked = this.id_invdetail.object.marked[ll_counter]
+			if wf_lockinvoice(ll_invcode) = 0 then
+				if ls_marked = "Y" then
+					choose case this.ii_invtype
+					case 1
+						this.it_transobject.checkunpostedsaleinvintransactions(ll_invcode, ll_null, "saleinvmarking", ll_rowscount, ls_msg)
+					case 2
+						this.it_transobject.checkunpostedpurinvintransactions(ll_invcode, ll_null, "purinvmarking", ll_rowscount, ls_msg)
+					case 3
+						this.it_transobject.checkunpostedsrinvintransactions(ll_invcode, ll_null, "srinvmarking", ll_rowscount, ls_msg)
+					case 4
+						this.it_transobject.checkunpostedprinvintransactions(ll_invcode, ll_null, "prinvmarking", ll_rowscount, ls_msg)
+					case 5
+						this.it_transobject.checkunpostedserviceinvintransactions(ll_invcode, ll_null, "saleinvmarking", ll_rowscount, ls_msg)
+					case 6
+						this.it_transobject.checkunpostedservicepurinvintransactions(ll_invcode, ll_null, "purinvmarking", ll_rowscount, ls_msg)
+					case 7
+						this.it_transobject.checkunpostedservicesrinvintransactions(ll_invcode, ll_null, "srinvmarking", ll_rowscount, ls_msg)
+					case 8
+						this.it_transobject.checkunpostedserviceprinvintransactions(ll_invcode, ll_null, "prinvmarking", ll_rowscount, ls_msg)
+					end choose
+					if ll_rowscount > 0 then
+						as_errtext = "Saving Failed, Because Unposted Transaction Exist for Invoice No. " + string(ll_invcode) + "~r~nPost Them first and try again~r~n~r~n" + ls_msg
+						lb_continue = false
+					end if
+				end if
+			else
+				as_errtext = "Invoice is in use, try later"
+				lb_continue = false
+			end if
+			ll_counter = ll_counter + 1
+		loop
+	else
+		lb_continue = false
+	end if
+	return lb_continue
+
+// w_invoicemarking.create() returns 0
+	integer icurrent
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_invoicemarking" then
+		this.menuid = create m_invoicemarking
+	end if
+	this.dw_invdetail = create dw_invdetail
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_invdetail
+
+// w_invoicemarking.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.dw_invdetail
+
+// w_invoicemarking.ue_save() returns 0
+	long ll_detailrows
+	long ll_errrowid
+	long ll_counter
+	long ll_count
+	long ll_null
+	boolean lb_commitflag
+	boolean lb_continue
+	integer li_counter
+	string ls_errtext
+	ll_detailrows = this.id_detail.rowcount()
+	if ll_detailrows > 0 then
+		for ll_counter = 1 to ll_detailrows
+			if isnull(this.id_detail.getitemnumber(ll_counter, "invoicecode")) or this.id_detail.getitemnumber(ll_counter, "invoicecode") = 0.0 then
+				this.id_detail.deleterow(ll_counter)
+			end if
+		next
+	end if
+	if f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	wf_deleteallemptydetailrows()
+	if this.id_detail.rowcount() < 0 then
+		messagebox("Rows Validation", "Please insert a row before proceeding")
+		return
+	end if
+	setpointer(hourglass!)
+	if this.id_detail.rowcount() > 0 then
+		if lb_continue then
+			this.id_invdetail.reset()
+			lb_continue = wf_savedetail(ll_errrowid, ls_errtext)
+			if lb_continue then
+				if this.id_invdetail.update() > 0 then
+					lb_continue = true
+					SQL commit USING this.it_transobject;
+					messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+					this.ib_commitok = true
+					this.id_detail.reset()
+					this.id_invdetail.resetupdate()
+					this.im_menu.m_file.m_new.enabled = true
+					this.editflag = false
+				else
+					this.ib_commitok = false
+					lb_continue = false
+				end if
+			end if
+		end if
+		if not lb_continue then
+			SQL rollback USING this.it_transobject;
+			this.id_detail.setcolumn("invoicecode")
+			this.id_detail.scrolltorow(ll_errrowid)
+			this.id_detail.setfocus()
+			messagebox("Updation Error", ls_errtext, stopsign!)
+		end if
+	else
+		SQL rollback USING this.it_transobject;
+		setpointer(arrow!)
+		return
+	end if
+	setpointer(arrow!)
+
+// w_invoicemarking.ue_newform() returns 0
+	this.im_menu.m_file.m_print.enabled = false
+	setredraw(false)
+	this.i_editmode = 1
+	this.i_retrievemode = 2
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_new.enabled = false
+	this.im_menu.m_file.m_delete.enabled = false
+	this.im_menu.m_item.m_newitem.enabled = true
+	this.im_menu.m_item.m_deleteitem.enabled = true
+	this.im_menu.m_file.m_first.enabled = false
+	this.im_menu.m_file.m_next.enabled = false
+	this.im_menu.m_file.m_previous.enabled = false
+	this.im_menu.m_file.m_last.enabled = false
+	this.im_menu.m_file.m_print.enabled = false
+	this.im_menu.m_file.m_retrieve.enabled = true
+	this.im_menu.m_file.m_retrieve.text = "Lis&t"
+	this.tab_retrieve.tabpage_detail.enabled = true
+	if this.id_master.rowcount() > 0 then
+		this.id_master.reset()
+	end if
+	this.ib_focusdetail = false
+	this.id_detail.reset()
+	postevent("ue_newitem")
+	this.id_detail.setcolumn("invoicecode")
+	this.id_detail.scrolltorow(0)
+	this.id_detail.setfocus()
+	setredraw(true)
+
+// w_invoicemarking.ue_newitem() returns 0
+	long ll_rowcount
+	long ll_rtcode
+	if this.id_detail.rowcount() > 0 and f_validatedw(this.id_detail) < 0 then
+		return
+	end if
+	this.id_detail.setcolumn("invoicecode")
+	this.id_detail.insertrow(0)
+	ll_rowcount = this.id_detail.rowcount()
+	if ll_rowcount > 1 then
+		this.id_detail.scrolltorow(ll_rowcount)
+		this.id_detail.setfocus()
+	end if
+	this.im_menu.m_file.m_save.enabled = true
+	this.im_menu.m_file.m_print.enabled = false
+	this.ib_validatefullcode = true
+
+// w_invoicemarking.close() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::close()
+	this.id_itemslist.sharedataoff()
+	return ::message.returnvalue
+
+// w_invoicemarking.ue_list() returns 0
+	long ll_row
+	m_invoicemarking lm_menu
+	call super::ue_list
+	lm_menu = this.menuid
+	SQL rollback USING this.it_transobject;
+	this.im_menu.m_file.m_post.enabled = false
+	this.im_menu.m_file.m_print.enabled = false
+	this.ib_modify = false
+	this.id_itemslist.hide()
+	if this.id_detail.rowcount() > 0 then
+		postevent("ue_deleteitem")
+	end if
+	ll_row = wf_retrievelist()
+	wf_disabledetailtab(ll_row)
+
+// w_invoicemarking.ue_new() returns 0
+	call super::ue_new
+	this.im_menu.m_file.m_post.enabled = false
+
+// w_invoicemarking.ue_postopen() returns 0
+	integer li_rtncode
+	integer i
+	long ll_counter
+	long ll_pos
+	long ll_prow
+	long ll_pcode
+	m_invoicemarking lm_menu
+	call super::ue_postopen
+	lm_menu = this.menuid
+	setredraw(false)
+	this.ii_invtype = message.doubleparm
+	choose case this.ii_invtype
+	case 1
+		this.title = "Sale Invoice Marking"
+		wf_assigndatawindowobjects("d_saleinvmarking", "d_saleinvmarking_hidden")
+	case 2
+		this.title = "Purchase Invoice Marking"
+		wf_assigndatawindowobjects("d_purinvmarking", "d_purinvmarking_hidden")
+	case 3
+		this.title = "Sale Return Marking"
+		wf_assigndatawindowobjects("d_srinvmarking", "d_srinvmarking_hidden")
+	case 4
+		this.title = "Purchase Return Marking"
+		wf_assigndatawindowobjects("d_prinvmarking", "d_prinvmarking_hidden")
+	case 5
+		this.title = "Sale of Service Invoice Marking"
+		wf_assigndatawindowobjects("d_servicesaleinvmarking", "d_servicesaleinvmarking_hidden")
+	case 6
+		this.title = "Purchase of Service Invoice Marking"
+		wf_assigndatawindowobjects("d_servicepurinvmarking", "d_servicepurinvmarking_hidden")
+	case 7
+		this.title = "Sale Return of Service Marking"
+		wf_assigndatawindowobjects("d_servicesrinvmarking", "d_servicesrinvmarking_hidden")
+	case 8
+		this.title = "Purchase Return of Service Marking"
+		wf_assigndatawindowobjects("d_serviceprinvmarking", "d_serviceprinvmarking_hidden")
+	end choose
+	setredraw(true)
+
+// w_invoicemarking.ue_deleteitem() returns 0
+	long ll_currow
+	long ll_detailrows
+	this.ib_itemvalidated = true
+	this.id_detail.deleterow(0)
+	ll_detailrows = this.id_detail.rowcount()
+	if ll_detailrows < 0 then
+		this.im_menu.m_file.m_save.enabled = false
+	end if
+
+// w_invoicemarking.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.tab_retrieve.tabpage_list.enabled = false
+	return ::message.returnvalue

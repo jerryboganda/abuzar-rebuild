@@ -1,0 +1,349 @@
+// userobject n_dwr_rect (dw2xls)  ancestor: n_dwr_field
+
+// n_dwr_rect.of_get_pen_width(long al_row) returns long
+	long ll_ret
+	if this.is_expr_pen_width = "" then
+		ll_ret = this.il_cached_pen_width
+	elseif this.is_expr_pen_width = "-" then
+		this.il_cached_pen_width = of_describe_expr(this.is_dwo_name + ".pen.width", al_row, this.is_expr_pen_width)
+		this.il_cached_pen_width = this.il_cached_pen_width * this.inv_sub.of_get_pen_width_coef(this.ii_units)
+		ll_ret = this.il_cached_pen_width
+	else
+		ll_ret = of_evaluate0(this.is_expr_pen_width, al_row)
+	end if
+	return ll_ret
+
+// n_dwr_rect.of_get_pen_height(long al_row) returns long
+	long ll_ret
+	if this.is_expr_pen_height = "" then
+		ll_ret = this.il_cached_pen_height
+	elseif this.is_expr_pen_height = "-" then
+		this.il_cached_pen_height = of_describe_expr(this.is_dwo_name + ".pen.width", al_row, this.is_expr_pen_height)
+		this.il_cached_pen_height = this.il_cached_pen_height * this.inv_sub.of_get_pen_height_coef(this.ii_units)
+		ll_ret = this.il_cached_pen_height
+	else
+		ll_ret = of_evaluate0(this.is_expr_pen_height, al_row)
+	end if
+	return ll_ret
+
+// n_dwr_rect.of_getvalue(long al_row) returns any
+	return ""
+
+// n_dwr_rect.of_descr_numformat() returns string
+	return "[General]"
+
+// n_dwr_rect.of_setformat() returns integer
+	integer li_ret
+	string ls_format
+	integer li_color_index
+	long ll_color
+	this.inv_format = this.inv_book.of_createformat()
+	if li_ret = 1 then
+		ls_format = of_descr_numformat()
+		if ls_format = "" then
+			ls_format = "[General]"
+		end if
+		ls_format = of_change_format(ls_format, this.is_coltype)
+		this.inv_format.setnumformat(this.inv_format.handle, ls_format)
+		this.inv_format.setfontname(this.inv_format.handle, of_descr_font_face())
+		this.inv_format.setfontsize(this.inv_format.handle, of_descr_font_height())
+		if of_descr_font_italic() then
+			this.inv_format.setfontitalic(this.inv_format.handle, 1)
+		end if
+		this.inv_format.setfontunderline(this.inv_format.handle, of_descr_font_underline())
+		this.inv_format.setfontweight(this.inv_format.handle, of_descr_font_weight2())
+		this.inv_format.sethalign(this.inv_format.handle, of_descr_alignment2())
+		this.inv_format.setvalign(this.inv_format.handle, 0)
+		if this.is_coltype = "s" then
+			this.inv_format.setwrap(this.inv_format.handle, 1)
+		end if
+		ll_color = of_descr_color2()
+		this.inv_format.setfgcolor(this.inv_format.handle, ll_color)
+		ll_color = of_descr_bg_color2()
+		this.inv_format.setbgcolor(this.inv_format.handle, ll_color)
+		this.inv_format.setfontcharset(this.inv_format.handle, of_descr_font_charset())
+		this.inv_format.setfontfamily(this.inv_format.handle, of_descr_font_family())
+		this.inv_format.setrotation(this.inv_format.handle, of_descr_font_escapement())
+	end if
+	if li_ret = 1 then
+		this.ib_custom_format = this.ib_color_expr or this.ib_bg_color_expr or this.ib_alignment_expr or this.ib_font_face_expr or this.ib_font_height_expr or this.ib_font_italic_expr or this.ib_font_underline_expr or this.ib_font_weight_expr or this.ib_format_expr or this.ib_font_escapement_expr
+		if not this.ib_custom_format then
+			this.il_format_ix = this.inv_book.of_addformat(this.inv_format)
+		end if
+	end if
+	return li_ret
+
+// n_dwr_rect.of_descr_bg_color2() returns long
+	integer li_ret
+	string ls_str
+	string ls_value
+	long ll_color
+	ll_color = 1073741824
+	if this.il_rect_type = 3 then
+		li_ret = of_check_property("Pen.Color", this.ib_bg_color_expr, this.is_bg_color_expr, ls_value)
+	else
+		li_ret = of_check_property("Brush.Color", this.ib_bg_color_expr, this.is_bg_color_expr, ls_value)
+	end if
+	if li_ret = 1 and isnumber(ls_value) then
+		ll_color = long(ls_value)
+	end if
+	return ll_color
+
+// n_dwr_rect.of_descr_color2() returns long
+	long ll_color
+	return ll_color
+
+// n_dwr_rect.of_get_item_coltype() returns string
+	return "s"
+
+// n_dwr_rect.of_get_column_display_type() returns integer
+	return 1
+
+// n_dwr_rect.of_descr_alignment2() returns long
+	return 0
+
+// n_dwr_rect.of_descr_font_face() returns string
+	return "Arial"
+
+// n_dwr_rect.of_descr_font_italic() returns boolean
+	return false
+
+// n_dwr_rect.of_descr_font_underline() returns integer
+	return 0
+
+// n_dwr_rect.of_descr_font_weight() returns boolean
+	return false
+
+// n_dwr_rect.of_descr_font_charset() returns long
+	return 0
+
+// n_dwr_rect.of_descr_font_escapement() returns integer
+	return 0
+
+// n_dwr_rect.of_descr_font_family() returns long
+	return 2
+
+// n_dwr_rect.of_descr_font_weight2() returns integer
+	return 400
+
+// n_dwr_rect.of_init(string as_dwo_name, integer ai_dwo_type) returns integer
+	integer li_ret
+	integer li_brush_hatch
+	integer li_pen_style
+	this.is_dwo_name = as_dwo_name
+	this.ii_dwo_type = ai_dwo_type
+	this.is_coltype = "s"
+	this.is_text = ""
+	if li_ret = 1 then
+		choose case this.ipo_requestortype
+		case datawindow!
+			this.il_dw_row_count = this.idw_requestor.rowcount()
+		case datastore!
+			this.il_dw_row_count = this.ids_requestor.rowcount()
+		case datawindowchild!
+			this.il_dw_row_count = this.idwc_requestor.rowcount()
+		case else
+			li_ret = -1
+		end choose
+	end if
+	if li_ret = 1 then
+		choose case this.ii_dwo_type
+		case 6
+			li_brush_hatch = integer(of_describe(this.is_dwo_name + ".brush.hatch"))
+			li_pen_style = integer(of_describe(this.is_dwo_name + ".pen.style"))
+			if li_brush_hatch <> 6 and li_pen_style <> 5 then
+				this.il_rect_type = 3
+			elseif li_brush_hatch = 6 and li_pen_style <> 5 then
+				this.il_rect_type = 2
+				this.inv_border = create n_dwr_rect
+				this.inv_border.of_register(this.ipo_requestor, this.inv_book, this.invo_colors, this.il_base_x, this.il_base_y, this.il_subband_y, this.ib_band_bg)
+				this.inv_border.of_init(this.is_dwo_name, 7)
+			elseif li_brush_hatch = 6 and li_pen_style = 5 then
+				this.il_rect_type = 1
+			else
+				li_ret = -1
+			end if
+		case 7
+			this.il_rect_type = 3
+		case else
+			li_ret = -1
+		end choose
+	end if
+	if li_ret = 1 then
+		this.ii_column_display_type = of_get_column_display_type()
+		li_ret = of_setformat()
+	end if
+	if li_ret = 1 then
+		this.ii_units = integer(of_describe("Datawindow.Units"))
+		this.inv_sub = create n_dwr_sub
+		this.inv_sub.of_set_cur_units(this.ii_units)
+	end if
+	return li_ret
+
+// n_dwr_rect.of_register_dynamic(powerobject apo_requestor) returns integer
+	of_register_dynamic(apo_requestor)
+	if this.il_rect_type = 2 then
+		this.inv_border.of_register_dynamic(apo_requestor)
+	end if
+	return 1
+
+// n_dwr_rect.of_render(n_dwr_worksheet anv_sheet, long al_row, long al_base_y, long al_units, n_dwr_progress apo_progress) returns boolean
+	long ll_x1
+	long ll_x2
+	long ll_y1
+	long ll_y2
+	long ll_format
+	long ll_pen_width
+	long ll_pen_height
+	if this.il_rect_type = 2 then
+		this.inv_border.of_render(anv_sheet, al_row, al_base_y, al_units, apo_progress)
+	end if
+	ll_x1 = of_get_x1(al_row)
+	ll_x2 = of_get_x2(al_row)
+	ll_y1 = of_get_y1(al_row) + al_base_y
+	ll_y2 = of_get_y2(al_row) + al_base_y
+	ll_pen_width = of_get_pen_width(al_row)
+	ll_pen_height = of_get_pen_height(al_row)
+	ll_format = of_get_format(al_row)
+	choose case this.il_rect_type
+	case 3
+		anv_sheet.of_create_cell(ll_x1, ll_x2, ll_y1, ll_y1 + ll_pen_height, "", ll_format, al_units)
+		anv_sheet.of_create_cell(ll_x1, ll_x2, ll_y2 - ll_pen_height, ll_y2, "", ll_format, al_units)
+		anv_sheet.of_create_cell(ll_x1, ll_x1 + ll_pen_width, ll_y1 + ll_pen_height, ll_y2 - ll_pen_height, "", ll_format, al_units)
+		anv_sheet.of_create_cell(ll_x2 - ll_pen_width, ll_x2, ll_y1 + ll_pen_height, ll_y2 - ll_pen_height, "", ll_format, al_units)
+	case 1
+	end choose
+	if isvalid(this.inv_band) then
+		this.inv_band.of_process_row(al_row, al_base_y, apo_progress)
+	end if
+	return true
+
+// n_dwr_rect.of_get_x1(long al_row) returns long
+	long ll_x1
+	ll_x1 = of_get_x1(al_row)
+	choose case this.il_rect_type
+	case 3, 2
+		ll_x1 = of_get_pen_width(al_row) / 2.0 - ll_x1
+	end choose
+	return ll_x1
+
+// n_dwr_rect.of_get_y1(long al_row) returns long
+	long ll_y1
+	ll_y1 = of_get_y1(al_row)
+	choose case this.il_rect_type
+	case 3, 2
+		ll_y1 = of_get_pen_height(al_row) / 2.0 - ll_y1
+	end choose
+	return ll_y1
+
+// n_dwr_rect.of_get_width(long al_row) returns long
+	long ll_width
+	ll_width = of_get_width(al_row)
+	choose case this.il_rect_type
+	case 3, 2
+		ll_width = ll_width + of_get_pen_width(al_row)
+	end choose
+	return ll_width
+
+// n_dwr_rect.of_get_height(long al_row) returns long
+	long ll_height
+	ll_height = of_get_height(al_row)
+	choose case this.il_rect_type
+	case 3, 2
+		ll_height = ll_height + of_get_pen_height(al_row)
+	end choose
+	return ll_height
+
+// n_dwr_rect.of_add_field(string as_name, long al_instance_id) returns integer
+	integer li_ret
+	n_dwr_field lnvo_field
+	setnull(lnvo_field)
+	li_ret = this.inv_band.of_add_field(as_name, al_instance_id, lnvo_field)
+	return li_ret
+
+// n_dwr_rect.of_isinside(long al_x1, long al_y1, long al_x2, long al_y2) returns boolean
+	long ll_x1
+	long ll_x2
+	long ll_y1
+	long ll_y2
+	ll_x1 = of_get_x1()
+	ll_x2 = of_get_x2()
+	ll_y1 = of_get_y1()
+	ll_y2 = of_get_y2()
+	return ll_x1 <= al_x1 and al_x2 <= ll_x2 and ll_y1 <= al_y1 and al_y2 <= ll_y2
+
+// n_dwr_rect.of_getbgrect(st_rect ast_rect, long al_row) returns 0
+	long ll_x1
+	long ll_x2
+	long ll_y1
+	long ll_y2
+	long ll_pen_width
+	long ll_pen_height
+	ll_x1 = of_get_x1(al_row)
+	ll_x2 = of_get_x2(al_row)
+	ll_y1 = of_get_y1(al_row)
+	ll_y2 = of_get_y2(al_row)
+	ll_pen_width = of_get_pen_width(al_row)
+	ll_pen_height = of_get_pen_height(al_row)
+	choose case this.il_rect_type
+	case 3, 2
+		ast_rect.x1 = ll_x1 + ll_pen_width
+		ast_rect.x2 = ll_x2 - ll_pen_width
+		ast_rect.y1 = ll_y1 + ll_pen_height
+		ast_rect.y2 = ll_y2 - ll_pen_height
+		return
+	case 1
+		ast_rect.x1 = ll_x1
+		ast_rect.x2 = ll_x2
+		ast_rect.y1 = ll_y1
+		ast_rect.y2 = ll_y2
+	end choose
+
+// n_dwr_rect.of_dispose() returns 0
+	setnull(this.inv_band)
+	setnull(this.inv_border)
+
+// n_dwr_rect.of_initband(powerobject anv_parent_band) returns integer
+	integer li_ret
+	this.inv_band = create n_dwr_rect_band
+	this.inv_band.of_setparent(this)
+	this.inv_band.of_copyfrom(anv_parent_band)
+	choose case this.il_rect_type
+	case 3
+	case 1, 2
+		this.inv_band.of_init_bg_fillers()
+		return li_ret
+	end choose
+	return li_ret
+
+// n_dwr_rect.of_do_static_x_markup(n_dwr_worksheet anv_sheet) returns integer
+	integer li_ret
+	long ll_x1
+	long ll_x2
+	long ll_pen_width
+	ll_x1 = of_get_x1(1)
+	ll_x2 = of_get_x2(1)
+	ll_pen_width = of_get_pen_width(1)
+	if this.is_expr_x1 <> "" or this.is_expr_x2 <> "" or this.is_expr_pen_width <> "" then
+		return -1
+	end if
+	if this.il_rect_type = 2 then
+		this.inv_border.of_do_static_x_markup(anv_sheet)
+	end if
+	choose case this.il_rect_type
+	case 3
+		anv_sheet.addxinterval(anv_sheet.handle, ll_x1, ll_x1 + ll_pen_width, this.ii_units)
+		anv_sheet.addxinterval(anv_sheet.handle, ll_x2 - ll_pen_width, ll_x2, this.ii_units)
+	case 1
+	case 2
+	end choose
+	if isvalid(this.inv_band) then
+		li_ret = this.inv_band.of_do_static_x_markup(anv_sheet)
+	end if
+	return li_ret
+
+// n_dwr_rect.create() returns 0
+	call super::create
+
+// n_dwr_rect.destroy() returns 0
+	call super::destroy

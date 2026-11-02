@@ -1,0 +1,264 @@
+// window w_emp_deduction (employee)  ancestor: w_single_entry
+
+// w_emp_deduction.wf_duplicateaccname(string as_accname) returns boolean
+	long ll_count
+	boolean b_flag
+	as_accname = trim(as_accname)
+	SQL SELECT count ( *) INTO :ll_count FROM Accounts WHERE Accounts.name =:as_accname USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_emp_deduction.wf_getmainaccount(long al_catacccode) returns long
+	long ll_mainacccode
+	SQL SELECT MainAccCode INTO :ll_mainacccode FROM CategoryAccounts WHERE catacccode =:al_catacccode USING sqlca;
+	return ll_mainacccode
+
+// w_emp_deduction.wf_getcategoryaccount(long al_subacccode) returns long
+	long ll_catacccode
+	SQL SELECT CatAccCode INTO :ll_catacccode FROM SubAccounts WHERE subacccode =:al_subacccode USING sqlca;
+	return ll_catacccode
+
+// w_emp_deduction.wf_checkfortransactions(long al_acccode) returns boolean
+	long ll_newcode
+	SQL Select count ( CustCode ) INTO :ll_newcode From saleledger Where custcode =:al_acccode USING sqlca;
+	if ll_newcode <> 0 then
+		return true
+	end if
+	SQL Select count ( SuppCode ) INTO :ll_newcode From purledger Where suppcode =:al_acccode USING sqlca;
+	if ll_newcode <> 0 then
+		return true
+	end if
+	SQL Select count ( AccCode ) INTO :ll_newcode From gldetail Where acccode =:al_acccode USING sqlca;
+	if ll_newcode <> 0 then
+		return true
+	end if
+	SQL Select count ( CustCode ) INTO :ll_newcode From srledger Where custcode =:al_acccode USING sqlca;
+	if ll_newcode <> 0 then
+		return true
+	end if
+	SQL Select count ( SuppCode ) INTO :ll_newcode From prledger Where suppcode =:al_acccode USING sqlca;
+	if ll_newcode <> 0 then
+		return true
+	end if
+	return false
+
+// w_emp_deduction.wf_duplicatealiasname(string as_aliasname) returns boolean
+	long ll_count
+	boolean b_flag
+	as_aliasname = trim(as_aliasname)
+	SQL SELECT count ( *) INTO :ll_count FROM Accounts WHERE Accounts.AliasName =:as_aliasname USING sqlca;
+	if ll_count > 0 then
+		b_flag = true
+	end if
+	return b_flag
+
+// w_emp_deduction.wf_showaccountledger() returns 0
+	long ll_acccode
+	if this.tab_retrieve.selectedtab = 1 then
+		if this.id_detail.rowcount() > 0 and this.id_detail.getrow() > 0 then
+			ll_acccode = this.id_detail.object.code[this.id_detail.getrow()]
+		end if
+	elseif this.tab_retrieve.selectedtab = 2 and (this.id_list.rowcount() > 0 and this.id_list.getrow() > 0) then
+		ll_acccode = this.id_list.object.code[this.id_list.getrow()]
+	end if
+	if not isnull(ll_acccode) and ll_acccode <> 0 then
+		SQL rollback USING sqlca;
+		sqlca.virtualgl("A")
+		if sqlca.sqlcode = 0 then
+			SQL commit USING sqlca;
+		else
+			SQL rollback USING sqlca;
+		end if
+		openwithparm(w_account_ledger, ll_acccode)
+	end if
+
+// w_emp_deduction.ue_newform() returns 0
+	datawindow ldw_detail
+	call super::ue_newform
+	ldw_detail = this.tab_retrieve.tabpage_detail.dw_detail
+	ldw_detail.object.name.protect = 0
+	ldw_detail.object.aliasname.protect = 0
+	ldw_detail.object.subcode.protect = 0
+	ldw_detail.object.active.protect = 0
+	ldw_detail.object.restricted.protect = 0
+	ldw_detail.object.restricted.visible = true
+	ldw_detail.object.restricted_t.visible = true
+	ldw_detail.object.active.visible = false
+	ldw_detail.object.active_t.visible = false
+	ldw_detail.object.subcode.protect = false
+	ldw_detail.object.subcode.background.color = rgb(255, 255, 255)
+	this.tab_retrieve.tabpage_detail.dw_detail.object.aliasname.visible = true
+	this.tab_retrieve.tabpage_detail.dw_detail.object.aliasname_t.visible = true
+
+// w_emp_deduction.create() returns 0
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_accountmenu" then
+		this.menuid = create m_accountmenu
+	end if
+
+// w_emp_deduction.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_emp_deduction.ue_detail() returns 0
+	datawindow ldw_detail
+	long ll_row
+	long ll_counter
+	long ll_newcode
+	long ll_acccode
+	call super::ue_detail
+	ll_row = this.id_detail.getrow()
+	ldw_detail = this.tab_retrieve.tabpage_detail.dw_detail
+	ll_acccode = ldw_detail.object.code[ll_row]
+	ldw_detail.object.restricted.protect = 0
+	this.tab_retrieve.tabpage_detail.dw_detail.object.aliasname.visible = false
+	this.tab_retrieve.tabpage_detail.dw_detail.object.aliasname_t.visible = false
+	this.tab_retrieve.tabpage_detail.dw_detail.object.restricted.visible = false
+	this.tab_retrieve.tabpage_detail.dw_detail.object.restricted_t.visible = false
+	this.tab_retrieve.tabpage_detail.dw_detail.object.active.visible = false
+	this.tab_retrieve.tabpage_detail.dw_detail.object.active_t.visible = false
+	for ll_counter = 1 to gds_securitywindow.rowcount()
+		if gds_securitywindow.object.rightcode[ll_counter] = 527 then
+			this.tab_retrieve.tabpage_detail.dw_detail.object.aliasname.visible = true
+			this.tab_retrieve.tabpage_detail.dw_detail.object.aliasname_t.visible = true
+		end if
+		if gds_securitywindow.object.rightcode[ll_counter] = 532 then
+			this.tab_retrieve.tabpage_detail.dw_detail.object.restricted.visible = true
+			this.tab_retrieve.tabpage_detail.dw_detail.object.restricted_t.visible = true
+		end if
+		if gds_securitywindow.object.rightcode[ll_counter] = 534 then
+			this.tab_retrieve.tabpage_detail.dw_detail.object.active.visible = true
+			this.tab_retrieve.tabpage_detail.dw_detail.object.active_t.visible = true
+		end if
+	next
+
+// w_emp_deduction.activate() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::activate()
+	this.windowstate = maximized!
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_emp_deduction.ue_save() returns 0
+	string ls_bal_limit_type
+	string ls_err
+	string ls_mod
+	long ll_acccode
+	long ll_row
+	long ll_newid
+	integer li_rc
+	double ld_null
+	datawindow ldw_detail
+	setnull(ld_null)
+	ll_row = this.id_detail.getrow()
+	if ll_row > 0 then
+		ll_newid = this.id_detail.object.code[ll_row]
+		ls_bal_limit_type = this.id_detail.object.balancelimitype[ll_row]
+		if isnull(this.id_detail.object.newbalancelimit[ll_row]) then
+			this.id_detail.object.balancelimit[ll_row] = ld_null
+		elseif ls_bal_limit_type = "DR" then
+			this.id_detail.object.balancelimit[ll_row] = abs(this.id_detail.object.newbalancelimit[ll_row])
+		elseif ls_bal_limit_type = "CR" then
+			this.id_detail.object.balancelimit[ll_row] = abs(this.id_detail.object.newbalancelimit[ll_row]) * -1
+		end if
+		if isnull(ll_newid) then
+			f_newtableid("Accounts", ll_acccode)
+			this.id_detail.object.code[ll_row] = ll_acccode
+			this.id_detail.object.emp_deduction_deductioncode[ll_row] = ll_acccode
+		end if
+		ls_bal_limit_type = this.id_detail.object.balancelimitype[ll_row]
+		if isnull(this.id_detail.object.newbalancelimit[ll_row]) then
+			this.id_detail.object.balancelimit[ll_row] = ld_null
+		elseif ls_bal_limit_type = "DR" then
+			this.id_detail.object.balancelimit[ll_row] = abs(this.id_detail.object.newbalancelimit[ll_row])
+		elseif ls_bal_limit_type = "CR" then
+			this.id_detail.object.balancelimit[ll_row] = abs(this.id_detail.object.newbalancelimit[ll_row]) * -1
+		end if
+		if f_validatedw(this.tab_retrieve.tabpage_detail.dw_detail) < 0 then
+			return
+		end if
+		ldw_detail = this.tab_retrieve.tabpage_detail.dw_detail
+		li_rc = ldw_detail.update(true, false)
+		if li_rc = 1 then
+			ls_mod = "code.Update=No "
+			ls_mod = ls_mod + "name.Update=No "
+			ls_mod = ls_mod + "SubCode.Update=No "
+			ls_mod = ls_mod + "active.Update=No "
+			ls_mod = ls_mod + "openingdate.Update=No "
+			ls_mod = ls_mod + "aliasname.Update=No "
+			ls_mod = ls_mod + "restricted.Update=No "
+			ls_mod = ls_mod + "alertcode.Update=No "
+			ls_mod = ls_mod + "balancelimit.Update=No "
+			ls_mod = ls_mod + "remarks.Update=No "
+			ls_mod = ls_mod + "code.Key=No "
+			ls_mod = ls_mod + "DataWindow.Table.UpdateTable='emp_deduction' "
+			ls_mod = ls_mod + "emp_deduction_deductioncode.Key=Yes "
+			ls_mod = ls_mod + "emp_deduction_deductioncode.Update=Yes "
+			ls_mod = ls_mod + "emp_deduction_description.Update=Yes "
+			ls_mod = ls_mod + "emp_deduction_percentage.Update=Yes "
+			ls_mod = ls_mod + "emp_deduction_flatamount.Update=Yes "
+			ls_err = ldw_detail.modify(ls_mod)
+			if ls_err <> "" then
+				messagebox("DataWindow Modify Error", ls_err)
+			end if
+			li_rc = ldw_detail.update()
+			if li_rc < 0 then
+				messagebox("Update of Employee Deduction Table Failed", "Rolling back changes to " + "accounts  and EMP_Deduction Tables")
+				SQL rollback USING sqlca;
+			else
+				SQL commit USING sqlca;
+				messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+				this.ib_commitok = true
+				this.id_detail.resetupdate()
+				this.im_menu.m_file.m_new.enabled = true
+				this.editflag = false
+			end if
+		end if
+		ls_mod = "Code.Update=yes "
+		ls_mod = ls_mod + "name.Update=yes "
+		ls_mod = ls_mod + "SubCode.Update=yes "
+		ls_mod = ls_mod + "active.Update=yes "
+		ls_mod = ls_mod + "openingdate.Update=yes "
+		ls_mod = ls_mod + "aliasname.Update=yes "
+		ls_mod = ls_mod + "restricted.Update=No "
+		ls_mod = ls_mod + "alertcode.Update=No "
+		ls_mod = ls_mod + "balancelimit.Update=No "
+		ls_mod = ls_mod + "remarks.Update=No "
+		ls_mod = ls_mod + "DataWindow.Table.UpdateTable='accounts' "
+		ls_mod = ls_mod + "Code.Key=yes "
+		ls_mod = ls_mod + "emp_deduction_deductioncode.Update=no "
+		ls_mod = ls_mod + "emp_deduction_description.Update=no "
+		ls_mod = ls_mod + "emp_deduction_percentage.Update=no "
+		ls_mod = ls_mod + "emp_deduction_flatamount.Update=no "
+		ls_mod = ls_mod + "emp_deduction_deductioncode.Key=no "
+		ls_err = ldw_detail.modify(ls_mod)
+		if ls_err <> "" then
+			messagebox("DataWindow Modify Error", ls_err)
+		end if
+	end if
+	setpointer(arrow!)
+
+// w_emp_deduction.open() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::open()
+	this.is_tablename = "Accounts"
+	return ::message.returnvalue
+
+// w_emp_deduction.ue_postopen() returns 0
+	long ll_found
+	m_accountmenu lm_menu
+	call super::ue_postopen
+	lm_menu = this.menuid
+	ll_found = 0
+	ll_found = gds_securitywindow.find("rightcode = 721", 1, gds_securitywindow.rowcount())
+	if ll_found > 0 then
+		lm_menu.m_file.m_showaccountledger.visible = true
+		lm_menu.m_file.m_showaccountledger.enabled = true
+	end if

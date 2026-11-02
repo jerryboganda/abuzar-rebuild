@@ -1,0 +1,106 @@
+// window w_setdiscount_manfwise (quotation)  ancestor: window
+
+// w_setdiscount_manfwise.ue_close(integer ai_status) returns 0
+	if this.istr_ds.i_closemode = 0 then
+		this.istr_ds.ds.reset()
+		this.dw_detail.rowscopy(1, this.dw_detail.rowcount(), primary!, this.istr_ds.ds, 1, primary!)
+	end if
+	closewithreturn(this, this.istr_ds)
+
+// w_setdiscount_manfwise.create() returns 0
+	this.dw_detail = create dw_detail
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.control = {this.dw_detail, this.cb_cancel, this.cb_ok}
+
+// w_setdiscount_manfwise.destroy() returns 0
+	destroy this.dw_detail
+	destroy this.cb_cancel
+	destroy this.cb_ok
+
+// w_setdiscount_manfwise.open() returns long
+	environment le_env
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	this.istr_ds = message.powerobjectparm
+	if getenvironment(le_env) = 1 then
+		ll_win_width = pixelstounits(le_env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(le_env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			ll_width = ll_width / 2.0
+			ll_height = ll_height / 2.0
+			if ll_width > 0 and ll_height > 0 then
+				this.x = ll_width
+				this.y = ll_height
+			end if
+		end if
+	end if
+	this.dw_detail.settransobject(sqlca)
+	this.istr_ds.ds.rowscopy(1, this.istr_ds.ds.rowcount(), primary!, this.dw_detail, 1, primary!)
+	if this.dw_detail.rowcount() <= 0 then
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	else
+		this.dw_detail.setrow(1)
+		this.dw_detail.scrolltorow(1)
+		this.dw_detail.selecttext(1, len(string(this.dw_detail.object.discperc[1])))
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "discperc"
+		if double(data) >= 0.0 and double(data) <= 100.0 then
+			return 0
+		else
+			return 1
+		end if
+		return
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.ue_enterkey() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// cb_cancel.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		triggerevent(clicked!)
+	end if
+	return 1
+
+// cb_cancel.clicked() returns long
+	parent.istr_ds.i_closemode = 1
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		triggerevent(clicked!)
+	end if
+	return 1
+
+// cb_ok.clicked() returns long
+	parent.istr_ds.i_closemode = 0
+	parent.post event ue_close(1)
+	return ::message.returnvalue

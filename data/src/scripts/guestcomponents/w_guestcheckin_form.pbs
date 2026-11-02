@@ -1,0 +1,761 @@
+// window w_guestcheckin_form (guestcomponents)  ancestor: window
+
+// w_guestcheckin_form.ue_close() returns 0
+	close(this)
+
+// w_guestcheckin_form.wf_set_interface_adjustments() returns 0
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	environment env
+	if getenvironment(env) = 1 then
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width * 0.95
+		ll_height = ll_win_height * 0.95
+		this.width = ll_width
+		this.height = ll_height
+		this.cb_ok.y = ll_height - this.cb_ok.height - 120
+		this.cb_cancel.y = ll_height - this.cb_cancel.height - 120
+		this.tab_main.width = ll_width * 0.98
+		this.tab_main.height = this.cb_ok.y - 50
+		this.tab_main.tabpage_guest.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_guest.height = this.tab_main.height - 200
+		this.tab_main.tabpage_guest.dw_guest.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_guest.dw_guest.height = this.tab_main.height - 200
+		this.tab_main.tabpage_room.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_room.height = this.tab_main.height - 200
+		this.tab_main.tabpage_room.dw_room.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_room.dw_roomservice.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_room.dw_roomservice.height = this.tab_main.height - this.tab_main.tabpage_room.dw_room.height - 200
+		this.tab_main.tabpage_checkin.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_checkin.height = this.tab_main.height - 200
+		this.tab_main.tabpage_checkin.dw_checkin.width = this.tab_main.width * 0.98
+		this.tab_main.tabpage_checkin.dw_checkin.height = this.tab_main.height - 200
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+
+// w_guestcheckin_form.wf_set_tab_visibility() returns long
+	return 0
+
+// w_guestcheckin_form.wf_connect() returns long
+	SQL start USING this.it_transobject;
+	return this.it_transobject.sqlcode
+
+// w_guestcheckin_form.wf_tabnewid(string as_tablename, long al_newid) returns long
+	long ll_rtcode
+	SQL SELECT TABMAXKEY INTO :al_newid FROM _TABMAXKEY WITH ( UPDLOCK HOLDLOCK ) WHERE _TABMAXKEY.TABName =:as_tablename USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		al_newid = al_newid + 1
+		SQL update dbo._tabmaxkey SET TABMAXKEY =:al_newid WHERE _TABMAXKEY.TABName =:as_tablename USING this.it_transobject;
+		if this.it_transobject.sqlcode < 0 then
+			ll_rtcode = this.it_transobject.sqlcode
+			al_newid = 0
+		end if
+	else
+		ll_rtcode = this.it_transobject.sqlcode
+		al_newid = 0
+	end if
+	return ll_rtcode
+
+// w_guestcheckin_form.wf_deleteemptyrows() returns long
+	long ll_counter
+	if this.id_room.rowcount() > 0 and isnull(this.id_room.object.qualifiedpersoncode[this.id_room.rowcount()]) then
+		this.id_room.deleterow(this.id_room.rowcount())
+	end if
+	if this.id_roomservice.rowcount() > 0 and isnull(this.id_roomservice.object.licensecategorycode[this.id_roomservice.rowcount()]) then
+		this.id_roomservice.deleterow(this.id_roomservice.rowcount())
+	end if
+	return 0
+
+// w_guestcheckin_form.wf_get_guest_checkin() returns long
+	long ll_retcode
+	SQL SELECT GuestCheckInCode =( SELECT MAX ( GC.GuestCheckInCode ) FROM GuestCheckIn GC WHERE GC.CurrentRoom =GuestRoom.GuestRoomCode AND GC.CheckOut ='N' ) , GuestCode =( SELECT G.GuestCode FROM ( SELECT GuestCheckInCode =MAX ( GC.GuestCheckInCode ) FROM GuestCheckIn GC WHERE GC.CurrentRoom =GuestRoom.GuestRoomCode AND GC.CheckOut ='N' ) T , Guest G , GuestCheckIn GCI WHERE T.GuestCheckInCode =GCI.GuestCheckInCode AND GCI.GuestCode =G.GuestCode ) INTO :this.il_checincode, :this.il_guestcode FROM GuestRoom WHERE GuestRoomCode =:this.il_code USING this.it_transobject;
+	if this.it_transobject.sqlcode = 0 then
+		ll_retcode = 0
+	else
+		ll_retcode = 1
+	end if
+	return 0
+
+// w_guestcheckin_form.wf_validate_roomservice() returns long
+	long ll_code
+	long ll_row
+	long ll_pcode
+	long ll_count
+	string ls_colname
+	string ls_accname
+	integer li_errcode
+	integer li_null
+	ls_colname = "icode"
+	ll_row = this.id_roomservice.getrow()
+	if ll_row <= 0 then
+		return 0
+	end if
+	ll_code = this.id_roomservice.getitemnumber(ll_row, ls_colname)
+	ll_pcode = this.id_guest.object.code[1]
+	if ll_code > 0 then
+		if vf_dwdupcode1(this.id_roomservice, ls_colname, string(ll_code), ll_row) = true then
+			messagebox("Duplication Error", "Current row is duplicate")
+			li_errcode = -1
+			this.ib_roomservice_validated = false
+		else
+			li_errcode = 0
+			this.ib_roomservice_validated = true
+		end if
+		this.il_roomservice_row = ll_row
+		if li_errcode = -1 then
+			setnull(li_null)
+			this.id_roomservice.setcolumn(ls_colname)
+			this.id_roomservice.scrolltorow(ll_row)
+			this.id_roomservice.setitem(ll_row, ls_colname, li_null)
+		end if
+	else
+		this.il_roomservice_row = ll_row
+		this.ib_roomservice_validated = false
+		li_errcode = 0
+	end if
+	return li_errcode
+
+// w_guestcheckin_form.wf_validate_checkinservice() returns integer
+	long ll_code
+	long ll_row
+	string ls_colname
+	integer li_errcode
+	integer li_null
+	ls_colname = "icode"
+	ll_row = this.id_checkinservice.getrow()
+	if ll_row <= 0 then
+		return 0
+	end if
+	ll_code = this.id_checkinservice.getitemnumber(ll_row, ls_colname)
+	if ll_code > 0 then
+		if vf_dwdupcode1(this.id_checkinservice, ls_colname, string(ll_code), ll_row) = true then
+			messagebox("Duplication Error", "Current row is duplicate")
+			li_errcode = -1
+			this.ib_checkinservice_validated = false
+		else
+			li_errcode = 0
+			this.ib_checkinservice_validated = true
+		end if
+		this.il_checkinservice_row = ll_row
+		if li_errcode = -1 then
+			setnull(li_null)
+			this.id_checkinservice.setcolumn(ls_colname)
+			this.id_checkinservice.scrolltorow(ll_row)
+			this.id_checkinservice.setitem(ll_row, ls_colname, li_null)
+		end if
+	else
+		this.il_checkinservice_row = ll_row
+		this.ib_checkinservice_validated = false
+		li_errcode = 0
+	end if
+	return li_errcode
+
+// w_guestcheckin_form.create() returns 0
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.tab_main = create tab_main
+	this.control = {this.cb_cancel, this.cb_ok, this.tab_main}
+
+// w_guestcheckin_form.destroy() returns 0
+	destroy this.cb_cancel
+	destroy this.cb_ok
+	destroy this.tab_main
+
+// w_guestcheckin_form.open() returns long
+	long ll_retcode
+	date ld_date
+	ld_date = today()
+	this.il_code = message.doubleparm
+	this.it_transobject = create u_transaction
+	if wf_connect() <> 0 then
+		messagebox("Connection Failure", "Unable to connect to the database", stopsign!)
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	wf_get_guest_checkin()
+	wf_set_interface_adjustments()
+	this.id_guest = this.tab_main.tabpage_guest.dw_guest
+	this.id_guest.settransobject(this.it_transobject)
+	if this.il_guestcode > 0 then
+		this.id_guest.retrieve(this.il_guestcode)
+		if this.id_guest.rowcount() = 0 then
+			this.id_guest.insertrow(0)
+		end if
+	else
+		this.id_guest.insertrow(0)
+	end if
+	this.id_room = this.tab_main.tabpage_room.dw_room
+	this.id_room.settransobject(this.it_transobject)
+	if this.il_code > 0 then
+		this.id_room.retrieve(this.il_code)
+		if this.id_room.rowcount() = 0 then
+			this.id_room.insertrow(0)
+		end if
+	else
+		this.id_room.insertrow(0)
+	end if
+	this.id_roomservice = this.tab_main.tabpage_room.dw_roomservice
+	this.id_roomservice.settransobject(this.it_transobject)
+	if this.il_code > 0 then
+		this.id_roomservice.retrieve(this.il_code)
+	else
+		this.id_roomservice.insertrow(0)
+	end if
+	this.id_checkin = this.tab_main.tabpage_checkin.dw_checkin
+	this.id_checkin.settransobject(this.it_transobject)
+	if this.il_checincode > 0 then
+		this.id_checkin.retrieve(this.il_checincode)
+	else
+		this.id_checkin.insertrow(0)
+	end if
+	wf_set_tab_visibility()
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// cb_cancel.clicked() returns long
+	parent.postevent("ue_close")
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	string ls_aliasname
+	long ll_newid
+	long ll_row
+	long ll_counter
+	long ll_liccode
+	boolean lb_commitok
+	integer li_rc
+	string ls_err
+	string ls_mod
+	datawindow ldw_detail
+	ll_row = parent.id_guest.getrow()
+	parent.wf_deleteemptyrows()
+	if f_validatedw(parent.id_guest) < 0 then
+		parent.tab_main.selecttab(1)
+		return ::message.returnvalue
+	end if
+	if f_validatedw(parent.id_room) < 0 then
+		parent.tab_main.selecttab(2)
+		return ::message.returnvalue
+	end if
+	if f_validatedw(parent.id_roomservice) < 0 then
+		parent.tab_main.selecttab(2)
+		return ::message.returnvalue
+	end if
+	if f_validatedw(parent.id_checkin) < 0 then
+		parent.tab_main.selecttab(3)
+		return ::message.returnvalue
+	end if
+	if f_validatedw(parent.id_checkinservice) < 0 then
+		parent.tab_main.selecttab(3)
+		return ::message.returnvalue
+	end if
+	ll_newid = parent.id_guest.object.code[parent.id_guest.getrow()]
+	if isnull(ll_newid) then
+		parent.wf_tabnewid("Guest", ll_newid)
+		parent.id_guest.object.code[ll_row] = ll_newid
+	end if
+	ls_aliasname = parent.id_guest.getitemstring(1, "accounts_aliasname")
+	if isnull(ls_aliasname) then
+		parent.id_guest.setitem(parent.id_guest.getrow(), "accounts_aliasname", string(ll_newid))
+	end if
+	if isnull(parent.id_guest.getitemstring(1, "customer_membershipid")) then
+		parent.id_guest.setitem(parent.id_guest.getrow(), "customer_membershipid", string(ll_newid))
+	end if
+	parent.id_guest.setitem(parent.id_guest.getrow(), "accounts_name", upper(parent.id_guest.object.customer_fullname[1] + "(" + trim(string(ll_newid)) + ")"))
+	for ll_counter = 1 to parent.id_room.rowcount()
+		if isnull(parent.id_room.object.code[ll_counter]) then
+			parent.id_room.object.code[ll_counter] = ll_newid
+		end if
+	next
+	for ll_counter = 1 to parent.id_roomservice.rowcount()
+		if isnull(parent.id_roomservice.object.code[ll_counter]) then
+			parent.id_roomservice.object.code[ll_counter] = ll_newid
+		end if
+	next
+	for ll_counter = 1 to parent.id_checkin.rowcount()
+		ll_liccode = parent.id_checkin.object.licensecode[ll_counter]
+		if isnull(ll_liccode) or ll_liccode < 0 then
+			parent.wf_tabnewid("License", ll_liccode)
+			parent.id_checkin.object.licensecode[ll_counter] = ll_liccode
+			parent.id_checkin.object.usercode[ll_counter] = gl_usercode
+			parent.id_checkin.object.date[ll_counter] = today()
+			parent.id_checkin.object.custcode[ll_counter] = ll_newid
+		end if
+	next
+	ldw_detail = parent.id_guest
+	li_rc = ldw_detail.update(true, false)
+	if li_rc = 1 then
+		ls_mod = "accounts_acccode.Update=No "
+		ls_mod = ls_mod + "accounts_name.Update=No "
+		ls_mod = ls_mod + "accounts_SubCode.Update=No "
+		ls_mod = ls_mod + "accounts_openingdate.Update=No "
+		ls_mod = ls_mod + "accounts_aliasname.Update=No "
+		ls_mod = ls_mod + "accounts_active.Update=No "
+		ls_mod = ls_mod + "accounts_alertcode.Update=No "
+		ls_mod = ls_mod + "accounts_acccode.Key=No "
+		ls_mod = ls_mod + "DataWindow.Table.UpdateTable='customer' "
+		ls_mod = ls_mod + "code.Key=Yes "
+		ls_mod = ls_mod + "code.Update=Yes "
+		ls_mod = ls_mod + "customer_CP.Update=Yes "
+		ls_mod = ls_mod + "customer_CP2.Update=Yes "
+		ls_mod = ls_mod + "customer_address1.Update=Yes "
+		ls_mod = ls_mod + "customer_address2.Update=Yes "
+		ls_mod = ls_mod + "customer_city.Update=Yes "
+		ls_mod = ls_mod + "customer_postcode.Update=Yes "
+		ls_mod = ls_mod + "customer_countycode.Update=Yes "
+		ls_mod = ls_mod + "customer_country.Update=Yes "
+		ls_mod = ls_mod + "customer_phone.Update=Yes "
+		ls_mod = ls_mod + "customer_fax.Update=Yes "
+		ls_mod = ls_mod + "customer_email.Update=Yes "
+		ls_mod = ls_mod + "customer_areacode.Update=Yes "
+		ls_mod = ls_mod + "customer_crlimit.Update=Yes "
+		ls_mod = ls_mod + "customer_dayslimit.Update=Yes "
+		ls_mod = ls_mod + "customer_custcatcode.Update=Yes "
+		ls_mod = ls_mod + "customer_licenceno.Update=Yes "
+		ls_mod = ls_mod + "customer_licenceexpiry.Update=Yes "
+		ls_mod = ls_mod + "customer_SalesTaxRegNo.Update=Yes "
+		ls_mod = ls_mod + "customer_DefaultGST.Update=Yes "
+		ls_mod = ls_mod + "customer_InvDiscperc.Update=Yes "
+		ls_mod = ls_mod + "customer_DefaultSalePrice.Update=Yes "
+		ls_mod = ls_mod + "customer_DefaultItemDiscperc.Update=Yes "
+		ls_mod = ls_mod + "customer_subareacode.Update=Yes "
+		ls_mod = ls_mod + "customer_BankName.Update=Yes "
+		ls_mod = ls_mod + "customer_BankAdd.Update=Yes "
+		ls_mod = ls_mod + "customer_messagecode.Update=Yes "
+		ls_mod = ls_mod + "customer_salesmancode.Update=Yes "
+		ls_mod = ls_mod + "customer_specialinstructions.Update=Yes "
+		ls_mod = ls_mod + "customer_allowsalebelowavgprice.Update=Yes "
+		ls_mod = ls_mod + "customer_schedforposting.Update=Yes "
+		ls_mod = ls_mod + "customer_designation.Update=Yes "
+		ls_mod = ls_mod + "customer_collectionpolicycode.Update=Yes "
+		ls_mod = ls_mod + "customer_associatedquotationcode.Update=Yes "
+		ls_mod = ls_mod + "customer_poassociatedquotationcode.Update=Yes "
+		ls_mod = ls_mod + "customer_saletypecode.Update=Yes "
+		ls_mod = ls_mod + "customer_gender.Update=Yes "
+		ls_mod = ls_mod + "customer_dob.Update=Yes "
+		ls_mod = ls_mod + "customer_nic.Update=Yes "
+		ls_mod = ls_mod + "customer_occupation.Update=Yes "
+		ls_mod = ls_mod + "customer_eduqualf.Update=Yes "
+		ls_mod = ls_mod + "customer_refno.Update=Yes "
+		ls_mod = ls_mod + "customer_considerinpo.Update=Yes "
+		ls_mod = ls_mod + "customer_membershipid.Update=Yes "
+		ls_mod = ls_mod + "customer_ntnno.Update=Yes "
+		ls_mod = ls_mod + "customer_printwaranty.Update=Yes "
+		ls_mod = ls_mod + "customer_gccode.Update=Yes "
+		ls_mod = ls_mod + "customer_associatedservicetemplatecode.Update=Yes "
+		ls_mod = ls_mod + "customer_printoutstandingserviceresult.Update=Yes "
+		ls_mod = ls_mod + "customer_printamtonserviceinv.Update=Yes "
+		ls_mod = ls_mod + "customer_printbalance.Update=Yes "
+		ls_mod = ls_mod + "customer_block.Update=Yes "
+		ls_mod = ls_mod + "customer_charges.Update=Yes "
+		ls_mod = ls_mod + "customer_fullname.Update=Yes "
+		ls_mod = ls_mod + "customer_address.Update=Yes "
+		ls_mod = ls_mod + "customer_owner.Update=Yes "
+		ls_mod = ls_mod + "customer_issuedlicenseno.Update=Yes "
+		ls_err = ldw_detail.modify(ls_mod)
+		if ls_err <> "" then
+			messagebox("DataWindow Modify Error", ls_err)
+		end if
+		li_rc = ldw_detail.update()
+		if li_rc = 1 then
+			if parent.id_guest.update() = 1 then
+				if parent.id_room.update() = 1 then
+					if parent.id_roomservice.update() = 1 then
+						if parent.id_checkin.update() = 1 then
+							SQL commit USING parent.it_transobject;
+							messagebox("Save Changes", "Changes take effect in database", exclamation!, ok!, 1)
+							lb_commitok = true
+							close(parent)
+							return ::message.returnvalue
+						else
+							messagebox("Guest Check-In Problem", "Unable to update Check-In Information~r~nDetails Are:- " + parent.it_transobject.sqlerrtext)
+							SQL rollback USING parent.it_transobject;
+						end if
+					else
+						messagebox("Guest Check-In Problem", "Unable to update Check-In Information~r~nDetails Are:- " + parent.it_transobject.sqlerrtext)
+						SQL rollback USING parent.it_transobject;
+					end if
+				else
+					messagebox("License Category Saving Problem", "Unable to update License Category" + "~r~nDetails Are:- " + parent.it_transobject.sqlerrtext)
+					SQL rollback USING parent.it_transobject;
+				end if
+			else
+				messagebox("Qualified Person Person Saving Problem", "Unable to update Qualified Person Person" + "~r~nDetails Are:- " + parent.it_transobject.sqlerrtext)
+				SQL rollback USING parent.it_transobject;
+			end if
+		else
+			messagebox("Update of Customer Table Failed", "Rolling back changes to " + "accounts  and Customer Tables")
+			SQL rollback USING parent.it_transobject;
+		end if
+	else
+		messagebox("Update of accounts Table Failed", "Rolling back changes to " + "accounts Table")
+		SQL rollback USING parent.it_transobject;
+		return ::message.returnvalue
+	end if
+	ls_mod = "accounts_accCode.Update=yes "
+	ls_mod = ls_mod + "accounts_name.Update=yes "
+	ls_mod = ls_mod + "accounts_SubCode.Update=yes "
+	ls_mod = ls_mod + "accounts_openingdate.Update=yes "
+	ls_mod = ls_mod + "accounts_alertcode.Update=yes "
+	ls_mod = ls_mod + "DataWindow.Table.UpdateTable='accounts' "
+	ls_mod = ls_mod + "accounts_aliasname.Update=yes "
+	ls_mod = ls_mod + "accounts_active.Update=yes "
+	ls_mod = ls_mod + "Accounts_acccode.Key=yes "
+	ls_mod = ls_mod + "code.Update=no "
+	ls_mod = ls_mod + "customer_CP.Update=no "
+	ls_mod = ls_mod + "customer_CP2.Update=no "
+	ls_mod = ls_mod + "customer_address1.Update=no "
+	ls_mod = ls_mod + "customer_address2.Update=no "
+	ls_mod = ls_mod + "customer_city.Update=no "
+	ls_mod = ls_mod + "customer_postcode.Update=no "
+	ls_mod = ls_mod + "customer_countycode.Update=no "
+	ls_mod = ls_mod + "customer_country.Update=no "
+	ls_mod = ls_mod + "customer_phone.Update=no "
+	ls_mod = ls_mod + "customer_fax.Update=no "
+	ls_mod = ls_mod + "customer_email.Update=no "
+	ls_mod = ls_mod + "customer_areacode.Update=no "
+	ls_mod = ls_mod + "customer_crlimit.Update=no "
+	ls_mod = ls_mod + "customer_dayslimit.Update=no "
+	ls_mod = ls_mod + "customer_custcatcode.Update=no "
+	ls_mod = ls_mod + "customer_licenceno.Update=no "
+	ls_mod = ls_mod + "customer_licenceexpiry.Update=no "
+	ls_mod = ls_mod + "code.Key=no "
+	ls_mod = ls_mod + "customer_SalesTaxRegNo.Update=No "
+	ls_mod = ls_mod + "customer_DefaultGST.Update=No "
+	ls_mod = ls_mod + "customer_InvDiscperc.Update=No "
+	ls_mod = ls_mod + "customer_DefaultSalePrice.Update=No "
+	ls_mod = ls_mod + "customer_DefaultItemDiscPerc.Update=No "
+	ls_mod = ls_mod + "customer_subareacode.Update=No "
+	ls_mod = ls_mod + "customer_BankName.Update=No "
+	ls_mod = ls_mod + "customer_BankAdd.Update=No "
+	ls_mod = ls_mod + "customer_messagecode.Update=No "
+	ls_mod = ls_mod + "customer_salesmancode.Update=No "
+	ls_mod = ls_mod + "customer_specialinstructions.Update=No "
+	ls_mod = ls_mod + "customer_allowsalebelowavgprice.Update=No "
+	ls_mod = ls_mod + "customer_schedforposting.Update=No "
+	ls_mod = ls_mod + "customer_designation.Update=No "
+	ls_mod = ls_mod + "customer_collectionpolicycode.Update=No "
+	ls_mod = ls_mod + "customer_associatedquotationcode.Update=No "
+	ls_mod = ls_mod + "customer_poassociatedquotationcode.Update=No "
+	ls_mod = ls_mod + "customer_saletypecode.Update=No "
+	ls_mod = ls_mod + "customer_gender.Update=No "
+	ls_mod = ls_mod + "customer_dob.Update=No "
+	ls_mod = ls_mod + "customer_nic.Update=No "
+	ls_mod = ls_mod + "customer_occupation.Update=No "
+	ls_mod = ls_mod + "customer_eduqualf.Update=No "
+	ls_mod = ls_mod + "customer_refno.Update=No "
+	ls_mod = ls_mod + "customer_considerinpo.Update=No "
+	ls_mod = ls_mod + "customer_MemberShipId.Update=No "
+	ls_mod = ls_mod + "customer_ntnno.Update=No "
+	ls_mod = ls_mod + "customer_printwaranty.Update=No "
+	ls_mod = ls_mod + "customer_gccode.Update=No "
+	ls_mod = ls_mod + "customer_associatedservicetemplatecode.Update=No "
+	ls_mod = ls_mod + "customer_printoutstandingserviceresult.Update=No "
+	ls_mod = ls_mod + "customer_printamtonserviceinv.Update=No "
+	ls_mod = ls_mod + "customer_printbalance.Update=No "
+	ls_mod = ls_mod + "customer_block.Update=No "
+	ls_mod = ls_mod + "customer_charges.Update=No "
+	ls_mod = ls_mod + "customer_fullname.Update=No "
+	ls_mod = ls_mod + "customer_address.Update=No "
+	ls_mod = ls_mod + "customer_owner.Update=No "
+	ls_mod = ls_mod + "customer_issuedlicenseno.Update=No "
+	ls_err = ldw_detail.modify(ls_mod)
+	if ls_err <> "" then
+		messagebox("DataWindow Modify Error", ls_err)
+	end if
+	return ::message.returnvalue
+
+// tab_main.create() returns 0
+	this.tabpage_room = create tabpage_room
+	this.tabpage_guest = create tabpage_guest
+	this.tabpage_checkin = create tabpage_checkin
+	this.control = {this.tabpage_room, this.tabpage_guest, this.tabpage_checkin}
+
+// tab_main.destroy() returns 0
+	destroy this.tabpage_room
+	destroy this.tabpage_guest
+	destroy this.tabpage_checkin
+
+// tab_main.selectionchanged(integer oldindex, integer newindex) returns long
+	if newindex = 1 then
+		parent.id_guest.setfocus()
+	elseif newindex = 2 then
+		parent.id_room.setfocus()
+	elseif newindex = 3 then
+		parent.id_roomservice.setfocus()
+	elseif newindex = 4 then
+		parent.id_checkin.setfocus()
+	end if
+	return ::message.returnvalue
+
+// tabpage_room.create() returns 0
+	this.dw_roomservice = create dw_roomservice
+	this.dw_room = create dw_room
+	this.control = {this.dw_roomservice, this.dw_room}
+
+// tabpage_room.destroy() returns 0
+	destroy this.dw_roomservice
+	destroy this.dw_room
+
+// dw_roomservice.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ll_rowcount
+	if keyflags = 2 then
+		if key = keyi! then
+			if getrow() > 0 and rowcount() > 0 and parent.parent.parent.wf_validate_roomservice() = -1 then
+				return ::message.returnvalue
+			end if
+			if parent.parent.parent.id_roomservice.rowcount() > 0 and f_validatedw(parent.parent.parent.id_roomservice) < 0 then
+				return ::message.returnvalue
+			end if
+			ll_rowcount = parent.parent.parent.id_roomservice.insertrow(0)
+			if ll_rowcount > 1 then
+				parent.parent.parent.id_roomservice.scrolltorow(ll_rowcount)
+				parent.parent.parent.id_roomservice.setfocus()
+			end if
+		end if
+		if key = keyd! then
+			if parent.parent.parent.id_roomservice.rowcount() > 0 then
+				parent.parent.parent.id_roomservice.deleterow(0)
+			end if
+			ll_rowcount = parent.parent.parent.id_roomservice.rowcount()
+			if ll_rowcount > 1 then
+				parent.parent.parent.id_roomservice.scrolltorow(ll_rowcount)
+				parent.parent.parent.id_roomservice.setfocus()
+			end if
+		end if
+	end if
+	return ::message.returnvalue
+
+// dw_roomservice.ue_enterkey() returns long
+	long ll_rowcount
+	if getrow() = rowcount() and getcolumn() = integer(this.object.datawindow.column.count) then
+		if parent.parent.parent.id_roomservice.rowcount() > 0 and f_validatedw(parent.parent.parent.id_roomservice) < 0 then
+			return ::message.returnvalue
+		end if
+		if getrow() > 0 and parent.parent.parent.wf_validate_roomservice() = -1 then
+			return 1
+		end if
+		ll_rowcount = parent.parent.parent.id_roomservice.insertrow(0)
+		if ll_rowcount > 1 then
+			parent.parent.parent.id_roomservice.scrolltorow(ll_rowcount)
+			parent.parent.parent.id_roomservice.setfocus()
+		end if
+		return 1
+	end if
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_roomservice.getfocus() returns long
+	setcolumn("icode")
+	setfocus()
+	return ::message.returnvalue
+
+// dw_roomservice.itemchanged(long row, dwobject dwo, string data) returns long
+	integer li_errcode
+	choose case dwo.name
+	case "icode"
+		parent.parent.parent.ib_roomservice_validated = false
+		parent.parent.parent.il_roomservice_row = row
+		li_errcode = 0
+		return li_errcode
+	end choose
+	return li_errcode
+
+// dw_roomservice.itemerror(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "icode"
+		if data = "" or isnull(data) then
+			messagebox("Service Validation", "Value required for Service in current row")
+		end if
+	end choose
+	return 1
+
+// dw_roomservice.itemfocuschanged(long row, dwobject dwo) returns long
+	if row > 0 and parent.parent.parent.wf_validate_roomservice() = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// tabpage_guest.create() returns 0
+	this.dw_guest = create dw_guest
+	this.control = {this.dw_guest}
+
+// tabpage_guest.destroy() returns 0
+	destroy this.dw_guest
+
+// dw_guest.ue_enterkey() returns long
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_guest.itemchanged(long row, dwobject dwo, string data) returns long
+	long ll_null
+	choose case dwo.name
+	case "customer_fullname"
+		if data = "" or isnull(data) or len(data) = 0 then
+			messagebox("Full Name Validation", "Please enter fulll customer name")
+			return 1
+		end if
+	case "customer_issuedlicenseno"
+		if data = "" or isnull(data) or len(data) = 0 then
+			return 1
+		end if
+	end choose
+	return 0
+
+// dw_guest.itemerror(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "customer_fullname"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for Name in current row")
+		end if
+	case "customer_issuedlicenseno"
+		if data = "" or isnull(data) then
+			messagebox("License No. Validation", "Value required for License No. in current row")
+		end if
+	case "customer_owner"
+		if data = "" or isnull(data) then
+			messagebox("Owner Name Validation", "Value required for Owner Name in current row")
+		end if
+	case "customer_nic"
+		if data = "" or isnull(data) then
+			messagebox("Owner CNIC No. Validation", "Value required for Owner CNIC No. in current row")
+		end if
+	case "accounts_name"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for Name in current row")
+		end if
+	case "customer_address"
+		if data = "" or isnull(data) then
+			messagebox("Address Validation", "Value required for Address in current row")
+		end if
+	case "customer_areacode"
+		if data = "" or isnull(data) then
+			messagebox("Area Name Validation", "Value required for Area Name in current row")
+		end if
+	case "customer_city"
+		if data = "" or isnull(data) then
+			messagebox("City Validation", "Value required for City in current row")
+		end if
+	case "customer_Phone"
+		if data = "" or isnull(data) then
+			messagebox("Phone Validation", "Value required for Phone in current row")
+		end if
+	case "customer_email"
+		if data = "" or isnull(data) then
+			messagebox("Email Validation", "Value required for Email in current row")
+		end if
+	case "customer_licenceno"
+		if data = "" or isnull(data) then
+			messagebox("LicenceNo Validation", "Value required for LicenceNO in current row")
+		end if
+	case "customer_licenceexpiry"
+		if data = "" or isnull(data) then
+			messagebox("LicenceExpiry Validation", "Value required for LicenceExpiry in current row")
+		end if
+	case "customer_cp"
+		if data = "" or isnull(data) then
+			messagebox("Contact Person Validation", "Value required for Contact Person in current row")
+		end if
+	case "customer_country"
+	case "customer_fax"
+		if data = "" or isnull(data) then
+			messagebox("Fax Validation", "Value required for Fax in current row")
+		end if
+	end choose
+	return 1
+
+// tabpage_checkin.create() returns 0
+	this.dw_checkin = create dw_checkin
+	this.dw_checkinservice = create dw_checkinservice
+	this.control = {this.dw_checkin, this.dw_checkinservice}
+
+// tabpage_checkin.destroy() returns 0
+	destroy this.dw_checkin
+	destroy this.dw_checkinservice
+
+// dw_checkinservice.ue_enterkey() returns long
+	long ll_rowcount
+	if getrow() = rowcount() and getcolumn() = integer(this.object.datawindow.column.count) then
+		if rowcount() > 0 and f_validatedw(this) < 0 then
+			return ::message.returnvalue
+		end if
+		ll_rowcount = insertrow(0)
+		if ll_rowcount > 1 then
+			scrolltorow(ll_rowcount)
+			setcolumn("validfrom")
+			setfocus()
+		end if
+		return 1
+	end if
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_checkinservice.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	long ll_rowcount
+	if keyflags = 2 then
+		if key = keyi! then
+			if rowcount() > 0 and f_validatedw(this) < 0 then
+				return ::message.returnvalue
+			end if
+			ll_rowcount = insertrow(0)
+			if ll_rowcount > 1 then
+				scrolltorow(ll_rowcount)
+				setfocus()
+			end if
+		end if
+		if key = keyd! then
+			if rowcount() > 0 then
+				deleterow(0)
+			end if
+			ll_rowcount = rowcount()
+			if ll_rowcount > 1 then
+				scrolltorow(ll_rowcount)
+				setfocus()
+			end if
+		end if
+	end if
+	return ::message.returnvalue
+
+// dw_checkinservice.itemchanged(long row, dwobject dwo, string data) returns long
+	integer li_errcode
+	choose case dwo.name
+	case "servicecode"
+		parent.parent.parent.ib_checkinservice_validated = false
+		parent.parent.parent.il_checkinservice_row = row
+		li_errcode = 0
+		return li_errcode
+	end choose
+	return li_errcode
+
+// dw_checkinservice.getfocus() returns long
+	setcolumn("servicecode")
+	setfocus()
+	return ::message.returnvalue
+
+// dw_checkinservice.itemerror(long row, dwobject dwo, string data) returns long
+	choose case dwo.name
+	case "servicecode"
+		if data = "" or isnull(data) then
+			messagebox("Service Validation", "Value required for Service in current row")
+		end if
+	end choose
+	return 1
+
+// dw_checkinservice.itemfocuschanged(long row, dwobject dwo) returns long
+	if row > 0 and parent.parent.parent.wf_validate_checkinservice() = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue

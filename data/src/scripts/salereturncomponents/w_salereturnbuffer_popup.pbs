@@ -1,0 +1,174 @@
+// window w_salereturnbuffer_popup (salereturncomponents)  ancestor: w_salereturnbuffer
+
+// w_salereturnbuffer_popup.ue_fetch_buffer_value() returns 0
+	integer li_result
+	long ll_listrow
+	long ll_custcode
+	long ll_code
+	if this.iw_callingwindow.istr_buffer.i_status = 1 then
+		this.istr_buffer = this.iw_callingwindow.istr_buffer
+		this.is_callermodule = lower(this.iw_callingwindow.classname())
+		if not isnull(this.iw_callingwindow.istr_buffer.l_code1) then
+			ll_listrow = this.id_list.insertrow(0)
+			this.il_selectedrow = ll_listrow
+			this.id_list.object.code[ll_listrow] = this.iw_callingwindow.istr_buffer.l_code1
+			this.id_master.retrieve(this.iw_callingwindow.istr_buffer.l_code1)
+			if this.id_master.rowcount() > 0 then
+				postevent("ue_detail")
+				ll_code = this.id_master.object.saleinvcode[1]
+				ll_custcode = this.id_master.object.custcode[1]
+				wf_setsaleinvinfo(ll_code, ll_custcode)
+				if lower(this.iw_callingwindow.classname()) = "w_billsummary" then
+					this.id_master.object.retviabillsummary.initial = "Y"
+					if this.id_master.rowcount() > 0 then
+						this.id_master.object.retviabillsummary[1] = "Y"
+					end if
+				end if
+				return
+			end if
+			return
+		end if
+		if not isnull(this.iw_callingwindow.istr_buffer.l_code2) and this.iw_callingwindow.istr_buffer.l_code4 = 1 and this.id_master.rowcount() > 0 then
+			this.id_master.object.saleinvcode[this.id_master.rowcount()] = this.iw_callingwindow.istr_buffer.l_code2
+			this.id_master.setfocus()
+			this.id_master.setcolumn("saleinvcode")
+			this.id_master.accepttext()
+			li_result = wf_validatesaleinvcode(1, this.id_master.object.saleinvcode[this.id_master.rowcount()])
+			if li_result = 1 then
+				wf_protectcolumns(0)
+			elseif li_result = 0 then
+				wf_setitemslist(this.id_master.object.saleinvcode[this.id_master.rowcount()])
+				wf_protectcolumns(1)
+			end if
+			wf_editsaleinvoice()
+			if lower(this.iw_callingwindow.classname()) = "w_billsummary" then
+				this.id_master.object.retviabillsummary.initial = "Y"
+				if this.id_master.rowcount() > 0 then
+					this.id_master.object.retviabillsummary[1] = "Y"
+				end if
+			end if
+			return
+		end if
+		if not isnull(this.iw_callingwindow.istr_buffer.l_code3) and this.id_master.rowcount() > 0 then
+			this.id_master.object.custcode[this.id_master.rowcount()] = this.iw_callingwindow.istr_buffer.l_code3
+			this.id_master.object.patientcode[this.id_master.rowcount()] = this.iw_callingwindow.istr_buffer.l_code5
+			this.id_master.setfocus()
+			this.id_master.setcolumn("custcode")
+			this.id_master.accepttext()
+			this.id_master.object.custcode.protect = 1
+			this.id_master.object.aliasname.protect = 1
+			this.id_master.object.patientcode.protect = 1
+			this.id_master.object.patientregno.protect = 1
+			wf_customerinfo(this.id_master.object.custcode[this.id_master.rowcount()])
+			if lower(this.iw_callingwindow.classname()) = "w_billsummary" then
+				this.id_master.object.retviabillsummary.initial = "Y"
+				if this.id_master.rowcount() > 0 then
+					this.id_master.object.retviabillsummary[1] = "Y"
+				end if
+			end if
+			return
+		end if
+		return
+	end if
+
+// w_salereturnbuffer_popup.create() returns 0
+	integer icurrent
+	call super::create
+	this.cb_save = create cb_save
+	this.cb_cancel = create cb_cancel
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.cb_save
+	this.control[icurrent + 2] = this.cb_cancel
+
+// w_salereturnbuffer_popup.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	destroy this.cb_save
+	destroy this.cb_cancel
+
+// w_salereturnbuffer_popup.open() returns long
+	m_entry lm_menu
+	long ll_width
+	long ll_height
+	environment env
+	postevent("ue_postopen")
+	this.iw_callingwindow = message.powerobjectparm
+	wf_setmenu(this.menuid)
+	lm_menu = this.menuid
+	lm_menu.dynamic mf_initsecurityapp(lm_menu)
+	if getenvironment(env) <> 1 then
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.tab_retrieve.width = ll_width * 0.99
+	this.tab_retrieve.height = ll_height * 0.83
+	this.tab_retrieve.tabpage_detail.dw_detail.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_itemsdetail.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_detail.dw_footer.y = this.tab_retrieve.height * 0.90 - this.tab_retrieve.tabpage_detail.dw_footer.height
+	this.tab_retrieve.tabpage_detail.dw_detail.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width
+	this.tab_retrieve.tabpage_detail.dw_footer.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width
+	this.tab_retrieve.tabpage_detail.dw_itemsdetail.height = this.tab_retrieve.tabpage_detail.dw_footer.y - this.tab_retrieve.tabpage_detail.dw_itemsdetail.y
+	this.tab_retrieve.tabpage_list.gb_fliter.width = ll_width * 0.97 - this.tab_retrieve.tabpage_list.gb_sort.width
+	this.tab_retrieve.tabpage_list.r_1.width = ll_width * 0.99
+	this.tab_retrieve.tabpage_list.r_1.height = ll_height * 0.765 - this.tab_retrieve.tabpage_list.gb_sort.height
+	this.tab_retrieve.tabpage_list.dw_list.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_list.dw_list.height = ll_height * 0.75 - this.tab_retrieve.tabpage_list.dw_list.y
+	this.tab_retrieve.tabpage_detail.dw_itemslist.height = ll_height * 0.6
+	this.tab_retrieve.tabpage_detail.dw_itemslist.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width * 0.73
+	this.cb_save.y = ll_height * 0.85
+	this.cb_cancel.y = ll_height * 0.85
+	this.cb_save.x = ll_width * 0.32
+	this.cb_cancel.x = ll_width * 0.52
+	setredraw(true)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_salereturnbuffer_popup.ue_postopen() returns 0
+	call super::ue_postopen
+	postevent("ue_fetch_buffer_value")
+
+// w_salereturnbuffer_popup.ue_list() returns 0
+
+// w_salereturnbuffer_popup.ue_new() returns 0
+	integer li_postingmode
+	if this.ib_commitok = true and this.il_codevalue > 0 then
+		if (this.is_callermodule = "w_sale" or this.is_callermodule = "w_postsale") and this.iw_callingwindow.istr_buffer.s_name1 = "Y" then
+			wf_post_salereturn(li_postingmode, this.il_codevalue, this.il_codevalue)
+		end if
+		this.iw_callingwindow.post event ue_callback_popupwindow(this.il_codevalue)
+		close(this)
+		return
+	end if
+	this.i_editmode = 1
+	this.ib_commitok = false
+	this.tab_retrieve.selectedtab = 1
+	this.id_master.setfocus()
+
+// cb_save.clicked() returns long
+	if parent.tab_retrieve.selectedtab = 1 then
+		if parent.is_callermodule = "w_sale" or parent.is_callermodule = "w_postsale" then
+			if parent.iw_callingwindow.istr_buffer.s_name1 = "Y" then
+				parent.wf_saveandpost()
+			end if
+		else
+			parent.event ue_save()
+		end if
+		if parent.ib_commitok = true then
+			parent.iw_callingwindow.post event ue_callback_popupwindow(parent.il_codevalue)
+			close(parent)
+		end if
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	close(parent)
+	return ::message.returnvalue

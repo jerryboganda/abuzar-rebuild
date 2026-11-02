@@ -1,0 +1,61 @@
+// window w_arg_accounts (reports)  ancestor: w_listarguments
+
+// w_arg_accounts.create() returns 0
+	integer icurrent
+	call super::create
+	this.st_4 = create st_4
+	this.st_8 = create st_8
+	this.rb_3by9 = create rb_3by9
+	this.rb_2by4 = create rb_2by4
+	this.gb_5 = create gb_5
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_4
+	this.control[icurrent + 2] = this.st_8
+	this.control[icurrent + 3] = this.rb_3by9
+	this.control[icurrent + 4] = this.rb_2by4
+	this.control[icurrent + 5] = this.gb_5
+
+// w_arg_accounts.destroy() returns 0
+	call super::destroy
+	destroy this.st_4
+	destroy this.st_8
+	destroy this.rb_3by9
+	destroy this.rb_2by4
+	destroy this.gb_5
+
+// w_arg_accounts.open() returns long
+	long ancestorreturnvalue
+	string ls_stringparam
+	string ls_filter
+	long ll_counter
+	long ll_rowcount
+	integer rtncode
+	listviewitem l_lvi
+	ancestorreturnvalue = super::open()
+	ls_stringparam = message.stringparm
+	this.dw_control.settransobject(sqlca)
+	rtncode = this.dw_control.retrieve()
+	if rtncode = -1 then
+		messagebox("Error", "No Account(s) To Select")
+	else
+		if ls_stringparam = "C" then
+			ls_filter = ls_filter + "subcode=3"
+		elseif ls_stringparam = "S" then
+			ls_filter = ls_filter + "subcode=7"
+		elseif ls_stringparam = "O" then
+			ls_filter = ls_filter + "subcode<>3 AND subcode<>7"
+		else
+			ls_filter = ls_filter + ""
+		end if
+		this.dw_control.setfilter(ls_filter)
+		this.dw_control.filter()
+		ll_rowcount = this.dw_control.rowcount()
+		ll_counter = 1
+		for ll_counter = 1 to ll_rowcount
+			this.lb_categories.additem(this.dw_control.getitemstring(ll_counter, "name"))
+		next
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue

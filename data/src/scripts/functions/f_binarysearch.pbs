@@ -1,0 +1,27 @@
+// function f_binarysearch (functions)  ancestor: function_object
+
+// f_binarysearch.f_binarysearch(string as_finddata, datawindow d_data, string as_columnname) returns long
+	long l_low
+	long l_mid
+	long l_high
+	long l_length
+	long l_row
+	char c_finddata
+	char c_data
+	l_low = 1
+	l_high = d_data.rowcount()
+	l_length = len(as_finddata)
+	c_finddata = lower(trim(left(as_finddata, 1)))
+	do while l_length > 0 and l_low <= l_high
+		l_mid = (l_low + l_high) / 2.0
+		c_data = lower(trim(left(d_data.getitemstring(l_mid, as_columnname), 1)))
+		if c_finddata < c_data then
+			l_high = l_mid - 1
+		elseif c_finddata > c_data then
+			l_low = l_mid + 1
+		else
+			l_row = d_data.find("lower(" + as_columnname + ") >='" + lower(as_finddata) + "'", l_low, l_high)
+			return l_row
+		end if
+	loop
+	return -1

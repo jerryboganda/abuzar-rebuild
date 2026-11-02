@@ -1,0 +1,150 @@
+// function f_printbarcode_fashionciti (barcodefunctions)  ancestor: function_object
+
+// f_printbarcode_fashionciti.f_printbarcode_fashionciti(datawindow id_master, datawindow id_detail, boolean ib_printprice) returns long
+	long ll_totalrows
+	long ll_counter
+	long ll_innercounter
+	long ll_qty
+	long ll_currrow
+	long ll_tot_label_rows
+	integer li_startcell
+	integer li_stopcell
+	integer li_temp
+	integer li_file
+	string ls_clientname
+	string ls_clientname_25_char
+	string ls_itemname
+	string ls_itemname2
+	string ls_aliasname
+	string ls_price
+	string ls_filecontent
+	string ls_seperator
+	string ls_date
+	string ls_format
+	string ls_xpos
+	string ls_infocode
+	string ls_packing
+	string ls_printer
+	string ls_manufshortname
+	string ls_design
+	string ls_purprice
+	string ls_supp_alias
+	string ls_mfg
+	string ls_expiry
+	string ls_manfdate
+	long ll_headerno
+	long ll_labelno
+	long ll_labelpos
+	long ll_supply_cols_per_row
+	integer li_barcodeleninprint
+	ls_seperator = ";"
+	ls_supp_alias = id_master.object.aliasname[id_master.getrow()]
+	ll_headerno = id_master.getitemnumber(id_master.getrow(), "headerno")
+	ls_clientname = left(trim(f_reportheaderinfo_wrt_headerno("clientname", ll_headerno)), 21)
+	ls_clientname_25_char = upper(left(trim(f_reportheaderinfo_wrt_headerno("clientname", ll_headerno)), 25))
+	li_barcodeleninprint = f_numberpreferences("BarCodeLenInPrint")
+	ll_totalrows = id_detail.rowcount()
+	ls_printer = trim(id_master.object.barcodeprinter[1])
+	if upper(ls_printer) = "TSC TTP-244 PRO" then
+		ls_format = id_master.object.labelformat[1]
+		if ls_format = "1" then
+			ll_supply_cols_per_row = 2
+			ll_labelno = 1
+			if ll_totalrows > 0 then
+				ll_counter = 1
+				tsc_openport_new("TSC TTP-244 PRO")
+				tsc_setup_new("76.10", "28.7", "4", "8", "0", "0", "0")
+				tsc_sendcommand_new("GAP 3 mm, 0 mm")
+				tsc_sendcommand_new("SPEED 4")
+				tsc_sendcommand_new("DENSITY 7")
+				tsc_sendcommand_new("DIRECTION 0,0")
+				tsc_sendcommand_new("REFERENCE 0,0")
+				tsc_sendcommand_new("OFFSET 0 mm")
+				tsc_sendcommand_new("SHIFT 0")
+				tsc_sendcommand_new("SET PEEL OFF")
+				tsc_sendcommand_new("SET CUTTER ON")
+				tsc_sendcommand_new("SET TEAR ON")
+				tsc_sendcommand_new("CLS")
+				tsc_sendcommand_new("CODEPAGE 850")
+				for ll_counter = 1 to ll_totalrows
+					if len(trim(id_detail.getitemstring(ll_counter, "fullcode"))) <= li_barcodeleninprint and id_detail.getitemnumber(ll_counter, "qty") > 0.0 then
+						ll_qty = id_detail.getitemnumber(ll_counter, "qty")
+						ls_itemname = id_detail.getitemstring(ll_counter, "itemname")
+						ls_aliasname = left(trim(id_detail.getitemstring(ll_counter, "fullcode")), li_barcodeleninprint)
+						if ib_printprice then
+							ls_price = "Rs. " + trim(string(round(id_detail.getitemdecimal(ll_counter, "saleprice"), 2)))
+						else
+							ls_price = ""
+						end if
+						ls_expiry = "Exp:" + string(id_detail.object.expiry[ll_counter], "dd/mm/yyyy")
+						ls_mfg = "Mfg:" + string(id_detail.object.manfdate[ll_counter], "dd/mm/yyyy")
+						if isnull(ls_mfg) then
+							ls_mfg = ""
+						end if
+						if isnull(ls_expiry) then
+							ls_expiry = ""
+						end if
+						if len(ls_mfg) > 0 then
+							ls_expiry = ls_mfg + space(2) + ls_expiry
+						end if
+						tsc_clearbuffer_new()
+						ll_tot_label_rows = ceiling(ll_qty / ll_supply_cols_per_row)
+						tsc_printerfont_new("270", "212", "0", "180", "8", "8", ls_clientname)
+						tsc_printerfont_new("600", "212", "0", "180", "8", "8", ls_clientname)
+						tsc_barcode_new("270", "185", "128", "70", "1", "180", "2", "3", ls_aliasname)
+						tsc_barcode_new("600", "185", "128", "70", "1", "180", "2", "3", ls_aliasname)
+						tsc_printerfont_new("270", "90", "0", "180", "8", "6", left(ls_itemname, 25))
+						tsc_printerfont_new("600", "90", "0", "180", "8", "6", left(ls_itemname, 25))
+						tsc_printerfont_new("270", "70", "0", "180", "8", "6", mid(ls_itemname, 26, 25))
+						tsc_printerfont_new("600", "70", "0", "180", "8", "6", mid(ls_itemname, 26, 25))
+						tsc_printerfont_new("270", "51", "0", "180", "10", "10", ls_price)
+						tsc_printerfont_new("600", "51", "0", "180", "10", "10", ls_price)
+						tsc_printlabel_new("1", trim(string(ll_tot_label_rows)))
+					end if
+				next
+				tsc_closeport_new()
+			end if
+		elseif ls_format = "2" and ll_totalrows > 0 then
+			ll_counter = 1
+			tsc_openport_new("TSC TTP-244 PRO")
+			tsc_setup_new("60", "40", "5", "12", "0", "3", "0")
+			for ll_counter = 1 to ll_totalrows
+				if len(trim(id_detail.getitemstring(ll_counter, "fullcode"))) <= li_barcodeleninprint and id_detail.getitemnumber(ll_counter, "qty") > 0.0 then
+					ll_qty = id_detail.getitemnumber(ll_counter, "qty")
+					ls_itemname = trim(id_detail.getitemstring(ll_counter, "itemname"))
+					ls_aliasname = left(trim(id_detail.getitemstring(ll_counter, "fullcode")), li_barcodeleninprint)
+					if isnull(id_detail.object.expiry[ll_counter]) then
+						ls_expiry = ""
+					else
+						ls_expiry = "Exp. Date: " + string(id_detail.object.expiry[ll_counter], "dd-mmm-yyyy")
+					end if
+					if isnull(id_detail.object.manfdate[ll_counter]) then
+						ls_manfdate = ""
+					else
+						ls_manfdate = "Packed On: " + string(id_detail.object.manfdate[ll_counter], "dd-mmm-yyyy")
+					end if
+					if ib_printprice then
+						ls_price = trim(string(round(id_detail.getitemdecimal(ll_counter, "saleprice"), 2)))
+					else
+						ls_price = ""
+					end if
+					ls_packing = left(trim(id_detail.getitemstring(ll_counter, "packing")), 30)
+					tsc_clearbuffer_new()
+					if len(ls_price) > 0 then
+						tsc_sendcommand_new("BOX 21,50,195,142,4")
+						tsc_windowsfont_new(23, 55, 40, 0, 2, 0, "Arial", space(6) + "Rs.")
+						tsc_windowsfont_new(23, 95, 40, 0, 2, 0, "Arial", space(int((12 - len(ls_price)) / 2.0)) + ls_price)
+					end if
+					tsc_windowsfont_new(214, 10, 40, 0, 2, 0, "Arial", ls_clientname)
+					tsc_barcode_new("214", "55", "128", "95", "1", "0", "2", "3", ls_aliasname)
+					tsc_windowsfont_new(21, 187, 30, 0, 2, 0, "Arial", left(ls_itemname, 25))
+					tsc_windowsfont_new(21, 215, 30, 0, 2, 0, "Arial", mid(ls_itemname, 26, 25))
+					tsc_windowsfont_new(21, 243, 30, 0, 2, 0, "Arial", mid(ls_itemname, 51, 25))
+					tsc_windowsfont_new(21, 280, 30, 0, 2, 0, "Arial", "www.facebook.com/FlossieClothing")
+					tsc_printlabel_new("1", string(ll_qty))
+				end if
+			next
+			tsc_closeport_new()
+		end if
+	end if
+	return 0

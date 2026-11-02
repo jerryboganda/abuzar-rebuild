@@ -1,0 +1,91 @@
+// window w_customerinfo (salerespwin)  ancestor: window
+
+// w_customerinfo.create() returns 0
+	this.dw_customerinfo = create dw_customerinfo
+	this.control = {this.dw_customerinfo}
+
+// w_customerinfo.destroy() returns 0
+	destroy this.dw_customerinfo
+
+// w_customerinfo.open() returns long
+	long ll_width
+	long ll_height
+	long li_retcode
+	long ll_custcode
+	long ll_colcount
+	long ll_counter
+	integer li_xpos
+	integer li_ypos
+	integer li_xendpos
+	integer li_counter
+	integer li_taborder
+	integer li_visiblecolumns
+	datastore lds_itemsetting
+	environment env
+	lds_itemsetting = create datastore
+	lds_itemsetting.dataobject = "d_interfacesettingcols"
+	lds_itemsetting.settransobject(sqlca)
+	ll_custcode = long(message.doubleparm)
+	if getenvironment(env) <> 1 then
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.width = ll_width * 0.98
+	this.height = ll_height * 0.75
+	this.y = int((ll_height - this.height) / 2.0)
+	this.dw_customerinfo.width = this.width - this.width * 0.02
+	this.dw_customerinfo.height = this.height - this.width * 0.05
+	this.dw_customerinfo.object.accounts_aliasname_t.visible = true
+	this.dw_customerinfo.object.accounts_aliasname.visible = true
+	lds_itemsetting.retrieve(24, 3, 1)
+	li_visiblecolumns = lds_itemsetting.rowcount()
+	for li_counter = 1 to li_counter
+		this.colname[li_counter, 1] = lds_itemsetting.getitemstring(li_counter, "colname") + "_t"
+		this.colname[li_counter, 2] = lds_itemsetting.getitemstring(li_counter, "colname")
+		this.colwidth[li_counter, 1] = integer(this.dw_customerinfo.describe(this.colname[li_counter, 1] + ".Width"))
+		this.colwidth[li_counter, 2] = integer(this.dw_customerinfo.describe(this.colname[li_counter, 2] + ".Width"))
+		this.colheight[li_counter] = integer(this.dw_customerinfo.describe(this.colname[li_counter, 2] + ".Height"))
+	next
+	li_taborder = 10
+	li_counter = 1
+	li_ypos = 100
+	li_xendpos = 30000
+	do while li_counter <= li_visiblecolumns and li_ypos <= 200000
+		li_xpos = 14
+		this.dw_customerinfo.modify(this.colname[li_counter, 1] + ".X=" + string(li_xpos))
+		this.dw_customerinfo.modify(this.colname[li_counter, 1] + ".Y=" + string(li_ypos))
+		this.dw_customerinfo.modify(this.colname[li_counter, 1] + ".Visible=1")
+		li_xpos = 617
+		this.dw_customerinfo.modify(this.colname[li_counter, 2] + ".X=" + string(li_xpos))
+		this.dw_customerinfo.modify(this.colname[li_counter, 2] + ".Y=" + string(li_ypos))
+		this.dw_customerinfo.modify(this.colname[li_counter, 2] + ".Visible=1")
+		this.dw_customerinfo.settaborder(this.colname[li_counter, 2], li_taborder)
+		li_taborder = li_taborder + 1
+		li_ypos = li_ypos + this.colheight[li_counter] + 22
+		li_counter = li_counter + 1
+	loop
+	ll_colcount = long(this.dw_customerinfo.object.datawindow.column.count)
+	for ll_counter = 1 to ll_colcount
+		this.dw_customerinfo.settaborder(ll_counter, 0)
+	next
+	this.dw_customerinfo.settransobject(sqlca)
+	this.dw_customerinfo.retrieve(ll_custcode)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_customerinfo.close() returns long
+	close(this)
+	return ::message.returnvalue
+
+// w_customerinfo.key(keycode key, unsignedlong keyflags) returns long
+	if keydown(keyescape!) then
+		close(this)
+	end if
+	return ::message.returnvalue

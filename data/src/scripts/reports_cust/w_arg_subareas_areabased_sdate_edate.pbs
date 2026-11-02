@@ -1,0 +1,51 @@
+// window w_arg_subareas_areabased_sdate_edate (reports_cust)  ancestor: w_listarguments
+
+// w_arg_subareas_areabased_sdate_edate.create() returns 0
+	integer icurrent
+	call super::create
+	this.st_4 = create st_4
+	this.st_8 = create st_8
+	this.dw_item = create dw_item
+	this.st_9 = create st_9
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_4
+	this.control[icurrent + 2] = this.st_8
+	this.control[icurrent + 3] = this.dw_item
+	this.control[icurrent + 4] = this.st_9
+
+// w_arg_subareas_areabased_sdate_edate.destroy() returns 0
+	call super::destroy
+	destroy this.st_4
+	destroy this.st_8
+	destroy this.dw_item
+	destroy this.st_9
+
+// w_arg_subareas_areabased_sdate_edate.open() returns long
+	long ancestorreturnvalue
+	s_arguements lstr_arg
+	long ll_counter
+	long ll_rowcount
+	integer rtncode
+	listviewitem l_lvi
+	ancestorreturnvalue = super::open()
+	lstr_arg = message.powerobjectparm
+	this.dw_control.settransobject(sqlca)
+	this.dw_item.settransobject(sqlca)
+	rtncode = this.dw_control.getchild("subareacode", this.idc_categories)
+	if rtncode = -1 then
+		messagebox("Error", "Not a DataWindowChild")
+	end if
+	this.idc_categories.settransobject(sqlca)
+	this.idc_categories.retrieve(lstr_arg.ia_integerlist)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	this.dw_item.insertrow(0)
+	this.dw_item.scrolltorow(0)
+	ll_rowcount = this.idc_categories.rowcount()
+	for ll_counter = 1 to ll_rowcount
+		this.lb_categories.additem(this.idc_categories.getitemstring(ll_counter, "name"))
+	next
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue

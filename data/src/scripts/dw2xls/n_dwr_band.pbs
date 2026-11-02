@@ -1,0 +1,956 @@
+// userobject n_dwr_band (dw2xls)  ancestor: nonvisualobject
+
+// n_dwr_band.of_dynamic_horisontal_layout(long al_row) returns integer
+	integer li_ret
+	integer li_i
+	if this.ib_variable_band_height and this.ii_band_type = 3 then
+		this.ii_band_height = integer(of_describe("evaluate('rowheight()'," + string(al_row) + ")"))
+	else
+		this.ii_band_height = integer(of_describe("datawindow." + this.is_band_name + ".height"))
+	end if
+	if this.ii_band_height > 0 then
+		if this.invo_parm.ib_keep_band_height then
+			this.il_ysplit_ind_from = this.invo_hgrid.of_add_split(this.il_base_y + 0)
+			this.il_ysplit_ind_to = this.invo_hgrid.of_add_split(this.il_base_y + this.ii_band_height)
+		elseif this.ii_dw_processing = 1 and this.ib_variable_band_height then
+			this.il_ysplit_ind_to = this.invo_hgrid.of_add_split(this.il_base_y + this.ii_band_height)
+		end if
+		if this.ii_fields_count > 0 then
+			for li_i = 1 to this.ii_fields_count
+				if this.invo_fields[li_i].ii_dwo_type = 4 then
+					goto L1104
+				elseif this.invo_fields[li_i].of_get_y1() <= this.il_base_y + this.ii_band_height + this.invo_hgrid.ii_round_ratio then
+					this.invo_fields[li_i].il_ysplit_ind_from = this.invo_hgrid.of_add_split(this.invo_fields[li_i].of_get_y1(al_row))
+					if this.ii_dw_processing = 1 and this.ib_variable_band_height and this.ii_band_type = 3 then
+						this.invo_fields[li_i].il_ysplit_ind_to = this.il_ysplit_ind_to
+					else
+						this.invo_fields[li_i].il_ysplit_ind_to = this.invo_hgrid.of_add_split(this.invo_fields[li_i].of_get_y2(al_row))
+					end if
+				end if
+			next
+		end if
+	end if
+	return li_ret
+
+// n_dwr_band.of_set_row_height(long al_writer_row) returns integer
+	long ll_i
+	integer li_ret
+	return li_ret
+
+// n_dwr_band.of_find_row_in_detail() returns 0
+	string ls_syntax
+	long ll_pos
+	long ll_pos_end
+	long ll_start_pos
+	string ls_column
+	string ls_name
+	string ls_row_in_detail
+	integer li_row_in_detail
+	ls_syntax = of_describe("Datawindow.Syntax")
+	this.invo_row_in_detail = create n_cst_hash_long
+	do while ll_start_pos >= 0
+		ll_pos = pos(ls_syntax, "~r~ncolumn(", ll_start_pos)
+		if ll_pos > 0 then
+			ll_pos_end = pos(ls_syntax, "~r~n", ll_pos + 7)
+			if ll_pos_end > 0 then
+				ll_start_pos = ll_pos_end - 2
+			else
+				ll_start_pos = -1
+				ll_pos_end = len(ls_syntax) + 1
+			end if
+			ls_column = mid(ls_syntax, ll_pos, ll_pos_end - ll_pos)
+			ll_pos = pos(ls_column, "name=")
+			if ll_pos > 0 then
+				ll_pos_end = pos(ls_column, " ", ll_pos + 5)
+				if ll_pos_end > 0 then
+					ls_name = mid(ls_column, ll_pos + 5, ll_pos_end - ll_pos - 5)
+					ll_pos = pos(ls_column, "row_in_detail=")
+					if ll_pos > 0 then
+						ll_pos_end = pos(ls_column, " ", ll_pos + 14)
+						if ll_pos_end > 0 then
+							ls_row_in_detail = mid(ls_column, ll_pos + 14, ll_pos_end - ll_pos - 14)
+							li_row_in_detail = integer(ls_row_in_detail)
+							this.invo_row_in_detail.of_set_value(ls_name, li_row_in_detail)
+						end if
+					end if
+				end if
+			end if
+		else
+			ll_start_pos = -1
+		end if
+	loop
+
+// n_dwr_band.of_describe(string as_expr) returns string
+	choose case this.ipo_requestortype
+	case datawindow!
+		return this.idw_requestor.describe(as_expr)
+	case datastore!
+		return this.ids_requestor.describe(as_expr)
+	case datawindowchild!
+		return this.idwc_requestor.describe(as_expr)
+	end choose
+	return "!"
+
+// n_dwr_band.of_register_dynamic(powerobject apo_requestor) returns integer
+	long li_i
+	this.ipo_requestor = apo_requestor
+	this.ipo_requestortype = this.ipo_requestor.typeof()
+	choose case this.ipo_requestortype
+	case datawindow!
+		this.idw_requestor = this.ipo_requestor
+		this.il_dw_row_count = this.idw_requestor.rowcount()
+	case datastore!
+		this.ids_requestor = this.ipo_requestor
+		this.il_dw_row_count = this.ids_requestor.rowcount()
+	case datawindowchild!
+		this.idwc_requestor = this.ipo_requestor
+		this.il_dw_row_count = this.idwc_requestor.rowcount()
+	case else
+		return -1
+	end choose
+	for li_i = 1 to li_i
+		this.invo_fields[li_i].of_register_dynamic(this.ipo_requestor)
+	next
+	return 1
+
+// n_dwr_band.of_add_field(string as_name) returns integer
+	n_dwr_field lnvo_field
+	setnull(lnvo_field)
+	return of_add_field(as_name, 0, lnvo_field)
+
+// n_dwr_band.of_sort_fields() returns integer
+	n_dwr_field[] lnv_col
+	n_dwr_field[] lnv_rep
+	integer li_field
+	integer li_fieldn
+	integer li_base
+	for li_field = 1 to this.ii_fields_count
+		if this.invo_fields[li_field].ii_dwo_type = 4 then
+			lnv_rep[upperbound(lnv_rep) + 1] = this.invo_fields[li_field]
+		else
+			lnv_rep[upperbound(lnv_col) + 1] = this.invo_fields[li_field]
+		end if
+	next
+	li_fieldn = upperbound(lnv_col)
+	for li_field = 1 to li_fieldn
+		this.invo_fields[li_field] = lnv_col[li_field]
+	next
+	li_base = li_fieldn
+	li_fieldn = upperbound(lnv_rep)
+	for li_field = 1 to li_fieldn
+		this.invo_fields[li_base + li_field] = lnv_rep[li_field]
+	next
+	return 1
+
+// n_dwr_band.of_add_field(string as_name, long al_instance_id, n_dwr_field anvo_field) returns integer
+	string ls_field_class
+	string ls_coltype
+	integer li_ret
+	integer li_row_in_detail
+	long ll_i
+	n_dwr_field lnvo_field
+	n_dwr_field lnb
+	st_rect coord
+	long ll_status
+	n_dwr_nested_service_parm lnvo_nested_parm
+	if not this.ib_enabled then
+		return 1
+	end if
+	ls_field_class = of_describe(as_name + ".type")
+	if isnull(anvo_field) then
+		if of_describe(as_name + ".visible") = "0" and not this.invo_parm.ib_export_invisible then
+			return 1
+		end if
+		if of_describe(as_name + ".width") = "0" then
+			return 1
+		end if
+		if pos(of_describe(as_name + ".tag"), this.is_skip_key) > 0 then
+			return 1
+		end if
+		choose case ls_field_class
+		case "datawindow"
+			li_ret = -1
+		case "bitmap"
+			if this.invo_parm.ib_pictures then
+				li_ret = of_add_picture(as_name, anvo_field)
+			else
+				li_ret = -1
+			end if
+		case "button"
+			li_ret = -1
+		case "column"
+			anvo_field = create n_dwr_field
+			anvo_field.inv_parm = this.invo_parm
+			anvo_field.of_setparentband(this)
+			anvo_field.of_register(this.ipo_requestor, this.inv_book, this.invo_colors, this.il_base_x, this.il_base_y, this.il_subband_y, this.ib_background_color)
+			anvo_field.of_init(as_name, 1)
+		case "compute"
+			anvo_field = create n_dwr_field
+			anvo_field.inv_parm = this.invo_parm
+			anvo_field.of_setparentband(this)
+			anvo_field.of_register(this.ipo_requestor, this.inv_book, this.invo_colors, this.il_base_x, this.il_base_y, this.il_subband_y, this.ib_background_color)
+			anvo_field.of_init(as_name, 2)
+		case "graph"
+			li_ret = -1
+		case "groupbox"
+			li_ret = -1
+		case "line"
+			li_ret = of_add_line(as_name, anvo_field)
+		case "ole"
+			li_ret = -1
+		case "ellipse"
+			li_ret = -1
+		case "rectangle"
+			li_ret = of_add_rect(as_name, anvo_field)
+		case "report"
+			if this.invo_parm.ib_nested then
+				anvo_field = create n_dwr_field
+				anvo_field.inv_parm = this.invo_parm
+				anvo_field.of_setparentband(this)
+				anvo_field.of_register(this.ipo_requestor, this.inv_book, this.invo_colors, this.il_base_x, this.il_base_y, this.il_subband_y, this.ib_background_color)
+				anvo_field.of_init(as_name, 4)
+			else
+				li_ret = -1
+			end if
+		case "roundrectangle"
+			li_ret = -1
+		case "tableblob"
+			li_ret = -1
+		case "text"
+			anvo_field = create n_dwr_field
+			anvo_field.inv_parm = this.invo_parm
+			anvo_field.of_setparentband(this)
+			anvo_field.of_register(this.ipo_requestor, this.inv_book, this.invo_colors, this.il_base_x, this.il_base_y, this.il_subband_y, this.ib_background_color)
+			anvo_field.of_init(as_name, 3)
+		end choose
+		if li_ret < 1 then
+			return li_ret
+		end if
+		if anvo_field.ii_sparse > 0 then
+			this.invo_sparse_fields[anvo_field.ii_sparse] = anvo_field
+		end if
+		if this.ib_grid and (anvo_field.of_get_x2() > this.il_base_x + this.il_grid_detail_width and not this.invo_parm.ib_always_export_grid_header) then
+			li_ret = -1
+		end if
+		if li_ret < 1 then
+			return li_ret
+		end if
+		if this.ib_trim_overlapped or this.ib_has_rectangles then
+			coord.x1 = anvo_field.of_get_x1()
+			coord.y1 = anvo_field.of_get_y1()
+			coord.x2 = anvo_field.of_get_x2()
+			coord.y2 = anvo_field.of_get_y2()
+		end if
+		if this.ib_has_rectangles then
+			for ll_i = 1 to upperbound(this.inv_rect)
+				lnvo_field = this.inv_rect[ll_i]
+				if lnvo_field <> anvo_field and this.inv_rect[ll_i].of_isinside(coord.x1, coord.y1, coord.x2, coord.y2) then
+					this.inv_rect[ll_i].of_add_field(as_name, al_instance_id)
+					return 2
+				end if
+			next
+		end if
+		if this.ib_trim_overlapped then
+			ll_status = addoverlappedobject(this.iul_oostorage, coord)
+			if ll_status < 0 then
+				li_ret = -1
+			elseif ll_status > 0 then
+				anvo_field.of_setrect(coord.x1, coord.y1, coord.x2, coord.y2)
+			end if
+		end if
+		if li_ret < 1 then
+			return li_ret
+		end if
+		if not (anvo_field.of_get_x1() >= this.il_x2 or anvo_field.of_get_x2() <= this.il_x1) then
+			if this.ib_has_autosize_height_objects then
+				return -3
+			end if
+		end if
+		return
+	end if
+	if anvo_field.ib_autosize_height and anvo_field.ii_dwo_type = 4 then
+		if this.il_x1 = -1 then
+			this.il_x1 = anvo_field.of_get_x1()
+		else
+			this.il_x1 = min(this.il_x1, anvo_field.of_get_x1())
+		end if
+		if this.il_x2 = -1 then
+			this.il_x2 = anvo_field.of_get_x2()
+		else
+			this.il_x2 = min(this.il_x2, anvo_field.of_get_x2())
+		end if
+		this.ib_has_autosize_height_objects = true
+	end if
+	choose case ls_field_class
+	case "report"
+		lnvo_nested_parm = create n_dwr_nested_service_parm
+		lnvo_nested_parm.inv_sheet = this.inv_sheet
+		lnvo_nested_parm.invo_colors = this.invo_colors
+		lnvo_nested_parm.is_parent_band_id = this.is_band_id
+		lnvo_nested_parm.ipo_progress = this.ipo_progress
+		anvo_field.is_nested_instance_id = string(al_instance_id)
+		li_ret = anvo_field.of_createnestedservice(lnvo_nested_parm, this.invo_parm)
+	end choose
+	if li_ret = 1 then
+		if not this.ib_variable_band_height then
+			if anvo_field.of_get_band_y1() > this.ii_band_height + this.invo_hgrid.ii_round_ratio then
+				li_ret = -1
+			end if
+			if li_ret = 1 then
+				this.ii_fields_count = this.ii_fields_count + 1
+				this.invo_fields[this.ii_fields_count] = anvo_field
+			end if
+		else
+			this.ii_fields_count = this.ii_fields_count + 1
+			this.invo_fields[this.ii_fields_count] = anvo_field
+		end if
+	end if
+	if li_ret = 1 then
+		if this.ii_band_type = 3 and this.ii_rows_per_detail > 1 then
+			li_row_in_detail = this.invo_row_in_detail.of_get_value(as_name)
+			if li_row_in_detail > 0 then
+				anvo_field.ii_row_in_detail = li_row_in_detail
+			end if
+		end if
+		if anvo_field.ii_dwo_type = 4 then
+			this.ib_has_reports = true
+		end if
+	end if
+	return li_ret
+
+// n_dwr_band.of_process_row(long al_row, long al_base_y, n_dwr_progress apo_progress) returns integer
+	integer li_i
+	integer li_ret
+	integer li_res
+	long ll_band_row
+	long ll_obj_written
+	integer li_merge_row
+	long ll_band_col
+	integer li_merge_col
+	any la_val
+	time lt_time
+	datetime ldt_dtime
+	date ld_date
+	string ls_picture
+	long ll_nested_rows
+	long ll_nested_ret
+	long[] ll_current_hsplit_values
+	long ll_x1
+	long ll_x2
+	long ll_y1
+	long ll_y2
+	boolean lb_row_height_set
+	boolean lb_suppressedrow
+	st_rect cinit
+	st_rect cmax
+	if not this.invo_parm.ib_export_hidden_treeview_levels and (this.ii_dw_processing = 8 or this.ii_dw_processing = 9) then
+		choose case this.ii_band_type
+		case 2, 4
+			if not of_istreelevelvisible(al_row, this.ii_group_level - 1) then
+				return ll_obj_written
+			end if
+		case 3
+			if not of_istreelevelvisible(al_row, this.ii_group_level) then
+				return ll_obj_written
+			end if
+		end choose
+		return
+	end if
+	if al_row = 0 and this.il_dw_row_count = 0 and this.ib_nested then
+		return ll_obj_written
+	end if
+	if this.ib_background_color then
+		of_getbgrect(cinit, al_row)
+		cmax.x1 = -1
+		cmax.x2 = -1
+		cmax.y1 = -1
+		cmax.y2 = -1
+		initbandbackground(this.iul_bg, cinit, cmax)
+	end if
+	if this.ib_has_reports then
+		for li_i = 1 to this.ii_fields_count
+			if this.invo_fields[li_i].ii_dwo_type = 4 then
+				ll_nested_ret = this.invo_fields[li_i].of_process_nested(al_row, al_base_y, this.invo_hgrid, apo_progress)
+				if ll_nested_ret > ll_nested_rows then
+					ll_nested_rows = ll_nested_ret
+				end if
+				ll_obj_written = ll_obj_written + 1
+			end if
+		next
+	end if
+	lb_suppressedrow = of_isrowsuppressed(al_row)
+	this.il_row_cnt = 0
+	for li_i = 1 to this.ii_fields_count
+		if this.invo_fields[li_i].ii_dwo_type <> 4 then
+			if not (this.invo_fields[li_i].of_get_visible(al_row) <> 1 and not this.invo_parm.ib_export_invisible) then
+				ll_obj_written = ll_obj_written + 1
+				ll_x1 = this.invo_fields[li_i].of_get_x1(al_row)
+				ll_x2 = this.invo_fields[li_i].of_get_x2(al_row)
+				ll_y1 = this.invo_fields[li_i].of_get_y1(al_row) + al_base_y
+				ll_y2 = this.invo_fields[li_i].of_get_y2(al_row) + al_base_y
+				if this.ib_background_color then
+					addobjecttoband(this.iul_bg, this.inv_sheet.handle, ll_x1, ll_x2, ll_y1, ll_y2)
+				end if
+				if not (this.ib_has_custom_renderers and this.invo_fields[li_i].of_render(this.inv_sheet, al_row, al_base_y, this.ii_units, apo_progress)) then
+					if this.invo_fields[li_i].ii_dwo_type = 8 then
+						ls_picture = this.invo_fields[li_i].dynamic of_descr_filename()
+						if ls_picture <> "" then
+							this.inv_sheet.of_create_cell_drawing(ll_x1, ll_x2, ll_y1, ll_y2, ls_picture, this.invo_fields[li_i].of_get_format(al_row), this.ii_units)
+						end if
+					else
+						la_val = this.invo_fields[li_i].of_getvalue(al_row)
+						if lb_suppressedrow and this.invo_fields[li_i].ii_sparse > 0 then
+							setnull(la_val)
+						end if
+						if this.invo_fields[li_i].of_descr_bitmapname() and this.invo_parm.ib_pictures then
+							ls_picture = string(la_val)
+							if ls_picture <> "" and not isnull(ls_picture) then
+								this.inv_sheet.of_create_cell_drawing(ll_x1, ll_x2, ll_y1, ll_y2, ls_picture, this.invo_fields[li_i].of_get_format(al_row), this.ii_units)
+							end if
+						else
+							choose case classname(la_val)
+							case "integer", "decimal", "double", "number", "real"
+								this.inv_sheet.of_create_cell(ll_x1, ll_x2, ll_y1, ll_y2, double(la_val), this.invo_fields[li_i].of_get_format(al_row), this.ii_units)
+							case "string", "char"
+								this.inv_sheet.of_create_cell(ll_x1, ll_x2, ll_y1, ll_y2, string(la_val), this.invo_fields[li_i].of_get_format(al_row), this.ii_units)
+							case "date"
+								ld_date = la_val
+								this.inv_sheet.of_create_cell(ll_x1, ll_x2, ll_y1, ll_y2, ld_date, this.invo_fields[li_i].of_get_format(al_row), this.ii_units)
+							case "datetime"
+								ldt_dtime = la_val
+								this.inv_sheet.of_create_cell(ll_x1, ll_x2, ll_y1, ll_y2, ldt_dtime, this.invo_fields[li_i].of_get_format(al_row), this.ii_units)
+							case "time"
+								lt_time = la_val
+								this.inv_sheet.of_create_cell(ll_x1, ll_x2, ll_y1, ll_y2, lt_time, this.invo_fields[li_i].of_get_format(al_row), this.ii_units)
+							case else
+								this.inv_sheet.of_create_cell(ll_x1, ll_x2, ll_y1, ll_y2, "", this.invo_fields[li_i].of_get_format(al_row), this.ii_units)
+							end choose
+						end if
+					end if
+					if this.ib_yield_enable then
+						yield()
+					end if
+					if this.ib_cancel then
+						li_ret = -1
+						exit
+					end if
+				end if
+			end if
+		end if
+	next
+	if this.ib_background_color then
+		this.inv_sheet.fillbandbackground(this.inv_sheet.handle, this.iul_bg, of_getformat(al_row), this.ii_units)
+	end if
+	return ll_obj_written
+
+// n_dwr_band.of_check_process_row(long al_row, long al_base_y, boolean ab_newpage, n_dwr_progress apo_progress) returns integer
+	long ll_obj_written
+	if not this.ib_enabled and not (this.ii_band_type = 2 or this.ii_band_type = 3) then
+		return 0
+	end if
+	choose case this.ii_band_type
+	case 1
+		if al_row = 1 or ab_newpage and this.invo_parm.ib_group_pageheader then
+			ll_obj_written = of_process_row(al_row, al_base_y, apo_progress)
+		end if
+	case 2
+		if al_row = this.il_groupchangerow and this.il_dw_row_count > 0 or ab_newpage then
+			if this.ib_enabled then
+				ll_obj_written = of_process_row(al_row, al_base_y, apo_progress)
+			end if
+			if al_row = this.il_groupchangerow and this.il_dw_row_count > 0 then
+				choose case this.ipo_requestortype
+				case datawindow!
+					this.il_groupchangerow = this.idw_requestor.findgroupchange(this.il_groupchangerow + 1, this.ii_group_level)
+				case datastore!
+					this.il_groupchangerow = this.ids_requestor.findgroupchange(this.il_groupchangerow + 1, this.ii_group_level)
+				case datawindowchild!
+					this.il_groupchangerow = this.idwc_requestor.findgroupchange(this.il_groupchangerow + 1, this.ii_group_level)
+				case else
+					return -1
+				end choose
+				if this.il_groupchangerow <= 0 then
+					this.il_groupchangerow = this.il_dw_row_count + 1
+				end if
+			end if
+		end if
+	case 3
+		if al_row <= this.il_dw_row_count then
+			ll_obj_written = of_process_row(al_row, al_base_y, apo_progress)
+		end if
+	case 4
+		if al_row = this.il_groupchangerow or ab_newpage then
+			if al_row > 1 and this.ib_enabled then
+				ll_obj_written = of_process_row(al_row - 1, al_base_y, apo_progress)
+			end if
+			if this.invo_parm.ib_group_pagebreak and this.ib_newpage and (al_row > 1 and al_row <= this.il_dw_row_count + 1 and ab_newpage) then
+				this.inv_sheet.addhbreak(this.inv_sheet.handle, al_base_y, this.ii_units)
+			end if
+			if al_row = this.il_groupchangerow then
+				choose case this.ipo_requestortype
+				case datawindow!
+					this.il_groupchangerow = this.idw_requestor.findgroupchange(this.il_groupchangerow + 1, this.ii_group_level)
+				case datastore!
+					this.il_groupchangerow = this.ids_requestor.findgroupchange(this.il_groupchangerow + 1, this.ii_group_level)
+				case datawindowchild!
+					this.il_groupchangerow = this.idwc_requestor.findgroupchange(this.il_groupchangerow + 1, this.ii_group_level)
+				case else
+					return 0
+				end choose
+				if this.il_groupchangerow <= 0 then
+					this.il_groupchangerow = this.il_dw_row_count + 1
+				end if
+			end if
+		end if
+	case 5
+		if al_row = this.il_dw_row_count + 1 then
+			ll_obj_written = of_process_row(al_row - 1, al_base_y, apo_progress)
+		end if
+	case 6
+		if al_row = this.il_dw_row_count + 1 or ab_newpage then
+			ll_obj_written = of_process_row(al_row - 1, al_base_y, apo_progress)
+		end if
+	end choose
+	return ll_obj_written
+
+// n_dwr_band.of_cancel() returns 0
+	long li_i
+	this.ib_cancel = true
+	for li_i = 1 to li_i
+		if this.invo_fields[li_i].ii_dwo_type = 4 then
+			this.invo_fields[li_i].of_cancel_nested()
+		end if
+	next
+
+// n_dwr_band.of_add_line(string as_name, n_dwr_field anvo_field) returns integer
+	integer li_ret
+	if not this.invo_parm.ib_lines then
+		li_ret = -1
+	end if
+	if li_ret = 1 and (of_describe(as_name + ".x1") <> of_describe(as_name + ".x2") and of_describe(as_name + ".y1") <> of_describe(as_name + ".y2")) then
+		li_ret = -1
+	end if
+	if li_ret = 1 then
+		anvo_field = create n_dwr_line
+		anvo_field.of_setparentband(this)
+		anvo_field.of_register(this.ipo_requestor, this.inv_book, this.invo_colors, this.il_base_x, this.il_base_y, this.il_subband_y, this.ib_background_color)
+		li_ret = anvo_field.of_init(as_name, 5)
+	end if
+	return li_ret
+
+// n_dwr_band.of_add_rect(string as_name, n_dwr_field anvo_field) returns integer
+	integer li_ret
+	long ll_rect
+	if not this.invo_parm.ib_rectangles then
+		li_ret = -1
+	end if
+	if li_ret = 1 then
+		anvo_field = create n_dwr_rect
+		anvo_field.of_setparentband(this)
+		anvo_field.of_register(this.ipo_requestor, this.inv_book, this.invo_colors, this.il_base_x, this.il_base_y, this.il_subband_y, this.ib_background_color)
+		li_ret = anvo_field.of_init(as_name, 6)
+	end if
+	if li_ret = 1 then
+		this.ib_has_custom_renderers = true
+		ll_rect = upperbound(this.inv_rect) + 1
+		this.inv_rect[ll_rect] = anvo_field
+		this.inv_rect[ll_rect].of_initband(this)
+		this.ib_has_rectangles = true
+	end if
+	return li_ret
+
+// n_dwr_band.of_init_bg_fillers() returns 0
+	if this.invo_parm.ib_background_color then
+		this.ib_background_color = true
+	end if
+	if this.ib_background_color and this.ib_nested then
+		this.ib_background_color = false
+	end if
+	if this.ib_background_color and of_countnested() > 0 then
+		this.ib_background_color = false
+	end if
+	if this.ib_background_color then
+		of_initbgstorage()
+		this.inv_bg_format.setbgcolor(this.inv_bg_format.handle, of_descr_bg_color())
+		this.ib_custom_format = this.ib_bg_color_expr
+		if not this.ib_custom_format then
+			this.il_bg_format_ix = this.inv_book.of_addformat(this.inv_bg_format)
+		end if
+	end if
+
+// n_dwr_band.of_countnested() returns long
+	long li_band
+	long li_bandn
+	long li_field
+	long li_fieldn
+	long li_nestedn
+	li_fieldn = upperbound(this.invo_fields)
+	for li_field = 1 to li_fieldn
+		if this.invo_fields[li_field].ii_dwo_type = 4 then
+			li_nestedn = li_nestedn + 1
+		end if
+	next
+	return li_nestedn
+
+// n_dwr_band.of_getformat(long al_row) returns long
+	long ll_format_ix
+	if not this.ib_custom_format then
+		return this.il_bg_format_ix
+	end if
+	if this.ib_bg_color_expr then
+		of_eval_bg_color(al_row)
+	end if
+	this.il_bg_format_ix = this.inv_book.of_addformat(this.inv_bg_format)
+	return this.il_bg_format_ix
+
+// n_dwr_band.of_set_bg_x(long al_x1, long al_x2) returns 0
+	this.il_bg_x1 = al_x1
+	this.il_bg_x2 = al_x2
+
+// n_dwr_band.of_check_property(string as_property_name, boolean ab_is_expression, string as_expression, string as_value) returns integer
+	integer li_ret
+	string ls_str
+	long ll_pos
+	if left(as_property_name, 2) = "::" then
+		choose case this.ipo_requestortype
+		case datawindow!
+			ls_str = this.idw_requestor.describe(mid(as_property_name, 3))
+		case datastore!
+			ls_str = this.ids_requestor.describe(mid(as_property_name, 3))
+		case datawindowchild!
+			ls_str = this.idwc_requestor.describe(mid(as_property_name, 3))
+		case else
+			return -1
+		end choose
+	else
+		choose case this.ipo_requestortype
+		case datawindow!
+			ls_str = this.idw_requestor.describe("Datawindow." + this.is_band_name + "." + as_property_name)
+		case datastore!
+			ls_str = this.ids_requestor.describe("Datawindow." + this.is_band_name + "." + as_property_name)
+		case datawindowchild!
+			ls_str = this.idwc_requestor.describe("Datawindow." + this.is_band_name + "." + as_property_name)
+		case else
+			return -1
+		end choose
+	end if
+	if ls_str <> "!" and ls_str <> "?" and ls_str <> "" then
+		ll_pos = pos(lower(ls_str), "~t")
+		if ll_pos > 0 then
+			as_expression = right(ls_str, len(ls_str) - ll_pos)
+			if right(as_expression, 1) = "~"" then
+				as_expression = left(as_expression, len(as_expression) - 1)
+			end if
+			ab_is_expression = trim(as_expression) <> ""
+			ls_str = left(ls_str, ll_pos - 1)
+			if left(ls_str, 1) = "~"" then
+				ls_str = right(ls_str, len(ls_str) - 1)
+			end if
+		end if
+		as_value = ls_str
+		li_ret = 1
+	else
+		li_ret = -1
+	end if
+	return li_ret
+
+// n_dwr_band.of_descr_bg_color() returns long
+	integer li_ret
+	string ls_str
+	string ls_bgmode
+	string ls_band
+	string ls_value
+	long ll_color
+	ll_color = 1073741824
+	li_ret = of_check_property("Color", this.ib_bg_color_expr, this.is_bg_color_expr, ls_value)
+	if not this.ib_bg_color_expr and (ls_value = "553648127" or ls_value = "536870912") or li_ret <> 1 or not isnumber(ls_value) then
+		li_ret = of_check_property("::Datawindow.Color", this.ib_bg_color_expr, this.is_bg_color_expr, ls_value)
+	end if
+	ll_color = long(ls_value)
+	return ll_color
+
+// n_dwr_band.of_eval_bg_color(long al_row) returns integer
+	integer li_color_index
+	string ls_value
+	long ll_color
+	if al_row <= this.il_dw_row_count then
+		ll_color = long(of_describe("evaluate(~"" + this.is_bg_color_expr + "~", " + string(al_row) + ")"))
+		this.inv_bg_format.setbgcolor(this.inv_bg_format.handle, ll_color)
+		return 1
+	end if
+	return -1
+
+// n_dwr_band.of_init(string as_band_name, integer ai_band_type, integer ai_group_level, boolean ab_newpage, n_dwr_grid anvo_vgrid) returns integer
+	integer li_ret
+	boolean lb_vgrid_def
+	long ll_cnt
+	string ls_sparse
+	n_dwr_string s
+	this.is_band_name = as_band_name
+	this.ii_band_type = ai_band_type
+	this.ii_group_level = ai_group_level
+	this.ib_newpage = ab_newpage
+	this.ib_autosize_band_height = of_describe("datawindow." + this.is_band_name + ".height.autosize") = "yes"
+	this.ii_processing = long(of_describe("datawindow.processing"))
+	this.ib_grid = this.ii_processing = 1
+	if this.ib_autosize_band_height then
+		this.ib_variable_band_height = true
+	end if
+	this.ii_dw_processing = integer(of_describe("Datawindow.Processing"))
+	if not isnull(anvo_vgrid) and isvalid(anvo_vgrid) then
+		lb_vgrid_def = true
+	end if
+	if lb_vgrid_def then
+		this.invo_vgrid = anvo_vgrid
+	else
+		this.invo_vgrid = create n_dwr_grid
+		this.invo_vgrid.ii_round_ratio = this.invo_vgrid.ii_round_init_ratio * this.id_conv
+	end if
+	if ai_band_type = 3 and this.ii_rows_per_detail > 1 then
+		of_find_row_in_detail()
+	end if
+	if not this.ib_variable_band_height then
+		this.invo_hgrid = create n_dwr_grid
+		this.invo_hgrid.ii_round_ratio = this.invo_hgrid.ii_round_init_ratio * this.id_conv
+		this.ii_band_height = integer(of_describe("datawindow." + this.is_band_name + ".height"))
+		if this.il_base_y < 0 then
+			this.ii_band_height = this.il_base_y + this.ii_band_height
+		end if
+		if this.ii_band_height > 0 then
+			this.ib_enabled = true
+			if this.invo_parm.ib_keep_band_height then
+				this.il_ysplit_ind_from = this.invo_hgrid.of_add_split(0)
+				this.il_ysplit_ind_to = this.invo_hgrid.of_add_split(this.ii_band_height)
+			end if
+			this.il_row_cnt = this.invo_hgrid.of_get_split_count() - 1
+			if this.il_row_cnt < 0 then
+				this.il_row_cnt = 0
+			end if
+			this.ib_enabled = true
+		else
+			this.ib_enabled = false
+		end if
+	else
+		this.ib_enabled = true
+	end if
+	choose case ai_band_type
+	case 1
+		this.is_band_id = "2"
+	case 2
+		this.is_band_id = "5"
+	case 3
+		this.is_band_id = "1"
+	case 4
+		this.is_band_id = "6"
+	case 5
+		this.is_band_id = "4"
+	case 6
+		this.is_band_id = "3"
+	end choose
+	if this.is_band_id = "1" and this.invo_parm.ib_check_suppressed then
+		ls_sparse = of_describe("Datawindow.Sparse")
+		ll_cnt = s.of_parsetoarray(ls_sparse, "~t", this.is_sparselist)
+	end if
+	of_sort_fields()
+	of_init_bg_fillers()
+	return li_ret
+
+// n_dwr_band.of_register(powerobject apo_requestor, n_dwr_workbook anv_book, n_dwr_worksheet anv_sheet, n_dwr_service_parm anvo_parm, n_dwr_colors anvo_colors, integer ai_rows_per_detail, long al_base_x, long al_base_y, long al_subband_y) returns integer
+	this.il_base_x = al_base_x
+	this.il_base_y = al_base_y
+	this.il_subband_y = al_subband_y
+	this.ipo_requestor = apo_requestor
+	this.ipo_requestortype = this.ipo_requestor.typeof()
+	choose case this.ipo_requestortype
+	case datawindow!
+		this.idw_requestor = this.ipo_requestor
+		this.il_dw_row_count = this.idw_requestor.rowcount()
+	case datastore!
+		this.ids_requestor = this.ipo_requestor
+		this.il_dw_row_count = this.ids_requestor.rowcount()
+	case datawindowchild!
+		this.idwc_requestor = this.ipo_requestor
+		this.il_dw_row_count = this.idwc_requestor.rowcount()
+	case else
+		return -1
+	end choose
+	this.inv_book = anv_book
+	this.inv_sheet = anv_sheet
+	this.invo_parm = anvo_parm
+	this.invo_colors = anvo_colors
+	this.ii_rows_per_detail = ai_rows_per_detail
+	this.ib_trim_overlapped = this.invo_parm.ib_trim_overlapped
+	return 1
+
+// n_dwr_band.of_copyfrom(n_dwr_band anv_band) returns 0
+	this.ib_variable_band_height = anv_band.ib_variable_band_height
+	this.ib_autosize_band_height = anv_band.ib_autosize_band_height
+	this.id_x_coef = anv_band.id_x_coef
+	this.id_y_coef = anv_band.id_y_coef
+	this.id_conv = anv_band.id_conv
+	this.ii_units = anv_band.ii_units
+	this.ib_nested = anv_band.ib_nested
+	this.ipo_progress = anv_band.ipo_progress
+	this.invo_nested_parm = anv_band.invo_nested_parm
+	this.il_grid_detail_width = anv_band.il_grid_detail_width
+	this.il_base_x = anv_band.il_base_x
+	this.il_base_y = anv_band.il_base_y
+	this.il_subband_y = anv_band.il_subband_y
+	this.ipo_requestor = anv_band.ipo_requestor
+	this.ipo_requestortype = anv_band.ipo_requestortype
+	this.idw_requestor = anv_band.idw_requestor
+	this.il_dw_row_count = anv_band.il_dw_row_count
+	this.ids_requestor = anv_band.ids_requestor
+	this.idwc_requestor = anv_band.idwc_requestor
+	this.inv_book = anv_band.inv_book
+	this.inv_sheet = anv_band.inv_sheet
+	this.invo_parm = anv_band.invo_parm
+	this.invo_colors = anv_band.invo_colors
+	this.ii_rows_per_detail = anv_band.ii_rows_per_detail
+	this.is_band_name = anv_band.is_band_name
+	this.ii_band_type = anv_band.ii_band_type
+	this.ii_group_level = anv_band.ii_group_level
+	this.ib_newpage = anv_band.ib_newpage
+	this.ib_autosize_band_height = anv_band.ib_autosize_band_height
+	this.ii_processing = anv_band.ii_processing
+	this.ib_grid = anv_band.ib_grid
+	this.ii_dw_processing = anv_band.ii_dw_processing
+	this.invo_vgrid = anv_band.invo_vgrid
+	this.invo_hgrid = anv_band.invo_hgrid
+	this.ii_band_height = anv_band.ii_band_height
+	this.ib_enabled = anv_band.ib_enabled
+	this.il_row_cnt = anv_band.il_row_cnt
+	this.is_band_id = anv_band.is_band_id
+
+// n_dwr_band.of_initbgstorage() returns 0
+	this.iul_bg = createbandbackground()
+	this.inv_bg_format = this.inv_book.of_createformat()
+
+// n_dwr_band.of_getbgrect(st_rect ast_rect, long al_row) returns 0
+	ast_rect.x1 = this.il_bg_x1
+	ast_rect.x2 = this.il_bg_x2
+	ast_rect.y1 = this.il_base_y + this.il_subband_y + this.il_bg_y1
+	ast_rect.y2 = this.il_base_y + this.il_subband_y + this.il_bg_y2
+
+// n_dwr_band.of_dispose() returns 0
+	long ll_i
+	n_dwr_field[] e
+	for ll_i = 1 to upperbound(this.invo_fields)
+		if isvalid(this.invo_fields[ll_i]) then
+			this.invo_fields[ll_i].of_dispose()
+		end if
+	next
+	this.invo_fields = e
+
+// n_dwr_band.of_do_static_x_markup(n_dwr_worksheet anv_sheet) returns integer
+	integer li_ret
+	integer li_field
+	if this.ii_rows_per_detail > 1 then
+		return -1
+	end if
+	for li_field = 1 to li_field
+		if this.invo_fields[li_field].of_do_static_x_markup(anv_sheet) <> 1 then
+			li_ret = -1
+			return li_ret
+		end if
+	next
+	return li_ret
+
+// n_dwr_band.of_istreelevelvisible(long al_row, long al_level) returns boolean
+	if al_level > 0 then
+		choose case this.ipo_requestortype
+		case datawindow!
+			do while al_level > 0
+				if not this.idw_requestor.isexpanded(al_row, al_level) then
+					return false
+				end if
+				al_level = al_level - 1
+			loop
+		case datastore!
+			return this.ids_requestor.isexpanded(al_row, al_level)
+		case datawindowchild!
+			return this.idwc_requestor.isexpanded(al_row, al_level)
+		case else
+			return true
+		end choose
+		return
+	end if
+	return true
+
+// n_dwr_band.of_register_dynamic2(powerobject apo_requestor, long al_rowcount) returns integer
+	long li_i
+	this.ipo_requestor = apo_requestor
+	this.ipo_requestortype = this.ipo_requestor.typeof()
+	choose case this.ipo_requestortype
+	case datawindow!
+		this.idw_requestor = this.ipo_requestor
+		this.il_dw_row_count = al_rowcount
+	case datastore!
+		this.ids_requestor = this.ipo_requestor
+		this.il_dw_row_count = al_rowcount
+	case datawindowchild!
+		this.idwc_requestor = this.ipo_requestor
+		this.il_dw_row_count = al_rowcount
+	case else
+		return -1
+	end choose
+	for li_i = 1 to li_i
+		this.invo_fields[li_i].of_register_dynamic2(this.ipo_requestor, al_rowcount)
+	next
+	return 1
+
+// n_dwr_band.of_isrowsuppressed(long al_row) returns boolean
+	integer li_i
+	integer li_suppress
+	any la_val
+	any la_val_prev
+	if this.is_band_id = "1" and upperbound(this.invo_sparse_fields) > 0 and al_row > 1 then
+		for li_i = 1 to li_i
+			la_val_prev = this.invo_sparse_fields[li_i].of_getvalue(al_row - 1)
+			la_val = this.invo_sparse_fields[li_i].of_getvalue(al_row)
+			if la_val_prev = la_val or isnull(la_val_prev) and isnull(la_val) then
+				li_suppress = li_suppress + 1
+			end if
+		next
+		return li_suppress = upperbound(this.invo_sparse_fields)
+	end if
+	return false
+
+// n_dwr_band.of_add_picture(string as_name, n_dwr_field anvo_field) returns integer
+	integer li_ret
+	if not this.invo_parm.ib_pictures then
+		li_ret = -1
+	end if
+	if li_ret = 1 then
+		anvo_field = create n_dwr_picture
+		anvo_field.of_setparentband(this)
+		anvo_field.of_register(this.ipo_requestor, this.inv_book, this.invo_colors, this.il_base_x, this.il_base_y, this.il_subband_y, this.ib_background_color)
+		li_ret = anvo_field.of_init(as_name, 8)
+	end if
+	return li_ret
+
+// n_dwr_band.create() returns 0
+	call super::create
+	triggerevent("constructor")
+
+// n_dwr_band.destroy() returns 0
+	triggerevent("destructor")
+	call super::destroy
+
+// n_dwr_band.constructor() returns long
+	this.inv_field_const = create n_dwr_field
+	if this.ib_trim_overlapped then
+		this.iul_oostorage = createoverlappedstorage()
+	end if
+	return ::message.returnvalue
+
+// n_dwr_band.destructor() returns long
+	if this.iul_oostorage <> 0 then
+		destroyoverlappedstorage(this.iul_oostorage)
+		this.iul_oostorage = 0
+	end if
+	if this.iul_bg <> 0 then
+		destroybandbackground(this.iul_bg)
+		this.iul_bg = 0
+	end if
+	return ::message.returnvalue

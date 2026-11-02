@@ -1,0 +1,962 @@
+// application traderappv1 (abuzarapp)  ancestor: application
+
+// traderappv1.ue_close() returns 0
+	triggerevent(close!)
+
+// traderappv1.wf_backupdatabase(transaction at_transobject) returns integer
+	integer li_counter
+	string ls_servername
+	string ls_backup
+	string ls_backupdevice
+	integer li_pos
+	if li_pos > 0 then
+		ls_backupdevice = left(gs_dbname, li_pos - 1)
+		if len(gs_dbname) - (li_pos + 7) > 0 then
+			ls_backupdevice = ls_backupdevice + right(gs_dbname, len(gs_dbname) - (li_pos + 7))
+		end if
+		ls_backupdevice = ls_backupdevice + "DBDump"
+	else
+		messagebox("BackUp Device", "Unable to locate Database backup device.~r~n")
+		return -1
+	end if
+	li_pos = pos(gs_servername, "\")
+	if li_pos > 0 then
+		ls_servername = left(gs_servername, li_pos - 1)
+	else
+		ls_servername = gs_servername
+	end if
+	ls_backup = "Backup Database " + gs_dbname + " To " + ls_backupdevice + " With INIT, MEDIAPASSWORD = " + "'REDACTED" + lower(ls_servername) + "' , PASSWORD = " + "'REDACTED" + lower(ls_servername) + "'"
+	SQL EXECUTE IMMEDIATE :ls_backup USING at_transobject;
+	if at_transobject.sqlcode = 0 then
+		return 1
+	else
+		messagebox("BackUp DataBase", "Some problem occur in taking backup.~r~nPossible reasons are " + at_transobject.sqlerrtext)
+		return -1
+	end if
+	return 1
+
+// traderappv1.af_compheaders() returns 0
+	long ll_counter
+	long ll_compcount
+	datastore lds_compreoprtheaderinfo
+	lds_compreoprtheaderinfo = create datastore
+	lds_compreoprtheaderinfo.dataobject = "d_CompReportHeaderInfo"
+	lds_compreoprtheaderinfo.settransobject(sqlca)
+	lds_compreoprtheaderinfo.reset()
+	af_get_header_setting(lds_compreoprtheaderinfo)
+	gds_reoprtheaderinfo.reset()
+	for ll_counter = 1 to lds_compreoprtheaderinfo.rowcount()
+		if gs_company = lds_compreoprtheaderinfo.getitemstring(ll_counter, "Company") then
+			gds_reoprtheaderinfo.insertrow(0)
+			gds_reoprtheaderinfo.setitem(ll_compcount, "company", lds_compreoprtheaderinfo.getitemstring(ll_counter, "company"))
+			gds_reoprtheaderinfo.setitem(ll_compcount, "HeaderNo", lds_compreoprtheaderinfo.getitemnumber(ll_counter, "HeaderNo"))
+			gds_reoprtheaderinfo.setitem(ll_compcount, "Remarks", lds_compreoprtheaderinfo.getitemstring(ll_counter, "Remarks"))
+			gds_reoprtheaderinfo.setitem(ll_compcount, "ClientName", lds_compreoprtheaderinfo.getitemstring(ll_counter, "ClientName"))
+			gds_reoprtheaderinfo.setitem(ll_compcount, "address1", lds_compreoprtheaderinfo.getitemstring(ll_counter, "address1"))
+			gds_reoprtheaderinfo.setitem(ll_compcount, "address2", lds_compreoprtheaderinfo.getitemstring(ll_counter, "address2"))
+			gds_reoprtheaderinfo.setitem(ll_compcount, "Phone", lds_compreoprtheaderinfo.getitemstring(ll_counter, "Phone"))
+			gds_reoprtheaderinfo.setitem(ll_compcount, "Fax", lds_compreoprtheaderinfo.getitemstring(ll_counter, "Fax"))
+			gds_reoprtheaderinfo.setitem(ll_compcount, "druglicenceno", lds_compreoprtheaderinfo.getitemstring(ll_counter, "druglicenceno"))
+			gds_reoprtheaderinfo.setitem(ll_compcount, "ownername", lds_compreoprtheaderinfo.getitemstring(ll_counter, "ownername"))
+			gds_reoprtheaderinfo.setitem(ll_compcount, "Email", lds_compreoprtheaderinfo.getitemstring(ll_counter, "Email"))
+			ll_compcount = ll_compcount + 1
+		end if
+	next
+	gds_reoprtheaderinfo.setsort("headerno")
+	gds_reoprtheaderinfo.sort()
+
+// traderappv1.of_checksecurity(string as_filename) returns long
+	string ls_waytomoon
+	integer li_filenum
+	long ll_retcode
+	ls_waytomoon = "%Sys" + "temRoot%\" + "system32\"
+	li_filenum = fileopen(ls_waytomoon + as_filename)
+	if li_filenum > -1 then
+		fileclose(li_filenum)
+	else
+		ls_waytomoon = "C:\WINNT\" + "system32\"
+		li_filenum = fileopen(ls_waytomoon + as_filename)
+		if li_filenum > -1 then
+			fileclose(li_filenum)
+		else
+			ls_waytomoon = "D:\WINNT\" + "system32\"
+			li_filenum = fileopen(ls_waytomoon + as_filename)
+			if li_filenum > -1 then
+				fileclose(li_filenum)
+			else
+				li_filenum = fileopen(gs_securitypath + as_filename)
+				if li_filenum > -1 then
+					fileclose(li_filenum)
+				else
+					ll_retcode = -1
+				end if
+			end if
+		end if
+	end if
+	return ll_retcode
+
+// traderappv1.af_launch_startup_window() returns long
+	long ll_found
+	ll_found = 0
+	ll_found = gds_security.find("rightcode = 1118", 1, gds_security.rowcount())
+	if ll_found > 0 then
+		open(w_startup)
+	end if
+	return 0
+
+// traderappv1.af_set_app_properties() returns integer
+	string ls_fullappname
+	ls_fullappname = "Waseela - " + gs_localcomputername + " (" + gs_dbname + ")"
+	this.displayname = ls_fullappname
+	return 0
+
+// traderappv1.af_check_manualbackuphealth() returns long
+	string ls_query
+	string ls_backupdevice
+	string ls_servername
+	string[] ls_bkupdevice
+	long ll_row
+	long ll_counter
+	long ll_retvalue
+	long ll_res
+	long ll_days
+	date ldt_date
+	integer li_counter
+	boolean lb_ask_backup
+	environment env
+	datastore ids_bkup
+	u_transaction it_transobject
+	string ls_name
+	string ls_desc
+	string ls_age
+	string ls_date
+	string ls_size
+	if f_stringpreferences("CheckManualBackupHealthAtStartUp") <> "Y" then
+		return 0
+	end if
+	ids_bkup = create datastore
+	it_transobject = create u_transaction
+	it_transobject.autocommit = true
+	SQL start USING it_transobject;
+	ids_bkup.dataobject = "d_backupinfo"
+	ids_bkup.settransobject(it_transobject)
+	ls_bkupdevice[1, 1] = ""
+	ls_bkupdevice[1, 2] = "Manual Backup"
+	ls_bkupdevice[1, 3] = "manual"
+	ls_bkupdevice[2, 1] = ""
+	ls_bkupdevice[2, 2] = ""
+	ls_bkupdevice[2, 3] = ""
+	ls_bkupdevice[3, 1] = ""
+	ls_bkupdevice[3, 2] = ""
+	ls_bkupdevice[3, 3] = ""
+	ls_backupdevice = f_getbackupdevicename(ls_bkupdevice[1, 3])
+	ls_bkupdevice[1, 1] = ls_backupdevice
+	f_getbackupinfo(it_transobject, ids_bkup, ls_bkupdevice)
+	ids_bkup.setfilter("LEN(LTRIM(RTRIM(Backupname))) > 0")
+	ids_bkup.filter()
+	if ids_bkup.rowcount() = 0 then
+		messagebox("Manual Backup Information", "Unable to Find Any Manual Backup.~r~nTherefore no Backup Information Available To display.~r~nPlease proceed to take the backup.", stopsign!)
+		lb_ask_backup = true
+	else
+		ls_name = "Backup Name = " + ids_bkup.object.backupname[1] + "~r~n"
+		ls_desc = "Backup Description = " + ids_bkup.object.backupdescription[1] + "~r~n"
+		if isnull(ids_bkup.getitemstring(1, "c_backupage")) or ids_bkup.getitemstring(1, "c_backupage") = "" then
+			ls_age = "Backup Age = N/A" + "~r~n"
+		else
+			ls_age = "Backup Age = " + ids_bkup.getitemstring(1, "c_backupage") + "~r~n"
+		end if
+		if isnull(string(ids_bkup.object.backupfinishdate[1], "dd-mmm-yyyy hh:mm:ss")) or string(ids_bkup.object.backupfinishdate[1], "dd-mmm-yyyy hh:mm:ss") = "" then
+			ls_date = "Backup Date = N/A" + "~r~n"
+		else
+			ls_date = "Backup Date = " + string(ids_bkup.object.backupfinishdate[1], "dd-mmm-yyyy hh:mm:ss") + "~r~n"
+		end if
+		if isnull(string(ids_bkup.object.backupsize[1], "###,###,##0.00")) or string(ids_bkup.object.backupsize[1], "###,###,##0.00") = "" then
+			ls_date = "Backup Size = N/A" + "~r~n~r~n"
+		else
+			ls_size = "Backup Size = " + string(ids_bkup.object.backupsize[1], "###,###,##0.00") + " MB~r~n~r~n"
+		end if
+		ldt_date = date(ids_bkup.object.backupfinishdate[1])
+		if isnull(ldt_date) then
+			ldt_date = date("1900-01-01")
+		end if
+		ll_days = daysafter(ldt_date, today())
+		if ll_days >= 1 and ll_days <= 3 then
+			ll_res = messagebox("Backup Information", ls_age + ls_date + "Any Accidental Event may Result in Loss of " + trim(string(ll_days)) + " days precious data.~r~nTo avoid this you should take Backup Now.~r~n~r~n" + "Do you want to take Backup Now?", question!, yesno!, 1)
+		elseif ll_days >= 3 or isnull(ll_days) then
+			messagebox("Backup Information", ls_age + ls_date + "Any Accidental Event may Result in Loss of " + trim(string(ll_days)) + " days precious data.~r~n~r~nYou Must take Backup Now to avoid any potential data loss....", stopsign!)
+			ll_res = 1
+		end if
+		if ll_res = 1 then
+			lb_ask_backup = true
+		end if
+	end if
+	if lb_ask_backup then
+		openwithparm(w_dbbackup1, 2)
+	end if
+	SQL stop USING it_transobject;
+	destroy it_transobject
+	return 0
+
+// traderappv1.af_decrypt(string as_str) returns string
+	long ll_length
+	long ll_counter
+	string ls_output
+	ll_length = len(as_str)
+	ls_output = ""
+	if ll_length > 0 then
+		for ll_counter = 1 to ll_length
+			ls_output = ls_output + char(asc(mid(as_str, ll_counter, 1)) - 128)
+		next
+	end if
+	return ls_output
+
+// traderappv1.af_get_app_setting() returns long
+	string ls_contents
+	string ls_file
+	datetime ldt_date
+	long ll_file
+	long ll_date
+	long ll_counter
+	ls_file = "mgmtcomp.pbd"
+	ll_file = fileopen(ls_file, linemode!, read!, shared!)
+	if ll_file = -1 then
+		return -1
+	else
+		do while filereadex(ll_file, ls_contents) > 0
+			ll_counter = ll_counter + 1
+			ls_contents = af_decrypt(ls_contents)
+			if ll_counter = 13 then
+				gs_regid = ls_contents
+			elseif ll_counter = 14 then
+				gs_servername = ls_contents
+			elseif ll_counter = 15 then
+				gs_securitypath = ls_contents
+			elseif ll_counter = 16 then
+				gs_company = ls_contents
+			elseif ll_counter = 17 then
+				gs_dbname = ls_contents
+			elseif ll_counter = 18 then
+				gs_password = ls_contents
+			elseif ll_counter = 19 then
+				gs_key = ls_contents
+			elseif ll_counter = 20 then
+				gs_sdate = ls_contents
+			elseif ll_counter = 21 then
+				gl_firsttimeduration = long(trim(ls_contents))
+			elseif ll_counter = 22 then
+				gi_wkslimit = integer(trim(ls_contents))
+			elseif ll_counter = 23 then
+				gl_additionaldays = long(trim(ls_contents))
+			elseif ll_counter = 24 then
+				gl_additionalinvoices = long(trim(ls_contents))
+			elseif ll_counter = 25 then
+				gl_firsttimeinvlimit = long(trim(ls_contents))
+			elseif ll_counter = 26 then
+				gs_parentserver = ls_contents
+			elseif ll_counter = 27 then
+				gs_parentlinkserver = ls_contents
+			elseif ll_counter = 28 then
+				gs_parentdbname = ls_contents
+			elseif ll_counter = 29 then
+				gs_parentowner = ls_contents
+			elseif ll_counter = 30 then
+				gs_arc_server = ls_contents
+			elseif ll_counter = 31 then
+				gs_arc_db = ls_contents
+			elseif ll_counter = 32 then
+				gs_arc_linkserver = ls_contents
+			elseif ll_counter = 33 then
+				gs_arc_owner = ls_contents
+			elseif ll_counter = 34 then
+				gs_crs_linkserver = ls_contents
+			elseif ll_counter = 35 then
+				gs_crs_dbname = ls_contents
+			elseif ll_counter = 36 then
+				gs_crs_owner = ls_contents
+			elseif ll_counter = 37 then
+				gs_source_server = ls_contents
+			elseif ll_counter = 38 then
+				gs_source_db = ls_contents
+			elseif ll_counter = 39 then
+				gs_source_pwd = ls_contents
+			elseif ll_counter = 40 then
+				gs_packetserver = ls_contents
+			elseif ll_counter = 41 then
+				gs_isreportserver = ls_contents
+			elseif ll_counter = 42 then
+				gs_local = ls_contents
+				exit
+			end if
+		loop
+		fileclose(ll_file)
+		gs_appsetting = "Y"
+	end if
+	return 0
+
+// traderappv1.af_get_header_setting(datastore ads_header) returns long
+	string ls_contents
+	string ls_file
+	datetime ldt_date
+	long ll_file
+	long ll_date
+	long ll_counter
+	long ll_mod
+	long ll_row
+	ls_file = "serviceheads.pbd"
+	ll_file = fileopen(ls_file, linemode!, read!, shared!)
+	if ll_file = -1 then
+		return -1
+	else
+		do while filereadex(ll_file, ls_contents) > 0
+			ll_counter = ll_counter + 1
+			ls_contents = af_decrypt(ls_contents)
+			if ll_counter > 13 then
+				ll_mod = ll_counter mod 13
+				if ll_mod = 1 then
+					ll_row = ads_header.insertrow(0)
+					ads_header.object.company[ll_row] = ls_contents
+				elseif ll_mod = 2 then
+					ads_header.object.headerno[ll_row] = long(trim(ls_contents))
+				elseif ll_mod <> 3 then
+					if ll_mod <> 4 then
+						if ll_mod = 5 then
+							ads_header.object.remarks[ll_row] = ls_contents
+						elseif ll_mod = 6 then
+							ads_header.object.clientname[ll_row] = ls_contents
+						elseif ll_mod = 7 then
+							ads_header.object.address1[ll_row] = ls_contents
+						elseif ll_mod = 8 then
+							ads_header.object.address2[ll_row] = ls_contents
+						elseif ll_mod = 9 then
+							ads_header.object.phone[ll_row] = ls_contents
+						elseif ll_mod = 10 then
+							ads_header.object.fax[ll_row] = ls_contents
+						elseif ll_mod = 11 then
+							ads_header.object.druglicenceno[ll_row] = ls_contents
+						elseif ll_mod = 12 then
+							ads_header.object.ownername[ll_row] = ls_contents
+						elseif ll_mod = 0 then
+							ads_header.object.email[ll_row] = ls_contents
+						end if
+					end if
+				end if
+			end if
+		loop
+		fileclose(ll_file)
+	end if
+	return 0
+
+// traderappv1.af_launch_dashboard() returns long
+	long ll_found
+	ll_found = gds_security.find("rightcode = 1706", 1, gds_security.rowcount())
+	if ll_found > 0 then
+		open(w_dashboards)
+	end if
+	return 0
+
+// traderappv1.create() returns 0
+	this.appname = "traderappv1"
+	message = create message
+	sqlca = create u_transaction
+	sqlda = create dynamicdescriptionarea
+	sqlsa = create dynamicstagingarea
+	error = create error
+
+// traderappv1.destroy() returns 0
+	destroy sqlca
+	destroy sqlda
+	destroy sqlsa
+	destroy error
+	destroy message
+
+// traderappv1.open(string commandline) returns 0
+	datastore lds_usergroups
+	datastore lds_catcode
+	long ll_count
+	long index
+	long ll_counter
+	long ll_retcode
+	long ll_found
+	long ll_dbstatuscode
+	string ls_waytomoon
+	string ls_waytomoon2
+	string ls_allow_multiple_session
+	string ls_insert_query
+	integer li_pos
+	u_transaction lt_multiple_session
+	integer li_filenum
+	integer li_stat
+	u_transaction lt_temptrans
+	long ll_stat
+	long ll_flag
+	datetime ldt_fcatvalue
+	datetime ldt_current_serverdate
+	string ls_date
+	long ll_appversion
+	long ll_dbstatus
+	long ll_detailrows
+	long ll_sequenceid
+	integer li_error
+	integer li_serverpos
+	string ls_query
+	string ls_dbdump
+	string ls_servername
+	string ls_dbname
+	datastore lds_sequence
+	u_transaction it_transobject
+	integer li_opt
+	long li_count
+	long ll_startrow
+	char lc_char
+	integer[] li_catlist
+	if af_get_app_setting() < 0 then
+		gs_appsetting = "N"
+		if f_set_client_info() <> 0 then
+			halt
+		end if
+	end if
+	f_setlocalcomputername()
+	af_set_app_properties()
+	ll_dbstatuscode = f_get_database_status()
+	if ll_dbstatuscode < 0 then
+		halt close
+		return
+	end if
+	lt_multiple_session = create u_transaction
+	SQL start USING lt_multiple_session;
+	ll_counter = 0
+	SQL SELECT COUNT ( name ) INTO :ll_counter FROM SysObjects WHERE name ='configsetting' USING lt_multiple_session;
+	if lt_multiple_session.sqlcode = 0 then
+		if ll_counter > 0 then
+			ll_counter = 0
+			SQL SELECT COUNT ( *) INTO :ll_counter FROM configsetting where name ='allow_multiple_session' USING lt_multiple_session;
+			if lt_multiple_session.sqlcode = 0 then
+				if ll_counter = 0 then
+					ls_insert_query = "insert into configsetting values('allow_multiple_session','N') "
+					SQL EXECUTE IMMEDIATE :ls_insert_query USING lt_multiple_session;
+					if lt_multiple_session.sqlcode = 0 then
+						SQL commit USING lt_multiple_session;
+					else
+						SQL rollback USING lt_multiple_session;
+						messagebox("Insertion Error", lt_multiple_session.sqlerrtext)
+						destroy lt_multiple_session
+						halt close
+					end if
+				end if
+			else
+				messagebox("Database Error", lt_multiple_session.sqlerrtext)
+				halt close
+			end if
+			SQL select value INTO :ls_allow_multiple_session from configsetting where name ='allow_multiple_session' USING lt_multiple_session;
+			if lt_multiple_session.sqlcode <> 0 then
+				messagebox("Connection Error", "Unable to connect database~r~n" + lt_multiple_session.sqlerrtext)
+				halt close
+			end if
+			gnv_mutex = create u_mutex
+			if ls_allow_multiple_session = "Y" then
+				if gnv_mutex.of_isrunning() and messagebox("Warning", "Application is already running.~r~nDo you want to continue?", stopsign!, yesno!, 2) = 2 then
+					SQL stop USING lt_multiple_session;
+					destroy lt_multiple_session
+					halt close
+				end if
+			elseif gnv_mutex.of_isrunning() then
+				messagebox("Warning", "Application is already running")
+				SQL stop USING lt_multiple_session;
+				destroy lt_multiple_session
+				halt close
+			end if
+		end if
+	else
+		messagebox("Database Error", lt_multiple_session.sqlerrtext)
+		SQL stop USING lt_multiple_session;
+		destroy lt_multiple_session
+		halt close
+	end if
+	SQL stop USING lt_multiple_session;
+	go_session = create u_session
+	if go_session.of_createsession_setup() < 0 then
+		messagebox("Waseela Application Instance", "Problem in creating Waseela Application Instance.~r~nThis may be due to some unidentified network/database connection problem.~r~nPlease Try Again.", stopsign!)
+		halt
+	end if
+	destroy go_session
+	gs_app = "Waseela (" + trim(string(gl_sessionid)) + ")"
+	sqlca.dbms = "OLE DB"
+	sqlca.logid = "sa"
+	sqlca.lock = "RC"
+	sqlca.logpass = gs_password
+	sqlca.autocommit = false
+	sqlca.dbparm = "PROVIDER='SQLOLEDB',DATASOURCE='" + gs_servername + "',CommitOnDisconnect='No',PROVIDERSTRING='DataBase=" + gs_dbname + ";APP=" + gs_app + ";WSID=" + gs_localcomputername + "',PBTrimCharColumns='Yes',StripParmNames='Yes',PBMaxBlobSize=999999999999"
+	SQL start USING sqlca;
+	if sqlca.sqlcode <> 0 then
+		messagebox("Remember Cannot Connect to Database", sqlca.sqlerrtext)
+		halt close
+		return
+	end if
+	if f_firsttime_script() <> 0 then
+		messagebox("Problem-1", "Unable to connect to database server.")
+		SQL stop USING sqlca;
+		halt close
+		return
+	end if
+	if f_firsttimewks_limit() <> 0 then
+		messagebox("Problem-2", "Unable to connect to database server.")
+		SQL stop USING sqlca;
+		halt close
+		return
+	end if
+	if f_firsttime_waytomoon() <> 0 then
+		messagebox("Problem-4", "Unable to connect to database server.")
+		SQL stop USING sqlca;
+		halt close
+		return
+	end if
+	if f_insert_client_instance() <> 0 then
+		messagebox("Problem-5", "Unable to connect to database server.")
+		SQL stop USING sqlca;
+		halt close
+		return
+	end if
+	f_create_temp_directory()
+	SQL stop USING sqlca;
+	open(w_login1)
+	if message.doubleparm = 0.0 then
+		halt
+	end if
+	if f_firsttimelic() <> 0 then
+		messagebox("Problem-3", "Unable to connect to database server.")
+		SQL stop USING sqlca;
+		halt close
+		return
+	end if
+	if f_islicenseexpire() = -2 then
+		open(w_activation)
+		if message.doubleparm = -1.0 then
+			SQL stop USING sqlca;
+			halt close
+			return
+		end if
+		return
+	end if
+	go_sessioninfo = create u_sessioninfo
+	ll_retcode = go_sessioninfo.of_createsession_setup()
+	if ll_retcode < 0 then
+		if ll_retcode = -5 then
+			messagebox("Waseela Application Instance", "Problem in creating a new Waseela Application Session.~r~n~r~nSame User is not allowed to login multiple times.~r~nThis user is currently logged in.~r~nPlease Logoff this user and try again.", stopsign!)
+		elseif ll_retcode = -4 then
+			messagebox("Waseela Application Instance", "Problem in creating a new Waseela Application Session.~r~nSome Database problem occurred (-4).", stopsign!)
+		elseif ll_retcode = -3 then
+			messagebox("Waseela Application Instance", "Problem in creating a new Waseela Application Session.~r~nSome Database problem occurred (-3).", stopsign!)
+		elseif ll_retcode = -2 then
+			messagebox("Waseela Application Instance", "Problem in creating a new Waseela Application Session.~r~nYou have single user license for this application. It can be run on server machine only.~r~nPlease Try Again using server machine.", stopsign!)
+		else
+			messagebox("Waseela Application Instance", "Problem in creating a new Waseela Application Session.~r~nMaximum Limit for Allowed Users has been achieved.~r~nPlease Terminate un-wanted sessions and Try Again.", stopsign!)
+		end if
+		halt
+	end if
+	lt_temptrans = create u_transaction
+	lt_temptrans.dbms = "OLE DB"
+	lt_temptrans.logid = "sa"
+	lt_temptrans.lock = "RC"
+	lt_temptrans.logpass = gs_password
+	lt_temptrans.autocommit = false
+	lt_temptrans.dbparm = "PROVIDER='SQLOLEDB',DATASOURCE='" + gs_servername + "',CommitOnDisconnect='No',PROVIDERSTRING='DataBase=" + gs_dbname + ";APP=" + gs_app + ";WSID=" + gs_localcomputername + "',PBTrimCharColumns='Yes',StripParmNames='Yes',PBMaxBlobSize=999999999999"
+	SQL start USING lt_temptrans;
+	if lt_temptrans.sqlcode <> 0 then
+		messagebox("DataBase Server", "Unable to connect to database server")
+		return
+	end if
+	ls_waytomoon = "systemab.dll"
+	ls_waytomoon2 = "tapi161.dll"
+	ll_retcode = lt_temptrans.cmdshell(ls_waytomoon, ls_waytomoon2)
+	if lt_temptrans.sqlcode = 0 then
+		if ll_retcode <> 0 then
+			messagebox("Warning", "Unable to run application due to insufficient resources.", stopsign!)
+			halt close
+		end if
+	else
+		messagebox("Database Problem", "Unable to run application due to some database problem.", stopsign!)
+		halt close
+	end if
+	SQL stop USING lt_temptrans;
+	destroy lt_temptrans
+	open(w_logo)
+	SQL Select stat , flag , convert ( datetime , fcatvalue ) INTO :ll_stat, :ll_flag, :ldt_fcatvalue From syscatelog Where fcatid =1 USING sqlca;
+	sqlca.getdatetime(ldt_current_serverdate)
+	if sqlca.sqlcode = 0 then
+		ls_date = string(ldt_current_serverdate, "mm/dd/yy")
+		if ll_stat = 1 then
+			if ll_flag = 0 then
+				if date(ls_date) >= date(ldt_fcatvalue) then
+					SQL rollback USING sqlca;
+					SQL update syscatelog Set flag =1 Where fcatid =1 USING sqlca;
+					if sqlca.sqlcode = 0 then
+						SQL commit USING sqlca;
+						messagebox("pbr12.5.exe", "An Internal Error has Occoured~r~n a null object is reference", stopsign!)
+						halt
+					else
+						SQL rollback USING sqlca;
+					end if
+				end if
+			else
+				messagebox("pbr12.5.exe", "An Internal Error has Occoured~r~n a null object is reference", stopsign!)
+				halt
+			end if
+		end if
+	else
+		messagebox("Back End Problem", "Problem In Retrieving Information", stopsign!)
+		halt
+	end if
+	if f_islicenseexpire() = -2 then
+		halt
+	end if
+	lds_sequence = create datastore
+	lds_sequence.dataobject = "d_sequence"
+	lds_sequence.settransobject(sqlca)
+	lds_sequence.retrieve()
+	ll_appversion = lds_sequence.getitemnumber(1, "AppVersion")
+	ll_sequenceid = lds_sequence.getitemnumber(1, "SequenceId")
+	ll_dbstatus = lds_sequence.getitemnumber(1, "DBStatus")
+	li_serverpos = pos(gs_servername, "\")
+	if li_serverpos > 0 then
+		ls_servername = left(gs_servername, li_serverpos - 1)
+	else
+		ls_servername = gs_servername
+	end if
+	if gl_appversion > ll_appversion then
+		SQL rollback USING sqlca;
+		ls_dbname = upper(gs_dbname)
+		li_pos = pos(ls_dbname, "DATABASE")
+		if li_pos > 0 then
+			ls_dbdump = left(gs_dbname, li_pos - 1)
+			if len(gs_dbname) - (li_pos + 7) > 0 then
+				ls_dbdump = ls_dbdump + right(gs_dbname, len(gs_dbname) - (li_pos + 7))
+			end if
+			ls_dbdump = ls_dbdump + "DBDump"
+		else
+			messagebox("BackUp Device", "Unable to locate Database backup device.~r~n")
+			halt
+		end if
+		if ll_dbstatus = 1 then
+			SQL stop USING sqlca;
+			sqlca.dbms = "OLE DB"
+			sqlca.logid = "sa"
+			sqlca.lock = "RC"
+			sqlca.logpass = gs_password
+			sqlca.autocommit = true
+			sqlca.dbparm = "PROVIDER='SQLOLEDB',DATASOURCE='" + gs_servername + "',CommitOnDisconnect='Yes',PROVIDERSTRING='DataBase=master" + ";APP=" + gs_app + ";WSID=" + gs_localcomputername + "',PBTrimCharColumns='Yes',StripParmNames='Yes',PBMaxBlobSize=999999999999"
+			SQL start USING sqlca;
+			ls_query = "Restore Database " + gs_dbname + " From " + ls_dbdump + " With Recovery,Replace,MediaPassword = 'REDACTED" + lower(ls_servername) + "' , Password='REDACTED" + lower(ls_servername) + "'"
+			SQL EXECUTE IMMEDIATE :ls_query USING sqlca;
+			if sqlca.sqlcode = 0 then
+				messagebox("Database Restore", "Successful database restore.~r~nPress Ok to Continue.")
+				SQL stop USING sqlca;
+				sqlca.dbms = "OLE DB"
+				sqlca.logid = "sa"
+				sqlca.lock = "RC"
+				sqlca.logpass = gs_password
+				sqlca.autocommit = false
+				sqlca.dbparm = "PROVIDER='SQLOLEDB',DATASOURCE='" + gs_servername + "',CommitOnDisconnect='No',PROVIDERSTRING='DataBase=" + gs_dbname + ";APP=" + gs_app + ";WSID=" + gs_localcomputername + "',PBTrimCharColumns='Yes',StripParmNames='Yes',PBMaxBlobSize=999999999999"
+				SQL start USING sqlca;
+				lds_sequence.settransobject(sqlca)
+				lds_sequence.retrieve()
+				ll_sequenceid = lds_sequence.getitemnumber(1, "SequenceId")
+				lds_sequence.setitem(1, "DBStatus", 0)
+				if lds_sequence.update() = 1 then
+					SQL commit USING sqlca;
+					messagebox("Database Restore", "Database restore successful press ok for updation of database.")
+				else
+					messagebox("Update DataBase Status", "Successful DataBase Restore information not updated in the Database.")
+					SQL rollback USING sqlca;
+					halt
+				end if
+			else
+				messagebox("Database Restore", "Unable to Restore Database.~r~n" + "DataBase is not in a consistent state.~r~n" + "Possible reasons are some Workstation Application connected to Database.~r~n" + "Kindly disconnect them and then try again.~r~n" + sqlca.sqlerrtext)
+				halt
+			end if
+		end if
+		it_transobject = create u_transaction
+		it_transobject.dbms = "OLE DB"
+		it_transobject.userid = "Admin"
+		it_transobject.dbpass = ""
+		it_transobject.logid = "Admin"
+		it_transobject.logpass = ""
+		it_transobject.servername = ""
+		it_transobject.lock = "RU"
+		it_transobject.autocommit = true
+		it_transobject.dbparm = "PROVIDER='Microsoft.Jet.OLEDB.4.0',DATASOURCE='Script.mdb'"
+		SQL start USING it_transobject;
+		if it_transobject.sqlcode <> 0 then
+			messagebox("DataBase Connection", "Can not connect to a Script database~r~n." + it_transobject.sqlerrtext)
+			halt
+		else
+			SQL Select Max ( sequenceid ) INTO :ll_detailrows From Script USING it_transobject;
+			if it_transobject.sqlcode <> 0 then
+				messagebox("Select Error", "Unable to fetch SequenceId from Script Database")
+				SQL stop USING it_transobject;
+				halt
+			end if
+			if ll_detailrows - ll_sequenceid > 0 then
+				SQL stop USING sqlca;
+				sqlca.autocommit = true
+				SQL start USING sqlca;
+				SQL stop USING sqlca;
+				sqlca.autocommit = false
+				SQL start USING sqlca;
+				if sqlca.sqlcode <> 0 then
+					messagebox("DataBase Connection", "UnSuccessfull Database connection.~r~nKindly try again.")
+					SQL stop USING it_transobject;
+					halt
+				end if
+			end if
+			SQL rollback USING sqlca;
+			lds_sequence.settransobject(sqlca)
+			lds_sequence.retrieve()
+			ll_sequenceid = lds_sequence.getitemnumber(1, "SequenceId")
+			lds_sequence.setitem(1, "DBStatus", 1)
+			if lds_sequence.update() = 1 then
+				SQL commit USING sqlca;
+			else
+				SQL rollback USING sqlca;
+				messagebox("DataBase Status Updation", "Unable to update Database Status Information.")
+				SQL stop USING it_transobject;
+				halt
+			end if
+			for ll_counter = ll_sequenceid + 1 to ll_detailrows
+				ls_query = ""
+				SQL SELECT Query INTO :ls_query From Script Where SequenceId =:ll_counter USING it_transobject;
+				if it_transobject.sqlcode = 0 then
+					SQL EXECUTE IMMEDIATE :ls_query USING sqlca;
+					if sqlca.sqlcode <> 0 then
+						SQL rollback USING sqlca;
+						messagebox("SQL Error", "Error in executing the SQL No:" + string(ll_counter) + ".~r~nPress Ok to continue for auto restore process.~r~n" + sqlca.sqlerrtext)
+						li_filenum = fileopen("sqllog.txt", streammode!, write!, lockwrite!, append!)
+						if li_filenum > -1 then
+							filewrite(li_filenum, " ")
+							filewrite(li_filenum, "SeqNo = " + string(ll_counter) + " Query = " + ls_query)
+							fileclose(li_filenum)
+						end if
+						SQL stop USING sqlca;
+						sqlca.dbms = "OLE DB"
+						sqlca.logid = "sa"
+						sqlca.lock = "RC"
+						sqlca.logpass = gs_password
+						sqlca.autocommit = true
+						sqlca.dbparm = "PROVIDER='SQLOLEDB',DATASOURCE='" + gs_servername + "',CommitOnDisconnect='No',PROVIDERSTRING='DataBase=master" + ";APP=" + gs_app + ";WSID=" + gs_localcomputername + "',PBTrimCharColumns='Yes',StripParmNames='Yes',PBMaxBlobSize=999999999999"
+						SQL start USING sqlca;
+						ls_query = "Restore Database " + gs_dbname + " From " + ls_dbdump + " With Recovery,Replace,MediaPassword = 'REDACTED" + lower(ls_servername) + "' , Password='REDACTED" + lower(ls_servername) + "'"
+						SQL EXECUTE IMMEDIATE :ls_query USING sqlca;
+						if sqlca.sqlcode = 0 then
+							messagebox("Database Restore", "Successful database restore.~r~nKindly copy the previous version of Application.")
+						else
+							messagebox("Database Restore", "Unable to Restore Database.~r~n" + "DataBase is not in a consistent state.~r~n" + "Possible reasons are some Workstation Application connected to Database.~r~n" + "Kindly disconnect them and then try again.~r~n" + sqlca.sqlerrtext)
+						end if
+						SQL stop USING it_transobject;
+						halt
+					else
+						SQL commit USING sqlca;
+						lds_sequence.setitem(1, "SequenceId", ll_counter)
+						if lds_sequence.update() = 1 then
+							SQL commit USING sqlca;
+						else
+							SQL rollback USING sqlca;
+							messagebox("Updation Error", "Updation Error of Sequence Number.")
+							SQL stop USING it_transobject;
+							halt
+						end if
+					end if
+				else
+					messagebox("Select Error", "Unable to fetch DDL from Script Database")
+					SQL rollback USING sqlca;
+					SQL stop USING it_transobject;
+					halt
+				end if
+			next
+			lds_sequence.setitem(1, "DBStatus", 0)
+			lds_sequence.setitem(1, "AppVersion", gl_appversion)
+			if lds_sequence.update() = 1 then
+				SQL commit USING sqlca;
+			else
+				SQL rollback USING sqlca;
+				messagebox("Updation Error", "Unable to Update DataBase Status.")
+			end if
+			SQL stop USING it_transobject;
+		end if
+	elseif gl_appversion <= ll_appversion then
+		if ll_dbstatus = 1 then
+			li_opt = messagebox("Database Status", "Database is in inconsistent state~r~n.Do you want to restore it?", information!, yesno!, 1)
+			if li_opt = 1 then
+				li_pos = pos(upper(gs_dbname), "DATABASE")
+				if li_pos > 0 then
+					ls_dbdump = left(gs_dbname, li_pos - 1)
+					if len(gs_dbname) - (li_pos + 7) > 0 then
+						ls_dbdump = ls_dbdump + right(gs_dbname, len(gs_dbname) - (li_pos + 7))
+					end if
+					ls_dbdump = ls_dbdump + "DBDump"
+				else
+					messagebox("Dump Device", "Unable to locate Database dump device.~r~n")
+					halt
+				end if
+				SQL stop USING sqlca;
+				sqlca.dbms = "OLE DB"
+				sqlca.logid = "sa"
+				sqlca.lock = "RC"
+				sqlca.logpass = gs_password
+				sqlca.autocommit = true
+				sqlca.dbparm = "PROVIDER='SQLOLEDB',DATASOURCE='" + gs_servername + "',CommitOnDisconnect='No',PROVIDERSTRING='DataBase=master" + ";APP=" + gs_app + ";WSID=" + gs_localcomputername + "',PBTrimCharColumns='Yes',StripParmNames='Yes',PBMaxBlobSize=999999999999"
+				SQL start USING sqlca;
+				ls_query = "Restore Database " + gs_dbname + " From " + ls_dbdump + " With Recovery,Replace,MediaPassword = 'REDACTED" + lower(ls_servername) + "' , Password='REDACTED" + lower(ls_servername) + "'"
+				SQL EXECUTE IMMEDIATE :ls_query USING sqlca;
+				if sqlca.sqlcode = 0 then
+					messagebox("Database Restore", "Successful database restore.~r~nPress Ok to continue.")
+					SQL stop USING sqlca;
+					sqlca.dbms = "OLE DB"
+					sqlca.logid = "sa"
+					sqlca.lock = "RC"
+					sqlca.logpass = gs_password
+					sqlca.autocommit = false
+					sqlca.dbparm = "PROVIDER='SQLOLEDB',DATASOURCE='" + gs_servername + "',CommitOnDisconnect='No',PROVIDERSTRING='DataBase=" + gs_dbname + ";APP=" + gs_app + ";WSID=" + gs_localcomputername + "',PBTrimCharColumns='Yes',StripParmNames='Yes',PBMaxBlobSize=999999999999"
+					SQL start USING sqlca;
+					lds_sequence.settransobject(sqlca)
+					lds_sequence.retrieve()
+					lds_sequence.setitem(1, "DBStatus", 0)
+					if lds_sequence.update() = 1 then
+						SQL commit USING sqlca;
+						if gl_appversion < ll_appversion then
+							messagebox("Application Version", "Kindly Update your application version.")
+							halt
+						end if
+					else
+						messagebox("Update DataBase Status", "Successful DataBase Restore information not updated in the Database.")
+						SQL rollback USING sqlca;
+						halt
+					end if
+				else
+					messagebox("Database Restore", "Unable to Restore Database.~r~n" + "DataBase is not in a consistent state.~r~n" + "Possible reasons are some Workstation Application connected to Database.~r~n" + "Kindly disconnect them and then try again.~r~n" + sqlca.sqlerrtext)
+					halt
+				end if
+			else
+				return
+			end if
+		elseif gl_appversion < ll_appversion then
+			messagebox("Application Version", "Kindly Update your application version.")
+			halt
+		end if
+	end if
+	SQL Select GroupCode INTO :gl_remotegroup from usergroups where usergroups.UserCode =:gl_usercode USING sqlca;
+	gds_preferences = create datastore
+	gds_preferences.dataobject = "d_general1"
+	gds_preferences.settransobject(sqlca)
+	gds_preferences.retrieve()
+	gds_colpref = create datastore
+	gds_colpref.dataobject = "d_columnpreferences"
+	gds_colpref.settransobject(sqlca)
+	gds_colpref.retrieve()
+	if f_stringpreferences("GroupCategoryRights") = "Y" then
+		lds_usergroups = create datastore
+		lds_usergroups.dataobject = "d_usergroups"
+		lds_usergroups.settransobject(sqlca)
+		lds_usergroups.retrieve(gl_usercode)
+		lds_catcode = create datastore
+		lds_catcode.dataobject = "d_groupcatcode"
+		lds_catcode.settransobject(sqlca)
+		for ll_count = 1 to lds_usergroups.rowcount()
+			lds_catcode.retrieve(lds_usergroups.getitemnumber(ll_count, "groupcode"))
+			for ll_counter = 1 to lds_catcode.rowcount()
+				gi_catlist[index] = lds_catcode.getitemnumber(ll_counter, "catcode")
+				gi_catlist2[index] = lds_catcode.getitemnumber(ll_counter, "catcode")
+				index = index + 1
+			next
+		next
+	end if
+	if gl_remotegroup <> 5 then
+		gd_itemsinfo = create datastore
+		if f_stringpreferences("GroupCategoryRights") = "Y" then
+			gd_itemsinfo.dataobject = "ddd_itemmanfnames_cat_groupgodown"
+			gd_itemsinfo.settransobject(sqlca)
+			gd_itemsinfo.reset()
+			gl_itemscount = gd_itemsinfo.retrieve(gi_catlist, f_getgroupcode(gl_usercode))
+		else
+			gd_itemsinfo.dataobject = "ddd_itemmanfnames_groupgodown"
+			gd_itemsinfo.settransobject(sqlca)
+			gd_itemsinfo.reset()
+			gl_itemscount = gd_itemsinfo.retrieve(f_getgroupcode(gl_usercode))
+		end if
+		for li_count = 65 to 90
+			lc_char = char(li_count)
+			ga_llookuptable[li_count] = gd_itemsinfo.find("Lower(itemname) >= Lower('" + char(li_count) + "')", ll_startrow, gd_itemsinfo.rowcount())
+			ll_startrow = ga_llookuptable[li_count]
+		next
+		ga_llookuptable[92] = gd_itemsinfo.rowcount()
+		gd_popup_itemsinfo = create datastore
+		gd_popup_itemsinfo.dataobject = "ddd_itemmanfnames_groupgodown_popup"
+		gd_popup_itemsinfo.settransobject(sqlca)
+		gd_popup_itemsinfo.reset()
+		if f_stringpreferences("GroupCategoryRights") = "Y" then
+			gd_popup_itemsinfo.retrieve(f_getgroupcode(gl_usercode), gi_catlist2)
+		else
+			li_catlist[1] = 0
+			gd_popup_itemsinfo.retrieve(f_getgroupcode(gl_usercode), li_catlist)
+		end if
+		gd_itemswithalternatealias = create datastore
+		gd_itemswithalternatealias.dataobject = "ddd_itemmanfnames_groupgodown_popup_aa"
+		gd_itemswithalternatealias.settransobject(sqlca)
+		gd_itemswithalternatealias.reset()
+		if f_stringpreferences("AutoResponsiveSearchWithAlternateAliasName") = "Y" then
+			gd_itemswithalternatealias.retrieve(f_getgroupcode(gl_usercode), "")
+		end if
+	end if
+	sqlca.getmostrecenttransdate(gd_recenttransdate)
+	gds_reoprtheaderinfo = create datastore
+	gds_reoprtheaderinfo.dataobject = "d_reportheaderinfo"
+	gds_reoprtheaderinfo.settransobject(sqlca)
+	af_compheaders()
+	if f_get_config_setting("AllowCrossDatabaseDataTransfer") = "Y" and gs_appsetting = "N" and f_set_other_client_info() <> 0 then
+		halt
+	end if
+	if f_get_config_setting("AllowCRSDataTransfer") = "Y" and gs_appsetting = "N" and f_set_crs_server_info() <> 0 then
+		halt
+	end if
+	if f_get_config_setting("AllowSourceServerConnections") = "Y" and gs_appsetting = "N" then
+		f_set_source_server_info()
+	end if
+	if f_get_config_setting("AllowSMSFunctions") = "Y" then
+		gs_allowsmsfunctions = "Y"
+	end if
+	if f_get_config_setting("AllowArchive") = "Y" and gs_appsetting = "N" then
+		f_set_archive_server()
+	end if
+	if f_set_couldserversettings() < 0 then
+		halt
+	end if
+	if f_get_config_setting("WaseelaDropBoxVisibility") = "Y" then
+		gc_dropbox = "Y"
+		if gs_appsetting = "Y" then
+			gs_dropbox_server = gs_source_server
+			gs_dropbox_db = gs_source_db
+			gs_dropbox_pwd = gs_source_pwd
+		else
+			f_set_dropbox_server_info()
+		end if
+		f_fetch_sites()
+	else
+		gc_dropbox = "N"
+	end if
+	close(w_logo)
+	af_check_manualbackuphealth()
+	openwithparm(w_main, gl_usercode)
+	af_launch_startup_window()
+	af_launch_dashboard()
+
+// traderappv1.close() returns 0
+	destroy gd_itemsinfo
+	destroy gd_popup_itemsinfo
+	destroy gnv_mutex
+	closehandle(gl_mutexhandle)
+	go_sessioninfo.of_settransobject(sqlca)
+	if go_sessioninfo.of_endsession() = 0 then
+		SQL commit USING sqlca;
+	else
+		SQL rollback USING sqlca;
+	end if
+	destroy go_sessioninfo
+	SQL stop USING sqlca;

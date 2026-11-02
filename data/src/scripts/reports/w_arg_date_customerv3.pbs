@@ -1,0 +1,69 @@
+// window w_arg_date_customerv3 (reports)  ancestor: w_listarguments
+
+// w_arg_date_customerv3.create() returns 0
+	integer icurrent
+	call super::create
+	this.st_4 = create st_4
+	this.st_8 = create st_8
+	this.cbx_suppressheader = create cbx_suppressheader
+	this.rb_originaldate = create rb_originaldate
+	this.rb_lastsavingdate = create rb_lastsavingdate
+	this.rb_billingdate = create rb_billingdate
+	this.gb_5 = create gb_5
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_4
+	this.control[icurrent + 2] = this.st_8
+	this.control[icurrent + 3] = this.cbx_suppressheader
+	this.control[icurrent + 4] = this.rb_originaldate
+	this.control[icurrent + 5] = this.rb_lastsavingdate
+	this.control[icurrent + 6] = this.rb_billingdate
+	this.control[icurrent + 7] = this.gb_5
+
+// w_arg_date_customerv3.destroy() returns 0
+	call super::destroy
+	destroy this.st_4
+	destroy this.st_8
+	destroy this.cbx_suppressheader
+	destroy this.rb_originaldate
+	destroy this.rb_lastsavingdate
+	destroy this.rb_billingdate
+	destroy this.gb_5
+
+// w_arg_date_customerv3.open() returns long
+	long ancestorreturnvalue
+	long ll_counter
+	long ll_rowcount
+	integer rtncode
+	ancestorreturnvalue = super::open()
+	this.dw_control.settransobject(sqlca)
+	this.dw_control.insertrow(0)
+	this.dw_control.scrolltorow(0)
+	rtncode = this.dw_control.getchild("custcode", this.idc_categories)
+	if rtncode = -1 then
+		messagebox("Error", "Not a DataWindowChild")
+	end if
+	ll_rowcount = this.idc_categories.rowcount()
+	for ll_counter = 1 to ll_rowcount
+		this.lb_categories.additem(this.idc_categories.getitemstring(ll_counter, "customer_name"))
+	next
+	this.lb_categories.setfocus()
+	this.lb_categories.selectitem(1)
+	return ::message.returnvalue
+
+// rb_originaldate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// rb_lastsavingdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// rb_billingdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue

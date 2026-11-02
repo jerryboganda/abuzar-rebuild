@@ -1,0 +1,224 @@
+// window w_weighingscale_itemlist (singleentryitem)  ancestor: window
+
+// w_weighingscale_itemlist.wf_saveasexcel() returns long
+	f_saveasexcel(this.dw_preview)
+	return 0
+
+// w_weighingscale_itemlist.wf_changeorientation() returns 0
+	string ls_currentorientation
+	ls_currentorientation = this.dw_preview.describe("datawindow.print.orientation")
+	if integer(ls_currentorientation) = 0 or integer(ls_currentorientation) = 2 then
+		this.dw_preview.object.datawindow.print.orientation = 1
+		return
+	end if
+	this.dw_preview.object.datawindow.print.orientation = 2
+
+// w_weighingscale_itemlist.wf_visible() returns 0
+	s_dwinfo ls_dwinfo
+	ls_dwinfo.dw_control = this.dw_preview
+	openwithparm(w_select, ls_dwinfo)
+	ls_dwinfo.dw_control = this.dw_preview
+
+// w_weighingscale_itemlist.wf_retreive() returns long
+	long ll_code
+	long ll_retcode
+	long ll_counter
+	string ls_grouping
+	s_arguements lstr_arg
+	ll_code = this.il_code
+	open(w_selection_manf_cat_class_packing)
+	ls_grouping = message.stringparm
+	if ls_grouping = "" or isnull(ls_grouping) then
+		return 0
+	else
+		openwithparm(w_arg_grouping, ls_grouping)
+		lstr_arg = message.powerobjectparm
+		if lstr_arg.i_status = 1 then
+			ll_retcode = this.dw_preview.retrieve(ls_grouping, lstr_arg.ia_integerlist, ll_code, this.il_decimals)
+			if ll_retcode > 0 then
+				if this.dw_preview.dataobject = "d_weighingscale_itemlist" then
+					for ll_counter = 1 to this.dw_preview.rowcount()
+						this.dw_preview.object.id[ll_counter] = ll_counter
+					next
+				elseif this.dw_preview.dataobject = "d_weighingscale_itemlist_rongta" then
+					for ll_counter = 1 to this.dw_preview.rowcount()
+						this.dw_preview.object.hotkey[ll_counter] = ll_counter
+					next
+				end if
+			end if
+		end if
+	end if
+	return 0
+
+// w_weighingscale_itemlist.create() returns 0
+	this.cb_retrieve = create cb_retrieve
+	this.cb_hidevisible = create cb_hidevisible
+	this.cb_orientation = create cb_orientation
+	this.cb_saveexcel = create cb_saveexcel
+	this.cb_printsetup = create cb_printsetup
+	this.cb_filter = create cb_filter
+	this.cb_sort = create cb_sort
+	this.cb_saveas = create cb_saveas
+	this.dw_preview = create dw_preview
+	this.cb_cancel = create cb_cancel
+	this.cb_ok = create cb_ok
+	this.control = {this.cb_retrieve, this.cb_hidevisible, this.cb_orientation, this.cb_saveexcel, this.cb_printsetup, this.cb_filter, this.cb_sort, this.cb_saveas, this.dw_preview, this.cb_cancel, this.cb_ok}
+
+// w_weighingscale_itemlist.destroy() returns 0
+	destroy this.cb_retrieve
+	destroy this.cb_hidevisible
+	destroy this.cb_orientation
+	destroy this.cb_saveexcel
+	destroy this.cb_printsetup
+	destroy this.cb_filter
+	destroy this.cb_sort
+	destroy this.cb_saveas
+	destroy this.dw_preview
+	destroy this.cb_cancel
+	destroy this.cb_ok
+
+// w_weighingscale_itemlist.open() returns long
+	long cll_buttondiff
+	long ll_win_width
+	long ll_win_height
+	long ll_width
+	long ll_height
+	long ll_found
+	long ll_scale
+	environment env
+	setredraw(false)
+	if getenvironment(env) = 1 then
+		ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+		this.width = ll_width * 0.98
+		this.height = ll_height * 0.98
+		this.dw_preview.width = ll_width * 0.95
+		this.dw_preview.height = ll_height * 0.80
+		this.cb_filter.x = ll_width * 0.10
+		this.cb_filter.y = ll_height * 0.85
+		this.cb_sort.x = this.cb_filter.x + this.cb_filter.width + 1
+		this.cb_sort.y = this.cb_filter.y
+		this.cb_hidevisible.x = this.cb_sort.x + this.cb_sort.width + 1
+		this.cb_hidevisible.y = this.cb_sort.y
+		this.cb_orientation.x = this.cb_hidevisible.x + this.cb_hidevisible.width + 1
+		this.cb_orientation.y = this.cb_hidevisible.y
+		this.cb_printsetup.x = this.cb_orientation.x + this.cb_orientation.width + 1
+		this.cb_printsetup.y = this.cb_orientation.y
+		this.cb_ok.x = this.cb_printsetup.x + this.cb_printsetup.width + 1
+		this.cb_ok.y = this.cb_printsetup.y
+		this.cb_cancel.x = this.cb_ok.x + this.cb_ok.width + 1
+		this.cb_cancel.y = this.cb_ok.y
+		this.cb_saveas.x = this.cb_cancel.x + this.cb_cancel.width + 1
+		this.cb_saveas.y = this.cb_cancel.y
+		this.cb_saveexcel.x = this.cb_saveas.x + this.cb_saveas.width + 1
+		this.cb_saveexcel.y = this.cb_saveas.y
+		this.cb_retrieve.x = this.cb_saveexcel.x + this.cb_saveexcel.width + 1
+		this.cb_retrieve.y = this.cb_saveexcel.y
+		ll_win_width = pixelstounits(env.screenwidth, xpixelstounits!)
+		ll_win_height = pixelstounits(env.screenheight, ypixelstounits!)
+		ll_width = ll_win_width - this.width
+		ll_height = ll_win_height - this.height
+		if ll_width > 0 and ll_height > 0 then
+			this.x = ll_width / 2.0
+			this.y = ll_height / 2.0
+		end if
+	end if
+	this.il_code = message.doubleparm
+	if this.il_code <= 0 then
+		close(this)
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	open(w_select_weighingscale)
+	ll_scale = message.doubleparm
+	if ll_scale = 1 then
+		this.dw_preview.dataobject = "d_weighingscale_itemlist"
+	elseif ll_scale = 2 then
+		this.dw_preview.dataobject = "d_weighingscale_itemlist_bizerba"
+	else
+		this.dw_preview.dataobject = "d_weighingscale_itemlist_rongta"
+	end if
+	this.dw_preview.settransobject(sqlca)
+	open(w_select_weighingscale_price)
+	this.il_decimals = message.doubleparm
+	if this.il_decimals = 1 then
+		this.il_decimals = 2
+	else
+		this.il_decimals = 0
+	end if
+	wf_retreive()
+	this.dw_preview.setfocus()
+	setredraw(true)
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// w_weighingscale_itemlist.key(keycode key, unsignedlong keyflags) returns long
+	if keydown(keyescape!) then
+		this.cb_cancel.postevent(clicked!)
+	end if
+	return ::message.returnvalue
+
+// cb_retrieve.clicked() returns long
+	parent.wf_retreive()
+	return ::message.returnvalue
+
+// cb_hidevisible.clicked() returns long
+	parent.wf_visible()
+	return ::message.returnvalue
+
+// cb_orientation.clicked() returns long
+	parent.wf_changeorientation()
+	return ::message.returnvalue
+
+// cb_saveexcel.clicked() returns long
+	parent.wf_saveasexcel()
+	return ::message.returnvalue
+
+// cb_printsetup.clicked() returns long
+	openwithparm(w_printer, parent.dw_preview)
+	return ::message.returnvalue
+
+// cb_filter.clicked() returns long
+	string ls_null
+	setnull(ls_null)
+	parent.dw_preview.scrolltorow(0)
+	parent.dw_preview.setfilter(ls_null)
+	parent.dw_preview.filter()
+	parent.dw_preview.groupcalc()
+	return ::message.returnvalue
+
+// cb_sort.clicked() returns long
+	string ls_null
+	setnull(ls_null)
+	parent.dw_preview.setsort(ls_null)
+	parent.dw_preview.sort()
+	parent.dw_preview.groupcalc()
+	return ::message.returnvalue
+
+// cb_saveas.clicked() returns long
+	parent.dw_preview.saveas()
+	return ::message.returnvalue
+
+// dw_preview.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+	if key = keyhome! then
+		scrolltorow(0)
+	elseif key = keyend! then
+		scrolltorow(rowcount())
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long
+	s_datastore lstr
+	lstr.i_closemode = -1
+	closewithreturn(parent, lstr)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long
+	s_datastore lstr
+	lstr.i_closemode = 1
+	closewithreturn(parent, lstr)
+	return ::message.returnvalue

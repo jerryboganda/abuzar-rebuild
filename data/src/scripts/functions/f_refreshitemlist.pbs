@@ -1,0 +1,43 @@
+// function f_refreshitemlist (functions)  ancestor: function_object
+
+// f_refreshitemlist.f_refreshitemlist() returns long
+	long ll_counter
+	boolean lb_enablerestricted
+	long li_count
+	long ll_startrow
+	char lc_char
+	integer[] li_catlist
+	gd_itemsinfo.reset()
+	gd_itemsinfo.setfilter("")
+	gd_itemsinfo.filter()
+	if f_stringpreferences("GroupCategoryRights") = "Y" then
+		gd_itemsinfo.retrieve(gi_catlist, f_getgroupcode(gl_usercode))
+	else
+		gd_itemsinfo.retrieve(f_getgroupcode(gl_usercode))
+	end if
+	for ll_counter = 1 to gds_securitywindow.rowcount()
+		if gds_securitywindow.object.rightcode[ll_counter] = 515 then
+			lb_enablerestricted = true
+		end if
+	next
+	if lb_enablerestricted = false then
+		gd_itemsinfo.setfilter("restricted = 'N' ")
+		gd_itemsinfo.filter()
+	end if
+	for li_count = 65 to 90
+		lc_char = char(li_count)
+		ga_llookuptable[li_count] = gd_itemsinfo.find("Lower(itemname) >= Lower('" + char(li_count) + "')", ll_startrow, 99999)
+		ll_startrow = ga_llookuptable[li_count]
+	next
+	ga_llookuptable[92] = 99999
+	gd_popup_itemsinfo.reset()
+	if f_stringpreferences("GroupCategoryRights") = "Y" then
+		gd_popup_itemsinfo.retrieve(f_getgroupcode(gl_usercode), gi_catlist2)
+	else
+		li_catlist[1] = 0
+		gd_popup_itemsinfo.retrieve(f_getgroupcode(gl_usercode), li_catlist)
+	end if
+	if f_stringpreferences("AutoResponsiveSearchWithAlternateAliasName") = "Y" then
+		gd_itemswithalternatealias.retrieve(f_getgroupcode(gl_usercode), "")
+	end if
+	return 0

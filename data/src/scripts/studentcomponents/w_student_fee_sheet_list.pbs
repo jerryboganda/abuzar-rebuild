@@ -1,0 +1,205 @@
+// window w_student_fee_sheet_list (studentcomponents)  ancestor: w_listview_form
+
+// w_student_fee_sheet_list.wf_setprintout() returns long
+	this.id_print.dataobject = "d_studentfeesheet_print"
+	return 0
+
+// w_student_fee_sheet_list.wf_post() returns long
+	long ll_code
+	long ll_usercode
+	double ld_advance
+	string ls_err
+	string ls_posted
+	datetime ldt_server_datetime
+	u_transaction it_mytransobject
+	if this.id_list.getrow() > 0 then
+		ll_code = this.id_list.object.code[this.id_list.getrow()]
+		ls_posted = this.id_list.object.posted[this.id_list.getrow()]
+		if ll_code > 0 and ls_posted = "N" then
+			open(w_salesmanpassword)
+			ll_usercode = long(message.doubleparm)
+			if ll_usercode > 0 then
+				it_mytransobject = create u_transaction
+				SQL start USING it_mytransobject;
+				if it_mytransobject.sqlcode = 0 then
+					it_mytransobject.poststudentfeesheet(ll_code, ll_usercode)
+					if it_mytransobject.sqlcode = 0 then
+						SQL commit USING it_mytransobject;
+						messagebox("Student Service Sheet Posting", "Successfully Posted Student Service Sheet Code = " + trim(string(ll_code)), information!)
+					else
+						ls_err = it_mytransobject.sqlerrtext
+						SQL rollback USING it_mytransobject;
+						messagebox("Student Service Sheet Posting", "Problem in Posting Student Service Sheet Code = " + trim(string(ll_code)) + "~r~nDetails are:-~r~n" + ls_err, information!)
+					end if
+				end if
+			end if
+		end if
+	end if
+	return 0
+
+// w_student_fee_sheet_list.wf_openmywindow(long al_code) returns 0
+	s_arguements lstr_arg
+	long ll_code
+	long ll_retcode
+	long ll_protect
+	long ll_count
+	if this.id_list.rowcount() > 0 and this.id_list.getrow() > 0 and al_code > 0 then
+		if this.id_list.object.posted[this.id_list.getrow()] = "Y" then
+			lstr_arg.i_status = 1
+			lstr_arg.l_code1 = al_code
+			lstr_arg.l_code2 = al_code
+			lstr_arg.l_code3 = 1
+			ll_protect = 1
+			ll_code = al_code
+		end if
+	else
+		setnull(ll_code)
+		lstr_arg.i_status = 0
+	end if
+	lstr_arg.l_code1 = ll_code
+	lstr_arg.l_code2 = al_code
+	lstr_arg.l_code3 = ll_protect
+	if lstr_arg.i_status = 1 and al_code > 0 then
+		openwithparm(w_studentfeesheet_form, lstr_arg)
+	end if
+
+// w_student_fee_sheet_list.wf_retrieve() returns long
+	long rtcode
+	this.id_list.setfilter("")
+	rtcode = this.id_dwcontrol.retrieve()
+	return rtcode
+
+// w_student_fee_sheet_list.wf_generate_student_fee_sheet() returns long
+	boolean lb_listtab
+	s_arguements lstr_arg
+	open(w_arg_academicclass_svctemp2)
+	lstr_arg = message.powerobjectparm
+	if lstr_arg.i_status = 1 then
+		openwithparm(w_generate_studentfeesheet, lstr_arg)
+	end if
+	return 0
+
+// w_student_fee_sheet_list.create() returns 0
+	call super::create
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+	if this.menuname = "m_studentfeesheet_menu" then
+		this.menuid = create m_studentfeesheet_menu
+	end if
+
+// w_student_fee_sheet_list.destroy() returns 0
+	call super::destroy
+	if isvalid(this.menuid) then
+		destroy this.menuid
+	end if
+
+// w_student_fee_sheet_list.ue_new() returns 0
+	call super::ue_new
+
+// w_student_fee_sheet_list.ue_list() returns 0
+	long ll_rtcode
+	this.id_list.retrieve()
+	if this.id_list.rowcount() <= 0 then
+		ll_rtcode = wf_retrieve()
+	end if
+	wf_populate_ddlb(this.id_list)
+	if ll_rtcode > 0 then
+		this.im_menu.m_file.m_new.enabled = true
+		this.im_menu.m_file.m_save.enabled = false
+		this.im_menu.m_file.m_delete.enabled = false
+		this.im_menu.m_file.m_first.enabled = true
+		this.im_menu.m_file.m_next.enabled = true
+		this.im_menu.m_file.m_last.enabled = true
+		this.im_menu.m_file.m_print.enabled = true
+		this.im_menu.m_file.m_previous.enabled = true
+		this.im_menu.m_file.m_retrieve.text = "De&tail"
+		this.i_retrievemode = 2
+		this.i_editmode = 2
+		if this.il_selectedrow = 0 then
+			wf_first()
+			wf_selectunselectrow(1)
+		end if
+		this.tab_retrieve.tabpage_list.dw_find.setfocus()
+		return
+	end if
+
+// w_student_fee_sheet_list.ue_postopen() returns 0
+	call super::ue_postopen
+	this.tab_retrieve.tabpage_list.dw_list.settransobject(this.it_transobject)
+
+// w_student_fee_sheet_list.open() returns long
+	m_entry lm_menu
+	long ll_width
+	long ll_height
+	environment env
+	this.it_transobject = sqlca
+	this.tab_retrieve.tabpage_list.dw_list.settransobject(this.it_transobject)
+	wf_setmenu(this.menuid)
+	lm_menu = this.menuid
+	lm_menu.mf_initsecurityapp(lm_menu)
+	this.im_menu.m_file.m_save.enabled = false
+	this.im_menu.m_file.m_delete.enabled = false
+	this.im_menu.m_file.m_previous.enabled = false
+	this.im_menu.m_file.m_retrieve.text = "De&tail"
+	this.id_list = this.tab_retrieve.tabpage_list.dw_list
+	this.id_list.settransobject(this.it_transobject)
+	this.id_list.retrieve()
+	this.dw_print.dataobject = this.tab_retrieve.tabpage_list.dw_list.dataobject
+	this.id_print = this.dw_print
+	this.id_printlist = this.dw_listprint
+	this.id_print.settransobject(this.it_transobject)
+	this.id_printlist.settransobject(this.it_transobject)
+	this.id_dwcontrol = this.id_list
+	wf_populate_ddlb(this.id_dwcontrol)
+	this.tab_retrieve.tabpage_list.dw_find.settransobject(this.it_transobject)
+	if getenvironment(env) <> 1 then
+		return ::message.returnvalue
+	end if
+	ll_width = pixelstounits(env.screenwidth, xpixelstounits!)
+	ll_height = pixelstounits(env.screenheight, ypixelstounits!)
+	setredraw(false)
+	this.tab_retrieve.width = ll_width * 0.99
+	this.tab_retrieve.height = ll_height * 0.83
+	this.tab_retrieve.tabpage_list.gb_fliter.width = ll_width * 0.97 - this.tab_retrieve.tabpage_list.gb_sort.width
+	this.tab_retrieve.tabpage_list.r_1.width = ll_width * 0.99
+	this.tab_retrieve.tabpage_list.r_1.height = ll_height * 0.765 - this.tab_retrieve.tabpage_list.gb_sort.height
+	this.tab_retrieve.tabpage_list.dw_list.width = ll_width * 0.98
+	this.tab_retrieve.tabpage_list.dw_list.height = ll_height * 0.75 - this.tab_retrieve.tabpage_list.dw_list.y
+	setredraw(true)
+	return ::message.returnvalue
+
+// w_student_fee_sheet_list.ue_print() returns 0
+	long ll_code
+	boolean lb_listtab
+	s_datastore lstr
+	if isnull(this.id_list.getrow()) or this.id_list.getrow() <= 0 then
+		messagebox("Rows Validation", "Kindly select any row from the list view.")
+		return
+	end if
+	ll_code = this.id_list.getitemnumber(this.id_list.getrow(), "code")
+	if isnull(ll_code) or ll_code <= 0 then
+		messagebox("Selection Validation", "Kindly select any row from the list view.")
+		return
+	end if
+	wf_setprintout()
+	this.id_print.settransobject(this.it_transobject)
+	this.id_print.retrieve(ll_code)
+	lstr.dw = this.id_print
+	lstr.s_name1 = this.id_print.dataobject
+	openwithparm(w_preview_invoices, lstr)
+	lstr = message.powerobjectparm
+	if lstr.i_closemode = -1 then
+		return
+	end if
+	if f_stringpreferences("PromptBeforePrinting") = "Y" and printsetup() < 0 then
+		messagebox("Printer", "Printing Error")
+		this.id_print.printcancel()
+	end if
+	if this.id_print.rowcount() > 0 then
+		if this.id_print.print() < 0 then
+			messagebox("Printing", "Can not Print Invoice", information!)
+		end if
+		return
+	end if
+	messagebox("Printing Error", "Can not Print Data,~r~nNo rows are retrieved", information!)
