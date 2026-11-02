@@ -83,6 +83,14 @@ CREATE OR REPLACE FUNCTION dbo.tsql_datepart_week(ts timestamp) RETURNS integer
   LANGUAGE sql IMMUTABLE AS $body$
   SELECT floor((extract(doy FROM ts) - 1 + extract(dow FROM date_trunc('year', ts))) / 7)::integer + 1
 $body$;
+-- ==== compat tsql_trg_flag ====
+CREATE OR REPLACE FUNCTION dbo.tsql_trg_flag() RETURNS trigger
+  LANGUAGE plpgsql AS $body$
+BEGIN
+  PERFORM set_config(TG_ARGV[0], '1', true);
+  RETURN NULL;
+END
+$body$;
 
 -- ==== function Fn_AccountBalance ====
 CREATE OR REPLACE FUNCTION dbo.fn_accountbalance(date timestamp, acccode integer)
@@ -363,6 +371,7 @@ CREATE OR REPLACE FUNCTION dbo.fn_getcopiedsaleinvtotal(saleinvcode integer)
 DECLARE
   v_saleinvcode integer;
   v_netamount numeric(15,2);
+  _r1 record;
 BEGIN
   v_saleinvcode := saleinvcode;
   FOR _r1 IN SELECT (CASE WHEN (round((sum(((((((sd.looseqty * ((sd.saleprice - sd.itemflatdisc)))) * ((1 - (sd.discperc / 100)))) * ((1 - (sl.discperc / 100)))) - flatdisc) + misccharges)))::numeric, 2) IS NULL) THEN 0 ELSE round((((sum(((((sd.looseqty * ((sd.saleprice - sd.itemflatdisc)))) * ((1 - (sd.discperc / 100)))) * ((1 - (sl.discperc / 100))))) - flatdisc) + misccharges))::numeric, 0) END + round(((sum(round((((((sd.looseqty + sd.bonusqty)) * sd.unitsalestax) + round((((round((((sd.looseqty * ((sd.saleprice - sd.itemflatdisc))) * ((1 - (sd.discperc * 0.01)))))::numeric, 2) * sd.gstperc) * 0.01))::numeric, 2)))::numeric, 2)) + (CASE WHEN ((((round((sum((((((sd.looseqty * ((sd.saleprice - sd.itemflatdisc)))) * ((1 - (sd.discperc / 100)))) * ((1 - (sl.discperc / 100)))) - flatdisc)))::numeric, 2)) * sl.invgstperc1) * 0.01) IS NULL) THEN 0 ELSE (((round(((sum(((((sd.looseqty * ((sd.saleprice - sd.itemflatdisc)))) * ((1 - (sd.discperc / 100)))) * ((1 - (sl.discperc / 100))))) - flatdisc))::numeric, 2)) * sl.invgstperc1) * 0.01) END)))::numeric, 0)) AS c1 FROM dbo.saleledgermodified AS sl, dbo.saledetailmodified AS sd WHERE ((sl.saleinvcode = v_saleinvcode) AND (sl.saleinvcode = sd.saleinvcode)) GROUP BY sl.saleinvcode, sl.flatdisc, sl.misccharges, sl.discperc, sl.invgstperc1 LOOP
@@ -545,6 +554,7 @@ DECLARE
   v_icode integer;
   v_salerowid integer;
   v_dueqty numeric(15,4);
+  _r1 record;
 BEGIN
   v_saleinvcode := saleinvcode;
   v_icode := icode;
@@ -834,6 +844,7 @@ CREATE OR REPLACE FUNCTION dbo.fn_getpoinvtotal(pocode integer)
 DECLARE
   v_pocode integer;
   v_netamount numeric(15,2);
+  _r1 record;
 BEGIN
   v_pocode := pocode;
   FOR _r1 IN SELECT (round((((((sum(round(((((((pod.rate - pod.itemflatdisc)) * ((1 - (pod.discperc * 0.01))))) * pod.qty))::numeric, 2)) * ((1 - (poh.discperc * 0.01))))) - poh.flatdisc) + poh.misccharges))::numeric, 0) + round((((sum((pod.packsalestax * ((pod.qty + pod.bonusqty)))) + sum(round((((round(((((((pod.rate - pod.itemflatdisc)) * ((1 - (pod.discperc * 0.01))))) * pod.qty))::numeric, 2) * 0.01) * pod.gstperc))::numeric, 2))) + ((((((sum(round(((((((pod.rate - pod.itemflatdisc)) * ((1 - (pod.discperc * 0.01))))) * pod.qty))::numeric, 2)) * ((1 - (poh.discperc * 0.01))))) - poh.flatdisc)) * poh.invgstperc1) * 0.01)))::numeric, 0)) AS c1 FROM dbo.purorderdetail AS pod, dbo.purorderheader AS poh WHERE ((poh.pocode = v_pocode) AND (poh.pocode = pod.pocode)) GROUP BY poh.pocode, poh.flatdisc, poh.discperc, poh.invgstperc1, poh.misccharges LOOP
@@ -869,6 +880,7 @@ DECLARE
   v_purinvcode integer;
   v_netamount numeric(15,2);
   v_roundupyo smallint;
+  _r1 record;
 BEGIN
   v_purinvcode := purinvcode;
   v_roundupyo := (SELECT dbo.fn_get_int_preference('roundpurinvon') AS a);
@@ -905,6 +917,7 @@ DECLARE
   v_sdate timestamp(3);
   v_edate timestamp(3);
   v_quotlist citext;
+  _r1 record;
 BEGIN
   v_sdate := sdate;
   v_edate := edate;
@@ -942,6 +955,8 @@ DECLARE
   v_saleinvcode integer;
   v_netamount numeric(15,2);
   v_roundupyo smallint;
+  _r1 record;
+  _r2 record;
   _rc integer;
 BEGIN
   v_saleinvcode := saleinvcode;
@@ -971,6 +986,7 @@ CREATE OR REPLACE FUNCTION dbo.fn_getsaleinvtotal_with_assocsaleinv(saleinvcode 
 DECLARE
   v_saleinvcode integer;
   v_netamount numeric(15,2);
+  _r1 record;
 BEGIN
   v_saleinvcode := saleinvcode;
   v_netamount := (SELECT dbo.fn_getsaleinvtotal(v_saleinvcode));
@@ -1111,6 +1127,7 @@ CREATE OR REPLACE FUNCTION dbo.fn_getsrbufferinvtotal(srbufferinvcode integer)
 DECLARE
   v_srbufferinvcode integer;
   v_netamount numeric(15,2);
+  _r1 record;
 BEGIN
   v_srbufferinvcode := srbufferinvcode;
   FOR _r1 IN SELECT (round((((((sum((((srbufferdetail.looseqty * srbufferdetail.srprice)) * ((1 - ((.01 * srbufferdetail.discperc)))))) * ((1 - ((.01 * srbufferledger.discperc))))) + srbufferledger.misccharges) + srbufferledger.salestax) - srbufferledger.flatdisc))::numeric, 0) + round((((sum((((srbufferdetail.looseqty + srbufferdetail.bonusqty)) * srbufferdetail.unitsalestax)) + sum(round(((((((srbufferdetail.looseqty * srbufferdetail.srprice)) * ((1 - ((.01 * srbufferdetail.discperc))))) * srbufferdetail.gstperc) * .01))::numeric, 2))) + round((((((sum((((srbufferdetail.looseqty * srbufferdetail.srprice)) * ((1 - ((.01 * srbufferdetail.discperc)))))) * ((1 - ((.01 * srbufferledger.discperc))))) - srbufferledger.flatdisc)) * ((srbufferledger.invgstperc1 * .01))))::numeric, 2)))::numeric, 0)) AS c1 FROM dbo.srbufferledger, dbo.srbufferdetail WHERE ((srbufferledger.srbufferinvcode = v_srbufferinvcode) AND (srbufferledger.srbufferinvcode = srbufferdetail.srbufferinvcode)) GROUP BY srbufferledger.srbufferinvcode, srbufferledger.discperc, srbufferledger.misccharges, srbufferledger.salestax, srbufferledger.flatdisc, srbufferledger.invgstperc1 LOOP
@@ -1175,6 +1192,7 @@ DECLARE
   v_srinvcode integer;
   v_netamount numeric(15,2);
   v_roundupyo smallint;
+  _r1 record;
 BEGIN
   v_srinvcode := srinvcode;
   v_roundupyo := (SELECT dbo.fn_get_int_preference('roundsalereturninvon') AS a);
@@ -1211,6 +1229,7 @@ DECLARE
   v_saleinvcode integer;
   v_netamount numeric(15,2);
   v_roundupyo smallint;
+  _r1 record;
 BEGIN
   v_saleinvcode := saleinvcode;
   v_roundupyo := (SELECT dbo.fn_get_int_preference('roundsaleinvon') AS a);
@@ -1263,6 +1282,7 @@ DECLARE
   v_srinvcode integer;
   v_netamount numeric(15,2);
   v_roundupto smallint;
+  _r1 record;
 BEGIN
   v_srinvcode := srinvcode;
   v_roundupto := (SELECT dbo.fn_get_int_preference('roundsalereturninvon') AS a);

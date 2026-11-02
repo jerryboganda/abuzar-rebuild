@@ -81,3 +81,11 @@ CREATE OR REPLACE FUNCTION dbo.tsql_datepart_week(ts timestamp) RETURNS integer
   LANGUAGE sql IMMUTABLE AS $body$
   SELECT floor((extract(doy FROM ts) - 1 + extract(dow FROM date_trunc('year', ts))) / 7)::integer + 1
 $body$;
+-- ==== compat tsql_trg_flag ====
+CREATE OR REPLACE FUNCTION dbo.tsql_trg_flag() RETURNS trigger
+  LANGUAGE plpgsql AS $body$
+BEGIN
+  PERFORM set_config(TG_ARGV[0], '1', true);
+  RETURN NULL;
+END
+$body$;

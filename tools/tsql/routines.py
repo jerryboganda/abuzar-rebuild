@@ -421,23 +421,34 @@ class Translator(ExprMixin, QueryMixin, StmtMixin):
         fn = 'trg_' + name
         fnq = fn_ident(fn)
         guard = shorten('tsql.' + name)[:60]
+        flag = shorten('tsql.upd.' + name)[:60]
         self.ind = 1
         self.emit("IF coalesce(current_setting('%s', true), '') = '1' THEN RETURN NULL; END IF;" % guard)
+        run_stmts = body
+        if update_cols:
+            # IF UPDATE(col) wraps the whole body: a BEFORE UPDATE OF <cols> trigger raises a flag (UPDATE OF fires when the column
+            # is in the SET list, exactly like UPDATE(col)); transition tables cannot be combined with a column list
+            self.emit("IF TG_OP = 'UPDATE' AND coalesce(current_setting('%s', true), '') <> '1' THEN RETURN NULL; END IF;" % flag)
+            self.emit("PERFORM set_config('%s', '0', true);" % flag)
+            run_stmts = [stmts[0].then]
         self.emit("PERFORM set_config('%s', '1', true);" % guard)
-        self.stmts(body)
+        self.stmts(run_stmts)
         self.emit("PERFORM set_config('%s', '0', true);" % guard)
+        if update_cols:
+            self.emit("PERFORM set_config('%s', '0', true);" % flag)
         self.emit('RETURN NULL;')
         func = self.assemble(fnq, '', 'trigger', self.lines, ctx.decls)
         trigs = []
         for ev in events:
             ref = {'INSERT': 'REFERENCING NEW TABLE AS inserted', 'DELETE': 'REFERENCING OLD TABLE AS deleted',
                    'UPDATE': 'REFERENCING OLD TABLE AS deleted NEW TABLE AS inserted'}[ev]
-            evs = ev
-            if ev == 'UPDATE' and update_cols:
-                evs = 'UPDATE OF ' + ', '.join(ident(c) for c in update_cols)
             tn = ident(name if len(events) == 1 else '%s_%s' % (name, ev[0].lower()))
             trigs.append('DROP TRIGGER IF EXISTS %s ON %s;\nCREATE TRIGGER %s AFTER %s ON %s\n  %s\n  FOR EACH STATEMENT EXECUTE FUNCTION %s();'
-                         % (tn, fn_ident(tname), tn, evs, fn_ident(tname), ref, fnq))
+                         % (tn, fn_ident(tname), tn, ev, fn_ident(tname), ref, fnq))
+            if ev == 'UPDATE' and update_cols:
+                bn = ident(name + '_b')
+                trigs.append('DROP TRIGGER IF EXISTS %s ON %s;\nCREATE TRIGGER %s BEFORE UPDATE OF %s ON %s\n  FOR EACH STATEMENT EXECUTE FUNCTION dbo.tsql_trg_flag(%s);'
+                             % (bn, fn_ident(tname), bn, ', '.join(ident(c) for c in update_cols), fn_ident(tname), q(flag)))
         sig = Sig(name.lower(), 'trigger')
         sig.status = 'partial' if ctx.notes else 'full'
         sig.notes = list(ctx.notes)

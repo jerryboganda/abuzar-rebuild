@@ -477,6 +477,7 @@ class StmtMixin:
         # general: FOR loop, last row wins
         self.ctx.tmp_n += 1
         r = '_r%d' % self.ctx.tmp_n
+        self.ctx.decls.append('%s record;' % r)
         loop_items = []
         sets = []
         if refs_self:

@@ -2717,6 +2717,8 @@ DECLARE
   v_dm_db citext;
   v_dbcount integer;
   cur_db_cursor refcursor;
+  _r1 record;
+  _r2 record;
   _fs integer := -1;
 BEGIN
   v_svr := current_setting('cluster_name', true);
@@ -2951,6 +2953,7 @@ DECLARE
   v_rowcount integer;
   v_counter integer;
   v_shortname citext;
+  _r1 record;
   _rc integer;
 BEGIN
   v_patientcatcode := patientcatcode;
@@ -3303,6 +3306,7 @@ DECLARE
   v_in_rowid integer;
   v_in_qty integer;
   v_ticketcode integer;
+  _r1 record;
   _rc integer;
 BEGIN
   v_serviceinvcode := serviceinvcode;
@@ -5155,6 +5159,7 @@ DECLARE
   v_flag integer;
   v_invtype integer;
   v_dt timestamp(3);
+  _r1 record;
   _rc integer;
 BEGIN
   v_childserver := childserver;
@@ -5377,6 +5382,7 @@ DECLARE
   v_thischildserver citext;
   v_flag integer;
   v_dt timestamp(3);
+  _r1 record;
   _rc integer;
 BEGIN
   v_childserver := childserver;
@@ -6362,6 +6368,7 @@ DECLARE
   v_phonenoexists integer;
   v_mincontactcard integer;
   v_expiry integer;
+  _r1 record;
   _rc integer;
 BEGIN
   v_as_list := as_list;
@@ -9362,6 +9369,7 @@ DECLARE
   v_setpart citext;
   v_upd_pkcond citext;
   v_upd_qry citext;
+  _r1 record;
   cur_tmpcrs3 refcursor;
   _rc integer;
   _fs integer := -1;
@@ -12590,6 +12598,7 @@ DECLARE
   v_oldqty numeric(15,4);
   v_itemname citext;
   v_string_expiry citext;
+  _r1 record;
   _rc integer;
 BEGIN
   v_gcode := gcode;
@@ -13534,6 +13543,7 @@ DECLARE
   v_itemflatdisc numeric(5,2);
   v_discperc numeric(5,2);
   v_rows smallint;
+  _r1 record;
 BEGIN
   v_custcode := custcode;
   v_icode := icode;
@@ -13562,6 +13572,7 @@ DECLARE
   v_icode integer;
   v_netrate numeric(8,2);
   v_rows smallint;
+  _r1 record;
 BEGIN
   v_custcode := custcode;
   v_icode := icode;
@@ -13587,6 +13598,7 @@ DECLARE
   v_icode integer;
   v_saleprice numeric(8,2);
   v_rows smallint;
+  _r1 record;
 BEGIN
   v_custcode := custcode;
   v_icode := icode;
@@ -13972,6 +13984,7 @@ DECLARE
   v_icode integer;
   v_batch citext;
   v_expiry timestamp(3);
+  _r1 record;
   cur_abc refcursor;
   _fs integer := -1;
 BEGIN
@@ -14074,6 +14087,8 @@ DECLARE
   v_headerno integer;
   v_rowgroup integer;
   v_innercounter integer;
+  _r1 record;
+  _r2 record;
   _rc integer;
 BEGIN
   v_saleordercode := saleordercode;
@@ -14569,7 +14584,10 @@ DECLARE
   v_innercounter integer;
   v_quotationcode integer;
   v_quotpopulatesetting integer;
+  _r1 record;
+  _r2 record;
   cur_itembatch_cursor refcursor;
+  _r3 record;
   _rc integer;
   _fs integer := -1;
 BEGIN
@@ -15962,6 +15980,8 @@ DECLARE
   v_innercounter integer;
   _xc1 refcursor;
   _xr1 record;
+  _r2 record;
+  _r3 record;
   cur_itembatch_cursor refcursor;
   _rc integer;
   _fs integer := -1;
@@ -16741,6 +16761,8 @@ DECLARE
   v_rowgroup integer;
   v_lineitems_rowcount integer;
   v_innercounter integer;
+  _r1 record;
+  _r2 record;
   cur_itembatch_cursor refcursor;
   _rc integer;
   _fs integer := -1;
@@ -17671,6 +17693,8 @@ DECLARE
   v_machinename citext;
   v_rowgroup integer;
   v_innercounter integer;
+  _r1 record;
+  _r2 record;
   _rc integer;
 BEGIN
   v_presaleinvcode := presaleinvcode;
@@ -17899,6 +17923,8 @@ DECLARE
   v_lineitems_rowcount integer;
   v_innercounter integer;
   v_saleitemdescription citext;
+  _r1 record;
+  _r2 record;
   cur_itembatch_cursor refcursor;
   _rc integer;
   _fs integer := -1;
@@ -18417,6 +18443,7 @@ DECLARE
   v_err integer;
   v_rowid integer;
   v_rowcount integer;
+  _r1 record;
 BEGIN
   v_acccode := acccode;
   v_balancedate := balancedate;
@@ -18496,6 +18523,12 @@ DECLARE
   v_retcode integer;
   v_err integer;
   v_rowcount integer;
+  _r1 record;
+  _r2 record;
+  _r3 record;
+  _r4 record;
+  _r5 record;
+  _r6 record;
   _rc integer;
 BEGIN
   v_usercode := usercode;
@@ -18738,6 +18771,12 @@ DECLARE
   v_retcode integer;
   v_err integer;
   v_rowcount integer;
+  _r1 record;
+  _r2 record;
+  _r3 record;
+  _r4 record;
+  _r5 record;
+  _r6 record;
   _rc integer;
 BEGIN
   v_usercode := usercode;
@@ -18989,6 +19028,13 @@ DECLARE
   v_newaliasname citext;
   v_weightstr citext;
   v_weight numeric(15,4);
+  _r1 record;
+  _r2 record;
+  _r3 record;
+  _r4 record;
+  _r5 record;
+  _r6 record;
+  _r7 record;
   _rc integer;
 BEGIN
   v_usercode := usercode;
@@ -19308,6 +19354,13 @@ DECLARE
   v_newaliasname citext;
   v_weightstr citext;
   v_weight numeric(15,4);
+  _r1 record;
+  _r2 record;
+  _r3 record;
+  _r4 record;
+  _r5 record;
+  _r6 record;
+  _r7 record;
   _rc integer;
 BEGIN
   v_usercode := usercode;
@@ -19833,6 +19886,7 @@ DECLARE
   v_discperc numeric(5,2);
   v_itemflatdisc numeric(12,2);
   v_rows smallint;
+  _r1 record;
 BEGIN
   v_custcode := custcode;
   v_icode := icode;
@@ -19991,6 +20045,9 @@ DECLARE
   v_modulename citext;
   v_err integer;
   v_rowcount integer;
+  _r1 record;
+  _r2 record;
+  _r3 record;
   _rc integer;
 BEGIN
   v_headercode := headercode;
@@ -20055,6 +20112,7 @@ DECLARE
   v_counter integer;
   v_err integer;
   v_rowcount integer;
+  _r1 record;
   _rc integer;
 BEGIN
   v_category := category;
@@ -20111,6 +20169,9 @@ DECLARE
   v_retcode integer;
   v_err integer;
   v_rowcount integer;
+  _r1 record;
+  _r2 record;
+  _r3 record;
   _rc integer;
 BEGIN
   v_aliasname := aliasname;
@@ -20305,6 +20366,7 @@ DECLARE
   v_icode integer;
   v_gcode integer;
   v_reqqty numeric(15,4);
+  _r1 record;
 BEGIN
   v_startdate := startdate;
   v_enddate := enddate;
@@ -20403,6 +20465,7 @@ DECLARE
   v_qty numeric(15,4);
   v_itemname citext;
   v_str_expiry citext;
+  _r1 record;
 BEGIN
   v_gcode := gcode;
   v_icode := icode;
@@ -20554,6 +20617,7 @@ DECLARE
   v_oclimit integer;
   v_mclimit integer;
   v_sclimit integer;
+  _r1 record;
 BEGIN
   v_icode := icode;
   v_icatcode := icatcode;
@@ -20635,6 +20699,7 @@ DECLARE
   v_ageyears integer;
   v_agemonth integer;
   v_agedays integer;
+  _r1 record;
 BEGIN
   v_patientcode := patientcode;
   v_ageyears := ageyears;
@@ -20701,6 +20766,7 @@ DECLARE
   v_ageyears integer;
   v_agemonths integer;
   v_agedays integer;
+  _r1 record;
 BEGIN
   v_patientcode := patientcode;
   v_regno := regno;
@@ -20861,6 +20927,7 @@ CREATE OR REPLACE FUNCTION dbo.sp_getprinvbalance(ai_prinvcode integer, INOUT an
 DECLARE
   v_ai_prinvcode integer;
   v_an_balance numeric(15,2);
+  _r1 record;
 BEGIN
   v_ai_prinvcode := ai_prinvcode;
   v_an_balance := an_balance;
@@ -20880,6 +20947,7 @@ CREATE OR REPLACE FUNCTION dbo.sp_getpurinvbalance(ai_purinvcode integer, INOUT 
 DECLARE
   v_ai_purinvcode integer;
   v_an_balance numeric(15,2);
+  _r1 record;
 BEGIN
   v_ai_purinvcode := ai_purinvcode;
   v_an_balance := an_balance;
@@ -20940,6 +21008,7 @@ DECLARE
   v_counter integer;
   v_err integer;
   v_rowcount integer;
+  _r1 record;
   _rc integer;
 BEGIN
   v_category := category;
@@ -21226,6 +21295,7 @@ CREATE OR REPLACE FUNCTION dbo.sp_getsaleinvbalance(ai_saleinvcode integer, INOU
 DECLARE
   v_ai_saleinvcode integer;
   v_an_balance numeric(15,2);
+  _r1 record;
 BEGIN
   v_ai_saleinvcode := ai_saleinvcode;
   v_an_balance := an_balance;
@@ -21318,6 +21388,8 @@ DECLARE
   v_retcode integer;
   v_err integer;
   v_rowcount integer;
+  _r1 record;
+  _r2 record;
   _rc integer;
 BEGIN
   v_usercode := usercode;
@@ -21415,6 +21487,8 @@ DECLARE
   v_agedays integer;
   v_admissioncode integer;
   v_patientlocation integer;
+  _r1 record;
+  _r2 record;
 BEGIN
   v_serviceinvcode := serviceinvcode;
   v_servicedate := servicedate;
@@ -21495,6 +21569,7 @@ CREATE OR REPLACE FUNCTION dbo.sp_getserviceinvbalance(ai_invcode integer, INOUT
 DECLARE
   v_ai_invcode integer;
   v_an_balance numeric(15,2);
+  _r1 record;
 BEGIN
   v_ai_invcode := ai_invcode;
   v_an_balance := an_balance;
@@ -21514,6 +21589,7 @@ CREATE OR REPLACE FUNCTION dbo.sp_getserviceprinvbalance(ai_invcode integer, INO
 DECLARE
   v_ai_invcode integer;
   v_an_balance numeric(15,2);
+  _r1 record;
 BEGIN
   v_ai_invcode := ai_invcode;
   v_an_balance := an_balance;
@@ -21533,6 +21609,7 @@ CREATE OR REPLACE FUNCTION dbo.sp_getservicepurinvbalance(ai_invcode integer, IN
 DECLARE
   v_ai_invcode integer;
   v_an_balance numeric(15,2);
+  _r1 record;
 BEGIN
   v_ai_invcode := ai_invcode;
   v_an_balance := an_balance;
@@ -21570,6 +21647,8 @@ DECLARE
   v_patientlocation integer;
   v_servicecode integer;
   v_deliverydate timestamp(3);
+  _r1 record;
+  _r2 record;
 BEGIN
   v_servicerowid := servicerowid;
   v_serviceinvcode := serviceinvcode;
@@ -21662,6 +21741,7 @@ CREATE OR REPLACE FUNCTION dbo.sp_getservicesrinvbalance(ai_srinvcode integer, I
 DECLARE
   v_ai_srinvcode integer;
   v_an_balance numeric(15,2);
+  _r1 record;
 BEGIN
   v_ai_srinvcode := ai_srinvcode;
   v_an_balance := an_balance;
@@ -21681,6 +21761,7 @@ CREATE OR REPLACE FUNCTION dbo.sp_getsrinvbalance(ai_srinvcode integer, INOUT an
 DECLARE
   v_ai_srinvcode integer;
   v_an_balance numeric(15,2);
+  _r1 record;
 BEGIN
   v_ai_srinvcode := ai_srinvcode;
   v_an_balance := an_balance;
@@ -21745,6 +21826,7 @@ DECLARE
   v_key integer;
   v_err integer;
   v_rowcount integer;
+  _r1 record;
   _rc integer;
 BEGIN
   v_tabname := tabname;
@@ -21815,6 +21897,7 @@ DECLARE
   v_key integer;
   v_err integer;
   v_rowcount integer;
+  _r1 record;
   _rc integer;
 BEGIN
   v_transactiontypecode := transactiontypecode;
@@ -21904,6 +21987,7 @@ DECLARE
   v_err integer;
   v_rowcount integer;
   v_catname citext;
+  _r1 record;
   _rc integer;
 BEGIN
   v_ai_vochcatcode := ai_vochcatcode;
@@ -26041,6 +26125,8 @@ DECLARE
   v_loyaltypoints integer;
   v_pointsvalue numeric(12,2);
   v_loyaltypolicycode integer;
+  _r1 record;
+  _r2 record;
 BEGIN
   v_invtype := invtype;
   v_invoicecode := invoicecode;
@@ -26216,6 +26302,9 @@ DECLARE
   v_datetimenow timestamp(3);
   v_starttime timestamp(3);
   v_endtime timestamp(3);
+  _r1 record;
+  _r2 record;
+  _r3 record;
 BEGIN
   v_empcode := empcode;
   v_fingercode := fingercode;
@@ -27311,6 +27400,7 @@ DECLARE
   v_glvochcode integer;
   v_vochcode integer;
   v_smancode smallint;
+  _r1 record;
 BEGIN
   v_ai_startcode := ai_startcode;
   v_ai_endcode := ai_endcode;
@@ -27476,6 +27566,8 @@ DECLARE
   v_saleutn bigint;
   v_smancode smallint;
   v_inquirypersoncode smallint;
+  _r1 record;
+  _r2 record;
   cur_itembatch_cursor refcursor;
   _rc integer;
   _fs integer := -1;
@@ -31005,6 +31097,7 @@ DECLARE
   v_in_rowid integer;
   v_in_qty integer;
   v_ticketcode integer;
+  _r1 record;
   _rc integer;
 BEGIN
   v_serviceinvcode := serviceinvcode;
@@ -32003,6 +32096,7 @@ DECLARE
   v_oldqty numeric(15,4);
   v_itemname citext;
   v_string_expiry citext;
+  _r1 record;
   _rc integer;
 BEGIN
   v_gcode := gcode;
@@ -32072,6 +32166,7 @@ DECLARE
   v_itemname citext;
   cur_cursor_duesatisfyinvoices refcursor;
   cur_cursor_duesatisfyinvoice_items refcursor;
+  _r1 record;
   cur_itembatch_cursor refcursor;
   cur_cursor_duedeleteinvoices refcursor;
   cur_cursor_duedeleteinvoice_items refcursor;
@@ -34661,6 +34756,7 @@ DECLARE
   v_avgprice numeric(15,5);
   cur_tran1 refcursor;
   cur_tran2 refcursor;
+  _r1 record;
   cur_tran3 refcursor;
   _rc integer;
   _fs integer := -1;
@@ -36243,6 +36339,7 @@ DECLARE
   v_updateloyaltypoints citext;
   v_keepinvno citext;
   v_updaterefno1 citext;
+  _r1 record;
   cur_itembatch_cursor refcursor;
   _rc integer;
   _fs integer := -1;
@@ -36538,6 +36635,7 @@ DECLARE
   v_rowgroup integer;
   v_lineitems_rowcount integer;
   v_innercounter integer;
+  _r1 record;
   _rc integer;
 BEGIN
   v_childserver := childserver;
@@ -36765,6 +36863,7 @@ DECLARE
   v_lineitems_rowcount integer;
   v_innercounter integer;
   v_updateloyaltypoints citext;
+  _r1 record;
   _rc integer;
 BEGIN
   v_childserver := childserver;
@@ -37845,6 +37944,8 @@ DECLARE
   v_err integer;
   v_priority smallint;
   v_method smallint;
+  _r1 record;
+  _r2 record;
   _rc integer;
 BEGIN
   v_gcode := gcode;
@@ -38129,6 +38230,8 @@ DECLARE
   v_err integer;
   v_priority smallint;
   v_method smallint;
+  _r1 record;
+  _r2 record;
   _rc integer;
 BEGIN
   v_gcode := gcode;
@@ -39978,6 +40081,7 @@ DECLARE
   v_prefix citext;
   v_status citext;
   v_webordercode integer;
+  _r1 record;
 BEGIN
   v_srv := srv;
   v_db := db;

@@ -47,7 +47,7 @@ def first_line(e):
     return str(e).strip().split('\n')[0]
 
 
-def apply_units(conn, repo, results, failures):
+def apply_units(conn, repo, results, failures, sources):
     created = []
     for kind, fname in FILES:
         path = os.path.join(repo, 'db', 'pg', fname)
@@ -65,6 +65,7 @@ def apply_units(conn, repo, results, failures):
                 conn.execute(sql)
                 rec['result'] = 'created'
                 created.append((cat, name))
+                sources[(cat, name)] = sql
             except Exception as e:
                 rec['result'] = 'failed'
                 st = getattr(e, 'sqlstate', None)
@@ -83,7 +84,57 @@ def apply_units(conn, repo, results, failures):
     return created
 
 
-def plpgsql_check(conn, created, units_index, results, failures):
+TEMP_OPEN = re.compile(r'^\s*CREATE TEMP TABLE (\S+) \($')
+TEMP_CTAS = re.compile(r'^\s*CREATE TEMP TABLE (\S+) ON COMMIT DROP AS (.*);\s*$')
+DECL = re.compile(r'^  (v_\w+|"v_\w+") ([^;]+);$')
+
+
+def temp_statements(sql):
+    """temporary tables a routine creates, in order: (name, ddl).  Structure for CREATE TABLE AS comes from running the SELECT
+    with the routine's variables replaced by typed NULLs (WITH NO DATA)."""
+    lines = sql.split('\n')
+    decl = {}
+    for ln in lines:
+        m = DECL.match(ln)
+        if m:
+            decl[m.group(1).strip('"')] = m.group(2)
+    out = []
+    i = 0
+    while i < len(lines):
+        ln = lines[i]
+        m = TEMP_OPEN.match(ln)
+        if m:
+            j = i + 1
+            body = []
+            while j < len(lines) and not lines[j].startswith(') ON COMMIT DROP;'):
+                body.append(lines[j])
+                j += 1
+            out.append((m.group(1), 'CREATE TEMP TABLE %s (\n%s\n)' % (m.group(1), '\n'.join(body))))
+            i = j
+        else:
+            m = TEMP_CTAS.match(ln)
+            if m:
+                sel = m.group(2)
+                for v, ty in decl.items():
+                    sel = re.sub(r'(?<![\w.])%s(?!\w)' % re.escape(v), '(NULL::%s)' % ty, sel)
+                out.append((m.group(1), 'CREATE TEMP TABLE %s AS %s WITH NO DATA' % (m.group(1), sel)))
+        i += 1
+    return out
+
+
+def precreate_temps(conn, sql):
+    made = []
+    for name, ddl in temp_statements(sql):
+        try:
+            conn.execute('DROP TABLE IF EXISTS %s' % name)
+            conn.execute(ddl)
+            made.append(name)
+        except Exception:
+            pass
+    return made
+
+
+def plpgsql_check(conn, created, units_index, results, failures, sources):
     try:
         conn.execute('CREATE EXTENSION IF NOT EXISTS plpgsql_check')
     except Exception as e:
@@ -114,6 +165,7 @@ def plpgsql_check(conn, created, units_index, results, failures):
             rec['check'] = 'not-found'
             continue
         oid = row[0]
+        made = precreate_temps(conn, sources.get((cat, name), ''))
         try:
             if cat == 'trigger':
                 tbl = trig_tables.get(name)
@@ -125,11 +177,22 @@ def plpgsql_check(conn, created, units_index, results, failures):
         except Exception as e:
             rec['check'] = 'check-error'
             rec['check_message'] = first_line(e)
+            for t in made:
+                conn.execute('DROP TABLE IF EXISTS %s' % t)
             continue
+        for t in made:
+            try:
+                conn.execute('DROP TABLE IF EXISTS %s' % t)
+            except Exception:
+                pass
         errs = [r for r in rows if r[3] == 'error']
         n += 1
+        temp_only = errs and all(re.match(r'relation "(tmp_|tv_)\w*" does not exist', r[2] or '') for r in errs)
         if not errs:
             rec['check'] = 'ok'
+        elif temp_only:
+            rec['check'] = 'temp-unresolved'
+            rec['check_errors'] = [{'line': r[0], 'message': r[2]} for r in errs[:3]]
         else:
             rec['check'] = 'errors'
             rec['check_errors'] = [{'line': r[0], 'sqlstate': r[1], 'message': r[2], 'statement': r[4], 'query': (r[5] or '')[:200]} for r in errs[:8]]
@@ -276,9 +339,10 @@ def main():
     conn = connect()
     results, failures = [], []
     t0 = time.time()
-    created = apply_units(conn, a.repo, results, failures)
+    sources = {}
+    created = apply_units(conn, a.repo, results, failures, sources)
     print('applied routines in %.0fs' % (time.time() - t0))
-    have_check = plpgsql_check(conn, created, units_index, results, failures)
+    have_check = plpgsql_check(conn, created, units_index, results, failures, sources)
     t0 = time.time()
     stmts = prepare_statements(conn, a.repo, results, failures)
     print('statements prepared in %.0fs' % (time.time() - t0))
@@ -295,6 +359,16 @@ def main():
     for (stage, cat, kind), fs in sorted(fk.items(), key=lambda x: -len(x[1]))[:a.top]:
         print('%4d  %s/%s  %s   e.g. %s' % (len(fs), stage, cat, kind, ', '.join(sorted({f['name'] for f in fs})[:3])))
     print('\nfailures total', len(failures))
+    if os.environ.get('DUMP_FAILURES', '1') == '1':
+        print('=== BEGIN FAILURES (json lines)')
+        for f in failures:
+            print(json.dumps(f, ensure_ascii=False))
+        print('=== END FAILURES')
+        print('=== BEGIN RESULTS (json lines)')
+        for r in results:
+            if r.get('result') not in ('created', 'prepared') or r.get('check') not in (None, 'ok'):
+                print(json.dumps(r, ensure_ascii=False))
+        print('=== END RESULTS')
 
 
 if __name__ == '__main__':

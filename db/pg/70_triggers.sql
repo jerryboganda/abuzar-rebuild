@@ -7,18 +7,22 @@ CREATE OR REPLACE FUNCTION dbo.trg_trig_emp_payroll_afterupdate_paid()
 #variable_conflict use_column
 BEGIN
   IF coalesce(current_setting('tsql.trig_emp_payroll_afterupdate_paid', true), '') = '1' THEN RETURN NULL; END IF;
+  IF TG_OP = 'UPDATE' AND coalesce(current_setting('tsql.upd.trig_emp_payroll_afterupdate_paid', true), '') <> '1' THEN RETURN NULL; END IF;
+  PERFORM set_config('tsql.upd.trig_emp_payroll_afterupdate_paid', '0', true);
   PERFORM set_config('tsql.trig_emp_payroll_afterupdate_paid', '1', true);
-  IF TRUE THEN
-    UPDATE dbo.emp_attendance SET payed = 'Y' FROM deleted AS u WHERE ((emp_attendance.empcode = u.empcode) AND (emp_attendance.timein BETWEEN u.fromdate AND u.todate));
-  END IF;
+  UPDATE dbo.emp_attendance SET payed = 'Y' FROM deleted AS u WHERE ((emp_attendance.empcode = u.empcode) AND (emp_attendance.timein BETWEEN u.fromdate AND u.todate));
   PERFORM set_config('tsql.trig_emp_payroll_afterupdate_paid', '0', true);
+  PERFORM set_config('tsql.upd.trig_emp_payroll_afterupdate_paid', '0', true);
   RETURN NULL;
 END
 $body$;
 DROP TRIGGER IF EXISTS trig_emp_payroll_afterupdate_paid ON dbo.emp_payroll;
-CREATE TRIGGER trig_emp_payroll_afterupdate_paid AFTER UPDATE OF paid ON dbo.emp_payroll
+CREATE TRIGGER trig_emp_payroll_afterupdate_paid AFTER UPDATE ON dbo.emp_payroll
   REFERENCING OLD TABLE AS deleted NEW TABLE AS inserted
   FOR EACH STATEMENT EXECUTE FUNCTION dbo.trg_trig_emp_payroll_afterupdate_paid();
+DROP TRIGGER IF EXISTS trig_emp_payroll_afterupdate_paid_b ON dbo.emp_payroll;
+CREATE TRIGGER trig_emp_payroll_afterupdate_paid_b BEFORE UPDATE OF paid ON dbo.emp_payroll
+  FOR EACH STATEMENT EXECUTE FUNCTION dbo.tsql_trg_flag('tsql.upd.trig_emp_payroll_afterupdate_paid');
 
 -- ==== trigger Trig_GodownDetail_AfterUpdate_LastUpdated ====
 CREATE OR REPLACE FUNCTION dbo.trg_trig_godowndetail_afterupdate_lastupdated()
@@ -63,21 +67,25 @@ CREATE OR REPLACE FUNCTION dbo.trg_trig_itempart_afterupdate_reflectitempartchan
 #variable_conflict use_column
 BEGIN
   IF coalesce(current_setting('tsql.trig_itempart_afterupdate_reflectitempartchanges_to_ite', true), '') = '1' THEN RETURN NULL; END IF;
+  IF TG_OP = 'UPDATE' AND coalesce(current_setting('tsql.upd.trig_itempart_afterupdate_reflectitempartchan_0cad8', true), '') <> '1' THEN RETURN NULL; END IF;
+  PERFORM set_config('tsql.upd.trig_itempart_afterupdate_reflectitempartchan_0cad8', '0', true);
   PERFORM set_config('tsql.trig_itempart_afterupdate_reflectitempartchanges_to_ite', '1', true);
-  IF ((((TRUE OR TRUE) OR TRUE) OR TRUE) OR TRUE) THEN
-    IF ((SELECT masteripartcode FROM inserted) IS NULL) THEN
-      UPDATE dbo.item AS item SET remarks = coalesce((SELECT inserted.description FROM inserted), ''), packingdesc = coalesce((SELECT inserted.application FROM inserted), ''), remarks1 = coalesce((SELECT inserted.remarks FROM inserted), ''), icatcode = (SELECT inserted.icatcode FROM inserted), iccode = (SELECT inserted.iccode FROM inserted) FROM dbo.itempart WHERE ((item.ipartcode IN (SELECT ip.ipartcode FROM dbo.itempart AS ip WHERE (ip.masteripartcode IN (SELECT i.ipartcode FROM inserted AS i)) UNION SELECT inserted.ipartcode FROM inserted)) AND (itempart.ipartcode = item.ipartcode));
-      UPDATE dbo.itempart AS itempart SET description = i.description, application = i.application, remarks = i.remarks, icatcode = i.icatcode, iccode = i.iccode FROM inserted AS i WHERE (itempart.masteripartcode = i.ipartcode);
-    END IF;
+  IF ((SELECT masteripartcode FROM inserted) IS NULL) THEN
+    UPDATE dbo.item AS item SET remarks = coalesce((SELECT inserted.description FROM inserted), ''), packingdesc = coalesce((SELECT inserted.application FROM inserted), ''), remarks1 = coalesce((SELECT inserted.remarks FROM inserted), ''), icatcode = (SELECT inserted.icatcode FROM inserted), iccode = (SELECT inserted.iccode FROM inserted) FROM dbo.itempart WHERE ((item.ipartcode IN (SELECT ip.ipartcode FROM dbo.itempart AS ip WHERE (ip.masteripartcode IN (SELECT i.ipartcode FROM inserted AS i)) UNION SELECT inserted.ipartcode FROM inserted)) AND (itempart.ipartcode = item.ipartcode));
+    UPDATE dbo.itempart AS itempart SET description = i.description, application = i.application, remarks = i.remarks, icatcode = i.icatcode, iccode = i.iccode FROM inserted AS i WHERE (itempart.masteripartcode = i.ipartcode);
   END IF;
   PERFORM set_config('tsql.trig_itempart_afterupdate_reflectitempartchanges_to_ite', '0', true);
+  PERFORM set_config('tsql.upd.trig_itempart_afterupdate_reflectitempartchan_0cad8', '0', true);
   RETURN NULL;
 END
 $body$;
 DROP TRIGGER IF EXISTS trig_itempart_afterupdate_reflectitempartchanges_to_item ON dbo.itempart;
-CREATE TRIGGER trig_itempart_afterupdate_reflectitempartchanges_to_item AFTER UPDATE OF description, application, remarks, icatcode, iccode ON dbo.itempart
+CREATE TRIGGER trig_itempart_afterupdate_reflectitempartchanges_to_item AFTER UPDATE ON dbo.itempart
   REFERENCING OLD TABLE AS deleted NEW TABLE AS inserted
   FOR EACH STATEMENT EXECUTE FUNCTION dbo.trg_trig_itempart_afterupdate_reflectitempartchanges_to_item();
+DROP TRIGGER IF EXISTS trig_itempart_afterupdate_reflectitempartchanges_to_item_b ON dbo.itempart;
+CREATE TRIGGER trig_itempart_afterupdate_reflectitempartchanges_to_item_b BEFORE UPDATE OF description, application, remarks, icatcode, iccode ON dbo.itempart
+  FOR EACH STATEMENT EXECUTE FUNCTION dbo.tsql_trg_flag('tsql.upd.trig_itempart_afterupdate_reflectitempartchan_0cad8');
 
 -- ==== trigger Trig_ItemPartInModel_AfterDelete_ReflectItemPartInModelChanges_TO_ItemInModel ====
 CREATE OR REPLACE FUNCTION dbo.trg_trig_itempartinmodel_afterdelete_reflectitempartin_1b1b6e08()
@@ -134,20 +142,24 @@ CREATE OR REPLACE FUNCTION dbo.trg_trig_patient_afterupdate_inactivecount()
 #variable_conflict use_column
 BEGIN
   IF coalesce(current_setting('tsql.trig_patient_afterupdate_inactivecount', true), '') = '1' THEN RETURN NULL; END IF;
+  IF TG_OP = 'UPDATE' AND coalesce(current_setting('tsql.upd.trig_patient_afterupdate_inactivecount', true), '') <> '1' THEN RETURN NULL; END IF;
+  PERFORM set_config('tsql.upd.trig_patient_afterupdate_inactivecount', '0', true);
   PERFORM set_config('tsql.trig_patient_afterupdate_inactivecount', '1', true);
-  IF TRUE THEN
-    IF ((SELECT max(active) FROM inserted) = 'N') THEN
-      UPDATE dbo.patient AS patient SET inactivecount = coalesce((inserted.inactivecount + 1), 0) FROM inserted WHERE (patient.patientcode = inserted.patientcode);
-    END IF;
+  IF ((SELECT max(active) FROM inserted) = 'N') THEN
+    UPDATE dbo.patient AS patient SET inactivecount = coalesce((inserted.inactivecount + 1), 0) FROM inserted WHERE (patient.patientcode = inserted.patientcode);
   END IF;
   PERFORM set_config('tsql.trig_patient_afterupdate_inactivecount', '0', true);
+  PERFORM set_config('tsql.upd.trig_patient_afterupdate_inactivecount', '0', true);
   RETURN NULL;
 END
 $body$;
 DROP TRIGGER IF EXISTS trig_patient_afterupdate_inactivecount ON dbo.patient;
-CREATE TRIGGER trig_patient_afterupdate_inactivecount AFTER UPDATE OF active ON dbo.patient
+CREATE TRIGGER trig_patient_afterupdate_inactivecount AFTER UPDATE ON dbo.patient
   REFERENCING OLD TABLE AS deleted NEW TABLE AS inserted
   FOR EACH STATEMENT EXECUTE FUNCTION dbo.trg_trig_patient_afterupdate_inactivecount();
+DROP TRIGGER IF EXISTS trig_patient_afterupdate_inactivecount_b ON dbo.patient;
+CREATE TRIGGER trig_patient_afterupdate_inactivecount_b BEFORE UPDATE OF active ON dbo.patient
+  FOR EACH STATEMENT EXECUTE FUNCTION dbo.tsql_trg_flag('tsql.upd.trig_patient_afterupdate_inactivecount');
 
 -- ==== trigger Trig_PurLedger_AfterUpdate_UpdatePOStatistics_For_Purchases ====
 CREATE OR REPLACE FUNCTION dbo.trg_trig_purledger_afterupdate_updatepostatistics_for_purchases()
