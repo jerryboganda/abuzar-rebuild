@@ -751,6 +751,7 @@ INSERT INTO dbo.saleinterface (interfacecode, name) VALUES (18, 'RECEIPT TRANSAC
 UPDATE dbo.softwarepreferences SET prefvalue = '0' WHERE lower(name) = 'logoselected';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'archiveaccountingdata';
 UPDATE dbo.softwarepreferences SET prefvalue = 'Y' WHERE lower(name) = 'keep_accbal_on_archive';
+UPDATE dbo.softwarepreferences SET prefvalue = 'P' WHERE lower(name) = 'inventorysystemused';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'deletesyncedtransactions';
 UPDATE dbo.softwarepreferences SET prefvalue = '1' WHERE lower(name) = 'inventorymovementmethod';
 UPDATE dbo.softwarepreferences SET prefvalue = '.' WHERE lower(name) = 'defaultbatch';
@@ -886,8 +887,11 @@ UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'yourexpi
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'yourpacking';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'invgstperc';
 UPDATE dbo.softwarepreferences SET prefvalue = 'Y' WHERE lower(name) = 'priceandtaxvalueinfooter';
+UPDATE dbo.softwarepreferences SET prefvalue = 'T' WHERE lower(name) = 'pagesize';
+UPDATE dbo.softwarepreferences SET prefvalue = 'T' WHERE lower(name) = 'creditsalepagesize';
 UPDATE dbo.softwarepreferences SET prefvalue = '12' WHERE lower(name) = 'salethermalprintformat';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'invsizeinsale';
+UPDATE dbo.softwarepreferences SET prefvalue = 'Q' WHERE lower(name) = 'qrcodeprintingmethodinsale';
 UPDATE dbo.softwarepreferences SET prefvalue = 'Y' WHERE lower(name) = 'saleaccountfor';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'defaultwaranty';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'salecheckexpiry';
@@ -902,8 +906,11 @@ UPDATE dbo.softwarepreferences SET prefvalue = '1' WHERE lower(name) = 'defaultc
 UPDATE dbo.softwarepreferences SET prefvalue = '-1' WHERE lower(name) = 'defaultcustomerincashsale';
 UPDATE dbo.softwarepreferences SET prefvalue = '-1' WHERE lower(name) = 'defaultdoctorinsale';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'askamtoncreditsale';
+UPDATE dbo.softwarepreferences SET prefvalue = 'C' WHERE lower(name) = 'salepaymentmode';
 UPDATE dbo.softwarepreferences SET prefvalue = 'Y' WHERE lower(name) = 'cashsaleallownullpatient';
+UPDATE dbo.softwarepreferences SET prefvalue = 'P' WHERE lower(name) = 'patientonretailsale';
 UPDATE dbo.softwarepreferences SET prefvalue = 'Y' WHERE lower(name) = 'creditsaleallownullpatient';
+UPDATE dbo.softwarepreferences SET prefvalue = 'P' WHERE lower(name) = 'patientoncreditsale';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'studentoncashsale';
 UPDATE dbo.softwarepreferences SET prefvalue = 'Y' WHERE lower(name) = 'cashsaleallownullstudent';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'studentoncreditsale';
@@ -969,6 +976,7 @@ UPDATE dbo.softwarepreferences SET prefvalue = 'Y' WHERE lower(name) = 'allowsal
 UPDATE dbo.softwarepreferences SET prefvalue = 'Y' WHERE lower(name) = 'allowsaleaboveretailpriceinsale';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'saleonzeroprice';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'incsaleinactmonitor';
+UPDATE dbo.softwarepreferences SET prefvalue = 'A' WHERE lower(name) = 'reportratedeviationusing';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'discpriceinsale';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'enforcenuminputincashsalerefno';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'enforcenuminputincreditsalerefno';
@@ -1047,9 +1055,11 @@ UPDATE dbo.softwarepreferences SET prefvalue = 'Y' WHERE lower(name) = 'batchins
 UPDATE dbo.softwarepreferences SET prefvalue = 'Y' WHERE lower(name) = 'expiryinsr';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'saleretitemdescription';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'displaytotalpiecesinsalereturn';
+UPDATE dbo.softwarepreferences SET prefvalue = 'T' WHERE lower(name) = 'salereturnpagesize';
 UPDATE dbo.softwarepreferences SET prefvalue = '1' WHERE lower(name) = 'salereturnthermalprintformat';
 UPDATE dbo.softwarepreferences SET prefvalue = 'Y' WHERE lower(name) = 'salereturnaccountfor';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'askamtoncreditsalereturn';
+UPDATE dbo.softwarepreferences SET prefvalue = 'C' WHERE lower(name) = 'salereturnpaymentmode';
 UPDATE dbo.softwarepreferences SET prefvalue = '0' WHERE lower(name) = 'roundsalereturninvon';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'updateavgpriceinsr';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'autosalereturnallocation';
@@ -1115,11 +1125,14 @@ UPDATE dbo.softwarepreferences SET prefvalue = 'Y' WHERE lower(name) = 'showsale
 UPDATE dbo.softwarepreferences SET prefvalue = 'Y' WHERE lower(name) = 'showpctcodeinpur';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'showitemalertinpur';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'showpurinvgstperc';
+UPDATE dbo.softwarepreferences SET prefvalue = 'F' WHERE lower(name) = 'purinvpagesize';
 UPDATE dbo.softwarepreferences SET prefvalue = 'Y' WHERE lower(name) = 'purchaseaccountfor';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'purchaseautoposting';
 UPDATE dbo.softwarepreferences SET prefvalue = '1' WHERE lower(name) = 'defaulttaxcategory';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'askamtonpurchase';
+UPDATE dbo.softwarepreferences SET prefvalue = 'C' WHERE lower(name) = 'purchasepaymentmode';
 UPDATE dbo.softwarepreferences SET prefvalue = '0' WHERE lower(name) = 'roundpurinvon';
+UPDATE dbo.softwarepreferences SET prefvalue = 'F' WHERE lower(name) = 'purslipsize';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'updateitemlocationinpur';
 UPDATE dbo.softwarepreferences SET prefvalue = 'Y' WHERE lower(name) = 'updatepurprice';
 UPDATE dbo.softwarepreferences SET prefvalue = 'Y' WHERE lower(name) = 'updatesalepriceforitem';
@@ -1240,6 +1253,7 @@ UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'showpurc
 UPDATE dbo.softwarepreferences SET prefvalue = 'Y' WHERE lower(name) = 'purchasereturnaccountfor';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'purchasereturnposting';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'askamtonpurchasereturn';
+UPDATE dbo.softwarepreferences SET prefvalue = 'C' WHERE lower(name) = 'purchasereturnpaymentmode';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'salepriceinpr';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'purretaskprintcopies';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'incprinactmonitor';
@@ -1252,9 +1266,12 @@ UPDATE dbo.softwarepreferences SET prefvalue = 'Y' WHERE lower(name) = 'askdatei
 UPDATE dbo.softwarepreferences SET prefvalue = 'Y' WHERE lower(name) = 'transuserwindow';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'patientintransaction';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'askpatientintransrecpaymentwindow';
+UPDATE dbo.softwarepreferences SET prefvalue = 'A' WHERE lower(name) = 'allowedpatientsintransaction';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'uniquerefnointrans';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'guestintransaction';
+UPDATE dbo.softwarepreferences SET prefvalue = 'A' WHERE lower(name) = 'allowedguestsintransaction';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'studentintransaction';
+UPDATE dbo.softwarepreferences SET prefvalue = 'A' WHERE lower(name) = 'allowedstudentsintransaction';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'salepersonintrans';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'showcurrencyinvouchers';
 UPDATE dbo.softwarepreferences SET prefvalue = '1' WHERE lower(name) = 'defaultcurrencyinvouchers';
@@ -1264,6 +1281,7 @@ UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'incbrbpi
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'aliasnameintrans';
 UPDATE dbo.softwarepreferences SET prefvalue = 'Y' WHERE lower(name) = 'showcurrentbalanceintrans';
 UPDATE dbo.softwarepreferences SET prefvalue = 'Y' WHERE lower(name) = 'showeffectivebalanceintrans';
+UPDATE dbo.softwarepreferences SET prefvalue = 'H' WHERE lower(name) = 'voucherprintingpagesize';
 UPDATE dbo.softwarepreferences SET prefvalue = '2' WHERE lower(name) = 'voucherprintingformat';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'chequeprintinginterface';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'insistoninvoicesettlement';
@@ -1388,9 +1406,11 @@ UPDATE dbo.softwarepreferences SET prefvalue = 'Y' WHERE lower(name) = 'showcred
 UPDATE dbo.softwarepreferences SET prefvalue = 'Y' WHERE lower(name) = 'showcreditserviceinvdiscperc';
 UPDATE dbo.softwarepreferences SET prefvalue = 'Y' WHERE lower(name) = 'showcreditserviceinvmisccharges';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'showcreditserviceinvgstperc';
+UPDATE dbo.softwarepreferences SET prefvalue = 'Q' WHERE lower(name) = 'cashservicepagesize';
 UPDATE dbo.softwarepreferences SET prefvalue = '1' WHERE lower(name) = 'initialsmancodeincashservice';
 UPDATE dbo.softwarepreferences SET prefvalue = '1' WHERE lower(name) = 'initialserviceinvtypeincashservice';
 UPDATE dbo.softwarepreferences SET prefvalue = '-1' WHERE lower(name) = 'defaultdoctorincashservice';
+UPDATE dbo.softwarepreferences SET prefvalue = 'Q' WHERE lower(name) = 'creditservicepagesize';
 UPDATE dbo.softwarepreferences SET prefvalue = '1' WHERE lower(name) = 'initialsmancodeinservice';
 UPDATE dbo.softwarepreferences SET prefvalue = '1' WHERE lower(name) = 'initialserviceinvtypeincreditservice';
 UPDATE dbo.softwarepreferences SET prefvalue = '-1' WHERE lower(name) = 'defaultdoctorincreditservice';
@@ -1458,9 +1478,11 @@ UPDATE dbo.softwarepreferences SET prefvalue = 'Y' WHERE lower(name) = 'allowzer
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'askforcopiesinservice';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'gendoctortokenonservice';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'genserviceticketonposting';
+UPDATE dbo.softwarepreferences SET prefvalue = 'Q' WHERE lower(name) = 'serviceticketgenerationmethod';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'printsepsaleinvafterserviceinv';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'forcepricepolicyonsavingservice';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'fetchservicepricefrompricepolicy';
+UPDATE dbo.softwarepreferences SET prefvalue = 'S' WHERE lower(name) = 'fetchservicedeliverydatefrom';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'autogenresultonserviceposting';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'allowdecimalinserviceqty';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'autogensrvpurtemponserviceposting';
@@ -1617,8 +1639,10 @@ UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'invmiscc
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'invgstpercinpo';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'invflatdiscinpo';
 UPDATE dbo.softwarepreferences SET prefvalue = 'Y' WHERE lower(name) = 'showgrandtotalinpo';
+UPDATE dbo.softwarepreferences SET prefvalue = 'R' WHERE lower(name) = 'reqpackqtyfractiontreatment_inpo';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'autoupdatetransitstock';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'updatereorderqty_po_save';
+UPDATE dbo.softwarepreferences SET prefvalue = 'T' WHERE lower(name) = 'poprintpagesize';
 UPDATE dbo.softwarepreferences SET prefvalue = 'Y' WHERE lower(name) = 'poapplysuppitemonly';
 UPDATE dbo.softwarepreferences SET prefvalue = '1' WHERE lower(name) = 'pocategorydefault';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'updateminqty_po_save';
@@ -1782,6 +1806,7 @@ UPDATE dbo.softwarepreferences SET prefvalue = 'Y' WHERE lower(name) = 'showaccc
 UPDATE dbo.softwarepreferences SET prefvalue = 'Y' WHERE lower(name) = 'showsupervisedincashieract';
 UPDATE dbo.softwarepreferences SET prefvalue = 'Y' WHERE lower(name) = 'showselectedincashieract';
 UPDATE dbo.softwarepreferences SET prefvalue = '15' WHERE lower(name) = 'defaultrefreshtimeincashieract';
+UPDATE dbo.softwarepreferences SET prefvalue = 'A' WHERE lower(name) = 'cashieractivitymode';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'autofillcashcharged';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'showemptydocumentcodebydefault';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'keepcashwindowalwaysopen';
@@ -1862,8 +1887,11 @@ UPDATE dbo.softwarepreferences SET prefvalue = '5' WHERE lower(name) = 'lastempi
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'fatherniccompulsion_instudentreg';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'promptfathernicstatisticsonsaving';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'askuserpwdinstudentreg';
+UPDATE dbo.softwarepreferences SET prefvalue = 'M' WHERE lower(name) = 'sendmethod';
+UPDATE dbo.softwarepreferences SET prefvalue = 'Z' WHERE lower(name) = 'websmsprovider';
 UPDATE dbo.softwarepreferences SET prefvalue = '30' WHERE lower(name) = 'dashboard_summaryanlaysis';
 UPDATE dbo.softwarepreferences SET prefvalue = '30' WHERE lower(name) = 'dashboard_salesanlaysis';
+UPDATE dbo.softwarepreferences SET prefvalue = 'C' WHERE lower(name) = 'dashboard_inventorybreakupcriteria';
 UPDATE dbo.softwarepreferences SET prefvalue = '30' WHERE lower(name) = 'dashboard_puranlaysis';
 UPDATE dbo.softwarepreferences SET prefvalue = '30' WHERE lower(name) = 'dashboard_receiptanalysis';
 UPDATE dbo.softwarepreferences SET prefvalue = '30' WHERE lower(name) = 'dashboard_issueanalysis';
@@ -1888,5 +1916,6 @@ UPDATE dbo.softwarepreferences SET prefvalue = 'Y' WHERE lower(name) = 'refnoinp
 UPDATE dbo.softwarepreferences SET prefvalue = 'Y' WHERE lower(name) = 'paymentremarksinpayroll';
 UPDATE dbo.softwarepreferences SET prefvalue = 'Y' WHERE lower(name) = 'paidbyinpayroll';
 UPDATE dbo.softwarepreferences SET prefvalue = 'Y' WHERE lower(name) = 'paidoninpayroll';
+UPDATE dbo.softwarepreferences SET prefvalue = 'P' WHERE lower(name) = 'bookingdateinpayroll';
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'asksectioninso';
 
