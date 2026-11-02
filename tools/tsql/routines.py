@@ -191,7 +191,7 @@ class Translator(ExprMixin, QueryMixin, StmtMixin):
                     dflt = self.Es(p.default, Scope())
                 except Untranslatable:
                     dflt = 'NULL'
-            elif p.out or (first_default is not None and i > first_default):
+            elif first_default is not None and i > first_default:
                 dflt = 'NULL'
             s.params.append(PSig(p.name.lower(), pg, cls, 'inout' if p.out else 'in', dflt, tsql_type_str(p.type)))
         if node.k == 'function':
@@ -221,7 +221,9 @@ class Translator(ExprMixin, QueryMixin, StmtMixin):
             n = sg.node
             if n.ret_table is not None and n.ret_var is None:
                 sel = n.body[0].e.sel
-                self.ctx = Ctx('stmt', sg.name)
+                self.ctx = Ctx('func', sg.name)
+                for p in n.params:
+                    self.declare_var(p.name, p.type, param=True)
                 try:
                     sql, cols = self.select_full(sel, Scope())
                 except Untranslatable:
@@ -232,6 +234,13 @@ class Translator(ExprMixin, QueryMixin, StmtMixin):
                     if nm:
                         tcols.append(Col(nm, self.cls_default_pg(cls), cls))
                 sg.ret_table = Table(sg.name, tcols)
+        # RETURNS TABLE columns are OUT parameters: input parameters with the same name must be renamed
+        for sg in cat.funcs.values():
+            if sg.ret_table is not None:
+                cn = set(c.name.lower() for c in sg.ret_table.cols)
+                for ps in sg.params:
+                    if ps.name in cn:
+                        ps.name = 'p_' + ps.name
         # result-set counts (fixpoint)
         for sg in cat.procs.values():
             sg.sqlvars, sg.sqlselect = scan_sqlvars(sg.node.body)
@@ -336,9 +345,9 @@ class Translator(ExprMixin, QueryMixin, StmtMixin):
         pdecl, copyin = [], []
         for p, ps in zip(node.params, sig.params):
             d = ' DEFAULT ' + ps.default if ps.default is not None else ''
-            pdecl.append('%s %s%s' % (pident(p.name), ps.pgtype, d))
+            pdecl.append('%s %s%s' % (pident(ps.name), ps.pgtype, d))
             v = self.declare_var(p.name, p.type, param=True)
-            copyin.append('%s := %s;' % (v[0], pident(p.name)))
+            copyin.append('%s := %s;' % (v[0], pident(ps.name)))
         self.ind = 1
         for c in copyin:
             self.emit(c)

@@ -47,6 +47,20 @@ class Scope:
             s = s.parent
         return None
 
+    def find_identity(self, qual):
+        s = self
+        while s is not None:
+            for alias, t in s.items:
+                if qual is not None and alias != qual:
+                    continue
+                if t is None:
+                    continue
+                for c in t.cols:
+                    if c.identity:
+                        return alias, c.name
+            s = s.parent
+        return None, None
+
     def table_of(self, qual):
         s = self
         while s is not None:
@@ -156,8 +170,10 @@ class ExprMixin:
             rs = "(timestamp '1900-01-01' + (%s) * interval '1 day')" % rs
         elif rc == 'D' and lc in NUMERIC:
             ls = "(timestamp '1900-01-01' + (%s) * interval '1 day')" % ls
-        ls = self.sink(ln, ls, lc)
-        rs = self.sink(rn, rs, rc)
+        if lc == 'S' and not ls.endswith(')::numeric') and not ls.endswith(')::timestamp'):
+            ls = self.sink(ln, ls, lc)
+        if rc == 'S' and not rs.endswith(')::numeric') and not rs.endswith(')::timestamp'):
+            rs = self.sink(rn, rs, rc)
         return ls, rs
 
     # ------------------------------------------------------------------ leaves
@@ -209,9 +225,7 @@ class ExprMixin:
         out = []
         for p in parts:
             if p.startswith('#') or p.startswith('@'):
-                key = p.lower()
-                t = self.lookup_temp(key)
-                out.append(t[0] if t else self.temp_name(p))
+                out.append(p.lstrip('#@').lower())
             else:
                 out.append(p)
         return out
@@ -260,6 +274,12 @@ class ExprMixin:
                 return 'current_user', 'S'
             cls = sc.lookup(None, parts[0])
             return ident(parts[0]), cls or 'U'
+        if parts[-1].lower() == 'identitycol':
+            qual = parts[-2].lower() if len(parts) >= 2 else None
+            alias, colname = sc.find_identity(qual)
+            if colname is None:
+                raise Untranslatable('IDENTITYCOL of a table without an identity column')
+            return (ident(alias) + '.' if alias else '') + ident(colname), 'I'
         pq = self.qual_parts(parts)
         qual = parts[-2].lower() if len(parts) >= 2 else None
         cls = sc.lookup(qual, parts[-1])
@@ -563,20 +583,40 @@ class ExprMixin:
 
     def coerce_to(self, node, s, c, pgtype, pcls):
         """argument -> declared parameter type (needed: text -> citext is only an assignment cast)"""
-        if node.k == 'lit' and node.t in ('str', 'null') or node.k == 'default':
+        if node.k == 'default' or (node.k == 'lit' and node.t in ('str', 'null')):
             return s
-        if node.k == 'lit' and node.t == 'num' and pcls in NUMERIC:
+        base = re.sub(r'\(.*\)', '', pgtype or '')
+        if not base:
             return s
-        if pcls == 'S' and c in ('S', 'U'):
-            return '(%s)::citext' % s if not is_simple(node) or node.k != 'var' and node.k != 'col' else s
-        if pcls == 'S' and c in NUMERIC:
-            return '(%s)::text' % s
-        if pcls in NUMERIC and c == 'S':
-            return '(%s)::%s' % (s, pgtype)
-        if pcls == 'D' and c == 'S':
-            return '(%s)::timestamp' % s
-        if pcls in NUMERIC and c in NUMERIC and pgtype.startswith(('smallint', 'integer', 'bigint')) and c == 'N':
-            return 'trunc(%s)::%s' % (s, pgtype)
+        if node.k == 'var':
+            v = self.ctx.vars.get('@' + node.name.lower())
+            if v and re.sub(r'\(.*\)', '', v[2]) == base:
+                return s
+        if node.k == 'lit' and node.t == 'num':
+            if (base == 'integer' and c == 'I') or (base == 'numeric' and c == 'N'):
+                return s
+        if c == 'N' and base in ('smallint', 'integer', 'bigint'):
+            return 'trunc(%s)::%s' % (s, base)
+        return '(%s)::%s' % (s, base)
+
+    def coerce_col(self, e, s, c, col):
+        """expression assigned to a table column (INSERT ... SELECT / VALUES / UPDATE SET): T-SQL converts implicitly,
+        PostgreSQL needs an explicit cast for string -> number/date and for typeless NULLs inside UNIONs"""
+        if col is None or not col.pg:
+            return s
+        pcls, pg = col.cls, col.pg
+        if e.k == 'lit' and e.t == 'null':
+            return 'NULL::%s' % pg
+        if c == 'S' and pcls in ('I', 'N'):
+            if e.k == 'lit' and e.t == 'str' and e.v.strip() == '':
+                return '0'
+            return '(%s)::%s' % (s, pg)
+        if c == 'S' and pcls == 'D':
+            if e.k == 'lit' and e.t == 'str' and e.v.strip() == '':
+                return "timestamp '1900-01-01'"
+            return '(%s)::%s' % (s, pg)
+        if c == 'N' and pcls == 'I':
+            return 'trunc(%s)::%s' % (s, pg)
         return s
 
     def args_sql(self, n, sc):
@@ -842,8 +882,10 @@ class ExprMixin:
         part = self.part_of(n.args[0])
         ns, nc = self.E(n.args[1], sc)
         d = self.date_arg(n.args[2], sc)
-        if nc not in ('I',) and not (n.args[1].k == 'lit'):
+        if nc == 'N':
             ns = 'trunc(%s)' % ns
+        elif nc not in ('I',) and not (n.args[1].k == 'lit'):
+            ns = '(%s)::integer' % ns
         unit = {'year': "interval '1 year'", 'quarter': "interval '3 month'", 'month': "interval '1 month'", 'dayofyear': "interval '1 day'",
                 'day': "interval '1 day'", 'week': "interval '7 day'", 'weekday': "interval '1 day'", 'hour': "interval '1 hour'",
                 'minute': "interval '1 minute'", 'second': "interval '1 second'", 'millisecond': "interval '1 millisecond'"}[part]

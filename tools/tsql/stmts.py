@@ -58,6 +58,37 @@ PREFIX_TYPES = [(('ls_', 'as_', 's_', 'is_', 'str_', 'lc_', 'ac_', 'gs_', 'ps_')
                 (('lb_', 'ab_', 'lblob', 'ibl_', 'bl_'), 'bytea')]
 
 
+def compact(text):
+    """collapse whitespace runs outside of string literals (keeps statements.json small)"""
+    out, i, n = [], 0, len(text)
+    sp = False
+    while i < n:
+        c = text[i]
+        if c == "'":
+            j = i + 1
+            while j < n:
+                if text[j] == "'":
+                    if j + 1 < n and text[j + 1] == "'":
+                        j += 2
+                        continue
+                    break
+                j += 1
+            out.append(text[i:j + 1])
+            i = j + 1
+            sp = False
+            continue
+        if c in ' \t\r\n':
+            if not sp and out:
+                out.append(' ')
+            sp = True
+            i += 1
+            continue
+        sp = False
+        out.append(c)
+        i += 1
+    return ''.join(out).strip()
+
+
 def guess_type(name):
     last = name.split('.')[-1].split('[')[0].lower()
     if 'date' in last or last.startswith(('dt', 'adt', 'ldt')):
@@ -298,6 +329,10 @@ def main():
         except Exception as ex:
             r.update(status='translator-error', note='%s: %s' % (type(ex).__name__, ex))
         recs.append(r)
+    for r in recs:
+        r['original'] = compact(r['original'])
+        if r.get('translated'):
+            r['translated'] = compact(r['translated'])
     os.makedirs(os.path.join(a.repo, 'data', 'sql'), exist_ok=True)
     with open(os.path.join(a.repo, 'data', 'sql', 'statements.json'), 'w', encoding='utf-8', newline='\n') as f:
         json.dump(recs, f, indent=0, ensure_ascii=False)

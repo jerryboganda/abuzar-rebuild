@@ -80,43 +80,83 @@ class QueryMixin:
     def select_sql(self, sel, outer):
         return self.select_full(sel, outer)[0]
 
-    def select_full(self, sel, outer):
+    def select_full(self, sel, outer, targets=None):
+        """query expression -> (sql, output columns).  targets: columns of the INSERT target (positional coercions)"""
         members = []
         cur = sel
         while cur is not None:
             members.append(cur)
             cur = cur.union[2] if cur.union else None
         union = len(members) > 1
-        parts, cols, first_scope, single_limit = [], None, None, ''
-        for i, m in enumerate(members):
-            sql, mcols, msc, limit = self.select_core(m, outer)
-            if i == 0:
-                cols, first_scope = mcols, msc
-            if union:
-                if limit or (i > 0 and m.order):
-                    if i > 0 and m.order:
-                        sql += ' ORDER BY ' + ', '.join(self.Es(e, msc) + (' DESC' if d else '') for e, d in m.order)
-                    sql = '(%s%s)' % (sql, limit)
-                parts.append(sql)
-                if m.union:
-                    op, all_, _ = m.union
-                    parts.append(op + (' ALL' if all_ else ''))
-            else:
-                parts.append(sql)
-                single_limit = limit
+        unify = None
+        nbinds = len(self.binds)
+        for attempt in (0, 1):
+            del self.binds[nbinds:]
+            parts, cols, first_scope, single_limit = [], None, None, ''
+            metas = []
+            first_names = None
+            for i, m in enumerate(members):
+                sql, mcols, msc, limit = self.select_core(m, outer, targets=targets, unify=unify)
+                metas.append(mcols)
+                if i == 0:
+                    cols, first_scope = mcols, msc
+                if union:
+                    if limit or (i > 0 and m.order):
+                        if i > 0 and m.order:
+                            sql += ' ORDER BY ' + ', '.join(self.Es(e, msc) + (' DESC' if d else '') for e, d in m.order)
+                        sql = '(%s%s)' % (sql, limit)
+                    parts.append(sql)
+                    if m.union:
+                        op, all_, _ = m.union
+                        parts.append(op + (' ALL' if all_ else ''))
+                else:
+                    parts.append(sql)
+                    single_limit = limit
+            if not union or attempt == 1:
+                break
+            unify = self.union_plan(metas)
+            if not unify:
+                break
         sql = ' '.join(parts)
         if sel.order:
             osc = first_scope if first_scope is not None else Scope(outer)
-            sql += ' ORDER BY ' + ', '.join(self.Es(e, osc) + (' DESC' if d else '') for e, d in sel.order)
+            items = []
+            for e, desc in sel.order:
+                if union:
+                    e = self.union_order_item(e, sel)
+                items.append(self.Es(e, osc) + (' DESC' if desc else ''))
+            sql += ' ORDER BY ' + ', '.join(items)
         sql += single_limit
         return sql, cols
 
-    def select_core(self, s, outer, with_limit=True):
+    def union_order_item(self, e, first):
+        """ORDER BY of a UNION: qualified columns refer to the output column names"""
+        if e.k == 'col' and len(e.parts) > 1:
+            last = e.parts[-1].lower()
+            for it in first.items:
+                nm = it.alias or (it.e.parts[-1] if it.e.k == 'col' else None)
+                if nm and nm.lower() == last:
+                    return Node('col', parts=[nm])
+            return Node('col', parts=[e.parts[-1]])
+        return e
+
+    def union_plan(self, metas):
+        """columns whose static class differs between the members of a UNION: {index: target class}"""
+        n = min(len(m) for m in metas)
+        plan = {}
+        rank = {'D': 4, 'N': 3, 'I': 2, 'S': 1}
+        for j in range(n):
+            cl = [m[j][1] for m in metas if m[j][1] in rank]
+            if len(set(cl)) > 1:
+                plan[j] = max(cl, key=lambda c: rank[c])
+        return plan
+
+    def select_core(self, s, outer, targets=None, unify=None):
         sc = Scope(outer)
         frm = ''
         if s.frm:
             frm = ' FROM ' + self.from_list(s.frm, sc)
-        items, cols = self.select_items(s.items, sc)
+        items, cols = self.select_items(s.items, sc, targets, unify)
         parts = ['SELECT']
         if s.distinct:
             parts.append('DISTINCT')
@@ -141,8 +181,24 @@ class QueryMixin:
                 limit = ' LIMIT %s' % tp
         return sql, cols, sc, limit
 
-    def select_items(self, items, sc):
+    def unify_cast(self, e, s, c, target_cls):
+        if c == target_cls or c in ('U', 'P') or (e.k == 'lit' and e.t == 'null'):
+            return s
+        if c == 'S':
+            if e.k == 'lit' and e.t == 'str' and e.v.strip() == '':
+                return "timestamp '1900-01-01'" if target_cls == 'D' else '0'
+            return '(%s)::%s' % (s, 'timestamp' if target_cls == 'D' else 'numeric')
+        if target_cls == 'S':
+            return '(%s)::text' % s
+        if target_cls == 'D' and c in ('I', 'N'):
+            return "(timestamp '1900-01-01' + (%s) * interval '1 day')" % s
+        if target_cls == 'N' and c == 'I':
+            return s
+        return s
+
+    def select_items(self, items, sc, targets=None, unify=None):
         out, cols = [], []
+        pos = 0
         for it in items:
             if it.var is not None:
                 raise Untranslatable('variable assignment inside query expression')
@@ -150,9 +206,17 @@ class QueryMixin:
             if e.k == 'star':
                 s, _ = self.E(e, sc)
                 out.append(s)
-                cols.extend(self.star_cols(e, sc))
+                sc_cols = self.star_cols(e, sc)
+                cols.extend(sc_cols)
+                pos += len(sc_cols)
+                targets = None
                 continue
             s, c = self.E(e, sc)
+            if unify and pos in unify:
+                s = self.unify_cast(e, s, c, unify[pos])
+                c = unify[pos]
+            elif targets is not None and pos < len(targets):
+                s = self.coerce_col(e, s, c, targets[pos])
             name = it.alias
             if name is None and e.k == 'col':
                 name = e.parts[-1]
@@ -160,10 +224,11 @@ class QueryMixin:
                 name = e.e.parts[-1]
             if it.alias is not None:
                 s = '%s AS %s' % (s, ident(it.alias))
-            elif name is None and e.k in ('lit', 'bin', 'func', 'case', 'cast', 'convert', 'sub') and False:
-                pass
+            elif name is not None and unify and pos in unify and e.k == 'col':
+                s = '%s AS %s' % (s, ident(name))
             out.append(s)
             cols.append((name.lower() if name else None, c))
+            pos += 1
         return out, cols
 
     def star_cols(self, e, sc):
@@ -263,31 +328,54 @@ class QueryMixin:
         if n.cols:
             names = [c for c in n.cols]
             cols_sql = ' (%s)' % ', '.join(ident(c) for c in names)
+
+        def target_cols(names, count):
+            if tab is None:
+                return None
+            if names is not None:
+                return [tab.by.get(x.lower()) for x in names]
+            return None
+
         if n.sel is not None:
-            sql, ocols = self.select_full(n.sel, Scope())
+            # figure out the column list first (identity columns are skipped when the select has one column fewer)
             if names is None and tab is not None:
+                nb0 = len(self.binds)
+                sql0, ocols = self.select_full(n.sel, Scope())
+                del self.binds[nb0:]
                 ins = [c for c in tab.cols if c.identity]
                 if ins and ocols and all(c[0] != '*' for c in ocols):
                     noni = [c for c in tab.cols if not c.identity]
                     if len(ocols) == len(noni) and len(ocols) != len(tab.cols):
                         names = [c.name for c in noni]
                         cols_sql = ' (%s)' % ', '.join(ident(c) for c in names)
+            tc = None
+            if tab is not None:
+                if names is not None:
+                    tc = [tab.by.get(x.lower()) for x in names]
+                else:
+                    tc = list(tab.cols)
+            sql, ocols = self.select_full(n.sel, Scope(), targets=tc)
             return 'INSERT INTO %s%s %s' % (pg, cols_sql, sql)
         if getattr(n, 'defaults', False):
             return 'INSERT INTO %s DEFAULT VALUES' % pg
-        rows = []
-        for row in n.rows:
-            vals = []
-            for i, e in enumerate(row):
-                s, c = self.E(e, sc)
-                vals.append(s)
-            rows.append('(%s)' % ', '.join(vals))
-        if names is None and tab is not None and rows:
+        if names is None and tab is not None and n.rows:
             ins = [c for c in tab.cols if c.identity]
             nvals = len(n.rows[0])
             if ins and nvals == len(tab.cols) - len(ins):
                 names = [c.name for c in tab.cols if not c.identity]
                 cols_sql = ' (%s)' % ', '.join(ident(c) for c in names)
+        tc = None
+        if tab is not None:
+            tc = [tab.by.get(x.lower()) for x in names] if names is not None else list(tab.cols)
+        rows = []
+        for row in n.rows:
+            vals = []
+            for i, e in enumerate(row):
+                s, c = self.E(e, sc)
+                if tc is not None and i < len(tc):
+                    s = self.coerce_col(e, s, c, tc[i])
+                vals.append(s)
+            rows.append('(%s)' % ', '.join(vals))
         return 'INSERT INTO %s%s VALUES %s' % (pg, cols_sql, ', '.join(rows))
 
     # ------------------------------------------------------------------ UPDATE / DELETE
@@ -298,11 +386,16 @@ class QueryMixin:
         tparts = n.target.parts if tkind == 'table' else None
         tname = (tparts[-1] if tparts else n.target.name).lower().lstrip('@') if True else None
         tname_full = (tparts[-1] if tparts else n.target.name).lower()
+        refs = [x for x in walk_nodes(srcs) if x.k == 'table' and x.parts[-1].lower() == tname_full]
+        single = len(refs) == 1
+        aliased = any(x.alias is not None and x.alias.lower() == tname_full for x in walk_nodes(srcs) if x.k == 'table')
 
         def matches(x):
             if x.k == 'table':
+                if x.alias is not None and x.alias.lower() == tname_full:
+                    return True
                 if x.alias is not None:
-                    return x.alias.lower() == tname_full
+                    return single and not aliased and x.parts[-1].lower() == tname_full
                 return x.parts[-1].lower() == tname_full
             if x.k == 'tvar':
                 if x.alias is not None:
@@ -415,6 +508,8 @@ class QueryMixin:
             if op != '=':
                 cur = ident(col)
                 s = '%s %s (%s)' % (cur, op[0], s)
+            elif info['tab'] is not None:
+                s = self.coerce_col(e, s, c, info['tab'].by.get(col.lower()))
             sets.append((col, s))
         where_sql = ''
         if n.where is not None:
@@ -436,6 +531,8 @@ class QueryMixin:
             sub = 'SELECT %s.ctid AS _id, %s FROM %s%s' % (ident(talias), vals, from_sql, inner_w)
             return 'UPDATE %s AS _t SET %s FROM (%s) AS _s WHERE _t.ctid = _s._id' % (
                 info['pg'], ', '.join('%s = _s._v%d' % (ident(c), i) for i, (c, _) in enumerate(sets)), sub)
+        if not alias and info['kind'] in ('temp', 'tvar'):
+            alias = tname.lstrip('#@')
         a = ' AS ' + ident(alias) if alias else ''
         return 'UPDATE %s%s SET %s%s%s' % (info['pg'], a, ', '.join('%s = %s' % (ident(c), s) for c, s in sets),
                                            (' FROM ' + from_sql) if from_sql else '', where_sql)
@@ -467,5 +564,7 @@ class QueryMixin:
             if n.where is not None:
                 inner_w = ' WHERE ' + self.Es(n.where, sc)
             return 'DELETE FROM %s WHERE ctid IN (SELECT %s.ctid FROM %s%s)' % (info['pg'], ident(talias), from_sql, inner_w)
+        if not alias and info['kind'] in ('temp', 'tvar'):
+            alias = (n.target.parts[-1] if n.target.k == 'table' else n.target.name).lstrip('#@')
         a = ' AS ' + ident(alias) if alias else ''
         return 'DELETE FROM %s%s%s%s' % (info['pg'], a, (' USING ' + from_sql) if from_sql else '', where_sql)

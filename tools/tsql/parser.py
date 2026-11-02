@@ -320,6 +320,9 @@ class Parser:
             if t.value == '*':
                 self.adv()
                 return Node('star', q=None)
+            if t.value == '.' and self.peek().kind in ('id', 'qid'):      # stray leading dot (PowerBuilder painter output)
+                self.adv()
+                return self.parse_primary()
             self.err('unexpected %r in expression' % t.value)
         if k in ('id', 'qid'):
             up = t.value.upper() if k == 'id' else None
@@ -613,6 +616,9 @@ class Parser:
             src = self.parse_join_tree()
             self.expect_op(')')
             return Node('group', src=src)
+        if t.is_op('.') and self.peek().kind in ('id', 'qid'):
+            self.adv()
+            t = self.t
         if t.kind == 'var':
             self.adv()
             alias = self.parse_alias()

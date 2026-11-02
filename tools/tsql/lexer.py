@@ -53,6 +53,10 @@ def tokenize(s, binds=False, dq_is_string=False):
         if c in ' \t\r\n\f\v\xa0﻿':
             i += 1
             continue
+        if binds and c == '/' and s.startswith('//', i):      # PowerBuilder line comment inside DataWindow SQL
+            j = s.find(chr(10), i)
+            i = n if j < 0 else j + 1
+            continue
         if c == '-' and s.startswith('--', i):
             j = s.find('\n', i)
             i = n if j < 0 else j + 1

@@ -32,7 +32,7 @@ CREATE OR REPLACE FUNCTION dbo.trg_trig_godowndetail_afterupdate_lastupdated()
 BEGIN
   IF coalesce(current_setting('tsql.trig_godowndetail_afterupdate_lastupdated', true), '') = '1' THEN RETURN NULL; END IF;
   PERFORM set_config('tsql.trig_godowndetail_afterupdate_lastupdated', '1', true);
-  UPDATE dbo.godowndetail SET lastupdated = localtimestamp(3) FROM deleted AS u, dbo.godowndetail AS g WHERE ((((u.gcode = g.gcode) AND (u.icode = g.icode)) AND (u.batch = g.batch)) AND (u.expiry = g.expiry));
+  UPDATE dbo.godowndetail AS g SET lastupdated = localtimestamp(3) FROM deleted AS u WHERE ((((u.gcode = g.gcode) AND (u.icode = g.icode)) AND (u.batch = g.batch)) AND (u.expiry = g.expiry));
   PERFORM set_config('tsql.trig_godowndetail_afterupdate_lastupdated', '0', true);
   RETURN NULL;
 END
@@ -50,7 +50,7 @@ CREATE OR REPLACE FUNCTION dbo.trg_trig_item_afterupdate_updatelastupdate_timest
 BEGIN
   IF coalesce(current_setting('tsql.trig_item_afterupdate_updatelastupdate_timestamp', true), '') = '1' THEN RETURN NULL; END IF;
   PERFORM set_config('tsql.trig_item_afterupdate_updatelastupdate_timestamp', '1', true);
-  UPDATE dbo.item SET lastupdate = localtimestamp(3) FROM deleted AS u, dbo.item AS i WHERE (u.icode = i.icode);
+  UPDATE dbo.item AS i SET lastupdate = localtimestamp(3) FROM deleted AS u WHERE (u.icode = i.icode);
   PERFORM set_config('tsql.trig_item_afterupdate_updatelastupdate_timestamp', '0', true);
   RETURN NULL;
 END
