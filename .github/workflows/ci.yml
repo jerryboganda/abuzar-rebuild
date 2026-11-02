@@ -81,6 +81,11 @@ jobs:
         run: node --test "web/tests/*.test.ts"
       - name: Parse every recovered routine
         run: node web/tools/parse-corpus.ts data/src/scripts
+      - name: QR codes decode with an independent decoder (OpenCV)
+        run: |
+          pip install --quiet opencv-python-headless
+          node web/tools/qr-check.ts qr-out
+          python tools/qr_verify.py qr-out
 
   desktop:
     runs-on: windows-latest
@@ -93,6 +98,8 @@ jobs:
       - name: Build the web UI (static)
         shell: bash
         run: |
+          mkdir -p web/public/data
+          python tools/build_sql_tables.py data/sql web/public/data/sql.json
           node web/tools/build-classes.ts data/src/objects data/src/scripts web/public/data/classes data/src/menu_trees
           mkdir -p web/public/data/dw && cp data/src/dw/* web/public/data/dw/ && cp data/src/names/names.json web/public/data/
           node web/tools/build-static.ts web/dist

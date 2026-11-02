@@ -210,3 +210,36 @@ test('SaveAs: csv with headings, xlsx container, html, xml', async () => {
   assert.equal(new DataView(z.buffer, z.length - 22).getUint16(10, true), 1)
   assert.equal(crc32(new TextEncoder().encode('123456789')), 0xcbf43926)
 })
+
+test('QR code: Reed-Solomon vector, capacities, format bits, symbol structure', async () => {
+  const { rsDivisor, rsRemainder, dataCodewords, formatInfo, encodeQr, qrBmp } = await import('../src/runtime/qr.ts')
+  // "HELLO WORLD" in version 1-Q (the worked example of the standard's tutorials)
+  const data = [32, 91, 11, 120, 209, 114, 220, 77, 67, 64, 236, 17, 236]
+  assert.deepEqual(rsRemainder(data, rsDivisor(13)), [168, 72, 22, 82, 217, 54, 156, 0, 46, 15, 180, 122, 16])
+  assert.deepEqual(rsDivisor(7), [127, 122, 154, 164, 11, 68, 117])
+  // data capacities of the standard (codewords)
+  const cap = (v: number) => [0, 1, 2, 3].map((e) => dataCodewords(v, e as 0 | 1 | 2 | 3))
+  assert.deepEqual(cap(1), [19, 16, 13, 9])
+  assert.deepEqual(cap(2), [34, 28, 22, 16])
+  assert.deepEqual(cap(5), [108, 86, 62, 46])
+  assert.deepEqual(cap(10), [274, 216, 154, 122])
+  assert.deepEqual(cap(40), [2956, 2334, 1666, 1276])
+  assert.equal(formatInfo(0, 0), 0x77c4) // level L, mask 0
+  assert.equal(formatInfo(1, 0), 0x5412) // level M, mask 0
+  const q = encodeQr('https://example.com/invoice/12345', 1)!
+  assert.equal(q.size, q.version * 4 + 17)
+  assert.ok(q.version >= 2 && q.version <= 4)
+  // finder patterns in three corners, timing pattern alternates
+  for (const [ox, oy] of [[0, 0], [q.size - 7, 0], [0, q.size - 7]]) {
+    assert.equal(q.modules[oy][ox], true)
+    assert.equal(q.modules[oy + 3][ox + 3], true)
+    assert.equal(q.modules[oy + 1][ox + 1], false)
+  }
+  assert.equal(q.modules[6][8], true)
+  assert.equal(q.modules[6][9], false)
+  assert.equal(q.modules[q.size - 8][8], true) // the dark module
+  const bmp = qrBmp(q, 4, 3)
+  assert.equal(bmp[0], 0x42)
+  assert.equal(new DataView(bmp.buffer).getInt32(18, true), (q.size + 8) * 3)
+  assert.equal(encodeQr('x'.repeat(3000), 0), null)
+})

@@ -1,6 +1,8 @@
 // File functions (fileopen, filewrite, filedelete ...), colour / sound / process helpers and the TSC label-printer DLL functions.
 // Files live on the machine of the server (the desktop shell runs it locally); every call goes through /api/fs.
 import { authHeaders } from './apiauth.ts'
+import { encodeQr, qrBmp } from './qr.ts'
+import type { Ecl } from './qr.ts'
 import type { Runtime } from './interp.ts'
 import { Ref } from './interp.ts'
 import { toNum, toStr, PBArray } from './values.ts'
@@ -28,6 +30,12 @@ const b64 = (u: Uint8Array): string => {
 }
 const unb64 = (s: string): Uint8Array => Uint8Array.from(atob(s), (c) => c.charCodeAt(0))
 
+/** reads a file through the server's file endpoint; null when it does not exist */
+export async function readFileBytes(path: string): Promise<Uint8Array | null> {
+  const r = await api<{ exists?: boolean; data?: string }>('/api/fs/read', { path })
+  return r.exists ? unb64(r.data || '') : null
+}
+
 /** writes a file through the server's file endpoint (SaveAs of a DataWindow) */
 export async function writeFileBytes(path: string, data: Uint8Array): Promise<boolean> {
   const r = await api<{ ok?: boolean }>('/api/fs/write', { path, data: b64(data) })
@@ -51,6 +59,20 @@ const mode = (v: unknown) => String(v ?? '').toLowerCase()
 export function registerFileFuncs(rt: Runtime): void {
   const def = (name: string, fn: (r: Runtime, a: unknown[]) => unknown | Promise<unknown>, refs?: number[]) => rt.sys.set(name, refs ? { fn: (r, a) => fn(r, a), refs } : { fn: (r, a) => fn(r, a) })
 
+  /** QRCodeGenLibrary.dll: createbmpfile(file, text, errCorLvl, borderSize, scale) -> 0, or 1 file / 2 text / 3 level / 4 border / 5 scale */
+  def('createbmpfile', async (_r, a) => {
+    const text = toStr(a[1])
+    const ecl = toNum(a[2])
+    const border = toNum(a[3])
+    const scale = toNum(a[4])
+    if (!text) return 2
+    if (!(ecl >= 0 && ecl <= 3)) return 3
+    if (!(border >= 0 && border <= 50)) return 4
+    if (!(scale >= 1 && scale <= 50)) return 5
+    const qr = encodeQr(text, ecl as Ecl)
+    if (!qr) return 2
+    return (await writeFileBytes(toStr(a[0]), qrBmp(qr, border, scale))) ? 0 : 1
+  })
   def('fileexists', async (_r, a) => (await api<{ exists?: boolean }>('/api/fs/exists', { path: toStr(a[0]) })).exists === true)
   def('filedelete', async (_r, a) => (await api<{ ok?: boolean }>('/api/fs/delete', { path: toStr(a[0]) })).ok === true)
   def('filecopy', async (_r, a) => (await api<{ ok?: boolean }>('/api/fs/copy', { from: toStr(a[0]), to: toStr(a[1]), overwrite: a[2] === true })).ok === true)

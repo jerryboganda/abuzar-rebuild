@@ -11,6 +11,7 @@ import { formatValue } from '../runtime/sysfuncs.ts'
 import { Dec, PBDate, PBDateTime, PBTime, toStr } from '../runtime/values.ts'
 import { cssFont, draftCpi, fontSize, pbColor, toPx } from './pb.ts'
 import { code39Svg, isCode39Font } from './barcode.ts'
+import { readFileBytes } from '../runtime/sysfiles.ts'
 
 const BORDER_CSS: Record<string, string> = {
   '0': 'none',
@@ -508,11 +509,21 @@ export class DwView {
       return el
     }
     if (o.type === 'bitmap') {
+      // the file of the picture can be set at run time (the QR code of an invoice is written to qrcode.bmp before the report prints)
+      const file = (await this.prop(m, o, 'filename', row, band)) || o.filename || ''
       const img = document.createElement('img')
-      img.src = 'data/assets/' + (o.filename || '').replace(/^.*[\\/]/, '').toLowerCase()
+      img.src = 'data/assets/' + file.replace(/^.*[\\/]/, '').toLowerCase()
       img.style.width = '100%'
       img.style.height = '100%'
-      img.onerror = () => img.remove()
+      img.onerror = () => {
+        img.onerror = () => img.remove()
+        void readFileBytes(file).then((bytes) => {
+          if (!bytes) return img.remove()
+          const ext = (/\.(\w+)$/.exec(file)?.[1] ?? 'bmp').toLowerCase()
+          const mime = ext === 'jpg' ? 'image/jpeg' : ext === 'ico' ? 'image/x-icon' : `image/${ext}`
+          img.src = URL.createObjectURL(new Blob([bytes as BlobPart], { type: mime }))
+        })
+      }
       el.appendChild(img)
       return el
     }
