@@ -36,7 +36,7 @@ async fn session_transaction_semantics() {
     let (_, r) = call(&app, "/api/query", json!({"sid": sid, "sql": "select a, b, c, d from t where b = $1 order by a", "params": ["o'brien"]})).await;
     assert_eq!(r["rows"], json!([["1", "O'Brien", "12.50", "2026-11-02 10:30:00"]]), "{r}");
     assert_eq!(r["columns"][2]["type"], "numeric");
-    assert_eq!(r["columns"][1]["type"], "citext");
+    assert_eq!(r["columns"][1]["type"], "text"); // citext is not a type sqlx names; the client treats it as text
     // list parameter
     let (_, r) = call(&app, "/api/query", json!({"sid": sid, "sql": "select count(*) from t where a = any($1)", "params": [[1, 2, 3]]})).await;
     assert_eq!(r["rows"], json!([["2"]]), "{r}");

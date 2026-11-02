@@ -28,8 +28,6 @@ use tokio::sync::Mutex;
 
 pub struct Session {
     conn: PgConnection,
-    /// oid -> type name for the types sqlx does not know (citext, refcursor ...)
-    types: HashMap<u32, String>,
     autocommit: bool,
     in_tx: bool,
     last_used: Instant,
@@ -129,33 +127,13 @@ async fn open_session(State(st): State<AppState>, Json(req): Json<OpenReq>) -> R
     let mut conn = PgConnection::connect(&st.database_url).await.map_err(db_err)?;
     conn.execute("SET standard_conforming_strings = on; SET search_path TO dbo, public;").await.map_err(db_err)?;
     let sid = uuid::Uuid::new_v4().to_string();
-    let mut types = HashMap::new();
-    for row in sqlx::query_as::<_, (i64, String)>("select oid::int8, typname::text from pg_type").fetch_all(&mut conn).await.map_err(db_err)? {
-        types.insert(row.0 as u32, row.1);
-    }
-    let s = Session { conn, types, autocommit: req.autocommit, in_tx: false, last_used: Instant::now() };
+    let s = Session { conn, autocommit: req.autocommit, in_tx: false, last_used: Instant::now() };
     st.sessions.lock().await.insert(sid.clone(), Arc::new(Mutex::new(s)));
     Ok(Json(json!({ "sid": sid })))
 }
 
 async fn session(st: &AppState, sid: &str) -> Result<Arc<Mutex<Session>>, ApiError> {
     st.sessions.lock().await.get(sid).cloned().ok_or(ApiError::NoSession)
-}
-
-/// PostgreSQL type name of a result column: sqlx names the builtin types, the rest is looked up by oid
-fn type_name(types: &HashMap<u32, String>, ti: &sqlx::postgres::PgTypeInfo) -> String {
-    let n = ti.name().to_lowercase();
-    if n != "?" {
-        return n;
-    }
-    let d = format!("{ti:?}");
-    d.find("Oid(")
-        .and_then(|i| {
-            let rest = &d[i + 4..];
-            rest.find(')').and_then(|j| rest[..j].parse::<u32>().ok())
-        })
-        .and_then(|oid| types.get(&oid).cloned())
-        .unwrap_or(n)
 }
 
 /// run `f` as one statement with SQL Server statement-level atomicity
@@ -174,7 +152,7 @@ async fn run_statement(s: &mut Session, sql: String, want_rows: bool) -> Result<
             Ok(rows) => {
                 let mut cols: Vec<ColumnInfo> = Vec::new();
                 if let Some(r) = rows.first() {
-                    cols = r.columns().iter().map(|c| ColumnInfo { name: c.name().to_string(), ty: type_name(&s.types, c.type_info()) }).collect();
+                    cols = r.columns().iter().map(|c| ColumnInfo { name: c.name().to_string(), ty: c.type_info().name().to_lowercase() }).collect();
                 }
                 let mut data = Vec::with_capacity(rows.len());
                 for r in &rows {
@@ -189,6 +167,13 @@ async fn run_statement(s: &mut Session, sql: String, want_rows: bool) -> Result<
                         }
                     }
                     data.push(row);
+                }
+                // types sqlx does not name (citext, refcursor ...): a cursor is recognisable by its value, the rest is text
+                for (i, c) in cols.iter_mut().enumerate() {
+                    if c.ty == "?" {
+                        let first = data.iter().find_map(|r| if let Value::String(t) = &r[i] { Some(t.as_str()) } else { None });
+                        c.ty = if first.map_or(false, |t| t.starts_with("<unnamed portal") || t.starts_with("<portal")) { "refcursor".into() } else { "text".into() };
+                    }
                 }
                 let n = data.len() as u64;
                 Ok((cols, data, n))
