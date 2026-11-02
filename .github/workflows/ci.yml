@@ -97,3 +97,45 @@ jobs:
         with:
           name: trader-desktop-windows
           path: target/release/trader-desktop.exe
+
+  e2e:
+    # the real thing: translated schema + routines in PostgreSQL 17, the Rust server, and every DataWindow / embedded statement executed through it
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: trader
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:ci@localhost:5432/trader
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: ci
+      PGDATABASE: trader
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Load schema, functions, views, procedures, triggers
+        run: for f in db/pg/[0-9]*.sql; do PGOPTIONS="-c client_min_messages=warning" psql -q -f "$f" > /dev/null 2> "$f.err" || true; done
+      - name: Build the data tables the UI uses
+        run: |
+          python3 tools/build_sql_tables.py data/sql web/public/data/sql.json
+          mkdir -p web/public/data/dw && cp data/src/dw/* web/public/data/dw/
+      - name: Build and start the server
+        run: |
+          cargo build --release -p trader-server
+          (./target/release/trader-server > server.log 2>&1 &)
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:8787/api/health && break; sleep 1; done
+      - name: Execute every DataWindow retrieve and embedded statement
+        run: node web/tools/dw-sweep.ts web/public/data http://127.0.0.1:8787 sweep.json | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Server log (tail)
+        if: always()
+        run: tail -n 40 server.log || true

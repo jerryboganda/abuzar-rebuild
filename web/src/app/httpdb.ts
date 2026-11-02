@@ -11,8 +11,10 @@ export class HttpDb implements Db {
     const r = await fetch(this.base + path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
     const j = (await r.json()) as T & { error?: { code: string; message: string } }
     if (!r.ok || (j as { error?: unknown }).error) {
-      const e = (j as { error?: { message: string } }).error
-      throw new Error(e ? e.message : `HTTP ${r.status}`)
+      const e = (j as { error?: { message: string; code?: string } }).error
+      const err = new Error(e ? e.message : `HTTP ${r.status}`) as Error & { code?: string }
+      err.code = e?.code
+      throw err
     }
     return j
   }
