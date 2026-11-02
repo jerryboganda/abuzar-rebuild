@@ -99,3 +99,16 @@ export function draftCpi(face: string): number {
 export function fontSize(height: number): number {
   return height < 0 ? -height : Math.round((height * 72) / 96)
 }
+
+/** text with a PowerBuilder mnemonic: `&Ok` underlines the O, `&&` is a literal ampersand (Windows shows the underline because "always underline accelerators" is on) */
+export function setMnemonic(el: HTMLElement, text: string): void {
+  el.textContent = ''
+  for (const part of text.split(/(&&|&[^&])/)) {
+    if (part === '&&') el.append('&')
+    else if (part.length === 2 && part[0] === '&') {
+      const u = document.createElement('u')
+      u.textContent = part[1]
+      el.append(u)
+    } else if (part) el.append(part)
+  }
+}

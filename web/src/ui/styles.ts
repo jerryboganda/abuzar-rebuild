@@ -18,10 +18,12 @@ html, body { margin:0; height:100%; overflow:hidden; background:#ababab; font: v
 .client { position:relative; flex:1; overflow:hidden; }
 .ctl { position:absolute; }
 .ctl.hidden { display:none !important; }
-button.ctl { background:#e1e1e1; border:1px solid #adadad; padding:0 4px; border-radius:0; color:#000; }
-button.ctl:hover:not(:disabled) { background:#e5f1fb; border-color:#0078d7; }
-button.ctl:disabled { color:#838383; background:#cccccc; border-color:#bfbfbf; }
+button.ctl { background:#fdfdfd; border:1px solid #d0d0d0; border-bottom-color:#bcbcbc; padding:0 4px; border-radius:4px; color:#000; }
+button.ctl:hover:not(:disabled) { background:#f6f6f6; }
+button.ctl:active:not(:disabled) { background:#ebebeb; }
+button.ctl:disabled { color:#a0a0a0; background:#f5f5f5; border-color:#e0e0e0; }
 button.ctl.default { border:1px solid #0078d4; background:#e0eef9; }
+button.ctl.default:hover:not(:disabled) { background:#cce4f7; }
 .ctl.st { overflow:hidden; white-space:pre; }
 input.ctl, textarea.ctl, select.ctl { border:1px solid #7a7a7a; background:#fff; padding:0 2px; font:inherit; user-select:text; }
 .ctl.lowered { border:1px solid; border-color:#a0a0a0 #fff #fff #a0a0a0; box-shadow: inset 1px 1px 0 #696969; }
@@ -70,11 +72,12 @@ label.ctl { display:flex; align-items:center; gap:4px; white-space:nowrap; }
 .toolbar .tb.dis .pic { filter:grayscale(1) opacity(.55); }
 .toolbar .tb-gap { flex:0 0 2px; height:22px; margin:0 1px; border-left:1px solid #a0a0a0; border-right:1px solid #fff; }
 .status { height:17px; flex:0 0 17px; background:#f0f0f0; border:1px solid; border-color:#a0a0a0 #fff #fff #a0a0a0; margin:1px 0 0 0; padding:0 3px; line-height:15px; }
-.modal-bg { position:absolute; inset:0; background:rgba(0,0,0,.12); z-index:900; }
-.msgbox { position:absolute; background:#fff; border:1px solid #707070; box-shadow:0 4px 18px rgba(0,0,0,.4); min-width:300px; max-width:520px; z-index:2000; }
-.msgbox .body { padding:18px 18px 14px; display:flex; gap:14px; white-space:pre-wrap; user-select:text; }
-.msgbox .btns { background:#f0f0f0; padding:10px; display:flex; justify-content:flex-end; gap:8px; }
-.msgbox button { min-width:76px; height:24px; background:#e1e1e1; border:1px solid #adadad; }
-.msgbox button:focus { outline:2px solid #0078d7; outline-offset:1px; }
+.modal-bg { position:absolute; inset:0; background:transparent; z-index:900; }
+.msgbox { position:absolute; background:#fff; border:1px solid #c8c8c8; border-radius:8px; overflow:hidden; box-shadow:0 8px 24px rgba(0,0,0,.28); min-width:284px; max-width:520px; z-index:2000; }
+.msgbox .body { padding:22px 20px 20px; display:flex; align-items:center; gap:14px; white-space:pre-wrap; user-select:text; }
+.msgbox .tbar { height:25px; flex-basis:25px; font-size:12px; color:#444; }
+.msgbox .btns { background:#f0f0f0; padding:10px 12px; display:flex; justify-content:flex-end; gap:8px; }
+.msgbox button { min-width:72px; height:20px; background:#fdfdfd; border:1px solid #d0d0d0; border-bottom-color:#bcbcbc; border-radius:4px; font:inherit; }
+.msgbox button:focus { border-color:#0078d4; outline:1px solid #0078d4; outline-offset:0; }
 .mdi-client { position:relative; flex:1; background:#ababab; overflow:hidden; }
 `

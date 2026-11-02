@@ -5,7 +5,7 @@ import { PBObject } from '../runtime/object.ts'
 import { NControl, NWindow } from '../runtime/native/controls.ts'
 import { NDwBase } from '../runtime/native/dwctrl.ts'
 import { PBArray, toNum, toStr } from '../runtime/values.ts'
-import { cssFont, fontSize, pbColor, toPx } from './pb.ts'
+import { cssFont, fontSize, pbColor, toPx, setMnemonic } from './pb.ts'
 import { DwView } from './dwview.ts'
 import { printDw, printPlainText } from './print.ts'
 import { exportDw } from '../dw/export.ts'
@@ -201,10 +201,17 @@ export class DomUi implements UiHost {
       bg.style.zIndex = '1999'
       const box = document.createElement('div')
       box.className = 'msgbox'
-      const ic: Record<string, string> = { 'stopsign!': '⛔', 'exclamation!': '⚠️', 'question!': '❓', 'information!': 'ℹ️' }
-      box.innerHTML = `<div class="tbar" style="background:#fff"><div class="ttl"></div></div><div class="body"><div class="ico" style="font-size:28px"></div><div class="txt"></div></div><div class="btns"></div>`
+      // the Windows 11 pictures of a message box: blue circle with ? or i, red circle with a cross, yellow triangle
+      const circle = (fill: string, glyph: string) => `<svg width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="15" fill="${fill}"/>${glyph}</svg>`
+      const ic: Record<string, string> = {
+        'question!': circle('#0a7fd4', '<text x="16" y="23" text-anchor="middle" font-family="Segoe UI,Arial" font-weight="700" font-size="21" fill="#fff">?</text>'),
+        'information!': circle('#0a7fd4', '<text x="16" y="23" text-anchor="middle" font-family="Segoe UI,Arial" font-weight="700" font-size="21" fill="#fff">i</text>'),
+        'stopsign!': circle('#e0301e', '<path d="M10.5 10.5l11 11M21.5 10.5l-11 11" stroke="#fff" stroke-width="3" stroke-linecap="round"/>'),
+        'exclamation!': '<svg width="32" height="32" viewBox="0 0 32 32"><path d="M16 2.5L30 28H2z" fill="#f9c80e" stroke="#c9a000" stroke-width="1" stroke-linejoin="round"/><text x="16" y="25" text-anchor="middle" font-family="Segoe UI,Arial" font-weight="700" font-size="20" fill="#222">!</text></svg>',
+      }
+      box.innerHTML = `<div class="tbar" style="background:#fff"><div class="ttl"></div></div><div class="body"><div class="ico"></div><div class="txt"></div></div><div class="btns"></div>`
       ;(box.querySelector('.ttl') as HTMLElement).textContent = title
-      ;(box.querySelector('.ico') as HTMLElement).textContent = ic[icon] ?? ''
+      ;(box.querySelector('.ico') as HTMLElement).innerHTML = ic[icon] ?? ''
       ;(box.querySelector('.txt') as HTMLElement).textContent = text.replace(/\r\n/g, '\n')
       const defs: Record<string, [string, number][]> = {
         'ok!': [['OK', 1]],
@@ -486,6 +493,7 @@ export class WinView {
     const m = own ?? this.frameMenu
     if (!m || m === this.shownMenu) return
     this.shownMenu = m
+    this.shownSheet = own ? sheet : null
     this.menuSig = ''
     this.renderMenuBar(m, this.menuBar)
     this.toolSig = ''
@@ -516,6 +524,7 @@ export class WinView {
   /** the toolbar follows the state of the menu items (sheets enable / disable them while the user works) */
   private frameMenu: PBObject | null = null
   private shownMenu: PBObject | null = null
+  private shownSheet: PBObject | null = null
   private menuBar: HTMLElement | null = null
   private menuSig = ''
   private toolSig = ''
@@ -561,6 +570,23 @@ export class WinView {
         b.onclick = () => void this.ui.rt.fire(item, 'clicked')
         tool.appendChild(b)
       }
+      // every sheet's toolbar ends with the door: it closes the sheet (seen on every window of the original)
+      const sheet = this.shownSheet
+      if (items.length && sheet) {
+        const gap = document.createElement('span')
+        gap.className = 'tb-gap'
+        tool.appendChild(gap)
+        const b = document.createElement('button')
+        b.className = 'tb'
+        b.title = 'Exit this Window'
+        const pic = document.createElement('span')
+        pic.className = 'pic'
+        const spot = iconPos('exit!')
+        if (spot !== null) pic.style.backgroundPosition = `-${spot * 16}px 0`
+        b.appendChild(pic)
+        b.onclick = () => void this.ui.rt.closeWindow(sheet)
+        tool.appendChild(b)
+      }
     }
     this.menuSig = [...(this.shownMenu?.children.values() ?? [])].map((i) => `${i.props.get('visible') === false ? 0 : 1}${str(i, 'text')}`).join('|')
     refresh()
@@ -570,7 +596,11 @@ export class WinView {
 
   renderMenuBar(menu: PBObject, bar: HTMLElement): void {
     bar.replaceChildren()
-    for (const item of menu.children.values()) {
+    // the menu bar of a sheet shows its own `Item` menu right after File (measured on the original; the item array has it last, and the rights indices count it last)
+    const tops = [...menu.children.values()]
+    const own = tops.findIndex((t) => t.name === 'm_item')
+    if (own > 1) tops.splice(1, 0, ...tops.splice(own, 1))
+    for (const item of tops) {
       if (item.props.get('visible') === false) continue
       const mi = document.createElement('div')
       mi.className = 'mi'
@@ -711,7 +741,7 @@ export class WinView {
       case 'picturebutton': {
         const b = document.createElement('button')
         b.className = 'ctl' + (bool(c, 'default', false) ? ' default' : '')
-        b.textContent = caption(str(c, 'text'))
+        setMnemonic(b, str(c, 'text'))
         this.style(c, b)
         b.disabled = !bool(c, 'enabled', true)
         b.onclick = () => void rt.fire(c, 'clicked')
@@ -723,7 +753,7 @@ export class WinView {
       case 'statictext': {
         const d = document.createElement('div')
         d.className = 'ctl st'
-        d.textContent = caption(str(c, 'text')).replace(/\r\n/g, '\n')
+        setMnemonic(d, str(c, 'text').replace(/\r\n/g, '\n'))
         this.style(c, d)
         d.style.textAlign = ALIGN[num(c, 'alignment', 0)] ?? 'left'
         d.style.lineHeight = 'normal'
@@ -777,7 +807,7 @@ export class WinView {
           void rt.fire(c, 'clicked')
         }
         const sp = document.createElement('span')
-        sp.textContent = caption(str(c, 'text'))
+        setMnemonic(sp, str(c, 'text'))
         if (bool(c, 'lefttext', false)) l.append(sp, i)
         else l.append(i, sp)
         wire(i)
@@ -788,7 +818,7 @@ export class WinView {
         const f = document.createElement('fieldset')
         f.className = 'ctl'
         const lg = document.createElement('legend')
-        lg.textContent = caption(str(c, 'text'))
+        setMnemonic(lg, str(c, 'text'))
         f.appendChild(lg)
         this.style(c, f)
         el = f
@@ -921,9 +951,14 @@ export class WinView {
     el.classList.toggle('hidden', !bool(c, 'visible', true))
     const dis = !bool(c, 'enabled', true)
     if ('disabled' in el) (el as HTMLButtonElement).disabled = dis
-    const t = caption(str(c, 'text'))
-    if (c.native === 'commandbutton') el.textContent = t
-    else if (c.native === 'statictext') el.textContent = t.replace(/\r\n/g, '\n')
+    const raw = str(c, 'text')
+    const mnemonic = (target: HTMLElement, text: string) => {
+      if (target.dataset.raw === text) return
+      target.dataset.raw = text
+      setMnemonic(target, text)
+    }
+    if (c.native === 'commandbutton') mnemonic(el, raw)
+    else if (c.native === 'statictext') mnemonic(el, raw.replace(/\r\n/g, '\n'))
     else if (c.native === 'singlelineedit' || c.native === 'editmask') {
       const i = el as HTMLInputElement
       if (i.value !== str(c, 'text')) i.value = str(c, 'text')
@@ -932,7 +967,7 @@ export class WinView {
       i.checked = bool(c, 'checked', false)
       i.disabled = dis
       const sp = el.querySelector('span')
-      if (sp) sp.textContent = t
+      if (sp) mnemonic(sp as HTMLElement, raw)
     }
     const tc = c.props.get('textcolor')
     if (typeof tc === 'number') el.style.color = pbColor(tc, '#000')

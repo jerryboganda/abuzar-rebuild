@@ -9,7 +9,7 @@ import type { DwObject } from '../dw/def.ts'
 import { compileDw, evalDw, newCtx } from '../dw/expr.ts'
 import { formatValue } from '../runtime/sysfuncs.ts'
 import { Dec, PBDate, PBDateTime, PBTime, toStr } from '../runtime/values.ts'
-import { cssFont, draftCpi, fontSize, pbColor, toPx } from './pb.ts'
+import { cssFont, draftCpi, fontSize, pbColor, toPx, setMnemonic } from './pb.ts'
 import { code39Svg, isCode39Font } from './barcode.ts'
 import { readFileBytes } from '../runtime/sysfiles.ts'
 
@@ -600,7 +600,7 @@ export class DwView {
     if (o.type === 'text') {
       // the text of a label may carry an expression after ~t ("static~texpression")
       const t = await this.prop(m, o, 'text', row, band)
-      el.textContent = t.replace(/~r~n/g, '\n').replace(/&(.)/g, '$1')
+      setMnemonic(el, t.replace(/~r~n/g, '\n'))
       return el
     }
     if (o.type === 'button') {

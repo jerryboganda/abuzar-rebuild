@@ -248,8 +248,10 @@ export function registerSysFuncs(rt: Runtime): void {
   def(rt, 'getenvironment', async (_r, a) => {
     if (a[0] instanceof Ref) {
       const env = await rt.instantiate('environment')
-      env.props.set('screenwidth', 1366)
-      env.props.set('screenheight', 768)
+      // the screen the program runs on (windows lay themselves out from it: tab = 99 % of the screen width ...); 1366 x 768 without a display (tests)
+      const scr = (globalThis as { screen?: { width: number; height: number } }).screen
+      env.props.set('screenwidth', scr?.width || 1366)
+      env.props.set('screenheight', scr?.height || 768)
       env.props.set('numberofcolors', 16777216)
       env.props.set('win32', true)
       env.props.set('pbmajorrevision', 12)
