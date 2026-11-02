@@ -172,6 +172,8 @@ jobs:
       - name: Browser run of the real user interface (Chromium)
         continue-on-error: true
         run: |
+          pkill trader-server || true   # its sessions would count against the connection limit of PostgreSQL
+          sleep 2
           node web/tools/build-static.ts web/dist
           (STATIC_DIR=web/dist BIND=127.0.0.1:8788 ./target/release/trader-server > server2.log 2>&1 &)
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:8788/api/health && break; sleep 1; done

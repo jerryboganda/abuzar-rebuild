@@ -17,7 +17,7 @@ async fn main() -> anyhow::Result<()> {
     tokio::spawn(async move {
         loop {
             tokio::time::sleep(Duration::from_secs(60)).await;
-            reaper.reap(Duration::from_secs(8 * 3600)).await;
+            reaper.reap(Duration::from_secs(30 * 60), Duration::from_secs(8 * 3600)).await;
         }
     });
 

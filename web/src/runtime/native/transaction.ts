@@ -18,6 +18,9 @@ export interface SqlEntry {
   kind?: string
 }
 
+/** a transaction object that nothing refers to any more gives its server session back (PowerBuilder disconnects when the object is collected) */
+const abandoned = new FinalizationRegistry<Db>((db) => void db.close().catch(() => undefined))
+
 export class NTransaction extends PBObject implements DwTrans {
   db: Db | null = null
   cursors = new Map<string, { sql: string; params: unknown[]; rows?: unknown[][]; cols?: { name: string; type: string }[]; pos: number }>()
@@ -53,6 +56,7 @@ export class NTransaction extends PBObject implements DwTrans {
     if (this.rt.openDb) {
       try {
         this.db = await this.rt.openDb(this)
+        if (this.db) abandoned.register(this, this.db, this.db)
       } catch (e) {
         this.setError(-1, (e as Error).message)
         return null
@@ -71,6 +75,17 @@ export class NTransaction extends PBObject implements DwTrans {
     return 1
   }
 
+  /** `destroy lt_trans`: the session goes back to the server */
+  override destroy(): void {
+    const d = this.db
+    this.db = null
+    if (d) {
+      abandoned.unregister(d)
+      void d.close().catch(() => undefined)
+    }
+    super.destroy()
+  }
+
   async n_connect(): Promise<number> {
     const db = await this.ensureDb()
     if (!db) return -1
@@ -78,7 +93,10 @@ export class NTransaction extends PBObject implements DwTrans {
     return 1
   }
   async n_disconnect(): Promise<number> {
-    if (this.db) await this.db.close()
+    if (this.db) {
+      abandoned.unregister(this.db)
+      await this.db.close()
+    }
     this.db = null
     this.setOk(0)
     return 1

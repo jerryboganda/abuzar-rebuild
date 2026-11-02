@@ -32,6 +32,8 @@ pub struct Session {
     conn: PgConnection,
     autocommit: bool,
     in_tx: bool,
+    /// a statement that may have written ran since the last COMMIT / ROLLBACK
+    dirty: bool,
     last_used: Instant,
 }
 
@@ -46,13 +48,15 @@ impl AppState {
         Self { database_url: Arc::new(database_url), sessions: Arc::new(Mutex::new(HashMap::new())) }
     }
 
-    /// drop sessions that were idle for longer than `idle`
-    pub async fn reap(&self, idle: Duration) {
+    /// drop sessions that were idle: `clean` ones (nothing written since the last COMMIT / ROLLBACK) after `idle_clean`, the others after
+    /// `idle_dirty`.  A client whose session was dropped opens a new one and repeats its request (HttpDb).
+    pub async fn reap(&self, idle_clean: Duration, idle_dirty: Duration) {
         let mut map = self.sessions.lock().await;
         let mut dead = Vec::new();
         for (k, s) in map.iter() {
             if let Ok(g) = s.try_lock() {
-                if g.last_used.elapsed() > idle {
+                let limit = if g.dirty { idle_dirty } else { idle_clean };
+                if g.last_used.elapsed() > limit {
                     dead.push(k.clone());
                 }
             }
@@ -60,6 +64,31 @@ impl AppState {
         for k in dead {
             map.remove(&k);
         }
+    }
+
+    /// make room for one more session below `max` (PostgreSQL has a connection limit, windows open one session per transaction object):
+    /// the sessions idle for the longest time go first - only ones that wrote nothing, unless they are idle for half an hour
+    pub async fn make_room(&self, max: usize) -> bool {
+        let mut map = self.sessions.lock().await;
+        if map.len() < max {
+            return true;
+        }
+        let mut idle: Vec<(String, Duration)> = Vec::new();
+        for (k, s) in map.iter() {
+            if let Ok(g) = s.try_lock() {
+                let age = g.last_used.elapsed();
+                if (!g.dirty && age > Duration::from_secs(20)) || age > Duration::from_secs(1800) {
+                    idle.push((k.clone(), age));
+                }
+            }
+        }
+        idle.sort_by(|a, b| b.1.cmp(&a.1));
+        // free a few more than needed so the next opens do not evict again
+        let take = (map.len() + 1).saturating_sub(max) + 8;
+        for (k, _) in idle.into_iter().take(take) {
+            map.remove(&k);
+        }
+        map.len() < max
     }
 }
 
@@ -126,10 +155,14 @@ async fn health(State(st): State<AppState>) -> Json<Value> {
 }
 
 async fn open_session(State(st): State<AppState>, Json(req): Json<OpenReq>) -> Result<Json<Value>, ApiError> {
+    let max: usize = std::env::var("MAX_SESSIONS").ok().and_then(|v| v.parse().ok()).unwrap_or(80);
+    if !st.make_room(max).await {
+        return Err(ApiError::Bad(format!("too many open sessions ({max}); close windows or raise MAX_SESSIONS (PostgreSQL max_connections)")));
+    }
     let mut conn = PgConnection::connect(&st.database_url).await.map_err(db_err)?;
     conn.execute("SET standard_conforming_strings = on; SET search_path TO dbo, public;").await.map_err(db_err)?;
     let sid = uuid::Uuid::new_v4().to_string();
-    let s = Session { conn, autocommit: req.autocommit, in_tx: false, last_used: Instant::now() };
+    let s = Session { conn, autocommit: req.autocommit, in_tx: false, dirty: false, last_used: Instant::now() };
     st.sessions.lock().await.insert(sid.clone(), Arc::new(Mutex::new(s)));
     Ok(Json(json!({ "sid": sid })))
 }
@@ -215,6 +248,7 @@ async fn exec(State(st): State<AppState>, Json(req): Json<StmtReq>) -> Result<Js
     let sql = sqlsub::substitute(&req.sql, &req.params).map_err(|e| ApiError::Bad(e.to_string()))?;
     let sess = session(&st, &req.sid).await?;
     let mut s = sess.lock().await;
+    s.dirty = true;
     let (_, _, n) = run_statement(&mut s, sql, false).await?;
     Ok(Json(json!({ "rowcount": n })))
 }
@@ -230,6 +264,7 @@ async fn call(State(st): State<AppState>, Json(req): Json<StmtReq>) -> Result<Js
     if own_tx {
         s.conn.execute("BEGIN").await.map_err(db_err)?;
     }
+    s.dirty = true;
     let res = call_inner(&mut s, sql).await;
     if own_tx {
         let end = if res.is_ok() { "COMMIT" } else { "ROLLBACK" };
@@ -265,6 +300,7 @@ async fn end_tx(st: &AppState, sid: &str, sql: &str) -> Result<Json<Value>, ApiE
         s.conn.execute(sql).await.map_err(db_err)?;
         s.in_tx = false;
     }
+    s.dirty = false;
     Ok(Json(json!({ "ok": true })))
 }
 
