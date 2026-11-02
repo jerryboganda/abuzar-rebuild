@@ -12,6 +12,12 @@ const shots = process.argv[4] || ''
 const errors = []
 let missingFiles = 0
 let current = '(start-up)'
+// a window whose script never returns freezes the page (and with it every evaluate call): the run ends here and says where, instead of hanging until the job timeout
+const watchdog = setTimeout(() => {
+  console.log(`watchdog: the browser run was still busy after 20 minutes, last step: ${current}; ${errors.length} browser errors so far`)
+  process.exit(0)
+}, 20 * 60 * 1000)
+watchdog.unref?.()
 page.on('pageerror', (e) => errors.push({ win: current, text: String((e && e.message) || e).slice(0, 220) }))
 page.on('console', (m) => {
   if (m.type() !== 'error') return
