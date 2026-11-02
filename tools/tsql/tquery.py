@@ -140,6 +140,8 @@ class QueryMixin:
                     if not (e.k == 'col' and len(e.parts) == 1):
                         continue      # T-SQL accepts expressions that are not output columns; PostgreSQL cannot - tie-breaker dropped
                 else:
+                    if e.k == 'lit' and not str(getattr(e, 'value', getattr(e, 'v', ''))).lstrip('-').isdigit():
+                        continue      # a constant that is not an ordinal orders nothing; PostgreSQL rejects it
                     e = self.group_order_item(e, sel)
                     if e.k == 'col' and len(e.parts) == 1 and names0.count(e.parts[0].lower()) > 1:
                         items.append(str(names0.index(e.parts[0].lower()) + 1) + (' DESC' if desc else ''))
@@ -170,6 +172,10 @@ class QueryMixin:
             last = e.parts[-1].lower()
             hits = [j for j, it in enumerate(first.items)
                     if (it.alias or (it.e.parts[-1] if it.e.k == 'col' else '') or '').lower() == last]
+            if hits:
+                return hits[0] + 1
+            # T-SQL also accepts the source column name of an aliased select item (`Supplier = S.name` ... ORDER BY name)
+            hits = [j for j, it in enumerate(first.items) if it.e.k == 'col' and it.e.parts[-1].lower() == last] if len(e.parts) == 1 else []
             if hits:
                 return hits[0] + 1
         return None
