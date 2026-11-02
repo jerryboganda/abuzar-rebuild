@@ -14,6 +14,18 @@ export class MockDb implements Db {
     this.rowsPerQuery = rowsPerQuery
   }
   async query(sql: string): Promise<QueryResult> {
+    // The real login is embedded SQL, not a DataWindow retrieve. The mock
+    // server has no Users table, so answer it with the bootstrap administrator
+    // (db/pg/95_bootstrap.sql: admin / admin). Test fixture only.
+    if (/from\s+(?:dbo\.)?users\b/i.test(sql)) {
+      return {
+        columns: [
+          { name: 'usercode', type: 'int4' },
+          { name: 'password', type: 'text' },
+        ],
+        rows: [[1, 'admin']],
+      }
+    }
     const name = sql.startsWith('mock:') ? sql.slice(5) : ''
     const def = name ? ((await this.catalog.get(name)) as DwDef | undefined) : undefined
     if (!def) return { columns: [], rows: [] }

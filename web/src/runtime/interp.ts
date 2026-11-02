@@ -253,8 +253,16 @@ export class Runtime {
   }
 
   // ---------------------------------------------------------------- invoking routines
+  /** the routines started last, newest last (a debugging aid of the browser test: what ran just before a script closed a window) */
+  recent: [PBObject, Routine][] = []
+  recentNames(n = 8): string {
+    return this.recent.slice(-n).map(([o, r]) => `${o.className}.${this.routineName(o, r)}`).join(' > ')
+  }
+
   async runEntry(self: PBObject, e: RoutineEntry, args: unknown[]): Promise<unknown> {
     const r = e.r
+    this.recent.push([self, r])
+    if (this.recent.length > 24) this.recent.shift()
     const f = new Frame(self, r, e.idx)
     const refBack: { i: number; ref: Ref }[] = []
     r.params.forEach((p, i) => {
@@ -674,6 +682,8 @@ export class Runtime {
   async defaultOf(type: string): Promise<unknown> {
     if (type.endsWith('[]')) return new PBArray(type.slice(0, -2))
     if (PRIMITIVES.has(type)) return defaultValue(type)
+    // a DataWindowChild variable is usable before GetChild filled it (calls answer -1): w_purchase (opening purchase) filters one it never assigned
+    if (type === 'datawindowchild') return this.natives.get(type)?.(this, type) ?? null
     const c = await this.getClass(type)
     if (c && c.kind === 'structure') return this.newStruct(c)
     return null

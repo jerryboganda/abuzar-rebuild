@@ -702,7 +702,8 @@ export class WinView {
     s.left = toPx(num(c, 'x'), 'x') + 'px'
     s.top = toPx(num(c, 'y'), 'y') + 'px'
     s.width = toPx(num(c, 'width'), 'x') + 'px'
-    s.height = toPx(num(c, 'height'), 'y') + 'px'
+    // the height of a drop-down list box includes its list; the closed control is one line (21 px at 96 dpi in the original)
+    s.height = (c.native === 'dropdownlistbox' || c.native === 'dropdownpicturelistbox' ? 21 : toPx(num(c, 'height'), 'y')) + 'px'
     if (!bool(c, 'visible', true)) el.classList.add('hidden')
   }
 

@@ -510,7 +510,10 @@ export class DwView {
     }
     await this.ctl.rt.fire(this.ctl, 'clicked', [ev.offsetX, ev.offsetY, row, obj ? { name: obj } : null])
     if (changedRow) await this.ctl.rt.fire(this.ctl, 'rowfocuschanged', [row])
-    this.ctl.changed()
+    // An editable cell must stay in the DOM until its click handler has opened
+    // the in-cell editor. Repainting here replaces the cell first, which made
+    // the Login DataWindow impossible to type into.
+    if (!(target?.classList.contains('editable') && !changedRow)) this.ctl.changed()
   }
 
   /** evaluate an expression-carrying property of an object for a row; falls back to the static value */

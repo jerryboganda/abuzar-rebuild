@@ -99,6 +99,24 @@ if (shots && observed) {
   const leaves = lines.filter((p) => p[1] === 'item' && p[2] !== 'disabled' && p[0] !== '0' && !skipRe.test(p[3]))
   const rep = leaves.filter((p) => p[3].startsWith('&Reports'))
   const order = [...leaves.filter((p) => !p[3].startsWith('&Reports')), ...rep.filter((_, i) => i % 3 === 0)]
+  // windows that a script closes by itself (a failed check in the open event): which routines ran just before, per menu item
+  await page.evaluate(() => {
+    window.__closes = []
+    const cw = window.rt.closeWindow
+    window.rt.closeWindow = (w) => {
+      window.__closes.push(`${w.className}<-${window.rt.recentNames(6)}`)
+      return cw(w)
+    }
+    // message boxes too: the watchdog answers them before the screen is read
+    const mb = window.rt.sys.get('messagebox')
+    window.rt.sys.set('messagebox', {
+      ...mb,
+      fn: (r, a, ...x) => {
+        window.__closes.push(`BOX ${a[0]}: ${String(a[1]).slice(0, 90)}`)
+        return mb.fn(r, a, ...x)
+      },
+    })
+  })
   const t0 = Date.now()
   const rows = []
   for (const p of order) {
@@ -106,6 +124,7 @@ if (shots && observed) {
     const [id, , , path] = p
     current = path
     const name = id + '_' + path.replace(/[^A-Za-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 110)
+    await page.evaluate(() => (window.__closes.length = 0))
     const res = await page.evaluate(async (pa) => {
       try {
         return String(await Promise.race([window.__menu(pa), new Promise((r) => setTimeout(() => r('timeout'), 6000))]))
@@ -170,7 +189,9 @@ if (shots && observed) {
       const el = [...document.querySelectorAll('.pbwin')].pop()
       return `dw=${d.props.get('dataobject') || (m && m.name) || ''} visible=${d.props.get('visible')} rows=${m ? m.rowCount() : 'nomodel'} preview=${m ? m.overrides.get('datawindow.print.preview') : ''} dom=${document.querySelectorAll('.dw-preview').length}`
     })
-    rows.push(`${id}\t${res}\t${titles}\t${path}\t${boxes}\t${rep}`)
+    // closed by scripts while this item was opening
+    const closed = await page.evaluate(() => window.__closes.splice(0).join(' || '))
+    rows.push(`${id}\t${res}\t${titles}\t${path}\t${boxes}\t${rep}\t${closed}`)
     writeFileSync(`${shots}/menu-crawl.tsv`, rows.join('\n') + '\n') // kept up to date: a frozen page must not lose what was seen
     await page.evaluate(async () => {
       for (let i = 0; i < 4; i++) {

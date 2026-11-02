@@ -79,6 +79,8 @@ export class NDwBase extends PBObject {
 
   /** a script that changes visibility, position or size of the control (`dw.visible = false`, `dw.width = ...`) must see the change on the screen */
   override pbSet(name: string, value: unknown): void {
+    // the design-time `dataobject` is a declared property: a script that assigns another one must still load that definition
+    if (name.toLowerCase() === 'dataobject') return this.setNative('dataobject', value)
     super.pbSet(name, value)
     if (['visible', 'enabled', 'x', 'y', 'width', 'height'].includes(name.toLowerCase())) this.changed()
   }

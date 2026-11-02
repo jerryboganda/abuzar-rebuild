@@ -19,3 +19,6 @@ UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) IN ('checkm
 
 -- the argument windows of the reports start with today 00:00:00 (the original showed that date)
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'applyargsdate';
+
+-- the migration of the original switches the group customer category rule off (UPDATE preferences SET groupcustomercategory = 'N'); without categories assigned to the user group sales would refuse to open
+UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) IN ('groupcustomercategory', 'groupsuppcatinpurandpr');
