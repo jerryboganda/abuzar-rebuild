@@ -62,6 +62,8 @@ export class DwModel implements EvalHost {
   /** child data for drop-down DataWindows by column name */
   children = new Map<string, DwModel>()
   lastError = ''
+  /** retrieval arguments of the last retrieve by name (nested reports and expressions refer to them) */
+  args = new Map<string, unknown>()
 
   constructor(rt: Runtime, name: string, def: DwDef) {
     this.rt = rt
@@ -274,6 +276,7 @@ export class DwModel implements EvalHost {
       this.lastError = 'no transaction object'
       return -1
     }
+    argList(this.def).forEach((a, i) => this.args.set(a.name, args[i] ?? null))
     let sql: string
     let proc = false
     let params: unknown[] = []
@@ -536,6 +539,7 @@ export class DwModel implements EvalHost {
       const r = this.buf.primary[row - 1]
       return r ? r.v[i] : null
     }
+    if (this.args.has(name)) return this.args.get(name)
     const comp = this.computes.get(name)
     if (comp) {
       if (ctx.depth > 20) return null

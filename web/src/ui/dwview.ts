@@ -120,7 +120,8 @@ export class DwView {
     return this.layout(m).sy(this.bandHeight(m, band))
   }
 
-  private async paint(m: DwModel): Promise<void> {
+  /** all bands of the report as one element (header, groups, rows, summary); `sticky` keeps header / footer in view on screen */
+  async buildBody(m: DwModel, sticky: boolean, interactive: boolean): Promise<HTMLElement> {
     const L = this.layout(m)
     const sx = L.sx
     const sy = L.sy
@@ -136,10 +137,12 @@ export class DwView {
     void byBand
     if (this.bandHeight(m, 'header') > 0 || (byBand.get('header') || []).length) {
       const hdr = await mk('header', 0, 'hdr')
-      hdr.style.position = 'sticky'
-      hdr.style.top = '0'
-      hdr.style.zIndex = '2'
-      hdr.style.background = hdr.style.background || pbColor(m.def.datawindow.color, '#fff')
+      if (sticky) {
+        hdr.style.position = 'sticky'
+        hdr.style.top = '0'
+        hdr.style.zIndex = '2'
+        hdr.style.background = hdr.style.background || pbColor(m.def.datawindow.color, '#fff')
+      }
       inner.appendChild(hdr)
     }
     const levels = m.groupLevels()
@@ -152,8 +155,10 @@ export class DwView {
       el.dataset.row = String(i + 1)
       if (m.row === i + 1) el.classList.add('cur')
       if (rows[i].sel) el.classList.add('sel')
-      el.addEventListener('mousedown', (ev) => void this.rowClick(m, i + 1, ev))
-      el.addEventListener('dblclick', () => void this.ctl.rt.fire(this.ctl, 'doubleclicked', [0, 0, i + 1, null]))
+      if (interactive) {
+        el.addEventListener('mousedown', (ev) => void this.rowClick(m, i + 1, ev))
+        el.addEventListener('dblclick', () => void this.ctl.rt.fire(this.ctl, 'doubleclicked', [0, 0, i + 1, null]))
+      }
       inner.appendChild(el)
       for (const g of [...levels].reverse()) {
         if (this.groupEnds(m, i, levels, g.level)) inner.appendChild(await mk(`trailer.${g.level}`, i + 1, 'gtr'))
@@ -162,11 +167,18 @@ export class DwView {
     if (this.bandHeight(m, 'summary') > 0) inner.appendChild(await mk('summary', Math.max(1, rows.length), 'sum'))
     if (this.bandHeight(m, 'footer') > 0) {
       const f = await mk('footer', Math.max(1, rows.length), 'ftr')
-      f.style.position = 'sticky'
-      f.style.bottom = '0'
-      f.style.background = pbColor(m.def.datawindow.color, '#fff')
+      if (sticky) {
+        f.style.position = 'sticky'
+        f.style.bottom = '0'
+        f.style.background = pbColor(m.def.datawindow.color, '#fff')
+      }
       inner.appendChild(f)
     }
+    return inner
+  }
+
+  private async paint(m: DwModel): Promise<void> {
+    const inner = await this.buildBody(m, true, true)
     const scroll = this.root.scrollTop
     const left = this.root.scrollLeft
     this.root.replaceChildren(inner)
@@ -271,6 +283,19 @@ export class DwView {
       el.appendChild(img)
       return el
     }
+    if (o.type === 'report' && o.dataobject) {
+      try {
+        const body = await this.nestedReport(m, o, row, band)
+        if (body) {
+          el.style.overflow = 'visible'
+          el.style.height = 'auto'
+          el.appendChild(body)
+          return el
+        }
+      } catch (e) {
+        this.ctl.rt.noteMissing('nested:' + (e as Error).message.slice(0, 50))
+      }
+    }
     if (o.type === 'report' || o.type === 'graph' || o.type === 'ole' || o.type === 'tableblob') {
       el.classList.add('placeholder')
       el.title = `${o.type}: ${o.dataobject || ''}`
@@ -330,6 +355,27 @@ export class DwView {
       await c.n_retrieve()
     }
     return cm
+  }
+
+  /** nested report: retrieves the child DataWindow with the arguments given in the report object and renders it in full */
+  async nestedReport(m: DwModel, o: DwObject, row: number, band: string): Promise<HTMLElement | null> {
+    const rt = this.ctl.rt
+    const def = await rt.dwCatalog?.get(o.dataobject)
+    if (!def) return null
+    const child = new DwModel(rt, o.dataobject, def)
+    child.trans = m.trans
+    const args: unknown[] = []
+    const items = ((o.nest_arguments as unknown as { _items: { _items: string[] }[] } | undefined)?._items) ?? []
+    for (const it of items) {
+      const src = (it._items[0] || '').trim().replace(/^"|"$/g, '')
+      args.push(src ? await evalDw(compileDw(src), newCtx(m, row, band)) : null)
+    }
+    if (m.trans) await child.retrieve(args)
+    const { NDwBase } = await import('../runtime/native/dwctrl.ts')
+    const c = new NDwBase(rt, 'datawindow', 'datawindow')
+    c.attach(child)
+    const view = new DwView(c, document.createElement('div'))
+    return view.buildBody(child, false, false)
   }
 
   private async display(m: DwModel, o: DwObject, v: unknown): Promise<string> {
