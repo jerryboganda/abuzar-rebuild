@@ -65,7 +65,7 @@ def apply_units(conn, repo, results, failures, sources):
         for k, name, sql in split_units(path):
             cat = 'compat' if k == 'compat' else k
             rec = {'category': cat, 'name': name, 'file': fname}
-            if sql.lstrip().startswith('-- view not translated'):
+            if '-- view not translated' in sql:
                 rec['result'] = 'skipped'
                 results.append(rec)
                 continue
@@ -247,10 +247,11 @@ def prepare_statements(conn, repo, results, failures):
             msg = first_line(e)
             near = None
             try:
-                pos = int(e.diag.position) - len('PREPARE s AS ') - 1
+                raw = e.diag.statement_position or e.diag.position
+                pos = int(raw) - len('PREPARE s AS ') - 1
                 near = st['translated'][max(0, pos - 100):pos + 100]
             except Exception:
-                pass
+                near = 'pos=%r/%r' % (getattr(e.diag, 'statement_position', None), getattr(e.diag, 'position', None))
             try:
                 conn.execute('DEALLOCATE s')
             except Exception:
