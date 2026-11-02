@@ -9,7 +9,8 @@ export type Expr =
   | { k: 'global'; n: string } // ::name
   | { k: 'mem'; o: Expr; n: string }
   | { k: 'idx'; o: Expr; i: Expr[] }
-  | { k: 'call'; o: Expr | null; n: string; a: Expr[]; m?: string } // m: modifiers (post/dynamic/event)
+  | { k: 'call'; o: Expr | null; n: string; a: Expr[]; m?: string; sc?: { kind: string; n?: number; distinct?: Expr } } // m: modifiers (post/dynamic/event); sc: DataWindow aggregate scope
+  | { k: 'case'; e: Expr; w: { v: Expr[]; r: Expr }[]; d?: Expr } // DataWindow case(x when a then b ... else c)
   | { k: 'super'; n: string; a: Expr[] }
   | { k: 'un'; op: '-' | 'not'; e: Expr }
   | { k: 'bin'; op: string; l: Expr; r: Expr }

@@ -9,11 +9,13 @@ const STMT_KW = new Set([
   'exit', 'continue', 'halt', 'goto', 'call', 'destroy', 'throw',
 ])
 
-class ExprParser {
+export class ExprParser {
   p = 0
   t: Tok[]
-  constructor(t: Tok[]) {
+  dw = false // DataWindow expression dialect: `in (...)`, aggregate scopes, case()
+  constructor(t: Tok[], dw = false) {
     this.t = t
+    this.dw = dw
   }
   get cur(): Tok {
     return this.t[this.p]
@@ -65,6 +67,16 @@ class ExprParser {
     let l = this.add()
     for (;;) {
       const c = this.cur
+      if (this.dw && c.t === 'id' && c.v.toLowerCase() === 'in' && this.t[this.p + 1].v === '(') {
+        this.p += 2
+        const e: Expr[] = []
+        do {
+          e.push(this.or())
+        } while (this.eat(','))
+        this.expect(')')
+        l = { k: 'bin', op: 'in', l, r: { k: 'arr', e } }
+        continue
+      }
       if (c.t === 'op' && (c.v === '=' || c.v === '<>' || c.v === '<' || c.v === '>' || c.v === '<=' || c.v === '>=')) {
         this.p++
         l = { k: 'bin', op: c.v, l, r: this.add() }
@@ -120,6 +132,57 @@ class ExprParser {
     } while (this.eat(','))
     this.expect(')')
     return a
+  }
+
+  /** `sum(x for group 1)` style call: arguments followed by a scope clause */
+  scopedCall(name: string): Expr {
+    const a: Expr[] = []
+    let sc: { kind: string; n?: number; distinct?: Expr } | undefined
+    if (!this.eat(')')) {
+      do {
+        a.push(this.or())
+        if (this.isKw('for')) {
+          this.p++
+          const kind = this.cur.v.toLowerCase()
+          this.p++
+          sc = { kind }
+          if (kind === 'group' && this.cur.t === 'num') {
+            sc.n = Number(this.cur.v)
+            this.p++
+          }
+          if (this.isKw('distinct')) {
+            this.p++
+            sc.distinct = this.or()
+          }
+          break
+        }
+      } while (this.eat(','))
+      this.expect(')')
+    }
+    const call: Expr = { k: 'call', o: null, n: name, a }
+    if (sc) call.sc = sc
+    return call
+  }
+
+  caseExpr(): Expr {
+    const e = this.or()
+    const w: { v: Expr[]; r: Expr }[] = []
+    let d: Expr | undefined
+    for (;;) {
+      if (this.isKw('when')) {
+        this.p++
+        const v: Expr[] = [this.or()]
+        while (this.eat(',')) v.push(this.or())
+        if (!this.isKw('then')) throw new Error('then expected in case()')
+        this.p++
+        w.push({ v, r: this.or() })
+      } else if (this.isKw('else')) {
+        this.p++
+        d = this.or()
+      } else break
+    }
+    this.expect(')')
+    return { k: 'case', e, w, d }
   }
 
   mods(): string {
@@ -213,6 +276,8 @@ class ExprParser {
       }
       if (this.isOp('(')) {
         this.p++
+        if (this.dw && lc === 'case') return this.caseExpr()
+        if (this.dw) return this.scopedCall(lc)
         return { k: 'call', o: null, n: lc, a: this.args() }
       }
       return { k: 'id', n: lc }
@@ -248,6 +313,13 @@ class ExprParser {
       } else return e
     }
   }
+}
+
+export function parseDwExpr(src: string): Expr {
+  const ep = new ExprParser(lex(src), true)
+  const e = ep.or()
+  if (!ep.atEnd()) throw new Error(`trailing '${ep.cur.v}'`)
+  return e
 }
 
 export function parseExpr(src: string): Expr {

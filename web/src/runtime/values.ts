@@ -344,6 +344,7 @@ export function toStr(v: unknown): string {
 
 // ---------------------------------------------------------------------------------------------- comparison / arithmetic
 export function cmp(a: unknown, b: unknown): number {
+  if (a === null || a === undefined || b === null || b === undefined) return (a ?? null) === (b ?? null) ? 0 : a === null || a === undefined ? -1 : 1
   if (a instanceof Dec || b instanceof Dec) {
     if (typeof a === 'number' || typeof b === 'number') {
       const x = toNum(a)

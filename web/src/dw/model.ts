@@ -1,0 +1,644 @@
+// DataWindow data model: buffers, row status, retrieve / update through the database session, find / filter / sort, groups.
+import type { Runtime } from '../runtime/interp.ts'
+import { coerce, cmp, Dec, DATE_ZERO, equals, PBDate, PBDateTime, PBTime, toNum } from '../runtime/values.ts'
+import { fromWire, toWire } from '../runtime/wire.ts'
+import type { Db } from '../runtime/wire.ts'
+import { argList, colKind, num, splitExpr } from './def.ts'
+import type { DwDef, DwObject } from './def.ts'
+import { compileDw, evalDw, newCtx } from './expr.ts'
+import type { EvalCtx, EvalHost } from './expr.ts'
+
+export const NOT_MODIFIED = 0
+export const DATA_MODIFIED = 1
+export const NEW = 2
+export const NEW_MODIFIED = 3
+
+export interface DwRow {
+  v: unknown[]
+  /** values as retrieved / last updated (for the update where-clause and for resetting) */
+  orig: unknown[] | null
+  st: number
+  /** columns changed since retrieve / last update */
+  mod: Set<number>
+  sel: boolean
+}
+
+export class DwBuffers {
+  primary: DwRow[] = []
+  filtered: DwRow[] = []
+  deleted: DwRow[] = []
+  version = 0
+}
+
+export interface DwTrans {
+  db: Db | null
+  /** error text of the last statement */
+  setError(code: number, text: string): void
+  setOk(rowcount: number): void
+}
+
+export interface SqlSource {
+  /** translated retrieve statement of a DataWindow and its argument names ($1..$n order) */
+  dw(name: string): { sql: string; params: string[]; lists?: string[] } | undefined
+}
+
+export class DwModel implements EvalHost {
+  rt: Runtime
+  def: DwDef
+  name: string
+  buf = new DwBuffers()
+  colNames: string[]
+  colIdx = new Map<string, number>()
+  kinds: ReturnType<typeof colKind>[]
+  computes = new Map<string, DwObject>()
+  overrides = new Map<string, string>() // modify(): "object.property" -> value
+  trans: DwTrans | null = null
+  row = 0 // current row (1-based, 0 = none)
+  col = 0
+  filterText = ''
+  sortText = ''
+  retrieveSqlOverride: string | null = null
+  sqlSource: SqlSource | null = null
+  /** child data for drop-down DataWindows by column name */
+  children = new Map<string, DwModel>()
+  lastError = ''
+
+  constructor(rt: Runtime, name: string, def: DwDef) {
+    this.rt = rt
+    this.def = def
+    this.name = name
+    this.colNames = def.table.columns.map((c) => c.name.toLowerCase())
+    this.colNames.forEach((n, i) => this.colIdx.set(n, i))
+    this.kinds = def.table.columns.map((c) => colKind(c.type))
+    for (const o of def.objects) if (o.type === 'compute') this.computes.set(o.name.toLowerCase(), o)
+    this.sortText = (def.table.sort as string | undefined) || ''
+    this.filterText = (def.table.filter as string | undefined) || ''
+  }
+
+  get version(): number {
+    return this.buf.version
+  }
+  touch(): void {
+    this.buf.version++
+  }
+
+  // ---------------------------------------------------------------- columns
+  /** 0-based column index of a column name / "#n" number; -1 when it is not a data column */
+  colIndex(c: string | number): number {
+    if (typeof c === 'number') return c >= 1 && c <= this.colNames.length ? c - 1 : -1
+    const s = c.toLowerCase()
+    if (s.startsWith('#')) return this.colIndex(Number(s.slice(1)))
+    const i = this.colIdx.get(s)
+    if (i !== undefined) return i
+    // dotted names: "table.column"
+    const dot = s.lastIndexOf('.')
+    return dot > 0 ? this.colIdx.get(s.slice(dot + 1)) ?? -1 : -1
+  }
+
+  hasName(name: string): boolean {
+    return this.colIdx.has(name) || this.computes.has(name)
+  }
+
+  defaultFor(i: number): unknown {
+    const col = this.def.table.columns[i]
+    const ini = col.initial
+    switch (this.kinds[i]) {
+      case 'string':
+        return ini !== undefined && ini !== '' && ini !== 'null' ? ini : null
+      case 'number':
+        return ini !== undefined && ini !== '' ? Number(ini) : null
+      case 'decimal':
+        return ini !== undefined && ini !== '' ? Dec.parse(ini) : null
+      default:
+        return null
+    }
+  }
+
+  coerceTo(i: number, v: unknown): unknown {
+    if (v === null || v === undefined) return null
+    switch (this.kinds[i]) {
+      case 'string': {
+        const s = typeof v === 'string' ? v : String(v)
+        const m = /\((\d+)\)/.exec(this.def.table.columns[i].type)
+        return m && s.length > +m[1] ? s.slice(0, +m[1]) : s
+      }
+      case 'number': {
+        const t = this.def.table.columns[i].type.toLowerCase()
+        if (t === 'long' || t === 'int' || t === 'ulong') return Math.trunc(toNum(v))
+        return toNum(v)
+      }
+      case 'decimal': {
+        const d = coerce('decimal', v) as Dec
+        const m = /decimal\((\d+)\)/i.exec(this.def.table.columns[i].type)
+        return m ? d.round(+m[1]) : d
+      }
+      case 'date':
+        if (v instanceof PBDateTime) return v.date
+        return v
+      case 'datetime':
+        if (v instanceof PBDate) return new PBDateTime(v.n, 0)
+        return v
+      default:
+        return v
+    }
+  }
+
+  // ---------------------------------------------------------------- rows
+  rowCount(): number {
+    return this.buf.primary.length
+  }
+  filteredCount(): number {
+    return this.buf.filtered.length
+  }
+  deletedCount(): number {
+    return this.buf.deleted.length
+  }
+  rowAt(row: number, buffer = 'primary'): DwRow | undefined {
+    const list = buffer === 'filter' ? this.buf.filtered : buffer === 'delete' ? this.buf.deleted : this.buf.primary
+    return list[row - 1]
+  }
+
+  newRowObject(status = NEW): DwRow {
+    const v = this.colNames.map((_, i) => this.defaultFor(i))
+    return { v, orig: null, st: status, mod: new Set(), sel: false }
+  }
+
+  insertRow(row: number): number {
+    const r = this.newRowObject()
+    const list = this.buf.primary
+    const at = row <= 0 || row > list.length ? list.length : row - 1
+    list.splice(at, 0, r)
+    this.touch()
+    this.row = at + 1
+    return at + 1
+  }
+
+  deleteRow(row: number): number {
+    const at = (row === 0 ? this.row : row) - 1
+    const r = this.buf.primary[at]
+    if (!r) return -1
+    this.buf.primary.splice(at, 1)
+    if (r.st !== NEW && r.st !== NEW_MODIFIED) this.buf.deleted.push(r)
+    this.touch()
+    if (this.row > this.buf.primary.length) this.row = this.buf.primary.length
+    return 1
+  }
+
+  reset(): void {
+    this.buf.primary = []
+    this.buf.filtered = []
+    this.buf.deleted = []
+    this.row = 0
+    this.touch()
+  }
+
+  getItem(row: number, c: string | number, buffer = 'primary'): unknown {
+    const i = this.colIndex(c)
+    const r = this.rowAt(row, buffer)
+    if (!r || i < 0) return null
+    return r.v[i]
+  }
+
+  /** value for display / expressions: data columns first, then computed fields (async) */
+  async getValue(row: number, c: string | number, buffer = 'primary'): Promise<unknown> {
+    const i = this.colIndex(c)
+    if (i >= 0) return this.getItem(row, i + 1, buffer)
+    const name = String(c).toLowerCase()
+    const comp = this.computes.get(name)
+    if (comp && buffer === 'primary') return this.evalCompute(comp, row)
+    return null
+  }
+
+  async evalCompute(comp: DwObject, row: number): Promise<unknown> {
+    const { value, expr } = splitExpr(comp.expression)
+    const src = expr ?? value
+    if (!src) return null
+    try {
+      return await evalDw(compileDw(src), newCtx(this, row, comp.band))
+    } catch (e) {
+      this.rt.noteMissing('dwexpr:' + (e as Error).message.slice(0, 60))
+      return null
+    }
+  }
+
+  setItem(row: number, c: string | number, value: unknown): number {
+    const i = this.colIndex(c)
+    const r = this.rowAt(row)
+    if (!r || i < 0) return -1
+    const v = this.coerceTo(i, value)
+    const cur = r.v[i]
+    if (cur === null || v === null ? cur !== v : !equals(cur, v)) {
+      r.v[i] = v
+      r.mod.add(i)
+      if (r.st === NOT_MODIFIED) r.st = DATA_MODIFIED
+      else if (r.st === NEW) r.st = NEW_MODIFIED
+      this.touch()
+    }
+    return 1
+  }
+
+  getStatus(row: number, c: string | number | null, buffer = 'primary'): number {
+    const r = this.rowAt(row, buffer)
+    if (!r) return -1
+    if (c === null || c === 0 || c === '') return r.st
+    const i = this.colIndex(c)
+    if (i < 0) return -1
+    if (r.st === NEW || r.st === NEW_MODIFIED) return r.mod.has(i) ? NEW_MODIFIED : NEW
+    return r.mod.has(i) ? DATA_MODIFIED : NOT_MODIFIED
+  }
+
+  setStatus(row: number, c: string | number | null, st: number, buffer = 'primary'): number {
+    const r = this.rowAt(row, buffer)
+    if (!r) return -1
+    if (c === null || c === 0 || c === '') {
+      r.st = st
+      if (st === NOT_MODIFIED) r.mod.clear()
+    } else {
+      const i = this.colIndex(c)
+      if (i < 0) return -1
+      if (st === NOT_MODIFIED) r.mod.delete(i)
+      else r.mod.add(i)
+      if (r.mod.size === 0 && r.st === DATA_MODIFIED) r.st = NOT_MODIFIED
+      else if (r.mod.size > 0 && r.st === NOT_MODIFIED) r.st = DATA_MODIFIED
+    }
+    return 1
+  }
+
+  modifiedCount(): number {
+    return this.buf.primary.filter((r) => r.st === DATA_MODIFIED || r.st === NEW_MODIFIED).length + this.buf.deleted.length
+  }
+
+  // ---------------------------------------------------------------- retrieve
+  async retrieve(args: unknown[]): Promise<number> {
+    if (!this.trans || !this.trans.db) {
+      this.lastError = 'no transaction object'
+      return -1
+    }
+    let sql: string
+    let params: unknown[] = []
+    if (this.retrieveSqlOverride) {
+      const tr = this.rt.translateSql?.(this.retrieveSqlOverride)
+      if (!tr) {
+        this.lastError = 'retrieve SQL was changed at run time and cannot be translated'
+        return -1
+      }
+      sql = tr.sql
+      params = tr.params.map((p) => args[argList(this.def).findIndex((a) => a.name === p)])
+    } else {
+      const src = this.sqlSource?.dw(this.name) ?? this.rt.dwSql?.(this.name)
+      if (!src) {
+        this.lastError = `no translated SQL for DataWindow ${this.name}`
+        this.rt.noteMissing('dwsql:' + this.name)
+        return -1
+      }
+      sql = src.sql
+      const decl = argList(this.def)
+      params = src.params.map((p) => {
+        const idx = decl.findIndex((a) => a.name === p.toLowerCase())
+        const v = idx >= 0 ? args[idx] : null
+        return toWire(v)
+      })
+    }
+    try {
+      const res = await this.trans.db.query(sql, params.map(toWire))
+      this.reset()
+      const map: number[] = this.colNames.map((_, i) => i)
+      if (res.columns.length) {
+        // result columns are in the order of the DataWindow columns; match by name when the counts differ
+        const byName = res.columns.map((c) => this.colIdx.get(c.name.toLowerCase()) ?? -1)
+        if (res.columns.length !== this.colNames.length || byName.some((x) => x < 0)) {
+          for (let k = 0; k < res.columns.length; k++) map[k] = byName[k]
+        }
+      }
+      const rows: DwRow[] = []
+      for (const raw of res.rows) {
+        const v: unknown[] = this.colNames.map(() => null)
+        for (let k = 0; k < raw.length; k++) {
+          const ci = map[k]
+          if (ci === undefined || ci < 0) continue
+          v[ci] = this.coerceTo(ci, fromWire(res.columns[k].type, raw[k]))
+        }
+        rows.push({ v, orig: v.slice(), st: NOT_MODIFIED, mod: new Set(), sel: false })
+      }
+      this.buf.primary = rows
+      this.trans.setOk(rows.length)
+      await this.applyFilterSort()
+      this.row = this.buf.primary.length ? 1 : 0
+      this.touch()
+      return this.buf.primary.length
+    } catch (e) {
+      const err = e as { code?: string; message?: string }
+      this.lastError = err.message || String(e)
+      this.trans.setError(-1, this.lastError)
+      return -1
+    }
+  }
+
+  // ---------------------------------------------------------------- update
+  keyCols(): number[] {
+    return this.def.table.columns.map((c, i) => (c.key === 'yes' ? i : -1)).filter((i) => i >= 0)
+  }
+  updatableCols(): number[] {
+    return this.def.table.columns.map((c, i) => (c.update === 'yes' ? i : -1)).filter((i) => i >= 0)
+  }
+  dbColName(i: number): string {
+    const c = this.def.table.columns[i]
+    const dbn = c.dbname || c.name
+    return dbn.slice(dbn.lastIndexOf('.') + 1).toLowerCase()
+  }
+
+  private whereFor(row: DwRow, params: unknown[]): string {
+    const mode = this.def.table.updatewhere ?? '1'
+    const cols = new Set<number>(this.keyCols())
+    if (mode === '1') for (const i of this.updatableCols()) if (this.def.table.columns[i].updatewhereclause !== 'no') cols.add(i)
+    if (mode === '2') for (const i of row.mod) if (this.def.table.columns[i].update === 'yes') cols.add(i)
+    const parts: string[] = []
+    for (const i of [...cols].sort((a, b) => a - b)) {
+      const old = (row.orig ?? row.v)[i]
+      const n = this.dbColName(i)
+      if (old === null || old === undefined) parts.push(`${quoteIdent(n)} IS NULL`)
+      else {
+        params.push(toWire(old))
+        parts.push(`${quoteIdent(n)} = $${params.length}`)
+      }
+    }
+    return parts.join(' AND ')
+  }
+
+  /** statements for all pending changes: deletes, updates, inserts (PowerBuilder order) */
+  buildUpdate(): { sql: string; params: unknown[]; expect: number }[] {
+    const table = this.def.table.update
+    if (!table) return []
+    const out: { sql: string; params: unknown[]; expect: number }[] = []
+    const t = quoteIdent(table.toLowerCase())
+    for (const r of this.buf.deleted) {
+      const params: unknown[] = []
+      out.push({ sql: `DELETE FROM ${t} WHERE ${this.whereFor(r, params)}`, params, expect: 1 })
+    }
+    for (const r of this.buf.primary) {
+      if (r.st === DATA_MODIFIED) {
+        const cols = [...r.mod].filter((i) => this.def.table.columns[i].update === 'yes').sort((a, b) => a - b)
+        if (!cols.length) continue
+        const params: unknown[] = []
+        const sets = cols.map((i) => {
+          params.push(toWire(r.v[i]))
+          return `${quoteIdent(this.dbColName(i))} = $${params.length}`
+        })
+        out.push({ sql: `UPDATE ${t} SET ${sets.join(', ')} WHERE ${this.whereFor(r, params)}`, params, expect: 1 })
+      } else if (r.st === NEW_MODIFIED) {
+        const cols = this.updatableCols().filter((i) => this.def.table.columns[i].identity !== 'yes')
+        const params: unknown[] = []
+        const names = cols.map((i) => quoteIdent(this.dbColName(i)))
+        const vals = cols.map((i) => {
+          params.push(toWire(r.v[i]))
+          return `$${params.length}`
+        })
+        out.push({ sql: `INSERT INTO ${t} (${names.join(', ')}) VALUES (${vals.join(', ')})`, params, expect: 1 })
+      }
+    }
+    return out
+  }
+
+  async update(accept = true, resetFlag = true): Promise<number> {
+    if (!this.trans || !this.trans.db) return -1
+    if (accept) await this.acceptText()
+    const stmts = this.buildUpdate()
+    try {
+      for (const s of stmts) {
+        const r = await this.trans.db.exec(s.sql, s.params)
+        if (r.rowcount !== s.expect) {
+          this.lastError = 'row changed between retrieve and update'
+          this.trans.setError(-1, this.lastError)
+          return -1
+        }
+      }
+    } catch (e) {
+      this.lastError = (e as Error).message
+      this.trans.setError(-1, this.lastError)
+      return -1
+    }
+    if (resetFlag) this.resetUpdate()
+    this.trans.setOk(stmts.length)
+    return 1
+  }
+
+  resetUpdate(): void {
+    this.buf.deleted = []
+    for (const r of this.buf.primary) {
+      r.st = NOT_MODIFIED
+      r.mod.clear()
+      r.orig = r.v.slice()
+    }
+    this.touch()
+  }
+
+  /** hook for the visual control: push the text of the cell being edited into the buffer */
+  acceptText: () => Promise<number> = async () => 1
+
+  // ---------------------------------------------------------------- find / filter / sort
+  async find(expr: string, start: number, end: number): Promise<number> {
+    const e = compileDw(expr)
+    const step = end >= start ? 1 : -1
+    const memo = new Map<string, unknown>()
+    for (let r = Math.max(1, start); step > 0 ? r <= Math.min(end, this.rowCount()) : r >= Math.max(end, 1); r += step) {
+      const ctx: EvalCtx = { host: this, row: r, band: 'detail', memo, depth: 0 }
+      const v = await evalDw(e, ctx)
+      if (v === true || (typeof v === 'number' && v !== 0)) return r
+    }
+    return 0
+  }
+
+  setFilter(text: string): number {
+    this.filterText = text
+    return 1
+  }
+  setSort(text: string): number {
+    this.sortText = text
+    return 1
+  }
+
+  async applyFilterSort(): Promise<void> {
+    await this.filter()
+    await this.sort()
+  }
+
+  async filter(): Promise<number> {
+    const all = [...this.buf.primary, ...this.buf.filtered]
+    const text = this.filterText.trim()
+    if (!text || /^(none|\?)$/i.test(text)) {
+      this.buf.primary = all
+      this.buf.filtered = []
+    } else {
+      const e = compileDw(text)
+      const keep: DwRow[] = []
+      const out: DwRow[] = []
+      // evaluate against a temporary primary buffer holding all rows
+      const savedP = this.buf.primary
+      this.buf.primary = all
+      const memo = new Map<string, unknown>()
+      for (let i = 0; i < all.length; i++) {
+        const v = await evalDw(e, { host: this, row: i + 1, band: 'detail', memo, depth: 0 })
+        ;(v === true || (typeof v === 'number' && v !== 0) ? keep : out).push(all[i])
+      }
+      void savedP
+      this.buf.primary = keep
+      this.buf.filtered = out
+    }
+    this.touch()
+    return 1
+  }
+
+  /** sort spec: "col A, col D, expression A" */
+  async sort(): Promise<number> {
+    const spec = this.sortText.trim()
+    if (!spec) return 1
+    const keys = spec.split(',').map((s) => {
+      const m = /^(.*?)(?:\s+([AD]))?\s*$/i.exec(s.trim())!
+      return { expr: compileDw(m[1].trim()), desc: (m[2] || 'A').toUpperCase() === 'D' }
+    })
+    const rows = this.buf.primary
+    const keyed: { r: DwRow; k: unknown[] }[] = []
+    const savedP = this.buf.primary
+    for (let i = 0; i < rows.length; i++) {
+      const k: unknown[] = []
+      for (const key of keys) k.push(await evalDw(key.expr, { host: this, row: i + 1, band: 'detail', memo: new Map(), depth: 0 }))
+      keyed.push({ r: rows[i], k })
+    }
+    void savedP
+    // stable sort; null sorts first (as in PowerBuilder)
+    keyed.sort((a, b) => {
+      for (let j = 0; j < keys.length; j++) {
+        const x = a.k[j]
+        const y = b.k[j]
+        let c = x === null ? (y === null ? 0 : -1) : y === null ? 1 : cmp(x, y)
+        if (keys[j].desc) c = -c
+        if (c !== 0) return c
+      }
+      return 0
+    })
+    this.buf.primary = keyed.map((x) => x.r)
+    this.touch()
+    return 1
+  }
+
+  // ---------------------------------------------------------------- EvalHost
+  async colValue(name: string, ctx: EvalCtx, rel = 0): Promise<unknown> {
+    const row = ctx.row + rel
+    const i = this.colIdx.get(name)
+    if (i !== undefined) {
+      const r = this.buf.primary[row - 1]
+      return r ? r.v[i] : null
+    }
+    const comp = this.computes.get(name)
+    if (comp) {
+      if (ctx.depth > 20) return null
+      const { value, expr } = splitExpr(comp.expression)
+      const src = expr ?? value
+      if (!src) return null
+      return evalDw(compileDw(src), { ...ctx, row, band: comp.band, depth: ctx.depth + 1 })
+    }
+    this.rt.noteMissing('dwname:' + name)
+    return null
+  }
+
+  groupLevels(): { level: number; by: number[] }[] {
+    const groups = (this.def.bands.group || []) as { level: string; by: { _items: string[] } }[]
+    return groups.map((g) => ({ level: Number(g.level), by: g.by._items.map((c) => this.colIndex(c)).filter((i) => i >= 0) }))
+  }
+
+  scopeRange(ctx: EvalCtx, sc: { kind: string; n?: number } | undefined): [number, number] {
+    const n = this.rowCount()
+    let kind = sc?.kind
+    let level = sc?.n ?? 0
+    if (!kind) {
+      const m = /^(?:header|trailer)\.(\d+)$/.exec(ctx.band)
+      if (m) {
+        kind = 'group'
+        level = Number(m[1])
+      } else kind = 'all'
+    }
+    if (kind === 'group') {
+      const lv = this.groupLevels().find((g) => g.level === level) ?? this.groupLevels()[0]
+      if (!lv) return [1, n]
+      // a group spans consecutive rows with equal values of all `by` columns of levels up to this one
+      const cols = this.groupLevels().filter((g) => g.level <= lv.level).flatMap((g) => g.by)
+      const same = (a: DwRow, b: DwRow) => cols.every((i) => equals(a.v[i], b.v[i]) && (a.v[i] === null) === (b.v[i] === null))
+      const rows = this.buf.primary
+      let lo = Math.min(Math.max(ctx.row, 1), n)
+      let hi = lo
+      if (!rows[lo - 1]) return [1, n]
+      while (lo > 1 && same(rows[lo - 2], rows[lo - 1])) lo--
+      while (hi < n && same(rows[hi], rows[hi - 1])) hi++
+      return [lo, hi]
+    }
+    return [1, n]
+  }
+
+  pageInfo(): { page: number; pageCount: number } {
+    return { page: 1, pageCount: 1 }
+  }
+
+  // ---------------------------------------------------------------- misc
+  describe(prop: string): string {
+    const p = prop.toLowerCase()
+    const ov = this.overrides.get(p)
+    if (ov !== undefined) return ov
+    if (p === 'datawindow.processing') return this.def.datawindow.processing ?? '0'
+    if (p === 'datawindow.table.select') return this.def.table.retrieve ?? ''
+    if (p === 'datawindow.table.update') return this.def.table.update ?? ''
+    if (p === 'datawindow.table.sort') return this.sortText
+    if (p === 'datawindow.table.filter') return this.filterText
+    if (p === 'datawindow.units') return this.def.datawindow.units ?? '0'
+    if (p === 'datawindow.color') return this.def.datawindow.color ?? ''
+    if (p === 'datawindow.column.count') return String(this.colNames.length)
+    if (p === 'datawindow.readonly') return this.overrides.get('datawindow.readonly') ?? 'no'
+    const m = /^([^.]+)\.(.+)$/.exec(p)
+    if (m) {
+      const [, obj, attr] = m
+      if (attr === 'coltype') {
+        const i = this.colIndex(obj)
+        if (i >= 0) return this.def.table.columns[i].type
+        return '!'
+      }
+      if (attr === 'type') {
+        const o = this.def.objects.find((x) => x.name.toLowerCase() === obj)
+        return o ? o.type : '!'
+      }
+      const o = this.def.objects.find((x) => x.name.toLowerCase() === obj)
+      if (o) {
+        const v = o[attr]
+        if (v !== undefined) return splitExpr(v).value
+        if (attr === 'x' || attr === 'y' || attr === 'width' || attr === 'height') return String(num(o, attr))
+        return '?'
+      }
+      const i = this.colIndex(obj)
+      if (i >= 0 && attr === 'id') return String(i + 1)
+    }
+    return '!'
+  }
+
+  /** modify("col.prop=value col2.prop=value ...") - returns '' on success, the message on error like PowerBuilder */
+  modify(text: string): string {
+    // split on whitespace that is followed by "name.prop=" (values may be quoted and contain spaces)
+    const re = /([A-Za-z_#][\w.#\[\]]*?)\s*=\s*("(?:[^"]|~")*"|'(?:[^']|~')*'|\S+)/g
+    let m: RegExpExecArray | null
+    while ((m = re.exec(text)) !== null) {
+      let v = m[2]
+      if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) v = v.slice(1, -1)
+      const key = m[1].toLowerCase()
+      this.overrides.set(key, v)
+      if (key === 'datawindow.table.select') this.retrieveSqlOverride = v
+      else if (key === 'datawindow.table.sort') this.sortText = v
+      else if (key === 'datawindow.table.filter') this.filterText = v
+    }
+    this.touch()
+    return ''
+  }
+}
+
+function quoteIdent(n: string): string {
+  return /^[a-z_][a-z0-9_]*$/.test(n) && !RESERVED.has(n) ? n : '"' + n.replace(/"/g, '""') + '"'
+}
+const RESERVED = new Set(['user', 'order', 'group', 'limit', 'offset', 'check', 'default', 'table', 'column', 'select', 'from', 'where', 'all', 'and', 'or', 'not', 'null', 'primary', 'references', 'union', 'unique', 'using', 'when', 'then', 'case', 'end', 'in', 'is', 'like', 'on', 'as', 'to', 'for', 'with', 'both', 'cast', 'do', 'else', 'false', 'true', 'fetch', 'having', 'into', 'natural', 'only', 'some', 'trailing', 'leading'])
+
+export { DATE_ZERO, PBTime }

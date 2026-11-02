@@ -74,6 +74,10 @@ export class Runtime {
   posted: (() => Promise<void>)[] = []
   /** statement executor for embedded SQL (set by the data layer) */
   sql: ((rt: Runtime, f: Frame, st: Extract<Stmt, { k: 'sql' }>) => Promise<void>) | null = null
+  /** translated retrieve statement of a DataWindow (data/sql); set by the application shell */
+  dwSql: ((name: string) => { sql: string; params: string[] } | undefined) | null = null
+  /** run-time translation of a changed SELECT (modify datawindow.table.select) */
+  translateSql: ((text: string) => { sql: string; params: string[] } | undefined) | null = null
   missing = new Map<string, number>() // unimplemented functions / members seen at run time
   depth = 0
 
