@@ -77,7 +77,7 @@ impl AppState {
         for (k, s) in map.iter() {
             if let Ok(g) = s.try_lock() {
                 let age = g.last_used.elapsed();
-                if (!g.dirty && age > Duration::from_secs(20)) || age > Duration::from_secs(1800) {
+                if (!g.dirty && age > Duration::from_secs(2)) || age > Duration::from_secs(1800) {
                     idle.push((k.clone(), age));
                 }
             }
