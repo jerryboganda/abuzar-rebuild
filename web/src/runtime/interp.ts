@@ -54,7 +54,7 @@ export function exprText(e: Expr): string {
 }
 
 /** native methods that return a value through a `ref` argument: name -> argument positions */
-const REF_METHODS: Record<string, number[]> = { getchild: [1], getfullstate: [0], getdata: [0], getdatetime: [0], getmostrecenttransdate: [0], findrequired: [1, 2, 3] }
+const REF_METHODS: Record<string, number[]> = { getchild: [1], getfullstate: [0], getdata: [0], getitem: [1], getdatetime: [0], getmostrecenttransdate: [0], findrequired: [1, 2, 3] }
 function e0(_e: unknown, r: Routine): Routine {
   return r
 }
@@ -716,6 +716,14 @@ export class Runtime {
     if (PRIMITIVES.has(type)) return defaultValue(type)
     // a DataWindowChild variable is usable before GetChild filled it (calls answer -1): w_purchase (opening purchase) filters one it never assigned
     if (type === 'datawindowchild') return this.natives.get(type)?.(this, type) ?? null
+    // system structures of the list / tree view controls: always present, fields assigned one by one before AddItem (w_select_single_servicecategry)
+    if (type === 'listviewitem' || type === 'treeviewitem') {
+      const s = new PBStruct(type)
+      for (const k of ['pictureindex', 'selectedpictureindex', 'statepictureindex', 'overlaypictureindex', 'level']) s.f.set(k, 0)
+      for (const k of ['children', 'selected', 'expanded', 'cut', 'drophighlighted', 'bold', 'italic', 'underline', 'strikeout', 'disabled']) s.f.set(k, false)
+      s.f.set('label', '')
+      return s
+    }
     const c = await this.getClass(type)
     if (c && c.kind === 'structure') return this.newStruct(c)
     return null

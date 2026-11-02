@@ -2,6 +2,7 @@
 import { toolbarItems, iconPos } from './toolbar.ts'
 import type { Runtime, UiHost } from '../runtime/interp.ts'
 import { PBObject } from '../runtime/object.ts'
+import type { PBStruct } from '../runtime/object.ts'
 import { NControl, NWindow } from '../runtime/native/controls.ts'
 import { NDwBase } from '../runtime/native/dwctrl.ts'
 import { PBArray, toNum, toStr } from '../runtime/values.ts'
@@ -864,6 +865,42 @@ export class WinView {
         }
         wire(s)
         el = s
+        break
+      }
+      case 'listview': {
+        const d = document.createElement('div')
+        d.className = 'ctl lv'
+        this.style(c, d)
+        const fill = () => {
+          d.replaceChildren()
+          const items = (c.props.get('_lvitems') as PBStruct[] | undefined) ?? []
+          const pics = (c.props.get('_lvpics') as string[] | undefined) ?? []
+          const sel = toNum(c.props.get('_selected') ?? 0)
+          const size = Math.max(16, toNum(c.props.get('largepicturewidth') ?? 32))
+          items.forEach((it, i) => {
+            const cell = document.createElement('div')
+            cell.className = 'lvi' + (sel === i + 1 ? ' on' : '')
+            const pi = toNum(it.pbGet('pictureindex'))
+            const src = pi > 0 ? pics[pi - 1] : ''
+            const im = document.createElement('div')
+            im.className = 'lvp'
+            im.style.width = im.style.height = size + 'px'
+            if (src) im.style.backgroundImage = `url("${src}")`
+            const label = document.createElement('span')
+            label.textContent = toStr(it.pbGet('label'))
+            cell.append(im, label)
+            cell.onclick = () => {
+              c.props.set('_selected', i + 1)
+              fill()
+              void rt.fire(c, 'clicked', [i + 1])
+            }
+            d.appendChild(cell)
+          })
+        }
+        fill()
+        ;(c as NControl).listeners.add(fill)
+        wire(d)
+        el = d
         break
       }
       case 'datawindow':

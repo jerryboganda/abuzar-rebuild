@@ -261,3 +261,15 @@ test('an array addressed with two subscripts keeps every element', async () => {
 `)
   assert.equal(await call(rt, 'f_md'), 'xyz2')
 })
+
+test('a listviewitem local is a ready structure', async () => {
+  const rt = runtimeWith(`// function f_lvi (x)  ancestor: function_object
+
+// f_lvi.f_lvi() returns string
+	listviewitem l_lvi
+	l_lvi.label = "Bravo"
+	l_lvi.pictureindex = 3
+	return l_lvi.label + string(l_lvi.pictureindex)
+`)
+  assert.equal(await call(rt, 'f_lvi'), 'Bravo3')
+})

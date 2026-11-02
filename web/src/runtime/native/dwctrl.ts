@@ -79,13 +79,18 @@ export class NDwBase extends PBObject {
 
   /** itemfocuschanged is running: SelectText from its script must not raise it again */
   inItemFocus = false
-  async fireItemFocus(row: number, col: string): Promise<unknown> {
+  /** the item focus raised by InsertRow while another control owns the keyboard: SelectText in the handler must not take the keyboard over */
+  quietItemFocus = false
+  async fireItemFocus(row: number, col: string, quiet = false): Promise<unknown> {
     const prev = this.inItemFocus
+    const prevQuiet = this.quietItemFocus
     this.inItemFocus = true
+    this.quietItemFocus = quiet
     try {
       return await this.rt.fire(this, 'itemfocuschanged', [row, { name: col }])
     } finally {
       this.inItemFocus = prev
+      this.quietItemFocus = prevQuiet
     }
   }
 
@@ -263,7 +268,7 @@ export class NDwBase extends PBObject {
     // `editflag`, which `wf_validatedate` returns; ue_newform clears `ib_focusdetail` right before it so that the event does not open the item list)
     if (n > 0 && m.colNames.length) {
       if (m.col < 1) m.col = 1
-      await this.fireItemFocus(n, m.colNames[m.col - 1])
+      await this.fireItemFocus(n, m.colNames[m.col - 1], true)
     }
     return n
   }
@@ -487,6 +492,7 @@ export class NDwBase extends PBObject {
     const m = await this.m()
     if (!m || m.row < 1 || m.col < 1) return 1
     const ui = this.rt.ui as { focusDw?: (o: PBObject) => Promise<boolean>; focus?: (o: PBObject) => void } | null
+    if (this.quietItemFocus) return 1
     if (this.inItemFocus) {
       await ui?.focusDw?.(this)
       return 1

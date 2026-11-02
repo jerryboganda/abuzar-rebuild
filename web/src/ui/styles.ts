@@ -43,6 +43,10 @@ label.ctl { display:flex; align-items:center; gap:4px; white-space:nowrap; }
 .dw .o { pointer-events:auto; }
 .dw .o .dd-arrow { position:absolute; right:0; top:0; bottom:0; width:16px; background:#fdfdfd url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23303030' stroke-width='1.4'/%3E%3C/svg%3E") center/9px 6px no-repeat; border-left:1px solid #adadad; pointer-events:none; }
 .dw .o .dd-spin { position:absolute; right:0; top:0; bottom:0; width:14px; background:#fdfdfd url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 10'%3E%3Cpath d='M1 4l3-3 3 3M1 6l3 3 3-3' fill='none' stroke='%23303030' stroke-width='1.2'/%3E%3C/svg%3E") center/8px 10px no-repeat; border-left:1px solid #adadad; pointer-events:none; }
+.lv { display:flex; flex-wrap:wrap; align-content:flex-start; gap:6px; padding:4px; overflow:auto; background:#fff; border:1px solid #828790; box-sizing:border-box; }
+.lvi { width:84px; display:flex; flex-direction:column; align-items:center; text-align:center; padding:4px 2px; font-size:12px; cursor:default; }
+.lvi.on { background:#0078d7; color:#fff; }
+.lvp { background:center/contain no-repeat; margin-bottom:2px; }
 .dw .o.editable { cursor:text; }
 .dw .row.sel { background:#0078d7; }
 .dw .row.sel .o { color:#fff !important; }

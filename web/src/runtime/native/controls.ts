@@ -1,9 +1,10 @@
 // Windows and standard controls (headless behaviour; the DOM layer binds to `onProp` and the listeners).
-import { PBObject } from '../object.ts'
+import { PBObject, PBStruct } from '../object.ts'
 import type { Member } from '../object.ts'
 import type { Runtime } from '../interp.ts'
 import { PBArray, PBDateTime, toNum, toStr } from '../values.ts'
 import { Ref } from '../interp.ts'
+import { readFileBytes } from '../sysfiles.ts'
 
 /** the automation object of an OLE control whose server is not installed here (fingerprint reader, ActiveX viewers): every call fails with -1,
  *  so the window opens and the device features report an error instead of the whole window failing */
@@ -149,7 +150,47 @@ export class NControl extends PBObject {
     }
     return a
   }
+  // ---- list views (the service category chooser): items are listviewitem structures, a picture is read from the file the script just wrote
+  lvItems(): PBStruct[] {
+    let a = this.props.get('_lvitems') as PBStruct[] | undefined
+    if (!a) {
+      a = []
+      this.props.set('_lvitems', a)
+    }
+    return a
+  }
+  private async addPicture(path: unknown, key: string): Promise<number> {
+    const bytes = await readFileBytes(toStr(path))
+    if (!bytes || !bytes.length) return -1
+    const type = bytes[0] === 0x89 ? 'png' : bytes[0] === 0xff ? 'jpeg' : bytes[0] === 0x47 ? 'gif' : 'bmp'
+    let s = ''
+    for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+    let a = this.props.get(key) as string[] | undefined
+    if (!a) {
+      a = []
+      this.props.set(key, a)
+    }
+    a.push(`data:image/${type};base64,${btoa(s)}`)
+    return a.length
+  }
+  async n_addlargepicture(path: unknown): Promise<number> {
+    return this.addPicture(path, '_lvpics')
+  }
+  async n_addsmallpicture(path: unknown): Promise<number> {
+    return this.addPicture(path, '_lvsmall')
+  }
+  async n_getitem(index: unknown, ref?: unknown): Promise<number> {
+    const it = this.lvItems()[toNum(index) - 1]
+    if (!it || !(ref instanceof Ref)) return -1
+    await ref.set(it.copy())
+    return 1
+  }
   async n_additem(t: unknown): Promise<number> {
+    if (t instanceof PBStruct) {
+      this.lvItems().push(t.copy())
+      this.changed()
+      return this.lvItems().length
+    }
     this.items().a.push(toStr(t))
     this.changed()
     return this.items().a.length
@@ -174,6 +215,7 @@ export class NControl extends PBObject {
     return 1
   }
   async n_totalitems(): Promise<number> {
+    if (this.native === 'listview') return this.lvItems().length
     return this.items().a.length
   }
   async n_selectitem(i: unknown): Promise<number> {
