@@ -54,6 +54,20 @@ node web/tools/smoke-windows.ts web/public/data - report.json  # open every wind
 node --test web/tests/*.test.ts
 ```
 
+## Running it
+
+1. **Database**: PostgreSQL 17. Apply `db/pg/*.sql` in file order (`psql -f`): schema, functions, views, procedures, triggers, audit trail,
+   the seed data of the original migration chain (`90_seed.sql`, statements that no longer fit are skipped) and `95_bootstrap.sql`
+   (first administrator **admin / admin**, one group, one godown, one preferences row - change the password after the first login).
+2. **Desktop** (Windows): `trader-desktop.exe` embeds the server on `127.0.0.1:8787` and opens the application. The connection URL is the first line of
+   `trader.conf` next to the program (or the `DATABASE_URL` variable), e.g. `postgres://user:password@host:5432/trader`.
+3. **Network / browser**: `trader-server` with `DATABASE_URL`, `BIND` (default `127.0.0.1:8787`), `STATIC_DIR=web/dist` (build with
+   `node web/tools/build-static.ts web/dist`), `FS_ROOT` (the folder the file functions may use; the desktop shell allows every path) and
+   optionally `API_TOKEN` (every API call must then carry the same value in `x-api-token`; the page asks for it, or `?token=`).
+
+Developer URLs of the dev server: `?app=1` start the application, `?w=<window>` one window, `?dw=<datawindow>` a report as it prints,
+`?live=<datawindow>` the live control, `&rows=<n>` rows of the mock database, `?db=mock` force the mock database.
+
 Rust and PostgreSQL are not needed locally: `.github/workflows/ci.yml` applies the schema to PostgreSQL 17, runs the server tests against it
 and the web tests; `sql.yml` validates every translated routine and statement on PostgreSQL 17.
 
