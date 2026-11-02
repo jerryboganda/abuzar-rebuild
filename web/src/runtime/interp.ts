@@ -796,7 +796,11 @@ export class Runtime {
     if (o === null || o === undefined) throw new PBRuntimeError('Null object reference (array access)')
     if (o instanceof PBArray) {
       const i = toNum(idx[0]) - 1
-      if (idx.length > 1 || i < 0) return null
+      if (i < 0) return null
+      if (idx.length > 1) {
+        const v = o.md?.get(idx.map((x) => toNum(x)).join(','))
+        return v === undefined ? defaultValue(o.type) : v
+      }
       return i < o.a.length ? o.a[i] : defaultValue(o.type)
     }
     const m = o as Member
@@ -808,6 +812,11 @@ export class Runtime {
     if (o instanceof PBArray) {
       const i = toNum(idx[0]) - 1
       if (i < 0) throw new PBRuntimeError('Array index out of bounds')
+      while (o.a.length <= i && idx.length > 1) o.a.push(defaultValue(o.type))
+      if (idx.length > 1) {
+        ;(o.md ??= new Map()).set(idx.map((x) => toNum(x)).join(','), o.type === 'any' ? v : coerce(o.type, v))
+        return
+      }
       while (o.a.length < i) o.a.push(defaultValue(o.type))
       o.a[i] = o.type === 'any' ? v : coerce(o.type, v)
       return

@@ -1,6 +1,6 @@
 // DataWindow data model: buffers, row status, retrieve / update through the database session, find / filter / sort, groups.
 import type { Runtime } from '../runtime/interp.ts'
-import { coerce, cmp, Dec, DATE_ZERO, equals, PBDate, PBDateTime, PBTime, toNum } from '../runtime/values.ts'
+import { coerce, cmp, daysFromCivil, Dec, DATE_ZERO, equals, PBDate, PBDateTime, PBTime, toNum } from '../runtime/values.ts'
 import { fromWire, toWire } from '../runtime/wire.ts'
 import type { Db, QueryResult } from '../runtime/wire.ts'
 import { argList, colKind, num, splitExpr } from './def.ts'
@@ -151,7 +151,14 @@ export class DwModel implements EvalHost {
       case 'datetime':
       case 'time': {
         // the initial value `today` of a date / time column is the moment the row is inserted (the sale template's date shows 02/11/2026 11:46)
-        if (ini?.trim().toLowerCase() !== 'today') return null
+        const t = ini?.trim().toLowerCase()
+        if (t !== 'today') {
+          // a literal set by a script (`expiry.initial = f_stringpreferences('DefaultExpiry')` = `2030-12-12 00:00:00`)
+          const m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/.exec(ini ?? '')
+          if (!m) return null
+          const dt = new PBDateTime(daysFromCivil(+m[1], +m[2], +m[3]), (((+(m[4] ?? 0)) * 60 + +(m[5] ?? 0)) * 60 + +(m[6] ?? 0)) * 1000)
+          return this.kinds[i] === 'date' ? dt.date : this.kinds[i] === 'time' ? dt.time : dt
+        }
         const now = PBDateTime.fromJs(new Date())
         return this.kinds[i] === 'date' ? now.date : this.kinds[i] === 'time' ? now.time : now
       }

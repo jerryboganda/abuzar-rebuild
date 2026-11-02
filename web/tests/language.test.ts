@@ -247,4 +247,17 @@ test('a ref parameter returns its value to the caller', async () => {
 `,
   )
   assert.equal(await call(rt, 'f_caller'), 'hello')
+})
+
+test('an array addressed with two subscripts keeps every element', async () => {
+  const rt = runtimeWith(`// function f_md (x)  ancestor: function_object
+
+// f_md.f_md() returns string
+	string ls_a[]
+	ls_a[1, 1] = "x"
+	ls_a[1, 2] = "y"
+	ls_a[2, 1] = "z"
+	return ls_a[1, 1] + ls_a[1, 2] + ls_a[2, 1] + string(upperbound(ls_a))
+`)
+  assert.equal(await call(rt, 'f_md'), 'xyz2')
 })

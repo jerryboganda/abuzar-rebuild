@@ -220,6 +220,8 @@ export const DATE_ZERO = PBDate.ymd(1900, 1, 1)
 // ---------------------------------------------------------------------------------------------- arrays / helpers
 export class PBArray {
   a: unknown[] = []
+  /** elements addressed with more than one subscript (`colname[i, 2]`): keyed by the subscripts; `a` keeps the first dimension's bound for upperbound() */
+  md: Map<string, unknown> | null = null
   type: string
   constructor(type: string, a: unknown[] = []) {
     this.type = type
