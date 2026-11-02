@@ -88,11 +88,11 @@
 	setpointer(arrow!)
 	return 0
 
-// w_inpatientsale.wf_getmaxdate(datetime ad_date) returns integer
+// w_inpatientsale.wf_getmaxdate(ref datetime ad_date) returns integer
 	SQL Select Max ( Date ) INTO :ad_date From saleledger USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
-// w_inpatientsale.wf_locksaleinvoices(long al_sinvcode, long al_linvcode, long al_totalinvoice) returns integer
+// w_inpatientsale.wf_locksaleinvoices(long al_sinvcode, long al_linvcode, ref long al_totalinvoice) returns integer
 	integer li_count
 	SQL Select count ( *) INTO :al_totalinvoice From saleledger WITH ( UPDLOCK HOLDLOCK ) Where saleledger.saleinvcode Between :al_sinvcode AND :al_linvcode AND saleledger.Posted ='N' USING sqlca;
 	return sqlca.sqlcode
@@ -163,7 +163,7 @@
 	this.ib_itemslistopen = false
 	this.id_itemslist.hide()
 
-// w_inpatientsale.wf_genfullcode(long al_icode, string as_fullcode) returns integer
+// w_inpatientsale.wf_genfullcode(long al_icode, ref string as_fullcode) returns integer
 	integer li_retflag
 	string ls_fullcode
 	long icode
@@ -275,7 +275,7 @@
 	end if
 	return lb_rtflag
 
-// w_inpatientsale.wf_returnsaleinvoice(long al_invid, string as_errtext) returns boolean
+// w_inpatientsale.wf_returnsaleinvoice(long al_invid, ref string as_errtext) returns boolean
 	long ll_saleinvcode
 	long ll_gcode
 	long ll_icode
@@ -644,7 +644,7 @@
 		this.idc_customers.selectrow(ll_rowno, true)
 	end if
 
-// w_inpatientsale.wf_findcustcode(string as_aliasname, integer ai_custcode) returns integer
+// w_inpatientsale.wf_findcustcode(string as_aliasname, ref integer ai_custcode) returns integer
 	integer li_custcode
 	integer ll_retflag
 	string ls_itemname
@@ -661,7 +661,7 @@
 	end if
 	return ll_retflag
 
-// w_inpatientsale.wf_initmodify(integer ai_protect) returns 0
+// w_inpatientsale.wf_initmodify(ref integer ai_protect) returns 0
 	long ll_saleinvcode
 	long ll_gcode
 	long ll_icode
@@ -1118,7 +1118,7 @@
 	this.ib_printout = true
 	return ls_report
 
-// w_inpatientsale.wf_allowinvoice(long al_custcode, long al_lastinvcode) returns long
+// w_inpatientsale.wf_allowinvoice(long al_custcode, ref long al_lastinvcode) returns long
 	long ll_retcode
 	long ll_code
 	if this.ib_modify then
@@ -1136,7 +1136,7 @@
 		openwithparm(w_customerinfo, ll_custcode)
 	end if
 
-// w_inpatientsale.wf_findfullcode(string as_fullcode, long al_icode, string al_itemname) returns integer
+// w_inpatientsale.wf_findfullcode(string as_fullcode, ref long al_icode, ref string al_itemname) returns integer
 	long ll_icode
 	long ll_retflag
 	string ls_itemname
@@ -1808,7 +1808,7 @@
 	wf_grandtotal()
 	return li_retcode
 
-// w_inpatientsale.wf_populatesaledetail(long al_invid, datawindow ad_saledetail, string as_errortext, long al_errorrow) returns boolean
+// w_inpatientsale.wf_populatesaledetail(long al_invid, ref datawindow ad_saledetail, ref string as_errortext, ref long al_errorrow) returns boolean
 	long ll_detailrows
 	long ll_gcode
 	long ll_icode
@@ -2133,7 +2133,7 @@
 	end if
 	return ld_grandtotal
 
-// w_inpatientsale.wf_inititeminfo(long al_icode, long al_row, integer ai_rtcode, string as_errortext) returns boolean
+// w_inpatientsale.wf_inititeminfo(long al_icode, long al_row, ref integer ai_rtcode, ref string as_errortext) returns boolean
 	boolean retflag = true
 	double ld_rpp
 	double ld_purprice
@@ -2751,14 +2751,14 @@
 	destroy lds_saletemplatedetail
 	return li_retcode
 
-// w_inpatientsale.wf_getsalesstockinfo(long al_saleinvcode, long al_gcode, long al_icode, double ad_saleqty) returns integer
+// w_inpatientsale.wf_getsalesstockinfo(long al_saleinvcode, long al_gcode, long al_icode, ref double ad_saleqty) returns integer
 	SQL Select IsNull ( Sum ( saledetail.looseqty + saledetail.bonusqty ) , 0 ) INTO :ad_saleqty from saledetail where saledetail.saleinvcode =:al_saleinvcode and saledetail.gcode =:al_gcode and saledetail.icode =:al_icode USING this.it_transobject;
 	if isnull(ad_saleqty) then
 		ad_saleqty = 0
 	end if
 	return this.it_transobject.sqlcode
 
-// w_inpatientsale.wf_selectitembatches(long al_gcode, long al_icode, double ad_qty, double ad_bonus, datawindow ad_itemsdetail, long al_rowscount, string al_errortext) returns integer
+// w_inpatientsale.wf_selectitembatches(long al_gcode, long al_icode, double ad_qty, double ad_bonus, ref datawindow ad_itemsdetail, ref long al_rowscount, ref string al_errortext) returns integer
 	datastore lds_itemstockinfo
 	integer li_errcode
 	long ll_counter
@@ -3113,7 +3113,7 @@
 	this.id_master.setitem(1, "invtotal", this.id_footer.getitemnumber(1, "total"))
 	return 0
 
-// w_inpatientsale.wf_findadmissioncode(string as_regno, long al_admissioncode) returns long
+// w_inpatientsale.wf_findadmissioncode(string as_regno, ref long al_admissioncode) returns long
 	long ll_admissioncode
 	long ll_retflag
 	string ls_itemname

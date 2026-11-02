@@ -44,7 +44,7 @@
 	this.id_footer.object.stock.visible = ab_flag
 	this.id_footer.object.t_stock.visible = ab_flag
 
-// w_godownitem_setting.wf_genfullcode(long al_icode, string as_fullcode) returns integer
+// w_godownitem_setting.wf_genfullcode(long al_icode, ref string as_fullcode) returns integer
 	integer li_retflag
 	string ls_fullcode
 	long icode
@@ -61,7 +61,7 @@
 	end if
 	return li_retflag
 
-// w_godownitem_setting.wf_getmaxdate(datetime ad_date) returns integer
+// w_godownitem_setting.wf_getmaxdate(ref datetime ad_date) returns integer
 	SQL Select Max ( Date ) INTO :ad_date From saleledger USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
@@ -206,7 +206,7 @@
 	this.id_print.settransobject(this.it_transobject)
 	return ls_report
 
-// w_godownitem_setting.wf_returnsaleinvoice(long al_invid, string as_errtext) returns boolean
+// w_godownitem_setting.wf_returnsaleinvoice(long al_invid, ref string as_errtext) returns boolean
 	return true
 
 // w_godownitem_setting.wf_assigndatawindowobjects(string as_masterdw, string as_detaildw, string as_footerdw, string as_listdw, string as_printdw) returns 0
@@ -235,7 +235,7 @@
 	SQL Select count ( *) INTO :li_count From IssueHeader WITH ( UPDLOCK HOLDLOCK ) Where IssueHeader.Issueinvcode =:al_saleinvcode USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
-// w_godownitem_setting.wf_locksaleinvoices(long al_sinvcode, long al_linvcode, long al_totalinvoice) returns integer
+// w_godownitem_setting.wf_locksaleinvoices(long al_sinvcode, long al_linvcode, ref long al_totalinvoice) returns integer
 	integer li_count
 	SQL Select count ( *) INTO :al_totalinvoice From IssueHeader WITH ( UPDLOCK HOLDLOCK ) Where IssueHeader.Issueinvcode Between :al_sinvcode AND :al_linvcode AND IssueHeader.Posted ='N' USING sqlca;
 	return sqlca.sqlcode
@@ -436,7 +436,7 @@
 	end if
 	return this.id_list.retrieve(li_salecategory, ls_posted, ld_invdate, this.il_groupcode, this.ii_module)
 
-// w_godownitem_setting.wf_selectitembatches(long al_gcode, long al_icode, long al_qty, datawindow ad_itemsdetail, long al_rowscount, string al_errortext) returns integer
+// w_godownitem_setting.wf_selectitembatches(long al_gcode, long al_icode, long al_qty, ref datawindow ad_itemsdetail, ref long al_rowscount, ref string al_errortext) returns integer
 	datastore lds_itemstockinfo
 	long ll_counter
 	long ll_saleqty
@@ -554,7 +554,7 @@
 	ld_grandtotal = 0
 	return ld_grandtotal
 
-// w_godownitem_setting.wf_initmodify(integer ai_protect) returns 0
+// w_godownitem_setting.wf_initmodify(ref integer ai_protect) returns 0
 	long ll_code
 	long ll_gcode
 	long ll_icode
@@ -643,7 +643,7 @@
 	end if
 	return li_errcode
 
-// w_godownitem_setting.wf_findfullcode(string as_fullcode, long al_icode, string al_itemname) returns integer
+// w_godownitem_setting.wf_findfullcode(string as_fullcode, ref long al_icode, ref string al_itemname) returns integer
 	integer ll_icode
 	integer ll_retflag
 	string ls_itemname
@@ -665,7 +665,7 @@
 	end if
 	return ll_retflag
 
-// w_godownitem_setting.wf_populatesaledetail(long al_invid, datawindow ad_saledetail, string as_errortext, long al_errorrow) returns boolean
+// w_godownitem_setting.wf_populatesaledetail(long al_invid, ref datawindow ad_saledetail, ref string as_errortext, ref long al_errorrow) returns boolean
 	long ll_detailrows
 	long ll_stock
 	long ll_newstock
@@ -778,7 +778,7 @@
 	next
 	return lb_commitflag
 
-// w_godownitem_setting.wf_inititeminfo(long al_icode, long al_row, integer ai_rtcode, string as_errortext) returns boolean
+// w_godownitem_setting.wf_inititeminfo(long al_icode, long al_row, ref integer ai_rtcode, ref string as_errortext) returns boolean
 	boolean retflag = true
 	long ll_packunits
 	long ll_saleinvcode
@@ -913,7 +913,7 @@
 	end if
 	return 0
 
-// w_godownitem_setting.wf_getsalesstockinfo(long al_saleinvcode, long al_gcode, long al_icode, double ad_saleqty) returns integer
+// w_godownitem_setting.wf_getsalesstockinfo(long al_saleinvcode, long al_gcode, long al_icode, ref double ad_saleqty) returns integer
 	SQL Select IsNull ( Sum ( saledetail.looseqty ) , 0 ) INTO :ad_saleqty from saledetail where saledetail.saleinvcode =:al_saleinvcode and saledetail.gcode =:al_gcode and saledetail.icode =:al_icode USING this.it_transobject;
 	if isnull(ad_saleqty) then
 		ad_saleqty = 0

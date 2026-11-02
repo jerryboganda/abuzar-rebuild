@@ -70,7 +70,7 @@
 	rtcode = this.id_dwcontrol.retrieve(ldt_invdate)
 	return rtcode
 
-// w_patientadmission_form.wf_returnsaleinvoice(long al_invid, string as_errtext) returns boolean
+// w_patientadmission_form.wf_returnsaleinvoice(long al_invid, ref string as_errtext) returns boolean
 	long ll_saleinvcode
 	long ll_gcode
 	long ll_icode
@@ -177,7 +177,7 @@
 	end if
 	return b_flag
 
-// w_patientadmission_form.wf_getmaxdate(datetime ad_date) returns integer
+// w_patientadmission_form.wf_getmaxdate(ref datetime ad_date) returns integer
 	SQL Select Max ( Date ) INTO :ad_date From saleledger USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
@@ -190,7 +190,7 @@
 	double ld_grandtotal
 	return ld_grandtotal
 
-// w_patientadmission_form.wf_inititeminfo(long al_icode, long al_row, integer ai_rtcode, string as_errortext) returns boolean
+// w_patientadmission_form.wf_inititeminfo(long al_icode, long al_row, ref integer ai_rtcode, ref string as_errortext) returns boolean
 	boolean retflag = true
 	double ld_saleprice
 	double ld_discperc
@@ -232,7 +232,7 @@
 	end if
 	return retflag
 
-// w_patientadmission_form.wf_initmodify(integer ai_protect) returns 0
+// w_patientadmission_form.wf_initmodify(ref integer ai_protect) returns 0
 	long ll_saleinvcode
 	long ll_gcode
 	long ll_icode
@@ -257,7 +257,7 @@
 		this.tab_retrieve.tabpage_detail.enabled = true
 	end if
 
-// w_patientadmission_form.wf_lockserviceinvoices(long al_sinvcode, long al_linvcode, long al_totalinvoice) returns integer
+// w_patientadmission_form.wf_lockserviceinvoices(long al_sinvcode, long al_linvcode, ref long al_totalinvoice) returns integer
 	integer li_count
 	SQL Select count ( *) INTO :al_totalinvoice From ServiceTemplateHeader WITH ( UPDLOCK HOLDLOCK ) Where ServiceTemplateHeader.ServiceTemplatecode Between :al_sinvcode AND :al_linvcode USING sqlca;
 	return sqlca.sqlcode
@@ -861,7 +861,7 @@
 	end if
 	return ls_regno
 
-// w_patientadmission_form.wf_find_patient_regno(long al_patientcode, string as_regno) returns long
+// w_patientadmission_form.wf_find_patient_regno(long al_patientcode, ref string as_regno) returns long
 	long ll_retflag
 	char lc_active
 	ll_retflag = 0

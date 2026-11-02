@@ -83,7 +83,7 @@
 		end if
 	next
 
-// w_duesatisfy.wf_findsaleinv(long al_saleinvcode, string as_errtext) returns boolean
+// w_duesatisfy.wf_findsaleinv(long al_saleinvcode, ref string as_errtext) returns boolean
 	boolean lb_rtflag
 	integer li_code
 	integer li_countsaleinvcode
@@ -104,11 +104,11 @@
 	SQL Select count ( *) INTO :li_count From saleledger WITH ( UPDLOCK HOLDLOCK ) Where saleledger.saleinvcode =:al_saleinvcode USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
-// w_duesatisfy.wf_locksaledetailrow(long al_saleinvcode, long al_icode, integer al_gcode, string as_batch, datetime ad_expiry, char ac_due, long al_salerowid) returns integer
+// w_duesatisfy.wf_locksaledetailrow(long al_saleinvcode, long al_icode, integer al_gcode, string as_batch, datetime ad_expiry, ref char ac_due, long al_salerowid) returns integer
 	SQL SELECT SaleDetail.Due INTO :ac_due FROM SaleDetail WITH ( UPDLOCK HOLDLOCK ) WHERE SaleDetail.SaleInvCode =:al_saleinvcode AND SaleDetail.icode =:al_icode AND SaleDetail.gcode =:al_gcode AND SaleDetail.batch =:as_batch AND SaleDetail.expiry =:ad_expiry AND SaleDetail.RowId =:al_salerowid USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
-// w_duesatisfy.wf_populatesaledetail(long al_invid, datawindow ad_saledetail, string as_errortext, long al_errorrow) returns boolean
+// w_duesatisfy.wf_populatesaledetail(long al_invid, ref datawindow ad_saledetail, ref string as_errortext, ref long al_errorrow) returns boolean
 	long ll_saleinvcode
 	long ll_detailrows
 	long ll_gcode
@@ -276,7 +276,7 @@
 	end if
 	return li_errcode
 
-// w_duesatisfy.wf_selectitembatches(long al_gcode, long al_icode, double ad_qty, datawindow ad_itemsdetail, long al_rowscount, string al_errortext) returns integer
+// w_duesatisfy.wf_selectitembatches(long al_gcode, long al_icode, double ad_qty, ref datawindow ad_itemsdetail, ref long al_rowscount, ref string al_errortext) returns integer
 	datastore lds_itemstockinfo
 	long ll_counter
 	long ll_detailrowcount

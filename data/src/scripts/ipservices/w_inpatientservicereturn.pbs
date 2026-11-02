@@ -40,7 +40,7 @@
 	this.id_detail.object.discperc.visible = 0
 	return 1
 
-// w_inpatientservicereturn.wf_updatesalereturnitemsstock(long al_saleretinvcode, string as_errtext, long al_errrow) returns integer
+// w_inpatientservicereturn.wf_updatesalereturnitemsstock(long al_saleretinvcode, ref string as_errtext, ref long al_errrow) returns integer
 	long ll_detailrows
 	long ll_gcode
 	long ll_icode
@@ -244,7 +244,7 @@
 	SQL SELECT SaleLedger.headerno INTO :li_header_no FROM SaleLedger WHERE SaleLedger.Saleinvcode =:al_saleinvcode USING this.it_transobject;
 	return li_header_no
 
-// w_inpatientservicereturn.wf_findfullcode(string as_fullcode, long al_icode, string al_itemname) returns integer
+// w_inpatientservicereturn.wf_findfullcode(string as_fullcode, ref long al_icode, ref string al_itemname) returns integer
 	integer ll_icode
 	integer ll_retflag
 	string ls_itemname
@@ -266,7 +266,7 @@
 	end if
 	return ll_retflag
 
-// w_inpatientservicereturn.wf_findretailsaleinvoice(long al_saleinvcode, datetime ad_date, string as_errtext) returns integer
+// w_inpatientservicereturn.wf_findretailsaleinvoice(long al_saleinvcode, ref datetime ad_date, ref string as_errtext) returns integer
 	integer li_rtcode
 	long ll_admissioncode
 	string ls_posted
@@ -291,7 +291,7 @@
 	end if
 	return li_rtcode
 
-// w_inpatientservicereturn.wf_findunpostedsalereturns(long al_saleinvcode, string as_errtext) returns integer
+// w_inpatientservicereturn.wf_findunpostedsalereturns(long al_saleinvcode, ref string as_errtext) returns integer
 	integer li_rtcode
 	long ll_count
 	SQL SELECT count ( *) INTO :ll_count FROM servicerheader WHERE servicerheader.serviceinvcode =:al_saleinvcode AND servicerheader.posted ='N' USING this.it_transobject;
@@ -306,7 +306,7 @@
 	end if
 	return li_rtcode
 
-// w_inpatientservicereturn.wf_findwholesaleinvoice(long al_saleinvcode, datetime ad_date, string as_errtext) returns integer
+// w_inpatientservicereturn.wf_findwholesaleinvoice(long al_saleinvcode, ref datetime ad_date, ref string as_errtext) returns integer
 	integer li_rtcode
 	string ls_posted
 	long ll_admissioncode
@@ -331,7 +331,7 @@
 	end if
 	return li_rtcode
 
-// w_inpatientservicereturn.wf_genfullcode(long al_icode, string as_fullcode) returns integer
+// w_inpatientservicereturn.wf_genfullcode(long al_icode, ref string as_fullcode) returns integer
 	integer li_retflag
 	string ls_fullcode
 	long icode
@@ -367,7 +367,7 @@
 	end if
 	return ld_grandtotal
 
-// w_inpatientservicereturn.wf_inititeminfo(datawindowchild adc_itemdddw, long al_saleinvcode, long al_dsrow, long al_detaildwrow, string as_errtext) returns integer
+// w_inpatientservicereturn.wf_inititeminfo(datawindowchild adc_itemdddw, long al_saleinvcode, long al_dsrow, long al_detaildwrow, ref string as_errtext) returns integer
 	long ll_servicecode
 	long ll_gcode
 	long ll_packunits
@@ -407,7 +407,7 @@
 	end if
 	return li_errcode
 
-// w_inpatientservicereturn.wf_inititeminfo(long al_icode, long al_row, string as_errortext) returns integer
+// w_inpatientservicereturn.wf_inititeminfo(long al_icode, long al_row, ref string as_errortext) returns integer
 	double ld_saleprice
 	double ld_discperc
 	long ll_packunits
@@ -442,7 +442,7 @@
 	end if
 	return retflag
 
-// w_inpatientservicereturn.wf_inititeminfo(datawindowchild adc_itemdddw, long al_row, long al_dddwrow, string as_errtext) returns integer
+// w_inpatientservicereturn.wf_inititeminfo(ref datawindowchild adc_itemdddw, long al_row, long al_dddwrow, ref string as_errtext) returns integer
 	long ll_servicecode
 	long ll_gcode
 	long ll_packunits
@@ -509,7 +509,7 @@
 	end if
 	return li_errcode
 
-// w_inpatientservicereturn.wf_initmodify(integer ai_protect) returns 0
+// w_inpatientservicereturn.wf_initmodify(ref integer ai_protect) returns 0
 
 // w_inpatientservicereturn.wf_locksaleinvoice(long al_saleinvcode) returns integer
 	integer li_count
@@ -625,7 +625,7 @@
 	this.id_list.settransobject(this.it_transobject)
 	this.id_print.settransobject(this.it_transobject)
 
-// w_inpatientservicereturn.wf_setsaleinvinfo(long al_saleinvcode, long al_custcode) returns 0
+// w_inpatientservicereturn.wf_setsaleinvinfo(long al_saleinvcode, ref long al_custcode) returns 0
 	long ll_salecatcode
 	long ll_row
 	long ll_patientcode
@@ -725,7 +725,7 @@
 	end if
 	return ll_admissioncode
 
-// w_inpatientservicereturn.wf_getadmissioncode(string as_regno, long al_admissioncode) returns integer
+// w_inpatientservicereturn.wf_getadmissioncode(string as_regno, ref long al_admissioncode) returns integer
 	integer li_retflag
 	SQL SELECT patientadmission.admissioncode INTO :al_admissioncode FROM patient , patientadmission WHERE patient.regno =:as_regno AND patient.patientcode =patientadmission.patientcode and patientadmission.discharged ='N' USING this.it_transobject;
 	if this.it_transobject.sqlcode = 0 then
@@ -964,14 +964,14 @@
 	end if
 	return 0
 
-// w_inpatientservicereturn.wf_itemprevretqty(long al_serviceinvcode, long al_srvrowid, long al_servicecode, double ad_serviceprevqty) returns integer
+// w_inpatientservicereturn.wf_itemprevretqty(long al_serviceinvcode, long al_srvrowid, long al_servicecode, ref double ad_serviceprevqty) returns integer
 	SQL SELECT Sum ( qty ) INTO :ad_serviceprevqty FROM servicerheader , servicerdetail WHERE servicerheader.serviceinvcode =:al_serviceinvcode And servicerheader.posted ='Y' And servicerheader.servicerinvcode =servicerdetail.serviceRInvCode And servicerdetail.servicecode =:al_servicecode And servicerdetail.srvrowid =:al_srvrowid USING this.it_transobject;
 	if isnull(ad_serviceprevqty) then
 		ad_serviceprevqty = 0
 	end if
 	return this.it_transobject.sqlcode
 
-// w_inpatientservicereturn.wf_oninvoiceitemprevretqty(long al_row, long al_servicecode, long al_srvrowid, double ad_serviceprevqty) returns integer
+// w_inpatientservicereturn.wf_oninvoiceitemprevretqty(long al_row, long al_servicecode, long al_srvrowid, ref double ad_serviceprevqty) returns integer
 	long ll_counter
 	long ll_rowcount
 	long ll_servicecode

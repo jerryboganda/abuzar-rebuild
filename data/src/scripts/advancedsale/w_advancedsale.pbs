@@ -358,7 +358,7 @@
 	end if
 	return true
 
-// w_advancedsale.wf_getmaxdate(datetime ad_date) returns integer
+// w_advancedsale.wf_getmaxdate(ref datetime ad_date) returns integer
 	SQL Select Max ( Date ) INTO :ad_date From advsaleledger USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
@@ -420,7 +420,7 @@
 	this.ib_itemvalidated = true
 	return li_errcode
 
-// w_advancedsale.wf_genfullcode(long al_icode, string as_fullcode) returns integer
+// w_advancedsale.wf_genfullcode(long al_icode, ref string as_fullcode) returns integer
 	integer li_retflag
 	string ls_fullcode
 	long icode
@@ -584,7 +584,7 @@
 	end if
 	return ld_grandtotal
 
-// w_advancedsale.wf_initmodify(integer ai_protect) returns 0
+// w_advancedsale.wf_initmodify(ref integer ai_protect) returns 0
 	long ll_saleinvcode
 	long ll_gcode
 	long ll_icode
@@ -842,12 +842,12 @@
 	end if
 	return this.id_list.retrieve(li_salecategory, ls_posted, ld_invdate, ls_showrows, this.il_groupcode, this.ii_module)
 
-// w_advancedsale.wf_locksaleinvoices(long al_sinvcode, long al_linvcode, long al_totalinvoice) returns integer
+// w_advancedsale.wf_locksaleinvoices(long al_sinvcode, long al_linvcode, ref long al_totalinvoice) returns integer
 	integer li_count
 	SQL Select count ( *) INTO :al_totalinvoice From advsaleledger WITH ( UPDLOCK HOLDLOCK ) Where advsaleledger.advsaleinvcode Between :al_sinvcode AND :al_linvcode AND advsaleledger.Posted ='N' USING sqlca;
 	return sqlca.sqlcode
 
-// w_advancedsale.wf_findpatientcode(string as_regno, integer ai_patientcode) returns integer
+// w_advancedsale.wf_findpatientcode(string as_regno, ref integer ai_patientcode) returns integer
 	integer li_patientcode
 	integer ll_retflag
 	string ls_itemname
@@ -922,7 +922,7 @@
 	end if
 	return li_errcode
 
-// w_advancedsale.wf_findfullcode(string as_fullcode, long al_icode, string al_itemname) returns integer
+// w_advancedsale.wf_findfullcode(string as_fullcode, ref long al_icode, ref string al_itemname) returns integer
 	integer ll_retflag
 	long ll_icode
 	string ls_itemname
@@ -1065,7 +1065,7 @@
 	end if
 	return li_errcode
 
-// w_advancedsale.wf_returnsaleinvoice(long al_invid, string as_errortext) returns boolean
+// w_advancedsale.wf_returnsaleinvoice(long al_invid, ref string as_errortext) returns boolean
 	boolean lb_commitflag = true
 	if lb_commitflag and wf_deletesaleinvoice(al_invid) <> 0 then
 		lb_commitflag = false
@@ -1127,7 +1127,7 @@
 	end if
 	return 0
 
-// w_advancedsale.wf_findcustcode(string as_aliasname, integer ai_custcode) returns integer
+// w_advancedsale.wf_findcustcode(string as_aliasname, ref integer ai_custcode) returns integer
 	integer li_custcode
 	integer ll_retflag
 	string ls_itemname
@@ -1368,7 +1368,7 @@
 	this.id_list.settransobject(this.it_transobject)
 	this.id_print.settransobject(this.it_transobject)
 
-// w_advancedsale.wf_checkgodownstock(long al_icode, long al_row, integer ai_rtcode, string as_errortext) returns boolean
+// w_advancedsale.wf_checkgodownstock(long al_icode, long al_row, ref integer ai_rtcode, ref string as_errortext) returns boolean
 	boolean retflag = true
 	long ll_custcode
 	long ll_packunits
@@ -1855,7 +1855,7 @@
 		end if
 	end if
 
-// w_advancedsale.wf_set_godown_item_stock(long ai_gcode, long al_icode, long al_detailrow, string as_errortext) returns long
+// w_advancedsale.wf_set_godown_item_stock(long ai_gcode, long al_icode, long al_detailrow, ref string as_errortext) returns long
 	double ld_godownstock
 	boolean retflag = true
 	this.it_transobject.getitemstocktotal(ai_gcode, al_icode, ld_godownstock)
@@ -2350,7 +2350,7 @@
 	wf_grandtotal()
 	return li_retcode
 
-// w_advancedsale.wf_inititeminfo_quotation(long al_icode, long al_row, integer ai_rtcode, string as_errortext, long al_gcode) returns boolean
+// w_advancedsale.wf_inititeminfo_quotation(long al_icode, long al_row, ref integer ai_rtcode, ref string as_errortext, long al_gcode) returns boolean
 	boolean retflag = true
 	integer li_gcode
 	integer li_defaultgcode
@@ -2637,7 +2637,7 @@
 	end if
 	return retflag
 
-// w_advancedsale.wf_getitemsaleprice(long al_icode, double ad_saleprice) returns long
+// w_advancedsale.wf_getitemsaleprice(long al_icode, ref double ad_saleprice) returns long
 	long ll_retcode
 	SQL SELECT saleprice =Round ( saleprice / CASE PackUnits WHEN 0 THEN 1 ELSE PackUnits END , 2 ) INTO :ad_saleprice FROM item WHERE ICode =:al_icode USING sqlca;
 	if sqlca.sqlcode = 0 then
@@ -2671,7 +2671,7 @@
 		end if
 	end if
 
-// w_advancedsale.wf_populatesaledetail(long al_invid, datawindow ad_saledetail, string as_errortext, long al_errorrow) returns boolean
+// w_advancedsale.wf_populatesaledetail(long al_invid, ref datawindow ad_saledetail, ref string as_errortext, ref long al_errorrow) returns boolean
 	long ll_detailrows
 	long ll_gcode
 	long ll_icode
@@ -2823,7 +2823,7 @@
 		lstr_dw.dw2.sharedata(this.dw_refusedsaledetail)
 	end if
 
-// w_advancedsale.wf_get_refusedsaleinvcode(long al_saleinvcode, long al_refinvcode) returns long
+// w_advancedsale.wf_get_refusedsaleinvcode(long al_saleinvcode, ref long al_refinvcode) returns long
 	long ll_retcode = 2
 	long ll_invcode
 	setnull(al_refinvcode)
@@ -2919,7 +2919,7 @@
 	end if
 	return ll_retcode
 
-// w_advancedsale.wf_inititeminfo(long al_icode, long al_row, integer ai_rtcode, string as_errortext) returns boolean
+// w_advancedsale.wf_inititeminfo(long al_icode, long al_row, ref integer ai_rtcode, ref string as_errortext) returns boolean
 	boolean retflag = true
 	integer li_gcode
 	integer li_defaultgcode
@@ -3486,7 +3486,7 @@
 	wf_grandtotal()
 	return li_retcode
 
-// w_advancedsale.wf_allowinvoice(long al_custcode, long al_lastinvcode) returns long
+// w_advancedsale.wf_allowinvoice(long al_custcode, ref long al_lastinvcode) returns long
 	long ll_retcode
 	long ll_code
 	if this.ib_modify then
@@ -4218,7 +4218,7 @@
 	end if
 	openwithparm(w_salebalanceqty_slip, ll_invcode)
 
-// w_advancedsale.wf_quotationinuse(long al_quotationcode, long al_saleinvno) returns long
+// w_advancedsale.wf_quotationinuse(long al_quotationcode, ref long al_saleinvno) returns long
 	long ll_saleinvcode
 	ll_saleinvcode = this.id_master.object.code[this.id_master.getrow()]
 	SQL Select AdvSaleInvCode INTO :al_saleinvno From AdvSaleLedger Where QuotationNo =:al_quotationcode And AdvSaleInvCode Not In ( :ll_saleinvcode ) USING this.it_transobject;
@@ -4243,7 +4243,7 @@
 	end if
 	return this.ib_validcustomer
 
-// w_advancedsale.wf_getcustitemcatwisesalesdiscount(long al_icode, long al_custcode, double ad_discperc, double ad_itemflatdisc) returns boolean
+// w_advancedsale.wf_getcustitemcatwisesalesdiscount(long al_icode, long al_custcode, ref double ad_discperc, ref double ad_itemflatdisc) returns boolean
 	double ld_null
 	setnull(ld_null)
 	ad_discperc = ld_null
@@ -4567,7 +4567,7 @@
 	this.id_footer.object.icode[this.id_footer.getrow()] = al_icode
 	this.id_footer.object.stock[this.id_footer.getrow()] = ad_stock
 
-// w_advancedsale.wf_selectitembatches(long al_gcode, long al_icode, double ad_qty, double ad_bonus, datawindow ad_itemsdetail, long al_rowscount, string al_errortext) returns integer
+// w_advancedsale.wf_selectitembatches(long al_gcode, long al_icode, double ad_qty, double ad_bonus, ref datawindow ad_itemsdetail, ref long al_rowscount, ref string al_errortext) returns integer
 	datastore lds_itemstockinfo
 	long ll_counter
 	long ll_detailrowcount
@@ -4636,7 +4636,7 @@
 		end if
 	end if
 
-// w_advancedsale.wf_isolatebonusqty(datawindow adw_itemdetail) returns long
+// w_advancedsale.wf_isolatebonusqty(ref datawindow adw_itemdetail) returns long
 	long ll_tmpcounter
 	long ll_tmpcount
 	long ll_detailrows
@@ -4844,7 +4844,7 @@
 	wf_grandtotal()
 	return li_retcode
 
-// w_advancedsale.wf_getitemdiscounts(long al_icode, long al_custcode, double ad_salediscperc, double ad_maxsalediscperc) returns long
+// w_advancedsale.wf_getitemdiscounts(long al_icode, long al_custcode, ref double ad_salediscperc, ref double ad_maxsalediscperc) returns long
 	long ll_retcode
 	SQL SELECT SaleDiscPerc =CASE ( SELECT DefaultItemDiscPerc FROM DBO.Customer WHERE CustCode =:al_custcode ) WHEN 1 THEN SaleDiscPerc WHEN 2 THEN SaleDiscPerc2 WHEN 3 THEN SaleDiscPerc3 WHEN 4 THEN SaleDiscPerc4 WHEN 5 THEN SaleDiscPerc5 ELSE 0 END , MaxSaleDiscPerc INTO :ad_salediscperc, :ad_maxsalediscperc FROM item WHERE ICode =:al_icode USING sqlca;
 	if sqlca.sqlcode = 0 then
@@ -4858,14 +4858,14 @@
 	SQL Delete advsaledetail Where advsaledetail.AdvSaleInvCode =:al_advsaleinvcode USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
-// w_advancedsale.wf_getsalesstockinfo(long al_advsaleinvcode, long al_gcode, long al_icode, double ad_saleqty) returns integer
+// w_advancedsale.wf_getsalesstockinfo(long al_advsaleinvcode, long al_gcode, long al_icode, ref double ad_saleqty) returns integer
 	SQL Select IsNull ( Sum ( advsaledetail.looseqty + advsaledetail.bonusqty ) , 0 ) INTO :ad_saleqty from advsaledetail where advsaledetail.advsaleinvcode =:al_advsaleinvcode and advsaledetail.gcode =:al_gcode and advsaledetail.icode =:al_icode USING this.it_transobject;
 	if isnull(ad_saleqty) then
 		ad_saleqty = 0
 	end if
 	return this.it_transobject.sqlcode
 
-// w_advancedsale.wf_getassocsaleinvlisttotal(double ad_invamount) returns long
+// w_advancedsale.wf_getassocsaleinvlisttotal(ref double ad_invamount) returns long
 	long ll_counter
 	long ll_saleinvcode
 	double ld_invamount

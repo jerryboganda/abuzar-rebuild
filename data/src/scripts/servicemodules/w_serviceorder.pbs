@@ -72,7 +72,7 @@
 	this.id_footer.object.icode[this.id_footer.getrow()] = al_icode
 	this.id_footer.object.stock[this.id_footer.getrow()] = al_stock
 
-// w_serviceorder.wf_getmaxdate(datetime ad_date) returns integer
+// w_serviceorder.wf_getmaxdate(ref datetime ad_date) returns integer
 	SQL Select Max ( Date ) INTO :ad_date From saleledger USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
@@ -162,7 +162,7 @@
 	SQL update Item SET saleprice =:ad_saleprice WHERE Item.icode =:al_icode USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
-// w_serviceorder.wf_selectitembatches(long al_gcode, long al_icode, long al_qty, datawindow ad_itemsdetail, long al_rowscount, string al_errortext) returns integer
+// w_serviceorder.wf_selectitembatches(long al_gcode, long al_icode, long al_qty, ref datawindow ad_itemsdetail, ref long al_rowscount, ref string al_errortext) returns integer
 	datastore lds_itemstockinfo
 	long ll_counter
 	long ll_saleqty
@@ -444,7 +444,7 @@
 	SQL Delete Servicedetail Where Servicedetail.ServiceInvCode =:al_serviceinvcode USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
-// w_serviceorder.wf_locksaleinvoices(long al_sinvcode, long al_linvcode, long al_totalinvoice) returns integer
+// w_serviceorder.wf_locksaleinvoices(long al_sinvcode, long al_linvcode, ref long al_totalinvoice) returns integer
 	integer li_count
 	SQL Select count ( *) INTO :al_totalinvoice From saleledger WITH ( UPDLOCK HOLDLOCK ) Where saleledger.saleinvcode Between :al_sinvcode AND :al_linvcode AND saleledger.Posted ='N' USING sqlca;
 	return sqlca.sqlcode
@@ -488,7 +488,7 @@
 	this.id_print.settransobject(this.it_transobject)
 	return ls_report
 
-// w_serviceorder.wf_findcustcode(integer ai_custcode, string as_aliasname) returns integer
+// w_serviceorder.wf_findcustcode(ref integer ai_custcode, string as_aliasname) returns integer
 	integer li_custcode
 	integer ll_retflag
 	string ls_itemname
@@ -505,7 +505,7 @@
 	end if
 	return ll_retflag
 
-// w_serviceorder.wf_getsalesstockinfo(long al_saleinvcode, long al_gcode, long al_icode, long al_saleqty) returns integer
+// w_serviceorder.wf_getsalesstockinfo(long al_saleinvcode, long al_gcode, long al_icode, ref long al_saleqty) returns integer
 	SQL Select IsNull ( Sum ( saledetail.looseqty ) , 0 ) INTO :al_saleqty from saledetail where saledetail.saleinvcode =:al_saleinvcode and saledetail.gcode =:al_gcode and saledetail.icode =:al_icode USING this.it_transobject;
 	if isnull(al_saleqty) then
 		al_saleqty = 0
@@ -560,7 +560,7 @@
 
 // w_serviceorder.wf_visible(boolean ab_flag) returns 0
 
-// w_serviceorder.wf_returnsaleinvoice(long al_invid, string as_errtext) returns boolean
+// w_serviceorder.wf_returnsaleinvoice(long al_invid, ref string as_errtext) returns boolean
 	long ll_saleinvcode
 	long ll_gcode
 	long ll_icode
@@ -623,7 +623,7 @@
 	end if
 	return lb_retflag
 
-// w_serviceorder.wf_lockserviceinvoices(long al_sinvcode, long al_linvcode, long al_totalinvoice) returns integer
+// w_serviceorder.wf_lockserviceinvoices(long al_sinvcode, long al_linvcode, ref long al_totalinvoice) returns integer
 	integer li_count
 	SQL Select count ( *) INTO :al_totalinvoice From ServiceHeader WITH ( UPDLOCK HOLDLOCK ) Where ServiceHeader.Serviceinvcode Between :al_sinvcode AND :al_linvcode AND ServiceHeader.Posted ='N' USING sqlca;
 	return sqlca.sqlcode
@@ -660,7 +660,7 @@
 	end if
 	return li_errcode
 
-// w_serviceorder.wf_inititeminfo(long al_icode, long al_row, integer ai_rtcode, string as_errortext) returns boolean
+// w_serviceorder.wf_inititeminfo(long al_icode, long al_row, ref integer ai_rtcode, ref string as_errortext) returns boolean
 	boolean retflag = true
 	double ld_saleprice
 	double ld_discperc
@@ -707,7 +707,7 @@
 	end if
 	return retflag
 
-// w_serviceorder.wf_genfullcode(long al_icode, string as_fullcode) returns integer
+// w_serviceorder.wf_genfullcode(long al_icode, ref string as_fullcode) returns integer
 	integer li_retflag
 	string ls_fullcode
 	long icode
@@ -724,7 +724,7 @@
 	end if
 	return li_retflag
 
-// w_serviceorder.wf_findfullcode(string as_fullcode, long al_icode, string al_itemname) returns integer
+// w_serviceorder.wf_findfullcode(string as_fullcode, ref long al_icode, ref string al_itemname) returns integer
 	integer ll_icode
 	integer ll_retflag
 	string ls_itemname
@@ -746,7 +746,7 @@
 	end if
 	return ll_retflag
 
-// w_serviceorder.wf_populatesaledetail(long al_invid, datawindow ad_saledetail, string as_errortext, long al_errorrow) returns boolean
+// w_serviceorder.wf_populatesaledetail(long al_invid, ref datawindow ad_saledetail, ref string as_errortext, ref long al_errorrow) returns boolean
 	long ll_detailrows
 	long ll_stock
 	long ll_newstock
@@ -988,7 +988,7 @@
 	end if
 	return 0
 
-// w_serviceorder.wf_initmodify(integer ai_protect) returns 0
+// w_serviceorder.wf_initmodify(ref integer ai_protect) returns 0
 	long ll_saleinvcode
 	long ll_gcode
 	long ll_icode
@@ -1159,7 +1159,7 @@
 	next
 	return 0
 
-// w_serviceorder.wf_findpatientcode(string as_regno, long al_patientcode) returns long
+// w_serviceorder.wf_findpatientcode(string as_regno, ref long al_patientcode) returns long
 	long ll_patientcode
 	long ll_retflag
 	string ls_itemname

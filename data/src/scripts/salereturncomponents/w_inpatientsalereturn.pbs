@@ -30,7 +30,7 @@
 	this.id_detail.object.discperc.visible = 0
 	return 1
 
-// w_inpatientsalereturn.wf_genfullcode(long al_icode, string as_fullcode) returns integer
+// w_inpatientsalereturn.wf_genfullcode(long al_icode, ref string as_fullcode) returns integer
 	integer li_retflag
 	string ls_fullcode
 	long icode
@@ -212,7 +212,7 @@
 		this.id_footer.object.t_salebonusqty.visible = ab_flag
 	end if
 
-// w_inpatientsalereturn.wf_findunpostedsalereturns(long al_saleinvcode, string as_errtext) returns integer
+// w_inpatientsalereturn.wf_findunpostedsalereturns(long al_saleinvcode, ref string as_errtext) returns integer
 	integer li_rtcode
 	long ll_count
 	SQL SELECT count ( *) INTO :ll_count FROM srledger WHERE srledger.saleinvcode =:al_saleinvcode AND srledger.posted ='N' USING this.it_transobject;
@@ -227,7 +227,7 @@
 	end if
 	return li_rtcode
 
-// w_inpatientsalereturn.wf_setsaleinvinfo(long al_saleinvcode, long al_custcode) returns 0
+// w_inpatientsalereturn.wf_setsaleinvinfo(long al_saleinvcode, ref long al_custcode) returns 0
 	long ll_salecatcode
 	long ll_row
 	long ll_smancode
@@ -357,7 +357,7 @@
 	this.id_detail.setredraw(true)
 	return ll_rowscopy
 
-// w_inpatientsalereturn.wf_findcustcode(string as_aliasname, integer ai_custcode) returns integer
+// w_inpatientsalereturn.wf_findcustcode(string as_aliasname, ref integer ai_custcode) returns integer
 	integer li_custcode
 	integer ll_retflag
 	string ls_itemname
@@ -379,7 +379,7 @@
 	SQL SELECT regno INTO :ls_regno FROM Patient WHERE Patient.PatientCode =:al_patientcode and patientcode IN ( select distinct patientcode from patientadmission where patientcode =:al_patientcode and discharged ='N' ) USING this.it_transobject;
 	return ls_regno
 
-// w_inpatientsalereturn.wf_updatesalereturnitemsstock(long al_saleretinvcode, string as_errtext, long al_errrow) returns integer
+// w_inpatientsalereturn.wf_updatesalereturnitemsstock(long al_saleretinvcode, ref string as_errtext, ref long al_errrow) returns integer
 	long ll_detailrows
 	long ll_gcode
 	long ll_icode
@@ -463,7 +463,7 @@
 	SQL SELECT SaleLedger.headerno INTO :li_header_no FROM SaleLedger WHERE SaleLedger.Saleinvcode =:al_saleinvcode USING this.it_transobject;
 	return li_header_no
 
-// w_inpatientsalereturn.wf_initmodify(integer ai_protect) returns 0
+// w_inpatientsalereturn.wf_initmodify(ref integer ai_protect) returns 0
 	long ll_saleretinvcode
 	long ll_saleinvcode
 	long ll_gcode
@@ -661,7 +661,7 @@
 	SQL SELECT DISTINCT GCode =ISNull ( Count ( GCode ) , 0 ) INTO :ll_disallowedcount FROM SaleDetail WHERE SaleInvCode =:ad_invoicecode AND GCode NOT IN ( SELECT Godown.GCode FROM Godown WHERE GCode IN ( CASE :ai_strategy WHEN 2 THEN ( SELECT G.GCode From Godown G WHERE G.GCode =Godown.GCode ) ELSE ( SELECT G.GCode From GroupAllowedGodown G WHERE G.GroupCode =:al_groupcode AND G.Module =:this.ii_module AND Godown.GCode =G.GCode ) END ) ) USING sqlca;
 	return ll_disallowedcount
 
-// w_inpatientsalereturn.wf_findretailsaleinvoice(long al_saleinvcode, datetime ad_date, string as_errtext) returns integer
+// w_inpatientsalereturn.wf_findretailsaleinvoice(long al_saleinvcode, ref datetime ad_date, ref string as_errtext) returns integer
 	integer li_rtcode
 	string ls_posted
 	SQL SELECT SaleLedger.date , posted INTO :ad_date, :ls_posted FROM SaleLedger WHERE SaleLedger.Saleinvcode =:al_saleinvcode AND SaleLedger.SaleCatCode =3 USING this.it_transobject;
@@ -685,7 +685,7 @@
 	end if
 	return li_rtcode
 
-// w_inpatientsalereturn.wf_findwholesaleinvoice(long al_saleinvcode, datetime ad_date, string as_errtext) returns integer
+// w_inpatientsalereturn.wf_findwholesaleinvoice(long al_saleinvcode, ref datetime ad_date, ref string as_errtext) returns integer
 	integer li_rtcode
 	long ll_admissioncode
 	string ls_posted
@@ -720,7 +720,7 @@
 	end if
 	return li_rtcode
 
-// w_inpatientsalereturn.wf_findfullcode(string as_fullcode, long al_icode, string al_itemname) returns integer
+// w_inpatientsalereturn.wf_findfullcode(string as_fullcode, ref long al_icode, ref string al_itemname) returns integer
 	long ll_icode
 	long ll_retflag
 	long ll_rowid
@@ -793,7 +793,7 @@
 	SQL SELECT Count ( *) INTO :ll_count FROM PatientAdmission WHERE PatientAdmission.AdmissionCode =:al_admissioncode AND PatientAdmission.Discharged ='N' USING sqlca;
 	return ll_count
 
-// w_inpatientsalereturn.wf_inititeminfo(datawindowchild adc_itemdddw, long al_saleinvcode, long al_dsrow, long al_detaildwrow, string as_errtext) returns integer
+// w_inpatientsalereturn.wf_inititeminfo(datawindowchild adc_itemdddw, long al_saleinvcode, long al_dsrow, long al_detaildwrow, ref string as_errtext) returns integer
 	long ll_icode
 	long ll_gcode
 	long ll_packunits
@@ -874,7 +874,7 @@
 	end if
 	return li_errcode
 
-// w_inpatientsalereturn.wf_inititeminfo(long al_icode, long al_row, string as_errortext) returns integer
+// w_inpatientsalereturn.wf_inititeminfo(long al_icode, long al_row, ref string as_errortext) returns integer
 	double ld_saleprice
 	double ld_discperc
 	double ld_unitsalestax
@@ -971,7 +971,7 @@
 	end if
 	return li_errcode
 
-// w_inpatientsalereturn.wf_inititeminfo(datawindowchild adc_itemdddw, long al_row, long al_dddwrow, string as_errtext) returns integer
+// w_inpatientsalereturn.wf_inititeminfo(ref datawindowchild adc_itemdddw, long al_row, long al_dddwrow, ref string as_errtext) returns integer
 	long ll_icode
 	long ll_gcode
 	long ll_packunits
@@ -1055,7 +1055,7 @@
 	end if
 	return li_errcode
 
-// w_inpatientsalereturn.wf_checkitemactiveness(long al_icode, string as_errtext, long al_count, long[] al_activeitemslist) returns long
+// w_inpatientsalereturn.wf_checkitemactiveness(long al_icode, ref string as_errtext, ref long al_count, ref long[] al_activeitemslist) returns long
 	long ll_activestatus
 	long ll_setactive
 	ll_activestatus = this.it_transobject.isactiveitem(al_icode)
@@ -1079,7 +1079,7 @@
 	end if
 	return 0
 
-// w_inpatientsalereturn.wf_itemprevretqty(long al_saleinvcode, long al_gcode, long al_icode, string as_batch, datetime ad_expiry, double ad_itemprevqty, double ad_itemprevbonusqty) returns integer
+// w_inpatientsalereturn.wf_itemprevretqty(long al_saleinvcode, long al_gcode, long al_icode, string as_batch, datetime ad_expiry, ref double ad_itemprevqty, double ad_itemprevbonusqty) returns integer
 	SQL SELECT IsNull ( Sum ( srdetail.looseqty ) , 0 ) , IsNull ( Sum ( srdetail.Bonusqty ) , 0 ) INTO :ad_itemprevqty, :ad_itemprevbonusqty FROM srledger , srdetail WHERE srledger.saleinvcode =:al_saleinvcode and srledger.posted ='Y' and srledger.srinvcode =srdetail.SRInvCode and srdetail.icode =:al_icode and srdetail.batch =:as_batch and srdetail.expiry =:ad_expiry USING this.it_transobject;
 	if isnull(ad_itemprevqty) then
 		ad_itemprevqty = 0
@@ -1230,7 +1230,7 @@
 	end if
 	return -1
 
-// w_inpatientsalereturn.wf_findadmissioncode(string as_regno, long al_admissioncode) returns long
+// w_inpatientsalereturn.wf_findadmissioncode(string as_regno, ref long al_admissioncode) returns long
 	integer ll_retflag
 	SQL SELECT patientadmission.admissioncode INTO :al_admissioncode FROM patient , patientadmission WHERE patient.regno =:as_regno AND patient.patientcode =patientadmission.patientcode and patientadmission.discharged ='N' USING this.it_transobject;
 	if this.it_transobject.sqlcode = 0 then

@@ -32,7 +32,7 @@
 	this.id_detail.object.discperc.visible = 0
 	return 1
 
-// w_servicepurreturn.wf_updatesalereturnitemsstock(long al_saleretinvcode, string as_errtext, long al_errrow) returns integer
+// w_servicepurreturn.wf_updatesalereturnitemsstock(long al_saleretinvcode, ref string as_errtext, ref long al_errrow) returns integer
 	return 0
 
 // w_servicepurreturn.wf_validatefullcode(string as_fullcode, long al_currrow) returns integer
@@ -101,7 +101,7 @@
 	end if
 	return lb_duplicate
 
-// w_servicepurreturn.wf_findfullcode(string as_fullcode, long al_icode, string al_itemname) returns integer
+// w_servicepurreturn.wf_findfullcode(string as_fullcode, ref long al_icode, ref string al_itemname) returns integer
 	integer ll_icode
 	integer ll_retflag
 	string ls_itemname
@@ -142,10 +142,10 @@
 	end if
 	return ld_grandtotal
 
-// w_servicepurreturn.wf_inititeminfo(long al_icode, long al_row, string as_errortext) returns integer
+// w_servicepurreturn.wf_inititeminfo(long al_icode, long al_row, ref string as_errortext) returns integer
 	return 0
 
-// w_servicepurreturn.wf_inititeminfo(datawindowchild adc_itemdddw, long al_row, long al_dddwrow, string as_errtext) returns integer
+// w_servicepurreturn.wf_inititeminfo(ref datawindowchild adc_itemdddw, long al_row, long al_dddwrow, ref string as_errtext) returns integer
 	long ll_servicecode
 	long ll_gcode
 	long ll_packunits
@@ -202,7 +202,7 @@
 	end if
 	return li_errcode
 
-// w_servicepurreturn.wf_initmodify(integer ai_protect) returns 0
+// w_servicepurreturn.wf_initmodify(ref integer ai_protect) returns 0
 	long ll_saleinvcode
 	long ll_gcode
 	long ll_icode
@@ -515,7 +515,7 @@
 	end if
 	return li_rtcode
 
-// w_servicepurreturn.wf_oninvoiceitemprevretqty(long al_row, long al_servicecode, long al_srvrowid, double ad_serviceprevqty) returns integer
+// w_servicepurreturn.wf_oninvoiceitemprevretqty(long al_row, long al_servicecode, long al_srvrowid, ref double ad_serviceprevqty) returns integer
 	long ll_counter
 	long ll_rowcount
 	long ll_servicecode
@@ -563,7 +563,7 @@
 	SQL SELECT headerno INTO :li_header_no FROM ServicePurHeader WHERE ServicePurInvCode =:al_servicepurinvcode USING this.it_transobject;
 	return li_header_no
 
-// w_servicepurreturn.wf_find_service_pur_invoice(long al_servicepurinvcode, datetime ad_date, string as_errtext) returns integer
+// w_servicepurreturn.wf_find_service_pur_invoice(long al_servicepurinvcode, ref datetime ad_date, ref string as_errtext) returns integer
 	integer li_rtcode
 	long ll_admissioncode
 	long ll_suppcode
@@ -593,7 +593,7 @@
 	end if
 	return li_rtcode
 
-// w_servicepurreturn.wf_inititeminfo(datawindowchild adc_itemdddw, long al_servicepurinvcode, long al_dsrow, long al_detaildwrow, string as_errtext) returns integer
+// w_servicepurreturn.wf_inititeminfo(datawindowchild adc_itemdddw, long al_servicepurinvcode, long al_dsrow, long al_detaildwrow, ref string as_errtext) returns integer
 	long ll_servicecode
 	long ll_gcode
 	long ll_packunits
@@ -636,7 +636,7 @@
 	end if
 	return li_errcode
 
-// w_servicepurreturn.wf_itemprevretqty(long al_servicepurinvcode, long al_srvrowid, long al_servicecode, double ad_serviceprevqty) returns integer
+// w_servicepurreturn.wf_itemprevretqty(long al_servicepurinvcode, long al_srvrowid, long al_servicecode, ref double ad_serviceprevqty) returns integer
 	SQL SELECT Sum ( qty ) INTO :ad_serviceprevqty FROM serviceprheader , serviceprdetail WHERE serviceprheader.servicePurinvcode =:al_servicepurinvcode And serviceprheader.posted ='Y' And serviceprheader.serviceprinvcode =serviceprdetail.servicePRInvCode And serviceprdetail.servicecode =:al_servicecode And serviceprdetail.rowid =:al_srvrowid USING this.it_transobject;
 	if isnull(ad_serviceprevqty) then
 		ad_serviceprevqty = 0
@@ -662,7 +662,7 @@
 	this.id_footer.setitem(1, "flatdisc", ld_flatdisc)
 	this.id_footer.setitem(1, "misccharges", ld_misccharges)
 
-// w_servicepurreturn.wf_set_servicepur_info(long al_servicepurinvcode, long al_suppcode) returns 0
+// w_servicepurreturn.wf_set_servicepur_info(long al_servicepurinvcode, ref long al_suppcode) returns 0
 	long ll_row
 	long ll_headerno
 	datetime ld_date
@@ -793,7 +793,7 @@
 	end if
 	return 0
 
-// w_servicepurreturn.wf_findunpostedreturns(long al_servicepurinvcode, string as_errtext) returns integer
+// w_servicepurreturn.wf_findunpostedreturns(long al_servicepurinvcode, ref string as_errtext) returns integer
 	integer li_rtcode
 	long ll_count
 	long ll_suppcode

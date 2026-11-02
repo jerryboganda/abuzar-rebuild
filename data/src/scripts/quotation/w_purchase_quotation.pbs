@@ -129,7 +129,7 @@
 	SQL Delete purquotationdetail Where purquotationdetail.purquotationCode =:al_invcode USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
-// w_purchase_quotation.wf_findfullcode(string as_fullcode, long al_icode, string al_itemname) returns integer
+// w_purchase_quotation.wf_findfullcode(string as_fullcode, ref long al_icode, ref string al_itemname) returns integer
 	long ll_icode
 	long ll_retflag
 	string ls_itemname
@@ -151,7 +151,7 @@
 	end if
 	return ll_retflag
 
-// w_purchase_quotation.wf_genfullcode(long al_icode, string as_fullcode) returns integer
+// w_purchase_quotation.wf_genfullcode(long al_icode, ref string as_fullcode) returns integer
 	integer li_retflag
 	string ls_fullcode
 	long icode
@@ -173,11 +173,11 @@
 	SQL Select Gcode INTO :li_gcode From item Where icode =:la_icode USING this.it_transobject;
 	return li_gcode
 
-// w_purchase_quotation.wf_getmaxdate(datetime ad_date) returns integer
+// w_purchase_quotation.wf_getmaxdate(ref datetime ad_date) returns integer
 	SQL Select Max ( Date ) INTO :ad_date From saleledger USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
-// w_purchase_quotation.wf_inititeminfo(long al_icode, long al_row, integer ai_rtcode, string as_errortext) returns boolean
+// w_purchase_quotation.wf_inititeminfo(long al_icode, long al_row, ref integer ai_rtcode, ref string as_errortext) returns boolean
 	boolean retflag = true
 	double ld_saleprice
 	double ld_saleprice1
@@ -290,7 +290,7 @@
 	end if
 	return retflag
 
-// w_purchase_quotation.wf_initmodify(integer ai_protect) returns 0
+// w_purchase_quotation.wf_initmodify(ref integer ai_protect) returns 0
 	long ll_quotationinvcode
 	long ll_gcode
 	long ll_icode
@@ -671,7 +671,7 @@
 		this.idc_supplier.selectrow(ll_rowno, true)
 	end if
 
-// w_purchase_quotation.wf_findsuppcode(string as_aliasname, long al_suppcode) returns long
+// w_purchase_quotation.wf_findsuppcode(string as_aliasname, ref long al_suppcode) returns long
 	long ll_suppcode
 	long ll_retflag
 	string ls_itemname
@@ -693,7 +693,7 @@
 	SQL Select count ( *) INTO :li_count From PurQuotationheader WITH ( UPDLOCK HOLDLOCK ) Where PurQuotationheader.Purquotationcode =:al_quotationinvcode USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
-// w_purchase_quotation.wf_lockquotationinvoices(long al_sinvcode, long al_linvcode, long al_totalinvoice) returns integer
+// w_purchase_quotation.wf_lockquotationinvoices(long al_sinvcode, long al_linvcode, ref long al_totalinvoice) returns integer
 	integer li_count
 	SQL Select count ( *) INTO :al_totalinvoice From Purquotationheader WITH ( UPDLOCK HOLDLOCK ) Where Purquotationheader.Purquotationcode Between :al_sinvcode AND :al_linvcode AND Purquotationheader.Posted ='N' USING sqlca;
 	return sqlca.sqlcode

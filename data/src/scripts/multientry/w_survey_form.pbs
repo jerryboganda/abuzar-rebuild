@@ -44,7 +44,7 @@
 	this.id_footer.object.stock.visible = ab_flag
 	this.id_footer.object.t_stock.visible = ab_flag
 
-// w_survey_form.wf_genfullcode(long al_icode, string as_fullcode) returns integer
+// w_survey_form.wf_genfullcode(long al_icode, ref string as_fullcode) returns integer
 	integer li_retflag
 	string ls_fullcode
 	long icode
@@ -61,7 +61,7 @@
 	end if
 	return li_retflag
 
-// w_survey_form.wf_getmaxdate(datetime ad_date) returns integer
+// w_survey_form.wf_getmaxdate(ref datetime ad_date) returns integer
 	SQL Select Max ( Date ) INTO :ad_date From saleledger USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
@@ -207,7 +207,7 @@
 	this.id_print.settransobject(this.it_transobject)
 	return ls_report
 
-// w_survey_form.wf_returnsaleinvoice(long al_invid, string as_errtext) returns boolean
+// w_survey_form.wf_returnsaleinvoice(long al_invid, ref string as_errtext) returns boolean
 	long ll_saleinvcode
 	long ll_gcode
 	long ll_icode
@@ -286,7 +286,7 @@
 	SQL Select count ( *) INTO :li_count From IssueHeader WITH ( UPDLOCK HOLDLOCK ) Where IssueHeader.Issueinvcode =:al_saleinvcode USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
-// w_survey_form.wf_locksaleinvoices(long al_sinvcode, long al_linvcode, long al_totalinvoice) returns integer
+// w_survey_form.wf_locksaleinvoices(long al_sinvcode, long al_linvcode, ref long al_totalinvoice) returns integer
 	integer li_count
 	SQL Select count ( *) INTO :al_totalinvoice From IssueHeader WITH ( UPDLOCK HOLDLOCK ) Where IssueHeader.Issueinvcode Between :al_sinvcode AND :al_linvcode AND IssueHeader.Posted ='N' USING sqlca;
 	return sqlca.sqlcode
@@ -540,7 +540,7 @@
 	ld_grandtotal = 0
 	return ld_grandtotal
 
-// w_survey_form.wf_initmodify(integer ai_protect) returns 0
+// w_survey_form.wf_initmodify(ref integer ai_protect) returns 0
 	long ll_code
 	long ll_gcode
 	long ll_icode
@@ -629,7 +629,7 @@
 	end if
 	return li_errcode
 
-// w_survey_form.wf_findfullcode(string as_fullcode, long al_icode, string al_itemname) returns integer
+// w_survey_form.wf_findfullcode(string as_fullcode, ref long al_icode, ref string al_itemname) returns integer
 	integer ll_icode
 	integer ll_retflag
 	string ls_itemname
@@ -710,7 +710,7 @@
 	SQL SELECT DISTINCT GCode =ISNull ( Count ( GCode ) , 0 ) INTO :ll_disallowedcount FROM IssueDetail WHERE IssueInvCode =:ad_invoicecode AND GCode NOT IN ( SELECT Godown.GCode FROM Godown WHERE GCode IN ( CASE :ai_strategy WHEN 2 THEN ( SELECT G.GCode From Godown G WHERE G.GCode =Godown.GCode ) ELSE ( SELECT G.GCode From GroupAllowedGodown G WHERE G.GroupCode =:al_groupcode AND G.Module =:this.ii_module AND Godown.GCode =G.GCode ) END ) ) USING sqlca;
 	return ll_disallowedcount
 
-// w_survey_form.wf_inititeminfo(long al_icode, long al_row, integer ai_rtcode, string as_errortext) returns boolean
+// w_survey_form.wf_inititeminfo(long al_icode, long al_row, ref integer ai_rtcode, ref string as_errortext) returns boolean
 	boolean retflag = true
 	double ld_saleprice
 	long ll_packunits
@@ -758,14 +758,14 @@
 	end if
 	return retflag
 
-// w_survey_form.wf_getsalesstockinfo(long al_saleinvcode, long al_gcode, long al_icode, double ad_saleqty) returns integer
+// w_survey_form.wf_getsalesstockinfo(long al_saleinvcode, long al_gcode, long al_icode, ref double ad_saleqty) returns integer
 	SQL Select IsNull ( Sum ( saledetail.looseqty ) , 0 ) INTO :ad_saleqty from saledetail where saledetail.saleinvcode =:al_saleinvcode and saledetail.gcode =:al_gcode and saledetail.icode =:al_icode USING this.it_transobject;
 	if isnull(ad_saleqty) then
 		ad_saleqty = 0
 	end if
 	return this.it_transobject.sqlcode
 
-// w_survey_form.wf_selectitembatches(long al_gcode, long al_icode, double ad_qty, datawindow ad_itemsdetail, long al_rowscount, string al_errortext) returns integer
+// w_survey_form.wf_selectitembatches(long al_gcode, long al_icode, double ad_qty, ref datawindow ad_itemsdetail, ref long al_rowscount, ref string al_errortext) returns integer
 	datastore lds_itemstockinfo
 	long ll_counter
 	long ll_saleqty

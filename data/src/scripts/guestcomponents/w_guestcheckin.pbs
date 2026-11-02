@@ -135,7 +135,7 @@
 	end if
 	return b_flag
 
-// w_guestcheckin.wf_getmaxdate(datetime ad_date) returns integer
+// w_guestcheckin.wf_getmaxdate(ref datetime ad_date) returns integer
 	SQL Select Max ( Date ) INTO :ad_date From saleledger USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
@@ -143,7 +143,7 @@
 	double ld_grandtotal
 	return ld_grandtotal
 
-// w_guestcheckin.wf_inititeminfo(long al_icode, long al_row, integer ai_rtcode, string as_errortext) returns boolean
+// w_guestcheckin.wf_inititeminfo(long al_icode, long al_row, ref integer ai_rtcode, ref string as_errortext) returns boolean
 	boolean retflag = true
 	double ld_saleprice
 	double ld_discperc
@@ -177,7 +177,7 @@
 	end if
 	return retflag
 
-// w_guestcheckin.wf_initmodify(integer ai_protect) returns 0
+// w_guestcheckin.wf_initmodify(ref integer ai_protect) returns 0
 	long ll_saleinvcode
 	long ll_gcode
 	long ll_icode
@@ -202,7 +202,7 @@
 		this.tab_retrieve.tabpage_detail.enabled = true
 	end if
 
-// w_guestcheckin.wf_lockserviceinvoices(long al_sinvcode, long al_linvcode, long al_totalinvoice) returns integer
+// w_guestcheckin.wf_lockserviceinvoices(long al_sinvcode, long al_linvcode, ref long al_totalinvoice) returns integer
 	integer li_count
 	SQL Select count ( *) INTO :al_totalinvoice From ServiceTemplateHeader WITH ( UPDLOCK HOLDLOCK ) Where ServiceTemplateHeader.ServiceTemplatecode Between :al_sinvcode AND :al_linvcode USING sqlca;
 	return sqlca.sqlcode
@@ -566,7 +566,7 @@
 	end if
 	return ll_retcode
 
-// w_guestcheckin.wf_returnserviceinvoice(long al_invid, string as_errtext) returns boolean
+// w_guestcheckin.wf_returnserviceinvoice(long al_invid, ref string as_errtext) returns boolean
 	long ll_saleinvcode
 	long ll_gcode
 	long ll_icode

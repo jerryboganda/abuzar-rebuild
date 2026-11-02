@@ -15,7 +15,7 @@
 	end if
 	return this.it_transobject.sqlcode
 
-// w_service_issue_request.wf_genfullcode(long al_icode, string as_fullcode) returns integer
+// w_service_issue_request.wf_genfullcode(long al_icode, ref string as_fullcode) returns integer
 	integer li_retflag
 	string ls_fullcode
 	long icode
@@ -32,7 +32,7 @@
 	end if
 	return li_retflag
 
-// w_service_issue_request.wf_getmaxdate(datetime ad_date) returns integer
+// w_service_issue_request.wf_getmaxdate(ref datetime ad_date) returns integer
 	SQL Select Max ( Date ) INTO :ad_date From saleledger USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
@@ -158,7 +158,7 @@
 
 // w_service_issue_request.wf_setgodownoption() returns 0
 
-// w_service_issue_request.wf_initmodify(integer ai_protect) returns 0
+// w_service_issue_request.wf_initmodify(ref integer ai_protect) returns 0
 	long ll_saleinvcode
 	long ll_gcode
 	long ll_icode
@@ -292,7 +292,7 @@
 	this.id_footer.object.stock.visible = ab_flag
 	this.id_footer.object.t_stock.visible = ab_flag
 
-// w_service_issue_request.wf_locksaleinvoices(long al_sinvcode, long al_linvcode, long al_totalinvoice) returns integer
+// w_service_issue_request.wf_locksaleinvoices(long al_sinvcode, long al_linvcode, ref long al_totalinvoice) returns integer
 	integer li_count
 	SQL Select count ( *) INTO :al_totalinvoice From ServiceIssueRequest WITH ( UPDLOCK HOLDLOCK ) Where ServiceIssueRequest.ServiceIssueRequestcode Between :al_sinvcode AND :al_linvcode AND ServiceIssueRequest.Posted ='N' USING this.it_transobject;
 	return this.it_transobject.sqlcode
@@ -304,7 +304,7 @@
 	this.id_print.settransobject(this.it_transobject)
 	return ls_report
 
-// w_service_issue_request.wf_findfullcode(string as_fullcode, long al_icode, string al_itemname) returns integer
+// w_service_issue_request.wf_findfullcode(string as_fullcode, ref long al_icode, ref string al_itemname) returns integer
 	long ll_icode
 	long ll_retflag
 	string ls_itemname
@@ -375,7 +375,7 @@
 	end if
 	return li_errcode
 
-// w_service_issue_request.wf_inititeminfo(long al_icode, long al_row, integer ai_rtcode, string as_errortext) returns boolean
+// w_service_issue_request.wf_inititeminfo(long al_icode, long al_row, ref integer ai_rtcode, ref string as_errortext) returns boolean
 	boolean retflag = true
 	double ld_saleprice
 	long ll_packunits

@@ -4,7 +4,7 @@
 	this.id_footer.object.stock.visible = ab_flag
 	this.id_footer.object.t_stock.visible = ab_flag
 
-// w_recipe_form.wf_genfullcode(long al_icode, string as_fullcode) returns integer
+// w_recipe_form.wf_genfullcode(long al_icode, ref string as_fullcode) returns integer
 	integer li_retflag
 	string ls_fullcode
 	long icode
@@ -21,7 +21,7 @@
 	end if
 	return li_retflag
 
-// w_recipe_form.wf_getmaxdate(datetime ad_date) returns integer
+// w_recipe_form.wf_getmaxdate(ref datetime ad_date) returns integer
 	SQL Select Max ( Date ) INTO :ad_date From saleledger USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
@@ -113,7 +113,7 @@
 	this.id_print.settransobject(this.it_transobject)
 	return ls_report
 
-// w_recipe_form.wf_returnsaleinvoice(long al_invid, string as_errtext) returns boolean
+// w_recipe_form.wf_returnsaleinvoice(long al_invid, ref string as_errtext) returns boolean
 	long ll_saleinvcode
 	long ll_gcode
 	long ll_icode
@@ -182,7 +182,7 @@
 	SQL Select count ( *) INTO :li_count From IssueHeader WITH ( UPDLOCK HOLDLOCK ) Where IssueHeader.Issueinvcode =:al_saleinvcode USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
-// w_recipe_form.wf_locksaleinvoices(long al_sinvcode, long al_linvcode, long al_totalinvoice) returns integer
+// w_recipe_form.wf_locksaleinvoices(long al_sinvcode, long al_linvcode, ref long al_totalinvoice) returns integer
 	integer li_count
 	SQL Select count ( *) INTO :al_totalinvoice From IssueHeader WITH ( UPDLOCK HOLDLOCK ) Where IssueHeader.Issueinvcode Between :al_sinvcode AND :al_linvcode AND IssueHeader.Posted ='N' USING sqlca;
 	return sqlca.sqlcode
@@ -389,7 +389,7 @@
 	wf_setvalue(ld_grandtotal)
 	return ld_grandtotal
 
-// w_recipe_form.wf_initmodify(integer ai_protect) returns 0
+// w_recipe_form.wf_initmodify(ref integer ai_protect) returns 0
 	long ll_code
 	long ll_gcode
 	long ll_icode
@@ -480,7 +480,7 @@
 	end if
 	return li_errcode
 
-// w_recipe_form.wf_findfullcode(string as_fullcode, long al_icode, string al_itemname) returns integer
+// w_recipe_form.wf_findfullcode(string as_fullcode, ref long al_icode, ref string al_itemname) returns integer
 	integer ll_icode
 	integer ll_retflag
 	string ls_itemname
@@ -502,7 +502,7 @@
 	end if
 	return ll_retflag
 
-// w_recipe_form.wf_inititeminfo(long al_icode, long al_row, integer ai_rtcode, string as_errortext) returns boolean
+// w_recipe_form.wf_inititeminfo(long al_icode, long al_row, ref integer ai_rtcode, ref string as_errortext) returns boolean
 	boolean retflag = true
 	double ld_price
 	double ld_saleprice
@@ -680,7 +680,7 @@
 	end if
 	return ll_retcode
 
-// w_recipe_form.wf_resulteditem_info(long al_icode, long al_row, string as_errortext) returns boolean
+// w_recipe_form.wf_resulteditem_info(long al_icode, long al_row, ref string as_errortext) returns boolean
 	boolean retflag = true
 	double ld_price
 	double ld_saleprice
@@ -751,7 +751,7 @@
 	end if
 	return 0
 
-// w_recipe_form.wf_selectitembatches(long al_gcode, long al_icode, double ad_qty, datawindow ad_itemsdetail, long al_rowscount, string al_errortext) returns integer
+// w_recipe_form.wf_selectitembatches(long al_gcode, long al_icode, double ad_qty, ref datawindow ad_itemsdetail, ref long al_rowscount, ref string al_errortext) returns integer
 	datastore lds_itemstockinfo
 	long ll_counter
 	long ll_saleqty

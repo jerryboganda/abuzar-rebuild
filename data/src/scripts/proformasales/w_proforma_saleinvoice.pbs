@@ -328,7 +328,7 @@
 	end if
 	return 0
 
-// w_proforma_saleinvoice.wf_findcustcode(string as_aliasname, integer ai_custcode) returns integer
+// w_proforma_saleinvoice.wf_findcustcode(string as_aliasname, ref integer ai_custcode) returns integer
 	integer li_custcode
 	integer ll_retflag
 	string ls_itemname
@@ -345,7 +345,7 @@
 	end if
 	return ll_retflag
 
-// w_proforma_saleinvoice.wf_findfullcode(string as_fullcode, long al_icode, string al_itemname) returns integer
+// w_proforma_saleinvoice.wf_findfullcode(string as_fullcode, ref long al_icode, ref string al_itemname) returns integer
 	integer ll_retflag
 	long ll_icode
 	string ls_itemname
@@ -367,7 +367,7 @@
 	end if
 	return ll_retflag
 
-// w_proforma_saleinvoice.wf_findpatientcode(string as_regno, integer ai_patientcode) returns integer
+// w_proforma_saleinvoice.wf_findpatientcode(string as_regno, ref integer ai_patientcode) returns integer
 	integer li_patientcode
 	integer ll_retflag
 	string ls_itemname
@@ -396,7 +396,7 @@
 	SQL Select Gcode INTO :li_gcode From item Where icode =:la_icode USING this.it_transobject;
 	return li_gcode
 
-// w_proforma_saleinvoice.wf_genfullcode(long al_icode, string as_fullcode) returns integer
+// w_proforma_saleinvoice.wf_genfullcode(long al_icode, ref string as_fullcode) returns integer
 	integer li_retflag
 	string ls_fullcode
 	long icode
@@ -421,7 +421,7 @@
 	end if
 	return -1
 
-// w_proforma_saleinvoice.wf_getmaxdate(datetime ad_date) returns integer
+// w_proforma_saleinvoice.wf_getmaxdate(ref datetime ad_date) returns integer
 	SQL Select Max ( Date ) INTO :ad_date From saleledger USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
@@ -456,7 +456,7 @@
 	end if
 	return ld_grandtotal
 
-// w_proforma_saleinvoice.wf_initmodify(integer ai_protect) returns 0
+// w_proforma_saleinvoice.wf_initmodify(ref integer ai_protect) returns 0
 	long ll_saleinvcode
 	long ll_gcode
 	long ll_icode
@@ -620,7 +620,7 @@
 	this.it_transobject.dbparm = "Async =0, DBGetTime = 0"
 	return this.it_transobject.sqlcode
 
-// w_proforma_saleinvoice.wf_locksaleinvoices(long al_sinvcode, long al_linvcode, long al_totalinvoice) returns integer
+// w_proforma_saleinvoice.wf_locksaleinvoices(long al_sinvcode, long al_linvcode, ref long al_totalinvoice) returns integer
 	integer li_count
 	SQL Select count ( *) INTO :al_totalinvoice From saleledger WITH ( UPDLOCK HOLDLOCK ) Where saleledger.saleinvcode Between :al_sinvcode AND :al_linvcode AND saleledger.Posted ='N' AND ImpactInventory ='N' USING sqlca;
 	return sqlca.sqlcode
@@ -787,7 +787,7 @@
 	end if
 	return this.id_list.retrieve(li_salecategory, ls_posted, ld_invdate, ls_showrows, this.il_groupcode, this.ii_module)
 
-// w_proforma_saleinvoice.wf_returnsaleinvoice(long al_invid, string as_errortext) returns boolean
+// w_proforma_saleinvoice.wf_returnsaleinvoice(long al_invid, ref string as_errortext) returns boolean
 	long ll_saleinvcode
 	long ll_gcode
 	long ll_icode
@@ -1625,7 +1625,7 @@
 	SQL SELECT DISTINCT GCode =ISNull ( Count ( GCode ) , 0 ) INTO :ll_disallowedcount FROM SaleInvDetail WHERE SaleInvCode =:ad_invoicecode AND GCode NOT IN ( SELECT Godown.GCode FROM Godown WHERE GCode IN ( CASE :ai_strategy WHEN 2 THEN ( SELECT G.GCode From Godown G WHERE G.GCode =Godown.GCode ) ELSE ( SELECT G.GCode From GroupAllowedGodown G WHERE G.GroupCode =:al_groupcode AND G.Module =:this.ii_module AND Godown.GCode =G.GCode ) END ) ) USING sqlca;
 	return ll_disallowedcount
 
-// w_proforma_saleinvoice.wf_inititeminfo_quotation(long al_icode, long al_row, integer ai_rtcode, string as_errortext, long al_gcode) returns boolean
+// w_proforma_saleinvoice.wf_inititeminfo_quotation(long al_icode, long al_row, ref integer ai_rtcode, ref string as_errortext, long al_gcode) returns boolean
 	boolean retflag = true
 	double ld_rpp
 	double ld_purprice
@@ -1961,7 +1961,7 @@
 	end if
 	return retflag
 
-// w_proforma_saleinvoice.wf_inititeminfo(long al_icode, long al_row, integer ai_rtcode, string as_errortext) returns boolean
+// w_proforma_saleinvoice.wf_inititeminfo(long al_icode, long al_row, ref integer ai_rtcode, ref string as_errortext) returns boolean
 	boolean retflag = true
 	double ld_rpp
 	double ld_purprice
@@ -2692,7 +2692,7 @@
 	SQL Delete saleinvdetail Where saleinvdetail.SaleInvCode =:al_saleinvcode USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
-// w_proforma_saleinvoice.wf_populatesaledetail(long al_invid, datawindow ad_saledetail, string as_errortext, long al_errorrow) returns boolean
+// w_proforma_saleinvoice.wf_populatesaledetail(long al_invid, ref datawindow ad_saledetail, ref string as_errortext, ref long al_errorrow) returns boolean
 	long ll_detailrows
 	long ll_icode
 	long ll_errrowid
@@ -2974,7 +2974,7 @@
 	wf_grandtotal()
 	return li_retcode
 
-// w_proforma_saleinvoice.wf_allowinvoice(long al_custcode, long al_lastinvcode) returns long
+// w_proforma_saleinvoice.wf_allowinvoice(long al_custcode, ref long al_lastinvcode) returns long
 	long ll_retcode
 	long ll_code
 	if this.ib_modify then
@@ -3236,7 +3236,7 @@
 	this.ib_printout = true
 	return ls_report
 
-// w_proforma_saleinvoice.wf_getcustitemcatwisesalesdiscount(long al_icode, long al_custcode, double ad_discperc, double ad_itemflatdisc) returns boolean
+// w_proforma_saleinvoice.wf_getcustitemcatwisesalesdiscount(long al_icode, long al_custcode, ref double ad_discperc, ref double ad_itemflatdisc) returns boolean
 	double ld_null
 	setnull(ld_null)
 	ad_discperc = ld_null
@@ -3494,7 +3494,7 @@
 	end if
 	return ll_retcode
 
-// w_proforma_saleinvoice.wf_getsalesstockinfo(long al_saleinvcode, long al_gcode, long al_icode, double ad_saleqty) returns integer
+// w_proforma_saleinvoice.wf_getsalesstockinfo(long al_saleinvcode, long al_gcode, long al_icode, ref double ad_saleqty) returns integer
 	SQL Select IsNull ( Sum ( saledetail.looseqty + saledetail.bonusqty ) , 0 ) INTO :ad_saleqty from saledetail where saledetail.saleinvcode =:al_saleinvcode and saledetail.gcode =:al_gcode and saledetail.icode =:al_icode USING this.it_transobject;
 	if isnull(ad_saleqty) then
 		ad_saleqty = 0
@@ -4100,7 +4100,7 @@
 	this.idc_motorvehicle.scrolltorow(ll_row)
 	return 0
 
-// w_proforma_saleinvoice.wf_find_motorvehiclecode(string as_chasisno, long al_code) returns long
+// w_proforma_saleinvoice.wf_find_motorvehiclecode(string as_chasisno, ref long al_code) returns long
 	long ll_motorvehiclecode
 	long ll_retflag
 	ll_retflag = 0

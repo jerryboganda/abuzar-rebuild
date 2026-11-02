@@ -36,7 +36,7 @@
 	SQL SELECT COUNT ( *) INTO :ll_retcode FROM ( SELECT LocationCode FROM PatientAdmission WHERE Discharged ='N' AND AdmissionCode NOT IN ( SELECT DISTINCT AdmissionCode FROM PatientTransfer ) UNION ALL SELECT LocationCode =TargetLocation FROM PatientTransfer WHERE TransferCode IN ( SELECT TransferCode =Max ( TransferCode ) FROM PatientTransfer WHERE AdmissionCode IN ( SELECT DISTINCT AdmissionCode FROM PatientAdmission WHERE Discharged ='N' ) GROUP BY AdmissionCode ) ) A WHERE LocationCode =:al_locationcode USING sqlca;
 	return ll_retcode
 
-// w_visit_appointment_form.wf_findpatientcode(string as_regno, long al_patientcode) returns long
+// w_visit_appointment_form.wf_findpatientcode(string as_regno, ref long al_patientcode) returns long
 	long ll_patientcode
 	long ll_retflag
 	string ls_itemname
@@ -82,7 +82,7 @@
 	end if
 	return ll_retcode
 
-// w_visit_appointment_form.wf_get_newtoken(long al_token) returns long
+// w_visit_appointment_form.wf_get_newtoken(ref long al_token) returns long
 	long ll_retcode
 	long ll_doctcode
 	datetime ldt_duedate
@@ -124,7 +124,7 @@
 	end if
 	return ls_regno
 
-// w_visit_appointment_form.wf_find_patient_regno(long al_patientcode, string as_regno) returns long
+// w_visit_appointment_form.wf_find_patient_regno(long al_patientcode, ref string as_regno) returns long
 	long ll_retflag
 	char lc_active
 	ll_retflag = 0
@@ -190,7 +190,7 @@
 	end if
 	return ll_errcode
 
-// w_visit_appointment_form.wf_lockappointments(long al_sinvcode, long al_linvcode, long al_totalcount) returns long
+// w_visit_appointment_form.wf_lockappointments(long al_sinvcode, long al_linvcode, ref long al_totalcount) returns long
 	SQL Select count ( *) INTO :al_totalcount From VisitAppointment WITH ( UPDLOCK HOLDLOCK ) Where AppointmentCode Between :al_sinvcode AND :al_linvcode AND Posted ='N' USING sqlca;
 	return sqlca.sqlcode
 

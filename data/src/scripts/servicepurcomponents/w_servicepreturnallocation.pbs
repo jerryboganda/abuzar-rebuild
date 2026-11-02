@@ -70,18 +70,18 @@
 	SQL Delete serviceprallocationdetail Where serviceprallocationdetail.servicePRAllocationCode =:al_prallocationcode USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
-// w_servicepreturnallocation.wf_getprinvcode(long al_prallocationcode, long al_prinvcode) returns integer
+// w_servicepreturnallocation.wf_getprinvcode(long al_prallocationcode, ref long al_prinvcode) returns integer
 	SQL SELECT ServicePRInvCode INTO :al_prinvcode FROM ServicePRAllocationHeader WHERE ServicePRAllocationCode =:al_prallocationcode USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
-// w_servicepreturnallocation.wf_getprinvinfo(long al_prallocationcode, double ad_amt) returns integer
+// w_servicepreturnallocation.wf_getprinvinfo(long al_prallocationcode, ref double ad_amt) returns integer
 	SQL Select IsNull ( Sum ( Serviceprallocationdetail.amt ) , 0 ) INTO :ad_amt from Serviceprallocationdetail where Serviceprallocationdetail.Serviceprallocationcode =:al_prallocationcode USING this.it_transobject;
 	if isnull(ad_amt) then
 		ad_amt = 0
 	end if
 	return this.it_transobject.sqlcode
 
-// w_servicepreturnallocation.wf_initmodify(integer ai_protect) returns 0
+// w_servicepreturnallocation.wf_initmodify(ref integer ai_protect) returns 0
 	long ll_prallocationcode
 	long ll_purinvcode
 	long ll_counter = 1
@@ -141,7 +141,7 @@
 	this.it_transobject.dbparm = "Async =0, DBGetTime = 0"
 	return this.it_transobject.sqlcode
 
-// w_servicepreturnallocation.wf_lockprallocations(long al_sinvcode, long al_linvcode, long al_totalinvoice) returns integer
+// w_servicepreturnallocation.wf_lockprallocations(long al_sinvcode, long al_linvcode, ref long al_totalinvoice) returns integer
 	integer li_count
 	SQL Select count ( *) INTO :al_totalinvoice From ServicePRAllocationHeader WITH ( UPDLOCK HOLDLOCK ) Where ServicePRAllocationHeader.ServicePRAllocationCode Between :al_sinvcode AND :al_linvcode AND ServicePRAllocationHeader.Posted ='N' USING sqlca;
 	return sqlca.sqlcode
@@ -221,7 +221,7 @@
 	end if
 	return ll_rtcode
 
-// w_servicepreturnallocation.wf_returnprallocation(long al_invid, string as_errortext) returns boolean
+// w_servicepreturnallocation.wf_returnprallocation(long al_invid, ref string as_errortext) returns boolean
 	long ll_prinvcode
 	long ll_purinvcode
 	long ll_counter = 1
@@ -517,7 +517,7 @@
 	end if
 	return li_rtcode
 
-// w_servicepreturnallocation.wf_getpurinvinfo(long al_prallocationcode, long al_purinvcode, double ad_amt) returns integer
+// w_servicepreturnallocation.wf_getpurinvinfo(long al_prallocationcode, long al_purinvcode, ref double ad_amt) returns integer
 	SQL Select IsNull ( Sum ( Serviceprallocationdetail.amt ) , 0 ) INTO :ad_amt from Serviceprallocationdetail where Serviceprallocationdetail.Serviceprallocationcode =:al_prallocationcode and Serviceprallocationdetail.Servicepurinvcode =:al_purinvcode USING this.it_transobject;
 	if isnull(ad_amt) then
 		ad_amt = 0
@@ -536,7 +536,7 @@
 	this.id_list.settransobject(this.it_transobject)
 	this.id_print.settransobject(this.it_transobject)
 
-// w_servicepreturnallocation.wf_populatedetail(long al_invid, datawindow ad_detail, string as_errortext, long al_errorrow) returns boolean
+// w_servicepreturnallocation.wf_populatedetail(long al_invid, ref datawindow ad_detail, ref string as_errortext, ref long al_errorrow) returns boolean
 	long ll_detailrows
 	long ll_errrowid
 	long ll_usercode

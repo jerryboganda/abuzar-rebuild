@@ -344,7 +344,7 @@
 	end if
 	return ld_grandtotal
 
-// w_saleinpurchase.wf_findfullcode(string as_fullcode, long al_icode, string as_itemname) returns integer
+// w_saleinpurchase.wf_findfullcode(string as_fullcode, ref long al_icode, ref string as_itemname) returns integer
 	long ll_icode
 	long ll_retflag
 	long ll_rowid
@@ -363,7 +363,7 @@
 	end if
 	return ll_retflag
 
-// w_saleinpurchase.wf_getfullcode(long al_icode, long al_row, string as_fullcode) returns long
+// w_saleinpurchase.wf_getfullcode(long al_icode, long al_row, ref string as_fullcode) returns long
 	long ll_retflag
 	if f_stringpreferences("GroupCategoryRights") = "Y" then
 		SQL SELECT item.customicode INTO :as_fullcode FROM item WHERE Item.ICode =:al_icode AND item.Active =1 AND Item.ICatCode IN ( SELECT ICatCode FROM ItemCategory WHERE ICatCode IN ( SELECT ItemsCategoryCode FROM ItemsGroupCategory WHERE GroupCode IN ( SELECT GroupCode FROM UserGroups WHERE UserCode =:gl_usercode ) ) ) USING sqlca;
@@ -381,7 +381,7 @@
 	end if
 	return ll_retflag
 
-// w_saleinpurchase.wf_findcustcode(string as_aliasname, long al_custcode) returns long
+// w_saleinpurchase.wf_findcustcode(string as_aliasname, ref long al_custcode) returns long
 	integer ll_retflag
 	long ll_rowno
 	string ls_itemname

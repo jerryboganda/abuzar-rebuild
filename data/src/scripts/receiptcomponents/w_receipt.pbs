@@ -805,7 +805,7 @@
 	this.id_detail.settransobject(this.it_transobject)
 	this.id_list.settransobject(this.it_transobject)
 
-// w_receipt.wf_genfullcode(long al_icode, string as_fullcode) returns integer
+// w_receipt.wf_genfullcode(long al_icode, ref string as_fullcode) returns integer
 	integer li_retflag
 	string ls_fullcode
 	long icode
@@ -818,7 +818,7 @@
 	end if
 	return li_retflag
 
-// w_receipt.wf_getpomanfcode(long al_pocode, long al_manfcode) returns 0
+// w_receipt.wf_getpomanfcode(ref long al_pocode, ref long al_manfcode) returns 0
 	al_pocode = this.id_master.object.pocode[this.id_master.getrow()]
 	al_manfcode = this.id_master.object.manfcode[this.id_master.getrow()]
 
@@ -843,7 +843,7 @@
 	end if
 	return ld_grandtotal
 
-// w_receipt.wf_iteminfo(long al_icode, long al_gcode, double ad_purprice, double ad_discperc, double ad_avgprice, long al_packunits) returns boolean
+// w_receipt.wf_iteminfo(long al_icode, ref long al_gcode, ref double ad_purprice, ref double ad_discperc, ref double ad_avgprice, ref long al_packunits) returns boolean
 	boolean retflag = true
 	SQL SELECT 1 , item.salePrice , item.purdiscperc , item.avgprice , item.packunits INTO :al_gcode, :ad_purprice, :ad_discperc, :ad_avgprice, :al_packunits FROM item WHERE item.icode =:al_icode USING this.it_transobject;
 	al_gcode = this.ii_purchasegodownoption
@@ -1009,7 +1009,7 @@
 		this.id_detail.object.gcode.background.color = this.backcolor
 	end if
 
-// w_receipt.wf_initmodify(integer ai_protect) returns 0
+// w_receipt.wf_initmodify(ref integer ai_protect) returns 0
 	long ll_receiptinvcode
 	long ll_gcode
 	long ll_icode
@@ -1055,7 +1055,7 @@
 	end if
 	ai_protect = 1
 
-// w_receipt.wf_findfullcode(string as_fullcode, long al_icode, string al_itemname) returns integer
+// w_receipt.wf_findfullcode(string as_fullcode, ref long al_icode, ref string al_itemname) returns integer
 	long ll_icode
 	long ll_retflag
 	string ls_itemname
@@ -1147,7 +1147,7 @@
 	SQL SELECT DISTINCT GCode =ISNull ( Count ( GCode ) , 0 ) INTO :ll_disallowedcount FROM ReceiptDetail WHERE ReceiptInvCode =:ad_invoicecode AND GCode NOT IN ( SELECT Godown.GCode FROM Godown WHERE GCode IN ( CASE :ai_strategy WHEN 2 THEN ( SELECT G.GCode From Godown G WHERE G.GCode =Godown.GCode ) ELSE ( SELECT G.GCode From GroupAllowedGodown G WHERE G.GroupCode =:al_groupcode AND G.Module =:this.ii_module AND Godown.GCode =G.GCode ) END ) ) USING sqlca;
 	return ll_disallowedcount
 
-// w_receipt.wf_inititeminfo(long al_icode, long al_row, string as_errortext) returns boolean
+// w_receipt.wf_inititeminfo(long al_icode, long al_row, ref string as_errortext) returns boolean
 	boolean retflag = true
 	double ld_purprice
 	double ld_avgprice
@@ -1239,7 +1239,7 @@
 	wf_set_itemimage(al_icode)
 	return retflag
 
-// w_receipt.wf_itemstockinfo(long al_icode, long al_gcode, double al_stock) returns boolean
+// w_receipt.wf_itemstockinfo(long al_icode, long al_gcode, ref double al_stock) returns boolean
 	boolean retflag = true
 	double ld_stock
 	double ld_totalstock
@@ -2136,7 +2136,7 @@
 	end if
 	return ls_pref_value
 
-// w_receipt.wf_genenerate_receiptcategory_counter(integer ai_receiptcategorycode, long al_receiptcode, transaction at_transobject) returns long
+// w_receipt.wf_genenerate_receiptcategory_counter(integer ai_receiptcategorycode, ref long al_receiptcode, ref transaction at_transobject) returns long
 	long ll_rtcode
 	SQL SELECT dbo.ReceiptCategory.COUNTER INTO :al_receiptcode FROM dbo.ReceiptCategory WITH ( UPDLOCK HOLDLOCK ) WHERE dbo.ReceiptCategory.ReceiptCategoryCode =:ai_receiptcategorycode USING at_transobject;
 	if at_transobject.sqlcode = 0 then
@@ -2349,7 +2349,7 @@
 	this.idc_motorvehicle.scrolltorow(ll_row)
 	return 0
 
-// w_receipt.wf_find_motorvehiclecode(string as_chasisno, long al_code) returns long
+// w_receipt.wf_find_motorvehiclecode(string as_chasisno, ref long al_code) returns long
 	long ll_motorvehiclecode
 	long ll_retflag
 	ll_retflag = 0
@@ -2549,7 +2549,7 @@
 	messagebox("Receipt Invoice Validation", "Receipt Invoice Does not Exist.", stopsign!)
 	return 1
 
-// w_receipt.wf_inititeminfo(datawindowchild adc_itemdddw, long al_issueinvcode, long al_dsrow, long al_detaildwrow, string as_errtext) returns long
+// w_receipt.wf_inititeminfo(ref datawindowchild adc_itemdddw, long al_issueinvcode, long al_dsrow, long al_detaildwrow, ref string as_errtext) returns long
 	long ll_icode
 	long ll_gcode
 	long ll_packunits
@@ -2634,14 +2634,14 @@
 	end if
 	return li_errcode
 
-// w_receipt.wf_itemprevqty(long al_issueinvcode, long al_issuerowid, long al_icode, double al_itemprevqty) returns long
+// w_receipt.wf_itemprevqty(long al_issueinvcode, long al_issuerowid, long al_icode, ref double al_itemprevqty) returns long
 	SQL SELECT IsNull ( Sum ( qty ) , 0 ) INTO :al_itemprevqty FROM ReceiptHeader , ReceiptDetail WHERE ReceiptHeader.IssueInvCode =:al_issueinvcode And ReceiptHeader.ReceiptInvcode =ReceiptDetail.ReceiptInvCode And ReceiptDetail.ICode =:al_icode And ReceiptDetail.IssueRowId =:al_issuerowid USING this.it_transobject;
 	if isnull(al_itemprevqty) then
 		al_itemprevqty = 0
 	end if
 	return this.it_transobject.sqlcode
 
-// w_receipt.wf_inititeminfo(datawindowchild adc_itemdddw, long al_row, long al_dddwrow, string as_errtext) returns integer
+// w_receipt.wf_inititeminfo(ref datawindowchild adc_itemdddw, long al_row, long al_dddwrow, ref string as_errtext) returns integer
 	long ll_icode
 	long ll_gcode
 	long ll_packunits
@@ -2733,7 +2733,7 @@
 	end if
 	return li_errcode
 
-// w_receipt.wf_oninvoiceitemprevqty(long al_row, long al_icode, long al_issuerowid, double al_itemprevqty, string as_batch, datetime adt_expiry) returns integer
+// w_receipt.wf_oninvoiceitemprevqty(long al_row, long al_icode, long al_issuerowid, ref double al_itemprevqty, string as_batch, datetime adt_expiry) returns integer
 	long ll_counter
 	long ll_rowcount
 	long ll_icode

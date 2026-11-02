@@ -67,7 +67,7 @@
 // w_sale_modified.ue_enableprint() returns 0 [event]
 	this.im_menu.m_file.m_print.enabled = true
 
-// w_sale_modified.wf_getmaxdate(datetime ad_date) returns integer
+// w_sale_modified.wf_getmaxdate(ref datetime ad_date) returns integer
 	SQL Select Max ( Date ) INTO :ad_date From saleledger USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
@@ -161,7 +161,7 @@
 	this.ib_itemslistopen = false
 	this.id_itemslist.hide()
 
-// w_sale_modified.wf_genfullcode(long al_icode, string as_fullcode) returns integer
+// w_sale_modified.wf_genfullcode(long al_icode, ref string as_fullcode) returns integer
 	integer li_retflag
 	string ls_fullcode
 	long icode
@@ -209,7 +209,7 @@
 	setpointer(arrow!)
 	return li_errcode
 
-// w_sale_modified.wf_findpatientcode(string as_regno, integer ai_patientcode) returns integer
+// w_sale_modified.wf_findpatientcode(string as_regno, ref integer ai_patientcode) returns integer
 	integer li_patientcode
 	integer ll_retflag
 	string ls_itemname
@@ -292,7 +292,7 @@
 	end if
 	return lb_rtflag
 
-// w_sale_modified.wf_returnsaleinvoice(long al_invid, string as_errtext) returns boolean
+// w_sale_modified.wf_returnsaleinvoice(long al_invid, ref string as_errtext) returns boolean
 	long ll_saleinvcode
 	long ll_gcode
 	long ll_icode
@@ -595,7 +595,7 @@
 	end if
 	return li_errcode
 
-// w_sale_modified.wf_findcustcode(string as_aliasname, integer ai_custcode) returns integer
+// w_sale_modified.wf_findcustcode(string as_aliasname, ref integer ai_custcode) returns integer
 	integer li_custcode
 	integer ll_retflag
 	string ls_itemname
@@ -937,7 +937,7 @@
 	next
 	return 1
 
-// w_sale_modified.wf_inititeminfo(long al_icode, long al_row, integer ai_rtcode, string as_errortext) returns boolean
+// w_sale_modified.wf_inititeminfo(long al_icode, long al_row, ref integer ai_rtcode, ref string as_errortext) returns boolean
 	boolean retflag = true
 	double ld_rpp
 	double ld_purprice
@@ -1330,7 +1330,7 @@
 	setredraw(true)
 	return 0
 
-// w_sale_modified.wf_populatesaledetail(long al_invid, datawindow ad_saledetail, string as_errortext, long al_errorrow) returns boolean
+// w_sale_modified.wf_populatesaledetail(long al_invid, ref datawindow ad_saledetail, ref string as_errortext, ref long al_errorrow) returns boolean
 	long ll_detailrows
 	long ll_gcode
 	long ll_icode
@@ -1519,7 +1519,7 @@
 	destroy lds_saledetail
 	return li_retcode
 
-// w_sale_modified.wf_setrowgroup(datawindow adw_detail) returns integer
+// w_sale_modified.wf_setrowgroup(ref datawindow adw_detail) returns integer
 	long ll_counter = 1
 	long ll_rowcount
 	long ll_rowgroup
@@ -1592,7 +1592,7 @@
 	end if
 	return li_errcode
 
-// w_sale_modified.wf_findfullcode(string as_fullcode, long al_icode, string al_itemname) returns integer
+// w_sale_modified.wf_findfullcode(string as_fullcode, ref long al_icode, ref string al_itemname) returns integer
 	long ll_icode
 	long ll_retflag
 	string ls_itemname
@@ -1719,7 +1719,7 @@
 	end if
 	return 0
 
-// w_sale_modified.wf_initmodify(integer ai_protect) returns 0
+// w_sale_modified.wf_initmodify(ref integer ai_protect) returns 0
 	long ll_saleinvcode
 	long ll_gcode
 	long ll_icode
@@ -1795,12 +1795,12 @@
 		messagebox("Cannot Modify", "Sale invoice is already in use")
 	end if
 
-// w_sale_modified.wf_locksaleinvoices(long al_sinvcode, long al_linvcode, long al_totalinvoice) returns integer
+// w_sale_modified.wf_locksaleinvoices(long al_sinvcode, long al_linvcode, ref long al_totalinvoice) returns integer
 	integer li_count
 	SQL Select count ( *) INTO :al_totalinvoice From saleledgerModified WITH ( UPDLOCK HOLDLOCK ) Where saleledgerModified.saleinvcode Between :al_sinvcode AND :al_linvcode AND saleledgerModified.Posted ='N' USING sqlca;
 	return sqlca.sqlcode
 
-// w_sale_modified.wf_allowinvoice(long al_custcode, long al_lastinvcode) returns long
+// w_sale_modified.wf_allowinvoice(long al_custcode, ref long al_lastinvcode) returns long
 	long ll_retcode
 	long ll_code
 	if this.ib_modify then
@@ -1829,14 +1829,14 @@
 	end if
 	return false
 
-// w_sale_modified.wf_getsalesstockinfo(long al_saleinvcode, long al_gcode, long al_icode, double al_saleqty) returns integer
+// w_sale_modified.wf_getsalesstockinfo(long al_saleinvcode, long al_gcode, long al_icode, ref double al_saleqty) returns integer
 	SQL Select IsNull ( Sum ( saledetail.looseqty + saledetail.bonusqty ) , 0 ) INTO :al_saleqty from saledetail where saledetail.saleinvcode =:al_saleinvcode and saledetail.gcode =:al_gcode and saledetail.icode =:al_icode USING this.it_transobject;
 	if isnull(al_saleqty) then
 		al_saleqty = 0
 	end if
 	return this.it_transobject.sqlcode
 
-// w_sale_modified.wf_selectitembatches(long al_gcode, long al_icode, double al_qty, double al_bonus, datawindow ad_itemsdetail, long al_rowscount, string al_errortext) returns integer
+// w_sale_modified.wf_selectitembatches(long al_gcode, long al_icode, double al_qty, double al_bonus, ref datawindow ad_itemsdetail, ref long al_rowscount, ref string al_errortext) returns integer
 	datastore lds_itemstockinfo
 	long ll_counter
 	long ll_detailrowcount

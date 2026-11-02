@@ -258,7 +258,7 @@
 	this.id_detail.settransobject(this.it_transobject)
 	this.id_list.settransobject(this.it_transobject)
 
-// w_proformapurchase.wf_findsuppcode(string as_aliasname, integer ai_suppcode) returns integer
+// w_proformapurchase.wf_findsuppcode(string as_aliasname, ref integer ai_suppcode) returns integer
 	integer li_suppcode
 	integer ll_retflag
 	string ls_itemname
@@ -275,7 +275,7 @@
 	end if
 	return ll_retflag
 
-// w_proformapurchase.wf_genfullcode(long al_icode, string as_fullcode) returns integer
+// w_proformapurchase.wf_genfullcode(long al_icode, ref string as_fullcode) returns integer
 	integer li_retflag
 	string ls_fullcode
 	long icode
@@ -288,11 +288,11 @@
 	end if
 	return li_retflag
 
-// w_proformapurchase.wf_getpomanfcode(long al_pocode, long al_manfcode) returns 0
+// w_proformapurchase.wf_getpomanfcode(ref long al_pocode, ref long al_manfcode) returns 0
 	al_pocode = this.id_master.object.pocode[this.id_master.getrow()]
 	al_manfcode = this.id_master.object.manfcode[this.id_master.getrow()]
 
-// w_proformapurchase.wf_initmodify(integer ai_protect) returns 0
+// w_proformapurchase.wf_initmodify(ref integer ai_protect) returns 0
 	long ll_purinvcode
 	long ll_gcode
 	long ll_icode
@@ -408,7 +408,7 @@
 // w_proformapurchase.wf_validatefullcode(string as_custicode, long al_currrow) returns boolean
 	return true
 
-// w_proformapurchase.wf_iteminfo(long al_icode, long al_gcode, double ad_purprice, double ad_discperc, double ad_avgprice, long al_packunits, double al_packsalestax, double al_gstperc, double ad_saleprice) returns boolean
+// w_proformapurchase.wf_iteminfo(long al_icode, ref long al_gcode, ref double ad_purprice, ref double ad_discperc, ref double ad_avgprice, ref long al_packunits, ref double al_packsalestax, ref double al_gstperc, ref double ad_saleprice) returns boolean
 	boolean retflag = true
 	SQL SELECT 1 , item.salePrice , item.purdiscperc , item.avgprice , item.packunits , item.saleprice , item.packsalestax , item.gstperc1 INTO :al_gcode, :ad_purprice, :ad_discperc, :ad_avgprice, :al_packunits, :ad_saleprice, :al_packsalestax, :al_gstperc FROM item WHERE item.icode =:al_icode USING this.it_transobject;
 	al_gcode = this.ii_purchasegodownoption
@@ -510,7 +510,7 @@
 	end if
 	return ll_rtcode
 
-// w_proformapurchase.wf_inititeminfo(long al_icode, long al_row, string as_errortext) returns boolean
+// w_proformapurchase.wf_inititeminfo(long al_icode, long al_row, ref string as_errortext) returns boolean
 	boolean retflag = true
 	double ld_purprice
 	double ld_discperc
@@ -611,7 +611,7 @@
 	end if
 	return 0
 
-// w_proformapurchase.wf_findfullcode(string as_fullcode, long al_icode, string al_itemname) returns integer
+// w_proformapurchase.wf_findfullcode(string as_fullcode, ref long al_icode, ref string al_itemname) returns integer
 	long ll_icode
 	long ll_retflag
 	string ls_itemname
@@ -692,7 +692,7 @@
 	this.id_master.setitem(1, "amtreference", ls_null)
 	this.id_master.setitem(1, "amt", 0)
 
-// w_proformapurchase.wf_getitemsaleprice(long al_icode, double ad_saleprice) returns boolean
+// w_proformapurchase.wf_getitemsaleprice(long al_icode, ref double ad_saleprice) returns boolean
 	boolean retflag = true
 	SQL SELECT item.salePrice INTO :ad_saleprice FROM item WHERE item.icode =:al_icode USING this.it_transobject;
 	if isnull(ad_saleprice) then
@@ -1607,7 +1607,7 @@
 	end if
 	return rt_code
 
-// w_proformapurchase.wf_itemstockinfo(long al_icode, long al_gcode, double ad_stock) returns boolean
+// w_proformapurchase.wf_itemstockinfo(long al_icode, long al_gcode, ref double ad_stock) returns boolean
 	boolean retflag = true
 	double ld_stock
 	double ld_totalstock
@@ -1965,7 +1965,7 @@
 	end if
 	return ll_retcode
 
-// w_proformapurchase.wf_inititeminfo_purcategory(long al_icode, long al_row, string as_errortext, long al_purcatcode) returns boolean
+// w_proformapurchase.wf_inititeminfo_purcategory(long al_icode, long al_row, ref string as_errortext, long al_purcatcode) returns boolean
 	boolean retflag = true
 	double ld_purprice
 	double ld_discperc

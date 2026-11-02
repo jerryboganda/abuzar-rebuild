@@ -126,7 +126,7 @@
 	this.id_footer.object.stock.visible = ab_flag
 	this.id_footer.object.t_stock.visible = ab_flag
 
-// w_issue.wf_genfullcode(long al_icode, string as_fullcode) returns integer
+// w_issue.wf_genfullcode(long al_icode, ref string as_fullcode) returns integer
 	integer li_retflag
 	string ls_fullcode
 	long icode
@@ -143,7 +143,7 @@
 	end if
 	return li_retflag
 
-// w_issue.wf_getmaxdate(datetime ad_date) returns integer
+// w_issue.wf_getmaxdate(ref datetime ad_date) returns integer
 	SQL Select Max ( Date ) INTO :ad_date From saleledger USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
@@ -572,7 +572,7 @@
 	this.id_print.settransobject(this.it_transobject)
 	return ls_report
 
-// w_issue.wf_returnsaleinvoice(long al_invid, string as_errtext) returns boolean
+// w_issue.wf_returnsaleinvoice(long al_invid, ref string as_errtext) returns boolean
 	long ll_saleinvcode
 	long ll_gcode
 	long ll_icode
@@ -919,7 +919,7 @@
 	end if
 	return this.id_list.retrieve(li_salecategory, ls_posted, ld_invdate, this.il_groupcode, this.ii_module, this.ii_category)
 
-// w_issue.wf_initmodify(integer ai_protect) returns 0
+// w_issue.wf_initmodify(ref integer ai_protect) returns 0
 	long ll_saleinvcode
 	long ll_gcode
 	long ll_icode
@@ -1316,7 +1316,7 @@
 	end if
 	return li_errcode
 
-// w_issue.wf_findfullcode(string as_fullcode, long al_icode, string al_itemname) returns integer
+// w_issue.wf_findfullcode(string as_fullcode, ref long al_icode, ref string al_itemname) returns integer
 	long ll_icode
 	long ll_retflag
 	string ls_itemname
@@ -1397,7 +1397,7 @@
 	end if
 	return ll_retcode
 
-// w_issue.wf_inititeminfo(long al_icode, long al_row, integer ai_rtcode, string as_errortext) returns boolean
+// w_issue.wf_inititeminfo(long al_icode, long al_row, ref integer ai_rtcode, ref string as_errortext) returns boolean
 	boolean retflag = true
 	double ld_saleprice
 	long ll_packunits
@@ -1521,7 +1521,7 @@
 	SQL SELECT DISTINCT GCode =ISNull ( Count ( GCode ) , 0 ) INTO :ll_disallowedcount FROM IssueDetail WHERE IssueInvCode =:ad_invoicecode AND GCode NOT IN ( SELECT Godown.GCode FROM Godown WHERE GCode IN ( CASE :ai_strategy WHEN 2 THEN ( SELECT G.GCode From Godown G WHERE G.GCode =Godown.GCode ) ELSE ( SELECT G.GCode From GroupAllowedGodown G WHERE G.GroupCode =:al_groupcode AND G.Module =:this.ii_module AND Godown.GCode =G.GCode ) END ) ) USING sqlca;
 	return ll_disallowedcount
 
-// w_issue.wf_populatesaledetail(long al_invid, datawindow ad_saledetail, string as_errortext, long al_errorrow) returns boolean
+// w_issue.wf_populatesaledetail(long al_invid, ref datawindow ad_saledetail, ref string as_errortext, ref long al_errorrow) returns boolean
 	long ll_detailrows
 	long ll_gcode
 	long ll_icode
@@ -1938,7 +1938,7 @@
 	wf_grandtotal()
 	return li_retcode
 
-// w_issue.wf_selectitembatches(long al_gcode, long al_icode, double al_qty, datawindow ad_itemsdetail, long al_rowscount, string al_errortext) returns integer
+// w_issue.wf_selectitembatches(long al_gcode, long al_icode, double al_qty, ref datawindow ad_itemsdetail, ref long al_rowscount, ref string al_errortext) returns integer
 	datastore lds_itemstockinfo
 	long ll_counter
 	long ll_detailrowcount
@@ -2037,7 +2037,7 @@
 	SQL Delete IssueDetail Where IssueDetail.IssueInvCode =:al_invcode USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
-// w_issue.wf_getissuestockinfo(long al_invcode, long al_gcode, long al_icode, double al_issueqty) returns integer
+// w_issue.wf_getissuestockinfo(long al_invcode, long al_gcode, long al_icode, ref double al_issueqty) returns integer
 	SQL Select IsNull ( Sum ( IssueDetail.qty ) , 0 ) INTO :al_issueqty from IssueDetail where IssueDetail.Issueinvcode =:al_invcode and IssueDetail.gcode =:al_gcode and IssueDetail.icode =:al_icode USING this.it_transobject;
 	if isnull(al_issueqty) then
 		al_issueqty = 0
@@ -2696,7 +2696,7 @@
 	this.id_itemslist.setredraw(true)
 	return 0
 
-// w_issue.wf_inititeminfo(datawindowchild adc_itemdddw, long al_row, long al_dddwrow, string as_errtext) returns integer
+// w_issue.wf_inititeminfo(ref datawindowchild adc_itemdddw, long al_row, long al_dddwrow, ref string as_errtext) returns integer
 	long ll_icode
 	long ll_gcode
 	long ll_packunits
@@ -2822,14 +2822,14 @@
 	end if
 	return li_errcode
 
-// w_issue.wf_itemprevissueqty(long al_receiptinvcode, long al_receiptrowid, long al_icode, double al_itemprevqty) returns long
+// w_issue.wf_itemprevissueqty(long al_receiptinvcode, long al_receiptrowid, long al_icode, ref double al_itemprevqty) returns long
 	SQL SELECT IsNull ( Sum ( qty ) , 0 ) INTO :al_itemprevqty FROM IssueHeader , IssueDetail WHERE IssueHeader.ReceiptInvCode =:al_receiptinvcode And IssueHeader.posted ='Y' And IssueHeader.IssueInvcode =IssueDetail.IssueInvCode And IssueDetail.ICode =:al_icode And IssueDetail.ReceiptRowId =:al_receiptrowid USING this.it_transobject;
 	if isnull(al_itemprevqty) then
 		al_itemprevqty = 0
 	end if
 	return this.it_transobject.sqlcode
 
-// w_issue.wf_oninvoiceitemprevqty(long al_row, long al_icode, long al_receiptrowid, double al_itemprevqty, string as_batch, datetime adt_expiry) returns integer
+// w_issue.wf_oninvoiceitemprevqty(long al_row, long al_icode, long al_receiptrowid, ref double al_itemprevqty, string as_batch, datetime adt_expiry) returns integer
 	long ll_counter
 	long ll_rowcount
 	long ll_icode
@@ -2905,7 +2905,7 @@
 	this.id_detail.setredraw(true)
 	return ll_rowscopy
 
-// w_issue.wf_inititeminfo(datawindowchild adc_itemdddw, long al_receiptinvcode, long al_dsrow, long al_detaildwrow, string as_errtext) returns long
+// w_issue.wf_inititeminfo(ref datawindowchild adc_itemdddw, long al_receiptinvcode, long al_dsrow, long al_detaildwrow, ref string as_errtext) returns long
 	long ll_icode
 	long ll_gcode
 	long ll_packunits
@@ -3041,7 +3041,7 @@
 	end if
 	return li_rtcode
 
-// w_issue.wf_findfullcode(string as_fullcode, long al_icode, string as_itemname, long al_itemcodetype, double ad_qty, double ad_purprice, double ad_saleprice) returns long
+// w_issue.wf_findfullcode(string as_fullcode, ref long al_icode, ref string as_itemname, ref long al_itemcodetype, ref double ad_qty, ref double ad_purprice, ref double ad_saleprice) returns long
 	long ll_rowid
 	long ll_retflag
 	if this.id_master.object.receiptinvcode[1] > 0 then
@@ -3070,7 +3070,7 @@
 	end if
 	return ll_retflag
 
-// w_issue.wf_generate_issuecategory_counter(integer ai_issuecategorycode, long al_issuecode, transaction at_transobject) returns long
+// w_issue.wf_generate_issuecategory_counter(integer ai_issuecategorycode, ref long al_issuecode, ref transaction at_transobject) returns long
 	long ll_rtcode
 	SQL SELECT dbo.IssueCategory.COUNTER INTO :al_issuecode FROM dbo.IssueCategory WITH ( UPDLOCK HOLDLOCK ) WHERE dbo.IssueCategory.IssueCategoryCode =:ai_issuecategorycode USING at_transobject;
 	if at_transobject.sqlcode = 0 then
@@ -3086,12 +3086,12 @@
 	end if
 	return ll_rtcode
 
-// w_issue.wf_locksaleinvoices(long al_sinvcode, long al_linvcode, long al_totalinvoice, integer ai_issuecategorycode) returns integer
+// w_issue.wf_locksaleinvoices(long al_sinvcode, long al_linvcode, ref long al_totalinvoice, integer ai_issuecategorycode) returns integer
 	integer li_count
 	SQL Select count ( *) INTO :al_totalinvoice From IssueHeader WITH ( UPDLOCK HOLDLOCK ) Where IssueHeader.Issueinvcode Between :al_sinvcode AND :al_linvcode AND IssueHeader.Posted ='N' AND IssueHeader.IssueCategoryCode =:ai_issuecategorycode USING sqlca;
 	return sqlca.sqlcode
 
-// w_issue.wf_quotationinuse(long al_quotationcode, long al_issueinvcode) returns long
+// w_issue.wf_quotationinuse(long al_quotationcode, ref long al_issueinvcode) returns long
 	long ll_issueinvcode
 	ll_issueinvcode = this.id_master.object.code[this.id_master.getrow()]
 	SQL Select issueinvcode INTO :al_issueinvcode From IssueHeader Where QuotationCode =:al_quotationcode And IssueInvCode Not In ( :ll_issueinvcode ) USING this.it_transobject;
@@ -3114,7 +3114,7 @@
 	this.idc_motorvehicle.scrolltorow(ll_row)
 	return 0
 
-// w_issue.wf_find_motorvehiclecode(string as_chasisno, long al_code) returns long
+// w_issue.wf_find_motorvehiclecode(string as_chasisno, ref long al_code) returns long
 	long ll_motorvehiclecode
 	long ll_retflag
 	ll_retflag = 0

@@ -41,7 +41,7 @@
 	end if
 	return li_errcode
 
-// w_customer_note_form.wf_locknotes(long al_sinvcode, long al_linvcode, long al_totalinvoice) returns integer
+// w_customer_note_form.wf_locknotes(long al_sinvcode, long al_linvcode, ref long al_totalinvoice) returns integer
 	integer li_count
 	SQL Select count ( *) INTO :al_totalinvoice From Notes WITH ( UPDLOCK HOLDLOCK ) Where Notes.notecode Between :al_sinvcode AND :al_linvcode AND Notes.Posted ='N' USING sqlca;
 	return sqlca.sqlcode
@@ -51,7 +51,7 @@
 	SQL Select count ( *) INTO :li_count From Notes WITH ( UPDLOCK HOLDLOCK ) Where Notes.NoteCode =:al_invcode USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
-// w_customer_note_form.wf_initmodify(integer ai_protect) returns 0
+// w_customer_note_form.wf_initmodify(ref integer ai_protect) returns 0
 	long ll_notecode
 	long ll_counter = 1
 	if this.id_detail.getitemstring(1, "posted") = "N" then

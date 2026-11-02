@@ -95,7 +95,7 @@
 	end if
 	return ls_uuid
 
-// n_smtp.of_findmimefromdata(string as_filename, blob ablob_filedata) returns string
+// n_smtp.of_findmimefromdata(string as_filename, ref blob ablob_filedata) returns string
 	unsignedlong e_invalidarg = 2147942487
 	unsignedlong e_outofmemory = 2147942414
 	unsignedlong noerror
@@ -160,7 +160,7 @@
 	end if
 	return ls_offset
 
-// n_smtp.of_readfile(string as_filename, blob ablob_data) returns boolean
+// n_smtp.of_readfile(string as_filename, ref blob ablob_data) returns boolean
 	long invalid_handle_value = -1
 	unsignedlong generic_read = 2147483648
 	unsignedlong generic_write = 1073741824
@@ -732,6 +732,22 @@
 // n_smtp.of_hex(unsignedlong aul_decimal) returns string
 	string ls_hex
 	char[] lch_hex
+	lch_hex[1] = "0"
+	lch_hex[2] = "1"
+	lch_hex[3] = "2"
+	lch_hex[4] = "3"
+	lch_hex[5] = "4"
+	lch_hex[6] = "5"
+	lch_hex[7] = "6"
+	lch_hex[8] = "7"
+	lch_hex[9] = "8"
+	lch_hex[10] = "9"
+	lch_hex[11] = "A"
+	lch_hex[12] = "B"
+	lch_hex[13] = "C"
+	lch_hex[14] = "D"
+	lch_hex[15] = "E"
+	lch_hex[16] = "F"
 	do
 		ls_hex = lch_hex[aul_decimal mod 16] + ls_hex
 		aul_decimal = 16.0 / aul_decimal
@@ -778,7 +794,7 @@
 	end if
 	return ls_result
 
-// n_smtp.of_utf8body(string as_string, string as_encoding, string as_charset) returns 0
+// n_smtp.of_utf8body(ref string as_string, ref string as_encoding, ref string as_charset) returns 0
 	string[] ls_char
 	integer li_idx
 	integer li_max
@@ -1092,7 +1108,7 @@
 	of_logfile("~r~n" + "of_SendSSLMail End: " + string(ldt_current) + "~r~n")
 	return true
 
-// n_smtp.of_validemail(string as_email, string as_errormsg) returns boolean
+// n_smtp.of_validemail(string as_email, ref string as_errormsg) returns boolean
 	string ls_localpart
 	string ls_domain
 	string[] ls_domainpart
@@ -1220,7 +1236,7 @@
 	end if
 	return ldec_elapsed
 
-// n_smtp.of_sendmsg_crypt(string as_cmd, integer ai_okreturn, string as_reply) returns boolean
+// n_smtp.of_sendmsg_crypt(ref string as_cmd, integer ai_okreturn, ref string as_reply) returns boolean
 	long max_buffer_len = 16000
 	string ls_msg
 	string ls_reply
@@ -1317,7 +1333,7 @@
 	end if
 	return false
 
-// n_smtp.of_sendmsg(string as_cmd, integer ai_okreturn, string as_reply) returns boolean
+// n_smtp.of_sendmsg(ref string as_cmd, integer ai_okreturn, ref string as_reply) returns boolean
 	string ls_msg
 	string ls_reply
 	if right(as_cmd, 2) = "~r~n" then

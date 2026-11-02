@@ -268,7 +268,7 @@
 	this.id_detail.object.discperc.visible = 0
 	return 1
 
-// w_salereturnbuffer.wf_genfullcode(long al_icode, string as_fullcode) returns integer
+// w_salereturnbuffer.wf_genfullcode(long al_icode, ref string as_fullcode) returns integer
 	integer li_retflag
 	string ls_fullcode
 	long icode
@@ -369,7 +369,7 @@
 	end if
 	return lb_duplicate
 
-// w_salereturnbuffer.wf_findcustcode(string as_aliasname, integer ai_custcode) returns integer
+// w_salereturnbuffer.wf_findcustcode(string as_aliasname, ref integer ai_custcode) returns integer
 	integer li_custcode
 	integer ll_retflag
 	string ls_itemname
@@ -456,7 +456,7 @@
 	this.ii_salerettype = ai_salerettype
 	this.ib_opensalereturn = ab_opensaleret
 
-// w_salereturnbuffer.wf_updatesalereturnitemsstock(long al_saleretinvcode, string as_errtext, long al_errrow) returns integer
+// w_salereturnbuffer.wf_updatesalereturnitemsstock(long al_saleretinvcode, ref string as_errtext, ref long al_errrow) returns integer
 	long ll_detailrows
 	long ll_gcode
 	long ll_icode
@@ -542,7 +542,7 @@
 	SQL SELECT DISTINCT GCode =ISNull ( Count ( GCode ) , 0 ) INTO :ll_disallowedcount FROM SaleDetail WHERE SaleInvCode =:ad_invoicecode AND GCode NOT IN ( SELECT Godown.GCode FROM Godown WHERE GCode IN ( CASE :ai_strategy WHEN 2 THEN ( SELECT G.GCode From Godown G WHERE G.GCode =Godown.GCode ) ELSE ( SELECT G.GCode From GroupAllowedGodown G WHERE G.GroupCode =:al_groupcode AND G.Module =:this.ii_module AND Godown.GCode =G.GCode ) END ) ) USING sqlca;
 	return ll_disallowedcount
 
-// w_salereturnbuffer.wf_findretailsaleinvoice(long al_saleinvcode, datetime ad_date, string as_errtext) returns integer
+// w_salereturnbuffer.wf_findretailsaleinvoice(long al_saleinvcode, ref datetime ad_date, ref string as_errtext) returns integer
 	integer li_rtcode
 	string ls_posted
 	SQL SELECT SaleLedger.date , posted INTO :ad_date, :ls_posted FROM SaleLedger WHERE SaleLedger.Saleinvcode =:al_saleinvcode AND SaleLedger.SaleCatCode =3 USING this.it_transobject;
@@ -700,7 +700,7 @@
 	SQL SELECT DISTINCT GCode =ISNull ( Count ( GCode ) , 0 ) INTO :ll_disallowedcount FROM SRBufferDetail WHERE SRBufferInvCode =:ad_invoicecode AND GCode NOT IN ( SELECT Godown.GCode FROM Godown WHERE GCode IN ( CASE :ai_strategy WHEN 2 THEN ( SELECT G.GCode From Godown G WHERE G.GCode =Godown.GCode ) ELSE ( SELECT G.GCode From GroupAllowedGodown G WHERE G.GroupCode =:al_groupcode AND G.Module =:this.ii_module AND Godown.GCode =G.GCode ) END ) ) USING sqlca;
 	return ll_disallowedcount
 
-// w_salereturnbuffer.wf_findfullcode(string as_fullcode, long al_icode, string al_itemname) returns integer
+// w_salereturnbuffer.wf_findfullcode(string as_fullcode, ref long al_icode, ref string al_itemname) returns integer
 	long ll_icode
 	long ll_retflag
 	long ll_rowid
@@ -735,7 +735,7 @@
 	end if
 	return ll_retflag
 
-// w_salereturnbuffer.wf_initmodify(integer ai_protect) returns 0
+// w_salereturnbuffer.wf_initmodify(ref integer ai_protect) returns 0
 	long ll_saleretinvcode
 	long ll_saleinvcode
 	long ll_gcode
@@ -843,7 +843,7 @@
 	end if
 	return 0
 
-// w_salereturnbuffer.wf_findsaleinvoice(long al_saleinvcode, datetime ad_date, string as_errtext) returns integer
+// w_salereturnbuffer.wf_findsaleinvoice(long al_saleinvcode, ref datetime ad_date, ref string as_errtext) returns integer
 	integer li_rtcode
 	long ll_admissioncode
 	string ls_posted
@@ -873,7 +873,7 @@
 	end if
 	return li_rtcode
 
-// w_salereturnbuffer.wf_setsaleinvinfo(long al_saleinvcode, long al_custcode) returns 0
+// w_salereturnbuffer.wf_setsaleinvinfo(long al_saleinvcode, ref long al_custcode) returns 0
 	long ll_salecatcode
 	long ll_row
 	long ll_smancode
@@ -967,7 +967,7 @@
 	this.id_master.object.custname[this.id_master.getrow()] = ls_custname
 	return this.it_transobject.sqlcode
 
-// w_salereturnbuffer.wf_findunpostedsalereturns(long al_saleinvcode, string as_errtext) returns integer
+// w_salereturnbuffer.wf_findunpostedsalereturns(long al_saleinvcode, ref string as_errtext) returns integer
 	integer li_rtcode
 	long ll_count
 	long ll_code
@@ -1088,7 +1088,7 @@
 	this.id_list.settransobject(this.it_transobject)
 	this.id_print.settransobject(this.it_transobject)
 
-// w_salereturnbuffer.wf_isposted(long al_code, transaction at_object) returns long
+// w_salereturnbuffer.wf_isposted(long al_code, ref transaction at_object) returns long
 	string ls_posted
 	SQL Select IsNull ( Posted , 'N' ) INTO :ls_posted From SrBufferLedger Where Srbufferinvcode =:al_code USING at_object;
 	if at_object.sqlcode = 0 then
@@ -1251,7 +1251,7 @@
 	end if
 	return 0
 
-// w_salereturnbuffer.wf_inititeminfo(datawindowchild adc_itemdddw, long al_saleinvcode, long al_dsrow, long al_detaildwrow, string as_errtext) returns integer
+// w_salereturnbuffer.wf_inititeminfo(datawindowchild adc_itemdddw, long al_saleinvcode, long al_dsrow, long al_detaildwrow, ref string as_errtext) returns integer
 	long ll_icode
 	long ll_gcode
 	long ll_packunits
@@ -1491,7 +1491,7 @@
 	end if
 	return ll_retcode
 
-// w_salereturnbuffer.wf_inititeminfo(datawindowchild adc_itemdddw, long al_row, long al_dddwrow, string as_errtext) returns integer
+// w_salereturnbuffer.wf_inititeminfo(ref datawindowchild adc_itemdddw, long al_row, long al_dddwrow, ref string as_errtext) returns integer
 	long ll_icode
 	long ll_gcode
 	long ll_packunits
@@ -1631,7 +1631,7 @@
 	end if
 	return li_errcode
 
-// w_salereturnbuffer.wf_inititeminfo(long al_icode, long al_row, string as_errortext) returns integer
+// w_salereturnbuffer.wf_inititeminfo(long al_icode, long al_row, ref string as_errortext) returns integer
 	double ld_saleprice
 	double ld_discperc
 	double ld_unitsalestax
@@ -1752,7 +1752,7 @@
 	end if
 	return retflag
 
-// w_salereturnbuffer.wf_checkitemactiveness(long al_icode, string as_errtext, long al_count, long[] al_activeitemslist) returns long
+// w_salereturnbuffer.wf_checkitemactiveness(long al_icode, ref string as_errtext, ref long al_count, ref long[] al_activeitemslist) returns long
 	long ll_activestatus
 	long ll_setactive
 	ll_activestatus = this.it_transobject.isactiveitem(al_icode)
@@ -1776,7 +1776,7 @@
 	end if
 	return 0
 
-// w_salereturnbuffer.wf_itemprevretqty(long al_saleinvcode, long al_gcode, long al_icode, string as_batch, datetime ad_expiry, double al_itemprevqty, double al_itemprevbonusqty) returns integer
+// w_salereturnbuffer.wf_itemprevretqty(long al_saleinvcode, long al_gcode, long al_icode, string as_batch, datetime ad_expiry, ref double al_itemprevqty, double al_itemprevbonusqty) returns integer
 	SQL SELECT IsNull ( Sum ( srdetail.looseqty ) , 0 ) , IsNull ( Sum ( srdetail.Bonusqty ) , 0 ) INTO :al_itemprevqty, :al_itemprevbonusqty FROM srledger , srdetail WHERE srledger.saleinvcode =:al_saleinvcode and srledger.posted ='Y' and srledger.srinvcode =srdetail.SRInvCode and srdetail.icode =:al_icode and srdetail.batch =:as_batch and srdetail.expiry =:ad_expiry USING this.it_transobject;
 	if isnull(al_itemprevqty) then
 		al_itemprevqty = 0
@@ -1786,7 +1786,7 @@
 	end if
 	return this.it_transobject.sqlcode
 
-// w_salereturnbuffer.wf_itemprevretqty(long al_saleinvcode, long al_salerowid, long al_icode, double al_itemprevqty, double al_itemprevbonusqty) returns integer
+// w_salereturnbuffer.wf_itemprevretqty(long al_saleinvcode, long al_salerowid, long al_icode, ref double al_itemprevqty, ref double al_itemprevbonusqty) returns integer
 	SQL SELECT IsNull ( Sum ( looseqty ) , 0 ) , IsNull ( Sum ( bonusqty ) , 0 ) INTO :al_itemprevqty, :al_itemprevbonusqty FROM SRLedger , SRDetail WHERE SRLedger.SaleInvCode =:al_saleinvcode And SRLedger.posted ='Y' And SRLedger.SRInvcode =SRDetail.SRInvCode And SRDetail.ICode =:al_icode And SRDetail.SaleRowId =:al_salerowid USING this.it_transobject;
 	if isnull(al_itemprevqty) then
 		al_itemprevqty = 0
@@ -1796,7 +1796,7 @@
 	end if
 	return this.it_transobject.sqlcode
 
-// w_salereturnbuffer.wf_oninvoiceitemprevqty(long al_row, long al_icode, long al_salerowid, double al_itemprevqty, double al_itemprevbonusqty, string as_batch, datetime ad_expiry) returns integer
+// w_salereturnbuffer.wf_oninvoiceitemprevqty(long al_row, long al_icode, long al_salerowid, ref double al_itemprevqty, ref double al_itemprevbonusqty, string as_batch, datetime ad_expiry) returns integer
 	long ll_counter
 	long ll_rowcount
 	long ll_icode
@@ -2629,7 +2629,7 @@
 	destroy lds_groupdiscinfo
 	return 0
 
-// w_salereturnbuffer.wf_getitemdiscounts(long al_icode, long al_custcode, double ad_salediscperc, double ad_maxsalediscperc) returns long
+// w_salereturnbuffer.wf_getitemdiscounts(long al_icode, long al_custcode, ref double ad_salediscperc, ref double ad_maxsalediscperc) returns long
 	long ll_retcode
 	SQL SELECT SaleDiscPerc =CASE ( SELECT DefaultItemDiscPerc FROM DBO.Customer WHERE CustCode =:al_custcode ) WHEN 1 THEN SaleDiscPerc WHEN 2 THEN SaleDiscPerc2 WHEN 3 THEN SaleDiscPerc3 WHEN 4 THEN SaleDiscPerc4 WHEN 5 THEN SaleDiscPerc5 ELSE 0 END , MaxSaleDiscPerc INTO :ad_salediscperc, :ad_maxsalediscperc FROM item WHERE ICode =:al_icode USING sqlca;
 	if sqlca.sqlcode = 0 then
@@ -2639,7 +2639,7 @@
 	end if
 	return ll_retcode
 
-// w_salereturnbuffer.wf_findfullcode(string as_fullcode, long al_icode, string as_itemname, long al_itemcodetype) returns long
+// w_salereturnbuffer.wf_findfullcode(string as_fullcode, ref long al_icode, ref string as_itemname, ref long al_itemcodetype) returns long
 	long ll_retflag
 	long ll_rowid
 	setnull(al_icode)
@@ -2674,7 +2674,7 @@
 	pd_writepd(ls_init_string, len(ls_init_string))
 	return 0
 
-// w_salereturnbuffer.wf_findpatientcode(string as_regno, long al_patientcode) returns integer
+// w_salereturnbuffer.wf_findpatientcode(string as_regno, ref long al_patientcode) returns integer
 	long ll_patientcode
 	long ll_retflag
 	string ls_itemname
@@ -2691,7 +2691,7 @@
 	end if
 	return ll_retflag
 
-// w_salereturnbuffer.wf_findguestcode(string as_regno, long al_code) returns long
+// w_salereturnbuffer.wf_findguestcode(string as_regno, ref long al_code) returns long
 	long ll_guestcode
 	long ll_retflag
 	string ls_itemname
@@ -2712,7 +2712,7 @@
 	end if
 	return ll_retflag
 
-// w_salereturnbuffer.wf_findstudentcode(string as_regno, long al_code) returns long
+// w_salereturnbuffer.wf_findstudentcode(string as_regno, ref long al_code) returns long
 	long ll_studentcode
 	long ll_retflag
 	string ls_itemname
@@ -2776,7 +2776,7 @@
 	end if
 	return 0
 
-// w_salereturnbuffer.wf_is_batch_already_returned(long al_icode, string as_batch, datetime adt_expiry, string as_errtext) returns long
+// w_salereturnbuffer.wf_is_batch_already_returned(long al_icode, string as_batch, datetime adt_expiry, ref string as_errtext) returns long
 	long ll_count
 	long ll_invcode
 	long ll_code

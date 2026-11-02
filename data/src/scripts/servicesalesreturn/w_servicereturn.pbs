@@ -40,7 +40,7 @@
 	this.id_detail.object.discperc.visible = 0
 	return 1
 
-// w_servicereturn.wf_updatesalereturnitemsstock(long al_saleretinvcode, string as_errtext, long al_errrow) returns integer
+// w_servicereturn.wf_updatesalereturnitemsstock(long al_saleretinvcode, ref string as_errtext, ref long al_errrow) returns integer
 	return 0
 
 // w_servicereturn.wf_validatefullcode(string as_fullcode, long al_currrow) returns integer
@@ -156,7 +156,7 @@
 	SQL SELECT SaleLedger.headerno INTO :li_header_no FROM SaleLedger WHERE SaleLedger.Saleinvcode =:al_saleinvcode USING this.it_transobject;
 	return li_header_no
 
-// w_servicereturn.wf_findfullcode(string as_fullcode, long al_icode, string al_itemname) returns integer
+// w_servicereturn.wf_findfullcode(string as_fullcode, ref long al_icode, ref string al_itemname) returns integer
 	integer ll_icode
 	integer ll_retflag
 	string ls_itemname
@@ -178,7 +178,7 @@
 	end if
 	return ll_retflag
 
-// w_servicereturn.wf_findretailsaleinvoice(long al_saleinvcode, datetime ad_date, string as_errtext) returns integer
+// w_servicereturn.wf_findretailsaleinvoice(long al_saleinvcode, ref datetime ad_date, ref string as_errtext) returns integer
 	integer li_rtcode
 	long ll_admissioncode
 	string ls_posted
@@ -203,7 +203,7 @@
 	end if
 	return li_rtcode
 
-// w_servicereturn.wf_findunpostedsalereturns(long al_saleinvcode, string as_errtext) returns integer
+// w_servicereturn.wf_findunpostedsalereturns(long al_saleinvcode, ref string as_errtext) returns integer
 	integer li_rtcode
 	long ll_count
 	SQL SELECT count ( *) INTO :ll_count FROM servicerheader WHERE servicerheader.serviceinvcode =:al_saleinvcode AND servicerheader.posted ='N' USING this.it_transobject;
@@ -218,7 +218,7 @@
 	end if
 	return li_rtcode
 
-// w_servicereturn.wf_findwholesaleinvoice(long al_saleinvcode, datetime ad_date, string as_errtext) returns integer
+// w_servicereturn.wf_findwholesaleinvoice(long al_saleinvcode, ref datetime ad_date, ref string as_errtext) returns integer
 	integer li_rtcode
 	string ls_posted
 	long ll_admissioncode
@@ -243,7 +243,7 @@
 	end if
 	return li_rtcode
 
-// w_servicereturn.wf_genfullcode(long al_icode, string as_fullcode) returns integer
+// w_servicereturn.wf_genfullcode(long al_icode, ref string as_fullcode) returns integer
 	integer li_retflag
 	string ls_fullcode
 	long icode
@@ -288,7 +288,7 @@
 	end if
 	return ld_grandtotal
 
-// w_servicereturn.wf_inititeminfo(datawindowchild adc_itemdddw, long al_saleinvcode, long al_dsrow, long al_detaildwrow, string as_errtext) returns integer
+// w_servicereturn.wf_inititeminfo(datawindowchild adc_itemdddw, long al_saleinvcode, long al_dsrow, long al_detaildwrow, ref string as_errtext) returns integer
 	long ll_servicecode
 	long ll_gcode
 	long ll_packunits
@@ -347,10 +347,10 @@
 	end if
 	return li_errcode
 
-// w_servicereturn.wf_inititeminfo(long al_icode, long al_row, string as_errortext) returns integer
+// w_servicereturn.wf_inititeminfo(long al_icode, long al_row, ref string as_errortext) returns integer
 	return 0
 
-// w_servicereturn.wf_inititeminfo(datawindowchild adc_itemdddw, long al_row, long al_dddwrow, string as_errtext) returns integer
+// w_servicereturn.wf_inititeminfo(ref datawindowchild adc_itemdddw, long al_row, long al_dddwrow, ref string as_errtext) returns integer
 	long ll_servicecode
 	long ll_gcode
 	long ll_packunits
@@ -441,7 +441,7 @@
 	end if
 	return li_errcode
 
-// w_servicereturn.wf_initmodify(integer ai_protect) returns 0
+// w_servicereturn.wf_initmodify(ref integer ai_protect) returns 0
 	long ll_saleretinvcode
 	long ll_saleinvcode
 	long ll_gcode
@@ -568,7 +568,7 @@
 	this.id_footer.setitem(1, "flatdisc", ld_flatdisc)
 	this.id_footer.setitem(1, "misccharges", ld_misccharges)
 
-// w_servicereturn.wf_setsaleinvinfo(long al_saleinvcode, long al_custcode) returns 0
+// w_servicereturn.wf_setsaleinvinfo(long al_saleinvcode, ref long al_custcode) returns 0
 	long ll_salecatcode
 	long ll_row
 	long ll_patientcode
@@ -1130,7 +1130,7 @@
 	end if
 	return li_rtcode
 
-// w_servicereturn.wf_oninvoiceitemprevretqty(long al_row, long al_servicecode, long al_srvrowid, double ad_serviceprevqty) returns integer
+// w_servicereturn.wf_oninvoiceitemprevretqty(long al_row, long al_servicecode, long al_srvrowid, ref double ad_serviceprevqty) returns integer
 	long ll_counter
 	long ll_rowcount
 	long ll_servicecode
@@ -1154,7 +1154,7 @@
 	ad_serviceprevqty = ld_holdqty
 	return 0
 
-// w_servicereturn.wf_itemprevretqty(long al_serviceinvcode, long al_srvrowid, long al_servicecode, double ad_serviceprevqty) returns integer
+// w_servicereturn.wf_itemprevretqty(long al_serviceinvcode, long al_srvrowid, long al_servicecode, ref double ad_serviceprevqty) returns integer
 	SQL SELECT Sum ( qty ) INTO :ad_serviceprevqty FROM serviceRheader , serviceRdetail WHERE serviceRheader.serviceinvcode =:al_serviceinvcode And serviceRheader.posted ='Y' And serviceRheader.serviceRinvcode =serviceRdetail.serviceRInvCode And serviceRdetail.servicecode =:al_servicecode USING this.it_transobject;
 	if isnull(ad_serviceprevqty) then
 		ad_serviceprevqty = 0
@@ -1307,7 +1307,7 @@
 	this.idc_guest.scrolltorow(ll_row)
 	return 0
 
-// w_servicereturn.wf_findcustcode(long ai_custcode, string as_aliasname) returns long
+// w_servicereturn.wf_findcustcode(ref long ai_custcode, string as_aliasname) returns long
 	integer li_custcode
 	integer ll_retflag
 	string ls_itemname
@@ -1355,7 +1355,7 @@
 	this.id_itemslist.filter()
 	return 0
 
-// w_servicereturn.wf_findpatientcode(string as_regno, long al_patientcode) returns long
+// w_servicereturn.wf_findpatientcode(string as_regno, ref long al_patientcode) returns long
 	long ll_patientcode
 	long ll_retflag
 	string ls_itemname
@@ -1399,7 +1399,7 @@
 	end if
 	return ll_retcode
 
-// w_servicereturn.wf_findstudentcode(string as_regno, long al_code) returns long
+// w_servicereturn.wf_findstudentcode(string as_regno, ref long al_code) returns long
 	long ll_studentcode
 	long ll_retflag
 	string ls_itemname
@@ -1560,7 +1560,7 @@
 	end if
 	return ll_retcode
 
-// w_servicereturn.wf_find_motorvehiclecode(string as_chasisno, long al_code) returns long
+// w_servicereturn.wf_find_motorvehiclecode(string as_chasisno, ref long al_code) returns long
 	long ll_motorvehiclecode
 	long ll_retflag
 	ll_retflag = 0

@@ -337,6 +337,13 @@ export class DwView {
         f.style.position = 'sticky'
         f.style.bottom = '0'
         f.style.background = background
+        // the footer band belongs to the bottom of the control, not to the end of the rows (the totals of the entry windows sit at the foot of the grid)
+        inner.style.display = 'flex'
+        inner.style.flexDirection = 'column'
+        inner.style.minHeight = '100%'
+        f.style.marginTop = 'auto'
+        f.style.flex = 'none'
+        for (const c of Array.from(inner.children)) (c as HTMLElement).style.flexShrink = '0'
       }
       inner.appendChild(f)
     }
@@ -599,6 +606,9 @@ export class DwView {
   }
 
   private async object(m: DwModel, o: DwObject, row: number, band: string, sx: (v: number) => number, sy: (v: number) => number, _ctx: unknown): Promise<HTMLElement | null> {
+    // a script may move or resize an object at run time (`modify("customer_city.X=14 customer_city.Y=100")`: the customer form stacks its fields from InterfaceSetting)
+    const geo = ['x', 'y', 'width', 'height'].filter((k) => m.overrides.has(`${o.name.toLowerCase()}.${k}`))
+    if (geo.length) o = { ...o, ...Object.fromEntries(geo.map((k) => [k, m.overrides.get(`${o.name.toLowerCase()}.${k}`)!])) } as DwObject
     if ((await this.prop(m, o, 'visible', row, band)) === '0') return null
     if (this.headerOfHiddenColumn(o)) return null
     const shift = this.gridShift(o)

@@ -6,7 +6,7 @@
 	setnull(ls_null)
 	close(this)
 
-// w_emp_employee_fingerprint_enrollment_old.wf_insert_fingerprint(integer ai_finger, blob img, blob features) returns long
+// w_emp_employee_fingerprint_enrollment_old.wf_insert_fingerprint(integer ai_finger, ref blob img, ref blob features) returns long
 	SQL INSERT INTO EMP_FingerPrint ( EmpCode , FingerCode ) VALUES ( :this.il_code , :ai_finger ) USING this.it_transobject;
 	if this.it_transobject.sqlcode <> 0 then
 		messagebox("Insert Error", "Unable to Insert Employee Finger Images Into Database.~r~nReasons are:~r~n" + this.it_transobject.sqlerrtext)
@@ -187,7 +187,7 @@
 		messagebox("Exception Occur", "Details are:~r~n" + ex.getmessage())
 	end try
 
-// ole_zktfp.onimagereceived(boolean aimagevalid) returns 0 [event]
+// ole_zktfp.onimagereceived(ref boolean aimagevalid) returns 0 [event]
 	long ll_ret
 	long ll_quality
 	blob rawimage

@@ -62,7 +62,7 @@
 	SQL start USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
-// w_prodnote_form.wf_tabnewid(string as_tablename, long al_newid) returns long
+// w_prodnote_form.wf_tabnewid(string as_tablename, ref long al_newid) returns long
 	long ll_rtcode
 	SQL SELECT TABMAXKEY INTO :al_newid FROM _TABMAXKEY WITH ( UPDLOCK HOLDLOCK ) WHERE _TABMAXKEY.TABName =:as_tablename USING this.it_transobject;
 	if this.it_transobject.sqlcode = 0 then
@@ -137,7 +137,7 @@
 	this.id_receipt.object.expiry.initial = string(f_datepreferences("defaultexpiry"))
 	return 0
 
-// w_prodnote_form.wf_insert_row(datawindow adw_dw, integer ai_askpermit) returns long
+// w_prodnote_form.wf_insert_row(ref datawindow adw_dw, integer ai_askpermit) returns long
 	long ll_row
 	long ll_res = 2
 	if ai_askpermit = 1 then
@@ -153,7 +153,7 @@
 	end if
 	return 0
 
-// w_prodnote_form.wf_delete_row(datawindow adw_dw, integer ai_askpermit) returns long
+// w_prodnote_form.wf_delete_row(ref datawindow adw_dw, integer ai_askpermit) returns long
 	long ll_row
 	long ll_res = 2
 	if adw_dw.rowcount() > 0 and adw_dw.getrow() > 0 then
@@ -172,7 +172,7 @@
 	end if
 	return 0
 
-// w_prodnote_form.wf_protectdw(datawindow ad_dwcontrol, integer ai_doundo) returns integer
+// w_prodnote_form.wf_protectdw(ref datawindow ad_dwcontrol, integer ai_doundo) returns integer
 	integer li_colcount
 	integer li_counter
 	integer li_start = 1
@@ -347,7 +347,7 @@
 	end if
 	return 0
 
-// w_prodnote_form.wf_validateserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+// w_prodnote_form.wf_validateserverdatetime(ref datetime ar_server_datetime, ref string ar_errtext) returns boolean
 	datetime ldt_last_transdate
 	datetime ldt_current_serverdate
 	long li_max_allow_days
@@ -553,7 +553,7 @@
 	next
 	return 0
 
-// w_prodnote_form.wf_findfullcode(string as_fullcode, long al_icode, string as_itemname, long al_itemcodetype, double ad_qty, double ad_purprice, double ad_saleprice) returns long
+// w_prodnote_form.wf_findfullcode(string as_fullcode, ref long al_icode, ref string as_itemname, ref long al_itemcodetype, ref double ad_qty, ref double ad_purprice, ref double ad_saleprice) returns long
 	long ll_retflag
 	setnull(al_icode)
 	as_itemname = "                                                            "
@@ -631,7 +631,7 @@
 	end if
 	return li_errcode
 
-// w_prodnote_form.wf_inititeminfo(datawindow adw_dw, long al_icode, long al_row, string as_errortext) returns long
+// w_prodnote_form.wf_inititeminfo(ref datawindow adw_dw, long al_icode, long al_row, ref string as_errortext) returns long
 	long ll_retcode
 	long ll_packunits
 	long ll_totalpieces
@@ -702,7 +702,7 @@
 	end if
 	return ll_retcode
 
-// w_prodnote_form.wf_inititeminfo_receipt(long al_icode, long al_row, string as_errortext) returns long
+// w_prodnote_form.wf_inititeminfo_receipt(long al_icode, long al_row, ref string as_errortext) returns long
 	long ll_retcode
 	long ll_packunits
 	long ll_piecesinhand

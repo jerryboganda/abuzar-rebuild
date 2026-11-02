@@ -66,13 +66,13 @@
 	end if
 	return ret_val
 
-// w_entry_primitives.wf_settransobject(transaction a_transobject) returns 0
+// w_entry_primitives.wf_settransobject(ref transaction a_transobject) returns 0
 	this.it_transobject = a_transobject
 
-// w_entry_primitives.wf_setdwcontrol(datawindow a_dwcontrol) returns 0
+// w_entry_primitives.wf_setdwcontrol(ref datawindow a_dwcontrol) returns 0
 	this.id_dwcontrol = a_dwcontrol
 
-// w_entry_primitives.wf_getserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+// w_entry_primitives.wf_getserverdatetime(ref datetime ar_server_datetime, ref string ar_errtext) returns boolean
 	datetime ldt_last_transdate
 	datetime ldt_current_serverdate
 	integer li_max_allow_days
@@ -121,7 +121,7 @@
 	ar_server_datetime = datetime(date(today()), time(today()))
 	return false
 
-// w_entry_primitives.wf_validateserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+// w_entry_primitives.wf_validateserverdatetime(ref datetime ar_server_datetime, ref string ar_errtext) returns boolean
 	datetime ldt_last_transdate
 	datetime ldt_current_serverdate
 	long li_max_allow_days
@@ -165,7 +165,7 @@
 	end if
 	return ret_val
 
-// w_entry_primitives.wf_tabnewid(string as_tablename, long al_newid) returns long
+// w_entry_primitives.wf_tabnewid(string as_tablename, ref long al_newid) returns long
 	long ll_rtcode
 	SQL SELECT TABMAXKEY INTO :al_newid FROM _TABMAXKEY WITH ( UPDLOCK HOLDLOCK ) WHERE _TABMAXKEY.TABName =:as_tablename USING this.it_transobject;
 	if this.it_transobject.sqlcode = 0 then
@@ -201,7 +201,7 @@
 // w_entry_primitives.wf_retrieve(long retrievalarg) returns long
 	return this.id_dwcontrol.retrieve(retrievalarg)
 
-// w_entry_primitives.wf_isvalid_string(string as_str, long al_pos, char ac_char) returns boolean
+// w_entry_primitives.wf_isvalid_string(string as_str, ref long al_pos, ref char ac_char) returns boolean
 	long ll_counter
 	long ll_length
 	char lc_hold

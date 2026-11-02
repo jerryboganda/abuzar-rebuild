@@ -19,7 +19,7 @@
 	SQL SELECT count ( *) INTO :li_count FROM purledger WITH ( UPDLOCK HOLDLOCK ) WHERE purledger.purinvcode Between :al_sinvcode and :al_linvcode AND ( purledger.purcatcode =1 or purledger.purcatcode =2 ) USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
-// w_goods_recieveable_note.wf_getitemsaleprice(long al_icode, double ad_saleprice) returns boolean
+// w_goods_recieveable_note.wf_getitemsaleprice(long al_icode, ref double ad_saleprice) returns boolean
 	boolean retflag = true
 	SQL SELECT item.salePrice INTO :ad_saleprice FROM item WHERE item.icode =:al_icode USING this.it_transobject;
 	if isnull(ad_saleprice) then
@@ -40,7 +40,7 @@
 	SQL SELECT count ( *) INTO :li_count FROM purledger WITH ( UPDLOCK HOLDLOCK ) WHERE purledger.purinvcode Between :al_sinvcode and :al_linvcode AND purledger.purcatcode =3 USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
-// w_goods_recieveable_note.wf_getpomanfcode(long al_pocode, long al_manfcode) returns 0
+// w_goods_recieveable_note.wf_getpomanfcode(ref long al_pocode, ref long al_manfcode) returns 0
 	al_pocode = this.id_master.object.pocode[this.id_master.getrow()]
 	al_manfcode = this.id_master.object.manfcode[this.id_master.getrow()]
 
@@ -52,7 +52,7 @@
 		openwithparm(w_itempurchasehistory, ls_itempurchasehistory)
 	end if
 
-// w_goods_recieveable_note.wf_initmodify(integer ai_protect) returns 0
+// w_goods_recieveable_note.wf_initmodify(ref integer ai_protect) returns 0
 	long ll_purinvcode
 	long ll_gcode
 	long ll_icode
@@ -123,7 +123,7 @@
 	this.id_detail.settransobject(this.it_transobject)
 	this.id_list.settransobject(this.it_transobject)
 
-// w_goods_recieveable_note.wf_findsuppcode(string as_aliasname, integer ai_suppcode) returns integer
+// w_goods_recieveable_note.wf_findsuppcode(string as_aliasname, ref integer ai_suppcode) returns integer
 	integer li_suppcode
 	integer ll_retflag
 	string ls_itemname
@@ -140,7 +140,7 @@
 	end if
 	return ll_retflag
 
-// w_goods_recieveable_note.wf_genfullcode(long al_icode, string as_fullcode) returns integer
+// w_goods_recieveable_note.wf_genfullcode(long al_icode, ref string as_fullcode) returns integer
 	integer li_retflag
 	string ls_fullcode
 	long icode
@@ -318,7 +318,7 @@
 		this.idc_supplierlist.selectrow(ll_rowno, true)
 	end if
 
-// w_goods_recieveable_note.wf_iteminfo(long al_icode, long al_gcode, double ad_purprice, double ad_discperc, double ad_avgprice, long al_packunits, double al_packsalestax, double al_gstperc, double ad_saleprice) returns boolean
+// w_goods_recieveable_note.wf_iteminfo(long al_icode, ref long al_gcode, ref double ad_purprice, ref double ad_discperc, ref double ad_avgprice, ref long al_packunits, ref double al_packsalestax, ref double al_gstperc, ref double ad_saleprice) returns boolean
 	boolean retflag = true
 	SQL SELECT 1 , item.salePrice , item.purdiscperc , item.avgprice , item.packunits , item.saleprice , item.packsalestax , item.gstperc1 INTO :al_gcode, :ad_purprice, :ad_discperc, :ad_avgprice, :al_packunits, :ad_saleprice, :al_packsalestax, :al_gstperc FROM item WHERE item.icode =:al_icode USING this.it_transobject;
 	if isnull(ad_purprice) then
@@ -333,11 +333,11 @@
 	end if
 	return retflag
 
-// w_goods_recieveable_note.wf_setpurorderqty(transaction at_transobject, long al_pocode, long al_icode, long al_qtysatisfied, long al_bonusqtysatisfied) returns long
+// w_goods_recieveable_note.wf_setpurorderqty(ref transaction at_transobject, long al_pocode, long al_icode, long al_qtysatisfied, long al_bonusqtysatisfied) returns long
 	SQL update purorderdetail Set qtysatisfied =qtysatisfied + :al_qtysatisfied , bonusqtysatisfied =bonusqtysatisfied + :al_bonusqtysatisfied Where purorderdetail.pocode =:al_pocode and purorderdetail.icode =:al_icode USING at_transobject;
 	return at_transobject.sqlcode
 
-// w_goods_recieveable_note.wf_inititeminfo(long al_icode, long al_row, string as_errortext) returns boolean
+// w_goods_recieveable_note.wf_inititeminfo(long al_icode, long al_row, ref string as_errortext) returns boolean
 	boolean retflag = true
 	double ld_purprice
 	double ld_discperc
@@ -704,7 +704,7 @@
 	this.id_detail.setredraw(true)
 	return ll_retrievecount
 
-// w_goods_recieveable_note.wf_findfullcode(string as_fullcode, long al_icode, string al_itemname) returns integer
+// w_goods_recieveable_note.wf_findfullcode(string as_fullcode, ref long al_icode, ref string al_itemname) returns integer
 	long ll_icode
 	long ll_retflag
 	string ls_itemname
@@ -909,7 +909,7 @@
 		return this.it_transobject.sqlcode
 	end if
 
-// w_goods_recieveable_note.wf_updateitemsaleprice(transaction at_transobject, long al_icode, double ad_saleprice) returns long
+// w_goods_recieveable_note.wf_updateitemsaleprice(ref transaction at_transobject, long al_icode, double ad_saleprice) returns long
 	SQL update Item SET Saleprice =:ad_saleprice WHERE Item.icode =:al_icode USING at_transobject;
 	return at_transobject.sqlcode
 
@@ -1385,7 +1385,7 @@
 	end if
 	return 0
 
-// w_goods_recieveable_note.wf_itemstockinfo(long al_icode, long al_gcode, double ad_stock) returns boolean
+// w_goods_recieveable_note.wf_itemstockinfo(long al_icode, long al_gcode, ref double ad_stock) returns boolean
 	boolean retflag = true
 	double ld_stock
 	double ld_totalstock

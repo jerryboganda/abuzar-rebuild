@@ -23,7 +23,7 @@
 	SQL Select count ( *) INTO :li_count From glheader WITH ( UPDLOCK HOLDLOCK ) Where glheader.glvochcode =:al_glvochcode USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
-// w_journalvoucher.wf_lockvouchers(long al_sinvcode, long al_linvcode, long al_totalinvoice) returns integer
+// w_journalvoucher.wf_lockvouchers(long al_sinvcode, long al_linvcode, ref long al_totalinvoice) returns integer
 	integer li_count
 	SQL Select count ( *) INTO :al_totalinvoice From glheader WITH ( UPDLOCK HOLDLOCK ) Where glheader.glvochcode Between :al_sinvcode AND :al_linvcode AND glheader.Posted ='N' USING sqlca;
 	return sqlca.sqlcode
@@ -45,7 +45,7 @@
 	end if
 	this.id_detail.setitem(al_row, "invamt", lds_invbal.getitemnumber(lds_invbal.getrow(), "c_balance"))
 
-// w_journalvoucher.wf_initmodify(integer ai_protect) returns integer
+// w_journalvoucher.wf_initmodify(ref integer ai_protect) returns integer
 	long ll_glvochcode
 	long ll_counter = 1
 	if this.id_master.getitemstring(1, "posted") = "N" then
@@ -71,10 +71,10 @@
 	end if
 	return 1
 
-// w_journalvoucher.wf_getserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+// w_journalvoucher.wf_getserverdatetime(ref datetime ar_server_datetime, ref string ar_errtext) returns boolean
 	return true
 
-// w_journalvoucher.wf_validateserverdatetime(datetime ar_server_datetime, string ar_errtext) returns boolean
+// w_journalvoucher.wf_validateserverdatetime(ref datetime ar_server_datetime, ref string ar_errtext) returns boolean
 	return true
 
 // w_journalvoucher.wf_validatedate() returns boolean
@@ -86,7 +86,7 @@
 	end if
 	return false
 
-// w_journalvoucher.wf_getfullcode(long al_acccode, string as_fullcode) returns integer
+// w_journalvoucher.wf_getfullcode(long al_acccode, ref string as_fullcode) returns integer
 	integer li_retflag
 	string ls_fullcode
 	SQL SELECT aliasname INTO :ls_fullcode FROM dbo.accounts WHERE dbo.accounts.acccode =:al_acccode USING this.it_transobject;
@@ -206,14 +206,14 @@
 		this.idc_dddwdetailpatient.selectrow(ll_rowno, true)
 	end if
 
-// w_journalvoucher.wf_validatepatient(long al_patientcode, string as_regno, long al_acccode) returns boolean
+// w_journalvoucher.wf_validatepatient(long al_patientcode, ref string as_regno, ref long al_acccode) returns boolean
 	SQL SELECT regno , CustCode INTO :as_regno, :al_acccode FROM Patient WHERE PatientCode =:al_patientcode USING sqlca;
 	if sqlca.sqlcode = 0 then
 		return true
 	end if
 	return false
 
-// w_journalvoucher.wf_validateregno(string as_regno, long al_patientcode, long al_acccode) returns boolean
+// w_journalvoucher.wf_validateregno(string as_regno, ref long al_patientcode, ref long al_acccode) returns boolean
 	SQL SELECT patientcode , CustCode INTO :al_patientcode, :al_acccode FROM Patient WHERE regno =:as_regno USING sqlca;
 	if sqlca.sqlcode = 0 then
 		return true
@@ -275,7 +275,7 @@
 	next
 	return 0
 
-// w_journalvoucher.wf_findfullcode(string as_fullcode, long al_acccode) returns integer
+// w_journalvoucher.wf_findfullcode(string as_fullcode, ref long al_acccode) returns integer
 	boolean lb_groupcustcat
 	long ll_found
 	long ll_subcode

@@ -498,7 +498,7 @@
 	this.it_transobject.dbparm = "Async =0, DBGetTime = 0"
 	return this.it_transobject.sqlcode
 
-// w_transferrequisition.wf_locktransferinvoices(long al_sinvcode, long al_linvcode, long al_totalinvoice) returns integer
+// w_transferrequisition.wf_locktransferinvoices(long al_sinvcode, long al_linvcode, ref long al_totalinvoice) returns integer
 	integer li_count
 	SQL Select count ( *) INTO :al_totalinvoice From TransferRequisitionHeader WITH ( UPDLOCK HOLDLOCK ) Where TransferRequisitionHeader.TransReqCode Between :al_sinvcode AND :al_linvcode AND TransferRequisitionHeader.Posted ='N' USING this.it_transobject;
 	return this.it_transobject.sqlcode
@@ -643,14 +643,14 @@
 
 // w_transferrequisition.wf_setgodownoption() returns 0
 
-// w_transferrequisition.wf_getmaxdate(datetime ad_date) returns integer
+// w_transferrequisition.wf_getmaxdate(ref datetime ad_date) returns integer
 	SQL Select Max ( Date ) INTO :ad_date From saleledger USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
 // w_transferrequisition.wf_grandtotal() returns double
 	return 0
 
-// w_transferrequisition.wf_initmodify(integer ai_protect) returns 0
+// w_transferrequisition.wf_initmodify(ref integer ai_protect) returns 0
 	long ll_saleinvcode
 	long ll_gcode
 	long ll_icode
@@ -693,7 +693,7 @@
 		messagebox("Cannot Modify", "This Transfer invoice is already in use by some other user on network.~r~nPlease Try Later.")
 	end if
 
-// w_transferrequisition.wf_returnsaleinvoice(long al_invid, string as_errtext) returns boolean
+// w_transferrequisition.wf_returnsaleinvoice(long al_invid, ref string as_errtext) returns boolean
 	return true
 
 // w_transferrequisition.wf_retrievelist() returns long
@@ -869,7 +869,7 @@
 	this.ii_currsourcegodown = ai_sourcegcode
 	this.id_detail.setredraw(true)
 
-// w_transferrequisition.wf_findfullcode(string as_fullcode, long al_icode, string as_itemname) returns integer
+// w_transferrequisition.wf_findfullcode(string as_fullcode, ref long al_icode, ref string as_itemname) returns integer
 	long ll_icode
 	long ll_retflag
 	string ls_itemname
@@ -891,7 +891,7 @@
 	end if
 	return ll_retflag
 
-// w_transferrequisition.wf_genfullcode(long al_icode, string as_fullcode) returns integer
+// w_transferrequisition.wf_genfullcode(long al_icode, ref string as_fullcode) returns integer
 	integer li_retflag
 	string ls_fullcode
 	long icode
@@ -1011,7 +1011,7 @@
 		this.id_detail.object.itemdescription.visible = false
 	end if
 
-// w_transferrequisition.wf_inititeminfo(long al_icode, long al_row, integer ai_rtcode, string as_errortext) returns boolean
+// w_transferrequisition.wf_inititeminfo(long al_icode, long al_row, ref integer ai_rtcode, ref string as_errortext) returns boolean
 	boolean retflag = true
 	double ld_saleprice
 	double ld_discperc

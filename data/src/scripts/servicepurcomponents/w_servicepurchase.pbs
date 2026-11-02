@@ -21,7 +21,7 @@
 	setpointer(arrow!)
 	return 0
 
-// w_servicepurchase.wf_genfullcode(long al_icode, string as_fullcode) returns integer
+// w_servicepurchase.wf_genfullcode(long al_icode, ref string as_fullcode) returns integer
 	integer li_retflag
 	string ls_fullcode
 	long icode
@@ -38,11 +38,11 @@
 	end if
 	return li_retflag
 
-// w_servicepurchase.wf_getmaxdate(datetime ad_date) returns integer
+// w_servicepurchase.wf_getmaxdate(ref datetime ad_date) returns integer
 	SQL Select Max ( Date ) INTO :ad_date From saleledger USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
-// w_servicepurchase.wf_getsalesstockinfo(long al_saleinvcode, long al_gcode, long al_icode, long al_saleqty) returns integer
+// w_servicepurchase.wf_getsalesstockinfo(long al_saleinvcode, long al_gcode, long al_icode, ref long al_saleqty) returns integer
 	SQL Select IsNull ( Sum ( saledetail.looseqty ) , 0 ) INTO :al_saleqty from saledetail where saledetail.saleinvcode =:al_saleinvcode and saledetail.gcode =:al_gcode and saledetail.icode =:al_icode USING this.it_transobject;
 	if isnull(al_saleqty) then
 		al_saleqty = 0
@@ -102,7 +102,7 @@
 	ls_posted[2] = "Y"
 	return this.id_list.retrieve(ls_posted, ld_invdate)
 
-// w_servicepurchase.wf_selectitembatches(long al_gcode, long al_icode, long al_qty, datawindow ad_itemsdetail, long al_rowscount, string al_errortext) returns integer
+// w_servicepurchase.wf_selectitembatches(long al_gcode, long al_icode, long al_qty, ref datawindow ad_itemsdetail, ref long al_rowscount, ref string al_errortext) returns integer
 	datastore lds_itemstockinfo
 	long ll_counter = 1
 	long ll_saleqty
@@ -169,7 +169,7 @@
 
 // w_servicepurchase.wf_visible(boolean ab_flag) returns 0
 
-// w_servicepurchase.wf_initmodify(integer ai_protect) returns 0
+// w_servicepurchase.wf_initmodify(ref integer ai_protect) returns 0
 	long ll_saleinvcode
 	long ll_gcode
 	long ll_icode
@@ -199,7 +199,7 @@
 	this.ib_modify = false
 	this.editflag = false
 
-// w_servicepurchase.wf_findfullcode(string as_fullcode, long al_icode, string al_itemname) returns integer
+// w_servicepurchase.wf_findfullcode(string as_fullcode, ref long al_icode, ref string al_itemname) returns integer
 	integer ll_icode
 	integer ll_retflag
 	string ls_itemname
@@ -256,7 +256,7 @@
 	end if
 	return li_errcode
 
-// w_servicepurchase.wf_inititeminfo(long al_icode, long al_row, integer ai_rtcode, string as_errortext) returns boolean
+// w_servicepurchase.wf_inititeminfo(long al_icode, long al_row, ref integer ai_rtcode, ref string as_errortext) returns boolean
 	boolean retflag = true
 	boolean lb_continue = true
 	double ld_saleprice
@@ -706,7 +706,7 @@
 	SQL Delete ServicePurDetail Where ServicePurDetail.ServicePurInvCode =:al_code USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
-// w_servicepurchase.wf_find_suppcode(integer ai_suppcode, string as_aliasname) returns integer
+// w_servicepurchase.wf_find_suppcode(ref integer ai_suppcode, string as_aliasname) returns integer
 	integer li_suppcode
 	integer ll_retflag
 	SQL SELECT accounts.acccode INTO :li_suppcode FROM accounts , supplier WHERE accounts.aliasname =:as_aliasname AND accounts.acccode =supplier.suppcode USING this.it_transobject;
@@ -880,7 +880,7 @@
 	end if
 	return li_errcode
 
-// w_servicepurchase.wf_lockserviceinvoices(long al_sinvcode, long al_linvcode, long al_suppcode, long al_totalinvoice) returns integer
+// w_servicepurchase.wf_lockserviceinvoices(long al_sinvcode, long al_linvcode, long al_suppcode, ref long al_totalinvoice) returns integer
 	integer li_count
 	if al_suppcode = 0 or isnull(al_suppcode) then
 		SQL Select count ( *) INTO :al_totalinvoice From ServicePurHeader WITH ( UPDLOCK HOLDLOCK ) Where ServicePurinvcode Between :al_sinvcode AND :al_linvcode AND Posted ='N' USING this.it_transobject;
@@ -889,7 +889,7 @@
 	end if
 	return this.it_transobject.sqlcode
 
-// w_servicepurchase.wf_returnthisinvoice(long al_invid, string as_errtext) returns boolean
+// w_servicepurchase.wf_returnthisinvoice(long al_invid, ref string as_errtext) returns boolean
 	boolean lb_commitflag = true
 	if lb_commitflag then
 		if wf_deleteserviceinvoice(al_invid) <> 0 then

@@ -488,6 +488,13 @@ export class Runtime {
         const a = toNum(await this.eval(s.a, f))
         const step = s.s ? toNum(await this.eval(s.s, f)) : 1
         if (step === 0) return NONE
+        // an empty loop is a delay loop (`for ll_waitcount = 1 to 9999999 / next` of the SMS centre): it has no effect except the final value of the variable
+        if (!s.body.length) {
+          const lim = toNum(await this.eval(s.b, f))
+          const n = step > 0 ? (a <= lim ? Math.floor((lim - a) / step) + 1 : 0) : a >= lim ? Math.floor((a - lim) / -step) + 1 : 0
+          await this.assign(s.v, a + n * step, f)
+          return NONE
+        }
         // the compiled loop tests the limit expression again on every pass (`for i = 1 to ds.rowcount()` follows rows the body deletes)
         for (let i = a; ; i += step) {
           const b = toNum(await this.eval(s.b, f))
@@ -876,6 +883,27 @@ export class Runtime {
     }
     return r
   }
+  /** like refOf, but a member / element lvalue (`this.is_x`, `la[i]`) hands its current value in: a `ref` parameter may be read before it is written */
+  async refWithValue(e: Expr, f: Frame): Promise<Ref> {
+    if (e.k === 'id') return this.refOf(e, f)
+    let cur: unknown = null
+    try {
+      cur = await this.eval(e, f)
+    } catch {
+      cur = null
+    }
+    return new Ref(
+      () => cur,
+      async (v) => {
+        cur = v
+        try {
+          await this.assign(e, v, f)
+        } catch {
+          /* an expression that is not an lvalue: the value stays in the reference only */
+        }
+      },
+    )
+  }
   private refOf0(e: Expr, f: Frame): Ref {
     return new Ref(
       () => {
@@ -897,7 +925,15 @@ export class Runtime {
       let refIdx = REF_METHODS[e.n]
       // RPC calls on a transaction object: INOUT / OUT parameters come back through the arguments
       if (!refIdx && recv instanceof PBObject && recv.native === 'transaction' && this.procs?.refPositions) refIdx = this.procs.refPositions(e.n)
-      for (let i = 0; i < e.a.length; i++) args.push(refIdx && refIdx.includes(i) ? this.refOf(e.a[i], f) : await this.eval(e.a[i], f))
+      // a script routine of the receiver with `ref` parameters (`w_main.wf_getappname(ref string as_appname)`) gets references for them
+      if (!refIdx && recv instanceof PBObject) {
+        const ents = recv.findRoutines(e.n)
+        if (ents.length) {
+          const idx = this.pick(ents, e.a.length)!.r.params.flatMap((p, i) => (p.ref ? [i] : []))
+          if (idx.length) refIdx = idx
+        }
+      }
+      for (let i = 0; i < e.a.length; i++) args.push(refIdx && refIdx.includes(i) ? await this.refWithValue(e.a[i], f) : await this.eval(e.a[i], f))
       if (recv === null || recv === undefined) throw new PBRuntimeError(`Null object reference (calling ${e.n})`)
       const run = async (): Promise<unknown> => {
         if (recv instanceof PBObject) return this.callMethod(recv, e.n, args)
@@ -976,7 +1012,7 @@ export class Runtime {
     const out: unknown[] = []
     for (let i = 0; i < exprs.length; i++) {
       const p = r.params[i]
-      out.push(p && p.ref ? this.refOf(exprs[i], f) : await this.eval(exprs[i], f))
+      out.push(p && p.ref ? await this.refWithValue(exprs[i], f) : await this.eval(exprs[i], f))
     }
     return out
   }

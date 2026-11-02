@@ -269,7 +269,7 @@
 	end if
 	return 0
 
-// w_serviceresult_form.wf_get_servicecomponenttype_info(long al_typecode, char ac_askunit, char ac_askcomments) returns long
+// w_serviceresult_form.wf_get_servicecomponenttype_info(long al_typecode, ref char ac_askunit, ref char ac_askcomments) returns long
 	SQL SELECT AskUnit , AskComments INTO :ac_askunit, :ac_askcomments FROM DBO.ServiceComponentType WHERE ServiceComponentTypeCode =:al_typecode USING this.it_transobject;
 	if this.it_transobject.sqlcode = 0 then
 		if isnull(ac_askunit) then
@@ -317,7 +317,7 @@
 	end if
 	return 1
 
-// w_serviceresult_form.wf_lock_service_result(long al_sinvcode, long al_linvcode, long al_totalinvoice) returns long
+// w_serviceresult_form.wf_lock_service_result(long al_sinvcode, long al_linvcode, ref long al_totalinvoice) returns long
 	integer li_count
 	SQL Select count ( *) INTO :al_totalinvoice From ServiceResultHeader WITH ( UPDLOCK HOLDLOCK ) Where ServiceResultCode Between :al_sinvcode AND :al_linvcode AND Posted ='N' USING sqlca;
 	return sqlca.sqlcode
@@ -872,7 +872,7 @@
 	end if
 	return ls_report
 
-// w_serviceresult_form.wf_getserviceinfo(long al_code, string as_errtext, long al_resultcode) returns long
+// w_serviceresult_form.wf_getserviceinfo(long al_code, ref string as_errtext, ref long al_resultcode) returns long
 	datetime ldt_servicedate
 	datetime ldt_dob
 	datetime ldt_deliverydate

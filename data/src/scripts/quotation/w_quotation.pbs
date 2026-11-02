@@ -478,7 +478,7 @@
 	SQL update Item SET saleprice =:ad_saleprice WHERE Item.icode =:al_icode USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
-// w_quotation.wf_selectitembatches(long al_gcode, long al_icode, long al_qty, datawindow ad_itemsdetail, long al_rowscount, string al_errortext) returns integer
+// w_quotation.wf_selectitembatches(long al_gcode, long al_icode, long al_qty, ref datawindow ad_itemsdetail, ref long al_rowscount, ref string al_errortext) returns integer
 	datastore lds_itemstockinfo
 	long ll_counter = 1
 	long ll_saleqty
@@ -531,7 +531,7 @@
 	destroy lds_itemstockinfo
 	return li_errcode
 
-// w_quotation.wf_returnsaleinvoice(long al_invid, string as_errtext) returns boolean
+// w_quotation.wf_returnsaleinvoice(long al_invid, ref string as_errtext) returns boolean
 	long ll_saleinvcode
 	long ll_gcode
 	long ll_icode
@@ -700,7 +700,7 @@
 	SQL Delete saledetail Where saledetail.SaleInvCode =:al_saleinvcode USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
-// w_quotation.wf_genfullcode(long al_icode, string as_fullcode) returns integer
+// w_quotation.wf_genfullcode(long al_icode, ref string as_fullcode) returns integer
 	integer li_retflag
 	string ls_fullcode
 	long icode
@@ -722,11 +722,11 @@
 	SQL Select Gcode INTO :li_gcode From item Where icode =:la_icode USING this.it_transobject;
 	return li_gcode
 
-// w_quotation.wf_getmaxdate(datetime ad_date) returns integer
+// w_quotation.wf_getmaxdate(ref datetime ad_date) returns integer
 	SQL Select Max ( Date ) INTO :ad_date From saleledger USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
-// w_quotation.wf_getsalesstockinfo(long al_saleinvcode, long al_gcode, long al_icode, long al_saleqty) returns integer
+// w_quotation.wf_getsalesstockinfo(long al_saleinvcode, long al_gcode, long al_icode, ref long al_saleqty) returns integer
 	SQL Select IsNull ( Sum ( saledetail.looseqty ) , 0 ) INTO :al_saleqty from saledetail where saledetail.saleinvcode =:al_saleinvcode and saledetail.gcode =:al_gcode and saledetail.icode =:al_icode USING this.it_transobject;
 	if isnull(al_saleqty) then
 		al_saleqty = 0
@@ -738,12 +738,12 @@
 	SQL Select count ( *) INTO :li_count From Quotationheader WITH ( UPDLOCK HOLDLOCK ) Where Quotationheader.quotationcode =:al_quotationinvcode USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
-// w_quotation.wf_lockquotationinvoices(long al_sinvcode, long al_linvcode, long al_totalinvoice) returns integer
+// w_quotation.wf_lockquotationinvoices(long al_sinvcode, long al_linvcode, ref long al_totalinvoice) returns integer
 	integer li_count
 	SQL Select count ( *) INTO :al_totalinvoice From quotationheader WITH ( UPDLOCK HOLDLOCK ) Where quotationheader.quotationcode Between :al_sinvcode AND :al_linvcode AND quotationheader.Posted ='N' USING sqlca;
 	return sqlca.sqlcode
 
-// w_quotation.wf_locksaleinvoices(long al_sinvcode, long al_linvcode, long al_totalinvoice) returns integer
+// w_quotation.wf_locksaleinvoices(long al_sinvcode, long al_linvcode, ref long al_totalinvoice) returns integer
 	integer li_count
 	SQL Select count ( *) INTO :al_totalinvoice From saleledger WITH ( UPDLOCK HOLDLOCK ) Where saleledger.saleinvcode Between :al_sinvcode AND :al_linvcode AND saleledger.Posted ='N' USING sqlca;
 	return sqlca.sqlcode
@@ -942,7 +942,7 @@
 	this.ib_itemslistopen = false
 	this.id_itemslist.hide()
 
-// w_quotation.wf_populatesaledetail(long al_invid, datawindow ad_saledetail, string as_errortext, long al_errorrow) returns boolean
+// w_quotation.wf_populatesaledetail(long al_invid, ref datawindow ad_saledetail, ref string as_errortext, ref long al_errorrow) returns boolean
 	long ll_detailrows
 	long ll_gcode
 	long ll_icode
@@ -1186,7 +1186,7 @@
 	end if
 	return li_errcode
 
-// w_quotation.wf_findfullcode(string as_fullcode, long al_icode, string al_itemname) returns integer
+// w_quotation.wf_findfullcode(string as_fullcode, ref long al_icode, ref string al_itemname) returns integer
 	long ll_icode
 	long ll_retflag
 	string ls_itemname
@@ -1356,7 +1356,7 @@
 	end if
 	return li_errcode
 
-// w_quotation.wf_initmodify(integer ai_protect) returns 0
+// w_quotation.wf_initmodify(ref integer ai_protect) returns 0
 	long ll_quotationinvcode
 	long ll_gcode
 	long ll_icode
@@ -1422,7 +1422,7 @@
 		this.id_master.setitem(1, "custcode", lstr_selection.l_code2)
 	end if
 
-// w_quotation.wf_inititeminfo(long al_icode, long al_row, integer ai_rtcode, string as_errortext) returns boolean
+// w_quotation.wf_inititeminfo(long al_icode, long al_row, ref integer ai_rtcode, ref string as_errortext) returns boolean
 	boolean retflag = true
 	double ld_saleprice
 	double ld_saleprice1
@@ -1725,7 +1725,7 @@
 	this.id_detail.setredraw(true)
 	return ll_retrievecount
 
-// w_quotation.wf_getcustitemcatwisesalesdiscount(long al_icode, long al_custcode, double ad_discperc, double ad_itemflatdisc) returns boolean
+// w_quotation.wf_getcustitemcatwisesalesdiscount(long al_icode, long al_custcode, ref double ad_discperc, ref double ad_itemflatdisc) returns boolean
 	double ld_null
 	setnull(ld_null)
 	ad_discperc = ld_null
@@ -3364,7 +3364,7 @@
 	this.idc_customers.setredraw(true)
 	return 0
 
-// w_quotation.wf_validate_price_discount_matters(integer ai_mode, long al_usercode, datawindow adw_local) returns integer
+// w_quotation.wf_validate_price_discount_matters(integer ai_mode, long al_usercode, ref datawindow adw_local) returns integer
 	long ll_counter
 	long ll_counter2
 	long ll_icode

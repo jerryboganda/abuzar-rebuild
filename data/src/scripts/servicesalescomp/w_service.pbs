@@ -243,7 +243,7 @@
 	end if
 	return this.it_transobject.sqlcode
 
-// w_service.wf_genfullcode(long al_icode, string as_fullcode) returns integer
+// w_service.wf_genfullcode(long al_icode, ref string as_fullcode) returns integer
 	integer li_retflag
 	string ls_fullcode
 	long icode
@@ -272,7 +272,7 @@
 	this.id_footer.object.icode[this.id_footer.getrow()] = al_icode
 	this.id_footer.object.stock[this.id_footer.getrow()] = al_stock
 
-// w_service.wf_getmaxdate(datetime ad_date) returns integer
+// w_service.wf_getmaxdate(ref datetime ad_date) returns integer
 	SQL Select Max ( Date ) INTO :ad_date From saleledger USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
@@ -283,7 +283,7 @@
 	this.it_transobject.dbparm = "Async =0, DBGetTime = 0"
 	return this.it_transobject.sqlcode
 
-// w_service.wf_getsalesstockinfo(long al_saleinvcode, long al_gcode, long al_icode, long al_saleqty) returns integer
+// w_service.wf_getsalesstockinfo(long al_saleinvcode, long al_gcode, long al_icode, ref long al_saleqty) returns integer
 	SQL Select IsNull ( Sum ( saledetail.looseqty ) , 0 ) INTO :al_saleqty from saledetail where saledetail.saleinvcode =:al_saleinvcode and saledetail.gcode =:al_gcode and saledetail.icode =:al_icode USING this.it_transobject;
 	if isnull(al_saleqty) then
 		al_saleqty = 0
@@ -410,7 +410,7 @@
 	SQL update Item SET saleprice =:ad_saleprice WHERE Item.icode =:al_icode USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
-// w_service.wf_selectitembatches(long al_gcode, long al_icode, long al_qty, datawindow ad_itemsdetail, long al_rowscount, string al_errortext) returns integer
+// w_service.wf_selectitembatches(long al_gcode, long al_icode, long al_qty, ref datawindow ad_itemsdetail, ref long al_rowscount, ref string al_errortext) returns integer
 	datastore lds_itemstockinfo
 	long ll_counter
 	long ll_saleqty
@@ -648,7 +648,7 @@
 
 // w_service.wf_visible(boolean ab_flag) returns 0
 
-// w_service.wf_returnsaleinvoice(long al_invid, string as_errtext) returns boolean
+// w_service.wf_returnsaleinvoice(long al_invid, ref string as_errtext) returns boolean
 	long ll_saleinvcode
 	long ll_gcode
 	long ll_icode
@@ -676,17 +676,17 @@
 	SQL Delete Servicedetail Where Servicedetail.ServiceInvCode =:al_serviceinvcode USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
-// w_service.wf_locksaleinvoices(long al_sinvcode, long al_linvcode, long al_totalinvoice) returns integer
+// w_service.wf_locksaleinvoices(long al_sinvcode, long al_linvcode, ref long al_totalinvoice) returns integer
 	integer li_count
 	SQL Select count ( *) INTO :al_totalinvoice From saleledger WITH ( UPDLOCK HOLDLOCK ) Where saleledger.saleinvcode Between :al_sinvcode AND :al_linvcode AND saleledger.Posted ='N' USING sqlca;
 	return sqlca.sqlcode
 
-// w_service.wf_lockserviceinvoices(long al_sinvcode, long al_linvcode, long al_totalinvoice) returns integer
+// w_service.wf_lockserviceinvoices(long al_sinvcode, long al_linvcode, ref long al_totalinvoice) returns integer
 	integer li_count
 	SQL Select count ( *) INTO :al_totalinvoice From ServiceHeader WITH ( UPDLOCK HOLDLOCK ) Where ServiceHeader.Serviceinvcode Between :al_sinvcode AND :al_linvcode AND ServiceHeader.Posted ='N' AND ServiceHeader.AdmissionCode IS NULL USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
-// w_service.wf_initmodify(integer ai_protect) returns 0
+// w_service.wf_initmodify(ref integer ai_protect) returns 0
 	long ll_saleinvcode
 	long ll_gcode
 	long ll_icode
@@ -716,7 +716,7 @@
 	this.ib_modify = false
 	this.editflag = false
 
-// w_service.wf_findfullcode(string as_fullcode, long al_icode, string al_itemname) returns integer
+// w_service.wf_findfullcode(string as_fullcode, ref long al_icode, ref string al_itemname) returns integer
 	integer ll_icode
 	integer ll_retflag
 	string ls_itemname
@@ -738,7 +738,7 @@
 	end if
 	return ll_retflag
 
-// w_service.wf_findcustcode(integer ai_custcode, string as_aliasname) returns integer
+// w_service.wf_findcustcode(ref integer ai_custcode, string as_aliasname) returns integer
 	integer li_custcode
 	integer ll_retflag
 	string ls_itemname
@@ -790,7 +790,7 @@
 	end if
 	return li_errcode
 
-// w_service.wf_inititeminfo(long al_icode, long al_row, integer ai_rtcode, string as_errortext) returns boolean
+// w_service.wf_inititeminfo(long al_icode, long al_row, ref integer ai_rtcode, ref string as_errortext) returns boolean
 	boolean retflag = true
 	boolean lb_continue = true
 	double ld_saleprice
@@ -933,7 +933,7 @@
 	end if
 	return ld_grandtotal
 
-// w_service.wf_populatesaledetail(long al_invid, datawindow ad_saledetail, string as_errortext, long al_errorrow) returns boolean
+// w_service.wf_populatesaledetail(long al_invid, ref datawindow ad_saledetail, ref string as_errortext, ref long al_errorrow) returns boolean
 	long ll_detailrows
 	long ll_stock
 	long ll_newstock
@@ -2715,7 +2715,7 @@
 	end if
 	return 0
 
-// w_service.wf_get_tokenno(long al_doctcode, integer ai_tokenno) returns long
+// w_service.wf_get_tokenno(long al_doctcode, ref integer ai_tokenno) returns long
 	long ll_rtcode
 	long ll_tokenno
 	long ll_temptoken
@@ -2876,7 +2876,7 @@
 	end if
 	return ll_retcode
 
-// w_service.wf_generate_serviceresult(long al_serviceinvcode, integer ai_usercode, long al_serviceresultcode) returns long
+// w_service.wf_generate_serviceresult(long al_serviceinvcode, integer ai_usercode, ref long al_serviceresultcode) returns long
 	long ll_retcode
 	if al_serviceinvcode > 0 and ai_usercode > 0 then
 		this.it_transobject.autogenerateserviceresult(al_serviceinvcode, ai_usercode, al_serviceresultcode)
@@ -2935,7 +2935,7 @@
 	end if
 	return ll_retcode
 
-// w_service.wf_findguestcode(string as_regno, long al_code) returns long
+// w_service.wf_findguestcode(string as_regno, ref long al_code) returns long
 	long ll_guestcode
 	long ll_retflag
 	string ls_itemname
@@ -3044,7 +3044,7 @@
 	end if
 	return 0
 
-// w_service.wf_findstudentcode(string as_regno, long al_code) returns long
+// w_service.wf_findstudentcode(string as_regno, ref long al_code) returns long
 	long ll_studentcode
 	long ll_retflag
 	string ls_itemname
@@ -4028,7 +4028,7 @@
 	next
 	return ll_retcode
 
-// w_service.wf_findpatientcode(string as_regno, long ai_patientcode) returns long
+// w_service.wf_findpatientcode(string as_regno, ref long ai_patientcode) returns long
 	long ll_patientcode
 	long ll_retflag
 	long ll_found
@@ -4147,7 +4147,7 @@
 	this.idc_motorvehicle.scrolltorow(ll_row)
 	return 0
 
-// w_service.wf_find_motorvehiclecode(string as_chasisno, long al_code) returns integer
+// w_service.wf_find_motorvehiclecode(string as_chasisno, ref long al_code) returns integer
 	long ll_motorvehiclecode
 	long ll_retflag
 	ll_retflag = 0

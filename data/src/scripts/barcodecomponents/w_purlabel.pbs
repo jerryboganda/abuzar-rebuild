@@ -50,7 +50,7 @@
 	wf_setsuppinfo(ll_suppcode, this.id_master)
 	return ll_manfcode
 
-// w_purlabel.wf_getpomanfcode(long al_pocode, long al_manfcode) returns 0
+// w_purlabel.wf_getpomanfcode(ref long al_pocode, ref long al_manfcode) returns 0
 	al_pocode = this.id_master.object.pocode[this.id_master.getrow()]
 	al_manfcode = this.id_master.object.manfcode[this.id_master.getrow()]
 
@@ -122,7 +122,7 @@
 	SQL SELECT count ( *) INTO :li_count FROM purledger WITH ( UPDLOCK HOLDLOCK ) WHERE purledger.purinvcode Between :al_sinvcode and :al_linvcode AND ( purledger.purcatcode =1 or purledger.purcatcode =2 ) USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
-// w_purlabel.wf_getitemsaleprice(long al_icode, double ad_saleprice) returns boolean
+// w_purlabel.wf_getitemsaleprice(long al_icode, ref double ad_saleprice) returns boolean
 	boolean retflag = true
 	SQL SELECT item.salePrice INTO :ad_saleprice FROM item WHERE item.icode =:al_icode USING this.it_transobject;
 	if isnull(ad_saleprice) then
@@ -133,7 +133,7 @@
 	end if
 	return retflag
 
-// w_purlabel.wf_genfullcode(long al_icode, string as_fullcode) returns integer
+// w_purlabel.wf_genfullcode(long al_icode, ref string as_fullcode) returns integer
 	integer li_retflag
 	string ls_fullcode
 	long icode
@@ -146,7 +146,7 @@
 	end if
 	return li_retflag
 
-// w_purlabel.wf_findsuppcode(string as_aliasname, integer ai_suppcode) returns integer
+// w_purlabel.wf_findsuppcode(string as_aliasname, ref integer ai_suppcode) returns integer
 	integer li_suppcode
 	integer ll_retflag
 	string ls_itemname
@@ -492,7 +492,7 @@
 	setpointer(arrow!)
 	return lb_commitflag
 
-// w_purlabel.wf_initmodify(integer ai_protect) returns 0
+// w_purlabel.wf_initmodify(ref integer ai_protect) returns 0
 	long ll_purinvcode
 	long ll_gcode
 	long ll_icode
@@ -591,7 +591,7 @@
 	end if
 	return il_errcode
 
-// w_purlabel.wf_inititeminfo(long al_icode, long al_row, string as_errortext) returns boolean
+// w_purlabel.wf_inititeminfo(long al_icode, long al_row, ref string as_errortext) returns boolean
 	boolean retflag = true
 	double ld_purprice
 	double ld_discperc
@@ -629,7 +629,7 @@
 	end if
 	return retflag
 
-// w_purlabel.wf_iteminfo(long al_icode, long al_gcode, double ad_purprice, double ad_discperc, double ad_avgprice, long al_packunits) returns boolean
+// w_purlabel.wf_iteminfo(long al_icode, ref long al_gcode, ref double ad_purprice, ref double ad_discperc, ref double ad_avgprice, ref long al_packunits) returns boolean
 	boolean retflag = true
 	SQL SELECT 1 , item.salePrice , item.purdiscperc , item.avgprice , item.packunits INTO :al_gcode, :ad_purprice, :ad_discperc, :ad_avgprice, :al_packunits FROM item WHERE item.icode =:al_icode USING this.it_transobject;
 	if isnull(ad_purprice) then
@@ -644,7 +644,7 @@
 	end if
 	return retflag
 
-// w_purlabel.wf_findfullcode(string as_fullcode, long al_icode, string al_itemname) returns integer
+// w_purlabel.wf_findfullcode(string as_fullcode, ref long al_icode, ref string al_itemname) returns integer
 	long ll_icode
 	long ll_retflag
 	string ls_itemname
@@ -738,7 +738,7 @@
 // w_purlabel.wf_populatepurinvoices() returns 0
 	messagebox("New Application Rule", "Its not necessary for a click to do some work.")
 
-// w_purlabel.wf_itemstockinfo(long al_icode, long al_gcode, double ad_stock) returns boolean
+// w_purlabel.wf_itemstockinfo(long al_icode, long al_gcode, ref double ad_stock) returns boolean
 	boolean retflag = true
 	ad_stock = 100
 	return retflag

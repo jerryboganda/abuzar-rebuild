@@ -1281,7 +1281,7 @@
 	end if
 	return retflag
 
-// w_purchaseorder.wf_findfullcode(string as_fullcode, long al_icode, string al_itemname) returns integer
+// w_purchaseorder.wf_findfullcode(string as_fullcode, ref long al_icode, ref string al_itemname) returns integer
 	long ll_icode
 	long ll_retflag
 	string ls_itemname
@@ -1315,7 +1315,7 @@
 	end if
 	return retflag
 
-// w_purchaseorder.wf_genfullcode(long al_icode, string as_fullcode) returns integer
+// w_purchaseorder.wf_genfullcode(long al_icode, ref string as_fullcode) returns integer
 	integer li_retflag
 	string ls_fullcode
 	long icode
@@ -1332,7 +1332,7 @@
 	end if
 	return li_retflag
 
-// w_purchaseorder.wf_getitempurprice(long al_icode, double ad_purprice) returns integer
+// w_purchaseorder.wf_getitempurprice(long al_icode, ref double ad_purprice) returns integer
 	SQL SELECT item.purprice INTO :ad_purprice FROM item WHERE item.icode =:al_icode USING sqlca;
 	if isnull(ad_purprice) then
 		ad_purprice = 0
@@ -1991,7 +1991,7 @@
 	next
 	this.id_detail.setredraw(true)
 
-// w_purchaseorder.wf_update_minqty(long al_icode, long al_qty, string as_errtext) returns long
+// w_purchaseorder.wf_update_minqty(long al_icode, long al_qty, ref string as_errtext) returns long
 	long ll_retcode = -1
 	if f_stringpreferences("UpdateMinQty_PO_Save") = "Y" then
 		ll_retcode = this.it_transobject.update_item_minqty(al_icode, al_qty)
@@ -2004,7 +2004,7 @@
 	end if
 	return 0
 
-// w_purchaseorder.wf_update_optimumqty(long al_icode, long al_qty, string as_errtext) returns long
+// w_purchaseorder.wf_update_optimumqty(long al_icode, long al_qty, ref string as_errtext) returns long
 	long ll_retcode
 	if f_stringpreferences("UpdateOptQty_PO_Save") = "Y" then
 		ll_retcode = this.it_transobject.update_item_optimumqty(al_icode, al_qty)
@@ -2017,7 +2017,7 @@
 	end if
 	return 0
 
-// w_purchaseorder.wf_update_reorderqty(long al_icode, long al_qty, string as_errtext) returns long
+// w_purchaseorder.wf_update_reorderqty(long al_icode, long al_qty, ref string as_errtext) returns long
 	long ll_retcode
 	if f_stringpreferences("UpdateReorderQty_PO_Save") = "Y" then
 		ll_retcode = this.it_transobject.update_item_reorderqty(al_icode, al_qty)
@@ -2089,7 +2089,7 @@
 	end if
 	return ll_retcode
 
-// w_purchaseorder.wf_findsuppcode(string as_aliasname, long al_suppcode) returns long
+// w_purchaseorder.wf_findsuppcode(string as_aliasname, ref long al_suppcode) returns long
 	long ll_suppcode
 	long ll_retflag
 	string ls_itemname

@@ -66,7 +66,7 @@
 	this.id_footer.settransobject(this.it_transobject)
 	this.id_list.settransobject(this.it_transobject)
 
-// w_purchasereturn.wf_checkitemstock(long al_gcode, long al_icode, string as_batch, date ad_expiry, long al_qty, string as_errortext, integer ai_errorcode) returns integer
+// w_purchasereturn.wf_checkitemstock(long al_gcode, long al_icode, string as_batch, date ad_expiry, long al_qty, ref string as_errortext, ref integer ai_errorcode) returns integer
 	datastore lds_itemstockinfo
 	long ll_counter
 	long ll_qty
@@ -175,7 +175,7 @@
 	end if
 	return retflag
 
-// w_purchasereturn.wf_findnormalpurinvoice(long al_purinvcode, datetime ad_date) returns boolean
+// w_purchasereturn.wf_findnormalpurinvoice(long al_purinvcode, ref datetime ad_date) returns boolean
 	boolean lb_rtflag
 	integer li_code
 	SQL SELECT PurLedger.date INTO :ad_date FROM PurLedger WHERE PurLedger.Purinvcode =:al_purinvcode AND PurLedger.Posted ='Y' AND ( PurLedger.PurCatCode =1 OR PurLedger.PurCatCode =2 ) USING this.it_transobject;
@@ -184,7 +184,7 @@
 	end if
 	return lb_rtflag
 
-// w_purchasereturn.wf_findopenpurinvoice(long al_purinvcode, datetime ad_date) returns boolean
+// w_purchasereturn.wf_findopenpurinvoice(long al_purinvcode, ref datetime ad_date) returns boolean
 	boolean lb_rtflag
 	integer li_code
 	SQL SELECT PurLedger.date INTO :ad_date FROM PurLedger WHERE PurLedger.Purinvcode =:al_purinvcode AND PurLedger.Posted ='Y' AND PurLedger.PurCatCode =3 USING this.it_transobject;
@@ -193,7 +193,7 @@
 	end if
 	return lb_rtflag
 
-// w_purchasereturn.wf_findunpostedpurret(long al_purinvcode, string as_errtext) returns integer
+// w_purchasereturn.wf_findunpostedpurret(long al_purinvcode, ref string as_errtext) returns integer
 	integer li_rtcode
 	long ll_count
 	SQL SELECT count ( *) INTO :ll_count FROM prledger WHERE prledger.purinvcode =:al_purinvcode AND prledger.posted ='N' USING this.it_transobject;
@@ -208,7 +208,7 @@
 	end if
 	return li_rtcode
 
-// w_purchasereturn.wf_genfullcode(long al_icode, string as_fullcode) returns integer
+// w_purchasereturn.wf_genfullcode(long al_icode, ref string as_fullcode) returns integer
 	integer li_retflag
 	string ls_fullcode
 	long icode
@@ -221,7 +221,7 @@
 	end if
 	return li_retflag
 
-// w_purchasereturn.wf_iteminfo(long al_icode, double ad_purprice, double ad_discperc, double ad_avgprice, double ad_saleprice) returns boolean
+// w_purchasereturn.wf_iteminfo(long al_icode, ref double ad_purprice, ref double ad_discperc, ref double ad_avgprice, ref double ad_saleprice) returns boolean
 	boolean retflag = true
 	SQL SELECT item.purprice , item.purdiscperc , item.avgprice , item.saleprice INTO :ad_purprice, :ad_discperc, :ad_avgprice, :ad_saleprice FROM item WHERE item.icode =:al_icode USING this.it_transobject;
 	if isnull(ad_purprice) then
@@ -309,7 +309,7 @@
 	this.id_footer.object.prevretbonusqty[this.id_footer.getrow()] = al_prevretbonusqty
 	this.id_footer.object.stock[this.id_footer.getrow()] = al_stock
 
-// w_purchasereturn.wf_setpurinvinfo(long al_purinvcode, long al_suppcode) returns long
+// w_purchasereturn.wf_setpurinvinfo(long al_purinvcode, ref long al_suppcode) returns long
 	long ll_picode
 	long ll_purcatcode
 	long ll_row
@@ -392,7 +392,7 @@
 	SQL Select count ( *) INTO :li_count From prledger WITH ( UPDLOCK HOLDLOCK ) Where prledger.prinvcode =:al_prinvcode USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
-// w_purchasereturn.wf_initmodify(integer ai_protect, string as_errtext) returns 0
+// w_purchasereturn.wf_initmodify(ref integer ai_protect, ref string as_errtext) returns 0
 	long ll_purinvcode
 	long ll_piecesinhand
 	long ll_totalpieces
@@ -610,7 +610,7 @@
 	end if
 	return ld_grandtotal
 
-// w_purchasereturn.wf_populateprdetail(long al_invid, datawindow ad_prinvdetail, string as_errortext, integer ai_errorrow) returns integer
+// w_purchasereturn.wf_populateprdetail(long al_invid, datawindow ad_prinvdetail, ref string as_errortext, ref integer ai_errorrow) returns integer
 	unsignedlong ul_rowcount
 	unsignedlong ul_maxutn
 	long ll_counter
@@ -848,7 +848,7 @@
 	end if
 	return -1
 
-// w_purchasereturn.wf_returnprinvoice(long al_invcode, string as_errtext) returns boolean
+// w_purchasereturn.wf_returnprinvoice(long al_invcode, ref string as_errtext) returns boolean
 	integer li_errcode
 	long ll_prinvcode
 	long ll_detailrows
@@ -1253,7 +1253,7 @@
 	end if
 	return ll_rtcode
 
-// w_purchasereturn.wf_inititeminfo(datawindowchild adc_itemdddw, long al_row, long al_dddwrow, string as_errtext) returns integer
+// w_purchasereturn.wf_inititeminfo(ref datawindowchild adc_itemdddw, long al_row, long al_dddwrow, ref string as_errtext) returns integer
 	long ll_icode
 	long ll_gcode
 	long ll_purinvcode
@@ -1365,7 +1365,7 @@
 	end if
 	return li_errcode
 
-// w_purchasereturn.wf_inititeminfo(datawindowchild adc_itemdddw, long al_purinvcode, long al_dsrow, long al_detaildwrow, string as_errtext) returns integer
+// w_purchasereturn.wf_inititeminfo(datawindowchild adc_itemdddw, long al_purinvcode, long al_dsrow, long al_detaildwrow, ref string as_errtext) returns integer
 	long ll_icode
 	long ll_gcode
 	long ll_purinvcode
@@ -1476,7 +1476,7 @@
 	end if
 	return li_errcode
 
-// w_purchasereturn.wf_inititeminfo(long al_icode, long al_row, string as_errortext) returns boolean
+// w_purchasereturn.wf_inititeminfo(long al_icode, long al_row, ref string as_errortext) returns boolean
 	boolean retflag = true
 	double ld_purprice
 	double ld_discperc
@@ -1594,7 +1594,7 @@
 	this.id_footer.object.t_rpp.text = string(ld_rpp) + " , " + string(ld_rpp2) + " , " + string(ld_rpp3) + " , " + string(ld_rpp4) + " , " + string(ld_rpp5)
 	return retflag
 
-// w_purchasereturn.wf_findfullcode(string as_fullcode, long al_icode, string al_itemname) returns integer
+// w_purchasereturn.wf_findfullcode(string as_fullcode, ref long al_icode, ref string al_itemname) returns integer
 	long ll_icode
 	long ll_retflag
 	string ls_itemname
@@ -1755,7 +1755,7 @@
 	end if
 	this.id_print.dataobject = ls_report
 
-// w_purchasereturn.wf_validatebonusqty(long al_row, double al_bonusqty, string as_errortext) returns integer
+// w_purchasereturn.wf_validatebonusqty(long al_row, double al_bonusqty, ref string as_errortext) returns integer
 	integer li_rtcode
 	double ld_retablebonusqty
 	double ld_stock
@@ -1778,7 +1778,7 @@
 	end if
 	return li_rtcode
 
-// w_purchasereturn.wf_itemprevretqty(long al_purinvcode, long al_icode, string as_batch, datetime ad_expiry, double al_prevretlooseqty, double al_prevretbonusqty) returns boolean
+// w_purchasereturn.wf_itemprevretqty(long al_purinvcode, long al_icode, string as_batch, datetime ad_expiry, ref double al_prevretlooseqty, ref double al_prevretbonusqty) returns boolean
 	boolean lb_rtflag = true
 	SQL SELECT Sum ( prdetail.looseqty ) , Sum ( prdetail.bonusqty ) INTO :al_prevretlooseqty, :al_prevretbonusqty FROM prledger , prdetail WHERE prledger.purinvcode =:al_purinvcode AND prledger.prinvcode =prdetail.prinvcode AND prdetail.icode =:al_icode AND prdetail.batch =:as_batch AND prdetail.expiry =:ad_expiry USING this.it_transobject;
 	if this.it_transobject.sqlcode = -1 then
@@ -1792,7 +1792,7 @@
 	end if
 	return lb_rtflag
 
-// w_purchasereturn.wf_itemprevretlbqty(long al_purinvcode, long al_icode, string as_batch, datetime ad_expiry, double al_prevretlooseqty, double al_prevretbonusqty) returns boolean
+// w_purchasereturn.wf_itemprevretlbqty(long al_purinvcode, long al_icode, string as_batch, datetime ad_expiry, ref double al_prevretlooseqty, ref double al_prevretbonusqty) returns boolean
 	boolean lb_rtflag = true
 	SQL SELECT Sum ( prdetail.looseqty ) , Sum ( prdetail.bonusqty ) INTO :al_prevretlooseqty, :al_prevretbonusqty FROM prledger , prdetail WHERE prledger.purinvcode =:al_purinvcode AND prledger.prinvcode =prdetail.prinvcode AND prdetail.icode =:al_icode USING this.it_transobject;
 	if this.it_transobject.sqlcode = -1 then
@@ -1806,7 +1806,7 @@
 	end if
 	return lb_rtflag
 
-// w_purchasereturn.wf_itemstockinfo(long al_gcode, long al_icode, string as_batch, datetime ad_expiry, double al_stock) returns boolean
+// w_purchasereturn.wf_itemstockinfo(long al_gcode, long al_icode, string as_batch, datetime ad_expiry, ref double al_stock) returns boolean
 	boolean retflag = true
 	SQL SELECT godowndetail.currqty INTO :al_stock FROM godowndetail WHERE godowndetail.Gcode =:al_gcode AND godowndetail.icode =:al_icode AND godowndetail.batch =:as_batch AND godowndetail.expiry =:ad_expiry USING this.it_transobject;
 	if isnull(al_stock) then
@@ -1817,7 +1817,7 @@
 	end if
 	return retflag
 
-// w_purchasereturn.wf_validatelooseqty(long al_row, double al_looseqty, string as_errortext) returns integer
+// w_purchasereturn.wf_validatelooseqty(long al_row, double al_looseqty, ref string as_errortext) returns integer
 	integer li_rtcode
 	double ld_retablelooseqty
 	double ld_stock

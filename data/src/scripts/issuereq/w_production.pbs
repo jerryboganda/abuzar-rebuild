@@ -43,7 +43,7 @@
 	end if
 	return this.it_transobject.sqlcode
 
-// w_production.wf_genfullcode(long al_icode, string as_fullcode) returns integer
+// w_production.wf_genfullcode(long al_icode, ref string as_fullcode) returns integer
 	integer li_retflag
 	string ls_fullcode
 	long icode
@@ -60,7 +60,7 @@
 	end if
 	return li_retflag
 
-// w_production.wf_getmaxdate(datetime ad_date) returns integer
+// w_production.wf_getmaxdate(ref datetime ad_date) returns integer
 	SQL Select Max ( Date ) INTO :ad_date From saleledger USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
@@ -233,7 +233,7 @@
 	SQL Delete IssueDetail Where IssueDetail.IssueInvCode =:al_saleinvcode USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
-// w_production.wf_selectitembatches(long al_gcode, long al_icode, long al_qty, datawindow ad_itemsdetail, long al_rowscount, string al_errortext) returns integer
+// w_production.wf_selectitembatches(long al_gcode, long al_icode, long al_qty, ref datawindow ad_itemsdetail, ref long al_rowscount, ref string al_errortext) returns integer
 	datastore lds_itemstockinfo
 	long ll_counter
 	long ll_saleqty
@@ -286,7 +286,7 @@
 	destroy lds_itemstockinfo
 	return li_errcode
 
-// w_production.wf_returnsaleinvoice(long al_invid, string as_errtext) returns boolean
+// w_production.wf_returnsaleinvoice(long al_invid, ref string as_errtext) returns boolean
 	long ll_saleinvcode
 	long ll_gcode
 	long ll_icode
@@ -513,7 +513,7 @@
 	end if
 	return this.id_list.retrieve(li_salecategory, ls_posted, ld_invdate, this.il_groupcode, this.ii_module)
 
-// w_production.wf_populatesaledetail(long al_invid, datawindow ad_saledetail, string as_errortext, long al_errorrow) returns boolean
+// w_production.wf_populatesaledetail(long al_invid, ref datawindow ad_saledetail, ref string as_errortext, ref long al_errorrow) returns boolean
 	long ll_detailrows
 	long ll_gcode
 	long ll_icode
@@ -627,7 +627,7 @@
 
 // w_production.wf_setgodownoption() returns 0
 
-// w_production.wf_initmodify(integer ai_protect) returns 0
+// w_production.wf_initmodify(ref integer ai_protect) returns 0
 	long ll_saleinvcode
 	long ll_gcode
 	long ll_icode
@@ -885,7 +885,7 @@
 	SQL SELECT DISTINCT GCode =ISNull ( Count ( GCode ) , 0 ) INTO :ll_disallowedcount FROM IssueReqDetail WHERE IssueReqInvCode =:ad_invoicecode AND GCode NOT IN ( SELECT Godown.GCode FROM Godown WHERE GCode IN ( CASE :ai_strategy WHEN 2 THEN ( SELECT G.GCode From Godown G WHERE G.GCode =Godown.GCode ) ELSE ( SELECT G.GCode From GroupAllowedGodown G WHERE G.GroupCode =:al_groupcode AND G.Module =:this.ii_module AND Godown.GCode =G.GCode ) END ) ) USING sqlca;
 	return ll_disallowedcount
 
-// w_production.wf_inititeminfo(long al_icode, long al_row, integer ai_rtcode, string as_errortext) returns boolean
+// w_production.wf_inititeminfo(long al_icode, long al_row, ref integer ai_rtcode, ref string as_errortext) returns boolean
 	boolean retflag = true
 	double ld_saleprice
 	long ll_packunits
@@ -963,14 +963,14 @@
 	this.ia_llookuptable[92] = 99999
 	return 0
 
-// w_production.wf_getsalesstockinfo(long al_saleinvcode, long al_gcode, long al_icode, double al_saleqty) returns integer
+// w_production.wf_getsalesstockinfo(long al_saleinvcode, long al_gcode, long al_icode, ref double al_saleqty) returns integer
 	SQL Select IsNull ( Sum ( saledetail.looseqty ) , 0 ) INTO :al_saleqty from saledetail where saledetail.saleinvcode =:al_saleinvcode and saledetail.gcode =:al_gcode and saledetail.icode =:al_icode USING this.it_transobject;
 	if isnull(al_saleqty) then
 		al_saleqty = 0
 	end if
 	return this.it_transobject.sqlcode
 
-// w_production.wf_findfullcode(string as_fullcode, long al_icode, string as_itemname) returns integer
+// w_production.wf_findfullcode(string as_fullcode, ref long al_icode, ref string as_itemname) returns integer
 	long ll_icode
 	long ll_retflag
 	string ls_itemname
@@ -1042,7 +1042,7 @@
 	SQL Select count ( *) INTO :li_count From ProdHeader WITH ( UPDLOCK HOLDLOCK ) Where ProdHeader.ProdCode =:al_saleinvcode USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
-// w_production.wf_lock_productions(long al_sinvcode, long al_linvcode, long al_totalinvoice) returns integer
+// w_production.wf_lock_productions(long al_sinvcode, long al_linvcode, ref long al_totalinvoice) returns integer
 	integer li_count
 	SQL Select count ( *) INTO :al_totalinvoice From ProdHeader WITH ( UPDLOCK HOLDLOCK ) Where ProdHeader.ProdCode Between :al_sinvcode AND :al_linvcode AND ProdHeader.Posted ='N' AND Finalized ='N' USING sqlca;
 	return sqlca.sqlcode

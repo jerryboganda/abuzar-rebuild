@@ -122,7 +122,7 @@
 	this.idc_dddwdetailaccount.setfilter(ls_filter)
 	this.idc_dddwdetailaccount.filter()
 
-// w_voucher.wf_findfullcode(string as_fullcode, long al_acccode) returns integer
+// w_voucher.wf_findfullcode(string as_fullcode, ref long al_acccode) returns integer
 	boolean lb_groupcustcat
 	long ll_found
 	long ll_subcode
@@ -166,7 +166,7 @@
 	end if
 	return ld_balance
 
-// w_voucher.wf_getfullcode(long al_acccode, string as_fullcode) returns integer
+// w_voucher.wf_getfullcode(long al_acccode, ref string as_fullcode) returns integer
 	integer li_retflag
 	string ls_fullcode
 	SQL SELECT aliasname INTO :ls_fullcode FROM dbo.accounts WHERE dbo.accounts.acccode =:al_acccode and active ='Y' USING this.it_transobject;
@@ -178,7 +178,7 @@
 	end if
 	return li_retflag
 
-// w_voucher.wf_getinvinfo(long al_glvochcode, long al_invcode, double ad_amt) returns integer
+// w_voucher.wf_getinvinfo(long al_glvochcode, long al_invcode, ref double ad_amt) returns integer
 	double ld_dr
 	double ld_cr
 	if this.is_jv = "Y" then
@@ -216,7 +216,7 @@
 	this.it_transobject.getglobalcode("GT_CreditorsSub", this.il_creditorssub)
 	this.it_transobject.getglobalcode("GT_DebitorsSub", this.il_debitorssub)
 
-// w_voucher.wf_initmodify(integer ai_protect) returns integer
+// w_voucher.wf_initmodify(ref integer ai_protect) returns integer
 	long ll_glvochcode
 	long ll_counter = 1
 	if this.id_master.getitemstring(1, "posted") = "N" then
@@ -275,7 +275,7 @@
 	this.it_transobject.dbparm = "Async =0, DBGetTime = 0"
 	return this.it_transobject.sqlcode
 
-// w_voucher.wf_lockvouchers(long al_sinvcode, long al_linvcode, long al_totalinvoice) returns integer
+// w_voucher.wf_lockvouchers(long al_sinvcode, long al_linvcode, ref long al_totalinvoice) returns integer
 	integer li_count
 	SQL Select count ( *) INTO :al_totalinvoice From glheader WITH ( UPDLOCK HOLDLOCK ) Where glheader.glvochcode Between :al_sinvcode AND :al_linvcode AND glheader.Posted ='N' USING sqlca;
 	return sqlca.sqlcode
@@ -361,7 +361,7 @@
 		next
 	end if
 
-// w_voucher.wf_returnvoucher(long al_invid, string as_errortext) returns boolean
+// w_voucher.wf_returnvoucher(long al_invid, ref string as_errortext) returns boolean
 	long ll_invcode
 	long ll_counter = 1
 	long ll_detailrows
@@ -610,21 +610,21 @@
 	next
 	return 0
 
-// w_voucher.wf_validatepatient(long al_patientcode, string as_regno, long al_acccode) returns boolean
+// w_voucher.wf_validatepatient(long al_patientcode, ref string as_regno, ref long al_acccode) returns boolean
 	SQL SELECT regno , CustCode INTO :as_regno, :al_acccode FROM Patient WHERE PatientCode =:al_patientcode USING sqlca;
 	if sqlca.sqlcode = 0 then
 		return true
 	end if
 	return false
 
-// w_voucher.wf_validateregno(string as_regno, long al_patientcode, long al_acccode) returns boolean
+// w_voucher.wf_validateregno(string as_regno, ref long al_patientcode, ref long al_acccode) returns boolean
 	SQL SELECT patientcode , CustCode INTO :al_patientcode, :al_acccode FROM Patient WHERE regno =:as_regno AND patientcode in ( SELECT PP.PatientCode FROM Patient PP WHERE PP.RegNo =:as_regno AND dbo.fn_GetPreference ( 'allowedpatientsintransaction' ) ='A' UNION SELECT PP.PatientCode FROM Patient PP WHERE PP.RegNo =:as_regno AND dbo.fn_GetPreference ( 'allowedpatientsintransaction' ) ='C' AND PP.Active ='Y' UNION SELECT PP.PatientCode FROM Patient PP , PatientAdmission PA WHERE PP.RegNo =:as_regno AND dbo.fn_GetPreference ( 'allowedpatientsintransaction' ) ='D' AND PP.Active ='Y' AND PP.PatientCode =PA.PatientCode AND PA.Discharged ='N' UNION SELECT PP.PatientCode FROM Patient PP WHERE PP.RegNo =:as_regno AND dbo.fn_GetPreference ( 'allowedpatientsintransaction' ) ='X' AND PP.Active ='Y' AND PP.PatientCode NOT IN ( SELECT DISTINCT PA.PatientCode FROM PatientAdmission PA WHERE PA.Discharged ='Y' ) ) USING sqlca;
 	if sqlca.sqlcode = 0 then
 		return true
 	end if
 	return false
 
-// w_voucher.wf_populatedetail(long al_invid, datawindow ad_detail, string as_errortext, long al_errorrow) returns boolean
+// w_voucher.wf_populatedetail(long al_invid, datawindow ad_detail, ref string as_errortext, ref long al_errorrow) returns boolean
 	long ll_detailrows
 	long ll_errrowid
 	long ll_usercode = 1
@@ -1631,28 +1631,28 @@
 	end if
 	return 0
 
-// w_voucher.wf_validateguest(long al_guestcode, string as_regno, long al_acccode) returns boolean
+// w_voucher.wf_validateguest(long al_guestcode, ref string as_regno, ref long al_acccode) returns boolean
 	SQL SELECT regno , CustCode INTO :as_regno, :al_acccode FROM Guest WHERE GuestCode =:al_guestcode USING sqlca;
 	if sqlca.sqlcode = 0 then
 		return true
 	end if
 	return false
 
-// w_voucher.wf_validatestudent(long al_studentcode, string as_regno, long al_acccode) returns boolean
+// w_voucher.wf_validatestudent(long al_studentcode, ref string as_regno, ref long al_acccode) returns boolean
 	SQL SELECT regno , CustCode INTO :as_regno, :al_acccode FROM Student WHERE StudentCode =:al_studentcode USING sqlca;
 	if sqlca.sqlcode = 0 then
 		return true
 	end if
 	return false
 
-// w_voucher.wf_validate_guestregno(string as_regno, long al_guestcode, long al_acccode) returns boolean
+// w_voucher.wf_validate_guestregno(string as_regno, ref long al_guestcode, ref long al_acccode) returns boolean
 	SQL SELECT Guestcode , CustCode INTO :al_guestcode, :al_acccode FROM Guest WHERE regno =:as_regno AND Guestcode in ( SELECT PP.GuestCode FROM Guest PP WHERE PP.RegNo =:as_regno AND dbo.fn_GetPreference ( 'allowedGuestsintransaction' ) ='A' UNION SELECT PP.GuestCode FROM Guest PP WHERE PP.RegNo =:as_regno AND dbo.fn_GetPreference ( 'allowedGuestsintransaction' ) ='C' AND PP.Active ='Y' UNION SELECT PP.GuestCode FROM Guest PP , GuestCheckIn PA WHERE PP.RegNo =:as_regno AND dbo.fn_GetPreference ( 'allowedGuestsintransaction' ) ='D' AND PP.Active ='Y' AND PP.GuestCode =PA.GuestCode AND PA.CheckOut ='N' UNION SELECT PP.GuestCode FROM Guest PP WHERE PP.RegNo =:as_regno AND dbo.fn_GetPreference ( 'allowedGuestsintransaction' ) ='X' AND PP.Active ='Y' AND PP.GuestCode NOT IN ( SELECT DISTINCT PA.GuestCode FROM GuestCheckIn PA WHERE PA.CheckOut ='Y' ) ) USING sqlca;
 	if sqlca.sqlcode = 0 then
 		return true
 	end if
 	return false
 
-// w_voucher.wf_validate_studentregno(string as_regno, long al_studentcode, long al_acccode) returns boolean
+// w_voucher.wf_validate_studentregno(string as_regno, ref long al_studentcode, ref long al_acccode) returns boolean
 	SQL SELECT Studentcode , CustCode INTO :al_studentcode, :al_acccode FROM Student WHERE regno =:as_regno AND Studentcode in ( SELECT PP.StudentCode FROM Student PP WHERE PP.RegNo =:as_regno AND dbo.fn_GetPreference ( 'allowedStudentsintransaction' ) ='A' UNION SELECT PP.StudentCode FROM Student PP , StudentClass PA , Class C WHERE PP.RegNo =:as_regno AND dbo.fn_GetPreference ( 'allowedStudentsintransaction' ) ='D' AND PP.StudentCode =PA.StudentCode AND PA.ClassCode =C.ClassCode AND C.Active ='Y' ) USING sqlca;
 	if sqlca.sqlcode = 0 then
 		return true
@@ -1949,7 +1949,7 @@
 	next
 	return 0
 
-// w_voucher.wf_getnewvouchercode(integer ai_vouchcatcode, long al_vouchercode) returns integer
+// w_voucher.wf_getnewvouchercode(integer ai_vouchcatcode, ref long al_vouchercode) returns integer
 	long ll_rtcode
 	SQL SELECT dbo.VOCHERCATEGORY.COUNTER INTO :al_vouchercode FROM dbo.VOCHERCATEGORY WITH ( UPDLOCK HOLDLOCK ) WHERE dbo.VOCHERCATEGORY.VochCatCode =:ai_vouchcatcode USING this.it_transobject;
 	if this.it_transobject.sqlcode = 0 then

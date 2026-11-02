@@ -207,4 +207,44 @@ test('Timer(0, window) reaches the system function, not the window Timer event',
   const w = await rt.instantiate('w_timer')
   await rt.fire(w, 'open')
   assert.equal(rt.globals.get('gs_timerhits'), 0)
+})
+
+test('a for loop tests its limit again on every pass; a local keeps its initial value', async () => {
+  const rt = runtimeWith(`// function f_loop (x)  ancestor: function_object
+
+// f_loop.f_loop(long a) returns long
+	long total = 5
+	boolean lb_on = true
+	long n = 3
+	long i
+	for i = 1 to n
+		n = 2
+		total = total + i
+	next
+	if lb_on then
+		total = total + 100
+	end if
+	return total
+`)
+  // the limit drops to 2 inside the body: passes 1 and 2 run, 3 does not (5 + 1 + 2 + 100)
+  assert.equal(await call(rt, 'f_loop', 0), 108)
+})
+
+test('a ref parameter returns its value to the caller', async () => {
+  const rt = runtimeWith(
+    `// function f_setter (x)  ancestor: function_object
+
+// f_setter.f_setter(ref string as_out) returns boolean
+	as_out = "hello"
+	return true
+`,
+    `// function f_caller (x)  ancestor: function_object
+
+// f_caller.f_caller() returns string
+	string ls
+	f_setter(ls)
+	return ls
+`,
+  )
+  assert.equal(await call(rt, 'f_caller'), 'hello')
 })

@@ -23,7 +23,7 @@
 	end if
 	return true
 
-// n_winsock.of_close(unsignedlong aul_socket) returns boolean
+// n_winsock.of_close(ref unsignedlong aul_socket) returns boolean
 	long ll_rc
 	if aul_socket <> 0 then
 		ll_rc = closesocket(aul_socket)
@@ -241,7 +241,7 @@
 	end if
 	return ls_userid
 
-// n_winsock.of_ioctlsocket(unsignedlong aul_socket, string as_cmdname, unsignedlong aul_argp) returns boolean
+// n_winsock.of_ioctlsocket(unsignedlong aul_socket, string as_cmdname, ref unsignedlong aul_argp) returns boolean
 	unsignedlong fionbio = 2147772030
 	unsignedlong fionread = 1074030207
 	unsignedlong siocatmark = 1074033415
@@ -349,7 +349,7 @@
 	end choose
 	messagebox("Winsock Message", as_msgtext, information!)
 
-// n_winsock.of_recv(unsignedlong aul_socket, blob ablob_data) returns boolean
+// n_winsock.of_recv(unsignedlong aul_socket, ref blob ablob_data) returns boolean
 	long ll_bytes
 	long ll_maxbuffer
 	blob lblob_data
@@ -367,7 +367,7 @@
 	loop
 	return true
 
-// n_winsock.of_recv(unsignedlong aul_socket, string as_data) returns boolean
+// n_winsock.of_recv(unsignedlong aul_socket, ref string as_data) returns boolean
 	blob lblob_data
 	if of_recv(aul_socket, lblob_data) then
 		if this.ib_recv_unicode then
@@ -381,7 +381,7 @@
 	end if
 	return true
 
-// n_winsock.of_recvfrom(unsignedinteger aui_port, blob ablob_data, string as_ipaddress) returns boolean
+// n_winsock.of_recvfrom(unsignedinteger aui_port, ref blob ablob_data, ref string as_ipaddress) returns boolean
 	sockaddr lstr_recvaddr
 	sockaddr lstr_senderaddr
 	unsignedlong lul_recvsocket
@@ -412,7 +412,7 @@
 	closesocket(lul_recvsocket)
 	return true
 
-// n_winsock.of_recvfrom(unsignedinteger aui_port, string as_data, string as_ipaddress) returns boolean
+// n_winsock.of_recvfrom(unsignedinteger aui_port, ref string as_data, ref string as_ipaddress) returns boolean
 	blob lblob_data
 	lblob_data = blob(as_data)
 	if of_recvfrom(aui_port, lblob_data, as_ipaddress) then
@@ -542,7 +542,7 @@
 	end if
 	return true
 
-// n_winsock.of_decode64(string as_encoded) returns blob
+// n_winsock.of_decode64(ref string as_encoded) returns blob
 	blob lblob_data
 	unsignedlong lul_len
 	unsignedlong lul_buflen
@@ -555,7 +555,7 @@
 	lb_rtn = cryptstringtobinary(as_encoded, lul_len, 1, lblob_data, lul_buflen, lul_skip, lul_pflags)
 	return blobmid(lblob_data, 1, lul_buflen)
 
-// n_winsock.of_encode64(blob ablob_data) returns string
+// n_winsock.of_encode64(ref blob ablob_data) returns string
 	string ls_encoded
 	unsignedlong lul_len
 	unsignedlong lul_buflen
@@ -571,10 +571,10 @@
 	end if
 	return ls_encoded
 
-// n_winsock.of_encode64(string as_data) returns string
+// n_winsock.of_encode64(ref string as_data) returns string
 	return of_encode64(blob(as_data, encodingansi!))
 
-// n_winsock.of_parse(string as_string, string as_separator, string[] as_outarray) returns long
+// n_winsock.of_parse(ref string as_string, ref string as_separator, ref string[] as_outarray) returns long
 	long ll_posend
 	long ll_posstart = 1
 	long ll_separatorlen

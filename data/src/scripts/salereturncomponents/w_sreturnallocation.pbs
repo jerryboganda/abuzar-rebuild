@@ -70,7 +70,7 @@
 	this.it_transobject.dbparm = "Async =0, DBGetTime = 0"
 	return this.it_transobject.sqlcode
 
-// w_sreturnallocation.wf_locksrallocations(long al_sinvcode, long al_linvcode, long al_totalinvoice) returns integer
+// w_sreturnallocation.wf_locksrallocations(long al_sinvcode, long al_linvcode, ref long al_totalinvoice) returns integer
 	integer li_count
 	SQL Select count ( *) INTO :al_totalinvoice From SRAllocationHeader WITH ( UPDLOCK HOLDLOCK ) Where SRAllocationHeader.SRAllocationCode Between :al_sinvcode AND :al_linvcode AND SRAllocationHeader.Posted ='N' USING sqlca;
 	return sqlca.sqlcode
@@ -177,7 +177,7 @@
 		end if
 	next
 
-// w_sreturnallocation.wf_returnsrallocation(long al_invid, string as_errortext) returns boolean
+// w_sreturnallocation.wf_returnsrallocation(long al_invid, ref string as_errortext) returns boolean
 	long ll_srinvcode
 	long ll_saleinvcode
 	long ll_counter = 1
@@ -455,25 +455,25 @@
 	SQL Delete srallocationdetail Where srallocationdetail.SRAllocationCode =:al_srallocationcode USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
-// w_sreturnallocation.wf_getsaleinvinfo(long al_srallocationcode, long al_saleinvcode, double ad_amt) returns integer
+// w_sreturnallocation.wf_getsaleinvinfo(long al_srallocationcode, long al_saleinvcode, ref double ad_amt) returns integer
 	SQL Select IsNull ( Sum ( srallocationdetail.amt ) , 0 ) INTO :ad_amt from srallocationdetail where srallocationdetail.srallocationcode =:al_srallocationcode and srallocationdetail.saleinvcode =:al_saleinvcode USING this.it_transobject;
 	if isnull(ad_amt) then
 		ad_amt = 0
 	end if
 	return this.it_transobject.sqlcode
 
-// w_sreturnallocation.wf_getsrinvcode(long al_srallocationcode, long al_srinvcode) returns integer
+// w_sreturnallocation.wf_getsrinvcode(long al_srallocationcode, ref long al_srinvcode) returns integer
 	SQL SELECT SRInvCode INTO :al_srinvcode FROM SRAllocationHeader WHERE SRAllocationCode =:al_srallocationcode USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
-// w_sreturnallocation.wf_getsrinvinfo(long al_srallocationcode, double ad_amt) returns integer
+// w_sreturnallocation.wf_getsrinvinfo(long al_srallocationcode, ref double ad_amt) returns integer
 	SQL Select IsNull ( Sum ( srallocationdetail.amt ) , 0 ) INTO :ad_amt from srallocationdetail where srallocationdetail.srallocationcode =:al_srallocationcode USING this.it_transobject;
 	if isnull(ad_amt) then
 		ad_amt = 0
 	end if
 	return this.it_transobject.sqlcode
 
-// w_sreturnallocation.wf_initmodify(integer ai_protect) returns 0
+// w_sreturnallocation.wf_initmodify(ref integer ai_protect) returns 0
 	long ll_srallocationcode
 	long ll_saleinvcode
 	long ll_counter = 1
@@ -526,7 +526,7 @@
 		messagebox("Cannot Modify", "Sale invoice is already in use")
 	end if
 
-// w_sreturnallocation.wf_populatedetail(long al_invid, datawindow ad_detail, string as_errortext, long al_errorrow) returns boolean
+// w_sreturnallocation.wf_populatedetail(long al_invid, ref datawindow ad_detail, ref string as_errortext, ref long al_errorrow) returns boolean
 	long ll_detailrows
 	long ll_errrowid
 	long ll_usercode = 1
