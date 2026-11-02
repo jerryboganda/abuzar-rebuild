@@ -158,3 +158,34 @@ test('values: exact decimals and array helpers', () => {
   assert.equal(new PBArray('long', [1, 2, 3]).a.length, 3)
   assert.ok(parseDwExpr("sum(x for group 1) + if(a = 'q', 1, 2)"))
 })
+
+test('stored procedure called as a method of the transaction object: status code and INOUT values', async () => {
+  const { registerWindowing } = await import('../src/runtime/native/windowing.ts')
+  const { NTransaction } = await import('../src/runtime/native/transaction.ts')
+  const { ProcCaller } = await import('../src/runtime/native/procs.ts')
+  const rt = runtimeWith(`// function f_p (x)  ancestor: function_object
+
+// f_p.f_p() returns long
+	long ll_out
+	long ll_ret
+	ll_out = 1
+	ll_ret = sqlca.getthing(5, ll_out)
+	return ll_ret * 1000 + ll_out
+`)
+  registerWindowing(rt)
+  const calls: unknown[][] = []
+  const t = new NTransaction(rt, 'u_transaction')
+  t.db = {
+    async query() { return { columns: [], rows: [] } },
+    async exec() { return { rowcount: 0 } },
+    async call(sql: string, params: unknown[]) {
+      calls.push([sql, params])
+      return { columns: [{ name: 'return_value', type: 'int4' }, { name: 'b', type: 'int4' }], row: ['7', '42'], resultsets: [] }
+    },
+    async commit() {}, async rollback() {}, async close() {},
+  }
+  rt.globals.set('sqlca', t)
+  rt.procs = new ProcCaller({ sp_getthing: { call: 'SELECT * FROM dbo.sp_getthing(a => $1, b => $2)', params: [{ name: 'a', mode: 'in' }, { name: 'b', mode: 'inout' }], inout: ['b'], rs: 0 } })
+  assert.equal(await call(rt, 'f_p'), 7042)
+  assert.deepEqual(calls[0], ['SELECT * FROM dbo.sp_getthing(a => $1, b => $2)', [5, 1]])
+})

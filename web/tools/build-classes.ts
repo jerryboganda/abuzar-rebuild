@@ -37,7 +37,7 @@ function slimControl(c: any): any {
   return {
     name: String(c.name).toLowerCase(),
     ancestor: String(c.ancestor).toLowerCase(),
-    fields: (c.fields || []).filter((f: any) => f.name !== 'control').map((f: any) => ({ name: f.name, type: f.type, attr: f.attr, value: f.value })),
+    fields: (c.fields || []).filter((f: any) => f.name !== 'control').map((f: any) => (f.array ? { name: f.name, type: f.type, attr: f.attr, value: f.value, array: true } : { name: f.name, type: f.type, attr: f.attr, value: f.value })),
     controls: (c.controls || []).map(slimControl),
   }
 }
@@ -67,7 +67,7 @@ for (const lib of readdirSync(objRoot)) {
         kind: o.kind || kind,
         ancestor: o.ancestor ? String(o.ancestor).toLowerCase() : null,
         library: lib,
-        fields: (o.fields || []).filter((x: any) => x.name !== 'control').map((x: any) => ({ name: x.name, type: x.type, attr: x.attr, value: x.value })),
+        fields: (o.fields || []).filter((x: any) => x.name !== 'control').map((x: any) => (x.array ? { name: x.name, type: x.type, attr: x.attr, value: x.value, array: true } : { name: x.name, type: x.type, attr: x.attr, value: x.value })),
         controls: (o.kind || kind) === 'menu' ? menuControls(lib, o.name) ?? (o.controls || []).map(slimControl) : (o.controls || []).map(slimControl),
         routines: routinesOf(lib, o.name),
       }

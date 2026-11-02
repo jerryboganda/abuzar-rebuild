@@ -20,8 +20,17 @@ export class ProcCaller {
     this.sigs = sigs
   }
 
+  /** argument positions that are OUT / INOUT parameters of the procedure behind an RPC name */
+  refPositions(name: string): number[] | undefined {
+    const sig = this.sigs[name.toLowerCase()] ?? this.sigs['sp_' + name.toLowerCase()]
+    if (!sig) return undefined
+    const idx = sig.params.map((p, i) => (p.mode !== 'in' ? i : -1)).filter((i) => i >= 0)
+    return idx.length ? idx : undefined
+  }
+
   async call(t: PBObject, name: string, args: unknown[]): Promise<unknown> {
-    const sig = this.sigs[name.toLowerCase()]
+    // RPC declarations alias the PowerScript name to the procedure: getitemstocktotal -> sp_getitemstocktotal
+    const sig = this.sigs[name.toLowerCase()] ?? this.sigs['sp_' + name.toLowerCase()]
     if (!(t instanceof NTransaction)) return null
     if (!sig) {
       t.rt.noteMissing('rpc:' + name)

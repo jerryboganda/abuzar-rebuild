@@ -1,6 +1,7 @@
 // Transaction object (sqlca and every user-defined transaction) and the embedded-SQL statement executor.
 import { PBObject } from '../object.ts'
 import type { Frame, Runtime } from '../interp.ts'
+import { Ref } from '../interp.ts'
 import type { Stmt } from '../../pbscript/ast.ts'
 import { parseExpr } from '../../pbscript/parser.ts'
 import { fromWire, toWire } from '../wire.ts'
@@ -58,6 +59,16 @@ export class NTransaction extends PBObject implements DwTrans {
       }
     }
     return this.db
+  }
+
+  /** server date and time (GetDateTime(ref datetime)) */
+  async n_getdatetime(ref?: unknown): Promise<number> {
+    const db = await this.ensureDb()
+    if (!db || !(ref instanceof Ref)) return -1
+    const r = await db.query('SELECT localtimestamp(3)', [])
+    await ref.set(fromWire('timestamp', r.rows[0]?.[0]))
+    this.setOk(1)
+    return 1
   }
 
   async n_connect(): Promise<number> {

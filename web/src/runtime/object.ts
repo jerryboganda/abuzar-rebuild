@@ -8,6 +8,7 @@ export interface FieldDef {
   type: string
   attr: string // '0xbc' property, '0xcc' instance variable ...
   value: unknown
+  array?: boolean // instance variable declared as an array (`long il_x[]`)
 }
 
 export interface ControlDef {

@@ -2,6 +2,7 @@
 import { PBObject } from '../object.ts'
 import type { Runtime } from '../interp.ts'
 import { PBArray, toNum, toStr } from '../values.ts'
+import { Ref } from '../interp.ts'
 
 export class NControl extends PBObject {
   listeners = new Set<() => void>()
@@ -21,6 +22,15 @@ export class NControl extends PBObject {
   }
 
   // ---- common window-object methods
+  /** EditMask.GetData(ref value): the entered text converted to the type of the receiving variable */
+  async n_getdata(ref?: unknown): Promise<number> {
+    if (!(ref instanceof Ref)) return -1
+    const text = toStr(this.props.get('text'))
+    const cur = ref.get()
+    if (typeof cur === 'number') await ref.set(Number(text.replace(/,/g, '')) || 0)
+    else await ref.set(text)
+    return 1
+  }
   /** the window that contains this control */
   async n_getparent(): Promise<unknown> {
     let p = this.parent

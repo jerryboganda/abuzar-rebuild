@@ -35,8 +35,26 @@ export class Ref {
 
 export class HaltSignal extends Error {}
 
+/** short text of an expression for error messages */
+export function exprText(e: Expr): string {
+  switch (e.k) {
+    case 'id':
+      return e.n
+    case 'global':
+      return '::' + e.n
+    case 'mem':
+      return exprText(e.o) + '.' + e.n
+    case 'idx':
+      return exprText(e.o) + '[..]'
+    case 'call':
+      return (e.o ? exprText(e.o) + '.' : '') + e.n + '(..)'
+    default:
+      return e.k
+  }
+}
+
 /** native methods that return a value through a `ref` argument: name -> argument positions */
-const REF_METHODS: Record<string, number[]> = { getchild: [1], getfullstate: [0] }
+const REF_METHODS: Record<string, number[]> = { getchild: [1], getfullstate: [0], getdata: [0], getdatetime: [0], getmostrecenttransdate: [0] }
 function e0(_e: unknown, r: Routine): Routine {
   return r
 }
@@ -97,7 +115,7 @@ export class Runtime {
   /** opens a server session for a transaction object */
   openDb: ((t: PBObject) => Promise<import('./wire.ts').Db>) | null = null
   /** stored procedures callable through the transaction object (RPC declarations) */
-  procs: { call(t: PBObject, name: string, args: unknown[]): Promise<unknown> } | null = null
+  procs: { call(t: PBObject, name: string, args: unknown[]): Promise<unknown>; refPositions?(name: string): number[] | undefined } | null = null
   /** run-time translation of a changed SELECT (modify datawindow.table.select) */
   translateSql: ((text: string) => { sql: string; params: string[] } | undefined) | null = null
   missing = new Map<string, number>() // unimplemented functions / members seen at run time
@@ -165,7 +183,7 @@ export class Runtime {
   async initObjectVars(obj: PBObject): Promise<void> {
     for (const name of obj.vars) {
       const type = obj.types.get(name)!
-      if (PRIMITIVES.has(type) || obj.children.has(name)) continue
+      if (PRIMITIVES.has(type) || type.endsWith('[]') || obj.children.has(name)) continue
       obj.props.set(name, await this.defaultOf(type))
     }
   }
@@ -175,6 +193,10 @@ export class Runtime {
       if (f.name === 'control') continue
       obj.declare(f.name, f.type, f.value === undefined ? undefined : f.value)
       if (f.attr === '0xcc') obj.vars.add(f.name)
+      if (f.array) {
+        obj.props.set(f.name, new PBArray(f.type))
+        obj.types.set(f.name, f.type + '[]')
+      }
       // `item[]` of menus / list boxes: filled by scripts (this.item[upperbound(this.item) + 1] = ...)
       if (f.name === 'item') obj.props.set('item', new PBArray('any'))
     }
@@ -299,6 +321,8 @@ export class Runtime {
         obj.destroy()
         return 1
     }
+    // stored procedures declared on the transaction object (RPCFUNC)
+    if (obj.native === 'transaction' && this.procs) return this.procs.call(obj, name, args)
     // events without a script (post event ue_xxx, constructor ...) do nothing, like in PowerBuilder
     if (!/^ue_|^constructor$|^destructor$/.test(name)) this.noteMissing(obj.native + '.' + name)
     return null
@@ -769,7 +793,12 @@ export class Runtime {
           base = new PBArray('any')
           await this.assign(target.o, base, f)
         }
-        this.setIndex(base, idx, v)
+        try {
+          this.setIndex(base, idx, v)
+        } catch (e) {
+          if (e instanceof PBRuntimeError) e.message += ` [${exprText(target.o)}]`
+          throw e
+        }
         return
       }
       default:
@@ -804,7 +833,9 @@ export class Runtime {
     if (e.o) {
       const recv = await this.eval(e.o, f)
       const args: unknown[] = []
-      const refIdx = REF_METHODS[e.n]
+      let refIdx = REF_METHODS[e.n]
+      // RPC calls on a transaction object: INOUT / OUT parameters come back through the arguments
+      if (!refIdx && recv instanceof PBObject && recv.native === 'transaction' && this.procs?.refPositions) refIdx = this.procs.refPositions(e.n)
       for (let i = 0; i < e.a.length; i++) args.push(refIdx && refIdx.includes(i) ? this.refOf(e.a[i], f) : await this.eval(e.a[i], f))
       if (recv === null || recv === undefined) throw new PBRuntimeError(`Null object reference (calling ${e.n})`)
       const run = async (): Promise<unknown> => {
