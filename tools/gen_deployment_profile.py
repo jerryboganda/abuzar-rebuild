@@ -28,6 +28,8 @@ def q(s):
 
 
 ifs = rows(sys.argv[1], 7)
+# equal sequence ids keep the order of SQL Server's clustered key (module, column, window type): the rows are inserted that way, a heap scan returns them in that order
+ifs.sort(key=lambda r: (int(r[0]), int(r[5]), int(r[1]), r[2].lower()))
 prefs = rows(sys.argv[2], 5)
 saleif = rows(sys.argv[3], 2)
 out_path = sys.argv[4]

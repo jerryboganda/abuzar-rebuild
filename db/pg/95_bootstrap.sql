@@ -23,6 +23,9 @@ UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'applyarg
 -- the migration of the original switches the group customer category rule off (UPDATE preferences SET groupcustomercategory = 'N'); without categories assigned to the user group sales would refuse to open
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) IN ('groupcustomercategory', 'groupsuppcatinpurandpr');
 
+-- the default sales person of the original (customers and invoices refer to it)
+INSERT INTO dbo.salesman (salesmancode, name, address, phone) VALUES (1, '***', '***', '**') ON CONFLICT DO NOTHING;
+
 -- the retail customer of the cash sale windows (w_sale reads `Customer WHERE custcode = 19`) with the base rows the original ships inside its pre-built
 -- database (names and codes as the original shows them).  The customer table also defaults to province 7, which the recovered seed does not contain.
 -- A failure is reported as an error of this block and leaves nothing half done.
