@@ -11,6 +11,7 @@ import { DwCatalog } from '../dw/def.ts'
 import { defaultValue, PBArray } from './values.ts'
 import type { Db } from './wire.ts'
 import { ProcCaller } from './native/procs.ts'
+import { translateDynamicSql } from './dynsql.ts'
 import type { ProcSig } from './native/procs.ts'
 
 /** type codes of the application's global variable table: code >> 16 is the primitive type */
@@ -46,6 +47,7 @@ export async function createRuntime(o: BootOptions): Promise<Runtime> {
     rt.sqlStmt = (k) => t[k]
   }
   if (o.procs) rt.procs = new ProcCaller(o.procs)
+  rt.translateSql = translateDynamicSql
   // message / error objects
   const message = new PBObject(rt, 'message', 'message')
   for (const [n, t] of [['stringparm', 'string'], ['doubleparm', 'double'], ['returnvalue', 'long'], ['number', 'long'], ['wordparm', 'long'], ['longparm', 'long'], ['handle', 'long'], ['processed', 'boolean']] as const) message.declare(n, t)

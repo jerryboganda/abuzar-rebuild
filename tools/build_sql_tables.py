@@ -32,7 +32,7 @@ def main(src, out):
     for s in sig:
         if s['kind'] == 'proc' and s['status'] in ('translated', 'partial'):
             r = s['returns']
-            proc[s['name'].lower()] = {'call': s['call'], 'params': [{'name': p['name'], 'mode': p['mode']} for p in s['params']],
+            proc[s['name'].lower()] = {'call': s['call'], 'params': [{'name': p['name'], 'mode': p['mode'], 'type': p.get('type', '')} for p in s['params']],
                                        'inout': r.get('inout_columns', []), 'rs': len(r.get('result_sets', []))}
     json.dump({'stmt': stmt, 'dw': dw, 'proc': proc}, open(out, 'w', encoding='utf-8', newline='\n'), separators=(',', ':'))
     print('embedded', len(stmt), 'datawindows', len(dw), 'procedures', len(proc))

@@ -6,6 +6,7 @@
 // Part 1 has no meaning in the rebuild (own configuration, own licensing decision, proper migrations).  Parts 2 and 3 are the
 // recovered code itself: the login window is opened like the original, and the code after the login is executed from the
 // decompiled `open` routine, so every preference lookup, cache and menu rule behaves as it did.
+import { setAppUser } from './httpdb.ts'
 import type { Runtime } from '../runtime/interp.ts'
 import { Frame, HaltSignal, Ref } from '../runtime/interp.ts'
 import type { Stmt } from '../pbscript/ast.ts'
@@ -55,6 +56,8 @@ export async function startApplication(rt: Runtime, cfg: AppConfig = DEFAULT_CON
   ref.name = 'w_login1'
   await rt.sys.get('open')!.fn(rt, [ref], undefined as never)
   if (msg.props.get('doubleparm') !== 1) return false
+  const user = rt.globals.get('gl_usercode')
+  if (user !== undefined && user !== null) await setAppUser(String(user)) // audit trail
   const pl = await postLoginStatements(rt)
   if (!pl) throw new Error('traderappv1.open has no post-login section')
   const open = (await rt.getClass('traderappv1'))!.routines.get('traderappv1')!.get('open')![0]

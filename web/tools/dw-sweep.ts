@@ -92,11 +92,47 @@ for (const [key, e] of Object.entries(full.stmt)) {
   }
   await db.rollback().catch(() => {})
 }
+// stored procedures: run once with neutral arguments (the body is resolved only when it runs, so this finds what creation cannot)
+const pgDefault = (type: string): unknown => {
+  const t = type.toLowerCase()
+  if (/^(smallint|integer|bigint|numeric|real|double|int)/.test(t)) return 0
+  if (/^(text|citext|char|varchar)/.test(t)) return ''
+  if (t.startsWith('timestamp')) return '2026-01-01 00:00:00'
+  if (t === 'date') return '2026-01-01'
+  if (t.startsWith('bool')) return false
+  return null
+}
+const procStats = new Map<string, { n: number; example: string }>()
+let procOk = 0
+let procTried = 0
+const procBad: { proc: string; code: string; error: string }[] = []
+const procs = JSON.parse(readFileSync(join(dir, 'sql.json'), 'utf8')) as { proc: Record<string, { call: string; params: { name: string; mode: string; type?: string }[] }> }
+for (const [name, p] of Object.entries(procs.proc)) {
+  procTried++
+  try {
+    await db.call(p.call, p.params.map((x) => pgDefault(x.type || '')))
+    procOk++
+  } catch (err) {
+    const code = (err as { code?: string }).code || '?'
+    // integrity / data errors and the ROLLBACK marker are what neutral arguments cause; the rest is a defect of the translation
+    if (/^(23|22|P0001|40|TS001)/.test(code)) procOk++
+    else {
+      const k = code + ' ' + (err as Error).message.replace(/"[^"]*"/g, '"?"').replace(/\d+/g, 'N').slice(0, 70)
+      const f = procStats.get(k) || { n: 0, example: name }
+      f.n++
+      procStats.set(k, f)
+      procBad.push({ proc: name, code, error: (err as Error).message.slice(0, 200) })
+    }
+  }
+  await db.rollback().catch(() => {})
+}
+console.log(`procedures executed: ${procOk} of ${procTried} (failures are SQLSTATE classes other than integrity / data errors)`)
+for (const [k, v] of [...procStats.entries()].sort((a, b) => b[1].n - a[1].n).slice(0, 30)) console.log(`${v.n} x ${k}   e.g. ${v.example}`)
 console.log(`embedded statements executed: ${stmtOk} of ${stmtTried} (failures are SQLSTATE classes other than integrity / data errors)`)
 for (const [k, v] of [...stmtStats.entries()].sort((a, b) => b[1].n - a[1].n).slice(0, 20)) console.log(`${v.n} x ${k}   e.g. ${v.example}`)
 console.log(`DataWindows executed: ${ok} of ${tried} retrieve statements run on PostgreSQL`)
 for (const [k, v] of [...failures.entries()].sort((a, b) => b[1].n - a[1].n).slice(0, 25)) console.log(`${v.n} x ${k}   e.g. ${v.example}`)
-if (out) writeFileSync(out, JSON.stringify({ tried, ok, failures: Object.fromEntries(failures), bad, stmtTried, stmtOk, stmtFailures: Object.fromEntries(stmtStats), stmtBad }, null, 1))
+if (out) writeFileSync(out, JSON.stringify({ tried, ok, failures: Object.fromEntries(failures), bad, stmtTried, stmtOk, stmtFailures: Object.fromEntries(stmtStats), stmtBad, procTried, procOk, procFailures: Object.fromEntries(procStats), procBad }, null, 1))
 void readdirSync
 // open handles of the HTTP client would keep the process (and the CI job) alive
 setTimeout(() => process.exit(0), 200)

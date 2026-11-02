@@ -1,5 +1,6 @@
 // File functions (fileopen, filewrite, filedelete ...), colour / sound / process helpers and the TSC label-printer DLL functions.
 // Files live on the machine of the server (the desktop shell runs it locally); every call goes through /api/fs.
+import { authHeaders } from './apiauth.ts'
 import type { Runtime } from './interp.ts'
 import { Ref } from './interp.ts'
 import { toNum, toStr, PBArray } from './values.ts'
@@ -11,7 +12,7 @@ export function setApiBase(b: string): void {
 
 async function api<T>(path: string, body: unknown): Promise<T> {
   try {
-    const r = await fetch(apiBase + path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+    const r = await fetch(apiBase + path, { method: 'POST', headers: { 'content-type': 'application/json', ...authHeaders() }, body: JSON.stringify(body) })
     return (await r.json()) as T
   } catch {
     return {} as T // no server (headless runs): behaves like a missing file

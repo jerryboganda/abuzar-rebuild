@@ -157,3 +157,10 @@ test('crosstab pivot: replicated columns, shifted objects, crosstabsum, sparse',
   assert.equal(m.suppressed(3, 0), false)
   assert.equal(m.suppressed(2, 1), false) // not a sparse column
 })
+
+test('dynamic SQL: session options are accepted, plain statements get the dialect basics', async () => {
+  const { translateDynamicSql } = await import('../src/runtime/dynsql.ts')
+  assert.equal(translateDynamicSql('Set ANSI_NULLS ON Set ANSI_WARNINGS ON')?.sql, 'SELECT 1')
+  assert.equal(translateDynamicSql('UPDATE ITEM SET [saleprice]=12.5 , d=isnull(d,0) where len(x)>1')?.sql, 'UPDATE ITEM SET saleprice=12.5 , d=coalesce(d,0) where length(x)>1')
+  assert.equal(translateDynamicSql('backup database x to disk=\'y\''), undefined)
+})

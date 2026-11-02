@@ -25,6 +25,12 @@ async fn main() -> anyhow::Result<()> {
     if let Ok(dir) = std::env::var("STATIC_DIR") {
         app = app.fallback_service(ServeDir::new(dir));
     }
+    // a server that listens on the network asks every API caller for the shared token
+    if let Ok(token) = std::env::var("API_TOKEN") {
+        if !token.is_empty() {
+            app = app.layer(axum::middleware::from_fn_with_state(trader_server::auth::Token(std::sync::Arc::new(token)), trader_server::auth::check));
+        }
+    }
     // the desktop shell talks to 127.0.0.1; allow cross-origin only for a dev UI served from another port
     if std::env::var("DEV_CORS").is_ok() {
         app = app.layer(CorsLayer::permissive());

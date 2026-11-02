@@ -133,7 +133,11 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Load schema, functions, views, procedures, triggers
-        run: for f in db/pg/[0-9]*.sql; do PGOPTIONS="-c client_min_messages=warning" psql -q -f "$f" > /dev/null 2> "$f.err" || true; done
+        run: for f in db/pg/[0-9]*.sql; do PGOPTIONS="-c client_min_messages=warning" psql -q -f "$f" > /dev/null 2> "$f.err" || true; done; psql -q -c "ALTER DATABASE trader SET statement_timeout = '20s'"
+      - name: Enhancements are in place (audit trail)
+        run: |
+          if grep -q ERROR db/pg/80_audit.sql.err; then cat db/pg/80_audit.sql.err; exit 1; fi
+          test "$(psql -At -c "select count(*) from pg_trigger where tgname = 'audit_trail'")" = 10
       - name: Build the data tables the UI uses
         run: |
           mkdir -p web/public/data

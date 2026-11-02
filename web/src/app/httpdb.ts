@@ -1,5 +1,15 @@
 // Database session over the Rust server's HTTP API (see server/src/api.rs).
 import type { Db, QueryResult, CallResult } from '../runtime/wire.ts'
+import { askForToken, authHeaders } from '../runtime/apiauth.ts'
+
+/** application user of the audit trail: every open session (and every later one) carries it as the setting `app.user` */
+let appUser = ''
+const open = new Set<HttpDb>()
+
+export async function setAppUser(user: string): Promise<void> {
+  appUser = user
+  for (const d of open) await d.exec("SELECT set_config('app.user', $1, false)", [user]).catch(() => undefined)
+}
 
 export class HttpDb implements Db {
   base: string
@@ -8,7 +18,9 @@ export class HttpDb implements Db {
     this.base = base
   }
   private async post<T>(path: string, body: unknown): Promise<T> {
-    const r = await fetch(this.base + path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+    const send = () => fetch(this.base + path, { method: 'POST', headers: { 'content-type': 'application/json', ...authHeaders() }, body: JSON.stringify(body) })
+    let r = await send()
+    if (r.status === 401 && askForToken()) r = await send()
     const j = (await r.json()) as T & { error?: { code: string; message: string } }
     if (!r.ok || (j as { error?: unknown }).error) {
       const e = (j as { error?: { message: string; code?: string } }).error
@@ -21,6 +33,8 @@ export class HttpDb implements Db {
   async open(): Promise<this> {
     const j = await this.post<{ sid: string }>('/api/session', {})
     this.sid = j.sid
+    open.add(this)
+    if (appUser) await this.exec("SELECT set_config('app.user', $1, false)", [appUser]).catch(() => undefined)
     return this
   }
   query(sql: string, params: unknown[]): Promise<QueryResult> {
@@ -39,6 +53,7 @@ export class HttpDb implements Db {
     await this.post('/api/rollback', { sid: this.sid })
   }
   async close(): Promise<void> {
+    open.delete(this)
     await this.post('/api/close', { sid: this.sid })
   }
 }

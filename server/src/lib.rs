@@ -9,6 +9,7 @@
 //! Statements arrive with `$n` placeholders and JSON parameters and are executed with the simple query protocol, so every
 //! result is returned in text form together with its PostgreSQL type name (the client decodes by type).
 
+pub mod auth;
 pub mod fs;
 pub mod sqlsub;
 

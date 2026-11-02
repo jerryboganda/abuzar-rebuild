@@ -536,7 +536,13 @@ export class DwModel implements EvalHost {
       this.buf.primary = all
       this.buf.filtered = []
     } else {
-      const e = compileDw(text)
+      let e: ReturnType<typeof compileDw>
+      try {
+        e = compileDw(text)
+      } catch (err) {
+        this.lastError = (err as Error).message // an unusable filter: Filter() reports -1
+        return -1
+      }
       const keep: DwRow[] = []
       const out: DwRow[] = []
       // evaluate against a temporary primary buffer holding all rows
@@ -559,10 +565,16 @@ export class DwModel implements EvalHost {
   async sort(): Promise<number> {
     const spec = this.sortText.trim()
     if (!spec) return 1
-    const keys = spec.split(',').map((s) => {
-      const m = /^(.*?)(?:\s+([AD]))?\s*$/i.exec(s.trim())!
-      return { expr: compileDw(m[1].trim()), desc: (m[2] || 'A').toUpperCase() === 'D' }
-    })
+    let keys: { expr: ReturnType<typeof compileDw>; desc: boolean }[]
+    try {
+      keys = spec.split(',').map((s) => {
+        const m = /^(.*?)(?:\s+([AD]))?\s*$/i.exec(s.trim())!
+        return { expr: compileDw(m[1].trim()), desc: (m[2] || 'A').toUpperCase() === 'D' }
+      })
+    } catch (e) {
+      this.lastError = (e as Error).message // an unusable sort specification: Sort() reports -1
+      return -1
+    }
     const rows = this.buf.primary
     const keyed: { r: DwRow; k: unknown[] }[] = []
     const savedP = this.buf.primary
