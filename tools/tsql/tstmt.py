@@ -33,6 +33,7 @@ class Ctx:
         self.uses_loop_vars = False
         self.declared_flags = set()
         self.rs_cols = {}
+        self.perms = {}             # permanent work tables created by SELECT INTO / CREATE TABLE inside the routine
 
 
 def raise_fmt(text):
@@ -173,6 +174,11 @@ class StmtMixin:
         self.emit('CONTINUE;')
 
     def s_waitfor(self, n):
+        e = n.e
+        if n.what == 'DELAY' and e.k == 'lit' and e.t == 'str' and re.fullmatch(r'\d+:\d+:\d+', e.v):
+            h, m, s = [int(x) for x in e.v.split(':')]
+            self.emit('PERFORM pg_sleep(%d);' % (h * 3600 + m * 60 + s))
+            return
         raise Untranslatable('WAITFOR')
 
     def s_print(self, n):
@@ -352,8 +358,11 @@ class StmtMixin:
             if name.startswith('#'):
                 self.emit('DROP TABLE IF EXISTS %s;' % self.temp_name(name))
                 self.ctx.temps.pop(name.lower(), None)
+            elif name.lower() in self.tables or name.lower() in self.catalog.views:
+                raise Untranslatable('DROP TABLE of a table of the schema')
             else:
-                raise Untranslatable('DROP TABLE of a permanent table')
+                self.emit('DROP TABLE IF EXISTS dbo.%s;' % ident(name))
+                self.ctx.perms.pop(name.lower(), None)
 
     def s_truncate(self, n):
         kind, pg, t, base = self.resolve_table(n.table)
@@ -464,7 +473,13 @@ class StmtMixin:
             tcols = [Col(nm, '', cls) for nm, cls in cols if nm]
             self.ctx.temps[name.lower()] = (pg, Table(name, tcols))
         else:
-            raise Untranslatable('SELECT INTO a permanent table')
+            low = name.lower()
+            if low in self.tables:
+                raise Untranslatable('SELECT INTO an existing table')
+            pg = 'dbo.' + ident(name)
+            self.emit('DROP TABLE IF EXISTS %s;' % pg)
+            self.emit('CREATE TABLE %s AS %s;' % (pg, sql))
+            self.ctx.perms[low] = Table(name, [Col(nm, '', cls) for nm, cls in cols if nm])
         self.after_dml()
 
     def select_assign(self, sel):
@@ -523,6 +538,9 @@ class StmtMixin:
                     return x
                 if x.k in ('lit',) or x.k == 'var':
                     return x
+                if x.k in ('sub', 'exists', 'quant') or (x.k == 'in' and x.sub is not None):
+                    if has_assigned(x):
+                        return x
                 if not has_assigned(x):
                     counter[0] += 1
                     nm = 'c%d' % counter[0]
@@ -750,6 +768,19 @@ class StmtMixin:
 
     def insert_exec(self, n):
         ex = n.exec
+        if ex.k == 'execdyn' and ex.e is not None and not getattr(ex, 'sp_executesql', False):
+            kind, pg, tab, base = self.target_info(n.target)
+            cols = ' (%s)' % ', '.join(ident(c) for c in n.cols) if n.cols else ''
+            self.dyn_mode = True
+            try:
+                s, c = self.E(ex.e, Scope())
+            finally:
+                self.dyn_mode = False
+            if c != 'S':
+                s = '(%s)::text' % s
+            self.emit('EXECUTE %s || %s;' % (q('INSERT INTO %s%s ' % (pg, cols)), s))
+            self.after_dml()
+            return
         if ex.k != 'exec' or ex.name is None:
             raise Untranslatable('INSERT ... EXEC of dynamic SQL')
         parts = [p for p in ex.name if p != '']

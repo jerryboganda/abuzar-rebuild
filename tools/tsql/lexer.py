@@ -100,7 +100,9 @@ def tokenize(s, binds=False, dq_is_string=False):
             if k < 0:
                 raise LexError('unterminated "')
             body = s[i + 1:k]
-            toks.append(Token('str' if dq_is_string else 'qid', body, i))
+            # QUOTED_IDENTIFIER OFF code uses "text with blanks" as string literals; plain words stay identifiers
+            as_str = dq_is_string or not re.fullmatch(r'[A-Za-z_][A-Za-z0-9_$#]*', body)
+            toks.append(Token('str' if as_str else 'qid', body, i))
             i = k + 1
             continue
         if c == '[':

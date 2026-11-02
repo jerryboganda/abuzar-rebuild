@@ -3942,7 +3942,7 @@ BEGIN
   IF (v_applydepttimeslabs = 'Y') THEN
     UPDATE dbo.emp_attendance SET timeout = eto.idealtimeout, comments = 'System Timed-Out' FROM dbo.emp_attendance AS a, dbo.emp_employee AS e, (SELECT ea.attendancecode, (((left(to_char(ea.timein, 'MM/DD/YYYY'), 100) || ' ') || CASE WHEN ((ltrim(rtrim(left(to_char(ed.shtimeout, 'HH24:MI:SS:MS'), 100))))::citext > (ltrim(rtrim(left(to_char(ed.fhtimeout, 'HH24:MI:SS:MS'), 100))))::citext) THEN ltrim(rtrim(left(to_char(ed.shtimeout, 'HH24:MI:SS:MS'), 100))) WHEN ((ltrim(rtrim(left(to_char(ed.fhtimeout, 'HH24:MI:SS:MS'), 100))))::citext > (ltrim(rtrim(left(to_char(ed.shtimeout, 'HH24:MI:SS:MS'), 100))))::citext) THEN ltrim(rtrim(left(to_char(ed.fhtimeout, 'HH24:MI:SS:MS'), 100))) WHEN ((ltrim(rtrim(left(to_char(ea.timein, 'HH24:MI:SS:MS'), 100))))::citext > (ltrim(rtrim(left(to_char(ed.fhtimeout, 'HH24:MI:SS:MS'), 100))))::citext) THEN ltrim(rtrim(left(to_char(ed.shtimeout, 'HH24:MI:SS:MS'), 100))) ELSE ltrim(rtrim(left(to_char(ed.fhtimeout, 'HH24:MI:SS:MS'), 100))) END))::timestamp(3) AS idealtimeout FROM dbo.emp_departmenttiming AS ed, dbo.emp_attendance AS ea, dbo.emp_employee AS ee WHERE ((((ea.timeout IS NULL) AND (ea.empcode = ee.empcode)) AND ((extract(dow from ea.timein)::integer + 1) = ed.weekdaycode)) AND (ed.deptcode = ee.deptcode))) AS eto WHERE ((((a.timeout IS NULL) AND (a.empcode = e.empcode)) AND (a.attendancecode = eto.attendancecode)) AND (localtimestamp(3) >= eto.idealtimeout));
   ELSE
-    UPDATE dbo.emp_attendance AS a SET timeout = (a.timein + (CASE WHEN ((SELECT max(ep.workinghours) FROM dbo.emp_pay AS ep WHERE (ep.empcode = e.empcode)) IS NULL) THEN e.maxtimeinlimitinhrs ELSE (SELECT max(ep.workinghours) FROM dbo.emp_pay AS ep WHERE (ep.empcode = e.empcode)) END) * interval '1 hour'), comments = 'System Timed-Out' FROM dbo.emp_employee AS e WHERE (((a.timeout IS NULL) AND (a.empcode = e.empcode)) AND (localtimestamp(3) >= (a.timein + (CASE WHEN ((SELECT max(ep.workinghours) FROM dbo.emp_pay AS ep WHERE (ep.empcode = e.empcode)) IS NULL) THEN e.maxtimeinlimitinhrs ELSE (SELECT max(ep.workinghours) FROM dbo.emp_pay AS ep WHERE (ep.empcode = e.empcode)) END) * interval '1 hour')));
+    UPDATE dbo.emp_attendance AS a SET timeout = (a.timein + (trunc(CASE WHEN ((SELECT max(ep.workinghours) FROM dbo.emp_pay AS ep WHERE (ep.empcode = e.empcode)) IS NULL) THEN e.maxtimeinlimitinhrs ELSE (SELECT max(ep.workinghours) FROM dbo.emp_pay AS ep WHERE (ep.empcode = e.empcode)) END)) * interval '1 hour'), comments = 'System Timed-Out' FROM dbo.emp_employee AS e WHERE (((a.timeout IS NULL) AND (a.empcode = e.empcode)) AND (localtimestamp(3) >= (a.timein + (trunc(CASE WHEN ((SELECT max(ep.workinghours) FROM dbo.emp_pay AS ep WHERE (ep.empcode = e.empcode)) IS NULL) THEN e.maxtimeinlimitinhrs ELSE (SELECT max(ep.workinghours) FROM dbo.emp_pay AS ep WHERE (ep.empcode = e.empcode)) END)) * interval '1 hour')));
   END IF;
   return_value := 0;
   RETURN;
@@ -4449,20 +4449,9 @@ BEGIN
     IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
     WHILE (_fs = 0) LOOP
       IF (v_dbversion = '2012') THEN
-        -- INSERT INTO DBCC_History (
-        -- 			ErrorID, LevelID, StateID, MessageText, RepairLevel, StatusID,
-        -- 			DbId, DBFragID, ObjectId, IndId, PartitionID, AllocUnitID,
-        -- 			RidDbId, RidPruId, FileID, PageID, SlotID, RefDBID, RefPruID,
-        -- 			RefFileID, RefPageID, RefSlotID, AllocationID)
-        -- 			EXEC ('dbcc checkdb(''' + @DB + ''') with tableresults, ALL_ERRORMSGS')
-        RAISE EXCEPTION 'untranslated T-SQL (INSERT ... EXEC of dynamic SQL)' USING ERRCODE = '0A000';
+        EXECUTE 'INSERT INTO dbo.dbcc_history (errorid, levelid, stateid, messagetext, repairlevel, statusid, dbid, dbfragid, objectid, indid, partitionid, allocunitid, riddbid, ridpruid, fileid, pageid, slotid, refdbid, refpruid, reffileid, refpageid, refslotid, allocationid) ' || (('dbcc checkdb(''' || v_db) || ''') with tableresults, ALL_ERRORMSGS');
       ELSE
-        -- INSERT INTO DBCC_History (
-        -- 			ErrorID, LevelID, StateID, MessageText, RepairLevel, StatusID,
-        -- 			DbId, ObjectId, IndId, FileID, PageID, SlotID, RefFileID,
-        -- 			RefPageID, RefSlotID, AllocationID)
-        -- 			EXEC ('dbcc checkdb(''' + @DB + ''') with tableresults, ALL_ERRORMSGS')
-        RAISE EXCEPTION 'untranslated T-SQL (INSERT ... EXEC of dynamic SQL)' USING ERRCODE = '0A000';
+        EXECUTE 'INSERT INTO dbo.dbcc_history (errorid, levelid, stateid, messagetext, repairlevel, statusid, dbid, objectid, indid, fileid, pageid, slotid, reffileid, refpageid, refslotid, allocationid) ' || (('dbcc checkdb(''' || v_db) || ''') with tableresults, ALL_ERRORMSGS');
       END IF;
       IF (0 <> 0) THEN
         CLOSE cur_database_cursor;
@@ -4477,20 +4466,9 @@ BEGIN
     -- DEALLOCATE database_cursor
   ELSE
     IF (v_dbversion = '2012') THEN
-      -- INSERT INTO DBCC_History (
-      -- 		ErrorID, LevelID, StateID, MessageText, RepairLevel, StatusID,
-      -- 		DbId, DBFragID, ObjectId, IndId, PartitionID, AllocUnitID,
-      -- 		RidDbId, RidPruId, FileID, PageID, SlotID, RefDBID, RefPruID,
-      -- 		RefFileID, RefPageID, RefSlotID, AllocationID)
-      -- 		EXEC ('dbcc checkdb(''' + @DB + ''') with tableresults, ALL_ERRORMSGS')
-      RAISE EXCEPTION 'untranslated T-SQL (INSERT ... EXEC of dynamic SQL)' USING ERRCODE = '0A000';
+      EXECUTE 'INSERT INTO dbo.dbcc_history (errorid, levelid, stateid, messagetext, repairlevel, statusid, dbid, dbfragid, objectid, indid, partitionid, allocunitid, riddbid, ridpruid, fileid, pageid, slotid, refdbid, refpruid, reffileid, refpageid, refslotid, allocationid) ' || (('dbcc checkdb(''' || v_db) || ''') with tableresults, ALL_ERRORMSGS');
     ELSE
-      -- INSERT INTO DBCC_History(
-      -- 		ErrorID, LevelID, StateID, MessageText, RepairLevel, StatusID,
-      -- 		DbId, ObjectId, IndId, FileID, PageID, SlotID, RefFileID,
-      -- 		RefPageID, RefSlotID, AllocationID)
-      -- 		EXEC ('dbcc checkdb(''' + @DB + ''') with tableresults, ALL_ERRORMSGS')
-      RAISE EXCEPTION 'untranslated T-SQL (INSERT ... EXEC of dynamic SQL)' USING ERRCODE = '0A000';
+      EXECUTE 'INSERT INTO dbo.dbcc_history (errorid, levelid, stateid, messagetext, repairlevel, statusid, dbid, objectid, indid, fileid, pageid, slotid, reffileid, refpageid, refslotid, allocationid) ' || (('dbcc checkdb(''' || v_db) || ''') with tableresults, ALL_ERRORMSGS');
     END IF;
     IF (0 <> 0) THEN
       CLOSE cur_database_cursor;
@@ -6726,7 +6704,7 @@ BEGIN
         RETURN;
       ELSE
         v_totalsmsgen := (v_totalsmsgen + v_smsgenerated);
-        UPDATE dbo.sms_template SET executedon = localtimestamp(3), nextrunon = (CASE scheduletype WHEN 1 THEN ((left(to_char(localtimestamp(3), 'MM/DD/YYYY'), 100) || ' ') || left(to_char(runonce, 'HH24:MI:SS:MS'), 100)) ELSE (localtimestamp(3) + (CASE runeveryfreq WHEN 1 THEN ((((runevery * 60) * 60) * 1000)) ELSE (((runevery * 60) * 1000)) END) * interval '1 millisecond') END)::timestamp(3) WHERE (smstemplatecode = v_smstemplatecode);
+        UPDATE dbo.sms_template SET executedon = localtimestamp(3), nextrunon = CASE scheduletype WHEN 1 THEN (((left(to_char(localtimestamp(3), 'MM/DD/YYYY'), 100) || ' ') || left(to_char(runonce, 'HH24:MI:SS:MS'), 100)))::timestamp ELSE (localtimestamp(3) + (CASE runeveryfreq WHEN 1 THEN ((((runevery * 60) * 60) * 1000)) ELSE (((runevery * 60) * 1000)) END) * interval '1 millisecond') END WHERE (smstemplatecode = v_smstemplatecode);
       END IF;
       v_rowid := (v_rowid + 1);
     END LOOP;
@@ -7769,9 +7747,7 @@ BEGIN
     expiry timestamp(3)
 ) ON COMMIT DROP;
   v_header_qry := ((('SELECT SaleOrderCode, CustCode, Date, OriginalDate, BillingDate, DiscPerc, FlatDisc, MiscCharges, InvGSTPerc1, InvTotal, SPrice, Remarks, CustRefNo, CustRefNo2, CustRefNo3, CustRefNo4, DeliveryDeadLine FROM ' || v_tp) || 'SaleOrderHeader WHERE Finalized=''Y'' AND Posted=''N'' AND CRS_Sent=''N'' AND ClientInstanceID=') || v_instanceid_str);
-  -- INSERT INTO #SOHeader (SaleOrderCode, CustCode, Date, OriginalDate, BillingDate, DiscPerc, FlatDisc, MiscCharges, InvGSTPerc1, InvTotal, SPrice, Remarks, CustRefNo, CustRefNo2, CustRefNo3, CustRefNo4, DeliveryDeadLine)
-  -- EXECUTE (@Header_Qry)
-  RAISE EXCEPTION 'untranslated T-SQL (INSERT ... EXEC of dynamic SQL)' USING ERRCODE = '0A000';
+  EXECUTE 'INSERT INTO tmp_soheader (saleordercode, custcode, date, originaldate, billingdate, discperc, flatdisc, misccharges, invgstperc1, invtotal, sprice, remarks, custrefno, custrefno2, custrefno3, custrefno4, deliverydeadline) ' || v_header_qry;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
     RAISE EXCEPTION 'CRS Data Transfer Error: Fetching Sale Order Header Data From source';
@@ -7784,9 +7760,7 @@ BEGIN
     RETURN;
   END IF;
   v_detail_qry := (((((('SELECT SaleOrderCode, ICode, GCode=1, LooseQty, PackUnits, SalePrice, DiscPerc, ItemFlatDisc, SaleItemDescription, UnitSalesTax, GSTPerc, BonusQty, Remarks, Batch, Expiry FROM ' || v_tp) || 'SaleOrderDetail WHERE SaleOrderCode IN (SELECT SaleOrderCode FROM ') || v_tp) || 'SaleOrderHeader WHERE Finalized=''Y'' AND Posted=''N'' AND CRS_Sent=''N'' AND ClientInstanceID=') || v_instanceid_str) || ')');
-  -- INSERT INTO #SODetail (SaleOrderCode, ICode, GCode, LooseQty, PackUnits, SalePrice, DiscPerc, ItemFlatDisc, SaleItemDescription, UnitSalesTax, GSTPerc, BonusQty, Remarks, Batch, Expiry)
-  -- EXECUTE (@Detail_Qry)
-  RAISE EXCEPTION 'untranslated T-SQL (INSERT ... EXEC of dynamic SQL)' USING ERRCODE = '0A000';
+  EXECUTE 'INSERT INTO tmp_sodetail (saleordercode, icode, gcode, looseqty, packunits, saleprice, discperc, itemflatdisc, saleitemdescription, unitsalestax, gstperc, bonusqty, remarks, batch, expiry) ' || v_detail_qry;
   v_err := 0;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
     RAISE EXCEPTION 'CRS Data Transfer Error: Fetching Sale Order Detail Data From source';
@@ -9736,7 +9710,7 @@ BEGIN
     code integer NOT NULL
 ) ON COMMIT DROP;
   INSERT INTO tmp_lsl SELECT a.clientinstanceid, a.adjcode FROM dbo.crs_adjheader AS a WHERE ((a.posted = 'Y') AND (NOT EXISTS (SELECT DISTINCT v.clientinstanceid, v.documentcode FROM dbo.crs_virtualgl AS v WHERE (((v.documenttype IN ('AI', 'AD')) AND (v.clientinstanceid = a.clientinstanceid)) AND (v.documentcode = a.adjcode)))));
-  INSERT INTO dbo.crs_virtualgltemp SELECT a.clientinstanceid, a.adjcode AS documentcode, CASE a.adjcatcode WHEN 1 THEN 'AI' ELSE 'AD' END AS documenttype, a.adjcatcode AS catcode, trunc(CASE a.adjcatcode WHEN 1 THEN v_ln_invacc ELSE a.acccode END)::smallint AS dr_acccode, CASE a.adjcatcode WHEN 1 THEN a.acccode ELSE v_ln_invacc END AS cr_acccode, NULL::smallint AS alternateacccode, a.date AS date, 0 AS saletax, round((sum((d.looseqty * d.price)))::numeric, 0) AS gross, (CASE a.adjcatcode WHEN 1 THEN 'Stock Adjustment Increase # ' ELSE 'Stock Adjustment Decrease # ' END || ltrim(rtrim(dbo.tsql_str((a.adjcode)::numeric)))) AS dr_remarks, (CASE a.adjcatcode WHEN 1 THEN 'Stock Adjustment Increase # ' ELSE 'Stock Adjustment Decrease # ' END || ltrim(rtrim(dbo.tsql_str((a.adjcode)::numeric)))) AS cr_remarks, '' AS saletax_remarks, NULL::citext AS checkno, a.usercode AS usercode, a.adjcode AS vouchercode, a.adjcode AS invoicecode, NULL::smallint AS invoicetype, 0 AS amt, NULL::integer AS dramtacccode, NULL::integer AS cramtacccode, NULL::smallint AS amtby, NULL::timestamp(3) AS amtdate, NULL::citext AS amtref, 0 AS outstandingamt, 0 AS balance, NULL::integer AS patientcode, NULL::citext AS grn, NULL::smallint AS gccode, NULL::citext AS vehicle, NULL::citext AS shipto, NULL::integer AS guestcode, NULL::integer AS studentcode, 0 AS cgs, NULL::smallint AS currencycode, NULL::numeric(11,5) AS conversionrate, 0.00 AS advincometax, 0.00 AS fbrposfee FROM dbo.crs_adjheader AS a, dbo.crs_adjdetail AS d WHERE ((((a.clientinstanceid = d.clientinstanceid) AND (a.adjcode = d.adjcode)) AND (a.acccode IS NOT NULL)) AND (((dbo.tsql_str((a.clientinstanceid)::numeric, 10) || dbo.tsql_str((a.adjcode)::numeric, 10)))::citext IN (SELECT (dbo.tsql_str((lsl.clientinstanceid)::numeric, 10) || dbo.tsql_str((lsl.code)::numeric, 10)) FROM tmp_lsl AS lsl))) GROUP BY a.clientinstanceid, a.adjcode, a.acccode, a.adjcatcode, a.date, a.usercode, a.remarks;
+  INSERT INTO dbo.crs_virtualgltemp SELECT a.clientinstanceid, a.adjcode AS documentcode, CASE a.adjcatcode WHEN 1 THEN 'AI' ELSE 'AD' END AS documenttype, a.adjcatcode AS catcode, trunc(CASE a.adjcatcode WHEN 1 THEN v_ln_invacc ELSE a.acccode END)::smallint AS dr_acccode, trunc(CASE a.adjcatcode WHEN 1 THEN a.acccode ELSE v_ln_invacc END)::smallint AS cr_acccode, NULL::smallint AS alternateacccode, a.date AS date, 0 AS saletax, round((sum((d.looseqty * d.price)))::numeric, 0) AS gross, (CASE a.adjcatcode WHEN 1 THEN 'Stock Adjustment Increase # ' ELSE 'Stock Adjustment Decrease # ' END || ltrim(rtrim(dbo.tsql_str((a.adjcode)::numeric)))) AS dr_remarks, (CASE a.adjcatcode WHEN 1 THEN 'Stock Adjustment Increase # ' ELSE 'Stock Adjustment Decrease # ' END || ltrim(rtrim(dbo.tsql_str((a.adjcode)::numeric)))) AS cr_remarks, '' AS saletax_remarks, NULL::citext AS checkno, a.usercode AS usercode, a.adjcode AS vouchercode, a.adjcode AS invoicecode, NULL::smallint AS invoicetype, 0 AS amt, NULL::integer AS dramtacccode, NULL::integer AS cramtacccode, NULL::smallint AS amtby, NULL::timestamp(3) AS amtdate, NULL::citext AS amtref, 0 AS outstandingamt, 0 AS balance, NULL::integer AS patientcode, NULL::citext AS grn, NULL::smallint AS gccode, NULL::citext AS vehicle, NULL::citext AS shipto, NULL::integer AS guestcode, NULL::integer AS studentcode, 0 AS cgs, NULL::smallint AS currencycode, NULL::numeric(11,5) AS conversionrate, 0.00 AS advincometax, 0.00 AS fbrposfee FROM dbo.crs_adjheader AS a, dbo.crs_adjdetail AS d WHERE ((((a.clientinstanceid = d.clientinstanceid) AND (a.adjcode = d.adjcode)) AND (a.acccode IS NOT NULL)) AND (((dbo.tsql_str((a.clientinstanceid)::numeric, 10) || dbo.tsql_str((a.adjcode)::numeric, 10)))::citext IN (SELECT (dbo.tsql_str((lsl.clientinstanceid)::numeric, 10) || dbo.tsql_str((lsl.code)::numeric, 10)) FROM tmp_lsl AS lsl))) GROUP BY a.clientinstanceid, a.adjcode, a.acccode, a.adjcatcode, a.date, a.usercode, a.remarks;
   TRUNCATE TABLE tmp_lsl RESTART IDENTITY;
   return_value := 0;
   RETURN;
@@ -13163,8 +13137,7 @@ DECLARE
 BEGIN
   v_query := query;
   TRUNCATE TABLE dbo.reportdata;
-  -- INSERT INTO ReportData(Name10,Name11,Name1,Name2,Value17,Value18)  Execute(@query)
-  RAISE EXCEPTION 'untranslated T-SQL (INSERT ... EXEC of dynamic SQL)' USING ERRCODE = '0A000';
+  EXECUTE 'INSERT INTO dbo.reportdata (name10, name11, name1, name2, value17, value18) ' || v_query;
   OPEN rs1 FOR SELECT name10, name11, name1 FROM dbo.reportdata;
   return_value := 0;
   RETURN;
@@ -18211,7 +18184,7 @@ BEGIN
   IF (v_method IS NULL) THEN
     v_method := 'Q';
   END IF;
-  v_tot_tickets := coalesce((SELECT sum(CASE WHEN (v_method = 'S') THEN s.ticketstogenerate ELSE d.qty END) FROM dbo.servicedetail AS d, dbo.service AS s WHERE (((d.serviceinvcode = v_serviceinvcode) AND (d.servicecode = s.servicecode)) AND (s.ticketrequired = 'Y'))), 0);
+  v_tot_tickets := trunc(coalesce((SELECT sum(CASE WHEN (v_method = 'S') THEN s.ticketstogenerate ELSE d.qty END) FROM dbo.servicedetail AS d, dbo.service AS s WHERE (((d.serviceinvcode = v_serviceinvcode) AND (d.servicecode = s.servicecode)) AND (s.ticketrequired = 'Y'))), 0))::integer;
   IF (v_tot_tickets = 0) THEN
     return_value := 0;
     RETURN;
@@ -22431,7 +22404,7 @@ BEGIN
   DROP TABLE IF EXISTS tmp_detail;
   CREATE TEMP TABLE tmp_detail ON COMMIT DROP AS SELECT purinvcode AS oldinvcode, -1 AS purinvcode, icode, gcode, batch, expiry, packqty, looseqty, packunits, purprice, discperc, avgprice, bonusqty, purrowid, newavgprice, currstock, gstperc, unitsalestax, purutn, saleprice, itemdescription, rate, salepriceforitem, foreignprice, purpriceinadvpur, netrate, recentpurprice, totalpieces, piecesinhand, receiptrowid, manfcodeforitem, discountedsaleprice, flatdiscforitem, retailprice, alternatecustomicode, manfdate, unitweight, qe1, qe2, qe3, qe4, qe5, we1, we2, we3, we4, we5, batchsaleprice FROM dbo.purdetail WHERE (purinvcode < 0);
   GET DIAGNOSTICS _rc = ROW_COUNT;
-  v_query := 'ALTER TABLE tmp_header ADD RowID INT NOT NULL IDENTITY(1,1)';
+  v_query := 'ALTER TABLE tmp_header ADD COLUMN RowID integer NOT NULL GENERATED BY DEFAULT AS IDENTITY';
   OPEN rs1 FOR EXECUTE v_query;
   IF (0 <> 0) THEN
     RAISE EXCEPTION 'Problem in adding identity column in temporary table';
@@ -22655,7 +22628,7 @@ BEGIN
   DROP TABLE IF EXISTS tmp_detail;
   CREATE TEMP TABLE tmp_detail ON COMMIT DROP AS SELECT quotationcode AS oldinvcode, -1 AS quotationcode, icode, qty, packunits, saleprice, discperc, salestax, itemflatdisc, bonusqty, gstperc, unitsalestax, itemdescription, gcode, remotenetsaleqty, remotestock, porate, podiscperc, specialrate, refno FROM dbo.quotationdetail WHERE (quotationcode < 0);
   GET DIAGNOSTICS _rc = ROW_COUNT;
-  v_query := 'ALTER TABLE tmp_header ADD RowID INT NOT NULL IDENTITY(1,1)';
+  v_query := 'ALTER TABLE tmp_header ADD COLUMN RowID integer NOT NULL GENERATED BY DEFAULT AS IDENTITY';
   OPEN rs1 FOR EXECUTE v_query;
   IF (0 <> 0) THEN
     RAISE EXCEPTION 'Problem in adding identity column in temporary table';
@@ -22782,7 +22755,7 @@ BEGIN
   DROP TABLE IF EXISTS tmp_sdetail;
   CREATE TEMP TABLE tmp_sdetail ON COMMIT DROP AS SELECT serviceinvcode AS oldinvcode, -1 AS serviceinvcode, servicecode, price, discperc, smancode, qty, commission, deliverydate, sampletaken, reportmade, costprice, remarks, serviceflatdisc, servicegstperc, serviceflattax, transportroutecode, vehiclecode FROM dbo.servicedetail WHERE (serviceinvcode < 0);
   GET DIAGNOSTICS _rc = ROW_COUNT;
-  v_query := 'ALTER TABLE tmp_sheader ADD RowID INT NOT NULL IDENTITY(1,1)';
+  v_query := 'ALTER TABLE tmp_sheader ADD COLUMN RowID integer NOT NULL GENERATED BY DEFAULT AS IDENTITY';
   OPEN rs1 FOR EXECUTE v_query;
   IF (0 <> 0) THEN
     RAISE EXCEPTION 'Problem in adding identity column in temporary table';
@@ -23534,16 +23507,16 @@ BEGIN
   UPDATE tmp_lt_amt AS lt_amt SET acname = salecategory.name FROM dbo.salecategory WHERE ((lt_amt.acccode IN (v_ln_revfromservices, v_ln_salesretacc, v_ln_salesacc)) AND (lt_amt.type = salecategory.salecatcode));
   DELETE FROM dbo.reportdata;
   INSERT INTO dbo.reportdata (code1, code2, name1, name2, name3, value1, value2, date1, date2) SELECT acccode AS code1, subacccode AS code2, acname, subacname, mainacname, value1, 0, v_ad_sdate AS date1, v_ad_edate AS date2 FROM tmp_lt_amt AS lt_amt WHERE (acccode = v_ln_salesacc);
-  INSERT INTO dbo.reportdata (code1, code2, name1, name2, name3, value1, value2, date1, date2) SELECT acccode AS code1, subacccode AS code2, "total sales for the period" AS acname, subacname, mainacname, 0 AS value1, sum(value1) AS value2, v_ad_sdate AS date1, v_ad_edate AS date2 FROM tmp_lt_amt AS lt_amt WHERE (acccode = v_ln_salesacc) GROUP BY acccode, catacccode, subacccode, mainacccode, subacname, catacname, mainacname;
+  INSERT INTO dbo.reportdata (code1, code2, name1, name2, name3, value1, value2, date1, date2) SELECT acccode AS code1, subacccode AS code2, 'TOTAL SALES FOR THE PERIOD' AS acname, subacname, mainacname, 0 AS value1, sum(value1) AS value2, v_ad_sdate AS date1, v_ad_edate AS date2 FROM tmp_lt_amt AS lt_amt WHERE (acccode = v_ln_salesacc) GROUP BY acccode, catacccode, subacccode, mainacccode, subacname, catacname, mainacname;
   INSERT INTO dbo.reportdata (code1, code2, name1, name2, name3, value1, value2, date1, date2) SELECT acccode AS code1, subacccode AS code2, acname, subacname, mainacname, value1, 0, v_ad_sdate AS date1, v_ad_edate AS date2 FROM tmp_lt_amt AS lt_amt WHERE (acccode = v_ln_salesretacc);
-  INSERT INTO dbo.reportdata (code1, code2, name1, name2, name3, value1, value2, date1, date2) SELECT acccode AS code1, subacccode AS code2, "total returns for the period" AS acname, subacname, mainacname, 0 AS value1, sum(value1) AS value2, v_ad_sdate AS date1, v_ad_edate AS date2 FROM tmp_lt_amt AS lt_amt WHERE (acccode = v_ln_salesretacc) GROUP BY acccode, catacccode, subacccode, mainacccode, subacname, catacname, mainacname;
+  INSERT INTO dbo.reportdata (code1, code2, name1, name2, name3, value1, value2, date1, date2) SELECT acccode AS code1, subacccode AS code2, 'TOTAL RETURNS FOR THE PERIOD' AS acname, subacname, mainacname, 0 AS value1, sum(value1) AS value2, v_ad_sdate AS date1, v_ad_edate AS date2 FROM tmp_lt_amt AS lt_amt WHERE (acccode = v_ln_salesretacc) GROUP BY acccode, catacccode, subacccode, mainacccode, subacname, catacname, mainacname;
   SELECT sum(value2) INTO v_ln_netsal FROM dbo.reportdata;
-  INSERT INTO dbo.reportdata (code1, code2, name1, name2, name3, value1, value2, date1, date2) SELECT DISTINCT acccode AS code1, subacccode AS code2, "net sales for the period" AS acname, subacname, mainacname, 0 AS value1, (SELECT sum(i.value1) FROM dbo.reportdata AS i) AS value2, v_ad_sdate AS date1, v_ad_edate AS date2 FROM tmp_lt_amt AS lt_amt WHERE (acccode = v_ln_salesretacc);
-  INSERT INTO dbo.reportdata (code1, code2, name1, name2, name3, value1, value2, date1, date2) SELECT acccode AS code1, subacccode AS code2, "cost of sales" AS acname, subacname, mainacname, 0 AS value1, value1 AS value2, v_ad_sdate AS date1, v_ad_edate AS date2 FROM tmp_lt_amt AS lt_amt WHERE (acccode = v_ln_purchaseacc);
+  INSERT INTO dbo.reportdata (code1, code2, name1, name2, name3, value1, value2, date1, date2) SELECT DISTINCT acccode AS code1, subacccode AS code2, 'NET SALES FOR THE PERIOD' AS acname, subacname, mainacname, 0 AS value1, (SELECT sum(i.value1) FROM dbo.reportdata AS i) AS value2, v_ad_sdate AS date1, v_ad_edate AS date2 FROM tmp_lt_amt AS lt_amt WHERE (acccode = v_ln_salesretacc);
+  INSERT INTO dbo.reportdata (code1, code2, name1, name2, name3, value1, value2, date1, date2) SELECT acccode AS code1, subacccode AS code2, 'COST OF SALES' AS acname, subacname, mainacname, 0 AS value1, value1 AS value2, v_ad_sdate AS date1, v_ad_edate AS date2 FROM tmp_lt_amt AS lt_amt WHERE (acccode = v_ln_purchaseacc);
   SELECT (v_ln_netsal + sum(i.value2)) INTO v_ln_gp FROM dbo.reportdata AS i WHERE (i.code1 = v_ln_purchaseacc);
-  INSERT INTO dbo.reportdata (code1, code2, name1, name2, name3, value1, value2, date1, date2) SELECT acccode AS code1, subacccode AS code2, "gross profit/(loss)" AS acname, subacname, mainacname, 0 AS value1, v_ln_gp AS value2, v_ad_sdate AS date1, v_ad_edate AS date2 FROM tmp_lt_amt AS lt_amt WHERE (acccode = v_ln_purchaseacc);
+  INSERT INTO dbo.reportdata (code1, code2, name1, name2, name3, value1, value2, date1, date2) SELECT acccode AS code1, subacccode AS code2, 'GROSS PROFIT/(LOSS)' AS acname, subacname, mainacname, 0 AS value1, v_ln_gp AS value2, v_ad_sdate AS date1, v_ad_edate AS date2 FROM tmp_lt_amt AS lt_amt WHERE (acccode = v_ln_purchaseacc);
   SELECT sum(value1) INTO v_ln_other_income_exp FROM tmp_lt_amt AS lt_amt WHERE (acccode NOT IN (SELECT i.code1 FROM dbo.reportdata AS i));
-  INSERT INTO dbo.reportdata (code1, code2, name1, name2, name3, value1, value2, date1, date2) SELECT acccode AS code1, subacccode AS code2, acname, "misc. sales income" AS subacname, mainacname, 0 AS value1, value1 AS value2, v_ad_sdate AS date1, v_ad_edate AS date2 FROM tmp_lt_amt AS lt_amt WHERE (acccode = v_ln_miscchargesacc);
+  INSERT INTO dbo.reportdata (code1, code2, name1, name2, name3, value1, value2, date1, date2) SELECT acccode AS code1, subacccode AS code2, acname, 'Misc. Sales Income' AS subacname, mainacname, 0 AS value1, value1 AS value2, v_ad_sdate AS date1, v_ad_edate AS date2 FROM tmp_lt_amt AS lt_amt WHERE (acccode = v_ln_miscchargesacc);
   INSERT INTO dbo.reportdata (code1, code2, name1, name2, name3, value1, value2, date1, date2) SELECT acccode AS code1, subacccode AS code2, acname, subacname, mainacname, 0 AS value1, value1 AS vlaue2, v_ad_sdate AS date1, v_ad_edate AS date2 FROM tmp_lt_amt AS lt_amt WHERE (acccode = v_ln_revfromservices);
   INSERT INTO dbo.reportdata (code1, code2, name1, name2, name3, value1, value2, date1, date2) SELECT subacccode, subacccode, acname, subacname, mainacname, 0 AS value1, sum(value2) AS value2, date1 AS date1, date2 AS date2 FROM (SELECT acccode, subacccode, subacname AS acname, subacname, mainacname, 0 AS value1, sum(value1) AS value2, v_ad_sdate AS date1, v_ad_edate AS date2 FROM tmp_lt_amt AS lt_amt WHERE (acccode NOT IN (SELECT i.code1 FROM dbo.reportdata AS i)) GROUP BY mainacccode, catacccode, subacccode, acccode, subacname, mainacname, acname) AS abc GROUP BY subacccode, subacname, mainacname, acname, date1, date2 ORDER BY subacccode;
   INSERT INTO dbo.reportdata (code1, code2, name1, name2, name3, value1, value2, date1, date2) SELECT NULL::numeric(15,4) AS code1, NULL::numeric(15,4) AS code2, 'NET PROFIT/(LOSS)' AS acname, NULL::citext, NULL::citext, 0 AS value1, (v_ln_other_income_exp + v_ln_gp) AS value2, v_ad_sdate AS date1, v_ad_edate AS date2;
@@ -27581,14 +27554,28 @@ BEGIN
   v_salecatcode := 2;
   v_saletypecode := (SELECT min(saletypecode) FROM dbo.saletype);
   v_serverdate := localtimestamp(3);
-  -- Select @CustCode=CustCode, @GCode=gcode, @ICode=icode, @PackUnits = PackUnits, @satisfiableqty=qty, @satisfiedqty=0, @SalePrice=saleprice, @itemflatdisc=itemflatdisc, @discperc=discperc, @unitsalestax=0, @gstperc1=0,
-  -- 	@MarkupAmt=MarkupAmt, @ProcessingFee=ProcessingFee, @DownPayment=DownPayment,
-  -- 	@itemname = (SELECT I.Name FROM Item I WHERE I.ICode=@ICode),
-  -- 	@NetAmount = ROUND(Round((Qty * (SalePrice - ItemFlatDisc) * (1 - DiscPerc * 0.01)), 2) + MarkupAmt + ProcessingFee, 0),
-  -- 	@SManCode = SManCode , @InquiryPersonCode = InquiryPersonCode
-  -- From InstallmentHeader
-  -- WHERE InstallmentCode = @InstallmentCode AND Posted='N' AND Approved='Y'
-  RAISE EXCEPTION 'untranslated T-SQL (expression kind item)' USING ERRCODE = '0A000';
+  _rc := 0;
+  FOR _r1 IN SELECT custcode AS c1, gcode AS c2, icode AS c3, packunits AS c4, qty AS c5, saleprice AS c6, itemflatdisc AS c7, discperc AS c8, markupamt AS c9, processingfee AS c10, downpayment AS c11, round((((round(((((qty * ((saleprice - itemflatdisc))) * ((1 - (discperc * 0.01))))))::numeric, 2) + markupamt) + processingfee))::numeric, 0) AS c12, smancode AS c13, inquirypersoncode AS c14 FROM dbo.installmentheader WHERE (((installmentcode = v_installmentcode) AND (posted = 'N')) AND (approved = 'Y')) LOOP
+    _rc := _rc + 1;
+    v_custcode := _r1.c1;
+    v_gcode := _r1.c2;
+    v_icode := _r1.c3;
+    v_packunits := _r1.c4;
+    v_satisfiableqty := _r1.c5;
+    v_satisfiedqty := 0;
+    v_saleprice := _r1.c6;
+    v_itemflatdisc := _r1.c7;
+    v_discperc := _r1.c8;
+    v_unitsalestax := 0;
+    v_gstperc1 := 0;
+    v_markupamt := _r1.c9;
+    v_processingfee := _r1.c10;
+    v_downpayment := _r1.c11;
+    v_itemname := (SELECT i.name FROM dbo.item AS i WHERE (i.icode = v_icode));
+    v_netamount := _r1.c12;
+    v_smancode := _r1.c13;
+    v_inquirypersoncode := _r1.c14;
+  END LOOP;
   v_totalrows := _rc;
   IF (v_totalrows = 0) THEN
     RAISE EXCEPTION 'Installment code : % is not available for posting', v_installmentcode;
@@ -31352,12 +31339,7 @@ BEGIN
   END IF;
   v_qry := (v_qry || ') with tableresults, ALL_ERRORMSGS');
   TRUNCATE TABLE dbo.dbcc_history RESTART IDENTITY;
-  -- INSERT INTO DBCC_History(
-  -- ErrorID, LevelID, StateID, MessageText, RepairLevel, StatusID,
-  -- DbId, ObjectId, IndId, FileID, PageID, SlotID, RefFileID,
-  -- RefPageID, RefSlotID, AllocationID)
-  -- EXEC (@Qry)
-  RAISE EXCEPTION 'untranslated T-SQL (INSERT ... EXEC of dynamic SQL)' USING ERRCODE = '0A000';
+  EXECUTE 'INSERT INTO dbo.dbcc_history (errorid, levelid, stateid, messagetext, repairlevel, statusid, dbid, objectid, indid, fileid, pageid, slotid, reffileid, refpageid, refslotid, allocationid) ' || v_qry;
   IF (0 <> 0) THEN
     return_value := 0;
     RETURN;
@@ -34462,10 +34444,8 @@ BEGIN
     INSERT INTO dbo.datatransferlog (transferlogid, logdate, transferedby, invoicecode, invoicetype, date, acccode, sgcode, dgcode, status) SELECT v_logid, localtimestamp(3) AS logdate, v_usercode AS transferedby, oldglvochcode AS invoicecode, 0 AS invoicetype, localtimestamp(3) AS date, acccode AS acccode, NULL::smallint, NULL::smallint, CASE glvochcode WHEN -1000 THEN 0 ELSE 1 END AS status FROM dbo.glhtemp;
     INSERT INTO dbo.datatransferlogdetail (transferlogid, invoicecode, invoicetype, icode, gcode, batch, expiry, qty, bonusqty, price, status) SELECT v_logid, oldglvochcode AS invoicecode, 0 AS invoicetype, acccode AS icode, NULL::smallint AS gcode, NULL::citext AS batch, NULL::timestamp(3) AS expiry, (debit - credit) AS qty, 0 AS bonusqty, 1 AS purprice, CASE glvochcode WHEN -1000 THEN 0 ELSE 1 END AS status FROM dbo.gldtemp;
   END IF;
-  -- DROP TABLE GLHTEMP
-  RAISE EXCEPTION 'untranslated T-SQL (DROP TABLE of a permanent table)' USING ERRCODE = '0A000';
-  -- DROP TABLE GLDTEMP
-  RAISE EXCEPTION 'untranslated T-SQL (DROP TABLE of a permanent table)' USING ERRCODE = '0A000';
+  DROP TABLE IF EXISTS dbo.glhtemp;
+  DROP TABLE IF EXISTS dbo.gldtemp;
   IF ((0 = 0) AND (v_errcode = 0)) THEN
     return_value := 0;
     logid := v_logid;
@@ -34811,11 +34791,9 @@ BEGIN
     logid := v_logid;
     RETURN;
   END IF;
-  -- SELECT * INTO TDTEMP2
-  -- 	FROM (SELECT * FROM TDTEMP WHERE TransCode < 0
-  -- 	UNION
-  -- 	SELECT * FROM TDTEMP WHERE TransCode < 0) A
-  RAISE EXCEPTION 'untranslated T-SQL (SELECT INTO a permanent table)' USING ERRCODE = '0A000';
+  DROP TABLE IF EXISTS dbo.tdtemp2;
+  CREATE TABLE dbo.tdtemp2 AS SELECT * FROM (SELECT * FROM dbo.tdtemp WHERE (transcode < 0) UNION SELECT * FROM dbo.tdtemp WHERE (transcode < 0)) AS a;
+  GET DIAGNOSTICS _rc = ROW_COUNT;
   IF ((0 <> 0) OR (_rc > 0)) THEN
     RAISE EXCEPTION 'Problem in generating transfer invoice(s) number';
     return_value := -1;
@@ -35099,12 +35077,9 @@ BEGIN
     INSERT INTO dbo.datatransferlogdetail (transferlogid, invoicecode, invoicetype, icode, gcode, batch, expiry, qty, price, status) SELECT v_logid, oldinvcode AS invoicecode, 8 AS invoicetype, icode, NULL::smallint, batch, expiry, qty, (purprice / CASE packunits WHEN 0 THEN 1 ELSE packunits END) AS price, CASE transcode WHEN -1000 THEN 0 ELSE 1 END AS status FROM dbo.tdtemp;
     GET DIAGNOSTICS _rc = ROW_COUNT;
   END IF;
-  -- DROP TABLE THTEMP
-  RAISE EXCEPTION 'untranslated T-SQL (DROP TABLE of a permanent table)' USING ERRCODE = '0A000';
-  -- DROP TABLE TDTEMP
-  RAISE EXCEPTION 'untranslated T-SQL (DROP TABLE of a permanent table)' USING ERRCODE = '0A000';
-  -- DROP TABLE TDTEMP2
-  RAISE EXCEPTION 'untranslated T-SQL (DROP TABLE of a permanent table)' USING ERRCODE = '0A000';
+  DROP TABLE IF EXISTS dbo.thtemp;
+  DROP TABLE IF EXISTS dbo.tdtemp;
+  DROP TABLE IF EXISTS dbo.tdtemp2;
   IF ((0 = 0) AND (v_errcode = 0)) THEN
     return_value := 0;
     logid := v_logid;
@@ -35416,10 +35391,8 @@ BEGIN
     INSERT INTO dbo.datatransferlogdetail (transferlogid, invoicecode, invoicetype, icode, gcode, batch, expiry, qty, bonusqty, price, status) SELECT v_logid, oldinvcode AS invoicecode, 3 AS invoicetype, icode, gcode, batch, expiry, (looseqty + packqty) AS qty, bonusqty, purprice, CASE purinvcode WHEN -1000 THEN 0 ELSE 1 END AS status FROM dbo.pdtemp;
     GET DIAGNOSTICS _rc = ROW_COUNT;
   END IF;
-  -- DROP TABLE PLTEMP
-  RAISE EXCEPTION 'untranslated T-SQL (DROP TABLE of a permanent table)' USING ERRCODE = '0A000';
-  -- DROP TABLE PDTEMP
-  RAISE EXCEPTION 'untranslated T-SQL (DROP TABLE of a permanent table)' USING ERRCODE = '0A000';
+  DROP TABLE IF EXISTS dbo.pltemp;
+  DROP TABLE IF EXISTS dbo.pdtemp;
   IF ((0 = 0) AND (v_errcode = 0)) THEN
     return_value := 0;
     logid := v_logid;
@@ -35639,10 +35612,8 @@ BEGIN
     INSERT INTO dbo.datatransferlog (transferlogid, logdate, transferedby, invoicecode, invoicetype, date, acccode, sgcode, dgcode, status) SELECT v_logid, localtimestamp(3) AS logdate, v_usercode AS transferedby, oldinvcode AS invoicecode, 3 AS invoicetype, localtimestamp(3) AS date, suppcode AS acccode, NULL::smallint, NULL::smallint, CASE purinvcode WHEN -1000 THEN 0 ELSE 1 END AS status FROM dbo.pltemp;
     INSERT INTO dbo.datatransferlogdetail (transferlogid, invoicecode, invoicetype, icode, gcode, batch, expiry, qty, bonusqty, price, status) SELECT v_logid, oldinvcode AS invoicecode, 3 AS invoicetype, icode, gcode, batch, expiry, (looseqty + packqty) AS qty, bonusqty, purprice, CASE purinvcode WHEN -1000 THEN 0 ELSE 1 END AS status FROM dbo.pdtemp ORDER BY purrowid;
   END IF;
-  -- DROP TABLE PLTEMP
-  RAISE EXCEPTION 'untranslated T-SQL (DROP TABLE of a permanent table)' USING ERRCODE = '0A000';
-  -- DROP TABLE PDTEMP
-  RAISE EXCEPTION 'untranslated T-SQL (DROP TABLE of a permanent table)' USING ERRCODE = '0A000';
+  DROP TABLE IF EXISTS dbo.pltemp;
+  DROP TABLE IF EXISTS dbo.pdtemp;
   IF ((0 = 0) AND (v_errcode = 0)) THEN
     return_value := 0;
     logid := v_logid;
@@ -35814,10 +35785,8 @@ BEGIN
     RETURN;
   END IF;
   -- SET XACT_ABORT OFF
-  -- DROP TABLE SOHTEMP
-  RAISE EXCEPTION 'untranslated T-SQL (DROP TABLE of a permanent table)' USING ERRCODE = '0A000';
-  -- DROP TABLE SODTEMP
-  RAISE EXCEPTION 'untranslated T-SQL (DROP TABLE of a permanent table)' USING ERRCODE = '0A000';
+  DROP TABLE IF EXISTS dbo.sohtemp;
+  DROP TABLE IF EXISTS dbo.sodtemp;
   IF ((0 = 0) AND (v_errcode = 0)) THEN
     return_value := 0;
     startsaleordercode := v_startsaleordercode;
@@ -35951,10 +35920,9 @@ BEGIN
     logid := v_logid;
     RETURN;
   END IF;
-  -- SELECT * INTO SDTEMP2
-  -- FROM (SELECT * FROM SDTEMP WHERE SaleInvCode < 0
-  -- 	  UNION SELECT * FROM SDTEMP WHERE SaleInvCode < 0) A
-  RAISE EXCEPTION 'untranslated T-SQL (SELECT INTO a permanent table)' USING ERRCODE = '0A000';
+  DROP TABLE IF EXISTS dbo.sdtemp2;
+  CREATE TABLE dbo.sdtemp2 AS SELECT * FROM (SELECT * FROM dbo.sdtemp WHERE (saleinvcode < 0) UNION SELECT * FROM dbo.sdtemp WHERE (saleinvcode < 0)) AS a;
+  GET DIAGNOSTICS _rc = ROW_COUNT;
   IF ((0 <> 0) OR (_rc > 0)) THEN
     RAISE EXCEPTION 'Problem in generating sales invoice(s) number';
     return_value := -1;
@@ -36255,12 +36223,9 @@ BEGIN
     INSERT INTO dbo.datatransferlogdetail (transferlogid, invoicecode, invoicetype, icode, gcode, batch, expiry, qty, bonusqty, price, status) SELECT v_logid, oldinvcode AS invoicecode, 1 AS invoicetype, icode, gcode, batch, expiry, looseqty, bonusqty, saleprice, CASE saleinvcode WHEN -1000 THEN 0 ELSE 1 END AS status FROM dbo.sdtemp;
     GET DIAGNOSTICS _rc = ROW_COUNT;
   END IF;
-  -- DROP TABLE SHTEMP
-  RAISE EXCEPTION 'untranslated T-SQL (DROP TABLE of a permanent table)' USING ERRCODE = '0A000';
-  -- DROP TABLE SDTEMP
-  RAISE EXCEPTION 'untranslated T-SQL (DROP TABLE of a permanent table)' USING ERRCODE = '0A000';
-  -- DROP TABLE SDTEMP2
-  RAISE EXCEPTION 'untranslated T-SQL (DROP TABLE of a permanent table)' USING ERRCODE = '0A000';
+  DROP TABLE IF EXISTS dbo.shtemp;
+  DROP TABLE IF EXISTS dbo.sdtemp;
+  DROP TABLE IF EXISTS dbo.sdtemp2;
   IF ((0 = 0) AND (v_errcode = 0)) THEN
     return_value := 0;
     logid := v_logid;
@@ -39203,7 +39168,7 @@ BEGIN
     code integer NOT NULL
 ) ON COMMIT DROP;
   INSERT INTO tmp_lsl SELECT adjcode FROM dbo.adjheader WHERE ((posted = 'Y') AND (NOT EXISTS (SELECT DISTINCT documentcode FROM dbo.virtualgl AS v WHERE ((v.documenttype IN ('AI', 'AD')) AND (v.documentcode = adjheader.adjcode)))));
-  INSERT INTO dbo.virtualgltemp SELECT a.adjcode AS documentcode, CASE a.adjcatcode WHEN 1 THEN 'AI' ELSE 'AD' END AS documenttype, a.adjcatcode AS catcode, trunc(CASE a.adjcatcode WHEN 1 THEN v_ln_invacc ELSE a.acccode END)::smallint AS dr_acccode, CASE a.adjcatcode WHEN 1 THEN a.acccode ELSE v_ln_invacc END AS cr_acccode, NULL::smallint AS alternateacccode, a.date AS date, 0 AS saletax, round((sum((d.looseqty * d.price)))::numeric, 0) AS gross, (CASE a.adjcatcode WHEN 1 THEN 'Stock Adjustment Increase # ' ELSE 'Stock Adjustment Decrease # ' END || ltrim(rtrim(dbo.tsql_str((a.adjcode)::numeric)))) AS dr_remarks, (CASE a.adjcatcode WHEN 1 THEN 'Stock Adjustment Increase # ' ELSE 'Stock Adjustment Decrease # ' END || ltrim(rtrim(dbo.tsql_str((a.adjcode)::numeric)))) AS cr_remarks, '' AS saletax_remarks, NULL::citext AS checkno, a.usercode AS usercode, a.adjcode AS vouchercode, a.adjcode AS invoicecode, NULL::smallint AS invoicetype, 0 AS amt, NULL::integer AS dramtacccode, NULL::integer AS cramtacccode, NULL::smallint AS amtby, NULL::timestamp(3) AS amtdate, NULL::citext AS amtref, 0 AS outstandingamt, 0 AS balance, NULL::integer AS patientcode, NULL::citext AS grn, NULL::smallint AS gccode, NULL::citext AS vehicle, NULL::citext AS shipto, NULL::integer AS guestcode, NULL::integer AS studentcode, 0 AS cgs, NULL::smallint AS currencycode, NULL::numeric(11,5) AS conversionrate, 0.00 AS advincometax, 0.00 AS fbrposfee FROM dbo.adjheader AS a, dbo.adjdetail AS d WHERE (((a.adjcode IN (SELECT code FROM tmp_lsl AS lsl)) AND (a.adjcode = d.adjcode)) AND (a.acccode IS NOT NULL)) GROUP BY a.adjcode, a.acccode, a.adjcatcode, a.date, a.usercode, a.remarks;
+  INSERT INTO dbo.virtualgltemp SELECT a.adjcode AS documentcode, CASE a.adjcatcode WHEN 1 THEN 'AI' ELSE 'AD' END AS documenttype, a.adjcatcode AS catcode, trunc(CASE a.adjcatcode WHEN 1 THEN v_ln_invacc ELSE a.acccode END)::smallint AS dr_acccode, trunc(CASE a.adjcatcode WHEN 1 THEN a.acccode ELSE v_ln_invacc END)::smallint AS cr_acccode, NULL::smallint AS alternateacccode, a.date AS date, 0 AS saletax, round((sum((d.looseqty * d.price)))::numeric, 0) AS gross, (CASE a.adjcatcode WHEN 1 THEN 'Stock Adjustment Increase # ' ELSE 'Stock Adjustment Decrease # ' END || ltrim(rtrim(dbo.tsql_str((a.adjcode)::numeric)))) AS dr_remarks, (CASE a.adjcatcode WHEN 1 THEN 'Stock Adjustment Increase # ' ELSE 'Stock Adjustment Decrease # ' END || ltrim(rtrim(dbo.tsql_str((a.adjcode)::numeric)))) AS cr_remarks, '' AS saletax_remarks, NULL::citext AS checkno, a.usercode AS usercode, a.adjcode AS vouchercode, a.adjcode AS invoicecode, NULL::smallint AS invoicetype, 0 AS amt, NULL::integer AS dramtacccode, NULL::integer AS cramtacccode, NULL::smallint AS amtby, NULL::timestamp(3) AS amtdate, NULL::citext AS amtref, 0 AS outstandingamt, 0 AS balance, NULL::integer AS patientcode, NULL::citext AS grn, NULL::smallint AS gccode, NULL::citext AS vehicle, NULL::citext AS shipto, NULL::integer AS guestcode, NULL::integer AS studentcode, 0 AS cgs, NULL::smallint AS currencycode, NULL::numeric(11,5) AS conversionrate, 0.00 AS advincometax, 0.00 AS fbrposfee FROM dbo.adjheader AS a, dbo.adjdetail AS d WHERE (((a.adjcode IN (SELECT code FROM tmp_lsl AS lsl)) AND (a.adjcode = d.adjcode)) AND (a.acccode IS NOT NULL)) GROUP BY a.adjcode, a.acccode, a.adjcatcode, a.date, a.usercode, a.remarks;
   TRUNCATE TABLE tmp_lsl RESTART IDENTITY;
   return_value := 0;
   RETURN;

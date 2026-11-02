@@ -197,8 +197,10 @@ class ExprMixin:
         raise Untranslatable('ODBC escape ' + n.text)
 
     def e_bind(self, n, sc):
-        self.binds.append(n.name)
-        return '$%d' % len(self.binds), self.bind_cls(n.name)
+        # one parameter per host variable name (the same variable always carries the same value)
+        if n.name not in self.binds:
+            self.binds.append(n.name)
+        return '$%d' % (self.binds.index(n.name) + 1), self.bind_cls(n.name)
 
     def bind_cls(self, name):
         return 'U'
@@ -435,13 +437,17 @@ class ExprMixin:
 
     def e_case(self, n, sc):
         parts = ['CASE']
-        cls = 'U'
         opn = None
         if n.operand is not None:
             os_, oc = self.E(n.operand, sc)
-            os_ = self.sink(n.operand, os_, oc)
+            if oc == 'U' and n.operand.k in ('bind', 'var') and n.whens and all(self.is_num_lit(w[0]) for w in n.whens):
+                os_ = '(%s)::numeric' % os_
+                oc = 'N'
+            else:
+                os_ = self.sink(n.operand, os_, oc)
             parts.append(os_)
             opn = (n.operand, oc)
+        conds, results = [], []
         for c, r in n.whens:
             if opn is None:
                 cs = self.Es(c, sc)
@@ -451,15 +457,23 @@ class ExprMixin:
                     cs = q(c.v)
                 else:
                     cs = self.sink(c, cs, cc)
-            rs, rc = self.E(r, sc)
-            if cls == 'U' and rc not in ('U',):
-                cls = rc
-            parts.append('WHEN %s THEN %s' % (cs, rs))
+            conds.append(cs)
+            results.append((r,) + self.E(r, sc))
         if n.els is not None:
-            es, ec = self.E(n.els, sc)
-            if cls == 'U' and ec != 'U':
-                cls = ec
-            parts.append('ELSE ' + es)
+            results.append((n.els,) + self.E(n.els, sc))
+        rank = {'D': 4, 'N': 3, 'I': 2, 'S': 1}
+        classes = set(c for _, _, c in results if c in rank)
+        cls = 'U'
+        if classes:
+            cls = max(classes, key=lambda c: rank[c])
+            if len(classes) > 1 and not (classes <= {'I', 'N'}):
+                results = [(nd, self.unify_cast(nd, s, c, cls), cls if c in rank else c) for nd, s, c in results]
+        i = 0
+        for cs in conds:
+            parts.append('WHEN %s THEN %s' % (cs, results[i][1]))
+            i += 1
+        if n.els is not None:
+            parts.append('ELSE ' + results[i][1])
         parts.append('END')
         return ' '.join(parts), cls
 

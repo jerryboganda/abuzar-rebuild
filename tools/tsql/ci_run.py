@@ -86,6 +86,7 @@ def apply_units(conn, repo, results, failures, sources):
 
 TEMP_OPEN = re.compile(r'^\s*CREATE TEMP TABLE (\S+) \($')
 TEMP_CTAS = re.compile(r'^\s*CREATE TEMP TABLE (\S+) ON COMMIT DROP AS (.*);\s*$')
+PERM_CTAS = re.compile(r'^\s*CREATE TABLE (dbo\.\S+) AS (.*);\s*$')
 DECL = re.compile(r'^  (v_\w+|"v_\w+") ([^;]+);$')
 
 
@@ -118,6 +119,13 @@ def temp_statements(sql):
                 for v, ty in decl.items():
                     sel = re.sub(r'(?<![\w.])%s(?!\w)' % re.escape(v), '(NULL::%s)' % ty, sel)
                 out.append((m.group(1), 'CREATE TEMP TABLE %s AS %s WITH NO DATA' % (m.group(1), sel)))
+            else:
+                m = PERM_CTAS.match(ln)
+                if m:
+                    sel = m.group(2)
+                    for v, ty in decl.items():
+                        sel = re.sub(r'(?<![\w.])%s(?!\w)' % re.escape(v), '(NULL::%s)' % ty, sel)
+                    out.append((m.group(1), 'CREATE TABLE %s AS %s WITH NO DATA' % (m.group(1), sel)))
         i += 1
     return out
 
@@ -169,8 +177,11 @@ def plpgsql_check(conn, created, units_index, results, failures, sources):
         try:
             if cat == 'trigger':
                 tbl = trig_tables.get(name)
-                rows = conn.execute("select lineno, sqlstate, message, level, statement, query from plpgsql_check_function_tb(%s::oid::regproc, %s::regclass, fatal_errors := false, other_warnings := false, extra_warnings := false, performance_warnings := false)",
-                                    (oid, 'dbo.' + tbl.lower() if tbl else None)).fetchall()
+                evs = next((u.get('events') or [] for u in units_index if u['kind'] == 'trigger' and u['name'] == name), [])
+                oldt = 'deleted' if ('UPDATE' in evs or 'DELETE' in evs) else None
+                newt = 'inserted' if ('UPDATE' in evs or 'INSERT' in evs) else None
+                rows = conn.execute("select lineno, sqlstate, message, level, statement, query from plpgsql_check_function_tb(%s::oid::regproc, %s::regclass, fatal_errors := false, other_warnings := false, extra_warnings := false, performance_warnings := false, oldtable := %s, newtable := %s)",
+                                    (oid, 'dbo.' + tbl.lower() if tbl else None, oldt, newt)).fetchall()
             else:
                 rows = conn.execute("select lineno, sqlstate, message, level, statement, query from plpgsql_check_function_tb(%s::oid::regproc, fatal_errors := false, other_warnings := false, extra_warnings := false, performance_warnings := false)",
                                     (oid,)).fetchall()
@@ -289,6 +300,12 @@ def summarize(results, failures, units_index, repo, report_path, stmts_total):
               '"translated fully" = every statement was translated; "with untranslated statements" = the routine compiles but contains `RAISE EXCEPTION \'untranslated T-SQL\'` placeholders (original kept as a comment);',
               '"stub" = parse/translation failed, or deliberately excluded (vendor backup/restore code, SQL Server system views): a function with the right signature that raises when called.',
               '"CREATE succeeded" counts what PostgreSQL accepted (PL/pgSQL syntax check only); "plpgsql_check clean" additionally resolves tables, columns, types and function calls inside each body.', '']
+    sm = collections.Counter()
+    for r in results:
+        if r['category'].startswith('smoke-'):
+            sm[r['result']] += 1
+    if sm:
+        lines += ['Runtime smoke test (every translated procedure/function called once with NULL arguments on the empty schema, rolled back): %s.' % ', '.join('%s %d' % (k, v) for k, v in sorted(sm.items())), '']
     comp = by.get('compat', collections.Counter())
     lines += ['Compatibility helper functions (`dbo.tsql_*`): created %d, failed %d.' % (comp.get('created', 0), comp.get('failed', 0)), '']
     if stmts_total is not None:
@@ -328,6 +345,60 @@ def summarize(results, failures, units_index, repo, report_path, stmts_total):
     return by
 
 
+def smoke_calls(conn, units_index, results, failures):
+    """call every translated procedure / function with NULL arguments inside a rolled-back transaction (schema is empty):
+    exercises dynamic SQL, cursors, temp tables and casts that the static checks cannot see"""
+    sigs = json.load(open(os.path.join(REPO, 'data', 'sql', 'proc_signatures.json'), encoding='utf-8'))
+    n = 0
+    for sg in sigs:
+        if sg.get('kind') not in ('proc', 'function') or sg.get('status') not in ('translated', 'partial'):
+            continue
+        name = sg['name']
+        fq = sg['pg_name']
+        nargs = len(sg['params'])
+        args = ', '.join('NULL' for _ in range(nargs))
+        if sg['kind'] == 'function' and (sg.get('returns') or {}).get('style') == 'table':
+            sql = 'SELECT count(*) FROM %s(%s)' % (fq, args)
+        elif sg['kind'] == 'proc':
+            sql = 'SELECT * FROM %s(%s)' % (fq, args)
+        else:
+            sql = 'SELECT %s(%s)' % (fq, args)
+        rec = {'category': 'smoke-' + sg['kind'], 'name': name}
+        try:
+            conn.execute('BEGIN')
+            conn.execute("SET LOCAL statement_timeout = '4s'")
+            conn.execute('SET LOCAL search_path TO dbo, public')
+            conn.execute(sql).fetchall()
+            rec['result'] = 'ok'
+        except Exception as e:
+            st = getattr(e, 'sqlstate', None)
+            msg = first_line(e)
+            if st == '0A000' and 'untranslated T-SQL' in msg:
+                rec['result'] = 'ok-untranslated-placeholder'
+            elif st in ('TS001',):
+                rec['result'] = 'ok-rollback-requested'
+            elif st == 'P0001':
+                rec['result'] = 'ok-raised'
+            elif st == '57014':
+                rec['result'] = 'timeout'
+            else:
+                rec['result'] = 'failed'
+                rec['sqlstate'], rec['message'], rec['kind'] = st, msg, kind_of_error(msg)
+                failures.append({'stage': 'smoke', 'category': rec['category'], 'name': name, 'sqlstate': st, 'message': msg,
+                                 'kind': rec['kind']})
+        finally:
+            try:
+                conn.execute('ROLLBACK')
+            except Exception:
+                pass
+        results.append(rec)
+        n += 1
+    print('smoke calls', n)
+
+
+REPO = '.'
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--repo', default='.')
@@ -347,6 +418,11 @@ def main():
     t0 = time.time()
     stmts = prepare_statements(conn, a.repo, results, failures)
     print('statements prepared in %.0fs' % (time.time() - t0))
+    global REPO
+    REPO = a.repo
+    t0 = time.time()
+    smoke_calls(conn, units_index, results, failures)
+    print('smoke calls in %.0fs' % (time.time() - t0))
     by = summarize(results, failures, units_index, a.repo, a.report, stmts)
     json.dump(failures, open(os.path.join(a.out, 'sql-failures.json'), 'w', encoding='utf-8'), indent=1)
     json.dump(results, open(os.path.join(a.out, 'results.json'), 'w', encoding='utf-8'), indent=1)

@@ -514,14 +514,14 @@ $body$;
 
 -- ==== function fn_GetInProcessChequesList ====
 CREATE OR REPLACE FUNCTION dbo.fn_getinprocesschequeslist(p_acccode integer)
-  RETURNS TABLE(notecode integer, vouchercode integer, acccode integer, documentnumber citext, transferredto integer, debit integer, credit numeric)
+  RETURNS TABLE(notecode integer, vouchercode integer, acccode integer, documentnumber citext, transferredto integer, debit numeric, credit numeric)
   LANGUAGE plpgsql AS $body$
 #variable_conflict use_column
 DECLARE
   v_acccode integer;
 BEGIN
   v_acccode := p_acccode;
-  RETURN QUERY SELECT (t.notecode)::integer, (t.vouchercode)::integer, (t.acccode)::integer, (t.documentnumber)::citext, (t.transferredto)::integer, (t.debit)::integer, (t.credit)::numeric FROM (SELECT notecode, vouchercode, acccode, documentnumber, bankacccode AS transferredto, CASE notecatcode WHEN 1 THEN 0 ELSE amount END AS debit, CASE notecatcode WHEN 1 THEN amount ELSE 0 END AS credit FROM dbo.notes WHERE (((acccode = v_acccode) AND (finalized = 'Y')) AND (posted = 'N'))) AS t(notecode, vouchercode, acccode, documentnumber, transferredto, debit, credit);
+  RETURN QUERY SELECT (t.notecode)::integer, (t.vouchercode)::integer, (t.acccode)::integer, (t.documentnumber)::citext, (t.transferredto)::integer, (t.debit)::numeric, (t.credit)::numeric FROM (SELECT notecode, vouchercode, acccode, documentnumber, bankacccode AS transferredto, CASE notecatcode WHEN 1 THEN 0 ELSE amount END AS debit, CASE notecatcode WHEN 1 THEN amount ELSE 0 END AS credit FROM dbo.notes WHERE (((acccode = v_acccode) AND (finalized = 'Y')) AND (posted = 'N'))) AS t(notecode, vouchercode, acccode, documentnumber, transferredto, debit, credit);
   RETURN;
 END
 $body$;

@@ -71,7 +71,7 @@ class QueryMixin:
             return ('trans', low, self.ctx.trigger_table, low)
         if low in SYSTABLES:
             raise Untranslatable('system table ' + name)
-        t = self.tables.get(low)
+        t = self.ctx.perms.get(low) or self.tables.get(low)
         if t is None:
             t = self.catalog.views.get(low)
         return ('real', 'dbo.' + ident(name), t, low)
@@ -124,14 +124,49 @@ class QueryMixin:
             for e, desc in sel.order:
                 if union:
                     e = self.union_order_item(e, sel)
+                else:
+                    e = self.group_order_item(e, sel)
                 items.append(self.Es(e, osc) + (' DESC' if desc else ''))
             sql += ' ORDER BY ' + ', '.join(items)
         sql += single_limit
         return sql, cols
 
+    @staticmethod
+    def colkey(x):
+        ps = [p.lower() for p in x.parts if p != '']
+        if len(ps) > 2 and ps[0] == 'dbo':
+            ps = ps[1:]
+        return tuple(ps[-2:])
+
+    def group_order_item(self, e, sel):
+        if e.k != 'col' or not sel.group or sel.where is None:
+            return e
+        gset = set(self.colkey(g) for g in sel.group if g.k == 'col')
+        if self.colkey(e) in gset or len(e.parts) < 2:
+            return e
+        conj, stack = [], [sel.where]
+        while stack:
+            c = stack.pop()
+            if c.k == 'paren':
+                stack.append(c.e)
+            elif c.k == 'bin' and c.op == 'AND':
+                stack.extend([c.l, c.r])
+            elif c.k == 'bin' and c.op == '=' and c.l.k == 'col' and c.r.k == 'col':
+                conj.append(c)
+        me = self.colkey(e)
+        for c in conj:
+            for a, b in ((c.l, c.r), (c.r, c.l)):
+                if self.colkey(a) == me and self.colkey(b) in gset:
+                    return b
+        return e
+
     def union_order_item(self, e, first):
         """ORDER BY of a UNION: qualified columns refer to the output column names"""
         if e.k == 'col' and len(e.parts) > 1:
+            key = [p.lower() for p in e.parts if p != ''][-2:]
+            for it in first.items:
+                if it.e.k == 'col' and [p.lower() for p in it.e.parts if p != ''][-2:] == key:
+                    return Node('col', parts=[it.alias or it.e.parts[-1]])
             last = e.parts[-1].lower()
             for it in first.items:
                 nm = it.alias or (it.e.parts[-1] if it.e.k == 'col' else None)
