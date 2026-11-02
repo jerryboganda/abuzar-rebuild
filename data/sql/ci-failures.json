@@ -1,0 +1,1049 @@
+{
+"run": 41371394790,
+"note": "failures of the last CI run: stage create/check (routines), prepare (statements), smoke (runtime NULL-argument calls)",
+"failures": [
+{
+"stage": "check",
+"category": "proc",
+"name": "SheerazConvert",
+"sqlstate": "42703",
+"message": "column \"patientid\" does not exist",
+"query": "UPDATE dbo._tabmaxkey SET tabmaxkey = CASE (SELECT max(patientid) FROM dbo.patient) WHEN NULL THEN 0 ELSE (SELECT max(patientid) FROM dbo.patient) END WHERE (tabname = 'Patient')"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "sp_Import_Purchases_From_DataCarryDB",
+"sqlstate": "42703",
+"message": "column \"rowid\" does not exist",
+"query": "UPDATE tmp_header AS header SET purinvcode = (v_purinvcode + rowid)"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "sp_Import_Quotation_From_DataCarryDB",
+"sqlstate": "42703",
+"message": "column \"rowid\" does not exist",
+"query": "UPDATE tmp_header AS header SET quotationcode = (v_quotationcode + rowid)"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "sp_Import_ServiceSales_From_DataCarryDB",
+"sqlstate": "42703",
+"message": "column \"rowid\" does not exist",
+"query": "UPDATE tmp_sheader AS sheader SET serviceinvcode = (v_serviceinvcode + rowid)"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "sp_IncomeStatment",
+"sqlstate": "42703",
+"message": "column d.bonusqty does not exist",
+"query": "INSERT INTO tmp_lt_stockadj SELECT h.acccode, round((sum((((d.looseqty + d.bonusqty)) * d.price)))::numeric, 0) AS netamt FROM dbo.adjheader AS h, dbo.adjdetail AS d WHERE (((((h.date >= v_ad_sdate) A"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "sp_IncomeStatment",
+"sqlstate": "42703",
+"message": "column d.bonusqty does not exist",
+"query": "INSERT INTO tmp_lt_stockadj2 SELECT h.acccode, round((sum((((d.looseqty + d.bonusqty)) * d.price)))::numeric, 0) AS netamt FROM dbo.adjheader AS h, dbo.adjdetail AS d WHERE (((((h.posteddate >= v_ad_s"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "sp_itemingodowns",
+"sqlstate": "42P01",
+"message": "relation \"dbo.stockinallgodown\" does not exist",
+"query": "DELETE FROM dbo.stockinallgodown"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "sp_itemingodowns",
+"sqlstate": "42P01",
+"message": "relation \"dbo.stockinallgodown\" does not exist",
+"query": "INSERT INTO dbo.stockinallgodown SELECT item.customicode, item.name, item.saleprice, item.purprice, item.avgprice, item.packunits, item.iccode, item.icatcode, item.packcode, item.manfcode, (SELECT nam"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "sp_PostServiceSRAllocationHeader",
+"sqlstate": "42P01",
+"message": "relation \"dbo.servicesrheader\" does not exist",
+"query": "UPDATE dbo.servicesrallocationheader AS servicesrallocationheader SET posted = 'Y', postdate = localtimestamp(3), postedby = v_ai_usercode FROM dbo.servicesrheader WHERE ((((servicesrallocationheader."
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferAccountingVoucher",
+"sqlstate": "42P01",
+"message": "relation \"dbo.glhtemp\" does not exist",
+"query": "v_headercount := coalesce((SELECT coalesce(count(*), 0) FROM dbo.glhtemp), 0)"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferAccountingVoucher",
+"sqlstate": "42P01",
+"message": "relation \"dbo.gldtemp\" does not exist",
+"query": "v_detailcount := coalesce((SELECT coalesce(count(*), 0) FROM dbo.gldtemp), 0)"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferAccountingVoucher",
+"sqlstate": "42P01",
+"message": "relation \"dbo.glhtemp\" does not exist",
+"query": "SELECT glvochcode, vochcatcode FROM dbo.glhtemp ORDER BY glvochcode"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferAccountingVoucher",
+"sqlstate": "42601",
+"message": "query does not return data"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferAccountingVoucher",
+"sqlstate": "42P01",
+"message": "relation \"dbo.gldtemp\" does not exist",
+"query": "UPDATE dbo.gldtemp SET glvochcode = -1000 WHERE (oldglvochcode = v_oldglvochcode)"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferAccountingVoucher",
+"sqlstate": "42P01",
+"message": "relation \"dbo.gldtemp\" does not exist",
+"query": "v_thiscount := coalesce((SELECT count(oldglvochcode) FROM dbo.gldtemp WHERE (oldglvochcode = v_oldglvochcode)), 0)"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferAccountingVoucher",
+"sqlstate": "42P01",
+"message": "relation \"dbo.glhtemp\" does not exist",
+"query": "UPDATE dbo.glhtemp SET glvochcode = -1000 WHERE (oldglvochcode = v_oldglvochcode)"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferAccountingVoucher",
+"sqlstate": "42P01",
+"message": "relation \"dbo.glhtemp\" does not exist",
+"query": "UPDATE dbo.glhtemp SET glvochcode = v_tabmaxkey, vouchercode = v_vouchercode, salesmancode = v_usercode, modifiedby = NULL, posted = 'N', postedby = NULL, transferable = 'N', transfered = 'N', transfe"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferInterGodownTransfers",
+"sqlstate": "42P01",
+"message": "relation \"dbo.thtemp\" does not exist",
+"query": "v_headercount := (SELECT coalesce(count(*), 0) FROM dbo.thtemp)"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferInterGodownTransfers",
+"sqlstate": "42P01",
+"message": "relation \"dbo.tdtemp\" does not exist",
+"query": "v_detailcount := (SELECT coalesce(count(*), 0) FROM dbo.tdtemp)"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferInterGodownTransfers",
+"sqlstate": "42P01",
+"message": "relation \"dbo.tdtemp\" does not exist",
+"query": "CREATE TABLE dbo.tdtemp2 AS SELECT * FROM (SELECT * FROM dbo.tdtemp WHERE (transcode < 0) UNION SELECT * FROM dbo.tdtemp WHERE (transcode < 0)) AS a"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferInterGodownTransfers",
+"sqlstate": "42P01",
+"message": "relation \"dbo.thtemp\" does not exist",
+"query": "SELECT oldinvcode, ttcode, sgcode, dgcode, coalesce(headerno, 1) AS headerno FROM dbo.thtemp ORDER BY oldinvcode"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferInterGodownTransfers",
+"sqlstate": "42601",
+"message": "query does not return data"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferInterGodownTransfers",
+"sqlstate": "42P01",
+"message": "relation \"dbo.tdtemp\" does not exist",
+"query": "SELECT icode, max(id) AS id, sum(qty), max(coalesce(reorderqty, 0)) AS reorderqty, max(coalesce(optimumqty, 0)) AS optimumqty FROM dbo.tdtemp WHERE (oldinvcode = v_oldinvcode) GROUP BY icode ORDER BY "
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferInterGodownTransfers",
+"sqlstate": "42601",
+"message": "query does not return data"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferInterGodownTransfers",
+"sqlstate": "42P01",
+"message": "relation \"dbo.tdtemp2\" does not exist",
+"query": "INSERT INTO dbo.tdtemp2 SELECT * FROM dbo.tdtemp WHERE (id = v_id)"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferPurchaseInvoices",
+"sqlstate": "42P01",
+"message": "relation \"dbo.pltemp\" does not exist",
+"query": "v_headercount := coalesce((SELECT coalesce(count(*), 0) FROM dbo.pltemp), 0)"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferPurchaseInvoices",
+"sqlstate": "42P01",
+"message": "relation \"dbo.pdtemp\" does not exist",
+"query": "v_detailcount := coalesce((SELECT coalesce(count(*), 0) FROM dbo.pdtemp), 0)"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferPurchaseInvoices",
+"sqlstate": "42P01",
+"message": "relation \"dbo.pltemp\" does not exist",
+"query": "SELECT oldinvcode, purcatcode, discperc, invgstperc1, coalesce(headerno, 1) AS headerno FROM dbo.pltemp ORDER BY oldinvcode"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferPurchaseInvoices",
+"sqlstate": "42601",
+"message": "query does not return data"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferPurchaseInvoices",
+"sqlstate": "42P01",
+"message": "relation \"dbo.pdtemp\" does not exist",
+"query": "SELECT icode, gcode, batch, expiry, purrowid, packqty, looseqty, bonusqty, packunits, purprice, discperc, unitsalestax, gstperc FROM dbo.pdtemp WHERE (oldinvcode = v_oldinvcode) ORDER BY purrowid"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferPurchaseInvoices",
+"sqlstate": "42601",
+"message": "query does not return data"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferPurchaseInvoices",
+"sqlstate": "42P01",
+"message": "relation \"dbo.pdtemp\" does not exist",
+"query": "UPDATE dbo.pdtemp SET avgprice = v_avgprice, purutn = v_maxutn, currstock = v_stock, newavgprice = (((((v_avgprice * v_stock)) + (v_itemcost))) / CASE (v_qty + v_stock) WHEN 0 THEN 1 ELSE ((v_qty + v_"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferPurchaseInvoices",
+"sqlstate": "42P01",
+"message": "relation \"dbo.pdtemp\" does not exist",
+"query": "v_newavgprice := coalesce((SELECT newavgprice FROM dbo.pdtemp WHERE (purrowid = v_purrowid)), 0)"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferPurchaseInvoices2",
+"sqlstate": "42P01",
+"message": "relation \"dbo.pltemp\" does not exist",
+"query": "v_headercount := coalesce((SELECT coalesce(count(*), 0) FROM dbo.pltemp), 0)"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferPurchaseInvoices2",
+"sqlstate": "42P01",
+"message": "relation \"dbo.pdtemp\" does not exist",
+"query": "v_detailcount := coalesce((SELECT coalesce(count(*), 0) FROM dbo.pdtemp), 0)"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferPurchaseInvoices2",
+"sqlstate": "42P01",
+"message": "relation \"dbo.pltemp\" does not exist",
+"query": "SELECT oldinvcode, purcatcode, discperc, invgstperc1, coalesce(headerno, 1) AS headerno FROM dbo.pltemp ORDER BY oldinvcode"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferPurchaseInvoices2",
+"sqlstate": "42601",
+"message": "query does not return data"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferPurchaseInvoices2",
+"sqlstate": "42P01",
+"message": "relation \"dbo.pdtemp\" does not exist",
+"query": "SELECT icode, gcode, batch, expiry, purrowid, packqty, looseqty, bonusqty, packunits, purprice, discperc, unitsalestax, gstperc FROM dbo.pdtemp WHERE (oldinvcode = v_oldinvcode) ORDER BY purrowid"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferPurchaseInvoices2",
+"sqlstate": "42601",
+"message": "query does not return data"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferPurchaseInvoices2",
+"sqlstate": "42P01",
+"message": "relation \"dbo.pdtemp\" does not exist",
+"query": "UPDATE dbo.pdtemp SET purinvcode = -1000 WHERE (purrowid = v_purrowid)"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferPurchaseInvoices2",
+"sqlstate": "42P01",
+"message": "relation \"dbo.pltemp\" does not exist",
+"query": "UPDATE dbo.pltemp SET purinvcode = -1000 WHERE (oldinvcode = v_oldinvcode)"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferSaleIntoSaleOrders",
+"sqlstate": "42P01",
+"message": "relation \"dbo.sohtemp\" does not exist",
+"query": "v_headercount := (SELECT coalesce(count(*), 0) FROM dbo.sohtemp)"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferSaleIntoSaleOrders",
+"sqlstate": "42P01",
+"message": "relation \"dbo.sohtemp\" does not exist",
+"query": "v_invcount := coalesce((SELECT count(saleinvcode) FROM dbo.sohtemp), 0)"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferSaleIntoSaleOrders",
+"sqlstate": "42P01",
+"message": "relation \"dbo.sohtemp\" does not exist",
+"query": "INSERT INTO tv_sp_transfersaleintosaleorders_tab_so (saleinvcode, newsaleordercode) SELECT saleinvcode, 0 AS newsaleordercode FROM dbo.sohtemp WHERE (saleinvcode > 0)"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferSaleIntoSaleOrders",
+"sqlstate": "42P01",
+"message": "relation \"dbo.sohtemp\" does not exist",
+"query": "UPDATE dbo.sohtemp SET newsaleordercode = (SELECT newsaleordercode FROM tv_sp_transfersaleintosaleorders_tab_so AS t WHERE (t.saleinvcode = sohtemp.saleinvcode))"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferSaleIntoSaleOrders",
+"sqlstate": "42P01",
+"message": "relation \"dbo.sodtemp\" does not exist",
+"query": "UPDATE dbo.sodtemp SET newsaleordercode = (SELECT sohtemp.newsaleordercode FROM dbo.sohtemp WHERE (sohtemp.saleinvcode = sodtemp.saleinvcode))"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferSaleIntoSaleOrders",
+"sqlstate": "42P01",
+"message": "relation \"dbo.sohtemp\" does not exist",
+"query": "INSERT INTO dbo.saleorderheader (saleordercode, custcode, usercode, date, originaldate, billingdate, discperc, flatdisc, misccharges, invgstperc1, posted, postdate, headerno, headerinvno, modifiedby, "
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferSaleIntoSaleOrders",
+"sqlstate": "42P01",
+"message": "relation \"dbo.sodtemp\" does not exist",
+"query": "INSERT INTO dbo.saleorderdetail (saleordercode, icode, gcode, looseqty, packunits, saleprice, avgprice, rate, discperc, itemflatdisc, saleitemdescription, packprice, unitsalestax, gstperc, bonusqty, r"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferSaleIntoSaleOrders",
+"sqlstate": "42P01",
+"message": "relation \"dbo.sohtemp\" does not exist",
+"query": "v_endsaleordercode := (SELECT max(newsaleordercode) FROM dbo.sohtemp)"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferSaleInvoices",
+"sqlstate": "42P01",
+"message": "relation \"dbo.shtemp\" does not exist",
+"query": "v_headercount := (SELECT coalesce(count(*), 0) FROM dbo.shtemp)"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferSaleInvoices",
+"sqlstate": "42P01",
+"message": "relation \"dbo.sdtemp\" does not exist",
+"query": "v_detailcount := (SELECT coalesce(count(*), 0) FROM dbo.sdtemp)"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferSaleInvoices",
+"sqlstate": "42P01",
+"message": "relation \"dbo.sdtemp\" does not exist",
+"query": "CREATE TABLE dbo.sdtemp2 AS SELECT * FROM (SELECT * FROM dbo.sdtemp WHERE (saleinvcode < 0) UNION SELECT * FROM dbo.sdtemp WHERE (saleinvcode < 0)) AS a"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferSaleInvoices",
+"sqlstate": "42P01",
+"message": "relation \"dbo.shtemp\" does not exist",
+"query": "SELECT s.oldinvcode, s.salecatcode, coalesce(s.headerno, 1) AS headerno, c.defaultgst FROM dbo.shtemp AS s, dbo.customer AS c WHERE (s.custcode = c.custcode) ORDER BY oldinvcode"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferSaleInvoices",
+"sqlstate": "42601",
+"message": "query does not return data"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferSaleInvoices",
+"sqlstate": "42P01",
+"message": "relation \"dbo.sdtemp\" does not exist",
+"query": "SELECT s.icode, s.gcode, max(s.rowid) AS id, sum(s.packqty) AS packqty, sum(s.bonusqty) AS bonusqty, sum(s.looseqty) AS looseqty, s.rowgroup, sum(CASE WHEN (s.due IS NULL) THEN 0 ELSE s.looseqty END) "
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferSaleInvoices",
+"sqlstate": "42601",
+"message": "query does not return data"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "SP_TransferSaleInvoices",
+"sqlstate": "42P01",
+"message": "relation \"dbo.sdtemp2\" does not exist",
+"query": "INSERT INTO dbo.sdtemp2 SELECT * FROM dbo.sdtemp WHERE (rowid = v_id)"
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "sp_yearly_sale_summary_monthwise_groping",
+"sqlstate": "42P01",
+"message": "relation \"tmp_mytable1\" does not exist",
+"query": "SELECT left(to_char(((((a.months)::text || '/01/') || (extract(year from v_dt_year)::integer)::text))::timestamp(3), 'Mon DD, YY'), 3) AS monthname, a.months, (SELECT count(DISTINCT (extract(day from "
+},
+{
+"stage": "check",
+"category": "proc",
+"name": "sp_yearly_sale_summary_monthwise_groping",
+"sqlstate": "42601",
+"message": "query does not return data"
+},
+{
+"stage": "prepare",
+"category": "stmt-embedded-select",
+"name": "emb:abuzarapp/traderappv1:692",
+"sqlstate": "42P01",
+"message": "relation \"dbo.script\" does not exist",
+"near": "SELECT max(sequenceid) FROM dbo.script"
+},
+{
+"stage": "prepare",
+"category": "stmt-embedded-select",
+"name": "emb:abuzarapp/traderappv1:726",
+"sqlstate": "42P01",
+"message": "relation \"dbo.script\" does not exist",
+"near": "SELECT query FROM dbo.script WHERE (sequenceid = $1)"
+},
+{
+"stage": "prepare",
+"category": "stmt-embedded-select",
+"name": "emb:components/w_entry_primitives:49",
+"sqlstate": "42703",
+"message": "column customer.code does not exist",
+"near": "SELECT max(customer.code) FROM dbo.customer"
+},
+{
+"stage": "prepare",
+"category": "stmt-embedded-select",
+"name": "emb:components/w_oldpreferences:87",
+"sqlstate": "42703",
+"message": "column salesman.password does not exist",
+"near": "SELECT salesman.name, salesman.password FROM dbo.salesman WHERE (salesman.salesmancode = $1)"
+},
+{
+"stage": "prepare",
+"category": "stmt-embedded-select",
+"name": "emb:components/w_password:19",
+"sqlstate": "42703",
+"message": "column salesman.password does not exist",
+"near": "SELECT salesman.password, salesmancode FROM dbo.salesman WHERE ((lower(salesman.password))::citext = $1)"
+},
+{
+"stage": "prepare",
+"category": "stmt-embedded-insert",
+"name": "emb:functions/f_generateprescriptionlog:7",
+"sqlstate": "42601",
+"message": "INSERT has more expressions than target columns",
+"near": "INSERT INTO dbo.prescriptionheaderlog SELECT $1 AS logid, ($2)::timestamp AS logdate, p.* FROM dbo.prescriptionheader AS p WHERE (p.prescode = $3)"
+},
+{
+"stage": "prepare",
+"category": "stmt-embedded-select",
+"name": "emb:issuereq/w_issue_request:931",
+"sqlstate": "42703",
+"message": "column \"gcode\" does not exist",
+"near": "SELECT DISTINCT coalesce(count(gcode), 0) AS gcode FROM dbo.issuereqdetail WHERE ((issuereqinvcode = $1) AND (gcode NOT IN (SELECT "
+},
+{
+"stage": "prepare",
+"category": "stmt-embedded-select",
+"name": "emb:issuereq/w_production:885",
+"sqlstate": "42703",
+"message": "column \"gcode\" does not exist",
+"near": "SELECT DISTINCT coalesce(count(gcode), 0) AS gcode FROM dbo.issuereqdetail WHERE ((issuereqinvcode = $1) AND (gcode NOT IN (SELECT "
+},
+{
+"stage": "prepare",
+"category": "stmt-embedded-select",
+"name": "emb:multientrygroups/w_groupitemwisepurexptemplate:6",
+"sqlstate": "42P01",
+"message": "relation \"dbo.groupitemwisepurexptemplate\" does not exist",
+"near": "SELECT coalesce(count(*), 0) FROM dbo.groupitemwisepurexptemplate WHERE (groupcode = $1)"
+},
+{
+"stage": "prepare",
+"category": "stmt-embedded-select",
+"name": "emb:multientrygroups/w_itempurexptemplate:6",
+"sqlstate": "42P01",
+"message": "relation \"dbo.groupitemwisepurexptemplate\" does not exist",
+"near": "SELECT coalesce(count(*), 0) FROM dbo.groupitemwisepurexptemplate WHERE (groupcode = $1)"
+},
+{
+"stage": "prepare",
+"category": "stmt-embedded-select",
+"name": "emb:receiptcomponents/w_groupitemwisereceiptexptemplate:6",
+"sqlstate": "42P01",
+"message": "relation \"dbo.groupitemwisereceiptexptemplate\" does not exist",
+"near": "SELECT coalesce(count(*), 0) FROM dbo.groupitemwisereceiptexptemplate WHERE (groupcode = $1)"
+},
+{
+"stage": "prepare",
+"category": "stmt-embedded-update",
+"name": "emb:salereturncomponents/w_salereturn:2168",
+"sqlstate": "42703",
+"message": "column \"ld_newavgprice\" does not exist",
+"near": "UPDATE dbo.srdetail SET avgprice = $1, newavgprice = ld_newavgprice WHERE (rowid = $2)"
+},
+{
+"stage": "prepare",
+"category": "stmt-embedded-update",
+"name": "emb:singleentry/w_locker:21",
+"sqlstate": "42P01",
+"message": "relation \"dbo.lockers\" does not exist",
+"near": "UPDATE dbo.lockers SET occupied = 'N'"
+},
+{
+"stage": "prepare",
+"category": "stmt-embedded-select",
+"name": "emb:singleentryitem/w_packcatclass:7",
+"sqlstate": "42703",
+"message": "column itempacking.icatcode does not exist",
+"near": "SELECT itempacking.icatcode FROM dbo.itempacking WHERE (itempacking.packcode = $1)"
+},
+{
+"stage": "prepare",
+"category": "stmt-embedded-select",
+"name": "emb:singleentryitem/w_packcatclass:37",
+"sqlstate": "42703",
+"message": "column itemcategory.packcode does not exist",
+"near": "SELECT itemcategory.packcode FROM dbo.itemcategory WHERE (itemcategory.catcode = $1)"
+},
+{
+"stage": "prepare",
+"category": "stmt-embedded-select",
+"name": "emb:singleentryitem/w_packcatclass:47",
+"sqlstate": "42703",
+"message": "column itemclass.catcode does not exist",
+"near": "SELECT itemclass.iccode FROM dbo.itemclass WHERE (itemclass.catcode = $1)"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-select",
+"name": "dw:abuzarapp/d_gene",
+"sqlstate": "42703",
+"message": "column preferences.terms does not exist",
+"near": "SELECT preferences.userid, preferences.terms, preferences.pagesize, preferences.headerno, preferences.pofooter, preferences.ite"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-select",
+"name": "dw:abuzarapp/d_newpreferences1",
+"sqlstate": "42703",
+"message": "column preferences.terms does not exist",
+"near": "SELECT preferences.userid, preferences.terms, preferences.pagesize, preferences.headerno, preferences.pofooter, preferences.ite"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-select",
+"name": "dw:abuzarapp/d_preferences",
+"sqlstate": "42703",
+"message": "column preferences.terms does not exist",
+"near": "SELECT preferences.userid, preferences.terms, preferences.pagesize, preferences.headerno, preferences.pofooter, preferences.ite"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-select",
+"name": "dw:accountreports/d_account_status_detail_recon",
+"sqlstate": "42703",
+"message": "column \"date\" does not exist",
+"near": "((v.acccode IN ($3)) AND (v.acccode = a.acccode)) AND (a.subcode = s.subacccode)) ORDER BY 5, 6, 1, date, 4, 12"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-select",
+"name": "dw:accountreports/d_account_status_detail_test",
+"sqlstate": "42703",
+"message": "column \"date\" does not exist",
+"near": "((v.acccode IN ($2)) AND (v.acccode = a.acccode)) AND (a.subcode = s.subacccode)) ORDER BY 5, 6, 1, date, 4, 12"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-select",
+"name": "dw:accountreports/d_account_status_detail_unpost_periodic",
+"sqlstate": "42703",
+"message": "column \"date\" does not exist",
+"near": "(v.acccode IN ($2))) AND (v.acccode = a.acccode)) AND (a.subcode = s.subacccode)) ORDER BY 5, 6, 1, date, 4, 12"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-select",
+"name": "dw:accountreports/d_cashflow_onecashacc",
+"sqlstate": "42804",
+"message": "UNION types text and integer cannot be matched",
+"near": "ower('GT_CashSub'))::citext))))))) AND (d.acccode = a.acccode)) GROUP BY d.acccode UNION ALL SELECT notes.notecode AS glvochcode, CASE WHEN (notes.notecatcode = 1) THEN notes.amount ELSE 0 END AS debi"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-select",
+"name": "dw:accountreports/d_cashflow_onecashacc_patient",
+"sqlstate": "42804",
+"message": "UNION types text and integer cannot be matched",
+"near": "ower('GT_CashSub'))::citext))))))) AND (d.acccode = a.acccode)) GROUP BY d.acccode UNION ALL SELECT notes.notecode AS glvochcode, CASE WHEN (notes.notecatcode = 1) THEN notes.amount ELSE 0 END AS debi"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-select",
+"name": "dw:accountreports/d_supplierledger",
+"sqlstate": "42703",
+"message": "column \"name\" does not exist",
+"near": "s AS n WHERE (((n.posted = 'N') AND (n.finalized = 'Y')) AND (n.acccode IN ($1))))))) AS s ORDER BY name, 10, 4, 2, 14"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-select",
+"name": "dw:accountreports/d_supplierledger_landscape",
+"sqlstate": "42703",
+"message": "column \"name\" does not exist",
+"near": "s AS n WHERE (((n.posted = 'N') AND (n.finalized = 'Y')) AND (n.acccode IN ($1))))))) AS s ORDER BY name, 9, 3, 2, 13"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-select",
+"name": "dw:accountreports/d_supplierledger_landscape_purexp",
+"sqlstate": "42703",
+"message": "column \"name\" does not exist",
+"near": "s AS n WHERE (((n.posted = 'N') AND (n.finalized = 'Y')) AND (n.acccode IN ($1))))))) AS s ORDER BY name, 10, 1, 4, 3, 22"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-select",
+"name": "dw:accountreports/d_supplierledger_landscape_pursumm",
+"sqlstate": "42703",
+"message": "column \"name\" does not exist",
+"near": "s AS n WHERE (((n.posted = 'N') AND (n.finalized = 'Y')) AND (n.acccode IN ($1))))))) AS s ORDER BY name, 9, 3, 2, 13"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-select",
+"name": "dw:accountreports/d_supplierledger_landscape_withdetail",
+"sqlstate": "42703",
+"message": "column \"name\" does not exist",
+"near": "s AS n WHERE (((n.posted = 'N') AND (n.finalized = 'Y')) AND (n.acccode IN ($4))))))) AS s ORDER BY name, 9, 3, 2, 13"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-select",
+"name": "dw:accountreports/d_supplierledger_summary",
+"sqlstate": "42703",
+"message": "column \"name\" does not exist",
+"near": "s AS n WHERE (((n.posted = 'N') AND (n.finalized = 'Y')) AND (n.acccode IN ($1))))))) AS s ORDER BY name, 9, 3, 2, 13"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-select",
+"name": "dw:accountreports/d_supplierledger_unpostedtrans",
+"sqlstate": "42703",
+"message": "column \"name\" does not exist",
+"near": "= s.suppcode))) AS s WHERE (((v.acccode = s.acccode) OR (v.alternateacccode = s.acccode))) ORDER BY name, 11, 1, 5, 3, 15"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-select",
+"name": "dw:accountreports/d_supplierledger_withgridlines",
+"sqlstate": "42703",
+"message": "column \"name\" does not exist",
+"near": "s AS n WHERE (((n.posted = 'N') AND (n.finalized = 'Y')) AND (n.acccode IN ($1))))))) AS s ORDER BY name, 10, 4, 2, 14"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-select",
+"name": "dw:accountsrespwin/d_accountledgerinvreport",
+"sqlstate": "42703",
+"message": "column \"date\" does not exist",
+"near": "ateacccode = a.acccode)))) AND (a.restricted = 'N')) AND (a.subcode = s.subacccode)) ORDER BY 1, 3, date, 6, 15, 7, 8, debit, credit"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-select",
+"name": "dw:accountsrespwin/d_accountledgerinvreport1",
+"sqlstate": "42703",
+"message": "column \"date\" does not exist",
+"near": "d.acccode = a.acccode)) AND (l.acccode = a.acccode)) AND (a.subcode = s.subacccode)) ORDER BY 1, 3, date, 6, 14, 7, 8, debit, credit"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-select",
+"name": "dw:components/d_newpreferences",
+"sqlstate": "42703",
+"message": "column preferences.terms does not exist",
+"near": "SELECT preferences.userid, preferences.terms, preferences.pagesize, preferences.headerno, preferences.pofooter, preferences.ite"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-pbselect",
+"name": "dw:components/d_password",
+"sqlstate": "42703",
+"message": "column salesman.password does not exist",
+"near": "SELECT salesman.password FROM dbo.salesman"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-procedure",
+"name": "dw:crsreports/d_crs_branch_itemstockposition#proc",
+"sqlstate": "42883",
+"message": "function dbo.sp_crs_fetch_itemstockposition(icode => unknown) does not exist",
+"near": "SELECT * FROM dbo.sp_crs_fetch_itemstockposition(icode => $1)"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-select",
+"name": "dw:crsreports/d_crs_supplierledger",
+"sqlstate": "42703",
+"message": "column \"name\" does not exist",
+"near": "lientinstanceid END)) AND (vgl.date BETWEEN ($3)::timestamp AND ($4)::timestamp)))))) AS s ORDER BY name, 12, 6, 4, 16"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-select",
+"name": "dw:crsreports/d_crs_supplierledger_landscape",
+"sqlstate": "42703",
+"message": "column \"name\" does not exist",
+"near": "lientinstanceid END)) AND (vgl.date BETWEEN ($3)::timestamp AND ($4)::timestamp)))))) AS s ORDER BY name, 11, 5, 4, 15"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-select",
+"name": "dw:multientry/d_issueform",
+"sqlstate": "42703",
+"message": "column gd1.optimumqty does not exist",
+"near": "name) AS itemname, 0 AS currlistrow, gd1.gcode, gd1.icode, gd2.currqty, CASE WHEN ((gd2.currqty - ((gd1.optimumqty - gd1.currqty))) >= 0) THEN (gd1.optimumqty - gd1.currqty) ELSE gd2.currqty END AS qt"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-select",
+"name": "dw:saleorder/d_workorder_printout",
+"sqlstate": "42804",
+"message": "UNION types text and smallint cannot be matched",
+"near": ") * interval '1 day') AS timetaken, receiptdetail.itemdescription AS remarks, NULL AS sourcegodown, receiptdetail.gcode AS targetgodown FROM dbo.customer, dbo.workorder, dbo.users, dbo.accounts, dbo.r"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-select",
+"name": "dw:salereports/d_sale_itemsnotsold",
+"sqlstate": "42P08",
+"message": "could not determine data type of parameter $2",
+"near": "N ($1)))) AS purinvdate, m.name AS manufacturer FROM dbo.item AS i, dbo.manufacturer AS m WHERE (((($2 IS NULL) AND (i.manfcode IN ($3))) AND (i.manfcode = m.manfcode)) AND (i.icode NOT IN (SELECT ico"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-select",
+"name": "dw:salereportssumm/d_daily_saleand_service_summary",
+"sqlstate": "42804",
+"message": "UNION types text and integer cannot be matched",
+"near": "S salesman, srledger.remarks AS remarks, srledger.accountfor AS accountfor, 'N' AS impactinventory, srledger.saleinvcode AS saleinvcode, (SELECT p.regno FROM dbo.patient AS p WHERE (p.patientcode = sr"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-select",
+"name": "dw:salereportssumm/d_daily_saleand_service_summary_patient",
+"sqlstate": "42804",
+"message": "UNION types text and integer cannot be matched",
+"near": "S salesman, srledger.remarks AS remarks, srledger.accountfor AS accountfor, 'N' AS impactinventory, srledger.saleinvcode AS saleinvcode, (SELECT p.regno FROM dbo.patient AS p WHERE (p.patientcode = sr"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-select",
+"name": "dw:salereportssumm/d_dailysale_sr_sum_inv_type_wise2",
+"sqlstate": "42804",
+"message": "UNION types text and integer cannot be matched",
+"near": "c, 2)))::numeric, 2)))) AS itemsalestax, srledger.accountfor AS accountfor, 'N' AS impactinventory, srledger.saleinvcode AS saleinvcode, (SELECT godown.name FROM dbo.godown WHERE (godown.gcode = max(s"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-select",
+"name": "dw:salereportssumm/d_dayssalessummery3",
+"sqlstate": "42P08",
+"message": "inconsistent types deduced for parameter $6",
+"near": "al)) WHEN 0 THEN 1 ELSE sum((saleinvtotal - srinvtotal)) END, 1)) AS profitperc, max(date) AS date, $6 AS commissionperc, ((coalesce(sum((saleinvtotal - srinvtotal)), 0) * $6) * 0.01) AS commission FR"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-select",
+"name": "dw:singleentry/d_departmentsection",
+"sqlstate": "42P01",
+"message": "relation \"dbo.departmentsection\" does not exist",
+"near": "SELECT ds.deptcode, s.sectcode FROM dbo.departmentsection AS ds JOIN dbo.section AS s ON (ds.sectcode = s.sectcode) WHERE (ds.deptcode ="
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-pbselect",
+"name": "dw:singleentry/d_test_detail",
+"sqlstate": "42P01",
+"message": "relation \"dbo.clinictest\" does not exist",
+"near": "SELECT clinictest.ctcode, clinictest.name, clinictest.testprice FROM dbo.clinictest WHERE (clinictest.ctcode = $1)"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-pbselect",
+"name": "dw:singleentry/d_test_list",
+"sqlstate": "42P01",
+"message": "relation \"dbo.clinictest\" does not exist",
+"near": "SELECT clinictest.ctcode, clinictest.name FROM dbo.clinictest"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-pbselect",
+"name": "dw:singleentry/ddd_balancecat",
+"sqlstate": "42P01",
+"message": "relation \"dbo.balancecategory\" does not exist",
+"near": "SELECT balancecategory.balcatcode, balancecategory.name FROM dbo.balancecategory"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-pbselect",
+"name": "dw:singleentryitem/d_godown_detail",
+"sqlstate": "42703",
+"message": "column godowndetail.reorderqty does not exist",
+"near": "SELECT godowndetail.gcode, godowndetail.icode, godowndetail.reorderqty, godowndetail.optimumqty, godowndetail.currqty FROM dbo.godowndetail"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-pbselect",
+"name": "dw:singleentryitem/d_godowndetail",
+"sqlstate": "42703",
+"message": "column godowndetail.reorderqty does not exist",
+"near": "SELECT godowndetail.gcode, godowndetail.icode, godowndetail.reorderqty, godowndetail.optimumqty, godowndetail.currqty FROM dbo.godowndetail WHERE ("
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-select",
+"name": "dw:sprntatod/d_alazizdist_wholesaleinvreport_full",
+"sqlstate": "42804",
+"message": "UNION types timestamp without time zone and text cannot be matched",
+"near": "ecatcode AS salecatcode, item.gcode AS gcode, saledetail.icode AS icode, saledetail.batch AS batch, saledetail.expiry AS expiry, (CASE ((trunc((saledetail.looseqty / saledetail.packunits))::integer - "
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-select",
+"name": "dw:sprntlton/d_medocalldist_saleinvreport_copied_rp",
+"sqlstate": "42P01",
+"message": "missing FROM-clause entry for table \"saleledgerl\"",
+"near": ") AND ((saleledger.salesmancode = users.usercode))) AND ((saledetail.icode = item.icode))) ORDER BY saleledgerl.saleinvcode, saledetail.rowid"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-select",
+"name": "dw:sprntlton/d_medocalldist_saleinvreport_copied_rp2",
+"sqlstate": "42P01",
+"message": "missing FROM-clause entry for table \"saleledgerl\"",
+"near": ") AND ((saleledger.salesmancode = users.usercode))) AND ((saledetail.icode = item.icode))) ORDER BY saleledgerl.saleinvcode, saledetail.rowid"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-select",
+"name": "dw:sprntttoz/d_unitedmedicine_wholesaleinvreport_full",
+"sqlstate": "42804",
+"message": "UNION types timestamp without time zone and text cannot be matched",
+"near": "ecatcode AS salecatcode, item.gcode AS gcode, saledetail.icode AS icode, saledetail.batch AS batch, saledetail.expiry AS expiry, (CASE ((trunc((saledetail.looseqty / saledetail.packunits))::integer - "
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-select",
+"name": "dw:sprntttoz/d_unitedpharma2_wholesaleinvreport_full",
+"sqlstate": "42804",
+"message": "UNION types timestamp without time zone and text cannot be matched",
+"near": "ecatcode AS salecatcode, item.gcode AS gcode, saledetail.icode AS icode, saledetail.batch AS batch, saledetail.expiry AS expiry, (CASE ((trunc((saledetail.looseqty / saledetail.packunits))::integer - "
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-select",
+"name": "dw:sprntttoz/d_wholesaleinvreport_manfwise_full",
+"sqlstate": "42702",
+"message": "column reference \"printbalance\" is ambiguous",
+"near": "ufacturer.manfcode, manufacturer.name AS manufacturer, 0 AS balance, customer.custcode AS custcode, printbalance FROM dbo.saleledger, dbo.saledetail, dbo.accounts, dbo.customer, dbo.users, dbo.item, d"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-select",
+"name": "dw:sprntttoz/d_zafartractor_transferinvreport",
+"sqlstate": "42702",
+"message": "column reference \"headerno\" is ambiguous",
+"near": "g WHERE ((g.icode = td.icode) AND (g.gcode = th.sgcode))), 0) AS sourcestk, sum(td.qty) AS qty, max(headerno) AS headerno FROM dbo.tdetail AS td, dbo.theader AS th, dbo.item AS i WHERE ((((th.transcod"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-select",
+"name": "dw:stockreports/d_stockinhand_transitstock_crosstab",
+"sqlstate": "42803",
+"message": "column \"t.name\" must appear in the GROUP BY clause or be used in an aggregate function",
+"near": "$2)))) AS t ON (((gd.icode = t.icode) AND (gd.gcode = t.gcode))) GROUP BY t.gcode, t.icode ORDER BY t.name, t.gcode"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-select",
+"name": "dw:studentcomponents/d_cust_student_servicetemplatedetail",
+"sqlstate": "42P01",
+"message": "missing FROM-clause entry for table \"studentservicetemplatedetail\"",
+"near": "tecode = $1) AND (customerstudentservicetemplatedetail.studentcode = student.studentcode)) ORDER BY studentservicetemplatedetail.rowid"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-pbselect",
+"name": "dw:templates/d_dispatachlist",
+"sqlstate": "42703",
+"message": "column dispatchheader.biltynumber does not exist",
+"near": "SELECT dispatchheader.dispcode, dispatchheader.biltynumber, dispatchheader.goodagncyname, dispatchheader.date FROM dbo.dispatchheade"
+},
+{
+"stage": "prepare",
+"category": "stmt-dw-select",
+"name": "dw:useratten/d_userattendance",
+"sqlstate": "42703",
+"message": "column userattendance.in_datetime does not exist",
+"near": "SELECT userattendance.usercode, userattendance.in_datetime, userattendance.out_datetime, userattendance.remarks, userattendance.rowi"
+},
+{
+"stage": "smoke",
+"category": "smoke-proc",
+"name": "SP_DB_Fetch_DropBoxInfo",
+"sqlstate": "42703",
+"message": "column \"mysitecode\" does not exist"
+},
+{
+"stage": "smoke",
+"category": "smoke-proc",
+"name": "sp_IncomeStatment",
+"sqlstate": "42703",
+"message": "column d.bonusqty does not exist"
+},
+{
+"stage": "smoke",
+"category": "smoke-proc",
+"name": "sp_itemingodowns",
+"sqlstate": "42P01",
+"message": "relation \"dbo.stockinallgodown\" does not exist"
+},
+{
+"stage": "smoke",
+"category": "smoke-proc",
+"name": "sp_test1",
+"sqlstate": "42P01",
+"message": "relation \"tmp_lt_accounts\" does not exist"
+},
+{
+"stage": "smoke",
+"category": "smoke-proc",
+"name": "SP_TransferAccountingVoucher",
+"sqlstate": "42P01",
+"message": "relation \"dbo.glhtemp\" does not exist"
+},
+{
+"stage": "smoke",
+"category": "smoke-proc",
+"name": "SP_TransferInterGodownTransfers",
+"sqlstate": "42P01",
+"message": "relation \"dbo.thtemp\" does not exist"
+},
+{
+"stage": "smoke",
+"category": "smoke-proc",
+"name": "SP_TransferPurchaseInvoices",
+"sqlstate": "42P01",
+"message": "relation \"dbo.pltemp\" does not exist"
+},
+{
+"stage": "smoke",
+"category": "smoke-proc",
+"name": "SP_TransferPurchaseInvoices2",
+"sqlstate": "42P01",
+"message": "relation \"dbo.pltemp\" does not exist"
+},
+{
+"stage": "smoke",
+"category": "smoke-proc",
+"name": "SP_TransferSaleIntoSaleOrders",
+"sqlstate": "42P01",
+"message": "relation \"dbo.sohtemp\" does not exist"
+},
+{
+"stage": "smoke",
+"category": "smoke-proc",
+"name": "SP_TransferSaleInvoices",
+"sqlstate": "42P01",
+"message": "relation \"dbo.shtemp\" does not exist"
+},
+{
+"stage": "smoke",
+"category": "smoke-proc",
+"name": "SP_WaseelaMini_Fetch_SalesOrders",
+"sqlstate": "42804",
+"message": "column \"webordercode\" is of type integer but expression is of type boolean"
+}
+]
+}

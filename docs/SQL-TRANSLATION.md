@@ -123,3 +123,21 @@ that order, `param_types` the PostgreSQL types derived from the DataWindow argum
 * code that reads SQL Server catalogs (`sysobjects`, `sysindexes`, `OBJECT_ID(@x)`), uses COM automation (`sp_OA*`), `xp_cmdshell`, `msdb` jobs, linked servers or
   other databases (`SheerazDBV1.*`): the statement is kept as a comment and replaced by `RAISE EXCEPTION ... ERRCODE '0A000'`; the rest of the routine is translated;
 * `sp_executesql` with parameters, `COMPUTE BY`, `GROUP BY ALL`, `GOTO`, `SET ROWCOUNT n`, `TOP n PERCENT`, legacy `*=` outer joins.
+
+## Hand-off notes for the backend
+
+* **Parameter types.** Translated routines take `citext` for every T-SQL character parameter. `text -> citext` is only an assignment cast in PostgreSQL, so a
+  bound `text` value must be sent untyped or cast: `dbo.f(name => $1::citext)`. The statements in `statements.json` are untyped `$n` and let PostgreSQL
+  infer the type from the column (`param_types` is only a fallback for the few statements where inference alone fails).
+* **Cursors.** Close every returned refcursor after `FETCH ALL` (`CLOSE "<name>"`) before calling the next routine in the same transaction.
+* **Transactions.** Translated procedures never `COMMIT`/`ROLLBACK`; a T-SQL `ROLLBACK` raises SQLSTATE `TS001` (roll the transaction back and report the failure),
+  T-SQL `RAISERROR` with severity >= 11 raises `P0001`, an untranslated statement raises `0A000`.
+* **Dates.** `GETDATE()` is `localtimestamp(3)` (transaction start time). Date literals written as `'MM/DD/YYYY'` rely on the default `DateStyle = ISO, MDY`.
+* **Dynamic SQL built in PowerScript** (`embedded-dynamic`, 122 sites) cannot be translated statically: `statements.json` keeps the assignments that build the string
+  (`builder`) so the ported scripts can be rewritten to build PostgreSQL text directly. Dynamic SQL built inside stored procedures is translated as far as
+  its literal parts allow (see `frag_fix`/`frag_extra` in `routines.py` and `dbo.tsql_dyn`).
+* **Work tables.** Report procedures write to permanent work tables (`ReportData`, `VirtualGLTemp`, ...) exactly like the original; concurrent users therefore
+  share them as before.
+* **Regeneration.** `python -I tools/tsql/build.py --src <parent project> --repo .` then `python -I tools/tsql/stmts.py --src <parent project> --repo .`
+  (the second step also merges the DataWindow-declared result columns into `proc_signatures.json`). `python -I tools/tsql/selftest.py` checks the translator
+  without a database; `tools/tsql/functional_test.py` runs the mechanism tests against PostgreSQL (done by `.github/workflows/sql.yml`).
