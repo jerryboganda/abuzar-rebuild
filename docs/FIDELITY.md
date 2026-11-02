@@ -30,8 +30,19 @@ Tools: `tools/orig/` (crawler, crop, icon and sprite builders), `web/tools/{gen-
 | Scroll bars of a DataWindow control | only when the control has `HScrollBar` / `VScrollBar` (d_login's dw_remote has none: invisible in the original) |
 | String display format `'*****';'*****'` | sections text; zero-length; null, quoted literals - the password column shows `*****` whatever it holds |
 
+## Behaviours found by running both side by side
+* A tab control raises SelectionChanging / SelectionChanged for its first page when the window comes up: the entry windows (Users, Item, Sale Template) build their blank new form there.
+* `getenvironment` reports the real screen: windows size their tab and DataWindows as 99 % / 98 % of it (`pixelstounits(screenwidth)`), the control tree of the original confirms it (tab 1901 x 897 px on 1920 x 1080).
+* Posted events (`post event`, `postevent`) run one after the other, each to its end; while a modal window or a message box waits for its answer the queue goes on.
+* `DataWindow.GetChild` leaves the variable usable even when the column has no dropdown (reports call `SetTransObject` on it without testing the return code).
+* A control inside the rectangle of a hidden group box that carries no `visible` attribute is hidden in the original (the invoice / price fields of the argument windows); `dw_itemslist` of the entry windows is hidden until a script shows it.
+* Group boxes are only a frame and a caption: transparent, never in front of the controls inside them. Border defaults to on for edit-like controls, off for labels and check boxes.
+* A DataWindow control scrolls only where it has `HScrollBar` / `VScrollBar`; a form taller than the control shows from its top.
+* String display formats `'*****';'*****'` show for empty columns, too (password columns).
+* `Backup Database` is a `pg_dump`; SQL Agent job lookups (`SysJobs`) read `dbo.sysjobs`.
+
 ## Not yet matched
-* The window height of response windows: the original's client area of the Login window is 234 px, the definition says 1016 PBU = 254 px.
+* The window height of response windows: measured factor 0.924 of the height in units (Login 234 px, Select Format 306 px), the reason is unknown.
 * Dropdown menu pixel metrics (width, padding) were approximated from screenshots; the crawler does not open dropdowns.
 * One menu caption: the original shows "Sale And Return " where `m_entry` has "Sale And Return (One Category)" (changed by a script path not yet found).
 * Data-dependent screens need real data in the rebuild's database.
