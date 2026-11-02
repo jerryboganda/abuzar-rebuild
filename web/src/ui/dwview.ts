@@ -66,6 +66,15 @@ function stringFormat(v: string | null, fmt: string): string {
   return pick.replace(/@|/g, (m) => (m === '@' ? (v ?? '')[i++] ?? '' : '@'))
 }
 
+let measureCtx: CanvasRenderingContext2D | null = null
+/** width in px of a text in a CSS font */
+function measure(font: string, text: string): number {
+  measureCtx ??= document.createElement('canvas').getContext('2d')
+  if (!measureCtx) return 0
+  measureCtx.font = font
+  return Math.max(...text.split('\n').map((l) => measureCtx!.measureText(l).width))
+}
+
 export class DwView {
   ctl: NDwBase
   host: HTMLElement
@@ -608,6 +617,25 @@ export class DwView {
       st.background = o['brush.hatch'] === '6' ? pbColor(o['brush.color'], 'transparent') : 'transparent'
       return el
     }
+    if (o.type === 'groupbox') {
+      // the themed group box: a thin rounded frame with the (bold) caption set into its top line
+      const fh = Number(o['font.height'] ?? -9)
+      const fpx = fontSize(fh) * (96 / 72)
+      st.border = 'none'
+      st.overflow = 'visible'
+      st.pointerEvents = 'none'
+      const frame = document.createElement('div')
+      frame.style.cssText = `position:absolute;left:0;right:0;bottom:0;top:${Math.round(fpx / 2)}px;border:1px solid #dcdcdc;border-radius:4px;box-sizing:border-box`
+      el.appendChild(frame)
+      const text = await this.prop(m, o, 'text', row, band)
+      if (text) {
+        const cap = document.createElement('span')
+        cap.textContent = text
+        cap.style.cssText = `position:absolute;left:8px;top:0;padding:0 3px;white-space:pre;line-height:${Math.round(fpx * 1.25)}px;background:${pbColor(m.def.datawindow.color, '#f0f0f0')};font:${cssFont({ face: o['font.face'] || 'Arial', size: fontSize(fh), weight: Number(o['font.weight'] ?? 400), italic: false, underline: false, strike: false })}`
+        el.appendChild(cap)
+      }
+      return el
+    }
     if (o.type === 'bitmap') {
       // the file of the picture can be set at run time (the QR code of an invoice is written to qrcode.bmp before the report prints)
       const file = (await this.prop(m, o, 'filename', row, band)) || o.filename || ''
@@ -669,8 +697,20 @@ export class DwView {
     st.padding = '0 2px'
     if (o.type === 'text') {
       // the text of a label may carry an expression after ~t ("static~texpression")
-      const t = await this.prop(m, o, 'text', row, band)
-      setMnemonic(el, t.replace(/~r~n/g, '\n'))
+      const t = (await this.prop(m, o, 'text', row, band)).replace(/~r~n/g, '\n')
+      setMnemonic(el, t)
+      // a label wider than its box wraps at the words (the grid headers `Manufacturer Name`, `P/O Base Period (Days)` show on two lines)
+      const boxW = sx(num(o, 'width')) - 4
+      const boxH = sy(num(o, 'height'))
+      const fpx = fontSize(fh) * (96 / 72)
+      if (boxW > 8 && boxH >= fpx * 1.9 && (t.includes('\n') || t.includes('\r') || measure(st.font, t) > boxW)) {
+        // explicit line breaks are kept as they are; only a single long line wraps at the words
+        st.whiteSpace = t.includes('\n') || t.includes('\r') ? 'pre' : 'pre-wrap'
+        st.lineHeight = `${Math.round(fpx * 1.25)}px`
+        st.display = 'flex'
+        st.alignItems = 'center'
+        st.justifyContent = al === '1' ? 'flex-end' : al === '2' ? 'center' : 'flex-start'
+      }
       return el
     }
     if (o.type === 'button') {
@@ -703,6 +743,9 @@ export class DwView {
       el.style.gap = '3px'
     } else el.textContent = await this.display(m, o, v)
     if (o.type === 'column') {
+      // a drop-down that uses the arrow as its border shows it all the time; a spin edit mask shows its two arrows
+      if (o['dddw.useasborder'] === 'yes' || o['ddlb.useasborder'] === 'yes') el.appendChild(Object.assign(document.createElement('span'), { className: 'dd-arrow' }))
+      else if (o['editmask.spin'] === 'yes') el.appendChild(Object.assign(document.createElement('span'), { className: 'dd-spin' }))
       const protect = (await this.prop(m, o, 'protect', row, band)) === '1'
       const tab = num(o, 'tabsequence', 0)
       if (!protect && tab > 0) {
@@ -750,7 +793,26 @@ export class DwView {
     return view.buildBody(child, false, false)
   }
 
+  /** the code table of a drop-down list box / code-table column: `Yes<tab>Y/No<tab>N/` of the table definition as [display, data] pairs */
+  private codeTable(m: DwModel, o: DwObject): [string, string][] | null {
+    if (o.type !== 'column') return null
+    const ddlb = Object.keys(o).some((k) => k.startsWith('ddlb.'))
+    if (!ddlb && o['edit.codetable'] !== 'yes' && o['editmask.codetable'] !== 'yes') return null
+    const ci = m.colIndex(o.name)
+    const raw = ci >= 0 ? m.def.table.columns[ci].values : undefined
+    if (!raw) return null
+    const out: [string, string][] = []
+    for (const part of raw.split('/')) {
+      if (!part) continue
+      const [d, v] = part.split('\t')
+      out.push([d, v ?? d])
+    }
+    return out.length ? out : null
+  }
+
   private async display(m: DwModel, o: DwObject, v: unknown): Promise<string> {
+    const ct = v === null || v === undefined ? null : this.codeTable(m, o)
+    if (ct) return ct.find(([, d]) => d === toStr(v))?.[0] ?? toStr(v)
     if (v === null || v === undefined) {
       // an empty column still shows its display format when that has a section for null / zero-length text (the password columns show `*****`)
       const f = splitExpr(o.format).value
@@ -793,6 +855,40 @@ export class DwView {
           this.ctl.changed()
         }
       })
+      return
+    }
+    const ct = Object.keys(o).some((k) => k.startsWith('ddlb.')) ? this.codeTable(m, o) : null
+    if (ct) {
+      const sel = document.createElement('select')
+      sel.className = 'dw-edit'
+      sel.style.cssText = cell.style.cssText + ';z-index:5;line-height:normal'
+      const cur = toStr(m.buf.primary[row - 1]?.v[ci])
+      for (const [d, v] of ct) {
+        const op = document.createElement('option')
+        op.value = v
+        op.textContent = d
+        if (v === cur) op.selected = true
+        sel.appendChild(op)
+      }
+      cell.parentElement?.appendChild(sel)
+      this.editor = sel
+      sel.focus()
+      const done = () => {
+        if (this.editor !== sel) return
+        this.editor = null
+        const val = sel.value
+        sel.remove()
+        if (val !== cur) {
+          void this.ctl.rt.fire(this.ctl, 'itemchanged', [row, { name: o.name }, val]).then((rej) => {
+            if (rej !== 1 && rej !== 2) {
+              m.setItem(row, ci + 1, val)
+              this.ctl.changed()
+            }
+          })
+        }
+      }
+      sel.addEventListener('change', done)
+      sel.addEventListener('blur', done)
       return
     }
     if (o['dddw.name']) {

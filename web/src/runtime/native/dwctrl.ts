@@ -483,6 +483,8 @@ export class NDwBase extends PBObject {
       ch.dwName = dddw.toLowerCase()
       ch.ready = ch.loadDef(ch.dwName)
       if (this.trans) ch.trans = this.trans
+      // a script that retrieves the child (`idc_category.retrieve()`) changes what the column shows: the parent repaints
+      ch.listeners.add(() => this.changed())
       store.set(name, ch)
     }
     if (ref instanceof Ref) {

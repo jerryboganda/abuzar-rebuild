@@ -49,6 +49,8 @@ Tools: `tools/orig/` (crawler, crop, icon and sprite builders), `web/tools/{gen-
 * A column whose initial value is `today` takes the current date / time when a row is inserted (the sale template's date shows `02/11/2026 11:46`).
 * `object.<col>.visible = false` (a boolean) hides the column: it used to arrive as `no`, which the view did not read as 0, so every preference-driven hiding (header, item code, alias, godown column ...) was ignored. `visible` / `protect` are stored as `1` / `0`.
 * A grid DataWindow (processing 1) leaves a hidden column out together with its header and total, and the columns on its right move left (Adjustment Increase shows No / Item Name / Batch / Expiry / Qty / Price / Total).
+* Code-table columns (`values="Yes<tab>Y/No<tab>N/"` of the table definition with a drop-down list box style) show the display text (`Yes`) and edit with a list; a drop-down column that uses the arrow as its border (`dddw.useasborder` / `ddlb.useasborder`) shows the arrow all the time; a spin edit mask shows its arrows.
+* DataWindow labels with a line break keep it and sit in the header box (`P/O Base` / `Period (Days)`); `groupbox` objects draw a thin rounded frame with the bold caption set into it; the parent redraws when a script retrieves a drop-down child.
 * First-run preferences: `GroupCustomerCategory` is off (the migration of the original updates `preferences.groupcustomercategory = 'N'`), otherwise Cash / Credit Sale refuse to open for a group without customer categories.
 ## Not yet matched
 * The window height of response windows: measured factor 0.924 of the height in units (Login 234 px, Select Format 306 px), the reason is unknown.
