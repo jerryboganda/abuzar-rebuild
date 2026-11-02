@@ -265,6 +265,10 @@ export function registerSysFuncs(rt: Runtime): void {
 }
 
 /** pixels per PowerBuilder unit (system font cell 6 x 13 pixels: 1 PBU = 1/32 cell width, 1/64 cell height) - calibrate against the original */
-/** measured on the original running on Windows 11 at 96 dpi (Cash Sale window: tab page top + 876 PBU = grid header): 8 x 16 dialog base units */
-export const PX_PER_PBU_X = 8 / 32
+/**
+ * measured on the original running on Windows 11 at 96 dpi: vertically 16/64 (Cash Sale: tab page top + 876 PBU = grid header, Login: Ok button at 808 PBU = 203 px
+ * below the title bar), horizontally 7/32 (Login: window 1582 PBU = 346 px, Ok button at 306 PBU = 68 px, Cancel at 887 PBU = 195 px).
+ * That is a dialog base unit of 7 x 16 pixels.
+ */
+export const PX_PER_PBU_X = 7 / 32
 export const PX_PER_PBU_Y = 16 / 64

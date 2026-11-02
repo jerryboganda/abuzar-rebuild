@@ -1,5 +1,5 @@
 // DOM implementation of the UiHost: windows, MDI frame, menus, controls, message boxes.
-import { toolbarItems } from './toolbar.ts'
+import { toolbarItems, iconPos } from './toolbar.ts'
 import type { Runtime, UiHost } from '../runtime/interp.ts'
 import { PBObject } from '../runtime/object.ts'
 import { NControl, NWindow } from '../runtime/native/controls.ts'
@@ -51,6 +51,12 @@ export class DomUi implements UiHost {
     document.addEventListener('keydown', (e) => {
       const k = keyEnum(e)
       if (k) this.down.add(k)
+      // accelerators of the menu of the active sheet: `shortcut` = virtual key + 256 (Ctrl) + 512 (Alt) + 1024 (Shift)
+      const fkey = e.keyCode >= 112 && e.keyCode <= 123
+      if ((e.ctrlKey || e.altKey || fkey || e.keyCode === 45 || e.keyCode === 46) && !(e.ctrlKey && e.altKey && e.key === 'AltGraph')) {
+        const code = e.keyCode + (e.ctrlKey ? 256 : 0) + (e.altKey ? 512 : 0) + (e.shiftKey ? 1024 : 0)
+        if (this.mdi?.fireShortcut(code)) e.preventDefault()
+      }
     })
     document.addEventListener('keyup', (e) => {
       const k = keyEnum(e)
@@ -278,7 +284,7 @@ export class WinView {
     if (titlebar) {
       const tb = document.createElement('div')
       tb.className = 'tbar'
-      tb.innerHTML = '<div class="ttl"></div><div class="cls">✕</div>'
+      tb.innerHTML = '<img class="ic" src="app-icon.png" alt=""><div class="ttl"></div><div class="cls">✕</div>'
       this.ttlEl = tb.querySelector('.ttl') as HTMLElement
       this.ttlEl.textContent = str(w, 'title')
       ;(tb.querySelector('.cls') as HTMLElement).onclick = () => void ui.rt.closeWindow(w)
@@ -457,6 +463,7 @@ export class WinView {
     this.client.appendChild(this.mdiClient)
     const st = document.createElement('div')
     st.className = 'status'
+    st.textContent = 'Ready'
     this.client.appendChild(st)
     if (menuName) void this.loadMenu(menuName, bar)
   }
@@ -484,6 +491,28 @@ export class WinView {
     this.toolSig = ''
   }
 
+  statusText(t: string): void {
+    const st = this.client.querySelector('.status') as HTMLElement | null
+    if (st) st.textContent = t
+  }
+
+  /** runs the menu item with this accelerator in the menu that is shown (enabled and visible items only) */
+  fireShortcut(code: number): boolean {
+    const find = (m: PBObject): PBObject | null => {
+      for (const it of m.children.values()) {
+        if (it.props.get('visible') === false) continue
+        if (!it.children.size && Number(it.props.get('shortcut') ?? 0) === code && it.props.get('enabled') !== false) return it
+        const r = find(it)
+        if (r) return r
+      }
+      return null
+    }
+    const hit = this.shownMenu ? find(this.shownMenu) : null
+    if (!hit) return false
+    void this.ui.rt.fire(hit, 'clicked')
+    return true
+  }
+
   /** the toolbar follows the state of the menu items (sheets enable / disable them while the user works) */
   private frameMenu: PBObject | null = null
   private shownMenu: PBObject | null = null
@@ -508,6 +537,7 @@ export class WinView {
       const sig = items.map((x) => `${x.button.name}${x.button.enabled ? 1 : 0}${x.button.space ? 's' : ''}${x.button.text}`).join('|')
       if (sig === this.toolSig) return
       this.toolSig = sig
+      tool.style.display = items.length ? '' : 'none' // the original's frame shows no toolbar until a sheet brings its own
       tool.replaceChildren()
       for (const { item, button } of items) {
         if (button.space) {
@@ -518,9 +548,15 @@ export class WinView {
         const b = document.createElement('button')
         b.className = 'tb' + (button.enabled ? '' : ' dis')
         b.title = button.text
-        b.innerHTML = `<span class="g"></span><span class="t"></span>`
-        ;(b.querySelector('.g') as HTMLElement).textContent = button.glyph
-        ;(b.querySelector('.t') as HTMLElement).textContent = button.text
+        const pic = document.createElement('span')
+        pic.className = 'pic'
+        const spot = iconPos(button.stock)
+        if (spot !== null) pic.style.backgroundPosition = `-${spot * 16}px 0`
+        else {
+          pic.classList.add('gl')
+          pic.textContent = button.glyph
+        }
+        b.appendChild(pic)
         b.disabled = !button.enabled
         b.onclick = () => void this.ui.rt.fire(item, 'clicked')
         tool.appendChild(b)
@@ -539,6 +575,8 @@ export class WinView {
       const mi = document.createElement('div')
       mi.className = 'mi'
       mi.textContent = caption(str(item, 'text'))
+      mi.onmouseenter = () => this.statusText(str(item, 'microhelp') || caption(str(item, 'text')))
+      mi.onmouseleave = () => this.statusText('Ready')
       mi.onclick = (e) => {
         e.stopPropagation()
         const open = bar.querySelector('.mi.open')
@@ -575,11 +613,19 @@ export class WinView {
       }
       const it = document.createElement('div')
       it.className = 'it' + (sub.props.get('enabled') === false ? ' dis' : '')
+      const [label, hot] = caption(text).split('	')
+      const ck = document.createElement('span')
+      ck.className = 'ck'
+      ck.textContent = sub.props.get('checked') === true ? '✓' : ''
       const l = document.createElement('span')
-      l.textContent = (sub.props.get('checked') === true ? '✓ ' : '') + caption(text)
+      l.className = 'lb'
+      l.textContent = label.trim()
       const r = document.createElement('span')
-      r.textContent = sub.children.size ? '▶' : str(sub, 'shortcut') ? '' : ''
-      it.append(l, r)
+      r.className = sub.children.size ? 'ar' : 'hk'
+      r.textContent = sub.children.size ? '' : (hot ?? '').trim()
+      it.append(ck, l, r)
+      it.onmouseenter = () => this.statusText(str(sub, 'microhelp') || label.trim())
+      it.onmouseleave = () => this.statusText('Ready')
       if (sub.children.size) {
         const subDrop = this.dropdown(sub)
         subDrop.classList.add('sub')
@@ -638,7 +684,7 @@ export class WinView {
 
   private borderClass(c: PBObject, el: HTMLElement): void {
     const b = num(c, 'borderstyle', 0)
-    if (!bool(c, 'border', true) && b === 0) return
+    if (!bool(c, 'border', true)) return // BorderStyle only applies while Border is on
     if (b === 5) el.classList.add('lowered')
     else if (b === 6) el.classList.add('raised')
     else if (b === 2 || b === 1) el.classList.add('box')

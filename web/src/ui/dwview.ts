@@ -19,7 +19,7 @@ const BORDER_CSS: Record<string, string> = {
   '2': '1px solid #000',
   '3': '1px solid #404040',
   '4': 'none;border-bottom:1px solid #000',
-  '5': '1px solid;border-color:#808080 #fff #fff #808080', // lowered
+  '5': '1px solid #abadb3', // lowered: a themed edit box on Windows 10/11 (measured on the login window of the original)
   '6': '1px solid;border-color:#fff #808080 #808080 #fff', // raised
   '7': '1px solid #000',
 }
@@ -40,6 +40,30 @@ interface FlowItem {
   band: string
   row: number
   cls: string
+}
+
+/**
+ * display format of a string column: up to three sections (text; zero-length text; null) separated by `;`, `@` stands for one character of the value,
+ * quoted text and other characters are literal (d_login shows `'*****';'*****'` for the password column whatever it holds)
+ */
+function stringFormat(v: string | null, fmt: string): string {
+  const sections: string[] = []
+  let cur = ''
+  let q = ''
+  for (const ch of fmt) {
+    if (q) {
+      if (ch === q) q = ''
+      else cur += ch === '@' ? '' : ch
+    } else if (ch === "'" || ch === '"') q = ch
+    else if (ch === ';') {
+      sections.push(cur)
+      cur = ''
+    } else cur += ch
+  }
+  sections.push(cur)
+  const pick = v === null ? (sections[2] ?? sections[1] ?? '') : v === '' ? (sections[1] ?? '') : sections[0]
+  let i = 0
+  return pick.replace(/@|/g, (m) => (m === '@' ? (v ?? '')[i++] ?? '' : '@'))
 }
 
 export class DwView {
@@ -83,6 +107,11 @@ export class DwView {
       if (!m) {
         this.root.textContent = ''
         return
+      }
+      // the scroll bars are attributes of the control (HScrollBar / VScrollBar), not of the DataWindow object; without them nothing scrolls by mouse
+      if (!this.previewOn(m)) {
+        this.root.style.overflowX = this.ctl.props.get('hscrollbar') === true ? 'auto' : 'hidden'
+        this.root.style.overflowY = this.ctl.props.get('vscrollbar') === true ? 'auto' : 'hidden'
       }
       await this.paint(m)
     } finally {
@@ -501,7 +530,8 @@ export class DwView {
     if (bcss !== 'none') st.cssText += `;border:${bcss}`
     const bgMode = o['background.mode'] ?? '1'
     const bg = await this.prop(m, o, 'background.color', row, band)
-    if (bgMode !== '2' && bg) st.background = pbColor(bg, 'transparent')
+    // background.mode: 1 = transparent, 0 / 2 = opaque with the colour (the edit fields of d_login are mode 2 with white)
+    if (bgMode !== '1' && bg) st.background = pbColor(bg, 'transparent')
     if (o.type === 'rectangle' || o.type === 'roundrectangle' || o.type === 'ellipse') {
       st.border = `${Math.max(1, Math.round(toPx(num(o, 'pen.width', 1), 'x', this.units(m))))}px solid ${pbColor(o['pen.color'], '#000')}`
       if (o.type !== 'rectangle') st.borderRadius = o.type === 'ellipse' ? '50%' : '8px'
@@ -661,6 +691,7 @@ export class DwView {
     const mask = o['editmask.mask']
     const useFmt = fmt && !/^\[general\]$/i.test(fmt) ? fmt : mask && o['editmask.useformat'] !== 'yes' ? mask : ''
     if (typeof v === 'number' || v instanceof Dec || v instanceof PBDate || v instanceof PBTime || v instanceof PBDateTime) return formatValue(v, useFmt || undefined)
+    if ((typeof v === 'string' || v === null || v === undefined) && /['"@;]/.test(useFmt)) return stringFormat(v ?? null, useFmt)
     return formatValue(v, useFmt || undefined)
   }
 

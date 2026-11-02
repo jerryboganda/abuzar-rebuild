@@ -61,9 +61,7 @@ $pid_ = [uint32]$proc.Id
 function Frame { foreach ($h in [W]::Top($pid_)) { if ([W]::Cls($h) -eq 'FNWND3125' -and [W]::IsWindowVisible($h)) { return $h } } }
 # what is on the screen inside the window's rectangle (PrintWindow leaves the DataWindow children blank); the program is kept topmost so
 # nothing else (the chat window ...) is drawn over it
-function Shot($h, $path) {
-  [void][W]::SetWindowPos($h, [IntPtr]::new(-1), 0, 0, 0, 0, 0x43)
-  Start-Sleep -Milliseconds 250
+function Snap($h) {
   $r = New-Object W+RECT
   [void][W]::GetWindowRect($h, [ref]$r)
   $x = [Math]::Max(0, $r.L); $y = [Math]::Max(0, $r.T)
@@ -71,17 +69,37 @@ function Shot($h, $path) {
   $b = New-Object System.Drawing.Bitmap $w, $ht
   $g = [System.Drawing.Graphics]::FromImage($b)
   $g.CopyFromScreen($x, $y, 0, 0, $b.Size)
+  $g.Dispose()
+  return $b
+}
+function Shot($h, $path) {
+  [void][W]::SetWindowPos($h, [IntPtr]::new(-1), 0, 0, 0, 0, 0x43)
+  Start-Sleep -Milliseconds 120
+  $b = Snap $h
   $b.Save($path, [System.Drawing.Imaging.ImageFormat]::Png)
-  $g.Dispose(); $b.Dispose()
+  $b.Dispose()
+}
+function ThumbHash($b) {
+  $t = New-Object System.Drawing.Bitmap $b, 160, 90
+  $ms = New-Object System.IO.MemoryStream
+  $t.Save($ms, [System.Drawing.Imaging.ImageFormat]::Bmp)
+  $t.Dispose()
+  $md5 = [System.Security.Cryptography.MD5]::Create()
+  return [BitConverter]::ToString($md5.ComputeHash($ms.ToArray()))
 }
 function StableShot($frame, $png) {
-  $prev = ''
-  for ($i = 0; $i -lt 14; $i++) {
-    Shot $frame $png
-    $hash = (Get-FileHash $png -Algorithm MD5).Hash
+  [void][W]::SetWindowPos($frame, [IntPtr]::new(-1), 0, 0, 0, 0, 0x43)
+  Start-Sleep -Milliseconds 120
+  $prev = ''; $b = $null
+  for ($i = 0; $i -lt 18; $i++) {
+    if ($b) { $b.Dispose() }
+    $b = Snap $frame
+    $hash = ThumbHash $b
     if ($hash -eq $prev) { break }
-    $prev = $hash; Start-Sleep -Milliseconds 800
+    $prev = $hash; Start-Sleep -Milliseconds 500
   }
+  $b.Save($png, [System.Drawing.Imaging.ImageFormat]::Png)
+  $b.Dispose()
 }
 function Others($frame) { @([W]::Top($pid_) | Where-Object { $_ -ne $frame -and [W]::IsWindowVisible($_) -and ([W]::Cls($_) -notin @('PBTooltips16_100', 'MSCTFIME UI', 'IME')) }) }
 # click the button of a dialog that dismisses it without doing anything: Cancel / Close / No / Exit, else Ok
@@ -102,14 +120,14 @@ function Cleanup($frame) {
         $script:btns = @()
         if (-not (Dismiss $h)) { [void][W]::PostMessage($h, 0x10, [IntPtr]::Zero, [IntPtr]::Zero) }
       }
-      Start-Sleep -Milliseconds 700
+      Start-Sleep -Milliseconds 400
       continue
     }
     $mdi = [W]::Find($frame, 'MDIClient')
     $act = [W]::SendMessage($mdi, 0x229, [IntPtr]::Zero, [IntPtr]::Zero)
     if ($act -eq [IntPtr]::Zero) { break }
     [void][W]::PostMessage($act, 0x112, [IntPtr]0xF060, [IntPtr]::Zero)
-    Start-Sleep -Milliseconds 700
+    Start-Sleep -Milliseconds 400
   }
 }
 $frame = Frame
