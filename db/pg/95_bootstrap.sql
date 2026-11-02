@@ -39,3 +39,7 @@ EXCEPTION WHEN OTHERS THEN
   RAISE NOTICE 'retail customer 19 not created: %', SQLERRM;
 END
 $boot$;
+
+-- the About window reads the version row and the licence text catalog; the rebuild has no licence checks, the rows only have to exist
+INSERT INTO dbo.sequence (sequenceid, appversion, dbstatus) SELECT 1, 1, 0 WHERE NOT EXISTS (SELECT 1 FROM dbo.sequence);
+INSERT INTO dbo.systextcatalog (textcatalog, cataloglength, textlength, status, cache) SELECT '', 0, 0, 0, 0 WHERE NOT EXISTS (SELECT 1 FROM dbo.systextcatalog);

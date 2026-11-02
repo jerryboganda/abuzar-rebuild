@@ -1,4 +1,4 @@
-// function f_getlicinfo (functions)  ancestor: function_object
+﻿// function f_getlicinfo (functions)  ancestor: function_object
 
 // f_getlicinfo.f_getlicinfo(transaction at_transobject, string as_textcatalog, datetime adt_startdate, long al_duration, long al_iteration, long al_first, long al_second, string as_key) returns long
 	long ll_first
@@ -54,8 +54,10 @@
 		return -1
 	end if
 	al_iteration = integer(string(li_hold1) + string(li_hold2))
-	SQL Select Convert ( datetime , DateAdd ( month , :al_duration , Convert ( datetime , :ll_startdate ) ) ) INTO :adt_startdate From Sequence USING at_transobject;
+	// PostgreSQL: ll_startdate is a SQL Server datetime serial (days since 1900-01-01).
+	SQL Select (DATE '1900-01-01' + :ll_startdate) + (:al_duration * INTERVAL '1 month') INTO :adt_startdate From Sequence USING at_transobject;
 	if at_transobject.sqlcode <> 0 then
 		return -1
 	end if
 	return 0
+

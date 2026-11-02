@@ -1,4 +1,4 @@
-// function f_islicenseexpire (functions)  ancestor: function_object
+﻿// function f_islicenseexpire (functions)  ancestor: function_object
 
 // f_islicenseexpire.f_islicenseexpire() returns integer
 	datetime ldt_current_serverdate
@@ -22,7 +22,8 @@
 	date ld_coushindate
 	ll_additionaldays = gl_additionaldays
 	ll_additionalinvoices = gl_additionalinvoices
-	SQL Select textcatalog , Convert ( DateTime , cataloglength ) , textlength , status , t.rcount INTO :ls_licensekey, :ldt_lastaccessdate, :ll_invoicelimit, :li_status, :ll_rows From systextcatalog , ( Select Max ( textcatalogid ) as id , Count ( textcatalogid ) as rcount From Systextcatalog ) t where systextcatalog.textcatalogid =t.id USING sqlca;
+	// PostgreSQL: cataloglength stores the SQL Server datetime serial (days since 1900-01-01), not a timestamp.
+	SQL Select textcatalog , (DATE '1900-01-01' + cataloglength) , textlength , status , t.rcount INTO :ls_licensekey, :ldt_lastaccessdate, :ll_invoicelimit, :li_status, :ll_rows From systextcatalog , ( Select Max ( textcatalogid ) as id , Count ( textcatalogid ) as rcount From Systextcatalog ) t where systextcatalog.textcatalogid =t.id USING sqlca;
 	if sqlca.sqlcode = -1 then
 		return -2
 	end if
@@ -60,7 +61,8 @@
 		ls_date = string(ldt_current_serverdate, "mm/dd/yy")
 		if date(ldt_current_serverdate) >= date(ldt_lastaccessdate) then
 			SQL rollback USING sqlca;
-			SQL update systextcatalog Set cataloglength =Convert ( Int , Convert ( DateTime , :ls_date ) ) USING sqlca;
+			// PostgreSQL: store the datetime serial (days since 1900-01-01) in the integer column.
+			SQL update systextcatalog Set cataloglength =(to_date(:ls_date, 'MM/DD/YY') - DATE '1900-01-01') USING sqlca;
 			if sqlca.sqlcode = 0 then
 				SQL commit USING sqlca;
 				ldt_lastaccessdate = ldt_current_serverdate
@@ -113,3 +115,4 @@
 		end if
 	end if
 	return li_retcode
+

@@ -171,6 +171,20 @@ export function registerSysFuncs(rt: Runtime): void {
 
   // ------------------------------------------------------------------ dates and times
   def(rt, 'today', () => nowDateTime().date)
+  // Licensing (decision of the owner: the rebuild has no licence checks). The recovered vendor checks - the expiry check of the transaction windows
+  // and the decoding of the licence key (SysTextCatalog) - are replaced: nothing expires, the key is not read.
+  def(rt, 'f_islicenseexpire', () => 0)
+  def(
+    rt,
+    'f_getlicinfo',
+    async (_r, a) => {
+      // (transaction, key, ref start date, ref duration, ref iteration, ref first, ref second, ref key)
+      const out: unknown[] = [nowDateTime(), 1, 0, 0, 0, '']
+      for (let i = 0; i < out.length; i++) if (a[i + 2] instanceof Ref) await (a[i + 2] as Ref).set(out[i])
+      return 0
+    },
+    [2, 3, 4, 5, 6, 7],
+  )
   def(rt, 'now', () => nowDateTime().time)
   def(rt, 'date', (_r, a) => {
     if (a.length >= 3) return PBDate.ymd(n(a[0]), n(a[1]), n(a[2]))
