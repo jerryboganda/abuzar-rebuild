@@ -82,7 +82,7 @@ impl AppState {
                 }
             }
         }
-        idle.sort_by(|a, b| b.1.cmp(&a.1));
+        idle.sort_by_key(|x| std::cmp::Reverse(x.1));
         // free a few more than needed so the next opens do not evict again
         let take = (map.len() + 1).saturating_sub(max) + 8;
         for (k, _) in idle.into_iter().take(take) {
