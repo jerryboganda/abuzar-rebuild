@@ -167,7 +167,13 @@ export async function executeStatement(rt: Runtime, f: Frame, st: Extract<Stmt, 
     t.setError(-1, 'not connected')
     return
   }
-  const entry = rt.sqlStmt?.(stmtKey(st.text))
+  let entry = rt.sqlStmt?.(stmtKey(st.text))
+  // SQL Server Agent: `Select enabled INTO :x From SysJobs Where Name = :job` - every job is known by name and disabled until it is enabled (db/pg/86_jobs.sql)
+  const job = entry ? null : /^select\s+enabled\s+into\s+:(\S+)\s+from\s+sysjobs\s+where\s+name\s*=\s*:(\S+?)\s*;?$/i.exec(st.text.trim())
+  if (job) {
+    await db.exec('INSERT INTO dbo.sysjobs (name) VALUES ($1) ON CONFLICT DO NOTHING', [toWire(await rt.eval(parseExpr(job[2]), f))])
+    entry = { sql: 'SELECT enabled FROM dbo.sysjobs WHERE name = $1', params: [job[2]], into: [job[1]] }
+  }
   if (st.kind === 'execute immediate') {
     const text = String((await hostValues(rt, f, st.hv))[0] ?? '')
     const tr = rt.translateSql?.(text)
