@@ -124,6 +124,15 @@ export class Runtime {
   depth = 0
   /** safety net for scripts that wait for data that never arrives */
   loopLimit = 20_000_000
+  /**
+   * Session cache for the application-wide item lists (traderappv1.open creates gd_itemsinfo / gd_popup_itemsinfo /
+   * gd_itemswithalternatealias and every window shares them).  Keyed by DataWindow name + translated retrieve SQL +
+   * parameter values; cleared whenever this session writes through a DataWindow or embedded SQL.  See dw/model.ts.
+   */
+  retrieveCache = new Map<string, import('./wire.ts').QueryResult>()
+  invalidateRetrieveCache(): void {
+    this.retrieveCache.clear()
+  }
 
   constructor(loader: ClassLoader) {
     this.loader = loader
@@ -285,6 +294,8 @@ export class Runtime {
       throw e
     } finally {
       this.depth--
+      // the outermost routine returned: now the posted events may run
+      if (this.depth === 0 && this.posted.length) this.kickQueue()
     }
     for (const b of refBack) await b.ref.set(f.locals.get(r.params[b.i].n))
     if (f.ret === null && r.ret && r.ret !== '0' && NUMERIC_TYPES.has(r.ret)) return null
@@ -351,11 +362,17 @@ export class Runtime {
   private gen = 0
   post(fn: () => Promise<void>): void {
     this.posted.push(fn)
-    if (!this.draining) {
-      this.draining = true
-      const g = this.gen
-      setTimeout(() => void this.drainPosted(g), 0)
-    }
+    // A posted event only runs after the current PowerScript event has
+    // returned (PowerBuilder's message queue).  A bare setTimeout would fire
+    // while the window's Open is still awaiting a query, interleaving
+    // ue_postopen with ue_newform and leaving child DataWindows null.
+    if (!this.draining && this.depth === 0) this.kickQueue()
+  }
+  private kickQueue(): void {
+    if (this.draining) return
+    this.draining = true
+    const g = this.gen
+    setTimeout(() => void this.drainPosted(g), 0)
   }
   async drainPosted(g = this.gen): Promise<void> {
     try {
@@ -370,6 +387,12 @@ export class Runtime {
     } finally {
       if (g === this.gen) this.draining = false
     }
+  }
+  /** run every posted event now (the window's Open has finished, its `postevent ue_postopen` must run before the first tab selection) */
+  async flushPosted(): Promise<void> {
+    this.gen++
+    this.draining = false
+    await this.drainPosted(this.gen)
   }
   yieldQueue(): void {
     this.gen++

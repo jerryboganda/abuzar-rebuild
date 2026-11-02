@@ -1,4 +1,4 @@
-// window w_sale (salewin)  ancestor: w_multi_entry
+﻿// window w_sale (salewin)  ancestor: w_multi_entry
 
 // w_sale.ue_printdo() returns 0 [event]
 	long ll_custcode
@@ -5893,6 +5893,11 @@
 // w_sale.wf_check_customer(long al_code) returns boolean
 	boolean lb_check1
 	boolean lb_check2
+	// The decompiled source lost these two initialisers; without them
+	// ib_validcustomer can never become true and every item click raises the
+	// "Please select a Customer" modal even when a customer is set.
+	lb_check1 = true
+	lb_check2 = true
 	if wf_checkunpostedcustomersale(al_code) > 1 then
 		lb_check1 = false
 	end if
@@ -6986,7 +6991,7 @@
 			end if
 			if ls_autopatientreg = "Y" then
 				ll_custcode = this.id_master.object.custcode[1]
-				ls_regno = as_regno + "«" + trim(string(ll_custcode))
+				ls_regno = as_regno + "Â«" + trim(string(ll_custcode))
 				openwithparm(w_simple_patientregistration, ls_regno)
 				ls_regno = message.stringparm
 				if not (ls_regno = "" or isnull(ls_regno)) then
@@ -19052,3 +19057,4 @@
 		messagebox("Exception Occur", "Details are:~r~n" + ex.getmessage())
 	end try
 	return ::message.returnvalue
+

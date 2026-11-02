@@ -23,22 +23,27 @@ UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'applyarg
 -- the migration of the original switches the group customer category rule off (UPDATE preferences SET groupcustomercategory = 'N'); without categories assigned to the user group sales would refuse to open
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) IN ('groupcustomercategory', 'groupsuppcatinpurandpr');
 
--- the retail customer of the cash sale windows (w_sale reads `Customer WHERE custcode = 19`); the original ships it inside its pre-built database.
--- Parents first (the customer table defaults to province 7, sector 1, contact policy 1 and alert 1; the province rows are not part of the recovered seed). A failure is reported as an error of this block and leaves nothing half done.
+-- the retail customer of the cash sale windows (w_sale reads `Customer WHERE custcode = 19`) with the base rows the original ships inside its pre-built
+-- database (names and codes as the original shows them).  The customer table also defaults to province 7, which the recovered seed does not contain.
+-- A failure is reported as an error of this block and leaves nothing half done.
 DO $boot$
 BEGIN
   IF EXISTS (SELECT 1 FROM dbo.customer WHERE custcode = 19) THEN
     RETURN;
   END IF;
   INSERT INTO dbo.stateprovince (stateprovincecode, stateprovincedescription) SELECT 7, 'NOT SPECIFIED' WHERE NOT EXISTS (SELECT 1 FROM dbo.stateprovince WHERE stateprovincecode = 7);
-  INSERT INTO dbo.area (areacode, name, shortname) SELECT 1, 'DEFAULT', 'DEF' WHERE NOT EXISTS (SELECT 1 FROM dbo.area);
-  INSERT INTO dbo.subarea (subareacode, name, manager, areacode) SELECT 1, 'SUB DEFAULT', '1', (SELECT min(areacode) FROM dbo.area) WHERE NOT EXISTS (SELECT 1 FROM dbo.subarea);
-  INSERT INTO dbo.subaccounts (subacccode, catacccode, name) SELECT (SELECT coalesce(max(subacccode), 0) + 1 FROM dbo.subaccounts), 1, 'CUSTOMERS' WHERE NOT EXISTS (SELECT 1 FROM dbo.subaccounts WHERE name = 'CUSTOMERS');
-  INSERT INTO dbo.accounts (acccode, subcode, name, aliasname, active, restricted) SELECT 19, (SELECT subacccode FROM dbo.subaccounts WHERE name = 'CUSTOMERS'), 'CASH CUSTOMER', 'CASHCUST19', 'Y', 'N' WHERE NOT EXISTS (SELECT 1 FROM dbo.accounts WHERE acccode = 19);
-  INSERT INTO dbo.customer (custcode, areacode, crlimit, dayslimit, custcatcode, subareacode, membershipid) VALUES (19, (SELECT min(areacode) FROM dbo.area), 0, 0, (SELECT min(custcatcode) FROM dbo.customercategory), (SELECT min(subareacode) FROM dbo.subarea), '19');
+  INSERT INTO dbo.area (areacode, name, shortname) SELECT 1, 'DEFAULT AREA', '1' WHERE NOT EXISTS (SELECT 1 FROM dbo.area WHERE areacode = 1);
+  INSERT INTO dbo.subarea (subareacode, name, manager, areacode) SELECT 1, 'SUB DEFAULT AREA', '1', 1 WHERE NOT EXISTS (SELECT 1 FROM dbo.subarea WHERE subareacode = 1);
+  INSERT INTO dbo.customercategory (custcatcode, name) SELECT 1, 'DEFAULT CATEGORY' WHERE NOT EXISTS (SELECT 1 FROM dbo.customercategory WHERE custcatcode = 1);
+  INSERT INTO dbo.subaccounts (subacccode, catacccode, name) SELECT 3, 1, 'CUSTOMERS/DEBITORS' WHERE NOT EXISTS (SELECT 1 FROM dbo.subaccounts WHERE subacccode = 3 OR name = 'CUSTOMERS/DEBITORS');
+  INSERT INTO dbo.accounts (acccode, subcode, name, aliasname, active, restricted) SELECT 19, 3, '****CASH SALES CUSTOMER', 'CASHSALES', 'Y', 'N' WHERE NOT EXISTS (SELECT 1 FROM dbo.accounts WHERE acccode = 19);
+  INSERT INTO dbo.customer (custcode, areacode, crlimit, dayslimit, custcatcode, subareacode, membershipid) VALUES (19, 1, 0, 0, 1, 1, '19');
 END
 $boot$;
 
 -- the About window reads the version row and the licence text catalog; the rebuild has no licence checks, the rows only have to exist
 INSERT INTO dbo.sequence (sequenceid, appversion, dbstatus) SELECT 1, 1, 0 WHERE NOT EXISTS (SELECT 1 FROM dbo.sequence);
 INSERT INTO dbo.systextcatalog (textcatalog, cataloglength, textlength, status, cache) SELECT '', 0, 0, 0, 0 WHERE NOT EXISTS (SELECT 1 FROM dbo.systextcatalog);
+
+-- the last transaction date every entry window compares the server date with (wf_getserverdatetime): one row, set to the day of the installation
+INSERT INTO dbo.serverdate (lasttransdate) SELECT date_trunc('day', localtimestamp(3)) WHERE NOT EXISTS (SELECT 1 FROM dbo.serverdate);

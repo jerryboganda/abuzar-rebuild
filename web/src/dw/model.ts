@@ -43,6 +43,19 @@ export interface SqlSource {
   dw(name: string): { sql: string; params: string[]; proc?: boolean; lists?: string[] } | undefined
 }
 
+/**
+ * The item lists that traderappv1.open loads once into application-wide DataStores (gd_itemsinfo,
+ * gd_popup_itemsinfo, gd_itemswithalternatealias).  Every screen shares those stores instead of retrieving its own
+ * copy, so a repeated retrieve of the same DataWindow with the same arguments can reuse the session result.
+ * Other DataWindows are deliberately not cached: reports and entry windows expect a fresh read whenever they retrieve.
+ */
+const SHARED_ITEM_LIST_DWS = new Set([
+  'ddd_itemmanfnames_groupgodown',
+  'ddd_itemmanfnames_cat_groupgodown',
+  'ddd_itemmanfnames_groupgodown_popup',
+  'ddd_itemmanfnames_groupgodown_popup_aa',
+])
+
 export class DwModel implements EvalHost {
   rt: Runtime
   def!: DwDef
@@ -69,6 +82,8 @@ export class DwModel implements EvalHost {
   lastError = ''
   /** retrieval arguments of the last retrieve by name (nested reports and expressions refer to them) */
   args = new Map<string, unknown>()
+  /** a Reset() before the next Retrieve means the caller wants current data, not the session cache */
+  private retrieveDirty = false
 
   constructor(rt: Runtime, name: string, def: DwDef) {
     this.rt = rt
@@ -120,7 +135,11 @@ export class DwModel implements EvalHost {
 
   defaultFor(i: number): unknown {
     const col = this.def.table.columns[i]
-    const ini = col.initial
+    // a script may set `dw.object.col.initial = ...` after the DataWindow is
+    // built and before the row is inserted (Cash Sale sets the godown and
+    // price type in ue_postopen, then ue_newform inserts the header row)
+    const ov = this.overrides.get(`${col.name.toLowerCase()}.initial`)
+    const ini = ov !== undefined ? ov : col.initial
     switch (this.kinds[i]) {
       case 'string':
         return ini !== undefined && ini !== '' && ini !== 'null' ? ini : null
@@ -212,6 +231,14 @@ export class DwModel implements EvalHost {
   }
 
   reset(): void {
+    this.clearBuffers()
+    // Reset() followed by Retrieve() is how the original refreshes a shared list (f_refreshitemlist and the windows
+    // that explicitly rebuild gd_itemsinfo): that retrieve must go to the database, not answer from the session cache.
+    this.retrieveDirty = true
+  }
+
+  /** clear the buffers without making the next retrieve bypass the session cache */
+  private clearBuffers(): void {
     this.buf.primary = []
     this.buf.filtered = []
     this.buf.deleted = []
@@ -330,18 +357,30 @@ export class DwModel implements EvalHost {
       })
     }
     try {
+      const wireParams = params.map(toWire)
+      const cacheKey = this.retrieveCacheKey(sql, wireParams, proc)
       let res: QueryResult
-      if (proc) {
-        const c = await this.trans.db.call(sql, params.map(toWire))
-        res = c.resultsets[0] ? { columns: c.resultsets[0].columns, rows: c.resultsets[0].rows } : { columns: [], rows: [] }
-      } else res = await this.trans.db.query(sql, params.map(toWire))
-      this.reset()
+      if (cacheKey && !this.retrieveDirty && this.rt.retrieveCache.has(cacheKey)) {
+        // the application already holds this item list for the session (usually gd_itemsinfo): share its result
+        res = this.rt.retrieveCache.get(cacheKey)!
+      } else {
+        if (proc) {
+          const c = await this.trans.db.call(sql, wireParams)
+          res = c.resultsets[0] ? { columns: c.resultsets[0].columns, rows: c.resultsets[0].rows } : { columns: [], rows: [] }
+        } else res = await this.trans.db.query(sql, wireParams)
+        if (cacheKey) this.rt.retrieveCache.set(cacheKey, res)
+      }
+      this.clearBuffers()
+      this.retrieveDirty = false
       if (this.baseDef.crosstab) return await this.pivotResult(res)
       const map: number[] = this.colNames.map((_, i) => i)
       if (res.columns.length) {
-        // result columns are in the order of the DataWindow columns; match by name when the counts differ
+        // Result columns are in the order of the DataWindow columns.  A DDDW's
+        // SQL often renames a column (Name -> customer_name) while keeping the
+        // same count; mapping those by name nulls the column.  Use position
+        // when the counts match, and fall back to names only when they differ.
         const byName = res.columns.map((c) => this.colIdx.get(c.name.toLowerCase()) ?? -1)
-        if (res.columns.length !== this.colNames.length || byName.some((x) => x < 0)) {
+        if (res.columns.length !== this.colNames.length || byName.every((x) => x >= 0)) {
           for (let k = 0; k < res.columns.length; k++) map[k] = byName[k]
         }
       }
@@ -367,6 +406,13 @@ export class DwModel implements EvalHost {
       this.trans.setError(-1, this.lastError)
       return -1
     }
+  }
+
+  /** key of the session cache: DataWindow + translated SQL + parameter values (only the shared item lists are cached) */
+  private retrieveCacheKey(sql: string, params: unknown[], proc: boolean): string {
+    const name = this.name.toLowerCase()
+    if (!SHARED_ITEM_LIST_DWS.has(name)) return ''
+    return `${proc ? 'call' : 'sql'}\u0000${name}\u0000${sql}\u0000${JSON.stringify(params)}`
   }
 
   /** crosstab: the retrieved rows are the source of the pivot; the definition is expanded to the columns found in them */
@@ -497,6 +543,8 @@ export class DwModel implements EvalHost {
       return -1
     }
     if (resetFlag) this.resetUpdate()
+    // item prices / stock / description just changed: shared item lists must be retrieved again, not taken from the cache
+    this.rt.invalidateRetrieveCache()
     this.trans.setOk(stmts.length)
     return 1
   }

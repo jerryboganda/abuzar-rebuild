@@ -1,6 +1,6 @@
 // DOM rendering of a DataWindow control: bands, rows, objects, editing.
 import type { NDwBase } from '../runtime/native/dwctrl.ts'
-import { argList } from '../dw/def.ts'
+import { argList, colKind } from '../dw/def.ts'
 import { renderChart } from '../dw/chart.ts'
 import { keyEnum, keyFlags, virtualKey } from './keys.ts'
 import type { DwModel } from '../dw/model.ts'
@@ -83,6 +83,9 @@ export class DwView {
   rendering = false
   again = false
   editor: HTMLElement | null = null
+  editRow = 0
+  editCol = 0
+  editObj = ''
 
   constructor(ctl: NDwBase, host: HTMLElement) {
     this.ctl = ctl
@@ -169,11 +172,26 @@ export class DwView {
     if (num(m.def.datawindow, 'processing', 0) !== 1) return []
     const out: { x: number; w: number }[] = []
     for (const o of m.def.objects) {
-      if (o.type !== 'column' || o.band !== 'detail') continue
+      // a compute column (c_rsum, c_advancetax ...) is hidden exactly like a db column
+      if ((o.type !== 'column' && o.type !== 'compute') || o.band !== 'detail') continue
       const v = m.overrides.get(`${o.name.toLowerCase()}.visible`) ?? o.visible
       if (v === '0') out.push({ x: num(o, 'x'), w: num(o, 'width') })
     }
     return out
+  }
+  /**
+   * PowerBuilder's grid hides a column's header with the column.  Compute
+   * columns often have a generic header name (c_rsum -> t_4), so the header is
+   * identified by its exact position, not by its name.
+   */
+  private headerOfHiddenColumn(o: DwObject): boolean {
+    if (!this.hiddenCols.length || (o.type !== 'text' && o.type !== 'compute')) return false
+    const band = String(o.band ?? '')
+    // headers, footer totals and group trailers travel with the detail column
+    if (!band.startsWith('header') && band !== 'footer' && !band.startsWith('trailer')) return false
+    const x = num(o, 'x')
+    const w = num(o, 'width')
+    return this.hiddenCols.some((h) => Math.abs(h.x - x) <= 2 && Math.abs(h.w - w) <= 10)
   }
   /** horizontal shift of an object of a grid with hidden columns; null when the object belonged to a hidden column (its header, its total) */
   private gridShift(o: DwObject): number | null {
@@ -183,7 +201,7 @@ export class DwView {
     let shift = 0
     for (const h of this.hiddenCols) {
       if (x >= h.x + h.w - 1) shift += h.w
-      else if (o.type !== 'column' && x >= h.x - 1 && x + w <= h.x + h.w + 1) return null
+      else if (o.type !== 'column' && w <= h.w * 1.6 + 20 && x + w / 2 >= h.x && x + w / 2 < h.x + h.w) return null // the header / total of a hidden column (its centre lies over the column)
     }
     return shift
   }
@@ -475,12 +493,16 @@ export class DwView {
   private async paint(m: DwModel): Promise<void> {
     if (this.previewOn(m)) return this.paintPreview(m)
     const inner = await this.buildBody(m, true, true)
+    const editor = this.takeEditor()
     const scroll = this.root.scrollTop
     const left = this.root.scrollLeft
     this.root.replaceChildren(inner)
     this.root.scrollTop = scroll
     this.root.scrollLeft = left
     await this.fillWindow()
+    // a programmatic SetItem (the item list writes icode/itemname/fullcode)
+    // repaints the DataWindow; the in-place editor must survive that repaint
+    if (editor) this.restoreEditor(editor)
     if (m.row !== this.lastRow) {
       this.lastRow = m.row
       await this.revealRow(m)
@@ -528,17 +550,26 @@ export class DwView {
       await this.ctl.rt.fire(this.ctl, 'rowfocuschanged', [row])
     }
     m.col = m.colIndex(cols[i]) + 1
-    await this.ctl.rt.fire(this.ctl, 'itemfocuschanged', [row, { name: cols[i] }])
+    await this.ctl.fireItemFocus(row, cols[i])
     await this.paint(m)
     const cell = this.root.querySelector(`.row[data-row="${row}"] .o[data-obj="${cols[i]}"]`) as HTMLElement | null
     cell?.click()
   }
 
+  private focused = false
   private async rowClick(m: DwModel, row: number, ev: MouseEvent): Promise<void> {
     const target = (ev.target as HTMLElement).closest('[data-obj]') as HTMLElement | null
     const obj = target?.dataset.obj
     const changedRow = m.row !== row
     m.row = row
+    // a real mouse focus raises the DataWindow's GetFocus event; the entry
+    // screens open their item-search list from it.  This is deliberately not
+    // done for programmatic SetFocus during window open (the customer setup is
+    // still pending there and the validation would fire too early).
+    if (!this.focused) {
+      this.focused = true
+      await this.ctl.rt.fire(this.ctl, 'getfocus')
+    }
     if (obj) {
       const ci = m.colIndex(obj)
       if (ci >= 0) m.col = ci + 1
@@ -569,6 +600,7 @@ export class DwView {
 
   private async object(m: DwModel, o: DwObject, row: number, band: string, sx: (v: number) => number, sy: (v: number) => number, _ctx: unknown): Promise<HTMLElement | null> {
     if ((await this.prop(m, o, 'visible', row, band)) === '0') return null
+    if (this.headerOfHiddenColumn(o)) return null
     const shift = this.gridShift(o)
     if (shift === null) return null
     const el = document.createElement('div')
@@ -741,7 +773,7 @@ export class DwView {
       el.style.display = 'flex'
       el.style.alignItems = 'center'
       el.style.gap = '3px'
-    } else el.textContent = await this.display(m, o, v)
+    } else el.textContent = await this.display(m, o, v, row, band)
     if (o.type === 'column') {
       // a drop-down that uses the arrow as its border shows it all the time; a spin edit mask shows its two arrows
       if (o['dddw.useasborder'] === 'yes' || o['ddlb.useasborder'] === 'yes') el.appendChild(Object.assign(document.createElement('span'), { className: 'dd-arrow' }))
@@ -810,13 +842,18 @@ export class DwView {
     return out.length ? out : null
   }
 
-  private async display(m: DwModel, o: DwObject, v: unknown): Promise<string> {
+  private async display(m: DwModel, o: DwObject, v: unknown, row: number, band: string): Promise<string> {
     const ct = v === null || v === undefined ? null : this.codeTable(m, o)
     if (ct) return ct.find(([, d]) => d === toStr(v))?.[0] ?? toStr(v)
     if (v === null || v === undefined) {
       // an empty column still shows its display format when that has a section for null / zero-length text (the password columns show `*****`)
       const f = splitExpr(o.format).value
-      return f && /^\s*'[^']*'\s*;\s*'[^']*'\s*$/.test(f) ? stringFormat(null, f) : ''
+      if (f && /^\s*'[^']*'\s*;\s*'[^']*'\s*$/.test(f)) return stringFormat(null, f)
+      // an empty date / time column with an edit mask shows the mask with zeros (`00/00/0000`, the sale return's expiry, the customer's licence expiry)
+      const mask = o['editmask.mask']
+      const ci = mask ? m.colIndex(o.name) : -1
+      if (mask && ci >= 0 && ['date', 'datetime', 'time'].includes(colKind(m.def.table.columns[ci].type)) && !/am|pm|a\/p/i.test(mask)) return mask.replace(/[dmyhs]/gi, '0')
+      return ''
     }
     if (o['dddw.name']) {
       const cm = await this.childOf(o)
@@ -834,18 +871,84 @@ export class DwView {
       const on = toStr(v) === o['checkbox.on']
       return (on ? '\u2611' : '\u2610') + (o['checkbox.text'] ? ' ' + o['checkbox.text'] : '')
     }
-    const fmt = splitExpr(o.format).value
+    // dynamic format expressions like `[currency]\tf_SetColumnFormat('Qty')`
+    // must be evaluated, not shown literally
+    const fmt = await this.prop(m, o, 'format', row, band)
     const mask = o['editmask.mask']
-    const useFmt = fmt && !/^\[general\]$/i.test(fmt) ? fmt : mask && o['editmask.useformat'] !== 'yes' ? mask : ''
+    const useFmt = fmt && !/^\[general\]$/i.test(fmt) ? fmt : mask && o['editmask.useformat'] !== 'yes' ? mask : /^\[general\]$/i.test(fmt) ? fmt : ''
     if (typeof v === 'number' || v instanceof Dec || v instanceof PBDate || v instanceof PBTime || v instanceof PBDateTime) return formatValue(v, useFmt || undefined)
     if ((typeof v === 'string' || v === null || v === undefined) && /['"@;]/.test(useFmt)) return stringFormat(v ?? null, useFmt)
     return formatValue(v, useFmt || undefined)
   }
 
+  private cellOf(row: number, name: string): HTMLElement | null {
+    return this.root.querySelector(`.row[data-row="${row}"] .o[data-obj="${name}"]`) as HTMLElement | null
+  }
+
+  /**
+   * PowerBuilder's SetFocus / SelectText on a DataWindow put the keyboard in
+   * its current cell and open the in-place editor. The item lists rely on this
+   * after `id_detail.selecttext(...)`: the mouse click moves the DOM focus to
+   * the list, and the detail editor has to be restored for the item to commit.
+   */
+  async focusCurrent(): Promise<boolean> {
+    await this.ctl.ready
+    const m = this.ctl.model
+    if (!m || m.row < 1 || m.row > m.rowCount() || m.col < 1) return false
+    const name = m.colNames[m.col - 1]
+    const o = m.def.objects.find((x) => x.type === 'column' && x.name.toLowerCase() === name)
+    if (!o) return false
+    let cell = this.cellOf(m.row, o.name)
+    if (!cell) {
+      await this.render()
+      cell = this.cellOf(m.row, o.name)
+    }
+    if (!cell) return false
+    if (this.editor instanceof HTMLInputElement && this.editRow === m.row && this.editObj.toLowerCase() === name) {
+      // SetItem on the cell being edited updates the in-place text, as in PB
+      const v = m.buf.primary[m.row - 1]?.v[m.colIndex(name)]
+      const text = v === null || v === undefined ? '' : toStr(v)
+      if (this.editor.value !== text) this.editor.value = text
+      this.editor.focus()
+      this.editor.select()
+      return true
+    }
+    if (!cell.classList.contains('editable')) return false
+    this.edit(m, o, m.row, cell)
+    return true
+  }
+
+  /** state of the open in-place editor, kept across a repaint of the DataWindow */
+  private takeEditor(): { row: number; obj: string; value: string; start: number | null; end: number | null } | null {
+    const e = this.editor
+    if (!(e instanceof HTMLInputElement)) return null
+    return { row: this.editRow, obj: this.editObj, value: e.value, start: e.selectionStart, end: e.selectionEnd }
+  }
+
+  private restoreEditor(s: { row: number; obj: string; value: string; start: number | null; end: number | null }): void {
+    const m = this.ctl.model
+    if (!m || s.row < 1 || s.row > m.rowCount()) return
+    const o = m.def.objects.find((x) => x.type === 'column' && x.name.toLowerCase() === s.obj.toLowerCase())
+    if (!o) return
+    const cell = this.cellOf(s.row, o.name)
+    if (!cell) return
+    this.edit(m, o, s.row, cell)
+    const e = this.editor
+    if (!(e instanceof HTMLInputElement)) return
+    e.value = s.value
+    if (s.start !== null && s.end !== null) e.setSelectionRange(s.start, s.end)
+  }
+
   private edit(m: DwModel, o: DwObject, row: number, cell: HTMLElement): void {
-    if (this.editor) this.editor.remove()
+    if (this.editor) {
+      this.editor.remove()
+      this.editor = null
+    }
     const ci = m.colIndex(o.name)
     if (ci < 0) return
+    this.editRow = row
+    this.editCol = ci + 1
+    this.editObj = o.name
     if (o['checkbox.on'] !== undefined) {
       const cur = toStr(m.buf.primary[row - 1]?.v[ci])
       const next = cur === o['checkbox.on'] ? o['checkbox.off'] : o['checkbox.on']

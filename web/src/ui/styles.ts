@@ -12,7 +12,7 @@ html, body { margin:0; height:100%; overflow:hidden; background:#ababab; font: v
 .tbar { height:26px; flex:0 0 26px; background:#fff; color:#000; display:flex; align-items:center; padding:0 0 0 6px; cursor:default; }
 .tbar .ic { width:16px; height:16px; margin-right:6px; flex:none; }
 .pbwin.sheet .tbar { height:22px; flex-basis:22px; }
-.tbar .ttl { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tbar .ttl { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:pre; }
 .tbar .cls { width:46px; height:100%; display:flex; align-items:center; justify-content:center; font-size:13px; }
 .tbar .cls:hover { background:#e81123; color:#fff; }
 .client { position:relative; flex:1; overflow:hidden; }

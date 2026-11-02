@@ -77,6 +77,18 @@ export class NDwBase extends PBObject {
     for (const l of this.listeners) l()
   }
 
+  /** itemfocuschanged is running: SelectText from its script must not raise it again */
+  inItemFocus = false
+  async fireItemFocus(row: number, col: string): Promise<unknown> {
+    const prev = this.inItemFocus
+    this.inItemFocus = true
+    try {
+      return await this.rt.fire(this, 'itemfocuschanged', [row, { name: col }])
+    } finally {
+      this.inItemFocus = prev
+    }
+  }
+
   /** a script that changes visibility, position or size of the control (`dw.visible = false`, `dw.width = ...`) must see the change on the screen */
   override pbSet(name: string, value: unknown): void {
     // the design-time `dataobject` is a declared property: a script that assigns another one must still load that definition
@@ -251,7 +263,7 @@ export class NDwBase extends PBObject {
     // `editflag`, which `wf_validatedate` returns; ue_newform clears `ib_focusdetail` right before it so that the event does not open the item list)
     if (n > 0 && m.colNames.length) {
       if (m.col < 1) m.col = 1
-      await this.rt.fire(this, 'itemfocuschanged', [n, { name: m.colNames[m.col - 1] }])
+      await this.fireItemFocus(n, m.colNames[m.col - 1])
     }
     return n
   }
@@ -319,9 +331,14 @@ export class NDwBase extends PBObject {
   async n_getitemany(row: unknown, col: unknown): Promise<unknown> {
     return this.getAny(row, col)
   }
-  async n_getitemstatus(row: unknown, col: unknown, buffer?: unknown): Promise<number> {
+  async n_getitemstatus(row: unknown, col: unknown, buffer?: unknown): Promise<number | string> {
     const m = await this.m()
-    return m ? m.getStatus(toNum(row), col === 0 || col === null ? null : typeof col === 'number' ? col : toStr(col), bufferName(buffer)) : -1
+    if (!m) return -1
+    const st = m.getStatus(toNum(row), col === 0 || col === null ? null : typeof col === 'number' ? col : toStr(col), bufferName(buffer))
+    // PowerBuilder returns the RowStatus / DWItemStatus enumeration, and every
+    // recovered script compares it with `notmodified!`, `new!` ... (strings in
+    // the runtime).  Returning the raw 0..3 made those comparisons always false.
+    return st === NOT_MODIFIED ? 'notmodified!' : st === DATA_MODIFIED ? 'datamodified!' : st === NEW ? 'new!' : st === NEW_MODIFIED ? 'newmodified!' : st
   }
   async n_setitemstatus(row: unknown, col: unknown, buffer: unknown, status: unknown): Promise<number> {
     const m = await this.m()
@@ -460,6 +477,34 @@ export class NDwBase extends PBObject {
     this.rt.ui?.focus?.(this)
     return 1
   }
+  /**
+   * SelectText: select the text of the current editable cell. The item list's
+   * Clicked script calls this on id_detail after writing icode/itemname; the
+   * click has taken the DOM focus, so the detail editor has to be restored and
+   * its item focus raised again (after the Clicked script has set its flags).
+   */
+  async n_selecttext(): Promise<number> {
+    const m = await this.m()
+    if (!m || m.row < 1 || m.col < 1) return 1
+    const ui = this.rt.ui as { focusDw?: (o: PBObject) => Promise<boolean>; focus?: (o: PBObject) => void } | null
+    if (this.inItemFocus) {
+      await ui?.focusDw?.(this)
+      return 1
+    }
+    const row = m.row
+    const col = m.colNames[m.col - 1]
+    this.rt.post(async () => {
+      const ok = await ui?.focusDw?.(this)
+      if (!ok) {
+        ui?.focus?.(this)
+        return
+      }
+      const cur = this.model
+      if (!cur || cur.row < 1 || cur.col < 1 || cur.colNames[cur.col - 1] !== col) return
+      await this.fireItemFocus(cur.row, col)
+    })
+    return 1
+  }
   async n_setredraw(): Promise<number> {
     return 1
   }
@@ -587,9 +632,6 @@ export class NDwBase extends PBObject {
       }
     }
     return 0
-  }
-  async n_selecttext(): Promise<number> {
-    return 1
   }
   /** SetTabOrder(column, n): column-level tab sequence */
   async n_settaborder(col: unknown, n: unknown): Promise<number> {

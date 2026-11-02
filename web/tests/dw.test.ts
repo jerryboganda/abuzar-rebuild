@@ -254,3 +254,29 @@ test('string to number: the leading number counts (the menu rights code relies o
   assert.equal(await f('long', '1234,'), 1234)
   assert.equal(await f('integer', null), null)
 })
+
+test('shared item list: one retrieve per session, reset and writes invalidate the cache', async () => {
+  const rt = new Runtime({ load: async () => undefined })
+  registerSysFuncs(rt)
+  rt.dwSql = () => ({ sql: 'select code, grp, amt from item where code > $1', params: ['ai_min'] })
+  const log: { sql: string; params: unknown[] }[] = []
+  const queries = () => log.filter((x) => x.sql.startsWith('select')).length
+  const trans = { db: makeDb(log), setError() {}, setOk() {} }
+  const a = new DwModel(rt, 'ddd_itemmanfnames_groupgodown', def)
+  a.trans = trans
+  const b = new DwModel(rt, 'ddd_itemmanfnames_groupgodown', def)
+  b.trans = trans
+  assert.equal(await a.retrieve([0]), 3)
+  assert.equal(await b.retrieve([0]), 3) // another screen asks for the same shared list
+  assert.equal(queries(), 1)
+  assert.equal(b.rowCount(), 3)
+  // Reset() before Retrieve() is the original's explicit refresh: it must go to the database
+  a.reset()
+  assert.equal(await a.retrieve([0]), 3)
+  assert.equal(queries(), 2)
+  // a write clears the session cache: the next screen sees the changed item data
+  a.setItem(1, 'amt', 11)
+  assert.equal(await a.update(), 1)
+  assert.equal(await b.retrieve([0]), 3)
+  assert.equal(queries(), 3)
+})

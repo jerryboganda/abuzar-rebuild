@@ -189,3 +189,22 @@ test('stored procedure called as a method of the transaction object: status code
   assert.equal(await call(rt, 'f_p'), 7042)
   assert.deepEqual(calls[0], ['SELECT * FROM dbo.sp_getthing(a => $1, b => $2)', [5, 1]])
 })
+
+test('Timer(0, window) reaches the system function, not the window Timer event', async () => {
+  const { registerWindowing } = await import('../src/runtime/native/windowing.ts')
+  const rt = runtimeWith(`// window w_timer  ancestor: window
+
+// w_timer.open() returns long [event]
+	timer(0, this)
+	return 1
+
+// w_timer.timer() returns long [event]
+	gs_timerhits = gs_timerhits + 1
+	return 0
+`)
+  registerWindowing(rt)
+  rt.globals.set('gs_timerhits', 0)
+  const w = await rt.instantiate('w_timer')
+  await rt.fire(w, 'open')
+  assert.equal(rt.globals.get('gs_timerhits'), 0)
+})

@@ -8,7 +8,9 @@ const open = new Set<HttpDb>()
 
 export async function setAppUser(user: string): Promise<void> {
   appUser = user
-  for (const d of open) await d.exec("SELECT set_config('app.user', $1, false)", [user]).catch(() => undefined)
+  // a session setting is not a write: send it through /api/query, or every
+  // session is marked dirty and the server's reaper keeps it for 8 hours
+  for (const d of open) await d.query("SELECT set_config('app.user', $1, false)", [user]).catch(() => undefined)
 }
 
 interface ApiBody {
@@ -54,14 +56,14 @@ export class HttpDb implements Db {
   private async reopen(): Promise<void> {
     const j = await this.post<{ sid: string }>('/api/session', {})
     this.sid = j.sid
-    if (appUser) await this.send('/api/exec', { sid: this.sid, sql: "SELECT set_config('app.user', $1, false)", params: [appUser] })
+    if (appUser) await this.send('/api/query', { sid: this.sid, sql: "SELECT set_config('app.user', $1, false)", params: [appUser] })
   }
 
   async open(): Promise<this> {
     const j = await this.post<{ sid: string }>('/api/session', {})
     this.sid = j.sid
     open.add(this)
-    if (appUser) await this.exec("SELECT set_config('app.user', $1, false)", [appUser]).catch(() => undefined)
+    if (appUser) await this.query("SELECT set_config('app.user', $1, false)", [appUser]).catch(() => undefined)
     return this
   }
   /** `Select enabled From SysJobs Where Name = :job` (SQL Server Agent): every job is known by name and disabled until it is enabled, see db/pg/86_jobs.sql */

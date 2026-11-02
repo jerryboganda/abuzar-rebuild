@@ -117,10 +117,16 @@ export class DomUi implements UiHost {
     const v = this.findView(o)
     v?.focus()
   }
-  findView(o: PBObject): { focus(): void } | undefined {
+  /** SetFocus / SelectText on a DataWindow: the current cell and its in-place editor */
+  async focusDw(o: PBObject): Promise<boolean> {
+    const v = this.findView(o)
+    if (!v?.dw) return false
+    return v.dw.focusCurrent()
+  }
+  findView(o: PBObject): { focus(): void; dw?: DwView } | undefined {
     for (const wv of this.views.values()) {
       const cv = wv.ctlViews.get(o)
-      if (cv) return { focus: () => (cv.el.querySelector('input,textarea,select,button') as HTMLElement | null)?.focus() ?? cv.el.focus?.() }
+      if (cv) return { focus: () => (cv.el.querySelector('input,textarea,select,button') as HTMLElement | null)?.focus() ?? cv.el.focus?.(), dw: cv.dw }
     }
     return undefined
   }

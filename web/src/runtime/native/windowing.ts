@@ -2,7 +2,7 @@
 import type { Runtime } from '../interp.ts'
 import { Ref } from '../interp.ts'
 import { PBObject } from '../object.ts'
-import { Dec, PBRuntimeError, toStr } from '../values.ts'
+import { Dec, PBRuntimeError, toNum, toStr } from '../values.ts'
 import { NControl, NMenuItem, NWindow } from './controls.ts'
 import { NDwBase } from './dwctrl.ts'
 import { NTransaction } from './transaction.ts'
@@ -17,6 +17,17 @@ function setMessage(rt: Runtime, parm: unknown): void {
   else if (typeof parm === 'number') msg.props.set('doubleparm', parm)
   else if (parm instanceof Dec) msg.props.set('doubleparm', parm.toNumber())
   else if (parm instanceof PBObject || (parm && typeof parm === 'object')) msg.props.set('powerobjectparm', parm)
+}
+
+/** PowerBuilder Timer(): the repeating timer of a window (seconds); interval 0 stops it */
+const windowTimers = new WeakMap<PBObject, ReturnType<typeof setInterval>>()
+
+function stopWindowTimer(w: PBObject): void {
+  const t = windowTimers.get(w)
+  if (t !== undefined) {
+    clearInterval(t)
+    windowTimers.delete(w)
+  }
 }
 
 async function openWin(rt: Runtime, a: unknown[], sheet: boolean, withParm: boolean): Promise<number> {
@@ -76,6 +87,11 @@ async function openWin(rt: Runtime, a: unknown[], sheet: boolean, withParm: bool
   rt.ui?.createWindow?.(w, { sheet, modal })
   await rt.fire(w, 'open')
   rt.ui?.showWindow?.(w, { sheet, modal })
+  // `postevent("ue_postopen")` queued by the window's Open must finish before
+  // the first tab is selected: the entry windows lay out and initialise their
+  // DataWindows there, and the tab's SelectionChanged reads those values
+  // (Cash Sale's godown and price were still null when the tab ran first).
+  await rt.flushPosted()
   // a tab control raises SelectionChanging / SelectionChanged for its first page when its window comes up (the entry windows build their blank new form in it:
   // the original's Users, Item or Sale Template window opens with an empty form and the menu in new-form state)
   const tabs: PBObject[] = []
@@ -108,6 +124,7 @@ export async function closeWindow(rt: Runtime, w: PBObject): Promise<number> {
     return -1
   }
   await rt.fire(w, 'close')
+  stopWindowTimer(w)
   w.isOpen = false
   rt.ui?.closeWindow?.(w)
   w.destroy()
@@ -125,6 +142,21 @@ export function registerWindowing(rt: Runtime): void {
   def('opensheet', (r, a) => openWin(r, a, true, false), [0])
   def('opensheetwithparm', (r, a) => openWin(r, a, true, true), [0])
   def('close', (r, a) => (a[0] instanceof PBObject ? closeWindow(r, a[0]) : 0))
+  // Timer(interval, window): interval in seconds, 0 stops it.  PowerBuilder has a system function with this name while a
+  // window also has a Timer event; a plain `timer(0, this)` call must reach the function, not recursively fire the event.
+  def('timer', (r, a) => {
+    const w = a[1]
+    if (!(w instanceof PBObject)) return -1
+    stopWindowTimer(w)
+    const seconds = toNum(a[0])
+    if (seconds > 0) {
+      const handle = setInterval(() => {
+        void Promise.resolve(r.fire(w, 'timer')).catch((e) => r.onError(e))
+      }, seconds * 1000)
+      windowTimers.set(w, handle)
+    }
+    return 1
+  })
   def('closewithreturn', (r, a) => {
     const w = a[0]
     const msg = r.globals.get('message') as PBObject | undefined

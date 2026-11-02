@@ -471,7 +471,11 @@ export function formatTime(t: PBTime, mask: string): string {
 
 /** PowerBuilder numeric display mask: #, 0, comma, point, literal text, [general], optional ;negative section */
 export function formatNumber(value: number | Dec, mask: string): string {
-  if (mask === '' || /^\[general\]$/i.test(mask)) return value instanceof Dec ? value.toString() : toStr(value)
+  if (mask === '' || /^\[general\]$/i.test(mask)) {
+    // [general] shows the number without the column's stored scale: 1.0000 -> 1, 12.3400 -> 12.34
+    const s = value instanceof Dec ? value.toString() : toStr(value)
+    return /^-?\d+\.\d+$/.test(s) ? s.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '') : s
+  }
   const sections = mask.split(';')
   const neg = (value instanceof Dec ? value.u < 0n : value < 0) && sections.length > 1
   const m = neg ? sections[1] : sections[0]

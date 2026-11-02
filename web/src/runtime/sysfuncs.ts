@@ -53,11 +53,24 @@ export function nowDateTime(): PBDateTime {
 export function formatValue(v: unknown, fmt?: string): string {
   if (v === null || v === undefined) return ''
   if (fmt !== undefined && fmt !== '') {
+    // the named date / time formats follow the regional settings; the original shows `[shortdate] [time]` as `11/2/2026 23:20`
+    if (/^[^[]*\[(shortdate|longdate|time)\]/i.test(fmt)) fmt = fmt.replace(/\[shortdate\]/gi, 'm/d/yyyy').replace(/\[longdate\]/gi, 'dddd, mmmm d, yyyy').replace(/\[time\]/gi, 'hh:mm')
     if (typeof v === 'number' || v instanceof Dec) return formatNumber(v, fmt)
     if (v instanceof PBDate) return formatDate(v, fmt)
     if (v instanceof PBTime) return formatTime(v, fmt)
-    if (v instanceof PBDateTime) return formatTime(v.time, formatDate(v.date, fmt))
+    if (v instanceof PBDateTime) {
+    // A combined mask like "dd/mm/yy hh:mm:ss" must be split at the first
+    // time token: running the whole mask through formatDate would turn the
+    // minutes' `mm` into the month number (21:44 -> 21:11), and then
+    // formatTime would leave that literal month in place.
+    const t = /hh|h|ss|s|fff+|am\/pm|a\/p/i.exec(fmt)
+    if (!t) return formatDate(v.date, fmt)
+    return formatDate(v.date, fmt.slice(0, t.index)) + formatTime(v.time, fmt.slice(t.index))
+  }
     if (typeof v === 'string') {
+      // [general] is a number format, not a string mask: a text column with
+      // this format displays its text, not the literal "[general]".
+      if (/^\[general\]$/i.test(fmt)) return v
       // string masks: @ = any character
       let i = 0
       return fmt.replace(/@/g, () => v[i++] ?? '')

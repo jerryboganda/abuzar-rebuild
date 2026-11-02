@@ -104,12 +104,14 @@ export class NTransaction extends PBObject implements DwTrans {
   async n_commit(): Promise<number> {
     if (!this.db) return -1
     await this.db.commit()
+    this.rt.invalidateRetrieveCache()
     this.setOk(0)
     return 1
   }
   async n_rollback(): Promise<number> {
     if (!this.db) return -1
     await this.db.rollback()
+    this.rt.invalidateRetrieveCache()
     this.setOk(0)
     return 1
   }
@@ -183,6 +185,7 @@ export async function executeStatement(rt: Runtime, f: Frame, st: Extract<Stmt, 
     }
     try {
       const r = await db.exec(tr.sql, [])
+      rt.invalidateRetrieveCache()
       t.setOk(r.rowcount)
     } catch (e) {
       t.setError(-1, (e as Error).message)
@@ -210,6 +213,7 @@ export async function executeStatement(rt: Runtime, f: Frame, st: Extract<Stmt, 
       t.setOk(res.rows.length)
     } else {
       const r = await db.exec(entry.sql, params)
+      rt.invalidateRetrieveCache()
       t.setOk(r.rowcount)
     }
   } catch (e) {
