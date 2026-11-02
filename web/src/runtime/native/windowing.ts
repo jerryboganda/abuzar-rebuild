@@ -42,6 +42,8 @@ async function openWin(rt: Runtime, a: unknown[], sheet: boolean, withParm: bool
   const w = (await rt.instantiate(cls, parent)) as NWindow
   w.parent = parent
   if (ref) await ref.set(w)
+  // open(w_logo) without a declared variable: the class name is the variable (close(w_logo) finds the window later)
+  if (ref && cls === ref.name.toLowerCase() && !rt.globals.has(cls)) rt.globals.set(cls, w)
   rt.windowInstances.set(cls, w)
   w.isOpen = true
   // a window with a menu name owns an instance of that menu (`menuid`)
