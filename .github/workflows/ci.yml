@@ -169,6 +169,16 @@ jobs:
         run: node web/tools/dw-sweep.ts web/public/data http://127.0.0.1:8787 sweep.json | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Open every window against the real server and database
         run: SMOKE_SERVER=http://127.0.0.1:8787 node web/tools/smoke-windows.ts web/public/data - smoke.json | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Browser run of the real user interface (Chromium)
+        continue-on-error: true
+        run: |
+          node web/tools/build-static.ts web/dist
+          (STATIC_DIR=web/dist BIND=127.0.0.1:8788 ./target/release/trader-server > server2.log 2>&1 &)
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:8788/api/health && break; sleep 1; done
+          cd web/e2e
+          npm install --no-save --no-package-lock --silent playwright@1.49.1
+          npx playwright install --with-deps chromium > /dev/null
+          node browser-smoke.mjs http://127.0.0.1:8788 14 | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Server log (tail)
         if: always()
         run: tail -n 40 server.log || true

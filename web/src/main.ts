@@ -10,6 +10,7 @@ import { Ref } from './runtime/interp.ts'
 import { authHeaders } from './runtime/apiauth.ts'
 import { setApiBase } from './runtime/sysfiles.ts'
 import { startApplication, DEFAULT_CONFIG } from './app/startup.ts'
+import { autoLogin } from './app/autologin.ts'
 import { buildPages } from './ui/print.ts'
 import { DwView } from './ui/dwview.ts'
 import type { NDwBase } from './runtime/native/dwctrl.ts'
@@ -112,10 +113,18 @@ async function main(): Promise<void> {
   }
   // with a data server the application starts by itself; `?app=0` keeps the bare desktop, `?w=` opens one window
   if (q.get('app') === '1' || (server !== null && q.get('app') !== '0' && !q.get('w'))) {
+    const auto = (q.get('autologin') ?? '').split(':')
+    if (auto.length === 2) void autoLogin(rt, auto[0], auto[1])
     try {
       await startApplication(rt, { ...DEFAULT_CONFIG, company: q.get('company') ?? '' })
     } catch (e) {
       rt.onError(e)
+    }
+    // helpers of the browser test (web/e2e/browser-smoke.mjs)
+    ;(window as unknown as Record<string, unknown>).__open = async (name: string) => {
+      const ref = new Ref(() => null, () => {})
+      ref.name = name
+      await rt.sys.get('open')!.fn(rt, [ref], undefined as never)
     }
     return
   }
