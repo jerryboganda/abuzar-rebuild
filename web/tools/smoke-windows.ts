@@ -63,19 +63,19 @@ const results: { name: string; ok: boolean; error?: string; ms: number }[] = []
 let late: string[] = []
 process.on('unhandledRejection', (e) => late.push((e as Error).message?.slice(0, 160) ?? String(e)))
 const t0 = Date.now()
-for (const name of windows) {
-  const cls = await rt.getClass(name)
-  if (!cls || cls.kind !== 'window') continue
-  const type = Number(cls.fields.find((f) => f.name === 'windowtype')?.value ?? 0)
+// windows opened with an argument branch on Message.StringParm: a failing window is retried with the usual codes
+const CANDIDATES = ['M', 'C', 'L', 'P', 'S', 'A', 'B', 'G', 'D', 'I', 'R', 'T', 'Y', '2', '0']
+async function tryOpen(name: string, type: number, stringparm: string): Promise<{ name: string; ok: boolean; error?: string; ms: number }> {
   const ref = new Ref(() => null, () => {})
   ref.name = name
   const start = Date.now()
+  let res: { name: string; ok: boolean; error?: string; ms: number }
   try {
     const open = rt.sys.get('open')!
     const msg = rt.globals.get('message') as PBObject
     msg.props.set('powerobjectparm', new LooseStruct('arguments'))
     msg.props.set('doubleparm', 1)
-    msg.props.set('stringparm', '1')
+    msg.props.set('stringparm', stringparm)
     // response windows block until closed: close them as soon as they are shown
     const p = Promise.resolve(open.fn(rt, [ref], undefined as never))
     let openErr: string | null = null
@@ -93,16 +93,37 @@ for (const name of windows) {
     }
     await Promise.race([p, new Promise((r) => setTimeout(r, 3000))])
     await new Promise((r) => setTimeout(r, 5))
-    if (openErr) results.push({ name, ok: false, error: openErr, ms: Date.now() - start })
-    else results.push({ name, ok: true, ms: Date.now() - start })
+    res = openErr ? { name, ok: false, error: openErr, ms: Date.now() - start } : { name, ok: true, ms: Date.now() - start }
     const inst = rt.windowInstances.get(name)
     if (inst) await rt.closeWindow(inst).catch(() => {})
   } catch (e) {
-    results.push({ name, ok: false, error: (e as Error).message.slice(0, 120) + ' @' + whereOf(e), ms: Date.now() - start })
+    res = { name, ok: false, error: (e as Error).message.slice(0, 120) + ' @' + whereOf(e), ms: Date.now() - start }
     rt.windowInstances.delete(name)
   }
   rt.depth = 0
+  return res
 }
+let retried = 0
+let rescued = 0
+for (const name of windows) {
+  const cls = await rt.getClass(name)
+  if (!cls || cls.kind !== 'window') continue
+  const type = Number(cls.fields.find((f) => f.name === 'windowtype')?.value ?? 0)
+  let r = await tryOpen(name, type, '1')
+  if (!r.ok && /Null object reference|expression/.test(r.error || '')) {
+    retried++
+    for (const sp of CANDIDATES) {
+      const r2 = await tryOpen(name, type, sp)
+      if (r2.ok) {
+        r = r2
+        rescued++
+        break
+      }
+    }
+  }
+  results.push(r)
+}
+console.log(`retried with other Message.StringParm codes ${retried}, opened that way ${rescued}`)
 const ok = results.filter((r) => r.ok).length
 console.log(`windows tried ${results.length}  opened without runtime error ${ok}  failed ${results.length - ok}  (${((Date.now() - t0) / 1000).toFixed(1)}s)`)
 const errs = new Map<string, number>()

@@ -15,6 +15,8 @@ export interface EvalHost {
   scopeRange(ctx: EvalCtx, sc: { kind: string; n?: number } | undefined): [number, number]
   version: number
   pageInfo(): { page: number; pageCount: number }
+  /** crosstabsum / -count / -avg / -min / -max (n) of a row; only crosstab models have it */
+  crosstabAgg?(name: string, n: number, row: number): unknown
 }
 
 export interface EvalCtx {
@@ -168,6 +170,8 @@ async function evalCall(e: Extract<Expr, { k: 'call' }>, ctx: EvalCtx): Promise<
     default:
       break
   }
+  // crosstabsum(n) ... : over the replicated columns of the n-th value of the current row of a crosstab
+  if (/^crosstab(sum|count|avg|min|max)$/.test(name)) return ctx.host.crosstabAgg ? ctx.host.crosstabAgg(name, e.a[0] ? toNum(await evalDw(e.a[0], ctx)) : 1, ctx.row) : null
   if (AGG.has(name)) return aggregate(e, ctx)
   if (name === 'counter') return ctx.row
   const args: unknown[] = []
@@ -207,10 +211,17 @@ async function aggregate(e: Extract<Expr, { k: 'call' }>, ctx: EvalCtx): Promise
     }
     vals.push(arg ? await evalDw(arg, c2) : r)
   }
-  const nums = vals.filter((v) => v !== null)
+  const res = reduceAgg(name, vals.filter((v) => v !== null))
+  ctx.memo.set(key, res)
+  return res
+}
+
+/** value of an aggregate function over the non-null values `nums` */
+export function reduceAgg(name: string, nums: unknown[]): unknown {
   let res: unknown = null
   switch (name) {
     case 'count':
+    case 'crosstabcount':
       res = nums.length
       break
     case 'sum':
@@ -268,7 +279,6 @@ async function aggregate(e: Extract<Expr, { k: 'call' }>, ctx: EvalCtx): Promise
     default:
       res = null
   }
-  ctx.memo.set(key, res)
   return res
 }
 

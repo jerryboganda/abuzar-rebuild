@@ -84,7 +84,8 @@ export async function buildPages(ctl: NDwBase): Promise<HTMLElement[]> {
   }
   const L = view.layout(m)
   const ps = pageSetup(m)
-  const hdrH = view.heightOf(m, 'header')
+  const hdrBands = view.headerBands(m)
+  const hdrH = hdrBands.reduce((s, b) => s + view.heightOf(m, b), 0)
   const ftrH = view.heightOf(m, 'footer')
   const body = ps.height - ps.top - ps.bottom - hdrH - ftrH
   const levels = m.groupLevels()
@@ -130,7 +131,7 @@ export async function buildPages(ctl: NDwBase): Promise<HTMLElement[]> {
       bgb.style.overflow = 'visible'
       inner.appendChild(bgb)
     }
-    if (hdrH > 0) inner.appendChild(await view.makeBand(m, L, 'header', 1, 'hdr'))
+    for (const hb of hdrBands) if (view.heightOf(m, hb) > 0) inner.appendChild(await view.makeBand(m, L, hb, 1, 'hdr'))
     for (const f of pagesFlow[p]) inner.appendChild(await view.makeBand(m, L, f.band, f.row, f.cls))
     page.appendChild(inner)
     if (ftrH > 0) {

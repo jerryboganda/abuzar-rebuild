@@ -5,7 +5,8 @@ import { fromWire, toWire } from '../runtime/wire.ts'
 import type { Db, QueryResult } from '../runtime/wire.ts'
 import { argList, colKind, num, splitExpr } from './def.ts'
 import type { DwDef, DwObject } from './def.ts'
-import { compileDw, evalDw, newCtx } from './expr.ts'
+import { compileDw, evalDw, newCtx, reduceAgg } from './expr.ts'
+import { crosstabSpec, pivot } from './crosstab.ts'
 import type { EvalCtx, EvalHost } from './expr.ts'
 
 export const NOT_MODIFIED = 0
@@ -44,12 +45,16 @@ export interface SqlSource {
 
 export class DwModel implements EvalHost {
   rt: Runtime
-  def: DwDef
+  def!: DwDef
+  /** the definition as stored; a crosstab replaces `def` with the expanded one on every retrieve */
+  baseDef: DwDef
   name: string
   buf = new DwBuffers()
-  colNames: string[]
+  colNames!: string[]
   colIdx = new Map<string, number>()
-  kinds: ReturnType<typeof colKind>[]
+  kinds!: ReturnType<typeof colKind>[]
+  /** crosstab: new column indexes of the replicated columns of each value */
+  xt: number[][] = []
   computes = new Map<string, DwObject>()
   overrides = new Map<string, string>() // modify(): "object.property" -> value
   trans: DwTrans | null = null
@@ -67,14 +72,21 @@ export class DwModel implements EvalHost {
 
   constructor(rt: Runtime, name: string, def: DwDef) {
     this.rt = rt
-    this.def = def
+    this.baseDef = def
     this.name = name
-    this.colNames = def.table.columns.map((c) => c.name.toLowerCase())
-    this.colNames.forEach((n, i) => this.colIdx.set(n, i))
-    this.kinds = def.table.columns.map((c) => colKind(c.type))
-    for (const o of def.objects) if (o.type === 'compute') this.computes.set(o.name.toLowerCase(), o)
+    this.setDef(def)
     this.sortText = (def.table.sort as string | undefined) || ''
     this.filterText = (def.table.filter as string | undefined) || ''
+  }
+
+  private setDef(def: DwDef): void {
+    this.def = def
+    this.colNames = def.table.columns.map((c) => c.name.toLowerCase())
+    this.colIdx.clear()
+    this.colNames.forEach((n, i) => this.colIdx.set(n, i))
+    this.kinds = def.table.columns.map((c) => colKind(c.type))
+    this.computes.clear()
+    for (const o of def.objects) if (o.type === 'compute') this.computes.set(o.name.toLowerCase(), o)
   }
 
   get version(): number {
@@ -311,6 +323,7 @@ export class DwModel implements EvalHost {
         res = c.resultsets[0] ? { columns: c.resultsets[0].columns, rows: c.resultsets[0].rows } : { columns: [], rows: [] }
       } else res = await this.trans.db.query(sql, params.map(toWire))
       this.reset()
+      if (this.baseDef.crosstab) return await this.pivotResult(res)
       const map: number[] = this.colNames.map((_, i) => i)
       if (res.columns.length) {
         // result columns are in the order of the DataWindow columns; match by name when the counts differ
@@ -341,6 +354,50 @@ export class DwModel implements EvalHost {
       this.trans.setError(-1, this.lastError)
       return -1
     }
+  }
+
+  /** crosstab: the retrieved rows are the source of the pivot; the definition is expanded to the columns found in them */
+  private async pivotResult(res: QueryResult): Promise<number> {
+    const spec = crosstabSpec(this.baseDef)!
+    const names = res.columns.length === spec.sourceNames.length ? spec.sourceNames : res.columns.map((c) => c.name.toLowerCase())
+    const src = res.rows.map((raw) => raw.map((x, k) => fromWire(res.columns[k].type, x)))
+    const p = await pivot(this.rt, this.baseDef, spec, names, src)
+    this.setDef(p.def)
+    this.xt = p.valueCols
+    this.buf.primary = p.rows.map((vals) => {
+      const v = vals.map((x, i) => this.coerceTo(i, x))
+      return { v, orig: v.slice(), st: NOT_MODIFIED, mod: new Set<number>(), sel: false }
+    })
+    this.trans?.setOk(this.buf.primary.length)
+    await this.applyFilterSort()
+    this.row = this.buf.primary.length ? 1 : 0
+    this.touch()
+    return this.buf.primary.length
+  }
+
+  crosstabAgg(name: string, n: number, row: number): unknown {
+    const r = this.buf.primary[row - 1]
+    const cols = this.xt[n - 1]
+    if (!r || !cols) return null
+    return reduceAgg(name.slice('crosstab'.length), cols.map((i) => r.v[i]).filter((v) => v !== null))
+  }
+
+  /** suppress repeating values (`sparse` columns): true when the cell repeats the value of the row above */
+  suppressed(row: number, col: number): boolean {
+    const sp = this.def.sparse
+    if (!sp || row < 2) return false
+    const at = sp.findIndex((n) => this.colIdx.get(n.toLowerCase()) === col)
+    if (at < 0) return false
+    const a = this.buf.primary[row - 1]
+    const b = this.buf.primary[row - 2]
+    if (!a || !b) return false
+    // a change in an earlier sparse column starts a new run for the later ones
+    for (let i = 0; i <= at; i++) {
+      const c = this.colIdx.get(sp[i].toLowerCase())
+      if (c === undefined) continue
+      if ((a.v[c] === null) !== (b.v[c] === null) || (a.v[c] !== null && !equals(a.v[c], b.v[c]))) return false
+    }
+    return true
   }
 
   // ---------------------------------------------------------------- update

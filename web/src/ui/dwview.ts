@@ -22,6 +22,24 @@ const BORDER_CSS: Record<string, string> = {
   '7': '1px solid #000',
 }
 
+/** runs `f` once on the next animation frame, or soon after when the page is hidden and frames are not delivered */
+function nextFrame(f: () => void): void {
+  let done = false
+  const once = () => {
+    if (done) return
+    done = true
+    f()
+  }
+  requestAnimationFrame(once)
+  setTimeout(once, 60)
+}
+
+interface FlowItem {
+  band: string
+  row: number
+  cls: string
+}
+
 export class DwView {
   ctl: NDwBase
   host: HTMLElement
@@ -37,6 +55,7 @@ export class DwView {
     this.root = document.createElement('div')
     this.root.className = 'dw'
     host.appendChild(this.root)
+    this.root.addEventListener('scroll', this.onScroll)
     ctl.listeners.add(() => this.schedule())
     this.schedule()
   }
@@ -44,7 +63,7 @@ export class DwView {
   schedule(): void {
     if (this.scheduled) return
     this.scheduled = true
-    requestAnimationFrame(() => {
+    nextFrame(() => {
       this.scheduled = false
       void this.render()
     })
@@ -95,7 +114,7 @@ export class DwView {
     const sy = (v: number) => toPx(v, 'y', u)
     const byBand = new Map<string, DwObject[]>()
     for (const o of m.def.objects) {
-      const b = o.band === 'header[1]' ? 'header.1' : o.band
+      const b = o.band
       ;(byBand.get(b) || byBand.set(b, []).get(b)!).push(o)
     }
     const width = Math.max(0, ...m.def.objects.map((o) => num(o, 'x') + num(o, 'width') + (o.type === 'line' ? Math.max(num(o, 'x2'), num(o, 'x1')) - num(o, 'x') : 0)))
@@ -108,6 +127,7 @@ export class DwView {
     el.className = 'band ' + cls
     el.style.height = L.sy(h) + 'px'
     el.style.position = 'relative'
+    if (h === 0) el.style.overflow = 'hidden' // objects of a band without height are not shown (group trailers a report does not use)
     const bandProps = (m.def.bands as Record<string, Record<string, string>>)[band]
     if (bandProps?.color) el.style.background = pbColor(bandProps.color, 'transparent')
     const ctxBase = newCtx(m, 0, 'header')
@@ -118,14 +138,50 @@ export class DwView {
     return el
   }
 
+  /** page header bands in order: `header`, then `header[1]`, `header[2]` ... (crosstabs have several) */
+  headerBands(m: DwModel): string[] {
+    const num1 = (k: string) => Number(/\d+/.exec(k)![0])
+    const extra = Object.keys(m.def.bands).filter((k) => /^header\[\d+\]$/.test(k)).sort((a, b) => num1(a) - num1(b))
+    return ['header', ...extra]
+  }
+
   heightOf(m: DwModel, band: string): number {
     return this.layout(m).sy(this.bandHeight(m, band))
   }
 
+  /** the sequence of bands of the body: group headers, detail rows, group trailers */
+  private flowOf(m: DwModel): FlowItem[] {
+    const levels = m.groupLevels()
+    const rows = m.buf.primary
+    const flow: FlowItem[] = []
+    for (let i = 0; i < rows.length; i++) {
+      for (const g of levels) if (this.groupStarts(m, i, levels, g.level)) flow.push({ band: `header.${g.level}`, row: i + 1, cls: 'ghdr' })
+      flow.push({ band: 'detail', row: i + 1, cls: 'row' })
+      for (const g of [...levels].reverse()) if (this.groupEnds(m, i, levels, g.level)) flow.push({ band: `trailer.${g.level}`, row: i + 1, cls: 'gtr' })
+    }
+    return flow
+  }
+
+  /** one band of the flow as an element; detail rows get their selection state and mouse handlers */
+  private async flowBand(m: DwModel, L: ReturnType<DwView['layout']>, f: FlowItem, interactive: boolean): Promise<HTMLElement> {
+    const el = await this.makeBand(m, L, f.band, f.row, f.cls)
+    if (f.cls !== 'row') return el
+    el.dataset.row = String(f.row)
+    if (m.row === f.row) el.classList.add('cur')
+    if (m.buf.primary[f.row - 1]?.sel) el.classList.add('sel')
+    if (interactive) {
+      el.addEventListener('mousedown', (ev) => void this.rowClick(m, f.row, ev))
+      el.addEventListener('dblclick', () => void this.ctl.rt.fire(this.ctl, 'doubleclicked', [0, 0, f.row, null]))
+    }
+    return el
+  }
+
+  /** more rows than this on screen are rendered window-wise (the original draws only what is visible, too) */
+  static readonly VIRTUAL_ROWS = 120
+
   /** all bands of the report as one element (header, groups, rows, summary); `sticky` keeps header / footer in view on screen */
   async buildBody(m: DwModel, sticky: boolean, interactive: boolean): Promise<HTMLElement> {
     const L = this.layout(m)
-    const sx = L.sx
     const sy = L.sy
     const byBand = L.byBand
     const root = document.createElement('div')
@@ -134,9 +190,7 @@ export class DwView {
     const inner = root
     inner.style.width = L.width + 'px'
     const mk = (band: string, row: number, cls: string): Promise<HTMLElement> => this.makeBand(m, L, band, row, cls)
-    void sx
-    void sy
-    void byBand
+    const background = pbColor(m.def.datawindow.color, '#fff')
     // the background band holds objects that sit behind everything (charts of graph DataWindows, watermarks, free-standing labels)
     if ((byBand.get('background') || []).length) {
       const bgBand = await mk('background', Math.max(1, m.rowCount()), 'bgl')
@@ -147,34 +201,49 @@ export class DwView {
       for (const o of byBand.get('background')!) bottom = Math.max(bottom, sy(num(o, 'y') + num(o, 'height')))
       inner.style.minHeight = bottom + 'px'
     }
-    if (this.bandHeight(m, 'header') > 0 || (byBand.get('header') || []).length) {
-      const hdr = await mk('header', 0, 'hdr')
+    const heads: HTMLElement[] = []
+    for (const hb of this.headerBands(m)) {
+      if (this.bandHeight(m, hb) > 0 || (byBand.get(hb) || []).length) heads.push(await mk(hb, 0, 'hdr'))
+    }
+    if (heads.length) {
+      let hdr = heads[0]
+      if (heads.length > 1) {
+        hdr = document.createElement('div')
+        hdr.append(...heads)
+      }
       if (sticky) {
         hdr.style.position = 'sticky'
         hdr.style.top = '0'
         hdr.style.zIndex = '2'
-        hdr.style.background = hdr.style.background || pbColor(m.def.datawindow.color, '#fff')
+        hdr.style.background = hdr.style.background || background
       }
       inner.appendChild(hdr)
     }
-    const levels = m.groupLevels()
     const rows = m.buf.primary
-    for (let i = 0; i < rows.length; i++) {
-      for (const g of levels) {
-        if (this.groupStarts(m, i, levels, g.level)) inner.appendChild(await mk(`header.${g.level}`, i + 1, 'ghdr'))
+    const flow = this.flowOf(m)
+    if (sticky && interactive && rows.length > DwView.VIRTUAL_ROWS) {
+      // only the bands around the viewport exist; the body keeps its full height so the scroll bar is right
+      const heights = new Map<string, number>()
+      const tops: number[] = []
+      const hs: number[] = []
+      let y = 0
+      for (const f of flow) {
+        let h = heights.get(f.band)
+        if (h === undefined) heights.set(f.band, (h = sy(this.bandHeight(m, f.band))))
+        tops.push(y)
+        hs.push(h)
+        y += h
       }
-      const el = await mk('detail', i + 1, 'row')
-      el.dataset.row = String(i + 1)
-      if (m.row === i + 1) el.classList.add('cur')
-      if (rows[i].sel) el.classList.add('sel')
-      if (interactive) {
-        el.addEventListener('mousedown', (ev) => void this.rowClick(m, i + 1, ev))
-        el.addEventListener('dblclick', () => void this.ctl.rt.fire(this.ctl, 'doubleclicked', [0, 0, i + 1, null]))
-      }
-      inner.appendChild(el)
-      for (const g of [...levels].reverse()) {
-        if (this.groupEnds(m, i, levels, g.level)) inner.appendChild(await mk(`trailer.${g.level}`, i + 1, 'gtr'))
-      }
+      const body = document.createElement('div')
+      body.className = 'dw-body'
+      body.style.cssText = `position:relative;height:${y}px`
+      const rowAt = new Map<number, number>()
+      flow.forEach((f, i) => f.cls === 'row' && rowAt.set(f.row, i))
+      this.virt = { m, L, flow, tops, hs, body, shown: new Map(), rowAt }
+      inner.appendChild(body)
+    } else {
+      this.virt = null
+      for (const f of flow) inner.appendChild(await this.flowBand(m, L, f, interactive))
     }
     if (this.bandHeight(m, 'summary') > 0) inner.appendChild(await mk('summary', Math.max(1, rows.length), 'sum'))
     if (this.bandHeight(m, 'footer') > 0) {
@@ -182,11 +251,96 @@ export class DwView {
       if (sticky) {
         f.style.position = 'sticky'
         f.style.bottom = '0'
-        f.style.background = pbColor(m.def.datawindow.color, '#fff')
+        f.style.background = background
       }
       inner.appendChild(f)
     }
     return inner
+  }
+
+  private virt: {
+    m: DwModel
+    L: ReturnType<DwView['layout']>
+    flow: FlowItem[]
+    tops: number[]
+    hs: number[]
+    body: HTMLElement
+    shown: Map<number, HTMLElement>
+    rowAt: Map<number, number>
+  } | null = null
+  private fillToken = 0
+  private lastRow = 0
+
+  /** creates the bands of the visible window of a windowed body and drops the ones that left it */
+  private async fillWindow(): Promise<void> {
+    const v = this.virt
+    if (!v) return
+    const tok = ++this.fillToken
+    const top = this.root.scrollTop - v.body.offsetTop
+    const view = this.root.clientHeight || 600
+    const lo = top - 400
+    const hi = top + view + 400
+    let a = 0
+    let b = v.flow.length
+    while (a < b) {
+      const mid = (a + b) >> 1
+      if (v.tops[mid] + v.hs[mid] > lo) b = mid
+      else a = mid + 1
+    }
+    const want = new Set<number>()
+    for (let i = a; i < v.flow.length && v.tops[i] < hi; i++) want.add(i)
+    for (const [i, el] of v.shown) {
+      if (!want.has(i)) {
+        el.remove()
+        v.shown.delete(i)
+      }
+    }
+    for (const i of want) {
+      if (v.shown.has(i)) continue
+      const el = await this.flowBand(v.m, v.L, v.flow[i], true)
+      if (tok !== this.fillToken || this.virt !== v) return
+      el.style.position = 'absolute'
+      el.style.top = v.tops[i] + 'px'
+      el.style.left = '0'
+      el.style.right = '0'
+      v.body.appendChild(el)
+      v.shown.set(i, el)
+    }
+  }
+
+  private fillScheduled = false
+  private onScroll = (): void => {
+    if (!this.virt || this.fillScheduled) return
+    this.fillScheduled = true
+    nextFrame(() => {
+      this.fillScheduled = false
+      void this.fillWindow()
+    })
+  }
+
+  /** scrolls the current row into view (ScrollToRow, SetRow, Tab into the next row ...) */
+  private async revealRow(m: DwModel): Promise<void> {
+    const row = m.row
+    if (row < 1) return
+    let top: number
+    let h: number
+    const v = this.virt
+    if (v) {
+      const i = v.rowAt.get(row)
+      if (i === undefined) return
+      top = v.tops[i] + v.body.offsetTop
+      h = v.hs[i]
+    } else {
+      const el = this.root.querySelector(`.row[data-row="${row}"]`) as HTMLElement | null
+      if (!el) return
+      top = el.offsetTop
+      h = el.offsetHeight
+    }
+    const view = this.root.clientHeight
+    if (!view) return
+    if (top < this.root.scrollTop) this.root.scrollTop = top
+    else if (top + h > this.root.scrollTop + view) this.root.scrollTop = top + h - view
+    if (v) await this.fillWindow()
   }
 
   private async paint(m: DwModel): Promise<void> {
@@ -196,6 +350,11 @@ export class DwView {
     this.root.replaceChildren(inner)
     this.root.scrollTop = scroll
     this.root.scrollLeft = left
+    await this.fillWindow()
+    if (m.row !== this.lastRow) {
+      this.lastRow = m.row
+      await this.revealRow(m)
+    }
   }
 
   private keyOf(m: DwModel, i: number, level: number, levels: { level: number; by: number[] }[]): string {
@@ -384,7 +543,7 @@ export class DwView {
     else {
       const r = m.buf.primary[row - 1]
       const ci = m.colIndex(o.name)
-      v = r && ci >= 0 ? r.v[ci] : null
+      v = r && ci >= 0 && !(band === 'detail' && m.suppressed(row, ci)) ? r.v[ci] : null
     }
     el.textContent = await this.display(m, o, v)
     if (o.type === 'column') {

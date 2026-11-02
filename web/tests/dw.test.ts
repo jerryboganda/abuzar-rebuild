@@ -91,3 +91,69 @@ test('retrieve, aggregates, groups, update statements', async () => {
   assert.equal(m.modifiedCount(), 0)
   void NEW_MODIFIED; void Dec
 })
+
+test('crosstab pivot: replicated columns, shifted objects, crosstabsum, sparse', async () => {
+  const xdef: DwDef = {
+    datawindow: { processing: '4' },
+    bands: { 'header[1]': { height: '100' }, 'header[2]': { height: '50' }, detail: { height: '40' }, summary: { height: '40' } } as DwDef['bands'],
+    table: {
+      columns: [
+        { type: 'char(10)', name: 'grp' },
+        { type: 'char(10)', name: 'item' },
+        { type: 'decimal(0)', name: 'qty' },
+        { type: 'decimal(0)', name: 'val' },
+      ],
+      retrieve: 'select grp, item, client, qty, val from t',
+      sort: 'grp A, item A',
+    },
+    objects: [
+      { type: 'column', name: 'grp', band: 'detail', x: '0', width: '100' },
+      { type: 'column', name: 'item', band: 'detail', x: '100', width: '100' },
+      { type: 'column', name: 'qty', band: 'detail', x: '200', width: '60', 'crosstab.repeat': 'yes' },
+      { type: 'column', name: 'val', band: 'detail', x: '260', width: '40', 'crosstab.repeat': 'yes' },
+      { type: 'text', name: 't_client', band: 'header[2]', x: '200', width: '100', text: '@client' },
+      { type: 'text', name: 'qty_t', band: 'header[2]', x: '200', width: '60', text: 'Qty' },
+      { type: 'compute', name: 'c_qty', band: 'summary', x: '200', width: '60', expression: 'sum(qty for all)', visible: '1\tif(sum(qty for all)=0,0,1)' },
+      { type: 'compute', name: 'gsq', band: 'detail', x: '310', width: '50', expression: 'crosstabsum(1)' },
+    ],
+    crosstab: { columns: 'client', rows: 'grp, item', values: 'sum(qty for crosstab), sum(val for crosstab)', sourcenames: 'grp, item, client, qty, val', crosstabonly: 'yes' },
+    sparse: ['grp'],
+  }
+  const rt = new Runtime({ load: async () => undefined })
+  registerSysFuncs(rt)
+  rt.dwSql = () => ({ sql: 'select 1', params: [] })
+  const db = makeDb([])
+  db.query = async () => ({
+    columns: [{ name: 'grp', type: 'text' }, { name: 'item', type: 'text' }, { name: 'client', type: 'text' }, { name: 'qty', type: 'numeric' }, { name: 'val', type: 'numeric' }],
+    rows: [['g1', 'i1', 'B', '1', '10'], ['g1', 'i1', 'A', '2', '20'], ['g1', 'i1', 'A', '3', '30'], ['g1', 'i2', 'B', '4', '40'], ['g2', 'i3', 'A', '5', '50']],
+  })
+  const m = new DwModel(rt, 'd_x', xdef)
+  m.trans = { db, setError() {}, setOk() {} }
+  assert.equal(await m.retrieve([]), 3)
+  assert.deepEqual(m.colNames, ['grp', 'item', 'qty_1', 'val_1', 'qty_2', 'val_2'])
+  // client A (sorted first) sums its two rows, B has the other
+  assert.equal(String(m.getItem(1, 'qty_1')), '5')
+  assert.equal(String(m.getItem(1, 'val_1')), '50')
+  assert.equal(String(m.getItem(1, 'qty_2')), '1')
+  assert.equal(m.getItem(2, 'qty_1'), null)
+  assert.equal(String(m.getItem(2, 'qty_2')), '4')
+  assert.equal(String(m.getItem(3, 'qty_1')), '5')
+  assert.equal(String(await m.getValue(1, 'gsq')), '6')
+  assert.equal(String(await m.getValue(2, 'gsq')), '4')
+  const by = (n: string) => m.def.objects.find((o) => o.name === n)
+  assert.equal(by('qty_1')?.x, '200')
+  assert.equal(by('qty_2')?.x, '300') // zone = 200..300 (qty + val) -> stride 100
+  assert.equal(by('gsq')?.x, '410') // moved right by the one added column group
+  assert.equal(by('t_client_1')?.text, 'A')
+  assert.equal(by('t_client_2')?.text, 'B')
+  assert.equal(by('qty_t_2')?.text, 'Qty')
+  assert.equal(by('c_qty_2')?.expression, 'sum(qty_2 for all)')
+  assert.equal(by('c_qty_2')?.visible, '1\tif(sum(qty_2 for all)=0,0,1)')
+  assert.equal(String(await m.getValue(1, 'c_qty_1')), '10')
+  assert.equal(by('qty'), undefined)
+  // suppress repeating values: g1 is shown on its first row only
+  assert.equal(m.suppressed(1, 0), false)
+  assert.equal(m.suppressed(2, 0), true)
+  assert.equal(m.suppressed(3, 0), false)
+  assert.equal(m.suppressed(2, 1), false) // not a sparse column
+})

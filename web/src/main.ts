@@ -9,6 +9,7 @@ import type { PBObject } from './runtime/object.ts'
 import { Ref } from './runtime/interp.ts'
 import { startApplication, DEFAULT_CONFIG } from './app/startup.ts'
 import { buildPages } from './ui/print.ts'
+import { DwView } from './ui/dwview.ts'
 import type { NDwBase } from './runtime/native/dwctrl.ts'
 import type { NTransaction } from './runtime/native/transaction.ts'
 
@@ -38,7 +39,7 @@ async function main(): Promise<void> {
     stmts: sqlTables.stmt,
     dwSql: sqlTables.dw,
     procs: sqlTables.proc,
-    openDb: async (_t: PBObject): Promise<Db> => (useMock ? new MockDb(rt.dwCatalog!) : await new HttpDb().open()),
+    openDb: async (_t: PBObject): Promise<Db> => (useMock ? new MockDb(rt.dwCatalog!, Number(q.get('rows')) || 6) : await new HttpDb().open()),
   })
   if (useMock) rt.dwSql = (n) => ({ sql: 'mock:' + n, params: [], proc: !!sqlTables.dw?.[n]?.proc })
   const ui = new DomUi(rt, desktop)
@@ -49,9 +50,9 @@ async function main(): Promise<void> {
 (in ${(e as { where?: string }).where})` : ''), 'stopsign!', 'ok!', 1)
   }
   ;(window as unknown as { rt: unknown }).rt = rt
-  const dwName = q.get('dw')
+  const dwName = q.get('dw') || q.get('live')
   if (dwName) {
-    // development aid: lay out one DataWindow as a printed report with the mock (or server) data
+    // development aid: lay out one DataWindow as a printed report (`dw`) or as the live control (`live`) with the mock (or server) data
     const ds = (await rt.instantiate('datastore')) as NDwBase
     ds.setNative('dataobject', dwName)
     const t = rt.globals.get('sqlca') as NTransaction
@@ -59,6 +60,13 @@ async function main(): Promise<void> {
     await ds.n_settransobject(t)
     const args = (q.get('args') ?? '').split(',').filter(Boolean).map((a) => (/^-?\d+(\.\d+)?$/.test(a) ? Number(a) : a))
     await ds.n_retrieve(...args)
+    if (q.get('live')) {
+      const box = document.createElement('div')
+      box.style.cssText = 'position:absolute;inset:0'
+      desktop.appendChild(box)
+      new DwView(ds, box)
+      return
+    }
     const host = document.createElement('div')
     host.style.cssText = 'position:absolute;inset:0;overflow:auto;background:#808080;padding:12px'
     for (const p of await buildPages(ds)) {

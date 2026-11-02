@@ -1,11 +1,17 @@
 """Pack the recovered DataWindow definitions into one gzip-compressed JSON bundle per library.
 usage: python -I build_dw_bundle.py <datawindows_json dir> <out dir>
-Dropped as irrelevant to the rebuild: the `extras` section (HTML / XHTML generation defaults) and `html.*` object properties."""
+Kept from the `extras` section: the `crosstab` specification (columns / rows / values / sourcenames, 147 DataWindows) as `crosstab`
+and the `sparse` list of columns that suppress repeating values (408 DataWindows) as `sparse`.
+Dropped as irrelevant to the rebuild: the rest of `extras` (HTML / XHTML / XML / PDF generation defaults) and `html.*` object properties."""
 import sys, os, json, gzip, glob
 
 
 def slim(d):
-    d.pop('extras', None)
+    for e in d.pop('extras', None) or []:
+        if e.get('type') == 'crosstab':
+            d['crosstab'] = e['props']
+        elif e.get('type') == 'sparse':
+            d['sparse'] = [n for n in e['props'].get('names', '').split('\t') if n]
     for o in d.get('objects', []):
         for k in [k for k in o if k.startswith('html.')]:
             del o[k]

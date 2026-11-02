@@ -5,6 +5,7 @@
 //! A *session* here is exactly that: a dedicated connection with the same transaction behaviour:
 //!   * `autocommit = false`: the first statement starts a transaction that lasts until COMMIT / ROLLBACK
 //!   * a failing statement only undoes itself (SQL Server semantics), implemented with a savepoint per statement
+//!
 //! Statements arrive with `$n` placeholders and JSON parameters and are executed with the simple query protocol, so every
 //! result is returned in text form together with its PostgreSQL type name (the client decodes by type).
 
@@ -172,7 +173,7 @@ async fn run_statement(s: &mut Session, sql: String, want_rows: bool) -> Result<
                 for (i, c) in cols.iter_mut().enumerate() {
                     if c.ty == "?" {
                         let first = data.iter().find_map(|r| if let Value::String(t) = &r[i] { Some(t.as_str()) } else { None });
-                        c.ty = if first.map_or(false, |t| t.starts_with("<unnamed portal") || t.starts_with("<portal")) { "refcursor".into() } else { "text".into() };
+                        c.ty = if first.is_some_and(|t| t.starts_with("<unnamed portal") || t.starts_with("<portal")) { "refcursor".into() } else { "text".into() };
                     }
                 }
                 let n = data.len() as u64;

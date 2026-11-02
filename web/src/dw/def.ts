@@ -42,6 +42,10 @@ export interface DwDef {
     [k: string]: unknown
   }
   objects: DwObject[]
+  /** crosstab specification (columns / rows / values / sourcenames), processing = 4 */
+  crosstab?: Props
+  /** columns that suppress repeating values (lower-case names are matched) */
+  sparse?: string[]
 }
 
 /** processing style (datawindow.processing) */
