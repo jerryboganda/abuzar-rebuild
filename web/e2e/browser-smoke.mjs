@@ -8,6 +8,19 @@ const stride = Number(process.argv[3] || 14)
 const browser = await chromium.launch()
 // the size of the screen the original was compared on: windows lay themselves out from the screen size (GetEnvironment)
 const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } })
+await page.addInitScript(() => {
+  window.closeLikeUser = async (w) => {
+    const closing = window.rt.closeWindow(w).catch(() => {})
+    for (let i = 0; i < 4; i++) {
+      const done = await Promise.race([closing.then(() => true), new Promise((r) => setTimeout(() => r(false), 400))])
+      if (done) return
+      document.querySelectorAll('.msgbox .btns').forEach((bar) => {
+        const no = [...bar.querySelectorAll('button')].find((x) => /^no$/i.test(x.textContent.trim()))
+        ;(no || bar.querySelector('button'))?.click()
+      })
+    }
+  }
+})
 const shots = process.argv[4] || ''
 const errors = []
 let missingFiles = 0
@@ -70,7 +83,7 @@ if (shots && !process.argv[5]) {
     await page.screenshot({ path: `${shots}/${name}.png` })
     await page.evaluate(async (n) => {
       const w = window.rt.windowInstances.get(n)
-      if (w) await window.rt.closeWindow(w).catch(() => {})
+      if (w) await window.closeLikeUser(w)
     }, name)
   }
 }
@@ -143,7 +156,7 @@ if (shots && observed) {
           const no = [...b.parentElement.querySelectorAll('button')].find((x) => /^no$/i.test(x.textContent.trim()))
           ;(no || b).click()
         })
-        for (const [n, w] of [...window.rt.windowInstances]) if (n !== 'w_main') await window.rt.closeWindow(w).catch(() => {})
+        for (const [n, w] of [...window.rt.windowInstances]) if (n !== 'w_main') await window.closeLikeUser(w)
         await new Promise((r) => setTimeout(r, 150))
       }
     })
@@ -179,7 +192,7 @@ for (const name of sample) {
     const hadDom = document.querySelectorAll('.win').length
     if (w) {
       try {
-        await window.rt.closeWindow(w)
+        await window.closeLikeUser(w)
       } catch (e) {
         /* closing a window that failed half-way */
       }
