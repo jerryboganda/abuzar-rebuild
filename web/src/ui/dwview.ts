@@ -9,7 +9,8 @@ import type { DwObject } from '../dw/def.ts'
 import { compileDw, evalDw, newCtx } from '../dw/expr.ts'
 import { formatValue } from '../runtime/sysfuncs.ts'
 import { Dec, PBDate, PBDateTime, PBTime, toStr } from '../runtime/values.ts'
-import { cssFont, fontSize, pbColor, toPx } from './pb.ts'
+import { cssFont, draftCpi, fontSize, pbColor, toPx } from './pb.ts'
+import { code39Svg, isCode39Font } from './barcode.ts'
 
 const BORDER_CSS: Record<string, string> = {
   '0': 'none',
@@ -343,7 +344,32 @@ export class DwView {
     if (v) await this.fillWindow()
   }
 
+  /** `datawindow.print.preview = yes`: the report is shown page by page as it will print (report windows of the application) */
+  private previewOn(m: DwModel): boolean {
+    const v = (m.overrides.get('datawindow.print.preview') ?? m.def.datawindow['print.preview'] ?? '').toLowerCase()
+    return v === 'yes' || v === 'true' || v === '1'
+  }
+
+  private async paintPreview(m: DwModel): Promise<void> {
+    const { buildPages } = await import('./print.ts') // print.ts builds its pages with a DwView: loaded on use
+    const pages = await buildPages(this.ctl)
+    const zoom = Number(m.overrides.get('datawindow.print.preview.zoom') ?? m.def.datawindow['print.preview.zoom'] ?? 100) / 100
+    const wrap = document.createElement('div')
+    wrap.className = 'dw-preview'
+    wrap.style.cssText = 'background:#808080;padding:10px;width:max-content;min-width:100%;box-sizing:border-box'
+    for (const p of pages) {
+      p.style.margin = '0 auto 10px'
+      p.style.boxShadow = '0 0 4px #000'
+      p.style.pageBreakAfter = 'auto'
+      if (zoom > 0 && zoom !== 1) p.style.setProperty('zoom', String(zoom))
+      wrap.appendChild(p)
+    }
+    this.virt = null
+    this.root.replaceChildren(wrap)
+  }
+
   private async paint(m: DwModel): Promise<void> {
+    if (this.previewOn(m)) return this.paintPreview(m)
     const inner = await this.buildBody(m, true, true)
     const scroll = this.root.scrollTop
     const left = this.root.scrollLeft
@@ -521,6 +547,9 @@ export class DwView {
     const fh = Number(o['font.height'] ?? -10)
     st.font = cssFont({ face: o['font.face'] || 'Arial', size: fontSize(fh), weight: Number(o['font.weight'] ?? 400), italic: o['font.italic'] === '1', underline: o['font.underline'] === '1', strike: false })
     if (o['font.underline'] === '1') st.textDecoration = 'underline'
+    const cpi = draftCpi(o['font.face'] || '')
+    if (cpi) st.letterSpacing = `${(96 / cpi - 0.6 * fontSize(fh) * (96 / 72)).toFixed(2)}px` // fixed pitch of the dot-matrix font
+    if ((o['font.face'] || '').trim().toLowerCase() === 'arial narrow') st.fontStretch = 'condensed'
     st.color = pbColor(await this.prop(m, o, 'color', row, band), '#000')
     const al = await this.prop(m, o, 'alignment', row, band)
     st.textAlign = al === '1' ? 'right' : al === '2' ? 'center' : al === '3' ? 'justify' : 'left'
@@ -544,6 +573,11 @@ export class DwView {
       const r = m.buf.primary[row - 1]
       const ci = m.colIndex(o.name)
       v = r && ci >= 0 && !(band === 'detail' && m.suppressed(row, ci)) ? r.v[ci] : null
+    }
+    if (isCode39Font(o['font.face']) && v !== null && v !== undefined && toStr(v) !== '') {
+      el.innerHTML = code39Svg(toStr(v), sx(num(o, 'width')) - 4, sy(num(o, 'height')) * 0.9)
+      el.style.padding = '0 2px'
+      return el
     }
     el.textContent = await this.display(m, o, v)
     if (o.type === 'column') {

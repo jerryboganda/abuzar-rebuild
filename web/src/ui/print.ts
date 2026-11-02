@@ -84,6 +84,7 @@ export async function buildPages(ctl: NDwBase): Promise<HTMLElement[]> {
   }
   const L = view.layout(m)
   const ps = pageSetup(m)
+  if (num(m.def.datawindow, 'processing', 0) === 2) return buildLabelPages(m, view, L, ps)
   const hdrBands = view.headerBands(m)
   const hdrH = hdrBands.reduce((s, b) => s + view.heightOf(m, b), 0)
   const ftrH = view.heightOf(m, 'footer')
@@ -114,33 +115,57 @@ export async function buildPages(ctl: NDwBase): Promise<HTMLElement[]> {
     used += h
   }
 
-  // 3. render every page; page() / pagecount() are known now
+  // 3. render every page; page() / pagecount() are known now.  A report wider than the paper is cut into strips of the printable
+  // width and printed strip after strip (pageacross() / pagecountacross()); a few percent over the width stay on one page.
   const pages: HTMLElement[] = []
   const total = pagesFlow.length
-  for (let p = 0; p < total; p++) {
-    m.printPage = p + 1
-    m.printPageCount = total
-    const page = document.createElement('div')
-    page.className = 'page'
-    page.style.cssText = `position:relative;width:${ps.width}px;height:${ps.height}px;overflow:hidden;background:${pbColor(m.def.datawindow.color, '#fff')};page-break-after:always;break-after:page`
-    const inner = document.createElement('div')
-    inner.style.cssText = `position:absolute;left:${ps.left}px;top:${ps.top}px;width:${L.width}px`
-    if (L.byBand.has('background')) {
-      const bgb = await view.makeBand(m, L, 'background', 1, 'bgl')
-      bgb.style.height = '0'
-      bgb.style.overflow = 'visible'
-      inner.appendChild(bgb)
+  const usable = ps.width - ps.left - ps.right
+  const across = L.width > usable * 1.05 ? Math.ceil(L.width / usable - 0.05) : 1
+  m.printAcrossCount = across
+  for (let s = 0; s < across; s++) {
+    for (let p = 0; p < total; p++) {
+      m.printPage = p + 1
+      m.printPageCount = total
+      m.printAcross = s + 1
+      const page = document.createElement('div')
+      page.className = 'page'
+      page.style.cssText = `position:relative;width:${ps.width}px;height:${ps.height}px;overflow:hidden;background:${pbColor(m.def.datawindow.color, '#fff')};page-break-after:always;break-after:page`
+      const inner = document.createElement('div')
+      inner.style.cssText = `position:absolute;left:${ps.left}px;top:${ps.top}px;width:${L.width}px`
+      if (L.byBand.has('background')) {
+        const bgb = await view.makeBand(m, L, 'background', 1, 'bgl')
+        bgb.style.height = '0'
+        bgb.style.overflow = 'visible'
+        inner.appendChild(bgb)
+      }
+      for (const hb of hdrBands) if (view.heightOf(m, hb) > 0) inner.appendChild(await view.makeBand(m, L, hb, 1, 'hdr'))
+      for (const f of pagesFlow[p]) inner.appendChild(await view.makeBand(m, L, f.band, f.row, f.cls))
+      let ft: HTMLElement | null = null
+      if (ftrH > 0) {
+        ft = await view.makeBand(m, L, 'footer', Math.max(1, rows.length), 'ftr')
+        ft.style.cssText += `;position:absolute;left:${ps.left}px;top:${ps.height - ps.bottom - ftrH}px;width:${L.width}px`
+      }
+      if (across > 1) {
+        // the strip: the printable window of the page onto the full-width report
+        const clip = (top: number, height: number, child: HTMLElement) => {
+          const c = document.createElement('div')
+          c.style.cssText = `position:absolute;left:${ps.left}px;top:${top}px;width:${usable}px;height:${height}px;overflow:hidden`
+          child.style.left = `${-s * usable}px`
+          child.style.top = '0'
+          c.appendChild(child)
+          page.appendChild(c)
+        }
+        clip(ps.top, ps.height - ps.top - ps.bottom, inner)
+        if (ft) clip(ps.height - ps.bottom - ftrH, ftrH, ft)
+      } else {
+        page.appendChild(inner)
+        if (ft) page.appendChild(ft)
+      }
+      pages.push(page)
     }
-    for (const hb of hdrBands) if (view.heightOf(m, hb) > 0) inner.appendChild(await view.makeBand(m, L, hb, 1, 'hdr'))
-    for (const f of pagesFlow[p]) inner.appendChild(await view.makeBand(m, L, f.band, f.row, f.cls))
-    page.appendChild(inner)
-    if (ftrH > 0) {
-      const ft = await view.makeBand(m, L, 'footer', Math.max(1, rows.length), 'ftr')
-      ft.style.cssText += `;position:absolute;left:${ps.left}px;top:${ps.height - ps.bottom - ftrH}px;width:${L.width}px`
-      page.appendChild(ft)
-    }
-    pages.push(page)
   }
+  m.printAcross = 1
+  m.printAcrossCount = 1
   m.printPage = 1
   m.printPageCount = 1
   return pages
@@ -186,4 +211,44 @@ html, body { height:auto; overflow:visible; background:#fff }
   frame.contentWindow!.print()
   setTimeout(() => frame.remove(), 60000)
   return true
+}
+
+/** label DataWindows (processing = 2): the detail band is one label; labels fill a sheet of `label.columns` x `label.rows` */
+async function buildLabelPages(m: DwModel, view: DwView, L: ReturnType<DwView['layout']>, ps: PageSetup): Promise<HTMLElement[]> {
+  const dw = m.def.datawindow
+  const units = num(dw, 'units', 0)
+  const lw = toPx(num(dw, 'label.width', 2000), 'x', units)
+  const lh = toPx(num(dw, 'label.height', 1000), 'y', units)
+  const cols = Math.max(1, num(dw, 'label.columns', 1))
+  const rows = Math.max(1, num(dw, 'label.rows', 1))
+  const gapX = toPx(num(dw, 'label.columns.spacing', 0), 'x', units)
+  const gapY = toPx(num(dw, 'label.rows.spacing', 0), 'y', units)
+  const topDown = dw['label.topdown'] === 'yes'
+  const perSheet = cols * rows
+  const count = m.rowCount()
+  const pages: HTMLElement[] = []
+  const total = Math.max(1, Math.ceil(count / perSheet))
+  for (let p = 0; p < total; p++) {
+    m.printPage = p + 1
+    m.printPageCount = total
+    const page = document.createElement('div')
+    page.className = 'page'
+    page.style.cssText = `position:relative;width:${ps.width}px;height:${ps.height}px;overflow:hidden;background:${pbColor(dw.color, '#fff')};page-break-after:always;break-after:page`
+    for (let k = 0; k < perSheet; k++) {
+      const row = p * perSheet + k + 1
+      if (row > count) break
+      const col = topDown ? Math.floor(k / rows) : k % cols
+      const line = topDown ? k % rows : Math.floor(k / cols)
+      const cell = document.createElement('div')
+      cell.style.cssText = `position:absolute;left:${ps.left + col * (lw + gapX)}px;top:${ps.top + line * (lh + gapY)}px;width:${lw}px;height:${lh}px;overflow:hidden`
+      const band = await view.makeBand(m, L, 'detail', row, 'row')
+      band.style.height = `${lh}px`
+      cell.appendChild(band)
+      page.appendChild(cell)
+    }
+    pages.push(page)
+  }
+  m.printPage = 1
+  m.printPageCount = 1
+  return pages
 }

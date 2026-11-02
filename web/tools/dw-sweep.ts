@@ -102,7 +102,7 @@ const pgDefault = (type: string): unknown => {
   if (t.startsWith('bool')) return false
   return null
 }
-const procStats = new Map<string, { n: number; example: string }>()
+const procStats = new Map<string, { n: number; example: string; names: string[] }>()
 let procOk = 0
 let procTried = 0
 const procBad: { proc: string; code: string; error: string }[] = []
@@ -118,8 +118,9 @@ for (const [name, p] of Object.entries(procs.proc)) {
     if (/^(23|22|P0001|40|TS001)/.test(code)) procOk++
     else {
       const k = code + ' ' + (err as Error).message.replace(/"[^"]*"/g, '"?"').replace(/\d+/g, 'N').slice(0, 70)
-      const f = procStats.get(k) || { n: 0, example: name }
+      const f = procStats.get(k) || { n: 0, example: name, names: [] }
       f.n++
+      if (f.names.length < 12) f.names.push(name)
       procStats.set(k, f)
       procBad.push({ proc: name, code, error: (err as Error).message.slice(0, 200) })
     }
@@ -132,6 +133,13 @@ console.log(`embedded statements executed: ${stmtOk} of ${stmtTried} (failures a
 for (const [k, v] of [...stmtStats.entries()].sort((a, b) => b[1].n - a[1].n).slice(0, 20)) console.log(`${v.n} x ${k}   e.g. ${v.example}`)
 console.log(`DataWindows executed: ${ok} of ${tried} retrieve statements run on PostgreSQL`)
 for (const [k, v] of [...failures.entries()].sort((a, b) => b[1].n - a[1].n).slice(0, 25)) console.log(`${v.n} x ${k}   e.g. ${v.example}`)
+// every failure with its message, so the next fix does not need another run just to see them
+console.log('--- failing DataWindows')
+for (const b of bad.slice(0, 120)) console.log(`${b.dw}: ${b.error.slice(0, 150)}`)
+console.log('--- failing embedded statements')
+for (const b of stmtBad.slice(0, 40)) console.log(`${b.code} ${b.text.slice(0, 90)}: ${b.error.slice(0, 120)}`)
+console.log('--- failing procedures')
+for (const b of procBad.slice(0, 260)) console.log(`${b.proc}: ${b.code} ${b.error.slice(0, 130)}`)
 if (out) writeFileSync(out, JSON.stringify({ tried, ok, failures: Object.fromEntries(failures), bad, stmtTried, stmtOk, stmtFailures: Object.fromEntries(stmtStats), stmtBad, procTried, procOk, procFailures: Object.fromEntries(procStats), procBad }, null, 1))
 void readdirSync
 // open handles of the HTTP client would keep the process (and the CI job) alive

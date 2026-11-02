@@ -28,6 +28,12 @@ const b64 = (u: Uint8Array): string => {
 }
 const unb64 = (s: string): Uint8Array => Uint8Array.from(atob(s), (c) => c.charCodeAt(0))
 
+/** writes a file through the server's file endpoint (SaveAs of a DataWindow) */
+export async function writeFileBytes(path: string, data: Uint8Array): Promise<boolean> {
+  const r = await api<{ ok?: boolean }>('/api/fs/write', { path, data: b64(data) })
+  return !!r.ok
+}
+
 interface Handle {
   path: string
   write: boolean

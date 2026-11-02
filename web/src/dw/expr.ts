@@ -14,7 +14,7 @@ export interface EvalHost {
   /** rows [start, end] (1-based, inclusive) forming the scope of an aggregate */
   scopeRange(ctx: EvalCtx, sc: { kind: string; n?: number } | undefined): [number, number]
   version: number
-  pageInfo(): { page: number; pageCount: number }
+  pageInfo(): { page: number; pageCount: number; across?: number; acrossCount?: number }
   /** crosstabsum / -count / -avg / -min / -max (n) of a row; only crosstab models have it */
   crosstabAgg?(name: string, n: number, row: number): unknown
 }
@@ -156,8 +156,9 @@ async function evalCall(e: Extract<Expr, { k: 'call' }>, ctx: EvalCtx): Promise<
     case 'pagecount':
       return ctx.host.pageInfo().pageCount
     case 'pageacross':
+      return ctx.host.pageInfo().across ?? 1
     case 'pagecountacross':
-      return 1
+      return ctx.host.pageInfo().acrossCount ?? 1
     case 'rowcount':
       return ctx.host.rowCount()
     case 'getrow':

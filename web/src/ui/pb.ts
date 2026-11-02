@@ -72,10 +72,33 @@ const FALLBACK: Record<string, string> = {
   'tahoma': 'Tahoma, "Segoe UI", Arial, sans-serif',
 }
 
+/** the generic family a face falls back to when it is not installed */
+function genericOf(face: string): string {
+  if (/courier|console|mono|draft|fixed/i.test(face)) return 'monospace'
+  if (/script|corsiva|handwriting|brush/i.test(face)) return 'cursive'
+  if (/times|serif|garamond|bookman|antiqua|cambria|batang|century|georgia|palatino|eras/i.test(face) && !/sans/i.test(face)) return 'serif'
+  return 'sans-serif'
+}
+
 export function cssFont(f: FontSpec): string {
   const px = f.size * (96 / 72)
-  const fam = FALLBACK[f.face.toLowerCase()] ?? `"${f.face}", Arial, sans-serif`
+  const face = f.face.trim()
+  const key = face.toLowerCase()
+  let fam = FALLBACK[key]
+  if (!fam) {
+    const g = genericOf(face)
+    if (/^draft \d+cpi$/.test(key)) fam = '"Courier New", Courier, monospace' // dot-matrix printer fonts
+    else if (/nastaleeq|nastaliq|noori/.test(key)) fam = `"${face}", "Noto Nastaliq Urdu", "Noto Naskh Arabic", "Segoe UI", ${g}`
+    else if (key === 'arial narrow') fam = '"Arial Narrow", "Liberation Sans Narrow", "Nimbus Sans Narrow", Arial, sans-serif'
+    else fam = `"${face}", ${g === 'sans-serif' ? 'Arial, sans-serif' : g}`
+  }
   return `${f.italic ? 'italic ' : ''}${f.weight || 400} ${px.toFixed(2)}px ${fam}`
+}
+
+/** characters per inch of a "Draft Ncpi" printer font, else 0 */
+export function draftCpi(face: string): number {
+  const m = /^draft (\d+)cpi$/i.exec(face.trim())
+  return m ? Number(m[1]) : 0
 }
 
 /** PowerBuilder font height: negative = points, positive = (character cell) pixels */

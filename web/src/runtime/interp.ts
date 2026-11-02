@@ -54,7 +54,7 @@ export function exprText(e: Expr): string {
 }
 
 /** native methods that return a value through a `ref` argument: name -> argument positions */
-const REF_METHODS: Record<string, number[]> = { getchild: [1], getfullstate: [0], getdata: [0], getdatetime: [0], getmostrecenttransdate: [0] }
+const REF_METHODS: Record<string, number[]> = { getchild: [1], getfullstate: [0], getdata: [0], getdatetime: [0], getmostrecenttransdate: [0], findrequired: [1, 2, 3] }
 function e0(_e: unknown, r: Routine): Routine {
   return r
 }

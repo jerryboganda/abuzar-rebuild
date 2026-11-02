@@ -7,6 +7,8 @@ import { PBArray, toNum, toStr } from '../runtime/values.ts'
 import { cssFont, fontSize, pbColor, toPx } from './pb.ts'
 import { DwView } from './dwview.ts'
 import { printDw, printPlainText } from './print.ts'
+import { exportDw } from '../dw/export.ts'
+import { writeFileBytes } from '../runtime/sysfiles.ts'
 import { CSS } from './styles.ts'
 import { keyEnum, keyFlags } from './keys.ts'
 
@@ -117,6 +119,24 @@ export class DomUi implements UiHost {
   }
   print(dw: NDwBase): Promise<boolean> {
     return printDw(dw)
+  }
+  /** DataWindow SaveAs: to the given file (through the file endpoint) or, without a name, as a download */
+  async saveAs(dw: NDwBase, file: string, type: string, headers: boolean): Promise<boolean> {
+    await dw.ready
+    const m = dw.model
+    if (!m) return false
+    const out = await exportDw(m, type || 'excel!', headers)
+    if (!out) return false
+    if (file) return writeFileBytes(file, out.bytes)
+    const url = URL.createObjectURL(new Blob([out.bytes as BlobPart], { type: out.mime }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${m.name || 'report'}.${out.ext}`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 10000)
+    return true
   }
   printText(text: string): Promise<boolean> {
     return printPlainText(text)

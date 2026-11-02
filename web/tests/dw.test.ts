@@ -164,3 +164,49 @@ test('dynamic SQL: session options are accepted, plain statements get the dialec
   assert.equal(translateDynamicSql('UPDATE ITEM SET [saleprice]=12.5 , d=isnull(d,0) where len(x)>1')?.sql, 'UPDATE ITEM SET saleprice=12.5 , d=coalesce(d,0) where length(x)>1')
   assert.equal(translateDynamicSql('backup database x to disk=\'y\''), undefined)
 })
+
+test('code 39: start / stop characters, extended lower case', async () => {
+  const { code39Svg, isCode39Font } = await import('../src/ui/barcode.ts')
+  assert.equal(isCode39Font('Free 3 of 9 Extended'), true)
+  assert.equal(isCode39Font('IDAutomation.com Code39'), true)
+  assert.equal(isCode39Font('Arial'), false)
+  // *1* = 3 characters x 5 bars; the extended set writes a lower-case letter as + and the letter
+  const bars = (s: string) => (code39Svg(s, 100, 20).match(/<rect /g) || []).length
+  assert.equal(bars('1'), 15)
+  assert.equal(bars('a'), 20)
+  assert.equal(bars('*1*'), 15)
+})
+
+test('SaveAs: csv with headings, xlsx container, html, xml', async () => {
+  const { exportDw, zipStored, crc32 } = await import('../src/dw/export.ts')
+  const rt = new Runtime({ load: async () => undefined })
+  registerSysFuncs(rt)
+  const d: DwDef = {
+    datawindow: {},
+    bands: { header: { height: '10' }, detail: { height: '10' } } as DwDef['bands'],
+    table: { columns: [{ type: 'char(10)', name: 'code' }, { type: 'decimal(2)', name: 'amt' }] },
+    objects: [
+      { type: 'text', name: 'code_t', band: 'header', x: '0', text: 'Code' },
+      { type: 'text', name: 'amt_t', band: 'header', x: '100', text: 'Amount' },
+      { type: 'column', name: 'amt', band: 'detail', x: '100' },
+      { type: 'column', name: 'code', band: 'detail', x: '0' },
+    ],
+  }
+  const m = new DwModel(rt, 'd_x', d)
+  const r1 = m.insertRow(0)
+  m.setItem(r1, 'code', 'A,1')
+  m.setItem(r1, 'amt', 12.5)
+  const dec = (u: Uint8Array) => new TextDecoder().decode(u)
+  assert.equal(dec((await exportDw(m, 'csv!', true))!.bytes), 'Code,Amount\r\n"A,1",12.5\r\n')
+  assert.equal(dec((await exportDw(m, 'text!', false))!.bytes), 'A,1\t12.5\r\n')
+  assert.match(dec((await exportDw(m, 'html!', true))!.bytes), /<th>Code<\/th><th>Amount<\/th>/)
+  assert.match(dec((await exportDw(m, 'xml!', false))!.bytes), /<d_x_row><Code>A,1<\/Code><Amount>12.5<\/Amount><\/d_x_row>/)
+  const x = (await exportDw(m, 'excel8!', true))!
+  assert.equal(x.ext, 'xlsx')
+  assert.equal(x.bytes[0], 0x50) // PK
+  assert.equal(await exportDw(m, 'pdf!', false), null)
+  // the zip container is well formed: one end-of-central-directory record that counts the entries
+  const z = zipStored([{ name: 'a.txt', data: new TextEncoder().encode('hello') }])
+  assert.equal(new DataView(z.buffer, z.length - 22).getUint16(10, true), 1)
+  assert.equal(crc32(new TextEncoder().encode('123456789')), 0xcbf43926)
+})

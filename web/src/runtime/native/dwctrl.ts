@@ -4,7 +4,7 @@ import type { Member } from '../object.ts'
 import type { Runtime } from '../interp.ts'
 import { Dec, PBDate, PBDateTime, PBTime, PBArray, PBRuntimeError, toNum, toStr, coerce } from '../values.ts'
 import { compileDw } from '../../dw/expr.ts'
-import { DwModel, DATA_MODIFIED, NOT_MODIFIED } from '../../dw/model.ts'
+import { DwModel, DATA_MODIFIED, NEW_MODIFIED, NOT_MODIFIED } from '../../dw/model.ts'
 import type { DwDef } from '../../dw/def.ts'
 import { NTransaction } from './transaction.ts'
 import { Ref } from '../interp.ts'
@@ -499,8 +499,11 @@ export class NDwBase extends PBObject {
   async n_print(): Promise<number> {
     return (await this.rt.ui?.print?.(this)) ? 1 : -1
   }
-  async n_saveas(file: unknown, type: unknown): Promise<number> {
-    return (await this.rt.ui?.saveAs?.(this, toStr(file), toStr(type))) ? 1 : -1
+  /** SaveAs(file, type, headers): without a file name the user is asked (a download) */
+  async n_saveas(file: unknown = '', type: unknown = '', headers?: unknown): Promise<number> {
+    const f = toStr(file)
+    const h = headers === undefined || headers === null ? !f : headers === true || (typeof headers === 'number' && headers !== 0)
+    return (await (this.rt.ui as { saveAs?: (c: unknown, f: string, t: string, h: boolean) => Promise<boolean> } | null)?.saveAs?.(this, f, toStr(type), h)) ? 1 : -1
   }
   async n_object(): Promise<unknown> {
     return new NDwObject(this)
@@ -509,6 +512,32 @@ export class NDwBase extends PBObject {
     return this.n_getchild(col)
   }
   async n_setposition(): Promise<number> {
+    return 1
+  }
+  /** FindRequired(buffer, ref row, ref column number, ref column name, updateOnly): 1 and the position of the first required column left empty, 0 when none */
+  async n_findrequired(_buffer?: unknown, row?: unknown, colNo?: unknown, colName?: unknown, updateOnly?: unknown): Promise<number> {
+    const m = await this.m()
+    if (!m) return -1
+    const only = updateOnly === true || (typeof updateOnly === 'number' && updateOnly !== 0)
+    const required = m.def.objects.filter((o) => o.type === 'column' && o['edit.required'] === 'yes' && m.colIndex(o.name) >= 0).map((o) => m.colIndex(o.name))
+    const startRow = row instanceof Ref ? Math.max(1, toNum(row.get())) : 1
+    for (let r = startRow; r <= m.rowCount(); r++) {
+      const dr = m.rowAt(r)
+      if (!dr) continue
+      for (const ci of required) {
+        if (only && dr.st !== DATA_MODIFIED && dr.st !== NEW_MODIFIED) continue
+        const v = dr.v[ci]
+        if (v === null || v === undefined || v === '') {
+          if (row instanceof Ref) await row.set(r)
+          if (colNo instanceof Ref) await colNo.set(ci + 1)
+          if (colName instanceof Ref) await colName.set(m.colNames[ci])
+          return 1
+        }
+      }
+    }
+    return 0
+  }
+  async n_selecttext(): Promise<number> {
     return 1
   }
   /** SetTabOrder(column, n): column-level tab sequence */

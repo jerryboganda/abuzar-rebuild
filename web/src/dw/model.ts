@@ -85,6 +85,11 @@ export class DwModel implements EvalHost {
     this.colIdx.clear()
     this.colNames.forEach((n, i) => this.colIdx.set(n, i))
     this.kinds = def.table.columns.map((c) => colKind(c.type))
+    // a column object whose name is not a data column shows the column its `id` points at (copies of one column on a label)
+    for (const o of def.objects) {
+      const id = Number(o.id)
+      if (o.type === 'column' && Number.isInteger(id) && id >= 1 && id <= this.colNames.length && !this.colIdx.has(o.name.toLowerCase())) this.colIdx.set(o.name.toLowerCase(), id - 1)
+    }
     this.computes.clear()
     for (const o of def.objects) if (o.type === 'compute') this.computes.set(o.name.toLowerCase(), o)
   }
@@ -657,8 +662,10 @@ export class DwModel implements EvalHost {
   /** set by the printing code while it renders a page */
   printPage = 1
   printPageCount = 1
-  pageInfo(): { page: number; pageCount: number } {
-    return { page: this.printPage, pageCount: this.printPageCount }
+  printAcross = 1
+  printAcrossCount = 1
+  pageInfo(): { page: number; pageCount: number; across: number; acrossCount: number } {
+    return { page: this.printPage, pageCount: this.printPageCount, across: this.printAcross, acrossCount: this.printAcrossCount }
   }
 
   // ---------------------------------------------------------------- misc
