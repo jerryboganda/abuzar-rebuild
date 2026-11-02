@@ -6,6 +6,7 @@ import { gunzipSync } from 'node:zlib'
 import { createRuntime } from '../src/runtime/boot.ts'
 import { JsonClassLoader } from '../src/runtime/loader.ts'
 import { MockDb } from '../src/app/mockdb.ts'
+import { HttpDb } from '../src/app/httpdb.ts'
 import type { PBObject } from '../src/runtime/object.ts'
 import { Ref } from '../src/runtime/interp.ts'
 import { PBStruct } from '../src/runtime/object.ts'
@@ -48,8 +49,11 @@ const ui = {
   focus() {},
 } as never
 
-const rt = await createRuntime({ loader, readData: read, sharedVars: names.sharedVars, globalTypes: names.globalTypes, stmts: sqlTables.stmt, procs: sqlTables.proc, ui, openDb: async (_t: PBObject) => new MockDb(rt.dwCatalog!) })
-rt.dwSql = (n) => ({ sql: 'mock:' + n, params: [] })
+const server = process.env.SMOKE_SERVER
+if (server) (globalThis as { fetch: typeof fetch }).fetch = ((orig) => (u: string | URL | Request, i?: RequestInit) => orig(typeof u === 'string' && u.startsWith('/') ? server + u : u, i))(fetch)
+const rt = await createRuntime({ loader, readData: read, sharedVars: names.sharedVars, globalTypes: names.globalTypes, stmts: sqlTables.stmt, procs: sqlTables.proc, ui, openDb: async (_t: PBObject) => (server ? await new HttpDb('').open() : new MockDb(rt.dwCatalog!)) })
+if (!server) rt.dwSql = (n) => ({ sql: 'mock:' + n, params: [] })
+else rt.dwSql = (n) => sqlTables.dw?.[n.toLowerCase()]
 rt.onError = () => {}
 rt.loopLimit = 20000
 

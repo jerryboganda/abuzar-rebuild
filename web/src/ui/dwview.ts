@@ -1,6 +1,7 @@
 // DOM rendering of a DataWindow control: bands, rows, objects, editing.
 import type { NDwBase } from '../runtime/native/dwctrl.ts'
 import { argList } from '../dw/def.ts'
+import { renderChart } from '../dw/chart.ts'
 import type { DwModel } from '../dw/model.ts'
 import { num, splitExpr } from '../dw/def.ts'
 import type { DwObject } from '../dw/def.ts'
@@ -135,6 +136,16 @@ export class DwView {
     void sx
     void sy
     void byBand
+    // the background band holds objects that sit behind everything (charts of graph DataWindows, watermarks, free-standing labels)
+    if ((byBand.get('background') || []).length) {
+      const bgBand = await mk('background', Math.max(1, m.rowCount()), 'bgl')
+      bgBand.style.height = '0'
+      bgBand.style.overflow = 'visible'
+      inner.appendChild(bgBand)
+      let bottom = 0
+      for (const o of byBand.get('background')!) bottom = Math.max(bottom, sy(num(o, 'y') + num(o, 'height')))
+      inner.style.minHeight = bottom + 'px'
+    }
     if (this.bandHeight(m, 'header') > 0 || (byBand.get('header') || []).length) {
       const hdr = await mk('header', 0, 'hdr')
       if (sticky) {
@@ -294,6 +305,15 @@ export class DwView {
         }
       } catch (e) {
         this.ctl.rt.noteMissing('nested:' + (e as Error).message.slice(0, 50))
+      }
+    }
+    if (o.type === 'graph') {
+      try {
+        el.innerHTML = await renderChart(m, o, Math.round(sx(num(o, 'width'))), Math.round(sy(num(o, 'height'))))
+        el.style.overflow = 'hidden'
+        return el
+      } catch (e) {
+        this.ctl.rt.noteMissing('graph:' + (e as Error).message.slice(0, 50))
       }
     }
     if (o.type === 'report' || o.type === 'graph' || o.type === 'ole' || o.type === 'tableblob') {

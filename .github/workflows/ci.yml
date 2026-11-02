@@ -136,6 +136,8 @@ jobs:
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:8787/api/health && break; sleep 1; done
       - name: Execute every DataWindow retrieve and embedded statement
         run: node web/tools/dw-sweep.ts web/public/data http://127.0.0.1:8787 sweep.json | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Open every window against the real server and database
+        run: SMOKE_SERVER=http://127.0.0.1:8787 node web/tools/smoke-windows.ts web/public/data - smoke.json | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Server log (tail)
         if: always()
         run: tail -n 40 server.log || true

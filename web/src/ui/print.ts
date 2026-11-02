@@ -124,6 +124,12 @@ export async function buildPages(ctl: NDwBase): Promise<HTMLElement[]> {
     page.style.cssText = `position:relative;width:${ps.width}px;height:${ps.height}px;overflow:hidden;background:${pbColor(m.def.datawindow.color, '#fff')};page-break-after:always;break-after:page`
     const inner = document.createElement('div')
     inner.style.cssText = `position:absolute;left:${ps.left}px;top:${ps.top}px;width:${L.width}px`
+    if (L.byBand.has('background')) {
+      const bgb = await view.makeBand(m, L, 'background', 1, 'bgl')
+      bgb.style.height = '0'
+      bgb.style.overflow = 'visible'
+      inner.appendChild(bgb)
+    }
     if (hdrH > 0) inner.appendChild(await view.makeBand(m, L, 'header', 1, 'hdr'))
     for (const f of pagesFlow[p]) inner.appendChild(await view.makeBand(m, L, f.band, f.row, f.cls))
     page.appendChild(inner)
