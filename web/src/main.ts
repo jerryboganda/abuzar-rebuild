@@ -7,6 +7,8 @@ import { HttpDb } from './app/httpdb.ts'
 import type { Db } from './runtime/wire.ts'
 import type { PBObject } from './runtime/object.ts'
 import { Ref } from './runtime/interp.ts'
+import { authHeaders } from './runtime/apiauth.ts'
+import { setApiBase } from './runtime/sysfiles.ts'
 import { startApplication, DEFAULT_CONFIG } from './app/startup.ts'
 import { buildPages } from './ui/print.ts'
 import { DwView } from './ui/dwview.ts'
@@ -24,13 +26,44 @@ async function text(path: string): Promise<string | undefined> {
   return r.ok ? await r.text() : undefined
 }
 
+/**
+ * The data server: the desktop shell embeds it on 127.0.0.1, the Rust server serves the page itself (same origin), a plain dev server
+ * has none (the mock database is used).  `?db=mock` forces the mock, `?server=<url>` names another server.
+ */
+async function findServer(q: URLSearchParams): Promise<{ base: string; db: boolean } | null> {
+  if (q.get('db') === 'mock') return null
+  const tauri = !!(globalThis as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__
+  const bases = q.get('server') ? [q.get('server')!] : q.get('db') === 'server' ? [''] : tauri ? ['http://127.0.0.1:8787'] : ['']
+  for (const b of bases) {
+    try {
+      const r = await fetch(b + '/api/health', { headers: authHeaders() })
+      const j = r.ok ? ((await r.json()) as { ok?: boolean; db?: boolean }) : null
+      if (j?.ok) return { base: b, db: j.db !== false }
+    } catch {
+      // not reachable: next candidate
+    }
+  }
+  return null
+}
+
 async function main(): Promise<void> {
   const q = new URLSearchParams(location.search)
+  const found = await findServer(q)
+  const server = found ? found.base : null
   const names = JSON.parse((await text('names.json')) || '{}')
   const loader = new JsonClassLoader((n) => text(`classes/${n}.json`))
   const sqlTables = JSON.parse((await text('sql.json')) || '{}')
-  const useMock = q.get('db') !== 'server'
+  const useMock = server === null
+  if (server !== null) setApiBase(server)
   const desktop = document.getElementById('desktop') as HTMLElement
+  if (found && !found.db) {
+    // the server runs but PostgreSQL does not answer: say what to check instead of failing inside the login window
+    const box = document.createElement('div')
+    box.style.cssText = 'font:14px Segoe UI,Arial,sans-serif;padding:32px;max-width:640px'
+    box.innerHTML = '<h2>The database is not reachable</h2><p>The data server is running but cannot connect to PostgreSQL. Put the connection URL on the first line of <code>trader.conf</code> next to the program (for example <code>postgres://user:password@host:5432/trader</code>), or set <code>DATABASE_URL</code>, and start the program again.</p>'
+    desktop.appendChild(box)
+    return
+  }
   const rt = await createRuntime({
     loader,
     readData: text,
@@ -39,7 +72,7 @@ async function main(): Promise<void> {
     stmts: sqlTables.stmt,
     dwSql: sqlTables.dw,
     procs: sqlTables.proc,
-    openDb: async (_t: PBObject): Promise<Db> => (useMock ? new MockDb(rt.dwCatalog!, Number(q.get('rows')) || 6) : await new HttpDb().open()),
+    openDb: async (_t: PBObject): Promise<Db> => (useMock ? new MockDb(rt.dwCatalog!, Number(q.get('rows')) || 6) : await new HttpDb(server ?? '').open()),
   })
   if (useMock) rt.dwSql = (n) => ({ sql: 'mock:' + n, params: [], proc: !!sqlTables.dw?.[n]?.proc })
   const ui = new DomUi(rt, desktop)
@@ -77,7 +110,8 @@ async function main(): Promise<void> {
     desktop.appendChild(host)
     return
   }
-  if (q.get('app')) {
+  // with a data server the application starts by itself; `?app=0` keeps the bare desktop, `?w=` opens one window
+  if (q.get('app') === '1' || (server !== null && q.get('app') !== '0' && !q.get('w'))) {
     try {
       await startApplication(rt, { ...DEFAULT_CONFIG, company: q.get('company') ?? '' })
     } catch (e) {
