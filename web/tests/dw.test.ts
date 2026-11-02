@@ -37,6 +37,9 @@ function makeDb(log: { sql: string; params: unknown[] }[]): Db {
         rows: [[1, 'a', '10.10'], [2, 'a', '20.20'], [3, 'b', '5.05']],
       }
     },
+    async call() {
+      return { columns: [], row: null, resultsets: [] }
+    },
     async exec(sql, params) {
       log.push({ sql, params })
       return { rowcount: 1 }

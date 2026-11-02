@@ -698,7 +698,7 @@ class Block {
 }
 
 // ------------------------------------------------------------------------------------------------ routines / files
-const ROUTINE_HDR = /^\/\/ ([^\s.]+)\.([^\s(]+)\((.*)\)(?: returns (.*))?$/
+const ROUTINE_HDR = /^\/\/ ([^\s.]+)\.([^\s(]+)\((.*)\)(?: returns (.*?))?( \[event\])?$/
 
 function splitParams(src: string): Param[] {
   const out: Param[] = []
@@ -753,6 +753,7 @@ export function parseScriptFile(text: string): { file: ScriptFile; errors: strin
       params: [],
       ret: (cur.hdr[4] || '').trim().toLowerCase(),
       locals: [],
+      event: !!cur.hdr[5],
       body: [],
       line: cur.at,
     }

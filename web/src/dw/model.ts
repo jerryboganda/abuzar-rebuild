@@ -2,7 +2,7 @@
 import type { Runtime } from '../runtime/interp.ts'
 import { coerce, cmp, Dec, DATE_ZERO, equals, PBDate, PBDateTime, PBTime, toNum } from '../runtime/values.ts'
 import { fromWire, toWire } from '../runtime/wire.ts'
-import type { Db } from '../runtime/wire.ts'
+import type { Db, QueryResult } from '../runtime/wire.ts'
 import { argList, colKind, num, splitExpr } from './def.ts'
 import type { DwDef, DwObject } from './def.ts'
 import { compileDw, evalDw, newCtx } from './expr.ts'
@@ -39,7 +39,7 @@ export interface DwTrans {
 
 export interface SqlSource {
   /** translated retrieve statement of a DataWindow and its argument names ($1..$n order) */
-  dw(name: string): { sql: string; params: string[]; lists?: string[] } | undefined
+  dw(name: string): { sql: string; params: string[]; proc?: boolean; lists?: string[] } | undefined
 }
 
 export class DwModel implements EvalHost {
@@ -275,6 +275,7 @@ export class DwModel implements EvalHost {
       return -1
     }
     let sql: string
+    let proc = false
     let params: unknown[] = []
     if (this.retrieveSqlOverride) {
       const tr = this.rt.translateSql?.(this.retrieveSqlOverride)
@@ -292,6 +293,7 @@ export class DwModel implements EvalHost {
         return -1
       }
       sql = src.sql
+      proc = !!src.proc
       const decl = argList(this.def)
       params = src.params.map((p) => {
         const idx = decl.findIndex((a) => a.name === p.toLowerCase())
@@ -300,7 +302,11 @@ export class DwModel implements EvalHost {
       })
     }
     try {
-      const res = await this.trans.db.query(sql, params.map(toWire))
+      let res: QueryResult
+      if (proc) {
+        const c = await this.trans.db.call(sql, params.map(toWire))
+        res = c.resultsets[0] ? { columns: c.resultsets[0].columns, rows: c.resultsets[0].rows } : { columns: [], rows: [] }
+      } else res = await this.trans.db.query(sql, params.map(toWire))
       this.reset()
       const map: number[] = this.colNames.map((_, i) => i)
       if (res.columns.length) {

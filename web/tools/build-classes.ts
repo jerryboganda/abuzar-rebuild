@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { parseScriptFile } from '../src/pbscript/parser.ts'
 import type { Routine } from '../src/pbscript/ast.ts'
 
-const [objRoot, scrRoot, out] = process.argv.slice(2)
+const [objRoot, scrRoot, out, menuRoot] = process.argv.slice(2)
 mkdirSync(out, { recursive: true })
 
 type Plain = Record<string, Record<string, Routine[]>>
@@ -42,6 +42,15 @@ function slimControl(c: any): any {
   }
 }
 
+/** complete item tree of a menu (see re-tools/menu_export.py) */
+function menuControls(lib: string, name: string): any[] | null {
+  if (!menuRoot) return null
+  const p = join(menuRoot, lib, name + '.json')
+  if (!existsSync(p)) return null
+  const conv = (it: any): any => ({ name: String(it.name).toLowerCase(), ancestor: 'menu', fields: [], controls: (it.items || []).map(conv) })
+  return (JSON.parse(readFileSync(p, 'utf8')).items || []).map(conv)
+}
+
 const done = new Set<string>()
 for (const lib of readdirSync(objRoot)) {
   const ld = join(objRoot, lib)
@@ -59,7 +68,7 @@ for (const lib of readdirSync(objRoot)) {
         ancestor: o.ancestor ? String(o.ancestor).toLowerCase() : null,
         library: lib,
         fields: (o.fields || []).filter((x: any) => x.name !== 'control').map((x: any) => ({ name: x.name, type: x.type, attr: x.attr, value: x.value })),
-        controls: (o.controls || []).map(slimControl),
+        controls: (o.kind || kind) === 'menu' ? menuControls(lib, o.name) ?? (o.controls || []).map(slimControl) : (o.controls || []).map(slimControl),
         routines: routinesOf(lib, o.name),
       }
       writeFileSync(join(out, name + '.json'), JSON.stringify(cls))

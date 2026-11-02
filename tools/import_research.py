@@ -25,6 +25,15 @@ def main(src, dst):
         d = json.load(open(f, encoding='utf-8'))
         json.dump(d, open(out, 'w', encoding='utf-8', newline='\n'), separators=(',', ':'), ensure_ascii=False)
         n += 1
+    # 2b. complete menu item trees (inherited items and the items descendants add to them)
+    m = 0
+    for f in glob.glob(os.path.join(src, 'recovered', 'menu_trees', '*', '*.json')):
+        lib = os.path.basename(os.path.dirname(f))
+        out = os.path.join(data, 'menu_trees', lib, os.path.basename(f))
+        os.makedirs(os.path.dirname(out), exist_ok=True)
+        json.dump(json.load(open(f, encoding='utf-8')), open(out, 'w', encoding='utf-8', newline='\n'), separators=(',', ':'), ensure_ascii=False)
+        m += 1
+    print('menu trees', m)
     # 3. names
     nm = os.path.join(src, 'recovered', 'pcode_names')
     shared = json.load(open(os.path.join(nm, 'shared_vars.json'), encoding='utf-8'))

@@ -61,8 +61,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Load schema
         run: for f in db/pg/[0-3]*.sql; do PGOPTIONS="-c client_min_messages=warning" psql -q -v ON_ERROR_STOP=1 -f "$f"; done
-      - run: cargo test --workspace
-      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test -p trader-server
+      - run: cargo clippy -p trader-server --all-targets -- -D warnings
 
   web:
     runs-on: ubuntu-latest
@@ -75,3 +75,25 @@ jobs:
         run: node --test "web/tests/*.test.ts"
       - name: Parse every recovered routine
         run: node web/tools/parse-corpus.ts data/src/scripts
+
+  desktop:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Build the web UI (static)
+        shell: bash
+        run: |
+          node web/tools/build-classes.ts data/src/objects data/src/scripts web/public/data/classes data/src/menu_trees
+          mkdir -p web/public/data/dw && cp data/src/dw/* web/public/data/dw/ && cp data/src/names/names.json web/public/data/
+          node web/tools/build-static.ts web/dist
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build the desktop application
+        run: cargo build --release -p trader-desktop
+      - uses: actions/upload-artifact@v4
+        with:
+          name: trader-desktop-windows
+          path: target/release/trader-desktop.exe

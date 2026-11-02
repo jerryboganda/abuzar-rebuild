@@ -1,5 +1,5 @@
 // Database session over the Rust server's HTTP API (see server/src/api.rs).
-import type { Db, QueryResult } from '../runtime/wire.ts'
+import type { Db, QueryResult, CallResult } from '../runtime/wire.ts'
 
 export class HttpDb implements Db {
   base: string
@@ -26,6 +26,9 @@ export class HttpDb implements Db {
   }
   exec(sql: string, params: unknown[]): Promise<{ rowcount: number }> {
     return this.post('/api/exec', { sid: this.sid, sql, params })
+  }
+  call(sql: string, params: unknown[]): Promise<CallResult> {
+    return this.post('/api/call', { sid: this.sid, sql, params })
   }
   async commit(): Promise<void> {
     await this.post('/api/commit', { sid: this.sid })

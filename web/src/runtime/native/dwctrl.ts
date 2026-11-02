@@ -6,6 +6,7 @@ import { Dec, PBDate, PBDateTime, PBTime, PBArray, toNum, toStr, coerce } from '
 import { DwModel, DATA_MODIFIED, NOT_MODIFIED } from '../../dw/model.ts'
 import type { DwDef } from '../../dw/def.ts'
 import { NTransaction } from './transaction.ts'
+import { Ref } from '../interp.ts'
 
 const bufferName = (v: unknown): string => String(v ?? 'primary!').replace(/!$/, '').toLowerCase()
 
@@ -20,7 +21,10 @@ export class NDwColumn implements Member {
   pbGet(prop: string): unknown {
     const m = this.dw.model
     if (!m) return null
-    return m.describe(`${this.col}.${prop}`)
+    const path = `${this.col}.${prop}`
+    const v = m.describe(path)
+    // `object.datawindow.column.count`: an unknown intermediate name continues the path
+    return v === '!' ? new NDwColumn(this.dw, path) : v
   }
   pbSet(prop: string, v: unknown): void {
     this.dw.model?.modify(`${this.col}.${prop}=${typeof v === 'boolean' ? (v ? 'yes' : 'no') : toStr(v)}`)
@@ -388,21 +392,27 @@ export class NDwBase extends PBObject {
   async n_setredraw(): Promise<number> {
     return 1
   }
-  async n_getchild(col: unknown): Promise<unknown> {
+  /** GetChild(column, ref DataWindowChild): returns 1 and stores the child in the reference, -1 when the column is not a drop-down DataWindow */
+  async n_getchild(col: unknown, ref?: unknown): Promise<unknown> {
     const m = await this.m()
-    if (!m) return null
+    if (!m) return -1
     const name = toStr(col).toLowerCase()
-    const cached = m.children.get(name)
-    let ch = (m as unknown as { childCtl?: Map<string, NDwBase> }).childCtl?.get(name)
-    if (ch) return ch
-    const o = m.def.objects.find((x) => x.type === 'column' && x.name.toLowerCase() === name)
-    const dddw = o?.['dddw.name']
-    if (!dddw) return null
-    ch = new NDwBase(this.rt, 'datawindowchild', 'datawindowchild')
-    ch.dwName = dddw.toLowerCase()
-    ch.ready = ch.loadDef(ch.dwName)
-    ;((m as unknown as { childCtl?: Map<string, NDwBase> }).childCtl ??= new Map()).set(name, ch)
-    void cached
+    const store = ((m as unknown as { childCtl?: Map<string, NDwBase> }).childCtl ??= new Map())
+    let ch = store.get(name)
+    if (!ch) {
+      const o = m.def.objects.find((x) => x.type === 'column' && x.name.toLowerCase() === name)
+      const dddw = o?.['dddw.name']
+      if (!dddw) return -1
+      ch = new NDwBase(this.rt, 'datawindowchild', 'datawindowchild')
+      ch.dwName = dddw.toLowerCase()
+      ch.ready = ch.loadDef(ch.dwName)
+      if (this.trans) ch.trans = this.trans
+      store.set(name, ch)
+    }
+    if (ref instanceof Ref) {
+      await ref.set(ch)
+      return 1
+    }
     return ch
   }
   async n_sharedata(other: unknown): Promise<number> {

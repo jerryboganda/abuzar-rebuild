@@ -179,6 +179,7 @@ export class NWindow extends NControl {
   closed: Promise<void>
   resolveClosed!: () => void
   isOpen = false
+  closing = false
   returnValue: unknown = null
   constructor(rt: Runtime, className: string, native = 'window') {
     super(rt, className, native)

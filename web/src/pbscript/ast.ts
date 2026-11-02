@@ -56,6 +56,7 @@ export interface Routine {
   params: Param[]
   ret: string
   locals: { n: string; t: string; arr: boolean }[]
+  event: boolean // an event (script of an event) rather than a function
   body: Stmt[]
   line: number
 }

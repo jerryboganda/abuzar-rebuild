@@ -59,9 +59,13 @@ async function openWin(rt: Runtime, a: unknown[], sheet: boolean, withParm: bool
 }
 
 export async function closeWindow(rt: Runtime, w: PBObject): Promise<number> {
-  if (!(w instanceof NWindow) || !w.isOpen) return 0
+  if (!(w instanceof NWindow) || !w.isOpen || w.closing) return 0
+  w.closing = true
   const q = await rt.fire(w, 'closequery')
-  if (q === 1) return -1
+  if (q === 1) {
+    w.closing = false
+    return -1
+  }
   await rt.fire(w, 'close')
   w.isOpen = false
   rt.ui?.closeWindow?.(w)

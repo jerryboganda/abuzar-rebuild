@@ -1,5 +1,5 @@
 // Stand-in database for developing the UI without a server: returns plausible rows for any DataWindow.
-import type { Db, QueryResult } from '../runtime/wire.ts'
+import type { Db, QueryResult, CallResult } from '../runtime/wire.ts'
 import { colKind } from '../dw/def.ts'
 import type { DwDef } from '../dw/def.ts'
 import type { DwCatalog } from '../dw/def.ts'
@@ -43,6 +43,10 @@ export class MockDb implements Db {
       columns: cols.map((c) => ({ name: c.name, type: { string: 'text', decimal: 'numeric', number: 'int4', datetime: 'timestamp', date: 'date', time: 'time', blob: 'bytea' }[colKind(c.type)] })),
       rows,
     }
+  }
+  async call(sql: string): Promise<CallResult> {
+    const rs = await this.query(sql)
+    return { columns: [], row: null, resultsets: rs.columns.length ? [{ column: 'rs1', columns: rs.columns, rows: rs.rows }] : [] }
   }
   async exec(): Promise<{ rowcount: number }> {
     return { rowcount: 1 }

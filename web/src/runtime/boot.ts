@@ -9,6 +9,8 @@ import { PBObject } from './object.ts'
 import { DwCatalog } from '../dw/def.ts'
 import { defaultValue } from './values.ts'
 import type { Db } from './wire.ts'
+import { ProcCaller } from './native/procs.ts'
+import type { ProcSig } from './native/procs.ts'
 
 /** type codes of the application's global variable table: code >> 16 is the primitive type */
 const PRIM: Record<number, string> = { 1: 'integer', 2: 'long', 3: 'real', 4: 'double', 5: 'decimal', 6: 'string', 7: 'boolean', 8: 'any', 9: 'unsignedinteger', 10: 'unsignedlong', 11: 'blob', 12: 'date', 13: 'time', 14: 'datetime', 18: 'char' }
@@ -20,8 +22,9 @@ export interface BootOptions {
   openDb?: (t: PBObject) => Promise<Db>
   sharedVars?: Record<string, [string, number][]>
   globalTypes?: Record<string, string>
-  dwSql?: Record<string, { sql: string; params: string[] }>
+  dwSql?: Record<string, { sql: string; params: string[]; proc?: boolean }>
   stmts?: Record<string, SqlEntry>
+  procs?: Record<string, ProcSig>
 }
 
 export async function createRuntime(o: BootOptions): Promise<Runtime> {
@@ -40,6 +43,7 @@ export async function createRuntime(o: BootOptions): Promise<Runtime> {
     const t = o.stmts
     rt.sqlStmt = (k) => t[k]
   }
+  if (o.procs) rt.procs = new ProcCaller(o.procs)
   // message / error objects
   const message = new PBObject(rt, 'message', 'message')
   for (const [n, t] of [['stringparm', 'string'], ['doubleparm', 'double'], ['returnvalue', 'long'], ['number', 'long'], ['wordparm', 'long'], ['longparm', 'long'], ['handle', 'long'], ['processed', 'boolean']] as const) message.declare(n, t)

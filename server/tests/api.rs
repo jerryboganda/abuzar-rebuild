@@ -50,6 +50,20 @@ async fn session_transaction_semantics() {
 }
 
 #[tokio::test]
+async fn procedure_call_returns_outputs_and_result_sets() {
+    let Some(app) = app() else { return };
+    let (_, s) = call(&app, "/api/session", json!({"autocommit": true})).await;
+    let sid = s["sid"].as_str().unwrap().to_string();
+    let ddl = "create or replace function dbo.t_proc(a integer, out return_value integer, out rs1 refcursor) language plpgsql as $f$ begin return_value := a * 2; open rs1 for select i, 'x' || i as t from generate_series(1, 3) i; end $f$";
+    let (_, r) = call(&app, "/api/exec", json!({"sid": sid, "sql": ddl})).await;
+    assert!(r.get("error").is_none(), "{r}");
+    let (_, r) = call(&app, "/api/call", json!({"sid": sid, "sql": "SELECT * FROM dbo.t_proc(a => $1)", "params": [21]})).await;
+    assert_eq!(r["row"][0], "42", "{r}");
+    assert_eq!(r["resultsets"][0]["rows"], json!([["1", "x1"], ["2", "x2"], ["3", "x3"]]), "{r}");
+    call(&app, "/api/exec", json!({"sid": sid, "sql": "drop function dbo.t_proc(integer)"})).await;
+}
+
+#[tokio::test]
 async fn autocommit_session_commits_each_statement() {
     let Some(app) = app() else { return };
     let (_, s) = call(&app, "/api/session", json!({"autocommit": true})).await;

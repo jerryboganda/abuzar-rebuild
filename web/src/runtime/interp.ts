@@ -34,6 +34,9 @@ export class Ref {
 }
 
 export class HaltSignal extends Error {}
+
+/** native methods that return a value through a `ref` argument: name -> argument positions */
+const REF_METHODS: Record<string, number[]> = { getchild: [1], getfullstate: [0] }
 function e0(_e: unknown, r: Routine): Routine {
   return r
 }
@@ -85,7 +88,7 @@ export class Runtime {
   /** statement executor for embedded SQL (set by the data layer) */
   sql: ((rt: Runtime, f: Frame, st: Extract<Stmt, { k: 'sql' }>) => Promise<void>) | null = null
   /** translated retrieve statement of a DataWindow (data/sql); set by the application shell */
-  dwSql: ((name: string) => { sql: string; params: string[] } | undefined) | null = null
+  dwSql: ((name: string) => { sql: string; params: string[]; proc?: boolean } | undefined) | null = null
   windowInstances = new Map<string, PBObject>() // open window by class name (global window variables such as w_main)
   dwCatalog: import('../dw/def.ts').DwCatalog | null = null
   closeWindow: (w: PBObject) => Promise<number> = async () => 0
@@ -194,30 +197,28 @@ export class Runtime {
     }
     // the declaring class redefines fields of the control
     this.applyFields(child, cd.fields)
-    // scripts of the declaring class for this control come first
-    const own = declaring.routines.get(cd.name.toLowerCase())
-    if (own) {
-      const pos = windowClasses.indexOf(declaring)
-      // keep descendant-first ordering: windowClasses is root-first, so later classes are more specific
-      child.scripts = [{ cls: declaring, owner: cd.name.toLowerCase() }, ...child.scripts.filter((s) => !(s.cls === declaring && s.owner === cd.name.toLowerCase()))]
-      void pos
-    }
+    // scripts written for this control in the window / menu classes of the chain (most derived first), then the control's own class chain
+    const nm = cd.name.toLowerCase()
+    const mine = windowClasses.slice().reverse().filter((c) => c.routines.get(nm)).map((c) => ({ cls: c, owner: nm }))
+    const rest = child.scripts.filter((sc) => !mine.some((m) => m.cls === sc.cls && m.owner === sc.owner))
+    child.scripts = [...mine, ...rest]
+    void declaring
     for (const sub of cd.controls) await this.addControl(child, sub, declaring, windowClasses)
     await this.initObjectVars(child)
   }
 
-  /** run the `create` event of an object (menus set their captions there) */
+  /** run the `create` events of an object and its controls (menu items set their captions there; each one chains to its ancestor's with `call super::create`) */
   private async runCreate(obj: PBObject): Promise<void> {
-    const entries = obj.findRoutines('create')
-    // only the object's own and ancestors' `create`, most specific last so that descendants override ancestors
-    for (const e of entries.slice().reverse()) {
-      if (e.r.owner !== obj.scripts[e.idx].owner) continue
-      await this.runEntry(obj, e, [])
-    }
+    const own = obj.findRoutines('create').filter((e) => obj.scripts[e.idx].owner === obj.scripts[e.idx].cls.name)
+    if (own.length) await this.runEntry(obj, own[0], [])
+    await this.createChildren(obj)
+  }
+
+  private async createChildren(obj: PBObject): Promise<void> {
     for (const c of obj.children.values()) {
-      if (c.scripts.length) {
-        for (const e of c.findRoutines('create').slice().reverse()) await this.runEntry(c, e, [])
-      }
+      const es = c.findRoutines('create')
+      if (es.length) await this.runEntry(c, es[0], [])
+      await this.createChildren(c)
     }
   }
 
@@ -793,7 +794,8 @@ export class Runtime {
     if (e.o) {
       const recv = await this.eval(e.o, f)
       const args: unknown[] = []
-      for (const a of e.a) args.push(await this.eval(a, f))
+      const refIdx = REF_METHODS[e.n]
+      for (let i = 0; i < e.a.length; i++) args.push(refIdx && refIdx.includes(i) ? this.refOf(e.a[i], f) : await this.eval(e.a[i], f))
       if (recv === null || recv === undefined) throw new PBRuntimeError(`Null object reference (calling ${e.n})`)
       const run = async (): Promise<unknown> => {
         if (recv instanceof PBObject) return this.callMethod(recv, e.n, args)
@@ -811,7 +813,9 @@ export class Runtime {
     // ---- unqualified call: routine of this object, global function, system function
     const self = f.self
     const name = e.n
-    const entries = self ? self.findRoutines(name) : []
+    let entries = self ? self.findRoutines(name) : []
+    // a plain call never runs an *event* that shares its name with a system function: `close(this)` inside the Close event closes the window
+    if (entries.length && !mods.includes('event') && this.sys.has(name) && entries.every((x) => x.r.event)) entries = []
     if (entries.length) {
       const entry = this.pick(entries, e.a.length)!
       const args = await this.evalArgs(e.a, f, entry.r)

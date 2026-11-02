@@ -209,6 +209,44 @@ async fn exec(State(st): State<AppState>, Json(req): Json<StmtReq>) -> Result<Js
     Ok(Json(json!({ "rowcount": n })))
 }
 
+/// Call a translated stored procedure (`SELECT * FROM dbo.sp(...)`): the first row holds the status / INOUT values and one
+/// refcursor per result set; every cursor that was opened is fetched completely and closed (see docs/SQL-TRANSLATION.md).
+async fn call(State(st): State<AppState>, Json(req): Json<StmtReq>) -> Result<Json<Value>, ApiError> {
+    let sql = sqlsub::substitute(&req.sql, &req.params).map_err(|e| ApiError::Bad(e.to_string()))?;
+    let sess = session(&st, &req.sid).await?;
+    let mut s = sess.lock().await;
+    // cursors only live inside a transaction: autocommit sessions get one for the duration of the call
+    let own_tx = s.autocommit;
+    if own_tx {
+        s.conn.execute("BEGIN").await.map_err(db_err)?;
+    }
+    let res = call_inner(&mut s, sql).await;
+    if own_tx {
+        let end = if res.is_ok() { "COMMIT" } else { "ROLLBACK" };
+        let _ = s.conn.execute(end).await;
+    }
+    res.map(Json)
+}
+
+async fn call_inner(s: &mut Session, sql: String) -> Result<Value, ApiError> {
+    let (cols, rows, _) = run_statement(s, sql, true).await?;
+    let mut result_sets = Vec::new();
+    if let Some(row) = rows.first() {
+        for (i, c) in cols.iter().enumerate() {
+            if c.ty == "refcursor" {
+                if let Value::String(name) = &row[i] {
+                    let q = format!("\"{}\"", name.replace('"', "\"\""));
+                    let (rc, rr, _) = run_statement(s, format!("FETCH ALL FROM {q}"), true).await?;
+                    let _ = s.conn.execute(format!("CLOSE {q}").as_str()).await;
+                    result_sets.push(json!({ "column": c.name, "columns": rc, "rows": rr }));
+                    continue;
+                }
+            }
+        }
+    }
+    Ok(json!({ "columns": cols, "row": rows.first(), "resultsets": result_sets }))
+}
+
 async fn end_tx(st: &AppState, sid: &str, sql: &str) -> Result<Json<Value>, ApiError> {
     let sess = session(st, sid).await?;
     let mut s = sess.lock().await;
@@ -236,12 +274,20 @@ async fn close(State(st): State<AppState>, Json(req): Json<SidReq>) -> Result<Js
     Ok(Json(json!({ "ok": true })))
 }
 
+pub use axum::Router as HttpRouter;
+
+/// serve `app` on `listener` (used by the desktop shell, which owns the process and the runtime)
+pub async fn serve(listener: tokio::net::TcpListener, app: Router) -> std::io::Result<()> {
+    axum::serve(listener, app).await
+}
+
 pub fn router(state: AppState) -> Router {
     Router::new()
         .route("/api/health", get(health))
         .route("/api/session", post(open_session))
         .route("/api/query", post(query))
         .route("/api/exec", post(exec))
+        .route("/api/call", post(call))
         .route("/api/commit", post(commit))
         .route("/api/rollback", post(rollback))
         .route("/api/close", post(close))

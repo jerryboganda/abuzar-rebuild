@@ -18,10 +18,19 @@ export interface DbError {
   detail?: string
 }
 
+export interface CallResult {
+  columns: ColumnInfo[]
+  /** first row: status / INOUT values and the names of the opened cursors (text) */
+  row: (string | null)[] | null
+  resultsets: { column: string; columns: ColumnInfo[]; rows: unknown[][] }[]
+}
+
 /** one database session (the server keeps a dedicated connection and transaction state per session) */
 export interface Db {
   query(sql: string, params: unknown[]): Promise<QueryResult>
   exec(sql: string, params: unknown[]): Promise<{ rowcount: number }>
+  /** stored procedure call (`SELECT * FROM dbo.sp(...)`) including its result sets */
+  call(sql: string, params: unknown[]): Promise<CallResult>
   commit(): Promise<void>
   rollback(): Promise<void>
   close(): Promise<void>
