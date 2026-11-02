@@ -92,6 +92,10 @@ def compact(text):
 def guess_type(name):
     last = name.split('.')[-1].split('[')[0].lower()
     probe = re.sub(r'update|validate|candidate|mandate', '', last)
+    # the PowerScript type prefix wins over the word "date" in the name (ll_date is a long, ls_date a string)
+    for pre, ty in PREFIX_TYPES:
+        if last.startswith(pre) and ty in ('text', 'integer', 'bytea') and not last.startswith(('ldt_', 'adt_', 'idt_')):
+            return ty
     if 'date' in probe or last.startswith(('dt', 'adt', 'ldt', 'idt')):
         return 'timestamp'
     for pre, ty in PREFIX_TYPES:
@@ -180,7 +184,8 @@ def dw_items(dw_root):
             nm = it.get('_items') if isinstance(it, dict) else None
             if nm and len(nm) >= 2:
                 args[str(nm[0]).lower()] = str(nm[1]).lower()
-        base = {'id': 'dw:%s/%s' % (lib, name), 'file': 'recovered/datawindows_json/%s/%s.json' % (lib, name), 'args': args}
+        base = {'id': 'dw:%s/%s' % (lib, name), 'file': 'recovered/datawindows_json/%s/%s.json' % (lib, name), 'args': args,
+                'columns': [{'name': c.get('name'), 'type': c.get('type')} for c in (t.get('columns') or [])]}
         if t.get('procedure'):
             out.append({**base, 'dwkind': 'procedure', 'raw': t['procedure']})
         if t.get('retrieve'):
@@ -355,6 +360,20 @@ def main():
         r['original'] = compact(r['original'])
         if r.get('translated'):
             r['translated'] = compact(r['translated'])
+    # result columns of procedures that DataWindows call (the DataWindow declares them) -> proc_signatures.json
+    sigp = os.path.join(a.repo, 'data', 'sql', 'proc_signatures.json')
+    if os.path.exists(sigp):
+        sigs = json.load(open(sigp, encoding='utf-8'))
+        byname = {x['name'].lower(): x for x in sigs}
+        for d in dw_items(os.path.join(a.src, 'recovered', 'datawindows_json')):
+            if d['dwkind'] != 'procedure':
+                continue
+            m = re.match(r'\s*\d+\s+execute\s+(?:dbo\.)?(\w+)', d['raw'], re.I)
+            sg = byname.get(m.group(1).lower()) if m else None
+            if sg is not None:
+                sg.setdefault('datawindows', []).append({'datawindow': d['id'][3:], 'columns': d['columns']})
+        with open(sigp, 'w', encoding='utf-8', newline='\n') as f:
+            json.dump(sigs, f, indent=1, ensure_ascii=False)
     os.makedirs(os.path.join(a.repo, 'data', 'sql'), exist_ok=True)
     with open(os.path.join(a.repo, 'data', 'sql', 'statements.json'), 'w', encoding='utf-8', newline='\n') as f:
         json.dump(recs, f, indent=0, ensure_ascii=False)

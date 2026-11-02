@@ -1343,12 +1343,12 @@
 "routine": "w_activation.wf_newactivation",
 "kind": "embedded-select",
 "original": "Select Convert ( Int , Convert ( DateTime , :ls_date ) ) INTO :ll_date From Sequence",
-"translated": "SELECT (((($1)::timestamp)::timestamp(3))::date - date '1900-01-01') FROM dbo.sequence",
+"translated": "SELECT ((($1)::timestamp(3))::date - date '1900-01-01') FROM dbo.sequence",
 "params": [
 "ls_date"
 ],
 "param_types": [
-"timestamp"
+"text"
 ],
 "into": [
 "ll_date"
@@ -1398,7 +1398,7 @@
 "routine": "w_activation.wf_newactivation",
 "kind": "embedded-insert",
 "original": "Insert Into systextcatalog ( textcatalog , cataloglength , textlength , status , cache ) values ( :as_licensekey , :ll_date , :ll_invlimit , :ll_status , :ll_cache )",
-"translated": "INSERT INTO dbo.systextcatalog (textcatalog, cataloglength, textlength, status, cache) VALUES ($1, ($2)::timestamp, $3, $4, $5)",
+"translated": "INSERT INTO dbo.systextcatalog (textcatalog, cataloglength, textlength, status, cache) VALUES ($1, $2, $3, $4, $5)",
 "params": [
 "as_licensekey",
 "ll_date",
@@ -1408,7 +1408,7 @@
 ],
 "param_types": [
 "text",
-"timestamp",
+"integer",
 "integer",
 "integer",
 "integer"
@@ -37662,14 +37662,14 @@
 "routine": "f_getlicinfo.f_getlicinfo",
 "kind": "embedded-select",
 "original": "Select Convert ( datetime , DateAdd ( month , :al_duration , Convert ( datetime , :ll_startdate ) ) ) INTO :adt_startdate From Sequence",
-"translated": "SELECT (((($2)::timestamp)::timestamp(3) + (($1)::integer) * interval '1 month'))::timestamp(3) FROM dbo.sequence",
+"translated": "SELECT ((($2)::timestamp(3) + (($1)::integer) * interval '1 month'))::timestamp(3) FROM dbo.sequence",
 "params": [
 "al_duration",
 "ll_startdate"
 ],
 "param_types": [
 "integer",
-"timestamp"
+"integer"
 ],
 "into": [
 "adt_startdate"
@@ -38927,12 +38927,12 @@
 "routine": "f_islicenseexpire.f_islicenseexpire",
 "kind": "embedded-update",
 "original": "update systextcatalog Set cataloglength =Convert ( Int , Convert ( DateTime , :ls_date ) )",
-"translated": "UPDATE dbo.systextcatalog SET cataloglength = (((($1)::timestamp)::timestamp(3))::date - date '1900-01-01')",
+"translated": "UPDATE dbo.systextcatalog SET cataloglength = ((($1)::timestamp(3))::date - date '1900-01-01')",
 "params": [
 "ls_date"
 ],
 "param_types": [
-"timestamp"
+"text"
 ],
 "into": null,
 "status": "translated",

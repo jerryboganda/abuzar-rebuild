@@ -187,14 +187,14 @@ def sig_json(tr, kind, u, sg, rs_cols):
             cols = rs_cols.get('rs%d' % (i + 1)) if rs_cols else None
             rs.append({'column': 'rs%d' % (i + 1),
                        'columns': [{'name': c[0], 'class': c[1]} for c in cols if c[0]] if cols else None})
-        d['returns'] = {'style': 'record', 'status_column': 'return_value', 'inout_columns': outs, 'result_sets': rs}
+        d['returns'] = {'kind': 'record', 'style': 'record', 'status_column': 'return_value', 'inout_columns': outs, 'result_sets': rs}
         d['call'] = 'SELECT * FROM dbo.%s(%s)' % (ident(u['name']).strip('"'), ', '.join('%s => $%d' % (p['pg_param'], i + 1) for i, p in enumerate(params)))
     elif kind == 'function':
         if sg.ret_table is not None:
-            d['returns'] = {'style': 'table', 'columns': [{'name': ident(c.name).strip('"'), 'type': c.pg} for c in sg.ret_table.cols]}
+            d['returns'] = {'kind': 'table', 'style': 'table', 'columns': [{'name': ident(c.name).strip('"'), 'type': c.pg} for c in sg.ret_table.cols]}
             d['call'] = 'SELECT * FROM dbo.%s(%s)' % (ident(u['name']).strip('"'), ', '.join('$%d' % (i + 1) for i in range(len(params))))
         else:
-            d['returns'] = {'style': 'scalar', 'type': sg.ret_pg}
+            d['returns'] = {'kind': 'scalar', 'style': 'scalar', 'type': sg.ret_pg}
             d['call'] = 'SELECT dbo.%s(%s)' % (ident(u['name']).strip('"'), ', '.join('$%d' % (i + 1) for i in range(len(params))))
     if u.get('notes'):
         d['untranslated_statements'] = len(u['notes'])
