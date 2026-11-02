@@ -163,7 +163,8 @@ export class Runtime {
 
   /** instance variables of object / structure / array types do not use the numeric placeholder stored in the class data */
   async initObjectVars(obj: PBObject): Promise<void> {
-    for (const [name, type] of obj.types) {
+    for (const name of obj.vars) {
+      const type = obj.types.get(name)!
       if (PRIMITIVES.has(type) || obj.children.has(name)) continue
       obj.props.set(name, await this.defaultOf(type))
     }
@@ -173,6 +174,9 @@ export class Runtime {
     for (const f of fields) {
       if (f.name === 'control') continue
       obj.declare(f.name, f.type, f.value === undefined ? undefined : f.value)
+      if (f.attr === '0xcc') obj.vars.add(f.name)
+      // `item[]` of menus / list boxes: filled by scripts (this.item[upperbound(this.item) + 1] = ...)
+      if (f.name === 'item') obj.props.set('item', new PBArray('any'))
     }
   }
 

@@ -45,7 +45,8 @@ async function main(): Promise<void> {
   rt.ui = ui
   rt.onError = (e) => {
     console.error(e)
-    void ui.messageBox('Application error', e instanceof Error ? e.message : String(e), 'stopsign!', 'ok!', 1)
+    void ui.messageBox('Application error', (e instanceof Error ? e.message : String(e)) + ((e as { where?: string }).where ? `
+(in ${(e as { where?: string }).where})` : ''), 'stopsign!', 'ok!', 1)
   }
   ;(window as unknown as { rt: unknown }).rt = rt
   const dwName = q.get('dw')

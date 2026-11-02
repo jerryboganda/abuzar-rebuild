@@ -83,6 +83,8 @@ export class PBObject implements Member {
   native: string // name of the native root class (window, commandbutton, datawindow, nonvisualobject ...)
   props = new Map<string, unknown>()
   types = new Map<string, string>()
+  /** names of instance variables (field attribute 0xcc): only these are re-initialised by type, properties keep their stored value */
+  vars = new Set<string>()
   children = new Map<string, PBObject>()
   parent: PBObject | null = null
   /** name of this control inside its parent (or the object name for top-level objects) */

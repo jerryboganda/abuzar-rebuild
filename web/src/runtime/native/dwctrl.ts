@@ -2,7 +2,8 @@
 import { PBObject } from '../object.ts'
 import type { Member } from '../object.ts'
 import type { Runtime } from '../interp.ts'
-import { Dec, PBDate, PBDateTime, PBTime, PBArray, toNum, toStr, coerce } from '../values.ts'
+import { Dec, PBDate, PBDateTime, PBTime, PBArray, PBRuntimeError, toNum, toStr, coerce } from '../values.ts'
+import { compileDw } from '../../dw/expr.ts'
 import { DwModel, DATA_MODIFIED, NOT_MODIFIED } from '../../dw/model.ts'
 import type { DwDef } from '../../dw/def.ts'
 import { NTransaction } from './transaction.ts'
@@ -287,13 +288,29 @@ export class NDwBase extends PBObject {
     this.changed()
     return r
   }
+  /** an invalid expression is an error code (-1 / -5), not a runtime error, as in PowerBuilder */
   async n_find(expr: unknown, start: unknown, end: unknown): Promise<number> {
     const m = await this.m()
-    return m ? m.find(toStr(expr), toNum(start), toNum(end)) : -1
+    if (!m) return -1
+    try {
+      return await m.find(toStr(expr), toNum(start), toNum(end))
+    } catch (e) {
+      if (e instanceof PBRuntimeError && /DataWindow expression/.test(e.message)) return -5
+      throw e
+    }
   }
   async n_setfilter(text: unknown): Promise<number> {
     const m = await this.m()
-    return m ? m.setFilter(toStr(text)) : -1
+    if (!m) return -1
+    const t = toStr(text).trim()
+    if (t && !/^(none|\?)$/i.test(t)) {
+      try {
+        compileDw(t)
+      } catch {
+        return -1
+      }
+    }
+    return m.setFilter(toStr(text))
   }
   async n_filter(): Promise<number> {
     const m = await this.m()
@@ -304,7 +321,17 @@ export class NDwBase extends PBObject {
   }
   async n_setsort(text: unknown): Promise<number> {
     const m = await this.m()
-    return m ? m.setSort(toStr(text)) : -1
+    if (!m) return -1
+    for (const part of toStr(text).split(',')) {
+      const expr = part.trim().replace(/\s+[AD]$/i, '').trim()
+      if (!expr) continue
+      try {
+        compileDw(expr)
+      } catch {
+        return -1
+      }
+    }
+    return m.setSort(toStr(text))
   }
   async n_sort(): Promise<number> {
     const m = await this.m()
