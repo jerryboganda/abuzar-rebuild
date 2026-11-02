@@ -381,11 +381,17 @@ export class WinView {
     for (const v of this.ui.views.values()) v.el.classList.remove('active')
     this.el.classList.add('active')
     this.el.style.zIndex = String(++this.ui.zTop)
+    if (this.sheet) this.ui.mdi?.showMenuFor(this.w)
   }
 
   destroy(): void {
     if (this.toolbarTimer) clearInterval(this.toolbarTimer)
     this.el.remove()
+    if (this.sheet && this.ui.mdi) {
+      // the menu of the sheet that is on top now (or the frame's)
+      const rest = [...this.ui.views.values()].filter((v) => v.sheet && v !== this && v.el.isConnected).sort((a, b) => Number(b.el.style.zIndex || 0) - Number(a.el.style.zIndex || 0))
+      this.ui.mdi.showMenuFor(rest[0]?.w ?? null)
+    }
   }
 
   // ---------------------------------------------------------------- MDI frame
@@ -414,20 +420,49 @@ export class WinView {
     const rt = this.ui.rt
     const menu = await rt.instantiate(name, this.w)
     this.w.props.set('menuid', menu)
+    this.frameMenu = menu
+    this.shownMenu = menu
+    this.menuBar = bar
     this.renderMenuBar(menu, bar)
-    this.startToolbar(menu)
+    this.startToolbar()
+  }
+
+  /** MDI: the menu of the active sheet replaces the frame's menu bar and toolbar while the sheet is active (a sheet without a menu keeps the frame's) */
+  showMenuFor(sheet: PBObject | null): void {
+    if (!this.menuBar) return
+    const own = sheet ? (sheet.props.get('menuid') as PBObject | undefined) : undefined
+    const m = own ?? this.frameMenu
+    if (!m || m === this.shownMenu) return
+    this.shownMenu = m
+    this.menuSig = ''
+    this.renderMenuBar(m, this.menuBar)
+    this.toolSig = ''
   }
 
   /** the toolbar follows the state of the menu items (sheets enable / disable them while the user works) */
-  private startToolbar(menu: PBObject): void {
+  private frameMenu: PBObject | null = null
+  private shownMenu: PBObject | null = null
+  private menuBar: HTMLElement | null = null
+  private menuSig = ''
+  private toolSig = ''
+  private menuClickBound = false
+
+  private startToolbar(): void {
     const tool = this.client.querySelector('.toolbar') as HTMLElement | null
     if (!tool) return
-    let last = ''
     const refresh = () => {
+      const menu = this.shownMenu
+      if (!menu) return
+      // the rights are applied to the menu after the window opened: the bar follows visibility and captions
+      const bar = [...menu.children.values()].map((i) => `${i.props.get('visible') === false ? 0 : 1}${str(i, 'text')}`).join('|')
+      if (bar !== this.menuSig) {
+        if (this.menuSig && this.menuBar) this.renderMenuBar(menu, this.menuBar)
+        this.menuSig = bar
+      }
       const items = toolbarItems(menu)
       const sig = items.map((x) => `${x.button.name}${x.button.enabled ? 1 : 0}${x.button.space ? 's' : ''}${x.button.text}`).join('|')
-      if (sig === last) return
-      last = sig
+      if (sig === this.toolSig) return
+      this.toolSig = sig
       tool.replaceChildren()
       for (const { item, button } of items) {
         if (button.space) {
@@ -446,6 +481,7 @@ export class WinView {
         tool.appendChild(b)
       }
     }
+    this.menuSig = [...(this.shownMenu?.children.values() ?? [])].map((i) => `${i.props.get('visible') === false ? 0 : 1}${str(i, 'text')}`).join('|')
     refresh()
     this.toolbarTimer = setInterval(refresh, 300)
   }
@@ -470,10 +506,13 @@ export class WinView {
       }
       bar.appendChild(mi)
     }
-    document.addEventListener('click', () => {
-      bar.querySelectorAll('.menu-drop').forEach((d) => d.remove())
-      bar.querySelectorAll('.mi.open').forEach((d) => d.classList.remove('open'))
-    })
+    if (!this.menuClickBound) {
+      this.menuClickBound = true
+      document.addEventListener('click', () => {
+        bar.querySelectorAll('.menu-drop').forEach((d) => d.remove())
+        bar.querySelectorAll('.mi.open').forEach((d) => d.classList.remove('open'))
+      })
+    }
   }
 
   dropdown(item: PBObject): HTMLElement {

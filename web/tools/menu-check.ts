@@ -37,6 +37,16 @@ for (const r of rows) {
 }
 rt.globals.set('gds_security', ds)
 rt.globals.set('gl_securityrowcount', rows.length)
+const withStock: string[] = []
+const walkStock = (m: PBObject, depth: number) => {
+  for (const it of m.children.values()) {
+    const n = it.props.get('toolbaritemname')
+    if (typeof n === 'string' && n) withStock.push(`${it.name}:${n}:${String(it.props.get('visible'))}`)
+    walkStock(it, depth + 1)
+  }
+}
+walkStock(menu, 0)
+console.log('items with a toolbar picture:', withStock.length, withStock.slice(0, 8))
 const before = [...menu.children.values()].map((i) => i.props.get('visible'))
 const ret = await rt.callMethod(menu, 'mf_initsecurityapp', [menu])
 const after = [...menu.children.values()].map((i) => i.props.get('visible'))
