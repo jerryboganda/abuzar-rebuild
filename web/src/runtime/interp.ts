@@ -117,6 +117,8 @@ export class Runtime {
   /** stored procedures callable through the transaction object (RPC declarations) */
   procs: { call(t: PBObject, name: string, args: unknown[]): Promise<unknown>; refPositions?(name: string): number[] | undefined } | null = null
   /** run-time translation of a changed SELECT (modify datawindow.table.select) */
+  /** diagnostic hook: an exception about to be handled by a script's catch block */
+  onCaught: ((e: unknown) => void) | null = null
   translateSql: ((text: string) => { sql: string; params: string[] } | undefined) | null = null
   missing = new Map<string, number>() // unimplemented functions / members seen at run time
   depth = 0
@@ -469,6 +471,7 @@ export class Runtime {
           if (e instanceof HaltSignal) throw e
           const c = s.catches[0]
           if (!c) throw e
+          this.onCaught?.(e)
           const t = this.toThrowable(e)
           f.locals.set(c.v, t)
           f.types.set(c.v, c.t)

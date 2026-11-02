@@ -243,3 +243,14 @@ test('QR code: Reed-Solomon vector, capacities, format bits, symbol structure', 
   assert.equal(new DataView(bmp.buffer).getInt32(18, true), (q.size + 8) * 3)
   assert.equal(encodeQr('x'.repeat(3000), 0), null)
 })
+
+test('string to number: the leading number counts (the menu rights code relies on Integer("2,") = 2)', async () => {
+  const rt = new Runtime({ load: async () => undefined })
+  registerSysFuncs(rt)
+  const f = (n: string, v: unknown) => rt.sys.get(n)!.fn(rt, [v], undefined as never)
+  assert.equal(await f('integer', '2,'), 2)
+  assert.equal(await f('integer', '  -15abc'), -15)
+  assert.equal(await f('integer', 'abc'), 0)
+  assert.equal(await f('long', '1234,'), 1234)
+  assert.equal(await f('integer', null), null)
+})

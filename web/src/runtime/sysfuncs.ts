@@ -66,12 +66,18 @@ export function formatValue(v: unknown, fmt?: string): string {
   return s(v)
 }
 
+/** PowerBuilder converts the leading number of a string and ignores what follows (Integer("2,") = 2: the menu rights code relies on it); 0 without a number */
+function leadingNumber(text: string): number {
+  const m = /^\s*[+-]?(\d+(\.\d*)?|\.\d+)/.exec(text)
+  return m ? Number(m[0]) : 0
+}
+
 export function registerSysFuncs(rt: Runtime): void {
   // ------------------------------------------------------------------ type conversion
   def(rt, 'string', (_r, a) => (a[0] === null ? null : formatValue(a[0], a.length > 1 ? s(a[1]) : undefined)))
-  def(rt, 'integer', (_r, a) => (isNull(a[0]) ? null : typeof a[0] === 'string' ? (/^\s*-?\d+(\.\d+)?\s*$/.test(a[0]) ? coerce('integer', n(a[0])) : 0) : coerce('integer', a[0])))
+  def(rt, 'integer', (_r, a) => (isNull(a[0]) ? null : typeof a[0] === 'string' ? coerce('integer', leadingNumber(a[0])) : coerce('integer', a[0])))
   def(rt, 'int', (_r, a) => (isNull(a[0]) ? null : Math.floor(n(a[0]))))
-  def(rt, 'long', (_r, a) => (isNull(a[0]) ? null : typeof a[0] === 'string' ? (/^\s*-?\d+(\.\d+)?\s*$/.test(a[0]) ? coerce('long', n(a[0])) : 0) : coerce('long', a[0])))
+  def(rt, 'long', (_r, a) => (isNull(a[0]) ? null : typeof a[0] === 'string' ? coerce('long', leadingNumber(a[0])) : coerce('long', a[0])))
   def(rt, 'longlong', (_r, a) => (isNull(a[0]) ? null : Math.trunc(n(a[0]))))
   def(rt, 'double', (_r, a) => (isNull(a[0]) ? null : typeof a[0] === 'string' && !/^\s*[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?\s*$/.test(a[0]) ? 0 : n(a[0])))
   def(rt, 'real', (_r, a) => (isNull(a[0]) ? null : n(a[0])))
