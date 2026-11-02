@@ -31,6 +31,7 @@ const read = async (p: string): Promise<string | undefined> => {
 }
 
 const names = JSON.parse((await read('names.json')) || '{}')
+const sqlTables = JSON.parse((await read('sql.json')) || '{}')
 const loader = new JsonClassLoader((n) => read(`classes/${n}.json`))
 const created: unknown[] = []
 const ui = {
@@ -47,9 +48,10 @@ const ui = {
   focus() {},
 } as never
 
-const rt = await createRuntime({ loader, readData: read, sharedVars: names.sharedVars, globalTypes: names.globalTypes, ui, openDb: async (_t: PBObject) => new MockDb(rt.dwCatalog!) })
+const rt = await createRuntime({ loader, readData: read, sharedVars: names.sharedVars, globalTypes: names.globalTypes, stmts: sqlTables.stmt, procs: sqlTables.proc, ui, openDb: async (_t: PBObject) => new MockDb(rt.dwCatalog!) })
 rt.dwSql = (n) => ({ sql: 'mock:' + n, params: [] })
 rt.onError = () => {}
+rt.loopLimit = 20000
 
 const index = JSON.parse((await read('classes/_index.json')) || '{}') as Record<string, string>
 const windows = Object.keys(index).filter((n) => n.startsWith('w_') && (!filter || filter.test(n)))

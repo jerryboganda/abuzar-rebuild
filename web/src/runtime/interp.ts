@@ -102,6 +102,8 @@ export class Runtime {
   translateSql: ((text: string) => { sql: string; params: string[] } | undefined) | null = null
   missing = new Map<string, number>() // unimplemented functions / members seen at run time
   depth = 0
+  /** safety net for scripts that wait for data that never arrives */
+  loopLimit = 20_000_000
 
   constructor(loader: ClassLoader) {
     this.loader = loader
@@ -293,7 +295,8 @@ export class Runtime {
         obj.destroy()
         return 1
     }
-    this.noteMissing(obj.native + '.' + name)
+    // events without a script (post event ue_xxx, constructor ...) do nothing, like in PowerBuilder
+    if (!/^ue_|^constructor$|^destructor$/.test(name)) this.noteMissing(obj.native + '.' + name)
     return null
   }
 
@@ -413,8 +416,10 @@ export class Runtime {
         return NONE
       }
       case 'while': {
+        let guard = 0
         if (s.post) {
           do {
+            if (++guard > this.loopLimit) throw new PBRuntimeError('Loop iteration limit exceeded')
             const sig = await this.execBlock(s.body, f)
             if (sig === EXIT) break
             if (sig === RETURN || sig === GOTO) return sig
@@ -422,6 +427,7 @@ export class Runtime {
           return NONE
         }
         while (s.until ? !(await this.cond(s.c, f)) : await this.cond(s.c, f)) {
+          if (++guard > this.loopLimit) throw new PBRuntimeError('Loop iteration limit exceeded')
           const sig = await this.execBlock(s.body, f)
           if (sig === EXIT) break
           if (sig === RETURN || sig === GOTO) return sig

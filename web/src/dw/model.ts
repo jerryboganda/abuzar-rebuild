@@ -443,6 +443,7 @@ export class DwModel implements EvalHost {
 
   // ---------------------------------------------------------------- find / filter / sort
   async find(expr: string, start: number, end: number): Promise<number> {
+    if (!expr.trim()) return 0
     const e = compileDw(expr)
     const step = end >= start ? 1 : -1
     const memo = new Map<string, unknown>()

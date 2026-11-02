@@ -7,7 +7,7 @@ import { executeStatement } from './native/transaction.ts'
 import type { SqlEntry } from './native/transaction.ts'
 import { PBObject } from './object.ts'
 import { DwCatalog } from '../dw/def.ts'
-import { defaultValue } from './values.ts'
+import { defaultValue, PBArray } from './values.ts'
 import type { Db } from './wire.ts'
 import { ProcCaller } from './native/procs.ts'
 import type { ProcSig } from './native/procs.ts'
@@ -59,8 +59,14 @@ export async function createRuntime(o: BootOptions): Promise<Runtime> {
     const prim = PRIM[code >> 16]
     const cls = o.globalTypes?.[name]
     if (prim && !cls) {
-      rt.globals.set(name, defaultValue(prim))
-      rt.gtypes.set(name, prim)
+      // bit 0x2000 of the type word marks an array (gi_catlist, ga_llookuptable ...)
+      if (code & 0x2000) {
+        rt.globals.set(name, new PBArray(prim))
+        rt.gtypes.set(name, prim + '[]')
+      } else {
+        rt.globals.set(name, defaultValue(prim))
+        rt.gtypes.set(name, prim)
+      }
     } else {
       rt.globals.set(name, null)
     }

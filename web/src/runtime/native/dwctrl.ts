@@ -484,6 +484,14 @@ export class NDwBase extends PBObject {
   async n_setposition(): Promise<number> {
     return 1
   }
+  /** SetTabOrder(column, n): column-level tab sequence */
+  async n_settaborder(col: unknown, n: unknown): Promise<number> {
+    const m = await this.m()
+    if (!m || m.colIndex(typeof col === 'number' ? col : toStr(col)) < 0) return -1
+    m.modify(`${typeof col === 'number' ? m.colNames[col - 1] : toStr(col)}.tabsequence=${toNum(n)}`)
+    this.changed()
+    return 1
+  }
   async n_insertrow_array(): Promise<number> {
     return 1
   }
