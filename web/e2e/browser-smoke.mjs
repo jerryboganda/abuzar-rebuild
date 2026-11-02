@@ -177,7 +177,7 @@ const slow = []
 const failed = []
 for (const name of sample) {
   current = name
-  const r = await page.evaluate(async (n) => {
+  const r = await Promise.race([new Promise((res) => setTimeout(() => res({ stuck: true }), 30000)), page.evaluate(async (n) => {
     const t0 = performance.now()
     let err = null
     try {
@@ -198,7 +198,11 @@ for (const name of sample) {
       }
     }
     return { err, msgs, opened: !!w, ms: Math.round(performance.now() - t0), hadDom }
-  }, name)
+  }, name)])
+  if (r.stuck) {
+    console.log(`stuck: ${name} did not finish opening within 30 s (the page is busy); the rest of the sample is skipped`)
+    break
+  }
   if (r.opened) opened++
   if (r.err) {
     thrown++
