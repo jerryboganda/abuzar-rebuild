@@ -22,3 +22,20 @@ UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) = 'applyarg
 
 -- the migration of the original switches the group customer category rule off (UPDATE preferences SET groupcustomercategory = 'N'); without categories assigned to the user group sales would refuse to open
 UPDATE dbo.softwarepreferences SET prefvalue = 'N' WHERE lower(name) IN ('groupcustomercategory', 'groupsuppcatinpurandpr');
+
+-- the retail customer of the cash sale windows (w_sale reads `Customer WHERE custcode = 19`); the original ships it inside its pre-built database.
+-- Parents first; a failure here must not stop the first-run data, so the block reports instead of raising.
+DO $boot$
+BEGIN
+  IF EXISTS (SELECT 1 FROM dbo.customer WHERE custcode = 19) THEN
+    RETURN;
+  END IF;
+  INSERT INTO dbo.area (areacode, name, shortname) SELECT 1, 'DEFAULT', 'DEF' WHERE NOT EXISTS (SELECT 1 FROM dbo.area);
+  INSERT INTO dbo.subarea (subareacode, name, manager, areacode) SELECT 1, 'SUB DEFAULT', '1', (SELECT min(areacode) FROM dbo.area) WHERE NOT EXISTS (SELECT 1 FROM dbo.subarea);
+  INSERT INTO dbo.subaccounts (subacccode, catacccode, name) SELECT (SELECT coalesce(max(subacccode), 0) + 1 FROM dbo.subaccounts), 1, 'CUSTOMERS' WHERE NOT EXISTS (SELECT 1 FROM dbo.subaccounts WHERE name = 'CUSTOMERS');
+  INSERT INTO dbo.accounts (acccode, subcode, name, aliasname, active, restricted) SELECT 19, (SELECT subacccode FROM dbo.subaccounts WHERE name = 'CUSTOMERS'), 'CASH CUSTOMER', 'CASHCUST19', 'Y', 'N' WHERE NOT EXISTS (SELECT 1 FROM dbo.accounts WHERE acccode = 19);
+  INSERT INTO dbo.customer (custcode, areacode, crlimit, dayslimit, custcatcode, subareacode, membershipid) VALUES (19, (SELECT min(areacode) FROM dbo.area), 0, 0, (SELECT min(custcatcode) FROM dbo.customercategory), (SELECT min(subareacode) FROM dbo.subarea), '19');
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE 'retail customer 19 not created: %', SQLERRM;
+END
+$boot$;
