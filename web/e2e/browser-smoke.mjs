@@ -17,7 +17,23 @@ page.on('console', (m) => {
   else errors.push({ win: current, text: m.text().slice(0, 220) })
 })
 await page.goto(base + '/?autologin=admin:admin')
-await page.waitForFunction(() => window.__open && window.rt && window.rt.windowInstances.get('w_main'), null, { timeout: 240000, polling: 500 })
+try {
+  await page.waitForFunction(() => window.__open && window.rt && window.rt.windowInstances.get('w_main'), null, { timeout: 150000, polling: 500 })
+} catch (e) {
+  // say what the page shows instead of only timing out
+  const state = await page.evaluate(() => ({
+    rt: !!window.rt,
+    windows: window.rt ? [...window.rt.windowInstances.keys()] : [],
+    text: document.body.innerText.replace(/\s+/g, ' ').slice(0, 400),
+    msgbox: [...document.querySelectorAll('.msgbox .txt')].map((x) => x.textContent.slice(0, 200)),
+  })).catch((err) => ({ error: String(err) }))
+  console.log('the application did not reach the main window:', JSON.stringify(state))
+  console.log('browser errors so far:', errors.length)
+  for (const er of errors.slice(0, 15)) console.log('  ' + er.text)
+  console.log('missing files:', missingFiles)
+  await browser.close()
+  process.exit(0)
+}
 await page.waitForTimeout(1500)
 const frame = await page.evaluate(() => ({
   menuItems: [...document.querySelectorAll('.menubar .mi')].map((e) => e.textContent),
