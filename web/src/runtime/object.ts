@@ -105,9 +105,9 @@ export class PBObject implements Member {
     return false
   }
   pbGet(name: string): unknown {
-    if (this.props.has(name)) return this.props.get(name)
     const c = this.children.get(name)
     if (c) return c
+    if (this.props.has(name)) return this.props.get(name)
     return this.getNative(name)
   }
   getNative(name: string): unknown {

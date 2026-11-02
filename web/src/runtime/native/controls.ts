@@ -82,9 +82,6 @@ export class NControl extends PBObject {
   async n_textlimit(): Promise<number> {
     return toNum(this.props.get('limit') ?? 0)
   }
-  async n_postevent(e: unknown): Promise<number> {
-    return toNum(await this.rt.callNative(this, 'postevent', [e]))
-  }
 
   // ---- list boxes / drop-down list boxes
   items(): PBArray {

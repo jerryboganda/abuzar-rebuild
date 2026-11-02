@@ -34,11 +34,19 @@ export class Ref {
 }
 
 export class HaltSignal extends Error {}
+function e0(_e: unknown, r: Routine): Routine {
+  return r
+}
+
+const PRIMITIVES = new Set([...NUMERIC_TYPES, 'string', 'boolean', 'char', 'date', 'time', 'datetime', 'blob', 'any', 'uint', 'ulong'])
 
 /** exception raised by `throw` or converted from runtime errors, catchable with try/catch */
 export class PBThrowable extends PBObject {
   message = ''
-  getmessage(): string {
+  n_getmessage(): string {
+    return this.message
+  }
+  n_gettext(): string {
     return this.message
   }
 }
@@ -143,8 +151,17 @@ export class Runtime {
     // controls: root-most class first; a descendant may redefine (override fields/scripts of) an inherited control
     const classesRootFirst = chain.slice().reverse()
     await this.buildControls(obj, classesRootFirst, (c) => c.controls)
+    await this.initObjectVars(obj)
     if (obj.native === 'menu' || obj.native === 'window' || chain.length) await this.runCreate(obj)
     return obj
+  }
+
+  /** instance variables of object / structure / array types do not use the numeric placeholder stored in the class data */
+  async initObjectVars(obj: PBObject): Promise<void> {
+    for (const [name, type] of obj.types) {
+      if (PRIMITIVES.has(type) || obj.children.has(name)) continue
+      obj.props.set(name, await this.defaultOf(type))
+    }
   }
 
   applyFields(obj: PBObject, fields: FieldDef[]): void {
@@ -186,6 +203,7 @@ export class Runtime {
       void pos
     }
     for (const sub of cd.controls) await this.addControl(child, sub, declaring, windowClasses)
+    await this.initObjectVars(child)
   }
 
   /** run the `create` event of an object (menus set their captions there) */
@@ -223,12 +241,20 @@ export class Runtime {
     }
     try {
       await this.execBlock(r.body, f)
+    } catch (e) {
+      if (e instanceof PBRuntimeError && !e.where) e.where = `${self.className}.${self.name}.${r.params.length >= 0 ? this.routineName(self, e0(e, r)) : ''}`
+      throw e
     } finally {
       this.depth--
     }
     for (const b of refBack) await b.ref.set(f.locals.get(r.params[b.i].n))
     if (f.ret === null && r.ret && r.ret !== '0' && NUMERIC_TYPES.has(r.ret)) return null
     return f.ret === undefined ? null : f.ret
+  }
+
+  routineName(self: PBObject, r: Routine): string {
+    for (const sc of self.scripts) for (const [, m] of sc.cls.routines) for (const [n, list] of m) if (list.includes(r)) return n
+    return '?'
   }
 
   /** find the routine (events and functions share a namespace) matching the argument count */
@@ -338,7 +364,7 @@ export class Runtime {
               const arr = val as PBArray
               for (let i = 0; i < n; i++) arr.a.push(defaultValue(s.t))
             }
-          } else val = v.init ? coerce(s.t, await this.eval(v.init, f)) : defaultValue(s.t)
+          } else val = v.init ? coerce(s.t, await this.eval(v.init, f)) : PRIMITIVES.has(s.t) ? defaultValue(s.t) : await this.defaultOf(s.t)
           f.locals.set(v.n, val)
           f.types.set(v.n, s.arr || v.dims ? s.t + '[]' : s.t)
         }
@@ -566,7 +592,7 @@ export class Runtime {
   async createObject(name: string, f: Frame): Promise<unknown> {
     const key = name.toLowerCase()
     const cls = await this.getClass(key)
-    if (cls && cls.kind === 'structure') return this.newStruct(cls)
+    if (cls && cls.kind === 'structure') return await this.newStruct(cls)
     // local type table: `create` of a name declared in the current frame's window as control
     const o = await this.instantiate(key, null)
     void f
@@ -583,11 +609,21 @@ export class Runtime {
     }
   }
 
-  newStruct(cls: ClassDef): PBStruct {
+  /** default value of a declared type: primitives, arrays, structures (value types, always present) or null for objects */
+  async defaultOf(type: string): Promise<unknown> {
+    if (type.endsWith('[]')) return new PBArray(type.slice(0, -2))
+    if (PRIMITIVES.has(type)) return defaultValue(type)
+    const c = await this.getClass(type)
+    if (c && c.kind === 'structure') return this.newStruct(c)
+    return null
+  }
+
+  async newStruct(cls: ClassDef): Promise<PBStruct> {
     const s = new PBStruct(cls.name)
     for (const fd of cls.fields) {
-      const t = fd.type.replace(/\[\]$/, '')
-      s.f.set(fd.name, fd.type.endsWith('[]') ? new PBArray(t) : fd.value !== undefined && fd.value !== null && typeof fd.value !== 'object' ? fd.value : defaultValue(t))
+      const t = fd.type.toLowerCase()
+      const init = PRIMITIVES.has(t) && fd.value !== undefined && fd.value !== null && typeof fd.value !== 'object' ? fd.value : await this.defaultOf(t)
+      s.f.set(fd.name, init)
     }
     return s
   }

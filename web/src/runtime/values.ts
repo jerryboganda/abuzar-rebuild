@@ -400,6 +400,7 @@ export function div(a: unknown, b: unknown): unknown {
 }
 
 export class PBRuntimeError extends Error {
+  where = ''
   constructor(msg: string) {
     super(msg)
     this.name = 'PBRuntimeError'

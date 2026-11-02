@@ -44,6 +44,9 @@ async function openWin(rt: Runtime, a: unknown[], sheet: boolean, withParm: bool
   if (ref) await ref.set(w)
   rt.windowInstances.set(cls, w)
   w.isOpen = true
+  // a window with a menu name owns an instance of that menu (`menuid`)
+  const mn = w.props.get('menuname')
+  if (typeof mn === 'string' && mn && !w.props.get('menuid')) w.props.set('menuid', await rt.instantiate(mn.toLowerCase(), w))
   await rt.fireConstructors(w)
   const type = Number(w.props.get('windowtype') ?? 0)
   const modal = type === 3

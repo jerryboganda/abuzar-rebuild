@@ -63,5 +63,17 @@ export async function createRuntime(o: BootOptions): Promise<Runtime> {
   }
   const sqlca = await rt.instantiate(o.globalTypes?.sqlca ?? 'u_transaction')
   rt.globals.set('sqlca', sqlca)
+  // global objects of the application: data stores start empty (the post-login initialisation fills them), the rest are plain instances
+  for (const [name, cls] of Object.entries(o.globalTypes ?? {})) {
+    if (['sqlca', 'sqlda', 'sqlsa', 'error', 'message'].includes(name)) continue
+    if (cls === 'datastore' || (await rt.getClass(cls))) {
+      try {
+        rt.globals.set(name, await rt.instantiate(cls))
+      } catch (e) {
+        rt.noteMissing('global:' + name + ':' + (e as Error).message.slice(0, 40))
+      }
+    }
+  }
+  rt.sys.set('getapplication', { fn: (r) => r.globals.get('traderappv1') ?? null })
   return rt
 }
