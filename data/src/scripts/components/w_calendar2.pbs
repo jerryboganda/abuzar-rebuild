@@ -1,6 +1,6 @@
 // window w_calendar2 (components)  ancestor: window
 
-// w_calendar2.ue_close(integer ai_status) returns 0
+// w_calendar2.ue_close(integer ai_status) returns 0 [event]
 	date ld_date
 	if ai_status = 1 then
 		this.mc_calendar.getselecteddate(ld_date)
@@ -10,7 +10,7 @@
 	end if
 	closewithreturn(this, this.is_date)
 
-// w_calendar2.open() returns long
+// w_calendar2.open() returns long [event]
 	environment le_env
 	long ll_win_width
 	long ll_win_height
@@ -46,30 +46,30 @@
 	end if
 	return message.returnvalue
 
-// w_calendar2.create() returns 0
+// w_calendar2.create() returns 0 [event]
 	this.cb_cancel = create cb_cancel
 	this.cb_ok = create cb_ok
 	this.mc_calendar = create mc_calendar
 	this.control = {this.cb_cancel, this.cb_ok, this.mc_calendar}
 
-// w_calendar2.destroy() returns 0
+// w_calendar2.destroy() returns 0 [event]
 	destroy this.cb_cancel
 	destroy this.cb_ok
 	destroy this.mc_calendar
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.post event ue_close(-1)
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	parent.post event ue_close(1)
 	return ::message.returnvalue
 
-// mc_calendar.doubleclicked(unsignedlong flags, integer xpos, integer ypos) returns long
+// mc_calendar.doubleclicked(unsignedlong flags, integer xpos, integer ypos) returns long [event]
 	parent.cb_ok.triggerevent(clicked!)
 	return ::message.returnvalue
 
-// mc_calendar.datechanged() returns long
+// mc_calendar.datechanged() returns long [event]
 	getselecteddate(parent.id_date)
 	parent.is_date = string(parent.id_date, "yyyy-mm-dd")
 	return ::message.returnvalue

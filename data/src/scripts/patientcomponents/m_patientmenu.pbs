@@ -1,8 +1,59 @@
 // menu m_patientmenu (patientcomponents)  ancestor: m_single_entry
 
-// m_patientmenu.create() returns 0
+// m_patientmenu.create() returns 0 [event]
 	m_patientmenu = this
 	call super::create
 
-// m_patientmenu.destroy() returns 0
+// m_patientmenu.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_printgeneralpatientform = create m_printgeneralpatientform
+	this.m_showassociatedpatients = create m_showassociatedpatients
+	this.m_showpatientledger = create m_showpatientledger
+	this.item[upperbound(this.item) + 1] = this.m_printgeneralpatientform
+	this.item[upperbound(this.item) + 1] = this.m_showassociatedpatients
+	this.item[upperbound(this.item) + 1] = this.m_showpatientledger
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_printgeneralpatientform
+	destroy this.m_showassociatedpatients
+	destroy this.m_showpatientledger
+
+// m_printgeneralpatientform.clicked() returns 0 [event]
+	if this.checked then
+		this.checked = false
+		return
+	end if
+	this.checked = true
+
+// m_printgeneralpatientform.create() returns 0 [event]
+	call super::create
+	this.text = "Print General Patient Form"
+
+// m_printgeneralpatientform.destroy() returns 0 [event]
+	call super::destroy
+
+// None.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_show_associated_patient()
+
+// None.create() returns 0 [event]
+	call super::create
+	this.text = "Show Associated Patient(s)~tCtrl+F5"
+	this.shortcut = 372
+
+// None.destroy() returns 0 [event]
+	call super::destroy
+
+// None.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_show_patientledger()
+
+// None.create() returns 0 [event]
+	call super::create
+	this.text = "Show Patient Ledger~tF1"
+	this.shortcut = 112
+
+// None.destroy() returns 0 [event]
 	call super::destroy

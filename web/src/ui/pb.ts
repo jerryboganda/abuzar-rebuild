@@ -5,15 +5,15 @@ export const SYSTEM_COLORS = { windowText: '#000000', buttonFace: '#f0f0f0', win
 
 export const px = { x: PX_PER_PBU_X, y: PX_PER_PBU_Y }
 
-/** PowerBuilder units -> CSS pixels; `units` 0 = PBU, 1 = 1/1000 inch, 2 = pixels, 3 = 1/100 mm (DataWindow `datawindow.units`) */
+/** PowerBuilder units -> CSS pixels; DataWindow `datawindow.units`: 0 = PBU, 1 = pixels, 2 = 1/1000 inch, 3 = 1/1000 cm */
 export function toPx(v: number, axis: 'x' | 'y', units = 0): number {
   switch (units) {
-    case 2:
-      return v
     case 1:
+      return v
+    case 2:
       return (v / 1000) * 96
     case 3:
-      return (v / 2540) * 96
+      return (v / 1000 / 2.54) * 96
     default:
       return v * px[axis]
   }

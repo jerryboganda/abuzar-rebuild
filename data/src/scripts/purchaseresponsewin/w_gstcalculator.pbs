@@ -1,6 +1,6 @@
 // window w_gstcalculator (purchaseresponsewin)  ancestor: window
 
-// w_gstcalculator.ue_close(integer ai_status) returns 0
+// w_gstcalculator.ue_close(integer ai_status) returns 0 [event]
 	if ai_status = -1 then
 		this.istr_unittaxinputs.d_unittax = this.istr_oldunittaxinputs.d_unittax
 		this.istr_unittaxinputs.i_status = this.istr_oldunittaxinputs.i_status
@@ -41,18 +41,18 @@
 	end if
 	return 0
 
-// w_gstcalculator.create() returns 0
+// w_gstcalculator.create() returns 0 [event]
 	this.dw_amountoninvoice = create dw_amountoninvoice
 	this.cb_cancel = create cb_cancel
 	this.cb_ok = create cb_ok
 	this.control = {this.dw_amountoninvoice, this.cb_cancel, this.cb_ok}
 
-// w_gstcalculator.destroy() returns 0
+// w_gstcalculator.destroy() returns 0 [event]
 	destroy this.dw_amountoninvoice
 	destroy this.cb_cancel
 	destroy this.cb_ok
 
-// w_gstcalculator.open() returns long
+// w_gstcalculator.open() returns long [event]
 	string ls_aliasname
 	string ls_name
 	decimal ld_saleprice
@@ -100,7 +100,7 @@
 	end if
 	return message.returnvalue
 
-// dw_amountoninvoice.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_amountoninvoice.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ll_null
 	integer li_errcode
 	setnull(ll_null)
@@ -120,7 +120,7 @@
 	end choose
 	return li_errcode
 
-// dw_amountoninvoice.itemerror(long row, dwobject dwo, string data) returns long
+// dw_amountoninvoice.itemerror(long row, dwobject dwo, string data) returns long [event]
 	choose case dwo.name
 	case "invunitax"
 		messagebox("Unit Tax Validation!", "Please Enter Valid Unit Tax")
@@ -129,16 +129,16 @@
 	end choose
 	return ::message.returnvalue
 
-// dw_amountoninvoice.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_amountoninvoice.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	selecttext(1, len(gettext()))
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.istr_unittaxinputs.i_status = -1
 	parent.post event ue_close(-1)
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	if parent.id_dw.accepttext() = 1 then
 		if parent.id_dw.object.gstvalue[1] < 0 then
 			messagebox("GST Value Validation!", "Please Enter Valid GST Value")

@@ -1,19 +1,19 @@
 // window w_itemalert_form (singleentryitem)  ancestor: w_single_entry
 
-// w_itemalert_form.ue_newform() returns 0
+// w_itemalert_form.ue_newform() returns 0 [event]
 	call super::ue_newform
 
-// w_itemalert_form.create() returns 0
+// w_itemalert_form.create() returns 0 [event]
 	integer icurrent
 	call super::create
 
-// w_itemalert_form.destroy() returns 0
+// w_itemalert_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_itemalert_form.activate() returns long
+// w_itemalert_form.activate() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::activate()
 	this.is_tablename = "ItemAlert"
@@ -21,7 +21,7 @@
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_itemalert_form.ue_save() returns 0
+// w_itemalert_form.ue_save() returns 0 [event]
 	long ll_newid
 	long ll_row
 	ll_row = this.id_detail.getrow()
@@ -31,3 +31,72 @@
 		this.id_detail.object.code[ll_row] = ll_newid
 	end if
 	call super::ue_save
+
+// tabpage_detail.create() returns 0 [event]
+	integer icurrent
+	this.dw_1 = create dw_1
+	call super::create
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_1
+
+// tabpage_detail.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.dw_1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	string ls_name
+	string ls_name2
+	long ll_count
+	integer rt_code
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		ls_name = lower(trim(data))
+		SQL Select count ( *) INTO :ll_count From itemalert Where name =:ls_name USING sqlca;
+		if sqlca.sqlcode <> 0 then
+			messagebox("Database Error", "Some database request has been fail")
+			rt_code = 1
+		elseif not isnull(ll_count) and ll_count > 0 then
+			messagebox("Name Validation", "Name " + ls_name + " already exist~r~nEnter some differnt name")
+			rt_code = 1
+		end if
+	end choose
+	return rt_code
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	end choose
+	return 1
+
+// dw_detail.ue_enterkey() returns long [event]
+	long ancestorreturnvalue
+	if parent.dw_detail.getcolumnname() <> "alertdetail" then
+		ancestorreturnvalue = super::ue_enterkey()
+		send(handle(this), 256, 9, long(90))
+		return 1
+	end if
+	return ::message.returnvalue
+
+// dw_detail.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
+	s_colorpicker lstr_color
+	s_colorpicker lstr_color2
+	if dwo.name = "b_color" then
+		lstr_color.i_status = 1
+		lstr_color.l_colorvalue = this.object.bgcolor[1]
+		openwithparm(w_pick_color, lstr_color)
+		lstr_color2 = message.powerobjectparm
+		if lstr_color2.i_status = 1 then
+			this.object.bgcolor[1] = lstr_color2.l_colorvalue
+		end if
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue

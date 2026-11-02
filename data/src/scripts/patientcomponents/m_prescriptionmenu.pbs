@@ -1,8 +1,42 @@
 // menu m_prescriptionmenu (patientcomponents)  ancestor: m_multi_entry
 
-// m_prescriptionmenu.create() returns 0
+// m_prescriptionmenu.create() returns 0 [event]
 	m_prescriptionmenu = this
 	call super::create
 
-// m_prescriptionmenu.destroy() returns 0
+// m_prescriptionmenu.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_viewdis-continueditems = create m_viewdis-continueditems
+	this.m_viewpatientprescriptionprofile = create m_viewpatientprescriptionprofile
+	this.item[upperbound(this.item) + 1] = this.m_viewdis-continueditems
+	this.item[upperbound(this.item) + 1] = this.m_viewpatientprescriptionprofile
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_viewdis-continueditems
+	destroy this.m_viewpatientprescriptionprofile
+
+// m_viewdis-continueditems.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_view_discontinued_items()
+
+// m_viewdis-continueditems.create() returns 0 [event]
+	call super::create
+	this.text = "View Dis-Continued Item(s)~tF5"
+	this.shortcut = 116
+
+// m_viewdis-continueditems.destroy() returns 0 [event]
+	call super::destroy
+
+// m_viewpatientprescriptionprofile.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_view_prescription_profile()
+
+// m_viewpatientprescriptionprofile.create() returns 0 [event]
+	call super::create
+	this.text = "View Patient/Prescription Profile~tF6"
+	this.shortcut = 117
+
+// m_viewpatientprescriptionprofile.destroy() returns 0 [event]
 	call super::destroy

@@ -25,16 +25,16 @@
 	rtcode = this.id_dwcontrol.retrieve(f_getgroupcode(gl_usercode))
 	return rtcode
 
-// w_prospectivecustomer_form.create() returns 0
+// w_prospectivecustomer_form.create() returns 0 [event]
 	call super::create
 
-// w_prospectivecustomer_form.destroy() returns 0
+// w_prospectivecustomer_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_prospectivecustomer_form.ue_newform() returns 0
+// w_prospectivecustomer_form.ue_newform() returns 0 [event]
 	long ll_rtncode
 	call super::ue_newform
 	ll_rtncode = this.id_detail.getchild("subareacode", this.idc_subarea)
@@ -47,15 +47,83 @@
 	this.idc_subarea.setfilter("areacode=1")
 	this.idc_subarea.filter()
 
-// w_prospectivecustomer_form.open() returns long
+// w_prospectivecustomer_form.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.is_tablename = "ProspectiveCustomer"
 	return ::message.returnvalue
 
-// w_prospectivecustomer_form.ue_detail() returns 0
+// w_prospectivecustomer_form.ue_detail() returns 0 [event]
 	call super::ue_detail
 	this.idc_subarea.setredraw(false)
 	this.idc_subarea.setfilter("areacode=" + string(this.id_detail.getitemnumber(1, "areacode")))
 	this.idc_subarea.filter()
 	this.idc_subarea.setredraw(true)
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for Customer Name in current row")
+		end if
+	case "address1"
+		if data = "" or isnull(data) then
+			messagebox("Address Validation", "Value required for Address in current row")
+		end if
+	case "areacode"
+		if data = "" or isnull(data) then
+			messagebox("Area Name Validation", "Value required for Area Name in current row")
+		end if
+	case "city"
+		if data = "" or isnull(data) then
+			messagebox("City Validation", "Value required for City in current row")
+		end if
+	case "licenceexpiry"
+		if data = "" or isnull(data) then
+			messagebox("LicenceExpiry Validation", "Value required for LicenceExpiry in current row")
+		end if
+	case "country"
+		if data = "" or isnull(data) then
+			messagebox("Country Validation", "Value required for Country in current row")
+		end if
+	end choose
+	return 1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	long ll_null
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if parent.parent.parent.wf_duplicatename(data) then
+			messagebox("Name Validation", "Duplication Name Error~n~rPlease Choose Some Other Name")
+			return 1
+		end if
+	case "aliasname"
+		if parent.parent.parent.wf_duplicatealiasname(data) then
+			messagebox("AliasName Validation", "Duplication AliasName Error~n~rPlease Choose Some Other Name")
+			return 1
+		end if
+	case "areacode"
+		parent.parent.parent.idc_subarea.setredraw(false)
+		setnull(ll_null)
+		parent.parent.parent.id_detail.setitem(1, "subareacode", ll_null)
+		if parent.parent.parent.idc_subarea.setfilter("areacode=" + data) = 1 then
+			parent.parent.parent.idc_subarea.filter()
+			parent.parent.parent.idc_subarea.setredraw(true)
+		else
+			messagebox("Sub Area Filter", "Unable to filter Sub Area Column")
+			return 1
+		end if
+		return
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.ue_enterkey() returns long [event]
+	if parent.parent.parent.id_detail.getcolumnname() <> "customer_specialinstructions" then
+		send(handle(this), 256, 9, long(90))
+		return 1
+	end if
+	return ::message.returnvalue

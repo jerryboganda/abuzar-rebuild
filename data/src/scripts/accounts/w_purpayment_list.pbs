@@ -125,7 +125,7 @@
 	rtcode = this.id_dwcontrol.retrieve()
 	return rtcode
 
-// w_purpayment_list.create() returns 0
+// w_purpayment_list.create() returns 0 [event]
 	call super::create
 	if isvalid(this.menuid) then
 		destroy this.menuid
@@ -134,19 +134,19 @@
 		this.menuid = create m_purpayment_menu
 	end if
 
-// w_purpayment_list.destroy() returns 0
+// w_purpayment_list.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_purpayment_list.ue_new() returns 0
+// w_purpayment_list.ue_new() returns 0 [event]
 	long ll_code
 	call super::ue_new
 	setnull(ll_code)
 	wf_openmywindow(ll_code)
 
-// w_purpayment_list.ue_list() returns 0
+// w_purpayment_list.ue_list() returns 0 [event]
 	long ll_rtcode
 	this.id_list.retrieve()
 	if this.id_list.rowcount() <= 0 then
@@ -173,9 +173,9 @@
 		return
 	end if
 
-// w_purpayment_list.ue_print() returns 0
+// w_purpayment_list.ue_print() returns 0 [event]
 
-// w_purpayment_list.ue_postopen() returns 0
+// w_purpayment_list.ue_postopen() returns 0 [event]
 	call super::ue_postopen
 	if gs_company = "MRSERVER" then
 		this.tab_retrieve.tabpage_list.dw_list.dataobject = "d_mrserver_purpayment_list"
@@ -184,7 +184,7 @@
 	end if
 	this.tab_retrieve.tabpage_list.dw_list.settransobject(this.it_transobject)
 
-// w_purpayment_list.open() returns long
+// w_purpayment_list.open() returns long [event]
 	m_entry lm_menu
 	long ll_width
 	long ll_height
@@ -228,4 +228,44 @@
 	this.tab_retrieve.tabpage_list.dw_list.width = ll_width * 0.98
 	this.tab_retrieve.tabpage_list.dw_list.height = ll_height * 0.75 - this.tab_retrieve.tabpage_list.dw_list.y
 	setredraw(true)
+	return ::message.returnvalue
+
+// dw_list.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	long ll_code
+	ancestorreturnvalue = super::doubleclicked(xpos, ypos, row, dwo)
+	if row > 0 then
+		ll_code = this.object.code[row]
+		if ll_code > 0 then
+			parent.parent.parent.wf_openmywindow(ll_code)
+		end if
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_list.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked(xpos, ypos, row, dwo)
+	return ::message.returnvalue
+
+// dw_find.keypressed(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	long ll_code
+	long ll_found
+	string ls_regno
+	s_arguements lstr_arg
+	ancestorreturnvalue = super::keypressed(key, keyflags)
+	if key = keyenter! and parent.parent.parent.id_list.getselectedrow(0) > 0 then
+		ll_code = parent.parent.parent.id_list.object.code[parent.parent.parent.id_list.getselectedrow(0)]
+		parent.parent.parent.wf_openmywindow(ll_code)
+		return ::message.returnvalue
+	end if
+	if key = keyf5! then
+		open(w_arg_containerno)
+		lstr_arg = ::message.powerobjectparm
+		if lstr_arg.i_status = 1 then
+			parent.parent.parent.id_list.setfilter("containerno = '" + lstr_arg.s_name1 + "'")
+			parent.parent.parent.id_list.filter()
+		end if
+	end if
 	return ::message.returnvalue

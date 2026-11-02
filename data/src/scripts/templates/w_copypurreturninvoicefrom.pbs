@@ -1,6 +1,6 @@
 // window w_copypurreturninvoicefrom (templates)  ancestor: window
 
-// w_copypurreturninvoicefrom.ue_setfocus(char ac_type) returns 0
+// w_copypurreturninvoicefrom.ue_setfocus(char ac_type) returns 0 [event]
 	long ll_invcode
 	setnull(ll_invcode)
 	if ac_type = "P" then
@@ -30,7 +30,7 @@
 		this.dw_trans.setfocus()
 	end if
 
-// w_copypurreturninvoicefrom.ue_postopen() returns 0
+// w_copypurreturninvoicefrom.ue_postopen() returns 0 [event]
 	long ll_invcode
 	this.istr_template.b_userinput = false
 	this.dw_purchaseinvtemplate.settransobject(sqlca)
@@ -85,7 +85,7 @@
 	this.dw_trans.insertrow(0)
 	this.dw_trans.scrolltorow(0)
 
-// w_copypurreturninvoicefrom.create() returns 0
+// w_copypurreturninvoicefrom.create() returns 0 [event]
 	this.rb_transfer = create rb_transfer
 	this.dw_trans = create dw_trans
 	this.dw_expiryintimation_pur = create dw_expiryintimation_pur
@@ -101,7 +101,7 @@
 	this.gb_1 = create gb_1
 	this.control = {this.rb_transfer, this.dw_trans, this.dw_expiryintimation_pur, this.rb_expiryintimation_pur, this.dw_salereturninvtemplate, this.st_1, this.rb_copyinvfromsalereturninvoice, this.dw_purchaseinvtemplate, this.st_purchaseinvno, this.rb_copyinvfrompurchaseinvoice, this.cb_cancel, this.cb_ok, this.gb_1}
 
-// w_copypurreturninvoicefrom.destroy() returns 0
+// w_copypurreturninvoicefrom.destroy() returns 0 [event]
 	destroy this.rb_transfer
 	destroy this.dw_trans
 	destroy this.dw_expiryintimation_pur
@@ -116,7 +116,7 @@
 	destroy this.cb_ok
 	destroy this.gb_1
 
-// w_copypurreturninvoicefrom.open() returns long
+// w_copypurreturninvoicefrom.open() returns long [event]
 	long ll_win_width
 	long ll_win_height
 	long ll_width
@@ -135,86 +135,86 @@
 	post event ue_postopen()
 	return ::message.returnvalue
 
-// w_copypurreturninvoicefrom.close() returns long
+// w_copypurreturninvoicefrom.close() returns long [event]
 	closewithreturn(this, this.istr_template)
 	return ::message.returnvalue
 
-// w_copypurreturninvoicefrom.key(keycode key, unsignedlong keyflags) returns long
+// w_copypurreturninvoicefrom.key(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		post event Close()
 	end if
 	return ::message.returnvalue
 
-// rb_transfer.clicked() returns long
+// rb_transfer.clicked() returns long [event]
 	if this.checked then
 		parent.event ue_setfocus("N")
 	end if
 	return ::message.returnvalue
 
-// dw_trans.key(keycode key, unsignedlong keyflags) returns long
+// dw_trans.key(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		parent.post event Close()
 	end if
 	return ::message.returnvalue
 
-// dw_trans.itemerror(long row, dwobject dwo, string data) returns long
+// dw_trans.itemerror(long row, dwobject dwo, string data) returns long [event]
 	messagebox("Expiry Intimation - Purchase Based", "Please enter valid Expiry Intimation Code")
 	return 1
 
-// dw_expiryintimation_pur.key(keycode key, unsignedlong keyflags) returns long
+// dw_expiryintimation_pur.key(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		parent.post event Close()
 	end if
 	return ::message.returnvalue
 
-// dw_expiryintimation_pur.itemerror(long row, dwobject dwo, string data) returns long
+// dw_expiryintimation_pur.itemerror(long row, dwobject dwo, string data) returns long [event]
 	messagebox("Expiry Intimation - Purchase Based", "Please enter valid Expiry Intimation Code")
 	return 1
 
-// rb_expiryintimation_pur.clicked() returns long
+// rb_expiryintimation_pur.clicked() returns long [event]
 	if this.checked then
 		parent.event ue_setfocus("E")
 	end if
 	return ::message.returnvalue
 
-// dw_salereturninvtemplate.key(keycode key, unsignedlong keyflags) returns long
+// dw_salereturninvtemplate.key(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		parent.post event Close()
 	end if
 	return ::message.returnvalue
 
-// dw_salereturninvtemplate.itemerror(long row, dwobject dwo, string data) returns long
+// dw_salereturninvtemplate.itemerror(long row, dwobject dwo, string data) returns long [event]
 	messagebox("Sale Return Invoice Code Validation", "Please enter valid Sale Return Invoice Code")
 	return 1
 
-// rb_copyinvfromsalereturninvoice.clicked() returns long
+// rb_copyinvfromsalereturninvoice.clicked() returns long [event]
 	if parent.rb_copyinvfromsalereturninvoice.checked then
 		parent.event ue_setfocus("R")
 	end if
 	return ::message.returnvalue
 
-// dw_purchaseinvtemplate.ue_key(keycode key, unsignedlong keyflags) returns long
+// dw_purchaseinvtemplate.ue_key(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		parent.post event Close()
 	end if
 	return ::message.returnvalue
 
-// dw_purchaseinvtemplate.itemerror(long row, dwobject dwo, string data) returns long
+// dw_purchaseinvtemplate.itemerror(long row, dwobject dwo, string data) returns long [event]
 	messagebox("Purchase Invoice Code Validation", "Please enter valid Purchase Invoice Code")
 	return 1
 
-// rb_copyinvfrompurchaseinvoice.clicked() returns long
+// rb_copyinvfrompurchaseinvoice.clicked() returns long [event]
 	if parent.rb_copyinvfrompurchaseinvoice.checked then
 		parent.event ue_setfocus("P")
 	end if
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.istr_template.b_userinput = false
 	parent.post event Close()
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	long ll_find
 	parent.istr_template.b_userinput = false
 	if parent.rb_copyinvfrompurchaseinvoice.checked then

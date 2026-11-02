@@ -236,7 +236,7 @@
 	end if
 	return 0
 
-// w_change_item_prices2.create() returns 0
+// w_change_item_prices2.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	if isvalid(this.menuid) then
@@ -246,26 +246,26 @@
 		this.menuid = create m_changeitemsprice
 	end if
 
-// w_change_item_prices2.destroy() returns 0
+// w_change_item_prices2.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_change_item_prices2.activate() returns long
+// w_change_item_prices2.activate() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::activate()
 	this.windowstate = maximized!
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_change_item_prices2.closequery() returns long
+// w_change_item_prices2.closequery() returns long [event]
 	return ::message.returnvalue
 
-// w_change_item_prices2.ue_save() returns 0
+// w_change_item_prices2.ue_save() returns 0 [event]
 	wf_changeprices()
 
-// w_change_item_prices2.open() returns long
+// w_change_item_prices2.open() returns long [event]
 	long ancestorreturnvalue
 	environment env
 	long ll_width
@@ -320,6 +320,165 @@
 	loop
 	return ::message.returnvalue
 
-// w_change_item_prices2.ue_detail() returns 0
+// w_change_item_prices2.ue_detail() returns 0 [event]
 	call super::ue_detail
 	wf_retrieve_detail("icatcode", this.id_detail.object.icatcode[1])
+
+// tabpage_detail.create() returns 0 [event]
+	integer icurrent
+	this.dw_detail2 = create dw_detail2
+	call super::create
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_detail2
+
+// tabpage_detail.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.dw_detail2
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "icatcode"
+		if data = "" or isnull(data) then
+			messagebox("Item Category Validation", "Value required for item Category")
+		end if
+	case "packcode"
+		if data = "" or isnull(data) then
+			messagebox("Item Packing Validation", "Value required for item Packing")
+		end if
+	case "manfcode"
+		if real(data) < 1.0 then
+			messagebox("Item Manufacturer Validation", "Value required for Manufacturer")
+		end if
+	case "iccode"
+		if data = "" or isnull(data) then
+			messagebox("Item Class Validation", "Value required for item Class")
+		end if
+	end choose
+	return 1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	long ll_icatcode
+	long ll_packcode
+	long ll_manfcode
+	long ll_iccode
+	double ld_price
+	double ld_purprice
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	accepttext()
+	choose case dwo.name
+	case "icatcode", "iccode", "packcode", "manfcode"
+		parent.parent.parent.wf_retrieve_detail(dwo.name, long(data))
+		return 0
+	case "saleprice"
+		if double(data) < 0.0 then
+			return 1
+		end if
+	case "purprice"
+		if double(data) < 0.0 then
+			return 1
+		end if
+	case "changepurprice"
+		if data = "Y" then
+			parent.parent.parent.id_detail.object.purprice.visible = true
+			parent.parent.parent.id_detail.object.t_purprice.visible = true
+		else
+			parent.parent.parent.id_detail.object.purprice.visible = false
+			parent.parent.parent.id_detail.object.t_purprice.visible = false
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key <> keyf5! then
+		if key <> keyf6! then
+			if key = keyf7! then
+				parent.parent.parent.wf_set_columnvalue()
+			end if
+		end if
+	end if
+	return ::message.returnvalue
+
+// dw_detail2.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "item_customicode"
+		if parent.parent.parent.wf_duplicatealiasname(data, this.object.code[row]) then
+			messagebox("AliasName Validation", "Item AliasName Duplication Error~r~nPlease enter some other Item AliasName")
+			return 1
+		end if
+	case "icatcode", "packcode", "iccode", "manfcode"
+		if data = "" or isnull(data) then
+			return 1
+		else
+			parent.parent.parent.wf_fetch_price(dwo.name, data)
+			return 0
+		end if
+	case "saleprice"
+		if double(data) < 0.0 then
+			return 1
+		end if
+	case "purprice"
+		if double(data) < 0.0 then
+			return 1
+		end if
+	case "changepurprice"
+		if data = "Y" then
+			parent.parent.parent.id_detail.object.purprice.visible = true
+			parent.parent.parent.id_detail.object.t_purprice.visible = true
+		else
+			parent.parent.parent.id_detail.object.purprice.visible = false
+			parent.parent.parent.id_detail.object.t_purprice.visible = false
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_detail2.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "iccode"
+		if data = "" or isnull(data) then
+			messagebox("Item Validation", "Value required for Item Class")
+		end if
+	case "icatcode"
+		if data = "" or isnull(data) then
+			messagebox("Item Validation", "Value required for Item Category")
+		end if
+	case "packcode"
+		if data = "" or isnull(data) then
+			messagebox("Item Validation", "Value required for Item Packing")
+		end if
+	case "manfcode"
+		if real(data) < 1.0 then
+			messagebox("Item Qty Validation", "Value required for Item Manufacturer")
+		end if
+	case "purprice"
+		if real(data) < 1.0 then
+			messagebox("Purchase Price Validation!", "Please Enter Valid Purchase Price")
+		end if
+	case "price"
+		if real(data) < 1.0 then
+			messagebox("Purchase Price Validation!", "Please Enter Valid Purchase Price")
+		end if
+	end choose
+	return 1
+
+// dw_detail2.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keyf5! then
+		parent.parent.parent.wf_updatesaleprice_purprice()
+	elseif key = keyf6! then
+		parent.parent.parent.wf_copy_source_target_column()
+	elseif key = keyf7! then
+		parent.parent.parent.wf_set_columnvalue()
+	elseif key = keyf8! then
+		parent.parent.parent.wf_set_saleprice_areavolume()
+	end if
+	return ::message.returnvalue

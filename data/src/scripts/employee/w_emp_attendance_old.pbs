@@ -1,6 +1,6 @@
 // window w_emp_attendance_old (employee)  ancestor: window
 
-// w_emp_attendance_old.ue_close(integer ai_status) returns 0
+// w_emp_attendance_old.ue_close(integer ai_status) returns 0 [event]
 	close(this)
 
 // w_emp_attendance_old.wf_insert_fingerprint(integer ai_finger, blob img, blob features) returns long
@@ -47,20 +47,20 @@
 	end if
 	return 0
 
-// w_emp_attendance_old.create() returns 0
+// w_emp_attendance_old.create() returns 0 [event]
 	this.p_photo = create p_photo
 	this.p_fp = create p_fp
 	this.dw_control = create dw_control
 	this.ole_grfinger = create ole_grfinger
 	this.control = {this.p_photo, this.p_fp, this.dw_control, this.ole_grfinger}
 
-// w_emp_attendance_old.destroy() returns 0
+// w_emp_attendance_old.destroy() returns 0 [event]
 	destroy this.p_photo
 	destroy this.p_fp
 	destroy this.dw_control
 	destroy this.ole_grfinger
 
-// w_emp_attendance_old.open() returns long
+// w_emp_attendance_old.open() returns long [event]
 	environment le_env
 	long ll_win_width
 	long ll_win_height
@@ -110,17 +110,17 @@
 	this.p_fp.triggerevent(clicked!)
 	return ::message.returnvalue
 
-// w_emp_attendance_old.close() returns long
+// w_emp_attendance_old.close() returns long [event]
 	triggerevent("ue_close")
 	return ::message.returnvalue
 
-// dw_control.ue_enterkey() returns long
+// dw_control.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_control.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_control.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	integer li_null
 	ancestorreturnvalue = super::itemchanged(row, dwo, data)
@@ -147,13 +147,13 @@
 	end choose
 	return ::message.returnvalue
 
-// dw_control.getfocus() returns long
+// dw_control.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	selecttext(1, len(gettext()))
 	return ::message.returnvalue
 
-// ole_grfinger.sensorplug(string idsensor) returns 0
+// ole_grfinger.sensorplug(string idsensor) returns 0 [event]
 	runtimeerror ex
 	try
 		this.object.__invoke_method("capstartcapture", 1, {idsensor}, true)
@@ -161,7 +161,7 @@
 		messagebox("Exception Occur", "Details are:~r~n" + ex.getmessage())
 	end try
 
-// ole_grfinger.sensorunplug(string idsensor) returns 0
+// ole_grfinger.sensorunplug(string idsensor) returns 0 [event]
 	runtimeerror ex
 	try
 		this.object.__invoke_method("capstopcapture", 1, {idsensor}, true)
@@ -169,7 +169,7 @@
 		messagebox("Exception Occur", "Details are:~r~n" + ex.getmessage())
 	end try
 
-// ole_grfinger.imageacquired(string idsensor, long ocx_width, long ocx_height, any rawimage, long res) returns 0
+// ole_grfinger.imageacquired(string idsensor, long ocx_width, long ocx_height, any rawimage, long res) returns 0 [event]
 	long ll_ret
 	long ll_format
 	long ll_quality
@@ -264,7 +264,7 @@
 		messagebox("Exception Occur", "Details are:~r~n" + ex.getmessage())
 	end try
 
-// ole_grfinger.constructor() returns long
+// ole_grfinger.constructor() returns long [event]
 	long ll_err
 	runtimeerror ex
 	try
@@ -276,7 +276,7 @@
 	end try
 	return ::message.returnvalue
 
-// ole_grfinger.destructor() returns long
+// ole_grfinger.destructor() returns long [event]
 	long ll_err
 	runtimeerror ex
 	try

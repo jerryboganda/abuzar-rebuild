@@ -744,7 +744,7 @@
 	this.id_packednodes.setrow(ll_insrow)
 	return 0
 
-// w_packingjob.create() returns 0
+// w_packingjob.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	if isvalid(this.menuid) then
@@ -757,14 +757,14 @@
 	icurrent = upperbound(this.control)
 	this.control[icurrent + 1] = this.dw_print
 
-// w_packingjob.destroy() returns 0
+// w_packingjob.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 	destroy this.dw_print
 
-// w_packingjob.ue_save() returns 0
+// w_packingjob.ue_save() returns 0 [event]
 	long ll_mastercurrrow
 	long ll_invid
 	long ll_detailrows
@@ -913,7 +913,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_packingjob.ue_newform() returns 0
+// w_packingjob.ue_newform() returns 0 [event]
 	integer li_protect
 	call super::ue_newform
 	this.id_footer.reset()
@@ -934,14 +934,14 @@
 	wf_protectdw(this.id_pending, li_protect)
 	this.im_menu.m_file.m_print.enabled = true
 
-// w_packingjob.ue_newitem() returns 0
+// w_packingjob.ue_newitem() returns 0 [event]
 	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
 		return
 	end if
 	call super::ue_newitem
 	this.id_detail.setcolumn("doccode")
 
-// w_packingjob.ue_detail() returns 0
+// w_packingjob.ue_detail() returns 0 [event]
 	long ll_code
 	integer li_protect
 	string ls_posted
@@ -974,7 +974,7 @@
 	wf_protectdw(this.id_packed, li_protect)
 	wf_protectdw(this.id_pending, li_protect)
 
-// w_packingjob.open() returns long
+// w_packingjob.open() returns long [event]
 	m_packjob lm_menu
 	long ll_width
 	long ll_height
@@ -1017,7 +1017,7 @@
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_packingjob.ue_postopen() returns 0
+// w_packingjob.ue_postopen() returns 0 [event]
 	call super::ue_postopen
 	this.id_pending = this.tab_retrieve.tabpage_detail.dw_pending
 	this.id_packed = this.tab_retrieve.tabpage_detail.dw_packed
@@ -1028,17 +1028,17 @@
 	this.id_packednodes.settransobject(this.it_transobject)
 	this.id_print.settransobject(this.it_transobject)
 
-// w_packingjob.ue_deleteitem() returns 0
+// w_packingjob.ue_deleteitem() returns 0 [event]
 	call super::ue_deleteitem
 	wf_populateitem()
 
-// w_packingjob.ue_list() returns 0
+// w_packingjob.ue_list() returns 0 [event]
 	call super::ue_list
 	SQL rollback USING this.it_transobject;
 	this.editflag = false
 	this.im_menu.m_file.m_print.enabled = true
 
-// w_packingjob.ue_print() returns 0
+// w_packingjob.ue_print() returns 0 [event]
 	integer li_option
 	long ll_row
 	long ll_printretcode
@@ -1097,3 +1097,186 @@
 		return
 	end if
 	messagebox("Printing Error.", "Can not Print,~r~nNo rows are retrieved", information!)
+
+// tabpage_detail.create() returns 0 [event]
+	integer icurrent
+	this.dw_pending = create dw_pending
+	this.dw_packed = create dw_packed
+	this.dw_packednodes = create dw_packednodes
+	this.tv_packinglist = create tv_packinglist
+	call super::create
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_pending
+	this.control[icurrent + 2] = this.dw_packed
+	this.control[icurrent + 3] = this.dw_packednodes
+	this.control[icurrent + 4] = this.tv_packinglist
+
+// tabpage_detail.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.dw_pending
+	destroy this.dw_packed
+	destroy this.dw_packednodes
+	destroy this.tv_packinglist
+
+// dw_footer.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	parent.parent.parent.wf_filterpendingitem()
+	return 0
+
+// dw_footer.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if getcolumnname() = "packcode" then
+		parent.parent.parent.id_pending.setfocus()
+	end if
+	return ::message.returnvalue
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "manfname"
+		if data = "" or isnull(data) then
+			messagebox("ManfName Validation", "Value requiredfor " + upper(dwo.manfname) + "in current row")
+		end if
+	case "manager"
+		if data = "" or isnull(data) then
+			messagebox("Manager Validation", "Value required for Manager in current row")
+		end if
+	end choose
+	return 1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if parent.parent.parent.wf_duplicatename(data) then
+			messagebox("Name Validation", "Duplication Name Error~n~rPlease Choose Some Other Name")
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.ue_enterkey() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	if getcolumnname() = "remarks" then
+		parent.parent.parent.id_detail.setfocus()
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	string ls_managername
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "doccode"
+		if isnull(data) or data = "" then
+			messagebox("Source Document Validation", "Not a valid Source Document Code.~r~nPlease select some valid source document code")
+			return 1
+		elseif parent.parent.parent.wf_validatedoccode(1, long(data)) = 0 then
+			return 0
+		else
+			messagebox("Source Document Validation", "Not a valid Source Document Code.~r~nPlease select some valid source document code")
+			return 1
+		end if
+		parent.parent.parent.il_currrow = row
+		parent.parent.parent.ib_itemvalidated = false
+	case else
+		parent.parent.parent.ib_itemvalidated = true
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "salesmancode"
+		if data = "" or isnull(data) then
+			messagebox("Sales Person Name Validation", "Value required Sales Person Name in current row")
+		end if
+	end choose
+	return 1
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem() = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.getfocus() returns long [event]
+	return ::message.returnvalue
+
+// dw_pending.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	long ll_counter
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keyf5! then
+		for ll_counter = 1 to parent.parent.parent.id_pending.rowcount()
+			parent.parent.parent.id_pending.object.selected[ll_counter] = "Y"
+		next
+	elseif key = keyf6! then
+		for ll_counter = 1 to parent.parent.parent.id_pending.rowcount()
+			parent.parent.parent.id_pending.object.selected[ll_counter] = "N"
+		next
+	end if
+	return ::message.returnvalue
+
+// dw_pending.ue_enterkey() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	if getcolumnname() = "selected" and getrow() = rowcount() then
+		parent.parent.parent.tab_retrieve.tabpage_detail.tv_packinglist.setfocus()
+		parent.parent.parent.wf_selectrootitem()
+	end if
+	return ::message.returnvalue
+
+// tv_packinglist.ue_getcurrentitem() returns long [event]
+	return parent.parent.parent.wf_get_current_treeitem()
+
+// tv_packinglist.key(keycode key, unsignedlong keyflags) returns long [event]
+	long ll_packinglayout
+	long ll_handle
+	treeviewitem ltvi_treeitem
+	treeviewitem ltvi_item
+	if key = keyinsert! and parent.parent.parent.id_detail.rowcount() > 0 then
+		ll_handle = parent.parent.parent.wf_get_current_treeitem()
+		if ll_handle = 1 then
+			if parent.parent.parent.id_detail.object.doccode[1] > 0 then
+				open(w_select_case)
+				ll_packinglayout = message.doubleparm
+				parent.parent.parent.wf_populate_packinglayout(ll_packinglayout, 1)
+			end if
+		else
+			parent.parent.parent.wf_insert_item()
+		end if
+	elseif key = keydelete! and parent.parent.parent.id_detail.rowcount() > 0 then
+		ll_handle = parent.parent.parent.wf_get_current_treeitem()
+		if ll_handle <> 1 then
+			parent.parent.parent.wf_deletetreeitem(ll_handle)
+		end if
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// tv_packinglist.clicked(long handle) returns long [event]
+	event ue_getcurrentitem()
+	return 0
+
+// tv_packinglist.selectionchanged(long oldhandle, long newhandle) returns long [event]
+	long ll_found
+	if newhandle > 0 then
+		parent.parent.parent.wf_select_packednode(newhandle)
+	end if
+	return ::message.returnvalue

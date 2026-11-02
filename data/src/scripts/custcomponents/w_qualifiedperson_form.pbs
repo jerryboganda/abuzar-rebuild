@@ -202,7 +202,7 @@
 	end if
 	return b_flag
 
-// w_qualifiedperson_form.create() returns 0
+// w_qualifiedperson_form.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	if isvalid(this.menuid) then
@@ -215,21 +215,21 @@
 	icurrent = upperbound(this.control)
 	this.control[icurrent + 1] = this.dw_image
 
-// w_qualifiedperson_form.destroy() returns 0
+// w_qualifiedperson_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 	destroy this.dw_image
 
-// w_qualifiedperson_form.activate() returns long
+// w_qualifiedperson_form.activate() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::activate()
 	this.windowstate = maximized!
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_qualifiedperson_form.open() returns long
+// w_qualifiedperson_form.open() returns long [event]
 	long ancestorreturnvalue
 	m_qpersonmenu lm_menu
 	ancestorreturnvalue = super::open()
@@ -242,7 +242,7 @@
 	this.id_image.settransobject(this.it_transobject)
 	return ::message.returnvalue
 
-// w_qualifiedperson_form.ue_save() returns 0
+// w_qualifiedperson_form.ue_save() returns 0 [event]
 	long ll_primarykey
 	long ll_row
 	long ll_usercode
@@ -312,7 +312,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_qualifiedperson_form.ue_detail() returns 0
+// w_qualifiedperson_form.ue_detail() returns 0 [event]
 	call super::ue_detail
 	this.im_menu.m_file.m_print.enabled = true
 	if this.id_detail.object.code[this.id_detail.rowcount()] > 0 then
@@ -322,19 +322,19 @@
 	end if
 	wf_assign_master_cash_win_object()
 
-// w_qualifiedperson_form.ue_newform() returns 0
+// w_qualifiedperson_form.ue_newform() returns 0 [event]
 	long ll_code
 	call super::ue_newform
 	wf_assign_master_cash_win_object()
 	this.id_image.reset()
 	this.id_detail.object.p_photo.filename = ""
 
-// w_qualifiedperson_form.ue_postopen() returns 0
+// w_qualifiedperson_form.ue_postopen() returns 0 [event]
 	call super::ue_postopen
 	wf_assign_master_cash_win_object()
 	this.il_groupcode = f_getgroupcode(gl_usercode)
 
-// w_qualifiedperson_form.ue_print() returns 0
+// w_qualifiedperson_form.ue_print() returns 0 [event]
 	long ll_code
 	long ll_row
 	long li_printretcode
@@ -395,3 +395,124 @@
 		return
 	end if
 	messagebox("Printing Error", "Can not Print,~r~nNo rows are retrieved", information!)
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "regno"
+		messagebox("ItemNo Validation", "Item Duplication Error~r~nPlease enter some other Reg No")
+	end choose
+	return 1
+
+// dw_detail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keyf9! then
+		parent.parent.parent.wf_setimage()
+	end if
+	return ::message.returnvalue
+
+// dw_detail.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked(xpos, ypos, row, dwo)
+	if dwo.name = "p_photo" then
+		parent.parent.parent.wf_setimage()
+	end if
+	return ::message.returnvalue
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_null
+	long ll_totdays
+	long ll_years
+	long ll_months
+	long ll_days
+	datetime ldt_date_null
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	setnull(ldt_date_null)
+	setnull(li_null)
+	choose case dwo.name
+	case "nic"
+		if parent.parent.parent.wf_duplicate_nic(data) then
+			messagebox("CNIC No. Validation", "This CNIC No. is already registered~r~nPlease enter some other CNIC No.")
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_find.keypressed(keycode key, unsignedlong keyflags) returns long [event]
+	integer li_movement
+	long ll_row
+	long ll_temp
+	long ll_code
+	string sl_columnname
+	string ls_filterexp
+	s_popup_selection lstr_selection
+	if key = keyf8! then
+		openwithparm(w_popup_partialsearch_selection, "d_patient_list")
+		lstr_selection = message.powerobjectparm
+		if lstr_selection.l_code > 0 and lstr_selection.l_code2 > 0 then
+			ll_temp = parent.parent.parent.id_list.find("code = " + string(lstr_selection.l_code2), 1, parent.parent.parent.id_list.rowcount())
+			if ll_temp > 0 then
+				ll_row = ll_temp
+				parent.parent.parent.id_list.scrolltorow(ll_row)
+			end if
+		end if
+	elseif key = keyf6! then
+		openwithparm(w_popup_comprehensicesearch_selection, "d_patient_comprehensive_list")
+		lstr_selection = message.powerobjectparm
+		if lstr_selection.l_code > 0 and lstr_selection.l_code2 > 0 then
+			ll_temp = parent.parent.parent.id_list.find("code = " + string(lstr_selection.l_code2), 1, parent.parent.parent.id_list.rowcount())
+			if ll_temp > 0 then
+				ll_row = ll_temp
+				parent.parent.parent.id_list.scrolltorow(ll_row)
+			end if
+		end if
+	elseif key = keyuparrow! then
+		ll_row = parent.parent.parent.id_list.getrow() - 1
+		parent.parent.parent.id_list.scrollpriorrow()
+	elseif key = keydownarrow! then
+		ll_row = parent.parent.parent.id_list.getrow() + 1
+		parent.parent.parent.id_list.scrollnextrow()
+	elseif key = keypagedown! then
+		parent.parent.parent.id_list.scrollnextpage()
+		ll_row = parent.parent.parent.id_dwcontrol.getrow()
+	elseif key = keypageup! then
+		parent.parent.parent.id_list.scrollpriorpage()
+		ll_row = parent.parent.parent.id_dwcontrol.getrow()
+	elseif key = keyhome! then
+		scrolltorow(1)
+		ll_row = 1
+	elseif key = keyend! then
+		ll_row = parent.parent.parent.id_list.rowcount()
+		scrolltorow(ll_row)
+	elseif key = keyenter! and parent.parent.parent.id_dwcontrol.getselectedrow(0) > 0 then
+		parent.parent.parent.i_editmode = 2
+		parent.parent.parent.tab_retrieve.selectedtab = 1
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	if ll_row > 0 and ll_row <= parent.parent.parent.id_dwcontrol.rowcount() then
+		parent.parent.parent.id_list.setredraw(false)
+		parent.parent.parent.tab_retrieve.tabpage_detail.enabled = true
+		parent.parent.parent.im_menu.m_file.m_retrieve.enabled = true
+		parent.parent.parent.id_list.selectrow(0, false)
+		parent.parent.parent.id_list.selectrow(ll_row, true)
+		if parent.parent.parent.ii_type = 1 then
+			setitem(1, "find", parent.parent.parent.id_list.getitemstring(ll_row, parent.parent.parent.ii_colindex))
+		elseif parent.parent.parent.ii_type = 3 then
+			setitem(1, "find", trim(string(parent.parent.parent.id_list.getitemdatetime(ll_row, parent.parent.parent.ii_colindex))))
+		else
+			setitem(1, "find", trim(string(parent.parent.parent.id_list.getitemnumber(ll_row, parent.parent.parent.ii_colindex))))
+		end if
+		parent.parent.parent.il_selectedrow = ll_row
+		selecttext(1, len(gettext()))
+		parent.parent.parent.id_list.setredraw(true)
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue

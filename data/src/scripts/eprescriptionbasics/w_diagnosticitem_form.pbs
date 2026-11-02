@@ -10,24 +10,52 @@
 	end if
 	return b_flag
 
-// w_diagnosticitem_form.create() returns 0
+// w_diagnosticitem_form.create() returns 0 [event]
 	call super::create
 
-// w_diagnosticitem_form.destroy() returns 0
+// w_diagnosticitem_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_diagnosticitem_form.activate() returns long
+// w_diagnosticitem_form.activate() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::activate()
 	this.windowstate = maximized!
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_diagnosticitem_form.open() returns long
+// w_diagnosticitem_form.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.is_tablename = "DiagnosticItem"
+	return ::message.returnvalue
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if isnull(data) or data = "" then
+			messagebox("Name Validation", "Name Error~n~rPlease Choose Some Valid Name")
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		messagebox("Name Validation", "Name Error~r~nPlease enter some valid name")
+	end choose
+	return 1
+
+// dw_detail.ue_enterkey() returns long [event]
+	if parent.parent.parent.id_detail.getcolumnname() <> "description" then
+		send(handle(this), 256, 9, long(90))
+		return 1
+	end if
 	return ::message.returnvalue

@@ -4,7 +4,7 @@
 	integer li_errcode
 	long ll_salesmancode
 	long ll_saleinvcount
-	s_arguements lstr_arginfo
+	type_800c lstr_arginfo
 	open(w_salesmanpassword)
 	ll_salesmancode = long(message.doubleparm)
 	setfocus()
@@ -74,7 +74,7 @@
 		end if
 	end if
 
-// w_customer_note_form.create() returns 0
+// w_customer_note_form.create() returns 0 [event]
 	call super::create
 	if isvalid(this.menuid) then
 		destroy this.menuid
@@ -83,13 +83,13 @@
 		this.menuid = create m_notes
 	end if
 
-// w_customer_note_form.destroy() returns 0
+// w_customer_note_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_customer_note_form.open() returns long
+// w_customer_note_form.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.is_tablename = "Notes"
@@ -115,7 +115,7 @@
 	end if
 	return message.returnvalue
 
-// w_customer_note_form.ue_save() returns 0
+// w_customer_note_form.ue_save() returns 0 [event]
 	long ll_salesmancode
 	if f_validatedw(this.id_detail) < 0 then
 		return
@@ -133,7 +133,7 @@
 	end if
 	setfocus()
 
-// w_customer_note_form.ue_newform() returns 0
+// w_customer_note_form.ue_newform() returns 0 [event]
 	integer rtncode
 	long li_fetched_code
 	long row
@@ -145,7 +145,7 @@
 	this.im_menu.m_file.m_options.enabled = false
 	setredraw(true)
 
-// w_customer_note_form.ue_detail() returns 0
+// w_customer_note_form.ue_detail() returns 0 [event]
 	integer li_rtncode
 	integer li_protect
 	long ll_row
@@ -156,7 +156,55 @@
 	this.im_menu.m_file.m_options.enabled = false
 	setredraw(true)
 
-// w_customer_note_form.ue_list() returns 0
+// w_customer_note_form.ue_list() returns 0 [event]
 	call super::ue_list
 	this.im_menu.m_file.m_options.enabled = true
 	this.ib_modify = true
+
+// tab_retrieve.selectionchanged(integer oldindex, integer newindex) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::selectionchanged(oldindex, newindex)
+	if parent.ib_modify and newindex <> 1 then
+		SQL rollback USING parent.it_transobject;
+		parent.ib_modify = false
+	end if
+	return ::message.returnvalue
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "acccode"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for Name in current row")
+		end if
+	case "bankacccode"
+		if data = "" or isnull(data) then
+			messagebox("Bank Account Name Validation", "Value required for Bank Account Name in current row")
+		end if
+	case "issuedate"
+		if data = "" or isnull(data) then
+			messagebox("Issue Date Validation", "Value required for Issue Date in current row")
+		end if
+	case "duedate"
+		if data = "" or isnull(data) then
+			messagebox("Due Date Validation", "Value required for Due Date in current row")
+		end if
+	case "amount"
+		if data = "" or isnull(data) then
+			messagebox("Amount Validation", "Value required for Amount in current row")
+		end if
+	case "bankname"
+		if data = "" or isnull(data) then
+			messagebox("Bank Name Validation", "Value required for Bank Name in current row")
+		end if
+	case "posted"
+		if data = "" or isnull(data) then
+			messagebox("Posted Validation", "Value required for Posted in current row")
+		end if
+	case "postdate"
+		if data = "" or isnull(data) then
+			messagebox("Post Date Validation", "Value required for Post Date in current row")
+		end if
+	end choose
+	return 1

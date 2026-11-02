@@ -10,22 +10,22 @@
 	end if
 	return b_flag
 
-// w_crs_client_datatransfer_config.create() returns 0
+// w_crs_client_datatransfer_config.create() returns 0 [event]
 	call super::create
 
-// w_crs_client_datatransfer_config.destroy() returns 0
+// w_crs_client_datatransfer_config.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_crs_client_datatransfer_config.open() returns long
+// w_crs_client_datatransfer_config.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.is_tablename = "crs_clientlist"
 	return ::message.returnvalue
 
-// w_crs_client_datatransfer_config.ue_list() returns 0
+// w_crs_client_datatransfer_config.ue_list() returns 0 [event]
 	long ll_rtcode
 	if this.id_list.rowcount() <= 0 then
 		ll_rtcode = wf_retrieve()
@@ -53,7 +53,7 @@
 	messagebox("Result", "No rows or retrieved possible empty table~r~nInsert some rows first")
 	postevent("ue_new")
 
-// w_crs_client_datatransfer_config.ue_save() returns 0
+// w_crs_client_datatransfer_config.ue_save() returns 0 [event]
 	long ll_primarykey
 	long ll_row
 	setpointer(hourglass!)
@@ -74,3 +74,26 @@
 		return
 	end if
 	setpointer(arrow!)
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if parent.parent.parent.wf_duplicatename(data) then
+			messagebox("Name Validation", "Duplication Name Error~n~rPlease Choose Some Other Name")
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	end choose
+	return 1

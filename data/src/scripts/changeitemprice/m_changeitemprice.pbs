@@ -1,9 +1,28 @@
 // menu m_changeitemprice (changeitemprice)  ancestor: m_multi_entry
 
-// m_changeitemprice.create() returns 0
+// m_changeitemprice.create() returns 0 [event]
 	m_changeitemprice = this
 	call super::create
 	this.text = "m_changeitemprice"
 
-// m_changeitemprice.destroy() returns 0
+// m_changeitemprice.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_setitemclassforall = create m_setitemclassforall
+	this.item[upperbound(this.item) + 1] = this.m_setitemclassforall
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_setitemclassforall
+
+// m_setitemclassforall.clicked() returns 0 [event]
+	this.parentwindow.triggerevent("ue_set_column_value")
+
+// m_setitemclassforall.create() returns 0 [event]
+	call super::create
+	this.text = "Set Column Value For All Rows"
+
+// m_setitemclassforall.destroy() returns 0 [event]
 	call super::destroy

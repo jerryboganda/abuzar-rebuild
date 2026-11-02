@@ -1,6 +1,6 @@
 // window w_popup_comprehensicesearch_selection2 (components)  ancestor: window
 
-// w_popup_comprehensicesearch_selection2.ue_close(integer ai_status) returns 0
+// w_popup_comprehensicesearch_selection2.ue_close(integer ai_status) returns 0 [event]
 	this.is_popup_selection.l_code = ai_status
 	if this.dw_master.rowcount() > 0 then
 		this.is_popup_selection.l_code2 = this.dw_master.getitemnumber(this.dw_master.getrow(), "code")
@@ -80,20 +80,20 @@
 	messagebox("Search Aborted", "Nothing To Search")
 	return -1
 
-// w_popup_comprehensicesearch_selection2.create() returns 0
+// w_popup_comprehensicesearch_selection2.create() returns 0 [event]
 	this.cb_search = create cb_search
 	this.dw_find = create dw_find
 	this.cb_retrieve = create cb_retrieve
 	this.dw_master = create dw_master
 	this.control = {this.cb_search, this.dw_find, this.cb_retrieve, this.dw_master}
 
-// w_popup_comprehensicesearch_selection2.destroy() returns 0
+// w_popup_comprehensicesearch_selection2.destroy() returns 0 [event]
 	destroy this.cb_search
 	destroy this.dw_find
 	destroy this.cb_retrieve
 	destroy this.dw_master
 
-// w_popup_comprehensicesearch_selection2.open() returns long
+// w_popup_comprehensicesearch_selection2.open() returns long [event]
 	long ll_rtcode
 	long ll_code
 	environment le_env
@@ -160,7 +160,7 @@
 	end if
 	return message.returnvalue
 
-// cb_search.clicked() returns long
+// cb_search.clicked() returns long [event]
 	long ll_counter
 	long ll_rowcount
 	string ls_criteria
@@ -180,7 +180,7 @@
 	parent.dw_find.setfocus()
 	return ::message.returnvalue
 
-// dw_find.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// dw_find.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	long ancestorreturnvalue
 	integer rt_code
 	long ll_currrow
@@ -231,7 +231,7 @@
 	end if
 	return rt_code
 
-// dw_find.ue_enterkey() returns long
+// dw_find.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	long ll_rowcount
 	ancestorreturnvalue = super::ue_enterkey()
@@ -256,7 +256,7 @@
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// cb_retrieve.clicked() returns long
+// cb_retrieve.clicked() returns long [event]
 	parent.dw_find.accepttext()
 	parent.dw_master.setfilter("")
 	parent.dw_master.filter()
@@ -267,13 +267,13 @@
 	parent.dw_find.setfocus()
 	return ::message.returnvalue
 
-// dw_master.getfocus() returns long
+// dw_master.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	parent.dw_find.setfocus()
 	return ::message.returnvalue
 
-// dw_master.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+// dw_master.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
 	string s_str
 	string s_t
 	integer i_len
@@ -306,7 +306,7 @@
 	parent.dw_find.setfocus()
 	return ::message.returnvalue
 
-// dw_master.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+// dw_master.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::doubleclicked(xpos, ypos, row, dwo)
 	parent.post event ue_close(1)

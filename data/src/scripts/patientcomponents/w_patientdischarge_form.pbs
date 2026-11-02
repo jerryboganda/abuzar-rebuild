@@ -69,7 +69,7 @@
 	end if
 	return 0
 
-// w_patientdischarge_form.create() returns 0
+// w_patientdischarge_form.create() returns 0 [event]
 	call super::create
 	if isvalid(this.menuid) then
 		destroy this.menuid
@@ -78,20 +78,20 @@
 		this.menuid = create m_discchargepatient
 	end if
 
-// w_patientdischarge_form.destroy() returns 0
+// w_patientdischarge_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_patientdischarge_form.activate() returns long
+// w_patientdischarge_form.activate() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::activate()
 	this.windowstate = maximized!
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_patientdischarge_form.open() returns long
+// w_patientdischarge_form.open() returns long [event]
 	long ancestorreturnvalue
 	long ll_found
 	ancestorreturnvalue = super::open()
@@ -120,7 +120,7 @@
 	end if
 	return ::message.returnvalue
 
-// w_patientdischarge_form.ue_save() returns 0
+// w_patientdischarge_form.ue_save() returns 0 [event]
 	long ll_primarykey
 	long ll_row
 	long ll_retcode
@@ -250,7 +250,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_patientdischarge_form.ue_detail() returns 0
+// w_patientdischarge_form.ue_detail() returns 0 [event]
 	long ll_code
 	integer li_protect
 	this.im_menu.m_file.m_new.enabled = false
@@ -309,17 +309,17 @@
 	end if
 	this.ib_discharged1 = false
 
-// w_patientdischarge_form.ue_newform() returns 0
+// w_patientdischarge_form.ue_newform() returns 0 [event]
 	integer li_protect
 	call super::ue_newform
 	wf_protectdw(this.id_detail, li_protect)
 
-// w_patientdischarge_form.ue_list() returns 0
+// w_patientdischarge_form.ue_list() returns 0 [event]
 	call super::ue_list
 	this.ib_discharged1 = false
 	this.im_menu.m_file.m_new.enabled = false
 
-// w_patientdischarge_form.ue_print() returns 0
+// w_patientdischarge_form.ue_print() returns 0 [event]
 	long ll_code
 	long ll_patientcode
 	boolean lb_listtab
@@ -381,3 +381,40 @@
 		return
 	end if
 	messagebox("Printing Error", "Can not Print Data,~r~nNo rows are retrieved", information!)
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	long ll_retcode
+	long ll_patientcode
+	string ls_regno
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "targetlocation"
+		if isnull(data) then
+			messagebox("Patient Location Validation", "Please Choose Some Valid Patient Location")
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.ue_enterkey() returns long [event]
+	if getcolumnname() <> "dischargenotes" then
+		send(handle(this), 256, 9, long(90))
+		return 1
+	end if
+	return ::message.returnvalue
+
+// dw_detail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	long ll_admissioncode
+	long ll_patientcode
+	s_datatype lstr_datatype
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keyf5! and rowcount() > 0 then
+		ll_admissioncode = this.object.code[1]
+		ll_patientcode = this.object.patientcode[1]
+		lstr_datatype.al_long = ll_patientcode
+		lstr_datatype.ai_int = 0
+		openwithparm(w_mr_form, lstr_datatype)
+	end if
+	return ::message.returnvalue

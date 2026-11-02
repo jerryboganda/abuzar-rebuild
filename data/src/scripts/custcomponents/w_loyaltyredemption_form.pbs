@@ -44,22 +44,22 @@
 	this.id_print.dataobject = "d_loyaltyredemption_print_thermal"
 	return 0
 
-// w_loyaltyredemption_form.create() returns 0
+// w_loyaltyredemption_form.create() returns 0 [event]
 	call super::create
 
-// w_loyaltyredemption_form.destroy() returns 0
+// w_loyaltyredemption_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_loyaltyredemption_form.open() returns long
+// w_loyaltyredemption_form.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.is_tablename = "LoyaltyRedemption"
 	return ::message.returnvalue
 
-// w_loyaltyredemption_form.ue_save() returns 0
+// w_loyaltyredemption_form.ue_save() returns 0 [event]
 	long ll_primarykey
 	long ll_row
 	long ll_usercode
@@ -106,7 +106,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_loyaltyredemption_form.ue_detail() returns 0
+// w_loyaltyredemption_form.ue_detail() returns 0 [event]
 	call super::ue_detail
 	if this.id_list.getrow() > 0 and this.id_list.object.code[this.id_list.getrow()] > 0 then
 		wf_protectdw(this.id_detail, 1)
@@ -117,7 +117,7 @@
 	this.im_menu.m_file.m_print.visible = true
 	this.im_menu.m_file.m_print.enabled = true
 
-// w_loyaltyredemption_form.ue_newform() returns 0
+// w_loyaltyredemption_form.ue_newform() returns 0 [event]
 	call super::ue_newform
 	wf_protectdw(this.id_detail, 0)
 	this.editflag = true
@@ -126,7 +126,7 @@
 	this.im_menu.m_file.m_print.visible = true
 	this.im_menu.m_file.m_print.enabled = true
 
-// w_loyaltyredemption_form.ue_print() returns 0
+// w_loyaltyredemption_form.ue_print() returns 0 [event]
 	long ll_code
 	boolean lb_listtab
 	s_datastore lstr
@@ -175,3 +175,49 @@
 		return
 	end if
 	messagebox("Printing Error", "Can not Print Data,~r~nNo rows are retrieved", information!)
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	long ll_acccode
+	long ll_retcode
+	string ls_aliasname
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "loyaltycardid"
+		if parent.parent.parent.wf_validate_loyaltycard(data) > 0 then
+			messagebox("Loyalty Card ID Validation", "Invalid Loyalty Card ID~n~rPlease enter some other Valid Loyalty Card ID")
+			ll_retcode = 1
+		end if
+	case "pointsredeemed"
+		if long(data) > 0 then
+			if long(data) > parent.parent.parent.id_detail.object.pointsbalance[row] then
+				messagebox("Points Redeemed Validation", "Points to be redeemed must be less or equal to Balance Points Available")
+				ll_retcode = 1
+			elseif long(data) > 0 then
+				if parent.parent.parent.wf_validate_pointsredeemed(parent.parent.parent.id_detail.object.loyaltypolicycode[row], long(data)) = 0 then
+					ll_retcode = 0
+				else
+					messagebox("Points Redeemed Validation", "Points to be redeemed do not pass validation test")
+					ll_retcode = 1
+				end if
+			else
+				messagebox("Points Redeemed Validation", "Points to be redeemed must be a valid possitive integer value")
+				ll_retcode = 1
+			end if
+		else
+			messagebox("Points Redeemed Validation", "Points to be redeemed must be a valid possitive integer value")
+			ll_retcode = 1
+		end if
+	end choose
+	return ll_retcode
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "loyaltycardid"
+		if data = "" or isnull(data) then
+			messagebox("Loyalty Card ID Validation", "Value required for Loyalty Card ID in current row")
+		end if
+	end choose
+	return 1

@@ -1,12 +1,12 @@
 // window w_supp_manf_po_generate (pocomponents)  ancestor: window
 
-// w_supp_manf_po_generate.ue_keydown(keycode key, unsignedlong keyflags) returns long
+// w_supp_manf_po_generate.ue_keydown(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		post event ue_close()
 	end if
 	return ::message.returnvalue
 
-// w_supp_manf_po_generate.ue_close() returns 0
+// w_supp_manf_po_generate.ue_close() returns 0 [event]
 	u_ds_standard lds_ds
 	lds_ds = create u_ds_standard
 	lds_ds.dataobject = this.dw_detail.dataobject
@@ -87,7 +87,7 @@
 	this.dw_detail.filter()
 	return 0
 
-// w_supp_manf_po_generate.create() returns 0
+// w_supp_manf_po_generate.create() returns 0 [event]
 	this.cb_cancel = create cb_cancel
 	this.dw_footer = create dw_footer
 	this.dw_master = create dw_master
@@ -96,7 +96,7 @@
 	this.dw_detail = create dw_detail
 	this.control = {this.cb_cancel, this.dw_footer, this.dw_master, this.cb_retrieve, this.cb_ok, this.dw_detail}
 
-// w_supp_manf_po_generate.destroy() returns 0
+// w_supp_manf_po_generate.destroy() returns 0 [event]
 	destroy this.cb_cancel
 	destroy this.dw_footer
 	destroy this.dw_master
@@ -104,7 +104,7 @@
 	destroy this.cb_ok
 	destroy this.dw_detail
 
-// w_supp_manf_po_generate.open() returns long
+// w_supp_manf_po_generate.open() returns long [event]
 	environment le_env
 	long ll_win_width
 	long ll_win_height
@@ -167,18 +167,18 @@
 	end if
 	return message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.istr_arg.i_closemode = 1
 	parent.post event ue_close()
 	return ::message.returnvalue
 
-// dw_master.ue_enterkey() returns long
+// dw_master.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_master.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_master.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	long ll_code
 	long ll_retcode
@@ -191,11 +191,11 @@
 	end choose
 	return ll_retcode
 
-// cb_retrieve.clicked() returns long
+// cb_retrieve.clicked() returns long [event]
 	parent.dw_detail.retrieve()
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	if parent.dw_detail.accepttext() <= 0 then
 		parent.dw_detail.setcolumn("Qty")
 		parent.dw_detail.setfocus()
@@ -205,13 +205,13 @@
 	parent.post event ue_close()
 	return ::message.returnvalue
 
-// dw_detail.ue_enterkey() returns long
+// dw_detail.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	long ll_retcode
 	double ld_code
@@ -236,7 +236,7 @@
 	end choose
 	return ll_retcode
 
-// dw_detail.itemerror(long row, dwobject dwo, string data) returns long
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	long ll_retcode
 	double ld_code

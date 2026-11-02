@@ -10,22 +10,22 @@
 	end if
 	return b_flag
 
-// w_loyaltycard_form.create() returns 0
+// w_loyaltycard_form.create() returns 0 [event]
 	call super::create
 
-// w_loyaltycard_form.destroy() returns 0
+// w_loyaltycard_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_loyaltycard_form.open() returns long
+// w_loyaltycard_form.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.is_tablename = "LoyaltyCard"
 	return ::message.returnvalue
 
-// w_loyaltycard_form.ue_save() returns 0
+// w_loyaltycard_form.ue_save() returns 0 [event]
 	long ll_primarykey
 	long ll_row
 	long ll_usercode
@@ -58,3 +58,57 @@
 		return
 	end if
 	setpointer(arrow!)
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	long ll_acccode
+	string ls_aliasname
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "loyaltycardid"
+		if parent.parent.parent.wf_duplicatecardid(data) then
+			messagebox("Loyalty Card ID Validation", "Duplication of Loyalty Card ID~n~rPlease Choose Some Other Loyalty Card ID")
+			return 1
+		end if
+	case "aliasname"
+		if len(trim(data)) > 0 then
+			ls_aliasname = trim(data)
+			SQL SELECT AccCode INTO :ll_acccode FROM Accounts WHERE Active ='Y' AND SubCode =3 AND AliasName =:ls_aliasname USING sqlca;
+			if sqlca.sqlcode = 0 then
+				this.object.acccode[row] = ll_acccode
+				return 0
+			else
+				return 1
+			end if
+		else
+			messagebox("Account Alias Name Validation", "Please Select valid Account Alias Name~n~rPlease Choose Some Other Account Alias Name")
+			return 1
+		end if
+	case "acccode"
+		ll_acccode = long(data)
+		if ll_acccode > 0 then
+			SQL SELECT AliasName INTO :ls_aliasname FROM Accounts WHERE SubCode =3 AND AccCode =:ll_acccode USING sqlca;
+			if sqlca.sqlcode = 0 then
+				this.object.aliasname[row] = ls_aliasname
+				return 0
+			else
+				return 1
+			end if
+		else
+			messagebox("Loyalty Card Account Validation", "Please Select valid Loyalty Card Account~n~rPlease Choose Some Other Loyalty Card Account")
+			return 1
+		end if
+		return
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "loyaltycardid"
+		if data = "" or isnull(data) then
+			messagebox("Loyalty Card ID Validation", "Value required for Loyalty Card ID in current row")
+		end if
+	end choose
+	return 1

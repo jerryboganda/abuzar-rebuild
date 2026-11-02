@@ -4,9 +4,321 @@
 	this.m_file.m_dueitem.enabled = false
 	this.m_file.m_dueitem.visible = false
 
-// m_inpatientsalemenu.create() returns 0
+// m_inpatientsalemenu.create() returns 0 [event]
 	m_inpatientsalemenu = this
 	call super::create
 
-// m_inpatientsalemenu.destroy() returns 0
+// m_inpatientsalemenu.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_copyinvoicefrom = create m_copyinvoicefrom
+	this.m_saveastemplate = create m_saveastemplate
+	this.m_editsaletemplate = create m_editsaletemplate
+	this.m_editquotation = create m_editquotation
+	this.m_âprintdo = create m_âprintdo
+	this.m_-m6 = create m_-m6
+	this.m_dueitem = create m_dueitem
+	this.m_previousinvoiceinfo = create m_previousinvoiceinfo
+	this.m_itemsalehistory = create m_itemsalehistory
+	this.m_viewheader = create m_viewheader
+	this.m_customerinfo = create m_customerinfo
+	this.m_normalsave = create m_normalsave
+	this.m_populateprescription = create m_populateprescription
+	this.m_editsaleinvoicecomments = create m_editsaleinvoicecomments
+	this.m_showaccountledger = create m_showaccountledger
+	this.m_showpatientledger = create m_showpatientledger
+	this.m_showin-patientbill = create m_showin-patientbill
+	this.m_setserverdate = create m_setserverdate
+	this.item[upperbound(this.item) + 1] = this.m_copyinvoicefrom
+	this.item[upperbound(this.item) + 1] = this.m_saveastemplate
+	this.item[upperbound(this.item) + 1] = this.m_editsaletemplate
+	this.item[upperbound(this.item) + 1] = this.m_editquotation
+	this.item[upperbound(this.item) + 1] = this.m_âprintdo
+	this.item[upperbound(this.item) + 1] = this.m_-m6
+	this.item[upperbound(this.item) + 1] = this.m_dueitem
+	this.item[upperbound(this.item) + 1] = this.m_previousinvoiceinfo
+	this.item[upperbound(this.item) + 1] = this.m_itemsalehistory
+	this.item[upperbound(this.item) + 1] = this.m_viewheader
+	this.item[upperbound(this.item) + 1] = this.m_customerinfo
+	this.item[upperbound(this.item) + 1] = this.m_normalsave
+	this.item[upperbound(this.item) + 1] = this.m_populateprescription
+	this.item[upperbound(this.item) + 1] = this.m_editsaleinvoicecomments
+	this.item[upperbound(this.item) + 1] = this.m_showaccountledger
+	this.item[upperbound(this.item) + 1] = this.m_showpatientledger
+	this.item[upperbound(this.item) + 1] = this.m_showin-patientbill
+	this.item[upperbound(this.item) + 1] = this.m_setserverdate
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_copyinvoicefrom
+	destroy this.m_saveastemplate
+	destroy this.m_editsaletemplate
+	destroy this.m_editquotation
+	destroy this.m_âprintdo
+	destroy this.m_-m6
+	destroy this.m_dueitem
+	destroy this.m_previousinvoiceinfo
+	destroy this.m_itemsalehistory
+	destroy this.m_viewheader
+	destroy this.m_customerinfo
+	destroy this.m_normalsave
+	destroy this.m_populateprescription
+	destroy this.m_editsaleinvoicecomments
+	destroy this.m_showaccountledger
+	destroy this.m_showpatientledger
+	destroy this.m_showin-patientbill
+	destroy this.m_setserverdate
+
+// m_save.create() returns 0 [event]
+	call super::create
+
+// m_save.destroy() returns 0 [event]
+	call super::destroy
+
+// m_save.clicked() returns 0 [event]
+	boolean lb_saveright
+	long ll_counter
+	for ll_counter = 1 to gds_securitywindow.rowcount()
+		if gds_securitywindow.object.rightcode[ll_counter] = 531 then
+			lb_saveright = true
+		end if
+	next
+	if lb_saveright = false then
+		messagebox("Save", "Press Ctrl + P  for Save and Print")
+		return
+	end if
+	this.parentwindow.triggerevent("ue_save")
+	if this.parentwindow.dynamic wf_commitform() = true then
+		this.parentwindow.postevent("ue_new")
+	end if
+
+// m_options.create() returns 0 [event]
+	call super::create
+	this.text = "Sa&ve and Print~tCtrl+F6"
+	this.enabled = false
+
+// m_options.clicked() returns 0 [event]
+	call super::clicked
+	this.parentwindow.triggerevent("ue_save")
+	if this.parentwindow.dynamic wf_commitform() = true then
+		this.parentwindow.triggerevent("ue_print")
+		this.parentwindow.postevent("ue_new")
+	end if
+
+// m_options.destroy() returns 0 [event]
+	call super::destroy
+
+// m_copyinvoicefrom.create() returns 0 [event]
+	call super::create
+	this.text = "&Open ...~tCtrl+G"
+	this.shortcut = 327
+
+// m_copyinvoicefrom.destroy() returns 0 [event]
+	call super::destroy
+
+// m_copyinvoicefrom.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_copyinvoice()
+
+// m_saveastemplate.create() returns 0 [event]
+	call super::create
+	this.text = "Save &as Template~tCtrl+A"
+	this.shortcut = 321
+
+// m_saveastemplate.destroy() returns 0 [event]
+	call super::destroy
+
+// m_saveastemplate.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_savastemplate()
+
+// m_editsaletemplate.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_copyinvoice()
+
+// m_editsaletemplate.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Edit Sale Te&mplate~tCtrl+M"
+	this.shortcut = 333
+
+// m_editsaletemplate.destroy() returns 0 [event]
+	call super::destroy
+
+// m_editquotation.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_editquotation()
+
+// m_editquotation.create() returns 0 [event]
+	call super::create
+	this.text = "Edit Quotation"
+	this.toolbaritemvisible = false
+
+// m_editquotation.destroy() returns 0 [event]
+	call super::destroy
+
+// m_âprintdo.clicked() returns 0 [event]
+	this.parentwindow.triggerevent("ue_printdo")
+
+// m_âprintdo.create() returns 0 [event]
+	call super::create
+	this.text = "Save/Print DO~tCtrl+Alt+D"
+	this.shortcut = 836
+	this.microhelp = "Save/Print DO"
+
+// m_âprintdo.destroy() returns 0 [event]
+	call super::destroy
+
+// m_-m6.create() returns 0 [event]
+	call super::create
+	this.text = "-"
+
+// m_-m6.destroy() returns 0 [event]
+	call super::destroy
+
+// m_dueitem.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Due Item~tCtrl+U"
+	this.enabled = false
+	this.shortcut = 341
+
+// m_dueitem.destroy() returns 0 [event]
+	call super::destroy
+
+// m_dueitem.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_dueitem()
+
+// m_previousinvoiceinfo.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_preinvinfo()
+
+// m_previousinvoiceinfo.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Previous Invoice Info~tCtrl+B"
+	this.enabled = false
+	this.shortcut = 322
+
+// m_previousinvoiceinfo.destroy() returns 0 [event]
+	call super::destroy
+
+// m_itemsalehistory.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_itemsalehistory()
+
+// m_itemsalehistory.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Item Sale History~tCtrl+H"
+	this.enabled = false
+	this.shortcut = 328
+
+// m_itemsalehistory.destroy() returns 0 [event]
+	call super::destroy
+
+// m_viewheader.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_viewheader()
+
+// m_viewheader.create() returns 0 [event]
+	call super::create
+	this.text = "&View Header~tF10"
+	this.shortcut = 121
+
+// m_viewheader.destroy() returns 0 [event]
+	call super::destroy
+
+// m_customerinfo.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_getcustomerinfo()
+
+// m_customerinfo.create() returns 0 [event]
+	call super::create
+	this.text = "Customer Info.~tF12"
+	this.shortcut = 123
+
+// m_customerinfo.destroy() returns 0 [event]
+	call super::destroy
+
+// m_normalsave.create() returns 0 [event]
+	call super::create
+	this.text = "Normal Save~tCtrl+Z"
+	this.enabled = false
+	this.shortcut = 346
+
+// m_normalsave.destroy() returns 0 [event]
+	call super::destroy
+
+// m_normalsave.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_setnormalsale()
+	this.parentwindow.triggerevent("ue_save")
+	if this.parentwindow.dynamic wf_commitform() = true then
+		this.parentwindow.postevent("ue_new")
+	end if
+
+// m_populateprescription.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_populate_prescription()
+
+// m_populateprescription.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Populate Prescription~tCtrl+Q"
+	this.enabled = false
+	this.shortcut = 337
+
+// m_populateprescription.destroy() returns 0 [event]
+	call super::destroy
+
+// m_editsaleinvoicecomments.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_setcomments()
+
+// m_editsaleinvoicecomments.create() returns 0 [event]
+	call super::create
+	this.text = "Edit Sale Invoice Comments"
+
+// m_editsaleinvoicecomments.destroy() returns 0 [event]
+	call super::destroy
+
+// m_showaccountledger.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_show_accountledger()
+
+// m_showaccountledger.create() returns 0 [event]
+	call super::create
+	this.text = "Show Account Ledger~tF1"
+	this.shortcut = 112
+
+// m_showaccountledger.destroy() returns 0 [event]
+	call super::destroy
+
+// m_showpatientledger.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_show_patientledger()
+
+// m_showpatientledger.create() returns 0 [event]
+	call super::create
+	this.text = "Show Patient Ledger~tCtrl+F1"
+	this.shortcut = 368
+
+// m_showpatientledger.destroy() returns 0 [event]
+	call super::destroy
+
+// m_showin-patientbill.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_show_inpatientbill()
+
+// m_showin-patientbill.create() returns 0 [event]
+	call super::create
+	this.text = "Show In-Patient Bill~tAlt+F1"
+	this.shortcut = 624
+
+// m_showin-patientbill.destroy() returns 0 [event]
+	call super::destroy
+
+// m_setserverdate.clicked() returns 0 [event]
+	if this.checked then
+		this.checked = false
+	else
+		this.checked = true
+	end if
+	this.parentwindow.dynamic wf_fetchserverdate(this.checked)
+
+// m_setserverdate.create() returns 0 [event]
+	call super::create
+	this.text = "Set Server Date"
+	this.checked = true
+
+// m_setserverdate.destroy() returns 0 [event]
 	call super::destroy

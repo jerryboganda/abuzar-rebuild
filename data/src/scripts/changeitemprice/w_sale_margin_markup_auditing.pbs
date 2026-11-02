@@ -1,6 +1,6 @@
 // window w_sale_margin_markup_auditing (changeitemprice)  ancestor: w_multi_entry
 
-// w_sale_margin_markup_auditing.ue_changeitemclass() returns 0
+// w_sale_margin_markup_auditing.ue_changeitemclass() returns 0 [event]
 	long ll_counter
 	long ll_endrow
 	long ll_rows
@@ -25,7 +25,7 @@
 	next
 	this.id_detail.setredraw(true)
 
-// w_sale_margin_markup_auditing.ue_set_column_value() returns 0
+// w_sale_margin_markup_auditing.ue_set_column_value() returns 0 [event]
 	long ll_counter
 	long ll_endrow
 	long ll_rows
@@ -189,16 +189,16 @@
 	end if
 	return 0
 
-// w_sale_margin_markup_auditing.create() returns 0
+// w_sale_margin_markup_auditing.create() returns 0 [event]
 	call super::create
 
-// w_sale_margin_markup_auditing.destroy() returns 0
+// w_sale_margin_markup_auditing.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_sale_margin_markup_auditing.ue_detail() returns 0
+// w_sale_margin_markup_auditing.ue_detail() returns 0 [event]
 	call super::ue_detail
 	this.id_detail.setfilter("")
 	this.id_detail.filter()
@@ -206,13 +206,13 @@
 	this.im_menu.m_file.m_save.enabled = true
 	this.id_detail.retrieve(this.istr_arg.d_sdate, this.istr_arg.d_edate, this.istr_arg.s_name1, this.istr_arg.db_code1, this.istr_arg.db_code2)
 
-// w_sale_margin_markup_auditing.ue_postopen() returns 0
+// w_sale_margin_markup_auditing.ue_postopen() returns 0 [event]
 	call super::ue_postopen
 	this.istr_arg = message.powerobjectparm
 	this.title = "Change Item Price (Purchase Based)"
 	wf_assigndatawindow("d_changeitem_price_purinvbased", "d_sale_margin_markup_auditing_detail", "d_changeitem_price_purinvbased_list")
 
-// w_sale_margin_markup_auditing.ue_save() returns 0
+// w_sale_margin_markup_auditing.ue_save() returns 0 [event]
 	long ll_salesmancode
 	long ll_rowcount
 	long ll_counter
@@ -266,7 +266,7 @@
 	end if
 	messagebox("Updataion Problem", "No rows to Update!", stopsign!)
 
-// w_sale_margin_markup_auditing.open() returns long
+// w_sale_margin_markup_auditing.open() returns long [event]
 	long ancestorreturnvalue
 	m_entry lm_menu
 	long ll_width
@@ -298,10 +298,123 @@
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_sale_margin_markup_auditing.ue_newform() returns 0
+// w_sale_margin_markup_auditing.ue_newform() returns 0 [event]
 	call super::ue_newform
 	this.id_detail.retrieve(this.istr_arg.d_sdate, this.istr_arg.d_edate, this.istr_arg.s_name1, this.istr_arg.db_code1, this.istr_arg.db_code2)
 
-// w_sale_margin_markup_auditing.ue_newitem() returns 0
+// w_sale_margin_markup_auditing.ue_newitem() returns 0 [event]
 
-// w_sale_margin_markup_auditing.ue_deleteitem() returns 0
+// w_sale_margin_markup_auditing.ue_deleteitem() returns 0 [event]
+
+// dw_itemsdetail.getfocus() returns long [event]
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	string ls_errormessage
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	ls_errormessage = "Please enter valid value "
+	choose case dwo.name
+	case "item_saleprice"
+		ls_errormessage = ls_errormessage + " for Item SalePrice 1"
+	case "item_saleprice2"
+		ls_errormessage = ls_errormessage + " for Item SalePrice 2"
+	case "item_saleprice3"
+		ls_errormessage = ls_errormessage + " for Item SalePrice 3"
+	case "item_recentpurprice"
+		ls_errormessage = ls_errormessage + " for Item Recent Purchase Price"
+	case "item_salediscperc"
+		ls_errormessage = ls_errormessage + " for Item Sale Discount Percentage"
+	case "item_purdiscperc"
+		ls_errormessage = ls_errormessage + " for Item Purchase Discount Percentage"
+	case "item_packsalestax"
+		ls_errormessage = ls_errormessage + " for Item Pack SalesTax"
+	case "item_gstperc1"
+		ls_errormessage = ls_errormessage + " for Item SalesTax 1"
+	case "item_gstperc2"
+		ls_errormessage = ls_errormessage + " for Item SalesTax 2"
+	case "item_reorderqty"
+		ls_errormessage = ls_errormessage + " for Item Reorder Quantity"
+	case "item_optimumqty"
+		ls_errormessage = ls_errormessage + " for Item Optimum Quantity"
+	case "item_packunits"
+		ls_errormessage = ls_errormessage + " for Item Packing Cost"
+	case "item_packingcost"
+		ls_errormessage = ls_errormessage + " for Item Packing Cost"
+	end choose
+	ls_errormessage = ls_errormessage + " in row number " + string(row)
+	messagebox("Item Validation", ls_errormessage)
+	return 1
+
+// dw_itemsdetail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keyf9! then
+		parent.parent.parent.wf_filter_items()
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	double ld_value
+	long ll_null
+	long li_errcode
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	setnull(ll_null)
+	choose case dwo.name
+	case "item_saleprice"
+		ld_value = double(data)
+		if ld_value < 0.0 then
+			messagebox("Sale Price Validation", "Sale Price can not be negative", stopsign!)
+			li_errcode = 1
+		else
+			if ld_value = 0.0 then
+				ld_value = 1
+			end if
+			this.object.itemmargin[row] = round((ld_value - this.object.item_recentpurprice[row]) / ld_value * 100, 2)
+			if this.object.item_recentpurprice[row] > 0 then
+				this.object.itemmarkup[row] = round((ld_value - this.object.item_recentpurprice[row]) / this.object.item_recentpurprice[row] * 100, 2)
+			else
+				this.object.itemmarkup[row] = round((ld_value - this.object.item_recentpurprice[row]) / 1 * 100, 2)
+			end if
+		end if
+	case "item_recentpurprice"
+		ld_value = double(data)
+		if ld_value < 0.0 then
+			messagebox("Recent Purchase Price Validation", "Recent Purchase Price can not be negative", stopsign!)
+			li_errcode = 1
+		else
+			if ld_value = 0.0 then
+				ld_value = 1
+			end if
+			if this.object.item_saleprice[row] > 0 then
+				this.object.itemmargin[row] = round((this.object.item_saleprice[row] - ld_value) / this.object.item_saleprice[row] * 100, 2)
+			else
+				this.object.itemmargin[row] = round((this.object.item_saleprice[row] - ld_value) / 1 * 100, 2)
+			end if
+			this.object.itemmarkup[row] = round((this.object.item_saleprice[row] - ld_value) / ld_value * 100, 2)
+		end if
+	case "itemmargin"
+		ld_value = double(data)
+		if ld_value = 0.0 then
+			ld_value = 1
+		end if
+		this.object.item_saleprice[row] = round(this.object.item_recentpurprice[row] * 100 / (100.00 - ld_value), 2)
+		if this.object.item_recentpurprice[row] = 0 then
+			this.object.itemmarkup[row] = round((this.object.item_saleprice[row] - this.object.item_recentpurprice[row]) / 1 * 100, 2)
+		else
+			this.object.itemmarkup[row] = round((this.object.item_saleprice[row] - this.object.item_recentpurprice[row]) / this.object.item_recentpurprice[row] * 100, 2)
+		end if
+	case "itemmarkup"
+		ld_value = double(data)
+		if ld_value = 0.0 then
+			ld_value = 1
+		end if
+		this.object.item_saleprice[row] = this.object.item_recentpurprice[row] * (1.0 + ld_value * 0.01)
+		if this.object.item_saleprice[row] > 0 then
+			this.object.itemmargin[row] = round((this.object.item_saleprice[row] - this.object.item_recentpurprice[row]) / this.object.item_saleprice[row] * 100, 2)
+		else
+			this.object.itemmargin[row] = round((this.object.item_saleprice[row] - this.object.item_recentpurprice[row]) / 1 * 100, 2)
+		end if
+	end choose
+	return li_errcode

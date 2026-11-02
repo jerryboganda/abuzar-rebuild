@@ -41,23 +41,23 @@
 	rtcode = this.id_dwcontrol.retrieve(18)
 	return rtcode
 
-// w_patient_profile_form.create() returns 0
+// w_patient_profile_form.create() returns 0 [event]
 	call super::create
 
-// w_patient_profile_form.destroy() returns 0
+// w_patient_profile_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_patient_profile_form.activate() returns long
+// w_patient_profile_form.activate() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::activate()
 	this.windowstate = maximized!
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_patient_profile_form.open() returns long
+// w_patient_profile_form.open() returns long [event]
 	long ancestorreturnvalue
 	integer li_rtncode
 	ancestorreturnvalue = super::open()
@@ -81,7 +81,7 @@
 	this.id_print.settransobject(sqlca)
 	return ::message.returnvalue
 
-// w_patient_profile_form.ue_save() returns 0
+// w_patient_profile_form.ue_save() returns 0 [event]
 	long ll_primarykey
 	long ll_row
 	long ll_primarykey2
@@ -218,12 +218,12 @@
 	end if
 	setpointer(arrow!)
 
-// w_patient_profile_form.ue_detail() returns 0
+// w_patient_profile_form.ue_detail() returns 0 [event]
 	call super::ue_detail
 	this.id_detail.object.active.protect = 0
 	this.im_menu.m_file.m_print.enabled = true
 
-// w_patient_profile_form.ue_newform() returns 0
+// w_patient_profile_form.ue_newform() returns 0 [event]
 	call super::ue_newform
 	this.id_detail.object.regno.protect = 0
 	this.id_detail.object.active.protect = 1
@@ -233,7 +233,7 @@
 		this.id_detail.setcolumn("name")
 	end if
 
-// w_patient_profile_form.ue_print() returns 0
+// w_patient_profile_form.ue_print() returns 0 [event]
 	long ll_code
 	long ll_row
 	long li_printretcode
@@ -289,3 +289,137 @@
 		return
 	end if
 	messagebox("Printing Error", "Can not Print,~r~nNo rows are retrieved", information!)
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_null
+	long ll_totdays
+	long ll_years
+	long ll_months
+	long ll_days
+	datetime ldt_date_null
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	setnull(ldt_date_null)
+	setnull(li_null)
+	choose case dwo.name
+	case "active"
+		if upper(data) = "Y" then
+			this.object.inactivedate[row] = ldt_date_null
+			this.object.inactivedby[row] = li_null
+		end if
+	case "regno"
+		if parent.parent.parent.wf_duplicateregno(data) then
+			return 1
+		end if
+	case "dob"
+		if isdate(string(date(left(data, 10)))) then
+			ll_totdays = daysafter(date(string(date(left(data, 10)))), today())
+			ll_years = ll_totdays / 365.0
+			ll_months = ll_totdays mod 365 / 30.0
+			ll_days = ll_totdays mod 365 mod 30
+			setitem(row, "ageyears", ll_years)
+			setitem(row, "agemonths", ll_months)
+			setitem(row, "agedays", ll_days)
+		else
+			return 1
+		end if
+	case "ageyears"
+		ll_years = long(data)
+		if isnull(ll_years) then
+			ll_years = 0
+		end if
+		ll_months = this.object.agemonths[row]
+		if isnull(ll_months) then
+			ll_months = 0
+		end if
+		ll_days = this.object.agedays[row]
+		if isnull(ll_days) then
+			ll_days = 0
+		end if
+		ll_totdays = ll_years * 365 + ll_months * 30 + ll_days
+		if ll_totdays >= 0 then
+			setitem(row, "dob", relativedate(today(), -ll_totdays))
+		else
+			return 1
+		end if
+	case "agemonths"
+		ll_years = this.object.ageyears[row]
+		if isnull(ll_years) then
+			ll_years = 0
+		end if
+		ll_months = long(data)
+		if isnull(ll_months) then
+			ll_months = 0
+		end if
+		ll_days = this.object.agedays[row]
+		if isnull(ll_days) then
+			ll_days = 0
+		end if
+		ll_totdays = ll_years * 365 + ll_months * 30 + ll_days
+		if ll_totdays >= 0 then
+			setitem(row, "dob", relativedate(today(), -ll_totdays))
+		else
+			return 1
+		end if
+	case "agedays"
+		ll_years = this.object.ageyears[row]
+		if isnull(ll_years) then
+			ll_years = 0
+		end if
+		ll_months = this.object.agemonths[row]
+		if isnull(ll_months) then
+			ll_months = 0
+		end if
+		ll_days = long(data)
+		if isnull(ll_days) then
+			ll_days = 0
+		end if
+		ll_totdays = ll_years * 365 + ll_months * 30 + ll_days
+		if ll_totdays >= 0 then
+			setitem(row, "dob", relativedate(today(), -ll_totdays))
+		else
+			return 1
+		end if
+	case "recurringperiod"
+		if long(data) < 0 then
+			return 1
+		end if
+	case "admit"
+		if long(data) = 1 then
+			this.object.admissioncode_t.visible = true
+			this.object.admissioncode.visible = true
+			this.object.locationcode_t.visible = true
+			this.object.locationcode.visible = true
+			this.object.doctorcode_t.visible = true
+			this.object.doctorcode.visible = true
+			this.object.diseasecode_t.visible = true
+			this.object.diseasecode.visible = true
+			this.object.diagnosis_t.visible = true
+			this.object.diagnosis.visible = true
+		else
+			this.object.admissioncode_t.visible = false
+			this.object.admissioncode.visible = false
+			this.object.locationcode_t.visible = false
+			this.object.locationcode.visible = false
+			this.object.doctorcode_t.visible = false
+			this.object.doctorcode.visible = false
+			this.object.diseasecode_t.visible = false
+			this.object.diseasecode.visible = false
+			this.object.diagnosis_t.visible = false
+			this.object.diagnosis.visible = false
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "regno"
+		messagebox("ItemNo Validation", "Item Duplication Error~r~nPlease enter some other Reg No")
+	case "dob"
+		messagebox("Birth Date Validation", "Please enter some valid date")
+	case "age"
+		messagebox("Age Validation", "Please enter some valid age in years")
+	end choose
+	return 1

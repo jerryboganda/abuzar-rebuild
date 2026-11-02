@@ -1,19 +1,19 @@
 // window w_popup_itemsearch_criteria (components)  ancestor: window
 
-// w_popup_itemsearch_criteria.ue_close() returns 0
+// w_popup_itemsearch_criteria.ue_close() returns 0 [event]
 	closewithreturn(this, this.is_popup_selection)
 
-// w_popup_itemsearch_criteria.ue_cancel() returns 0
+// w_popup_itemsearch_criteria.ue_cancel() returns 0 [event]
 	this.is_popup_selection.l_code = -1
 	closewithreturn(this, this.is_popup_selection)
 
-// w_popup_itemsearch_criteria.ue_keydown(keycode key, unsignedlong keyflags) returns long
+// w_popup_itemsearch_criteria.ue_keydown(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		post event ue_cancel()
 	end if
 	return ::message.returnvalue
 
-// w_popup_itemsearch_criteria.create() returns 0
+// w_popup_itemsearch_criteria.create() returns 0 [event]
 	this.rb_brand = create rb_brand
 	this.rb_size = create rb_size
 	this.rb_model = create rb_model
@@ -31,7 +31,7 @@
 	this.gb_searchon = create gb_searchon
 	this.control = {this.rb_brand, this.rb_size, this.rb_model, this.rb_type, this.rb_itemname, this.rb_oldpartno, this.rb_partno, this.rb_anywhere, this.rb_endswith, this.rb_startswith, this.cb_cancel, this.cb_ok, this.em_itemname, this.gb_searchposition, this.gb_searchon}
 
-// w_popup_itemsearch_criteria.destroy() returns 0
+// w_popup_itemsearch_criteria.destroy() returns 0 [event]
 	destroy this.rb_brand
 	destroy this.rb_size
 	destroy this.rb_model
@@ -48,7 +48,7 @@
 	destroy this.gb_searchposition
 	destroy this.gb_searchon
 
-// w_popup_itemsearch_criteria.open() returns long
+// w_popup_itemsearch_criteria.open() returns long [event]
 	long ll_win_width
 	long ll_win_height
 	long ll_width
@@ -67,12 +67,12 @@
 	this.em_itemname.setfocus()
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.is_popup_selection.l_code = -1
 	parent.post event ue_close()
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	string ls_name
 	parent.em_itemname.getdata(ls_name)
 	if ls_name = "" or isnull(ls_name) then
@@ -106,7 +106,7 @@
 	parent.post event ue_close()
 	return ::message.returnvalue
 
-// em_itemname.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// em_itemname.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 		return 1

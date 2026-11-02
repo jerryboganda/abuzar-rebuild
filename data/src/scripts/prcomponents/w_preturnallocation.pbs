@@ -659,7 +659,7 @@
 	end if
 	return lb_commitflag
 
-// w_preturnallocation.create() returns 0
+// w_preturnallocation.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	if isvalid(this.menuid) then
@@ -674,7 +674,7 @@
 	this.control[icurrent + 1] = this.dw_saleinvrep
 	this.control[icurrent + 2] = this.dw_invdetail
 
-// w_preturnallocation.destroy() returns 0
+// w_preturnallocation.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
@@ -682,7 +682,7 @@
 	destroy this.dw_saleinvrep
 	destroy this.dw_invdetail
 
-// w_preturnallocation.ue_save() returns 0
+// w_preturnallocation.ue_save() returns 0 [event]
 	long ll_detailrows
 	long ll_mastercurrrow
 	long ll_footercurrrow
@@ -826,7 +826,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_preturnallocation.ue_newform() returns 0
+// w_preturnallocation.ue_newform() returns 0 [event]
 	integer li_rtncode
 	this.im_menu.m_file.m_print.enabled = false
 	wf_protectdw(this.id_master, 0)
@@ -867,7 +867,7 @@
 	this.id_master.setfocus()
 	setredraw(true)
 
-// w_preturnallocation.ue_detail() returns 0
+// w_preturnallocation.ue_detail() returns 0 [event]
 	integer li_rtncode
 	integer li_protect
 	integer li_ismodifysaleprice
@@ -924,7 +924,7 @@
 	end if
 	setredraw(true)
 
-// w_preturnallocation.ue_newitem() returns 0
+// w_preturnallocation.ue_newitem() returns 0 [event]
 	long ll_rowcount
 	long ll_rtcode
 	if this.id_detail.rowcount() = 0 then
@@ -952,13 +952,13 @@
 	this.im_menu.m_file.m_print.enabled = true
 	this.ib_validatefullcode = true
 
-// w_preturnallocation.close() returns long
+// w_preturnallocation.close() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::close()
 	this.id_itemslist.sharedataoff()
 	return ::message.returnvalue
 
-// w_preturnallocation.ue_list() returns 0
+// w_preturnallocation.ue_list() returns 0 [event]
 	long ll_row
 	m_preturnallocation lm_menu
 	call super::ue_list
@@ -974,17 +974,17 @@
 	ll_row = wf_retrievelist()
 	wf_disabledetailtab(ll_row)
 
-// w_preturnallocation.ue_refreshddw() returns 0
+// w_preturnallocation.ue_refreshddw() returns 0 [event]
 	call super::ue_refreshddw
 	setpointer(hourglass!)
 	this.idc_retinv.retrieve(this.id_master.object.code[this.id_master.rowcount()])
 	setpointer(arrow!)
 
-// w_preturnallocation.ue_new() returns 0
+// w_preturnallocation.ue_new() returns 0 [event]
 	call super::ue_new
 	this.im_menu.m_file.m_post.enabled = false
 
-// w_preturnallocation.ue_postopen() returns 0
+// w_preturnallocation.ue_postopen() returns 0 [event]
 	integer li_rtncode
 	integer i
 	long ll_counter
@@ -1020,3 +1020,217 @@
 	this.idc_invoices.settransobject(this.it_transobject)
 	li_rtncode = this.idc_invoices.retrieve(0, 0, this.is_module)
 	setredraw(true)
+
+// tab_retrieve.selectionchanged(integer oldindex, integer newindex) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::selectionchanged(oldindex, newindex)
+	if parent.ib_modify and newindex <> 1 then
+		SQL rollback USING parent.it_transobject;
+		parent.ib_modify = false
+	end if
+	if newindex = 1 then
+		parent.ii_focusreturn = 1
+	end if
+	return ::message.returnvalue
+
+// dw_footer.losefocus() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::losefocus()
+	parent.parent.parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_footer.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	parent.parent.parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_footer.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "misccharges"
+		messagebox("Misc. Charges Validation", "Charges ~"" + data + "~" should be greater equal zero")
+	case "flatdisc"
+		messagebox("Flat Dsicount Validation", "Flat Discount ~"" + data + "~" should be greater equal zero")
+	case "discperc"
+		messagebox("Invoice Discount(%) Validation", "Dsicount ~"" + data + "~" must be betweeen 0 and 100")
+	end choose
+	return 1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	dwitemstatus lrs_status
+	long ll_code
+	long ll_detailrows
+	long ll_suppcode
+	long ll_custcode
+	long ll_counter
+	long ll_customerbalance
+	long ll_unpostedtrans
+	integer rt_code
+	integer li_res
+	long ll_icode
+	long ll_allowed
+	long ll_null
+	string ls_result
+	string ls_null
+	string ls_msg
+	datetime ld_currdate
+	date ld_datepart
+	time lt_timepart
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	ls_msg = "000                                                                                                                                 "
+	choose case dwo.name
+	case "date"
+		if isdate(left(data, 10)) then
+			ld_datepart = date(left(data, 10))
+			if istime(mid(data, 12, 8)) then
+				lt_timepart = time(mid(data, 12, 8))
+				ld_currdate = datetime(ld_datepart, lt_timepart)
+				if ld_currdate < parent.parent.parent.id_systemdate then
+					rt_code = 1
+				end if
+			else
+				rt_code = 1
+			end if
+		else
+			rt_code = 1
+		end if
+	case "prinvcode"
+		rt_code = parent.parent.parent.wf_validateprinvcode(row, long(data))
+		if rt_code = 0 then
+			parent.parent.parent.it_transobject.checkunpostedprinvintransactions(long(data), parent.parent.parent.id_master.object.code[parent.parent.parent.id_master.rowcount()], parent.parent.parent.is_module, ll_unpostedtrans, ls_msg)
+			if ll_unpostedtrans > 0 then
+				messagebox("Purchase Return Validation Problem", "Unposted Transaction(s) Exist for this Purchase Return~r~n~r~n" + ls_msg)
+				rt_code = 1
+			end if
+			if rt_code = 0 then
+				parent.parent.parent.wf_retrieveinvoicelist(this.object.suppcode[row], this.object.code[row], parent.parent.parent.is_module)
+			end if
+		end if
+		return rt_code
+	end choose
+	return rt_code
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "date"
+		messagebox("Date Time Validation", "Date and Time is invalid,~r~nPlease enter current date and time")
+	case "prinvcode"
+		if isnull(data) or integer(data) = 0 then
+			messagebox("Purchase Return Validation", "You must select some Valid Purchase Return Invoice")
+		end if
+	end choose
+	return 1
+
+// dw_detail.editchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::editchanged(row, dwo, data)
+	return ::message.returnvalue
+
+// dw_itemsdetail.ue_focusreturn() returns 0 [event]
+	parent.parent.parent.id_master.setfocus()
+	messagebox("Purchase Return Code Validation", "Kindly select some Purchase Return code.")
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	long ll_null
+	long ll_icode
+	long ll_unpostedtrans
+	string ls_null
+	string ls_itemname
+	string ls_msg
+	double ld_invdiscperc
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	setnull(ll_null)
+	setnull(ls_null)
+	ls_msg = "000                                                                                                                                 "
+	choose case dwo.name
+	case "purinvcode"
+		if not isnull(parent.parent.parent.id_master.object.prinvcode[parent.parent.parent.id_master.rowcount()]) then
+			li_errcode = parent.parent.parent.wf_validatepurinvcode(row, long(data))
+			if li_errcode = 0 then
+				parent.parent.parent.it_transobject.checkunpostedpurinvintransactions(long(data), parent.parent.parent.id_master.object.code[parent.parent.parent.id_master.rowcount()], parent.parent.parent.is_module, ll_unpostedtrans, ls_msg)
+				if ll_unpostedtrans > 0 then
+					messagebox("Purchase Invoice Validation Problem", "Unposted Transaction(s) Exist for this Purchase Invoice~r~n~r~n" + ls_msg)
+					li_errcode = 1
+				end if
+			end if
+		else
+			li_errcode = 1
+		end if
+	case "amt"
+		if double(data) > 0.0 then
+			if double(data) > this.object.outstandingamt[row] or double(data) > parent.parent.parent.id_master.object.returnoutstanding[parent.parent.parent.id_master.rowcount()] then
+				li_errcode = 1
+			end if
+			if li_errcode = 0 and parent.parent.parent.wf_validateamt(this.object.purinvcode[row], row, double(data)) = false then
+				li_errcode = 1
+			end if
+		else
+			li_errcode = 1
+		end if
+		return li_errcode
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "purinvcode"
+		if isnull(data) or integer(data) = 0 then
+			messagebox("Purchase Invoice Validation", "You must select some Purchase Invoice")
+		else
+			messagebox("Purchase Invoice Validation", "You must select some valid Purchase Invoice")
+		end if
+	case "amt"
+		if isnull(data) or double(data) <= 0.0 then
+			messagebox("Amount Validation", "Please enter some valid amount here")
+		else
+			messagebox("Amount Validation", "Amount Entered is more than allowed amount.")
+		end if
+	end choose
+	return 1
+
+// dw_itemsdetail.getfocus() returns long [event]
+	long ll_prinvcode
+	long ll_row
+	long ll_rtcode
+	ll_row = parent.parent.parent.id_master.getrow()
+	ll_prinvcode = parent.parent.parent.id_master.object.prinvcode[ll_row]
+	if isnull(ll_prinvcode) or ll_prinvcode = 0 then
+		if parent.parent.parent.ii_focusreturn = 2 then
+			post event ue_focusreturn()
+		end if
+	else
+		ll_rtcode = parent.parent.parent.wf_retrieveinvoicelist(parent.parent.parent.id_master.object.suppcode[parent.parent.parent.id_master.rowcount()], parent.parent.parent.id_master.object.code[parent.parent.parent.id_master.rowcount()], parent.parent.parent.is_module)
+		if ll_rtcode <= 0 then
+			messagebox("Purchase Return Validation", "There is no Unpaid Invoice Exists for this Supplier")
+		end if
+	end if
+	return ::message.returnvalue
+
+// tabpage_list.create() returns 0 [event]
+	integer icurrent
+	this.st_3 = create st_3
+	this.em_invno = create em_invno
+	call super::create
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_3
+	this.control[icurrent + 2] = this.em_invno
+
+// tabpage_list.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.st_3
+	destroy this.em_invno
+
+// em_invno.ue_downkey(keycode key, unsignedlong keyflags) returns long [event]
+	if key = keyenter! then
+		parent.parent.parent.tab_retrieve.selecttab(1)
+	end if
+	return ::message.returnvalue

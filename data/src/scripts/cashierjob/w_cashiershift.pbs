@@ -237,7 +237,7 @@
 	end if
 	return 0
 
-// w_cashiershift.create() returns 0
+// w_cashiershift.create() returns 0 [event]
 	call super::create
 	if isvalid(this.menuid) then
 		destroy this.menuid
@@ -246,13 +246,13 @@
 		this.menuid = create m_cashiershiftmenu
 	end if
 
-// w_cashiershift.destroy() returns 0
+// w_cashiershift.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_cashiershift.ue_save() returns 0
+// w_cashiershift.ue_save() returns 0 [event]
 	long ll_mastercurrrow
 	long ll_invid
 	long ll_detailrows
@@ -349,7 +349,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_cashiershift.ue_newform() returns 0
+// w_cashiershift.ue_newform() returns 0 [event]
 	m_cashiershiftmenu lm_menu
 	datetime ldt_server_datetime
 	string ls_date_errtext
@@ -378,14 +378,14 @@
 		end if
 	end if
 
-// w_cashiershift.ue_newitem() returns 0
+// w_cashiershift.ue_newitem() returns 0 [event]
 	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
 		return
 	end if
 	call super::ue_newitem
 	this.id_detail.setcolumn("usercode")
 
-// w_cashiershift.ue_detail() returns 0
+// w_cashiershift.ue_detail() returns 0 [event]
 	long li_protect
 	call super::ue_detail
 	this.im_menu.m_file.m_save.enabled = true
@@ -410,7 +410,7 @@
 		this.id_master.object.cashacccode.protect = "1"
 	end if
 
-// w_cashiershift.ue_list() returns 0
+// w_cashiershift.ue_list() returns 0 [event]
 	m_cashiershiftmenu lm_menu
 	long ll_rtcode
 	lm_menu = this.menuid
@@ -450,7 +450,7 @@
 	messagebox("Result", "No rows or retrieved possible empty table~r~nInsert some rows first")
 	postevent("ue_new")
 
-// w_cashiershift.ue_deleteitem() returns 0
+// w_cashiershift.ue_deleteitem() returns 0 [event]
 	long ll_currow
 	long ll_detailrows
 	long ll_icode
@@ -467,7 +467,7 @@
 	ll_detailrows = this.id_detail.rowcount()
 	wf_grandtotal()
 
-// w_cashiershift.ue_postopen() returns 0
+// w_cashiershift.ue_postopen() returns 0 [event]
 	long li_rtncode
 	call super::ue_postopen
 	li_rtncode = this.id_master.getchild("cashacccode", this.idc_cashacc)
@@ -482,3 +482,106 @@
 	end if
 	this.id_master.object.shiftowner.initial = trim(string(gl_usercode))
 	this.id_master.object.openedby.initial = trim(string(gl_usercode))
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "manfname"
+		if data = "" or isnull(data) then
+			messagebox("ManfName Validation", "Value requiredfor " + upper(dwo.manfname) + "in current row")
+		end if
+	case "manager"
+		if data = "" or isnull(data) then
+			messagebox("Manager Validation", "Value required for Manager in current row")
+		end if
+	end choose
+	return 1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	long ll_retcode
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "shiftowner"
+		if long(data) > 0 then
+			ll_retcode = parent.parent.parent.wf_setcashiershift(long(data))
+		else
+			ll_retcode = 1
+		end if
+	case "cashacccode"
+		if long(data) > 0 then
+			if parent.parent.parent.wf_check_cash_account_availability(long(data)) = 0 then
+				parent.parent.parent.wf_set_cash_account_balance(long(data))
+				return 0
+			else
+				messagebox("Cash A/c Validation", "This Cash Account is already allocated to a cashier shift.~r~nPlease Select some other account", stopsign!)
+				return 1
+			end if
+			return
+		end if
+		return ll_retcode
+	end choose
+	return ll_retcode
+
+// dw_detail.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	long ll_retcode
+	ancestorreturnvalue = super::clicked(xpos, ypos, row, dwo)
+	choose case dwo.name
+	case "b_filter"
+		parent.parent.parent.wf_set_defaultfilter()
+		return ll_retcode
+	end choose
+	return ll_retcode
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	string ls_managername
+	double ld_balance
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "usercode"
+		parent.parent.parent.il_currrow = row
+		parent.parent.parent.ib_itemvalidated = false
+		li_errcode = 0
+	case else
+		parent.parent.parent.ib_itemvalidated = true
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "usercode"
+		if data = "" or isnull(data) then
+			messagebox("User Validation", "Value required User Name in current row")
+		end if
+	end choose
+	return 1
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem() = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.getfocus() returns long [event]
+	return ::message.returnvalue
+
+// cb_retrieve.clicked() returns long [event]
+	long ll_rtcode
+	parent.parent.parent.id_list.reset()
+	ll_rtcode = parent.parent.parent.wf_retrieve(gl_usercode)
+	parent.parent.parent.wf_first()
+	parent.parent.parent.wf_selectunselectrow(1)
+	parent.parent.parent.tab_retrieve.tabpage_list.dw_find.setfocus()
+	return ::message.returnvalue

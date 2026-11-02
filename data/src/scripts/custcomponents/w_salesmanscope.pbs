@@ -1,12 +1,12 @@
 // window w_salesmanscope (custcomponents)  ancestor: window
 
-// w_salesmanscope.ue_keydown(keycode key, unsignedlong keyflags) returns long
+// w_salesmanscope.ue_keydown(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		post event ue_close()
 	end if
 	return ::message.returnvalue
 
-// w_salesmanscope.ue_close() returns 0
+// w_salesmanscope.ue_close() returns 0 [event]
 	close(this)
 
 // w_salesmanscope.wf_assigndwobjects(string as_masterdw, string as_detaildw, string as_footerdw) returns 0
@@ -219,7 +219,7 @@
 	messagebox("Sub. Area Validation", "Problem in validating Sub. Area.~r~nReasons are:-~r~n" + sqlca.sqlerrtext, stopsign!)
 	return -1
 
-// w_salesmanscope.create() returns 0
+// w_salesmanscope.create() returns 0 [event]
 	this.cb_exit = create cb_exit
 	this.dw_footer = create dw_footer
 	this.dw_master = create dw_master
@@ -228,7 +228,7 @@
 	this.dw_detail = create dw_detail
 	this.control = {this.cb_exit, this.dw_footer, this.dw_master, this.cb_retrieve, this.cb_save, this.dw_detail}
 
-// w_salesmanscope.destroy() returns 0
+// w_salesmanscope.destroy() returns 0 [event]
 	destroy this.cb_exit
 	destroy this.dw_footer
 	destroy this.dw_master
@@ -236,7 +236,7 @@
 	destroy this.cb_save
 	destroy this.dw_detail
 
-// w_salesmanscope.open() returns long
+// w_salesmanscope.open() returns long [event]
 	environment le_env
 	long ll_win_width
 	long ll_win_height
@@ -289,17 +289,17 @@
 	this.dw_master.setfocus()
 	return ::message.returnvalue
 
-// cb_exit.clicked() returns long
+// cb_exit.clicked() returns long [event]
 	parent.post event ue_close()
 	return ::message.returnvalue
 
-// dw_master.ue_enterkey() returns long
+// dw_master.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_master.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_master.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	long ll_code
 	long ll_retcode
@@ -313,34 +313,34 @@
 	end choose
 	return ll_retcode
 
-// dw_master.losefocus() returns long
+// dw_master.losefocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::losefocus()
 	parent.dw_detail.event getfocus()
 	return ::message.returnvalue
 
-// cb_retrieve.clicked() returns long
+// cb_retrieve.clicked() returns long [event]
 	parent.dw_detail.retrieve()
 	parent.wf_plot_salesmanscope()
 	return ::message.returnvalue
 
-// cb_save.clicked() returns long
+// cb_save.clicked() returns long [event]
 	parent.wf_save()
 	return ::message.returnvalue
 
-// dw_detail.ue_enterkey() returns long
+// dw_detail.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_detail.getfocus() returns long
+// dw_detail.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	setcolumn("weekday_1")
 	return ::message.returnvalue
 
-// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	long ll_subareacode
 	long ll_retcode
@@ -359,7 +359,7 @@
 	end choose
 	return ll_retcode
 
-// dw_detail.editchanged(long row, dwobject dwo, string data) returns long
+// dw_detail.editchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::editchanged(row, dwo, data)
 	parent.ib_editflag = true

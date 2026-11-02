@@ -1,9 +1,63 @@
 // menu m_passport_form (multientryitem)  ancestor: m_multi_entry
 
-// m_passport_form.create() returns 0
+// m_passport_form.create() returns 0 [event]
 	m_passport_form = this
 	call super::create
 	this.text = "m_passport_form"
 
-// m_passport_form.destroy() returns 0
+// m_passport_form.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_setitemnotes = create m_setitemnotes
+	this.m_setalternateitemaliasnames = create m_setalternateitemaliasnames
+	this.m_setitemimages = create m_setitemimages
+	this.item[upperbound(this.item) + 1] = this.m_setitemnotes
+	this.item[upperbound(this.item) + 1] = this.m_setalternateitemaliasnames
+	this.item[upperbound(this.item) + 1] = this.m_setitemimages
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_setitemnotes
+	destroy this.m_setalternateitemaliasnames
+	destroy this.m_setitemimages
+
+// m_setitemnotes.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_set_itemnotes()
+
+// m_setitemnotes.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Set Item Notes~tF10"
+	this.enabled = false
+	this.shortcut = 121
+
+// m_setitemnotes.destroy() returns 0 [event]
+	call super::destroy
+
+// m_setalternateitemaliasnames.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Set Alternate Passport ID~tAlt+F11"
+	this.enabled = false
+	this.shortcut = 634
+
+// m_setalternateitemaliasnames.destroy() returns 0 [event]
+	call super::destroy
+
+// m_setalternateitemaliasnames.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_select_alternateitemalias()
+
+// m_setitemimages.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_setimage()
+
+// m_setitemimages.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Set Passport Image(s)~tAlt+F9"
+	this.enabled = false
+	this.shortcut = 632
+
+// m_setitemimages.destroy() returns 0 [event]
 	call super::destroy

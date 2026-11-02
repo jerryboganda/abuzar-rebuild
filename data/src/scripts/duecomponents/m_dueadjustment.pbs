@@ -1,9 +1,28 @@
 // menu m_dueadjustment (duecomponents)  ancestor: m_multi_entry
 
-// m_dueadjustment.create() returns 0
+// m_dueadjustment.create() returns 0 [event]
 	m_dueadjustment = this
 	call super::create
 	this.text = "m_dueadjustment"
 
-// m_dueadjustment.destroy() returns 0
+// m_dueadjustment.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_generate = create m_generate
+	this.item[upperbound(this.item) + 1] = this.m_generate
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_generate
+
+// m_generate.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_populatesatisfiableitems()
+
+// m_generate.create() returns 0 [event]
+	call super::create
+	this.text = "Generate"
+
+// m_generate.destroy() returns 0 [event]
 	call super::destroy

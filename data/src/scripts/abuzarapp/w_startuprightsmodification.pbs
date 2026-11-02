@@ -1,8 +1,8 @@
 // window w_startuprightsmodification (abuzarapp)  ancestor: window
 
-// w_startuprightsmodification.ue_displayrights() returns 0
+// w_startuprightsmodification.ue_displayrights() returns 0 [event]
 
-// w_startuprightsmodification.ue_save() returns 0
+// w_startuprightsmodification.ue_save() returns 0 [event]
 	long ll_counter
 	long ll_limit
 	long ll_currow
@@ -17,10 +17,10 @@
 	setpointer(arrow!)
 	triggerevent(clicked!)
 
-// w_startuprightsmodification.ue_close() returns 0
+// w_startuprightsmodification.ue_close() returns 0 [event]
 	close(this)
 
-// w_startuprightsmodification.ue_postopen() returns long
+// w_startuprightsmodification.ue_postopen() returns long [event]
 	this.it_transobject = create u_transaction
 	SQL start USING this.it_transobject;
 	if this.it_transobject.sqlcode <> 0 then
@@ -33,29 +33,29 @@
 	this.dw_rights.retrieve()
 	return 1
 
-// w_startuprightsmodification.create() returns 0
+// w_startuprightsmodification.create() returns 0 [event]
 	this.cb_cancel = create cb_cancel
 	this.cb_save = create cb_save
 	this.dw_rights = create dw_rights
 	this.gb_1 = create gb_1
 	this.control = {this.cb_cancel, this.cb_save, this.dw_rights, this.gb_1}
 
-// w_startuprightsmodification.destroy() returns 0
+// w_startuprightsmodification.destroy() returns 0 [event]
 	destroy this.cb_cancel
 	destroy this.cb_save
 	destroy this.dw_rights
 	destroy this.gb_1
 
-// w_startuprightsmodification.activate() returns long
+// w_startuprightsmodification.activate() returns long [event]
 	this.windowstate = maximized!
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_startuprightsmodification.close() returns long
+// w_startuprightsmodification.close() returns long [event]
 	destroy this.it_transobject
 	return ::message.returnvalue
 
-// w_startuprightsmodification.open() returns long
+// w_startuprightsmodification.open() returns long [event]
 	long ll_win_width
 	long ll_win_height
 	long ll_width
@@ -74,16 +74,16 @@
 	post event ue_postopen()
 	return ::message.returnvalue
 
-// w_startuprightsmodification.key(keycode key, unsignedlong keyflags) returns long
+// w_startuprightsmodification.key(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		post event ue_close()
 	end if
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.post event ue_close()
 	return ::message.returnvalue
 
-// cb_save.clicked() returns long
+// cb_save.clicked() returns long [event]
 	parent.event ue_save()
 	return ::message.returnvalue

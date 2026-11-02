@@ -374,7 +374,7 @@
 	end if
 	return 0
 
-// w_customerstudentservicetemplate.create() returns 0
+// w_customerstudentservicetemplate.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	if isvalid(this.menuid) then
@@ -389,7 +389,7 @@
 	this.control[icurrent + 1] = this.dw_saleinvrep
 	this.control[icurrent + 2] = this.dw_saleinvdetail
 
-// w_customerstudentservicetemplate.destroy() returns 0
+// w_customerstudentservicetemplate.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
@@ -397,7 +397,7 @@
 	destroy this.dw_saleinvrep
 	destroy this.dw_saleinvdetail
 
-// w_customerstudentservicetemplate.ue_save() returns 0
+// w_customerstudentservicetemplate.ue_save() returns 0 [event]
 	long ll_detailrows
 	long ll_counter
 	long ll_count
@@ -482,7 +482,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_customerstudentservicetemplate.ue_newform() returns 0
+// w_customerstudentservicetemplate.ue_newform() returns 0 [event]
 	integer rtncode
 	long li_fetched_code
 	long row
@@ -506,7 +506,7 @@
 	wf_visible(true)
 	setredraw(true)
 
-// w_customerstudentservicetemplate.ue_detail() returns 0
+// w_customerstudentservicetemplate.ue_detail() returns 0 [event]
 	integer li_rtncode
 	integer li_protect
 	long ll_row
@@ -543,7 +543,7 @@
 	end if
 	setredraw(true)
 
-// w_customerstudentservicetemplate.ue_newitem() returns 0
+// w_customerstudentservicetemplate.ue_newitem() returns 0 [event]
 	long ll_insrow
 	long ll_rowcount
 	long ll_newrollno
@@ -567,12 +567,12 @@
 	this.im_menu.m_file.m_save.enabled = true
 	this.ib_validatefullcode = true
 
-// w_customerstudentservicetemplate.close() returns long
+// w_customerstudentservicetemplate.close() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::close()
 	return ::message.returnvalue
 
-// w_customerstudentservicetemplate.ue_list() returns 0
+// w_customerstudentservicetemplate.ue_list() returns 0 [event]
 	m_custstudentservicetemp lm_menu
 	call super::ue_list
 	lm_menu = this.menuid
@@ -588,7 +588,7 @@
 	end if
 	wf_retrievelist()
 
-// w_customerstudentservicetemplate.ue_print() returns 0
+// w_customerstudentservicetemplate.ue_print() returns 0 [event]
 	long ll_code
 	long ll_row
 	long li_printretcode
@@ -648,11 +648,11 @@
 	end if
 	messagebox("Printing Error", "Can not Print,~r~nNo rows are retrieved", information!)
 
-// w_customerstudentservicetemplate.ue_new() returns 0
+// w_customerstudentservicetemplate.ue_new() returns 0 [event]
 	call super::ue_new
 	this.im_menu.m_file.m_post.enabled = false
 
-// w_customerstudentservicetemplate.ue_postopen() returns 0
+// w_customerstudentservicetemplate.ue_postopen() returns 0 [event]
 	m_custstudentservicetemp lm_menu
 	integer li_rtncode
 	long ll_counter
@@ -696,12 +696,12 @@
 	this.id_footer.scrolltorow(0)
 	setredraw(true)
 
-// w_customerstudentservicetemplate.open() returns long
+// w_customerstudentservicetemplate.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	return ::message.returnvalue
 
-// w_customerstudentservicetemplate.ue_refreshddw() returns 0
+// w_customerstudentservicetemplate.ue_refreshddw() returns 0 [event]
 	long li_count
 	long ll_startrow
 	char lc_char
@@ -713,3 +713,172 @@
 		ll_startrow = this.ia_llookuptable[li_count]
 	next
 	this.ia_llookuptable[92] = 999999
+
+// tab_retrieve.selectionchanged(integer oldindex, integer newindex) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::selectionchanged(oldindex, newindex)
+	if parent.ib_modify and newindex <> 1 then
+		SQL rollback USING parent.it_transobject;
+		parent.ib_modify = false
+	end if
+	return ::message.returnvalue
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if parent.parent.parent.wf_duplicatename(data) then
+			messagebox("Name Validation", "Duplication Name Error~n~rPlease Choose Some Other Name")
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	long ll_newqty
+	long ll_storedqty
+	long ll_stock
+	long ll_null
+	long ll_icode
+	long ll_gcode
+	string ls_null
+	string ls_itemname
+	integer li_res
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	setnull(ll_null)
+	setnull(ls_null)
+	choose case dwo.name
+	case parent.parent.parent.is_columnitemname
+		parent.parent.parent.id_detail.setitem(row, "icode", parent.parent.parent.id_itemslist.getitemnumber(parent.parent.parent.id_itemslist.getrow(), "icode"))
+		parent.parent.parent.id_detail.setitem(row, "fullcode", parent.parent.parent.id_itemslist.getitemstring(parent.parent.parent.id_itemslist.getrow(), "fullcode"))
+		parent.parent.parent.ib_itemvalidated = false
+		parent.parent.parent.il_currrow = row
+		li_errcode = 0
+	case "fullcode"
+		if not isnull(data) and data <> "" then
+			li_res = parent.parent.parent.wf_findfullcode(data, ll_icode, ls_itemname)
+			if li_res > 0 then
+				setitem(row, "icode", ll_icode)
+				setitem(row, "itemname", ls_itemname)
+				parent.parent.parent.ib_itemvalidated = false
+				parent.parent.parent.il_currrow = row
+				li_errcode = 0
+			else
+				if li_res <> -2 then
+					messagebox("Studemt Validation", "Student Does not exist for this Reg, No.")
+				end if
+				setitem(row, "icode", ll_null)
+				setitem(row, "fullcode", ls_null)
+				li_errcode = 1
+			end if
+		else
+			setitem(row, "icode", ll_null)
+			setitem(row, "fullcode", ls_null)
+			li_errcode = 2
+		end if
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	string ls_columnobject
+	long ll_currow
+	long ll_icode
+	long ancestorreturnvalue
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem(false) = -1 then
+		return ::message.returnvalue
+	end if
+	if dwo.name = "itemname" then
+		parent.parent.parent.ib_focusdetail = true
+	end if
+	if dwo.name <> "itemname" then
+		parent.parent.parent.ib_itemslistopen = false
+		parent.parent.parent.id_itemslist.hide()
+	end if
+	parent.parent.parent.wf_grandtotal()
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	return 0
+
+// dw_itemsdetail.rowfocuschanged(long currentrow) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::rowfocuschanged(currentrow)
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem(true) = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.losefocus() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::losefocus()
+	parent.parent.parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "fullcode"
+		if data = "" or isnull(data) then
+		end if
+	case parent.parent.parent.is_columnitemname
+		if data = "" or isnull(data) then
+			messagebox("Student Validation", "Value required in current row")
+		end if
+	end choose
+	return 1
+
+// dw_itemsdetail.editchanged(long row, dwobject dwo, string data) returns long [event]
+	long ll_currrow
+	long ll_startrow
+	long ll_endrow
+	if parent.parent.parent.editflag = false then
+		parent.parent.parent.editflag = true
+		parent.parent.parent.im_menu.m_file.m_save.enabled = true
+	end if
+	choose case dwo.name
+	case parent.parent.parent.is_columnitemname
+		if upper(left(data, 1)) >= "A" and upper(left(data, 1)) <= "Z" or left(data, 1) >= "0" and left(data, 1) <= "9" or left(data, 1) = "*" then
+			ll_currrow = parent.parent.parent.id_itemslist.getrow()
+			if len(data) > 1 then
+				ll_startrow = ll_currrow
+			else
+				if left(data, 1) >= "0" and left(data, 1) <= "9" or left(data, 1) = "*" then
+					ll_startrow = 1
+				else
+					ll_startrow = parent.parent.parent.ia_llookuptable[asc(upper(data))]
+				end if
+				parent.parent.parent.ib_bkspace = false
+			end if
+			if parent.parent.parent.ib_bkspace then
+				parent.parent.parent.il_itemlistfoundrow = parent.parent.parent.id_itemslist.find("Lower(itemname) <= '" + lower(data) + "'", ll_startrow, 0)
+				parent.parent.parent.il_itemlistfoundrow = parent.parent.parent.il_itemlistfoundrow + 1
+				parent.parent.parent.ib_bkspace = false
+			else
+				parent.parent.parent.il_itemlistfoundrow = parent.parent.parent.id_itemslist.find("Lower(itemname) >= '" + lower(data) + "'", ll_startrow, 99999)
+			end if
+			if parent.parent.parent.il_itemlistfoundrow = 0 then
+				parent.parent.parent.il_itemlistfoundrow = parent.parent.parent.id_itemslist.rowcount()
+			end if
+			if parent.parent.parent.il_itemlistfoundrow <> ll_currrow then
+				parent.parent.parent.id_itemslist.selectrow(0, false)
+				parent.parent.parent.id_itemslist.setrow(parent.parent.parent.il_itemlistfoundrow)
+				parent.parent.parent.id_itemslist.scrolltorow(parent.parent.parent.il_itemlistfoundrow)
+				parent.parent.parent.id_itemslist.selectrow(parent.parent.parent.il_itemlistfoundrow, true)
+				ll_endrow = setitem(row, "currlistrow", parent.parent.parent.il_itemlistfoundrow)
+				ll_endrow = getitemnumber(row, "currlistrow")
+				setfocus()
+			end if
+		end if
+		parent.parent.parent.ib_itemvalidated = false
+		parent.parent.parent.il_currrow = row
+	end choose
+	return ::message.returnvalue
+
+// dw_itemsdetail.getfocus() returns long [event]
+	if getcolumnname() <> "itemname" then
+		parent.parent.parent.ib_itemslistopen = false
+		parent.parent.parent.id_itemslist.hide()
+	end if
+	return ::message.returnvalue

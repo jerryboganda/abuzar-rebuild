@@ -119,7 +119,7 @@
 	setpointer(arrow!)
 	this.id_detail.setredraw(true)
 
-// w_custitemcat_disc_setting.create() returns 0
+// w_custitemcat_disc_setting.create() returns 0 [event]
 	call super::create
 	if isvalid(this.menuid) then
 		destroy this.menuid
@@ -128,13 +128,13 @@
 		this.menuid = create m_custitemcat_disc_setting
 	end if
 
-// w_custitemcat_disc_setting.destroy() returns 0
+// w_custitemcat_disc_setting.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_custitemcat_disc_setting.ue_save() returns 0
+// w_custitemcat_disc_setting.ue_save() returns 0 [event]
 	long ll_mastercurrrow
 	long ll_invid
 	long ll_detailrows
@@ -166,11 +166,11 @@
 	call super::ue_save
 	setpointer(arrow!)
 
-// w_custitemcat_disc_setting.ue_newform() returns 0
+// w_custitemcat_disc_setting.ue_newform() returns 0 [event]
 	call super::ue_newform
 	this.id_master.setfocus()
 
-// w_custitemcat_disc_setting.ue_newitem() returns 0
+// w_custitemcat_disc_setting.ue_newitem() returns 0 [event]
 	long ll_rowcount
 	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
 		return
@@ -188,7 +188,7 @@
 	this.im_menu.m_file.m_save.enabled = true
 	this.ib_validatefullcode = true
 
-// w_custitemcat_disc_setting.ue_detail() returns 0
+// w_custitemcat_disc_setting.ue_detail() returns 0 [event]
 	call super::ue_detail
 	this.im_menu.m_file.m_save.enabled = true
 	this.im_menu.m_file.m_delete.enabled = true
@@ -200,7 +200,7 @@
 	this.im_menu.m_item.m_newitem.enabled = true
 	this.im_menu.m_item.m_deleteitem.enabled = true
 
-// w_custitemcat_disc_setting.ue_postopen() returns 0
+// w_custitemcat_disc_setting.ue_postopen() returns 0 [event]
 	call super::ue_postopen
 	this.ic_category = message.stringparm
 	choose case this.ic_category
@@ -213,10 +213,87 @@
 		wf_assigndatawindowobjects("d_itemcategory_header", "d_itemcat_custcat_discperc_detail", "d_item_category_list")
 	end choose
 
-// w_custitemcat_disc_setting.ue_deleteitem() returns 0
+// w_custitemcat_disc_setting.ue_deleteitem() returns 0 [event]
 	long ll_currow
 	long ll_detailrows
 	this.ib_itemvalidated = true
 	this.id_detail.deleterow(0)
 	ll_detailrows = this.id_detail.rowcount()
 	wf_grandtotal()
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	end choose
+	return 1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if parent.parent.parent.wf_duplicatename(data) then
+			messagebox("Name Validation", "Duplication Name Error~n~rPlease Choose Some Other Name")
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	string ls_managername
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "icatcode"
+		parent.parent.parent.il_currrow = row
+		parent.parent.parent.ib_itemvalidated = false
+		li_errcode = 0
+	case "custcatcode"
+		parent.parent.parent.il_currrow = row
+		parent.parent.parent.ib_itemvalidated = false
+		li_errcode = 0
+	case "discperc"
+		if real(data) < 0.0 or real(data) > 100.0 then
+			li_errcode = 1
+		end if
+		parent.parent.parent.ib_itemvalidated = true
+	case else
+		parent.parent.parent.ib_itemvalidated = true
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "icatcode"
+		if data = "" or isnull(data) then
+			messagebox("Item Category Name Validation", "Value required Item Category Name in current row")
+		end if
+	case "custcatcode"
+		if data = "" or isnull(data) then
+			messagebox("Customer Category Name Validation", "Value required Customer Category Name in current row")
+		end if
+	case "discperc"
+		if data = "" or isnull(data) or real(data) < 0.0 or real(data) > 100.0 then
+			messagebox("Discount Percentage Validation", "Please enter valid value for discount percentage~r~nRange = 0.00 TO 100.00")
+		end if
+	end choose
+	return 1
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem() = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.getfocus() returns long [event]
+	return ::message.returnvalue

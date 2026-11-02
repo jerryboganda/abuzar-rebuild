@@ -1,9 +1,69 @@
 // menu m_changeitem_reorderqty (changeitemprice)  ancestor: m_multi_entry
 
-// m_changeitem_reorderqty.create() returns 0
+// m_changeitem_reorderqty.create() returns 0 [event]
 	m_changeitem_reorderqty = this
 	call super::create
 	this.text = "m_changeitem_reorderqty"
 
-// m_changeitem_reorderqty.destroy() returns 0
+// m_changeitem_reorderqty.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_setitemclassforall = create m_setitemclassforall
+	this.m_setitemminqtyforall = create m_setitemminqtyforall
+	this.m_setitemreorderqtyforall = create m_setitemreorderqtyforall
+	this.m_setitemoptimumqtyforall = create m_setitemoptimumqtyforall
+	this.item[upperbound(this.item) + 1] = this.m_setitemclassforall
+	this.item[upperbound(this.item) + 1] = this.m_setitemminqtyforall
+	this.item[upperbound(this.item) + 1] = this.m_setitemreorderqtyforall
+	this.item[upperbound(this.item) + 1] = this.m_setitemoptimumqtyforall
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_setitemclassforall
+	destroy this.m_setitemminqtyforall
+	destroy this.m_setitemreorderqtyforall
+	destroy this.m_setitemoptimumqtyforall
+
+// m_setitemclassforall.clicked() returns 0 [event]
+	this.parentwindow.dynamic post event ue_generate()
+
+// m_setitemclassforall.create() returns 0 [event]
+	call super::create
+	this.text = "Generate"
+	this.toolbaritemname = "Run!"
+	this.toolbaritemtext = "Generate Item List"
+
+// m_setitemclassforall.destroy() returns 0 [event]
+	call super::destroy
+
+// m_setitemminqtyforall.clicked() returns 0 [event]
+	this.parentwindow.dynamic post event ue_setqty("M")
+
+// m_setitemminqtyforall.create() returns 0 [event]
+	call super::create
+	this.text = "Set Item Min Qty For All"
+
+// m_setitemminqtyforall.destroy() returns 0 [event]
+	call super::destroy
+
+// m_setitemreorderqtyforall.clicked() returns 0 [event]
+	this.parentwindow.dynamic post event ue_setqty("R")
+
+// m_setitemreorderqtyforall.create() returns 0 [event]
+	call super::create
+	this.text = "Set Item Reorder Qty For All"
+
+// m_setitemreorderqtyforall.destroy() returns 0 [event]
+	call super::destroy
+
+// m_setitemoptimumqtyforall.clicked() returns 0 [event]
+	this.parentwindow.dynamic post event ue_setqty("O")
+
+// m_setitemoptimumqtyforall.create() returns 0 [event]
+	call super::create
+	this.text = "Set Item Optimum Qty For All"
+
+// m_setitemoptimumqtyforall.destroy() returns 0 [event]
 	call super::destroy

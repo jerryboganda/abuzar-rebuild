@@ -1,12 +1,12 @@
 // window w_sale_popup (salewin)  ancestor: w_sale
 
-// w_sale_popup.ue_fetch_buffer_value() returns 0
+// w_sale_popup.ue_fetch_buffer_value() returns 0 [event]
 	if this.iw_callingwindow.istr_buffer.i_status = 1 then
 		this.istr_buffer = this.iw_callingwindow.istr_buffer
 		this.is_callermodule = lower(this.iw_callingwindow.classname())
 	end if
 
-// w_sale_popup.ue_set_buffer_value() returns 0
+// w_sale_popup.ue_set_buffer_value() returns 0 [event]
 	long ll_listrow
 	if this.iw_callingwindow.istr_buffer.i_status = 1 then
 		if not isnull(this.iw_callingwindow.istr_buffer.l_code1) then
@@ -33,7 +33,7 @@
 		return
 	end if
 
-// w_sale_popup.create() returns 0
+// w_sale_popup.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.cb_save = create cb_save
@@ -42,7 +42,7 @@
 	this.control[icurrent + 1] = this.cb_save
 	this.control[icurrent + 2] = this.cb_cancel
 
-// w_sale_popup.destroy() returns 0
+// w_sale_popup.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
@@ -50,7 +50,7 @@
 	destroy this.cb_save
 	destroy this.cb_cancel
 
-// w_sale_popup.open() returns long
+// w_sale_popup.open() returns long [event]
 	m_entry lm_menu
 	long ll_width
 	long ll_height
@@ -95,9 +95,9 @@
 	end if
 	return message.returnvalue
 
-// w_sale_popup.ue_list() returns 0
+// w_sale_popup.ue_list() returns 0 [event]
 
-// w_sale_popup.ue_new() returns 0
+// w_sale_popup.ue_new() returns 0 [event]
 	integer li_postingmode
 	if this.ib_commitok = true and this.il_codevalue > 0 then
 		if this.is_callermodule = "w_service" and this.iw_callingwindow.istr_buffer.s_name1 = "Y" then
@@ -113,11 +113,11 @@
 	this.tab_retrieve.selectedtab = 1
 	this.id_master.setfocus()
 
-// w_sale_popup.ue_postopen() returns 0
+// w_sale_popup.ue_postopen() returns 0 [event]
 	call super::ue_postopen
 	postevent("ue_set_buffer_value")
 
-// cb_save.clicked() returns long
+// cb_save.clicked() returns long [event]
 	if parent.tab_retrieve.selectedtab = 1 then
 		if parent.is_callermodule = "w_service" then
 			if parent.iw_callingwindow.istr_buffer.s_name1 = "Y" then
@@ -135,6 +135,6 @@
 	end if
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	close(parent)
 	return ::message.returnvalue

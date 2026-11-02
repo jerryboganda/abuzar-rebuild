@@ -1,10 +1,10 @@
 // window w_serviceorder_form (servicemodules)  ancestor: window
 
-// w_serviceorder_form.ue_close() returns 0
+// w_serviceorder_form.ue_close() returns 0 [event]
 	SQL stop USING this.it_transobject;
 	close(this)
 
-// w_serviceorder_form.ue_postopen() returns 0
+// w_serviceorder_form.ue_postopen() returns 0 [event]
 	long ll_counter
 	long ll_pos
 	long ll_prow
@@ -1298,7 +1298,7 @@
 	SQL DELETE SOCheckListItem WHERE ServiceOCode =:ll_code USING this.it_transobject;
 	return 0
 
-// w_serviceorder_form.create() returns 0
+// w_serviceorder_form.create() returns 0 [event]
 	this.dw_netamt = create dw_netamt
 	this.cb_printorder = create cb_printorder
 	this.cb_cancel = create cb_cancel
@@ -1309,7 +1309,7 @@
 	this.dw_print2 = create dw_print2
 	this.control = {this.dw_netamt, this.cb_printorder, this.cb_cancel, this.cb_ok, this.tab_main, this.dw_image, this.dw_print, this.dw_print2}
 
-// w_serviceorder_form.destroy() returns 0
+// w_serviceorder_form.destroy() returns 0 [event]
 	destroy this.dw_netamt
 	destroy this.cb_printorder
 	destroy this.cb_cancel
@@ -1319,7 +1319,7 @@
 	destroy this.dw_print
 	destroy this.dw_print2
 
-// w_serviceorder_form.open() returns long
+// w_serviceorder_form.open() returns long [event]
 	integer li_xpos
 	integer li_ypos
 	integer li_xendpos
@@ -1364,7 +1364,7 @@
 	end if
 	return message.returnvalue
 
-// w_serviceorder_form.key(keycode key, unsignedlong keyflags) returns long
+// w_serviceorder_form.key(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyf8! and this.ib_viewimage then
 		wf_show_patient_gallery()
 	end if
@@ -1373,22 +1373,22 @@
 	end if
 	return ::message.returnvalue
 
-// cb_printorder.clicked() returns long
+// cb_printorder.clicked() returns long [event]
 	parent.ib_printorder = true
 	parent.wf_save()
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.postevent("ue_close")
 	return ::message.returnvalue
 
-// cb_ok.ue_enterkry(keycode key, unsignedlong keyflags) returns long
+// cb_ok.ue_enterkry(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		triggerevent(clicked!)
 	end if
 	return 1
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	string ls_aliasname
 	long ll_newid
 	long ll_row
@@ -1554,7 +1554,7 @@
 	end if
 	return ::message.returnvalue
 
-// tab_main.create() returns 0
+// tab_main.create() returns 0 [event]
 	this.tabpage_header = create tabpage_header
 	this.tabpage_checklist = create tabpage_checklist
 	this.tabpage_detail = create tabpage_detail
@@ -1564,7 +1564,7 @@
 	this.tabpage_sale = create tabpage_sale
 	this.control = {this.tabpage_header, this.tabpage_checklist, this.tabpage_detail, this.tabpage_itemreq, this.tabpage_issue, this.tabpage_service, this.tabpage_sale}
 
-// tab_main.destroy() returns 0
+// tab_main.destroy() returns 0 [event]
 	destroy this.tabpage_header
 	destroy this.tabpage_checklist
 	destroy this.tabpage_detail
@@ -1573,7 +1573,7 @@
 	destroy this.tabpage_service
 	destroy this.tabpage_sale
 
-// tab_main.selectionchanged(integer oldindex, integer newindex) returns long
+// tab_main.selectionchanged(integer oldindex, integer newindex) returns long [event]
 	parent.wf_grandtotal()
 	if parent.il_protect = 0 then
 		if newindex = 1 then
@@ -1609,20 +1609,20 @@
 	end if
 	return ::message.returnvalue
 
-// tab_main.key(keycode key, unsignedlong keyflags) returns long
+// tab_main.key(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyf9! then
 		parent.wf_setimage("ECG")
 	end if
 	return ::message.returnvalue
 
-// tabpage_header.create() returns 0
+// tabpage_header.create() returns 0 [event]
 	this.dw_header = create dw_header
 	this.control = {this.dw_header}
 
-// tabpage_header.destroy() returns 0
+// tabpage_header.destroy() returns 0 [event]
 	destroy this.dw_header
 
-// dw_header.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// dw_header.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	long ll_counter
 	long ll_foundcode
 	s_popup_selection lstr_selection
@@ -1666,23 +1666,23 @@
 	end if
 	return message.returnvalue
 
-// dw_header.ue_enterkey() returns long
+// dw_header.ue_enterkey() returns long [event]
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_header.getfocus() returns long
+// dw_header.getfocus() returns long [event]
 	setfocus()
 	selecttext(1, len(gettext()))
 	parent.parent.parent.wf_grandtotal()
 	return ::message.returnvalue
 
-// dw_header.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_header.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	if len(gettext()) > 0 then
 		selecttext(1, len(gettext()))
 	end if
 	return ::message.returnvalue
 
-// dw_header.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_header.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	dwitemstatus lrs_status
 	long ll_code
 	long ll_detailrows
@@ -1795,31 +1795,31 @@
 	end choose
 	return rt_code
 
-// tabpage_checklist.create() returns 0
+// tabpage_checklist.create() returns 0 [event]
 	this.dw_checklist = create dw_checklist
 	this.control = {this.dw_checklist}
 
-// tabpage_checklist.destroy() returns 0
+// tabpage_checklist.destroy() returns 0 [event]
 	destroy this.dw_checklist
 
-// dw_checklist.getfocus() returns long
+// dw_checklist.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	parent.parent.parent.wf_grandtotal()
 	return ::message.returnvalue
 
-// tabpage_detail.create() returns 0
+// tabpage_detail.create() returns 0 [event]
 	this.dw_footer = create dw_footer
 	this.dw_detail = create dw_detail
 	this.dw_selectionlist = create dw_selectionlist
 	this.control = {this.dw_footer, this.dw_detail, this.dw_selectionlist}
 
-// tabpage_detail.destroy() returns 0
+// tabpage_detail.destroy() returns 0 [event]
 	destroy this.dw_footer
 	destroy this.dw_detail
 	destroy this.dw_selectionlist
 
-// dw_footer.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// dw_footer.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
 	if getcolumnname() = "flatdisc" and key = keyuparrow! then
@@ -1835,13 +1835,13 @@
 	parent.parent.parent.wf_grandtotal()
 	return ::message.returnvalue
 
-// dw_footer.ue_enterkey() returns long
+// dw_footer.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_footer.getfocus() returns long
+// dw_footer.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	if rowcount() > 0 then
@@ -1849,7 +1849,7 @@
 	end if
 	return ::message.returnvalue
 
-// dw_detail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// dw_detail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	long ancestorreturnvalue
 	integer rt_code
 	long ll_currrow
@@ -1980,7 +1980,7 @@
 	end if
 	return rt_code
 
-// dw_detail.getfocus() returns long
+// dw_detail.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	setfocus()
@@ -1988,7 +1988,7 @@
 	parent.parent.parent.wf_grandtotal()
 	return ::message.returnvalue
 
-// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	integer li_rtcode
 	string ls_errortext
@@ -2014,7 +2014,7 @@
 	end if
 	return ::message.returnvalue
 
-// dw_detail.ue_enterkey() returns long
+// dw_detail.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	long ll_rowcount
 	ancestorreturnvalue = super::ue_enterkey()
@@ -2051,7 +2051,7 @@
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_detail.editchanged(long row, dwobject dwo, string data) returns long
+// dw_detail.editchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	long ll_currrow
 	long ll_startrow
@@ -2098,7 +2098,7 @@
 	end choose
 	return ::message.returnvalue
 
-// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	long ll_icode
 	long ll_null
@@ -2159,7 +2159,7 @@
 	end choose
 	return ll_errcode
 
-// dw_detail.itemerror(long row, dwobject dwo, string data) returns long
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemerror(row, dwo, data)
 	choose case dwo.name
@@ -2170,13 +2170,13 @@
 	end choose
 	return 1
 
-// dw_detail.losefocus() returns long
+// dw_detail.losefocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::losefocus()
 	parent.parent.parent.id_selectionlist.hide()
 	return ::message.returnvalue
 
-// dw_detail.rowfocuschanging(long currentrow, long newrow) returns long
+// dw_detail.rowfocuschanging(long currentrow, long newrow) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::rowfocuschanging(currentrow, newrow)
 	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem(getrow()) = -1 then
@@ -2184,17 +2184,17 @@
 	end if
 	return ::message.returnvalue
 
-// dw_selectionlist.ue_setfocus() returns 0
+// dw_selectionlist.ue_setfocus() returns 0 [event]
 	parent.parent.parent.id_svcdetail.setcolumn("itemname")
 	parent.parent.parent.id_svcdetail.setfocus()
 
-// dw_selectionlist.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+// dw_selectionlist.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::doubleclicked(xpos, ypos, row, dwo)
 	post event ue_setfocus()
 	return ::message.returnvalue
 
-// dw_selectionlist.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+// dw_selectionlist.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	long ll_rowmain
 	ancestorreturnvalue = super::clicked(xpos, ypos, row, dwo)
@@ -2210,20 +2210,20 @@
 	end if
 	return ::message.returnvalue
 
-// tabpage_itemreq.create() returns 0
+// tabpage_itemreq.create() returns 0 [event]
 	this.dw_selection_req = create dw_selection_req
 	this.dw_itemreq = create dw_itemreq
 	this.control = {this.dw_selection_req, this.dw_itemreq}
 
-// tabpage_itemreq.destroy() returns 0
+// tabpage_itemreq.destroy() returns 0 [event]
 	destroy this.dw_selection_req
 	destroy this.dw_itemreq
 
-// dw_selection_req.ue_setfocus() returns 0
+// dw_selection_req.ue_setfocus() returns 0 [event]
 	parent.parent.parent.id_itemreq.setcolumn("itemname")
 	parent.parent.parent.id_itemreq.setfocus()
 
-// dw_selection_req.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+// dw_selection_req.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	long ll_rowmain
 	ancestorreturnvalue = super::clicked(xpos, ypos, row, dwo)
@@ -2239,13 +2239,13 @@
 	end if
 	return ::message.returnvalue
 
-// dw_selection_req.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+// dw_selection_req.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::doubleclicked(xpos, ypos, row, dwo)
 	post event ue_setfocus()
 	return ::message.returnvalue
 
-// dw_itemreq.editchanged(long row, dwobject dwo, string data) returns long
+// dw_itemreq.editchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	long ll_currrow
 	long ll_startrow
@@ -2292,7 +2292,7 @@
 	end choose
 	return ::message.returnvalue
 
-// dw_itemreq.getfocus() returns long
+// dw_itemreq.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	if parent.parent.parent.il_protect = 0 then
@@ -2307,7 +2307,7 @@
 	parent.parent.parent.wf_grandtotal()
 	return ::message.returnvalue
 
-// dw_itemreq.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_itemreq.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	integer li_retcode
 	integer li_res
@@ -2360,7 +2360,7 @@
 	end choose
 	return li_retcode
 
-// dw_itemreq.itemerror(long row, dwobject dwo, string data) returns long
+// dw_itemreq.itemerror(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemerror(row, dwo, data)
 	choose case dwo.name
@@ -2373,7 +2373,7 @@
 	end choose
 	return 1
 
-// dw_itemreq.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_itemreq.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	string ls_itemname
 	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
@@ -2418,13 +2418,13 @@
 	selecttext(1, len(gettext()))
 	return ::message.returnvalue
 
-// dw_itemreq.losefocus() returns long
+// dw_itemreq.losefocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::losefocus()
 	parent.parent.parent.id_selectionlist_req.hide()
 	return ::message.returnvalue
 
-// dw_itemreq.rowfocuschanged(long currentrow) returns long
+// dw_itemreq.rowfocuschanged(long currentrow) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::rowfocuschanged(currentrow)
 	if parent.parent.parent.ib_itemvalidated_req = false and parent.parent.parent.wf_validateitem_req(getrow()) = -1 then
@@ -2432,7 +2432,7 @@
 	end if
 	return ::message.returnvalue
 
-// dw_itemreq.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// dw_itemreq.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	long ancestorreturnvalue
 	integer rt_code
 	long ll_currrow
@@ -2615,7 +2615,7 @@
 	setfocus()
 	return rt_code
 
-// dw_itemreq.ue_enterkey() returns long
+// dw_itemreq.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	long ll_rowcount
 	ancestorreturnvalue = super::ue_enterkey()
@@ -2649,40 +2649,40 @@
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// tabpage_issue.create() returns 0
+// tabpage_issue.create() returns 0 [event]
 	this.dw_issue = create dw_issue
 	this.control = {this.dw_issue}
 
-// tabpage_issue.destroy() returns 0
+// tabpage_issue.destroy() returns 0 [event]
 	destroy this.dw_issue
 
-// dw_issue.getfocus() returns long
+// dw_issue.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	parent.parent.parent.wf_grandtotal()
 	return ::message.returnvalue
 
-// tabpage_service.create() returns 0
+// tabpage_service.create() returns 0 [event]
 	this.dw_service = create dw_service
 	this.control = {this.dw_service}
 
-// tabpage_service.destroy() returns 0
+// tabpage_service.destroy() returns 0 [event]
 	destroy this.dw_service
 
-// dw_service.getfocus() returns long
+// dw_service.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	parent.parent.parent.wf_grandtotal()
 	return ::message.returnvalue
 
-// tabpage_sale.create() returns 0
+// tabpage_sale.create() returns 0 [event]
 	this.dw_sale = create dw_sale
 	this.control = {this.dw_sale}
 
-// tabpage_sale.destroy() returns 0
+// tabpage_sale.destroy() returns 0 [event]
 	destroy this.dw_sale
 
-// dw_sale.getfocus() returns long
+// dw_sale.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	parent.parent.parent.wf_grandtotal()

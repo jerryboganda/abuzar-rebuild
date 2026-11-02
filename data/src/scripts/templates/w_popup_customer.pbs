@@ -1,6 +1,6 @@
 // window w_popup_customer (templates)  ancestor: window
 
-// w_popup_customer.ue_postopen() returns 0
+// w_popup_customer.ue_postopen() returns 0 [event]
 	long ll_rtncode
 	this.istr_template.b_userinput = false
 	this.dw_detail.settransobject(sqlca)
@@ -36,20 +36,20 @@
 	end if
 	return b_flag
 
-// w_popup_customer.create() returns 0
+// w_popup_customer.create() returns 0 [event]
 	this.dw_detail = create dw_detail
 	this.cb_cancel = create cb_cancel
 	this.cb_ok = create cb_ok
 	this.gb_2 = create gb_2
 	this.control = {this.dw_detail, this.cb_cancel, this.cb_ok, this.gb_2}
 
-// w_popup_customer.destroy() returns 0
+// w_popup_customer.destroy() returns 0 [event]
 	destroy this.dw_detail
 	destroy this.cb_cancel
 	destroy this.cb_ok
 	destroy this.gb_2
 
-// w_popup_customer.open() returns long
+// w_popup_customer.open() returns long [event]
 	long ll_win_width
 	long ll_win_height
 	long ll_width
@@ -68,21 +68,21 @@
 	post event ue_postopen()
 	return ::message.returnvalue
 
-// w_popup_customer.close() returns long
+// w_popup_customer.close() returns long [event]
 	closewithreturn(this, this.istr_template)
 	return ::message.returnvalue
 
-// w_popup_customer.key(keycode key, unsignedlong keyflags) returns long
+// w_popup_customer.key(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		post event Close()
 	end if
 	return ::message.returnvalue
 
-// dw_detail.ue_enterkey() returns long
+// dw_detail.ue_enterkey() returns long [event]
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ll_null
 	choose case dwo.name
 	case "accounts_name"
@@ -110,7 +110,7 @@
 	end choose
 	return ::message.returnvalue
 
-// dw_detail.itemerror(long row, dwobject dwo, string data) returns long
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
 	choose case dwo.name
 	case "accounts_name"
 		if data = "" or isnull(data) then
@@ -119,18 +119,18 @@
 	end choose
 	return 1
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.istr_template.b_userinput = false
 	parent.post event Close()
 	return ::message.returnvalue
 
-// cb_ok.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// cb_ok.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		post event clicked()
 	end if
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	long ll_find
 	long ll_counter
 	long ll_rowcount
@@ -216,6 +216,6 @@
 	end if
 	return ::message.returnvalue
 
-// gb_2.ue_getfocus() returns long
+// gb_2.ue_getfocus() returns long [event]
 	parent.dw_detail.setfocus()
 	return ::message.returnvalue

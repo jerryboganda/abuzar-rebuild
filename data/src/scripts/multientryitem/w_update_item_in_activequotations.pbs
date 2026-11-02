@@ -1,15 +1,15 @@
 // window w_update_item_in_activequotations (multientryitem)  ancestor: window
 
-// w_update_item_in_activequotations.ue_keydown(keycode key, unsignedlong keyflags) returns long
+// w_update_item_in_activequotations.ue_keydown(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		post event ue_close()
 	end if
 	return ::message.returnvalue
 
-// w_update_item_in_activequotations.ue_close() returns 0
+// w_update_item_in_activequotations.ue_close() returns 0 [event]
 	close(this)
 
-// w_update_item_in_activequotations.create() returns 0
+// w_update_item_in_activequotations.create() returns 0 [event]
 	this.cb_cancel = create cb_cancel
 	this.dw_footer = create dw_footer
 	this.dw_master = create dw_master
@@ -17,14 +17,14 @@
 	this.dw_detail = create dw_detail
 	this.control = {this.cb_cancel, this.dw_footer, this.dw_master, this.cb_ok, this.dw_detail}
 
-// w_update_item_in_activequotations.destroy() returns 0
+// w_update_item_in_activequotations.destroy() returns 0 [event]
 	destroy this.cb_cancel
 	destroy this.dw_footer
 	destroy this.dw_master
 	destroy this.cb_ok
 	destroy this.dw_detail
 
-// w_update_item_in_activequotations.open() returns long
+// w_update_item_in_activequotations.open() returns long [event]
 	environment le_env
 	long ll_win_width
 	long ll_win_height
@@ -64,17 +64,17 @@
 	end if
 	return message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.post event ue_close()
 	return ::message.returnvalue
 
-// dw_master.ue_enterkey() returns long
+// dw_master.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	long ll_rowcount
 	long ll_counter
 	long ll_servicecode
@@ -101,19 +101,19 @@
 	end if
 	return ::message.returnvalue
 
-// dw_detail.ue_enterkey() returns long
+// dw_detail.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_detail.getfocus() returns long
+// dw_detail.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	selecttext(1, len(gettext()))
 	return ::message.returnvalue
 
-// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
 	selecttext(1, len(gettext()))

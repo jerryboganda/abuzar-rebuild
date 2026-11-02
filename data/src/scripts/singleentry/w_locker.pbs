@@ -28,17 +28,17 @@
 	end if
 	return 0
 
-// w_locker.create() returns 0
+// w_locker.create() returns 0 [event]
 	integer icurrent
 	call super::create
 
-// w_locker.destroy() returns 0
+// w_locker.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_locker.open() returns long
+// w_locker.open() returns long [event]
 	long ancestorreturnvalue
 	m_entry lm_menu
 	long ll_width
@@ -89,7 +89,7 @@
 	f_setcolumnstyle(this.tab_retrieve.tabpage_detail.dw_lockerdetail, "Qty")
 	return ::message.returnvalue
 
-// w_locker.ue_detail() returns 0
+// w_locker.ue_detail() returns 0 [event]
 	long ll_code
 	long ll_found
 	call super::ue_detail
@@ -120,6 +120,48 @@
 		this.tab_retrieve.tabpage_detail.dw_detail.setfocus()
 	end if
 
-// w_locker.ue_newform() returns 0
+// w_locker.ue_newform() returns 0 [event]
 	call super::ue_newform
 	wf_protectdw(this.tab_retrieve.tabpage_detail.dw_lockerdetail, 1)
+
+// tabpage_detail.create() returns 0 [event]
+	integer icurrent
+	this.dw_lockerdetail = create dw_lockerdetail
+	call super::create
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_lockerdetail
+
+// tabpage_detail.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.dw_lockerdetail
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if parent.parent.parent.wf_duplicatename(data) then
+			messagebox("Name Validation", "Duplication Name Error~n~rPlease Choose Some Other Name")
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	end choose
+	return 1
+
+// dw_find.keypressed(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::keypressed(key, keyflags)
+	if key = keyf5! then
+		parent.parent.parent.wf_release_all_lockers()
+	end if
+	return ::message.returnvalue

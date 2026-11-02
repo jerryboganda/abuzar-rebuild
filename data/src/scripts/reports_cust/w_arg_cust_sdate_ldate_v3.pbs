@@ -1,6 +1,6 @@
 // window w_arg_cust_sdate_ldate_v3 (reports_cust)  ancestor: w_popup_forselection_walias
 
-// w_arg_cust_sdate_ldate_v3.create() returns 0
+// w_arg_cust_sdate_ldate_v3.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.gb_3 = create gb_3
@@ -41,7 +41,7 @@
 	this.control[icurrent + 17] = this.st_6
 	this.control[icurrent + 18] = this.cbx_suppressheader
 
-// w_arg_cust_sdate_ldate_v3.destroy() returns 0
+// w_arg_cust_sdate_ldate_v3.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.gb_3
 	destroy this.gb_2
@@ -62,7 +62,7 @@
 	destroy this.st_6
 	destroy this.cbx_suppressheader
 
-// w_arg_cust_sdate_ldate_v3.open() returns long
+// w_arg_cust_sdate_ldate_v3.open() returns long [event]
 	long ancestorreturnvalue
 	date ld_currdate
 	string ls_text
@@ -80,58 +80,91 @@
 	this.em_enddate.text = ls_text
 	return ::message.returnvalue
 
-// w_arg_cust_sdate_ldate_v3.ue_close() returns 0
+// w_arg_cust_sdate_ldate_v3.ue_close() returns 0 [event]
 	closewithreturn(this, this.istr_arg)
 
-// em_startdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_cancel.clicked() returns long [event]
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked()
+	parent.istr_arg.l_code1 = parent.id_selected.getitemnumber(1, "code")
+	if isnull(parent.istr_arg.l_code1) then
+		parent.istr_arg.l_code1 = 0
+	end if
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	parent.em_caption.getdata(parent.istr_arg.s_name1)
+	parent.em_discperc.getdata(parent.istr_arg.db_code1)
+	if parent.rb_originaldate.checked then
+		parent.istr_arg.s_name3 = "originaldate"
+	elseif parent.rb_billingdate.checked then
+		parent.istr_arg.s_name3 = "billingdate"
+	else
+		parent.istr_arg.s_name3 = "lastsavingdate"
+	end if
+	parent.istr_arg.l_code4 = 0
+	if parent.cbx_suppressheader.checked then
+		parent.istr_arg.l_code4 = 1
+	else
+		parent.istr_arg.l_code4 = 0
+	end if
+	parent.em_term1.getdata(parent.istr_arg.sa_stringlist[1])
+	parent.em_term2.getdata(parent.istr_arg.sa_stringlist[2])
+	parent.istr_arg.i_status = 1
+	return ::message.returnvalue
+
+// em_startdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// em_enddate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// em_enddate.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// em_caption.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// em_caption.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// em_discperc.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// em_discperc.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// rb_originaldate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// rb_originaldate.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// rb_lastsavingdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// rb_lastsavingdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// em_term1.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// em_term1.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// em_term2.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// em_term2.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// cbx_suppressheader.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cbx_suppressheader.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if

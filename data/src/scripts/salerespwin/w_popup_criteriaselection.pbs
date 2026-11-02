@@ -1,13 +1,143 @@
 // window w_popup_criteriaselection (salerespwin)  ancestor: w_popup_forselection
 
-// w_popup_criteriaselection.create() returns 0
+// w_popup_criteriaselection.create() returns 0 [event]
 	call super::create
 
-// w_popup_criteriaselection.destroy() returns 0
+// w_popup_criteriaselection.destroy() returns 0 [event]
 	call super::destroy
 
-// w_popup_criteriaselection.open() returns long
+// w_popup_criteriaselection.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.id_selectionlist.retrieve(1, 5, 1)
+	return ::message.returnvalue
+
+// dw_selected.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	integer li_qty
+	long ll_icode
+	long ll_null
+	long ll_gcode
+	string ls_itemname
+	string ls_null
+	setnull(ll_null)
+	setnull(ls_null)
+	choose case dwo.name
+	case "code"
+		if parent.wf_inititem(integer(data)) = false then
+			messagebox("Validation", "Code does not exist.")
+			setfocus()
+			return 2
+		end if
+		parent.ib_itemvalidated = false
+	case "name"
+		setitem(row, "code", parent.id_selectionlist.getitemnumber(parent.id_selectionlist.getrow(), "code"))
+		setitem(row, "name", parent.id_selectionlist.getitemstring(parent.id_selectionlist.getrow(), "name"))
+		setitem(row, "colname", parent.id_selectionlist.getitemstring(parent.id_selectionlist.getrow(), "colname"))
+		parent.ib_itemvalidated = false
+		return 2
+	end choose
+	return ::message.returnvalue
+
+// dw_selected.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	integer rt_code
+	long ll_currrow
+	long ll_listcurrrow
+	long ll_rowm
+	if getcolumnname() = "name" then
+		setredraw(false)
+		ll_rowm = getrow()
+		if key = keydownarrow! then
+			parent.id_selectionlist.selectrow(0, false)
+			parent.id_selectionlist.scrollnextrow()
+			ll_listcurrrow = parent.id_selectionlist.getrow()
+			rt_code = 1
+		elseif key = keyuparrow! then
+			parent.id_selectionlist.selectrow(0, false)
+			parent.id_selectionlist.scrollpriorrow()
+			ll_listcurrrow = parent.id_selectionlist.getrow()
+			rt_code = 1
+		elseif key = keypagedown! then
+			parent.id_selectionlist.selectrow(0, false)
+			parent.id_selectionlist.scrollnextpage()
+			ll_listcurrrow = parent.id_selectionlist.getrow()
+			rt_code = 1
+		elseif key = keypageup! then
+			parent.id_selectionlist.selectrow(0, false)
+			parent.id_selectionlist.scrollpriorpage()
+			ll_listcurrrow = parent.id_selectionlist.getrow()
+			rt_code = 1
+		elseif key = keyend! then
+			parent.id_selectionlist.selectrow(0, false)
+			parent.id_selectionlist.scrolltorow(parent.id_selectionlist.rowcount())
+			ll_listcurrrow = parent.id_selectionlist.getrow()
+			rt_code = 1
+		elseif key = keyhome! then
+			parent.id_selectionlist.selectrow(0, false)
+			parent.id_selectionlist.scrolltorow(1)
+			ll_listcurrrow = parent.id_selectionlist.getrow()
+			rt_code = 1
+		elseif key = keyback! then
+			parent.ib_bkspace = true
+			setredraw(true)
+		elseif key = keyescape! then
+			if parent.id_selectionlist.visible = false then
+				parent.post event ue_cancel()
+				return 1
+			end if
+			parent.id_selectionlist.hide()
+			setfocus()
+			setredraw(true)
+		elseif key = keyf4! then
+			parent.id_selectionlist.show()
+			parent.id_selectionlist.selectrow(0, false)
+			parent.id_selectionlist.scrolltorow(parent.id_selectionlist.getrow())
+			parent.id_selectionlist.selectrow(parent.id_selectionlist.getrow(), true)
+			setredraw(true)
+		else
+			setredraw(true)
+		end if
+		if rt_code = 1 then
+			parent.id_selectionlist.selectrow(ll_listcurrrow, true)
+			setitem(ll_rowm, "code", parent.id_selectionlist.getitemnumber(ll_listcurrrow, "code"))
+			setitem(ll_rowm, "name", parent.id_selectionlist.getitemstring(ll_listcurrrow, "name"))
+			setitem(ll_rowm, "colname", parent.id_selectionlist.getitemstring(ll_listcurrrow, "colname"))
+			selecttext(1, len(gettext()))
+			setredraw(true)
+		end if
+	end if
+	return rt_code
+
+// dw_selected.ue_enterkey() returns long [event]
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long [event]
+	if parent.id_selected.accepttext() = -1 then
+		parent.id_selected.setfocus()
+		return ::message.returnvalue
+	elseif isnull(parent.id_selected.getitemstring(parent.id_selected.getrow(), "name")) then
+		messagebox("Name Validation", "Please enter valid value for Name.")
+		parent.id_selected.setcolumn(1)
+		parent.id_selected.setfocus()
+		return ::message.returnvalue
+	end if
+	parent.is_popup_selection.l_code = parent.id_selected.getitemnumber(parent.id_selected.getrow(), "code")
+	parent.is_popup_selection.s_name = parent.id_selected.getitemstring(parent.id_selected.getrow(), "name")
+	parent.is_popup_selection.s_name2 = parent.id_selected.getitemstring(parent.id_selected.getrow(), "colname")
+	parent.is_popup_selection.s_name3 = "criteriasearch"
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// dw_selectionlist.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
+	long ll_rowmain
+	if row > 0 then
+		ll_rowmain = parent.id_selected.getrow()
+		parent.id_selected.setitem(ll_rowmain, "code", parent.id_selectionlist.getitemnumber(row, "code"))
+		parent.id_selected.setitem(ll_rowmain, "name", parent.id_selectionlist.getitemstring(row, "name"))
+		parent.id_selected.setitem(ll_rowmain, "colname", parent.id_selectionlist.getitemstring(row, "colname"))
+		parent.id_selected.selecttext(1, len(gettext()))
+		parent.ib_itemvalidated = false
+		selectrow(0, false)
+		selectrow(row, true)
+		post event ue_setfocus()
+	end if
 	return ::message.returnvalue

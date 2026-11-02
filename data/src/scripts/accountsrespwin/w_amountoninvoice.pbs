@@ -1,6 +1,6 @@
 // window w_amountoninvoice (accountsrespwin)  ancestor: window
 
-// w_amountoninvoice.ue_close(integer ai_status) returns 0
+// w_amountoninvoice.ue_close(integer ai_status) returns 0 [event]
 	if ai_status = -1 then
 		this.istr_amountoninvoice.d_amt = this.istr_oldamountoninvoice.d_amt
 		this.istr_amountoninvoice.c_paymentmode = this.istr_oldamountoninvoice.c_paymentmode
@@ -46,18 +46,18 @@
 	next
 	return 0
 
-// w_amountoninvoice.create() returns 0
+// w_amountoninvoice.create() returns 0 [event]
 	this.dw_amountoninvoice = create dw_amountoninvoice
 	this.cb_cancel = create cb_cancel
 	this.cb_ok = create cb_ok
 	this.control = {this.dw_amountoninvoice, this.cb_cancel, this.cb_ok}
 
-// w_amountoninvoice.destroy() returns 0
+// w_amountoninvoice.destroy() returns 0 [event]
 	destroy this.dw_amountoninvoice
 	destroy this.cb_cancel
 	destroy this.cb_ok
 
-// w_amountoninvoice.open() returns long
+// w_amountoninvoice.open() returns long [event]
 	string ls_invcode
 	long ll_rtcode
 	environment le_env
@@ -129,7 +129,7 @@
 	end if
 	return message.returnvalue
 
-// dw_amountoninvoice.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_amountoninvoice.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ll_null
 	integer li_errcode
 	setnull(ll_null)
@@ -154,7 +154,7 @@
 	end choose
 	return li_errcode
 
-// dw_amountoninvoice.itemerror(long row, dwobject dwo, string data) returns long
+// dw_amountoninvoice.itemerror(long row, dwobject dwo, string data) returns long [event]
 	choose case dwo.name
 	case "amt"
 		messagebox("Amount Validation!", "Please Enter Valid Amount")
@@ -163,12 +163,12 @@
 	end choose
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.istr_amountoninvoice.i_status = -1
 	parent.post event ue_close(-1)
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	if parent.istr_amountoninvoice.l_mode = 1 then
 		parent.post event ue_close(-1)
 		return ::message.returnvalue

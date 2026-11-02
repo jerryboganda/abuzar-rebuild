@@ -1,9 +1,51 @@
 // menu m_survey_form (multientry)  ancestor: m_multi_entry
 
-// m_survey_form.create() returns 0
+// m_survey_form.create() returns 0 [event]
 	m_survey_form = this
 	call super::create
 	this.text = "m_survey_form"
 
-// m_survey_form.destroy() returns 0
+// m_survey_form.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_open = create m_open
+	this.item[upperbound(this.item) + 1] = this.m_open
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_open
+
+// m_file.clicked() returns 0 [event]
+	call super::clicked
+	this.parentwindow.dynamic wf_dueitem()
+
+// m_options.create() returns 0 [event]
+	call super::create
+	this.text = "Sa&ve and Print~tCtrl+F6"
+	this.enabled = false
+
+// m_options.clicked() returns 0 [event]
+	call super::clicked
+	this.parentwindow.triggerevent("ue_save")
+	if this.parentwindow.dynamic wf_commitform() = true then
+		this.parentwindow.triggerevent("ue_print")
+		this.parentwindow.postevent("ue_new")
+	end if
+
+// m_options.destroy() returns 0 [event]
+	call super::destroy
+
+// m_open.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_populateitems()
+
+// m_open.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Populate~tCtrl+G"
+	this.enabled = false
+	this.shortcut = 327
+
+// m_open.destroy() returns 0 [event]
 	call super::destroy

@@ -1,9 +1,28 @@
 // menu m_packjob (packingmodule)  ancestor: m_multi_entry
 
-// m_packjob.create() returns 0
+// m_packjob.create() returns 0 [event]
 	m_packjob = this
 	call super::create
 	this.text = "m_packjob"
 
-// m_packjob.destroy() returns 0
+// m_packjob.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_selectprintformat = create m_selectprintformat
+	this.item[upperbound(this.item) + 1] = this.m_selectprintformat
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_selectprintformat
+
+// m_selectprintformat.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_select_printformat()
+
+// m_selectprintformat.create() returns 0 [event]
+	call super::create
+	this.text = "Select Print Format"
+
+// m_selectprintformat.destroy() returns 0 [event]
 	call super::destroy

@@ -260,7 +260,7 @@
 		openwithparm(w_student_ledger, ll_studentcode)
 	end if
 
-// w_student_form.create() returns 0
+// w_student_form.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	if isvalid(this.menuid) then
@@ -273,21 +273,21 @@
 	icurrent = upperbound(this.control)
 	this.control[icurrent + 1] = this.dw_image
 
-// w_student_form.destroy() returns 0
+// w_student_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 	destroy this.dw_image
 
-// w_student_form.activate() returns long
+// w_student_form.activate() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::activate()
 	this.windowstate = maximized!
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_student_form.open() returns long
+// w_student_form.open() returns long [event]
 	long ancestorreturnvalue
 	m_studentmenu lm_menu
 	ancestorreturnvalue = super::open()
@@ -300,7 +300,7 @@
 	this.id_image.settransobject(this.it_transobject)
 	return ::message.returnvalue
 
-// w_student_form.ue_save() returns 0
+// w_student_form.ue_save() returns 0 [event]
 	long ll_primarykey
 	long ll_row
 	long ll_usercode
@@ -426,7 +426,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_student_form.ue_detail() returns 0
+// w_student_form.ue_detail() returns 0 [event]
 	long ll_code
 	call super::ue_detail
 	if this.id_list.rowcount() > 0 and this.id_list.getrow() > 0 and not f_rightexists(5263) then
@@ -459,7 +459,7 @@
 		end if
 	end if
 
-// w_student_form.ue_newform() returns 0
+// w_student_form.ue_newform() returns 0 [event]
 	long ll_code
 	call super::ue_newform
 	wf_assign_master_cash_win_object()
@@ -477,12 +477,12 @@
 	end if
 	this.id_detail.object.fnic.edit.required = "no"
 
-// w_student_form.ue_postopen() returns 0
+// w_student_form.ue_postopen() returns 0 [event]
 	call super::ue_postopen
 	wf_assign_master_cash_win_object()
 	this.il_groupcode = f_getgroupcode(gl_usercode)
 
-// w_student_form.ue_print() returns 0
+// w_student_form.ue_print() returns 0 [event]
 	long ll_code
 	long ll_row
 	long li_printretcode
@@ -543,3 +543,251 @@
 		return
 	end if
 	messagebox("Printing Error", "Can not Print,~r~nNo rows are retrieved", information!)
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_null
+	long ll_totdays
+	long ll_years
+	long ll_months
+	long ll_days
+	datetime ldt_date_null
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	setnull(ldt_date_null)
+	setnull(li_null)
+	choose case dwo.name
+	case "regno"
+		if parent.parent.parent.wf_duplicateregno(data) then
+			return 1
+		end if
+	case "dob"
+		if isdate(string(date(left(data, 10)))) then
+			ll_totdays = daysafter(date(string(date(left(data, 10)))), today())
+			ll_years = ll_totdays / 365.0
+			ll_months = ll_totdays mod 365 / 30.0
+			ll_days = ll_totdays mod 365 mod 30
+			setitem(row, "ageyears", ll_years)
+			setitem(row, "agemonths", ll_months)
+			setitem(row, "agedays", ll_days)
+		else
+			return 1
+		end if
+	case "ageyears"
+		ll_years = long(data)
+		if isnull(ll_years) then
+			ll_years = 0
+		end if
+		ll_months = this.object.agemonths[row]
+		if isnull(ll_months) then
+			ll_months = 0
+		end if
+		ll_days = this.object.agedays[row]
+		if isnull(ll_days) then
+			ll_days = 0
+		end if
+		ll_totdays = ll_years * 365 + ll_months * 30 + ll_days
+		if ll_totdays >= 0 then
+			setitem(row, "dob", relativedate(today(), -ll_totdays))
+		else
+			return 1
+		end if
+	case "agemonths"
+		ll_years = this.object.ageyears[row]
+		if isnull(ll_years) then
+			ll_years = 0
+		end if
+		ll_months = long(data)
+		if isnull(ll_months) then
+			ll_months = 0
+		end if
+		ll_days = this.object.agedays[row]
+		if isnull(ll_days) then
+			ll_days = 0
+		end if
+		ll_totdays = ll_years * 365 + ll_months * 30 + ll_days
+		if ll_totdays >= 0 then
+			setitem(row, "dob", relativedate(today(), -ll_totdays))
+		else
+			return 1
+		end if
+	case "agedays"
+		ll_years = this.object.ageyears[row]
+		if isnull(ll_years) then
+			ll_years = 0
+		end if
+		ll_months = this.object.agemonths[row]
+		if isnull(ll_months) then
+			ll_months = 0
+		end if
+		ll_days = long(data)
+		if isnull(ll_days) then
+			ll_days = 0
+		end if
+		ll_totdays = ll_years * 365 + ll_months * 30 + ll_days
+		if ll_totdays >= 0 then
+			setitem(row, "dob", relativedate(today(), -ll_totdays))
+		else
+			return 1
+		end if
+	case "recurringperiod"
+		if long(data) < 0 then
+			return 1
+		end if
+	case "admit"
+		if long(data) = 1 then
+			this.object.admissioncode_t.visible = true
+			this.object.admissioncode.visible = true
+			this.object.locationcode_t.visible = true
+			this.object.locationcode.visible = true
+			this.object.doctorcode_t.visible = true
+			this.object.doctorcode.visible = true
+			this.object.diseasecode_t.visible = true
+			this.object.diseasecode.visible = true
+			this.object.diagnosis_t.visible = true
+			this.object.diagnosis.visible = true
+		else
+			this.object.admissioncode_t.visible = false
+			this.object.admissioncode.visible = false
+			this.object.locationcode_t.visible = false
+			this.object.locationcode.visible = false
+			this.object.doctorcode_t.visible = false
+			this.object.doctorcode.visible = false
+			this.object.diseasecode_t.visible = false
+			this.object.diseasecode.visible = false
+			this.object.diagnosis_t.visible = false
+			this.object.diagnosis.visible = false
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "regno"
+		messagebox("ItemNo Validation", "Item Duplication Error~r~nPlease enter some other Reg No")
+	case "dob"
+		messagebox("Birth Date Validation", "Please enter some valid date")
+	case "age"
+		messagebox("Age Validation", "Please enter some valid age in years")
+	end choose
+	return 1
+
+// dw_detail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keyf9! then
+		parent.parent.parent.wf_setimage()
+	end if
+	return ::message.returnvalue
+
+// dw_detail.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked(xpos, ypos, row, dwo)
+	if dwo.name = "p_photo" then
+		parent.parent.parent.wf_setimage()
+	end if
+	return ::message.returnvalue
+
+// dw_find.keypressed(keycode key, unsignedlong keyflags) returns long [event]
+	integer li_movement
+	long ll_row
+	long ll_temp
+	long ll_code
+	string sl_columnname
+	string ls_filterexp
+	s_popup_selection lstr_selection
+	s_arguements lstr_arg
+	long ll_classcode
+	long ll_studentcode
+	string ls_rollno
+	if key = keyf8! then
+		openwithparm(w_popup_partialsearch_selection, "d_student_list")
+		lstr_selection = message.powerobjectparm
+		if lstr_selection.l_code > 0 and lstr_selection.l_code2 > 0 then
+			ll_temp = parent.parent.parent.id_list.find("code = " + string(lstr_selection.l_code2), 1, parent.parent.parent.id_list.rowcount())
+			if ll_temp > 0 then
+				ll_row = ll_temp
+				parent.parent.parent.id_list.scrolltorow(ll_row)
+			end if
+		end if
+	elseif key = keyf6! then
+		openwithparm(w_popup_comprehensicesearch_selection, "d_student_list")
+		lstr_selection = message.powerobjectparm
+		if lstr_selection.l_code > 0 and lstr_selection.l_code2 > 0 then
+			ll_temp = parent.parent.parent.id_list.find("code = " + string(lstr_selection.l_code2), 1, parent.parent.parent.id_list.rowcount())
+			if ll_temp > 0 then
+				ll_row = ll_temp
+				parent.parent.parent.id_list.scrolltorow(ll_row)
+			end if
+		end if
+	elseif key = keyf5! then
+		if parent.parent.parent.id_list.getrow() > 0 and (parent.parent.parent.id_list.object.status[parent.parent.parent.id_list.getrow()] = "L" and parent.parent.parent.id_list.object.code[parent.parent.parent.id_list.getrow()] > 0) then
+			open(w_arg_activeclass_single)
+			lstr_arg = message.powerobjectparm
+			if lstr_arg.i_status = 1 and lstr_arg.l_code1 > 0 then
+				ll_classcode = lstr_arg.l_code1
+				ll_studentcode = parent.parent.parent.id_list.object.code[parent.parent.parent.id_list.getrow()]
+				SQL rollback USING parent.parent.parent.it_transobject;
+				parent.parent.parent.it_transobject.admit_student(ll_classcode, ll_studentcode, ls_rollno)
+				if parent.parent.parent.it_transobject.sqlcode = 0 then
+					SQL commit USING parent.parent.parent.it_transobject;
+					if parent.parent.parent.it_transobject.sqlcode = 0 then
+						messagebox("Student Re-Admission/Re-Enrollment.", "Student Successfully Re-Admitted/Re-Enrolled", information!)
+					else
+						SQL rollback USING parent.parent.parent.it_transobject;
+						messagebox("Student Admission/Enrollment.", "Problem in Student Admission/Enrollment", stopsign!)
+					end if
+				else
+					SQL rollback USING parent.parent.parent.it_transobject;
+					messagebox("Student Admission/Enrollment", "Problem in Student Admission/Enrollment", stopsign!)
+				end if
+			end if
+		end if
+	elseif key = keyuparrow! then
+		ll_row = parent.parent.parent.id_list.getrow() - 1
+		parent.parent.parent.id_list.scrollpriorrow()
+	elseif key = keydownarrow! then
+		ll_row = parent.parent.parent.id_list.getrow() + 1
+		parent.parent.parent.id_list.scrollnextrow()
+	elseif key = keypagedown! then
+		parent.parent.parent.id_list.scrollnextpage()
+		ll_row = parent.parent.parent.id_dwcontrol.getrow()
+	elseif key = keypageup! then
+		parent.parent.parent.id_list.scrollpriorpage()
+		ll_row = parent.parent.parent.id_dwcontrol.getrow()
+	elseif key = keyhome! then
+		scrolltorow(1)
+		ll_row = 1
+	elseif key = keyend! then
+		ll_row = parent.parent.parent.id_list.rowcount()
+		scrolltorow(ll_row)
+	elseif key = keyenter! and parent.parent.parent.id_dwcontrol.getselectedrow(0) > 0 then
+		parent.parent.parent.i_editmode = 2
+		parent.parent.parent.tab_retrieve.selectedtab = 1
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	if ll_row > 0 and ll_row <= parent.parent.parent.id_dwcontrol.rowcount() then
+		parent.parent.parent.id_list.setredraw(false)
+		parent.parent.parent.tab_retrieve.tabpage_detail.enabled = true
+		parent.parent.parent.im_menu.m_file.m_retrieve.enabled = true
+		parent.parent.parent.id_list.selectrow(0, false)
+		parent.parent.parent.id_list.selectrow(ll_row, true)
+		if parent.parent.parent.ii_type = 1 then
+			setitem(1, "find", parent.parent.parent.id_list.getitemstring(ll_row, parent.parent.parent.ii_colindex))
+		elseif parent.parent.parent.ii_type = 3 then
+			setitem(1, "find", trim(string(parent.parent.parent.id_list.getitemdatetime(ll_row, parent.parent.parent.ii_colindex))))
+		else
+			setitem(1, "find", trim(string(parent.parent.parent.id_list.getitemnumber(ll_row, parent.parent.parent.ii_colindex))))
+		end if
+		parent.parent.parent.il_selectedrow = ll_row
+		selecttext(1, len(gettext()))
+		parent.parent.parent.id_list.setredraw(true)
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue

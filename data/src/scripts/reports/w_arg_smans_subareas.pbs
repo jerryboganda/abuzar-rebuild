@@ -1,6 +1,6 @@
 // window w_arg_smans_subareas (reports)  ancestor: w_listarguments
 
-// w_arg_smans_subareas.create() returns 0
+// w_arg_smans_subareas.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.dw_control2 = create dw_control2
@@ -29,7 +29,7 @@
 	this.control[icurrent + 11] = this.rb_both
 	this.control[icurrent + 12] = this.gb_6
 
-// w_arg_smans_subareas.destroy() returns 0
+// w_arg_smans_subareas.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.dw_control2
 	destroy this.st_selectable
@@ -44,7 +44,7 @@
 	destroy this.rb_both
 	destroy this.gb_6
 
-// w_arg_smans_subareas.open() returns long
+// w_arg_smans_subareas.open() returns long [event]
 	long ancestorreturnvalue
 	long ll_counter
 	long ll_rowcount
@@ -84,17 +84,57 @@
 	this.dw_price.setitem(1, "price", 1)
 	return ::message.returnvalue
 
-// dw_control2.ue_enterkey() returns long
+// cb_ok.clicked() returns long [event]
+	long ancestorreturnvalue
+	long ll_count
+	long ll_counter
+	long ll_temp
+	long ll_innercounter
+	long ll_found
+	ancestorreturnvalue = super::clicked()
+	if parent.cbx_all.checked = true then
+		for ll_counter = 1 to parent.idc_categories.rowcount()
+			parent.istr_arg.ia_integerlist[ll_counter] = parent.idc_categories.getitemnumber(ll_counter, parent.is_childcolname)
+		next
+	else
+		parent.istr_arg.ia_integerlist[1] = -1000
+		for ll_counter = 1 to ll_counter
+			ll_found = parent.idc_categories.find("name ='" + parent.lb_selectedcategories.text(ll_counter) + "'", 1, parent.idc_categories.rowcount())
+			if ll_found > 0 then
+				parent.istr_arg.ia_integerlist[ll_counter] = parent.idc_categories.getitemnumber(ll_found, parent.is_childcolname)
+			end if
+		next
+	end if
+	if parent.cbx_allcust.checked = true then
+		for ll_counter = 1 to parent.idc_child.rowcount()
+			parent.istr_arg.ia_integerlist1[ll_counter] = parent.idc_child.getitemnumber(ll_counter, "subareacode")
+		next
+	else
+		parent.istr_arg.ia_integerlist1[1] = -1000
+		for ll_counter = 1 to ll_counter
+			ll_found = parent.idc_child.find("name ='" + parent.lb_selectedcust.text(ll_counter) + "'", 1, parent.idc_child.rowcount())
+			if ll_found > 0 then
+				parent.istr_arg.ia_integerlist1[ll_counter] = parent.idc_child.getitemnumber(ll_found, "subareacode")
+			end if
+		next
+	end if
+	parent.istr_arg.i_supress = parent.cbx_supress.checked
+	parent.istr_arg.i_hide = parent.cbx_hide.checked
+	parent.istr_arg.i_status = 1
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// dw_control2.ue_enterkey() returns long [event]
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// lb_cust.ue_keypress(keycode key, unsignedlong keyflags) returns long
+// lb_cust.ue_keypress(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		post event doubleclicked(selectedindex())
 	end if
 	return ::message.returnvalue
 
-// lb_cust.doubleclicked(integer index) returns long
+// lb_cust.doubleclicked(integer index) returns long [event]
 	string ls_item
 	long ll_selectedindex
 	ls_item = string(selecteditem())
@@ -116,18 +156,18 @@
 	end if
 	return ::message.returnvalue
 
-// lb_cust.getfocus() returns long
+// lb_cust.getfocus() returns long [event]
 	selectitem(0)
 	selectitem(1)
 	return ::message.returnvalue
 
-// lb_selectedcust.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// lb_selectedcust.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		post event doubleclicked(selectedindex())
 	end if
 	return ::message.returnvalue
 
-// lb_selectedcust.doubleclicked(integer index) returns long
+// lb_selectedcust.doubleclicked(integer index) returns long [event]
 	string ls_item
 	long ll_selectedindex
 	ll_selectedindex = selectedindex()
@@ -145,7 +185,7 @@
 	end if
 	return ::message.returnvalue
 
-// lb_selectedcust.getfocus() returns long
+// lb_selectedcust.getfocus() returns long [event]
 	selectitem(0)
 	selectitem(1)
 	return ::message.returnvalue

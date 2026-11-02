@@ -49,7 +49,7 @@
 	end if
 	return ll_retcode
 
-// w_studentclasstransfer_form.create() returns 0
+// w_studentclasstransfer_form.create() returns 0 [event]
 	call super::create
 	if isvalid(this.menuid) then
 		destroy this.menuid
@@ -58,27 +58,27 @@
 		this.menuid = create m_studenttransfermenu
 	end if
 
-// w_studentclasstransfer_form.destroy() returns 0
+// w_studentclasstransfer_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_studentclasstransfer_form.activate() returns long
+// w_studentclasstransfer_form.activate() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::activate()
 	this.windowstate = maximized!
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_studentclasstransfer_form.open() returns long
+// w_studentclasstransfer_form.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.is_tablename = "StudentClassTransfer"
 	this.im_transfermenu = this.menuid
 	return ::message.returnvalue
 
-// w_studentclasstransfer_form.ue_save() returns 0
+// w_studentclasstransfer_form.ue_save() returns 0 [event]
 	long ll_row
 	long ll_retcode
 	long ll_currentclass
@@ -154,7 +154,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_studentclasstransfer_form.ue_detail() returns 0
+// w_studentclasstransfer_form.ue_detail() returns 0 [event]
 	long ll_code
 	this.im_menu.m_file.m_new.enabled = false
 	this.im_menu.m_file.m_save.enabled = false
@@ -176,7 +176,7 @@
 		this.tab_retrieve.tabpage_detail.dw_detail.setfocus()
 	end if
 
-// w_studentclasstransfer_form.ue_newform() returns 0
+// w_studentclasstransfer_form.ue_newform() returns 0 [event]
 	integer li_protect
 	long ll_retcode
 	call super::ue_newform
@@ -188,3 +188,92 @@
 	this.idc_location.settransobject(sqlca)
 	this.idc_location.retrieve()
 	wf_protectdw(this.id_detail, li_protect)
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_res
+	long ll_retcode
+	long ll_studentcode
+	long rt_code
+	string ls_regno
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "regno"
+		if isnull(data) or data = "" then
+			rt_code = 0
+		else
+			li_res = parent.parent.parent.wf_findstudentcode(data, ll_studentcode)
+			if li_res > 0 then
+				setitem(row, "StudentCode", ll_studentcode)
+				rt_code = 0
+				parent.parent.parent.wf_setstudentinfo(ll_studentcode)
+			else
+				messagebox("Student Validation", "Student with  RegNo  " + data + " does not exist")
+				rt_code = 1
+			end if
+		end if
+		return rt_code
+	case "studentcode"
+		ll_studentcode = long(data)
+		if ll_studentcode > 0 then
+			if parent.parent.parent.wf_setstudentinfo(ll_studentcode) = 0 then
+				messagebox("Student Validation", "Student does not exist or Already Inactive.")
+				return 1
+			else
+				return 0
+			end if
+			return
+		end if
+	case "targetclass"
+		if isnull(data) then
+			messagebox("Target Class Validation", "Please Choose Some Valid New/Target Class")
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	long ll_counter
+	long ll_foundcode
+	s_popup_selection lstr_selection
+	s_arguements lstr_arguements
+	string ls_dataobject
+	dwruntimeerror exdw
+	nullobjecterror exnullobj
+	runtimeerror ex
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	try
+		if getcolumnname() = "studentcode" and key = keyf6! then
+			open(w_studentsearch)
+			lstr_arguements = message.powerobjectparm
+			if lstr_arguements.i_status = 1 then
+				openwithparm(w_studentsearchresult, lstr_arguements)
+				lstr_arguements = message.powerobjectparm
+				if lstr_arguements.i_status = 1 and lstr_arguements.l_code1 > 0 then
+					this.object.studentcode[1] = lstr_arguements.l_code1
+					parent.parent.parent.wf_setstudentinfo(lstr_arguements.l_code1)
+				end if
+			end if
+		elseif getcolumnname() = "studentcode" and key = keyf7! then
+			openwithparm(w_popup_partialsearch_selection, "d_student_list")
+			lstr_selection = message.powerobjectparm
+			if lstr_selection.l_code > 0 and lstr_selection.l_code2 > 0 then
+				ll_foundcode = lstr_selection.l_code2
+				this.object.studentcode[1] = ll_foundcode
+				parent.parent.parent.wf_setstudentinfo(ll_foundcode)
+			end if
+		end if
+	catch (throwable exdw)
+		messagebox("Exception Occur", "Details are:~r~n" + exdw.getmessage())
+	catch (throwable exnullobj)
+		messagebox("Exception Occur", "Details are:~r~n" + exnullobj.getmessage())
+	catch (throwable ex)
+		messagebox("Exception Occur", "Details are:~r~n" + ex.getmessage())
+		setnull(ll_counter)
+		setitem(1, "custcode", ll_counter)
+	end try
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue

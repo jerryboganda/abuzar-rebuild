@@ -37,7 +37,7 @@
 // w_itembatchlock_form.wf_retrievedetail(long al_icode, long al_groupcode) returns long
 	return this.id_dwcontrol.retrieve(al_icode, al_groupcode)
 
-// w_itembatchlock_form.create() returns 0
+// w_itembatchlock_form.create() returns 0 [event]
 	call super::create
 	if isvalid(this.menuid) then
 		destroy this.menuid
@@ -46,13 +46,13 @@
 		this.menuid = create m_itempriority
 	end if
 
-// w_itembatchlock_form.destroy() returns 0
+// w_itembatchlock_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_itembatchlock_form.ue_save() returns 0
+// w_itembatchlock_form.ue_save() returns 0 [event]
 	setpointer(hourglass!)
 	if f_validatedw(this.id_detail) < 0 then
 		return
@@ -71,7 +71,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_itembatchlock_form.ue_detail() returns 0
+// w_itembatchlock_form.ue_detail() returns 0 [event]
 	long ll_code
 	long ll_rowcount
 	long ll_counter
@@ -104,18 +104,18 @@
 		this.id_detail.setitemstatus(ll_counter, 1, primary!, datamodified!)
 	next
 
-// w_itembatchlock_form.ue_newform() returns 0
+// w_itembatchlock_form.ue_newform() returns 0 [event]
 	call super::ue_newform
 	this.im_menu.m_item.m_newitem.enabled = false
 	this.im_menu.m_item.m_deleteitem.enabled = false
 
-// w_itembatchlock_form.ue_postopen() returns 0
+// w_itembatchlock_form.ue_postopen() returns 0 [event]
 	call super::ue_postopen
 	this.im_menu.m_file.m_new.visible = false
 
-// w_itembatchlock_form.ue_getfocus() returns 0
+// w_itembatchlock_form.ue_getfocus() returns 0 [event]
 
-// w_itembatchlock_form.ue_list() returns 0
+// w_itembatchlock_form.ue_list() returns 0 [event]
 	long ll_rtcode
 	if this.id_list.rowcount() <= 0 then
 		ll_rtcode = wf_retrievelist()
@@ -148,3 +148,9 @@
 	end if
 	messagebox("Result", "No rows or retrieved possible empty table~r~nInsert some rows first")
 	postevent("ue_new")
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	return ::message.returnvalue
+
+// dw_itemsdetail.getfocus() returns long [event]
+	return ::message.returnvalue

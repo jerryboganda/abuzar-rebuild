@@ -1,6 +1,6 @@
 // window w_modify_vouchers_old (accountsext)  ancestor: w_single_entry
 
-// w_modify_vouchers_old.ue_newform() returns 0
+// w_modify_vouchers_old.ue_newform() returns 0 [event]
 	setredraw(false)
 	this.i_editmode = 1
 	this.i_retrievemode = 2
@@ -22,24 +22,24 @@
 	this.id_detail.setfocus()
 	setredraw(true)
 
-// w_modify_vouchers_old.create() returns 0
+// w_modify_vouchers_old.create() returns 0 [event]
 	integer icurrent
 	call super::create
 
-// w_modify_vouchers_old.destroy() returns 0
+// w_modify_vouchers_old.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_modify_vouchers_old.activate() returns long
+// w_modify_vouchers_old.activate() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::activate()
 	this.windowstate = maximized!
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_modify_vouchers_old.ue_save() returns 0
+// w_modify_vouchers_old.ue_save() returns 0 [event]
 	long ll_primarykey
 	long ll_row
 	setpointer(hourglass!)
@@ -60,8 +60,51 @@
 	end if
 	setpointer(arrow!)
 
-// w_modify_vouchers_old.open() returns long
+// w_modify_vouchers_old.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.tab_retrieve.tabpage_list.enabled = false
 	return ::message.returnvalue
+
+// tabpage_detail.create() returns 0 [event]
+	integer icurrent
+	this.dw_1 = create dw_1
+	call super::create
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_1
+
+// tabpage_detail.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.dw_1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer rt_code
+	string ls_region
+	string ls_name
+	long ll_count
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		ls_region = lower(trim(data))
+		SQL Select count ( *) INTO :ll_count From Region Where Region.name =:ls_region USING sqlca;
+		if sqlca.sqlcode <> 0 then
+			messagebox("Database Error", "Some database request has been fail")
+			rt_code = 1
+		elseif not isnull(ll_count) and ll_count > 0 then
+			messagebox("Name Validation", "Name " + ls_name + " already exist~r~nEnter some differnt name")
+			rt_code = 1
+		end if
+	end choose
+	return rt_code
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	end choose
+	return 1

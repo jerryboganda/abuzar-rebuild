@@ -1,9 +1,197 @@
 // menu m_ipserviceordermenu (ipservices)  ancestor: m_multi_entry
 
-// m_ipserviceordermenu.create() returns 0
+// m_ipserviceordermenu.create() returns 0 [event]
 	m_ipserviceordermenu = this
 	call super::create
 	this.text = "m_ipserviceordermenu"
 
-// m_ipserviceordermenu.destroy() returns 0
+// m_ipserviceordermenu.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_open = create m_open
+	this.m_newcustomer = create m_newcustomer
+	this.m_searchbyservicedate = create m_searchbyservicedate
+	this.m_editservicetemplate = create m_editservicetemplate
+	this.m_showinpatientbill = create m_showinpatientbill
+	this.item[upperbound(this.item) + 1] = this.m_open
+	this.item[upperbound(this.item) + 1] = this.m_newcustomer
+	this.item[upperbound(this.item) + 1] = this.m_searchbyservicedate
+	this.item[upperbound(this.item) + 1] = this.m_editservicetemplate
+	this.item[upperbound(this.item) + 1] = this.m_showinpatientbill
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_open
+	destroy this.m_newcustomer
+	destroy this.m_searchbyservicedate
+	destroy this.m_editservicetemplate
+	destroy this.m_showinpatientbill
+
+// m_file.clicked() returns 0 [event]
+	call super::clicked
+	this.parentwindow.dynamic wf_dueitem()
+
+// m_options.create() returns 0 [event]
+	call super::create
+	this.text = "Sa&ve and Print~tCtrl+F6"
+	this.enabled = false
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_options.clicked() returns 0 [event]
+	call super::clicked
+	this.parentwindow.triggerevent("ue_save")
+	if this.parentwindow.dynamic wf_commitform() = true then
+		this.parentwindow.triggerevent("ue_print")
+		this.parentwindow.postevent("ue_new")
+	end if
+
+// m_options.destroy() returns 0 [event]
+	call super::destroy
+
+// m_open.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_copyinvoice()
+
+// m_open.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "&Open~tCtrl+O"
+	this.enabled = false
+	this.shortcut = 335
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_open.destroy() returns 0 [event]
+	call super::destroy
+
+// m_newcustomer.create() returns 0 [event]
+	call super::create
+	this.text = "Ne&w Customer~tCtrl+W"
+	this.shortcut = 343
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_newcustomer.destroy() returns 0 [event]
+	call super::destroy
+
+// m_newcustomer.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_newcustomer()
+
+// m_searchbyservicedate.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_searchserviceorderbyservicedate()
+
+// m_searchbyservicedate.create() returns 0 [event]
+	call super::create
+	this.text = "Search By Service Date~tCtrl+R"
+	this.shortcut = 338
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_searchbyservicedate.destroy() returns 0 [event]
+	call super::destroy
+
+// m_editservicetemplate.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_editservicetemplate()
+
+// m_editservicetemplate.create() returns 0 [event]
+	call super::create
+	this.text = "Edit Service Template~tAlt+F10"
+	this.shortcut = 633
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_editservicetemplate.destroy() returns 0 [event]
+	call super::destroy
+
+// m_showinpatientbill.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_show_inpatientbill()
+
+// m_showinpatientbill.create() returns 0 [event]
+	call super::create
+	this.text = "Show In-Patient Bill~tAlt+F1"
+	this.shortcut = 624
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_showinpatientbill.destroy() returns 0 [event]
 	call super::destroy

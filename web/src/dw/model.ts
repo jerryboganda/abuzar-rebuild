@@ -580,8 +580,11 @@ export class DwModel implements EvalHost {
     return [1, n]
   }
 
+  /** set by the printing code while it renders a page */
+  printPage = 1
+  printPageCount = 1
   pageInfo(): { page: number; pageCount: number } {
-    return { page: 1, pageCount: 1 }
+    return { page: this.printPage, pageCount: this.printPageCount }
   }
 
   // ---------------------------------------------------------------- misc
@@ -601,10 +604,16 @@ export class DwModel implements EvalHost {
     const m = /^([^.]+)\.(.+)$/.exec(p)
     if (m) {
       const [, obj, attr] = m
-      if (attr === 'coltype') {
-        const i = this.colIndex(obj)
-        if (i >= 0) return this.def.table.columns[i].type
-        return '!'
+      const ci = this.colIndex(obj)
+      if (ci >= 0) {
+        const col = this.def.table.columns[ci]
+        if (attr === 'coltype') return col.type
+        if (attr === 'name') return this.colNames[ci]
+        if (attr === 'dbname') return col.dbname || col.name
+        if (attr === 'id') return String(ci + 1)
+        if (attr === 'key') return col.key || 'no'
+        if (attr === 'update') return col.update || 'no'
+        if (attr === 'initial') return col.initial ?? ''
       }
       if (attr === 'type') {
         const o = this.def.objects.find((x) => x.name.toLowerCase() === obj)

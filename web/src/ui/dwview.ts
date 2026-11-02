@@ -1,5 +1,6 @@
 // DOM rendering of a DataWindow control: bands, rows, objects, editing.
 import type { NDwBase } from '../runtime/native/dwctrl.ts'
+import { argList } from '../dw/def.ts'
 import type { DwModel } from '../dw/model.ts'
 import { num, splitExpr } from '../dw/def.ts'
 import type { DwObject } from '../dw/def.ts'
@@ -85,36 +86,54 @@ export class DwView {
     return props ? Number(props.height ?? 0) : 0
   }
 
-  private async paint(m: DwModel): Promise<void> {
+  /** objects of the definition by band, scale functions and the natural width of the layout */
+  layout(m: DwModel): { sx: (v: number) => number; sy: (v: number) => number; byBand: Map<string, DwObject[]>; width: number } {
     const u = this.units(m)
     const sx = (v: number) => toPx(v, 'x', u)
     const sy = (v: number) => toPx(v, 'y', u)
-    const root = document.createElement('div')
-    root.className = 'dw-inner'
-    root.style.background = pbColor(m.def.datawindow.color, '#fff')
     const byBand = new Map<string, DwObject[]>()
     for (const o of m.def.objects) {
       const b = o.band === 'header[1]' ? 'header.1' : o.band
       ;(byBand.get(b) || byBand.set(b, []).get(b)!).push(o)
     }
     const width = Math.max(0, ...m.def.objects.map((o) => num(o, 'x') + num(o, 'width') + (o.type === 'line' ? Math.max(num(o, 'x2'), num(o, 'x1')) - num(o, 'x') : 0)))
-    const inner = root
-    inner.style.width = sx(width) + 'px'
+    return { sx, sy, byBand, width: sx(width) }
+  }
+
+  async makeBand(m: DwModel, L: ReturnType<DwView['layout']>, band: string, row: number, cls: string): Promise<HTMLElement> {
+    const h = this.bandHeight(m, band)
+    const el = document.createElement('div')
+    el.className = 'band ' + cls
+    el.style.height = L.sy(h) + 'px'
+    el.style.position = 'relative'
+    const bandProps = (m.def.bands as Record<string, Record<string, string>>)[band]
+    if (bandProps?.color) el.style.background = pbColor(bandProps.color, 'transparent')
     const ctxBase = newCtx(m, 0, 'header')
-    const mk = async (band: string, row: number, cls: string): Promise<HTMLElement> => {
-      const h = this.bandHeight(m, band)
-      const el = document.createElement('div')
-      el.className = 'band ' + cls
-      el.style.height = sy(h) + 'px'
-      el.style.position = 'relative'
-      const bandProps = (m.def.bands as Record<string, Record<string, string>>)[band]
-      if (bandProps?.color) el.style.background = pbColor(bandProps.color, 'transparent')
-      for (const o of byBand.get(band) || []) {
-        const node = await this.object(m, o, row, band, sx, sy, ctxBase)
-        if (node) el.appendChild(node)
-      }
-      return el
+    for (const o of L.byBand.get(band) || []) {
+      const node = await this.object(m, o, row, band, L.sx, L.sy, ctxBase)
+      if (node) el.appendChild(node)
     }
+    return el
+  }
+
+  heightOf(m: DwModel, band: string): number {
+    return this.layout(m).sy(this.bandHeight(m, band))
+  }
+
+  private async paint(m: DwModel): Promise<void> {
+    const L = this.layout(m)
+    const sx = L.sx
+    const sy = L.sy
+    const byBand = L.byBand
+    const root = document.createElement('div')
+    root.className = 'dw-inner'
+    root.style.background = pbColor(m.def.datawindow.color, '#fff')
+    const inner = root
+    inner.style.width = L.width + 'px'
+    const mk = (band: string, row: number, cls: string): Promise<HTMLElement> => this.makeBand(m, L, band, row, cls)
+    void sx
+    void sy
+    void byBand
     if (this.bandHeight(m, 'header') > 0 || (byBand.get('header') || []).length) {
       const hdr = await mk('header', 0, 'hdr')
       hdr.style.position = 'sticky'
@@ -212,7 +231,7 @@ export class DwView {
       const h = Math.max(1, Math.abs(sy(y2) - sy(y1)))
       st.left = Math.min(sx(x1), sx(x2)) + 'px'
       st.top = Math.min(sy(y1), sy(y2)) + 'px'
-      const pen = Math.max(1, Math.round(num(o, 'pen.width', 1)))
+      const pen = Math.max(1, Math.round(toPx(num(o, 'pen.width', 1), 'x', this.units(m))))
       const colr = pbColor(o['pen.color'], '#000')
       if (h <= 2) {
         st.width = w + 'px'
@@ -238,7 +257,7 @@ export class DwView {
     const bg = await this.prop(m, o, 'background.color', row, band)
     if (bgMode !== '2' && bg) st.background = pbColor(bg, 'transparent')
     if (o.type === 'rectangle' || o.type === 'roundrectangle' || o.type === 'ellipse') {
-      st.border = `${Math.max(1, num(o, 'pen.width', 1))}px solid ${pbColor(o['pen.color'], '#000')}`
+      st.border = `${Math.max(1, Math.round(toPx(num(o, 'pen.width', 1), 'x', this.units(m))))}px solid ${pbColor(o['pen.color'], '#000')}`
       if (o.type !== 'rectangle') st.borderRadius = o.type === 'ellipse' ? '50%' : '8px'
       st.background = o['brush.hatch'] === '6' ? pbColor(o['brush.color'], 'transparent') : 'transparent'
       return el
@@ -268,8 +287,9 @@ export class DwView {
     st.lineHeight = st.height
     st.padding = '0 2px'
     if (o.type === 'text') {
-      el.textContent = (o.text ?? '').replace(/~r~n/g, '\n').replace(/~t/g, '\t')
-      if (o.text && /&/.test(o.text)) el.textContent = o.text.replace(/&(.)/g, '$1')
+      // the text of a label may carry an expression after ~t ("static~texpression")
+      const t = await this.prop(m, o, 'text', row, band)
+      el.textContent = t.replace(/~r~n/g, '\n').replace(/&(.)/g, '$1')
       return el
     }
     if (o.type === 'button') {
@@ -284,7 +304,7 @@ export class DwView {
       const ci = m.colIndex(o.name)
       v = r && ci >= 0 ? r.v[ci] : null
     }
-    el.textContent = this.display(m, o, v)
+    el.textContent = await this.display(m, o, v)
     if (o.type === 'column') {
       const protect = (await this.prop(m, o, 'protect', row, band)) === '1'
       const tab = num(o, 'tabsequence', 0)
@@ -296,21 +316,100 @@ export class DwView {
     return el
   }
 
-  private display(m: DwModel, o: DwObject, v: unknown): string {
+  /** child DataWindow of a drop-down column, retrieved on first use when the definition asks for it */
+  private loaded = new Set<string>()
+  private async childOf(o: DwObject): Promise<DwModel | null> {
+    const ch = (await this.ctl.n_getchild(o.name)) as unknown
+    if (typeof ch === 'number' || !ch) return null
+    const c = ch as NDwBase
+    await c.ready
+    const cm = c.model
+    if (!cm) return null
+    if (cm.rowCount() === 0 && !this.loaded.has(o.name) && o['dddw.autoretrieve'] === 'yes' && argList(cm.def).length === 0) {
+      this.loaded.add(o.name)
+      await c.n_retrieve()
+    }
+    return cm
+  }
+
+  private async display(m: DwModel, o: DwObject, v: unknown): Promise<string> {
     if (v === null || v === undefined) return ''
-    // drop-down DataWindow / list: show the display value of the data value
-    const codeTable = o['ddlb.useasborder'] !== undefined || o['edit.codetable'] === 'yes' ? (o['edit.values'] || '') : ''
-    if (o['checkbox.on'] !== undefined) return v === o['checkbox.on'] || toStr(v) === o['checkbox.on'] ? (o['checkbox.text'] || '☑') : o['checkbox.text'] || '☐'
-    void codeTable
+    if (o['dddw.name']) {
+      const cm = await this.childOf(o)
+      if (cm) {
+        const dc = cm.colIndex(o['dddw.datacolumn'] || '')
+        const ds = cm.colIndex(o['dddw.displaycolumn'] || '')
+        if (dc >= 0 && ds >= 0) {
+          const hit = cm.buf.primary.find((r) => toStr(r.v[dc]) === toStr(v))
+          if (hit) return toStr(hit.v[ds])
+        }
+      }
+      return toStr(v)
+    }
+    if (o['checkbox.on'] !== undefined) {
+      const on = toStr(v) === o['checkbox.on']
+      return (on ? '\u2611' : '\u2610') + (o['checkbox.text'] ? ' ' + o['checkbox.text'] : '')
+    }
     const fmt = splitExpr(o.format).value
-    if (typeof v === 'number' || v instanceof Dec || v instanceof PBDate || v instanceof PBTime || v instanceof PBDateTime) return formatValue(v, fmt || undefined)
-    return formatValue(v, fmt && fmt !== '[general]' && fmt !== '[GENERAL]' ? fmt : undefined)
+    const mask = o['editmask.mask']
+    const useFmt = fmt && !/^\[general\]$/i.test(fmt) ? fmt : mask && o['editmask.useformat'] !== 'yes' ? mask : ''
+    if (typeof v === 'number' || v instanceof Dec || v instanceof PBDate || v instanceof PBTime || v instanceof PBDateTime) return formatValue(v, useFmt || undefined)
+    return formatValue(v, useFmt || undefined)
   }
 
   private edit(m: DwModel, o: DwObject, row: number, cell: HTMLElement): void {
     if (this.editor) this.editor.remove()
     const ci = m.colIndex(o.name)
     if (ci < 0) return
+    if (o['checkbox.on'] !== undefined) {
+      const cur = toStr(m.buf.primary[row - 1]?.v[ci])
+      const next = cur === o['checkbox.on'] ? o['checkbox.off'] : o['checkbox.on']
+      void this.ctl.rt.fire(this.ctl, 'itemchanged', [row, { name: o.name }, next]).then((rej) => {
+        if (rej !== 1 && rej !== 2) {
+          m.setItem(row, ci + 1, next)
+          this.ctl.changed()
+        }
+      })
+      return
+    }
+    if (o['dddw.name']) {
+      void this.childOf(o).then((cm) => {
+        if (!cm) return
+        const dc = cm.colIndex(o['dddw.datacolumn'] || '')
+        const ds = cm.colIndex(o['dddw.displaycolumn'] || '')
+        const sel = document.createElement('select')
+        sel.className = 'dw-edit'
+        sel.style.cssText = cell.style.cssText + ';z-index:5;line-height:normal'
+        const cur = toStr(m.buf.primary[row - 1]?.v[ci])
+        for (const r of cm.buf.primary) {
+          const op = document.createElement('option')
+          op.value = toStr(r.v[dc])
+          op.textContent = toStr(r.v[ds])
+          if (op.value === cur) op.selected = true
+          sel.appendChild(op)
+        }
+        cell.parentElement?.appendChild(sel)
+        this.editor = sel
+        sel.focus()
+        const done = () => {
+          if (this.editor !== sel) return
+          this.editor = null
+          const val = sel.value
+          sel.remove()
+          if (val !== cur) {
+            void this.ctl.rt.fire(this.ctl, 'itemchanged', [row, { name: o.name }, val]).then((rej) => {
+              if (rej !== 1 && rej !== 2) {
+                m.setItem(row, ci + 1, val)
+                this.ctl.changed()
+              }
+            })
+          }
+        }
+        sel.addEventListener('change', done)
+        sel.addEventListener('blur', done)
+      })
+      return
+    }
     const input = document.createElement('input')
     input.className = 'dw-edit'
     const v = m.buf.primary[row - 1]?.v[ci]

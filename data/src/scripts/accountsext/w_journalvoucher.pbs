@@ -318,7 +318,7 @@
 		openwithparm(w_account_ledger, ll_acccode)
 	end if
 
-// w_journalvoucher.create() returns 0
+// w_journalvoucher.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	if isvalid(this.menuid) then
@@ -331,14 +331,14 @@
 	icurrent = upperbound(this.control)
 	this.control[icurrent + 1] = this.dw_voucherrep
 
-// w_journalvoucher.destroy() returns 0
+// w_journalvoucher.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 	destroy this.dw_voucherrep
 
-// w_journalvoucher.ue_newform() returns 0
+// w_journalvoucher.ue_newform() returns 0 [event]
 	integer rtncode
 	long li_fetched_code
 	long row
@@ -354,7 +354,7 @@
 	end if
 	setredraw(true)
 
-// w_journalvoucher.ue_save() returns 0
+// w_journalvoucher.ue_save() returns 0 [event]
 	long ll_detailrows
 	long ll_mastercurrrow
 	long ll_invid
@@ -484,7 +484,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_journalvoucher.ue_detail() returns 0
+// w_journalvoucher.ue_detail() returns 0 [event]
 	integer li_rtncode
 	integer li_protect
 	long ll_row
@@ -502,7 +502,7 @@
 	wf_protectdw(this.id_detail, li_protect)
 	setredraw(true)
 
-// w_journalvoucher.ue_newitem() returns 0
+// w_journalvoucher.ue_newitem() returns 0 [event]
 	integer li_null
 	long ll_rowcount
 	setnull(li_null)
@@ -574,14 +574,14 @@
 	this.im_menu.m_file.m_save.enabled = true
 	this.ib_validatefullcode = true
 
-// w_journalvoucher.activate() returns long
+// w_journalvoucher.activate() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::activate()
 	this.windowstate = maximized!
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_journalvoucher.ue_refreshddw() returns 0
+// w_journalvoucher.ue_refreshddw() returns 0 [event]
 	setpointer(hourglass!)
 	this.idc_dddwdetailaccount.setredraw(false)
 	this.idc_dddwdetailaccount.settransobject(this.it_transobject)
@@ -594,7 +594,7 @@
 	this.idc_dddwdetailpatient.setredraw(true)
 	setpointer(arrow!)
 
-// w_journalvoucher.ue_list() returns 0
+// w_journalvoucher.ue_list() returns 0 [event]
 	call super::ue_list
 	SQL rollback USING this.it_transobject;
 	this.ib_modify = false
@@ -602,7 +602,7 @@
 	this.im_menu.m_file.m_post.enabled = true
 	this.im_menu.m_file.m_print.enabled = false
 
-// w_journalvoucher.ue_postopen() returns 0
+// w_journalvoucher.ue_postopen() returns 0 [event]
 	datawindowchild ldc_dddpurcategory
 	integer li_rtncode
 	string ls_filter
@@ -663,7 +663,7 @@
 	this.tab_retrieve.tabpage_detail.rb_all.postevent(clicked!)
 	setredraw(true)
 
-// w_journalvoucher.ue_print() returns 0
+// w_journalvoucher.ue_print() returns 0 [event]
 	integer li_option
 	long ll_counter
 	long ll_rowcount
@@ -697,8 +697,319 @@
 	end if
 	messagebox("Printing Error", "Can not Print Voucher,~r~nNo rows are retrieved", information!)
 
-// w_journalvoucher.ue_deleteitem() returns 0
+// w_journalvoucher.ue_deleteitem() returns 0 [event]
 	call super::ue_deleteitem
 	if this.id_detail.rowcount() <= 0 then
 		this.im_menu.m_file.m_print.enabled = false
 	end if
+
+// tab_retrieve.selectionchanged(integer oldindex, integer newindex) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::selectionchanged(oldindex, newindex)
+	if parent.ib_modify then
+		SQL rollback USING parent.it_transobject;
+		parent.ib_modify = false
+	end if
+	return ::message.returnvalue
+
+// tabpage_detail.create() returns 0 [event]
+	integer icurrent
+	this.rb_others = create rb_others
+	this.rb_all = create rb_all
+	this.rb_debitors = create rb_debitors
+	this.rb_creditors = create rb_creditors
+	call super::create
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.rb_others
+	this.control[icurrent + 2] = this.rb_all
+	this.control[icurrent + 3] = this.rb_debitors
+	this.control[icurrent + 4] = this.rb_creditors
+
+// tabpage_detail.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.rb_others
+	destroy this.rb_all
+	destroy this.rb_debitors
+	destroy this.rb_creditors
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	integer li_hold
+	long ll_newamt
+	long ll_amt
+	long ll_storedamt
+	long ll_acccode
+	long ll_patientcode
+	long ll_rowno
+	string ls_fullcode
+	string ls_regno
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "acccode"
+		parent.parent.parent.ib_invaccval = false
+		parent.parent.parent.ib_itemvalidated = true
+		if parent.parent.parent.wf_getfullcode(long(data), ls_fullcode) = 1 then
+			setnull(ll_patientcode)
+			setnull(ls_regno)
+			this.object.patientcode[row] = ll_patientcode
+			this.object.regno[row] = ls_regno
+			this.object.fullcode[row] = ls_fullcode
+			parent.parent.parent.wf_setbalance()
+		else
+			messagebox("Account Name Validation", "Please Select Valid Account Name")
+			li_errcode = 1
+			this.object.fullcode[row] = ""
+		end if
+	case "invcode"
+		parent.parent.parent.ib_invaccval = false
+		if vf_dwdupcode(this, "invcode", data) = true then
+			parent.parent.parent.ib_invnovalidated = false
+			parent.parent.parent.il_currrow = row
+		else
+			parent.parent.parent.ib_invnovalidated = true
+		end if
+		if not isnull(data) and data <> "" then
+			parent.parent.parent.wf_retrieveinvbalance(long(data), row)
+		end if
+	case "credit"
+		if parent.parent.parent.ii_vouchertype = 14 then
+			ll_newamt = long(data)
+			ll_storedamt = getitemnumber(row, "credit")
+			if ll_newamt > ll_storedamt then
+				ll_amt = this.object.invamt[row]
+				if ll_newamt > ll_amt then
+					messagebox("Amount Validation", "Amount " + data + " exceeds the invoice amout")
+					li_errcode = 1
+				end if
+			elseif ll_newamt < 1 then
+				messagebox("Amount Validation", "Amount ~"" + data + "~" should be greater than zero")
+				li_errcode = 1
+			end if
+		end if
+	case "regno"
+		if not isnull(data) and data <> "" then
+			ll_acccode = this.object.acccode[row]
+			if parent.parent.parent.wf_validateregno(data, ll_patientcode, ll_acccode) then
+				setitem(row, "patientcode", ll_patientcode)
+				this.object.acccode[row] = ll_acccode
+				parent.parent.parent.wf_getfullcode(ll_acccode, ls_fullcode)
+				this.object.fullcode[row] = ls_fullcode
+			else
+				messagebox("Reg. No Validation", "Reg. No. ~"" + data + "~" is not valid")
+				li_errcode = 1
+			end if
+		end if
+	case "patientcode"
+		if not isnull(data) and data <> "" then
+			ll_acccode = this.object.acccode[row]
+			if parent.parent.parent.wf_validatepatient(long(data), ls_regno, ll_acccode) then
+				setitem(row, "regno", ls_regno)
+				this.object.acccode[row] = ll_acccode
+				parent.parent.parent.wf_getfullcode(ll_acccode, ls_fullcode)
+				this.object.fullcode[row] = ls_fullcode
+			else
+				messagebox("Patient Validation", "Please enter valid patient")
+				li_errcode = 1
+			end if
+		end if
+	case "debit"
+		if parent.parent.parent.ii_vouchertype = 17 then
+			ll_newamt = long(data)
+			ll_storedamt = getitemnumber(row, "debit")
+			if ll_newamt > ll_storedamt then
+				ll_amt = this.object.invamt[row]
+				if ll_newamt > ll_amt then
+					messagebox("Amount Validation", "Amount " + data + " exceeds the invoice amout")
+					li_errcode = 1
+				end if
+			elseif ll_newamt < 1 then
+				messagebox("Amount Validation", "Amount ~"" + data + "~" should be greater than zero")
+				li_errcode = 1
+			end if
+		end if
+	case "fullcode"
+		li_hold = parent.parent.parent.wf_findfullcode(data, ll_acccode)
+		if li_hold = 1 then
+			setnull(ll_patientcode)
+			setnull(ls_regno)
+			this.object.patientcode[row] = ll_patientcode
+			this.object.regno[row] = ls_regno
+			this.object.acccode[row] = ll_acccode
+			parent.parent.parent.ib_itemvalidated = true
+			ll_rowno = parent.parent.parent.idc_dddwdetailaccount.find("aliasname ='" + data + "'", 1, parent.parent.parent.idc_dddwdetailaccount.rowcount())
+			parent.parent.parent.idc_dddwdetailaccount.setrow(ll_rowno)
+			parent.parent.parent.wf_setbalance()
+		elseif li_hold = -1 then
+			parent.parent.parent.ib_itemvalidated = true
+		else
+			messagebox("Account Alias Name Validation", "Please Select Valid Account Alias Name")
+			li_errcode = 1
+			parent.parent.parent.ib_itemvalidated = false
+		end if
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.rowfocuschanged(long currentrow) returns long [event]
+	long ancestorreturnvalue
+	integer li_null
+	dwitemstatus lrs_detail
+	ancestorreturnvalue = super::rowfocuschanged(currentrow)
+	setnull(li_null)
+	if parent.parent.parent.id_detail.rowcount() > 1 then
+		parent.parent.parent.id_detail.object.t_balance.text = parent.parent.parent.id_detail.getitemstring(currentrow, "balance")
+		lrs_detail = getitemstatus(currentrow, 0, primary!)
+		if lrs_detail <> new! then
+			if parent.parent.parent.id_detail.object.credit[parent.parent.parent.id_detail.getrow()] < 1 and parent.parent.parent.id_detail.object.debit[parent.parent.parent.id_detail.getrow()] < 1 then
+				messagebox("Input Error", "Enter some valid value for credit or debit field")
+				return ::message.returnvalue
+			elseif parent.parent.parent.id_detail.object.credit[parent.parent.parent.id_detail.getrow()] > 0 and parent.parent.parent.id_detail.object.debit[parent.parent.parent.id_detail.getrow()] > 0 then
+				messagebox("Input Error", "One of the credit or debit field must be zero")
+				return ::message.returnvalue
+			end if
+			return
+		end if
+		return
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	integer li_null
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if parent.parent.parent.ib_itemvalidated = false then
+		setnull(li_null)
+		messagebox("Account Validation", "Duplicate Account, Please select some other")
+		parent.parent.parent.ib_itemvalidated = true
+		setcolumn("acccode")
+		scrolltorow(parent.parent.parent.il_currrow)
+		this.object.acccode[parent.parent.parent.il_currrow] = li_null
+	end if
+	if parent.parent.parent.ib_invnovalidated = false then
+		messagebox("Invoice No Account Validation", "Duplicate Invoice No, Please enter some other")
+		parent.parent.parent.ib_invnovalidated = true
+		setcolumn("invcode")
+		scrolltorow(parent.parent.parent.il_currrow)
+		this.object.invcode[parent.parent.parent.il_currrow] = li_null
+	end if
+	if string(dwo.name) = "acccode" then
+		parent.parent.parent.id_detail.selecttext(1, 40)
+	end if
+	parent.parent.parent.il_currrow = row
+	return ::message.returnvalue
+
+// dw_itemsdetail.getfocus() returns long [event]
+	return ::message.returnvalue
+
+// dw_itemsdetail.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
+	return ::message.returnvalue
+
+// dw_itemsdetail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	string ls_fullcode
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keyenter! and getcolumnname() = "acccode" then
+		parent.parent.parent.id_detail.setitem(parent.parent.parent.id_detail.getrow(), "acccode", parent.parent.parent.idc_dddwdetailaccount.getitemnumber(parent.parent.parent.idc_dddwdetailaccount.getrow(), "acccode"))
+		if parent.parent.parent.wf_getfullcode(parent.parent.parent.id_detail.getitemnumber(parent.parent.parent.id_detail.getrow(), "acccode"), ls_fullcode) = 1 then
+			this.object.fullcode[parent.parent.parent.id_detail.getrow()] = ls_fullcode
+			parent.parent.parent.wf_setbalance()
+		else
+			messagebox("Account Name Validation", "Please Select Valid Account Name")
+			this.object.fullcode[parent.parent.parent.id_detail.getrow()] = ""
+		end if
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.editchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::editchanged(row, dwo, data)
+	choose case dwo.name
+	case "acccode"
+		parent.parent.parent.post wf_setaccountname(data)
+	case "patientcode"
+		parent.parent.parent.post wf_setpatientname(data)
+	end choose
+	return ::message.returnvalue
+
+// rb_others.clicked() returns long [event]
+	string ls_filter
+	ls_filter = "restricted = 'N' AND "
+	if f_rightexists(537) then
+		ls_filter = ""
+	end if
+	ls_filter = ls_filter + "subcode <> Long('" + string(parent.parent.parent.il_creditorssub) + "') AND subcode <> Long('" + string(parent.parent.parent.il_debitorssub) + "')"
+	parent.parent.parent.idc_dddwdetailaccount.setfilter(ls_filter)
+	parent.parent.parent.idc_dddwdetailaccount.filter()
+	parent.parent.parent.id_detail.object.regno.visible = false
+	parent.parent.parent.id_detail.object.regno_t.visible = false
+	parent.parent.parent.id_detail.object.patientcode.visible = false
+	parent.parent.parent.id_detail.object.patientcode_t.visible = false
+	return ::message.returnvalue
+
+// rb_all.clicked() returns long [event]
+	string ls_filter
+	string ls_custfilterstring
+	ls_filter = "restricted='N' "
+	if f_rightexists(537) then
+		ls_filter = ""
+	end if
+	if f_stringpreferences("GroupCustCatInTrans") = "Y" then
+		ls_custfilterstring = "0                                                                                                                                                                                                             "
+		parent.parent.parent.it_transobject.getallowedgroupcustomercategory(f_getgroupcode(gl_usercode), ls_custfilterstring)
+		if ls_custfilterstring = " " or ls_custfilterstring = "" or isnull(ls_custfilterstring) then
+			ls_custfilterstring = "0"
+			messagebox("Group Customer Category Validation", "Current user group does not have enough permissions w.r.t customer.")
+		end if
+		if ls_filter = "" then
+			ls_filter = "custcatcode In (" + ls_custfilterstring + " , -1 )"
+		else
+			ls_filter = ls_filter + " AND " + "custcatcode In (" + ls_custfilterstring + " , -1 )"
+		end if
+	end if
+	parent.parent.parent.idc_dddwdetailaccount.setfilter(ls_filter)
+	parent.parent.parent.idc_dddwdetailaccount.filter()
+	parent.parent.parent.id_detail.object.regno.visible = false
+	parent.parent.parent.id_detail.object.regno_t.visible = false
+	parent.parent.parent.id_detail.object.patientcode.visible = false
+	parent.parent.parent.id_detail.object.patientcode_t.visible = false
+	return ::message.returnvalue
+
+// rb_debitors.clicked() returns long [event]
+	string ls_filter
+	string ls_custfilterstring
+	ls_filter = "restricted='N' AND "
+	if f_rightexists(537) then
+		ls_filter = ""
+	end if
+	ls_filter = ls_filter + "subcode = Long('" + string(parent.parent.parent.il_debitorssub) + "')"
+	if f_stringpreferences("GroupCustCatInTrans") = "Y" then
+		ls_custfilterstring = "0                                                                                                                                                                                                             "
+		parent.parent.parent.it_transobject.getallowedgroupcustomercategory(f_getgroupcode(gl_usercode), ls_custfilterstring)
+		if ls_custfilterstring = " " or ls_custfilterstring = "" or isnull(ls_custfilterstring) then
+			ls_custfilterstring = "0"
+			messagebox("Group Customer Category Validation", "Current user group does not have enough permissions w.r.t customer.")
+		end if
+		ls_filter = ls_filter + " AND " + "custcatcode In (" + ls_custfilterstring + " , -1 )"
+	end if
+	parent.parent.parent.idc_dddwdetailaccount.setfilter(ls_filter)
+	parent.parent.parent.idc_dddwdetailaccount.filter()
+	if f_stringpreferences("PatientInTransaction") = "Y" then
+		parent.parent.parent.id_detail.object.regno.visible = true
+		parent.parent.parent.id_detail.object.regno_t.visible = true
+		parent.parent.parent.id_detail.object.patientcode.visible = true
+		parent.parent.parent.id_detail.object.patientcode_t.visible = true
+	else
+		parent.parent.parent.id_detail.object.regno.visible = false
+		parent.parent.parent.id_detail.object.regno_t.visible = false
+		parent.parent.parent.id_detail.object.patientcode.visible = false
+		parent.parent.parent.id_detail.object.patientcode_t.visible = false
+	end if
+	return ::message.returnvalue
+
+// rb_creditors.clicked() returns long [event]
+	parent.parent.parent.wf_filter(parent.parent.parent.il_creditorssub)
+	parent.parent.parent.id_detail.object.regno.visible = false
+	parent.parent.parent.id_detail.object.regno_t.visible = false
+	parent.parent.parent.id_detail.object.patientcode.visible = false
+	parent.parent.parent.id_detail.object.patientcode_t.visible = false
+	return ::message.returnvalue

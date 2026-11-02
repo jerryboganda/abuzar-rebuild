@@ -20,30 +20,71 @@
 	end if
 	return b_flag
 
-// w_itempacking_form.create() returns 0
+// w_itempacking_form.create() returns 0 [event]
 	call super::create
 
-// w_itempacking_form.destroy() returns 0
+// w_itempacking_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_itempacking_form.activate() returns long
+// w_itempacking_form.activate() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::activate()
 	this.windowstate = maximized!
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_itempacking_form.ue_detail() returns 0
+// w_itempacking_form.ue_detail() returns 0 [event]
 	call super::ue_detail
 
-// w_itempacking_form.ue_newform() returns 0
+// w_itempacking_form.ue_newform() returns 0 [event]
 	call super::ue_newform
 
-// w_itempacking_form.open() returns long
+// w_itempacking_form.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.is_tablename = "ItemPacking"
 	return ::message.returnvalue
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer rt_code
+	integer li_packcode
+	integer li_duppackcode
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "packcode"
+		li_packcode = integer(data)
+		SQL SELECT itempacking.packcode INTO :li_duppackcode FROM itempacking WHERE itempacking.packcode =:li_packcode USING sqlca;
+		if sqlca.sqlcode = 0 and li_duppackcode = li_packcode then
+			rt_code = 1
+			messagebox("Class Code Validation", "Duplicate Packing Code, Enter some other class code")
+		end if
+	case "name"
+		if parent.parent.parent.wf_duplicateitempackingname(data) then
+			messagebox("Name Validation", "Duplication Name Error~n~rPlease Choose Some Other Name")
+			rt_code = 1
+		end if
+	case "numericalfactor"
+		if data = "" or isnull(data) then
+			rt_code = 1
+		end if
+	end choose
+	return rt_code
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "numericalfactor"
+		if data = "" or isnull(data) then
+			messagebox("Numerical Factor Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	end choose
+	return 1

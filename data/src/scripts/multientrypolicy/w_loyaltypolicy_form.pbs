@@ -74,16 +74,16 @@
 	end if
 	return 0
 
-// w_loyaltypolicy_form.create() returns 0
+// w_loyaltypolicy_form.create() returns 0 [event]
 	call super::create
 
-// w_loyaltypolicy_form.destroy() returns 0
+// w_loyaltypolicy_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_loyaltypolicy_form.ue_save() returns 0
+// w_loyaltypolicy_form.ue_save() returns 0 [event]
 	long ll_mastercurrrow
 	long ll_invid
 	long ll_detailrows
@@ -125,11 +125,11 @@
 	end if
 	setpointer(arrow!)
 
-// w_loyaltypolicy_form.ue_newform() returns 0
+// w_loyaltypolicy_form.ue_newform() returns 0 [event]
 	call super::ue_newform
 	this.id_master.setfocus()
 
-// w_loyaltypolicy_form.ue_newitem() returns 0
+// w_loyaltypolicy_form.ue_newitem() returns 0 [event]
 	long ll_rowcount
 	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
 		return
@@ -147,7 +147,7 @@
 	this.im_menu.m_file.m_save.enabled = true
 	this.ib_validatefullcode = true
 
-// w_loyaltypolicy_form.ue_detail() returns 0
+// w_loyaltypolicy_form.ue_detail() returns 0 [event]
 	call super::ue_detail
 	this.im_menu.m_file.m_save.enabled = true
 	this.im_menu.m_file.m_delete.enabled = true
@@ -159,7 +159,7 @@
 	this.im_menu.m_item.m_newitem.enabled = true
 	this.im_menu.m_item.m_deleteitem.enabled = true
 
-// w_loyaltypolicy_form.ue_deleteitem() returns 0
+// w_loyaltypolicy_form.ue_deleteitem() returns 0 [event]
 	long ll_currow
 	long ll_detailrows
 	this.ib_itemvalidated = true
@@ -169,3 +169,65 @@
 		this.im_menu.m_file.m_save.enabled = false
 	end if
 	wf_grandtotal()
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	long ll_retcode
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if isnull(data) then
+			messagebox("Loyalty Policy Name Validation", "Loyalty Policy Name Error~n~rPlease enter Some valid Loyalty Policy Name")
+			ll_retcode = 1
+		elseif parent.parent.parent.wf_duplicatename(data) then
+			messagebox("Policy Name Validation", "Duplicate Policy Name Error~n~rPlease enter Some Other Policy Name")
+			ll_retcode = 1
+		end if
+	end choose
+	return ll_retcode
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	string ls_managername
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "salelimit"
+		parent.parent.parent.il_currrow = row
+		parent.parent.parent.ib_itemvalidated = false
+		if real(data) < 0.0 then
+			li_errcode = 1
+		else
+			li_errcode = 0
+		end if
+	case "loayltypoints"
+		if real(data) < 0.0 then
+			li_errcode = 1
+		end if
+		parent.parent.parent.ib_itemvalidated = true
+	case "redemtionvalue"
+		if real(data) < 0.0 then
+			li_errcode = 1
+		end if
+		parent.parent.parent.ib_itemvalidated = true
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem() = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.getfocus() returns long [event]
+	return ::message.returnvalue
+
+// dw_itemsdetail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keyf5! then
+		parent.parent.parent.wf_generatepolicyrows()
+	end if
+	return ::message.returnvalue

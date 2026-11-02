@@ -1,30 +1,30 @@
 // window w_restoreitem (components)  ancestor: window
 
-// w_restoreitem.ue_keydown(keycode key, unsignedlong keyflags) returns long
+// w_restoreitem.ue_keydown(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		post event ue_close()
 	end if
 	return ::message.returnvalue
 
-// w_restoreitem.ue_close() returns 0
+// w_restoreitem.ue_close() returns 0 [event]
 	closewithreturn(this, this.ids_restoreitem)
 
 // w_restoreitem.wf_assigndwobjects(string as_detaildw) returns 0
 	this.dw_detail.dataobject = as_detaildw
 	this.dw_detail.settransobject(sqlca)
 
-// w_restoreitem.create() returns 0
+// w_restoreitem.create() returns 0 [event]
 	this.cb_cancel = create cb_cancel
 	this.cb_restore = create cb_restore
 	this.dw_detail = create dw_detail
 	this.control = {this.cb_cancel, this.cb_restore, this.dw_detail}
 
-// w_restoreitem.destroy() returns 0
+// w_restoreitem.destroy() returns 0 [event]
 	destroy this.cb_cancel
 	destroy this.cb_restore
 	destroy this.dw_detail
 
-// w_restoreitem.open() returns long
+// w_restoreitem.open() returns long [event]
 	environment le_env
 	long ll_win_width
 	long ll_win_height
@@ -54,12 +54,12 @@
 	end if
 	return message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.ids_restoreitem.i_closemode = -1
 	parent.post event ue_close()
 	return ::message.returnvalue
 
-// cb_restore.clicked() returns long
+// cb_restore.clicked() returns long [event]
 	long[] ll_invcode
 	long ll_rowcount
 	long ll_counter

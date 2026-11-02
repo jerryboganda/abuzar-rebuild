@@ -34,23 +34,23 @@
 	SQL update Guest Set Active ='N' Where Guestcode =:al_code USING sqlca;
 	return sqlca.sqlcode
 
-// w_guestcheckout_form.create() returns 0
+// w_guestcheckout_form.create() returns 0 [event]
 	call super::create
 
-// w_guestcheckout_form.destroy() returns 0
+// w_guestcheckout_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_guestcheckout_form.activate() returns long
+// w_guestcheckout_form.activate() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::activate()
 	this.windowstate = maximized!
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_guestcheckout_form.open() returns long
+// w_guestcheckout_form.open() returns long [event]
 	long ancestorreturnvalue
 	long ll_found
 	ancestorreturnvalue = super::open()
@@ -59,7 +59,7 @@
 	this.id_print.settransobject(sqlca)
 	return ::message.returnvalue
 
-// w_guestcheckout_form.ue_save() returns 0
+// w_guestcheckout_form.ue_save() returns 0 [event]
 	long ll_primarykey
 	long ll_row
 	long ll_retcode
@@ -141,7 +141,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_guestcheckout_form.ue_detail() returns 0
+// w_guestcheckout_form.ue_detail() returns 0 [event]
 	long ll_code
 	integer li_protect
 	this.im_menu.m_file.m_new.enabled = false
@@ -173,16 +173,16 @@
 		this.tab_retrieve.tabpage_detail.dw_detail.setfocus()
 	end if
 
-// w_guestcheckout_form.ue_newform() returns 0
+// w_guestcheckout_form.ue_newform() returns 0 [event]
 	integer li_protect
 	call super::ue_newform
 	wf_protectdw(this.id_detail, li_protect)
 
-// w_guestcheckout_form.ue_list() returns 0
+// w_guestcheckout_form.ue_list() returns 0 [event]
 	call super::ue_list
 	this.im_menu.m_file.m_new.enabled = false
 
-// w_guestcheckout_form.ue_print() returns 0
+// w_guestcheckout_form.ue_print() returns 0 [event]
 	long ll_code
 	boolean lb_listtab
 	s_datastore lstr

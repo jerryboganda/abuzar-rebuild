@@ -28,21 +28,21 @@
 	end if
 	return li_errcode
 
-// w_groups_startupright.create() returns 0
+// w_groups_startupright.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.dw_rights = create dw_rights
 	icurrent = upperbound(this.control)
 	this.control[icurrent + 1] = this.dw_rights
 
-// w_groups_startupright.destroy() returns 0
+// w_groups_startupright.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 	destroy this.dw_rights
 
-// w_groups_startupright.ue_save() returns 0
+// w_groups_startupright.ue_save() returns 0 [event]
 	long ll_mastercurrrow
 	long ll_invid
 	long ll_detailrows
@@ -101,13 +101,13 @@
 	this.id_rights.reset()
 	setpointer(arrow!)
 
-// w_groups_startupright.ue_newitem() returns 0
+// w_groups_startupright.ue_newitem() returns 0 [event]
 	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
 		return
 	end if
 	call super::ue_newitem
 
-// w_groups_startupright.ue_detail() returns 0
+// w_groups_startupright.ue_detail() returns 0 [event]
 	integer li_counter
 	integer li_count
 	integer li_detailrowcount
@@ -130,12 +130,71 @@
 		li_rightscount = this.id_rights.rowcount()
 	end if
 
-// w_groups_startupright.ue_postopen() returns 0
+// w_groups_startupright.ue_postopen() returns 0 [event]
 	call super::ue_postopen
 	this.id_rights = this.dw_rights
 	this.id_rights.settransobject(this.it_transobject)
 
-// w_groups_startupright.ue_newform() returns 0
+// w_groups_startupright.ue_newform() returns 0 [event]
 	call super::ue_newform
 	this.im_menu.m_item.m_newitem.toolbaritemvisible = false
 	this.im_menu.m_item.m_deleteitem.toolbaritemvisible = false
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "groupname"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for Group Name in current row")
+		end if
+	end choose
+	return 1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "groupname"
+		if parent.parent.parent.wf_duplicatename(data) then
+			messagebox("Name Validation", "Duplication Name Error~n~rPlease Choose Some Other Name")
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "rightcode"
+		parent.parent.parent.il_currrow = row
+		parent.parent.parent.ib_itemvalidated = false
+		li_errcode = 0
+	case else
+		parent.parent.parent.ib_itemvalidated = true
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "rightcode"
+		if data = "" or isnull(data) then
+			messagebox("RightName Validation", "Value required Right Name in current row")
+		end if
+	end choose
+	return 1
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem() = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.getfocus() returns long [event]
+	return ::message.returnvalue

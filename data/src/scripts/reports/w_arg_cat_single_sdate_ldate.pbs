@@ -1,6 +1,6 @@
 // window w_arg_cat_single_sdate_ldate (reports)  ancestor: w_arguements
 
-// w_arg_cat_single_sdate_ldate.create() returns 0
+// w_arg_cat_single_sdate_ldate.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.cbx_cash = create cbx_cash
@@ -13,14 +13,14 @@
 	this.control[icurrent + 3] = this.rb_groupmanf
 	this.control[icurrent + 4] = this.rb_groupclass
 
-// w_arg_cat_single_sdate_ldate.destroy() returns 0
+// w_arg_cat_single_sdate_ldate.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.cbx_cash
 	destroy this.cbx_credit
 	destroy this.rb_groupmanf
 	destroy this.rb_groupclass
 
-// w_arg_cat_single_sdate_ldate.open() returns long
+// w_arg_cat_single_sdate_ldate.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.dw_control.settransobject(sqlca)
@@ -28,6 +28,39 @@
 	this.dw_control.scrolltorow(0)
 	return ::message.returnvalue
 
-// w_arg_cat_single_sdate_ldate.ue_close(integer ai_stauts) returns 0
+// w_arg_cat_single_sdate_ldate.ue_close(integer ai_stauts) returns 0 [event]
 	super::ue_close(ai_stauts)
 	closewithreturn(this, this.istr_arg)
+
+// cb_cancel.clicked() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked()
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked()
+	parent.istr_arg.l_code1 = parent.dw_control.getitemnumber(1, "icatcode")
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	if parent.cbx_cash.checked = true then
+		parent.istr_arg.ia_integerlist[1] = 3
+		parent.istr_arg.ia_integerlist1[1] = 8
+		parent.istr_arg.s_name1 = "Y"
+	end if
+	if parent.cbx_credit.checked = true then
+		parent.istr_arg.ia_integerlist[2] = 1
+		parent.istr_arg.ia_integerlist[3] = 2
+		parent.istr_arg.ia_integerlist1[2] = 6
+		parent.istr_arg.ia_integerlist1[3] = 7
+		parent.istr_arg.s_name2 = "Y"
+	end if
+	if parent.rb_groupmanf.checked = true then
+		parent.istr_arg.l_code2 = 1
+	else
+		parent.istr_arg.l_code2 = 0
+	end if
+	parent.istr_arg.i_status = 1
+	parent.post event ue_close(1)
+	return ::message.returnvalue

@@ -1,6 +1,6 @@
 // window w_arg_sdate_ldate_stax_disc_reduceqty (reports)  ancestor: w_arguements
 
-// w_arg_sdate_ldate_stax_disc_reduceqty.create() returns 0
+// w_arg_sdate_ldate_stax_disc_reduceqty.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.st_9 = create st_9
@@ -17,7 +17,7 @@
 	this.control[icurrent + 5] = this.st_5
 	this.control[icurrent + 6] = this.em_reduceqtyperc
 
-// w_arg_sdate_ldate_stax_disc_reduceqty.destroy() returns 0
+// w_arg_sdate_ldate_stax_disc_reduceqty.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.st_9
 	destroy this.em_staxperc
@@ -26,36 +26,66 @@
 	destroy this.st_5
 	destroy this.em_reduceqtyperc
 
-// w_arg_sdate_ldate_stax_disc_reduceqty.ue_close(integer ai_stauts) returns 0
+// w_arg_sdate_ldate_stax_disc_reduceqty.ue_close(integer ai_stauts) returns 0 [event]
 	super::ue_close(ai_stauts)
 	closewithreturn(this, this.istr_arg)
 
-// em_staxperc.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_cancel.clicked() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked()
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked()
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	parent.em_staxperc.getdata(parent.istr_arg.db_code1)
+	if parent.istr_arg.db_code1 < 0.0 or isnull(parent.istr_arg.db_code1) or parent.istr_arg.db_code1 > 100.0 then
+		messagebox("Sales Tax Percentage Validation!", "Please Enter Some Valid Sales Tax Percentage  Here")
+		return ::message.returnvalue
+	end if
+	parent.em_discperc.getdata(parent.istr_arg.db_code2)
+	if parent.istr_arg.db_code2 < 0.0 or isnull(parent.istr_arg.db_code2) or parent.istr_arg.db_code2 > 100.0 then
+		messagebox("Discount Percentage Validation!", "Please Enter Some Valid Discount Percentage Here")
+		return ::message.returnvalue
+	end if
+	parent.em_reduceqtyperc.getdata(parent.istr_arg.db_code3)
+	if parent.istr_arg.db_code3 < 0.0 or isnull(parent.istr_arg.db_code3) or parent.istr_arg.db_code3 > 100.0 then
+		messagebox("Reduce Qty Percentage Validation!", "Please Enter Some Valid Reduce Qty Percentage Here")
+		return ::message.returnvalue
+	end if
+	parent.istr_arg.i_status = 1
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// em_staxperc.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// em_staxperc.getfocus() returns long
+// em_staxperc.getfocus() returns long [event]
 	selecttext(1, len(this.text))
 	return ::message.returnvalue
 
-// em_discperc.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// em_discperc.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// em_discperc.getfocus() returns long
+// em_discperc.getfocus() returns long [event]
 	selecttext(1, len(this.text))
 	return ::message.returnvalue
 
-// em_reduceqtyperc.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// em_reduceqtyperc.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// em_reduceqtyperc.getfocus() returns long
+// em_reduceqtyperc.getfocus() returns long [event]
 	selecttext(1, len(this.text))
 	return ::message.returnvalue

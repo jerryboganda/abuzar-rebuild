@@ -1,8 +1,43 @@
 // menu m_guestcheckinmenu (guestcomponents)  ancestor: m_multi_entry
 
-// m_guestcheckinmenu.create() returns 0
+// m_guestcheckinmenu.create() returns 0 [event]
 	m_guestcheckinmenu = this
 	call super::create
 
-// m_guestcheckinmenu.destroy() returns 0
+// m_guestcheckinmenu.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_registerguest = create m_registerguest
+	this.m_populateservicetemplate = create m_populateservicetemplate
+	this.item[upperbound(this.item) + 1] = this.m_registerguest
+	this.item[upperbound(this.item) + 1] = this.m_populateservicetemplate
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_registerguest
+	destroy this.m_populateservicetemplate
+
+// m_registerguest.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_registerguest()
+
+// m_registerguest.create() returns 0 [event]
+	call super::create
+	this.text = "Register Guest~tF5"
+	this.shortcut = 116
+	this.microhelp = "Registers New Guest"
+
+// m_registerguest.destroy() returns 0 [event]
+	call super::destroy
+
+// m_populateservicetemplate.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_populate_group_servicetemplate()
+
+// m_populateservicetemplate.create() returns 0 [event]
+	call super::create
+	this.text = "Populate Service Template~tF6"
+	this.shortcut = 117
+
+// m_populateservicetemplate.destroy() returns 0 [event]
 	call super::destroy

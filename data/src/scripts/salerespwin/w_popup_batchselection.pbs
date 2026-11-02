@@ -1,12 +1,12 @@
 // window w_popup_batchselection (salerespwin)  ancestor: w_popup_forselection
 
-// w_popup_batchselection.create() returns 0
+// w_popup_batchselection.create() returns 0 [event]
 	call super::create
 
-// w_popup_batchselection.destroy() returns 0
+// w_popup_batchselection.destroy() returns 0 [event]
 	call super::destroy
 
-// w_popup_batchselection.open() returns long
+// w_popup_batchselection.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.is_popup_selection = message.powerobjectparm
@@ -15,3 +15,43 @@
 		return 0
 	end if
 	return message.returnvalue
+
+// dw_selected.ue_enterkey() returns long [event]
+	return ::message.returnvalue
+
+// dw_selected.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	setitem(1, "price", parent.id_selectionlist.getitemnumber(parent.id_selectionlist.getrow(), "saleprice"))
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long [event]
+	if parent.id_selected.accepttext() = -1 then
+		parent.id_selected.setfocus()
+		return ::message.returnvalue
+	elseif isnull(parent.id_selected.getitemstring(parent.id_selected.getrow(), "name")) then
+		messagebox("Name Validation", "Please enter valid value for Name.")
+		parent.id_selected.setcolumn(1)
+		parent.id_selected.setfocus()
+		return ::message.returnvalue
+	end if
+	parent.is_popup_selection.l_code = parent.id_selected.getitemnumber(parent.id_selected.getrow(), "code")
+	parent.is_popup_selection.s_name = parent.id_selected.getitemstring(parent.id_selected.getrow(), "name")
+	parent.is_popup_selection.d_value = parent.id_selected.getitemnumber(parent.id_selected.getrow(), "price")
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// dw_selectionlist.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
+	long ll_rowmain
+	if row > 0 then
+		ll_rowmain = parent.id_selected.getrow()
+		parent.id_selected.setitem(ll_rowmain, "code", parent.id_selectionlist.getitemnumber(row, "code"))
+		parent.id_selected.setitem(ll_rowmain, "name", parent.id_selectionlist.getitemstring(row, "name"))
+		parent.id_selected.setitem(ll_rowmain, "price", parent.id_selectionlist.getitemnumber(row, "saleprice"))
+		parent.id_selected.selecttext(1, len(gettext()))
+		parent.ib_itemvalidated = false
+		selectrow(0, false)
+		selectrow(row, true)
+		post event ue_setfocus()
+	end if
+	return ::message.returnvalue

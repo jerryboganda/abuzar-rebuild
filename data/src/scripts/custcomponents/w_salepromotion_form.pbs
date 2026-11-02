@@ -10,22 +10,22 @@
 	end if
 	return b_flag
 
-// w_salepromotion_form.create() returns 0
+// w_salepromotion_form.create() returns 0 [event]
 	call super::create
 
-// w_salepromotion_form.destroy() returns 0
+// w_salepromotion_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_salepromotion_form.open() returns long
+// w_salepromotion_form.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.is_tablename = "SalePromotion"
 	return ::message.returnvalue
 
-// w_salepromotion_form.ue_save() returns 0
+// w_salepromotion_form.ue_save() returns 0 [event]
 	long ll_primarykey
 	long ll_row
 	long ll_weekday
@@ -80,7 +80,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_salepromotion_form.ue_newform() returns 0
+// w_salepromotion_form.ue_newform() returns 0 [event]
 	setredraw(false)
 	this.i_editmode = 1
 	this.i_retrievemode = 2
@@ -104,3 +104,26 @@
 	this.id_detail.setcolumn(1)
 	this.id_detail.setfocus()
 	setredraw(true)
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if parent.parent.parent.wf_duplicatename(data) then
+			messagebox("Name Validation", "Duplication Name Error~n~rPlease Choose Some Other Name")
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	end choose
+	return 1

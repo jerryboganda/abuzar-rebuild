@@ -1,13 +1,13 @@
 // window w_visitprescription_details (patientvisitcomp)  ancestor: window
 
-// w_visitprescription_details.ue_close(integer ai_status) returns 0
+// w_visitprescription_details.ue_close(integer ai_status) returns 0 [event]
 	this.istr_ds.i_closemode = ai_status
 	if this.istr_ds.i_protect = 0 and ai_status = 1 then
 		this.istr_ds.ds.sharedata(this.dw_detail)
 	end if
 	closewithreturn(this, this.istr_ds)
 
-// w_visitprescription_details.ue_postopen() returns 0
+// w_visitprescription_details.ue_postopen() returns 0 [event]
 	this.dw_detail.settransobject(sqlca)
 	this.istr_ds.ds.sharedata(this.dw_detail)
 	if this.dw_detail.rowcount() <= 0 then
@@ -119,16 +119,16 @@
 	end if
 	return 0
 
-// w_visitprescription_details.create() returns 0
+// w_visitprescription_details.create() returns 0 [event]
 	this.cb_back = create cb_back
 	this.dw_detail = create dw_detail
 	this.control = {this.cb_back, this.dw_detail}
 
-// w_visitprescription_details.destroy() returns 0
+// w_visitprescription_details.destroy() returns 0 [event]
 	destroy this.cb_back
 	destroy this.dw_detail
 
-// w_visitprescription_details.open() returns long
+// w_visitprescription_details.open() returns long [event]
 	long ll_row
 	long ll_width
 	long ll_height
@@ -146,31 +146,31 @@
 	post event ue_postopen()
 	return ::message.returnvalue
 
-// w_visitprescription_details.close() returns long
+// w_visitprescription_details.close() returns long [event]
 	triggerevent("ue_close")
 	return ::message.returnvalue
 
-// cb_back.ue_keydown(keycode key, unsignedlong keyflags) returns long
+// cb_back.ue_keydown(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		postevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_back.clicked() returns long
+// cb_back.clicked() returns long [event]
 	if f_validatedw(parent.dw_detail) < 0 then
 		return ::message.returnvalue
 	end if
 	parent.post event ue_close(1)
 	return ::message.returnvalue
 
-// dw_detail.ue_enterkey() returns long
+// dw_detail.ue_enterkey() returns long [event]
 	if parent.dw_detail.getcolumnname() <> "details" then
 		send(handle(this), 256, 9, long(90))
 		return 1
 	end if
 	return ::message.returnvalue
 
-// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	choose case dwo.name
 	case "qty"
 		if long(data) <= 0 then
@@ -187,7 +187,7 @@
 	end choose
 	return ::message.returnvalue
 
-// dw_detail.itemerror(long row, dwobject dwo, string data) returns long
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
 	choose case dwo.name
 	case "qty"
 		if long(data) <= 0 then
@@ -200,6 +200,6 @@
 	end choose
 	return 1
 
-// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	selecttext(1, len(gettext()))
 	return ::message.returnvalue

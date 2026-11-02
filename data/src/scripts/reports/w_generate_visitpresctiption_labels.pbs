@@ -1,15 +1,15 @@
 // window w_generate_visitpresctiption_labels (reports)  ancestor: window
 
-// w_generate_visitpresctiption_labels.ue_keydown(keycode key, unsignedlong keyflags) returns long
+// w_generate_visitpresctiption_labels.ue_keydown(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		post event ue_close()
 	end if
 	return ::message.returnvalue
 
-// w_generate_visitpresctiption_labels.ue_close() returns 0
+// w_generate_visitpresctiption_labels.ue_close() returns 0 [event]
 	closewithreturn(this, this.istr_arg)
 
-// w_generate_visitpresctiption_labels.create() returns 0
+// w_generate_visitpresctiption_labels.create() returns 0 [event]
 	this.dw_print = create dw_print
 	this.dw_footer = create dw_footer
 	this.dw_master = create dw_master
@@ -18,7 +18,7 @@
 	this.dw_detail = create dw_detail
 	this.control = {this.dw_print, this.dw_footer, this.dw_master, this.cb_retrieve, this.cb_ok, this.dw_detail}
 
-// w_generate_visitpresctiption_labels.destroy() returns 0
+// w_generate_visitpresctiption_labels.destroy() returns 0 [event]
 	destroy this.dw_print
 	destroy this.dw_footer
 	destroy this.dw_master
@@ -26,7 +26,7 @@
 	destroy this.cb_ok
 	destroy this.dw_detail
 
-// w_generate_visitpresctiption_labels.open() returns long
+// w_generate_visitpresctiption_labels.open() returns long [event]
 	environment le_env
 	long ll_win_width
 	long ll_win_height
@@ -65,13 +65,13 @@
 	end if
 	return message.returnvalue
 
-// dw_master.ue_enterkey() returns long
+// dw_master.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_master.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_master.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemchanged(row, dwo, data)
 	choose case dwo.name
@@ -85,7 +85,7 @@
 	end choose
 	return 0
 
-// cb_retrieve.clicked() returns long
+// cb_retrieve.clicked() returns long [event]
 	string ls_filter
 	long ll_masterrow
 	parent.dw_master.accepttext()
@@ -99,7 +99,7 @@
 	end if
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	long ll_rowcount
 	long ll_counter
 	long[] ll_rowid
@@ -145,19 +145,19 @@
 	end if
 	return message.returnvalue
 
-// dw_detail.ue_enterkey() returns long
+// dw_detail.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_detail.getfocus() returns long
+// dw_detail.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	selecttext(1, len(gettext()))
 	return ::message.returnvalue
 
-// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
 	selecttext(1, len(gettext()))

@@ -18,16 +18,16 @@
 	end if
 	return li_errcode
 
-// w_groupitemscategory.create() returns 0
+// w_groupitemscategory.create() returns 0 [event]
 	call super::create
 
-// w_groupitemscategory.destroy() returns 0
+// w_groupitemscategory.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_groupitemscategory.ue_save() returns 0
+// w_groupitemscategory.ue_save() returns 0 [event]
 	long ll_counter
 	long ll_code
 	setpointer(hourglass!)
@@ -55,19 +55,19 @@
 	end if
 	setpointer(arrow!)
 
-// w_groupitemscategory.ue_postopen() returns 0
+// w_groupitemscategory.ue_postopen() returns 0 [event]
 	call super::ue_postopen
 	this.im_menu.m_file.m_new.visible = false
 
-// w_groupitemscategory.ue_newform() returns 0
+// w_groupitemscategory.ue_newform() returns 0 [event]
 	call super::ue_newform
 	this.im_menu.m_item.m_newitem.enabled = true
 	this.im_menu.m_item.m_deleteitem.enabled = true
 
-// w_groupitemscategory.ue_getfocus() returns 0
+// w_groupitemscategory.ue_getfocus() returns 0 [event]
 	call super::ue_getfocus
 
-// w_groupitemscategory.ue_detail() returns 0
+// w_groupitemscategory.ue_detail() returns 0 [event]
 	long ll_code
 	long ll_rowcount
 	this.im_menu.m_file.m_retrieve.text = "Lis&t"
@@ -89,8 +89,207 @@
 	this.im_menu.m_item.m_newitem.enabled = true
 	this.im_menu.m_item.m_deleteitem.enabled = true
 
-// w_groupitemscategory.ue_newitem() returns 0
+// w_groupitemscategory.ue_newitem() returns 0 [event]
 	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
 		return
 	end if
 	call super::ue_newitem
+
+// dw_itemsdetail.getfocus() returns long [event]
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem() = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	string ls_managername
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "itemscategorycode"
+		parent.parent.parent.il_currrow = row
+		parent.parent.parent.ib_itemvalidated = false
+		li_errcode = 0
+	case else
+		parent.parent.parent.ib_itemvalidated = true
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	integer rt_code
+	long ll_currrow
+	long ll_listcurrrow
+	long ll_icode
+	long ll_found
+	long ll_rowm
+	long ll_counter
+	long ll_insrow
+	datastore lds_itemcategory
+	if getcolumnname() = parent.parent.parent.is_columnitemname then
+		setredraw(false)
+		ll_rowm = getrow()
+		if key = keydownarrow! then
+			if parent.parent.parent.id_itemslist.visible then
+				parent.parent.parent.id_itemslist.selectrow(0, false)
+				parent.parent.parent.id_itemslist.scrollnextrow()
+				ll_listcurrrow = parent.parent.parent.id_itemslist.getrow()
+				rt_code = 1
+			else
+				rt_code = 2
+			end if
+		elseif key = keyuparrow! then
+			if parent.parent.parent.id_itemslist.visible then
+				parent.parent.parent.id_itemslist.selectrow(0, false)
+				parent.parent.parent.id_itemslist.scrollpriorrow()
+				ll_listcurrrow = parent.parent.parent.id_itemslist.getrow()
+				rt_code = 1
+			else
+				rt_code = 2
+			end if
+		elseif key = keypagedown! then
+			if parent.parent.parent.id_itemslist.visible then
+				parent.parent.parent.id_itemslist.selectrow(0, false)
+				parent.parent.parent.id_itemslist.scrollnextpage()
+				ll_listcurrrow = parent.parent.parent.id_itemslist.getrow()
+				rt_code = 1
+			else
+				rt_code = 2
+			end if
+		elseif key = keypageup! then
+			if parent.parent.parent.id_itemslist.visible then
+				parent.parent.parent.id_itemslist.selectrow(0, false)
+				parent.parent.parent.id_itemslist.scrollpriorpage()
+				ll_listcurrrow = parent.parent.parent.id_itemslist.getrow()
+				rt_code = 1
+			else
+				rt_code = 2
+			end if
+		elseif key = keyend! then
+			if parent.parent.parent.id_itemslist.visible then
+				parent.parent.parent.id_itemslist.selectrow(0, false)
+				parent.parent.parent.id_itemslist.scrolltorow(99999)
+				ll_listcurrrow = parent.parent.parent.id_itemslist.getrow()
+				rt_code = 1
+			else
+				rt_code = 2
+			end if
+		elseif key = keyhome! then
+			if parent.parent.parent.id_itemslist.visible then
+				parent.parent.parent.id_itemslist.selectrow(0, false)
+				parent.parent.parent.id_itemslist.scrolltorow(1)
+				ll_listcurrrow = parent.parent.parent.id_itemslist.getrow()
+				rt_code = 1
+			else
+				rt_code = 2
+			end if
+		elseif key = keyback! then
+			parent.parent.parent.ib_bkspace = true
+			setredraw(true)
+		elseif key = keyescape! then
+			parent.parent.parent.ib_itemslistopen = false
+			parent.parent.parent.id_itemslist.hide()
+			setfocus()
+			setredraw(true)
+		elseif key = keyf8! then
+			parent.parent.parent.ib_itemslistopen = false
+			parent.parent.parent.id_itemslist.hide()
+			setredraw(true)
+			ll_icode = f_drilldown_itemsearch("namesearch", 1)
+			if ll_icode > 0 then
+				ll_found = parent.parent.parent.id_itemslist.find("icode = " + string(ll_icode), 1, parent.parent.parent.id_itemslist.rowcount())
+				if ll_found > 0 then
+					ll_listcurrrow = ll_found
+					parent.parent.parent.id_itemslist.selectrow(0, false)
+					rt_code = 1
+				end if
+			end if
+			setfocus()
+		elseif key = keyf9! then
+			parent.parent.parent.ib_itemslistopen = false
+			parent.parent.parent.id_itemslist.hide()
+			setredraw(true)
+			ll_icode = f_drilldown_itemsearch("criteriasearch", 1)
+			if ll_icode > 0 then
+				ll_found = parent.parent.parent.id_itemslist.find("icode = " + string(ll_icode), 1, parent.parent.parent.id_itemslist.rowcount())
+				if ll_found > 0 then
+					ll_listcurrrow = ll_found
+					parent.parent.parent.id_itemslist.selectrow(0, false)
+					rt_code = 1
+				end if
+			end if
+			setfocus()
+		elseif key = keyf4! then
+			parent.parent.parent.wf_showlist(getitemnumber(getrow(), "currlistrow"))
+			setredraw(true)
+		else
+			setredraw(true)
+		end if
+		if rt_code = 1 then
+			parent.parent.parent.id_itemslist.selectrow(ll_listcurrrow, true)
+			if parent.parent.parent.id_itemslist.rowcount() > 0 then
+				setitem(ll_rowm, parent.parent.parent.is_columnitemname, parent.parent.parent.id_itemslist.getitemstring(ll_listcurrrow, "itemname"))
+				setitem(ll_rowm, "icode", parent.parent.parent.id_itemslist.getitemnumber(ll_listcurrrow, "icode"))
+				setitem(ll_rowm, "fullcode", parent.parent.parent.id_itemslist.getitemstring(ll_listcurrrow, "fullcode"))
+			end if
+			selecttext(1, len(gettext()))
+			parent.parent.parent.ib_itemvalidated = false
+			parent.parent.parent.il_currrow = ll_rowm
+			setitem(getrow(), "CurrListRow", ll_listcurrrow)
+			setredraw(true)
+		elseif rt_code = 2 then
+			ll_rowm = getrow()
+			parent.parent.parent.id_itemslist.selectrow(0, false)
+			if getrow() > 0 then
+				ll_listcurrrow = parent.parent.parent.id_itemslist.find("itemname = '" + this.object.itemname[ll_rowm] + "'", 1, parent.parent.parent.id_itemslist.rowcount())
+				if ll_listcurrrow > 0 and ll_listcurrrow <= parent.parent.parent.id_itemslist.rowcount() then
+					parent.parent.parent.id_itemslist.selectrow(ll_listcurrrow, true)
+					setitem(ll_rowm, parent.parent.parent.is_columnitemname, parent.parent.parent.id_itemslist.getitemstring(ll_listcurrrow, "itemname"))
+					setitem(ll_rowm, "icode", parent.parent.parent.id_itemslist.getitemnumber(ll_listcurrrow, "icode"))
+					setitem(ll_rowm, "fullcode", parent.parent.parent.id_itemslist.getitemstring(ll_listcurrrow, "fullcode"))
+					selecttext(1, len(gettext()))
+					parent.parent.parent.ib_itemvalidated = true
+					parent.parent.parent.il_currrow = ll_rowm
+					setitem(ll_rowm, "CurrListRow", ll_listcurrrow)
+					setredraw(true)
+				end if
+				rt_code = 0
+			end if
+		end if
+	elseif key = keydownarrow! then
+		ll_currrow = getrow()
+		if ll_currrow = rowcount() then
+			getparent().dynamic postevent("ue_focusfooter")
+			rt_code = 1
+		end if
+	elseif key = keyuparrow! then
+		ll_currrow = getrow()
+		if ll_currrow = 1 then
+			getparent().dynamic postevent("ue_FocusHeader")
+			rt_code = 1
+		end if
+	end if
+	if getcolumnname() = "itemscategorycode" and key = keyf5! then
+		lds_itemcategory = create datastore
+		lds_itemcategory.dataobject = "ddd_itemcategory"
+		lds_itemcategory.settransobject(sqlca)
+		lds_itemcategory.retrieve()
+		for ll_counter = 1 to parent.parent.parent.id_detail.rowcount()
+			parent.triggerevent("ue_deleteitem")
+		next
+		if lds_itemcategory.rowcount() > 0 then
+			ll_counter = 1
+			for ll_counter = 1 to lds_itemcategory.rowcount()
+				ll_insrow = insertrow(0)
+				if ll_insrow > 0 then
+					parent.parent.parent.id_detail.object.itemscategorycode[ll_insrow] = lds_itemcategory.object.icatcode[ll_counter]
+				end if
+			next
+		end if
+	end if
+	return rt_code

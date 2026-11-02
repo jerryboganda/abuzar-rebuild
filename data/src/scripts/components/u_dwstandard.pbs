@@ -1,10 +1,10 @@
 // userobject u_dwstandard (components)  ancestor: datawindow
 
-// u_dwstandard.uevent_dberr_reqmissing(dwbuffer adwb_buffer, long al_row) returns 0
+// u_dwstandard.uevent_dberr_reqmissing(dwbuffer adwb_buffer, long al_row) returns 0 [event]
 
-// u_dwstandard.uevent_dberr_initial() returns 0
+// u_dwstandard.uevent_dberr_initial() returns 0 [event]
 
-// u_dwstandard.uevent_dberr_message(long al_errorcode, string as_errortext, long al_row, dwbuffer adwb_buffer) returns 0
+// u_dwstandard.uevent_dberr_message(long al_errorcode, string as_errortext, long al_row, dwbuffer adwb_buffer) returns 0 [event]
 	s_dberror ls_dberror
 	choose case al_errorcode
 	case -193
@@ -39,7 +39,7 @@
 	end choose
 	openwithparm(w_dberror, ls_dberror)
 
-// u_dwstandard.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// u_dwstandard.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	string ls_column
 	string ls_exp
 	string ls_date
@@ -121,13 +121,13 @@
 	end if
 	return 0
 
-// u_dwstandard.dberror(long sqldbcode, string sqlerrtext, string sqlsyntax, dwbuffer buffer, long row) returns long
+// u_dwstandard.dberror(long sqldbcode, string sqlerrtext, string sqlsyntax, dwbuffer buffer, long row) returns long [event]
 	event uevent_dberr_initial()
 	post event uevent_dberr_message(sqldbcode, sqlerrtext, row, buffer)
 	SQL rollback USING sqlca;
 	return 1
 
-// u_dwstandard.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+// u_dwstandard.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
 	string s_str
 	string s_t
 	integer i_len
@@ -152,10 +152,10 @@
 	this.s_previous = s_str
 	return ::message.returnvalue
 
-// u_dwstandard.create() returns 0
+// u_dwstandard.create() returns 0 [event]
 
-// u_dwstandard.destroy() returns 0
+// u_dwstandard.destroy() returns 0 [event]
 
-// u_dwstandard.getfocus() returns long
+// u_dwstandard.getfocus() returns long [event]
 	selecttext(1, len(gettext()))
 	return ::message.returnvalue

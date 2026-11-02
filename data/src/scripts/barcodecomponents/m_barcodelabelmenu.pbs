@@ -1,8 +1,114 @@
 // menu m_barcodelabelmenu (barcodecomponents)  ancestor: m_multi_entry
 
-// m_barcodelabelmenu.create() returns 0
+// m_barcodelabelmenu.create() returns 0 [event]
 	m_barcodelabelmenu = this
 	call super::create
 
-// m_barcodelabelmenu.destroy() returns 0
+// m_barcodelabelmenu.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_generate = create m_generate
+	this.m_populateitems = create m_populateitems
+	this.m_printprice = create m_printprice
+	this.m_setquantity = create m_setquantity
+	this.m_populateinter-godowntransfer = create m_populateinter-godowntransfer
+	this.m_scaledownqtywithprefferedsaleqty = create m_scaledownqtywithprefferedsaleqty
+	this.item[upperbound(this.item) + 1] = this.m_generate
+	this.item[upperbound(this.item) + 1] = this.m_populateitems
+	this.item[upperbound(this.item) + 1] = this.m_printprice
+	this.item[upperbound(this.item) + 1] = this.m_setquantity
+	this.item[upperbound(this.item) + 1] = this.m_populateinter-godowntransfer
+	this.item[upperbound(this.item) + 1] = this.m_scaledownqtywithprefferedsaleqty
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_generate
+	destroy this.m_populateitems
+	destroy this.m_printprice
+	destroy this.m_setquantity
+	destroy this.m_populateinter-godowntransfer
+	destroy this.m_scaledownqtywithprefferedsaleqty
+
+// m_options.clicked() returns 0 [event]
+	long ll_manfcode
+	long ll_pocode
+	call super::clicked
+	this.parentwindow.dynamic wf_getpomanfcode(ll_pocode, ll_manfcode)
+	this.parentwindow.dynamic wf_populatedetaildwfrompo(ll_pocode, ll_manfcode)
+
+// m_options.create() returns 0 [event]
+	call super::create
+	this.visible = true
+	this.text = "Edit Purchase Order"
+	this.enabled = false
+
+// m_options.destroy() returns 0 [event]
+	call super::destroy
+
+// m_generate.clicked() returns 0 [event]
+	this.parentwindow.triggerevent("ue_generate")
+
+// m_generate.create() returns 0 [event]
+	call super::create
+	this.text = "Generate"
+
+// m_generate.destroy() returns 0 [event]
+	call super::destroy
+
+// m_populateitems.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_populatefiltereditems()
+
+// m_populateitems.create() returns 0 [event]
+	call super::create
+	this.text = "Populate Items"
+
+// m_populateitems.destroy() returns 0 [event]
+	call super::destroy
+
+// m_printprice.clicked() returns 0 [event]
+	if this.checked then
+		this.checked = false
+	else
+		this.checked = true
+	end if
+	this.parentwindow.dynamic wf_printprice(this.checked)
+
+// m_printprice.create() returns 0 [event]
+	call super::create
+	this.text = "Print Price"
+
+// m_printprice.destroy() returns 0 [event]
+	call super::destroy
+
+// m_setquantity.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_set_quantity()
+
+// m_setquantity.create() returns 0 [event]
+	call super::create
+	this.text = "Set Quantity"
+
+// m_setquantity.destroy() returns 0 [event]
+	call super::destroy
+
+// m_populateinter-godowntransfer.create() returns 0 [event]
+	call super::create
+	this.text = "Populate Inter-Godown Transfer~tCtrl+F8"
+	this.shortcut = 375
+
+// m_populateinter-godowntransfer.destroy() returns 0 [event]
+	call super::destroy
+
+// m_populateinter-godowntransfer.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_populate_transfer()
+
+// m_scaledownqtywithprefferedsaleqty.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_scaledown_qty_with_prefferedsaleqty()
+
+// m_scaledownqtywithprefferedsaleqty.create() returns 0 [event]
+	call super::create
+	this.text = "Scale Down Qty With Preffered Sale Qty"
+
+// m_scaledownqtywithprefferedsaleqty.destroy() returns 0 [event]
 	call super::destroy

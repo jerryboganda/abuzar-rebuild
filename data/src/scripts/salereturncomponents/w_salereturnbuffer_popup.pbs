@@ -1,6 +1,6 @@
 // window w_salereturnbuffer_popup (salereturncomponents)  ancestor: w_salereturnbuffer
 
-// w_salereturnbuffer_popup.ue_fetch_buffer_value() returns 0
+// w_salereturnbuffer_popup.ue_fetch_buffer_value() returns 0 [event]
 	integer li_result
 	long ll_listrow
 	long ll_custcode
@@ -71,7 +71,7 @@
 		return
 	end if
 
-// w_salereturnbuffer_popup.create() returns 0
+// w_salereturnbuffer_popup.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.cb_save = create cb_save
@@ -80,7 +80,7 @@
 	this.control[icurrent + 1] = this.cb_save
 	this.control[icurrent + 2] = this.cb_cancel
 
-// w_salereturnbuffer_popup.destroy() returns 0
+// w_salereturnbuffer_popup.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
@@ -88,7 +88,7 @@
 	destroy this.cb_save
 	destroy this.cb_cancel
 
-// w_salereturnbuffer_popup.open() returns long
+// w_salereturnbuffer_popup.open() returns long [event]
 	m_entry lm_menu
 	long ll_width
 	long ll_height
@@ -132,13 +132,13 @@
 	end if
 	return message.returnvalue
 
-// w_salereturnbuffer_popup.ue_postopen() returns 0
+// w_salereturnbuffer_popup.ue_postopen() returns 0 [event]
 	call super::ue_postopen
 	postevent("ue_fetch_buffer_value")
 
-// w_salereturnbuffer_popup.ue_list() returns 0
+// w_salereturnbuffer_popup.ue_list() returns 0 [event]
 
-// w_salereturnbuffer_popup.ue_new() returns 0
+// w_salereturnbuffer_popup.ue_new() returns 0 [event]
 	integer li_postingmode
 	if this.ib_commitok = true and this.il_codevalue > 0 then
 		if (this.is_callermodule = "w_sale" or this.is_callermodule = "w_postsale") and this.iw_callingwindow.istr_buffer.s_name1 = "Y" then
@@ -153,7 +153,7 @@
 	this.tab_retrieve.selectedtab = 1
 	this.id_master.setfocus()
 
-// cb_save.clicked() returns long
+// cb_save.clicked() returns long [event]
 	if parent.tab_retrieve.selectedtab = 1 then
 		if parent.is_callermodule = "w_sale" or parent.is_callermodule = "w_postsale" then
 			if parent.iw_callingwindow.istr_buffer.s_name1 = "Y" then
@@ -169,6 +169,6 @@
 	end if
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	close(parent)
 	return ::message.returnvalue

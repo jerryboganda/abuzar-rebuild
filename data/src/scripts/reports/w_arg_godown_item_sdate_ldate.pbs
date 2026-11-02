@@ -1,6 +1,6 @@
 // window w_arg_godown_item_sdate_ldate (reports)  ancestor: w_popup_forselection_walias
 
-// w_arg_godown_item_sdate_ldate.create() returns 0
+// w_arg_godown_item_sdate_ldate.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.gb_2 = create gb_2
@@ -21,7 +21,7 @@
 	this.control[icurrent + 7] = this.st_3
 	this.control[icurrent + 8] = this.gb_3
 
-// w_arg_godown_item_sdate_ldate.destroy() returns 0
+// w_arg_godown_item_sdate_ldate.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.gb_2
 	destroy this.st_1
@@ -32,7 +32,7 @@
 	destroy this.st_3
 	destroy this.gb_3
 
-// w_arg_godown_item_sdate_ldate.open() returns long
+// w_arg_godown_item_sdate_ldate.open() returns long [event]
 	long ancestorreturnvalue
 	date ld_currdate
 	string ls_text
@@ -50,21 +50,51 @@
 	this.em_enddate.text = ls_text
 	return ::message.returnvalue
 
-// w_arg_godown_item_sdate_ldate.ue_close() returns 0
+// w_arg_godown_item_sdate_ldate.ue_close() returns 0 [event]
 	closewithreturn(this, this.istr_arg)
 
-// em_startdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_cancel.clicked() returns long [event]
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long [event]
+	if parent.id_selected.accepttext() = -1 then
+		parent.id_selected.setfocus()
+		return ::message.returnvalue
+	elseif isnull(parent.id_selected.getitemstring(parent.id_selected.getrow(), "name")) then
+		messagebox("Name Validation", "Please enter valid value for Name.")
+		parent.id_selected.setcolumn(1)
+		parent.id_selected.setfocus()
+		return ::message.returnvalue
+	end if
+	parent.is_popup_selection.l_code = parent.id_selected.getitemnumber(parent.id_selected.getrow(), "code")
+	parent.is_popup_selection.s_name = parent.id_selected.getitemstring(parent.id_selected.getrow(), "name")
+	parent.istr_arg.l_code1 = parent.id_selected.getitemnumber(1, "code")
+	parent.istr_arg.l_code2 = parent.dw_control2.getitemnumber(1, "gcode")
+	if parent.istr_arg.l_code2 = 0 or isnull(parent.istr_arg.l_code2) then
+		messagebox("Godown Validation!", "Please Select Valid Godown")
+		parent.dw_control2.setcolumn("gcode")
+		parent.dw_control2.setfocus()
+		return ::message.returnvalue
+	end if
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	parent.istr_arg.i_status = 1
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// em_startdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// em_enddate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// em_enddate.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// dw_control2.ue_enterkey() returns long
+// dw_control2.ue_enterkey() returns long [event]
 	send(handle(this), 256, 9, long(90))
 	return 1

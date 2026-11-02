@@ -32,16 +32,16 @@
 	end if
 	return li_errcode
 
-// w_emp_dept.create() returns 0
+// w_emp_dept.create() returns 0 [event]
 	call super::create
 
-// w_emp_dept.destroy() returns 0
+// w_emp_dept.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_emp_dept.ue_save() returns 0
+// w_emp_dept.ue_save() returns 0 [event]
 	long ll_mastercurrrow
 	long ll_invid
 	long ll_detailrows
@@ -77,18 +77,18 @@
 	call super::ue_save
 	setpointer(arrow!)
 
-// w_emp_dept.ue_newform() returns 0
+// w_emp_dept.ue_newform() returns 0 [event]
 	call super::ue_newform
 	this.id_master.setfocus()
 
-// w_emp_dept.ue_newitem() returns 0
+// w_emp_dept.ue_newitem() returns 0 [event]
 	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
 		return
 	end if
 	call super::ue_newitem
 	this.id_detail.setcolumn("weekdaycode")
 
-// w_emp_dept.ue_detail() returns 0
+// w_emp_dept.ue_detail() returns 0 [event]
 	call super::ue_detail
 	this.im_menu.m_file.m_save.enabled = true
 	this.im_menu.m_file.m_delete.enabled = true
@@ -100,12 +100,12 @@
 	this.im_menu.m_item.m_newitem.enabled = true
 	this.im_menu.m_item.m_deleteitem.enabled = true
 
-// w_emp_dept.ue_postopen() returns 0
+// w_emp_dept.ue_postopen() returns 0 [event]
 	call super::ue_postopen
 	this.id_detail.getchild("WeekDayCode", this.idc_salesman)
 	this.idc_salesman.settransobject(this.it_transobject)
 
-// w_emp_dept.ue_deleteitem() returns 0
+// w_emp_dept.ue_deleteitem() returns 0 [event]
 	long ll_currow
 	long ll_detailrows
 	long ll_icode
@@ -121,3 +121,76 @@
 	this.id_detail.deleterow(0)
 	ll_detailrows = this.id_detail.rowcount()
 	wf_grandtotal()
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if data = "" or isnull(data) then
+			messagebox("Deparment Name Validation", "Value required for Deparment " + upper(dwo.name) + " in current row")
+		end if
+	end choose
+	return 1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if parent.parent.parent.wf_duplicatename(data) then
+			messagebox("Deparment Name Validation", "Duplicate Deparment Name Error~n~rPlease Choose Some Other Deparment Name")
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "weekdaycode"
+		parent.parent.parent.il_currrow = row
+		parent.parent.parent.ib_itemvalidated = false
+		li_errcode = 0
+	case else
+		parent.parent.parent.ib_itemvalidated = true
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "weekdaycode"
+		if data = "" or isnull(data) then
+			messagebox("Week Day Validation", "Value required Week Day Name in current row")
+		end if
+	end choose
+	return 1
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem() = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.getfocus() returns long [event]
+	setcolumn(1)
+	if len(gettext()) > 0 then
+		selecttext(1, len(gettext()))
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.ue_enterkey() returns long [event]
+	if getrow() = rowcount() and getcolumn() = integer(this.object.datawindow.column.count) then
+		parent.parent.parent.event ue_newitem()
+		setcolumn("weekdaycode")
+		setfocus()
+		return 1
+	end if
+	send(handle(this), 256, 9, long(90))
+	return 1

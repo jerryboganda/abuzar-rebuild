@@ -1,8 +1,48 @@
 // menu m_issuereqmenu (issuereq)  ancestor: m_multi_entry
 
-// m_issuereqmenu.create() returns 0
+// m_issuereqmenu.create() returns 0 [event]
 	m_issuereqmenu = this
 	call super::create
 
-// m_issuereqmenu.destroy() returns 0
+// m_issuereqmenu.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_itemissuehistory = create m_itemissuehistory
+	this.item[upperbound(this.item) + 1] = this.m_itemissuehistory
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_itemissuehistory
+
+// m_file.clicked() returns 0 [event]
+	call super::clicked
+	this.parentwindow.dynamic wf_dueitem()
+
+// m_options.create() returns 0 [event]
+	call super::create
+	this.text = "Sa&ve and Print~tCtrl+F6"
+	this.enabled = false
+
+// m_options.clicked() returns 0 [event]
+	call super::clicked
+	this.parentwindow.triggerevent("ue_save")
+	if this.parentwindow.dynamic wf_commitform() = true then
+		this.parentwindow.triggerevent("ue_print")
+		this.parentwindow.postevent("ue_new")
+	end if
+
+// m_options.destroy() returns 0 [event]
+	call super::destroy
+
+// m_itemissuehistory.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_itemissuehistory()
+
+// m_itemissuehistory.create() returns 0 [event]
+	call super::create
+	this.text = "Item Issue History~tCtrl+M"
+	this.shortcut = 333
+
+// m_itemissuehistory.destroy() returns 0 [event]
 	call super::destroy

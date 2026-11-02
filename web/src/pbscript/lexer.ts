@@ -2,8 +2,8 @@
 
 export type Tok = { t: 'num' | 'str' | 'id' | 'enum' | 'op' | 'eof'; v: string }
 
-const IDSTART = /[A-Za-z_$#%]/
-const IDCHAR = /[A-Za-z0-9_$#%-]/
+const IDSTART = /[A-Za-z_$#%-￿]/
+const IDCHAR = /[A-Za-z0-9_$#%-￿-]/
 const OPS3: string[] = []
 const OPS2 = ['<>', '<=', '>=', '::', '+=', '-=', '*=', '/=', '++', '--']
 const OPS1 = '+-*/^=<>(),.[]{}:;&'

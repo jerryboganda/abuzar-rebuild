@@ -1,6 +1,6 @@
 // window w_diseasetreatmenttemplate (patientvisitcomp)  ancestor: w_multi_entry
 
-// w_diseasetreatmenttemplate.ue_enableprint() returns 0
+// w_diseasetreatmenttemplate.ue_enableprint() returns 0 [event]
 	this.im_menu.m_file.m_print.enabled = true
 
 // w_diseasetreatmenttemplate.wf_duplicatename(string as_name) returns boolean
@@ -255,21 +255,21 @@
 	end if
 	return 0
 
-// w_diseasetreatmenttemplate.create() returns 0
+// w_diseasetreatmenttemplate.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.dw_analyzerprint = create dw_analyzerprint
 	icurrent = upperbound(this.control)
 	this.control[icurrent + 1] = this.dw_analyzerprint
 
-// w_diseasetreatmenttemplate.destroy() returns 0
+// w_diseasetreatmenttemplate.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 	destroy this.dw_analyzerprint
 
-// w_diseasetreatmenttemplate.ue_save() returns 0
+// w_diseasetreatmenttemplate.ue_save() returns 0 [event]
 	long ll_mastercurrrow
 	long ll_invid
 	long ll_detailrows
@@ -306,7 +306,7 @@
 	call super::ue_save
 	setpointer(arrow!)
 
-// w_diseasetreatmenttemplate.ue_detail() returns 0
+// w_diseasetreatmenttemplate.ue_detail() returns 0 [event]
 	long ll_code
 	call super::ue_detail
 	ll_code = this.id_dwcontrol.borderstyle.code[this.il_selectedrow]
@@ -326,7 +326,7 @@
 	this.im_menu.m_item.m_deleteitem.enabled = true
 	wf_grandtotal()
 
-// w_diseasetreatmenttemplate.ue_newitem() returns 0
+// w_diseasetreatmenttemplate.ue_newitem() returns 0 [event]
 	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
 		return
 	end if
@@ -337,7 +337,7 @@
 	end if
 	call super::ue_newitem
 
-// w_diseasetreatmenttemplate.ue_postopen() returns 0
+// w_diseasetreatmenttemplate.ue_postopen() returns 0 [event]
 	boolean lb_found
 	integer li_rtncode
 	long ll_counter
@@ -375,7 +375,7 @@
 	end if
 	this.id_itemslist.object.purprice.visible = false
 
-// w_diseasetreatmenttemplate.ue_print() returns 0
+// w_diseasetreatmenttemplate.ue_print() returns 0 [event]
 	integer li_option
 	long ll_custcode
 	long ll_row
@@ -438,13 +438,13 @@
 	end if
 	messagebox("Printing Error.", "Can not Print,~r~nNo rows are retrieved", information!)
 
-// w_diseasetreatmenttemplate.ue_list() returns 0
+// w_diseasetreatmenttemplate.ue_list() returns 0 [event]
 	call super::ue_list
 	SQL rollback USING this.it_transobject;
 	this.im_menu.m_file.m_print.enabled = false
 	post event ue_enableprint()
 
-// w_diseasetreatmenttemplate.ue_newform() returns 0
+// w_diseasetreatmenttemplate.ue_newform() returns 0 [event]
 	integer rtncode
 	integer li_defaultgcode
 	integer li_ismodifysaleprice
@@ -476,3 +476,143 @@
 		return
 	end if
 	this.id_master.setfocus()
+
+// tabpage_detail.create() returns 0 [event]
+	integer icurrent
+	this.dw_print = create dw_print
+	call super::create
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_print
+
+// tabpage_detail.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.dw_print
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if parent.parent.parent.wf_duplicatename(data) then
+			messagebox("Name Validation", "Duplication Name Error~n~rPlease Choose Some Other Name")
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "itemname"
+		if data = "" or isnull(data) then
+			messagebox("ItemName Validation", "Value required ItemName in current row")
+		end if
+	case "qty"
+		messagebox("Quantity Validation", "Please enter valid qty in current row")
+	case "totalqty"
+		messagebox("Total Quantity Validation", "Please enter valid Total Qty in current row")
+	end choose
+	return 1
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	long ll_icode
+	long ll_null
+	string ls_null
+	string ls_itemname
+	integer li_res
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case parent.parent.parent.is_columnitemname
+		parent.parent.parent.id_detail.setitem(row, "icode", parent.parent.parent.id_itemslist.getitemnumber(parent.parent.parent.id_itemslist.getrow(), "icode"))
+		parent.parent.parent.id_detail.setitem(row, "fullcode", parent.parent.parent.id_itemslist.getitemstring(parent.parent.parent.id_itemslist.getrow(), "fullcode"))
+		parent.parent.parent.id_detail.setitem(row, "itemname", parent.parent.parent.id_itemslist.getitemstring(parent.parent.parent.id_itemslist.getrow(), "itemname"))
+		parent.parent.parent.ib_itemvalidated = false
+		parent.parent.parent.il_currrow = row
+		li_errcode = 0
+	case "fullcode"
+		if not isnull(data) and data <> "" then
+			li_res = parent.parent.parent.wf_findfullcode(data, ll_icode, ls_itemname)
+			if li_res > 0 then
+				setitem(row, "icode", ll_icode)
+				setitem(row, "itemname", ls_itemname)
+				parent.parent.parent.ib_itemvalidated = false
+				parent.parent.parent.il_currrow = row
+				li_errcode = 0
+			else
+				messagebox("ItemNumber Validation", "Item does not exist")
+				setitem(row, "icode", ll_null)
+				setitem(row, "fullcode", ls_null)
+				li_errcode = 1
+			end if
+		else
+			setitem(row, "icode", ll_null)
+			setitem(row, "fullcode", ls_null)
+			li_errcode = 2
+		end if
+	case "qty"
+		if double(data) <= 0.0 then
+			messagebox("Qty Validation!", "Please enter valid Qty")
+			return 1
+		end if
+		this.object.manualchangeintotqty[row] = 0
+	case "dosagecode"
+		parent.parent.parent.wf_dosageinfo(long(data), row)
+		this.object.manualchangeintotqty[row] = 0
+	case "totalqty"
+		if double(data) <= 0.0 then
+			messagebox("Total Qty Validation!", "Please enter valid Total Qty")
+			return 1
+		else
+			this.object.manualchangeintotqty[row] = 1
+		end if
+	case "duration"
+		if long(data) < 0 then
+			messagebox("Duration Validation!", "Please enter a valid duration")
+			return 1
+		end if
+		this.object.manualchangeintotqty[row] = 0
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	parent.parent.parent.wf_grandtotal()
+	parent.parent.parent.wf_update_totalqty(row)
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem() = -1 then
+		return ::message.returnvalue
+	end if
+	if dwo.name = "itemname" then
+		parent.parent.parent.ib_focusdetail = true
+	end if
+	if dwo.name = "qty" and parent.parent.parent.ib_itemslistopen then
+		parent.parent.parent.ib_itemslistopen = false
+		parent.parent.parent.id_itemslist.hide()
+	end if
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	return 0
+
+// dw_itemsdetail.getfocus() returns long [event]
+	long ancestorreturnvalue
+	if f_stringpreferences("itemcode") = "N" then
+		ancestorreturnvalue = super::getfocus()
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.rowfocuschanged(long currentrow) returns long [event]
+	long ancestorreturnvalue
+	dwitemstatus lrs_status
+	long ll_icode
+	ancestorreturnvalue = super::rowfocuschanged(currentrow)
+	if currentrow > 0 then
+	end if
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem() = -1 then
+		return ::message.returnvalue
+	end if
+	lrs_status = getitemstatus(currentrow, 0, primary!)
+	if getcolumnname() <> parent.parent.parent.is_columnitemname and (rowcount() > 0 and lrs_status <> new!) and currentrow > 0 then
+		ll_icode = this.object.icode[currentrow]
+	end if
+	return ::message.returnvalue

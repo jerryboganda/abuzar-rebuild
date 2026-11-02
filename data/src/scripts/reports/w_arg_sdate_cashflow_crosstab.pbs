@@ -1,6 +1,6 @@
 // window w_arg_sdate_cashflow_crosstab (reports)  ancestor: w_arguements
 
-// w_arg_sdate_cashflow_crosstab.create() returns 0
+// w_arg_sdate_cashflow_crosstab.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.rb_bank = create rb_bank
@@ -13,13 +13,42 @@
 	this.control[icurrent + 3] = this.rb_both
 	this.control[icurrent + 4] = this.gb_2
 
-// w_arg_sdate_cashflow_crosstab.destroy() returns 0
+// w_arg_sdate_cashflow_crosstab.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.rb_bank
 	destroy this.rb_cash
 	destroy this.rb_both
 	destroy this.gb_2
 
-// w_arg_sdate_cashflow_crosstab.ue_close(integer ai_stauts) returns 0
+// w_arg_sdate_cashflow_crosstab.ue_close(integer ai_stauts) returns 0 [event]
 	super::ue_close(ai_stauts)
 	closewithreturn(this, this.istr_arg)
+
+// cb_cancel.clicked() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked()
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked()
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	if parent.rb_cash.checked = true then
+		parent.istr_arg.l_code1 = 1
+	end if
+	if parent.rb_bank.checked = true then
+		parent.istr_arg.l_code1 = 2
+	end if
+	if parent.rb_both.checked = true then
+		parent.istr_arg.l_code1 = 3
+	end if
+	if parent.cbx_supress.checked = true then
+		parent.istr_arg.l_code2 = 1
+	else
+		parent.istr_arg.l_code2 = 0
+	end if
+	parent.istr_arg.i_status = 1
+	parent.post event ue_close(1)
+	return ::message.returnvalue

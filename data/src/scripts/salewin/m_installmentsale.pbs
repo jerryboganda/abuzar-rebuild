@@ -1,9 +1,81 @@
 // menu m_installmentsale (salewin)  ancestor: m_multi_entry
 
-// m_installmentsale.create() returns 0
+// m_installmentsale.create() returns 0 [event]
 	m_installmentsale = this
 	call super::create
 	this.text = "m_installmentsale"
 
-// m_installmentsale.destroy() returns 0
+// m_installmentsale.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_approve = create m_approve
+	this.m_setguarantors = create m_setguarantors
+	this.m_reject = create m_reject
+	this.m_securitydetails = create m_securitydetails
+	this.item[upperbound(this.item) + 1] = this.m_approve
+	this.item[upperbound(this.item) + 1] = this.m_setguarantors
+	this.item[upperbound(this.item) + 1] = this.m_reject
+	this.item[upperbound(this.item) + 1] = this.m_securitydetails
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_approve
+	destroy this.m_setguarantors
+	destroy this.m_reject
+	destroy this.m_securitydetails
+
+// m_approve.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_approve()
+
+// m_approve.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Approve"
+	this.enabled = false
+	this.toolbaritemvisible = false
+	this.toolbaritemname = "Custom038!"
+	this.toolbaritemtext = "Approve Installment Estimate"
+	this.toolbaritemorder = 10
+
+// m_approve.destroy() returns 0 [event]
+	call super::destroy
+
+// m_setguarantors.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_set_guarantors()
+
+// m_setguarantors.create() returns 0 [event]
+	call super::create
+	this.text = "Set Guarantor(s)~tCtrl+G"
+	this.shortcut = 327
+
+// m_setguarantors.destroy() returns 0 [event]
+	call super::destroy
+
+// m_reject.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_reject()
+
+// m_reject.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Reject"
+	this.enabled = false
+	this.toolbaritemvisible = false
+	this.toolbaritemname = "Custom080!"
+	this.toolbaritemtext = "Reject"
+	this.toolbaritemorder = 11
+
+// m_reject.destroy() returns 0 [event]
+	call super::destroy
+
+// m_securitydetails.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_set_security_details()
+
+// m_securitydetails.create() returns 0 [event]
+	call super::create
+	this.text = "Security Details~tCtrl+U"
+	this.shortcut = 341
+
+// m_securitydetails.destroy() returns 0 [event]
 	call super::destroy

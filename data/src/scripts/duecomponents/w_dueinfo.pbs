@@ -1,17 +1,17 @@
 // window w_dueinfo (duecomponents)  ancestor: window
 
-// w_dueinfo.create() returns 0
+// w_dueinfo.create() returns 0 [event]
 	this.dw_due = create dw_due
 	this.cb_cancel = create cb_cancel
 	this.cb_ok = create cb_ok
 	this.control = {this.dw_due, this.cb_cancel, this.cb_ok}
 
-// w_dueinfo.destroy() returns 0
+// w_dueinfo.destroy() returns 0 [event]
 	destroy this.dw_due
 	destroy this.cb_cancel
 	destroy this.cb_ok
 
-// w_dueinfo.open() returns long
+// w_dueinfo.open() returns long [event]
 	long ll_win_width
 	long ll_win_height
 	long ll_width
@@ -42,11 +42,11 @@
 	end if
 	return message.returnvalue
 
-// w_dueinfo.close() returns long
+// w_dueinfo.close() returns long [event]
 	closewithreturn(this, this.is_due)
 	return ::message.returnvalue
 
-// dw_due.itemerror(long row, dwobject dwo, string data) returns long
+// dw_due.itemerror(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemerror(row, dwo, data)
 	choose case dwo.name
@@ -61,7 +61,7 @@
 	end choose
 	return 1
 
-// dw_due.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_due.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	double ld_totalqty
 	ancestorreturnvalue = super::itemchanged(row, dwo, data)
@@ -75,32 +75,32 @@
 	end choose
 	return ::message.returnvalue
 
-// dw_due.ue_enterkey() returns long
+// dw_due.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// cb_cancel.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// cb_cancel.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		postevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.is_due.properclose = true
 	parent.is_due.qty = -1
 	parent.is_due.dueqty = -1
 	closewithreturn(parent, parent.is_due)
 	return ::message.returnvalue
 
-// cb_ok.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// cb_ok.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		postevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	double ld_totalqty
 	double ld_dueqty
 	double ld_actualqty

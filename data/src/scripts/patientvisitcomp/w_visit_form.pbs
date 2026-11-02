@@ -578,7 +578,7 @@
 		this.tab_retrieve.tabpage_detail.enabled = true
 	end if
 
-// w_visit_form.create() returns 0
+// w_visit_form.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	if isvalid(this.menuid) then
@@ -591,14 +591,14 @@
 	icurrent = upperbound(this.control)
 	this.control[icurrent + 1] = this.dw_image
 
-// w_visit_form.destroy() returns 0
+// w_visit_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 	destroy this.dw_image
 
-// w_visit_form.open() returns long
+// w_visit_form.open() returns long [event]
 	m_visitmenu lm_menu
 	long ll_width
 	long ll_height
@@ -630,7 +630,7 @@
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_visit_form.ue_postopen() returns 0
+// w_visit_form.ue_postopen() returns 0 [event]
 	long ll_rtncode
 	long ll_found
 	m_visitmenu lm_menu
@@ -796,7 +796,7 @@
 	lm_menu.m_file.m_visitprecautions.enabled = false
 	this.id_footer.object.b_precaution.visible = 0
 
-// w_visit_form.ue_save() returns 0
+// w_visit_form.ue_save() returns 0 [event]
 	long ll_primarykey
 	long ll_row
 	long ll_counter
@@ -941,9 +941,9 @@
 	end if
 	setpointer(arrow!)
 
-// w_visit_form.ue_newitem() returns 0
+// w_visit_form.ue_newitem() returns 0 [event]
 
-// w_visit_form.ue_newform() returns 0
+// w_visit_form.ue_newform() returns 0 [event]
 	string ls_date_errtext
 	datetime ldt_server_datetime
 	setredraw(false)
@@ -991,7 +991,7 @@
 	this.id_image.reset()
 	setredraw(true)
 
-// w_visit_form.ue_detail() returns 0
+// w_visit_form.ue_detail() returns 0 [event]
 	long ll_code
 	integer li_protect
 	boolean lb_modify
@@ -1019,13 +1019,13 @@
 	wf_protectdw(this.id_master, li_protect)
 	setredraw(true)
 
-// w_visit_form.ue_list() returns 0
+// w_visit_form.ue_list() returns 0 [event]
 	call super::ue_list
 	SQL rollback USING this.it_transobject;
 	this.im_menu.m_file.m_print.enabled = true
 	this.im_menu.m_file.m_post.enabled = true
 
-// w_visit_form.ue_print() returns 0
+// w_visit_form.ue_print() returns 0 [event]
 	long ll_code
 	long ll_row
 	long li_printretcode
@@ -1097,3 +1097,121 @@
 		return
 	end if
 	messagebox("Printing Error", "Can not Print,~r~nNo rows are retrieved", information!)
+
+// tabpage_detail.create() returns 0 [event]
+	integer icurrent
+	this.dw_print = create dw_print
+	call super::create
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_print
+
+// tabpage_detail.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.dw_print
+
+// dw_footer.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked(xpos, ypos, row, dwo)
+	choose case dwo.name
+	case "b_vitalsign"
+		parent.parent.parent.wf_show_visitvitals()
+	case "b_diagnosis"
+		parent.parent.parent.wf_show_visitsymptoms()
+	case "b_physicalexam"
+		parent.parent.parent.wf_show_visitphysicalexam()
+	case "b_diagnostics"
+		parent.parent.parent.wf_show_visitdiagnostics()
+	case "b_rx"
+		parent.parent.parent.wf_show_visitprescription()
+	case "b_patienthistory"
+		parent.parent.parent.wf_visithistory()
+	case "b_search"
+		parent.parent.parent.wf_patientsearch()
+	case "b_registerpatient"
+		parent.parent.parent.wf_registerpatient()
+	case "b_precaution"
+		parent.parent.parent.wf_show_visitprecaution()
+	case "b_patientimage"
+		parent.parent.parent.wf_setimage()
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.ue_enterkey() returns long [event]
+	if getcolumnname() <> "diagnosis" then
+		if getcolumnname() <> "previousdiagnosis" then
+			if getcolumnname() <> "recommendations" then
+				send(handle(this), 256, 9, long(90))
+				return 1
+			end if
+		end if
+	end if
+	return ::message.returnvalue
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	long ll_patientcode
+	long ll_res
+	long ll_found
+	long ll_count
+	integer li_null
+	datetime ldt_date_null
+	date ld_followupdate
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	setnull(ldt_date_null)
+	setnull(li_null)
+	choose case dwo.name
+	case "doctcode"
+		parent.parent.parent.wf_retrieve_appointments(long(data))
+	case "appointmentcode"
+		parent.parent.parent.wf_set_appointmentinfo(long(data))
+	case "regno"
+		if not isnull(data) and data <> "" then
+			ll_res = parent.parent.parent.wf_findpatientcode(data, ll_patientcode)
+			if ll_res > 0 then
+				setitem(row, "patientcode", ll_patientcode)
+			else
+				if ll_res = -2 then
+					messagebox("Patient Validation", "Patient with  RegNo  " + data + " is Inactive")
+				else
+					messagebox("Patient Validation", "Patient with  RegNo  " + data + " does not exist")
+				end if
+				return 1
+			end if
+			return
+		end if
+	case "patientcode"
+		ll_patientcode = long(data)
+		ll_found = parent.parent.parent.idc_patient.find("patientcode=" + trim(string(ll_patientcode)), 1, parent.parent.parent.idc_patient.rowcount())
+		if ll_found > 0 then
+			setitem(1, "regno", parent.parent.parent.idc_patient.getitemstring(parent.parent.parent.idc_patient.getrow(), "regno"))
+		else
+			messagebox("Patient Validation", "Patient does not exist or Already Inactive.")
+			return 1
+		end if
+	case "followupdays"
+		if long(data) < 0 or isnull(data) then
+			messagebox("Patient Follow-up Days Validation", "Please enter valid Patient Follow-up Days.", stopsign!)
+			return 1
+		else
+			ld_followupdate = relativedate(date(this.object.date[1]), long(data))
+			SQL SELECT ISNULL ( COUNT ( V.VisitCode ) , :ld_followupdate ) INTO :ll_count FROM Visit V WHERE CAST ( CONVERT ( VARCHAR ( 100 ) , DateAdd ( dd , V.FollowUpDAys , V.Date ) , 101 ) AS DATETIME ) ={d '2024-11-08' } USING parent.parent.parent.it_transobject;
+			if parent.parent.parent.it_transobject.sqlcode = 0 then
+				this.object.followupdate[1] = ld_followupdate
+				this.object.estimatedpatientcount[1] = ll_count
+				if ll_count > this.object.maxestpatientcount[1] then
+					ll_res = messagebox("Patient Follow-up Days Validation", "Estimated Patient Count is exceeding Maximum Daily Patients Limit.~r~nAllow this to happen?", question!, yesno!, 2)
+					if ll_res = 1 then
+						return 0
+					else
+						return 1
+					end if
+				else
+					this.object.estimatedpatientcount[1] = ll_count
+				end if
+			else
+				return 0
+			end if
+		end if
+		return
+	end choose
+	return ::message.returnvalue

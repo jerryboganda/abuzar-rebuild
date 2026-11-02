@@ -1,12 +1,12 @@
 // window w_patientregistration (patientcomponents)  ancestor: window
 
-// w_patientregistration.ue_close(integer ai_status) returns 0
+// w_patientregistration.ue_close(integer ai_status) returns 0 [event]
 	if ai_status = -1 then
 		setnull(this.is_regno)
 	end if
 	closewithreturn(this, this.is_regno)
 
-// w_patientregistration.ue_postopen() returns 0
+// w_patientregistration.ue_postopen() returns 0 [event]
 	boolean lb_wardcode_enabled
 	string ls_custcode
 	string ls_setting
@@ -366,20 +366,20 @@
 	end if
 	return 0
 
-// w_patientregistration.create() returns 0
+// w_patientregistration.create() returns 0 [event]
 	this.dw_print = create dw_print
 	this.cb_cancel = create cb_cancel
 	this.cb_ok = create cb_ok
 	this.dw_detail = create dw_detail
 	this.control = {this.dw_print, this.cb_cancel, this.cb_ok, this.dw_detail}
 
-// w_patientregistration.destroy() returns 0
+// w_patientregistration.destroy() returns 0 [event]
 	destroy this.dw_print
 	destroy this.cb_cancel
 	destroy this.cb_ok
 	destroy this.dw_detail
 
-// w_patientregistration.open() returns long
+// w_patientregistration.open() returns long [event]
 	long ll_row
 	long ll_width
 	long ll_height
@@ -400,23 +400,23 @@
 	post event ue_postopen()
 	return ::message.returnvalue
 
-// cb_cancel.ue_keydown(keycode key, unsignedlong keyflags) returns long
+// cb_cancel.ue_keydown(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		postevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.post event ue_close(-1)
 	return ::message.returnvalue
 
-// cb_ok.ue_keydown(keycode key, unsignedlong keyflags) returns long
+// cb_ok.ue_keydown(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		postevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	long ll_primarykey
 	long ll_row
 	long ll_usercode
@@ -565,18 +565,18 @@
 	setpointer(arrow!)
 	return ::message.returnvalue
 
-// dw_detail.ue_enterkey() returns long
+// dw_detail.ue_enterkey() returns long [event]
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_detail.ue_downkey(keycode key, unsignedlong keyflags) returns long
+// dw_detail.ue_downkey(keycode key, unsignedlong keyflags) returns long [event]
 	if keyflags = 2 and key = keyp! then
 		parent.ib_print = true
 		parent.cb_ok.triggerevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ll_totdays
 	long ll_years
 	long ll_months
@@ -670,7 +670,7 @@
 	end choose
 	return ::message.returnvalue
 
-// dw_detail.itemerror(long row, dwobject dwo, string data) returns long
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
 	choose case dwo.name
 	case "regno"
 		messagebox("ItemNo Validation", "Item Duplication Error~r~nPlease enter some other Reg No")

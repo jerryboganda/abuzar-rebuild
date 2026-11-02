@@ -30,7 +30,11 @@ const cache = new Map<string, Expr>()
 export function compileDw(src: string): Expr {
   let e = cache.get(src)
   if (!e) {
-    e = parseDwExpr(src)
+    try {
+      e = parseDwExpr(src)
+    } catch (err) {
+      throw new PBRuntimeError(`${(err as Error).message} in DataWindow expression <<${src.slice(0, 100)}>>`)
+    }
     cache.set(src, e)
   }
   return e

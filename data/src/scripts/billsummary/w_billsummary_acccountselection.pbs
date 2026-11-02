@@ -9,22 +9,22 @@
 	this.is_billsum_acc.acccode = this.dw_pref.object.acccode[1]
 	return 0
 
-// w_billsummary_acccountselection.create() returns 0
+// w_billsummary_acccountselection.create() returns 0 [event]
 	this.dw_pref = create dw_pref
 	this.cb_cancel = create cb_cancel
 	this.cb_ok = create cb_ok
 	this.control = {this.dw_pref, this.cb_cancel, this.cb_ok}
 
-// w_billsummary_acccountselection.destroy() returns 0
+// w_billsummary_acccountselection.destroy() returns 0 [event]
 	destroy this.dw_pref
 	destroy this.cb_cancel
 	destroy this.cb_ok
 
-// w_billsummary_acccountselection.close() returns long
+// w_billsummary_acccountselection.close() returns long [event]
 	closewithreturn(this, this.is_billsum_acc)
 	return ::message.returnvalue
 
-// w_billsummary_acccountselection.open() returns long
+// w_billsummary_acccountselection.open() returns long [event]
 	environment le_env
 	long ll_win_width
 	long ll_win_height
@@ -68,27 +68,27 @@
 	end if
 	return message.returnvalue
 
-// w_billsummary_acccountselection.key(keycode key, unsignedlong keyflags) returns long
+// w_billsummary_acccountselection.key(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		this.is_billsum_acc.status = false
 	end if
 	return ::message.returnvalue
 
-// dw_pref.ue_enterkey() returns long
+// dw_pref.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_pref.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+// dw_pref.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.is_billsum_acc.status = false
 	parent.triggerevent(close!)
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	if parent.dw_pref.accepttext() < 1 then
 		return ::message.returnvalue
 	end if

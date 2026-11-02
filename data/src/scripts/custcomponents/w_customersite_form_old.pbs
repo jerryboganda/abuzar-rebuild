@@ -36,35 +36,35 @@
 	SQL SELECT Count ( *) INTO :ll_count FROM PatientAdmission WHERE PatientAdmission.PatientCode =:al_patientcode AND PatientAdmission.Discharged ='N' USING sqlca;
 	return ll_count
 
-// w_customersite_form_old.create() returns 0
+// w_customersite_form_old.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.dw_admissiondetail = create dw_admissiondetail
 	icurrent = upperbound(this.control)
 	this.control[icurrent + 1] = this.dw_admissiondetail
 
-// w_customersite_form_old.destroy() returns 0
+// w_customersite_form_old.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 	destroy this.dw_admissiondetail
 
-// w_customersite_form_old.activate() returns long
+// w_customersite_form_old.activate() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::activate()
 	this.windowstate = maximized!
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_customersite_form_old.open() returns long
+// w_customersite_form_old.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.is_tablename = "patient"
 	this.dw_admissiondetail.settransobject(sqlca)
 	return ::message.returnvalue
 
-// w_customersite_form_old.ue_save() returns 0
+// w_customersite_form_old.ue_save() returns 0 [event]
 	long ll_primarykey
 	long ll_row
 	long ll_primarykey2
@@ -104,12 +104,52 @@
 	end if
 	setpointer(arrow!)
 
-// w_customersite_form_old.ue_detail() returns 0
+// w_customersite_form_old.ue_detail() returns 0 [event]
 	call super::ue_detail
 	this.id_detail.object.active.visible = true
 	this.id_detail.object.active_t.visible = true
 
-// w_customersite_form_old.ue_newform() returns 0
+// w_customersite_form_old.ue_newform() returns 0 [event]
 	call super::ue_newform
 	this.id_detail.object.active.visible = false
 	this.id_detail.object.active_t.visible = false
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "regno"
+		if parent.parent.parent.wf_duplicateregno(data) then
+			return 1
+		end if
+	case "admit"
+		if long(data) = 1 then
+			this.object.admissioncode_t.visible = true
+			this.object.admissioncode.visible = true
+			this.object.locationcode_t.visible = true
+			this.object.locationcode.visible = true
+			this.object.doctorcode_t.visible = true
+			this.object.doctorcode.visible = true
+			this.object.diagnosis_t.visible = true
+			this.object.diagnosis.visible = true
+		else
+			this.object.admissioncode_t.visible = false
+			this.object.admissioncode.visible = false
+			this.object.locationcode_t.visible = false
+			this.object.locationcode.visible = false
+			this.object.doctorcode_t.visible = false
+			this.object.doctorcode.visible = false
+			this.object.diagnosis_t.visible = false
+			this.object.diagnosis.visible = false
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "regno"
+		messagebox("ItemNo Validation", "Item Duplication Error~r~nPlease enter some other Reg No")
+	end choose
+	return 1

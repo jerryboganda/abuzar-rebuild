@@ -25,24 +25,24 @@
 		this.dw_control.object.heightunit.visible = 0
 	end if
 
-// w_papersize.create() returns 0
+// w_papersize.create() returns 0 [event]
 	this.dw_control = create dw_control
 	this.cb_cancel = create cb_cancel
 	this.cb_ok = create cb_ok
 	this.gb_1 = create gb_1
 	this.control = {this.dw_control, this.cb_cancel, this.cb_ok, this.gb_1}
 
-// w_papersize.destroy() returns 0
+// w_papersize.destroy() returns 0 [event]
 	destroy this.dw_control
 	destroy this.cb_cancel
 	destroy this.cb_ok
 	destroy this.gb_1
 
-// w_papersize.close() returns long
+// w_papersize.close() returns long [event]
 	closewithreturn(this, this.istr_repinfo)
 	return ::message.returnvalue
 
-// w_papersize.open() returns long
+// w_papersize.open() returns long [event]
 	environment le_env
 	long ll_win_width
 	long ll_win_height
@@ -80,7 +80,7 @@
 	end if
 	return message.returnvalue
 
-// dw_control.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_control.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	double ld_value
 	ancestorreturnvalue = super::itemchanged(row, dwo, data)
@@ -96,18 +96,18 @@
 	end choose
 	return 0
 
-// dw_control.ue_enterkey() returns long
+// dw_control.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.istr_repinfo.i_status = -1
 	parent.triggerevent(close!)
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	if parent.dw_control.accepttext() < 0 then
 		return ::message.returnvalue
 	end if

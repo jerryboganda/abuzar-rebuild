@@ -1,6 +1,6 @@
 // window w_selectformat_dc_taxinv_invoice (reportformat)  ancestor: window
 
-// w_selectformat_dc_taxinv_invoice.ue_close(integer ai_status) returns 0
+// w_selectformat_dc_taxinv_invoice.ue_close(integer ai_status) returns 0 [event]
 	this.istr_arg.i_status = 1
 	if this.cbx_dc.checked = true then
 		this.istr_arg.s_name1 = "Y"
@@ -19,7 +19,7 @@
 	end if
 	closewithreturn(this, this.istr_arg)
 
-// w_selectformat_dc_taxinv_invoice.create() returns 0
+// w_selectformat_dc_taxinv_invoice.create() returns 0 [event]
 	this.cbx_invoice = create cbx_invoice
 	this.cbx_taxinv = create cbx_taxinv
 	this.cbx_dc = create cbx_dc
@@ -27,14 +27,14 @@
 	this.gb_format = create gb_format
 	this.control = {this.cbx_invoice, this.cbx_taxinv, this.cbx_dc, this.cb_ok, this.gb_format}
 
-// w_selectformat_dc_taxinv_invoice.destroy() returns 0
+// w_selectformat_dc_taxinv_invoice.destroy() returns 0 [event]
 	destroy this.cbx_invoice
 	destroy this.cbx_taxinv
 	destroy this.cbx_dc
 	destroy this.cb_ok
 	destroy this.gb_format
 
-// w_selectformat_dc_taxinv_invoice.open() returns long
+// w_selectformat_dc_taxinv_invoice.open() returns long [event]
 	environment le_env
 	long ll_win_width
 	long ll_win_height
@@ -56,13 +56,13 @@
 	end if
 	return ::message.returnvalue
 
-// cb_ok.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// cb_ok.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	parent.istr_arg.i_status = 1
 	if key = keyenter! then
 		postevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	parent.post event ue_close(1)
 	return ::message.returnvalue

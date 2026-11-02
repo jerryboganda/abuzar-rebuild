@@ -1,8 +1,76 @@
 // menu m_billsummarymenu (billsummary)  ancestor: m_multi_entry
 
-// m_billsummarymenu.create() returns 0
+// m_billsummarymenu.create() returns 0 [event]
 	m_billsummarymenu = this
 	call super::create
 
-// m_billsummarymenu.destroy() returns 0
+// m_billsummarymenu.destroy() returns 0 [event]
 	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_populateinvoices = create m_populateinvoices
+	this.m_finalizebillsummary = create m_finalizebillsummary
+	this.m_printstorekeepersummary = create m_printstorekeepersummary
+	this.m_printsaleinvoices = create m_printsaleinvoices
+	this.item[upperbound(this.item) + 1] = this.m_populateinvoices
+	this.item[upperbound(this.item) + 1] = this.m_finalizebillsummary
+	this.item[upperbound(this.item) + 1] = this.m_printstorekeepersummary
+	this.item[upperbound(this.item) + 1] = this.m_printsaleinvoices
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_populateinvoices
+	destroy this.m_finalizebillsummary
+	destroy this.m_printstorekeepersummary
+	destroy this.m_printsaleinvoices
+
+// m_populateinvoices.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_populateinvoices()
+
+// m_populateinvoices.create() returns 0 [event]
+	call super::create
+	this.text = "Populate Invoices"
+
+// m_populateinvoices.destroy() returns 0 [event]
+	call super::destroy
+
+// m_finalizebillsummary.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Finalize Bill Summary"
+	this.microhelp = "Finalize Bill Summary to avoid invoice addition/deletion within it and allow user to enter cash, return, etc."
+	this.toolbaritemname = "Move!"
+	this.toolbaritemorder = 11
+
+// m_finalizebillsummary.destroy() returns 0 [event]
+	call super::destroy
+
+// m_finalizebillsummary.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_finalize_billsummary()
+
+// m_printstorekeepersummary.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_print_storekeepersummary()
+
+// m_printstorekeepersummary.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Print Store Keeper Summary~tCtrl+F7"
+	this.enabled = false
+	this.shortcut = 374
+
+// m_printstorekeepersummary.destroy() returns 0 [event]
+	call super::destroy
+
+// m_printsaleinvoices.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Print Sale Invoices~tCtrl+F8"
+	this.enabled = false
+	this.shortcut = 375
+
+// m_printsaleinvoices.destroy() returns 0 [event]
+	call super::destroy
+
+// m_printsaleinvoices.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_print_saleinvoices()

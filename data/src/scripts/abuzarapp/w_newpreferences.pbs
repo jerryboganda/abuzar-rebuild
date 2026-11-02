@@ -109,18 +109,18 @@
 	this.id_purchase.object.autopostpurinvoicefromadvpur.visible = ab_visibility
 	this.id_purchase.object.t_autopostpurinvoicefromadvpur.visible = ab_visibility
 
-// w_newpreferences.create() returns 0
+// w_newpreferences.create() returns 0 [event]
 	this.cb_cancel = create cb_cancel
 	this.cb_ok = create cb_ok
 	this.tab_preferences = create tab_preferences
 	this.control = {this.cb_cancel, this.cb_ok, this.tab_preferences}
 
-// w_newpreferences.destroy() returns 0
+// w_newpreferences.destroy() returns 0 [event]
 	destroy this.cb_cancel
 	destroy this.cb_ok
 	destroy this.tab_preferences
 
-// w_newpreferences.open() returns long
+// w_newpreferences.open() returns long [event]
 	datawindowchild ldc_headerno
 	datawindowchild ldc_retailsaleheader
 	datawindowchild ldc_creditsaleheader
@@ -529,29 +529,29 @@
 	end if
 	return ::message.returnvalue
 
-// w_newpreferences.systemkey(keycode key, unsignedlong keyflags) returns long
+// w_newpreferences.systemkey(keycode key, unsignedlong keyflags) returns long [event]
 	if keyflags = 1 and key = keys! and this.tab_preferences.selectedtab = 4 then
 		f_startup_rightsmodification()
 	end if
 	return ::message.returnvalue
 
-// cb_cancel.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_cancel.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		triggerevent(clicked!)
 	end if
 	return 1
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	close(parent)
 	return ::message.returnvalue
 
-// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		triggerevent(clicked!)
 	end if
 	return 1
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	double ld_expirydays
 	integer li_cashsalepostingtime
 	integer li_creditsalepostingtime
@@ -1091,7 +1091,7 @@
 	close(w_newpreferences)
 	return ::message.returnvalue
 
-// tab_preferences.create() returns 0
+// tab_preferences.create() returns 0 [event]
 	this.tabpage_general = create tabpage_general
 	this.tabpage_sale = create tabpage_sale
 	this.tabpage_salereturn = create tabpage_salereturn
@@ -1117,7 +1117,7 @@
 	this.tabpage_patientpref = create tabpage_patientpref
 	this.control = {this.tabpage_general, this.tabpage_sale, this.tabpage_salereturn, this.tabpage_purchase, this.tabpage_purchasereturn, this.tabpage_account, this.tabpage_report, this.tabpage_basicdata, this.tabpage_quotation, this.tabpage_service, this.tabpage_issue, this.tabpage_schedule, this.tabpage_adjustment, this.tabpage_transfer, this.tabpage_receipt, this.tabpage_purorder, this.tabpage_others, this.tabpage_barcode, this.tabpage_itempriceadj, this.tabpage_saleorder, this.tabpage_recipe, this.tabpage_production, this.tabpage_patientpref}
 
-// tab_preferences.destroy() returns 0
+// tab_preferences.destroy() returns 0 [event]
 	destroy this.tabpage_general
 	destroy this.tabpage_sale
 	destroy this.tabpage_salereturn
@@ -1142,20 +1142,20 @@
 	destroy this.tabpage_production
 	destroy this.tabpage_patientpref
 
-// tabpage_general.create() returns 0
+// tabpage_general.create() returns 0 [event]
 	this.dw_general1 = create dw_general1
 	this.control = {this.dw_general1}
 
-// tabpage_general.destroy() returns 0
+// tabpage_general.destroy() returns 0 [event]
 	destroy this.dw_general1
 
-// dw_general1.ue_enterkey() returns long
+// dw_general1.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// tabpage_sale.create() returns 0
+// tabpage_sale.create() returns 0 [event]
 	this.cbx_cashsaleallownullpatient = create cbx_cashsaleallownullpatient
 	this.cbx_creditsaleallownullpatient = create cbx_creditsaleallownullpatient
 	this.dw_saleamountoninv = create dw_saleamountoninv
@@ -1171,7 +1171,7 @@
 	this.gb_5 = create gb_5
 	this.control = {this.cbx_cashsaleallownullpatient, this.cbx_creditsaleallownullpatient, this.dw_saleamountoninv, this.cbx_askamtoncreditsale, this.rb_sale_patientcreditsale_none, this.rb_sale_patientcreditsale_popupwindow, this.rb_sale_patientcreditsale_headerwindow, this.rb_sale_patientretailsale_none, this.rb_sale_patientretailsale_popupwindow, this.rb_sale_patientretailsale_headerwindow, this.dw_sale, this.gb_4, this.gb_5}
 
-// tabpage_sale.destroy() returns 0
+// tabpage_sale.destroy() returns 0 [event]
 	destroy this.cbx_cashsaleallownullpatient
 	destroy this.cbx_creditsaleallownullpatient
 	destroy this.dw_saleamountoninv
@@ -1186,11 +1186,11 @@
 	destroy this.gb_4
 	destroy this.gb_5
 
-// dw_saleamountoninv.ue_enterkey() returns long
+// dw_saleamountoninv.ue_enterkey() returns long [event]
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_saleamountoninv.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_saleamountoninv.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	choose case dwo.name
 	case "paymentmode"
 		if data = "C" then
@@ -1203,7 +1203,7 @@
 	end choose
 	return ::message.returnvalue
 
-// cbx_askamtoncreditsale.clicked() returns long
+// cbx_askamtoncreditsale.clicked() returns long [event]
 	if this.checked = true then
 		parent.parent.parent.id_saleamountoninv.visible = true
 	else
@@ -1211,13 +1211,13 @@
 	end if
 	return ::message.returnvalue
 
-// dw_sale.ue_enterkey() returns long
+// dw_sale.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_sale.buttonclicked(long row, long actionreturncode, dwobject dwo) returns long
+// dw_sale.buttonclicked(long row, long actionreturncode, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	integer fh
 	integer ret
@@ -1233,7 +1233,7 @@
 	end if
 	return ::message.returnvalue
 
-// dw_sale.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_sale.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemchanged(row, dwo, data)
 	choose case dwo.name
@@ -1248,28 +1248,28 @@
 	end choose
 	return ::message.returnvalue
 
-// tabpage_salereturn.create() returns 0
+// tabpage_salereturn.create() returns 0 [event]
 	this.dw_salereturn = create dw_salereturn
 	this.dw_sretamountoninv = create dw_sretamountoninv
 	this.cbx_askamtoncreditsalereturn = create cbx_askamtoncreditsalereturn
 	this.control = {this.dw_salereturn, this.dw_sretamountoninv, this.cbx_askamtoncreditsalereturn}
 
-// tabpage_salereturn.destroy() returns 0
+// tabpage_salereturn.destroy() returns 0 [event]
 	destroy this.dw_salereturn
 	destroy this.dw_sretamountoninv
 	destroy this.cbx_askamtoncreditsalereturn
 
-// dw_salereturn.ue_enterkey() returns long
+// dw_salereturn.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_sretamountoninv.ue_enterkey() returns long
+// dw_sretamountoninv.ue_enterkey() returns long [event]
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_sretamountoninv.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_sretamountoninv.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	choose case dwo.name
 	case "paymentmode"
 		if data = "C" then
@@ -1282,7 +1282,7 @@
 	end choose
 	return ::message.returnvalue
 
-// cbx_askamtoncreditsalereturn.clicked() returns long
+// cbx_askamtoncreditsalereturn.clicked() returns long [event]
 	if this.checked = true then
 		parent.parent.parent.id_sramountoninv.visible = true
 	else
@@ -1290,26 +1290,26 @@
 	end if
 	return ::message.returnvalue
 
-// tabpage_purchase.create() returns 0
+// tabpage_purchase.create() returns 0 [event]
 	this.dw_purchase = create dw_purchase
 	this.dw_puramountoninv = create dw_puramountoninv
 	this.cbx_askamtonpurchase = create cbx_askamtonpurchase
 	this.cbx_porb = create cbx_porb
 	this.control = {this.dw_purchase, this.dw_puramountoninv, this.cbx_askamtonpurchase, this.cbx_porb}
 
-// tabpage_purchase.destroy() returns 0
+// tabpage_purchase.destroy() returns 0 [event]
 	destroy this.dw_purchase
 	destroy this.dw_puramountoninv
 	destroy this.cbx_askamtonpurchase
 	destroy this.cbx_porb
 
-// dw_purchase.ue_enterkey() returns long
+// dw_purchase.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_purchase.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_purchase.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemchanged(row, dwo, data)
 	choose case dwo.name
@@ -1322,7 +1322,7 @@
 	end choose
 	return ::message.returnvalue
 
-// dw_purchase.getfocus() returns long
+// dw_purchase.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	if parent.parent.parent.id_purchase.object.purreplaceitemsaledisc[parent.parent.parent.id_purchase.rowcount()] = "Y" then
@@ -1332,11 +1332,11 @@
 	end if
 	return ::message.returnvalue
 
-// dw_puramountoninv.ue_enterkey() returns long
+// dw_puramountoninv.ue_enterkey() returns long [event]
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_puramountoninv.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_puramountoninv.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	choose case dwo.name
 	case "paymentmode"
 		if data = "C" then
@@ -1349,7 +1349,7 @@
 	end choose
 	return ::message.returnvalue
 
-// cbx_askamtonpurchase.clicked() returns long
+// cbx_askamtonpurchase.clicked() returns long [event]
 	if this.checked = true then
 		parent.parent.parent.id_puramountoninv.visible = true
 	else
@@ -1357,28 +1357,28 @@
 	end if
 	return ::message.returnvalue
 
-// tabpage_purchasereturn.create() returns 0
+// tabpage_purchasereturn.create() returns 0 [event]
 	this.dw_purchasereturn = create dw_purchasereturn
 	this.dw_prretamountoninv = create dw_prretamountoninv
 	this.cbx_askamtonpurchasereturn = create cbx_askamtonpurchasereturn
 	this.control = {this.dw_purchasereturn, this.dw_prretamountoninv, this.cbx_askamtonpurchasereturn}
 
-// tabpage_purchasereturn.destroy() returns 0
+// tabpage_purchasereturn.destroy() returns 0 [event]
 	destroy this.dw_purchasereturn
 	destroy this.dw_prretamountoninv
 	destroy this.cbx_askamtonpurchasereturn
 
-// dw_purchasereturn.ue_enterkey() returns long
+// dw_purchasereturn.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_prretamountoninv.ue_enterkey() returns long
+// dw_prretamountoninv.ue_enterkey() returns long [event]
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_prretamountoninv.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_prretamountoninv.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	choose case dwo.name
 	case "paymentmode"
 		if data = "C" then
@@ -1391,7 +1391,7 @@
 	end choose
 	return ::message.returnvalue
 
-// cbx_askamtonpurchasereturn.clicked() returns long
+// cbx_askamtonpurchasereturn.clicked() returns long [event]
 	if this.checked = true then
 		parent.parent.parent.id_pramountoninv.visible = true
 	else
@@ -1399,85 +1399,85 @@
 	end if
 	return ::message.returnvalue
 
-// tabpage_account.create() returns 0
+// tabpage_account.create() returns 0 [event]
 	this.dw_accountpreferences = create dw_accountpreferences
 	this.control = {this.dw_accountpreferences}
 
-// tabpage_account.destroy() returns 0
+// tabpage_account.destroy() returns 0 [event]
 	destroy this.dw_accountpreferences
 
-// dw_accountpreferences.ue_enterkey() returns long
+// dw_accountpreferences.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// tabpage_report.create() returns 0
+// tabpage_report.create() returns 0 [event]
 	this.dw_reportpreferences = create dw_reportpreferences
 	this.control = {this.dw_reportpreferences}
 
-// tabpage_report.destroy() returns 0
+// tabpage_report.destroy() returns 0 [event]
 	destroy this.dw_reportpreferences
 
-// dw_reportpreferences.ue_enterkey() returns long
+// dw_reportpreferences.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// tabpage_basicdata.create() returns 0
+// tabpage_basicdata.create() returns 0 [event]
 	this.dw_default_itemsetting = create dw_default_itemsetting
 	this.control = {this.dw_default_itemsetting}
 
-// tabpage_basicdata.destroy() returns 0
+// tabpage_basicdata.destroy() returns 0 [event]
 	destroy this.dw_default_itemsetting
 
-// dw_default_itemsetting.ue_enterkey() returns long
+// dw_default_itemsetting.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// tabpage_quotation.create() returns 0
+// tabpage_quotation.create() returns 0 [event]
 	this.dw_quotationterms = create dw_quotationterms
 	this.control = {this.dw_quotationterms}
 
-// tabpage_quotation.destroy() returns 0
+// tabpage_quotation.destroy() returns 0 [event]
 	destroy this.dw_quotationterms
 
-// dw_quotationterms.ue_enterkey() returns long
+// dw_quotationterms.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// tabpage_service.create() returns 0
+// tabpage_service.create() returns 0 [event]
 	this.dw_servicepreferences = create dw_servicepreferences
 	this.control = {this.dw_servicepreferences}
 
-// tabpage_service.destroy() returns 0
+// tabpage_service.destroy() returns 0 [event]
 	destroy this.dw_servicepreferences
 
-// dw_servicepreferences.ue_enterkey() returns long
+// dw_servicepreferences.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// tabpage_issue.create() returns 0
+// tabpage_issue.create() returns 0 [event]
 	this.dw_issuepreferences = create dw_issuepreferences
 	this.control = {this.dw_issuepreferences}
 
-// tabpage_issue.destroy() returns 0
+// tabpage_issue.destroy() returns 0 [event]
 	destroy this.dw_issuepreferences
 
-// dw_issuepreferences.ue_enterkey() returns long
+// dw_issuepreferences.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// tabpage_schedule.create() returns 0
+// tabpage_schedule.create() returns 0 [event]
 	this.ddlb_inpatientrecurringservicemin = create ddlb_inpatientrecurringservicemin
 	this.dw_inpatientrecurringservice = create dw_inpatientrecurringservice
 	this.st_inpatientrecurringservicesec = create st_inpatientrecurringservicesec
@@ -1521,7 +1521,7 @@
 	this.ddlb_inpatientrecurringservicetime = create ddlb_inpatientrecurringservicetime
 	this.control = {this.ddlb_inpatientrecurringservicemin, this.dw_inpatientrecurringservice, this.st_inpatientrecurringservicesec, this.st_inpatientrecurringservicemin, this.cbx_inpatientrecurringservices, this.dw_autocreditsalepostingschedule, this.dw_autocashsalepostingschedule, this.st_creditsalepostingoccursevery, this.st_cashsalepostingoccursevery, this.st_creditsaleminutesold, this.em_autocreditsalepostingtime, this.st_cashsaleminutesold, this.em_autocashsalepostingtime, this.st_creditsaleinvoices, this.st_cashsaleinvoices, this.gb_10, this.gb_9, this.cbx_activateautocreditsaleposting, this.cbx_activateautocashsaleposting, this.st_backupsec, this.st_backupmin, this.st_backuphr, this.dw_backupschedule, this.rb_backupevery, this.rb_backuponce, this.cbx_activateautobackup, this.gb_3, this.gb_2, this.gb_7, this.gb_8, this.gb_6, this.gb_1, this.ddlb_backuptime, this.ddlb_backupsec, this.ddlb_backupmin, this.ddlb_backuphr, this.st_inpatientrecurringserviceshr, this.st_inpatientrecurringservicesonce, this.ddlb_inpatientrecurringservicehr, this.ddlb_inpatientrecurringservicesec, this.ddlb_inpatientrecurringservicetime}
 
-// tabpage_schedule.destroy() returns 0
+// tabpage_schedule.destroy() returns 0 [event]
 	destroy this.ddlb_inpatientrecurringservicemin
 	destroy this.dw_inpatientrecurringservice
 	destroy this.st_inpatientrecurringservicesec
@@ -1564,7 +1564,7 @@
 	destroy this.ddlb_inpatientrecurringservicesec
 	destroy this.ddlb_inpatientrecurringservicetime
 
-// cbx_inpatientrecurringservices.clicked() returns long
+// cbx_inpatientrecurringservices.clicked() returns long [event]
 	if this.checked = true then
 		parent.parent.parent.tab_preferences.tabpage_schedule.st_inpatientrecurringservicesonce.visible = true
 		parent.parent.parent.tab_preferences.tabpage_schedule.ddlb_inpatientrecurringservicehr.enabled = true
@@ -1579,7 +1579,7 @@
 	end if
 	return ::message.returnvalue
 
-// cbx_activateautocreditsaleposting.clicked() returns long
+// cbx_activateautocreditsaleposting.clicked() returns long [event]
 	if this.checked = true then
 		parent.parent.parent.tab_preferences.tabpage_schedule.dw_autocreditsalepostingschedule.enabled = true
 		parent.parent.parent.tab_preferences.tabpage_schedule.em_autocreditsalepostingtime.enabled = true
@@ -1589,7 +1589,7 @@
 	end if
 	return ::message.returnvalue
 
-// cbx_activateautocashsaleposting.clicked() returns long
+// cbx_activateautocashsaleposting.clicked() returns long [event]
 	if this.checked = true then
 		parent.parent.parent.tab_preferences.tabpage_schedule.dw_autocashsalepostingschedule.enabled = true
 		parent.parent.parent.tab_preferences.tabpage_schedule.em_autocashsalepostingtime.enabled = true
@@ -1599,7 +1599,7 @@
 	end if
 	return ::message.returnvalue
 
-// rb_backupevery.clicked() returns long
+// rb_backupevery.clicked() returns long [event]
 	if this.checked = true then
 		parent.parent.parent.tab_preferences.tabpage_schedule.dw_backupschedule.enabled = true
 		parent.parent.parent.tab_preferences.tabpage_schedule.ddlb_backuphr.enabled = false
@@ -1609,7 +1609,7 @@
 	end if
 	return ::message.returnvalue
 
-// rb_backuponce.clicked() returns long
+// rb_backuponce.clicked() returns long [event]
 	if this.checked = true then
 		parent.parent.parent.tab_preferences.tabpage_schedule.dw_backupschedule.enabled = false
 		parent.parent.parent.tab_preferences.tabpage_schedule.ddlb_backuphr.enabled = true
@@ -1619,7 +1619,7 @@
 	end if
 	return ::message.returnvalue
 
-// cbx_activateautobackup.clicked() returns long
+// cbx_activateautobackup.clicked() returns long [event]
 	if this.checked = true then
 		parent.parent.parent.tab_preferences.tabpage_schedule.rb_backuponce.enabled = true
 		parent.parent.parent.tab_preferences.tabpage_schedule.rb_backuponce.checked = true
@@ -1640,68 +1640,68 @@
 	end if
 	return ::message.returnvalue
 
-// tabpage_adjustment.create() returns 0
+// tabpage_adjustment.create() returns 0 [event]
 	this.dw_adjustmentpreferences = create dw_adjustmentpreferences
 	this.control = {this.dw_adjustmentpreferences}
 
-// tabpage_adjustment.destroy() returns 0
+// tabpage_adjustment.destroy() returns 0 [event]
 	destroy this.dw_adjustmentpreferences
 
-// dw_adjustmentpreferences.ue_enterkey() returns long
+// dw_adjustmentpreferences.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// tabpage_transfer.create() returns 0
+// tabpage_transfer.create() returns 0 [event]
 	this.dw_transferpreferences = create dw_transferpreferences
 	this.control = {this.dw_transferpreferences}
 
-// tabpage_transfer.destroy() returns 0
+// tabpage_transfer.destroy() returns 0 [event]
 	destroy this.dw_transferpreferences
 
-// dw_transferpreferences.ue_enterkey() returns long
+// dw_transferpreferences.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// tabpage_receipt.create() returns 0
+// tabpage_receipt.create() returns 0 [event]
 	this.dw_receiptpreferences = create dw_receiptpreferences
 	this.control = {this.dw_receiptpreferences}
 
-// tabpage_receipt.destroy() returns 0
+// tabpage_receipt.destroy() returns 0 [event]
 	destroy this.dw_receiptpreferences
 
-// dw_receiptpreferences.ue_enterkey() returns long
+// dw_receiptpreferences.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// tabpage_purorder.create() returns 0
+// tabpage_purorder.create() returns 0 [event]
 	this.dw_purorderterms = create dw_purorderterms
 	this.control = {this.dw_purorderterms}
 
-// tabpage_purorder.destroy() returns 0
+// tabpage_purorder.destroy() returns 0 [event]
 	destroy this.dw_purorderterms
 
-// dw_purorderterms.ue_enterkey() returns long
+// dw_purorderterms.ue_enterkey() returns long [event]
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// tabpage_others.create() returns 0
+// tabpage_others.create() returns 0 [event]
 	this.dw_otherspref = create dw_otherspref
 	this.control = {this.dw_otherspref}
 
-// tabpage_others.destroy() returns 0
+// tabpage_others.destroy() returns 0 [event]
 	destroy this.dw_otherspref
 
-// dw_otherspref.ue_enterkey() returns long
+// dw_otherspref.ue_enterkey() returns long [event]
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_otherspref.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+// dw_otherspref.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
 	string ls_docname
 	string ls_named
 	string ls_path
@@ -1719,74 +1719,74 @@
 	end choose
 	return ::message.returnvalue
 
-// tabpage_barcode.create() returns 0
+// tabpage_barcode.create() returns 0 [event]
 	this.dw_barcode = create dw_barcode
 	this.control = {this.dw_barcode}
 
-// tabpage_barcode.destroy() returns 0
+// tabpage_barcode.destroy() returns 0 [event]
 	destroy this.dw_barcode
 
-// dw_barcode.ue_enterkey() returns long
+// dw_barcode.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// tabpage_itempriceadj.create() returns 0
+// tabpage_itempriceadj.create() returns 0 [event]
 	this.dw_itempriceadj = create dw_itempriceadj
 	this.control = {this.dw_itempriceadj}
 
-// tabpage_itempriceadj.destroy() returns 0
+// tabpage_itempriceadj.destroy() returns 0 [event]
 	destroy this.dw_itempriceadj
 
-// dw_itempriceadj.ue_enterkey() returns long
+// dw_itempriceadj.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// tabpage_saleorder.create() returns 0
+// tabpage_saleorder.create() returns 0 [event]
 	this.dw_saleorder = create dw_saleorder
 	this.control = {this.dw_saleorder}
 
-// tabpage_saleorder.destroy() returns 0
+// tabpage_saleorder.destroy() returns 0 [event]
 	destroy this.dw_saleorder
 
-// dw_saleorder.ue_enterkey() returns long
+// dw_saleorder.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// tabpage_recipe.create() returns 0
+// tabpage_recipe.create() returns 0 [event]
 	this.dw_recipe = create dw_recipe
 	this.control = {this.dw_recipe}
 
-// tabpage_recipe.destroy() returns 0
+// tabpage_recipe.destroy() returns 0 [event]
 	destroy this.dw_recipe
 
-// dw_recipe.ue_enterkey() returns long
+// dw_recipe.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// tabpage_production.create() returns 0
+// tabpage_production.create() returns 0 [event]
 	this.dw_production = create dw_production
 	this.control = {this.dw_production}
 
-// tabpage_production.destroy() returns 0
+// tabpage_production.destroy() returns 0 [event]
 	destroy this.dw_production
 
-// dw_production.ue_enterkey() returns long
+// dw_production.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// tabpage_patientpref.create() returns 0
+// tabpage_patientpref.create() returns 0 [event]
 	this.dw_patientpref = create dw_patientpref
 	this.control = {this.dw_patientpref}
 
-// tabpage_patientpref.destroy() returns 0
+// tabpage_patientpref.destroy() returns 0 [event]
 	destroy this.dw_patientpref

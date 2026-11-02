@@ -980,7 +980,7 @@
 	end if
 	return 0
 
-// w_billsummary.create() returns 0
+// w_billsummary.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	if isvalid(this.menuid) then
@@ -995,7 +995,7 @@
 	this.control[icurrent + 1] = this.dw_invdetail
 	this.control[icurrent + 2] = this.dw_print
 
-// w_billsummary.destroy() returns 0
+// w_billsummary.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
@@ -1003,7 +1003,7 @@
 	destroy this.dw_invdetail
 	destroy this.dw_print
 
-// w_billsummary.ue_save() returns 0
+// w_billsummary.ue_save() returns 0 [event]
 	long ll_detailrows
 	long ll_salesmancode
 	long ll_errrowid
@@ -1154,7 +1154,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_billsummary.ue_newform() returns 0
+// w_billsummary.ue_newform() returns 0 [event]
 	m_billsummarymenu lm_menu
 	call super::ue_newform
 	lm_menu = this.menuid
@@ -1199,7 +1199,7 @@
 	this.ib_modify = false
 	setredraw(true)
 
-// w_billsummary.ue_newitem() returns 0
+// w_billsummary.ue_newitem() returns 0 [event]
 	long ll_rowcount
 	long ll_rtcode
 	ll_rowcount = this.id_detail.rowcount()
@@ -1233,13 +1233,13 @@
 	this.im_menu.m_file.m_print.enabled = false
 	this.ib_validatefullcode = true
 
-// w_billsummary.close() returns long
+// w_billsummary.close() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::close()
 	this.id_itemslist.sharedataoff()
 	return ::message.returnvalue
 
-// w_billsummary.ue_list() returns 0
+// w_billsummary.ue_list() returns 0 [event]
 	long ll_row
 	long ll_found
 	m_billsummarymenu lm_menu
@@ -1278,7 +1278,7 @@
 	ll_row = wf_retrievelist()
 	wf_disabledetailtab(ll_row)
 
-// w_billsummary.ue_deleteitem() returns 0
+// w_billsummary.ue_deleteitem() returns 0 [event]
 	long ll_currow
 	long ll_detailrows
 	this.ib_itemvalidated = true
@@ -1291,7 +1291,7 @@
 		this.im_menu.m_file.m_save.enabled = false
 	end if
 
-// w_billsummary.ue_postopen() returns 0
+// w_billsummary.ue_postopen() returns 0 [event]
 	call super::ue_postopen
 	if f_numberpreferences("defaultbillsummarytype") = 1 then
 		wf_assigndatawindowobjects("d_billsummarydetail", "d_billsummarydetail")
@@ -1300,7 +1300,7 @@
 	end if
 	this.id_master.object.billsummarytypecode.initial = trim(string(f_numberpreferences("defaultbillsummarytype")))
 
-// w_billsummary.ue_detail() returns 0
+// w_billsummary.ue_detail() returns 0 [event]
 	integer li_protect
 	long ll_row
 	long ll_code
@@ -1370,7 +1370,7 @@
 	end if
 	setredraw(true)
 
-// w_billsummary.ue_print() returns 0
+// w_billsummary.ue_print() returns 0 [event]
 	long ll_code
 	long ll_counter
 	long ll_rowcount
@@ -1437,7 +1437,7 @@
 	end if
 	messagebox("Printing Error", "Can not Print,~r~nNo rows are retrieved", information!)
 
-// w_billsummary.ue_callback_popupwindow(any ar_object) returns 0
+// w_billsummary.ue_callback_popupwindow(any ar_object) returns 0 [event]
 	long ll_code
 	long ll_row
 	string as_errortext
@@ -1448,3 +1448,294 @@
 		this.id_detail.object.srbufferinvcode[ll_row] = ll_code
 		wf_set_salereturn_amount(ll_row)
 	end if
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	long ll_code
+	long ll_suppcode
+	long ll_res
+	integer li_rtcode
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "billsummarytypecode"
+		if long(data) <> this.object.billsummarytypecode[1] then
+			li_rtcode = messagebox("Warning", "Rows in Detail Window will Lost", exclamation!, okcancel!, 2)
+			if li_rtcode = 2 then
+				li_rtcode = 2
+			else
+				parent.parent.parent.wf_setbillsummarytype(long(data))
+				li_rtcode = 0
+			end if
+		end if
+	end choose
+	return li_rtcode
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	long ll_null
+	long ll_custcode
+	long ll_billsumm
+	string ls_null
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	setnull(ll_null)
+	setnull(ls_null)
+	choose case dwo.name
+	case "aliasname"
+		if data = "" or isnull(data) then
+			return 0
+		elseif parent.parent.parent.wf_findcustcode(data, ll_custcode) > 0 then
+			messagebox("Customer Alias Name Validation", "Customer with this Alias Name not found")
+			return 1
+		elseif parent.parent.parent.wf_setcustomerinfo(ll_custcode, row) > 0 then
+			messagebox("Customer Alias Name Validation", "Problem in retrieving Customer Information")
+			return 1
+		end if
+	case "custcode"
+		if data = "" or isnull(data) then
+			return 0
+		elseif parent.parent.parent.wf_setcustomerinfo(long(data), row) > 0 then
+			messagebox("Customer Alias Name Validation", "Problem in retrieving Customer Information")
+			return 1
+		end if
+	case "saleinvcode"
+		li_errcode = parent.parent.parent.wf_validateinvcode(row, long(data), ll_billsumm, 0)
+		if li_errcode = 0 then
+			return li_errcode
+		else
+			if li_errcode = -5 then
+				messagebox("Sale Invoice Validation", "Sale Invoice is not yet posted.~r~nFor a Sale Invoice to be included in Bill Summary, You must post it first.~r~nPlease enter some other sale invoice code ")
+			elseif li_errcode = -6 then
+				messagebox("Sale Invoice Validation", "This sale invoice does not have sufficient balance to deal on this bill summary document.~r~nPlease enter some other sale invoice code ")
+			elseif li_errcode = -4 then
+				messagebox("Sale Invoice Validation", "Can not find sale invoice details.~r~nPlease enter some other sale invoice code ")
+			elseif li_errcode = -3 then
+				messagebox("Sale Invoice Validation", "Can not find sale invoice details.~r~nThis Sale Invoice Code already used in some other Bill Summary.~r~nBill Summary Code = " + trim(string(ll_billsumm)))
+			elseif li_errcode = -2 then
+				messagebox("Sale Invoice Validation", "Can not find sale invoice details.~r~nSome other problem prevented it to retrieve. Please enter some other Sale Invoice Code.")
+			else
+				messagebox("Sale Invoice Validation", "Can not find sale invoice details due to some unknown problem.")
+			end if
+			return 1
+		end if
+		return li_errcode
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "saleinvcode"
+		if long(data) <= 0 then
+			messagebox("Sale Invoice Validation", "You must select some Sale Invoice")
+		end if
+	end choose
+	return 1
+
+// dw_itemsdetail.getfocus() returns long [event]
+	return ::message.returnvalue
+
+// dw_itemsdetail.editchanged(long row, dwobject dwo, string data) returns long [event]
+	return ::message.returnvalue
+
+// dw_itemsdetail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	integer rt_code
+	long ll_currrow
+	long ll_listcurrrow
+	long ll_icode
+	long ll_found
+	long ll_acccode
+	long ll_rowm
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if getcolumnname() = parent.parent.parent.is_columnitemname then
+		setredraw(false)
+		ll_rowm = getrow()
+		if key = keydownarrow! then
+			parent.parent.parent.id_itemslist.selectrow(0, false)
+			parent.parent.parent.id_itemslist.scrollnextrow()
+			ll_listcurrrow = parent.parent.parent.id_itemslist.getrow()
+			rt_code = 1
+		elseif key = keyuparrow! then
+			parent.parent.parent.id_itemslist.selectrow(0, false)
+			parent.parent.parent.id_itemslist.scrollpriorrow()
+			ll_listcurrrow = parent.parent.parent.id_itemslist.getrow()
+			rt_code = 1
+		elseif key = keypagedown! then
+			parent.parent.parent.id_itemslist.selectrow(0, false)
+			parent.parent.parent.id_itemslist.scrollnextpage()
+			ll_listcurrrow = parent.parent.parent.id_itemslist.getrow()
+			rt_code = 1
+		elseif key = keypageup! then
+			parent.parent.parent.id_itemslist.selectrow(0, false)
+			parent.parent.parent.id_itemslist.scrollpriorpage()
+			ll_listcurrrow = parent.parent.parent.id_itemslist.getrow()
+			rt_code = 1
+		elseif key = keyend! then
+			parent.parent.parent.id_itemslist.selectrow(0, false)
+			parent.parent.parent.id_itemslist.scrolltorow(99999)
+			ll_listcurrrow = parent.parent.parent.id_itemslist.getrow()
+			rt_code = 1
+		elseif key = keyhome! then
+			parent.parent.parent.id_itemslist.selectrow(0, false)
+			parent.parent.parent.id_itemslist.scrolltorow(1)
+			ll_listcurrrow = parent.parent.parent.id_itemslist.getrow()
+			rt_code = 1
+		elseif key = keyback! then
+			parent.parent.parent.ib_bkspace = true
+			setredraw(true)
+		elseif key = keyescape! then
+			parent.parent.parent.ib_itemslistopen = false
+			parent.parent.parent.id_itemslist.hide()
+			setfocus()
+			setredraw(true)
+		elseif key = keyf4! then
+			parent.parent.parent.wf_showlist(getitemnumber(getrow(), "currlistrow"))
+			setredraw(true)
+		else
+			setredraw(true)
+		end if
+		if rt_code = 1 then
+			parent.parent.parent.id_itemslist.selectrow(ll_listcurrrow, true)
+			setitem(ll_rowm, parent.parent.parent.is_columnitemname, parent.parent.parent.id_itemslist.getitemstring(ll_listcurrrow, "itemname"))
+			setitem(ll_rowm, "icode", parent.parent.parent.id_itemslist.getitemnumber(ll_listcurrrow, "icode"))
+			setitem(ll_rowm, "fullcode", parent.parent.parent.id_itemslist.getitemstring(ll_listcurrrow, "fullcode"))
+			selecttext(1, len(gettext()))
+			parent.parent.parent.ib_itemvalidated = false
+			parent.parent.parent.il_currrow = ll_rowm
+			setitem(getrow(), "CurrListRow", ll_listcurrrow)
+			setredraw(true)
+		end if
+	elseif key = keydownarrow! then
+		ll_currrow = getrow()
+		if ll_currrow = rowcount() then
+			getparent().dynamic postevent("ue_focusfooter")
+			rt_code = 1
+		end if
+	elseif key = keyuparrow! then
+		ll_currrow = getrow()
+		if ll_currrow = 1 then
+			getparent().dynamic postevent("ue_FocusHeader")
+			rt_code = 1
+		end if
+	end if
+	if getcolumnname() = "cashamt" and key = keyf4! then
+		parent.parent.parent.wf_set_account("cashamt", getrow())
+	elseif getcolumnname() = "chequeamt" and key = keyf4! then
+		parent.parent.parent.wf_set_account("chequeamt", getrow())
+	elseif getcolumnname() = "debitnoteamt" and key = keyf4! then
+		parent.parent.parent.wf_set_account("debitnoteamt", getrow())
+	elseif getcolumnname() = "creditnoteamt" and key = keyf4! then
+		parent.parent.parent.wf_set_account("creditnoteamt", getrow())
+	elseif getcolumnname() = "salereturnamt" and key = keyf4! then
+		if getrow() > 0 then
+			parent.parent.parent.wf_request_open_salereturn()
+			parent.parent.parent.wf_open_item_form_popup()
+		end if
+	elseif getcolumnname() = "salereturnamt" and key = keyf5! and getrow() > 0 then
+		parent.parent.parent.wf_request_referenced_salereturn()
+		parent.parent.parent.wf_open_item_form_popup()
+	end if
+	if key = keyf1! and rowcount() > 0 then
+		ll_acccode = getitemnumber(getrow(), "custcode")
+		openwithparm(w_account_ledger, ll_acccode)
+	end if
+	return rt_code
+
+// dw_itemsdetail.ue_enterkey() returns long [event]
+	if getrow() = rowcount() then
+		if parent.parent.parent.id_master.object.billsummarytypecode[1] = 1 then
+			if getcolumn() = integer(this.object.datawindow.column.count) then
+				parent.parent.parent.event ue_newitem()
+				return 1
+			end if
+		elseif lower(getcolumnname()) = "saleinvcode" then
+			parent.parent.parent.event ue_newitem()
+			return 1
+		end if
+		return
+	end if
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_itemsdetail.rowfocuschanging(long currentrow, long newrow) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::rowfocuschanging(currentrow, newrow)
+	if currentrow > 0 and rowcount() > 0 and parent.parent.parent.id_master.object.billsummarytypecode[1] <> 1 and getitemnumber(currentrow, "c_invbalance") < 0.0 then
+		messagebox("Sale Invoice Validation", "Invoice Balance Can not be -ve.~r~nEither you have entered some wrong amount / return.~r~nPlease recheck and make desired adjustments.")
+		return 1
+	end if
+	return 0
+
+// tabpage_list.create() returns 0 [event]
+	integer icurrent
+	this.st_3 = create st_3
+	this.em_invno = create em_invno
+	call super::create
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_3
+	this.control[icurrent + 2] = this.em_invno
+
+// tabpage_list.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.st_3
+	destroy this.em_invno
+
+// dw_find.keypressed(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	long ll_code
+	long ll_row
+	s_datastore lstr
+	datastore lds_datastore
+	ancestorreturnvalue = super::keypressed(key, keyflags)
+	lds_datastore = create datastore
+	if key = keyf7! then
+		ll_row = parent.parent.parent.id_dwcontrol.getrow()
+		if ll_row > 0 then
+			ll_code = parent.parent.parent.id_list.object.code[ll_row]
+			if ll_code > 0 then
+				lds_datastore.dataobject = "d_storesummary_sreturn_viabillsummary"
+				lds_datastore.settransobject(sqlca)
+				lds_datastore.retrieve(ll_code)
+				lstr.ds = lds_datastore
+				lstr.s_name1 = lds_datastore.dataobject
+				openwithparm(w_preview_invoices2, lstr)
+				lstr = message.powerobjectparm
+				if lstr.i_closemode = -1 then
+					if not isvalid(message) then
+						return 0
+					end if
+					return message.returnvalue
+				end if
+				return
+			end if
+			setfocus()
+		end if
+	elseif key = keyf8! then
+		ll_row = parent.parent.parent.id_dwcontrol.getrow()
+		if ll_row > 0 then
+			ll_code = parent.parent.parent.id_list.object.code[ll_row]
+			if ll_code > 0 then
+				lds_datastore.dataobject = "d_custwise_sreturnsummary_viabillsummary"
+				lds_datastore.settransobject(sqlca)
+				lds_datastore.retrieve(ll_code)
+				lstr.ds = lds_datastore
+				lstr.s_name1 = lds_datastore.dataobject
+				openwithparm(w_preview_invoices2, lstr)
+				lstr = message.powerobjectparm
+				if lstr.i_closemode = -1 then
+					if not isvalid(message) then
+						return 0
+					end if
+					return message.returnvalue
+				end if
+				return
+			end if
+			setfocus()
+		end if
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue

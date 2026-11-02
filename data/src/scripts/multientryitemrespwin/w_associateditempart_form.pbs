@@ -1,12 +1,12 @@
 // window w_associateditempart_form (multientryitemrespwin)  ancestor: window
 
-// w_associateditempart_form.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// w_associateditempart_form.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		post event ue_close(-1)
 	end if
 	return ::message.returnvalue
 
-// w_associateditempart_form.ue_close(integer ai_closemode) returns integer
+// w_associateditempart_form.ue_close(integer ai_closemode) returns integer [event]
 	long ll_currrow
 	long ll_counter
 	string[] ls_values
@@ -77,18 +77,18 @@
 		end if
 	next
 
-// w_associateditempart_form.create() returns 0
+// w_associateditempart_form.create() returns 0 [event]
 	this.cb_ok = create cb_ok
 	this.cb_cancel = create cb_cancel
 	this.dw_viewheader = create dw_viewheader
 	this.control = {this.cb_ok, this.cb_cancel, this.dw_viewheader}
 
-// w_associateditempart_form.destroy() returns 0
+// w_associateditempart_form.destroy() returns 0 [event]
 	destroy this.cb_ok
 	destroy this.cb_cancel
 	destroy this.dw_viewheader
 
-// w_associateditempart_form.open() returns long
+// w_associateditempart_form.open() returns long [event]
 	long ll_row
 	long ll_currrow
 	long ll_counter
@@ -128,21 +128,21 @@
 	end if
 	return message.returnvalue
 
-// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		triggerevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	parent.post event ue_close(1)
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.post event ue_close(-1)
 	return ::message.returnvalue
 
-// dw_viewheader.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// dw_viewheader.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	long ll_rowcount
 	if key = keyescape! then
 		parent.post event ue_close(-1)
@@ -176,7 +176,7 @@
 	end if
 	return ::message.returnvalue
 
-// dw_viewheader.ue_enterkey() returns long
+// dw_viewheader.ue_enterkey() returns long [event]
 	long ll_rowcount
 	if getrow() = rowcount() and getcolumn() = integer(this.object.datawindow.column.count) then
 		if parent.id_header.rowcount() > 0 and f_validatedw(parent.id_header) < 0 then
@@ -195,7 +195,7 @@
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_viewheader.itemerror(long row, dwobject dwo, string data) returns long
+// dw_viewheader.itemerror(long row, dwobject dwo, string data) returns long [event]
 	choose case dwo.name
 	case "modelcode"
 		if data = "" or isnull(data) then
@@ -204,13 +204,13 @@
 	end choose
 	return 1
 
-// dw_viewheader.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_viewheader.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	if parent.ib_rowvalidated = false and parent.wf_validateitem() = -1 then
 		return ::message.returnvalue
 	end if
 	return ::message.returnvalue
 
-// dw_viewheader.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_viewheader.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	integer li_errcode
 	choose case dwo.name
 	case "associatedipartcode"

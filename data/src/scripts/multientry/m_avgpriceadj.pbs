@@ -1,8 +1,28 @@
 // menu m_avgpriceadj (multientry)  ancestor: m_multi_entry
 
-// m_avgpriceadj.create() returns 0
+// m_avgpriceadj.create() returns 0 [event]
 	m_avgpriceadj = this
 	call super::create
 
-// m_avgpriceadj.destroy() returns 0
+// m_avgpriceadj.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_populateitems = create m_populateitems
+	this.item[upperbound(this.item) + 1] = this.m_populateitems
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_populateitems
+
+// m_populateitems.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_populteitems()
+
+// m_populateitems.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Populate Items"
+
+// m_populateitems.destroy() returns 0 [event]
 	call super::destroy

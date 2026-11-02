@@ -10,17 +10,50 @@
 	end if
 	return b_flag
 
-// w_biometricmachine.create() returns 0
+// w_biometricmachine.create() returns 0 [event]
 	call super::create
 
-// w_biometricmachine.destroy() returns 0
+// w_biometricmachine.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_biometricmachine.open() returns long
+// w_biometricmachine.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.is_tablename = "biometricmachine"
+	return ::message.returnvalue
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if parent.parent.parent.wf_duplicatename(data) then
+			messagebox("Name Validation", "Duplication Name Error~n~rPlease Choose Some Other Name")
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	end choose
+	return 1
+
+// dw_find.keypressed(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	long ll_code
+	ancestorreturnvalue = super::keypressed(key, keyflags)
+	if key = keyf5! and parent.parent.parent.id_list.getrow() > 0 then
+		ll_code = parent.parent.parent.id_list.object.code[parent.parent.parent.id_list.getrow()]
+		openwithparm(w_emp_biometricmachine_mgmt, ll_code)
+	end if
 	return ::message.returnvalue

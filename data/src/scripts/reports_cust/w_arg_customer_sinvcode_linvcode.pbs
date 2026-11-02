@@ -1,6 +1,6 @@
 // window w_arg_customer_sinvcode_linvcode (reports_cust)  ancestor: w_listarguments
 
-// w_arg_customer_sinvcode_linvcode.create() returns 0
+// w_arg_customer_sinvcode_linvcode.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.st_4 = create st_4
@@ -9,12 +9,12 @@
 	this.control[icurrent + 1] = this.st_4
 	this.control[icurrent + 2] = this.st_8
 
-// w_arg_customer_sinvcode_linvcode.destroy() returns 0
+// w_arg_customer_sinvcode_linvcode.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.st_4
 	destroy this.st_8
 
-// w_arg_customer_sinvcode_linvcode.open() returns long
+// w_arg_customer_sinvcode_linvcode.open() returns long [event]
 	long ancestorreturnvalue
 	long ll_counter
 	long ll_rowcount
@@ -34,4 +34,40 @@
 	this.dw_startendinvoice.settransobject(sqlca)
 	this.dw_startendinvoice.insertrow(0)
 	this.dw_startendinvoice.scrolltorow(0)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long [event]
+	long ancestorreturnvalue
+	long ll_count
+	long ll_counter
+	long ll_innercounter
+	long ll_found
+	integer li_temp
+	ancestorreturnvalue = super::clicked()
+	if parent.cbx_all.checked = true then
+		for ll_counter = 1 to parent.idc_categories.rowcount()
+			parent.istr_arg.la_longlist[ll_counter] = parent.idc_categories.getitemnumber(ll_counter, "accounts_acccode")
+		next
+	else
+		for ll_counter = 1 to ll_counter
+			ll_found = parent.idc_categories.find("customer_name ='" + parent.lb_selectedcategories.text(ll_counter) + "'", 1, parent.idc_categories.rowcount())
+			if ll_found > 0 then
+				parent.istr_arg.la_longlist[ll_counter] = parent.idc_categories.getitemnumber(ll_found, "accounts_acccode")
+			end if
+		next
+	end if
+	parent.dw_startendinvoice.accepttext()
+	parent.istr_arg.l_code1 = parent.dw_startendinvoice.getitemnumber(1, "sinvcode")
+	parent.istr_arg.l_code2 = parent.dw_startendinvoice.getitemnumber(1, "linvcode")
+	if parent.istr_arg.l_code1 > parent.istr_arg.l_code2 then
+		li_temp = parent.istr_arg.l_code1
+		parent.istr_arg.l_code1 = parent.istr_arg.l_code2
+		parent.istr_arg.l_code2 = li_temp
+	end if
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	parent.istr_arg.i_supress = parent.cbx_supress.checked
+	parent.istr_arg.i_hide = parent.cbx_hide.checked
+	parent.istr_arg.i_status = 1
+	parent.post event ue_close(1)
 	return ::message.returnvalue

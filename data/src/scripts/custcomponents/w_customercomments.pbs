@@ -343,7 +343,7 @@
 	SQL Delete CustAllowedServices Where CustCode =:al_code USING this.it_transobject;
 	return this.it_transobject.sqlcode
 
-// w_customercomments.create() returns 0
+// w_customercomments.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.dw_saleinvrep = create dw_saleinvrep
@@ -352,7 +352,7 @@
 	this.control[icurrent + 1] = this.dw_saleinvrep
 	this.control[icurrent + 2] = this.dw_saleinvdetail
 
-// w_customercomments.destroy() returns 0
+// w_customercomments.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
@@ -360,7 +360,7 @@
 	destroy this.dw_saleinvrep
 	destroy this.dw_saleinvdetail
 
-// w_customercomments.ue_save() returns 0
+// w_customercomments.ue_save() returns 0 [event]
 	long ll_detailrows
 	long ll_mastercurrrow
 	long ll_footercurrrow
@@ -414,7 +414,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_customercomments.ue_newform() returns 0
+// w_customercomments.ue_newform() returns 0 [event]
 	integer rtncode
 	long li_fetched_code
 	long row
@@ -434,7 +434,7 @@
 	wf_visible(true)
 	setredraw(true)
 
-// w_customercomments.ue_detail() returns 0
+// w_customercomments.ue_detail() returns 0 [event]
 	integer li_rtncode
 	integer li_protect
 	long ll_row
@@ -454,7 +454,7 @@
 	wf_grandtotal()
 	setredraw(true)
 
-// w_customercomments.ue_newitem() returns 0
+// w_customercomments.ue_newitem() returns 0 [event]
 	long ll_rowcount
 	this.id_detail.setcolumn("comments")
 	this.id_detail.insertrow(0)
@@ -468,7 +468,7 @@
 	this.im_menu.m_file.m_save.enabled = true
 	this.im_menu.m_file.m_print.enabled = true
 
-// w_customercomments.ue_deleteitem() returns 0
+// w_customercomments.ue_deleteitem() returns 0 [event]
 	long ll_row
 	long ll_footerrow
 	call super::ue_deleteitem
@@ -480,7 +480,7 @@
 	this.im_menu.m_file.m_print.enabled = false
 	this.im_menu.m_file.m_save.enabled = false
 
-// w_customercomments.ue_list() returns 0
+// w_customercomments.ue_list() returns 0 [event]
 	call super::ue_list
 	SQL rollback USING this.it_transobject;
 	this.im_menu.m_file.m_post.enabled = true
@@ -493,14 +493,14 @@
 	end if
 	wf_retrievelist()
 
-// w_customercomments.ue_print() returns 0
+// w_customercomments.ue_print() returns 0 [event]
 	call super::ue_print
 
-// w_customercomments.ue_new() returns 0
+// w_customercomments.ue_new() returns 0 [event]
 	call super::ue_new
 	this.im_menu.m_file.m_post.enabled = false
 
-// w_customercomments.ue_postopen() returns 0
+// w_customercomments.ue_postopen() returns 0 [event]
 	datawindowchild ldc_headerno
 	integer li_rtncode
 	long ll_counter
@@ -519,7 +519,139 @@
 	this.id_footer.scrolltorow(0)
 	setredraw(true)
 
-// w_customercomments.open() returns long
+// w_customercomments.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	return ::message.returnvalue
+
+// tab_retrieve.selectionchanged(integer oldindex, integer newindex) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::selectionchanged(oldindex, newindex)
+	if parent.ib_modify and newindex <> 1 then
+		SQL rollback USING parent.it_transobject;
+		parent.ib_modify = false
+	end if
+	return ::message.returnvalue
+
+// dw_footer.losefocus() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::losefocus()
+	parent.parent.parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_footer.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	parent.parent.parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if data = "" or isnull(data) then
+			messagebox("Service Tepmlate Validation", "Please enter valid Service Template Name")
+		end if
+	end choose
+	return 1
+
+// dw_itemsdetail.ue_enterkey() returns long [event]
+	return ::message.returnvalue
+
+// dw_itemsdetail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	string ls_column
+	string ls_exp
+	string ls_date
+	string ls_temp
+	string ls_time
+	date ld_date
+	time lt_time
+	datetime ldt_date
+	ls_column = getcolumnname()
+	if keyflags = 3 and key = keyf! then
+		of_find()
+	end if
+	ls_exp = describe(ls_column + ".coltype")
+	if key = keyf4! and left(ls_exp, 4) = "date" and (rowcount() > 0 and getrow() > 0) then
+		accepttext()
+		if ls_exp = "date" then
+			ls_temp = string(getitemdate(getrow(), ls_column), "yyyy-mm-dd")
+		elseif ls_exp = "datetime" then
+			ls_temp = string(getitemdatetime(getrow(), ls_column), "yyyy-mm-dd hh:mm:ss")
+		end if
+		ls_date = left(ls_temp, 10)
+		openwithparm(w_calendar2, ls_date)
+		ls_date = message.stringparm
+		if not (ls_date = "" or isnull(ls_date)) then
+			if ls_exp = "date" then
+				ld_date = date(ls_date)
+				setitem(getrow(), ls_column, ld_date)
+			elseif ls_exp = "datetime" then
+				ls_time = right(ls_temp, 8)
+				lt_time = time(ls_time)
+				ld_date = date(ls_date)
+				ldt_date = datetime(ld_date, lt_time)
+				setitem(getrow(), ls_column, ldt_date)
+				accepttext()
+			end if
+		end if
+	end if
+	if getcolumnname() = "comments" then
+		if keyflags = 2 and key = keyl! then
+			this.object.comments.alignment = 0
+		elseif keyflags = 2 and key = keyr! then
+			this.object.comments.alignment = 1
+		elseif keyflags = 2 and key = keyt! then
+			this.object.comments.alignment = 2
+		elseif keyflags = 2 and key = keyj! then
+			this.object.comments.alignment = 3
+		end if
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	return ::message.returnvalue
+
+// dw_itemsdetail.getfocus() returns long [event]
+	return ::message.returnvalue
+
+// dw_itemsdetail.editchanged(long row, dwobject dwo, string data) returns long [event]
+	parent.parent.parent.editflag = true
+	return ::message.returnvalue
+
+// dw_itemsdetail.sqlpreview(sqlpreviewfunction request, sqlpreviewtype sqltype, string sqlsyntax, dwbuffer buffer, long row) returns long [event]
+	long ancestorreturnvalue
+	string ls_sql
+	string ls_newsql
+	string ls_sql_part
+	long ll_pos
+	long ll_commacount
+	long ll_commapos
+	ancestorreturnvalue = super::sqlpreview(request, sqltype, sqlsyntax, buffer, row)
+	if sqltype = previewupdate! or sqltype = previewdelete! or sqltype = previewselect! then
+		ls_sql = sqlsyntax
+		ll_pos = pos(lower(ls_sql), " = '", 1)
+		if ll_pos > 0 then
+			ls_newsql = mid(ls_sql, 1, ll_pos - 1) + " = N'" + mid(ls_sql, ll_pos + 4)
+		else
+			ls_newsql = ls_sql
+		end if
+		setsqlpreview(ls_newsql)
+	elseif sqltype = previewinsert! then
+		ls_sql = sqlsyntax
+		ll_pos = pos(lower(ls_sql), ", '", 1)
+		if ll_pos > 0 then
+			ls_newsql = mid(ls_sql, 1, ll_pos - 1) + ", N'" + mid(ls_sql, ll_pos + 3)
+		else
+			ls_newsql = ls_sql
+		end if
+		setsqlpreview(ls_newsql)
+	end if
+	return 0

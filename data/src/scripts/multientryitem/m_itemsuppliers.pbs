@@ -1,8 +1,54 @@
 // menu m_itemsuppliers (multientryitem)  ancestor: m_multi_entry
 
-// m_itemsuppliers.create() returns 0
+// m_itemsuppliers.create() returns 0 [event]
 	m_itemsuppliers = this
 	call super::create
 
-// m_itemsuppliers.destroy() returns 0
+// m_itemsuppliers.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_populateitems = create m_populateitems
+	this.m_itemsuppliersview = create m_itemsuppliersview
+	this.m_populatesuplierpurchaseditem = create m_populatesuplierpurchaseditem
+	this.item[upperbound(this.item) + 1] = this.m_populateitems
+	this.item[upperbound(this.item) + 1] = this.m_itemsuppliersview
+	this.item[upperbound(this.item) + 1] = this.m_populatesuplierpurchaseditem
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_populateitems
+	destroy this.m_itemsuppliersview
+	destroy this.m_populatesuplierpurchaseditem
+
+// m_populateitems.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_populateitems()
+
+// m_populateitems.create() returns 0 [event]
+	call super::create
+	this.text = "Populate Items"
+
+// m_populateitems.destroy() returns 0 [event]
+	call super::destroy
+
+// m_itemsuppliersview.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_viewitemsuppliers()
+
+// m_itemsuppliersview.create() returns 0 [event]
+	call super::create
+	this.text = "Item Suppliers View~tF6"
+	this.shortcut = 117
+
+// m_itemsuppliersview.destroy() returns 0 [event]
+	call super::destroy
+
+// m_populatesuplierpurchaseditem.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_populate_supplier_purchaseitem()
+
+// m_populatesuplierpurchaseditem.create() returns 0 [event]
+	call super::create
+	this.text = "Populate Suplier Purchased Item"
+
+// m_populatesuplierpurchaseditem.destroy() returns 0 [event]
 	call super::destroy

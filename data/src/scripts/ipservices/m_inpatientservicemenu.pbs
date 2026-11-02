@@ -1,9 +1,366 @@
 // menu m_inpatientservicemenu (ipservices)  ancestor: m_multi_entry
 
-// m_inpatientservicemenu.create() returns 0
+// m_inpatientservicemenu.create() returns 0 [event]
 	m_inpatientservicemenu = this
 	call super::create
 	this.text = "m_inpatientservicemenu"
 
-// m_inpatientservicemenu.destroy() returns 0
+// m_inpatientservicemenu.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_open = create m_open
+	this.m_newcustomer = create m_newcustomer
+	this.m_editservicetemplate = create m_editservicetemplate
+	this.m_showaccountledger = create m_showaccountledger
+	this.m_showpatientledger = create m_showpatientledger
+	this.m_showin-patientbill = create m_showin-patientbill
+	this.m_applydoctorsassociatedservicetemplate = create m_applydoctorsassociatedservicetemplate
+	this.m_applycustomersassociatedservicetemplate = create m_applycustomersassociatedservicetemplate
+	this.m_saveandpost = create m_saveandpost
+	this.m_showserviceinvoicepurchasetemplate = create m_showserviceinvoicepurchasetemplate
+	this.m_showinpatientbillwrtprocedureinfo = create m_showinpatientbillwrtprocedureinfo
+	this.item[upperbound(this.item) + 1] = this.m_open
+	this.item[upperbound(this.item) + 1] = this.m_newcustomer
+	this.item[upperbound(this.item) + 1] = this.m_editservicetemplate
+	this.item[upperbound(this.item) + 1] = this.m_showaccountledger
+	this.item[upperbound(this.item) + 1] = this.m_showpatientledger
+	this.item[upperbound(this.item) + 1] = this.m_showin-patientbill
+	this.item[upperbound(this.item) + 1] = this.m_applydoctorsassociatedservicetemplate
+	this.item[upperbound(this.item) + 1] = this.m_applycustomersassociatedservicetemplate
+	this.item[upperbound(this.item) + 1] = this.m_saveandpost
+	this.item[upperbound(this.item) + 1] = this.m_showserviceinvoicepurchasetemplate
+	this.item[upperbound(this.item) + 1] = this.m_showinpatientbillwrtprocedureinfo
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_open
+	destroy this.m_newcustomer
+	destroy this.m_editservicetemplate
+	destroy this.m_showaccountledger
+	destroy this.m_showpatientledger
+	destroy this.m_showin-patientbill
+	destroy this.m_applydoctorsassociatedservicetemplate
+	destroy this.m_applycustomersassociatedservicetemplate
+	destroy this.m_saveandpost
+	destroy this.m_showserviceinvoicepurchasetemplate
+	destroy this.m_showinpatientbillwrtprocedureinfo
+
+// m_options.create() returns 0 [event]
+	call super::create
+	this.text = "Sa&ve and Print~tCtrl+F6"
+	this.enabled = false
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_options.clicked() returns 0 [event]
+	call super::clicked
+	this.parentwindow.triggerevent("ue_save")
+	if this.parentwindow.dynamic wf_commitform() = true then
+		this.parentwindow.triggerevent("ue_print")
+		this.parentwindow.postevent("ue_new")
+	end if
+
+// m_options.destroy() returns 0 [event]
+	call super::destroy
+
+// m_open.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_copyinvoice()
+
+// m_open.create() returns 0 [event]
+	call super::create
+	this.text = "&Open~tCtrl+O"
+	this.shortcut = 335
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_open.destroy() returns 0 [event]
+	call super::destroy
+
+// m_newcustomer.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Ne&w Customer~tCtrl+W"
+	this.shortcut = 343
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_newcustomer.destroy() returns 0 [event]
+	call super::destroy
+
+// m_newcustomer.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_newcustomer()
+
+// m_editservicetemplate.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_editservicetemplate()
+
+// m_editservicetemplate.create() returns 0 [event]
+	call super::create
+	this.text = "Edit Service Template~tAlt+F10"
+	this.shortcut = 633
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_editservicetemplate.destroy() returns 0 [event]
+	call super::destroy
+
+// m_showaccountledger.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_show_accountledger()
+
+// m_showaccountledger.create() returns 0 [event]
+	call super::create
+	this.text = "Show Account Ledger~tF1"
+	this.shortcut = 112
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_showaccountledger.destroy() returns 0 [event]
+	call super::destroy
+
+// m_showpatientledger.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_show_patientledger()
+
+// m_showpatientledger.create() returns 0 [event]
+	call super::create
+	this.text = "Show Patient Ledger~tCtrl+F1"
+	this.shortcut = 368
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_showpatientledger.destroy() returns 0 [event]
+	call super::destroy
+
+// m_showin-patientbill.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_show_inpatientbill()
+
+// m_showin-patientbill.create() returns 0 [event]
+	call super::create
+	this.text = "Show In-Patient Bill~tAlt+F1"
+	this.shortcut = 624
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_showin-patientbill.destroy() returns 0 [event]
+	call super::destroy
+
+// m_applydoctorsassociatedservicetemplate.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_apply_associated_doctor_tempate(0)
+
+// m_applydoctorsassociatedservicetemplate.create() returns 0 [event]
+	call super::create
+	this.text = "Apply Doctor's Associated Service Template~tAlt+F8"
+	this.shortcut = 631
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_applydoctorsassociatedservicetemplate.destroy() returns 0 [event]
+	call super::destroy
+
+// m_applycustomersassociatedservicetemplate.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_apply_associated_customer_tempate(0)
+
+// m_applycustomersassociatedservicetemplate.create() returns 0 [event]
+	call super::create
+	this.text = "Apply Customer's Associated Service Template~tAlt+F9"
+	this.shortcut = 632
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_applycustomersassociatedservicetemplate.destroy() returns 0 [event]
+	call super::destroy
+
+// m_saveandpost.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_saveandpost()
+
+// m_saveandpost.create() returns 0 [event]
+	call super::create
+	this.text = "Save and Post~tCtrl+Q"
+	this.shortcut = 337
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_saveandpost.destroy() returns 0 [event]
+	call super::destroy
+
+// m_showserviceinvoicepurchasetemplate.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_show_serviceinvpurtemplate()
+
+// m_showserviceinvoicepurchasetemplate.create() returns 0 [event]
+	call super::create
+	this.text = "Show Service Invoice Purchase Template~tCtrl+M"
+	this.shortcut = 333
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_showserviceinvoicepurchasetemplate.destroy() returns 0 [event]
+	call super::destroy
+
+// m_showinpatientbillwrtprocedureinfo.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_show_inpatientbill_procedure()
+
+// m_showinpatientbillwrtprocedureinfo.create() returns 0 [event]
+	call super::create
+	this.text = "Show In-Patient Bill wrt Procedure Info.~tCtrl+K"
+	this.shortcut = 331
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_showinpatientbillwrtprocedureinfo.destroy() returns 0 [event]
 	call super::destroy

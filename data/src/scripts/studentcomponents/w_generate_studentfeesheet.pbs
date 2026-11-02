@@ -1,12 +1,12 @@
 // window w_generate_studentfeesheet (studentcomponents)  ancestor: window
 
-// w_generate_studentfeesheet.ue_keydown(keycode key, unsignedlong keyflags) returns long
+// w_generate_studentfeesheet.ue_keydown(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		post event ue_close()
 	end if
 	return ::message.returnvalue
 
-// w_generate_studentfeesheet.ue_close() returns 0
+// w_generate_studentfeesheet.ue_close() returns 0 [event]
 	closewithreturn(this, this.istr_arg)
 
 // w_generate_studentfeesheet.wf_setnewtabid(string as_tablename, long al_newid) returns long
@@ -66,7 +66,7 @@
 	setpointer(arrow!)
 	return 0
 
-// w_generate_studentfeesheet.create() returns 0
+// w_generate_studentfeesheet.create() returns 0 [event]
 	this.dw_feedetail = create dw_feedetail
 	this.dw_feeheader = create dw_feeheader
 	this.dw_footer = create dw_footer
@@ -76,7 +76,7 @@
 	this.dw_detail = create dw_detail
 	this.control = {this.dw_feedetail, this.dw_feeheader, this.dw_footer, this.dw_master, this.cb_retrieve, this.cb_ok, this.dw_detail}
 
-// w_generate_studentfeesheet.destroy() returns 0
+// w_generate_studentfeesheet.destroy() returns 0 [event]
 	destroy this.dw_feedetail
 	destroy this.dw_feeheader
 	destroy this.dw_footer
@@ -85,7 +85,7 @@
 	destroy this.cb_ok
 	destroy this.dw_detail
 
-// w_generate_studentfeesheet.open() returns long
+// w_generate_studentfeesheet.open() returns long [event]
 	environment le_env
 	long ll_win_width
 	long ll_win_height
@@ -129,13 +129,13 @@
 	end if
 	return message.returnvalue
 
-// dw_master.ue_enterkey() returns long
+// dw_master.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// cb_retrieve.clicked() returns long
+// cb_retrieve.clicked() returns long [event]
 	string ls_filter
 	long ll_masterrow
 	parent.dw_master.accepttext()
@@ -146,7 +146,7 @@
 	parent.dw_detail.setredraw(true)
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	long ll_rowcount
 	long ll_counter
 	long ll_servicecode
@@ -224,19 +224,19 @@
 	setpointer(arrow!)
 	return ::message.returnvalue
 
-// dw_detail.ue_enterkey() returns long
+// dw_detail.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_detail.getfocus() returns long
+// dw_detail.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	selecttext(1, len(gettext()))
 	return ::message.returnvalue
 
-// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
 	selecttext(1, len(gettext()))

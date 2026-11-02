@@ -30,7 +30,7 @@
 	SQL SELECT Count ( *) INTO :ll_count FROM PatientAdmission WHERE PatientAdmission.AdmissionCode =:al_admissioncode AND PatientAdmission.Discharged ='N' AND PatientAdmission.Discharged1 ='N' USING sqlca;
 	return ll_count
 
-// w_patienttransfer_form.create() returns 0
+// w_patienttransfer_form.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	if isvalid(this.menuid) then
@@ -43,28 +43,28 @@
 	icurrent = upperbound(this.control)
 	this.control[icurrent + 1] = this.dw_patienttransferdetail
 
-// w_patienttransfer_form.destroy() returns 0
+// w_patienttransfer_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 	destroy this.dw_patienttransferdetail
 
-// w_patienttransfer_form.activate() returns long
+// w_patienttransfer_form.activate() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::activate()
 	this.windowstate = maximized!
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_patienttransfer_form.open() returns long
+// w_patienttransfer_form.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.is_tablename = "PatientTransfer"
 	this.im_transfermenu = this.menuid
 	return ::message.returnvalue
 
-// w_patienttransfer_form.ue_save() returns 0
+// w_patienttransfer_form.ue_save() returns 0 [event]
 	long ll_primarykey
 	long ll_row
 	long ll_retcode
@@ -152,7 +152,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_patienttransfer_form.ue_detail() returns 0
+// w_patienttransfer_form.ue_detail() returns 0 [event]
 	long ll_code
 	this.im_menu.m_file.m_new.enabled = false
 	this.im_menu.m_file.m_save.enabled = true
@@ -173,7 +173,7 @@
 		this.tab_retrieve.tabpage_detail.dw_detail.setfocus()
 	end if
 
-// w_patienttransfer_form.ue_newform() returns 0
+// w_patienttransfer_form.ue_newform() returns 0 [event]
 	integer li_protect
 	long ll_retcode
 	call super::ue_newform
@@ -185,3 +185,18 @@
 	this.idc_location.settransobject(sqlca)
 	this.idc_location.retrieve()
 	wf_protectdw(this.id_detail, li_protect)
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	long ll_retcode
+	long ll_patientcode
+	string ls_regno
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "targetlocation"
+		if isnull(data) then
+			messagebox("Patient Location Validation", "Please Choose Some Valid Patient Location")
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue

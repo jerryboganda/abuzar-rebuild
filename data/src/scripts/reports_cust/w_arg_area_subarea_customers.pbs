@@ -1,6 +1,6 @@
 // window w_arg_area_subarea_customers (reports_cust)  ancestor: w_listarguments
 
-// w_arg_area_subarea_customers.create() returns 0
+// w_arg_area_subarea_customers.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.st_selectable = create st_selectable
@@ -9,12 +9,12 @@
 	this.control[icurrent + 1] = this.st_selectable
 	this.control[icurrent + 2] = this.st_selected
 
-// w_arg_area_subarea_customers.destroy() returns 0
+// w_arg_area_subarea_customers.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.st_selectable
 	destroy this.st_selected
 
-// w_arg_area_subarea_customers.open() returns long
+// w_arg_area_subarea_customers.open() returns long [event]
 	long ancestorreturnvalue
 	long ll_counter
 	long ll_rowcount
@@ -62,3 +62,37 @@
 		return 0
 	end if
 	return message.returnvalue
+
+// cb_ok.clicked() returns long [event]
+	long ancestorreturnvalue
+	long ll_count
+	long ll_counter
+	long ll_innercounter
+	long ll_found
+	string ls_colname
+	ancestorreturnvalue = super::clicked()
+	if parent.cbx_all.checked = true then
+		for ll_counter = 1 to parent.idc_categories.rowcount()
+			parent.istr_arg.ia_integerlist[ll_counter] = parent.idc_categories.getitemnumber(ll_counter, parent.is_childcolname)
+		next
+	else
+		for ll_counter = 1 to ll_counter
+			if parent.is_stringparam = "C" then
+				ls_colname = "customer_name ='"
+			else
+				ls_colname = "name ='"
+			end if
+			ll_found = parent.idc_categories.find(ls_colname + parent.lb_selectedcategories.text(ll_counter) + "'", 1, parent.idc_categories.rowcount())
+			if ll_found > 0 then
+				parent.istr_arg.ia_integerlist[ll_counter] = parent.idc_categories.getitemnumber(ll_found, parent.is_childcolname)
+			end if
+		next
+	end if
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	parent.istr_arg.l_code1 = parent.dw_price.getitemnumber(1, "price")
+	parent.istr_arg.i_supress = parent.cbx_supress.checked
+	parent.istr_arg.i_hide = parent.cbx_hide.checked
+	parent.istr_arg.i_status = 1
+	parent.post event ue_close(1)
+	return ::message.returnvalue

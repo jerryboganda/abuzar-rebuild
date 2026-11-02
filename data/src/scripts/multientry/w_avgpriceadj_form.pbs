@@ -295,7 +295,7 @@
 	setpointer(arrow!)
 	this.id_detail.setredraw(true)
 
-// w_avgpriceadj_form.create() returns 0
+// w_avgpriceadj_form.create() returns 0 [event]
 	call super::create
 	if isvalid(this.menuid) then
 		destroy this.menuid
@@ -304,13 +304,13 @@
 		this.menuid = create m_avgpriceadj
 	end if
 
-// w_avgpriceadj_form.destroy() returns 0
+// w_avgpriceadj_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_avgpriceadj_form.ue_save() returns 0
+// w_avgpriceadj_form.ue_save() returns 0 [event]
 	long ll_mastercurrrow
 	long ll_invid
 	long ll_detailrows
@@ -511,7 +511,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_avgpriceadj_form.ue_newitem() returns 0
+// w_avgpriceadj_form.ue_newitem() returns 0 [event]
 	long ll_rowcount
 	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
 		this.id_detail.setfocus()
@@ -535,7 +535,7 @@
 	this.im_menu.m_file.m_save.enabled = true
 	this.ib_validatefullcode = true
 
-// w_avgpriceadj_form.ue_deleteitem() returns 0
+// w_avgpriceadj_form.ue_deleteitem() returns 0 [event]
 	long ll_row
 	ll_row = this.id_detail.getrow()
 	if this.id_detail.rowcount() > 0 then
@@ -544,13 +544,13 @@
 	end if
 	this.im_menu.m_file.m_print.enabled = false
 
-// w_avgpriceadj_form.close() returns long
+// w_avgpriceadj_form.close() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::close()
 	destroy this.ids_itemstockinfo
 	return ::message.returnvalue
 
-// w_avgpriceadj_form.ue_refreshddw() returns 0
+// w_avgpriceadj_form.ue_refreshddw() returns 0 [event]
 	call super::ue_refreshddw
 	setpointer(hourglass!)
 	this.idc_dracc.setredraw(false)
@@ -565,7 +565,7 @@
 	this.idc_cracc.setredraw(true)
 	setpointer(arrow!)
 
-// w_avgpriceadj_form.ue_postopen() returns 0
+// w_avgpriceadj_form.ue_postopen() returns 0 [event]
 	integer li_rtncode
 	m_avgpriceadj lm_menu
 	call super::ue_postopen
@@ -612,13 +612,13 @@
 	gd_itemsinfo.sharedata(this.id_itemslist)
 	setredraw(true)
 
-// w_avgpriceadj_form.open() returns long
+// w_avgpriceadj_form.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	show()
 	return ::message.returnvalue
 
-// w_avgpriceadj_form.ue_detail() returns 0
+// w_avgpriceadj_form.ue_detail() returns 0 [event]
 	long ll_code
 	integer li_rtncode
 	integer li_protect
@@ -650,7 +650,7 @@
 	this.im_menu.m_file.m_print.enabled = false
 	setredraw(true)
 
-// w_avgpriceadj_form.ue_newform() returns 0
+// w_avgpriceadj_form.ue_newform() returns 0 [event]
 	integer li_protect
 	call super::ue_newform
 	this.id_detail.setfocus()
@@ -660,3 +660,190 @@
 	end if
 	wf_protectdw(this.id_master, li_protect)
 	wf_protectdw(this.id_detail, li_protect)
+
+// tab_retrieve.selectionchanging(integer oldindex, integer newindex) returns long [event]
+	integer li_yesno
+	integer li_rtcode
+	return li_rtcode
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	long ll_null
+	long ll_currentrow
+	long ll_icode
+	string ls_null
+	string ls_itemname
+	datetime ldt_expiry
+	date ld_expiry
+	time lt_expiry
+	string ls_error
+	datawindowchild ldc_items
+	dwitemstatus lrs_status
+	integer li_res
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	ll_currentrow = getrow()
+	lrs_status = getitemstatus(ll_currentrow, 0, primary!)
+	setnull(ll_null)
+	setnull(ls_null)
+	choose case dwo.name
+	case parent.parent.parent.is_columnitemname
+		parent.parent.parent.id_detail.setitem(row, "icode", parent.parent.parent.id_itemslist.getitemnumber(parent.parent.parent.id_itemslist.getrow(), "icode"))
+		parent.parent.parent.id_detail.setitem(row, "fullcode", parent.parent.parent.id_itemslist.getitemstring(parent.parent.parent.id_itemslist.getrow(), "fullcode"))
+		parent.parent.parent.ib_itemvalidated = false
+		parent.parent.parent.il_currrow = row
+		li_errcode = 0
+	case "icode"
+		parent.parent.parent.ib_itemvalidated = false
+		parent.parent.parent.il_currrow = row
+	case "fullcode"
+		if not isnull(data) and data <> "" then
+			li_res = parent.parent.parent.wf_findfullcode(data, ll_icode, ls_itemname)
+			if li_res > 0 then
+				setitem(row, "icode", ll_icode)
+				setitem(row, "itemname", ls_itemname)
+				parent.parent.parent.ib_itemvalidated = false
+				parent.parent.parent.il_currrow = row
+				li_errcode = 0
+			else
+				messagebox("ItemNumber Validation", "Item does not exist")
+				setitem(row, "icode", ll_null)
+				setitem(row, "fullcode", ls_null)
+				li_errcode = 1
+			end if
+		else
+			setitem(row, "icode", ll_null)
+			setitem(row, "fullcode", ls_null)
+			li_errcode = 2
+		end if
+	case "newsaleprice"
+		if real(data) < 0.0 then
+			li_errcode = 1
+		end if
+		parent.parent.parent.ib_itemvalidated = true
+	case "newpurprice"
+		if real(data) < 0.0 then
+			li_errcode = 1
+		elseif parent.parent.parent.id_detail.object.purprice[row] - real(data) < 0 then
+			li_errcode = 1
+		elseif parent.parent.parent.id_detail.object.purprice[row] - real(data) > 0 then
+			parent.parent.parent.id_detail.object.rate[row] = parent.parent.parent.id_detail.object.purprice[row] - real(data)
+			parent.parent.parent.id_detail.object.amount[row] = round(parent.parent.parent.id_detail.object.stock[row] * (parent.parent.parent.id_detail.object.purprice[row] - real(data)), 2)
+			if parent.parent.parent.il_mode <> 1 then
+				parent.parent.parent.id_master.object.amount[parent.parent.parent.id_master.getrow()] = parent.parent.parent.id_detail.object.amount[row]
+			end if
+		else
+			parent.parent.parent.id_detail.object.rate[row] = 0
+			parent.parent.parent.id_detail.object.amount[row] = 0
+			if parent.parent.parent.il_mode <> 1 then
+				parent.parent.parent.id_master.object.amount[parent.parent.parent.id_master.getrow()] = 0
+			end if
+		end if
+		parent.parent.parent.ib_itemvalidated = true
+	case "newavgprice"
+		if real(data) < 0.0 then
+			li_errcode = 1
+		end if
+		parent.parent.parent.ib_itemvalidated = true
+	case "amount"
+		if real(data) < 0.0 then
+			li_errcode = 1
+		end if
+		parent.parent.parent.ib_itemvalidated = true
+	case "rate"
+		if real(data) < 0.0 then
+			li_errcode = 1
+		else
+			parent.parent.parent.id_detail.object.amount[row] = round(parent.parent.parent.id_detail.object.stock[row] * real(data), 2)
+			if parent.parent.parent.il_mode <> 1 then
+				parent.parent.parent.id_master.object.amount[parent.parent.parent.id_master.getrow()] = parent.parent.parent.id_detail.object.amount[row]
+			end if
+		end if
+		parent.parent.parent.ib_itemvalidated = true
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.losefocus() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::losefocus()
+	parent.parent.parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "fullcode"
+		if isnull(data) or data = "" then
+			messagebox("Item Code Validation", "Item Code ~"" + data + "~" does not exist")
+		end if
+	case parent.parent.parent.is_columnitemname
+		messagebox("Item Validation", "Value required for item in current row")
+	case "icode"
+		messagebox("Item Validation", "Value required for item in current row")
+	case "newsaleprice"
+		if data = "" or isnull(data) or real(data) < 0.0 then
+			messagebox("Sale Price Validation", "Please enter valid sale price")
+		end if
+	case "newpurprice"
+		if data = "" or isnull(data) or real(data) < 0.0 then
+			messagebox("Purchase Price Validation", "Please enter valid purchase price")
+		end if
+	case "newavgprice"
+		if data = "" or isnull(data) or real(data) < 0.0 then
+			messagebox("Average Price Validation", "Please enter valid average price")
+		end if
+	case "rate"
+		if data = "" or isnull(data) or real(data) < 0.0 then
+			messagebox("Difference Validation", "Please enter valid purchase difference value")
+		end if
+	end choose
+	return 1
+
+// dw_itemsdetail.getfocus() returns long [event]
+	long ancestorreturnvalue
+	if f_stringpreferences("itemcode") = "N" then
+		ancestorreturnvalue = super::getfocus()
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	string ls_columnobject
+	long ll_currow
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem() = -1 then
+		return ::message.returnvalue
+	end if
+	if dwo.name = "itemname" then
+		parent.parent.parent.ib_focusdetail = true
+	end if
+	parent.parent.parent.wf_grandtotal()
+	ls_columnobject = dwo.name
+	ll_currow = rowcount()
+	if ll_currow > 0 and (ls_columnobject = "newpurprice" or ls_columnobject = "newsaleprice" or ls_columnobject = "newavgprice" or ls_columnobject = "rate") then
+		if isnull(this.object.icode[ll_currow]) then
+			scrolltorow(ll_currow)
+			setcolumn(parent.parent.parent.is_columnitemname)
+			setfocus()
+		else
+			selecttext(1, len(gettext()))
+		end if
+	end if
+	parent.parent.parent.editflag = true
+	selecttext(1, len(gettext()))
+	if dwo.name = parent.parent.parent.is_columnitemname then
+		if isnull(getitemnumber(row, "icode")) and parent.parent.parent.ib_focusdetail then
+			parent.parent.parent.wf_showlist(getitemnumber(row, "CurrListRow"))
+		end if
+	else
+		parent.parent.parent.ib_itemslistopen = false
+		parent.parent.parent.id_itemslist.hide()
+	end if
+	return 0
+
+// dw_itemsdetail.ue_enterkey() returns long [event]
+	if getrow() = rowcount() and getcolumn() = integer(this.object.datawindow.column.count) and parent.parent.parent.il_mode = 1 and accepttext() = 1 then
+		parent.parent.parent.event ue_newitem()
+		return 1
+	end if
+	send(handle(this), 256, 9, long(90))
+	return 1

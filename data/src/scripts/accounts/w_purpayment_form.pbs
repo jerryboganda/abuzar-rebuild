@@ -1,10 +1,10 @@
 // window w_purpayment_form (accounts)  ancestor: window
 
-// w_purpayment_form.ue_close() returns 0
+// w_purpayment_form.ue_close() returns 0 [event]
 	SQL stop USING this.it_transobject;
 	close(this)
 
-// w_purpayment_form.ue_postopen() returns 0
+// w_purpayment_form.ue_postopen() returns 0 [event]
 	long ll_counter
 	long ll_pos
 	long ll_prow
@@ -612,7 +612,7 @@
 	end if
 	return false
 
-// w_purpayment_form.create() returns 0
+// w_purpayment_form.create() returns 0 [event]
 	this.dw_purpayment = create dw_purpayment
 	this.cb_printorder = create cb_printorder
 	this.cb_cancel = create cb_cancel
@@ -621,7 +621,7 @@
 	this.dw_print = create dw_print
 	this.control = {this.dw_purpayment, this.cb_printorder, this.cb_cancel, this.cb_ok, this.tab_main, this.dw_print}
 
-// w_purpayment_form.destroy() returns 0
+// w_purpayment_form.destroy() returns 0 [event]
 	destroy this.dw_purpayment
 	destroy this.cb_printorder
 	destroy this.cb_cancel
@@ -629,7 +629,7 @@
 	destroy this.tab_main
 	destroy this.dw_print
 
-// w_purpayment_form.open() returns long
+// w_purpayment_form.open() returns long [event]
 	integer li_xpos
 	integer li_ypos
 	integer li_xendpos
@@ -672,22 +672,22 @@
 	end if
 	return message.returnvalue
 
-// cb_printorder.clicked() returns long
+// cb_printorder.clicked() returns long [event]
 	parent.ib_print = true
 	parent.wf_save()
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.postevent("ue_close")
 	return ::message.returnvalue
 
-// cb_ok.ue_enterkry(keycode key, unsignedlong keyflags) returns long
+// cb_ok.ue_enterkry(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		triggerevent(clicked!)
 	end if
 	return 1
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	string ls_aliasname
 	long ll_newid
 	long ll_row
@@ -800,14 +800,14 @@
 	end if
 	return ::message.returnvalue
 
-// tab_main.create() returns 0
+// tab_main.create() returns 0 [event]
 	this.tabpage_header = create tabpage_header
 	this.control = {this.tabpage_header}
 
-// tab_main.destroy() returns 0
+// tab_main.destroy() returns 0 [event]
 	destroy this.tabpage_header
 
-// tab_main.selectionchanged(integer oldindex, integer newindex) returns long
+// tab_main.selectionchanged(integer oldindex, integer newindex) returns long [event]
 	if parent.il_protect = 0 and newindex = 1 then
 		parent.id_header.setfocus()
 		if parent.id_header.rowcount() = 0 then
@@ -816,23 +816,23 @@
 	end if
 	return ::message.returnvalue
 
-// tabpage_header.create() returns 0
+// tabpage_header.create() returns 0 [event]
 	this.dw_header = create dw_header
 	this.control = {this.dw_header}
 
-// tabpage_header.destroy() returns 0
+// tabpage_header.destroy() returns 0 [event]
 	destroy this.dw_header
 
-// dw_header.ue_enterkey() returns long
+// dw_header.ue_enterkey() returns long [event]
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_header.getfocus() returns long
+// dw_header.getfocus() returns long [event]
 	setfocus()
 	selecttext(1, len(gettext()))
 	return ::message.returnvalue
 
-// dw_header.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_header.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	long ll_retcode
 	double ld_balance
 	if len(gettext()) > 0 then
@@ -850,7 +850,7 @@
 	end choose
 	return ll_retcode
 
-// dw_header.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_header.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ll_retcode
 	double ld_balance
 	choose case dwo.name

@@ -1,20 +1,20 @@
 // window w_pricecalculator_pur (purchaseresponsewin)  ancestor: window
 
-// w_pricecalculator_pur.ue_close(integer ai_status) returns 0
+// w_pricecalculator_pur.ue_close(integer ai_status) returns 0 [event]
 	closewithreturn(this, this.istr_amountoninvoice)
 
-// w_pricecalculator_pur.create() returns 0
+// w_pricecalculator_pur.create() returns 0 [event]
 	this.dw_amountoninvoice = create dw_amountoninvoice
 	this.cb_cancel = create cb_cancel
 	this.cb_ok = create cb_ok
 	this.control = {this.dw_amountoninvoice, this.cb_cancel, this.cb_ok}
 
-// w_pricecalculator_pur.destroy() returns 0
+// w_pricecalculator_pur.destroy() returns 0 [event]
 	destroy this.dw_amountoninvoice
 	destroy this.cb_cancel
 	destroy this.cb_ok
 
-// w_pricecalculator_pur.open() returns long
+// w_pricecalculator_pur.open() returns long [event]
 	string ls_aliasname
 	string ls_name
 	decimal ld_saleprice
@@ -70,11 +70,11 @@
 	end if
 	return message.returnvalue
 
-// dw_amountoninvoice.ue_enterkey() returns long
+// dw_amountoninvoice.ue_enterkey() returns long [event]
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_amountoninvoice.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_amountoninvoice.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ll_null
 	long ll_salepricecriteria
 	integer li_errcode
@@ -147,7 +147,7 @@
 	end choose
 	return li_errcode
 
-// dw_amountoninvoice.itemerror(long row, dwobject dwo, string data) returns long
+// dw_amountoninvoice.itemerror(long row, dwobject dwo, string data) returns long [event]
 	choose case dwo.name
 	case "amt"
 		messagebox("Amount Validation!", "Please Enter Valid Amount")
@@ -156,30 +156,30 @@
 	end choose
 	return ::message.returnvalue
 
-// dw_amountoninvoice.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_amountoninvoice.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	if row > 0 then
 		selecttext(1, len(gettext()))
 	end if
 	return ::message.returnvalue
 
-// cb_cancel.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// cb_cancel.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		postevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.istr_amountoninvoice.i_status = -1
 	parent.post event ue_close(-1)
 	return ::message.returnvalue
 
-// cb_ok.ue_keypress(keycode key, unsignedlong keyflags) returns long
+// cb_ok.ue_keypress(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		postevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	if parent.id_dw.accepttext() = 1 then
 		parent.istr_amountoninvoice.d_new_saleprice = parent.id_dw.getitemnumber(1, "newsaleprice")
 		parent.istr_amountoninvoice.i_status = 1

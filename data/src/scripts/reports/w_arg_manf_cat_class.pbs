@@ -1,6 +1,6 @@
 // window w_arg_manf_cat_class (reports)  ancestor: w_arguements
 
-// w_arg_manf_cat_class.create() returns 0
+// w_arg_manf_cat_class.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.st_4 = create st_4
@@ -49,7 +49,7 @@
 	this.control[icurrent + 21] = this.lb_itemclasses
 	this.control[icurrent + 22] = this.dw_control4
 
-// w_arg_manf_cat_class.destroy() returns 0
+// w_arg_manf_cat_class.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.st_4
 	destroy this.lb_categories
@@ -74,7 +74,7 @@
 	destroy this.lb_itemclasses
 	destroy this.dw_control4
 
-// w_arg_manf_cat_class.open() returns long
+// w_arg_manf_cat_class.open() returns long [event]
 	long ancestorreturnvalue
 	long ll_counter
 	long ll_rowcount
@@ -115,17 +115,101 @@
 	next
 	return ::message.returnvalue
 
-// w_arg_manf_cat_class.ue_close(integer ai_stauts) returns 0
+// w_arg_manf_cat_class.ue_close(integer ai_stauts) returns 0 [event]
 	super::ue_close(ai_stauts)
 	closewithreturn(this, this.istr_arg)
 
-// lb_categories.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// cb_cancel.clicked() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked()
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long [event]
+	long ancestorreturnvalue
+	long ll_count
+	long ll_counter
+	long ll_innercounter
+	long ll_found
+	string ls_qty
+	ancestorreturnvalue = super::clicked()
+	if parent.cbx_all.checked = true then
+		for ll_counter = 1 to parent.idc_manufacturers.rowcount()
+			parent.istr_arg.ia_integerlist[ll_counter] = parent.idc_manufacturers.getitemnumber(ll_counter, "manfcode")
+		next
+	else
+		parent.istr_arg.ia_integerlist[1] = -1000
+		for ll_counter = 1 to ll_counter
+			ll_found = parent.idc_manufacturers.find("name ='" + parent.lb_selectedcategories.text(ll_counter) + "'", 1, parent.idc_manufacturers.rowcount())
+			if ll_found > 0 then
+				parent.istr_arg.ia_integerlist[ll_counter] = parent.idc_manufacturers.getitemnumber(ll_found, "manfcode")
+			end if
+		next
+	end if
+	ll_counter = 1
+	if parent.cbx_itemcategoriesall.checked = true then
+		for ll_counter = 1 to parent.idc_itemcategories.rowcount()
+			parent.istr_arg.ia_integerlist1[ll_counter] = parent.idc_itemcategories.getitemnumber(ll_counter, "icatcode")
+		next
+	else
+		parent.istr_arg.ia_integerlist1[1] = -1000
+		for ll_counter = 1 to ll_counter
+			ll_found = parent.idc_itemcategories.find("name ='" + parent.lb_selecteditemcategories.text(ll_counter) + "'", 1, parent.idc_itemcategories.rowcount())
+			if ll_found > 0 then
+				parent.istr_arg.ia_integerlist1[ll_counter] = parent.idc_itemcategories.getitemnumber(ll_found, "icatcode")
+			end if
+		next
+	end if
+	ll_counter = 1
+	if parent.cbx_itemclassesall.checked = true then
+		for ll_counter = 1 to parent.idc_itemclasses.rowcount()
+			parent.istr_arg.ia_integerlist2[ll_counter] = parent.idc_itemclasses.getitemnumber(ll_counter, "iccode")
+		next
+	else
+		parent.istr_arg.ia_integerlist2[1] = -1000
+		for ll_counter = 1 to ll_counter
+			ll_found = parent.idc_itemclasses.find("name ='" + parent.lb_selecteditemclasses.text(ll_counter) + "'", 1, parent.idc_itemclasses.rowcount())
+			if ll_found > 0 then
+				parent.istr_arg.ia_integerlist2[ll_counter] = parent.idc_itemclasses.getitemnumber(ll_found, "iccode")
+			end if
+		next
+	end if
+	ll_counter = 1
+	for ll_counter = 1 to upperbound(parent.istr_arg.ia_integerlist)
+		if parent.istr_arg.ia_integerlist[ll_counter] = 0 then
+			parent.istr_arg.ia_integerlist[ll_counter] = -1000
+		end if
+	next
+	for ll_counter = 1 to upperbound(parent.istr_arg.ia_integerlist1)
+		if parent.istr_arg.ia_integerlist1[ll_counter] = 0 then
+			parent.istr_arg.ia_integerlist1[ll_counter] = -1000
+		end if
+	next
+	for ll_counter = 1 to upperbound(parent.istr_arg.ia_integerlist2)
+		if parent.istr_arg.ia_integerlist2[ll_counter] = 0 then
+			parent.istr_arg.ia_integerlist2[ll_counter] = -1000
+		end if
+	next
+	for ll_counter = 1 to upperbound(parent.istr_arg.la_longlist)
+		if parent.istr_arg.la_longlist[ll_counter] = 0 then
+			parent.istr_arg.la_longlist[ll_counter] = -1000
+		end if
+	next
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	parent.istr_arg.i_supress = parent.cbx_supress.checked
+	parent.istr_arg.i_hide = parent.cbx_hide.checked
+	parent.istr_arg.i_status = 1
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// lb_categories.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		post event doubleclicked(selectedindex())
 	end if
 	return ::message.returnvalue
 
-// lb_categories.doubleclicked(integer index) returns long
+// lb_categories.doubleclicked(integer index) returns long [event]
 	long ll_selectedindex
 	string ls_item
 	ls_item = string(selecteditem())
@@ -147,18 +231,18 @@
 	end if
 	return ::message.returnvalue
 
-// lb_categories.getfocus() returns long
+// lb_categories.getfocus() returns long [event]
 	selectitem(0)
 	selectitem(1)
 	return ::message.returnvalue
 
-// lb_selectedcategories.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// lb_selectedcategories.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		post event doubleclicked(selectedindex())
 	end if
 	return ::message.returnvalue
 
-// lb_selectedcategories.doubleclicked(integer index) returns long
+// lb_selectedcategories.doubleclicked(integer index) returns long [event]
 	string ls_item
 	long ll_selectedindex
 	ll_selectedindex = selectedindex()
@@ -176,24 +260,24 @@
 	end if
 	return ::message.returnvalue
 
-// lb_selectedcategories.getfocus() returns long
+// lb_selectedcategories.getfocus() returns long [event]
 	selectitem(0)
 	selectitem(1)
 	return ::message.returnvalue
 
-// cbx_all.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// cbx_all.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// lb_itemcategories.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// lb_itemcategories.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		post event doubleclicked(selectedindex())
 	end if
 	return ::message.returnvalue
 
-// lb_itemcategories.doubleclicked(integer index) returns long
+// lb_itemcategories.doubleclicked(integer index) returns long [event]
 	long ll_selectedindex
 	string ls_item
 	ls_item = string(selecteditem())
@@ -215,18 +299,18 @@
 	end if
 	return ::message.returnvalue
 
-// lb_itemcategories.getfocus() returns long
+// lb_itemcategories.getfocus() returns long [event]
 	selectitem(0)
 	selectitem(1)
 	return ::message.returnvalue
 
-// lb_selecteditemcategories.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// lb_selecteditemcategories.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		post event doubleclicked(selectedindex())
 	end if
 	return ::message.returnvalue
 
-// lb_selecteditemcategories.doubleclicked(integer index) returns long
+// lb_selecteditemcategories.doubleclicked(integer index) returns long [event]
 	string ls_item
 	long ll_selectedindex
 	ll_selectedindex = selectedindex()
@@ -244,30 +328,30 @@
 	end if
 	return ::message.returnvalue
 
-// lb_selecteditemcategories.getfocus() returns long
+// lb_selecteditemcategories.getfocus() returns long [event]
 	selectitem(0)
 	selectitem(1)
 	return ::message.returnvalue
 
-// cbx_itemcategoriesall.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// cbx_itemcategoriesall.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// cbx_itemclassesall.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// cbx_itemclassesall.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// lb_selecteditemclasses.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// lb_selecteditemclasses.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		post event doubleclicked(selectedindex())
 	end if
 	return ::message.returnvalue
 
-// lb_selecteditemclasses.doubleclicked(integer index) returns long
+// lb_selecteditemclasses.doubleclicked(integer index) returns long [event]
 	string ls_item
 	long ll_selectedindex
 	ll_selectedindex = selectedindex()
@@ -285,18 +369,18 @@
 	end if
 	return ::message.returnvalue
 
-// lb_selecteditemclasses.getfocus() returns long
+// lb_selecteditemclasses.getfocus() returns long [event]
 	selectitem(0)
 	selectitem(1)
 	return ::message.returnvalue
 
-// lb_itemclasses.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// lb_itemclasses.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		post event doubleclicked(selectedindex())
 	end if
 	return ::message.returnvalue
 
-// lb_itemclasses.doubleclicked(integer index) returns long
+// lb_itemclasses.doubleclicked(integer index) returns long [event]
 	long ll_selectedindex
 	string ls_item
 	ls_item = string(selecteditem())
@@ -318,7 +402,7 @@
 	end if
 	return ::message.returnvalue
 
-// lb_itemclasses.getfocus() returns long
+// lb_itemclasses.getfocus() returns long [event]
 	selectitem(0)
 	selectitem(1)
 	return ::message.returnvalue

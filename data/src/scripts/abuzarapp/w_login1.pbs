@@ -17,7 +17,7 @@
 	end if
 	return 0
 
-// w_login1.create() returns 0
+// w_login1.create() returns 0 [event]
 	this.cbx_remote = create cbx_remote
 	this.dw_remote = create dw_remote
 	this.cb_ok = create cb_ok
@@ -25,14 +25,14 @@
 	this.dw_password = create dw_password
 	this.control = {this.cbx_remote, this.dw_remote, this.cb_ok, this.cb_cancel, this.dw_password}
 
-// w_login1.destroy() returns 0
+// w_login1.destroy() returns 0 [event]
 	destroy this.cbx_remote
 	destroy this.dw_remote
 	destroy this.cb_ok
 	destroy this.cb_cancel
 	destroy this.dw_password
 
-// w_login1.open() returns long
+// w_login1.open() returns long [event]
 	long ll_win_width
 	long ll_win_height
 	long ll_width
@@ -56,17 +56,17 @@
 	this.dw_remote.insertrow(0)
 	return ::message.returnvalue
 
-// w_login1.key(keycode key, unsignedlong keyflags) returns long
+// w_login1.key(keycode key, unsignedlong keyflags) returns long [event]
 	if keydown(keyescape!) then
 		closewithreturn(this, 0)
 	end if
 	return ::message.returnvalue
 
-// cbx_remote.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cbx_remote.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// cbx_remote.clicked() returns long
+// cbx_remote.clicked() returns long [event]
 	if parent.cbx_remote.checked then
 		parent.id_remote.object.servername.visible = true
 		parent.id_remote.object.databasename.visible = true
@@ -80,7 +80,7 @@
 	end if
 	return ::message.returnvalue
 
-// dw_remote.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_remote.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	datawindowchild ldc_databasesname
 	ancestorreturnvalue = super::itemchanged(row, dwo, data)
@@ -115,13 +115,13 @@
 	end choose
 	return ::message.returnvalue
 
-// dw_remote.getfocus() returns long
+// dw_remote.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	setcolumn("servername")
 	return ::message.returnvalue
 
-// dw_remote.itemerror(long row, dwobject dwo, string data) returns long
+// dw_remote.itemerror(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemerror(row, dwo, data)
 	choose case dwo.name
@@ -136,7 +136,7 @@
 	end choose
 	return 1
 
-// dw_remote.ue_enterkey() returns long
+// dw_remote.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	if getcolumn() = 2 then
@@ -145,13 +145,13 @@
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		postevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	long ancestorreturnvalue
 	long ll_counter
 	long ll_len
@@ -276,24 +276,24 @@
 	end if
 	return ::message.returnvalue
 
-// cb_cancel.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_cancel.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		postevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	closewithreturn(parent, 0)
 	return ::message.returnvalue
 
-// dw_password.ue_close() returns 0
+// dw_password.ue_close() returns 0 [event]
 	integer li_salesmancode
 	w_salesmanpassword w_parent
 	li_salesmancode = getitemnumber(1, "salesmancode")
 	w_parent = getparent()
 	closewithreturn(w_parent, li_salesmancode)
 
-// dw_password.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_password.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemchanged(row, dwo, data)
 	choose case dwo.name
@@ -302,7 +302,7 @@
 	end choose
 	return ::message.returnvalue
 
-// dw_password.itemerror(long row, dwobject dwo, string data) returns long
+// dw_password.itemerror(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	integer li_salesmancode
 	string ls_salesman
@@ -310,7 +310,7 @@
 	ancestorreturnvalue = super::itemerror(row, dwo, data)
 	return ::message.returnvalue
 
-// dw_password.ue_enterkey() returns long
+// dw_password.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	if parent.cbx_remote.visible = false and getcolumn() = 2 then
@@ -319,7 +319,7 @@
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_password.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// dw_password.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
 	if keyflags = 2 and key = keym! then

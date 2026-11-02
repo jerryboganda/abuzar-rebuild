@@ -320,7 +320,7 @@
 	end if
 	return 0
 
-// w_visit_appointment_form.create() returns 0
+// w_visit_appointment_form.create() returns 0 [event]
 	call super::create
 	if isvalid(this.menuid) then
 		destroy this.menuid
@@ -329,20 +329,20 @@
 		this.menuid = create m_visit_appointment
 	end if
 
-// w_visit_appointment_form.destroy() returns 0
+// w_visit_appointment_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_visit_appointment_form.activate() returns long
+// w_visit_appointment_form.activate() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::activate()
 	this.windowstate = maximized!
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_visit_appointment_form.open() returns long
+// w_visit_appointment_form.open() returns long [event]
 	long ancestorreturnvalue
 	long ll_rtncode
 	long ll_found
@@ -388,7 +388,7 @@
 	this.id_print.settransobject(sqlca)
 	return ::message.returnvalue
 
-// w_visit_appointment_form.ue_save() returns 0
+// w_visit_appointment_form.ue_save() returns 0 [event]
 	long ll_primarykey
 	long ll_row
 	long ll_primarykey2
@@ -484,7 +484,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_visit_appointment_form.ue_detail() returns 0
+// w_visit_appointment_form.ue_detail() returns 0 [event]
 	m_visit_appointment lm_menu
 	call super::ue_detail
 	lm_menu = this.menuid
@@ -505,7 +505,7 @@
 		this.id_detail.object.patientcode.protect = 1
 	end if
 
-// w_visit_appointment_form.ue_print() returns 0
+// w_visit_appointment_form.ue_print() returns 0 [event]
 	long ll_code
 	long ll_row
 	long li_printretcode
@@ -570,14 +570,14 @@
 	end if
 	messagebox("Printing Error", "Can not Print,~r~nNo rows are retrieved", information!)
 
-// w_visit_appointment_form.ue_list() returns 0
+// w_visit_appointment_form.ue_list() returns 0 [event]
 	m_visit_appointment lm_menu
 	call super::ue_list
 	lm_menu = this.menuid
 	lm_menu.m_file.m_print.enabled = true
 	lm_menu.m_file.m_post.enabled = true
 
-// w_visit_appointment_form.ue_newform() returns 0
+// w_visit_appointment_form.ue_newform() returns 0 [event]
 	string ls_date_errtext
 	datetime ldt_server_datetime
 	long ll_days
@@ -631,3 +631,117 @@
 	this.id_detail.object.tokenno.protect = 0
 	this.id_detail.object.regno.protect = 0
 	this.id_detail.object.patientcode.protect = 0
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	long ll_patientcode
+	long ll_res
+	long ll_found
+	time lt_time
+	date ld_date
+	integer li_null
+	datetime ldt_date_null
+	datetime ldt_duedate
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	setnull(ldt_date_null)
+	setnull(li_null)
+	choose case dwo.name
+	case "ddate"
+		ldt_duedate = datetime(date(mid(data, 1, 10)), time(mid(string(this.object.dtime[row]), 12, 5)))
+		if isnull(data) or data = "" then
+			messagebox("Due Date Validation!", "Please Enter Valid Due Date")
+			return 1
+		elseif ldt_duedate < datetime(today(), now()) then
+			messagebox("Due Date Validation!", "Due Date Must be a future Date~r~nPlease Enter Valid Due Date")
+			return 1
+		end if
+		if parent.parent.parent.wf_validate_duedate(ldt_duedate) = 0 then
+			this.object.duedate[row] = ldt_duedate
+			parent.parent.parent.wf_set_next_timeslot(ldt_duedate)
+			return 0
+		else
+			return 1
+		end if
+	case "dtime"
+		if isnull(data) or data = "" then
+			messagebox("Time Slot Validation!", "Please Enter Valid Time Slot")
+			return 1
+		else
+			ld_date = date(this.object.duedate[row])
+			lt_time = time(mid(data, 12, len(data)))
+			ldt_duedate = datetime(ld_date, lt_time)
+			if parent.parent.parent.wf_validate_duedate(ldt_duedate) = 0 then
+				if parent.parent.parent.wf_validate_timeslot(ldt_duedate) = 0 then
+					this.object.duedate[row] = ldt_duedate
+				else
+					return 1
+				end if
+				return 0
+			else
+				return 1
+			end if
+		end if
+	case "duedate"
+		ldt_duedate = datetime(date(mid(data, 1, 10)), time(mid(data, 12, 8)))
+		if isnull(data) or data = "" then
+			messagebox("Due Date Validation!", "Please Enter Valid Due Date")
+			return 1
+		elseif ldt_duedate < datetime(today(), now()) then
+			messagebox("Due Date Validation!", "Due Date Must be a future Date~r~nPlease Enter Valid Due Date")
+			return 1
+		end if
+	case "tokenno"
+		if long(data) < 0 then
+			messagebox("Visit Appointment!", "Please Enter Valid Token Number")
+			return 1
+		elseif not isnull(data) and data <> "" and data <> "0" and parent.parent.parent.wf_validate_token(long(data)) <> 0 then
+			messagebox("Token Number Validation", "This Token No. is already alloted. Please enter some other valid token no.")
+			return 1
+		end if
+	case "regno"
+		if not isnull(data) and data <> "" then
+			ll_res = parent.parent.parent.wf_findpatientcode(data, ll_patientcode)
+			if ll_res > 0 then
+				setitem(row, "patientcode", ll_patientcode)
+			else
+				if ll_res = -2 then
+					messagebox("Patient Validation", "Patient with  RegNo  " + data + " is Inactive")
+				else
+					messagebox("Patient Validation", "Patient with  RegNo  " + data + " does not exist")
+				end if
+				return 1
+			end if
+			return
+		end if
+	case "patientcode"
+		ll_patientcode = long(data)
+		ll_found = parent.parent.parent.idc_patient.find("patientcode=" + trim(string(ll_patientcode)), 1, parent.parent.parent.idc_patient.rowcount())
+		if ll_found > 0 then
+			setitem(1, "regno", parent.parent.parent.idc_patient.getitemstring(parent.parent.parent.idc_patient.getrow(), "regno"))
+		else
+			messagebox("Patient Validation", "Patient does not exist or Already Inactive.")
+			return 1
+		end if
+		return
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "regno"
+		messagebox("ItemNo Validation", "Item Duplication Error~r~nPlease enter some other Reg No")
+	case "dob"
+		messagebox("Birth Date Validation", "Please enter some valid date")
+	case "age"
+		messagebox("Age Validation", "Please enter some valid age in years")
+	end choose
+	return 1
+
+// dw_detail.ue_enterkey() returns long [event]
+	if parent.parent.parent.id_detail.getcolumnname() <> "comments" then
+		send(handle(this), 256, 9, long(90))
+		return 1
+	end if
+	return ::message.returnvalue

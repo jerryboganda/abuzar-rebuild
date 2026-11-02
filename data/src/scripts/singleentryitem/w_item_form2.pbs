@@ -10,36 +10,36 @@
 	end if
 	return b_flag
 
-// w_item_form2.ue_newform() returns 0
+// w_item_form2.ue_newform() returns 0 [event]
 	call super::ue_newform
 	this.id_detail.setcolumn(1)
 
-// w_item_form2.create() returns 0
+// w_item_form2.create() returns 0 [event]
 	call super::create
 
-// w_item_form2.destroy() returns 0
+// w_item_form2.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_item_form2.activate() returns long
+// w_item_form2.activate() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::activate()
 	this.windowstate = maximized!
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_item_form2.ue_detail() returns 0
+// w_item_form2.ue_detail() returns 0 [event]
 	call super::ue_detail
 
-// w_item_form2.open() returns long
+// w_item_form2.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.is_tablename = "Item"
 	return ::message.returnvalue
 
-// w_item_form2.ue_save() returns 0
+// w_item_form2.ue_save() returns 0 [event]
 	long ll_primarykey
 	long ll_row
 	string s_customicode
@@ -70,3 +70,176 @@
 		return
 	end if
 	setpointer(arrow!)
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "customicode"
+		if data = "" or isnull(data) then
+			messagebox("Item Code Validation", "Value required for " + upper("item no") + " in current row")
+		end if
+	case "name"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "gcode"
+		if data = "" or isnull(data) then
+			messagebox("Godown Validation", "Value required for Godown in current row")
+		end if
+	case "packcode"
+		if data = "" or isnull(data) then
+			messagebox("Packing Validation", "Value required for " + upper("Packing") + " in current row")
+		end if
+	case "active"
+		if data = "" or isnull(data) then
+			messagebox("Active Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "refrigrated"
+		if data = "" or isnull(data) then
+			messagebox("Refrigrated Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "saleprice"
+		if data = "" or isnull(data) then
+			messagebox("Sale Price Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "retailprice"
+		if data = "" or isnull(data) then
+			messagebox("Retail Price Validation", "Value required for Retail Price in current row")
+		end if
+	case "salediscperc"
+		if data = "" or isnull(data) then
+			messagebox("Sale Disc(%) Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "reorderqty"
+		if data = "" or isnull(data) then
+			messagebox("Reorder Quantity Validation", "Value required for " + upper("Reorder Quantity") + " in current row")
+		end if
+	case "location"
+		if data = "" or isnull(data) then
+			messagebox("Location Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "remarks"
+		if data = "" or isnull(data) then
+			messagebox("Remarks Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "manfcode"
+		if data = "" or isnull(data) then
+			messagebox("Manufacturer Validation", "Value required for " + upper("Manufacturer") + " in current row")
+		end if
+	case "prescribed"
+		if data = "" or isnull(data) then
+			messagebox("Prescribed Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "packunits"
+		if data = "" or isnull(data) then
+			messagebox("Packing Units Validation", "Value required for " + upper("Packing Units") + " in current row")
+		end if
+	case "purprice"
+		if data = "" or isnull(data) then
+			messagebox("Purchase Price Validation", "Value required for " + upper("Purchase Price") + " in current row")
+		end if
+	case "purdiscperc"
+		if data = "" or isnull(data) then
+			messagebox("Purchase Disc(%) Validation", "Value required for " + upper("Purchase Discount") + " in current row")
+		end if
+	case "optimumqty"
+		if data = "" or isnull(data) then
+			messagebox("Maximum Quantity Validation", "Value required for " + upper("Maximum Quantity") + " in current row")
+		end if
+	case "printable"
+		if data = "" or isnull(data) then
+			messagebox("Printable Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "retailprice"
+		if data = "" or isnull(data) then
+			messagebox("Retail Price Validation", "Value required for " + upper("Retail Price") + " in current row")
+		end if
+	case "salestax"
+		if data = "" or isnull(data) then
+			messagebox("Salestax Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	end choose
+	return 1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "customicode"
+		if parent.parent.parent.wf_duplicateitemno(data) then
+			messagebox("ItemNo Validation", "Item Duplication Error~r~nPlease enter some other Item No")
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_find.keypressed(keycode key, unsignedlong keyflags) returns long [event]
+	integer li_movement
+	long ll_row
+	long ll_temp
+	long ll_icode
+	long ll_found
+	string sl_columnname
+	if key = keyf8! then
+		ll_icode = f_drilldown_itemsearch("namesearch", 1)
+		ll_found = parent.parent.parent.id_list.find("code = " + string(ll_icode), 1, parent.parent.parent.id_list.rowcount())
+		if ll_found > 0 then
+			ll_row = ll_found
+			parent.parent.parent.id_list.scrolltorow(ll_row)
+		end if
+	elseif key = keyf9! then
+		ll_icode = f_drilldown_itemsearch("criteriasearch", 1)
+		ll_found = parent.parent.parent.id_list.find("code = " + string(ll_icode), 1, parent.parent.parent.id_list.rowcount())
+		if ll_found > 0 then
+			ll_row = ll_found
+			parent.parent.parent.id_list.scrolltorow(ll_row)
+		end if
+	elseif key = keyf3! then
+		ll_icode = f_drilldown_itemsearch("itemsearch", 1)
+		ll_found = parent.parent.parent.id_list.find("code = " + string(ll_icode), 1, parent.parent.parent.id_list.rowcount())
+		if ll_found > 0 then
+			ll_row = ll_found
+			parent.parent.parent.id_list.scrolltorow(ll_row)
+		end if
+	elseif key = keyuparrow! then
+		ll_row = parent.parent.parent.id_list.getrow() - 1
+		parent.parent.parent.id_list.scrollpriorrow()
+	elseif key = keydownarrow! then
+		ll_row = parent.parent.parent.id_list.getrow() + 1
+		parent.parent.parent.id_list.scrollnextrow()
+	elseif key = keypagedown! then
+		parent.parent.parent.id_list.scrollnextpage()
+		ll_row = parent.parent.parent.id_dwcontrol.getrow()
+	elseif key = keypageup! then
+		parent.parent.parent.id_list.scrollpriorpage()
+		ll_row = parent.parent.parent.id_dwcontrol.getrow()
+	elseif key = keyhome! then
+		scrolltorow(1)
+		ll_row = 1
+	elseif key = keyend! then
+		ll_row = parent.parent.parent.id_list.rowcount()
+		scrolltorow(ll_row)
+	elseif key = keyenter! and parent.parent.parent.id_dwcontrol.getselectedrow(0) > 0 then
+		parent.parent.parent.i_editmode = 2
+		parent.parent.parent.tab_retrieve.selectedtab = 1
+		return ::message.returnvalue
+	end if
+	if ll_row > 0 and ll_row <= parent.parent.parent.id_dwcontrol.rowcount() then
+		parent.parent.parent.id_list.setredraw(false)
+		parent.parent.parent.tab_retrieve.tabpage_detail.enabled = true
+		parent.parent.parent.im_menu.m_file.m_retrieve.enabled = true
+		parent.parent.parent.id_list.selectrow(0, false)
+		parent.parent.parent.id_list.selectrow(ll_row, true)
+		if parent.parent.parent.ii_type = 1 then
+			setitem(1, "find", parent.parent.parent.id_list.getitemstring(ll_row, parent.parent.parent.ii_colindex))
+		elseif parent.parent.parent.ii_type = 3 then
+			setitem(1, "find", trim(string(parent.parent.parent.id_list.getitemdatetime(ll_row, parent.parent.parent.ii_colindex))))
+		else
+			setitem(1, "find", trim(string(parent.parent.parent.id_list.getitemnumber(ll_row, parent.parent.parent.ii_colindex))))
+		end if
+		parent.parent.parent.il_selectedrow = ll_row
+		selecttext(1, len(gettext()))
+		parent.parent.parent.id_list.setredraw(true)
+	end if
+	return ::message.returnvalue

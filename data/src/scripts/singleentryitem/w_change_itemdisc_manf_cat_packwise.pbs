@@ -51,7 +51,7 @@
 	setpointer(arrow!)
 	return ll_rtncode
 
-// w_change_itemdisc_manf_cat_packwise.create() returns 0
+// w_change_itemdisc_manf_cat_packwise.create() returns 0 [event]
 	call super::create
 	if isvalid(this.menuid) then
 		destroy this.menuid
@@ -60,23 +60,23 @@
 		this.menuid = create m_changeitemsdisc_catwise
 	end if
 
-// w_change_itemdisc_manf_cat_packwise.destroy() returns 0
+// w_change_itemdisc_manf_cat_packwise.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_change_itemdisc_manf_cat_packwise.activate() returns long
+// w_change_itemdisc_manf_cat_packwise.activate() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::activate()
 	this.windowstate = maximized!
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_change_itemdisc_manf_cat_packwise.closequery() returns long
+// w_change_itemdisc_manf_cat_packwise.closequery() returns long [event]
 	return ::message.returnvalue
 
-// w_change_itemdisc_manf_cat_packwise.open() returns long
+// w_change_itemdisc_manf_cat_packwise.open() returns long [event]
 	long ancestorreturnvalue
 	integer li_counter
 	string ls_stringparam
@@ -85,14 +85,14 @@
 	SQL start USING this.it_transobject;
 	return ::message.returnvalue
 
-// w_change_itemdisc_manf_cat_packwise.close() returns long
+// w_change_itemdisc_manf_cat_packwise.close() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::close()
 	SQL stop USING this.it_transobject;
 	destroy this.it_transobject
 	return ::message.returnvalue
 
-// w_change_itemdisc_manf_cat_packwise.ue_postopen() returns 0
+// w_change_itemdisc_manf_cat_packwise.ue_postopen() returns 0 [event]
 	string ls_stringparam
 	integer li_null
 	call super::ue_postopen
@@ -102,4 +102,31 @@
 	setnull(li_null)
 	setredraw(true)
 
-// w_change_itemdisc_manf_cat_packwise.ue_save() returns 0
+// w_change_itemdisc_manf_cat_packwise.ue_save() returns 0 [event]
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "icatcode"
+		if data = "" or isnull(data) then
+			messagebox("Item Category Validation", "Kindly select item Category from drop down.")
+		end if
+	case "manfcode"
+		if data = "" or isnull(data) then
+			messagebox("Manufacturer Validation", "Kindly select manufacturer from drop down.")
+		end if
+	case "iccode"
+		if data = "" or isnull(data) then
+			messagebox("Item Class Validation", "Kindly select item Class from drop down.")
+		end if
+	case "packcode"
+		if data = "" or isnull(data) then
+			messagebox("Item Packing Validation", "Kindly select item Packing from drop down.")
+		end if
+	case "saledisc"
+		if real(data) < 0.0 then
+			messagebox("Sale Disc Validation", "Kindly give valid value for sale disc.")
+		end if
+	end choose
+	return 1

@@ -1,6 +1,6 @@
 // window w_sendmail (components)  ancestor: window
 
-// w_sendmail.ue_keydown(keycode key, unsignedlong keyflags) returns long
+// w_sendmail.ue_keydown(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		post event ue_close()
 	end if
@@ -8,16 +8,16 @@
 
 // w_sendmail.wf_assigndwobjects(string as_detaildw) returns 0
 
-// w_sendmail.create() returns 0
+// w_sendmail.create() returns 0 [event]
 	this.uo_1 = create uo_1
 	this.cb_close = create cb_close
 	this.control = {this.uo_1, this.cb_close}
 
-// w_sendmail.destroy() returns 0
+// w_sendmail.destroy() returns 0 [event]
 	destroy this.uo_1
 	destroy this.cb_close
 
-// w_sendmail.open() returns long
+// w_sendmail.open() returns long [event]
 	environment le_env
 	long ll_win_width
 	long ll_win_height
@@ -50,13 +50,38 @@
 	end if
 	return message.returnvalue
 
-// w_sendmail.close() returns long
+// w_sendmail.close() returns long [event]
 	close(this)
 	return ::message.returnvalue
 
-// uo_1.destroy() returns 0
+// uo_1.destroy() returns 0 [event]
 	call super::destroy
 
-// cb_close.clicked() returns long
+// dw_subject.close(long row, message dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::close(row, dwo, data)
+	choose case dwo.name
+	case "subject"
+		if data = "" or isnull(data) then
+			messagebox("Subject Validation", "Please Select Some Valid Subject")
+			return 1
+		elseif parent.idc_subject.getrow() > 0 then
+			parent.mle_body.text = parent.idc_subject.getitemstring(parent.idc_subject.getrow(), "body")
+		else
+			parent.mle_body.text = ""
+		end if
+	end choose
+	if not isvalid(::message) then
+		return 0
+	end if
+	return ::message.field6
+
+// dw_subject.ed() returns long
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ed()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// cb_close.clicked() returns long [event]
 	close(parent)
 	return ::message.returnvalue

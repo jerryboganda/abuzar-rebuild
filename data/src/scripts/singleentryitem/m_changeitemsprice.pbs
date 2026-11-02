@@ -1,8 +1,33 @@
 // menu m_changeitemsprice (singleentryitem)  ancestor: m_single_entry
 
-// m_changeitemsprice.create() returns 0
+// m_changeitemsprice.create() returns 0 [event]
 	m_changeitemsprice = this
 	call super::create
 
-// m_changeitemsprice.destroy() returns 0
+// m_changeitemsprice.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+
+// m_options.create() returns 0 [event]
+	call super::create
+	this.visible = true
+	this.text = "Change Now~tF12"
+	this.shortcut = 123
+	this.toolbaritemname = "CheckIn5!"
+
+// m_options.clicked() returns 0 [event]
+	integer li_yesno
+	call super::clicked
+	li_yesno = messagebox("Price Change ", "Are You Sure? The Sale Price of Item(s) " + "~nfor the specified filter criteria will be Changed", exclamation!, yesno!, 2)
+	if li_yesno = 2 then
+		return
+	end if
+	this.parentwindow.dynamic wf_changeprices()
+
+// m_options.destroy() returns 0 [event]
 	call super::destroy

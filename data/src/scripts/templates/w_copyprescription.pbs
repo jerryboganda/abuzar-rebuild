@@ -1,6 +1,6 @@
 // window w_copyprescription (templates)  ancestor: window
 
-// w_copyprescription.ue_postopen() returns 0
+// w_copyprescription.ue_postopen() returns 0 [event]
 	long rt_code
 	this.dw_pres.settransobject(sqlca)
 	rt_code = this.dw_pres.reset()
@@ -11,10 +11,10 @@
 		post event ue_close()
 	end if
 
-// w_copyprescription.ue_close() returns 0
+// w_copyprescription.ue_close() returns 0 [event]
 	closewithreturn(this, this.istr_arg)
 
-// w_copyprescription.open() returns long
+// w_copyprescription.open() returns long [event]
 	long ll_win_width
 	long ll_win_height
 	long ll_width
@@ -33,7 +33,7 @@
 	post event ue_postopen()
 	return ::message.returnvalue
 
-// w_copyprescription.create() returns 0
+// w_copyprescription.create() returns 0 [event]
 	this.dw_pres = create dw_pres
 	this.st_prescriptionno = create st_prescriptionno
 	this.cb_cancel = create cb_cancel
@@ -41,29 +41,29 @@
 	this.gb_1 = create gb_1
 	this.control = {this.dw_pres, this.st_prescriptionno, this.cb_cancel, this.cb_ok, this.gb_1}
 
-// w_copyprescription.destroy() returns 0
+// w_copyprescription.destroy() returns 0 [event]
 	destroy this.dw_pres
 	destroy this.st_prescriptionno
 	destroy this.cb_cancel
 	destroy this.cb_ok
 	destroy this.gb_1
 
-// dw_pres.ue_enterkey() returns long
+// dw_pres.ue_enterkey() returns long [event]
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.istr_arg.i_status = -1
 	parent.post event ue_close()
 	return ::message.returnvalue
 
-// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		post event clicked()
 	end if
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	long ll_code
 	if parent.dw_pres.accepttext() = -1 then
 		messagebox("Prescription Validation", "Kindly select some prescription from the list.")

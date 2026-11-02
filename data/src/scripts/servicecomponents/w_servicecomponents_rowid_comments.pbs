@@ -1,6 +1,6 @@
 // window w_servicecomponents_rowid_comments (servicecomponents)  ancestor: window
 
-// w_servicecomponents_rowid_comments.ue_postopen() returns 0
+// w_servicecomponents_rowid_comments.ue_postopen() returns 0 [event]
 	long ll_code
 	long ll_rowid
 	this.istr_comments = message.powerobjectparm
@@ -11,7 +11,7 @@
 	this.dw_control.setfocus()
 	this.dw_control.setcolumn("comments")
 
-// w_servicecomponents_rowid_comments.ue_close(integer ar_closearg) returns 0
+// w_servicecomponents_rowid_comments.ue_close(integer ar_closearg) returns 0 [event]
 	if ar_closearg = -1 then
 		this.istr_comments.i_closemode = -1
 	else
@@ -19,18 +19,18 @@
 	end if
 	closewithreturn(this, this.istr_comments)
 
-// w_servicecomponents_rowid_comments.create() returns 0
+// w_servicecomponents_rowid_comments.create() returns 0 [event]
 	this.dw_control = create dw_control
 	this.cb_ok = create cb_ok
 	this.cb_cancel = create cb_cancel
 	this.control = {this.dw_control, this.cb_ok, this.cb_cancel}
 
-// w_servicecomponents_rowid_comments.destroy() returns 0
+// w_servicecomponents_rowid_comments.destroy() returns 0 [event]
 	destroy this.dw_control
 	destroy this.cb_ok
 	destroy this.cb_cancel
 
-// w_servicecomponents_rowid_comments.open() returns long
+// w_servicecomponents_rowid_comments.open() returns long [event]
 	long ll_win_width
 	long ll_win_height
 	long ll_width
@@ -49,13 +49,13 @@
 	post event ue_postopen()
 	return ::message.returnvalue
 
-// w_servicecomponents_rowid_comments.key(keycode key, unsignedlong keyflags) returns long
+// w_servicecomponents_rowid_comments.key(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		post event ue_close(-1)
 	end if
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	string ls_text
 	parent.dw_control.accepttext()
 	ls_text = parent.dw_control.object.comments[1]
@@ -63,6 +63,6 @@
 	parent.post event ue_close(1)
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.post event ue_close(-1)
 	return ::message.returnvalue

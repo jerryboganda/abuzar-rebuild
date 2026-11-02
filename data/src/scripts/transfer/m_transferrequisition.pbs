@@ -1,8 +1,222 @@
 // menu m_transferrequisition (transfer)  ancestor: m_multi_entry
 
-// m_transferrequisition.create() returns 0
+// m_transferrequisition.create() returns 0 [event]
 	m_transferrequisition = this
 	call super::create
 
-// m_transferrequisition.destroy() returns 0
+// m_transferrequisition.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_generate = create m_generate
+	this.m_generategodownwise = create m_generategodownwise
+	this.m_generateconsumptionwise = create m_generateconsumptionwise
+	this.m_saveandpost = create m_saveandpost
+	this.m_open = create m_open
+	this.m_generatesourcegodownstockbasedtransfer = create m_generatesourcegodownstockbasedtransfer
+	this.item[upperbound(this.item) + 1] = this.m_generate
+	this.item[upperbound(this.item) + 1] = this.m_generategodownwise
+	this.item[upperbound(this.item) + 1] = this.m_generateconsumptionwise
+	this.item[upperbound(this.item) + 1] = this.m_saveandpost
+	this.item[upperbound(this.item) + 1] = this.m_open
+	this.item[upperbound(this.item) + 1] = this.m_generatesourcegodownstockbasedtransfer
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_generate
+	destroy this.m_generategodownwise
+	destroy this.m_generateconsumptionwise
+	destroy this.m_saveandpost
+	destroy this.m_open
+	destroy this.m_generatesourcegodownstockbasedtransfer
+
+// m_file.clicked() returns 0 [event]
+	this.parentwindow.triggerevent("ue_generate")
+
+// m_save.create() returns 0 [event]
+	call super::create
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_save.destroy() returns 0 [event]
+	call super::destroy
+
+// m_save.clicked() returns 0 [event]
+	if f_stringpreferences("TransferAutoPosting") = "Y" then
+		this.parentwindow.dynamic wf_saveandpost()
+	else
+		this.parentwindow.triggerevent("ue_save")
+	end if
+	if this.parentwindow.dynamic wf_commitform() = true then
+		this.parentwindow.postevent("ue_new")
+	end if
+
+// m_generate.clicked() returns 0 [event]
+	this.parentwindow.triggerevent("ue_Generate")
+
+// m_generate.create() returns 0 [event]
+	call super::create
+	this.text = "Gene&rate"
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_generate.destroy() returns 0 [event]
+	call super::destroy
+
+// m_generategodownwise.clicked() returns 0 [event]
+	this.parentwindow.triggerevent("ue_Generate_godownreorderlevel")
+
+// m_generategodownwise.create() returns 0 [event]
+	call super::create
+	this.text = "Generate &Godown Wise"
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_generategodownwise.destroy() returns 0 [event]
+	call super::destroy
+
+// m_generateconsumptionwise.clicked() returns 0 [event]
+	this.parentwindow.triggerevent("ue_Generate_godownwise_consumption")
+
+// m_generateconsumptionwise.create() returns 0 [event]
+	call super::create
+	this.text = "Generate &Consumption Wise"
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_generateconsumptionwise.destroy() returns 0 [event]
+	call super::destroy
+
+// m_saveandpost.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_saveandpost()
+	if this.parentwindow.dynamic wf_commitform() = true then
+		this.parentwindow.postevent("ue_new")
+	end if
+
+// m_saveandpost.create() returns 0 [event]
+	call super::create
+	this.text = "Save and Post~tCtrl+Q"
+	this.shortcut = 337
+	this.microhelp = "Save and Post"
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_saveandpost.destroy() returns 0 [event]
+	call super::destroy
+
+// m_open.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_copyinvoice()
+
+// m_open.create() returns 0 [event]
+	call super::create
+	this.text = "Open~tCtrl+G"
+	this.shortcut = 327
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_open.destroy() returns 0 [event]
+	call super::destroy
+
+// m_generatesourcegodownstockbasedtransfer.clicked() returns 0 [event]
+	this.parentwindow.triggerevent("ue_generate_sourcebased")
+
+// m_generatesourcegodownstockbasedtransfer.create() returns 0 [event]
+	call super::create
+	this.text = "Generate Source Godown Stock Based Transfer"
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_generatesourcegodownstockbasedtransfer.destroy() returns 0 [event]
 	call super::destroy

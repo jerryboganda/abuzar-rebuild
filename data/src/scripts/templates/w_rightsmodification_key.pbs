@@ -1,16 +1,16 @@
 // window w_rightsmodification_key (templates)  ancestor: window
 
-// w_rightsmodification_key.ue_postopen() returns 0
+// w_rightsmodification_key.ue_postopen() returns 0 [event]
 	long ll_date
 	long ll_randno
 	ll_randno = rand(32767)
 	SQL Select Convert ( int , Convert ( DateTime , GetDate ( ) ) ) INTO :ll_date From Sequence USING sqlca;
 	this.em_statuscode.text = string(ll_date + ll_randno)
 
-// w_rightsmodification_key.ue_close(integer ai_value) returns 0
+// w_rightsmodification_key.ue_close(integer ai_value) returns 0 [event]
 	closewithreturn(this, ai_value)
 
-// w_rightsmodification_key.create() returns 0
+// w_rightsmodification_key.create() returns 0 [event]
 	this.cbx_localdb = create cbx_localdb
 	this.sle_key = create sle_key
 	this.cb_cancel = create cb_cancel
@@ -20,7 +20,7 @@
 	this.st_1 = create st_1
 	this.control = {this.cbx_localdb, this.sle_key, this.cb_cancel, this.cb_ok, this.em_statuscode, this.st_2, this.st_1}
 
-// w_rightsmodification_key.destroy() returns 0
+// w_rightsmodification_key.destroy() returns 0 [event]
 	destroy this.cbx_localdb
 	destroy this.sle_key
 	destroy this.cb_cancel
@@ -29,7 +29,7 @@
 	destroy this.st_2
 	destroy this.st_1
 
-// w_rightsmodification_key.open() returns long
+// w_rightsmodification_key.open() returns long [event]
 	environment le_env
 	long ll_width
 	long ll_height
@@ -49,35 +49,35 @@
 	post event ue_postopen()
 	return ::message.returnvalue
 
-// w_rightsmodification_key.key(keycode key, unsignedlong keyflags) returns long
+// w_rightsmodification_key.key(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		post event ue_close(-1)
 	end if
 	return ::message.returnvalue
 
-// cbx_localdb.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// cbx_localdb.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// sle_key.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// sle_key.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.post event ue_close(-1)
 	return ::message.returnvalue
 
-// cb_ok.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// cb_ok.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		post event clicked()
 	end if
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	long ll_key
 	long ll_statuscode
 	ll_statuscode = long(parent.em_statuscode.text)

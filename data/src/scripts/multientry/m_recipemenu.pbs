@@ -1,8 +1,28 @@
 // menu m_recipemenu (multientry)  ancestor: m_multi_entry
 
-// m_recipemenu.create() returns 0
+// m_recipemenu.create() returns 0 [event]
 	m_recipemenu = this
 	call super::create
 
-// m_recipemenu.destroy() returns 0
+// m_recipemenu.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_refreshprices = create m_refreshprices
+	this.item[upperbound(this.item) + 1] = this.m_refreshprices
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_refreshprices
+
+// m_refreshprices.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_refreshprices()
+
+// m_refreshprices.create() returns 0 [event]
+	call super::create
+	this.text = "Refresh Prices~tF5"
+	this.shortcut = 116
+
+// m_refreshprices.destroy() returns 0 [event]
 	call super::destroy

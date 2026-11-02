@@ -411,7 +411,7 @@
 	openwithparm(w_installmentsecurity_form, lstr_header)
 	return 0
 
-// w_installmentsale.create() returns 0
+// w_installmentsale.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	if isvalid(this.menuid) then
@@ -428,7 +428,7 @@
 	this.control[icurrent + 2] = this.dw_guarantor
 	this.control[icurrent + 3] = this.dw_security
 
-// w_installmentsale.destroy() returns 0
+// w_installmentsale.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
@@ -437,7 +437,7 @@
 	destroy this.dw_guarantor
 	destroy this.dw_security
 
-// w_installmentsale.ue_save() returns 0
+// w_installmentsale.ue_save() returns 0 [event]
 	long ll_mastercurrrow
 	long ll_invid
 	long ll_detailrows
@@ -571,7 +571,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_installmentsale.ue_newform() returns 0
+// w_installmentsale.ue_newform() returns 0 [event]
 	m_installmentsale lm_menu
 	call super::ue_newform
 	lm_menu = this.menuid
@@ -582,7 +582,7 @@
 	this.dw_guarantor.reset()
 	this.dw_security.reset()
 
-// w_installmentsale.ue_newitem() returns 0
+// w_installmentsale.ue_newitem() returns 0 [event]
 	long ll_rowcount
 	long ll_icode
 	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
@@ -601,7 +601,7 @@
 	this.im_menu.m_file.m_save.enabled = true
 	this.ib_validatefullcode = true
 
-// w_installmentsale.ue_detail() returns 0
+// w_installmentsale.ue_detail() returns 0 [event]
 	m_installmentsale lm_menu
 	integer li_protect
 	call super::ue_detail
@@ -650,7 +650,7 @@
 	wf_protectdw(this.id_master, li_protect)
 	wf_protectdw(this.id_detail, li_protect)
 
-// w_installmentsale.ue_deleteitem() returns 0
+// w_installmentsale.ue_deleteitem() returns 0 [event]
 	long ll_currow
 	long ll_detailrows
 	this.ib_itemvalidated = true
@@ -661,7 +661,7 @@
 	end if
 	wf_grandtotal()
 
-// w_installmentsale.ue_postopen() returns 0
+// w_installmentsale.ue_postopen() returns 0 [event]
 	integer li_rtncode
 	m_installmentsale lm_menu
 	call super::ue_postopen
@@ -708,7 +708,7 @@
 	end if
 	this.ib_approval = false
 
-// w_installmentsale.ue_list() returns 0
+// w_installmentsale.ue_list() returns 0 [event]
 	m_installmentsale lm_menu
 	long ll_rtcode
 	lm_menu = this.menuid
@@ -782,7 +782,7 @@
 	messagebox("Result", "No rows or retrieved possible empty table~r~nInsert some rows first")
 	postevent("ue_new")
 
-// w_installmentsale.ue_print() returns 0
+// w_installmentsale.ue_print() returns 0 [event]
 	long ll_row
 	long ll_invcode
 	long ll_option
@@ -847,3 +847,251 @@
 		return
 	end if
 	messagebox("Printing Error", "Can not Print Invoice,~r~nNo rows are retrieved", information!)
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "icode"
+		if data = "" or isnull(data) then
+			messagebox("Item Name Validation", "Value required for item name in current row")
+		end if
+	end choose
+	return 1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	string ls_aliasname
+	double ld_amt
+	double ld_stock
+	long ll_retcode
+	long ll_custcode
+	long ll_icode
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "aliasname"
+		if isnull(data) or data = "" then
+			return 0
+		elseif parent.parent.parent.wf_find_customer(data, ll_custcode) = 1 then
+			messagebox("Customer Alias Name Valdiation", "Please enter a valid Customer alias name", stopsign!)
+			return 1
+		end if
+	case "custcode"
+		if long(data) > 0 and parent.parent.parent.wf_set_customer_alias(long(data), ls_aliasname) = 1 then
+			messagebox("Customer Name Valdiation", "Please enter a valid Customer name", stopsign!)
+			return 1
+		end if
+	case "icode"
+		if isnull(data) then
+			messagebox("Item Name Validation", "Item Name Error~n~rPlease select valid Item")
+			ll_retcode = 1
+		else
+			if long(data) > 0 and parent.parent.parent.wf_set_item_alias(long(data), ls_aliasname) = 1 then
+				messagebox("Customer Name Valdiation", "Please enter a valid Customer name", stopsign!)
+				return 1
+			end if
+			parent.parent.parent.wf_inititeminfo(long(data), row)
+		end if
+	case "gcode"
+		if long(data) > 0 then
+			parent.parent.parent.it_transobject.getitemstocktotal(long(data), this.object.icode[1], ld_stock)
+			if parent.parent.parent.it_transobject.sqlcode = 0 then
+				this.object.godownstock[1] = ld_stock
+			end if
+		else
+			messagebox("Godown Valdiation", "Please select a valid Godown", stopsign!)
+			return 1
+		end if
+	case "customicode"
+		if isnull(data) or data = "" then
+			return 0
+		elseif parent.parent.parent.wf_find_item(data, ll_icode) = 1 then
+			messagebox("Item Alias Name Valdiation", "Please enter a valid item alias name", stopsign!)
+			return 1
+		end if
+	case "qty"
+		parent.parent.parent.wf_calculate_installment("qty", data, row)
+	case "saleprice"
+		parent.parent.parent.wf_calculate_installment("saleprice", data, row)
+	case "itemflatdisc"
+		parent.parent.parent.wf_calculate_installment("itemflatdisc", data, row)
+	case "discperc"
+		parent.parent.parent.wf_calculate_installment("discperc", data, row)
+	case "markupperc"
+		if double(data) < 0.0 then
+			return 1
+		else
+			ld_amt = getitemnumber(1, "c_itemvalue")
+			if ld_amt = 0.0 then
+				ld_amt = 1
+			end if
+			this.object.markupamt[row] = round(ld_amt * double(data) * 0.01, 2)
+			parent.parent.parent.wf_calculate_installment("markupperc", data, row)
+		end if
+	case "markupamt"
+		if double(data) < 0.0 then
+			return 1
+		else
+			ld_amt = getitemnumber(1, "c_itemvalue")
+			if ld_amt = 0.0 then
+				ld_amt = 1
+			end if
+			this.object.markupperc[row] = round(double(data) * 100.0 / ld_amt, 2)
+			parent.parent.parent.wf_calculate_installment("markupamt", data, row)
+		end if
+	case "processingfeeperc"
+		if double(data) < 0.0 then
+			return 1
+		else
+			ld_amt = getitemnumber(1, "c_totalwithmarkup")
+			if ld_amt = 0.0 then
+				ld_amt = 1
+			end if
+			this.object.processingfee[row] = round(ld_amt * double(data) * 0.01, 2)
+			parent.parent.parent.wf_calculate_installment("processingfeeperc", data, row)
+		end if
+	case "processingfee"
+		if double(data) < 0.0 then
+			return 1
+		else
+			ld_amt = getitemnumber(1, "c_totalwithmarkup")
+			if ld_amt = 0.0 then
+				ld_amt = 1
+			end if
+			this.object.processingfeeperc[row] = round(double(data) / ld_amt * 100.0, 2)
+			parent.parent.parent.wf_calculate_installment("processingfee", data, row)
+		end if
+	case "downpaymentperc"
+		if double(data) < 0.0 then
+			return 1
+		else
+			ld_amt = getitemnumber(1, "c_contractamt")
+			if ld_amt = 0.0 then
+				ld_amt = 1
+			end if
+			this.object.downpayment[row] = round(ld_amt * double(data) * 0.01, 2)
+			parent.parent.parent.wf_calculate_installment("downpaymentperc", data, row)
+		end if
+	case "downpayment"
+		if double(data) < 0.0 then
+			return 1
+		else
+			ld_amt = getitemnumber(1, "c_contractamt")
+			if ld_amt = 0.0 then
+				ld_amt = 1
+			end if
+			this.object.downpaymentperc[row] = round(double(data) * 100.0 / ld_amt, 2)
+			parent.parent.parent.wf_calculate_installment("downpayment", data, row)
+		end if
+	case "installmentfrequency"
+		parent.parent.parent.wf_calculate_installment("installmentfrequency", data, row)
+	case "noofinstallments"
+		parent.parent.parent.wf_calculate_installment("noofinstallments", data, row)
+	case "firstduedate"
+		if data = "" or isnull(data) then
+			messagebox("First Due Date Valdiation", "Please enter a valid First Due Date", stopsign!)
+			return 1
+		else
+			parent.parent.parent.wf_calculate_installment("firstduedate", data, row)
+		end if
+	end choose
+	return ll_retcode
+
+// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	double ld_stock
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	choose case dwo.name
+	case "gcode"
+		parent.parent.parent.it_transobject.getitemstocktotal(this.object.gcode[1], this.object.icode[1], ld_stock)
+		if parent.parent.parent.it_transobject.sqlcode = 0 then
+			this.object.godownstock[1] = ld_stock
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.editchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::editchanged(row, dwo, data)
+	return ::message.returnvalue
+
+// dw_detail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	long ll_icode
+	long rt_code
+	string ls_itemalias
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if getcolumnname() = "icode" then
+		if key = keyf5! then
+			if not isnull(getitemnumber(1, "icode")) then
+				ll_icode = getitemnumber(1, "icode")
+				ll_icode = f_prefered_itemsearch(ll_icode)
+				if ll_icode > 0 then
+					this.object.icode[1] = ll_icode
+					parent.parent.parent.wf_set_item_alias(ll_icode, ls_itemalias)
+					rt_code = 1
+				end if
+			end if
+			setfocus()
+		elseif key = keyf8! then
+			ll_icode = f_drilldown_itemsearch("namesearch", parent.parent.parent.ii_module)
+			if ll_icode > 0 then
+				this.object.icode[1] = ll_icode
+				parent.parent.parent.wf_set_item_alias(ll_icode, ls_itemalias)
+				rt_code = 1
+			end if
+			setfocus()
+		elseif key = keyf9! then
+			ll_icode = f_drilldown_itemsearch("criteriasearch", parent.parent.parent.ii_module)
+			if ll_icode > 0 then
+				this.object.icode[1] = ll_icode
+				parent.parent.parent.wf_set_item_alias(ll_icode, ls_itemalias)
+				rt_code = 1
+			end if
+			setfocus()
+		end if
+	elseif key = keyf6! and getcolumnname() = "custcode" then
+		parent.parent.parent.wf_new_customerregisteration()
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem() = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.getfocus() returns long [event]
+	parent.parent.parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_itemsdetail.losefocus() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::losefocus()
+	parent.parent.parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_itemsdetail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keyf5! then
+		parent.parent.parent.wf_populate_singleamt()
+	end if
+	return ::message.returnvalue
+
+// dw_find.keypressed(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	string ls_err
+	ancestorreturnvalue = super::keypressed(key, keyflags)
+	if key = keyf11! then
+		open(w_customer_guaranteeperson_search)
+	elseif key = keyf9! then
+		open(w_cnic_search)
+	end if
+	return ::message.returnvalue

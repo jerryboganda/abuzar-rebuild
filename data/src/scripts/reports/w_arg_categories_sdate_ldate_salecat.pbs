@@ -1,6 +1,6 @@
 // window w_arg_categories_sdate_ldate_salecat (reports)  ancestor: w_listarguments
 
-// w_arg_categories_sdate_ldate_salecat.create() returns 0
+// w_arg_categories_sdate_ldate_salecat.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.st_4 = create st_4
@@ -19,7 +19,7 @@
 	this.control[icurrent + 6] = this.em_commperc
 	this.control[icurrent + 7] = this.gb_5
 
-// w_arg_categories_sdate_ldate_salecat.destroy() returns 0
+// w_arg_categories_sdate_ldate_salecat.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.st_4
 	destroy this.st_8
@@ -29,7 +29,7 @@
 	destroy this.em_commperc
 	destroy this.gb_5
 
-// w_arg_categories_sdate_ldate_salecat.open() returns long
+// w_arg_categories_sdate_ldate_salecat.open() returns long [event]
 	long ancestorreturnvalue
 	long ll_counter
 	long ll_rowcount
@@ -48,13 +48,57 @@
 	next
 	return ::message.returnvalue
 
-// cbx_cash.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// cbx_supress.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// cbx_credit.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// cb_ok.clicked() returns long [event]
+	long ancestorreturnvalue
+	long ll_count
+	long ll_counter
+	long ll_innercounter
+	long ll_found
+	ancestorreturnvalue = super::clicked()
+	if parent.cbx_all.checked = true then
+		for ll_counter = 1 to parent.idc_categories.rowcount()
+			parent.istr_arg.ia_integerlist[ll_counter] = parent.idc_categories.getitemnumber(ll_counter, "icatcode")
+		next
+	else
+		for ll_counter = 1 to ll_counter
+			ll_found = parent.idc_categories.find("name ='" + parent.lb_selectedcategories.text(ll_counter) + "'", 1, parent.idc_categories.rowcount())
+			if ll_found > 0 then
+				parent.istr_arg.ia_integerlist[ll_counter] = parent.idc_categories.getitemnumber(ll_found, "icatcode")
+			end if
+		next
+	end if
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	parent.istr_arg.i_supress = parent.cbx_supress.checked
+	parent.istr_arg.i_hide = parent.cbx_hide.checked
+	parent.istr_arg.i_status = 1
+	for ll_counter = 1 to 10
+		parent.istr_arg.ia_integerlist1[ll_counter] = 0
+	next
+	if parent.cbx_cash.checked then
+		parent.istr_arg.ia_integerlist1[3] = 3
+	end if
+	if parent.cbx_credit.checked then
+		parent.istr_arg.ia_integerlist1[2] = 2
+		parent.istr_arg.ia_integerlist1[1] = 1
+	end if
+	parent.em_commperc.getdata(parent.istr_arg.db_code1)
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// cbx_cash.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// cbx_credit.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if

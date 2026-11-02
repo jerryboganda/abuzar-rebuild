@@ -1,6 +1,6 @@
 // window w_vaccineschedule_form (patientvaccinecomp)  ancestor: w_multi_entry
 
-// w_vaccineschedule_form.ue_printdo() returns 0
+// w_vaccineschedule_form.ue_printdo() returns 0 [event]
 	long ll_custcode
 	long ll_row
 	string ls_custname
@@ -572,7 +572,7 @@
 	end if
 	return 0
 
-// w_vaccineschedule_form.create() returns 0
+// w_vaccineschedule_form.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	if isvalid(this.menuid) then
@@ -587,7 +587,7 @@
 	this.control[icurrent + 1] = this.dw_print
 	this.control[icurrent + 2] = this.dw_saleinvdetail
 
-// w_vaccineschedule_form.destroy() returns 0
+// w_vaccineschedule_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
@@ -595,7 +595,7 @@
 	destroy this.dw_print
 	destroy this.dw_saleinvdetail
 
-// w_vaccineschedule_form.ue_save() returns 0
+// w_vaccineschedule_form.ue_save() returns 0 [event]
 	long ll_detailrows
 	long ll_counter
 	long ll_count
@@ -659,7 +659,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_vaccineschedule_form.ue_newform() returns 0
+// w_vaccineschedule_form.ue_newform() returns 0 [event]
 	integer rtncode
 	long li_fetched_code
 	long row
@@ -680,7 +680,7 @@
 	wf_visible(true)
 	setredraw(true)
 
-// w_vaccineschedule_form.ue_detail() returns 0
+// w_vaccineschedule_form.ue_detail() returns 0 [event]
 	integer li_rtncode
 	integer li_protect
 	long ll_row
@@ -702,7 +702,7 @@
 	wf_grandtotal()
 	setredraw(true)
 
-// w_vaccineschedule_form.ue_newitem() returns 0
+// w_vaccineschedule_form.ue_newitem() returns 0 [event]
 	long ll_insrow
 	long ll_rowcount
 	if this.ib_itemvalidated = false and wf_validateitem(true) = -1 then
@@ -727,7 +727,7 @@
 	this.im_menu.m_file.m_save.enabled = true
 	this.ib_validatefullcode = true
 
-// w_vaccineschedule_form.ue_deleteitem() returns 0
+// w_vaccineschedule_form.ue_deleteitem() returns 0 [event]
 	long ll_currow
 	long ll_detailrows
 	long ll_icode
@@ -757,13 +757,13 @@
 		end if
 	end if
 
-// w_vaccineschedule_form.close() returns long
+// w_vaccineschedule_form.close() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::close()
 	this.id_itemslist.sharedataoff()
 	return ::message.returnvalue
 
-// w_vaccineschedule_form.ue_list() returns 0
+// w_vaccineschedule_form.ue_list() returns 0 [event]
 	call super::ue_list
 	SQL rollback USING this.it_transobject;
 	this.im_menu.m_file.m_print.enabled = false
@@ -783,7 +783,7 @@
 	end if
 	wf_retrievelist()
 
-// w_vaccineschedule_form.ue_print() returns 0
+// w_vaccineschedule_form.ue_print() returns 0 [event]
 	long ll_code
 	long ll_counter
 	long ll_rowcount
@@ -847,7 +847,7 @@
 	end if
 	messagebox("Printing Error", "Can not Print,~r~nNo rows are retrieved", information!)
 
-// w_vaccineschedule_form.ue_refreshddw() returns 0
+// w_vaccineschedule_form.ue_refreshddw() returns 0 [event]
 	call super::ue_refreshddw
 	setpointer(hourglass!)
 	if this.ii_saletype <> 3 then
@@ -862,7 +862,7 @@
 	this.idc_patient.setredraw(true)
 	setpointer(arrow!)
 
-// w_vaccineschedule_form.ue_postopen() returns 0
+// w_vaccineschedule_form.ue_postopen() returns 0 [event]
 	integer li_rtncode
 	long ll_counter
 	long ll_pos
@@ -928,7 +928,203 @@
 	end if
 	setredraw(true)
 
-// w_vaccineschedule_form.open() returns long
+// w_vaccineschedule_form.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
+	return ::message.returnvalue
+
+// tab_retrieve.selectionchanged(integer oldindex, integer newindex) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::selectionchanged(oldindex, newindex)
+	if parent.ib_modify and newindex <> 1 then
+		SQL rollback USING parent.it_transobject;
+		parent.ib_modify = false
+	end if
+	return ::message.returnvalue
+
+// dw_footer.losefocus() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::losefocus()
+	parent.parent.parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_footer.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	parent.parent.parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_footer.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "misccharges"
+		messagebox("Misc. Charges Validation", "Charges ~"" + data + "~" should be greater equal zero")
+	case "flatdisc"
+		messagebox("Flat Dsicount Validation", "Flat Discount ~"" + data + "~" should be greater equal zero")
+	case "discperc"
+		messagebox("Invoice Discount(%) Validation", "Dsicount ~"" + data + "~" must be betweeen 0 and 100")
+	end choose
+	return 1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	long ll_counter
+	long ll_rowcount
+	long ll_admissioncode
+	long ll_patientcode
+	long ll_res
+	long ll_pres_duration
+	long ll_duration
+	integer rt_code
+	datetime ldt_pres_datetime
+	datetime ldt_datetime
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "regno"
+		if not isnull(data) and data <> "" then
+			ll_res = parent.parent.parent.wf_findpatientcode(data, ll_patientcode)
+			if ll_res > 0 then
+				setitem(row, "patientcode", ll_patientcode)
+				if parent.parent.parent.wf_set_patientinfo(ll_patientcode) = 0 then
+					ll_admissioncode = parent.parent.parent.wf_set_admission(long(data))
+					if ll_admissioncode > 0 then
+					end if
+					rt_code = 0
+				else
+					messagebox("Patient Validation", "Patient with  RegNo  " + data + " does not exist.")
+					rt_code = 1
+				end if
+			else
+				messagebox("Patient Validation", "Patient with  RegNo  " + data + " does not exist.")
+				rt_code = 1
+			end if
+		end if
+	case "patientcode"
+		if long(data) > 0 then
+			if parent.parent.parent.wf_set_patientinfo(long(data)) = 0 then
+				ll_admissioncode = parent.parent.parent.wf_set_admission(long(data))
+				if ll_admissioncode > 0 then
+				end if
+				return 0
+			else
+				return -1
+			end if
+			return
+		end if
+	end choose
+	return rt_code
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "patientcode"
+		messagebox("Patient Validation", "Kindly select a valid patient from drop down.")
+	end choose
+	return 1
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	long ll_newqty
+	long ll_storedqty
+	long ll_stock
+	long ll_null
+	long ll_icode
+	long ll_gcode
+	long ll_duration
+	string ls_null
+	string ls_itemname
+	datetime ldt_datetime
+	dwitemstatus ldw_itemstatus
+	integer li_res
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	setnull(ll_null)
+	setnull(ls_null)
+	choose case dwo.name
+	case parent.parent.parent.is_columnitemname
+		parent.parent.parent.id_detail.setitem(row, "icode", parent.parent.parent.id_itemslist.getitemnumber(parent.parent.parent.id_itemslist.getrow(), "icode"))
+		parent.parent.parent.id_detail.setitem(row, "fullcode", parent.parent.parent.id_itemslist.getitemstring(parent.parent.parent.id_itemslist.getrow(), "fullcode"))
+		parent.parent.parent.ib_itemvalidated = false
+		parent.parent.parent.il_currrow = row
+		li_errcode = 0
+	case "fullcode"
+		if not isnull(data) and data <> "" then
+			li_res = parent.parent.parent.wf_findfullcode(data, ll_icode, ls_itemname)
+			if li_res > 0 then
+				setitem(row, "icode", ll_icode)
+				setitem(row, "itemname", ls_itemname)
+				parent.parent.parent.ib_itemvalidated = false
+				parent.parent.parent.il_currrow = row
+				li_errcode = 0
+			else
+				messagebox("ItemNumber Validation", "Item does not exist")
+				setitem(row, "icode", ll_null)
+				setitem(row, "fullcode", ls_null)
+				li_errcode = 1
+			end if
+		else
+			setitem(row, "icode", ll_null)
+			setitem(row, "fullcode", ls_null)
+			li_errcode = 2
+		end if
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	string ls_columnobject
+	long ll_currow
+	long ll_icode
+	long ll_gcode
+	long ll_godownstock
+	long ancestorreturnvalue
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem(false) = -1 then
+		return ::message.returnvalue
+	end if
+	if dwo.name = "itemname" then
+		parent.parent.parent.ib_focusdetail = true
+	end if
+	parent.parent.parent.wf_grandtotal()
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	return 0
+
+// dw_itemsdetail.rowfocuschanged(long currentrow) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::rowfocuschanged(currentrow)
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem(true) = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.losefocus() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::losefocus()
+	parent.parent.parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "fullcode"
+		if data = "" or isnull(data) then
+		end if
+	case parent.parent.parent.is_columnitemname
+		if data = "" or isnull(data) then
+			messagebox("Item Validation", "Value required for item in current row.")
+		end if
+	end choose
+	return 1
+
+// dw_itemsdetail.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked(xpos, ypos, row, dwo)
+	return ::message.returnvalue
+
+// dw_itemsdetail.getfocus() returns long [event]
+	long ancestorreturnvalue
+	if f_stringpreferences("itemcode") = "N" and getcolumnname() = "itemname" then
+		ancestorreturnvalue = super::getfocus()
+	end if
 	return ::message.returnvalue

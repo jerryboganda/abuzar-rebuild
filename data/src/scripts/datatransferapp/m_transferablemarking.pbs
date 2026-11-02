@@ -1,8 +1,56 @@
 // menu m_transferablemarking (datatransferapp)  ancestor: m_multi_entry
 
-// m_transferablemarking.create() returns 0
+// m_transferablemarking.create() returns 0 [event]
 	m_transferablemarking = this
 	call super::create
 
-// m_transferablemarking.destroy() returns 0
+// m_transferablemarking.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_populateinvoices = create m_populateinvoices
+	this.m_viewdocumentdetails = create m_viewdocumentdetails
+	this.m_selectdeselectall = create m_selectdeselectall
+	this.item[upperbound(this.item) + 1] = this.m_populateinvoices
+	this.item[upperbound(this.item) + 1] = this.m_viewdocumentdetails
+	this.item[upperbound(this.item) + 1] = this.m_selectdeselectall
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_populateinvoices
+	destroy this.m_viewdocumentdetails
+	destroy this.m_selectdeselectall
+
+// m_populateinvoices.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_populateinvoices()
+
+// m_populateinvoices.create() returns 0 [event]
+	call super::create
+	this.text = "Populate Invoices~tF5"
+	this.shortcut = 116
+
+// m_populateinvoices.destroy() returns 0 [event]
+	call super::destroy
+
+// m_viewdocumentdetails.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_showdetails()
+
+// m_viewdocumentdetails.create() returns 0 [event]
+	call super::create
+	this.text = "View Document Details~tF6"
+	this.shortcut = 117
+
+// m_viewdocumentdetails.destroy() returns 0 [event]
+	call super::destroy
+
+// m_selectdeselectall.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_select_deselect_all()
+
+// m_selectdeselectall.create() returns 0 [event]
+	call super::create
+	this.text = "Select/DeSelect All~tF7"
+	this.shortcut = 118
+
+// m_selectdeselectall.destroy() returns 0 [event]
 	call super::destroy

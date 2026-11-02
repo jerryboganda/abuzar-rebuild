@@ -1,6 +1,6 @@
 // window w_arg_cust_sdate_ldate (reports_cust)  ancestor: w_popup_forselection_walias
 
-// w_arg_cust_sdate_ldate.create() returns 0
+// w_arg_cust_sdate_ldate.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.gb_2 = create gb_2
@@ -15,7 +15,7 @@
 	this.control[icurrent + 4] = this.em_startdate
 	this.control[icurrent + 5] = this.em_enddate
 
-// w_arg_cust_sdate_ldate.destroy() returns 0
+// w_arg_cust_sdate_ldate.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.gb_2
 	destroy this.st_1
@@ -23,7 +23,7 @@
 	destroy this.em_startdate
 	destroy this.em_enddate
 
-// w_arg_cust_sdate_ldate.open() returns long
+// w_arg_cust_sdate_ldate.open() returns long [event]
 	long ancestorreturnvalue
 	date ld_currdate
 	string ls_text
@@ -41,16 +41,32 @@
 	this.em_enddate.text = ls_text
 	return ::message.returnvalue
 
-// w_arg_cust_sdate_ldate.ue_close() returns 0
+// w_arg_cust_sdate_ldate.ue_close() returns 0 [event]
 	closewithreturn(this, this.istr_arg)
 
-// em_startdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_cancel.clicked() returns long [event]
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked()
+	parent.istr_arg.l_code1 = parent.id_selected.getitemnumber(1, "code")
+	if isnull(parent.istr_arg.l_code1) then
+		parent.istr_arg.l_code1 = 0
+	end if
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	parent.istr_arg.i_status = 1
+	return ::message.returnvalue
+
+// em_startdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// em_enddate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// em_enddate.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if

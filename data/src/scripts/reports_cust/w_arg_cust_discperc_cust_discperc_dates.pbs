@@ -12,13 +12,13 @@
 	end if
 	return 0
 
-// w_arg_cust_discperc_cust_discperc_dates.create() returns 0
+// w_arg_cust_discperc_cust_discperc_dates.create() returns 0 [event]
 	call super::create
 
-// w_arg_cust_discperc_cust_discperc_dates.destroy() returns 0
+// w_arg_cust_discperc_cust_discperc_dates.destroy() returns 0 [event]
 	call super::destroy
 
-// w_arg_cust_discperc_cust_discperc_dates.open() returns long
+// w_arg_cust_discperc_cust_discperc_dates.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.dw_control.settransobject(sqlca)
@@ -26,6 +26,71 @@
 	this.dw_control.scrolltorow(0)
 	return ::message.returnvalue
 
-// w_arg_cust_discperc_cust_discperc_dates.ue_close(integer ai_stauts) returns 0
+// w_arg_cust_discperc_cust_discperc_dates.ue_close(integer ai_stauts) returns 0 [event]
 	super::ue_close(ai_stauts)
 	closewithreturn(this, this.istr_arg)
+
+// dw_control.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "custcode"
+		if long(data) > 0 then
+			parent.wf_getdiscperc(long(data), 1)
+		end if
+	case "custcode2"
+		if long(data) > 0 then
+			parent.wf_getdiscperc(long(data), 2)
+		end if
+	end choose
+	return 0
+
+// dw_control.getfocus() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked()
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked()
+	if isnull(parent.dw_control.getitemnumber(1, "custcode")) then
+		messagebox("Customer Validation", "Please Select a valid Customer", stopsign!)
+		parent.dw_control.setcolumn("custcode")
+		parent.dw_control.setfocus()
+		return ::message.returnvalue
+	end if
+	if isnull(parent.dw_control.getitemnumber(1, "custcode2")) then
+		messagebox("Customer Validation", "Please Select a valid Customer", stopsign!)
+		parent.dw_control.setcolumn("custcode2")
+		parent.dw_control.setfocus()
+		return ::message.returnvalue
+	end if
+	if parent.dw_control.getitemnumber(1, "custcode") = parent.dw_control.getitemnumber(1, "custcode2") then
+		messagebox("Customer Validation", "Both Customers must be different", stopsign!)
+		parent.dw_control.setcolumn("custcode2")
+		parent.dw_control.setfocus()
+		return ::message.returnvalue
+	end if
+	parent.istr_arg.l_code1 = parent.dw_control.getitemnumber(1, "custcode")
+	if isnull(parent.istr_arg.l_code1) then
+		parent.istr_arg.l_code1 = 0
+	end if
+	parent.istr_arg.db_code1 = parent.dw_control.getitemnumber(1, "discperc")
+	parent.istr_arg.l_code2 = parent.dw_control.getitemnumber(1, "custcode2")
+	if isnull(parent.istr_arg.l_code2) then
+		parent.istr_arg.l_code2 = 0
+	end if
+	parent.istr_arg.db_code2 = parent.dw_control.getitemnumber(1, "discperc2")
+	parent.istr_arg.db_code3 = parent.dw_control.getitemnumber(1, "taxperc")
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	parent.istr_arg.i_status = 1
+	parent.post event ue_close(1)
+	return ::message.returnvalue

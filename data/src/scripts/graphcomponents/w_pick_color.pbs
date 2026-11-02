@@ -1,6 +1,6 @@
 // window w_pick_color (graphcomponents)  ancestor: w_center
 
-// w_pick_color.open() returns long
+// w_pick_color.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.istr_color = message.powerobjectparm
@@ -10,7 +10,7 @@
 	end if
 	return message.returnvalue
 
-// w_pick_color.create() returns 0
+// w_pick_color.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.cb_cancel = create cb_cancel
@@ -21,21 +21,318 @@
 	this.control[icurrent + 2] = this.uo_color_select
 	this.control[icurrent + 3] = this.cb_ok
 
-// w_pick_color.destroy() returns 0
+// w_pick_color.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.cb_cancel
 	destroy this.uo_color_select
 	destroy this.cb_ok
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.istr_color.i_status = 0
 	closewithreturn(parent, parent.istr_color)
 	return ::message.returnvalue
 
-// uo_color_select.destroy() returns 0
+// uo_color_select.destroy() returns 0 [event]
 	call super::destroy
 
-// cb_ok.clicked() returns long
+// hsb_green.() returns long
+	if parent.ii_g > 205 then
+		parent.ii_g = 255
+	else
+		parent.ii_g = parent.ii_g + 50
+	end if
+	parent.sle_green.text = string(parent.ii_g)
+	this.position = parent.ii_g
+	parent.rr_1.fillcolor = rgb(parent.ii_r, parent.ii_g, parent.ii_b)
+	parent.triggerevent("color_changed")
+	if not isvalid(::message) then
+		return 0
+	end if
+	return ::message.fillcolor
+
+// hsb_green.() returns long
+	if parent.ii_g < 10 then
+		parent.ii_g = 0
+	else
+		parent.ii_g = parent.ii_g - 10
+	end if
+	parent.sle_green.text = string(parent.ii_g)
+	this.position = parent.ii_g
+	parent.rr_1.fillcolor = rgb(parent.ii_r, parent.ii_g, parent.ii_b)
+	parent.triggerevent("color_changed")
+	if not isvalid(::message) then
+		return 0
+	end if
+	return ::message.fillcolor
+
+// hsb_green.       () returns long
+	if parent.ii_g > 245 then
+		parent.ii_g = 255
+	else
+		parent.ii_g = parent.ii_g + 10
+	end if
+	parent.sle_green.text = string(parent.ii_g)
+	this.position = parent.ii_g
+	parent.rr_1.fillcolor = rgb(parent.ii_r, parent.ii_g, parent.ii_b)
+	parent.triggerevent("color_changed")
+	if not isvalid(::message) then
+		return 0
+	end if
+	return ::message.fillcolor
+
+// hsb_green.ter(integer +scrollpos) returns long
+	parent.ii_g = this.position
+	parent.sle_green.text = string(parent.ii_g)
+	parent.rr_1.fillcolor = rgb(parent.ii_r, parent.ii_g, parent.ii_b)
+	parent.triggerevent("color_changed")
+	if not isvalid(::message) then
+		return 0
+	end if
+	return ::message.fillcolor
+
+// hsb_green.ick_color() returns long
+	if parent.ii_g < 50 then
+		parent.ii_g = 0
+	else
+		parent.ii_g = parent.ii_g - 50
+	end if
+	parent.sle_green.text = string(parent.ii_g)
+	this.position = parent.ii_g
+	parent.rr_1.fillcolor = rgb(parent.ii_r, parent.ii_g, parent.ii_b)
+	parent.triggerevent("color_changed")
+	if not isvalid(::message) then
+		return 0
+	end if
+	return ::message.fillcolor
+
+// hsb_red.       () returns long
+	if parent.ii_r > 245 then
+		parent.ii_r = 255
+	else
+		parent.ii_r = parent.ii_r + 10
+	end if
+	parent.sle_red.text = string(parent.ii_r)
+	this.position = parent.ii_r
+	parent.rr_1.fillcolor = rgb(parent.ii_r, parent.ii_g, parent.ii_b)
+	parent.triggerevent("color_changed")
+	if not isvalid(::message) then
+		return 0
+	end if
+	return ::message.fillcolor
+
+// hsb_red.ick_color() returns long
+	if parent.ii_r < 50 then
+		parent.ii_r = 0
+	else
+		parent.ii_r = parent.ii_r - 50
+	end if
+	parent.sle_red.text = string(parent.ii_r)
+	this.position = parent.ii_r
+	parent.rr_1.fillcolor = rgb(parent.ii_r, parent.ii_g, parent.ii_b)
+	parent.triggerevent("color_changed")
+	if not isvalid(::message) then
+		return 0
+	end if
+	return ::message.fillcolor
+
+// hsb_red.() returns long
+	if parent.ii_r < 10 then
+		parent.ii_r = 0
+	else
+		parent.ii_r = parent.ii_r - 10
+	end if
+	parent.sle_red.text = string(parent.ii_r)
+	this.position = parent.ii_r
+	parent.rr_1.fillcolor = rgb(parent.ii_r, parent.ii_g, parent.ii_b)
+	parent.triggerevent("color_changed")
+	if not isvalid(::message) then
+		return 0
+	end if
+	return ::message.fillcolor
+
+// hsb_red.ter(integer +scrollpos) returns long
+	parent.ii_r = this.position
+	parent.sle_red.text = string(parent.ii_r)
+	parent.rr_1.fillcolor = rgb(parent.ii_r, parent.ii_g, parent.ii_b)
+	parent.triggerevent("color_changed")
+	if not isvalid(::message) then
+		return 0
+	end if
+	return ::message.fillcolor
+
+// hsb_red.() returns long
+	if parent.ii_r > 205 then
+		parent.ii_r = 255
+	else
+		parent.ii_r = parent.ii_r + 50
+	end if
+	parent.sle_red.text = string(parent.ii_r)
+	this.position = parent.ii_r
+	parent.rr_1.fillcolor = rgb(parent.ii_r, parent.ii_g, parent.ii_b)
+	parent.triggerevent("color_changed")
+	if not isvalid(::message) then
+		return 0
+	end if
+	return ::message.fillcolor
+
+// sle_blue.accessiblerole() returns long
+	selecttext(1, len(this.text))
+	if not isvalid(::message) then
+		return 0
+	end if
+	return ::message.fillcolor
+
+// sle_blue.role() returns long
+	integer li_new_value
+	if isnumber(this.text) then
+		li_new_value = integer(this.text)
+		if li_new_value < 0 or li_new_value > 255 then
+			beep(1)
+			this.text = string(parent.ii_b)
+		else
+			parent.ii_b = li_new_value
+			parent.rr_1.fillcolor = rgb(parent.ii_r, parent.ii_g, parent.ii_b)
+			parent.hsb_blue.position = parent.ii_b
+			parent.triggerevent("color_changed")
+		end if
+	else
+		beep(1)
+		this.text = string(parent.ii_b)
+	end if
+	if not isvalid(::message) then
+		return 0
+	end if
+	return ::message.fillcolor
+
+// sle_green.accessiblerole() returns long
+	selecttext(1, len(this.text))
+	if not isvalid(::message) then
+		return 0
+	end if
+	return ::message.fillcolor
+
+// sle_green.role() returns long
+	integer li_new_value
+	if isnumber(this.text) then
+		li_new_value = integer(this.text)
+		if li_new_value < 0 or li_new_value > 255 then
+			beep(1)
+			this.text = string(parent.ii_g)
+		else
+			parent.ii_g = li_new_value
+			parent.rr_1.fillcolor = rgb(parent.ii_r, parent.ii_g, parent.ii_b)
+			parent.hsb_green.position = parent.ii_g
+			parent.triggerevent("color_changed")
+		end if
+	else
+		beep(1)
+		this.text = string(parent.ii_g)
+	end if
+	if not isvalid(::message) then
+		return 0
+	end if
+	return ::message.fillcolor
+
+// sle_red.accessiblerole() returns long
+	selecttext(1, len(this.text))
+	if not isvalid(::message) then
+		return 0
+	end if
+	return ::message.fillcolor
+
+// sle_red.role() returns long
+	integer li_new_value
+	if isnumber(this.text) then
+		li_new_value = integer(this.text)
+		if li_new_value < 0 or li_new_value > 255 then
+			beep(1)
+			this.text = string(parent.ii_r)
+		else
+			parent.ii_r = li_new_value
+			parent.rr_1.fillcolor = rgb(parent.ii_r, parent.ii_g, parent.ii_b)
+			parent.hsb_red.position = parent.ii_r
+			parent.triggerevent("color_changed")
+		end if
+	else
+		beep(1)
+		this.text = string(parent.ii_r)
+	end if
+	if not isvalid(::message) then
+		return 0
+	end if
+	return ::message.fillcolor
+
+// hsb_blue.() returns long
+	if parent.ii_b > 205 then
+		parent.ii_b = 255
+	else
+		parent.ii_b = parent.ii_b + 50
+	end if
+	parent.sle_blue.text = string(parent.ii_b)
+	this.position = parent.ii_b
+	parent.rr_1.fillcolor = rgb(parent.ii_r, parent.ii_g, parent.ii_b)
+	parent.triggerevent("color_changed")
+	if not isvalid(::message) then
+		return 0
+	end if
+	return ::message.fillcolor
+
+// hsb_blue.() returns long
+	if parent.ii_b < 10 then
+		parent.ii_b = 0
+	else
+		parent.ii_b = parent.ii_b - 10
+	end if
+	parent.sle_blue.text = string(parent.ii_b)
+	this.position = parent.ii_b
+	parent.rr_1.fillcolor = rgb(parent.ii_r, parent.ii_g, parent.ii_b)
+	parent.triggerevent("color_changed")
+	if not isvalid(::message) then
+		return 0
+	end if
+	return ::message.fillcolor
+
+// hsb_blue.       () returns long
+	if parent.ii_b > 245 then
+		parent.ii_b = 255
+	else
+		parent.ii_b = parent.ii_b + 10
+	end if
+	parent.sle_blue.text = string(parent.ii_b)
+	this.position = parent.ii_b
+	parent.rr_1.fillcolor = rgb(parent.ii_r, parent.ii_g, parent.ii_b)
+	parent.triggerevent("color_changed")
+	if not isvalid(::message) then
+		return 0
+	end if
+	return ::message.fillcolor
+
+// hsb_blue.ter(integer +scrollpos) returns long
+	parent.ii_b = this.position
+	parent.sle_blue.text = string(parent.ii_b)
+	parent.rr_1.fillcolor = rgb(parent.ii_r, parent.ii_g, parent.ii_b)
+	parent.triggerevent("color_changed")
+	if not isvalid(::message) then
+		return 0
+	end if
+	return ::message.fillcolor
+
+// hsb_blue.ick_color() returns long
+	if parent.ii_b < 50 then
+		parent.ii_b = 0
+	else
+		parent.ii_b = parent.ii_b - 50
+	end if
+	parent.sle_blue.text = string(parent.ii_b)
+	this.position = parent.ii_b
+	parent.rr_1.fillcolor = rgb(parent.ii_r, parent.ii_g, parent.ii_b)
+	parent.triggerevent("color_changed")
+	if not isvalid(::message) then
+		return 0
+	end if
+	return ::message.fillcolor
+
+// cb_ok.clicked() returns long [event]
 	parent.istr_color.i_status = 1
 	parent.istr_color.l_colorvalue = parent.uo_color_select.uf_get_rgb()
 	parent.istr_color.i_red = parent.uo_color_select.uf_get_red()

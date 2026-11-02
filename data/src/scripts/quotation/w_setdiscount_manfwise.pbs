@@ -1,24 +1,24 @@
 // window w_setdiscount_manfwise (quotation)  ancestor: window
 
-// w_setdiscount_manfwise.ue_close(integer ai_status) returns 0
+// w_setdiscount_manfwise.ue_close(integer ai_status) returns 0 [event]
 	if this.istr_ds.i_closemode = 0 then
 		this.istr_ds.ds.reset()
 		this.dw_detail.rowscopy(1, this.dw_detail.rowcount(), primary!, this.istr_ds.ds, 1, primary!)
 	end if
 	closewithreturn(this, this.istr_ds)
 
-// w_setdiscount_manfwise.create() returns 0
+// w_setdiscount_manfwise.create() returns 0 [event]
 	this.dw_detail = create dw_detail
 	this.cb_cancel = create cb_cancel
 	this.cb_ok = create cb_ok
 	this.control = {this.dw_detail, this.cb_cancel, this.cb_ok}
 
-// w_setdiscount_manfwise.destroy() returns 0
+// w_setdiscount_manfwise.destroy() returns 0 [event]
 	destroy this.dw_detail
 	destroy this.cb_cancel
 	destroy this.cb_ok
 
-// w_setdiscount_manfwise.open() returns long
+// w_setdiscount_manfwise.open() returns long [event]
 	environment le_env
 	long ll_win_width
 	long ll_win_height
@@ -57,13 +57,13 @@
 	end if
 	return message.returnvalue
 
-// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
 	selecttext(1, len(gettext()))
 	return ::message.returnvalue
 
-// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemchanged(row, dwo, data)
 	choose case dwo.name
@@ -77,30 +77,30 @@
 	end choose
 	return ::message.returnvalue
 
-// dw_detail.ue_enterkey() returns long
+// dw_detail.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// cb_cancel.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_cancel.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		triggerevent(clicked!)
 	end if
 	return 1
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.istr_ds.i_closemode = 1
 	parent.post event ue_close(1)
 	return ::message.returnvalue
 
-// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		triggerevent(clicked!)
 	end if
 	return 1
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	parent.istr_ds.i_closemode = 0
 	parent.post event ue_close(1)
 	return ::message.returnvalue

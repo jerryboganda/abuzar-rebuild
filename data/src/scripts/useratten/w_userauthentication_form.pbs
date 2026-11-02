@@ -1,6 +1,6 @@
 // window w_userauthentication_form (useratten)  ancestor: window
 
-// w_userauthentication_form.ue_close(integer ai_status) returns 0
+// w_userauthentication_form.ue_close(integer ai_status) returns 0 [event]
 	s_arguements lstr_in_out
 	lstr_in_out.l_code1 = ai_status
 	this.em_date.getdata(lstr_in_out.d_sdate)
@@ -35,7 +35,7 @@
 	end if
 	return 1
 
-// w_userauthentication_form.create() returns 0
+// w_userauthentication_form.create() returns 0 [event]
 	this.em_date = create em_date
 	this.st_date = create st_date
 	this.cb_ok = create cb_ok
@@ -43,14 +43,14 @@
 	this.dw_key = create dw_key
 	this.control = {this.em_date, this.st_date, this.cb_ok, this.cb_cancel, this.dw_key}
 
-// w_userauthentication_form.destroy() returns 0
+// w_userauthentication_form.destroy() returns 0 [event]
 	destroy this.em_date
 	destroy this.st_date
 	destroy this.cb_ok
 	destroy this.cb_cancel
 	destroy this.dw_key
 
-// w_userauthentication_form.open() returns long
+// w_userauthentication_form.open() returns long [event]
 	long ll_win_width
 	long ll_win_height
 	long ll_width
@@ -101,19 +101,19 @@
 	end if
 	return message.returnvalue
 
-// w_userauthentication_form.key(keycode key, unsignedlong keyflags) returns long
+// w_userauthentication_form.key(keycode key, unsignedlong keyflags) returns long [event]
 	if keydown(keyescape!) then
 		event ue_close(-1)
 	end if
 	return ::message.returnvalue
 
-// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		postevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	long ancestorreturnvalue
 	long ll_row
 	long ll_null
@@ -174,17 +174,17 @@
 	end if
 	return message.returnvalue
 
-// cb_cancel.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_cancel.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		parent.event ue_close(-1)
 	end if
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.event ue_close(-1)
 	return ::message.returnvalue
 
-// dw_key.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_key.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	long rt_code
 	long ll_code
@@ -199,7 +199,7 @@
 	end choose
 	return rt_code
 
-// dw_key.itemerror(long row, dwobject dwo, string data) returns long
+// dw_key.itemerror(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	integer ll_code
 	string ls_salesman
@@ -213,7 +213,7 @@
 	end choose
 	return 1
 
-// dw_key.ue_enterkey() returns long
+// dw_key.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	if parent.ii_mode = 0 and getcolumn() = 2 then

@@ -89,16 +89,16 @@
 	end if
 	return ll_retcode
 
-// w_serviceticketscanner.create() returns 0
+// w_serviceticketscanner.create() returns 0 [event]
 	this.cb_clear = create cb_clear
 	this.dw_control = create dw_control
 	this.control = {this.cb_clear, this.dw_control}
 
-// w_serviceticketscanner.destroy() returns 0
+// w_serviceticketscanner.destroy() returns 0 [event]
 	destroy this.cb_clear
 	destroy this.dw_control
 
-// w_serviceticketscanner.open() returns long
+// w_serviceticketscanner.open() returns long [event]
 	environment le_env
 	long ll_win_width
 	long ll_win_height
@@ -137,19 +137,19 @@
 	end if
 	return ::message.returnvalue
 
-// w_serviceticketscanner.key(keycode key, unsignedlong keyflags) returns long
+// w_serviceticketscanner.key(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyf10! then
 		wf_initialize_ticketing()
 	end if
 	return 0
 
-// cb_clear.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_clear.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		postevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_clear.clicked() returns long
+// cb_clear.clicked() returns long [event]
 	parent.dw_control.reset()
 	parent.dw_control.insertrow(0)
 	parent.dw_control.setrow(0)
@@ -157,7 +157,7 @@
 	parent.dw_control.setfocus()
 	return ::message.returnvalue
 
-// dw_control.ue_enterkey() returns long
+// dw_control.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	long ll_null
 	ancestorreturnvalue = super::ue_enterkey()
@@ -166,7 +166,7 @@
 	this.object.serviceticketcode[1] = ll_null
 	return 1
 
-// dw_control.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_control.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	integer li_errcode
 	long ll_code
@@ -192,7 +192,7 @@
 	end choose
 	return li_errcode
 
-// dw_control.itemerror(long row, dwobject dwo, string data) returns long
+// dw_control.itemerror(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	integer li_errcode
 	long ll_code
@@ -211,13 +211,13 @@
 	end choose
 	return 1
 
-// dw_control.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_control.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
 	selecttext(1, len(gettext()))
 	return ::message.returnvalue
 
-// dw_control.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// dw_control.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
 	if key = keyf11! then

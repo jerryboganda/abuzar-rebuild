@@ -1503,7 +1503,7 @@
 	SQL rollback USING this.it_transobject;
 	return 1
 
-// w_sms_center.create() returns 0
+// w_sms_center.create() returns 0 [event]
 	if this.menuname = "m_smscentermenu" then
 		this.menuid = create m_smscentermenu
 	end if
@@ -1514,7 +1514,7 @@
 	this.timing_1 = create timing_1
 	this.control = {this.dw_print, this.tab_smscenter, this.ole_device}
 
-// w_sms_center.destroy() returns 0
+// w_sms_center.destroy() returns 0 [event]
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
@@ -1524,7 +1524,7 @@
 	destroy this.timing_2
 	destroy this.timing_1
 
-// w_sms_center.open() returns long
+// w_sms_center.open() returns long [event]
 	long ll_counter
 	long ll_pos
 	long ll_rtcode
@@ -1624,7 +1624,7 @@
 	end if
 	return ::message.returnvalue
 
-// w_sms_center.timer() returns long
+// w_sms_center.timer() returns long [event]
 	if this.ib_editrefresh = false then
 		wf_update_sent_outbox_info()
 		wf_sendsms_from_outbox(-1)
@@ -1632,7 +1632,7 @@
 	end if
 	return ::message.returnvalue
 
-// tab_smscenter.create() returns 0
+// tab_smscenter.create() returns 0 [event]
 	this.tabpage_device = create tabpage_device
 	this.tabpage_compose = create tabpage_compose
 	this.tabpage_outbox = create tabpage_outbox
@@ -1643,7 +1643,7 @@
 	this.tabpage_graph = create tabpage_graph
 	this.control = {this.tabpage_device, this.tabpage_compose, this.tabpage_outbox, this.tabpage_sent, this.tabpage_expired, this.tabpage_schedule, this.tabpage_summary, this.tabpage_graph}
 
-// tab_smscenter.destroy() returns 0
+// tab_smscenter.destroy() returns 0 [event]
 	destroy this.tabpage_device
 	destroy this.tabpage_compose
 	destroy this.tabpage_outbox
@@ -1653,7 +1653,7 @@
 	destroy this.tabpage_summary
 	destroy this.tabpage_graph
 
-// tab_smscenter.selectionchanged(integer oldindex, integer newindex) returns long
+// tab_smscenter.selectionchanged(integer oldindex, integer newindex) returns long [event]
 	long ll_count
 	if newindex = 3 then
 		parent.id_outbox.retrieve(1)
@@ -1679,22 +1679,22 @@
 	end if
 	return ::message.returnvalue
 
-// tabpage_device.create() returns 0
+// tabpage_device.create() returns 0 [event]
 	this.cb_set_smscentre = create cb_set_smscentre
 	this.cb_refresh = create cb_refresh
 	this.dw_device = create dw_device
 	this.control = {this.cb_set_smscentre, this.cb_refresh, this.dw_device}
 
-// tabpage_device.destroy() returns 0
+// tabpage_device.destroy() returns 0 [event]
 	destroy this.cb_set_smscentre
 	destroy this.cb_refresh
 	destroy this.dw_device
 
-// cb_set_smscentre.clicked() returns long
+// cb_set_smscentre.clicked() returns long [event]
 	parent.parent.parent.wf_set_sms_centre()
 	return ::message.returnvalue
 
-// cb_refresh.clicked() returns long
+// cb_refresh.clicked() returns long [event]
 	parent.parent.parent.id_device.reset()
 	parent.parent.parent.wf_getdevices()
 	if parent.parent.parent.id_device.rowcount() > 0 then
@@ -1702,7 +1702,7 @@
 	end if
 	return ::message.returnvalue
 
-// dw_device.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_device.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemchanged(row, dwo, data)
 	choose case dwo.name
@@ -1711,29 +1711,29 @@
 	end choose
 	return ::message.returnvalue
 
-// dw_device.ue_enterkey() returns long
+// dw_device.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// tabpage_compose.create() returns 0
+// tabpage_compose.create() returns 0 [event]
 	this.cb_reset = create cb_reset
 	this.cb_send = create cb_send
 	this.dw_compose = create dw_compose
 	this.control = {this.cb_reset, this.cb_send, this.dw_compose}
 
-// tabpage_compose.destroy() returns 0
+// tabpage_compose.destroy() returns 0 [event]
 	destroy this.cb_reset
 	destroy this.cb_send
 	destroy this.dw_compose
 
-// cb_reset.clicked() returns long
+// cb_reset.clicked() returns long [event]
 	parent.parent.parent.id_compose.reset()
 	parent.parent.parent.id_compose.insertrow(0)
 	return ::message.returnvalue
 
-// cb_send.clicked() returns long
+// cb_send.clicked() returns long [event]
 	string ls_phones
 	string ls_phoneno
 	string ls_groupcontacts
@@ -1947,7 +1947,7 @@
 	parent.parent.parent.wf_update_sent_outbox_info()
 	return ::message.returnvalue
 
-// dw_compose.ue_enterkey() returns long
+// dw_compose.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	if getcolumnname() <> "smstext" then
@@ -1956,7 +1956,7 @@
 	end if
 	return ::message.returnvalue
 
-// dw_compose.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// dw_compose.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	long ancestorreturnvalue
 	s_arguements lstr_arg
 	s_arguements lstr_arg2
@@ -2016,7 +2016,7 @@
 	end if
 	return message.returnvalue
 
-// dw_compose.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_compose.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemchanged(row, dwo, data)
 	choose case dwo.name
@@ -2030,7 +2030,7 @@
 	end choose
 	return ::message.returnvalue
 
-// dw_compose.editchanged(long row, dwobject dwo, string data) returns long
+// dw_compose.editchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::editchanged(row, dwo, data)
 	choose case dwo.name
@@ -2040,7 +2040,7 @@
 	end choose
 	return 0
 
-// tabpage_outbox.create() returns 0
+// tabpage_outbox.create() returns 0 [event]
 	this.cb_mark_outbox_expired = create cb_mark_outbox_expired
 	this.cb_sendselected = create cb_sendselected
 	this.hpb_sentprog = create hpb_sentprog
@@ -2052,7 +2052,7 @@
 	this.dw_outbox = create dw_outbox
 	this.control = {this.cb_mark_outbox_expired, this.cb_sendselected, this.hpb_sentprog, this.cb_mark_outbox, this.cb_sort_outbox, this.cb_filter_outbox, this.cb_retrieve_outbox, this.cb_send_outbox, this.dw_outbox}
 
-// tabpage_outbox.destroy() returns 0
+// tabpage_outbox.destroy() returns 0 [event]
 	destroy this.cb_mark_outbox_expired
 	destroy this.cb_sendselected
 	destroy this.hpb_sentprog
@@ -2063,7 +2063,7 @@
 	destroy this.cb_send_outbox
 	destroy this.dw_outbox
 
-// cb_mark_outbox_expired.clicked() returns long
+// cb_mark_outbox_expired.clicked() returns long [event]
 	long ll_smscode
 	if parent.parent.parent.id_outbox.getrow() > 0 and parent.parent.parent.id_outbox.rowcount() > 0 then
 		ll_smscode = parent.parent.parent.id_outbox.object.smscode[parent.parent.parent.id_outbox.getrow()]
@@ -2072,13 +2072,13 @@
 	parent.parent.parent.wf_update_sent_outbox_info()
 	return ::message.returnvalue
 
-// cb_sendselected.clicked() returns long
+// cb_sendselected.clicked() returns long [event]
 	if parent.parent.parent.id_outbox.getrow() > 0 then
 		parent.parent.parent.wf_sendsms_from_outbox(parent.parent.parent.id_outbox.getrow())
 	end if
 	return ::message.returnvalue
 
-// cb_mark_outbox.clicked() returns long
+// cb_mark_outbox.clicked() returns long [event]
 	long ll_smscode
 	if parent.parent.parent.id_outbox.getrow() > 0 and parent.parent.parent.id_outbox.rowcount() > 0 then
 		ll_smscode = parent.parent.parent.id_outbox.object.smscode[parent.parent.parent.id_outbox.getrow()]
@@ -2087,7 +2087,7 @@
 	parent.parent.parent.wf_update_sent_outbox_info()
 	return ::message.returnvalue
 
-// cb_sort_outbox.clicked() returns long
+// cb_sort_outbox.clicked() returns long [event]
 	string ls_null
 	setnull(ls_null)
 	parent.parent.parent.id_outbox.setsort(ls_null)
@@ -2095,7 +2095,7 @@
 	parent.parent.parent.id_outbox.groupcalc()
 	return ::message.returnvalue
 
-// cb_filter_outbox.clicked() returns long
+// cb_filter_outbox.clicked() returns long [event]
 	string ls_null
 	setnull(ls_null)
 	parent.parent.parent.id_outbox.scrolltorow(0)
@@ -2104,21 +2104,21 @@
 	parent.parent.parent.id_outbox.groupcalc()
 	return ::message.returnvalue
 
-// cb_retrieve_outbox.clicked() returns long
+// cb_retrieve_outbox.clicked() returns long [event]
 	parent.parent.parent.wf_update_sent_outbox_info()
 	return ::message.returnvalue
 
-// cb_send_outbox.clicked() returns long
+// cb_send_outbox.clicked() returns long [event]
 	parent.parent.parent.wf_sendsms_from_outbox(-1)
 	return ::message.returnvalue
 
-// dw_outbox.ue_enterkey() returns long
+// dw_outbox.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_outbox.rowfocuschanged(long currentrow) returns long
+// dw_outbox.rowfocuschanged(long currentrow) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::rowfocuschanged(currentrow)
 	if currentrow > 0 then
@@ -2129,13 +2129,13 @@
 	end if
 	return ::message.returnvalue
 
-// dw_outbox.editchanged(long row, dwobject dwo, string data) returns long
+// dw_outbox.editchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::editchanged(row, dwo, data)
 	parent.parent.parent.ib_editflag = true
 	return ::message.returnvalue
 
-// dw_outbox.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+// dw_outbox.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	long ll_code
 	ancestorreturnvalue = super::doubleclicked(xpos, ypos, row, dwo)
@@ -2147,7 +2147,7 @@
 	end if
 	return ::message.returnvalue
 
-// tabpage_sent.create() returns 0
+// tabpage_sent.create() returns 0 [event]
 	this.cb_deleteall = create cb_deleteall
 	this.cb_delete = create cb_delete
 	this.cb_mark_unsent = create cb_mark_unsent
@@ -2157,7 +2157,7 @@
 	this.dw_sent = create dw_sent
 	this.control = {this.cb_deleteall, this.cb_delete, this.cb_mark_unsent, this.cb_sort_sent, this.cb_filter_sent, this.cb_retrieve_sent, this.dw_sent}
 
-// tabpage_sent.destroy() returns 0
+// tabpage_sent.destroy() returns 0 [event]
 	destroy this.cb_deleteall
 	destroy this.cb_delete
 	destroy this.cb_mark_unsent
@@ -2166,7 +2166,7 @@
 	destroy this.cb_retrieve_sent
 	destroy this.dw_sent
 
-// cb_deleteall.clicked() returns long
+// cb_deleteall.clicked() returns long [event]
 	long ll_res
 	ll_res = messagebox("Delete Sent SMS", "Are you sure to delete All the Sent SMS Record from SMS Center?", question!, yesnocancel!, 2)
 	if ll_res = 1 then
@@ -2184,7 +2184,7 @@
 	parent.parent.parent.wf_update_sent_outbox_info()
 	return ::message.returnvalue
 
-// cb_delete.clicked() returns long
+// cb_delete.clicked() returns long [event]
 	long ll_res
 	s_arguements lstr_arg
 	open(w_arg_sdate_ldate)
@@ -2210,7 +2210,7 @@
 	end if
 	return message.returnvalue
 
-// cb_mark_unsent.clicked() returns long
+// cb_mark_unsent.clicked() returns long [event]
 	long ll_smscode
 	if parent.parent.parent.id_sent.getrow() > 0 then
 		ll_smscode = parent.parent.parent.id_sent.object.smscode[parent.parent.parent.id_sent.getrow()]
@@ -2224,7 +2224,7 @@
 	parent.parent.parent.wf_update_sent_outbox_info()
 	return ::message.returnvalue
 
-// cb_sort_sent.clicked() returns long
+// cb_sort_sent.clicked() returns long [event]
 	string ls_null
 	setnull(ls_null)
 	parent.parent.parent.id_sent.setsort(ls_null)
@@ -2232,7 +2232,7 @@
 	parent.parent.parent.id_sent.groupcalc()
 	return ::message.returnvalue
 
-// cb_filter_sent.clicked() returns long
+// cb_filter_sent.clicked() returns long [event]
 	string ls_null
 	setnull(ls_null)
 	parent.parent.parent.id_sent.scrolltorow(0)
@@ -2241,11 +2241,11 @@
 	parent.parent.parent.id_sent.groupcalc()
 	return ::message.returnvalue
 
-// cb_retrieve_sent.clicked() returns long
+// cb_retrieve_sent.clicked() returns long [event]
 	parent.parent.parent.wf_update_sent_outbox_info()
 	return ::message.returnvalue
 
-// dw_sent.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+// dw_sent.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	long ll_code
 	ancestorreturnvalue = super::doubleclicked(xpos, ypos, row, dwo)
@@ -2257,7 +2257,7 @@
 	end if
 	return ::message.returnvalue
 
-// dw_sent.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// dw_sent.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	long ancestorreturnvalue
 	long ll_code
 	long ll_res
@@ -2285,7 +2285,7 @@
 	end if
 	return 0
 
-// tabpage_expired.create() returns 0
+// tabpage_expired.create() returns 0 [event]
 	this.cb_expired_deleteall = create cb_expired_deleteall
 	this.cb_expired_delete = create cb_expired_delete
 	this.cb_expired_mark_unsent = create cb_expired_mark_unsent
@@ -2295,7 +2295,7 @@
 	this.dw_expired = create dw_expired
 	this.control = {this.cb_expired_deleteall, this.cb_expired_delete, this.cb_expired_mark_unsent, this.cb_expired_sort, this.cb_expired_filter, this.cb_expired_retrieve, this.dw_expired}
 
-// tabpage_expired.destroy() returns 0
+// tabpage_expired.destroy() returns 0 [event]
 	destroy this.cb_expired_deleteall
 	destroy this.cb_expired_delete
 	destroy this.cb_expired_mark_unsent
@@ -2304,7 +2304,7 @@
 	destroy this.cb_expired_retrieve
 	destroy this.dw_expired
 
-// cb_expired_deleteall.clicked() returns long
+// cb_expired_deleteall.clicked() returns long [event]
 	long ll_res
 	ll_res = messagebox("Delete Expired SMS", "Are you sure to delete All the Expired SMS Record from SMS Center?", question!, yesnocancel!, 2)
 	if ll_res = 1 then
@@ -2321,7 +2321,7 @@
 	end if
 	return ::message.returnvalue
 
-// cb_expired_delete.clicked() returns long
+// cb_expired_delete.clicked() returns long [event]
 	long ll_res
 	s_arguements lstr_arg
 	open(w_arg_sdate_ldate)
@@ -2346,7 +2346,7 @@
 	end if
 	return message.returnvalue
 
-// cb_expired_mark_unsent.clicked() returns long
+// cb_expired_mark_unsent.clicked() returns long [event]
 	long ll_smscode
 	if parent.parent.parent.id_expired.getrow() > 0 then
 		ll_smscode = parent.parent.parent.id_expired.object.smscode[parent.parent.parent.id_expired.getrow()]
@@ -2361,7 +2361,7 @@
 	parent.parent.parent.wf_update_sent_outbox_info()
 	return ::message.returnvalue
 
-// cb_expired_sort.clicked() returns long
+// cb_expired_sort.clicked() returns long [event]
 	string ls_null
 	setnull(ls_null)
 	parent.parent.parent.id_expired.setsort(ls_null)
@@ -2369,7 +2369,7 @@
 	parent.parent.parent.id_expired.groupcalc()
 	return ::message.returnvalue
 
-// cb_expired_filter.clicked() returns long
+// cb_expired_filter.clicked() returns long [event]
 	string ls_null
 	setnull(ls_null)
 	parent.parent.parent.id_expired.scrolltorow(0)
@@ -2378,11 +2378,11 @@
 	parent.parent.parent.id_expired.groupcalc()
 	return ::message.returnvalue
 
-// cb_expired_retrieve.clicked() returns long
+// cb_expired_retrieve.clicked() returns long [event]
 	parent.parent.parent.id_expired.retrieve(3)
 	return ::message.returnvalue
 
-// tabpage_schedule.create() returns 0
+// tabpage_schedule.create() returns 0 [event]
 	this.cb_save_schedule = create cb_save_schedule
 	this.st_hr = create st_hr
 	this.st_min = create st_min
@@ -2398,7 +2398,7 @@
 	this.gb_3 = create gb_3
 	this.control = {this.cb_save_schedule, this.st_hr, this.st_min, this.st_sec, this.ddlb_time, this.ddlb_sec, this.ddlb_min, this.ddlb_hr, this.dw_schedule, this.rb_every, this.rb_once, this.cbx_activate, this.gb_3}
 
-// tabpage_schedule.destroy() returns 0
+// tabpage_schedule.destroy() returns 0 [event]
 	destroy this.cb_save_schedule
 	destroy this.st_hr
 	destroy this.st_min
@@ -2413,7 +2413,7 @@
 	destroy this.cbx_activate
 	destroy this.gb_3
 
-// cb_save_schedule.clicked() returns long
+// cb_save_schedule.clicked() returns long [event]
 	string ls_jobname
 	string ls_schedulename
 	string ls_hr
@@ -2510,7 +2510,7 @@
 	end if
 	return ::message.returnvalue
 
-// rb_every.clicked() returns long
+// rb_every.clicked() returns long [event]
 	if this.checked = true then
 		parent.parent.parent.tab_smscenter.tabpage_schedule.dw_schedule.enabled = true
 		parent.parent.parent.tab_smscenter.tabpage_schedule.ddlb_hr.enabled = false
@@ -2520,7 +2520,7 @@
 	end if
 	return ::message.returnvalue
 
-// rb_once.clicked() returns long
+// rb_once.clicked() returns long [event]
 	if this.checked = true then
 		parent.parent.parent.tab_smscenter.tabpage_schedule.dw_schedule.enabled = false
 		parent.parent.parent.tab_smscenter.tabpage_schedule.ddlb_hr.enabled = true
@@ -2530,7 +2530,7 @@
 	end if
 	return ::message.returnvalue
 
-// cbx_activate.clicked() returns long
+// cbx_activate.clicked() returns long [event]
 	if this.checked = true then
 		parent.parent.parent.tab_smscenter.tabpage_schedule.rb_once.enabled = true
 		parent.parent.parent.tab_smscenter.tabpage_schedule.rb_once.checked = true
@@ -2551,23 +2551,23 @@
 	end if
 	return ::message.returnvalue
 
-// tabpage_summary.create() returns 0
+// tabpage_summary.create() returns 0 [event]
 	this.dw_summary = create dw_summary
 	this.control = {this.dw_summary}
 
-// tabpage_summary.destroy() returns 0
+// tabpage_summary.destroy() returns 0 [event]
 	destroy this.dw_summary
 
-// tabpage_graph.create() returns 0
+// tabpage_graph.create() returns 0 [event]
 	this.st_tooltip = create st_tooltip
 	this.gr_graph = create gr_graph
 	this.control = {this.st_tooltip, this.gr_graph}
 
-// tabpage_graph.destroy() returns 0
+// tabpage_graph.destroy() returns 0 [event]
 	destroy this.st_tooltip
 	destroy this.gr_graph
 
-// gr_graph.create() returns 0
+// gr_graph.create() returns 0 [event]
 	this.titledispattr = create grdispattr
 	this.legenddispattr = create grdispattr
 	this.piedispattr = create grdispattr
@@ -2694,7 +2694,7 @@
 	this.piedispattr.displayexpression = "if(seriescount > 1, series,string(percentofseries,~"0.00%~"))"
 	this.piedispattr.autosize = true
 
-// gr_graph.destroy() returns 0
+// gr_graph.destroy() returns 0 [event]
 	destroy this.titledispattr
 	destroy this.legenddispattr
 	destroy this.piedispattr
@@ -2708,11 +2708,11 @@
 	destroy this.values.labeldispattr
 	destroy this.values
 
-// gr_graph.ue_rbuttonup(unsignedlong flags, integer xpos, integer ypos) returns long
+// gr_graph.ue_rbuttonup(unsignedlong flags, integer xpos, integer ypos) returns long [event]
 	parent.parent.parent.tab_smscenter.tabpage_graph.st_tooltip.visible = false
 	return ::message.returnvalue
 
-// gr_graph.clicked() returns long
+// gr_graph.clicked() returns long [event]
 	grobjecttype clickedobject
 	string ls_cat
 	integer li_series
@@ -2723,7 +2723,7 @@
 	end if
 	return ::message.returnvalue
 
-// gr_graph.rbuttondown(unsignedlong flags, integer xpos, integer ypos) returns long
+// gr_graph.rbuttondown(unsignedlong flags, integer xpos, integer ypos) returns long [event]
 	grobjecttype clickedobject
 	integer li_series
 	integer li_category
@@ -2737,18 +2737,18 @@
 	end if
 	return ::message.returnvalue
 
-// timing_2.create() returns 0
+// timing_2.create() returns 0 [event]
 	call super::create
 	triggerevent("constructor")
 
-// timing_2.destroy() returns 0
+// timing_2.destroy() returns 0 [event]
 	triggerevent("destructor")
 	call super::destroy
 
-// timing_1.create() returns 0
+// timing_1.create() returns 0 [event]
 	call super::create
 	triggerevent("constructor")
 
-// timing_1.destroy() returns 0
+// timing_1.destroy() returns 0 [event]
 	triggerevent("destructor")
 	call super::destroy

@@ -1,6 +1,6 @@
 // window w_arg_sdate_ldate_custcat (reports)  ancestor: w_arguements
 
-// w_arg_sdate_ldate_custcat.create() returns 0
+// w_arg_sdate_ldate_custcat.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.gb_2 = create gb_2
@@ -29,7 +29,7 @@
 	this.control[icurrent + 11] = this.em_discperc
 	this.control[icurrent + 12] = this.cbx_all
 
-// w_arg_sdate_ldate_custcat.destroy() returns 0
+// w_arg_sdate_ldate_custcat.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.gb_2
 	destroy this.dw_customercategory
@@ -44,7 +44,7 @@
 	destroy this.em_discperc
 	destroy this.cbx_all
 
-// w_arg_sdate_ldate_custcat.open() returns long
+// w_arg_sdate_ldate_custcat.open() returns long [event]
 	long ancestorreturnvalue
 	long rtncode
 	ancestorreturnvalue = super::open()
@@ -63,46 +63,82 @@
 	this.dw_pagesize.scrolltorow(0)
 	return ::message.returnvalue
 
-// w_arg_sdate_ldate_custcat.ue_close(integer ai_stauts) returns 0
+// w_arg_sdate_ldate_custcat.ue_close(integer ai_stauts) returns 0 [event]
 	super::ue_close(ai_stauts)
 	closewithreturn(this, this.istr_arg)
 
-// dw_customercategory.ue_enterkey() returns long
+// cb_cancel.clicked() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked()
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long [event]
+	long ancestorreturnvalue
+	long ll_counter
+	datastore lds_cust
+	ancestorreturnvalue = super::clicked()
+	lds_cust = create datastore
+	lds_cust.dataobject = "ddd_customer"
+	lds_cust.settransobject(sqlca)
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	parent.dw_customercategory.accepttext()
+	if parent.cbx_all.checked = true then
+		for ll_counter = 1 to parent.idc_custcategory.rowcount()
+			parent.istr_arg.ia_integerlist[ll_counter] = parent.idc_custcategory.getitemnumber(ll_counter, "custcatcode")
+		next
+	else
+		parent.istr_arg.ia_integerlist[1] = parent.dw_customercategory.getitemnumber(1, "custcatcode")
+	end if
+	parent.istr_arg.l_code1 = parent.dw_customercategory.getitemnumber(1, "custcatcode")
+	parent.em_discperc.getdata(parent.istr_arg.db_code1)
+	parent.istr_arg.s_name1 = parent.sle_caption.text
+	parent.istr_arg.s_name2 = parent.sle_terms1.text
+	parent.istr_arg.s_name3 = parent.sle_terms2.text
+	if isnull(parent.istr_arg.l_code1) then
+		parent.istr_arg.l_code1 = 0
+	end if
+	parent.istr_arg.i_status = 1
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// dw_customercategory.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_customercategory.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_customercategory.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemchanged(row, dwo, data)
 	return ::message.returnvalue
 
-// dw_pagesize.ue_enterkey() returns long
+// dw_pagesize.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// sle_terms1.downkey(keycode key, unsignedlong keyflags) returns long
+// sle_terms1.downkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// sle_terms2.keydown(keycode key, unsignedlong keyflags) returns long
+// sle_terms2.keydown(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// sle_caption.downkey(keycode key, unsignedlong keyflags) returns long
+// sle_caption.downkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// em_discperc.downkey(keycode key, unsignedlong keyflags) returns long
+// em_discperc.downkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if

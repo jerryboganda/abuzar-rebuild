@@ -1,8 +1,40 @@
 // menu m_custitemcat_disc_setting (multientry)  ancestor: m_multi_entry
 
-// m_custitemcat_disc_setting.create() returns 0
+// m_custitemcat_disc_setting.create() returns 0 [event]
 	m_custitemcat_disc_setting = this
 	call super::create
 
-// m_custitemcat_disc_setting.destroy() returns 0
+// m_custitemcat_disc_setting.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_populatecategories = create m_populatecategories
+	this.m_customeritemcategorywisediscountpositio = create m_customeritemcategorywisediscountpositio
+	this.item[upperbound(this.item) + 1] = this.m_populatecategories
+	this.item[upperbound(this.item) + 1] = this.m_customeritemcategorywisediscountpositio
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_populatecategories
+	destroy this.m_customeritemcategorywisediscountpositio
+
+// m_populatecategories.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_populatecategories()
+
+// m_populatecategories.create() returns 0 [event]
+	call super::create
+	this.text = "Populate Categories"
+
+// m_populatecategories.destroy() returns 0 [event]
+	call super::destroy
+
+// m_customeritemcategorywisediscountpositio.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_custitemcatwisediscountposition()
+
+// m_customeritemcategorywisediscountpositio.create() returns 0 [event]
+	call super::create
+	this.text = "Customer/Item Category Wise Discount Position"
+
+// m_customeritemcategorywisediscountpositio.destroy() returns 0 [event]
 	call super::destroy

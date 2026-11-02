@@ -1,13 +1,13 @@
 // menu m_adjustmentmenu (adjustment)  ancestor: m_multi_entry
 
-// m_adjustmentmenu.create() returns 0
+// m_adjustmentmenu.create() returns 0 [event]
 	m_adjustmentmenu = this
 	call super::create
 
-// m_adjustmentmenu.destroy() returns 0
+// m_adjustmentmenu.destroy() returns 0 [event]
 	call super::destroy
 
-// m_adjustmentmenu.clicked() returns 0
+// m_adjustmentmenu.clicked() returns 0 [event]
 	call super::clicked
 	if this.checked then
 		this.checked = false
@@ -15,3 +15,215 @@
 		this.checked = true
 	end if
 	this.parentwindow.dynamic wf_fetchserverdate(this.checked)
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_populateitems = create m_populateitems
+	this.m_savepost = create m_savepost
+	this.m_setserverdate = create m_setserverdate
+	this.m_populatestockinhandfromdatacarry = create m_populatestockinhandfromdatacarry
+	this.m_showitemadjustmenthistory = create m_showitemadjustmenthistory
+	this.m_populatestockauditfromdatacarry = create m_populatestockauditfromdatacarry
+	this.item[upperbound(this.item) + 1] = this.m_populateitems
+	this.item[upperbound(this.item) + 1] = this.m_savepost
+	this.item[upperbound(this.item) + 1] = this.m_setserverdate
+	this.item[upperbound(this.item) + 1] = this.m_populatestockinhandfromdatacarry
+	this.item[upperbound(this.item) + 1] = this.m_showitemadjustmenthistory
+	this.item[upperbound(this.item) + 1] = this.m_populatestockauditfromdatacarry
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_populateitems
+	destroy this.m_savepost
+	destroy this.m_setserverdate
+	destroy this.m_populatestockinhandfromdatacarry
+	destroy this.m_showitemadjustmenthistory
+	destroy this.m_populatestockauditfromdatacarry
+
+// m_options.clicked() returns 0 [event]
+	long ll_manfcode
+	long ll_pocode
+	call super::clicked
+	this.parentwindow.dynamic wf_getpomanfcode(ll_pocode, ll_manfcode)
+	this.parentwindow.dynamic wf_populatedetaildwfrompo(ll_pocode, ll_manfcode)
+
+// m_options.create() returns 0 [event]
+	call super::create
+	this.visible = true
+	this.text = "Edit Purchase Order"
+	this.enabled = false
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_options.destroy() returns 0 [event]
+	call super::destroy
+
+// m_populateitems.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_populatefiltereditems()
+
+// m_populateitems.create() returns 0 [event]
+	call super::create
+	this.text = "Populate Items"
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_populateitems.destroy() returns 0 [event]
+	call super::destroy
+
+// m_savepost.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_saveandpost()
+	if this.parentwindow.dynamic wf_commitform() = true then
+		this.parentwindow.postevent("ue_new")
+	end if
+
+// m_savepost.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Save And Post~tCtrl+Q"
+	this.enabled = false
+	this.checked = true
+	this.shortcut = 337
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_savepost.destroy() returns 0 [event]
+	call super::destroy
+
+// m_setserverdate.create() returns 0 [event]
+	call super::create
+	this.text = "Set Server Date"
+	this.checked = true
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_setserverdate.destroy() returns 0 [event]
+	call super::destroy
+
+// m_populatestockinhandfromdatacarry.clicked() returns 0 [event]
+	this.parentwindow.dynamic event ue_populate_shelfstock_from_datacarry()
+
+// m_populatestockinhandfromdatacarry.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Populate Stock In Hand From DataCarry"
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_populatestockinhandfromdatacarry.destroy() returns 0 [event]
+	call super::destroy
+
+// m_showitemadjustmenthistory.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_show_item_adjustment_history()
+
+// m_showitemadjustmenthistory.create() returns 0 [event]
+	call super::create
+	this.text = "Show Item Adjustment History~tCtrl+H"
+	this.shortcut = 328
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_showitemadjustmenthistory.destroy() returns 0 [event]
+	call super::destroy
+
+// m_populatestockauditfromdatacarry.clicked() returns 0 [event]
+	this.parentwindow.dynamic event ue_populate_stockaudit_from_datacarry()
+
+// m_populatestockauditfromdatacarry.create() returns 0 [event]
+	call super::create
+	this.text = "Populate Stock Audit From DataCarry"
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_populatestockauditfromdatacarry.destroy() returns 0 [event]
+	call super::destroy

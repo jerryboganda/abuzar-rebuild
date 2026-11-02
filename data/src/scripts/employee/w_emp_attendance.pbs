@@ -1,6 +1,6 @@
 // window w_emp_attendance (employee)  ancestor: window
 
-// w_emp_attendance.ue_close(integer ai_status) returns 0
+// w_emp_attendance.ue_close(integer ai_status) returns 0 [event]
 	close(this)
 
 // w_emp_attendance.wf_insert_fingerprint(integer ai_finger, blob img, blob features) returns long
@@ -187,20 +187,20 @@
 	end if
 	return 0
 
-// w_emp_attendance.create() returns 0
+// w_emp_attendance.create() returns 0 [event]
 	this.ole_zkfinger = create ole_zkfinger
 	this.ole_grfinger = create ole_grfinger
 	this.uo_attendance = create uo_attendance
 	this.dw_empid = create dw_empid
 	this.control = {this.ole_zkfinger, this.ole_grfinger, this.uo_attendance, this.dw_empid}
 
-// w_emp_attendance.destroy() returns 0
+// w_emp_attendance.destroy() returns 0 [event]
 	destroy this.ole_zkfinger
 	destroy this.ole_grfinger
 	destroy this.uo_attendance
 	destroy this.dw_empid
 
-// w_emp_attendance.open() returns long
+// w_emp_attendance.open() returns long [event]
 	environment le_env
 	long ll_win_width
 	long ll_win_height
@@ -297,15 +297,15 @@
 	wf_set_timer()
 	return ::message.returnvalue
 
-// w_emp_attendance.close() returns long
+// w_emp_attendance.close() returns long [event]
 	triggerevent("ue_close")
 	return ::message.returnvalue
 
-// w_emp_attendance.timer() returns long
+// w_emp_attendance.timer() returns long [event]
 	wf_clear_employee_info()
 	return ::message.returnvalue
 
-// ole_zkfinger.oncapture(boolean actionresult, any atemplate) returns 0
+// ole_zkfinger.oncapture(boolean actionresult, any atemplate) returns 0 [event]
 	long ll_ret
 	long ll_quality
 	long ll_null
@@ -393,7 +393,7 @@
 		messagebox("Exception Occur", "Details are:~r~n" + ex.getmessage())
 	end try
 
-// ole_zkfinger.constructor() returns long
+// ole_zkfinger.constructor() returns long [event]
 	long ll_retcode
 	runtimeerror ex
 	try
@@ -412,7 +412,7 @@
 	end try
 	return ::message.returnvalue
 
-// ole_zkfinger.destructor() returns long
+// ole_zkfinger.destructor() returns long [event]
 	runtimeerror ex
 	try
 		this.object.__invoke_method("cancelcapture", 0, {}, true)
@@ -423,7 +423,7 @@
 	end try
 	return ::message.returnvalue
 
-// ole_grfinger.sensorplug(string idsensor) returns 0
+// ole_grfinger.sensorplug(string idsensor) returns 0 [event]
 	runtimeerror ex
 	try
 		this.object.__invoke_method("capstartcapture", 1, {idsensor}, true)
@@ -431,7 +431,7 @@
 		messagebox("Exception Occur", "Details are:~r~n" + ex.getmessage())
 	end try
 
-// ole_grfinger.sensorunplug(string idsensor) returns 0
+// ole_grfinger.sensorunplug(string idsensor) returns 0 [event]
 	runtimeerror ex
 	try
 		this.object.__invoke_method("capstopcapture", 1, {idsensor}, true)
@@ -439,7 +439,7 @@
 		messagebox("Exception Occur", "Details are:~r~n" + ex.getmessage())
 	end try
 
-// ole_grfinger.imageacquired(string idsensor, long ocx_width, long ocx_height, any rawimage, long res) returns 0
+// ole_grfinger.imageacquired(string idsensor, long ocx_width, long ocx_height, any rawimage, long res) returns 0 [event]
 	long ll_ret
 	long ll_format
 	long ll_quality
@@ -532,7 +532,7 @@
 		messagebox("Exception Occur", "Details are:~r~n" + ex.getmessage())
 	end try
 
-// ole_grfinger.constructor() returns long
+// ole_grfinger.constructor() returns long [event]
 	long ll_err
 	runtimeerror ex
 	try
@@ -546,7 +546,7 @@
 	end try
 	return ::message.returnvalue
 
-// ole_grfinger.destructor() returns long
+// ole_grfinger.destructor() returns long [event]
 	long ll_err
 	runtimeerror ex
 	try
@@ -557,10 +557,10 @@
 	end try
 	return ::message.returnvalue
 
-// uo_attendance.destroy() returns 0
+// uo_attendance.destroy() returns 0 [event]
 	call super::destroy
 
-// dw_empid.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_empid.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	long ll_retcode
 	ancestorreturnvalue = super::itemchanged(row, dwo, data)

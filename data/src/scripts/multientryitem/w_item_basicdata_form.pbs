@@ -1,6 +1,6 @@
 // window w_item_basicdata_form (multientryitem)  ancestor: w_multi_entry
 
-// w_item_basicdata_form.ue_populate_newitem(long al_icode) returns 0
+// w_item_basicdata_form.ue_populate_newitem(long al_icode) returns 0 [event]
 	long ll_icode
 	long ll_count
 	string ls_null
@@ -516,7 +516,7 @@
 	end if
 	return ll_retcode
 
-// w_item_basicdata_form.create() returns 0
+// w_item_basicdata_form.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	if isvalid(this.menuid) then
@@ -531,7 +531,7 @@
 	this.control[icurrent + 1] = this.dw_itemassociation
 	this.control[icurrent + 2] = this.dw_itemauthor
 
-// w_item_basicdata_form.destroy() returns 0
+// w_item_basicdata_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
@@ -539,7 +539,7 @@
 	destroy this.dw_itemassociation
 	destroy this.dw_itemauthor
 
-// w_item_basicdata_form.ue_save() returns 0
+// w_item_basicdata_form.ue_save() returns 0 [event]
 	long ll_mastercurrrow
 	long ll_invid
 	long ll_detailrows
@@ -768,7 +768,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_item_basicdata_form.ue_detail() returns 0
+// w_item_basicdata_form.ue_detail() returns 0 [event]
 	long ll_counter
 	call super::ue_detail
 	this.im_menu.m_file.m_delete.enabled = true
@@ -807,7 +807,7 @@
 		end if
 	end if
 
-// w_item_basicdata_form.ue_newitem() returns 0
+// w_item_basicdata_form.ue_newitem() returns 0 [event]
 	long ll_rowcount
 	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
 		return
@@ -825,7 +825,7 @@
 	this.im_menu.m_file.m_save.enabled = true
 	this.ib_validatefullcode = true
 
-// w_item_basicdata_form.ue_newform() returns 0
+// w_item_basicdata_form.ue_newform() returns 0 [event]
 	long ll_counter
 	call super::ue_newform
 	this.ib_modify = false
@@ -839,7 +839,7 @@
 	this.id_associateditempart.reset()
 	setnull(this.iblob_notes)
 
-// w_item_basicdata_form.ue_postopen() returns 0
+// w_item_basicdata_form.ue_postopen() returns 0 [event]
 	long ll_found
 	integer li_xpos
 	integer li_ypos
@@ -950,12 +950,12 @@
 	this.id_itemassociation = this.dw_itemassociation
 	this.id_itemassociation.settransobject(this.it_transobject)
 
-// w_item_basicdata_form.open() returns long
+// w_item_basicdata_form.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	return ::message.returnvalue
 
-// w_item_basicdata_form.ue_callback_popupwindow(any ar_object) returns 0
+// w_item_basicdata_form.ue_callback_popupwindow(any ar_object) returns 0 [event]
 	long ll_code
 	long ll_row
 	string as_errortext
@@ -980,3 +980,276 @@
 	this.id_master.accepttext()
 	this.id_master.setcolumn("masterpartname")
 	this.id_master.setfocus()
+
+// tabpage_detail.create() returns 0 [event]
+	integer icurrent
+	this.dw_iteminmodel = create dw_iteminmodel
+	this.dw_associateditempart = create dw_associateditempart
+	call super::create
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_iteminmodel
+	this.control[icurrent + 2] = this.dw_associateditempart
+
+// tabpage_detail.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.dw_iteminmodel
+	destroy this.dw_associateditempart
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_icode
+	integer li_option
+	long ll_qty
+	long ll_null
+	string ls_null
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	setnull(ll_null)
+	setnull(ls_null)
+	choose case dwo.name
+	case "itempartname"
+		if parent.parent.parent.wf_find_itempart_info(data) > 0 then
+			this.object.masterpartname.protect = 0
+			this.object.ipartcode[row] = ll_null
+			this.object.masteripartcode[row] = ll_null
+			this.object.masterpartname[row] = ls_null
+		else
+			this.object.masterpartname.protect = 1
+		end if
+	case "masterpartname"
+		if not isnull(data) then
+			if parent.parent.parent.wf_find_masteritempart_info(data) > 0 then
+				li_option = messagebox("Master Part No. Validation", "Master Part Number Does Not Exist~r~nDo you want to define a new one?", question!, yesno!, 1)
+				if li_option = 1 then
+					parent.parent.parent.wf_open_item_form_popup()
+					if parent.parent.parent.il_codevalue = 0 or isnull(parent.parent.parent.il_codevalue) then
+						return 1
+					end if
+				else
+					return 1
+				end if
+			else
+				parent.parent.parent.wf_setmasterpartinfo(this.object.masteripartcode[row])
+				return 2
+			end if
+		end if
+	case "customicode"
+		if parent.parent.parent.wf_duplicateitemno(data) then
+			messagebox("ItemNo Validation", "Item Duplication Error~r~nPlease enter some other Item No")
+			return 1
+		end if
+	case "active"
+		if integer(data) = 0 then
+			li_icode = parent.parent.parent.id_master.getitemnumber(1, "code")
+			SQL SELECT ISNULL ( sum ( currqty ) , 0 ) INTO :ll_qty FROM godowndetail WHERE icode =:li_icode USING sqlca;
+			if sqlca.sqlcode = -1 then
+				messagebox("", "Database Error: Item information can not be retrieved")
+				return 1
+			end if
+			if ll_qty > 0 then
+				messagebox("Active", "You Cann't Set NO Because~r~n Stock exist for this item")
+				return 1
+			end if
+			return
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "itempartname"
+		messagebox("Item Part No. Validation", "Please Enter a valid Item Part No.")
+	case "customicode"
+		if data = "" or isnull(data) then
+			messagebox("Item Code Validation", "Value required for " + upper("item no") + " in current row")
+		end if
+	case "name"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "gcode"
+		if data = "" or isnull(data) then
+			messagebox("Godown Validation", "Value required for Godown in current row")
+		end if
+	case "icatcode"
+		if data = "" or isnull(data) or data = "0" then
+			messagebox("Item Category Validation", "Please give some value for item category.")
+		end if
+	case "packcode"
+		if data = "" or isnull(data) then
+			messagebox("Packing Validation", "Value required for " + upper("Packing") + " in current row")
+		end if
+	case "active"
+		if data = "" or isnull(data) then
+			messagebox("Active Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "refrigrated"
+		if data = "" or isnull(data) then
+			messagebox("Refrigrated Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "saleprice"
+	case "retailprice"
+	case "salediscperc"
+		if data = "" or isnull(data) then
+			messagebox("Sale Disc(%) Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "reorderqty"
+		if data = "" or isnull(data) then
+			messagebox("Reorder Quantity Validation", "Value required for " + upper("Reorder Quantity") + " in current row")
+		end if
+	case "location"
+		if data = "" or isnull(data) then
+			messagebox("Location Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "remarks"
+		if data = "" or isnull(data) then
+			messagebox("Remarks Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "manfcode"
+		if data = "" or isnull(data) then
+			messagebox("Manufacturer Validation", "Value required for " + upper("Manufacturer") + " in current row")
+		end if
+	case "prescribed"
+		if data = "" or isnull(data) then
+			messagebox("Prescribed Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "packunits"
+		if data = "" or isnull(data) then
+			messagebox("Packing Units Validation", "Value required for " + upper("Packing Units") + " in current row")
+		end if
+	case "purprice"
+	case "purdiscperc"
+		if data = "" or isnull(data) then
+			messagebox("Purchase Disc(%) Validation", "Value required for " + upper("Purchase Discount") + " in current row")
+		end if
+	case "optimumqty"
+		if data = "" or isnull(data) then
+			messagebox("Maximum Quantity Validation", "Value required for " + upper("Maximum Quantity") + " in current row")
+		end if
+	case "printable"
+		if data = "" or isnull(data) then
+			messagebox("Printable Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "retailprice"
+		if data = "" or isnull(data) then
+			messagebox("Retail Price Validation", "Value required for " + upper("Retail Price") + " in current row")
+		end if
+	case "salestax"
+		if data = "" or isnull(data) then
+			messagebox("Salestax Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	end choose
+	return 1
+
+// dw_detail.ue_enterkey() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	return ::message.returnvalue
+
+// dw_itemsdetail.getfocus() returns long [event]
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	string ls_managername
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "suppcode"
+		parent.parent.parent.il_currrow = row
+		parent.parent.parent.ib_itemvalidated = false
+		li_errcode = 0
+	case else
+		parent.parent.parent.ib_itemvalidated = true
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "suppcode"
+		if data = "" or isnull(data) then
+			messagebox("SupplierName Validation", "Value required Supplier Name in current row")
+		end if
+	end choose
+	return 1
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem() = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_find.keypressed(keycode key, unsignedlong keyflags) returns long [event]
+	integer li_movement
+	long ll_row
+	long ll_temp
+	long ll_icode
+	long ll_found
+	string sl_columnname
+	if key = keyf8! then
+		ll_icode = f_drilldown_itemsearch("namesearch", 1)
+		ll_found = parent.parent.parent.id_list.find("code = " + string(ll_icode), 1, parent.parent.parent.id_list.rowcount())
+		if ll_found > 0 then
+			ll_row = ll_found
+			parent.parent.parent.id_list.scrolltorow(ll_row)
+		end if
+	elseif key = keyf9! then
+		ll_icode = f_drilldown_itemsearch("criteriasearch", 1)
+		ll_found = parent.parent.parent.id_list.find("code = " + string(ll_icode), 1, parent.parent.parent.id_list.rowcount())
+		if ll_found > 0 then
+			ll_row = ll_found
+			parent.parent.parent.id_list.scrolltorow(ll_row)
+		end if
+	elseif key = keyf3! then
+		ll_icode = f_drilldown_itemsearch("itemsearch", 1)
+		ll_found = parent.parent.parent.id_list.find("code = " + string(ll_icode), 1, parent.parent.parent.id_list.rowcount())
+		if ll_found > 0 then
+			ll_row = ll_found
+			parent.parent.parent.id_list.scrolltorow(ll_row)
+		end if
+	elseif key = keyuparrow! then
+		ll_row = parent.parent.parent.id_list.getrow() - 1
+		parent.parent.parent.id_list.scrollpriorrow()
+	elseif key = keydownarrow! then
+		ll_row = parent.parent.parent.id_list.getrow() + 1
+		parent.parent.parent.id_list.scrollnextrow()
+	elseif key = keypagedown! then
+		parent.parent.parent.id_list.scrollnextpage()
+		ll_row = parent.parent.parent.id_dwcontrol.getrow()
+	elseif key = keypageup! then
+		parent.parent.parent.id_list.scrollpriorpage()
+		ll_row = parent.parent.parent.id_dwcontrol.getrow()
+	elseif key = keyhome! then
+		scrolltorow(1)
+		ll_row = 1
+	elseif key = keyend! then
+		ll_row = parent.parent.parent.id_list.rowcount()
+		scrolltorow(ll_row)
+	elseif key = keyenter! and parent.parent.parent.id_dwcontrol.getselectedrow(0) > 0 then
+		parent.parent.parent.i_editmode = 2
+		parent.parent.parent.tab_retrieve.selectedtab = 1
+		return ::message.returnvalue
+	end if
+	if ll_row > 0 and ll_row <= parent.parent.parent.id_dwcontrol.rowcount() then
+		parent.parent.parent.id_list.setredraw(false)
+		parent.parent.parent.tab_retrieve.tabpage_detail.enabled = true
+		parent.parent.parent.im_menu.m_file.m_retrieve.enabled = true
+		parent.parent.parent.id_list.selectrow(0, false)
+		parent.parent.parent.id_list.selectrow(ll_row, true)
+		if parent.parent.parent.ii_type = 1 then
+			setitem(1, "find", parent.parent.parent.id_list.getitemstring(ll_row, parent.parent.parent.ii_colindex))
+		elseif parent.parent.parent.ii_type = 3 then
+			setitem(1, "find", trim(string(parent.parent.parent.id_list.getitemdatetime(ll_row, parent.parent.parent.ii_colindex))))
+		else
+			setitem(1, "find", trim(string(parent.parent.parent.id_list.getitemnumber(ll_row, parent.parent.parent.ii_colindex))))
+		end if
+		parent.parent.parent.il_selectedrow = ll_row
+		selecttext(1, len(gettext()))
+		parent.parent.parent.id_list.setredraw(true)
+	end if
+	return ::message.returnvalue

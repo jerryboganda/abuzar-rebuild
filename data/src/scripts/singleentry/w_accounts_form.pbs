@@ -74,7 +74,7 @@
 		openwithparm(w_account_ledger, ll_acccode)
 	end if
 
-// w_accounts_form.ue_newform() returns 0
+// w_accounts_form.ue_newform() returns 0 [event]
 	datawindow ldw_detail
 	call super::ue_newform
 	ldw_detail = this.tab_retrieve.tabpage_detail.dw_detail
@@ -93,7 +93,7 @@
 	this.tab_retrieve.tabpage_detail.dw_detail.object.aliasname.visible = true
 	this.tab_retrieve.tabpage_detail.dw_detail.object.aliasname_t.visible = true
 
-// w_accounts_form.create() returns 0
+// w_accounts_form.create() returns 0 [event]
 	call super::create
 	if isvalid(this.menuid) then
 		destroy this.menuid
@@ -102,13 +102,13 @@
 		this.menuid = create m_accountmenu
 	end if
 
-// w_accounts_form.destroy() returns 0
+// w_accounts_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_accounts_form.ue_detail() returns 0
+// w_accounts_form.ue_detail() returns 0 [event]
 	datawindow ldw_detail
 	long ll_row
 	long ll_counter
@@ -176,14 +176,14 @@
 		end if
 	next
 
-// w_accounts_form.activate() returns long
+// w_accounts_form.activate() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::activate()
 	this.windowstate = maximized!
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_accounts_form.ue_save() returns 0
+// w_accounts_form.ue_save() returns 0 [event]
 	string ls_bal_limit_type
 	long ll_acccode
 	long ll_row
@@ -208,13 +208,13 @@
 		call super::ue_save
 	end if
 
-// w_accounts_form.open() returns long
+// w_accounts_form.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.is_tablename = "Accounts"
 	return ::message.returnvalue
 
-// w_accounts_form.ue_postopen() returns 0
+// w_accounts_form.ue_postopen() returns 0 [event]
 	long ll_found
 	m_accountmenu lm_menu
 	call super::ue_postopen
@@ -225,3 +225,82 @@
 		lm_menu.m_file.m_showaccountledger.visible = true
 		lm_menu.m_file.m_showaccountledger.enabled = true
 	end if
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "subcode"
+		if data = "" or isnull(data) then
+			messagebox("Sub. Account Validation", "Value required for Sub. Account in current row")
+		end if
+	end choose
+	return 1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "aliasname"
+		if parent.parent.parent.wf_duplicatealiasname(data) then
+			messagebox("Alias Name Validation", "Account Alias Name Duplication Error~r~nPlease enter some other Alias Name")
+			return 1
+		end if
+	case "name"
+		if parent.parent.parent.wf_duplicateaccname(data) then
+			messagebox("Name Validation", "Duplication Name Error~n~rPlease Choose Some Other Name")
+			return 1
+		end if
+	case "subcode"
+		parent.parent.parent.id_detail.setitem(parent.parent.parent.id_detail.getrow(), "catacccode", parent.parent.parent.wf_getcategoryaccount(long(data)))
+		parent.parent.parent.id_detail.setitem(parent.parent.parent.id_detail.getrow(), "mainacccode", parent.parent.parent.wf_getmainaccount(parent.parent.parent.id_detail.getitemnumber(parent.parent.parent.id_detail.getrow(), "catacccode")))
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	choose case dwo.name
+	case "localaccountname"
+		f_set_keyboard_local()
+	case else
+		f_set_keyboard_english()
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.sqlpreview(sqlpreviewfunction request, sqlpreviewtype sqltype, string sqlsyntax, dwbuffer buffer, long row) returns long [event]
+	long ancestorreturnvalue
+	string ls_sql
+	string ls_newsql
+	string ls_sql_part
+	long ll_counter
+	long ll_pos
+	long ll_commacount
+	long ll_commapos
+	long ll_newcommacount
+	ancestorreturnvalue = super::sqlpreview(request, sqltype, sqlsyntax, buffer, row)
+	if sqltype = previewinsert! then
+		ls_sql = sqlsyntax
+		ls_sql_part = "'" + getitemstring(getrow(), "localaccountname") + "'"
+		ll_pos = pos(lower(ls_sql), ls_sql_part, 1)
+		if ll_pos > 0 then
+			ls_newsql = replace(ls_sql, ll_pos, len(ls_sql_part), "N" + ls_sql_part)
+		else
+			ls_newsql = ls_sql
+		end if
+		setsqlpreview(ls_newsql)
+	elseif sqltype = previewupdate! then
+		ls_sql = sqlsyntax
+		ll_pos = pos(lower(ls_sql), "localaccountname = ", 1)
+		if ll_pos > 0 then
+			ls_newsql = mid(ls_sql, 1, ll_pos - 1) + "localaccountname = N" + mid(ls_sql, ll_pos + 19)
+		else
+			ls_newsql = ls_sql
+		end if
+		setsqlpreview(ls_newsql)
+	end if
+	return 0

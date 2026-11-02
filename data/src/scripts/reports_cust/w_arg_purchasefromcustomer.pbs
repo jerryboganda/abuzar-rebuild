@@ -1,6 +1,6 @@
 // window w_arg_purchasefromcustomer (reports_cust)  ancestor: w_popup_forselection_walias
 
-// w_arg_purchasefromcustomer.create() returns 0
+// w_arg_purchasefromcustomer.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.gb_2 = create gb_2
@@ -15,7 +15,7 @@
 	this.control[icurrent + 4] = this.em_startdate
 	this.control[icurrent + 5] = this.em_enddate
 
-// w_arg_purchasefromcustomer.destroy() returns 0
+// w_arg_purchasefromcustomer.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.gb_2
 	destroy this.st_1
@@ -23,7 +23,7 @@
 	destroy this.em_startdate
 	destroy this.em_enddate
 
-// w_arg_purchasefromcustomer.open() returns long
+// w_arg_purchasefromcustomer.open() returns long [event]
 	long ancestorreturnvalue
 	long ll_found
 	date ld_currdate
@@ -58,16 +58,77 @@
 	end if
 	return message.returnvalue
 
-// w_arg_purchasefromcustomer.ue_close() returns 0
+// w_arg_purchasefromcustomer.ue_close() returns 0 [event]
 	closewithreturn(this, this.istr_arg)
 
-// em_startdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// dw_selected.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	integer li_qty
+	long ll_icode
+	long ll_null
+	long ll_gcode
+	string ls_itemname
+	string ls_null
+	setnull(ll_null)
+	setnull(ls_null)
+	choose case dwo.name
+	case "aliasname"
+		if data = "" or isnull(data) then
+			this.object.code[row] = ll_null
+			this.object.name[row] = ""
+			return 0
+		elseif parent.wf_inititem(data) = false then
+			messagebox("Validation", "AliasName does not exist.~r~nPlease try some other AliasName.")
+			setitem(row, "code", ll_null)
+			setitem(row, "aliasname", ls_null)
+			setitem(row, "name", ls_null)
+			return 1
+		end if
+		parent.ib_itemvalidated = false
+	case "name"
+		if data = "" or isnull(data) then
+			this.object.code[row] = ll_null
+			this.object.aliasname[row] = ""
+			return 0
+		else
+			setitem(row, "code", parent.id_selectionlist.getitemnumber(parent.id_selectionlist.getrow(), "code"))
+			setitem(row, "aliasname", parent.id_selectionlist.getitemstring(parent.id_selectionlist.getrow(), "aliasname"))
+			setitem(row, "name", parent.id_selectionlist.getitemstring(parent.id_selectionlist.getrow(), "name"))
+			parent.ib_itemvalidated = false
+			return 2
+		end if
+		return
+	end choose
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long [event]
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long [event]
+	if parent.id_selected.accepttext() = -1 then
+		parent.id_selected.setfocus()
+		return ::message.returnvalue
+	elseif isnull(parent.id_selected.getitemstring(parent.id_selected.getrow(), "name")) then
+	end if
+	parent.is_popup_selection.l_code = parent.id_selected.getitemnumber(parent.id_selected.getrow(), "code")
+	parent.is_popup_selection.s_name = parent.id_selected.getitemstring(parent.id_selected.getrow(), "name")
+	parent.istr_arg.l_code1 = parent.id_selected.getitemnumber(1, "code")
+	if parent.istr_arg.l_code1 <= 0 then
+		setnull(parent.istr_arg.l_code1)
+	end if
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	parent.istr_arg.i_status = 1
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// em_startdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// em_enddate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// em_enddate.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if

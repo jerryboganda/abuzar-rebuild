@@ -1,6 +1,6 @@
 // window w_copysaleinvoicefrom3 (templates)  ancestor: window
 
-// w_copysaleinvoicefrom3.ue_setfocus(char ac_type) returns 0
+// w_copysaleinvoicefrom3.ue_setfocus(char ac_type) returns 0 [event]
 	long ll_invcode
 	setnull(ll_invcode)
 	if ac_type = "S" then
@@ -17,7 +17,7 @@
 		this.dw_salereturninvtemplate.setfocus()
 	end if
 
-// w_copysaleinvoicefrom3.ue_postopen() returns 0
+// w_copysaleinvoicefrom3.ue_postopen() returns 0 [event]
 	long ll_invcode
 	long ll_startinginv
 	this.istr_template.b_userinput = false
@@ -68,7 +68,7 @@
 	end if
 	return 0
 
-// w_copysaleinvoicefrom3.create() returns 0
+// w_copysaleinvoicefrom3.create() returns 0 [event]
 	this.dw_control = create dw_control
 	this.st_4 = create st_4
 	this.st_saleinvno = create st_saleinvno
@@ -79,7 +79,7 @@
 	this.gb_1 = create gb_1
 	this.control = {this.dw_control, this.st_4, this.st_saleinvno, this.cb_cancel, this.cb_ok, this.dw_salereturninvtemplate, this.dw_saleinvtemplate, this.gb_1}
 
-// w_copysaleinvoicefrom3.destroy() returns 0
+// w_copysaleinvoicefrom3.destroy() returns 0 [event]
 	destroy this.dw_control
 	destroy this.st_4
 	destroy this.st_saleinvno
@@ -89,7 +89,7 @@
 	destroy this.dw_saleinvtemplate
 	destroy this.gb_1
 
-// w_copysaleinvoicefrom3.open() returns long
+// w_copysaleinvoicefrom3.open() returns long [event]
 	long ll_win_width
 	long ll_win_height
 	long ll_width
@@ -108,17 +108,17 @@
 	post event ue_postopen()
 	return ::message.returnvalue
 
-// w_copysaleinvoicefrom3.close() returns long
+// w_copysaleinvoicefrom3.close() returns long [event]
 	closewithreturn(this, this.istr_template)
 	return ::message.returnvalue
 
-// w_copysaleinvoicefrom3.key(keycode key, unsignedlong keyflags) returns long
+// w_copysaleinvoicefrom3.key(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		post event Close()
 	end if
 	return ::message.returnvalue
 
-// dw_control.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_control.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemchanged(row, dwo, data)
 	choose case dwo.name
@@ -127,18 +127,18 @@
 	end choose
 	return 0
 
-// dw_control.ue_enterkey() returns long
+// dw_control.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.istr_template.b_userinput = false
 	parent.post event Close()
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	long ll_find
 	long ll_invcode
 	parent.istr_template.b_userinput = false
@@ -179,22 +179,22 @@
 	parent.post event Close()
 	return ::message.returnvalue
 
-// dw_salereturninvtemplate.key(keycode key, unsignedlong keyflags) returns long
+// dw_salereturninvtemplate.key(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		parent.post event Close()
 	end if
 	return ::message.returnvalue
 
-// dw_salereturninvtemplate.itemerror(long row, dwobject dwo, string data) returns long
+// dw_salereturninvtemplate.itemerror(long row, dwobject dwo, string data) returns long [event]
 	messagebox("Sale Return Invoice Code Validation", "Please enter valid Sale Return Invoice Code")
 	return 1
 
-// dw_saleinvtemplate.key(keycode key, unsignedlong keyflags) returns long
+// dw_saleinvtemplate.key(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		parent.post event Close()
 	end if
 	return ::message.returnvalue
 
-// dw_saleinvtemplate.itemerror(long row, dwobject dwo, string data) returns long
+// dw_saleinvtemplate.itemerror(long row, dwobject dwo, string data) returns long [event]
 	messagebox("Sale Invoice Code Validation", "Please enter valid Sale Invoice Code")
 	return 1

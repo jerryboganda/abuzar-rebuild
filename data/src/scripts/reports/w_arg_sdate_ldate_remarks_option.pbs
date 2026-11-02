@@ -1,11 +1,31 @@
 // window w_arg_sdate_ldate_remarks_option (reports)  ancestor: w_arguements
 
-// w_arg_sdate_ldate_remarks_option.create() returns 0
+// w_arg_sdate_ldate_remarks_option.create() returns 0 [event]
 	call super::create
 
-// w_arg_sdate_ldate_remarks_option.destroy() returns 0
+// w_arg_sdate_ldate_remarks_option.destroy() returns 0 [event]
 	call super::destroy
 
-// w_arg_sdate_ldate_remarks_option.ue_close(integer ai_stauts) returns 0
+// w_arg_sdate_ldate_remarks_option.ue_close(integer ai_stauts) returns 0 [event]
 	super::ue_close(ai_stauts)
 	closewithreturn(this, this.istr_arg)
+
+// cb_cancel.clicked() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked()
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked()
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	if parent.rb_purprice.checked then
+		parent.istr_arg.s_name1 = "Y"
+	else
+		parent.istr_arg.s_name1 = "N"
+	end if
+	parent.istr_arg.i_status = 1
+	parent.post event ue_close(1)
+	return ::message.returnvalue

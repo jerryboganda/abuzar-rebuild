@@ -1,6 +1,6 @@
 // window w_pricecalculator (salerespwin)  ancestor: window
 
-// w_pricecalculator.ue_close(integer ai_status) returns 0
+// w_pricecalculator.ue_close(integer ai_status) returns 0 [event]
 	if ai_status = -1 then
 		this.istr_amountoninvoice.d_amt = this.istr_oldamountoninvoice.d_amt
 		this.istr_amountoninvoice.c_paymentmode = this.istr_oldamountoninvoice.c_paymentmode
@@ -10,18 +10,18 @@
 	end if
 	closewithreturn(this, this.istr_amountoninvoice)
 
-// w_pricecalculator.create() returns 0
+// w_pricecalculator.create() returns 0 [event]
 	this.dw_amountoninvoice = create dw_amountoninvoice
 	this.cb_cancel = create cb_cancel
 	this.cb_ok = create cb_ok
 	this.control = {this.dw_amountoninvoice, this.cb_cancel, this.cb_ok}
 
-// w_pricecalculator.destroy() returns 0
+// w_pricecalculator.destroy() returns 0 [event]
 	destroy this.dw_amountoninvoice
 	destroy this.cb_cancel
 	destroy this.cb_ok
 
-// w_pricecalculator.open() returns long
+// w_pricecalculator.open() returns long [event]
 	string ls_aliasname
 	string ls_name
 	decimal ld_saleprice
@@ -72,7 +72,7 @@
 	end if
 	return message.returnvalue
 
-// dw_amountoninvoice.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_amountoninvoice.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ll_null
 	integer li_errcode
 	setnull(ll_null)
@@ -88,7 +88,7 @@
 	end choose
 	return li_errcode
 
-// dw_amountoninvoice.itemerror(long row, dwobject dwo, string data) returns long
+// dw_amountoninvoice.itemerror(long row, dwobject dwo, string data) returns long [event]
 	choose case dwo.name
 	case "amt"
 		messagebox("Amount Validation!", "Please Enter Valid Amount")
@@ -97,16 +97,16 @@
 	end choose
 	return ::message.returnvalue
 
-// dw_amountoninvoice.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_amountoninvoice.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	selecttext(0, len(gettext()))
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.istr_amountoninvoice.i_status = -1
 	parent.post event ue_close(-1)
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	if parent.id_dw.accepttext() = 1 then
 		if parent.id_dw.getitemdecimal(1, "rate") < 0 then
 			messagebox("Rate Validation!", "Please Enter Valid Net Rate")

@@ -1,12 +1,20 @@
 // window w_arg_godown (reports)  ancestor: w_arg_manf
 
-// w_arg_godown.create() returns 0
+// w_arg_godown.create() returns 0 [event]
 	call super::create
 
-// w_arg_godown.destroy() returns 0
+// w_arg_godown.destroy() returns 0 [event]
 	call super::destroy
 
-// w_arg_godown.open() returns long
+// w_arg_godown.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long [event]
+	parent.istr_arg.l_code3 = parent.dw_control.getitemnumber(1, "gcode")
+	parent.istr_arg.i_supress = parent.cbx_supress.checked
+	parent.istr_arg.i_hide = parent.cbx_hide.checked
+	parent.istr_arg.i_status = 1
+	parent.post event ue_close(1)
 	return ::message.returnvalue

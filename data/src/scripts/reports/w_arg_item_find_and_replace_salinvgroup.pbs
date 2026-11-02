@@ -1,6 +1,6 @@
 // window w_arg_item_find_and_replace_salinvgroup (reports)  ancestor: w_popup_forselection_walias2
 
-// w_arg_item_find_and_replace_salinvgroup.create() returns 0
+// w_arg_item_find_and_replace_salinvgroup.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.st_1 = create st_1
@@ -19,7 +19,7 @@
 	this.control[icurrent + 6] = this.dw_replace_saleprice
 	this.control[icurrent + 7] = this.gb_3
 
-// w_arg_item_find_and_replace_salinvgroup.destroy() returns 0
+// w_arg_item_find_and_replace_salinvgroup.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.st_1
 	destroy this.st_2
@@ -29,7 +29,7 @@
 	destroy this.dw_replace_saleprice
 	destroy this.gb_3
 
-// w_arg_item_find_and_replace_salinvgroup.open() returns long
+// w_arg_item_find_and_replace_salinvgroup.open() returns long [event]
 	long ancestorreturnvalue
 	date ld_currdate
 	string ls_text
@@ -49,22 +49,59 @@
 	this.em_enddate.text = ls_text
 	return ::message.returnvalue
 
-// w_arg_item_find_and_replace_salinvgroup.ue_close() returns 0
+// w_arg_item_find_and_replace_salinvgroup.ue_close() returns 0 [event]
 	closewithreturn(this, this.istr_arg)
 
-// em_startdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// dw_selected.losefocus() returns long [event]
+	long ancestorreturnvalue
+	long ll_icode
+	double ld_saleprice
+	ancestorreturnvalue = super::losefocus()
+	if getrow() > 0 then
+		accepttext()
+		if this.object.code[getrow()] > 0 then
+			ll_icode = this.object.code[getrow()]
+			if ll_icode > 0 then
+				SQL SELECT SalePrice =Round ( SalePrice / CASE WHEN PackUnits > 0 THEN Packunits ELSE 1 END , 2 ) INTO :ld_saleprice FROM Item WHERE ICode =:ll_icode USING sqlca;
+				if sqlca.sqlcode = 0 then
+					parent.dw_find_saleprice.object.saleprice[1] = ld_saleprice
+				end if
+			end if
+		end if
+	end if
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long [event]
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked()
+	parent.istr_arg.l_code1 = parent.id_selected.getitemnumber(1, "code")
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	parent.istr_arg.l_code2 = parent.id_selected2.getitemnumber(1, "code")
+	parent.dw_find_saleprice.accepttext()
+	parent.dw_replace_saleprice.accepttext()
+	parent.istr_arg.db_code1 = parent.dw_find_saleprice.object.saleprice[1]
+	parent.istr_arg.db_code2 = parent.dw_replace_saleprice.object.saleprice[1]
+	parent.istr_arg.i_status = 1
+	return ::message.returnvalue
+
+// em_startdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// em_enddate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// em_enddate.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// dw_replace_saleprice.getfocus() returns long
+// dw_replace_saleprice.getfocus() returns long [event]
 	long ancestorreturnvalue
 	long ll_icode
 	double ld_saleprice

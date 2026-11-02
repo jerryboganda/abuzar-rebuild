@@ -1,9 +1,43 @@
 // menu m_itemregreq_form (multientryitem)  ancestor: m_multi_entry
 
-// m_itemregreq_form.create() returns 0
+// m_itemregreq_form.create() returns 0 [event]
 	m_itemregreq_form = this
 	call super::create
 	this.text = "m_itemregreq_form"
 
-// m_itemregreq_form.destroy() returns 0
+// m_itemregreq_form.destroy() returns 0 [event]
 	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_setalternateitemaliasnames = create m_setalternateitemaliasnames
+	this.item[upperbound(this.item) + 1] = this.m_setalternateitemaliasnames
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_setalternateitemaliasnames
+
+// m_post.create() returns 0 [event]
+	call super::create
+	this.tag = ""
+	this.text = "Send~tCtrl+E"
+	this.microhelp = "Send Un-Sent item registration requests."
+	this.toolbaritemname = "Custom035!"
+	this.toolbaritemtext = "Send"
+
+// m_post.destroy() returns 0 [event]
+	call super::destroy
+
+// m_post.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_send()
+
+// m_setalternateitemaliasnames.create() returns 0 [event]
+	call super::create
+	this.text = "Set Alternate Item Alias Names~tAlt+F11"
+	this.shortcut = 634
+
+// m_setalternateitemaliasnames.destroy() returns 0 [event]
+	call super::destroy
+
+// m_setalternateitemaliasnames.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_select_alternateitemalias()

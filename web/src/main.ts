@@ -8,6 +8,9 @@ import type { Db } from './runtime/wire.ts'
 import type { PBObject } from './runtime/object.ts'
 import { Ref } from './runtime/interp.ts'
 import { startApplication, DEFAULT_CONFIG } from './app/startup.ts'
+import { buildPages } from './ui/print.ts'
+import type { NDwBase } from './runtime/native/dwctrl.ts'
+import type { NTransaction } from './runtime/native/transaction.ts'
 
 /** data files; DataWindow bundles are stored gzip-compressed */
 async function text(path: string): Promise<string | undefined> {
@@ -45,6 +48,26 @@ async function main(): Promise<void> {
     void ui.messageBox('Application error', e instanceof Error ? e.message : String(e), 'stopsign!', 'ok!', 1)
   }
   ;(window as unknown as { rt: unknown }).rt = rt
+  const dwName = q.get('dw')
+  if (dwName) {
+    // development aid: lay out one DataWindow as a printed report with the mock (or server) data
+    const ds = (await rt.instantiate('datastore')) as NDwBase
+    ds.setNative('dataobject', dwName)
+    const t = rt.globals.get('sqlca') as NTransaction
+    await t.n_connect()
+    await ds.n_settransobject(t)
+    const args = (q.get('args') ?? '').split(',').filter(Boolean).map((a) => (/^-?\d+(\.\d+)?$/.test(a) ? Number(a) : a))
+    await ds.n_retrieve(...args)
+    const host = document.createElement('div')
+    host.style.cssText = 'position:absolute;inset:0;overflow:auto;background:#808080;padding:12px'
+    for (const p of await buildPages(ds)) {
+      p.style.margin = '0 auto 12px'
+      p.style.boxShadow = '0 0 6px #000'
+      host.appendChild(p)
+    }
+    desktop.appendChild(host)
+    return
+  }
   if (q.get('app')) {
     try {
       await startApplication(rt, { ...DEFAULT_CONFIG, company: q.get('company') ?? '' })

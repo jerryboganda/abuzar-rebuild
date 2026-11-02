@@ -1,6 +1,6 @@
 // window w_arg_manufacturers_ims (reports)  ancestor: w_listarguments
 
-// w_arg_manufacturers_ims.create() returns 0
+// w_arg_manufacturers_ims.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.st_4 = create st_4
@@ -51,7 +51,7 @@
 	this.control[icurrent + 22] = this.cb_dissr
 	this.control[icurrent + 23] = this.gb_txt
 
-// w_arg_manufacturers_ims.destroy() returns 0
+// w_arg_manufacturers_ims.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.st_4
 	destroy this.st_8
@@ -77,7 +77,7 @@
 	destroy this.cb_dissr
 	destroy this.gb_txt
 
-// w_arg_manufacturers_ims.open() returns long
+// w_arg_manufacturers_ims.open() returns long [event]
 	long ancestorreturnvalue
 	long ll_counter
 	long ll_rowcount
@@ -116,61 +116,206 @@
 	end if
 	return message.returnvalue
 
-// cb_prod.clicked() returns long
+// cb_ok.clicked() returns long [event]
+	long ancestorreturnvalue
+	long ll_count
+	long ll_counter
+	long ll_innercounter
+	long ll_found
+	datastore lds_temp
+	ancestorreturnvalue = super::clicked()
+	lds_temp = create datastore
+	if parent.dw_price.accepttext() = 1 then
+		parent.dw_price.setfocus()
+	else
+		messagebox("Sale Type Validation", "Please select a valid sale type~r~nLoose Qty or Pack Qty")
+		return ::message.returnvalue
+	end if
+	if parent.cbx_all.checked = true then
+		for ll_counter = 1 to parent.idc_categories.rowcount()
+			parent.istr_arg.ia_integerlist[ll_counter] = parent.idc_categories.getitemnumber(ll_counter, "manfcode")
+		next
+	else
+		for ll_counter = 1 to ll_counter
+			ll_found = parent.idc_categories.find("name ='" + parent.lb_selectedcategories.text(ll_counter) + "'", 1, parent.idc_categories.rowcount())
+			if ll_found > 0 then
+				parent.istr_arg.ia_integerlist[ll_counter] = parent.idc_categories.getitemnumber(ll_found, "manfcode")
+			end if
+		next
+	end if
+	parent.istr_arg.l_code1 = parent.dw_price.object.packing[1]
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	parent.istr_arg.i_supress = parent.cbx_supress.checked
+	parent.istr_arg.i_hide = parent.cbx_hide.checked
+	parent.istr_arg.i_status = 1
+	if parent.cbx_prod.checked = true then
+		lds_temp.dataobject = "d_productdata_ims"
+		lds_temp.settransobject(sqlca)
+		lds_temp.retrieve(parent.istr_arg.ia_integerlist, parent.istr_arg.d_sdate, parent.istr_arg.d_edate)
+		if f_save_from_ds_to_fff(parent.is_prod, lds_temp, "~t", false) = 0 then
+			messagebox("Product Data Generation Problem", "Error Generating Customer Text File~r~nPlease Try Later")
+			destroy lds_temp
+			parent.post event ue_close(0)
+		end if
+	end if
+	if parent.cbx_cust.checked = true then
+		lds_temp.dataobject = "d_customerdata_ims"
+		lds_temp.settransobject(sqlca)
+		lds_temp.retrieve()
+		if f_save_from_ds_to_fff(parent.is_cust, lds_temp, "~t", false) = 0 then
+			messagebox("Customer Data Generation Problem", "Error Generating Customer Text File~r~nPlease Try Later")
+			destroy lds_temp
+			parent.post event ue_close(0)
+		end if
+	end if
+	if parent.cbx_transale.checked = true then
+		lds_temp.dataobject = "d_salestran_ims"
+		lds_temp.settransobject(sqlca)
+		lds_temp.retrieve(parent.istr_arg.ia_integerlist, parent.istr_arg.d_sdate, parent.istr_arg.d_edate, parent.istr_arg.l_code1, parent.il_scope)
+		if f_save_from_ds_to_fff(parent.is_transale, lds_temp, "~t", false) = 0 then
+			messagebox("Sale Data Generation Problem", "Error Generating Sales Transaction Text File~r~nPlease Try Later")
+			destroy lds_temp
+			return ::message.returnvalue
+		end if
+		return
+	end if
+	if parent.cbx_transalebns.checked = true then
+		lds_temp.dataobject = "d_salestranbns_ims"
+		lds_temp.settransobject(sqlca)
+		lds_temp.retrieve(parent.istr_arg.ia_integerlist, parent.istr_arg.d_sdate, parent.istr_arg.d_edate, parent.istr_arg.l_code1, parent.il_scope)
+		if f_save_from_ds_to_fff(parent.is_transalebns, lds_temp, "~t", false) = 0 then
+			messagebox("Sale Data Generation Problem", "Error Generating Sales (Bonus) Transaction Text File~r~nPlease Try Later")
+			destroy lds_temp
+			return ::message.returnvalue
+		end if
+		return
+	end if
+	if parent.cbx_dissal.checked = true then
+		lds_temp.dataobject = "d_salesdistinctdates_ims"
+		lds_temp.settransobject(sqlca)
+		lds_temp.retrieve(parent.istr_arg.ia_integerlist, parent.istr_arg.d_sdate, parent.istr_arg.d_edate, parent.il_scope)
+		if f_save_from_ds_to_fff(parent.is_dissal, lds_temp, "~t", false) = 0 then
+			messagebox("Sale Data Generation Problem", "Error Generating Sales Distinct Dates Text File~r~nPlease Try Later")
+			destroy lds_temp
+			return ::message.returnvalue
+		end if
+		return
+	end if
+	if parent.cbx_transr.checked = true then
+		lds_temp.dataobject = "d_srtran_ims"
+		lds_temp.settransobject(sqlca)
+		lds_temp.retrieve(parent.istr_arg.ia_integerlist, parent.istr_arg.d_sdate, parent.istr_arg.d_edate, parent.istr_arg.l_code1, parent.il_scope)
+		if f_save_from_ds_to_fff(parent.is_transr, lds_temp, "~t", false) = 0 then
+			messagebox("Sale Return Data Generation Problem", "Error Generating Sales Return Transaction Text File~r~nPlease Try Later")
+			destroy lds_temp
+			return ::message.returnvalue
+		end if
+		return
+	end if
+	if parent.cbx_transrbns.checked = true then
+		lds_temp.dataobject = "d_srtranbns_ims"
+		lds_temp.settransobject(sqlca)
+		lds_temp.retrieve(parent.istr_arg.ia_integerlist, parent.istr_arg.d_sdate, parent.istr_arg.d_edate, parent.istr_arg.l_code1, parent.il_scope)
+		if f_save_from_ds_to_fff(parent.is_transrbns, lds_temp, "~t", false) = 0 then
+			messagebox("Sale Return Data Generation Problem", "Error Generating Sales Return (Bonus) Transaction Text File~r~nPlease Try Later")
+			destroy lds_temp
+			return ::message.returnvalue
+		end if
+		return
+	end if
+	if parent.cbx_salval.checked = true then
+		lds_temp.dataobject = "d_totalsalesvalue_ims"
+		lds_temp.settransobject(sqlca)
+		lds_temp.retrieve(parent.istr_arg.ia_integerlist, parent.istr_arg.d_sdate, parent.istr_arg.d_edate, parent.istr_arg.l_code1, parent.il_scope)
+		if f_save_from_ds_to_fff(parent.is_salval, lds_temp, "~t", false) = 0 then
+			messagebox("Sale Value Data Generation Problem", "Error Generating Sales Value Text File~r~nPlease Try Later")
+			destroy lds_temp
+			return ::message.returnvalue
+		end if
+		return
+	end if
+	if parent.cbx_srval.checked = true then
+		lds_temp.dataobject = "d_totalsrvalue_ims"
+		lds_temp.settransobject(sqlca)
+		lds_temp.retrieve(parent.istr_arg.ia_integerlist, parent.istr_arg.d_sdate, parent.istr_arg.d_edate, parent.istr_arg.l_code1, parent.il_scope)
+		if f_save_from_ds_to_fff(parent.is_srval, lds_temp, "~t", false) = 0 then
+			messagebox("Sale Return Value Data Generation Problem", "Error Generating Sales Return Value Text File~r~nPlease Try Later")
+			destroy lds_temp
+			return ::message.returnvalue
+		end if
+		return
+	end if
+	if parent.cbx_dissr.checked = true then
+		lds_temp.dataobject = "d_srdistinctdates_ims"
+		lds_temp.settransobject(sqlca)
+		lds_temp.retrieve(parent.istr_arg.ia_integerlist, parent.istr_arg.d_sdate, parent.istr_arg.d_edate, parent.il_scope)
+		if f_save_from_ds_to_fff(parent.is_dissr, lds_temp, "~t", false) = 0 then
+			messagebox("Sale Data Generation Problem", "Error Generating Sale Return Distinct Dates Text File~r~nPlease Try Later")
+			destroy lds_temp
+			return ::message.returnvalue
+		end if
+		return
+	end if
+	destroy lds_temp
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// cb_prod.clicked() returns long [event]
 	string ls_named
 	integer li_value
 	li_value = getfilesavename("Select File Location", parent.is_prod, ls_named, "TXT", "All Files (*.*),*.*," + "All Files (*.*),*.*")
 	return ::message.returnvalue
 
-// cb_transale.clicked() returns long
+// cb_transale.clicked() returns long [event]
 	string ls_named
 	integer li_value
 	li_value = getfilesavename("Select File Location", parent.is_transale, ls_named, "TXT", "All Files (*.*),*.*," + "All Files (*.*),*.*")
 	return ::message.returnvalue
 
-// cb_cust.clicked() returns long
+// cb_cust.clicked() returns long [event]
 	string ls_named
 	integer li_value
 	li_value = getfilesavename("Select File Location", parent.is_cust, ls_named, "TXT", "All Files (*.*),*.*," + "All Files (*.*),*.*")
 	return ::message.returnvalue
 
-// cb_transalebns.clicked() returns long
+// cb_transalebns.clicked() returns long [event]
 	string ls_named
 	integer li_value
 	li_value = getfilesavename("Select File Location", parent.is_transalebns, ls_named, "TXT", "All Files (*.*),*.*," + "All Files (*.*),*.*")
 	return ::message.returnvalue
 
-// cb_transr.clicked() returns long
+// cb_transr.clicked() returns long [event]
 	string ls_named
 	integer li_value
 	li_value = getfilesavename("Select File Location", parent.is_transr, ls_named, "TXT", "All Files (*.*),*.*," + "All Files (*.*),*.*")
 	return ::message.returnvalue
 
-// cb_transrbns.clicked() returns long
+// cb_transrbns.clicked() returns long [event]
 	string ls_named
 	integer li_value
 	li_value = getfilesavename("Select File Location", parent.is_transrbns, ls_named, "TXT", "All Files (*.*),*.*," + "All Files (*.*),*.*")
 	return ::message.returnvalue
 
-// cb_salval.clicked() returns long
+// cb_salval.clicked() returns long [event]
 	string ls_named
 	integer li_value
 	li_value = getfilesavename("Select File Location", parent.is_salval, ls_named, "TXT", "All Files (*.*),*.*," + "All Files (*.*),*.*")
 	return ::message.returnvalue
 
-// cb_srval.clicked() returns long
+// cb_srval.clicked() returns long [event]
 	string ls_named
 	integer li_value
 	li_value = getfilesavename("Select File Location", parent.is_srval, ls_named, "TXT", "All Files (*.*),*.*," + "All Files (*.*),*.*")
 	return ::message.returnvalue
 
-// cb_dissal.clicked() returns long
+// cb_dissal.clicked() returns long [event]
 	string ls_named
 	integer li_value
 	li_value = getfilesavename("Select File Location", parent.is_dissal, ls_named, "TXT", "All Files (*.*),*.*," + "All Files (*.*),*.*")
 	return ::message.returnvalue
 
-// cb_dissr.clicked() returns long
+// cb_dissr.clicked() returns long [event]
 	string ls_named
 	integer li_value
 	li_value = getfilesavename("Select File Location", parent.is_dissr, ls_named, "TXT", "All Files (*.*),*.*," + "All Files (*.*),*.*")

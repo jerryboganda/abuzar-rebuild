@@ -1,6 +1,6 @@
 // window w_arg_item_smans_sdate_ldate (reports)  ancestor: w_popup_forselection_walias
 
-// w_arg_item_smans_sdate_ldate.create() returns 0
+// w_arg_item_smans_sdate_ldate.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.gb_2 = create gb_2
@@ -29,7 +29,7 @@
 	this.control[icurrent + 11] = this.cbx_all
 	this.control[icurrent + 12] = this.gb_3
 
-// w_arg_item_smans_sdate_ldate.destroy() returns 0
+// w_arg_item_smans_sdate_ldate.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.gb_2
 	destroy this.st_1
@@ -44,7 +44,7 @@
 	destroy this.cbx_all
 	destroy this.gb_3
 
-// w_arg_item_smans_sdate_ldate.open() returns long
+// w_arg_item_smans_sdate_ldate.open() returns long [event]
 	long ancestorreturnvalue
 	integer rtncode
 	long ll_rowcount
@@ -73,32 +73,70 @@
 	next
 	return ::message.returnvalue
 
-// w_arg_item_smans_sdate_ldate.ue_close() returns 0
+// w_arg_item_smans_sdate_ldate.ue_close() returns 0 [event]
 	closewithreturn(this, this.istr_arg)
 
-// em_startdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_cancel.clicked() returns long [event]
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long [event]
+	long ll_counter
+	long ll_found
+	if parent.id_selected.accepttext() = -1 then
+		parent.id_selected.setfocus()
+		return ::message.returnvalue
+	elseif isnull(parent.id_selected.getitemstring(parent.id_selected.getrow(), "name")) then
+		messagebox("Name Validation", "Please enter valid value for Name.")
+		parent.id_selected.setcolumn(1)
+		parent.id_selected.setfocus()
+		return ::message.returnvalue
+	end if
+	parent.is_popup_selection.l_code = parent.id_selected.getitemnumber(parent.id_selected.getrow(), "code")
+	parent.is_popup_selection.s_name = parent.id_selected.getitemstring(parent.id_selected.getrow(), "name")
+	parent.istr_arg.l_code1 = parent.id_selected.getitemnumber(1, "code")
+	if parent.cbx_all.checked = true then
+		for ll_counter = 1 to parent.idc_selectedvalue.rowcount()
+			parent.istr_arg.ia_integerlist[ll_counter] = parent.idc_selectedvalue.getitemnumber(ll_counter, "salesmancode")
+		next
+	else
+		parent.istr_arg.ia_integerlist[1] = -1000
+		for ll_counter = 1 to ll_counter
+			ll_found = parent.idc_selectedvalue.find("name ='" + parent.lb_selected.text(ll_counter) + "'", 1, parent.idc_selectedvalue.rowcount())
+			if ll_found > 0 then
+				parent.istr_arg.ia_integerlist[ll_counter] = parent.idc_selectedvalue.getitemnumber(ll_found, "salesmancode")
+			end if
+		next
+	end if
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	parent.istr_arg.i_status = 1
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// em_startdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// em_enddate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// em_enddate.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// dw_control.ue_enterkey() returns long
+// dw_control.ue_enterkey() returns long [event]
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// lb_selectable.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// lb_selectable.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		post event doubleclicked(selectedindex())
 	end if
 	return ::message.returnvalue
 
-// lb_selectable.doubleclicked(integer index) returns long
+// lb_selectable.doubleclicked(integer index) returns long [event]
 	string ls_item
 	long ll_selectedindex
 	ls_item = string(selecteditem())
@@ -120,23 +158,23 @@
 	end if
 	return ::message.returnvalue
 
-// lb_selectable.getfocus() returns long
+// lb_selectable.getfocus() returns long [event]
 	selectitem(0)
 	selectitem(1)
 	return ::message.returnvalue
 
-// lb_selected.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// lb_selected.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		post event doubleclicked(selectedindex())
 	end if
 	return ::message.returnvalue
 
-// lb_selected.getfocus() returns long
+// lb_selected.getfocus() returns long [event]
 	selectitem(0)
 	selectitem(1)
 	return ::message.returnvalue
 
-// lb_selected.doubleclicked(integer index) returns long
+// lb_selected.doubleclicked(integer index) returns long [event]
 	string ls_item
 	long ll_selectedindex
 	ll_selectedindex = selectedindex()
@@ -154,7 +192,7 @@
 	end if
 	return ::message.returnvalue
 
-// cbx_all.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// cbx_all.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if

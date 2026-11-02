@@ -10,24 +10,78 @@
 	end if
 	return b_flag
 
-// w_precaution_form.create() returns 0
+// w_precaution_form.create() returns 0 [event]
 	call super::create
 
-// w_precaution_form.destroy() returns 0
+// w_precaution_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_precaution_form.activate() returns long
+// w_precaution_form.activate() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::activate()
 	this.windowstate = maximized!
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_precaution_form.open() returns long
+// w_precaution_form.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.is_tablename = "Precaution"
+	return ::message.returnvalue
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if parent.parent.parent.wf_duplicatename(data) then
+			messagebox("Name Validation", "Duplication Name Error~n~rPlease Choose Some Other Name")
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.sqlpreview(sqlpreviewfunction request, sqlpreviewtype sqltype, string sqlsyntax, dwbuffer buffer, long row) returns long [event]
+	long ancestorreturnvalue
+	string ls_sql
+	string ls_newsql
+	string ls_sql_part
+	long ll_pos
+	long ll_commacount
+	long ll_commapos
+	ancestorreturnvalue = super::sqlpreview(request, sqltype, sqlsyntax, buffer, row)
+	if sqltype = previewupdate! then
+		ls_sql = sqlsyntax
+		ll_pos = pos(lower(ls_sql), "localprecaution = ", 1)
+		if ll_pos > 0 then
+			ls_newsql = mid(ls_sql, 1, ll_pos - 1) + "localprecaution = N" + mid(ls_sql, ll_pos + 18)
+		else
+			ls_newsql = ls_sql
+		end if
+		setsqlpreview(ls_newsql)
+	elseif sqltype = previewinsert! then
+		ls_sql = sqlsyntax
+		ls_sql_part = "'" + getitemstring(getrow(), "localprecaution") + "'"
+		ll_pos = pos(lower(ls_sql), ls_sql_part, 1)
+		if ll_pos > 0 then
+			ls_newsql = replace(ls_sql, ll_pos, len(ls_sql_part), "N" + ls_sql_part)
+		else
+			ls_newsql = ls_sql
+		end if
+		setsqlpreview(ls_newsql)
+	end if
+	return 0
+
+// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	choose case dwo.name
+	case "localprecaution"
+		f_set_keyboard_local()
+	case else
+		f_set_keyboard_english()
+	end choose
 	return ::message.returnvalue

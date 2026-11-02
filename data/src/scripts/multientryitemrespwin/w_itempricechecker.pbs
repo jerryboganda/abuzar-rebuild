@@ -232,18 +232,18 @@
 	end if
 	return ls_rep
 
-// w_itempricechecker.create() returns 0
+// w_itempricechecker.create() returns 0 [event]
 	this.dw_comment = create dw_comment
 	this.cb_clear = create cb_clear
 	this.dw_control = create dw_control
 	this.control = {this.dw_comment, this.cb_clear, this.dw_control}
 
-// w_itempricechecker.destroy() returns 0
+// w_itempricechecker.destroy() returns 0 [event]
 	destroy this.dw_comment
 	destroy this.cb_clear
 	destroy this.dw_control
 
-// w_itempricechecker.open() returns long
+// w_itempricechecker.open() returns long [event]
 	environment le_env
 	long ll_win_width
 	long ll_win_height
@@ -286,11 +286,11 @@
 	wf_set_preferences()
 	return ::message.returnvalue
 
-// w_itempricechecker.timer() returns long
+// w_itempricechecker.timer() returns long [event]
 	this.cb_clear.triggerevent(clicked!)
 	return ::message.returnvalue
 
-// w_itempricechecker.key(keycode key, unsignedlong keyflags) returns long
+// w_itempricechecker.key(keycode key, unsignedlong keyflags) returns long [event]
 	long ll_icode
 	if key = keyf7! and f_rightexists(5053) then
 		this.dw_control.accepttext()
@@ -306,13 +306,13 @@
 	end if
 	return 0
 
-// cb_clear.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_clear.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		postevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_clear.clicked() returns long
+// cb_clear.clicked() returns long [event]
 	parent.dw_control.reset()
 	parent.dw_control.insertrow(0)
 	parent.dw_control.setrow(0)
@@ -321,7 +321,7 @@
 	timer(0)
 	return ::message.returnvalue
 
-// dw_control.ue_enterkey() returns long
+// dw_control.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	string ls_null
 	ancestorreturnvalue = super::ue_enterkey()
@@ -332,7 +332,7 @@
 	end if
 	return 1
 
-// dw_control.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_control.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	integer li_errcode
 	long ll_code
@@ -359,7 +359,7 @@
 	end choose
 	return li_errcode
 
-// dw_control.itemerror(long row, dwobject dwo, string data) returns long
+// dw_control.itemerror(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	integer li_errcode
 	long ll_code
@@ -377,13 +377,13 @@
 	end choose
 	return 1
 
-// dw_control.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_control.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
 	selecttext(1, len(gettext()))
 	return ::message.returnvalue
 
-// dw_control.editchanged(long row, dwobject dwo, string data) returns long
+// dw_control.editchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::editchanged(row, dwo, data)
 	parent.ib_editflag = true

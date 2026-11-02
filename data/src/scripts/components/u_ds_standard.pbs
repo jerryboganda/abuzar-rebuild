@@ -1,8 +1,8 @@
 // userobject u_ds_standard (components)  ancestor: datastore
 
-// u_ds_standard.uevent_dberr_reqmissing(dwbuffer adwb_buffer, long al_row) returns 0
+// u_ds_standard.uevent_dberr_reqmissing(dwbuffer adwb_buffer, long al_row) returns 0 [event]
 
-// u_ds_standard.uevent_dberr_message(long al_errorcode, string as_errortext, long al_row, dwbuffer adwb_buffer) returns 0
+// u_ds_standard.uevent_dberr_message(long al_errorcode, string as_errortext, long al_row, dwbuffer adwb_buffer) returns 0 [event]
 	s_dberror ls_dberror
 	choose case al_errorcode
 	case -193
@@ -37,17 +37,17 @@
 	end choose
 	openwithparm(w_dberror, ls_dberror)
 
-// u_ds_standard.uevent_dberr_initial() returns 0
+// u_ds_standard.uevent_dberr_initial() returns 0 [event]
 
-// u_ds_standard.create() returns 0
+// u_ds_standard.create() returns 0 [event]
 	call super::create
 	triggerevent("constructor")
 
-// u_ds_standard.destroy() returns 0
+// u_ds_standard.destroy() returns 0 [event]
 	triggerevent("destructor")
 	call super::destroy
 
-// u_ds_standard.dberror(long sqldbcode, string sqlerrtext, string sqlsyntax, dwbuffer buffer, long row) returns long
+// u_ds_standard.dberror(long sqldbcode, string sqlerrtext, string sqlsyntax, dwbuffer buffer, long row) returns long [event]
 	event uevent_dberr_initial()
 	post event uevent_dberr_message(sqldbcode, sqlerrtext, row, buffer)
 	SQL rollback USING sqlca;

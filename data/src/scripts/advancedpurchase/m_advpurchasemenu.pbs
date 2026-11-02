@@ -1,8 +1,207 @@
 // menu m_advpurchasemenu (advancedpurchase)  ancestor: m_multi_entry
 
-// m_advpurchasemenu.create() returns 0
+// m_advpurchasemenu.create() returns 0 [event]
 	m_advpurchasemenu = this
 	call super::create
 
-// m_advpurchasemenu.destroy() returns 0
+// m_advpurchasemenu.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_open = create m_open
+	this.m_populateitems = create m_populateitems
+	this.m_savepost = create m_savepost
+	this.m_itempurchasehistory = create m_itempurchasehistory
+	this.m_setquantity = create m_setquantity
+	this.m_purchaseslip = create m_purchaseslip
+	this.m_setserverdate = create m_setserverdate
+	this.m_recalculate = create m_recalculate
+	this.m_showaccountledger = create m_showaccountledger
+	this.m_showsummaryaccountbalance = create m_showsummaryaccountbalance
+	this.item[upperbound(this.item) + 1] = this.m_open
+	this.item[upperbound(this.item) + 1] = this.m_populateitems
+	this.item[upperbound(this.item) + 1] = this.m_savepost
+	this.item[upperbound(this.item) + 1] = this.m_itempurchasehistory
+	this.item[upperbound(this.item) + 1] = this.m_setquantity
+	this.item[upperbound(this.item) + 1] = this.m_purchaseslip
+	this.item[upperbound(this.item) + 1] = this.m_setserverdate
+	this.item[upperbound(this.item) + 1] = this.m_recalculate
+	this.item[upperbound(this.item) + 1] = this.m_showaccountledger
+	this.item[upperbound(this.item) + 1] = this.m_showsummaryaccountbalance
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_open
+	destroy this.m_populateitems
+	destroy this.m_savepost
+	destroy this.m_itempurchasehistory
+	destroy this.m_setquantity
+	destroy this.m_purchaseslip
+	destroy this.m_setserverdate
+	destroy this.m_recalculate
+	destroy this.m_showaccountledger
+	destroy this.m_showsummaryaccountbalance
+
+// m_save.create() returns 0 [event]
+	call super::create
+
+// m_save.destroy() returns 0 [event]
+	call super::destroy
+
+// m_save.clicked() returns 0 [event]
+	if f_stringpreferences("PurchaseAutoPosting") = "Y" then
+		this.parentwindow.dynamic wf_saveandpost()
+	else
+		this.parentwindow.triggerevent("ue_save")
+	end if
+	if this.parentwindow.dynamic wf_commitform() = true then
+		this.parentwindow.postevent("ue_new")
+	end if
+
+// m_options.clicked() returns 0 [event]
+	long ll_manfcode
+	long ll_pocode
+	call super::clicked
+	this.parentwindow.dynamic wf_getpomanfcode(ll_pocode, ll_manfcode)
+	this.parentwindow.dynamic wf_populatedetaildwfrompo(ll_pocode, ll_manfcode)
+
+// m_options.create() returns 0 [event]
+	call super::create
+	this.visible = true
+	this.text = "Edit Purchase Order"
+	this.enabled = false
+
+// m_options.destroy() returns 0 [event]
+	call super::destroy
+
+// m_open.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_populatepurorder()
+
+// m_open.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "&Open~tCtrl+J"
+	this.enabled = false
+	this.shortcut = 330
+
+// m_open.destroy() returns 0 [event]
+	call super::destroy
+
+// m_populateitems.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_populatefiltereditems()
+
+// m_populateitems.create() returns 0 [event]
+	call super::create
+	this.text = "Populate Items"
+
+// m_populateitems.destroy() returns 0 [event]
+	call super::destroy
+
+// m_savepost.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_saveandpost()
+	if this.parentwindow.dynamic wf_commitform() = true then
+		this.parentwindow.postevent("ue_new")
+	end if
+
+// m_savepost.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Save And Post~tCtrl+Q"
+	this.enabled = false
+	this.checked = true
+	this.shortcut = 337
+
+// m_savepost.destroy() returns 0 [event]
+	call super::destroy
+
+// m_itempurchasehistory.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_itempurchasehistory()
+
+// m_itempurchasehistory.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Item Purchase History~tCtrl+H"
+	this.enabled = false
+	this.shortcut = 328
+
+// m_itempurchasehistory.destroy() returns 0 [event]
+	call super::destroy
+
+// m_setquantity.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_setquantity()
+
+// m_setquantity.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Set Q&uantity~tCtrl+U"
+	this.enabled = false
+	this.shortcut = 341
+
+// m_setquantity.destroy() returns 0 [event]
+	call super::destroy
+
+// m_purchaseslip.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_purchaseslip()
+
+// m_purchaseslip.create() returns 0 [event]
+	call super::create
+	this.text = "Purchase Slip~tCtrl+M"
+	this.shortcut = 333
+
+// m_purchaseslip.destroy() returns 0 [event]
+	call super::destroy
+
+// m_setserverdate.clicked() returns 0 [event]
+	if this.checked then
+		this.checked = false
+	else
+		this.checked = true
+	end if
+	this.parentwindow.dynamic wf_fetchserverdate(this.checked)
+
+// m_setserverdate.create() returns 0 [event]
+	call super::create
+	this.text = "Set Server Date"
+	this.checked = true
+
+// m_setserverdate.destroy() returns 0 [event]
+	call super::destroy
+
+// m_recalculate.create() returns 0 [event]
+	call super::create
+	this.text = "Re-Calculate~tCtrl+F8"
+	this.shortcut = 375
+	this.microhelp = "Re-Calculates the purchase rate, expense ratio, and totals."
+
+// m_recalculate.destroy() returns 0 [event]
+	call super::destroy
+
+// m_recalculate.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_grandtotal()
+
+// m_showaccountledger.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_showaccountledger()
+
+// m_showaccountledger.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Show Account Ledger~tF1"
+	this.enabled = false
+	this.shortcut = 112
+
+// m_showaccountledger.destroy() returns 0 [event]
+	call super::destroy
+
+// m_showsummaryaccountbalance.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_showsummaryaccountbalance()
+
+// m_showsummaryaccountbalance.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Show Summary Account Balance~tAlt+F1"
+	this.enabled = false
+	this.shortcut = 624
+
+// m_showsummaryaccountbalance.destroy() returns 0 [event]
 	call super::destroy

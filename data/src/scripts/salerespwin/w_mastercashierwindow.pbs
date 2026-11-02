@@ -1,6 +1,6 @@
 // window w_mastercashierwindow (salerespwin)  ancestor: window
 
-// w_mastercashierwindow.ue_close(integer ai_status) returns integer
+// w_mastercashierwindow.ue_close(integer ai_status) returns integer [event]
 	long ll_headerrow
 	long ll_detailrow
 	long ll_footerrow
@@ -146,7 +146,7 @@
 	end if
 	return 0
 
-// w_mastercashierwindow.create() returns 0
+// w_mastercashierwindow.create() returns 0 [event]
 	this.dw_footer = create dw_footer
 	this.dw_detail = create dw_detail
 	this.dw_header = create dw_header
@@ -154,14 +154,14 @@
 	this.cb_ok = create cb_ok
 	this.control = {this.dw_footer, this.dw_detail, this.dw_header, this.cb_cancel, this.cb_ok}
 
-// w_mastercashierwindow.destroy() returns 0
+// w_mastercashierwindow.destroy() returns 0 [event]
 	destroy this.dw_footer
 	destroy this.dw_detail
 	destroy this.dw_header
 	destroy this.cb_cancel
 	destroy this.cb_ok
 
-// w_mastercashierwindow.open() returns long
+// w_mastercashierwindow.open() returns long [event]
 	string ls_invcode
 	long ll_rtcode
 	long ll_headerrow
@@ -245,7 +245,7 @@
 	end if
 	return message.returnvalue
 
-// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	long ll_null
 	long ll_res
@@ -262,38 +262,38 @@
 	end choose
 	return li_errcode
 
-// dw_detail.ue_enterkey() returns long
+// dw_detail.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_detail.getfocus() returns long
+// dw_detail.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	parent.wf_set_invbalance()
 	return ::message.returnvalue
 
-// dw_detail.losefocus() returns long
+// dw_detail.losefocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::losefocus()
 	parent.wf_set_invbalance()
 	return ::message.returnvalue
 
-// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
 	parent.wf_set_invbalance()
 	selecttext(1, len(gettext()))
 	return ::message.returnvalue
 
-// dw_header.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_header.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
 	selecttext(1, len(gettext()))
 	return ::message.returnvalue
 
-// dw_header.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_header.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	long ll_null
 	long ll_res
@@ -328,30 +328,30 @@
 	end choose
 	return li_errcode
 
-// dw_header.ue_enterkey() returns long
+// dw_header.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// cb_cancel.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_cancel.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		triggerevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.istr_cash.i_status = -1
 	parent.post event ue_close(-1)
 	return ::message.returnvalue
 
-// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		triggerevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	double ld_totamt
 	long ll_res
 	if parent.dw_header.accepttext() < 1 then

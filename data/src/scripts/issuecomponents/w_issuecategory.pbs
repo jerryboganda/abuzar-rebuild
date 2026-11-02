@@ -54,7 +54,7 @@
 		next
 	end if
 
-// w_issuecategory.create() returns 0
+// w_issuecategory.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	if isvalid(this.menuid) then
@@ -64,13 +64,13 @@
 		this.menuid = create m_issuecatmenu
 	end if
 
-// w_issuecategory.destroy() returns 0
+// w_issuecategory.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_issuecategory.ue_newform() returns 0
+// w_issuecategory.ue_newform() returns 0 [event]
 	setredraw(false)
 	this.i_editmode = 1
 	this.i_retrievemode = 2
@@ -101,7 +101,7 @@
 	wf_protectdw(this.id_detail, 0)
 	setredraw(true)
 
-// w_issuecategory.ue_detail() returns 0
+// w_issuecategory.ue_detail() returns 0 [event]
 	integer li_protect
 	call super::ue_detail
 	if this.id_master.object.posted[this.id_master.rowcount()] = "Y" then
@@ -116,7 +116,7 @@
 	end if
 	this.im_menu.m_file.m_save.enabled = true
 
-// w_issuecategory.ue_save() returns 0
+// w_issuecategory.ue_save() returns 0 [event]
 	long ll_invid
 	long ll_mastercurrrow
 	long ll_counter
@@ -201,14 +201,14 @@
 	this.id_detaildw.reset()
 	setpointer(arrow!)
 
-// w_issuecategory.ue_postopen() returns 0
+// w_issuecategory.ue_postopen() returns 0 [event]
 	m_issuecatmenu lm_menu
 	call super::ue_postopen
 	lm_menu = this.menuid
 	this.id_detaildw = this.tab_retrieve.tabpage_detail.dw_detaildw
 	this.id_detaildw.settransobject(this.it_transobject)
 
-// w_issuecategory.open() returns long
+// w_issuecategory.open() returns long [event]
 	m_entry lm_menu
 	long ll_width
 	long ll_height
@@ -237,3 +237,66 @@
 	this.tab_retrieve.tabpage_detail.dw_itemslist.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width * 0.73
 	setredraw(true)
 	return ::message.returnvalue
+
+// tabpage_detail.create() returns 0 [event]
+	integer icurrent
+	this.dw_detaildw = create dw_detaildw
+	call super::create
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_detaildw
+
+// tabpage_detail.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.dw_detaildw
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	integer ll_dup_shortname
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	li_errcode = 0
+	choose case dwo.name
+	case "name"
+		if isnull(data) then
+			messagebox("Name Validation", "Please enter some Valid Name")
+			li_errcode = 1
+		elseif parent.parent.parent.wf_duplicatename(data) then
+			messagebox("Name Validation", "Name Already Exists~r~nPlease enter some other Name")
+			li_errcode = 1
+		end if
+	case "shortname"
+		if isnull(data) then
+			messagebox("Short Name Validation", "Please enter some Valid Short Name")
+			li_errcode = 1
+		elseif parent.parent.parent.wf_duplicateshortname(data) then
+			messagebox("Short Name Validation", "Short Name Already Exists~r~nPlease enter some other Short Name")
+			li_errcode = 1
+		end if
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.getfocus() returns long [event]
+	if parent.parent.parent.im_menu.m_file.m_save.enabled = true then
+		if not parent.parent.parent.ib_focusdetail then
+			parent.parent.parent.ib_focusdetail = true
+		end if
+		if parent.parent.parent.ib_itemslistopen then
+		end if
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.ue_enterkey() returns long [event]
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_itemslist.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
+	return ::message.returnvalue
+
+// dw_itemslist.dberror(long sqldbcode, string sqlerrtext, string sqlsyntax, dwbuffer buffer, long row) returns long [event]
+	return ::message.returnvalue
+
+// dw_itemslist.uevent_dberr_initial() returns 0 [event]
+
+// dw_itemslist.uevent_dberr_message(long al_errorcode, string as_errortext, long al_row, dwbuffer adwb_buffer) returns 0 [event]
+
+// dw_itemslist.uevent_dberr_reqmissing(dwbuffer adwb_buffer, long al_row) returns 0 [event]

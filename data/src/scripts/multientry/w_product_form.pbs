@@ -1,6 +1,6 @@
 // window w_product_form (multientry)  ancestor: w_multi_entry
 
-// w_product_form.ue_print_deliveryletter() returns 0
+// w_product_form.ue_print_deliveryletter() returns 0 [event]
 	long ll_custcode
 	long ll_row
 	long ll_invcode
@@ -25,7 +25,7 @@
 		wf_print_deliveryletter(ll_invcode)
 	end if
 
-// w_product_form.ue_print_passagecertificate() returns 0
+// w_product_form.ue_print_passagecertificate() returns 0 [event]
 	long ll_custcode
 	long ll_row
 	long ll_invcode
@@ -50,7 +50,7 @@
 		wf_print_passage_certificate(ll_invcode)
 	end if
 
-// w_product_form.ue_print_gatepass() returns 0
+// w_product_form.ue_print_gatepass() returns 0 [event]
 	long ll_custcode
 	long ll_row
 	long ll_invcode
@@ -182,7 +182,7 @@
 	end if
 	return 0
 
-// w_product_form.create() returns 0
+// w_product_form.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	if isvalid(this.menuid) then
@@ -195,14 +195,14 @@
 	icurrent = upperbound(this.control)
 	this.control[icurrent + 1] = this.dw_print
 
-// w_product_form.destroy() returns 0
+// w_product_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 	destroy this.dw_print
 
-// w_product_form.ue_save() returns 0
+// w_product_form.ue_save() returns 0 [event]
 	long ll_mastercurrrow
 	long ll_invid
 	long ll_detailrows
@@ -261,7 +261,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_product_form.ue_newform() returns 0
+// w_product_form.ue_newform() returns 0 [event]
 	m_productmenu lm_menu
 	wf_setmenu(this.menuid)
 	lm_menu = this.menuid
@@ -297,9 +297,9 @@
 	this.id_master.setfocus()
 	this.id_master.setcolumn("name")
 
-// w_product_form.ue_newitem() returns 0
+// w_product_form.ue_newitem() returns 0 [event]
 
-// w_product_form.ue_detail() returns 0
+// w_product_form.ue_detail() returns 0 [event]
 	m_productmenu lm_menu
 	call super::ue_detail
 	wf_setmenu(this.menuid)
@@ -318,7 +318,7 @@
 	end if
 	lm_menu.m_file.m_save.enabled = true
 
-// w_product_form.ue_postopen() returns 0
+// w_product_form.ue_postopen() returns 0 [event]
 	string ls_describe
 	setredraw(false)
 	wf_connect()
@@ -369,7 +369,7 @@
 	this.ids_itemrecyclebin.tag = this.id_detail.dataobject
 	this.ids_itemrecyclebin.settransobject(this.it_transobject)
 
-// w_product_form.open() returns long
+// w_product_form.open() returns long [event]
 	m_productmenu lm_menu
 	long ll_width
 	long ll_height
@@ -406,7 +406,7 @@
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_product_form.ue_print() returns 0
+// w_product_form.ue_print() returns 0 [event]
 	long ll_custcode
 	long ll_row
 	long ll_invcode
@@ -468,7 +468,7 @@
 		end if
 	end if
 
-// w_product_form.ue_list() returns 0
+// w_product_form.ue_list() returns 0 [event]
 	m_productmenu lm_menu
 	long ll_rtcode
 	wf_setmenu(this.menuid)
@@ -507,3 +507,109 @@
 	end if
 	messagebox("Result", "No rows or retrieved possible empty table~r~nInsert some rows first")
 	postevent("ue_new")
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for product name in current row")
+		end if
+	case "chasisno"
+		if data = "" or isnull(data) then
+			messagebox("Chasis No. Validation", "Value required for chasis no. in current row")
+		end if
+	case "engineno"
+		if data = "" or isnull(data) then
+			messagebox("Engine No. Validation", "Value required for Engine No. in current row")
+		end if
+	end choose
+	return 1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "chasisno"
+		if parent.parent.parent.wf_duplicatechasisno(data) then
+			messagebox("Chasis No. Validation", "Duplicate Chasis No. Error~n~rPlease Choose Some Other Chasis No.")
+			return 1
+		end if
+	case "engineno"
+		if parent.parent.parent.wf_duplicateengineno(data) then
+			messagebox("Engine No. Validation", "Duplicate Engine No. Error~n~rPlease Choose Some Other Engine No.")
+			return 1
+		end if
+	case "finalized"
+		if data = "Y" then
+			this.object.finalizedby[row] = gl_usercode
+		end if
+	case "aquired"
+		if data = "Y" then
+			this.object.aquiredby[row] = gl_usercode
+		end if
+	case "delivered"
+		if data = "Y" then
+			this.object.deliveredby[row] = gl_usercode
+		end if
+	case "sold"
+		if data = "Y" then
+			this.object.soldby[row] = gl_usercode
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	long ll_scroll
+	integer li_rc
+	string ls_describe
+	string ls_modify
+	string ls_rc
+	string ls_column
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	ls_column = string(dwo.name)
+	ls_column = ".Y" + ls_column
+	ls_rc = describe(ls_column)
+	ll_scroll = long(ls_rc) - 250
+	ls_modify = string(ll_scroll) + "'" + ls_modify
+	ls_rc = modify(ls_modify)
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	string ls_managername
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "transportroutecode"
+		parent.parent.parent.il_currrow = row
+		parent.parent.parent.ib_itemvalidated = false
+		li_errcode = 0
+	case else
+		parent.parent.parent.ib_itemvalidated = true
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "transportroutecode"
+		if data = "" or isnull(data) then
+			messagebox("Transport Route Validation", "Value required Transport Route  Name in current row")
+		end if
+	end choose
+	return 1
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem() = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.getfocus() returns long [event]
+	return ::message.returnvalue

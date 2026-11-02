@@ -73,17 +73,17 @@
 	this.id_master.object.useforsms[1] = "N"
 	return 0
 
-// w_contactcard_form.create() returns 0
+// w_contactcard_form.create() returns 0 [event]
 	integer icurrent
 	call super::create
 
-// w_contactcard_form.destroy() returns 0
+// w_contactcard_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_contactcard_form.open() returns long
+// w_contactcard_form.open() returns long [event]
 	m_entry lm_menu
 	long ll_width
 	long ll_height
@@ -114,7 +114,7 @@
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_contactcard_form.ue_postopen() returns 0
+// w_contactcard_form.ue_postopen() returns 0 [event]
 	long ll_rtncode
 	long ll_found
 	setredraw(false)
@@ -141,7 +141,7 @@
 	this.id_print = this.tab_retrieve.tabpage_detail.dw_print
 	this.id_print.settransobject(sqlca)
 
-// w_contactcard_form.ue_save() returns 0
+// w_contactcard_form.ue_save() returns 0 [event]
 	long ll_primarykey
 	long ll_row
 	long ll_counter
@@ -223,9 +223,9 @@
 	end if
 	setpointer(arrow!)
 
-// w_contactcard_form.ue_newitem() returns 0
+// w_contactcard_form.ue_newitem() returns 0 [event]
 
-// w_contactcard_form.ue_newform() returns 0
+// w_contactcard_form.ue_newform() returns 0 [event]
 	string ls_date_errtext
 	datetime ldt_server_datetime
 	setredraw(false)
@@ -252,7 +252,7 @@
 	this.id_master.selecttext(1, len(this.id_master.gettext()))
 	setredraw(true)
 
-// w_contactcard_form.ue_detail() returns 0
+// w_contactcard_form.ue_detail() returns 0 [event]
 	long ll_code
 	integer li_protect
 	boolean lb_modify
@@ -275,13 +275,13 @@
 	wf_protectdw(this.id_master, li_protect)
 	setredraw(true)
 
-// w_contactcard_form.ue_list() returns 0
+// w_contactcard_form.ue_list() returns 0 [event]
 	call super::ue_list
 	SQL rollback USING this.it_transobject;
 	this.im_menu.m_file.m_print.enabled = true
 	this.im_menu.m_file.m_post.enabled = true
 
-// w_contactcard_form.ue_print() returns 0
+// w_contactcard_form.ue_print() returns 0 [event]
 	long ll_code
 	long ll_row
 	long li_printretcode
@@ -338,3 +338,35 @@
 		return
 	end if
 	messagebox("Printing Error", "Can not Print,~r~nNo rows are retrieved", information!)
+
+// tabpage_detail.create() returns 0 [event]
+	integer icurrent
+	this.dw_print = create dw_print
+	call super::create
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_print
+
+// tabpage_detail.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.dw_print
+
+// dw_footer.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked(xpos, ypos, row, dwo)
+	return ::message.returnvalue
+
+// dw_detail.ue_enterkey() returns long [event]
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	long ll_res
+	integer li_null
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	setnull(li_null)
+	choose case dwo.name
+	case "acccode"
+		return parent.parent.parent.wf_validateaccount(long(data))
+	end choose
+	return ::message.returnvalue

@@ -212,7 +212,7 @@
 	rtcode = this.id_list.retrieve(gl_usercode, ld_date)
 	return rtcode
 
-// w_patientvisit_list.create() returns 0
+// w_patientvisit_list.create() returns 0 [event]
 	call super::create
 	if isvalid(this.menuid) then
 		destroy this.menuid
@@ -221,19 +221,19 @@
 		this.menuid = create m_patientvisitmenu
 	end if
 
-// w_patientvisit_list.destroy() returns 0
+// w_patientvisit_list.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_patientvisit_list.ue_new() returns 0
+// w_patientvisit_list.ue_new() returns 0 [event]
 	long ll_code
 	call super::ue_new
 	setnull(ll_code)
 	wf_openmywindow(ll_code)
 
-// w_patientvisit_list.ue_list() returns 0
+// w_patientvisit_list.ue_list() returns 0 [event]
 	long ll_rtcode
 	m_patientvisitmenu lm_menu
 	call super::ue_list
@@ -263,7 +263,7 @@
 		return
 	end if
 
-// w_patientvisit_list.open() returns long
+// w_patientvisit_list.open() returns long [event]
 	m_patientvisitmenu lm_menu
 	long ll_width
 	long ll_height
@@ -311,4 +311,60 @@
 	this.tab_retrieve.tabpage_list.rb_ascending.checked = false
 	this.tab_retrieve.tabpage_list.rb_descending.checked = true
 	wf_sortdw(this.tab_retrieve.tabpage_list.ddlb_sort.text, this.is_sortsequence)
+	return ::message.returnvalue
+
+// dw_list.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	long ll_code
+	ancestorreturnvalue = super::doubleclicked(xpos, ypos, row, dwo)
+	if row > 0 then
+		ll_code = this.object.code[row]
+		if ll_code > 0 then
+			parent.parent.parent.wf_openmywindow(ll_code)
+		end if
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_find.keypressed(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	s_arguements lstr_arg
+	long ll_code
+	long ll_found
+	string ls_regno
+	ancestorreturnvalue = super::keypressed(key, keyflags)
+	if key = keyenter! and parent.parent.parent.id_list.getselectedrow(0) > 0 then
+		ll_code = parent.parent.parent.id_list.object.code[parent.parent.parent.id_list.getselectedrow(0)]
+		parent.parent.parent.wf_openmywindow(ll_code)
+		return ::message.returnvalue
+	end if
+	if key = keyf5! then
+		ls_regno = parent.parent.parent.wf_new_patientregistration()
+		if len(trim(ls_regno)) > 0 then
+			this.object.find[1] = ls_regno
+			ll_found = parent.parent.parent.id_list.find("regno = '" + ls_regno + "'", 1, parent.parent.parent.id_list.rowcount())
+			if ll_found > 0 and ll_found <= parent.parent.parent.id_list.rowcount() then
+				parent.parent.parent.id_list.setrow(0)
+				parent.parent.parent.id_list.setrow(ll_found)
+				parent.parent.parent.id_list.selectrow(0, false)
+				parent.parent.parent.id_list.scrolltorow(ll_found)
+				parent.parent.parent.id_list.selectrow(ll_found, true)
+				parent.parent.parent.il_selectedrow = ll_found
+			end if
+		end if
+	end if
+	if key = keyf7! then
+		open(w_arg_sdate_ldate)
+		lstr_arg = ::message.powerobjectparm
+		if lstr_arg.i_status = 1 then
+			openwithparm(w_appointtments_for_a_period, lstr_arg)
+		end if
+	end if
+	if key = keyf9! then
+		open(w_arg_sdate_ldate)
+		lstr_arg = ::message.powerobjectparm
+		if lstr_arg.i_status = 1 then
+			openwithparm(w_visits_for_a_period, lstr_arg)
+		end if
+	end if
 	return ::message.returnvalue

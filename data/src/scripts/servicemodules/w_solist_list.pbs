@@ -398,7 +398,7 @@
 	end if
 	return 0
 
-// w_solist_list.create() returns 0
+// w_solist_list.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	if isvalid(this.menuid) then
@@ -413,7 +413,7 @@
 	this.control[icurrent + 1] = this.dw_jobcard
 	this.control[icurrent + 2] = this.dw_combineinvoice
 
-// w_solist_list.destroy() returns 0
+// w_solist_list.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
@@ -421,13 +421,13 @@
 	destroy this.dw_jobcard
 	destroy this.dw_combineinvoice
 
-// w_solist_list.ue_new() returns 0
+// w_solist_list.ue_new() returns 0 [event]
 	long ll_code
 	call super::ue_new
 	setnull(ll_code)
 	wf_openmywindow(ll_code)
 
-// w_solist_list.ue_list() returns 0
+// w_solist_list.ue_list() returns 0 [event]
 	long ll_rtcode
 	call super::ue_list
 	if this.id_list.rowcount() <= 0 then
@@ -454,7 +454,7 @@
 		return
 	end if
 
-// w_solist_list.open() returns long
+// w_solist_list.open() returns long [event]
 	long ancestorreturnvalue
 	m_serviceorder_menu lm_menu
 	ancestorreturnvalue = super::open()
@@ -481,4 +481,45 @@
 	end if
 	this.tab_retrieve.tabpage_list.rb_ascending.checked = true
 	this.tab_retrieve.tabpage_list.rb_descending.triggerevent(clicked!)
+	return ::message.returnvalue
+
+// tabpage_list.create() returns 0 [event]
+	integer icurrent
+	this.cb_image = create cb_image
+	call super::create
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.cb_image
+
+// tabpage_list.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.cb_image
+
+// dw_list.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	long ll_code
+	ancestorreturnvalue = super::doubleclicked(xpos, ypos, row, dwo)
+	if row > 0 then
+		ll_code = this.object.code[row]
+		if ll_code > 0 then
+			parent.parent.parent.wf_openmywindow(ll_code)
+		end if
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_find.keypressed(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	long ll_code
+	long ll_found
+	string ls_regno
+	ancestorreturnvalue = super::keypressed(key, keyflags)
+	if key = keyenter! and parent.parent.parent.id_list.getselectedrow(0) > 0 then
+		ll_code = parent.parent.parent.id_list.object.code[parent.parent.parent.id_list.getselectedrow(0)]
+		parent.parent.parent.wf_openmywindow(ll_code)
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// cb_image.clicked() returns long [event]
+	parent.parent.parent.wf_upload_image()
 	return ::message.returnvalue

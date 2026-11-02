@@ -97,7 +97,7 @@
 	end if
 	return 1
 
-// w_contactgroup.create() returns 0
+// w_contactgroup.create() returns 0 [event]
 	call super::create
 	if isvalid(this.menuid) then
 		destroy this.menuid
@@ -106,13 +106,13 @@
 		this.menuid = create m_contactgroupmenu
 	end if
 
-// w_contactgroup.destroy() returns 0
+// w_contactgroup.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_contactgroup.ue_save() returns 0
+// w_contactgroup.ue_save() returns 0 [event]
 	long ll_mastercurrrow
 	long ll_invid
 	long ll_detailrows
@@ -147,13 +147,13 @@
 	call super::ue_save
 	setpointer(arrow!)
 
-// w_contactgroup.ue_newform() returns 0
+// w_contactgroup.ue_newform() returns 0 [event]
 	call super::ue_newform
 	this.im_menu.m_item.m_newitem.enabled = true
 	this.im_menu.m_item.m_deleteitem.enabled = true
 	this.id_master.setfocus()
 
-// w_contactgroup.ue_detail() returns 0
+// w_contactgroup.ue_detail() returns 0 [event]
 	long ll_code
 	long ll_rowcount
 	call super::ue_detail
@@ -176,13 +176,72 @@
 	this.im_menu.m_item.m_newitem.enabled = true
 	this.im_menu.m_item.m_deleteitem.enabled = true
 
-// w_contactgroup.ue_postopen() returns 0
+// w_contactgroup.ue_postopen() returns 0 [event]
 	call super::ue_postopen
 	this.id_detail.getchild("contactcardcode", this.idc_contacts)
 	this.idc_contacts.settransobject(this.it_transobject)
 
-// w_contactgroup.ue_newitem() returns 0
+// w_contactgroup.ue_newitem() returns 0 [event]
 	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
 		return
 	end if
 	call super::ue_newitem
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if parent.parent.parent.wf_duplicatename(data) then
+			messagebox("Name Validation", "Duplication Name Error~n~rPlease Choose Some Other Name")
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	end choose
+	return 1
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "contactcardcode"
+		parent.parent.parent.il_currrow = row
+		parent.parent.parent.ib_itemvalidated = false
+		li_errcode = 0
+	case else
+		parent.parent.parent.ib_itemvalidated = true
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "contactcardcode"
+		if data = "" or isnull(data) then
+			messagebox("Contact Validation", "Value required for Contact in current row")
+		end if
+	end choose
+	return 1
+
+// dw_itemsdetail.getfocus() returns long [event]
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem() = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue

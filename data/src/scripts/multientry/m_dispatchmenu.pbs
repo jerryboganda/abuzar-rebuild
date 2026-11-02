@@ -1,9 +1,29 @@
 // menu m_dispatchmenu (multientry)  ancestor: m_multi_entry
 
-// m_dispatchmenu.create() returns 0
+// m_dispatchmenu.create() returns 0 [event]
 	m_dispatchmenu = this
 	call super::create
 	this.text = "m_dispatchmenu"
 
-// m_dispatchmenu.destroy() returns 0
+// m_dispatchmenu.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_populateinvoices = create m_populateinvoices
+	this.item[upperbound(this.item) + 1] = this.m_populateinvoices
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_populateinvoices
+
+// m_populateinvoices.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_populateinvoices()
+
+// m_populateinvoices.create() returns 0 [event]
+	call super::create
+	this.text = "Populate Invoices~tCtrl+U"
+	this.shortcut = 341
+
+// m_populateinvoices.destroy() returns 0 [event]
 	call super::destroy

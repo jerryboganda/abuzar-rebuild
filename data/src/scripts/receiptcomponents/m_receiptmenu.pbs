@@ -1,9 +1,367 @@
 // menu m_receiptmenu (receiptcomponents)  ancestor: m_multi_entry
 
-// m_receiptmenu.create() returns 0
+// m_receiptmenu.create() returns 0 [event]
 	m_receiptmenu = this
 	call super::create
 	this.text = "m_receiptmenu"
 
-// m_receiptmenu.destroy() returns 0
+// m_receiptmenu.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_saveandpost = create m_saveandpost
+	this.m_autobatchgeneration = create m_autobatchgeneration
+	this.m_itempurchsehistory = create m_itempurchsehistory
+	this.m_populatesaleorder = create m_populatesaleorder
+	this.m_populatefromdatacarrydb = create m_populatefromdatacarrydb
+	this.m_populateandpostfromdatacarrydb = create m_populateandpostfromdatacarrydb
+	this.m_populateissuedeliverychallan = create m_populateissuedeliverychallan
+	this.m_populatedallissueditems = create m_populatedallissueditems
+	this.m_pullsalesfromdropbox = create m_pullsalesfromdropbox
+	this.m_pullissuefromdropbox = create m_pullissuefromdropbox
+	this.item[upperbound(this.item) + 1] = this.m_saveandpost
+	this.item[upperbound(this.item) + 1] = this.m_autobatchgeneration
+	this.item[upperbound(this.item) + 1] = this.m_itempurchsehistory
+	this.item[upperbound(this.item) + 1] = this.m_populatesaleorder
+	this.item[upperbound(this.item) + 1] = this.m_populatefromdatacarrydb
+	this.item[upperbound(this.item) + 1] = this.m_populateandpostfromdatacarrydb
+	this.item[upperbound(this.item) + 1] = this.m_populateissuedeliverychallan
+	this.item[upperbound(this.item) + 1] = this.m_populatedallissueditems
+	this.item[upperbound(this.item) + 1] = this.m_pullsalesfromdropbox
+	this.item[upperbound(this.item) + 1] = this.m_pullissuefromdropbox
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_saveandpost
+	destroy this.m_autobatchgeneration
+	destroy this.m_itempurchsehistory
+	destroy this.m_populatesaleorder
+	destroy this.m_populatefromdatacarrydb
+	destroy this.m_populateandpostfromdatacarrydb
+	destroy this.m_populateissuedeliverychallan
+	destroy this.m_populatedallissueditems
+	destroy this.m_pullsalesfromdropbox
+	destroy this.m_pullissuefromdropbox
+
+// m_save.create() returns 0 [event]
+	call super::create
+	this.toolbaritemname = "save!"
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_save.destroy() returns 0 [event]
+	call super::destroy
+
+// m_save.clicked() returns 0 [event]
+	if f_stringpreferences("ReceiptAutoPosting") = "Y" then
+		this.parentwindow.dynamic wf_saveandpost()
+	else
+		this.parentwindow.triggerevent("ue_save")
+	end if
+	if this.parentwindow.dynamic wf_commitform() = true then
+		this.parentwindow.postevent("ue_new")
+	end if
+
+// m_options.create() returns 0 [event]
+	call super::create
+	this.visible = true
+	this.text = "Edit Purchase Order"
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_options.destroy() returns 0 [event]
+	call super::destroy
+
+// m_options.clicked() returns 0 [event]
+	call super::clicked
+	this.parentwindow.dynamic wf_populatedetaildwfrompo()
+
+// m_saveandpost.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_saveandpost()
+	if this.parentwindow.dynamic wf_commitform() = true then
+		this.parentwindow.postevent("ue_new")
+	end if
+
+// m_saveandpost.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Save and Post~tCtrl+Q"
+	this.enabled = false
+	this.shortcut = 337
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_saveandpost.destroy() returns 0 [event]
+	call super::destroy
+
+// m_autobatchgeneration.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_generatebatches()
+
+// m_autobatchgeneration.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Auto Batch Generation"
+	this.enabled = false
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_autobatchgeneration.destroy() returns 0 [event]
+	call super::destroy
+
+// m_itempurchsehistory.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_itempurchasehistory()
+
+// m_itempurchsehistory.create() returns 0 [event]
+	call super::create
+	this.text = "Item Purchse History~tCtrl+H"
+	this.shortcut = 328
+	this.microhelp = "Item Purchse History"
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_itempurchsehistory.destroy() returns 0 [event]
+	call super::destroy
+
+// m_populatesaleorder.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_populate_saleorder()
+
+// m_populatesaleorder.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Populate Sale Order"
+	this.enabled = false
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_populatesaleorder.destroy() returns 0 [event]
+	call super::destroy
+
+// m_populatefromdatacarrydb.clicked() returns 0 [event]
+	this.parentwindow.dynamic event ue_populate_from_datacarrydb()
+
+// m_populatefromdatacarrydb.create() returns 0 [event]
+	call super::create
+	this.text = "Populate From DataCarryDB"
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_populatefromdatacarrydb.destroy() returns 0 [event]
+	call super::destroy
+
+// m_populateandpostfromdatacarrydb.clicked() returns 0 [event]
+	this.parentwindow.dynamic event ue_populate_and_post_from_datacarrydb()
+
+// m_populateandpostfromdatacarrydb.create() returns 0 [event]
+	call super::create
+	this.text = "Populate and Post From DataCarryDB"
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_populateandpostfromdatacarrydb.destroy() returns 0 [event]
+	call super::destroy
+
+// m_populateissuedeliverychallan.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_populate_issue()
+
+// m_populateissuedeliverychallan.create() returns 0 [event]
+	call super::create
+	this.text = "Populate Issue/Delivery Challan"
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_populateissuedeliverychallan.destroy() returns 0 [event]
+	call super::destroy
+
+// m_populatedallissueditems.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_populate_issue()
+
+// m_populatedallissueditems.create() returns 0 [event]
+	call super::create
+	this.text = "P&opulated All Issued Items~tCtrl+O"
+	this.shortcut = 335
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_populatedallissueditems.destroy() returns 0 [event]
+	call super::destroy
+
+// m_pullsalesfromdropbox.clicked() returns 0 [event]
+	this.parentwindow.dynamic event ue_pull_sale_from_dropbox()
+
+// m_pullsalesfromdropbox.create() returns 0 [event]
+	call super::create
+	this.text = "Pull Sales From Drop Box"
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_pullsalesfromdropbox.destroy() returns 0 [event]
+	call super::destroy
+
+// m_pullissuefromdropbox.clicked() returns 0 [event]
+	this.parentwindow.dynamic event ue_pull_issue_from_dropbox()
+
+// m_pullissuefromdropbox.create() returns 0 [event]
+	call super::create
+	this.text = "Pull Issue From Drop Box"
+	this.menutextcolor = 134217735
+	this.menubackcolor = 134217732
+	this.menuhighlightcolor = 134217741
+	this.textsize = 8
+	this.weight = 400
+	this.facename = "Tahoma"
+	this.titlebackcolor = 134217730
+	this.bitmapbackcolor = 12632256
+	this.menubitmaps = true
+	this.titlegradient = true
+	this.toolbartextcolor = 134217746
+	this.toolbarbackcolor = 67108864
+	this.toolbarhighlightcolor = 134217741
+	this.toolbargradient = true
+	this.bitmapgradient = true
+
+// m_pullissuefromdropbox.destroy() returns 0 [event]
 	call super::destroy

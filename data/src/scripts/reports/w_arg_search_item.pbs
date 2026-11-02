@@ -1,6 +1,6 @@
 // window w_arg_search_item (reports)  ancestor: w_popup_forselection_walias
 
-// w_arg_search_item.create() returns 0
+// w_arg_search_item.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.dw_1 = create dw_1
@@ -9,12 +9,12 @@
 	this.control[icurrent + 1] = this.dw_1
 	this.control[icurrent + 2] = this.dw_2
 
-// w_arg_search_item.destroy() returns 0
+// w_arg_search_item.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.dw_1
 	destroy this.dw_2
 
-// w_arg_search_item.open() returns long
+// w_arg_search_item.open() returns long [event]
 	long ancestorreturnvalue
 	date ld_currdate
 	string ls_text
@@ -23,5 +23,9 @@
 	ld_currdate = today()
 	return ::message.returnvalue
 
-// w_arg_search_item.ue_close() returns 0
+// w_arg_search_item.ue_close() returns 0 [event]
 	closewithreturn(this, this.istr_arg)
+
+// cb_cancel.clicked() returns long [event]
+	parent.post event ue_close()
+	return ::message.returnvalue

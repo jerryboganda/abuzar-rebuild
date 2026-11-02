@@ -1,13 +1,13 @@
 // window w_import_datacarrysetting (datatransfercomponents)  ancestor: window
 
-// w_import_datacarrysetting.ue_postopen() returns 0
+// w_import_datacarrysetting.ue_postopen() returns 0 [event]
 	long ll_found
 	this.dw_datacarry.settransobject(sqlca)
 	this.dw_datacarry.retrieve()
 	wf_checkrigths()
 	wf_setvisibility()
 
-// w_import_datacarrysetting.ue_close() returns 0
+// w_import_datacarrysetting.ue_close() returns 0 [event]
 	closewithreturn(this, this.istr_arguments)
 
 // w_import_datacarrysetting.wf_setvisibility() returns long
@@ -82,18 +82,18 @@
 	end if
 	return 0
 
-// w_import_datacarrysetting.create() returns 0
+// w_import_datacarrysetting.create() returns 0 [event]
 	this.dw_datacarry = create dw_datacarry
 	this.cb_cancel = create cb_cancel
 	this.cb_ok = create cb_ok
 	this.control = {this.dw_datacarry, this.cb_cancel, this.cb_ok}
 
-// w_import_datacarrysetting.destroy() returns 0
+// w_import_datacarrysetting.destroy() returns 0 [event]
 	destroy this.dw_datacarry
 	destroy this.cb_cancel
 	destroy this.cb_ok
 
-// w_import_datacarrysetting.open() returns long
+// w_import_datacarrysetting.open() returns long [event]
 	long ll_win_width
 	long ll_win_height
 	long ll_width
@@ -112,7 +112,7 @@
 	post event ue_postopen()
 	return ::message.returnvalue
 
-// dw_datacarry.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_datacarry.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemchanged(row, dwo, data)
 	choose case dwo.name
@@ -127,12 +127,12 @@
 	end choose
 	return 0
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.istr_arguments.i_status = -1
 	parent.post event ue_close()
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	string ls_connsetting
 	string ls_errtext
 	char lc_items

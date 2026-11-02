@@ -1,6 +1,6 @@
 // window w_item_form_notes (multientryitemrespwin)  ancestor: window
 
-// w_item_form_notes.ue_postopen() returns 0
+// w_item_form_notes.ue_postopen() returns 0 [event]
 	string ls_text
 	long ll_icode
 	blob lblob_notes
@@ -28,7 +28,7 @@
 	this.rte_control.pastertf(ls_text)
 	this.rte_control.scroll(-1 * this.rte_control.linecount())
 
-// w_item_form_notes.ue_close(integer ar_closearg) returns 0
+// w_item_form_notes.ue_close(integer ar_closearg) returns 0 [event]
 	if ar_closearg = -1 then
 		this.istr_arg.i_status = -1
 	else
@@ -36,20 +36,20 @@
 	end if
 	closewithreturn(this, this.istr_arg)
 
-// w_item_form_notes.create() returns 0
+// w_item_form_notes.create() returns 0 [event]
 	this.cb_print = create cb_print
 	this.cb_ok = create cb_ok
 	this.cb_cancel = create cb_cancel
 	this.rte_control = create rte_control
 	this.control = {this.cb_print, this.cb_ok, this.cb_cancel, this.rte_control}
 
-// w_item_form_notes.destroy() returns 0
+// w_item_form_notes.destroy() returns 0 [event]
 	destroy this.cb_print
 	destroy this.cb_ok
 	destroy this.cb_cancel
 	destroy this.rte_control
 
-// w_item_form_notes.open() returns long
+// w_item_form_notes.open() returns long [event]
 	long ll_win_width
 	long ll_win_height
 	long ll_width
@@ -68,28 +68,28 @@
 	post event ue_postopen()
 	return ::message.returnvalue
 
-// w_item_form_notes.key(keycode key, unsignedlong keyflags) returns long
+// w_item_form_notes.key(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		post event ue_close(-1)
 	end if
 	return ::message.returnvalue
 
-// cb_print.clicked() returns long
+// cb_print.clicked() returns long [event]
 	parent.rte_control.print(1, "", false, true)
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	string ls_text
 	ls_text = parent.rte_control.copyrtf(false, detail!)
 	parent.istr_arg.s_name1 = ls_text
 	parent.post event ue_close(1)
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.post event ue_close(-1)
 	return ::message.returnvalue
 
-// rte_control.key(keycode key, unsignedlong keyflags) returns long
+// rte_control.key(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		parent.post event ue_close(-1)
 	end if

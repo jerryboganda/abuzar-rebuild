@@ -962,7 +962,7 @@
 	end if
 	return li_rtcode
 
-// w_purregister.create() returns 0
+// w_purregister.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	if isvalid(this.menuid) then
@@ -977,7 +977,7 @@
 	this.control[icurrent + 1] = this.dw_purinvrep
 	this.control[icurrent + 2] = this.dw_changeprice_foritemlog
 
-// w_purregister.destroy() returns 0
+// w_purregister.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
@@ -985,7 +985,7 @@
 	destroy this.dw_purinvrep
 	destroy this.dw_changeprice_foritemlog
 
-// w_purregister.ue_save() returns 0
+// w_purregister.ue_save() returns 0 [event]
 	double ld_qty
 	double li_option
 	integer li_counter
@@ -1151,7 +1151,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_purregister.ue_newform() returns 0
+// w_purregister.ue_newform() returns 0 [event]
 	integer rtncode
 	integer ll_counter
 	datetime ldt_server_datetime
@@ -1188,7 +1188,7 @@
 		close(this)
 	end if
 
-// w_purregister.ue_detail() returns 0
+// w_purregister.ue_detail() returns 0 [event]
 	long ll_code
 	long ll_counter
 	integer li_rtncode
@@ -1238,7 +1238,7 @@
 	wf_grandtotal()
 	setredraw(true)
 
-// w_purregister.ue_newitem() returns 0
+// w_purregister.ue_newitem() returns 0 [event]
 	long ll_rowcount
 	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
 		this.id_detail.setfocus()
@@ -1267,7 +1267,7 @@
 	this.im_menu.m_file.m_print.enabled = true
 	this.ib_validatefullcode = true
 
-// w_purregister.ue_deleteitem() returns 0
+// w_purregister.ue_deleteitem() returns 0 [event]
 	long ll_row
 	long ll_currow
 	long ll_detailrows
@@ -1283,17 +1283,17 @@
 	end if
 	this.im_menu.m_file.m_print.enabled = false
 
-// w_purregister.close() returns long
+// w_purregister.close() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::close()
 	destroy this.ids_itemstockinfo
 	return ::message.returnvalue
 
-// w_purregister.ue_new() returns 0
+// w_purregister.ue_new() returns 0 [event]
 	call super::ue_new
 	this.im_menu.m_file.m_post.enabled = false
 
-// w_purregister.ue_list() returns 0
+// w_purregister.ue_list() returns 0 [event]
 	m_purregistermenu lm_menu
 	long ll_counter
 	call super::ue_list
@@ -1310,7 +1310,7 @@
 		end if
 	next
 
-// w_purregister.ue_refreshddw() returns 0
+// w_purregister.ue_refreshddw() returns 0 [event]
 	call super::ue_refreshddw
 	setpointer(hourglass!)
 	this.idc_supplierlist.setredraw(false)
@@ -1320,7 +1320,7 @@
 	this.idc_supplierlist.setredraw(true)
 	setpointer(arrow!)
 
-// w_purregister.ue_print() returns 0
+// w_purregister.ue_print() returns 0 [event]
 	long ll_invcode
 	long ll_suppcode
 	long ll_row
@@ -1385,7 +1385,7 @@
 	end if
 	messagebox("Printing Error", "Can not Print Invoice,~r~nNo rows are retrieved", information!)
 
-// w_purregister.ue_postopen() returns 0
+// w_purregister.ue_postopen() returns 0 [event]
 	m_purregistermenu lm_menu
 	integer li_rtncode
 	long ll_code
@@ -1511,13 +1511,13 @@
 	f_setcolumnstyle(this.id_detail, "Qty")
 	setredraw(true)
 
-// w_purregister.open() returns long
+// w_purregister.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	show()
 	return ::message.returnvalue
 
-// w_purregister.closequery() returns long
+// w_purregister.closequery() returns long [event]
 	integer li_yesno
 	integer li_rtcode
 	if this.editflag = true then
@@ -1535,3 +1535,314 @@
 		end if
 	end if
 	return li_rtcode
+
+// dw_footer.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	return ::message.returnvalue
+
+// dw_footer.losefocus() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::losefocus()
+	parent.parent.parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_footer.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	parent.parent.parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_footer.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "misccharges"
+		messagebox("Misc. Charges Validation", "Charges ~"" + data + "~" should be greater equal zero")
+		return 1
+	case "misccharges2"
+		messagebox("Misc. Charges 2 Validation", "Charges ~"" + data + "~" should be greater equal zero")
+		return 1
+	case "faltdisc"
+		messagebox("Flat Dsicount Validation", "Flat Discount ~"" + data + "~" should be greater equal zero")
+		return 1
+	case "faltdisc2"
+		messagebox("Flat Dsicount 2 Validation", "Flat Discount ~"" + data + "~" should be greater equal zero")
+		return 1
+	case "discperc"
+		messagebox("Invoice Discount(%) Validation", "Dsicount ~"" + data + "~" must be betweeen 0 and 100")
+		return 1
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_result
+	long ll_code
+	long ll_manfcode
+	long ll_detailrows
+	double ld_price
+	double ld_rate
+	string ls_null
+	date ld_null
+	dwitemstatus lrs_status
+	integer li_res
+	integer li_suppcode
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "icatcode"
+		if long(data) > 0 and not isnull(data) then
+			return parent.parent.parent.wf_changeitemcategory(long(data))
+		else
+			return 1
+		end if
+	case "totalamount"
+		if double(data) < 0.0 then
+			messagebox("Supplier Total Amount Validation", "Supplier Total Amount is not valid")
+			return 1
+		else
+			parent.parent.parent.id_footer.object.suppliertotal[1] = double(data)
+		end if
+	case "suppcode"
+		ll_code = long(data)
+		parent.parent.parent.wf_setsuppinfo(ll_code, this)
+	case "aliasname"
+		if not isnull(data) and data <> "" then
+			li_res = parent.parent.parent.wf_findsuppcode(data, li_suppcode)
+			if li_res > 0 then
+				setitem(row, "suppcode", li_suppcode)
+				return 0
+			else
+				messagebox("Supplier Validation", "Supplier with  AliasName " + data + " does not exist")
+				return 1
+			end if
+			return
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "suppcode"
+		messagebox("Supplier Name Validation", "You must select some supplier")
+		return 1
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if string(dwo.name) = "suppcode" then
+		parent.parent.parent.id_master.selecttext(1, 40)
+	end if
+	parent.parent.parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_detail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keyenter! and getcolumnname() = "suppcode" then
+		parent.parent.parent.id_master.setitem(1, "suppcode", parent.parent.parent.idc_supplierlist.getitemnumber(parent.parent.parent.idc_supplierlist.getrow(), "supplier_suppcode"))
+		parent.parent.parent.wf_setsuppinfo(parent.parent.parent.idc_supplierlist.getitemnumber(parent.parent.parent.idc_supplierlist.getrow(), "supplier_suppcode"), this)
+	end if
+	return ::message.returnvalue
+
+// dw_detail.editchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	string ls_colname
+	ancestorreturnvalue = super::editchanged(row, dwo, data)
+	ls_colname = lower(dwo.name)
+	if ls_colname = "totalamount" or ls_colname = "totalmeasure" or ls_colname = "totalpieces" then
+		parent.parent.parent.wf_grandtotal()
+	end if
+	parent.parent.parent.post wf_setsuppname(data)
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	string ls_null
+	string ls_itemname
+	string ls_error
+	integer li_errcode
+	integer li_packunits
+	integer li_retmsgcode
+	integer li_option
+	datetime ldt_expiry
+	date ld_expiry
+	time lt_expiry
+	long ll_null
+	long ll_currentrow
+	long ll_icode
+	double ld_conversionfactor
+	double ld_saleprice
+	double ld_newprice
+	double ld_totpurprice
+	double ld_newqty
+	double ld_storedqty
+	double ld_stock
+	double ld_bonusqty
+	double ld_packqty
+	double ld_looseqty
+	double ld_defaultqty
+	datawindowchild ldc_items
+	dwitemstatus lrs_status
+	integer li_res
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	ll_currentrow = getrow()
+	lrs_status = getitemstatus(ll_currentrow, 0, primary!)
+	setnull(ll_null)
+	setnull(ls_null)
+	choose case dwo.name
+	case parent.parent.parent.is_columnitemname
+		parent.parent.parent.id_detail.setitem(row, "icode", parent.parent.parent.id_itemslist.getitemnumber(parent.parent.parent.id_itemslist.getrow(), "icode"))
+		parent.parent.parent.id_detail.setitem(row, "fullcode", parent.parent.parent.id_itemslist.getitemstring(parent.parent.parent.id_itemslist.getrow(), "fullcode"))
+		parent.parent.parent.ib_itemvalidated = false
+		parent.parent.parent.il_currrow = row
+		li_errcode = 0
+	case "icode"
+		parent.parent.parent.ib_itemvalidated = false
+		parent.parent.parent.il_currrow = row
+	case "qty"
+		ld_packqty = double(data)
+	case "fullcode"
+		if not isnull(data) and data <> "" then
+			li_res = parent.parent.parent.wf_findfullcode(data, ll_icode, ls_itemname)
+			if li_res > 0 then
+				setitem(row, "icode", ll_icode)
+				setitem(row, "itemname", ls_itemname)
+				parent.parent.parent.ib_itemvalidated = false
+				parent.parent.parent.il_currrow = row
+				li_errcode = 0
+			else
+				messagebox("ItemNumber Validation", "Item does not exist")
+				setitem(row, "icode", ll_null)
+				setitem(row, "fullcode", ls_null)
+				li_errcode = 1
+			end if
+		else
+			setitem(row, "icode", ll_null)
+			setitem(row, "fullcode", ls_null)
+			li_errcode = 2
+		end if
+	case "purprice"
+		ll_icode = parent.parent.parent.id_detail.getitemnumber(row, "icode")
+		SQL Select item.saleprice , item.packunits INTO :ld_saleprice, :li_packunits From Item Where item.icode =:ll_icode USING parent.parent.parent.it_transobject;
+		if double(data) > ld_saleprice then
+			li_retmsgcode = messagebox("Purchase Validation", "Purchase Price " + data + " is greater than Sale Price~r~n Do you want to continue", question!, yesno!)
+			if li_retmsgcode = 1 then
+				li_errcode = 0
+			else
+				li_errcode = 1
+			end if
+		end if
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	string ls_columnobject
+	long ll_currow
+	long ancestorreturnvalue
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem() = -1 then
+		return ::message.returnvalue
+	end if
+	if dwo.name = "itemname" then
+		parent.parent.parent.ib_focusdetail = true
+	end if
+	parent.parent.parent.wf_grandtotal()
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	return ::message.returnvalue
+
+// dw_itemsdetail.rowfocuschanged(long currentrow) returns long [event]
+	long ancestorreturnvalue
+	double ld_rpp
+	double ld_avgprice
+	double ld_rpp2
+	double ld_rpp3
+	double ld_rpp4
+	double ld_rpp5
+	dwitemstatus lrs_status
+	long ll_icode
+	ancestorreturnvalue = super::rowfocuschanged(currentrow)
+	lrs_status = getitemstatus(currentrow, 0, primary!)
+	if getcolumnname() <> parent.parent.parent.is_columnitemname then
+		if rowcount() > 0 and lrs_status <> new! then
+			parent.parent.parent.id_footer.setitem(parent.parent.parent.id_footer.getrow(), "icode", getitemnumber(currentrow, "icode"))
+			parent.parent.parent.id_footer.setitem(parent.parent.parent.id_footer.getrow(), "totalstock", getitemnumber(currentrow, "totalstock"))
+			parent.parent.parent.id_footer.setitem(parent.parent.parent.id_footer.getrow(), "PiecesInHand", getitemnumber(currentrow, "PiecesInHand"))
+			ll_icode = getitemnumber(getrow(), "icode")
+			SQL Select item.avgprice INTO :ld_avgprice From Item Where item.icode =:ll_icode USING parent.parent.parent.it_transobject;
+			parent.parent.parent.id_footer.object.t_avgprice.text = string(ld_avgprice)
+		elseif parent.parent.parent.id_footer.getrow() > 0 then
+			parent.parent.parent.id_footer.setitem(parent.parent.parent.id_footer.getrow(), "icode", 0)
+			parent.parent.parent.id_footer.setitem(parent.parent.parent.id_footer.getrow(), "totalstock", 0)
+			parent.parent.parent.id_footer.setitem(parent.parent.parent.id_footer.getrow(), "PiecesInHand", 0)
+		end if
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.losefocus() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::losefocus()
+	parent.parent.parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_itemsdetail.editchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	string ls_colname
+	ancestorreturnvalue = super::editchanged(row, dwo, data)
+	ls_colname = lower(dwo.name)
+	if ls_colname = "qty" or ls_colname = "purprice" or ls_colname = "totalpieces" then
+		parent.parent.parent.wf_grandtotal()
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "fullcode"
+		if isnull(data) or data = "" then
+			messagebox("Item Code Validation", "Item Code ~"" + data + "~" does not exist")
+		end if
+		return 1
+	case parent.parent.parent.is_columnitemname
+		messagebox("Item Validation", "Value required for item in current row")
+		return 1
+	case "icode"
+		messagebox("Item Validation", "Value required for item in current row")
+		return 1
+	case "purprice"
+		return 1
+	end choose
+	return ::message.returnvalue
+
+// dw_itemsdetail.getfocus() returns long [event]
+	long ancestorreturnvalue
+	if f_stringpreferences("itemcode") = "N" then
+		ancestorreturnvalue = super::getfocus()
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.rowfocuschanging(long currentrow, long newrow) returns long [event]
+	long ancestorreturnvalue
+	double ld_qty
+	long ll_icode
+	ancestorreturnvalue = super::rowfocuschanging(currentrow, newrow)
+	if currentrow > 0 and parent.parent.parent.id_detail.rowcount() > 0 and currentrow <= parent.parent.parent.id_detail.rowcount() then
+		ld_qty = parent.parent.parent.id_detail.getitemnumber(currentrow, "qty")
+		ll_icode = parent.parent.parent.id_detail.getitemnumber(currentrow, "icode")
+		if ld_qty <= 0.0 and not isnull(ll_icode) then
+			messagebox("Item measurement Validation", "Please enter valid measurement")
+			post event ue_focusqty()
+			return 1
+		end if
+		return
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.ue_focusqty() returns 0 [event]
+	parent.parent.parent.id_detail.setcolumn("qty")
+	parent.parent.parent.id_detail.selecttext(1, len(parent.parent.parent.id_detail.gettext()))
+	parent.parent.parent.id_detail.setfocus()

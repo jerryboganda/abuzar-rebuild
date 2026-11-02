@@ -1,6 +1,6 @@
 // window w_arg_users_withlist_sdate_ldate_purcat (reports)  ancestor: w_listarguments
 
-// w_arg_users_withlist_sdate_ldate_purcat.create() returns 0
+// w_arg_users_withlist_sdate_ldate_purcat.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.cbx_cash = create cbx_cash
@@ -29,7 +29,7 @@
 	this.control[icurrent + 11] = this.gb_5
 	this.control[icurrent + 12] = this.gb_6
 
-// w_arg_users_withlist_sdate_ldate_purcat.destroy() returns 0
+// w_arg_users_withlist_sdate_ldate_purcat.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.cbx_cash
 	destroy this.cbx_credit
@@ -44,7 +44,7 @@
 	destroy this.gb_5
 	destroy this.gb_6
 
-// w_arg_users_withlist_sdate_ldate_purcat.open() returns long
+// w_arg_users_withlist_sdate_ldate_purcat.open() returns long [event]
 	long ancestorreturnvalue
 	long ll_counter
 	long ll_rowcount
@@ -63,13 +63,67 @@
 	next
 	return ::message.returnvalue
 
-// cbx_cash.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// cb_ok.clicked() returns long [event]
+	long ancestorreturnvalue
+	long ll_count
+	long ll_counter
+	long ll_innercounter
+	long ll_found
+	string ls_name
+	ancestorreturnvalue = super::clicked()
+	if parent.cbx_all.checked = true then
+		for ll_counter = 1 to parent.idc_categories.rowcount()
+			parent.istr_arg.ia_integerlist[ll_counter] = parent.idc_categories.getitemnumber(ll_counter, "usercode")
+		next
+		parent.istr_arg.s_name1 = "All User(s)"
+	else
+		for ll_counter = 1 to ll_counter
+			ll_found = parent.idc_categories.find("username ='" + parent.lb_selectedcategories.text(ll_counter) + "'", 1, parent.idc_categories.rowcount())
+			if ll_found > 0 then
+				parent.istr_arg.ia_integerlist[ll_counter] = parent.idc_categories.getitemnumber(ll_found, "usercode")
+				ls_name = parent.idc_categories.getitemstring(ll_found, "username")
+				parent.istr_arg.s_name1 = parent.istr_arg.s_name1 + trim(ls_name) + ","
+			end if
+		next
+	end if
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	parent.istr_arg.s_name2 = ""
+	if parent.cbx_pack.checked then
+		parent.istr_arg.ia_integerlist2[1] = 1
+		parent.istr_arg.ia_integerlist2[2] = 2
+		parent.istr_arg.s_name2 = "Pack Purchase"
+	end if
+	if parent.cbx_loose.checked then
+		parent.istr_arg.ia_integerlist2[3] = 7
+		parent.istr_arg.ia_integerlist2[4] = 8
+		parent.istr_arg.s_name2 = parent.istr_arg.s_name2 + " , " + "Loose Purchase"
+	end if
+	if parent.cbx_opening.checked then
+		parent.istr_arg.ia_integerlist2[5] = 3
+		parent.istr_arg.s_name2 = parent.istr_arg.s_name2 + " , " + "Opening Purchase"
+	end if
+	if parent.rb_posted.checked = true then
+		parent.istr_arg.sa_stringlist[1] = "Y"
+	elseif parent.rb_unposted.checked = true then
+		parent.istr_arg.sa_stringlist[1] = "N"
+	else
+		parent.istr_arg.sa_stringlist[1] = "Y"
+		parent.istr_arg.sa_stringlist[2] = "N"
+	end if
+	parent.istr_arg.i_supress = parent.cbx_supress.checked
+	parent.istr_arg.i_hide = parent.cbx_hide.checked
+	parent.istr_arg.i_status = 1
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// cbx_cash.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// cbx_credit.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// cbx_credit.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if

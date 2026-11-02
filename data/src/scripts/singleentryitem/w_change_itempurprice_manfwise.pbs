@@ -35,7 +35,7 @@
 	end if
 	return ll_rtncode
 
-// w_change_itempurprice_manfwise.create() returns 0
+// w_change_itempurprice_manfwise.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	if isvalid(this.menuid) then
@@ -45,23 +45,23 @@
 		this.menuid = create m_changeitempurprice_manfwise
 	end if
 
-// w_change_itempurprice_manfwise.destroy() returns 0
+// w_change_itempurprice_manfwise.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_change_itempurprice_manfwise.activate() returns long
+// w_change_itempurprice_manfwise.activate() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::activate()
 	this.windowstate = maximized!
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_change_itempurprice_manfwise.closequery() returns long
+// w_change_itempurprice_manfwise.closequery() returns long [event]
 	return ::message.returnvalue
 
-// w_change_itempurprice_manfwise.open() returns long
+// w_change_itempurprice_manfwise.open() returns long [event]
 	long ancestorreturnvalue
 	integer li_counter
 	ancestorreturnvalue = super::open()
@@ -69,9 +69,51 @@
 	SQL start USING this.it_transobject;
 	return ::message.returnvalue
 
-// w_change_itempurprice_manfwise.close() returns long
+// w_change_itempurprice_manfwise.close() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::close()
 	SQL stop USING this.it_transobject;
 	destroy this.it_transobject
+	return ::message.returnvalue
+
+// tabpage_detail.create() returns 0 [event]
+	integer icurrent
+	this.st_3 = create st_3
+	this.st_4 = create st_4
+	call super::create
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_3
+	this.control[icurrent + 2] = this.st_4
+
+// tabpage_detail.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.st_3
+	destroy this.st_4
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "icatcode"
+		if data = "" or isnull(data) then
+			messagebox("Item Validation", "Value required for item Category")
+		end if
+	case "packcode"
+		if data = "" or isnull(data) then
+			messagebox("Item Validation", "Value required for item Packing")
+		end if
+	case "manfcode"
+		if real(data) < 1.0 then
+			messagebox("Manufacturer Validation", "Please enter a value for manufacturer")
+		end if
+	case "discperc"
+		if real(data) < 0.0 then
+			messagebox("Disc(%) Validation", "Please enter a value greater than or equal to zero")
+		end if
+	end choose
+	return 1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
 	return ::message.returnvalue

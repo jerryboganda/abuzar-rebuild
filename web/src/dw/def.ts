@@ -78,12 +78,12 @@ export const num = (o: Props | undefined, k: string, d = 0): number => {
   return Number.isNaN(n) ? d : n
 }
 
-/** property value that may carry an expression: "0~tif(...)" -> { value: '0', expr: 'if(...)' } */
+/** property value that may carry an expression: "0<TAB>if(...)" (the compiled form of `0~tif(...)`) -> { value: '0', expr: 'if(...)' } */
 export function splitExpr(v: string | undefined): { value: string; expr?: string } {
   if (v === undefined) return { value: '' }
-  const i = v.indexOf('~t')
+  const i = v.search(/	|~t/)
   if (i < 0) return { value: v }
-  return { value: v.slice(0, i), expr: v.slice(i + 2) }
+  return { value: v.slice(0, i), expr: v.slice(v[i] === '	' ? i + 1 : i + 2) }
 }
 
 export class DwCatalog {

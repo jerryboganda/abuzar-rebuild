@@ -304,7 +304,7 @@
 	this.it_transobject.dbparm = "Async =0, DBGetTime = 0"
 	return this.it_transobject.sqlcode
 
-// w_purpayment_old.create() returns 0
+// w_purpayment_old.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.dw_print = create dw_print
@@ -313,7 +313,7 @@
 	this.control[icurrent + 1] = this.dw_print
 	this.control[icurrent + 2] = this.dw_purpayment
 
-// w_purpayment_old.destroy() returns 0
+// w_purpayment_old.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
@@ -321,7 +321,7 @@
 	destroy this.dw_print
 	destroy this.dw_purpayment
 
-// w_purpayment_old.ue_save() returns 0
+// w_purpayment_old.ue_save() returns 0 [event]
 	long ll_mastercurrrow
 	long ll_invid
 	long ll_null
@@ -380,7 +380,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_purpayment_old.ue_newform() returns 0
+// w_purpayment_old.ue_newform() returns 0 [event]
 	call super::ue_newform
 	this.id_master.setfocus()
 	this.idc_paymentacccode.reset()
@@ -389,7 +389,7 @@
 	this.idc_paymentacccode.filter()
 	wf_protectdw(this.id_master, 0)
 
-// w_purpayment_old.ue_detail() returns 0
+// w_purpayment_old.ue_detail() returns 0 [event]
 	long li_protect
 	call super::ue_detail
 	this.im_menu.m_file.m_save.enabled = false
@@ -419,7 +419,7 @@
 	wf_protectdw(this.id_master, li_protect)
 	wf_protectdw(this.id_detail, li_protect)
 
-// w_purpayment_old.ue_postopen() returns 0
+// w_purpayment_old.ue_postopen() returns 0 [event]
 	integer ll_rtcode
 	call super::ue_postopen
 	ll_rtcode = this.id_master.getchild("paymentacccode", this.idc_paymentacccode)
@@ -429,7 +429,7 @@
 	this.id_purpayment = this.dw_purpayment
 	this.id_purpayment.settransobject(this.it_transobject)
 
-// w_purpayment_old.ue_print() returns 0
+// w_purpayment_old.ue_print() returns 0 [event]
 	long ll_row
 	long ll_invcode
 	long ll_option
@@ -493,12 +493,12 @@
 	end if
 	messagebox("Printing Error", "Can not Print Invoice,~r~nNo rows are retrieved", information!)
 
-// w_purpayment_old.ue_list() returns 0
+// w_purpayment_old.ue_list() returns 0 [event]
 	call super::ue_list
 	this.im_menu.m_file.m_print.enabled = true
 	this.im_menu.m_file.m_print.visible = true
 
-// w_purpayment_old.open() returns long
+// w_purpayment_old.open() returns long [event]
 	m_entry lm_menu
 	long ll_width
 	long ll_height
@@ -527,4 +527,219 @@
 	this.tab_retrieve.tabpage_detail.dw_itemslist.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width * 0.67
 	this.tab_retrieve.tabpage_detail.dw_itemslist.x = 1150
 	setredraw(true)
+	return ::message.returnvalue
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "icode"
+		if data = "" or isnull(data) then
+			messagebox("Item Name Validation", "Value required for item name in current row")
+		end if
+	end choose
+	return 1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	long ll_retcode
+	double ld_balance
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "purinvcode"
+		if isnull(data) or long(data) < 0 then
+			messagebox("Purchase Invoice Code Validation", "Purchase Invoice Code Validation Error~n~rPlease enter Some valid Purchase Invoice Code", stopsign!)
+			ll_retcode = 1
+		else
+			ll_retcode = parent.parent.parent.wf_validateinvoice(long(data))
+			if ll_retcode <> 0 then
+				messagebox("Purchase Invoice Code Validation", "Purchase Invoice Code Validation Error~n~rPlease enter Some valid Purchase Invoice Code", stopsign!)
+				ll_retcode = 1
+			end if
+		end if
+	case "paymentmode"
+		if data = "C" then
+			parent.parent.parent.idc_paymentacccode.setfilter("subcode=2")
+		else
+			parent.parent.parent.idc_paymentacccode.setfilter("subcode=4")
+		end if
+		parent.parent.parent.idc_paymentacccode.filter()
+		return 0
+	case "ded1aliasname"
+		if data = "" or isnull(data) then
+			return 0
+		else
+			return parent.parent.parent.wf_validate_aliasname(1, data)
+		end if
+	case "ded2aliasname"
+		if data = "" or isnull(data) then
+			return 0
+		else
+			return parent.parent.parent.wf_validate_aliasname(2, data)
+		end if
+	case "ded3aliasname"
+		if data = "" or isnull(data) then
+			return 0
+		else
+			return parent.parent.parent.wf_validate_aliasname(3, data)
+		end if
+	case "ded4aliasname"
+		if data = "" or isnull(data) then
+			return 0
+		else
+			return parent.parent.parent.wf_validate_aliasname(4, data)
+		end if
+	case "ded5aliasname"
+		if data = "" or isnull(data) then
+			return 0
+		else
+			return parent.parent.parent.wf_validate_aliasname(5, data)
+		end if
+	case "ded1acccode"
+		if data = "" or isnull(data) then
+			return 0
+		else
+			return parent.parent.parent.wf_validate_acccode(1, long(data))
+		end if
+	case "ded2acccode"
+		if data = "" or isnull(data) then
+			return 0
+		else
+			return parent.parent.parent.wf_validate_acccode(2, long(data))
+		end if
+	case "ded3acccode"
+		if data = "" or isnull(data) then
+			return 0
+		else
+			return parent.parent.parent.wf_validate_acccode(3, long(data))
+		end if
+	case "ded4acccode"
+		if data = "" or isnull(data) then
+			return 0
+		else
+			return parent.parent.parent.wf_validate_acccode(4, long(data))
+		end if
+	case "ded5acccode"
+		if data = "" or isnull(data) then
+			return 0
+		else
+			return parent.parent.parent.wf_validate_acccode(5, long(data))
+		end if
+	case "ded1perc"
+		if data = "" or isnull(data) then
+			return 0
+		else
+			return parent.parent.parent.wf_set_deductionamt(1, 1, double(data))
+		end if
+	case "ded2perc"
+		if data = "" or isnull(data) then
+			return 0
+		else
+			return parent.parent.parent.wf_set_deductionamt(2, 1, double(data))
+		end if
+	case "ded3perc"
+		if data = "" or isnull(data) then
+			return 0
+		else
+			return parent.parent.parent.wf_set_deductionamt(3, 1, double(data))
+		end if
+	case "ded4perc"
+		if data = "" or isnull(data) then
+			return 0
+		else
+			return parent.parent.parent.wf_set_deductionamt(4, 1, double(data))
+		end if
+	case "ded5perc"
+		if data = "" or isnull(data) then
+			return 0
+		else
+			return parent.parent.parent.wf_set_deductionamt(5, 1, double(data))
+		end if
+	case "ded1baseamt"
+		if data = "" or isnull(data) then
+			return 0
+		else
+			return parent.parent.parent.wf_set_deductionamt(1, 2, double(data))
+		end if
+	case "ded2baseamt"
+		if data = "" or isnull(data) then
+			return 0
+		else
+			return parent.parent.parent.wf_set_deductionamt(1, 2, double(data))
+		end if
+	case "ded3baseamt"
+		if data = "" or isnull(data) then
+			return 0
+		else
+			return parent.parent.parent.wf_set_deductionamt(1, 3, double(data))
+		end if
+	case "ded4baseamt"
+		if data = "" or isnull(data) then
+			return 0
+		else
+			return parent.parent.parent.wf_set_deductionamt(1, 4, double(data))
+		end if
+	case "ded5baseamt"
+		if data = "" or isnull(data) then
+			return 0
+		else
+			return parent.parent.parent.wf_set_deductionamt(1, 5, double(data))
+		end if
+		return
+	end choose
+	return ll_retcode
+
+// dw_detail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	integer li_movement
+	long ll_row
+	long ll_temp
+	long ll_code
+	long ll_invcode
+	string sl_columnname
+	string ls_filterexp
+	s_popup_selection lstr_selection
+	s_arguements lst_arg
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keyf5! then
+		openwithparm(w_popup_comprehensicesearch_selection, "d_supplier_list")
+		lstr_selection = message.powerobjectparm
+		if lstr_selection.l_code > 0 and lstr_selection.l_code2 > 0 then
+			openwithparm(w_arg_sale_outstanding_a_customer, lstr_selection.l_code2)
+			lst_arg = message.powerobjectparm
+			if lst_arg.i_status = 1 and lst_arg.l_code1 > 0 then
+				this.object.saleinvcode[1] = lst_arg.l_code1
+				if parent.parent.parent.wf_validateinvoice(lst_arg.l_code1) <> 0 then
+					messagebox("Purchase Invoice Code Validation", "Purchase Invoice Code Validation Error~n~rPlease enter Some valid Purchase Invoice Code", stopsign!)
+				end if
+			end if
+		end if
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	long ll_retcode
+	double ld_balance
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	choose case dwo.name
+	case "paymentmode", "paymentacccode"
+		if this.object.paymentmode[row] = "C" then
+			parent.parent.parent.idc_paymentacccode.setfilter("subcode=2")
+		else
+			parent.parent.parent.idc_paymentacccode.setfilter("subcode=4")
+		end if
+		parent.parent.parent.idc_paymentacccode.filter()
+		return 0
+	end choose
+	return ll_retcode
+
+// dw_itemsdetail.getfocus() returns long [event]
 	return ::message.returnvalue

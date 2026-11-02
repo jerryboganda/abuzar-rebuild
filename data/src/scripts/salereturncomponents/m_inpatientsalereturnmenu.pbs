@@ -1,8 +1,72 @@
 // menu m_inpatientsalereturnmenu (salereturncomponents)  ancestor: m_multi_entry
 
-// m_inpatientsalereturnmenu.create() returns 0
+// m_inpatientsalereturnmenu.create() returns 0 [event]
 	m_inpatientsalereturnmenu = this
 	call super::create
 
-// m_inpatientsalereturnmenu.destroy() returns 0
+// m_inpatientsalereturnmenu.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_previoussaleinvoiceinfo = create m_previoussaleinvoiceinfo
+	this.m_itemsalehistory = create m_itemsalehistory
+	this.m_possiblebatchandexpiry = create m_possiblebatchandexpiry
+	this.item[upperbound(this.item) + 1] = this.m_previoussaleinvoiceinfo
+	this.item[upperbound(this.item) + 1] = this.m_itemsalehistory
+	this.item[upperbound(this.item) + 1] = this.m_possiblebatchandexpiry
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_previoussaleinvoiceinfo
+	destroy this.m_itemsalehistory
+	destroy this.m_possiblebatchandexpiry
+
+// m_options.create() returns 0 [event]
+	call super::create
+	this.visible = true
+	this.text = "Edit Sale Invoice~tCtrl+O"
+	this.enabled = false
+	this.shortcut = 335
+
+// m_options.clicked() returns 0 [event]
+	call super::clicked
+	this.parentwindow.dynamic wf_editsaleinvoice()
+
+// m_options.destroy() returns 0 [event]
+	call super::destroy
+
+// m_previoussaleinvoiceinfo.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_prevsaleinvinfo()
+
+// m_previoussaleinvoiceinfo.create() returns 0 [event]
+	call super::create
+	this.text = "Previous Sale Invoice Info.~tCtrl+B"
+	this.shortcut = 322
+
+// m_previoussaleinvoiceinfo.destroy() returns 0 [event]
+	call super::destroy
+
+// m_itemsalehistory.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_itemsalehistory()
+
+// m_itemsalehistory.create() returns 0 [event]
+	call super::create
+	this.text = "Item Sale History~tCtrl+H"
+	this.shortcut = 328
+
+// m_itemsalehistory.destroy() returns 0 [event]
+	call super::destroy
+
+// m_possiblebatchandexpiry.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_getpossiblebatchexpiry()
+
+// m_possiblebatchandexpiry.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Possible Batch and Expiry~tCtrl+Y"
+	this.enabled = false
+	this.shortcut = 345
+
+// m_possiblebatchandexpiry.destroy() returns 0 [event]
 	call super::destroy

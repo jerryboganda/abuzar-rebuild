@@ -1,25 +1,25 @@
 // window w_salesman_form (custcomponents)  ancestor: w_single_entry
 
-// w_salesman_form.ue_newform() returns 0
+// w_salesman_form.ue_newform() returns 0 [event]
 	call super::ue_newform
 
-// w_salesman_form.create() returns 0
+// w_salesman_form.create() returns 0 [event]
 	call super::create
 
-// w_salesman_form.destroy() returns 0
+// w_salesman_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_salesman_form.activate() returns long
+// w_salesman_form.activate() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::activate()
 	this.windowstate = maximized!
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_salesman_form.ue_save() returns 0
+// w_salesman_form.ue_save() returns 0 [event]
 	long ll_newid
 	long ll_row
 	ll_row = this.id_detail.getrow()
@@ -29,3 +29,35 @@
 		this.id_detail.object.code[ll_row] = ll_newid
 	end if
 	call super::ue_save
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer rt_code
+	string ls_salesman
+	string ls_name
+	long ll_count
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		ls_salesman = lower(trim(data))
+		SQL Select count ( *) INTO :ll_count From salesman Where salesman.name =:ls_salesman USING sqlca;
+		if sqlca.sqlcode <> 0 then
+			messagebox("Database Error", "Some database request has been fail")
+			rt_code = 1
+		elseif not isnull(ll_count) and ll_count > 0 then
+			messagebox("Name Validation", "Name " + ls_name + " already exist~r~nEnter some differnt name")
+			rt_code = 1
+		end if
+	end choose
+	return rt_code
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	end choose
+	return 1

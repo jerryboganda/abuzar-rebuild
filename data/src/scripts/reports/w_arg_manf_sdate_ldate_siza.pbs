@@ -1,6 +1,6 @@
 // window w_arg_manf_sdate_ldate_siza (reports)  ancestor: w_arguements
 
-// w_arg_manf_sdate_ldate_siza.create() returns 0
+// w_arg_manf_sdate_ldate_siza.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.gb_2 = create gb_2
@@ -19,7 +19,7 @@
 	this.control[icurrent + 6] = this.cb_xls
 	this.control[icurrent + 7] = this.gb_overallprogress
 
-// w_arg_manf_sdate_ldate_siza.destroy() returns 0
+// w_arg_manf_sdate_ldate_siza.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.gb_2
 	destroy this.cbx_trans
@@ -29,7 +29,7 @@
 	destroy this.cb_xls
 	destroy this.gb_overallprogress
 
-// w_arg_manf_sdate_ldate_siza.open() returns long
+// w_arg_manf_sdate_ldate_siza.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.dw_control.settransobject(sqlca)
@@ -39,17 +39,120 @@
 	this.is_xls = trim(f_stringpreferences("OutputFilePath")) + trim(f_stringpreferences("MerckDistCode")) + "INV.XLS"
 	return ::message.returnvalue
 
-// w_arg_manf_sdate_ldate_siza.ue_close(integer ai_stauts) returns 0
+// w_arg_manf_sdate_ldate_siza.ue_close(integer ai_stauts) returns 0 [event]
 	super::ue_close(ai_stauts)
 	closewithreturn(this, this.istr_arg)
 
-// cb_trans.clicked() returns long
+// cb_cancel.clicked() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked()
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long [event]
+	long ancestorreturnvalue
+	boolean lb_ok
+	long ll_ret
+	datastore lds_temp
+	integer li_filehandle
+	integer li_colcount
+	integer li_collen
+	long ll_counter
+	long ll_innercounter
+	string ls_writetofile
+	string ls_prevcol
+	string ls_colname
+	string ls_temp
+	datastore lds_excel
+	ancestorreturnvalue = super::clicked()
+	setpointer(hourglass!)
+	parent.gb_overallprogress.visible = true
+	parent.hpb_hpb.visible = true
+	parent.istr_arg.l_code1 = parent.dw_control.getitemnumber(1, "manfcode")
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	parent.istr_arg.i_status = 1
+	if parent.cbx_trans.checked = true then
+		lds_temp = create datastore
+		lds_temp.dataobject = "d_siza_textreport"
+		lds_temp.settransobject(sqlca)
+		lds_temp.retrieve(parent.istr_arg.l_code1, parent.istr_arg.d_sdate, parent.istr_arg.d_edate)
+		parent.hpb_hpb.stepit()
+		parent.hpb_hpb.stepit()
+		if lds_temp.rowcount() <= 0 then
+			messagebox("Invoice Data Generation Problem", "Error Generating Invoice Data Text File~r~nPlease Try Later")
+			lb_ok = false
+		else
+			parent.hpb_hpb.stepit()
+			parent.hpb_hpb.stepit()
+			parent.hpb_hpb.stepit()
+			li_filehandle = fileopen(parent.is_trans, linemode!, write!, lockwrite!, replace!)
+			if li_filehandle > -1 then
+				ls_writetofile = lds_temp.getitemstring(1, "compute_1")
+				filewrite(li_filehandle, ls_writetofile)
+				ls_writetofile = lds_temp.getitemstring(1, "compute_2")
+				filewrite(li_filehandle, ls_writetofile)
+				ls_writetofile = lds_temp.getitemstring(1, "compute_3")
+				filewrite(li_filehandle, ls_writetofile)
+				ls_writetofile = lds_temp.getitemstring(1, "compute_4")
+				filewrite(li_filehandle, ls_writetofile)
+				ls_writetofile = lds_temp.getitemstring(1, "compute_5")
+				filewrite(li_filehandle, ls_writetofile)
+				ls_writetofile = lds_temp.getitemstring(1, "compute_6")
+				filewrite(li_filehandle, ls_writetofile)
+				for ll_counter = 1 to lds_temp.rowcount()
+					ls_writetofile = lds_temp.getitemstring(ll_counter, "compute_7")
+					filewrite(li_filehandle, ls_writetofile)
+				next
+				fileclose(li_filehandle)
+				parent.hpb_hpb.stepit()
+				parent.hpb_hpb.stepit()
+				messagebox("Invoice Data Generation", "Invoice Data Text File Generated Sucessfully")
+				lb_ok = true
+			else
+				messagebox("Invoice Data Generation Problem", "File Handle Error~r~nError Generating Invoice Data Text File.~r~nPlease Try Later")
+				lb_ok = false
+			end if
+		end if
+		destroy lds_temp
+	end if
+	if parent.cbx_xls.checked = true then
+		lds_excel = create datastore
+		lds_excel.dataobject = "d_siza_excel_data"
+		lds_excel.settransobject(sqlca)
+		lds_excel.retrieve(parent.istr_arg.l_code1, parent.istr_arg.d_sdate, parent.istr_arg.d_edate)
+		if lds_excel.rowcount() <= 0 then
+			messagebox("Invoice Data Generation Problem", "Error Generating Invoice Data Excel File~r~nPlease Try Later")
+			lb_ok = false
+		else
+			ll_ret = uf_save_ds_as_excel(lds_excel, parent.is_xls)
+			if ll_ret = 1 then
+				messagebox("Save as Excel File", "Successfully Saved Excel File")
+				lb_ok = true
+			else
+				messagebox("Save as Excel File", "Problem in Saving Excel File")
+				lb_ok = false
+			end if
+		end if
+		destroy lds_excel
+	end if
+	setpointer(arrow!)
+	if lb_ok = false then
+		parent.hpb_hpb.visible = false
+		parent.hpb_hpb.position = 10
+		parent.gb_overallprogress.visible = false
+		return ::message.returnvalue
+	end if
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// cb_trans.clicked() returns long [event]
 	string ls_named
 	integer li_value
 	li_value = getfilesavename("Select File Location", parent.is_trans, ls_named, "TXT", "All Files (*.*),*.*," + "All Files (*.*),*.*")
 	return ::message.returnvalue
 
-// cb_xls.clicked() returns long
+// cb_xls.clicked() returns long [event]
 	string ls_named
 	integer li_value
 	li_value = getfilesavename("Select File Location", parent.is_xls, ls_named, "XLS", "All Files (*.*),*.*," + "All Files (*.*),*.*")

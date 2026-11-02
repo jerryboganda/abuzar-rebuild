@@ -794,7 +794,7 @@
 	end if
 	return 0
 
-// w_payroll.create() returns 0
+// w_payroll.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	if isvalid(this.menuid) then
@@ -809,7 +809,7 @@
 	this.control[icurrent + 1] = this.dw_purinvrep
 	this.control[icurrent + 2] = this.dw_changeprice_foritemlog
 
-// w_payroll.destroy() returns 0
+// w_payroll.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
@@ -817,7 +817,7 @@
 	destroy this.dw_purinvrep
 	destroy this.dw_changeprice_foritemlog
 
-// w_payroll.ue_save() returns 0
+// w_payroll.ue_save() returns 0 [event]
 	integer li_counter
 	integer li_option
 	long ll_salesmancode
@@ -922,7 +922,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_payroll.ue_newform() returns 0
+// w_payroll.ue_newform() returns 0 [event]
 	integer rtncode
 	integer ll_counter
 	datetime ldt_server_datetime
@@ -969,7 +969,7 @@
 	this.id_master.object.p_itemimage.filename = ""
 	setredraw(true)
 
-// w_payroll.ue_detail() returns 0
+// w_payroll.ue_detail() returns 0 [event]
 	long ll_code
 	long ll_counter
 	long ll_found
@@ -1017,15 +1017,15 @@
 	end if
 	setredraw(true)
 
-// w_payroll.ue_newitem() returns 0
+// w_payroll.ue_newitem() returns 0 [event]
 
-// w_payroll.ue_deleteitem() returns 0
+// w_payroll.ue_deleteitem() returns 0 [event]
 
-// w_payroll.ue_new() returns 0
+// w_payroll.ue_new() returns 0 [event]
 	call super::ue_new
 	this.im_menu.m_file.m_post.enabled = false
 
-// w_payroll.ue_list() returns 0
+// w_payroll.ue_list() returns 0 [event]
 	m_payroll_menu lm_menu
 	long ll_counter
 	call super::ue_list
@@ -1035,7 +1035,7 @@
 	lm_menu.m_file.m_print.enabled = true
 	lm_menu.m_file.m_payrollpayment.enabled = true
 
-// w_payroll.ue_refreshddw() returns 0
+// w_payroll.ue_refreshddw() returns 0 [event]
 	call super::ue_refreshddw
 	setpointer(hourglass!)
 	this.idc_employee.setredraw(false)
@@ -1045,7 +1045,7 @@
 	this.idc_employee.setredraw(true)
 	setpointer(arrow!)
 
-// w_payroll.ue_print() returns 0
+// w_payroll.ue_print() returns 0 [event]
 	long ll_invcode
 	long ll_suppcode
 	long ll_row
@@ -1105,7 +1105,7 @@
 	end if
 	messagebox("Printing Error", "Can not Print~r~nNo rows are retrieved", information!)
 
-// w_payroll.ue_postopen() returns 0
+// w_payroll.ue_postopen() returns 0 [event]
 	m_payroll_menu lm_menu
 	integer li_rtncode
 	long ll_code
@@ -1130,7 +1130,7 @@
 	end if
 	setredraw(true)
 
-// w_payroll.open() returns long
+// w_payroll.open() returns long [event]
 	m_payroll_menu lm_menu
 	long ll_width
 	long ll_height
@@ -1167,5 +1167,253 @@
 	show()
 	return ::message.returnvalue
 
-// w_payroll.ue_deleteitem_row(long al_row) returns 0
+// w_payroll.ue_deleteitem_row(long al_row) returns 0 [event]
 	super::ue_deleteitem_row(al_row)
+
+// tabpage_detail.create() returns 0 [event]
+	integer icurrent
+	this.dw_footer2 = create dw_footer2
+	call super::create
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_footer2
+
+// tabpage_detail.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.dw_footer2
+
+// dw_footer.losefocus() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::losefocus()
+	parent.parent.parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_footer.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	parent.parent.parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_footer.ue_enterkey() returns long [event]
+	accepttext()
+	parent.parent.parent.wf_grandtotal()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_result
+	long ll_code
+	long ll_detailrows
+	long ll_res
+	long ll_empcode
+	long ll_days
+	double ld_price
+	double ld_rate
+	string ls_null
+	date ld_null
+	datetime ldt_date
+	dwitemstatus lrs_status
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "date"
+		this.object.paymentdate[row] = datetime(data)
+		return 0
+	case "empcode"
+		ll_code = long(data)
+		if parent.parent.parent.wf_set_employee_info(ll_code) = 0 then
+			parent.parent.parent.wf_update_salary(dwo.name, data)
+			return 0
+		else
+			return 1
+		end if
+	case "empid"
+		if not isnull(data) and data <> "" then
+			ll_res = parent.parent.parent.wf_find_empcode(data, ll_empcode)
+			if ll_res > 0 then
+				setitem(row, "empcode", ll_empcode)
+				parent.parent.parent.wf_set_employee_info(ll_empcode)
+				parent.parent.parent.wf_update_salary(dwo.name, data)
+				return 0
+			else
+				messagebox("Employee Validation", "Employee with  Employee ID  " + data + " does not exist")
+				return 1
+			end if
+			return
+		end if
+	case "todate"
+		if not isnull(data) then
+			ldt_date = datetime(date(left(data, 10)), time(mid(data, 12, len(data))))
+			if ldt_date < this.object.fromdate[row] then
+				messagebox("To Date Validation", "Please enter valid Date", stopsign!)
+				return 1
+			else
+				ll_days = daysafter(date(this.object.fromdate[row]), date(ldt_date)) + 1
+				this.object.workdays[row] = ll_days
+				return 0
+			end if
+		else
+			return 0
+		end if
+	case "fromdate"
+		if not isnull(data) then
+			ldt_date = datetime(date(left(data, 10)), time(mid(data, 12, len(data))))
+			if ldt_date > this.object.todate[row] then
+				messagebox("From Date Validation", "Please enter valid Date", stopsign!)
+				return 1
+			else
+				ll_days = daysafter(date(this.object.fromdate[row]), date(data)) + 1
+				this.object.workdays[row] = ll_days
+				return 0
+			end if
+		else
+			return 0
+		end if
+	case "workdays"
+		if long(data) >= 0 then
+			return 0
+		else
+			messagebox("Work Days Validation", "Please enter valid Work Days", stopsign!)
+			return 1
+		end if
+	case "presents"
+		if long(data) >= 0 then
+			if long(data) > this.object.workdays[row] then
+				messagebox("Presents Validation", "Please enter valid Presents", stopsign!)
+				return 1
+			else
+				if this.object.paytype[row] = 1 then
+					this.object.hoursworked[row] = (long(data) + this.object.leaves[row]) * this.object.workinghours[row]
+				end if
+				parent.parent.parent.wf_update_salary(dwo.name, data)
+				return 0
+			end if
+		else
+			messagebox("Presents Validation", "Please enter valid Presents", stopsign!)
+			return 1
+		end if
+	case "absents"
+		if long(data) >= 0 then
+			if long(data) > this.object.workdays[row] then
+				messagebox("Absents Validation", "Please enter valid Absents", stopsign!)
+				return 1
+			else
+				parent.parent.parent.wf_update_salary(dwo.name, data)
+				return 0
+			end if
+		else
+			messagebox("Absents Validation", "Please enter valid Absents", stopsign!)
+			return 1
+		end if
+	case "leaves"
+		if long(data) >= 0 then
+			if long(data) > this.object.workdays[row] then
+				messagebox("leaves Validation", "Please enter valid leaves", stopsign!)
+				return 1
+			else
+				if this.object.paytype[row] = 1 then
+					this.object.hoursworked[row] = (this.object.presents[row] + long(data)) * this.object.workinghours[row]
+				end if
+				parent.parent.parent.wf_update_salary(dwo.name, data)
+				return 0
+			end if
+		else
+			messagebox("leaves Validation", "Please enter valid leaves", stopsign!)
+			return 1
+		end if
+	case "sundays"
+		if long(data) >= 0 then
+			if long(data) > this.object.workdays[row] then
+				messagebox("Sundays Validation", "Please enter valid Sundays", stopsign!)
+				return 1
+			else
+				parent.parent.parent.wf_update_salary(dwo.name, data)
+				return 0
+			end if
+		else
+			messagebox("Sundays Validation", "Please enter valid sundays", stopsign!)
+			return 1
+		end if
+	case "holidays"
+		if long(data) >= 0 then
+			if long(data) > this.object.workdays[row] then
+				messagebox("Holidays Validation", "Please enter valid holidays", stopsign!)
+				return 1
+			else
+				parent.parent.parent.wf_update_salary(dwo.name, data)
+				return 0
+			end if
+		else
+			messagebox("Holidays Validation", "Please enter valid holidays", stopsign!)
+			return 1
+		end if
+	case else
+		parent.parent.parent.wf_update_salary(dwo.name, data)
+		return 0
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.editchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::editchanged(row, dwo, data)
+	parent.parent.parent.post wf_set_employee_name(data)
+	return ::message.returnvalue
+
+// dw_detail.losefocus() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::losefocus()
+	parent.parent.parent.id_detail.setfocus()
+	return ::message.returnvalue
+
+// dw_detail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	integer li_movement
+	long ll_row
+	long ll_temp
+	long ll_code
+	long ll_foundcode
+	string sl_columnname
+	string ls_filterexp
+	s_popup_selection lstr_selection
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keyf8! and getcolumnname() = "empcode" then
+		parent.parent.parent.is_comprehensive_search_dataobject = "ddd_employees"
+		ll_foundcode = parent.parent.parent.wf_comprehensive_search()
+		if ll_foundcode >= 0 then
+			this.object.empcode[1] = ll_foundcode
+			if parent.parent.parent.wf_set_employee_info(ll_foundcode) = 0 then
+				parent.parent.parent.wf_update_salary("empcode", string(ll_foundcode))
+			end if
+		end if
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	parent.parent.parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_itemsdetail.rowfocuschanged(long currentrow) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::rowfocuschanged(currentrow)
+	parent.parent.parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_itemsdetail.losefocus() returns long [event]
+	parent.parent.parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_itemsdetail.getfocus() returns long [event]
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// dw_itemsdetail.ue_focusqty() returns 0 [event]
+	parent.parent.parent.id_detail.selecttext(1, len(parent.parent.parent.id_detail.gettext()))
+	parent.parent.parent.id_detail.setfocus()
+
+// dw_itemsdetail.ue_enterkey() returns long [event]
+	accepttext()
+	parent.parent.parent.wf_grandtotal()
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_itemsdetail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	return ::message.returnvalue

@@ -64,16 +64,16 @@
 	wf_sortdw(this.tab_retrieve.tabpage_list.ddlb_sort.text, this.is_sortsequence)
 	this.id_master.setfocus()
 
-// w_cashiertemplate_form.create() returns 0
+// w_cashiertemplate_form.create() returns 0 [event]
 	call super::create
 
-// w_cashiertemplate_form.destroy() returns 0
+// w_cashiertemplate_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_cashiertemplate_form.ue_save() returns 0
+// w_cashiertemplate_form.ue_save() returns 0 [event]
 	long ll_mastercurrrow
 	long ll_invid
 	long ll_detailrows
@@ -110,7 +110,7 @@
 	call super::ue_save
 	setpointer(arrow!)
 
-// w_cashiertemplate_form.ue_newform() returns 0
+// w_cashiertemplate_form.ue_newform() returns 0 [event]
 	call super::ue_newform
 	this.id_master.setfocus()
 	wf_retrieve_itemlist()
@@ -121,7 +121,7 @@
 		this.id_detail.setcolumn("acccode")
 	end if
 
-// w_cashiertemplate_form.ue_newitem() returns 0
+// w_cashiertemplate_form.ue_newitem() returns 0 [event]
 	if this.id_detail.rowcount() > 0 and (isnull(this.id_detail.object.acccode[this.id_detail.rowcount()]) or isnull(this.id_detail.object.acccode[this.id_detail.rowcount()])) then
 		this.id_detail.setrow(this.id_detail.rowcount())
 		this.id_detail.setcolumn("acccode")
@@ -133,7 +133,7 @@
 	call super::ue_newitem
 	this.id_detail.setcolumn("acccode")
 
-// w_cashiertemplate_form.ue_detail() returns 0
+// w_cashiertemplate_form.ue_detail() returns 0 [event]
 	long ll_rowcount
 	long ll_code
 	this.im_menu.m_file.m_retrieve.text = "Lis&t"
@@ -161,13 +161,136 @@
 	this.im_menu.m_item.m_newitem.enabled = true
 	this.im_menu.m_item.m_deleteitem.enabled = true
 
-// w_cashiertemplate_form.ue_postopen() returns 0
+// w_cashiertemplate_form.ue_postopen() returns 0 [event]
 	call super::ue_postopen
 	this.id_detail.getchild("acccode", this.idc_child)
 	wf_retrieve_itemlist()
 
-// w_cashiertemplate_form.open() returns long
+// w_cashiertemplate_form.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.title = "Cashier Window Template"
 	return ::message.returnvalue
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "tablename"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	end choose
+	return 1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "tablename"
+		if parent.parent.parent.wf_duplicatename(data) then
+			messagebox("Table Name Validation", "Duplication Table Name Error~n~rPlease Choose Some Other Table Name")
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "acccode"
+		parent.parent.parent.il_currrow = row
+		parent.parent.parent.ib_itemvalidated = false
+		li_errcode = 0
+	case else
+		parent.parent.parent.ib_itemvalidated = true
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "acccode"
+		if data = "" or isnull(data) then
+			messagebox("Account Name Validation", "Value required Account Name in current row")
+		end if
+	end choose
+	return 1
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	parent.parent.parent.editflag = true
+	selecttext(1, len(gettext()))
+	if dwo.name = parent.parent.parent.is_columnitemname then
+		if isnull(this.object.acccode[row]) and parent.parent.parent.ib_focusdetail then
+			parent.parent.parent.wf_showlist(getitemnumber(row, "CurrListRow"))
+		end if
+	else
+		parent.parent.parent.ib_itemslistopen = false
+		parent.parent.parent.id_itemslist.hide()
+	end if
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem() = -1 then
+		return ::message.returnvalue
+	end if
+	return 0
+
+// dw_itemsdetail.getfocus() returns long [event]
+	return ::message.returnvalue
+
+// dw_itemsdetail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	integer rt_code
+	long ll_currrow
+	long ll_listcurrrow
+	long ll_icode
+	long ll_found
+	long ll_rowm
+	if getcolumnname() = parent.parent.parent.is_columnitemname then
+		setredraw(false)
+		ll_rowm = getrow()
+		if key = keydownarrow! then
+			parent.parent.parent.id_itemslist.selectrow(0, false)
+			parent.parent.parent.id_itemslist.scrollnextrow()
+			ll_listcurrrow = parent.parent.parent.id_itemslist.getrow()
+			rt_code = 1
+		elseif key = keyuparrow! then
+			parent.parent.parent.id_itemslist.selectrow(0, false)
+			parent.parent.parent.id_itemslist.scrollpriorrow()
+			ll_listcurrrow = parent.parent.parent.id_itemslist.getrow()
+			rt_code = 1
+		elseif key = keypagedown! then
+			parent.parent.parent.id_itemslist.selectrow(0, false)
+			parent.parent.parent.id_itemslist.scrollnextpage()
+			ll_listcurrrow = parent.parent.parent.id_itemslist.getrow()
+			rt_code = 1
+		elseif key = keypageup! then
+			parent.parent.parent.id_itemslist.selectrow(0, false)
+			parent.parent.parent.id_itemslist.scrollpriorpage()
+			ll_listcurrrow = parent.parent.parent.id_itemslist.getrow()
+			rt_code = 1
+		elseif key = keyend! then
+			parent.parent.parent.id_itemslist.selectrow(0, false)
+			parent.parent.parent.id_itemslist.scrolltorow(99999)
+			ll_listcurrrow = parent.parent.parent.id_itemslist.getrow()
+			rt_code = 1
+		elseif key = keyhome! then
+			parent.parent.parent.id_itemslist.selectrow(0, false)
+			parent.parent.parent.id_itemslist.scrolltorow(1)
+			ll_listcurrrow = parent.parent.parent.id_itemslist.getrow()
+			rt_code = 1
+		elseif key = keyback! then
+			parent.parent.parent.ib_bkspace = true
+			setredraw(true)
+		elseif key = keyescape! then
+			parent.parent.parent.ib_itemslistopen = false
+			parent.parent.parent.id_itemslist.hide()
+			setfocus()
+			setredraw(true)
+		elseif key = keyf4! then
+			setredraw(true)
+		else
+			setredraw(true)
+		end if
+	end if
+	return rt_code

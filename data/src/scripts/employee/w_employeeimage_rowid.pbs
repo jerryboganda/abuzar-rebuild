@@ -1,6 +1,6 @@
 // window w_employeeimage_rowid (employee)  ancestor: window
 
-// w_employeeimage_rowid.ue_close(integer ar_closearg) returns 0
+// w_employeeimage_rowid.ue_close(integer ar_closearg) returns 0 [event]
 	if ar_closearg = -1 then
 		this.istr_blob.i_closemode = -1
 	else
@@ -34,20 +34,20 @@
 		end if
 	end if
 
-// w_employeeimage_rowid.create() returns 0
+// w_employeeimage_rowid.create() returns 0 [event]
 	this.cb_change = create cb_change
 	this.cb_ok = create cb_ok
 	this.cb_cancel = create cb_cancel
 	this.dw_image = create dw_image
 	this.control = {this.cb_change, this.cb_ok, this.cb_cancel, this.dw_image}
 
-// w_employeeimage_rowid.destroy() returns 0
+// w_employeeimage_rowid.destroy() returns 0 [event]
 	destroy this.cb_change
 	destroy this.cb_ok
 	destroy this.cb_cancel
 	destroy this.dw_image
 
-// w_employeeimage_rowid.open() returns long
+// w_employeeimage_rowid.open() returns long [event]
 	long ll_imagew
 	long ll_imageh
 	long ll_code
@@ -109,29 +109,29 @@
 	end if
 	return message.returnvalue
 
-// w_employeeimage_rowid.key(keycode key, unsignedlong keyflags) returns long
+// w_employeeimage_rowid.key(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		post event ue_close(-1)
 	end if
 	return ::message.returnvalue
 
-// w_employeeimage_rowid.close() returns long
+// w_employeeimage_rowid.close() returns long [event]
 	if fileexists(this.is_filename) then
 		filedelete(this.is_filename)
 	end if
 	return ::message.returnvalue
 
-// cb_change.clicked() returns long
+// cb_change.clicked() returns long [event]
 	parent.wf_get_image()
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	parent.post event ue_close(1)
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.post event ue_close(-1)
 	return ::message.returnvalue
 
-// dw_image.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+// dw_image.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
 	return ::message.returnvalue

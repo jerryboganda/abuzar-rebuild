@@ -283,21 +283,21 @@
 	loop
 	return li_rtcode
 
-// w_installmentreceipt.create() returns 0
+// w_installmentreceipt.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.dw_print = create dw_print
 	icurrent = upperbound(this.control)
 	this.control[icurrent + 1] = this.dw_print
 
-// w_installmentreceipt.destroy() returns 0
+// w_installmentreceipt.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 	destroy this.dw_print
 
-// w_installmentreceipt.ue_save() returns 0
+// w_installmentreceipt.ue_save() returns 0 [event]
 	long ll_mastercurrrow
 	long ll_invid
 	long ll_null
@@ -373,7 +373,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_installmentreceipt.ue_newform() returns 0
+// w_installmentreceipt.ue_newform() returns 0 [event]
 	call super::ue_newform
 	this.id_master.setfocus()
 	this.idc_installment.reset()
@@ -383,7 +383,7 @@
 	wf_protectdw(this.id_master, 0)
 	wf_protectdw(this.id_detail, 0)
 
-// w_installmentreceipt.ue_detail() returns 0
+// w_installmentreceipt.ue_detail() returns 0 [event]
 	long li_protect
 	call super::ue_detail
 	this.im_menu.m_file.m_save.enabled = false
@@ -407,7 +407,7 @@
 	wf_protectdw(this.id_master, li_protect)
 	wf_protectdw(this.id_detail, li_protect)
 
-// w_installmentreceipt.ue_postopen() returns 0
+// w_installmentreceipt.ue_postopen() returns 0 [event]
 	integer ll_rtcode
 	call super::ue_postopen
 	ll_rtcode = this.id_detail.getchild("InstallmentRowID", this.idc_installment)
@@ -445,7 +445,7 @@
 	this.id_master.object.glvochcodefine.visible = false
 	this.id_master.object.glvochcodefine_t.visible = false
 
-// w_installmentreceipt.ue_print() returns 0
+// w_installmentreceipt.ue_print() returns 0 [event]
 	long ll_row
 	long ll_invcode
 	long ll_option
@@ -513,7 +513,171 @@
 	end if
 	messagebox("Printing Error", "Can not Print Invoice,~r~nNo rows are retrieved", information!)
 
-// w_installmentreceipt.ue_list() returns 0
+// w_installmentreceipt.ue_list() returns 0 [event]
 	call super::ue_list
 	this.im_menu.m_file.m_print.enabled = true
 	this.im_menu.m_file.m_print.visible = true
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "icode"
+		if data = "" or isnull(data) then
+			messagebox("Item Name Validation", "Value required for item name in current row")
+		end if
+	end choose
+	return 1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	long ll_retcode
+	double ld_balance
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "saleinvcode"
+		if isnull(data) or long(data) < 0 then
+			messagebox("Sale Invoice Code Validation", "Sale Invoice Code Validation Error~n~rPlease enter Some valid Sale Invoice Code", stopsign!)
+			ll_retcode = 1
+		else
+			ll_retcode = parent.parent.parent.wf_validateinvoice(long(data))
+			if ll_retcode <> 0 then
+				messagebox("Sale Invoice Code Validation", "Sale Invoice Code Validation Error~n~rPlease enter Some valid Sale Invoice Code", stopsign!)
+				ll_retcode = 1
+			end if
+		end if
+	end choose
+	return ll_retcode
+
+// dw_detail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	integer li_movement
+	long ll_row
+	long ll_temp
+	long ll_code
+	long ll_invcode
+	string sl_columnname
+	string ls_filterexp
+	s_popup_selection lstr_selection
+	s_arguements lst_arg
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keyf5! then
+		openwithparm(w_popup_comprehensicesearch_selection, "d_customer_list")
+		lstr_selection = message.powerobjectparm
+		if lstr_selection.l_code > 0 and lstr_selection.l_code2 > 0 then
+			openwithparm(w_arg_sale_outstanding_a_customer, lstr_selection.l_code2)
+			lst_arg = message.powerobjectparm
+			if lst_arg.i_status = 1 and lst_arg.l_code1 > 0 then
+				this.object.saleinvcode[1] = lst_arg.l_code1
+				if parent.parent.parent.wf_validateinvoice(lst_arg.l_code1) <> 0 then
+					messagebox("Sale Invoice Code Validation", "Sale Invoice Code Validation Error~n~rPlease enter Some valid Sale Invoice Code", stopsign!)
+				end if
+			end if
+		end if
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	integer ll_retcode
+	double ld_balance
+	string ls_managername
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "installmentrowid"
+		if isnull(data) or long(data) < 0 then
+			messagebox("Installment Validation", "Installment Validation Error~n~rPlease select Some valid Installment", stopsign!)
+			ll_retcode = 1
+		else
+			ll_retcode = parent.parent.parent.wf_validateinstallment(parent.parent.parent.id_master.object.saleinvcode[1], long(data), row)
+			if ll_retcode <> 0 then
+				if ll_retcode = 2 then
+					messagebox("Installment Validation", "Installment Validation Error~n~rDuplication Installment. Please select Some valid Installment", stopsign!)
+					ll_retcode = 1
+				else
+					messagebox("Installment Validation", "Installment Validation Error~n~rPlease select Some valid Installment", stopsign!)
+					ll_retcode = 1
+				end if
+			end if
+		end if
+	case "amtreceived"
+		if double(data) >= 0.0 then
+			ld_balance = this.object.installmentamount[row] - double(data) - this.object.discount[row]
+			if isnull(ld_balance) then
+				ld_balance = 0
+			end if
+			if ld_balance >= 0.0 then
+				this.object.installmentbalance[row] = ld_balance
+			else
+				messagebox("Amount Received Validation", "Installment Amount Received Validation Error~n~rPlease enter some valid Installment Amount Received", stopsign!)
+				ll_retcode = 1
+			end if
+		else
+			messagebox("Amount Received Validation", "Installment Amount Received Validation Error~n~rPlease enter some valid Amount Received", stopsign!)
+			return 1
+		end if
+	case "discount"
+		if double(data) >= 0.0 then
+			ld_balance = this.object.installmentamount[row] - double(data) - this.object.amtreceived[row]
+			if isnull(ld_balance) then
+				ld_balance = 0
+			end if
+			if ld_balance >= 0.0 then
+				this.object.installmentbalance[row] = ld_balance
+			else
+				messagebox("Discount Validation", "Installment Discount Validation Error~n~rPlease enter some valid Installment Discount", stopsign!)
+				ll_retcode = 1
+			end if
+		else
+			messagebox("Discount Validation", "Installment Discount Validation Error~n~rPlease enter some valid Installment Discount", stopsign!)
+			return 1
+		end if
+	case "fine"
+		if double(data) < 0.0 then
+			messagebox("Fine Validation", "Installment Fine Validation Error~n~rPlease enter some valid Installment Fine", stopsign!)
+			return 1
+		end if
+	case "paymentmode"
+		if data = "C" then
+			parent.parent.parent.idc_acc.retrieve(2)
+			if parent.parent.parent.idc_acc.rowcount() > 0 then
+				parent.parent.parent.id_detail.object.receivedacccode[row] = parent.parent.parent.idc_acc.getitemnumber(1, "acccode")
+			end if
+		else
+			parent.parent.parent.idc_acc.retrieve(4)
+			if parent.parent.parent.idc_acc.rowcount() > 0 then
+				parent.parent.parent.id_detail.object.receivedacccode[row] = parent.parent.parent.idc_acc.getitemnumber(1, "acccode")
+			end if
+		end if
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "limit"
+		if data = "" or isnull(data) or real(data) < 0.0 then
+			messagebox("Limit Validation", "Valid Value required for limit in current row")
+		end if
+	end choose
+	return 1
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem() = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.getfocus() returns long [event]
+	return ::message.returnvalue

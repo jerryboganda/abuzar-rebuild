@@ -290,7 +290,7 @@
 	end if
 	return -2
 
-// w_vaccine_followup.create() returns 0
+// w_vaccine_followup.create() returns 0 [event]
 	if this.menuname = "m_vaccinefollowupmenu" then
 		this.menuid = create m_vaccinefollowupmenu
 	end if
@@ -298,14 +298,14 @@
 	this.tab_main = create tab_main
 	this.control = {this.dw_print, this.tab_main}
 
-// w_vaccine_followup.destroy() returns 0
+// w_vaccine_followup.destroy() returns 0 [event]
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 	destroy this.dw_print
 	destroy this.tab_main
 
-// w_vaccine_followup.open() returns long
+// w_vaccine_followup.open() returns long [event]
 	long ll_counter
 	long ll_pos
 	long ll_rtcode
@@ -362,23 +362,23 @@
 	wf_apply_rights()
 	return ::message.returnvalue
 
-// w_vaccine_followup.timer() returns long
+// w_vaccine_followup.timer() returns long [event]
 	if this.ib_editrefresh = false then
 	end if
 	return ::message.returnvalue
 
-// tab_main.create() returns 0
+// tab_main.create() returns 0 [event]
 	this.tabpage_vaccine = create tabpage_vaccine
 	this.tabpage_summary = create tabpage_summary
 	this.tabpage_graph = create tabpage_graph
 	this.control = {this.tabpage_vaccine, this.tabpage_summary, this.tabpage_graph}
 
-// tab_main.destroy() returns 0
+// tab_main.destroy() returns 0 [event]
 	destroy this.tabpage_vaccine
 	destroy this.tabpage_summary
 	destroy this.tabpage_graph
 
-// tabpage_vaccine.create() returns 0
+// tabpage_vaccine.create() returns 0 [event]
 	this.cb_save = create cb_save
 	this.cb_sort_outbox = create cb_sort_outbox
 	this.cb_filter_outbox = create cb_filter_outbox
@@ -386,14 +386,14 @@
 	this.dw_vaccine = create dw_vaccine
 	this.control = {this.cb_save, this.cb_sort_outbox, this.cb_filter_outbox, this.cb_retrieve_outbox, this.dw_vaccine}
 
-// tabpage_vaccine.destroy() returns 0
+// tabpage_vaccine.destroy() returns 0 [event]
 	destroy this.cb_save
 	destroy this.cb_sort_outbox
 	destroy this.cb_filter_outbox
 	destroy this.cb_retrieve_outbox
 	destroy this.dw_vaccine
 
-// cb_save.clicked() returns long
+// cb_save.clicked() returns long [event]
 	long ll_code
 	string ls_errtext
 	if parent.parent.parent.id_vaccine.getrow() > 0 then
@@ -408,7 +408,7 @@
 	end if
 	return 0
 
-// cb_sort_outbox.clicked() returns long
+// cb_sort_outbox.clicked() returns long [event]
 	string ls_null
 	setnull(ls_null)
 	parent.parent.parent.id_vaccine.setsort(ls_null)
@@ -416,7 +416,7 @@
 	parent.parent.parent.id_vaccine.groupcalc()
 	return ::message.returnvalue
 
-// cb_filter_outbox.clicked() returns long
+// cb_filter_outbox.clicked() returns long [event]
 	string ls_null
 	setnull(ls_null)
 	parent.parent.parent.id_vaccine.scrolltorow(0)
@@ -425,17 +425,17 @@
 	parent.parent.parent.id_vaccine.groupcalc()
 	return ::message.returnvalue
 
-// cb_retrieve_outbox.clicked() returns long
+// cb_retrieve_outbox.clicked() returns long [event]
 	parent.parent.parent.wf_retrieve()
 	return ::message.returnvalue
 
-// dw_vaccine.ue_enterkey() returns long
+// dw_vaccine.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_vaccine.rowfocuschanged(long currentrow) returns long
+// dw_vaccine.rowfocuschanged(long currentrow) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::rowfocuschanged(currentrow)
 	if currentrow > 0 then
@@ -446,18 +446,18 @@
 	end if
 	return ::message.returnvalue
 
-// dw_vaccine.editchanged(long row, dwobject dwo, string data) returns long
+// dw_vaccine.editchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::editchanged(row, dwo, data)
 	parent.parent.parent.ib_editflag = true
 	return ::message.returnvalue
 
-// dw_vaccine.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+// dw_vaccine.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::doubleclicked(xpos, ypos, row, dwo)
 	return ::message.returnvalue
 
-// dw_vaccine.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_vaccine.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemchanged(row, dwo, data)
 	choose case dwo.name
@@ -478,23 +478,23 @@
 	end choose
 	return ::message.returnvalue
 
-// tabpage_summary.create() returns 0
+// tabpage_summary.create() returns 0 [event]
 	this.dw_summary = create dw_summary
 	this.control = {this.dw_summary}
 
-// tabpage_summary.destroy() returns 0
+// tabpage_summary.destroy() returns 0 [event]
 	destroy this.dw_summary
 
-// tabpage_graph.create() returns 0
+// tabpage_graph.create() returns 0 [event]
 	this.st_tooltip = create st_tooltip
 	this.gr_graph = create gr_graph
 	this.control = {this.st_tooltip, this.gr_graph}
 
-// tabpage_graph.destroy() returns 0
+// tabpage_graph.destroy() returns 0 [event]
 	destroy this.st_tooltip
 	destroy this.gr_graph
 
-// gr_graph.create() returns 0
+// gr_graph.create() returns 0 [event]
 	this.titledispattr = create grdispattr
 	this.legenddispattr = create grdispattr
 	this.piedispattr = create grdispattr
@@ -621,7 +621,7 @@
 	this.piedispattr.displayexpression = "if(seriescount > 1, series,string(percentofseries,~"0.00%~"))"
 	this.piedispattr.autosize = true
 
-// gr_graph.destroy() returns 0
+// gr_graph.destroy() returns 0 [event]
 	destroy this.titledispattr
 	destroy this.legenddispattr
 	destroy this.piedispattr
@@ -635,11 +635,11 @@
 	destroy this.values.labeldispattr
 	destroy this.values
 
-// gr_graph.ue_rbuttonup(unsignedlong flags, integer xpos, integer ypos) returns long
+// gr_graph.ue_rbuttonup(unsignedlong flags, integer xpos, integer ypos) returns long [event]
 	parent.parent.parent.tab_main.tabpage_graph.st_tooltip.visible = false
 	return ::message.returnvalue
 
-// gr_graph.clicked() returns long
+// gr_graph.clicked() returns long [event]
 	grobjecttype clickedobject
 	string ls_cat
 	integer li_series
@@ -650,7 +650,7 @@
 	end if
 	return ::message.returnvalue
 
-// gr_graph.rbuttondown(unsignedlong flags, integer xpos, integer ypos) returns long
+// gr_graph.rbuttondown(unsignedlong flags, integer xpos, integer ypos) returns long [event]
 	grobjecttype clickedobject
 	integer li_series
 	integer li_category

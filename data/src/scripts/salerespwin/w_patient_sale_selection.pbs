@@ -1,16 +1,16 @@
 // window w_patient_sale_selection (salerespwin)  ancestor: window
 
-// w_patient_sale_selection.ue_keydown(keycode key, unsignedlong keyflags) returns long
+// w_patient_sale_selection.ue_keydown(keycode key, unsignedlong keyflags) returns long [event]
 	choose case key
 	case keyescape!
 		post event ue_close()
 	end choose
 	return ::message.returnvalue
 
-// w_patient_sale_selection.ue_close() returns 0
+// w_patient_sale_selection.ue_close() returns 0 [event]
 	closewithreturn(this, this.istr_arg)
 
-// w_patient_sale_selection.ue_first() returns 0
+// w_patient_sale_selection.ue_first() returns 0 [event]
 	long ll_code
 	ll_code = wf_first()
 	wf_selectunselectrow(1)
@@ -19,7 +19,7 @@
 		this.il_detailrow = 1
 	end if
 
-// w_patient_sale_selection.ue_next() returns 0
+// w_patient_sale_selection.ue_next() returns 0 [event]
 	long ll_code
 	ll_code = wf_next()
 	wf_selectunselectrow(this.dw_master.getrow())
@@ -28,7 +28,7 @@
 		this.il_detailrow = 1
 	end if
 
-// w_patient_sale_selection.ue_previous() returns 0
+// w_patient_sale_selection.ue_previous() returns 0 [event]
 	long ll_code
 	ll_code = wf_previous()
 	wf_selectunselectrow(this.dw_master.getrow())
@@ -37,7 +37,7 @@
 		this.il_detailrow = 1
 	end if
 
-// w_patient_sale_selection.ue_last() returns 0
+// w_patient_sale_selection.ue_last() returns 0 [event]
 	long ll_code
 	ll_code = wf_last()
 	wf_selectunselectrow(this.dw_master.rowcount())
@@ -81,20 +81,20 @@
 		this.dw_master.selectrow(this.il_selectedrow, true)
 	end if
 
-// w_patient_sale_selection.create() returns 0
+// w_patient_sale_selection.create() returns 0 [event]
 	this.cb_cancel = create cb_cancel
 	this.cb_ok = create cb_ok
 	this.dw_detail = create dw_detail
 	this.dw_master = create dw_master
 	this.control = {this.cb_cancel, this.cb_ok, this.dw_detail, this.dw_master}
 
-// w_patient_sale_selection.destroy() returns 0
+// w_patient_sale_selection.destroy() returns 0 [event]
 	destroy this.cb_cancel
 	destroy this.cb_ok
 	destroy this.dw_detail
 	destroy this.dw_master
 
-// w_patient_sale_selection.open() returns long
+// w_patient_sale_selection.open() returns long [event]
 	environment le_env
 	long ll_win_width
 	long ll_win_height
@@ -135,12 +135,12 @@
 	end if
 	return message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.istr_arg.i_status = -1
 	parent.triggerevent("ue_close")
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	long ll_counter
 	long ll_row
 	for ll_counter = 1 to parent.dw_master.rowcount()
@@ -153,7 +153,7 @@
 	parent.triggerevent("ue_close")
 	return ::message.returnvalue
 
-// dw_detail.ue_keydown(keycode key, unsignedlong keyflags) returns long
+// dw_detail.ue_keydown(keycode key, unsignedlong keyflags) returns long [event]
 	long ll_row
 	if key = keyuparrow! then
 		if parent.il_detailrow <= parent.dw_detail.rowcount() then
@@ -195,7 +195,7 @@
 	end if
 	return ::message.returnvalue
 
-// dw_detail.getfocus() returns long
+// dw_detail.getfocus() returns long [event]
 	if parent.dw_detail.rowcount() > 0 then
 		parent.dw_detail.selectrow(0, false)
 		parent.dw_detail.selectrow(1, true)
@@ -203,26 +203,26 @@
 	end if
 	return ::message.returnvalue
 
-// dw_detail.losefocus() returns long
+// dw_detail.losefocus() returns long [event]
 	if parent.dw_detail.rowcount() > 0 then
 		parent.dw_detail.selectrow(0, false)
 		parent.il_detailrow = 1
 	end if
 	return ::message.returnvalue
 
-// dw_detail.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+// dw_detail.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
 	parent.dw_detail.selectrow(0, false)
 	parent.dw_detail.selectrow(row, true)
 	parent.il_detailrow = row
 	return ::message.returnvalue
 
-// dw_detail.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+// dw_detail.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
 	parent.dw_detail.selectrow(0, false)
 	parent.dw_detail.selectrow(row, true)
 	parent.il_detailrow = row
 	return ::message.returnvalue
 
-// dw_master.ue_keydown(keycode key, unsignedlong keyflags) returns long
+// dw_master.ue_keydown(keycode key, unsignedlong keyflags) returns long [event]
 	integer li_movement
 	long ll_row
 	long ll_temp
@@ -268,27 +268,27 @@
 	end if
 	return ::message.returnvalue
 
-// dw_master.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+// dw_master.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
 	parent.wf_selectunselectrow(row)
 	if parent.dw_master.rowcount() > 0 then
 		parent.dw_detail.retrieve(parent.dw_master.object.code[parent.il_selectedrow])
 	end if
 	return ::message.returnvalue
 
-// dw_master.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+// dw_master.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
 	parent.wf_selectunselectrow(row)
 	if parent.dw_master.rowcount() > 0 then
 		parent.dw_detail.retrieve(parent.dw_master.object.code[parent.il_selectedrow])
 	end if
 	return ::message.returnvalue
 
-// dw_master.losefocus() returns long
+// dw_master.losefocus() returns long [event]
 	if parent.dw_master.rowcount() > 0 then
 		parent.dw_master.selectrow(0, false)
 	end if
 	return ::message.returnvalue
 
-// dw_master.getfocus() returns long
+// dw_master.getfocus() returns long [event]
 	if parent.dw_master.rowcount() > 0 then
 		parent.dw_master.selectrow(0, false)
 		if parent.il_selectedrow <= parent.dw_master.rowcount() then

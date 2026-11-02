@@ -48,16 +48,16 @@
 	end if
 	return b_flag
 
-// w_currency_form.create() returns 0
+// w_currency_form.create() returns 0 [event]
 	call super::create
 
-// w_currency_form.destroy() returns 0
+// w_currency_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_currency_form.ue_save() returns 0
+// w_currency_form.ue_save() returns 0 [event]
 	long ll_mastercurrrow
 	long ll_invid
 	long ll_detailrows
@@ -93,11 +93,11 @@
 	call super::ue_save
 	setpointer(arrow!)
 
-// w_currency_form.ue_newform() returns 0
+// w_currency_form.ue_newform() returns 0 [event]
 	call super::ue_newform
 	this.id_master.setfocus()
 
-// w_currency_form.ue_newitem() returns 0
+// w_currency_form.ue_newitem() returns 0 [event]
 	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
 		return
 	end if
@@ -107,7 +107,7 @@
 		this.id_detail.object.name[this.id_detail.rowcount()] = this.id_detail.object.name[this.id_detail.rowcount() - 1]
 	end if
 
-// w_currency_form.ue_detail() returns 0
+// w_currency_form.ue_detail() returns 0 [event]
 	call super::ue_detail
 	this.im_menu.m_file.m_save.enabled = true
 	this.im_menu.m_file.m_delete.enabled = true
@@ -118,3 +118,86 @@
 	this.im_menu.m_file.m_previous.enabled = true
 	this.im_menu.m_item.m_newitem.enabled = true
 	this.im_menu.m_item.m_deleteitem.enabled = true
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "shortname"
+		if data = "" or isnull(data) then
+			messagebox("Short Name Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "conversionfactor"
+		if long(data) <= 0 or isnull(data) then
+			messagebox("Conversion Factor/Rate Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	end choose
+	return 1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer rt_code
+	integer li_currencycode
+	integer li_dupcurrcode
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "code"
+		li_currencycode = integer(data)
+		SQL SELECT Currency.CurrencyCode INTO :li_dupcurrcode FROM Currency WHERE Currency.currencycode =:li_currencycode USING sqlca;
+		if sqlca.sqlcode = 0 and li_dupcurrcode = li_currencycode then
+			rt_code = 1
+			messagebox("Currency Code Validation", "Duplicate Currency Code, Enter some other Currency code")
+		end if
+	case "shortname"
+		if parent.parent.parent.wf_duplicateshortname(data) then
+			messagebox("Short Name Validation", "Duplicate Short Name Error~n~rPlease Choose Some Other Short Name")
+			return 1
+		end if
+	case "name"
+		if parent.parent.parent.wf_duplicatename(data) then
+			messagebox("Name Validation", "Duplicate Name Error~n~rPlease Choose Some Other Name")
+			return 1
+		end if
+	end choose
+	return rt_code
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	string ls_managername
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "denomination"
+		parent.parent.parent.il_currrow = row
+		parent.parent.parent.ib_itemvalidated = false
+		li_errcode = 0
+	case else
+		parent.parent.parent.ib_itemvalidated = true
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "denomination"
+		if data = "" or isnull(data) then
+			messagebox("Currency Denominations Validation", "Value required for Currency Denominations in current row")
+		end if
+	end choose
+	return 1
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem() = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.getfocus() returns long [event]
+	return ::message.returnvalue

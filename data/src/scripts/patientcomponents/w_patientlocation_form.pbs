@@ -10,29 +10,29 @@
 	end if
 	return b_flag
 
-// w_patientlocation_form.create() returns 0
+// w_patientlocation_form.create() returns 0 [event]
 	call super::create
 
-// w_patientlocation_form.destroy() returns 0
+// w_patientlocation_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_patientlocation_form.activate() returns long
+// w_patientlocation_form.activate() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::activate()
 	this.windowstate = maximized!
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_patientlocation_form.open() returns long
+// w_patientlocation_form.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.is_tablename = "PatientLocation"
 	return ::message.returnvalue
 
-// w_patientlocation_form.ue_save() returns 0
+// w_patientlocation_form.ue_save() returns 0 [event]
 	long ll_primarykey
 	long ll_row
 	long ll_code
@@ -76,3 +76,11 @@
 		return
 	end if
 	setpointer(arrow!)
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "name"
+	end choose
+	return ::message.returnvalue

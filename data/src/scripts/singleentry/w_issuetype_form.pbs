@@ -1,30 +1,58 @@
 // window w_issuetype_form (singleentry)  ancestor: w_single_entry
 
-// w_issuetype_form.ue_newform() returns 0
+// w_issuetype_form.ue_newform() returns 0 [event]
 	call super::ue_newform
 	this.id_detail.setcolumn(1)
 
-// w_issuetype_form.create() returns 0
+// w_issuetype_form.create() returns 0 [event]
 	call super::create
 
-// w_issuetype_form.destroy() returns 0
+// w_issuetype_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_issuetype_form.activate() returns long
+// w_issuetype_form.activate() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::activate()
 	this.windowstate = maximized!
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_issuetype_form.ue_detail() returns 0
+// w_issuetype_form.ue_detail() returns 0 [event]
 	call super::ue_detail
 
-// w_issuetype_form.open() returns long
+// w_issuetype_form.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.is_tablename = "IssueType"
 	return ::message.returnvalue
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer rt_code
+	integer li_classcode
+	integer li_dupclasscode
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "iccode"
+		li_classcode = integer(data)
+		SQL SELECT ItemClass.iccode INTO :li_dupclasscode FROM ItemClass WHERE ItemClass.iccode =:li_classcode USING sqlca;
+		if li_dupclasscode = li_classcode then
+			rt_code = 1
+			messagebox("Class Code Validation", "Duplicate class Code, Enter some other class code")
+		end if
+	end choose
+	return rt_code
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "iccode"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	end choose
+	return 1

@@ -1,6 +1,6 @@
 // window w_arg_supp_period_outstanding_inv (reports)  ancestor: w_popup_forselection_walias
 
-// w_arg_supp_period_outstanding_inv.create() returns 0
+// w_arg_supp_period_outstanding_inv.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.gb_2 = create gb_2
@@ -21,7 +21,7 @@
 	this.control[icurrent + 7] = this.dw_detail
 	this.control[icurrent + 8] = this.cb_retrieve
 
-// w_arg_supp_period_outstanding_inv.destroy() returns 0
+// w_arg_supp_period_outstanding_inv.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.gb_2
 	destroy this.st_1
@@ -32,7 +32,7 @@
 	destroy this.dw_detail
 	destroy this.cb_retrieve
 
-// w_arg_supp_period_outstanding_inv.open() returns long
+// w_arg_supp_period_outstanding_inv.open() returns long [event]
 	long ancestorreturnvalue
 	date ld_currdate
 	string ls_text
@@ -47,28 +47,51 @@
 	this.dw_detail.settransobject(sqlca)
 	return ::message.returnvalue
 
-// w_arg_supp_period_outstanding_inv.ue_close() returns 0
+// w_arg_supp_period_outstanding_inv.ue_close() returns 0 [event]
 	closewithreturn(this, this.istr_arg)
 
-// em_startdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_cancel.clicked() returns long [event]
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long [event]
+	long ll_counter
+	long ll_totalrows
+	long ll_row
+	ll_totalrows = parent.dw_detail.rowcount()
+	for ll_counter = 1 to ll_totalrows
+		if parent.dw_detail.object.selected[ll_counter] = 1 then
+			ll_row = ll_row + 1
+			parent.istr_arg.la_longlist[ll_row] = parent.dw_detail.object.invoicecode[ll_counter]
+		end if
+	next
+	if ll_row > 0 then
+		parent.istr_arg.i_status = 1
+	else
+		parent.istr_arg.i_status = -1
+	end if
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// em_startdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// em_enddate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// em_enddate.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// cbx_all.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cbx_all.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// cb_retrieve.clicked() returns long
+// cb_retrieve.clicked() returns long [event]
 	if parent.cbx_all.checked = true then
 		parent.istr_arg.l_code1 = 0
 	else

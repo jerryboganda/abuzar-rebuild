@@ -334,21 +334,21 @@
 	destroy lds_itemstockinfo
 	return li_errcode
 
-// w_duesatisfy.create() returns 0
+// w_duesatisfy.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.dw_saleinvdetail = create dw_saleinvdetail
 	icurrent = upperbound(this.control)
 	this.control[icurrent + 1] = this.dw_saleinvdetail
 
-// w_duesatisfy.destroy() returns 0
+// w_duesatisfy.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 	destroy this.dw_saleinvdetail
 
-// w_duesatisfy.ue_detail() returns 0
+// w_duesatisfy.ue_detail() returns 0 [event]
 	long li_counter
 	long li_rowcount
 	long li_rtncode
@@ -364,12 +364,12 @@
 	wf_protectdw(this.id_detail, 1)
 	setredraw(true)
 
-// w_duesatisfy.ue_list() returns 0
+// w_duesatisfy.ue_list() returns 0 [event]
 	call super::ue_list
 	this.im_menu.m_file.m_post.enabled = false
 	this.im_menu.m_item.m_deleteitem.enabled = false
 
-// w_duesatisfy.ue_postopen() returns 0
+// w_duesatisfy.ue_postopen() returns 0 [event]
 	long li_rtncode
 	call super::ue_postopen
 	this.ii_dueoption = integer(message.doubleparm)
@@ -391,7 +391,7 @@
 	this.idc_itemdddw.settransobject(this.it_transobject)
 	this.idc_itemdddw.insertrow(0)
 
-// w_duesatisfy.ue_save() returns 0
+// w_duesatisfy.ue_save() returns 0 [event]
 	long ll_invid
 	long ll_errrowid
 	long ll_counter
@@ -484,7 +484,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_duesatisfy.ue_newitem() returns 0
+// w_duesatisfy.ue_newitem() returns 0 [event]
 	long ll_rowcount
 	if this.id_detail.rowcount() > 0 and f_validatedw(this.id_detail) < 0 then
 		return
@@ -502,7 +502,7 @@
 	this.im_menu.m_file.m_save.enabled = true
 	this.im_menu.m_file.m_print.enabled = true
 
-// w_duesatisfy.ue_newform() returns 0
+// w_duesatisfy.ue_newform() returns 0 [event]
 	integer li_null
 	call super::ue_newform
 	setredraw(false)
@@ -537,3 +537,132 @@
 	wf_protectdw(this.id_detail, 0)
 	this.ib_modify = false
 	setredraw(true)
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	dwitemstatus lrs_status
+	long ll_code
+	long ll_detailrows
+	integer li_result
+	integer li_errcode
+	integer i_rtcode
+	boolean lb_rtflag
+	string ls_errtext
+	datawindowchild ldc_items
+	long ll_count
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "saleinvcode"
+		ll_code = long(data)
+		if not isnull(data) and long(data) <> 0 then
+			ll_detailrows = parent.dw_itemsdetail.rowcount()
+			if ll_detailrows > 0 then
+				lrs_status = parent.dw_itemsdetail.getitemstatus(1, 0, primary!)
+				if lrs_status <> new! then
+					li_result = messagebox("Warning", "Rows in Detail Window will Lost", exclamation!, okcancel!, 2)
+					if li_result = 2 then
+						return 2
+					else
+						parent.dw_itemsdetail.setredraw(false)
+						parent.dw_itemsdetail.reset()
+						parent.dw_itemsdetail.insertrow(0)
+						parent.dw_itemsdetail.setredraw(true)
+					end if
+				end if
+			end if
+			setpointer(hourglass!)
+			lb_rtflag = parent.parent.parent.wf_findsaleinv(ll_code, ls_errtext)
+			if lb_rtflag then
+				i_rtcode = parent.parent.parent.wf_locksaleinvoice(ll_code)
+				if i_rtcode = 0 then
+					parent.setredraw(false)
+					parent.parent.parent.idc_itemdddw.reset()
+					parent.parent.parent.idc_itemdddw.retrieve(ll_code)
+					parent.parent.parent.idc_itemdddw.setfilter("Due = 'D'")
+					parent.parent.parent.idc_itemdddw.filter()
+					setfocus()
+					parent.setredraw(true)
+				end if
+			else
+				messagebox("Sale Invoice Validation", ls_errtext)
+				return 1
+			end if
+			setpointer(arrow!)
+		else
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "saleinvcode"
+		if data = "" or isnull(data) then
+			messagebox("Invoice No Validation", "Please enter Invoice NO")
+		end if
+	end choose
+	return 1
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem() = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.getfocus() returns long [event]
+	return ::message.returnvalue
+
+// dw_itemsdetail.losefocus() returns long [event]
+	return ::message.returnvalue
+
+// dw_itemsdetail.editchanged(long row, dwobject dwo, string data) returns long [event]
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	integer li_null
+	double ld_dueqty
+	double ld_qtytobesatisfied
+	double ld_duesatisfyqty
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "icode"
+		ld_dueqty = parent.parent.parent.idc_itemdddw.getitemnumber(parent.parent.parent.idc_itemdddw.getrow(), "dueqty")
+		ld_duesatisfyqty = ld_dueqty - double(parent.parent.parent.idc_itemdddw.getitemnumber(parent.parent.parent.idc_itemdddw.getrow(), "satisfiedqty"))
+		if parent.parent.parent.ii_dueoption = 2 then
+			setitem(row, "deletedqty", ld_duesatisfyqty)
+		else
+			setitem(row, "dueqty", ld_dueqty)
+			setitem(row, "duesatisfyqty", ld_duesatisfyqty)
+			setitem(row, "totalsatisfyqty", parent.parent.parent.idc_itemdddw.getitemnumber(parent.parent.parent.idc_itemdddw.getrow(), "satisfiedqty"))
+		end if
+		setitem(row, "batch", parent.parent.parent.idc_itemdddw.getitemstring(parent.parent.parent.idc_itemdddw.getrow(), "batch"))
+		setitem(row, "expiry", parent.parent.parent.idc_itemdddw.getitemdatetime(parent.parent.parent.idc_itemdddw.getrow(), "expiry"))
+		setitem(row, "gcode", parent.parent.parent.idc_itemdddw.getitemnumber(parent.parent.parent.idc_itemdddw.getrow(), "gcode"))
+		setitem(row, "salerowid", parent.parent.parent.idc_itemdddw.getitemnumber(parent.parent.parent.idc_itemdddw.getrow(), "salerowid"))
+		parent.parent.parent.ib_itemvalidated = false
+		parent.parent.parent.il_currrow = row
+		li_errcode = 0
+	case "duesatisfyqty"
+		ld_dueqty = parent.parent.parent.idc_itemdddw.getitemnumber(parent.parent.parent.idc_itemdddw.getrow(), "dueqty")
+		ld_qtytobesatisfied = ld_dueqty - double(parent.parent.parent.idc_itemdddw.getitemnumber(parent.parent.parent.idc_itemdddw.getrow(), "satisfiedqty"))
+		if double(data) > ld_qtytobesatisfied then
+			messagebox("Satisfied Quantity Validation", "Total Satisfied Quantity Exceeds Dued Quantity")
+			li_errcode = 1
+		end if
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "duesatisfyqty"
+		if data = "" or isnull(data) then
+			messagebox("Due Satisfy Quantity Validation", "Value required for item in current row")
+		end if
+	end choose
+	return 1

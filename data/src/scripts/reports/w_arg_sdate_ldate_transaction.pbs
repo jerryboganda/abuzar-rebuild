@@ -1,6 +1,6 @@
 // window w_arg_sdate_ldate_transaction (reports)  ancestor: w_arguements
 
-// w_arg_sdate_ldate_transaction.create() returns 0
+// w_arg_sdate_ldate_transaction.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.cbx_sales = create cbx_sales
@@ -39,7 +39,7 @@
 	this.control[icurrent + 16] = this.cbx_all
 	this.control[icurrent + 17] = this.gb_2
 
-// w_arg_sdate_ldate_transaction.destroy() returns 0
+// w_arg_sdate_ldate_transaction.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.cbx_sales
 	destroy this.cbx_salesreturn
@@ -59,11 +59,71 @@
 	destroy this.cbx_all
 	destroy this.gb_2
 
-// w_arg_sdate_ldate_transaction.ue_close(integer ai_stauts) returns 0
+// w_arg_sdate_ldate_transaction.ue_close(integer ai_stauts) returns 0 [event]
 	super::ue_close(ai_stauts)
 	closewithreturn(this, this.istr_arg)
 
-// cbx_all.clicked() returns long
+// cb_cancel.clicked() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked()
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked()
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	if parent.cbx_purchase.checked = true then
+		parent.istr_arg.ia_integerlist[1] = 1
+	end if
+	if parent.cbx_purchasereturn.checked = true then
+		parent.istr_arg.ia_integerlist[2] = 1
+	end if
+	if parent.cbx_sales.checked = true then
+		parent.istr_arg.ia_integerlist[3] = 1
+	end if
+	if parent.cbx_salesreturn.checked = true then
+		parent.istr_arg.ia_integerlist[4] = 1
+	end if
+	if parent.cbx_service.checked = true then
+		parent.istr_arg.ia_integerlist[5] = 1
+	end if
+	if parent.cbx_servicereturn.checked = true then
+		parent.istr_arg.ia_integerlist[6] = 1
+	end if
+	if parent.cbx_issue.checked = true then
+		parent.istr_arg.ia_integerlist[7] = 1
+	end if
+	if parent.cbx_receipt.checked = true then
+		parent.istr_arg.ia_integerlist[8] = 1
+	end if
+	if parent.cbx_adjustment.checked = true then
+		parent.istr_arg.ia_integerlist[9] = 1
+	end if
+	if parent.cbx_cp.checked = true then
+		parent.istr_arg.ia_integerlist[10] = 1
+	end if
+	if parent.cbx_cr.checked = true then
+		parent.istr_arg.ia_integerlist[11] = 2
+	end if
+	if parent.cbx_bp.checked = true then
+		parent.istr_arg.ia_integerlist[12] = 3
+	end if
+	if parent.cbx_br.checked = true then
+		parent.istr_arg.ia_integerlist[13] = 4
+	end if
+	if parent.cbx_jv.checked = true then
+		parent.istr_arg.ia_integerlist[14] = 5
+	end if
+	if parent.cbx_others.checked = true then
+		parent.istr_arg.ia_integerlist[15] = 6
+	end if
+	parent.istr_arg.i_status = 1
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// cbx_all.clicked() returns long [event]
 	parent.cbx_purchase.checked = parent.cbx_all.checked
 	parent.cbx_purchase.enabled = not parent.cbx_all.checked
 	parent.cbx_purchasereturn.checked = parent.cbx_all.checked

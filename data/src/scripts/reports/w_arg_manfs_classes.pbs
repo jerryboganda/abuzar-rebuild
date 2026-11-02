@@ -1,6 +1,6 @@
 // window w_arg_manfs_classes (reports)  ancestor: w_listarguments
 
-// w_arg_manfs_classes.create() returns 0
+// w_arg_manfs_classes.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.st_4 = create st_4
@@ -21,7 +21,7 @@
 	this.control[icurrent + 7] = this.cbx_all_classes
 	this.control[icurrent + 8] = this.dw_classes
 
-// w_arg_manfs_classes.destroy() returns 0
+// w_arg_manfs_classes.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.st_4
 	destroy this.st_8
@@ -32,7 +32,7 @@
 	destroy this.cbx_all_classes
 	destroy this.dw_classes
 
-// w_arg_manfs_classes.open() returns long
+// w_arg_manfs_classes.open() returns long [event]
 	long ancestorreturnvalue
 	long ll_counter
 	long ll_rowcount
@@ -64,13 +64,63 @@
 	next
 	return ::message.returnvalue
 
-// lb_classes.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// cbx_supress.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
+	if key = keyenter! then
+		send(handle(this), 256, 9, long(90))
+	end if
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long [event]
+	long ancestorreturnvalue
+	long ll_count
+	long ll_counter
+	long ll_innercounter
+	long ll_found
+	datetime ldt_closingdate
+	ancestorreturnvalue = super::clicked()
+	if parent.cbx_all.checked = true then
+		parent.istr_arg.l_code3 = 1
+	else
+		parent.istr_arg.l_code3 = 0
+		for ll_counter = 1 to ll_counter
+			ll_found = parent.idc_categories.find("name ='" + parent.lb_selectedcategories.text(ll_counter) + "'", 1, parent.idc_categories.rowcount())
+			if ll_found > 0 then
+				parent.istr_arg.ia_integerlist[ll_counter] = parent.idc_categories.getitemnumber(ll_found, "manfcode")
+			end if
+		next
+	end if
+	if parent.cbx_all_classes.checked = true then
+		parent.istr_arg.l_code4 = 1
+	else
+		parent.istr_arg.l_code4 = 0
+		for ll_counter = 1 to ll_counter
+			ll_found = parent.idc_classes.find("name ='" + parent.lb_selectedclasses.text(ll_counter) + "'", 1, parent.idc_classes.rowcount())
+			if ll_found > 0 then
+				parent.istr_arg.ia_integerlist1[ll_counter] = parent.idc_classes.getitemnumber(ll_found, "iccode")
+			end if
+		next
+	end if
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	parent.dw_price.accepttext()
+	parent.istr_arg.l_code1 = parent.dw_price.getitemnumber(1, "price")
+	ldt_closingdate = datetime(date(parent.istr_arg.d_edate), relativetime(time(parent.istr_arg.d_edate), 1))
+	parent.istr_arg.d_date1 = ldt_closingdate
+	parent.istr_arg.i_supress = parent.cbx_supress.checked
+	parent.istr_arg.i_hide = parent.cbx_hide.checked
+	parent.istr_arg.i_supress = parent.cbx_supress.checked
+	parent.istr_arg.i_hide = parent.cbx_hide.checked
+	parent.istr_arg.i_status = 1
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// lb_classes.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		post event doubleclicked(selectedindex())
 	end if
 	return ::message.returnvalue
 
-// lb_classes.doubleclicked(integer index) returns long
+// lb_classes.doubleclicked(integer index) returns long [event]
 	string ls_item
 	long ll_selectedindex
 	ls_item = string(selecteditem())
@@ -92,18 +142,18 @@
 	end if
 	return ::message.returnvalue
 
-// lb_classes.getfocus() returns long
+// lb_classes.getfocus() returns long [event]
 	selectitem(0)
 	selectitem(1)
 	return ::message.returnvalue
 
-// lb_selectedclasses.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// lb_selectedclasses.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		post event doubleclicked(selectedindex())
 	end if
 	return ::message.returnvalue
 
-// lb_selectedclasses.doubleclicked(integer index) returns long
+// lb_selectedclasses.doubleclicked(integer index) returns long [event]
 	string ls_item
 	long ll_selectedindex
 	ll_selectedindex = selectedindex()
@@ -121,7 +171,7 @@
 	end if
 	return ::message.returnvalue
 
-// lb_selectedclasses.getfocus() returns long
+// lb_selectedclasses.getfocus() returns long [event]
 	selectitem(0)
 	selectitem(1)
 	return ::message.returnvalue

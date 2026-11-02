@@ -1,12 +1,12 @@
 // window w_view_saleheader (salerespwin)  ancestor: window
 
-// w_view_saleheader.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// w_view_saleheader.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		post event ue_close(-1)
 	end if
 	return ::message.returnvalue
 
-// w_view_saleheader.ue_close(integer ai_closemode) returns integer
+// w_view_saleheader.ue_close(integer ai_closemode) returns integer [event]
 	long ll_currrow
 	string[] ls_values
 	s_dw_header ls_dw_header
@@ -96,18 +96,18 @@
 	end if
 	return 0
 
-// w_view_saleheader.create() returns 0
+// w_view_saleheader.create() returns 0 [event]
 	this.cb_ok = create cb_ok
 	this.cb_cancel = create cb_cancel
 	this.dw_viewheader = create dw_viewheader
 	this.control = {this.cb_ok, this.cb_cancel, this.dw_viewheader}
 
-// w_view_saleheader.destroy() returns 0
+// w_view_saleheader.destroy() returns 0 [event]
 	destroy this.cb_ok
 	destroy this.cb_cancel
 	destroy this.dw_viewheader
 
-// w_view_saleheader.open() returns long
+// w_view_saleheader.open() returns long [event]
 	long ll_row
 	long ll_currrow
 	long ll_counter
@@ -281,31 +281,31 @@
 	end if
 	return message.returnvalue
 
-// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		triggerevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	parent.post event ue_close(1)
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.post event ue_close(-1)
 	return ::message.returnvalue
 
-// dw_viewheader.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// dw_viewheader.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		parent.post event ue_close(-1)
 	end if
 	return ::message.returnvalue
 
-// dw_viewheader.ue_enterkey() returns long
+// dw_viewheader.ue_enterkey() returns long [event]
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_viewheader.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_viewheader.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	integer li_res
 	integer rt_code
 	integer li_patientcode
@@ -334,5 +334,5 @@
 	end choose
 	return ::message.returnvalue
 
-// dw_viewheader.itemerror(long row, dwobject dwo, string data) returns long
+// dw_viewheader.itemerror(long row, dwobject dwo, string data) returns long [event]
 	return 1

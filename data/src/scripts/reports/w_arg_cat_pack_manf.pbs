@@ -1,6 +1,6 @@
 // window w_arg_cat_pack_manf (reports)  ancestor: w_arguements
 
-// w_arg_cat_pack_manf.create() returns 0
+// w_arg_cat_pack_manf.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.st_4 = create st_4
@@ -9,12 +9,12 @@
 	this.control[icurrent + 1] = this.st_4
 	this.control[icurrent + 2] = this.st_gcode
 
-// w_arg_cat_pack_manf.destroy() returns 0
+// w_arg_cat_pack_manf.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.st_4
 	destroy this.st_gcode
 
-// w_arg_cat_pack_manf.open() returns long
+// w_arg_cat_pack_manf.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.dw_control.settransobject(sqlca)
@@ -22,6 +22,25 @@
 	this.dw_control.scrolltorow(0)
 	return ::message.returnvalue
 
-// w_arg_cat_pack_manf.ue_close(integer ai_stauts) returns 0
+// w_arg_cat_pack_manf.ue_close(integer ai_stauts) returns 0 [event]
 	super::ue_close(ai_stauts)
 	closewithreturn(this, this.istr_arg)
+
+// cb_cancel.clicked() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked()
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked()
+	parent.istr_arg.l_code1 = parent.dw_control.getitemnumber(1, "icatcode")
+	parent.istr_arg.l_code2 = parent.dw_control.getitemnumber(1, "packcode")
+	parent.istr_arg.l_code3 = parent.dw_control.getitemnumber(1, "manfcode")
+	parent.istr_arg.l_code4 = parent.dw_control.getitemnumber(1, "gcode")
+	parent.istr_arg.i_supress = parent.cbx_supress.checked
+	parent.istr_arg.i_hide = parent.cbx_hide.checked
+	parent.istr_arg.i_status = 1
+	parent.post event ue_close(1)
+	return ::message.returnvalue

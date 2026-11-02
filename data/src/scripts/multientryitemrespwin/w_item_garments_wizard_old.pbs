@@ -1,9 +1,9 @@
 // window w_item_garments_wizard_old (multientryitemrespwin)  ancestor: window
 
-// w_item_garments_wizard_old.ue_keydown(keycode key, unsignedlong keyflags) returns long
+// w_item_garments_wizard_old.ue_keydown(keycode key, unsignedlong keyflags) returns long [event]
 	return ::message.returnvalue
 
-// w_item_garments_wizard_old.ue_close() returns 0
+// w_item_garments_wizard_old.ue_close() returns 0 [event]
 	wf_disconnect()
 	close(this)
 
@@ -189,20 +189,20 @@
 	wf_setitemname("", "")
 	return 0
 
-// w_item_garments_wizard_old.create() returns 0
+// w_item_garments_wizard_old.create() returns 0 [event]
 	this.cb_find = create cb_find
 	this.cb_exit = create cb_exit
 	this.cb_save = create cb_save
 	this.dw_master = create dw_master
 	this.control = {this.cb_find, this.cb_exit, this.cb_save, this.dw_master}
 
-// w_item_garments_wizard_old.destroy() returns 0
+// w_item_garments_wizard_old.destroy() returns 0 [event]
 	destroy this.cb_find
 	destroy this.cb_exit
 	destroy this.cb_save
 	destroy this.dw_master
 
-// w_item_garments_wizard_old.open() returns long
+// w_item_garments_wizard_old.open() returns long [event]
 	long ll_rtcode
 	long ll_code
 	long ll_counter
@@ -245,26 +245,26 @@
 	setredraw(true)
 	return ::message.returnvalue
 
-// cb_find.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_find.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		triggerevent(clicked!)
 	end if
 	return 1
 
-// cb_find.clicked() returns long
+// cb_find.clicked() returns long [event]
 	if parent.ib_editflag then
 		parent.cb_save.event clicked()
 	end if
 	parent.wf_edititem()
 	return ::message.returnvalue
 
-// cb_exit.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_exit.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		triggerevent(clicked!)
 	end if
 	return 1
 
-// cb_exit.clicked() returns long
+// cb_exit.clicked() returns long [event]
 	long ll_option
 	if parent.ib_editflag then
 		ll_option = messagebox("Save Changes and Exit", "Save Changes?", question!, yesno!, 1)
@@ -275,13 +275,13 @@
 	parent.triggerevent("ue_close")
 	return ::message.returnvalue
 
-// cb_save.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_save.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		triggerevent(clicked!)
 	end if
 	return 1
 
-// cb_save.clicked() returns long
+// cb_save.clicked() returns long [event]
 	long ll_mastercurrrow
 	long ll_invid
 	long ll_detailrows
@@ -385,12 +385,12 @@
 	setpointer(arrow!)
 	return ::message.returnvalue
 
-// dw_master.getfocus() returns long
+// dw_master.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	return ::message.returnvalue
 
-// dw_master.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_master.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	integer li_retcode
 	integer li_selected
@@ -481,7 +481,7 @@
 	end if
 	return li_retcode
 
-// dw_master.itemerror(long row, dwobject dwo, string data) returns long
+// dw_master.itemerror(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	string ls_errormessage
 	ancestorreturnvalue = super::itemerror(row, dwo, data)
@@ -522,7 +522,7 @@
 	messagebox("Item Validation", ls_errormessage)
 	return 1
 
-// dw_master.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// dw_master.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	long ancestorreturnvalue
 	integer li_movement
 	long ll_row
@@ -540,7 +540,7 @@
 	end if
 	return ::message.returnvalue
 
-// dw_master.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_master.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
 	selecttext(1, len(gettext()))

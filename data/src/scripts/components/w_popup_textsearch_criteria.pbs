@@ -1,19 +1,19 @@
 // window w_popup_textsearch_criteria (components)  ancestor: window
 
-// w_popup_textsearch_criteria.ue_close() returns 0
+// w_popup_textsearch_criteria.ue_close() returns 0 [event]
 	closewithreturn(this, this.is_popup_selection)
 
-// w_popup_textsearch_criteria.ue_cancel() returns 0
+// w_popup_textsearch_criteria.ue_cancel() returns 0 [event]
 	this.is_popup_selection.l_code = -1
 	closewithreturn(this, this.is_popup_selection)
 
-// w_popup_textsearch_criteria.ue_keydown(keycode key, unsignedlong keyflags) returns long
+// w_popup_textsearch_criteria.ue_keydown(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		post event ue_cancel()
 	end if
 	return ::message.returnvalue
 
-// w_popup_textsearch_criteria.create() returns 0
+// w_popup_textsearch_criteria.create() returns 0 [event]
 	this.rb_anywhere = create rb_anywhere
 	this.rb_endswith = create rb_endswith
 	this.rb_startswith = create rb_startswith
@@ -23,7 +23,7 @@
 	this.gb_searchposition = create gb_searchposition
 	this.control = {this.rb_anywhere, this.rb_endswith, this.rb_startswith, this.cb_cancel, this.cb_ok, this.em_string, this.gb_searchposition}
 
-// w_popup_textsearch_criteria.destroy() returns 0
+// w_popup_textsearch_criteria.destroy() returns 0 [event]
 	destroy this.rb_anywhere
 	destroy this.rb_endswith
 	destroy this.rb_startswith
@@ -32,7 +32,7 @@
 	destroy this.em_string
 	destroy this.gb_searchposition
 
-// w_popup_textsearch_criteria.open() returns long
+// w_popup_textsearch_criteria.open() returns long [event]
 	long ll_win_width
 	long ll_win_height
 	long ll_width
@@ -51,12 +51,12 @@
 	this.em_string.setfocus()
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.is_popup_selection.l_code = -1
 	parent.post event ue_close()
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	string ls_name
 	parent.em_string.getdata(ls_name)
 	if ls_name = "" or isnull(ls_name) then
@@ -75,7 +75,7 @@
 	parent.post event ue_close()
 	return ::message.returnvalue
 
-// em_string.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// em_string.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 		return 1

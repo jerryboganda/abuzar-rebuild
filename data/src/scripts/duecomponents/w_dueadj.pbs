@@ -413,7 +413,7 @@
 	destroy lds_itemstockinfo
 	return li_errcode
 
-// w_dueadj.create() returns 0
+// w_dueadj.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	if isvalid(this.menuid) then
@@ -426,14 +426,14 @@
 	icurrent = upperbound(this.control)
 	this.control[icurrent + 1] = this.dw_saleinvdetail
 
-// w_dueadj.destroy() returns 0
+// w_dueadj.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 	destroy this.dw_saleinvdetail
 
-// w_dueadj.ue_detail() returns 0
+// w_dueadj.ue_detail() returns 0 [event]
 	long li_counter
 	long li_rowcount
 	long li_rtncode
@@ -446,13 +446,13 @@
 	wf_protectdw(this.id_detail, 1)
 	setredraw(true)
 
-// w_dueadj.ue_list() returns 0
+// w_dueadj.ue_list() returns 0 [event]
 	call super::ue_list
 	this.im_menu.m_file.m_post.enabled = false
 	this.im_menu.m_item.m_deleteitem.enabled = false
 	this.im_menu.m_file.m_print.enabled = false
 
-// w_dueadj.ue_postopen() returns 0
+// w_dueadj.ue_postopen() returns 0 [event]
 	long li_rtncode
 	call super::ue_postopen
 	this.id_saleinvdetail = this.dw_saleinvdetail
@@ -460,7 +460,7 @@
 	this.im_menu.m_file.m_print.enabled = false
 	f_setcolumnstyle(this.id_detail, "Qty")
 
-// w_dueadj.ue_save() returns 0
+// w_dueadj.ue_save() returns 0 [event]
 	long ll_invid
 	long ll_errrowid
 	long ll_counter
@@ -559,7 +559,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_dueadj.ue_newitem() returns 0
+// w_dueadj.ue_newitem() returns 0 [event]
 	long ll_rowcount
 	if this.id_detail.rowcount() > 0 and f_validatedw(this.id_detail) < 0 then
 		return
@@ -577,7 +577,7 @@
 	this.im_menu.m_file.m_save.enabled = true
 	this.im_menu.m_file.m_print.enabled = true
 
-// w_dueadj.ue_newform() returns 0
+// w_dueadj.ue_newform() returns 0 [event]
 	integer li_null
 	call super::ue_newform
 	setredraw(false)
@@ -612,3 +612,144 @@
 	wf_protectdw(this.id_detail, 0)
 	this.ib_modify = false
 	setredraw(true)
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	dwitemstatus lrs_status
+	long ll_code
+	long ll_detailrows
+	integer li_result
+	integer li_errcode
+	integer i_rtcode
+	boolean lb_rtflag
+	string ls_errtext
+	datawindowchild ldc_items
+	long ll_count
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "saleinvcode"
+		ll_code = long(data)
+		if not isnull(data) and integer(data) <> 0 then
+			ll_detailrows = parent.dw_itemsdetail.rowcount()
+			if ll_detailrows > 0 then
+				lrs_status = parent.dw_itemsdetail.getitemstatus(1, 0, primary!)
+				if lrs_status <> new! then
+					li_result = messagebox("Warning", "Rows in Detail Window will Lost", exclamation!, okcancel!, 2)
+					if li_result = 2 then
+						return 2
+					else
+						parent.dw_itemsdetail.setredraw(false)
+						parent.dw_itemsdetail.reset()
+						parent.dw_itemsdetail.insertrow(0)
+						parent.dw_itemsdetail.setredraw(true)
+					end if
+				end if
+			end if
+			setpointer(hourglass!)
+			lb_rtflag = parent.parent.parent.wf_findsaleinv(ll_code, ls_errtext)
+			if lb_rtflag then
+				i_rtcode = parent.parent.parent.wf_locksaleinvoice(ll_code)
+				if i_rtcode = 0 then
+					parent.setredraw(false)
+					parent.parent.parent.idc_itemdddw.reset()
+					parent.parent.parent.idc_itemdddw.retrieve(ll_code)
+					parent.parent.parent.idc_itemdddw.setfilter("Due = 'D'")
+					parent.parent.parent.idc_itemdddw.filter()
+					setfocus()
+					parent.setredraw(true)
+				end if
+			else
+				messagebox("Sale Invoice Validation", ls_errtext)
+				return 1
+			end if
+			setpointer(arrow!)
+		else
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "startdate"
+		messagebox("Start Date Validation", "Kindly enter valid starting date.")
+	case "enddate"
+		messagebox("End Date Validation", "Kindly enter valid ending date.")
+	end choose
+	return 1
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem() = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.getfocus() returns long [event]
+	return ::message.returnvalue
+
+// dw_itemsdetail.losefocus() returns long [event]
+	return ::message.returnvalue
+
+// dw_itemsdetail.editchanged(long row, dwobject dwo, string data) returns long [event]
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	integer li_null
+	long ld_dueqty
+	long ld_balanceqty
+	long ld_stock
+	long ld_satisfiableqty
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "satisfiableqty"
+		ld_satisfiableqty = double(data)
+		ld_stock = getitemnumber(row, "stock")
+		ld_balanceqty = getitemnumber(row, "c_balanceqty")
+		if ld_satisfiableqty > ld_balanceqty and ld_satisfiableqty < ld_stock then
+			messagebox("Satisfiable Qty Validation", "Kindly enter satisfiable qty less than or equal to balane qty.")
+			li_errcode = 1
+		elseif ld_satisfiableqty > ld_balanceqty and ld_satisfiableqty >= ld_stock then
+			messagebox("Satisfiable Qty Validation", "Kindly enter satisfiable qty less than or equal to balance qty.")
+			li_errcode = 1
+		elseif ld_satisfiableqty <= ld_balanceqty and ld_satisfiableqty > ld_stock then
+			messagebox("Satisfiable Qty Validation", "Kindly enter satisfiable qty less than or equal to stock.")
+			li_errcode = 1
+		end if
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "satisfiableqty"
+		if isnull(data) or data = "" or double(data) < 0.0 then
+			messagebox("Satisfiable Qty Validation", "Please enter value greater than zero.")
+		end if
+	end choose
+	return 1
+
+// dw_itemsdetail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	long ll_counter
+	long ll_rowcount
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if getcolumnname() = "duedelete" then
+		if key = keyf5! then
+			ll_rowcount = parent.parent.parent.id_detail.rowcount()
+			for ll_counter = 1 to ll_rowcount
+				parent.parent.parent.id_detail.object.duedelete[ll_counter] = "Y"
+			next
+		end if
+		if key = keyf6! then
+			ll_rowcount = parent.parent.parent.id_detail.rowcount()
+			for ll_counter = 1 to ll_rowcount
+				parent.parent.parent.id_detail.object.duedelete[ll_counter] = "N"
+			next
+		end if
+	end if
+	return ::message.returnvalue

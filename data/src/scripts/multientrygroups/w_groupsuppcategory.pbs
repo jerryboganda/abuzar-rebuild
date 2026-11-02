@@ -18,16 +18,16 @@
 	end if
 	return li_errcode
 
-// w_groupsuppcategory.create() returns 0
+// w_groupsuppcategory.create() returns 0 [event]
 	call super::create
 
-// w_groupsuppcategory.destroy() returns 0
+// w_groupsuppcategory.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_groupsuppcategory.ue_save() returns 0
+// w_groupsuppcategory.ue_save() returns 0 [event]
 	long ll_counter
 	long ll_code
 	setpointer(hourglass!)
@@ -55,19 +55,19 @@
 	end if
 	setpointer(arrow!)
 
-// w_groupsuppcategory.ue_newform() returns 0
+// w_groupsuppcategory.ue_newform() returns 0 [event]
 	call super::ue_newform
 	this.im_menu.m_item.m_newitem.enabled = true
 	this.im_menu.m_item.m_deleteitem.enabled = true
 	this.id_master.setfocus()
 
-// w_groupsuppcategory.ue_newitem() returns 0
+// w_groupsuppcategory.ue_newitem() returns 0 [event]
 	if this.ib_itemvalidated = false and wf_validatecategory() = -1 then
 		return
 	end if
 	call super::ue_newitem
 
-// w_groupsuppcategory.ue_detail() returns 0
+// w_groupsuppcategory.ue_detail() returns 0 [event]
 	long ll_code
 	long ll_rowcount
 	call super::ue_detail
@@ -90,7 +90,44 @@
 	this.im_menu.m_item.m_newitem.enabled = true
 	this.im_menu.m_item.m_deleteitem.enabled = true
 
-// w_groupsuppcategory.ue_postopen() returns 0
+// w_groupsuppcategory.ue_postopen() returns 0 [event]
 	call super::ue_postopen
 	this.id_detail.getchild("suppcatcode", this.idc_cat)
 	this.idc_cat.settransobject(this.it_transobject)
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	string ls_managername
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "suppcatcode"
+		parent.parent.parent.il_currrow = row
+		parent.parent.parent.ib_itemvalidated = false
+		li_errcode = 0
+	case else
+		parent.parent.parent.ib_itemvalidated = true
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "suppcatcode"
+		if data = "" or isnull(data) then
+			messagebox("Category Validation", "Value required for Category in current row")
+		end if
+	end choose
+	return 1
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validatecategory() = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.getfocus() returns long [event]
+	return ::message.returnvalue

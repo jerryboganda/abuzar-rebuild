@@ -1,28 +1,28 @@
 // window w_items_select_documentfiltered (reports)  ancestor: window
 
-// w_items_select_documentfiltered.ue_keydown(keycode key, unsignedlong keyflags) returns long
+// w_items_select_documentfiltered.ue_keydown(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		post event ue_close()
 	end if
 	return ::message.returnvalue
 
-// w_items_select_documentfiltered.ue_close() returns 0
+// w_items_select_documentfiltered.ue_close() returns 0 [event]
 	closewithreturn(this, this.istr_arg)
 
-// w_items_select_documentfiltered.create() returns 0
+// w_items_select_documentfiltered.create() returns 0 [event]
 	this.cb_cancel = create cb_cancel
 	this.dw_footer = create dw_footer
 	this.cb_ok = create cb_ok
 	this.dw_detail = create dw_detail
 	this.control = {this.cb_cancel, this.dw_footer, this.cb_ok, this.dw_detail}
 
-// w_items_select_documentfiltered.destroy() returns 0
+// w_items_select_documentfiltered.destroy() returns 0 [event]
 	destroy this.cb_cancel
 	destroy this.dw_footer
 	destroy this.cb_ok
 	destroy this.dw_detail
 
-// w_items_select_documentfiltered.open() returns long
+// w_items_select_documentfiltered.open() returns long [event]
 	environment le_env
 	long ll_win_width
 	long ll_win_height
@@ -52,12 +52,12 @@
 	end if
 	return message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.istr_arg.i_status = -1
 	parent.post event ue_close()
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	long[] ll_invcode
 	long ll_rowcount
 	long ll_counter
@@ -87,7 +87,7 @@
 	parent.post event ue_close()
 	return ::message.returnvalue
 
-// dw_detail.ue_enterkey() returns long
+// dw_detail.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))

@@ -32,29 +32,29 @@
 		end if
 	end if
 
-// w_servicecategory_form.create() returns 0
+// w_servicecategory_form.create() returns 0 [event]
 	call super::create
 
-// w_servicecategory_form.destroy() returns 0
+// w_servicecategory_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_servicecategory_form.activate() returns long
+// w_servicecategory_form.activate() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::activate()
 	this.windowstate = maximized!
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_servicecategory_form.open() returns long
+// w_servicecategory_form.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.is_tablename = "ServiceCategory"
 	return ::message.returnvalue
 
-// w_servicecategory_form.ue_save() returns 0
+// w_servicecategory_form.ue_save() returns 0 [event]
 	long ll_primarykey
 	long ll_row
 	setpointer(hourglass!)
@@ -92,14 +92,14 @@
 	end if
 	setpointer(arrow!)
 
-// w_servicecategory_form.ue_newform() returns 0
+// w_servicecategory_form.ue_newform() returns 0 [event]
 	string ls_null
 	call super::ue_newform
 	setnull(this.i_blob_servicelogo)
 	setnull(ls_null)
 	this.id_detail.object.p_servicelogo.filename = ls_null
 
-// w_servicecategory_form.ue_detail() returns 0
+// w_servicecategory_form.ue_detail() returns 0 [event]
 	long ll_code
 	long ll_found
 	long ll_logosize
@@ -134,10 +134,31 @@
 		this.tab_retrieve.tabpage_detail.dw_detail.setfocus()
 	end if
 
-// w_servicecategory_form.close() returns long
+// w_servicecategory_form.close() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::close()
 	if fileexists(gs_temp_img_filename) then
 		filedelete(gs_temp_img_filename)
 	end if
+	return ::message.returnvalue
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if parent.parent.parent.wf_duplicatename(data) then
+			messagebox("Name Validation", "Duplication Name Error~n~rPlease Choose Some Other Name")
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked(xpos, ypos, row, dwo)
+	choose case dwo.name
+	case "p_servicelogo"
+		parent.parent.parent.wf_get_servicelogo()
+	end choose
 	return ::message.returnvalue

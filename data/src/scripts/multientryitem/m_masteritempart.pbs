@@ -1,8 +1,29 @@
 // menu m_masteritempart (multientryitem)  ancestor: m_multi_entry
 
-// m_masteritempart.create() returns 0
+// m_masteritempart.create() returns 0 [event]
 	m_masteritempart = this
 	call super::create
 
-// m_masteritempart.destroy() returns 0
+// m_masteritempart.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_selectassociatedmasters = create m_selectassociatedmasters
+	this.item[upperbound(this.item) + 1] = this.m_selectassociatedmasters
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_selectassociatedmasters
+
+// m_selectassociatedmasters.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_select_associateditempart()
+
+// m_selectassociatedmasters.create() returns 0 [event]
+	call super::create
+	this.text = "Select Associated Master(s)~tF6"
+	this.shortcut = 117
+	this.microhelp = "Select Associated Master(s)"
+
+// m_selectassociatedmasters.destroy() returns 0 [event]
 	call super::destroy

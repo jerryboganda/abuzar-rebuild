@@ -1,6 +1,6 @@
 // window w_graph_division (graphcomponents)  ancestor: w_center
 
-// w_graph_division.open() returns long
+// w_graph_division.open() returns long [event]
 	long ancestorreturnvalue
 	graphicobject lgro_hold
 	ancestorreturnvalue = super::open()
@@ -51,7 +51,7 @@
 	end if
 	return message.returnvalue
 
-// w_graph_division.create() returns 0
+// w_graph_division.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.dw_linestyle = create dw_linestyle
@@ -68,7 +68,7 @@
 	this.control[icurrent + 5] = this.cb_cancel
 	this.control[icurrent + 6] = this.cb_ok
 
-// w_graph_division.destroy() returns 0
+// w_graph_division.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.dw_linestyle
 	destroy this.st_2
@@ -77,13 +77,13 @@
 	destroy this.cb_cancel
 	destroy this.cb_ok
 
-// dw_linestyle.ue_enterkey() returns long
+// dw_linestyle.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_linestyle.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_linestyle.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	integer li_linestyle
 	ancestorreturnvalue = super::itemchanged(row, dwo, data)
@@ -119,7 +119,7 @@
 	end if
 	return ::message.returnvalue
 
-// em_1.ue_enchange() returns long
+// em_1.ue_enchange() returns long [event]
 	if parent.io_passed = graph! then
 		parent.igr_parm.values.majordivisions = integer(parent.em_1.text)
 	elseif parent.io_passed = datawindow! then
@@ -127,11 +127,11 @@
 	end if
 	return ::message.returnvalue
 
-// em_1.ue_enterkey() returns long
+// em_1.ue_enterkey() returns long [event]
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	if parent.io_passed = graph! then
 		parent.igr_parm.rotation = parent.ii_original_1
 	elseif parent.io_passed = datawindow! then
@@ -140,7 +140,7 @@
 	close(parent)
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	integer li_linestyle
 	li_linestyle = parent.dw_linestyle.object.linestyle[1]
 	if parent.io_passed = graph! then

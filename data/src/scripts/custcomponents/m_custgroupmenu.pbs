@@ -1,8 +1,28 @@
 // menu m_custgroupmenu (custcomponents)  ancestor: m_multi_entry
 
-// m_custgroupmenu.create() returns 0
+// m_custgroupmenu.create() returns 0 [event]
 	m_custgroupmenu = this
 	call super::create
 
-// m_custgroupmenu.destroy() returns 0
+// m_custgroupmenu.destroy() returns 0 [event]
 	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_populatecustomers = create m_populatecustomers
+	this.item[upperbound(this.item) + 1] = this.m_populatecustomers
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_populatecustomers
+
+// m_populatecustomers.create() returns 0 [event]
+	call super::create
+	this.text = "Populate Customers~tCtrl+U"
+	this.shortcut = 341
+
+// m_populatecustomers.destroy() returns 0 [event]
+	call super::destroy
+
+// m_populatecustomers.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_populatecustomer()

@@ -1,16 +1,16 @@
 // window w_dbmsinfo (abuzarapp)  ancestor: window
 
-// w_dbmsinfo.ue_postopen() returns 0
+// w_dbmsinfo.ue_postopen() returns 0 [event]
 	string ls_info
 	ls_info = message.stringparm
 	this.st_info.text = ls_info
 	this.st_server.text = gs_servername
 	this.st_db.text = gs_dbname
 
-// w_dbmsinfo.ue_close(integer ai_value) returns 0
+// w_dbmsinfo.ue_close(integer ai_value) returns 0 [event]
 	closewithreturn(this, ai_value)
 
-// w_dbmsinfo.create() returns 0
+// w_dbmsinfo.create() returns 0 [event]
 	this.st_db = create st_db
 	this.st_server = create st_server
 	this.st_3 = create st_3
@@ -20,7 +20,7 @@
 	this.gb_details = create gb_details
 	this.control = {this.st_db, this.st_server, this.st_3, this.st_2, this.st_info, this.cb_ok, this.gb_details}
 
-// w_dbmsinfo.destroy() returns 0
+// w_dbmsinfo.destroy() returns 0 [event]
 	destroy this.st_db
 	destroy this.st_server
 	destroy this.st_3
@@ -29,7 +29,7 @@
 	destroy this.cb_ok
 	destroy this.gb_details
 
-// w_dbmsinfo.open() returns long
+// w_dbmsinfo.open() returns long [event]
 	environment le_env
 	long ll_width
 	long ll_height
@@ -48,18 +48,18 @@
 	post event ue_postopen()
 	return ::message.returnvalue
 
-// w_dbmsinfo.key(keycode key, unsignedlong keyflags) returns long
+// w_dbmsinfo.key(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		post event ue_close(-1)
 	end if
 	return ::message.returnvalue
 
-// cb_ok.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// cb_ok.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		post event clicked()
 	end if
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	parent.post event ue_close(1)
 	return ::message.returnvalue

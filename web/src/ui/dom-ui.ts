@@ -6,6 +6,7 @@ import { NDwBase } from '../runtime/native/dwctrl.ts'
 import { PBArray, toNum, toStr } from '../runtime/values.ts'
 import { cssFont, fontSize, pbColor, toPx } from './pb.ts'
 import { DwView } from './dwview.ts'
+import { printDw } from './print.ts'
 import { CSS } from './styles.ts'
 
 const num = (o: PBObject, k: string, d = 0): number => {
@@ -75,6 +76,9 @@ export class DomUi implements UiHost {
       if (cv) return { focus: () => (cv.el.querySelector('input,textarea,select,button') as HTMLElement | null)?.focus() ?? cv.el.focus?.() }
     }
     return undefined
+  }
+  print(dw: NDwBase): Promise<boolean> {
+    return printDw(dw)
   }
   setMicroHelp(_w: NWindow, t: string): void {
     const s = this.desktop.querySelector('.status') as HTMLElement | null

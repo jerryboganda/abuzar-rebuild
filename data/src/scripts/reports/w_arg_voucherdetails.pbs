@@ -1,6 +1,6 @@
 // window w_arg_voucherdetails (reports)  ancestor: w_listarguments
 
-// w_arg_voucherdetails.create() returns 0
+// w_arg_voucherdetails.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.cbx_cr = create cbx_cr
@@ -29,7 +29,7 @@
 	this.control[icurrent + 11] = this.gb_5
 	this.control[icurrent + 12] = this.gb_6
 
-// w_arg_voucherdetails.destroy() returns 0
+// w_arg_voucherdetails.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.cbx_cr
 	destroy this.cbx_cp
@@ -44,7 +44,7 @@
 	destroy this.gb_5
 	destroy this.gb_6
 
-// w_arg_voucherdetails.open() returns long
+// w_arg_voucherdetails.open() returns long [event]
 	long ancestorreturnvalue
 	long ll_counter
 	long ll_rowcount
@@ -66,49 +66,122 @@
 	this.dw_startendinvoice.scrolltorow(0)
 	return ::message.returnvalue
 
-// cbx_cr.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// cb_ok.clicked() returns long [event]
+	long ancestorreturnvalue
+	long ll_count
+	long ll_counter
+	long ll_innercounter
+	long ll_found
+	integer li_temp
+	string ls_temp
+	ancestorreturnvalue = super::clicked()
+	if parent.cbx_all.checked = true then
+		for ll_counter = 1 to parent.idc_categories.rowcount()
+			parent.istr_arg.ia_integerlist[ll_counter] = parent.idc_categories.getitemnumber(ll_counter, "usercode")
+		next
+	else
+		for ll_counter = 1 to ll_counter
+			ll_found = parent.idc_categories.find("username ='" + parent.lb_selectedcategories.text(ll_counter) + "'", 1, parent.idc_categories.rowcount())
+			if ll_found > 0 then
+				parent.istr_arg.ia_integerlist[ll_counter] = parent.idc_categories.getitemnumber(ll_found, "usercode")
+			end if
+		next
+	end if
+	parent.dw_startendinvoice.accepttext()
+	parent.istr_arg.l_code1 = parent.dw_startendinvoice.getitemnumber(1, "sinvcode")
+	parent.istr_arg.l_code2 = parent.dw_startendinvoice.getitemnumber(1, "linvcode")
+	if parent.istr_arg.l_code1 > parent.istr_arg.l_code2 then
+		li_temp = parent.istr_arg.l_code1
+		parent.istr_arg.l_code1 = parent.istr_arg.l_code2
+		parent.istr_arg.l_code2 = li_temp
+	end if
+	if parent.cbx_posted.checked and parent.cbx_unposted.checked then
+		parent.istr_arg.s_name1 = "B"
+	elseif parent.cbx_posted.checked = false and parent.cbx_unposted.checked then
+		parent.istr_arg.s_name1 = "N"
+	elseif parent.cbx_posted.checked and parent.cbx_unposted.checked = false then
+		parent.istr_arg.s_name1 = "Y"
+	else
+		parent.istr_arg.s_name1 = "X"
+	end if
+	ll_counter = 1
+	if parent.cbx_cr.checked then
+		parent.istr_arg.ia_integerlist1[ll_counter] = 2
+		ll_counter = ll_counter + 1
+	end if
+	if parent.cbx_cp.checked then
+		parent.istr_arg.ia_integerlist1[ll_counter] = 1
+		ll_counter = ll_counter + 1
+	end if
+	if parent.cbx_br.checked then
+		parent.istr_arg.ia_integerlist1[ll_counter] = 4
+		ll_counter = ll_counter + 1
+	end if
+	if parent.cbx_bp.checked then
+		parent.istr_arg.ia_integerlist1[ll_counter] = 3
+		ll_counter = ll_counter + 1
+	end if
+	if parent.cbx_jv.checked then
+		parent.istr_arg.ia_integerlist1[ll_counter] = 5
+	end if
+	if parent.cbx_others.checked then
+		ll_counter = 6
+		do while ll_counter <= 15
+			parent.istr_arg.ia_integerlist1[ll_counter] = ll_counter
+			ll_counter = ll_counter + 1
+		loop
+	end if
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	parent.istr_arg.i_supress = parent.cbx_supress.checked
+	parent.istr_arg.i_hide = parent.cbx_hide.checked
+	parent.istr_arg.i_status = 1
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// cbx_cr.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// cbx_cp.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// cbx_cp.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// cbx_bp.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// cbx_bp.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// cbx_jv.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// cbx_jv.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// cbx_br.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// cbx_br.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// cbx_others.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// cbx_others.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// cbx_posted.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// cbx_posted.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// cbx_unposted.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// cbx_unposted.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if

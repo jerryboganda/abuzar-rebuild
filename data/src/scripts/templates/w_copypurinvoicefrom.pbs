@@ -1,6 +1,6 @@
 // window w_copypurinvoicefrom (templates)  ancestor: window
 
-// w_copypurinvoicefrom.ue_setfocus(char ac_type) returns 0
+// w_copypurinvoicefrom.ue_setfocus(char ac_type) returns 0 [event]
 	long ll_invcode
 	setnull(ll_invcode)
 	if ac_type = "P" then
@@ -9,7 +9,7 @@
 		this.rb_copyinvfrompurchaseinvoice.checked = true
 	end if
 
-// w_copypurinvoicefrom.ue_postopen() returns 0
+// w_copypurinvoicefrom.ue_postopen() returns 0 [event]
 	this.istr_template.b_userinput = false
 	this.dw_purordertemplate.settransobject(sqlca)
 	this.dw_purordertemplate.insertrow(0)
@@ -22,7 +22,7 @@
 	this.idc_purordertemplate.setsort("pocode D")
 	this.idc_purordertemplate.sort()
 
-// w_copypurinvoicefrom.create() returns 0
+// w_copypurinvoicefrom.create() returns 0 [event]
 	this.dw_purordertemplate = create dw_purordertemplate
 	this.st_purchaseinvno = create st_purchaseinvno
 	this.rb_copyinvfrompurchaseinvoice = create rb_copyinvfrompurchaseinvoice
@@ -31,7 +31,7 @@
 	this.gb_1 = create gb_1
 	this.control = {this.dw_purordertemplate, this.st_purchaseinvno, this.rb_copyinvfrompurchaseinvoice, this.cb_cancel, this.cb_ok, this.gb_1}
 
-// w_copypurinvoicefrom.destroy() returns 0
+// w_copypurinvoicefrom.destroy() returns 0 [event]
 	destroy this.dw_purordertemplate
 	destroy this.st_purchaseinvno
 	destroy this.rb_copyinvfrompurchaseinvoice
@@ -39,7 +39,7 @@
 	destroy this.cb_ok
 	destroy this.gb_1
 
-// w_copypurinvoicefrom.open() returns long
+// w_copypurinvoicefrom.open() returns long [event]
 	long ll_win_width
 	long ll_win_height
 	long ll_width
@@ -58,38 +58,38 @@
 	post event ue_postopen()
 	return ::message.returnvalue
 
-// w_copypurinvoicefrom.close() returns long
+// w_copypurinvoicefrom.close() returns long [event]
 	closewithreturn(this, this.istr_template)
 	return ::message.returnvalue
 
-// w_copypurinvoicefrom.key(keycode key, unsignedlong keyflags) returns long
+// w_copypurinvoicefrom.key(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		post event Close()
 	end if
 	return ::message.returnvalue
 
-// dw_purordertemplate.ue_key(keycode key, unsignedlong keyflags) returns long
+// dw_purordertemplate.ue_key(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		parent.post event Close()
 	end if
 	return ::message.returnvalue
 
-// dw_purordertemplate.itemerror(long row, dwobject dwo, string data) returns long
+// dw_purordertemplate.itemerror(long row, dwobject dwo, string data) returns long [event]
 	messagebox("Purchase Order Code Validation", "Please enter valid Purchase Order Code")
 	return 1
 
-// rb_copyinvfrompurchaseinvoice.clicked() returns long
+// rb_copyinvfrompurchaseinvoice.clicked() returns long [event]
 	if parent.rb_copyinvfrompurchaseinvoice.checked then
 		parent.event ue_setfocus("P")
 	end if
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.istr_template.b_userinput = false
 	parent.post event Close()
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	long ll_find
 	parent.istr_template.b_userinput = false
 	if parent.rb_copyinvfrompurchaseinvoice.checked then

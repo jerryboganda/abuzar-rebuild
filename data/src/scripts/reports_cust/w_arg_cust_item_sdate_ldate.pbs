@@ -1,6 +1,6 @@
 // window w_arg_cust_item_sdate_ldate (reports_cust)  ancestor: w_popup_forselection_walias
 
-// w_arg_cust_item_sdate_ldate.create() returns 0
+// w_arg_cust_item_sdate_ldate.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.gb_3 = create gb_3
@@ -25,7 +25,7 @@
 	this.control[icurrent + 9] = this.dw_control
 	this.control[icurrent + 10] = this.st_4
 
-// w_arg_cust_item_sdate_ldate.destroy() returns 0
+// w_arg_cust_item_sdate_ldate.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.gb_3
 	destroy this.gb_2
@@ -38,7 +38,7 @@
 	destroy this.dw_control
 	destroy this.st_4
 
-// w_arg_cust_item_sdate_ldate.open() returns long
+// w_arg_cust_item_sdate_ldate.open() returns long [event]
 	long ancestorreturnvalue
 	date ld_currdate
 	string ls_text
@@ -61,28 +61,169 @@
 	this.dw_control.insertrow(0)
 	return ::message.returnvalue
 
-// w_arg_cust_item_sdate_ldate.ue_close() returns 0
+// w_arg_cust_item_sdate_ldate.ue_close() returns 0 [event]
 	closewithreturn(this, this.istr_arg)
 
-// em_startdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// dw_selected.ue_addnewitem() returns 0 [event]
+	string ls_item
+	string ls_null
+	long ll_code
+	long ll_null
+	long ll_found
+	long ll_currentrow
+	setnull(ll_null)
+	setnull(ls_null)
+	ls_item = getitemstring(getrow(), "name")
+	ll_code = getitemnumber(getrow(), "code")
+	if not isnull(ls_item) and parent.id_selectionlist.rowcount() > 0 then
+		parent.lb_selected.additem(ls_item)
+		ll_found = parent.id_selectionlist.find("code=" + string(ll_code), 1, parent.id_selectionlist.rowcount())
+		if ll_found > 0 then
+			ll_currentrow = parent.ids_hold.insertrow(0)
+			parent.ids_hold.setitem(ll_currentrow, "code", parent.id_selectionlist.object.code[ll_found])
+			parent.ids_hold.setitem(ll_currentrow, "name", parent.id_selectionlist.object.name[ll_found])
+			parent.ids_hold.setitem(ll_currentrow, "aliasname", parent.id_selectionlist.object.aliasname[ll_found])
+			parent.ids_hold.setitem(ll_currentrow, "address1", parent.id_selectionlist.object.address1[ll_found])
+			parent.ids_hold.setitem(ll_currentrow, "city", parent.id_selectionlist.object.city[ll_found])
+			parent.ids_hold.accepttext()
+			parent.id_selectionlist.deleterow(ll_found)
+			parent.id_selectionlist.accepttext()
+		end if
+		setcolumn("aliasname")
+		setfocus()
+		setitem(getrow(), "aliasname", ls_null)
+		setitem(getrow(), "name", ls_null)
+		setitem(getrow(), "code", ll_null)
+	end if
+
+// dw_selected.ue_enterkey() returns long [event]
+	if getcolumnname() = "name" then
+		post event ue_addnewitem()
+	end if
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_selected.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	integer rt_code
+	long ll_currrow
+	long ll_listcurrrow
+	long ll_rowm
+	if parent.id_selectionlist.rowcount() <= 0 then
+		messagebox("Customer Validation", "There are no rows for selection.")
+		return 1
+	end if
+	if getcolumnname() = "name" then
+		setredraw(false)
+		ll_rowm = getrow()
+		if key = keydownarrow! then
+			parent.id_selectionlist.selectrow(0, false)
+			parent.id_selectionlist.scrollnextrow()
+			ll_listcurrrow = parent.id_selectionlist.getrow()
+			rt_code = 1
+		elseif key = keyuparrow! then
+			parent.id_selectionlist.selectrow(0, false)
+			parent.id_selectionlist.scrollpriorrow()
+			ll_listcurrrow = parent.id_selectionlist.getrow()
+			rt_code = 1
+		elseif key = keypagedown! then
+			parent.id_selectionlist.selectrow(0, false)
+			parent.id_selectionlist.scrollnextpage()
+			ll_listcurrrow = parent.id_selectionlist.getrow()
+			rt_code = 1
+		elseif key = keypageup! then
+			parent.id_selectionlist.selectrow(0, false)
+			parent.id_selectionlist.scrollpriorpage()
+			ll_listcurrrow = parent.id_selectionlist.getrow()
+			rt_code = 1
+		elseif key = keyend! then
+			parent.id_selectionlist.selectrow(0, false)
+			parent.id_selectionlist.scrolltorow(99999)
+			ll_listcurrrow = parent.id_selectionlist.getrow()
+			rt_code = 1
+		elseif key = keyhome! then
+			parent.id_selectionlist.selectrow(0, false)
+			parent.id_selectionlist.scrolltorow(1)
+			ll_listcurrrow = parent.id_selectionlist.getrow()
+			rt_code = 1
+		elseif key = keyback! then
+			parent.ib_bkspace = true
+			setredraw(true)
+		elseif key = keyescape! then
+			parent.id_selectionlist.hide()
+			setfocus()
+			setredraw(true)
+		elseif key = keyf4! then
+			parent.id_selectionlist.show()
+			parent.id_selectionlist.selectrow(0, false)
+			parent.id_selectionlist.scrolltorow(parent.id_selectionlist.getrow())
+			parent.id_selectionlist.selectrow(parent.id_selectionlist.getrow(), true)
+			setredraw(true)
+		else
+			setredraw(true)
+		end if
+		if rt_code = 1 then
+			parent.id_selectionlist.selectrow(ll_listcurrrow, true)
+			setitem(ll_rowm, "code", parent.id_selectionlist.getitemnumber(ll_listcurrrow, "code"))
+			setitem(ll_rowm, "aliasname", parent.id_selectionlist.getitemstring(ll_listcurrrow, "aliasname"))
+			setitem(ll_rowm, "name", parent.id_selectionlist.getitemstring(ll_listcurrrow, "name"))
+			selecttext(1, len(gettext()))
+			setredraw(true)
+		end if
+	end if
+	return rt_code
+
+// cb_cancel.clicked() returns long [event]
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long [event]
+	long ll_count
+	long ll_counter
+	long ll_innercounter
+	long ll_found
+	integer[] li_list
+	if parent.cbx_all.checked = true then
+		for ll_counter = 1 to parent.ids_allcustomers.rowcount()
+			li_list[ll_counter] = parent.ids_allcustomers.getitemnumber(ll_counter, "code")
+		next
+	elseif parent.lb_selected.totalitems() > 0 then
+		for ll_counter = 1 to ll_counter
+			ll_found = parent.ids_allcustomers.find("name ='" + parent.lb_selected.text(ll_counter) + "'", 1, parent.ids_allcustomers.rowcount())
+			if ll_found > 0 then
+				li_list[ll_counter] = parent.ids_allcustomers.getitemnumber(ll_found, "code")
+			end if
+		next
+	else
+		messagebox("Customer Validation", "Either select all customers from checkbox or select some customers from the selection list.")
+		return ::message.returnvalue
+	end if
+	parent.istr_arg.l_code1 = parent.dw_control.getitemnumber(1, "icode")
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	parent.istr_arg.ia_integerlist = li_list
+	parent.istr_arg.i_status = 1
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// em_startdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// em_enddate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// em_enddate.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// lb_selected.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// lb_selected.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		post event doubleclicked(selectedindex())
 	end if
 	return ::message.returnvalue
 
-// lb_selected.doubleclicked(integer index) returns long
+// lb_selected.doubleclicked(integer index) returns long [event]
 	string ls_name
 	long ll_selectedindex
 	long ll_found
@@ -116,17 +257,17 @@
 	end if
 	return ::message.returnvalue
 
-// lb_selected.getfocus() returns long
+// lb_selected.getfocus() returns long [event]
 	selectitem(0)
 	selectitem(1)
 	return ::message.returnvalue
 
-// cbx_all.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cbx_all.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// dw_control.ue_enterkey() returns long
+// dw_control.ue_enterkey() returns long [event]
 	send(handle(this), 256, 9, long(90))
 	return 1

@@ -1,13 +1,13 @@
 // menu m_itemconversionmenu (adjustment)  ancestor: m_multi_entry
 
-// m_itemconversionmenu.create() returns 0
+// m_itemconversionmenu.create() returns 0 [event]
 	m_itemconversionmenu = this
 	call super::create
 
-// m_itemconversionmenu.destroy() returns 0
+// m_itemconversionmenu.destroy() returns 0 [event]
 	call super::destroy
 
-// m_itemconversionmenu.clicked() returns 0
+// m_itemconversionmenu.clicked() returns 0 [event]
 	call super::clicked
 	if this.checked then
 		this.checked = false
@@ -15,3 +15,70 @@
 		this.checked = true
 	end if
 	this.parentwindow.dynamic wf_fetchserverdate(this.checked)
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.checked = true
+	this.m_populateitems = create m_populateitems
+	this.m_savepost = create m_savepost
+	this.m_setserverdate = create m_setserverdate
+	this.item[upperbound(this.item) + 1] = this.m_populateitems
+	this.item[upperbound(this.item) + 1] = this.m_savepost
+	this.item[upperbound(this.item) + 1] = this.m_setserverdate
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_populateitems
+	destroy this.m_savepost
+	destroy this.m_setserverdate
+
+// m_options.clicked() returns 0 [event]
+	long ll_manfcode
+	long ll_pocode
+	call super::clicked
+	this.parentwindow.dynamic wf_getpomanfcode(ll_pocode, ll_manfcode)
+	this.parentwindow.dynamic wf_populatedetaildwfrompo(ll_pocode, ll_manfcode)
+
+// m_options.create() returns 0 [event]
+	call super::create
+	this.visible = true
+	this.text = "Edit Purchase Order"
+	this.enabled = false
+
+// m_options.destroy() returns 0 [event]
+	call super::destroy
+
+// m_populateitems.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_populatefiltereditems()
+
+// m_populateitems.create() returns 0 [event]
+	call super::create
+	this.text = "Populate Items"
+
+// m_populateitems.destroy() returns 0 [event]
+	call super::destroy
+
+// m_savepost.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_saveandpost()
+	if this.parentwindow.dynamic wf_commitform() = true then
+		this.parentwindow.postevent("ue_new")
+	end if
+
+// m_savepost.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Save And Post~tCtrl+Q"
+	this.enabled = false
+	this.checked = true
+	this.shortcut = 337
+
+// m_savepost.destroy() returns 0 [event]
+	call super::destroy
+
+// m_setserverdate.create() returns 0 [event]
+	call super::create
+	this.text = "Set Server Date"
+	this.checked = true
+
+// m_setserverdate.destroy() returns 0 [event]
+	call super::destroy

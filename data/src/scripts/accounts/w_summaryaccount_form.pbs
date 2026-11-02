@@ -314,7 +314,7 @@
 	end if
 	return retflag
 
-// w_summaryaccount_form.create() returns 0
+// w_summaryaccount_form.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	if isvalid(this.menuid) then
@@ -329,7 +329,7 @@
 	this.control[icurrent + 1] = this.dw_saleinvrep
 	this.control[icurrent + 2] = this.dw_saleinvdetail
 
-// w_summaryaccount_form.destroy() returns 0
+// w_summaryaccount_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
@@ -337,7 +337,7 @@
 	destroy this.dw_saleinvrep
 	destroy this.dw_saleinvdetail
 
-// w_summaryaccount_form.ue_save() returns 0
+// w_summaryaccount_form.ue_save() returns 0 [event]
 	long ll_detailrows
 	long ll_counter
 	long ll_count
@@ -397,7 +397,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_summaryaccount_form.ue_newform() returns 0
+// w_summaryaccount_form.ue_newform() returns 0 [event]
 	integer rtncode
 	long li_fetched_code
 	long row
@@ -420,7 +420,7 @@
 	this.id_itemslist.retrieve()
 	setredraw(true)
 
-// w_summaryaccount_form.ue_detail() returns 0
+// w_summaryaccount_form.ue_detail() returns 0 [event]
 	integer li_rtncode
 	integer li_protect
 	long ll_row
@@ -446,7 +446,7 @@
 	end if
 	setredraw(true)
 
-// w_summaryaccount_form.ue_newitem() returns 0
+// w_summaryaccount_form.ue_newitem() returns 0 [event]
 	long ll_rowcount
 	if this.ib_itemvalidated = false and wf_validateitem(true) = -1 then
 		this.id_detail.setfocus()
@@ -469,7 +469,7 @@
 	this.im_menu.m_file.m_save.enabled = true
 	this.ib_validatefullcode = true
 
-// w_summaryaccount_form.ue_deleteitem() returns 0
+// w_summaryaccount_form.ue_deleteitem() returns 0 [event]
 	long ll_row
 	long ll_footerrow
 	call super::ue_deleteitem
@@ -480,13 +480,13 @@
 		this.im_menu.m_file.m_save.enabled = false
 	end if
 
-// w_summaryaccount_form.close() returns long
+// w_summaryaccount_form.close() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::close()
 	this.id_itemslist.sharedataoff()
 	return ::message.returnvalue
 
-// w_summaryaccount_form.ue_list() returns 0
+// w_summaryaccount_form.ue_list() returns 0 [event]
 	call super::ue_list
 	SQL rollback USING this.it_transobject;
 	this.im_menu.m_file.m_post.enabled = false
@@ -498,14 +498,14 @@
 	end if
 	wf_retrievelist()
 
-// w_summaryaccount_form.ue_print() returns 0
+// w_summaryaccount_form.ue_print() returns 0 [event]
 	call super::ue_print
 
-// w_summaryaccount_form.ue_new() returns 0
+// w_summaryaccount_form.ue_new() returns 0 [event]
 	call super::ue_new
 	this.im_menu.m_file.m_post.enabled = false
 
-// w_summaryaccount_form.ue_postopen() returns 0
+// w_summaryaccount_form.ue_postopen() returns 0 [event]
 	m_summaccmenu lm_menu
 	integer li_rtncode
 	long ll_counter
@@ -532,8 +532,366 @@
 	this.ia_llookuptable[92] = 99999
 	setredraw(true)
 
-// w_summaryaccount_form.open() returns long
+// w_summaryaccount_form.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.is_columnitemname = "accountname"
+	return ::message.returnvalue
+
+// tab_retrieve.selectionchanged(integer oldindex, integer newindex) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::selectionchanged(oldindex, newindex)
+	if parent.ib_modify and newindex <> 1 then
+		SQL rollback USING parent.it_transobject;
+		parent.ib_modify = false
+	end if
+	return ::message.returnvalue
+
+// dw_footer.losefocus() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::losefocus()
+	parent.parent.parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_footer.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	parent.parent.parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_footer.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "misccharges"
+		messagebox("Misc. Charges Validation", "Charges ~"" + data + "~" should be greater equal zero")
+	case "flatdisc"
+		messagebox("Flat Dsicount Validation", "Flat Discount ~"" + data + "~" should be greater equal zero")
+	case "discperc"
+		messagebox("Invoice Discount(%) Validation", "Dsicount ~"" + data + "~" must be betweeen 0 and 100")
+	end choose
+	return 1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	dwitemstatus lrs_status
+	long ll_code
+	long ll_detailrows
+	long ll_suppcode
+	long ll_custcode
+	long ll_counter
+	long ll_customerbalance
+	long ll_headerinvno
+	integer rt_code
+	long ll_icode
+	long ld_saleprice1
+	long ld_saleprice2
+	long ld_saleprice3
+	long ld_avgprice
+	long li_packunits
+	long ll_null
+	string ls_result
+	string ls_null
+	datetime ld_currdate
+	date ld_datepart
+	time lt_timepart
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "aliasname"
+		if parent.parent.parent.wf_duplicate_summaliasname(data) then
+			messagebox("Alias Name Validation", "Summary Account Alias Name Duplication Error~r~nPlease enter some other Alias Name")
+			return 1
+		end if
+	case "name"
+		if parent.parent.parent.wf_duplicate_summaccname(data) then
+			messagebox("Name Validation", "Duplication Summary Account Name Error~n~rPlease Choose Some Other Name")
+			return 1
+		end if
+		return rt_code
+	end choose
+	return rt_code
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "aliasname"
+		messagebox("Alias Name Validation", "Please enter valid Alias Name")
+	case "name"
+		messagebox("Account Name Validation", "You must select some valid Account")
+	end choose
+	return 1
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	long ll_newqty
+	long ll_storedqty
+	long ll_stock
+	long ll_null
+	long ll_icode
+	long ll_gcode
+	string ls_null
+	string ls_accountname
+	integer li_res
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	setnull(ll_null)
+	setnull(ls_null)
+	choose case dwo.name
+	case parent.parent.parent.is_columnitemname
+		parent.parent.parent.id_detail.setitem(row, "acccode", parent.parent.parent.id_itemslist.getitemnumber(parent.parent.parent.id_itemslist.getrow(), "acccode"))
+		parent.parent.parent.id_detail.setitem(row, "fullcode", parent.parent.parent.id_itemslist.getitemstring(parent.parent.parent.id_itemslist.getrow(), "fullcode"))
+		parent.parent.parent.ib_itemvalidated = false
+		parent.parent.parent.il_currrow = row
+		li_errcode = 0
+	case "fullcode"
+		if not isnull(data) and data <> "" then
+			li_res = parent.parent.parent.wf_findfullcode(data, ll_icode, ls_accountname)
+			if li_res > 0 then
+				setitem(row, "acccode", ll_icode)
+				setitem(row, "accountname", ls_accountname)
+				parent.parent.parent.ib_itemvalidated = false
+				parent.parent.parent.il_currrow = row
+				li_errcode = 0
+			else
+				messagebox("Account Validation", "Account does not exist")
+				setitem(row, "acccode", ll_null)
+				setitem(row, "fullcode", ls_null)
+				li_errcode = 1
+			end if
+		else
+			setitem(row, "acccode", ll_null)
+			setitem(row, "fullcode", ls_null)
+			li_errcode = 2
+		end if
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	string ls_columnobject
+	long ll_currow
+	long ll_icode
+	long ll_gcode
+	long ll_godownstock
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem(false) = -1 then
+		return ::message.returnvalue
+	end if
+	if dwo.name = "accountname" then
+		parent.parent.parent.ib_focusdetail = true
+	end if
+	parent.parent.parent.wf_grandtotal()
+	parent.parent.parent.editflag = true
+	selecttext(1, len(gettext()))
+	if dwo.name = parent.parent.parent.is_columnitemname then
+		if isnull(getitemnumber(row, "acccode")) and parent.parent.parent.ib_focusdetail then
+			parent.parent.parent.wf_showlist(getitemnumber(row, "CurrListRow"))
+		end if
+	else
+		parent.parent.parent.ib_itemslistopen = false
+		parent.parent.parent.id_itemslist.hide()
+	end if
+	return 0
+
+// dw_itemsdetail.rowfocuschanged(long currentrow) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::rowfocuschanged(currentrow)
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem(true) = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.losefocus() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::losefocus()
+	parent.parent.parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "fullcode"
+		if data = "" or isnull(data) then
+		end if
+	case parent.parent.parent.is_columnitemname
+		if data = "" or isnull(data) then
+			messagebox("Account Validation", "Value required for current row")
+		end if
+	end choose
+	return 1
+
+// dw_itemsdetail.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked(xpos, ypos, row, dwo)
+	return ::message.returnvalue
+
+// dw_itemsdetail.getfocus() returns long [event]
+	long ancestorreturnvalue
+	if f_stringpreferences("itemcode") = "N" then
+		ancestorreturnvalue = super::getfocus()
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.editchanged(long row, dwobject dwo, string data) returns long [event]
+	long ll_currrow
+	long ll_startrow
+	long ll_endrow
+	if parent.parent.parent.editflag = false then
+		parent.parent.parent.editflag = true
+		parent.parent.parent.im_menu.m_file.m_save.enabled = true
+	end if
+	choose case dwo.name
+	case parent.parent.parent.is_columnitemname
+		if upper(left(data, 1)) >= "A" and upper(left(data, 1)) <= "Z" or left(data, 1) >= "0" and left(data, 1) <= "9" or left(data, 1) = "*" then
+			ll_currrow = 1
+			if len(data) > 1 then
+				ll_startrow = ll_currrow
+			else
+				if left(data, 1) >= "0" and left(data, 1) <= "9" or left(data, 1) = "*" then
+					ll_startrow = 1
+				else
+					ll_startrow = parent.parent.parent.ia_llookuptable[asc(upper(data))]
+				end if
+				parent.parent.parent.ib_bkspace = false
+			end if
+			if parent.parent.parent.ib_bkspace then
+				parent.parent.parent.il_itemlistfoundrow = parent.parent.parent.id_itemslist.find("Lower(accountname) <= '" + lower(data) + "'", ll_startrow, 0)
+				parent.parent.parent.il_itemlistfoundrow = parent.parent.parent.il_itemlistfoundrow + 1
+				parent.parent.parent.ib_bkspace = false
+			else
+				parent.parent.parent.il_itemlistfoundrow = parent.parent.parent.id_itemslist.find("Lower(accountname) >= '" + lower(data) + "'", ll_startrow, 99999)
+			end if
+			if parent.parent.parent.il_itemlistfoundrow = 0 then
+				parent.parent.parent.il_itemlistfoundrow = parent.parent.parent.id_itemslist.rowcount()
+			end if
+			if parent.parent.parent.il_itemlistfoundrow <> ll_currrow then
+				parent.parent.parent.id_itemslist.selectrow(0, false)
+				parent.parent.parent.id_itemslist.setrow(parent.parent.parent.il_itemlistfoundrow)
+				parent.parent.parent.id_itemslist.scrolltorow(parent.parent.parent.il_itemlistfoundrow)
+				parent.parent.parent.id_itemslist.selectrow(parent.parent.parent.il_itemlistfoundrow, true)
+				ll_endrow = setitem(row, "currlistrow", parent.parent.parent.il_itemlistfoundrow)
+				ll_endrow = getitemnumber(row, "currlistrow")
+				setfocus()
+			end if
+		end if
+		parent.parent.parent.ib_itemvalidated = false
+		parent.parent.parent.il_currrow = row
+	end choose
+	return ::message.returnvalue
+
+// dw_itemsdetail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	integer rt_code
+	long ll_currrow
+	long ll_listcurrrow
+	long ll_icode
+	long ll_found
+	long ll_rowm
+	if getcolumnname() = parent.parent.parent.is_columnitemname then
+		setredraw(false)
+		ll_rowm = getrow()
+		if key = keydownarrow! then
+			parent.parent.parent.id_itemslist.selectrow(0, false)
+			parent.parent.parent.id_itemslist.scrollnextrow()
+			ll_listcurrrow = parent.parent.parent.id_itemslist.getrow()
+			rt_code = 1
+		elseif key = keyuparrow! then
+			parent.parent.parent.id_itemslist.selectrow(0, false)
+			parent.parent.parent.id_itemslist.scrollpriorrow()
+			ll_listcurrrow = parent.parent.parent.id_itemslist.getrow()
+			rt_code = 1
+		elseif key = keypagedown! then
+			parent.parent.parent.id_itemslist.selectrow(0, false)
+			parent.parent.parent.id_itemslist.scrollnextpage()
+			ll_listcurrrow = parent.parent.parent.id_itemslist.getrow()
+			rt_code = 1
+		elseif key = keypageup! then
+			parent.parent.parent.id_itemslist.selectrow(0, false)
+			parent.parent.parent.id_itemslist.scrollpriorpage()
+			ll_listcurrrow = parent.parent.parent.id_itemslist.getrow()
+			rt_code = 1
+		elseif key = keyend! then
+			parent.parent.parent.id_itemslist.selectrow(0, false)
+			parent.parent.parent.id_itemslist.scrolltorow(99999)
+			ll_listcurrrow = parent.parent.parent.id_itemslist.getrow()
+			rt_code = 1
+		elseif key = keyhome! then
+			parent.parent.parent.id_itemslist.selectrow(0, false)
+			parent.parent.parent.id_itemslist.scrolltorow(1)
+			ll_listcurrrow = parent.parent.parent.id_itemslist.getrow()
+			rt_code = 1
+		elseif key = keyback! then
+			parent.parent.parent.ib_bkspace = true
+			setredraw(true)
+		elseif key = keyescape! then
+			parent.parent.parent.ib_itemslistopen = false
+			parent.parent.parent.id_itemslist.hide()
+			setfocus()
+			setredraw(true)
+		elseif key = keyf4! then
+			parent.parent.parent.wf_showlist(getitemnumber(getrow(), "currlistrow"))
+			setredraw(true)
+		else
+			setredraw(true)
+		end if
+		if rt_code = 1 then
+			parent.parent.parent.id_itemslist.selectrow(ll_listcurrrow, true)
+			setitem(ll_rowm, parent.parent.parent.is_columnitemname, parent.parent.parent.id_itemslist.getitemstring(ll_listcurrrow, "accountname"))
+			setitem(ll_rowm, "acccode", parent.parent.parent.id_itemslist.getitemnumber(ll_listcurrrow, "acccode"))
+			setitem(ll_rowm, "fullcode", parent.parent.parent.id_itemslist.getitemstring(ll_listcurrrow, "fullcode"))
+			selecttext(1, len(gettext()))
+			parent.parent.parent.ib_itemvalidated = false
+			parent.parent.parent.il_currrow = ll_rowm
+			setitem(getrow(), "CurrListRow", ll_listcurrrow)
+			setredraw(true)
+		end if
+	elseif key = keydownarrow! then
+		ll_currrow = getrow()
+		if ll_currrow = rowcount() then
+			getparent().dynamic postevent("ue_focusfooter")
+			rt_code = 1
+		end if
+	elseif key = keyuparrow! then
+		ll_currrow = getrow()
+		if ll_currrow = 1 then
+			getparent().dynamic postevent("ue_FocusHeader")
+			rt_code = 1
+		end if
+	end if
+	return rt_code
+
+// dw_itemslist.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
+	long ll_rowmain
+	string s_str
+	string s_t
+	integer i_len
+	if row > 0 then
+		ll_rowmain = parent.parent.parent.id_detail.getrow()
+		parent.parent.parent.id_detail.setitem(ll_rowmain, parent.parent.parent.is_columnitemname, parent.parent.parent.id_itemslist.getitemstring(row, parent.parent.parent.is_columnitemname))
+		parent.parent.parent.id_detail.setitem(ll_rowmain, "acccode", parent.parent.parent.id_itemslist.getitemnumber(row, "acccode"))
+		parent.parent.parent.id_detail.setitem(ll_rowmain, "fullcode", parent.parent.parent.id_itemslist.getitemstring(row, "fullcode"))
+		parent.parent.parent.id_detail.selecttext(1, len(gettext()))
+		parent.parent.parent.ib_itemvalidated = false
+		parent.parent.parent.il_currrow = ll_rowmain
+		selectrow(0, false)
+		selectrow(row, true)
+	end if
+	s_str = string(dwo.name)
+	s_t = right(s_str, 2)
+	if s_t = "_t" then
+		i_len = len(s_str)
+		s_str = left(s_str, i_len - 2)
+		if this.s_previous <> s_str then
+			this.b_flag = true
+		end if
+		if this.b_flag = true then
+			setsort(s_str)
+			sort()
+			this.b_flag = false
+		else
+			setsort(s_str + " D")
+			sort()
+			this.b_flag = true
+		end if
+	end if
+	this.s_previous = s_str
 	return ::message.returnvalue

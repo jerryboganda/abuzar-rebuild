@@ -1,6 +1,6 @@
 // window w_entry (components)  ancestor: w_entry_primitives
 
-// w_entry.ue_getfocus() returns 0
+// w_entry.ue_getfocus() returns 0 [event]
 	this.tab_retrieve.tabpage_list.sle_find.setfocus()
 
 // w_entry.wf_confirm_changes() returns 0
@@ -95,7 +95,7 @@
 	end if
 	this.tab_retrieve.tabpage_list.sle_find.setfocus()
 
-// w_entry.create() returns 0
+// w_entry.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	if this.menuname = "m_single_entry" then
@@ -105,14 +105,14 @@
 	icurrent = upperbound(this.control)
 	this.control[icurrent + 1] = this.tab_retrieve
 
-// w_entry.destroy() returns 0
+// w_entry.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 	destroy this.tab_retrieve
 
-// w_entry.open() returns long
+// w_entry.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	wf_setmenu(this.menuid)
@@ -129,7 +129,7 @@
 	event ue_first()
 	return ::message.returnvalue
 
-// w_entry.ue_detail() returns 0
+// w_entry.ue_detail() returns 0 [event]
 	long li_customer_code
 	this.im_menu.m_file.m_save.enabled = true
 	this.im_menu.m_file.m_delete.enabled = true
@@ -147,7 +147,7 @@
 	this.id_dwcontrol = this.tab_retrieve.tabpage_list.dw_list
 	this.tab_retrieve.tabpage_detail.dw_detail.setfocus()
 
-// w_entry.ue_list() returns 0
+// w_entry.ue_list() returns 0 [event]
 	call super::ue_list
 	wf_confirm_changes()
 	this.im_menu.m_file.m_new.enabled = true
@@ -162,13 +162,13 @@
 	this.i_retrievemode = 1
 	this.tab_retrieve.tabpage_list.sle_find.setfocus()
 
-// w_entry.ue_new() returns 0
+// w_entry.ue_new() returns 0 [event]
 	call super::ue_new
 	this.i_editmode = 1
 	this.tab_retrieve.selectedtab = 2
 	this.tab_retrieve.tabpage_detail.dw_detail.setfocus()
 
-// w_entry.ue_retrieve() returns 0
+// w_entry.ue_retrieve() returns 0 [event]
 	call super::ue_retrieve
 	if this.i_retrievemode = 1 then
 		this.i_editmode = 2
@@ -177,7 +177,7 @@
 	end if
 	this.tab_retrieve.selectedtab = 1
 
-// w_entry.ue_save() returns 0
+// w_entry.ue_save() returns 0 [event]
 	if f_validatedw(this.tab_retrieve.tabpage_detail.dw_detail) < 0 then
 		return
 	end if
@@ -189,7 +189,7 @@
 	end if
 	this.id_dwcontrol = this.tab_retrieve.tabpage_list.dw_list
 
-// w_entry.ue_first() returns 0
+// w_entry.ue_first() returns 0 [event]
 	long li_customer_code
 	call super::ue_first
 	li_customer_code = wf_first()
@@ -203,7 +203,7 @@
 		this.id_dwcontrol = this.tab_retrieve.tabpage_list.dw_list
 	end if
 
-// w_entry.ue_last() returns 0
+// w_entry.ue_last() returns 0 [event]
 	long li_customer_code
 	call super::ue_last
 	li_customer_code = wf_last()
@@ -217,7 +217,7 @@
 		this.id_dwcontrol = this.tab_retrieve.tabpage_list.dw_list
 	end if
 
-// w_entry.ue_next() returns 0
+// w_entry.ue_next() returns 0 [event]
 	long li_customer_code
 	call super::ue_next
 	li_customer_code = wf_next()
@@ -233,7 +233,7 @@
 		this.id_dwcontrol = this.tab_retrieve.tabpage_list.dw_list
 	end if
 
-// w_entry.ue_previous() returns 0
+// w_entry.ue_previous() returns 0 [event]
 	long li_customer_code
 	call super::ue_previous
 	li_customer_code = wf_previous()
@@ -249,7 +249,7 @@
 		this.id_dwcontrol = this.tab_retrieve.tabpage_list.dw_list
 	end if
 
-// w_entry.ue_newform() returns 0
+// w_entry.ue_newform() returns 0 [event]
 	call super::ue_newform
 	wf_confirm_changes()
 	this.id_dwcontrol = this.tab_retrieve.tabpage_detail.dw_detail
@@ -273,10 +273,10 @@
 	this.id_dwcontrol.insertrow(0)
 	this.id_dwcontrol = this.tab_retrieve.tabpage_list.dw_list
 
-// w_entry.ue_exit() returns 0
+// w_entry.ue_exit() returns 0 [event]
 	call super::ue_exit
 
-// tab_retrieve.selectionchanged(integer oldindex, integer newindex) returns long
+// tab_retrieve.selectionchanged(integer oldindex, integer newindex) returns long [event]
 	if newindex = 2 and parent.i_editmode = 2 then
 		parent.event ue_detail()
 	elseif newindex = 2 and parent.i_editmode = 1 then
@@ -286,16 +286,16 @@
 	end if
 	return ::message.returnvalue
 
-// tab_retrieve.create() returns 0
+// tab_retrieve.create() returns 0 [event]
 	this.tabpage_list = create tabpage_list
 	this.tabpage_detail = create tabpage_detail
 	this.control = {this.tabpage_list, this.tabpage_detail}
 
-// tab_retrieve.destroy() returns 0
+// tab_retrieve.destroy() returns 0 [event]
 	destroy this.tabpage_list
 	destroy this.tabpage_detail
 
-// tabpage_list.create() returns 0
+// tabpage_list.create() returns 0 [event]
 	this.gb_sort = create gb_sort
 	this.gb_fliter = create gb_fliter
 	this.ddlb_sort = create ddlb_sort
@@ -311,7 +311,7 @@
 	this.st_find = create st_find
 	this.control = {this.gb_sort, this.gb_fliter, this.ddlb_sort, this.rb_ascending, this.rb_descending, this.ddlb_filter_column, this.ddlb_op, this.ddlb_data, this.cb_filter, this.dw_list, this.r_1, this.sle_find, this.st_find}
 
-// tabpage_list.destroy() returns 0
+// tabpage_list.destroy() returns 0 [event]
 	destroy this.gb_sort
 	destroy this.gb_fliter
 	destroy this.ddlb_sort
@@ -326,7 +326,7 @@
 	destroy this.sle_find
 	destroy this.st_find
 
-// ddlb_sort.selectionchanged(integer index) returns long
+// ddlb_sort.selectionchanged(integer index) returns long [event]
 	string ls_columntype
 	integer temp1
 	integer temp2
@@ -346,7 +346,7 @@
 	parent.parent.parent.wf_sortdw(parent.ddlb_sort.text, parent.parent.parent.is_sortsequence)
 	return ::message.returnvalue
 
-// rb_ascending.clicked() returns long
+// rb_ascending.clicked() returns long [event]
 	parent.parent.parent.tab_retrieve.tabpage_detail.enabled = false
 	parent.parent.parent.im_menu.m_file.m_retrieve.enabled = false
 	parent.parent.parent.im_menu.m_file.m_next.enabled = false
@@ -356,7 +356,7 @@
 	parent.parent.parent.wf_sortdw(parent.ddlb_sort.text, parent.parent.parent.is_sortsequence)
 	return ::message.returnvalue
 
-// rb_descending.clicked() returns long
+// rb_descending.clicked() returns long [event]
 	parent.parent.parent.tab_retrieve.tabpage_detail.enabled = false
 	parent.parent.parent.im_menu.m_file.m_retrieve.enabled = false
 	parent.parent.parent.im_menu.m_file.m_next.enabled = false
@@ -366,7 +366,7 @@
 	parent.parent.parent.wf_sortdw(parent.ddlb_sort.text, parent.parent.parent.is_sortsequence)
 	return ::message.returnvalue
 
-// ddlb_filter_column.selectionchanged(integer index) returns long
+// ddlb_filter_column.selectionchanged(integer index) returns long [event]
 	dwbuffer le_buffertype
 	integer li_buffers
 	integer li_items
@@ -413,19 +413,19 @@
 	loop
 	return ::message.returnvalue
 
-// ddlb_op.selectionchanged(integer index) returns long
+// ddlb_op.selectionchanged(integer index) returns long [event]
 	if parent.parent.parent.tab_retrieve.tabpage_list.cb_filter.text = "Un&filter" then
 		parent.cb_filter.triggerevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// ddlb_data.selectionchanged(integer index) returns long
+// ddlb_data.selectionchanged(integer index) returns long [event]
 	if parent.cb_filter.text = "Un&filter" then
 		parent.parent.parent.wf_filter()
 	end if
 	return ::message.returnvalue
 
-// cb_filter.clicked() returns long
+// cb_filter.clicked() returns long [event]
 	string filt
 	string quote
 	string ls_column_name
@@ -445,7 +445,7 @@
 	end if
 	return ::message.returnvalue
 
-// dw_list.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+// dw_list.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::clicked(xpos, ypos, row, dwo)
 	if row = 1 then
@@ -462,25 +462,25 @@
 	parent.postevent("ue_getfoucs")
 	return ::message.returnvalue
 
-// dw_list.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+// dw_list.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::doubleclicked(xpos, ypos, row, dwo)
 	parent.parent.parent.tab_retrieve.selectedtab = 2
 	return ::message.returnvalue
 
-// dw_list.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_list.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
 	parent.postevent("ue_getfoucs")
 	return ::message.returnvalue
 
-// dw_list.getfocus() returns long
+// dw_list.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	parent.postevent("ue_getfoucs")
 	return ::message.returnvalue
 
-// sle_find.keypressed(keycode key, unsignedlong keyflags) returns long
+// sle_find.keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	integer li_movement
 	long ll_row
 	string sl_columnname
@@ -576,14 +576,14 @@
 	parent.parent.parent.il_selectedrow = ll_found_row
 	return ::message.returnvalue
 
-// tabpage_detail.create() returns 0
+// tabpage_detail.create() returns 0 [event]
 	this.dw_detail = create dw_detail
 	this.control = {this.dw_detail}
 
-// tabpage_detail.destroy() returns 0
+// tabpage_detail.destroy() returns 0 [event]
 	destroy this.dw_detail
 
-// dw_detail.editchanged(long row, dwobject dwo, string data) returns long
+// dw_detail.editchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::editchanged(row, dwo, data)
 	if parent.parent.parent.editflag = false then
@@ -592,7 +592,7 @@
 	end if
 	return ::message.returnvalue
 
-// dw_detail.getfocus() returns long
+// dw_detail.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	if parent.parent.parent.i_editmode = 2 then
@@ -602,7 +602,7 @@
 	end if
 	return ::message.returnvalue
 
-// dw_detail.losefocus() returns long
+// dw_detail.losefocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::losefocus()
 	return ::message.returnvalue

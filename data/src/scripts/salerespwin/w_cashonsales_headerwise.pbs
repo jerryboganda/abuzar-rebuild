@@ -178,23 +178,23 @@
 // w_cashonsales_headerwise.wf_retrieve(long retrievalarg) returns long
 	return this.id_dwcontrol.retrieve(retrievalarg)
 
-// w_cashonsales_headerwise.create() returns 0
+// w_cashonsales_headerwise.create() returns 0 [event]
 	call super::create
 
-// w_cashonsales_headerwise.destroy() returns 0
+// w_cashonsales_headerwise.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_cashonsales_headerwise.activate() returns long
+// w_cashonsales_headerwise.activate() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::activate()
 	this.windowstate = maximized!
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_cashonsales_headerwise.open() returns long
+// w_cashonsales_headerwise.open() returns long [event]
 	long ancestorreturnvalue
 	integer li_rtncode
 	ancestorreturnvalue = super::open()
@@ -212,9 +212,9 @@
 	this.id_print.settransobject(sqlca)
 	return ::message.returnvalue
 
-// w_cashonsales_headerwise.ue_delete() returns 0
+// w_cashonsales_headerwise.ue_delete() returns 0 [event]
 
-// w_cashonsales_headerwise.ue_detail() returns 0
+// w_cashonsales_headerwise.ue_detail() returns 0 [event]
 	long ll_code
 	long ll_found
 	this.im_menu.m_file.m_save.enabled = true
@@ -257,7 +257,7 @@
 	end if
 	this.id_detail.selecttext(1, len(this.id_detail.gettext()))
 
-// w_cashonsales_headerwise.ue_list() returns 0
+// w_cashonsales_headerwise.ue_list() returns 0 [event]
 	long ll_rtcode
 	SQL rollback USING sqlca;
 	if this.id_list.rowcount() <= 0 then
@@ -284,7 +284,7 @@
 	messagebox("Result", "No rows or retrieved possible empty table~r~nInsert some rows first")
 	postevent("ue_new")
 
-// w_cashonsales_headerwise.ue_save() returns 0
+// w_cashonsales_headerwise.ue_save() returns 0 [event]
 	long ll_row
 	long ll_temp
 	long ll_err_row
@@ -320,7 +320,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_cashonsales_headerwise.ue_newform() returns 0
+// w_cashonsales_headerwise.ue_newform() returns 0 [event]
 	setredraw(false)
 	this.i_editmode = 1
 	this.i_retrievemode = 2
@@ -345,7 +345,7 @@
 	this.id_detail.setfocus()
 	setredraw(true)
 
-// w_cashonsales_headerwise.ue_print() returns 0
+// w_cashonsales_headerwise.ue_print() returns 0 [event]
 	long ll_code
 	boolean lb_listtab
 	if this.tab_retrieve.selectedtab = 2 then
@@ -380,8 +380,114 @@
 		openwithparm(w_printer, this.id_print)
 	end if
 
-// w_cashonsales_headerwise.closequery() returns long
+// w_cashonsales_headerwise.closequery() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::closequery()
 	SQL rollback USING sqlca;
+	return ::message.returnvalue
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	long ll_opted
+	long ll_globalcode
+	long ll_tmpcode
+	long ll_null
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	setnull(ll_null)
+	choose case dwo.name
+	case "amt"
+		if double(data) < 0.0 then
+			messagebox("Amount Validation", "Negative Amount Not Allowed")
+			return 1
+		elseif double(data) > getitemdecimal(row, "invtotal") then
+			ll_opted = messagebox("Amount Validation", "Amount is Greater Than Invoice Total~r~nAccept Anyway?", question!, yesno!, 1)
+			if ll_opted <> 1 then
+				return 1
+			end if
+			return
+		end if
+		if this.object.paymentmode[row] = "" or isnull(this.object.paymentmode[row]) then
+			this.object.paymentmode[row] = "C"
+			ll_globalcode = f_getglobalcode("GT_CashSub")
+			parent.parent.parent.idc_paymentacccode.retrieve(ll_globalcode)
+			this.object.paymentacccode[row] = parent.parent.parent.idc_paymentacccode.getitemnumber(1, "acccode")
+		end if
+		return 0
+	case "paymentmode"
+		if data = "" or isnull(data) then
+			if this.object.amt[row] = 0 then
+				return 0
+			else
+				return 1
+			end if
+		else
+			if data = "C" then
+				ll_globalcode = f_getglobalcode("GT_CashSub")
+			else
+				ll_globalcode = f_getglobalcode("GT_BankSub")
+			end if
+			SQL SELECT count ( *) INTO :ll_tmpcode FROM Accounts WHERE SubCode =:ll_globalcode USING sqlca;
+			if ll_tmpcode > 0 then
+				parent.parent.parent.idc_paymentacccode.reset()
+				parent.parent.parent.idc_paymentacccode.retrieve(ll_globalcode)
+				if parent.parent.parent.idc_paymentacccode.rowcount() > 0 then
+					this.object.paymentacccode[row] = parent.parent.parent.idc_paymentacccode.getitemnumber(1, "acccode")
+				end if
+			else
+				parent.parent.parent.idc_paymentacccode.reset()
+				parent.parent.parent.idc_paymentacccode.insertrow(0)
+				this.object.paymentacccode[row] = ll_null
+			end if
+		end if
+	end choose
+	return 0
+
+// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	long ll_globalcode
+	long ll_tmpcode
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	selecttext(1, len(gettext()))
+	if dwo.name = "paymentacccode" then
+		if this.object.paymentmode[row] = "C" then
+			ll_globalcode = f_getglobalcode("GT_CashSub")
+		else
+			ll_globalcode = f_getglobalcode("GT_BankSub")
+		end if
+		SQL SELECT count ( *) INTO :ll_tmpcode FROM Accounts WHERE SubCode =:ll_globalcode USING sqlca;
+		if ll_tmpcode > 0 then
+			parent.parent.parent.idc_paymentacccode.reset()
+			parent.parent.parent.idc_paymentacccode.retrieve(ll_globalcode)
+			this.object.paymentacccode[row] = parent.parent.parent.idc_paymentacccode.getitemnumber(1, "acccode")
+		else
+			parent.parent.parent.idc_paymentacccode.reset()
+			parent.parent.parent.idc_paymentacccode.insertrow(0)
+		end if
+	end if
+	return ::message.returnvalue
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	string ls_errormessage
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	ls_errormessage = "Please enter valid value "
+	choose case dwo.name
+	case "amt"
+		ls_errormessage = ls_errormessage + " for Amount Received"
+	case "paymentacccode"
+		ls_errormessage = ls_errormessage + " for Cash/Bank Account"
+	case else
+		ls_errormessage = ls_errormessage + " for " + trim(dwo.name)
+	end choose
+	ls_errormessage = ls_errormessage + " in row number " + string(row)
+	messagebox("Item Validation!", ls_errormessage)
+	return 1
+
+// cb_retrieve.clicked() returns long [event]
+	long ll_rtcode
+	parent.parent.parent.id_list.reset()
+	ll_rtcode = parent.parent.parent.wf_retrievelist()
+	parent.parent.parent.wf_first()
+	parent.parent.parent.wf_selectunselectrow(1)
+	parent.parent.parent.tab_retrieve.tabpage_list.dw_find.setfocus()
 	return ::message.returnvalue

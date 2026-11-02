@@ -1,6 +1,6 @@
 // window w_arg_manf_sdate_ldate_shaigan (reports)  ancestor: w_arguements
 
-// w_arg_manf_sdate_ldate_shaigan.create() returns 0
+// w_arg_manf_sdate_ldate_shaigan.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.cbx_cust = create cbx_cust
@@ -37,7 +37,7 @@
 	this.control[icurrent + 15] = this.cb_summ
 	this.control[icurrent + 16] = this.gb_2
 
-// w_arg_manf_sdate_ldate_shaigan.destroy() returns 0
+// w_arg_manf_sdate_ldate_shaigan.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.cbx_cust
 	destroy this.cbx_stock
@@ -56,7 +56,7 @@
 	destroy this.cb_summ
 	destroy this.gb_2
 
-// w_arg_manf_sdate_ldate_shaigan.open() returns long
+// w_arg_manf_sdate_ldate_shaigan.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.dw_control.settransobject(sqlca)
@@ -74,29 +74,139 @@
 	this.dw_control2.object.distcode[1] = f_stringpreferences("MerckDistCode")
 	return ::message.returnvalue
 
-// w_arg_manf_sdate_ldate_shaigan.ue_close(integer ai_stauts) returns 0
+// w_arg_manf_sdate_ldate_shaigan.ue_close(integer ai_stauts) returns 0 [event]
 	super::ue_close(ai_stauts)
 	closewithreturn(this, this.istr_arg)
 
-// cb_trans.clicked() returns long
+// cb_cancel.clicked() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked()
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long [event]
+	long ancestorreturnvalue
+	long ll_ret
+	string ls_distcode
+	datastore lds_temp
+	ancestorreturnvalue = super::clicked()
+	setpointer(hourglass!)
+	parent.gb_overallprogress.visible = true
+	parent.hpb_hpb.visible = true
+	parent.istr_arg.l_code1 = parent.dw_control.getitemnumber(1, "manfcode")
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	ls_distcode = parent.dw_control2.object.distcode[1]
+	if isnull(ls_distcode) or ls_distcode = "" then
+		messagebox("Distributor Code Validation", "Please enter a valid Distributor Code")
+		return ::message.returnvalue
+	end if
+	parent.istr_arg.i_status = 1
+	lds_temp = create datastore
+	if parent.dw_control2.object.targetsys[1] <> "SAS" then
+		if parent.cbx_summ.checked = true then
+			lds_temp.dataobject = "d_brickdata_dsr_shaigan"
+			lds_temp.settransobject(sqlca)
+			lds_temp.retrieve(ls_distcode)
+			parent.hpb_hpb.stepit()
+			if f_save_from_ds_to_fff2(parent.is_brick, lds_temp, "$SPL$", false) = 0 then
+				messagebox("Bricks Data Generation Problem", "Error Generating Bricks Data Text File~r~nPlease Try Later")
+				destroy lds_temp
+				return ::message.returnvalue
+			end if
+			parent.hpb_hpb.stepit()
+		end if
+		if parent.cbx_cust.checked = true then
+			lds_temp.dataobject = "d_custdata_dsr_shaigan"
+			lds_temp.settransobject(sqlca)
+			lds_temp.retrieve(ls_distcode)
+			parent.hpb_hpb.stepit()
+			if f_save_from_ds_to_fff2(parent.is_cust, lds_temp, "$SPL$", false) = 0 then
+				messagebox("Customer Data Generation Problem", "Error Generating Customer Data Text File~r~nPlease Try Later")
+				destroy lds_temp
+				return ::message.returnvalue
+			end if
+			parent.hpb_hpb.stepit()
+		end if
+		if parent.cbx_prod.checked = true then
+			lds_temp.dataobject = "d_proddata_dsr_shaigan"
+			lds_temp.settransobject(sqlca)
+			lds_temp.retrieve(parent.istr_arg.l_code1, ls_distcode)
+			parent.hpb_hpb.stepit()
+			if f_save_from_ds_to_fff2(parent.is_prod, lds_temp, "$SPL$", false) = 0 then
+				messagebox("Product Data Generation Problem", "Error Generating Product Data Text File~r~nPlease Try Later")
+				destroy lds_temp
+				return ::message.returnvalue
+			end if
+			parent.hpb_hpb.stepit()
+		end if
+		if parent.cbx_trans.checked = true then
+			lds_temp.dataobject = "d_invdata_dsr_shaigan"
+			lds_temp.settransobject(sqlca)
+			lds_temp.retrieve(parent.istr_arg.l_code1, ls_distcode, parent.istr_arg.d_sdate, parent.istr_arg.d_edate)
+			parent.hpb_hpb.stepit()
+			parent.hpb_hpb.stepit()
+			parent.hpb_hpb.stepit()
+			if f_save_from_ds_to_fff2(parent.is_trans, lds_temp, "$SPL$", false) = 0 then
+				messagebox("Transactions Data Generation Problem", "Error Generating Transactions Data Text File~r~nPlease Try Later")
+				destroy lds_temp
+				return ::message.returnvalue
+			end if
+			parent.hpb_hpb.stepit()
+		end if
+		if parent.cbx_stock.checked = true then
+			lds_temp.dataobject = "d_stockdata_dsr_shaigan"
+			lds_temp.settransobject(sqlca)
+			lds_temp.retrieve(parent.istr_arg.l_code1, ls_distcode, parent.istr_arg.d_sdate, parent.istr_arg.d_edate)
+			parent.hpb_hpb.stepit()
+			if f_save_from_ds_to_fff2(parent.is_stock, lds_temp, "$SPL$", false) = 0 then
+				messagebox("Stock Data Generation Problem", "Error Generating Stock Data File~r~nPlease Try Later")
+				destroy lds_temp
+				return ::message.returnvalue
+			end if
+			parent.hpb_hpb.stepit()
+		end if
+		if parent.cbx_summ.checked = true then
+			lds_temp.dataobject = "d_summary_dsr_shaigan"
+			lds_temp.settransobject(sqlca)
+			lds_temp.retrieve(parent.istr_arg.l_code1, ls_distcode, parent.istr_arg.d_sdate, parent.istr_arg.d_edate)
+			parent.hpb_hpb.stepit()
+			if f_save_from_ds_to_fff2(parent.is_summ, lds_temp, "$SPL$", false) = 0 then
+				messagebox("Values Generation Problem", "Error Generating Values File~r~nPlease Try Later")
+				destroy lds_temp
+				return ::message.returnvalue
+			end if
+			parent.hpb_hpb.stepit()
+		end if
+	end if
+	parent.hpb_hpb.stepit()
+	destroy lds_temp
+	parent.hpb_hpb.visible = false
+	parent.hpb_hpb.position = 10
+	parent.gb_overallprogress.visible = false
+	setpointer(arrow!)
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// cb_trans.clicked() returns long [event]
 	string ls_named
 	integer li_value
 	li_value = getfilesavename("Select File Location", parent.is_trans, ls_named, "TXT", "All Files (*.*),*.*," + "All Files (*.*),*.*")
 	return ::message.returnvalue
 
-// cb_cust.clicked() returns long
+// cb_cust.clicked() returns long [event]
 	string ls_named
 	integer li_value
 	li_value = getfilesavename("Select File Location", parent.is_cust, ls_named, "TXT", "All Files (*.*),*.*," + "All Files (*.*),*.*")
 	return ::message.returnvalue
 
-// dw_control2.ue_enterkey() returns long
+// dw_control2.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_control2.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_control2.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	string ls_distcode
 	string ls_sys
@@ -128,25 +238,25 @@
 	end choose
 	return 0
 
-// cb_prod.clicked() returns long
+// cb_prod.clicked() returns long [event]
 	string ls_named
 	integer li_value
 	li_value = getfilesavename("Select File Location", parent.is_prod, ls_named, "TXT", "All Files (*.*),*.*," + "All Files (*.*),*.*")
 	return ::message.returnvalue
 
-// cb_brick.clicked() returns long
+// cb_brick.clicked() returns long [event]
 	string ls_named
 	integer li_value
 	li_value = getfilesavename("Select File Location", parent.is_brick, ls_named, "TXT", "All Files (*.*),*.*," + "All Files (*.*),*.*")
 	return ::message.returnvalue
 
-// cb_stock.clicked() returns long
+// cb_stock.clicked() returns long [event]
 	string ls_named
 	integer li_value
 	li_value = getfilesavename("Select File Location", parent.is_stock, ls_named, "TXT", "All Files (*.*),*.*," + "All Files (*.*),*.*")
 	return ::message.returnvalue
 
-// cb_summ.clicked() returns long
+// cb_summ.clicked() returns long [event]
 	string ls_named
 	integer li_value
 	li_value = getfilesavename("Select File Location", parent.is_summ, ls_named, "TXT", "All Files (*.*),*.*," + "All Files (*.*),*.*")

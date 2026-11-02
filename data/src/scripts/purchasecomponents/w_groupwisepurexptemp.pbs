@@ -58,16 +58,16 @@
 	end if
 	return yesno
 
-// w_groupwisepurexptemp.create() returns 0
+// w_groupwisepurexptemp.create() returns 0 [event]
 	call super::create
 
-// w_groupwisepurexptemp.destroy() returns 0
+// w_groupwisepurexptemp.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_groupwisepurexptemp.ue_save() returns 0
+// w_groupwisepurexptemp.ue_save() returns 0 [event]
 	long ll_mastercurrrow
 	long ll_invid
 	long ll_detailrows
@@ -101,12 +101,12 @@
 	call super::ue_save
 	setpointer(arrow!)
 
-// w_groupwisepurexptemp.ue_newform() returns 0
+// w_groupwisepurexptemp.ue_newform() returns 0 [event]
 	call super::ue_newform
 	this.id_detail.setfocus()
 	this.id_detail.setcolumn("acccode")
 
-// w_groupwisepurexptemp.ue_newitem() returns 0
+// w_groupwisepurexptemp.ue_newitem() returns 0 [event]
 	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
 		return
 	end if
@@ -114,7 +114,7 @@
 	this.id_detail.setrow(this.id_detail.getrow())
 	this.id_detail.setcolumn("acccode")
 
-// w_groupwisepurexptemp.ue_detail() returns 0
+// w_groupwisepurexptemp.ue_detail() returns 0 [event]
 	call super::ue_detail
 	this.im_menu.m_file.m_save.enabled = true
 	this.im_menu.m_file.m_delete.enabled = true
@@ -131,3 +131,99 @@
 			this.id_detail.setcolumn("acccode")
 		end if
 	end if
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "manfname"
+		if data = "" or isnull(data) then
+			messagebox("ManfName Validation", "Value requiredfor " + upper(dwo.manfname) + "in current row")
+		end if
+	case "manager"
+		if data = "" or isnull(data) then
+			messagebox("Manager Validation", "Value required for Manager in current row")
+		end if
+	end choose
+	return 1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if parent.parent.parent.wf_duplicatename(data) then
+			messagebox("Name Validation", "Duplication Name Error~n~rPlease Choose Some Other Name")
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	string ls_managername
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "acccode"
+		if data = "" or isnull(data) then
+			li_errcode = 1
+		else
+			parent.parent.parent.il_currrow = row
+			parent.parent.parent.ib_itemvalidated = false
+			li_errcode = 0
+		end if
+	case else
+		parent.parent.parent.ib_itemvalidated = true
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "acccode"
+		if data = "" or isnull(data) then
+			messagebox("Expense Account Name Validation", "Value required for Expense Account Name in current row")
+		end if
+	end choose
+	return 1
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem() = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.getfocus() returns long [event]
+	return ::message.returnvalue
+
+// dw_itemsdetail.rowfocuschanging(long currentrow, long newrow) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::rowfocuschanging(currentrow, newrow)
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem() = -1 then
+		return 1
+	end if
+	return 0
+
+// dw_itemsdetail.ue_enterkey() returns long [event]
+	long ll_acccode
+	string ls_expensetype
+	if getrow() = rowcount() and getcolumn() = integer(this.object.datawindow.column.count) and getrow() > 0 then
+		ll_acccode = this.object.acccode[getrow()]
+		if ll_acccode = 0 or isnull(ll_acccode) then
+			return 0
+		else
+			parent.parent.parent.event ue_newitem()
+			return 1
+		end if
+		return
+	end if
+	send(handle(this), 256, 9, long(90))
+	return 1

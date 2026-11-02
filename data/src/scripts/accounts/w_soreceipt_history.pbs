@@ -75,7 +75,7 @@
 	end if
 	return li_count
 
-// w_soreceipt_history.create() returns 0
+// w_soreceipt_history.create() returns 0 [event]
 	this.cb_new = create cb_new
 	this.cb_post = create cb_post
 	this.dw_print = create dw_print
@@ -85,7 +85,7 @@
 	this.dw_control = create dw_control
 	this.control = {this.cb_new, this.cb_post, this.dw_print, this.cb_print, this.cb_cancel, this.cb_select, this.dw_control}
 
-// w_soreceipt_history.destroy() returns 0
+// w_soreceipt_history.destroy() returns 0 [event]
 	destroy this.cb_new
 	destroy this.cb_post
 	destroy this.dw_print
@@ -94,7 +94,7 @@
 	destroy this.cb_select
 	destroy this.dw_control
 
-// w_soreceipt_history.open() returns long
+// w_soreceipt_history.open() returns long [event]
 	long ll_width
 	long ll_height
 	long ll_code
@@ -145,12 +145,12 @@
 	end if
 	return message.returnvalue
 
-// w_soreceipt_history.close() returns long
+// w_soreceipt_history.close() returns long [event]
 	SQL stop USING this.it_transobject;
 	closewithreturn(this, this.istr_arg)
 	return ::message.returnvalue
 
-// cb_new.clicked() returns long
+// cb_new.clicked() returns long [event]
 	parent.istr_arg.i_status = 1
 	setnull(parent.istr_arg.l_code1)
 	parent.istr_arg.l_code2 = parent.il_invcode
@@ -158,12 +158,12 @@
 	parent.postevent(close!)
 	return ::message.returnvalue
 
-// cb_post.clicked() returns long
+// cb_post.clicked() returns long [event]
 	parent.wf_post()
 	parent.dw_control.retrieve(parent.il_invcode)
 	return ::message.returnvalue
 
-// cb_print.clicked() returns long
+// cb_print.clicked() returns long [event]
 	long ll_code
 	long ll_row
 	long li_printretcode
@@ -206,12 +206,12 @@
 	end if
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.istr_arg.i_status = 0
 	parent.postevent(close!)
 	return ::message.returnvalue
 
-// cb_select.clicked() returns long
+// cb_select.clicked() returns long [event]
 	parent.istr_arg.i_status = 1
 	if parent.dw_control.getrow() > 0 then
 		parent.istr_arg.l_code1 = parent.dw_control.object.code[parent.dw_control.getrow()]
@@ -225,7 +225,7 @@
 	parent.postevent(close!)
 	return ::message.returnvalue
 
-// dw_control.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+// dw_control.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	long ll_row
 	long ll_retcode
@@ -244,7 +244,7 @@
 	end if
 	return ll_retcode
 
-// dw_control.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// dw_control.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	long ancestorreturnvalue
 	integer rt_code
 	long ll_currrow
@@ -306,7 +306,7 @@
 	end if
 	return rt_code
 
-// dw_control.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+// dw_control.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::clicked(xpos, ypos, row, dwo)
 	if row > 0 then

@@ -1,19 +1,19 @@
 // window w_arg_yesno (reports)  ancestor: window
 
-// w_arg_yesno.create() returns 0
+// w_arg_yesno.create() returns 0 [event]
 	this.dw_control = create dw_control
 	this.st_val = create st_val
 	this.cb_cancel = create cb_cancel
 	this.cb_ok = create cb_ok
 	this.control = {this.dw_control, this.st_val, this.cb_cancel, this.cb_ok}
 
-// w_arg_yesno.destroy() returns 0
+// w_arg_yesno.destroy() returns 0 [event]
 	destroy this.dw_control
 	destroy this.st_val
 	destroy this.cb_cancel
 	destroy this.cb_ok
 
-// w_arg_yesno.open() returns long
+// w_arg_yesno.open() returns long [event]
 	this.st_val.text = message.stringparm
 	this.dw_control.settransobject(sqlca)
 	this.dw_control.retrieve()
@@ -22,17 +22,17 @@
 	end if
 	return message.returnvalue
 
-// dw_control.ue_enterkey() returns long
+// dw_control.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	closewithreturn(parent, -1)
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	double ld_val
 	char ls_value
 	parent.dw_control.accepttext()

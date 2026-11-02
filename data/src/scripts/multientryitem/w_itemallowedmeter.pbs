@@ -18,16 +18,16 @@
 	end if
 	return li_errcode
 
-// w_itemallowedmeter.create() returns 0
+// w_itemallowedmeter.create() returns 0 [event]
 	call super::create
 
-// w_itemallowedmeter.destroy() returns 0
+// w_itemallowedmeter.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_itemallowedmeter.ue_save() returns 0
+// w_itemallowedmeter.ue_save() returns 0 [event]
 	long ll_counter
 	long ll_code
 	long ll_itemmetercode
@@ -85,13 +85,13 @@
 	end if
 	setpointer(arrow!)
 
-// w_itemallowedmeter.ue_newform() returns 0
+// w_itemallowedmeter.ue_newform() returns 0 [event]
 	call super::ue_newform
 	this.im_menu.m_item.m_newitem.enabled = true
 	this.im_menu.m_item.m_deleteitem.enabled = true
 	this.id_master.setfocus()
 
-// w_itemallowedmeter.ue_newitem() returns 0
+// w_itemallowedmeter.ue_newitem() returns 0 [event]
 	long ll_rowcount
 	long ll_currentrow
 	if this.ib_itemvalidated = false and wf_validate() = -1 then
@@ -118,7 +118,7 @@
 	this.im_menu.m_file.m_save.enabled = true
 	this.ib_validatefullcode = true
 
-// w_itemallowedmeter.ue_detail() returns 0
+// w_itemallowedmeter.ue_detail() returns 0 [event]
 	long ll_code
 	long ll_rowcount
 	call super::ue_detail
@@ -141,7 +141,52 @@
 	this.im_menu.m_item.m_newitem.enabled = true
 	this.im_menu.m_item.m_deleteitem.enabled = true
 
-// w_itemallowedmeter.ue_postopen() returns 0
+// w_itemallowedmeter.ue_postopen() returns 0 [event]
 	call super::ue_postopen
 	this.id_detail.getchild("itemmetercode", this.idc_itemmeter)
 	this.idc_itemmeter.settransobject(this.it_transobject)
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "itemmertercode"
+		parent.parent.parent.il_currrow = row
+		parent.parent.parent.ib_itemvalidated = false
+		li_errcode = 0
+	case else
+		parent.parent.parent.ib_itemvalidated = true
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "itemmetercode"
+		if data = "" or isnull(data) then
+			messagebox("Item Meter Validation", "Value required for Item Meter in current row")
+		end if
+	end choose
+	return 1
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validate() = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.getfocus() returns long [event]
+	return ::message.returnvalue
+
+// dw_itemsdetail.ue_enterkey() returns long [event]
+	if getrow() = rowcount() and getcolumn() = integer(this.object.datawindow.column.count) then
+		parent.parent.parent.event ue_newitem()
+		setcolumn("itemmetercode")
+		return 1
+	end if
+	send(handle(this), 256, 9, long(90))
+	return 1

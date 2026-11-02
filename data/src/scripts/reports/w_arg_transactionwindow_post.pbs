@@ -1,6 +1,6 @@
 // window w_arg_transactionwindow_post (reports)  ancestor: w_arguements
 
-// w_arg_transactionwindow_post.create() returns 0
+// w_arg_transactionwindow_post.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.st_4 = create st_4
@@ -11,17 +11,17 @@
 	this.control[icurrent + 2] = this.st_5
 	this.control[icurrent + 3] = this.gb_2
 
-// w_arg_transactionwindow_post.destroy() returns 0
+// w_arg_transactionwindow_post.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.st_4
 	destroy this.st_5
 	destroy this.gb_2
 
-// w_arg_transactionwindow_post.ue_close(integer ai_stauts) returns 0
+// w_arg_transactionwindow_post.ue_close(integer ai_stauts) returns 0 [event]
 	super::ue_close(ai_stauts)
 	closewithreturn(this, this.istr_arg)
 
-// w_arg_transactionwindow_post.open() returns long
+// w_arg_transactionwindow_post.open() returns long [event]
 	long ancestorreturnvalue
 	long ll_rtcode
 	ancestorreturnvalue = super::open()
@@ -62,3 +62,38 @@
 		return 0
 	end if
 	return message.returnvalue
+
+// cb_cancel.clicked() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked()
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked()
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	if parent.dw_control.object.documentcode[1] = 0 or isnull(parent.dw_control.object.documentcode[1]) then
+		messagebox("Transaction Code Validation", "Please Select some valid starting transaction ", information!)
+		parent.dw_control.setcolumn("documentcode")
+		parent.dw_control.setfocus()
+		return ::message.returnvalue
+	end if
+	if parent.dw_control.object.documentcode2[1] = 0 or isnull(parent.dw_control.object.documentcode2[1]) then
+		messagebox("Transaction Code Validation", "Please Select some valid ending transaction", information!)
+		parent.dw_control.setcolumn("documentcode2")
+		parent.dw_control.setfocus()
+		return ::message.returnvalue
+	end if
+	if parent.dw_control.object.documentcode[1] > parent.dw_control.object.documentcode2[1] then
+		messagebox("Transaction Code Validation", "Starting Transaction can not be greater than ending~r~nPlease Select some valid starting transaction", information!)
+		parent.dw_control.setcolumn("documentcode")
+		parent.dw_control.setfocus()
+		return ::message.returnvalue
+	end if
+	parent.istr_arg.l_code1 = parent.dw_control.object.documentcode[1]
+	parent.istr_arg.l_code2 = parent.dw_control.object.documentcode2[1]
+	parent.istr_arg.i_status = 1
+	parent.post event ue_close(1)
+	return ::message.returnvalue

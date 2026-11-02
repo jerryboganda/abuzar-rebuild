@@ -111,23 +111,23 @@
 	end if
 	return 0
 
-// w_mr_list.create() returns 0
+// w_mr_list.create() returns 0 [event]
 	integer icurrent
 	call super::create
 
-// w_mr_list.destroy() returns 0
+// w_mr_list.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_mr_list.ue_new() returns 0
+// w_mr_list.ue_new() returns 0 [event]
 	long ll_code
 	call super::ue_new
 	setnull(ll_code)
 	wf_openmywindow(ll_code)
 
-// w_mr_list.ue_list() returns 0
+// w_mr_list.ue_list() returns 0 [event]
 	long ll_rtcode
 	call super::ue_list
 	if this.id_list.rowcount() <= 0 then
@@ -154,7 +154,7 @@
 		return
 	end if
 
-// w_mr_list.open() returns long
+// w_mr_list.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	if f_rightexists(5122) then
@@ -162,4 +162,60 @@
 	else
 		this.tab_retrieve.tabpage_list.cb_image.visible = false
 	end if
+	return ::message.returnvalue
+
+// tabpage_list.create() returns 0 [event]
+	integer icurrent
+	this.cb_image = create cb_image
+	call super::create
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.cb_image
+
+// tabpage_list.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.cb_image
+
+// dw_list.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	long ll_code
+	ancestorreturnvalue = super::doubleclicked(xpos, ypos, row, dwo)
+	if row > 0 then
+		ll_code = this.object.code[row]
+		if ll_code > 0 then
+			parent.parent.parent.wf_openmywindow(ll_code)
+		end if
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_find.keypressed(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	long ll_code
+	long ll_found
+	string ls_regno
+	ancestorreturnvalue = super::keypressed(key, keyflags)
+	if key = keyenter! and parent.parent.parent.id_list.getselectedrow(0) > 0 then
+		ll_code = parent.parent.parent.id_list.object.code[parent.parent.parent.id_list.getselectedrow(0)]
+		parent.parent.parent.wf_openmywindow(ll_code)
+		return ::message.returnvalue
+	end if
+	if key = keyf5! then
+		ls_regno = parent.parent.parent.wf_new_patientregistration()
+		if len(trim(ls_regno)) > 0 then
+			this.object.find[1] = ls_regno
+			ll_found = parent.parent.parent.id_list.find("regno = '" + ls_regno + "'", 1, parent.parent.parent.id_list.rowcount())
+			if ll_found > 0 and ll_found <= parent.parent.parent.id_list.rowcount() then
+				parent.parent.parent.id_list.setrow(0)
+				parent.parent.parent.id_list.setrow(ll_found)
+				parent.parent.parent.id_list.selectrow(0, false)
+				parent.parent.parent.id_list.scrolltorow(ll_found)
+				parent.parent.parent.id_list.selectrow(ll_found, true)
+				parent.parent.parent.il_selectedrow = ll_found
+			end if
+		end if
+	end if
+	return ::message.returnvalue
+
+// cb_image.clicked() returns long [event]
+	parent.parent.parent.wf_upload_image()
 	return ::message.returnvalue

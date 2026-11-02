@@ -1,6 +1,6 @@
 // window w_responsivesearch_batch (components)  ancestor: window
 
-// w_responsivesearch_batch.ue_close(integer ai_status) returns 0
+// w_responsivesearch_batch.ue_close(integer ai_status) returns 0 [event]
 	this.is_popup_selection.l_code = ai_status
 	if this.dw_data.rowcount() > 0 then
 		this.is_popup_selection.l_code2 = this.dw_data.getitemnumber(this.dw_data.getrow(), "code")
@@ -124,16 +124,16 @@
 	end if
 	return 0
 
-// w_responsivesearch_batch.create() returns 0
+// w_responsivesearch_batch.create() returns 0 [event]
 	this.dw_search = create dw_search
 	this.dw_data = create dw_data
 	this.control = {this.dw_search, this.dw_data}
 
-// w_responsivesearch_batch.destroy() returns 0
+// w_responsivesearch_batch.destroy() returns 0 [event]
 	destroy this.dw_search
 	destroy this.dw_data
 
-// w_responsivesearch_batch.open() returns long
+// w_responsivesearch_batch.open() returns long [event]
 	long ll_rtcode
 	long ll_code
 	s_datastore lstr_ds
@@ -190,7 +190,7 @@
 	end if
 	return message.returnvalue
 
-// dw_search.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// dw_search.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	long ancestorreturnvalue
 	integer rt_code
 	long ll_rowm
@@ -243,13 +243,13 @@
 	setredraw(true)
 	return ::message.returnvalue
 
-// dw_search.ue_enterkey() returns long
+// dw_search.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_search.editchanged(long row, dwobject dwo, string data) returns long
+// dw_search.editchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	string ls_filter
 	ancestorreturnvalue = super::editchanged(row, dwo, data)
@@ -262,19 +262,19 @@
 	parent.dw_data.filter()
 	return ::message.returnvalue
 
-// dw_search.getfocus() returns long
+// dw_search.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	selecttext(1, len(gettext()))
 	return ::message.returnvalue
 
-// dw_data.getfocus() returns long
+// dw_data.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	parent.dw_search.setfocus()
 	return ::message.returnvalue
 
-// dw_data.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+// dw_data.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
 	string s_str
 	string s_t
 	integer i_len
@@ -307,7 +307,7 @@
 	parent.dw_search.setfocus()
 	return ::message.returnvalue
 
-// dw_data.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+// dw_data.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::doubleclicked(xpos, ypos, row, dwo)
 	parent.post event ue_close(1)

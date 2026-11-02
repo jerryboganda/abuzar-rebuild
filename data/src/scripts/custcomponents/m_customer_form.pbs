@@ -1,8 +1,73 @@
 // menu m_customer_form (custcomponents)  ancestor: m_single_entry
 
-// m_customer_form.create() returns 0
+// m_customer_form.create() returns 0 [event]
 	m_customer_form = this
 	call super::create
 
-// m_customer_form.destroy() returns 0
+// m_customer_form.destroy() returns 0 [event]
 	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_setitemcategories = create m_setitemcategories
+	this.m_showaccountledger = create m_showaccountledger
+	this.m_setguaranteeperson = create m_setguaranteeperson
+	this.m_viewcustomercomments = create m_viewcustomercomments
+	this.item[upperbound(this.item) + 1] = this.m_setitemcategories
+	this.item[upperbound(this.item) + 1] = this.m_showaccountledger
+	this.item[upperbound(this.item) + 1] = this.m_setguaranteeperson
+	this.item[upperbound(this.item) + 1] = this.m_viewcustomercomments
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_setitemcategories
+	destroy this.m_showaccountledger
+	destroy this.m_setguaranteeperson
+	destroy this.m_viewcustomercomments
+
+// m_setitemcategories.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_set_itemcat_association()
+
+// m_setitemcategories.create() returns 0 [event]
+	call super::create
+	this.text = "Set Item Categories~tF12"
+	this.shortcut = 123
+
+// m_setitemcategories.destroy() returns 0 [event]
+	call super::destroy
+
+// None.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_showaccountledger()
+
+// None.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Show Account Ledger~tF1"
+	this.enabled = false
+	this.shortcut = 112
+
+// None.destroy() returns 0 [event]
+	call super::destroy
+
+// None.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_set_guaranteeperson_association()
+
+// None.create() returns 0 [event]
+	call super::create
+	this.text = "Set Guarantee Person~tF5"
+	this.shortcut = 116
+	this.microhelp = "Set Guarantee Person"
+
+// None.destroy() returns 0 [event]
+	call super::destroy
+
+// None.create() returns 0 [event]
+	call super::create
+	this.text = "View Customer Comments~tCtrl+Alt+V"
+	this.shortcut = 854
+
+// None.destroy() returns 0 [event]
+	call super::destroy
+
+// None.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_view_customercomments()

@@ -1,6 +1,6 @@
 // window w_arg_cust_sdate_ldate_balancereminder2 (reports_cust)  ancestor: w_popup_forselection_walias
 
-// w_arg_cust_sdate_ldate_balancereminder2.create() returns 0
+// w_arg_cust_sdate_ldate_balancereminder2.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.gb_2 = create gb_2
@@ -29,7 +29,7 @@
 	this.control[icurrent + 11] = this.em_lastdate
 	this.control[icurrent + 12] = this.st_5
 
-// w_arg_cust_sdate_ldate_balancereminder2.destroy() returns 0
+// w_arg_cust_sdate_ldate_balancereminder2.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.gb_2
 	destroy this.st_1
@@ -44,7 +44,7 @@
 	destroy this.em_lastdate
 	destroy this.st_5
 
-// w_arg_cust_sdate_ldate_balancereminder2.open() returns long
+// w_arg_cust_sdate_ldate_balancereminder2.open() returns long [event]
 	long ancestorreturnvalue
 	date ld_currdate
 	string ls_text
@@ -60,34 +60,68 @@
 	this.em_lastdate.text = ls_text
 	return ::message.returnvalue
 
-// w_arg_cust_sdate_ldate_balancereminder2.ue_close() returns 0
+// w_arg_cust_sdate_ldate_balancereminder2.ue_close() returns 0 [event]
 	closewithreturn(this, this.istr_arg)
 
-// em_startdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_cancel.clicked() returns long [event]
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long [event]
+	long ll_counter
+	long ll_totalrows
+	if not (parent.cbx_allcustomers.checked = true) then
+		if parent.id_selected.accepttext() = -1 then
+			parent.id_selected.setfocus()
+			return ::message.returnvalue
+		elseif isnull(parent.id_selected.getitemstring(parent.id_selected.getrow(), "name")) then
+			messagebox("Name Validation", "Please enter valid value for Name.")
+			parent.id_selected.setcolumn(1)
+			parent.id_selected.setfocus()
+			return ::message.returnvalue
+		end if
+		parent.istr_arg.la_longlist[1] = parent.id_selected.getitemnumber(1, "code")
+	else
+		parent.istr_arg.l_code1 = 0
+		ll_totalrows = parent.id_selectionlist.rowcount()
+		for ll_counter = 1 to ll_totalrows
+			parent.istr_arg.la_longlist[ll_counter] = parent.id_selectionlist.getitemnumber(ll_counter, "code")
+		next
+	end if
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	parent.em_duedate.getdata(parent.istr_arg.d_date1)
+	parent.em_lastdate.getdata(parent.istr_arg.d_date2)
+	parent.istr_arg.s_name1 = parent.mle_letterbody.text
+	parent.istr_arg.i_status = 1
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// em_startdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// em_enddate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// em_enddate.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// cbx_allcustomers.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cbx_allcustomers.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// em_duedate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// em_duedate.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// em_lastdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// em_lastdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if

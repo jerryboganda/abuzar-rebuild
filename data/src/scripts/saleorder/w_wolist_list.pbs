@@ -136,7 +136,7 @@
 	end if
 	return 0
 
-// w_wolist_list.create() returns 0
+// w_wolist_list.create() returns 0 [event]
 	call super::create
 	if isvalid(this.menuid) then
 		destroy this.menuid
@@ -145,19 +145,19 @@
 		this.menuid = create m_workorder_menu
 	end if
 
-// w_wolist_list.destroy() returns 0
+// w_wolist_list.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_wolist_list.ue_new() returns 0
+// w_wolist_list.ue_new() returns 0 [event]
 	long ll_code
 	call super::ue_new
 	setnull(ll_code)
 	wf_openmywindow(ll_code)
 
-// w_wolist_list.ue_list() returns 0
+// w_wolist_list.ue_list() returns 0 [event]
 	long ll_rtcode
 	m_workorder_menu lm_menu
 	call super::ue_list
@@ -206,7 +206,7 @@
 		return
 	end if
 
-// w_wolist_list.open() returns long
+// w_wolist_list.open() returns long [event]
 	m_workorder_menu lm_menu
 	long ll_width
 	long ll_height
@@ -263,4 +263,30 @@
 	this.tab_retrieve.tabpage_list.dw_list.width = ll_width * 0.98
 	this.tab_retrieve.tabpage_list.dw_list.height = ll_height * 0.75 - this.tab_retrieve.tabpage_list.dw_list.y
 	setredraw(true)
+	return ::message.returnvalue
+
+// dw_list.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	long ll_code
+	ancestorreturnvalue = super::doubleclicked(xpos, ypos, row, dwo)
+	if row > 0 then
+		ll_code = this.object.code[row]
+		if ll_code > 0 then
+			parent.parent.parent.wf_openmywindow(ll_code)
+		end if
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_find.keypressed(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	long ll_code
+	long ll_found
+	string ls_regno
+	ancestorreturnvalue = super::keypressed(key, keyflags)
+	if key = keyenter! and parent.parent.parent.id_list.getselectedrow(0) > 0 then
+		ll_code = parent.parent.parent.id_list.object.code[parent.parent.parent.id_list.getselectedrow(0)]
+		parent.parent.parent.wf_openmywindow(ll_code)
+		return ::message.returnvalue
+	end if
 	return ::message.returnvalue

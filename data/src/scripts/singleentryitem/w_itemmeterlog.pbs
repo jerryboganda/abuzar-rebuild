@@ -23,29 +23,29 @@
 	end if
 	return 0
 
-// w_itemmeterlog.create() returns 0
+// w_itemmeterlog.create() returns 0 [event]
 	call super::create
 
-// w_itemmeterlog.destroy() returns 0
+// w_itemmeterlog.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_itemmeterlog.activate() returns long
+// w_itemmeterlog.activate() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::activate()
 	this.windowstate = maximized!
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_itemmeterlog.open() returns long
+// w_itemmeterlog.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.is_tablename = "ItemMeterLog"
 	return ::message.returnvalue
 
-// w_itemmeterlog.ue_save() returns 0
+// w_itemmeterlog.ue_save() returns 0 [event]
 	long ll_primarykey
 	long ll_row
 	long ll_metercode
@@ -97,7 +97,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_itemmeterlog.ue_detail() returns 0
+// w_itemmeterlog.ue_detail() returns 0 [event]
 	long ll_code
 	long ll_found
 	this.im_menu.m_file.m_save.enabled = false
@@ -119,6 +119,19 @@
 	end if
 	wf_protectdw(this.id_detail, 1)
 
-// w_itemmeterlog.ue_newform() returns 0
+// w_itemmeterlog.ue_newform() returns 0 [event]
 	call super::ue_newform
 	wf_protectdw(this.id_detail, 0)
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	long ll_retcode
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "itemmetercode"
+		if parent.parent.parent.wf_validate_itemmeter(long(data)) <> 0 then
+			messagebox("Item Meter Validation", "Item Meter Validation Error~n~rPlease Choose Some Other Item Meter")
+			return 1
+		end if
+	end choose
+	return ll_retcode

@@ -247,7 +247,7 @@
 	wf_sortdw(this.tab_retrieve.tabpage_list.ddlb_sort.text, this.is_sortsequence)
 	this.id_master.setfocus()
 
-// w_samples_form.create() returns 0
+// w_samples_form.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	if isvalid(this.menuid) then
@@ -257,13 +257,13 @@
 		this.menuid = create m_samplesmenu
 	end if
 
-// w_samples_form.destroy() returns 0
+// w_samples_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_samples_form.ue_save() returns 0
+// w_samples_form.ue_save() returns 0 [event]
 	long ll_mastercurrrow
 	long ll_invid
 	long ll_detailrows
@@ -339,7 +339,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_samples_form.ue_newform() returns 0
+// w_samples_form.ue_newform() returns 0 [event]
 	long ll_null
 	call super::ue_newform
 	this.id_master.setfocus()
@@ -352,7 +352,7 @@
 	this.id_master.setcolumn("serviceinvcode")
 	this.id_master.setfocus()
 
-// w_samples_form.ue_newitem() returns 0
+// w_samples_form.ue_newitem() returns 0 [event]
 	long ll_rowcount
 	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
 		return
@@ -373,7 +373,7 @@
 	if this.id_detail.rowcount() > 1 then
 	end if
 
-// w_samples_form.ue_detail() returns 0
+// w_samples_form.ue_detail() returns 0 [event]
 	m_samplesmenu lm_menu
 	integer li_protect
 	call super::ue_detail
@@ -399,7 +399,7 @@
 		wf_protectdw(this.id_detail, li_protect)
 	end if
 
-// w_samples_form.ue_postopen() returns 0
+// w_samples_form.ue_postopen() returns 0 [event]
 	long ll_null
 	call super::ue_postopen
 	setnull(ll_null)
@@ -407,7 +407,7 @@
 	this.idc_service.settransobject(this.it_transobject)
 	this.idc_service.retrieve(ll_null)
 
-// w_samples_form.ue_deleteitem() returns 0
+// w_samples_form.ue_deleteitem() returns 0 [event]
 	long ll_currow
 	long ll_detailrows
 	this.ib_itemvalidated = true
@@ -418,14 +418,14 @@
 	end if
 	wf_grandtotal()
 
-// w_samples_form.ue_list() returns 0
+// w_samples_form.ue_list() returns 0 [event]
 	m_samplesmenu lm_menu
 	call super::ue_list
 	lm_menu = this.menuid
 	lm_menu.m_file.m_markasprocessed.visible = true
 	lm_menu.m_file.m_markasprocessed.enabled = true
 
-// w_samples_form.ue_new() returns 0
+// w_samples_form.ue_new() returns 0 [event]
 	long ll_null
 	call super::ue_new
 	setnull(ll_null)
@@ -433,7 +433,7 @@
 	this.idc_service.settransobject(this.it_transobject)
 	this.idc_service.retrieve(ll_null)
 
-// w_samples_form.ue_print() returns 0
+// w_samples_form.ue_print() returns 0 [event]
 	integer li_option
 	long ll_code
 	boolean lb_listtab
@@ -498,3 +498,92 @@
 	if this.im_menu.m_file.m_save.enabled = true and lb_listtab = false then
 		postevent("ue_new")
 	end if
+
+// tabpage_detail.create() returns 0 [event]
+	integer icurrent
+	this.dw_print = create dw_print
+	call super::create
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_print
+
+// tabpage_detail.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.dw_print
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	end choose
+	return 1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "serviceinvcode"
+		if parent.parent.parent.wf_getserviceinfo(long(data)) > 0 then
+			messagebox("Service Invoice Code Validation", "Either Not a valid Service Invoice Code~r~nOr this service invoice code does not contain any service for which service result will be required~n~rPlease enter Some Other Service Invoice Code", stopsign!)
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	string ls_managername
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "servicerowid"
+		parent.parent.parent.il_currrow = row
+		parent.parent.parent.ib_itemvalidated = false
+		li_errcode = 0
+	case else
+		parent.parent.parent.ib_itemvalidated = true
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "servicerowid"
+		if data = "" or isnull(data) then
+			messagebox("Service Validation", "Value required Service in current row")
+		end if
+	end choose
+	return 1
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem() = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.getfocus() returns long [event]
+	return ::message.returnvalue
+
+// dw_itemsdetail.rowfocuschanged(long currentrow) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::rowfocuschanged(currentrow)
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem() = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.ue_enterkey() returns long [event]
+	if getrow() = rowcount() and getcolumn() = integer(this.object.datawindow.column.count) then
+		parent.parent.parent.event ue_newitem()
+		setcolumn("servicerowid")
+		setfocus()
+		return 1
+	end if
+	send(handle(this), 256, 9, long(90))
+	return 1

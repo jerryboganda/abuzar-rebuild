@@ -30,29 +30,29 @@
 	end if
 	return b_flag
 
-// w_manufacturer_form.create() returns 0
+// w_manufacturer_form.create() returns 0 [event]
 	call super::create
 
-// w_manufacturer_form.destroy() returns 0
+// w_manufacturer_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_manufacturer_form.activate() returns long
+// w_manufacturer_form.activate() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::activate()
 	this.windowstate = maximized!
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_manufacturer_form.open() returns long
+// w_manufacturer_form.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.is_tablename = "Manufacturer"
 	return ::message.returnvalue
 
-// w_manufacturer_form.ue_save() returns 0
+// w_manufacturer_form.ue_save() returns 0 [event]
 	long ll_primarykey
 	long ll_row
 	string ls_aliasname
@@ -84,3 +84,65 @@
 		return
 	end if
 	setpointer(arrow!)
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer rt_code
+	integer li_manfcode
+	integer li_dupmanfcode
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "code"
+		li_manfcode = integer(data)
+		SQL SELECT manufacturer.manfcode INTO :li_dupmanfcode FROM manufacturer WHERE manufacturer.manfcode =:li_manfcode USING sqlca;
+		if sqlca.sqlcode = 0 and li_dupmanfcode = li_manfcode then
+			rt_code = 1
+			messagebox("Class Code Validation", "Duplicate Company Code, Enter some other class code")
+		end if
+	case "aliasname"
+		if parent.parent.parent.wf_duplicatealiasname(data) then
+			messagebox("Alias Name Validation", "Duplication Alias Name Error~n~rPlease Choose Some Other Name")
+			return 1
+		end if
+	case "name"
+		if parent.parent.parent.wf_duplicatename(data) then
+			messagebox("Name Validation", "Duplication Name Error~n~rPlease Choose Some Other Name")
+			return 1
+		end if
+	end choose
+	return rt_code
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "shortname"
+		if data = "" or isnull(data) then
+			messagebox("Nick Name Validation", "Value required for " + upper("Nick Name") + " in current row")
+		end if
+	case "cp"
+		if data = "" or isnull(data) then
+			messagebox("Contact Person Validation", "Value required for Contact Person in current row")
+		end if
+	case "address"
+		if data = "" or isnull(data) then
+			messagebox("Address Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "city"
+		if data = "" or isnull(data) then
+			messagebox("City Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "phone"
+		if data = "" or isnull(data) then
+			messagebox("Phone Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "country"
+		if data = "" or isnull(data) then
+			messagebox("Country Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	end choose
+	return 1

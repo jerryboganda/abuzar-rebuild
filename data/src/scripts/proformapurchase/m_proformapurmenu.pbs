@@ -1,12 +1,337 @@
 // menu m_proformapurmenu (proformapurchase)  ancestor: m_multi_entry
 
-// m_proformapurmenu.create() returns 0
+// m_proformapurmenu.create() returns 0 [event]
 	m_proformapurmenu = this
 	call super::create
 
-// m_proformapurmenu.destroy() returns 0
+// m_proformapurmenu.destroy() returns 0 [event]
 	call super::destroy
 
-// m_proformapurmenu.clicked() returns 0
+// m_proformapurmenu.clicked() returns 0 [event]
 	call super::clicked
 	this.parentwindow.dynamic wf_view_iteminfo()
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_open = create m_open
+	this.m_populateitems = create m_populateitems
+	this.m_savepost = create m_savepost
+	this.m_itempurchasehistory = create m_itempurchasehistory
+	this.m_setquantity = create m_setquantity
+	this.m_purchaseslip = create m_purchaseslip
+	this.m_setserverdate = create m_setserverdate
+	this.m_showaccountledger = create m_showaccountledger
+	this.m_showsummaryaccountbalance = create m_showsummaryaccountbalance
+	this.m_populatefromdatacarrydb = create m_populatefromdatacarrydb
+	this.m_printbarcode = create m_printbarcode
+	this.m_populateandpostfromdatacarrydb = create m_populateandpostfromdatacarrydb
+	this.m_viewiteminfo = create m_viewiteminfo
+	this.m_supplierinfo = create m_supplierinfo
+	this.m_showpobasedpurchasedisparity = create m_showpobasedpurchasedisparity
+	this.m_quicksale = create m_quicksale
+	this.m_populatesalesorder = create m_populatesalesorder
+	this.m_populatependingdueitems = create m_populatependingdueitems
+	this.m_populatereceiptgrn = create m_populatereceiptgrn
+	this.item[upperbound(this.item) + 1] = this.m_open
+	this.item[upperbound(this.item) + 1] = this.m_populateitems
+	this.item[upperbound(this.item) + 1] = this.m_savepost
+	this.item[upperbound(this.item) + 1] = this.m_itempurchasehistory
+	this.item[upperbound(this.item) + 1] = this.m_setquantity
+	this.item[upperbound(this.item) + 1] = this.m_purchaseslip
+	this.item[upperbound(this.item) + 1] = this.m_setserverdate
+	this.item[upperbound(this.item) + 1] = this.m_showaccountledger
+	this.item[upperbound(this.item) + 1] = this.m_showsummaryaccountbalance
+	this.item[upperbound(this.item) + 1] = this.m_populatefromdatacarrydb
+	this.item[upperbound(this.item) + 1] = this.m_printbarcode
+	this.item[upperbound(this.item) + 1] = this.m_populateandpostfromdatacarrydb
+	this.item[upperbound(this.item) + 1] = this.m_viewiteminfo
+	this.item[upperbound(this.item) + 1] = this.m_supplierinfo
+	this.item[upperbound(this.item) + 1] = this.m_showpobasedpurchasedisparity
+	this.item[upperbound(this.item) + 1] = this.m_quicksale
+	this.item[upperbound(this.item) + 1] = this.m_populatesalesorder
+	this.item[upperbound(this.item) + 1] = this.m_populatependingdueitems
+	this.item[upperbound(this.item) + 1] = this.m_populatereceiptgrn
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_open
+	destroy this.m_populateitems
+	destroy this.m_savepost
+	destroy this.m_itempurchasehistory
+	destroy this.m_setquantity
+	destroy this.m_purchaseslip
+	destroy this.m_setserverdate
+	destroy this.m_showaccountledger
+	destroy this.m_showsummaryaccountbalance
+	destroy this.m_populatefromdatacarrydb
+	destroy this.m_printbarcode
+	destroy this.m_populateandpostfromdatacarrydb
+	destroy this.m_viewiteminfo
+	destroy this.m_supplierinfo
+	destroy this.m_showpobasedpurchasedisparity
+	destroy this.m_quicksale
+	destroy this.m_populatesalesorder
+	destroy this.m_populatependingdueitems
+	destroy this.m_populatereceiptgrn
+
+// m_save.create() returns 0 [event]
+	call super::create
+
+// m_save.destroy() returns 0 [event]
+	call super::destroy
+
+// m_save.clicked() returns 0 [event]
+	if f_stringpreferences("PurchaseAutoPosting") = "Y" then
+		this.parentwindow.dynamic wf_saveandpost()
+	else
+		this.parentwindow.triggerevent("ue_save")
+	end if
+	if this.parentwindow.dynamic wf_commitform() = true then
+		this.parentwindow.postevent("ue_new")
+	end if
+
+// m_options.clicked() returns 0 [event]
+	long ll_manfcode
+	long ll_pocode
+	call super::clicked
+	this.parentwindow.dynamic wf_getpomanfcode(ll_pocode, ll_manfcode)
+	this.parentwindow.dynamic wf_populatedetaildwfrompo(ll_pocode, ll_manfcode)
+
+// m_options.create() returns 0 [event]
+	call super::create
+	this.visible = true
+	this.text = "Edit Purchase Order"
+	this.enabled = false
+
+// m_options.destroy() returns 0 [event]
+	call super::destroy
+
+// m_open.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_populatepurorder()
+
+// m_open.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "&Open~tCtrl+J"
+	this.enabled = false
+	this.shortcut = 330
+
+// m_open.destroy() returns 0 [event]
+	call super::destroy
+
+// m_populateitems.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_populatefiltereditems()
+
+// m_populateitems.create() returns 0 [event]
+	call super::create
+	this.text = "Populate Items"
+
+// m_populateitems.destroy() returns 0 [event]
+	call super::destroy
+
+// m_savepost.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_saveandpost()
+	if this.parentwindow.dynamic wf_commitform() = true then
+		this.parentwindow.postevent("ue_new")
+	end if
+
+// m_savepost.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Save And Post~tCtrl+Q"
+	this.enabled = false
+	this.checked = true
+	this.shortcut = 337
+
+// m_savepost.destroy() returns 0 [event]
+	call super::destroy
+
+// m_itempurchasehistory.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_itempurchasehistory()
+
+// m_itempurchasehistory.create() returns 0 [event]
+	call super::create
+	this.text = "Item Purchase History~tCtrl+H"
+	this.shortcut = 328
+
+// m_itempurchasehistory.destroy() returns 0 [event]
+	call super::destroy
+
+// m_setquantity.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_setquantity()
+
+// m_setquantity.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Set Q&uantity~tCtrl+U"
+	this.enabled = false
+	this.shortcut = 341
+
+// m_setquantity.destroy() returns 0 [event]
+	call super::destroy
+
+// m_purchaseslip.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_purchaseslip()
+
+// m_purchaseslip.create() returns 0 [event]
+	call super::create
+	this.text = "Purchase Slip~tCtrl+M"
+	this.shortcut = 333
+
+// m_purchaseslip.destroy() returns 0 [event]
+	call super::destroy
+
+// m_setserverdate.clicked() returns 0 [event]
+	if this.checked then
+		this.checked = false
+	else
+		this.checked = true
+	end if
+	this.parentwindow.dynamic wf_fetchserverdate(this.checked)
+
+// m_setserverdate.create() returns 0 [event]
+	call super::create
+	this.text = "Set Server Date"
+	this.checked = true
+
+// m_setserverdate.destroy() returns 0 [event]
+	call super::destroy
+
+// m_showaccountledger.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_showaccountledger()
+
+// m_showaccountledger.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Show Account Ledger~tF1"
+	this.shortcut = 112
+
+// m_showaccountledger.destroy() returns 0 [event]
+	call super::destroy
+
+// m_showsummaryaccountbalance.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_showsummaryaccountbalance()
+
+// m_showsummaryaccountbalance.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Show Summary Account Balance~tAlt+F1"
+	this.shortcut = 624
+
+// m_showsummaryaccountbalance.destroy() returns 0 [event]
+	call super::destroy
+
+// m_populatefromdatacarrydb.clicked() returns 0 [event]
+	this.parentwindow.dynamic event ue_populate_purchase_from_datacarrydb()
+
+// m_populatefromdatacarrydb.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Populate From DataCarryDB"
+	this.enabled = false
+
+// m_populatefromdatacarrydb.destroy() returns 0 [event]
+	call super::destroy
+
+// m_printbarcode.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_printbarcode()
+
+// m_printbarcode.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Print BarCode~tAlt+F3"
+	this.enabled = false
+	this.shortcut = 626
+
+// m_printbarcode.destroy() returns 0 [event]
+	call super::destroy
+
+// m_populateandpostfromdatacarrydb.clicked() returns 0 [event]
+	this.parentwindow.dynamic event ue_populate_and_post_from_datacarrydb()
+
+// m_populateandpostfromdatacarrydb.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Populate and Post From DataCarryDB"
+	this.enabled = false
+
+// m_populateandpostfromdatacarrydb.destroy() returns 0 [event]
+	call super::destroy
+
+// m_viewiteminfo.create() returns 0 [event]
+	call super::create
+	this.text = "View Item Info~tCtrl+Alt+I"
+	this.shortcut = 841
+	this.microhelp = "View Item Information"
+
+// m_viewiteminfo.destroy() returns 0 [event]
+	call super::destroy
+
+// m_viewiteminfo.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_view_iteminfo()
+
+// m_supplierinfo.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_getsupplierinfo()
+
+// m_supplierinfo.create() returns 0 [event]
+	call super::create
+	this.text = "Supplier Info.~tF12"
+	this.shortcut = 123
+	this.microhelp = "Supplier Information"
+
+// m_supplierinfo.destroy() returns 0 [event]
+	call super::destroy
+
+// m_showpobasedpurchasedisparity.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_show_po_pur_disparity(0)
+
+// m_showpobasedpurchasedisparity.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Show P/O Based Purchase Disparity~tF11"
+	this.enabled = false
+	this.shortcut = 122
+
+// m_showpobasedpurchasedisparity.destroy() returns 0 [event]
+	call super::destroy
+
+// m_quicksale.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_show_saleinpurchase()
+
+// m_quicksale.create() returns 0 [event]
+	call super::create
+	this.text = "Quick Sale~tAlt+Shift+S"
+	this.shortcut = 1619
+
+// m_quicksale.destroy() returns 0 [event]
+	call super::destroy
+
+// m_populatesalesorder.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_populate_saleorder()
+
+// m_populatesalesorder.create() returns 0 [event]
+	call super::create
+	this.text = "Populate Sales Order"
+
+// m_populatesalesorder.destroy() returns 0 [event]
+	call super::destroy
+
+// m_populatependingdueitems.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_populate_pendingdueitems()
+
+// m_populatependingdueitems.create() returns 0 [event]
+	call super::create
+	this.text = "Populate Pending Due Item(s)"
+
+// m_populatependingdueitems.destroy() returns 0 [event]
+	call super::destroy
+
+// m_populatereceiptgrn.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_populate_receipt()
+
+// m_populatereceiptgrn.create() returns 0 [event]
+	call super::create
+	this.text = "Populate Receipt/GRN"
+
+// m_populatereceiptgrn.destroy() returns 0 [event]
+	call super::destroy

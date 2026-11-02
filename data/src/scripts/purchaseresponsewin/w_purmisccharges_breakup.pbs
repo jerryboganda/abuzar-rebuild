@@ -1,17 +1,17 @@
 // window w_purmisccharges_breakup (purchaseresponsewin)  ancestor: window
 
-// w_purmisccharges_breakup.create() returns 0
+// w_purmisccharges_breakup.create() returns 0 [event]
 	this.cb_cancel = create cb_cancel
 	this.cb_ok = create cb_ok
 	this.dw_control = create dw_control
 	this.control = {this.cb_cancel, this.cb_ok, this.dw_control}
 
-// w_purmisccharges_breakup.destroy() returns 0
+// w_purmisccharges_breakup.destroy() returns 0 [event]
 	destroy this.cb_cancel
 	destroy this.cb_ok
 	destroy this.dw_control
 
-// w_purmisccharges_breakup.open() returns long
+// w_purmisccharges_breakup.open() returns long [event]
 	environment le_env
 	long ll_win_width
 	long ll_win_height
@@ -49,34 +49,34 @@
 	end if
 	return message.returnvalue
 
-// w_purmisccharges_breakup.close() returns long
+// w_purmisccharges_breakup.close() returns long [event]
 	closewithreturn(this, this.is_values)
 	return ::message.returnvalue
 
-// w_purmisccharges_breakup.key(keycode key, unsignedlong keyflags) returns long
+// w_purmisccharges_breakup.key(keycode key, unsignedlong keyflags) returns long [event]
 	if keydown(keyescape!) then
 		close(this)
 	end if
 	return ::message.returnvalue
 
-// cb_cancel.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_cancel.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		postevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.is_values.i_status = -1
 	closewithreturn(parent, parent.is_values)
 	return ::message.returnvalue
 
-// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		postevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	if parent.dw_control.accepttext() = -1 then
 		return ::message.returnvalue
 	end if
@@ -89,19 +89,19 @@
 	closewithreturn(parent, parent.is_values)
 	return ::message.returnvalue
 
-// dw_control.ue_enterkey() returns long
+// dw_control.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_control.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_control.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
 	selecttext(1, len(gettext()))
 	return ::message.returnvalue
 
-// dw_control.getfocus() returns long
+// dw_control.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	selecttext(1, len(gettext()))

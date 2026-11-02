@@ -82,7 +82,7 @@
 	end if
 	return rtcode
 
-// w_supplier_manf.create() returns 0
+// w_supplier_manf.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	if isvalid(this.menuid) then
@@ -95,14 +95,14 @@
 	icurrent = upperbound(this.control)
 	this.control[icurrent + 1] = this.dw_print
 
-// w_supplier_manf.destroy() returns 0
+// w_supplier_manf.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 	destroy this.dw_print
 
-// w_supplier_manf.ue_save() returns 0
+// w_supplier_manf.ue_save() returns 0 [event]
 	integer li_counter
 	string ls_aliasname
 	boolean lb_commitflag
@@ -276,20 +276,20 @@
 	end if
 	setpointer(arrow!)
 
-// w_supplier_manf.ue_newform() returns 0
+// w_supplier_manf.ue_newform() returns 0 [event]
 	long ll_counter
 	call super::ue_newform
 	this.id_master.object.accounts_aliasname.visible = true
 	this.id_master.object.accounts_aliasname_t.visible = true
 	this.id_master.setfocus()
 
-// w_supplier_manf.ue_newitem() returns 0
+// w_supplier_manf.ue_newitem() returns 0 [event]
 	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
 		return
 	end if
 	call super::ue_newitem
 
-// w_supplier_manf.ue_detail() returns 0
+// w_supplier_manf.ue_detail() returns 0 [event]
 	long ll_counter
 	long ll_code
 	long ll_found
@@ -323,7 +323,7 @@
 		end if
 	next
 
-// w_supplier_manf.ue_postopen() returns 0
+// w_supplier_manf.ue_postopen() returns 0 [event]
 	long ll_found
 	m_supplier_manf lm_menu
 	call super::ue_postopen
@@ -351,7 +351,7 @@
 	this.id_master.object.supplier_sitecode.visible = false
 	this.id_master.object.supplier_sitecode_t.visible = false
 
-// w_supplier_manf.ue_print() returns 0
+// w_supplier_manf.ue_print() returns 0 [event]
 	long ll_code
 	boolean lb_listtab
 	s_datastore lstr
@@ -406,7 +406,7 @@
 		messagebox("Printing Error", "Can not Print Data,~r~nNo rows are retrieved", information!)
 	end if
 
-// w_supplier_manf.open() returns long
+// w_supplier_manf.open() returns long [event]
 	m_entry lm_menu
 	long ll_width
 	long ll_height
@@ -440,4 +440,150 @@
 	this.tab_retrieve.tabpage_detail.dw_itemslist.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width * 0.67
 	this.tab_retrieve.tabpage_detail.dw_itemslist.x = 1150
 	setredraw(true)
+	return ::message.returnvalue
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	string ls_aliasname
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "accounts_name"
+		if parent.parent.parent.wf_duplicateaccname(data) then
+			messagebox("Name Validation", "Duplication Name Error~n~rPlease Choose Some Other Name")
+			return 1
+		end if
+	case "accounts_aliasname"
+		if parent.parent.parent.wf_duplicatealiasname(data) then
+			messagebox("AliasName Validation", "Duplication AliasName Error~n~rPlease Choose Some Other Name")
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "accounts_name"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for Supplier Name in current row")
+		end if
+	case "supplier_address1"
+		if data = "" or isnull(data) then
+			messagebox("Address1 Validation", "Value required for Address1 in current row")
+		end if
+	case "supplier_address2"
+		if data = "" or isnull(data) then
+			messagebox("Address2 Validation", "Value required for Address2 in current row")
+		end if
+	case "supplier_cp"
+		if data = "" or isnull(data) then
+			messagebox("Contact Person Validation", "Value required for Contact Person in current row")
+		end if
+	case "supplier_city"
+		if data = "" or isnull(data) then
+			messagebox("City Validation", "Value required for City in current row")
+		end if
+	case "supplier_country"
+		if data = "" or isnull(data) then
+			messagebox("Country Validation", "Value required for Country in current row")
+		end if
+	case "suplier_phone"
+		if data = "" or isnull(data) then
+			messagebox("Phone Validation", "Value required for Phone in current row")
+		end if
+	end choose
+	return 1
+
+// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	choose case dwo.name
+	case "accounts_localaccountname"
+		f_set_keyboard_local()
+	case else
+		f_set_keyboard_english()
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.sqlpreview(sqlpreviewfunction request, sqlpreviewtype sqltype, string sqlsyntax, dwbuffer buffer, long row) returns long [event]
+	long ancestorreturnvalue
+	string ls_sql
+	string ls_newsql
+	string ls_sql_part
+	long ll_counter
+	long ll_pos
+	long ll_commacount
+	long ll_commapos
+	long ll_newcommacount
+	ancestorreturnvalue = super::sqlpreview(request, sqltype, sqlsyntax, buffer, row)
+	if sqltype = previewinsert! then
+		ls_sql = sqlsyntax
+		ls_sql_part = "'" + getitemstring(getrow(), "accounts_localaccountname") + "'"
+		ll_pos = pos(lower(ls_sql), ls_sql_part, 1)
+		if ll_pos > 0 then
+			ls_newsql = replace(ls_sql, ll_pos, len(ls_sql_part), "N" + ls_sql_part)
+		else
+			ls_newsql = ls_sql
+		end if
+		setsqlpreview(ls_newsql)
+	elseif sqltype = previewupdate! then
+		ls_sql = sqlsyntax
+		ll_pos = pos(lower(ls_sql), "localaccountname = ", 1)
+		if ll_pos > 0 then
+			ls_newsql = mid(ls_sql, 1, ll_pos - 1) + "localaccountname = N" + mid(ls_sql, ll_pos + 19)
+		else
+			ls_newsql = ls_sql
+		end if
+		setsqlpreview(ls_newsql)
+	end if
+	return 0
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	long ll_base
+	long ll_proj
+	long ll_popolicy
+	long ll_manfcode
+	string ls_managername
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "manfcode"
+		parent.parent.parent.il_currrow = row
+		parent.parent.parent.ib_itemvalidated = false
+		if long(data) > 0 then
+			ll_manfcode = long(data)
+			SQL SELECT PurOrderBasePeriodDays , PurOrderProjPeriodDays , POPolicyCode INTO :ll_base, :ll_proj, :ll_popolicy FROM Manufacturer WHERE ManfCode =:ll_manfcode USING parent.parent.parent.it_transobject;
+			if parent.parent.parent.it_transobject.sqlcode = 0 then
+				parent.parent.parent.id_detail.object.purorderbaseperioddays[row] = ll_base
+				parent.parent.parent.id_detail.object.purorderprojperioddays[row] = ll_proj
+				parent.parent.parent.id_detail.object.popolicycode[row] = ll_popolicy
+			end if
+		end if
+		li_errcode = 0
+		return li_errcode
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "manfcode"
+		if data = "" or isnull(data) then
+			messagebox("Macufacturer Name Validation", "Value required for Manufatcurer Name in current row")
+		end if
+	end choose
+	return 1
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem() = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.getfocus() returns long [event]
 	return ::message.returnvalue

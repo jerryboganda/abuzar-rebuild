@@ -1,16 +1,16 @@
 // window w_editpostedinvoice (salerespwin)  ancestor: window
 
-// w_editpostedinvoice.ue_keydown(keycode key, unsignedlong keyflags) returns long
+// w_editpostedinvoice.ue_keydown(keycode key, unsignedlong keyflags) returns long [event]
 	long ll_option
 	if key = keyescape! then
 		return ::message.returnvalue
 	end if
 	return ::message.returnvalue
 
-// w_editpostedinvoice.ue_close() returns 0
+// w_editpostedinvoice.ue_close() returns 0 [event]
 	close(this)
 
-// w_editpostedinvoice.ue_save() returns 0
+// w_editpostedinvoice.ue_save() returns 0 [event]
 	long ll_retcode
 	string ls_errtext
 	if this.editflag = false then
@@ -279,18 +279,18 @@
 	as_errtext = this.it_transobject.sqlerrtext
 	return -1
 
-// w_editpostedinvoice.create() returns 0
+// w_editpostedinvoice.create() returns 0 [event]
 	this.dw_master = create dw_master
 	this.dw_detail = create dw_detail
 	this.dw_footer = create dw_footer
 	this.control = {this.dw_master, this.dw_detail, this.dw_footer}
 
-// w_editpostedinvoice.destroy() returns 0
+// w_editpostedinvoice.destroy() returns 0 [event]
 	destroy this.dw_master
 	destroy this.dw_detail
 	destroy this.dw_footer
 
-// w_editpostedinvoice.open() returns long
+// w_editpostedinvoice.open() returns long [event]
 	long ll_module
 	environment le_env
 	long ll_win_width
@@ -373,7 +373,7 @@
 	end if
 	return message.returnvalue
 
-// w_editpostedinvoice.closequery() returns long
+// w_editpostedinvoice.closequery() returns long [event]
 	long ll_option
 	if this.editflag = true then
 		ll_option = messagebox("Saving Validation", "Do you want to save changes", question!, yesno!, 1)
@@ -384,43 +384,43 @@
 	SQL stop USING this.it_transobject;
 	return ::message.returnvalue
 
-// dw_master.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_master.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
 	parent.wf_grandtotal()
 	return ::message.returnvalue
 
-// dw_master.rowfocuschanged(long currentrow) returns long
+// dw_master.rowfocuschanged(long currentrow) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::rowfocuschanged(currentrow)
 	parent.wf_grandtotal()
 	return ::message.returnvalue
 
-// dw_master.rowfocuschanging(long currentrow, long newrow) returns long
+// dw_master.rowfocuschanging(long currentrow, long newrow) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::rowfocuschanging(currentrow, newrow)
 	parent.wf_grandtotal()
 	return ::message.returnvalue
 
-// dw_master.ue_enterkey() returns long
+// dw_master.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_master.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_master.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemchanged(row, dwo, data)
 	parent.editflag = true
 	return ::message.returnvalue
 
-// dw_master.editchanged(long row, dwobject dwo, string data) returns long
+// dw_master.editchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::editchanged(row, dwo, data)
 	parent.editflag = true
 	return ::message.returnvalue
 
-// dw_master.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// dw_master.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
 	if keyflags = 2 and key = keys! then
@@ -432,43 +432,43 @@
 	end if
 	return ::message.returnvalue
 
-// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
 	parent.wf_grandtotal()
 	return ::message.returnvalue
 
-// dw_detail.rowfocuschanged(long currentrow) returns long
+// dw_detail.rowfocuschanged(long currentrow) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::rowfocuschanged(currentrow)
 	parent.wf_grandtotal()
 	return ::message.returnvalue
 
-// dw_detail.rowfocuschanging(long currentrow, long newrow) returns long
+// dw_detail.rowfocuschanging(long currentrow, long newrow) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::rowfocuschanging(currentrow, newrow)
 	parent.wf_grandtotal()
 	return ::message.returnvalue
 
-// dw_detail.ue_enterkey() returns long
+// dw_detail.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemchanged(row, dwo, data)
 	parent.editflag = true
 	return ::message.returnvalue
 
-// dw_detail.editchanged(long row, dwobject dwo, string data) returns long
+// dw_detail.editchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::editchanged(row, dwo, data)
 	parent.editflag = true
 	return ::message.returnvalue
 
-// dw_detail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// dw_detail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
 	if keyflags = 2 and key = keys! then
@@ -480,44 +480,44 @@
 	end if
 	return ::message.returnvalue
 
-// dw_footer.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_footer.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
 	parent.wf_grandtotal()
 	return ::message.returnvalue
 
-// dw_footer.rowfocuschanged(long currentrow) returns long
+// dw_footer.rowfocuschanged(long currentrow) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::rowfocuschanged(currentrow)
 	parent.wf_grandtotal()
 	return ::message.returnvalue
 
-// dw_footer.rowfocuschanging(long currentrow, long newrow) returns long
+// dw_footer.rowfocuschanging(long currentrow, long newrow) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::rowfocuschanging(currentrow, newrow)
 	parent.wf_grandtotal()
 	return ::message.returnvalue
 
-// dw_footer.ue_enterkey() returns long
+// dw_footer.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_footer.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_footer.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemchanged(row, dwo, data)
 	parent.editflag = true
 	parent.wf_grandtotal()
 	return ::message.returnvalue
 
-// dw_footer.editchanged(long row, dwobject dwo, string data) returns long
+// dw_footer.editchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::editchanged(row, dwo, data)
 	parent.editflag = true
 	return ::message.returnvalue
 
-// dw_footer.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// dw_footer.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
 	if keyflags = 2 and key = keys! then

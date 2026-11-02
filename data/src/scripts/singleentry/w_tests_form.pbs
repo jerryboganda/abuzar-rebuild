@@ -1,25 +1,25 @@
 // window w_tests_form (singleentry)  ancestor: w_single_entry
 
-// w_tests_form.create() returns 0
+// w_tests_form.create() returns 0 [event]
 	call super::create
 
-// w_tests_form.destroy() returns 0
+// w_tests_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_tests_form.ue_newform() returns 0
+// w_tests_form.ue_newform() returns 0 [event]
 	call super::ue_newform
 
-// w_tests_form.activate() returns long
+// w_tests_form.activate() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::activate()
 	this.windowstate = maximized!
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_tests_form.ue_save() returns 0
+// w_tests_form.ue_save() returns 0 [event]
 	long ll_newid
 	long ll_row
 	ll_row = this.id_detail.getrow()
@@ -29,3 +29,18 @@
 		this.id_detail.object.code[ll_row] = ll_newid
 	end if
 	call super::ue_save
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for " + upper(dwo.name) + " in current row")
+		else
+			messagebox("Name Validation", "~t~tThe First letter of  ~"" + data + "~"~t~t~r~n should be Alphabet")
+		end if
+	case "testprice"
+		messagebox("Test Price Validation", "Value should be greater than zero")
+	end choose
+	return 1

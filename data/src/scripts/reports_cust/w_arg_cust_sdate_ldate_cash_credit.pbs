@@ -1,6 +1,6 @@
 // window w_arg_cust_sdate_ldate_cash_credit (reports_cust)  ancestor: w_popup_forselection_walias
 
-// w_arg_cust_sdate_ldate_cash_credit.create() returns 0
+// w_arg_cust_sdate_ldate_cash_credit.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.gb_2 = create gb_2
@@ -19,7 +19,7 @@
 	this.control[icurrent + 6] = this.cbx_cash
 	this.control[icurrent + 7] = this.cbx_credit
 
-// w_arg_cust_sdate_ldate_cash_credit.destroy() returns 0
+// w_arg_cust_sdate_ldate_cash_credit.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.gb_2
 	destroy this.st_1
@@ -29,7 +29,7 @@
 	destroy this.cbx_cash
 	destroy this.cbx_credit
 
-// w_arg_cust_sdate_ldate_cash_credit.open() returns long
+// w_arg_cust_sdate_ldate_cash_credit.open() returns long [event]
 	long ancestorreturnvalue
 	date ld_currdate
 	string ls_text
@@ -47,16 +47,42 @@
 	this.em_enddate.text = ls_text
 	return ::message.returnvalue
 
-// w_arg_cust_sdate_ldate_cash_credit.ue_close() returns 0
+// w_arg_cust_sdate_ldate_cash_credit.ue_close() returns 0 [event]
 	closewithreturn(this, this.istr_arg)
 
-// em_startdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_cancel.clicked() returns long [event]
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked()
+	parent.istr_arg.l_code1 = parent.id_selected.getitemnumber(1, "code")
+	if isnull(parent.istr_arg.l_code1) then
+		parent.istr_arg.l_code1 = 0
+	end if
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	if parent.cbx_cash.checked then
+		parent.istr_arg.ia_integerlist[3] = 3
+		parent.istr_arg.ia_integerlist[6] = 8
+	end if
+	if parent.cbx_credit.checked then
+		parent.istr_arg.ia_integerlist[2] = 2
+		parent.istr_arg.ia_integerlist[1] = 1
+		parent.istr_arg.ia_integerlist[4] = 6
+		parent.istr_arg.ia_integerlist[5] = 7
+	end if
+	parent.istr_arg.i_status = 1
+	return ::message.returnvalue
+
+// em_startdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// em_enddate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// em_enddate.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if

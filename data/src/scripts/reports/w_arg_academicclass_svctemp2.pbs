@@ -1,6 +1,6 @@
 // window w_arg_academicclass_svctemp2 (reports)  ancestor: w_listarguments
 
-// w_arg_academicclass_svctemp2.create() returns 0
+// w_arg_academicclass_svctemp2.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.st_4 = create st_4
@@ -13,14 +13,14 @@
 	this.control[icurrent + 3] = this.dw_template
 	this.control[icurrent + 4] = this.dw_services
 
-// w_arg_academicclass_svctemp2.destroy() returns 0
+// w_arg_academicclass_svctemp2.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.st_4
 	destroy this.st_8
 	destroy this.dw_template
 	destroy this.dw_services
 
-// w_arg_academicclass_svctemp2.open() returns long
+// w_arg_academicclass_svctemp2.open() returns long [event]
 	long ancestorreturnvalue
 	string ls_stringparam
 	string ls_filter
@@ -50,7 +50,57 @@
 	end if
 	return message.returnvalue
 
-// dw_services.ue_enterkey() returns long
+// cb_ok.clicked() returns long [event]
+	long ancestorreturnvalue
+	long ll_count
+	long ll_counter
+	long ll_found
+	long ll_row
+	ancestorreturnvalue = super::clicked()
+	if parent.dw_template.accepttext() < 0 then
+		return ::message.returnvalue
+	end if
+	parent.dw_services.accepttext()
+	if parent.cbx_all.checked = true then
+		for ll_counter = 1 to parent.dw_control.rowcount()
+			parent.istr_arg.ia_integerlist[ll_counter] = parent.dw_control.getitemnumber(ll_counter, "classcode")
+		next
+	else
+		for ll_counter = 1 to ll_counter
+			ll_found = parent.dw_control.find("name ='" + parent.lb_selectedcategories.text(ll_counter) + "'", 1, parent.dw_control.rowcount())
+			if ll_found > 0 then
+				parent.istr_arg.ia_integerlist[ll_counter] = parent.dw_control.getitemnumber(ll_found, "classcode")
+			end if
+		next
+	end if
+	ll_counter = 0
+	for ll_counter = 1 to parent.dw_services.rowcount()
+		if parent.dw_services.rowcount() > 0 and parent.dw_services.object.selected[ll_counter] = "Y" then
+			ll_row = ll_row + 1
+			parent.istr_arg.ia_integerlist1[ll_row] = parent.dw_services.object.servicecode[ll_counter]
+			parent.istr_arg.da_doublelist[ll_row] = parent.dw_services.object.price[ll_counter]
+		end if
+	next
+	if ll_row <= 0 then
+		parent.istr_arg.ia_integerlist1[1] = -1
+		parent.istr_arg.da_doublelist[1] = 0
+	end if
+	parent.istr_arg.l_code10 = parent.dw_template.object.servicetemplatecode[1]
+	parent.istr_arg.s_name1 = parent.dw_template.object.remarks[1]
+	parent.istr_arg.d_date1 = parent.dw_template.object.date[1]
+	if date(parent.istr_arg.d_date1) < today() then
+		messagebox("Due Date Validation", "Please enter valid due date")
+		return ::message.returnvalue
+	end if
+	parent.istr_arg.i_supress = parent.cbx_supress.checked
+	parent.istr_arg.i_hide = parent.cbx_hide.checked
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	parent.istr_arg.i_status = 1
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// dw_services.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))

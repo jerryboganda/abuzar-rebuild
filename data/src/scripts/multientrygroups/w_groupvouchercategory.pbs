@@ -18,16 +18,16 @@
 	end if
 	return li_errcode
 
-// w_groupvouchercategory.create() returns 0
+// w_groupvouchercategory.create() returns 0 [event]
 	call super::create
 
-// w_groupvouchercategory.destroy() returns 0
+// w_groupvouchercategory.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_groupvouchercategory.ue_save() returns 0
+// w_groupvouchercategory.ue_save() returns 0 [event]
 	long ll_counter
 	long ll_code
 	setpointer(hourglass!)
@@ -55,19 +55,19 @@
 	end if
 	setpointer(arrow!)
 
-// w_groupvouchercategory.ue_postopen() returns 0
+// w_groupvouchercategory.ue_postopen() returns 0 [event]
 	call super::ue_postopen
 	this.im_menu.m_file.m_new.visible = false
 
-// w_groupvouchercategory.ue_newform() returns 0
+// w_groupvouchercategory.ue_newform() returns 0 [event]
 	call super::ue_newform
 	this.im_menu.m_item.m_newitem.enabled = true
 	this.im_menu.m_item.m_deleteitem.enabled = true
 
-// w_groupvouchercategory.ue_getfocus() returns 0
+// w_groupvouchercategory.ue_getfocus() returns 0 [event]
 	call super::ue_getfocus
 
-// w_groupvouchercategory.ue_detail() returns 0
+// w_groupvouchercategory.ue_detail() returns 0 [event]
 	long ll_code
 	long ll_rowcount
 	this.im_menu.m_file.m_retrieve.text = "Lis&t"
@@ -89,8 +89,34 @@
 	this.im_menu.m_item.m_newitem.enabled = true
 	this.im_menu.m_item.m_deleteitem.enabled = true
 
-// w_groupvouchercategory.ue_newitem() returns 0
+// w_groupvouchercategory.ue_newitem() returns 0 [event]
 	if this.ib_itemvalidated = false and wf_validatecategory() = -1 then
 		return
 	end if
 	call super::ue_newitem
+
+// dw_itemsdetail.getfocus() returns long [event]
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validatecategory() = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	string ls_managername
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "vochcatcode"
+		parent.parent.parent.il_currrow = row
+		parent.parent.parent.ib_itemvalidated = false
+		li_errcode = 0
+	case else
+		parent.parent.parent.ib_itemvalidated = true
+	end choose
+	return li_errcode

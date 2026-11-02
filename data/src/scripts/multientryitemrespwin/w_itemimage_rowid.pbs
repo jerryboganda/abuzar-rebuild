@@ -1,6 +1,6 @@
 // window w_itemimage_rowid (multientryitemrespwin)  ancestor: window
 
-// w_itemimage_rowid.ue_postopen() returns 0
+// w_itemimage_rowid.ue_postopen() returns 0 [event]
 	long ll_code
 	long ll_rowid
 	this.is_filename = gs_temp_img_filename
@@ -22,7 +22,7 @@
 	f_writeimgtofile(this.is_filename, this.istr_item_blob.lb_blob)
 	this.dw_image.object.p_image.filename = this.is_filename
 
-// w_itemimage_rowid.ue_close(integer ar_closearg) returns 0
+// w_itemimage_rowid.ue_close(integer ar_closearg) returns 0 [event]
 	if ar_closearg = -1 then
 		this.istr_item_blob.i_closemode = -1
 	else
@@ -56,20 +56,20 @@
 		end if
 	end if
 
-// w_itemimage_rowid.create() returns 0
+// w_itemimage_rowid.create() returns 0 [event]
 	this.cb_change = create cb_change
 	this.cb_ok = create cb_ok
 	this.cb_cancel = create cb_cancel
 	this.dw_image = create dw_image
 	this.control = {this.cb_change, this.cb_ok, this.cb_cancel, this.dw_image}
 
-// w_itemimage_rowid.destroy() returns 0
+// w_itemimage_rowid.destroy() returns 0 [event]
 	destroy this.cb_change
 	destroy this.cb_ok
 	destroy this.cb_cancel
 	destroy this.dw_image
 
-// w_itemimage_rowid.open() returns long
+// w_itemimage_rowid.open() returns long [event]
 	long ll_win_width
 	long ll_win_height
 	long ll_width
@@ -88,29 +88,29 @@
 	post event ue_postopen()
 	return ::message.returnvalue
 
-// w_itemimage_rowid.key(keycode key, unsignedlong keyflags) returns long
+// w_itemimage_rowid.key(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		post event ue_close(-1)
 	end if
 	return ::message.returnvalue
 
-// w_itemimage_rowid.close() returns long
+// w_itemimage_rowid.close() returns long [event]
 	if fileexists(this.is_filename) then
 		filedelete(this.is_filename)
 	end if
 	return ::message.returnvalue
 
-// cb_change.clicked() returns long
+// cb_change.clicked() returns long [event]
 	parent.wf_get_image()
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	parent.post event ue_close(1)
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.post event ue_close(-1)
 	return ::message.returnvalue
 
-// dw_image.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+// dw_image.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
 	return ::message.returnvalue

@@ -1,6 +1,6 @@
 // window w_student_fine_waiver (studentcomponents)  ancestor: window
 
-// w_student_fine_waiver.ue_close(integer ai_status) returns 0
+// w_student_fine_waiver.ue_close(integer ai_status) returns 0 [event]
 	long ll_row
 	string ls_null
 	setnull(ls_null)
@@ -8,18 +8,18 @@
 	this.il_retvalue = ai_status
 	closewithreturn(this, this.il_retvalue)
 
-// w_student_fine_waiver.create() returns 0
+// w_student_fine_waiver.create() returns 0 [event]
 	this.cb_cancel = create cb_cancel
 	this.dw_control = create dw_control
 	this.cb_ok = create cb_ok
 	this.control = {this.cb_cancel, this.dw_control, this.cb_ok}
 
-// w_student_fine_waiver.destroy() returns 0
+// w_student_fine_waiver.destroy() returns 0 [event]
 	destroy this.cb_cancel
 	destroy this.dw_control
 	destroy this.cb_ok
 
-// w_student_fine_waiver.open() returns long
+// w_student_fine_waiver.open() returns long [event]
 	environment le_env
 	long ll_win_width
 	long ll_win_height
@@ -52,17 +52,17 @@
 	end if
 	return message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.post event ue_close(0)
 	return ::message.returnvalue
 
-// dw_control.ue_enterkey() returns long
+// dw_control.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_control.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_control.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	integer li_null
 	ancestorreturnvalue = super::itemchanged(row, dwo, data)
@@ -89,19 +89,19 @@
 	end choose
 	return ::message.returnvalue
 
-// dw_control.getfocus() returns long
+// dw_control.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	selecttext(1, len(gettext()))
 	return ::message.returnvalue
 
-// cb_ok.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// cb_ok.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		postevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	string ls_errtext
 	long ll_invcode
 	ll_invcode = parent.dw_control.object.serviceinvcode[1]

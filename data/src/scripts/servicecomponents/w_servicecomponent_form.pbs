@@ -357,7 +357,7 @@
 	end if
 	return 0
 
-// w_servicecomponent_form.create() returns 0
+// w_servicecomponent_form.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	if isvalid(this.menuid) then
@@ -374,7 +374,7 @@
 	this.control[icurrent + 2] = this.dw_hidden_refvalue
 	this.control[icurrent + 3] = this.dw_hidden_options
 
-// w_servicecomponent_form.destroy() returns 0
+// w_servicecomponent_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
@@ -383,7 +383,7 @@
 	destroy this.dw_hidden_refvalue
 	destroy this.dw_hidden_options
 
-// w_servicecomponent_form.open() returns long
+// w_servicecomponent_form.open() returns long [event]
 	m_entry lm_menu
 	long ll_width
 	long ll_height
@@ -414,7 +414,7 @@
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_servicecomponent_form.ue_postopen() returns 0
+// w_servicecomponent_form.ue_postopen() returns 0 [event]
 	long ll_rtncode
 	setredraw(false)
 	wf_connect()
@@ -477,7 +477,7 @@
 	this.id_comments.dataobject = "d_servicecomponent_comments"
 	this.id_comments.settransobject(this.it_transobject)
 
-// w_servicecomponent_form.ue_save() returns 0
+// w_servicecomponent_form.ue_save() returns 0 [event]
 	long ll_primarykey
 	long ll_row
 	long ll_counter
@@ -612,9 +612,9 @@
 	end if
 	setpointer(arrow!)
 
-// w_servicecomponent_form.ue_newitem() returns 0
+// w_servicecomponent_form.ue_newitem() returns 0 [event]
 
-// w_servicecomponent_form.ue_newform() returns 0
+// w_servicecomponent_form.ue_newform() returns 0 [event]
 	setredraw(false)
 	this.i_editmode = 1
 	this.i_retrievemode = 2
@@ -644,7 +644,7 @@
 	wf_apply_servicecomponentunit(this.id_master.object.servicecomponentunitcode[1])
 	setredraw(true)
 
-// w_servicecomponent_form.ue_detail() returns 0
+// w_servicecomponent_form.ue_detail() returns 0 [event]
 	long ll_code
 	integer li_protect
 	boolean lb_modify
@@ -668,14 +668,14 @@
 	wf_apply_servicecomponentunit(this.id_master.object.servicecomponentunitcode[1])
 	setredraw(true)
 
-// w_servicecomponent_form.ue_list() returns 0
+// w_servicecomponent_form.ue_list() returns 0 [event]
 	call super::ue_list
 	SQL rollback USING this.it_transobject;
 	this.im_menu.m_file.m_print.enabled = true
 	this.im_menu.m_file.m_post.enabled = true
 	this.im_menu.m_file.m_save.enabled = false
 
-// w_servicecomponent_form.ue_print() returns 0
+// w_servicecomponent_form.ue_print() returns 0 [event]
 	long ll_code
 	long ll_row
 	long li_printretcode
@@ -733,7 +733,84 @@
 	end if
 	messagebox("Printing Error", "Can not Print,~r~nNo rows are retrieved", information!)
 
-// w_servicecomponent_form.ue_refreshddw() returns 0
+// w_servicecomponent_form.ue_refreshddw() returns 0 [event]
 	call super::ue_refreshddw
 	this.idc_servicecomponentunit.retrieve()
 	this.idc_servicecomponenttype.retrieve()
+
+// tab_retrieve.selectionchanging(integer oldindex, integer newindex) returns long [event]
+	integer li_yesno
+	integer li_rtcode
+	if oldindex = 1 and newindex = 2 and parent.editflag = true and parent.id_master.rowcount() > 0 then
+		li_yesno = messagebox("Confirm Changes", "Yes to save changes that you've typed", question!, yesnocancel!, 2)
+		if li_yesno = 1 then
+			getparent().triggerevent("ue_save")
+			if getparent().dynamic wf_commitform() = false then
+				li_rtcode = 1
+			end if
+		elseif li_yesno = 3 then
+			li_rtcode = 1
+		else
+			parent.editflag = false
+			parent.i_editmode = 2
+		end if
+	end if
+	return li_rtcode
+
+// tabpage_detail.create() returns 0 [event]
+	integer icurrent
+	this.dw_print = create dw_print
+	this.dw_options = create dw_options
+	this.dw_refvalue = create dw_refvalue
+	this.dw_comments = create dw_comments
+	call super::create
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_print
+	this.control[icurrent + 2] = this.dw_options
+	this.control[icurrent + 3] = this.dw_refvalue
+	this.control[icurrent + 4] = this.dw_comments
+
+// tabpage_detail.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.dw_print
+	destroy this.dw_options
+	destroy this.dw_refvalue
+	destroy this.dw_comments
+
+// dw_footer.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked(xpos, ypos, row, dwo)
+	choose case dwo.name
+	case "b_options"
+		parent.parent.parent.wf_show_options()
+	case "b_refvalue"
+		parent.parent.parent.wf_show_refvalue()
+	case "b_comments"
+		parent.parent.parent.wf_show_comments()
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.ue_enterkey() returns long [event]
+	if getcolumnname() <> "refdescription" then
+		send(handle(this), 256, 9, long(90))
+		return 1
+	end if
+	return ::message.returnvalue
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	long ll_patientcode
+	long ll_res
+	long ll_found
+	integer li_null
+	datetime ldt_date_null
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	setnull(ldt_date_null)
+	setnull(li_null)
+	choose case dwo.name
+	case "servicecomponenttypecode"
+		parent.parent.parent.wf_apply_servicecomponenttype(long(data))
+	case "servicecomponentunitcode"
+		parent.parent.parent.wf_apply_servicecomponentunit(long(data))
+	end choose
+	return ::message.returnvalue

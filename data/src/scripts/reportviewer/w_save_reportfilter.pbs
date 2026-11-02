@@ -11,18 +11,18 @@
 	end if
 	return ll_count
 
-// w_save_reportfilter.create() returns 0
+// w_save_reportfilter.create() returns 0 [event]
 	this.cb_cancel = create cb_cancel
 	this.cb_ok = create cb_ok
 	this.dw_control = create dw_control
 	this.control = {this.cb_cancel, this.cb_ok, this.dw_control}
 
-// w_save_reportfilter.destroy() returns 0
+// w_save_reportfilter.destroy() returns 0 [event]
 	destroy this.cb_cancel
 	destroy this.cb_ok
 	destroy this.dw_control
 
-// w_save_reportfilter.open() returns long
+// w_save_reportfilter.open() returns long [event]
 	long ll_retcode
 	this.is_filterinfo = message.powerobjectparm
 	SQL rollback USING sqlca;
@@ -40,12 +40,12 @@
 	end if
 	return message.returnvalue
 
-// w_save_reportfilter.close() returns long
+// w_save_reportfilter.close() returns long [event]
 	this.is_filterinfo.i_status = 1
 	closewithreturn(this, this.is_filterinfo)
 	return ::message.returnvalue
 
-// w_save_reportfilter.key(keycode key, unsignedlong keyflags) returns long
+// w_save_reportfilter.key(keycode key, unsignedlong keyflags) returns long [event]
 	if keydown(keyescape!) then
 		this.is_filterinfo.i_status = 0
 		SQL rollback USING sqlca;
@@ -53,24 +53,24 @@
 	end if
 	return ::message.returnvalue
 
-// cb_cancel.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_cancel.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		postevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.is_filterinfo.i_status = 0
 	closewithreturn(parent, parent.is_filterinfo)
 	return ::message.returnvalue
 
-// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		postevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	parent.dw_control.accepttext()
 	if parent.dw_control.getrow() > 0 and parent.wf_duplicate_filter(parent.dw_control.object.filtername[parent.dw_control.getrow()]) > 0 then
 		messagebox("Filter Name Validation!", "Duplicate Filter Name Not Allowed~r~nPlease enter valid Filter Name")
@@ -88,13 +88,13 @@
 	end if
 	return ::message.returnvalue
 
-// dw_control.ue_enterkey() returns long
+// dw_control.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_control.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_control.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	long ll_retcode
 	ancestorreturnvalue = super::itemchanged(row, dwo, data)
@@ -109,7 +109,7 @@
 	end choose
 	return ll_retcode
 
-// dw_control.itemerror(long row, dwobject dwo, string data) returns long
+// dw_control.itemerror(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	long ll_retcode
 	ancestorreturnvalue = super::itemerror(row, dwo, data)

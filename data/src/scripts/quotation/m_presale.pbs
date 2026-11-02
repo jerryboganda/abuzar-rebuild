@@ -1,9 +1,41 @@
 // menu m_presale (quotation)  ancestor: m_multi_entry
 
-// m_presale.create() returns 0
+// m_presale.create() returns 0 [event]
 	m_presale = this
 	call super::create
 	this.text = "m_presale"
 
-// m_presale.destroy() returns 0
+// m_presale.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_populatepurchases = create m_populatepurchases
+	this.m_showpurchaselistforthispre-sales = create m_showpurchaselistforthispre-sales
+	this.item[upperbound(this.item) + 1] = this.m_populatepurchases
+	this.item[upperbound(this.item) + 1] = this.m_showpurchaselistforthispre-sales
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_populatepurchases
+	destroy this.m_showpurchaselistforthispre-sales
+
+// m_populatepurchases.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_populate_purchases()
+
+// m_populatepurchases.create() returns 0 [event]
+	call super::create
+	this.text = "Populate Purchases"
+
+// m_populatepurchases.destroy() returns 0 [event]
+	call super::destroy
+
+// m_showpurchaselistforthispre-sales.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_show_purchase_list()
+
+// m_showpurchaselistforthispre-sales.create() returns 0 [event]
+	call super::create
+	this.text = "Show Purchase List for this Pre-Sales"
+
+// m_showpurchaselistforthispre-sales.destroy() returns 0 [event]
 	call super::destroy

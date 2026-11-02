@@ -336,7 +336,7 @@
 	end if
 	return lb_continue
 
-// w_invoicemarking.create() returns 0
+// w_invoicemarking.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	if isvalid(this.menuid) then
@@ -349,14 +349,14 @@
 	icurrent = upperbound(this.control)
 	this.control[icurrent + 1] = this.dw_invdetail
 
-// w_invoicemarking.destroy() returns 0
+// w_invoicemarking.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 	destroy this.dw_invdetail
 
-// w_invoicemarking.ue_save() returns 0
+// w_invoicemarking.ue_save() returns 0 [event]
 	long ll_detailrows
 	long ll_errrowid
 	long ll_counter
@@ -417,7 +417,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_invoicemarking.ue_newform() returns 0
+// w_invoicemarking.ue_newform() returns 0 [event]
 	this.im_menu.m_file.m_print.enabled = false
 	setredraw(false)
 	this.i_editmode = 1
@@ -446,7 +446,7 @@
 	this.id_detail.setfocus()
 	setredraw(true)
 
-// w_invoicemarking.ue_newitem() returns 0
+// w_invoicemarking.ue_newitem() returns 0 [event]
 	long ll_rowcount
 	long ll_rtcode
 	if this.id_detail.rowcount() > 0 and f_validatedw(this.id_detail) < 0 then
@@ -463,13 +463,13 @@
 	this.im_menu.m_file.m_print.enabled = false
 	this.ib_validatefullcode = true
 
-// w_invoicemarking.close() returns long
+// w_invoicemarking.close() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::close()
 	this.id_itemslist.sharedataoff()
 	return ::message.returnvalue
 
-// w_invoicemarking.ue_list() returns 0
+// w_invoicemarking.ue_list() returns 0 [event]
 	long ll_row
 	m_invoicemarking lm_menu
 	call super::ue_list
@@ -485,11 +485,11 @@
 	ll_row = wf_retrievelist()
 	wf_disabledetailtab(ll_row)
 
-// w_invoicemarking.ue_new() returns 0
+// w_invoicemarking.ue_new() returns 0 [event]
 	call super::ue_new
 	this.im_menu.m_file.m_post.enabled = false
 
-// w_invoicemarking.ue_postopen() returns 0
+// w_invoicemarking.ue_postopen() returns 0 [event]
 	integer li_rtncode
 	integer i
 	long ll_counter
@@ -529,7 +529,7 @@
 	end choose
 	setredraw(true)
 
-// w_invoicemarking.ue_deleteitem() returns 0
+// w_invoicemarking.ue_deleteitem() returns 0 [event]
 	long ll_currow
 	long ll_detailrows
 	this.ib_itemvalidated = true
@@ -539,8 +539,69 @@
 		this.im_menu.m_file.m_save.enabled = false
 	end if
 
-// w_invoicemarking.open() returns long
+// w_invoicemarking.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.tab_retrieve.tabpage_list.enabled = false
 	return ::message.returnvalue
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	long ll_null
+	string ls_null
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	setnull(ll_null)
+	setnull(ls_null)
+	choose case dwo.name
+	case "invoicecode"
+		li_errcode = parent.parent.parent.wf_validateinvcode(row, long(data))
+		return li_errcode
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "invoicecode"
+		choose case parent.parent.parent.ii_invtype
+		case 1
+			messagebox("Sale Invoice Validation", "You must select some Sale Invoice")
+		case 2
+			messagebox("Purchase Invoice Validation", "You must select some Purchase Invoice")
+		case 3
+			messagebox("Sale Return Invoice Validation", "You must select some Sale Return Invoice")
+		case 4
+			messagebox("Purchase Return Invoice Validation", "You must select some Purchase Return Invoice")
+		case 5
+			messagebox("Sale of Service Invoice Validation", "You must select some Sale of Service Invoice")
+		case 6
+			messagebox("Purchase of Service Invoice Validation", "You must select some Purchase of Service Invoice")
+		case 7
+			messagebox("Sale Return Of Service Invoice Validation", "You must select some Sale Return Of Service Invoice")
+		case 8
+			messagebox("Purchase Return Of Service Invoice Validation", "You must select some Purchase Return Of Service Invoice")
+		end choose
+	end choose
+	return 1
+
+// dw_itemsdetail.getfocus() returns long [event]
+	return ::message.returnvalue
+
+// dw_itemsdetail.editchanged(long row, dwobject dwo, string data) returns long [event]
+	return ::message.returnvalue
+
+// tabpage_list.create() returns 0 [event]
+	integer icurrent
+	this.st_3 = create st_3
+	this.em_invno = create em_invno
+	call super::create
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_3
+	this.control[icurrent + 2] = this.em_invno
+
+// tabpage_list.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.st_3
+	destroy this.em_invno

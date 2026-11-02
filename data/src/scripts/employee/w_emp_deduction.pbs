@@ -74,7 +74,7 @@
 		openwithparm(w_account_ledger, ll_acccode)
 	end if
 
-// w_emp_deduction.ue_newform() returns 0
+// w_emp_deduction.ue_newform() returns 0 [event]
 	datawindow ldw_detail
 	call super::ue_newform
 	ldw_detail = this.tab_retrieve.tabpage_detail.dw_detail
@@ -92,7 +92,7 @@
 	this.tab_retrieve.tabpage_detail.dw_detail.object.aliasname.visible = true
 	this.tab_retrieve.tabpage_detail.dw_detail.object.aliasname_t.visible = true
 
-// w_emp_deduction.create() returns 0
+// w_emp_deduction.create() returns 0 [event]
 	call super::create
 	if isvalid(this.menuid) then
 		destroy this.menuid
@@ -101,13 +101,13 @@
 		this.menuid = create m_accountmenu
 	end if
 
-// w_emp_deduction.destroy() returns 0
+// w_emp_deduction.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_emp_deduction.ue_detail() returns 0
+// w_emp_deduction.ue_detail() returns 0 [event]
 	datawindow ldw_detail
 	long ll_row
 	long ll_counter
@@ -139,14 +139,14 @@
 		end if
 	next
 
-// w_emp_deduction.activate() returns long
+// w_emp_deduction.activate() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::activate()
 	this.windowstate = maximized!
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_emp_deduction.ue_save() returns 0
+// w_emp_deduction.ue_save() returns 0 [event]
 	string ls_bal_limit_type
 	string ls_err
 	string ls_mod
@@ -245,13 +245,13 @@
 	end if
 	setpointer(arrow!)
 
-// w_emp_deduction.open() returns long
+// w_emp_deduction.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.is_tablename = "Accounts"
 	return ::message.returnvalue
 
-// w_emp_deduction.ue_postopen() returns 0
+// w_emp_deduction.ue_postopen() returns 0 [event]
 	long ll_found
 	m_accountmenu lm_menu
 	call super::ue_postopen
@@ -262,3 +262,39 @@
 		lm_menu.m_file.m_showaccountledger.visible = true
 		lm_menu.m_file.m_showaccountledger.enabled = true
 	end if
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "subcode"
+		if data = "" or isnull(data) then
+			messagebox("Sub. Account Validation", "Value required for Sub. Account in current row")
+		end if
+	end choose
+	return 1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "aliasname"
+		if parent.parent.parent.wf_duplicatealiasname(data) then
+			messagebox("Alias Name Validation", "Account Alias Name Duplication Error~r~nPlease enter some other Alias Name")
+			return 1
+		end if
+	case "name"
+		if parent.parent.parent.wf_duplicateaccname(data) then
+			messagebox("Name Validation", "Duplication Name Error~n~rPlease Choose Some Other Name")
+			return 1
+		end if
+	case "subcode"
+		parent.parent.parent.id_detail.setitem(parent.parent.parent.id_detail.getrow(), "catacccode", parent.parent.parent.wf_getcategoryaccount(long(data)))
+		parent.parent.parent.id_detail.setitem(parent.parent.parent.id_detail.getrow(), "mainacccode", parent.parent.parent.wf_getmainaccount(parent.parent.parent.id_detail.getitemnumber(parent.parent.parent.id_detail.getrow(), "catacccode")))
+	case "emp_deduction_percentage"
+	end choose
+	return ::message.returnvalue

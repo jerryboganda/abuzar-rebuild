@@ -1,6 +1,6 @@
 // window w_arg_sinvcode_linvcode_invselection (reports)  ancestor: w_arg_sinvcode_linvcode
 
-// w_arg_sinvcode_linvcode_invselection.create() returns 0
+// w_arg_sinvcode_linvcode_invselection.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.dw_invoiceselection = create dw_invoiceselection
@@ -17,7 +17,7 @@
 	this.control[icurrent + 5] = this.cbx_invoiceprinting
 	this.control[icurrent + 6] = this.gb_2
 
-// w_arg_sinvcode_linvcode_invselection.destroy() returns 0
+// w_arg_sinvcode_linvcode_invselection.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.dw_invoiceselection
 	destroy this.cb_retrieve
@@ -26,24 +26,64 @@
 	destroy this.cbx_invoiceprinting
 	destroy this.gb_2
 
-// w_arg_sinvcode_linvcode_invselection.open() returns long
+// w_arg_sinvcode_linvcode_invselection.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.dw_invoiceselection.settransobject(sqlca)
 	this.dw_invoiceselection.reset()
 	return ::message.returnvalue
 
-// dw_invoiceselection.ue_enterkey() returns long
+// cb_ok.clicked() returns long [event]
+	long ll_counter
+	long ll_rowcount
+	long ll_index
+	long[] la_invcode
+	boolean lb_row
+	lb_row = false
+	ll_rowcount = parent.dw_invoiceselection.rowcount()
+	ll_index = 1
+	for ll_counter = 1 to ll_rowcount
+		if parent.dw_invoiceselection.getitemstring(ll_counter, "invselect") = "Y" then
+			la_invcode[ll_index] = parent.dw_invoiceselection.getitemnumber(ll_counter, "code")
+			ll_index = ll_index + 1
+			lb_row = true
+		end if
+	next
+	if not lb_row then
+		messagebox("Selection Validation", "Please select some invoice from the Invoice Selection List")
+		return ::message.returnvalue
+	end if
+	parent.istr_arg.i_status = 1
+	parent.istr_arg.la_longlist = la_invcode
+	if parent.cbx_storekeepersummary.checked = true then
+		parent.istr_arg.s_name1 = "Y"
+	else
+		parent.istr_arg.s_name1 = "N"
+	end if
+	if parent.cbx_billsummary.checked = true then
+		parent.istr_arg.s_name2 = "Y"
+	else
+		parent.istr_arg.s_name2 = "N"
+	end if
+	if parent.cbx_invoiceprinting.checked = true then
+		parent.istr_arg.s_name3 = "Y"
+	else
+		parent.istr_arg.s_name3 = "N"
+	end if
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// dw_invoiceselection.ue_enterkey() returns long [event]
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// cb_retrieve.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_retrieve.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		postevent("Clicked")
 	end if
 	return ::message.returnvalue
 
-// cb_retrieve.clicked() returns long
+// cb_retrieve.clicked() returns long [event]
 	long ll_sinvcode
 	long ll_linvcode
 	long ll_custcode

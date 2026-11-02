@@ -1,6 +1,6 @@
 // window w_arg_cust_sinv_linv_term_batch_exp_disc (reports_cust)  ancestor: w_popup_forselection_walias
 
-// w_arg_cust_sinv_linv_term_batch_exp_disc.create() returns 0
+// w_arg_cust_sinv_linv_term_batch_exp_disc.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.gb_2 = create gb_2
@@ -45,7 +45,7 @@
 	this.control[icurrent + 19] = this.st_9
 	this.control[icurrent + 20] = this.gb_3
 
-// w_arg_cust_sinv_linv_term_batch_exp_disc.destroy() returns 0
+// w_arg_cust_sinv_linv_term_batch_exp_disc.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.gb_2
 	destroy this.st_1
@@ -68,7 +68,7 @@
 	destroy this.st_9
 	destroy this.gb_3
 
-// w_arg_cust_sinv_linv_term_batch_exp_disc.open() returns long
+// w_arg_cust_sinv_linv_term_batch_exp_disc.open() returns long [event]
 	long ancestorreturnvalue
 	date ld_currdate
 	string ls_text
@@ -86,71 +86,107 @@
 	this.ddlb_format.selectitem("Delivery Challan", 1)
 	return ::message.returnvalue
 
-// w_arg_cust_sinv_linv_term_batch_exp_disc.ue_close() returns 0
+// w_arg_cust_sinv_linv_term_batch_exp_disc.ue_close() returns 0 [event]
 	closewithreturn(this, this.istr_arg)
 
-// em_startdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_cancel.clicked() returns long [event]
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked()
+	parent.istr_arg.l_code1 = parent.id_selected.getitemnumber(1, "code")
+	if isnull(parent.istr_arg.l_code1) then
+		parent.istr_arg.l_code1 = 0
+	end if
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	if parent.dw_startendinvoice.accepttext() = 1 then
+		parent.istr_arg.l_code2 = parent.dw_startendinvoice.getitemnumber(1, "sinvcode")
+		parent.istr_arg.l_code3 = parent.dw_startendinvoice.getitemnumber(1, "linvcode")
+	else
+		return ::message.returnvalue
+	end if
+	parent.em_caption.getdata(parent.istr_arg.s_name1)
+	parent.em_term1.getdata(parent.istr_arg.s_name2)
+	parent.em_term2.getdata(parent.istr_arg.s_name3)
+	parent.em_discperc.getdata(parent.istr_arg.db_code1)
+	if parent.cbx_batch.checked = true then
+		parent.istr_arg.l_code4 = 1
+	else
+		parent.istr_arg.l_code4 = 0
+	end if
+	if parent.ddlb_format.text = "Delivery Challan" then
+		parent.istr_arg.l_code5 = 1
+	else
+		parent.istr_arg.l_code5 = 2
+	end if
+	parent.istr_arg.i_status = 1
+	return ::message.returnvalue
+
+// em_startdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// em_startdate.getfocus() returns long
+// em_startdate.getfocus() returns long [event]
 	selecttext(1, len(this.text))
 	return ::message.returnvalue
 
-// em_enddate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// em_enddate.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// em_enddate.getfocus() returns long
+// em_enddate.getfocus() returns long [event]
 	selecttext(1, len(this.text))
 	return ::message.returnvalue
 
-// dw_startendinvoice.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// dw_startendinvoice.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// em_term1.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// em_term1.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// em_term1.getfocus() returns long
+// em_term1.getfocus() returns long [event]
 	selecttext(1, len(this.text))
 	return ::message.returnvalue
 
-// em_term2.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// em_term2.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// em_term2.getfocus() returns long
+// em_term2.getfocus() returns long [event]
 	selecttext(1, len(this.text))
 	return ::message.returnvalue
 
-// em_caption.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// em_caption.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// em_caption.getfocus() returns long
+// em_caption.getfocus() returns long [event]
 	selecttext(1, len(this.text))
 	return ::message.returnvalue
 
-// em_discperc.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// em_discperc.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// em_discperc.getfocus() returns long
+// em_discperc.getfocus() returns long [event]
 	selecttext(1, len(this.text))
 	return ::message.returnvalue

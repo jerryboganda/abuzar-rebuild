@@ -1,6 +1,6 @@
 // window w_arg_saleinvcode_iteminquiry (reports)  ancestor: w_arguements
 
-// w_arg_saleinvcode_iteminquiry.create() returns 0
+// w_arg_saleinvcode_iteminquiry.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.dw_control2 = create dw_control2
@@ -9,16 +9,16 @@
 	this.control[icurrent + 1] = this.dw_control2
 	this.control[icurrent + 2] = this.st_4
 
-// w_arg_saleinvcode_iteminquiry.destroy() returns 0
+// w_arg_saleinvcode_iteminquiry.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.dw_control2
 	destroy this.st_4
 
-// w_arg_saleinvcode_iteminquiry.ue_close(integer ai_stauts) returns 0
+// w_arg_saleinvcode_iteminquiry.ue_close(integer ai_stauts) returns 0 [event]
 	super::ue_close(ai_stauts)
 	closewithreturn(this, this.istr_arg)
 
-// w_arg_saleinvcode_iteminquiry.open() returns long
+// w_arg_saleinvcode_iteminquiry.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.em_startdate.text = string(today(), "dd/mm/yyyy hh:mm:ss")
@@ -27,6 +27,24 @@
 	this.dw_control2.scrolltorow(0)
 	return ::message.returnvalue
 
-// dw_control2.ue_enterkey() returns long
+// cb_cancel.clicked() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked()
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long [event]
+	long ancestorreturnvalue
+	long ll_invcode
+	long ll_retcode
+	ancestorreturnvalue = super::clicked()
+	parent.dw_control2.accepttext()
+	ll_invcode = parent.dw_control2.getitemnumber(1, "saleinvcode")
+	parent.istr_arg.l_code1 = ll_invcode
+	parent.istr_arg.i_status = 1
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// dw_control2.ue_enterkey() returns long [event]
 	send(handle(this), 256, 9, long(90))
 	return ::message.returnvalue

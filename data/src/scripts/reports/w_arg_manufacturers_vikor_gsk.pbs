@@ -1,6 +1,6 @@
 // window w_arg_manufacturers_vikor_gsk (reports)  ancestor: w_listarguments
 
-// w_arg_manufacturers_vikor_gsk.create() returns 0
+// w_arg_manufacturers_vikor_gsk.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.st_4 = create st_4
@@ -19,7 +19,7 @@
 	this.control[icurrent + 6] = this.gb_overallprogress
 	this.control[icurrent + 7] = this.gb_5
 
-// w_arg_manufacturers_vikor_gsk.destroy() returns 0
+// w_arg_manufacturers_vikor_gsk.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.st_4
 	destroy this.st_8
@@ -29,7 +29,7 @@
 	destroy this.gb_overallprogress
 	destroy this.gb_5
 
-// w_arg_manufacturers_vikor_gsk.open() returns long
+// w_arg_manufacturers_vikor_gsk.open() returns long [event]
 	long ancestorreturnvalue
 	long ll_counter
 	long ll_rowcount
@@ -49,4 +49,170 @@
 	next
 	ls_dstcode = f_stringpreferences("MerckDistCode")
 	this.em_dscode.text = ls_dstcode
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long [event]
+	long ancestorreturnvalue
+	long ll_count
+	long ll_counter
+	long ll_innercounter
+	long ll_found
+	string ls_path
+	string ls_fn
+	datastore lds_temp
+	ancestorreturnvalue = super::clicked()
+	ls_path = trim(f_stringpreferences("OutputFilePath"))
+	lds_temp = create datastore
+	if parent.cbx_all.checked = true then
+		for ll_counter = 1 to parent.idc_categories.rowcount()
+			parent.istr_arg.ia_integerlist[ll_counter] = parent.idc_categories.getitemnumber(ll_counter, "manfcode")
+		next
+	else
+		for ll_counter = 1 to ll_counter
+			ll_found = parent.idc_categories.find("name ='" + parent.lb_selectedcategories.text(ll_counter) + "'", 1, parent.idc_categories.rowcount())
+			if ll_found > 0 then
+				parent.istr_arg.ia_integerlist[ll_counter] = parent.idc_categories.getitemnumber(ll_found, "manfcode")
+			end if
+		next
+	end if
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	parent.em_dscode.getdata(parent.istr_arg.s_name1)
+	if parent.istr_arg.s_name1 = "" or isnull(parent.istr_arg.s_name1) then
+		messagebox("Distributor Code Validation!", "Please enter valid Distributor Code")
+		parent.em_dscode.setfocus()
+		return ::message.returnvalue
+	end if
+	parent.istr_arg.i_supress = parent.cbx_supress.checked
+	parent.istr_arg.i_hide = parent.cbx_hide.checked
+	parent.istr_arg.i_status = 1
+	parent.gb_overallprogress.visible = true
+	parent.hpb_hpb.visible = true
+	if parent.istr_arg.i_status = 1 then
+		ls_fn = ls_path + "Prncipl.txt"
+		lds_temp.dataobject = "d_vikor_gsk_principal_data"
+		lds_temp.settransobject(sqlca)
+		lds_temp.retrieve(parent.istr_arg.s_name1, parent.istr_arg.ia_integerlist)
+		if f_save_from_ds_to_textfile(ls_fn, lds_temp, "|", false) = 0 then
+			messagebox("Sales Data Generation Problem", "Error Generating Principal Data Text File~r~nPlease Try Later")
+			destroy lds_temp
+			parent.post event ue_close(0)
+		end if
+		parent.hpb_hpb.stepit()
+		ls_fn = ls_path + "Items.txt"
+		lds_temp.dataobject = "d_vikor_gsk_items_data"
+		lds_temp.settransobject(sqlca)
+		lds_temp.retrieve(parent.istr_arg.s_name1, parent.istr_arg.ia_integerlist)
+		if f_save_from_ds_to_textfile(ls_fn, lds_temp, "|", false) = 0 then
+			messagebox("Sales Data Generation Problem", "Error Generating Items Data Text File~r~nPlease Try Later")
+			destroy lds_temp
+			parent.post event ue_close(0)
+		end if
+		parent.hpb_hpb.stepit()
+		ls_fn = ls_path + "Customers.txt"
+		lds_temp.dataobject = "d_vikor_gsk_customers_data"
+		lds_temp.settransobject(sqlca)
+		lds_temp.retrieve(parent.istr_arg.s_name1)
+		if f_save_from_ds_to_textfile(ls_fn, lds_temp, "|", false) = 0 then
+			messagebox("Sales Data Generation Problem", "Error Generating Customers Data Text File~r~nPlease Try Later")
+			destroy lds_temp
+			parent.post event ue_close(0)
+		end if
+		parent.hpb_hpb.stepit()
+		ls_fn = ls_path + "Regon.txt"
+		lds_temp.dataobject = "d_vikor_gsk_region_data"
+		lds_temp.settransobject(sqlca)
+		lds_temp.retrieve(parent.istr_arg.s_name1, parent.istr_arg.ia_integerlist)
+		if f_save_from_ds_to_textfile(ls_fn, lds_temp, "|", false) = 0 then
+			messagebox("Sales Data Generation Problem", "Error Generating Region Data Text File~r~nPlease Try Later")
+			destroy lds_temp
+			parent.post event ue_close(0)
+		end if
+		parent.hpb_hpb.stepit()
+		ls_fn = ls_path + "MedicalR.txt"
+		lds_temp.dataobject = "d_vikor_gsk_medicalrep_data"
+		lds_temp.settransobject(sqlca)
+		lds_temp.retrieve(parent.istr_arg.s_name1, parent.istr_arg.ia_integerlist)
+		if f_save_from_ds_to_textfile(ls_fn, lds_temp, "|", false) = 0 then
+			messagebox("Sales Data Generation Problem", "Error Generating Medical Rep. Data Text File~r~nPlease Try Later")
+			destroy lds_temp
+			parent.post event ue_close(0)
+		end if
+		parent.hpb_hpb.stepit()
+		ls_fn = ls_path + "Territory.txt"
+		lds_temp.dataobject = "d_vikor_gsk_territory_data"
+		lds_temp.settransobject(sqlca)
+		lds_temp.retrieve(parent.istr_arg.s_name1, parent.istr_arg.ia_integerlist)
+		if f_save_from_ds_to_textfile(ls_fn, lds_temp, "|", false) = 0 then
+			messagebox("Sales Data Generation Problem", "Error Generating Territory Rep. Data Text File~r~nPlease Try Later")
+			destroy lds_temp
+			parent.post event ue_close(0)
+		end if
+		parent.hpb_hpb.stepit()
+		ls_fn = ls_path + "Salesman.txt"
+		lds_temp.dataobject = "d_vikor_gsk_salesman_data"
+		lds_temp.settransobject(sqlca)
+		lds_temp.retrieve(parent.istr_arg.s_name1)
+		if f_save_from_ds_to_textfile(ls_fn, lds_temp, "|", false) = 0 then
+			messagebox("Sales Data Generation Problem", "Error Generating Sales Person Data Text File~r~nPlease Try Later")
+			destroy lds_temp
+			parent.post event ue_close(0)
+		end if
+		parent.hpb_hpb.stepit()
+		ls_fn = ls_path + "Zone.txt"
+		lds_temp.dataobject = "d_vikor_gsk_zones_data"
+		lds_temp.settransobject(sqlca)
+		lds_temp.retrieve(parent.istr_arg.s_name1)
+		if f_save_from_ds_to_textfile(ls_fn, lds_temp, "|", false) = 0 then
+			messagebox("Sales Data Generation Problem", "Error Generating Zones Data Text File~r~nPlease Try Later")
+			destroy lds_temp
+			parent.post event ue_close(0)
+		end if
+		parent.hpb_hpb.stepit()
+		ls_fn = ls_path + "Areas.txt"
+		lds_temp.dataobject = "d_vikor_gsk_areas_data"
+		lds_temp.settransobject(sqlca)
+		lds_temp.retrieve(parent.istr_arg.s_name1)
+		if f_save_from_ds_to_textfile(ls_fn, lds_temp, "|", false) = 0 then
+			messagebox("Sales Data Generation Problem", "Error Generating Areas Data Text File~r~nPlease Try Later")
+			destroy lds_temp
+			parent.post event ue_close(0)
+		end if
+		parent.hpb_hpb.stepit()
+		ls_fn = ls_path + "Sales.txt"
+		lds_temp.dataobject = "d_vikor_gsk_sales_data"
+		lds_temp.settransobject(sqlca)
+		lds_temp.retrieve(parent.istr_arg.s_name1, parent.istr_arg.ia_integerlist, parent.istr_arg.d_sdate, parent.istr_arg.d_edate)
+		if f_save_from_ds_to_textfile(ls_fn, lds_temp, "|", false) = 0 then
+			messagebox("Sales Data Generation Problem", "Error Generating Net Sales Data Text File~r~nPlease Try Later")
+			destroy lds_temp
+			parent.post event ue_close(0)
+		end if
+		parent.hpb_hpb.stepit()
+		ls_fn = ls_path + "Stok.txt"
+		lds_temp.dataobject = "d_vikor_gsk_stock_data"
+		lds_temp.settransobject(sqlca)
+		lds_temp.retrieve(parent.istr_arg.s_name1, parent.istr_arg.ia_integerlist, parent.istr_arg.d_sdate, parent.istr_arg.d_edate)
+		if f_save_from_ds_to_textfile(ls_fn, lds_temp, "|", false) = 0 then
+			messagebox("Sales Data Generation Problem", "Error Generating Stock Data Text File~r~nPlease Try Later")
+			destroy lds_temp
+			parent.post event ue_close(0)
+		end if
+		parent.hpb_hpb.stepit()
+		ls_fn = ls_path + "Trans.txt"
+		lds_temp.dataobject = "d_vikor_gsk_trans_data"
+		lds_temp.settransobject(sqlca)
+		lds_temp.retrieve(parent.istr_arg.s_name1, parent.istr_arg.ia_integerlist, parent.istr_arg.d_sdate, parent.istr_arg.d_edate)
+		if f_save_from_ds_to_textfile(ls_fn, lds_temp, "|", false) = 0 then
+			messagebox("Sales Data Generation Problem", "Error Generating Stock Data Text File~r~nPlease Try Later")
+			destroy lds_temp
+			parent.post event ue_close(0)
+		end if
+		parent.hpb_hpb.stepit()
+	end if
+	destroy lds_temp
+	parent.hpb_hpb.visible = false
+	parent.hpb_hpb.position = 0
+	parent.gb_overallprogress.visible = false
+	parent.post event ue_close(1)
 	return ::message.returnvalue

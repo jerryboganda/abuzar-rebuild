@@ -1,6 +1,6 @@
 // window w_arg_manufacturers_gsk (reports)  ancestor: w_listarguments
 
-// w_arg_manufacturers_gsk.create() returns 0
+// w_arg_manufacturers_gsk.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.st_4 = create st_4
@@ -25,7 +25,7 @@
 	this.control[icurrent + 9] = this.gb_overallprogress
 	this.control[icurrent + 10] = this.gb_5
 
-// w_arg_manufacturers_gsk.destroy() returns 0
+// w_arg_manufacturers_gsk.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.st_4
 	destroy this.st_8
@@ -38,7 +38,7 @@
 	destroy this.gb_overallprogress
 	destroy this.gb_5
 
-// w_arg_manufacturers_gsk.open() returns long
+// w_arg_manufacturers_gsk.open() returns long [event]
 	long ancestorreturnvalue
 	long ll_counter
 	long ll_rowcount
@@ -58,7 +58,62 @@
 	this.is_sale = trim(f_stringpreferences("OutputFilePath")) + "GSKSale.Txt"
 	return ::message.returnvalue
 
-// cb_sale.clicked() returns long
+// cb_ok.clicked() returns long [event]
+	long ancestorreturnvalue
+	long ll_count
+	long ll_counter
+	long ll_innercounter
+	long ll_found
+	datastore lds_temp
+	ancestorreturnvalue = super::clicked()
+	lds_temp = create datastore
+	if parent.cbx_all.checked = true then
+		for ll_counter = 1 to parent.idc_categories.rowcount()
+			parent.istr_arg.ia_integerlist[ll_counter] = parent.idc_categories.getitemnumber(ll_counter, "manfcode")
+		next
+	else
+		for ll_counter = 1 to ll_counter
+			ll_found = parent.idc_categories.find("name ='" + parent.lb_selectedcategories.text(ll_counter) + "'", 1, parent.idc_categories.rowcount())
+			if ll_found > 0 then
+				parent.istr_arg.ia_integerlist[ll_counter] = parent.idc_categories.getitemnumber(ll_found, "manfcode")
+			end if
+		next
+	end if
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	parent.em_dscode.getdata(parent.istr_arg.s_name1)
+	if parent.istr_arg.s_name1 = "" or isnull(parent.istr_arg.s_name1) then
+		messagebox("Distributor Code Validation!", "Please enter valid Distributor Code")
+		parent.em_dscode.setfocus()
+		return ::message.returnvalue
+	end if
+	parent.istr_arg.i_supress = parent.cbx_supress.checked
+	parent.istr_arg.i_hide = parent.cbx_hide.checked
+	parent.istr_arg.i_status = 1
+	parent.gb_overallprogress.visible = true
+	parent.hpb_hpb.visible = true
+	if parent.cbx_sale.checked = true then
+		lds_temp.dataobject = "d_gsk_salesdata"
+		lds_temp.settransobject(sqlca)
+		lds_temp.retrieve(parent.istr_arg.s_name1, parent.istr_arg.ia_integerlist, parent.istr_arg.d_sdate, parent.istr_arg.d_edate)
+		parent.hpb_hpb.stepit()
+		if f_save_from_ds_to_fff(parent.is_sale, lds_temp, ",", false) = 0 then
+			messagebox("Sales Data Generation Problem", "Error Generating SalesData Text File~r~nPlease Try Later")
+			destroy lds_temp
+			parent.post event ue_close(0)
+		end if
+		parent.hpb_hpb.stepit()
+		parent.hpb_hpb.stepit()
+		parent.hpb_hpb.stepit()
+	end if
+	destroy lds_temp
+	parent.hpb_hpb.visible = false
+	parent.hpb_hpb.position = 5
+	parent.gb_overallprogress.visible = false
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// cb_sale.clicked() returns long [event]
 	string ls_named
 	integer li_value
 	li_value = getfilesavename("Select File Location", parent.is_sale, ls_named, "TXT", "All Files (*.*),*.*," + "All Files (*.*),*.*")

@@ -1,10 +1,10 @@
 // window w_populate_patient_recurring_invoices (salerespwin)  ancestor: window
 
-// w_populate_patient_recurring_invoices.ue_setfocus(char ac_type) returns 0
+// w_populate_patient_recurring_invoices.ue_setfocus(char ac_type) returns 0 [event]
 	long ll_invcode
 	setnull(ll_invcode)
 
-// w_populate_patient_recurring_invoices.ue_postopen() returns 0
+// w_populate_patient_recurring_invoices.ue_postopen() returns 0 [event]
 	long ll_invcode
 	this.istr_template.b_userinput = false
 	this.dw_control.settransobject(sqlca)
@@ -18,7 +18,7 @@
 	this.dw_control.scrolltorow(0)
 	this.dw_control.setfocus()
 
-// w_populate_patient_recurring_invoices.create() returns 0
+// w_populate_patient_recurring_invoices.create() returns 0 [event]
 	this.dw_control = create dw_control
 	this.st_saleinvno = create st_saleinvno
 	this.cb_cancel = create cb_cancel
@@ -26,14 +26,14 @@
 	this.gb_1 = create gb_1
 	this.control = {this.dw_control, this.st_saleinvno, this.cb_cancel, this.cb_ok, this.gb_1}
 
-// w_populate_patient_recurring_invoices.destroy() returns 0
+// w_populate_patient_recurring_invoices.destroy() returns 0 [event]
 	destroy this.dw_control
 	destroy this.st_saleinvno
 	destroy this.cb_cancel
 	destroy this.cb_ok
 	destroy this.gb_1
 
-// w_populate_patient_recurring_invoices.open() returns long
+// w_populate_patient_recurring_invoices.open() returns long [event]
 	long ll_win_width
 	long ll_win_height
 	long ll_width
@@ -56,32 +56,32 @@
 	end if
 	return message.returnvalue
 
-// w_populate_patient_recurring_invoices.close() returns long
+// w_populate_patient_recurring_invoices.close() returns long [event]
 	closewithreturn(this, this.istr_template)
 	return ::message.returnvalue
 
-// w_populate_patient_recurring_invoices.key(keycode key, unsignedlong keyflags) returns long
+// w_populate_patient_recurring_invoices.key(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		post event Close()
 	end if
 	return ::message.returnvalue
 
-// dw_control.key(keycode key, unsignedlong keyflags) returns long
+// dw_control.key(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		parent.post event Close()
 	end if
 	return ::message.returnvalue
 
-// dw_control.itemerror(long row, dwobject dwo, string data) returns long
+// dw_control.itemerror(long row, dwobject dwo, string data) returns long [event]
 	messagebox("Sale Invoice Code Validation", "Please enter valid Sale Invoice Code")
 	return 1
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.istr_template.b_userinput = false
 	parent.post event Close()
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	long ll_find
 	long ll_invcode
 	parent.istr_template.b_userinput = false

@@ -1,9 +1,9 @@
 // window w_cashierjobactivity_cashtendered (cashierjob)  ancestor: window
 
-// w_cashierjobactivity_cashtendered.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// w_cashierjobactivity_cashtendered.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	return ::message.returnvalue
 
-// w_cashierjobactivity_cashtendered.ue_close(integer ai_closemode) returns integer
+// w_cashierjobactivity_cashtendered.ue_close(integer ai_closemode) returns integer [event]
 	long ll_currrow
 	long ll_counter
 	long ll_doccode
@@ -362,7 +362,7 @@
 	end if
 	return ls_report
 
-// w_cashierjobactivity_cashtendered.create() returns 0
+// w_cashierjobactivity_cashtendered.create() returns 0 [event]
 	this.dw_print = create dw_print
 	this.cb_print = create cb_print
 	this.dw_cash = create dw_cash
@@ -371,7 +371,7 @@
 	this.dw_header = create dw_header
 	this.control = {this.dw_print, this.cb_print, this.dw_cash, this.cb_ok, this.cb_cancel, this.dw_header}
 
-// w_cashierjobactivity_cashtendered.destroy() returns 0
+// w_cashierjobactivity_cashtendered.destroy() returns 0 [event]
 	destroy this.dw_print
 	destroy this.cb_print
 	destroy this.dw_cash
@@ -379,7 +379,7 @@
 	destroy this.cb_cancel
 	destroy this.dw_header
 
-// w_cashierjobactivity_cashtendered.open() returns long
+// w_cashierjobactivity_cashtendered.open() returns long [event]
 	long ll_row
 	long ll_currrow
 	long ll_counter
@@ -439,12 +439,12 @@
 	this.dw_cash.insertrow(0)
 	return ::message.returnvalue
 
-// cb_print.clicked() returns long
+// cb_print.clicked() returns long [event]
 	parent.ib_print = true
 	parent.cb_ok.triggerevent(clicked!)
 	return ::message.returnvalue
 
-// dw_cash.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_cash.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	integer li_errcode
 	long ll_null
@@ -480,19 +480,19 @@
 	end choose
 	return li_errcode
 
-// dw_cash.ue_enterkey() returns long
+// dw_cash.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_cash.getfocus() returns long
+// dw_cash.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	selecttext(1, len(gettext()))
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	long ll_counter
 	if parent.id_header.rowcount() > 0 and (isnull(parent.id_header.object.doccode[parent.id_header.rowcount()]) and parent.id_header.object.amount[parent.id_header.rowcount()] = 0) then
 		parent.id_header.scrolltorow(parent.id_header.rowcount())
@@ -537,11 +537,11 @@
 	end if
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.post event ue_close(-1)
 	return ::message.returnvalue
 
-// dw_header.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_header.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	integer li_errcode
 	ancestorreturnvalue = super::itemchanged(row, dwo, data)
@@ -555,7 +555,7 @@
 	end choose
 	return li_errcode
 
-// dw_header.itemerror(long row, dwobject dwo, string data) returns long
+// dw_header.itemerror(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemerror(row, dwo, data)
 	choose case dwo.name
@@ -566,7 +566,7 @@
 	end choose
 	return 1
 
-// dw_header.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_header.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
 	if parent.ib_rowvalidated = false and parent.wf_validateitem() = -1 then
@@ -574,7 +574,7 @@
 	end if
 	return ::message.returnvalue
 
-// dw_header.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// dw_header.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	long ancestorreturnvalue
 	long ll_rowcount
 	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
@@ -613,7 +613,7 @@
 	end if
 	return ::message.returnvalue
 
-// dw_header.ue_enterkey() returns long
+// dw_header.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	long ll_rowcount
 	ancestorreturnvalue = super::ue_enterkey()
@@ -642,7 +642,7 @@
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_header.rowfocuschanging(long currentrow, long newrow) returns long
+// dw_header.rowfocuschanging(long currentrow, long newrow) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::rowfocuschanging(currentrow, newrow)
 	if currentrow > 0 and rowcount() > 0 and (isnull(parent.id_header.object.doccode[currentrow]) and currentrow = parent.id_header.rowcount()) then

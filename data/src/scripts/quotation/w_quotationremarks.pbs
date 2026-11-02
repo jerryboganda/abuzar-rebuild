@@ -1,17 +1,17 @@
 // window w_quotationremarks (quotation)  ancestor: window
 
-// w_quotationremarks.create() returns 0
+// w_quotationremarks.create() returns 0 [event]
 	this.cb_cancel = create cb_cancel
 	this.cb_ok = create cb_ok
 	this.dw_quotationremarks = create dw_quotationremarks
 	this.control = {this.cb_cancel, this.cb_ok, this.dw_quotationremarks}
 
-// w_quotationremarks.destroy() returns 0
+// w_quotationremarks.destroy() returns 0 [event]
 	destroy this.cb_cancel
 	destroy this.cb_ok
 	destroy this.dw_quotationremarks
 
-// w_quotationremarks.open() returns long
+// w_quotationremarks.open() returns long [event]
 	this.is_quotationremarks = message.powerobjectparm
 	this.dw_quotationremarks.settransobject(sqlca)
 	this.dw_quotationremarks.insertrow(0)
@@ -39,33 +39,33 @@
 	end if
 	return message.returnvalue
 
-// w_quotationremarks.close() returns long
+// w_quotationremarks.close() returns long [event]
 	closewithreturn(this, this.is_quotationremarks)
 	return ::message.returnvalue
 
-// w_quotationremarks.key(keycode key, unsignedlong keyflags) returns long
+// w_quotationremarks.key(keycode key, unsignedlong keyflags) returns long [event]
 	if keydown(keyescape!) then
 		close(this)
 	end if
 	return ::message.returnvalue
 
-// cb_cancel.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_cancel.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		postevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	closewithreturn(parent, parent.is_quotationremarks)
 	return ::message.returnvalue
 
-// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		postevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	parent.dw_quotationremarks.accepttext()
 	parent.is_quotationremarks.remarks2 = parent.dw_quotationremarks.getitemstring(1, "remarks2")
 	parent.is_quotationremarks.remarks3 = parent.dw_quotationremarks.getitemstring(1, "remarks3")
@@ -78,7 +78,7 @@
 	closewithreturn(parent, parent.is_quotationremarks)
 	return ::message.returnvalue
 
-// dw_quotationremarks.ue_enterkey() returns long
+// dw_quotationremarks.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))

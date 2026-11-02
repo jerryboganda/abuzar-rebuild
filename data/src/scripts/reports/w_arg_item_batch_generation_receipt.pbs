@@ -1,6 +1,6 @@
 // window w_arg_item_batch_generation_receipt (reports)  ancestor: w_popup_forselection_walias
 
-// w_arg_item_batch_generation_receipt.create() returns 0
+// w_arg_item_batch_generation_receipt.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.gb_2 = create gb_2
@@ -17,7 +17,7 @@
 	this.control[icurrent + 5] = this.em_enddate
 	this.control[icurrent + 6] = this.dw_control
 
-// w_arg_item_batch_generation_receipt.destroy() returns 0
+// w_arg_item_batch_generation_receipt.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.gb_2
 	destroy this.st_1
@@ -26,7 +26,7 @@
 	destroy this.em_enddate
 	destroy this.dw_control
 
-// w_arg_item_batch_generation_receipt.open() returns long
+// w_arg_item_batch_generation_receipt.open() returns long [event]
 	long ancestorreturnvalue
 	date ld_currdate
 	string ls_text
@@ -45,28 +45,63 @@
 	this.dw_control.scrolltorow(0)
 	return ::message.returnvalue
 
-// w_arg_item_batch_generation_receipt.ue_close() returns 0
+// w_arg_item_batch_generation_receipt.ue_close() returns 0 [event]
 	closewithreturn(this, this.istr_arg)
 
-// em_startdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_cancel.clicked() returns long [event]
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long [event]
+	long ancestorreturnvalue
+	double ld_tmp
+	string ls_temp
+	ancestorreturnvalue = super::clicked()
+	parent.dw_control.accepttext()
+	parent.istr_arg.l_code1 = parent.id_selected.getitemnumber(1, "code")
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	parent.istr_arg.i_status = 1
+	parent.istr_arg.l_code2 = parent.dw_control.object.startno[1]
+	parent.istr_arg.l_code3 = parent.dw_control.object.increment[1]
+	parent.istr_arg.l_code4 = parent.dw_control.object.noofbatch[1]
+	parent.istr_arg.l_code5 = parent.dw_control.object.batchqty[1]
+	if parent.istr_arg.l_code3 > parent.istr_arg.l_code4 then
+		messagebox("Range Validation!", "Please enter valid start, and increment number")
+		parent.dw_control.setcolumn("startno")
+		parent.dw_control.setfocus()
+		return ::message.returnvalue
+	end if
+	parent.istr_arg.s_name1 = parent.dw_control.object.prebatch[1]
+	if isnull(parent.istr_arg.s_name1) then
+		parent.istr_arg.s_name1 = ""
+	end if
+	parent.istr_arg.s_name2 = parent.dw_control.object.postbatch[1]
+	if isnull(parent.istr_arg.s_name2) then
+		parent.istr_arg.s_name2 = ""
+	end if
+	parent.istr_arg.d_sdate = parent.dw_control.object.expirydate[1]
+	return ::message.returnvalue
+
+// em_startdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// em_enddate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// em_enddate.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// dw_control.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_control.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
 	selecttext(1, len(gettext()))
 	return ::message.returnvalue
 
-// dw_control.ue_enterkey() returns long
+// dw_control.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))

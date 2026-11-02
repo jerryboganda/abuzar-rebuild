@@ -26,30 +26,62 @@
 	end if
 	return b_flag
 
-// w_measuringunit_form.create() returns 0
+// w_measuringunit_form.create() returns 0 [event]
 	call super::create
 
-// w_measuringunit_form.destroy() returns 0
+// w_measuringunit_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_measuringunit_form.activate() returns long
+// w_measuringunit_form.activate() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::activate()
 	this.windowstate = maximized!
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_measuringunit_form.ue_detail() returns 0
+// w_measuringunit_form.ue_detail() returns 0 [event]
 	call super::ue_detail
 
-// w_measuringunit_form.ue_newform() returns 0
+// w_measuringunit_form.ue_newform() returns 0 [event]
 	call super::ue_newform
 
-// w_measuringunit_form.open() returns long
+// w_measuringunit_form.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.is_tablename = "MeasuringUnit"
 	return ::message.returnvalue
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer rt_code
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if parent.parent.parent.wf_duplicatename(data) then
+			messagebox("Name Validation", "Duplication Name Error~n~rPlease Choose Some Other Name")
+			rt_code = 1
+		end if
+	case "measureqty"
+		if data = "" or isnull(data) or double(data) <= 0.0 then
+			rt_code = 1
+		end if
+	end choose
+	return rt_code
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "measureqty"
+		if data = "" or isnull(data) or double(data) <= 0.0 then
+			messagebox("Measure Qty Validation", "Please enter valid value for Measure Qty")
+		end if
+	end choose
+	return 1

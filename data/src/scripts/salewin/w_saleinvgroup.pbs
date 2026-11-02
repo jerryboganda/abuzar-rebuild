@@ -228,7 +228,7 @@
 	end if
 	return ll_retcode
 
-// w_saleinvgroup.create() returns 0
+// w_saleinvgroup.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	if isvalid(this.menuid) then
@@ -241,14 +241,14 @@
 	icurrent = upperbound(this.control)
 	this.control[icurrent + 1] = this.dw_print
 
-// w_saleinvgroup.destroy() returns 0
+// w_saleinvgroup.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 	destroy this.dw_print
 
-// w_saleinvgroup.ue_save() returns 0
+// w_saleinvgroup.ue_save() returns 0 [event]
 	long ll_detailrows
 	long ll_mastercurrrow
 	long ll_invid
@@ -376,7 +376,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_saleinvgroup.ue_newform() returns 0
+// w_saleinvgroup.ue_newform() returns 0 [event]
 	this.im_menu.m_file.m_print.enabled = false
 	setredraw(false)
 	this.i_editmode = 1
@@ -407,7 +407,7 @@
 	this.id_detail.setfocus()
 	setredraw(true)
 
-// w_saleinvgroup.ue_newitem() returns 0
+// w_saleinvgroup.ue_newitem() returns 0 [event]
 	long ll_rowcount
 	long ll_rtcode
 	if this.id_detail.rowcount() > 0 and f_validatedw(this.id_detail) < 0 then
@@ -424,17 +424,17 @@
 	this.im_menu.m_file.m_print.enabled = false
 	this.ib_validatefullcode = true
 
-// w_saleinvgroup.close() returns long
+// w_saleinvgroup.close() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::close()
 	this.id_itemslist.sharedataoff()
 	return ::message.returnvalue
 
-// w_saleinvgroup.ue_new() returns 0
+// w_saleinvgroup.ue_new() returns 0 [event]
 	call super::ue_new
 	this.im_menu.m_file.m_post.enabled = false
 
-// w_saleinvgroup.ue_deleteitem() returns 0
+// w_saleinvgroup.ue_deleteitem() returns 0 [event]
 	long ll_currow
 	long ll_detailrows
 	this.ib_itemvalidated = true
@@ -444,14 +444,14 @@
 		this.im_menu.m_file.m_save.enabled = false
 	end if
 
-// w_saleinvgroup.ue_postopen() returns 0
+// w_saleinvgroup.ue_postopen() returns 0 [event]
 	m_saleinvgroup lm_menu
 	call super::ue_postopen
 	lm_menu = this.menuid
 	this.id_print = this.dw_print
 	wf_assigndatawindowobjects("d_saleinvgroup_header", "d_saleinvgroup_detail", "d_saleinvgroup_list")
 
-// w_saleinvgroup.ue_detail() returns 0
+// w_saleinvgroup.ue_detail() returns 0 [event]
 	long ll_code
 	long ll_rowcount
 	this.im_menu.m_file.m_save.enabled = true
@@ -479,7 +479,7 @@
 	this.id_dwcontrol = this.id_list
 	this.ib_modify = true
 
-// w_saleinvgroup.ue_print() returns 0
+// w_saleinvgroup.ue_print() returns 0 [event]
 	long ll_row
 	long ll_invcode
 	long ll_option
@@ -549,3 +549,93 @@
 		return
 	end if
 	messagebox("Printing Error", "Can not Print Invoice,~r~nNo rows are retrieved", information!)
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	long ll_null
+	string ls_null
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	setnull(ll_null)
+	setnull(ls_null)
+	choose case dwo.name
+	case "saleinvcode"
+		li_errcode = parent.parent.parent.wf_validateinvcode(row, long(data))
+		return li_errcode
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "saleinvcode"
+		messagebox("Sale Invoice Validation", "You must select some Sale Invoice")
+	end choose
+	return 1
+
+// dw_itemsdetail.getfocus() returns long [event]
+	return ::message.returnvalue
+
+// dw_itemsdetail.editchanged(long row, dwobject dwo, string data) returns long [event]
+	return ::message.returnvalue
+
+// tabpage_list.create() returns 0 [event]
+	integer icurrent
+	this.st_3 = create st_3
+	this.em_invno = create em_invno
+	call super::create
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.st_3
+	this.control[icurrent + 2] = this.em_invno
+
+// tabpage_list.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.st_3
+	destroy this.em_invno
+
+// dw_find.keypressed(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	long ll_row
+	long ll_code
+	long ll_update
+	long ll_option
+	string ls_errortext
+	s_arguements lstr_arg
+	s_arguements lstr_arg2
+	ancestorreturnvalue = super::keypressed(key, keyflags)
+	if key = keyf7! and parent.parent.parent.id_list.getrow() > 0 then
+		ll_code = parent.parent.parent.id_list.object.code[parent.parent.parent.id_list.getrow()]
+		if ll_code > 0 then
+			openwithparm(w_arg_item_find_and_replace_salinvgroup, lstr_arg)
+			lstr_arg = message.powerobjectparm
+			if lstr_arg.i_status > 0 then
+				if lstr_arg.l_code1 > 0 then
+					lstr_arg.l_code3 = ll_code
+					openwithparm(w_review_proformasale_item_replacement, lstr_arg)
+					ll_update = message.doubleparm
+					if ll_update = 1 then
+						ll_option = messagebox("Data Risk Alert", "This action might change data in bulk.~r~nIt has un-reversible consequences.~r~n~r~nUpdate Anyway?", question!, yesno!, 2)
+						if ll_option = 1 then
+							SQL rollback USING parent.parent.parent.it_transobject;
+							parent.parent.parent.it_transobject.findandreplaceiteminproformasales(lstr_arg.l_code3, lstr_arg.l_code1, lstr_arg.db_code1, lstr_arg.l_code2, lstr_arg.db_code2)
+							if parent.parent.parent.it_transobject.sqlcode = 0 then
+								SQL commit USING parent.parent.parent.it_transobject;
+								messagebox("Update Sucessfull", "Updation Successfull", information!)
+							else
+								SQL rollback USING parent.parent.parent.it_transobject;
+								ls_errortext = parent.parent.parent.it_transobject.sqlerrtext
+								messagebox("Error", "Error occured in updating Proforma Sales Invocies.~r~nDetails are:-~r~n" + ls_errortext, stopsign!)
+							end if
+						end if
+					end if
+				end if
+			else
+				ll_row = 0
+			end if
+		end if
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue

@@ -1,6 +1,6 @@
 // window w_customersite_form (patientcomponents)  ancestor: w_multi_entry
 
-// w_customersite_form.ue_save_withnocommit() returns long
+// w_customersite_form.ue_save_withnocommit() returns long [event]
 	setpointer(hourglass!)
 	if f_validatedw(this.id_master) < 0 then
 		return -1
@@ -600,7 +600,7 @@
 	rtcode = this.id_dwcontrol.retrieve(ldt_invdate)
 	return rtcode
 
-// w_customersite_form.create() returns 0
+// w_customersite_form.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.dw_saleinvrep = create dw_saleinvrep
@@ -609,7 +609,7 @@
 	this.control[icurrent + 1] = this.dw_saleinvrep
 	this.control[icurrent + 2] = this.dw_saleinvdetail
 
-// w_customersite_form.destroy() returns 0
+// w_customersite_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
@@ -617,7 +617,7 @@
 	destroy this.dw_saleinvrep
 	destroy this.dw_saleinvdetail
 
-// w_customersite_form.ue_save() returns 0
+// w_customersite_form.ue_save() returns 0 [event]
 	long ll_detailrows
 	long ll_mastercurrrow
 	long ll_footercurrrow
@@ -765,7 +765,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_customersite_form.ue_newform() returns 0
+// w_customersite_form.ue_newform() returns 0 [event]
 	integer rtncode
 	long li_fetched_code
 	long row
@@ -802,7 +802,7 @@
 	this.id_master.object.active_t.visible = false
 	setredraw(true)
 
-// w_customersite_form.ue_detail() returns 0
+// w_customersite_form.ue_detail() returns 0 [event]
 	integer li_rtncode
 	integer li_protect
 	long ll_row
@@ -842,7 +842,7 @@
 	this.id_master.object.active_t.visible = true
 	setredraw(true)
 
-// w_customersite_form.ue_newitem() returns 0
+// w_customersite_form.ue_newitem() returns 0 [event]
 	long ll_rowcount
 	if this.ib_itemvalidated = false and wf_validateitem(true) = -1 then
 		this.id_detail.setfocus()
@@ -863,7 +863,7 @@
 	this.im_menu.m_file.m_save.enabled = true
 	this.ib_validatefullcode = true
 
-// w_customersite_form.ue_deleteitem() returns 0
+// w_customersite_form.ue_deleteitem() returns 0 [event]
 	long ll_currow
 	long ll_detailrows
 	this.ib_itemvalidated = true
@@ -871,13 +871,13 @@
 	ll_detailrows = this.id_detail.rowcount()
 	wf_grandtotal()
 
-// w_customersite_form.close() returns long
+// w_customersite_form.close() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::close()
 	this.id_itemslist.sharedataoff()
 	return ::message.returnvalue
 
-// w_customersite_form.ue_list() returns 0
+// w_customersite_form.ue_list() returns 0 [event]
 	call super::ue_list
 	SQL rollback USING this.it_transobject;
 	this.ib_modify = false
@@ -887,7 +887,7 @@
 	end if
 	wf_retrievelist()
 
-// w_customersite_form.ue_print() returns 0
+// w_customersite_form.ue_print() returns 0 [event]
 	long ll_custcode
 	long ll_row
 	long ll_code
@@ -944,17 +944,17 @@
 	end if
 	messagebox("Printing Error", "Can not Print Invoice,~r~nNo rows are retrieved", information!)
 
-// w_customersite_form.ue_refreshddw() returns 0
+// w_customersite_form.ue_refreshddw() returns 0 [event]
 	call super::ue_refreshddw
 	setpointer(hourglass!)
 	this.idc_salesman.settransobject(this.it_transobject)
 	this.idc_salesman.retrieve()
 	setpointer(arrow!)
 
-// w_customersite_form.ue_new() returns 0
+// w_customersite_form.ue_new() returns 0 [event]
 	call super::ue_new
 
-// w_customersite_form.ue_postopen() returns 0
+// w_customersite_form.ue_postopen() returns 0 [event]
 	integer li_rtncode
 	integer li_visiblecolumns
 	integer li_counter
@@ -1043,7 +1043,263 @@
 	f_setserviceqtystyle(this.id_detail, "qty")
 	setredraw(true)
 
-// w_customersite_form.open() returns long
+// w_customersite_form.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
+	return ::message.returnvalue
+
+// tab_retrieve.selectionchanged(integer oldindex, integer newindex) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::selectionchanged(oldindex, newindex)
+	if parent.ib_modify and newindex <> 1 then
+		SQL rollback USING parent.it_transobject;
+		parent.ib_modify = false
+	end if
+	return ::message.returnvalue
+
+// dw_footer.losefocus() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::losefocus()
+	parent.parent.parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_footer.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	parent.parent.parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "regno"
+		if parent.parent.parent.wf_duplicateregno(data) then
+			return 1
+		end if
+	case "admit"
+		if long(data) = 1 then
+			this.object.admissioncode_t.visible = true
+			this.object.admissioncode.visible = true
+			this.object.locationcode_t.visible = true
+			this.object.locationcode.visible = true
+			this.object.doctorcode_t.visible = true
+			this.object.doctorcode.visible = true
+			this.object.diagnosis_t.visible = true
+			this.object.diagnosis.visible = true
+		else
+			this.object.admissioncode_t.visible = false
+			this.object.admissioncode.visible = false
+			this.object.locationcode_t.visible = false
+			this.object.locationcode.visible = false
+			this.object.doctorcode_t.visible = false
+			this.object.doctorcode.visible = false
+			this.object.diagnosis_t.visible = false
+			this.object.diagnosis.visible = false
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "regno"
+		messagebox("ItemNo Validation", "Item Duplication Error~r~nPlease enter some other Reg No")
+	end choose
+	return 1
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	integer li_servicecode
+	double ld_newqty
+	double ld_storedqty
+	long ll_null
+	long ll_icode
+	long ll_gcode
+	string ls_null
+	string ls_itemname
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	setnull(ll_null)
+	setnull(ls_null)
+	choose case dwo.name
+	case parent.parent.parent.is_columnitemname
+		parent.parent.parent.id_detail.setitem(row, "icode", parent.parent.parent.id_itemslist.getitemnumber(parent.parent.parent.id_itemslist.getrow(), "icode"))
+		parent.parent.parent.id_detail.setitem(row, "fullcode", parent.parent.parent.id_itemslist.getitemstring(parent.parent.parent.id_itemslist.getrow(), "fullcode"))
+		parent.parent.parent.ib_itemvalidated = false
+		parent.parent.parent.il_currrow = row
+		li_errcode = 0
+	case "qty"
+		ld_newqty = double(data)
+		ld_storedqty = getitemnumber(row, "qty")
+		if double(data) > 0.0 then
+			li_errcode = 0
+			if double(long(data)) <> double(data) and parent.parent.parent.id_detail.object.allowsaleindecimal[row] = "N" then
+				messagebox("Quantity Validation", "Quantity In decimals is not allowed for this service", stopsign!)
+				li_errcode = 1
+			else
+				li_errcode = 0
+			end if
+		else
+			li_errcode = 1
+		end if
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	string ls_columnobject
+	long ll_currow
+	long ll_icode
+	long ll_gcode
+	long ll_godownstock
+	long ancestorreturnvalue
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem(false) = -1 then
+		return ::message.returnvalue
+	end if
+	if dwo.name = "itemname" then
+		parent.parent.parent.ib_focusdetail = true
+	end if
+	parent.parent.parent.wf_grandtotal()
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	return 0
+
+// dw_itemsdetail.rowfocuschanged(long currentrow) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::rowfocuschanged(currentrow)
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem(true) = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.losefocus() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::losefocus()
+	parent.parent.parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case parent.parent.parent.is_columnitemname
+		if data = "" or isnull(data) then
+			messagebox("Service Validation", "Please enter value for Service in row " + string(row))
+		end if
+	case "discperc"
+		if real(data) < 0.0 and real(data) > 100.0 then
+			messagebox("Service Discount Validation", "Discount ~"" + data + "~" must be betweeen 0 and 100")
+		end if
+	case "smancode"
+		messagebox("SalesPerson Validation", "Please select SalesPerson from the dropdown box.")
+	end choose
+	return 1
+
+// dw_itemsdetail.editchanged(long row, dwobject dwo, string data) returns long [event]
+	long ll_currrow
+	long ll_startrow
+	long ll_endrow
+	if parent.parent.parent.editflag = false then
+		parent.parent.parent.editflag = true
+		parent.parent.parent.im_menu.m_file.m_save.enabled = true
+	end if
+	choose case dwo.name
+	case parent.parent.parent.is_columnitemname
+		if upper(left(data, 1)) >= "A" and upper(left(data, 1)) <= "Z" or left(data, 1) >= "0" and left(data, 1) <= "9" or left(data, 1) = "*" then
+			ll_currrow = parent.parent.parent.id_itemslist.getrow()
+			if len(data) > 1 then
+				ll_startrow = ll_currrow
+			else
+				if left(data, 1) >= "0" and left(data, 1) <= "9" or left(data, 1) = "*" then
+					ll_startrow = 1
+				else
+					ll_startrow = parent.parent.parent.ia_llookuptable[asc(upper(data))]
+				end if
+				parent.parent.parent.ib_bkspace = false
+			end if
+			if parent.parent.parent.ib_bkspace then
+				parent.parent.parent.il_itemlistfoundrow = parent.parent.parent.id_itemslist.find("Lower(itemname) <= '" + lower(data) + "'", ll_startrow, 0)
+				parent.parent.parent.il_itemlistfoundrow = parent.parent.parent.il_itemlistfoundrow + 1
+				parent.parent.parent.ib_bkspace = false
+			else
+				parent.parent.parent.il_itemlistfoundrow = parent.parent.parent.id_itemslist.find("Lower(itemname) >= '" + lower(data) + "'", ll_startrow, 99999)
+			end if
+			if parent.parent.parent.il_itemlistfoundrow = 0 then
+				parent.parent.parent.il_itemlistfoundrow = parent.parent.parent.id_itemslist.rowcount()
+			end if
+			if parent.parent.parent.il_itemlistfoundrow <> ll_currrow then
+				parent.parent.parent.id_itemslist.selectrow(0, false)
+				parent.parent.parent.id_itemslist.setrow(parent.parent.parent.il_itemlistfoundrow)
+				parent.parent.parent.id_itemslist.scrolltorow(parent.parent.parent.il_itemlistfoundrow)
+				parent.parent.parent.id_itemslist.selectrow(parent.parent.parent.il_itemlistfoundrow, true)
+				ll_endrow = setitem(row, "currlistrow", parent.parent.parent.il_itemlistfoundrow)
+				ll_endrow = getitemnumber(row, "currlistrow")
+				setfocus()
+			end if
+		end if
+		parent.parent.parent.ib_itemvalidated = false
+		parent.parent.parent.il_currrow = row
+	end choose
+	return ::message.returnvalue
+
+// dw_find.keypressed(keycode key, unsignedlong keyflags) returns long [event]
+	integer li_movement
+	long ll_row
+	long ll_temp
+	string sl_columnname
+	string ls_rightid
+	if key = keyuparrow! then
+		ll_row = parent.parent.parent.id_list.getrow() - 1
+		parent.parent.parent.id_list.scrollpriorrow()
+	elseif key = keydownarrow! then
+		ll_row = parent.parent.parent.id_list.getrow() + 1
+		parent.parent.parent.id_list.scrollnextrow()
+	elseif key = keypagedown! then
+		parent.parent.parent.id_list.scrollnextpage()
+		ll_row = parent.parent.parent.id_dwcontrol.getrow()
+	elseif key = keypageup! then
+		parent.parent.parent.id_list.scrollpriorpage()
+		ll_row = parent.parent.parent.id_dwcontrol.getrow()
+	elseif key = keyhome! then
+		scrolltorow(1)
+		ll_row = 1
+	elseif key = keyend! then
+		ll_row = parent.parent.parent.id_list.rowcount()
+		scrolltorow(ll_row)
+	elseif key = keyenter! then
+		if parent.parent.parent.id_dwcontrol.getselectedrow(0) > 0 then
+			parent.parent.parent.i_editmode = 2
+			parent.parent.parent.tab_retrieve.selectedtab = 1
+			return ::message.returnvalue
+		end if
+	elseif key = keyf7! then
+		ll_row = parent.parent.parent.wf_retrievelist_datelimit()
+		if ll_row > 0 then
+			scrolltorow(1)
+			ll_row = 1
+		end if
+	elseif key = keyf9! then
+		ll_row = parent.parent.parent.id_dwcontrol.getrow()
+		if ll_row > 0 then
+			parent.parent.parent.wf_editpostedinvoice()
+			setfocus()
+		end if
+	end if
+	if ll_row > 0 and ll_row <= parent.parent.parent.id_dwcontrol.rowcount() then
+		parent.parent.parent.id_list.setredraw(false)
+		parent.parent.parent.tab_retrieve.tabpage_detail.enabled = true
+		parent.parent.parent.im_menu.m_file.m_retrieve.enabled = true
+		parent.parent.parent.id_list.selectrow(0, false)
+		parent.parent.parent.id_list.selectrow(ll_row, true)
+		if parent.parent.parent.ii_type = 1 then
+			setitem(1, "find", parent.parent.parent.id_list.getitemstring(ll_row, parent.parent.parent.ii_colindex))
+		elseif parent.parent.parent.ii_type = 3 then
+			setitem(1, "find", trim(string(parent.parent.parent.id_list.getitemdatetime(ll_row, parent.parent.parent.ii_colindex))))
+		else
+			setitem(1, "find", trim(string(parent.parent.parent.id_list.getitemnumber(ll_row, parent.parent.parent.ii_colindex))))
+		end if
+		parent.parent.parent.il_selectedrow = ll_row
+		selecttext(1, len(gettext()))
+		parent.parent.parent.id_list.setredraw(true)
+	end if
 	return ::message.returnvalue

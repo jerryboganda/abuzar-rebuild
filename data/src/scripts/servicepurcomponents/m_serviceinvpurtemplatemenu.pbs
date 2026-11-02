@@ -1,8 +1,28 @@
 // menu m_serviceinvpurtemplatemenu (servicepurcomponents)  ancestor: m_multi_entry
 
-// m_serviceinvpurtemplatemenu.create() returns 0
+// m_serviceinvpurtemplatemenu.create() returns 0 [event]
 	m_serviceinvpurtemplatemenu = this
 	call super::create
 
-// m_serviceinvpurtemplatemenu.destroy() returns 0
+// m_serviceinvpurtemplatemenu.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_populateservices = create m_populateservices
+	this.item[upperbound(this.item) + 1] = this.m_populateservices
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_populateservices
+
+// m_populateservices.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_populate_services()
+
+// m_populateservices.create() returns 0 [event]
+	call super::create
+	this.text = "Populate Services~tF5"
+	this.shortcut = 116
+
+// m_populateservices.destroy() returns 0 [event]
 	call super::destroy

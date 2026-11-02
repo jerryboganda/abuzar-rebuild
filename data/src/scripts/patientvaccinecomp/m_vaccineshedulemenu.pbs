@@ -1,9 +1,61 @@
 // menu m_vaccineshedulemenu (patientvaccinecomp)  ancestor: m_multi_entry
 
-// m_vaccineshedulemenu.create() returns 0
+// m_vaccineshedulemenu.create() returns 0 [event]
 	m_vaccineshedulemenu = this
 	call super::create
 	this.text = "m_vaccineshedulemenu"
 
-// m_vaccineshedulemenu.destroy() returns 0
+// m_vaccineshedulemenu.destroy() returns 0 [event]
 	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_populatesaletemplate = create m_populatesaletemplate
+	this.m_markasstopped = create m_markasstopped
+	this.m_markasun-stoppedresumed = create m_markasun-stoppedresumed
+	this.item[upperbound(this.item) + 1] = this.m_populatesaletemplate
+	this.item[upperbound(this.item) + 1] = this.m_markasstopped
+	this.item[upperbound(this.item) + 1] = this.m_markasun-stoppedresumed
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_populatesaletemplate
+	destroy this.m_markasstopped
+	destroy this.m_markasun-stoppedresumed
+
+// m_file.clicked() returns 0 [event]
+	call super::clicked
+
+// m_populatesaletemplate.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_populate_saletemplate()
+
+// m_populatesaletemplate.create() returns 0 [event]
+	call super::create
+	this.text = "Populate Sale Template~tF5"
+	this.shortcut = 116
+	this.microhelp = "Populate Vaccine schedule with existing Sale Template for Vaccines"
+
+// m_populatesaletemplate.destroy() returns 0 [event]
+	call super::destroy
+
+// m_markasstopped.create() returns 0 [event]
+	call super::create
+	this.text = "Mark As Stopped~tF6"
+	this.shortcut = 117
+
+// m_markasstopped.destroy() returns 0 [event]
+	call super::destroy
+
+// m_markasstopped.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_mark_as_stopped()
+
+// m_markasun-stoppedresumed.create() returns 0 [event]
+	call super::create
+	this.text = "Mark As Un-Stopped/Resumed~tF7"
+	this.shortcut = 118
+
+// m_markasun-stoppedresumed.destroy() returns 0 [event]
+	call super::destroy
+
+// m_markasun-stoppedresumed.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_mark_as_unstopped()

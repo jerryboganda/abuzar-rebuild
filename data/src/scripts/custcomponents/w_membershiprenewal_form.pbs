@@ -42,32 +42,32 @@
 	end if
 	return ll_retflag
 
-// w_membershiprenewal_form.ue_newform() returns 0
+// w_membershiprenewal_form.ue_newform() returns 0 [event]
 	call super::ue_newform
 	wf_protectdw(this.id_detail, 0)
 	this.id_detail.setcolumn("regno")
 
-// w_membershiprenewal_form.create() returns 0
+// w_membershiprenewal_form.create() returns 0 [event]
 	call super::create
 
-// w_membershiprenewal_form.destroy() returns 0
+// w_membershiprenewal_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_membershiprenewal_form.activate() returns long
+// w_membershiprenewal_form.activate() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::activate()
 	this.windowstate = maximized!
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_membershiprenewal_form.ue_detail() returns 0
+// w_membershiprenewal_form.ue_detail() returns 0 [event]
 	call super::ue_detail
 	wf_protectdw(this.id_detail, 1)
 
-// w_membershiprenewal_form.open() returns long
+// w_membershiprenewal_form.open() returns long [event]
 	m_entry lm_menu
 	long ll_width
 	long ll_height
@@ -111,7 +111,7 @@
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_membershiprenewal_form.ue_save() returns 0
+// w_membershiprenewal_form.ue_save() returns 0 [event]
 	long ll_primarykey
 	long ll_patientcode
 	long ll_row
@@ -181,9 +181,130 @@
 	end if
 	setpointer(arrow!)
 
-// w_membershiprenewal_form.close() returns long
+// w_membershiprenewal_form.close() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::close()
 	SQL stop USING this.it_transobject;
 	destroy this.it_transobject
 	return ::message.returnvalue
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer rt_code
+	long ll_custcode
+	long ll_patientcode
+	long ll_res
+	string ls_oldaliasname
+	string ls_aliasname
+	string ls_membershipid
+	datetime ldt_oldlicexpiry
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "regno"
+		ls_oldaliasname = data
+		SQL SELECT licenseexpiry , membershipid , custcode , patientcode , aliasname =( select a.aliasname from accounts a where a.acccode =patient.custcode ) INTO :ldt_oldlicexpiry, :ls_membershipid, :ll_custcode, :ll_patientcode, :ls_aliasname FROM patient WHERE regno =:data USING sqlca;
+		if isnull(ldt_oldlicexpiry) then
+			ldt_oldlicexpiry = datetime(today())
+		end if
+		setitem(1, "patientcode", ll_patientcode)
+		setitem(1, "accounts_aliasname", ls_aliasname)
+		setitem(1, "custcode", ll_custcode)
+		setitem(1, "oldaliasname", ls_oldaliasname)
+		setitem(1, "oldlicexpiry", ldt_oldlicexpiry)
+		setitem(1, "newaliasname", ls_oldaliasname)
+		setitem(1, "newlicexpiry", ldt_oldlicexpiry)
+		setitem(1, "membershipid", ls_membershipid)
+		if sqlca.sqlcode <> 0 then
+			messagebox("DataBase Problem", "Unable to fetch Old information")
+			rt_code = 1
+		end if
+	case "patientcode"
+		ll_patientcode = long(data)
+		SQL SELECT regno , licenseexpiry , membershipid , custcode , aliasname =( select a.aliasname from accounts a where a.acccode =patient.custcode ) INTO :ls_oldaliasname, :ldt_oldlicexpiry, :ls_membershipid, :ll_custcode, :ls_aliasname FROM patient WHERE patientcode =:ll_patientcode USING sqlca;
+		if isnull(ldt_oldlicexpiry) then
+			ldt_oldlicexpiry = datetime(today())
+		end if
+		setitem(1, "regno", ls_oldaliasname)
+		setitem(1, "accounts_aliasname", ls_aliasname)
+		setitem(1, "custcode", ll_custcode)
+		setitem(1, "oldaliasname", ls_oldaliasname)
+		setitem(1, "oldlicexpiry", ldt_oldlicexpiry)
+		setitem(1, "newaliasname", ls_oldaliasname)
+		setitem(1, "newlicexpiry", ldt_oldlicexpiry)
+		setitem(1, "membershipid", ls_membershipid)
+		if sqlca.sqlcode <> 0 then
+			messagebox("DataBase Problem", "Unable to fetch Old information")
+			rt_code = 1
+		end if
+	case "custcode"
+		ll_custcode = long(data)
+		SQL SELECT aliasname INTO :ls_oldaliasname FROM accounts WHERE acccode =:ll_custcode USING sqlca;
+		SQL SELECT licenceexpiry , membershipid INTO :ldt_oldlicexpiry, :ls_membershipid FROM customer WHERE custcode =:ll_custcode USING sqlca;
+		if isnull(ldt_oldlicexpiry) then
+			ldt_oldlicexpiry = datetime(today())
+		end if
+		setitem(1, "oldaliasname", ls_oldaliasname)
+		setitem(1, "oldlicexpiry", ldt_oldlicexpiry)
+		setitem(1, "newaliasname", ls_oldaliasname)
+		setitem(1, "newlicexpiry", ldt_oldlicexpiry)
+		setitem(1, "accounts_aliasname", ls_oldaliasname)
+		setitem(1, "membershipid", ls_membershipid)
+		if sqlca.sqlcode <> 0 then
+			messagebox("DataBase Problem", "Unable to fetch Old information")
+			rt_code = 1
+		end if
+	case "membershipid"
+		if not isnull(data) and data <> "" then
+			SQL SELECT regno , licenseexpiry , custcode , patientcode , aliasname =( select a.aliasname from accounts a where a.acccode =patient.custcode ) INTO :ls_oldaliasname, :ldt_oldlicexpiry, :ll_custcode, :ll_patientcode, :ls_aliasname FROM patient WHERE MembershipID =:data USING sqlca;
+			if isnull(ldt_oldlicexpiry) then
+				ldt_oldlicexpiry = datetime(today())
+			end if
+			setitem(1, "accounts_aliasname", ls_aliasname)
+			setitem(row, "custcode", ll_custcode)
+			setitem(1, "regno", ls_oldaliasname)
+			setitem(1, "patientcode", ll_patientcode)
+			setitem(1, "oldaliasname", ls_oldaliasname)
+			setitem(1, "oldlicexpiry", ldt_oldlicexpiry)
+			setitem(1, "newaliasname", ls_oldaliasname)
+			setitem(1, "newlicexpiry", ldt_oldlicexpiry)
+			setitem(1, "membershipid", data)
+			if sqlca.sqlcode <> 0 then
+				messagebox("DataBase Problem", "Unable to fetch Old information")
+				rt_code = 1
+			end if
+		end if
+	case "accounts_aliasname"
+		if not isnull(data) and data <> "" then
+			ll_res = parent.parent.parent.wf_findcustcode(data, dwo.name, ll_custcode, ls_membershipid)
+			if ll_res > 0 then
+				setitem(row, "custcode", ll_custcode)
+				SQL SELECT aliasname INTO :ls_oldaliasname FROM accounts WHERE acccode =:ll_custcode USING sqlca;
+				SQL SELECT licenceexpiry , membershipid INTO :ldt_oldlicexpiry, :ls_membershipid FROM customer WHERE custcode =:ll_custcode USING sqlca;
+				setitem(1, "oldaliasname", ls_oldaliasname)
+				setitem(1, "oldlicexpiry", ldt_oldlicexpiry)
+				setitem(1, "newaliasname", ls_oldaliasname)
+				setitem(1, "newlicexpiry", ldt_oldlicexpiry)
+				setitem(1, "membershipid", ls_membershipid)
+				setitem(1, "accounts_aliasname", ls_oldaliasname)
+				if sqlca.sqlcode <> 0 then
+					messagebox("DataBase Problem", "Unable to fetch Old information")
+					rt_code = 1
+				end if
+			else
+				messagebox("Customer Validation", "Customer with  Alias Name  " + data + " does not exist")
+				rt_code = 1
+			end if
+		end if
+	end choose
+	return rt_code
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "iccode"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	end choose
+	return 1

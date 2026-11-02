@@ -16,28 +16,28 @@
 	end if
 	return false
 
-// w_itempurexptemplate.create() returns 0
+// w_itempurexptemplate.create() returns 0 [event]
 	call super::create
 
-// w_itempurexptemplate.destroy() returns 0
+// w_itempurexptemplate.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_itempurexptemplate.activate() returns long
+// w_itempurexptemplate.activate() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::activate()
 	this.windowstate = maximized!
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_itempurexptemplate.open() returns long
+// w_itempurexptemplate.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	return ::message.returnvalue
 
-// w_itempurexptemplate.ue_detail() returns 0
+// w_itempurexptemplate.ue_detail() returns 0 [event]
 	call super::ue_detail
 	if this.id_list.getrow() > 0 and this.id_list.object.code[this.id_list.getrow()] > 0 then
 		this.id_detail.retrieve(this.id_list.object.code[this.id_list.getrow()])
@@ -46,3 +46,15 @@
 			this.id_detail.object.code[1] = this.id_list.object.code[this.id_list.getrow()]
 		end if
 	end if
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "code"
+		if parent.parent.parent.wf_validategroup(long(data)) = false then
+			messagebox("Group Validation", "Please Choose Some Valid Group")
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue

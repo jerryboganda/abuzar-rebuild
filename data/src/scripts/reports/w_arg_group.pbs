@@ -1,12 +1,27 @@
 // window w_arg_group (reports)  ancestor: w_arg_manf
 
-// w_arg_group.create() returns 0
+// w_arg_group.create() returns 0 [event]
 	call super::create
 
-// w_arg_group.destroy() returns 0
+// w_arg_group.destroy() returns 0 [event]
 	call super::destroy
 
-// w_arg_group.open() returns long
+// w_arg_group.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long [event]
+	parent.istr_arg.l_code3 = parent.dw_control.getitemnumber(1, "groupcode")
+	if isnull(parent.istr_arg.l_code3) then
+		messagebox("Group Validation", "Please select a valid user group")
+		parent.dw_control.setcolumn("groupcode")
+		parent.dw_control.setrow(1)
+		parent.dw_control.setfocus()
+		return ::message.returnvalue
+	end if
+	parent.istr_arg.i_supress = parent.cbx_supress.checked
+	parent.istr_arg.i_hide = parent.cbx_hide.checked
+	parent.istr_arg.i_status = 1
+	parent.post event ue_close(1)
 	return ::message.returnvalue

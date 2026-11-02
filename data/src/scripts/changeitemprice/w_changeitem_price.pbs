@@ -1,6 +1,6 @@
 // window w_changeitem_price (changeitemprice)  ancestor: w_multi_entry
 
-// w_changeitem_price.ue_changeitemclass() returns 0
+// w_changeitem_price.ue_changeitemclass() returns 0 [event]
 	long ll_counter
 	long ll_endrow
 	long ll_rows
@@ -25,7 +25,7 @@
 	next
 	this.id_detail.setredraw(true)
 
-// w_changeitem_price.ue_set_column_value() returns 0
+// w_changeitem_price.ue_set_column_value() returns 0 [event]
 	long ll_counter
 	long ll_endrow
 	long ll_rows
@@ -317,7 +317,7 @@
 	end if
 	return 0
 
-// w_changeitem_price.create() returns 0
+// w_changeitem_price.create() returns 0 [event]
 	call super::create
 	if isvalid(this.menuid) then
 		destroy this.menuid
@@ -326,20 +326,20 @@
 		this.menuid = create m_changeitemprice
 	end if
 
-// w_changeitem_price.destroy() returns 0
+// w_changeitem_price.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_changeitem_price.ue_detail() returns 0
+// w_changeitem_price.ue_detail() returns 0 [event]
 	call super::ue_detail
 	this.id_detail.setfilter("")
 	this.id_detail.filter()
 	this.id_detail.setfocus()
 	this.im_menu.m_file.m_save.enabled = true
 
-// w_changeitem_price.ue_postopen() returns 0
+// w_changeitem_price.ue_postopen() returns 0 [event]
 	long li_visiblecolumns
 	long li_counter
 	long li_taborder
@@ -407,7 +407,7 @@
 		this.id_detail.object.t_gstperc2.visible = false
 	end if
 
-// w_changeitem_price.ue_save() returns 0
+// w_changeitem_price.ue_save() returns 0 [event]
 	long ll_salesmancode
 	long ll_rowcount
 	long ll_counter
@@ -459,3 +459,109 @@
 		return
 	end if
 	messagebox("Updataion Problem", "No rows to Update!", stopsign!)
+
+// dw_detail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	long ll_res
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if parent.parent.parent.is_dwtype = "MARGINBASED" and key = keyf5! then
+		accepttext()
+		if parent.parent.parent.id_detail.rowcount() > 0 and parent.parent.parent.editflag = true then
+			ll_res = messagebox("Save Changes", "You Asked for Fresh Retrieval. Existing Changes will lost. Are You Sure?", question!, yesno!, 2)
+			if ll_res = 1 then
+				parent.parent.parent.id_detail.retrieve(parent.parent.parent.id_master.object.margintype[1], parent.parent.parent.id_master.object.startingmarginperc[1], parent.parent.parent.id_master.object.endingmarginperc[1])
+			end if
+		end if
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.getfocus() returns long [event]
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	string ls_errormessage
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	ls_errormessage = "Please enter valid value "
+	choose case dwo.name
+	case "item_saleprice"
+		ls_errormessage = ls_errormessage + " for Item SalePrice 1"
+	case "item_saleprice2"
+		ls_errormessage = ls_errormessage + " for Item SalePrice 2"
+	case "item_saleprice3"
+		ls_errormessage = ls_errormessage + " for Item SalePrice 3"
+	case "item_purprice"
+		ls_errormessage = ls_errormessage + " for Item PurchasePrice"
+	case "item_salediscperc"
+		ls_errormessage = ls_errormessage + " for Item Sale Discount Percentage"
+	case "item_purdiscperc"
+		ls_errormessage = ls_errormessage + " for Item Purchase Discount Percentage"
+	case "item_packsalestax"
+		ls_errormessage = ls_errormessage + " for Item Pack SalesTax"
+	case "item_gstperc1"
+		ls_errormessage = ls_errormessage + " for Item SalesTax 1"
+	case "item_gstperc2"
+		ls_errormessage = ls_errormessage + " for Item SalesTax 2"
+	case "item_reorderqty"
+		ls_errormessage = ls_errormessage + " for Item Reorder Quantity"
+	case "item_optimumqty"
+		ls_errormessage = ls_errormessage + " for Item Optimum Quantity"
+	case "item_packunits"
+		ls_errormessage = ls_errormessage + " for Item Packing Cost"
+	case "item_packingcost"
+		ls_errormessage = ls_errormessage + " for Item Packing Cost"
+	end choose
+	ls_errormessage = ls_errormessage + " in row number " + string(row)
+	messagebox("Item Validation", ls_errormessage)
+	return 1
+
+// dw_itemsdetail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	s_unittaxinputs ls_unittaxinputs
+	double ld_valuextax
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keyf5! then
+		if getcolumnname() = "item_packsalestax" then
+			accepttext()
+			if not isnull(this.object.code[parent.parent.parent.id_detail.getrow()]) then
+				ls_unittaxinputs.l_icode = this.object.code[getrow()]
+				ls_unittaxinputs.d_price = this.object.item_purprice[getrow()]
+				ls_unittaxinputs.d_saleprice = this.object.item_saleprice[getrow()]
+				ls_unittaxinputs.d_unittax = this.object.item_packsalestax[getrow()]
+				ls_unittaxinputs.d_retailprice = this.object.item_retailprice[getrow()]
+				openwithparm(w_unittaxcalculator, ls_unittaxinputs)
+				ls_unittaxinputs = message.powerobjectparm
+				if ls_unittaxinputs.i_status = 1 then
+					this.object.item_packsalestax[getrow()] = ls_unittaxinputs.d_unittax
+				end if
+			end if
+		elseif keyflags = 2 then
+			parent.parent.parent.wf_updatesaleprice_purprice()
+		else
+			parent.parent.parent.wf_update_price_margin_based()
+		end if
+	elseif key = keyf6! then
+		if getcolumnname() = "item_packsalestax" then
+			parent.parent.parent.wf_set_packsalestax_formula()
+		else
+			parent.parent.parent.wf_copy_source_target_column()
+		end if
+	elseif key = keyf7! then
+		parent.parent.parent.wf_set_columnvalue()
+	elseif key = keyf8! then
+		parent.parent.parent.wf_set_purprice_from_saleprice_saledisc()
+	elseif key = keyf9! then
+		parent.parent.parent.wf_filter_items()
+	elseif key = keyf11! then
+		parent.parent.parent.wf_update_saleprice_with_saleprice()
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue
+
+// dw_itemsdetail.ue_enterkey() returns long [event]
+	if getrow() = rowcount() and getcolumn() = integer(this.object.datawindow.column.count) then
+	end if
+	send(handle(this), 256, 9, long(90))
+	return 1

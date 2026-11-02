@@ -18,22 +18,22 @@
 	end if
 	return ls_name
 
-// w_componentvalue2_text.create() returns 0
+// w_componentvalue2_text.create() returns 0 [event]
 	this.dw_value = create dw_value
 	this.cb_cancel = create cb_cancel
 	this.cb_ok = create cb_ok
 	this.control = {this.dw_value, this.cb_cancel, this.cb_ok}
 
-// w_componentvalue2_text.destroy() returns 0
+// w_componentvalue2_text.destroy() returns 0 [event]
 	destroy this.dw_value
 	destroy this.cb_cancel
 	destroy this.cb_ok
 
-// w_componentvalue2_text.close() returns long
+// w_componentvalue2_text.close() returns long [event]
 	closewithreturn(this, this.is_compvalue)
 	return ::message.returnvalue
 
-// w_componentvalue2_text.open() returns long
+// w_componentvalue2_text.open() returns long [event]
 	environment le_env
 	long ll_win_width
 	long ll_win_height
@@ -63,30 +63,30 @@
 	end if
 	return message.returnvalue
 
-// w_componentvalue2_text.key(keycode key, unsignedlong keyflags) returns long
+// w_componentvalue2_text.key(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		this.is_compvalue.status = false
 	end if
 	return ::message.returnvalue
 
-// dw_value.getfocus() returns long
+// dw_value.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	selecttext(1, len(gettext()))
 	return ::message.returnvalue
 
-// dw_value.ue_enterkey() returns long
+// dw_value.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.is_compvalue.status = false
 	parent.triggerevent(close!)
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	if parent.dw_value.accepttext() < 0 then
 		return ::message.returnvalue
 	end if

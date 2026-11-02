@@ -1,6 +1,6 @@
 // window w_vehiclesearch (multientry)  ancestor: window
 
-// w_vehiclesearch.ue_close(integer ai_status) returns 0
+// w_vehiclesearch.ue_close(integer ai_status) returns 0 [event]
 	long ll_row
 	string ls_null
 	this.is_arguements.i_status = ai_status
@@ -42,18 +42,18 @@
 	end if
 	closewithreturn(this, this.is_arguements)
 
-// w_vehiclesearch.create() returns 0
+// w_vehiclesearch.create() returns 0 [event]
 	this.cb_cancel = create cb_cancel
 	this.dw_control = create dw_control
 	this.cb_ok = create cb_ok
 	this.control = {this.cb_cancel, this.dw_control, this.cb_ok}
 
-// w_vehiclesearch.destroy() returns 0
+// w_vehiclesearch.destroy() returns 0 [event]
 	destroy this.cb_cancel
 	destroy this.dw_control
 	destroy this.cb_ok
 
-// w_vehiclesearch.open() returns long
+// w_vehiclesearch.open() returns long [event]
 	environment le_env
 	long ll_win_width
 	long ll_win_height
@@ -77,22 +77,22 @@
 	this.dw_control.insertrow(0)
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.post event ue_close(0)
 	return ::message.returnvalue
 
-// dw_control.ue_enterkey() returns long
+// dw_control.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// cb_ok.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// cb_ok.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		postevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	parent.post event ue_close(1)
 	return ::message.returnvalue

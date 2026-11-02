@@ -111,7 +111,7 @@
 	end if
 	return 0
 
-// w_customer_form.create() returns 0
+// w_customer_form.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	if isvalid(this.menuid) then
@@ -126,7 +126,7 @@
 	this.control[icurrent + 1] = this.dw_cust_itemcat_association
 	this.control[icurrent + 2] = this.dw_cust_guranteeperson_association
 
-// w_customer_form.destroy() returns 0
+// w_customer_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
@@ -134,7 +134,7 @@
 	destroy this.dw_cust_itemcat_association
 	destroy this.dw_cust_guranteeperson_association
 
-// w_customer_form.ue_save() returns 0
+// w_customer_form.ue_save() returns 0 [event]
 	string ls_aliasname
 	long ll_newid
 	long ll_row
@@ -415,7 +415,7 @@
 		messagebox("DataWindow Modify Error", ls_err)
 	end if
 
-// w_customer_form.ue_newform() returns 0
+// w_customer_form.ue_newform() returns 0 [event]
 	long ll_rtncode
 	call super::ue_newform
 	this.tab_retrieve.tabpage_detail.dw_detail.object.accounts_aliasname.protect = 0
@@ -432,7 +432,7 @@
 	this.id_cust_itemcat_association.reset()
 	this.dw_cust_guranteeperson_association.reset()
 
-// w_customer_form.open() returns long
+// w_customer_form.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.is_tablename = "Customer"
@@ -446,7 +446,7 @@
 	this.id_cust_guranteeperson_association.settransobject(sqlca)
 	return ::message.returnvalue
 
-// w_customer_form.ue_detail() returns 0
+// w_customer_form.ue_detail() returns 0 [event]
 	long ll_counter
 	long ll_code
 	long ll_found
@@ -482,7 +482,7 @@
 		this.im_menu.m_file.m_print.enabled = true
 	end if
 
-// w_customer_form.ue_postopen() returns 0
+// w_customer_form.ue_postopen() returns 0 [event]
 	integer li_xpos
 	integer li_ypos
 	integer li_xendpos
@@ -547,7 +547,7 @@
 	this.id_detail.object.customer_sitecode.visible = false
 	this.id_detail.object.customer_sitecode_t.visible = false
 
-// w_customer_form.ue_print() returns 0
+// w_customer_form.ue_print() returns 0 [event]
 	long ll_code
 	boolean lb_listtab
 	s_datastore lstr
@@ -598,3 +598,186 @@
 		end if
 		messagebox("Printing Error", "Can not Print Data,~r~nNo rows are retrieved", information!)
 	end if
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "accounts_name"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for Customer Name in current row")
+		end if
+	case "customer_fullname"
+		if data = "" or isnull(data) then
+			messagebox("Full Name Validation", "Value required for Customer's Full Name in current row")
+		end if
+	case "customer_owner"
+		if data = "" or isnull(data) then
+			messagebox("Owner Name Validation", "Value required for Owner's Full Name in current row")
+		end if
+	case "customer_address"
+		if data = "" or isnull(data) then
+			messagebox("Address Validation", "Value required for Address in current row")
+		end if
+	case "customer_issuedlicenseno"
+		if data = "" or isnull(data) then
+			messagebox("Issued License No. Validation", "Value required for Issued License No. in current row")
+		end if
+	case "customer_areacode"
+		if data = "" or isnull(data) then
+			messagebox("Area Name Validation", "Value required for Area Name in current row")
+		end if
+	case "customer_address1"
+		if data = "" or isnull(data) then
+			messagebox("Address1 Validation", "Value required for Address1 in current row")
+		end if
+	case "customer_address2"
+		if data = "" or isnull(data) then
+			messagebox("Address2 Validation", "Value required for Address2 in current row")
+		end if
+	case "customer_crlimit"
+		messagebox("Credit Limit Validation", "Value required for Credit Limit in current row")
+	case "customer_dayslimit"
+		messagebox("Days Limit Validation", "Value required for Days Limit in current row")
+	case "customer_city"
+		if data = "" or isnull(data) then
+			messagebox("City Validation", "Value required for City in current row")
+		end if
+	case "customer_Phone"
+		if data = "" or isnull(data) then
+			messagebox("Phone Validation", "Value required for Phone in current row")
+		end if
+	case "customer_email"
+		if data = "" or isnull(data) then
+			messagebox("Email Validation", "Value required for Email in current row")
+		end if
+	case "customer_licenceno"
+		if data = "" or isnull(data) then
+			messagebox("LicenceNo Validation", "Value required for LicenceNO in current row")
+		end if
+	case "customer_licenceexpiry"
+		if data = "" or isnull(data) then
+			messagebox("LicenceExpiry Validation", "Value required for LicenceExpiry in current row")
+		end if
+	case "customer_cp"
+		if data = "" or isnull(data) then
+			messagebox("Contact Person Validation", "Value required for Contact Person in current row")
+		end if
+	case "customer_country"
+	case "customer_fax"
+		if data = "" or isnull(data) then
+			messagebox("Fax Validation", "Value required for Fax in current row")
+		end if
+	end choose
+	return 1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	long ll_null
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "accounts_name"
+		if parent.parent.parent.wf_duplicateaccname(data) then
+			messagebox("Name Validation", "Duplication Name Error~n~rPlease Choose Some Other Name")
+			return 1
+		else
+			this.object.customer_fullname[row] = data
+		end if
+	case "accounts_aliasname"
+		if parent.parent.parent.wf_duplicatealiasname(data) then
+			messagebox("AliasName Validation", "Duplication AliasName Error~n~rPlease Choose Some Other Name")
+			return 1
+		end if
+	case "customer_areacode"
+		parent.parent.parent.idc_subarea.setredraw(false)
+		setnull(ll_null)
+		parent.parent.parent.id_detail.setitem(1, "customer_subareacode", ll_null)
+		if parent.parent.parent.idc_subarea.setfilter("areacode=" + data) = 1 then
+			parent.parent.parent.idc_subarea.filter()
+			parent.parent.parent.idc_subarea.setredraw(true)
+		else
+			messagebox("Sub Area Filter", "Unable to filter Sub Area Column")
+			return 1
+		end if
+	case "customer_criticallimit"
+		if double(data) < 0.0 then
+			messagebox("Critical Limit Validation", "Critical Limit Error~n~rCritical Limit must be greater than or equal to zero")
+			return 1
+		elseif double(data) < this.object.customer_crlimit[row] then
+			messagebox("Critical Limit Validation", "Critical Limit Error~n~rCritical Limit must be greater than or equal to credit limit")
+			return 1
+		else
+			return 0
+		end if
+	case "customer_crlimit"
+		if double(data) < 0.0 then
+			messagebox("Customer Credit Limit Validation", "Customer Critical Limit Error~r~nPlease enter some possitive Customer Credit Limit")
+			return 1
+		else
+			if double(data) > this.object.customer_criticallimit[row] then
+				this.object.customer_criticallimit[row] = double(data)
+			end if
+			return 0
+		end if
+		return
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.ue_enterkey() returns long [event]
+	if parent.parent.parent.id_detail.getcolumnname() <> "customer_specialinstructions" then
+		send(handle(this), 256, 9, long(90))
+		return 1
+	end if
+	return ::message.returnvalue
+
+// dw_detail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keyf6! then
+		parent.parent.parent.wf_populateexistingcust()
+	end if
+	return ::message.returnvalue
+
+// dw_detail.sqlpreview(sqlpreviewfunction request, sqlpreviewtype sqltype, string sqlsyntax, dwbuffer buffer, long row) returns long [event]
+	long ancestorreturnvalue
+	string ls_sql
+	string ls_newsql
+	string ls_sql_part
+	long ll_counter
+	long ll_pos
+	long ll_commacount
+	long ll_commapos
+	long ll_newcommacount
+	ancestorreturnvalue = super::sqlpreview(request, sqltype, sqlsyntax, buffer, row)
+	if sqltype = previewinsert! then
+		ls_sql = sqlsyntax
+		ls_sql_part = "'" + getitemstring(getrow(), "accounts_localaccountname") + "'"
+		ll_pos = pos(lower(ls_sql), ls_sql_part, 1)
+		if ll_pos > 0 then
+			ls_newsql = replace(ls_sql, ll_pos, len(ls_sql_part), "N" + ls_sql_part)
+		else
+			ls_newsql = ls_sql
+		end if
+		setsqlpreview(ls_newsql)
+	elseif sqltype = previewupdate! then
+		ls_sql = sqlsyntax
+		ll_pos = pos(lower(ls_sql), "localaccountname = ", 1)
+		if ll_pos > 0 then
+			ls_newsql = mid(ls_sql, 1, ll_pos - 1) + "localaccountname = N" + mid(ls_sql, ll_pos + 19)
+		else
+			ls_newsql = ls_sql
+		end if
+		setsqlpreview(ls_newsql)
+	end if
+	return 0
+
+// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	choose case dwo.name
+	case "accounts_localaccountname"
+		f_set_keyboard_local()
+	case else
+		f_set_keyboard_english()
+	end choose
+	return ::message.returnvalue

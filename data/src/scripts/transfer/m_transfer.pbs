@@ -1,8 +1,217 @@
 // menu m_transfer (transfer)  ancestor: m_multi_entry
 
-// m_transfer.create() returns 0
+// m_transfer.create() returns 0 [event]
 	m_transfer = this
 	call super::create
 
-// m_transfer.destroy() returns 0
+// m_transfer.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_generate = create m_generate
+	this.m_generategodownwise = create m_generategodownwise
+	this.m_generateconsumptionwise = create m_generateconsumptionwise
+	this.m_saveandpost = create m_saveandpost
+	this.m_open = create m_open
+	this.m_generatesourcegodownstockbasedtransfer = create m_generatesourcegodownstockbasedtransfer
+	this.m_setserverdate = create m_setserverdate
+	this.m_showitemtransferhistory = create m_showitemtransferhistory
+	this.m_usecustomerassociatedgodownastarget = create m_usecustomerassociatedgodownastarget
+	this.m_showapproximatebatchallocationscenario = create m_showapproximatebatchallocationscenario
+	this.m_populatepostedquotation = create m_populatepostedquotation
+	this.m_populatepurchaseorder = create m_populatepurchaseorder
+	this.m_populatesaleorder = create m_populatesaleorder
+	this.item[upperbound(this.item) + 1] = this.m_generate
+	this.item[upperbound(this.item) + 1] = this.m_generategodownwise
+	this.item[upperbound(this.item) + 1] = this.m_generateconsumptionwise
+	this.item[upperbound(this.item) + 1] = this.m_saveandpost
+	this.item[upperbound(this.item) + 1] = this.m_open
+	this.item[upperbound(this.item) + 1] = this.m_generatesourcegodownstockbasedtransfer
+	this.item[upperbound(this.item) + 1] = this.m_setserverdate
+	this.item[upperbound(this.item) + 1] = this.m_showitemtransferhistory
+	this.item[upperbound(this.item) + 1] = this.m_usecustomerassociatedgodownastarget
+	this.item[upperbound(this.item) + 1] = this.m_showapproximatebatchallocationscenario
+	this.item[upperbound(this.item) + 1] = this.m_populatepostedquotation
+	this.item[upperbound(this.item) + 1] = this.m_populatepurchaseorder
+	this.item[upperbound(this.item) + 1] = this.m_populatesaleorder
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_generate
+	destroy this.m_generategodownwise
+	destroy this.m_generateconsumptionwise
+	destroy this.m_saveandpost
+	destroy this.m_open
+	destroy this.m_generatesourcegodownstockbasedtransfer
+	destroy this.m_setserverdate
+	destroy this.m_showitemtransferhistory
+	destroy this.m_usecustomerassociatedgodownastarget
+	destroy this.m_showapproximatebatchallocationscenario
+	destroy this.m_populatepostedquotation
+	destroy this.m_populatepurchaseorder
+	destroy this.m_populatesaleorder
+
+// m_file.clicked() returns 0 [event]
+	this.parentwindow.triggerevent("ue_generate")
+
+// m_save.create() returns 0 [event]
+	call super::create
+
+// m_save.destroy() returns 0 [event]
+	call super::destroy
+
+// m_save.clicked() returns 0 [event]
+	if f_stringpreferences("TransferAutoPosting") = "Y" then
+		this.parentwindow.dynamic wf_saveandpost()
+	else
+		this.parentwindow.triggerevent("ue_save")
+	end if
+	if this.parentwindow.dynamic wf_commitform() = true then
+		this.parentwindow.postevent("ue_new")
+	end if
+
+// m_generate.clicked() returns 0 [event]
+	this.parentwindow.triggerevent("ue_Generate")
+
+// m_generate.create() returns 0 [event]
+	call super::create
+	this.text = "Gene&rate"
+
+// m_generate.destroy() returns 0 [event]
+	call super::destroy
+
+// m_generategodownwise.clicked() returns 0 [event]
+	this.parentwindow.triggerevent("ue_Generate_godownreorderlevel")
+
+// m_generategodownwise.create() returns 0 [event]
+	call super::create
+	this.text = "Generate &Godown Wise"
+
+// m_generategodownwise.destroy() returns 0 [event]
+	call super::destroy
+
+// m_generateconsumptionwise.clicked() returns 0 [event]
+	this.parentwindow.triggerevent("ue_Generate_godownwise_consumption")
+
+// m_generateconsumptionwise.create() returns 0 [event]
+	call super::create
+	this.text = "Generate &Consumption Wise"
+
+// m_generateconsumptionwise.destroy() returns 0 [event]
+	call super::destroy
+
+// m_saveandpost.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_saveandpost()
+	if this.parentwindow.dynamic wf_commitform() = true then
+		this.parentwindow.postevent("ue_new")
+	end if
+
+// m_saveandpost.create() returns 0 [event]
+	call super::create
+	this.text = "Save and Post~tCtrl+Q"
+	this.shortcut = 337
+	this.microhelp = "Save and Post"
+
+// m_saveandpost.destroy() returns 0 [event]
+	call super::destroy
+
+// m_open.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_copyinvoice()
+
+// m_open.create() returns 0 [event]
+	call super::create
+	this.text = "Open~tCtrl+G"
+	this.shortcut = 327
+
+// m_open.destroy() returns 0 [event]
+	call super::destroy
+
+// m_generatesourcegodownstockbasedtransfer.clicked() returns 0 [event]
+	this.parentwindow.triggerevent("ue_generate_sourcebased")
+
+// m_generatesourcegodownstockbasedtransfer.create() returns 0 [event]
+	call super::create
+	this.text = "Generate Source Godown Stock Based Transfer"
+
+// m_generatesourcegodownstockbasedtransfer.destroy() returns 0 [event]
+	call super::destroy
+
+// m_setserverdate.clicked() returns 0 [event]
+	if this.checked then
+		this.checked = false
+	else
+		this.checked = true
+	end if
+	this.parentwindow.dynamic wf_fetchserverdate(this.checked)
+
+// m_setserverdate.create() returns 0 [event]
+	call super::create
+	this.text = "Set Server Date"
+	this.checked = true
+
+// m_setserverdate.destroy() returns 0 [event]
+	call super::destroy
+
+// m_showitemtransferhistory.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_show_itemtransferhistory()
+
+// m_showitemtransferhistory.create() returns 0 [event]
+	call super::create
+	this.text = "Show Item Transfer History~tCtrl+H"
+	this.shortcut = 328
+
+// m_showitemtransferhistory.destroy() returns 0 [event]
+	call super::destroy
+
+// m_usecustomerassociatedgodownastarget.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_use_customer_associated_godown()
+
+// m_usecustomerassociatedgodownastarget.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Use Customer Associated Godown As Target"
+
+// m_usecustomerassociatedgodownastarget.destroy() returns 0 [event]
+	call super::destroy
+
+// m_showapproximatebatchallocationscenario.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_show_approx_batchallocation_detail()
+
+// m_showapproximatebatchallocationscenario.create() returns 0 [event]
+	call super::create
+	this.text = "Show Approximate Batch Allocation Scenario~tCtrl+J"
+	this.shortcut = 330
+
+// m_showapproximatebatchallocationscenario.destroy() returns 0 [event]
+	call super::destroy
+
+// m_populatepostedquotation.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_populate_posted_quotation()
+
+// m_populatepostedquotation.create() returns 0 [event]
+	call super::create
+	this.text = "Populate Posted Quotation"
+
+// m_populatepostedquotation.destroy() returns 0 [event]
+	call super::destroy
+
+// m_populatepurchaseorder.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_populate_purchaseorder()
+
+// m_populatepurchaseorder.create() returns 0 [event]
+	call super::create
+	this.text = "Populate Purchase Order"
+
+// m_populatepurchaseorder.destroy() returns 0 [event]
+	call super::destroy
+
+// m_populatesaleorder.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_populate_saleorder()
+
+// m_populatesaleorder.create() returns 0 [event]
+	call super::create
+	this.text = "Populate Sale Order"
+
+// m_populatesaleorder.destroy() returns 0 [event]
 	call super::destroy

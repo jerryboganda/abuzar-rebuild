@@ -8,8 +8,18 @@ import { JsonClassLoader } from '../src/runtime/loader.ts'
 import { MockDb } from '../src/app/mockdb.ts'
 import type { PBObject } from '../src/runtime/object.ts'
 import { Ref } from '../src/runtime/interp.ts'
+import { PBStruct } from '../src/runtime/object.ts'
+
+/** stand-in for the argument structures the caller of a window normally provides: unknown fields read as 0 / empty text by naming convention */
+class LooseStruct extends PBStruct {
+  override pbGet(name: string): unknown {
+    if (this.f.has(name)) return this.f.get(name)
+    return /^(s|as|is)_/.test(name) ? '' : 0
+  }
+}
 
 const dataDir = process.argv[2]
+const whereOf = (e: unknown): string => (e as { where?: string }).where || ((e as Error).stack || '').split(String.fromCharCode(10)).slice(1, 3).map((l) => l.trim().replace(/^at /, '')).join(' < ')
 const filter = process.argv[3] && process.argv[3] !== '-' ? new RegExp(process.argv[3]) : null
 const reportFile = process.argv[4]
 
@@ -56,10 +66,14 @@ for (const name of windows) {
   const start = Date.now()
   try {
     const open = rt.sys.get('open')!
+    const msg = rt.globals.get('message') as PBObject
+    msg.props.set('powerobjectparm', new LooseStruct('arguments'))
+    msg.props.set('doubleparm', 1)
+    msg.props.set('stringparm', '1')
     // response windows block until closed: close them as soon as they are shown
     const p = Promise.resolve(open.fn(rt, [ref], undefined as never))
     let openErr: string | null = null
-    p.catch((e) => (openErr = (e as Error).message.slice(0, 120) + ' @' + ((e as { where?: string }).where || '')))
+    p.catch((e) => (openErr = (e as Error).message.slice(0, 120) + ' @' + whereOf(e)))
     const w = await Promise.race([
       (async () => {
         while (!rt.windowInstances.get(name)) await new Promise((r) => setTimeout(r, 1))
@@ -78,7 +92,7 @@ for (const name of windows) {
     const inst = rt.windowInstances.get(name)
     if (inst) await rt.closeWindow(inst).catch(() => {})
   } catch (e) {
-    results.push({ name, ok: false, error: (e as Error).message.slice(0, 120) + ' @' + ((e as { where?: string }).where || ''), ms: Date.now() - start })
+    results.push({ name, ok: false, error: (e as Error).message.slice(0, 120) + ' @' + whereOf(e), ms: Date.now() - start })
     rt.windowInstances.delete(name)
   }
   rt.depth = 0

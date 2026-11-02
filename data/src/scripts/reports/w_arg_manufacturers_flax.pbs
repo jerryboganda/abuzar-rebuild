@@ -1,6 +1,6 @@
 // window w_arg_manufacturers_flax (reports)  ancestor: w_listarguments
 
-// w_arg_manufacturers_flax.create() returns 0
+// w_arg_manufacturers_flax.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.st_4 = create st_4
@@ -41,7 +41,7 @@
 	this.control[icurrent + 17] = this.gb_overallprogress
 	this.control[icurrent + 18] = this.gb_5
 
-// w_arg_manufacturers_flax.destroy() returns 0
+// w_arg_manufacturers_flax.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.st_4
 	destroy this.st_8
@@ -62,7 +62,7 @@
 	destroy this.gb_overallprogress
 	destroy this.gb_5
 
-// w_arg_manufacturers_flax.open() returns long
+// w_arg_manufacturers_flax.open() returns long [event]
 	long ancestorreturnvalue
 	long ll_counter
 	long ll_rowcount
@@ -86,31 +86,142 @@
 	this.is_summ = trim(f_stringpreferences("OutputFilePath")) + "FlaxSumm.TXT"
 	return ::message.returnvalue
 
-// cb_prod.clicked() returns long
+// cb_ok.clicked() returns long [event]
+	long ancestorreturnvalue
+	long ll_count
+	long ll_counter
+	long ll_innercounter
+	long ll_found
+	datastore lds_temp
+	ancestorreturnvalue = super::clicked()
+	lds_temp = create datastore
+	if parent.cbx_all.checked = true then
+		for ll_counter = 1 to parent.idc_categories.rowcount()
+			parent.istr_arg.ia_integerlist[ll_counter] = parent.idc_categories.getitemnumber(ll_counter, "manfcode")
+		next
+	else
+		for ll_counter = 1 to ll_counter
+			ll_found = parent.idc_categories.find("name ='" + parent.lb_selectedcategories.text(ll_counter) + "'", 1, parent.idc_categories.rowcount())
+			if ll_found > 0 then
+				parent.istr_arg.ia_integerlist[ll_counter] = parent.idc_categories.getitemnumber(ll_found, "manfcode")
+			end if
+		next
+	end if
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	parent.em_dscode.getdata(parent.istr_arg.s_name1)
+	if parent.istr_arg.s_name1 = "" or isnull(parent.istr_arg.s_name1) then
+		messagebox("Distributor Code Validation!", "Please enter valid Distributor Code")
+		parent.em_dscode.setfocus()
+		return ::message.returnvalue
+	end if
+	parent.istr_arg.i_supress = parent.cbx_supress.checked
+	parent.istr_arg.i_hide = parent.cbx_hide.checked
+	parent.istr_arg.i_status = 1
+	parent.gb_overallprogress.visible = true
+	parent.hpb_hpb.visible = true
+	if parent.cbx_prod.checked = true then
+		lds_temp.dataobject = "d_productdata_flax"
+		lds_temp.settransobject(sqlca)
+		lds_temp.retrieve(parent.istr_arg.ia_integerlist, parent.istr_arg.s_name1)
+		parent.hpb_hpb.stepit()
+		if f_save_from_ds_to_fff(parent.is_prod, lds_temp, "#$#", false) = 0 then
+			messagebox("Product Data Generation Problem", "Error Generating Customer Text File~r~nPlease Try Later")
+			destroy lds_temp
+			parent.post event ue_close(0)
+		end if
+		parent.hpb_hpb.stepit()
+		parent.hpb_hpb.stepit()
+		parent.hpb_hpb.stepit()
+	end if
+	if parent.cbx_cust.checked = true then
+		lds_temp.dataobject = "d_customerdata_flax"
+		lds_temp.settransobject(sqlca)
+		lds_temp.retrieve(parent.istr_arg.s_name1)
+		parent.hpb_hpb.stepit()
+		if f_save_from_ds_to_fff(parent.is_cust, lds_temp, "#$#", false) = 0 then
+			messagebox("Customer Data Generation Problem", "Error Generating Customer Text File~r~nPlease Try Later")
+			destroy lds_temp
+			parent.post event ue_close(0)
+		end if
+		parent.hpb_hpb.stepit()
+		parent.hpb_hpb.stepit()
+		parent.hpb_hpb.stepit()
+	end if
+	if parent.cbx_trans.checked = true then
+		lds_temp.dataobject = "d_tran_flax"
+		lds_temp.settransobject(sqlca)
+		lds_temp.retrieve(parent.istr_arg.ia_integerlist, parent.istr_arg.d_sdate, parent.istr_arg.d_edate, parent.istr_arg.s_name1)
+		parent.hpb_hpb.stepit()
+		if f_save_from_ds_to_fff(parent.is_trans, lds_temp, "#$#", false) = 0 then
+			messagebox("Sale Data Generation Problem", "Error Generating Sales Transaction Text File~r~nPlease Try Later")
+			destroy lds_temp
+			return ::message.returnvalue
+		end if
+		parent.hpb_hpb.stepit()
+		parent.hpb_hpb.stepit()
+		parent.hpb_hpb.stepit()
+	end if
+	if parent.cbx_stock.checked = true then
+		lds_temp.dataobject = "d_stock_flax"
+		lds_temp.settransobject(sqlca)
+		lds_temp.retrieve(parent.istr_arg.ia_integerlist, parent.istr_arg.s_name1)
+		parent.hpb_hpb.stepit()
+		if f_save_from_ds_to_fff(parent.is_stock, lds_temp, "#$#", false) = 0 then
+			messagebox("Sale Data Generation Problem", "Error Generating Sales (Bonus) Transaction Text File~r~nPlease Try Later")
+			destroy lds_temp
+			return ::message.returnvalue
+		end if
+		parent.hpb_hpb.stepit()
+		parent.hpb_hpb.stepit()
+		parent.hpb_hpb.stepit()
+	end if
+	if parent.cbx_summ.checked = true then
+		lds_temp.dataobject = "d_summ_flax"
+		lds_temp.settransobject(sqlca)
+		lds_temp.retrieve(parent.istr_arg.ia_integerlist, parent.istr_arg.d_sdate, parent.istr_arg.d_edate, parent.istr_arg.s_name1)
+		parent.hpb_hpb.stepit()
+		if f_save_from_ds_to_fff(parent.is_summ, lds_temp, "#$#", false) = 0 then
+			messagebox("Sale Data Generation Problem", "Error Generating Sales (Bonus) Transaction Text File~r~nPlease Try Later")
+			destroy lds_temp
+			return ::message.returnvalue
+		end if
+		parent.hpb_hpb.stepit()
+		parent.hpb_hpb.stepit()
+		parent.hpb_hpb.stepit()
+	end if
+	destroy lds_temp
+	parent.hpb_hpb.visible = false
+	parent.hpb_hpb.position = 5
+	parent.gb_overallprogress.visible = false
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// cb_prod.clicked() returns long [event]
 	string ls_named
 	integer li_value
 	li_value = getfilesavename("Select File Location", parent.is_prod, ls_named, "TXT", "All Files (*.*),*.*," + "All Files (*.*),*.*")
 	return ::message.returnvalue
 
-// cb_trans.clicked() returns long
+// cb_trans.clicked() returns long [event]
 	string ls_named
 	integer li_value
 	li_value = getfilesavename("Select File Location", parent.is_trans, ls_named, "TXT", "All Files (*.*),*.*," + "All Files (*.*),*.*")
 	return ::message.returnvalue
 
-// cb_cust.clicked() returns long
+// cb_cust.clicked() returns long [event]
 	string ls_named
 	integer li_value
 	li_value = getfilesavename("Select File Location", parent.is_cust, ls_named, "TXT", "All Files (*.*),*.*," + "All Files (*.*),*.*")
 	return ::message.returnvalue
 
-// cb_stock.clicked() returns long
+// cb_stock.clicked() returns long [event]
 	string ls_named
 	integer li_value
 	li_value = getfilesavename("Select File Location", parent.is_stock, ls_named, "TXT", "All Files (*.*),*.*," + "All Files (*.*),*.*")
 	return ::message.returnvalue
 
-// cb_summ.clicked() returns long
+// cb_summ.clicked() returns long [event]
 	string ls_named
 	integer li_value
 	li_value = getfilesavename("Select File Location", parent.is_summ, ls_named, "TXT", "All Files (*.*),*.*," + "All Files (*.*),*.*")

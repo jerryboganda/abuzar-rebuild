@@ -80,7 +80,7 @@
 	end if
 	return 0
 
-// w_itembatchpricing.create() returns 0
+// w_itembatchpricing.create() returns 0 [event]
 	call super::create
 	if isvalid(this.menuid) then
 		destroy this.menuid
@@ -89,13 +89,13 @@
 		this.menuid = create m_itembatchpricing
 	end if
 
-// w_itembatchpricing.destroy() returns 0
+// w_itembatchpricing.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_itembatchpricing.ue_save() returns 0
+// w_itembatchpricing.ue_save() returns 0 [event]
 	long ll_code
 	long ll_counter
 	datetime ldt_server_datetime
@@ -138,7 +138,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_itembatchpricing.ue_detail() returns 0
+// w_itembatchpricing.ue_detail() returns 0 [event]
 	long ll_code
 	long ll_rowcount
 	long ll_counter
@@ -179,18 +179,18 @@
 		end if
 	next
 
-// w_itembatchpricing.ue_newform() returns 0
+// w_itembatchpricing.ue_newform() returns 0 [event]
 	call super::ue_newform
 	this.im_menu.m_item.m_newitem.enabled = false
 	this.im_menu.m_item.m_deleteitem.enabled = false
 
-// w_itembatchpricing.ue_postopen() returns 0
+// w_itembatchpricing.ue_postopen() returns 0 [event]
 	call super::ue_postopen
 	this.im_menu.m_file.m_new.visible = false
 
-// w_itembatchpricing.ue_getfocus() returns 0
+// w_itembatchpricing.ue_getfocus() returns 0 [event]
 
-// w_itembatchpricing.ue_list() returns 0
+// w_itembatchpricing.ue_list() returns 0 [event]
 	long ll_rtcode
 	if this.id_list.rowcount() <= 0 then
 		ll_rtcode = wf_retrievelist()
@@ -223,3 +223,94 @@
 	end if
 	messagebox("Result", "No rows or retrieved possible empty table~r~nInsert some rows first")
 	postevent("ue_new")
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	if len(gettext()) > 0 then
+		selecttext(1, len(gettext()))
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.getfocus() returns long [event]
+	return ::message.returnvalue
+
+// dw_find.keypressed(keycode key, unsignedlong keyflags) returns long [event]
+	integer li_movement
+	long ll_row
+	long ll_temp
+	string sl_columnname
+	string ls_rightid
+	s_popup_selection lstr_selection
+	s_datastore lstr_ds
+	if key = keyuparrow! then
+		ll_row = parent.parent.parent.id_list.getrow() - 1
+		parent.parent.parent.id_list.scrollpriorrow()
+	elseif key = keydownarrow! then
+		ll_row = parent.parent.parent.id_list.getrow() + 1
+		parent.parent.parent.id_list.scrollnextrow()
+	elseif key = keypagedown! then
+		parent.parent.parent.id_list.scrollnextpage()
+		ll_row = parent.parent.parent.id_dwcontrol.getrow()
+	elseif key = keypageup! then
+		parent.parent.parent.id_list.scrollpriorpage()
+		ll_row = parent.parent.parent.id_dwcontrol.getrow()
+	elseif key = keyhome! then
+		scrolltorow(1)
+		ll_row = 1
+	elseif key = keyend! then
+		ll_row = parent.parent.parent.id_list.rowcount()
+		scrolltorow(ll_row)
+	elseif key = keyenter! then
+		if parent.parent.parent.id_dwcontrol.getselectedrow(0) > 0 then
+			parent.parent.parent.i_editmode = 2
+			parent.parent.parent.tab_retrieve.selectedtab = 1
+			return ::message.returnvalue
+		end if
+	elseif key = keyf5! then
+		ll_row = parent.parent.parent.wf_retrievelist_datelimit()
+		if ll_row > 0 then
+			scrolltorow(1)
+			ll_row = 1
+		end if
+	elseif key = keyf6! then
+		lstr_ds.dw = parent.parent.parent.id_list
+		lstr_ds.s_name1 = parent.parent.parent.id_list.dataobject
+		openwithparm(w_popup_comprehensicesearch_selection2, lstr_ds)
+		lstr_selection = ::message.powerobjectparm
+		if lstr_selection.l_code > 0 then
+			if lstr_selection.l_code2 > 0 then
+				ll_temp = parent.parent.parent.id_list.find("code = " + string(lstr_selection.l_code2), 1, parent.parent.parent.id_list.rowcount())
+				if ll_temp > 0 then
+					ll_row = ll_temp
+					parent.parent.parent.id_list.scrolltorow(ll_row)
+				end if
+			end if
+		else
+			ll_row = 0
+		end if
+	elseif key = keyf7! then
+		parent.parent.parent.wf_populate_alll_item_batches()
+	elseif key = keyf9! then
+		ll_row = parent.parent.parent.id_dwcontrol.getrow()
+		if ll_row > 0 then
+			parent.parent.parent.wf_editpostedinvoice()
+			setfocus()
+		end if
+	end if
+	if ll_row > 0 and ll_row <= parent.parent.parent.id_dwcontrol.rowcount() then
+		parent.parent.parent.id_list.setredraw(false)
+		parent.parent.parent.tab_retrieve.tabpage_detail.enabled = true
+		parent.parent.parent.im_menu.m_file.m_retrieve.enabled = true
+		parent.parent.parent.id_list.selectrow(0, false)
+		parent.parent.parent.id_list.selectrow(ll_row, true)
+		if parent.parent.parent.ii_type = 1 then
+			setitem(1, "find", parent.parent.parent.id_list.getitemstring(ll_row, parent.parent.parent.ii_colindex))
+		elseif parent.parent.parent.ii_type = 3 then
+			setitem(1, "find", trim(string(parent.parent.parent.id_list.getitemdatetime(ll_row, parent.parent.parent.ii_colindex))))
+		else
+			setitem(1, "find", trim(string(parent.parent.parent.id_list.getitemnumber(ll_row, parent.parent.parent.ii_colindex))))
+		end if
+		parent.parent.parent.il_selectedrow = ll_row
+		selecttext(1, len(gettext()))
+		parent.parent.parent.id_list.setredraw(true)
+	end if
+	return ::message.returnvalue

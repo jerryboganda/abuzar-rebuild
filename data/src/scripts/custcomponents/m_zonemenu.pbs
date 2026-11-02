@@ -1,9 +1,29 @@
 // menu m_zonemenu (custcomponents)  ancestor: m_multi_entry
 
-// m_zonemenu.create() returns 0
+// m_zonemenu.create() returns 0 [event]
 	m_zonemenu = this
 	call super::create
 	this.text = "m_zonemenu"
 
-// m_zonemenu.destroy() returns 0
+// m_zonemenu.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_setcontactgroups = create m_setcontactgroups
+	this.item[upperbound(this.item) + 1] = this.m_setcontactgroups
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_setcontactgroups
+
+// m_setcontactgroups.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_set_contactgroup()
+
+// m_setcontactgroups.create() returns 0 [event]
+	call super::create
+	this.text = "Set Contact Group(s)~tF8"
+	this.shortcut = 119
+
+// m_setcontactgroups.destroy() returns 0 [event]
 	call super::destroy

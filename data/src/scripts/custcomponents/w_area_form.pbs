@@ -22,30 +22,71 @@
 	this.id_detail.setitem(this.id_detail.getrow(), "shortname", as_name1 + "~r~n" + as_name2)
 	return b_flag
 
-// w_area_form.create() returns 0
+// w_area_form.create() returns 0 [event]
 	call super::create
 
-// w_area_form.destroy() returns 0
+// w_area_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_area_form.open() returns long
+// w_area_form.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.is_tablename = "area"
 	return ::message.returnvalue
 
-// w_area_form.activate() returns long
+// w_area_form.activate() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::activate()
 	this.windowstate = maximized!
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_area_form.ue_save() returns 0
+// w_area_form.ue_save() returns 0 [event]
 	call super::ue_save
 	if this.id_detail.accepttext() > 0 then
 		this.id_detail.setitem(this.id_detail.getrow(), "shortname", this.id_detail.getitemstring(this.id_detail.getrow(), "shortname1") + "~r~n" + this.id_detail.getitemstring(this.id_detail.getrow(), "shortname2"))
 	end if
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "shortname"
+		if data = "" or isnull(data) then
+			messagebox("ShortName Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "manager"
+		if data = "" or isnull(data) then
+			messagebox("Manager Validation", "Value required for Manager in current row")
+		end if
+	end choose
+	return 1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if parent.parent.parent.wf_duplicatename(data) then
+			messagebox("Name Validation", "Duplication Name Error~n~rPlease Choose Some Other Name")
+			return 1
+		end if
+	case "shortname1"
+		if parent.parent.parent.wf_duplicateshortname(data, getitemstring(row, "shortname2")) then
+			messagebox("ShortName Validation", "Duplication ShortName Error~n~rPlease enter Some Other ShortName")
+			return 1
+		end if
+	case "shortname2"
+		if parent.parent.parent.wf_duplicateshortname(getitemstring(row, "shortname1"), data) then
+			messagebox("ShortName Validation", "Duplication ShortName Error~n~rPlease enter Some Other ShortName")
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue

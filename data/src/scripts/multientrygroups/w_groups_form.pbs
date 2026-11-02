@@ -1,6 +1,6 @@
 // window w_groups_form (multientrygroups)  ancestor: window
 
-// w_groups_form.ue_close() returns 0
+// w_groups_form.ue_close() returns 0 [event]
 	SQL stop USING this.it_transobject;
 	close(this)
 
@@ -189,7 +189,7 @@
 	end if
 	return ll_retcode
 
-// w_groups_form.create() returns 0
+// w_groups_form.create() returns 0 [event]
 	this.dw_groupheaders = create dw_groupheaders
 	this.dw_groupgodowns = create dw_groupgodowns
 	this.dw_rights_hidden = create dw_rights_hidden
@@ -198,7 +198,7 @@
 	this.tab_main = create tab_main
 	this.control = {this.dw_groupheaders, this.dw_groupgodowns, this.dw_rights_hidden, this.cb_cancel, this.cb_ok, this.tab_main}
 
-// w_groups_form.destroy() returns 0
+// w_groups_form.destroy() returns 0 [event]
 	destroy this.dw_groupheaders
 	destroy this.dw_groupgodowns
 	destroy this.dw_rights_hidden
@@ -206,7 +206,7 @@
 	destroy this.cb_ok
 	destroy this.tab_main
 
-// w_groups_form.open() returns long
+// w_groups_form.open() returns long [event]
 	integer li_xpos
 	integer li_ypos
 	integer li_xendpos
@@ -243,17 +243,17 @@
 	end if
 	return message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.postevent("ue_close")
 	return ::message.returnvalue
 
-// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		triggerevent(clicked!)
 	end if
 	return 1
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	string ls_aliasname
 	long ll_newid
 	long ll_row
@@ -383,16 +383,16 @@
 	setpointer(arrow!)
 	return ::message.returnvalue
 
-// tab_main.create() returns 0
+// tab_main.create() returns 0 [event]
 	this.tabpage_group = create tabpage_group
 	this.tabpage_rights = create tabpage_rights
 	this.control = {this.tabpage_group, this.tabpage_rights}
 
-// tab_main.destroy() returns 0
+// tab_main.destroy() returns 0 [event]
 	destroy this.tabpage_group
 	destroy this.tabpage_rights
 
-// tab_main.selectionchanged(integer oldindex, integer newindex) returns long
+// tab_main.selectionchanged(integer oldindex, integer newindex) returns long [event]
 	if newindex = 1 then
 		parent.id_group.setfocus()
 	elseif newindex = 2 then
@@ -400,29 +400,29 @@
 	end if
 	return ::message.returnvalue
 
-// tabpage_group.create() returns 0
+// tabpage_group.create() returns 0 [event]
 	this.dw_group = create dw_group
 	this.control = {this.dw_group}
 
-// tabpage_group.destroy() returns 0
+// tabpage_group.destroy() returns 0 [event]
 	destroy this.dw_group
 
-// dw_group.ue_enterkey() returns long
+// dw_group.ue_enterkey() returns long [event]
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_group.getfocus() returns long
+// dw_group.getfocus() returns long [event]
 	setfocus()
 	selecttext(1, len(gettext()))
 	return ::message.returnvalue
 
-// dw_group.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_group.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	if len(gettext()) > 0 then
 		selecttext(1, len(gettext()))
 	end if
 	return ::message.returnvalue
 
-// dw_group.itemerror(long row, dwobject dwo, string data) returns long
+// dw_group.itemerror(long row, dwobject dwo, string data) returns long [event]
 	choose case dwo.name
 	case "groupname"
 		if data = "" or isnull(data) then
@@ -431,7 +431,7 @@
 	end choose
 	return 1
 
-// dw_group.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_group.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	choose case dwo.name
 	case "groupname"
 		if parent.parent.parent.wf_duplicatename(data) then
@@ -448,27 +448,27 @@
 	end choose
 	return ::message.returnvalue
 
-// tabpage_rights.create() returns 0
+// tabpage_rights.create() returns 0 [event]
 	this.dw_rights = create dw_rights
 	this.control = {this.dw_rights}
 
-// tabpage_rights.destroy() returns 0
+// tabpage_rights.destroy() returns 0 [event]
 	destroy this.dw_rights
 
-// dw_rights.getfocus() returns long
+// dw_rights.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	setfocus()
 	selecttext(1, len(gettext()))
 	return ::message.returnvalue
 
-// dw_rights.ue_enterkey() returns long
+// dw_rights.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_rights.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_rights.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
 	if len(gettext()) > 0 then
@@ -476,7 +476,7 @@
 	end if
 	return ::message.returnvalue
 
-// dw_rights.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// dw_rights.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	long ancestorreturnvalue
 	integer rt_code
 	long ll_currrow

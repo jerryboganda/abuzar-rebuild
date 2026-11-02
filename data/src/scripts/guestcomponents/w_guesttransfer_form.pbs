@@ -17,7 +17,7 @@
 	SQL SELECT CASE Occupied WHEN 'Y' THEN 1 ELSE 0 END INTO :ll_retcode FROM GuestRoom WHERE GuestRoomCode =:al_locationcode USING this.it_transobject;
 	return ll_retcode
 
-// w_guesttransfer_form.create() returns 0
+// w_guesttransfer_form.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	if isvalid(this.menuid) then
@@ -30,21 +30,21 @@
 	icurrent = upperbound(this.control)
 	this.control[icurrent + 1] = this.dw_transferdetail
 
-// w_guesttransfer_form.destroy() returns 0
+// w_guesttransfer_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 	destroy this.dw_transferdetail
 
-// w_guesttransfer_form.activate() returns long
+// w_guesttransfer_form.activate() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::activate()
 	this.windowstate = maximized!
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_guesttransfer_form.open() returns long
+// w_guesttransfer_form.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.is_tablename = "GuestTransfer"
@@ -52,7 +52,7 @@
 	this.id_print.dataobject = "d_guesttransfer_print"
 	return ::message.returnvalue
 
-// w_guesttransfer_form.ue_save() returns 0
+// w_guesttransfer_form.ue_save() returns 0 [event]
 	long ll_primarykey
 	long ll_row
 	long ll_retcode
@@ -152,7 +152,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_guesttransfer_form.ue_detail() returns 0
+// w_guesttransfer_form.ue_detail() returns 0 [event]
 	long ll_code
 	this.im_menu.m_file.m_new.enabled = false
 	this.im_menu.m_file.m_save.enabled = true
@@ -173,7 +173,22 @@
 		this.tab_retrieve.tabpage_detail.dw_detail.setfocus()
 	end if
 
-// w_guesttransfer_form.ue_newform() returns 0
+// w_guesttransfer_form.ue_newform() returns 0 [event]
 	integer li_protect
 	call super::ue_newform
 	wf_protectdw(this.id_detail, li_protect)
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	long ll_retcode
+	long ll_patientcode
+	string ls_regno
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "newroom"
+		if isnull(data) then
+			messagebox("New Guest Room Validation", "Please Choose Some Valid Guest Room")
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue

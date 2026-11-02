@@ -1,12 +1,12 @@
 // window w_populate_receipt_in_proformapurinv (receiptcomponents)  ancestor: window
 
-// w_populate_receipt_in_proformapurinv.ue_keydown(keycode key, unsignedlong keyflags) returns long
+// w_populate_receipt_in_proformapurinv.ue_keydown(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		post event ue_close()
 	end if
 	return ::message.returnvalue
 
-// w_populate_receipt_in_proformapurinv.ue_close() returns 0
+// w_populate_receipt_in_proformapurinv.ue_close() returns 0 [event]
 	closewithreturn(this, this.istr_arg)
 
 // w_populate_receipt_in_proformapurinv.wf_assigndwobjects(string as_masterdw, string as_detaildw, string as_footerdw) returns 0
@@ -17,7 +17,7 @@
 	this.dw_detail.settransobject(sqlca)
 	this.dw_footer.settransobject(sqlca)
 
-// w_populate_receipt_in_proformapurinv.create() returns 0
+// w_populate_receipt_in_proformapurinv.create() returns 0 [event]
 	this.cb_retrieve = create cb_retrieve
 	this.cbx_updateremarks = create cbx_updateremarks
 	this.rb_both = create rb_both
@@ -31,7 +31,7 @@
 	this.dw_detail = create dw_detail
 	this.control = {this.cb_retrieve, this.cbx_updateremarks, this.rb_both, this.rb_npop, this.rb_pop, this.cb_ok, this.dw_footer, this.dw_master, this.gb_1, this.gb_3, this.dw_detail}
 
-// w_populate_receipt_in_proformapurinv.destroy() returns 0
+// w_populate_receipt_in_proformapurinv.destroy() returns 0 [event]
 	destroy this.cb_retrieve
 	destroy this.cbx_updateremarks
 	destroy this.rb_both
@@ -44,7 +44,7 @@
 	destroy this.gb_3
 	destroy this.dw_detail
 
-// w_populate_receipt_in_proformapurinv.open() returns long
+// w_populate_receipt_in_proformapurinv.open() returns long [event]
 	environment le_env
 	integer li_rtncode
 	long ll_win_width
@@ -91,13 +91,13 @@
 	end if
 	return message.returnvalue
 
-// cb_retrieve.clicked() returns long
+// cb_retrieve.clicked() returns long [event]
 	if parent.dw_master.rowcount() > 0 then
 		parent.dw_detail.retrieve(parent.dw_master.object.recipienttypecode[1], parent.dw_master.object.recipientcode[1])
 	end if
 	return ::message.returnvalue
 
-// rb_both.clicked() returns long
+// rb_both.clicked() returns long [event]
 	string ls_filter
 	if parent.rb_pop.checked = true then
 		ls_filter = "status='Populated'"
@@ -112,7 +112,7 @@
 	parent.dw_detail.setredraw(true)
 	return ::message.returnvalue
 
-// rb_npop.clicked() returns long
+// rb_npop.clicked() returns long [event]
 	string ls_filter
 	if parent.rb_pop.checked = true then
 		ls_filter = "status='Populated'"
@@ -127,7 +127,7 @@
 	parent.dw_detail.setredraw(true)
 	return ::message.returnvalue
 
-// rb_pop.clicked() returns long
+// rb_pop.clicked() returns long [event]
 	string ls_filter
 	if parent.rb_pop.checked = true then
 		ls_filter = "status='Populated'"
@@ -142,7 +142,7 @@
 	parent.dw_detail.setredraw(true)
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	long[] ll_invcode
 	long ll_rowcount
 	long ll_counter
@@ -173,7 +173,7 @@
 	parent.post event ue_close()
 	return ::message.returnvalue
 
-// dw_master.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_master.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	integer ll_retcode
 	long ll_recipientcode
 	long ll_null

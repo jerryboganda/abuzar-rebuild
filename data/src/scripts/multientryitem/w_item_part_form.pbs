@@ -236,16 +236,16 @@
 	end if
 	return ll_retcode
 
-// w_item_part_form.create() returns 0
+// w_item_part_form.create() returns 0 [event]
 	call super::create
 
-// w_item_part_form.destroy() returns 0
+// w_item_part_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_item_part_form.ue_save() returns 0
+// w_item_part_form.ue_save() returns 0 [event]
 	long ll_counter
 	long ll_code
 	long ll_oldmasterpart
@@ -374,7 +374,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_item_part_form.ue_newform() returns 0
+// w_item_part_form.ue_newform() returns 0 [event]
 	call super::ue_newform
 	this.im_menu.m_item.m_newitem.enabled = true
 	this.im_menu.m_item.m_deleteitem.enabled = true
@@ -384,13 +384,13 @@
 	this.id_master.object.gcode.initial = string(f_numberpreferences("ItemDefaultAssociatedGcode"))
 	this.id_master.setfocus()
 
-// w_item_part_form.ue_newitem() returns 0
+// w_item_part_form.ue_newitem() returns 0 [event]
 	if this.ib_itemvalidated = false and wf_validatemodel() = -1 then
 		return
 	end if
 	call super::ue_newitem
 
-// w_item_part_form.ue_detail() returns 0
+// w_item_part_form.ue_detail() returns 0 [event]
 	long ll_code
 	long ll_rowcount
 	call super::ue_detail
@@ -413,7 +413,7 @@
 	this.im_menu.m_item.m_newitem.enabled = true
 	this.im_menu.m_item.m_deleteitem.enabled = true
 
-// w_item_part_form.ue_deleteitem() returns 0
+// w_item_part_form.ue_deleteitem() returns 0 [event]
 	long ll_currow
 	long ll_detailrows
 	this.ib_itemvalidated = true
@@ -421,7 +421,7 @@
 	ll_detailrows = this.id_detail.rowcount()
 	wf_grandtotal()
 
-// w_item_part_form.ue_postopen() returns 0
+// w_item_part_form.ue_postopen() returns 0 [event]
 	long ll_rtncode
 	call super::ue_postopen
 	ll_rtncode = this.id_detail.getchild("modelcode", this.idc_model)
@@ -437,17 +437,17 @@
 	ll_rtncode = this.idc_masterpart.settransobject(this.it_transobject)
 	this.idc_masterpart.retrieve()
 
-// w_item_part_form.open() returns long
+// w_item_part_form.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	return ::message.returnvalue
 
-// w_item_part_form.ue_refreshddw() returns 0
+// w_item_part_form.ue_refreshddw() returns 0 [event]
 	call super::ue_refreshddw
 	this.idc_model.retrieve()
 	this.idc_masterpart.retrieve()
 
-// w_item_part_form.ue_callback_popupwindow(any ar_object) returns 0
+// w_item_part_form.ue_callback_popupwindow(any ar_object) returns 0 [event]
 	long ll_code
 	long ll_row
 	string as_errortext
@@ -472,3 +472,122 @@
 	this.id_master.accepttext()
 	this.id_master.setcolumn("masterpartname")
 	this.id_master.setfocus()
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	long li_option
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if parent.parent.parent.wf_duplicatename(data) then
+			messagebox("Part No. Validation", "Duplicate Part No. Error~n~rPlease Enter Some valid Part No.")
+			return 1
+		end if
+	case "masterpartname"
+		if not isnull(data) then
+			if this.object.name[row] = data then
+				messagebox("Master Part No. Validation", "Part No Can not be master to itself~n~rPlease Enter Some valid Part No. or Leave Empty for Master")
+				return 1
+			end if
+			if parent.parent.parent.wf_find_masteritempart_info(data) > 0 then
+				li_option = messagebox("Master Part No. Validation", "Master Part Number Does Not Exist~r~nDo you want to define a new one?", question!, yesno!, 1)
+				if li_option = 1 then
+					parent.parent.parent.wf_open_item_form_popup()
+					if parent.parent.parent.il_codevalue = 0 or isnull(parent.parent.parent.il_codevalue) then
+						return 1
+					end if
+				else
+					return 1
+				end if
+			else
+				parent.parent.parent.wf_setmasterpartinfo(this.object.masteripartcode[row])
+				return 2
+			end if
+		end if
+	case "masteripartcode"
+		if not (isnull(data) or data = "") then
+			if long(data) = getitemnumber(row, "code") then
+				messagebox("Part No. Validation", "Part No Can not be master to itself~n~rPlease Enter Some valid Part No. or Leave Empty for Master")
+				return 1
+			elseif parent.parent.parent.wf_validate_masterpartno(long(data)) = 0 then
+				return parent.parent.parent.wf_setmasterpartinfo(long(data))
+			else
+				return 1
+			end if
+		end if
+		return
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "code"
+		if data = "" or isnull(data) then
+			messagebox("Part Code Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "masteripartcode"
+	end choose
+	return 1
+
+// dw_detail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	return ::message.returnvalue
+
+// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if string(dwo.name) = "ipartcode" or string(dwo.name) = "masteripartcode" or string(dwo.name) = "manfcode" or string(dwo.name) = "iccode" or string(dwo.name) = "icatcode" or string(dwo.name) = "gcode" then
+		parent.parent.parent.id_master.selecttext(1, 60)
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	string ls_managername
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "modelcode"
+		parent.parent.parent.il_currrow = row
+		parent.parent.parent.ib_itemvalidated = false
+		li_errcode = 0
+	case else
+		parent.parent.parent.ib_itemvalidated = true
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "modelcode"
+		if data = "" or isnull(data) then
+			messagebox("Model Validation", "Value required for Model in current row")
+		end if
+	end choose
+	return 1
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validatemodel() = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.getfocus() returns long [event]
+	return ::message.returnvalue
+
+// dw_itemsdetail.ue_enterkey() returns long [event]
+	if getrow() = rowcount() and getcolumn() = integer(this.object.datawindow.column.count) then
+		if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validatemodel() = -1 then
+			return 0
+		end if
+		parent.parent.parent.event ue_newitem()
+		return 1
+	end if
+	send(handle(this), 256, 9, long(90))
+	return 1

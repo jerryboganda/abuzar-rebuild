@@ -1,6 +1,6 @@
 // window w_patientimage_rowid_old (patientcomponents)  ancestor: window
 
-// w_patientimage_rowid_old.ue_postopen() returns 0
+// w_patientimage_rowid_old.ue_postopen() returns 0 [event]
 	runtimeerror ex
 	string ls_err
 	string ls_errcode
@@ -27,7 +27,7 @@
 		messagebox("Exception Occur", "Details are:~r~n" + ex.getmessage() + "~r~nError Code" + ls_errcode + "~r~nError Description" + ls_err)
 	end try
 
-// w_patientimage_rowid_old.ue_close(integer ar_closearg) returns 0
+// w_patientimage_rowid_old.ue_close(integer ar_closearg) returns 0 [event]
 	if ar_closearg = -1 then
 		this.istr_blob.i_closemode = -1
 	else
@@ -71,7 +71,7 @@
 	f_writeimgtofile(ls_filename, this.istr_blob.lb_blob)
 	return ls_filename
 
-// w_patientimage_rowid_old.create() returns 0
+// w_patientimage_rowid_old.create() returns 0 [event]
 	this.p_image = create p_image
 	this.ole_twain = create ole_twain
 	this.cb_change = create cb_change
@@ -79,14 +79,14 @@
 	this.cb_cancel = create cb_cancel
 	this.control = {this.p_image, this.ole_twain, this.cb_change, this.cb_ok, this.cb_cancel}
 
-// w_patientimage_rowid_old.destroy() returns 0
+// w_patientimage_rowid_old.destroy() returns 0 [event]
 	destroy this.p_image
 	destroy this.ole_twain
 	destroy this.cb_change
 	destroy this.cb_ok
 	destroy this.cb_cancel
 
-// w_patientimage_rowid_old.open() returns long
+// w_patientimage_rowid_old.open() returns long [event]
 	long ll_imagew
 	long ll_imageh
 	long ll_code
@@ -137,19 +137,19 @@
 	end if
 	return message.returnvalue
 
-// w_patientimage_rowid_old.key(keycode key, unsignedlong keyflags) returns long
+// w_patientimage_rowid_old.key(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		post event ue_close(-1)
 	end if
 	return ::message.returnvalue
 
-// w_patientimage_rowid_old.close() returns long
+// w_patientimage_rowid_old.close() returns long [event]
 	if fileexists(this.is_filename) then
 		filedelete(this.is_filename)
 	end if
 	return ::message.returnvalue
 
-// p_image.clicked() returns long
+// p_image.clicked() returns long [event]
 	string ls_filename
 	string ls_cmd
 	if not (this.picturename = "" or isnull(this.picturename)) then
@@ -159,7 +159,7 @@
 	end if
 	return ::message.returnvalue
 
-// ole_twain.onposttransfer() returns 0
+// ole_twain.onposttransfer() returns 0 [event]
 	long fh
 	long ll_fbytes
 	runtimeerror ex
@@ -177,14 +177,14 @@
 		messagebox("Exception Occur", "Details are:~r~n" + ex.getmessage())
 	end try
 
-// cb_change.clicked() returns long
+// cb_change.clicked() returns long [event]
 	parent.wf_get_image()
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	parent.post event ue_close(1)
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.post event ue_close(-1)
 	return ::message.returnvalue

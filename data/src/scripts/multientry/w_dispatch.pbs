@@ -207,7 +207,7 @@
 	end if
 	return 0
 
-// w_dispatch.create() returns 0
+// w_dispatch.create() returns 0 [event]
 	call super::create
 	if isvalid(this.menuid) then
 		destroy this.menuid
@@ -216,19 +216,19 @@
 		this.menuid = create m_dispatchmenu
 	end if
 
-// w_dispatch.destroy() returns 0
+// w_dispatch.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_dispatch.activate() returns long
+// w_dispatch.activate() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::activate()
 	this.windowstate = maximized!
 	return ::message.returnvalue
 
-// w_dispatch.ue_save() returns 0
+// w_dispatch.ue_save() returns 0 [event]
 	long ll_mastercurrrow
 	long ll_invid
 	long ll_detailrows
@@ -280,7 +280,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_dispatch.ue_newform() returns 0
+// w_dispatch.ue_newform() returns 0 [event]
 	call super::ue_newform
 	wf_protectdw(this.id_master, 0)
 	wf_protectdw(this.id_detail, 0)
@@ -292,7 +292,7 @@
 		close(this)
 	end if
 
-// w_dispatch.ue_detail() returns 0
+// w_dispatch.ue_detail() returns 0 [event]
 	integer li_rtncode
 	integer li_protect
 	long ll_row
@@ -331,12 +331,12 @@
 	wf_grandtotal()
 	setredraw(true)
 
-// w_dispatch.ue_list() returns 0
+// w_dispatch.ue_list() returns 0 [event]
 	call super::ue_list
 	this.im_menu.m_file.m_print.enabled = false
 	this.im_menu.m_file.m_post.enabled = true
 
-// w_dispatch.ue_refreshddw() returns 0
+// w_dispatch.ue_refreshddw() returns 0 [event]
 	call super::ue_refreshddw
 	this.idc_customers.setredraw(false)
 	this.idc_customers.settransobject(this.it_transobject)
@@ -347,7 +347,7 @@
 	this.idc_agency.retrieve()
 	this.idc_agency.setredraw(true)
 
-// w_dispatch.ue_postopen() returns 0
+// w_dispatch.ue_postopen() returns 0 [event]
 	integer li_rtncode
 	call super::ue_postopen
 	li_rtncode = this.id_master.getchild("custcode", this.idc_customers)
@@ -362,3 +362,57 @@
 		close(this)
 	end if
 	this.idc_agency.settransobject(this.it_transobject)
+
+// dw_detail.editchanged(long row, dwobject dwo, string data) returns long [event]
+	return ::message.returnvalue
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	long ll_retcode
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	ll_retcode = 0
+	choose case dwo.name
+	case "builtyexpenses"
+		if isnull(double(data)) or double(data) < 0.0 then
+			messagebox("Builty Expenses Validation!", "Please Enter Valid Builty Expenses")
+			return 1
+		end if
+	end choose
+	return ll_retcode
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	long ll_invcode
+	long ll_retcode
+	string ls_customer
+	double ld_saleinvamt
+	integer yesno
+	integer li_custcode
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "saleinvcode"
+		parent.parent.parent.il_currrow = row
+		if isnull(long(data)) or long(data) = 0 then
+			return 1
+		else
+			return parent.parent.parent.wf_validatesaleinv(long(data), row)
+		end if
+		return
+	end choose
+	return ::message.returnvalue
+
+// dw_itemsdetail.editchanged(long row, dwobject dwo, string data) returns long [event]
+	return ::message.returnvalue
+
+// dw_itemsdetail.getfocus() returns long [event]
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "saleinvcode"
+		messagebox("Sale Invoice Code Validation!", "Please Enter Valid Sale Invoice Code")
+		return 1
+	end choose
+	return ::message.returnvalue

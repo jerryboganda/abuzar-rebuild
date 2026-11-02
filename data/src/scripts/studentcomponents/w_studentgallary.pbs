@@ -1,6 +1,6 @@
 // window w_studentgallary (studentcomponents)  ancestor: window
 
-// w_studentgallary.ue_postopen() returns 0
+// w_studentgallary.ue_postopen() returns 0 [event]
 	long ll_code
 	long ll_rowid
 	this.il_icode = message.doubleparm
@@ -29,7 +29,7 @@
 	end if
 	this.cb_prev.event clicked()
 
-// w_studentgallary.ue_close(integer ar_closearg) returns 0
+// w_studentgallary.ue_close(integer ar_closearg) returns 0 [event]
 	string ls_file
 	ls_file = gs_temp_img_filename
 	ls_file = left(this.is_filename, len(this.is_filename) - 4)
@@ -89,7 +89,7 @@
 	f_writeimgtofile(ls_filename, this.ibl_image)
 	return ls_filename
 
-// w_studentgallary.create() returns 0
+// w_studentgallary.create() returns 0 [event]
 	this.ole_image = create ole_image
 	this.st_regno = create st_regno
 	this.st_name = create st_name
@@ -102,7 +102,7 @@
 	this.cb_slideshow = create cb_slideshow
 	this.control = {this.ole_image, this.st_regno, this.st_name, this.st_imagecounter, this.cb_exit, this.cb_next, this.cb_prev, this.st_imagecaption, this.p_image, this.cb_slideshow}
 
-// w_studentgallary.destroy() returns 0
+// w_studentgallary.destroy() returns 0 [event]
 	destroy this.ole_image
 	destroy this.st_regno
 	destroy this.st_name
@@ -114,7 +114,7 @@
 	destroy this.p_image
 	destroy this.cb_slideshow
 
-// w_studentgallary.open() returns long
+// w_studentgallary.open() returns long [event]
 	long ll_win_width
 	long ll_win_height
 	long ll_width
@@ -147,37 +147,37 @@
 	post event ue_postopen()
 	return ::message.returnvalue
 
-// w_studentgallary.key(keycode key, unsignedlong keyflags) returns long
+// w_studentgallary.key(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		post event ue_close(-1)
 	end if
 	return ::message.returnvalue
 
-// w_studentgallary.close() returns long
+// w_studentgallary.close() returns long [event]
 	if fileexists(this.is_filename) then
 		filedelete(this.is_filename)
 	end if
 	return ::message.returnvalue
 
-// cb_exit.clicked() returns long
+// cb_exit.clicked() returns long [event]
 	parent.post event ue_close(0)
 	return ::message.returnvalue
 
-// cb_next.clicked() returns long
+// cb_next.clicked() returns long [event]
 	if parent.il_thisrow < parent.il_totrows then
 		parent.il_thisrow = parent.il_thisrow + 1
 		parent.wf_set_image_details()
 	end if
 	return ::message.returnvalue
 
-// cb_prev.clicked() returns long
+// cb_prev.clicked() returns long [event]
 	if parent.il_thisrow > 1 then
 		parent.il_thisrow = parent.il_thisrow - 1
 		parent.wf_set_image_details()
 	end if
 	return ::message.returnvalue
 
-// p_image.clicked() returns long
+// p_image.clicked() returns long [event]
 	string ls_filename
 	string ls_cmd
 	if not (this.picturename = "" or isnull(this.picturename)) then
@@ -187,7 +187,7 @@
 	end if
 	return ::message.returnvalue
 
-// cb_slideshow.clicked() returns long
+// cb_slideshow.clicked() returns long [event]
 	long ll_counter
 	long i
 	this.enabled = false

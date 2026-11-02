@@ -1,6 +1,6 @@
 // window w_advancedsaleamount (advancedsale)  ancestor: window
 
-// w_advancedsaleamount.ue_close(integer ai_status) returns 0
+// w_advancedsaleamount.ue_close(integer ai_status) returns 0 [event]
 	if this.id_dw.object.creditamt1[1] <> 0 and (long(this.id_dw.object.credit1acccode[1]) = 0 or isnull(this.id_dw.object.credit1acccode[1])) then
 		messagebox("Account1 selection validation", "Please select some valid Account for Credit Card/Voucher")
 		this.id_dw.setcolumn("credit1acccode")
@@ -74,18 +74,18 @@
 		this.id_dw.setitem(1, "balance", this.id_dw.getitemdecimal(1, "netamt") - ad_amt - this.id_dw.getitemdecimal(1, "cashamt") - this.id_dw.getitemdecimal(1, "creditamt1") - this.id_dw.getitemdecimal(1, "creditamt2"))
 	end if
 
-// w_advancedsaleamount.create() returns 0
+// w_advancedsaleamount.create() returns 0 [event]
 	this.dw_amountoninvoice = create dw_amountoninvoice
 	this.cb_cancel = create cb_cancel
 	this.cb_ok = create cb_ok
 	this.control = {this.dw_amountoninvoice, this.cb_cancel, this.cb_ok}
 
-// w_advancedsaleamount.destroy() returns 0
+// w_advancedsaleamount.destroy() returns 0 [event]
 	destroy this.dw_amountoninvoice
 	destroy this.cb_cancel
 	destroy this.cb_ok
 
-// w_advancedsaleamount.open() returns long
+// w_advancedsaleamount.open() returns long [event]
 	string ls_invcode
 	long ll_rtcode
 	environment le_env
@@ -144,13 +144,13 @@
 	end if
 	return message.returnvalue
 
-// dw_amountoninvoice.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_amountoninvoice.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
 	selecttext(1, len(gettext()))
 	return ::message.returnvalue
 
-// dw_amountoninvoice.itemerror(long row, dwobject dwo, string data) returns long
+// dw_amountoninvoice.itemerror(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemerror(row, dwo, data)
 	choose case dwo.name
@@ -161,7 +161,7 @@
 	end choose
 	return ::message.returnvalue
 
-// dw_amountoninvoice.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_amountoninvoice.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	long ll_null
 	integer li_errcode
@@ -188,29 +188,29 @@
 	end choose
 	return li_errcode
 
-// dw_amountoninvoice.ue_enterkey() returns long
+// dw_amountoninvoice.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	return ::message.returnvalue
 
-// cb_cancel.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_cancel.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		triggerevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.istr_amountoninvoice.i_status = -1
 	parent.post event ue_close(-1)
 	return ::message.returnvalue
 
-// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		triggerevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	if parent.id_dw.accepttext() = 1 then
 		if parent.id_dw.getitemnumber(1, "balance") <> 0.0 then
 			messagebox("Invoice Balance", "In order to proceed futher, Sale Invoice Balance Must be Zero~r~nAny Non-Zero Balance is not Acceptable", stopsign!)

@@ -1,8 +1,27 @@
 // menu m_saleinvgroup (salewin)  ancestor: m_multi_entry
 
-// m_saleinvgroup.create() returns 0
+// m_saleinvgroup.create() returns 0 [event]
 	m_saleinvgroup = this
 	call super::create
 
-// m_saleinvgroup.destroy() returns 0
+// m_saleinvgroup.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_populateinvoices = create m_populateinvoices
+	this.item[upperbound(this.item) + 1] = this.m_populateinvoices
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_populateinvoices
+
+// m_populateinvoices.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_populateinvoices()
+
+// m_populateinvoices.create() returns 0 [event]
+	call super::create
+	this.text = "Populate Invoices"
+
+// m_populateinvoices.destroy() returns 0 [event]
 	call super::destroy

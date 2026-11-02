@@ -1,17 +1,17 @@
 // window w_popup_customerselectionareawise_vocher (accountsrespwin)  ancestor: w_popup_forselection_walias
 
-// w_popup_customerselectionareawise_vocher.create() returns 0
+// w_popup_customerselectionareawise_vocher.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.cbx_all = create cbx_all
 	icurrent = upperbound(this.control)
 	this.control[icurrent + 1] = this.cbx_all
 
-// w_popup_customerselectionareawise_vocher.destroy() returns 0
+// w_popup_customerselectionareawise_vocher.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.cbx_all
 
-// w_popup_customerselectionareawise_vocher.open() returns long
+// w_popup_customerselectionareawise_vocher.open() returns long [event]
 	string ls_custfilterstring
 	s_popup_selection ls_popup_selection
 	long ll_win_width
@@ -61,3 +61,25 @@
 		return 0
 	end if
 	return message.returnvalue
+
+// cb_cancel.clicked() returns long [event]
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long [event]
+	if parent.id_selected.accepttext() = -1 then
+		parent.id_selected.setfocus()
+		return ::message.returnvalue
+	elseif isnull(parent.id_selected.getitemstring(parent.id_selected.getrow(), "name")) and parent.cbx_all.checked = false then
+		messagebox("Name Validation", "Please enter valid value for Name.")
+		parent.id_selected.setcolumn(1)
+		parent.id_selected.setfocus()
+		return ::message.returnvalue
+	end if
+	parent.is_popup_selection.l_code = parent.id_selected.getitemnumber(parent.id_selected.getrow(), "code")
+	parent.is_popup_selection.s_name = parent.id_selected.getitemstring(parent.id_selected.getrow(), "name")
+	if parent.cbx_all.checked then
+		parent.is_popup_selection.l_code = -2
+	end if
+	parent.post event ue_close()
+	return ::message.returnvalue

@@ -10,24 +10,36 @@
 	end if
 	return b_flag
 
-// w_emp_attendancestatus.create() returns 0
+// w_emp_attendancestatus.create() returns 0 [event]
 	call super::create
 
-// w_emp_attendancestatus.destroy() returns 0
+// w_emp_attendancestatus.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_emp_attendancestatus.activate() returns long
+// w_emp_attendancestatus.activate() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::activate()
 	this.windowstate = maximized!
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_emp_attendancestatus.open() returns long
+// w_emp_attendancestatus.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.is_tablename = "EMP_AttendanceStatus"
+	return ::message.returnvalue
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if parent.parent.parent.wf_duplicatename(data) then
+			messagebox("Name Validation", "Duplication Name Error~n~rPlease Choose Some Other Name")
+			return 1
+		end if
+	end choose
 	return ::message.returnvalue

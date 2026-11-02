@@ -1,12 +1,12 @@
 // window w_motorvehicle (multientry)  ancestor: window
 
-// w_motorvehicle.ue_close(integer ai_status) returns 0
+// w_motorvehicle.ue_close(integer ai_status) returns 0 [event]
 	if ai_status = -1 then
 		setnull(this.is_chasisno)
 	end if
 	closewithreturn(this, this.is_chasisno)
 
-// w_motorvehicle.ue_postopen() returns 0
+// w_motorvehicle.ue_postopen() returns 0 [event]
 	boolean lb_wardcode_enabled
 	string ls_custcode
 	string ls_setting
@@ -151,20 +151,20 @@
 	end if
 	return b_flag
 
-// w_motorvehicle.create() returns 0
+// w_motorvehicle.create() returns 0 [event]
 	this.dw_print = create dw_print
 	this.cb_cancel = create cb_cancel
 	this.cb_ok = create cb_ok
 	this.dw_detail = create dw_detail
 	this.control = {this.dw_print, this.cb_cancel, this.cb_ok, this.dw_detail}
 
-// w_motorvehicle.destroy() returns 0
+// w_motorvehicle.destroy() returns 0 [event]
 	destroy this.dw_print
 	destroy this.cb_cancel
 	destroy this.cb_ok
 	destroy this.dw_detail
 
-// w_motorvehicle.open() returns long
+// w_motorvehicle.open() returns long [event]
 	long ll_row
 	long ll_width
 	long ll_height
@@ -184,23 +184,23 @@
 	post event ue_postopen()
 	return ::message.returnvalue
 
-// cb_cancel.ue_keydown(keycode key, unsignedlong keyflags) returns long
+// cb_cancel.ue_keydown(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		postevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.post event ue_close(-1)
 	return ::message.returnvalue
 
-// cb_ok.ue_keydown(keycode key, unsignedlong keyflags) returns long
+// cb_ok.ue_keydown(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		postevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	long ll_primarykey
 	long ll_row
 	long ll_null
@@ -278,13 +278,13 @@
 	setpointer(arrow!)
 	return ::message.returnvalue
 
-// dw_detail.ue_enterkey() returns long
+// dw_detail.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	long ll_totdays
 	long ll_years
@@ -299,7 +299,7 @@
 	end choose
 	return ::message.returnvalue
 
-// dw_detail.itemerror(long row, dwobject dwo, string data) returns long
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemerror(row, dwo, data)
 	choose case dwo.name
@@ -308,7 +308,7 @@
 	end choose
 	return 1
 
-// dw_detail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// dw_detail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
 	if keyflags = 2 and key = keyp! then

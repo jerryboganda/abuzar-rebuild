@@ -1030,7 +1030,7 @@
 	end if
 	return 0
 
-// w_serviceresult_form.create() returns 0
+// w_serviceresult_form.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	if isvalid(this.menuid) then
@@ -1040,13 +1040,13 @@
 		this.menuid = create m_serviceresultmenu
 	end if
 
-// w_serviceresult_form.destroy() returns 0
+// w_serviceresult_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_serviceresult_form.ue_save() returns 0
+// w_serviceresult_form.ue_save() returns 0 [event]
 	long ll_mastercurrrow
 	long ll_invid
 	long ll_detailrows
@@ -1124,7 +1124,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_serviceresult_form.ue_newform() returns 0
+// w_serviceresult_form.ue_newform() returns 0 [event]
 	long ll_null
 	call super::ue_newform
 	this.id_master.setfocus()
@@ -1136,7 +1136,7 @@
 	this.id_master.setcolumn("serviceinvcode")
 	this.id_master.setfocus()
 
-// w_serviceresult_form.ue_newitem() returns 0
+// w_serviceresult_form.ue_newitem() returns 0 [event]
 	long ll_rowcount
 	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
 		return
@@ -1154,7 +1154,7 @@
 	this.im_menu.m_file.m_save.enabled = true
 	this.ib_validatefullcode = true
 
-// w_serviceresult_form.ue_detail() returns 0
+// w_serviceresult_form.ue_detail() returns 0 [event]
 	m_serviceresultmenu lm_menu
 	integer li_protect
 	call super::ue_detail
@@ -1176,7 +1176,7 @@
 		wf_protectdw(this.id_detail, li_protect)
 	end if
 
-// w_serviceresult_form.ue_postopen() returns 0
+// w_serviceresult_form.ue_postopen() returns 0 [event]
 	long ll_null
 	call super::ue_postopen
 	setnull(ll_null)
@@ -1212,21 +1212,21 @@
 	end if
 	this.ib_regen_serviceresult = false
 
-// w_serviceresult_form.ue_deleteitem() returns 0
+// w_serviceresult_form.ue_deleteitem() returns 0 [event]
 
-// w_serviceresult_form.ue_list() returns 0
+// w_serviceresult_form.ue_list() returns 0 [event]
 	m_serviceresultmenu lm_menu
 	call super::ue_list
 	lm_menu = this.menuid
 	lm_menu.m_file.m_save.enabled = false
 	lm_menu.m_file.m_post.enabled = true
 
-// w_serviceresult_form.ue_new() returns 0
+// w_serviceresult_form.ue_new() returns 0 [event]
 	long ll_null
 	call super::ue_new
 	setnull(ll_null)
 
-// w_serviceresult_form.ue_print() returns 0
+// w_serviceresult_form.ue_print() returns 0 [event]
 	integer li_option
 	integer li_printcode
 	long ll_code
@@ -1296,3 +1296,188 @@
 	if this.im_menu.m_file.m_save.enabled = true and lb_listtab = false then
 		postevent("ue_new")
 	end if
+
+// tabpage_detail.create() returns 0 [event]
+	integer icurrent
+	this.dw_print = create dw_print
+	call super::create
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_print
+
+// tabpage_detail.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.dw_print
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	end choose
+	return 1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	string ls_errtext
+	long ll_resultcode
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "serviceinvcode"
+		if parent.parent.parent.wf_getserviceinfo(long(data), ls_errtext, ll_resultcode) > 0 then
+			messagebox("Service Invoice Code Validation", "Not a valid Service Invoice Code~r~n" + ls_errtext, stopsign!)
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.getfocus() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::getfocus()
+	if len(gettext()) > 0 then
+		selecttext(1, len(gettext()))
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	string ls_managername
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "testmachinecode"
+		if long(data) > 0 then
+			if parent.parent.parent.wf_set_machine_based_ref_value(long(data), row) = 0 then
+				return 0
+			else
+				messagebox("Machine Validation", "Please select valid machine", stopsign!)
+				return 1
+			end if
+		else
+			messagebox("Machine Validation", "Please select valid machine", stopsign!)
+			return 1
+		end if
+	case "componentvalue"
+		parent.parent.parent.wf_edit_componentvalue(this, row, 1)
+		return 0
+	case "srvrowid"
+		parent.parent.parent.il_currrow = row
+		parent.parent.parent.ib_itemvalidated = false
+		li_errcode = 0
+	case else
+		parent.parent.parent.ib_itemvalidated = true
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "srvrowid"
+		if data = "" or isnull(data) then
+			messagebox("Service Validation", "Value required Service in current row")
+		end if
+	end choose
+	return 1
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem() = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.getfocus() returns long [event]
+	parent.parent.parent.id_itemslist.hide()
+	setfocus()
+	return ::message.returnvalue
+
+// dw_itemsdetail.rowfocuschanged(long currentrow) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::rowfocuschanged(currentrow)
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem() = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.ue_enterkey() returns long [event]
+	if getrow() = rowcount() and getcolumn() = integer(this.object.datawindow.column.count) then
+		setcolumn("componentvalue")
+		setfocus()
+		return 1
+	end if
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_itemsdetail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keyf5! and getrow() > 0 then
+		parent.parent.parent.wf_edit_comments(this.object.servicecomponentcode[getrow()], getrow())
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	string ls_controlname
+	string ls_temp
+	ancestorreturnvalue = super::doubleclicked(xpos, ypos, row, dwo)
+	if row > 0 and parent.parent.parent.ib_validate_result_value then
+		choose case dwo.name
+		case "b_comments"
+			parent.parent.parent.wf_edit_comments(this.object.servicecomponentcode[row], row)
+		case "componentvalue"
+			parent.parent.parent.wf_edit_componentvalue(this, row, 0)
+		case "componentvalue2"
+			parent.parent.parent.wf_edit_componentvalue2(this, row)
+		end choose
+	end if
+	return ::message.returnvalue
+
+// dw_find.keypressed(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	long ll_row
+	long ll_code
+	long ll_serviceinvcode
+	long ll_usercode
+	string ls_errtext
+	w_transactionwindow lw_sheet
+	ancestorreturnvalue = super::keypressed(key, keyflags)
+	if key = keyf6! then
+		ll_row = parent.parent.parent.id_list.getrow()
+		if ll_row > 0 then
+			ll_serviceinvcode = parent.parent.parent.id_list.object.serviceinvcode[ll_row]
+			openwithparm(lw_sheet, 1)
+			ll_code = message.doubleparm
+			if ll_code > 0 and ll_serviceinvcode > 0 then
+				parent.parent.parent.wf_set_servicebalance(ll_serviceinvcode, ll_code)
+			end if
+		end if
+	end if
+	if key = keyf7! and parent.parent.parent.ib_regen_serviceresult = true then
+		ll_row = parent.parent.parent.id_list.getrow()
+		if ll_row > 0 then
+			ll_serviceinvcode = parent.parent.parent.id_list.object.serviceinvcode[ll_row]
+			open(w_salesmanpassword)
+			ll_usercode = long(message.doubleparm)
+			if ll_serviceinvcode > 0 and ll_usercode > 0 then
+				SQL rollback USING parent.parent.parent.it_transobject;
+				parent.parent.parent.it_transobject.regenerateserviceresult(ll_serviceinvcode, ll_usercode)
+				if parent.parent.parent.it_transobject.sqlcode = 0 then
+					SQL commit USING parent.parent.parent.it_transobject;
+					messagebox("Service Result Re-Generation", "Successfully Regenerated Desired Service Result")
+				else
+					ls_errtext = "Problem in Re-Generation of Service Result.~r~nReasons Are:-~r~n" + parent.parent.parent.it_transobject.sqlerrtext
+					SQL rollback USING parent.parent.parent.it_transobject;
+					messagebox("Service Result Re-Generation", ls_errtext)
+				end if
+			end if
+		end if
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue

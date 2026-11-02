@@ -1,8 +1,88 @@
 // menu m_productionmenu (issuereq)  ancestor: m_multi_entry
 
-// m_productionmenu.create() returns 0
+// m_productionmenu.create() returns 0 [event]
 	m_productionmenu = this
 	call super::create
 
-// m_productionmenu.destroy() returns 0
+// m_productionmenu.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_finalize = create m_finalize
+	this.m_postissue = create m_postissue
+	this.m_postreceipt = create m_postreceipt
+	this.item[upperbound(this.item) + 1] = this.m_finalize
+	this.item[upperbound(this.item) + 1] = this.m_postissue
+	this.item[upperbound(this.item) + 1] = this.m_postreceipt
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_finalize
+	destroy this.m_postissue
+	destroy this.m_postreceipt
+
+// m_file.clicked() returns 0 [event]
+	call super::clicked
+	this.parentwindow.dynamic wf_dueitem()
+
+// m_options.create() returns 0 [event]
+	call super::create
+	this.text = "Sa&ve and Print~tCtrl+F6"
+	this.enabled = false
+
+// m_options.clicked() returns 0 [event]
+	call super::clicked
+	this.parentwindow.triggerevent("ue_save")
+	if this.parentwindow.dynamic wf_commitform() = true then
+		this.parentwindow.triggerevent("ue_print")
+		this.parentwindow.postevent("ue_new")
+	end if
+
+// m_options.destroy() returns 0 [event]
+	call super::destroy
+
+// m_finalize.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Finalize"
+	this.microhelp = "Finalize the production job in terms of items and qty to be produced"
+	this.toolbaritemname = "Move!"
+	this.toolbaritemtext = "Finalize"
+	this.toolbaritemorder = 11
+
+// m_finalize.destroy() returns 0 [event]
+	call super::destroy
+
+// m_finalize.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_finalize()
+
+// m_postissue.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_postissue()
+
+// m_postissue.create() returns 0 [event]
+	call super::create
+	this.text = "Post Issue~tCtrl+F8"
+	this.shortcut = 375
+	this.microhelp = "Post Issue"
+	this.toolbaritemname = "CreateLibrary!"
+	this.toolbaritemtext = "Post Issue"
+	this.toolbaritemorder = 11
+
+// m_postissue.destroy() returns 0 [event]
+	call super::destroy
+
+// m_postreceipt.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_postreceipt()
+
+// m_postreceipt.create() returns 0 [event]
+	call super::create
+	this.text = "Post Receipt~tCtrl+F9"
+	this.shortcut = 376
+	this.microhelp = "Post Receipt"
+	this.toolbaritemname = "CreateRuntime!"
+	this.toolbaritemtext = "Post Receipt"
+	this.toolbaritemorder = 11
+
+// m_postreceipt.destroy() returns 0 [event]
 	call super::destroy

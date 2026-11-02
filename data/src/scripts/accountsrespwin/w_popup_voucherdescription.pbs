@@ -1,6 +1,6 @@
 // window w_popup_voucherdescription (accountsrespwin)  ancestor: window
 
-// w_popup_voucherdescription.ue_postopen() returns 0
+// w_popup_voucherdescription.ue_postopen() returns 0 [event]
 	long ll_counter
 	long ll_invcode
 	ll_invcode = message.doubleparm
@@ -16,18 +16,18 @@
 	messagebox("Item Validation", "Invoice does not contain any item")
 	post event Close()
 
-// w_popup_voucherdescription.create() returns 0
+// w_popup_voucherdescription.create() returns 0 [event]
 	this.cb_cancel = create cb_cancel
 	this.cb_save = create cb_save
 	this.dw_detail = create dw_detail
 	this.control = {this.cb_cancel, this.cb_save, this.dw_detail}
 
-// w_popup_voucherdescription.destroy() returns 0
+// w_popup_voucherdescription.destroy() returns 0 [event]
 	destroy this.cb_cancel
 	destroy this.cb_save
 	destroy this.dw_detail
 
-// w_popup_voucherdescription.open() returns long
+// w_popup_voucherdescription.open() returns long [event]
 	long ll_win_width
 	long ll_win_height
 	long ll_width
@@ -46,21 +46,21 @@
 	post event ue_postopen()
 	return ::message.returnvalue
 
-// w_popup_voucherdescription.close() returns long
+// w_popup_voucherdescription.close() returns long [event]
 	close(this)
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.post event Close()
 	return ::message.returnvalue
 
-// cb_save.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_save.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		triggerevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_save.clicked() returns long
+// cb_save.clicked() returns long [event]
 	setpointer(hourglass!)
 	if parent.dw_detail.update(true, false) = 1 then
 		SQL commit USING sqlca;
@@ -73,14 +73,14 @@
 	setpointer(arrow!)
 	return ::message.returnvalue
 
-// dw_detail.ue_enterkey() returns long
+// dw_detail.ue_enterkey() returns long [event]
 	if getrow() = rowcount() and getcolumn() = integer(this.object.datawindow.column.count) then
 		return 1
 	end if
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_detail.uevent_dberr_message(long al_errorcode, string as_errortext, long al_row, dwbuffer adwb_buffer) returns 0
+// dw_detail.uevent_dberr_message(long al_errorcode, string as_errortext, long al_row, dwbuffer adwb_buffer) returns 0 [event]
 	s_dberror ls_dberror
 	choose case al_errorcode
 	case -193
@@ -114,7 +114,7 @@
 	end choose
 	openwithparm(w_dberror, ls_dberror)
 
-// dw_detail.dberror(long sqldbcode, string sqlerrtext, string sqlsyntax, dwbuffer buffer, long row) returns long
+// dw_detail.dberror(long sqldbcode, string sqlerrtext, string sqlsyntax, dwbuffer buffer, long row) returns long [event]
 	post event uevent_dberr_message(sqldbcode, sqlerrtext, row, buffer)
 	SQL rollback USING sqlca;
 	return 1

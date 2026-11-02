@@ -78,21 +78,21 @@
 	end if
 	return -1
 
-// w_emp_advance.create() returns 0
+// w_emp_advance.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.dw_print = create dw_print
 	icurrent = upperbound(this.control)
 	this.control[icurrent + 1] = this.dw_print
 
-// w_emp_advance.destroy() returns 0
+// w_emp_advance.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 	destroy this.dw_print
 
-// w_emp_advance.ue_save() returns 0
+// w_emp_advance.ue_save() returns 0 [event]
 	long ll_mastercurrrow
 	long ll_invid
 	long ll_null
@@ -139,7 +139,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_emp_advance.ue_newform() returns 0
+// w_emp_advance.ue_newform() returns 0 [event]
 	call super::ue_newform
 	this.id_master.setfocus()
 	this.idc_emp_advance_acc.reset()
@@ -147,7 +147,7 @@
 	this.idc_cashbankacc.retrieve()
 	wf_protectdw(this.id_master, 0)
 
-// w_emp_advance.ue_detail() returns 0
+// w_emp_advance.ue_detail() returns 0 [event]
 	long li_protect
 	call super::ue_detail
 	this.im_menu.m_file.m_save.enabled = false
@@ -169,11 +169,11 @@
 	end if
 	wf_protectdw(this.id_master, li_protect)
 
-// w_emp_advance.ue_deleteitem() returns 0
+// w_emp_advance.ue_deleteitem() returns 0 [event]
 
-// w_emp_advance.ue_newitem() returns 0
+// w_emp_advance.ue_newitem() returns 0 [event]
 
-// w_emp_advance.ue_postopen() returns 0
+// w_emp_advance.ue_postopen() returns 0 [event]
 	integer ll_rtcode
 	call super::ue_postopen
 	this.il_subcode[1] = 2
@@ -186,7 +186,7 @@
 	this.idc_cashbankacc.insertrow(0)
 	this.id_print = this.dw_print
 
-// w_emp_advance.ue_print() returns 0
+// w_emp_advance.ue_print() returns 0 [event]
 	long ll_row
 	long ll_invcode
 	long ll_option
@@ -246,7 +246,52 @@
 	end if
 	messagebox("Printing Error", "Can not Print Invoice,~r~nNo rows are retrieved", information!)
 
-// w_emp_advance.ue_list() returns 0
+// w_emp_advance.ue_list() returns 0 [event]
 	call super::ue_list
 	this.im_menu.m_file.m_print.enabled = true
 	this.im_menu.m_file.m_print.visible = true
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	long ll_retcode
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "empadvacccode"
+		parent.parent.parent.wf_set_employee_info(long(data))
+		return ll_retcode
+	end choose
+	return ll_retcode
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	string ls_managername
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "limit"
+		parent.parent.parent.il_currrow = row
+		parent.parent.parent.ib_itemvalidated = false
+		if real(data) < 0.0 then
+			li_errcode = 1
+		else
+			li_errcode = 0
+		end if
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "limit"
+		if data = "" or isnull(data) or real(data) < 0.0 then
+			messagebox("Limit Validation", "Valid Value required for limit in current row")
+		end if
+	end choose
+	return 1
+
+// dw_itemsdetail.getfocus() returns long [event]
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	return ::message.returnvalue

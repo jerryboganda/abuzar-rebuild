@@ -1,9 +1,56 @@
 // menu m_custservicetemp (custcomponents)  ancestor: m_multi_entry
 
-// m_custservicetemp.create() returns 0
+// m_custservicetemp.create() returns 0 [event]
 	m_custservicetemp = this
 	call super::create
 	this.text = "m_custservicetemp"
 
-// m_custservicetemp.destroy() returns 0
+// m_custservicetemp.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_inheritfromanothercustomerservicetempla = create m_inheritfromanothercustomerservicetempla
+	this.m_populatecustomers-areaandcitycountywise = create m_populatecustomers-areaandcitycountywise
+	this.m_setcolumnvalue = create m_setcolumnvalue
+	this.item[upperbound(this.item) + 1] = this.m_inheritfromanothercustomerservicetempla
+	this.item[upperbound(this.item) + 1] = this.m_populatecustomers-areaandcitycountywise
+	this.item[upperbound(this.item) + 1] = this.m_setcolumnvalue
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_inheritfromanothercustomerservicetempla
+	destroy this.m_populatecustomers-areaandcitycountywise
+	destroy this.m_setcolumnvalue
+
+// m_inheritfromanothercustomerservicetempla.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_inherit_from_another_template()
+
+// m_inheritfromanothercustomerservicetempla.create() returns 0 [event]
+	call super::create
+	this.text = "Inherit From another Customer Service Template"
+	this.microhelp = "Inherit From another Customer Service Template"
+
+// m_inheritfromanothercustomerservicetempla.destroy() returns 0 [event]
+	call super::destroy
+
+// m_populatecustomers-areaandcitycountywise.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_populate_customer_area_city_wise()
+
+// m_populatecustomers-areaandcitycountywise.create() returns 0 [event]
+	call super::create
+	this.text = "Populate Customers - Area and City/County Wise"
+
+// m_populatecustomers-areaandcitycountywise.destroy() returns 0 [event]
+	call super::destroy
+
+// m_setcolumnvalue.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_set_column_value()
+
+// m_setcolumnvalue.create() returns 0 [event]
+	call super::create
+	this.text = "Set Column Value~tCtrl+F5"
+	this.shortcut = 372
+
+// m_setcolumnvalue.destroy() returns 0 [event]
 	call super::destroy

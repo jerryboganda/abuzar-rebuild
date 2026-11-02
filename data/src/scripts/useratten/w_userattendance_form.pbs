@@ -103,18 +103,18 @@
 	SQL SELECT TimeIn INTO :ldt_timein FROM DBO.UserAttendance WHERE RowId =:this.il_rowid USING sqlca;
 	return ldt_timein
 
-// w_userattendance_form.create() returns 0
+// w_userattendance_form.create() returns 0 [event]
 	this.cb_ok = create cb_ok
 	this.cb_cancel = create cb_cancel
 	this.dw_password = create dw_password
 	this.control = {this.cb_ok, this.cb_cancel, this.dw_password}
 
-// w_userattendance_form.destroy() returns 0
+// w_userattendance_form.destroy() returns 0 [event]
 	destroy this.cb_ok
 	destroy this.cb_cancel
 	destroy this.dw_password
 
-// w_userattendance_form.open() returns long
+// w_userattendance_form.open() returns long [event]
 	long ll_win_width
 	long ll_win_height
 	long ll_width
@@ -148,19 +148,19 @@
 	end if
 	return message.returnvalue
 
-// w_userattendance_form.key(keycode key, unsignedlong keyflags) returns long
+// w_userattendance_form.key(keycode key, unsignedlong keyflags) returns long [event]
 	if keydown(keyescape!) then
 		close(this)
 	end if
 	return ::message.returnvalue
 
-// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		postevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	long ancestorreturnvalue
 	long ll_row
 	long ll_code
@@ -255,17 +255,17 @@
 	end if
 	return ::message.returnvalue
 
-// cb_cancel.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_cancel.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		postevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	close(parent)
 	return ::message.returnvalue
 
-// dw_password.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_password.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	long rt_code
 	long ll_code
@@ -309,7 +309,7 @@
 	end choose
 	return rt_code
 
-// dw_password.itemerror(long row, dwobject dwo, string data) returns long
+// dw_password.itemerror(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	integer ll_code
 	string ls_salesman
@@ -323,7 +323,7 @@
 	end choose
 	return 1
 
-// dw_password.ue_enterkey() returns long
+// dw_password.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	if getcolumn() = 3 then
@@ -332,7 +332,7 @@
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_password.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_password.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	long jump
 	ancestorreturnvalue = super::itemfocuschanged(row, dwo)

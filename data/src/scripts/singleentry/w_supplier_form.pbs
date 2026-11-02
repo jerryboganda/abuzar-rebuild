@@ -1,6 +1,6 @@
 // window w_supplier_form (singleentry)  ancestor: w_single_entry
 
-// w_supplier_form.ue_downarrow(keycode key, unsignedlong keyflags) returns long
+// w_supplier_form.ue_downarrow(keycode key, unsignedlong keyflags) returns long [event]
 	return ::message.returnvalue
 
 // w_supplier_form.wf_duplicateaccname(string as_accname) returns boolean
@@ -19,19 +19,19 @@
 	end if
 	return 0
 
-// w_supplier_form.create() returns 0
+// w_supplier_form.create() returns 0 [event]
 	call super::create
 
-// w_supplier_form.destroy() returns 0
+// w_supplier_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_supplier_form.ue_newform() returns 0
+// w_supplier_form.ue_newform() returns 0 [event]
 	call super::ue_newform
 
-// w_supplier_form.ue_save() returns 0
+// w_supplier_form.ue_save() returns 0 [event]
 	long ll_newid
 	long ll_row
 	integer li_rc
@@ -121,14 +121,14 @@
 		messagebox("DataWindow Modify Error", ls_err)
 	end if
 
-// w_supplier_form.activate() returns long
+// w_supplier_form.activate() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::activate()
 	this.windowstate = maximized!
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_supplier_form.ue_detail() returns 0
+// w_supplier_form.ue_detail() returns 0 [event]
 	long ll_code
 	long ll_found
 	call super::ue_detail
@@ -144,7 +144,7 @@
 	messagebox("Supplier Modification!", "Your do not have enough rights for supplier data modification~r~nPlease Contact system administrator for your help", stopsign!)
 	this.tab_retrieve.selecttab(2)
 
-// w_supplier_form.ue_print() returns 0
+// w_supplier_form.ue_print() returns 0 [event]
 	long ll_code
 	boolean lb_listtab
 	s_datastore lstr
@@ -183,3 +183,34 @@
 		end if
 		messagebox("Printing Error", "Can not Print Data,~r~nNo rows are retrieved", information!)
 	end if
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "accounts_name"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "supplier_address"
+		if data = "" or isnull(data) then
+			messagebox("Address Validation", "Value required for Address in current row")
+		end if
+	case "supplier_openbalance"
+		messagebox("Opening Balance Validation", "Value should be greater than zero")
+	case "suplier_balcatcode"
+		messagebox("BAlance Category Validation", "Value required for Balance Category in current row")
+	end choose
+	return 1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "accounts_name"
+		if parent.parent.parent.wf_duplicateaccname(data) then
+			messagebox("Name Validation", "Duplication Name Error~n~rPlease Choose Some Other Name")
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue

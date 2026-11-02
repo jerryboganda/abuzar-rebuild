@@ -1,6 +1,6 @@
 // window w_graph_type (graphcomponents)  ancestor: w_center
 
-// w_graph_type.open() returns long
+// w_graph_type.open() returns long [event]
 	long ancestorreturnvalue
 	graphicobject lgro_hold
 	ancestorreturnvalue = super::open()
@@ -17,18 +17,18 @@
 	end if
 	return message.returnvalue
 
-// w_graph_type.create() returns 0
+// w_graph_type.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.uo_1 = create uo_1
 	icurrent = upperbound(this.control)
 	this.control[icurrent + 1] = this.uo_1
 
-// w_graph_type.destroy() returns 0
+// w_graph_type.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.uo_1
 
-// uo_1.gallery_ok(unsignedlong wparam, long lparam) returns long
+// uo_1.gallery_ok(unsignedlong wparam, long lparam) returns long [event]
 	long ancestorreturnvalue
 	integer li_col
 	integer li_row
@@ -122,11 +122,77 @@
 	close(parent)
 	return ::message.returnvalue
 
-// uo_1.gallery_cancel(unsignedlong +wparam, long +lparam) returns long
+// uo_1.gallery_cancel(unsignedlong +wparam, long +lparam) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::gallery_cancel(+wparam, +lparam)
 	close(parent)
 	return ::message.returnvalue
 
-// uo_1.destroy() returns 0
+// uo_1.destroy() returns 0 [event]
 	call super::destroy
+
+// p_gallery.இ() returns long
+	integer icolwidth
+	integer irowheight
+	integer li_x
+	integer li_y
+	integer li_textx
+	integer li_texty
+	string ls_title
+	string[] ls_titles1
+	string[] ls_titles3
+	string[] ls_graphtype
+	li_x = pointerx()
+	li_y = pointery()
+	if li_x < 25 or li_x > 1747 or li_y < 30 or li_y > 954 then
+		parent.st_1.hide()
+		beep(1)
+		if not isvalid(::message) then
+			return 0
+		end if
+		return ::message.field6
+	end if
+	parent.ii_col = (li_x - 25) / 287.0 + 1.0
+	parent.ii_row = (li_y - 30) / irowheight + 1.0
+	if parent.ii_row = 3 then
+		ls_title = ls_titles3[parent.ii_col]
+	else
+		ls_title = ls_titles1[parent.ii_col]
+	end if
+	li_texty = parent.ii_row * irowheight + (parent.ii_row - 1) * 10
+	parent.st_1.text = ls_title
+	li_textx = this.x + (parent.ii_col - 1) * 287 + 75
+	li_texty = li_texty - this.y
+	parent.st_1.hide()
+	if parent.ii_row = 2 and parent.ii_col = 6 then
+		beep(1)
+	else
+		parent.st_1.move(li_textx, li_texty)
+		parent.st_1.show()
+	end if
+	parent.is_graphtype = ls_graphtype[parent.ii_col, parent.ii_row]
+	if not isvalid(::message) then
+		return 0
+	end if
+	return ::message.field6
+
+// p_gallery.↴இ℄இ܀ကᠬஇ       () returns long
+	parent.cb_ok.triggerevent(clicked!)
+	if not isvalid(::message) then
+		return 0
+	end if
+	return ::message.field6
+
+// cb_ok.இ() returns long
+	parent.triggerevent("gallery_ok")
+	if not isvalid(::message) then
+		return 0
+	end if
+	return ::message.field6
+
+// cb_cancel.இ() returns long
+	parent.triggerevent("gallery_cancel")
+	if not isvalid(::message) then
+		return 0
+	end if
+	return ::message.field6

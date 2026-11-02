@@ -39,7 +39,7 @@
 	lstr_header.dw_header = this.ids_zonecontactgroup
 	openwithparm(w_zonecontactgroup_form, lstr_header)
 
-// w_zone.create() returns 0
+// w_zone.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	if isvalid(this.menuid) then
@@ -52,14 +52,14 @@
 	icurrent = upperbound(this.control)
 	this.control[icurrent + 1] = this.dw_contactgroup
 
-// w_zone.destroy() returns 0
+// w_zone.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 	destroy this.dw_contactgroup
 
-// w_zone.ue_save() returns 0
+// w_zone.ue_save() returns 0 [event]
 	long ll_mastercurrrow
 	long ll_invid
 	long ll_detailrows
@@ -126,18 +126,18 @@
 	end if
 	setpointer(arrow!)
 
-// w_zone.ue_newform() returns 0
+// w_zone.ue_newform() returns 0 [event]
 	call super::ue_newform
 	this.id_master.setfocus()
 	this.ids_zonecontactgroup.reset()
 
-// w_zone.ue_newitem() returns 0
+// w_zone.ue_newitem() returns 0 [event]
 	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
 		return
 	end if
 	call super::ue_newitem
 
-// w_zone.ue_detail() returns 0
+// w_zone.ue_detail() returns 0 [event]
 	call super::ue_detail
 	this.im_menu.m_file.m_save.enabled = true
 	this.im_menu.m_file.m_delete.enabled = true
@@ -152,7 +152,7 @@
 		this.ids_zonecontactgroup.retrieve(this.id_list.object.code[this.id_list.getrow()])
 	end if
 
-// w_zone.ue_postopen() returns 0
+// w_zone.ue_postopen() returns 0 [event]
 	call super::ue_postopen
 	this.id_detail.getchild("areacode", this.idc_area)
 	this.idc_area.settransobject(this.it_transobject)
@@ -161,7 +161,7 @@
 	this.ids_zonecontactgroup = this.dw_contactgroup
 	this.ids_zonecontactgroup.settransobject(this.it_transobject)
 
-// w_zone.open() returns long
+// w_zone.open() returns long [event]
 	m_zonemenu lm_menu
 	long ll_width
 	long ll_height
@@ -193,4 +193,72 @@
 	this.tab_retrieve.tabpage_detail.dw_itemslist.width = this.tab_retrieve.tabpage_detail.dw_itemsdetail.width * 0.67
 	this.tab_retrieve.tabpage_detail.dw_itemslist.x = 1150
 	setredraw(true)
+	return ::message.returnvalue
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "manfname"
+		if data = "" or isnull(data) then
+			messagebox("ManfName Validation", "Value requiredfor " + upper(dwo.manfname) + "in current row")
+		end if
+	case "manager"
+		if data = "" or isnull(data) then
+			messagebox("Manager Validation", "Value required for Manager in current row")
+		end if
+	end choose
+	return 1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if parent.parent.parent.wf_duplicatename(data) then
+			messagebox("Name Validation", "Duplication Name Error~n~rPlease Choose Some Other Name")
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	string ls_managername
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "areacode"
+		parent.parent.parent.il_currrow = row
+		parent.parent.parent.ib_itemvalidated = false
+		li_errcode = 0
+	case else
+		parent.parent.parent.ib_itemvalidated = true
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "areacode"
+		if data = "" or isnull(data) then
+			messagebox("AreaName Validation", "Value required AreaName in current row")
+		end if
+	end choose
+	return 1
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem() = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.getfocus() returns long [event]
 	return ::message.returnvalue

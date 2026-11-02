@@ -113,7 +113,7 @@
 	setpointer(arrow!)
 	this.id_detail.setredraw(true)
 
-// w_itemsuppliers_form2.create() returns 0
+// w_itemsuppliers_form2.create() returns 0 [event]
 	call super::create
 	if isvalid(this.menuid) then
 		destroy this.menuid
@@ -122,13 +122,13 @@
 		this.menuid = create m_itemsuppliers
 	end if
 
-// w_itemsuppliers_form2.destroy() returns 0
+// w_itemsuppliers_form2.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_itemsuppliers_form2.ue_save() returns 0
+// w_itemsuppliers_form2.ue_save() returns 0 [event]
 	long ll_mastercurrrow
 	long ll_invid
 	long ll_detailrows
@@ -160,11 +160,11 @@
 	call super::ue_save
 	setpointer(arrow!)
 
-// w_itemsuppliers_form2.ue_newform() returns 0
+// w_itemsuppliers_form2.ue_newform() returns 0 [event]
 	call super::ue_newform
 	this.id_master.setfocus()
 
-// w_itemsuppliers_form2.ue_newitem() returns 0
+// w_itemsuppliers_form2.ue_newitem() returns 0 [event]
 	long ll_rowcount
 	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
 		return
@@ -182,7 +182,7 @@
 	this.im_menu.m_file.m_save.enabled = true
 	this.ib_validatefullcode = true
 
-// w_itemsuppliers_form2.ue_detail() returns 0
+// w_itemsuppliers_form2.ue_detail() returns 0 [event]
 	call super::ue_detail
 	this.im_menu.m_file.m_save.enabled = true
 	this.im_menu.m_file.m_delete.enabled = true
@@ -194,10 +194,129 @@
 	this.im_menu.m_item.m_newitem.enabled = true
 	this.im_menu.m_item.m_deleteitem.enabled = true
 
-// w_itemsuppliers_form2.ue_deleteitem() returns 0
+// w_itemsuppliers_form2.ue_deleteitem() returns 0 [event]
 	long ll_currow
 	long ll_detailrows
 	this.ib_itemvalidated = true
 	this.id_detail.deleterow(0)
 	ll_detailrows = this.id_detail.rowcount()
 	wf_grandtotal()
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	end choose
+	return 1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if parent.parent.parent.wf_duplicatename(data) then
+			messagebox("Name Validation", "Duplication Name Error~n~rPlease Choose Some Other Name")
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	string ls_managername
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case parent.parent.parent.is_columnitemname
+		parent.parent.parent.id_detail.setitem(row, "icode", parent.parent.parent.id_itemslist.getitemnumber(parent.parent.parent.id_itemslist.getrow(), "icode"))
+		parent.parent.parent.id_detail.setitem(row, "fullcode", parent.parent.parent.id_itemslist.getitemstring(parent.parent.parent.id_itemslist.getrow(), "fullcode"))
+		parent.parent.parent.ib_itemvalidated = false
+		parent.parent.parent.il_currrow = row
+		li_errcode = 0
+	case "icode"
+		parent.parent.parent.ib_itemvalidated = false
+		parent.parent.parent.il_currrow = row
+	case "discperc"
+		if real(data) < 0.0 or real(data) > 100.0 then
+			li_errcode = 1
+		end if
+		parent.parent.parent.ib_itemvalidated = true
+	case "priority"
+		if real(data) < 0.0 then
+			li_errcode = 1
+		end if
+		parent.parent.parent.ib_itemvalidated = true
+	case "rate"
+		if real(data) < 0.0 then
+			li_errcode = 1
+		end if
+		parent.parent.parent.ib_itemvalidated = true
+	case "saleqty"
+		if real(data) < 0.0 then
+			li_errcode = 1
+		end if
+		parent.parent.parent.ib_itemvalidated = true
+	case "bonusqty"
+		if real(data) < 0.0 then
+			li_errcode = 1
+		end if
+		parent.parent.parent.ib_itemvalidated = true
+	case "days"
+		if real(data) < 0.0 then
+			li_errcode = 1
+		end if
+		parent.parent.parent.ib_itemvalidated = true
+	case else
+		parent.parent.parent.ib_itemvalidated = true
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "icode"
+		if data = "" or isnull(data) then
+			messagebox("Item Name Validation", "Value required Item Name in current row")
+		end if
+	case "discperc"
+		if data = "" or isnull(data) or real(data) < 0.0 or real(data) > 100.0 then
+			messagebox("Discount Percentage Validation", "Please enter valid value for discount percentage~r~nRange = 0.00 TO 100.00")
+		end if
+	case "priority"
+		if data = "" or isnull(data) or real(data) < 0.0 then
+			messagebox("Priority Validation", "Please enter valid value for Priority")
+		end if
+	case "rate"
+		if data = "" or isnull(data) or real(data) < 0.0 then
+			messagebox("Rate Validation", "Please enter valid value for Rate")
+		end if
+	case "bonusqty"
+		if data = "" or isnull(data) or real(data) < 0.0 then
+			messagebox("Bonus Validation", "Please enter valid value for Bonus")
+		end if
+	case "saleqty"
+		if data = "" or isnull(data) or real(data) < 0.0 then
+			messagebox("Sale Qty Validation", "Please enter valid value for Sale Qty")
+		end if
+	case "days"
+		if data = "" or isnull(data) or real(data) < 0.0 then
+			messagebox("Days Validation", "Please enter valid value for Days")
+		end if
+	end choose
+	return 1
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem() = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.getfocus() returns long [event]
+	return ::message.returnvalue

@@ -50,18 +50,18 @@
 	end if
 	return false
 
-// w_packcatclass.create() returns 0
+// w_packcatclass.create() returns 0 [event]
 	this.cb_cancel = create cb_cancel
 	this.cb_save = create cb_save
 	this.dw_1 = create dw_1
 	this.control = {this.cb_cancel, this.cb_save, this.dw_1}
 
-// w_packcatclass.destroy() returns 0
+// w_packcatclass.destroy() returns 0 [event]
 	destroy this.cb_cancel
 	destroy this.cb_save
 	destroy this.dw_1
 
-// w_packcatclass.open() returns long
+// w_packcatclass.open() returns long [event]
 	this.dw_1.setfocus()
 	this.dw_1.settransobject(sqlca)
 	choose case message.stringparm
@@ -87,14 +87,14 @@
 	end if
 	return message.returnvalue
 
-// w_packcatclass.close() returns long
+// w_packcatclass.close() returns long [event]
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	close(parent)
 	return ::message.returnvalue
 
-// cb_save.clicked() returns long
+// cb_save.clicked() returns long [event]
 	string ls_code
 	ls_code = string(parent.dw_1.getitemnumber(1, 1))
 	if f_validatedw(parent.dw_1) < 0 then
@@ -109,7 +109,7 @@
 	close(parent)
 	return ::message.returnvalue
 
-// dw_1.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_1.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemchanged(row, dwo, data)
 	choose case dwo.name
@@ -132,7 +132,7 @@
 	end choose
 	return ::message.returnvalue
 
-// dw_1.itemerror(long row, dwobject dwo, string data) returns long
+// dw_1.itemerror(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemerror(row, dwo, data)
 	choose case dwo.name

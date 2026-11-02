@@ -1,8 +1,42 @@
 // menu m_studentservicetemp (studentcomponents)  ancestor: m_multi_entry
 
-// m_studentservicetemp.create() returns 0
+// m_studentservicetemp.create() returns 0 [event]
 	m_studentservicetemp = this
 	call super::create
 
-// m_studentservicetemp.destroy() returns 0
+// m_studentservicetemp.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_inheritfromanotherstudentservicetemplat = create m_inheritfromanotherstudentservicetemplat
+	this.m_setcolumnvalue = create m_setcolumnvalue
+	this.item[upperbound(this.item) + 1] = this.m_inheritfromanotherstudentservicetemplat
+	this.item[upperbound(this.item) + 1] = this.m_setcolumnvalue
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_inheritfromanotherstudentservicetemplat
+	destroy this.m_setcolumnvalue
+
+// m_inheritfromanotherstudentservicetemplat.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_inherit_from_another_template()
+
+// m_inheritfromanotherstudentservicetemplat.create() returns 0 [event]
+	call super::create
+	this.text = "Inherit From another Student Service Template"
+	this.microhelp = "Inherit From another Student Service Template"
+
+// m_inheritfromanotherstudentservicetemplat.destroy() returns 0 [event]
+	call super::destroy
+
+// m_setcolumnvalue.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_set_column_value()
+
+// m_setcolumnvalue.create() returns 0 [event]
+	call super::create
+	this.text = "Set Column Value~tCtrl+F5"
+	this.shortcut = 372
+
+// m_setcolumnvalue.destroy() returns 0 [event]
 	call super::destroy

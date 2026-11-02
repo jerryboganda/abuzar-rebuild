@@ -1,6 +1,6 @@
 // window w_arg_cust_sdate_ldate_withalloption2 (reports_cust)  ancestor: w_popup_forselection_walias
 
-// w_arg_cust_sdate_ldate_withalloption2.create() returns 0
+// w_arg_cust_sdate_ldate_withalloption2.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.gb_2 = create gb_2
@@ -17,7 +17,7 @@
 	this.control[icurrent + 5] = this.em_enddate
 	this.control[icurrent + 6] = this.cbx_allcustomers
 
-// w_arg_cust_sdate_ldate_withalloption2.destroy() returns 0
+// w_arg_cust_sdate_ldate_withalloption2.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.gb_2
 	destroy this.st_1
@@ -26,7 +26,7 @@
 	destroy this.em_enddate
 	destroy this.cbx_allcustomers
 
-// w_arg_cust_sdate_ldate_withalloption2.open() returns long
+// w_arg_cust_sdate_ldate_withalloption2.open() returns long [event]
 	long ancestorreturnvalue
 	date ld_currdate
 	string ls_text
@@ -40,22 +40,52 @@
 	this.em_enddate.text = ls_text
 	return ::message.returnvalue
 
-// w_arg_cust_sdate_ldate_withalloption2.ue_close() returns 0
+// w_arg_cust_sdate_ldate_withalloption2.ue_close() returns 0 [event]
 	closewithreturn(this, this.istr_arg)
 
-// em_startdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_cancel.clicked() returns long [event]
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long [event]
+	long ll_counter
+	long ll_totalrows
+	if parent.cbx_allcustomers.checked = true then
+		parent.istr_arg.l_code1 = 1
+	else
+		if parent.id_selected.accepttext() = -1 then
+			parent.id_selected.setfocus()
+			return ::message.returnvalue
+		end if
+		if isnull(parent.id_selected.getitemstring(parent.id_selected.getrow(), "name")) then
+			messagebox("Name Validation", "Please enter valid value for Name.")
+			parent.id_selected.setcolumn(1)
+			parent.id_selected.setfocus()
+			return ::message.returnvalue
+		end if
+		parent.istr_arg.l_code2 = parent.id_selected.getitemnumber(1, "code")
+	end if
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	parent.istr_arg.l_code3 = -1
+	parent.istr_arg.l_code4 = -1
+	parent.istr_arg.i_status = 1
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// em_startdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// em_enddate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// em_enddate.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// cbx_allcustomers.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cbx_allcustomers.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if

@@ -72,7 +72,7 @@
 	end if
 	return 1
 
-// w_changeservice_price.create() returns 0
+// w_changeservice_price.create() returns 0 [event]
 	call super::create
 	if isvalid(this.menuid) then
 		destroy this.menuid
@@ -81,20 +81,20 @@
 		this.menuid = create m_changeservicepricemenu
 	end if
 
-// w_changeservice_price.destroy() returns 0
+// w_changeservice_price.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_changeservice_price.ue_detail() returns 0
+// w_changeservice_price.ue_detail() returns 0 [event]
 	call super::ue_detail
 	this.id_detail.setfilter("")
 	this.id_detail.filter()
 	this.id_detail.setfocus()
 	this.im_menu.m_file.m_save.enabled = true
 
-// w_changeservice_price.ue_postopen() returns 0
+// w_changeservice_price.ue_postopen() returns 0 [event]
 	string ls_dwtype
 	string ls_columnname
 	integer li_visiblecolumns
@@ -114,7 +114,7 @@
 		li_taborder = li_taborder + 1
 	next
 
-// w_changeservice_price.ue_save() returns 0
+// w_changeservice_price.ue_save() returns 0 [event]
 	long ll_salesmancode
 	long ll_rowcount
 	long ll_counter
@@ -134,3 +134,40 @@
 		return
 	end if
 	messagebox("Updataion Problem", "No rows to Update!", stopsign!)
+
+// dw_itemsdetail.getfocus() returns long [event]
+	return ::message.returnvalue
+
+// dw_itemsdetail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keyf5! then
+		parent.parent.parent.wf_updatesaleprice_purprice()
+	elseif key = keyf6! then
+		parent.parent.parent.wf_filter_items()
+	elseif key = keyf7! then
+		parent.parent.parent.wf_update_saleprice_with_saleprice()
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "name"
+	case "aliasname"
+		if isnull(data) or data = "" then
+			return 0
+		end if
+	case "serviceresulttemplate"
+		if isnull(data) or data = "" then
+			return 0
+		elseif long(data) < 0 then
+			messagebox("Service Result Template Validation", "Please Choose Some Valid Service Result Template ")
+			return 1
+		else
+			return parent.parent.parent.wf_validate_service_result_tempalate(long(data))
+		end if
+		return
+	end choose
+	return ::message.returnvalue

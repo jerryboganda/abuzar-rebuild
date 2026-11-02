@@ -1,8 +1,42 @@
 // menu m_cashierjobmenu (cashierjob)  ancestor: m_multi_entry
 
-// m_cashierjobmenu.create() returns 0
+// m_cashierjobmenu.create() returns 0 [event]
 	m_cashierjobmenu = this
 	call super::create
 
-// m_cashierjobmenu.destroy() returns 0
+// m_cashierjobmenu.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_printcashieractivityreport = create m_printcashieractivityreport
+	this.item[upperbound(this.item) + 1] = this.m_printcashieractivityreport
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_printcashieractivityreport
+
+// m_post.create() returns 0 [event]
+	call super::create
+	this.tag = "Mark a cashier job as inactive"
+	this.text = "Mark In-Active~tCtrl+Q"
+	this.shortcut = 337
+	this.microhelp = "Mark Cashier Job as In-Active"
+	this.toolbaritemtext = "Mark In-Active"
+
+// m_post.destroy() returns 0 [event]
+	call super::destroy
+
+// m_post.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_markinactive()
+
+// m_printcashieractivityreport.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_print_cashieractivity()
+
+// m_printcashieractivityreport.create() returns 0 [event]
+	call super::create
+	this.text = "Print Cashier Activity Report~tCtrl+F1"
+	this.shortcut = 368
+
+// m_printcashieractivityreport.destroy() returns 0 [event]
 	call super::destroy

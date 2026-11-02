@@ -93,21 +93,21 @@
 	end if
 	return 0
 
-// w_birthcertificate.create() returns 0
+// w_birthcertificate.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.dw_print = create dw_print
 	icurrent = upperbound(this.control)
 	this.control[icurrent + 1] = this.dw_print
 
-// w_birthcertificate.destroy() returns 0
+// w_birthcertificate.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 	destroy this.dw_print
 
-// w_birthcertificate.ue_newform() returns 0
+// w_birthcertificate.ue_newform() returns 0 [event]
 	setredraw(false)
 	this.i_editmode = 1
 	this.i_retrievemode = 2
@@ -135,13 +135,13 @@
 	this.id_master.setfocus()
 	setredraw(true)
 
-// w_birthcertificate.ue_detail() returns 0
+// w_birthcertificate.ue_detail() returns 0 [event]
 	integer li_protect
 	call super::ue_detail
 	this.im_menu.m_file.m_save.enabled = true
 	li_protect = 0
 
-// w_birthcertificate.ue_save() returns 0
+// w_birthcertificate.ue_save() returns 0 [event]
 	long ll_invid
 	long ll_mastercurrrow
 	long ll_counter
@@ -186,7 +186,7 @@
 	this.id_detail.reset()
 	setpointer(arrow!)
 
-// w_birthcertificate.open() returns long
+// w_birthcertificate.open() returns long [event]
 	m_entry lm_menu
 	long ll_width
 	long ll_height
@@ -215,7 +215,7 @@
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_birthcertificate.ue_postopen() returns 0
+// w_birthcertificate.ue_postopen() returns 0 [event]
 	call super::ue_postopen
 	this.id_detaildw = this.tab_retrieve.tabpage_detail.dw_detaildw
 	this.id_detaildw.settransobject(this.it_transobject)
@@ -223,7 +223,7 @@
 	this.id_print = this.dw_print
 	this.id_print.settransobject(this.it_transobject)
 
-// w_birthcertificate.ue_print() returns 0
+// w_birthcertificate.ue_print() returns 0 [event]
 	long ll_code
 	boolean lb_listtab
 	s_datastore lstr
@@ -276,3 +276,88 @@
 		end if
 		messagebox("Printing Error", "Can not Print Data,~r~nNo rows are retrieved", information!)
 	end if
+
+// tabpage_detail.create() returns 0 [event]
+	integer icurrent
+	this.dw_detaildw = create dw_detaildw
+	call super::create
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.dw_detaildw
+
+// tabpage_detail.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.dw_detaildw
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	long ll_patientcode
+	long ll_res
+	long ll_found
+	long ll_count
+	integer li_null
+	datetime ldt_date_null
+	date ld_followupdate
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	setnull(ldt_date_null)
+	setnull(li_null)
+	choose case dwo.name
+	case "regno"
+		if not isnull(data) and data <> "" then
+			ll_res = parent.parent.parent.wf_findpatientcode(data, ll_patientcode)
+			if ll_res > 0 then
+				setitem(row, "patientcode", ll_patientcode)
+				parent.parent.parent.wf_get_patient_info(ll_patientcode)
+			else
+				if ll_res = -2 then
+					messagebox("Patient Validation", "Patient with  RegNo  " + data + " is Inactive")
+				else
+					messagebox("Patient Validation", "Patient with  RegNo  " + data + " does not exist")
+				end if
+				return 1
+			end if
+			return
+		end if
+	case "patientcode"
+		if long(data) > 0 then
+			parent.parent.parent.wf_get_patient_info(long(data))
+		else
+			messagebox("Patient Validation", "Patient does not exist or Already Inactive.")
+			return 1
+		end if
+		return
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keyf5! then
+		parent.parent.parent.wf_patientsearch()
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.getfocus() returns long [event]
+	if parent.parent.parent.im_menu.m_file.m_save.enabled = true then
+		if not parent.parent.parent.ib_focusdetail then
+			parent.parent.parent.ib_focusdetail = true
+		end if
+		if parent.parent.parent.ib_itemslistopen then
+		end if
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.ue_enterkey() returns long [event]
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_itemslist.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
+	return ::message.returnvalue
+
+// dw_itemslist.dberror(long sqldbcode, string sqlerrtext, string sqlsyntax, dwbuffer buffer, long row) returns long [event]
+	return ::message.returnvalue
+
+// dw_itemslist.uevent_dberr_initial() returns 0 [event]
+
+// dw_itemslist.uevent_dberr_message(long al_errorcode, string as_errortext, long al_row, dwbuffer adwb_buffer) returns 0 [event]
+
+// dw_itemslist.uevent_dberr_reqmissing(dwbuffer adwb_buffer, long al_row) returns 0 [event]

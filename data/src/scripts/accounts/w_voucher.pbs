@@ -2181,7 +2181,7 @@
 	this.idc_dddwdetailaccount.filter()
 	setredraw(true)
 
-// w_voucher.create() returns 0
+// w_voucher.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	if isvalid(this.menuid) then
@@ -2200,7 +2200,7 @@
 	this.control[icurrent + 3] = this.dw_voucherreceipt
 	this.control[icurrent + 4] = this.dw_document
 
-// w_voucher.destroy() returns 0
+// w_voucher.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
@@ -2210,7 +2210,7 @@
 	destroy this.dw_voucherreceipt
 	destroy this.dw_document
 
-// w_voucher.ue_newform() returns 0
+// w_voucher.ue_newform() returns 0 [event]
 	integer li_rtncode
 	long li_fetched_code
 	long row
@@ -2254,7 +2254,7 @@
 	this.tab_retrieve.tabpage_detail.rb_all.event clicked()
 	wf_set_filter_all()
 
-// w_voucher.ue_save() returns 0
+// w_voucher.ue_save() returns 0 [event]
 	long ll_detailrows
 	long ll_mastercurrrow
 	long ll_invid
@@ -2529,7 +2529,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_voucher.ue_detail() returns 0
+// w_voucher.ue_detail() returns 0 [event]
 	integer li_rtncode
 	integer li_protect
 	long ll_row
@@ -2577,7 +2577,7 @@
 	this.tab_retrieve.tabpage_detail.rb_all.event clicked()
 	setredraw(true)
 
-// w_voucher.ue_newitem() returns 0
+// w_voucher.ue_newitem() returns 0 [event]
 	integer li_null
 	long ll_rowcount
 	string ls_temp
@@ -2705,7 +2705,7 @@
 	this.im_menu.m_file.m_save.enabled = true
 	this.ib_validatefullcode = true
 
-// w_voucher.ue_refreshddw() returns 0
+// w_voucher.ue_refreshddw() returns 0 [event]
 	setpointer(hourglass!)
 	SQL rollback USING sqlca;
 	sqlca.virtualgl("A")
@@ -2741,7 +2741,7 @@
 	this.idc_dddwdetailstudent.setredraw(true)
 	setpointer(arrow!)
 
-// w_voucher.ue_list() returns 0
+// w_voucher.ue_list() returns 0 [event]
 	call super::ue_list
 	SQL rollback USING this.it_transobject;
 	this.ib_modify = false
@@ -2755,7 +2755,7 @@
 	this.im_menu.m_file.m_post.enabled = false
 	this.im_menu.m_file.m_post.toolbaritemvisible = false
 
-// w_voucher.ue_postopen() returns 0
+// w_voucher.ue_postopen() returns 0 [event]
 	long ll_counter
 	long ll_code
 	long ll_found
@@ -2998,7 +2998,7 @@
 	setredraw(true)
 	setnull(this.ll_last_headeracc)
 
-// w_voucher.ue_print() returns 0
+// w_voucher.ue_print() returns 0 [event]
 	long ll_code
 	long ll_counter
 	long ll_rowcount
@@ -3060,8 +3060,595 @@
 	end if
 	messagebox("Printing Error", "Can not Print Voucher,~r~nNo rows are retrieved", information!)
 
-// w_voucher.ue_deleteitem() returns 0
+// w_voucher.ue_deleteitem() returns 0 [event]
 	call super::ue_deleteitem
 	if this.id_detail.rowcount() <= 0 then
 		this.im_menu.m_file.m_print.enabled = false
 	end if
+
+// tab_retrieve.selectionchanged(integer oldindex, integer newindex) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::selectionchanged(oldindex, newindex)
+	if parent.ib_modify and newindex <> 1 then
+		SQL rollback USING parent.it_transobject;
+		parent.ib_modify = false
+	end if
+	return ::message.returnvalue
+
+// tabpage_detail.create() returns 0 [event]
+	integer icurrent
+	this.gb_accounts = create gb_accounts
+	this.rb_creditors = create rb_creditors
+	this.rb_debitors = create rb_debitors
+	this.rb_other = create rb_other
+	this.rb_all = create rb_all
+	call super::create
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.gb_accounts
+	this.control[icurrent + 2] = this.rb_creditors
+	this.control[icurrent + 3] = this.rb_debitors
+	this.control[icurrent + 4] = this.rb_other
+	this.control[icurrent + 5] = this.rb_all
+
+// tabpage_detail.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.gb_accounts
+	destroy this.rb_creditors
+	destroy this.rb_debitors
+	destroy this.rb_other
+	destroy this.rb_all
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "currencycode"
+		if long(data) > 0 then
+			parent.parent.parent.wf_setcurrency(long(data))
+		else
+			messagebox("Currency Validation", "Problem in setting currency", stopsign!)
+			return 1
+		end if
+	case "conversionrate"
+		if double(data) <= 0.0 then
+			return 1
+		elseif parent.parent.parent.wf_apply_currency(double(data)) then
+			return 0
+		else
+			messagebox("Currency Validation", "Problem in setting currency", stopsign!)
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	double ld_newamt
+	double ld_storedamt
+	double ld_amt
+	double ld_conversionrate
+	long ll_acccode
+	long ll_patientcode
+	long ll_guestcode
+	long ll_studentcode
+	long ll_rowno
+	long ll_unpostedtrans
+	long ll_null
+	integer li_errcode
+	integer li_hold
+	string ls_fullcode
+	string ls_regno
+	string ls_msg
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	ls_msg = "000                                                                                                                                 "
+	setnull(ll_null)
+	choose case dwo.name
+	case "acccode"
+		parent.parent.parent.ib_itemvalidated = true
+		if parent.parent.parent.wf_getfullcode(long(data), ls_fullcode) = 1 then
+			this.object.fullcode[row] = ls_fullcode
+			setnull(ll_patientcode)
+			setnull(ls_regno)
+			this.object.patientcode[row] = ll_null
+			this.object.guestcode[row] = ll_null
+			this.object.studentcode[row] = ll_null
+			this.object.regno[row] = ls_regno
+			this.object.guestregno[row] = ""
+			this.object.studentregno[row] = ""
+			parent.parent.parent.wf_setbalance(long(data), row)
+		else
+			messagebox("Account Name Validation", "Please Select Valid Account Name")
+			li_errcode = 1
+			this.object.fullcode[row] = ""
+		end if
+	case "invoicecode"
+		li_errcode = parent.parent.parent.wf_validateinvcode(row, long(data))
+		if li_errcode = 0 then
+			if parent.parent.parent.is_invoicetype = "Sale" then
+				parent.parent.parent.it_transobject.checkunpostedsaleinvintransactions(long(data), parent.parent.parent.id_master.object.code[parent.parent.parent.id_master.rowcount()], "V", ll_unpostedtrans, ls_msg)
+			elseif parent.parent.parent.is_invoicetype = "Sale of Service" then
+				parent.parent.parent.it_transobject.checkunpostedserviceinvintransactions(long(data), parent.parent.parent.id_master.object.code[parent.parent.parent.id_master.rowcount()], "V", ll_unpostedtrans, ls_msg)
+			elseif parent.parent.parent.is_invoicetype = parent.parent.parent.isc_svc_pur then
+				parent.parent.parent.it_transobject.checkunpostedservicepurinvintransactions(long(data), parent.parent.parent.id_master.object.code[parent.parent.parent.id_master.rowcount()], "V", ll_unpostedtrans, ls_msg)
+			elseif parent.parent.parent.is_invoicetype = "Purchase" then
+				parent.parent.parent.it_transobject.checkunpostedpurinvintransactions(long(data), parent.parent.parent.id_master.object.code[parent.parent.parent.id_master.rowcount()], "V", ll_unpostedtrans, ls_msg)
+			end if
+			if ll_unpostedtrans > 0 then
+				messagebox("Invoice Validation Problem", "Unposted Transaction(s) Exist for this Invoice~r~n~r~n" + trim(ls_msg))
+				li_errcode = 1
+			end if
+		end if
+	case "regno"
+		if not isnull(data) and data <> "" then
+			ll_acccode = this.object.acccode[row]
+			if parent.parent.parent.wf_validateregno(data, ll_patientcode, ll_acccode) then
+				setitem(row, "patientcode", ll_patientcode)
+				this.object.acccode[row] = ll_acccode
+				parent.parent.parent.wf_getfullcode(ll_acccode, ls_fullcode)
+				this.object.fullcode[row] = ls_fullcode
+			else
+				messagebox("Reg. No Validation", "Reg. No. ~"" + data + "~" is not valid")
+				li_errcode = 1
+			end if
+		end if
+	case "patientcode"
+		if not isnull(data) and data <> "" then
+			ll_acccode = this.object.acccode[row]
+			if parent.parent.parent.wf_validatepatient(long(data), ls_regno, ll_acccode) then
+				setitem(row, "regno", ls_regno)
+				this.object.acccode[row] = ll_acccode
+				parent.parent.parent.wf_getfullcode(ll_acccode, ls_fullcode)
+				this.object.fullcode[row] = ls_fullcode
+			else
+				messagebox("Patient Validation", "Please enter valid patient")
+				li_errcode = 1
+			end if
+		end if
+	case "guestregno"
+		if not isnull(data) and data <> "" then
+			ll_acccode = this.object.acccode[row]
+			if parent.parent.parent.wf_validate_guestregno(data, ll_guestcode, ll_acccode) then
+				setitem(row, "guestcode", ll_guestcode)
+				this.object.acccode[row] = ll_acccode
+				parent.parent.parent.wf_getfullcode(ll_acccode, ls_fullcode)
+				this.object.fullcode[row] = ls_fullcode
+			else
+				messagebox("Reg. No Validation", "Reg. No. ~"" + data + "~" is not valid")
+				li_errcode = 1
+			end if
+		end if
+	case "guestcode"
+		if not isnull(data) and data <> "" then
+			ll_acccode = this.object.acccode[row]
+			if parent.parent.parent.wf_validateguest(long(data), ls_regno, ll_acccode) then
+				setitem(row, "guestregno", ls_regno)
+				this.object.acccode[row] = ll_acccode
+				parent.parent.parent.wf_getfullcode(ll_acccode, ls_fullcode)
+				this.object.fullcode[row] = ls_fullcode
+			else
+				messagebox("Guest Validation", "Please enter valid Guest")
+				li_errcode = 1
+			end if
+		end if
+	case "studentregno"
+		if not isnull(data) and data <> "" then
+			ll_acccode = this.object.acccode[row]
+			if parent.parent.parent.wf_validate_studentregno(data, ll_studentcode, ll_acccode) then
+				setitem(row, "studentcode", ll_studentcode)
+				this.object.acccode[row] = ll_acccode
+				parent.parent.parent.wf_getfullcode(ll_acccode, ls_fullcode)
+				this.object.fullcode[row] = ls_fullcode
+			else
+				messagebox("Reg. No Validation", "Reg. No. ~"" + data + "~" is not valid")
+				li_errcode = 1
+			end if
+		end if
+	case "studentcode"
+		if not isnull(data) and data <> "" then
+			ll_acccode = this.object.acccode[row]
+			if parent.parent.parent.wf_validatestudent(long(data), ls_regno, ll_acccode) then
+				setitem(row, "studentregno", ls_regno)
+				this.object.acccode[row] = ll_acccode
+				parent.parent.parent.wf_getfullcode(ll_acccode, ls_fullcode)
+				this.object.fullcode[row] = ls_fullcode
+			else
+				messagebox("Student Validation", "Please enter valid Student")
+				li_errcode = 1
+			end if
+		end if
+	case "foreignamt"
+		ld_conversionrate = parent.parent.parent.id_master.object.conversionrate[1]
+		ld_newamt = double(data)
+		ld_storedamt = getitemdecimal(row, "foreignamt")
+		if ld_newamt < 0.0 then
+			messagebox("Foreign Amount Validation", "Foreign Amount ~"" + data + "~" should be greater than zero")
+			li_errcode = 1
+		end if
+		if li_errcode = 0 and parent.parent.parent.is_jv = "N" then
+			if parent.parent.parent.is_detailtreatment = "D" then
+				if ld_newamt < 0.0 then
+					messagebox("Foreign Amount Validation", "Foreign Amount ~"" + data + "~" should be greater than zero")
+					li_errcode = 1
+				else
+					parent.parent.parent.id_detail.object.debit[row] = round(ld_newamt * ld_conversionrate, 2)
+				end if
+			elseif parent.parent.parent.is_detailtreatment = "C" then
+				if ld_newamt < 0.0 then
+					messagebox("Foreign Amount Validation", "Foreign Amount ~"" + data + "~" should be greater than zero")
+					li_errcode = 1
+				else
+					parent.parent.parent.id_detail.object.credit[row] = round(ld_newamt * ld_conversionrate, 2)
+				end if
+			end if
+		end if
+		if li_errcode = 0 and parent.parent.parent.is_invoicebased = "Y" and parent.parent.parent.is_jv = "N" then
+			if parent.parent.parent.is_invoicetype = "Sale" or parent.parent.parent.is_invoicetype = "Sale of Service" then
+				if round(ld_newamt * ld_conversionrate, 2) > getitemdecimal(row, "outstandingamt") then
+					li_errcode = 1
+				end if
+			elseif round(ld_newamt * ld_conversionrate, 2) > getitemdecimal(row, "outstandingamt") then
+				li_errcode = 1
+			end if
+		end if
+		if parent.parent.parent.is_jv = "Y" then
+			if parent.parent.parent.id_detail.object.debit[row] > 0 then
+				parent.parent.parent.id_detail.object.debit[row] = round(ld_newamt * ld_conversionrate, 2)
+				parent.parent.parent.id_detail.object.credit[row] = 0
+			else
+				parent.parent.parent.id_detail.object.debit[row] = 0
+				parent.parent.parent.id_detail.object.credit[row] = round(ld_newamt * ld_conversionrate, 2)
+			end if
+		end if
+	case "debit"
+		ld_newamt = double(data)
+		ld_storedamt = getitemdecimal(row, "debit")
+		if ld_newamt < 0.0 then
+			messagebox("Amount Validation", "Amount ~"" + data + "~" should be greater than zero")
+			li_errcode = 1
+		end if
+		if li_errcode = 0 and parent.parent.parent.is_jv = "N" and parent.parent.parent.is_detailtreatment = "D" and ld_newamt < 1.0 then
+			messagebox("Amount Validation", "Amount ~"" + data + "~" should be greater than zero")
+			li_errcode = 1
+		end if
+		if li_errcode = 0 and parent.parent.parent.is_invoicebased = "Y" then
+			if not (parent.parent.parent.is_invoicetype = "Sale" or parent.parent.parent.is_invoicetype = "Sale of Service") then
+				if double(data) > getitemdecimal(row, "outstandingamt") then
+					li_errcode = 1
+				end if
+			end if
+		end if
+		if parent.parent.parent.is_jv = "N" then
+			if parent.parent.parent.id_master.object.conversionrate[1] > 0 then
+				this.object.foreignamt[row] = ld_newamt / parent.parent.parent.id_master.object.conversionrate[1]
+			else
+				this.object.foreignamt[row] = ld_newamt / 1.0
+			end if
+		end if
+	case "credit"
+		ld_newamt = double(data)
+		ld_storedamt = getitemdecimal(row, "credit")
+		if ld_newamt < 0.0 then
+			messagebox("Amount Validation", "Amount ~"" + data + "~" should be greater than zero")
+			li_errcode = 1
+		end if
+		if li_errcode = 0 and parent.parent.parent.is_jv = "N" and parent.parent.parent.is_detailtreatment = "C" and ld_newamt < 1.0 then
+			messagebox("Amount Validation", "Amount ~"" + data + "~" should be greater than zero")
+			li_errcode = 1
+		end if
+		if li_errcode = 0 and parent.parent.parent.is_invoicebased = "Y" and (parent.parent.parent.is_invoicetype = "Sale" or parent.parent.parent.is_invoicetype = "Sale of Service") then
+			if double(data) > getitemdecimal(row, "outstandingamt") then
+				li_errcode = 1
+			end if
+		end if
+		if parent.parent.parent.is_jv = "N" then
+			if parent.parent.parent.id_master.object.conversionrate[1] > 0 then
+				this.object.foreignamt[row] = ld_newamt / parent.parent.parent.id_master.object.conversionrate[1]
+			else
+				this.object.foreignamt[row] = ld_newamt / 1.0
+			end if
+		end if
+	case "fullcode"
+		li_hold = parent.parent.parent.wf_findfullcode(data, ll_acccode)
+		if li_hold = 1 then
+			ll_rowno = parent.parent.parent.idc_dddwdetailaccount.find("aliasname ='" + data + "'", 1, parent.parent.parent.idc_dddwdetailaccount.rowcount())
+			parent.parent.parent.idc_dddwdetailaccount.setrow(ll_rowno)
+			if ll_rowno > 0 and ll_rowno <= parent.parent.parent.idc_dddwdetailaccount.rowcount() then
+				this.object.acccode[row] = ll_acccode
+				setnull(ll_patientcode)
+				setnull(ls_regno)
+				this.object.patientcode[row] = ll_patientcode
+				this.object.regno[row] = ls_regno
+				parent.parent.parent.ib_itemvalidated = true
+				parent.parent.parent.wf_setbalance(this.object.acccode[row], row)
+			else
+				messagebox("Alias Name Validation", "Please Select Valid Alias Name")
+				li_errcode = 1
+				parent.parent.parent.ib_itemvalidated = false
+			end if
+		elseif li_hold = -1 then
+			parent.parent.parent.ib_itemvalidated = true
+		else
+			messagebox("Alias Name Validation", "Please Select Valid Alias Name")
+			li_errcode = 1
+			parent.parent.parent.ib_itemvalidated = false
+		end if
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.rowfocuschanged(long currentrow) returns long [event]
+	long ancestorreturnvalue
+	dwitemstatus lrs_detail
+	integer li_null
+	datetime ldt_date
+	ancestorreturnvalue = super::rowfocuschanged(currentrow)
+	setnull(li_null)
+	setnull(ldt_date)
+	lrs_detail = getitemstatus(currentrow, 0, primary!)
+	if getcolumnname() <> parent.parent.parent.is_columnitemname then
+		if rowcount() > 0 and lrs_detail <> new! then
+			if parent.parent.parent.is_jv = "Y" then
+				if parent.parent.parent.id_detail.rowcount() > 0 then
+					parent.parent.parent.id_footer.object.balance[1] = parent.parent.parent.id_detail.getitemdecimal(currentrow, "balance")
+					parent.parent.parent.id_footer.object.invdate[1] = parent.parent.parent.id_detail.getitemdatetime(currentrow, "invdate")
+					parent.parent.parent.id_footer.object.netamt[1] = parent.parent.parent.id_detail.getitemdecimal(currentrow, "netamt")
+					parent.parent.parent.id_footer.object.outstandingamt[1] = parent.parent.parent.id_detail.getitemdecimal(currentrow, "outstandingamt")
+					if lrs_detail <> new! then
+						if parent.parent.parent.id_detail.object.credit[parent.parent.parent.id_detail.getrow()] < 1 and parent.parent.parent.id_detail.object.debit[parent.parent.parent.id_detail.getrow()] < 1 then
+							if parent.parent.parent.is_invoicebased = "Y" then
+								messagebox("Amount validation", "Enter some valid value")
+							else
+								messagebox("Amount validation", "Enter some valid value for credit or debit field")
+								if parent.parent.parent.id_detail.object.debit[parent.parent.parent.id_detail.getrow()] < 1 then
+									setcolumn("debit")
+								else
+									setcolumn("credit")
+								end if
+							end if
+							scrolltorow(currentrow)
+							return ::message.returnvalue
+						elseif parent.parent.parent.id_detail.object.credit[parent.parent.parent.id_detail.getrow()] > 0 and parent.parent.parent.id_detail.object.debit[parent.parent.parent.id_detail.getrow()] > 0 then
+							messagebox("Amount validation", "Either Debit or Credit field must be zero")
+							setcolumn("debit")
+							scrolltorow(currentrow)
+							return ::message.returnvalue
+						end if
+						return
+					end if
+					return
+				end if
+			elseif parent.parent.parent.id_detail.rowcount() > 1 then
+				parent.parent.parent.id_footer.object.balance[1] = parent.parent.parent.id_detail.getitemdecimal(currentrow, "balance")
+				parent.parent.parent.id_footer.object.invdate[1] = parent.parent.parent.id_detail.getitemdatetime(currentrow, "invdate")
+				parent.parent.parent.id_footer.object.netamt[1] = parent.parent.parent.id_detail.getitemdecimal(currentrow, "netamt")
+				parent.parent.parent.id_footer.object.outstandingamt[1] = parent.parent.parent.id_detail.getitemdecimal(currentrow, "outstandingamt")
+				lrs_detail = getitemstatus(currentrow, 0, primary!)
+				if lrs_detail <> new! then
+					if parent.parent.parent.is_detailtreatment = "D" then
+						if parent.parent.parent.id_detail.object.debit[parent.parent.parent.id_detail.getrow()] < 1 then
+							messagebox("Amount validation", "Enter some valid amount")
+							setcolumn("debit")
+							scrolltorow(currentrow)
+							return ::message.returnvalue
+						end if
+					elseif parent.parent.parent.id_detail.object.credit[parent.parent.parent.id_detail.getrow()] < 1 then
+						messagebox("Amount validation", "Enter some valid amount")
+						setcolumn("credit")
+						scrolltorow(currentrow)
+						return ::message.returnvalue
+					end if
+					if parent.parent.parent.id_detail.object.credit[parent.parent.parent.id_detail.getrow()] < 1 and parent.parent.parent.id_detail.object.debit[parent.parent.parent.id_detail.getrow()] < 1 or parent.parent.parent.id_detail.object.credit[parent.parent.parent.id_detail.getrow()] > 0 and parent.parent.parent.id_detail.object.debit[parent.parent.parent.id_detail.getrow()] > 0 then
+						messagebox("Amount validation", "Enter some valid amount")
+						if parent.parent.parent.is_detailtreatment = "D" then
+							setcolumn("debit")
+						else
+							setcolumn("credit")
+						end if
+						scrolltorow(currentrow)
+						return ::message.returnvalue
+					end if
+					return
+				end if
+				return
+			end if
+		else
+			parent.parent.parent.id_footer.object.balance[1] = 0
+			parent.parent.parent.id_footer.object.invdate[1] = ldt_date
+			parent.parent.parent.id_footer.object.netamt[1] = 0
+			parent.parent.parent.id_footer.object.outstandingamt[1] = 0
+		end if
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	integer li_null
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	setnull(li_null)
+	if parent.parent.parent.ib_itemvalidated = false then
+		messagebox("Account Validation", "Duplicate Account, Please select some other")
+		parent.parent.parent.ib_itemvalidated = true
+		setcolumn("acccode")
+		scrolltorow(parent.parent.parent.il_currrow)
+		this.object.acccode[parent.parent.parent.il_currrow] = li_null
+	end if
+	if string(dwo.name) = "acccode" then
+		parent.parent.parent.id_detail.selecttext(1, 40)
+	end if
+	parent.parent.parent.il_currrow = row
+	return ::message.returnvalue
+
+// dw_itemsdetail.getfocus() returns long [event]
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "invoicecode"
+		if data = "" or isnull(data) then
+			messagebox("Invoice Code Validation", "Please enter valid invoice code")
+		end if
+	end choose
+	return 1
+
+// dw_itemsdetail.editchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::editchanged(row, dwo, data)
+	choose case dwo.name
+	case "acccode"
+		parent.parent.parent.post wf_setaccountname(data)
+	case "patientcode"
+		parent.parent.parent.post wf_setpatientname(data)
+	case "guestcode"
+		parent.parent.parent.post wf_setguestname(data)
+	end choose
+	return ::message.returnvalue
+
+// dw_itemsdetail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	string ls_fullcode
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keyenter! and getcolumnname() = "acccode" then
+		if parent.parent.parent.idc_dddwdetailaccount.rowcount() > 0 then
+			parent.parent.parent.id_detail.setitem(parent.parent.parent.id_detail.getrow(), "acccode", parent.parent.parent.idc_dddwdetailaccount.getitemnumber(parent.parent.parent.idc_dddwdetailaccount.getrow(), "acccode"))
+		end if
+		if parent.parent.parent.wf_getfullcode(parent.parent.parent.id_detail.getitemnumber(parent.parent.parent.id_detail.getrow(), "acccode"), ls_fullcode) = 1 then
+			this.object.fullcode[parent.parent.parent.id_detail.getrow()] = ls_fullcode
+			parent.parent.parent.wf_setbalance(this.object.acccode[parent.parent.parent.id_detail.getrow()], parent.parent.parent.id_detail.getrow())
+		else
+			messagebox("Account Name Validation", "Please Select Valid Account Name")
+			this.object.fullcode[parent.parent.parent.id_detail.getrow()] = ""
+		end if
+	end if
+	if getcolumnname() = "credit" and key = keyf5! then
+		parent.parent.parent.wf_show_patientdiscount_window()
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.ue_enterkey() returns long [event]
+	if getrow() = rowcount() then
+		if parent.parent.parent.is_jv = "N" then
+			if parent.parent.parent.is_detailtreatment = "D" then
+				if getcolumn() = integer(this.object.datawindow.column.count) - 1 then
+					parent.parent.parent.event ue_newitem()
+					return 1
+				end if
+			elseif getcolumn() = integer(this.object.datawindow.column.count) then
+				parent.parent.parent.event ue_newitem()
+				return 1
+			end if
+		elseif getcolumn() = integer(this.object.datawindow.column.count) then
+			parent.parent.parent.event ue_newitem()
+			return 1
+		end if
+		return
+	end if
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// rb_creditors.clicked() returns long [event]
+	string ls_filter
+	string ls_suppfilterstring
+	setredraw(false)
+	ls_filter = "restricted='N' AND "
+	if f_rightexists(537) then
+		ls_filter = ""
+	end if
+	ls_filter = ls_filter + "subcode = Long('" + string(parent.parent.parent.il_creditorssub) + "')"
+	if f_stringpreferences("GroupSuppCatInAccounts") = "Y" then
+		ls_suppfilterstring = "0                                                                                                                                                                                                             "
+		parent.parent.parent.it_transobject.getallowedgroupsuppliercategory(f_getgroupcode(gl_usercode), ls_suppfilterstring)
+		if ls_suppfilterstring = " " or ls_suppfilterstring = "" or isnull(ls_suppfilterstring) then
+			ls_suppfilterstring = "0"
+			messagebox("Group Supplier Category Validation", "Current user group does not have enough permissions w.r.t supplier.")
+		end if
+		ls_filter = ls_filter + " AND " + "custcatcode In (" + ls_suppfilterstring + " , -1 )"
+	end if
+	parent.parent.parent.idc_dddwdetailaccount.setfilter(ls_filter)
+	parent.parent.parent.idc_dddwdetailaccount.filter()
+	setredraw(true)
+	return ::message.returnvalue
+
+// rb_debitors.clicked() returns long [event]
+	string ls_filter
+	string ls_custfilterstring
+	setredraw(false)
+	ls_filter = "restricted='N' AND "
+	if f_rightexists(537) then
+		ls_filter = ""
+	end if
+	ls_filter = ls_filter + "subcode = Long('" + string(parent.parent.parent.il_debitorssub) + "')"
+	if f_stringpreferences("GroupCustCatInTrans") = "Y" then
+		ls_custfilterstring = "0                                                                                                                                                                                                             "
+		parent.parent.parent.it_transobject.getallowedgroupcustomercategory(f_getgroupcode(gl_usercode), ls_custfilterstring)
+		if ls_custfilterstring = " " or ls_custfilterstring = "" or isnull(ls_custfilterstring) then
+			ls_custfilterstring = "0"
+			messagebox("Group Customer Category Validation", "Current user group does not have enough permissions w.r.t customer.")
+		end if
+		ls_filter = ls_filter + " AND " + "custcatcode In (" + ls_custfilterstring + " , -1 )"
+	end if
+	parent.parent.parent.idc_dddwdetailaccount.setfilter(ls_filter)
+	parent.parent.parent.idc_dddwdetailaccount.filter()
+	setredraw(true)
+	return ::message.returnvalue
+
+// rb_other.clicked() returns long [event]
+	string ls_filter
+	setredraw(false)
+	ls_filter = "restricted='N' AND "
+	if f_rightexists(537) then
+		ls_filter = ""
+	end if
+	ls_filter = ls_filter + "subcode <> Long('" + string(parent.parent.parent.il_creditorssub) + "') AND subcode <> Long('" + string(parent.parent.parent.il_debitorssub) + "')"
+	parent.parent.parent.idc_dddwdetailaccount.setfilter(ls_filter)
+	parent.parent.parent.idc_dddwdetailaccount.filter()
+	setredraw(true)
+	return ::message.returnvalue
+
+// rb_all.clicked() returns long [event]
+	string ls_filter
+	string ls_custfilterstring
+	string ls_suppfilterstring
+	string ls_restricted
+	setredraw(false)
+	ls_restricted = "restricted='N'"
+	if f_rightexists(537) then
+		ls_restricted = ""
+	end if
+	ls_filter = ls_restricted
+	if f_stringpreferences("GroupCustCatInTrans") = "Y" then
+		ls_custfilterstring = "0                                                                                                                                                                                                             "
+		parent.parent.parent.it_transobject.getallowedgroupcustomercategory(f_getgroupcode(gl_usercode), ls_custfilterstring)
+		if ls_custfilterstring = " " or ls_custfilterstring = "" or isnull(ls_custfilterstring) then
+			ls_custfilterstring = "0"
+			messagebox("Group Customer Category Validation", "Current user group does not have enough permissions w.r.t customer.")
+		end if
+		if ls_restricted = "" then
+			ls_filter = "(subcode = 3 AND custcatcode In (" + ls_custfilterstring + " , -1 )) "
+		else
+			ls_filter = "(restricted='N' AND subcode = 3 AND custcatcode In (" + ls_custfilterstring + " , -1 )) "
+		end if
+	end if
+	if f_stringpreferences("GroupSuppCatInAccounts") = "Y" then
+		ls_suppfilterstring = "0                                                                                                                                                                                                             "
+		parent.parent.parent.it_transobject.getallowedgroupsuppliercategory(f_getgroupcode(gl_usercode), ls_suppfilterstring)
+		if ls_suppfilterstring = " " or ls_suppfilterstring = "" or isnull(ls_suppfilterstring) then
+			ls_suppfilterstring = "0"
+			messagebox("Group Supplier Category Validation", "Current user group does not have enough permissions w.r.t supplier.")
+		end if
+		if f_stringpreferences("GroupCustCatInTrans") = "Y" then
+			if ls_restricted = "" then
+				ls_filter = ls_filter + "OR (subcode = 7 AND custcatcode In (" + ls_suppfilterstring + " , -1 )) "
+			else
+				ls_filter = ls_filter + "OR (restricted='N' AND subcode = 7 AND custcatcode In (" + ls_suppfilterstring + " , -1 )) "
+			end if
+		elseif ls_restricted = "" then
+			ls_filter = ls_filter + "(subcode = 7 AND custcatcode In (" + ls_suppfilterstring + " , -1 )) "
+		else
+			ls_filter = ls_filter + "(restricted='N' AND subcode = 7 AND custcatcode In (" + ls_suppfilterstring + " , -1 )) "
+		end if
+	end if
+	parent.parent.parent.idc_dddwdetailaccount.setfilter(ls_filter)
+	parent.parent.parent.idc_dddwdetailaccount.filter()
+	setredraw(true)
+	return ::message.returnvalue

@@ -1,12 +1,12 @@
 // window w_salereturninsale (salereturncomponents)  ancestor: window
 
-// w_salereturninsale.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// w_salereturninsale.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		return ::message.returnvalue
 	end if
 	return ::message.returnvalue
 
-// w_salereturninsale.ue_close(integer ai_closemode) returns integer
+// w_salereturninsale.ue_close(integer ai_closemode) returns integer [event]
 	long ll_currrow
 	long ll_counter
 	long ll_null
@@ -58,7 +58,7 @@
 	closewithreturn(this, this.istr_ds)
 	return 0
 
-// w_salereturninsale.ue_postopen() returns 0
+// w_salereturninsale.ue_postopen() returns 0 [event]
 	long li_counter
 	long ll_startrow
 	long ll_rowcount
@@ -392,7 +392,7 @@
 	end if
 	return ll_retflag
 
-// w_salereturninsale.create() returns 0
+// w_salereturninsale.create() returns 0 [event]
 	this.cb_cancel = create cb_cancel
 	this.dw_footer = create dw_footer
 	this.cb_ok = create cb_ok
@@ -401,7 +401,7 @@
 	this.dw_header = create dw_header
 	this.control = {this.cb_cancel, this.dw_footer, this.cb_ok, this.dw_selectionlist, this.dw_detail, this.dw_header}
 
-// w_salereturninsale.destroy() returns 0
+// w_salereturninsale.destroy() returns 0 [event]
 	destroy this.cb_cancel
 	destroy this.dw_footer
 	destroy this.cb_ok
@@ -409,7 +409,7 @@
 	destroy this.dw_detail
 	destroy this.dw_header
 
-// w_salereturninsale.open() returns long
+// w_salereturninsale.open() returns long [event]
 	long ll_win_width
 	long ll_win_height
 	long ll_width
@@ -467,35 +467,35 @@
 	end if
 	return message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.post event ue_close(-1)
 	return ::message.returnvalue
 
-// dw_footer.losefocus() returns long
+// dw_footer.losefocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::losefocus()
 	parent.wf_grandtotal()
 	return ::message.returnvalue
 
-// dw_footer.getfocus() returns long
+// dw_footer.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	parent.wf_grandtotal()
 	return ::message.returnvalue
 
-// dw_footer.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_footer.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
 	parent.wf_grandtotal()
 	return ::message.returnvalue
 
-// dw_footer.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_footer.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemchanged(row, dwo, data)
 	parent.wf_grandtotal()
 	return ::message.returnvalue
 
-// dw_footer.itemerror(long row, dwobject dwo, string data) returns long
+// dw_footer.itemerror(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemerror(row, dwo, data)
 	choose case dwo.name
@@ -508,21 +508,21 @@
 	end choose
 	return 1
 
-// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		triggerevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	parent.post event ue_close(1)
 	return ::message.returnvalue
 
-// dw_selectionlist.ue_setfocus() returns 0
+// dw_selectionlist.ue_setfocus() returns 0 [event]
 	parent.id_detail.setcolumn("itemname")
 	parent.id_detail.setfocus()
 
-// dw_selectionlist.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+// dw_selectionlist.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
 	long ll_rowmain
 	if row > 0 then
 		ll_rowmain = parent.id_detail.getrow()
@@ -536,11 +536,11 @@
 	end if
 	return ::message.returnvalue
 
-// dw_selectionlist.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+// dw_selectionlist.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
 	post event ue_setfocus()
 	return ::message.returnvalue
 
-// dw_detail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// dw_detail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	integer rt_code
 	long ll_currrow
 	long ll_listcurrrow
@@ -673,7 +673,7 @@
 	end if
 	return rt_code
 
-// dw_detail.ue_enterkey() returns long
+// dw_detail.ue_enterkey() returns long [event]
 	long ll_rowcount
 	parent.wf_grandtotal()
 	if getrow() = rowcount() and getcolumn() = integer(this.object.datawindow.column.count) then
@@ -707,7 +707,7 @@
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_detail.itemerror(long row, dwobject dwo, string data) returns long
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
 	choose case dwo.name
 	case "itemname"
 		messagebox("Name Validation", "Please enter value for Name")
@@ -716,7 +716,7 @@
 	end choose
 	return 1
 
-// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	parent.wf_grandtotal()
 	if parent.ib_itemvalidated = false and parent.wf_validateitem(row) = -1 then
 		parent.ib_itemvalidated = false
@@ -738,7 +738,7 @@
 	selecttext(1, len(gettext()))
 	return ::message.returnvalue
 
-// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	integer li_retcode
 	integer li_rtcode
 	long ll_icode
@@ -794,7 +794,7 @@
 	end choose
 	return li_retcode
 
-// dw_detail.editchanged(long row, dwobject dwo, string data) returns long
+// dw_detail.editchanged(long row, dwobject dwo, string data) returns long [event]
 	long ll_currrow
 	long ll_startrow
 	ll_startrow = 0
@@ -839,38 +839,38 @@
 	end choose
 	return ::message.returnvalue
 
-// dw_detail.losefocus() returns long
+// dw_detail.losefocus() returns long [event]
 	parent.id_selectionlist.hide()
 	parent.wf_grandtotal()
 	return ::message.returnvalue
 
-// dw_detail.rowfocuschanged(long currentrow) returns long
+// dw_detail.rowfocuschanged(long currentrow) returns long [event]
 	parent.wf_grandtotal()
 	if parent.ib_itemvalidated = false and parent.wf_validateitem(getrow()) = -1 then
 		return ::message.returnvalue
 	end if
 	return ::message.returnvalue
 
-// dw_header.ue_enterkey() returns long
+// dw_header.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	parent.wf_grandtotal()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_header.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_header.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
 	parent.wf_grandtotal()
 	return ::message.returnvalue
 
-// dw_header.losefocus() returns long
+// dw_header.losefocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::losefocus()
 	parent.wf_grandtotal()
 	return ::message.returnvalue
 
-// dw_header.getfocus() returns long
+// dw_header.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	parent.wf_grandtotal()

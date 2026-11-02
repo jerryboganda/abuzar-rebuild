@@ -1,12 +1,12 @@
 // window w_listarguments (reports)  ancestor: window
 
-// w_listarguments.ue_close(integer ai_status) returns 0
+// w_listarguments.ue_close(integer ai_status) returns 0 [event]
 	if ai_status <> 1 then
 		this.istr_arg.i_status = -1
 	end if
 	closewithreturn(this, this.istr_arg)
 
-// w_listarguments.ue_downkey(keycode key, unsignedlong keyflags) returns long
+// w_listarguments.ue_downkey(keycode key, unsignedlong keyflags) returns long [event]
 	string ls_item
 	long ll_selectedindex
 	long ll_counter
@@ -40,7 +40,7 @@
 	end if
 	return 0
 
-// w_listarguments.create() returns 0
+// w_listarguments.create() returns 0 [event]
 	this.st_7 = create st_7
 	this.st_3 = create st_3
 	this.dw_startendinvoice = create dw_startendinvoice
@@ -65,7 +65,7 @@
 	this.gb_4 = create gb_4
 	this.control = {this.st_7, this.st_3, this.dw_startendinvoice, this.cbx_all, this.st_6, this.st_5, this.lb_selectedcategories, this.lb_categories, this.dw_price, this.cbx_hide, this.cbx_supress, this.dw_control, this.cb_cancel, this.cb_ok, this.st_2, this.st_1, this.em_enddate, this.em_startdate, this.gb_1, this.gb_2, this.gb_3, this.gb_4}
 
-// w_listarguments.destroy() returns 0
+// w_listarguments.destroy() returns 0 [event]
 	destroy this.st_7
 	destroy this.st_3
 	destroy this.dw_startendinvoice
@@ -89,7 +89,7 @@
 	destroy this.gb_3
 	destroy this.gb_4
 
-// w_listarguments.open() returns long
+// w_listarguments.open() returns long [event]
 	string ls_text
 	date ld_currdate
 	time lt_currtime
@@ -127,28 +127,28 @@
 	this.em_enddate.text = ls_text
 	return ::message.returnvalue
 
-// dw_startendinvoice.ue_enterkey() returns long
+// dw_startendinvoice.ue_enterkey() returns long [event]
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// cbx_all.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// cbx_all.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// lb_selectedcategories.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// lb_selectedcategories.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		post event doubleclicked(selectedindex())
 	end if
 	return ::message.returnvalue
 
-// lb_selectedcategories.getfocus() returns long
+// lb_selectedcategories.getfocus() returns long [event]
 	selectitem(0)
 	selectitem(1)
 	return ::message.returnvalue
 
-// lb_selectedcategories.doubleclicked(integer index) returns long
+// lb_selectedcategories.doubleclicked(integer index) returns long [event]
 	string ls_item
 	long ll_selectedindex
 	ll_selectedindex = selectedindex()
@@ -166,18 +166,18 @@
 	end if
 	return ::message.returnvalue
 
-// lb_categories.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// lb_categories.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		post event doubleclicked(selectedindex())
 	end if
 	return ::message.returnvalue
 
-// lb_categories.getfocus() returns long
+// lb_categories.getfocus() returns long [event]
 	selectitem(0)
 	selectitem(1)
 	return ::message.returnvalue
 
-// lb_categories.doubleclicked(integer index) returns long
+// lb_categories.doubleclicked(integer index) returns long [event]
 	string ls_item
 	long ll_selectedindex
 	ls_item = string(selecteditem())
@@ -199,45 +199,45 @@
 	end if
 	return ::message.returnvalue
 
-// dw_price.ue_enterkey() returns long
+// dw_price.ue_enterkey() returns long [event]
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// cbx_hide.keydown(keycode key, unsignedlong keyflags) returns long
+// cbx_hide.keydown(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// cbx_supress.keydown(keycode key, unsignedlong keyflags) returns long
+// cbx_supress.keydown(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// dw_control.ue_enterkey() returns long
+// dw_control.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// cb_cancel.ue_keypresed(keycode key, unsignedlong keyflags) returns long
+// cb_cancel.ue_keypresed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		postevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.post event ue_close(-1)
 	return ::message.returnvalue
 
-// cb_ok.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// cb_ok.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		postevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	string ls_enddate
 	date ld_date
 	parent.em_enddate.getdata(ls_enddate)
@@ -247,7 +247,7 @@
 	end if
 	return ::message.returnvalue
 
-// em_enddate.keydown(keycode key, unsignedlong keyflags) returns long
+// em_enddate.keydown(keycode key, unsignedlong keyflags) returns long [event]
 	string ls_date
 	string ls_temp
 	if key = keyenter! then
@@ -268,7 +268,7 @@
 	end if
 	return message.returnvalue
 
-// em_startdate.keydown(keycode key, unsignedlong keyflags) returns long
+// em_startdate.keydown(keycode key, unsignedlong keyflags) returns long [event]
 	string ls_date
 	string ls_temp
 	if key = keyenter! then

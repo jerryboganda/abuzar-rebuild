@@ -1,9 +1,33 @@
 // menu m_changeitempurprice_manfwise (singleentryitem)  ancestor: m_single_entry
 
-// m_changeitempurprice_manfwise.create() returns 0
+// m_changeitempurprice_manfwise.create() returns 0 [event]
 	m_changeitempurprice_manfwise = this
 	call super::create
 	this.text = "m_changeitempurprice_manfwise"
 
-// m_changeitempurprice_manfwise.destroy() returns 0
+// m_changeitempurprice_manfwise.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+
+// m_options.create() returns 0 [event]
+	call super::create
+	this.visible = true
+	this.text = "Change Now"
+	this.toolbaritemname = "CheckIn5!"
+
+// m_options.clicked() returns 0 [event]
+	integer li_yesno
+	call super::clicked
+	li_yesno = messagebox("Purchase Price Change ", "Are You Sure? The Purchase Price of all those Items~n which" + "   belong to selected Manufacturer  will be Changed", exclamation!, yesno!, 2)
+	if li_yesno = 2 then
+		return
+	end if
+	this.parentwindow.dynamic wf_changepurprice()
+
+// m_options.destroy() returns 0 [event]
 	call super::destroy

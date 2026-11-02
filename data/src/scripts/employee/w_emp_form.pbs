@@ -1,6 +1,6 @@
 // window w_emp_form (employee)  ancestor: window
 
-// w_emp_form.ue_close() returns 0
+// w_emp_form.ue_close() returns 0 [event]
 	SQL stop USING this.it_transobject;
 	close(this)
 
@@ -1101,7 +1101,7 @@
 	next
 	return 0
 
-// w_emp_form.create() returns 0
+// w_emp_form.create() returns 0 [event]
 	this.dw_advance = create dw_advance
 	this.dw_account = create dw_account
 	this.tab_main = create tab_main
@@ -1110,7 +1110,7 @@
 	this.cb_cancel = create cb_cancel
 	this.control = {this.dw_advance, this.dw_account, this.tab_main, this.dw_image, this.cb_ok, this.cb_cancel}
 
-// w_emp_form.destroy() returns 0
+// w_emp_form.destroy() returns 0 [event]
 	destroy this.dw_advance
 	destroy this.dw_account
 	destroy this.tab_main
@@ -1118,7 +1118,7 @@
 	destroy this.cb_ok
 	destroy this.cb_cancel
 
-// w_emp_form.open() returns long
+// w_emp_form.open() returns long [event]
 	integer li_xpos
 	integer li_ypos
 	integer li_xendpos
@@ -1166,7 +1166,7 @@
 	end if
 	return message.returnvalue
 
-// tab_main.create() returns 0
+// tab_main.create() returns 0 [event]
 	this.tabpage_emp = create tabpage_emp
 	this.tabpage_edu = create tabpage_edu
 	this.tabpage_cert = create tabpage_cert
@@ -1177,7 +1177,7 @@
 	this.tabpage_pay = create tabpage_pay
 	this.control = {this.tabpage_emp, this.tabpage_edu, this.tabpage_cert, this.tabpage_skill, this.tabpage_jobexp, this.tabpage_proj, this.tabpage_ref, this.tabpage_pay}
 
-// tab_main.destroy() returns 0
+// tab_main.destroy() returns 0 [event]
 	destroy this.tabpage_emp
 	destroy this.tabpage_edu
 	destroy this.tabpage_cert
@@ -1187,7 +1187,7 @@
 	destroy this.tabpage_ref
 	destroy this.tabpage_pay
 
-// tab_main.selectionchanged(integer oldindex, integer newindex) returns long
+// tab_main.selectionchanged(integer oldindex, integer newindex) returns long [event]
 	if newindex = 1 then
 		parent.id_emp.setfocus()
 		if parent.id_emp.rowcount() = 0 then
@@ -1238,21 +1238,21 @@
 	end if
 	return ::message.returnvalue
 
-// tabpage_emp.create() returns 0
+// tabpage_emp.create() returns 0 [event]
 	this.dw_emp = create dw_emp
 	this.control = {this.dw_emp}
 
-// tabpage_emp.destroy() returns 0
+// tabpage_emp.destroy() returns 0 [event]
 	destroy this.dw_emp
 
-// dw_emp.getfocus() returns long
+// dw_emp.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	setfocus()
 	selecttext(1, len(gettext()))
 	return ::message.returnvalue
 
-// dw_emp.ue_enterkey() returns long
+// dw_emp.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	if getcolumnname() <> "pmtaddress" and getcolumnname() <> "tmpaddress" then
@@ -1261,7 +1261,7 @@
 	end if
 	return ::message.returnvalue
 
-// dw_emp.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_emp.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
 	if len(gettext()) > 0 then
@@ -1269,7 +1269,7 @@
 	end if
 	return ::message.returnvalue
 
-// dw_emp.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// dw_emp.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
 	if key = keyf8! and parent.parent.parent.ib_viewimage then
@@ -1280,7 +1280,7 @@
 	end if
 	return ::message.returnvalue
 
-// dw_emp.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_emp.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	long ll_retcode
 	ancestorreturnvalue = super::itemchanged(row, dwo, data)
@@ -1343,7 +1343,7 @@
 	end choose
 	return ::message.returnvalue
 
-// dw_emp.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+// dw_emp.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::clicked(xpos, ypos, row, dwo)
 	if dwo.name = "p_photo" then
@@ -1351,7 +1351,7 @@
 	end if
 	return ::message.returnvalue
 
-// dw_emp.editchanged(long row, dwobject dwo, string data) returns long
+// dw_emp.editchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::editchanged(row, dwo, data)
 	choose case dwo.name
@@ -1365,27 +1365,27 @@
 	end choose
 	return ::message.returnvalue
 
-// tabpage_edu.create() returns 0
+// tabpage_edu.create() returns 0 [event]
 	this.dw_edu = create dw_edu
 	this.control = {this.dw_edu}
 
-// tabpage_edu.destroy() returns 0
+// tabpage_edu.destroy() returns 0 [event]
 	destroy this.dw_edu
 
-// dw_edu.ue_enterkey() returns long
+// dw_edu.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_edu.getfocus() returns long
+// dw_edu.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	setfocus()
 	selecttext(1, len(gettext()))
 	return ::message.returnvalue
 
-// dw_edu.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_edu.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
 	if len(gettext()) > 0 then
@@ -1393,7 +1393,7 @@
 	end if
 	return ::message.returnvalue
 
-// dw_edu.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// dw_edu.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
 	if key = keyinsert! then
@@ -1412,21 +1412,21 @@
 	end if
 	return ::message.returnvalue
 
-// tabpage_cert.create() returns 0
+// tabpage_cert.create() returns 0 [event]
 	this.dw_cert = create dw_cert
 	this.control = {this.dw_cert}
 
-// tabpage_cert.destroy() returns 0
+// tabpage_cert.destroy() returns 0 [event]
 	destroy this.dw_cert
 
-// dw_cert.getfocus() returns long
+// dw_cert.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	setfocus()
 	selecttext(1, len(gettext()))
 	return ::message.returnvalue
 
-// dw_cert.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_cert.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
 	if len(gettext()) > 0 then
@@ -1434,7 +1434,7 @@
 	end if
 	return ::message.returnvalue
 
-// dw_cert.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// dw_cert.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
 	if key = keyinsert! then
@@ -1453,27 +1453,27 @@
 	end if
 	return ::message.returnvalue
 
-// dw_cert.ue_enterkey() returns long
+// dw_cert.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// tabpage_skill.create() returns 0
+// tabpage_skill.create() returns 0 [event]
 	this.dw_skill = create dw_skill
 	this.control = {this.dw_skill}
 
-// tabpage_skill.destroy() returns 0
+// tabpage_skill.destroy() returns 0 [event]
 	destroy this.dw_skill
 
-// dw_skill.getfocus() returns long
+// dw_skill.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	setfocus()
 	selecttext(1, len(gettext()))
 	return ::message.returnvalue
 
-// dw_skill.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_skill.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
 	if len(gettext()) > 0 then
@@ -1481,7 +1481,7 @@
 	end if
 	return ::message.returnvalue
 
-// dw_skill.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// dw_skill.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
 	if key = keyinsert! then
@@ -1500,27 +1500,27 @@
 	end if
 	return ::message.returnvalue
 
-// dw_skill.ue_enterkey() returns long
+// dw_skill.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// tabpage_jobexp.create() returns 0
+// tabpage_jobexp.create() returns 0 [event]
 	this.dw_jobexp = create dw_jobexp
 	this.control = {this.dw_jobexp}
 
-// tabpage_jobexp.destroy() returns 0
+// tabpage_jobexp.destroy() returns 0 [event]
 	destroy this.dw_jobexp
 
-// dw_jobexp.getfocus() returns long
+// dw_jobexp.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	setfocus()
 	selecttext(1, len(gettext()))
 	return ::message.returnvalue
 
-// dw_jobexp.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_jobexp.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
 	if len(gettext()) > 0 then
@@ -1528,7 +1528,7 @@
 	end if
 	return ::message.returnvalue
 
-// dw_jobexp.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// dw_jobexp.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
 	if key = keyinsert! then
@@ -1547,7 +1547,7 @@
 	end if
 	return ::message.returnvalue
 
-// dw_jobexp.ue_enterkey() returns long
+// dw_jobexp.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	if getcolumnname() <> "jobdescription" then
@@ -1556,14 +1556,14 @@
 	end if
 	return ::message.returnvalue
 
-// tabpage_proj.create() returns 0
+// tabpage_proj.create() returns 0 [event]
 	this.dw_proj = create dw_proj
 	this.control = {this.dw_proj}
 
-// tabpage_proj.destroy() returns 0
+// tabpage_proj.destroy() returns 0 [event]
 	destroy this.dw_proj
 
-// dw_proj.ue_enterkey() returns long
+// dw_proj.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	if getcolumnname() <> "briefdescription" then
@@ -1572,7 +1572,7 @@
 	end if
 	return ::message.returnvalue
 
-// dw_proj.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// dw_proj.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
 	if key = keyinsert! then
@@ -1591,7 +1591,7 @@
 	end if
 	return ::message.returnvalue
 
-// dw_proj.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_proj.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
 	if len(gettext()) > 0 then
@@ -1599,21 +1599,21 @@
 	end if
 	return ::message.returnvalue
 
-// dw_proj.getfocus() returns long
+// dw_proj.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	setfocus()
 	selecttext(1, len(gettext()))
 	return ::message.returnvalue
 
-// tabpage_ref.create() returns 0
+// tabpage_ref.create() returns 0 [event]
 	this.dw_ref = create dw_ref
 	this.control = {this.dw_ref}
 
-// tabpage_ref.destroy() returns 0
+// tabpage_ref.destroy() returns 0 [event]
 	destroy this.dw_ref
 
-// dw_ref.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// dw_ref.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
 	if key = keyinsert! then
@@ -1632,7 +1632,7 @@
 	end if
 	return ::message.returnvalue
 
-// dw_ref.ue_enterkey() returns long
+// dw_ref.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	if getcolumnname() <> "comments" then
@@ -1641,7 +1641,7 @@
 	end if
 	return ::message.returnvalue
 
-// dw_ref.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_ref.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
 	if len(gettext()) > 0 then
@@ -1649,25 +1649,25 @@
 	end if
 	return ::message.returnvalue
 
-// dw_ref.getfocus() returns long
+// dw_ref.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	setfocus()
 	selecttext(1, len(gettext()))
 	return ::message.returnvalue
 
-// tabpage_pay.create() returns 0
+// tabpage_pay.create() returns 0 [event]
 	this.dw_pay = create dw_pay
 	this.dw_deduction = create dw_deduction
 	this.dw_allowance = create dw_allowance
 	this.control = {this.dw_pay, this.dw_deduction, this.dw_allowance}
 
-// tabpage_pay.destroy() returns 0
+// tabpage_pay.destroy() returns 0 [event]
 	destroy this.dw_pay
 	destroy this.dw_deduction
 	destroy this.dw_allowance
 
-// dw_pay.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_pay.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemchanged(row, dwo, data)
 	choose case dwo.name
@@ -1697,61 +1697,61 @@
 	end choose
 	return ::message.returnvalue
 
-// dw_pay.getfocus() returns long
+// dw_pay.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	selecttext(1, len(gettext()))
 	return ::message.returnvalue
 
-// dw_pay.ue_enterkey() returns long
+// dw_pay.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_deduction.getfocus() returns long
+// dw_deduction.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	selecttext(1, len(gettext()))
 	return ::message.returnvalue
 
-// dw_deduction.editchanged(long row, dwobject dwo, string data) returns long
+// dw_deduction.editchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::editchanged(row, dwo, data)
 	parent.parent.parent.wf_update_salary("deduction", "a", 1)
 	return ::message.returnvalue
 
-// dw_deduction.ue_enterkey() returns long
+// dw_deduction.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_allowance.getfocus() returns long
+// dw_allowance.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	selecttext(1, len(gettext()))
 	return ::message.returnvalue
 
-// dw_allowance.editchanged(long row, dwobject dwo, string data) returns long
+// dw_allowance.editchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::editchanged(row, dwo, data)
 	parent.parent.parent.wf_update_salary("allowances", "a", 1)
 	return ::message.returnvalue
 
-// dw_allowance.ue_enterkey() returns long
+// dw_allowance.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// cb_ok.ue_enterkry(keycode key, unsignedlong keyflags) returns long
+// cb_ok.ue_enterkry(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		triggerevent(clicked!)
 	end if
 	return 1
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	string ls_aliasname
 	string ls_empname
 	long ll_newid
@@ -1930,6 +1930,6 @@
 	end if
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.postevent("ue_close")
 	return ::message.returnvalue

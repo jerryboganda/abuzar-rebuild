@@ -1,6 +1,6 @@
 // window w_popup_itempriority_settings (salerespwin)  ancestor: window
 
-// w_popup_itempriority_settings.ue_postopen() returns 0
+// w_popup_itempriority_settings.ue_postopen() returns 0 [event]
 	s_positem ls_item
 	long ll_counter
 	ls_item = message.powerobjectparm
@@ -45,20 +45,20 @@
 		this.cb_save.enabled = false
 	end if
 
-// w_popup_itempriority_settings.create() returns 0
+// w_popup_itempriority_settings.create() returns 0 [event]
 	this.dw_item = create dw_item
 	this.cb_cancel = create cb_cancel
 	this.cb_save = create cb_save
 	this.dw_itempriority = create dw_itempriority
 	this.control = {this.dw_item, this.cb_cancel, this.cb_save, this.dw_itempriority}
 
-// w_popup_itempriority_settings.destroy() returns 0
+// w_popup_itempriority_settings.destroy() returns 0 [event]
 	destroy this.dw_item
 	destroy this.cb_cancel
 	destroy this.cb_save
 	destroy this.dw_itempriority
 
-// w_popup_itempriority_settings.open() returns long
+// w_popup_itempriority_settings.open() returns long [event]
 	long ll_win_width
 	long ll_win_height
 	long ll_width
@@ -77,21 +77,21 @@
 	post event ue_postopen()
 	return ::message.returnvalue
 
-// w_popup_itempriority_settings.close() returns long
+// w_popup_itempriority_settings.close() returns long [event]
 	close(this)
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.post event Close()
 	return ::message.returnvalue
 
-// cb_save.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_save.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		triggerevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_save.clicked() returns long
+// cb_save.clicked() returns long [event]
 	setpointer(hourglass!)
 	if f_validatedw(parent.dw_itempriority) < 0 then
 		return ::message.returnvalue
@@ -107,14 +107,14 @@
 	setpointer(arrow!)
 	return ::message.returnvalue
 
-// dw_itempriority.ue_enterkey() returns long
+// dw_itempriority.ue_enterkey() returns long [event]
 	if getrow() = rowcount() and getcolumn() = integer(this.object.datawindow.column.count) then
 		return 1
 	end if
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_itempriority.uevent_dberr_message(long al_errorcode, string as_errortext, long al_row, dwbuffer adwb_buffer) returns 0
+// dw_itempriority.uevent_dberr_message(long al_errorcode, string as_errortext, long al_row, dwbuffer adwb_buffer) returns 0 [event]
 	s_dberror ls_dberror
 	choose case al_errorcode
 	case -193
@@ -148,7 +148,7 @@
 	end choose
 	openwithparm(w_dberror, ls_dberror)
 
-// dw_itempriority.dberror(long sqldbcode, string sqlerrtext, string sqlsyntax, dwbuffer buffer, long row) returns long
+// dw_itempriority.dberror(long sqldbcode, string sqlerrtext, string sqlsyntax, dwbuffer buffer, long row) returns long [event]
 	post event uevent_dberr_message(sqldbcode, sqlerrtext, row, buffer)
 	SQL rollback USING sqlca;
 	return 1

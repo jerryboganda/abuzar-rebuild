@@ -1,8 +1,92 @@
 // menu m_serviceordermenu (servicemodules)  ancestor: m_multi_entry
 
-// m_serviceordermenu.create() returns 0
+// m_serviceordermenu.create() returns 0 [event]
 	m_serviceordermenu = this
 	call super::create
 
-// m_serviceordermenu.destroy() returns 0
+// m_serviceordermenu.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_open = create m_open
+	this.m_newcustomer = create m_newcustomer
+	this.m_searchbyservicedate = create m_searchbyservicedate
+	this.m_editservicetemplate = create m_editservicetemplate
+	this.item[upperbound(this.item) + 1] = this.m_open
+	this.item[upperbound(this.item) + 1] = this.m_newcustomer
+	this.item[upperbound(this.item) + 1] = this.m_searchbyservicedate
+	this.item[upperbound(this.item) + 1] = this.m_editservicetemplate
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_open
+	destroy this.m_newcustomer
+	destroy this.m_searchbyservicedate
+	destroy this.m_editservicetemplate
+
+// m_file.clicked() returns 0 [event]
+	call super::clicked
+	this.parentwindow.dynamic wf_dueitem()
+
+// m_options.create() returns 0 [event]
+	call super::create
+	this.text = "Sa&ve and Print~tCtrl+F6"
+	this.enabled = false
+
+// m_options.clicked() returns 0 [event]
+	call super::clicked
+	this.parentwindow.triggerevent("ue_save")
+	if this.parentwindow.dynamic wf_commitform() = true then
+		this.parentwindow.triggerevent("ue_print")
+		this.parentwindow.postevent("ue_new")
+	end if
+
+// m_options.destroy() returns 0 [event]
+	call super::destroy
+
+// m_open.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_copyinvoice()
+
+// m_open.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "&Open~tCtrl+O"
+	this.enabled = false
+	this.shortcut = 335
+
+// m_open.destroy() returns 0 [event]
+	call super::destroy
+
+// m_newcustomer.create() returns 0 [event]
+	call super::create
+	this.text = "Ne&w Customer~tCtrl+W"
+	this.shortcut = 343
+
+// m_newcustomer.destroy() returns 0 [event]
+	call super::destroy
+
+// m_newcustomer.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_newcustomer()
+
+// m_searchbyservicedate.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_searchserviceorderbyservicedate()
+
+// m_searchbyservicedate.create() returns 0 [event]
+	call super::create
+	this.text = "Search By Service Date~tCtrl+R"
+	this.shortcut = 338
+
+// m_searchbyservicedate.destroy() returns 0 [event]
+	call super::destroy
+
+// m_editservicetemplate.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_editservicetemplate()
+
+// m_editservicetemplate.create() returns 0 [event]
+	call super::create
+	this.text = "Edit Service Template~tAlt+F10"
+	this.shortcut = 633
+
+// m_editservicetemplate.destroy() returns 0 [event]
 	call super::destroy

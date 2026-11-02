@@ -1,6 +1,6 @@
 // window w_arg_spoteam_distcode (reports)  ancestor: w_listarguments
 
-// w_arg_spoteam_distcode.create() returns 0
+// w_arg_spoteam_distcode.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.st_4 = create st_4
@@ -17,7 +17,7 @@
 	this.control[icurrent + 5] = this.hpb_hpb
 	this.control[icurrent + 6] = this.gb_overallprogress
 
-// w_arg_spoteam_distcode.destroy() returns 0
+// w_arg_spoteam_distcode.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.st_4
 	destroy this.st_8
@@ -26,7 +26,7 @@
 	destroy this.hpb_hpb
 	destroy this.gb_overallprogress
 
-// w_arg_spoteam_distcode.open() returns long
+// w_arg_spoteam_distcode.open() returns long [event]
 	long ancestorreturnvalue
 	string ls_stringparam
 	string ls_filter
@@ -56,13 +56,77 @@
 	end if
 	return message.returnvalue
 
-// sle_distcode.ue_keydown(keycode key, unsignedlong keyflags) returns long
+// cb_ok.clicked() returns long [event]
+	long ancestorreturnvalue
+	string ls_dstcode
+	long ll_count
+	long ll_counter
+	long ll_found
+	datastore lds_temp
+	ancestorreturnvalue = super::clicked()
+	ls_dstcode = parent.sle_distcode.text
+	if len(ls_dstcode) = 0 or isnull(ls_dstcode) then
+		messagebox("Distributor Code Validation!", "Please enter a valid distributor code")
+		return ::message.returnvalue
+	end if
+	if parent.cbx_all.checked = true then
+		for ll_counter = 1 to parent.dw_control.rowcount()
+			parent.istr_arg.ia_integerlist[ll_counter] = parent.dw_control.getitemnumber(ll_counter, "spoteamcode")
+		next
+	else
+		for ll_counter = 1 to ll_counter
+			ll_found = parent.dw_control.find("name ='" + parent.lb_selectedcategories.text(ll_counter) + "'", 1, parent.dw_control.rowcount())
+			if ll_found > 0 then
+				parent.istr_arg.ia_integerlist[ll_counter] = parent.dw_control.getitemnumber(ll_found, "spoteamcode")
+			end if
+		next
+	end if
+	parent.istr_arg.i_supress = parent.cbx_supress.checked
+	if parent.cbx_supress.checked then
+		parent.istr_arg.s_name1 = "Y"
+	else
+		parent.istr_arg.s_name1 = "N"
+	end if
+	parent.istr_arg.i_hide = parent.cbx_hide.checked
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	parent.istr_arg.i_status = 1
+	setpointer(hourglass!)
+	parent.gb_overallprogress.visible = true
+	parent.hpb_hpb.visible = true
+	lds_temp = create datastore
+	parent.hpb_hpb.stepit()
+	parent.hpb_hpb.stepit()
+	parent.hpb_hpb.stepit()
+	lds_temp.dataobject = "d_sposhare_merck"
+	lds_temp.settransobject(sqlca)
+	lds_temp.retrieve(ls_dstcode, parent.istr_arg.ia_integerlist)
+	parent.hpb_hpb.stepit()
+	parent.hpb_hpb.stepit()
+	parent.hpb_hpb.stepit()
+	if f_save_from_ds_to_fff2(parent.is_share, lds_temp, " ", true) = 0 then
+		messagebox("SPO Share Data Generation Problem", "Error Generating SPO Share Data Text File~r~nPlease Try Later")
+		destroy lds_temp
+		return ::message.returnvalue
+	end if
+	parent.hpb_hpb.stepit()
+	parent.hpb_hpb.stepit()
+	parent.hpb_hpb.stepit()
+	destroy lds_temp
+	parent.hpb_hpb.visible = false
+	parent.hpb_hpb.position = 10
+	parent.gb_overallprogress.visible = false
+	setpointer(arrow!)
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// sle_distcode.ue_keydown(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// sle_distcode.modified() returns long
+// sle_distcode.modified() returns long [event]
 	if len(this.text) > 0 then
 		parent.is_trans = trim(f_stringpreferences("OutputFilePath")) + this.text + "INV.TXT"
 		parent.is_cust = trim(f_stringpreferences("OutputFilePath")) + this.text + "CUST.TXT"

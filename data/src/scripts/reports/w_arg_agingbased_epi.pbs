@@ -1,6 +1,6 @@
 // window w_arg_agingbased_epi (reports)  ancestor: w_listarguments
 
-// w_arg_agingbased_epi.create() returns 0
+// w_arg_agingbased_epi.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.lb_cust = create lb_cust
@@ -35,7 +35,7 @@
 	this.control[icurrent + 14] = this.gb_5
 	this.control[icurrent + 15] = this.gb_6
 
-// w_arg_agingbased_epi.destroy() returns 0
+// w_arg_agingbased_epi.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.lb_cust
 	destroy this.cbx_allcust
@@ -53,7 +53,7 @@
 	destroy this.gb_5
 	destroy this.gb_6
 
-// w_arg_agingbased_epi.open() returns long
+// w_arg_agingbased_epi.open() returns long [event]
 	long ancestorreturnvalue
 	long ll_counter
 	long ll_rowcount
@@ -83,13 +83,69 @@
 	this.em_agingdate.text = this.em_enddate.text
 	return ::message.returnvalue
 
-// lb_cust.ue_keypress(keycode key, unsignedlong keyflags) returns long
+// cb_ok.clicked() returns long [event]
+	long ancestorreturnvalue
+	long ll_count
+	long ll_counter
+	long ll_innercounter
+	long ll_found
+	double ld_agelimit
+	string ls_temp
+	ancestorreturnvalue = super::clicked()
+	parent.istr_arg.i_supress = parent.cbx_supress.checked
+	parent.istr_arg.i_hide = parent.cbx_hide.checked
+	if parent.cbx_allcust.checked = true then
+		for ll_counter = 1 to parent.idc_child.rowcount()
+			parent.istr_arg.ia_integerlist[ll_counter] = parent.idc_child.getitemnumber(ll_counter, "vochcatcode")
+		next
+	else
+		parent.istr_arg.ia_integerlist[1] = -1000
+		for ll_counter = 1 to ll_counter
+			ll_found = parent.idc_child.find("name ='" + parent.lb_selectedcust.text(ll_counter) + "'", 1, parent.idc_child.rowcount())
+			if ll_found > 0 then
+				parent.istr_arg.ia_integerlist[ll_counter] = parent.idc_child.getitemnumber(ll_found, "vochcatcode")
+			end if
+		next
+	end if
+	if isnull(parent.dw_area.object.areacode[1]) or parent.dw_area.object.areacode[1] = 0 then
+		messagebox("Area Validation", "Please Enter Valid Area Name")
+		parent.dw_area.setcolumn("areacode")
+		parent.dw_area.setfocus()
+		return ::message.returnvalue
+	end if
+	parent.istr_arg.l_code1 = parent.dw_area.getitemnumber(1, "areacode")
+	parent.em_agingdate.getdata(parent.istr_arg.d_date1)
+	parent.em_aginglimit.getdata(ld_agelimit)
+	parent.istr_arg.l_code2 = long(ld_agelimit)
+	if parent.istr_arg.l_code2 < 0 then
+		messagebox("Aging Limt Validation", "Please Enter Valid Aging Limit (in days)")
+		parent.em_aginglimit.setfocus()
+		return ::message.returnvalue
+	end if
+	parent.em_epi.getdata(parent.istr_arg.db_code1)
+	if parent.istr_arg.db_code1 < 0.0 or parent.istr_arg.db_code1 > 100.0 then
+		messagebox("EPI Validation", "Please Enter Valid EPI (Range : 0-100)")
+		parent.em_epi.setfocus()
+		return ::message.returnvalue
+	end if
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	if parent.istr_arg.d_sdate > parent.istr_arg.d_edate then
+		messagebox("Date Validation Problem", "Please Enter Valid Period")
+		parent.em_startdate.setfocus()
+		return ::message.returnvalue
+	end if
+	parent.istr_arg.i_status = 1
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// lb_cust.ue_keypress(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		post event doubleclicked(selectedindex())
 	end if
 	return ::message.returnvalue
 
-// lb_cust.doubleclicked(integer index) returns long
+// lb_cust.doubleclicked(integer index) returns long [event]
 	string ls_item
 	long ll_selectedindex
 	ls_item = string(selecteditem())
@@ -111,16 +167,16 @@
 	end if
 	return ::message.returnvalue
 
-// lb_cust.getfocus() returns long
+// lb_cust.getfocus() returns long [event]
 	return ::message.returnvalue
 
-// lb_selectedcust.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// lb_selectedcust.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		post event doubleclicked(selectedindex())
 	end if
 	return ::message.returnvalue
 
-// lb_selectedcust.doubleclicked(integer index) returns long
+// lb_selectedcust.doubleclicked(integer index) returns long [event]
 	string ls_item
 	long ll_selectedindex
 	ll_selectedindex = selectedindex()
@@ -138,26 +194,26 @@
 	end if
 	return ::message.returnvalue
 
-// lb_selectedcust.getfocus() returns long
+// lb_selectedcust.getfocus() returns long [event]
 	return ::message.returnvalue
 
-// dw_area.ue_enterkey() returns long
+// dw_area.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return ::message.returnvalue
 
-// em_aginglimit.ue_keydown(keycode key, unsignedlong keyflags) returns long
+// em_aginglimit.ue_keydown(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// em_aginglimit.getfocus() returns long
+// em_aginglimit.getfocus() returns long [event]
 	selecttext(1, len(this.text))
 	return ::message.returnvalue
 
-// em_agingdate.ue_keydown(keycode key, unsignedlong keyflags) returns long
+// em_agingdate.ue_keydown(keycode key, unsignedlong keyflags) returns long [event]
 	string ls_date
 	string ls_temp
 	if key = keyenter! then
@@ -178,16 +234,16 @@
 	end if
 	return message.returnvalue
 
-// em_agingdate.getfocus() returns long
+// em_agingdate.getfocus() returns long [event]
 	selecttext(1, len(this.text))
 	return ::message.returnvalue
 
-// em_epi.ue_keydown(keycode key, unsignedlong keyflags) returns long
+// em_epi.ue_keydown(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// em_epi.getfocus() returns long
+// em_epi.getfocus() returns long [event]
 	selecttext(1, len(this.text))
 	return ::message.returnvalue

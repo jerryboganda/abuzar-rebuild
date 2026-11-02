@@ -1,12 +1,12 @@
 // window w_fetch_linkservers (datatransfercomponents)  ancestor: w_arguements
 
-// w_fetch_linkservers.create() returns 0
+// w_fetch_linkservers.create() returns 0 [event]
 	call super::create
 
-// w_fetch_linkservers.destroy() returns 0
+// w_fetch_linkservers.destroy() returns 0 [event]
 	call super::destroy
 
-// w_fetch_linkservers.open() returns long
+// w_fetch_linkservers.open() returns long [event]
 	long ancestorreturnvalue
 	long ll_retcode
 	long ll_rows
@@ -45,6 +45,37 @@
 	this.idc_child.retrieve()
 	return ::message.returnvalue
 
-// w_fetch_linkservers.ue_close(integer ai_stauts) returns 0
+// w_fetch_linkservers.ue_close(integer ai_stauts) returns 0 [event]
 	super::ue_close(ai_stauts)
 	closewithreturn(this, this.istr_arg)
+
+// cb_cancel.clicked() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked()
+	parent.istr_arg.i_status = -1
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long [event]
+	long ancestorreturnvalue
+	string ls_server
+	string ls_db
+	string ls_datasource
+	ancestorreturnvalue = super::clicked()
+	ls_server = parent.dw_control.getitemstring(1, "servername")
+	ls_db = parent.idc_child.getitemstring(parent.idc_child.getrow(), "catalog")
+	ls_datasource = parent.idc_child.getitemstring(parent.idc_child.getrow(), "datasource")
+	if len(ls_server) = 0 or isnull(ls_server) then
+		messagebox("Linked Server Validation!", "Please select valid Linked Server.", stopsign!)
+		return ::message.returnvalue
+	end if
+	if len(ls_db) = 0 or isnull(ls_db) then
+		messagebox("Linked Server Database Validation!", "Please select valid Linked Server Database.", stopsign!)
+		return ::message.returnvalue
+	end if
+	parent.istr_arg.s_name1 = ls_server
+	parent.istr_arg.s_name2 = ls_db
+	parent.istr_arg.s_name3 = ls_datasource
+	parent.istr_arg.i_status = 1
+	parent.post event ue_close(1)
+	return ::message.returnvalue

@@ -1,6 +1,6 @@
 // window w_site_update (datatransfercomponents)  ancestor: window
 
-// w_site_update.ue_close(integer ai_status) returns 0
+// w_site_update.ue_close(integer ai_status) returns 0 [event]
 	SQL stop USING this.it_datatransobject;
 	destroy this.it_datatransobject
 	close(this)
@@ -23,18 +23,18 @@
 		messagebox("Failure", "Changes Not Saved Sucessfully~r~nReasons are:- " + ls_err_reason, stopsign!)
 	end if
 
-// w_site_update.create() returns 0
+// w_site_update.create() returns 0 [event]
 	this.cb_update = create cb_update
 	this.dw_control = create dw_control
 	this.cb_cancel = create cb_cancel
 	this.control = {this.cb_update, this.dw_control, this.cb_cancel}
 
-// w_site_update.destroy() returns 0
+// w_site_update.destroy() returns 0 [event]
 	destroy this.cb_update
 	destroy this.dw_control
 	destroy this.cb_cancel
 
-// w_site_update.open() returns long
+// w_site_update.open() returns long [event]
 	long ll_appversion
 	long ll_sequenceid
 	long ll_dbstatus
@@ -63,18 +63,18 @@
 	this.dw_control.retrieve()
 	return ::message.returnvalue
 
-// cb_update.clicked() returns long
+// cb_update.clicked() returns long [event]
 	parent.wf_update()
 	parent.post event ue_close(0)
 	return ::message.returnvalue
 
-// dw_control.ue_enterkey() returns long
+// dw_control.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_control.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// dw_control.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	long ancestorreturnvalue
 	long ll_insrow
 	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
@@ -90,6 +90,6 @@
 	end if
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.post event ue_close(0)
 	return ::message.returnvalue

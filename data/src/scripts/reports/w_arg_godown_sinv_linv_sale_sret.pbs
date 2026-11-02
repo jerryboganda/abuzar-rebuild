@@ -17,7 +17,7 @@
 	this.st_11.visible = ab_value
 	this.dw_srinvoice.visible = ab_value
 
-// w_arg_godown_sinv_linv_sale_sret.create() returns 0
+// w_arg_godown_sinv_linv_sale_sret.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.st_4 = create st_4
@@ -58,7 +58,7 @@
 	this.control[icurrent + 17] = this.gb_7
 	this.control[icurrent + 18] = this.gb_8
 
-// w_arg_godown_sinv_linv_sale_sret.destroy() returns 0
+// w_arg_godown_sinv_linv_sale_sret.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.st_4
 	destroy this.st_8
@@ -79,7 +79,7 @@
 	destroy this.gb_7
 	destroy this.gb_8
 
-// w_arg_godown_sinv_linv_sale_sret.open() returns long
+// w_arg_godown_sinv_linv_sale_sret.open() returns long [event]
 	long ancestorreturnvalue
 	long ll_counter
 	long ll_rowcount
@@ -118,15 +118,78 @@
 	wf_set_invrange_on_off(true)
 	return ::message.returnvalue
 
-// dw_godown.ue_enterkey() returns long
+// cb_ok.clicked() returns long [event]
+	long ancestorreturnvalue
+	long ll_count
+	long ll_counter
+	long ll_innercounter
+	long ll_found
+	ancestorreturnvalue = super::clicked()
+	if parent.cbx_cash.checked = false and parent.cbx_credit.checked = false then
+		messagebox("Type Validation", "Kindly select either Cash or Credit or both types.")
+		return ::message.returnvalue
+	end if
+	if parent.cbx_all.checked = true then
+		for ll_counter = 1 to parent.idc_categories.rowcount()
+			parent.istr_arg.la_longlist[ll_counter] = parent.idc_categories.getitemnumber(ll_counter, "gcode")
+		next
+	else
+		for ll_counter = 1 to ll_counter
+			ll_found = parent.idc_categories.find("name ='" + parent.lb_selectedcategories.text(ll_counter) + "'", 1, parent.idc_categories.rowcount())
+			if ll_found > 0 then
+				parent.istr_arg.la_longlist[ll_counter] = parent.idc_categories.getitemnumber(ll_found, "gcode")
+			end if
+		next
+	end if
+	parent.dw_startendinvoice.accepttext()
+	parent.istr_arg.l_code1 = parent.dw_startendinvoice.getitemnumber(1, "sinvcode")
+	parent.istr_arg.l_code2 = parent.dw_startendinvoice.getitemnumber(1, "linvcode")
+	parent.dw_srinvoice.accepttext()
+	parent.istr_arg.l_code3 = parent.dw_srinvoice.getitemnumber(1, "sinvcode")
+	parent.istr_arg.l_code4 = parent.dw_srinvoice.getitemnumber(1, "linvcode")
+	for ll_counter = 1 to 6
+		parent.istr_arg.ia_integerlist[ll_counter] = 0
+	next
+	if parent.cbx_cash.checked then
+		parent.istr_arg.ia_integerlist[1] = 3
+		parent.istr_arg.ia_integerlist[4] = 8
+	end if
+	if parent.cbx_credit.checked then
+		parent.istr_arg.ia_integerlist[2] = 1
+		parent.istr_arg.ia_integerlist[3] = 2
+		parent.istr_arg.ia_integerlist[5] = 6
+		parent.istr_arg.ia_integerlist[6] = 7
+	end if
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	if parent.rb_detailreport.checked = true then
+		parent.istr_arg.s_name1 = "D"
+	else
+		parent.istr_arg.s_name1 = "I"
+	end if
+	parent.dw_header.accepttext()
+	if parent.rb_singleheader.checked then
+		parent.istr_arg.ia_integerlist2[1] = parent.dw_header.getitemnumber(1, "headerno")
+	else
+		for ll_counter = 1 to gds_reoprtheaderinfo.rowcount()
+			parent.istr_arg.ia_integerlist2[ll_counter] = gds_reoprtheaderinfo.getitemnumber(ll_counter, "headerno")
+		next
+	end if
+	parent.istr_arg.i_supress = parent.cbx_supress.checked
+	parent.istr_arg.i_hide = parent.cbx_hide.checked
+	parent.istr_arg.i_status = 1
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// dw_godown.ue_enterkey() returns long [event]
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// rb_detailreport.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// rb_detailreport.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// rb_detailreport.clicked() returns long
+// rb_detailreport.clicked() returns long [event]
 	if this.checked = true then
 		parent.wf_set_date_on_off(true)
 		parent.wf_set_invrange_on_off(false)
@@ -136,11 +199,11 @@
 	end if
 	return ::message.returnvalue
 
-// rb_summaryreport.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// rb_summaryreport.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// rb_summaryreport.clicked() returns long
+// rb_summaryreport.clicked() returns long [event]
 	if this.checked = true then
 		parent.wf_set_date_on_off(false)
 		parent.wf_set_invrange_on_off(true)
@@ -150,24 +213,24 @@
 	end if
 	return ::message.returnvalue
 
-// cbx_cash.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cbx_cash.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 		return 1
 	end if
 	return ::message.returnvalue
 
-// cbx_credit.ue_entekey(keycode key, unsignedlong keyflags) returns long
+// cbx_credit.ue_entekey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 		return 1
 	end if
 	return ::message.returnvalue
 
-// rb_singleheader.clicked() returns long
+// rb_singleheader.clicked() returns long [event]
 	parent.dw_header.visible = true
 	return ::message.returnvalue
 
-// rb_allheader.clicked() returns long
+// rb_allheader.clicked() returns long [event]
 	parent.dw_header.visible = false
 	return ::message.returnvalue

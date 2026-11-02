@@ -88,15 +88,209 @@
 	end if
 	return false
 
-// w_popup_forselection_walias2.create() returns 0
+// w_popup_forselection_walias2.create() returns 0 [event]
 	call super::create
 
-// w_popup_forselection_walias2.destroy() returns 0
+// w_popup_forselection_walias2.destroy() returns 0 [event]
 	call super::destroy
 
-// w_popup_forselection_walias2.open() returns long
+// w_popup_forselection_walias2.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.id_selectionlist.retrieve()
 	this.id_selectionlist2.retrieve()
 	return ::message.returnvalue
+
+// dw_selected2.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	integer li_qty
+	long ll_icode
+	long ll_null
+	long ll_gcode
+	string ls_itemname
+	string ls_null
+	setnull(ll_null)
+	setnull(ls_null)
+	choose case dwo.name
+	case "aliasname"
+		if parent.wf_inititem2(data) = false then
+			messagebox("Validation", "AliasName does not exist.~r~nPlease try some other AliasName.")
+			setitem(row, "code", ll_null)
+			setitem(row, "aliasname", ls_null)
+			setitem(row, "name", ls_null)
+			return 1
+		end if
+		parent.ib_itemvalidated2 = false
+	case "name"
+		setitem(row, "code", parent.id_selectionlist2.getitemnumber(parent.id_selectionlist2.getrow(), "code"))
+		setitem(row, "aliasname", parent.id_selectionlist2.getitemstring(parent.id_selectionlist2.getrow(), "aliasname"))
+		setitem(row, "name", parent.id_selectionlist2.getitemstring(parent.id_selectionlist2.getrow(), "name"))
+		parent.ib_itemvalidated = false
+		return 2
+	end choose
+	return ::message.returnvalue
+
+// dw_selected2.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	integer rt_code
+	long ll_currrow
+	long ll_listcurrrow
+	long ll_rowm
+	if getcolumnname() = "name" then
+		setredraw(false)
+		ll_rowm = getrow()
+		if key = keydownarrow! then
+			parent.id_selectionlist2.selectrow(0, false)
+			parent.id_selectionlist2.scrollnextrow()
+			ll_listcurrrow = parent.id_selectionlist2.getrow()
+			rt_code = 1
+		elseif key = keyuparrow! then
+			parent.id_selectionlist2.selectrow(0, false)
+			parent.id_selectionlist2.scrollpriorrow()
+			ll_listcurrrow = parent.id_selectionlist2.getrow()
+			rt_code = 1
+		elseif key = keypagedown! then
+			parent.id_selectionlist2.selectrow(0, false)
+			parent.id_selectionlist2.scrollnextpage()
+			ll_listcurrrow = parent.id_selectionlist2.getrow()
+			rt_code = 1
+		elseif key = keypageup! then
+			parent.id_selectionlist2.selectrow(0, false)
+			parent.id_selectionlist2.scrollpriorpage()
+			ll_listcurrrow = parent.id_selectionlist2.getrow()
+			rt_code = 1
+		elseif key = keyend! then
+			parent.id_selectionlist2.selectrow(0, false)
+			parent.id_selectionlist2.scrolltorow(parent.id_selectionlist2.rowcount())
+			ll_listcurrrow = parent.id_selectionlist2.getrow()
+			rt_code = 1
+		elseif key = keyhome! then
+			parent.id_selectionlist2.selectrow(0, false)
+			parent.id_selectionlist2.scrolltorow(1)
+			ll_listcurrrow = parent.id_selectionlist2.getrow()
+			rt_code = 1
+		elseif key = keyback! then
+			parent.ib_bkspace2 = true
+			setredraw(true)
+		elseif key = keyescape! then
+			if parent.id_selectionlist2.visible = false then
+				parent.post event ue_cancel()
+				return 1
+			end if
+			parent.id_selectionlist2.hide()
+			setfocus()
+			setredraw(true)
+		elseif key = keyf4! then
+			parent.id_selectionlist2.show()
+			parent.id_selectionlist2.selectrow(0, false)
+			parent.id_selectionlist2.scrolltorow(parent.id_selectionlist2.getrow())
+			parent.id_selectionlist2.selectrow(parent.id_selectionlist2.getrow(), true)
+			setredraw(true)
+		else
+			setredraw(true)
+		end if
+		if rt_code = 1 then
+			parent.id_selectionlist2.selectrow(ll_listcurrrow, true)
+			setitem(ll_rowm, "code", parent.id_selectionlist2.getitemnumber(ll_listcurrrow, "code"))
+			setitem(ll_rowm, "aliasname", parent.id_selectionlist2.getitemstring(ll_listcurrrow, "aliasname"))
+			setitem(ll_rowm, "name", parent.id_selectionlist2.getitemstring(ll_listcurrrow, "name"))
+			selecttext(1, len(gettext()))
+			setredraw(true)
+		end if
+	end if
+	return rt_code
+
+// dw_selected.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	integer li_qty
+	long ll_icode
+	long ll_null
+	long ll_gcode
+	string ls_itemname
+	string ls_null
+	setnull(ll_null)
+	setnull(ls_null)
+	choose case dwo.name
+	case "aliasname"
+		if parent.wf_inititem(data) = false then
+			messagebox("Validation", "AliasName does not exist.~r~nPlease try some other AliasName.")
+			setitem(row, "code", ll_null)
+			setitem(row, "aliasname", ls_null)
+			setitem(row, "name", ls_null)
+			return 1
+		end if
+		parent.ib_itemvalidated = false
+	case "name"
+		setitem(row, "code", parent.id_selectionlist.getitemnumber(parent.id_selectionlist.getrow(), "code"))
+		setitem(row, "aliasname", parent.id_selectionlist.getitemstring(parent.id_selectionlist.getrow(), "aliasname"))
+		setitem(row, "name", parent.id_selectionlist.getitemstring(parent.id_selectionlist.getrow(), "name"))
+		parent.ib_itemvalidated = false
+		return 2
+	end choose
+	return ::message.returnvalue
+
+// dw_selected.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	integer rt_code
+	long ll_currrow
+	long ll_listcurrrow
+	long ll_rowm
+	if getcolumnname() = "name" then
+		setredraw(false)
+		ll_rowm = getrow()
+		if key = keydownarrow! then
+			parent.id_selectionlist.selectrow(0, false)
+			parent.id_selectionlist.scrollnextrow()
+			ll_listcurrrow = parent.id_selectionlist.getrow()
+			rt_code = 1
+		elseif key = keyuparrow! then
+			parent.id_selectionlist.selectrow(0, false)
+			parent.id_selectionlist.scrollpriorrow()
+			ll_listcurrrow = parent.id_selectionlist.getrow()
+			rt_code = 1
+		elseif key = keypagedown! then
+			parent.id_selectionlist.selectrow(0, false)
+			parent.id_selectionlist.scrollnextpage()
+			ll_listcurrrow = parent.id_selectionlist.getrow()
+			rt_code = 1
+		elseif key = keypageup! then
+			parent.id_selectionlist.selectrow(0, false)
+			parent.id_selectionlist.scrollpriorpage()
+			ll_listcurrrow = parent.id_selectionlist.getrow()
+			rt_code = 1
+		elseif key = keyend! then
+			parent.id_selectionlist.selectrow(0, false)
+			parent.id_selectionlist.scrolltorow(parent.id_selectionlist.rowcount())
+			ll_listcurrrow = parent.id_selectionlist.getrow()
+			rt_code = 1
+		elseif key = keyhome! then
+			parent.id_selectionlist.selectrow(0, false)
+			parent.id_selectionlist.scrolltorow(1)
+			ll_listcurrrow = parent.id_selectionlist.getrow()
+			rt_code = 1
+		elseif key = keyback! then
+			parent.ib_bkspace = true
+			setredraw(true)
+		elseif key = keyescape! then
+			if parent.id_selectionlist.visible = false then
+				parent.post event ue_cancel()
+				return 1
+			end if
+			parent.id_selectionlist.hide()
+			setfocus()
+			setredraw(true)
+		elseif key = keyf4! then
+			parent.id_selectionlist.show()
+			parent.id_selectionlist.selectrow(0, false)
+			parent.id_selectionlist.scrolltorow(parent.id_selectionlist.getrow())
+			parent.id_selectionlist.selectrow(parent.id_selectionlist.getrow(), true)
+			setredraw(true)
+		else
+			setredraw(true)
+		end if
+		if rt_code = 1 then
+			parent.id_selectionlist.selectrow(ll_listcurrrow, true)
+			setitem(ll_rowm, "code", parent.id_selectionlist.getitemnumber(ll_listcurrrow, "code"))
+			setitem(ll_rowm, "aliasname", parent.id_selectionlist.getitemstring(ll_listcurrrow, "aliasname"))
+			setitem(ll_rowm, "name", parent.id_selectionlist.getitemstring(ll_listcurrrow, "name"))
+			selecttext(1, len(gettext()))
+			setredraw(true)
+		end if
+	end if
+	return rt_code

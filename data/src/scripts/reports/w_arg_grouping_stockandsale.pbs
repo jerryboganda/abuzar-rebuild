@@ -1,6 +1,6 @@
 // window w_arg_grouping_stockandsale (reports)  ancestor: w_listarguments
 
-// w_arg_grouping_stockandsale.create() returns 0
+// w_arg_grouping_stockandsale.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.st_selectable = create st_selectable
@@ -13,14 +13,14 @@
 	this.control[icurrent + 3] = this.dw_price2
 	this.control[icurrent + 4] = this.gb_5
 
-// w_arg_grouping_stockandsale.destroy() returns 0
+// w_arg_grouping_stockandsale.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.st_selectable
 	destroy this.st_selected
 	destroy this.dw_price2
 	destroy this.gb_5
 
-// w_arg_grouping_stockandsale.open() returns long
+// w_arg_grouping_stockandsale.open() returns long [event]
 	long ancestorreturnvalue
 	long ll_counter
 	long ll_rowcount
@@ -74,7 +74,38 @@
 	end if
 	return message.returnvalue
 
-// dw_price2.ue_enterkey() returns long
+// cb_ok.clicked() returns long [event]
+	long ancestorreturnvalue
+	long ll_count
+	long ll_counter
+	long ll_innercounter
+	long ll_found
+	ancestorreturnvalue = super::clicked()
+	if parent.cbx_all.checked = true then
+		for ll_counter = 1 to parent.idc_categories.rowcount()
+			parent.istr_arg.ia_integerlist[ll_counter] = parent.idc_categories.getitemnumber(ll_counter, parent.is_childcolname)
+		next
+	else
+		for ll_counter = 1 to ll_counter
+			ll_found = parent.idc_categories.find("name ='" + parent.lb_selectedcategories.text(ll_counter) + "'", 1, parent.idc_categories.rowcount())
+			if ll_found > 0 then
+				parent.istr_arg.ia_integerlist[ll_counter] = parent.idc_categories.getitemnumber(ll_found, parent.is_childcolname)
+			end if
+		next
+	end if
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	parent.dw_price.accepttext()
+	parent.istr_arg.l_code1 = parent.dw_price.getitemnumber(1, "price")
+	parent.dw_price2.accepttext()
+	parent.istr_arg.l_code3 = parent.dw_price2.getitemnumber(1, "price")
+	parent.istr_arg.i_supress = parent.cbx_supress.checked
+	parent.istr_arg.i_hide = parent.cbx_hide.checked
+	parent.istr_arg.i_status = 1
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// dw_price2.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))

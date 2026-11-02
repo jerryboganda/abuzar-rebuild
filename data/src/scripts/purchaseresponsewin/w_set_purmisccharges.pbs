@@ -1,6 +1,6 @@
 // window w_set_purmisccharges (purchaseresponsewin)  ancestor: window
 
-// w_set_purmisccharges.ue_close(integer ai_status) returns 0
+// w_set_purmisccharges.ue_close(integer ai_status) returns 0 [event]
 	if ai_status = -1 then
 		this.id_processingfee = -9999
 	else
@@ -11,18 +11,18 @@
 	end if
 	closewithreturn(this, this.id_processingfee)
 
-// w_set_purmisccharges.create() returns 0
+// w_set_purmisccharges.create() returns 0 [event]
 	this.dw_control = create dw_control
 	this.cb_cancel = create cb_cancel
 	this.cb_ok = create cb_ok
 	this.control = {this.dw_control, this.cb_cancel, this.cb_ok}
 
-// w_set_purmisccharges.destroy() returns 0
+// w_set_purmisccharges.destroy() returns 0 [event]
 	destroy this.dw_control
 	destroy this.cb_cancel
 	destroy this.cb_ok
 
-// w_set_purmisccharges.open() returns long
+// w_set_purmisccharges.open() returns long [event]
 	string ls_aliasname
 	string ls_name
 	decimal ld_saleprice
@@ -61,7 +61,7 @@
 	end if
 	return message.returnvalue
 
-// dw_control.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_control.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ll_null
 	integer li_errcode
 	setnull(ll_null)
@@ -73,7 +73,7 @@
 	end choose
 	return li_errcode
 
-// dw_control.itemerror(long row, dwobject dwo, string data) returns long
+// dw_control.itemerror(long row, dwobject dwo, string data) returns long [event]
 	choose case dwo.name
 	case "amt"
 		messagebox("Amount Validation!", "Please Enter Valid Amount")
@@ -82,11 +82,11 @@
 	end choose
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.post event ue_close(-1)
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	parent.dw_control.accepttext()
 	if isnull(parent.dw_control.getitemnumber(1, "processingfeeperc")) or parent.dw_control.getitemnumber(1, "processingfeeperc") < 0.0 or parent.dw_control.getitemnumber(1, "processingfeeperc") > 100.0 then
 		messagebox("Processing Fee %age Validaion!", "Please Enter Valid Processing Fee Percentage")

@@ -1,6 +1,6 @@
 // window w_arg_batch_selection (reports)  ancestor: w_popup_forselection_walias
 
-// w_arg_batch_selection.create() returns 0
+// w_arg_batch_selection.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.gb_2 = create gb_2
@@ -15,7 +15,7 @@
 	this.control[icurrent + 4] = this.em_startdate
 	this.control[icurrent + 5] = this.em_enddate
 
-// w_arg_batch_selection.destroy() returns 0
+// w_arg_batch_selection.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.gb_2
 	destroy this.st_1
@@ -23,7 +23,7 @@
 	destroy this.em_startdate
 	destroy this.em_enddate
 
-// w_arg_batch_selection.open() returns long
+// w_arg_batch_selection.open() returns long [event]
 	date ld_currdate
 	string ls_text
 	long ll_win_width
@@ -78,16 +78,185 @@
 	end if
 	return message.returnvalue
 
-// w_arg_batch_selection.ue_close() returns 0
+// w_arg_batch_selection.ue_close() returns 0 [event]
 	closewithreturn(this, this.istr_arg)
 
-// em_startdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// dw_selected.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	integer li_qty
+	long ll_icode
+	long ll_null
+	long ll_gcode
+	string ls_itemname
+	string ls_null
+	setnull(ll_null)
+	setnull(ls_null)
+	choose case dwo.name
+	case "name"
+		setitem(row, "name", parent.id_selectionlist.getitemstring(parent.id_selectionlist.getrow(), "name"))
+		parent.ib_itemvalidated = false
+		return 2
+	end choose
+	return ::message.returnvalue
+
+// dw_selected.itemerror(long row, dwobject dwo, string data) returns long [event]
+	choose case dwo.name
+	case "name"
+		messagebox("Name Validation", "Please enter value for Name")
+	end choose
+	return 1
+
+// dw_selected.editchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	long ll_currrow
+	long ll_startrow
+	ancestorreturnvalue = super::editchanged(row, dwo, data)
+	ll_startrow = 0
+	choose case dwo.name
+	case "name"
+		if upper(left(data, 1)) >= "A" and upper(left(data, 1)) <= "Z" or left(data, 1) >= "0" and left(data, 1) <= "9" or left(data, 1) = "*" then
+			ll_currrow = parent.id_selectionlist.getrow()
+			if len(data) > 1 then
+				ll_startrow = ll_currrow
+			else
+				if left(data, 1) >= "0" and left(data, 1) <= "9" or left(data, 1) = "*" then
+					ll_startrow = 1
+				else
+					ll_startrow = parent.ia_llookuptable[asc(upper(data))]
+				end if
+				parent.ib_bkspace = false
+			end if
+			if parent.ib_bkspace then
+				parent.il_itemlistfoundrow = parent.id_selectionlist.find("Lower(name) <= '" + lower(data) + "'", ll_startrow, 0)
+				parent.il_itemlistfoundrow = parent.il_itemlistfoundrow + 1
+				parent.ib_bkspace = false
+			else
+				parent.il_itemlistfoundrow = parent.id_selectionlist.find("Lower(name) >= '" + lower(data) + "'", ll_startrow, 99999)
+			end if
+			if parent.il_itemlistfoundrow = 0 then
+				parent.il_itemlistfoundrow = parent.id_selectionlist.rowcount()
+			end if
+			if parent.il_itemlistfoundrow <> ll_currrow then
+				parent.id_selectionlist.selectrow(0, false)
+				parent.id_selectionlist.setrow(parent.il_itemlistfoundrow)
+				parent.id_selectionlist.scrolltorow(parent.il_itemlistfoundrow)
+				parent.id_selectionlist.selectrow(parent.il_itemlistfoundrow, true)
+				setfocus()
+			elseif parent.il_itemlistfoundrow = ll_currrow then
+				parent.id_selectionlist.selectrow(0, false)
+				parent.id_selectionlist.setrow(parent.il_itemlistfoundrow)
+				parent.id_selectionlist.scrolltorow(parent.il_itemlistfoundrow)
+				parent.id_selectionlist.selectrow(parent.il_itemlistfoundrow, true)
+				setfocus()
+			end if
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_selected.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	integer rt_code
+	long ll_currrow
+	long ll_listcurrrow
+	long ll_rowm
+	if getcolumnname() = "name" then
+		setredraw(false)
+		ll_rowm = getrow()
+		if key = keydownarrow! then
+			parent.id_selectionlist.selectrow(0, false)
+			parent.id_selectionlist.scrollnextrow()
+			ll_listcurrrow = parent.id_selectionlist.getrow()
+			rt_code = 1
+		elseif key = keyuparrow! then
+			parent.id_selectionlist.selectrow(0, false)
+			parent.id_selectionlist.scrollpriorrow()
+			ll_listcurrrow = parent.id_selectionlist.getrow()
+			rt_code = 1
+		elseif key = keypagedown! then
+			parent.id_selectionlist.selectrow(0, false)
+			parent.id_selectionlist.scrollnextpage()
+			ll_listcurrrow = parent.id_selectionlist.getrow()
+			rt_code = 1
+		elseif key = keypageup! then
+			parent.id_selectionlist.selectrow(0, false)
+			parent.id_selectionlist.scrollpriorpage()
+			ll_listcurrrow = parent.id_selectionlist.getrow()
+			rt_code = 1
+		elseif key = keyend! then
+			parent.id_selectionlist.selectrow(0, false)
+			parent.id_selectionlist.scrolltorow(99999)
+			ll_listcurrrow = parent.id_selectionlist.getrow()
+			rt_code = 1
+		elseif key = keyhome! then
+			parent.id_selectionlist.selectrow(0, false)
+			parent.id_selectionlist.scrolltorow(1)
+			ll_listcurrrow = parent.id_selectionlist.getrow()
+			rt_code = 1
+		elseif key = keyback! then
+			parent.ib_bkspace = true
+			setredraw(true)
+		elseif key = keyescape! then
+			parent.id_selectionlist.hide()
+			setfocus()
+			setredraw(true)
+		elseif key = keyf4! then
+			parent.id_selectionlist.show()
+			parent.id_selectionlist.selectrow(0, false)
+			parent.id_selectionlist.scrolltorow(parent.id_selectionlist.getrow())
+			parent.id_selectionlist.selectrow(parent.id_selectionlist.getrow(), true)
+			setredraw(true)
+		else
+			setredraw(true)
+		end if
+		if rt_code = 1 then
+			parent.id_selectionlist.selectrow(ll_listcurrrow, true)
+			setitem(ll_rowm, "name", parent.id_selectionlist.getitemstring(ll_listcurrrow, "name"))
+			selecttext(1, len(gettext()))
+			setredraw(true)
+		end if
+	end if
+	return rt_code
+
+// dw_selected.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	choose case dwo.name
+	case "name"
+		parent.id_selectionlist.show()
+	end choose
+	selecttext(1, len(gettext()))
+	return ::message.returnvalue
+
+// cb_cancel.clicked() returns long [event]
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long [event]
+	if parent.id_selected.accepttext() = -1 then
+		parent.id_selected.setfocus()
+		return ::message.returnvalue
+	elseif isnull(parent.id_selected.getitemstring(parent.id_selected.getrow(), "name")) then
+		messagebox("Name Validation", "Please enter valid value for Name.")
+		parent.id_selected.setcolumn(1)
+		parent.id_selected.setfocus()
+		return ::message.returnvalue
+	end if
+	parent.is_popup_selection.s_name = parent.id_selected.getitemstring(parent.id_selected.getrow(), "name")
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	if parent.id_selectionlist.getrow() > 0 then
+		parent.istr_arg.l_code1 = parent.id_selectionlist.getitemnumber(parent.id_selectionlist.getrow(), "code")
+		parent.istr_arg.l_code2 = parent.id_selectionlist.getitemnumber(parent.id_selectionlist.getrow(), "gcode")
+		parent.istr_arg.s_name1 = parent.id_selectionlist.getitemstring(parent.id_selectionlist.getrow(), "batch")
+		parent.istr_arg.d_sdate = parent.id_selectionlist.getitemdatetime(parent.id_selectionlist.getrow(), "expiry")
+	end if
+	parent.istr_arg.i_status = 1
+	parent.post event ue_close()
+	return ::message.returnvalue
+
+// em_startdate.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if
 	return ::message.returnvalue
 
-// em_enddate.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// em_enddate.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		send(handle(this), 256, 9, long(90))
 	end if

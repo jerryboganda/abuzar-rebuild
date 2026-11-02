@@ -1,6 +1,6 @@
 // window w_arg_aging_subarea (reports)  ancestor: w_listarguments
 
-// w_arg_aging_subarea.create() returns 0
+// w_arg_aging_subarea.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.st_4 = create st_4
@@ -19,7 +19,7 @@
 	this.control[icurrent + 6] = this.em_limit
 	this.control[icurrent + 7] = this.gb_5
 
-// w_arg_aging_subarea.destroy() returns 0
+// w_arg_aging_subarea.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.st_4
 	destroy this.st_8
@@ -29,7 +29,7 @@
 	destroy this.em_limit
 	destroy this.gb_5
 
-// w_arg_aging_subarea.open() returns long
+// w_arg_aging_subarea.open() returns long [event]
 	long ancestorreturnvalue
 	long ll_counter
 	long ll_rowcount
@@ -48,4 +48,51 @@
 	for ll_counter = 1 to ll_rowcount
 		this.lb_categories.additem(this.idc_categories.getitemstring(ll_counter, "name"))
 	next
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long [event]
+	long ancestorreturnvalue
+	long ll_count
+	long ll_counter
+	long ll_found
+	double ld_value
+	ancestorreturnvalue = super::clicked()
+	if parent.cbx_all.checked = true then
+		for ll_counter = 1 to parent.idc_categories.rowcount()
+			parent.istr_arg.ia_integerlist[ll_counter] = parent.idc_categories.getitemnumber(ll_counter, "subareacode")
+		next
+	else
+		for ll_counter = 1 to ll_counter
+			ll_found = parent.idc_categories.find("name ='" + parent.lb_selectedcategories.text(ll_counter) + "'", 1, parent.idc_categories.rowcount())
+			if ll_found > 0 then
+				parent.istr_arg.ia_integerlist[ll_counter] = parent.idc_categories.getitemnumber(ll_found, "subareacode")
+			end if
+		next
+	end if
+	parent.istr_arg.s_name1 = "C"
+	parent.istr_arg.i_supress = parent.cbx_supress.checked
+	parent.istr_arg.i_hide = parent.cbx_hide.checked
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	parent.em_interval.getdata(ld_value)
+	parent.istr_arg.l_code1 = long(ld_value)
+	parent.em_limit.getdata(ld_value)
+	parent.istr_arg.l_code2 = long(ld_value)
+	if parent.istr_arg.l_code1 <= 0 then
+		messagebox("Aging Interval Validation!", "Aging interval should be greater than zero.")
+		parent.em_interval.setfocus()
+		return ::message.returnvalue
+	end if
+	if parent.istr_arg.l_code2 <= 0 then
+		messagebox("Aging Limit Validation!", "Aging Limit should be greater than zero.")
+		parent.em_limit.setfocus()
+		return ::message.returnvalue
+	end if
+	if parent.istr_arg.l_code1 > parent.istr_arg.l_code2 then
+		messagebox("Aging Interval Validation!", "Aging interval should be less or equal to aging limit.")
+		parent.em_interval.setfocus()
+		return ::message.returnvalue
+	end if
+	parent.istr_arg.i_status = 1
+	parent.post event ue_close(1)
 	return ::message.returnvalue

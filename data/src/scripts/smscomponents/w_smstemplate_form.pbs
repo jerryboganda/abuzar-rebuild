@@ -159,7 +159,7 @@
 	end if
 	return 0
 
-// w_smstemplate_form.create() returns 0
+// w_smstemplate_form.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	if isvalid(this.menuid) then
@@ -169,13 +169,13 @@
 		this.menuid = create m_smstemplatemenu
 	end if
 
-// w_smstemplate_form.destroy() returns 0
+// w_smstemplate_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_smstemplate_form.ue_save() returns 0
+// w_smstemplate_form.ue_save() returns 0 [event]
 	long ll_primarykey
 	long ll_row
 	long ll_counter
@@ -240,7 +240,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_smstemplate_form.ue_newform() returns 0
+// w_smstemplate_form.ue_newform() returns 0 [event]
 	setredraw(false)
 	this.i_editmode = 1
 	this.i_retrievemode = 2
@@ -279,7 +279,7 @@
 	this.tab_retrieve.tabpage_detail.mle_smstemplate.text = ""
 	this.id_master.selecttext(1, len(this.id_master.gettext()))
 
-// w_smstemplate_form.ue_detail() returns 0
+// w_smstemplate_form.ue_detail() returns 0 [event]
 	long ll_code
 	integer li_protect
 	boolean lb_modify
@@ -316,7 +316,7 @@
 	end if
 	setredraw(true)
 
-// w_smstemplate_form.ue_postopen() returns 0
+// w_smstemplate_form.ue_postopen() returns 0 [event]
 	long ll_rtncode
 	long ll_found
 	setredraw(false)
@@ -368,7 +368,7 @@
 		return
 	end if
 
-// w_smstemplate_form.open() returns long
+// w_smstemplate_form.open() returns long [event]
 	m_smstemplatemenu lm_menu
 	long ll_width
 	long ll_height
@@ -406,7 +406,7 @@
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_smstemplate_form.ue_deleteitem() returns 0
+// w_smstemplate_form.ue_deleteitem() returns 0 [event]
 	long ll_currow
 	long ll_detailrows
 	long ll_icode
@@ -425,7 +425,7 @@
 	end if
 	wf_grandtotal()
 
-// w_smstemplate_form.ue_deleteitem_row(long al_row) returns 0
+// w_smstemplate_form.ue_deleteitem_row(long al_row) returns 0 [event]
 	long ll_currow
 	long ll_detailrows
 	long ll_icode
@@ -440,11 +440,11 @@
 	ll_detailrows = this.id_detail.rowcount()
 	wf_grandtotal()
 
-// w_smstemplate_form.ue_list() returns 0
+// w_smstemplate_form.ue_list() returns 0 [event]
 	call super::ue_list
 	SQL rollback USING this.it_transobject;
 
-// w_smstemplate_form.ue_newitem() returns 0
+// w_smstemplate_form.ue_newitem() returns 0 [event]
 	long ll_rowcount
 	long ll_currentrow
 	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
@@ -470,3 +470,105 @@
 	this.im_menu.m_file.m_save.enabled = true
 	this.im_menu.m_file.m_save.visible = true
 	this.ib_validatefullcode = true
+
+// tabpage_detail.create() returns 0 [event]
+	integer icurrent
+	this.mle_smstemplate = create mle_smstemplate
+	call super::create
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.mle_smstemplate
+
+// tabpage_detail.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.mle_smstemplate
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "manfname"
+		if data = "" or isnull(data) then
+			messagebox("ManfName Validation", "Value requiredfor " + upper(dwo.manfname) + "in current row")
+		end if
+	case "manager"
+		if data = "" or isnull(data) then
+			messagebox("Manager Validation", "Value required for Manager in current row")
+		end if
+	end choose
+	return 1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "smsdatacode"
+		this.object.smstemplate[row] = ""
+		parent.parent.parent.tab_retrieve.tabpage_detail.mle_smstemplate.text = ""
+		return parent.parent.parent.wf_set_smsdata_info(long(data))
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.ue_enterkey() returns long [event]
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_detail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keyf5! then
+		parent.parent.parent.wf_allow_smsdatacontent(1)
+	elseif key = keyf6! then
+		parent.parent.parent.wf_allow_smsdatacontent(2)
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	string ls_managername
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "contactgroupcode"
+		parent.parent.parent.il_currrow = row
+		parent.parent.parent.ib_itemvalidated = false
+		li_errcode = 0
+	case else
+		parent.parent.parent.ib_itemvalidated = true
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "contactgroupcode"
+		if data = "" or isnull(data) then
+			messagebox("Contact Group Name Validation", "Value required Contact Group Name in current row")
+		end if
+	end choose
+	return 1
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem() = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.getfocus() returns long [event]
+	return ::message.returnvalue
+
+// mle_smstemplate.help(integer xpos, integer ypos) returns long [event]
+	integer li_pos
+	string ls_columnname
+	li_pos = position()
+	if parent.parent.parent.wf_getcolumnname(ls_columnname) = 1 then
+		clipboard(ls_columnname)
+		paste()
+	end if
+	return ::message.returnvalue

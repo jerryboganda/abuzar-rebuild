@@ -1,8 +1,28 @@
 // menu m_itembatchpricing (multientryitem)  ancestor: m_multi_entry
 
-// m_itembatchpricing.create() returns 0
+// m_itembatchpricing.create() returns 0 [event]
 	m_itembatchpricing = this
 	call super::create
 
-// m_itembatchpricing.destroy() returns 0
+// m_itembatchpricing.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_populatepossibleitembatches = create m_populatepossibleitembatches
+	this.item[upperbound(this.item) + 1] = this.m_populatepossibleitembatches
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_populatepossibleitembatches
+
+// m_populatepossibleitembatches.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_populate_possible_item_batches()
+
+// m_populatepossibleitembatches.create() returns 0 [event]
+	call super::create
+	this.text = "Populate Possible Item Batches~tF5"
+	this.shortcut = 116
+
+// m_populatepossibleitembatches.destroy() returns 0 [event]
 	call super::destroy

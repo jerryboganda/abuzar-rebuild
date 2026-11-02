@@ -1,6 +1,6 @@
 // window w_purchaseorder (pocomponents)  ancestor: w_multi_entry
 
-// w_purchaseorder.ue_generatepo() returns 0
+// w_purchaseorder.ue_generatepo() returns 0 [event]
 	datastore lds_po
 	datastore lds_suppitems
 	long ll_counter
@@ -626,7 +626,7 @@
 	destroy lds_po
 	destroy lds_suppitems
 
-// w_purchaseorder.ue_generatepo_policybased() returns 0
+// w_purchaseorder.ue_generatepo_policybased() returns 0 [event]
 	datastore lds_po
 	datastore lds_suppitems
 	long ll_counter
@@ -919,7 +919,7 @@
 	destroy lds_po
 	destroy lds_suppitems
 
-// w_purchaseorder.ue_filter_po_items() returns 0
+// w_purchaseorder.ue_filter_po_items() returns 0 [event]
 	datastore lds_group_selected
 	long ll_counter
 	long ll_rows
@@ -978,13 +978,13 @@
 	end if
 	wf_grandtotal()
 
-// w_purchaseorder.ue_resetfilter() returns 0
+// w_purchaseorder.ue_resetfilter() returns 0 [event]
 	this.id_detail.setredraw(false)
 	this.id_detail.setfilter("")
 	this.id_detail.filter()
 	this.id_detail.setredraw(true)
 
-// w_purchaseorder.ue_supp_manf_po_wizard() returns 0
+// w_purchaseorder.ue_supp_manf_po_wizard() returns 0 [event]
 	long ll_endrow
 	long ll_insrow
 	long ll_counter
@@ -1086,7 +1086,7 @@
 	wf_grandtotal()
 	destroy lds_ds
 
-// w_purchaseorder.ue_generate_minqty() returns 0
+// w_purchaseorder.ue_generate_minqty() returns 0 [event]
 	datastore lds_po
 	datastore lds_suppitems
 	long ll_counter
@@ -3362,7 +3362,7 @@
 	end if
 	return -1
 
-// w_purchaseorder.create() returns 0
+// w_purchaseorder.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	if isvalid(this.menuid) then
@@ -3377,7 +3377,7 @@
 	this.control[icurrent + 1] = this.dw_print
 	this.control[icurrent + 2] = this.dw_orderdetail
 
-// w_purchaseorder.destroy() returns 0
+// w_purchaseorder.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
@@ -3385,7 +3385,7 @@
 	destroy this.dw_print
 	destroy this.dw_orderdetail
 
-// w_purchaseorder.ue_detail() returns 0
+// w_purchaseorder.ue_detail() returns 0 [event]
 	integer li_rtncode
 	integer li_protect
 	datawindowchild ldc_itemdddw
@@ -3481,7 +3481,7 @@
 	this.im_menu.m_file.m_post.enabled = false
 	wf_grandtotal()
 
-// w_purchaseorder.ue_newform() returns 0
+// w_purchaseorder.ue_newform() returns 0 [event]
 	integer li_rtncode
 	long ll_found
 	this.id_footer.reset()
@@ -3514,7 +3514,7 @@
 	this.id_master.object.purordercatcode[1] = f_numberpreferences("POCategoryDefault")
 	wf_setordersettings(this.id_master.object.purordercatcode[1])
 
-// w_purchaseorder.ue_save() returns 0
+// w_purchaseorder.ue_save() returns 0 [event]
 	long ll_invid
 	long ll_icode
 	long ll_minqty
@@ -3719,7 +3719,7 @@
 	end if
 	setfocus()
 
-// w_purchaseorder.ue_newitem() returns 0
+// w_purchaseorder.ue_newitem() returns 0 [event]
 	long ll_rowcount
 	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
 		this.id_detail.setfocus()
@@ -3743,7 +3743,7 @@
 	this.im_menu.m_file.m_print.enabled = true
 	this.ib_validatefullcode = true
 
-// w_purchaseorder.ue_print() returns 0
+// w_purchaseorder.ue_print() returns 0 [event]
 	long ll_row
 	long ll_invcode
 	integer li_option
@@ -3804,7 +3804,7 @@
 	end if
 	messagebox("Printing Error", "Can not Print Purchase Order,~r~nNo rows are retrieved", information!)
 
-// w_purchaseorder.ue_postopen() returns 0
+// w_purchaseorder.ue_postopen() returns 0 [event]
 	integer li_rtncode
 	long ll_found
 	m_purchaseordermenu lm_menu
@@ -3981,13 +3981,13 @@
 	wf_apply_interfacesetting_list()
 	setredraw(true)
 
-// w_purchaseorder.ue_list() returns 0
+// w_purchaseorder.ue_list() returns 0 [event]
 	call super::ue_list
 	SQL rollback USING this.it_transobject;
 	this.im_menu.m_file.m_options.enabled = false
 	this.im_menu.m_file.m_post.enabled = true
 
-// w_purchaseorder.ue_deleteitem_row(long al_row) returns 0
+// w_purchaseorder.ue_deleteitem_row(long al_row) returns 0 [event]
 	long ll_row
 	long ll_footerrow
 	super::ue_deleteitem_row(al_row)
@@ -3999,7 +3999,7 @@
 	this.im_menu.m_file.m_print.enabled = false
 	this.im_menu.m_file.m_save.enabled = false
 
-// w_purchaseorder.ue_refreshddw() returns 0
+// w_purchaseorder.ue_refreshddw() returns 0 [event]
 	call super::ue_refreshddw
 	setpointer(hourglass!)
 	this.idc_supplierlist.setredraw(false)
@@ -4009,3 +4009,397 @@
 	wf_apply_groupsuppliercategory()
 	this.idc_supplierlist.setredraw(true)
 	setpointer(arrow!)
+
+// tab_retrieve.selectionchanged(integer oldindex, integer newindex) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::selectionchanged(oldindex, newindex)
+	if newindex <> 1 then
+		SQL rollback USING parent.it_transobject;
+	end if
+	return ::message.returnvalue
+
+// dw_footer.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	parent.parent.parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_footer.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "discperc"
+		messagebox("Invoice Discount(%) Validation", "Discount ~"" + data + "~" must be betweeen 0 and 100")
+		return 1
+	case "invgstperc1"
+		messagebox("Invoice Level GST (%) Validation", "Inv. GST ~"" + data + "~" must be betweeen 0 and 100")
+		return 1
+	end choose
+	return ::message.returnvalue
+
+// dw_footer.losefocus() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::losefocus()
+	parent.parent.parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_detail.losefocus() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::losefocus()
+	return ::message.returnvalue
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	long ll_code
+	long ll_suppcode
+	long ll_res
+	double ld_rate
+	integer li_rtcode
+	integer li_null
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	setnull(li_null)
+	choose case dwo.name
+	case "purordercatcode"
+		if long(data) <> this.object.purordercatcode[1] then
+			li_rtcode = messagebox("Warning", "Rows in Detail Window will Lost", exclamation!, okcancel!, 2)
+			if li_rtcode = 2 then
+				li_rtcode = 2
+			else
+				parent.parent.parent.wf_setordersettings(long(data))
+				parent.dw_itemsdetail.setredraw(false)
+				parent.dw_itemsdetail.reset()
+				parent.dw_itemsdetail.insertrow(0)
+				parent.parent.parent.im_menu.m_file.m_options.enabled = true
+				parent.dw_itemsdetail.setredraw(true)
+				li_rtcode = 0
+			end if
+		end if
+	case "aliasname"
+		if not isnull(data) and data <> "" then
+			ll_res = parent.parent.parent.wf_findsuppcode(data, ll_suppcode)
+			if ll_res > 0 then
+				setitem(row, "suppcode", ll_suppcode)
+				if parent.parent.parent.wf_check_groupsuppliercategory() <> 0 then
+					messagebox("Group Wise Supplier Category Validation", "Current user group does not have enough permissions w.r.t supplier.~r~nPossible Reasons are:~r~nSupllier is not allowed to the current user group.")
+					setitem(row, "suppcode", li_null)
+					return 1
+				end if
+				return 0
+			else
+				messagebox("Supplier Validation", "Supplier with  AliasName " + data + " does not exist")
+				return 1
+			end if
+			return
+		end if
+	case "suppcode"
+		if not isnull(data) then
+			ll_code = long(data)
+			if parent.parent.parent.wf_supplierinfo(ll_code) <> 0 then
+				messagebox("Database Error", "Can not retrieve information from database")
+			end if
+		end if
+		if parent.parent.parent.id_master.getitemnumber(1, "purordercatcode") = 1.0 then
+			if parent.parent.parent.id_detail.rowcount() > 0 and parent.parent.parent.ib_enterkey then
+				parent.parent.parent.ib_enterkey = false
+				if not isnull(this.object.code[1]) then
+					ll_code = long(data)
+					li_rtcode = messagebox("Warning", "Rows in Detail Window will Lost", exclamation!, okcancel!, 2)
+					if li_rtcode = 2 then
+						setcolumn("remarks")
+						setfocus()
+						li_rtcode = 2
+					else
+						parent.dw_itemsdetail.setredraw(false)
+						parent.dw_itemsdetail.reset()
+						parent.dw_itemsdetail.insertrow(0)
+						parent.parent.parent.im_menu.m_file.m_options.enabled = true
+						parent.dw_itemsdetail.setredraw(true)
+						li_rtcode = 0
+					end if
+				else
+					parent.parent.parent.im_menu.m_file.m_options.enabled = true
+				end if
+			end if
+			parent.parent.parent.im_menu.m_file.m_options.enabled = true
+		else
+			parent.parent.parent.im_menu.m_file.m_options.enabled = true
+		end if
+	case "currencycode"
+		ll_code = long(data)
+		parent.parent.parent.wf_setcurrency(ll_code)
+	case "conversionfactor"
+		ld_rate = double(data)
+		if ld_rate <= 0.0 then
+			return 1
+		elseif parent.parent.parent.wf_applycurrency(double(data)) <= 0 then
+			return 1
+		end if
+		return
+	end choose
+	return li_rtcode
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "suppcode"
+		messagebox("supplier Name Validation", "You must select some Supplier")
+	case "manfcode"
+		messagebox("Manufacturer Name Validation", "You must select some Manufacturer")
+	case "currencycode"
+		messagebox("Currency Validation", "You must select some valid currency")
+	case "conversionfactor"
+		messagebox("Conversion Factor/Rate Validation", "You must select some valid Conversion Factor/Rate")
+	end choose
+	return 1
+
+// dw_detail.ue_enterkey() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::ue_enterkey()
+	parent.parent.parent.ib_enterkey = true
+	return ::message.returnvalue
+
+// dw_itemsdetail.losefocus() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::losefocus()
+	parent.parent.parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_itemsdetail.rowfocuschanged(long currentrow) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::rowfocuschanged(currentrow)
+	parent.parent.parent.wf_grandtotal()
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	long ll_icode
+	long ll_previcode
+	long ll_reorderqty
+	long ll_optimumqty
+	long ll_packunits
+	double ld_price
+	double ld_conversionfactor
+	double ld_saleprice
+	double ld_newprice
+	dwitemstatus ldws_column
+	string ls_fullcode
+	string ls_itemname
+	string ls_null
+	long ll_null
+	long ll_itemtypecode
+	integer li_errcode
+	integer li_retmsgcode
+	double ld_godownstock
+	integer li_res
+	double ld_allowedqty
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	setnull(ll_null)
+	setnull(ls_null)
+	choose case dwo.name
+	case parent.parent.parent.is_columnitemname
+		parent.parent.parent.id_detail.setitem(row, "icode", parent.parent.parent.id_itemslist.getitemnumber(parent.parent.parent.id_itemslist.getrow(), "icode"))
+		parent.parent.parent.id_detail.setitem(row, "fullcode", parent.parent.parent.id_itemslist.getitemstring(parent.parent.parent.id_itemslist.getrow(), "fullcode"))
+		parent.parent.parent.ib_itemvalidated = false
+		parent.parent.parent.il_currrow = row
+		return 0
+	case "icode"
+		ll_icode = long(data)
+		parent.parent.parent.it_transobject.getitemstocktotal(1, ll_icode, ld_godownstock)
+		if parent.parent.parent.it_transobject.sqlcode <> 0 then
+			messagebox("Database Error", "Item information can not be retrieved")
+			return 1
+		end if
+		if parent.parent.parent.id_master.object.purordercatcode[1] = 1 then
+			SQL Select reorderqty , optimumqty INTO :ll_reorderqty, :ll_optimumqty From item Where icode =:ll_icode USING parent.parent.parent.it_transobject;
+			setitem(row, "stock", ld_godownstock)
+			setitem(row, "reorderqty", ll_reorderqty)
+			setitem(row, "optimumqty", ll_optimumqty)
+		else
+			setitem(row, "stock", ld_godownstock)
+		end if
+		parent.parent.parent.ib_itemvalidated = false
+		parent.parent.parent.il_currrow = row
+	case "fullcode"
+		if not isnull(data) and data <> "" then
+			li_res = parent.parent.parent.wf_findfullcode(data, ll_icode, ls_itemname, ll_itemtypecode, parent.parent.parent.idbl_packqty, parent.parent.parent.idbl_purprice, parent.parent.parent.idbl_saleprice)
+			if li_res > 0 then
+				if parent.parent.parent.idbl_packqty <= 0.0 or isnull(parent.parent.parent.idbl_packqty) then
+					parent.parent.parent.idbl_packqty = 1
+				end if
+				setitem(row, "icode", ll_icode)
+				setitem(row, "itemname", ls_itemname)
+				if ll_itemtypecode = 2 then
+					setitem(row, "alternatecustomicode", data)
+					setitem(row, "packunits", long(parent.parent.parent.idbl_packqty))
+					setitem(row, "purprice", parent.parent.parent.idbl_purprice)
+					setitem(row, "rate", parent.parent.parent.idbl_purprice)
+					setitem(row, "saleprice", parent.parent.parent.idbl_saleprice)
+				else
+					setitem(row, "alternatecustomicode", ls_null)
+				end if
+				parent.parent.parent.ib_itemvalidated = false
+				parent.parent.parent.il_currrow = row
+				return 0
+			else
+				messagebox("ItemNumber Validation", "Item does not exist")
+				setitem(row, "icode", ll_null)
+				setitem(row, "fullcode", ls_null)
+				return 1
+			end if
+		else
+			setitem(row, "icode", ll_null)
+			setitem(row, "fullcode", ls_null)
+			return 2
+		end if
+	case "icode1"
+		ll_icode = long(data)
+		if parent.parent.parent.wf_genfullcode(ll_icode, ls_fullcode) > 0 then
+			if vf_dwdupcode(this, "icode", string(ll_icode)) = true then
+				return 1
+			else
+				this.object.fullcode[row] = ls_fullcode
+				if this.object.fullcode[row] = this.object.alternatecustomicode[row] then
+					if parent.parent.parent.wf_getitempurprice(ll_icode, ld_price) = 0 then
+						setitem(row, "rate", ld_price)
+						parent.parent.parent.wf_grandtotal()
+					else
+						messagebox("Database Error", "Item information can not retrieve~n~rPossible Causes: ~n~r               Item does not exist~n~r               Item has been deleted")
+					end if
+				end if
+			end if
+		else
+			messagebox("Database Error", "Item information can not retrieve~n~rPossible Causes: ~n~r               Item does not exist~n~r               Item has been deleted")
+			return 1
+		end if
+	case "qty"
+		if parent.parent.parent.ib_allowchangeincalculatedpacks = false then
+			ld_allowedqty = getitemnumber(row, "allowedqty")
+			if double(data) > ld_allowedqty and double(data) > 0.0 then
+				messagebox("Calculated Packs Validation", "Kindly enter pack values less than or equal to calculated pack values.")
+				return 1
+			end if
+			return
+		end if
+	case "itemflatdisc"
+		if double(data) > this.object.rate[row] then
+			messagebox("Item Flat Discount Validation", "Item flat discount should not be greater than price.")
+			return 1
+		elseif double(data) < 0.0 then
+			messagebox("Item Flat Discount Validation", "Item flat discount should not be negative.")
+			return 1
+		end if
+	case "rate"
+		if double(data) < this.object.itemflatdisc[row] then
+			this.object.itemflatdisc[row] = 0
+		end if
+	case "foreignprice"
+		if double(data) >= 0.0 then
+			ll_icode = parent.parent.parent.id_detail.getitemnumber(row, "icode")
+			ld_conversionfactor = parent.parent.parent.id_master.getitemnumber(parent.parent.parent.id_master.getrow(), "conversionfactor")
+			SQL Select item.saleprice , item.packunits INTO :ld_saleprice, :ll_packunits From Item Where item.icode =:ll_icode USING parent.parent.parent.it_transobject;
+			ld_newprice = round(double(data) * ld_conversionfactor, 2)
+			if ld_newprice > ld_saleprice then
+				li_retmsgcode = messagebox("Purchase Validation", "Purchase Price " + string(double(ld_newprice)) + " is greater than Sale Price " + string(ld_saleprice) + "~r~n Do you want to continue", question!, yesno!)
+				if li_retmsgcode = 1 then
+					li_errcode = 0
+				else
+					li_errcode = 1
+				end if
+			end if
+			if li_errcode = 0 then
+				this.object.rate[row] = ld_newprice
+				parent.parent.parent.wf_grandtotal()
+			end if
+		else
+			li_errcode = 1
+		end if
+		return li_errcode
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	string ls_columnobject
+	long ll_currow
+	long ancestorreturnvalue
+	ls_columnobject = dwo.name
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem() = -1 then
+		return ::message.returnvalue
+	end if
+	if dwo.name = "itemname" then
+		parent.parent.parent.ib_focusdetail = true
+	end if
+	parent.parent.parent.wf_grandtotal()
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "fullcode"
+		return 1
+	case "itemname"
+		messagebox("Item Validation", "Please enter valid value for item name.")
+		return 1
+	case "icode"
+		if data = "" or isnull(data) then
+			messagebox("Item Validation", "Value required for item in current row")
+			return 1
+		end if
+	case "minqty", "reorderqty", "optimumqty"
+		if long(data) < 0 then
+			messagebox("Item " + string(dwo.name) + " Validation", "Item " + string(dwo.name) + " should be valid")
+			return 1
+		end if
+	case "qty"
+		if data = "" or isnull(data) then
+			messagebox("Item Qty Validation", "Item Qty ~"" + data + "~" should be greater than zero")
+			return 1
+		end if
+	case "discperc"
+		if data = "" or isnull(data) then
+			messagebox("Item Discount Validation", "Dsicount ~"" + data + "~" must be betweeen 0 and 100")
+			return 1
+		end if
+	case "purprice"
+		if data = "" or isnull(data) then
+			messagebox("Item Price Validation", "Item price ~"" + data + "~" must be greater than zero")
+			return 1
+		end if
+	end choose
+	return ::message.returnvalue
+
+// dw_itemsdetail.getfocus() returns long [event]
+	long ancestorreturnvalue
+	if f_stringpreferences("itemcode") = "N" then
+		ancestorreturnvalue = super::getfocus()
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.rowfocuschanging(long currentrow, long newrow) returns long [event]
+	long ancestorreturnvalue
+	double ld_qty
+	double ld_bonusqty
+	long ll_icode
+	ancestorreturnvalue = super::rowfocuschanging(currentrow, newrow)
+	if currentrow > 0 and parent.parent.parent.id_detail.rowcount() > 0 and currentrow <= parent.parent.parent.id_detail.rowcount() then
+		ld_qty = parent.parent.parent.id_detail.getitemnumber(currentrow, "qty")
+		ld_bonusqty = parent.parent.parent.id_detail.getitemnumber(currentrow, "bonusqty")
+		ll_icode = parent.parent.parent.id_detail.getitemnumber(currentrow, "icode")
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.ue_focusqty() returns 0 [event]
+	call super::ue_focusqty
+	parent.parent.parent.id_detail.setcolumn("qty")
+	parent.parent.parent.id_detail.selecttext(1, len(gettext()))
+	parent.parent.parent.id_detail.setfocus()
+
+// dw_find.keypressed(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::keypressed(key, keyflags)
+	if key = keyf11! then
+		parent.parent.parent.wf_show_popolicybased_supplierlist()
+	end if
+	return ::message.returnvalue

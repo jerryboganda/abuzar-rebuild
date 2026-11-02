@@ -35,16 +35,16 @@
 	end if
 	return li_errcode
 
-// w_emp_attendanceregister.create() returns 0
+// w_emp_attendanceregister.create() returns 0 [event]
 	call super::create
 
-// w_emp_attendanceregister.destroy() returns 0
+// w_emp_attendanceregister.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_emp_attendanceregister.ue_save() returns 0
+// w_emp_attendanceregister.ue_save() returns 0 [event]
 	long ll_mastercurrrow
 	long ll_invid
 	long ll_detailrows
@@ -99,7 +99,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_emp_attendanceregister.ue_newform() returns 0
+// w_emp_attendanceregister.ue_newform() returns 0 [event]
 	call super::ue_newform
 	this.id_master.setfocus()
 	if this.id_master.rowcount() > 0 then
@@ -107,7 +107,7 @@
 		this.id_master.object.enddate[1] = datetime(date(today()), time("23:59:59"))
 	end if
 
-// w_emp_attendanceregister.ue_newitem() returns 0
+// w_emp_attendanceregister.ue_newitem() returns 0 [event]
 	long ll_rowcount
 	long ll_currentrow
 	if this.ib_itemvalidated = false and wf_validateitem() = -1 then
@@ -138,7 +138,7 @@
 	this.ib_validatefullcode = true
 	this.id_detail.setcolumn("empcode")
 
-// w_emp_attendanceregister.ue_detail() returns 0
+// w_emp_attendanceregister.ue_detail() returns 0 [event]
 	call super::ue_detail
 	this.im_menu.m_file.m_save.enabled = true
 	this.im_menu.m_file.m_delete.enabled = true
@@ -150,7 +150,103 @@
 	this.im_menu.m_item.m_newitem.enabled = true
 	this.im_menu.m_item.m_deleteitem.enabled = true
 
-// w_emp_attendanceregister.ue_postopen() returns 0
+// w_emp_attendanceregister.ue_postopen() returns 0 [event]
 	call super::ue_postopen
 	this.id_detail.getchild("empcode", this.idc_salesman)
 	this.idc_salesman.settransobject(this.it_transobject)
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if data = "" or isnull(data) then
+			messagebox("Deparment Name Validation", "Value required for Deparment " + upper(dwo.name) + " in current row")
+		end if
+	end choose
+	return 1
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	return ::message.returnvalue
+
+// dw_detail.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked(xpos, ypos, row, dwo)
+	if dwo.name = "b_retrieve" then
+		accepttext()
+		if row > 0 then
+			parent.parent.parent.id_detail.retrieve(this.object.startdate[row], this.object.enddate[row], this.object.empcode[row])
+		end if
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	integer li_errcode
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "empcode"
+		parent.parent.parent.il_currrow = row
+		parent.parent.parent.ib_itemvalidated = false
+		li_errcode = 0
+	case else
+		parent.parent.parent.ib_itemvalidated = true
+	end choose
+	return li_errcode
+
+// dw_itemsdetail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "empcode"
+		if data = "" or isnull(data) then
+			messagebox("Employee Validation", "Value required Employee Name in current row")
+		end if
+	end choose
+	return 1
+
+// dw_itemsdetail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	if parent.parent.parent.ib_itemvalidated = false and parent.parent.parent.wf_validateitem() = -1 then
+		return ::message.returnvalue
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.getfocus() returns long [event]
+	setcolumn(1)
+	if len(gettext()) > 0 then
+		selecttext(1, len(gettext()))
+	end if
+	return ::message.returnvalue
+
+// dw_itemsdetail.ue_enterkey() returns long [event]
+	if getrow() = rowcount() and getcolumn() = integer(this.object.datawindow.column.count) then
+		parent.parent.parent.event ue_newitem()
+		setcolumn("EmpCode")
+		setfocus()
+		return 1
+	end if
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// dw_itemsdetail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
+	long ancestorreturnvalue
+	long ll_res
+	long ll_counter
+	ancestorreturnvalue = super::ue_dwnkey(key, keyflags)
+	if key = keyf5! then
+		ll_res = 2
+		ll_counter = 1
+		ll_res = messagebox("Supervise All", "Do you want to supervise each attendance record selected here.", question!, yesnocancel!, 2)
+		if ll_res = 1 then
+			for ll_counter = 1 to parent.parent.parent.id_detail.rowcount()
+				if parent.parent.parent.id_detail.object.oldsupervised[ll_counter] = "N" then
+					parent.parent.parent.id_detail.object.supervised[ll_counter] = "Y"
+				end if
+			next
+		end if
+	end if
+	return ::message.returnvalue

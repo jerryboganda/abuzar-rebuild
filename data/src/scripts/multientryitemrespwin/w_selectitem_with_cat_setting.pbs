@@ -1,6 +1,6 @@
 // window w_selectitem_with_cat_setting (multientryitemrespwin)  ancestor: window
 
-// w_selectitem_with_cat_setting.ue_setbuttonfocus() returns 0
+// w_selectitem_with_cat_setting.ue_setbuttonfocus() returns 0 [event]
 	this.cb_ok.setfocus()
 
 // w_selectitem_with_cat_setting.wf_inititem(long al_icode) returns boolean
@@ -30,7 +30,7 @@
 	next
 	return -1
 
-// w_selectitem_with_cat_setting.create() returns 0
+// w_selectitem_with_cat_setting.create() returns 0 [event]
 	this.dw_item = create dw_item
 	this.cb_cancel = create cb_cancel
 	this.cb_ok = create cb_ok
@@ -38,14 +38,14 @@
 	this.dw_itemlist = create dw_itemlist
 	this.control = {this.dw_item, this.cb_cancel, this.cb_ok, this.gb_1, this.dw_itemlist}
 
-// w_selectitem_with_cat_setting.destroy() returns 0
+// w_selectitem_with_cat_setting.destroy() returns 0 [event]
 	destroy this.dw_item
 	destroy this.cb_cancel
 	destroy this.cb_ok
 	destroy this.gb_1
 	destroy this.dw_itemlist
 
-// w_selectitem_with_cat_setting.open() returns long
+// w_selectitem_with_cat_setting.open() returns long [event]
 	integer li_rtncode
 	integer li_counter
 	integer li_holdqty
@@ -92,14 +92,14 @@
 	setpointer(arrow!)
 	return ::message.returnvalue
 
-// dw_item.ue_enterkey() returns long
+// dw_item.ue_enterkey() returns long [event]
 	if getcolumnname() = "itemname" then
 		post event ue_inititem()
 	end if
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_item.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// dw_item.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	integer rt_code
 	long ll_currrow
 	long ll_listcurrrow
@@ -164,10 +164,10 @@
 	end if
 	return rt_code
 
-// dw_item.ue_inititem() returns 0
+// dw_item.ue_inititem() returns 0 [event]
 	parent.wf_inititem(getitemnumber(getrow(), "icode"))
 
-// dw_item.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_item.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	integer li_qty
 	long ll_icode
 	long ll_null
@@ -204,7 +204,7 @@
 	end choose
 	return ::message.returnvalue
 
-// dw_item.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_item.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	choose case dwo.name
 	case "fullcode"
 		parent.id_itemlist.hide()
@@ -219,7 +219,7 @@
 	selecttext(1, len(gettext()))
 	return ::message.returnvalue
 
-// dw_item.editchanged(long row, dwobject dwo, string data) returns long
+// dw_item.editchanged(long row, dwobject dwo, string data) returns long [event]
 	long ll_currrow
 	long ll_startrow
 	ll_startrow = 0
@@ -264,7 +264,7 @@
 	end choose
 	return ::message.returnvalue
 
-// dw_item.itemerror(long row, dwobject dwo, string data) returns long
+// dw_item.itemerror(long row, dwobject dwo, string data) returns long [event]
 	choose case dwo.name
 	case "fullcode"
 		messagebox("Item Validation", "AliasName does not exist~r~nPlease try some other AliasName")
@@ -273,25 +273,25 @@
 	end choose
 	return 1
 
-// cb_cancel.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_cancel.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		postevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	s_positem ls_positem
 	ls_positem.l_icode = 0
 	closewithreturn(parent, ls_positem)
 	return ::message.returnvalue
 
-// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		postevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	s_positem ls_positem
 	if parent.id_item.accepttext() = -1 then
 		parent.id_item.setfocus()
@@ -306,15 +306,15 @@
 	closewithreturn(parent, ls_positem)
 	return ::message.returnvalue
 
-// cb_ok.getfocus() returns long
+// cb_ok.getfocus() returns long [event]
 	parent.id_itemlist.hide()
 	return ::message.returnvalue
 
-// dw_itemlist.ue_setfocus() returns 0
+// dw_itemlist.ue_setfocus() returns 0 [event]
 	parent.id_item.setcolumn("itemname")
 	parent.id_item.setfocus()
 
-// dw_itemlist.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+// dw_itemlist.clicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
 	long ll_rowmain
 	if row > 0 then
 		ll_rowmain = parent.id_item.getrow()
@@ -329,6 +329,6 @@
 	end if
 	return ::message.returnvalue
 
-// dw_itemlist.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long
+// dw_itemlist.doubleclicked(integer xpos, integer ypos, long row, dwobject dwo) returns long [event]
 	post event ue_setfocus()
 	return ::message.returnvalue

@@ -1,9 +1,9 @@
 // window w_cashiershift_closing (cashierjob)  ancestor: window
 
-// w_cashiershift_closing.ue_close(integer ai_status) returns 0
+// w_cashiershift_closing.ue_close(integer ai_status) returns 0 [event]
 	close(this)
 
-// w_cashiershift_closing.ue_postopen() returns 0
+// w_cashiershift_closing.ue_postopen() returns 0 [event]
 	datastore lds_denominations
 	long ll_counter
 	long ll_insrow
@@ -217,7 +217,7 @@
 		end if
 	next
 
-// w_cashiershift_closing.create() returns 0
+// w_cashiershift_closing.create() returns 0 [event]
 	this.dw_figures = create dw_figures
 	this.dw_cash = create dw_cash
 	this.cb_cancel = create cb_cancel
@@ -225,14 +225,14 @@
 	this.dw_detail = create dw_detail
 	this.control = {this.dw_figures, this.dw_cash, this.cb_cancel, this.cb_ok, this.dw_detail}
 
-// w_cashiershift_closing.destroy() returns 0
+// w_cashiershift_closing.destroy() returns 0 [event]
 	destroy this.dw_figures
 	destroy this.dw_cash
 	destroy this.cb_cancel
 	destroy this.cb_ok
 	destroy this.dw_detail
 
-// w_cashiershift_closing.open() returns long
+// w_cashiershift_closing.open() returns long [event]
 	long ll_row
 	long ll_width
 	long ll_height
@@ -269,40 +269,40 @@
 	post event ue_postopen()
 	return ::message.returnvalue
 
-// dw_figures.getfocus() returns long
+// dw_figures.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	parent.wf_updatetotals()
 	selecttext(1, len(gettext()) + 1)
 	return ::message.returnvalue
 
-// dw_figures.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_figures.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
 	parent.wf_updatetotals()
 	selecttext(1, len(gettext()) + 1)
 	return ::message.returnvalue
 
-// dw_figures.ue_enterkey() returns long
+// dw_figures.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_cash.getfocus() returns long
+// dw_cash.getfocus() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::getfocus()
 	parent.wf_updatetotals()
 	selecttext(1, len(gettext()))
 	return ::message.returnvalue
 
-// dw_cash.rowfocuschanged(long currentrow) returns long
+// dw_cash.rowfocuschanged(long currentrow) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::rowfocuschanged(currentrow)
 	selecttext(1, len(gettext()) + 1)
 	return ::message.returnvalue
 
-// dw_cash.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_cash.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
 	parent.wf_updatetotals()
@@ -311,29 +311,29 @@
 	selecttext(1, len(gettext()) + 1)
 	return ::message.returnvalue
 
-// dw_cash.ue_enterkey() returns long
+// dw_cash.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// cb_cancel.ue_keydown(keycode key, unsignedlong keyflags) returns long
+// cb_cancel.ue_keydown(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		postevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.post event ue_close(-1)
 	return ::message.returnvalue
 
-// cb_ok.ue_keydown(keycode key, unsignedlong keyflags) returns long
+// cb_ok.ue_keydown(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		postevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	long ll_row
 	long ll_usercode
 	long ll_null
@@ -464,11 +464,11 @@
 	setpointer(arrow!)
 	return ::message.returnvalue
 
-// dw_detail.ue_enterkey() returns long
+// dw_detail.ue_enterkey() returns long [event]
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ll_totdays
 	long ll_years
 	long ll_months
@@ -562,7 +562,7 @@
 	end choose
 	return ::message.returnvalue
 
-// dw_detail.itemerror(long row, dwobject dwo, string data) returns long
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
 	choose case dwo.name
 	case "regno"
 		messagebox("ItemNo Validation", "Item Duplication Error~r~nPlease enter some other Reg No")

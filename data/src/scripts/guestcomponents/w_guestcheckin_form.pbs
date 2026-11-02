@@ -1,6 +1,6 @@
 // window w_guestcheckin_form (guestcomponents)  ancestor: window
 
-// w_guestcheckin_form.ue_close() returns 0
+// w_guestcheckin_form.ue_close() returns 0 [event]
 	close(this)
 
 // w_guestcheckin_form.wf_set_interface_adjustments() returns 0
@@ -158,18 +158,18 @@
 	end if
 	return li_errcode
 
-// w_guestcheckin_form.create() returns 0
+// w_guestcheckin_form.create() returns 0 [event]
 	this.cb_cancel = create cb_cancel
 	this.cb_ok = create cb_ok
 	this.tab_main = create tab_main
 	this.control = {this.cb_cancel, this.cb_ok, this.tab_main}
 
-// w_guestcheckin_form.destroy() returns 0
+// w_guestcheckin_form.destroy() returns 0 [event]
 	destroy this.cb_cancel
 	destroy this.cb_ok
 	destroy this.tab_main
 
-// w_guestcheckin_form.open() returns long
+// w_guestcheckin_form.open() returns long [event]
 	long ll_retcode
 	date ld_date
 	ld_date = today()
@@ -225,11 +225,11 @@
 	end if
 	return message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.postevent("ue_close")
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	string ls_aliasname
 	long ll_newid
 	long ll_row
@@ -478,18 +478,18 @@
 	end if
 	return ::message.returnvalue
 
-// tab_main.create() returns 0
+// tab_main.create() returns 0 [event]
 	this.tabpage_room = create tabpage_room
 	this.tabpage_guest = create tabpage_guest
 	this.tabpage_checkin = create tabpage_checkin
 	this.control = {this.tabpage_room, this.tabpage_guest, this.tabpage_checkin}
 
-// tab_main.destroy() returns 0
+// tab_main.destroy() returns 0 [event]
 	destroy this.tabpage_room
 	destroy this.tabpage_guest
 	destroy this.tabpage_checkin
 
-// tab_main.selectionchanged(integer oldindex, integer newindex) returns long
+// tab_main.selectionchanged(integer oldindex, integer newindex) returns long [event]
 	if newindex = 1 then
 		parent.id_guest.setfocus()
 	elseif newindex = 2 then
@@ -501,16 +501,16 @@
 	end if
 	return ::message.returnvalue
 
-// tabpage_room.create() returns 0
+// tabpage_room.create() returns 0 [event]
 	this.dw_roomservice = create dw_roomservice
 	this.dw_room = create dw_room
 	this.control = {this.dw_roomservice, this.dw_room}
 
-// tabpage_room.destroy() returns 0
+// tabpage_room.destroy() returns 0 [event]
 	destroy this.dw_roomservice
 	destroy this.dw_room
 
-// dw_roomservice.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// dw_roomservice.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	long ll_rowcount
 	if keyflags = 2 then
 		if key = keyi! then
@@ -539,7 +539,7 @@
 	end if
 	return ::message.returnvalue
 
-// dw_roomservice.ue_enterkey() returns long
+// dw_roomservice.ue_enterkey() returns long [event]
 	long ll_rowcount
 	if getrow() = rowcount() and getcolumn() = integer(this.object.datawindow.column.count) then
 		if parent.parent.parent.id_roomservice.rowcount() > 0 and f_validatedw(parent.parent.parent.id_roomservice) < 0 then
@@ -558,12 +558,12 @@
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_roomservice.getfocus() returns long
+// dw_roomservice.getfocus() returns long [event]
 	setcolumn("icode")
 	setfocus()
 	return ::message.returnvalue
 
-// dw_roomservice.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_roomservice.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	integer li_errcode
 	choose case dwo.name
 	case "icode"
@@ -574,7 +574,7 @@
 	end choose
 	return li_errcode
 
-// dw_roomservice.itemerror(long row, dwobject dwo, string data) returns long
+// dw_roomservice.itemerror(long row, dwobject dwo, string data) returns long [event]
 	choose case dwo.name
 	case "icode"
 		if data = "" or isnull(data) then
@@ -583,24 +583,24 @@
 	end choose
 	return 1
 
-// dw_roomservice.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_roomservice.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	if row > 0 and parent.parent.parent.wf_validate_roomservice() = -1 then
 		return ::message.returnvalue
 	end if
 	return ::message.returnvalue
 
-// tabpage_guest.create() returns 0
+// tabpage_guest.create() returns 0 [event]
 	this.dw_guest = create dw_guest
 	this.control = {this.dw_guest}
 
-// tabpage_guest.destroy() returns 0
+// tabpage_guest.destroy() returns 0 [event]
 	destroy this.dw_guest
 
-// dw_guest.ue_enterkey() returns long
+// dw_guest.ue_enterkey() returns long [event]
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_guest.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_guest.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ll_null
 	choose case dwo.name
 	case "customer_fullname"
@@ -615,7 +615,7 @@
 	end choose
 	return 0
 
-// dw_guest.itemerror(long row, dwobject dwo, string data) returns long
+// dw_guest.itemerror(long row, dwobject dwo, string data) returns long [event]
 	choose case dwo.name
 	case "customer_fullname"
 		if data = "" or isnull(data) then
@@ -677,16 +677,16 @@
 	end choose
 	return 1
 
-// tabpage_checkin.create() returns 0
+// tabpage_checkin.create() returns 0 [event]
 	this.dw_checkin = create dw_checkin
 	this.dw_checkinservice = create dw_checkinservice
 	this.control = {this.dw_checkin, this.dw_checkinservice}
 
-// tabpage_checkin.destroy() returns 0
+// tabpage_checkin.destroy() returns 0 [event]
 	destroy this.dw_checkin
 	destroy this.dw_checkinservice
 
-// dw_checkinservice.ue_enterkey() returns long
+// dw_checkinservice.ue_enterkey() returns long [event]
 	long ll_rowcount
 	if getrow() = rowcount() and getcolumn() = integer(this.object.datawindow.column.count) then
 		if rowcount() > 0 and f_validatedw(this) < 0 then
@@ -703,7 +703,7 @@
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_checkinservice.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// dw_checkinservice.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	long ll_rowcount
 	if keyflags = 2 then
 		if key = keyi! then
@@ -729,7 +729,7 @@
 	end if
 	return ::message.returnvalue
 
-// dw_checkinservice.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_checkinservice.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	integer li_errcode
 	choose case dwo.name
 	case "servicecode"
@@ -740,12 +740,12 @@
 	end choose
 	return li_errcode
 
-// dw_checkinservice.getfocus() returns long
+// dw_checkinservice.getfocus() returns long [event]
 	setcolumn("servicecode")
 	setfocus()
 	return ::message.returnvalue
 
-// dw_checkinservice.itemerror(long row, dwobject dwo, string data) returns long
+// dw_checkinservice.itemerror(long row, dwobject dwo, string data) returns long [event]
 	choose case dwo.name
 	case "servicecode"
 		if data = "" or isnull(data) then
@@ -754,7 +754,7 @@
 	end choose
 	return 1
 
-// dw_checkinservice.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_checkinservice.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	if row > 0 and parent.parent.parent.wf_validate_checkinservice() = -1 then
 		return ::message.returnvalue
 	end if

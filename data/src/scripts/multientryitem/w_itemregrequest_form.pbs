@@ -239,7 +239,7 @@
 	destroy lds_alteralias
 	return 0
 
-// w_itemregrequest_form.create() returns 0
+// w_itemregrequest_form.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	if isvalid(this.menuid) then
@@ -252,14 +252,14 @@
 	icurrent = upperbound(this.control)
 	this.control[icurrent + 1] = this.dw_alternatealias
 
-// w_itemregrequest_form.destroy() returns 0
+// w_itemregrequest_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 	destroy this.dw_alternatealias
 
-// w_itemregrequest_form.ue_save() returns 0
+// w_itemregrequest_form.ue_save() returns 0 [event]
 	long ll_mastercurrrow
 	long ll_invid
 	long ll_detailrows
@@ -376,7 +376,7 @@
 	end if
 	setpointer(arrow!)
 
-// w_itemregrequest_form.ue_detail() returns 0
+// w_itemregrequest_form.ue_detail() returns 0 [event]
 	long ll_counter
 	long ll_icode
 	call super::ue_detail
@@ -421,9 +421,9 @@
 	this.id_master.object.avgprice.protect = 1
 	this.id_master.setredraw(true)
 
-// w_itemregrequest_form.ue_newitem() returns 0
+// w_itemregrequest_form.ue_newitem() returns 0 [event]
 
-// w_itemregrequest_form.ue_newform() returns 0
+// w_itemregrequest_form.ue_newform() returns 0 [event]
 	long ll_counter
 	call super::ue_newform
 	this.ib_modify = false
@@ -440,7 +440,7 @@
 	end if
 	setnull(this.iblob_notes)
 
-// w_itemregrequest_form.ue_postopen() returns 0
+// w_itemregrequest_form.ue_postopen() returns 0 [event]
 	long ll_found
 	long ll_itemcolumn_row
 	integer li_xpos
@@ -603,7 +603,7 @@
 	this.id_master.object.avgprice.protect = 1
 	this.id_master.object.code.protect = 1
 
-// w_itemregrequest_form.open() returns long
+// w_itemregrequest_form.open() returns long [event]
 	m_entry lm_menu
 	long ll_width
 	long ll_height
@@ -637,7 +637,416 @@
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_itemregrequest_form.ue_list() returns 0
+// w_itemregrequest_form.ue_list() returns 0 [event]
 	call super::ue_list
 	this.im_menu.m_file.m_post.visible = true
 	this.im_menu.m_file.m_post.enabled = true
+
+// tabpage_detail.create() returns 0 [event]
+	integer icurrent
+	this.rb_summary = create rb_summary
+	this.rb_detail = create rb_detail
+	this.dw_iteminmodel = create dw_iteminmodel
+	call super::create
+	icurrent = upperbound(this.control)
+	this.control[icurrent + 1] = this.rb_summary
+	this.control[icurrent + 2] = this.rb_detail
+	this.control[icurrent + 3] = this.dw_iteminmodel
+
+// tabpage_detail.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.rb_summary
+	destroy this.rb_detail
+	destroy this.dw_iteminmodel
+
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	long ll_icode
+	long ll_retcode
+	double ld_price
+	double ld_discperc
+	double ld_qty
+	double ld_saleprice
+	double ld_purprice
+	double ld_markupperc
+	ancestorreturnvalue = super::itemchanged(row, dwo, data)
+	choose case dwo.name
+	case "regdno"
+		if not (data = "" or isnull(data)) then
+			if parent.parent.parent.wf_duplicate_regno(data) > 0 then
+				messagebox("Regd. No. Validation", "Item Duplication Error~r~nPlease enter some other Item Regd. No.")
+				return 1
+			end if
+		end if
+	case "packunits"
+		if long(data) <= 0 then
+			return 1
+		end if
+	case "customicode"
+		if not (data = "" or isnull(data)) then
+			if parent.parent.parent.wf_duplicateitemno(data) then
+				messagebox("ItemNo Validation", "Item Duplication Error~r~nPlease enter some other Item No")
+				return 1
+			end if
+		end if
+	case "active"
+		if integer(data) = 0 then
+			ll_icode = getitemnumber(1, "code")
+			SQL SELECT ISNULL ( sum ( currqty ) , 0 ) INTO :ld_qty FROM godowndetail WHERE icode =:ll_icode USING sqlca;
+			if sqlca.sqlcode = -1 then
+				messagebox("", "Database Error: Item information can not be retrieved")
+				return 1
+			end if
+			if ld_qty > 0.0 then
+				messagebox("Active", "You Cann't Mark this item as Active No~r~nStock exist for this item~r~nStock In Hand = " + string(ld_qty))
+				return 1
+			end if
+			return
+		end if
+	case "saleprice"
+		if long(data) > 0 and not isnull(long(data)) then
+			setitem(row, "discountedsaleprice", round(double(data) * (1.0 - getitemnumber(row, "salediscperc") * 0.01), 2))
+			ld_purprice = getitemnumber(row, "purprice")
+			if ld_purprice > 0.0 then
+				ld_markupperc = (double(data) - ld_purprice) * 100.0 / ld_purprice
+				setitem(row, "markupperc", ld_markupperc)
+			end if
+		end if
+	case "salediscperc"
+		if long(data) > 0 and not isnull(long(data)) then
+			setitem(row, "discountedsaleprice", round(getitemnumber(row, "saleprice") * (1.0 - double(data) * 0.01), 2))
+		end if
+	case "markupperc"
+		if double(data) > 0.0 and not isnull(double(data)) then
+			ld_purprice = getitemnumber(row, "purprice")
+			ld_saleprice = round(ld_purprice * (1.0 + 0.01 * double(data)), 2)
+			setitem(row, "saleprice", ld_saleprice)
+		end if
+	case "purprice"
+		if long(data) > 0 and not isnull(long(data)) then
+			setitem(row, "discountedpurprice", round(double(data) * (1.0 - getitemnumber(row, "purdiscperc") * 0.01), 2))
+		end if
+	case "purdiscperc"
+		if long(data) > 0 and not isnull(long(data)) then
+			setitem(row, "discountedpurprice", round(getitemnumber(row, "purprice") * (1.0 - double(data) * 0.01), 2))
+		end if
+	case "discountedsaleprice"
+		ld_price = getitemnumber(row, "saleprice")
+		if ld_price = 0.0 then
+			ld_price = 1
+		end if
+		if long(data) >= 0 and not isnull(long(data)) and long(data) <= ld_price then
+			ld_discperc = (ld_price - double(data)) / ld_price * 100.0
+			setitem(row, "salediscperc", ld_discperc)
+		elseif long(data) < 0 then
+			messagebox("Discounted Sale Price Validation!", "Negative Discounted Sale Price is not acceptable")
+			return 1
+		else
+			messagebox("Discounted Sale Price Validation!", "Discounted Sale Price should not be greater than Sale Price")
+			return 1
+		end if
+	case "discountedpurprice"
+		ld_price = getitemnumber(row, "purprice")
+		if ld_price = 0.0 then
+			ld_price = 1
+		end if
+		if long(data) >= 0 and not isnull(long(data)) and long(data) <= ld_price then
+			ld_discperc = (ld_price - double(data)) / ld_price * 100.0
+			setitem(row, "purdiscperc", ld_discperc)
+		elseif long(data) < 0 then
+			messagebox("Discounted Purchase Price Validation!", "Negative Discounted Purchase Price is not acceptable")
+			return 1
+		else
+			messagebox("Discounted Purchase Price Validation!", "Discounted Purchase Price should not be greater than Purchase Price")
+			return 1
+		end if
+		return
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "gcode"
+		if data = "" or isnull(data) then
+			messagebox("Godown Validation", "Value required for Godown in current row")
+		end if
+	case "icatcode"
+		if data = "" or isnull(data) or data = "0" then
+			messagebox("Item Category Validation", "Please give some value for item category.")
+		end if
+	case "packcode"
+		if data = "" or isnull(data) then
+			messagebox("Packing Validation", "Value required for " + upper("Packing") + " in current row")
+		end if
+	case "active"
+		if data = "" or isnull(data) then
+			messagebox("Active Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "refrigrated"
+		if data = "" or isnull(data) then
+			messagebox("Refrigrated Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "saleprice"
+	case "retailprice"
+	case "salediscperc"
+		if data = "" or isnull(data) then
+			messagebox("Sale Disc(%) Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "reorderqty"
+		if data = "" or isnull(data) then
+			messagebox("Reorder Quantity Validation", "Value required for " + upper("Reorder Quantity") + " in current row")
+		end if
+	case "location"
+		if data = "" or isnull(data) then
+			messagebox("Location Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "remarks"
+		if data = "" or isnull(data) then
+			messagebox("Remarks Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "manfcode"
+		if data = "" or isnull(data) then
+			messagebox("Manufacturer Validation", "Value required for " + upper("Manufacturer") + " in current row")
+		end if
+	case "prescribed"
+		if data = "" or isnull(data) then
+			messagebox("Prescribed Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "packunits"
+		if data = "" or isnull(data) then
+			messagebox("Packing Units Validation", "Value required for " + upper("Packing Units") + " in current row")
+		end if
+	case "purprice"
+	case "purdiscperc"
+		if data = "" or isnull(data) then
+			messagebox("Purchase Disc(%) Validation", "Value required for " + upper("Purchase Discount") + " in current row")
+		end if
+	case "optimumqty"
+		if data = "" or isnull(data) then
+			messagebox("Maximum Quantity Validation", "Value required for " + upper("Maximum Quantity") + " in current row")
+		end if
+	case "printable"
+		if data = "" or isnull(data) then
+			messagebox("Printable Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	case "retailprice"
+		if data = "" or isnull(data) then
+			messagebox("Retail Price Validation", "Value required for " + upper("Retail Price") + " in current row")
+		end if
+	case "salestax"
+		if data = "" or isnull(data) then
+			messagebox("Salestax Validation", "Value required for " + upper(dwo.name) + " in current row")
+		end if
+	end choose
+	return 1
+
+// dw_detail.sqlpreview(sqlpreviewfunction request, sqlpreviewtype sqltype, string sqlsyntax, dwbuffer buffer, long row) returns long [event]
+	long ancestorreturnvalue
+	string ls_sql
+	string ls_newsql
+	string ls_sql_part
+	long ll_pos
+	long ll_commacount
+	long ll_commapos
+	ancestorreturnvalue = super::sqlpreview(request, sqltype, sqlsyntax, buffer, row)
+	if sqltype = previewupdate! then
+		ls_sql = sqlsyntax
+		ll_pos = pos(lower(ls_sql), "localitemname = ", 1)
+		if ll_pos > 0 then
+			ls_newsql = mid(ls_sql, 1, ll_pos - 1) + "localitemname = N" + mid(ls_sql, ll_pos + 16)
+		else
+			ls_newsql = ls_sql
+		end if
+		setsqlpreview(ls_newsql)
+	end if
+	return 0
+
+// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
+	choose case dwo.name
+	case "localitemname"
+		f_set_keyboard_local()
+	case else
+		f_set_keyboard_english()
+	end choose
+	return ::message.returnvalue
+
+// dw_detail.losefocus() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::losefocus()
+	f_set_keyboard_english()
+	return ::message.returnvalue
+
+// rb_summary.clicked() returns long [event]
+	return ::message.returnvalue
+
+// rb_detail.clicked() returns long [event]
+	long ll_counter
+	long ll_taborder
+	return ::message.returnvalue
+
+// dw_find.keypressed(keycode key, unsignedlong keyflags) returns long [event]
+	integer li_movement
+	long ll_row
+	long ll_temp
+	long ll_icode
+	long ll_found
+	long ll_format
+	long ll_code
+	long ll_res
+	string sl_columnname
+	string ls_err
+	string ls_errtext
+	s_popup_selection lstr_selection
+	s_datastore lstr_ds
+	if key = keyf3! then
+		ll_icode = gfunc_1("itemsearch", 1)
+		ll_found = parent.parent.parent.id_list.find("code = " + string(ll_icode), 1, parent.parent.parent.id_list.rowcount())
+		if ll_found > 0 then
+			ll_row = ll_found
+			parent.parent.parent.id_list.scrolltorow(ll_row)
+		end if
+	elseif key = keyf6! then
+		lstr_ds.dw = parent.parent.parent.id_list
+		lstr_ds.s_name1 = parent.parent.parent.id_list.dataobject
+		openwithparm(w_popup_comprehensicesearch_selection2, lstr_ds)
+		lstr_selection = message.powerobjectparm
+		if lstr_selection.l_code > 0 then
+			if lstr_selection.l_code2 > 0 then
+				ll_temp = parent.parent.parent.id_list.find("code = " + string(lstr_selection.l_code2), 1, parent.parent.parent.id_list.rowcount())
+				if ll_temp > 0 then
+					ll_row = ll_temp
+					parent.parent.parent.id_list.scrolltorow(ll_row)
+				end if
+			end if
+		else
+			ll_row = 0
+		end if
+	elseif key = keyf8! then
+		ll_icode = gfunc_2("namesearch", 1)
+		ll_found = parent.parent.parent.id_list.find("code = " + string(ll_icode), 1, parent.parent.parent.id_list.rowcount())
+		if ll_found > 0 then
+			ll_row = ll_found
+			parent.parent.parent.id_list.scrolltorow(ll_row)
+		end if
+	elseif key = keyf9! then
+		ll_icode = gfunc_3("criteriasearch", 1)
+		ll_found = parent.parent.parent.id_list.find("code = " + string(ll_icode), 1, parent.parent.parent.id_list.rowcount())
+		if ll_found > 0 then
+			ll_row = ll_found
+			parent.parent.parent.id_list.scrolltorow(ll_row)
+		end if
+	elseif key = keyuparrow! then
+		ll_row = parent.parent.parent.id_list.getrow() - 1
+		parent.parent.parent.id_list.scrollpriorrow()
+	elseif key = keydownarrow! then
+		ll_row = parent.parent.parent.id_list.getrow() + 1
+		parent.parent.parent.id_list.scrollnextrow()
+	elseif key = keypagedown! then
+		parent.parent.parent.id_list.scrollnextpage()
+		ll_row = parent.parent.parent.id_dwcontrol.getrow()
+	elseif key = keypageup! then
+		parent.parent.parent.id_list.scrollpriorpage()
+		ll_row = parent.parent.parent.id_dwcontrol.getrow()
+	elseif key = keyhome! then
+		scrolltorow(1)
+		ll_row = 1
+	elseif key = keyend! then
+		ll_row = parent.parent.parent.id_list.rowcount()
+		scrolltorow(ll_row)
+	elseif key = keyenter! and parent.parent.parent.id_dwcontrol.getselectedrow(0) > 0 then
+		parent.parent.parent.i_editmode = 2
+		parent.parent.parent.tab_retrieve.selectedtab = 1
+		if not isvalid(message) then
+			return 0
+		end if
+		return message.returnvalue
+	end if
+	if ll_row > 0 and ll_row <= parent.parent.parent.id_dwcontrol.rowcount() then
+		parent.parent.parent.id_list.setredraw(false)
+		parent.parent.parent.tab_retrieve.tabpage_detail.enabled = true
+		parent.parent.parent.im_menu.m_file.m_retrieve.enabled = true
+		parent.parent.parent.id_list.selectrow(0, false)
+		parent.parent.parent.id_list.selectrow(ll_row, true)
+		if parent.parent.parent.ii_type = 1 then
+			setitem(1, "find", parent.parent.parent.id_list.getitemstring(ll_row, parent.parent.parent.ii_colindex))
+		elseif parent.parent.parent.ii_type = 3 then
+			setitem(1, "find", trim(string(parent.parent.parent.id_list.getitemdatetime(ll_row, parent.parent.parent.ii_colindex))))
+		else
+			setitem(1, "find", trim(string(parent.parent.parent.id_list.getitemnumber(ll_row, parent.parent.parent.ii_colindex))))
+		end if
+		parent.parent.parent.il_selectedrow = ll_row
+		selecttext(1, len(gettext()))
+		parent.parent.parent.id_list.setredraw(true)
+	end if
+	if key = keyf5! then
+		open(w_select_itemregrequest_deletion_option)
+		ll_format = message.doubleparm
+		ll_res = messagebox("Delete Confirmation", "Are you sure to delete?", question!, yesnocancel!, 2)
+		if ll_format = 1 and ll_res = 1 then
+			if parent.parent.parent.id_list.getrow() > 0 then
+				ll_code = parent.parent.parent.id_list.object.code[parent.parent.parent.id_list.getrow()]
+				SQL DELETE AlternateItemAliasRequest WHERE ItemRegReqCode =:ll_code USING parent.parent.parent.it_transobject;
+				if parent.parent.parent.it_transobject.sqlcode = 0 then
+					SQL DELETE ItemRegRequest WHERE ItemRegReqCode =:ll_code USING parent.parent.parent.it_transobject;
+					if parent.parent.parent.it_transobject.sqlcode = 0 then
+						SQL commit USING parent.parent.parent.it_transobject;
+						messagebox("Deletion", "Deletion of Selected Item Sucessfully Done", information!)
+					else
+						ls_errtext = parent.parent.parent.it_transobject.sqlerrtext
+						SQL rollback USING parent.parent.parent.it_transobject;
+						messagebox("Deletion", "Deletion of Selected Item Aborted, Reasons are:-~r~n" + ls_errtext, stopsign!)
+					end if
+				else
+					ls_errtext = parent.parent.parent.it_transobject.sqlerrtext
+					SQL rollback USING parent.parent.parent.it_transobject;
+					messagebox("Deletion", "Deletion of Selected Alternate Item Aborted, Reasons are:-~r~n" + ls_errtext, stopsign!)
+				end if
+			end if
+		elseif ll_format = 2 and ll_res = 1 then
+			SQL DELETE AlternateItemAliasRequest WHERE ItemRegReqCode IN ( SELECT ItemRegReqCode FROM ItemRegRequest WHERE Sent ='Y' ) USING parent.parent.parent.it_transobject;
+			if parent.parent.parent.it_transobject.sqlcode = 0 then
+				SQL DELETE ItemRegRequest WHERE Sent ='Y' USING parent.parent.parent.it_transobject;
+				if parent.parent.parent.it_transobject.sqlcode = 0 then
+					SQL commit USING parent.parent.parent.it_transobject;
+					messagebox("Deletion", "Deletion of Sent Items Sucessfully Done", information!)
+				else
+					ls_errtext = parent.parent.parent.it_transobject.sqlerrtext
+					SQL rollback USING parent.parent.parent.it_transobject;
+					messagebox("Deletion", "Deletion of Sent Items Aborted, Reasons are:-~r~n" + ls_errtext)
+				end if
+			else
+				ls_errtext = parent.parent.parent.it_transobject.sqlerrtext
+				SQL rollback USING parent.parent.parent.it_transobject;
+				messagebox("Deletion", "Deletion of Sent Alternate Items Aborted, Reasons are:-~r~n" + ls_errtext)
+			end if
+		elseif ll_format = 3 and ll_res = 1 then
+			SQL DELETE AlternateItemAliasRequest WHERE ItemRegReqCode IN ( SELECT ItemRegReqCode FROM ItemRegRequest WHERE ICode > 0 ) USING parent.parent.parent.it_transobject;
+			if parent.parent.parent.it_transobject.sqlcode = 0 then
+				SQL DELETE ItemRegRequest WHERE ICode > 0 USING parent.parent.parent.it_transobject;
+				if parent.parent.parent.it_transobject.sqlcode = 0 then
+					SQL commit USING parent.parent.parent.it_transobject;
+					messagebox("Deletion", "Deletion of Accepted/Defined Items Sucessfully Done", information!)
+				else
+					ls_errtext = parent.parent.parent.it_transobject.sqlerrtext
+					SQL rollback USING parent.parent.parent.it_transobject;
+					messagebox("Deletion", "Deletion of Accepted/Defined Items Aborted, Reasons are:-~r~n" + ls_errtext)
+				end if
+			else
+				ls_errtext = parent.parent.parent.it_transobject.sqlerrtext
+				SQL rollback USING parent.parent.parent.it_transobject;
+				messagebox("Deletion", "Deletion of Accepted/Defined Alternate Items Aborted, Reasons are:-~r~n" + ls_errtext)
+			end if
+		end if
+	end if
+	if not isvalid(message) then
+		return 0
+	end if
+	return message.returnvalue

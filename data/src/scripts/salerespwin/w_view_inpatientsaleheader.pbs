@@ -1,12 +1,12 @@
 // window w_view_inpatientsaleheader (salerespwin)  ancestor: window
 
-// w_view_inpatientsaleheader.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// w_view_inpatientsaleheader.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		postevent("ue_close")
 	end if
 	return ::message.returnvalue
 
-// w_view_inpatientsaleheader.ue_close() returns integer
+// w_view_inpatientsaleheader.ue_close() returns integer [event]
 	long ll_currrow
 	string[] ls_values
 	s_dw_header ls_dw_header
@@ -68,18 +68,18 @@
 	end if
 	return ll_retflag
 
-// w_view_inpatientsaleheader.create() returns 0
+// w_view_inpatientsaleheader.create() returns 0 [event]
 	this.cb_ok = create cb_ok
 	this.cb_cancel = create cb_cancel
 	this.dw_viewheader = create dw_viewheader
 	this.control = {this.cb_ok, this.cb_cancel, this.dw_viewheader}
 
-// w_view_inpatientsaleheader.destroy() returns 0
+// w_view_inpatientsaleheader.destroy() returns 0 [event]
 	destroy this.cb_ok
 	destroy this.cb_cancel
 	destroy this.dw_viewheader
 
-// w_view_inpatientsaleheader.open() returns long
+// w_view_inpatientsaleheader.open() returns long [event]
 	long ll_row
 	long ll_currrow
 	long ll_counter
@@ -217,42 +217,42 @@
 	end if
 	return message.returnvalue
 
-// w_view_inpatientsaleheader.close() returns long
+// w_view_inpatientsaleheader.close() returns long [event]
 	return ::message.returnvalue
 
-// w_view_inpatientsaleheader.closequery() returns long
+// w_view_inpatientsaleheader.closequery() returns long [event]
 	return ::message.returnvalue
 
-// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long
+// cb_ok.ue_enterkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		triggerevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	parent.post event ue_close()
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	s_dw_header ls_dw_header
 	ls_dw_header.i_closemode = -1
 	closewithreturn(parent, ls_dw_header)
 	return ::message.returnvalue
 
-// dw_viewheader.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// dw_viewheader.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyescape! then
 		parent.postevent("ue_close")
 	end if
 	return ::message.returnvalue
 
-// dw_viewheader.ue_enterkey() returns long
+// dw_viewheader.ue_enterkey() returns long [event]
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_viewheader.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_viewheader.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	integer li_res
 	integer rt_code
 	return ::message.returnvalue
 
-// dw_viewheader.itemerror(long row, dwobject dwo, string data) returns long
+// dw_viewheader.itemerror(long row, dwobject dwo, string data) returns long [event]
 	return 1

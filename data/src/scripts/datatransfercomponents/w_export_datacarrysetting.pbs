@@ -1,6 +1,6 @@
 // window w_export_datacarrysetting (datatransfercomponents)  ancestor: window
 
-// w_export_datacarrysetting.ue_postopen() returns 0
+// w_export_datacarrysetting.ue_postopen() returns 0 [event]
 	this.dw_datacarry.settransobject(sqlca)
 	this.dw_datacarry.retrieve(0)
 	this.dw_datacarry.scrolltorow(0)
@@ -11,7 +11,7 @@
 	end if
 	this.dw_datacarry.setfocus()
 
-// w_export_datacarrysetting.ue_close() returns 0
+// w_export_datacarrysetting.ue_close() returns 0 [event]
 	closewithreturn(this, this.istr_arguments)
 
 // w_export_datacarrysetting.wf_setvisibility() returns long
@@ -159,20 +159,20 @@
 	end if
 	return 0
 
-// w_export_datacarrysetting.create() returns 0
+// w_export_datacarrysetting.create() returns 0 [event]
 	this.st_1 = create st_1
 	this.dw_datacarry = create dw_datacarry
 	this.cb_cancel = create cb_cancel
 	this.cb_ok = create cb_ok
 	this.control = {this.st_1, this.dw_datacarry, this.cb_cancel, this.cb_ok}
 
-// w_export_datacarrysetting.destroy() returns 0
+// w_export_datacarrysetting.destroy() returns 0 [event]
 	destroy this.st_1
 	destroy this.dw_datacarry
 	destroy this.cb_cancel
 	destroy this.cb_ok
 
-// w_export_datacarrysetting.open() returns long
+// w_export_datacarrysetting.open() returns long [event]
 	long ll_win_width
 	long ll_win_height
 	long ll_width
@@ -191,13 +191,13 @@
 	post event ue_postopen()
 	return ::message.returnvalue
 
-// dw_datacarry.ue_enterkey() returns long
+// dw_datacarry.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_datacarry.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_datacarry.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::itemchanged(row, dwo, data)
 	choose case dwo.name
@@ -296,7 +296,7 @@
 	end choose
 	return 0
 
-// dw_datacarry.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// dw_datacarry.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	long ancestorreturnvalue
 	integer rt_code
 	long ll_counter
@@ -333,12 +333,12 @@
 	setfocus()
 	return rt_code
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.istr_arguments.i_status = -1
 	parent.post event ue_close()
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	string ls_connsetting
 	string ls_errtext
 	char lc_basicdata

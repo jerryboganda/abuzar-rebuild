@@ -1,8 +1,54 @@
 // menu m_incentivessheet (incentivesheet)  ancestor: m_multi_entry
 
-// m_incentivessheet.create() returns 0
+// m_incentivessheet.create() returns 0 [event]
 	m_incentivessheet = this
 	call super::create
 
-// m_incentivessheet.destroy() returns 0
+// m_incentivessheet.destroy() returns 0 [event]
+	call super::destroy
+
+// m_file.create() returns 0 [event]
+	call super::create
+	this.m_setserverdate = create m_setserverdate
+	this.m_generatepurchaseincentivesheet = create m_generatepurchaseincentivesheet
+	this.m_generatesaleincentivesheet = create m_generatesaleincentivesheet
+	this.item[upperbound(this.item) + 1] = this.m_setserverdate
+	this.item[upperbound(this.item) + 1] = this.m_generatepurchaseincentivesheet
+	this.item[upperbound(this.item) + 1] = this.m_generatesaleincentivesheet
+
+// m_file.destroy() returns 0 [event]
+	call super::destroy
+	destroy this.m_setserverdate
+	destroy this.m_generatepurchaseincentivesheet
+	destroy this.m_generatesaleincentivesheet
+
+// m_setserverdate.create() returns 0 [event]
+	call super::create
+	this.visible = false
+	this.text = "Set Server Date"
+	this.checked = true
+
+// m_setserverdate.destroy() returns 0 [event]
+	call super::destroy
+
+// m_generatepurchaseincentivesheet.create() returns 0 [event]
+	call super::create
+	this.text = "Generate Purchase Incentive Sheet~tF11"
+	this.shortcut = 122
+
+// m_generatepurchaseincentivesheet.destroy() returns 0 [event]
+	call super::destroy
+
+// m_generatepurchaseincentivesheet.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_gen_pur_incentive_sheet()
+
+// m_generatesaleincentivesheet.clicked() returns 0 [event]
+	this.parentwindow.dynamic wf_gen_sale_incentive_sheet()
+
+// m_generatesaleincentivesheet.create() returns 0 [event]
+	call super::create
+	this.text = "Generate Sale Incentive Sheet~tF12"
+	this.shortcut = 123
+
+// m_generatesaleincentivesheet.destroy() returns 0 [event]
 	call super::destroy

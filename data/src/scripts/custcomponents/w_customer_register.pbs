@@ -1,12 +1,12 @@
 // window w_customer_register (custcomponents)  ancestor: window
 
-// w_customer_register.ue_close(integer ai_status) returns 0
+// w_customer_register.ue_close(integer ai_status) returns 0 [event]
 	if ai_status = -1 then
 		setnull(this.is_aliasname)
 	end if
 	closewithreturn(this, this.is_aliasname)
 
-// w_customer_register.ue_postopen() returns 0
+// w_customer_register.ue_postopen() returns 0 [event]
 	integer li_rtncode
 	integer li_xpos
 	integer li_ypos
@@ -190,18 +190,18 @@
 	end if
 	return b_flag
 
-// w_customer_register.create() returns 0
+// w_customer_register.create() returns 0 [event]
 	this.cb_cancel = create cb_cancel
 	this.cb_ok = create cb_ok
 	this.dw_control = create dw_control
 	this.control = {this.cb_cancel, this.cb_ok, this.dw_control}
 
-// w_customer_register.destroy() returns 0
+// w_customer_register.destroy() returns 0 [event]
 	destroy this.cb_cancel
 	destroy this.cb_ok
 	destroy this.dw_control
 
-// w_customer_register.open() returns long
+// w_customer_register.open() returns long [event]
 	long ll_row
 	long ll_width
 	long ll_height
@@ -217,23 +217,23 @@
 	post event ue_postopen()
 	return ::message.returnvalue
 
-// cb_cancel.ue_keydown(keycode key, unsignedlong keyflags) returns long
+// cb_cancel.ue_keydown(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		postevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.post event ue_close(-1)
 	return ::message.returnvalue
 
-// cb_ok.ue_keydown(keycode key, unsignedlong keyflags) returns long
+// cb_ok.ue_keydown(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		postevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	long ll_primarykey
 	long ll_row
 	long ll_counter
@@ -495,11 +495,11 @@
 	setpointer(arrow!)
 	return ::message.returnvalue
 
-// dw_control.ue_enterkey() returns long
+// dw_control.ue_enterkey() returns long [event]
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_control.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_control.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	choose case dwo.name
 	case "accounts_aliasname"
 		if parent.wf_duplicatealiasname(data) then
@@ -508,13 +508,13 @@
 	end choose
 	return ::message.returnvalue
 
-// dw_control.itemerror(long row, dwobject dwo, string data) returns long
+// dw_control.itemerror(long row, dwobject dwo, string data) returns long [event]
 	choose case dwo.name
 	case "accounts_aliasname"
 		messagebox("Custmer Alias Name Validation", "Customer Alias Name Duplication Error~r~nPlease enter some other Alias Name")
 	end choose
 	return 1
 
-// dw_control.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_control.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	selecttext(1, len(gettext()))
 	return ::message.returnvalue

@@ -168,7 +168,7 @@
 	end if
 	return ls_fiscalinvoiceno
 
-// w_preview_invoices2.create() returns 0
+// w_preview_invoices2.create() returns 0 [event]
 	this.cb_printsetup = create cb_printsetup
 	this.cb_hidevisible = create cb_hidevisible
 	this.cb_orientation = create cb_orientation
@@ -181,7 +181,7 @@
 	this.cb_ok = create cb_ok
 	this.control = {this.cb_printsetup, this.cb_hidevisible, this.cb_orientation, this.cb_saveexcel, this.cb_filter, this.cb_sort, this.cb_saveas, this.dw_preview, this.cb_cancel, this.cb_ok}
 
-// w_preview_invoices2.destroy() returns 0
+// w_preview_invoices2.destroy() returns 0 [event]
 	destroy this.cb_printsetup
 	destroy this.cb_hidevisible
 	destroy this.cb_orientation
@@ -193,7 +193,7 @@
 	destroy this.cb_cancel
 	destroy this.cb_ok
 
-// w_preview_invoices2.open() returns long
+// w_preview_invoices2.open() returns long [event]
 	long cll_buttondiff
 	long ll_win_width
 	long ll_win_height
@@ -282,29 +282,29 @@
 	end if
 	return message.returnvalue
 
-// w_preview_invoices2.key(keycode key, unsignedlong keyflags) returns long
+// w_preview_invoices2.key(keycode key, unsignedlong keyflags) returns long [event]
 	if keydown(keyescape!) then
 		this.cb_cancel.postevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_printsetup.clicked() returns long
+// cb_printsetup.clicked() returns long [event]
 	openwithparm(w_printer, parent.dw_preview)
 	return ::message.returnvalue
 
-// cb_hidevisible.clicked() returns long
+// cb_hidevisible.clicked() returns long [event]
 	parent.wf_visible()
 	return ::message.returnvalue
 
-// cb_orientation.clicked() returns long
+// cb_orientation.clicked() returns long [event]
 	parent.wf_changeorientation()
 	return ::message.returnvalue
 
-// cb_saveexcel.clicked() returns long
+// cb_saveexcel.clicked() returns long [event]
 	parent.wf_saveasexcel()
 	return ::message.returnvalue
 
-// cb_filter.clicked() returns long
+// cb_filter.clicked() returns long [event]
 	string ls_null
 	setnull(ls_null)
 	parent.dw_preview.scrolltorow(0)
@@ -313,7 +313,7 @@
 	parent.dw_preview.groupcalc()
 	return ::message.returnvalue
 
-// cb_sort.clicked() returns long
+// cb_sort.clicked() returns long [event]
 	string ls_null
 	setnull(ls_null)
 	parent.dw_preview.setsort(ls_null)
@@ -321,11 +321,11 @@
 	parent.dw_preview.groupcalc()
 	return ::message.returnvalue
 
-// cb_saveas.clicked() returns long
+// cb_saveas.clicked() returns long [event]
 	parent.dw_preview.saveas()
 	return ::message.returnvalue
 
-// dw_preview.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// dw_preview.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyhome! then
 		scrolltorow(0)
 	elseif key = keyend! then
@@ -333,7 +333,7 @@
 	end if
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	s_datastore lstr
 	lstr.i_closemode = -1
 	SQL update SaleLedger SET ReprintingCounter =ISNULL ( SaleLedger.ReprintingCounter , 0 ) - 1 FROM SaleLedger , Customer C , Area A , SubArea SA WHERE SaleLedger.SaleInvCode BETWEEN :parent.istr_arg.l_code1 AND :parent.istr_arg.l_code2 AND SaleLedger.Posted ='Y' AND SaleLedger.SaleTypeCode IN ( ( SELECT Code FROM DBO.udf_StringToTabl ( :parent.istr_arg.s_name5 , ',' ) ) ) AND SaleLedger.CustCode =C.CustCode AND C.AreaCode =A.AreaCode AND C.SubAreaCode =SA.SubAreaCode AND A.AreaCode =SA.AreaCode AND SA.SubAreaCode IN ( ( SELECT Code FROM DBO.udf_StringToTabl ( :parent.istr_arg.s_name4 , ',' ) ) ) USING sqlca;
@@ -347,7 +347,7 @@
 	closewithreturn(parent, lstr)
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	integer li_printretcode
 	s_datastore lstr
 	lstr.i_closemode = 1

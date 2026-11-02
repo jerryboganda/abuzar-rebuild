@@ -1,6 +1,6 @@
 // window w_arg_grouping_sperson_period_top (reports)  ancestor: w_listarguments
 
-// w_arg_grouping_sperson_period_top.create() returns 0
+// w_arg_grouping_sperson_period_top.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.st_selectable = create st_selectable
@@ -27,7 +27,7 @@
 	this.control[icurrent + 10] = this.st_8
 	this.control[icurrent + 11] = this.lb_selectablegroup
 
-// w_arg_grouping_sperson_period_top.destroy() returns 0
+// w_arg_grouping_sperson_period_top.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.st_selectable
 	destroy this.st_selected
@@ -41,7 +41,7 @@
 	destroy this.st_8
 	destroy this.lb_selectablegroup
 
-// w_arg_grouping_sperson_period_top.open() returns long
+// w_arg_grouping_sperson_period_top.open() returns long [event]
 	long ancestorreturnvalue
 	long ll_counter
 	long ll_rowcount
@@ -101,13 +101,62 @@
 	end if
 	return message.returnvalue
 
-// lb_selectedgroup.ue_keypressed(keycode key, unsignedlong keyflags) returns long
+// cb_ok.clicked() returns long [event]
+	long ancestorreturnvalue
+	long ll_count
+	long ll_counter
+	long ll_temp
+	long ll_innercounter
+	long ll_found
+	string ls_temp
+	ancestorreturnvalue = super::clicked()
+	if parent.cbx_all.checked = true then
+		for ll_counter = 1 to parent.idc_categories.rowcount()
+			parent.istr_arg.ia_integerlist[ll_counter] = parent.idc_categories.getitemnumber(ll_counter, parent.is_childcolname)
+		next
+	else
+		parent.istr_arg.ia_integerlist[1] = -1000
+		for ll_counter = 1 to ll_counter
+			ll_found = parent.idc_categories.find("name ='" + parent.lb_selectedcategories.text(ll_counter) + "'", 1, parent.idc_categories.rowcount())
+			if ll_found > 0 then
+				parent.istr_arg.ia_integerlist[ll_counter] = parent.idc_categories.getitemnumber(ll_found, parent.is_childcolname)
+			end if
+		next
+	end if
+	if parent.cbx_allgroup.checked = true then
+		for ll_counter = 1 to parent.idc_child.rowcount()
+			parent.istr_arg.ia_integerlist1[ll_counter] = parent.idc_child.getitemnumber(ll_counter, "salesmancode")
+		next
+	else
+		parent.istr_arg.ia_integerlist1[1] = -1000
+		for ll_counter = 1 to ll_counter
+			ll_found = parent.idc_child.find("name ='" + parent.lb_selectedgroup.text(ll_counter) + "'", 1, parent.idc_child.rowcount())
+			if ll_found > 0 then
+				parent.istr_arg.ia_integerlist1[ll_counter] = parent.idc_child.getitemnumber(ll_found, "salesmancode")
+			end if
+		next
+	end if
+	parent.istr_arg.l_code1 = long(parent.em_top_n.text)
+	if parent.istr_arg.l_code1 <= 0 or isnull(parent.istr_arg.l_code1) then
+		messagebox("Number of Customer Validation!", "Please enter valid value")
+		parent.em_top_n.setfocus()
+		return ::message.returnvalue
+	end if
+	parent.em_startdate.getdata(parent.istr_arg.d_sdate)
+	parent.em_enddate.getdata(parent.istr_arg.d_edate)
+	parent.istr_arg.i_supress = parent.cbx_supress.checked
+	parent.istr_arg.i_hide = parent.cbx_hide.checked
+	parent.istr_arg.i_status = 1
+	parent.post event ue_close(1)
+	return ::message.returnvalue
+
+// lb_selectedgroup.ue_keypressed(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		post event doubleclicked(selectedindex())
 	end if
 	return ::message.returnvalue
 
-// lb_selectedgroup.doubleclicked(integer index) returns long
+// lb_selectedgroup.doubleclicked(integer index) returns long [event]
 	string ls_item
 	long ll_selectedindex
 	ll_selectedindex = selectedindex()
@@ -125,22 +174,22 @@
 	end if
 	return ::message.returnvalue
 
-// lb_selectedgroup.getfocus() returns long
+// lb_selectedgroup.getfocus() returns long [event]
 	selectitem(0)
 	selectitem(1)
 	return ::message.returnvalue
 
-// em_top_n.ue_enterkey() returns long
+// em_top_n.ue_enterkey() returns long [event]
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// lb_selectablegroup.ue_keypress(keycode key, unsignedlong keyflags) returns long
+// lb_selectablegroup.ue_keypress(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		post event doubleclicked(selectedindex())
 	end if
 	return ::message.returnvalue
 
-// lb_selectablegroup.doubleclicked(integer index) returns long
+// lb_selectablegroup.doubleclicked(integer index) returns long [event]
 	string ls_item
 	long ll_selectedindex
 	ls_item = string(selecteditem())
@@ -162,7 +211,7 @@
 	end if
 	return ::message.returnvalue
 
-// lb_selectablegroup.getfocus() returns long
+// lb_selectablegroup.getfocus() returns long [event]
 	selectitem(0)
 	selectitem(1)
 	return ::message.returnvalue

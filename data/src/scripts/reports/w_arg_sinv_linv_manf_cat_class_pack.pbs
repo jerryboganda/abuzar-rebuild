@@ -1,6 +1,6 @@
 // window w_arg_sinv_linv_manf_cat_class_pack (reports)  ancestor: w_arguements
 
-// w_arg_sinv_linv_manf_cat_class_pack.create() returns 0
+// w_arg_sinv_linv_manf_cat_class_pack.create() returns 0 [event]
 	integer icurrent
 	call super::create
 	this.gb_2 = create gb_2
@@ -17,7 +17,7 @@
 	this.control[icurrent + 5] = this.rb_class
 	this.control[icurrent + 6] = this.rb_packing
 
-// w_arg_sinv_linv_manf_cat_class_pack.destroy() returns 0
+// w_arg_sinv_linv_manf_cat_class_pack.destroy() returns 0 [event]
 	call super::destroy
 	destroy this.gb_2
 	destroy this.st_4
@@ -26,7 +26,7 @@
 	destroy this.rb_class
 	destroy this.rb_packing
 
-// w_arg_sinv_linv_manf_cat_class_pack.open() returns long
+// w_arg_sinv_linv_manf_cat_class_pack.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.dw_control.settransobject(sqlca)
@@ -37,6 +37,41 @@
 	this.dw_price.scrolltorow(0)
 	return ::message.returnvalue
 
-// w_arg_sinv_linv_manf_cat_class_pack.ue_close(integer ai_stauts) returns 0
+// w_arg_sinv_linv_manf_cat_class_pack.ue_close(integer ai_stauts) returns 0 [event]
 	super::ue_close(ai_stauts)
 	closewithreturn(this, this.istr_arg)
+
+// dw_price.ue_enterkey() returns long [event]
+	send(handle(this), 256, 9, long(90))
+	return 1
+
+// cb_cancel.clicked() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked()
+	parent.post event ue_close(-1)
+	return ::message.returnvalue
+
+// cb_ok.clicked() returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::clicked()
+	parent.istr_arg.l_code1 = parent.dw_control.getitemnumber(1, "sinvcode")
+	parent.istr_arg.l_code2 = parent.dw_control.getitemnumber(1, "linvcode")
+	if parent.istr_arg.l_code1 > parent.istr_arg.l_code2 then
+		messagebox("Range Validation", "Starting Document Code must be lesser or equal to Ending Document Code")
+		parent.dw_control.setfocus()
+		parent.dw_control.setcolumn("sinvcode")
+		return ::message.returnvalue
+	end if
+	parent.istr_arg.l_code3 = parent.dw_price.getitemnumber(1, "price")
+	if parent.rb_manf.checked = true then
+		parent.istr_arg.s_name1 = "M"
+	elseif parent.rb_category.checked = true then
+		parent.istr_arg.s_name1 = "C"
+	elseif parent.rb_class.checked = true then
+		parent.istr_arg.s_name1 = "L"
+	elseif parent.rb_packing.checked = true then
+		parent.istr_arg.s_name1 = "P"
+	end if
+	parent.istr_arg.i_status = 1
+	parent.post event ue_close(1)
+	return ::message.returnvalue

@@ -1,12 +1,12 @@
 // window w_contactcard_quick (contactmanagement)  ancestor: window
 
-// w_contactcard_quick.ue_close(integer ai_status) returns 0
+// w_contactcard_quick.ue_close(integer ai_status) returns 0 [event]
 	if ai_status = -1 then
 		setnull(this.il_code)
 	end if
 	closewithreturn(this, this.il_code)
 
-// w_contactcard_quick.ue_postopen() returns 0
+// w_contactcard_quick.ue_postopen() returns 0 [event]
 	boolean lb_wardcode_enabled
 	string ls_custcode
 	long ll_custcode
@@ -156,20 +156,20 @@
 	end if
 	return 0
 
-// w_contactcard_quick.create() returns 0
+// w_contactcard_quick.create() returns 0 [event]
 	this.dw_print = create dw_print
 	this.cb_cancel = create cb_cancel
 	this.cb_ok = create cb_ok
 	this.dw_detail = create dw_detail
 	this.control = {this.dw_print, this.cb_cancel, this.cb_ok, this.dw_detail}
 
-// w_contactcard_quick.destroy() returns 0
+// w_contactcard_quick.destroy() returns 0 [event]
 	destroy this.dw_print
 	destroy this.cb_cancel
 	destroy this.cb_ok
 	destroy this.dw_detail
 
-// w_contactcard_quick.open() returns long
+// w_contactcard_quick.open() returns long [event]
 	long ll_row
 	long ll_width
 	long ll_height
@@ -192,23 +192,23 @@
 	this.dw_detail.setcolumn("mobile")
 	return ::message.returnvalue
 
-// cb_cancel.ue_keydown(keycode key, unsignedlong keyflags) returns long
+// cb_cancel.ue_keydown(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		postevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_cancel.clicked() returns long
+// cb_cancel.clicked() returns long [event]
 	parent.post event ue_close(-1)
 	return ::message.returnvalue
 
-// cb_ok.ue_keydown(keycode key, unsignedlong keyflags) returns long
+// cb_ok.ue_keydown(keycode key, unsignedlong keyflags) returns long [event]
 	if key = keyenter! then
 		postevent(clicked!)
 	end if
 	return ::message.returnvalue
 
-// cb_ok.clicked() returns long
+// cb_ok.clicked() returns long [event]
 	long ll_primarykey
 	long ll_row
 	long ll_usercode
@@ -298,7 +298,7 @@
 	setpointer(arrow!)
 	return ::message.returnvalue
 
-// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long
+// dw_detail.itemchanged(long row, dwobject dwo, string data) returns long [event]
 	long ancestorreturnvalue
 	long ll_retcode
 	ancestorreturnvalue = super::itemchanged(row, dwo, data)
@@ -315,7 +315,7 @@
 	end choose
 	return ll_retcode
 
-// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long
+// dw_detail.itemfocuschanged(long row, dwobject dwo) returns long [event]
 	long ancestorreturnvalue
 	string ls_col
 	ancestorreturnvalue = super::itemfocuschanged(row, dwo)
@@ -327,7 +327,7 @@
 	end if
 	return ::message.returnvalue
 
-// dw_detail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long
+// dw_detail.ue_dwnkey(keycode key, unsignedlong keyflags) returns long [event]
 	long ancestorreturnvalue
 	s_datastore lstr_ds
 	s_popup_selection lstr_selection
@@ -358,13 +358,13 @@
 	end if
 	return message.returnvalue
 
-// dw_detail.ue_enterkey() returns long
+// dw_detail.ue_enterkey() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::ue_enterkey()
 	send(handle(this), 256, 9, long(90))
 	return 1
 
-// dw_detail.getfocus() returns long
+// dw_detail.getfocus() returns long [event]
 	string ls_col
 	ls_col = getcolumnname()
 	if ls_col = "mobile" then

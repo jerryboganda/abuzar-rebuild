@@ -1,34 +1,34 @@
 // window w_doctor_form (singleentry)  ancestor: w_single_entry
 
-// w_doctor_form.ue_newform() returns 0
+// w_doctor_form.ue_newform() returns 0 [event]
 	call super::ue_newform
 
-// w_doctor_form.create() returns 0
+// w_doctor_form.create() returns 0 [event]
 	call super::create
 
-// w_doctor_form.destroy() returns 0
+// w_doctor_form.destroy() returns 0 [event]
 	call super::destroy
 	if isvalid(this.menuid) then
 		destroy this.menuid
 	end if
 
-// w_doctor_form.activate() returns long
+// w_doctor_form.activate() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::activate()
 	this.windowstate = maximized!
 	setredraw(true)
 	return ::message.returnvalue
 
-// w_doctor_form.ue_save() returns 0
+// w_doctor_form.ue_save() returns 0 [event]
 	call super::ue_save
 
-// w_doctor_form.open() returns long
+// w_doctor_form.open() returns long [event]
 	long ancestorreturnvalue
 	ancestorreturnvalue = super::open()
 	this.is_tablename = "doctors"
 	return ::message.returnvalue
 
-// w_doctor_form.ue_postopen() returns 0
+// w_doctor_form.ue_postopen() returns 0 [event]
 	long ll_counter
 	datawindowchild ldc_headerno
 	call super::ue_postopen
@@ -39,3 +39,16 @@
 		ldc_headerno.setitem(ll_counter, "name", gds_reoprtheaderinfo.object.clientname[ll_counter])
 		ldc_headerno.setitem(ll_counter, "headeralias", gds_reoprtheaderinfo.object.remarks[ll_counter])
 	next
+
+// dw_detail.itemerror(long row, dwobject dwo, string data) returns long [event]
+	long ancestorreturnvalue
+	ancestorreturnvalue = super::itemerror(row, dwo, data)
+	choose case dwo.name
+	case "name"
+		if data = "" or isnull(data) then
+			messagebox("Name Validation", "Value required for " + upper(dwo.name) + " in current row")
+		else
+			messagebox("Name Validation", "~t~tThe First letter of  ~"" + data + "~"~t~t~r~n should be Alphabet")
+		end if
+	end choose
+	return 1
