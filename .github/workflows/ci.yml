@@ -35,3 +35,43 @@ jobs:
           psql -At -c "select 'tables', count(*) from information_schema.tables where table_schema='dbo' and table_type='BASE TABLE'"
           psql -At -c "select 'columns', count(*) from information_schema.columns where table_schema='dbo'"
           psql -At -c "select 'foreign keys', count(*) from information_schema.table_constraints where constraint_schema='dbo' and constraint_type='FOREIGN KEY'"
+
+  server:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: trader
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:ci@localhost:5432/trader
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: ci
+      PGDATABASE: trader
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Load schema
+        run: for f in db/pg/[0-9]*.sql; do PGOPTIONS="-c client_min_messages=warning" psql -q -v ON_ERROR_STOP=1 -f "$f"; done
+      - run: cargo test --workspace
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Unit tests
+        run: node --test web/tests/
+      - name: Parse every recovered routine
+        run: node web/tools/parse-corpus.ts data/src/scripts
