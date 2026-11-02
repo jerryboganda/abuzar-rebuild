@@ -791,8 +791,8 @@ export class Runtime {
         const idx: unknown[] = []
         for (const x of target.i) idx.push(await this.eval(x, f))
         let base = await this.eval(target.o, f)
-        if (base === null || base === undefined) {
-          // auto-create arrays on first assignment
+        // auto-create arrays on first assignment (also where the member of a structure holds a placeholder instead of an array)
+        if (base === null || base === undefined || (!(base instanceof PBArray) && !(base as Member | undefined)?.pbSetIndex)) {
           base = new PBArray('any')
           await this.assign(target.o, base, f)
         }
