@@ -42,6 +42,10 @@ if (ci) {
   L.push(`- translated procedures that run with neutral arguments: ${fmt(ci.procedures)}`)
   L.push(`- windows opened without a runtime error (retried with the usual Message.StringParm codes): ${fmt(ci.windows)}`)
   L.push(`- start-up with the first administrator: ${ci.startup ?? 'not measured'}`)
+  const mm = ci.main_menu as unknown as { visible: number; of: number; top_visible: number; top: number } | null
+  if (mm) L.push(`- main menu after the rights were applied (headless run): ${mm.visible} of ${mm.of} items visible, ${mm.top_visible} of ${mm.top} top-level menus`)
+  const br = ci.browser as unknown as { menu_bar: string | null; toolbar_buttons: number | null; sample: number | null; opened: number | null; exceptions: number | null; errors: number | null } | null
+  if (br && br.sample) L.push(`- real user interface in Chromium: sign-in, menu bar [${br.menu_bar}], ${br.toolbar_buttons} toolbar buttons; a sample of ${br.sample} windows: ${br.opened} opened, ${br.exceptions} raised an exception, ${br.errors} browser errors`)
 }
 L.push('', '## SQL translation (PostgreSQL 17)')
 if (stmts) {
