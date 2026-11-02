@@ -148,7 +148,16 @@ if (shots && observed) {
     const titles = await page.evaluate(() => [...document.querySelectorAll('.pbwin .ttl')].map((t) => t.textContent.trim()).join(' ; '))
     // message boxes that were open (script errors show up as "Application error" boxes): what the user would have seen
     const boxes = await page.evaluate(() => [...document.querySelectorAll('.msgbox')].map((b) => ((b.querySelector('.ttl')?.textContent || '') + ': ' + (b.querySelector('.txt')?.textContent || '')).replace(/\s+/g, ' ').slice(0, 260)).join(' || '))
-    rows.push(`${id}\t${res}\t${titles}\t${path}\t${boxes}`)
+    // what the report window holds (for the reports that opened one): the DataWindow's visibility, rows, preview state
+    const rep = await page.evaluate(() => {
+      const w = window.rt.windowInstances.get('w_reviewreport')
+      const d = w && w.children.get('dw_report')
+      if (!d) return ''
+      const m = d.model
+      const el = [...document.querySelectorAll('.pbwin')].pop()
+      return `dw=${d.props.get('dataobject') || (m && m.name) || ''} visible=${d.props.get('visible')} rows=${m ? m.rowCount() : 'nomodel'} preview=${m ? m.overrides.get('datawindow.print.preview') : ''} dom=${document.querySelectorAll('.dw-preview').length}`
+    })
+    rows.push(`${id}\t${res}\t${titles}\t${path}\t${boxes}\t${rep}`)
     writeFileSync(`${shots}/menu-crawl.tsv`, rows.join('\n') + '\n') // kept up to date: a frozen page must not lose what was seen
     await page.evaluate(async () => {
       for (let i = 0; i < 4; i++) {
