@@ -265,5 +265,6 @@ export function registerSysFuncs(rt: Runtime): void {
 }
 
 /** pixels per PowerBuilder unit (system font cell 6 x 13 pixels: 1 PBU = 1/32 cell width, 1/64 cell height) - calibrate against the original */
-export const PX_PER_PBU_X = 6 / 32
-export const PX_PER_PBU_Y = 13 / 64
+/** measured on the original running on Windows 11 at 96 dpi (Cash Sale window: tab page top + 876 PBU = grid header): 8 x 16 dialog base units */
+export const PX_PER_PBU_X = 8 / 32
+export const PX_PER_PBU_Y = 16 / 64

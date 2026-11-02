@@ -36,8 +36,18 @@ export class NControl extends PBObject {
     return super.pbGet(name)
   }
   override pbSet(name: string, value: unknown): void {
+    const old = name === 'selectedtab' ? toNum(this.props.get('selectedtab') ?? 1) : 0
     super.pbSet(name, value)
     this.changed()
+    // `tab.selectedtab = n` in a script raises the tab events like a click does (the entry windows build their new form that way)
+    if (name === 'selectedtab' && this.native === 'tab') {
+      const n = toNum(value)
+      void (async () => {
+        await this.rt.fire(this, 'selectionchanging', [old, n])
+        await this.rt.fire(this, 'selectionchanged', [old, n])
+        this.changed()
+      })()
+    }
   }
 
   // ---- common window-object methods

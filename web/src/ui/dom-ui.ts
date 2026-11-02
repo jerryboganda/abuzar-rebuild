@@ -279,11 +279,16 @@ export class WinView {
       const tb = document.createElement('div')
       tb.className = 'tbar'
       tb.innerHTML = '<div class="ttl"></div><div class="cls">✕</div>'
-      ;(tb.querySelector('.ttl') as HTMLElement).textContent = str(w, 'title')
+      this.ttlEl = tb.querySelector('.ttl') as HTMLElement
+      this.ttlEl.textContent = str(w, 'title')
       ;(tb.querySelector('.cls') as HTMLElement).onclick = () => void ui.rt.closeWindow(w)
       this.el.appendChild(tb)
       w.onProp = (n) => {
-        if (n === 'title') (tb.querySelector('.ttl') as HTMLElement).textContent = str(w, 'title')
+        if (n === 'title') {
+          this.ttlEl!.textContent = str(w, 'title')
+          if (this.sheet) ui.mdi?.refreshTitle()
+          else this.refreshTitle()
+        }
       }
       if (!isMdi) this.dragify(tb)
     }
@@ -324,8 +329,43 @@ export class WinView {
     })
   }
 
+  ttlEl: HTMLElement | null = null
+  private wasMax = false
+
+  /** a sheet with `windowstate = maximized!` fills the MDI client, has no title bar of its own and shows its title in the frame's */
+  private isMax(): boolean {
+    const s = this.w.props.get('windowstate')
+    return s === 2 || s === 'maximized!'
+  }
+
+  /** frame title: its own title, plus ` - [sheet title]` of the topmost maximized sheet (as Windows draws it) */
+  refreshTitle(): void {
+    if (!this.ttlEl) return
+    const maxed = [...this.ui.views.values()].filter((v) => v.sheet && v.el.classList.contains('max') && v.el.isConnected && !v.el.classList.contains('hidden'))
+    maxed.sort((a, b) => Number(b.el.style.zIndex || 0) - Number(a.el.style.zIndex || 0))
+    this.ttlEl.textContent = str(this.w, 'title') + (maxed[0] ? ' - [' + str(maxed[0].w, 'title') + ']' : '')
+  }
+
   private syncWindow(): void {
     const s = this.el.style
+    if (this.sheet) {
+      const max = this.isMax()
+      this.el.classList.toggle('max', max)
+      if (max !== this.wasMax) {
+        this.wasMax = max
+        this.ui.mdi?.refreshTitle()
+        if (max) {
+          // the window now has the size of the MDI client: scripts that lay out their controls on `resize` get it in PowerBuilder units
+          requestAnimationFrame(() => {
+            const r = this.el.getBoundingClientRect()
+            if (!r.width) return
+            this.w.props.set('width', r.width / toPx(1, 'x'))
+            this.w.props.set('height', r.height / toPx(1, 'y'))
+            void this.ui.rt.fire(this.w, 'resize', [2, this.w.props.get('width'), this.w.props.get('height')])
+          })
+        }
+      }
+    }
     if (Number(this.w.props.get('windowtype')) < 4) {
       s.left = toPx(num(this.w, 'x'), 'x') + 'px'
       s.top = toPx(num(this.w, 'y'), 'y') + 'px'
@@ -360,6 +400,7 @@ export class WinView {
 
   show(): void {
     this.el.classList.remove('hidden')
+    this.syncWindow()
     this.activate()
     // first focus: the control with the lowest tab order
     const first = this.firstFocusable()
@@ -381,7 +422,10 @@ export class WinView {
     for (const v of this.ui.views.values()) v.el.classList.remove('active')
     this.el.classList.add('active')
     this.el.style.zIndex = String(++this.ui.zTop)
-    if (this.sheet) this.ui.mdi?.showMenuFor(this.w)
+    if (this.sheet) {
+      this.ui.mdi?.showMenuFor(this.w)
+      this.ui.mdi?.refreshTitle()
+    }
   }
 
   destroy(): void {
@@ -391,6 +435,7 @@ export class WinView {
       // the menu of the sheet that is on top now (or the frame's)
       const rest = [...this.ui.views.values()].filter((v) => v.sheet && v !== this && v.el.isConnected).sort((a, b) => Number(b.el.style.zIndex || 0) - Number(a.el.style.zIndex || 0))
       this.ui.mdi.showMenuFor(rest[0]?.w ?? null)
+      this.ui.mdi.refreshTitle()
     }
   }
 
@@ -749,9 +794,12 @@ export class WinView {
         strip.className = 'strip'
         const pages: HTMLElement[] = []
         const pageObjs = [...c.children.values()]
-        const select = (n: number) => {
+        const show = (n: number) => {
           pages.forEach((p, i) => (p.style.display = i + 1 === n ? 'block' : 'none'))
           ;[...strip.children].forEach((s, i) => s.classList.toggle('on', i + 1 === n))
+        }
+        const select = (n: number) => {
+          show(n)
           c.props.set('selectedtab', n)
         }
         pageObjs.forEach((po, i) => {
@@ -772,6 +820,8 @@ export class WinView {
         })
         t.prepend(strip)
         select(toNum(c.props.get('selectedtab') ?? 1) || 1)
+        // a script that sets selectedtab switches the page, too
+        ;(c as unknown as { listeners: Set<() => void> }).listeners.add(() => show(toNum(c.props.get('selectedtab') ?? 1) || 1))
         el = t
         break
       }

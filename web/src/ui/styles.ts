@@ -6,6 +6,8 @@ html, body { margin:0; height:100%; overflow:hidden; background:#ababab; font: v
 #desktop { position:absolute; inset:0; overflow:hidden; }
 .pbwin { position:absolute; background:var(--face); border:1px solid #707070; box-shadow:0 2px 12px rgba(0,0,0,.35); display:flex; flex-direction:column; }
 .pbwin.sheet { box-shadow:none; border:1px solid #888; }
+.pbwin.sheet.max { left:0 !important; top:0 !important; width:100% !important; height:100% !important; border:none; }
+.pbwin.sheet.max > .tbar { display:none; }
 .pbwin.active .tbar { background:#0078d7; color:#fff; }
 .tbar { height:30px; flex:0 0 30px; background:#fff; color:#000; display:flex; align-items:center; padding:0 0 0 8px; cursor:default; }
 .pbwin.sheet .tbar { height:22px; flex-basis:22px; }

@@ -31,19 +31,13 @@ export function pbColor(v: number | string | undefined | null, fallback = 'trans
   const u = n >>> 0
   const flag = u >>> 24
   const low = u & 0xffffff
-  if (flag === 0 || (low !== 0 && flag !== 0x20 && flag !== 0x40)) return rgb(low)
-  switch (flag) {
-    case 0x02:
-      return SYSTEM_COLORS.windowText
-    case 0x04:
-      return SYSTEM_COLORS.buttonFace
-    case 0x08:
-      return SYSTEM_COLORS.window
-    case 0x10:
-      return SYSTEM_COLORS.appWorkspace
-    default:
-      return 'transparent' // 0x20 / 0x40: transparent / default
-  }
+  if (flag === 0) return rgb(low)
+  // the flag byte names a system colour; the low bits only hold what the colour was when the object was designed
+  if (flag & 0x20) return 'transparent'
+  if (flag & 0x04) return SYSTEM_COLORS.buttonFace
+  if (flag & 0x02) return SYSTEM_COLORS.windowText
+  if (flag & 0x10) return SYSTEM_COLORS.appWorkspace
+  return SYSTEM_COLORS.window // 0x01 / 0x08 / 0x40: window background
 }
 
 function rgb(bgr: number): string {

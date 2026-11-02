@@ -6,7 +6,9 @@ import { chromium } from 'playwright'
 const base = process.argv[2]
 const stride = Number(process.argv[3] || 14)
 const browser = await chromium.launch()
-const page = await browser.newPage({ viewport: { width: 1366, height: 768 } })
+// the size of the screen the original was compared on: windows lay themselves out from the screen size (GetEnvironment)
+const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } })
+const shots = process.argv[4] || ''
 const errors = []
 let missingFiles = 0
 let current = '(start-up)'
@@ -42,6 +44,30 @@ const frame = await page.evaluate(() => ({
 }))
 console.log(`main window: menu bar [${frame.menuItems.join(' | ')}], ${frame.toolbarButtons} toolbar buttons`)
 
+// screens for the side-by-side comparison with the original (uploaded by the workflow as release assets)
+if (shots) {
+  const { mkdirSync } = await import('node:fs')
+  mkdirSync(shots, { recursive: true })
+  await page.screenshot({ path: `${shots}/main.png` })
+  for (const name of ['w_sale', 'w_sale_modified', 'w_purchase', 'w_item_form', 'w_customer_form', 'w_voucher']) {
+    current = name
+    await page.evaluate(async (n) => {
+      try {
+        await Promise.race([window.__opensheet(n), new Promise((res) => setTimeout(res, 4000))])
+      } catch (e) {
+        /* reported by the page errors */
+      }
+    }, name)
+    await page.waitForTimeout(3500)
+    await page.evaluate(() => document.querySelectorAll('.msgbox .btns button').forEach((b) => b.click()))
+    await page.waitForTimeout(300)
+    await page.screenshot({ path: `${shots}/${name}.png` })
+    await page.evaluate(async (n) => {
+      const w = window.rt.windowInstances.get(n)
+      if (w) await window.rt.closeWindow(w).catch(() => {})
+    }, name)
+  }
+}
 const names = await page.evaluate(async () => {
   const j = await (await fetch('/data/classes/_index.json')).json()
   return Object.keys(j).filter((n) => n.startsWith('w_')).sort()

@@ -121,6 +121,11 @@ async function main(): Promise<void> {
       rt.onError(e)
     }
     // helpers of the browser test (web/e2e/browser-smoke.mjs)
+    ;(window as unknown as Record<string, unknown>).__opensheet = async (name: string) => {
+      const ref = new Ref(() => null, () => {})
+      ref.name = name
+      await rt.sys.get('opensheet')!.fn(rt, [ref, rt.windowInstances.get('w_main')], undefined as never)
+    }
     ;(window as unknown as Record<string, unknown>).__open = async (name: string) => {
       const ref = new Ref(() => null, () => {})
       ref.name = name
