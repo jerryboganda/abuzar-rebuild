@@ -97,6 +97,24 @@ console.log(`start-up ${result.ok ? 'completed' : 'FAILED'} ${result.error}`)
 console.log(`login result ${String(msg?.props.get('doubleparm'))}  user code ${String(rt.globals.get('gl_usercode'))}`)
 console.log(`windows created: ${windows.join(', ') || '-'}`)
 console.log(`response windows closed during start-up: ${dialogs.join(', ') || '-'}`)
+// the main menu after the rights were applied: what the administrator sees
+const mainWin = rt.windowInstances.get('w_main')
+const menu = mainWin?.props.get('menuid') as PBObject | undefined
+if (menu) {
+  let total = 0
+  let shown = 0
+  const walk = (m: PBObject, parentShown: boolean) => {
+    for (const it of m.children.values()) {
+      const vis = parentShown && it.props.get('visible') !== false
+      total++
+      if (vis) shown++
+      walk(it, vis)
+    }
+  }
+  walk(menu, true)
+  const top = [...menu.children.values()]
+  console.log(`main menu: ${shown} of ${total} items visible; top level: ${top.filter((i) => i.props.get('visible') !== false).length} of ${top.length}`)
+} else console.log('main menu: the main window did not open')
 console.log(`message boxes (${boxes.length}):`)
 for (const b of boxes.slice(0, 20)) console.log('  ' + b)
 console.log(`runtime errors (${errors.length}):`)
