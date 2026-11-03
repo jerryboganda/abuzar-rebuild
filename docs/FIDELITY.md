@@ -81,7 +81,7 @@ Every failing retrieve of the CI sweep (run 41563063841, 8616 of 8666 run) was c
 | group | count | verdict |
 |---|---|---|
 | linked-server pass-through (`ddd_access_*`, `ddd_dropbox_*`: `SRV.DB.OWNER.table` built by dynamic SQL, the sweep passes empty names) | 15 | cannot exist on PostgreSQL by design; a data-transfer feature |
-| the original's own statement fails the same way: unknown column (`preferences.terms` x4, `godowndetail.reorderqty` x3, `userattendance.in_datetime`, `dispatchheader.biltynumber`, `salesman.password`), unknown table (`departmentsection`, `clinictest` x2, `balancecategory`), typo alias (`saleledgerl`, `studentservicetemplatedetail` in ORDER BY), ambiguous column (`printbalance`, `headerno`), ORDER BY column outside GROUP BY (`t.name`) | 23 | defects of the original; SQL Server rejects them with the same messages |
+| the original's own statement fails the same way: unknown column (`preferences.terms` x4, `godowndetail.reorderqty` x3, `userattendance.in_datetime`, `dispatchheader.biltynumber`, `salesman.password`), unknown table (`departmentsection`, `clinictest` x2, `balancecategory`), typo alias (`saleledgerl`, `studentservicetemplatedetail` in ORDER BY), ambiguous column (`printbalance`, `headerno`), ORDER BY column outside GROUP BY (`t.name`) | 20 | defects of the original; SQL Server rejects them with the same messages |
 | `ORDER BY :ai_ordercol` (`d_postedsale_for_population`, `..._proformainvoice`) | 2 | SQL Server 2022 rejects it as well (Msg 1008, variable as column position); left as is |
 | the sweep passes `''` / an array where the application passes a date text / a scalar (`d_dashboard_*_drilldown` x7, list arguments x3) | 10 | sweep artefact; SQL Server accepts the statement |
 
