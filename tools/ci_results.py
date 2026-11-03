@@ -33,6 +33,10 @@ m3 = re.search(r'browser errors \(.*?\): (\d+)', log)
 res['browser'] = {'menu_bar': m.group(1) if m else None, 'toolbar_buttons': int(m.group(2)) if m else None,
                   'sample': int(m2.group(1)) if m2 else None, 'opened': int(m2.group(3)) if m2 else None, 'exceptions': int(m2.group(4)) if m2 else None,
                   'errors': int(m3.group(1)) if m3 else None}
+mw = re.search(r'menu walk: (\d+) of (\d+) items opened in (\d+) s; (\d+) did not click', log)
+wd = re.search(r'watchdog: the browser run was still busy after (\d+) minutes, last step: (\S+)', log)
+res['browser']['menu_walk'] = {'opened': int(mw.group(1)), 'of': int(mw.group(2)), 'seconds': int(mw.group(3)), 'not_clicked': int(mw.group(4))} if mw else None
+res['browser']['watchdog'] = {'minutes': int(wd.group(1)), 'last_step': wd.group(2)} if wd else None
 m = re.search(r'^main menu: (\d+) of (\d+) items visible; top level: (\d+) of (\d+)', log, re.M)
 res['main_menu'] = {'visible': int(m.group(1)), 'of': int(m.group(2)), 'top_visible': int(m.group(3)), 'top': int(m.group(4))} if m else None
 json.dump(res, open(out, 'w', encoding='utf-8', newline='\n'), indent=1)

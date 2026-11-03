@@ -47,6 +47,12 @@ if (ci) {
   if (mm) L.push(`- main menu after the rights were applied (headless run): ${mm.visible} of ${mm.of} items visible, ${mm.top_visible} of ${mm.top} top-level menus`)
   const br = ci.browser as unknown as { menu_bar: string | null; toolbar_buttons: number | null; sample: number | null; opened: number | null; exceptions: number | null; errors: number | null } | null
   if (br && br.sample) L.push(`- real user interface in Chromium: sign-in, menu bar [${br.menu_bar}], ${br.toolbar_buttons} toolbar buttons; a sample of ${br.sample} windows: ${br.opened} opened, ${br.exceptions} raised an exception, ${br.errors} browser errors`)
+  else if (br && br.menu_bar) {
+    const b = br as unknown as { menu_walk?: { opened: number; of: number; seconds: number; not_clicked: number } | null; watchdog?: { minutes: number; last_step: string } | null }
+    const walk = b.menu_walk ? `; menu walk: ${b.menu_walk.opened} of ${b.menu_walk.of} items opened in ${b.menu_walk.seconds} s, ${b.menu_walk.not_clicked} did not click` : ''
+    const dog = b.watchdog ? `; the window sample did not finish: the 20-minute watchdog fired at ${b.watchdog.last_step}` : ''
+    L.push(`- real user interface in Chromium: sign-in, menu bar [${br.menu_bar}], ${br.toolbar_buttons} toolbar buttons${walk}${dog}`)
+  }
 }
 L.push('', '## SQL translation (PostgreSQL 17)')
 if (stmts) {
