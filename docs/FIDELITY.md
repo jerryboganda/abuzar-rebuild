@@ -102,3 +102,15 @@ Procedures (the sweep calls each of the 638 once with NULL arguments on the empt
 | `sp_fiscalizesaleinvoice`, `sp_fiscalizesrinvoice`, `sp_init_update_tabmaxkey` | 3 | `sp_OACreate` / `OBJECT_ID(@name)`, as above |
 
 Embedded statements (15 of 1862 fail): 13 fail on the original's database too (missing `script`, `lockers`, `groupitemwise*` tables, `salesman.password`, `customer.code`, `itempacking.icatcode`, `itemcategory.packcode`, `itemclass.catcode`, `issuereqdetail.gcode`; `prescriptionheaderlog` has 15 columns where the statement supplies 16); 2 (`NULL * NULL`, `NULL / NULL` in an UPDATE / INSERT) are artefacts of the sweep's null arguments.
+
+## The windows that do not open bare in the headless smoke (2,046 of 2,062 open, checked 2026-11-04)
+
+The smoke opens every window class with a mock database and a `message.powerobjectparm` that answers 0 / empty text for any field. 16 windows still fail; none is a runtime defect, each reads something its caller normally supplies:
+
+| windows | what they read | why they cannot open bare |
+|---|---|---|
+| `w_alternate_item_aliasname_form`, `w_alternate_item_aliasname_req_form`, `w_item_pricepolicy_form` | `message.powerobjectparm.dw_header` (the caller's header DataWindow), passed to `f_setcolumnstyle` | the argument structure carries a DataWindow reference the smoke cannot invent |
+| `w_graph_series`, `w_select`, `w_printer`, `w_visitprescription`, `w_saleinpurchase`, `w_findwindow` | fields of the argument structure (`datawindow`, `printer`, `bsa`, `icode`, column list) | same: values come from the opening window |
+| `w_entry`, `w_single_entry`, `w_listview_form`, `w_popup_comprehensicesearch_selection(2)`, `w_popup_partialsearch_selection(_acc)` | the search/list DataWindow that a descendant sets before `wf_populate_ddlb` runs | abstract ancestors / popups, never opened without that setup |
+
+An uncommitted edit that made `DataWindow.InsertRow` always fire `ItemFocusChanged` raised the failures to 180 (164 windows reach `w_main.SetMicroHelp` with no `w_main` in the smoke); it was reverted, and the documented rule stays: a grid that another DataWindow's focus has passed by gets no event.
