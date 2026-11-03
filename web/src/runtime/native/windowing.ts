@@ -113,7 +113,15 @@ async function openWin(rt: Runtime, a: unknown[], sheet: boolean, withParm: bool
   w.lastFocusDw = null
   w.focusLive = true
   w.focusOwner = fd
-  if (fd && !fd.destroyed && w.isOpen) await rt.fire(fd, 'getfocus')
+  if (fd && !fd.destroyed && w.isOpen) {
+    await rt.fire(fd, 'getfocus')
+    // the keyboard is in the current cell of that DataWindow (its editor, text selected): the sale promotion starts in `Name`, Refused Sale in the detail grid
+    try {
+      await (rt.ui as { focusDw?: (o: PBObject, fallback?: boolean) => Promise<boolean> } | null)?.focusDw?.(fd, true)
+    } catch {
+      /* a DataWindow without a current cell takes no focus */
+    }
+  }
   if (modal) {
     rt.yieldQueue()
     await w.closed

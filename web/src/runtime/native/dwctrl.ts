@@ -266,9 +266,15 @@ export class NDwBase extends PBObject {
     this.changed()
     // the new row is the current row and its current cell gets the item focus: the entry windows rely on it (dw_itemsdetail.itemfocuschanged sets
     // `editflag`, which `wf_validatedate` returns; ue_newform clears `ib_focusdetail` right before it so that the event does not open the item list)
+    // (a grid that another DataWindow's keyboard focus has passed by gets no event: the Purchase Order sets the focus on its header first and inserts the detail row without opening the item list)
     if (n > 0 && m.colNames.length) {
       if (m.col < 1) m.col = 1
-      await this.fireItemFocus(n, m.colNames[m.col - 1], true)
+      type Win = { lastFocusDw: PBObject | null; focusLive: boolean; focusOwner: PBObject | null }
+      let p: PBObject | null = this.parent
+      while (p && !('lastFocusDw' in p)) p = p.parent
+      const win = p as unknown as Win | null
+      const holder = win ? (win.focusLive ? win.focusOwner : win.lastFocusDw) : null
+      if (holder === null || holder === this) await this.fireItemFocus(n, m.colNames[m.col - 1], true)
     }
     return n
   }

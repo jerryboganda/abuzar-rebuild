@@ -119,10 +119,10 @@ export class DomUi implements UiHost {
     v?.focus()
   }
   /** SetFocus / SelectText on a DataWindow: the current cell and its in-place editor */
-  async focusDw(o: PBObject): Promise<boolean> {
+  async focusDw(o: PBObject, fallback = false): Promise<boolean> {
     const v = this.findView(o)
     if (!v?.dw) return false
-    return v.dw.focusCurrent()
+    return v.dw.focusCurrent(fallback)
   }
   findView(o: PBObject): { focus(): void; dw?: DwView } | undefined {
     for (const wv of this.views.values()) {
@@ -425,7 +425,8 @@ export class WinView {
     this.activate()
     // first focus: the control with the lowest tab order
     const first = this.firstFocusable()
-    if (first) setTimeout(() => first.focus(), 0)
+    // ... unless a script has given the keyboard to a control of this window meanwhile (Refused Sale starts in its detail grid, not in the header's Remarks)
+    if (first) setTimeout(() => { const a = document.activeElement; if (!a || a === document.body || !this.client.contains(a)) first.focus() }, 0)
     void this.ui.rt.fire(this.w, 'activate')
   }
 

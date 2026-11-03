@@ -276,6 +276,7 @@ for (const name of sample) {
     slow.push(`${name} stalled ${secs} s`)
     continue
   }
+  console.log(`  sample ${name}: ${r.ms} ms${r.opened ? '' : ' (not open)'}`)
   if (r.opened) opened++
   if (r.err) {
     thrown++

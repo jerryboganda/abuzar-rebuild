@@ -922,7 +922,7 @@ export class DwView {
    * after `id_detail.selecttext(...)`: the mouse click moves the DOM focus to
    * the list, and the detail editor has to be restored for the item to commit.
    */
-  async focusCurrent(): Promise<boolean> {
+  async focusCurrent(fallback = false): Promise<boolean> {
     await this.ctl.ready
     const m = this.ctl.model
     if (!m || m.row < 1 || m.row > m.rowCount() || m.col < 1) return false
@@ -944,7 +944,21 @@ export class DwView {
       this.editor.select()
       return true
     }
-    if (!cell.classList.contains('editable')) return false
+    if (!cell.classList.contains('editable')) {
+      if (!fallback) return false
+      // a protected current cell (when the window comes up): the keyboard goes to the first column of the tab order that can be edited (the Purchase Order's header starts in AliasName, `Code` is read-only)
+      const order = m.def.objects.filter((x) => x.type === 'column' && num(x, 'tabsequence', 0) > 0).sort((a, b) => num(a, 'tabsequence') - num(b, 'tabsequence'))
+      for (const c of order) {
+        const el = this.cellOf(m.row, c.name)
+        const ci = m.colIndex(c.name)
+        if (el && ci >= 0 && el.classList.contains('editable')) {
+          m.col = ci + 1
+          this.edit(m, c, m.row, el)
+          return true
+        }
+      }
+      return false
+    }
     this.edit(m, o, m.row, cell)
     return true
   }
