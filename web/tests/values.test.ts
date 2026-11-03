@@ -18,7 +18,11 @@ test('number masks', () => {
   assert.equal(formatNumber(1234.5, '###0.00'), '1234.50')
   assert.equal(formatNumber(1234.5, '#,##0.00'), '1,234.50')
   assert.equal(formatNumber(1234567.891, '#,##0.00'), '1,234,567.89')
-  assert.equal(formatNumber(1234567.891, '#,##,##,##0.00'), '12,34,567.89')
+  assert.equal(formatNumber(1234567.891, '#,##,##,##0.00'), '1,234,567.89') // the engine of the original groups by three whatever the commas say
+  assert.equal(formatNumber(1, '###0.##0'), '1.0')
+  assert.equal(formatNumber(1234.567, '###0.##0'), '1234.567')
+  assert.equal(formatNumber(1, '######.##'), '1.')
+  assert.equal(formatNumber(-5.5, '[currency]'), '($5.50)')
   assert.equal(formatNumber(0, '#,##0.00'), '0.00')
   assert.equal(formatNumber(0.5, '#.##'), '.5')
   assert.equal(formatNumber(-5, '0.00'), '-5.00')
@@ -34,7 +38,8 @@ test('dates', () => {
   assert.equal(formatDate(d, 'dddd, d mmmm yy'), 'Monday, 2 November 26')
   assert.equal(d.dow, 2)
   assert.equal(formatTime(PBTime.hms(15, 4, 9), 'hh:mm:ss'), '15:04:09')
-  assert.equal(formatTime(PBTime.hms(15, 4, 9), 'h:mm am/pm'), '3:04 PM')
+  assert.equal(formatTime(PBTime.hms(15, 4, 9), 'h:mm am/pm'), '3:04 pm') // the case of the mask decides
+  assert.equal(formatTime(PBTime.hms(15, 4, 9), 'h:mm AM/PM'), '3:04 PM')
   assert.equal(cmp(PBDate.ymd(1900, 2, 28), PBDate.ymd(1899, 12, 30)), 1)
 })
 

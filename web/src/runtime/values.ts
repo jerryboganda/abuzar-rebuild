@@ -332,16 +332,49 @@ function wrap(n: number, bits: number, signed: boolean): number {
   return r
 }
 
+/** a double as text with 16 significant digits, the last one rounded up from the 17th (1/3 = 0.3333333333333333, 10/3 = 3.333333333333334: the DataWindow engine of the original) */
+function doubleText(v: number): string {
+  if (!Number.isFinite(v)) return String(v)
+  const abs = Math.abs(v)
+  if (abs >= 1e15 || abs < 1e-6) return String(Number(v.toPrecision(15)))
+  const intDigits = abs >= 1 ? Math.floor(Math.log10(abs)) + 1 : 0
+  const places = Math.max(0, 16 - intDigits)
+  const s = Dec.parse(v.toPrecision(17)).round(places).toString()
+  return s.includes('.') ? s.replace(/0+$/, '').replace(/\.$/, '') : s
+}
+
 export function toStr(v: unknown): string {
   if (v === null || v === undefined) return ''
   if (typeof v === 'string') return v
-  if (typeof v === 'number') return Number.isInteger(v) ? String(v) : String(Number(v.toPrecision(15)))
+  if (typeof v === 'number') return Number.isInteger(v) ? String(v) : doubleText(v)
   if (typeof v === 'boolean') return v ? 'TRUE' : 'FALSE'
   if (v instanceof Dec) return v.toString()
-  if (v instanceof PBDate) return formatDate(v, 'dd/mm/yyyy')
+  if (v instanceof PBDate) return formatDate(v, shortDateMask())
   if (v instanceof PBTime) return formatTime(v, 'hh:mm:ss')
-  if (v instanceof PBDateTime) return formatDate(v.date, 'dd/mm/yyyy') + ' ' + formatTime(v.time, 'hh:mm:ss')
+  if (v instanceof PBDateTime) return formatDate(v.date, shortDateMask()) + ' ' + formatTime(v.time, 'hh:mm:ss')
   return String(v)
+}
+
+/**
+ * The order of the regional short date (`11/3/2026` month first, `03/11/2026` day first): String(date), Date('3/11/2026') and `[shortdate]` follow it, like in the original, which
+ * follows the Windows settings. Measured with the DataWindow engine of the original on the reference machine: month first. The page sets it from the locale of the browser.
+ */
+export let dateOrder: 'mdy' | 'dmy' = 'mdy'
+export function setDateOrder(o: 'mdy' | 'dmy'): void {
+  dateOrder = o
+}
+export function shortDateMask(): string {
+  return dateOrder === 'mdy' ? 'm/d/yyyy' : 'dd/mm/yyyy'
+}
+/** the order of the short date of the locale of this runtime (the page of the desktop shell follows the Windows regional settings) */
+export function localeDateOrder(): 'mdy' | 'dmy' {
+  try {
+    const parts = new Intl.DateTimeFormat(undefined).formatToParts(new Date(2026, 10, 3))
+    const at = (t: string) => parts.findIndex((p) => p.type === t)
+    return at('day') < at('month') ? 'dmy' : 'mdy'
+  } catch {
+    return 'mdy'
+  }
 }
 
 // ---------------------------------------------------------------------------------------------- comparison / arithmetic
@@ -444,6 +477,80 @@ export function formatDate(d: PBDate, mask: string): string {
   })
 }
 
+/** a date and a time under one mask (`dd/mm/yyyy hh:mm am/pm`, `dd/mm/yyyy hh:mm ddd`): `mm` is the minute after an hour or before a second, else the month; `am/pm` keeps the case of the mask */
+export function formatDateTime(d: PBDate, t: PBTime, mask: string): string {
+  const [y, mo, day] = civilFromDays(d.n)
+  const ampm = /am\/pm|a\/p/i.test(mask)
+  const h12 = t.h % 12 === 0 ? 12 : t.h % 12
+  const toks = [...mask.matchAll(/yyyy|yy|mmmm|mmm|mm|m|dddd|ddd|dd|d|hh|h|ss|s|fff+|am\/pm|a\/p/gi)]
+  const kind = toks.map((m) => m[0].toLowerCase())
+  let out = ''
+  let at = 0
+  toks.forEach((m, i) => {
+    out += mask.slice(at, m.index)
+    at = (m.index ?? 0) + m[0].length
+    const tok = kind[i]
+    const minute = (tok === 'm' || tok === 'mm') && (/^hh?$/.test(kind[i - 1] ?? '') || /^ss?$/.test(kind[i + 1] ?? ''))
+    switch (tok) {
+      case 'yyyy':
+        out += pad(y, 4)
+        break
+      case 'yy':
+        out += pad(y % 100, 2)
+        break
+      case 'mmmm':
+        out += MONTHS[mo - 1]
+        break
+      case 'mmm':
+        out += MONTHS[mo - 1].slice(0, 3)
+        break
+      case 'mm':
+        out += pad(minute ? t.mi : mo, 2)
+        break
+      case 'm':
+        out += String(minute ? t.mi : mo)
+        break
+      case 'dddd':
+        out += DAYS[d.dow - 1]
+        break
+      case 'ddd':
+        out += DAYS[d.dow - 1].slice(0, 3)
+        break
+      case 'dd':
+        out += pad(day, 2)
+        break
+      case 'd':
+        out += String(day)
+        break
+      case 'hh':
+        out += pad(ampm ? h12 : t.h, 2)
+        break
+      case 'h':
+        out += String(ampm ? h12 : t.h)
+        break
+      case 'ss':
+        out += pad(t.s, 2)
+        break
+      case 's':
+        out += String(t.s)
+        break
+      case 'am/pm': {
+        const v = t.h < 12 ? 'am' : 'pm'
+        out += m[0] === m[0].toLowerCase() ? v : v.toUpperCase()
+        break
+      }
+      case 'a/p': {
+        const v = t.h < 12 ? 'a' : 'p'
+        out += m[0] === m[0].toLowerCase() ? v : v.toUpperCase()
+        break
+      }
+      default:
+        out += pad(t.frac, 3).padEnd(m[0].length, '0').slice(0, m[0].length)
+    }
+  })
+  return out + mask.slice(at)
+}
+
 export function formatTime(t: PBTime, mask: string): string {
   const ampm = /am\/pm|a\/p/i.test(mask)
   const h12 = t.h % 12 === 0 ? 12 : t.h % 12
@@ -462,9 +569,9 @@ export function formatTime(t: PBTime, mask: string): string {
       case 's':
         return String(t.s)
       case 'am/pm':
-        return t.h < 12 ? 'AM' : 'PM'
+        return tok === tok.toLowerCase() ? (t.h < 12 ? 'am' : 'pm') : t.h < 12 ? 'AM' : 'PM'
       case 'a/p':
-        return t.h < 12 ? 'A' : 'P'
+        return tok === tok.toLowerCase() ? (t.h < 12 ? 'a' : 'p') : t.h < 12 ? 'A' : 'P'
       default:
         return pad(t.frac, 3).padEnd(tok.length, '0').slice(0, tok.length)
     }
@@ -478,6 +585,10 @@ export function formatNumber(value: number | Dec, mask: string): string {
     const s = value instanceof Dec ? value.toString() : toStr(value)
     return /^-?\d+\.\d+$/.test(s) ? s.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '') : s
   }
+  // the system currency format of the machine the original ran on
+  if (/^\[currency\]$/i.test(mask)) mask = '$#,##0.00;($#,##0.00)'
+  // a mask without a digit place shows itself (a date or text mask on a number)
+  if (!/[#0]/.test(mask)) return mask
   const sections = mask.split(';')
   const neg = (value instanceof Dec ? value.u < 0n : value < 0) && sections.length > 1
   const m = neg ? sections[1] : sections[0]
@@ -493,14 +604,8 @@ export function formatNumber(value: number | Dec, mask: string): string {
   if (ip === '0' && minInt === 0) ip = ''
   ip = ip.padStart(minInt, '0')
   const group = intMask.includes(',')
-  // grouping distances come from the commas of the mask: "#,##,##,##0" groups 3 then 2 (Indian), "#,##0" groups of 3
-  let sizes: number[] = [3]
-  if (group) {
-    const tail = intMask.replace(/[^#0,]/g, '')
-    const parts = tail.split(',')
-    sizes = parts.slice(1).map((p) => p.length).reverse()
-    if (sizes.length === 0 || sizes[0] === 0) sizes = [3]
-  }
+  // any comma of the mask turns the grouping on, in groups of three wherever the mask puts it (`##,###,##0` and `#,##,##,##0` both give 1,234,567; measured with the DataWindow engine of the original)
+  const sizes: number[] = [3]
   const digitsOut: string[] = []
   const src = ip
   let pos = src.length
@@ -512,10 +617,11 @@ export function formatNumber(value: number | Dec, mask: string): string {
     gi++
   }
   const intOut = group ? digitsOut.join(',') : src
-  // '#' fraction places drop trailing zeros beyond the last '0' placeholder
-  const lastZero = fracMask.replace(/[^#0]/g, '').lastIndexOf('0') + 1
-  const fracShown = fp.slice(0, lastZero) + fp.slice(lastZero).replace(/0+$/, '')
-  const body = intOut + (fracShown.length ? '.' + fracShown : '')
+  // the fraction is rounded to the number of placeholders; trailing zeros go, but as many digits stay as the mask has '0' placeholders (`##0` shows 1.0, `.00` shows 1.00);
+  // a mask with a point keeps it (`######.##` shows `1.`, and `.` for 0)
+  const forced = (fracMask.match(/0/g) || []).length
+  const fracShown = fp.slice(0, forced) + fp.slice(forced).replace(/0+$/, '')
+  const body = intOut + (pointAt >= 0 ? '.' + fracShown : '')
   const literalPrefix = m.replace(/[#0,.].*$/s, '')
   const literalSuffix = m.replace(/^.*[#0]/s, '').replace(/[#0,.]/g, '')
   const sign = (value instanceof Dec ? value.u < 0n : value < 0) && sections.length === 1 ? '-' : ''

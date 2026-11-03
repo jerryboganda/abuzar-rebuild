@@ -1,6 +1,7 @@
 // DOM rendering of a DataWindow control: bands, rows, objects, editing.
 import type { NDwBase } from '../runtime/native/dwctrl.ts'
 import { argList, colKind } from '../dw/def.ts'
+
 import { renderChart } from '../dw/chart.ts'
 import { keyEnum, keyFlags, virtualKey } from './keys.ts'
 import type { DwModel } from '../dw/model.ts'
@@ -12,6 +13,9 @@ import { Dec, PBDate, PBDateTime, PBTime, toStr } from '../runtime/values.ts'
 import { cssFont, draftCpi, fontSize, pbColor, toPx, setMnemonic } from './pb.ts'
 import { code39Svg, isCode39Font } from './barcode.ts'
 import { readFileBytes } from '../runtime/sysfiles.ts'
+
+/** space between two columns of a grid, in DataWindow units (the engine of the original leaves 7 to 12, 9.5 on average) */
+const GRID_GAP = 9
 
 const BORDER_CSS: Record<string, string> = {
   '0': 'none',
@@ -163,19 +167,59 @@ export class DwView {
     }
     const width = Math.max(0, ...m.def.objects.map((o) => num(o, 'x') + num(o, 'width') + (o.type === 'line' ? Math.max(num(o, 'x2'), num(o, 'x1')) - num(o, 'x') : 0)))
     this.hiddenCols = this.gridHidden(m)
-    return { sx, sy, byBand, width: sx(width - this.hiddenCols.reduce((a, h) => a + h.w, 0)) }
+    return { sx, sy, byBand, width: sx(width - this.hiddenCols.reduce((a, h) => a + h.w, 0) + this.movedCols.reduce((a, c) => a + c.w + GRID_GAP, 0)) }
   }
 
   /** columns of a grid DataWindow (processing 1) that are not visible: the grid leaves them out with their headers and the columns on their right move left */
   private hiddenCols: { x: number; w: number }[] = []
+  /** columns a script switched on that the grid placed behind the visible ones: their old place, width and the new left edge */
+  private movedCols: { name: string; x: number; w: number; newX: number }[] = []
   private gridHidden(m: DwModel): { x: number; w: number }[] {
+    this.movedCols = []
     if (num(m.def.datawindow, 'processing', 0) !== 1) return []
+    const cols = m.def.objects.filter((o) => (o.type === 'column' || o.type === 'compute') && o.band === 'detail' && o.name)
+    // the grid of the original keeps the columns that are visible from the start where they are; a column that is switched on later (Modify `Visible=1`, the interface
+    // setting of the entry windows does it in the order of its sequence) is appended behind the last visible one - measured with the DataWindow engine of the original
+    const order = cols.filter((o) => o.visible !== '0').sort((a, b) => num(a, 'x') - num(b, 'x')).map((o) => o.name.toLowerCase())
+    const stay = new Set(order)
+    for (const e of m.visLog) {
+      const i = order.indexOf(e.name)
+      if (e.on && i < 0 && cols.some((o) => o.name.toLowerCase() === e.name)) order.push(e.name)
+      else if (!e.on && i >= 0) {
+        order.splice(i, 1)
+        stay.delete(e.name)
+      }
+    }
+    // an override set without a logged call (the model was filled another way) decides, too
+    for (const o of cols) {
+      const n = o.name.toLowerCase()
+      const ov = m.overrides.get(`${n}.visible`)
+      if (ov === undefined) continue
+      const i = order.indexOf(n)
+      if (ov === '0' && i >= 0) {
+        order.splice(i, 1)
+        stay.delete(n)
+      } else if (ov !== '0' && i < 0) order.push(n)
+    }
+    const byName = new Map(cols.map((o) => [o.name.toLowerCase(), o]))
     const out: { x: number; w: number }[] = []
-    for (const o of m.def.objects) {
-      // a compute column (c_rsum, c_advancetax ...) is hidden exactly like a db column
-      if ((o.type !== 'column' && o.type !== 'compute') || o.band !== 'detail') continue
-      const v = m.overrides.get(`${o.name.toLowerCase()}.visible`) ?? o.visible
-      if (v === '0') out.push({ x: num(o, 'x'), w: num(o, 'width') })
+    for (const o of cols) {
+      const n = o.name.toLowerCase()
+      if (!stay.has(n) || !order.includes(n)) out.push({ x: num(o, 'x'), w: num(o, 'width') })
+    }
+    let right = 0
+    for (const n of order) {
+      const o = byName.get(n)!
+      if (!stay.has(n)) continue
+      const shift = out.filter((h) => num(o, 'x') >= h.x + h.w - 1).reduce((a, h) => a + h.w, 0)
+      right = Math.max(right, num(o, 'x') - shift + num(o, 'width'))
+    }
+    for (const n of order) {
+      if (stay.has(n)) continue
+      const o = byName.get(n)!
+      const newX = right + GRID_GAP
+      this.movedCols.push({ name: n, x: num(o, 'x'), w: num(o, 'width'), newX })
+      right = newX + num(o, 'width')
     }
     return out
   }
@@ -185,6 +229,7 @@ export class DwView {
    * identified by its exact position, not by its name.
    */
   private headerOfHiddenColumn(o: DwObject): boolean {
+    if (this.movedOf(o)) return false
     if (!this.hiddenCols.length || (o.type !== 'text' && o.type !== 'compute')) return false
     const band = String(o.band ?? '')
     // headers, footer totals and group trailers travel with the detail column
@@ -194,7 +239,21 @@ export class DwView {
     return this.hiddenCols.some((h) => Math.abs(h.x - x) <= 2 && Math.abs(h.w - w) <= 10)
   }
   /** horizontal shift of an object of a grid with hidden columns; null when the object belonged to a hidden column (its header, its total) */
+  /** the moved column an object belongs to: the column itself, or its header / total / trailer (found by position) */
+  private movedOf(o: DwObject): { x: number; newX: number } | null {
+    if (!this.movedCols.length || o.type === 'line') return null
+    const own = o.name ? this.movedCols.find((c) => c.name === o.name.toLowerCase() && o.band === 'detail') : undefined
+    if (own) return own
+    if (o.type !== 'text' && o.type !== 'compute') return null
+    const band = String(o.band ?? '')
+    if (!band.startsWith('header') && band !== 'footer' && !band.startsWith('trailer')) return null
+    const x = num(o, 'x')
+    const w = num(o, 'width')
+    return this.movedCols.find((c) => Math.abs(c.x - x) <= 2 && Math.abs(c.w - w) <= 10) ?? null
+  }
   private gridShift(o: DwObject): number | null {
+    const mv = this.movedOf(o)
+    if (mv) return num(o, 'x') - (mv.newX + (num(o, 'x') - mv.x))
     if (!this.hiddenCols.length || o.type === 'line') return 0
     const x = num(o, 'x')
     const w = num(o, 'width')

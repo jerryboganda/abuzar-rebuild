@@ -9,6 +9,7 @@ import type { PBObject } from './runtime/object.ts'
 import { Ref } from './runtime/interp.ts'
 import { authHeaders } from './runtime/apiauth.ts'
 import { setApiBase } from './runtime/sysfiles.ts'
+import { localeDateOrder, setDateOrder } from './runtime/values.ts'
 import { startApplication, DEFAULT_CONFIG } from './app/startup.ts'
 import { autoLogin } from './app/autologin.ts'
 import { buildPages } from './ui/print.ts'
@@ -49,6 +50,7 @@ async function findServer(q: URLSearchParams): Promise<{ base: string; db: boole
 
 async function main(): Promise<void> {
   const q = new URLSearchParams(location.search)
+  setDateOrder(q.get('dateorder') === 'dmy' ? 'dmy' : q.get('dateorder') === 'mdy' ? 'mdy' : localeDateOrder()) // the short date of the machine (String(date), Date('3/11/2026'), [shortdate])
   const found = await findServer(q)
   const server = found ? found.base : null
   const names = JSON.parse((await text('names.json')) || '{}')

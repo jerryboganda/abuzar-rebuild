@@ -3,7 +3,7 @@ import type { Runtime, SysFunc } from './interp.ts'
 import { Ref } from './interp.ts'
 import { PBObject } from './object.ts'
 import {
-  Dec, PBDate, PBDateTime, PBTime, PBArray, PBRuntimeError, civilFromDays, coerce, daysFromCivil, formatDate, formatNumber, formatTime, isNull, toNum, toStr, MONTHS, DAYS, cmp,
+  Dec, PBDate, PBDateTime, PBTime, PBArray, PBRuntimeError, civilFromDays, coerce, daysFromCivil, dateOrder, shortDateMask, formatDate, formatDateTime, formatNumber, formatTime, isNull, toNum, toStr, MONTHS, DAYS, cmp,
 } from './values.ts'
 
 type Fn = (rt: Runtime, a: unknown[]) => unknown | Promise<unknown>
@@ -23,7 +23,7 @@ export function parseDate(text: string): PBDate | null {
   let m = /^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/.exec(t)
   if (m) return validDate(+m[1], +m[2], +m[3])
   m = /^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})/.exec(t)
-  if (m) return validDate(+m[3] < 100 ? 2000 + +m[3] : +m[3], +m[2], +m[1])
+  if (m) return validDate(+m[3] < 100 ? 2000 + +m[3] : +m[3], dateOrder === 'mdy' ? +m[1] : +m[2], dateOrder === 'mdy' ? +m[2] : +m[1])
   return null
 }
 function validDate(y: number, mo: number, d: number): PBDate | null {
@@ -55,27 +55,21 @@ export function formatValue(v: unknown, fmt?: string): string {
   // PowerBuilder's default decimal display is General: 2.0000 -> 2.
   if (v instanceof Dec && (fmt === undefined || fmt === '')) return formatNumber(v, '[general]')
   if (fmt !== undefined && fmt !== '') {
-    // the named date / time formats follow the regional settings; the original shows `[shortdate] [time]` as `11/2/2026 23:20`
-    if (/^[^[]*\[(shortdate|longdate|time)\]/i.test(fmt)) fmt = fmt.replace(/\[shortdate\]/gi, 'm/d/yyyy').replace(/\[longdate\]/gi, 'dddd, mmmm d, yyyy').replace(/\[time\]/gi, 'hh:mm')
+    // the named date / time formats follow the regional settings of the machine
+    // (measured with the DataWindow engine of the original: [time] is hh:mm:ss, [general] of a date or date-time is the short date)
+    if ((v instanceof PBDate || v instanceof PBDateTime) && /^\[general\]$/i.test(fmt)) fmt = '[shortdate]'
+    if (/^[^[]*\[(shortdate|longdate|time)\]/i.test(fmt)) fmt = fmt.replace(/\[shortdate\]/gi, shortDateMask()).replace(/\[longdate\]/gi, 'dddd, mmmm d, yyyy').replace(/\[time\]/gi, 'hh:mm:ss')
     if (typeof v === 'number' || v instanceof Dec) return formatNumber(v, fmt)
     if (v instanceof PBDate) return formatDate(v, fmt)
     if (v instanceof PBTime) return formatTime(v, fmt)
-    if (v instanceof PBDateTime) {
-    // A combined mask like "dd/mm/yy hh:mm:ss" must be split at the first
-    // time token: running the whole mask through formatDate would turn the
-    // minutes' `mm` into the month number (21:44 -> 21:11), and then
-    // formatTime would leave that literal month in place.
-    const t = /hh|h|ss|s|fff+|am\/pm|a\/p/i.exec(fmt)
-    if (!t) return formatDate(v.date, fmt)
-    return formatDate(v.date, fmt.slice(0, t.index)) + formatTime(v.time, fmt.slice(t.index))
-  }
+    if (v instanceof PBDateTime) return formatDateTime(v.date, v.time, fmt)
     if (typeof v === 'string') {
       // [general] is a number format, not a string mask: a text column with
       // this format displays its text, not the literal "[general]".
       if (/^\[general\]$/i.test(fmt)) return v
       // string masks: @ = any character
       let i = 0
-      return fmt.replace(/@/g, () => v[i++] ?? '')
+      return fmt.replace(/@/g, () => v[i++] ?? ' ') // a short text is padded with blanks
     }
   }
   return s(v)
@@ -95,8 +89,16 @@ export function registerSysFuncs(rt: Runtime): void {
   def(rt, 'long', (_r, a) => (isNull(a[0]) ? null : typeof a[0] === 'string' ? coerce('long', leadingNumber(a[0])) : coerce('long', a[0])))
   def(rt, 'longlong', (_r, a) => (isNull(a[0]) ? null : Math.trunc(n(a[0]))))
   def(rt, 'double', (_r, a) => (isNull(a[0]) ? null : typeof a[0] === 'string' && !/^\s*[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?\s*$/.test(a[0]) ? 0 : n(a[0])))
-  def(rt, 'real', (_r, a) => (isNull(a[0]) ? null : n(a[0])))
-  def(rt, 'dec', (_r, a) => (isNull(a[0]) ? null : coerce('decimal', a[0])))
+  // thousands separators are read (the engine of the original answers Real('1,234.5') = 1234.5)
+  const plain = (v: unknown): unknown => (typeof v === 'string' ? v.replace(/,/g, '') : v)
+  def(rt, 'real', (_r, a) => (isNull(a[0]) ? null : n(plain(a[0]))))
+  def(rt, 'dec', (_r, a) => (isNull(a[0]) ? null : coerce('decimal', plain(a[0]))))
+  // Number(text): the number the text starts with (thousands separators, exponent), 0 without one
+  def(rt, 'number', (_r, a) => {
+    if (isNull(a[0])) return null
+    const m = /^\s*[+-]?(\d[\d,]*\.?\d*|\.\d+)([eE][+-]?\d+)?/.exec(s(a[0]))
+    return m ? Number(m[0].replace(/,/g, '')) : 0
+  })
   def(rt, 'decimal', (_r, a) => (isNull(a[0]) ? null : coerce('decimal', a[0])))
   def(rt, 'char', (_r, a) => (isNull(a[0]) ? null : typeof a[0] === 'string' ? a[0].slice(0, 1) : String.fromCharCode(n(a[0]))))
   def(rt, 'asc', (_r, a) => (isNull(a[0]) ? null : s(a[0]).charCodeAt(0) || 0))
@@ -132,11 +134,13 @@ export function registerSysFuncs(rt: Runtime): void {
   })
   def(rt, 'pos', (_r, a) => {
     if (nul(a.slice(0, 2))) return null
+    if (s(a[1]) === '') return 0
     const from = a.length > 2 ? Math.max(1, n(a[2])) : 1
     return s(a[0]).indexOf(s(a[1]), from - 1) + 1
   })
   def(rt, 'lastpos', (_r, a) => {
     if (nul(a.slice(0, 2))) return null
+    if (s(a[1]) === '') return 0
     const hay = a.length > 2 ? s(a[0]).slice(0, n(a[2])) : s(a[0])
     return hay.lastIndexOf(s(a[1])) + 1
   })
