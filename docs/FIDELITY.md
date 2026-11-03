@@ -86,3 +86,19 @@ Every failing retrieve of the CI sweep (run 41563063841, 8616 of 8666 run) was c
 | the sweep passes `''` / an array where the application passes a date text / a scalar (`d_dashboard_*_drilldown` x7, list arguments x3) | 10 | sweep artefact; SQL Server accepts the statement |
 
 The rest (`d_selection_text` SysColumns, `d_purchase_resultset_from_excel` OPENROWSET, `d_crs_branch_itemstockposition`: the recovered V3 procedure has three more parameters than the DataWindow supplies and the deployed procedure has an empty body) are features without a PostgreSQL counterpart. No translator defect is among the 50.
+
+## The failing procedures and embedded statements of the CI sweep (checked 2026-11-03)
+
+Procedures (the sweep calls each of the 638 once with NULL arguments on the empty schema; 128 failed, 122 of them found in the recovered T-SQL source and classified by what it does):
+
+| group | count | verdict |
+|---|---|---|
+| database / server name built into dynamic SQL (`@SRV.@DB.@OWNER.table`, data carry, drop box, CRS push, parent server, Waseelamini) | 68 | cross-database or linked-server work; the sweep's empty names give `..` |
+| system catalogue or DDL on names (`sysobjects`, `OBJECT_ID(@name)`, `INFORMATION_SCHEMA`) | 21 | no PostgreSQL counterpart |
+| other dynamic SQL, `msdb` jobs, `xp_cmdshell`, `sp_OACreate` (fiscalization), `WAITFOR`, `DBCC`, `OPENROWSET`, `SheerazDB*` | 24 | same |
+| the original cannot run them either: `sp_incomestatment` (`adjdetail.bonusqty` does not exist), `sp_itemingodowns` (`StockInAllGodown`), `sp_postservicesrallocationheader` (`ServiceSRHeader`), `sp_test1` | 4 | defect of the original |
+| `sp_datewisesalebreakup` | 1 | the sweep passes 0 days: the loop never ends in T-SQL either |
+| `sp_salesman_collectionplan` | 1 | **real translator defect, fixed**: it returns a cursor over `#cust` and then drops `#cust` (error 55006); the translator now skips the DROP of a temp table an open result set reads (`tools/tsql/tstmt.py`; the one routine of 642 with the pattern is patched in `db/pg/60_procedures.sql`) |
+| `sp_fiscalizesaleinvoice`, `sp_fiscalizesrinvoice`, `sp_init_update_tabmaxkey` | 3 | `sp_OACreate` / `OBJECT_ID(@name)`, as above |
+
+Embedded statements (15 of 1862 fail): 13 fail on the original's database too (missing `script`, `lockers`, `groupitemwise*` tables, `salesman.password`, `customer.code`, `itempacking.icatcode`, `itemcategory.packcode`, `itemclass.catcode`, `issuereqdetail.gcode`; `prescriptionheaderlog` has 15 columns where the statement supplies 16); 2 (`NULL * NULL`, `NULL / NULL` in an UPDATE / INSERT) are artefacts of the sweep's null arguments.
