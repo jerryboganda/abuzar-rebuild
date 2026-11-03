@@ -250,16 +250,18 @@ for (const name of sample) {
   if (r.stuck) {
     const t0 = Date.now()
     // where the main thread is: a debugger pause answers with the call stack of whatever is running (it is resumed right away)
+    // every call to a frozen page can itself block for ever (the 20-minute watchdog then ends the run without a stack): each gets 8 s
+    const quick = (p, what) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(what + ' did not answer within 8 s (the page is frozen)')), 8000))])
     const where = await (async () => {
       try {
-        const cdp = await page.context().newCDPSession(page)
-        await cdp.send('Debugger.enable')
+        const cdp = await quick(page.context().newCDPSession(page), 'newCDPSession')
+        await quick(cdp.send('Debugger.enable'), 'Debugger.enable')
         const paused = new Promise((res) => cdp.once('Debugger.paused', res))
-        await cdp.send('Debugger.pause')
+        await quick(cdp.send('Debugger.pause'), 'Debugger.pause')
         const ev = await Promise.race([paused, new Promise((res) => setTimeout(() => res(null), 8000))])
         const stack = ev ? ev.callFrames.slice(0, 14).map((f) => `${f.functionName || '(anonymous)'} ${f.url.split('/').pop()}:${f.location.lineNumber + 1}`).join(' < ') : 'the page did not pause (it is idle, not computing)'
-        await cdp.send('Debugger.resume').catch(() => {})
-        await cdp.send('Debugger.disable').catch(() => {})
+        await quick(cdp.send('Debugger.resume'), 'Debugger.resume').catch(() => {})
+        await quick(cdp.send('Debugger.disable'), 'Debugger.disable').catch(() => {})
         return stack
       } catch (e) {
         return 'no stack: ' + String((e && e.message) || e).slice(0, 120)
