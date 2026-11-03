@@ -10,6 +10,7 @@
 //! result is returned in text form together with its PostgreSQL type name (the client decodes by type).
 
 pub mod auth;
+pub mod fiscal;
 pub mod fs;
 pub mod sqlsub;
 
@@ -341,6 +342,7 @@ pub fn router(state: AppState) -> Router {
         .route("/api/fs/copy", post(fs::copy))
         .route("/api/print/raw", post(fs::print_raw))
         .route("/api/backup", post(fs::backup))
+        .route("/api/fiscal", post(fiscal::fiscal))
         .route("/api/commit", post(commit))
         .route("/api/rollback", post(rollback))
         .route("/api/close", post(close))

@@ -10,6 +10,12 @@ import { toNum, toStr, PBArray } from './values.ts'
 let apiBase = ''
 export function setApiBase(b: string): void {
   apiBase = b
+  ;(globalThis as { __TRADER_API_BASE__?: string }).__TRADER_API_BASE__ = b
+}
+
+/** base URL of the desktop/server process (fiscal relay, file endpoints) */
+export function serverBase(): string {
+  return apiBase
 }
 
 async function api<T>(path: string, body: unknown): Promise<T> {

@@ -22,10 +22,17 @@ async function text(path: string): Promise<string | undefined> {
   if (/^dw\/(?!_index).*\.json$/.test(path)) {
     const r = await fetch('/data/' + path + '.gz')
     if (!r.ok || !r.body) return undefined
+    const type = (r.headers.get('content-type') || '').toLowerCase()
+    if (type.includes('text/html')) return undefined
     return await new Response(r.body.pipeThrough(new DecompressionStream('gzip'))).text()
   }
   const r = await fetch('/data/' + path)
-  return r.ok ? await r.text() : undefined
+  if (!r.ok) return undefined
+  // Tauri's asset protocol answers unknown paths with index.html (status 200);
+  // treat that as a missing data file instead of parsing HTML as JSON.
+  const type = (r.headers.get('content-type') || '').toLowerCase()
+  if (type.includes('text/html')) return undefined
+  return await r.text()
 }
 
 /**
@@ -34,15 +41,27 @@ async function text(path: string): Promise<string | undefined> {
  */
 async function findServer(q: URLSearchParams): Promise<{ base: string; db: boolean } | null> {
   if (q.get('db') === 'mock') return null
-  const tauri = !!(globalThis as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__
+  const tauri =
+    !!(globalThis as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ ||
+    !!(globalThis as { __TAURI__?: unknown }).__TAURI__ ||
+    location.protocol === 'tauri:' ||
+    /(^|\.)tauri\.localhost$/i.test(location.hostname)
   const bases = q.get('server') ? [q.get('server')!] : q.get('db') === 'server' ? [''] : tauri ? ['http://127.0.0.1:8787'] : ['']
   for (const b of bases) {
-    try {
-      const r = await fetch(b + '/api/health', { headers: authHeaders() })
-      const j = r.ok ? ((await r.json()) as { ok?: boolean; db?: boolean }) : null
-      if (j?.ok) return { base: b, db: j.db !== false }
-    } catch {
-      // not reachable: next candidate
+    // The desktop shell starts its embedded server in a background task; the
+    // webview can be ready before the listener is bound.  Retry instead of
+    // falling back to the mock and leaving a blank window.
+    const attempts = tauri ? 40 : 1
+    for (let i = 0; i < attempts; i++) {
+      try {
+        const r = await fetch(b + '/api/health', { headers: authHeaders() })
+        const type = (r.headers.get('content-type') || '').toLowerCase()
+        const j = r.ok && type.includes('json') ? ((await r.json()) as { ok?: boolean; db?: boolean }) : null
+        if (j?.ok) return { base: b, db: j.db !== false }
+      } catch {
+        // not reachable yet: next attempt
+      }
+      if (i + 1 < attempts) await new Promise((resolve) => setTimeout(resolve, 250))
     }
   }
   return null
