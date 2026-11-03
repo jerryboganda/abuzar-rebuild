@@ -2,6 +2,7 @@
 // menu bar and toolbar, opens a sample of the windows through the DOM UI and reports page errors, message boxes and slow windows.
 // usage: node browser-smoke.mjs <base url> [stride]       (needs the `playwright` package and a Chromium)
 import { chromium } from 'playwright'
+import { execSync } from 'node:child_process'
 
 const base = process.argv[2]
 const stride = Number(process.argv[3] || 14)
@@ -275,6 +276,19 @@ for (const name of sample) {
       }
     })()
     console.log(`stuck: ${name} did not finish opening within 30 s; main thread: ${where}`)
+    // a busy renderer (compute) and a blocked one (deadlock) look the same from the page: the process table tells them apart
+    const procs = () => {
+      try {
+        return execSync('ps -eo pid,pcpu,time,stat,wchan:18,args --sort=-pcpu | head -7 | cut -c1-170', { timeout: 5000 }).toString().trim()
+      } catch (e) {
+        return 'ps failed: ' + String((e && e.message) || e).slice(0, 80)
+      }
+    }
+    console.log('processes at the stall:
+' + procs())
+    await new Promise((r) => setTimeout(r, 4000))
+    console.log('processes 4 s later:
+' + procs())
     const back = await Promise.race([page.evaluate(() => 1).then(() => true, () => false), new Promise((res) => setTimeout(() => res(false), 90000))])
     const secs = Math.round((Date.now() - t0) / 1000) + 30
     if (!back) {
