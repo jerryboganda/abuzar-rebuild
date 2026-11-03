@@ -67,6 +67,8 @@ CASES = [
     ('proc: result set is a refcursor', body('SELECT name FROM item'), 'OPEN rs1 FOR SELECT name FROM dbo.item'),
     ('proc: output parameter is INOUT', body('SET @o = 1', '@o INT OUTPUT'), 'INOUT o integer'),
     ('proc: temp table', body('CREATE TABLE #t (a INT) INSERT #t VALUES (1)'), 'CREATE TEMP TABLE tmp_t'),
+    ('proc: temp table read by a result set is not dropped', body('CREATE TABLE #t (a INT) SELECT a FROM #t DROP TABLE #t'), '-- DROP TABLE #t skipped'),
+    ('proc: other temp table is dropped', body('CREATE TABLE #t (a INT) CREATE TABLE #u (a INT) SELECT a FROM #t DROP TABLE #u'), 'DROP TABLE IF EXISTS tmp_u;'),
     ('proc: rollback raises', body('ROLLBACK TRAN'), "ERRCODE = 'TS001'"),
     ('proc: cursor loop', body('DECLARE @a INT DECLARE c CURSOR FOR SELECT icode FROM item OPEN c FETCH NEXT FROM c INTO @a WHILE @@FETCH_STATUS = 0 BEGIN FETCH NEXT FROM c INTO @a END CLOSE c DEALLOCATE c'), 'WHILE (_fs = 0) LOOP'),
 ]

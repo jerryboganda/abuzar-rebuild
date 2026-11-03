@@ -34,6 +34,7 @@ class Ctx:
         self.declared_flags = set()
         self.rs_cols = {}
         self.perms = {}             # permanent work tables created by SELECT INTO / CREATE TABLE inside the routine
+        self.rs_temps = set()       # temp tables an open result-set cursor reads (they cannot be dropped before the caller has fetched)
 
 
 def raise_fmt(text):
@@ -365,7 +366,12 @@ class StmtMixin:
         for parts in n.names:
             name = parts[-1]
             if name.startswith('#'):
-                self.emit('DROP TABLE IF EXISTS %s;' % self.temp_name(name))
+                pg = self.temp_name(name)
+                if pg in self.ctx.rs_temps:
+                    # T-SQL has delivered the rows when the SELECT ran; here the caller fetches them after the routine returns (error 55006 on DROP)
+                    self.emit('-- DROP TABLE %s skipped: an open result set reads it (ON COMMIT DROP removes it)' % name)
+                else:
+                    self.emit('DROP TABLE IF EXISTS %s;' % pg)
                 self.ctx.temps.pop(name.lower(), None)
             elif name.lower() in self.tables or name.lower() in self.catalog.views:
                 raise Untranslatable('DROP TABLE of a table of the schema')
@@ -462,6 +468,9 @@ class StmtMixin:
                 return
             raise Untranslatable('result set in %s' % self.ctx.kind)
         sql, cols = self.select_full(sel, Scope())
+        for pg, _ in self.ctx.temps.values():
+            if re.search(r'\b%s\b' % re.escape(pg), sql):
+                self.ctx.rs_temps.add(pg)
         rs = self.rs_alloc()
         if self.ctx.loop_depth:
             self.emit('%s := NULL;' % rs)
