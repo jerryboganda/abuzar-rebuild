@@ -76,7 +76,7 @@ Tools: `tools/orig/` (crawler, crop, icon and sprite builders), `web/tools/{gen-
 
 ## The 50 DataWindow retrieves that fail on PostgreSQL (checked against the original's database, 2026-11-03)
 
-Every failing retrieve of the CI sweep (run 41563063841, 8616 of 8666 run) was classified; the original statement was bound against the live SQL Server database of the deployment (`sys.dm_exec_describe_first_result_set`, metadata only, no rows read):
+Every failing retrieve of the CI sweep (run 41563063841, 8616 of 8666 run) was classified; the original statement was bound against the live SQL Server database of the deployment (`sys.dm_exec_describe_first_result_set`; for the PBSELECT-format ones the column or table was looked up in the catalog; metadata only, no rows read):
 
 | group | count | verdict |
 |---|---|---|
