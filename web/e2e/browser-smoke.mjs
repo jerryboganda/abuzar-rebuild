@@ -223,6 +223,13 @@ let thrown = 0
 const boxes = []
 const slow = []
 const failed = []
+let dbg = null
+try {
+  dbg = await page.context().newCDPSession(page)
+  await dbg.send('Debugger.enable')
+} catch (e) {
+  console.log('debugger session for the stall probe: ' + String((e && e.message) || e).slice(0, 100))
+}
 for (const name of sample) {
   current = name
   const r = await Promise.race([new Promise((res) => setTimeout(() => res({ stuck: true }), 30000)), page.evaluate(async (n) => {
@@ -254,14 +261,14 @@ for (const name of sample) {
     const quick = (p, what) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(what + ' did not answer within 8 s (the page is frozen)')), 8000))])
     const where = await (async () => {
       try {
-        const cdp = await quick(page.context().newCDPSession(page), 'newCDPSession')
-        await quick(cdp.send('Debugger.enable'), 'Debugger.enable')
+        // the session was opened and Debugger.enable sent before the sample: a frozen renderer cannot start either, but it still takes the pause interrupt
+        if (!dbg) throw new Error('no debugger session (opened before the sample failed)')
+        const cdp = dbg
         const paused = new Promise((res) => cdp.once('Debugger.paused', res))
         await quick(cdp.send('Debugger.pause'), 'Debugger.pause')
         const ev = await Promise.race([paused, new Promise((res) => setTimeout(() => res(null), 8000))])
         const stack = ev ? ev.callFrames.slice(0, 14).map((f) => `${f.functionName || '(anonymous)'} ${f.url.split('/').pop()}:${f.location.lineNumber + 1}`).join(' < ') : 'the page did not pause (it is idle, not computing)'
         await quick(cdp.send('Debugger.resume'), 'Debugger.resume').catch(() => {})
-        await quick(cdp.send('Debugger.disable'), 'Debugger.disable').catch(() => {})
         return stack
       } catch (e) {
         return 'no stack: ' + String((e && e.message) || e).slice(0, 120)
