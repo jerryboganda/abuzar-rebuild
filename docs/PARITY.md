@@ -15,9 +15,9 @@ Every number below is produced by a tool run; nothing is estimated.
   - 1 x Null object reference (reading printer)
   - 1 x Null object reference (reading icode)
 - unimplemented functions / members met at run time (calls):
-  `method:number.sharedata` 129, `method:number.rowcount` 111, `member:number.object` 96, `method:number.getitemnumber` 57, `method:number.getitemstring` 49, `member:number.datawindow` 32, `dwname:name` 24, `method:number.rowscopy` 20, `fn:activatekeyboardlayout` 18, `method:object.settransobject` 16, `ole:__invoke_method` 16, `member:number.name` 16, `method:object.typeof` 12, `fn:ue_postopen` 11, `method:object.sharedata` 11, `method:number.getrow` 6, `graph.findseries` 6, `radiobutton.clicked!` 5, `method:number.getitemdatetime` 5, `member:number.i_status` 5, `datawindow.create` 4, `dw:0` 3, `picture.clicked!` 3, `oleobject.__invoke_method` 3, `dw:d_servicepurtemplate_print` 3
+  `method:number.sharedata` 129, `method:number.rowcount` 111, `member:number.object` 96, `method:number.getitemnumber` 57, `method:number.getitemstring` 49, `member:number.datawindow` 32, `dwname:name` 24, `method:number.rowscopy` 20, `method:object.settransobject` 16, `ole:__invoke_method` 16, `member:number.name` 16, `method:object.typeof` 12, `fn:ue_postopen` 11, `method:object.sharedata` 11, `method:number.getrow` 6, `graph.findseries` 6, `fn:activatekeyboardlayout` 6, `radiobutton.clicked!` 5, `method:number.getitemdatetime` 5, `member:number.i_status` 5, `datawindow.create` 4, `dw:0` 3, `picture.clicked!` 3, `oleobject.__invoke_method` 3, `dw:d_servicepurtemplate_print` 3
 
-## Against a real server and PostgreSQL 17 (CI end-to-end job, run 41549798959, commit 76c42a5)
+## Against a real server and PostgreSQL 17 (CI end-to-end job, run 41563063841, commit 869d3a7)
 - DataWindow retrieve statements that run: **8616 of 8666** (99.4%)
 - embedded statements that run (null parameters, errors of integrity / data classes not counted as failures): **1847 of 1862** (99.2%)
 - translated procedures that run with neutral arguments: **510 of 638** (79.9%)
