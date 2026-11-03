@@ -46,6 +46,7 @@ async function findServer(q: URLSearchParams): Promise<{ base: string; db: boole
     !!(globalThis as { __TAURI__?: unknown }).__TAURI__ ||
     location.protocol === 'tauri:' ||
     /(^|\.)tauri\.localhost$/i.test(location.hostname)
+  if (tauri) document.body.classList.add('tauri-shell')
   const bases = q.get('server') ? [q.get('server')!] : q.get('db') === 'server' ? [''] : tauri ? ['http://127.0.0.1:8787'] : ['']
   for (const b of bases) {
     // The desktop shell starts its embedded server in a background task; the

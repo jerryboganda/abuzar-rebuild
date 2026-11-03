@@ -36,6 +36,17 @@ function caption(t: string): string {
   return t.replace(/&&/g, '\u0001').replace(/&/g, '').replace(/\u0001/g, '&')
 }
 
+/** Tauri shell: the native window owns the title bar; push the app title there. */
+function setNativeTitle(title: string): void {
+  const invoke = (globalThis as { __TAURI_INTERNALS__?: { invoke?: (cmd: string, args: unknown) => Promise<unknown> } }).__TAURI_INTERNALS__?.invoke
+  if (typeof invoke !== 'function') return
+  try {
+    void invoke('plugin:window|set_title', { label: 'main', value: title })
+  } catch {
+    // not the desktop shell
+  }
+}
+
 export class DomUi implements UiHost {
   [k: string]: unknown
   rt: Runtime
@@ -282,6 +293,7 @@ export class WinView {
     const isMdi = Number(w.props.get('windowtype')) >= 4
     this.el = document.createElement('div')
     this.el.className = 'pbwin' + (this.sheet ? ' sheet' : '')
+    this.el.dataset.win = w.name.toLowerCase()
     const W = toPx(num(w, 'width'), 'x')
     const H = toPx(num(w, 'height'), 'y')
     const s = this.el.style
@@ -303,6 +315,7 @@ export class WinView {
       tb.innerHTML = '<img class="ic" src="app-icon.png" alt=""><div class="ttl"></div><div class="cls">✕</div>'
       this.ttlEl = tb.querySelector('.ttl') as HTMLElement
       this.ttlEl.textContent = str(w, 'title')
+      if (w.name.toLowerCase() === 'w_main') setNativeTitle(this.ttlEl.textContent)
       ;(tb.querySelector('.cls') as HTMLElement).onclick = () => void ui.rt.closeWindow(w)
       this.el.appendChild(tb)
       w.onProp = (n) => {
@@ -366,6 +379,7 @@ export class WinView {
     const maxed = [...this.ui.views.values()].filter((v) => v.sheet && v.el.classList.contains('max') && v.el.isConnected && !v.el.classList.contains('hidden'))
     maxed.sort((a, b) => Number(b.el.style.zIndex || 0) - Number(a.el.style.zIndex || 0))
     this.ttlEl.textContent = str(this.w, 'title') + (maxed[0] ? ' - [' + str(maxed[0].w, 'title') + ']' : '')
+  if (this.w.name.toLowerCase() === 'w_main') setNativeTitle(this.ttlEl.textContent)
   }
 
   private syncWindow(): void {

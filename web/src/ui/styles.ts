@@ -7,6 +7,9 @@ export const CSS = `
 @font-face { font-family: 'Arial Narrow'; font-style: normal; font-weight: 700; src: url('/fonts/LiberationSansNarrow-Bold.ttf') format('truetype'); }
 @font-face { font-family: 'Liberation Sans Narrow'; font-style: normal; font-weight: 400; src: url('/fonts/LiberationSansNarrow-Regular.ttf') format('truetype'); }
 @font-face { font-family: 'Liberation Sans Narrow'; font-style: normal; font-weight: 700; src: url('/fonts/LiberationSansNarrow-Bold.ttf') format('truetype'); }
+
+/* Desktop shell: the native Tauri frame is the main window's title bar. */
+body.tauri-shell .pbwin[data-win="w_main"] > .tbar { display:none; }
 :root { --face:#f0f0f0; --shadow:#a0a0a0; --dark:#696969; --hi:#ffffff; --sel:#0078d7; --font: 12px "Segoe UI", Tahoma, Arial, sans-serif; }
 * { box-sizing: border-box; }
 html, body { margin:0; height:100%; overflow:hidden; background:#ababab; font: var(--font); user-select:none; }

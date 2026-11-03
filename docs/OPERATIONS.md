@@ -2,7 +2,7 @@
 
 ## What you need
 * PostgreSQL 17 (on the same machine or on a server in the network), a database for the company, e.g. `trader`.
-* The Windows installer or the programs of a release (GitHub release of the private repository; built by `.github/workflows/release.yml`).
+* The Windows installer or the programs of a release (GitHub release of the repository; built by `.github/workflows/release.yml`).
 
 ## First installation
 1. Create the database and apply the scripts of `db/pg/` in file order:

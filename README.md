@@ -1,9 +1,9 @@
-# Trader App rebuild (private)
+# Trader App rebuild
 
 Rebuild of the PowerBuilder 12.5 application "Trader App v1" as **Tauri 2 + Rust (axum, sqlx) + PostgreSQL 17**, derived from the
 reverse engineering in the research project (the decompiled PowerScript, window / menu / DataWindow definitions and the SQL Server schema).
 
-Rules: this repository stays **private**; no vendor secrets or customer data (`tools/redact.py` removes the few vendor credentials
+Rules: this repository is **public** (since 2026-11-04, so GitHub Actions is free); no vendor secrets or customer data (`tools/redact.py` removes the few vendor credentials
 found in the recovered code and scans for leaks); builds and tests run in GitHub Actions.
 
 ## Architecture

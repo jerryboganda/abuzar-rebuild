@@ -1,0 +1,64 @@
+diff --git a/db/pg/60_procedures.sql b/db/pg/60_procedures.sql
+index 99c3c80b..4e1022a0 100644
+--- a/db/pg/60_procedures.sql
++++ b/db/pg/60_procedures.sql
+@@ -7950,52 +7950,20 @@ END
+ $body$;
+ 
+ -- ==== proc SP_CRS_Fetch_ItemStockPosition ====
+-CREATE OR REPLACE FUNCTION dbo.sp_crs_fetch_itemstockposition(srv citext, db citext, owner citext, icode integer, OUT return_value integer, OUT rs1 refcursor)
++CREATE OR REPLACE FUNCTION dbo.sp_crs_fetch_itemstockposition(icode integer, OUT return_value integer, OUT rs1 refcursor)
+   LANGUAGE plpgsql AS $body$
+ #variable_conflict use_column
+-DECLARE
+-  v_srv citext;
+-  v_db citext;
+-  v_owner citext;
+-  v_icode integer;
+-  v_tp citext;
+-  v_itemname citext;
+-  v_qry citext;
+-  _dq1 text;
+ BEGIN
+-  v_srv := srv;
+-  v_db := db;
+-  v_owner := owner;
+-  v_icode := icode;
+-  v_tp := '';
+-  IF (((length(rtrim(ltrim(rtrim(v_srv)))) = 0) OR (v_srv IS NULL))) THEN
+-    v_tp := '';
+-  ELSE
+-    v_tp := (v_srv || '.');
+-  END IF;
+-  IF (((length(rtrim(ltrim(rtrim(v_db)))) = 0) OR (v_db IS NULL))) THEN
+-    v_tp := v_tp;
+-  ELSE
+-    v_tp := ((v_tp || v_db) || '.');
+-  END IF;
+-  IF (((length(rtrim(ltrim(rtrim(v_owner)))) = 0) OR (v_owner IS NULL))) THEN
+-    v_tp := ((v_tp || 'DBO') || '.');
+-  ELSE
+-    v_tp := ((v_tp || v_owner) || '.');
+-  END IF;
+-  IF (v_icode > 0) THEN
+-    v_itemname := (SELECT name FROM dbo.item WHERE (icode = v_icode));
+-  END IF;
+-  v_qry := (((('SELECT T.BranchName, T.ICode, T.AliasName, T.ItemName, T.BranchStock, T.LastFetchedOn, T.Age FROM ' || v_tp) || 'View_CRS_ItemStockPosition T WHERE ICode = ') || ltrim(rtrim(dbo.tsql_str((v_icode)::numeric, 10)))) || ' ORDER BY BranchName');
+-  _dq1 := v_qry;
+-  IF _dq1 IS NOT NULL THEN
+-    IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
+-  END IF;
++  -- No linked servers in this deployment: the branch stock view is local.
++  OPEN rs1 FOR
++    SELECT branchName, ICode, AliasName, ItemName, BranchStock, LastFetchedOn, Age
++    FROM dbo.view_crs_itemstockposition
++    WHERE ICode = icode
++    ORDER BY BranchName;
+   return_value := 0;
+   RETURN;
+ END
+ $body$;
+-
+ -- ==== proc SP_CRS_Fetch_ItemStockPosition_Temp ====
+ CREATE OR REPLACE FUNCTION dbo.sp_crs_fetch_itemstockposition_temp(icode integer, OUT return_value integer)
+   LANGUAGE plpgsql AS $body$
