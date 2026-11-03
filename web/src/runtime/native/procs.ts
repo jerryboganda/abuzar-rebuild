@@ -12,6 +12,11 @@ export interface ProcSig {
   rs: number
 }
 
+const RPC_ALIASES: Record<string, string> = {
+  // recovered RPCFUNC name -> translated procedure name
+  getmaxutn: 'sp_maxutn',
+}
+
 export class ProcCaller {
   sigs: Record<string, ProcSig>
   /** result sets of the last call per transaction (read by the cursor-style statements that follow) */
@@ -21,8 +26,13 @@ export class ProcCaller {
   }
 
   /** argument positions that are OUT / INOUT parameters of the procedure behind an RPC name */
+  private signature(name: string): ProcSig | undefined {
+    const n = name.toLowerCase()
+    return this.sigs[n] ?? this.sigs['sp_' + n] ?? this.sigs[RPC_ALIASES[n]]
+  }
+
   refPositions(name: string): number[] | undefined {
-    const sig = this.sigs[name.toLowerCase()] ?? this.sigs['sp_' + name.toLowerCase()]
+    const sig = this.signature(name)
     if (!sig) return undefined
     const idx = sig.params.map((p, i) => (p.mode !== 'in' ? i : -1)).filter((i) => i >= 0)
     return idx.length ? idx : undefined
@@ -30,7 +40,7 @@ export class ProcCaller {
 
   async call(t: PBObject, name: string, args: unknown[]): Promise<unknown> {
     // RPC declarations alias the PowerScript name to the procedure: getitemstocktotal -> sp_getitemstocktotal
-    const sig = this.sigs[name.toLowerCase()] ?? this.sigs['sp_' + name.toLowerCase()]
+    const sig = this.signature(name)
     if (!(t instanceof NTransaction)) return null
     if (!sig) {
       t.rt.noteMissing('rpc:' + name)

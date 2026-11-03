@@ -6,6 +6,7 @@ import { Dec, PBRuntimeError, toNum, toStr } from '../values.ts'
 import { NControl, NMenuItem, NWindow } from './controls.ts'
 import { NDwBase } from './dwctrl.ts'
 import { NTransaction } from './transaction.ts'
+import { NWinSock } from './winsock.ts'
 
 function setMessage(rt: Runtime, parm: unknown): void {
   const msg = rt.globals.get('message') as PBObject | undefined
@@ -60,6 +61,8 @@ async function openWin(rt: Runtime, a: unknown[], sheet: boolean, withParm: bool
   // a window with a menu name owns an instance of that menu (`menuid`)
   const mn = w.props.get('menuname')
   if (typeof mn === 'string' && mn && !w.props.get('menuid')) w.props.set('menuid', await rt.instantiate(mn.toLowerCase(), w))
+  const ownedMenu = w.props.get('menuid')
+  if (ownedMenu instanceof PBObject && !ownedMenu.parent) ownedMenu.parent = w
   await rt.fireConstructors(w)
   // the item list popup of the entry windows is a DataWindow that is only shown while the user searches (the original has it hidden until `show()`;
   // its definition lacks the attribute, the program keeps `visible` false: its window class is not visible in the original's control tree)
@@ -193,6 +196,7 @@ export function registerWindowing(rt: Runtime): void {
   nat.set('datastore', (r, c) => new NDwBase(r, c, 'datastore'))
   nat.set('datawindowchild', (r, c) => new NDwBase(r, c, 'datawindowchild'))
   nat.set('transaction', (r, c) => new NTransaction(r, c))
+  nat.set('n_winsock', (r, c) => new NWinSock(r, c))
   for (const k of [
     'commandbutton', 'statictext', 'singlelineedit', 'multilineedit', 'editmask', 'checkbox', 'radiobutton', 'listbox', 'dropdownlistbox', 'picturelistbox',
     'tab', 'groupbox', 'picture', 'picturebutton', 'progressbar', 'hscrollbar', 'vscrollbar', 'hprogressbar', 'userobject', 'oval', 'rectangle', 'roundrectangle', 'line',

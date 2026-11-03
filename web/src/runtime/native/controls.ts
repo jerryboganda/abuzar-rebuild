@@ -316,6 +316,8 @@ export class NWindow extends NControl {
   }
   async n_changemenu(m: unknown): Promise<number> {
     this.props.set('menuid', m)
+    // a menu knows its owning window through the PowerBuilder `parentwindow` property
+    if (m instanceof PBObject && !m.parent) m.parent = this
     this.rt.ui?.changeMenu?.(this, m)
     return 1
   }

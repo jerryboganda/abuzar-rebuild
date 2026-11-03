@@ -21,6 +21,8 @@ interface ApiBody {
 export class HttpDb implements Db {
   base: string
   sid = ''
+  /** concurrent requests that all see NOSESSION must share one new session */
+  private reopening: Promise<void> | null = null
   constructor(base = '') {
     this.base = base
   }
@@ -55,10 +57,14 @@ export class HttpDb implements Db {
   }
 
   private async reopen(): Promise<void> {
-    const j = await this.post<{ sid: string }>('/api/session', {})
-    this.sid = j.sid
-    await this.setSessionTimeZone()
-    if (appUser) await this.send('/api/query', { sid: this.sid, sql: "SELECT set_config('app.user', $1, false)", params: [appUser] })
+    if (this.reopening) return this.reopening
+    this.reopening = (async () => {
+      const j = await this.post<{ sid: string }>('/api/session', {})
+      this.sid = j.sid
+      await this.setSessionTimeZone()
+      if (appUser) await this.send('/api/query', { sid: this.sid, sql: "SELECT set_config('app.user', $1, false)", params: [appUser] })
+    })().finally(() => { this.reopening = null })
+    return this.reopening
   }
 
   /** SQL Server ran with the installation's local timezone; sqlx forces UTC unless the session says otherwise. */

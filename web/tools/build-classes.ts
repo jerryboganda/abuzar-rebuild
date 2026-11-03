@@ -4,6 +4,7 @@ import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync, statSy
 import { join } from 'node:path'
 import { parseScriptFile } from '../src/pbscript/parser.ts'
 import type { Routine } from '../src/pbscript/ast.ts'
+import { applyRuntimeClassFixes } from './runtime-class-fixes.ts'
 
 const [objRoot, scrRoot, out, menuRoot] = process.argv.slice(2)
 mkdirSync(out, { recursive: true })
@@ -95,6 +96,10 @@ for (const lib of readdirSync(scrRoot)) {
     nClasses++
   }
 }
+// The decompiler loses a few initialisers and enum contracts.  Re-apply the
+// runtime corrections after every build so they cannot disappear silently.
+const classFixes = applyRuntimeClassFixes(out)
+if (classFixes.length) console.log(`runtime class fixes: ${classFixes.join(', ')}`)
 writeFileSync(join(out, '_index.json'), JSON.stringify(index))
 console.log(`classes ${nClasses}  routines ${nRoutines}  parse errors ${errors.length}`)
 writeFileSync(join(out, '..', 'build-classes-errors.txt'), errors.join('\n'))

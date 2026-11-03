@@ -1,6 +1,7 @@
 // Tree-walking, async interpreter for the recovered PowerScript.
 import type { Expr, Stmt, Routine, CaseTest } from '../pbscript/ast.ts'
 import { PBObject, PBStruct, isMember } from './object.ts'
+import { NWinSock } from './native/winsock.ts'
 import type { ClassDef, ControlDef, FieldDef, Member, RoutineEntry } from './object.ts'
 import { add, cmp, coerce, defaultValue, Dec, div, equals, isNull, mul, NUMERIC_TYPES, PBArray, PBRuntimeError, sub, toNum, toStr } from './values.ts'
 
@@ -164,6 +165,7 @@ export class Runtime {
   }
 
   private makeNative(native: string, className: string): PBObject {
+    if (className === 'n_winsock') return new NWinSock(this, className)
     let n: string | null = native
     while (n) {
       const f = this.natives.get(n)
@@ -200,7 +202,12 @@ export class Runtime {
   }
 
   applyFields(obj: PBObject, fields: FieldDef[]): void {
-    for (const f of fields) {
+    for (const raw of fields) {
+      // `type_18` is PowerBuilder `char`; the recovered JSON stores the
+      // default as the first byte of a little-endian hex value (59 = "Y").
+      const f = raw.type === 'type_18' && typeof raw.value === 'string' && /^[0-9a-fA-F]{8}$/.test(raw.value)
+        ? { ...raw, type: 'char', value: parseInt(raw.value.slice(0, 2), 16) === 0 ? '' : String.fromCharCode(parseInt(raw.value.slice(0, 2), 16)) }
+        : raw
       if (f.name === 'control') continue
       obj.declare(f.name, f.type, f.value === undefined ? undefined : f.value)
       if (f.attr === '0xcc') obj.vars.add(f.name)
@@ -314,6 +321,12 @@ export class Runtime {
   }
 
   async callMethod(obj: PBObject, name: string, args: unknown[]): Promise<unknown> {
+    // n_winsock methods are Windows socket wrappers; the recovered scripts
+    // call external DLLs the browser does not have.  Use the native model.
+    if (obj.native === 'n_winsock' && name.startsWith('of_')) {
+      const fn = (obj as unknown as Record<string, unknown>)[name]
+      if (typeof fn === 'function') return (fn as (...a: unknown[]) => unknown).apply(obj, args)
+    }
     const entries = obj.findRoutines(name)
     if (entries.length) return this.runEntry(obj, this.pick(entries, args.length)!, args)
     return this.callNative(obj, name, args)
@@ -726,6 +739,9 @@ export class Runtime {
     }
     const c = await this.getClass(type)
     if (c && c.kind === 'structure') return this.newStruct(c)
+    // n_winsock is an auto-instantiated (AutoInstantiate) user object in the
+    // original library: `n_winsock my_socket` is usable without CREATE.
+    if (type.toLowerCase() === 'n_winsock') return this.instantiate('n_winsock')
     return null
   }
 

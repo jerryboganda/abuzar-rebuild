@@ -108,6 +108,7 @@ export class PBObject implements Member {
     return false
   }
   pbGet(name: string): unknown {
+    if (name === 'parentwindow') return this.getNative(name)
     const c = this.children.get(name)
     if (c) return c
     if (this.props.has(name)) return this.props.get(name)
@@ -116,6 +117,13 @@ export class PBObject implements Member {
   getNative(name: string): unknown {
     if (name === 'classname') return this.className
     if (name === 'parent') return this.parent
+    // PowerBuilder menus expose the window that owns the menu.  Menu items
+    // are nested, so walk up to the root and then to its window.
+    if (name === 'parentwindow') {
+      let o: PBObject | null = this
+      while (o && o.native !== 'window') o = o.parent
+      return o
+    }
     return null
   }
   pbSet(name: string, value: unknown): void {
