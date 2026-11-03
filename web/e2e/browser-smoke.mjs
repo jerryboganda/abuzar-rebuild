@@ -248,8 +248,33 @@ for (const name of sample) {
     return { err, msgs, opened: !!w, ms: Math.round(performance.now() - t0), hadDom }
   }, name)])
   if (r.stuck) {
-    console.log(`stuck: ${name} did not finish opening within 30 s (the page is busy); the rest of the sample is skipped`)
-    break
+    const t0 = Date.now()
+    // where the main thread is: a debugger pause answers with the call stack of whatever is running (it is resumed right away)
+    const where = await (async () => {
+      try {
+        const cdp = await page.context().newCDPSession(page)
+        await cdp.send('Debugger.enable')
+        const paused = new Promise((res) => cdp.once('Debugger.paused', res))
+        await cdp.send('Debugger.pause')
+        const ev = await Promise.race([paused, new Promise((res) => setTimeout(() => res(null), 8000))])
+        const stack = ev ? ev.callFrames.slice(0, 14).map((f) => `${f.functionName || '(anonymous)'} ${f.url.split('/').pop()}:${f.location.lineNumber + 1}`).join(' < ') : 'the page did not pause (it is idle, not computing)'
+        await cdp.send('Debugger.resume').catch(() => {})
+        await cdp.send('Debugger.disable').catch(() => {})
+        return stack
+      } catch (e) {
+        return 'no stack: ' + String((e && e.message) || e).slice(0, 120)
+      }
+    })()
+    console.log(`stuck: ${name} did not finish opening within 30 s; main thread: ${where}`)
+    const back = await Promise.race([page.evaluate(() => 1).then(() => true, () => false), new Promise((res) => setTimeout(() => res(false), 90000))])
+    const secs = Math.round((Date.now() - t0) / 1000) + 30
+    if (!back) {
+      console.log('the page did not answer again within 2 minutes; the rest of the sample is skipped')
+      break
+    }
+    console.log(`the page answered again after ${secs} s: the sample goes on`)
+    slow.push(`${name} stalled ${secs} s`)
+    continue
   }
   if (r.opened) opened++
   if (r.err) {
