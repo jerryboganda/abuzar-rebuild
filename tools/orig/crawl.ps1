@@ -106,7 +106,9 @@ function Others($frame) { @([W]::Top($pid_) | Where-Object { $_ -ne $frame -and 
 function Dismiss($h) {
   $btns = @()
   [W]::EnumChildWindows($h, { param($c, $l) if ([W]::Cls($c) -eq 'Button') { $script:btns += , @($c, ([W]::Txt($c) -replace '&', '')) }; $true }, [IntPtr]::Zero) | Out-Null
-  foreach ($want in 'Cancel', 'Close', 'No', 'Exit', 'Ok', 'OK', 'Yes') {
+  # "Do you want to save changes?" (Yes / No / Cancel): No, or the sheet stays open and spoils the next capture
+  $order = if (($script:btns | Where-Object { $_[1] -eq 'Yes' }) -and ($script:btns | Where-Object { $_[1] -eq 'No' })) { @('No') } else { @('Cancel', 'Close', 'No', 'Exit', 'Ok', 'OK', 'Yes') }
+  foreach ($want in $order) {
     foreach ($b in $script:btns) { if ($b[1] -eq $want) { [void][W]::PostMessage($b[0], 0xF5, [IntPtr]::Zero, [IntPtr]::Zero); return $true } }
   }
   return $false

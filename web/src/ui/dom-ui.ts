@@ -24,7 +24,8 @@ const bool = (o: PBObject, k: string, d = true): boolean => {
 }
 const str = (o: PBObject, k: string): string => toStr(o.props.get(k))
 
-const ALIGN = ['left', 'right', 'center', 'justify']
+// the Alignment of a window control as the object file stores it: 0 left, 1 center, 2 right, 3 justify (the About window of the original shows its `alignment: 1` lines centered)
+const ALIGN = ['left', 'center', 'right', 'justify']
 
 function fontOf(o: PBObject): string {
   return cssFont({ face: str(o, 'facename') || 'Arial', size: fontSize(num(o, 'textsize', -9)), weight: num(o, 'weight', 400), italic: bool(o, 'italic', false), underline: false, strike: false })
@@ -776,12 +777,31 @@ export class WinView {
         el = d
         break
       }
+      case 'statichyperlink': {
+        // a link label: its text (the About window shows the e-mail and web address of the vendor), a click opens it
+        const d = document.createElement('div')
+        d.className = 'ctl st'
+        d.textContent = str(c, 'text')
+        this.style(c, d)
+        d.style.textAlign = ALIGN[num(c, 'alignment', 0)] ?? 'left'
+        d.style.lineHeight = 'normal'
+        d.style.cursor = 'pointer'
+        d.onclick = () => {
+          const target = str(c, 'url') || str(c, 'text')
+          if (target) window.open(/^[a-z]+:/i.test(target) ? target : target.includes('@') ? 'mailto:' + target : 'http://' + target, '_blank')
+          void rt.fire(c, 'clicked')
+        }
+        el = d
+        break
+      }
       case 'singlelineedit':
       case 'editmask': {
         const i = document.createElement('input')
         i.className = 'ctl'
         i.value = str(c, 'text')
         this.style(c, i)
+        // Border = false: the text sits on the form (the About window's company and licence lines)
+        if (!bool(c, 'border', true)) i.style.border = 'none'
         i.style.textAlign = ALIGN[num(c, 'alignment', 0)] ?? 'left'
         if (bool(c, 'password', false)) i.type = 'password'
         const lim = num(c, 'limit', 0)

@@ -196,7 +196,7 @@ export function registerWindowing(rt: Runtime): void {
   for (const k of [
     'commandbutton', 'statictext', 'singlelineedit', 'multilineedit', 'editmask', 'checkbox', 'radiobutton', 'listbox', 'dropdownlistbox', 'picturelistbox',
     'tab', 'groupbox', 'picture', 'picturebutton', 'progressbar', 'hscrollbar', 'vscrollbar', 'hprogressbar', 'userobject', 'oval', 'rectangle', 'roundrectangle', 'line',
-    'richtextedit', 'treeview', 'listview', 'ole', 'olecustomcontrol', 'graph', 'hslider', 'vslider', 'monthcalendar', 'datepicker',
+    'richtextedit', 'treeview', 'listview', 'ole', 'olecustomcontrol', 'graph', 'hslider', 'vslider', 'monthcalendar', 'datepicker', 'statichyperlink', 'picturehyperlink',
   ]) nat.set(k, (r, c) => new NControl(r, c, k))
   rt.nativeParent.set('u_transaction', 'transaction')
   void toStr
