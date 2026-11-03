@@ -89,6 +89,13 @@ export class NControl extends PBObject {
   }
   async n_setfocus(): Promise<number> {
     this.rt.ui?.focus?.(this)
+    let p: PBObject | null = this.parent
+    while (p && !(p instanceof NWindow)) p = p.parent
+    if (p && p.focusLive && p.focusOwner !== this) {
+      const from = p.focusOwner
+      p.focusOwner = this
+      if (from && from.native === 'datawindow') await this.rt.fire(from, 'losefocus')
+    }
     return 1
   }
   async n_move(x: unknown, y: unknown): Promise<number> {
@@ -280,6 +287,11 @@ export class NWindow extends NControl {
   isOpen = false
   closing = false
   returnValue: unknown = null
+  /** the DataWindow a script gave the keyboard (SetFocus) while the window was opening: it receives GetFocus when the window comes up, like in the original */
+  lastFocusDw: PBObject | null = null
+  /** once the window is up, a SetFocus that moves the keyboard between controls raises LoseFocus / GetFocus of the DataWindows involved */
+  focusLive = false
+  focusOwner: PBObject | null = null
   constructor(rt: Runtime, className: string, native = 'window') {
     super(rt, className, native)
     this.closed = new Promise<void>((r) => (this.resolveClosed = r))

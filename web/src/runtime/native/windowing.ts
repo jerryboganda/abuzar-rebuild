@@ -107,6 +107,13 @@ async function openWin(rt: Runtime, a: unknown[], sheet: boolean, withParm: bool
     await rt.fire(t, 'selectionchanging', [0, first])
     await rt.fire(t, 'selectionchanged', [0, first])
   }
+  // the DataWindow that holds the keyboard when the window comes up gets its GetFocus (the entry windows open the item list popup from it: Cash Sale and Refused Sale start with
+  // the detail grid focused, the Purchase Order with its header)
+  const fd = w.lastFocusDw
+  w.lastFocusDw = null
+  w.focusLive = true
+  w.focusOwner = fd
+  if (fd && !fd.destroyed && w.isOpen) await rt.fire(fd, 'getfocus')
   if (modal) {
     rt.yieldQueue()
     await w.closed

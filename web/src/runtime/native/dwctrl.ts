@@ -480,6 +480,18 @@ export class NDwBase extends PBObject {
   }
   async n_setfocus(): Promise<number> {
     this.rt.ui?.focus?.(this)
+    type Win = { lastFocusDw: PBObject | null; focusLive: boolean; focusOwner: PBObject | null }
+    let p: PBObject | null = this.parent
+    while (p && !('lastFocusDw' in p)) p = p.parent
+    const win = p as unknown as Win | null
+    if (!win) return 1
+    if (!win.focusLive) win.lastFocusDw = this // the window is still opening: GetFocus comes when it is up
+    else if (win.focusOwner !== this) {
+      const from = win.focusOwner
+      win.focusOwner = this
+      if (from && from.native === 'datawindow') await this.rt.fire(from, 'losefocus')
+      await this.rt.fire(this, 'getfocus')
+    }
     return 1
   }
   /**

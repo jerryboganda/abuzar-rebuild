@@ -154,9 +154,12 @@ export class DwModel implements EvalHost {
         const t = ini?.trim().toLowerCase()
         if (t !== 'today') {
           // a literal set by a script (`expiry.initial = f_stringpreferences('DefaultExpiry')` = `2030-12-12 00:00:00`)
+          // ... or the text String(datetime) gives in the program's regional format (`expiry.initial = string(f_datepreferences('defaultexpiry'))` = `12/12/2030 00:00:00`, day first)
           const m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/.exec(ini ?? '')
-          if (!m) return null
-          const dt = new PBDateTime(daysFromCivil(+m[1], +m[2], +m[3]), (((+(m[4] ?? 0)) * 60 + +(m[5] ?? 0)) * 60 + +(m[6] ?? 0)) * 1000)
+          const r = m ? null : /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/.exec(ini ?? '')
+          const p = m ? [m[1], m[2], m[3], m[4], m[5], m[6]] : r ? [r[3], r[2], r[1], r[4], r[5], r[6]] : null
+          if (!p) return null
+          const dt = new PBDateTime(daysFromCivil(+p[0], +p[1], +p[2]), (((+(p[3] ?? 0)) * 60 + +(p[4] ?? 0)) * 60 + +(p[5] ?? 0)) * 1000)
           return this.kinds[i] === 'date' ? dt.date : this.kinds[i] === 'time' ? dt.time : dt
         }
         const now = PBDateTime.fromJs(new Date())

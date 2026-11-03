@@ -295,3 +295,19 @@ test('a RichText DataWindow (objects without a name) builds and holds rows', () 
   m.setItem(1, 'comments', 'text')
   assert.equal(m.getItem(1, 'comments'), 'text')
 })
+
+test('an initial date set from String(datetime) (regional day-first text) is honoured', () => {
+  const rt = new Runtime({ load: async () => undefined })
+  registerSysFuncs(rt)
+  const d = {
+    datawindow: { processing: '1' },
+    bands: { detail: { height: '80' } },
+    table: { columns: [{ type: 'datetime', name: 'expiry' }] },
+    objects: [],
+  } as unknown as DwDef
+  const m = new DwModel(rt, 'd_exp', d)
+  m.overrides.set('expiry.initial', '12/12/2030 00:00:00')
+  assert.notEqual(m.defaultFor(0), null)
+  m.overrides.set('expiry.initial', '2030-12-12 00:00:00')
+  assert.equal(String(m.defaultFor(0)), String((() => { m.overrides.set('expiry.initial', '12/12/2030 00:00:00'); return m.defaultFor(0) })()))
+})

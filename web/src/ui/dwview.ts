@@ -733,7 +733,9 @@ export class DwView {
     if ((o['font.face'] || '').trim().toLowerCase() === 'arial narrow') st.fontStretch = 'condensed'
     st.color = pbColor(await this.prop(m, o, 'color', row, band), '#000')
     const al = await this.prop(m, o, 'alignment', row, band)
-    st.textAlign = al === '1' ? 'right' : al === '2' ? 'center' : al === '3' ? 'justify' : 'left'
+    // the text of a drop-down column stays left-aligned whatever the alignment says (sale promotion: weekday `<All Days>` and item discount `Disc. % 1` carry alignment 1)
+    const dropDown = o.type === 'column' && (o['dddw.name'] !== undefined || o['ddlb.limit'] !== undefined)
+    st.textAlign = dropDown ? 'left' : al === '1' ? 'right' : al === '2' ? 'center' : al === '3' ? 'justify' : 'left'
     st.whiteSpace = o.type === 'column' || o.type === 'compute' ? 'nowrap' : 'pre'
     st.lineHeight = st.height
     st.padding = '0 2px'
@@ -855,6 +857,14 @@ export class DwView {
   private async display(m: DwModel, o: DwObject, v: unknown, row: number, band: string): Promise<string> {
     const ct = v === null || v === undefined ? null : this.codeTable(m, o)
     if (ct) return ct.find(([, d]) => d === toStr(v))?.[0] ?? toStr(v)
+    // a null value shows the row of the drop-down list whose data column is null (`<None>` of the accounts list `ddd_allaccountslist_null`)
+    if ((v === null || v === undefined) && o['dddw.name']) {
+      const cm = await this.childOf(o)
+      const dc = cm ? cm.colIndex(o['dddw.datacolumn'] || '') : -1
+      const ds = cm ? cm.colIndex(o['dddw.displaycolumn'] || '') : -1
+      const hit = cm && dc >= 0 && ds >= 0 ? cm.buf.primary.find((r) => r.v[dc] === null || r.v[dc] === undefined) : undefined
+      if (hit && cm) return toStr(hit.v[cm.colIndex(o['dddw.displaycolumn'] || '')])
+    }
     if (v === null || v === undefined) {
       // an empty column still shows its display format when that has a section for null / zero-length text (the password columns show `*****`)
       const f = splitExpr(o.format).value
@@ -885,12 +895,15 @@ export class DwView {
     // must be evaluated, not shown literally
     const fmt = await this.prop(m, o, 'format', row, band)
     const mask = o['editmask.mask']
-    const useFmt = fmt !== undefined && fmt !== '' ? fmt : mask && o['editmask.useformat'] !== 'yes' ? mask : ''
+    // an edit-mask column that does not `use the format` shows its mask also when it has no focus (the pack purchase's date `dd/mm/yyyy hh:mm` carries a display format with
+    // seconds, the original shows no seconds; the sale promotion's start date `[shortdate] [time]` shows `dd/mm/yyyy hh:mm:ss`)
+    const ci = m.colIndex(o.name)
+    const kind = ci >= 0 ? m.kinds[ci] : ''
+    const maskWins = !!mask && o['editmask.useformat'] !== 'yes' && (kind === 'date' || kind === 'datetime' || kind === 'time')
+    const useFmt = maskWins ? mask : fmt !== undefined && fmt !== '' ? fmt : mask && o['editmask.useformat'] !== 'yes' ? mask : ''
     // A numeric DataWindow column may hold its value as text (the editor
     // commits the typed string).  Format it as a number, or [general] shows
     // the stored scale: Qty 2.0000 instead of 2.
-    const ci = m.colIndex(o.name)
-    const kind = ci >= 0 ? m.kinds[ci] : ''
     if (typeof v === 'string' && (kind === 'number' || kind === 'decimal') && v.trim() !== '' && Number.isFinite(Number(v))) {
       v = kind === 'decimal' ? Dec.parse(v) : Number(v)
     }

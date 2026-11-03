@@ -5,6 +5,7 @@ import { askForToken, authHeaders } from '../runtime/apiauth.ts'
 /** application user of the audit trail: every open session (and every later one) carries it as the setting `app.user` */
 let appUser = ''
 const open = new Set<HttpDb>()
+const SESSION_TZ = "SET TIME ZONE 'Asia/Karachi'"
 
 export async function setAppUser(user: string): Promise<void> {
   appUser = user
@@ -56,13 +57,20 @@ export class HttpDb implements Db {
   private async reopen(): Promise<void> {
     const j = await this.post<{ sid: string }>('/api/session', {})
     this.sid = j.sid
+    await this.setSessionTimeZone()
     if (appUser) await this.send('/api/query', { sid: this.sid, sql: "SELECT set_config('app.user', $1, false)", params: [appUser] })
+  }
+
+  /** SQL Server ran with the installation's local timezone; sqlx forces UTC unless the session says otherwise. */
+  private async setSessionTimeZone(): Promise<void> {
+    await this.query(SESSION_TZ).catch(() => undefined)
   }
 
   async open(): Promise<this> {
     const j = await this.post<{ sid: string }>('/api/session', {})
     this.sid = j.sid
     open.add(this)
+    await this.setSessionTimeZone()
     if (appUser) await this.query("SELECT set_config('app.user', $1, false)", [appUser]).catch(() => undefined)
     return this
   }
@@ -97,6 +105,8 @@ export class HttpDb implements Db {
   }
   async rollback(): Promise<void> {
     await this.post('/api/rollback', { sid: this.sid })
+    // SET TIME ZONE is transactional: a rollback restores the server's UTC default.
+    await this.setSessionTimeZone()
   }
   async close(): Promise<void> {
     open.delete(this)
