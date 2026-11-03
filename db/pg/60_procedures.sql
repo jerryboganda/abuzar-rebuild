@@ -948,6 +948,7 @@ BEGIN
     RETURN;
   END IF;
   v_admissioncode := v_code;
+  _rc := 1;
   return_value := 0;
   admissioncode := v_admissioncode;
   RETURN;
@@ -974,8 +975,10 @@ BEGIN
   DELETE FROM dbo.studentclass WHERE ((studentcode = v_studentcode) AND (classcode = v_classcode));
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_newrollno := coalesce((SELECT (coalesce(max((trunc((rollno)::numeric))::integer), 0) + 1) FROM dbo.studentclass WHERE (classcode = v_classcode)), 1);
+  _rc := 1;
   IF (v_newrollno IS NULL) THEN
     v_newrollno := '';
+    _rc := 1;
   END IF;
   INSERT INTO dbo.studentclass (classcode, studentcode, rollno, admissiondate) VALUES (v_classcode, v_studentcode, v_newrollno, localtimestamp(3));
   GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -986,6 +989,7 @@ BEGIN
     RETURN;
   END IF;
   v_rollno := v_newrollno;
+  _rc := 1;
   UPDATE dbo.student SET currentclass = v_classcode, status = 'A' WHERE (studentcode = v_studentcode);
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF ((_rc = 0) AND (0 <> 0)) THEN
@@ -2341,6 +2345,7 @@ BEGIN
   UPDATE dbo.installmentheader SET approved = 'Y', approvedby = v_usercode, approvedon = localtimestamp(3) WHERE ((((installmentcode BETWEEN v_startcode AND v_endcode) AND (posted = 'N')) AND (approved = 'N')) AND (rejected = 'N'));
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_totalrows := _rc;
+  _rc := 1;
   IF (v_totalrows = 0) THEN
     RAISE EXCEPTION 'No Installment Estimate available for Approval';
     return_value := -1;
@@ -2897,11 +2902,13 @@ BEGIN
     RETURN;
   END IF;
   v_posted := coalesce((SELECT posted FROM dbo.serviceheader WHERE (serviceinvcode = v_serviceinvcode)), 'N');
+  _rc := 1;
   IF ((v_posted = 'N') OR (v_posted IS NULL)) THEN
     return_value := 0;
     RETURN;
   END IF;
   v_errcode := 0;
+  _rc := 1;
   SELECT r.return_value, r.key INTO v_errcode, v_serviceissuerequestcode FROM dbo.sp_locktabmaxkey(tabname => 'ServiceIssueRequest', key => v_serviceissuerequestcode) AS r;
   IF ((0 <> 0) OR (v_errcode <> 0)) THEN
     RAISE EXCEPTION 'Problem while Fetching Service Issue Request Value';
@@ -2910,8 +2917,10 @@ BEGIN
   END IF;
   IF (v_usercode IS NULL) THEN
     v_usercode := 1;
+    _rc := 1;
   END IF;
   v_tmpcode := (SELECT count(sci.icode) FROM dbo.serviceheader AS h, dbo.servicedetail AS d, dbo.serviceconsumableitem AS sci WHERE ((((h.serviceinvcode = v_serviceinvcode) AND (h.posted = 'Y')) AND (h.serviceinvcode = d.serviceinvcode)) AND (d.servicecode = sci.servicecode)));
+  _rc := 1;
   IF ((v_tmpcode <= 0) OR (v_tmpcode IS NULL)) THEN
     return_value := 0;
     RETURN;
@@ -2931,6 +2940,7 @@ BEGIN
     RETURN;
   END IF;
   v_lastserviceissuerequestcode := (v_serviceissuerequestcode + 1);
+  _rc := 1;
   SELECT r.return_value INTO v_errcode FROM dbo.sp_updatetabmaxkey(tabname => 'ServiceIssueRequest', key => v_lastserviceissuerequestcode) AS r;
   IF ((0 <> 0) OR (v_errcode <> 0)) THEN
     RAISE EXCEPTION 'Problem while Updating Service Issue Request Max Key Value';
@@ -3002,6 +3012,7 @@ BEGIN
       RETURN;
     ELSE
       v_regno := coalesce((ltrim(rtrim(v_shortname)) || ltrim(rtrim(dbo.tsql_str(((v_counter + 1))::numeric)))), '');
+      _rc := 1;
     END IF;
   ELSE
     -- SET NOCOUNT OFF
@@ -3049,11 +3060,13 @@ BEGIN
     RETURN;
   END IF;
   v_posted := (SELECT posted FROM dbo.serviceinvpurtempheader WHERE (serviceinvcode = v_serviceinvcode));
+  _rc := 1;
   IF ((v_posted = 'Y') OR (v_posted IS NULL)) THEN
     return_value := 0;
     RETURN;
   END IF;
   v_errcode := 0;
+  _rc := 1;
   SELECT r.return_value, r.key INTO v_errcode, v_start_no FROM dbo.sp_locktabmaxkey(tabname => 'ServicePurHeader', key => v_start_no) AS r;
   IF ((0 <> 0) OR (v_errcode <> 0)) THEN
     RAISE EXCEPTION 'Problem while Fetching Service Purchase Header Value';
@@ -3068,6 +3081,7 @@ BEGIN
 ) ON COMMIT DROP;
   IF (v_usercode IS NULL) THEN
     v_usercode := 1;
+    _rc := 1;
   END IF;
   INSERT INTO tv_sp_autogeneratepurchaseofservice_servicepurheader (suppcode) SELECT DISTINCT suppcode FROM dbo.serviceinvpurtempdetail WHERE (serviceinvcode = v_serviceinvcode);
   GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -3076,6 +3090,7 @@ BEGIN
     RETURN;
   END IF;
   v_tot_services := coalesce((SELECT count(*) FROM tv_sp_autogeneratepurchaseofservice_servicepurheader AS servicepurheader), 0);
+  _rc := 1;
   IF (v_tot_services <= 0) THEN
     return_value := 0;
     RETURN;
@@ -3097,6 +3112,7 @@ BEGIN
     RETURN;
   END IF;
   v_end_no := coalesce((SELECT max(servicepurinvcode) FROM tv_sp_autogeneratepurchaseofservice_servicepurheader AS servicepurheader), 0);
+  _rc := 1;
   SELECT r.return_value INTO v_errcode FROM dbo.sp_updatetabmaxkey(tabname => 'ServicePurHeader', key => v_end_no) AS r;
   IF ((0 <> 0) OR (v_errcode <> 0)) THEN
     RAISE EXCEPTION 'Problem while Updating Service Purchase Key Value';
@@ -3152,11 +3168,13 @@ BEGIN
     RETURN;
   END IF;
   v_posted := (SELECT posted FROM dbo.serviceheader WHERE (serviceinvcode = v_serviceinvcode));
+  _rc := 1;
   IF ((v_posted = 'N') OR (v_posted IS NULL)) THEN
     return_value := 0;
     RETURN;
   END IF;
   v_errcode := 0;
+  _rc := 1;
   SELECT r.return_value, r.key INTO v_errcode, v_start_no FROM dbo.sp_locktabmaxkey(tabname => 'ServicePurHeader', key => v_start_no) AS r;
   IF ((0 <> 0) OR (v_errcode <> 0)) THEN
     RAISE EXCEPTION 'Problem while Fetching Service Purchase Header Value';
@@ -3173,6 +3191,7 @@ BEGIN
 ) ON COMMIT DROP;
   IF (v_usercode IS NULL) THEN
     v_usercode := 1;
+    _rc := 1;
   END IF;
   INSERT INTO tv_sp_autogeneratepurchaseofservice_doctorsharebased_s_c1171cc7 (suppcode, headerno, ref) SELECT DISTINCT dc.acccode, h.headerno, CASE WHEN (h.admissioncode > 0) THEN (SELECT p.name FROM dbo.patientadmission AS pa, dbo.patient AS p WHERE ((h.admissioncode = pa.admissioncode) AND (pa.patientcode = p.patientcode))) ELSE CASE WHEN (h.patientcode > 0) THEN (SELECT p.name FROM dbo.patient AS p WHERE (p.patientcode = h.patientcode)) ELSE '' END END AS ref FROM dbo.serviceheader AS h, dbo.servicedetail AS d, dbo.doctors AS dc WHERE (((((h.serviceinvcode = v_serviceinvcode) AND (h.serviceinvcode = d.serviceinvcode)) AND (((d.commission > 0) OR (d.shareperc > 0)))) AND (h.doctcode = dc.doctcode)) AND (dc.acccode > 0));
   GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -3181,6 +3200,7 @@ BEGIN
     RETURN;
   END IF;
   v_tot_services := coalesce((SELECT count(*) FROM tv_sp_autogeneratepurchaseofservice_doctorsharebased_s_c1171cc7 AS servicepurheader), 0);
+  _rc := 1;
   IF (v_tot_services <= 0) THEN
     return_value := 0;
     RETURN;
@@ -3202,6 +3222,7 @@ BEGIN
     RETURN;
   END IF;
   v_end_no := coalesce((SELECT max(servicepurinvcode) FROM tv_sp_autogeneratepurchaseofservice_doctorsharebased_s_c1171cc7 AS servicepurheader), 0);
+  _rc := 1;
   SELECT r.return_value INTO v_errcode FROM dbo.sp_updatetabmaxkey(tabname => 'ServicePurHeader', key => v_end_no) AS r;
   IF ((0 <> 0) OR (v_errcode <> 0)) THEN
     RAISE EXCEPTION 'Problem while Updating Service Purchase Key Value';
@@ -3254,19 +3275,23 @@ BEGIN
     RETURN;
   END IF;
   v_posted := coalesce((SELECT posted FROM dbo.serviceheader WHERE (serviceinvcode = v_serviceinvcode)), 'N');
+  _rc := 1;
   IF ((v_posted = 'N') OR (v_posted IS NULL)) THEN
     return_value := 0;
     RETURN;
   END IF;
   IF (v_usercode IS NULL) THEN
     v_usercode := 1;
+    _rc := 1;
   END IF;
   v_tmpcode := (SELECT count(ptd.servicecode) FROM dbo.serviceheader AS h, dbo.servicedetail AS d, dbo.servicepurtempheader AS pt, dbo.servicepurtempdetail AS ptd WHERE (((((h.serviceinvcode = v_serviceinvcode) AND (h.posted = 'Y')) AND (h.serviceinvcode = d.serviceinvcode)) AND (d.servicecode = pt.servicecode)) AND (pt.servicepurtempcode = ptd.servicepurtempcode)));
+  _rc := 1;
   IF ((v_tmpcode <= 0) OR (v_tmpcode IS NULL)) THEN
     return_value := 0;
     RETURN;
   END IF;
   v_tmpcode := (SELECT count(ptd.servicecode) FROM dbo.servicedetail AS d, dbo.serviceinvpurtempdetail AS ptd WHERE ((d.serviceinvcode = v_serviceinvcode) AND (d.srvrowid = ptd.srvrowid)));
+  _rc := 1;
   IF (v_tmpcode > 0) THEN
     return_value := 0;
     RETURN;
@@ -3353,20 +3378,24 @@ BEGIN
   END IF;
   IF (v_usercode IS NULL) THEN
     v_usercode := 1;
+    _rc := 1;
   END IF;
   v_posted := coalesce((SELECT posted FROM dbo.serviceheader WHERE (serviceinvcode = v_serviceinvcode)), 'N');
+  _rc := 1;
   IF ((v_posted = 'N') OR (v_posted IS NULL)) THEN
     return_value := 0;
     serviceresultcode := v_serviceresultcode;
     RETURN;
   END IF;
   v_resultcode := (SELECT (SELECT max(srh.serviceresultcode) FROM dbo.serviceresultheader AS srh WHERE (serviceinvcode = v_serviceinvcode)) AS resultcode FROM dbo.serviceheader WHERE (((serviceinvcode = v_serviceinvcode) AND (posted = 'Y')) AND (serviceinvcode IN (SELECT srh.serviceinvcode FROM dbo.serviceresultheader AS srh WHERE (srh.serviceinvcode = v_serviceinvcode)))));
+  _rc := 1;
   IF (v_resultcode >= 0) THEN
     return_value := 0;
     serviceresultcode := v_serviceresultcode;
     RETURN;
   END IF;
   v_tot_services := (SELECT (SELECT count(sd.servicecode) FROM dbo.servicedetail AS sd, dbo.service AS sv WHERE (((sd.serviceinvcode = v_serviceinvcode) AND (sd.servicecode = sv.servicecode)) AND (sv.resultrequired = 'Y'))) AS servicecount FROM dbo.serviceheader WHERE (((serviceinvcode = v_serviceinvcode) AND (posted = 'Y')) AND (serviceinvcode NOT IN (SELECT srh.serviceinvcode FROM dbo.serviceresultheader AS srh WHERE (srh.serviceinvcode = v_serviceinvcode)))));
+  _rc := 1;
   IF ((v_tot_services <= 0) OR (v_tot_services IS NULL)) THEN
     return_value := 0;
     serviceresultcode := v_serviceresultcode;
@@ -3379,6 +3408,7 @@ BEGIN
     v_gestationcode := _r1.c2;
   END LOOP;
   v_errcode := 0;
+  _rc := 1;
   SELECT r.return_value, r.key INTO v_errcode, v_serviceresultcode FROM dbo.sp_locktabmaxkey(tabname => 'ServiceResultHeader', key => v_serviceresultcode) AS r;
   IF ((0 <> 0) OR (v_errcode <> 0)) THEN
     RAISE EXCEPTION 'Problem while Fetching Service Result Key Value';
@@ -3387,6 +3417,7 @@ BEGIN
     RETURN;
   END IF;
   v_serviceresultcode := (v_serviceresultcode + 1);
+  _rc := 1;
   INSERT INTO dbo.serviceresultheader (serviceresultcode, date, serviceinvcode, usercode, posted, postdate, postedby, remarks, serviceresultstampcode) SELECT v_serviceresultcode, localtimestamp(3), v_serviceinvcode, v_usercode, 'N' AS posted, NULL::timestamp(3) AS postdate, NULL::smallint AS postedby, NULL::citext AS remarks, 1 AS serviceresultstampcode;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF ((0 <> 0) OR (_rc <= 0)) THEN
@@ -3404,6 +3435,7 @@ BEGIN
     RETURN;
   END IF;
   v_errcode := 0;
+  _rc := 1;
   SELECT r.return_value INTO v_errcode FROM dbo.sp_updatetabmaxkey(tabname => 'ServiceResultHeader', key => v_serviceresultcode) AS r;
   IF ((0 <> 0) OR (v_errcode <> 0)) THEN
     RAISE EXCEPTION 'Problem while Updating Service Result Key Value';
@@ -3487,17 +3519,24 @@ BEGIN
     growid integer GENERATED BY DEFAULT AS IDENTITY NOT NULL
 ) ON COMMIT DROP;
   v_continue := 0;
+  _rc := 1;
   v_deptcode := 1;
+  _rc := 1;
   v_areacode := 1;
+  _rc := 1;
   v_serverdate := (SELECT localtimestamp(3));
+  _rc := 1;
   v_serviceinvcode := coalesce((SELECT max(serviceinvcode) FROM dbo.serviceissuerequest WHERE (serviceissuerequestcode = v_serviceissuerequestcode)), 0);
+  _rc := 1;
   v_consumableitemcount := coalesce((SELECT count(d.icode) FROM dbo.serviceissuerequestdetail AS d, dbo.serviceissuerequest AS h WHERE ((h.serviceissuerequestcode = v_serviceissuerequestcode) AND (h.serviceissuerequestcode = d.serviceissuerequestcode))), 0);
+  _rc := 1;
   IF (v_consumableitemcount <= 0) THEN
     return_value := 0;
     issueinvcode := v_issueinvcode;
     RETURN;
   END IF;
   v_module := (SELECT module FROM dbo.module WHERE ((lower(name))::citext = 'issue'));
+  _rc := 1;
   IF ((v_module <= 0) OR (v_module IS NULL)) THEN
     RAISE EXCEPTION 'Error occured While Fetching Issue Module Information';
     return_value := -1;
@@ -3505,6 +3544,7 @@ BEGIN
     RETURN;
   END IF;
   v_pricetype := dbo.fn_get_int_preference('IssuePriceTypeCode');
+  _rc := 1;
   IF ((v_pricetype <= 0) OR (v_pricetype IS NULL)) THEN
     RAISE EXCEPTION 'Error occured While Fetching Issue Module Price Ttype Information';
     return_value := -1;
@@ -3512,6 +3552,7 @@ BEGIN
     RETURN;
   END IF;
   v_groupcode := dbo.fn_getgroupcode((v_usercode)::smallint);
+  _rc := 1;
   IF ((v_groupcode <= 0) OR (v_groupcode IS NULL)) THEN
     RAISE EXCEPTION 'Error occured While Fetching Group Information for the user triggered this event';
     return_value := -1;
@@ -3519,6 +3560,7 @@ BEGIN
     RETURN;
   END IF;
   v_gcode := dbo.fn_getgodown(v_groupcode, v_module);
+  _rc := 1;
   IF ((v_gcode <= 0) OR (v_gcode IS NULL)) THEN
     RAISE EXCEPTION 'You have No Allowed Godown for Issue Module';
     return_value := -1;
@@ -3526,6 +3568,7 @@ BEGIN
     RETURN;
   END IF;
   v_headerno := dbo.fn_getheader(v_groupcode, v_module);
+  _rc := 1;
   IF ((v_headerno <= 0) OR (v_headerno IS NULL)) THEN
     RAISE EXCEPTION 'You have No Allowed Header for Issue Module';
     return_value := -1;
@@ -3535,6 +3578,7 @@ BEGIN
   INSERT INTO tv_sp_autoissueconsumableitem_godownlist (code) SELECT code FROM dbo.fn_getavailablegodown(v_groupcode, v_module) AS fn_getavailablegodown ORDER BY rowid;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_totgodown := coalesce((SELECT count(code) FROM tv_sp_autoissueconsumableitem_godownlist AS godownlist), 0);
+  _rc := 1;
   IF ((v_totgodown = 0) OR (v_totgodown IS NULL)) THEN
     RAISE EXCEPTION 'You have No Allowed Godown for Issue Module';
     return_value := -1;
@@ -3542,28 +3586,38 @@ BEGIN
     RETURN;
   END IF;
   v_category := 2;
+  _rc := 1;
   v_accountfor := coalesce((SELECT accountfor FROM dbo.issuecategory WHERE (issuecategorycode = v_category)), 'N');
+  _rc := 1;
   IF (v_accountfor = 'Y') THEN
     v_dracccode := trunc(coalesce((SELECT code FROM dbo.global WHERE (name = 'GT_WIPAcc')), 33))::smallint;
+    _rc := 1;
   ELSE
     v_dracccode := NULL;
+    _rc := 1;
   END IF;
   OPEN cur_cursor_consumableitems FOR SELECT d.servicerowid AS servicerowid, d.icode AS icode, d.rowid AS rowid, coalesce(sum(d.qty), 0) AS consumeableqty, coalesce((SELECT sum(gd.currqty) FROM dbo.godowndetail AS gd WHERE ((gd.icode = d.icode) AND (gd.gcode IN (SELECT code FROM tv_sp_autoissueconsumableitem_godownlist AS godownlist)))), 0) AS availableqty, i.packunits AS packunits, round(((i.purprice / i.packunits))::numeric, 2) AS purprice, round(((i.saleprice / i.packunits))::numeric, 2) AS saleprice, round(((i.recentpurprice / i.packunits))::numeric, 2) AS recentpurprice, (CASE v_pricetype WHEN 1 THEN round(((i.saleprice / i.packunits))::numeric, 2) WHEN 2 THEN round(((i.saleprice2 / i.packunits))::numeric, 2) WHEN 3 THEN round(((i.saleprice3 / i.packunits))::numeric, 2) WHEN 4 THEN round(((i.purprice / i.packunits))::numeric, 2) WHEN 5 THEN round(((i.recentpurprice / i.packunits))::numeric, 2) WHEN 6 THEN round((i.avgprice)::numeric, 2) WHEN 7 THEN round(((i.saleprice4 / i.packunits))::numeric, 2) WHEN 8 THEN round(((i.saleprice5 / i.packunits))::numeric, 2) END + d.processcharge) AS price FROM dbo.serviceissuerequestdetail AS d, dbo.serviceissuerequest AS h, dbo.item AS i WHERE (((h.serviceissuerequestcode = v_serviceissuerequestcode) AND (h.serviceissuerequestcode = d.serviceissuerequestcode)) AND (d.icode = i.icode)) GROUP BY d.servicerowid, d.icode, d.rowid, i.packunits, i.purprice, i.saleprice, i.saleprice2, i.saleprice3, i.saleprice4, i.saleprice5, i.recentpurprice, i.avgprice, d.processcharge ORDER BY d.rowid;
   v_items_rows := (-1);
+  _rc := 1;
   IF (v_items_rows > 0) THEN
     SELECT r.return_value, r.key INTO v_rt_code, v_code FROM dbo.sp_gettabmaxkey(tabname => 'IssueHeader', key => v_code) AS r;
     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
       v_continue := -1;
+      _rc := 1;
     ELSE
       v_issueinvcode := v_code;
+      _rc := 1;
       SELECT r.return_value, r.key INTO v_rt_code, v_headerinvno FROM dbo.sp_getheadertabmaxkey(headercode => (v_headerno)::smallint, modulecode => v_module, key => v_headerinvno) AS r;
       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
         v_continue := -1;
+        _rc := 1;
       ELSE
         v_issuecode := NULL;
+        _rc := 1;
         SELECT r.return_value, r.counter INTO v_rt_code, v_issuecode FROM dbo.sp_getissuecategorycounter(category => v_category, counter => v_issuecode) AS r;
         IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
           v_continue := -1;
+          _rc := 1;
         ELSE
           INSERT INTO dbo.issueheader (issueinvcode, deptcode, date, originaldate, salesmancode, posted, postdate, postedby, areacode, headerno, headerinvno, pricetypecode, remarks, serviceissuerequestcode, serviceinvcode, issuecategorycode, accountfor, dracccode, issuecode) VALUES (v_code, v_deptcode, v_serverdate, v_serverdate, v_usercode, 'Y', v_serverdate, v_usercode, v_areacode, v_headerno, v_headerinvno, v_pricetype, ('SYS. GEN. ISSUE FOR ITEMS CONSUMED AGAINST SVC. INV. #: ' || ltrim(rtrim(dbo.tsql_str((v_serviceinvcode)::numeric, 10)))), v_serviceissuerequestcode, v_serviceinvcode, v_category, v_accountfor, v_dracccode, v_issuecode);
           GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -3573,6 +3627,7 @@ BEGIN
           IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
             RAISE EXCEPTION 'Error occured in inserting record into Issue Header : %', v_code;
             v_continue := -1;
+            _rc := 1;
           ELSE
             FETCH NEXT FROM cur_cursor_consumableitems INTO v_servicerowid, v_icode, v_rowid, v_consumableqty, v_availableqty, v_packunits, v_purprice, v_saleprice, v_recentpurprice, v_price;
             IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
@@ -3580,33 +3635,47 @@ BEGIN
               SELECT r.return_value, r.avgprice INTO v_rt_code, v_hold_avgprice FROM dbo.sp_getitemavgprice(icode => v_icode, avgprice => v_hold_avgprice) AS r;
               IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                 v_continue := -1;
+                _rc := 1;
               ELSE
                 v_total_availablestock := (SELECT coalesce(sum(currqty), 0) FROM dbo.godowndetail WHERE (godowndetail.icode = v_icode));
+                _rc := 1;
                 IF ((v_total_availablestock < 0) OR (v_total_availablestock IS NULL)) THEN
                   v_total_availablestock := 0;
+                  _rc := 1;
                 END IF;
                 v_packunits := CASE WHEN (v_packunits IS NULL) THEN 1 WHEN (v_packunits = 0) THEN 1 ELSE v_packunits END;
+                _rc := 1;
                 v_totalqty := (SELECT coalesce(sum(currqty), 0) FROM dbo.godowndetail WHERE ((godowndetail.gcode IN (SELECT code FROM tv_sp_autoissueconsumableitem_godownlist AS godownlist)) AND (godowndetail.icode = v_icode)));
+                _rc := 1;
                 IF (v_totalqty >= v_consumableqty) THEN
                   v_reqqty := v_consumableqty;
+                  _rc := 1;
                   OPEN cur_itembatch_cursor FOR SELECT gd.gcode, gd.batch, gd.expiry, gd.currqty FROM dbo.godowndetail AS gd, (SELECT code AS gcode, growid FROM tv_sp_autoissueconsumableitem_godownlist AS godownlist) AS g WHERE ((gd.gcode = g.gcode) AND (gd.icode = v_icode)) ORDER BY g.growid, gd.gcode, gd.priority, gd.expiry, gd.currqty;
                   v_totalrows := (-1);
+                  _rc := 1;
                   FETCH NEXT FROM cur_itembatch_cursor INTO v_gcode, v_batch, v_expiry, v_currqty;
                   IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
                   v_counter := 1;
+                  _rc := 1;
                   WHILE (((_fs = 0) AND (v_counter <= v_totalrows)) AND (v_reqqty > 0)) LOOP
                     v_batchqty := v_currqty;
+                    _rc := 1;
                     IF (v_batchqty >= v_reqqty) THEN
                       v_delqty := v_reqqty;
+                      _rc := 1;
                     ELSE
                       v_delqty := v_batchqty;
+                      _rc := 1;
                     END IF;
                     v_reqqty := (v_reqqty - v_delqty);
+                    _rc := 1;
                     SELECT r.return_value, r.lbi_maxutn INTO v_rt_code, v_utn FROM dbo.sp_maxutn(lbi_rows => (1)::bigint, lbi_maxutn => (v_utn)::bigint) AS r;
                     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                       v_continue := -1;
+                      _rc := 1;
                     END IF;
                     v_total_availablestock := (v_total_availablestock - v_delqty);
+                    _rc := 1;
                     INSERT INTO dbo.issuedetail (issueinvcode, gcode, icode, batch, expiry, qty, saleprice, purchaseprice, avgprice, packunits, mrpp, issueutn, price, serviceissuereqrowid, servicerowid, balancestock) VALUES (v_code, v_gcode, v_icode, v_batch, v_expiry, v_delqty, v_saleprice, v_purprice, v_hold_avgprice, v_packunits, v_recentpurprice, v_utn, v_price, v_rowid, v_servicerowid, v_total_availablestock);
                     GET DIAGNOSTICS _rc = ROW_COUNT;
                     v_err := 0;
@@ -3615,8 +3684,10 @@ BEGIN
                     IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
                       RAISE EXCEPTION 'Error occured in inserting record into Issue Detail for Service Issue Request Code : %', v_code;
                       v_continue := -1;
+                      _rc := 1;
                     ELSE
                       v_newqty := (v_currqty - v_delqty);
+                      _rc := 1;
                       IF (v_newqty > 0) THEN
                         SELECT r.return_value INTO v_rt_code FROM dbo.sp_saleupdateitemstockbatch(gcode => v_gcode, icode => v_icode, batch => v_batch, expiry => v_expiry, newqty => v_newqty, oldqty => v_currqty) AS r;
                       ELSE
@@ -3624,9 +3695,11 @@ BEGIN
                       END IF;
                       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                         v_continue := -1;
+                        _rc := 1;
                       END IF;
                     END IF;
                     v_counter := (v_counter + 1);
+                    _rc := 1;
                     FETCH NEXT FROM cur_itembatch_cursor INTO v_gcode, v_batch, v_expiry, v_currqty;
                     IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
                   END LOOP;
@@ -3634,8 +3707,10 @@ BEGIN
                   -- DEALLOCATE ItemBatch_Cursor
                 ELSE
                   v_itemname := (SELECT name FROM dbo.item WHERE (icode = v_icode));
+                  _rc := 1;
                   RAISE EXCEPTION 'Not enough stock for item (%) to decrease for Issue No. : %', v_itemname, v_code;
                   v_continue := -1;
+                  _rc := 1;
                 END IF;
               END IF;
               FETCH NEXT FROM cur_cursor_consumableitems INTO v_servicerowid, v_icode, v_rowid, v_consumableqty, v_availableqty, v_packunits, v_purprice, v_saleprice, v_recentpurprice, v_price;
@@ -3648,6 +3723,7 @@ BEGIN
   ELSE
     RAISE EXCEPTION 'Not enough stock exists for some of the consumable items for Issue No. : %', v_code;
     v_continue := -1;
+    _rc := 1;
   END IF;
   CLOSE cur_cursor_consumableitems;
   -- DEALLOCATE Cursor_ConsumableItems
@@ -3698,6 +3774,7 @@ BEGIN
   v_usercode := usercode;
   -- SET NOCOUNT ON
   v_errcode := 0;
+  _rc := 1;
   SELECT r.return_value, r.key INTO v_errcode, v_loyaltyredemptioncode FROM dbo.sp_locktabmaxkey(tabname => 'LoyaltyRedemption', key => v_loyaltyredemptioncode) AS r;
   IF ((0 <> 0) OR (v_errcode <> 0)) THEN
     RAISE EXCEPTION 'Problem while Fetching Loyalty Redemption Code';
@@ -3705,16 +3782,23 @@ BEGIN
     RETURN;
   END IF;
   v_loyaltyredemptioncode := (v_loyaltyredemptioncode + 1);
+  _rc := 1;
   v_remarks := 'Auto Points Redeemed';
+  _rc := 1;
   IF (v_documnttype = 'SV') THEN
     v_remarks := ((v_remarks || ' via Sale Inv. Code ') || ltrim(rtrim(dbo.tsql_str((v_documentcode)::numeric))));
+    _rc := 1;
   END IF;
   IF (v_usercode IS NULL) THEN
     v_usercode := 1;
+    _rc := 1;
   END IF;
   v_loyaltycardcode := (SELECT min(lc.loyaltycardcode) FROM dbo.loyaltycard AS lc WHERE (lc.acccode = v_acccode));
+  _rc := 1;
   v_balancedate := localtimestamp(3);
+  _rc := 1;
   v_errcode := 0;
+  _rc := 1;
   SELECT r.return_value, r.layaltypointsbalance, r.layaltypointsvalue INTO v_errcode, v_layaltypointsbalance, v_layaltypointsvalue FROM dbo.sp_getaccountloyaltybalance(acccode => v_acccode, balancedate => v_balancedate, layaltypointsbalance => v_layaltypointsbalance, layaltypointsvalue => v_layaltypointsvalue) AS r;
   IF ((0 <> 0) OR (v_errcode <> 0)) THEN
     RAISE EXCEPTION 'Problem while Fetching Account Loyalty Balance Info.';
@@ -3850,8 +3934,11 @@ DECLARE
   _rc integer;
 BEGIN
   v_usercode := 1;
+  _rc := 1;
   v_serverdate := localtimestamp(3);
+  _rc := 1;
   v_continue := 0;
+  _rc := 1;
   DROP TABLE IF EXISTS tv_sp_autosatisfydue_temp_table;
   CREATE TEMP TABLE tv_sp_autosatisfydue_temp_table (
     saleinvcode integer,
@@ -3869,37 +3956,49 @@ BEGIN
   INSERT INTO tv_sp_autosatisfydue_temp_table (saleinvcode, itemname, icode, gcode, salerowid, dueqty, satisfiedqty, stock, satisfiableqty, selected) SELECT saleinvcode, itemname, icode, gcode, salerowid, dueqty, satisfiedqty, stock, coalesce((dueqty - satisfiedqty), 0) AS satisfiableqty, 'N' AS selected FROM (SELECT sl.saleinvcode AS saleinvcode, i.name AS itemname, sd.icode AS icode, sd.gcode AS gcode, sd.rowid AS salerowid, sd.looseqty AS dueqty, coalesce((SELECT sum(dsd.duesatisfyqty) FROM dbo.duesatisfyheader AS dsh, dbo.duesatisfydetail AS dsd WHERE ((((dsh.saleinvcode = sl.saleinvcode) AND (dsh.duesatisfycode = dsd.duesatisfycode)) AND (dsd.icode = sd.icode)) AND (dsd.salerowid = sd.rowid))), 0) AS satisfiedqty, coalesce((SELECT sum(gd.currqty) FROM dbo.godowndetail AS gd WHERE ((gd.icode = sd.icode) AND (sd.gcode = gd.gcode))), 0) AS stock FROM dbo.saleledger AS sl, dbo.saledetail AS sd, dbo.item AS i, (SELECT DISTINCT icode, gcode FROM dbo.godowndetail WHERE (gcode IN (SELECT g.gcode FROM dbo.godown AS g WHERE (g.autosatisfydue = 'Y')))) AS p WHERE ((((((sl.saleinvcode = sd.saleinvcode) AND (sl.posted = 'Y')) AND (sd.icode = i.icode)) AND (sd.due = 'D')) AND (sd.icode = p.icode)) AND (sd.gcode = p.gcode))) AS t WHERE ((((t.dueqty - t.satisfiedqty)) > 0) AND (t.stock > 0)) ORDER BY t.itemname, t.saleinvcode;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_totalrows := coalesce((SELECT count(*) FROM tv_sp_autosatisfydue_temp_table AS temp_table), 0);
+  _rc := 1;
   v_counter := 1;
+  _rc := 1;
   v_oldicode := -1;
+  _rc := 1;
   WHILE ((v_totalrows > 0) AND (v_counter <= v_totalrows)) LOOP
     v_icode := (SELECT icode FROM tv_sp_autosatisfydue_temp_table AS temp_table WHERE (rowid = v_counter));
+    _rc := 1;
     IF (v_icode <> v_oldicode) THEN
       v_oldicode := v_icode;
+      _rc := 1;
       v_totstock := coalesce((SELECT stock FROM tv_sp_autosatisfydue_temp_table AS temp_table WHERE (rowid = v_counter)), 0);
+      _rc := 1;
     END IF;
     IF (v_totstock > 0) THEN
       v_satisfiableqty := (SELECT satisfiableqty FROM tv_sp_autosatisfydue_temp_table AS temp_table WHERE (rowid = v_counter));
+      _rc := 1;
       UPDATE tv_sp_autosatisfydue_temp_table AS temp_table SET stock = v_totstock WHERE (rowid = v_counter);
       GET DIAGNOSTICS _rc = ROW_COUNT;
       IF (v_satisfiableqty <= v_totstock) THEN
         v_totstock := (v_totstock - v_satisfiableqty);
+        _rc := 1;
       ELSE
         UPDATE tv_sp_autosatisfydue_temp_table AS temp_table SET satisfiableqty = v_totstock WHERE (rowid = v_counter);
         GET DIAGNOSTICS _rc = ROW_COUNT;
         v_totstock := 0;
+        _rc := 1;
       END IF;
       UPDATE tv_sp_autosatisfydue_temp_table AS temp_table SET selected = 'Y' WHERE (rowid = v_counter);
       GET DIAGNOSTICS _rc = ROW_COUNT;
     END IF;
     v_counter := (v_counter + 1);
+    _rc := 1;
   END LOOP;
   DELETE FROM tv_sp_autosatisfydue_temp_table AS temp_table WHERE (selected = 'N');
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_totalrows := coalesce((SELECT count(*) FROM tv_sp_autosatisfydue_temp_table AS temp_table), 0);
+  _rc := 1;
   IF (v_totalrows > 0) THEN
     SELECT r.return_value, r.key INTO v_rt_code, v_dueadjcode FROM dbo.sp_gettabmaxkey(tabname => 'DueAdjHeader', key => v_dueadjcode) AS r;
     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
       v_continue := -1;
+      _rc := 1;
       RAISE EXCEPTION 'Unable to Generate New Due Adjustment code';
     ELSE
       INSERT INTO dbo.dueadjheader (dueadjcode, date, startdate, enddate, remarks, usercode) VALUES (v_dueadjcode, v_serverdate, ('01-01-1990 00:00:00')::timestamp(3), localtimestamp(3), 'Due Satisfied Via Auto Due Satisfy Job', v_usercode);
@@ -3912,11 +4011,13 @@ BEGIN
       IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
         RAISE EXCEPTION 'Error occured in inserting record into Due Adjustment Detail';
         v_continue := -1;
+        _rc := 1;
       END IF;
       IF (v_continue >= 0) THEN
         SELECT r.return_value INTO v_rt_code FROM dbo.sp_satisfydueinbulk(dueadjcode => v_dueadjcode, usercode => v_usercode, serverdate => v_serverdate) AS r;
         IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
           v_continue := -1;
+          _rc := 1;
           RAISE EXCEPTION 'Unable to Generate New Due Adjustment code';
         END IF;
       END IF;
@@ -5186,6 +5287,7 @@ BEGIN
   -- SET ANSI_NULLS ON
   -- SET ANSI_WARNINGS ON
   v_invtype := 1;
+  _rc := 1;
   WHILE (v_invtype <= 3) LOOP
     DROP TABLE IF EXISTS tmp_saletemp;
     CREATE TEMP TABLE tmp_saletemp (
@@ -5209,10 +5311,14 @@ BEGIN
         RAISE EXCEPTION 'Unable to Fetch Information of Advance Sale Inv. No. % ', v_invcode;
       END IF;
       v_continue := -1;
+      _rc := 1;
     ELSE
       v_sale_rowcount := coalesce((SELECT count(*) FROM tmp_saletemp AS saletemp), 0);
+      _rc := 1;
       v_continue := 0;
+      _rc := 1;
       v_invcounter := 1;
+      _rc := 1;
     END IF;
     WHILE ((((v_sale_rowcount > 0)) AND ((v_continue >= 0))) AND ((v_invcounter <= v_sale_rowcount))) LOOP
       _rc := 0;
@@ -5237,14 +5343,18 @@ BEGIN
           RAISE EXCEPTION 'Unable to Fetch Information of Advance Sale Inv. No. % ', v_invcode;
         END IF;
         v_continue := -1;
+        _rc := 1;
       END IF;
       IF ((v_sale > 0) AND (v_continue = 0)) THEN
         IF ((v_refundamt > 0) AND (v_salereturn = 0)) THEN
           v_refund := v_refundamt;
+          _rc := 1;
         ELSE
           v_refund := 0;
+          _rc := 1;
         END IF;
         v_continue := 0;
+        _rc := 1;
         SELECT r.return_value INTO v_rt_code FROM dbo.sp_translate_childeserver_sale(childserver => v_thischildserver, invtype => v_invtype, invcode => v_invcode, usercode => v_usercode, refund => v_refund, saleinvcode => v_saleinvcode) AS r;
         IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
           IF (v_invtype = 1) THEN
@@ -5253,46 +5363,61 @@ BEGIN
             RAISE EXCEPTION 'Unable to Generate Sale Invoice No. % FROM Advance Sale Inv. No. % ', v_saleinvcode, v_invcode;
           END IF;
           v_continue := -1;
+          _rc := 1;
         END IF;
         IF (v_saleinvcode > 0) THEN
           v_sale_invtotal := dbo.fn_getsaleinvtotal(v_saleinvcode);
+          _rc := 1;
         ELSE
           v_sale_invtotal := 0;
+          _rc := 1;
         END IF;
         v_flag := 1;
+        _rc := 1;
       END IF;
       IF ((v_salereturn > 0) AND (v_continue = 0)) THEN
         IF (v_invtype = 2) THEN
           IF (v_refundamt > 0) THEN
             v_refund := v_refundamt;
+            _rc := 1;
           ELSE
             v_refund := 0;
+            _rc := 1;
           END IF;
           v_continue := 0;
+          _rc := 1;
           SELECT r.return_value, r.rs1 INTO v_rt_code, rs1 FROM dbo.sp_translate_childeserver_salereturn(childserver => v_thischildserver, advsaleinvcode => v_invcode, usercode => v_usercode, refund => v_refund, srinvcode => v_srinvcode) AS r;
           IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
             RAISE EXCEPTION 'Unable to Generate Sale Return No. % FROM Advance Sale Inv. No. % ', v_srinvcode, v_invcode;
             v_continue := -1;
+            _rc := 1;
           END IF;
         END IF;
         IF (v_invtype = 3) THEN
           v_refund := 0;
+          _rc := 1;
           v_continue := 0;
+          _rc := 1;
           SELECT r.return_value, r.srinvcode, r.rs1 INTO v_rt_code, v_srinvcode, rs2 FROM dbo.sp_translate_childeserver_sreturn(childserver => v_thischildserver, oldsrinvcode => v_invcode, usercode => v_usercode, srinvcode => v_srinvcode) AS r;
           IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
             RAISE EXCEPTION 'Unable to Generate Sale Return No. % FROM Old S/R No. % ', v_srinvcode, v_invcode;
             v_continue := -1;
+            _rc := 1;
           END IF;
         END IF;
         IF (v_srinvcode > 0) THEN
           v_ret_invtotal := dbo.fn_getsrinvtotal(v_srinvcode);
+          _rc := 1;
         ELSE
           v_ret_invtotal := 0;
+          _rc := 1;
         END IF;
         v_flag := 1;
+        _rc := 1;
       END IF;
       IF (v_invtype = 2) THEN
         v_invtotal_diff := ((coalesce(v_invtotal, 0) - coalesce(v_sale_invtotal, 0)) - coalesce(v_ret_invtotal, 0));
+        _rc := 1;
       END IF;
       IF (v_saleinvcode > 0) THEN
         IF (v_invtotal_diff > 0) THEN
@@ -5311,10 +5436,13 @@ BEGIN
           GET DIAGNOSTICS _rc = ROW_COUNT;
         END IF;
         v_sale_invtotal := dbo.fn_getsaleinvtotal(v_saleinvcode);
+        _rc := 1;
       ELSE
         v_sale_invtotal := 0;
+        _rc := 1;
       END IF;
       v_invtotal_diff := ((coalesce(v_invtotal, 0) - coalesce(v_sale_invtotal, 0)) - coalesce(v_ret_invtotal, 0));
+      _rc := 1;
       IF (v_srinvcode > 0) THEN
         IF ((v_sale <= 0) AND (v_invtype <> 3)) THEN
           UPDATE dbo.srledger SET flatdisc = coalesce(misccharges, 0), misccharges = coalesce(flatdisc, 0) WHERE (srinvcode = v_srinvcode);
@@ -5337,6 +5465,7 @@ BEGIN
         GET DIAGNOSTICS _rc = ROW_COUNT;
       END IF;
       v_invcounter := (v_invcounter + 1);
+      _rc := 1;
     END LOOP;
     IF (v_continue = 0) THEN
       IF (v_invtype = 1) THEN
@@ -5353,15 +5482,19 @@ BEGIN
     END IF;
     IF ((v_continue = 0) AND (v_flag = 1)) THEN
       v_dt := localtimestamp(3);
+      _rc := 1;
       v_continue := 0;
+      _rc := 1;
       SELECT r.return_value INTO v_rt_code FROM dbo.sp_set_datetime_preference(prefname => 'LastSaleSynchronized', prefvalue => v_dt) AS r;
       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
         RAISE EXCEPTION 'Unable to Record Last Sale Synchronization Information in Software Preferences';
         v_continue := -1;
+        _rc := 1;
       END IF;
     END IF;
     DROP TABLE IF EXISTS tmp_saletemp;
     v_invtype := (v_invtype + 1);
+    _rc := 1;
   END LOOP;
   return_value := v_continue;
   RETURN;
@@ -5434,10 +5567,14 @@ BEGIN
       RAISE EXCEPTION 'Unable to Fetch Information of Advance Sale Inv. No. % ', v_invcode;
     END IF;
     v_continue := -1;
+    _rc := 1;
   ELSE
     v_sale_rowcount := coalesce((SELECT count(*) FROM tmp_saletemp AS saletemp), 0);
+    _rc := 1;
     v_continue := 0;
+    _rc := 1;
     v_invcounter := 1;
+    _rc := 1;
   END IF;
   WHILE ((((v_sale_rowcount > 0)) AND ((v_continue >= 0))) AND ((v_invcounter <= v_sale_rowcount))) LOOP
     _rc := 0;
@@ -5462,14 +5599,18 @@ BEGIN
         RAISE EXCEPTION 'Unable to Fetch Information of Advance Sale Inv. No. % ', v_invcode;
       END IF;
       v_continue := -1;
+      _rc := 1;
     END IF;
     IF ((v_sale > 0) AND (v_continue = 0)) THEN
       IF ((v_refundamt > 0) AND (v_salereturn = 0)) THEN
         v_refund := v_refundamt;
+        _rc := 1;
       ELSE
         v_refund := 0;
+        _rc := 1;
       END IF;
       v_continue := 0;
+      _rc := 1;
       SELECT r.return_value INTO v_rt_code FROM dbo.sp_translate_childeserver_sale(childserver => v_thischildserver, invtype => v_invtype, invcode => v_invcode, usercode => v_usercode, refund => v_refund, saleinvcode => v_saleinvcode) AS r;
       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
         IF (v_invtype = 1) THEN
@@ -5478,46 +5619,61 @@ BEGIN
           RAISE EXCEPTION 'Unable to Generate Sale Invoice No. % FROM Advance Sale Inv. No. % ', v_saleinvcode, v_invcode;
         END IF;
         v_continue := -1;
+        _rc := 1;
       END IF;
       IF (v_saleinvcode > 0) THEN
         v_sale_invtotal := dbo.fn_getsaleinvtotal(v_saleinvcode);
+        _rc := 1;
       ELSE
         v_sale_invtotal := 0;
+        _rc := 1;
       END IF;
       v_flag := 1;
+      _rc := 1;
     END IF;
     IF ((v_salereturn > 0) AND (v_continue = 0)) THEN
       IF (v_invtype = 2) THEN
         IF (v_refundamt > 0) THEN
           v_refund := v_refundamt;
+          _rc := 1;
         ELSE
           v_refund := 0;
+          _rc := 1;
         END IF;
         v_continue := 0;
+        _rc := 1;
         SELECT r.return_value, r.rs1 INTO v_rt_code, rs1 FROM dbo.sp_translate_childeserver_salereturn(childserver => v_thischildserver, advsaleinvcode => v_invcode, usercode => v_usercode, refund => v_refund, srinvcode => v_srinvcode) AS r;
         IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
           RAISE EXCEPTION 'Unable to Generate Sale Return No. % FROM Advance Sale Inv. No. % ', v_srinvcode, v_invcode;
           v_continue := -1;
+          _rc := 1;
         END IF;
       END IF;
       IF (v_invtype = 3) THEN
         v_refund := 0;
+        _rc := 1;
         v_continue := 0;
+        _rc := 1;
         SELECT r.return_value, r.srinvcode, r.rs1 INTO v_rt_code, v_srinvcode, rs2 FROM dbo.sp_translate_childeserver_sreturn(childserver => v_thischildserver, oldsrinvcode => v_invcode, usercode => v_usercode, srinvcode => v_srinvcode) AS r;
         IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
           RAISE EXCEPTION 'Unable to Generate Sale Return No. % FROM Old S/R No. % ', v_srinvcode, v_invcode;
           v_continue := -1;
+          _rc := 1;
         END IF;
       END IF;
       IF (v_srinvcode > 0) THEN
         v_ret_invtotal := dbo.fn_getsrinvtotal(v_srinvcode);
+        _rc := 1;
       ELSE
         v_ret_invtotal := 0;
+        _rc := 1;
       END IF;
       v_flag := 1;
+      _rc := 1;
     END IF;
     IF (v_invtype = 2) THEN
       v_invtotal_diff := ((coalesce(v_invtotal, 0) - coalesce(v_sale_invtotal, 0)) - coalesce(v_ret_invtotal, 0));
+      _rc := 1;
     END IF;
     IF (v_saleinvcode > 0) THEN
       IF (v_invtotal_diff > 0) THEN
@@ -5536,10 +5692,13 @@ BEGIN
         GET DIAGNOSTICS _rc = ROW_COUNT;
       END IF;
       v_sale_invtotal := dbo.fn_getsaleinvtotal(v_saleinvcode);
+      _rc := 1;
     ELSE
       v_sale_invtotal := 0;
+      _rc := 1;
     END IF;
     v_invtotal_diff := ((coalesce(v_invtotal, 0) - coalesce(v_sale_invtotal, 0)) - coalesce(v_ret_invtotal, 0));
+    _rc := 1;
     IF (v_srinvcode > 0) THEN
       IF ((v_sale <= 0) AND (v_invtype <> 3)) THEN
         UPDATE dbo.srledger SET flatdisc = coalesce(misccharges, 0), misccharges = coalesce(flatdisc, 0) WHERE (srinvcode = v_srinvcode);
@@ -5562,6 +5721,7 @@ BEGIN
       GET DIAGNOSTICS _rc = ROW_COUNT;
     END IF;
     v_invcounter := (v_invcounter + 1);
+    _rc := 1;
   END LOOP;
   IF (v_continue = 0) THEN
     IF (v_invtype = 1) THEN
@@ -5578,11 +5738,14 @@ BEGIN
   END IF;
   IF ((v_continue = 0) AND (v_flag = 1)) THEN
     v_dt := localtimestamp(3);
+    _rc := 1;
     v_continue := 0;
+    _rc := 1;
     SELECT r.return_value INTO v_rt_code FROM dbo.sp_set_datetime_preference(prefname => 'LastSaleSynchronized', prefvalue => v_dt) AS r;
     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
       RAISE EXCEPTION 'Unable to Record Last Sale Synchronization Information in Software Preferences';
       v_continue := -1;
+      _rc := 1;
     END IF;
   END IF;
   DROP TABLE IF EXISTS tmp_saletemp;
@@ -5842,6 +6005,7 @@ BEGIN
   INSERT INTO tv_sp_consolidatedexpiryintimation_intimation (code) SELECT intimationcode FROM dbo.expiryintimation WHERE ((intimationtypecode = v_type) AND (intimationcode IN (SELECT code FROM dbo.udf_stringtotabl(v_list, ',') AS udf_stringtotabl)));
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_rowcount := coalesce((SELECT count(*) FROM tv_sp_consolidatedexpiryintimation_intimation AS intimation), 0);
+  _rc := 1;
   IF (v_rowcount <= 0) THEN
     RAISE EXCEPTION 'No Expiry Intimation Selected';
     return_value := -1;
@@ -5856,8 +6020,10 @@ BEGIN
     RETURN;
   END IF;
   v_serialno := coalesce((SELECT counter FROM dbo.intimationtype WHERE (intimationtypecode = v_type) FOR UPDATE OF intimationtype), 0);
+  _rc := 1;
   IF (v_serialno > 0) THEN
     v_serialno := (v_serialno + 1);
+    _rc := 1;
     UPDATE dbo.intimationtype SET counter = v_serialno WHERE (intimationtypecode = v_type);
     GET DIAGNOSTICS _rc = ROW_COUNT;
   END IF;
@@ -5916,6 +6082,7 @@ BEGIN
   INSERT INTO tv_sp_consolidatequotation_as_saleorder_quot (code) SELECT code FROM dbo.udf_stringtotabl(v_list, ',') AS udf_stringtotabl;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_rowcount := coalesce((SELECT count(*) FROM tv_sp_consolidatequotation_as_saleorder_quot AS quot), 0);
+  _rc := 1;
   IF (v_rowcount <= 0) THEN
     RAISE EXCEPTION 'No Quotations Selected';
     return_value := -1;
@@ -5930,7 +6097,9 @@ BEGIN
     RETURN;
   END IF;
   v_module := 12;
+  _rc := 1;
   v_headerno := 1;
+  _rc := 1;
   SELECT r.return_value, r.key INTO v_rt_code, v_headerinvno FROM dbo.sp_getheadertabmaxkey(headercode => (v_headerno)::smallint, modulecode => (v_module)::smallint, key => v_headerinvno) AS r;
   IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
     RAISE EXCEPTION 'New Header Inv Code Generation Problem';
@@ -6054,8 +6223,10 @@ DECLARE
   _rc integer;
 BEGIN
   v_inv_posted_age := dbo.fn_get_int_preference('AutoPurgePostedSaleTime');
+  _rc := 1;
   IF (v_inv_posted_age IS NULL) THEN
     v_inv_posted_age := 30;
+    _rc := 1;
   END IF;
   -- BEGIN TRANSACTION (the caller owns the transaction)
   INSERT INTO dbo.sbuffer (saleinvcode, salecatcode, custcode, salesmancode, date, discperc, flatdisc, misccharges, salestax, posted, postdate, remarks, custrefno, headerno, headerinvno, originaldate, modifiedby, postedby, sprice, quotationno, doctcode, patientcode, reprintingcounter, cashreceived, invgstperc1, printwaranty, printbatch, messagecode, smancode, invoicesize, custrefno2, custrefno3, custrefno4, gstno, invtotal, machinename, modifycounter, itemdiscpercno, relationcode, diseasecode, wardcode, admissioncode, returncounter, paid, billingdate, unreceivedbalance, totalofsalereturns, listofsrinvoices, printbalance, accountfor, paymentmode, paymentacccode, amt, amtby, amtdate, amtreference, outstandingamt, marked, transferable, transfered, transferedon, transferedby, imported, importedby, deliveredby, saletypecode, balance, pptcustcode, deleted, prescode, impactinventory, saleordercode, salecomments1, salecomments2, altersaleinvcode, recurringinvoice, recurringperiod, lastrecurringinvcode, recurringagainst, considerinpo, visitcode, duedate, srbufferinvcode, custrefno5, gccode, grn, suppinvcode, vehicle, shipto, guaranteepersoncode, cashtendered, cashcharged, cashback, cashacccode, custlicno, custlicexpiry, moduleid, doccode, saletypeinvno, crs_transfered, crs_transferedon, guestcode, guestcheckincode, studentcode, custsitecode, transmit, transmited, currencycode, conversionrate, shiptocustomer, previousreading, currentreading, nextchange, synced, syncedon, syncedby, misccharges1, misccharges2, misccharges3, misccharges4, misccharges5) SELECT saleinvcode, salecatcode, custcode, salesmancode, date, discperc, flatdisc, misccharges, salestax, posted, postdate, remarks, custrefno, headerno, headerinvno, originaldate, modifiedby, postedby, sprice, quotationno, doctcode, patientcode, reprintingcounter, cashreceived, invgstperc1, printwaranty, printbatch, messagecode, smancode, invoicesize, custrefno2, custrefno3, custrefno4, gstno, invtotal, machinename, modifycounter, itemdiscpercno, relationcode, diseasecode, wardcode, admissioncode, returncounter, paid, billingdate, unreceivedbalance, totalofsalereturns, listofsrinvoices, printbalance, accountfor, paymentmode, paymentacccode, amt, amtby, amtdate, amtreference, outstandingamt, marked, transferable, transfered, transferedon, transferedby, imported, importedby, deliveredby, saletypecode, balance, pptcustcode, deleted, prescode, impactinventory, saleordercode, salecomments1, salecomments2, altersaleinvcode, recurringinvoice, recurringperiod, lastrecurringinvcode, recurringagainst, considerinpo, visitcode, duedate, srbufferinvcode, custrefno5, gccode, grn, suppinvcode, vehicle, shipto, guaranteepersoncode, cashtendered, cashcharged, cashback, cashacccode, custlicno, custlicexpiry, moduleid, doccode, saletypeinvno, crs_transfered, crs_transferedon, guestcode, guestcheckincode, studentcode, custsitecode, transmit, transmited, currencycode, conversionrate, shiptocustomer, previousreading, currentreading, nextchange, synced, syncedon, syncedby, misccharges1, misccharges2, misccharges3, misccharges4, misccharges5 FROM dbo.saleledger WHERE (((saleledger.posted = 'Y') AND (dbo.tsql_datediff('minute', postdate, localtimestamp(3)) >= v_inv_posted_age)) AND (saleledger.saleinvcode NOT IN (SELECT saleinvcode FROM dbo.sbuffer)));
@@ -6403,10 +6574,13 @@ BEGIN
   -- SET NOCOUNT ON
   IF ((ltrim(rtrim(v_as_list)))::citext = '') THEN
     v_as_list := '1';
+    _rc := 1;
   END IF;
   v_expiry := dbo.fn_get_int_preference('defaultsmsexpiry');
+  _rc := 1;
   IF (v_expiry IS NULL) THEN
     v_expiry := 24;
+    _rc := 1;
   END IF;
   _rc := 0;
   FOR _r1 IN SELECT smstypecode AS c1, smsdatacode AS c2, smstemplate AS c3, (SELECT d.viewname FROM dbo.sms_datadefinition AS d WHERE (d.smsdatacode = sms_template.smsdatacode)) AS c4, (SELECT d.filteron FROM dbo.sms_datadefinition AS d WHERE (d.smsdatacode = sms_template.smsdatacode)) AS c5 FROM dbo.sms_template WHERE (((smstemplatecode = v_ai_smstemplatecode) AND (enabled = 'Y')) AND (active = 'Y')) LOOP
@@ -6440,12 +6614,14 @@ BEGIN
     smsto citext
 ) ON COMMIT DROP;
     v_qry := ((((('INSERT INTO tmp_inputrows (CardCode, Code, TokenValue, SMSText, SMSTO) SELECT DISTINCT T.ContactCardCode, P.Code, NULL, NULL, T.Mobile FROM ' || v_viewname) || ' AS T, (SELECT CODE FROM udf_StringToTabl_String(''') || v_as_list) || ''', '','')) P WHERE P.Code = T.') || v_filteron);
+    _rc := 1;
     _dq2 := v_qry;
     IF _dq2 IS NOT NULL THEN
       EXECUTE dbo.tsql_dyn(_dq2);
     END IF;
     GET DIAGNOSTICS _rc = ROW_COUNT;
     v_qry := (((('INSERT INTO #InputRows (CardCode, Code, TokenValue, SMSText, SMSTO) SELECT DISTINCT T.ContactCardCode, P.Code, NULL, NULL, T.Mobile FROM GetAssociatedRecipientForSMS AS T, (SELECT CODE FROM udf_StringToTabl_String(''' || v_as_list) || ''', '','')) P WHERE T.SMSTemplateCode = ') || ltrim(rtrim(dbo.tsql_str((v_ai_smstemplatecode)::numeric, 10)))) || ' AND T.ContactCardCode NOT IN (SELECT M.CardCode FROM tmp_inputrows M)');
+    _rc := 1;
     _dq3 := v_qry;
     IF _dq3 IS NOT NULL THEN
       EXECUTE dbo.tsql_dyn(_dq3);
@@ -6454,26 +6630,38 @@ BEGIN
     UPDATE tmp_inputrows AS inputrows SET smstext = v_smstemplate;
     GET DIAGNOSTICS _rc = ROW_COUNT;
     v_strlen := length(rtrim(v_smstemplate));
+    _rc := 1;
     v_currpos := 1;
+    _rc := 1;
     WHILE (v_currpos <= v_strlen) LOOP
       v_startpos := dbo.tsql_charindex(('«')::citext, (v_smstemplate)::citext, v_currpos);
+      _rc := 1;
       IF (v_startpos > 0) THEN
         v_endpos := dbo.tsql_charindex(('»')::citext, (v_smstemplate)::citext, v_startpos);
+        _rc := 1;
         v_tokenname := substring(v_smstemplate, (v_startpos + 1), ((v_endpos - v_startpos) - 1));
+        _rc := 1;
         INSERT INTO tmp_token (startpos, endpos, tokenname, tokenvalue) VALUES (v_startpos, v_endpos, v_tokenname, '');
         GET DIAGNOSTICS _rc = ROW_COUNT;
         v_currpos := v_endpos;
+        _rc := 1;
       ELSE
         v_currpos := (v_strlen + 1);
+        _rc := 1;
       END IF;
     END LOOP;
     v_totalrows := coalesce((SELECT count(code) FROM tmp_inputrows AS inputrows), 0);
+    _rc := 1;
     v_tottokens := coalesce((SELECT count(*) FROM tmp_token AS token), 0);
+    _rc := 1;
     IF ((v_totalrows > 0) AND (v_tottokens > 0)) THEN
       v_mincontactcard := coalesce((SELECT min(cardcode) FROM tmp_inputrows AS inputrows), 0);
+      _rc := 1;
       v_sno := 1;
+      _rc := 1;
       WHILE (v_sno <= v_tottokens) LOOP
         v_tokenname := (SELECT tokenname FROM tmp_token AS token WHERE (sno = v_sno));
+        _rc := 1;
         IF (v_mincontactcard > 0) THEN
           _dq4 := (((((('UPDATE tmp_inputrows SET TokenValue = (SELECT MAX(' || v_tokenname) || ') FROM ') || v_viewname) || ' WHERE ') || v_filteron) || ' = tmp_inputrows.Code  AND ContactCardCode = tmp_inputrows.CardCode)');
           IF _dq4 IS NOT NULL THEN
@@ -6490,10 +6678,13 @@ BEGIN
         UPDATE tmp_inputrows AS inputrows SET smstext = replace((smstext)::citext, ((('«' || v_tokenname) || '»'))::citext, (tokenvalue)::citext) WHERE (dbo.tsql_charindex(((('«' || v_tokenname) || '»'))::citext, (smstext)::citext, 1) > 0);
         GET DIAGNOSTICS _rc = ROW_COUNT;
         v_sno := (v_sno + 1);
+        _rc := 1;
       END LOOP;
       v_sno := 1;
+      _rc := 1;
       WHILE (v_sno <= v_totalrows) LOOP
         v_smsto := (SELECT smsto FROM tmp_inputrows AS inputrows WHERE (rowid = v_sno));
+        _rc := 1;
         DELETE FROM tmp_eachsmsto AS eachsmsto;
         GET DIAGNOSTICS _rc = ROW_COUNT;
         INSERT INTO tmp_eachsmsto SELECT DISTINCT code FROM dbo.udf_stringtotabl_string(v_smsto, ',') AS udf_stringtotabl_string;
@@ -6501,12 +6692,15 @@ BEGIN
         DELETE FROM tmp_eachsmsto AS eachsmsto WHERE ((smsto IS NULL) OR (smsto = ''));
         GET DIAGNOSTICS _rc = ROW_COUNT;
         v_phonenoexists := coalesce((SELECT count(*) FROM tmp_eachsmsto AS eachsmsto), 0);
+        _rc := 1;
         rs1 := NULL;
         OPEN rs1 FOR SELECT DISTINCT localtimestamp(3) AS date, s.smsto, t.smstext, v_smstype AS smstypecode, 1 AS smsstatuscode, v_ai_smstemplatecode AS smstemplatecode FROM tmp_inputrows AS t, tmp_eachsmsto AS s WHERE ((t.rowid = v_sno) AND (t.smstext IS NOT NULL));
         INSERT INTO dbo.sms_center (date, smsto, smstext, smstypecode, smsstatuscode, smstemplatecode, expiry) SELECT DISTINCT localtimestamp(3) AS date, s.smsto, t.smstext, v_smstype AS smstypecode, 1 AS smsstatuscode, v_ai_smstemplatecode AS smstemplatecode, (localtimestamp(3) + (v_expiry) * interval '1 hour') AS expiry FROM tmp_inputrows AS t, tmp_eachsmsto AS s WHERE ((t.rowid = v_sno) AND (t.smstext IS NOT NULL));
         GET DIAGNOSTICS _rc = ROW_COUNT;
         v_ai_totsms := (v_ai_totsms + coalesce(_rc, 0));
+        _rc := 1;
         v_sno := (v_sno + 1);
+        _rc := 1;
       END LOOP;
     END IF;
   END IF;
@@ -6842,6 +7036,7 @@ BEGIN
     RETURN;
   END IF;
   v_ai_srallocationcode := v_tabmaxkey;
+  _rc := 1;
   return_value := 0;
   ai_srallocationcode := v_ai_srallocationcode;
   RETURN;
@@ -6878,8 +7073,10 @@ BEGIN
     smstypecode smallint
 ) ON COMMIT DROP;
   v_expiry := dbo.fn_get_int_preference('defaultsmsexpiry');
+  _rc := 1;
   IF (v_expiry IS NULL) THEN
     v_expiry := 24;
+    _rc := 1;
   END IF;
   INSERT INTO tv_sp_createsms_lt_sms SELECT code, v_as_smstext AS smstext, v_ai_smstypecode AS smstype FROM dbo.udf_stringtotabl_string(v_as_contactlist, ',') AS udf_stringtotabl_string;
   GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -6892,7 +7089,9 @@ BEGIN
   INSERT INTO dbo.sms_center (date, smsto, smstext, smstypecode, smsstatuscode, smstemplatecode, expiry) SELECT localtimestamp(3) AS date, t.smsto, t.smstext, t.smstypecode, 1 AS smsstatuscode, v_ai_smstemplatecode AS smstemplatecode, (localtimestamp(3) + (v_expiry) * interval '1 hour') AS expiry FROM tv_sp_createsms_lt_sms AS t;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_ai_totsms := _rc;
+  _rc := 1;
   v_err := 0;
+  _rc := 1;
   IF (((0 <> 0) OR (v_err <> 0)) OR (v_ai_totsms = 0)) THEN
     RAISE EXCEPTION 'Problem Inserting SMS in SMS Center';
     return_value := -1;
@@ -6974,6 +7173,7 @@ BEGIN
     RETURN;
   END IF;
   v_ai_srallocationcode := v_tabmaxkey;
+  _rc := 1;
   return_value := 0;
   ai_srallocationcode := v_ai_srallocationcode;
   RETURN;
@@ -7134,6 +7334,7 @@ BEGIN
     RETURN;
   END IF;
   v_ai_vochcatcode := 5;
+  _rc := 1;
   SELECT r.return_value, r.ai_vouchercode INTO v_err, v_ai_vouchercode FROM dbo.sp_getvouchercode(ai_vochcatcode => v_ai_vochcatcode, ai_vouchercode => v_ai_vouchercode) AS r;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
     RAISE EXCEPTION 'Voucher Code Generation Problem';
@@ -7142,14 +7343,23 @@ BEGIN
     RETURN;
   END IF;
   v_ai_acccode := 2;
+  _rc := 1;
   v_ad_date := localtimestamp(3);
+  _rc := 1;
   v_as_posted := 'Y';
+  _rc := 1;
   v_ad_postdate := localtimestamp(3);
+  _rc := 1;
   v_as_remarks := (SELECT remarks FROM dbo.imppurheader WHERE (imppurinvcode = v_ai_imppurinvcode));
+  _rc := 1;
   v_ad_originaldate := localtimestamp(3);
+  _rc := 1;
   v_ai_modifiedby := NULL;
+  _rc := 1;
   v_ai_postedby := v_ai_salesmancode;
+  _rc := 1;
   v_as_chkno := (SELECT container FROM dbo.imppurheader WHERE (imppurinvcode = v_ai_imppurinvcode));
+  _rc := 1;
   SELECT r.return_value INTO v_err FROM dbo.sp_setglheader(ai_glvochcode => v_tabmaxkey, ai_vochcatcode => v_ai_vochcatcode, ai_acccode => v_ai_acccode, ad_date => v_ad_date, ai_salesmancode => v_ai_salesmancode, as_posted => v_as_posted, ad_postdate => v_ad_postdate, as_remarks => v_as_remarks, ad_originaldate => v_ad_originaldate, ai_modifiedby => v_ai_modifiedby, ai_postedby => v_ai_postedby, as_chkno => v_as_chkno, ai_vouchercode => v_ai_vouchercode) AS r;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
     RAISE EXCEPTION 'Problem Inserting Voucher (Table:GLHeader)';
@@ -7166,8 +7376,11 @@ BEGIN
     RETURN;
   END IF;
   v_glvochcode := v_tabmaxkey;
+  _rc := 1;
   v_vochcode := v_ai_vouchercode;
+  _rc := 1;
   v_ai_glvochcode := v_tabmaxkey;
+  _rc := 1;
   UPDATE dbo.imppurheader SET glvochcode = v_glvochcode WHERE (imppurinvcode = v_ai_imppurinvcode);
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF (((0 <> 0) OR (v_err <> 0)) OR (_rc = 0)) THEN
@@ -7231,6 +7444,7 @@ BEGIN
     RETURN;
   END IF;
   v_ai_vochcatcode := 17;
+  _rc := 1;
   SELECT r.return_value, r.ai_vouchercode INTO v_err, v_ai_vouchercode FROM dbo.sp_getvouchercode(ai_vochcatcode => v_ai_vochcatcode, ai_vouchercode => v_ai_vouchercode) AS r;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
     RAISE EXCEPTION 'Voucher Code Generation Problem';
@@ -7240,14 +7454,23 @@ BEGIN
   END IF;
   OPEN rs1 FOR SELECT * FROM dbo.purpayment;
   v_ai_acccode := 2;
+  _rc := 1;
   v_ad_date := (SELECT max(date) FROM dbo.purpayment WHERE (purpaymentcode = v_ai_purpaymentcode));
+  _rc := 1;
   v_as_posted := 'Y';
+  _rc := 1;
   v_ad_postdate := localtimestamp(3);
+  _rc := 1;
   v_as_remarks := (SELECT paymentremarks FROM dbo.purpayment WHERE (purpaymentcode = v_ai_purpaymentcode));
+  _rc := 1;
   v_ad_originaldate := (SELECT max(date) FROM dbo.purpayment WHERE (purpaymentcode = v_ai_purpaymentcode));
+  _rc := 1;
   v_ai_modifiedby := NULL;
+  _rc := 1;
   v_ai_postedby := v_ai_usercode;
+  _rc := 1;
   v_as_chkno := (SELECT paymentcheckno FROM dbo.purpayment WHERE (purpaymentcode = v_ai_purpaymentcode));
+  _rc := 1;
   SELECT r.return_value INTO v_err FROM dbo.sp_setglheader(ai_glvochcode => v_tabmaxkey, ai_vochcatcode => v_ai_vochcatcode, ai_acccode => v_ai_acccode, ad_date => v_ad_date, ai_salesmancode => v_ai_usercode, as_posted => v_as_posted, ad_postdate => v_ad_postdate, as_remarks => v_as_remarks, ad_originaldate => v_ad_originaldate, ai_modifiedby => v_ai_modifiedby, ai_postedby => v_ai_postedby, as_chkno => v_as_chkno, ai_vouchercode => v_ai_vouchercode) AS r;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
     RAISE EXCEPTION 'Problem Inserting Voucher (Table:GLHeader)';
@@ -7264,8 +7487,11 @@ BEGIN
     RETURN;
   END IF;
   v_glvochcode := v_tabmaxkey;
+  _rc := 1;
   v_vochcode := v_ai_vouchercode;
+  _rc := 1;
   v_ai_glvochcode := v_tabmaxkey;
+  _rc := 1;
   UPDATE dbo.purpayment SET glvochcode = v_glvochcode, posted = 'Y', postedby = v_ai_usercode, postdate = localtimestamp(3) WHERE (purpaymentcode = v_ai_purpaymentcode);
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF (((0 <> 0) OR (v_err <> 0)) OR (_rc = 0)) THEN
@@ -7329,6 +7555,7 @@ BEGIN
     RETURN;
   END IF;
   v_ai_vochcatcode := 5;
+  _rc := 1;
   SELECT r.return_value, r.ai_vouchercode INTO v_err, v_ai_vouchercode FROM dbo.sp_getvouchercode(ai_vochcatcode => v_ai_vochcatcode, ai_vouchercode => v_ai_vouchercode) AS r;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
     RAISE EXCEPTION 'Voucher Code Generation Problem';
@@ -7337,14 +7564,23 @@ BEGIN
     RETURN;
   END IF;
   v_ai_acccode := 2;
+  _rc := 1;
   v_ad_date := localtimestamp(3);
+  _rc := 1;
   v_as_posted := 'Y';
+  _rc := 1;
   v_ad_postdate := localtimestamp(3);
+  _rc := 1;
   v_as_remarks := (SELECT receiptremarks FROM dbo.soreceipt WHERE (soreceiptcode = v_ai_soreceiptcode));
+  _rc := 1;
   v_ad_originaldate := localtimestamp(3);
+  _rc := 1;
   v_ai_modifiedby := NULL;
+  _rc := 1;
   v_ai_postedby := v_ai_usercode;
+  _rc := 1;
   v_as_chkno := (SELECT receiptrefno FROM dbo.soreceipt WHERE (soreceiptcode = v_ai_soreceiptcode));
+  _rc := 1;
   SELECT r.return_value INTO v_err FROM dbo.sp_setglheader(ai_glvochcode => v_tabmaxkey, ai_vochcatcode => v_ai_vochcatcode, ai_acccode => v_ai_acccode, ad_date => v_ad_date, ai_salesmancode => v_ai_usercode, as_posted => v_as_posted, ad_postdate => v_ad_postdate, as_remarks => v_as_remarks, ad_originaldate => v_ad_originaldate, ai_modifiedby => v_ai_modifiedby, ai_postedby => v_ai_postedby, as_chkno => v_as_chkno, ai_vouchercode => v_ai_vouchercode) AS r;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
     RAISE EXCEPTION 'Problem Inserting Voucher (Table:GLHeader)';
@@ -7361,8 +7597,11 @@ BEGIN
     RETURN;
   END IF;
   v_glvochcode := v_tabmaxkey;
+  _rc := 1;
   v_vochcode := v_ai_vouchercode;
+  _rc := 1;
   v_ai_glvochcode := v_tabmaxkey;
+  _rc := 1;
   UPDATE dbo.soreceipt SET glvochcode = v_glvochcode, posted = 'Y', postedby = v_ai_usercode, postdate = localtimestamp(3) WHERE (soreceiptcode = v_ai_soreceiptcode);
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF (((0 <> 0) OR (v_err <> 0)) OR (_rc = 0)) THEN
@@ -7459,32 +7698,43 @@ BEGIN
   -- SET NOCOUNT ON
   -- SET XACT_ABORT ON
   v_tableprefix := '';
+  _rc := 1;
   IF (((length(rtrim(ltrim(rtrim(v_srv)))) = 0) OR (v_srv IS NULL))) THEN
     v_tableprefix := '';
+    _rc := 1;
   ELSE
     v_tableprefix := (v_srv || '.');
+    _rc := 1;
   END IF;
   IF (((length(rtrim(ltrim(rtrim(v_db)))) = 0) OR (v_db IS NULL))) THEN
     v_tableprefix := v_tableprefix;
+    _rc := 1;
   ELSE
     v_tableprefix := ((v_tableprefix || v_db) || '.');
+    _rc := 1;
   END IF;
   IF (((length(rtrim(ltrim(rtrim(v_owner)))) = 0) OR (v_owner IS NULL))) THEN
     v_tableprefix := ((v_tableprefix || 'DBO') || '.');
+    _rc := 1;
   ELSE
     v_tableprefix := ((v_tableprefix || v_owner) || '.');
+    _rc := 1;
   END IF;
   v_versionsyn := 0;
+  _rc := 1;
   SELECT r.return_value, r.versionsyn INTO v_err, v_versionsyn FROM dbo.sp_compare_remote_versioninfo(prefix => v_tableprefix, versionsyn => (v_versionsyn)::integer) AS r;
   v_err := 0;
+  _rc := 1;
   IF (((0 <> 0) OR (v_err <> 0)) OR (v_versionsyn = 0)) THEN
     RAISE EXCEPTION 'Unable to Continue due to Local and Remote version Conflicts.';
     return_value := -1;
     RETURN;
   END IF;
   v_instancename := coalesce((SELECT name FROM dbo.clientinstance), '');
+  _rc := 1;
   SELECT r.return_value, r.clientid, r.instanceid INTO v_err, v_clientid, v_instanceid FROM dbo.sp_crs_getclientinstanceinfo(srv => v_srv, db => v_db, owner => v_owner, instancename => v_instancename, clientid => v_clientid, instanceid => v_instanceid) AS r;
   v_err := 0;
+  _rc := 1;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
     RAISE EXCEPTION 'CRS Instance Verification: Unable to make CRS Instance Verification From CRS Server.';
     return_value := -1;
@@ -7498,33 +7748,41 @@ BEGIN
   UPDATE dbo.clientinstance SET clientid = v_clientid, clientinstanceid = v_instanceid;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_clientid_str := ltrim(rtrim((v_clientid)::text));
+  _rc := 1;
   v_instanceid_str := ltrim(rtrim((v_instanceid)::text));
+  _rc := 1;
   v_query := (((((('INSERT INTO ' || v_tableprefix) || 'CRS_DataTransferLog (ClientInstanceID, UserCode, StartDate, EndDate) VALUES (') || v_instanceid_str) || ', ') || coalesce(dbo.tsql_str((v_usercode)::numeric), 'NULL')) || ', localtimestamp(3), localtimestamp(3))');
+  _rc := 1;
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
     EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_err := 0;
+  _rc := 1;
   IF (((0 <> 0) OR (v_err <> 0)) OR (_rc = 0)) THEN
     RAISE EXCEPTION 'CRS Data Transfer Error: Problem in generating data transfer log header row';
     return_value := -1;
     RETURN;
   END IF;
   v_query := ((('INSERT INTO REPORTDATA (Code1, Name1) SELECT LOGID=MAX(LogID), Name1 = ''CRS_DataTransferLog'' FROM ' || v_tableprefix) || 'CRS_DataTransferLog WHERE ClientInstanceID = ') || v_instanceid_str);
+  _rc := 1;
   _dq2 := v_query;
   IF _dq2 IS NOT NULL THEN
     EXECUTE dbo.tsql_dyn(_dq2);
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_err := 0;
+  _rc := 1;
   IF (((0 <> 0) OR (v_err <> 0)) OR (_rc = 0)) THEN
     RAISE EXCEPTION 'CRS Data Transfer Error: Problem in generating data transfer log header row';
     return_value := -1;
     RETURN;
   END IF;
   v_logid := trunc(coalesce((SELECT max(code1) FROM dbo.reportdata WHERE (name1 = 'CRS_DataTransferLog')), 0))::integer;
+  _rc := 1;
   v_logid_str := ltrim(rtrim((v_logid)::text));
+  _rc := 1;
   IF ((v_logid <= 0) OR (v_logid IS NULL)) THEN
     RAISE EXCEPTION 'CRS Data Transfer Error: Problem in generating data transfer log header row';
     return_value := -1;
@@ -7535,12 +7793,14 @@ BEGIN
   IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
   WHILE (_fs = 0) LOOP
     v_query := (((((('INSERT INTO ' || v_tableprefix) || 'CRS_DataTransferLogDetail (LogID, SourceTableName, StartDate, EndDate) VALUES (') || v_logid_str) || ', ''') || v_tablename) || ''', GETDATE(), GETDATE())');
+    _rc := 1;
     _dq3 := v_query;
     IF _dq3 IS NOT NULL THEN
       EXECUTE dbo.tsql_dyn(_dq3);
     END IF;
     GET DIAGNOSTICS _rc = ROW_COUNT;
     v_err := 0;
+    _rc := 1;
     IF ((0 <> 0) OR (v_err <> 0)) THEN
       RAISE EXCEPTION 'CRS Data Transfer Error: Problem in generating data transfer log detail row';
       return_value := -1;
@@ -7548,6 +7808,7 @@ BEGIN
     END IF;
     SELECT r.return_value INTO v_err FROM dbo.sp_crs_transferclienttable(srv => v_srv, db => v_db, owner => v_owner, clientid => v_clientid, instanceid => v_instanceid, sourcetablename => v_tablename) AS r;
     v_err := 0;
+    _rc := 1;
     IF ((0 <> 0) OR (v_err <> 0)) THEN
       RAISE EXCEPTION 'CRS Data Transfer Error: Unable to Transfer Object, Name = %.', v_tablename;
       CLOSE cur_tmpcrs1;
@@ -7558,8 +7819,10 @@ BEGIN
     IF (((v_transfertype = 'T') AND ((right(upper(v_tablename), 6))::citext = 'DETAIL')) AND ((upper(v_tablename))::citext <> 'GODOWNDETAIL')) THEN
       IF ((upper(v_lasttablename))::citext = 'DUESATISFYHEADER') THEN
         v_localupd := (('UPDATE ' || v_lasttablename) || ' SET CRS_Transfered = ''Y'', CRS_TransferedON = localtimestamp(3) WHERE CRS_Transfered = ''N''');
+        _rc := 1;
       ELSE
         v_localupd := (('UPDATE ' || v_lasttablename) || ' SET CRS_Transfered = ''Y'', CRS_TransferedON = localtimestamp(3) WHERE CRS_Transfered = ''N'' AND Posted=''Y'' ');
+        _rc := 1;
       END IF;
       _dq4 := v_localupd;
       IF _dq4 IS NOT NULL THEN
@@ -7567,6 +7830,7 @@ BEGIN
       END IF;
       GET DIAGNOSTICS _rc = ROW_COUNT;
       v_err := 0;
+      _rc := 1;
       IF ((0 <> 0) OR (v_err <> 0)) THEN
         RAISE EXCEPTION 'CRS Data Transfer Error: Unable to Update Status of Object, Name = %.', v_lasttablename;
         CLOSE cur_tmpcrs1;
@@ -7576,30 +7840,35 @@ BEGIN
       END IF;
     END IF;
     v_query := (((((('UPDATE ' || v_tableprefix) || 'CRS_DataTransferLogDetail SET EndDate = localtimestamp(3) WHERE LogID = ') || v_logid_str) || ' AND SourceTableName = ''') || v_tablename) || '''');
+    _rc := 1;
     _dq5 := v_query;
     IF _dq5 IS NOT NULL THEN
       EXECUTE dbo.tsql_dyn(_dq5);
     END IF;
     GET DIAGNOSTICS _rc = ROW_COUNT;
     v_err := 0;
+    _rc := 1;
     IF ((0 <> 0) OR (v_err <> 0)) THEN
       RAISE EXCEPTION 'CRS Data Transfer Error: Problem in marking end date for data transfer log detail row';
       return_value := -1;
       RETURN;
     END IF;
     v_lasttablename := v_tablename;
+    _rc := 1;
     FETCH NEXT FROM cur_tmpcrs1 INTO v_tablename, v_remarks, v_transfertype;
     IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
   END LOOP;
   CLOSE cur_tmpcrs1;
   -- DEALLOCATE TmpCrs1
   v_query := ((('UPDATE ' || v_tableprefix) || 'CRS_DataTransferLog SET EndDate = localtimestamp(3) WHERE LogID = ') || v_logid_str);
+  _rc := 1;
   _dq6 := v_query;
   IF _dq6 IS NOT NULL THEN
     EXECUTE dbo.tsql_dyn(_dq6);
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_err := 0;
+  _rc := 1;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
     RAISE EXCEPTION 'CRS Data Transfer Error: Problem in marking end date for data transfer log';
     return_value := -1;
@@ -7607,6 +7876,7 @@ BEGIN
   END IF;
   SELECT r.return_value, r.rs1 INTO v_err, rs1 FROM dbo.sp_crs_fetchfinalizedsaleorders(srv => v_srv, db => v_db, owner => v_owner, clientinstanceid => v_instanceid, usercode => v_usercode) AS r;
   v_err := 0;
+  _rc := 1;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
     RAISE EXCEPTION 'Unable To Fetch Sale Orders From CRS Server.';
     return_value := -1;
@@ -8111,21 +8381,37 @@ BEGIN
   v_ac_level := ac_level;
   -- SET NOCOUNT ON
   v_invsys := coalesce((SELECT dbo.fn_getpreference('InventorySystemUsed') AS a), 'P');
+  _rc := 1;
   v_ln_invacc := (SELECT code FROM dbo.global WHERE (name = 'GT_InventoryAcc'));
+  _rc := 1;
   v_ln_cgs := (SELECT code FROM dbo.global WHERE (name = 'GT_CostOfGoodsSoldAcc'));
+  _rc := 1;
   v_ln_purchaseacc := (SELECT code FROM dbo.global WHERE (name = 'GT_PurchaseAccount'));
+  _rc := 1;
   v_ln_cashacc := (SELECT code FROM dbo.global WHERE (name = 'GT_CashACC'));
+  _rc := 1;
   v_ln_equityacc := (SELECT code FROM dbo.global WHERE (name = 'GT_EquityACC'));
+  _rc := 1;
   v_ln_salesacc := (SELECT code FROM dbo.global WHERE (name = 'GT_SalesACC'));
+  _rc := 1;
   v_ln_salesretacc := (SELECT code FROM dbo.global WHERE (name = 'GT_SalesReturnACC'));
+  _rc := 1;
   v_ln_purchaseretacc := (SELECT code FROM dbo.global WHERE (name = 'GT_PurchaseReturnsAccount'));
+  _rc := 1;
   v_ln_revfromservice := (SELECT code FROM dbo.global WHERE (name = 'GT_RevenueFromServices'));
+  _rc := 1;
   v_ln_otherrevenuescat := (SELECT code FROM dbo.global WHERE (name = 'GT_OtherRevenuesCat'));
+  _rc := 1;
   v_ln_revenuefromsalescat := (SELECT code FROM dbo.global WHERE (name = 'GT_RevenueFROMSalesCat'));
+  _rc := 1;
   v_ln_directexpensescat := (SELECT code FROM dbo.global WHERE (name = 'GT_DirectExpensesCat'));
+  _rc := 1;
   v_ln_operatingexpensescat := (SELECT code FROM dbo.global WHERE (name = 'GT_OperatingExpensesCat'));
+  _rc := 1;
   v_ln_otherexpensescat := (SELECT code FROM dbo.global WHERE (name = 'GT_OtherExpensesCat'));
+  _rc := 1;
   v_ln_otherrevenuescat := (SELECT code FROM dbo.global WHERE (name = 'GT_OtherRevenuesCat'));
+  _rc := 1;
   DELETE FROM dbo.reportdata;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   -- BEGIN TRANSACTION (the caller owns the transaction)
@@ -8133,21 +8419,25 @@ BEGIN
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF (_rc <> 0) THEN
     v_ln_temp := (SELECT coalesce(sum(coalesce(value1, 0)), 0) FROM dbo.reportdata WHERE (code2 = 1));
+    _rc := 1;
   END IF;
   INSERT INTO dbo.reportdata (code4, name3, code1, code2, code3, name1, name2, value1, value2, value3, value4, date1, date2, value5) SELECT ci.clientinstanceid AS code4, c.name AS client, -1 AS code1, 2 AS code2, 0 AS code3, 'COST OF SALES' AS name1, '' AS name2, (SELECT coalesce(sum((coalesce(v.debit, 0) - coalesce(v.credit, 0))), 0) FROM dbo.crs_virtualgl AS v WHERE (((ci.clientinstanceid = v.clientinstanceid) AND (v.acccode IN (SELECT acccode FROM dbo.accounts WHERE (subcode IN (SELECT subacccode FROM dbo.subaccounts WHERE (catacccode = v_ln_directexpensescat)))))) AND (v.date BETWEEN v_ad_sdate AND v_ad_edate))) AS value1, 0 AS value2, 0 AS value3, 0 AS value4, v_ad_sdate AS date1, v_ad_edate AS date2, (v_ac_level)::numeric(15,2) AS value5 FROM dbo.crs_clientinstance AS ci, dbo.crs_clientlist AS c WHERE (c.clientid = ci.clientid);
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF (_rc <> 0) THEN
     v_ln_temp := (SELECT coalesce(sum(coalesce(value1, 0)), 0) FROM dbo.reportdata WHERE (code2 = 2));
+    _rc := 1;
   END IF;
   INSERT INTO dbo.reportdata (code4, name3, code1, code2, code3, name1, name2, value1, value2, value3, value4, date1, date2, value5) SELECT ci.clientinstanceid, c.name AS client, -1 AS code1, 3 AS code2, 0 AS code3, 'GROSS PROFIT/LOSS' AS name1, '' AS name2, (SELECT coalesce(sum(coalesce(value1, 0)), 0) FROM dbo.reportdata WHERE (code4 = ci.clientinstanceid)) AS value1, 0 AS value2, 0 AS value3, 0 AS value4, v_ad_sdate AS date1, v_ad_edate AS date2, (v_ac_level)::numeric(15,2) AS value5 FROM dbo.crs_clientinstance AS ci, dbo.crs_clientlist AS c WHERE (c.clientid = ci.clientid);
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF (_rc <> 0) THEN
     v_ln_temp := (SELECT coalesce(sum(coalesce(value1, 0)), 0) FROM dbo.reportdata WHERE (code2 = 3));
+    _rc := 1;
   END IF;
   INSERT INTO dbo.reportdata (code4, name3, code1, code2, code3, name1, name2, value1, value2, value3, value4, date1, date2, value5) SELECT v.clientinstanceid, (SELECT c.name FROM dbo.crs_clientinstance AS ci, dbo.crs_clientlist AS c WHERE ((c.clientid = ci.clientid) AND (ci.clientinstanceid = v.clientinstanceid))) AS client, -1 AS code1, 4 AS code2, 0 AS code3, (SELECT name FROM dbo.categoryaccounts WHERE (catacccode = v_ln_operatingexpensescat)) AS name1, '' AS name2, coalesce(sum((v.debit - v.credit)), 0) AS value1, 0 AS value2, 0 AS value3, 0 AS value4, v_ad_sdate AS date1, v_ad_edate AS date2, (v_ac_level)::numeric(15,2) AS value5 FROM dbo.crs_virtualgl AS v WHERE (((v.acccode IN (SELECT acccode FROM dbo.accounts WHERE (subcode IN (SELECT subacccode FROM dbo.subaccounts WHERE (catacccode = v_ln_operatingexpensescat))))) AND (v.date >= v_ad_sdate)) AND (v.date <= v_ad_edate)) GROUP BY v.clientinstanceid;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF (_rc <> 0) THEN
     v_ln_temp := (SELECT coalesce(sum(coalesce(value1, 0)), 0) FROM dbo.reportdata WHERE (code2 = 4));
+    _rc := 1;
   END IF;
   IF (v_ln_temp <> 0) THEN
     INSERT INTO dbo.reportdata (code4, name3, code1, code2, code3, name1, name2, value1, value2, value3, value4, date1, date2, value5) SELECT ci.clientinstanceid, c.name AS client, -1 AS code1, 5 AS code2, 0 AS code3, 'OPERATING PROFIT/LOSS' AS name1, '' AS name2, (SELECT sum(coalesce(value1, 0)) FROM dbo.reportdata WHERE ((code4 = ci.clientinstanceid) AND (code2 IN (3, 4)))) AS value1, 0 AS value2, 0 AS value3, 0 AS value4, v_ad_sdate AS date1, v_ad_edate AS date2, (v_ac_level)::numeric(15,2) AS value5 FROM dbo.crs_clientinstance AS ci, dbo.crs_clientlist AS c WHERE (c.clientid = ci.clientid);
@@ -8155,11 +8445,13 @@ BEGIN
   END IF;
   IF (_rc <> 0) THEN
     v_ln_temp := (SELECT coalesce(sum(coalesce(value1, 0)), 0) FROM dbo.reportdata WHERE (code2 = 5));
+    _rc := 1;
   END IF;
   INSERT INTO dbo.reportdata (code4, name3, code1, code2, code3, name1, name2, value1, value2, value3, value4, date1, date2, value5) SELECT v.clientinstanceid, (SELECT c.name FROM dbo.crs_clientinstance AS ci, dbo.crs_clientlist AS c WHERE ((c.clientid = ci.clientid) AND (ci.clientinstanceid = v.clientinstanceid))) AS client, -1 AS code1, 6 AS code2, 0 AS code3, (SELECT name FROM dbo.categoryaccounts WHERE (catacccode = v_ln_otherexpensescat)) AS name1, '' AS name2, coalesce(sum((v.debit - v.credit)), 0) AS value1, 0 AS value2, 0 AS value3, 0 AS value4, v_ad_sdate AS date1, v_ad_edate AS date2, (v_ac_level)::numeric(15,2) AS value5 FROM dbo.crs_virtualgl AS v WHERE (((v.acccode IN (SELECT acccode FROM dbo.accounts WHERE (subcode IN (SELECT subacccode FROM dbo.subaccounts WHERE (catacccode = v_ln_otherexpensescat))))) AND (v.date >= v_ad_sdate)) AND (v.date <= v_ad_edate)) GROUP BY v.clientinstanceid;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF (_rc <> 0) THEN
     v_ln_temp := (SELECT coalesce(sum(coalesce(value1, 0)), 0) FROM dbo.reportdata WHERE (code2 = 6));
+    _rc := 1;
   END IF;
   IF (v_ln_temp <> 0) THEN
     INSERT INTO dbo.reportdata (code4, name3, code1, code2, code3, name1, name2, value1, value2, value3, value4, date1, date2, value5) SELECT ci.clientinstanceid, c.name AS client, -1 AS code1, 7 AS code2, 0 AS code3, ('PROFIT/LOSS AFTER ' || (SELECT rtrim(ltrim(name)) FROM dbo.categoryaccounts WHERE (catacccode = v_ln_otherexpensescat))) AS name1, '' AS name2, (SELECT coalesce(sum(coalesce(value1, 0)), 0) FROM dbo.reportdata WHERE ((code4 = ci.clientinstanceid) AND (code2 IN ((SELECT max(code2) FROM dbo.reportdata WHERE ((code4 = ci.clientinstanceid) AND (code2 IN (3, 5)))), 6)))) AS value1, 0 AS value2, 0 AS value3, 0 AS value4, v_ad_sdate AS date1, v_ad_edate AS date2, (v_ac_level)::numeric(15,2) AS value5 FROM dbo.crs_clientinstance AS ci, dbo.crs_clientlist AS c WHERE (c.clientid = ci.clientid);
@@ -8167,11 +8459,13 @@ BEGIN
   END IF;
   IF (_rc <> 0) THEN
     v_ln_temp := (SELECT coalesce(sum(coalesce(value1, 0)), 0) FROM dbo.reportdata WHERE (code2 = 7));
+    _rc := 1;
   END IF;
   INSERT INTO dbo.reportdata (code4, name3, code1, code2, code3, name1, name2, value1, value2, value3, value4, date1, date2, value5) SELECT v.clientinstanceid, (SELECT c.name FROM dbo.crs_clientinstance AS ci, dbo.crs_clientlist AS c WHERE ((c.clientid = ci.clientid) AND (ci.clientinstanceid = v.clientinstanceid))) AS client, -1 AS code1, 8 AS code2, 0 AS code3, (SELECT name FROM dbo.categoryaccounts WHERE (catacccode = v_ln_otherrevenuescat)) AS name1, '' AS name2, coalesce(sum((v.debit - v.credit)), 0) AS value1, 0 AS value2, 0 AS value3, 0 AS value4, v_ad_sdate AS date1, v_ad_edate AS date2, (v_ac_level)::numeric(15,2) AS value5 FROM dbo.crs_virtualgl AS v WHERE (((v.acccode IN (SELECT acccode FROM dbo.accounts WHERE (subcode IN (SELECT subacccode FROM dbo.subaccounts WHERE (catacccode = v_ln_otherrevenuescat))))) AND (v.date >= v_ad_sdate)) AND (v.date <= v_ad_edate)) GROUP BY v.clientinstanceid;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF (_rc <> 0) THEN
     v_ln_temp := (SELECT coalesce(sum(coalesce(value1, 0)), 0) FROM dbo.reportdata WHERE (code2 = 8));
+    _rc := 1;
   END IF;
   IF (v_ln_temp <> 0) THEN
     INSERT INTO dbo.reportdata (code4, name3, code1, code2, code3, name1, name2, value1, value2, value3, value4, date1, date2, value5) SELECT ci.clientinstanceid, c.name AS client, -1 AS code1, 9 AS code2, 0 AS code3, 'NET INCOME/LOSS' AS name1, '' AS name2, (SELECT coalesce(sum(coalesce(value1, 0)), 0) FROM dbo.reportdata WHERE ((code4 = ci.clientinstanceid) AND (code2 IN ((SELECT max(code2) FROM dbo.reportdata WHERE ((code4 = ci.clientinstanceid) AND (code2 IN (3, 5, 7)))), 8)))) AS value1, 0 AS value2, 0 AS value3, 0 AS value4, v_ad_sdate AS date1, v_ad_edate AS date2, (v_ac_level)::numeric(15,2) AS value5 FROM dbo.crs_clientinstance AS ci, dbo.crs_clientlist AS c WHERE (c.clientid = ci.clientid);
@@ -8179,11 +8473,13 @@ BEGIN
   END IF;
   IF (_rc <> 0) THEN
     v_ln_temp := (SELECT coalesce(sum(coalesce(value1, 0)), 0) FROM dbo.reportdata WHERE (code2 = 9));
+    _rc := 1;
   END IF;
   INSERT INTO dbo.reportdata (code4, name3, code1, code2, code3, name1, name2, value1, value2, value3, value4, date1, date2, value5) SELECT v.clientinstanceid, (SELECT c.name FROM dbo.crs_clientinstance AS ci, dbo.crs_clientlist AS c WHERE ((c.clientid = ci.clientid) AND (ci.clientinstanceid = v.clientinstanceid))) AS client, -1 AS code1, 10 AS code2, 0 AS code3, (SELECT name FROM dbo.categoryaccounts WHERE (catacccode = c.catacccode)) AS name1, '' AS name2, coalesce(sum((v.debit - v.credit)), 0) AS value1, 0 AS value2, 0 AS value3, 0 AS value4, v_ad_sdate AS date1, v_ad_edate AS date2, (v_ac_level)::numeric(15,2) AS value5 FROM dbo.crs_virtualgl AS v, dbo.categoryaccounts AS c, dbo.subaccounts AS s, dbo.accounts AS a WHERE ((((((v.acccode IN (SELECT acccode FROM dbo.accounts WHERE (subcode IN (SELECT subacccode FROM dbo.subaccounts WHERE (catacccode IN (SELECT catacccode FROM dbo.categoryaccounts WHERE ((mainacccode IN (4, 5)) AND (catacccode NOT IN (v_ln_revenuefromsalescat, v_ln_directexpensescat, v_ln_operatingexpensescat, v_ln_otherexpensescat, v_ln_otherrevenuescat))))))))) AND (v.date >= v_ad_sdate)) AND (v.date <= v_ad_edate)) AND (v.acccode = a.acccode)) AND (a.subcode = s.subacccode)) AND (s.catacccode = c.catacccode)) GROUP BY v.clientinstanceid, c.catacccode;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF (_rc <> 0) THEN
     v_ln_temp := (SELECT coalesce(sum(coalesce(value1, 0)), 0) FROM dbo.reportdata WHERE (code2 = 10));
+    _rc := 1;
   END IF;
   IF (v_ln_temp <> 0) THEN
     INSERT INTO dbo.reportdata (code4, name3, code1, code2, code3, name1, name2, value1, value2, value3, value4, date1, date2, value5) SELECT ci.clientinstanceid, c.name AS client, -1 AS code1, 11 AS code2, 0 AS code3, 'NET INCOME/LOSS FOR THE PERIOD' AS name1, '' AS name2, (SELECT coalesce(sum(coalesce(value1, 0)), 0) FROM dbo.reportdata WHERE ((code4 = ci.clientinstanceid) AND (code2 IN ((SELECT max(code2) FROM dbo.reportdata WHERE ((code4 = ci.clientinstanceid) AND (code2 IN (3, 5, 7, 9)))), 10)))) AS value1, 0 AS value2, 0 AS value3, 0 AS value4, v_ad_sdate AS date1, v_ad_edate AS date2, (v_ac_level)::numeric(15,2) AS value5 FROM dbo.crs_clientinstance AS ci, dbo.crs_clientlist AS c WHERE (c.clientid = ci.clientid);
@@ -8191,31 +8487,37 @@ BEGIN
   END IF;
   IF (_rc <> 0) THEN
     v_ln_temp := (SELECT coalesce(sum(coalesce(value1, 0)), 0) FROM dbo.reportdata WHERE (code2 = 11));
+    _rc := 1;
   END IF;
   UPDATE dbo.reportdata SET value1 = 0 WHERE (value1 IS NULL);
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF (v_ac_level <> '0') THEN
     v_ln_temp := (SELECT coalesce(max(code2), 0) FROM dbo.reportdata WHERE (code2 = 1));
+    _rc := 1;
     IF (v_ln_temp <> 0) THEN
       INSERT INTO dbo.reportdata (code4, name3, code1, code2, code3, name1, name2, value1, value2, value3, value4, date1, date2, value5) SELECT a.clientinstanceid, (SELECT c.name FROM dbo.crs_clientinstance AS ci, dbo.crs_clientlist AS c WHERE ((c.clientid = ci.clientid) AND (ci.clientinstanceid = a.clientinstanceid))) AS client, 1 AS code1, (SELECT (max(code2) + 1) FROM dbo.reportdata) AS code2, ac.acccode AS code3, ac.name AS name1, (SELECT max(name1) FROM dbo.reportdata WHERE ((code4 = a.clientinstanceid) AND (code2 = 1))) AS name2, a.balance AS value1, 0 AS value2, 0 AS value3, 1 AS value4, v_ad_sdate AS date1, v_ad_edate AS date2, (v_ac_level)::numeric(15,2) AS value5 FROM (SELECT clientinstanceid, acccode, coalesce(sum((debit - credit)), 0) AS balance FROM dbo.crs_virtualgl WHERE (((acccode IN (SELECT acccode FROM dbo.accounts WHERE (subcode IN (SELECT subacccode FROM dbo.subaccounts WHERE (catacccode = v_ln_revenuefromsalescat))))) AND (date >= v_ad_sdate)) AND (date <= v_ad_edate)) GROUP BY clientinstanceid, acccode) AS a, dbo.accounts AS ac WHERE (a.acccode = ac.acccode);
       GET DIAGNOSTICS _rc = ROW_COUNT;
     END IF;
     v_ln_temp := (SELECT coalesce(max(code2), 0) FROM dbo.reportdata WHERE (code2 = 2));
+    _rc := 1;
     IF (v_ln_temp <> 0) THEN
       INSERT INTO dbo.reportdata (code4, name3, code1, code2, code3, name1, name2, value1, value2, value3, value4, date1, date2, value5) SELECT a.clientinstanceid, (SELECT c.name FROM dbo.crs_clientinstance AS ci, dbo.crs_clientlist AS c WHERE ((c.clientid = ci.clientid) AND (ci.clientinstanceid = a.clientinstanceid))) AS client, 2 AS code1, (SELECT (max(code2) + 1) FROM dbo.reportdata) AS code2, ac.acccode AS code3, ac.name AS name1, (SELECT max(name1) FROM dbo.reportdata WHERE ((code4 = a.clientinstanceid) AND (code2 = 2))) AS name2, coalesce(a.balance, 0) AS value1, 0 AS value2, 0 AS value3, 1 AS value4, v_ad_sdate AS date1, v_ad_edate AS date2, (v_ac_level)::numeric(15,2) AS value5 FROM (SELECT clientinstanceid, acccode, sum((coalesce(debit, 0) - coalesce(credit, 0))) AS balance FROM dbo.crs_virtualgl WHERE (((acccode IN (SELECT acccode FROM dbo.accounts WHERE (subcode IN (SELECT subacccode FROM dbo.subaccounts WHERE (catacccode = v_ln_directexpensescat))))) AND (date >= v_ad_sdate)) AND (date <= v_ad_edate)) GROUP BY clientinstanceid, acccode) AS a, dbo.accounts AS ac WHERE (a.acccode = ac.acccode);
       GET DIAGNOSTICS _rc = ROW_COUNT;
     END IF;
     v_ln_temp := (SELECT coalesce(max(code2), 0) FROM dbo.reportdata WHERE (code2 = 4));
+    _rc := 1;
     IF (v_ln_temp <> 0) THEN
       INSERT INTO dbo.reportdata (code4, name3, code1, code2, code3, name1, name2, value1, value2, value3, value4, date1, date2, value5) SELECT a.clientinstanceid, (SELECT c.name FROM dbo.crs_clientinstance AS ci, dbo.crs_clientlist AS c WHERE ((c.clientid = ci.clientid) AND (ci.clientinstanceid = a.clientinstanceid))) AS client, 4 AS code1, (SELECT (max(code2) + 1) FROM dbo.reportdata) AS code2, acccode AS code3, name AS name1, (SELECT max(name1) FROM dbo.reportdata WHERE ((code4 = a.clientinstanceid) AND (code2 = 4))) AS name2, coalesce(balance, 0) AS value1, 0 AS value2, 0 AS value3, 1 AS value4, v_ad_sdate AS date1, v_ad_edate AS date2, (v_ac_level)::numeric(15,2) AS value5 FROM (SELECT v.clientinstanceid, a.acccode, a.name, sum((coalesce(v.debit, 0) - coalesce(v.credit, 0))) AS balance FROM dbo.crs_virtualgl AS v, dbo.accounts AS a WHERE ((((v.acccode IN (SELECT acccode FROM dbo.accounts WHERE (subcode IN (SELECT subacccode FROM dbo.subaccounts WHERE (catacccode IN (SELECT catacccode FROM dbo.categoryaccounts WHERE (catacccode = v_ln_operatingexpensescat))))))) AND (v.acccode = a.acccode)) AND (v.date >= v_ad_sdate)) AND (v.date <= v_ad_edate)) GROUP BY v.clientinstanceid, a.acccode, a.name) AS a;
       GET DIAGNOSTICS _rc = ROW_COUNT;
     END IF;
     v_ln_temp := (SELECT coalesce(max(code2), 0) FROM dbo.reportdata WHERE (code2 = 6));
+    _rc := 1;
     IF (v_ln_temp <> 0) THEN
       INSERT INTO dbo.reportdata (code4, name3, code1, code2, code3, name1, name2, value1, value2, value3, value4, date1, date2, value5) SELECT a.clientinstanceid, (SELECT c.name FROM dbo.crs_clientinstance AS ci, dbo.crs_clientlist AS c WHERE ((c.clientid = ci.clientid) AND (ci.clientinstanceid = a.clientinstanceid))) AS client, 6 AS code1, (SELECT (max(code2) + 1) FROM dbo.reportdata) AS code2, acccode AS code3, name AS name1, (SELECT max(name1) FROM dbo.reportdata WHERE ((code4 = a.clientinstanceid) AND (code2 = 6))) AS name2, coalesce(balance, 0) AS value1, 0 AS value2, 0 AS value3, 1 AS value4, v_ad_sdate AS date1, v_ad_edate AS date2, (v_ac_level)::numeric(15,2) AS value5 FROM (SELECT v.clientinstanceid, a.acccode, a.name, sum((coalesce(v.debit, 0) - coalesce(v.credit, 0))) AS balance FROM dbo.crs_virtualgl AS v, dbo.accounts AS a WHERE ((((v.acccode IN (SELECT acccode FROM dbo.accounts WHERE (subcode IN (SELECT subacccode FROM dbo.subaccounts WHERE (catacccode IN (SELECT catacccode FROM dbo.categoryaccounts WHERE (catacccode = v_ln_otherexpensescat))))))) AND (v.acccode = a.acccode)) AND (v.date >= v_ad_sdate)) AND (v.date <= v_ad_edate)) GROUP BY v.clientinstanceid, a.acccode, a.name) AS a;
       GET DIAGNOSTICS _rc = ROW_COUNT;
     END IF;
     v_ln_temp := (SELECT coalesce(max(code2), 0) FROM dbo.reportdata WHERE (code2 = 8));
+    _rc := 1;
     IF (v_ln_temp <> 0) THEN
       INSERT INTO dbo.reportdata (code4, name3, code1, code2, code3, name1, name2, value1, value2, value3, value4, date1, date2, value5) SELECT a.clientinstanceid, (SELECT c.name FROM dbo.crs_clientinstance AS ci, dbo.crs_clientlist AS c WHERE ((c.clientid = ci.clientid) AND (ci.clientinstanceid = a.clientinstanceid))) AS client, 8 AS code1, (SELECT (max(code2) + 1) FROM dbo.reportdata) AS code2, acccode AS code3, name AS name1, (SELECT max(name1) FROM dbo.reportdata WHERE ((code4 = a.clientinstanceid) AND (code2 = 8))) AS name2, coalesce(balance, 0) AS value1, 0 AS value2, 0 AS value3, 1 AS value4, v_ad_sdate AS date1, v_ad_edate AS date2, (v_ac_level)::numeric(15,2) AS value5 FROM (SELECT v.clientinstanceid, a.acccode, a.name, sum((coalesce(v.debit, 0) - coalesce(v.credit, 0))) AS balance FROM dbo.crs_virtualgl AS v, dbo.accounts AS a WHERE ((((v.acccode IN (SELECT acccode FROM dbo.accounts WHERE (subcode IN (SELECT subacccode FROM dbo.subaccounts WHERE (catacccode IN (SELECT catacccode FROM dbo.categoryaccounts WHERE (catacccode = v_ln_otherrevenuescat))))))) AND (v.acccode = a.acccode)) AND (v.date >= v_ad_sdate)) AND (v.date <= v_ad_edate)) GROUP BY v.clientinstanceid, a.acccode, a.name) AS a;
       GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -8641,32 +8943,43 @@ BEGIN
   -- SET NOCOUNT ON
   -- SET XACT_ABORT ON
   v_tp := '';
+  _rc := 1;
   IF (((length(rtrim(ltrim(rtrim(v_srv)))) = 0) OR (v_srv IS NULL))) THEN
     v_tp := '';
+    _rc := 1;
   ELSE
     v_tp := (v_srv || '.');
+    _rc := 1;
   END IF;
   IF (((length(rtrim(ltrim(rtrim(v_db)))) = 0) OR (v_db IS NULL))) THEN
     v_tp := v_tp;
+    _rc := 1;
   ELSE
     v_tp := ((v_tp || v_db) || '.');
+    _rc := 1;
   END IF;
   IF (((length(rtrim(ltrim(rtrim(v_owner)))) = 0) OR (v_owner IS NULL))) THEN
     v_tp := ((v_tp || 'DBO') || '.');
+    _rc := 1;
   ELSE
     v_tp := ((v_tp || v_owner) || '.');
+    _rc := 1;
   END IF;
   v_versionsyn := 0;
+  _rc := 1;
   SELECT r.return_value, r.versionsyn INTO v_err, v_versionsyn FROM dbo.sp_compare_remote_versioninfo(prefix => v_tp, versionsyn => (v_versionsyn)::integer) AS r;
   v_err := 0;
+  _rc := 1;
   IF (((0 <> 0) OR (v_err <> 0)) OR (v_versionsyn = 0)) THEN
     RAISE EXCEPTION 'Unable to Continue due to Local and Remote version Conflicts.';
     return_value := -1;
     RETURN;
   END IF;
   v_instancename := coalesce((SELECT name FROM dbo.clientinstance), '');
+  _rc := 1;
   SELECT r.return_value, r.clientid, r.instanceid INTO v_err, v_clientid, v_instanceid FROM dbo.sp_crs_getclientinstanceinfo(srv => v_srv, db => v_db, owner => v_owner, instancename => v_instancename, clientid => v_clientid, instanceid => v_instanceid) AS r;
   v_err := 0;
+  _rc := 1;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
     RAISE EXCEPTION 'CRS Instance Verification: Unable to make CRS Instance Verification From CRS Server.';
     return_value := -1;
@@ -8680,33 +8993,41 @@ BEGIN
   UPDATE dbo.clientinstance SET clientid = v_clientid, clientinstanceid = v_instanceid;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_cid := ltrim(rtrim((v_clientid)::text));
+  _rc := 1;
   v_id := ltrim(rtrim((v_instanceid)::text));
+  _rc := 1;
   v_query := (((((('INSERT INTO ' || v_tp) || 'CRS_DataTransferLog (ClientInstanceID, UserCode, StartDate, EndDate) VALUES (') || v_id) || ', ') || coalesce(dbo.tsql_str((v_usercode)::numeric), 'NULL')) || ', localtimestamp(3), localtimestamp(3))');
+  _rc := 1;
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
     EXECUTE dbo.tsql_dyn(_dq1);
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_err := 0;
+  _rc := 1;
   IF (((0 <> 0) OR (v_err <> 0)) OR (_rc = 0)) THEN
     RAISE EXCEPTION 'CRS Data Transfer Error: Problem in generating data transfer log header row';
     return_value := -1;
     RETURN;
   END IF;
   v_query := ((('INSERT INTO REPORTDATA (Code1, Name1) SELECT LOGID=MAX(LogID), Name1 = ''CRS_DataTransferLog'' FROM ' || v_tp) || 'CRS_DataTransferLog WHERE ClientInstanceID = ') || v_id);
+  _rc := 1;
   _dq2 := v_query;
   IF _dq2 IS NOT NULL THEN
     EXECUTE dbo.tsql_dyn(_dq2);
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_err := 0;
+  _rc := 1;
   IF (((0 <> 0) OR (v_err <> 0)) OR (_rc = 0)) THEN
     RAISE EXCEPTION 'CRS Data Transfer Error: Problem in generating data transfer log header row';
     return_value := -1;
     RETURN;
   END IF;
   v_logid := trunc(coalesce((SELECT max(code1) FROM dbo.reportdata WHERE (name1 = 'CRS_DataTransferLog')), 0))::integer;
+  _rc := 1;
   v_logid_str := ltrim(rtrim((v_logid)::text));
+  _rc := 1;
   IF ((v_logid <= 0) OR (v_logid IS NULL)) THEN
     RAISE EXCEPTION 'CRS Data Transfer Error: Problem in generating data transfer log header row';
     return_value := -1;
@@ -8717,12 +9038,14 @@ BEGIN
   IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
   WHILE (_fs = 0) LOOP
     v_query := (((((('INSERT INTO ' || v_tp) || 'CRS_DataTransferLogDetail (LogID, SourceTableName, StartDate, EndDate) VALUES (') || v_logid_str) || ', ''') || v_tablename) || ''', GETDATE(), GETDATE())');
+    _rc := 1;
     _dq3 := v_query;
     IF _dq3 IS NOT NULL THEN
       EXECUTE dbo.tsql_dyn(_dq3);
     END IF;
     GET DIAGNOSTICS _rc = ROW_COUNT;
     v_err := 0;
+    _rc := 1;
     IF ((0 <> 0) OR (v_err <> 0)) THEN
       RAISE EXCEPTION 'CRS Data Transfer Error: Problem in generating data transfer log detail row';
       return_value := -1;
@@ -8731,6 +9054,7 @@ BEGIN
     IF (v_transactionname = 'Stock') THEN
       SELECT r.return_value INTO v_err FROM dbo.sp_crs_push_stock(tp => v_tp, cid => v_cid, id => v_id, usercode => v_usercode) AS r;
       v_err := 0;
+      _rc := 1;
       IF ((0 <> 0) OR (v_err <> 0)) THEN
         RAISE EXCEPTION 'Error While Pushing Stock To CRS Server.';
         return_value := -1;
@@ -8740,6 +9064,7 @@ BEGIN
     IF (v_transactionname = 'Purchase') THEN
       SELECT r.return_value INTO v_err FROM dbo.sp_crs_push_purchase(tp => v_tp, cid => v_cid, id => v_id, usercode => v_usercode) AS r;
       v_err := 0;
+      _rc := 1;
       IF ((0 <> 0) OR (v_err <> 0)) THEN
         RAISE EXCEPTION 'Error While Pushing Purchases To CRS Server.';
         return_value := -1;
@@ -8749,6 +9074,7 @@ BEGIN
     IF (v_transactionname = 'P/R') THEN
       SELECT r.return_value INTO v_err FROM dbo.sp_crs_push_pr(tp => v_tp, cid => v_cid, id => v_id, usercode => v_usercode) AS r;
       v_err := 0;
+      _rc := 1;
       IF ((0 <> 0) OR (v_err <> 0)) THEN
         RAISE EXCEPTION 'Error While Pushing Purchase Return To CRS Server.';
         return_value := -1;
@@ -8758,6 +9084,7 @@ BEGIN
     IF (v_transactionname = 'Sales') THEN
       SELECT r.return_value INTO v_err FROM dbo.sp_crs_push_sales(tp => v_tp, cid => v_cid, id => v_id, usercode => v_usercode) AS r;
       v_err := 0;
+      _rc := 1;
       IF ((0 <> 0) OR (v_err <> 0)) THEN
         RAISE EXCEPTION 'Error While Pushing Purchase Return To CRS Server.';
         return_value := -1;
@@ -8767,6 +9094,7 @@ BEGIN
     IF (v_transactionname = 'S/R') THEN
       SELECT r.return_value INTO v_err FROM dbo.sp_crs_push_sr(tp => v_tp, cid => v_cid, id => v_id, usercode => v_usercode) AS r;
       v_err := 0;
+      _rc := 1;
       IF ((0 <> 0) OR (v_err <> 0)) THEN
         RAISE EXCEPTION 'Error While Pushing Sales Return To CRS Server.';
         return_value := -1;
@@ -8776,6 +9104,7 @@ BEGIN
     IF (v_transactionname = 'Receipt') THEN
       SELECT r.return_value INTO v_err FROM dbo.sp_crs_push_receipt(tp => v_tp, cid => v_cid, id => v_id, usercode => v_usercode) AS r;
       v_err := 0;
+      _rc := 1;
       IF ((0 <> 0) OR (v_err <> 0)) THEN
         RAISE EXCEPTION 'Error While Pushing Receipt To CRS Server.';
         return_value := -1;
@@ -8785,6 +9114,7 @@ BEGIN
     IF (v_transactionname = 'Issue') THEN
       SELECT r.return_value INTO v_err FROM dbo.sp_crs_push_issue(tp => v_tp, cid => v_cid, id => v_id, usercode => v_usercode) AS r;
       v_err := 0;
+      _rc := 1;
       IF ((0 <> 0) OR (v_err <> 0)) THEN
         RAISE EXCEPTION 'Error While Pushing Issue To CRS Server.';
         return_value := -1;
@@ -8794,6 +9124,7 @@ BEGIN
     IF (v_transactionname = 'Adjustment') THEN
       SELECT r.return_value INTO v_err FROM dbo.sp_crs_push_adjustment(tp => v_tp, cid => v_cid, id => v_id, usercode => v_usercode) AS r;
       v_err := 0;
+      _rc := 1;
       IF ((0 <> 0) OR (v_err <> 0)) THEN
         RAISE EXCEPTION 'Error While Pushing Adjustments To CRS Server.';
         return_value := -1;
@@ -8803,6 +9134,7 @@ BEGIN
     IF (v_transactionname = 'Due Satisfy') THEN
       SELECT r.return_value INTO v_err FROM dbo.sp_crs_push_duesatisfy(tp => v_tp, cid => v_cid, id => v_id, usercode => v_usercode) AS r;
       v_err := 0;
+      _rc := 1;
       IF ((0 <> 0) OR (v_err <> 0)) THEN
         RAISE EXCEPTION 'Error While Pushing Due Satisfy To CRS Server.';
         return_value := -1;
@@ -8812,6 +9144,7 @@ BEGIN
     IF (v_transactionname = 'Inter Godown Transfer') THEN
       SELECT r.return_value INTO v_err FROM dbo.sp_crs_push_transfers(tp => v_tp, cid => v_cid, id => v_id, usercode => v_usercode) AS r;
       v_err := 0;
+      _rc := 1;
       IF ((0 <> 0) OR (v_err <> 0)) THEN
         RAISE EXCEPTION 'Error While Pushing Inter Godown Transfer To CRS Server.';
         return_value := -1;
@@ -8821,6 +9154,7 @@ BEGIN
     IF (v_transactionname = 'A/c Transactions') THEN
       SELECT r.return_value INTO v_err FROM dbo.sp_crs_push_accvouchers(tp => v_tp, cid => v_cid, id => v_id, usercode => v_usercode) AS r;
       v_err := 0;
+      _rc := 1;
       IF ((0 <> 0) OR (v_err <> 0)) THEN
         RAISE EXCEPTION 'Error While Pushing A/c Vouchers To CRS Server.';
         return_value := -1;
@@ -8833,12 +9167,14 @@ BEGIN
   CLOSE cur_tmpcrs1;
   -- DEALLOCATE TmpCrs1
   v_query := ((('UPDATE ' || v_tp) || 'CRS_DataTransferLog SET EndDate = localtimestamp(3) WHERE LogID = ') || v_logid_str);
+  _rc := 1;
   _dq4 := v_query;
   IF _dq4 IS NOT NULL THEN
     EXECUTE dbo.tsql_dyn(_dq4);
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_err := 0;
+  _rc := 1;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
     RAISE EXCEPTION 'CRS Data Transfer Error: Problem in marking end date for data transfer log';
     return_value := -1;
@@ -8846,6 +9182,7 @@ BEGIN
   END IF;
   SELECT r.return_value, r.rs1 INTO v_err, rs1 FROM dbo.sp_crs_fetchfinalizedsaleorders(srv => v_srv, db => v_db, owner => v_owner, clientinstanceid => v_instanceid, usercode => v_usercode) AS r;
   v_err := 0;
+  _rc := 1;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
     RAISE EXCEPTION 'Unable To Fetch Sale Orders From CRS Server.';
     return_value := -1;
@@ -9625,30 +9962,46 @@ BEGIN
   -- SET ANSI_WARNINGS ON
   -- SET NOCOUNT ON
   v_tblprfix := '';
+  _rc := 1;
   IF (((length(rtrim(ltrim(rtrim(v_srv)))) = 0) OR (v_srv IS NULL))) THEN
     v_tblprfix := '';
+    _rc := 1;
   ELSE
     v_tblprfix := (v_srv || '.');
+    _rc := 1;
   END IF;
   IF (((length(rtrim(ltrim(rtrim(v_db)))) = 0) OR (v_db IS NULL))) THEN
     v_tblprfix := v_tblprfix;
+    _rc := 1;
   ELSE
     v_tblprfix := ((v_tblprfix || v_db) || '.');
+    _rc := 1;
   END IF;
   IF (((length(rtrim(ltrim(rtrim(v_owner)))) = 0) OR (v_owner IS NULL))) THEN
     v_tblprfix := ((v_tblprfix || 'DBO') || '.');
+    _rc := 1;
   ELSE
     v_tblprfix := ((v_tblprfix || v_owner) || '.');
+    _rc := 1;
   END IF;
   v_from := (' FROM ' || v_tblprfix);
+  _rc := 1;
   v_notin := ' NOT IN (SELECT ';
+  _rc := 1;
   v_sql := 'SELECT ';
+  _rc := 1;
   v_whr := ' WHERE ';
+  _rc := 1;
   v_endd := ' AS C WHERE ';
+  _rc := 1;
   v_del := 'DELETE ';
+  _rc := 1;
   v_upd := 'UPDATE S ';
+  _rc := 1;
   v_setpart := ' SET ';
+  _rc := 1;
   v_ins := 'INSERT INTO ';
+  _rc := 1;
   _rc := 0;
   FOR _r1 IN SELECT transfertype AS c1, ltrim(rtrim(crs_tablename)) AS c2, priority AS c3, autoinsert AS c4, autoupdate AS c5, autodelete AS c6 FROM dbo.crs_transferabledata WHERE ((enable = 'Y') AND (sourcetablename = v_sourcetablename)) LOOP
     _rc := _rc + 1;
@@ -9665,34 +10018,45 @@ BEGIN
     RETURN;
   ELSE
     v_full_table_name := ('DBO.' || v_sourcetablename);
+    _rc := 1;
     v_full_crs_table_name := ((ltrim(rtrim(v_owner)) || '.') || v_crs_tablename);
+    _rc := 1;
     -- SET @table_id = OBJECT_ID(@full_crs_table_name)
     RAISE EXCEPTION 'untranslated T-SQL (OBJECT_ID of non-literal)' USING ERRCODE = '0A000';
     -- SET @source_table_id = OBJECT_ID(@full_table_name)
     RAISE EXCEPTION 'untranslated T-SQL (OBJECT_ID of non-literal)' USING ERRCODE = '0A000';
     v_err := 0;
+    _rc := 1;
     IF ((((0 <> 0) OR (v_err <> 0)) OR (v_table_id IS NULL)) OR (v_source_table_id IS NULL)) THEN
       RAISE EXCEPTION 'CRS Data Transfer: Invalid Object Refered: Name = %', v_full_table_name;
       return_value := -1;
       RETURN;
     END IF;
     v_pkcond := '';
+    _rc := 1;
     v_maxcol := '';
+    _rc := 1;
     v_upd_pkcond := '';
+    _rc := 1;
     SELECT r.return_value, r.pkcond, r.upd_pkcond, r.maxcol INTO v_err, v_pkcond, v_upd_pkcond, v_maxcol FROM dbo.sp_crs_gettablekey(table_id => v_table_id, tablename => v_crs_tablename, fulltablename => v_full_crs_table_name, pkcond => v_pkcond, upd_pkcond => v_upd_pkcond, maxcol => v_maxcol) AS r;
     v_err := 0;
+    _rc := 1;
     IF (v_err <> 0) THEN
       RAISE EXCEPTION 'CRS Data Transfer: Error Transfering % Data', v_full_table_name;
       return_value := -1;
       RETURN;
     END IF;
     v_str_clientid := ltrim(rtrim((v_clientid)::text));
+    _rc := 1;
     v_str_instanceid := ltrim(rtrim((v_instanceid)::text));
+    _rc := 1;
     IF (v_autodelete = 'Y') THEN
       IF (v_transfertype = 'B') THEN
         v_del_qry := (((((((v_del || v_tblprfix) || v_crs_tablename) || ' ') || v_whr) || ' ') || 'ClientID = ') || v_str_clientid);
+        _rc := 1;
       ELSE
         v_del_qry := (((((((v_del || v_tblprfix) || v_crs_tablename) || ' ') || v_whr) || ' ') || 'ClientInstanceID = ') || v_str_instanceid);
+        _rc := 1;
       END IF;
       _dq2 := v_del_qry;
       IF _dq2 IS NOT NULL THEN
@@ -9700,6 +10064,7 @@ BEGIN
       END IF;
       GET DIAGNOSTICS _rc = ROW_COUNT;
       v_err := 0;
+      _rc := 1;
       IF (v_err <> 0) THEN
         RAISE EXCEPTION 'CRS Data Deletion: Error Transfering % Data', v_full_table_name;
         return_value := -1;
@@ -9708,7 +10073,9 @@ BEGIN
     END IF;
     IF (v_autoupdate = 'Y') THEN
       v_flag := 0;
+      _rc := 1;
       v_setpart := ' SET ';
+      _rc := 1;
       -- OPEN TmpCrs3
       RAISE EXCEPTION 'untranslated T-SQL (system table sysobjects)' USING ERRCODE = '0A000';
       FETCH NEXT FROM cur_tmpcrs3 INTO v_colname, v_position;
@@ -9756,9 +10123,11 @@ BEGIN
       IF (v_setpart <> ' SET ') THEN
         IF (v_transfertype = 'B') THEN
           v_upd_qry := (((((((((((v_upd || v_setpart) || ' ') || v_from) || v_crs_tablename) || ' AS S, ') || v_sourcetablename) || v_endd) || ' S.ClientID=') || v_str_clientid) || ' AND ') || v_upd_pkcond);
+          _rc := 1;
         ELSE
           IF ((upper(v_crs_tablename))::citext <> 'CRS_GodownDetail') THEN
             v_upd_qry := ((((((((((((v_upd || v_setpart) || ' ') || v_from) || v_crs_tablename) || ' AS S, ') || v_sourcetablename) || v_endd) || ' S.ClientInstanceID=') || v_str_instanceid) || ' AND ') || v_upd_pkcond) || ' AND C.Posted = ''Y'' AND C.CRS_Transfered = ''N''');
+            _rc := 1;
           END IF;
         END IF;
         _dq3 := v_upd_qry;
@@ -9767,6 +10136,7 @@ BEGIN
         END IF;
         GET DIAGNOSTICS _rc = ROW_COUNT;
         v_err := 0;
+        _rc := 1;
         IF ((0 <> 0) OR (v_err <> 0)) THEN
           RAISE EXCEPTION 'CRS Data Updation: Error Transfering % Data', v_full_table_name;
           return_value := -1;
@@ -9776,53 +10146,72 @@ BEGIN
     END IF;
     IF (v_autoinsert = 'Y') THEN
       v_sql := ' SELECT ';
+      _rc := 1;
       v_list := '';
+      _rc := 1;
       SELECT r.return_value, r.list INTO v_err, v_list FROM dbo.sp_columnlist(owner => v_owner, "table" => v_crs_tablename, list => v_list) AS r;
       v_err := 0;
+      _rc := 1;
       IF ((0 <> 0) OR (v_err <> 0)) THEN
         return_value := -1;
         RETURN;
       END IF;
       v_pkcond_src := substring(v_pkcond, (coalesce(dbo.tsql_charindex(('+')::citext, (v_pkcond)::citext, 1), 0) + 1), length(rtrim(v_pkcond)));
+      _rc := 1;
       IF (v_transfertype = 'B') THEN
         v_srclist := substring(v_list, 10, length(rtrim(v_list)));
+        _rc := 1;
         v_ins_qry := (((((((((((((((((((((v_ins || v_tblprfix) || v_crs_tablename) || ' (') || v_list) || ' )  ') || v_sql) || v_str_clientid) || ' AS CID, ') || v_srclist) || ' FROM ') || v_sourcetablename) || v_endd) || v_pkcond_src) || v_notin) || v_pkcond_src) || ' FROM ') || v_tblprfix) || v_crs_tablename) || ' WHERE ClientID = ') || v_str_clientid) || ')');
+        _rc := 1;
       ELSE
         v_srclist := substring(v_list, 18, length(rtrim(v_list)));
+        _rc := 1;
         IF ((upper(v_crs_tablename))::citext = 'CRS_PURDETAIL') THEN
           v_ins_qry := (((((((((((((((((((v_ins || v_tblprfix) || v_crs_tablename) || ' (') || v_list) || ' )  ') || v_sql) || v_str_instanceid) || ' AS CID, ') || v_srclist) || ' FROM ') || v_sourcetablename) || v_endd) || ' C.PurInvCode IN (SELECT M.PurInvCode FROM Purledger M WHERE M.Posted=''Y'' AND M.CRS_Transfered=''N'' AND M.PurInvCode NOT IN (SELECT PurInvCode FROM ') || v_tblprfix) || v_crs_tablename) || v_whr) || ' ClientInstanceID = ') || v_str_instanceid) || '))');
+          _rc := 1;
         ELSE
           IF ((upper(v_crs_tablename))::citext = 'CRS_PRDETAIL') THEN
             v_ins_qry := (((((((((((((((((((v_ins || v_tblprfix) || v_crs_tablename) || ' (') || v_list) || ' )  ') || v_sql) || v_str_instanceid) || ' AS CID, ') || v_srclist) || ' FROM ') || v_sourcetablename) || v_endd) || ' C.PrInvCode IN (SELECT M.PrInvCode FROM Prledger M WHERE M.Posted=''Y'' AND M.CRS_Transfered=''N'' AND M.PrInvCode NOT IN (SELECT PrInvCode FROM ') || v_tblprfix) || v_crs_tablename) || v_whr) || ' ClientInstanceID = ') || v_str_instanceid) || '))');
+            _rc := 1;
           ELSE
             IF ((upper(v_crs_tablename))::citext = 'CRS_SALEDETAIL') THEN
               v_ins_qry := (((((((((((((((((((v_ins || v_tblprfix) || v_crs_tablename) || ' (') || v_list) || ' )  ') || v_sql) || v_str_instanceid) || ' AS CID, ') || v_srclist) || ' FROM ') || v_sourcetablename) || v_endd) || ' C.SaleInvCode IN (SELECT M.SaleInvCode FROM Saleledger M WHERE M.Posted=''Y'' AND M.CRS_Transfered=''N'' AND M.SaleInvCode NOT IN (SELECT SaleInvCode FROM ') || v_tblprfix) || v_crs_tablename) || v_whr) || ' ClientInstanceID = ') || v_str_instanceid) || '))');
+              _rc := 1;
             ELSE
               IF ((upper(v_crs_tablename))::citext = 'CRS_SRDETAIL') THEN
                 v_ins_qry := (((((((((((((((((((v_ins || v_tblprfix) || v_crs_tablename) || ' (') || v_list) || ' )  ') || v_sql) || v_str_instanceid) || ' AS CID, ') || v_srclist) || ' FROM ') || v_sourcetablename) || v_endd) || ' C.SRInvCode IN (SELECT M.SRInvCode FROM SRledger M WHERE M.Posted=''Y'' AND M.CRS_Transfered=''N'' AND M.SRInvCode NOT IN (SELECT SRInvCode FROM ') || v_tblprfix) || v_crs_tablename) || v_whr) || ' ClientInstanceID = ') || v_str_instanceid) || '))');
+                _rc := 1;
               ELSE
                 IF ((upper(v_crs_tablename))::citext = 'CRS_RECEIPTDETAIL') THEN
                   v_ins_qry := (((((((((((((((((((v_ins || v_tblprfix) || v_crs_tablename) || ' (') || v_list) || ' )  ') || v_sql) || v_str_instanceid) || ' AS CID, ') || v_srclist) || ' FROM ') || v_sourcetablename) || v_endd) || ' C.ReceiptInvCode IN (SELECT M.ReceiptInvCode FROM ReceiptHeader M WHERE M.Posted=''Y'' AND M.CRS_Transfered=''N'' AND M.ReceiptInvCode NOT IN (SELECT ReceiptInvCode FROM ') || v_tblprfix) || v_crs_tablename) || v_whr) || ' ClientInstanceID = ') || v_str_instanceid) || '))');
+                  _rc := 1;
                 ELSE
                   IF ((upper(v_crs_tablename))::citext = 'CRS_ISSUEDETAIL') THEN
                     v_ins_qry := (((((((((((((((((((v_ins || v_tblprfix) || v_crs_tablename) || ' (') || v_list) || ' )  ') || v_sql) || v_str_instanceid) || ' AS CID, ') || v_srclist) || ' FROM ') || v_sourcetablename) || v_endd) || ' C.IssueInvCode IN (SELECT M.IssueInvCode FROM IssueHeader M WHERE M.Posted=''Y'' AND M.CRS_Transfered=''N'' AND M.IssueInvCode NOT IN (SELECT IssueInvCode FROM ') || v_tblprfix) || v_crs_tablename) || v_whr) || ' ClientInstanceID = ') || v_str_instanceid) || '))');
+                    _rc := 1;
                   ELSE
                     IF ((upper(v_crs_tablename))::citext = 'CRS_ADJDETAIL') THEN
                       v_ins_qry := (((((((((((((((((((v_ins || v_tblprfix) || v_crs_tablename) || ' (') || v_list) || ' )  ') || v_sql) || v_str_instanceid) || ' AS CID, ') || v_srclist) || ' FROM ') || v_sourcetablename) || v_endd) || ' C.AdjCode IN (SELECT M.AdjCode FROM AdjHeader M WHERE M.Posted=''Y'' AND M.CRS_Transfered=''N'' AND M.AdjCode NOT IN (SELECT AdjCode FROM ') || v_tblprfix) || v_crs_tablename) || v_whr) || ' ClientInstanceID = ') || v_str_instanceid) || '))');
+                      _rc := 1;
                     ELSE
                       IF ((upper(v_crs_tablename))::citext = 'CRS_TDETAIL') THEN
                         v_ins_qry := (((((((((((((((((((v_ins || v_tblprfix) || v_crs_tablename) || ' (') || v_list) || ' )  ') || v_sql) || v_str_instanceid) || ' AS CID, ') || v_srclist) || ' FROM ') || v_sourcetablename) || v_endd) || ' C.TransCode IN (SELECT M.TransCode FROM THeader M WHERE M.Posted=''Y'' AND M.CRS_Transfered=''N'' AND M.TransCode NOT IN (SELECT TransCode FROM ') || v_tblprfix) || v_crs_tablename) || v_whr) || ' ClientInstanceID = ') || v_str_instanceid) || '))');
+                        _rc := 1;
                       ELSE
                         IF ((upper(v_crs_tablename))::citext = 'CRS_DUESATISFYDETAIL') THEN
                           v_ins_qry := (((((((((((((((((((v_ins || v_tblprfix) || v_crs_tablename) || ' (') || v_list) || ' )  ') || v_sql) || v_str_instanceid) || ' AS CID, ') || v_srclist) || ' FROM ') || v_sourcetablename) || v_endd) || ' C.DueSatisfyCode IN (SELECT M.DueSatisfyCode FROM DueSatisfyHeader M WHERE M.CRS_Transfered=''N'' AND M.DueSatisfyCode NOT IN (SELECT DueSatisfyCode FROM ') || v_tblprfix) || v_crs_tablename) || v_whr) || ' ClientInstanceID = ') || v_str_instanceid) || '))');
+                          _rc := 1;
                         ELSE
                           IF ((upper(v_crs_tablename))::citext = 'CRS_DUESATISFYHEADER') THEN
                             v_ins_qry := (((((((((((((v_ins || v_tblprfix) || v_crs_tablename) || ' (') || v_list) || ' )  ') || v_sql) || v_str_instanceid) || ' AS CID, ') || v_srclist) || ' FROM ') || v_sourcetablename) || v_endd) || ' C.CRS_Transfered=''N''');
+                            _rc := 1;
                           ELSE
                             IF ((upper(v_crs_tablename))::citext = 'CRS_GODOWNDETAIL') THEN
                               v_ins_qry := ((((((((((((v_ins || v_tblprfix) || v_crs_tablename) || ' (') || v_list) || ' )  ') || v_sql) || v_str_instanceid) || ' AS CID, ') || v_srclist) || ' FROM ') || v_sourcetablename) || ' AS C ');
+                              _rc := 1;
                             ELSE
                               v_ins_qry := (((((((((((((((((((((((v_ins || v_tblprfix) || v_crs_tablename) || ' (') || v_list) || ' )  ') || v_sql) || v_str_instanceid) || ' AS CID, ') || v_srclist) || ' FROM ') || v_sourcetablename) || v_endd) || ' C.Posted=''Y'' AND C.CRS_Transfered = ''N'' AND ') || v_pkcond_src) || ' NOT IN (SELECT ') || v_pkcond_src) || ' FROM ') || v_tblprfix) || v_crs_tablename) || v_whr) || ' ClientInstanceID = ') || v_str_instanceid) || ')');
+                              _rc := 1;
                             END IF;
                           END IF;
                         END IF;
@@ -9841,6 +10230,7 @@ BEGIN
       END IF;
       GET DIAGNOSTICS _rc = ROW_COUNT;
       v_err := 0;
+      _rc := 1;
       IF ((0 <> 0) OR (v_err <> 0)) THEN
         RAISE EXCEPTION 'Data Insertion: Error Transfering % Data', v_full_crs_table_name;
         return_value := -1;
@@ -13041,6 +13431,7 @@ BEGIN
       v_itemname := _r1.c1;
     END LOOP;
     v_string_expiry := left(to_char(v_expiry, 'DD/MM/YYYY'), 25);
+    _rc := 1;
     RAISE EXCEPTION 'Not enough stock available for the item (%) in batch no. (%) with expiry (%)', v_itemname, v_batch, v_string_expiry;
     return_value := -1;
     RETURN;
@@ -13784,6 +14175,7 @@ BEGIN
     GET DIAGNOSTICS _rc = ROW_COUNT;
   END IF;
   v_totalrows := coalesce((SELECT count(d.icode) FROM (SELECT code FROM tv_sp_extractexpiryintimation_tab_itemlist AS tab_itemlist) AS i, dbo.expiryintimationdetail AS d WHERE ((d.intimationcode = v_consolidatedintimation) AND (d.icode = i.code))), 0);
+  _rc := 1;
   IF ((v_totalrows IS NULL) OR (v_totalrows <= 0)) THEN
     return_value := 0;
     intimationcode := v_intimationcode;
@@ -13797,8 +14189,10 @@ BEGIN
     RETURN;
   END IF;
   v_serialno := coalesce((SELECT counter FROM dbo.intimationtype WHERE (intimationtypecode = v_type) FOR UPDATE OF intimationtype), 0);
+  _rc := 1;
   IF (v_serialno > 0) THEN
     v_serialno := (v_serialno + 1);
+    _rc := 1;
     UPDATE dbo.intimationtype SET counter = v_serialno WHERE (intimationtypecode = v_type);
     GET DIAGNOSTICS _rc = ROW_COUNT;
   END IF;
@@ -14111,6 +14505,7 @@ BEGIN
   v_ai_linvcode := ai_linvcode;
   v_ai_usercode := ai_usercode;
   v_issueprice := dbo.fn_getpreference('DetermineIssuePriceInProductionFrom');
+  _rc := 1;
   INSERT INTO dbo.prodbuffer (prodcode, prodrowid, icode, qty, remarks, packunits, packprice, price, itemflatdisc, discperc, processcharge, processchargeperc) SELECT DISTINCT h.prodcode AS prodcode, d.rowid AS prodrowid, rd.icode, round((((rd.qty * ((d.qty / CASE WHEN (r.qty <= 0) THEN 1 ELSE r.qty END)))))::numeric, (SELECT dbo.fn_getcolumnprecision('Qty'))) AS qty, rd.remarks, rd.packunits, CASE v_issueprice WHEN '1' THEN rd.packprice WHEN '2' THEN coalesce((SELECT i.saleprice FROM dbo.item AS i WHERE (i.icode = rd.icode)), 0) WHEN '3' THEN coalesce((SELECT i.purprice FROM dbo.item AS i WHERE (i.icode = rd.icode)), 0) WHEN '4' THEN coalesce((SELECT i.recentpurprice FROM dbo.item AS i WHERE (i.icode = rd.icode)), 0) ELSE coalesce((SELECT round((i.avgprice)::numeric, 2) FROM dbo.item AS i WHERE (i.icode = rd.icode)), 0) END AS packprice, CASE v_issueprice WHEN '1' THEN rd.price WHEN '2' THEN coalesce((SELECT round(((i.saleprice / CASE WHEN (i.packunits > 0) THEN i.packunits ELSE 1 END))::numeric, 2) FROM dbo.item AS i WHERE (i.icode = rd.icode)), 0) WHEN '3' THEN coalesce((SELECT round(((i.purprice / CASE WHEN (i.packunits > 0) THEN i.packunits ELSE 1 END))::numeric, 2) FROM dbo.item AS i WHERE (i.icode = rd.icode)), 0) WHEN '4' THEN coalesce((SELECT round(((i.recentpurprice / CASE WHEN (i.packunits > 0) THEN i.packunits ELSE 1 END))::numeric, 2) FROM dbo.item AS i WHERE (i.icode = rd.icode)), 0) ELSE coalesce((SELECT round((i.avgprice)::numeric, 2) FROM dbo.item AS i WHERE (i.icode = rd.icode)), 0) END AS price, rd.itemflatdisc, rd.discperc, rd.processcharge, rd.processchargeperc FROM dbo.prodheader AS h, dbo.proddetail AS d, dbo.recipedetail AS rd, (SELECT r1.* FROM dbo.recipe AS r1 WHERE (((dbo.tsql_str((r1.resulteditem)::numeric, 7) || dbo.tsql_str((r1.priority)::numeric, 7)))::citext IN (SELECT DISTINCT (dbo.tsql_str((rr.resulteditem)::numeric, 7) || dbo.tsql_str((min(rr.priority))::numeric, 7)) FROM dbo.recipe AS rr WHERE (rr.resulteditem IN (SELECT DISTINCT pd.icode FROM dbo.prodheader AS p, dbo.proddetail AS pd WHERE ((((p.prodcode BETWEEN v_ai_sinvcode AND v_ai_linvcode) AND (p.posted = 'N')) AND (p.finalized = 'N')) AND (p.prodcode = pd.prodcode)))) GROUP BY rr.resulteditem))) AS r WHERE ((((((h.prodcode BETWEEN v_ai_sinvcode AND v_ai_linvcode) AND (h.posted = 'N')) AND (h.finalized = 'N')) AND (h.prodcode = d.prodcode)) AND (d.icode = r.resulteditem)) AND (r.recipecode = rd.recipecode)) ORDER BY prodrowid;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF (_rc > 0) THEN
@@ -14575,8 +14970,11 @@ BEGIN
   v_saleordercode := saleordercode;
   v_newsaleinvcode := newsaleinvcode;
   v_headerno := 1;
+  _rc := 1;
   v_module := (SELECT module FROM dbo.module WHERE (name = 'Sales'));
+  _rc := 1;
   v_serverdate := localtimestamp(3);
+  _rc := 1;
   DROP TABLE IF EXISTS tmp_saletemp;
   CREATE TEMP TABLE tmp_saletemp (
     id integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
@@ -14595,24 +14993,33 @@ BEGIN
   INSERT INTO tmp_saletemp (icode, gcode, batch, expiry, looseqty, bonusqty, saleprice, discperc, itemflatdisc, unitsalestax, gstperc) SELECT icode, gcode, batch, expiry, trunc(looseqty)::integer, 0, saleprice, discperc, itemflatdisc, unitsalestax, gstperc FROM dbo.saleorderdetail WHERE ((saleordercode = v_saleordercode) AND (((looseqty + bonusqty)) > 0)) ORDER BY rowid;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_totalrows := coalesce((SELECT count(*) FROM tmp_saletemp AS saletemp), 0);
+  _rc := 1;
   v_continue := 0;
+  _rc := 1;
   v_rowgroup := 0;
+  _rc := 1;
   IF ((v_totalrows > 0) AND (v_continue >= 0)) THEN
     SELECT r.return_value, r.key INTO v_rt_code, v_saleinvcode FROM dbo.sp_gettabmaxkey(tabname => 'Saleledger', key => v_saleinvcode) AS r;
     v_rowgroup := 0;
+    _rc := 1;
     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
       v_continue := -1;
+      _rc := 1;
     END IF;
     v_newsaleinvcode := v_saleinvcode;
+    _rc := 1;
     IF (v_continue >= 0) THEN
       SELECT r.return_value, r.key INTO v_rt_code, v_headerinvno FROM dbo.sp_getheadertabmaxkey(headercode => (v_headerno)::smallint, modulecode => (v_module)::smallint, key => v_headerinvno) AS r;
       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
         v_continue := -1;
+        _rc := 1;
       END IF;
     END IF;
     IF (v_continue >= 0) THEN
       v_err := 0;
+      _rc := 1;
       v_rowcount := 1;
+      _rc := 1;
       INSERT INTO dbo.saleledger (saleinvcode, salecatcode, custcode, salesmancode, date, discperc, flatdisc, misccharges, salestax, posted, postdate, remarks, custrefno, headerno, headerinvno, originaldate, modifiedby, postedby, sprice, quotationno, doctcode, patientcode, reprintingcounter, cashreceived, invgstperc1, printwaranty, printbatch, messagecode, smancode, invoicesize, custrefno2, custrefno3, custrefno4, gstno, invtotal, machinename, modifycounter, itemdiscpercno, relationcode, diseasecode, wardcode, admissioncode, returncounter, paid, billingdate, unreceivedbalance, totalofsalereturns, listofsrinvoices, printbalance, accountfor, paymentmode, paymentacccode, amt, amtby, amtdate, amtreference, outstandingamt, marked, transferable, transfered, transferedon, transferedby, imported, importedby, deliveredby, saletypecode, balance, pptcustcode, deleted, prescode, impactinventory, saleordercode, salecomments1, salecomments2, altersaleinvcode, recurringinvoice, recurringperiod, lastrecurringinvcode, recurringagainst, considerinpo, visitcode, duedate, srbufferinvcode, custrefno5, suppinvcode, grn, gccode, vehicle, shipto) SELECT v_saleinvcode, 2 AS salecatcode, custcode, usercode, localtimestamp(3) AS date, discperc, flatdisc, misccharges, 0 AS salestax, 'Y' AS posted, localtimestamp(3) AS postdate, remarks, custrefno, v_headerno, v_headerinvcode, localtimestamp(3) AS date, modifiedby, postedby, 1 AS sprice, quotationcode, doctcode, patientcode, reprintingcounter, 0 AS cashreceived, invgstperc1, 'N' AS printwaranty, 'N' AS printbatch, messagecode, smancode, invoicesize, custrefno2, custrefno3, custrefno4, gstno, invtotal, machinename, modifycounter, itemdiscpercno, relationcode, diseasecode, wardcode, NULL::integer AS admissioncode, 0 AS returncounter, 'N' AS paid, billingdate, invtotal AS unreceivedbalance, 0 AS totalofsalereturns, '', 'Y', 'Y', 'C' AS paymentmode, 2 AS paymentacccode, 0 AS amt, NULL::smallint AS amtby, localtimestamp(3) AS amtdate, NULL::citext AS amtreference, invtotal AS outstandingamt, 'N' AS marked, 'N' AS transferable, 'N' AS transfered, NULL::timestamp(3) AS transferedon, NULL::smallint AS transferedby, 'N' AS imported, NULL::smallint AS importedby, NULL::smallint AS deliveredby, 1 AS saletypeode, 0 AS balance, pptcustcode, 'N' AS deleted, prescode, 'Y' AS impactinventory, saleordercode, (SELECT dbo.fn_getpreference('SaleComments1') AS a) AS salecomments1, (SELECT dbo.fn_getpreference('SaleComments2') AS a) AS salecomments2, NULL::integer AS altersaleinvcode, 'N' AS recurringinvoice, 0 AS recurringperiod, NULL::integer AS lastrecurringinvcode, NULL::integer AS recurringagainst, 'Y' AS considerinpo, NULL::integer AS visitcode, localtimestamp(3) AS duedate, NULL::integer AS srbufferinvcode, NULL::citext AS custrefno5, suppinvcode, grn, gccode, vehicle, shipto FROM dbo.saleorderheader WHERE (saleordercode = v_saleordercode);
       GET DIAGNOSTICS _rc = ROW_COUNT;
       v_err := 0;
@@ -14621,8 +15028,10 @@ BEGIN
       IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
         RAISE EXCEPTION 'Error occured in inserting record into Sale Ledger : %', v_saleinvcode;
         v_continue := -1;
+        _rc := 1;
       ELSE
         v_innercounter := 1;
+        _rc := 1;
         WHILE (((v_innercounter <= v_totalrows)) AND ((v_continue >= 0))) LOOP
           _rc := 0;
           FOR _r1 IN SELECT icode AS c1, gcode AS c2, batch AS c3, expiry AS c4, looseqty AS c5, bonusqty AS c6, saleprice AS c7, discperc AS c8, itemflatdisc AS c9, unitsalestax AS c10, gstperc AS c11 FROM tmp_saletemp AS saletemp WHERE (id = v_innercounter) LOOP
@@ -14643,19 +15052,26 @@ BEGIN
           v_rowcount := _rc;
           _rc := 1;
           v_totalqty := (v_looseqty + v_bonusqty);
+          _rc := 1;
           IF (((v_totalqty > 0) AND (v_rowcount > 0)) AND (v_err = 0)) THEN
             SELECT r.return_value, r.avgprice INTO v_rt_code, v_hold_avgprice FROM dbo.sp_getitemavgprice(icode => v_icode, avgprice => v_hold_avgprice) AS r;
             IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
               v_continue := -1;
+              _rc := 1;
             ELSE
               v_total_availablestock := (SELECT coalesce(sum(currqty), 0) FROM dbo.godowndetail WHERE (godowndetail.icode = v_icode));
+              _rc := 1;
               IF ((v_total_availablestock < 0) OR (v_total_availablestock IS NULL)) THEN
                 v_total_availablestock := 0;
+                _rc := 1;
               END IF;
               v_totalstock := (SELECT coalesce(sum(currqty), 0) FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)));
+              _rc := 1;
               v_totalbatchqty := (SELECT coalesce(sum(currqty), 0) FROM dbo.godowndetail WHERE ((((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)) AND (godowndetail.batch = v_batch)) AND (godowndetail.expiry = v_expiry)));
+              _rc := 1;
               IF (v_totalbatchqty >= v_totalqty) THEN
                 v_newqty := (v_totalbatchqty - v_totalqty);
+                _rc := 1;
                 IF (v_newqty > 0) THEN
                   SELECT r.return_value INTO v_rt_code FROM dbo.sp_saleupdateitemstockbatch(gcode => v_gcode, icode => v_icode, batch => v_batch, expiry => v_expiry, newqty => v_newqty, oldqty => v_totalbatchqty) AS r;
                 ELSE
@@ -14663,8 +15079,10 @@ BEGIN
                 END IF;
                 IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                   v_continue := -1;
+                  _rc := 1;
                 ELSE
                   v_rowgroup := (v_rowgroup + 1);
+                  _rc := 1;
                   _rc := 0;
                   FOR _r2 IN SELECT saleprice AS c1, packunits AS c2 FROM dbo.item WHERE (icode = v_icode) LOOP
                     _rc := _rc + 1;
@@ -14673,12 +15091,15 @@ BEGIN
                   END LOOP;
                   IF ((v_packunits = 0) OR (v_packunits IS NULL)) THEN
                     v_packunits := 1;
+                    _rc := 1;
                   END IF;
                   SELECT r.return_value, r.lbi_maxutn INTO v_rt_code, v_saleutn FROM dbo.sp_maxutn(lbi_rows => (1)::bigint, lbi_maxutn => v_saleutn) AS r;
                   IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                     v_continue := -1;
+                    _rc := 1;
                   ELSE
                     v_total_availablestock := ((v_total_availablestock - v_looseqty) - v_bonusqty);
+                    _rc := 1;
                     INSERT INTO dbo.saledetail (saleinvcode, icode, gcode, batch, expiry, packqty, looseqty, bonusqty, packunits, saleprice, avgprice, rate, discperc, salestax, itemflatdisc, packprice, unitsalestax, gstperc, saleutn, balancestock, rowgroup) VALUES (v_saleinvcode, v_icode, v_gcode, v_batch, v_expiry, 0, v_looseqty, v_bonusqty, v_packunits, v_saleprice, v_hold_avgprice, (v_rate / v_packunits), v_discperc, 0, v_itemflatdisc, v_rate, v_unitsalestax, v_gstperc1, v_saleutn, v_total_availablestock, v_rowgroup);
                     GET DIAGNOSTICS _rc = ROW_COUNT;
                     v_err := 0;
@@ -14687,17 +15108,21 @@ BEGIN
                     IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
                       RAISE EXCEPTION 'Error occured in inserting record into Sale Detail for Sale Inv. No. : %', v_saleinvcode;
                       v_continue := -1;
+                      _rc := 1;
                     END IF;
                   END IF;
                 END IF;
               ELSE
                 v_itemname := (SELECT name FROM dbo.item WHERE (icode = v_icode));
+                _rc := 1;
                 RAISE EXCEPTION 'Not enough stock for item (%) to decrease for Sale Inv. No : %', v_itemname, v_saleinvcode;
                 v_continue := -1;
+                _rc := 1;
               END IF;
             END IF;
           END IF;
           v_innercounter := (v_innercounter + 1);
+          _rc := 1;
         END LOOP;
         IF (((v_continue >= 0)) AND (v_innercounter > v_totalrows)) THEN
           UPDATE dbo.saleledger SET invtotal = coalesce(dbo.fn_getsaleinvtotal((saleledger.saleinvcode)::integer), 0) WHERE (saleinvcode = v_saleinvcode);
@@ -14708,6 +15133,7 @@ BEGIN
           IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
             RAISE EXCEPTION 'Unable to update Sale Inv. total for Sale Invoice %', 1;
             v_continue := -1;
+            _rc := 1;
           END IF;
           IF ((v_continue >= 0)) THEN
             UPDATE dbo.saleorderheader SET posted = 'Y', postdate = localtimestamp(3), finalized = 'Y' WHERE (saleordercode = v_saleordercode);
@@ -14718,6 +15144,7 @@ BEGIN
             IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
               RAISE EXCEPTION 'Unable to update Sale Order Status (Inv. No. %)', 1;
               v_continue := -1;
+              _rc := 1;
             END IF;
           END IF;
         END IF;
@@ -14771,8 +15198,10 @@ BEGIN
   v_billsummcode2 := billsummcode2;
   v_usercode := usercode;
   v_continue := 0;
+  _rc := 1;
   OPEN cur_curs_voch FOR SELECT DISTINCT b.billsummarycode, b.billsummarytypecode, d.cashacccode AS acccode, 1 AS type, CASE b.billsummarytypecode WHEN 1 THEN 2 ELSE 12 END AS vochcatcode FROM dbo.billsummary AS b, dbo.billsummarydetail AS d WHERE ((((((b.billsummarycode BETWEEN v_billsummcode1 AND v_billsummcode2) AND (b.posted = 'N')) AND (b.finalized = 'Y')) AND (b.billsummarycode = d.billsummarycode)) AND (d.cashamt <> 0)) AND (d.cashacccode IS NOT NULL)) UNION ALL SELECT DISTINCT b.billsummarycode, b.billsummarytypecode, d.bankacccode AS acccode, 2 AS type, CASE b.billsummarytypecode WHEN 1 THEN 4 ELSE 13 END AS vochcatcode FROM dbo.billsummary AS b, dbo.billsummarydetail AS d WHERE ((((((b.billsummarycode BETWEEN v_billsummcode1 AND v_billsummcode2) AND (b.posted = 'N')) AND (b.finalized = 'Y')) AND (b.billsummarycode = d.billsummarycode)) AND (d.chequeamt <> 0)) AND (d.bankacccode IS NOT NULL)) UNION ALL SELECT DISTINCT b.billsummarycode, b.billsummarytypecode, d.debitnoteacccode AS acccode, 3 AS type, CASE b.billsummarytypecode WHEN 1 THEN 19 ELSE 21 END AS vochcatcode FROM dbo.billsummary AS b, dbo.billsummarydetail AS d WHERE ((((((b.billsummarycode BETWEEN v_billsummcode1 AND v_billsummcode2) AND (b.posted = 'N')) AND (b.finalized = 'Y')) AND (b.billsummarycode = d.billsummarycode)) AND (d.debitnoteamt <> 0)) AND (d.debitnoteacccode IS NOT NULL)) UNION ALL SELECT DISTINCT b.billsummarycode, b.billsummarytypecode, d.creditnoteacccode AS acccode, 4 AS type, CASE b.billsummarytypecode WHEN 1 THEN 20 ELSE 22 END AS vochcatcode FROM dbo.billsummary AS b, dbo.billsummarydetail AS d WHERE ((((((b.billsummarycode BETWEEN v_billsummcode1 AND v_billsummcode2) AND (b.posted = 'N')) AND (b.finalized = 'Y')) AND (b.billsummarycode = d.billsummarycode)) AND (d.creditnoteamt <> 0)) AND (d.creditnoteacccode IS NOT NULL)) ORDER BY 1, 4, 3;
   v_totvoch := (-1);
+  _rc := 1;
   IF (v_totvoch <= 0) THEN
     CLOSE cur_curs_voch;
     -- DEALLOCATE Curs_Voch
@@ -14882,18 +15311,25 @@ BEGIN
   CLOSE cur_curs_voch;
   -- DEALLOCATE Curs_Voch
   v_rowcount := (SELECT count(*) FROM tmp_voucherdetail AS voucherdetail);
+  _rc := 1;
   IF (v_rowcount <= 0) THEN
     return_value := 0;
     RETURN;
   END IF;
   v_rowid := 1;
+  _rc := 1;
   WHILE (v_rowid <= v_rowcount) LOOP
     v_saleinvcode := (SELECT invoicecode FROM tmp_voucherdetail AS voucherdetail WHERE (rowid = v_rowid));
+    _rc := 1;
     IF (v_saleinvcode > 0) THEN
       v_utn := coalesce((SELECT utn FROM tmp_voucherdetail AS voucherdetail WHERE (rowid = v_rowid)), 0);
+      _rc := 1;
       v_amt := coalesce((SELECT amount FROM tmp_voucherdetail AS voucherdetail WHERE (rowid = v_rowid)), 0);
+      _rc := 1;
       v_type := coalesce((SELECT type FROM tmp_voucherdetail AS voucherdetail WHERE (rowid = v_rowid)), 0);
+      _rc := 1;
       v_billsummarytypecode := coalesce((SELECT billsummarytypecode FROM tmp_voucherdetail AS voucherdetail WHERE (rowid = v_rowid)), 0);
+      _rc := 1;
       SELECT r.return_value, r.an_balance INTO v_err, v_saleinvbalance FROM dbo.sp_getsaleinvbalance(ai_saleinvcode => v_saleinvcode, an_balance => v_saleinvbalance) AS r;
       IF ((v_err <> 0) AND (0 <> 0)) THEN
         RAISE EXCEPTION 'Error occured in Fetching Balance of Sale Invoice: % while posting of BillSummary : %', v_saleinvcode, v_billsummarycode;
@@ -14902,13 +15338,16 @@ BEGIN
         RETURN;
       END IF;
       v_saleinvbalance := coalesce(v_saleinvbalance, 0);
+      _rc := 1;
       UPDATE dbo.gldetail SET outstandingamt = v_saleinvbalance WHERE (glutn = v_utn);
       GET DIAGNOSTICS _rc = ROW_COUNT;
       IF (v_billsummarytypecode = 2) THEN
         IF (v_type = 3) THEN
           v_newbalance := (coalesce(v_saleinvbalance, 0) + coalesce(v_amt, 0));
+          _rc := 1;
         ELSE
           v_newbalance := (coalesce(v_saleinvbalance, 0) - coalesce(v_amt, 0));
+          _rc := 1;
         END IF;
         IF (v_newbalance < 0) THEN
           RAISE EXCEPTION 'Error Occured while updation of Balance of Sale Invoice: % while posting of BillSummary : %', v_saleinvcode, v_billsummarycode;
@@ -14926,6 +15365,7 @@ BEGIN
       END IF;
     END IF;
     v_rowid := (v_rowid + 1);
+    _rc := 1;
   END LOOP;
   DROP TABLE IF EXISTS tmp_voucherdetail;
   return_value := 0;
@@ -14951,8 +15391,10 @@ BEGIN
   v_usercode := usercode;
   v_saleinvcode := saleinvcode;
   v_item_count := coalesce((SELECT count(*) FROM dbo.issuedetail AS d, dbo.issueheader AS h WHERE ((h.serviceocode = v_serviceocode) AND (h.issueinvcode = d.issueinvcode))), 0);
+  _rc := 1;
   IF ((v_serviceocode <> 0) AND (v_item_count > 0)) THEN
     v_errcode := 0;
+    _rc := 1;
     SELECT r.return_value, r.key INTO v_errcode, v_saleinvcode FROM dbo.sp_locktabmaxkey(tabname => 'SaleLedger', key => v_saleinvcode) AS r;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Problem while Fetching SaleLedger Key Value';
@@ -14961,6 +15403,7 @@ BEGIN
       RETURN;
     END IF;
     v_saleinvcode := (v_saleinvcode + 1);
+    _rc := 1;
     INSERT INTO dbo.saleledger (saleinvcode, salecatcode, custcode, salesmancode, date, discperc, flatdisc, misccharges, salestax, posted, postdate, remarks, custrefno, headerno, originaldate, modifiedby, patientcode, postedby, sprice, cashacccode, cashtendered, cashcharged, cashback, impactinventory) SELECT v_saleinvcode, 2 AS salecatcode, custcode, v_usercode AS salesmancode, localtimestamp(3) AS date, 0 AS discperc, 0 AS flatdisc, 0 AS misccharges, 0 AS salestax, 'Y' AS posted, localtimestamp(3) AS postdate, remarks AS remarks, reference1 AS custrefno, headerno, localtimestamp(3) AS originaldate, NULL::smallint AS modifiedby, patientcode, v_usercode AS postedby, 1 AS sprice, 2 AS cashacccode, 0 AS cashtendered, 0 AS cashcharged, 0 AS cashback, 'N' AS impactinventory FROM dbo.serviceoheader WHERE ((serviceocode = v_serviceocode) AND (serviceoheader.posted = 'N'));
     GET DIAGNOSTICS _rc = ROW_COUNT;
     IF ((0 <> 0) OR (_rc = 0)) THEN
@@ -14980,6 +15423,7 @@ BEGIN
       RETURN;
     END IF;
     v_errcode := 0;
+    _rc := 1;
     SELECT r.return_value INTO v_errcode FROM dbo.sp_updatetabmaxkey(tabname => 'SaleLedger', key => v_saleinvcode) AS r;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Problem while Updating SaleLedger Key Value';
@@ -15081,13 +15525,21 @@ BEGIN
   v_newsaleinvcode := newsaleinvcode;
   -- SET NOCOUNT On
   v_machinename := current_setting('cluster_name', true);
+  _rc := 1;
   v_salecatcode := 2;
+  _rc := 1;
   v_saletypecode := 2;
+  _rc := 1;
   v_headerno := 1;
+  _rc := 1;
   v_module := (SELECT module FROM dbo.module WHERE (name = 'Sales'));
+  _rc := 1;
   v_serverdate := localtimestamp(3);
+  _rc := 1;
   v_quotpopulatesetting := coalesce((SELECT dbo.fn_get_int_preference('quotationpopulationsetting')), 1);
+  _rc := 1;
   v_invoicesize := coalesce((SELECT dbo.fn_getpreference('creditsalepagesize')), 'F');
+  _rc := 1;
   DROP TABLE IF EXISTS tmp_saletemp;
   CREATE TEMP TABLE tmp_saletemp (
     tid integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
@@ -15113,20 +15565,28 @@ BEGIN
   DELETE FROM tmp_saletemp AS saletemp WHERE ((stock <= 0) AND (((satisfiableqty <= 0) OR (satisfiablebonus <= 0))));
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_salerows := (SELECT count(*) FROM tmp_saletemp AS saletemp);
+  _rc := 1;
   v_continue := 0;
+  _rc := 1;
   v_rowgroup := 0;
+  _rc := 1;
   IF ((v_salerows > 0) AND (v_continue >= 0)) THEN
     SELECT r.return_value, r.key INTO v_rt_code, v_saleinvcode FROM dbo.sp_gettabmaxkey(tabname => 'Saleledger', key => v_saleinvcode) AS r;
     v_rowgroup := 0;
+    _rc := 1;
     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
       v_continue := -1;
+      _rc := 1;
     ELSE
       SELECT r.return_value, r.key INTO v_rt_code, v_headerinvno FROM dbo.sp_getheadertabmaxkey(headercode => (v_headerno)::smallint, modulecode => (v_module)::smallint, key => v_headerinvno) AS r;
       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
         v_continue := -1;
+        _rc := 1;
       ELSE
         v_err := 0;
+        _rc := 1;
         v_rowcount := 1;
+        _rc := 1;
         INSERT INTO dbo.saleledger (saleinvcode, salecatcode, custcode, sprice, salesmancode, date, discperc, flatdisc, misccharges, salestax, posted, postdate, headerno, headerinvno, originaldate, invtotal, machinename, modifycounter, billingdate, saletypecode, invoicesize) VALUES (v_saleinvcode, v_salecatcode, v_custcode, 1, v_usercode, v_serverdate, 0, 0, 0, 0, 'N', v_serverdate, v_headerno, v_headerinvno, v_serverdate, 0, v_machinename, 0, v_serverdate, v_saletypecode, v_invoicesize);
         GET DIAGNOSTICS _rc = ROW_COUNT;
         v_err := 0;
@@ -15135,8 +15595,10 @@ BEGIN
         IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
           RAISE EXCEPTION 'Error occured in inserting record into Sale Ledger : %', v_saleinvcode;
           v_continue := -1;
+          _rc := 1;
         ELSE
           v_innercounter := 1;
+          _rc := 1;
           WHILE ((v_innercounter <= v_salerows) AND (v_continue >= 0)) LOOP
             _rc := 0;
             FOR _r1 IN SELECT icode AS c1, satisfiableqty AS c2, satisfiedqty AS c3, saleprice AS c4, discperc AS c5, itemflatdisc AS c6, unitsalestax AS c7, gstperc AS c8, quotationcode AS c9, claimablediscperc AS c10 FROM tmp_saletemp AS saletemp WHERE (tid = v_innercounter) LOOP
@@ -15156,11 +15618,15 @@ BEGIN
             _rc := 1;
             IF (((v_rowcount = 1)) AND ((((v_satisfiableqty - v_satisfiedqty)) > 0))) THEN
               v_givenqty := (v_satisfiableqty - v_satisfiedqty);
+              _rc := 1;
               v_total_availablestock := (SELECT coalesce(sum(currqty), 0) FROM dbo.godowndetail WHERE (godowndetail.icode = v_icode));
+              _rc := 1;
               IF ((v_total_availablestock < 0) OR (v_total_availablestock IS NULL)) THEN
                 v_total_availablestock := 0;
+                _rc := 1;
               END IF;
               v_totalqty := (SELECT coalesce(sum(currqty), 0) FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)));
+              _rc := 1;
               IF (((v_totalqty > 0) AND (v_total_availablestock > 0)) AND (v_givenqty > 0)) THEN
                 IF (v_givenqty > 0) THEN
                   UPDATE tmp_saletemp AS saletemp SET satisfiedqty = trunc((v_satisfiedqty + v_givenqty))::integer WHERE ((icode = v_icode) AND (tid = v_innercounter));
@@ -15169,9 +15635,11 @@ BEGIN
                 SELECT r.return_value, r.avgprice INTO v_rt_code, v_hold_avgprice FROM dbo.sp_getitemavgprice(icode => v_icode, avgprice => v_hold_avgprice) AS r;
                 IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                   v_continue := -1;
+                  _rc := 1;
                 ELSE
                   IF (v_totalqty >= v_givenqty) THEN
                     v_rowgroup := (v_rowgroup + 1);
+                    _rc := 1;
                     _rc := 0;
                     FOR _r2 IN SELECT saleprice AS c1, packunits AS c2 FROM dbo.item WHERE (icode = v_icode) LOOP
                       _rc := _rc + 1;
@@ -15180,26 +15648,36 @@ BEGIN
                     END LOOP;
                     IF ((v_packunits = 0) OR (v_packunits IS NULL)) THEN
                       v_packunits := 1;
+                      _rc := 1;
                     END IF;
                     v_reqqty := v_givenqty;
+                    _rc := 1;
                     OPEN cur_itembatch_cursor FOR SELECT batch, expiry, currqty FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)) ORDER BY priority, expiry, currqty;
                     v_totalrows := (-1);
+                    _rc := 1;
                     FETCH NEXT FROM cur_itembatch_cursor INTO v_batch, v_expiry, v_currqty;
                     IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
                     v_counter := 1;
+                    _rc := 1;
                     WHILE (((_fs = 0) AND (v_counter <= v_totalrows)) AND (v_reqqty > 0)) LOOP
                       v_batchqty := v_currqty;
+                      _rc := 1;
                       IF (v_batchqty >= v_reqqty) THEN
                         v_delqty := v_reqqty;
+                        _rc := 1;
                       ELSE
                         v_delqty := v_batchqty;
+                        _rc := 1;
                       END IF;
                       v_reqqty := (v_reqqty - v_delqty);
+                      _rc := 1;
                       SELECT r.return_value, r.lbi_maxutn INTO v_rt_code, v_saleutn FROM dbo.sp_maxutn(lbi_rows => (1)::bigint, lbi_maxutn => v_saleutn) AS r;
                       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                         v_continue := -1;
+                        _rc := 1;
                       END IF;
                       v_total_availablestock := (v_total_availablestock - v_delqty);
+                      _rc := 1;
                       INSERT INTO dbo.saledetail (saleinvcode, icode, gcode, batch, expiry, packqty, looseqty, packunits, saleprice, avgprice, rate, discperc, salestax, itemflatdisc, packprice, unitsalestax, gstperc, saleutn, balancestock, rowgroup, quotationcode, claimablediscperc) VALUES (v_saleinvcode, v_icode, v_gcode, v_batch, v_expiry, 0, v_delqty, v_packunits, v_saleprice, v_hold_avgprice, (v_rate / v_packunits), v_discperc, 0, v_itemflatdisc, v_rate, v_unitsalestax, v_gstperc1, v_saleutn, v_total_availablestock, v_rowgroup, v_quotationcode, v_claimablediscperc);
                       GET DIAGNOSTICS _rc = ROW_COUNT;
                       v_err := 0;
@@ -15208,8 +15686,10 @@ BEGIN
                       IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
                         RAISE EXCEPTION 'Error occured in inserting record into Sale Detail for Sale Inv. No. : %', v_saleinvcode;
                         v_continue := -1;
+                        _rc := 1;
                       ELSE
                         v_newqty := (v_currqty - v_delqty);
+                        _rc := 1;
                         IF (v_newqty > 0) THEN
                           SELECT r.return_value INTO v_rt_code FROM dbo.sp_saleupdateitemstockbatch(gcode => (v_gcode)::integer, icode => v_icode, batch => v_batch, expiry => v_expiry, newqty => v_newqty, oldqty => v_currqty) AS r;
                         ELSE
@@ -15217,9 +15697,11 @@ BEGIN
                         END IF;
                         IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                           v_continue := -1;
+                          _rc := 1;
                         END IF;
                       END IF;
                       v_counter := (v_counter + 1);
+                      _rc := 1;
                       FETCH NEXT FROM cur_itembatch_cursor INTO v_batch, v_expiry, v_currqty;
                       IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
                     END LOOP;
@@ -15228,6 +15710,7 @@ BEGIN
                   ELSE
                     IF ((v_totalqty > 0) AND (v_totalqty < v_givenqty)) THEN
                       v_rowgroup := (v_rowgroup + 1);
+                      _rc := 1;
                       _rc := 0;
                       FOR _r3 IN SELECT saleprice AS c1, packunits AS c2 FROM dbo.item WHERE (icode = v_icode) LOOP
                         _rc := _rc + 1;
@@ -15236,26 +15719,36 @@ BEGIN
                       END LOOP;
                       IF ((v_packunits = 0) OR (v_packunits IS NULL)) THEN
                         v_packunits := 1;
+                        _rc := 1;
                       END IF;
                       v_reqqty := v_totalqty;
+                      _rc := 1;
                       OPEN cur_itembatch_cursor FOR SELECT batch, expiry, currqty FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)) ORDER BY priority, expiry, currqty;
                       v_totalrows := (-1);
+                      _rc := 1;
                       FETCH NEXT FROM cur_itembatch_cursor INTO v_batch, v_expiry, v_currqty;
                       IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
                       v_counter := 1;
+                      _rc := 1;
                       WHILE (((_fs = 0) AND (v_counter <= v_totalrows)) AND (v_reqqty > 0)) LOOP
                         v_batchqty := v_currqty;
+                        _rc := 1;
                         IF (v_batchqty >= v_reqqty) THEN
                           v_delqty := v_reqqty;
+                          _rc := 1;
                         ELSE
                           v_delqty := v_batchqty;
+                          _rc := 1;
                         END IF;
                         v_reqqty := (v_reqqty - v_delqty);
+                        _rc := 1;
                         SELECT r.return_value, r.lbi_maxutn INTO v_rt_code, v_saleutn FROM dbo.sp_maxutn(lbi_rows => (1)::bigint, lbi_maxutn => v_saleutn) AS r;
                         IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                           v_continue := -1;
+                          _rc := 1;
                         END IF;
                         v_total_availablestock := (v_total_availablestock - v_delqty);
+                        _rc := 1;
                         INSERT INTO dbo.saledetail (saleinvcode, icode, gcode, batch, expiry, packqty, looseqty, packunits, saleprice, avgprice, rate, discperc, salestax, itemflatdisc, packprice, unitsalestax, gstperc, saleutn, balancestock, rowgroup, quotationcode, claimablediscperc) VALUES (v_saleinvcode, v_icode, v_gcode, v_batch, v_expiry, 0, v_delqty, v_packunits, v_saleprice, v_hold_avgprice, (v_rate / v_packunits), v_discperc, 0, v_itemflatdisc, v_rate, v_unitsalestax, v_gstperc1, v_saleutn, v_total_availablestock, v_rowgroup, v_quotationcode, v_claimablediscperc);
                         GET DIAGNOSTICS _rc = ROW_COUNT;
                         v_err := 0;
@@ -15264,8 +15757,10 @@ BEGIN
                         IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
                           RAISE EXCEPTION 'Error occured in inserting record into Sale Detail for Sale Inv. No. : %', v_saleinvcode;
                           v_continue := -1;
+                          _rc := 1;
                         ELSE
                           v_newqty := (v_currqty - v_delqty);
+                          _rc := 1;
                           IF (v_newqty > 0) THEN
                             SELECT r.return_value INTO v_rt_code FROM dbo.sp_saleupdateitemstockbatch(gcode => (v_gcode)::integer, icode => v_icode, batch => v_batch, expiry => v_expiry, newqty => v_newqty, oldqty => v_currqty) AS r;
                           ELSE
@@ -15273,9 +15768,11 @@ BEGIN
                           END IF;
                           IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                             v_continue := -1;
+                            _rc := 1;
                           END IF;
                         END IF;
                         v_counter := (v_counter + 1);
+                        _rc := 1;
                         FETCH NEXT FROM cur_itembatch_cursor INTO v_batch, v_expiry, v_currqty;
                         IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
                       END LOOP;
@@ -15283,14 +15780,17 @@ BEGIN
                       -- DEALLOCATE ItemBatch_Cursor
                     ELSE
                       v_itemname := (SELECT name FROM dbo.item WHERE (icode = v_icode));
+                      _rc := 1;
                       RAISE EXCEPTION 'Not enough stock for item (%) to decrease for Sale Inv. No : %', v_itemname, v_saleinvcode;
                       v_continue := -1;
+                      _rc := 1;
                     END IF;
                   END IF;
                 END IF;
               END IF;
             END IF;
             v_innercounter := (v_innercounter + 1);
+            _rc := 1;
           END LOOP;
         END IF;
       END IF;
@@ -15306,8 +15806,10 @@ BEGIN
     IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
       RAISE EXCEPTION 'Unable to update SaleInvoices for Sale Inv. total';
       v_continue := -1;
+      _rc := 1;
     END IF;
     v_newsaleinvcode := v_saleinvcode;
+    _rc := 1;
   END IF;
   return_value := v_continue;
   newsaleinvcode := v_newsaleinvcode;
@@ -15339,18 +15841,21 @@ BEGIN
   v_code := code;
   v_usercode := usercode;
   v_rows := coalesce((SELECT count(customerservicetemplatecode) FROM dbo.customerservicetemplate WHERE (((customerservicetemplatecode = v_code) AND (posted = 'Y')) AND (svcinvgenerated = 'N'))), 0);
+  _rc := 1;
   IF ((v_rows = 0) OR (v_rows IS NULL)) THEN
     RAISE EXCEPTION 'Template Already Posted OR used, Please select another one.';
     return_value := -1;
     RETURN;
   END IF;
   v_detailrows := coalesce((SELECT count(*) FROM dbo.customerservicetemplatedetail WHERE (customerservicetemplatecode = v_code)), 0);
+  _rc := 1;
   IF ((v_detailrows = 0) OR (v_detailrows IS NULL)) THEN
     RAISE EXCEPTION 'Template Has no rows for Customers, Please select another one.';
     return_value := -1;
     RETURN;
   END IF;
   v_servicecode := (SELECT servicecode FROM dbo.customerservicetemplate WHERE (((customerservicetemplatecode = v_code) AND (posted = 'Y')) AND (svcinvgenerated = 'N')));
+  _rc := 1;
   IF ((v_servicecode = 0) OR (v_servicecode IS NULL)) THEN
     RAISE EXCEPTION 'Template Has no Service selected, Please select another one.';
     return_value := -1;
@@ -15372,8 +15877,10 @@ BEGIN
   INSERT INTO tmp_studtemp (custcode, servicecode, qty, charges, discperc, serviceflatdisc, remarks, serviceinvcode, rowid) SELECT custcode, v_servicecode, qty, charges, discperc, serviceflatdisc, remarks, NULL::integer AS serviceinvcode, rowid FROM dbo.customerservicetemplatedetail WHERE (customerservicetemplatecode = v_code) ORDER BY rowid;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_detailrows := coalesce((SELECT count(*) FROM tmp_studtemp AS studtemp), 0);
+  _rc := 1;
   IF ((v_servicecode <> 0) AND (v_detailrows > 0)) THEN
     v_errcode := 0;
+    _rc := 1;
     SELECT r.return_value, r.key INTO v_errcode, v_serviceinvcode FROM dbo.sp_locktabmaxkey(tabname => 'ServiceHeader', key => v_serviceinvcode) AS r;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Problem while Fetching ServiceHeader Key Value';
@@ -15405,8 +15912,11 @@ BEGIN
       RETURN;
     END IF;
     v_sinvcode := coalesce((SELECT min(serviceinvcode) FROM tmp_studtemp AS studtemp), 0);
+    _rc := 1;
     v_einvcode := coalesce((SELECT max(serviceinvcode) FROM tmp_studtemp AS studtemp), 0);
+    _rc := 1;
     v_errcode := 0;
+    _rc := 1;
     SELECT r.return_value INTO v_errcode FROM dbo.sp_updatetabmaxkey(tabname => 'ServiceHeader', key => v_einvcode) AS r;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Problem while Updating ServiceHeader Key Value';
@@ -15455,24 +15965,28 @@ BEGIN
   v_code := code;
   v_usercode := usercode;
   v_rows := coalesce((SELECT count(customerstudentservicetemplatecode) FROM dbo.customerstudentservicetemplate WHERE (((customerstudentservicetemplatecode = v_code) AND (posted = 'Y')) AND (svcinvgenerated = 'N'))), 0);
+  _rc := 1;
   IF ((v_rows = 0) OR (v_rows IS NULL)) THEN
     RAISE EXCEPTION 'Template Already Posted OR used, Please select another one.';
     return_value := -1;
     RETURN;
   END IF;
   v_detailrows := coalesce((SELECT count(*) FROM dbo.customerstudentservicetemplatedetail WHERE (customerstudentservicetemplatecode = v_code)), 0);
+  _rc := 1;
   IF ((v_detailrows = 0) OR (v_detailrows IS NULL)) THEN
     RAISE EXCEPTION 'Template Has no rows for students, Please select another one.';
     return_value := -1;
     RETURN;
   END IF;
   v_servicecode := (SELECT servicecode FROM dbo.customerstudentservicetemplate WHERE (((customerstudentservicetemplatecode = v_code) AND (posted = 'Y')) AND (svcinvgenerated = 'N')));
+  _rc := 1;
   IF ((v_servicecode = 0) OR (v_servicecode IS NULL)) THEN
     RAISE EXCEPTION 'Template Has no Service selected, Please select another one.';
     return_value := -1;
     RETURN;
   END IF;
   v_custcode := (SELECT custcode FROM dbo.customerstudentservicetemplate WHERE (((customerstudentservicetemplatecode = v_code) AND (posted = 'Y')) AND (svcinvgenerated = 'N')));
+  _rc := 1;
   IF ((v_custcode = 0) OR (v_custcode IS NULL)) THEN
     RAISE EXCEPTION 'Template Has no Customer selected, Please select another one.';
     return_value := -1;
@@ -15492,12 +16006,14 @@ BEGIN
   INSERT INTO tmp_studtemp (studentcode, servicecode, qty, charges, discperc, serviceflatdisc, rowid, remarks) SELECT d.studentcode, v_servicecode, d.qty, d.charges, d.discperc, d.serviceflatdisc, d.rowid, coalesce((SELECT (((s.name || ' (') || s.regno) || ')') FROM dbo.student AS s WHERE (s.studentcode = d.studentcode)), d.remarks) AS remarks FROM dbo.customerstudentservicetemplatedetail AS d WHERE (d.customerstudentservicetemplatecode = v_code) ORDER BY d.rowid;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_detailrows := coalesce((SELECT count(*) FROM tmp_studtemp AS studtemp), 0);
+  _rc := 1;
   IF ((v_servicecode <= 0) AND (v_detailrows <= 0)) THEN
     RAISE EXCEPTION 'Please Try Again';
     return_value := -1;
     RETURN;
   END IF;
   v_errcode := 0;
+  _rc := 1;
   SELECT r.return_value, r.key INTO v_errcode, v_serviceinvcode FROM dbo.sp_locktabmaxkey(tabname => 'ServiceHeader', key => v_serviceinvcode) AS r;
   IF ((0 <> 0) OR (v_errcode <> 0)) THEN
     RAISE EXCEPTION 'Problem while Fetching ServiceHeader Key Value';
@@ -15505,6 +16021,7 @@ BEGIN
     RETURN;
   END IF;
   v_serviceinvcode := (v_serviceinvcode + 1);
+  _rc := 1;
   INSERT INTO dbo.serviceheader (serviceinvcode, custcode, salesmancode, servicecatcode, remarks, originaldate, modifiedby, date, postedby, postdate, headerno, discperc, flatdisc, misccharges, saleinvcode, posted, reprintingcounter, serviceocode, cashreceived, cashtendered, cashcharged, cashback, studentcode) SELECT v_serviceinvcode, v_custcode AS custcode, v_usercode AS salesmancode, 11 AS serivcecatcode, 'Student Fee Contribution' AS remarks, localtimestamp(3) AS originaldate, NULL::smallint AS modifiedby, localtimestamp(3) AS date, v_usercode AS postedby, localtimestamp(3) AS postdate, 1 AS headerno, 0 AS discperc, 0 AS flatdisc, 0 AS misccharges, NULL::integer AS saleinvcode, 'Y' AS posted, 0 AS reprintingcounter, NULL::integer AS serviceocode, 0 AS cashreceived, 0 AS cashtendered, 0 AS cashcharged, 0 AS cashback, NULL::integer AS studentcode;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF ((0 <> 0) OR (_rc = 0)) THEN
@@ -15528,6 +16045,7 @@ BEGIN
     RETURN;
   END IF;
   v_errcode := 0;
+  _rc := 1;
   SELECT r.return_value INTO v_errcode FROM dbo.sp_updatetabmaxkey(tabname => 'ServiceHeader', key => v_serviceinvcode) AS r;
   IF ((0 <> 0) OR (v_errcode <> 0)) THEN
     RAISE EXCEPTION 'Problem while Updating ServiceHeader Key Value';
@@ -15570,8 +16088,10 @@ BEGIN
   v_usercode := usercode;
   v_serviceinvcode := serviceinvcode;
   v_svc_count := coalesce((SELECT count(*) FROM dbo.serviceodetail WHERE (serviceocode = v_serviceocode)), 0);
+  _rc := 1;
   IF ((v_serviceocode <> 0) AND (v_svc_count > 0)) THEN
     v_errcode := 0;
+    _rc := 1;
     SELECT r.return_value, r.key INTO v_errcode, v_serviceinvcode FROM dbo.sp_locktabmaxkey(tabname => 'ServiceHeader', key => v_serviceinvcode) AS r;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Problem while Fetching ServiceHeader Key Value';
@@ -15580,6 +16100,7 @@ BEGIN
       RETURN;
     END IF;
     v_serviceinvcode := (v_serviceinvcode + 1);
+    _rc := 1;
     INSERT INTO dbo.serviceheader (serviceinvcode, custcode, salesmancode, servicecatcode, remarks, originaldate, modifiedby, date, postedby, postdate, headerno, discperc, ref1, ref2, flatdisc, misccharges, saleinvcode, posted, reprintingcounter, serviceocode, cashreceived, cashtendered, cashcharged, cashback, patientcode, studentcode, fullpatientname, patientage, patientsex, patientrefby, serviceinvtypecode, messagecode, serviceinvgstperc) SELECT v_serviceinvcode, custcode AS custcode, v_usercode AS salesmancode, 11 AS serivcecatcode, remarks AS remarks, localtimestamp(3) AS originaldate, NULL::smallint AS modifiedby, localtimestamp(3) AS date, v_usercode AS postedby, localtimestamp(3) AS postdate, 1 AS headerno, discperc, left(reference1, 60), left(reference2, 60), flatdisc, misccharges, saleinvcode AS saleinvcode, 'N' AS posted, 0 AS reprintingcounter, v_serviceocode AS serviceocode, 0 AS cashreceived, 0 AS cashtendered, 0 AS cashcharged, 0 AS cashback, patientcode, NULL::integer AS studentcode, fullpatientname, patientage, patientsex, patientrefby, serviceinvtypecode, messagecode, serviceinvgstperc FROM dbo.serviceoheader WHERE ((serviceocode = v_serviceocode) AND (serviceoheader.posted = 'N'));
     GET DIAGNOSTICS _rc = ROW_COUNT;
     IF ((0 <> 0) OR (_rc = 0)) THEN
@@ -15599,6 +16120,7 @@ BEGIN
       RETURN;
     END IF;
     v_errcode := 0;
+    _rc := 1;
     SELECT r.return_value INTO v_errcode FROM dbo.sp_updatetabmaxkey(tabname => 'ServiceHeader', key => v_serviceinvcode) AS r;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Problem while Updating ServiceHeader Key Value';
@@ -15612,6 +16134,7 @@ BEGIN
     UPDATE dbo.serviceheader SET outstandingamt = coalesce(dbo.fn_getserviceinvtotal((serviceinvcode)::integer), 0) WHERE (serviceinvcode = v_serviceinvcode);
     GET DIAGNOSTICS _rc = ROW_COUNT;
     v_errcode := 0;
+    _rc := 1;
     SELECT r.return_value, r.rs1 INTO v_errcode, rs1 FROM dbo.sp_postservice_custwise(ai_sinvcode => v_serviceinvcode, ai_linvcode => v_serviceinvcode, ai_servicecatcode => 11, ai_salesmancode => (v_usercode)::integer, ai_custcode => NULL, ai_oneorall => 1) AS r;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Problem while Posting Service Invoice %', v_serviceinvcode;
@@ -15667,19 +16190,26 @@ BEGIN
   v_usercode := usercode;
   v_serviceinvcode := serviceinvcode;
   v_feeday := coalesce((SELECT class.feedueon FROM dbo.class WHERE (class.classcode = v_classcode)), 1);
+  _rc := 1;
   v_today := (SELECT extract(day from localtimestamp(3))::integer);
+  _rc := 1;
   IF (v_today >= v_feeday) THEN
     IF (extract(month from localtimestamp(3))::integer < 12) THEN
       v_duedate := (((((ltrim(rtrim(dbo.tsql_str((extract(year from localtimestamp(3))::integer)::numeric, 7))) || '-') || ltrim(rtrim(dbo.tsql_str(((extract(month from localtimestamp(3))::integer + 1))::numeric, 7)))) || '-') || ltrim(rtrim(dbo.tsql_str((v_feeday)::numeric, 7)))))::timestamp(3);
+      _rc := 1;
     ELSE
       v_duedate := (((((ltrim(rtrim(dbo.tsql_str(((extract(year from localtimestamp(3))::integer + 1))::numeric, 7))) || '-') || '01') || '-') || ltrim(rtrim(dbo.tsql_str((v_feeday)::numeric, 7)))))::timestamp(3);
+      _rc := 1;
     END IF;
   ELSE
     v_duedate := (((((ltrim(rtrim(dbo.tsql_str((extract(year from localtimestamp(3))::integer)::numeric, 7))) || '-') || ltrim(rtrim(dbo.tsql_str((extract(month from localtimestamp(3))::integer)::numeric, 7)))) || '-') || ltrim(rtrim(dbo.tsql_str((v_feeday)::numeric, 7)))))::timestamp(3);
+    _rc := 1;
   END IF;
   v_duedate := coalesce(v_duedate, localtimestamp(3));
+  _rc := 1;
   IF ((v_servicecode <> 0) AND (v_studentcode <> 0)) THEN
     v_errcode := 0;
+    _rc := 1;
     SELECT r.return_value, r.key INTO v_errcode, v_serviceinvcode FROM dbo.sp_locktabmaxkey(tabname => 'ServiceHeader', key => v_serviceinvcode) AS r;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Problem while Fetching ServiceHeader Key Value';
@@ -15688,6 +16218,7 @@ BEGIN
       RETURN;
     END IF;
     v_serviceinvcode := (v_serviceinvcode + 1);
+    _rc := 1;
     INSERT INTO dbo.serviceheader (serviceinvcode, custcode, salesmancode, servicecatcode, remarks, originaldate, modifiedby, date, postedby, postdate, headerno, discperc, flatdisc, misccharges, saleinvcode, posted, reprintingcounter, serviceocode, cashreceived, cashtendered, cashcharged, cashback, studentcode, duedate) SELECT v_serviceinvcode, s.custcode AS custcode, v_usercode AS salesmancode, 11 AS serivcecatcode, v_remarks AS remarks, localtimestamp(3) AS originaldate, NULL::smallint AS modifiedby, localtimestamp(3) AS date, v_usercode AS postedby, localtimestamp(3) AS postdate, 1 AS headerno, 0 AS discperc, 0 AS flatdisc, 0 AS misccharges, NULL::integer AS saleinvcode, 'Y' AS posted, 0 AS reprintingcounter, NULL::integer AS serviceocode, 0 AS cashreceived, 0 AS cashtendered, 0 AS cashcharged, 0 AS cashback, s.studentcode AS studentcode, v_duedate AS duedate FROM dbo.student AS s WHERE (s.studentcode = v_studentcode);
     GET DIAGNOSTICS _rc = ROW_COUNT;
     IF ((0 <> 0) OR (_rc = 0)) THEN
@@ -15716,6 +16247,7 @@ BEGIN
       RETURN;
     END IF;
     v_errcode := 0;
+    _rc := 1;
     SELECT r.return_value INTO v_errcode FROM dbo.sp_updatetabmaxkey(tabname => 'ServiceHeader', key => v_serviceinvcode) AS r;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Problem while Updating ServiceHeader Key Value';
@@ -15777,19 +16309,26 @@ BEGIN
   v_servicetemplate := servicetemplate;
   v_serviceinvcode := serviceinvcode;
   v_feeday := coalesce((SELECT class.feedueon FROM dbo.class WHERE (class.classcode = v_classcode)), 1);
+  _rc := 1;
   v_today := (SELECT extract(day from localtimestamp(3))::integer);
+  _rc := 1;
   IF (v_today >= v_feeday) THEN
     IF (extract(month from localtimestamp(3))::integer < 12) THEN
       v_duedate := (((((ltrim(rtrim(dbo.tsql_str((extract(year from localtimestamp(3))::integer)::numeric, 7))) || '-') || ltrim(rtrim(dbo.tsql_str(((extract(month from localtimestamp(3))::integer + 1))::numeric, 7)))) || '-') || ltrim(rtrim(dbo.tsql_str((v_feeday)::numeric, 7)))))::timestamp(3);
+      _rc := 1;
     ELSE
       v_duedate := (((((ltrim(rtrim(dbo.tsql_str(((extract(year from localtimestamp(3))::integer + 1))::numeric, 7))) || '-') || '01') || '-') || ltrim(rtrim(dbo.tsql_str((v_feeday)::numeric, 7)))))::timestamp(3);
+      _rc := 1;
     END IF;
   ELSE
     v_duedate := (((((ltrim(rtrim(dbo.tsql_str((extract(year from localtimestamp(3))::integer)::numeric, 7))) || '-') || ltrim(rtrim(dbo.tsql_str((extract(month from localtimestamp(3))::integer)::numeric, 7)))) || '-') || ltrim(rtrim(dbo.tsql_str((v_feeday)::numeric, 7)))))::timestamp(3);
+    _rc := 1;
   END IF;
   v_duedate := coalesce(v_duedate, localtimestamp(3));
+  _rc := 1;
   IF ((v_servicecode <> 0) AND (v_studentcode <> 0)) THEN
     v_errcode := 0;
+    _rc := 1;
     SELECT r.return_value, r.key INTO v_errcode, v_serviceinvcode FROM dbo.sp_locktabmaxkey(tabname => 'ServiceHeader', key => v_serviceinvcode) AS r;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Problem while Fetching ServiceHeader Key Value';
@@ -15798,6 +16337,7 @@ BEGIN
       RETURN;
     END IF;
     v_serviceinvcode := (v_serviceinvcode + 1);
+    _rc := 1;
     INSERT INTO dbo.serviceheader (serviceinvcode, custcode, salesmancode, servicecatcode, remarks, originaldate, modifiedby, date, postedby, postdate, headerno, discperc, flatdisc, misccharges, saleinvcode, posted, reprintingcounter, serviceocode, cashreceived, cashtendered, cashcharged, cashback, studentcode, duedate) SELECT v_serviceinvcode, s.custcode AS custcode, v_usercode AS salesmancode, 11 AS serivcecatcode, v_remarks AS remarks, localtimestamp(3) AS originaldate, NULL::smallint AS modifiedby, localtimestamp(3) AS date, v_usercode AS postedby, localtimestamp(3) AS postdate, 1 AS headerno, 0 AS discperc, 0 AS flatdisc, 0 AS misccharges, NULL::integer AS saleinvcode, 'Y' AS posted, 0 AS reprintingcounter, NULL::integer AS serviceocode, 0 AS cashreceived, 0 AS cashtendered, 0 AS cashcharged, 0 AS cashback, s.studentcode AS studentcode, v_duedate AS duedate FROM dbo.student AS s WHERE (s.studentcode = v_studentcode);
     GET DIAGNOSTICS _rc = ROW_COUNT;
     IF ((0 <> 0) OR (_rc = 0)) THEN
@@ -15826,6 +16366,7 @@ BEGIN
       RETURN;
     END IF;
     v_errcode := 0;
+    _rc := 1;
     SELECT r.return_value INTO v_errcode FROM dbo.sp_updatetabmaxkey(tabname => 'ServiceHeader', key => v_serviceinvcode) AS r;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Problem while Updating ServiceHeader Key Value';
@@ -15890,22 +16431,30 @@ BEGIN
   v_serviceinvcode := serviceinvcode;
   IF (v_newduedate IS NULL) THEN
     v_feeday := coalesce((SELECT class.feedueon FROM dbo.class WHERE (class.classcode = v_classcode)), 1);
+    _rc := 1;
     v_today := (SELECT extract(day from localtimestamp(3))::integer);
+    _rc := 1;
     IF (v_today >= v_feeday) THEN
       IF (extract(month from localtimestamp(3))::integer < 12) THEN
         v_duedate := (((((ltrim(rtrim(dbo.tsql_str((extract(year from localtimestamp(3))::integer)::numeric, 7))) || '-') || ltrim(rtrim(dbo.tsql_str(((extract(month from localtimestamp(3))::integer + 1))::numeric, 7)))) || '-') || ltrim(rtrim(dbo.tsql_str((v_feeday)::numeric, 7)))))::timestamp(3);
+        _rc := 1;
       ELSE
         v_duedate := (((((ltrim(rtrim(dbo.tsql_str(((extract(year from localtimestamp(3))::integer + 1))::numeric, 7))) || '-') || '01') || '-') || ltrim(rtrim(dbo.tsql_str((v_feeday)::numeric, 7)))))::timestamp(3);
+        _rc := 1;
       END IF;
     ELSE
       v_duedate := (((((ltrim(rtrim(dbo.tsql_str((extract(year from localtimestamp(3))::integer)::numeric, 7))) || '-') || ltrim(rtrim(dbo.tsql_str((extract(month from localtimestamp(3))::integer)::numeric, 7)))) || '-') || ltrim(rtrim(dbo.tsql_str((v_feeday)::numeric, 7)))))::timestamp(3);
+      _rc := 1;
     END IF;
   ELSE
     v_duedate := v_newduedate;
+    _rc := 1;
   END IF;
   v_duedate := coalesce(v_duedate, localtimestamp(3));
+  _rc := 1;
   IF ((v_servicecode <> 0) AND (v_studentcode <> 0)) THEN
     v_errcode := 0;
+    _rc := 1;
     SELECT r.return_value, r.key INTO v_errcode, v_serviceinvcode FROM dbo.sp_locktabmaxkey(tabname => 'ServiceHeader', key => v_serviceinvcode) AS r;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Problem while Fetching ServiceHeader Key Value';
@@ -15914,6 +16463,7 @@ BEGIN
       RETURN;
     END IF;
     v_serviceinvcode := (v_serviceinvcode + 1);
+    _rc := 1;
     INSERT INTO dbo.serviceheader (serviceinvcode, custcode, salesmancode, servicecatcode, remarks, originaldate, modifiedby, date, postedby, postdate, headerno, discperc, flatdisc, misccharges, saleinvcode, posted, reprintingcounter, serviceocode, cashreceived, cashtendered, cashcharged, cashback, studentcode, duedate) SELECT v_serviceinvcode, s.custcode AS custcode, v_usercode AS salesmancode, 11 AS serivcecatcode, v_remarks AS remarks, localtimestamp(3) AS originaldate, NULL::smallint AS modifiedby, localtimestamp(3) AS date, v_usercode AS postedby, localtimestamp(3) AS postdate, 1 AS headerno, 0 AS discperc, 0 AS flatdisc, 0 AS misccharges, NULL::integer AS saleinvcode, 'Y' AS posted, 0 AS reprintingcounter, NULL::integer AS serviceocode, 0 AS cashreceived, 0 AS cashtendered, 0 AS cashcharged, 0 AS cashback, s.studentcode AS studentcode, v_duedate AS duedate FROM dbo.student AS s WHERE (s.studentcode = v_studentcode);
     GET DIAGNOSTICS _rc = ROW_COUNT;
     IF ((0 <> 0) OR (_rc = 0)) THEN
@@ -15942,6 +16492,7 @@ BEGIN
       RETURN;
     END IF;
     v_errcode := 0;
+    _rc := 1;
     SELECT r.return_value INTO v_errcode FROM dbo.sp_updatetabmaxkey(tabname => 'ServiceHeader', key => v_serviceinvcode) AS r;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Problem while Updating ServiceHeader Key Value';
@@ -15991,18 +16542,21 @@ BEGIN
   v_code := code;
   v_usercode := usercode;
   v_rows := coalesce((SELECT count(studentservicetemplatecode) FROM dbo.studentservicetemplate WHERE (((studentservicetemplatecode = v_code) AND (posted = 'Y')) AND (svcinvgenerated = 'N'))), 0);
+  _rc := 1;
   IF ((v_rows = 0) OR (v_rows IS NULL)) THEN
     RAISE EXCEPTION 'Template Already Posted OR used, Please select another one.';
     return_value := -1;
     RETURN;
   END IF;
   v_detailrows := coalesce((SELECT count(*) FROM dbo.studentservicetemplatedetail WHERE (studentservicetemplatecode = v_code)), 0);
+  _rc := 1;
   IF ((v_detailrows = 0) OR (v_detailrows IS NULL)) THEN
     RAISE EXCEPTION 'Template Has no rows for students, Please select another one.';
     return_value := -1;
     RETURN;
   END IF;
   v_servicecode := (SELECT servicecode FROM dbo.studentservicetemplate WHERE (((studentservicetemplatecode = v_code) AND (posted = 'Y')) AND (svcinvgenerated = 'N')));
+  _rc := 1;
   IF ((v_servicecode = 0) OR (v_servicecode IS NULL)) THEN
     RAISE EXCEPTION 'Template Has no Service selected, Please select another one.';
     return_value := -1;
@@ -16026,8 +16580,10 @@ BEGIN
   INSERT INTO tmp_studtemp (studentcode, servicecode, qty, transportroutecode, vehiclecode, charges, discperc, serviceflatdisc, remarks, serviceinvcode, rowid) SELECT studentcode, v_servicecode, qty, transportroutecode, vehiclecode, charges, discperc, serviceflatdisc, remarks, NULL::integer AS serviceinvcode, rowid FROM dbo.studentservicetemplatedetail WHERE (studentservicetemplatecode = v_code) ORDER BY rowid;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_detailrows := coalesce((SELECT count(*) FROM tmp_studtemp AS studtemp), 0);
+  _rc := 1;
   IF ((v_servicecode <> 0) AND (v_detailrows > 0)) THEN
     v_errcode := 0;
+    _rc := 1;
     SELECT r.return_value, r.key INTO v_errcode, v_serviceinvcode FROM dbo.sp_locktabmaxkey(tabname => 'ServiceHeader', key => v_serviceinvcode) AS r;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Problem while Fetching ServiceHeader Key Value';
@@ -16059,8 +16615,11 @@ BEGIN
       RETURN;
     END IF;
     v_sinvcode := coalesce((SELECT min(serviceinvcode) FROM tmp_studtemp AS studtemp), 0);
+    _rc := 1;
     v_einvcode := coalesce((SELECT max(serviceinvcode) FROM tmp_studtemp AS studtemp), 0);
+    _rc := 1;
     v_errcode := 0;
+    _rc := 1;
     SELECT r.return_value INTO v_errcode FROM dbo.sp_updatetabmaxkey(tabname => 'ServiceHeader', key => v_einvcode) AS r;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Problem while Updating ServiceHeader Key Value';
@@ -16106,6 +16665,7 @@ BEGIN
 ) ON COMMIT DROP;
   -- BEGIN TRANSACTION (the caller owns the transaction)
   v_tot_admitted_patients := coalesce((SELECT count(pa.admissioncode) FROM dbo.patientadmission AS pa, dbo.admittedpatientrecurringservices AS apr WHERE (((((pa.discharged1 = 'N') AND (pa.discharged = 'N')) AND (pa.admissioncode = apr.admissioncode)) AND (localtimestamp(3) >= coalesce(apr.startdate, '12-12-9999 00:00:00'))) AND (localtimestamp(3) >= coalesce(apr.nextrunon, '12-12-1900 00:00:00')))), 0);
+  _rc := 1;
   IF (v_tot_admitted_patients <> 0) THEN
     INSERT INTO tv_sp_generate_svc_from_admpatientrecsvc_service_table (admissioncode, serviceinvcode) SELECT pa.admissioncode, NULL::integer FROM dbo.patientadmission AS pa WHERE (((pa.discharged1 = 'N') AND (pa.discharged = 'N')) AND (pa.admissioncode IN (SELECT DISTINCT admittedpatientrecurringservices.admissioncode FROM dbo.admittedpatientrecurringservices WHERE ((localtimestamp(3) >= coalesce(admittedpatientrecurringservices.startdate, '12-12-9999 00:00:00')) AND (localtimestamp(3) >= coalesce(admittedpatientrecurringservices.nextrunon, '12-12-1900 00:00:00')))))) ORDER BY pa.admissioncode;
     GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -16116,6 +16676,7 @@ BEGIN
       RETURN;
     END IF;
     v_errcode := 0;
+    _rc := 1;
     SELECT r.return_value, r.key INTO v_errcode, v_start_invcode FROM dbo.sp_locktabmaxkey(tabname => 'ServiceHeader', key => v_start_invcode) AS r;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Problem while Fetching ServiceHeader Key Value';
@@ -16158,6 +16719,7 @@ BEGIN
     UPDATE dbo.admittedpatientrecurringservices AS admittedpatientrecurringservices SET nextrunon = (coalesce(admittedpatientrecurringservices.nextrunon, localtimestamp(3)) + (admittedpatientrecurringservices.frequencyhrs) * interval '1 hour') FROM dbo.patientadmission AS pa WHERE (((((pa.discharged1 = 'N') AND (pa.discharged = 'N')) AND (pa.admissioncode = admittedpatientrecurringservices.admissioncode)) AND (localtimestamp(3) >= coalesce(admittedpatientrecurringservices.startdate, '12-12-9999 00:00:00'))) AND (localtimestamp(3) >= coalesce(admittedpatientrecurringservices.nextrunon, '12-12-1900 00:00:00')));
     GET DIAGNOSTICS _rc = ROW_COUNT;
     v_end_invcode := coalesce((SELECT max(serviceinvcode) FROM tv_sp_generate_svc_from_admpatientrecsvc_service_table AS service_table), 0);
+    _rc := 1;
     IF (0 <> 0) THEN
       RAISE EXCEPTION 'Problem in Updating Service Header Key Value';
       RAISE EXCEPTION 'T-SQL ROLLBACK in SP_Generate_Svc_From_AdmPatientRecSvc' USING ERRCODE = 'TS001';
@@ -16167,6 +16729,7 @@ BEGIN
     UPDATE dbo.serviceheader SET invtotal = coalesce(dbo.fn_getserviceinvtotal((serviceheader.serviceinvcode)::integer), 0) WHERE (serviceheader.serviceinvcode IN (SELECT DISTINCT serviceinvcode FROM tv_sp_generate_svc_from_admpatientrecsvc_service_table AS service_table));
     GET DIAGNOSTICS _rc = ROW_COUNT;
     v_errcode := 0;
+    _rc := 1;
     SELECT r.return_value INTO v_errcode FROM dbo.sp_updatetabmaxkey(tabname => 'ServiceHeader', key => v_end_invcode) AS r;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Problem while Updating ServiceHeader Key Value';
@@ -16208,6 +16771,7 @@ BEGIN
 ) ON COMMIT DROP;
   -- BEGIN TRANSACTION (the caller owns the transaction)
   v_tot_checkedin := coalesce((SELECT count(gc.guestcheckincode) FROM dbo.guestcheckin AS gc, dbo.guestcheckinservice AS gcs WHERE (((gc.checkout = 'N') AND (gc.guestcheckincode = gcs.guestcheckincode)) AND (((localtimestamp(3))::date - (coalesce(gc.recurringservicechargedon, (timestamp '1900-01-01' + (0) * interval '1 day')))::date) >= 1))), 0);
+  _rc := 1;
   IF (v_tot_checkedin <> 0) THEN
     INSERT INTO tv_sp_generate_svc_from_checkedinguest_service_table (guestcheckincode, serviceinvcode) SELECT gc.guestcheckincode, NULL::integer FROM dbo.guestcheckin AS gc WHERE (((gc.checkout = 'N') AND (((localtimestamp(3))::date - (coalesce(gc.recurringservicechargedon, (timestamp '1900-01-01' + (0) * interval '1 day')))::date) >= 1)) AND (gc.guestcheckincode IN (SELECT DISTINCT guestcheckincode FROM dbo.guestcheckinservice))) ORDER BY gc.guestcheckincode;
     GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -16218,6 +16782,7 @@ BEGIN
       RETURN;
     END IF;
     v_errcode := 0;
+    _rc := 1;
     SELECT r.return_value, r.key INTO v_errcode, v_start_invcode FROM dbo.sp_locktabmaxkey(tabname => 'ServiceHeader', key => v_start_invcode) AS r;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Problem while Fetching ServiceHeader Key Value';
@@ -16258,6 +16823,7 @@ BEGIN
       RETURN;
     END IF;
     v_end_invcode := coalesce((SELECT max(serviceinvcode) FROM tv_sp_generate_svc_from_checkedinguest_service_table AS service_table), 0);
+    _rc := 1;
     IF (0 <> 0) THEN
       RAISE EXCEPTION 'Problem in Updating Service Header Key Value';
       RAISE EXCEPTION 'T-SQL ROLLBACK in SP_Generate_Svc_From_CheckedInGuest' USING ERRCODE = 'TS001';
@@ -16273,6 +16839,7 @@ BEGIN
       RETURN;
     END IF;
     v_errcode := 0;
+    _rc := 1;
     SELECT r.return_value INTO v_errcode FROM dbo.sp_updatetabmaxkey(tabname => 'ServiceHeader', key => v_end_invcode) AS r;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Problem while Updating ServiceHeader Key Value';
@@ -16314,6 +16881,7 @@ BEGIN
 ) ON COMMIT DROP;
   -- BEGIN TRANSACTION (the caller owns the transaction)
   v_tot_patients := coalesce((SELECT count(p.patientcode) FROM dbo.patient AS p, dbo.patientrecservices AS pr WHERE ((p.autogenrecurringserviceinv = 'Y') AND (p.patientcode = pr.patientcode))), 0);
+  _rc := 1;
   IF (v_tot_patients <> 0) THEN
     INSERT INTO tv_sp_generate_svc_from_patientrecsvc_service_table (patientcode, serviceinvcode) SELECT pa.patientcode, NULL::integer FROM dbo.patient AS pa, dbo.patientrecservices AS pr WHERE ((pa.autogenrecurringserviceinv = 'Y') AND (pa.patientcode = pr.patientcode)) ORDER BY pa.patientcode;
     GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -16324,6 +16892,7 @@ BEGIN
       RETURN;
     END IF;
     v_errcode := 0;
+    _rc := 1;
     SELECT r.return_value, r.key INTO v_errcode, v_start_invcode FROM dbo.sp_locktabmaxkey(tabname => 'ServiceHeader', key => v_start_invcode) AS r;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Problem while Fetching ServiceHeader Key Value';
@@ -16364,6 +16933,7 @@ BEGIN
       RETURN;
     END IF;
     v_end_invcode := coalesce((SELECT max(serviceinvcode) FROM tv_sp_generate_svc_from_patientrecsvc_service_table AS service_table), 0);
+    _rc := 1;
     IF (0 <> 0) THEN
       RAISE EXCEPTION 'Problem in Updating Service Header Key Value';
       RAISE EXCEPTION 'T-SQL ROLLBACK in SP_Generate_Svc_From_PatientRecSvc' USING ERRCODE = 'TS001';
@@ -16371,6 +16941,7 @@ BEGIN
       RETURN;
     END IF;
     v_errcode := 0;
+    _rc := 1;
     SELECT r.return_value INTO v_errcode FROM dbo.sp_updatetabmaxkey(tabname => 'ServiceHeader', key => v_end_invcode) AS r;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Problem while Updating ServiceHeader Key Value';
@@ -16480,11 +17051,17 @@ BEGIN
   v_sinvno := sinvno;
   v_einvno := einvno;
   v_firsttime := 0;
+  _rc := 1;
   v_custcode := 19;
+  _rc := 1;
   v_salecatcode := 3;
+  _rc := 1;
   v_saletypecode := 2;
+  _rc := 1;
   v_module := (SELECT module FROM dbo.module WHERE (name = 'Sales'));
+  _rc := 1;
   v_serverdate := v_enddate;
+  _rc := 1;
   DROP TABLE IF EXISTS tmp_randomitemlist;
   CREATE TEMP TABLE tmp_randomitemlist (
     lineid integer NOT NULL,
@@ -16505,31 +17082,44 @@ BEGIN
   INSERT INTO tmp_saletemp (icode, satisfiableqty, satisfiedqty, saleprice, discperc, itemflatdisc, unitsalestax, gstperc) SELECT icode, trunc(looseqty)::integer, 0, saleprice, discperc, itemflatdisc, unitsalestax, gstperc FROM dbo.saletemplatedetail WHERE (saletemplatecode = v_saletemplatecode) ORDER BY rowid;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_saletemplate_rowcount := ((SELECT count(*) FROM dbo.saletemplatedetail WHERE (saletemplatecode = v_saletemplatecode)) + 1);
+  _rc := 1;
   v_anyitem_exist := (SELECT sum((satisfiableqty - satisfiedqty)) FROM tmp_saletemp AS saletemp);
+  _rc := 1;
   v_continue := 0;
+  _rc := 1;
   v_invcounter := 1;
+  _rc := 1;
   v_invdetail_exist := 1;
+  _rc := 1;
   v_rowgroup := 0;
+  _rc := 1;
   WHILE ((v_anyitem_exist > 0) AND (v_continue >= 0)) LOOP
     IF (v_invdetail_exist > 0) THEN
       SELECT r.return_value, r.key INTO v_rt_code, v_saleinvcode FROM dbo.sp_gettabmaxkey(tabname => 'Saleledger', key => v_saleinvcode) AS r;
     END IF;
     IF ((v_firsttime = 0)) THEN
       v_sinvno := v_saleinvcode;
+      _rc := 1;
       v_firsttime := 1;
+      _rc := 1;
     END IF;
     v_rowgroup := 0;
+    _rc := 1;
     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
       v_continue := -1;
+      _rc := 1;
     ELSE
       IF (v_invdetail_exist > 0) THEN
         SELECT r.return_value, r.key INTO v_rt_code, v_headerinvno FROM dbo.sp_getheadertabmaxkey(headercode => (v_headerno)::smallint, modulecode => (v_module)::smallint, key => v_headerinvno) AS r;
       END IF;
       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
         v_continue := -1;
+        _rc := 1;
       ELSE
         v_err := 0;
+        _rc := 1;
         v_rowcount := 1;
+        _rc := 1;
         IF (v_invdetail_exist > 0) THEN
           INSERT INTO dbo.saleledger (saleinvcode, salecatcode, custcode, sprice, salesmancode, date, discperc, flatdisc, misccharges, salestax, posted, postdate, headerno, headerinvno, originaldate, invtotal, machinename, modifycounter, billingdate, saletypecode) VALUES (v_saleinvcode, v_salecatcode, v_custcode, 1, v_usercode, v_serverdate, 0, 0, 0, 0, 'N', v_serverdate, v_headerno, v_headerinvno, v_serverdate, 0, v_machinename, 0, v_serverdate, v_saletypecode);
           GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -16540,13 +17130,18 @@ BEGIN
         IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
           RAISE EXCEPTION 'Error occured in inserting record into Sale Ledger : %', v_saleinvcode;
           v_continue := -1;
+          _rc := 1;
         ELSE
           v_rand_lineitems := trunc((random() * v_max_lineitems))::integer;
+          _rc := 1;
           IF (v_rand_lineitems = 0) THEN
             v_rand_lineitems := 1;
+            _rc := 1;
           END IF;
           v_anyitem_exist := (SELECT sum((satisfiableqty - satisfiedqty)) FROM tmp_saletemp AS saletemp);
+          _rc := 1;
           v_lineitems_rowcount := v_max_lineitems;
+          _rc := 1;
           TRUNCATE TABLE tmp_randomitemlist RESTART IDENTITY;
           SELECT r.rs1 INTO _xc1 FROM dbo.sp_getrandomvaluetable(rows => v_lineitems_rowcount, max_randomvalue => v_saletemplate_rowcount) AS r;
           LOOP
@@ -16558,8 +17153,10 @@ BEGIN
           CLOSE _xc1;
           GET DIAGNOSTICS _rc = ROW_COUNT;
           v_innercounter := 1;
+          _rc := 1;
           WHILE (((((v_rand_lineitems > 0)) AND ((v_anyitem_exist > 0))) AND ((v_innercounter <= v_lineitems_rowcount))) AND ((v_continue >= 0))) LOOP
             v_rand_item := (SELECT randomvalue FROM tmp_randomitemlist AS randomitemlist WHERE (lineid = v_innercounter));
+            _rc := 1;
             _rc := 0;
             FOR _r2 IN SELECT icode AS c1, satisfiableqty AS c2, satisfiedqty AS c3, saleprice AS c4, discperc AS c5, itemflatdisc AS c6, unitsalestax AS c7, gstperc AS c8 FROM tmp_saletemp AS saletemp WHERE (id = v_rand_item) LOOP
               _rc := _rc + 1;
@@ -16575,18 +17172,24 @@ BEGIN
             v_rowcount := _rc;
             _rc := 1;
             v_item_in_inv_exist := (SELECT count(*) FROM dbo.saledetail WHERE ((saleinvcode = v_saleinvcode) AND (icode = v_icode)));
+            _rc := 1;
             IF ((((v_item_in_inv_exist = 0)) AND ((v_rowcount = 1))) AND ((((v_satisfiableqty - v_satisfiedqty)) > 0))) THEN
               v_rand_itemqty := trunc((random() * v_max_itemqty))::integer;
+              _rc := 1;
               IF (v_rand_itemqty = 0) THEN
                 v_rand_itemqty := 1;
+                _rc := 1;
               END IF;
               IF (((v_rand_itemqty + v_satisfiedqty)) <= v_satisfiableqty) THEN
                 v_givenqty := v_rand_itemqty;
+                _rc := 1;
               ELSE
                 v_givenqty := (v_satisfiableqty - v_satisfiedqty);
+                _rc := 1;
               END IF;
               IF (v_givenqty <= 0) THEN
                 v_givenqty := 1;
+                _rc := 1;
               ELSE
                 UPDATE tmp_saletemp AS saletemp SET satisfiedqty = trunc((v_satisfiedqty + v_givenqty))::integer WHERE (icode = v_icode);
                 GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -16594,14 +17197,19 @@ BEGIN
               SELECT r.return_value, r.avgprice INTO v_rt_code, v_hold_avgprice FROM dbo.sp_getitemavgprice(icode => v_icode, avgprice => v_hold_avgprice) AS r;
               IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                 v_continue := -1;
+                _rc := 1;
               ELSE
                 v_total_availablestock := (SELECT coalesce(sum(currqty), 0) FROM dbo.godowndetail WHERE (godowndetail.icode = v_icode));
+                _rc := 1;
                 IF ((v_total_availablestock < 0) OR (v_total_availablestock IS NULL)) THEN
                   v_total_availablestock := 0;
+                  _rc := 1;
                 END IF;
                 v_totalqty := (SELECT coalesce(sum(currqty), 0) FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)));
+                _rc := 1;
                 IF (v_totalqty >= v_givenqty) THEN
                   v_rowgroup := (v_rowgroup + 1);
+                  _rc := 1;
                   _rc := 0;
                   FOR _r3 IN SELECT saleprice AS c1, packunits AS c2 FROM dbo.item WHERE (icode = v_icode) LOOP
                     _rc := _rc + 1;
@@ -16610,26 +17218,36 @@ BEGIN
                   END LOOP;
                   IF ((v_packunits = 0) OR (v_packunits IS NULL)) THEN
                     v_packunits := 1;
+                    _rc := 1;
                   END IF;
                   v_reqqty := v_givenqty;
+                  _rc := 1;
                   OPEN cur_itembatch_cursor FOR SELECT batch, expiry, currqty FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)) ORDER BY priority, expiry, currqty;
                   v_totalrows := (-1);
+                  _rc := 1;
                   FETCH NEXT FROM cur_itembatch_cursor INTO v_batch, v_expiry, v_currqty;
                   IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
                   v_counter := 1;
+                  _rc := 1;
                   WHILE (((_fs = 0) AND (v_counter <= v_totalrows)) AND (v_reqqty > 0)) LOOP
                     v_batchqty := v_currqty;
+                    _rc := 1;
                     IF (v_batchqty >= v_reqqty) THEN
                       v_delqty := v_reqqty;
+                      _rc := 1;
                     ELSE
                       v_delqty := v_batchqty;
+                      _rc := 1;
                     END IF;
                     v_reqqty := (v_reqqty - v_delqty);
+                    _rc := 1;
                     SELECT r.return_value, r.lbi_maxutn INTO v_rt_code, v_saleutn FROM dbo.sp_maxutn(lbi_rows => (1)::bigint, lbi_maxutn => v_saleutn) AS r;
                     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                       v_continue := -1;
+                      _rc := 1;
                     END IF;
                     v_total_availablestock := (v_total_availablestock - v_delqty);
+                    _rc := 1;
                     INSERT INTO dbo.saledetail (saleinvcode, icode, gcode, batch, expiry, packqty, looseqty, packunits, saleprice, avgprice, rate, discperc, salestax, itemflatdisc, packprice, unitsalestax, gstperc, saleutn, balancestock, rowgroup) VALUES (v_saleinvcode, v_icode, v_gcode, v_batch, v_expiry, 0, v_delqty, v_packunits, v_saleprice, v_hold_avgprice, (v_rate / v_packunits), v_discperc, 0, v_itemflatdisc, v_rate, v_unitsalestax, v_gstperc1, v_saleutn, v_total_availablestock, v_rowgroup);
                     GET DIAGNOSTICS _rc = ROW_COUNT;
                     v_err := 0;
@@ -16638,8 +17256,10 @@ BEGIN
                     IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
                       RAISE EXCEPTION 'Error occured in inserting record into Sale Detail for Sale Inv. No. : %', v_saleinvcode;
                       v_continue := -1;
+                      _rc := 1;
                     ELSE
                       v_newqty := (v_currqty - v_delqty);
+                      _rc := 1;
                       IF (v_newqty > 0) THEN
                         SELECT r.return_value INTO v_rt_code FROM dbo.sp_saleupdateitemstockbatch(gcode => v_gcode, icode => v_icode, batch => v_batch, expiry => v_expiry, newqty => v_newqty, oldqty => v_currqty) AS r;
                       ELSE
@@ -16647,9 +17267,11 @@ BEGIN
                       END IF;
                       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                         v_continue := -1;
+                        _rc := 1;
                       END IF;
                     END IF;
                     v_counter := (v_counter + 1);
+                    _rc := 1;
                     FETCH NEXT FROM cur_itembatch_cursor INTO v_batch, v_expiry, v_currqty;
                     IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
                   END LOOP;
@@ -16657,25 +17279,33 @@ BEGIN
                   -- DEALLOCATE ItemBatch_Cursor
                 ELSE
                   v_itemname := (SELECT name FROM dbo.item WHERE (icode = v_icode));
+                  _rc := 1;
                   RAISE EXCEPTION 'Not enough stock for item (%) to decrease for Sale Inv. No : %', v_itemname, v_saleinvcode;
                   v_continue := -1;
+                  _rc := 1;
                 END IF;
               END IF;
             END IF;
             v_innercounter := (v_innercounter + 1);
+            _rc := 1;
             v_anyitem_exist := (SELECT sum((satisfiableqty - satisfiedqty)) FROM tmp_saletemp AS saletemp);
+            _rc := 1;
             v_rand_lineitems := (v_rand_lineitems - 1);
+            _rc := 1;
           END LOOP;
           v_invdetail_exist := (SELECT count(*) FROM dbo.saledetail WHERE (saleinvcode = v_saleinvcode));
+          _rc := 1;
         END IF;
       END IF;
     END IF;
     v_anyitem_exist := (SELECT sum((satisfiableqty - satisfiedqty)) FROM tmp_saletemp AS saletemp);
+    _rc := 1;
   END LOOP;
   DROP TABLE IF EXISTS tmp_saletemp;
   DROP TABLE IF EXISTS tmp_randomitemlist;
   IF ((v_continue >= 0)) THEN
     v_einvno := v_saleinvcode;
+    _rc := 1;
     UPDATE dbo.saleledger SET invtotal = dbo.fn_getsaleinvtotal((saleledger.saleinvcode)::integer) WHERE (saleinvcode BETWEEN v_sinvno AND v_einvno);
     GET DIAGNOSTICS _rc = ROW_COUNT;
     v_err := 0;
@@ -16684,6 +17314,7 @@ BEGIN
     IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
       RAISE EXCEPTION 'Unable to update SaleInvoices for Sale Inv. total';
       v_continue := -1;
+      _rc := 1;
     ELSE
       SELECT r.return_value INTO v_rt_code FROM dbo.sp_setdateforautosalegen(startdate => v_startdate, enddate => v_enddate, sinvno => v_sinvno, einvno => v_einvno) AS r;
       v_err := 0;
@@ -16691,6 +17322,7 @@ BEGIN
       IF ((v_err <> 0) OR (v_rt_code <> 0)) THEN
         RAISE EXCEPTION 'Unable to update SaleInvoices for Date adjustment';
         v_continue := -1;
+        _rc := 1;
       ELSE
         INSERT INTO dbo.autosalelog (saletemplatecode, ssaleinvcode, esaleinvcode, sdate, edate) VALUES (v_saletemplatecode, v_sinvno, v_einvno, v_startdate, v_enddate);
         GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -16700,6 +17332,7 @@ BEGIN
         IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
           RAISE EXCEPTION 'Database error in inserting record in AutoSaleLog';
           v_continue := -1;
+          _rc := 1;
         END IF;
       END IF;
     END IF;
@@ -16783,46 +17416,67 @@ BEGIN
   v_serverdate := serverdate;
   v_issueinvcode := issueinvcode;
   v_continue := 0;
+  _rc := 1;
   v_deptcode := coalesce((SELECT issuedeptcode FROM dbo.prodheader WHERE (prodcode = v_prodcode)), 1);
+  _rc := 1;
   v_areacode := 1;
+  _rc := 1;
   v_module := (SELECT module FROM dbo.module WHERE ((lower(name))::citext = 'issue'));
+  _rc := 1;
   v_pricetype := dbo.fn_get_int_preference('IssuePriceTypeCode');
+  _rc := 1;
   v_groupcode := coalesce((SELECT min(groupcode) FROM dbo.usergroups WHERE (usercode = v_usercode)), 1);
+  _rc := 1;
   v_category := 2;
+  _rc := 1;
   v_accountfor := coalesce((SELECT accountfor FROM dbo.issuecategory WHERE (issuecategorycode = v_category)), 'N');
+  _rc := 1;
   IF (v_accountfor = 'Y') THEN
     v_dracccode := trunc(coalesce((SELECT code FROM dbo.global WHERE (name = 'GT_WIPAcc')), 33))::smallint;
+    _rc := 1;
   ELSE
     v_dracccode := NULL;
+    _rc := 1;
   END IF;
   v_autopost := dbo.fn_getpreference('AutoPostIssueOnProdPost');
+  _rc := 1;
   IF (v_autopost IS NULL) THEN
     v_autopost := 'Y';
+    _rc := 1;
   END IF;
   IF (v_groupcode > 0) THEN
     v_issuegodownstrategy := coalesce((SELECT issuegodownstrategy FROM dbo.groups WHERE (groupcode = v_groupcode)), 1);
+    _rc := 1;
   ELSE
     v_issuegodownstrategy := 1;
+    _rc := 1;
   END IF;
   IF (v_issuegodownstrategy = 1) THEN
     v_gcode := (SELECT issuegcode FROM dbo.prodheader WHERE (prodcode = v_prodcode));
+    _rc := 1;
   END IF;
   OPEN cur_cursor_items FOR SELECT rd.icode, sum(rd.qty) AS qty, max(i.packunits) AS packunits, round(((max(i.purprice) / max(i.packunits)))::numeric, 2) AS purprice, round(((max(i.saleprice) / max(i.packunits)))::numeric, 2) AS saleprice, round(((max(i.recentpurprice) / max(i.packunits)))::numeric, 2) AS recentpurprice, rd.price AS price, rd.itemflatdisc, rd.discperc, rd.processcharge, rd.processchargeperc, rd.prodrowid, rd.rowid FROM (SELECT icode, qty, rowid FROM dbo.proddetail WHERE (proddetail.prodcode = v_prodcode)) AS pd, (SELECT r1.* FROM dbo.recipe AS r1 WHERE (((dbo.tsql_str((r1.resulteditem)::numeric, 7) || dbo.tsql_str((r1.priority)::numeric, 7)))::citext IN (SELECT DISTINCT (dbo.tsql_str((rr.resulteditem)::numeric, 7) || dbo.tsql_str((min(rr.priority))::numeric, 7)) FROM dbo.recipe AS rr WHERE (rr.resulteditem IN (SELECT DISTINCT d.icode FROM dbo.prodheader AS p, dbo.proddetail AS d WHERE ((p.prodcode = v_prodcode) AND (p.prodcode = d.prodcode)))) GROUP BY rr.resulteditem))) AS r, dbo.prodbuffer AS rd, dbo.item AS i WHERE ((((pd.icode = r.resulteditem) AND (rd.prodcode = v_prodcode)) AND (pd.rowid = rd.prodrowid)) AND (rd.icode = i.icode)) GROUP BY rd.prodrowid, rd.icode, rd.price, rd.rowid, rd.itemflatdisc, rd.discperc, rd.processcharge, rd.processchargeperc ORDER BY rd.rowid;
   v_items_rows := (-1);
+  _rc := 1;
   IF (v_items_rows > 0) THEN
     SELECT r.return_value, r.key INTO v_rt_code, v_code FROM dbo.sp_gettabmaxkey(tabname => 'IssueHeader', key => v_code) AS r;
     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
       v_continue := -1;
+      _rc := 1;
     ELSE
       v_issueinvcode := v_code;
+      _rc := 1;
       SELECT r.return_value, r.key INTO v_rt_code, v_headerinvno FROM dbo.sp_getheadertabmaxkey(headercode => (v_headerno)::smallint, modulecode => v_module, key => v_headerinvno) AS r;
       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
         v_continue := -1;
+        _rc := 1;
       ELSE
         v_issuecode := NULL;
+        _rc := 1;
         SELECT r.return_value, r.counter INTO v_rt_code, v_issuecode FROM dbo.sp_getissuecategorycounter(category => v_category, counter => v_issuecode) AS r;
         IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
           v_continue := -1;
+          _rc := 1;
         ELSE
           INSERT INTO dbo.issueheader (issueinvcode, deptcode, date, originaldate, salesmancode, posted, postdate, postedby, areacode, headerno, headerinvno, pricetypecode, remarks, issuecategorycode, accountfor, dracccode, issuecode) VALUES (v_code, v_deptcode, v_serverdate, v_serverdate, v_usercode, v_autopost, v_serverdate, v_usercode, v_areacode, v_headerno, v_headerinvno, v_pricetype, 'SYSTEM GENERATED ISSUE', v_category, v_accountfor, v_dracccode, v_issuecode);
           GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -16832,44 +17486,61 @@ BEGIN
           IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
             RAISE EXCEPTION 'Error occured in inserting record into Issue Header : %', v_code;
             v_continue := -1;
+            _rc := 1;
           ELSE
             FETCH NEXT FROM cur_cursor_items INTO v_icode, v_givenqty, v_packunits, v_purprice, v_saleprice, v_recentpurprice, v_price, v_itemflatdisc, v_discperc, v_processcharge, v_processchargeperc, v_prodrowid, v_rowid;
             IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
             WHILE ((_fs = 0) AND (v_continue >= 0)) LOOP
               IF (v_issuegodownstrategy = 2) THEN
                 v_gcode := coalesce((SELECT gcode FROM dbo.item WHERE (icode = v_icode)), 1);
+                _rc := 1;
               END IF;
               v_price := ((((((v_price - v_itemflatdisc)) * ((1 - (v_discperc * 0.01))))) + v_processcharge) + ((((((v_price - v_itemflatdisc)) * ((1 - (v_discperc * 0.01)))) * v_processchargeperc) * 0.01)));
+              _rc := 1;
               SELECT r.return_value, r.avgprice INTO v_rt_code, v_hold_avgprice FROM dbo.sp_getitemavgprice(icode => v_icode, avgprice => v_hold_avgprice) AS r;
               IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                 v_continue := -1;
+                _rc := 1;
               ELSE
                 v_packunits := CASE WHEN (v_packunits IS NULL) THEN 1 WHEN (v_packunits = 0) THEN 1 ELSE v_packunits END;
+                _rc := 1;
                 v_totalqty := (SELECT coalesce(sum(currqty), 0) FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)));
+                _rc := 1;
                 IF (v_totalqty >= v_givenqty) THEN
                   v_total_availablestock := (SELECT coalesce(sum(currqty), 0) FROM dbo.godowndetail WHERE (godowndetail.icode = v_icode));
+                  _rc := 1;
                   IF ((v_total_availablestock < 0) OR (v_total_availablestock IS NULL)) THEN
                     v_total_availablestock := 0;
+                    _rc := 1;
                   END IF;
                   v_reqqty := v_givenqty;
+                  _rc := 1;
                   OPEN cur_itembatch_cursor FOR SELECT batch, expiry, currqty FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)) ORDER BY priority, expiry, currqty;
                   v_totalrows := (-1);
+                  _rc := 1;
                   FETCH NEXT FROM cur_itembatch_cursor INTO v_batch, v_expiry, v_currqty;
                   IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
                   v_counter := 1;
+                  _rc := 1;
                   WHILE (((_fs = 0) AND (v_counter <= v_totalrows)) AND (v_reqqty > 0)) LOOP
                     v_batchqty := v_currqty;
+                    _rc := 1;
                     IF (v_batchqty >= v_reqqty) THEN
                       v_delqty := v_reqqty;
+                      _rc := 1;
                     ELSE
                       v_delqty := v_batchqty;
+                      _rc := 1;
                     END IF;
                     v_reqqty := (v_reqqty - v_delqty);
+                    _rc := 1;
                     SELECT r.return_value, r.lbi_maxutn INTO v_rt_code, v_utn FROM dbo.sp_maxutn(lbi_rows => (1)::bigint, lbi_maxutn => (v_utn)::bigint) AS r;
                     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                       v_continue := -1;
+                      _rc := 1;
                     END IF;
                     v_total_availablestock := (v_total_availablestock - v_delqty);
+                    _rc := 1;
                     INSERT INTO dbo.issuedetail (issueinvcode, gcode, icode, batch, expiry, qty, saleprice, purchaseprice, avgprice, packunits, mrpp, issueutn, price, balancestock) VALUES (v_code, v_gcode, v_icode, v_batch, v_expiry, v_delqty, v_saleprice, v_purprice, v_hold_avgprice, v_packunits, v_recentpurprice, v_utn, v_price, v_total_availablestock);
                     GET DIAGNOSTICS _rc = ROW_COUNT;
                     v_err := 0;
@@ -16878,8 +17549,10 @@ BEGIN
                     IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
                       RAISE EXCEPTION 'Error occured in inserting record into Issue Detail for Production : %', v_code;
                       v_continue := -1;
+                      _rc := 1;
                     ELSE
                       v_newqty := (v_currqty - v_delqty);
+                      _rc := 1;
                       IF (v_newqty > 0) THEN
                         SELECT r.return_value INTO v_rt_code FROM dbo.sp_saleupdateitemstockbatch(gcode => v_gcode, icode => v_icode, batch => v_batch, expiry => v_expiry, newqty => v_newqty, oldqty => v_currqty) AS r;
                       ELSE
@@ -16887,9 +17560,11 @@ BEGIN
                       END IF;
                       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                         v_continue := -1;
+                        _rc := 1;
                       END IF;
                     END IF;
                     v_counter := (v_counter + 1);
+                    _rc := 1;
                     FETCH NEXT FROM cur_itembatch_cursor INTO v_batch, v_expiry, v_currqty;
                     IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
                   END LOOP;
@@ -16897,8 +17572,10 @@ BEGIN
                   -- DEALLOCATE ItemBatch_Cursor
                 ELSE
                   v_itemname := (SELECT name FROM dbo.item WHERE (icode = v_icode));
+                  _rc := 1;
                   RAISE EXCEPTION 'Not enough stock for item (%) to decrease for Issue No. : %', v_itemname, v_code;
                   v_continue := -1;
+                  _rc := 1;
                 END IF;
               END IF;
               FETCH NEXT FROM cur_cursor_items INTO v_icode, v_givenqty, v_packunits, v_purprice, v_saleprice, v_recentpurprice, v_price, v_itemflatdisc, v_discperc, v_processcharge, v_processchargeperc, v_prodrowid, v_rowid;
@@ -16992,35 +17669,52 @@ BEGIN
   v_usercode := usercode;
   v_issueinvcode := issueinvcode;
   v_continue := 0;
+  _rc := 1;
   v_deptcode := coalesce((SELECT issuedeptcode FROM dbo.prodnote WHERE (prodnotecode = v_prodnotecode)), 1);
+  _rc := 1;
   v_headerno := 1;
+  _rc := 1;
   v_areacode := 1;
+  _rc := 1;
   v_module := (SELECT module FROM dbo.module WHERE ((lower(name))::citext = 'issue'));
+  _rc := 1;
   v_pricetype := dbo.fn_get_int_preference('IssuePriceTypeCode');
+  _rc := 1;
   v_serverdate := localtimestamp(3);
+  _rc := 1;
   v_category := 2;
+  _rc := 1;
   v_accountfor := coalesce((SELECT accountfor FROM dbo.issuecategory WHERE (issuecategorycode = v_category)), 'N');
+  _rc := 1;
   IF (v_accountfor = 'Y') THEN
     v_dracccode := trunc(coalesce((SELECT code FROM dbo.global WHERE (name = 'GT_WIPAcc')), 33))::smallint;
+    _rc := 1;
   ELSE
     v_dracccode := NULL;
+    _rc := 1;
   END IF;
   OPEN cur_cursor_items FOR SELECT pni.icode, pni.gcode, sum(pni.qty) AS qty, sum(pni.totalpieces) AS totalpieces, pni.packunits, round(((max(i.purprice) / max(i.packunits)))::numeric, 2) AS purprice, round(((max(i.saleprice) / max(i.packunits)))::numeric, 2) AS saleprice, round(((max(i.recentpurprice) / max(i.packunits)))::numeric, 2) AS recentpurprice, CASE v_pricetype WHEN 1 THEN round(((max(i.saleprice) / max(i.packunits)))::numeric, 2) WHEN 2 THEN round(((max(i.saleprice2) / max(i.packunits)))::numeric, 2) WHEN 3 THEN round(((max(i.saleprice3) / max(i.packunits)))::numeric, 2) WHEN 4 THEN round(((max(i.purprice) / max(i.packunits)))::numeric, 2) WHEN 5 THEN round(((max(i.recentpurprice) / max(i.packunits)))::numeric, 2) WHEN 6 THEN round((max(i.avgprice))::numeric, 2) WHEN 7 THEN round(((max(i.saleprice4) / max(i.packunits)))::numeric, 2) WHEN 8 THEN round(((max(i.saleprice5) / max(i.packunits)))::numeric, 2) END AS price, pni.rowid FROM dbo.prodnoteissue AS pni, dbo.item AS i WHERE ((pni.prodnotecode = v_prodnotecode) AND (pni.icode = i.icode)) GROUP BY pni.rowid, pni.icode, pni.gcode, pni.packunits ORDER BY pni.rowid;
   v_items_rows := (-1);
+  _rc := 1;
   IF (v_items_rows > 0) THEN
     SELECT r.return_value, r.key INTO v_rt_code, v_code FROM dbo.sp_gettabmaxkey(tabname => 'IssueHeader', key => v_code) AS r;
     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
       v_continue := -1;
+      _rc := 1;
     ELSE
       v_issueinvcode := v_code;
+      _rc := 1;
       SELECT r.return_value, r.key INTO v_rt_code, v_headerinvno FROM dbo.sp_getheadertabmaxkey(headercode => v_headerno, modulecode => v_module, key => v_headerinvno) AS r;
       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
         v_continue := -1;
+        _rc := 1;
       ELSE
         v_issuecode := NULL;
+        _rc := 1;
         SELECT r.return_value, r.counter INTO v_rt_code, v_issuecode FROM dbo.sp_getissuecategorycounter(category => v_category, counter => v_issuecode) AS r;
         IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
           v_continue := -1;
+          _rc := 1;
         ELSE
           INSERT INTO dbo.issueheader (issueinvcode, deptcode, date, originaldate, salesmancode, posted, postdate, postedby, areacode, headerno, headerinvno, pricetypecode, remarks, recipientcode, issuecategorycode, accountfor, dracccode, issuecode) VALUES (v_code, v_deptcode, v_serverdate, v_serverdate, v_usercode, 'Y', v_serverdate, v_usercode, v_areacode, v_headerno, v_headerinvno, v_pricetype, 'PRODUCTION NOTE BASED ISSUE', 1, v_category, v_accountfor, v_dracccode, v_issuecode);
           GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -17030,60 +17724,83 @@ BEGIN
           IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
             RAISE EXCEPTION 'Error occured in inserting record into Issue Header : %', v_code;
             v_continue := -1;
+            _rc := 1;
           ELSE
             FETCH NEXT FROM cur_cursor_items INTO v_icode, v_gcode, v_givenqty, v_totalpieces, v_packunits, v_purprice, v_saleprice, v_recentpurprice, v_price, v_rowid;
             IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
             WHILE ((_fs = 0) AND (v_continue >= 0)) LOOP
               v_itemname := (SELECT name FROM dbo.item WHERE (icode = v_icode));
+              _rc := 1;
               SELECT r.return_value, r.avgprice INTO v_rt_code, v_hold_avgprice FROM dbo.sp_getitemavgprice(icode => v_icode, avgprice => v_hold_avgprice) AS r;
               IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                 v_errtext := ('Unable to aquire item lock for item = ' || v_itemname);
+                _rc := 1;
                 v_continue := -1;
+                _rc := 1;
               ELSE
                 SELECT r.return_value, r.qty INTO v_rt_code, v_piecesinhand FROM dbo.sp_getitemtotalpiecesinhand(icode => v_icode, qty => v_piecesinhand) AS r;
                 IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                   v_errtext := ('Unable to fetch total pieces in hand for item = ' || v_itemname);
+                  _rc := 1;
                   v_continue := -1;
+                  _rc := 1;
                 ELSE
                   IF (v_totalpieces > v_piecesinhand) THEN
                     v_errtext := ('Total Pieces asked to issue are more than total pieces in hand for item = ' || v_itemname);
+                    _rc := 1;
                     v_continue := -1;
+                    _rc := 1;
                   ELSE
                     SELECT r.return_value INTO v_rt_code FROM dbo.sp_updateitemtotalpiecesinhand(icode => v_icode, incdec => -1, totalpieces => v_totalpieces) AS r;
                     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                       v_errtext := ('Error Updating pieces in hand for item = ' || v_itemname);
+                      _rc := 1;
                       v_continue := -1;
+                      _rc := 1;
                     END IF;
                   END IF;
                 END IF;
               END IF;
               IF (v_continue >= 0) THEN
                 v_total_availablestock := (SELECT coalesce(sum(currqty), 0) FROM dbo.godowndetail WHERE (godowndetail.icode = v_icode));
+                _rc := 1;
                 IF ((v_total_availablestock < 0) OR (v_total_availablestock IS NULL)) THEN
                   v_total_availablestock := 0;
+                  _rc := 1;
                 END IF;
                 v_packunits := CASE WHEN (v_packunits IS NULL) THEN 1 WHEN (v_packunits = 0) THEN 1 ELSE v_packunits END;
+                _rc := 1;
                 v_totalqty := (SELECT coalesce(sum(currqty), 0) FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)));
+                _rc := 1;
                 IF (v_totalqty >= v_givenqty) THEN
                   v_reqqty := v_givenqty;
+                  _rc := 1;
                   OPEN cur_itembatch_cursor FOR SELECT batch, expiry, currqty FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)) ORDER BY priority, expiry, currqty;
                   v_totalrows := (-1);
+                  _rc := 1;
                   FETCH NEXT FROM cur_itembatch_cursor INTO v_batch, v_expiry, v_currqty;
                   IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
                   v_counter := 1;
+                  _rc := 1;
                   WHILE (((_fs = 0) AND (v_counter <= v_totalrows)) AND (v_reqqty > 0)) LOOP
                     v_batchqty := v_currqty;
+                    _rc := 1;
                     IF (v_batchqty >= v_reqqty) THEN
                       v_delqty := v_reqqty;
+                      _rc := 1;
                     ELSE
                       v_delqty := v_batchqty;
+                      _rc := 1;
                     END IF;
                     v_reqqty := (v_reqqty - v_delqty);
+                    _rc := 1;
                     SELECT r.return_value, r.lbi_maxutn INTO v_rt_code, v_utn FROM dbo.sp_maxutn(lbi_rows => (1)::bigint, lbi_maxutn => (v_utn)::bigint) AS r;
                     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                       v_continue := -1;
+                      _rc := 1;
                     END IF;
                     v_total_availablestock := (v_total_availablestock - v_delqty);
+                    _rc := 1;
                     INSERT INTO dbo.issuedetail (issueinvcode, gcode, icode, batch, expiry, qty, saleprice, purchaseprice, avgprice, packunits, mrpp, issueutn, price, totalpieces, piecesinhand, balancestock) VALUES (v_code, v_gcode, v_icode, v_batch, v_expiry, v_delqty, v_saleprice, v_purprice, v_hold_avgprice, v_packunits, v_recentpurprice, v_utn, v_price, v_totalpieces, v_piecesinhand, v_total_availablestock);
                     GET DIAGNOSTICS _rc = ROW_COUNT;
                     v_err := 0;
@@ -17092,8 +17809,10 @@ BEGIN
                     IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
                       RAISE EXCEPTION 'Error occured in inserting record into Issue Detail for Production : %', v_code;
                       v_continue := -1;
+                      _rc := 1;
                     ELSE
                       v_newqty := (v_currqty - v_delqty);
+                      _rc := 1;
                       IF (v_newqty > 0) THEN
                         SELECT r.return_value INTO v_rt_code FROM dbo.sp_saleupdateitemstockbatch(gcode => v_gcode, icode => v_icode, batch => v_batch, expiry => v_expiry, newqty => v_newqty, oldqty => v_currqty) AS r;
                       ELSE
@@ -17101,9 +17820,11 @@ BEGIN
                       END IF;
                       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                         v_continue := -1;
+                        _rc := 1;
                       END IF;
                     END IF;
                     v_counter := (v_counter + 1);
+                    _rc := 1;
                     FETCH NEXT FROM cur_itembatch_cursor INTO v_batch, v_expiry, v_currqty;
                     IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
                   END LOOP;
@@ -17111,12 +17832,15 @@ BEGIN
                   -- DEALLOCATE ItemBatch_Cursor
                 ELSE
                   v_itemname := (SELECT name FROM dbo.item WHERE (icode = v_icode));
+                  _rc := 1;
                   RAISE EXCEPTION 'Not enough stock for item (%) to decrease for Issue No. : %', v_itemname, v_code;
                   v_continue := -1;
+                  _rc := 1;
                 END IF;
               ELSE
                 RAISE EXCEPTION '%', v_errtext;
                 v_continue := -1;
+                _rc := 1;
               END IF;
               FETCH NEXT FROM cur_cursor_items INTO v_icode, v_gcode, v_givenqty, v_totalpieces, v_packunits, v_purprice, v_saleprice, v_recentpurprice, v_price, v_rowid;
               IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
@@ -17259,6 +17983,7 @@ BEGIN
   v_einvno := einvno;
   -- SET NOCOUNT ON
   v_outofstock := coalesce((SELECT count(t.icode) FROM (SELECT icode, sum((coalesce(looseqty, 0) + coalesce(bonusqty, 0))) AS qty, coalesce((SELECT sum(gd.currqty) FROM dbo.godowndetail AS gd WHERE (gd.icode = saletemplatedetail.icode)), 0) AS stock FROM dbo.saletemplatedetail WHERE (((saletemplatecode = v_saletemplatecode) AND (marked = 'Y')) AND (((looseqty + bonusqty)) > 0)) GROUP BY icode) AS t WHERE (t.qty > t.stock)), 0);
+  _rc := 1;
   IF (v_outofstock > 0) THEN
     RAISE EXCEPTION 'Not Enough Stock exists for some items of sale template no. %', v_saletemplatecode;
     return_value := -1;
@@ -17290,32 +18015,51 @@ BEGIN
   INSERT INTO tmp_saletemp (saleinvcode, salecatcode, oldinvcode, saledate, custcode, icode, looseqty, bonusqty, saleprice, discperc, itemflatdisc, unitsalestax, gstperc, packunits, remarks, satisfiableqty, satisfiedqty) SELECT -1 AS saleinvcode, coalesce(salecatcode, 3), saleinvcode AS oldinvcode, saledate, custcode, icode, looseqty, bonusqty, saleprice, discperc, itemflatdisc, unitsalestax, gstperc, packunits, remarks, (looseqty + bonusqty) AS satisfiableqty, 0 AS satisfiedqty FROM dbo.saletemplatedetail WHERE (((saletemplatecode = v_saletemplatecode) AND (marked = 'Y')) AND (((looseqty + bonusqty)) > 0)) ORDER BY saleinvcode, rowid;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_saletypecode := 1;
+  _rc := 1;
   v_module := (SELECT module FROM dbo.module WHERE (name = 'Sales'));
+  _rc := 1;
   v_headerno := 1;
+  _rc := 1;
   v_saletemplate_rowcount := coalesce((SELECT count(*) FROM tmp_saletemp AS saletemp), 0);
+  _rc := 1;
   v_anyitem_exist := trunc(coalesce((SELECT sum((satisfiableqty - satisfiedqty)) FROM tmp_saletemp AS saletemp), 0))::integer;
+  _rc := 1;
   v_continue := 0;
+  _rc := 1;
   v_invcounter := 1;
+  _rc := 1;
   v_rowgroup := 0;
+  _rc := 1;
   v_rowid := 1;
+  _rc := 1;
   WHILE ((v_anyitem_exist > 0) AND (v_continue >= 0)) LOOP
     v_custcode := coalesce((SELECT custcode FROM tmp_saletemp AS saletemp WHERE (rowid = v_rowid)), 19);
+    _rc := 1;
     v_serverdate := coalesce((SELECT saledate FROM tmp_saletemp AS saletemp WHERE (rowid = v_rowid)), localtimestamp(3));
+    _rc := 1;
     v_oldinvcode := (SELECT oldinvcode FROM tmp_saletemp AS saletemp WHERE (rowid = v_rowid));
+    _rc := 1;
     v_invcode := (SELECT saleinvcode FROM tmp_saletemp AS saletemp WHERE (rowid = v_rowid));
+    _rc := 1;
     v_saleinvcode := coalesce((SELECT max(saleinvcode) FROM tmp_saletemp AS saletemp WHERE (oldinvcode = v_oldinvcode)), -1);
+    _rc := 1;
     v_salecatcode := coalesce((SELECT salecatcode FROM tmp_saletemp AS saletemp WHERE (rowid = v_rowid)), 3);
+    _rc := 1;
     v_remarks := coalesce((SELECT remarks FROM tmp_saletemp AS saletemp WHERE (rowid = v_rowid)), '');
+    _rc := 1;
     v_rowgroup := 0;
+    _rc := 1;
     IF ((v_invcode = -1) AND (v_saleinvcode = -1)) THEN
       SELECT r.return_value, r.key INTO v_rt_code, v_saleinvcode FROM dbo.sp_gettabmaxkey(tabname => 'Saleledger', key => v_saleinvcode) AS r;
       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
         v_continue := -1;
+        _rc := 1;
       END IF;
       IF (v_continue >= 0) THEN
         SELECT r.return_value, r.key INTO v_rt_code, v_headerinvno FROM dbo.sp_getheadertabmaxkey(headercode => v_headerno, modulecode => (v_module)::smallint, key => v_headerinvno) AS r;
         IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
           v_continue := -1;
+          _rc := 1;
         END IF;
       END IF;
       IF (v_continue >= 0) THEN
@@ -17327,17 +18071,22 @@ BEGIN
         IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
           RAISE EXCEPTION 'Error occured in inserting record into Sale Ledger : %', v_saleinvcode;
           v_continue := -1;
+          _rc := 1;
         END IF;
       END IF;
     END IF;
     IF (v_continue >= 0) THEN
       v_anyitem_exist := trunc(coalesce((SELECT sum((satisfiableqty - satisfiedqty)) FROM tmp_saletemp AS saletemp), 0))::integer;
+      _rc := 1;
       IF (v_oldinvcode > 0) THEN
         v_lineitems_rowcount := coalesce((SELECT count(*) FROM tmp_saletemp AS saletemp WHERE ((oldinvcode = v_oldinvcode) AND ((satisfiableqty - satisfiedqty) > 0))), 1);
+        _rc := 1;
       ELSE
         v_lineitems_rowcount := coalesce((SELECT count(*) FROM tmp_saletemp AS saletemp WHERE ((oldinvcode IS NULL) AND ((satisfiableqty - satisfiedqty) > 0))), 1);
+        _rc := 1;
       END IF;
       v_innercounter := 1;
+      _rc := 1;
       WHILE ((((v_anyitem_exist > 0)) AND ((v_innercounter <= v_lineitems_rowcount))) AND ((v_continue >= 0))) LOOP
         _rc := 0;
         FOR _r1 IN SELECT icode AS c1, looseqty AS c2, bonusqty AS c3, satisfiableqty AS c4, satisfiedqty AS c5, saleprice AS c6, discperc AS c7, itemflatdisc AS c8, unitsalestax AS c9, gstperc AS c10 FROM tmp_saletemp AS saletemp WHERE (rowid = v_rowid) LOOP
@@ -17358,11 +18107,14 @@ BEGIN
         IF (((v_rowcount > 0)) AND ((((v_satisfiableqty - v_satisfiedqty)) > 0))) THEN
           IF ((((v_quantity + v_bonusqty) + v_satisfiedqty)) <= v_satisfiableqty) THEN
             v_givenqty := (v_quantity + v_bonusqty);
+            _rc := 1;
           ELSE
             v_givenqty := (v_satisfiableqty - v_satisfiedqty);
+            _rc := 1;
           END IF;
           IF (v_givenqty <= 0) THEN
             v_givenqty := 1;
+            _rc := 1;
           ELSE
             UPDATE tmp_saletemp AS saletemp SET satisfiedqty = (v_satisfiedqty + v_givenqty) WHERE ((icode = v_icode) AND (rowid = v_rowid));
             GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -17370,14 +18122,19 @@ BEGIN
           SELECT r.return_value, r.avgprice INTO v_rt_code, v_hold_avgprice FROM dbo.sp_getitemavgprice(icode => v_icode, avgprice => v_hold_avgprice) AS r;
           IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
             v_continue := -1;
+            _rc := 1;
           ELSE
             v_total_availablestock := (SELECT coalesce(sum(currqty), 0) FROM dbo.godowndetail WHERE (godowndetail.icode = v_icode));
+            _rc := 1;
             IF ((v_total_availablestock < 0) OR (v_total_availablestock IS NULL)) THEN
               v_total_availablestock := 0;
+              _rc := 1;
             END IF;
             v_totalqty := (SELECT coalesce(sum(currqty), 0) FROM dbo.godowndetail WHERE (godowndetail.icode = v_icode));
+            _rc := 1;
             IF (v_totalqty >= v_givenqty) THEN
               v_rowgroup := (v_rowgroup + 1);
+              _rc := 1;
               _rc := 0;
               FOR _r2 IN SELECT saleprice AS c1, packunits AS c2 FROM dbo.item WHERE (icode = v_icode) LOOP
                 _rc := _rc + 1;
@@ -17386,39 +18143,55 @@ BEGIN
               END LOOP;
               IF ((v_packunits = 0) OR (v_packunits IS NULL)) THEN
                 v_packunits := 1;
+                _rc := 1;
               END IF;
               v_reqqty := v_givenqty;
+              _rc := 1;
               OPEN cur_itembatch_cursor FOR SELECT gcode, batch, expiry, currqty FROM dbo.godowndetail WHERE (godowndetail.icode = v_icode) ORDER BY gcode, priority, expiry, currqty;
               v_totalrows := (-1);
+              _rc := 1;
               FETCH NEXT FROM cur_itembatch_cursor INTO v_gcode, v_batch, v_expiry, v_currqty;
               IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
               v_counter := 1;
+              _rc := 1;
               WHILE (((_fs = 0) AND (v_counter <= v_totalrows)) AND (v_reqqty > 0)) LOOP
                 v_batchqty := v_currqty;
+                _rc := 1;
                 IF (v_batchqty >= v_reqqty) THEN
                   v_delqty := v_reqqty;
+                  _rc := 1;
                 ELSE
                   v_delqty := v_batchqty;
+                  _rc := 1;
                 END IF;
                 v_reqqty := (v_reqqty - v_delqty);
+                _rc := 1;
                 IF (v_delqty >= v_quantity) THEN
                   v_quantity := v_quantity;
+                  _rc := 1;
                   v_bonusqty := (v_delqty - v_quantity);
+                  _rc := 1;
                   IF (v_bonusqty < 0) THEN
                     v_bonusqty := 0;
+                    _rc := 1;
                   END IF;
                 ELSE
                   v_quantity := (v_quantity - v_delqty);
+                  _rc := 1;
                   IF (v_quantity < 0) THEN
                     v_quantity := 0;
+                    _rc := 1;
                   END IF;
                   v_bonusqty := 0;
+                  _rc := 1;
                 END IF;
                 SELECT r.return_value, r.lbi_maxutn INTO v_rt_code, v_saleutn FROM dbo.sp_maxutn(lbi_rows => (1)::bigint, lbi_maxutn => v_saleutn) AS r;
                 IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                   v_continue := -1;
+                  _rc := 1;
                 END IF;
                 v_total_availablestock := ((v_total_availablestock - v_quantity) - v_bonusqty);
+                _rc := 1;
                 INSERT INTO dbo.saledetail (saleinvcode, icode, gcode, batch, expiry, packqty, looseqty, bonusqty, packunits, saleprice, avgprice, rate, discperc, salestax, itemflatdisc, packprice, unitsalestax, gstperc, saleutn, balancestock, rowgroup) VALUES (v_saleinvcode, v_icode, v_gcode, v_batch, v_expiry, 0, v_quantity, v_bonusqty, v_packunits, v_saleprice, v_hold_avgprice, (v_rate / v_packunits), v_discperc, 0, v_itemflatdisc, v_rate, v_unitsalestax, v_gstperc1, v_saleutn, v_total_availablestock, v_rowgroup);
                 GET DIAGNOSTICS _rc = ROW_COUNT;
                 v_err := 0;
@@ -17427,8 +18200,10 @@ BEGIN
                 IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
                   RAISE EXCEPTION 'Error occured in inserting record into Sale Detail for Sale Inv. No. : %', v_saleinvcode;
                   v_continue := -1;
+                  _rc := 1;
                 ELSE
                   v_newqty := (v_currqty - v_delqty);
+                  _rc := 1;
                   IF (v_newqty > 0) THEN
                     SELECT r.return_value INTO v_rt_code FROM dbo.sp_saleupdateitemstockbatch(gcode => (v_gcode)::integer, icode => v_icode, batch => v_batch, expiry => v_expiry, newqty => v_newqty, oldqty => v_currqty) AS r;
                   ELSE
@@ -17436,9 +18211,11 @@ BEGIN
                   END IF;
                   IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                     v_continue := -1;
+                    _rc := 1;
                   END IF;
                 END IF;
                 v_counter := (v_counter + 1);
+                _rc := 1;
                 FETCH NEXT FROM cur_itembatch_cursor INTO v_gcode, v_batch, v_expiry, v_currqty;
                 IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
               END LOOP;
@@ -17446,13 +18223,17 @@ BEGIN
               -- DEALLOCATE ItemBatch_Cursor
             ELSE
               v_itemname := (SELECT name FROM dbo.item WHERE (icode = v_icode));
+              _rc := 1;
               RAISE EXCEPTION 'Not enough stock for item (%) to decrease for Sale Inv. No : %', v_itemname, v_saleinvcode;
               v_continue := -1;
+              _rc := 1;
             END IF;
           END IF;
         END IF;
         v_innercounter := (v_innercounter + 1);
+        _rc := 1;
         v_anyitem_exist := trunc(coalesce((SELECT sum((satisfiableqty - satisfiedqty)) FROM tmp_saletemp AS saletemp), 0))::integer;
+        _rc := 1;
       END LOOP;
     END IF;
     IF (v_oldinvcode > 0) THEN
@@ -17463,11 +18244,15 @@ BEGIN
       GET DIAGNOSTICS _rc = ROW_COUNT;
     END IF;
     v_rowid := (v_rowid + 1);
+    _rc := 1;
     v_anyitem_exist := trunc(coalesce((SELECT sum((satisfiableqty - satisfiedqty)) FROM tmp_saletemp AS saletemp), 0))::integer;
+    _rc := 1;
   END LOOP;
   IF ((v_continue >= 0)) THEN
     v_sinvno := (SELECT min(saleinvcode) FROM tmp_saletemp AS saletemp);
+    _rc := 1;
     v_einvno := (SELECT max(saleinvcode) FROM tmp_saletemp AS saletemp);
+    _rc := 1;
     UPDATE dbo.saleledger SET invtotal = dbo.fn_getsaleinvtotal((saleledger.saleinvcode)::integer) WHERE (saleinvcode BETWEEN v_sinvno AND v_einvno);
     GET DIAGNOSTICS _rc = ROW_COUNT;
     v_err := 0;
@@ -17476,6 +18261,7 @@ BEGIN
     IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
       RAISE EXCEPTION 'Unable to update SaleInvoices for Sale Inv. total';
       v_continue := -1;
+      _rc := 1;
     END IF;
   END IF;
   return_value := v_continue;
@@ -17652,16 +18438,19 @@ DECLARE
 BEGIN
   -- SET NOCOUNT ON
   v_mysitecode := (SELECT min(sitecode) FROM dbo.site WHERE (instanceid IN (SELECT name FROM dbo.clientinstance)));
+  _rc := 1;
   IF ((v_mysitecode < 0) OR (v_mysitecode IS NULL)) THEN
     return_value := 0;
     RETURN;
   END IF;
   v_unpulledorders := coalesce((SELECT count(*) FROM dbo.db_purorderheader WHERE ((pulled = 'N') AND (targetsitecode = v_mysitecode))), 0);
+  _rc := 1;
   IF ((v_unpulledorders <= 0) OR (v_unpulledorders IS NULL)) THEN
     return_value := 0;
     RETURN;
   END IF;
   v_errcode := 0;
+  _rc := 1;
   SELECT r.return_value, r.key INTO v_errcode, v_start_no FROM dbo.sp_locktabmaxkey(tabname => 'Quotation', key => v_start_no) AS r;
   IF ((0 <> 0) OR (v_errcode <> 0)) THEN
     RAISE EXCEPTION 'Problem while Fetching Quotation Header Value';
@@ -17677,6 +18466,7 @@ BEGIN
     rowid integer GENERATED BY DEFAULT AS IDENTITY
 ) ON COMMIT DROP;
   v_usercode := 1;
+  _rc := 1;
   INSERT INTO tv_sp_generatequotations_from_dropbox_header (code, sitecode, custcode, pocode) SELECT v_start_no AS code, p.sitecode, (SELECT max(c.custcode) FROM dbo.customer AS c WHERE (c.sitecode = p.sitecode)) AS custcode, p.pocode FROM dbo.db_purorderheader AS p WHERE ((p.pulled = 'N') AND (p.targetsitecode = v_mysitecode));
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF (_rc = 0) THEN
@@ -17704,6 +18494,7 @@ BEGIN
     RETURN;
   END IF;
   v_end_no := coalesce((SELECT max(code) FROM tv_sp_generatequotations_from_dropbox_header AS header), 0);
+  _rc := 1;
   SELECT r.return_value INTO v_errcode FROM dbo.sp_updatetabmaxkey(tabname => 'Quotation', key => v_end_no) AS r;
   IF ((0 <> 0) OR (v_errcode <> 0)) THEN
     RAISE EXCEPTION 'Problem while Updating Quotation Header Key Value';
@@ -17793,51 +18584,77 @@ BEGIN
   v_issueinvcode := issueinvcode;
   v_receiptinvcode := receiptinvcode;
   v_continue := 0;
+  _rc := 1;
   v_deptcode := coalesce((SELECT receiptdeptcode FROM dbo.prodheader WHERE (prodcode = v_prodcode)), 1);
+  _rc := 1;
   v_areacode := 1;
+  _rc := 1;
   v_module := (SELECT module FROM dbo.module WHERE ((lower(name))::citext = 'receipt'));
+  _rc := 1;
   v_pricetype := dbo.fn_get_int_preference('ReceiptPriceTypeCode');
+  _rc := 1;
   v_groupcode := coalesce((SELECT min(groupcode) FROM dbo.usergroups WHERE (usercode = v_usercode)), 1);
+  _rc := 1;
   v_category := 2;
+  _rc := 1;
   v_accountfor := coalesce((SELECT accountfor FROM dbo.receiptcategory WHERE (receiptcategorycode = v_category)), 'N');
+  _rc := 1;
   IF (v_accountfor = 'Y') THEN
     v_cracccode := trunc(coalesce((SELECT code FROM dbo.global WHERE (name = 'GT_WIPAcc')), 33))::smallint;
+    _rc := 1;
   ELSE
     v_cracccode := NULL;
+    _rc := 1;
   END IF;
   IF (v_groupcode > 0) THEN
     v_godownstrategy := coalesce((SELECT receiptgodownstrategy FROM dbo.groups WHERE (groupcode = v_groupcode)), 1);
+    _rc := 1;
   ELSE
     v_godownstrategy := 1;
+    _rc := 1;
   END IF;
   IF (v_godownstrategy = 1) THEN
     v_gcode := (SELECT receiptgcode FROM dbo.prodheader WHERE (prodcode = v_prodcode));
+    _rc := 1;
   END IF;
   v_batch := dbo.fn_getpreference('defaultbatch');
+  _rc := 1;
   v_expiry := dbo.fn_get_datetime_preference('defaultexpiry');
+  _rc := 1;
   v_updateavgprice := dbo.fn_getpreference('UpdAvgPriceInReceipt');
+  _rc := 1;
   v_priority := 10;
+  _rc := 1;
   v_recomputecost := dbo.fn_getpreference('ReComputeCostInProduction');
+  _rc := 1;
   v_autopost := dbo.fn_getpreference('AutoPostReceiptOnProdPost');
+  _rc := 1;
   IF (v_autopost IS NULL) THEN
     v_autopost := 'Y';
+    _rc := 1;
   END IF;
   OPEN cur_cursor_items FOR SELECT pd.icode AS icode, pd.batch, pd.expiry, sum(pd.qty) AS qty, max(i.packunits) AS packunits, round(((max(i.purprice) / max(i.packunits)))::numeric, 2) AS purprice, round(((max(i.saleprice) / max(i.packunits)))::numeric, 2) AS saleprice, round(((max(i.recentpurprice) / max(i.packunits)))::numeric, 2) AS recentpurprice, CASE WHEN (v_issueinvcode > 0) THEN CASE v_recomputecost WHEN 'Y' THEN round((((SELECT sum((isd.qty * isd.price)) FROM dbo.issuedetail AS isd, dbo.recipedetail AS rd WHERE (((isd.issueinvcode = v_issueinvcode) AND (r.recipecode = rd.recipecode)) AND (rd.icode = isd.icode))) / CASE WHEN (sum(pd.qty) = 0) THEN 1 ELSE sum(pd.qty) END))::numeric, 2) ELSE CASE v_pricetype WHEN 1 THEN round(((max(i.saleprice) / max(i.packunits)))::numeric, 2) WHEN 2 THEN round(((max(i.saleprice2) / max(i.packunits)))::numeric, 2) WHEN 3 THEN round(((max(i.saleprice3) / max(i.packunits)))::numeric, 2) WHEN 4 THEN round(((max(i.purprice) / max(i.packunits)))::numeric, 2) WHEN 5 THEN round(((max(i.recentpurprice) / max(i.packunits)))::numeric, 2) WHEN 6 THEN round((max(i.avgprice))::numeric, 2) WHEN 7 THEN round(((max(i.saleprice4) / max(i.packunits)))::numeric, 2) WHEN 8 THEN round(((max(i.saleprice5) / max(i.packunits)))::numeric, 2) END END ELSE CASE v_pricetype WHEN 1 THEN round(((max(i.saleprice) / max(i.packunits)))::numeric, 2) WHEN 2 THEN round(((max(i.saleprice2) / max(i.packunits)))::numeric, 2) WHEN 3 THEN round(((max(i.saleprice3) / max(i.packunits)))::numeric, 2) WHEN 4 THEN round(((max(i.purprice) / max(i.packunits)))::numeric, 2) WHEN 5 THEN round(((max(i.recentpurprice) / max(i.packunits)))::numeric, 2) WHEN 6 THEN round((max(i.avgprice))::numeric, 2) WHEN 7 THEN round(((max(i.saleprice4) / max(i.packunits)))::numeric, 2) WHEN 8 THEN round(((max(i.saleprice5) / max(i.packunits)))::numeric, 2) END END AS price FROM dbo.recipe AS r, (SELECT icode, qty, batch, expiry FROM dbo.proddetail WHERE (proddetail.prodcode = v_prodcode)) AS pd, dbo.item AS i WHERE (((r.resulteditem = pd.icode) AND (pd.icode = i.icode)) AND (r.priority = (SELECT min(priority) FROM dbo.recipe WHERE (resulteditem = pd.icode)))) GROUP BY pd.icode, pd.batch, pd.expiry, r.recipecode;
   v_items_rows := (-1);
+  _rc := 1;
   IF (v_items_rows > 0) THEN
     SELECT r.return_value, r.key INTO v_rt_code, v_code FROM dbo.sp_gettabmaxkey(tabname => 'ReceiptHeader', key => v_code) AS r;
     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
       v_continue := -1;
+      _rc := 1;
     ELSE
       v_receiptinvcode := v_code;
+      _rc := 1;
       SELECT r.return_value, r.key INTO v_rt_code, v_headerinvno FROM dbo.sp_getheadertabmaxkey(headercode => (v_headerno)::smallint, modulecode => v_module, key => v_headerinvno) AS r;
       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
         v_continue := -1;
+        _rc := 1;
       ELSE
         v_receiptcode := NULL;
+        _rc := 1;
         SELECT r.return_value, r.counter INTO v_rt_code, v_receiptcode FROM dbo.sp_getreceiptcategorycounter(category => v_category, counter => v_receiptcode) AS r;
         IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
           v_continue := -1;
+          _rc := 1;
         ELSE
           INSERT INTO dbo.receiptheader (receiptinvcode, deptcode, date, originaldate, salesmancode, posted, postdate, postedby, areacode, headerno, headerinvno, pricetypecode, remarks, receiptcategorycode, accountfor, cracccode, receiptcode) VALUES (v_code, v_deptcode, v_serverdate, v_serverdate, v_usercode, v_autopost, v_serverdate, v_usercode, v_areacode, v_headerno, v_headerinvno, v_pricetype, 'SYSTEM GENERATED RECEIPT', v_category, v_accountfor, v_cracccode, v_receiptcode);
           GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -17847,36 +18664,45 @@ BEGIN
           IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
             RAISE EXCEPTION 'Error occured in inserting record into Receipt Header : %', v_code;
             v_continue := -1;
+            _rc := 1;
           ELSE
             FETCH NEXT FROM cur_cursor_items INTO v_icode, v_batch, v_expiry, v_givenqty, v_packunits, v_purprice, v_saleprice, v_recentpurprice, v_price;
             IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
             WHILE ((_fs = 0) AND (v_continue >= 0)) LOOP
               IF (v_godownstrategy = 2) THEN
                 v_gcode := coalesce((SELECT gcode FROM dbo.item WHERE (icode = v_icode)), 1);
+                _rc := 1;
               END IF;
               SELECT r.return_value, r.avgprice INTO v_rt_code, v_hold_avgprice FROM dbo.sp_getitemavgprice(icode => v_icode, avgprice => v_hold_avgprice) AS r;
               IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                 v_continue := -1;
+                _rc := 1;
               ELSE
                 SELECT r.return_value, r.lbi_maxutn INTO v_rt_code, v_utn FROM dbo.sp_maxutn(lbi_rows => (1)::bigint, lbi_maxutn => (v_utn)::bigint) AS r;
                 IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                   v_continue := -1;
+                  _rc := 1;
                 END IF;
                 v_packunits := CASE WHEN (v_packunits IS NULL) THEN 1 WHEN (v_packunits = 0) THEN 1 ELSE v_packunits END;
+                _rc := 1;
                 SELECT r.return_value, r.qty INTO v_rt_code, v_totstock FROM dbo.sp_getitemstockall(icode => v_icode, qty => v_totstock) AS r;
                 IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                   v_continue := -1;
+                  _rc := 1;
                 END IF;
                 IF (v_updateavgprice = 'Y') THEN
                   v_newavgprice := coalesce((SELECT round(((((((v_totstock * v_hold_avgprice)) + ((v_givenqty * v_price)))) / ((v_givenqty + v_totstock))))::numeric, 5)), 0);
+                  _rc := 1;
                   IF (v_autopost = 'Y') THEN
                     SELECT r.return_value INTO v_rt_code FROM dbo.sp_updateitemavgprice(icode => v_icode, avgprice => v_newavgprice) AS r;
                     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                       v_continue := -1;
+                      _rc := 1;
                     END IF;
                   END IF;
                 ELSE
                   v_newavgprice := v_hold_avgprice;
+                  _rc := 1;
                 END IF;
                 IF (v_continue <> -1) THEN
                   INSERT INTO dbo.receiptdetail (receiptinvcode, gcode, icode, batch, expiry, qty, priority, saleprice, purchaseprice, avgprice, packunits, mrpp, receiptutn, price, updateavgprice, newavgprice, currstock) VALUES (v_code, v_gcode, v_icode, v_batch, v_expiry, v_givenqty, v_priority, v_saleprice, v_purprice, v_hold_avgprice, v_packunits, v_recentpurprice, v_utn, v_price, v_updateavgprice, v_newavgprice, v_totstock);
@@ -17887,16 +18713,20 @@ BEGIN
                   IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
                     RAISE EXCEPTION 'Error occured in inserting record into Receipt Detail for Production : %', v_prodcode;
                     v_continue := -1;
+                    _rc := 1;
                   ELSE
                     IF (v_autopost = 'Y') THEN
                       SELECT r.return_value, r.qty INTO v_rt_code, v_currqty FROM dbo.sp_getitemstockbatch(gcode => v_gcode, icode => v_icode, batch => v_batch, expiry => v_expiry, qty => v_currqty) AS r;
                       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                         v_continue := -1;
+                        _rc := 1;
                       ELSE
                         v_newqty := (v_currqty + v_givenqty);
+                        _rc := 1;
                         SELECT r.return_value INTO v_rt_code FROM dbo.sp_updateitemstockbatch(gcode => v_gcode, icode => v_icode, batch => v_batch, expiry => v_expiry, newqty => v_newqty) AS r;
                         IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                           v_continue := -1;
+                          _rc := 1;
                         END IF;
                       END IF;
                     END IF;
@@ -17993,40 +18823,62 @@ BEGIN
   v_usercode := usercode;
   v_receiptinvcode := receiptinvcode;
   v_continue := 0;
+  _rc := 1;
   v_deptcode := coalesce((SELECT receiptdeptcode FROM dbo.prodnote WHERE (prodnotecode = v_prodnotecode)), 1);
+  _rc := 1;
   v_headerno := 1;
+  _rc := 1;
   v_areacode := 1;
+  _rc := 1;
   v_module := (SELECT module FROM dbo.module WHERE ((lower(name))::citext = 'receipt'));
+  _rc := 1;
   v_pricetype := dbo.fn_get_int_preference('ReceiptPriceTypeCode');
+  _rc := 1;
   v_batch := dbo.fn_getpreference('defaultbatch');
+  _rc := 1;
   v_expiry := dbo.fn_get_datetime_preference('defaultexpiry');
+  _rc := 1;
   v_updateavgprice := dbo.fn_getpreference('UpdAvgPriceInReceipt');
+  _rc := 1;
   v_priority := 10;
+  _rc := 1;
   v_recomputecost := dbo.fn_getpreference('ReComputeCostInProduction');
+  _rc := 1;
   v_serverdate := localtimestamp(3);
+  _rc := 1;
   v_category := 2;
+  _rc := 1;
   v_accountfor := coalesce((SELECT accountfor FROM dbo.receiptcategory WHERE (receiptcategorycode = v_category)), 'N');
+  _rc := 1;
   IF (v_accountfor = 'Y') THEN
     v_cracccode := trunc(coalesce((SELECT code FROM dbo.global WHERE (name = 'GT_WIPAcc')), 33))::smallint;
+    _rc := 1;
   ELSE
     v_cracccode := NULL;
+    _rc := 1;
   END IF;
   OPEN cur_cursor_items FOR SELECT pnr.icode, pnr.gcode, pnr.batch, pnr.expiry, sum(pnr.totalpieces) AS totalpieces, sum(pnr.qty) AS qty, pnr.packunits, round(((max(i.purprice) / max(i.packunits)))::numeric, 2) AS purprice, round(((max(i.saleprice) / max(i.packunits)))::numeric, 2) AS saleprice, round(((max(i.recentpurprice) / max(i.packunits)))::numeric, 2) AS recentpurprice, CASE v_pricetype WHEN 1 THEN round(((max(i.saleprice) / max(i.packunits)))::numeric, 2) WHEN 2 THEN round(((max(i.saleprice2) / max(i.packunits)))::numeric, 2) WHEN 3 THEN round(((max(i.saleprice3) / max(i.packunits)))::numeric, 2) WHEN 4 THEN round(((max(i.purprice) / max(i.packunits)))::numeric, 2) WHEN 5 THEN round(((max(i.recentpurprice) / max(i.packunits)))::numeric, 2) WHEN 6 THEN round((max(i.avgprice))::numeric, 2) WHEN 7 THEN round(((max(i.saleprice4) / max(i.packunits)))::numeric, 2) WHEN 8 THEN round(((max(i.saleprice5) / max(i.packunits)))::numeric, 2) END AS price, pnr.rowid FROM dbo.prodnotereceipt AS pnr, dbo.item AS i WHERE ((pnr.prodnotecode = v_prodnotecode) AND (pnr.icode = i.icode)) GROUP BY pnr.icode, pnr.gcode, pnr.batch, pnr.expiry, pnr.packunits, pnr.rowid;
   v_items_rows := (-1);
+  _rc := 1;
   IF (v_items_rows > 0) THEN
     SELECT r.return_value, r.key INTO v_rt_code, v_code FROM dbo.sp_gettabmaxkey(tabname => 'ReceiptHeader', key => v_code) AS r;
     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
       v_continue := -1;
+      _rc := 1;
     ELSE
       v_receiptinvcode := v_code;
+      _rc := 1;
       SELECT r.return_value, r.key INTO v_rt_code, v_headerinvno FROM dbo.sp_getheadertabmaxkey(headercode => (v_headerno)::smallint, modulecode => v_module, key => v_headerinvno) AS r;
       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
         v_continue := -1;
+        _rc := 1;
       ELSE
         v_receiptcode := NULL;
+        _rc := 1;
         SELECT r.return_value, r.counter INTO v_rt_code, v_receiptcode FROM dbo.sp_getreceiptcategorycounter(category => v_category, counter => v_receiptcode) AS r;
         IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
           v_continue := -1;
+          _rc := 1;
         ELSE
           INSERT INTO dbo.receiptheader (receiptinvcode, deptcode, date, originaldate, salesmancode, posted, postdate, postedby, areacode, headerno, headerinvno, pricetypecode, remarks, recipientcode, receiptcategorycode, accountfor, cracccode, receiptcode, qe1_acccode, qe2_acccode, qe3_acccode, qe4_acccode, qe5_acccode, we1_acccode, we2_acccode, we3_acccode, we4_acccode, we5_acccode, qexp1_cracccode, qexp2_cracccode, qexp3_cracccode, qexp4_cracccode, qexp5_cracccode, wexp1_cracccode, wexp2_cracccode, wexp3_cracccode, wexp4_cracccode, wexp5_cracccode) SELECT v_code, v_deptcode, v_serverdate, v_serverdate, v_usercode, 'Y', v_serverdate, v_usercode, v_areacode, v_headerno, v_headerinvno, v_pricetype, 'PRODUCTION NOTE BASED RECEIPT', 1, v_category, v_accountfor, v_cracccode, v_receiptcode, qe1_acccode, qe2_acccode, qe3_acccode, qe4_acccode, qe5_acccode, we1_acccode, we2_acccode, we3_acccode, we4_acccode, we5_acccode, qexp1_cracccode, qexp2_cracccode, qexp3_cracccode, qexp4_cracccode, qexp5_cracccode, wexp1_cracccode, wexp2_cracccode, wexp3_cracccode, wexp4_cracccode, wexp5_cracccode FROM dbo.prodnote WHERE (prodnotecode = v_prodnotecode);
           GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -18036,25 +18888,33 @@ BEGIN
           IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
             RAISE EXCEPTION 'Error occured in inserting record into Receipt Header : %', v_code;
             v_continue := -1;
+            _rc := 1;
           ELSE
             FETCH NEXT FROM cur_cursor_items INTO v_icode, v_gcode, v_batch, v_expiry, v_totalpieces, v_givenqty, v_packunits, v_purprice, v_saleprice, v_recentpurprice, v_price, v_rowid;
             IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
             WHILE ((_fs = 0) AND (v_continue >= 0)) LOOP
               v_itemname := (SELECT name FROM dbo.item WHERE (icode = v_icode));
+              _rc := 1;
               SELECT r.return_value, r.avgprice INTO v_rt_code, v_hold_avgprice FROM dbo.sp_getitemavgprice(icode => v_icode, avgprice => v_hold_avgprice) AS r;
               IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                 v_errtext := ('Unable to aquire item lock for item = ' || v_itemname);
+                _rc := 1;
                 v_continue := -1;
+                _rc := 1;
               ELSE
                 SELECT r.return_value, r.qty INTO v_rt_code, v_piecesinhand FROM dbo.sp_getitemtotalpiecesinhand(icode => v_icode, qty => v_piecesinhand) AS r;
                 IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                   v_errtext := ('Unable to fetch total pieces in hand for item = ' || v_itemname);
+                  _rc := 1;
                   v_continue := -1;
+                  _rc := 1;
                 ELSE
                   SELECT r.return_value INTO v_rt_code FROM dbo.sp_updateitemtotalpiecesinhand(icode => v_icode, incdec => 1, totalpieces => v_totalpieces) AS r;
                   IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                     v_errtext := ('Error Updating pieces in hand for item = ' || v_itemname);
+                    _rc := 1;
                     v_continue := -1;
+                    _rc := 1;
                   END IF;
                 END IF;
               END IF;
@@ -18062,21 +18922,28 @@ BEGIN
                 SELECT r.return_value, r.lbi_maxutn INTO v_rt_code, v_utn FROM dbo.sp_maxutn(lbi_rows => (1)::bigint, lbi_maxutn => (v_utn)::bigint) AS r;
                 IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                   v_continue := -1;
+                  _rc := 1;
                 END IF;
                 v_packunits := CASE WHEN (v_packunits IS NULL) THEN 1 WHEN (v_packunits = 0) THEN 1 ELSE v_packunits END;
+                _rc := 1;
                 SELECT r.return_value, r.qty INTO v_rt_code, v_totstock FROM dbo.sp_getitemstockall(icode => v_icode, qty => v_totstock) AS r;
                 IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                   v_continue := -1;
+                  _rc := 1;
                 END IF;
                 IF (v_updateavgprice = 'Y') THEN
                   v_netrate := coalesce((SELECT round(((((((((qty * price)) + ((qty * (((((qe1 + qe2) + qe3) + qe4) + qe5))))) + (((qty * unitweight) * (((((we1 + we2) + we3) + we4) + we5)))))) / CASE WHEN (qty = 0) THEN 1 ELSE qty END)))::numeric, 5) FROM dbo.prodnotereceipt WHERE ((prodnotecode = v_prodnotecode) AND (rowid = v_rowid))), 0);
+                  _rc := 1;
                   v_newavgprice := coalesce((SELECT round(((((((v_totstock * v_hold_avgprice)) + ((v_givenqty * v_netrate)))) / ((v_givenqty + v_totstock))))::numeric, 5)), 0);
+                  _rc := 1;
                   SELECT r.return_value INTO v_rt_code FROM dbo.sp_updateitemavgprice(icode => v_icode, avgprice => v_newavgprice) AS r;
                   IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                     v_continue := -1;
+                    _rc := 1;
                   END IF;
                 ELSE
                   v_newavgprice := v_hold_avgprice;
+                  _rc := 1;
                 END IF;
                 IF (v_continue <> -1) THEN
                   INSERT INTO dbo.receiptdetail (receiptinvcode, gcode, icode, batch, expiry, qty, priority, saleprice, purchaseprice, avgprice, packunits, mrpp, receiptutn, price, updateavgprice, newavgprice, currstock, totalpieces, piecesinhand, unitweight, qe1, qe2, qe3, qe4, qe5, we1, we2, we3, we4, we5) SELECT v_code, v_gcode, v_icode, v_batch, v_expiry, v_givenqty, v_priority, v_saleprice, v_purprice, v_hold_avgprice, v_packunits, v_recentpurprice, v_utn, v_price, v_updateavgprice, v_newavgprice, v_totstock, v_totalpieces, v_piecesinhand, unitweight, qe1, qe2, qe3, qe4, qe5, we1, we2, we3, we4, we5 FROM dbo.prodnotereceipt WHERE ((prodnotecode = v_prodnotecode) AND (rowid = v_rowid));
@@ -18087,15 +18954,19 @@ BEGIN
                   IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
                     RAISE EXCEPTION 'Error occured in inserting record into Receipt Detail for Production : %', v_prodnotecode;
                     v_continue := -1;
+                    _rc := 1;
                   ELSE
                     SELECT r.return_value, r.qty INTO v_rt_code, v_currqty FROM dbo.sp_getitemstockbatch(gcode => v_gcode, icode => v_icode, batch => v_batch, expiry => v_expiry, qty => v_currqty) AS r;
                     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                       v_continue := -1;
+                      _rc := 1;
                     ELSE
                       v_newqty := (v_currqty + v_givenqty);
+                      _rc := 1;
                       SELECT r.return_value INTO v_rt_code FROM dbo.sp_updateitemstockbatch(gcode => v_gcode, icode => v_icode, batch => v_batch, expiry => v_expiry, newqty => v_newqty) AS r;
                       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                         v_continue := -1;
+                        _rc := 1;
                       END IF;
                     END IF;
                   END IF;
@@ -18103,6 +18974,7 @@ BEGIN
               ELSE
                 RAISE EXCEPTION '%', v_errtext;
                 v_continue := -1;
+                _rc := 1;
               END IF;
               FETCH NEXT FROM cur_cursor_items INTO v_icode, v_gcode, v_batch, v_expiry, v_totalpieces, v_givenqty, v_packunits, v_purprice, v_saleprice, v_recentpurprice, v_price, v_rowid;
               IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
@@ -18186,10 +19058,15 @@ BEGIN
   v_usercode := usercode;
   v_newsaleinvcode := newsaleinvcode;
   v_custcode := coalesce((SELECT custcode FROM dbo.presaleheader WHERE (presaleinvcode = v_presaleinvcode)), 19);
+  _rc := 1;
   v_headerno := 1;
+  _rc := 1;
   v_module := (SELECT module FROM dbo.module WHERE (name = 'Sales'));
+  _rc := 1;
   v_serverdate := localtimestamp(3);
+  _rc := 1;
   v_machinename := left(current_setting('cluster_name', true), 15);
+  _rc := 1;
   DROP TABLE IF EXISTS tmp_saletemp;
   CREATE TEMP TABLE tmp_saletemp (
     id integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
@@ -18209,24 +19086,33 @@ BEGIN
   INSERT INTO tmp_saletemp (icode, gcode, batch, expiry, looseqty, bonusqty, saleprice, discperc, itemflatdisc, unitsalestax, gstperc, itemdescription) SELECT icode, gcode, batch, expiry, trunc(qty)::integer, 0, saleprice, discperc, 0 AS itemflatdisc, 0 AS unitsalestax, 0 AS gstperc, itemdescription FROM dbo.presaledetail WHERE ((presaleinvcode = v_presaleinvcode) AND (((qty + bonusqty)) > 0)) ORDER BY rowid;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_totalrows := coalesce((SELECT count(*) FROM tmp_saletemp AS saletemp), 0);
+  _rc := 1;
   v_continue := 0;
+  _rc := 1;
   v_rowgroup := 0;
+  _rc := 1;
   IF ((v_totalrows > 0) AND (v_continue >= 0)) THEN
     SELECT r.return_value, r.key INTO v_rt_code, v_saleinvcode FROM dbo.sp_gettabmaxkey(tabname => 'Saleledger', key => v_saleinvcode) AS r;
     v_rowgroup := 0;
+    _rc := 1;
     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
       v_continue := -1;
+      _rc := 1;
     END IF;
     v_newsaleinvcode := v_saleinvcode;
+    _rc := 1;
     IF (v_continue >= 0) THEN
       SELECT r.return_value, r.key INTO v_rt_code, v_headerinvno FROM dbo.sp_getheadertabmaxkey(headercode => (v_headerno)::smallint, modulecode => (v_module)::smallint, key => v_headerinvno) AS r;
       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
         v_continue := -1;
+        _rc := 1;
       END IF;
     END IF;
     IF (v_continue >= 0) THEN
       v_err := 0;
+      _rc := 1;
       v_rowcount := 1;
+      _rc := 1;
       INSERT INTO dbo.saleledger (saleinvcode, salecatcode, custcode, salesmancode, date, discperc, flatdisc, misccharges, salestax, posted, postdate, remarks, custrefno, headerno, headerinvno, originaldate, modifiedby, postedby, sprice, quotationno, doctcode, patientcode, reprintingcounter, cashreceived, invgstperc1, printwaranty, printbatch, messagecode, smancode, invoicesize, custrefno2, custrefno3, custrefno4, gstno, invtotal, machinename, modifycounter, itemdiscpercno, relationcode, diseasecode, wardcode, admissioncode, returncounter, paid, billingdate, unreceivedbalance, totalofsalereturns, listofsrinvoices, printbalance, accountfor, paymentmode, paymentacccode, amt, amtby, amtdate, amtreference, outstandingamt, marked, transferable, transfered, transferedon, transferedby, imported, importedby, deliveredby, saletypecode, balance, pptcustcode, deleted, prescode, impactinventory, saleordercode, salecomments1, salecomments2, altersaleinvcode, recurringinvoice, recurringperiod, lastrecurringinvcode, recurringagainst, considerinpo, visitcode, duedate, srbufferinvcode, custrefno5, suppinvcode, grn, gccode, vehicle, shipto) SELECT v_saleinvcode, 2 AS salecatcode, v_custcode, v_usercode, localtimestamp(3) AS date, 0 AS discperc, 0 AS flatdisc, 0 AS misccharges, 0 AS salestax, 'Y' AS posted, localtimestamp(3) AS postdate, remarks, custrefno, v_headerno, v_headerinvcode, localtimestamp(3) AS date, NULL::smallint AS modifiedby, v_usercode AS postedby, 1 AS sprice, NULL::integer AS quotationcode, NULL::smallint AS doctcode, NULL::integer AS patientcode, 0 AS reprintingcounter, 0 AS cashreceived, 0 AS invgstperc1, 'N' AS printwaranty, 'N' AS printbatch, 1 AS messagecode, NULL::smallint AS smancode, 'F' AS invoicesize, custrefno2, custrefno3, custrefno4, 1 AS gstno, 0 AS invtotal, v_machinename, NULL::smallint AS modifycounter, 1 AS itemdiscpercno, NULL::smallint AS relationcode, NULL::smallint AS diseasecode, NULL::smallint AS wardcode, NULL::integer AS admissioncode, 0 AS returncounter, 'N' AS paid, orderdate AS billingdate, 0 AS unreceivedbalance, 0 AS totalofsalereturns, '', 'Y', 'Y', 'C' AS paymentmode, 2 AS paymentacccode, 0 AS amt, NULL::smallint AS amtby, localtimestamp(3) AS amtdate, NULL::citext AS amtreference, 0 AS outstandingamt, 'N' AS marked, 'N' AS transferable, 'N' AS transfered, NULL::timestamp(3) AS transferedon, NULL::smallint AS transferedby, 'N' AS imported, NULL::smallint AS importedby, NULL::smallint AS deliveredby, 1 AS saletypeode, 0 AS balance, NULL::smallint AS pptcustcode, 'N' AS deleted, NULL::integer AS prescode, 'Y' AS impactinventory, NULL::integer AS saleordercode, (SELECT dbo.fn_getpreference('SaleComments1') AS a) AS salecomments1, (SELECT dbo.fn_getpreference('SaleComments2') AS a) AS salecomments2, NULL::integer AS altersaleinvcode, 'N' AS recurringinvoice, 0 AS recurringperiod, NULL::integer AS lastrecurringinvcode, NULL::integer AS recurringagainst, 'Y' AS considerinpo, NULL::integer AS visitcode, localtimestamp(3) AS duedate, NULL::integer AS srbufferinvcode, NULL::citext AS custrefno5, NULL::citext AS suppinvcode, NULL::citext AS grn, NULL::smallint AS gccode, NULL::citext AS vehicle, NULL::citext AS shipto FROM dbo.presaleheader WHERE (presaleinvcode = v_presaleinvcode);
       GET DIAGNOSTICS _rc = ROW_COUNT;
       v_err := 0;
@@ -18235,8 +19121,10 @@ BEGIN
       IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
         RAISE EXCEPTION 'Error occured in inserting record into Sale Ledger : %', v_saleinvcode;
         v_continue := -1;
+        _rc := 1;
       ELSE
         v_innercounter := 1;
+        _rc := 1;
         WHILE (((v_innercounter <= v_totalrows)) AND ((v_continue >= 0))) LOOP
           _rc := 0;
           FOR _r1 IN SELECT icode AS c1, gcode AS c2, batch AS c3, expiry AS c4, looseqty AS c5, bonusqty AS c6, saleprice AS c7, discperc AS c8, itemflatdisc AS c9, unitsalestax AS c10, gstperc AS c11, itemdescription AS c12 FROM tmp_saletemp AS saletemp WHERE (id = v_innercounter) LOOP
@@ -18258,15 +19146,20 @@ BEGIN
           v_rowcount := _rc;
           _rc := 1;
           v_totalqty := (v_looseqty + v_bonusqty);
+          _rc := 1;
           IF (((v_totalqty > 0) AND (v_rowcount > 0)) AND (v_err = 0)) THEN
             SELECT r.return_value, r.avgprice INTO v_rt_code, v_hold_avgprice FROM dbo.sp_getitemavgprice(icode => v_icode, avgprice => v_hold_avgprice) AS r;
             IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
               v_continue := -1;
+              _rc := 1;
             ELSE
               v_totalstock := (SELECT coalesce(sum(currqty), 0) FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)));
+              _rc := 1;
               v_totalbatchqty := (SELECT coalesce(sum(currqty), 0) FROM dbo.godowndetail WHERE ((((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)) AND (godowndetail.batch = v_batch)) AND (godowndetail.expiry = v_expiry)));
+              _rc := 1;
               IF (v_totalbatchqty >= v_totalqty) THEN
                 v_newqty := (v_totalbatchqty - v_totalqty);
+                _rc := 1;
                 IF (v_newqty > 0) THEN
                   SELECT r.return_value INTO v_rt_code FROM dbo.sp_saleupdateitemstockbatch(gcode => v_gcode, icode => v_icode, batch => v_batch, expiry => v_expiry, newqty => v_newqty, oldqty => v_totalbatchqty) AS r;
                 ELSE
@@ -18274,8 +19167,10 @@ BEGIN
                 END IF;
                 IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                   v_continue := -1;
+                  _rc := 1;
                 ELSE
                   v_rowgroup := (v_rowgroup + 1);
+                  _rc := 1;
                   _rc := 0;
                   FOR _r2 IN SELECT saleprice AS c1, packunits AS c2 FROM dbo.item WHERE (icode = v_icode) LOOP
                     _rc := _rc + 1;
@@ -18284,10 +19179,12 @@ BEGIN
                   END LOOP;
                   IF ((v_packunits = 0) OR (v_packunits IS NULL)) THEN
                     v_packunits := 1;
+                    _rc := 1;
                   END IF;
                   SELECT r.return_value, r.lbi_maxutn INTO v_rt_code, v_saleutn FROM dbo.sp_maxutn(lbi_rows => (1)::bigint, lbi_maxutn => v_saleutn) AS r;
                   IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                     v_continue := -1;
+                    _rc := 1;
                   ELSE
                     INSERT INTO dbo.saledetail (saleinvcode, icode, gcode, batch, expiry, packqty, looseqty, bonusqty, packunits, saleprice, avgprice, rate, discperc, salestax, itemflatdisc, packprice, unitsalestax, gstperc, saleutn, balancestock, rowgroup, saleitemdescription) VALUES (v_saleinvcode, v_icode, v_gcode, v_batch, v_expiry, 0, v_looseqty, v_bonusqty, v_packunits, v_saleprice, v_hold_avgprice, (v_rate / v_packunits), v_discperc, 0, v_itemflatdisc, v_rate, v_unitsalestax, v_gstperc1, v_saleutn, 0, v_rowgroup, v_itemdescription);
                     GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -18297,17 +19194,21 @@ BEGIN
                     IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
                       RAISE EXCEPTION 'Error occured in inserting record into Sale Detail for Sale Inv. No. : %', v_saleinvcode;
                       v_continue := -1;
+                      _rc := 1;
                     END IF;
                   END IF;
                 END IF;
               ELSE
                 v_itemname := (SELECT name FROM dbo.item WHERE (icode = v_icode));
+                _rc := 1;
                 RAISE EXCEPTION 'Not enough stock for item (%) to decrease for Sale Inv. No : %', v_itemname, v_saleinvcode;
                 v_continue := -1;
+                _rc := 1;
               END IF;
             END IF;
           END IF;
           v_innercounter := (v_innercounter + 1);
+          _rc := 1;
         END LOOP;
         IF (((v_continue >= 0)) AND (v_innercounter > v_totalrows)) THEN
           UPDATE dbo.saleledger SET invtotal = coalesce(dbo.fn_getsaleinvtotal((saleledger.saleinvcode)::integer), 0), outstandingamt = coalesce(dbo.fn_getsaleinvtotal((saleledger.saleinvcode)::integer), 0) WHERE (saleinvcode = v_saleinvcode);
@@ -18318,6 +19219,7 @@ BEGIN
           IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
             RAISE EXCEPTION 'Unable to update Sale Inv. total for Sale Invoice %', 1;
             v_continue := -1;
+            _rc := 1;
           END IF;
           IF ((v_continue >= 0)) THEN
             UPDATE dbo.presaleheader SET posted = 'Y', postdate = localtimestamp(3), postedby = v_usercode, saleinvcode = v_saleinvcode WHERE (presaleinvcode = v_presaleinvcode);
@@ -18328,6 +19230,7 @@ BEGIN
             IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
               RAISE EXCEPTION 'Unable to update Sale Order Status (Inv. No. %)', 1;
               v_continue := -1;
+              _rc := 1;
             END IF;
           END IF;
         END IF;
@@ -18418,6 +19321,7 @@ BEGIN
   v_usercode := usercode;
   v_newsaleinvcode := newsaleinvcode;
   v_posted := coalesce((SELECT posted FROM dbo.saleorderheader WHERE (saleordercode = v_saleordercode)), 'N');
+  _rc := 1;
   IF (v_posted = 'Y') THEN
     RAISE EXCEPTION 'Sale Order is Already Posted, Can not post again.';
     return_value := -1;
@@ -18425,12 +19329,19 @@ BEGIN
     RETURN;
   END IF;
   v_firsttime := 0;
+  _rc := 1;
   v_custcode := 19;
+  _rc := 1;
   v_salecatcode := 3;
+  _rc := 1;
   v_saletypecode := 2;
+  _rc := 1;
   v_module := (SELECT module FROM dbo.module WHERE (name = 'Sales'));
+  _rc := 1;
   v_serverdate := localtimestamp(3);
+  _rc := 1;
   v_socatcode := coalesce((SELECT socatcode FROM dbo.saleorderheader WHERE (saleordercode = v_saleordercode)), 1);
+  _rc := 1;
   DROP TABLE IF EXISTS tmp_saletemp;
   CREATE TEMP TABLE tmp_saletemp (
     id integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
@@ -18453,31 +19364,44 @@ BEGIN
   INSERT INTO tmp_saletemp (icode, gcode, looseqty, satisfiableqty, satisfiedqty, saleprice, discperc, claimable, claimablediscperc, itemflatdisc, unitsalestax, gstperc, saleitemdescription, itemadvancetaxperc, rowid) SELECT icode, gcode, sum(looseqty), sum(looseqty), 0, max(saleprice), max(discperc), max(claimable), max(claimablediscperc), max(itemflatdisc), max(unitsalestax), max(gstperc), saleitemdescription, max(itemadvancetaxperc), max(rowid) AS rowid FROM dbo.saleorderdetail WHERE (saleordercode = v_saleordercode) GROUP BY icode, gcode, saleitemdescription ORDER BY rowid;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_saleorder_rowcount := ((SELECT count(icode) FROM dbo.saleorderdetail WHERE (saleordercode = v_saleordercode)) + 1);
+  _rc := 1;
   v_anyitem_exist := trunc((SELECT sum((satisfiableqty - satisfiedqty)) FROM tmp_saletemp AS saletemp))::integer;
+  _rc := 1;
   v_continue := 0;
+  _rc := 1;
   v_invcounter := 1;
+  _rc := 1;
   v_invdetail_exist := 1;
+  _rc := 1;
   v_rowgroup := 0;
+  _rc := 1;
   v_headerno := (SELECT headerno FROM dbo.saleorderheader WHERE (saleordercode = v_saleordercode));
+  _rc := 1;
   WHILE ((v_anyitem_exist > 0) AND (v_continue >= 0)) LOOP
     IF (v_invdetail_exist > 0) THEN
       SELECT r.return_value, r.key INTO v_rt_code, v_saleinvcode FROM dbo.sp_gettabmaxkey(tabname => 'Saleledger', key => v_saleinvcode) AS r;
     END IF;
     IF ((v_firsttime = 0)) THEN
       v_firsttime := 1;
+      _rc := 1;
     END IF;
     v_rowgroup := 0;
+    _rc := 1;
     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
       v_continue := -1;
+      _rc := 1;
     ELSE
       IF (v_invdetail_exist > 0) THEN
         SELECT r.return_value, r.key INTO v_rt_code, v_headerinvno FROM dbo.sp_getheadertabmaxkey(headercode => v_headerno, modulecode => (v_module)::smallint, key => v_headerinvno) AS r;
       END IF;
       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
         v_continue := -1;
+        _rc := 1;
       ELSE
         v_err := 0;
+        _rc := 1;
         v_rowcount := 1;
+        _rc := 1;
         IF (v_invdetail_exist > 0) THEN
           INSERT INTO dbo.saleledger (saleinvcode, salecatcode, custcode, salesmancode, date, discperc, flatdisc, misccharges, salestax, posted, postdate, remarks, custrefno, headerno, headerinvno, originaldate, modifiedby, postedby, sprice, quotationno, doctcode, patientcode, reprintingcounter, cashreceived, invgstperc1, printwaranty, printbatch, messagecode, smancode, invoicesize, custrefno2, custrefno3, custrefno4, gstno, invtotal, machinename, modifycounter, itemdiscpercno, relationcode, diseasecode, wardcode, admissioncode, returncounter, paid, billingdate, unreceivedbalance, totalofsalereturns, listofsrinvoices, printbalance, accountfor, paymentmode, paymentacccode, amt, amtby, amtdate, amtreference, outstandingamt, marked, transferable, transfered, transferedon, transferedby, imported, importedby, deliveredby, saletypecode, balance, pptcustcode, deleted, prescode, impactinventory, saleordercode, salecomments1, salecomments2, altersaleinvcode, recurringinvoice, recurringperiod, lastrecurringinvcode, recurringagainst, considerinpo, visitcode, duedate, srbufferinvcode, custrefno5, suppinvcode, grn, gccode, vehicle, shipto, advancetax, advancetaxamt, misccharges1, misccharges2, misccharges3, misccharges4, misccharges5, fbrposfee) SELECT v_saleinvcode, 2 AS salecatcode, custcode, usercode, localtimestamp(3) AS date, discperc, flatdisc, misccharges, 0 AS salestax, 'N' AS posted, localtimestamp(3) AS postdate, remarks, custrefno, v_headerno, v_headerinvno, localtimestamp(3) AS date, modifiedby, postedby, 1 AS sprice, quotationcode, doctcode, patientcode, reprintingcounter, 0 AS cashreceived, invgstperc1, 'N' AS printwaranty, 'N' AS printbatch, messagecode, smancode, invoicesize, custrefno2, custrefno3, custrefno4, gstno, invtotal, machinename, modifycounter, itemdiscpercno, relationcode, diseasecode, wardcode, NULL::integer AS admissioncode, 0 AS returncounter, 'N' AS paid, billingdate, invtotal AS unreceivedbalance, 0 AS totalofsalereturns, '', 'Y', 'Y', 'C' AS paymentmode, 2 AS paymentacccode, 0 AS amt, NULL::smallint AS amtby, localtimestamp(3) AS amtdate, NULL::citext AS amtreference, invtotal AS outstandingamt, 'N' AS marked, 'N' AS transferable, 'N' AS transfered, NULL::timestamp(3) AS transferedon, NULL::smallint AS transferedby, 'N' AS imported, NULL::smallint AS importedby, NULL::smallint AS deliveredby, 1 AS saletypeode, 0 AS balance, pptcustcode, 'N' AS deleted, prescode, 'Y' AS impactinventory, saleordercode, (SELECT dbo.fn_getpreference('SaleComments1') AS a) AS salecomments1, (SELECT dbo.fn_getpreference('SaleComments2') AS a) AS salecomments2, NULL::integer AS altersaleinvcode, 'N' AS recurringinvoice, 0 AS recurringperiod, NULL::integer AS lastrecurringinvcode, NULL::integer AS recurringagainst, 'Y' AS considerinpo, NULL::integer AS visitcode, localtimestamp(3) AS duedate, NULL::integer AS srbufferinvcode, NULL::citext AS custrefno5, suppinvcode, grn, gccode, vehicle, shipto, advancetax, advancetaxamt, misccharges1, misccharges2, misccharges3, misccharges4, misccharges5, fbrposfee FROM dbo.saleorderheader WHERE (saleordercode = v_saleordercode);
           GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -18488,10 +19412,14 @@ BEGIN
         IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
           RAISE EXCEPTION 'Error occured in inserting record into Sale Ledger : %', v_saleinvcode;
           v_continue := -1;
+          _rc := 1;
         ELSE
           v_anyitem_exist := trunc((SELECT sum((satisfiableqty - satisfiedqty)) FROM tmp_saletemp AS saletemp))::integer;
+          _rc := 1;
           v_lineitems_rowcount := (SELECT count(*) FROM tmp_saletemp AS saletemp);
+          _rc := 1;
           v_innercounter := 1;
+          _rc := 1;
           WHILE ((((v_anyitem_exist > 0)) AND ((v_innercounter <= v_lineitems_rowcount))) AND ((v_continue >= 0))) LOOP
             _rc := 0;
             FOR _r1 IN SELECT icode AS c1, gcode AS c2, looseqty AS c3, satisfiableqty AS c4, satisfiedqty AS c5, saleprice AS c6, discperc AS c7, itemflatdisc AS c8, unitsalestax AS c9, gstperc AS c10, saleitemdescription AS c11, claimable AS c12, claimablediscperc AS c13, itemadvancetaxperc AS c14 FROM tmp_saletemp AS saletemp WHERE (id = v_innercounter) LOOP
@@ -18516,11 +19444,14 @@ BEGIN
             IF (((v_rowcount = 1)) AND ((((v_satisfiableqty - v_satisfiedqty)) > 0))) THEN
               IF (((v_looseqty + v_satisfiedqty)) <= v_satisfiableqty) THEN
                 v_givenqty := v_looseqty;
+                _rc := 1;
               ELSE
                 v_givenqty := (v_satisfiableqty - v_satisfiedqty);
+                _rc := 1;
               END IF;
               IF (v_givenqty <= 0) THEN
                 v_givenqty := 1;
+                _rc := 1;
               ELSE
                 UPDATE tmp_saletemp AS saletemp SET satisfiedqty = (v_satisfiedqty + v_givenqty) WHERE (icode = v_icode);
                 GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -18528,11 +19459,14 @@ BEGIN
               SELECT r.return_value, r.avgprice INTO v_rt_code, v_hold_avgprice FROM dbo.sp_getitemavgprice(icode => v_icode, avgprice => v_hold_avgprice) AS r;
               IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                 v_continue := -1;
+                _rc := 1;
               ELSE
                 SELECT r.return_value, r.qty INTO v_rt_code, v_total_availablestock FROM dbo.sp_getitemstockall(icode => v_icode, qty => v_total_availablestock) AS r;
                 v_totalqty := (SELECT coalesce(sum(currqty), 0) FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)));
+                _rc := 1;
                 IF (v_totalqty >= v_givenqty) THEN
                   v_rowgroup := (v_rowgroup + 1);
+                  _rc := 1;
                   _rc := 0;
                   FOR _r2 IN SELECT saleprice AS c1, packunits AS c2 FROM dbo.item WHERE (icode = v_icode) LOOP
                     _rc := _rc + 1;
@@ -18541,26 +19475,36 @@ BEGIN
                   END LOOP;
                   IF ((v_packunits = 0) OR (v_packunits IS NULL)) THEN
                     v_packunits := 1;
+                    _rc := 1;
                   END IF;
                   v_reqqty := v_givenqty;
+                  _rc := 1;
                   OPEN cur_itembatch_cursor FOR SELECT batch, expiry, currqty FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)) ORDER BY priority, expiry, currqty;
                   v_totalrows := (-1);
+                  _rc := 1;
                   FETCH NEXT FROM cur_itembatch_cursor INTO v_batch, v_expiry, v_currqty;
                   IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
                   v_counter := 1;
+                  _rc := 1;
                   WHILE (((_fs = 0) AND (v_counter <= v_totalrows)) AND (v_reqqty > 0)) LOOP
                     v_batchqty := v_currqty;
+                    _rc := 1;
                     IF (v_batchqty >= v_reqqty) THEN
                       v_delqty := v_reqqty;
+                      _rc := 1;
                     ELSE
                       v_delqty := v_batchqty;
+                      _rc := 1;
                     END IF;
                     v_reqqty := (v_reqqty - v_delqty);
+                    _rc := 1;
                     SELECT r.return_value, r.lbi_maxutn INTO v_rt_code, v_saleutn FROM dbo.sp_maxutn(lbi_rows => (1)::bigint, lbi_maxutn => v_saleutn) AS r;
                     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                       v_continue := -1;
+                      _rc := 1;
                     END IF;
                     v_total_availablestock := (v_total_availablestock - v_delqty);
+                    _rc := 1;
                     INSERT INTO dbo.saledetail (saleinvcode, icode, gcode, batch, expiry, packqty, looseqty, packunits, saleprice, avgprice, rate, discperc, salestax, itemflatdisc, packprice, unitsalestax, gstperc, saleutn, balancestock, rowgroup, saleitemdescription, claimable, claimablediscperc, itemadvancetaxperc) VALUES (v_saleinvcode, v_icode, v_gcode, v_batch, v_expiry, 0, v_delqty, v_packunits, v_saleprice, v_hold_avgprice, (v_rate / v_packunits), v_discperc, 0, v_itemflatdisc, v_rate, v_unitsalestax, v_gstperc1, v_saleutn, v_total_availablestock, v_rowgroup, v_saleitemdescription, v_claimable, v_claimablediscperc, v_itemadvancetaxperc);
                     GET DIAGNOSTICS _rc = ROW_COUNT;
                     v_err := 0;
@@ -18569,8 +19513,10 @@ BEGIN
                     IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
                       RAISE EXCEPTION 'Error occured in inserting record into Sale Detail for Sale Inv. No. : %', v_saleinvcode;
                       v_continue := -1;
+                      _rc := 1;
                     ELSE
                       v_newqty := (v_currqty - v_delqty);
+                      _rc := 1;
                       IF (v_newqty > 0) THEN
                         SELECT r.return_value INTO v_rt_code FROM dbo.sp_saleupdateitemstockbatch(gcode => (v_gcode)::integer, icode => v_icode, batch => v_batch, expiry => v_expiry, newqty => v_newqty, oldqty => v_currqty) AS r;
                       ELSE
@@ -18578,9 +19524,11 @@ BEGIN
                       END IF;
                       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                         v_continue := -1;
+                        _rc := 1;
                       END IF;
                     END IF;
                     v_counter := (v_counter + 1);
+                    _rc := 1;
                     FETCH NEXT FROM cur_itembatch_cursor INTO v_batch, v_expiry, v_currqty;
                     IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
                   END LOOP;
@@ -18588,19 +19536,25 @@ BEGIN
                   -- DEALLOCATE ItemBatch_Cursor
                 ELSE
                   v_itemname := (SELECT name FROM dbo.item WHERE (icode = v_icode));
+                  _rc := 1;
                   RAISE EXCEPTION 'Not enough stock for item (%) to decrease for Sale Inv. No : %', v_itemname, v_saleinvcode;
                   v_continue := -1;
+                  _rc := 1;
                 END IF;
               END IF;
             END IF;
             v_innercounter := (v_innercounter + 1);
+            _rc := 1;
             v_anyitem_exist := trunc((SELECT sum((satisfiableqty - satisfiedqty)) FROM tmp_saletemp AS saletemp))::integer;
+            _rc := 1;
           END LOOP;
           v_invdetail_exist := (SELECT count(*) FROM dbo.saledetail WHERE (saleinvcode = v_saleinvcode));
+          _rc := 1;
         END IF;
       END IF;
     END IF;
     v_anyitem_exist := trunc((SELECT sum((satisfiableqty - satisfiedqty)) FROM tmp_saletemp AS saletemp))::integer;
+    _rc := 1;
   END LOOP;
   DROP TABLE IF EXISTS tmp_saletemp;
   IF ((v_continue >= 0)) THEN
@@ -18612,6 +19566,7 @@ BEGIN
     IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
       RAISE EXCEPTION 'Unable to update Sale Invoice for Sale Inv. %', v_saleinvcode;
       v_continue := -1;
+      _rc := 1;
     END IF;
     IF ((v_continue >= 0)) THEN
       UPDATE dbo.saleorderheader SET finalized = 'Y', status = 'COMPLETED' WHERE (saleordercode = v_saleordercode);
@@ -18620,11 +19575,13 @@ BEGIN
       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
         RAISE EXCEPTION 'Unable to update Sale Order Posting Status (Sale Order No. %)', 1;
         v_continue := -1;
+        _rc := 1;
       END IF;
     END IF;
   END IF;
   IF ((v_continue >= 0)) THEN
     v_newsaleinvcode := v_saleinvcode;
+    _rc := 1;
   END IF;
   return_value := v_continue;
   newsaleinvcode := v_newsaleinvcode;
@@ -18686,17 +19643,22 @@ BEGIN
   END IF;
   IF (v_usercode IS NULL) THEN
     v_usercode := 1;
+    _rc := 1;
   END IF;
   v_posted := coalesce((SELECT posted FROM dbo.serviceheader WHERE (serviceinvcode = v_serviceinvcode)), 'N');
+  _rc := 1;
   IF ((v_posted = 'N') OR (v_posted IS NULL)) THEN
     return_value := 0;
     RETURN;
   END IF;
   v_method := coalesce((SELECT dbo.fn_getpreference('serviceticketgenerationmethod')), 'Q');
+  _rc := 1;
   IF (v_method IS NULL) THEN
     v_method := 'Q';
+    _rc := 1;
   END IF;
   v_tot_tickets := trunc(coalesce((SELECT sum(CASE WHEN (v_method = 'S') THEN s.ticketstogenerate ELSE d.qty END) FROM dbo.servicedetail AS d, dbo.service AS s WHERE (((d.serviceinvcode = v_serviceinvcode) AND (d.servicecode = s.servicecode)) AND (s.ticketrequired = 'Y'))), 0))::integer;
+  _rc := 1;
   IF (v_tot_tickets = 0) THEN
     return_value := 0;
     RETURN;
@@ -18709,11 +19671,13 @@ BEGIN
     RETURN;
   END IF;
   v_tot_services := coalesce((SELECT count(*) FROM tv_sp_generateserviceticket_service_table AS service_table), 0);
+  _rc := 1;
   IF (v_tot_services = 0) THEN
     return_value := 0;
     RETURN;
   END IF;
   v_errcode := 0;
+  _rc := 1;
   SELECT r.return_value, r.key INTO v_errcode, v_start_ticket FROM dbo.sp_locktabmaxkey(tabname => 'ServiceTicket', key => v_start_ticket) AS r;
   IF ((0 <> 0) OR (v_errcode <> 0)) THEN
     RAISE EXCEPTION 'Problem while Fetching Service Ticket Key Value';
@@ -18721,21 +19685,34 @@ BEGIN
     RETURN;
   END IF;
   v_rowid := 1;
+  _rc := 1;
   WHILE (v_rowid <= v_tot_services) LOOP
     v_in_rowid := 1;
+    _rc := 1;
     v_in_qty := (SELECT qty FROM tv_sp_generateserviceticket_service_table AS service_table WHERE (rowid = v_rowid));
+    _rc := 1;
     v_servicecode := (SELECT servicecode FROM tv_sp_generateserviceticket_service_table AS service_table WHERE (rowid = v_rowid));
+    _rc := 1;
     v_interval := (SELECT interval FROM tv_sp_generateserviceticket_service_table AS service_table WHERE (rowid = v_rowid));
+    _rc := 1;
     v_expirydays := (SELECT expirydays FROM tv_sp_generateserviceticket_service_table AS service_table WHERE (rowid = v_rowid));
+    _rc := 1;
     v_date := (SELECT date FROM tv_sp_generateserviceticket_service_table AS service_table WHERE (rowid = v_rowid));
+    _rc := 1;
     v_expiry := (SELECT CASE WHEN (v_method = 'S') THEN (v_date + (v_expirydays) * interval '1 day') ELSE expiry END FROM tv_sp_generateserviceticket_service_table AS service_table WHERE (rowid = v_rowid));
+    _rc := 1;
     v_price := coalesce((SELECT price FROM tv_sp_generateserviceticket_service_table AS service_table WHERE (rowid = v_rowid)), 0);
+    _rc := 1;
     v_discperc := coalesce((SELECT discperc FROM tv_sp_generateserviceticket_service_table AS service_table WHERE (rowid = v_rowid)), 0);
+    _rc := 1;
     WHILE (v_in_rowid <= v_in_qty) LOOP
       v_ticketcode := (v_start_ticket + v_in_rowid);
+      _rc := 1;
       IF (v_in_rowid > 1) THEN
         v_date := (v_date + (v_interval) * interval '1 day');
+        _rc := 1;
         v_expiry := (SELECT CASE WHEN (v_method = 'S') THEN (v_date + (v_expirydays) * interval '1 day') ELSE expiry END FROM tv_sp_generateserviceticket_service_table AS service_table WHERE (rowid = v_rowid));
+        _rc := 1;
       END IF;
       INSERT INTO dbo.serviceticket (serviceticketcode, date, serviceinvcode, servicecode, price, discperc, expireson, ticketused, ticketusedon, usercode) VALUES (v_ticketcode, v_date, v_serviceinvcode, v_servicecode, v_price, v_discperc, v_expiry, 'N', localtimestamp(3), v_usercode);
       GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -18745,12 +19722,17 @@ BEGIN
         RETURN;
       END IF;
       v_in_rowid := (v_in_rowid + 1);
+      _rc := 1;
     END LOOP;
     v_start_ticket := v_ticketcode;
+    _rc := 1;
     v_rowid := (v_rowid + 1);
+    _rc := 1;
   END LOOP;
   v_end_ticket := v_ticketcode;
+  _rc := 1;
   v_errcode := 0;
+  _rc := 1;
   SELECT r.return_value INTO v_errcode FROM dbo.sp_updatetabmaxkey(tabname => 'ServiceTicket', key => v_end_ticket) AS r;
   IF ((0 <> 0) OR (v_errcode <> 0)) THEN
     RAISE EXCEPTION 'Problem while Updating Service Ticket Key Value';
@@ -19034,6 +20016,7 @@ BEGIN
   v_itemname := itemname;
   v_rettype := rettype;
   v_groupcode := (SELECT min(groupcode) FROM dbo.usergroups WHERE (usercode = v_usercode));
+  _rc := 1;
   v_err := 0;
   v_rowcount := _rc;
   _rc := 1;
@@ -19051,7 +20034,9 @@ BEGIN
       IF (v_err <> 0) THEN
         RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
         v_retcode := -1;
+        _rc := 1;
         v_rettype := 0;
+        _rc := 1;
         return_value := v_retcode;
         icode := v_icode;
         itemname := v_itemname;
@@ -19071,7 +20056,9 @@ BEGIN
         IF (v_err <> 0) THEN
           RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
           v_retcode := -1;
+          _rc := 1;
           v_rettype := 0;
+          _rc := 1;
           return_value := v_retcode;
           icode := v_icode;
           itemname := v_itemname;
@@ -19080,7 +20067,9 @@ BEGIN
         END IF;
         IF (v_rowcount = 0) THEN
           v_icode := NULL;
+          _rc := 1;
           v_itemname := NULL;
+          _rc := 1;
         END IF;
       END IF;
     ELSE
@@ -19096,7 +20085,9 @@ BEGIN
       IF (v_err <> 0) THEN
         RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
         v_retcode := -1;
+        _rc := 1;
         v_rettype := 0;
+        _rc := 1;
         return_value := v_retcode;
         icode := v_icode;
         itemname := v_itemname;
@@ -19116,7 +20107,9 @@ BEGIN
         IF (v_err <> 0) THEN
           RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
           v_retcode := -1;
+          _rc := 1;
           v_rettype := 0;
+          _rc := 1;
           return_value := v_retcode;
           icode := v_icode;
           itemname := v_itemname;
@@ -19125,20 +20118,25 @@ BEGIN
         END IF;
         IF (v_rowcount = 0) THEN
           v_icode := NULL;
+          _rc := 1;
           v_itemname := NULL;
+          _rc := 1;
         END IF;
       END IF;
     END IF;
     IF (v_icode IS NULL) THEN
       IF ((dbo.fn_getpreference('SearchItemCodeIfAliasNameNotFound'))::citext = 'Y') THEN
         v_tempicode := coalesce((SELECT (trunc((v_aliasname)::numeric))::integer), 0);
+        _rc := 1;
         v_err := 0;
         v_rowcount := _rc;
         _rc := 1;
         IF (v_err <> 0) THEN
           RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
           v_retcode := -1;
+          _rc := 1;
           v_rettype := 0;
+          _rc := 1;
           return_value := v_retcode;
           icode := v_icode;
           itemname := v_itemname;
@@ -19159,7 +20157,9 @@ BEGIN
             IF (v_err <> 0) THEN
               RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
               v_retcode := -1;
+              _rc := 1;
               v_rettype := 0;
+              _rc := 1;
               return_value := v_retcode;
               icode := v_icode;
               itemname := v_itemname;
@@ -19168,7 +20168,9 @@ BEGIN
             END IF;
             IF (v_rowcount = 0) THEN
               v_icode := NULL;
+              _rc := 1;
               v_itemname := NULL;
+              _rc := 1;
             END IF;
           ELSE
             _rc := 0;
@@ -19183,7 +20185,9 @@ BEGIN
             IF (v_err <> 0) THEN
               RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
               v_retcode := -1;
+              _rc := 1;
               v_rettype := 0;
+              _rc := 1;
               return_value := v_retcode;
               icode := v_icode;
               itemname := v_itemname;
@@ -19192,13 +20196,17 @@ BEGIN
             END IF;
             IF (v_rowcount = 0) THEN
               v_icode := NULL;
+              _rc := 1;
               v_itemname := NULL;
+              _rc := 1;
             END IF;
           END IF;
           IF (v_icode IS NULL) THEN
             RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
             v_retcode := -1;
+            _rc := 1;
             v_rettype := 0;
+            _rc := 1;
             return_value := v_retcode;
             icode := v_icode;
             itemname := v_itemname;
@@ -19206,12 +20214,16 @@ BEGIN
             RETURN;
           ELSE
             v_retcode := 0;
+            _rc := 1;
             v_rettype := 1;
+            _rc := 1;
           END IF;
         ELSE
           RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
           v_retcode := -1;
+          _rc := 1;
           v_rettype := 0;
+          _rc := 1;
           return_value := v_retcode;
           icode := v_icode;
           itemname := v_itemname;
@@ -19221,7 +20233,9 @@ BEGIN
       ELSE
         RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
         v_retcode := -1;
+        _rc := 1;
         v_rettype := 0;
+        _rc := 1;
         return_value := v_retcode;
         icode := v_icode;
         itemname := v_itemname;
@@ -19230,7 +20244,9 @@ BEGIN
       END IF;
     ELSE
       v_retcode := 0;
+      _rc := 1;
       v_rettype := 0;
+      _rc := 1;
     END IF;
   ELSE
     RAISE EXCEPTION 'Unable to fetch group code for user code = %', v_usercode;
@@ -19282,6 +20298,7 @@ BEGIN
   v_itemname := itemname;
   v_rettype := rettype;
   v_groupcode := (SELECT min(groupcode) FROM dbo.usergroups WHERE (usercode = v_usercode));
+  _rc := 1;
   v_err := 0;
   v_rowcount := _rc;
   _rc := 1;
@@ -19299,7 +20316,9 @@ BEGIN
       IF (v_err <> 0) THEN
         RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
         v_retcode := -1;
+        _rc := 1;
         v_rettype := 0;
+        _rc := 1;
         return_value := v_retcode;
         icode := v_icode;
         itemname := v_itemname;
@@ -19319,7 +20338,9 @@ BEGIN
         IF (v_err <> 0) THEN
           RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
           v_retcode := -1;
+          _rc := 1;
           v_rettype := 0;
+          _rc := 1;
           return_value := v_retcode;
           icode := v_icode;
           itemname := v_itemname;
@@ -19328,7 +20349,9 @@ BEGIN
         END IF;
         IF (v_rowcount = 0) THEN
           v_icode := NULL;
+          _rc := 1;
           v_itemname := NULL;
+          _rc := 1;
         END IF;
       END IF;
     ELSE
@@ -19344,7 +20367,9 @@ BEGIN
       IF (v_err <> 0) THEN
         RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
         v_retcode := -1;
+        _rc := 1;
         v_rettype := 0;
+        _rc := 1;
         return_value := v_retcode;
         icode := v_icode;
         itemname := v_itemname;
@@ -19364,7 +20389,9 @@ BEGIN
         IF (v_err <> 0) THEN
           RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
           v_retcode := -1;
+          _rc := 1;
           v_rettype := 0;
+          _rc := 1;
           return_value := v_retcode;
           icode := v_icode;
           itemname := v_itemname;
@@ -19373,20 +20400,25 @@ BEGIN
         END IF;
         IF (v_rowcount = 0) THEN
           v_icode := NULL;
+          _rc := 1;
           v_itemname := NULL;
+          _rc := 1;
         END IF;
       END IF;
     END IF;
     IF (v_icode IS NULL) THEN
       IF ((dbo.fn_getpreference('SearchItemCodeIfAliasNameNotFound'))::citext = 'Y') THEN
         v_tempicode := coalesce((SELECT (trunc((v_aliasname)::numeric))::integer), 0);
+        _rc := 1;
         v_err := 0;
         v_rowcount := _rc;
         _rc := 1;
         IF (v_err <> 0) THEN
           RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
           v_retcode := -1;
+          _rc := 1;
           v_rettype := 0;
+          _rc := 1;
           return_value := v_retcode;
           icode := v_icode;
           itemname := v_itemname;
@@ -19407,7 +20439,9 @@ BEGIN
             IF (v_err <> 0) THEN
               RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
               v_retcode := -1;
+              _rc := 1;
               v_rettype := 0;
+              _rc := 1;
               return_value := v_retcode;
               icode := v_icode;
               itemname := v_itemname;
@@ -19416,7 +20450,9 @@ BEGIN
             END IF;
             IF (v_rowcount = 0) THEN
               v_icode := NULL;
+              _rc := 1;
               v_itemname := NULL;
+              _rc := 1;
             END IF;
           ELSE
             _rc := 0;
@@ -19431,7 +20467,9 @@ BEGIN
             IF (v_err <> 0) THEN
               RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
               v_retcode := -1;
+              _rc := 1;
               v_rettype := 0;
+              _rc := 1;
               return_value := v_retcode;
               icode := v_icode;
               itemname := v_itemname;
@@ -19440,13 +20478,17 @@ BEGIN
             END IF;
             IF (v_rowcount = 0) THEN
               v_icode := NULL;
+              _rc := 1;
               v_itemname := NULL;
+              _rc := 1;
             END IF;
           END IF;
           IF (v_icode IS NULL) THEN
             RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
             v_retcode := -1;
+            _rc := 1;
             v_rettype := 0;
+            _rc := 1;
             return_value := v_retcode;
             icode := v_icode;
             itemname := v_itemname;
@@ -19454,12 +20496,16 @@ BEGIN
             RETURN;
           ELSE
             v_retcode := 0;
+            _rc := 1;
             v_rettype := 1;
+            _rc := 1;
           END IF;
         ELSE
           RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
           v_retcode := -1;
+          _rc := 1;
           v_rettype := 0;
+          _rc := 1;
           return_value := v_retcode;
           icode := v_icode;
           itemname := v_itemname;
@@ -19469,7 +20515,9 @@ BEGIN
       ELSE
         RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
         v_retcode := -1;
+        _rc := 1;
         v_rettype := 0;
+        _rc := 1;
         return_value := v_retcode;
         icode := v_icode;
         itemname := v_itemname;
@@ -19478,7 +20526,9 @@ BEGIN
       END IF;
     ELSE
       v_retcode := 0;
+      _rc := 1;
       v_rettype := 0;
+      _rc := 1;
     END IF;
   ELSE
     RAISE EXCEPTION 'Unable to fetch group code for user code = %', v_usercode;
@@ -19541,6 +20591,7 @@ BEGIN
   v_rettype := rettype;
   v_qty := qty;
   v_groupcode := (SELECT min(groupcode) FROM dbo.usergroups WHERE (usercode = v_usercode));
+  _rc := 1;
   v_err := 0;
   v_rowcount := _rc;
   _rc := 1;
@@ -19559,7 +20610,9 @@ BEGIN
       IF (v_err <> 0) THEN
         RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
         v_retcode := -1;
+        _rc := 1;
         v_rettype := 0;
+        _rc := 1;
         return_value := v_retcode;
         icode := v_icode;
         itemname := v_itemname;
@@ -19581,7 +20634,9 @@ BEGIN
         IF (v_err <> 0) THEN
           RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
           v_retcode := -1;
+          _rc := 1;
           v_rettype := 0;
+          _rc := 1;
           return_value := v_retcode;
           icode := v_icode;
           itemname := v_itemname;
@@ -19591,7 +20646,9 @@ BEGIN
         END IF;
         IF (v_rowcount = 0) THEN
           v_icode := NULL;
+          _rc := 1;
           v_itemname := NULL;
+          _rc := 1;
         END IF;
       END IF;
     ELSE
@@ -19608,7 +20665,9 @@ BEGIN
       IF (v_err <> 0) THEN
         RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
         v_retcode := -1;
+        _rc := 1;
         v_rettype := 0;
+        _rc := 1;
         return_value := v_retcode;
         icode := v_icode;
         itemname := v_itemname;
@@ -19630,7 +20689,9 @@ BEGIN
         IF (v_err <> 0) THEN
           RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
           v_retcode := -1;
+          _rc := 1;
           v_rettype := 0;
+          _rc := 1;
           return_value := v_retcode;
           icode := v_icode;
           itemname := v_itemname;
@@ -19640,20 +20701,25 @@ BEGIN
         END IF;
         IF (v_rowcount = 0) THEN
           v_icode := NULL;
+          _rc := 1;
           v_itemname := NULL;
+          _rc := 1;
         END IF;
       END IF;
     END IF;
     IF (v_icode IS NULL) THEN
       IF ((dbo.fn_getpreference('SearchItemCodeIfAliasNameNotFound'))::citext = 'Y') THEN
         v_tempicode := coalesce((SELECT (trunc((v_aliasname)::numeric))::integer), 0);
+        _rc := 1;
         v_err := 0;
         v_rowcount := _rc;
         _rc := 1;
         IF (v_err <> 0) THEN
           RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
           v_retcode := -1;
+          _rc := 1;
           v_rettype := 0;
+          _rc := 1;
           return_value := v_retcode;
           icode := v_icode;
           itemname := v_itemname;
@@ -19676,7 +20742,9 @@ BEGIN
             IF (v_err <> 0) THEN
               RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
               v_retcode := -1;
+              _rc := 1;
               v_rettype := 0;
+              _rc := 1;
               return_value := v_retcode;
               icode := v_icode;
               itemname := v_itemname;
@@ -19686,7 +20754,9 @@ BEGIN
             END IF;
             IF (v_rowcount = 0) THEN
               v_icode := NULL;
+              _rc := 1;
               v_itemname := NULL;
+              _rc := 1;
             END IF;
           ELSE
             _rc := 0;
@@ -19702,7 +20772,9 @@ BEGIN
             IF (v_err <> 0) THEN
               RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
               v_retcode := -1;
+              _rc := 1;
               v_rettype := 0;
+              _rc := 1;
               return_value := v_retcode;
               icode := v_icode;
               itemname := v_itemname;
@@ -19712,13 +20784,17 @@ BEGIN
             END IF;
             IF (v_rowcount = 0) THEN
               v_icode := NULL;
+              _rc := 1;
               v_itemname := NULL;
+              _rc := 1;
             END IF;
           END IF;
           IF (v_icode IS NULL) THEN
             RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
             v_retcode := -1;
+            _rc := 1;
             v_rettype := 0;
+            _rc := 1;
             return_value := v_retcode;
             icode := v_icode;
             itemname := v_itemname;
@@ -19727,12 +20803,16 @@ BEGIN
             RETURN;
           ELSE
             v_retcode := 0;
+            _rc := 1;
             v_rettype := 1;
+            _rc := 1;
           END IF;
         ELSE
           RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
           v_retcode := -1;
+          _rc := 1;
           v_rettype := 0;
+          _rc := 1;
           return_value := v_retcode;
           icode := v_icode;
           itemname := v_itemname;
@@ -19742,11 +20822,15 @@ BEGIN
         END IF;
       ELSE
         v_retcode := -1;
+        _rc := 1;
         v_rettype := 0;
+        _rc := 1;
       END IF;
     ELSE
       v_retcode := 0;
+      _rc := 1;
       v_rettype := 0;
+      _rc := 1;
     END IF;
     IF (v_icode IS NULL) THEN
       SELECT max(ws.weighingscalecode) INTO v_weighingscalecode FROM dbo.weighingscale AS ws WHERE ((((length(rtrim(v_aliasname)) = ws.barcodelen) AND ((substring(v_aliasname, ws.scaleidpos, length(rtrim(ws.scaleid))))::citext = ws.scaleid)) AND (length(rtrim(substring(v_aliasname, ws.itemstartpos, (((ws.itemendpos - ws.itemstartpos) + 1))))) <= (((ws.itemendpos - ws.itemstartpos) + 1)))) AND (length(rtrim(substring(v_aliasname, ws.weightstartpos, (((ws.weightendpos - ws.weightstartpos) + 1))))) <= (((ws.weightendpos - ws.weightstartpos) + 1))));
@@ -19754,7 +20838,9 @@ BEGIN
       IF ((0 <> 0) OR (_rc = 0)) THEN
         RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
         v_retcode := -1;
+        _rc := 1;
         v_rettype := 0;
+        _rc := 1;
         return_value := v_retcode;
         icode := v_icode;
         itemname := v_itemname;
@@ -19772,7 +20858,9 @@ BEGIN
         IF ((0 <> 0) OR (_rc = 0)) THEN
           RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
           v_retcode := -1;
+          _rc := 1;
           v_rettype := 0;
+          _rc := 1;
           return_value := v_retcode;
           icode := v_icode;
           itemname := v_itemname;
@@ -19784,7 +20872,9 @@ BEGIN
         IF ((0 <> 0) OR (v_retcode < 0)) THEN
           RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
           v_retcode := -1;
+          _rc := 1;
           v_rettype := 0;
+          _rc := 1;
           return_value := v_retcode;
           icode := v_icode;
           itemname := v_itemname;
@@ -19794,8 +20884,11 @@ BEGIN
         END IF;
         IF ((v_icode > 0) AND (v_retcode = 0)) THEN
           v_qty := ((v_weightstr)::numeric(15,4) / 1000);
+          _rc := 1;
           v_retcode := 0;
+          _rc := 1;
           v_rettype := 0;
+          _rc := 1;
         END IF;
       END IF;
     END IF;
@@ -19869,7 +20962,9 @@ BEGIN
   v_purprice := purprice;
   v_saleprice := saleprice;
   v_alternate := 0;
+  _rc := 1;
   v_groupcode := (SELECT min(groupcode) FROM dbo.usergroups WHERE (usercode = v_usercode));
+  _rc := 1;
   v_err := 0;
   v_rowcount := _rc;
   _rc := 1;
@@ -19891,7 +20986,9 @@ BEGIN
       IF (v_err <> 0) THEN
         RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
         v_retcode := -1;
+        _rc := 1;
         v_rettype := 0;
+        _rc := 1;
         return_value := v_retcode;
         icode := v_icode;
         itemname := v_itemname;
@@ -19918,7 +21015,9 @@ BEGIN
         IF (v_err <> 0) THEN
           RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
           v_retcode := -1;
+          _rc := 1;
           v_rettype := 0;
+          _rc := 1;
           return_value := v_retcode;
           icode := v_icode;
           itemname := v_itemname;
@@ -19930,9 +21029,12 @@ BEGIN
         END IF;
         IF (v_rowcount = 0) THEN
           v_icode := NULL;
+          _rc := 1;
           v_itemname := NULL;
+          _rc := 1;
         ELSE
           v_alternate := 1;
+          _rc := 1;
         END IF;
       END IF;
     ELSE
@@ -19952,7 +21054,9 @@ BEGIN
       IF (v_err <> 0) THEN
         RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
         v_retcode := -1;
+        _rc := 1;
         v_rettype := 0;
+        _rc := 1;
         return_value := v_retcode;
         icode := v_icode;
         itemname := v_itemname;
@@ -19979,7 +21083,9 @@ BEGIN
         IF (v_err <> 0) THEN
           RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
           v_retcode := -1;
+          _rc := 1;
           v_rettype := 0;
+          _rc := 1;
           return_value := v_retcode;
           icode := v_icode;
           itemname := v_itemname;
@@ -19991,22 +21097,28 @@ BEGIN
         END IF;
         IF (v_rowcount = 0) THEN
           v_icode := NULL;
+          _rc := 1;
           v_itemname := NULL;
+          _rc := 1;
         ELSE
           v_alternate := 1;
+          _rc := 1;
         END IF;
       END IF;
     END IF;
     IF (v_icode IS NULL) THEN
       IF ((dbo.fn_getpreference('SearchItemCodeIfAliasNameNotFound'))::citext = 'Y') THEN
         v_tempicode := coalesce((SELECT (trunc((v_aliasname)::numeric))::integer), 0);
+        _rc := 1;
         v_err := 0;
         v_rowcount := _rc;
         _rc := 1;
         IF (v_err <> 0) THEN
           RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
           v_retcode := -1;
+          _rc := 1;
           v_rettype := 0;
+          _rc := 1;
           return_value := v_retcode;
           icode := v_icode;
           itemname := v_itemname;
@@ -20034,7 +21146,9 @@ BEGIN
             IF (v_err <> 0) THEN
               RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
               v_retcode := -1;
+              _rc := 1;
               v_rettype := 0;
+              _rc := 1;
               return_value := v_retcode;
               icode := v_icode;
               itemname := v_itemname;
@@ -20046,7 +21160,9 @@ BEGIN
             END IF;
             IF (v_rowcount = 0) THEN
               v_icode := NULL;
+              _rc := 1;
               v_itemname := NULL;
+              _rc := 1;
             END IF;
           ELSE
             _rc := 0;
@@ -20065,7 +21181,9 @@ BEGIN
             IF (v_err <> 0) THEN
               RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
               v_retcode := -1;
+              _rc := 1;
               v_rettype := 0;
+              _rc := 1;
               return_value := v_retcode;
               icode := v_icode;
               itemname := v_itemname;
@@ -20077,13 +21195,17 @@ BEGIN
             END IF;
             IF (v_rowcount = 0) THEN
               v_icode := NULL;
+              _rc := 1;
               v_itemname := NULL;
+              _rc := 1;
             END IF;
           END IF;
           IF (v_icode IS NULL) THEN
             RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
             v_retcode := -1;
+            _rc := 1;
             v_rettype := 0;
+            _rc := 1;
             return_value := v_retcode;
             icode := v_icode;
             itemname := v_itemname;
@@ -20094,12 +21216,16 @@ BEGIN
             RETURN;
           ELSE
             v_retcode := 0;
+            _rc := 1;
             v_rettype := 1;
+            _rc := 1;
           END IF;
         ELSE
           RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
           v_retcode := -1;
+          _rc := 1;
           v_rettype := 0;
+          _rc := 1;
           return_value := v_retcode;
           icode := v_icode;
           itemname := v_itemname;
@@ -20111,11 +21237,15 @@ BEGIN
         END IF;
       ELSE
         v_retcode := -1;
+        _rc := 1;
         v_rettype := 0;
+        _rc := 1;
       END IF;
     ELSE
       v_retcode := 0;
+      _rc := 1;
       v_rettype := 0;
+      _rc := 1;
     END IF;
     IF (v_icode IS NULL) THEN
       SELECT max(ws.weighingscalecode) INTO v_weighingscalecode FROM dbo.weighingscale AS ws WHERE ((((length(rtrim(v_aliasname)) = ws.barcodelen) AND ((substring(v_aliasname, ws.scaleidpos, length(rtrim(ws.scaleid))))::citext = ws.scaleid)) AND (length(rtrim(substring(v_aliasname, ws.itemstartpos, (((ws.itemendpos - ws.itemstartpos) + 1))))) <= (((ws.itemendpos - ws.itemstartpos) + 1)))) AND (length(rtrim(substring(v_aliasname, ws.weightstartpos, (((ws.weightendpos - ws.weightstartpos) + 1))))) <= (((ws.weightendpos - ws.weightstartpos) + 1))));
@@ -20123,7 +21253,9 @@ BEGIN
       IF ((0 <> 0) OR (_rc = 0)) THEN
         RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
         v_retcode := -1;
+        _rc := 1;
         v_rettype := 0;
+        _rc := 1;
         return_value := v_retcode;
         icode := v_icode;
         itemname := v_itemname;
@@ -20143,7 +21275,9 @@ BEGIN
         IF ((0 <> 0) OR (_rc = 0)) THEN
           RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
           v_retcode := -1;
+          _rc := 1;
           v_rettype := 0;
+          _rc := 1;
           return_value := v_retcode;
           icode := v_icode;
           itemname := v_itemname;
@@ -20156,13 +21290,16 @@ BEGIN
         SELECT r.return_value, r.icode, r.itemname, r.rettype, r.qty, r.purprice, r.saleprice INTO v_retcode, v_icode, v_itemname, v_rettype, v_qty, v_purprice, v_saleprice FROM dbo.sp_getaliasname_withqtyprice(usercode => v_usercode, aliasname => v_newaliasname, icode => v_icode, itemname => v_itemname, rettype => v_rettype, qty => v_qty, purprice => v_purprice, saleprice => v_saleprice) AS r;
         IF ((0 <> 0) OR (v_retcode < 0)) THEN
           v_tempicode := coalesce((SELECT (trunc((v_newaliasname)::numeric))::integer), 0);
+          _rc := 1;
           v_err := 0;
           v_rowcount := _rc;
           _rc := 1;
           IF (v_err <> 0) THEN
             RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
             v_retcode := -1;
+            _rc := 1;
             v_rettype := 0;
+            _rc := 1;
             return_value := v_retcode;
             icode := v_icode;
             itemname := v_itemname;
@@ -20173,11 +21310,14 @@ BEGIN
             RETURN;
           ELSE
             v_newaliasname := ltrim(rtrim(dbo.tsql_str((v_tempicode)::numeric)));
+            _rc := 1;
             SELECT r.return_value, r.icode, r.itemname, r.rettype, r.qty, r.purprice, r.saleprice INTO v_retcode, v_icode, v_itemname, v_rettype, v_qty, v_purprice, v_saleprice FROM dbo.sp_getaliasname_withqtyprice(usercode => v_usercode, aliasname => v_newaliasname, icode => v_icode, itemname => v_itemname, rettype => v_rettype, qty => v_qty, purprice => v_purprice, saleprice => v_saleprice) AS r;
             IF ((0 <> 0) OR (v_retcode < 0)) THEN
               RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
               v_retcode := -1;
+              _rc := 1;
               v_rettype := 0;
+              _rc := 1;
               return_value := v_retcode;
               icode := v_icode;
               itemname := v_itemname;
@@ -20191,16 +21331,22 @@ BEGIN
         END IF;
         IF ((v_icode > 0) AND (v_retcode = 0)) THEN
           v_allowsaleindecimalqty := coalesce((SELECT allowsaleindecimalqty FROM dbo.item WHERE (icode = v_icode)), 'Y');
+          _rc := 1;
           IF (v_allowsaleindecimalqty = 'Y') THEN
             v_qty := ((v_weightstr)::numeric(15,4) / 1000);
+            _rc := 1;
             IF (v_qty < 0.01) THEN
               v_qty := (v_qty * 1000);
+              _rc := 1;
             END IF;
           ELSE
             v_qty := (trunc((v_weightstr)::numeric))::integer;
+            _rc := 1;
           END IF;
           v_retcode := 0;
+          _rc := 1;
           v_rettype := 0;
+          _rc := 1;
         END IF;
       END IF;
     END IF;
@@ -20217,6 +21363,7 @@ BEGIN
   END IF;
   IF ((v_alternate = 1) AND (v_rettype = 0)) THEN
     v_rettype := 2;
+    _rc := 1;
   END IF;
   return_value := v_retcode;
   icode := v_icode;
@@ -20561,6 +21708,7 @@ BEGIN
   _rc := 1;
   IF ((v_err = 0) AND (v_rowcount > 0)) THEN
     v_key := (v_key + 1);
+    _rc := 1;
     UPDATE dbo._headertabmaxkey SET tabmaxkey = v_key WHERE ((_headertabmaxkey.headercode = v_headercode) AND (_headertabmaxkey.module = v_modulecode));
     GET DIAGNOSTICS _rc = ROW_COUNT;
     v_err := 0;
@@ -20625,6 +21773,7 @@ BEGIN
   _rc := 1;
   IF ((v_err = 0) AND (v_rowcount > 0)) THEN
     v_counter := (v_counter + 1);
+    _rc := 1;
     UPDATE dbo.issuecategory SET counter = v_counter WHERE (issuecategorycode = v_category);
     GET DIAGNOSTICS _rc = ROW_COUNT;
     v_err := 0;
@@ -20687,6 +21836,7 @@ BEGIN
   IF (v_err <> 0) THEN
     RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
     v_retcode := -1;
+    _rc := 1;
     return_value := v_retcode;
     icode := v_icode;
     itemname := v_itemname;
@@ -20705,6 +21855,7 @@ BEGIN
     IF (v_err <> 0) THEN
       RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
       v_retcode := -1;
+      _rc := 1;
       return_value := v_retcode;
       icode := v_icode;
       itemname := v_itemname;
@@ -20712,18 +21863,22 @@ BEGIN
     END IF;
     IF (v_rowcount = 0) THEN
       v_icode := NULL;
+      _rc := 1;
       v_itemname := NULL;
+      _rc := 1;
     END IF;
   END IF;
   IF (v_icode IS NULL) THEN
     IF ((dbo.fn_getpreference('SearchItemCodeIfAliasNameNotFound'))::citext = 'Y') THEN
       v_tempicode := coalesce((SELECT (trunc((v_aliasname)::numeric))::integer), 0);
+      _rc := 1;
       v_err := 0;
       v_rowcount := _rc;
       _rc := 1;
       IF (v_err <> 0) THEN
         RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
         v_retcode := -1;
+        _rc := 1;
         return_value := v_retcode;
         icode := v_icode;
         itemname := v_itemname;
@@ -20742,6 +21897,7 @@ BEGIN
         IF (v_err <> 0) THEN
           RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
           v_retcode := -1;
+          _rc := 1;
           return_value := v_retcode;
           icode := v_icode;
           itemname := v_itemname;
@@ -20749,21 +21905,26 @@ BEGIN
         END IF;
         IF (v_rowcount = 0) THEN
           v_icode := NULL;
+          _rc := 1;
           v_itemname := NULL;
+          _rc := 1;
         END IF;
         IF (v_icode IS NULL) THEN
           RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
           v_retcode := -1;
+          _rc := 1;
           return_value := v_retcode;
           icode := v_icode;
           itemname := v_itemname;
           RETURN;
         ELSE
           v_retcode := 0;
+          _rc := 1;
         END IF;
       ELSE
         RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
         v_retcode := -1;
+        _rc := 1;
         return_value := v_retcode;
         icode := v_icode;
         itemname := v_itemname;
@@ -20772,6 +21933,7 @@ BEGIN
     ELSE
       RAISE EXCEPTION 'Unable to fetch Item Alias Name = %', v_aliasname;
       v_retcode := -1;
+      _rc := 1;
       return_value := v_retcode;
       icode := v_icode;
       itemname := v_itemname;
@@ -20805,17 +21967,21 @@ BEGIN
   v_icode := icode;
   v_avgprice := avgprice;
   v_price := (SELECT item.avgprice FROM dbo.item WHERE (icode = v_icode) FOR UPDATE OF item);
+  _rc := 1;
   v_err := 0;
   v_rowcount := _rc;
   _rc := 1;
   IF ((v_err = 0) AND (v_rowcount = 1)) THEN
     IF (v_price IS NULL) THEN
       v_avgprice := 0;
+      _rc := 1;
     ELSE
       v_avgprice := (v_price)::numeric(15,5);
+      _rc := 1;
     END IF;
   ELSE
     v_itemname := (SELECT name FROM dbo.item WHERE (icode = v_icode));
+    _rc := 1;
     RAISE EXCEPTION 'Unable to fetch AvgPrice for Item = %', v_itemname;
     return_value := -1;
     avgprice := v_avgprice;
@@ -21521,6 +22687,7 @@ BEGIN
   _rc := 1;
   IF ((v_err = 0) AND (v_rowcount > 0)) THEN
     v_counter := (v_counter + 1);
+    _rc := 1;
     UPDATE dbo.receiptcategory SET counter = v_counter WHERE (receiptcategorycode = v_category);
     GET DIAGNOSTICS _rc = ROW_COUNT;
     v_err := 0;
@@ -21894,7 +23061,9 @@ BEGIN
   v_servicecode := servicecode;
   v_servicename := servicename;
   v_retcode := 0;
+  _rc := 1;
   v_groupcode := (SELECT min(groupcode) FROM dbo.usergroups WHERE (usercode = v_usercode));
+  _rc := 1;
   v_err := 0;
   v_rowcount := _rc;
   _rc := 1;
@@ -21912,6 +23081,7 @@ BEGIN
       IF (v_err <> 0) THEN
         RAISE EXCEPTION 'Unable to fetch Service Alias Name = %', v_aliasname;
         v_retcode := -1;
+        _rc := 1;
         return_value := v_retcode;
         servicecode := v_servicecode;
         servicename := v_servicename;
@@ -21930,6 +23100,7 @@ BEGIN
       IF (v_err <> 0) THEN
         RAISE EXCEPTION 'Unable to fetch Service Alias Name = %', v_aliasname;
         v_retcode := -1;
+        _rc := 1;
         return_value := v_retcode;
         servicecode := v_servicecode;
         servicename := v_servicename;
@@ -21946,6 +23117,7 @@ BEGIN
   IF (v_servicecode IS NULL) THEN
     RAISE EXCEPTION 'Unable to fetch Service Alias Name = %', v_aliasname;
     v_retcode := -1;
+    _rc := 1;
     return_value := v_retcode;
     servicecode := v_servicecode;
     servicename := v_servicename;
@@ -22339,6 +23511,7 @@ BEGIN
   _rc := 1;
   IF ((v_err = 0) AND (v_rowcount > 0)) THEN
     v_key := (v_key + 1);
+    _rc := 1;
     UPDATE dbo._tabmaxkey SET tabmaxkey = v_key WHERE (_tabmaxkey.tabname = v_tabname);
     GET DIAGNOSTICS _rc = ROW_COUNT;
     v_err := 0;
@@ -22410,6 +23583,7 @@ BEGIN
   _rc := 1;
   IF ((v_err = 0) AND (v_rowcount > 0)) THEN
     v_key := (v_key + 1);
+    _rc := 1;
     UPDATE dbo.transactiontype SET counter = v_key WHERE (transactiontypecode = v_transactiontypecode);
     GET DIAGNOSTICS _rc = ROW_COUNT;
     v_err := 0;
@@ -22494,6 +23668,7 @@ BEGIN
   v_ai_vochcatcode := ai_vochcatcode;
   v_ai_vouchercode := ai_vouchercode;
   v_catname := (SELECT name FROM dbo.vochercategory WHERE (vochcatcode = v_ai_vochcatcode));
+  _rc := 1;
   IF (v_catname IS NULL) THEN
     -- SET NOCOUNT OFF
     RAISE EXCEPTION 'Voucher category does not exists, wrong voucher category code passed';
@@ -22512,6 +23687,7 @@ BEGIN
   _rc := 1;
   IF ((v_err = 0) AND (v_rowcount > 0)) THEN
     v_ai_vouchercode := (v_ai_vouchercode + 1);
+    _rc := 1;
     UPDATE dbo.vochercategory SET counter = v_ai_vouchercode WHERE (vochercategory.vochcatcode = v_ai_vochcatcode);
     GET DIAGNOSTICS _rc = ROW_COUNT;
     v_err := 0;
@@ -22936,6 +24112,7 @@ BEGIN
   CREATE TEMP TABLE tmp_detail ON COMMIT DROP AS SELECT purinvcode AS oldinvcode, -1 AS purinvcode, icode, gcode, batch, expiry, packqty, looseqty, packunits, purprice, discperc, avgprice, bonusqty, purrowid, newavgprice, currstock, gstperc, unitsalestax, purutn, saleprice, itemdescription, rate, salepriceforitem, foreignprice, purpriceinadvpur, netrate, recentpurprice, totalpieces, piecesinhand, receiptrowid, manfcodeforitem, discountedsaleprice, flatdiscforitem, retailprice, alternatecustomicode, manfdate, unitweight, qe1, qe2, qe3, qe4, qe5, we1, we2, we3, we4, we5, batchsaleprice FROM dbo.purdetail WHERE (purinvcode < 0);
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_query := 'ALTER TABLE tmp_header ADD COLUMN RowID integer NOT NULL GENERATED BY DEFAULT AS IDENTITY';
+  _rc := 1;
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
     IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
@@ -22947,13 +24124,19 @@ BEGIN
     RETURN;
   END IF;
   v_query := 'Insert Into tmp_header (OldInvCode,PurInvCode,PurCatCode,SuppCode,SuppInvCode,SalesmanCode,Date,POCode,DiscPerc,FlatDisc,MiscCharges,SalesTax,Posted,postdate,Remarks,OriginalDate,ModifiedBy,PostedBy,SuppInvDate,GRN,PORB,InvGSTPerc1,purtypecode,HeaderNo,HeaderInvNo,InvTotal,AccountFor,PaymentMode,PaymentAccCode,Amt,AmtBY,AmtDate,AmtReference,OutstandingAmt,Marked,Transferable,Transfered,TransferedOn,TransferedBy,Imported,ImportedBy,PrintBalance,PurInvPageSize,CurrencyCode,ConversionFactor,PrintCounter,AssociatedSaleOrderCode,AssociatedSaleInvCode,GCCode,Vehicle,ShipTo,NewPurchaseOrderNo,LCNO,UpdateAvgPriceWithNetRate,ImpactInventory,ImpPurInvCode,CreditDays,SuppInvAmount,CRS_Transfered,CRS_TransferedOn,ICatCode,MonthlyCounter,DailyCounter,CustCode,QE1_AccCode,QE2_AccCode,QE3_AccCode,QE4_AccCode,QE5_AccCode,WE1_AccCode,WE2_AccCode,WE3_AccCode,WE4_AccCode,WE5_AccCode) ';
+  _rc := 1;
   v_query := (v_query || ' Select OldInvCode=PurInvCode,PurInvCode=-1,PurCatCode,SuppCode,SuppInvCode,SalesmanCode,Date,POCode,DiscPerc,FlatDisc,MiscCharges,SalesTax,Posted,postdate,Remarks,OriginalDate,ModifiedBy,PostedBy,SuppInvDate,GRN,PORB,InvGSTPerc1,purtypecode,HeaderNo,HeaderInvNo,InvTotal,AccountFor,PaymentMode,PaymentAccCode,Amt,AmtBY,AmtDate,AmtReference,OutstandingAmt,Marked,Transferable,Transfered,TransferedOn,TransferedBy,Imported,ImportedBy,PrintBalance,PurInvPageSize,CurrencyCode,ConversionFactor,PrintCounter,AssociatedSaleOrderCode,AssociatedSaleInvCode,GCCode,Vehicle,ShipTo,NewPurchaseOrderNo,LCNO,UpdateAvgPriceWithNetRate,ImpactInventory,ImpPurInvCode,CreditDays,SuppInvAmount,CRS_Transfered,CRS_TransferedOn,ICatCode,MonthlyCounter,DailyCounter,CustCode,QE1_AccCode,QE2_AccCode,QE3_AccCode,QE4_AccCode,QE5_AccCode,WE1_AccCode,WE2_AccCode,WE3_AccCode,WE4_AccCode,WE5_AccCode ');
+  _rc := 1;
   v_query := ((((((((v_query || ' From ') || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.') || 'PurLedger ');
+  _rc := 1;
   v_query := ((((v_query || ' Where PurInvCode Between ') || (v_sinvcode)::text) || ' And ') || (v_linvcode)::text);
+  _rc := 1;
   IF (v_suppcode > 0) THEN
     v_query := ((v_query || ' AND SuppCode = ') || (v_suppcode)::text);
+    _rc := 1;
   END IF;
   v_query := (v_query || ' ORDER BY OldInvCode ');
+  _rc := 1;
   _dq2 := v_query;
   IF _dq2 IS NOT NULL THEN
     IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE dbo.tsql_dyn(_dq2); ELSE EXECUTE dbo.tsql_dyn(_dq2); END IF;
@@ -22961,13 +24144,19 @@ BEGIN
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF ((0 = 0) AND (_rc > 0)) THEN
     v_query := 'Insert Into tmp_detail (OldInvCode,PurInvCode,ICode,Gcode,Batch,Expiry,PackQty,LooseQty,PackUnits,PurPrice,DiscPerc,AvgPrice,BonusQty,NewAvgPrice,CurrStock,GSTPerc,UnitSalesTax,PurUtn,SalePrice,itemdescription,rate,SalePriceForItem,ForeignPrice,PurPriceInAdvPur,NetRate,RecentPurPrice,TotalPieces,PiecesInHand,ReceiptRowID,ManfCodeForItem,DiscountedSalePrice,FlatDiscForItem,RetailPrice,AlternateCustomICode,ManfDate,UnitWeight,QE1,QE2,QE3,QE4,QE5,WE1,WE2,WE3,WE4,WE5,BatchSalePrice) ';
+    _rc := 1;
     v_query := (v_query || 'Select OldInvCode=PurInvCode,PurInvCode=-1,ICode,Gcode,Batch,Expiry,PackQty,LooseQty,PackUnits,PurPrice,DiscPerc,AvgPrice,BonusQty,NewAvgPrice,CurrStock,GSTPerc,UnitSalesTax,PurUtn,SalePrice,itemdescription,rate,SalePriceForItem,ForeignPrice,PurPriceInAdvPur,NetRate,RecentPurPrice,TotalPieces,PiecesInHand,ReceiptRowID,ManfCodeForItem,DiscountedSalePrice,FlatDiscForItem,RetailPrice,AlternateCustomICode,ManfDate,UnitWeight,QE1,QE2,QE3,QE4,QE5,WE1,WE2,WE3,WE4,WE5,BatchSalePrice ');
+    _rc := 1;
     v_query := ((((((((v_query || 'From ') || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.') || 'PurDetail ');
+    _rc := 1;
     v_query := ((((v_query || 'Where PurInvCode Between ') || (v_sinvcode)::text) || ' And ') || (v_linvcode)::text);
+    _rc := 1;
     IF (v_suppcode > 0) THEN
       v_query := (((v_query || ' AND PurInvCode IN (SELECT PurInvCode FROM PurLedger WHERE SuppCode = ') || (v_suppcode)::text) || ') ');
+      _rc := 1;
     END IF;
     v_query := (v_query || ' ORDER BY OldInvCode, PurRowId ');
+    _rc := 1;
     _dq3 := v_query;
     IF _dq3 IS NOT NULL THEN
       IF _dq3 ~* '^[[:space:]]*select' THEN OPEN rs3 FOR EXECUTE dbo.tsql_dyn(_dq3); ELSE EXECUTE dbo.tsql_dyn(_dq3); END IF;
@@ -22989,8 +24178,10 @@ BEGIN
     END IF;
   END IF;
   v_rowcount := (SELECT count(*) FROM tmp_header AS header);
+  _rc := 1;
   IF ((v_linvcode >= v_sinvcode) AND (v_rowcount > 0)) THEN
     v_errcode := 0;
+    _rc := 1;
     SELECT r.return_value, r.key INTO v_errcode, v_purinvcode FROM dbo.sp_locktabmaxkey(tabname => 'PurLedger', key => v_purinvcode) AS r;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Problem while Fetching PurLedger Key Value';
@@ -23018,7 +24209,9 @@ BEGIN
       RETURN;
     END IF;
     v_end_invcode := coalesce((SELECT max(purinvcode) FROM tmp_header AS header), 1);
+    _rc := 1;
     v_errcode := 0;
+    _rc := 1;
     SELECT r.return_value INTO v_errcode FROM dbo.sp_updatetabmaxkey(tabname => 'PurLedger', key => v_end_invcode) AS r;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Problem while Updating PurLedger Key Value';
@@ -23199,6 +24392,7 @@ BEGIN
   CREATE TEMP TABLE tmp_detail ON COMMIT DROP AS SELECT quotationcode AS oldinvcode, -1 AS quotationcode, icode, qty, packunits, saleprice, discperc, salestax, itemflatdisc, bonusqty, gstperc, unitsalestax, itemdescription, gcode, remotenetsaleqty, remotestock, porate, podiscperc, specialrate, refno FROM dbo.quotationdetail WHERE (quotationcode < 0);
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_query := 'ALTER TABLE tmp_header ADD COLUMN RowID integer NOT NULL GENERATED BY DEFAULT AS IDENTITY';
+  _rc := 1;
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
     IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
@@ -23210,13 +24404,19 @@ BEGIN
     RETURN;
   END IF;
   v_query := 'Insert Into tmp_header (OldInvCode,QuotationCode,CustCode,SalesmanCode,date,DiscPerc,FlatDisc,MiscCharges,SalesTax,SPrice,ValidateUpTo,PostDate,Remarks,CustRefNo,headerno,OriginalDate,ModifiedBy,PostedBy,Posted,InvGSTPerc1,Remarks2,Remarks3,Remarks4,Remarks5,Remarks6,Remarks7,Remarks8,Remarks9,Pagesize,MessageCode,SManCode,LoosePack,ConsolidatedSaleOrder) ';
+  _rc := 1;
   v_query := (v_query || ' Select OldInvCode=QuotationCode,QuotationCode=-1,CustCode,SalesmanCode,date,DiscPerc,FlatDisc,MiscCharges,SalesTax,SPrice,ValidateUpTo,PostDate,Remarks,CustRefNo,headerno,OriginalDate,ModifiedBy,PostedBy,Posted,InvGSTPerc1,Remarks2,Remarks3,Remarks4,Remarks5,Remarks6,Remarks7,Remarks8,Remarks9,Pagesize,MessageCode,SManCode,LoosePack,ConsolidatedSaleOrder ');
+  _rc := 1;
   v_query := ((((((((v_query || ' From ') || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.') || 'QuotationHeader ');
+  _rc := 1;
   v_query := ((((v_query || ' Where QuotationCode Between ') || (v_sinvcode)::text) || ' And ') || (v_linvcode)::text);
+  _rc := 1;
   IF (v_custcode > 0) THEN
     v_query := ((v_query || ' AND CustCode = ') || (v_custcode)::text);
+    _rc := 1;
   END IF;
   v_query := (v_query || ' ORDER BY OldInvCode ');
+  _rc := 1;
   _dq2 := v_query;
   IF _dq2 IS NOT NULL THEN
     IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE dbo.tsql_dyn(_dq2); ELSE EXECUTE dbo.tsql_dyn(_dq2); END IF;
@@ -23224,13 +24424,19 @@ BEGIN
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF ((0 = 0) AND (_rc > 0)) THEN
     v_query := 'Insert Into tmp_detail (OldInvCode,QuotationCode,ICode,Qty,PackUnits,SalePrice,DiscPerc,SalesTax,itemflatdisc,BonusQty,GSTPerc,UnitSalesTax,ItemDescription,gcode,RemoteNetSaleQty,RemoteStock,PORate,PODiscPerc,SpecialRate,RefNo) ';
+    _rc := 1;
     v_query := (v_query || 'Select OldInvCode=QuotationCode,QuotationCode=-1,ICode,Qty,PackUnits,SalePrice,DiscPerc,SalesTax,itemflatdisc,BonusQty,GSTPerc,UnitSalesTax,ItemDescription,gcode,RemoteNetSaleQty,RemoteStock,PORate,PODiscPerc,SpecialRate,RefNo ');
+    _rc := 1;
     v_query := ((((((((v_query || 'From ') || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.') || 'QuotationDetail ');
+    _rc := 1;
     v_query := ((((v_query || 'Where QuotationCode Between ') || (v_sinvcode)::text) || ' And ') || (v_linvcode)::text);
+    _rc := 1;
     IF (v_custcode > 0) THEN
       v_query := (((v_query || ' AND QuotationCode IN (SELECT QuotationCode FROM QuotationHeader WHERE CustCode = ') || (v_custcode)::text) || ') ');
+      _rc := 1;
     END IF;
     v_query := (v_query || ' ORDER BY OldInvCode, RowID ');
+    _rc := 1;
     _dq3 := v_query;
     IF _dq3 IS NOT NULL THEN
       IF _dq3 ~* '^[[:space:]]*select' THEN OPEN rs3 FOR EXECUTE dbo.tsql_dyn(_dq3); ELSE EXECUTE dbo.tsql_dyn(_dq3); END IF;
@@ -23252,8 +24458,10 @@ BEGIN
     END IF;
   END IF;
   v_rowcount := (SELECT count(*) FROM tmp_header AS header);
+  _rc := 1;
   IF ((v_linvcode >= v_sinvcode) AND (v_rowcount > 0)) THEN
     v_errcode := 0;
+    _rc := 1;
     SELECT r.return_value, r.key INTO v_errcode, v_quotationcode FROM dbo.sp_locktabmaxkey(tabname => 'Quotation', key => v_quotationcode) AS r;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Problem while Fetching QuotationHeader Key Value';
@@ -23281,7 +24489,9 @@ BEGIN
       RETURN;
     END IF;
     v_end_invcode := coalesce((SELECT max(quotationcode) FROM tmp_header AS header), 1);
+    _rc := 1;
     v_errcode := 0;
+    _rc := 1;
     SELECT r.return_value INTO v_errcode FROM dbo.sp_updatetabmaxkey(tabname => 'Quotation', key => v_end_invcode) AS r;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Problem while Updating QuotationHeader Key Value';
@@ -23341,6 +24551,7 @@ BEGIN
   CREATE TEMP TABLE tmp_sdetail ON COMMIT DROP AS SELECT serviceinvcode AS oldinvcode, -1 AS serviceinvcode, servicecode, price, discperc, smancode, qty, commission, deliverydate, sampletaken, reportmade, costprice, remarks, serviceflatdisc, servicegstperc, serviceflattax, transportroutecode, vehiclecode FROM dbo.servicedetail WHERE (serviceinvcode < 0);
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_query := 'ALTER TABLE tmp_sheader ADD COLUMN RowID integer NOT NULL GENERATED BY DEFAULT AS IDENTITY';
+  _rc := 1;
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
     IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
@@ -23352,13 +24563,19 @@ BEGIN
     RETURN;
   END IF;
   v_query := 'Insert Into tmp_sheader (OldInvCode,ServiceInvCode,CustCode,SalesmanCode,ServiceCatCode,Remarks,OriginalDate,ModifiedBy,Date,PostedBy,PostDate,HeaderNo,DiscPerc,FlatDisc,MiscCharges,SaleInvCode,Posted,DoctCode,RePrintingCounter,ServiceOCode,CashReceived,PatientCode,AdmissionCode,DueDate,FullPatientName,PatientAge,PatientSex,PatientRefBy,Ref1,Ref2,CashAccCode,CashTendered,CashCharged,CashBack,InvTotal,OutStandingAmt,TokenNo,GuestCode,GuestCheckInCode,StudentCode,Marked,ServiceInvTypeCode,MessageCode,ServiceInvGSTPerc ) ';
+  _rc := 1;
   v_query := (v_query || ' Select OldInvCode=ServiceInvCode,ServiceInvCode=-1,CustCode,SalesmanCode,ServiceCatCode,Remarks,OriginalDate,ModifiedBy,Date,PostedBy,PostDate,HeaderNo,DiscPerc,FlatDisc,MiscCharges,SaleInvCode,Posted,DoctCode,RePrintingCounter,ServiceOCode,CashReceived,PatientCode,AdmissionCode,DueDate,FullPatientName,PatientAge,PatientSex,PatientRefBy,Ref1,Ref2,CashAccCode,CashTendered,CashCharged,CashBack,InvTotal,OutStandingAmt,TokenNo,GuestCode,GuestCheckInCode,StudentCode,Marked,ServiceInvTypeCode,MessageCode,ServiceInvGSTPerc ');
+  _rc := 1;
   v_query := ((((((((v_query || ' From ') || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.') || 'ServiceHeader ');
+  _rc := 1;
   v_query := (((((v_query || ' Where ServiceInvCode Between ') || (v_sinvcode)::text) || ' And ') || (v_linvcode)::text) || ' AND LTRIM(RTRIM(CAST(ServiceInvCode AS VARCHAR(10)))) NOT IN (SELECT LTRIM(RTRIM(Ref2)) FROM ServiceHeader WHERE Ref2 IS NOT NULL) ');
+  _rc := 1;
   IF (v_custcode > 0) THEN
     v_query := ((v_query || ' AND CustCode = ') || (v_custcode)::text);
+    _rc := 1;
   END IF;
   v_query := (v_query || ' ORDER BY OldInvCode ');
+  _rc := 1;
   _dq2 := v_query;
   IF _dq2 IS NOT NULL THEN
     IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE dbo.tsql_dyn(_dq2); ELSE EXECUTE dbo.tsql_dyn(_dq2); END IF;
@@ -23366,13 +24583,19 @@ BEGIN
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF ((0 = 0) AND (_rc > 0)) THEN
     v_query := 'Insert Into tmp_sdetail (OldInvCode,ServiceInvCode,ServiceCode,Price,DiscPerc,SmanCode,Qty,Commission,DeliveryDate,SampleTaken,ReportMade,CostPrice,Remarks,ServiceFlatDisc,ServiceGSTPerc,ServiceFlatTax,TransportRouteCode,VehicleCode) ';
+    _rc := 1;
     v_query := (v_query || 'Select OldInvCode=ServiceInvCode,ServiceInvCode=-1,ServiceCode,Price,DiscPerc,SmanCode,Qty,Commission,DeliveryDate,SampleTaken,ReportMade,CostPrice,Remarks,ServiceFlatDisc,ServiceGSTPerc,ServiceFlatTax,TransportRouteCode,VehicleCode ');
+    _rc := 1;
     v_query := ((((((((v_query || 'From ') || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.') || 'ServiceDetail ');
+    _rc := 1;
     v_query := (((((v_query || 'Where ServiceInvCode Between ') || (v_sinvcode)::text) || ' And ') || (v_linvcode)::text) || ' AND LTRIM(RTRIM(CAST(ServiceInvCode AS VARCHAR(10)))) NOT IN (SELECT LTRIM(RTRIM(Ref2)) FROM ServiceHeader WHERE Ref2 IS NOT NULL) ');
+    _rc := 1;
     IF (v_custcode > 0) THEN
       v_query := (((v_query || ' AND ServiceInvCode IN (SELECT ServiceInvCode FROM ServiceHeader WHERE CustCode = ') || (v_custcode)::text) || ') ');
+      _rc := 1;
     END IF;
     v_query := (v_query || ' ORDER BY OldInvCode, SrvRowId ');
+    _rc := 1;
     _dq3 := v_query;
     IF _dq3 IS NOT NULL THEN
       IF _dq3 ~* '^[[:space:]]*select' THEN OPEN rs3 FOR EXECUTE dbo.tsql_dyn(_dq3); ELSE EXECUTE dbo.tsql_dyn(_dq3); END IF;
@@ -23394,8 +24617,10 @@ BEGIN
     END IF;
   END IF;
   v_rowcount := (SELECT count(*) FROM tmp_sheader AS sheader);
+  _rc := 1;
   IF ((v_linvcode >= v_sinvcode) AND (v_rowcount > 0)) THEN
     v_errcode := 0;
+    _rc := 1;
     SELECT r.return_value, r.key INTO v_errcode, v_serviceinvcode FROM dbo.sp_locktabmaxkey(tabname => 'ServiceHeader', key => v_serviceinvcode) AS r;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Problem while Fetching ServiceHeader Key Value';
@@ -23423,7 +24648,9 @@ BEGIN
       RETURN;
     END IF;
     v_end_invcode := coalesce((SELECT max(serviceinvcode) FROM tmp_sheader AS sheader), 1);
+    _rc := 1;
     v_errcode := 0;
+    _rc := 1;
     SELECT r.return_value INTO v_errcode FROM dbo.sp_updatetabmaxkey(tabname => 'ServiceHeader', key => v_end_invcode) AS r;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Problem while Updating ServiceHeader Key Value';
@@ -23787,21 +25014,37 @@ BEGIN
   v_ac_level := ac_level;
   -- SET NOCOUNT ON
   v_invsys := coalesce((SELECT dbo.fn_getpreference('InventorySystemUsed') AS a), 'P');
+  _rc := 1;
   v_ln_invacc := (SELECT code FROM dbo.global WHERE (name = 'GT_InventoryAcc'));
+  _rc := 1;
   v_ln_cgs := (SELECT code FROM dbo.global WHERE (name = 'GT_CostOfGoodsSoldAcc'));
+  _rc := 1;
   v_ln_purchaseacc := (SELECT code FROM dbo.global WHERE (name = 'GT_PurchaseAccount'));
+  _rc := 1;
   v_ln_cashacc := (SELECT code FROM dbo.global WHERE (name = 'GT_CashACC'));
+  _rc := 1;
   v_ln_equityacc := (SELECT code FROM dbo.global WHERE (name = 'GT_EquityACC'));
+  _rc := 1;
   v_ln_salesacc := (SELECT code FROM dbo.global WHERE (name = 'GT_SalesACC'));
+  _rc := 1;
   v_ln_salesretacc := (SELECT code FROM dbo.global WHERE (name = 'GT_SalesReturnACC'));
+  _rc := 1;
   v_ln_purchaseretacc := (SELECT code FROM dbo.global WHERE (name = 'GT_PurchaseReturnsAccount'));
+  _rc := 1;
   v_ln_revfromservice := (SELECT code FROM dbo.global WHERE (name = 'GT_RevenueFromServices'));
+  _rc := 1;
   v_ln_otherrevenuescat := (SELECT code FROM dbo.global WHERE (name = 'GT_OtherRevenuesCat'));
+  _rc := 1;
   v_ln_revenuefromsalescat := (SELECT code FROM dbo.global WHERE (name = 'GT_RevenueFromSalesCat'));
+  _rc := 1;
   v_ln_directexpensescat := (SELECT code FROM dbo.global WHERE (name = 'GT_DirectExpensesCat'));
+  _rc := 1;
   v_ln_operatingexpensescat := (SELECT code FROM dbo.global WHERE (name = 'GT_OperatingExpensesCat'));
+  _rc := 1;
   v_ln_otherexpensescat := (SELECT code FROM dbo.global WHERE (name = 'GT_OtherExpensesCat'));
+  _rc := 1;
   v_ln_otherrevenuescat := (SELECT code FROM dbo.global WHERE (name = 'GT_OtherRevenuesCat'));
+  _rc := 1;
   DELETE FROM dbo.reportdata;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   -- BEGIN TRANSACTION (the caller owns the transaction)
@@ -23809,21 +25052,25 @@ BEGIN
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF (_rc <> 0) THEN
     v_ln_temp := (SELECT coalesce(sum(coalesce(value1, 0)), 0) FROM dbo.reportdata WHERE (code2 = 1));
+    _rc := 1;
   END IF;
   INSERT INTO dbo.reportdata (code1, code2, code3, name1, name2, value1, value2, value3, value4, date1, date2, value5) SELECT -1 AS code1, 2 AS code2, 0 AS code3, 'COST OF SALES' AS name1, '' AS name2, (((SELECT coalesce(sum((coalesce(v.debit, 0) - coalesce(v.credit, 0))), 0) FROM dbo.virtualgl AS v WHERE (((v.acccode IN (SELECT acccode FROM dbo.accounts WHERE (subcode IN (SELECT subacccode FROM dbo.subaccounts WHERE (catacccode = v_ln_directexpensescat))))) AND (v.date >= v_ad_sdate)) AND (v.date <= v_ad_edate))) + (SELECT round((coalesce(sum(coalesce((newavgprice * newstock), 0)), 0))::numeric, 0) FROM dbo.stockledger WHERE ((date < v_ad_sdate) AND (((((icode)::text || ' ') || (utn)::text))::citext IN (SELECT (((icode)::text || ' ') || (max(utn))::text) FROM dbo.stockledger WHERE ((v_invsys = 'P') AND (date < v_ad_sdate)) GROUP BY icode))))) - (SELECT round((coalesce(sum(coalesce((newavgprice * newstock), 0)), 0))::numeric, 0) FROM dbo.stockledger WHERE ((date <= v_ad_edate) AND (((((icode)::text || ' ') || (utn)::text))::citext IN (SELECT (((icode)::text || ' ') || (max(utn))::text) FROM dbo.stockledger WHERE ((v_invsys = 'P') AND (date <= v_ad_edate)) GROUP BY icode))))) AS value1, 0 AS value2, 0 AS value3, 0 AS value4, v_ad_sdate AS date1, v_ad_edate AS date2, (v_ac_level)::numeric(15,2) AS value5;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF (_rc <> 0) THEN
     v_ln_temp := (SELECT coalesce(sum(coalesce(value1, 0)), 0) FROM dbo.reportdata WHERE (code2 = 2));
+    _rc := 1;
   END IF;
   INSERT INTO dbo.reportdata (code1, code2, code3, name1, name2, value1, value2, value3, value4, date1, date2, value5) SELECT -1 AS code1, 3 AS code2, 0 AS code3, 'GROSS PROFIT/LOSS' AS name1, '' AS name2, (SELECT coalesce(sum(coalesce(value1, 0)), 0) FROM dbo.reportdata) AS value1, 0 AS value2, 0 AS value3, 0 AS value4, v_ad_sdate AS date1, v_ad_edate AS date2, (v_ac_level)::numeric(15,2) AS value5;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF (_rc <> 0) THEN
     v_ln_temp := (SELECT coalesce(sum(coalesce(value1, 0)), 0) FROM dbo.reportdata WHERE (code2 = 3));
+    _rc := 1;
   END IF;
   INSERT INTO dbo.reportdata (code1, code2, code3, name1, name2, value1, value2, value3, value4, date1, date2, value5) SELECT -1 AS code1, 4 AS code2, 0 AS code3, (SELECT name FROM dbo.categoryaccounts WHERE (catacccode = v_ln_operatingexpensescat)) AS name1, '' AS name2, coalesce(sum((v.debit - v.credit)), 0) AS value1, 0 AS value2, 0 AS value3, 0 AS value4, v_ad_sdate AS date1, v_ad_edate AS date2, (v_ac_level)::numeric(15,2) AS value5 FROM dbo.virtualgl AS v WHERE (((v.acccode IN (SELECT acccode FROM dbo.accounts WHERE (subcode IN (SELECT subacccode FROM dbo.subaccounts WHERE (catacccode = v_ln_operatingexpensescat))))) AND (v.date >= v_ad_sdate)) AND (v.date <= v_ad_edate));
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF (_rc <> 0) THEN
     v_ln_temp := (SELECT coalesce(sum(coalesce(value1, 0)), 0) FROM dbo.reportdata WHERE (code2 = 4));
+    _rc := 1;
   END IF;
   IF (v_ln_temp <> 0) THEN
     INSERT INTO dbo.reportdata (code1, code2, code3, name1, name2, value1, value2, value3, value4, date1, date2, value5) SELECT -1 AS code1, 5 AS code2, 0 AS code3, 'OPERATING PROFIT/LOSS' AS name1, '' AS name2, (SELECT sum(coalesce(value1, 0)) FROM dbo.reportdata WHERE (code2 IN (3, 4))) AS value1, 0 AS value2, 0 AS value3, 0 AS value4, v_ad_sdate AS date1, v_ad_edate AS date2, (v_ac_level)::numeric(15,2) AS value5;
@@ -23831,11 +25078,13 @@ BEGIN
   END IF;
   IF (_rc <> 0) THEN
     v_ln_temp := (SELECT coalesce(sum(coalesce(value1, 0)), 0) FROM dbo.reportdata WHERE (code2 = 5));
+    _rc := 1;
   END IF;
   INSERT INTO dbo.reportdata (code1, code2, code3, name1, name2, value1, value2, value3, value4, date1, date2, value5) SELECT -1 AS code1, 6 AS code2, 0 AS code3, (SELECT name FROM dbo.categoryaccounts WHERE (catacccode = v_ln_otherexpensescat)) AS name1, '' AS name2, coalesce(sum((v.debit - v.credit)), 0) AS value1, 0 AS value2, 0 AS value3, 0 AS value4, v_ad_sdate AS date1, v_ad_edate AS date2, (v_ac_level)::numeric(15,2) AS value5 FROM dbo.virtualgl AS v WHERE (((v.acccode IN (SELECT acccode FROM dbo.accounts WHERE (subcode IN (SELECT subacccode FROM dbo.subaccounts WHERE (catacccode = v_ln_otherexpensescat))))) AND (v.date >= v_ad_sdate)) AND (v.date <= v_ad_edate));
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF (_rc <> 0) THEN
     v_ln_temp := (SELECT coalesce(sum(coalesce(value1, 0)), 0) FROM dbo.reportdata WHERE (code2 = 6));
+    _rc := 1;
   END IF;
   IF (v_ln_temp <> 0) THEN
     INSERT INTO dbo.reportdata (code1, code2, code3, name1, name2, value1, value2, value3, value4, date1, date2, value5) SELECT -1 AS code1, 7 AS code2, 0 AS code3, ('PROFIT/LOSS AFTER ' || (SELECT rtrim(ltrim(name)) FROM dbo.categoryaccounts WHERE (catacccode = v_ln_otherexpensescat))) AS name1, '' AS name2, (SELECT coalesce(sum(coalesce(value1, 0)), 0) FROM dbo.reportdata WHERE (code2 IN ((SELECT max(code2) FROM dbo.reportdata WHERE (code2 IN (3, 5))), 6))) AS value1, 0 AS value2, 0 AS value3, 0 AS value4, v_ad_sdate AS date1, v_ad_edate AS date2, (v_ac_level)::numeric(15,2) AS value5;
@@ -23843,11 +25092,13 @@ BEGIN
   END IF;
   IF (_rc <> 0) THEN
     v_ln_temp := (SELECT coalesce(sum(coalesce(value1, 0)), 0) FROM dbo.reportdata WHERE (code2 = 7));
+    _rc := 1;
   END IF;
   INSERT INTO dbo.reportdata (code1, code2, code3, name1, name2, value1, value2, value3, value4, date1, date2, value5) SELECT -1 AS code1, 8 AS code2, 0 AS code3, (SELECT name FROM dbo.categoryaccounts WHERE (catacccode = v_ln_otherrevenuescat)) AS name1, '' AS name2, coalesce(sum((v.debit - v.credit)), 0) AS value1, 0 AS value2, 0 AS value3, 0 AS value4, v_ad_sdate AS date1, v_ad_edate AS date2, (v_ac_level)::numeric(15,2) AS value5 FROM dbo.virtualgl AS v WHERE (((v.acccode IN (SELECT acccode FROM dbo.accounts WHERE (subcode IN (SELECT subacccode FROM dbo.subaccounts WHERE (catacccode = v_ln_otherrevenuescat))))) AND (v.date >= v_ad_sdate)) AND (v.date <= v_ad_edate));
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF (_rc <> 0) THEN
     v_ln_temp := (SELECT coalesce(sum(coalesce(value1, 0)), 0) FROM dbo.reportdata WHERE (code2 = 8));
+    _rc := 1;
   END IF;
   IF (v_ln_temp <> 0) THEN
     INSERT INTO dbo.reportdata (code1, code2, code3, name1, name2, value1, value2, value3, value4, date1, date2, value5) SELECT -1 AS code1, 9 AS code2, 0 AS code3, 'NET INCOME/LOSS' AS name1, '' AS name2, (SELECT coalesce(sum(coalesce(value1, 0)), 0) FROM dbo.reportdata WHERE (code2 IN ((SELECT max(code2) FROM dbo.reportdata WHERE (code2 IN (3, 5, 7))), 8))) AS value1, 0 AS value2, 0 AS value3, 0 AS value4, v_ad_sdate AS date1, v_ad_edate AS date2, (v_ac_level)::numeric(15,2) AS value5;
@@ -23855,11 +25106,13 @@ BEGIN
   END IF;
   IF (_rc <> 0) THEN
     v_ln_temp := (SELECT coalesce(sum(coalesce(value1, 0)), 0) FROM dbo.reportdata WHERE (code2 = 9));
+    _rc := 1;
   END IF;
   INSERT INTO dbo.reportdata (code1, code2, code3, name1, name2, value1, value2, value3, value4, date1, date2, value5) SELECT -1 AS code1, 10 AS code2, 0 AS code3, (SELECT name FROM dbo.categoryaccounts WHERE (catacccode = c.catacccode)) AS name1, '' AS name2, coalesce(sum((v.debit - v.credit)), 0) AS value1, 0 AS value2, 0 AS value3, 0 AS value4, v_ad_sdate AS date1, v_ad_edate AS date2, (v_ac_level)::numeric(15,2) AS value5 FROM dbo.virtualgl AS v, dbo.categoryaccounts AS c, dbo.subaccounts AS s, dbo.accounts AS a WHERE ((((((v.acccode IN (SELECT acccode FROM dbo.accounts WHERE (subcode IN (SELECT subacccode FROM dbo.subaccounts WHERE (catacccode IN (SELECT catacccode FROM dbo.categoryaccounts WHERE ((mainacccode IN (4, 5)) AND (catacccode NOT IN (v_ln_revenuefromsalescat, v_ln_directexpensescat, v_ln_operatingexpensescat, v_ln_otherexpensescat, v_ln_otherrevenuescat))))))))) AND (v.date >= v_ad_sdate)) AND (v.date <= v_ad_edate)) AND (v.acccode = a.acccode)) AND (a.subcode = s.subacccode)) AND (s.catacccode = c.catacccode)) GROUP BY c.catacccode;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF (_rc <> 0) THEN
     v_ln_temp := (SELECT coalesce(sum(coalesce(value1, 0)), 0) FROM dbo.reportdata WHERE (code2 = 10));
+    _rc := 1;
   END IF;
   IF (v_ln_temp <> 0) THEN
     INSERT INTO dbo.reportdata (code1, code2, code3, name1, name2, value1, value2, value3, value4, date1, date2, value5) SELECT -1 AS code1, 11 AS code2, 0 AS code3, 'NET INCOME/LOSS FOR THE PERIOD' AS name1, '' AS name2, (SELECT coalesce(sum(coalesce(value1, 0)), 0) FROM dbo.reportdata WHERE (code2 IN ((SELECT max(code2) FROM dbo.reportdata WHERE (code2 IN (3, 5, 7, 9))), 10))) AS value1, 0 AS value2, 0 AS value3, 0 AS value4, v_ad_sdate AS date1, v_ad_edate AS date2, (v_ac_level)::numeric(15,2) AS value5;
@@ -23867,16 +25120,19 @@ BEGIN
   END IF;
   IF (_rc <> 0) THEN
     v_ln_temp := (SELECT coalesce(sum(coalesce(value1, 0)), 0) FROM dbo.reportdata WHERE (code2 = 11));
+    _rc := 1;
   END IF;
   UPDATE dbo.reportdata SET value1 = 0 WHERE (value1 IS NULL);
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF (v_ac_level <> '0') THEN
     v_ln_temp := (SELECT coalesce(code2, 0) FROM dbo.reportdata WHERE (code2 = 1));
+    _rc := 1;
     IF (v_ln_temp <> 0) THEN
       INSERT INTO dbo.reportdata (code1, code2, code3, name1, name2, value1, value2, value3, value4, date1, date2, value5) SELECT 1 AS code1, (SELECT (max(code2) + 1) FROM dbo.reportdata) AS code2, ac.acccode AS code3, ac.name AS name1, (SELECT DISTINCT name1 FROM dbo.reportdata WHERE (code2 = 1)) AS name2, a.balance AS value1, 0 AS value2, 0 AS value3, 1 AS value4, v_ad_sdate AS date1, v_ad_edate AS date2, (v_ac_level)::numeric(15,2) AS value5 FROM (SELECT acccode, coalesce(sum((debit - credit)), 0) AS balance FROM dbo.virtualgl WHERE (((acccode IN (SELECT acccode FROM dbo.accounts WHERE (subcode IN (SELECT subacccode FROM dbo.subaccounts WHERE (catacccode = v_ln_revenuefromsalescat))))) AND (date >= v_ad_sdate)) AND (date <= v_ad_edate)) GROUP BY acccode) AS a, dbo.accounts AS ac WHERE (a.acccode = ac.acccode);
       GET DIAGNOSTICS _rc = ROW_COUNT;
     END IF;
     v_ln_temp := (SELECT coalesce(code2, 0) FROM dbo.reportdata WHERE (code2 = 2));
+    _rc := 1;
     IF (v_ln_temp <> 0) THEN
       IF (v_invsys = 'P') THEN
         INSERT INTO dbo.reportdata (code1, code2, code3, name1, name2, value1, value2, value3, value4, date1, date2, value5) SELECT 2 AS code1, (SELECT (max(code2) + 1) FROM dbo.reportdata) AS code2, -2 AS code3, 'OPENING STOCK/INVENTORY ' AS name1, (SELECT DISTINCT name1 FROM dbo.reportdata WHERE (code2 = 2)) AS name2, (SELECT round((coalesce(sum(coalesce((newavgprice * newstock), 0)), 0))::numeric, 0) FROM dbo.stockledger WHERE ((date < v_ad_sdate) AND (((((icode)::text || ' ') || (utn)::text))::citext IN (SELECT (((icode)::text || ' ') || (max(utn))::text) FROM dbo.stockledger WHERE (date < v_ad_sdate) GROUP BY icode)))) AS value1, 0 AS value2, 0 AS value3, 1 AS value4, v_ad_sdate AS date1, v_ad_edate AS date2, (v_ac_level)::numeric(15,2) AS value5;
@@ -23890,16 +25146,19 @@ BEGIN
       END IF;
     END IF;
     v_ln_temp := (SELECT coalesce(code2, 0) FROM dbo.reportdata WHERE (code2 = 4));
+    _rc := 1;
     IF (v_ln_temp <> 0) THEN
       INSERT INTO dbo.reportdata (code1, code2, code3, name1, name2, value1, value2, value3, value4, date1, date2, value5) SELECT 4 AS code1, (SELECT (max(code2) + 1) FROM dbo.reportdata) AS code2, acccode AS code3, name AS name1, (SELECT DISTINCT name1 FROM dbo.reportdata WHERE (code2 = 4)) AS name2, coalesce(balance, 0) AS value1, 0 AS value2, 0 AS value3, 1 AS value4, v_ad_sdate AS date1, v_ad_edate AS date2, (v_ac_level)::numeric(15,2) AS value5 FROM (SELECT a.acccode, a.name, sum((coalesce(v.debit, 0) - coalesce(v.credit, 0))) AS balance FROM dbo.virtualgl AS v, dbo.accounts AS a WHERE ((((v.acccode IN (SELECT acccode FROM dbo.accounts WHERE (subcode IN (SELECT subacccode FROM dbo.subaccounts WHERE (catacccode IN (SELECT catacccode FROM dbo.categoryaccounts WHERE (catacccode = v_ln_operatingexpensescat))))))) AND (v.acccode = a.acccode)) AND (v.date >= v_ad_sdate)) AND (v.date <= v_ad_edate)) GROUP BY a.acccode, a.name) AS a;
       GET DIAGNOSTICS _rc = ROW_COUNT;
     END IF;
     v_ln_temp := (SELECT coalesce(code2, 0) FROM dbo.reportdata WHERE (code2 = 6));
+    _rc := 1;
     IF (v_ln_temp <> 0) THEN
       INSERT INTO dbo.reportdata (code1, code2, code3, name1, name2, value1, value2, value3, value4, date1, date2, value5) SELECT 6 AS code1, (SELECT (max(code2) + 1) FROM dbo.reportdata) AS code2, acccode AS code3, name AS name1, (SELECT DISTINCT name1 FROM dbo.reportdata WHERE (code2 = 6)) AS name2, coalesce(balance, 0) AS value1, 0 AS value2, 0 AS value3, 1 AS value4, v_ad_sdate AS date1, v_ad_edate AS date2, (v_ac_level)::numeric(15,2) AS value5 FROM (SELECT a.acccode, a.name, sum((coalesce(v.debit, 0) - coalesce(v.credit, 0))) AS balance FROM dbo.virtualgl AS v, dbo.accounts AS a WHERE ((((v.acccode IN (SELECT acccode FROM dbo.accounts WHERE (subcode IN (SELECT subacccode FROM dbo.subaccounts WHERE (catacccode IN (SELECT catacccode FROM dbo.categoryaccounts WHERE (catacccode = v_ln_otherexpensescat))))))) AND (v.acccode = a.acccode)) AND (v.date >= v_ad_sdate)) AND (v.date <= v_ad_edate)) GROUP BY a.acccode, a.name) AS a;
       GET DIAGNOSTICS _rc = ROW_COUNT;
     END IF;
     v_ln_temp := (SELECT coalesce(code2, 0) FROM dbo.reportdata WHERE (code2 = 8));
+    _rc := 1;
     IF (v_ln_temp <> 0) THEN
       INSERT INTO dbo.reportdata (code1, code2, code3, name1, name2, value1, value2, value3, value4, date1, date2, value5) SELECT 8 AS code1, (SELECT (max(code2) + 1) FROM dbo.reportdata) AS code2, acccode AS code3, name AS name1, (SELECT DISTINCT name1 FROM dbo.reportdata WHERE (code2 = 8)) AS name2, coalesce(balance, 0) AS value1, 0 AS value2, 0 AS value3, 1 AS value4, v_ad_sdate AS date1, v_ad_edate AS date2, (v_ac_level)::numeric(15,2) AS value5 FROM (SELECT a.acccode, a.name, sum((coalesce(v.debit, 0) - coalesce(v.credit, 0))) AS balance FROM dbo.virtualgl AS v, dbo.accounts AS a WHERE ((((v.acccode IN (SELECT acccode FROM dbo.accounts WHERE (subcode IN (SELECT subacccode FROM dbo.subaccounts WHERE (catacccode IN (SELECT catacccode FROM dbo.categoryaccounts WHERE (catacccode = v_ln_otherrevenuescat))))))) AND (v.acccode = a.acccode)) AND (v.date >= v_ad_sdate)) AND (v.date <= v_ad_edate)) GROUP BY a.acccode, a.name) AS a;
       GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -23923,11 +25182,13 @@ BEGIN
   END IF;
   IF (v_ac_level = '3') THEN
     v_ln_temp := (SELECT coalesce(code2, 0) FROM dbo.reportdata WHERE (code3 = -2));
+    _rc := 1;
     IF ((v_ln_temp <> 0) AND (v_invsys = 'P')) THEN
       INSERT INTO dbo.reportdata (code1, code2, code3, name1, name2, value1, value2, value3, value4, date1, date2, value5) SELECT (SELECT (max(code1) + 1) FROM dbo.reportdata) AS code1, 0 AS code2, item.icode AS code3, item.name AS name1, (SELECT DISTINCT name1 FROM dbo.reportdata WHERE (code3 = -2)) AS name2, stockval AS value1, newstock AS value2, newavgprice AS value3, 3 AS value4, v_ad_sdate AS date1, v_ad_edate AS date2, (v_ac_level)::numeric(15,2) AS value5 FROM (SELECT icode, newstock, newavgprice, (-coalesce((newavgprice * newstock), 0)) AS stockval FROM dbo.stockledger WHERE (((date < v_ad_sdate) AND (((((icode)::text || ' ') || (utn)::text))::citext IN (SELECT (((icode)::text || ' ') || (max(utn))::text) FROM dbo.stockledger WHERE (date < v_ad_sdate) GROUP BY icode))) AND (newstock > 0))) AS os, dbo.item WHERE (os.icode = item.icode) ORDER BY item.name;
       GET DIAGNOSTICS _rc = ROW_COUNT;
     END IF;
     v_ln_temp := (SELECT coalesce(code2, 0) FROM dbo.reportdata WHERE (code3 = -1));
+    _rc := 1;
     IF ((v_ln_temp <> 0) AND (v_invsys = 'P')) THEN
       INSERT INTO dbo.reportdata (code1, code2, code3, name1, name2, value1, value2, value3, value4, date1, date2, value5) SELECT (SELECT (max(code1) + 1) FROM dbo.reportdata) AS code1, 0 AS code2, item.icode AS code3, item.name AS name1, (SELECT DISTINCT name1 FROM dbo.reportdata WHERE (code3 = -1)) AS name2, stockval AS value1, newstock AS value2, newavgprice AS value3, 3 AS value4, v_ad_sdate AS date1, v_ad_edate AS date2, (v_ac_level)::numeric(15,2) AS value5 FROM (SELECT icode, newstock, newavgprice, (-coalesce((newavgprice * newstock), 0)) AS stockval FROM dbo.stockledger WHERE (((date <= v_ad_edate) AND (((((icode)::text || ' ') || (utn)::text))::citext IN (SELECT (((icode)::text || ' ') || (max(utn))::text) FROM dbo.stockledger WHERE (date <= v_ad_edate) GROUP BY icode))) AND (newstock > 0))) AS cs, dbo.item WHERE (cs.icode = item.icode) ORDER BY item.name;
       GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -24883,10 +26144,14 @@ BEGIN
   v_supervised := supervised;
   v_rowid := rowid;
   v_ai_salesmancode := (SELECT jobowner FROM dbo.cashierjob WHERE (cashierjobcode = v_cashierjobcode));
+  _rc := 1;
   v_retcode := -1;
+  _rc := 1;
   v_newdoccode := v_doccode;
+  _rc := 1;
   IF (v_newdoccode = 0) THEN
     v_newdoccode := NULL;
+    _rc := 1;
   END IF;
   IF (v_moduleid > 100) THEN
     INSERT INTO dbo.cashieractivity (date, moduleid, doccode, catcode, category, acccode, usercode, machinename, headerno, headerinvno, amount, cashacccode, cashtendered, cashcharged, cashback, remarks, cashierjobcode, printed, supervised, supervisedon, glvochcode) SELECT localtimestamp(3) AS date, v_moduleid, v_doccode, v_catcode, v_category, v_acccode, v_usercode, v_machinename, v_headerno, v_headerinvno, v_amount, v_cashacccode, v_cashtendered, v_cashcharged, v_cashback, v_remarks, v_cashierjobcode, v_printed, v_supervised, localtimestamp(3), NULL::integer AS glvochcode;
@@ -24901,12 +26166,18 @@ BEGIN
       RETURN;
     END IF;
     v_rowid := (SELECT max(rowid) FROM dbo.cashieractivity WHERE ((moduleid = v_moduleid) AND (doccode = v_doccode)));
+    _rc := 1;
     IF (v_rowid > 0) THEN
       v_ai_vochcatcode := CASE v_moduleid WHEN 101 THEN 2 WHEN 102 THEN 12 WHEN 103 THEN 1 ELSE 15 END;
+      _rc := 1;
       v_ad_date := localtimestamp(3);
+      _rc := 1;
       v_as_chkno := (SELECT (v_doccode)::text);
+      _rc := 1;
       v_ai_dr_acccode := CASE v_moduleid WHEN 101 THEN v_cashacccode WHEN 102 THEN v_cashacccode WHEN 103 THEN v_acccode ELSE v_acccode END;
+      _rc := 1;
       v_ai_cr_acccode := CASE v_moduleid WHEN 101 THEN v_acccode WHEN 102 THEN v_acccode WHEN 103 THEN v_cashacccode ELSE v_cashacccode END;
+      _rc := 1;
       SELECT r.return_value, r.glvochcode, r.vochcode INTO v_err, v_glvochcode, v_vochcode FROM dbo.sp_createvoucher(ai_vochcatcode => (v_ai_vochcatcode)::integer, ai_acccode => (v_cashacccode)::integer, ad_date => v_ad_date, ai_salesmancode => (v_ai_salesmancode)::integer, as_posted => 'Y', ad_postdate => v_ad_date, as_remarks => v_remarks, ad_originaldate => v_ad_date, ai_modifiedby => (v_ai_salesmancode)::integer, ai_postedby => (v_ai_salesmancode)::integer, as_chkno => v_as_chkno, ai_dr_acccode => v_ai_dr_acccode, ai_cr_acccode => v_ai_cr_acccode, an_amount => v_cashcharged, as_chkno_detail => '', as_remarks_detail => v_remarks, ai_patientcode => NULL, ai_guestcode => NULL, ai_studentcode => NULL, ai_invoicecode => v_doccode, an_outstandingamt => (0)::numeric, an_balance => (0)::numeric, glvochcode => v_glvochcode, vochcode => v_vochcode) AS r;
       IF ((0 <> 0) OR (v_err <> 0)) THEN
         RAISE EXCEPTION 'Problem Creating Voucher Against Document Code = %', v_doccode;
@@ -24917,6 +26188,7 @@ BEGIN
       UPDATE dbo.cashieractivity SET glvochcode = v_glvochcode WHERE (rowid = v_rowid);
       GET DIAGNOSTICS _rc = ROW_COUNT;
       v_retcode := 0;
+      _rc := 1;
     END IF;
   END IF;
   return_value := v_retcode;
@@ -25568,11 +26840,16 @@ BEGIN
   -- SET ANSI_NULLS ON
   -- SET ANSI_WARNINGS ON
   v_query := ((((((('Insert 	Into ' || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.') || 'SaleLedger (SaleInvCode, SaleCatCode, CustCode, SalesmanCode, date, DiscPerc, FlatDisc, MiscCharges, SalesTax,  Posted, PostDate, Remarks, CustRefNo, headerno, headerinvno, OriginalDate, ModifiedBy,PostedBy, InvGSTPerc1, InvTotal) ');
+  _rc := 1;
   v_query := (v_query || ' Select 	IssueInvCode AS SaleInvCode, 1 AS SaleCatCode, COALESCE(AccCode, 19) AS CustCode, SalesmanCode, date, 0 AS DiscPerc, 0 AS FlatDisc, 0 AS MiscCharges, 0 AS SalesTax,  Posted, PostDate, Remarks, LEFT(ReferenceNo, 30) AS CustRefNo, headerno, headerinvno, OriginalDate, ModifiedBy,PostedBy, 0 AS InvGSTPerc1, (SELECT ROUND(SUM(d.qty * d.price), 0) AS InvTotal FROM IssueDetail D where d.issueinvcode=issueheader.issueinvcode) ');
+  _rc := 1;
   v_query := (v_query || ' From 	IssueHeader ');
+  _rc := 1;
   v_query := ((((v_query || ' Where   IssueInvCode Between ') || (v_sinvcode)::text) || ' And ') || (v_linvcode)::text);
+  _rc := 1;
   IF (v_custcode > 0) THEN
     v_query := ((v_query || ' AND AccCode = ') || (v_custcode)::text);
+    _rc := 1;
   END IF;
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
@@ -25581,11 +26858,16 @@ BEGIN
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF ((0 = 0) AND (_rc > 0)) THEN
     v_query := ((((((('Insert 	Into ' || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.') || 'SaleDetail (SaleInvcode, ICode, GCode, Batch, Expiry, PackQty, LooseQty, PackUnits, SalePrice, AvgPrice, Rate, DiscPerc, SalesTax, RowID, itemflatdisc, SaleItemDescription, PackPrice, UnitSalesTax, GSTPerc, SaleUtn, bonusqty, RowGroup) ');
+    _rc := 1;
     v_query := (v_query || 'Select 	SaleInvcode=IssueInvCode, ICode, GCode, Batch, Expiry, PackQty=0, LooseQty=Qty, PackUnits, SalePrice=Price, AvgPrice, Rate=Price, DiscPerc=0, SalesTax=0, RowID=IssRowID, itemflatdisc=0, SaleItemDescription=ItemDescription, PackPrice=SalePrice, UnitSalesTax=0, GSTPerc=0, SaleUtn=IssueUtn, bonusqty=0, RowGroup ');
+    _rc := 1;
     v_query := (v_query || 'From  	IssueDetail ');
+    _rc := 1;
     v_query := ((((v_query || 'Where   IssueInvCode Between ') || (v_sinvcode)::text) || ' And ') || (v_linvcode)::text);
+    _rc := 1;
     IF (v_custcode > 0) THEN
       v_query := (((v_query || ' AND IssueInvCode IN (SELECT IssueInvCode FROM IssueHeader WHERE AccCode = ') || (v_custcode)::text) || ') ');
+      _rc := 1;
     END IF;
     _dq2 := v_query;
     IF _dq2 IS NOT NULL THEN
@@ -25918,11 +27200,16 @@ BEGIN
   -- SET ANSI_NULLS ON
   -- SET ANSI_WARNINGS ON
   v_query := ((((((('Insert 	Into ' || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.') || 'SaleLedger (SaleInvCode, SaleCatCode, CustCode, SalesmanCode, date, DiscPerc, FlatDisc, MiscCharges, SalesTax,  Posted, PostDate, Remarks, CustRefNo, headerno, headerinvno, OriginalDate, ModifiedBy,PostedBy, InvGSTPerc1, InvTotal, MachineName) ');
+  _rc := 1;
   v_query := (v_query || ' Select 	SaleInvCode, SaleCatCode, CustCode, SalesmanCode, date, DiscPerc, FlatDisc, MiscCharges, SalesTax,  Posted, PostDate, Remarks, CustRefNo, headerno, headerinvno, OriginalDate, ModifiedBy,PostedBy, InvGSTPerc1, InvTotal, CustRefNo5 ');
+  _rc := 1;
   v_query := (v_query || ' From 	SaleLedger ');
+  _rc := 1;
   v_query := ((((v_query || ' Where   Saleinvcode Between ') || (v_sinvcode)::text) || ' And ') || (v_linvcode)::text);
+  _rc := 1;
   IF (v_custcode > 0) THEN
     v_query := ((v_query || ' AND CustCode = ') || (v_custcode)::text);
+    _rc := 1;
   END IF;
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
@@ -25931,11 +27218,16 @@ BEGIN
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF ((0 = 0) AND (_rc > 0)) THEN
     v_query := ((((((('Insert 	Into ' || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.') || 'SaleDetail (SaleInvcode, ICode, GCode, Batch, Expiry, PackQty, LooseQty, PackUnits, SalePrice, AvgPrice, Rate, DiscPerc, SalesTax, RowID, itemflatdisc, SaleItemDescription, PackPrice, UnitSalesTax, GSTPerc, SaleUtn, bonusqty, RowGroup) ');
+    _rc := 1;
     v_query := (v_query || 'Select 	SaleInvcode, ICode, GCode, Batch, Expiry, PackQty, LooseQty, PackUnits, SalePrice, AvgPrice, Rate, DiscPerc, SalesTax, RowID, itemflatdisc, SaleItemDescription, PackPrice, UnitSalesTax, GSTPerc, SaleUtn, bonusqty, RowGroup ');
+    _rc := 1;
     v_query := (v_query || 'From  	SaleDetail ');
+    _rc := 1;
     v_query := ((((v_query || 'Where   Saleinvcode Between ') || (v_sinvcode)::text) || ' And ') || (v_linvcode)::text);
+    _rc := 1;
     IF (v_custcode > 0) THEN
       v_query := (((v_query || ' AND SaleInvCode IN (SELECT SaleInvCode FROM SaleLedger WHERE CustCode = ') || (v_custcode)::text) || ') ');
+      _rc := 1;
     END IF;
     _dq2 := v_query;
     IF _dq2 IS NOT NULL THEN
@@ -25990,11 +27282,16 @@ BEGIN
   -- SET ANSI_NULLS ON
   -- SET ANSI_WARNINGS ON
   v_query := ((((((('Insert Into ' || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.') || 'ServiceHeader (ServiceInvCode,CustCode,SalesmanCode,ServiceCatCode,Remarks,OriginalDate,ModifiedBy,Date,PostedBy,PostDate,HeaderNo,DiscPerc,FlatDisc,MiscCharges,SaleInvCode,Posted,DoctCode,RePrintingCounter,ServiceOCode,CashReceived,PatientCode,AdmissionCode,DueDate,FullPatientName,PatientAge,PatientSex,PatientRefBy,Ref1,Ref2,CashAccCode,CashTendered,CashCharged,CashBack,InvTotal,OutStandingAmt,TokenNo,GuestCode,GuestCheckInCode,StudentCode,Marked,ServiceInvTypeCode,MessageCode,ServiceInvGSTPerc ) ');
+  _rc := 1;
   v_query := (v_query || ' Select 	ServiceInvCode,CustCode,SalesmanCode,ServiceCatCode,Remarks,OriginalDate,ModifiedBy,Date,PostedBy,PostDate,HeaderNo,DiscPerc,FlatDisc,MiscCharges,SaleInvCode,Posted,DoctCode,RePrintingCounter,ServiceOCode,CashReceived,PatientCode,AdmissionCode,DueDate,FullPatientName,PatientAge,PatientSex,PatientRefBy,Ref1,Ref2,CashAccCode,CashTendered,CashCharged,CashBack,InvTotal,OutStandingAmt,TokenNo,GuestCode,GuestCheckInCode,StudentCode,Marked,ServiceInvTypeCode,MessageCode,ServiceInvGSTPerc ');
+  _rc := 1;
   v_query := (v_query || ' From 	ServiceHeader ');
+  _rc := 1;
   v_query := ((((v_query || ' Where   ServiceInvCode Between ') || (v_sinvcode)::text) || ' And ') || (v_linvcode)::text);
+  _rc := 1;
   IF (v_custcode > 0) THEN
     v_query := ((v_query || ' AND CustCode = ') || (v_custcode)::text);
+    _rc := 1;
   END IF;
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
@@ -26003,11 +27300,16 @@ BEGIN
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF ((0 = 0) AND (_rc > 0)) THEN
     v_query := ((((((('Insert 	Into ' || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.') || 'ServiceDetail (ServiceInvCode,ServiceCode,Price,DiscPerc,SrvRowId,SmanCode,Qty,Commission,DeliveryDate,SampleTaken,ReportMade,CostPrice,Remarks,ServiceFlatDisc,ServiceGSTPerc,ServiceFlatTax,TransportRouteCode,VehicleCode) ');
+    _rc := 1;
     v_query := (v_query || 'Select 	ServiceInvCode,ServiceCode,Price,DiscPerc,SrvRowId,SmanCode,Qty,Commission,DeliveryDate,SampleTaken,ReportMade,CostPrice,Remarks,ServiceFlatDisc,ServiceGSTPerc,ServiceFlatTax,TransportRouteCode,VehicleCode ');
+    _rc := 1;
     v_query := (v_query || 'From  	ServiceDetail ');
+    _rc := 1;
     v_query := ((((v_query || 'Where   ServiceInvCode Between ') || (v_sinvcode)::text) || ' And ') || (v_linvcode)::text);
+    _rc := 1;
     IF (v_custcode > 0) THEN
       v_query := (((v_query || ' AND ServiceInvCode IN (SELECT ServiceInvCode FROM ServiceHeader WHERE CustCode = ') || (v_custcode)::text) || ') ');
+      _rc := 1;
     END IF;
     _dq2 := v_query;
     IF _dq2 IS NOT NULL THEN
@@ -26061,11 +27363,16 @@ BEGIN
   -- SET ANSI_NULLS ON
   -- SET ANSI_WARNINGS ON
   v_query := ((((((('Insert 	Into ' || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.') || 'SaleOrderHeader (SaleOrderCode, CustCode, UserCode, date, DiscPerc, FlatDisc, MiscCharges, Posted, PostDate, Remarks, CustRefNo, headerno, headerinvno, OriginalDate, ModifiedBy,PostedBy, InvGSTPerc1, InvTotal) ');
+  _rc := 1;
   v_query := (v_query || ' Select 	SaleOrderCode, CustCode, UserCode, date, DiscPerc, FlatDisc, MiscCharges, Posted, PostDate, Remarks, CustRefNo, headerno, headerinvno, OriginalDate, ModifiedBy,PostedBy, InvGSTPerc1, InvTotal ');
+  _rc := 1;
   v_query := (v_query || ' From 	SaleOrderHeader ');
+  _rc := 1;
   v_query := ((((v_query || ' Where   Saleordercode Between ') || (v_ssocode)::text) || ' And ') || (v_lsocode)::text);
+  _rc := 1;
   IF (v_custcode > 0) THEN
     v_query := ((v_query || ' AND CustCode = ') || (v_custcode)::text);
+    _rc := 1;
   END IF;
   _dq1 := v_query;
   IF _dq1 IS NOT NULL THEN
@@ -26074,11 +27381,16 @@ BEGIN
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF ((0 = 0) AND (_rc > 0)) THEN
     v_query := ((((((('Insert 	Into ' || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.') || 'SaleOrderDetail (SaleOrdercode, ICode, GCode, LooseQty, PackUnits, SalePrice, AvgPrice, Rate, DiscPerc, RowID, itemflatdisc, SaleItemDescription, PackPrice, UnitSalesTax, GSTPerc, bonusqty, RowGroup) ');
+    _rc := 1;
     v_query := (v_query || 'Select 	SaleOrdercode, ICode, GCode, LooseQty, PackUnits, SalePrice, AvgPrice, Rate, DiscPerc, RowID, itemflatdisc, SaleItemDescription, PackPrice, UnitSalesTax, GSTPerc, bonusqty, RowGroup ');
+    _rc := 1;
     v_query := (v_query || 'From  	SaleOrderDetail ');
+    _rc := 1;
     v_query := ((((v_query || 'Where   Saleordercode Between ') || (v_ssocode)::text) || ' And ') || (v_lsocode)::text);
+    _rc := 1;
     IF (v_custcode > 0) THEN
       v_query := (((v_query || ' AND Saleordercode IN (SELECT Saleordercode FROM SaleOrderHeader WHERE CustCode = ') || (v_custcode)::text) || ') ');
+      _rc := 1;
     END IF;
     _dq2 := v_query;
     IF _dq2 IS NOT NULL THEN
@@ -26954,7 +28266,9 @@ BEGIN
   v_date_in_out := date_in_out;
   v_msg := msg;
   v_username := coalesce((SELECT username FROM dbo.users WHERE (usercode = v_usercode)), '');
+  _rc := 1;
   v_uc := (SELECT usercode FROM dbo.users WHERE (usercode = v_usercode) FOR UPDATE OF users);
+  _rc := 1;
   SELECT r.rowid INTO v_rid FROM dbo.sp_check_userattendance(usercode => v_usercode, rowid => v_rid) AS r;
   IF (0 <> 0) THEN
     RAISE EXCEPTION 'Unable to fetch user attendance status user = %, RowId = % ', v_username, v_rid;
@@ -26964,6 +28278,7 @@ BEGIN
   END IF;
   IF (v_rid = v_rowid) THEN
     v_dt := v_date_in_out;
+    _rc := 1;
     IF (v_mode = 1) THEN
       INSERT INTO dbo.userattendance (usercode, timein, timeout, remarks) SELECT v_usercode, v_dt, NULL::timestamp(3), '';
       GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -26974,9 +28289,11 @@ BEGIN
         RETURN;
       ELSE
         v_msg := ('Time-in On = ' || ltrim(rtrim(left(to_char(v_dt, 'Mon DD YYYY HH12:MIAM'), 100))));
+        _rc := 1;
       END IF;
     ELSE
       v_dt2 := (SELECT timein FROM dbo.userattendance WHERE ((usercode = v_usercode) AND (rowid = v_rowid)));
+      _rc := 1;
       IF (v_dt2 > v_date_in_out) THEN
         RAISE EXCEPTION 'User Time-in date is greater than current system date~r~nUnable to update user attendance record user = %, RowId = % ', v_username, v_rid;
         return_value := -1;
@@ -26992,6 +28309,7 @@ BEGIN
           RETURN;
         ELSE
           v_msg := ((('Time-in On = ' || ltrim(rtrim(left(to_char(v_dt2, 'Mon DD YYYY HH12:MIAM'), 100)))) || ', Time-out On = ') || ltrim(rtrim(left(to_char(v_dt, 'Mon DD YYYY HH12:MIAM'), 100))));
+          _rc := 1;
         END IF;
       END IF;
     END IF;
@@ -27134,6 +28452,7 @@ BEGIN
   v_lbi_rows := lbi_rows;
   v_lbi_maxutn := lbi_maxutn;
   v_lbi_maxutn := (SELECT utn FROM dbo._utn FOR UPDATE OF _utn);
+  _rc := 1;
   v_err := 0;
   v_rowcount := _rc;
   _rc := 1;
@@ -27512,13 +28831,17 @@ BEGIN
 ) ON COMMIT DROP;
   IF (v_usercode IS NULL) THEN
     v_usercode := 1;
+    _rc := 1;
   END IF;
   v_invcount := coalesce((SELECT count(serviceinvcode) FROM dbo.serviceheader WHERE ((studentcode = v_studentcode) AND (outstandingamt > 0))), 0);
+  _rc := 1;
   INSERT INTO tv_sp_performschoolleaving_svc (serviceinvcode) SELECT DISTINCT serviceinvcode FROM dbo.serviceheader WHERE ((studentcode = v_studentcode) AND (outstandingamt > 0));
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_invcount := _rc;
+  _rc := 1;
   IF (v_invcount > 0) THEN
     v_errcode := 0;
+    _rc := 1;
     SELECT r.return_value, r.key INTO v_errcode, v_start_no FROM dbo.sp_locktabmaxkey(tabname => 'ServiceRHeader', key => v_start_no) AS r;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Problem while Fetching Service Return Header Value';
@@ -27526,11 +28849,16 @@ BEGIN
       RETURN;
     END IF;
     v_rowid := 1;
+    _rc := 1;
     WHILE (v_rowid <= v_invcount) LOOP
       v_date := localtimestamp(3);
+      _rc := 1;
       v_servicerinvcode := (v_start_no + v_rowid);
+      _rc := 1;
       v_end_no := v_servicerinvcode;
+      _rc := 1;
       v_serviceinvcode := (SELECT serviceinvcode FROM tv_sp_performschoolleaving_svc AS svc WHERE (rowid = v_rowid));
+      _rc := 1;
       INSERT INTO dbo.servicerheader (servicerinvcode, serviceinvcode, custcode, salesmancode, servicercatcode, remarks, originaldate, modifiedby, date, postedby, postdate, headerno, discperc, flatdisc, misccharges, saleinvcode, posted, doctcode, patientcode, admissioncode, cashacccode, cashtendered, cashcharged, cashback, invtotal, guestcode, guestcheckincode, studentcode, outstandingamt, marked) SELECT v_servicerinvcode, serviceinvcode, custcode, salesmancode, CASE WHEN (servicecatcode = 10) THEN 13 ELSE 14 END AS servicercatcode, (('Return Against Service Inv. ' || ltrim(rtrim((serviceinvcode)::text))) || ' On School Leaving') AS remarks, v_date AS originaldate, NULL::smallint AS modifiedby, v_date AS date, v_usercode AS postedby, v_date AS postdate, headerno, discperc, flatdisc, misccharges, saleinvcode, 'Y' AS posted, doctcode, patientcode, admissioncode, cashacccode, 0 AS cashtendered, 0 AS cashcharged, 0 AS cashback, invtotal, guestcode, guestcheckincode, studentcode, outstandingamt, 'N' AS marked FROM dbo.serviceheader WHERE (serviceinvcode IN (SELECT serviceinvcode FROM tv_sp_performschoolleaving_svc AS svc WHERE (rowid = v_rowid)));
       GET DIAGNOSTICS _rc = ROW_COUNT;
       IF ((0 <> 0) OR (_rc <= 0)) THEN
@@ -27584,11 +28912,15 @@ BEGIN
           IF (v_svc_balance > 0) THEN
             IF (v_svc_balance <= v_sr_balance) THEN
               v_amt := v_svc_balance;
+              _rc := 1;
             ELSE
               v_amt := v_sr_balance;
+              _rc := 1;
             END IF;
             v_new_service_balance := (v_svc_balance - v_amt);
+            _rc := 1;
             v_new_sr_balance := (v_sr_balance - v_amt);
+            _rc := 1;
             SELECT r.return_value INTO v_errcode FROM dbo.sp_updateservicesrinvbalance(ai_invcode => v_servicerinvcode, an_amt => v_new_sr_balance) AS r;
             IF ((0 <> 0) OR (v_errcode <> 0)) THEN
               RAISE EXCEPTION 'Problem while Updating Service Return Invoice Balance For Ret #: %', v_servicerinvcode;
@@ -27611,6 +28943,7 @@ BEGIN
         END IF;
       END IF;
       v_rowid := (v_rowid + 1);
+      _rc := 1;
     END LOOP;
     SELECT r.return_value INTO v_errcode FROM dbo.sp_updatetabmaxkey(tabname => 'ServiceRHeader', key => v_end_no) AS r;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
@@ -27757,9 +29090,12 @@ BEGIN
   v_usercode := usercode;
   v_billsumm := billsumm;
   v_continue := 0;
+  _rc := 1;
   v_priority := 10;
+  _rc := 1;
   OPEN cur_cursor_items FOR SELECT rd.icode, rd.gcode, rd.batch, rd.expiry, rd.looseqty, rd.bonusqty, rd.packunits, rd.srprice, rd.discperc, rd.totalpieces, rd.piecesinhand, rd.rowid, i.name FROM dbo.srbufferledger AS r, dbo.srbufferdetail AS rd, dbo.item AS i WHERE ((((r.srbufferinvcode = v_srbufferinvcode) AND (r.retviabillsummary = v_billsumm)) AND (r.srbufferinvcode = rd.srbufferinvcode)) AND (rd.icode = i.icode)) ORDER BY r.srbufferinvcode, rd.rowid;
   v_items_rows := (-1);
+  _rc := 1;
   IF (v_items_rows <= 0) THEN
     RAISE EXCEPTION 'Unable to fetch sale return invoice : %', v_srbufferinvcode;
     CLOSE cur_cursor_items;
@@ -27806,6 +29142,7 @@ BEGIN
         END IF;
       END IF;
       v_packunits := CASE WHEN (v_packunits IS NULL) THEN 1 WHEN (v_packunits = 0) THEN 1 ELSE v_packunits END;
+      _rc := 1;
       SELECT r.return_value, r.qty INTO v_rt_code, v_total_availablestock FROM dbo.sp_getitemstockall(icode => v_icode, qty => v_total_availablestock) AS r;
       SELECT r.return_value, r.qty INTO v_rt_code, v_currqty FROM dbo.sp_getitemstockbatch(gcode => v_gcode, icode => v_icode, batch => v_batch, expiry => v_expiry, qty => v_currqty) AS r;
       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
@@ -27816,6 +29153,7 @@ BEGIN
         RETURN;
       END IF;
       v_newqty := ((v_currqty + v_looseqty) + v_bonusqty);
+      _rc := 1;
       SELECT r.return_value INTO v_rt_code FROM dbo.sp_updateitemstockbatch(gcode => v_gcode, icode => v_icode, batch => v_batch, expiry => v_expiry, newqty => v_newqty) AS r;
       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
         RAISE EXCEPTION 'Error occured in Updating batch wise item stock details for Item Name : %', v_itemname;
@@ -27889,6 +29227,7 @@ BEGIN
     RETURN;
   END IF;
   v_saleinvcode := (SELECT saleinvcode FROM dbo.srbufferledger WHERE ((retviabillsummary = v_billsumm) AND (srbufferinvcode = v_srbufferinvcode)));
+  _rc := 1;
   IF (v_saleinvcode > 0) THEN
     UPDATE dbo.saleledger SET returncounter = (returncounter + 1) WHERE (saleinvcode = v_saleinvcode);
     GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -27902,6 +29241,7 @@ BEGIN
     END IF;
   END IF;
   v_updactmon := (SELECT dbo.fn_getpreference('IncSRInActMonitor') AS a);
+  _rc := 1;
   IF ((upper(v_updactmon))::citext = 'Y') THEN
     SELECT r.return_value INTO v_rt_code FROM dbo.sp_updateactivitymonitor(documenttype => 'SR', documentcode => v_srbufferinvcode) AS r;
     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
@@ -28012,6 +29352,7 @@ BEGIN
     rowid integer GENERATED BY DEFAULT AS IDENTITY
 ) ON COMMIT DROP;
   v_billsummtopost := coalesce((SELECT count(b.billsummarycode) FROM dbo.billsummary AS b WHERE (((b.billsummarycode BETWEEN v_billsummcode1 AND v_billsummcode2) AND (b.posted = 'N')) AND (b.finalized = 'Y'))), 0);
+  _rc := 1;
   IF (v_billsummtopost > 0) THEN
     SELECT r.return_value INTO v_rt_code FROM dbo.sp_generate_billsummary_vouchers(billsummcode1 => v_billsummcode1, billsummcode2 => v_billsummcode2, usercode => v_usercode) AS r;
     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
@@ -28021,6 +29362,7 @@ BEGIN
     END IF;
     OPEN cur_c_bsr FOR SELECT DISTINCT b.billsummarycode, d.saleinvcode, d.srbufferinvcode FROM dbo.billsummary AS b, dbo.billsummarydetail AS d, dbo.srbufferledger AS sr WHERE ((((((((b.billsummarycode BETWEEN v_billsummcode1 AND v_billsummcode2) AND (b.posted = 'N')) AND (b.finalized = 'Y')) AND (b.billsummarycode = d.billsummarycode)) AND (d.srbufferinvcode IS NOT NULL)) AND (sr.posted = 'N')) AND (sr.srbufferinvcode = d.srbufferinvcode)) AND (sr.retviabillsummary = v_billsumm)) ORDER BY b.billsummarycode, d.srbufferinvcode;
     v_totrows := (-1);
+    _rc := 1;
     IF (v_totrows <= 0) THEN
       CLOSE cur_c_bsr;
       -- DEALLOCATE C_BSR
@@ -28054,13 +29396,19 @@ BEGIN
       RETURN;
     END IF;
     v_rowid := 1;
+    _rc := 1;
     v_totrows := (SELECT count(*) FROM tmp_returnlist AS returnlist);
+    _rc := 1;
     IF (v_totrows > 0) THEN
       WHILE (v_rowid <= v_totrows) LOOP
         v_billsummarycode := (SELECT billsummarycode FROM tmp_returnlist AS returnlist WHERE (rowid = v_rowid));
+        _rc := 1;
         v_saleinvcode := (SELECT saleinvcode FROM tmp_returnlist AS returnlist WHERE (rowid = v_rowid));
+        _rc := 1;
         v_srinvcode := (SELECT srinvcode FROM tmp_returnlist AS returnlist WHERE (rowid = v_rowid));
+        _rc := 1;
         v_returnsaleinvoice := (SELECT saleinvcode FROM dbo.srledger WHERE (srinvcode = v_srinvcode));
+        _rc := 1;
         IF ((((v_billsummarycode > 0) AND (v_srinvcode > 0)) AND (v_saleinvcode > 0)) AND (v_saleinvcode = v_returnsaleinvoice)) THEN
           SELECT r.return_value, r.srallocationcode INTO v_rt_code, v_srallocationcode FROM dbo.sp_allocatesalereturn(srinvcode => v_srinvcode, saleinvcode => v_saleinvcode, usercode => (v_usercode)::smallint, srallocationcode => v_srallocationcode) AS r;
           IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
@@ -28071,6 +29419,7 @@ BEGIN
           END IF;
         END IF;
         v_rowid := (v_rowid + 1);
+        _rc := 1;
       END LOOP;
     END IF;
   END IF;
@@ -28314,11 +29663,17 @@ BEGIN
   v_usercode := usercode;
   v_saleinvcode := saleinvcode;
   v_module := (SELECT module FROM dbo.module WHERE (name = 'Sales'));
+  _rc := 1;
   v_headerno := 1;
+  _rc := 1;
   v_machinename := current_setting('cluster_name', true);
+  _rc := 1;
   v_salecatcode := 2;
+  _rc := 1;
   v_saletypecode := (SELECT min(saletypecode) FROM dbo.saletype);
+  _rc := 1;
   v_serverdate := localtimestamp(3);
+  _rc := 1;
   _rc := 0;
   FOR _r1 IN SELECT custcode AS c1, gcode AS c2, icode AS c3, packunits AS c4, qty AS c5, saleprice AS c6, itemflatdisc AS c7, discperc AS c8, markupamt AS c9, processingfee AS c10, downpayment AS c11, round((((round(((((qty * ((saleprice - itemflatdisc))) * ((1 - (discperc * 0.01))))))::numeric, 2) + markupamt) + processingfee))::numeric, 0) AS c12, smancode AS c13, inquirypersoncode AS c14 FROM dbo.installmentheader WHERE (((installmentcode = v_installmentcode) AND (posted = 'N')) AND (approved = 'Y')) LOOP
     _rc := _rc + 1;
@@ -28342,6 +29697,7 @@ BEGIN
     v_inquirypersoncode := _r1.c14;
   END LOOP;
   v_totalrows := _rc;
+  _rc := 1;
   IF (v_totalrows = 0) THEN
     RAISE EXCEPTION 'Installment code : % is not available for posting', v_installmentcode;
     return_value := -1;
@@ -28350,11 +29706,16 @@ BEGIN
   END IF;
   IF (v_satisfiableqty = 0) THEN
     v_satisfiableqty := 1;
+    _rc := 1;
   END IF;
   v_saleprice := round(((v_netamount / v_satisfiableqty))::numeric, 2);
+  _rc := 1;
   v_continue := 0;
+  _rc := 1;
   v_rowgroup := 0;
+  _rc := 1;
   v_totalqty := (SELECT coalesce(sum(currqty), 0) FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)));
+  _rc := 1;
   IF (v_totalqty < v_satisfiableqty) THEN
     RAISE EXCEPTION 'Not Enough Stock exists for this item : % to sale against Installment code : %', v_itemname, v_installmentcode;
     return_value := -1;
@@ -28363,6 +29724,7 @@ BEGIN
   END IF;
   SELECT r.return_value, r.key INTO v_rt_code, v_saleinvcode FROM dbo.sp_gettabmaxkey(tabname => 'Saleledger', key => v_saleinvcode) AS r;
   v_rowgroup := 0;
+  _rc := 1;
   IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
     RAISE EXCEPTION 'Error in Generating Sale Invoice No. against Installment code : %', v_installmentcode;
     return_value := -1;
@@ -28377,7 +29739,9 @@ BEGIN
     RETURN;
   END IF;
   v_err := 0;
+  _rc := 1;
   v_rowcount := 1;
+  _rc := 1;
   INSERT INTO dbo.saleledger (saleinvcode, salecatcode, custcode, sprice, salesmancode, date, discperc, flatdisc, misccharges, salestax, posted, postdate, headerno, headerinvno, originaldate, invtotal, machinename, modifycounter, billingdate, saletypecode, cashacccode, cashtendered, cashcharged, cashback, outstandingamt, smancode, deliveredby) VALUES (v_saleinvcode, v_salecatcode, v_custcode, 1, v_usercode, v_serverdate, 0, 0, 0, 0, 'Y', v_serverdate, v_headerno, v_headerinvno, v_serverdate, v_netamount, v_machinename, 0, v_serverdate, v_saletypecode, 2, v_downpayment, v_downpayment, 0, (v_netamount - v_downpayment), v_smancode, v_inquirypersoncode);
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_err := 0;
@@ -28409,9 +29773,12 @@ BEGIN
     RETURN;
   END IF;
   v_givenqty := v_satisfiableqty;
+  _rc := 1;
   v_totalqty := (SELECT coalesce(sum(currqty), 0) FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)));
+  _rc := 1;
   IF (v_totalqty >= v_givenqty) THEN
     v_rowgroup := (v_rowgroup + 1);
+    _rc := 1;
     _rc := 0;
     FOR _r2 IN SELECT saleprice AS c1, packunits AS c2 FROM dbo.item WHERE (icode = v_icode) LOOP
       _rc := _rc + 1;
@@ -28420,26 +29787,36 @@ BEGIN
     END LOOP;
     IF ((v_packunits = 0) OR (v_packunits IS NULL)) THEN
       v_packunits := 1;
+      _rc := 1;
     END IF;
     v_reqqty := v_givenqty;
+    _rc := 1;
     OPEN cur_itembatch_cursor FOR SELECT batch, expiry, currqty FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)) ORDER BY priority, expiry, currqty;
     v_totalrows := (-1);
+    _rc := 1;
     FETCH NEXT FROM cur_itembatch_cursor INTO v_batch, v_expiry, v_currqty;
     IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
     v_counter := 1;
+    _rc := 1;
     WHILE ((((_fs = 0) AND (v_counter <= v_totalrows)) AND (v_reqqty > 0)) AND (v_continue <> -1)) LOOP
       v_batchqty := v_currqty;
+      _rc := 1;
       IF (v_batchqty >= v_reqqty) THEN
         v_delqty := v_reqqty;
+        _rc := 1;
       ELSE
         v_delqty := v_batchqty;
+        _rc := 1;
       END IF;
       v_reqqty := (v_reqqty - v_delqty);
+      _rc := 1;
       SELECT r.return_value, r.lbi_maxutn INTO v_rt_code, v_saleutn FROM dbo.sp_maxutn(lbi_rows => (1)::bigint, lbi_maxutn => v_saleutn) AS r;
       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
         v_continue := -1;
+        _rc := 1;
       END IF;
       v_total_availablestock := (v_total_availablestock - v_delqty);
+      _rc := 1;
       INSERT INTO dbo.saledetail (saleinvcode, icode, gcode, batch, expiry, packqty, looseqty, packunits, saleprice, avgprice, rate, discperc, salestax, itemflatdisc, packprice, unitsalestax, gstperc, saleutn, balancestock, rowgroup) VALUES (v_saleinvcode, v_icode, v_gcode, v_batch, v_expiry, 0, v_delqty, v_packunits, v_saleprice, v_hold_avgprice, (v_rate / v_packunits), 0, 0, 0, v_rate, v_unitsalestax, v_gstperc1, v_saleutn, v_total_availablestock, v_rowgroup);
       GET DIAGNOSTICS _rc = ROW_COUNT;
       v_err := 0;
@@ -28448,8 +29825,10 @@ BEGIN
       IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
         RAISE EXCEPTION 'Error occured in inserting record into Sale Detail for Sale Inv. No. : %', v_saleinvcode;
         v_continue := -1;
+        _rc := 1;
       ELSE
         v_newqty := (v_currqty - v_delqty);
+        _rc := 1;
         IF (v_newqty > 0) THEN
           SELECT r.return_value INTO v_rt_code FROM dbo.sp_saleupdateitemstockbatch(gcode => (v_gcode)::integer, icode => v_icode, batch => v_batch, expiry => v_expiry, newqty => v_newqty, oldqty => v_currqty) AS r;
         ELSE
@@ -28457,9 +29836,11 @@ BEGIN
         END IF;
         IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
           v_continue := -1;
+          _rc := 1;
         END IF;
       END IF;
       v_counter := (v_counter + 1);
+      _rc := 1;
       FETCH NEXT FROM cur_itembatch_cursor INTO v_batch, v_expiry, v_currqty;
       IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
     END LOOP;
@@ -28468,6 +29849,7 @@ BEGIN
   ELSE
     RAISE EXCEPTION 'Not enough stock for item (%) to decrease for Sale Inv. No : %', v_itemname, v_saleinvcode;
     v_continue := -1;
+    _rc := 1;
   END IF;
   IF ((v_continue >= 0)) THEN
     UPDATE dbo.installmentheader SET posted = 'Y', postedby = v_usercode, postdate = localtimestamp(3), saleinvcode = v_saleinvcode WHERE (installmentcode = v_installmentcode);
@@ -28478,6 +29860,7 @@ BEGIN
     IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
       RAISE EXCEPTION 'Unable to update Installment staus from Not Posted To Posted For Installment Code : %', v_installmentcode;
       v_continue := -1;
+      _rc := 1;
     END IF;
   END IF;
   return_value := v_continue;
@@ -28608,31 +29991,43 @@ BEGIN
   v_headerno := headerno;
   v_serverdate := serverdate;
   v_effect := (SELECT itemconversioneffectcode FROM dbo.itemconversionheader WHERE (itemconversioncode = v_code));
+  _rc := 1;
   v_remarks := (SELECT coalesce(remarks, '') FROM dbo.itemconversionheader WHERE (itemconversioncode = v_code));
+  _rc := 1;
   v_remarks := (((v_code)::text || ' , ') || v_remarks);
+  _rc := 1;
   v_rt_code := (SELECT count(*) FROM dbo.itemconversionheader WHERE ((itemconversioncode = v_code) AND (posted = 'Y')));
+  _rc := 1;
   IF (v_rt_code > 0) THEN
     return_value := 0;
     RETURN;
   END IF;
   v_continue := 0;
+  _rc := 1;
   v_module := (SELECT module FROM dbo.module WHERE (name = 'Adjustment'));
+  _rc := 1;
   v_defaultbatch := dbo.fn_getpreference('defaultbatch');
+  _rc := 1;
   v_defaultexpiry := dbo.fn_get_datetime_preference('defaultexpiry');
+  _rc := 1;
   v_updateavgprice := dbo.fn_getpreference('UpdAvgPriceInAdjInc');
+  _rc := 1;
   IF (v_effect = 1) THEN
   ELSE
   END IF;
   OPEN cur_cursor_adjinc_items FOR SELECT itemconversiondetail.gcode, itemconversiondetail.icode, itemconversiondetail.qty AS givenqty, item.packunits, item.purprice, item.saleprice, item.recentpurprice FROM dbo.itemconversiondetail JOIN dbo.item ON (itemconversiondetail.icode = item.icode) WHERE ((itemconversioncode = v_code) AND (qty > 0)) ORDER BY rowid;
   v_adjinc_items_rows := (-1);
+  _rc := 1;
   IF (v_adjinc_items_rows > 0) THEN
     SELECT r.return_value, r.key INTO v_rt_code, v_adjinccode FROM dbo.sp_gettabmaxkey(tabname => 'AdjHeader', key => v_adjinccode) AS r;
     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
       v_continue := -1;
+      _rc := 1;
     ELSE
       SELECT r.return_value, r.key INTO v_rt_code, v_headerinvno FROM dbo.sp_getheadertabmaxkey(headercode => v_headerno, modulecode => v_module, key => v_headerinvno) AS r;
       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
         v_continue := -1;
+        _rc := 1;
       ELSE
         INSERT INTO dbo.adjheader (adjcode, adjcatcode, usercode, remarks, date, modifieddate, modifiedby, posted, posteddate, postedby, headerno, headerinvno) VALUES (v_adjinccode, 1, v_usercode, v_remarks, v_serverdate, v_serverdate, NULL::integer, 'Y', v_serverdate, v_usercode, v_headerno, v_headerinvno);
         GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -28642,6 +30037,7 @@ BEGIN
         IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
           RAISE EXCEPTION 'Error occured in inserting record into Adjustment Increase Header for Item Conversion Code : %', v_code;
           v_continue := -1;
+          _rc := 1;
         ELSE
           FETCH NEXT FROM cur_cursor_adjinc_items INTO v_gcode, v_icode, v_givenqty, v_packunits, v_purprice, v_saleprice, v_recentpurprice;
           IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
@@ -28649,29 +30045,38 @@ BEGIN
             SELECT r.return_value, r.avgprice INTO v_rt_code, v_hold_avgprice FROM dbo.sp_getitemavgprice(icode => v_icode, avgprice => v_hold_avgprice) AS r;
             IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
               v_continue := -1;
+              _rc := 1;
             ELSE
               SELECT r.return_value, r.lbi_maxutn INTO v_rt_code, v_adjutn FROM dbo.sp_maxutn(lbi_rows => (1)::bigint, lbi_maxutn => v_adjutn) AS r;
               IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                 v_continue := -1;
+                _rc := 1;
               END IF;
               v_packunits := CASE WHEN (v_packunits IS NULL) THEN 1 WHEN (v_packunits = 0) THEN 1 ELSE v_packunits END;
+              _rc := 1;
               IF ((v_hold_avgprice IS NULL) OR (v_hold_avgprice = 0)) THEN
                 v_price := (v_purprice / v_packunits);
+                _rc := 1;
               ELSE
                 v_price := (v_hold_avgprice)::numeric(8,2);
+                _rc := 1;
               END IF;
               SELECT r.return_value, r.qty INTO v_rt_code, v_totstock FROM dbo.sp_getitemstockall(icode => v_icode, qty => v_totstock) AS r;
               IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                 v_continue := -1;
+                _rc := 1;
               END IF;
               IF (v_updateavgprice = 'Y') THEN
                 v_newavgprice := coalesce((SELECT round(((((((v_totstock * v_hold_avgprice)) + ((v_givenqty * v_price)))) / ((v_givenqty + v_totstock))))::numeric, 5)), 0);
+                _rc := 1;
                 SELECT r.return_value INTO v_rt_code FROM dbo.sp_updateitemavgprice(icode => v_icode, avgprice => v_newavgprice) AS r;
                 IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                   v_continue := -1;
+                  _rc := 1;
                 END IF;
               ELSE
                 v_newavgprice := v_hold_avgprice;
+                _rc := 1;
               END IF;
               IF (v_continue <> -1) THEN
                 INSERT INTO dbo.adjdetail (adjcode, gcode, icode, batch, expiry, looseqty, priority, price, avgprice, packunits, saleprice, purprice, recentpurprice, adjutn, updateavgprice, newavgprice, currstock) VALUES (v_adjinccode, v_gcode, v_icode, v_defaultbatch, v_defaultexpiry, v_givenqty, 0, v_price, v_hold_avgprice, v_packunits, v_saleprice, v_purprice, v_recentpurprice, v_adjutn, v_updateavgprice, v_newavgprice, v_totstock);
@@ -28682,15 +30087,19 @@ BEGIN
                 IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
                   RAISE EXCEPTION 'Error occured in inserting record into Adjustment Increase Detail for Item Conversion Code : %', v_code;
                   v_continue := -1;
+                  _rc := 1;
                 ELSE
                   SELECT r.return_value, r.qty INTO v_rt_code, v_currqty FROM dbo.sp_getitemstockbatch(gcode => (v_gcode)::integer, icode => v_icode, batch => v_defaultbatch, expiry => v_defaultexpiry, qty => v_currqty) AS r;
                   IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                     v_continue := -1;
+                    _rc := 1;
                   ELSE
                     v_newqty := (v_currqty + v_givenqty);
+                    _rc := 1;
                     SELECT r.return_value INTO v_rt_code FROM dbo.sp_updateitemstockbatch(gcode => (v_gcode)::integer, icode => v_icode, batch => v_defaultbatch, expiry => v_defaultexpiry, newqty => v_newqty) AS r;
                     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                       v_continue := -1;
+                      _rc := 1;
                     END IF;
                   END IF;
                 END IF;
@@ -28710,19 +30119,23 @@ BEGIN
     RETURN;
   ELSE
     v_continue := 0;
+    _rc := 1;
     IF (v_effect = 1) THEN
     ELSE
     END IF;
     OPEN cur_cursor_adjdec_items FOR SELECT itemconversionheader.gcode, itemconversionheader.icode, itemconversionheader.qty AS givenqty, item.packunits, item.purprice, item.saleprice, item.recentpurprice FROM dbo.itemconversionheader JOIN dbo.item ON (itemconversionheader.icode = item.icode) WHERE ((itemconversioncode = v_code) AND (qty > 0));
     v_adjdec_items_rows := (-1);
+    _rc := 1;
     IF (v_adjdec_items_rows > 0) THEN
       SELECT r.return_value, r.key INTO v_rt_code, v_adjdeccode FROM dbo.sp_gettabmaxkey(tabname => 'AdjHeader', key => v_adjdeccode) AS r;
       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
         v_continue := -1;
+        _rc := 1;
       ELSE
         SELECT r.return_value, r.key INTO v_rt_code, v_headerinvno FROM dbo.sp_getheadertabmaxkey(headercode => v_headerno, modulecode => v_module, key => v_headerinvno) AS r;
         IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
           v_continue := -1;
+          _rc := 1;
         ELSE
           INSERT INTO dbo.adjheader (adjcode, adjcatcode, usercode, remarks, date, modifieddate, modifiedby, posted, posteddate, postedby, headerno, headerinvno) VALUES (v_adjdeccode, 2, v_usercode, v_remarks, v_serverdate, v_serverdate, NULL::integer, 'Y', v_serverdate, v_usercode, v_headerno, v_headerinvno);
           GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -28732,6 +30145,7 @@ BEGIN
           IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
             RAISE EXCEPTION 'Error occured in inserting record into Adjustment Decrease for Item Conversion Code : %', v_code;
             v_continue := -1;
+            _rc := 1;
           ELSE
             FETCH NEXT FROM cur_cursor_adjdec_items INTO v_gcode, v_icode, v_givenqty, v_packunits, v_purprice, v_saleprice, v_recentpurprice;
             IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
@@ -28739,33 +30153,46 @@ BEGIN
               SELECT r.return_value, r.avgprice INTO v_rt_code, v_hold_avgprice FROM dbo.sp_getitemavgprice(icode => v_icode, avgprice => v_hold_avgprice) AS r;
               IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                 v_continue := -1;
+                _rc := 1;
               ELSE
                 v_packunits := CASE WHEN (v_packunits IS NULL) THEN 1 WHEN (v_packunits = 0) THEN 1 ELSE v_packunits END;
+                _rc := 1;
                 v_totalqty := (SELECT coalesce(sum(currqty), 0) FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)));
+                _rc := 1;
                 IF (v_totalqty >= v_givenqty) THEN
                   v_reqqty := v_givenqty;
+                  _rc := 1;
                   OPEN cur_itembatch_cursor FOR SELECT batch, expiry, currqty FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)) ORDER BY priority, expiry, currqty;
                   v_totalrows := (-1);
+                  _rc := 1;
                   FETCH NEXT FROM cur_itembatch_cursor INTO v_batch, v_expiry, v_currqty;
                   IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
                   v_counter := 1;
+                  _rc := 1;
                   WHILE (((_fs = 0) AND (v_counter <= v_totalrows)) AND (v_reqqty > 0)) LOOP
                     v_batchqty := v_currqty;
+                    _rc := 1;
                     IF (v_batchqty >= v_reqqty) THEN
                       v_delqty := v_reqqty;
+                      _rc := 1;
                     ELSE
                       v_delqty := v_batchqty;
+                      _rc := 1;
                     END IF;
                     v_reqqty := (v_reqqty - v_delqty);
+                    _rc := 1;
                     SELECT r.return_value, r.lbi_maxutn INTO v_rt_code, v_adjutn FROM dbo.sp_maxutn(lbi_rows => (1)::bigint, lbi_maxutn => v_adjutn) AS r;
                     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                       v_continue := -1;
+                      _rc := 1;
                     END IF;
                     SELECT r.return_value, r.qty INTO v_rt_code, v_totstock FROM dbo.sp_getitemstockall(icode => v_icode, qty => v_totstock) AS r;
                     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                       v_continue := -1;
+                      _rc := 1;
                     END IF;
                     v_newavgprice := v_hold_avgprice;
+                    _rc := 1;
                     INSERT INTO dbo.adjdetail (adjcode, gcode, icode, batch, expiry, looseqty, priority, price, avgprice, packunits, saleprice, purprice, recentpurprice, adjutn, updateavgprice, newavgprice, currstock) VALUES (v_adjdeccode, v_gcode, v_icode, v_batch, v_expiry, v_delqty, 0, v_hold_avgprice, v_hold_avgprice, v_packunits, v_saleprice, v_purprice, v_recentpurprice, v_adjutn, v_updateavgprice, v_newavgprice, v_totstock);
                     GET DIAGNOSTICS _rc = ROW_COUNT;
                     v_err := 0;
@@ -28774,8 +30201,10 @@ BEGIN
                     IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
                       RAISE EXCEPTION 'Error occured in inserting record into Adjustment Decrease Detail for Item Conversion Code : %', v_code;
                       v_continue := -1;
+                      _rc := 1;
                     ELSE
                       v_newqty := (v_currqty - v_delqty);
+                      _rc := 1;
                       IF (v_newqty > 0) THEN
                         SELECT r.return_value INTO v_rt_code FROM dbo.sp_saleupdateitemstockbatch(gcode => (v_gcode)::integer, icode => v_icode, batch => v_batch, expiry => v_expiry, newqty => v_newqty, oldqty => v_currqty) AS r;
                       ELSE
@@ -28783,9 +30212,11 @@ BEGIN
                       END IF;
                       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                         v_continue := -1;
+                        _rc := 1;
                       END IF;
                     END IF;
                     v_counter := (v_counter + 1);
+                    _rc := 1;
                     FETCH NEXT FROM cur_itembatch_cursor INTO v_batch, v_expiry, v_currqty;
                     IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
                   END LOOP;
@@ -28793,8 +30224,10 @@ BEGIN
                   -- DEALLOCATE ItemBatch_Cursor
                 ELSE
                   v_itemname := (SELECT name FROM dbo.item WHERE (icode = v_icode));
+                  _rc := 1;
                   RAISE EXCEPTION 'Not enough stock for item (%) to decrease for Item Conversion Code : %', v_itemname, v_code;
                   v_continue := -1;
+                  _rc := 1;
                 END IF;
               END IF;
               FETCH NEXT FROM cur_cursor_adjdec_items INTO v_gcode, v_icode, v_givenqty, v_packunits, v_purprice, v_saleprice, v_recentpurprice;
@@ -30638,28 +32071,40 @@ BEGIN
   v_headerno := headerno;
   v_serverdate := serverdate;
   v_remarks := (SELECT coalesce(remarks, '') FROM dbo.adjbufferheader WHERE (adjbuffercode = v_adjbuffercode));
+  _rc := 1;
   v_remarks := (((v_adjbuffercode)::text || ' , ') || v_remarks);
+  _rc := 1;
   v_rt_code := (SELECT count(*) FROM dbo.adjbufferheader WHERE ((adjbuffercode = v_adjbuffercode) AND (posted = 'Y')));
+  _rc := 1;
   IF (v_rt_code > 0) THEN
     return_value := 0;
     RETURN;
   END IF;
   v_continue := 0;
+  _rc := 1;
   v_gcode := (SELECT gcode FROM dbo.adjbufferheader WHERE (adjbuffercode = v_adjbuffercode));
+  _rc := 1;
   v_module := (SELECT module FROM dbo.module WHERE (name = 'Adjustment'));
+  _rc := 1;
   v_defaultbatch := dbo.fn_getpreference('defaultbatch');
+  _rc := 1;
   v_defaultexpiry := dbo.fn_get_datetime_preference('defaultexpiry');
+  _rc := 1;
   v_updateavgprice := dbo.fn_getpreference('UpdAvgPriceInAdjInc');
+  _rc := 1;
   OPEN cur_cursor_adjinc_items FOR SELECT adjbufferdetail.icode, ((stockonshelf - stockinhand)) AS givenqty, packunits, purprice, saleprice, recentpurprice, alternatecustomicode FROM dbo.adjbufferdetail JOIN dbo.item ON (adjbufferdetail.icode = item.icode) WHERE ((adjbuffercode = v_adjbuffercode) AND (((stockonshelf - stockinhand)) > 0)) ORDER BY rowid;
   v_adjinc_items_rows := (-1);
+  _rc := 1;
   IF (v_adjinc_items_rows > 0) THEN
     SELECT r.return_value, r.key INTO v_rt_code, v_adjinccode FROM dbo.sp_gettabmaxkey(tabname => 'AdjHeader', key => v_adjinccode) AS r;
     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
       v_continue := -1;
+      _rc := 1;
     ELSE
       SELECT r.return_value, r.key INTO v_rt_code, v_headerinvno FROM dbo.sp_getheadertabmaxkey(headercode => v_headerno, modulecode => v_module, key => v_headerinvno) AS r;
       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
         v_continue := -1;
+        _rc := 1;
       ELSE
         INSERT INTO dbo.adjheader (adjcode, adjcatcode, usercode, remarks, date, modifieddate, modifiedby, posted, posteddate, postedby, headerno, headerinvno) VALUES (v_adjinccode, 1, v_usercode, v_remarks, v_serverdate, v_serverdate, NULL::integer, 'Y', v_serverdate, v_usercode, v_headerno, v_headerinvno);
         GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -30669,6 +32114,7 @@ BEGIN
         IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
           RAISE EXCEPTION 'Error occured in inserting record into Adjustment Increase Header for Stock Adjustment : %', v_adjbuffercode;
           v_continue := -1;
+          _rc := 1;
         ELSE
           FETCH NEXT FROM cur_cursor_adjinc_items INTO v_icode, v_givenqty, v_packunits, v_purprice, v_saleprice, v_recentpurprice, v_alternatecustomicode;
           IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
@@ -30676,29 +32122,38 @@ BEGIN
             SELECT r.return_value, r.avgprice INTO v_rt_code, v_hold_avgprice FROM dbo.sp_getitemavgprice(icode => v_icode, avgprice => v_hold_avgprice) AS r;
             IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
               v_continue := -1;
+              _rc := 1;
             ELSE
               SELECT r.return_value, r.lbi_maxutn INTO v_rt_code, v_adjutn FROM dbo.sp_maxutn(lbi_rows => (1)::bigint, lbi_maxutn => v_adjutn) AS r;
               IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                 v_continue := -1;
+                _rc := 1;
               END IF;
               v_packunits := CASE WHEN (v_packunits IS NULL) THEN 1 WHEN (v_packunits = 0) THEN 1 ELSE v_packunits END;
+              _rc := 1;
               IF ((v_hold_avgprice IS NULL) OR (v_hold_avgprice = 0)) THEN
                 v_price := (v_purprice / v_packunits);
+                _rc := 1;
               ELSE
                 v_price := (v_hold_avgprice)::numeric(8,2);
+                _rc := 1;
               END IF;
               SELECT r.return_value, r.qty INTO v_rt_code, v_totstock FROM dbo.sp_getitemstockall(icode => v_icode, qty => v_totstock) AS r;
               IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                 v_continue := -1;
+                _rc := 1;
               END IF;
               IF (v_updateavgprice = 'Y') THEN
                 v_newavgprice := coalesce((SELECT round(((((((v_totstock * v_hold_avgprice)) + ((v_givenqty * v_price)))) / ((v_givenqty + v_totstock))))::numeric, 5)), 0);
+                _rc := 1;
                 SELECT r.return_value INTO v_rt_code FROM dbo.sp_updateitemavgprice(icode => v_icode, avgprice => v_newavgprice) AS r;
                 IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                   v_continue := -1;
+                  _rc := 1;
                 END IF;
               ELSE
                 v_newavgprice := v_hold_avgprice;
+                _rc := 1;
               END IF;
               IF (v_continue <> -1) THEN
                 INSERT INTO dbo.adjdetail (adjcode, gcode, icode, batch, expiry, looseqty, priority, price, avgprice, packunits, saleprice, purprice, recentpurprice, adjutn, updateavgprice, newavgprice, currstock, alternatecustomicode) VALUES (v_adjinccode, v_gcode, v_icode, v_defaultbatch, v_defaultexpiry, v_givenqty, 0, v_price, v_hold_avgprice, v_packunits, v_saleprice, v_purprice, v_recentpurprice, v_adjutn, v_updateavgprice, v_newavgprice, v_totstock, v_alternatecustomicode);
@@ -30709,15 +32164,19 @@ BEGIN
                 IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
                   RAISE EXCEPTION 'Error occured in inserting record into Adjustment Increase Detail for Stock Adjustment : %', v_adjbuffercode;
                   v_continue := -1;
+                  _rc := 1;
                 ELSE
                   SELECT r.return_value, r.qty INTO v_rt_code, v_currqty FROM dbo.sp_getitemstockbatch(gcode => (v_gcode)::integer, icode => v_icode, batch => v_defaultbatch, expiry => v_defaultexpiry, qty => v_currqty) AS r;
                   IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                     v_continue := -1;
+                    _rc := 1;
                   ELSE
                     v_newqty := (v_currqty + v_givenqty);
+                    _rc := 1;
                     SELECT r.return_value INTO v_rt_code FROM dbo.sp_updateitemstockbatch(gcode => (v_gcode)::integer, icode => v_icode, batch => v_defaultbatch, expiry => v_defaultexpiry, newqty => v_newqty) AS r;
                     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                       v_continue := -1;
+                      _rc := 1;
                     END IF;
                   END IF;
                 END IF;
@@ -30737,16 +32196,20 @@ BEGIN
     RETURN;
   ELSE
     v_continue := 0;
+    _rc := 1;
     OPEN cur_cursor_adjdec_items FOR SELECT adjbufferdetail.icode, abs((stockonshelf - stockinhand)) AS givenqty, packunits, purprice, saleprice, recentpurprice, alternatecustomicode FROM dbo.adjbufferdetail JOIN dbo.item ON (adjbufferdetail.icode = item.icode) WHERE (((adjbuffercode = v_adjbuffercode) AND (stockonshelf <> stockinhand)) AND (((stockonshelf - stockinhand)) <= 0)) ORDER BY rowid;
     v_adjdec_items_rows := (-1);
+    _rc := 1;
     IF (v_adjdec_items_rows > 0) THEN
       SELECT r.return_value, r.key INTO v_rt_code, v_adjdeccode FROM dbo.sp_gettabmaxkey(tabname => 'AdjHeader', key => v_adjdeccode) AS r;
       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
         v_continue := -1;
+        _rc := 1;
       ELSE
         SELECT r.return_value, r.key INTO v_rt_code, v_headerinvno FROM dbo.sp_getheadertabmaxkey(headercode => v_headerno, modulecode => v_module, key => v_headerinvno) AS r;
         IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
           v_continue := -1;
+          _rc := 1;
         ELSE
           INSERT INTO dbo.adjheader (adjcode, adjcatcode, usercode, remarks, date, modifieddate, modifiedby, posted, posteddate, postedby, headerno, headerinvno) VALUES (v_adjdeccode, 2, v_usercode, v_remarks, v_serverdate, v_serverdate, NULL::integer, 'Y', v_serverdate, v_usercode, v_headerno, v_headerinvno);
           GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -30756,6 +32219,7 @@ BEGIN
           IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
             RAISE EXCEPTION 'Error occured in inserting record into Adjustment Decrease for Stock Adjustment : %', v_adjbuffercode;
             v_continue := -1;
+            _rc := 1;
           ELSE
             FETCH NEXT FROM cur_cursor_adjdec_items INTO v_icode, v_givenqty, v_packunits, v_purprice, v_saleprice, v_recentpurprice, v_alternatecustomicode;
             IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
@@ -30763,33 +32227,46 @@ BEGIN
               SELECT r.return_value, r.avgprice INTO v_rt_code, v_hold_avgprice FROM dbo.sp_getitemavgprice(icode => v_icode, avgprice => v_hold_avgprice) AS r;
               IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                 v_continue := -1;
+                _rc := 1;
               ELSE
                 v_packunits := CASE WHEN (v_packunits IS NULL) THEN 1 WHEN (v_packunits = 0) THEN 1 ELSE v_packunits END;
+                _rc := 1;
                 v_totalqty := (SELECT coalesce(sum(currqty), 0) FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)));
+                _rc := 1;
                 IF (v_totalqty >= v_givenqty) THEN
                   v_reqqty := v_givenqty;
+                  _rc := 1;
                   OPEN cur_itembatch_cursor FOR SELECT batch, expiry, currqty FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)) ORDER BY priority, expiry, currqty;
                   v_totalrows := (-1);
+                  _rc := 1;
                   FETCH NEXT FROM cur_itembatch_cursor INTO v_batch, v_expiry, v_currqty;
                   IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
                   v_counter := 1;
+                  _rc := 1;
                   WHILE (((_fs = 0) AND (v_counter <= v_totalrows)) AND (v_reqqty > 0)) LOOP
                     v_batchqty := v_currqty;
+                    _rc := 1;
                     IF (v_batchqty >= v_reqqty) THEN
                       v_delqty := v_reqqty;
+                      _rc := 1;
                     ELSE
                       v_delqty := v_batchqty;
+                      _rc := 1;
                     END IF;
                     v_reqqty := (v_reqqty - v_delqty);
+                    _rc := 1;
                     SELECT r.return_value, r.lbi_maxutn INTO v_rt_code, v_adjutn FROM dbo.sp_maxutn(lbi_rows => (1)::bigint, lbi_maxutn => v_adjutn) AS r;
                     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                       v_continue := -1;
+                      _rc := 1;
                     END IF;
                     SELECT r.return_value, r.qty INTO v_rt_code, v_totstock FROM dbo.sp_getitemstockall(icode => v_icode, qty => v_totstock) AS r;
                     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                       v_continue := -1;
+                      _rc := 1;
                     END IF;
                     v_newavgprice := v_hold_avgprice;
+                    _rc := 1;
                     INSERT INTO dbo.adjdetail (adjcode, gcode, icode, batch, expiry, looseqty, priority, price, avgprice, packunits, saleprice, purprice, recentpurprice, adjutn, updateavgprice, newavgprice, currstock, alternatecustomicode) VALUES (v_adjdeccode, v_gcode, v_icode, v_batch, v_expiry, v_delqty, 0, v_hold_avgprice, v_hold_avgprice, v_packunits, v_saleprice, v_purprice, v_recentpurprice, v_adjutn, v_updateavgprice, v_newavgprice, v_totstock, v_alternatecustomicode);
                     GET DIAGNOSTICS _rc = ROW_COUNT;
                     v_err := 0;
@@ -30798,8 +32275,10 @@ BEGIN
                     IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
                       RAISE EXCEPTION 'Error occured in inserting record into Adjustment Decrease Detail for Stock Adjustment : %', v_adjbuffercode;
                       v_continue := -1;
+                      _rc := 1;
                     ELSE
                       v_newqty := (v_currqty - v_delqty);
+                      _rc := 1;
                       IF (v_newqty > 0) THEN
                         SELECT r.return_value INTO v_rt_code FROM dbo.sp_saleupdateitemstockbatch(gcode => (v_gcode)::integer, icode => v_icode, batch => v_batch, expiry => v_expiry, newqty => v_newqty, oldqty => v_currqty) AS r;
                       ELSE
@@ -30807,9 +32286,11 @@ BEGIN
                       END IF;
                       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                         v_continue := -1;
+                        _rc := 1;
                       END IF;
                     END IF;
                     v_counter := (v_counter + 1);
+                    _rc := 1;
                     FETCH NEXT FROM cur_itembatch_cursor INTO v_batch, v_expiry, v_currqty;
                     IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
                   END LOOP;
@@ -30817,8 +32298,10 @@ BEGIN
                   -- DEALLOCATE ItemBatch_Cursor
                 ELSE
                   v_itemname := (SELECT name FROM dbo.item WHERE (icode = v_icode));
+                  _rc := 1;
                   RAISE EXCEPTION 'Not enough stock for item (%) to decrease for Stock Adjusment : %', v_itemname, v_adjbuffercode;
                   v_continue := -1;
+                  _rc := 1;
                 END IF;
               END IF;
               FETCH NEXT FROM cur_cursor_adjdec_items INTO v_icode, v_givenqty, v_packunits, v_purprice, v_saleprice, v_recentpurprice, v_alternatecustomicode;
@@ -30907,30 +32390,41 @@ BEGIN
   v_ai_code := ai_code;
   v_ai_usercode := ai_usercode;
   v_usercode := v_ai_usercode;
+  _rc := 1;
   OPEN cur_c1 FOR SELECT d.studentcode, d.classcode, d.rollno, sum(((((d.fee - d.flatdisc)) * ((1 - (d.discperc * 0.01)))))) AS netamount, s.remarks, d.servicetemplatecode, d.duedate FROM dbo.studentfeesheetdetail AS d, dbo.studentfeesheet AS s, dbo.class AS c, dbo.student AS st WHERE (((((s.studentfeesheetcode = v_ai_code) AND (s.studentfeesheetcode = d.studentfeesheetcode)) AND (d.classcode = c.classcode)) AND (d.studentcode = st.studentcode)) AND (((((d.fee - d.flatdisc)) * ((1 - (d.discperc * 0.01))))) > 0)) GROUP BY d.classcode, c.name, d.rollno, d.studentcode, st.name, s.remarks, d.servicetemplatecode, d.duedate ORDER BY c.name, d.rollno, st.name;
   v_totrows := (-1);
+  _rc := 1;
   IF (v_totrows > 0) THEN
     FETCH NEXT FROM cur_c1 INTO v_studentcode, v_classcode, v_rollno, v_netamount, v_remarks, v_servicetemplatecode, v_duedate;
     IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
     WHILE (_fs = 0) LOOP
       v_newduedate := v_duedate;
+      _rc := 1;
       IF (v_newduedate IS NULL) THEN
         v_feeday := coalesce((SELECT class.feedueon FROM dbo.class WHERE (class.classcode = v_classcode)), 1);
+        _rc := 1;
         v_today := (SELECT extract(day from localtimestamp(3))::integer);
+        _rc := 1;
         IF (v_today >= v_feeday) THEN
           IF (extract(month from localtimestamp(3))::integer < 12) THEN
             v_duedate := (((((ltrim(rtrim(dbo.tsql_str((extract(year from localtimestamp(3))::integer)::numeric, 7))) || '-') || ltrim(rtrim(dbo.tsql_str(((extract(month from localtimestamp(3))::integer + 1))::numeric, 7)))) || '-') || ltrim(rtrim(dbo.tsql_str((v_feeday)::numeric, 7)))))::timestamp(3);
+            _rc := 1;
           ELSE
             v_duedate := (((((ltrim(rtrim(dbo.tsql_str(((extract(year from localtimestamp(3))::integer + 1))::numeric, 7))) || '-') || '01') || '-') || ltrim(rtrim(dbo.tsql_str((v_feeday)::numeric, 7)))))::timestamp(3);
+            _rc := 1;
           END IF;
         ELSE
           v_duedate := (((((ltrim(rtrim(dbo.tsql_str((extract(year from localtimestamp(3))::integer)::numeric, 7))) || '-') || ltrim(rtrim(dbo.tsql_str((extract(month from localtimestamp(3))::integer)::numeric, 7)))) || '-') || ltrim(rtrim(dbo.tsql_str((v_feeday)::numeric, 7)))))::timestamp(3);
+          _rc := 1;
         END IF;
       ELSE
         v_duedate := v_newduedate;
+        _rc := 1;
       END IF;
       v_duedate := coalesce(v_duedate, localtimestamp(3));
+      _rc := 1;
       v_errcode := 0;
+      _rc := 1;
       SELECT r.return_value, r.key INTO v_errcode, v_serviceinvcode FROM dbo.sp_locktabmaxkey(tabname => 'ServiceHeader', key => v_serviceinvcode) AS r;
       IF ((0 <> 0) OR (v_errcode <> 0)) THEN
         RAISE EXCEPTION 'Problem while Fetching ServiceHeader Key Value';
@@ -30938,6 +32432,7 @@ BEGIN
         RETURN;
       END IF;
       v_serviceinvcode := (v_serviceinvcode + 1);
+      _rc := 1;
       INSERT INTO dbo.serviceheader (serviceinvcode, custcode, salesmancode, servicecatcode, remarks, originaldate, modifiedby, date, postedby, postdate, headerno, discperc, flatdisc, misccharges, saleinvcode, posted, reprintingcounter, serviceocode, cashreceived, cashtendered, cashcharged, cashback, studentcode, duedate) SELECT v_serviceinvcode, s.custcode AS custcode, v_usercode AS salesmancode, 11 AS serivcecatcode, v_remarks AS remarks, localtimestamp(3) AS originaldate, NULL::smallint AS modifiedby, localtimestamp(3) AS date, v_usercode AS postedby, localtimestamp(3) AS postdate, 1 AS headerno, 0 AS discperc, 0 AS flatdisc, 0 AS misccharges, NULL::integer AS saleinvcode, 'Y' AS posted, 0 AS reprintingcounter, NULL::integer AS serviceocode, 0 AS cashreceived, 0 AS cashtendered, 0 AS cashcharged, 0 AS cashback, s.studentcode AS studentcode, v_duedate AS duedate FROM dbo.student AS s WHERE (s.studentcode = v_studentcode);
       GET DIAGNOSTICS _rc = ROW_COUNT;
       IF ((0 <> 0) OR (_rc = 0)) THEN
@@ -30969,6 +32464,7 @@ BEGIN
       CLOSE cur_c2;
       -- DEALLOCATE C2
       v_errcode := 0;
+      _rc := 1;
       SELECT r.return_value INTO v_errcode FROM dbo.sp_updatetabmaxkey(tabname => 'ServiceHeader', key => v_serviceinvcode) AS r;
       IF ((0 <> 0) OR (v_errcode <> 0)) THEN
         RAISE EXCEPTION 'Problem while Updating ServiceHeader Key Value';
@@ -31458,6 +32954,7 @@ DECLARE
 BEGIN
   v_promotioncode := promotioncode;
   v_promotedstudents := coalesce((SELECT count(*) FROM dbo.classpromotiondetail WHERE ((promotioncode = v_promotioncode) AND (promote = 'Y'))), 0);
+  _rc := 1;
   IF (v_promotedstudents <= 0) THEN
     return_value := 0;
     RETURN;
@@ -31474,17 +32971,24 @@ BEGIN
   INSERT INTO tv_sp_promoteclass_studentlist (promoteclassfrom, promoteclassto, studentcode, rollno, rowid) SELECT c.promoteclassfrom, promoteclassto, d.studentcode, d.rollno, d.rowid FROM dbo.classpromotion AS c, dbo.classpromotiondetail AS d WHERE (((c.promotioncode = v_promotioncode) AND (c.promotioncode = d.promotioncode)) AND (promote = 'Y')) ORDER BY d.rowid;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_promotedstudents := coalesce((SELECT count(*) FROM tv_sp_promoteclass_studentlist AS studentlist), 0);
+  _rc := 1;
   IF (v_promotedstudents <= 0) THEN
     return_value := 0;
     RETURN;
   END IF;
   v_thisid := 1;
+  _rc := 1;
   WHILE (v_thisid <= v_promotedstudents) LOOP
     v_classfrom := (SELECT promoteclassfrom FROM tv_sp_promoteclass_studentlist AS studentlist WHERE (thisid = v_thisid));
+    _rc := 1;
     v_classcode := (SELECT promoteclassto FROM tv_sp_promoteclass_studentlist AS studentlist WHERE (thisid = v_thisid));
+    _rc := 1;
     v_studentcode := (SELECT studentcode FROM tv_sp_promoteclass_studentlist AS studentlist WHERE (thisid = v_thisid));
+    _rc := 1;
     v_rollno := (SELECT rollno FROM tv_sp_promoteclass_studentlist AS studentlist WHERE (thisid = v_thisid));
+    _rc := 1;
     v_rowid := (SELECT rowid FROM tv_sp_promoteclass_studentlist AS studentlist WHERE (thisid = v_thisid));
+    _rc := 1;
     SELECT r.return_value, r.rollno INTO v_err, v_rollno FROM dbo.sp_admit_student(classcode => v_classcode, studentcode => v_studentcode, rollno => v_rollno) AS r;
     IF ((v_err <> 0) OR (0 <> 0)) THEN
       RAISE EXCEPTION 'Can Not Admit student in the specified class';
@@ -31499,6 +33003,7 @@ BEGIN
       RETURN;
     END IF;
     v_thisid := (v_thisid + 1);
+    _rc := 1;
   END LOOP;
   UPDATE dbo.class SET promoted = 'Y' WHERE (classcode = v_classfrom);
   GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -31698,6 +33203,7 @@ BEGIN
   v_serverdate := serverdate;
   v_duecode := duecode;
   v_continue := 0;
+  _rc := 1;
   DROP TABLE IF EXISTS tv_sp_purchasebased_satisfydue_temp_table;
   CREATE TEMP TABLE tv_sp_purchasebased_satisfydue_temp_table (
     saleinvcode integer,
@@ -31715,37 +33221,49 @@ BEGIN
   INSERT INTO tv_sp_purchasebased_satisfydue_temp_table (saleinvcode, itemname, icode, gcode, salerowid, dueqty, satisfiedqty, stock, satisfiableqty, selected) SELECT saleinvcode, itemname, icode, gcode, salerowid, dueqty, satisfiedqty, stock, coalesce((dueqty - satisfiedqty), 0) AS satisfiableqty, 'N' AS selected FROM (SELECT sl.saleinvcode AS saleinvcode, i.name AS itemname, sd.icode AS icode, sd.gcode AS gcode, sd.rowid AS salerowid, sd.looseqty AS dueqty, coalesce((SELECT sum(dsd.duesatisfyqty) FROM dbo.duesatisfyheader AS dsh, dbo.duesatisfydetail AS dsd WHERE ((((dsh.saleinvcode = sl.saleinvcode) AND (dsh.duesatisfycode = dsd.duesatisfycode)) AND (dsd.icode = sd.icode)) AND (dsd.salerowid = sd.rowid))), 0) AS satisfiedqty, coalesce((SELECT sum(gd.currqty) FROM dbo.godowndetail AS gd WHERE ((gd.icode = sd.icode) AND (sd.gcode = gd.gcode))), 0) AS stock FROM dbo.saleledger AS sl, dbo.saledetail AS sd, dbo.item AS i, (SELECT DISTINCT icode, gcode FROM dbo.purdetail WHERE (purinvcode = v_purinvcode)) AS p WHERE ((((((sl.saleinvcode = sd.saleinvcode) AND (sl.posted = 'Y')) AND (sd.icode = i.icode)) AND (sd.due = 'D')) AND (sd.icode = p.icode)) AND (sd.gcode = p.gcode))) AS t WHERE ((((t.dueqty - t.satisfiedqty)) > 0) AND (t.stock > 0)) ORDER BY t.itemname, t.saleinvcode;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_totalrows := coalesce((SELECT count(*) FROM tv_sp_purchasebased_satisfydue_temp_table AS temp_table), 0);
+  _rc := 1;
   v_counter := 1;
+  _rc := 1;
   v_oldicode := -1;
+  _rc := 1;
   WHILE ((v_totalrows > 0) AND (v_counter <= v_totalrows)) LOOP
     v_icode := (SELECT icode FROM tv_sp_purchasebased_satisfydue_temp_table AS temp_table WHERE (rowid = v_counter));
+    _rc := 1;
     IF (v_icode <> v_oldicode) THEN
       v_oldicode := v_icode;
+      _rc := 1;
       v_totstock := coalesce((SELECT stock FROM tv_sp_purchasebased_satisfydue_temp_table AS temp_table WHERE (rowid = v_counter)), 0);
+      _rc := 1;
     END IF;
     IF (v_totstock > 0) THEN
       v_satisfiableqty := (SELECT satisfiableqty FROM tv_sp_purchasebased_satisfydue_temp_table AS temp_table WHERE (rowid = v_counter));
+      _rc := 1;
       UPDATE tv_sp_purchasebased_satisfydue_temp_table AS temp_table SET stock = v_totstock WHERE (rowid = v_counter);
       GET DIAGNOSTICS _rc = ROW_COUNT;
       IF (v_satisfiableqty <= v_totstock) THEN
         v_totstock := (v_totstock - v_satisfiableqty);
+        _rc := 1;
       ELSE
         UPDATE tv_sp_purchasebased_satisfydue_temp_table AS temp_table SET satisfiableqty = v_totstock WHERE (rowid = v_counter);
         GET DIAGNOSTICS _rc = ROW_COUNT;
         v_totstock := 0;
+        _rc := 1;
       END IF;
       UPDATE tv_sp_purchasebased_satisfydue_temp_table AS temp_table SET selected = 'Y' WHERE (rowid = v_counter);
       GET DIAGNOSTICS _rc = ROW_COUNT;
     END IF;
     v_counter := (v_counter + 1);
+    _rc := 1;
   END LOOP;
   DELETE FROM tv_sp_purchasebased_satisfydue_temp_table AS temp_table WHERE (selected = 'N');
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_totalrows := coalesce((SELECT count(*) FROM tv_sp_purchasebased_satisfydue_temp_table AS temp_table), 0);
+  _rc := 1;
   IF (v_totalrows > 0) THEN
     SELECT r.return_value, r.key INTO v_rt_code, v_dueadjcode FROM dbo.sp_gettabmaxkey(tabname => 'DueAdjHeader', key => v_dueadjcode) AS r;
     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
       v_continue := -1;
+      _rc := 1;
       RAISE EXCEPTION 'Unable to Generate New Due Adjustment code';
     ELSE
       INSERT INTO dbo.dueadjheader (dueadjcode, date, startdate, enddate, remarks, usercode) VALUES (v_dueadjcode, v_serverdate, ('01-01-1990 00:00:00')::timestamp(3), localtimestamp(3), ('Auto Due Satisfied on Purchase Inv. # ' || rtrim(ltrim(dbo.tsql_str((v_purinvcode)::numeric, 10)))), v_usercode);
@@ -31758,17 +33276,20 @@ BEGIN
       IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
         RAISE EXCEPTION 'Error occured in inserting record into Due Adjustment Detail';
         v_continue := -1;
+        _rc := 1;
       END IF;
       IF (v_continue >= 0) THEN
         SELECT r.return_value INTO v_rt_code FROM dbo.sp_satisfydueinbulk(dueadjcode => v_dueadjcode, usercode => v_usercode, serverdate => v_serverdate) AS r;
         IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
           v_continue := -1;
+          _rc := 1;
           RAISE EXCEPTION 'Unable to Generate New Due Adjustment code';
         END IF;
       END IF;
     END IF;
   END IF;
   v_duecode := v_dueadjcode;
+  _rc := 1;
   return_value := v_continue;
   duecode := v_duecode;
   RETURN;
@@ -31872,6 +33393,7 @@ BEGIN
   v_usercode := usercode;
   -- SET NOCOUNT ON
   v_serviceresultcode := (SELECT max(serviceresultcode) FROM dbo.serviceresultheader WHERE (serviceinvcode = v_serviceinvcode));
+  _rc := 1;
   DROP TABLE IF EXISTS tv_sp_regenerateserviceresult_service_table;
   CREATE TEMP TABLE tv_sp_regenerateserviceresult_service_table (
     servicecode integer,
@@ -31886,13 +33408,16 @@ BEGIN
   END IF;
   IF (v_usercode IS NULL) THEN
     v_usercode := 1;
+    _rc := 1;
   END IF;
   v_posted := coalesce((SELECT posted FROM dbo.serviceheader WHERE (serviceinvcode = v_serviceinvcode)), 'N');
+  _rc := 1;
   IF ((v_posted = 'N') OR (v_posted IS NULL)) THEN
     return_value := 0;
     RETURN;
   END IF;
   v_tot_services := (SELECT (SELECT count(sd.servicecode) FROM dbo.servicedetail AS sd, dbo.service AS sv WHERE (((sd.serviceinvcode = v_serviceinvcode) AND (sd.servicecode = sv.servicecode)) AND (sv.resultrequired = 'Y'))) AS servicecount FROM dbo.serviceheader WHERE ((serviceinvcode = v_serviceinvcode) AND (posted = 'Y')));
+  _rc := 1;
   IF ((v_tot_services <= 0) OR (v_tot_services IS NULL)) THEN
     return_value := 0;
     RETURN;
@@ -32014,6 +33539,7 @@ BEGIN
   UPDATE dbo.installmentheader SET rejected = 'Y', rejectedby = v_usercode, rejectedon = localtimestamp(3) WHERE (((installmentcode BETWEEN v_startcode AND v_endcode) AND (posted = 'N')) AND (approved = 'N'));
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_totalrows := _rc;
+  _rc := 1;
   IF (v_totalrows = 0) THEN
     RAISE EXCEPTION 'No Installment Estimate available for Rejection';
     return_value := -1;
@@ -32893,6 +34419,7 @@ BEGIN
       v_itemname := _r1.c1;
     END LOOP;
     v_string_expiry := left(to_char(v_expiry, 'DD/MM/YYYY'), 25);
+    _rc := 1;
     RAISE EXCEPTION 'Not enough stock available for the item (%) in batch no. (%) with expiry (%)', v_itemname, v_batch, v_string_expiry;
     return_value := -1;
     RETURN;
@@ -32959,10 +34486,12 @@ BEGIN
   FETCH NEXT FROM cur_cursor_duesatisfyinvoices INTO v_saleinvcode;
   IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
   v_continue := 0;
+  _rc := 1;
   WHILE ((_fs = 0) AND (v_continue >= 0)) LOOP
     SELECT r.return_value, r.key INTO v_rt_code, v_duesatisfycode FROM dbo.sp_gettabmaxkey(tabname => 'DueSatisfyHeader', key => v_duesatisfycode) AS r;
     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
       v_continue := -1;
+      _rc := 1;
     ELSE
       INSERT INTO dbo.duesatisfyheader (duesatisfycode, saleinvcode, duesatisfydate, usercode, dueadjcode) VALUES (v_duesatisfycode, v_saleinvcode, v_serverdate, v_usercode, v_dueadjcode);
       GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -32972,16 +34501,20 @@ BEGIN
       WHILE ((_fs = 0) AND (v_continue >= 0)) LOOP
         IF (dbo.fn_locksaledetailrow(v_saleinvcode, v_icode, v_salerowid) > 0) THEN
           v_satisfiedqty := dbo.fn_getitemduesatisfiedqty(v_saleinvcode, v_icode, v_salerowid);
+          _rc := 1;
           v_dueqty := dbo.fn_getitemdueqty(v_saleinvcode, v_icode, v_salerowid);
+          _rc := 1;
           IF (v_dueqty = ((v_satisfiedqty + v_satisfiableqty))) THEN
             PERFORM dbo.sp_updatesaledetail(saleinvcode => v_saleinvcode, gcode => (v_gcode)::integer, icode => v_icode, due => 'S', salerowid => v_salerowid);
             IF (0 <> 0) THEN
               v_continue := -1;
+              _rc := 1;
               RAISE EXCEPTION 'Unable to update Due satisfy status in sale detail for SaleInv: %', v_saleinvcode;
             END IF;
           ELSE
             IF (v_dueqty < ((v_satisfiedqty + v_satisfiableqty))) THEN
               v_continue := -1;
+              _rc := 1;
               RAISE EXCEPTION 'Unable to update Due satisfy status in sale detail for SaleInv: %. Reason satisfiable qty exceeds from satisfied qty for Itemcode: %', v_saleinvcode, v_icode;
             END IF;
           END IF;
@@ -32989,13 +34522,18 @@ BEGIN
             SELECT r.return_value, r.avgprice INTO v_rt_code, v_hold_avgprice FROM dbo.sp_getitemavgprice(icode => v_icode, avgprice => v_hold_avgprice) AS r;
             IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
               v_continue := -1;
+              _rc := 1;
             ELSE
               v_total_availablestock := (SELECT coalesce(sum(currqty), 0) FROM dbo.godowndetail WHERE (godowndetail.icode = v_icode));
+              _rc := 1;
               IF ((v_total_availablestock < 0) OR (v_total_availablestock IS NULL)) THEN
                 v_total_availablestock := 0;
+                _rc := 1;
               END IF;
               v_givenqty := v_satisfiableqty;
+              _rc := 1;
               v_totalqty := (SELECT coalesce(sum(currqty), 0) FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)));
+              _rc := 1;
               IF (v_totalqty >= v_givenqty) THEN
                 _rc := 0;
                 FOR _r1 IN SELECT saleprice AS c1, packunits AS c2 FROM dbo.item WHERE (icode = v_icode) LOOP
@@ -33005,26 +34543,36 @@ BEGIN
                 END LOOP;
                 IF ((v_packunits = 0) OR (v_packunits IS NULL)) THEN
                   v_packunits := 1;
+                  _rc := 1;
                 END IF;
                 v_reqqty := v_givenqty;
+                _rc := 1;
                 OPEN cur_itembatch_cursor FOR SELECT batch, expiry, currqty FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)) ORDER BY priority, expiry, currqty;
                 v_totalrows := (-1);
+                _rc := 1;
                 FETCH NEXT FROM cur_itembatch_cursor INTO v_batch, v_expiry, v_currqty;
                 IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
                 v_counter := 1;
+                _rc := 1;
                 WHILE (((_fs = 0) AND (v_counter <= v_totalrows)) AND (v_reqqty > 0)) LOOP
                   v_batchqty := v_currqty;
+                  _rc := 1;
                   IF (v_batchqty >= v_reqqty) THEN
                     v_delqty := v_reqqty;
+                    _rc := 1;
                   ELSE
                     v_delqty := v_batchqty;
+                    _rc := 1;
                   END IF;
                   v_reqqty := (v_reqqty - v_delqty);
+                  _rc := 1;
                   SELECT r.return_value, r.lbi_maxutn INTO v_rt_code, v_dueutn FROM dbo.sp_maxutn(lbi_rows => (1)::bigint, lbi_maxutn => v_dueutn) AS r;
                   IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                     v_continue := -1;
+                    _rc := 1;
                   END IF;
                   v_total_availablestock := (v_total_availablestock - v_delqty);
+                  _rc := 1;
                   INSERT INTO dbo.duesatisfydetail (duesatisfycode, icode, gcode, batch, expiry, duesatisfyqty, avgprice, duesatisfyutn, packsaleprice, packunits, salerowid, balancestock) VALUES (v_duesatisfycode, v_icode, v_gcode, v_batch, v_expiry, v_delqty, v_hold_avgprice, v_dueutn, v_saleprice, v_packunits, v_salerowid, v_total_availablestock);
                   GET DIAGNOSTICS _rc = ROW_COUNT;
                   v_err := 0;
@@ -33033,8 +34581,10 @@ BEGIN
                   IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
                     RAISE EXCEPTION 'Error occured in inserting record into Due Sastisfy Detail for Due Satisfy Code : %', v_duesatisfycode;
                     v_continue := -1;
+                    _rc := 1;
                   ELSE
                     v_newqty := (v_currqty - v_delqty);
+                    _rc := 1;
                     IF (v_newqty > 0) THEN
                       SELECT r.return_value INTO v_rt_code FROM dbo.sp_saleupdateitemstockbatch(gcode => (v_gcode)::integer, icode => v_icode, batch => v_batch, expiry => v_expiry, newqty => v_newqty, oldqty => v_currqty) AS r;
                     ELSE
@@ -33042,9 +34592,11 @@ BEGIN
                     END IF;
                     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                       v_continue := -1;
+                      _rc := 1;
                     END IF;
                   END IF;
                   v_counter := (v_counter + 1);
+                  _rc := 1;
                   FETCH NEXT FROM cur_itembatch_cursor INTO v_batch, v_expiry, v_currqty;
                   IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
                 END LOOP;
@@ -33052,8 +34604,10 @@ BEGIN
                 -- DEALLOCATE ItemBatch_Cursor
               ELSE
                 v_itemname := (SELECT name FROM dbo.item WHERE (icode = v_icode));
+                _rc := 1;
                 RAISE EXCEPTION 'Not enough stock for item (%) to decrease for Due Satisfy Code : %', v_itemname, v_duesatisfycode;
                 v_continue := -1;
+                _rc := 1;
               END IF;
             END IF;
           END IF;
@@ -33074,10 +34628,12 @@ BEGIN
     FETCH NEXT FROM cur_cursor_duedeleteinvoices INTO v_saleinvcode;
     IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
     v_continue := 0;
+    _rc := 1;
     WHILE ((_fs = 0) AND (v_continue >= 0)) LOOP
       SELECT r.return_value, r.key INTO v_rt_code, v_duesatisfycode FROM dbo.sp_gettabmaxkey(tabname => 'DueSatisfyHeader', key => v_duesatisfycode) AS r;
       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
         v_continue := -1;
+        _rc := 1;
       ELSE
         INSERT INTO dbo.duesatisfyheader (duesatisfycode, saleinvcode, duesatisfydate, usercode, dueadjcode) VALUES (v_duesatisfycode, v_saleinvcode, v_serverdate, v_usercode, v_dueadjcode);
         GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -33087,15 +34643,19 @@ BEGIN
         WHILE ((_fs = 0) AND (v_continue >= 0)) LOOP
           IF (dbo.fn_locksaledetailrow(v_saleinvcode, v_icode, v_salerowid) > 0) THEN
             v_satisfiedqty := dbo.fn_getitemduesatisfiedqty(v_saleinvcode, v_icode, v_salerowid);
+            _rc := 1;
             v_dueqty := dbo.fn_getitemdueqty(v_saleinvcode, v_icode, v_salerowid);
+            _rc := 1;
             IF (v_dueqty > v_satisfiedqty) THEN
               PERFORM dbo.sp_updatesaledetail(saleinvcode => v_saleinvcode, gcode => (v_gcode)::integer, icode => v_icode, due => 'X', salerowid => v_salerowid);
               IF (0 <> 0) THEN
                 v_continue := -1;
+                _rc := 1;
                 RAISE EXCEPTION 'Unable to update Due delete status in sale detail for SaleInv: %', v_saleinvcode;
               END IF;
             ELSE
               v_continue := -1;
+              _rc := 1;
               RAISE EXCEPTION 'Unable to update Due delete status in sale detail for SaleInv: % and Item code : %. Reason Due qty is already satisfied', v_saleinvcode, v_icode;
             END IF;
             IF (v_continue >= 0) THEN
@@ -33107,6 +34667,7 @@ BEGIN
               IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
                 RAISE EXCEPTION 'Error occured in inserting record into Due Detail Detail for Due Delete Code : %', v_duesatisfycode;
                 v_continue := -1;
+                _rc := 1;
               END IF;
             END IF;
           END IF;
@@ -33202,8 +34763,10 @@ BEGIN
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF ((_rc <> 0) AND (0 = 0)) THEN
     v_retvalue := 0;
+    _rc := 1;
   ELSE
     v_retvalue := 1;
+    _rc := 1;
   END IF;
   return_value := v_retvalue;
   RETURN;
@@ -33228,8 +34791,10 @@ BEGIN
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF ((_rc <> 0) AND (0 = 0)) THEN
     v_retvalue := 0;
+    _rc := 1;
   ELSE
     v_retvalue := 1;
+    _rc := 1;
   END IF;
   return_value := v_retvalue;
   RETURN;
@@ -33317,6 +34882,7 @@ BEGIN
     RETURN;
   END IF;
   v_bal := CASE WHEN (v_an_balance <> 0) THEN v_an_balance ELSE coalesce((SELECT sum((debit - credit)) FROM dbo.virtualgl WHERE (acccode = v_ai_dr_acccode)), 0) END;
+  _rc := 1;
   INSERT INTO dbo.gldetail (glvochcode, acccode, debit, credit, chkno, remarks, glutn, patientcode, guestcode, studentcode, invoicecode, outstandingamt, balance) VALUES (v_ai_glvochcode, v_ai_dr_acccode, abs(v_an_amount), 0, v_as_chkno, v_as_remarks, v_maxutn, v_ai_patientcode, v_ai_guestcode, v_ai_studentcode, v_ai_invoicecode, v_an_outstandingamt, v_bal);
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_err := 0;
@@ -33328,6 +34894,7 @@ BEGIN
     RETURN;
   ELSE
     v_bal := CASE WHEN (v_an_balance <> 0) THEN v_an_balance ELSE coalesce((SELECT sum((debit - credit)) FROM dbo.virtualgl WHERE (acccode = v_ai_cr_acccode)), 0) END;
+    _rc := 1;
     INSERT INTO dbo.gldetail (glvochcode, acccode, debit, credit, chkno, remarks, glutn, patientcode, guestcode, studentcode, invoicecode, outstandingamt, balance) VALUES (v_ai_glvochcode, v_ai_cr_acccode, 0, abs(v_an_amount), v_as_chkno, v_as_remarks, (v_maxutn + 1), v_ai_patientcode, v_ai_guestcode, v_ai_studentcode, v_ai_invoicecode, v_an_outstandingamt, v_bal);
     GET DIAGNOSTICS _rc = ROW_COUNT;
     v_err := 0;
@@ -33460,8 +35027,10 @@ BEGIN
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF ((_rc <> 0) AND (0 = 0)) THEN
     v_retval := 0;
+    _rc := 1;
   ELSE
     v_retval := 1;
+    _rc := 1;
   END IF;
   return_value := v_retval;
   RETURN;
@@ -34066,6 +35635,7 @@ BEGIN
   v_cashierjobcode := cashierjobcode;
   v_printed := printed;
   v_count := coalesce((SELECT count(*) FROM dbo.cashieractivity WHERE ((rowid = v_rowid) AND (supervised = 'N'))), 0);
+  _rc := 1;
   IF ((v_count <= 0) OR (v_count IS NULL)) THEN
     RAISE EXCEPTION 'Unable to Supervise because the document is already supervised, Document #: %', v_doccode;
     return_value := -1;
@@ -34083,6 +35653,7 @@ BEGIN
       RETURN;
     END IF;
     v_posted := (SELECT posted FROM dbo.saleledger WHERE (saleinvcode = v_doccode));
+    _rc := 1;
     IF (v_posted = 'Y') THEN
       DELETE FROM dbo.virtualgl WHERE ((documenttype = 'SV') AND (documentcode = v_doccode));
       GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -34100,6 +35671,7 @@ BEGIN
       RETURN;
     END IF;
     v_posted := (SELECT posted FROM dbo.serviceheader WHERE (serviceinvcode = v_doccode));
+    _rc := 1;
     IF (v_posted = 'Y') THEN
       DELETE FROM dbo.virtualgl WHERE ((documenttype = 'RS') AND (documentcode = v_doccode));
       GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -34117,6 +35689,7 @@ BEGIN
       RETURN;
     END IF;
     v_posted := (SELECT posted FROM dbo.srledger WHERE (srinvcode = v_doccode));
+    _rc := 1;
     IF (v_posted = 'Y') THEN
       DELETE FROM dbo.virtualgl WHERE ((documenttype = 'SR') AND (documentcode = v_doccode));
       GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -35692,14 +37265,18 @@ BEGIN
   -- SET ANSI_NULLS ON
   -- SET ANSI_WARNINGS ON
   v_sqlheader := (((((('SELECT T.*, OLDINVCODE=T.TRANSCODE INTO THTEMP FROM ' || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.THeader AS T WHERE T.Transferable = ''Y'' and T.Transfered = ''N'' ');
+  _rc := 1;
   v_sqldetail := (((((('SELECT T.*, OLDINVCODE=T.TRANSCODE, ID2=0 INTO TDTEMP FROM ' || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.TDetail AS T WHERE T.TRANSCODE IN (SELECT TRANSCODE FROM THTEMP) ORDER BY T.ID');
+  _rc := 1;
   v_srcupd := (((((((('UPDATE ' || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.THeader SET TRANSFERED=''Y'', TRANSFEREDON = localtimestamp(3), TRANSFEREDBY = ') || ltrim(rtrim(dbo.tsql_str((v_usercode)::numeric)))) || ' WHERE TRANSCODE IN (SELECT OLDINVCODE FROM THTEMP WHERE TRANSCODE >= 0)');
+  _rc := 1;
   _dq1 := v_sqlheader;
   IF _dq1 IS NOT NULL THEN
     IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_errcode := 0;
+  _rc := 1;
   IF ((0 <> 0) OR (v_errcode <> 0)) THEN
     RAISE EXCEPTION 'Error Fetching The Required Inter Godown Transfers From Source Database';
     return_value := -1;
@@ -35707,7 +37284,9 @@ BEGIN
     RETURN;
   END IF;
   v_headercount := (SELECT coalesce(count(*), 0) FROM dbo.thtemp);
+  _rc := 1;
   v_errcode := 0;
+  _rc := 1;
   IF (((0 <> 0) OR (v_errcode <> 0)) OR (v_headercount <= 0)) THEN
     return_value := 0;
     logid := v_logid;
@@ -35719,6 +37298,7 @@ BEGIN
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_errcode := 0;
+  _rc := 1;
   IF ((0 <> 0) OR (v_errcode <> 0)) THEN
     RAISE EXCEPTION 'Problem in fetching Inter Godown Transfers Detail';
     return_value := -1;
@@ -35726,7 +37306,9 @@ BEGIN
     RETURN;
   END IF;
   v_detailcount := (SELECT coalesce(count(*), 0) FROM dbo.tdtemp);
+  _rc := 1;
   v_errcode := 0;
+  _rc := 1;
   IF (((0 <> 0) OR (v_errcode <> 0)) OR (v_detailcount <= 0)) THEN
     RAISE EXCEPTION 'Problem in fetching Transfer Invoices Detail';
     return_value := -1;
@@ -35735,6 +37317,7 @@ BEGIN
   END IF;
   SELECT r.return_value, r.key INTO v_errcode, v_logid FROM dbo.sp_gettabmaxkey(tabname => 'datatransferlog', key => v_logid) AS r;
   v_errcode := 0;
+  _rc := 1;
   IF ((0 <> 0) OR (v_errcode <> 0)) THEN
     RAISE EXCEPTION 'Problem in generating data transfer log';
     return_value := -1;
@@ -35751,20 +37334,26 @@ BEGIN
     RETURN;
   END IF;
   v_errcode := 0;
+  _rc := 1;
   OPEN cur_tran1 FOR SELECT oldinvcode, ttcode, sgcode, dgcode, coalesce(headerno, 1) AS headerno FROM dbo.thtemp ORDER BY oldinvcode;
   FETCH NEXT FROM cur_tran1 INTO v_oldinvcode, v_ttcode, v_sgcode, v_dgcode, v_headercode;
   IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
   WHILE (_fs = 0) LOOP
     v_thiscount := 0;
+    _rc := 1;
     OPEN cur_tran2 FOR SELECT icode, max(id) AS id, sum(qty), max(coalesce(reorderqty, 0)) AS reorderqty, max(coalesce(optimumqty, 0)) AS optimumqty FROM dbo.tdtemp WHERE (oldinvcode = v_oldinvcode) GROUP BY icode ORDER BY id, icode;
     FETCH NEXT FROM cur_tran2 INTO v_icode, v_id, v_qty, v_reorderqty, v_optimumqty;
     IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
     WHILE (_fs = 0) LOOP
       IF (v_qty > 0) THEN
         v_itemname := coalesce((SELECT name FROM dbo.item WHERE (icode = v_icode)), '');
+        _rc := 1;
         v_avgprice := 0;
+        _rc := 1;
         v_sourcestock := 0;
+        _rc := 1;
         v_targetstock := 0;
+        _rc := 1;
         SELECT r.return_value, r.avgprice INTO v_errcode, v_avgprice FROM dbo.sp_getitemavgprice(icode => v_icode, avgprice => v_avgprice) AS r;
         IF ((0 <> 0) OR (v_errcode <> 0)) THEN
           RAISE EXCEPTION 'Unable to fetch item average price, transfer # = %, item = (%)', v_oldinvcode, v_itemname;
@@ -35817,24 +37406,32 @@ BEGIN
         END IF;
         IF (v_qty <= v_sourcestock) THEN
           v_reqqty := v_qty;
+          _rc := 1;
           v_insercount := 0;
+          _rc := 1;
           v_retcode := 0;
+          _rc := 1;
           OPEN cur_tran3 FOR SELECT batch, expiry, currqty FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_sgcode) AND (godowndetail.icode = v_icode)) ORDER BY priority, expiry, currqty;
           FETCH NEXT FROM cur_tran3 INTO v_batch, v_expiry, v_batchstock;
           IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
           WHILE (_fs = 0) LOOP
             IF (v_batchstock >= v_reqqty) THEN
               v_tqty := v_reqqty;
+              _rc := 1;
             ELSE
               v_tqty := v_batchstock;
+              _rc := 1;
             END IF;
             v_reqqty := (v_reqqty - v_tqty);
+            _rc := 1;
             v_newstock := (v_batchstock - v_tqty);
+            _rc := 1;
             IF (v_newstock > 0) THEN
               UPDATE dbo.godowndetail SET currqty = v_newstock WHERE CURRENT OF cur_tran3;
               GET DIAGNOSTICS _rc = ROW_COUNT;
               IF (_rc = 0) THEN
                 v_retcode := 1;
+                _rc := 1;
               END IF;
             ELSE
               IF (v_newstock = 0) THEN
@@ -35842,9 +37439,11 @@ BEGIN
                 GET DIAGNOSTICS _rc = ROW_COUNT;
                 IF (_rc = 0) THEN
                   v_retcode := 1;
+                  _rc := 1;
                 END IF;
               ELSE
                 v_retcode := 1;
+                _rc := 1;
               END IF;
             END IF;
             IF (v_retcode = 0) THEN
@@ -35873,6 +37472,7 @@ BEGIN
                 RETURN;
               END IF;
               v_insercount := (v_insercount + 1);
+              _rc := 1;
               INSERT INTO dbo.tdtemp2 SELECT * FROM dbo.tdtemp WHERE (id = v_id);
               GET DIAGNOSTICS _rc = ROW_COUNT;
               IF ((0 <> 0) OR (_rc = 0)) THEN
@@ -35926,12 +37526,14 @@ BEGIN
           -- DEALLOCATE tran3
         ELSE
           v_retcode := 1;
+          _rc := 1;
         END IF;
         IF (v_retcode <> 0) THEN
           UPDATE dbo.tdtemp SET transcode = -1000 WHERE ((oldinvcode = v_oldinvcode) AND (icode = v_icode));
           GET DIAGNOSTICS _rc = ROW_COUNT;
         ELSE
           v_thiscount := (v_thiscount + 1);
+          _rc := 1;
         END IF;
       ELSE
         UPDATE dbo.tdtemp SET transcode = -1000 WHERE ((oldinvcode = v_oldinvcode) AND (icode = v_icode));
@@ -35973,6 +37575,7 @@ BEGIN
   CLOSE cur_tran1;
   -- DEALLOCATE tran1
   v_importcount := coalesce((SELECT count(*) FROM dbo.thtemp WHERE (thtemp.transcode >= 0)), 0);
+  _rc := 1;
   IF (v_importcount > 0) THEN
     -- SET XACT_ABORT ON
     _dq4 := v_srcupd;
@@ -35981,6 +37584,7 @@ BEGIN
     END IF;
     GET DIAGNOSTICS _rc = ROW_COUNT;
     v_errcode := 0;
+    _rc := 1;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Unable To update the transfer status at source database';
       return_value := -1;
@@ -35989,6 +37593,7 @@ BEGIN
     END IF;
     -- SET XACT_ABORT OFF
     v_list := '';
+    _rc := 1;
     SELECT r.return_value, r.list INTO v_errcode, v_list FROM dbo.sp_columnlist(owner => v_owner, "table" => 'Theader', list => v_list) AS r;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Unable To update the transfer header';
@@ -35997,12 +37602,14 @@ BEGIN
       RETURN;
     END IF;
     v_sql := ((((('INSERT INTO THEADER ( ' || v_list) || ' ) ') || 'SELECT ') || v_list) || ' FROM THTEMP WHERE THTEMP.TRANSCODE >=0');
+    _rc := 1;
     _dq5 := v_sql;
     IF _dq5 IS NOT NULL THEN
       IF _dq5 ~* '^[[:space:]]*select' THEN OPEN rs3 FOR EXECUTE dbo.tsql_dyn(_dq5); ELSE EXECUTE dbo.tsql_dyn(_dq5); END IF;
     END IF;
     GET DIAGNOSTICS _rc = ROW_COUNT;
     v_errcode := 0;
+    _rc := 1;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Unable To update the transfer header';
       return_value := -1;
@@ -36010,8 +37617,10 @@ BEGIN
       RETURN;
     END IF;
     v_list := '';
+    _rc := 1;
     SELECT r.return_value, r.list INTO v_errcode, v_list FROM dbo.sp_columnlist(owner => v_owner, "table" => 'TDetail', list => v_list) AS r;
     v_errcode := 0;
+    _rc := 1;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Unable To update the transfer detail';
       return_value := -1;
@@ -36019,12 +37628,14 @@ BEGIN
       RETURN;
     END IF;
     v_sql := ((((('INSERT INTO TDETAIL ( ' || v_list) || ' ) ') || 'SELECT ') || v_list) || ' FROM TDTEMP2 WHERE TDTEMP2.TRANSCODE >=0 ORDER BY TDTEMP2.ID');
+    _rc := 1;
     _dq6 := v_sql;
     IF _dq6 IS NOT NULL THEN
       IF _dq6 ~* '^[[:space:]]*select' THEN OPEN rs4 FOR EXECUTE dbo.tsql_dyn(_dq6); ELSE EXECUTE dbo.tsql_dyn(_dq6); END IF;
     END IF;
     GET DIAGNOSTICS _rc = ROW_COUNT;
     v_errcode := 0;
+    _rc := 1;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Unable To update the transfer detail';
       return_value := -1;
@@ -36127,14 +37738,18 @@ BEGIN
   -- SET ANSI_NULLS ON
   -- SET ANSI_WARNINGS ON
   v_sqlheader := (((((('SELECT T.*, OLDINVCODE=T.PURINVCODE INTO PLTEMP FROM ' || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.PurLedger AS T WHERE T.Transferable = ''Y'' and T.Transfered = ''N'' ');
+  _rc := 1;
   v_sqldetail := (((((('SELECT T.*, OLDINVCODE=T.PURINVCODE INTO PDTEMP FROM ' || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.PurDetail AS T WHERE T.PurInvCode IN (SELECT PurinvCode FROM PLTEMP)');
+  _rc := 1;
   v_srcupd := (((((((('UPDATE ' || ltrim(rtrim(v_srv))) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner))) || '.PurLedger SET TRANSFERED=''Y'', TRANSFEREDON = localtimestamp(3), TRANSFEREDBY = ') || ltrim(rtrim(dbo.tsql_str((v_usercode)::numeric)))) || ' WHERE PURINVCODE IN (SELECT OLDINVCODE FROM PLTEMP WHERE PURINVCODE >= 0)');
+  _rc := 1;
   _dq1 := v_sqlheader;
   IF _dq1 IS NOT NULL THEN
     IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_errcode := 0;
+  _rc := 1;
   IF ((0 <> 0) OR (v_errcode <> 0)) THEN
     RAISE EXCEPTION 'Error Fetching The Required Purchase Invoices From Source Database';
     return_value := -1;
@@ -36142,7 +37757,9 @@ BEGIN
     RETURN;
   END IF;
   v_headercount := coalesce((SELECT coalesce(count(*), 0) FROM dbo.pltemp), 0);
+  _rc := 1;
   v_errcode := 0;
+  _rc := 1;
   IF (((0 <> 0) OR (v_errcode <> 0)) OR (v_headercount <= 0)) THEN
     return_value := 0;
     logid := v_logid;
@@ -36154,6 +37771,7 @@ BEGIN
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_errcode := 0;
+  _rc := 1;
   IF ((0 <> 0) OR (v_errcode <> 0)) THEN
     RAISE EXCEPTION 'Problem in fetching Purchase Invoices Detail';
     return_value := -1;
@@ -36161,7 +37779,9 @@ BEGIN
     RETURN;
   END IF;
   v_detailcount := coalesce((SELECT coalesce(count(*), 0) FROM dbo.pdtemp), 0);
+  _rc := 1;
   v_errcode := 0;
+  _rc := 1;
   IF (((0 <> 0) OR (v_errcode <> 0)) OR (v_detailcount <= 0)) THEN
     RAISE EXCEPTION 'Problem in fetching Purchase Invoices Detail';
     return_value := -1;
@@ -36170,6 +37790,7 @@ BEGIN
   END IF;
   SELECT r.return_value, r.key INTO v_errcode, v_logid FROM dbo.sp_gettabmaxkey(tabname => 'datatransferlog', key => v_logid) AS r;
   v_errcode := 0;
+  _rc := 1;
   IF ((0 <> 0) OR (v_errcode <> 0)) THEN
     RAISE EXCEPTION 'Problem in generating data transfer log';
     return_value := -1;
@@ -36178,6 +37799,7 @@ BEGIN
   END IF;
   SELECT r.return_value, r.lbi_maxutn INTO v_errcode, v_maxutn FROM dbo.sp_maxutn(lbi_rows => v_detailcount, lbi_maxutn => v_maxutn) AS r;
   v_errcode := 0;
+  _rc := 1;
   IF ((0 <> 0) OR (v_errcode <> 0)) THEN
     RAISE EXCEPTION 'Problem in generating purchase invoice(s) number';
     return_value := -1;
@@ -36185,27 +37807,37 @@ BEGIN
     RETURN;
   END IF;
   v_errcode := 0;
+  _rc := 1;
   OPEN cur_pur1 FOR SELECT oldinvcode, purcatcode, discperc, invgstperc1, coalesce(headerno, 1) AS headerno FROM dbo.pltemp ORDER BY oldinvcode;
   FETCH NEXT FROM cur_pur1 INTO v_oldinvcode, v_purcatcode, v_invdiscperc, v_invgstperc1, v_headercode;
   IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
   WHILE (_fs = 0) LOOP
     v_thiscount := 0;
+    _rc := 1;
     OPEN cur_pur2 FOR SELECT icode, gcode, batch, expiry, purrowid, packqty, looseqty, bonusqty, packunits, purprice, discperc, unitsalestax, gstperc FROM dbo.pdtemp WHERE (oldinvcode = v_oldinvcode) ORDER BY purrowid;
     FETCH NEXT FROM cur_pur2 INTO v_icode, v_gcode, v_batch, v_expiry, v_purrowid, v_packqty, v_looseqty, v_bonusqty, v_packunits, v_purprice, v_discperc, v_unitsaletax, v_gstperc;
     IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
     WHILE (_fs = 0) LOOP
       v_itemname := coalesce((SELECT name FROM dbo.item WHERE (icode = v_icode)), '');
+      _rc := 1;
       IF ((v_purcatcode = 1) OR (v_purcatcode = 2)) THEN
         v_qty := (((v_packqty + v_bonusqty)) * v_packunits);
+        _rc := 1;
         v_itemcost := coalesce((SELECT (((v_packqty * v_purprice) * ((1 - (v_discperc * 0.01)))) * ((1 - (v_invdiscperc * 0.01))))), 0);
+        _rc := 1;
         v_rpp := (((round(((((((v_purprice * ((1 - (v_discperc * .01)))) * ((1 - (v_invdiscperc * .01)))) * v_packqty)) / ((v_packqty + v_bonusqty))))::numeric, 2) + v_unitsaletax) + round((((round(((v_purprice * ((1 - (v_discperc * .01)))))::numeric, 2) * v_gstperc) * 0.01))::numeric, 2)) + round((((((round(((v_purprice * ((1 - (v_discperc * .01)))))::numeric, 2) * ((1 - (v_invdiscperc * .01))))) * v_invgstperc1) * 0.01))::numeric, 2));
+        _rc := 1;
         v_avgprice := 0;
+        _rc := 1;
         v_newavgprice := 0;
+        _rc := 1;
         UPDATE dbo.item SET purprice = CASE (SELECT dbo.fn_getpreference('UpdatePurPrice') AS a) WHEN 'Y' THEN coalesce(v_purprice, 0) ELSE coalesce(item.purprice, 0) END, purdiscperc = CASE (SELECT dbo.fn_getpreference('UpdatePurDisc') AS a) WHEN 'Y' THEN coalesce(v_discperc, 0) ELSE coalesce(item.purdiscperc, 0) END, salediscperc = CASE (SELECT dbo.fn_getpreference('PurReplaceItemSaledisc') AS a) WHEN 'Y' THEN CASE (SELECT dbo.fn_get_int_preference('PurReplaceItemSalediscNo') AS a) WHEN 1 THEN coalesce(v_discperc, 0) ELSE coalesce(item.salediscperc, 0) END ELSE coalesce(item.salediscperc, 0) END, salediscperc2 = CASE (SELECT dbo.fn_getpreference('PurReplaceItemSaledisc') AS a) WHEN 'Y' THEN CASE (SELECT dbo.fn_get_int_preference('PurReplaceItemSalediscNo') AS a) WHEN 2 THEN coalesce(v_discperc, 0) ELSE coalesce(item.salediscperc2, 0) END ELSE coalesce(item.salediscperc2, 0) END, salediscperc3 = CASE (SELECT dbo.fn_getpreference('PurReplaceItemSaledisc') AS a) WHEN 'Y' THEN CASE (SELECT dbo.fn_get_int_preference('PurReplaceItemSalediscNo') AS a) WHEN 3 THEN coalesce(v_discperc, 0) ELSE coalesce(item.salediscperc3, 0) END ELSE coalesce(item.salediscperc3, 0) END, salediscperc4 = CASE (SELECT dbo.fn_getpreference('PurReplaceItemSaledisc') AS a) WHEN 'Y' THEN CASE (SELECT dbo.fn_get_int_preference('PurReplaceItemSalediscNo') AS a) WHEN 4 THEN coalesce(v_discperc, 0) ELSE coalesce(item.salediscperc4, 0) END ELSE coalesce(item.salediscperc4, 0) END, salediscperc5 = CASE (SELECT dbo.fn_getpreference('PurReplaceItemSaledisc') AS a) WHEN 'Y' THEN CASE (SELECT dbo.fn_get_int_preference('PurReplaceItemSalediscNo') AS a) WHEN 5 THEN coalesce(v_discperc, 0) ELSE coalesce(item.salediscperc5, 0) END ELSE coalesce(item.salediscperc5, 0) END, recentpurprice5 = coalesce(recentpurprice4, 0), recentpurprice4 = coalesce(recentpurprice3, 0), recentpurprice3 = coalesce(recentpurprice2, 0), recentpurprice2 = coalesce(recentpurprice, 0), recentpurprice = coalesce(v_rpp, 0) WHERE (icode = v_icode);
         GET DIAGNOSTICS _rc = ROW_COUNT;
       ELSE
         v_qty := (v_looseqty + v_bonusqty);
+        _rc := 1;
         v_itemcost := coalesce((SELECT (((v_looseqty * v_purprice) * ((1 - (v_discperc * 0.01)))) * ((1 - (v_invdiscperc * 0.01))))), 0);
+        _rc := 1;
       END IF;
       SELECT r.return_value, r.avgprice INTO v_errcode, v_avgprice FROM dbo.sp_getitemavgprice(icode => v_icode, avgprice => (v_avgprice)::numeric) AS r;
       IF ((0 <> 0) OR (v_errcode <> 0)) THEN
@@ -36220,6 +37852,7 @@ BEGIN
       SELECT r.qty INTO v_stock FROM dbo.sp_getitemstockall(icode => v_icode, qty => (v_stock)::numeric) AS r;
       IF (0 <> 0) THEN
         v_stock := 0;
+        _rc := 1;
       END IF;
       UPDATE dbo.pdtemp SET avgprice = v_avgprice, purutn = v_maxutn, currstock = v_stock, newavgprice = (((((v_avgprice * v_stock)) + (v_itemcost))) / CASE (v_qty + v_stock) WHEN 0 THEN 1 ELSE ((v_qty + v_stock)) END) WHERE (purrowid = v_purrowid);
       GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -36234,7 +37867,9 @@ BEGIN
         RETURN;
       END IF;
       v_newavgprice := coalesce((SELECT newavgprice FROM dbo.pdtemp WHERE (purrowid = v_purrowid)), 0);
+      _rc := 1;
       v_stock := 0;
+      _rc := 1;
       PERFORM dbo.sp_updateitemavgprice(icode => v_icode, avgprice => (v_newavgprice)::numeric);
       IF (0 <> 0) THEN
         RAISE EXCEPTION 'Problem in updating item average price on purchase invoice # %, item = (%)', v_oldinvcode, v_itemname;
@@ -36257,6 +37892,7 @@ BEGIN
         RETURN;
       END IF;
       v_stock := (v_stock + v_qty);
+      _rc := 1;
       SELECT r.return_value INTO v_errcode FROM dbo.sp_updateitemstockbatch(gcode => v_gcode, icode => v_icode, batch => v_batch, expiry => v_expiry, newqty => (v_stock)::numeric) AS r;
       IF ((0 <> 0) OR (v_errcode <> 0)) THEN
         CLOSE cur_pur2;
@@ -36268,9 +37904,11 @@ BEGIN
         RETURN;
       END IF;
       v_maxutn := (v_maxutn + 1);
+      _rc := 1;
       UPDATE dbo.pdtemp SET purinvcode = -1000 WHERE (purrowid = v_purrowid);
       GET DIAGNOSTICS _rc = ROW_COUNT;
       v_thiscount := (v_thiscount + 1);
+      _rc := 1;
       FETCH NEXT FROM cur_pur2 INTO v_icode, v_gcode, v_batch, v_expiry, v_purrowid, v_packqty, v_looseqty, v_bonusqty, v_packunits, v_purprice, v_discperc, v_unitsaletax, v_gstperc;
       IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
     END LOOP;
@@ -36307,6 +37945,7 @@ BEGIN
   CLOSE cur_pur1;
   -- DEALLOCATE pur1
   v_importcount := coalesce((SELECT count(*) FROM dbo.pltemp WHERE (pltemp.purinvcode >= 0)), 0);
+  _rc := 1;
   IF (v_importcount > 0) THEN
     UPDATE dbo.pltemp AS pltemp SET invtotal = p.net FROM (SELECT pl.purinvcode AS purinvcode, (round((((sum(((((pd.looseqty + pd.packqty) + pd.bonusqty)) * pd.unitsalestax)) + sum(round((((((((pd.looseqty + pd.packqty)) * pd.purprice) * ((1 - ((.01 * pd.discperc))))) * pd.gstperc) * .01))::numeric, 2))) + round((((((sum((((((pd.looseqty + pd.packqty)) * pd.purprice)) * ((1 - ((.01 * pd.discperc)))))) * ((1 - ((.01 * pl.discperc))))) - pl.flatdisc)) * ((pl.invgstperc1 * .01))))::numeric, 2)))::numeric, 0) + round((((((sum(((((pd.looseqty + pd.packqty)) * pd.purprice) * ((1 - ((.01 * pd.discperc)))))) * ((1 - ((.01 * pl.discperc))))) + pl.misccharges) + pl.salestax) - pl.flatdisc))::numeric, 0)) AS net FROM dbo.pltemp AS pl, dbo.pdtemp AS pd WHERE (pl.purinvcode = pd.purinvcode) GROUP BY pl.purinvcode, pl.suppcode, pl.purcatcode, pl.postdate, pl.discperc, pl.misccharges, pl.salestax, pl.flatdisc, pl.invgstperc1) AS p WHERE ((pltemp.purinvcode >= 0) AND (pltemp.purinvcode = p.purinvcode));
     GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -36319,6 +37958,7 @@ BEGIN
     END IF;
     GET DIAGNOSTICS _rc = ROW_COUNT;
     v_errcode := 0;
+    _rc := 1;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Unable To update the transfer status at source database';
       return_value := -1;
@@ -36327,6 +37967,7 @@ BEGIN
     END IF;
     -- SET XACT_ABORT OFF
     v_list := '';
+    _rc := 1;
     SELECT r.return_value, r.list INTO v_errcode, v_list FROM dbo.sp_columnlist(owner => v_owner, "table" => 'PurLedger', list => v_list) AS r;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Unable To update purchase header';
@@ -36335,12 +37976,14 @@ BEGIN
       RETURN;
     END IF;
     v_sql := ((((('INSERT INTO PURLEDGER ( ' || v_list) || ' ) ') || 'SELECT ') || v_list) || ' FROM PLTEMP WHERE PLTEMP.PURINVCODE >= 0');
+    _rc := 1;
     _dq4 := v_sql;
     IF _dq4 IS NOT NULL THEN
       IF _dq4 ~* '^[[:space:]]*select' THEN OPEN rs3 FOR EXECUTE dbo.tsql_dyn(_dq4); ELSE EXECUTE dbo.tsql_dyn(_dq4); END IF;
     END IF;
     GET DIAGNOSTICS _rc = ROW_COUNT;
     v_errcode := 0;
+    _rc := 1;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Unable To update purchase header';
       return_value := -1;
@@ -36348,8 +37991,10 @@ BEGIN
       RETURN;
     END IF;
     v_list := '';
+    _rc := 1;
     SELECT r.return_value, r.list INTO v_errcode, v_list FROM dbo.sp_columnlist(owner => v_owner, "table" => 'PurDetail', list => v_list) AS r;
     v_errcode := 0;
+    _rc := 1;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Unable To update purchase detail';
       return_value := -1;
@@ -36357,12 +38002,14 @@ BEGIN
       RETURN;
     END IF;
     v_sql := ((((('INSERT INTO PURDETAIL ( ' || v_list) || ' ) ') || 'SELECT ') || v_list) || ' FROM PDTEMP WHERE PDTEMP.PURINVCODE >= 0');
+    _rc := 1;
     _dq5 := v_sql;
     IF _dq5 IS NOT NULL THEN
       IF _dq5 ~* '^[[:space:]]*select' THEN OPEN rs4 FOR EXECUTE dbo.tsql_dyn(_dq5); ELSE EXECUTE dbo.tsql_dyn(_dq5); END IF;
     END IF;
     GET DIAGNOSTICS _rc = ROW_COUNT;
     v_errcode := 0;
+    _rc := 1;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Unable To update purchase detail';
       return_value := -1;
@@ -36900,15 +38547,20 @@ BEGIN
   -- SET ANSI_NULLS ON
   -- SET ANSI_WARNINGS ON
   v_tablequalifier := ((((ltrim(rtrim(v_srv)) || '.') || ltrim(rtrim(v_db))) || '.') || ltrim(rtrim(v_owner)));
+  _rc := 1;
   v_sqlheader := (('SELECT T.*, OLDINVCODE=T.SaleInvCode INTO SHTEMP FROM ' || v_tablequalifier) || '.SaleLedger AS T WHERE T.Transferable = ''Y'' and T.Transfered = ''N'' ');
+  _rc := 1;
   v_sqldetail := (('SELECT T.*, OLDINVCODE=T.SaleInvCode, ID2=0 INTO SDTEMP FROM ' || v_tablequalifier) || '.SaleDetail AS T WHERE T.SaleInvCode IN (SELECT SaleInvCode FROM SHTEMP) ORDER BY T.ROWID');
+  _rc := 1;
   v_srcupd := (((('UPDATE ' || v_tablequalifier) || '.SaleLedger SET TRANSFERED=''Y'', TRANSFEREDON = localtimestamp(3), TRANSFEREDBY = ') || ltrim(rtrim(dbo.tsql_str((v_usercode)::numeric)))) || ' WHERE SaleInvCode IN (SELECT OLDINVCODE FROM SHTEMP WHERE SaleInvCode >= 0)');
+  _rc := 1;
   _dq1 := v_sqlheader;
   IF _dq1 IS NOT NULL THEN
     IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_errcode := 0;
+  _rc := 1;
   IF ((0 <> 0) OR (v_errcode <> 0)) THEN
     RAISE EXCEPTION 'Error Fetching The Required Sales Invoices From Source Database';
     return_value := -1;
@@ -36916,7 +38568,9 @@ BEGIN
     RETURN;
   END IF;
   v_headercount := (SELECT coalesce(count(*), 0) FROM dbo.shtemp);
+  _rc := 1;
   v_errcode := 0;
+  _rc := 1;
   IF (((0 <> 0) OR (v_errcode <> 0)) OR (v_headercount <= 0)) THEN
     return_value := 0;
     logid := v_logid;
@@ -36928,6 +38582,7 @@ BEGIN
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_errcode := 0;
+  _rc := 1;
   IF ((0 <> 0) OR (v_errcode <> 0)) THEN
     RAISE EXCEPTION 'Problem in fetching Sales Invoices Detail';
     return_value := -1;
@@ -36935,7 +38590,9 @@ BEGIN
     RETURN;
   END IF;
   v_detailcount := (SELECT coalesce(count(*), 0) FROM dbo.sdtemp);
+  _rc := 1;
   v_errcode := 0;
+  _rc := 1;
   IF (((0 <> 0) OR (v_errcode <> 0)) OR (v_detailcount <= 0)) THEN
     RAISE EXCEPTION 'Problem in fetching Sales Invoices Detail';
     return_value := -1;
@@ -36944,6 +38601,7 @@ BEGIN
   END IF;
   SELECT r.return_value, r.key INTO v_errcode, v_logid FROM dbo.sp_gettabmaxkey(tabname => 'datatransferlog', key => v_logid) AS r;
   v_errcode := 0;
+  _rc := 1;
   IF ((0 <> 0) OR (v_errcode <> 0)) THEN
     RAISE EXCEPTION 'Problem in generating data transfer log';
     return_value := -1;
@@ -36962,25 +38620,35 @@ BEGIN
   -- ALTER TABLE SDTEMP2 ALTER COLUMN RowID BIGINT
   RAISE EXCEPTION 'untranslated T-SQL (ALTER TABLE of a permanent table)' USING ERRCODE = '0A000';
   v_errcode := 0;
+  _rc := 1;
   OPEN cur_sal1 FOR SELECT s.oldinvcode, s.salecatcode, coalesce(s.headerno, 1) AS headerno, c.defaultgst FROM dbo.shtemp AS s, dbo.customer AS c WHERE (s.custcode = c.custcode) ORDER BY oldinvcode;
   FETCH NEXT FROM cur_sal1 INTO v_oldinvcode, v_salecatcode, v_headercode, v_defaultgst;
   IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
   WHILE (_fs = 0) LOOP
     v_thiscount := 0;
+    _rc := 1;
     v_retcode := 0;
+    _rc := 1;
     OPEN cur_sal2 FOR SELECT s.icode, s.gcode, max(s.rowid) AS id, sum(s.packqty) AS packqty, sum(s.bonusqty) AS bonusqty, sum(s.looseqty) AS looseqty, s.rowgroup, sum(CASE WHEN (s.due IS NULL) THEN 0 ELSE s.looseqty END) AS dueqty, CASE v_defaultgst WHEN 2 THEN i.gstperc2 ELSE i.gstperc1 END AS itemgstperc, round(((i.packsalestax / CASE i.packunits WHEN 0 THEN 1 ELSE i.packunits END))::numeric, 2) AS unitsalestax, i.packunits, round(((i.saleprice / CASE i.packunits WHEN 0 THEN 1 ELSE i.packunits END))::numeric, 2) AS saleprice FROM dbo.sdtemp AS s, dbo.item AS i WHERE ((oldinvcode = v_oldinvcode) AND (s.icode = i.icode)) GROUP BY s.oldinvcode, s.icode, s.rowgroup, s.gcode, i.gstperc1, i.gstperc2, i.packunits, i.saleprice, i.packsalestax ORDER BY id;
     FETCH NEXT FROM cur_sal2 INTO v_icode, v_gcode, v_id, v_packqty, v_bonusqty, v_looseqty, v_rowgroup, v_dueqty, v_gstperc, v_unitsalestax, v_packunits, v_saleprice;
     IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
     WHILE (_fs = 0) LOOP
       v_itemname := coalesce((SELECT name FROM dbo.item WHERE (icode = v_icode)), '');
+      _rc := 1;
       v_qty := ((v_looseqty - v_dueqty) + v_bonusqty);
+      _rc := 1;
       v_looseqty := (v_looseqty - v_dueqty);
+      _rc := 1;
       IF (v_qty >= 0) THEN
         IF (v_qty > 0) THEN
           v_avgprice := 0;
+          _rc := 1;
           v_stock := 0;
+          _rc := 1;
           v_totalstock := 0;
+          _rc := 1;
           v_retcode := 0;
+          _rc := 1;
           SELECT r.return_value, r.avgprice INTO v_errcode, v_avgprice FROM dbo.sp_getitemavgprice(icode => v_icode, avgprice => v_avgprice) AS r;
           IF ((0 <> 0) OR (v_errcode <> 0)) THEN
             CLOSE cur_sal2;
@@ -37015,36 +38683,53 @@ BEGIN
           END IF;
           IF (v_qty <= v_stock) THEN
             v_reqqty := v_qty;
+            _rc := 1;
             v_insercount := 0;
+            _rc := 1;
             OPEN cur_sal3 FOR SELECT batch, expiry, currqty FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)) ORDER BY priority, expiry, currqty;
             FETCH NEXT FROM cur_sal3 INTO v_batch, v_expiry, v_batchstock;
             IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
             WHILE (_fs = 0) LOOP
               v_tqty := 0;
+              _rc := 1;
               v_tbqty := 0;
+              _rc := 1;
               v_retcode := 0;
+              _rc := 1;
               IF (v_batchstock >= v_reqqty) THEN
                 v_tqty := v_looseqty;
+                _rc := 1;
                 v_tbqty := v_bonusqty;
+                _rc := 1;
               ELSE
                 IF (v_batchstock <= v_looseqty) THEN
                   v_tqty := v_batchstock;
+                  _rc := 1;
                   v_tbqty := 0;
+                  _rc := 1;
                 ELSE
                   v_tqty := v_looseqty;
+                  _rc := 1;
                   v_tbqty := (v_batchstock - v_looseqty);
+                  _rc := 1;
                 END IF;
               END IF;
               v_looseqty := (v_looseqty - v_tqty);
+              _rc := 1;
               v_bonusqty := (v_bonusqty - v_tbqty);
+              _rc := 1;
               v_reqqty := (v_looseqty + v_bonusqty);
+              _rc := 1;
               v_newstock := (v_batchstock - ((v_tqty + v_tbqty)));
+              _rc := 1;
               v_totalstock := (v_totalstock - ((v_tqty + v_tbqty)));
+              _rc := 1;
               IF (v_newstock > 0) THEN
                 UPDATE dbo.godowndetail SET currqty = v_newstock WHERE CURRENT OF cur_sal3;
                 GET DIAGNOSTICS _rc = ROW_COUNT;
                 IF (_rc = 0) THEN
                   v_retcode := 1;
+                  _rc := 1;
                 END IF;
               ELSE
                 IF (v_newstock = 0) THEN
@@ -37052,9 +38737,11 @@ BEGIN
                   GET DIAGNOSTICS _rc = ROW_COUNT;
                   IF (_rc = 0) THEN
                     v_retcode := 1;
+                    _rc := 1;
                   END IF;
                 ELSE
                   v_retcode := 1;
+                  _rc := 1;
                 END IF;
               END IF;
               IF (v_retcode = 0) THEN
@@ -37071,6 +38758,7 @@ BEGIN
                   RETURN;
                 END IF;
                 v_insercount := (v_insercount + 1);
+                _rc := 1;
                 INSERT INTO dbo.sdtemp2 SELECT * FROM dbo.sdtemp WHERE (rowid = v_id);
                 GET DIAGNOSTICS _rc = ROW_COUNT;
                 IF ((0 <> 0) OR (_rc = 0)) THEN
@@ -37124,11 +38812,14 @@ BEGIN
             -- DEALLOCATE sal3
           ELSE
             v_retcode := 1;
+            _rc := 1;
           END IF;
         END IF;
         IF (v_dueqty > 0) THEN
           v_insercount := 1;
+          _rc := 1;
           v_retcode := 0;
+          _rc := 1;
           INSERT INTO dbo.sdtemp2 SELECT * FROM dbo.sdtemp WHERE (rowid = v_id);
           GET DIAGNOSTICS _rc = ROW_COUNT;
           SELECT r.return_value, r.lbi_maxutn INTO v_errcode, v_maxutn FROM dbo.sp_maxutn(lbi_rows => (1)::bigint, lbi_maxutn => v_maxutn) AS r;
@@ -37149,6 +38840,7 @@ BEGIN
           GET DIAGNOSTICS _rc = ROW_COUNT;
         ELSE
           v_thiscount := (v_thiscount + 1);
+          _rc := 1;
         END IF;
       ELSE
         UPDATE dbo.sdtemp SET saleinvcode = -1000 WHERE ((rowid = v_id) AND (rowgroup = v_rowgroup));
@@ -37190,6 +38882,7 @@ BEGIN
   CLOSE cur_sal1;
   -- DEALLOCATE sal1
   v_importcount := coalesce((SELECT count(*) FROM dbo.shtemp WHERE (shtemp.saleinvcode >= 0)), 0);
+  _rc := 1;
   IF (v_importcount > 0) THEN
     UPDATE dbo.shtemp AS shtemp SET invtotal = s.net FROM (SELECT h.saleinvcode, (round((((sum((((d.looseqty + d.bonusqty)) * d.unitsalestax)) + sum(round(((((((d.looseqty * ((d.saleprice - d.itemflatdisc)))) * ((1 - ((.01 * d.discperc))))) * d.gstperc) * .01))::numeric, 2))) + round((((((sum((((d.looseqty * ((d.saleprice - d.itemflatdisc)))) * ((1 - ((.01 * d.discperc)))))) * ((1 - ((.01 * h.discperc))))) - h.flatdisc)) * ((h.invgstperc1 * .01))))::numeric, 2)))::numeric, 0) + round((((((sum((((d.looseqty * ((d.saleprice - d.itemflatdisc)))) * ((1 - ((.01 * d.discperc)))))) * ((1 - ((.01 * h.discperc))))) + h.misccharges) + h.salestax) - h.flatdisc))::numeric, 0)) AS net FROM dbo.shtemp AS h, dbo.sdtemp2 AS d WHERE (h.saleinvcode = d.saleinvcode) GROUP BY h.saleinvcode, h.discperc, h.misccharges, h.salestax, h.flatdisc, h.invgstperc1) AS s WHERE ((shtemp.saleinvcode >= 0) AND (shtemp.saleinvcode = s.saleinvcode));
     GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -37208,6 +38901,7 @@ BEGIN
     END IF;
     GET DIAGNOSTICS _rc = ROW_COUNT;
     v_errcode := 0;
+    _rc := 1;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Unable To update the transfer status at source database';
       return_value := -1;
@@ -37216,6 +38910,7 @@ BEGIN
     END IF;
     -- SET XACT_ABORT OFF
     v_list := '';
+    _rc := 1;
     SELECT r.return_value, r.list INTO v_errcode, v_list FROM dbo.sp_columnlist(owner => v_owner, "table" => 'SaleLedger', list => v_list) AS r;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Unable To update sale invoice header';
@@ -37224,12 +38919,14 @@ BEGIN
       RETURN;
     END IF;
     v_sql := ((((('INSERT INTO SaleLedger ( ' || v_list) || ' ) ') || 'SELECT ') || v_list) || ' FROM SHTEMP WHERE SHTEMP.SALEINVCODE >=0');
+    _rc := 1;
     _dq4 := v_sql;
     IF _dq4 IS NOT NULL THEN
       IF _dq4 ~* '^[[:space:]]*select' THEN OPEN rs3 FOR EXECUTE dbo.tsql_dyn(_dq4); ELSE EXECUTE dbo.tsql_dyn(_dq4); END IF;
     END IF;
     GET DIAGNOSTICS _rc = ROW_COUNT;
     v_errcode := 0;
+    _rc := 1;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Unable To update sale invoice header';
       return_value := -1;
@@ -37237,6 +38934,7 @@ BEGIN
       RETURN;
     END IF;
     v_list := '';
+    _rc := 1;
     SELECT r.return_value, r.list INTO v_errcode, v_list FROM dbo.sp_columnlist(owner => v_owner, "table" => 'SaleDetail', list => v_list) AS r;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Unable To update sale invoice detail';
@@ -37245,12 +38943,14 @@ BEGIN
       RETURN;
     END IF;
     v_sql := ((((('INSERT INTO SALEDETAIL ( ' || v_list) || ' ) ') || 'SELECT ') || v_list) || ' FROM SDTEMP2 WHERE SALEINVCODE >= 0 ORDER BY ROWID');
+    _rc := 1;
     _dq5 := v_sql;
     IF _dq5 IS NOT NULL THEN
       IF _dq5 ~* '^[[:space:]]*select' THEN OPEN rs4 FOR EXECUTE dbo.tsql_dyn(_dq5); ELSE EXECUTE dbo.tsql_dyn(_dq5); END IF;
     END IF;
     GET DIAGNOSTICS _rc = ROW_COUNT;
     v_errcode := 0;
+    _rc := 1;
     IF ((0 <> 0) OR (v_errcode <> 0)) THEN
       RAISE EXCEPTION 'Unable To update sale invoice detail';
       return_value := -1;
@@ -37360,13 +39060,21 @@ BEGIN
   -- SET ANSI_NULLS ON
   -- SET ANSI_WARNINGS ON
   v_custcode := 19;
+  _rc := 1;
   v_salecatcode := 3;
+  _rc := 1;
   v_saletypecode := 2;
+  _rc := 1;
   v_module := (SELECT module FROM dbo.module WHERE (name = 'Sales'));
+  _rc := 1;
   v_serverdate := localtimestamp(3);
+  _rc := 1;
   v_updateloyaltypoints := coalesce((SELECT dbo.fn_getpreference('ApplyLoyaltypolicyonsaleposting')), 'N');
+  _rc := 1;
   v_keepinvno := coalesce((SELECT dbo.fn_getpreference('KeepChildServerInvoiceNoIntact')), 'N');
+  _rc := 1;
   v_updaterefno1 := coalesce((SELECT dbo.fn_getpreference('CopyChildServerInvoiceNoInRef1')), 'N');
+  _rc := 1;
   DROP TABLE IF EXISTS tmp_sale;
   CREATE TEMP TABLE tmp_sale (
     id integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
@@ -37388,40 +39096,57 @@ BEGIN
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF (v_invtype = 1) THEN
     v_salerowcount := coalesce((SELECT count(*) FROM dbo.imp_saledetail WHERE ((saleinvcode = v_invcode) AND (childserver = v_childserver))), 0);
+    _rc := 1;
   ELSE
     v_salerowcount := coalesce((SELECT count(*) FROM dbo.imp_advsaledetail WHERE ((advsaleinvcode = v_invcode) AND (childserver = v_childserver))), 0);
+    _rc := 1;
   END IF;
   v_anyitem_exist := (SELECT sum((satisfiableqty - satisfiedqty)) FROM tmp_sale AS sale);
+  _rc := 1;
   IF (v_invtype = 1) THEN
     v_headerno := (SELECT headerno FROM dbo.imp_saleledger WHERE ((saleinvcode = v_invcode) AND (childserver = v_childserver)));
+    _rc := 1;
     v_headerinvno := (SELECT headerinvno FROM dbo.imp_saleledger WHERE ((saleinvcode = v_invcode) AND (childserver = v_childserver)));
+    _rc := 1;
   ELSE
     v_headerno := (SELECT headerno FROM dbo.imp_advsaleledger WHERE ((advsaleinvcode = v_invcode) AND (childserver = v_childserver)));
+    _rc := 1;
     v_headerinvno := (SELECT headerinvno FROM dbo.imp_advsaleledger WHERE ((advsaleinvcode = v_invcode) AND (childserver = v_childserver)));
+    _rc := 1;
   END IF;
   v_continue := 0;
+  _rc := 1;
   v_invcounter := 1;
+  _rc := 1;
   v_rowgroup := 0;
+  _rc := 1;
   WHILE ((v_anyitem_exist > 0) AND (v_continue >= 0)) LOOP
     IF (v_keepinvno = 'N') THEN
       SELECT r.return_value, r.key INTO v_rt_code, v_saleinvcode FROM dbo.sp_gettabmaxkey(tabname => 'Saleledger', key => v_saleinvcode) AS r;
     ELSE
       v_saleinvcode := v_invcode;
+      _rc := 1;
     END IF;
     v_rowgroup := 0;
+    _rc := 1;
     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
       v_continue := -1;
+      _rc := 1;
     ELSE
       IF (v_keepinvno = 'N') THEN
         SELECT r.return_value, r.key INTO v_rt_code, v_headerinvno FROM dbo.sp_getheadertabmaxkey(headercode => (v_headerno)::smallint, modulecode => (v_module)::smallint, key => v_headerinvno) AS r;
       ELSE
         v_headerinvno := v_headerinvno;
+        _rc := 1;
       END IF;
       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
         v_continue := -1;
+        _rc := 1;
       ELSE
         v_err := 0;
+        _rc := 1;
         v_rowcount := 1;
+        _rc := 1;
         INSERT INTO dbo.saleledger (saleinvcode, salecatcode, custcode, salesmancode, date, discperc, flatdisc, misccharges, salestax, posted, postdate, remarks, custrefno, headerno, headerinvno, originaldate, modifiedby, postedby, sprice, quotationno, doctcode, patientcode, reprintingcounter, cashreceived, invgstperc1, printwaranty, printbatch, messagecode, smancode, invoicesize, custrefno2, custrefno3, custrefno4, gstno, invtotal, machinename, modifycounter, itemdiscpercno, relationcode, diseasecode, wardcode, admissioncode, returncounter, paid, billingdate, unreceivedbalance, totalofsalereturns, listofsrinvoices, printbalance, accountfor, paymentmode, paymentacccode, amt, amtby, amtdate, amtreference, outstandingamt, marked, transferable, transfered, transferedon, transferedby, imported, importedby, deliveredby, saletypecode, balance, pptcustcode, deleted, prescode, impactinventory, saleordercode, salecomments1, salecomments2, altersaleinvcode, recurringinvoice, recurringperiod, lastrecurringinvcode, recurringagainst, considerinpo, visitcode, duedate, srbufferinvcode, custrefno5, gccode, grn, suppinvcode, vehicle, shipto, guaranteepersoncode, cashtendered, cashcharged, cashback, cashacccode, custlicno, custlicexpiry, moduleid, doccode, saletypeinvno, crs_transfered, crs_transferedon, guestcode, guestcheckincode, studentcode, custsitecode, transmit, transmited, fiscalized, fiscalizedon, fiscalinvoiceno, advancetax, advancetaxamt, fbrposfee) SELECT v_saleinvcode, salecatcode, custcode, salesmancode, date, discperc, (flatdisc + coalesce(v_refund, 0)) AS flatdisc, misccharges, 0 AS salestax, 'Y' AS posted, postdate, remarks, CASE WHEN (v_updaterefno1 = 'Y') THEN ltrim(rtrim(dbo.tsql_str((v_saleinvcode)::numeric))) ELSE custrefno END AS custrefno, v_headerno, v_headerinvno, originaldate, modifiedby, postedby, sprice, quotationno, doctcode, patientcode, reprintingcounter, cashreceived, invgstperc1, printwaranty, printbatch, messagecode, smancode, invoicesize, custrefno2, custrefno3, custrefno4, gstno, invtotal AS invtotal, machinename, modifycounter, itemdiscpercno, relationcode, diseasecode, wardcode, admissioncode AS admissioncode, returncounter, paid, billingdate, unreceivedbalance AS unreceivedbalance, totalofsalereturns AS totalofsalereturns, listofsrinvoices, printbalance, accountfor, paymentmode, paymentacccode, amt, amtby, amtdate, amtreference, outstandingamt, marked, transferable, transfered, transferedon AS transferedon, transferedby AS transferedby, imported, importedby AS importedby, deliveredby AS deliveredby, saletypecode, balance, pptcustcode AS pptcustcode, deleted, prescode AS prescode, impactinventory, saleordercode AS saleordercode, salecomments1, salecomments2, altersaleinvcode, recurringinvoice, recurringperiod, lastrecurringinvcode AS lastrecurringinvcode, recurringagainst AS recurringagainst, considerinpo, visitcode AS visitcode, duedate, srbufferinvcode AS srbufferinvcode, custrefno5 AS custrefno5, gccode AS gccode, grn AS grn, suppinvcode AS suppinvcode, vehicle AS vehicle, shipto AS shipto, guaranteepersoncode AS guaranteepersoncode, cashtendered, cashcharged, cashback AS cashback, cashacccode, custlicno AS custlicno, custlicexpiry AS custlicexpiry, -1 AS moduleid, saleinvcode AS doccode, saletypeinvno, crs_transfered, crs_transferedon AS crs_transferedon, guestcode AS guestcode, guestcheckincode AS guestcheckincode, studentcode AS studentcode, custsitecode AS custsitecode, transmit, transmited, fiscalized, fiscalizedon AS fiscalizedon, fiscalinvoiceno AS fiscalinvoiceno, advancetax, coalesce(advancetaxamt, 0), fbrposfee AS fbrposfee FROM dbo.imp_saleledger WHERE (((v_invtype = 1) AND (saleinvcode = v_invcode)) AND (childserver = v_childserver)) UNION ALL SELECT v_saleinvcode, CASE invtype WHEN 1 THEN v_salecatcode ELSE 2 END AS salecatcode, custcode, salesmancode, date, discperc, (flatdisc + coalesce(v_refund, 0)) AS flatdisc, misccharges, 0 AS salestax, 'Y' AS posted, postdate, remarks, CASE WHEN (v_updaterefno1 = 'Y') THEN ltrim(rtrim(dbo.tsql_str((v_saleinvcode)::numeric))) ELSE custrefno END, v_headerno, v_headerinvno, originaldate, modifiedby, postedby, sprice, quotationno, doctcode, patientcode, reprintingcounter, cashamt AS cashreceived, invgstperc1, printwaranty, printbatch, messagecode, smancode, invoicesize, custrefno2, custrefno3, custrefno4, gstno, 0 AS invtotal, machinename, modifycounter, itemdiscpercno, relationcode, diseasecode, wardcode, NULL::integer AS admissioncode, 0 AS returncounter, 'N' AS paid, billingdate, 0 AS unreceivedbalance, 0 AS totalofsalereturns, '' AS listofsrinvoices, printbalance, 'Y' AS accountfor, paymentmode, paymentacccode, amt, amtby, amtdate, amtreference, outstandingamt, 'N' AS marked, 'Y' AS transferable, 'N' AS transfered, NULL::timestamp AS transferedon, NULL::integer AS transferedby, 'N' AS imported, NULL::integer AS importedby, NULL::integer AS deliveredby, saletypecode, balance, NULL::integer AS pptcustcode, deleted, NULL::integer AS prescode, 'Y' AS impactinventory, NULL::integer AS saleordercode, salecomments1, salecomments2, 0 AS altersaleinvcode, 'N' AS recurringinvoice, 0 AS recurringperiod, NULL::integer AS lastrecurringinvcode, NULL::integer AS recurringagainst, 'Y' AS considerinpo, NULL::integer AS visitcode, date AS duedate, NULL::integer AS srbufferinvcode, NULL::citext AS custrefno5, NULL::integer AS gccode, NULL::citext AS grn, NULL::citext AS suppinvcode, NULL::citext AS vehicle, NULL::citext AS shipto, NULL::integer AS guaranteepersoncode, cashtendered, cashamt AS cashcharged, 0 AS cashback, 2 AS cashacccode, NULL::citext AS custlicno, NULL::timestamp AS custlicexpiry, -1 AS moduleid, advsaleinvcode AS doccode, 0 AS saletypeinvno, 'N' AS crs_transfered, NULL::timestamp AS crs_transferedon, NULL::integer AS guestcode, NULL::integer AS guestcheckincode, NULL::integer AS studentcode, NULL::integer AS custsitecode, transmit, transmited, 'N' AS fiscalized, NULL::timestamp AS fiscalizedon, NULL::citext AS fiscalinvoiceno, 'N' AS advancetax, 0 AS advancetaxamt, 0 AS fbrposfee FROM dbo.imp_advsaleledger WHERE (((v_invtype = 2) AND (advsaleinvcode = v_invcode)) AND (childserver = v_childserver));
         GET DIAGNOSTICS _rc = ROW_COUNT;
         v_err := 0;
@@ -37430,11 +39155,16 @@ BEGIN
         IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
           RAISE EXCEPTION 'Error occured in inserting record into Sale Ledger : %', v_saleinvcode;
           v_continue := -1;
+          _rc := 1;
         ELSE
           v_curr_rowid := 1;
+          _rc := 1;
           v_anyitem_exist := (SELECT sum((satisfiableqty - satisfiedqty)) FROM tmp_sale AS sale);
+          _rc := 1;
           v_lineitems_rowcount := v_salerowcount;
+          _rc := 1;
           v_innercounter := 1;
+          _rc := 1;
           WHILE (((((v_salerowcount > 0)) AND ((v_anyitem_exist > 0))) AND ((v_innercounter <= v_lineitems_rowcount))) AND ((v_continue >= 0))) LOOP
             _rc := 0;
             FOR _r1 IN SELECT icode AS c1, gcode AS c2, satisfiableqty AS c3, satisfiedqty AS c4, saleprice AS c5, rate AS c6, packunits AS c7, discperc AS c8, itemflatdisc AS c9, unitsalestax AS c10, gstperc AS c11, saledesc AS c12, itemadvancetaxperc AS c13 FROM tmp_sale AS sale WHERE (id = v_curr_rowid) LOOP
@@ -37457,43 +39187,59 @@ BEGIN
             _rc := 1;
             IF (((v_rowcount = 1)) AND ((((v_satisfiableqty - v_satisfiedqty)) > 0))) THEN
               v_givenqty := (v_satisfiableqty - v_satisfiedqty);
+              _rc := 1;
               SELECT r.return_value, r.avgprice INTO v_rt_code, v_hold_avgprice FROM dbo.sp_getitemavgprice(icode => v_icode, avgprice => v_hold_avgprice) AS r;
               IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                 v_continue := -1;
+                _rc := 1;
               ELSE
                 SELECT r.return_value, r.qty INTO v_rt_code, v_total_availablestock FROM dbo.sp_getitemstockall(icode => v_icode, qty => v_total_availablestock) AS r;
                 IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                   v_continue := -1;
+                  _rc := 1;
                 END IF;
                 v_totalqty := (SELECT coalesce(sum(currqty), 0) FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)));
+                _rc := 1;
                 v_rowgroup := (v_rowgroup + 1);
+                _rc := 1;
                 IF ((v_packunits = 0) OR (v_packunits IS NULL)) THEN
                   v_packunits := 1;
+                  _rc := 1;
                 END IF;
                 IF (v_givenqty > 0) THEN
                   IF (v_totalqty >= v_givenqty) THEN
                     v_reqqty := v_givenqty;
+                    _rc := 1;
                   ELSE
                     v_reqqty := v_totalqty;
+                    _rc := 1;
                   END IF;
                   OPEN cur_itembatch_cursor FOR SELECT batch, expiry, currqty FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)) ORDER BY priority, expiry, currqty;
                   v_totalrows := (-1);
+                  _rc := 1;
                   FETCH NEXT FROM cur_itembatch_cursor INTO v_batch, v_expiry, v_currqty;
                   IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
                   v_counter := 1;
+                  _rc := 1;
                   WHILE (((_fs = 0) AND (v_counter <= v_totalrows)) AND (v_reqqty > 0)) LOOP
                     v_batchqty := v_currqty;
+                    _rc := 1;
                     IF (v_batchqty >= v_reqqty) THEN
                       v_delqty := v_reqqty;
+                      _rc := 1;
                     ELSE
                       v_delqty := v_batchqty;
+                      _rc := 1;
                     END IF;
                     v_reqqty := (v_reqqty - v_delqty);
+                    _rc := 1;
                     SELECT r.return_value, r.lbi_maxutn INTO v_rt_code, v_saleutn FROM dbo.sp_maxutn(lbi_rows => (1)::bigint, lbi_maxutn => v_saleutn) AS r;
                     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                       v_continue := -1;
+                      _rc := 1;
                     END IF;
                     v_total_availablestock := (v_total_availablestock - v_delqty);
+                    _rc := 1;
                     INSERT INTO dbo.saledetail (saleinvcode, icode, gcode, batch, expiry, packqty, looseqty, packunits, saleprice, avgprice, rate, discperc, salestax, itemflatdisc, packprice, unitsalestax, gstperc, saleutn, balancestock, rowgroup, saleitemdescription, itemadvancetaxperc) VALUES (v_saleinvcode, v_icode, v_gcode, v_batch, v_expiry, 0, v_delqty, v_packunits, v_saleprice, v_hold_avgprice, v_rate, v_discperc, 0, v_itemflatdisc, (v_rate * v_packunits), v_unitsalestax, v_gstperc1, v_saleutn, v_total_availablestock, v_rowgroup, v_saledesc, v_itemadvancetaxperc);
                     GET DIAGNOSTICS _rc = ROW_COUNT;
                     v_err := 0;
@@ -37502,8 +39248,10 @@ BEGIN
                     IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
                       RAISE EXCEPTION 'Error occured in inserting record into Sale Detail for Sale Inv. No. : %', v_saleinvcode;
                       v_continue := -1;
+                      _rc := 1;
                     ELSE
                       v_newqty := (v_currqty - v_delqty);
+                      _rc := 1;
                       IF (v_newqty > 0) THEN
                         SELECT r.return_value INTO v_rt_code FROM dbo.sp_saleupdateitemstockbatch(gcode => v_gcode, icode => v_icode, batch => v_batch, expiry => v_expiry, newqty => v_newqty, oldqty => v_currqty) AS r;
                       ELSE
@@ -37511,9 +39259,11 @@ BEGIN
                       END IF;
                       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                         v_continue := -1;
+                        _rc := 1;
                       END IF;
                     END IF;
                     v_counter := (v_counter + 1);
+                    _rc := 1;
                     FETCH NEXT FROM cur_itembatch_cursor INTO v_batch, v_expiry, v_currqty;
                     IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
                   END LOOP;
@@ -37521,10 +39271,12 @@ BEGIN
                   -- DEALLOCATE ItemBatch_Cursor
                   IF (v_totalqty < v_givenqty) THEN
                     v_givenqty := (v_givenqty - v_totalqty);
+                    _rc := 1;
                     IF (v_givenqty > 0) THEN
                       SELECT r.return_value, r.lbi_maxutn INTO v_rt_code, v_saleutn FROM dbo.sp_maxutn(lbi_rows => (1)::bigint, lbi_maxutn => v_saleutn) AS r;
                       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                         v_continue := -1;
+                        _rc := 1;
                       ELSE
                         INSERT INTO dbo.saledetail (saleinvcode, icode, gcode, due, batch, expiry, packqty, looseqty, packunits, saleprice, avgprice, rate, discperc, salestax, itemflatdisc, packprice, unitsalestax, gstperc, saleutn, balancestock, rowgroup, saleitemdescription) VALUES (v_saleinvcode, v_icode, v_gcode, 'D', 'due', (left(to_char((localtimestamp(3) + (365) * interval '1 day'), 'MM/DD/YYYY'), 100))::timestamp(3), 0, v_givenqty, v_packunits, v_saleprice, v_hold_avgprice, v_rate, v_discperc, 0, v_itemflatdisc, (v_rate * v_packunits), v_unitsalestax, v_gstperc1, v_saleutn, v_total_availablestock, v_rowgroup, v_saledesc);
                         GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -37534,6 +39286,7 @@ BEGIN
                         IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
                           RAISE EXCEPTION 'Error occured in inserting due record into Sale Detail for Sale Inv. No. : %', v_saleinvcode;
                           v_continue := -1;
+                          _rc := 1;
                         END IF;
                       END IF;
                     END IF;
@@ -37544,13 +39297,17 @@ BEGIN
             UPDATE tmp_sale AS sale SET satisfiedqty = satisfiableqty WHERE (id = v_curr_rowid);
             GET DIAGNOSTICS _rc = ROW_COUNT;
             v_curr_rowid := (v_curr_rowid + 1);
+            _rc := 1;
             v_innercounter := (v_innercounter + 1);
+            _rc := 1;
             v_anyitem_exist := (SELECT sum((satisfiableqty - satisfiedqty)) FROM tmp_sale AS sale);
+            _rc := 1;
           END LOOP;
         END IF;
       END IF;
     END IF;
     v_anyitem_exist := (SELECT sum((satisfiableqty - satisfiedqty)) FROM tmp_sale AS sale);
+    _rc := 1;
   END LOOP;
   DROP TABLE IF EXISTS tmp_sale;
   IF ((v_continue >= 0)) THEN
@@ -37565,12 +39322,14 @@ BEGIN
       IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
         RAISE EXCEPTION 'Unable to update Sale Invoice for Sale Inv. total';
         v_continue := -1;
+        _rc := 1;
       END IF;
       IF (v_updateloyaltypoints = 'Y') THEN
         SELECT r.return_value INTO v_rt_code FROM dbo.sp_manageloyaltypoints(invtype => 'SV', invoicecode => v_saleinvcode) AS r;
         IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
           RAISE EXCEPTION 'Unable to update loyalty points On Sale Invoice : %', v_saleinvcode;
           v_continue := -1;
+          _rc := 1;
         END IF;
       END IF;
     END IF;
@@ -37653,11 +39412,17 @@ BEGIN
   -- SET ANSI_NULLS ON
   -- SET ANSI_WARNINGS ON
   v_firsttime := 0;
+  _rc := 1;
   v_custcode := 19;
+  _rc := 1;
   v_srcatcode := 8;
+  _rc := 1;
   v_saletypecode := 2;
+  _rc := 1;
   v_module := (SELECT module FROM dbo.module WHERE (name = 'SALES RETURN'));
+  _rc := 1;
   v_serverdate := localtimestamp(3);
+  _rc := 1;
   DROP TABLE IF EXISTS tmp_salereturn;
   CREATE TEMP TABLE tmp_salereturn (
     id integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
@@ -37676,24 +39441,36 @@ BEGIN
   INSERT INTO tmp_salereturn (icode, gcode, batch, satisfiableqty, saleprice, rate, packunits, discperc, itemflatdisc, unitsalestax, gstperc) SELECT icode, gcode, batch, sum(abs(looseqty)), saleprice, rate, packunits, discperc, itemflatdisc, unitsalestax, gstperc FROM dbo.imp_advsaledetail WHERE (((childserver = v_childserver) AND (advsaleinvcode = v_advsaleinvcode)) AND (looseqty < 0)) GROUP BY icode, gcode, batch, saleprice, rate, packunits, discperc, itemflatdisc, unitsalestax, gstperc ORDER BY icode;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_sale := coalesce((SELECT sum(looseqty) FROM dbo.imp_advsaledetail WHERE (((childserver = v_childserver) AND (advsaleinvcode = v_advsaleinvcode)) AND (looseqty > 0))), 0);
+  _rc := 1;
   v_advsale_rowcount := coalesce((SELECT count(*) FROM dbo.imp_advsaledetail WHERE ((childserver = v_childserver) AND (advsaleinvcode = v_advsaleinvcode))), 0);
+  _rc := 1;
   v_anyitem_exist := trunc((SELECT sum(abs(satisfiableqty)) FROM tmp_salereturn AS salereturn))::integer;
+  _rc := 1;
   v_headerno := (SELECT headerno FROM dbo.imp_advsaleledger WHERE ((childserver = v_childserver) AND (advsaleinvcode = v_advsaleinvcode)));
+  _rc := 1;
   v_continue := 0;
+  _rc := 1;
   v_invcounter := 1;
+  _rc := 1;
   v_rowgroup := 0;
+  _rc := 1;
   WHILE ((v_anyitem_exist > 0) AND (v_continue >= 0)) LOOP
     SELECT r.return_value, r.key INTO v_rt_code, v_srinvcode FROM dbo.sp_gettabmaxkey(tabname => 'SRledger', key => v_srinvcode) AS r;
     v_rowgroup := 0;
+    _rc := 1;
     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
       v_continue := -1;
+      _rc := 1;
     ELSE
       SELECT r.return_value, r.key INTO v_rt_code, v_headerinvno FROM dbo.sp_getheadertabmaxkey(headercode => (v_headerno)::smallint, modulecode => (v_module)::smallint, key => v_headerinvno) AS r;
       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
         v_continue := -1;
+        _rc := 1;
       ELSE
         v_err := 0;
+        _rc := 1;
         v_rowcount := 1;
+        _rc := 1;
         INSERT INTO dbo.srledger (srinvcode, saleinvcode, date, srcatcode, custcode, salesmancode, discperc, flatdisc, misccharges, posted, postdate, remarks, salestax, originaldate, modifiedby, postedby, headerno, invgstperc1, smancode, custrefno, custrefno2, custrefno3, custrefno4, patientcode, machinename, headerinvno, admissioncode, invtotal, accountfor, paymentmode, paymentacccode, amt, amtby, amtdate, amtreference, outstandingamt, marked, pagesize, reprintingcounter, doctcode, considerinpo) SELECT v_srinvcode, NULL::integer AS saleinvcode, date, CASE invtype WHEN 1 THEN v_srcatcode ELSE 7 END AS srcatcode, custcode, salesmancode, discperc, CASE WHEN (v_sale = 0) THEN flatdisc ELSE 0 END AS flatdisc, (CASE WHEN (v_sale = 0) THEN misccharges ELSE 0 END + coalesce(v_refund, 0)) AS misccharges, 'Y' AS posted, localtimestamp(3) AS postdate, remarks, 0 AS salestax, originaldate, modifiedby, v_usercode AS postedby, v_headerno, invgstperc1, smancode, custrefno, custrefno2, custrefno3, custrefno4, patientcode, machinename, v_headerinvno, NULL::integer AS admissioncode, 0 AS invtotal, 'Y' AS accountfor, paymentmode, paymentacccode, amt, amtby, amtdate, amtreference, outstandingamt, 'N' AS marked, invoicesize, 0 AS reprintingcounter, doctcode, 'Y' AS considerinpo FROM dbo.imp_advsaleledger WHERE ((childserver = v_childserver) AND (advsaleinvcode = v_advsaleinvcode));
         GET DIAGNOSTICS _rc = ROW_COUNT;
         v_err := 0;
@@ -37702,11 +39479,16 @@ BEGIN
         IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
           RAISE EXCEPTION 'Error occured in inserting record into Sale Return Ledger : %', v_srinvcode;
           v_continue := -1;
+          _rc := 1;
         ELSE
           v_curr_rowid := 1;
+          _rc := 1;
           v_anyitem_exist := trunc((SELECT sum(satisfiableqty) FROM tmp_salereturn AS salereturn))::integer;
+          _rc := 1;
           v_lineitems_rowcount := v_advsale_rowcount;
+          _rc := 1;
           v_innercounter := 1;
+          _rc := 1;
           WHILE (((((v_advsale_rowcount > 0)) AND ((v_anyitem_exist > 0))) AND ((v_innercounter <= v_lineitems_rowcount))) AND ((v_continue >= 0))) LOOP
             _rc := 0;
             FOR _r1 IN SELECT icode AS c1, gcode AS c2, coalesce((SELECT dbo.fn_getpreference('defaultbatch')), '.') AS c3, (date_trunc('day', (SELECT (localtimestamp(3) + ((SELECT dbo.fn_get_int_preference('expiry'))) * interval '1 day'))))::timestamp(3) AS c4, satisfiableqty AS c5, saleprice AS c6, rate AS c7, packunits AS c8, discperc AS c9, itemflatdisc AS c10, unitsalestax AS c11, gstperc AS c12 FROM tmp_salereturn AS salereturn WHERE (id = v_curr_rowid) LOOP
@@ -37728,20 +39510,27 @@ BEGIN
             _rc := 1;
             IF (((v_rowcount = 1)) AND ((v_satisfiableqty > 0))) THEN
               v_givenqty := v_satisfiableqty;
+              _rc := 1;
               SELECT r.return_value, r.avgprice INTO v_rt_code, v_hold_avgprice FROM dbo.sp_getitemavgprice(icode => v_icode, avgprice => v_hold_avgprice) AS r;
               IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                 v_continue := -1;
+                _rc := 1;
               ELSE
                 v_totalstock := (SELECT coalesce(sum(currqty), 0) FROM dbo.godowndetail WHERE (godowndetail.icode = v_icode));
+                _rc := 1;
                 v_totalqty := (SELECT coalesce(sum(currqty), 0) FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)));
+                _rc := 1;
                 v_rowgroup := (v_rowgroup + 1);
+                _rc := 1;
                 IF ((v_packunits = 0) OR (v_packunits IS NULL)) THEN
                   v_packunits := 1;
+                  _rc := 1;
                 END IF;
                 IF (v_givenqty > 0) THEN
                   SELECT r.return_value, r.lbi_maxutn INTO v_rt_code, v_saleutn FROM dbo.sp_maxutn(lbi_rows => (1)::bigint, lbi_maxutn => v_saleutn) AS r;
                   IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                     v_continue := -1;
+                    _rc := 1;
                   END IF;
                   INSERT INTO dbo.srdetail (srinvcode, icode, gcode, batch, expiry, packqty, looseqty, packunits, srprice, discperc, salestax, avgprice, unitsalestax, gstperc, srutn, bonusqty, saleprice, salerowid, currstock) SELECT v_srinvcode, v_icode, v_gcode, v_batch, v_expiry, 0, v_givenqty, v_packunits, ((v_srprice - v_itemflatdisc)), v_discperc, 0, v_hold_avgprice, v_unitsalestax, v_gstperc1, v_saleutn, 0, ((v_srprice - v_itemflatdisc)), NULL::integer, v_totalstock;
                   GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -37751,14 +39540,18 @@ BEGIN
                   IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
                     RAISE EXCEPTION 'Error occured in inserting record into Sale Return Detail for Sale Return No. : %', v_srinvcode;
                     v_continue := -1;
+                    _rc := 1;
                   ELSE
                     v_currqty := 0;
+                    _rc := 1;
                     SELECT r.return_value, r.qty INTO v_rt_code, v_currqty FROM dbo.sp_getitemstockbatch(gcode => v_gcode, icode => v_icode, batch => v_batch, expiry => v_expiry, qty => v_currqty) AS r;
                     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                       RAISE EXCEPTION 'Error occured in checking Batch details of some items during processing of Sale Return No. : %', v_srinvcode;
                       v_continue := -1;
+                      _rc := 1;
                     END IF;
                     v_newqty := (coalesce(v_currqty, 0) + coalesce(v_givenqty, 0));
+                    _rc := 1;
                     rs1 := NULL;
                     OPEN rs1 FOR SELECT v_curr_rowid AS row, v_gcode AS gcode, v_icode AS icode, v_batch AS batch, v_expiry AS expiry, v_currqty AS qty, v_givenqty AS thisqty, v_newqty AS newqty;
                     IF (v_newqty > 0) THEN
@@ -37766,23 +39559,29 @@ BEGIN
                       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                         RAISE EXCEPTION 'Error occured in updation of Batch details of some items during processing of Sale Return No. : %', v_srinvcode;
                         v_continue := -1;
+                        _rc := 1;
                       END IF;
                     END IF;
                   END IF;
                   v_counter := (v_counter + 1);
+                  _rc := 1;
                 END IF;
               END IF;
             END IF;
             UPDATE tmp_salereturn AS salereturn SET satisfiableqty = 0 WHERE (id = v_curr_rowid);
             GET DIAGNOSTICS _rc = ROW_COUNT;
             v_curr_rowid := (v_curr_rowid + 1);
+            _rc := 1;
             v_innercounter := (v_innercounter + 1);
+            _rc := 1;
             v_anyitem_exist := trunc((SELECT sum(satisfiableqty) FROM tmp_salereturn AS salereturn))::integer;
+            _rc := 1;
           END LOOP;
         END IF;
       END IF;
     END IF;
     v_anyitem_exist := trunc((SELECT sum(satisfiableqty) FROM tmp_salereturn AS salereturn))::integer;
+    _rc := 1;
   END LOOP;
   DROP TABLE IF EXISTS tmp_salereturn;
   IF ((v_continue >= 0)) THEN
@@ -37795,6 +39594,7 @@ BEGIN
       IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
         RAISE EXCEPTION 'Unable to update Sale Return Invoices for Inv. total';
         v_continue := -1;
+        _rc := 1;
       END IF;
     END IF;
   END IF;
@@ -37880,14 +39680,23 @@ BEGIN
   -- SET ANSI_NULLS ON
   -- SET ANSI_WARNINGS ON
   v_keepinvno := coalesce((SELECT dbo.fn_getpreference('KeepChildServerInvoiceNoIntact')), 'N');
+  _rc := 1;
   v_updaterefno1 := coalesce((SELECT dbo.fn_getpreference('CopyChildServerInvoiceNoInRef1')), 'N');
+  _rc := 1;
   v_firsttime := 0;
+  _rc := 1;
   v_custcode := 19;
+  _rc := 1;
   v_srcatcode := 8;
+  _rc := 1;
   v_saletypecode := 2;
+  _rc := 1;
   v_module := (SELECT module FROM dbo.module WHERE (name = 'SALES RETURN'));
+  _rc := 1;
   v_serverdate := localtimestamp(3);
+  _rc := 1;
   v_updateloyaltypoints := coalesce((SELECT dbo.fn_getpreference('ApplyLoyaltypolicyonsaleposting')), 'N');
+  _rc := 1;
   DROP TABLE IF EXISTS tmp_salereturn;
   CREATE TEMP TABLE tmp_salereturn (
     id integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
@@ -37908,33 +39717,48 @@ BEGIN
   INSERT INTO tmp_salereturn (icode, gcode, batch, expiry, looseqty, bonusqty, srprice, packunits, discperc, unitsalestax, gstperc, returndesc, itemadvancetaxperc) SELECT icode, gcode, batch, expiry, sum(abs(looseqty)), sum(abs(bonusqty)) AS bonusqty, srprice, packunits, discperc, unitsalestax, gstperc, returnitemdescription, itemadvancetaxperc FROM dbo.imp_srdetail WHERE ((childserver = v_childserver) AND (srinvcode = v_oldsrinvcode)) GROUP BY icode, gcode, batch, expiry, srprice, packunits, discperc, unitsalestax, gstperc, returnitemdescription, itemadvancetaxperc ORDER BY icode;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_sale := coalesce((SELECT sum(looseqty) FROM dbo.imp_srdetail WHERE (((childserver = v_childserver) AND (srinvcode = v_oldsrinvcode)) AND (looseqty > 0))), 0);
+  _rc := 1;
   v_advsale_rowcount := coalesce((SELECT count(*) FROM dbo.imp_srdetail WHERE ((childserver = v_childserver) AND (srinvcode = v_oldsrinvcode))), 0);
+  _rc := 1;
   v_anyitem_exist := trunc((SELECT sum(abs(looseqty)) FROM tmp_salereturn AS salereturn))::integer;
+  _rc := 1;
   v_headerno := (SELECT headerno FROM dbo.imp_srledger WHERE ((childserver = v_childserver) AND (srinvcode = v_oldsrinvcode)));
+  _rc := 1;
   v_headerinvno := (SELECT headerinvno FROM dbo.imp_srledger WHERE ((childserver = v_childserver) AND (srinvcode = v_oldsrinvcode)));
+  _rc := 1;
   v_continue := 0;
+  _rc := 1;
   v_invcounter := 1;
+  _rc := 1;
   v_rowgroup := 0;
+  _rc := 1;
   WHILE ((v_anyitem_exist > 0) AND (v_continue >= 0)) LOOP
     IF (v_keepinvno = 'N') THEN
       SELECT r.return_value, r.key INTO v_rt_code, v_srinvcode FROM dbo.sp_gettabmaxkey(tabname => 'SRledger', key => v_srinvcode) AS r;
     ELSE
       v_srinvcode := v_oldsrinvcode;
+      _rc := 1;
     END IF;
     v_rowgroup := 0;
+    _rc := 1;
     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
       v_continue := -1;
+      _rc := 1;
     ELSE
       IF (v_keepinvno = 'N') THEN
         SELECT r.return_value, r.key INTO v_rt_code, v_headerinvno FROM dbo.sp_getheadertabmaxkey(headercode => (v_headerno)::smallint, modulecode => (v_module)::smallint, key => v_headerinvno) AS r;
       ELSE
         v_headerinvno := v_headerinvno;
+        _rc := 1;
       END IF;
       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
         v_continue := -1;
+        _rc := 1;
       ELSE
         v_err := 0;
+        _rc := 1;
         v_rowcount := 1;
+        _rc := 1;
         INSERT INTO dbo.srledger (srinvcode, saleinvcode, date, srcatcode, custcode, salesmancode, discperc, flatdisc, misccharges, posted, postdate, remarks, salestax, originaldate, modifiedby, postedby, headerno, invgstperc1, smancode, custrefno, custrefno2, custrefno3, custrefno4, patientcode, machinename, headerinvno, admissioncode, invtotal, accountfor, paymentmode, paymentacccode, amt, amtby, amtdate, amtreference, outstandingamt, marked, pagesize, reprintingcounter, doctcode, considerinpo, cashacccode, cashtendered, cashcharged, cashback, retviabillsummary, crs_transfered, crs_transferedon, guestcode, guestcheckincode, studentcode, synced, syncedon, syncedby, currencycode, conversionrate, fiscalized, fiscalizedon, fiscalinvoiceno, transmit, transmited, advancetax, advancetaxamt, fbrposfee) SELECT v_srinvcode, NULL::integer AS saleinvcode, date, srcatcode, custcode, salesmancode, discperc, flatdisc, misccharges, 'Y' AS posted, localtimestamp(3) AS postdate, remarks, 0 AS salestax, originaldate, modifiedby, v_usercode AS postedby, v_headerno, invgstperc1, smancode, CASE WHEN (v_updaterefno1 = 'Y') THEN ltrim(rtrim(dbo.tsql_str((v_srinvcode)::numeric))) ELSE custrefno END AS custrefno, custrefno2, custrefno3, custrefno AS custrefno4, patientcode, machinename, v_headerinvno, NULL::integer AS admissioncode, invtotal, accountfor, paymentmode, paymentacccode, amt, amtby, amtdate, amtreference, outstandingamt, 'N' AS marked, pagesize, reprintingcounter, doctcode, considerinpo, cashacccode, cashtendered, cashcharged, cashback, retviabillsummary, crs_transfered, crs_transferedon, guestcode, guestcheckincode, studentcode, synced, syncedon, syncedby, currencycode, conversionrate, fiscalized, fiscalizedon, fiscalinvoiceno, 'N' AS transmit, 'N' AS transmited, advancetax, advancetaxamt, fbrposfee FROM dbo.imp_srledger WHERE ((childserver = v_childserver) AND (srinvcode = v_oldsrinvcode));
         GET DIAGNOSTICS _rc = ROW_COUNT;
         v_err := 0;
@@ -37943,11 +39767,16 @@ BEGIN
         IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
           RAISE EXCEPTION 'Error occured in inserting record into Sale Return Ledger : %', v_srinvcode;
           v_continue := -1;
+          _rc := 1;
         ELSE
           v_curr_rowid := 1;
+          _rc := 1;
           v_anyitem_exist := trunc((SELECT sum((looseqty + bonusqty)) FROM tmp_salereturn AS salereturn))::integer;
+          _rc := 1;
           v_lineitems_rowcount := v_advsale_rowcount;
+          _rc := 1;
           v_innercounter := 1;
+          _rc := 1;
           WHILE (((((v_advsale_rowcount > 0)) AND ((v_anyitem_exist > 0))) AND ((v_innercounter <= v_lineitems_rowcount))) AND ((v_continue >= 0))) LOOP
             _rc := 0;
             FOR _r1 IN SELECT icode AS c1, gcode AS c2, batch AS c3, expiry AS c4, looseqty AS c5, bonusqty AS c6, srprice AS c7, packunits AS c8, discperc AS c9, unitsalestax AS c10, gstperc AS c11, returndesc AS c12, itemadvancetaxperc AS c13 FROM tmp_salereturn AS salereturn WHERE (id = v_curr_rowid) LOOP
@@ -37970,20 +39799,27 @@ BEGIN
             _rc := 1;
             IF (((v_rowcount = 1)) AND ((v_looseqty > 0))) THEN
               v_givenqty := (v_looseqty + v_bonusqty);
+              _rc := 1;
               SELECT r.return_value, r.avgprice INTO v_rt_code, v_hold_avgprice FROM dbo.sp_getitemavgprice(icode => v_icode, avgprice => v_hold_avgprice) AS r;
               IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                 v_continue := -1;
+                _rc := 1;
               ELSE
                 v_totalstock := (SELECT coalesce(sum(currqty), 0) FROM dbo.godowndetail WHERE (godowndetail.icode = v_icode));
+                _rc := 1;
                 v_totalqty := (SELECT coalesce(sum(currqty), 0) FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)));
+                _rc := 1;
                 v_rowgroup := (v_rowgroup + 1);
+                _rc := 1;
                 IF ((v_packunits = 0) OR (v_packunits IS NULL)) THEN
                   v_packunits := 1;
+                  _rc := 1;
                 END IF;
                 IF (v_givenqty > 0) THEN
                   SELECT r.return_value, r.lbi_maxutn INTO v_rt_code, v_saleutn FROM dbo.sp_maxutn(lbi_rows => (1)::bigint, lbi_maxutn => v_saleutn) AS r;
                   IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                     v_continue := -1;
+                    _rc := 1;
                   END IF;
                   INSERT INTO dbo.srdetail (srinvcode, icode, gcode, batch, expiry, packqty, looseqty, packunits, srprice, discperc, salestax, avgprice, unitsalestax, gstperc, srutn, bonusqty, saleprice, salerowid, returnitemdescription, itemadvancetaxperc, currstock) SELECT v_srinvcode, v_icode, v_gcode, v_batch, v_expiry, 0, v_looseqty, v_packunits, v_srprice, v_discperc, 0, v_hold_avgprice, v_unitsalestax, v_gstperc1, v_saleutn, v_bonusqty, v_srprice, NULL::integer, v_returndesc, v_itemadvancetaxperc, v_totalstock;
                   GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -37993,14 +39829,18 @@ BEGIN
                   IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
                     RAISE EXCEPTION 'Error occured in inserting record into Sale Return Detail for Sale Return No. : %', v_srinvcode;
                     v_continue := -1;
+                    _rc := 1;
                   ELSE
                     v_currqty := 0;
+                    _rc := 1;
                     SELECT r.return_value, r.qty INTO v_rt_code, v_currqty FROM dbo.sp_getitemstockbatch(gcode => v_gcode, icode => v_icode, batch => v_batch, expiry => v_expiry, qty => v_currqty) AS r;
                     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                       RAISE EXCEPTION 'Error occured in checking Batch details of some items during processing of Sale Return No. : %', v_srinvcode;
                       v_continue := -1;
+                      _rc := 1;
                     END IF;
                     v_newqty := (coalesce(v_currqty, 0) + coalesce(v_givenqty, 0));
+                    _rc := 1;
                     rs1 := NULL;
                     OPEN rs1 FOR SELECT v_curr_rowid AS row, v_gcode AS gcode, v_icode AS icode, v_batch AS batch, v_expiry AS expiry, v_currqty AS qty, v_givenqty AS thisqty, v_newqty AS newqty;
                     IF (v_newqty > 0) THEN
@@ -38008,23 +39848,29 @@ BEGIN
                       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
                         RAISE EXCEPTION 'Error occured in updation of Batch details of some items during processing of Sale Return No. : %', v_srinvcode;
                         v_continue := -1;
+                        _rc := 1;
                       END IF;
                     END IF;
                   END IF;
                   v_counter := (v_counter + 1);
+                  _rc := 1;
                 END IF;
               END IF;
             END IF;
             UPDATE tmp_salereturn AS salereturn SET looseqty = 0, bonusqty = 0 WHERE (id = v_curr_rowid);
             GET DIAGNOSTICS _rc = ROW_COUNT;
             v_curr_rowid := (v_curr_rowid + 1);
+            _rc := 1;
             v_innercounter := (v_innercounter + 1);
+            _rc := 1;
             v_anyitem_exist := trunc((SELECT sum((looseqty + bonusqty)) FROM tmp_salereturn AS salereturn))::integer;
+            _rc := 1;
           END LOOP;
         END IF;
       END IF;
     END IF;
     v_anyitem_exist := trunc((SELECT sum((looseqty + bonusqty)) FROM tmp_salereturn AS salereturn))::integer;
+    _rc := 1;
   END LOOP;
   DROP TABLE IF EXISTS tmp_salereturn;
   IF ((v_continue >= 0)) THEN
@@ -38037,12 +39883,14 @@ BEGIN
       IF ((v_err <> 0) OR (v_rowcount = 0)) THEN
         RAISE EXCEPTION 'Unable to update Sale Return Invoices for Inv. total';
         v_continue := -1;
+        _rc := 1;
       END IF;
       IF (v_updateloyaltypoints = 'Y') THEN
         SELECT r.return_value INTO v_rt_code FROM dbo.sp_manageloyaltypoints(invtype => 'SR', invoicecode => v_srinvcode) AS r;
         IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
           RAISE EXCEPTION 'Unable to update loyalty points On S/R Invoice : %', v_srinvcode;
           v_continue := -1;
+          _rc := 1;
         END IF;
       END IF;
     END IF;
@@ -38252,6 +40100,7 @@ BEGIN
   v_icode := icode;
   v_qty := qty;
   v_itemname := coalesce((SELECT name FROM dbo.item WHERE (icode = v_icode)), '');
+  _rc := 1;
   UPDATE dbo.item SET minqty = coalesce(v_qty, 0) WHERE (item.icode = v_icode);
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_rowcount := _rc;
@@ -38284,6 +40133,7 @@ BEGIN
   v_icode := icode;
   v_qty := qty;
   v_itemname := coalesce((SELECT name FROM dbo.item WHERE (icode = v_icode)), '');
+  _rc := 1;
   UPDATE dbo.item SET optimumqty = coalesce(v_qty, 0) WHERE (item.icode = v_icode);
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_rowcount := _rc;
@@ -38316,6 +40166,7 @@ BEGIN
   v_icode := icode;
   v_qty := qty;
   v_itemname := coalesce((SELECT name FROM dbo.item WHERE (icode = v_icode)), '');
+  _rc := 1;
   UPDATE dbo.item SET reorderqty = coalesce(v_qty, 0) WHERE (item.icode = v_icode);
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_rowcount := _rc;
@@ -38909,6 +40760,7 @@ BEGIN
   v_moduleid := moduleid;
   v_doccode := doccode;
   v_autofillcashcharged := dbo.fn_getpreference('AutoFillCashCharged');
+  _rc := 1;
   IF ((v_moduleid IS NULL) OR (v_doccode IS NULL)) THEN
     RAISE EXCEPTION 'Error Calling Cashier Activity Monitor';
     return_value := -1;
@@ -38995,37 +40847,49 @@ BEGIN
   _rc := 1;
   IF ((v_rowsaffected = 0) AND (v_err = 0)) THEN
     v_method := (SELECT dbo.fn_get_int_preference('InventoryMovementMethod'));
+    _rc := 1;
     IF (v_method = 1) THEN
       v_priority := 10;
+      _rc := 1;
     ELSE
       IF (v_method = 3) THEN
         v_priority := coalesce((SELECT min(priority) FROM dbo.godowndetail WHERE (icode = v_icode)), 10);
+        _rc := 1;
         IF (((v_priority - 1)) <= 0) THEN
           UPDATE dbo.godowndetail SET priority = CASE WHEN (priority >= 255) THEN 255 ELSE (priority + 1) END WHERE (icode = v_icode);
           GET DIAGNOSTICS _rc = ROW_COUNT;
           v_priority := coalesce((SELECT min(priority) FROM dbo.godowndetail WHERE (icode = v_icode)), 10);
+          _rc := 1;
           IF (((v_priority - 1)) <= 0) THEN
             v_priority := 0;
+            _rc := 1;
           ELSE
             v_priority := (v_priority - 1);
+            _rc := 1;
           END IF;
         ELSE
           v_priority := (v_priority - 1);
+          _rc := 1;
         END IF;
       ELSE
         IF (v_method = 2) THEN
           v_priority := coalesce((SELECT max(priority) FROM dbo.godowndetail WHERE (icode = v_icode)), 10);
+          _rc := 1;
           IF (((v_priority + 1)) >= 255) THEN
             UPDATE dbo.godowndetail SET priority = CASE WHEN (priority >= 255) THEN 255 WHEN (priority <= 0) THEN 0 ELSE (priority - 1) END WHERE (icode = v_icode);
             GET DIAGNOSTICS _rc = ROW_COUNT;
             v_priority := coalesce((SELECT max(priority) FROM dbo.godowndetail WHERE (icode = v_icode)), 10);
+            _rc := 1;
             IF (((v_priority + 1)) >= 255) THEN
               v_priority := 255;
+              _rc := 1;
             ELSE
               v_priority := (v_priority + 1);
+              _rc := 1;
             END IF;
           ELSE
             v_priority := (v_priority + 1);
+            _rc := 1;
           END IF;
         END IF;
       END IF;
@@ -39039,6 +40903,7 @@ BEGIN
         v_itemname := _r1.c1;
       END LOOP;
       v_string_expiry := left(to_char(v_expiry, 'DD/MM/YYYY'), 25);
+      _rc := 1;
       RAISE EXCEPTION 'Unable to insert stock for the item (%) in batch no. (%) with expiry (%)', v_itemname, v_batch, v_string_expiry;
       return_value := -1;
       RETURN;
@@ -39051,6 +40916,7 @@ BEGIN
         v_itemname := _r2.c1;
       END LOOP;
       v_string_expiry := left(to_char(v_expiry, 'DD/MM/YYYY'), 25);
+      _rc := 1;
       RAISE EXCEPTION 'Not enough stock available for the item (%) in batch no. (%) with expiry (%)', v_itemname, v_batch, v_string_expiry;
       return_value := -1;
       RETURN;
@@ -39286,37 +41152,49 @@ BEGIN
   _rc := 1;
   IF ((v_rowsaffected = 0) AND (v_err = 0)) THEN
     v_method := (SELECT dbo.fn_get_int_preference('InventoryMovementMethod'));
+    _rc := 1;
     IF (v_method = 1) THEN
       v_priority := 10;
+      _rc := 1;
     ELSE
       IF (v_method = 3) THEN
         v_priority := coalesce((SELECT min(priority) FROM dbo.godowndetail WHERE (icode = v_icode)), 10);
+        _rc := 1;
         IF (((v_priority - 1)) <= 0) THEN
           UPDATE dbo.godowndetail SET priority = CASE WHEN (priority >= 255) THEN 255 ELSE (priority + 1) END WHERE (icode = v_icode);
           GET DIAGNOSTICS _rc = ROW_COUNT;
           v_priority := coalesce((SELECT min(priority) FROM dbo.godowndetail WHERE (icode = v_icode)), 10);
+          _rc := 1;
           IF (((v_priority - 1)) <= 0) THEN
             v_priority := 0;
+            _rc := 1;
           ELSE
             v_priority := (v_priority - 1);
+            _rc := 1;
           END IF;
         ELSE
           v_priority := (v_priority - 1);
+          _rc := 1;
         END IF;
       ELSE
         IF (v_method = 2) THEN
           v_priority := coalesce((SELECT max(priority) FROM dbo.godowndetail WHERE (icode = v_icode)), 10);
+          _rc := 1;
           IF (((v_priority + 1)) >= 255) THEN
             UPDATE dbo.godowndetail SET priority = CASE WHEN (priority >= 255) THEN 255 WHEN (priority <= 0) THEN 0 ELSE (priority - 1) END WHERE (icode = v_icode);
             GET DIAGNOSTICS _rc = ROW_COUNT;
             v_priority := coalesce((SELECT max(priority) FROM dbo.godowndetail WHERE (icode = v_icode)), 10);
+            _rc := 1;
             IF (((v_priority + 1)) >= 255) THEN
               v_priority := 255;
+              _rc := 1;
             ELSE
               v_priority := (v_priority + 1);
+              _rc := 1;
             END IF;
           ELSE
             v_priority := (v_priority + 1);
+            _rc := 1;
           END IF;
         END IF;
       END IF;
@@ -39330,6 +41208,7 @@ BEGIN
         v_itemname := _r1.c1;
       END LOOP;
       v_string_expiry := left(to_char(v_expiry, 'DD/MM/YYYY'), 25);
+      _rc := 1;
       RAISE EXCEPTION 'Unable to insert stock for the item (%) in batch no. (%) with expiry (%)', v_itemname, v_batch, v_string_expiry;
       return_value := -1;
       RETURN;
@@ -39342,6 +41221,7 @@ BEGIN
         v_itemname := _r2.c1;
       END LOOP;
       v_string_expiry := left(to_char(v_expiry, 'DD/MM/YYYY'), 25);
+      _rc := 1;
       RAISE EXCEPTION 'Not enough stock available for the item (%) in batch no. (%) with expiry (%)', v_itemname, v_batch, v_string_expiry;
       return_value := -1;
       RETURN;
@@ -39531,9 +41411,13 @@ DECLARE
 BEGIN
   v_ai_icatcode := ai_icatcode;
   v_currentdate := localtimestamp(3);
+  _rc := 1;
   v_lastdate := (SELECT lastmonthdate FROM dbo.serverdatemonthpur);
+  _rc := 1;
   v_currentday := extract(doy from v_currentdate)::integer;
+  _rc := 1;
   v_lastday := extract(doy from v_lastdate)::integer;
+  _rc := 1;
   IF (((v_currentday > v_lastday)) OR (((v_currentday = 1) AND (v_lastday > 364)))) THEN
     UPDATE dbo.itemcategory SET purdailycounter = 0;
     GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -39570,9 +41454,13 @@ DECLARE
 BEGIN
   v_ai_icatcode := ai_icatcode;
   v_currentdate := localtimestamp(3);
+  _rc := 1;
   v_lastdate := (SELECT lastmonthdate FROM dbo.serverdatemonthpur);
+  _rc := 1;
   v_currentmonth := extract(month from v_currentdate)::integer;
+  _rc := 1;
   v_lastmonth := extract(month from v_lastdate)::integer;
+  _rc := 1;
   IF (((v_currentmonth > v_lastmonth)) OR (((v_currentmonth = 1) AND (v_lastmonth = 12)))) THEN
     UPDATE dbo.itemcategory SET purmonthlycounter = 0;
     GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -39646,9 +41534,13 @@ DECLARE
   _rc integer;
 BEGIN
   v_currentdate := localtimestamp(3);
+  _rc := 1;
   v_lastdate := (SELECT lastmonthdate FROM dbo.serverdatemonth);
+  _rc := 1;
   v_currentmonth := extract(month from v_currentdate)::integer;
+  _rc := 1;
   v_lastmonth := extract(month from v_lastdate)::integer;
+  _rc := 1;
   IF (((v_currentmonth > v_lastmonth)) OR (((v_currentmonth = 1) AND (v_lastmonth = 12)))) THEN
     UPDATE dbo._tabmaxkey SET tabmaxkey = 0 WHERE (tabname = 'SaleLedgerCashDummy');
     GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -39691,9 +41583,13 @@ DECLARE
   _rc integer;
 BEGIN
   v_currentdate := localtimestamp(3);
+  _rc := 1;
   v_lastdate := (SELECT lastmonthdate FROM dbo.serverdatemonth);
+  _rc := 1;
   v_currentday := extract(doy from v_currentdate)::integer;
+  _rc := 1;
   v_lastday := extract(doy from v_lastdate)::integer;
+  _rc := 1;
   IF (((v_currentday > v_lastday)) OR (((v_currentday = 1) AND (v_lastday > 364)))) THEN
     UPDATE dbo._tabmaxkey SET tabmaxkey = 0 WHERE (tabname = 'SaleLedgerCashDummy');
     GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -39827,9 +41723,11 @@ BEGIN
   -- SET NOCOUNT ON
   IF ((v_purgestockledger IS NULL) OR (v_purgestockledger = '')) THEN
     v_purgestockledger := 'N';
+    _rc := 1;
   END IF;
   IF ((v_updatebasetable IS NULL) OR (v_updatebasetable = '')) THEN
     v_updatebasetable := 'N';
+    _rc := 1;
   END IF;
   IF (v_purgestockledger = 'Y') THEN
     TRUNCATE TABLE dbo.stockledger;
@@ -39843,14 +41741,18 @@ BEGIN
   INSERT INTO tv_sp_updatestockledger_citems (icode) SELECT icode FROM dbo.item WHERE (icode IN (SELECT DISTINCT icode FROM dbo.stockledger)) ORDER BY icode;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_items_rows := _rc;
+  _rc := 1;
   v_rowid := 1;
+  _rc := 1;
   RAISE NOTICE '%', ('Total Rows = ' || dbo.tsql_str((v_items_rows)::numeric));
   WHILE (v_rowid <= v_items_rows) LOOP
     RAISE NOTICE '%', ('Row ID = ' || dbo.tsql_str((v_rowid)::numeric));
     v_icode := (SELECT icode FROM tv_sp_updatestockledger_citems AS citems WHERE (rowid = v_rowid));
+    _rc := 1;
     -- EXECUTE DBO.UpdateItemStockLedger @ICode, @UpdateBaseTable
     RAISE EXCEPTION 'untranslated T-SQL (unknown procedure UpdateItemStockLedger)' USING ERRCODE = '0A000';
     v_rowid := (v_rowid + 1);
+    _rc := 1;
   END LOOP;
   return_value := 0;
   RETURN;
@@ -39900,6 +41802,7 @@ BEGIN
   v_icode := icode;
   v_qty := qty;
   v_autoupdate := (SELECT dbo.fn_getpreference('AutoUpdateTransitStock') AS a);
+  _rc := 1;
   IF ((upper(v_autoupdate))::citext = 'Y') THEN
     IF ((v_mode < 0) OR (v_mode > 1)) THEN
       RAISE EXCEPTION 'UnRecognized Mode argument passed to StoredProcedure (sp_UpdateTransitStock) ';
@@ -39910,6 +41813,7 @@ BEGIN
     GET DIAGNOSTICS _rc = ROW_COUNT;
     IF ((_rc = 0) OR (0 <> 0)) THEN
       v_itemname := (SELECT name FROM dbo.item WHERE (icode = v_icode));
+      _rc := 1;
       RAISE EXCEPTION 'Unable to update TransitStock for Item: ';
       return_value := -1;
       RETURN;
@@ -39996,6 +41900,7 @@ BEGIN
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF ((0 <> 0) OR (_rc = 0)) THEN
     v_errortext := 'Problem while Fetching Service Ticket Information....';
+    _rc := 1;
     RAISE EXCEPTION '%', v_errortext;
     return_value := -1;
     date := v_date;
@@ -40011,8 +41916,10 @@ BEGIN
     RETURN;
   END IF;
   v_totrows := coalesce((SELECT count(*) FROM tv_sp_validateserviceticket_ticket_table AS ticket_table), 0);
+  _rc := 1;
   IF ((0 <> 0) OR (v_totrows = 0)) THEN
     v_errortext := (('Service Ticket No. ' || ltrim(rtrim(dbo.tsql_str((v_serviceticketcode)::numeric, 10)))) || ' doese not exists, Please enter some other ticket no.');
+    _rc := 1;
     RAISE EXCEPTION '%', v_errortext;
     return_value := -1;
     date := v_date;
@@ -40028,16 +41935,26 @@ BEGIN
     RETURN;
   END IF;
   v_date := (SELECT date FROM tv_sp_validateserviceticket_ticket_table AS ticket_table);
+  _rc := 1;
   v_serviceinvcode := (SELECT serviceinvcode FROM tv_sp_validateserviceticket_ticket_table AS ticket_table);
+  _rc := 1;
   v_servicecode := (SELECT servicecode FROM tv_sp_validateserviceticket_ticket_table AS ticket_table);
+  _rc := 1;
   v_servicecatcode := (SELECT servicecatcode FROM tv_sp_validateserviceticket_ticket_table AS ticket_table);
+  _rc := 1;
   v_ticketused := coalesce((SELECT ticketused FROM tv_sp_validateserviceticket_ticket_table AS ticket_table), 'N');
+  _rc := 1;
   v_ticketusedon := (SELECT ticketusedon FROM tv_sp_validateserviceticket_ticket_table AS ticket_table);
+  _rc := 1;
   v_usercode := (SELECT usercode FROM tv_sp_validateserviceticket_ticket_table AS ticket_table);
+  _rc := 1;
   v_expireson := (SELECT expireson FROM tv_sp_validateserviceticket_ticket_table AS ticket_table);
+  _rc := 1;
   v_price := coalesce((SELECT price FROM tv_sp_validateserviceticket_ticket_table AS ticket_table), 0);
+  _rc := 1;
   IF (v_ticketused = 'Y') THEN
     v_errortext := (('Service Ticket No. ' || ltrim(rtrim(dbo.tsql_str((v_serviceticketcode)::numeric, 10)))) || ' is Already Used, Please enter some other ticket no.');
+    _rc := 1;
     return_value := 1;
     date := v_date;
     serviceinvcode := v_serviceinvcode;
@@ -40053,6 +41970,7 @@ BEGIN
   END IF;
   IF (v_expireson < localtimestamp(3)) THEN
     v_errortext := (('Service Ticket No. ' || ltrim(rtrim(dbo.tsql_str((v_serviceticketcode)::numeric, 10)))) || ' is Already Expired, Please enter some other ticket no.');
+    _rc := 1;
     return_value := 2;
     date := v_date;
     serviceinvcode := v_serviceinvcode;
@@ -40070,6 +41988,7 @@ BEGIN
   GET DIAGNOSTICS _rc = ROW_COUNT;
   IF ((0 <> 0) OR (_rc = 0)) THEN
     v_errortext := (('Problem while updating Record for Service Ticket No. ' || ltrim(rtrim(dbo.tsql_str((v_serviceticketcode)::numeric, 10)))) || ', Please enter some other ticket no.');
+    _rc := 1;
     RAISE EXCEPTION '%', v_errortext;
     return_value := -1;
     date := v_date;
@@ -41047,22 +42966,30 @@ BEGIN
     rowid integer GENERATED BY DEFAULT AS IDENTITY
 ) ON COMMIT DROP;
   v_prefix := '';
+  _rc := 1;
   IF (((length(rtrim(ltrim(rtrim(v_srv)))) = 0) OR (v_srv IS NULL))) THEN
     v_prefix := '';
+    _rc := 1;
   ELSE
     v_prefix := (v_srv || '.');
+    _rc := 1;
   END IF;
   IF (((length(rtrim(ltrim(rtrim(v_db)))) = 0) OR (v_db IS NULL))) THEN
     v_prefix := v_prefix;
+    _rc := 1;
   ELSE
     v_prefix := ((v_prefix || v_db) || '.');
+    _rc := 1;
   END IF;
   IF (((length(rtrim(ltrim(rtrim(v_owner)))) = 0) OR (v_owner IS NULL))) THEN
     v_prefix := ((v_prefix || 'DBO') || '.');
+    _rc := 1;
   ELSE
     v_prefix := ((v_prefix || v_owner) || '.');
+    _rc := 1;
   END IF;
   v_qry := ((('INSERT INTO tmp_lt_so (webordercode, SaleOrderCode, OrderCode) ' || ' SELECT DISTINCT webordercode=SaleOrderCode , Null, Null FROM ') || v_prefix) || 'SaleOrderHeader WHERE Status=''PENDING'' AND SaleOrderCode NOT IN (SELECT WebOrderCode FROM SaleOrderHeader WHERE SOCatCode=1 AND WebOrderCode > 0)');
+  _rc := 1;
   _dq1 := v_qry;
   IF _dq1 IS NOT NULL THEN
     IF _dq1 ~* '^[[:space:]]*select' THEN OPEN rs1 FOR EXECUTE dbo.tsql_dyn(_dq1); ELSE EXECUTE dbo.tsql_dyn(_dq1); END IF;
@@ -41087,29 +43014,36 @@ BEGIN
     RETURN;
   END IF;
   v_lastordercode := coalesce((SELECT max(counter) FROM dbo.saleordercategory WHERE (socatcode = 1)), 0);
+  _rc := 1;
   UPDATE tmp_lt_so AS lt_so SET saleordercode = (v_key + rowid), ordercode = (v_lastordercode + rowid);
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_qry := '';
+  _rc := 1;
   v_qry := (((('INSERT INTO DBO.SaleOrderHeader (SaleOrderCode, HeaderNo, CustCode, UserCode, Date, OriginalDate, BillingDate, DiscPerc, MiscCharges, InvGSTPerc1, Posted, PostDate, InvoiceSize, GSTNo, Invtotal, ItemDiscPercNo, Amt, Deleted, Finalized, SOCatCode, OrderCode, DeliveryDeadLine, LateDeliveryCharges, WebOrderCode, Status, Type) ' || ' SELECT T.SaleOrderCode, 1 AS HeaderNo, H.CustCode, 1 AS UserCode, H.Date, H.Date AS OriginalDate, H.date AS BillingDate, 0 AS DiscPerc, 0 AS MiscCharges, 0 AS InvGSTPerc1, ''N'' AS Posted, localtimestamp(3) AS PostDate, ''F'' AS InvoiceSize, 1 AS GSTNo, H.Invtotal, 1 AS ItemDiscPercNo, AdvanceAmount AS Amt, ''N'' AS Deleted, ''Y'' AS Finalized, 1 AS SOCatCode, T.OrderCode AS OrderCode, H.DeliveryDeadLine, H.DeliveryCharges AS LateDeliveryCharges, H.SaleOrderCode AS WebOrderCode, UPPER(H.Status), UPPER(H.Type) ') || ' FROM ') || v_prefix) || 'SaleOrderHeader H, tmp_lt_so T  WHERE H.Posted=''N'' AND H.SaleOrderCode = T.webordercode');
+  _rc := 1;
   _dq2 := v_qry;
   IF _dq2 IS NOT NULL THEN
     IF _dq2 ~* '^[[:space:]]*select' THEN OPEN rs2 FOR EXECUTE dbo.tsql_dyn(_dq2); ELSE EXECUTE dbo.tsql_dyn(_dq2); END IF;
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_err := 0;
+  _rc := 1;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
     RAISE EXCEPTION 'Insert Data Problem: Error Inserting Sale Order Header';
     return_value := -1;
     RETURN;
   END IF;
   v_qry := '';
+  _rc := 1;
   v_qry := (((((((('INSERT INTO DBO.SaleOrderDetail (SaleOrderCode, ICode, GCode, LooseQty, PackUnits, SalePrice, AvgPrice, Rate, DiscPerc, ItemFlatDIsc, SaleItemDescription, PackPrice, UnitSalesTax, GSTPerc, BonusQty, RowGroup, PackQtyForSale, Remarks, Batch, Expiry, StrengthPerc, Claimable, ClaimableDiscPerc, ItemAdvanceTaxPerc) ' || ' SELECT T.SaleOrderCode, D.ICode, GCode=1, LooseQty=D.Qty, PackUnits=I.PackUnits, SalePrice=D.SalePrice, I.AvgPrice, Rate=I.SalePrice, DiscPerc=0, ItemFlatDIsc=0, SaleItemDescription=D.Remarks, PackPrice=I.SalePrice, UnitSalesTax=Round(I.PackSalesTax / I.PackUnits, 2), GSTPerc=0, D.BonusQty, RowGroup=1, PackQtyForSale=0, D.Remarks, Batch=''.'', Expiry=''2099-12-12'', StrengthPerc=0, Claimable=''Y'', ClaimableDiscPerc=0, ItemAdvanceTaxPerc=0 ') || ' FROM ') || v_prefix) || 'SaleOrderDetail D, ') || v_prefix) || 'Item I, tmp_lt_so T ') || ' WHERE D.SaleOrderCode = T.webordercode AND D.ICode = I.ICode ') || ' ORDER BY D.SaleOrderCode, D.RowID ');
+  _rc := 1;
   _dq3 := v_qry;
   IF _dq3 IS NOT NULL THEN
     IF _dq3 ~* '^[[:space:]]*select' THEN OPEN rs3 FOR EXECUTE dbo.tsql_dyn(_dq3); ELSE EXECUTE dbo.tsql_dyn(_dq3); END IF;
   END IF;
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_err := 0;
+  _rc := 1;
   IF ((0 <> 0) OR (v_err <> 0)) THEN
     RAISE EXCEPTION 'Insert Data Problem: Error Inserting Sale Order Detail';
     return_value := -1;
@@ -41118,7 +43052,9 @@ BEGIN
   UPDATE dbo.saleorderheader AS h SET ordercode = t.ordercode FROM tmp_lt_so AS t WHERE (h.saleordercode = t.saleordercode);
   GET DIAGNOSTICS _rc = ROW_COUNT;
   v_key := (SELECT max(saleordercode) FROM tmp_lt_so AS lt_so);
+  _rc := 1;
   v_ordercode := (SELECT max(ordercode) FROM tmp_lt_so AS lt_so);
+  _rc := 1;
   SELECT r.return_value INTO v_rt_code FROM dbo.sp_updatetabmaxkey(tabname => 'SaleOrderHeader', key => v_key) AS r;
   UPDATE dbo.saleordercategory SET counter = coalesce(v_ordercode, 0) WHERE (socatcode = 1);
   GET DIAGNOSTICS _rc = ROW_COUNT;
@@ -41276,22 +43212,30 @@ BEGIN
   -- SET ANSI_WARNINGS ON
   -- SET XACT_ABORT ON
   v_prefix := '';
+  _rc := 1;
   IF (((length(rtrim(ltrim(rtrim(v_srv)))) = 0) OR (v_srv IS NULL))) THEN
     v_prefix := '';
+    _rc := 1;
   ELSE
     v_prefix := (v_srv || '.');
+    _rc := 1;
   END IF;
   IF (((length(rtrim(ltrim(rtrim(v_db)))) = 0) OR (v_db IS NULL))) THEN
     v_prefix := v_prefix;
+    _rc := 1;
   ELSE
     v_prefix := ((v_prefix || v_db) || '.');
+    _rc := 1;
   END IF;
   IF (((length(rtrim(ltrim(rtrim(v_owner)))) = 0) OR (v_owner IS NULL))) THEN
     v_prefix := ((v_prefix || 'DBO') || '.');
+    _rc := 1;
   ELSE
     v_prefix := ((v_prefix || v_owner) || '.');
+    _rc := 1;
   END IF;
   v_qry := ((((('UPDATE ' || v_prefix) || 'SaleOrderHeader SET Status = ''') || v_status) || ''', Synced = ''Y'', SyncedOn = GETDATE() WHERE SaleOrderCode = ') || dbo.tsql_str((v_webordercode)::numeric));
+  _rc := 1;
   _dq1 := v_qry;
   IF _dq1 IS NOT NULL THEN
     EXECUTE dbo.tsql_dyn(_dq1);

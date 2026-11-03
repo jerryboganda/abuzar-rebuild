@@ -69,7 +69,8 @@ CASES = [
     ('proc: temp table', body('CREATE TABLE #t (a INT) INSERT #t VALUES (1)'), 'CREATE TEMP TABLE tmp_t'),
     ('proc: temp table read by a result set is not dropped', body('CREATE TABLE #t (a INT) SELECT a FROM #t DROP TABLE #t'), '-- DROP TABLE #t skipped'),
     ('proc: other temp table is dropped', body('CREATE TABLE #t (a INT) CREATE TABLE #u (a INT) SELECT a FROM #t DROP TABLE #u'), 'DROP TABLE IF EXISTS tmp_u;'),
-    ('proc: rollback raises', body('ROLLBACK TRAN'), "ERRCODE = 'TS001'"),
+    ('proc: SET leaves @@ROWCOUNT at 1', body('DECLARE @a INT, @n INT UPDATE item SET active = 1 SET @a = 5 SELECT @n = @@ROWCOUNT'), 'v_a := 5;\n  _rc := 1;'),
+    ('proc: rollback raises',body('ROLLBACK TRAN'), "ERRCODE = 'TS001'"),
     ('proc: cursor loop', body('DECLARE @a INT DECLARE c CURSOR FOR SELECT icode FROM item OPEN c FETCH NEXT FROM c INTO @a WHILE @@FETCH_STATUS = 0 BEGIN FETCH NEXT FROM c INTO @a END CLOSE c DEALLOCATE c'), 'WHILE (_fs = 0) LOOP'),
 ]
 

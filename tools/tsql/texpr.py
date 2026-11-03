@@ -715,6 +715,11 @@ class ExprMixin:
         (a, c), = self.a2(n, sc, 1)
         return 'length(rtrim((%s)::text))' % a if c != 'S' else 'length(rtrim(%s))' % a, 'I'
 
+    def fn_soundex(self, n, sc):
+        # SQL Server SOUNDEX -> PostgreSQL fuzzystrmatch.soundex
+        (a, c), = self.a2(n, sc, 1)
+        return 'soundex((%s)::text)' % a, 'S'
+
     def fn_datalength(self, n, sc):
         (a, c), = self.a2(n, sc, 1)
         return 'octet_length(%s)' % a, 'I'

@@ -424,6 +424,9 @@ class StmtMixin:
         frag = ('@' + n.var.lower()) in self.ctx.sqlvars
         s, c = self.expr_frag(rhs, frag)
         self.emit('%s := %s;' % (v[0], self.assign_cast(v, s, c)))
+        # SQL Server: SET @v = ... leaves @@ROWCOUNT at 1 (checked on the original's engine, also after a zero-row UPDATE)
+        if self.ctx.uses_rowcount:
+            self.emit('_rc := 1;')
 
     def assign_cast(self, v, s, c):
         pg = v[2]

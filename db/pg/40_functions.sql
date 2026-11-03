@@ -977,6 +977,7 @@ DECLARE
 BEGIN
   v_saleinvcode := saleinvcode;
   v_roundupyo := (SELECT dbo.fn_get_int_preference('roundsaleinvon') AS a);
+  _rc := 1;
   _rc := 0;
   FOR _r1 IN SELECT (CASE WHEN (round((sum(((((((sd.looseqty * ((sd.saleprice - sd.itemflatdisc)))) * ((1 - (sd.discperc / 100)))) * ((1 - (sl.discperc / 100)))) - flatdisc) + misccharges)))::numeric, 2) IS NULL) THEN 0 ELSE round((((sum(round((((((sd.looseqty * ((sd.saleprice - sd.itemflatdisc)))) * ((1 - (sd.discperc / 100)))) * ((1 - (sl.discperc / 100)))))::numeric, 2)) - flatdisc) + misccharges))::numeric, v_roundupyo) END + round(((sum(round((((((sd.looseqty + sd.bonusqty)) * sd.unitsalestax) + round((((round((((sd.looseqty * ((sd.saleprice - sd.itemflatdisc))) * ((1 - (sd.discperc * 0.01)))))::numeric, 2) * sd.gstperc) * 0.01))::numeric, 2)))::numeric, 2)) + (CASE WHEN ((((round((sum((((((sd.looseqty * ((sd.saleprice - sd.itemflatdisc)))) * ((1 - (sd.discperc / 100)))) * ((1 - (sl.discperc / 100)))) - flatdisc)))::numeric, 2)) * sl.invgstperc1) * 0.01) IS NULL) THEN 0 ELSE (((round(((sum(((((sd.looseqty * ((sd.saleprice - sd.itemflatdisc)))) * ((1 - (sd.discperc / 100)))) * ((1 - (sl.discperc / 100))))) - flatdisc))::numeric, 2)) * sl.invgstperc1) * 0.01) END)))::numeric, v_roundupyo)) AS c1 FROM dbo.saleledger AS sl, dbo.saledetail AS sd WHERE ((sl.saleinvcode = v_saleinvcode) AND (sl.saleinvcode = sd.saleinvcode)) GROUP BY sl.saleinvcode, sl.flatdisc, sl.misccharges, sl.discperc, sl.invgstperc1 LOOP
     _rc := _rc + 1;
