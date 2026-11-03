@@ -284,11 +284,9 @@ for (const name of sample) {
         return 'ps failed: ' + String((e && e.message) || e).slice(0, 80)
       }
     }
-    console.log('processes at the stall:
-' + procs())
+    console.log('processes at the stall: ' + procs().split(String.fromCharCode(10)).join(' // '))
     await new Promise((r) => setTimeout(r, 4000))
-    console.log('processes 4 s later:
-' + procs())
+    console.log('processes 4 s later: ' + procs().split(String.fromCharCode(10)).join(' // '))
     const back = await Promise.race([page.evaluate(() => 1).then(() => true, () => false), new Promise((res) => setTimeout(() => res(false), 90000))])
     const secs = Math.round((Date.now() - t0) / 1000) + 30
     if (!back) {
