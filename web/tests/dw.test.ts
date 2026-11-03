@@ -311,3 +311,15 @@ test('an initial date set from String(datetime) (regional day-first text) is hon
   m.overrides.set('expiry.initial', '2030-12-12 00:00:00')
   assert.equal(String(m.defaultFor(0)), String((() => { m.overrides.set('expiry.initial', '12/12/2030 00:00:00'); return m.defaultFor(0) })()))
 })
+
+test('datawindow.objects lists every object name, each followed by a tab', () => {
+  const rt = new Runtime({ load: async () => undefined })
+  registerSysFuncs(rt)
+  const d = {
+    datawindow: { processing: '1' },
+    bands: { detail: { height: '80' } },
+    table: { columns: [{ type: 'long', name: 'qty' }] },
+    objects: [{ type: 'column', name: 'qty', band: 'detail' }, { type: 'text', name: 'qty_t', band: 'header' }],
+  } as unknown as DwDef
+  assert.equal(new DwModel(rt, 'd_o', d).describe('datawindow.objects'), 'qty\tqty_t\t')
+})

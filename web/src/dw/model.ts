@@ -747,6 +747,8 @@ export class DwModel implements EvalHost {
     if (p === 'datawindow.units') return this.def.datawindow.units ?? '0'
     if (p === 'datawindow.color') return this.def.datawindow.color ?? ''
     if (p === 'datawindow.column.count') return String(this.colNames.length)
+    // every object name, each followed by a tab (f_setcolumnstyle walks it to give the quantity columns the precision of the installation)
+    if (p === 'datawindow.objects') return this.def.objects.filter((o) => o.name).map((o) => o.name).join('	') + '	'
     if (p === 'datawindow.readonly') return this.overrides.get('datawindow.readonly') ?? 'no'
     // the print settings of the DataWindow object (the report window toggles the preview rulers by reading them: default no)
     if (p.startsWith('datawindow.print.')) {
