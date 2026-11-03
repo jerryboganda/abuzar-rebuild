@@ -73,3 +73,16 @@ Tools: `tools/orig/` (crawler, crop, icon and sprite builders), `web/tools/{gen-
 * Dropdown menu pixel metrics (width, padding) were approximated from screenshots; the crawler does not open dropdowns.
 * One menu caption: the original shows "Sale And Return " where `m_entry` has "Sale And Return (One Category)" (changed by a script path not yet found).
 * Data-dependent screens need real data in the rebuild's database.
+
+## The 50 DataWindow retrieves that fail on PostgreSQL (checked against the original's database, 2026-11-03)
+
+Every failing retrieve of the CI sweep (run 41563063841, 8616 of 8666 run) was classified; the original statement was bound against the live SQL Server database of the deployment (`sys.dm_exec_describe_first_result_set`, metadata only, no rows read):
+
+| group | count | verdict |
+|---|---|---|
+| linked-server pass-through (`ddd_access_*`, `ddd_dropbox_*`: `SRV.DB.OWNER.table` built by dynamic SQL, the sweep passes empty names) | 15 | cannot exist on PostgreSQL by design; a data-transfer feature |
+| the original's own statement fails the same way: unknown column (`preferences.terms` x4, `godowndetail.reorderqty` x3, `userattendance.in_datetime`, `dispatchheader.biltynumber`, `salesman.password`), unknown table (`departmentsection`, `clinictest` x2, `balancecategory`), typo alias (`saleledgerl`, `studentservicetemplatedetail` in ORDER BY), ambiguous column (`printbalance`, `headerno`), ORDER BY column outside GROUP BY (`t.name`) | 23 | defects of the original; SQL Server rejects them with the same messages |
+| `ORDER BY :ai_ordercol` (`d_postedsale_for_population`, `..._proformainvoice`) | 2 | SQL Server 2022 rejects it as well (Msg 1008, variable as column position); left as is |
+| the sweep passes `''` / an array where the application passes a date text / a scalar (`d_dashboard_*_drilldown` x7, list arguments x3) | 10 | sweep artefact; SQL Server accepts the statement |
+
+The rest (`d_selection_text` SysColumns, `d_purchase_resultset_from_excel` OPENROWSET, `d_crs_branch_itemstockposition`: the recovered V3 procedure has three more parameters than the DataWindow supplies and the deployed procedure has an empty body) are features without a PostgreSQL counterpart. No translator defect is among the 50.
