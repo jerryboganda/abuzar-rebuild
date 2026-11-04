@@ -129,6 +129,21 @@ export class NDwBase extends PBObject {
     }
     return super.getNative(name)
   }
+  /**
+   * The decompiler emitted `.borderstyle.<column>` for what the original
+   * PowerBuilder code does as `.object.<column>` (list -> detail code reads
+   * `id_dwcontrol.object.code[row]` in dozens of windows).  `borderstyle` is a
+   * real control property, so the alias has to sit in front of the property
+   * lookup for DataWindows only.
+   */
+  override pbGet(name: string): unknown {
+    if (name === 'borderstyle') return new NDwObject(this)
+    return super.pbGet(name)
+  }
+  override pbHas(name: string): boolean {
+    if (name === 'borderstyle') return true
+    return super.pbHas(name)
+  }
   override hasNative(name: string): boolean {
     return name === 'object' || name === 'dataobject'
   }

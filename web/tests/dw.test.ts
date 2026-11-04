@@ -85,7 +85,8 @@ test('retrieve, aggregates, groups, update statements', async () => {
   assert.equal(st.length, 3)
   assert.match(st[0].sql, /^DELETE FROM dbo\.item WHERE /)
   assert.match(st[1].sql, /^UPDATE dbo\.item SET amt = \$1 WHERE code = \$2 AND grp = \$3 AND amt = \$4$/)
-  assert.match(st[2].sql, /^INSERT INTO dbo\.item \(code, grp, amt\) VALUES \(\$1, \$2, \$3\)$/)
+  // untouched NULL columns are omitted so database defaults apply
+  assert.match(st[2].sql, /^INSERT INTO dbo\.item \(code, amt\) VALUES \(\$1, \$2\)$/)
   assert.equal(await m.update(), 1)
   assert.equal(m.getStatus(1, null), NOT_MODIFIED)
   assert.equal(m.modifiedCount(), 0)

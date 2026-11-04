@@ -525,7 +525,11 @@ export class DwModel implements EvalHost {
         })
         out.push({ sql: `UPDATE ${t} SET ${sets.join(', ')} WHERE ${this.whereFor(r, params)}`, params, expect: 1 })
       } else if (r.st === NEW_MODIFIED) {
-        const cols = this.updatableCols().filter((i) => this.def.table.columns[i].identity !== 'yes')
+        // PowerBuilder omits untouched NULL columns from INSERT, so a column
+        // with a database default receives that default.  Including NULL
+        // explicitly (as the old code did) bypasses defaults and fails on
+        // NOT NULL columns such as GroupSupplierCategory.Status.
+        const cols = this.updatableCols().filter((i) => this.def.table.columns[i].identity !== 'yes' && (r.v[i] !== null || r.mod.has(i)))
         const params: unknown[] = []
         const names = cols.map((i) => quoteIdent(this.dbColName(i)))
         const vals = cols.map((i) => {
