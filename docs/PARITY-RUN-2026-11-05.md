@@ -1,4 +1,4 @@
-# Parity run 2026-11-05 — screen and field coverage
+﻿# Parity run 2026-11-05 â€” screen and field coverage
 
 This file records the measured state of the screen-by-screen / field-by-field
 parity audit.  It is the hand-off for the next session; numbers below come from
@@ -12,7 +12,7 @@ the tools in `tools/parity/`.
 | Non-report screens opened | 62/62 | 62 attempted (55 direct, 7 captured at their response window) | `deploy/parity/screen-parity/old-nonreport`, `new-nonreport` |
 | Report screens opened | not yet (old crawl pending) | 53+ captured so far | `screen-parity/new-reports` |
 | Master-data forms: every editable field typed, add/edit/delete/save verified in PostgreSQL | 16 forms | 16 forms | `screen-parity/crud-fields/crud-*.json` |
-| DataWindow expression parse sweep | — | every `expression` parses; SQL comments stripped | `tools/parity/dw-expr-audit.mjs` |
+| DataWindow expression parse sweep | â€” | every `expression` parses; SQL comments stripped | `tools/parity/dw-expr-audit.mjs` |
 
 The 16 passing forms are: Customer Category, Customer Sector, Generic Item,
 Generic Item Type, Item Alert, Item Category, Item Class, Item Thickness,
@@ -114,7 +114,7 @@ node tools/parity/discover-forms.mjs
 * **Event wiring audit:** every standard interaction event that has a script in
   the recovered controls (`clicked`, `doubleclicked`, `itemchanged`,
   `rowfocuschanged`, `selectionchanged`, `getfocus`, `losefocus`, `modified`,
-  drag/drop, label edit, sort, …) is fired by the DOM/native layer.  The only
+  drag/drop, label edit, sort, â€¦) is fired by the DOM/native layer.  The only
   events found without a UI dispatcher are lifecycle events (`constructor`,
   `create`, `destroy`, `destructor`) and non-visual classes, which the runtime
   dispatches itself.
@@ -131,9 +131,9 @@ node tools/parity/discover-forms.mjs
   **109 of 141** first-stage captures (84 in `new-reports`, 25 in
   `new-reports-b`; the remainder is still crawling).  The 67 pairs captured
   before the first background batch are compared below.
-* **Report dialog captions:** the 67 first-stage pairs captured were compared
+* **Report dialog captions:** the 117 first-stage pairs captured were compared
   by visible caption text: **0 old captions missing**
-  in the rebuild.  The rebuild capture contains 585 extra strings because it
+  in the rebuild.  The rebuild capture contains 1008 extra strings because it
   also captured the later stage dialogs (`Specify Retrieval Arguments`,
   `Preparing your report to display`, the final report) that the old crawl did
   not advance to.  This is a caption-level check, not a pixel check.
@@ -154,4 +154,5 @@ node tools/parity/discover-forms.mjs
   columns); Supplier Form 34, 33 typed.  All five probes (including Cash Sale
   and Purchase) finish with **0 page errors**; closing answers No to
   `Do You want to save changes`, so no document was saved.
+
 
