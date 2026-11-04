@@ -111,6 +111,16 @@ node tools/parity/discover-forms.mjs
   it.  The runtime used to hide `id_itemslist` for every entry window after
   Open.  The decision now looks at the detail DataWindow (`d_retailsaleheader`
   vs `d_wholesaleheader`), not at the title, which is set too late.
+* **Report dialog captions:** the first 67 report dialogs that both sides
+  captured were compared by visible caption text: **0 old captions missing**
+  in the rebuild.  The rebuild capture contains 585 extra strings because it
+  also captured the later stage dialogs (`Specify Retrieval Arguments`,
+  `Preparing your report to display`, the final report) that the old crawl did
+  not advance to.  This is a caption-level check, not a pixel check.
+* **Original report defect found:** the old crawl stopped at item 68
+  (`Reports | Sales Reports | Customer Sales | Customer NTN Wise Sales Tax
+  Report`) with `NOFRAME`: the original process closed itself on that report.
+  It is recorded as an original defect, not a rebuild failure.
 * **Transaction field probes**: Cash Sale exposes 64 editable detail/header
   columns; 15 were typed through the DOM before the dependency checks stopped
   the rest (item/discount/sale price need a selected item). Purchase exposes
