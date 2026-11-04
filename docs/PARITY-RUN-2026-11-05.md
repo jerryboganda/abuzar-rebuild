@@ -172,6 +172,143 @@ node tools/parity/discover-forms.mjs
   and Purchase) finish with **0 page errors**; closing answers No to
   `Do You want to save changes`, so no document was saved.
 
+## Second session (same day, continued)
+
+### Systemic fixes committed
+
+1. **DataWindow expression engine completed.** Every one of the **189,852**
+   expressions the runtime actually evaluates now compiles: nested `/* /* */ */`
+   comments, tabs inside computed expressions, `for all distinct a, b`,
+   `not in (...)`, `between x and y`, `case(... when 2 to limit ...)` and
+   `case(... when IS > x ...)`, hyphens in `stock- dueqty`, comment-only
+   computed fields, and division by zero returning null instead of aborting.
+   Audit tool: `tools/parity/dw-expr-audit.mjs`; result **0 failures**.
+2. **List -> detail reads.** The decompiler emitted
+   `id_dwcontrol.borderstyle.code[row]` for `id_dwcontrol.object.code[row]` in
+   ~90 windows.  `NDwBase.pbGet('borderstyle')` now aliases the DataWindow
+   object, so Adjustment, Purchase, Sale, Return, Priority, Users and the group
+   settings list-to-detail paths work.
+3. **INSERT and database defaults.** Untouched NULL columns are omitted from
+   INSERT, so defaults such as `GroupSupplierCategory.Status = 1` apply.  This
+   fixed Group Wise Supplier Category save.
+4. **Auto-instantiated local user objects.** A null local whose declared type
+   is a user object is instantiated on first method call; this fixed
+   `PreserveDeletedSaleItemsLog -> u_deleted_saleitemlog.of_generatelog` on
+   Cash Sale (zero page errors after the fix).
+5. **Tab pages fill the tab client area.** `tabpage_detail.height` now tracks
+   the runtime tab height.  Before this, the Item form set
+   `dw_detail.height = tabpage_detail.height * 0.70` from the tiny design
+   height and clipped Restricted, Narcotics, Lock DiscPerc, Active, Min. Qty,
+   Generic Name, Taxable Item, S/Tax Schedule, PCT Code and Commission.  All
+   now render as in the original.
+6. **Invalid numeric text is rejected** through ItemError instead of being
+   silently coerced to 0 (which could trigger a script division by zero).
+7. **Radio buttons are mutually exclusive within their group.**  Selecting
+   Category Wise now unchecks Manufacturer Wise; Change Item Discount opens the
+   category-wise form `d_changeitemdisc_catwise` instead of the manufacturer
+   form.
+
+### Verified through the UI and PostgreSQL
+
+* Users detail rows: add group 5 to user 10, save, delete, save; master user
+  survives (`dbo.usergroups`).
+* Price Policy 7670 (FACE MASK): add qty 999999 at 13.25, edit to 14.50, delete;
+  master survives (`dbo.pricepolicydetail`).
+* Group Allowed Price (group 11): add module 1 / price 2, edit to 3, delete.
+* Group Wise Cash Account (group 5): add module 12 / cash account 3 (rowid 177
+  assigned), edit to 4, delete.
+* Group Wise Supplier Category (group 11): add category 1, delete.
+* Priority Setting item 9801: priority 10 -> 11 saved, then restored to 10
+  (`dbo.godowndetail`).
+* Interface Setting: all 20 tabs load; visibility of `isizecode` saved
+  1 -> 0, confirmation shown, database verified, restored to 1.
+* Preferences: all **37** tab pages instantiate; hidden tabs follow the
+  original `wf_set_tab_visibility()` rights.  All preference DataWindows load
+  (e.g. Sale 251 rows, Purchase 109, Service 229).
+* Change Item Discount drives through Format -> Selection Criteria ->
+  Change Item Discount Form; Category Wise yields `d_changeitemdisc_catwise`.
+* Group Wise Godown Setting opens through the group argument dialog with all
+  strategy DataWindows and the nine allowed-godown grids for group 2.
+
+### Still open
+
+* Full add/edit/delete/save pass on Customer, Item and Supplier master forms
+  with every field (the forms now render all fields; CRUD evidence is partial).
+* Transaction line edit/delete/totals and the remaining transaction variants.
+* Nested workflows not yet driven to save: Modify Sale Invoices, Modify Last
+  Transaction Date, Update Item Basic Data, Change Item Reorder Qty, Session
+  Monitor, Cashier Activity, Job Schedule.
+* Reports: 138 menu paths paired; first-stage dialog captions compared, final
+  stage and pixel geometry still to be reduced per report.
+* Visual geometry: response dialogs remain ~3 px narrower / 8 px shorter and
+  row spacing 26 vs 28 px; Priority Setting column widths.
+* `LP Ledger` still hidden; the two original crash reports remain original
+  defects.
+
+Correction to the first-session note: Sale Return **is** re-verified.  Return
+invoice **61605** (`saleinvcode 588888`, FACE MASK 9801, qty 1, price 10.00,
+posted Y) was created at 2026-11-05 02:16:30 and read back from
+`dbo.srledger` / `dbo.srdetail`.
+
+## Third session (continued)
+
+### Verified through the UI and PostgreSQL
+
+* **Customer create/edit:** account/customer **329** created (subcode 3, active
+  Y, city KARACHI), then city edited to LAHORE; both `dbo.accounts` and
+  `dbo.customer` read back.  Delete is refused with the inherited original
+  message “Some information refering to this record exists” (the form has no
+  `ue_delete` override; it deletes the current accounts row which is still
+  referenced by `customer`).  Treated as the original rule, not a rebuild gap.
+* **Item create/save:** items **29041/29042** created with name, alias,
+  manufacturer/class/category/packing, sale/purchase/retail price, pack units,
+  active flag and supplier row (`dbo.itemsuppliers`, supplier 18).  The two
+  rows were removed afterwards including the auto-created price policy.
+* **Supplier create/edit:** supplier/account **331** created (subcode 7, active
+  Y, city KARACHI), then city edited to LAHORE; both tables read back.  Delete
+  follows the same inherited accounts-row rule as Customer.
+* **Cash Sale detail lines:** item 9801 added, qty/price/discount/flat-disc
+  changed through the model, then the line deleted (`id_detail` rows 1 -> 0)
+  with **0 page errors**.
+* **Purchase detail lines:** item 9801 added, pack qty 1 -> 5 changed the footer
+  total 2 -> 10, purchase price 2 -> 3 changed it 10 -> 15, then the line was
+  deleted (rows 1 -> 0) with **0 page errors**.  The footer keeps the last total
+  after line deletion; verify the original’s behavior before treating that as a
+  defect.
+
+### New runtime fixes in this session
+
+* Runtime `UpdateTable`, `Update` and `Key` overrides are honoured by
+  `buildUpdate()`/`whereFor()`; this is what makes Customer and Supplier save
+  their second (`customer`/`supplier`) table after the `accounts` insert.
+* `stateprovince` seed 7 (“NOT SPECIFIED”) restored in the clone; without it
+  every Customer/Supplier insert violated `fk_customer_stateprovincecode`.
+* Control-tree audit (`tools/parity/control-tree-audit.mjs`) ran all 62
+  non-report screens: **0 missing controls/tab pages/DataWindows**; the only
+  dataobject differences are the intended Cash/Credit/Opening/Return variants.
+  Three screens timed out at login (Manufacturer Type, Preferences, About) and
+  need a re-run, not a code change.
+
+### Still open after the third session
+
+* **Cash Sale totals verified** on real DOM edits: qty 1 -> 2 changed the footer
+  total 11 -> 21; price 10 -> 15 changed it 21 -> 31; the computed detail total
+  changed 10.00 -> 20.00 -> 30.00, with 0 page errors.  The earlier “stuck”
+  result was a model-level probe that skipped `itemfocuschanged` (the event
+  that calls `wf_grandtotal()`).
+* Full field-by-field CRUD on every transaction variant and the remaining
+  modal workflows (Modify Sale Invoices, Last Transaction Date, Update Item
+  Basic Data, Change Item Reorder Qty, Session Monitor, Cashier Activity, Job
+  Schedule) is still in progress.
+* Reports: 138 paths paired; final-stage/pixel comparison still open.
+* Reference-data gaps: live `CustomerGroup` is empty (Sale Promotion cannot
+  choose a group in either app); other reference tables still need a
+  live-vs-clone count audit.
+* Visual geometry: response dialogs still ~3 px narrower / 8 px shorter; row
+  spacing 26 vs 28 px; Priority Setting column widths.
+
+
+
 
 
 
