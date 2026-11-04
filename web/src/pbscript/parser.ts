@@ -67,6 +67,16 @@ export class ExprParser {
     let l = this.add()
     for (;;) {
       const c = this.cur
+      if (this.dw && c.t === 'id' && c.v.toLowerCase() === 'not' && this.t[this.p + 1]?.t === 'id' && this.t[this.p + 1].v.toLowerCase() === 'in' && this.t[this.p + 2]?.v === '(') {
+        this.p += 3
+        const e: Expr[] = []
+        do {
+          e.push(this.or())
+        } while (this.eat(','))
+        this.expect(')')
+        l = { k: 'bin', op: 'not in', l, r: { k: 'arr', e } }
+        continue
+      }
       if (this.dw && c.t === 'id' && c.v.toLowerCase() === 'in' && this.t[this.p + 1].v === '(') {
         this.p += 2
         const e: Expr[] = []
@@ -75,6 +85,15 @@ export class ExprParser {
         } while (this.eat(','))
         this.expect(')')
         l = { k: 'bin', op: 'in', l, r: { k: 'arr', e } }
+        continue
+      }
+      if (this.dw && c.t === 'id' && c.v.toLowerCase() === 'between') {
+        this.p++
+        const lo = this.add()
+        if (!this.isKw('and')) throw new Error("'and' expected after between")
+        this.p++
+        const hi = this.add()
+        l = { k: 'bin', op: 'and', l: { k: 'bin', op: '>=', l, r: lo }, r: { k: 'bin', op: '<=', l, r: hi } }
         continue
       }
       if (c.t === 'op' && (c.v === '=' || c.v === '<>' || c.v === '<' || c.v === '>' || c.v === '<=' || c.v === '>=')) {
@@ -152,7 +171,18 @@ export class ExprParser {
           }
           if (this.isKw('distinct')) {
             this.p++
-            sc.distinct = this.or()
+            // `for all distinct a, b` deduplicates by the combination of the
+            // listed expressions.  A bare `for all distinct` deduplicates by
+            // the aggregate's own argument.
+            const ds: Expr[] = []
+            if (this.isOp(')') || this.cur.t === 'eof') {
+              ds.push(a[0] ?? { k: 'num', v: 1, dec: false })
+            } else {
+              do {
+                ds.push(this.or())
+              } while (this.eat(','))
+            }
+            sc.distinct = ds
           }
           break
         }
@@ -166,16 +196,32 @@ export class ExprParser {
 
   caseExpr(): Expr {
     const e = this.or()
-    const w: { v: Expr[]; r: Expr }[] = []
+    const w: { v: Expr[]; to?: Expr[]; is?: { op: string; e: Expr }; r: Expr }[] = []
     let d: Expr | undefined
     for (;;) {
       if (this.isKw('when')) {
         this.p++
-        const v: Expr[] = [this.or()]
-        while (this.eat(',')) v.push(this.or())
+        const v: Expr[] = []
+        const to: Expr[] = []
+        let is: { op: string; e: Expr } | undefined
+        if (this.isKw('is')) {
+          this.p++
+          const op = this.cur.v
+          this.p++
+          is = { op, e: this.or() }
+        } else {
+          v.push(this.or())
+          while (this.isKw('to')) {
+            this.p++
+            to.push(this.or())
+            if (!this.eat(',')) break
+            v.push(this.or())
+          }
+          while (this.eat(',')) v.push(this.or())
+        }
         if (!this.isKw('then')) throw new Error('then expected in case()')
         this.p++
-        w.push({ v, r: this.or() })
+        w.push({ v, to: to.length ? to : undefined, is, r: this.or() })
       } else if (this.isKw('else')) {
         this.p++
         d = this.or()
@@ -316,7 +362,7 @@ export class ExprParser {
 }
 
 export function parseDwExpr(src: string): Expr {
-  const ep = new ExprParser(lex(src), true)
+  const ep = new ExprParser(lex(src, true), true)
   const e = ep.or()
   if (!ep.atEnd()) throw new Error(`trailing '${ep.cur.v}'`)
   return e

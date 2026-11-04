@@ -31,14 +31,58 @@ export interface EvalCtx {
 }
 
 const cache = new Map<string, Expr>()
+
+/** Remove PowerBuilder comments; DataWindow expressions may contain nested block comments. */
+function stripComments(src: string): string {
+  let out = ''
+  let i = 0
+  let depth = 0
+  while (i < src.length) {
+    const c = src[i]
+    const d = src[i + 1]
+    if (c === '"' || c === "'") {
+      let j = i + 1
+      while (j < src.length && src[j] !== c) {
+        if (src[j] === '~' && j + 1 < src.length) j += 2
+        else j++
+      }
+      if (depth === 0) out += src.slice(i, j + 1)
+      i = j + 1
+      continue
+    }
+    if (c === '/' && d === '*') {
+      depth++
+      i += 2
+      if (depth === 1) out += ' '
+      continue
+    }
+    if (depth > 0 && c === '*' && d === '/') {
+      depth--
+      i += 2
+      continue
+    }
+    if (depth === 0 && c === '/' && d === '/') {
+      while (i < src.length && src[i] !== '\n') i++
+      continue
+    }
+    if (depth === 0) out += c
+    i++
+  }
+  return out
+}
+
 export function compileDw(src: string): Expr {
   let e = cache.get(src)
   if (!e) {
     try {
-      // PowerBuilder expressions may carry SQL-style comments (`Round(...) /* old
-      // formula */`); the original engine ignores them, the parser does not.
-      const clean = src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\/\/[^\n]*/g, ' ').trim()
-      e = parseDwExpr(clean)
+      e = stripComments(src).trim()
+      if (!e) {
+        // A computed field whose expression was commented out in the original
+        // has no value to show; PowerBuilder renders it blank rather than failing.
+        e = { k: 'str', v: '' } as Expr
+      } else {
+        e = parseDwExpr(e as string)
+      }
     } catch (err) {
       throw new PBRuntimeError(`${(err as Error).message} in DataWindow expression <<${src.slice(0, 100)}>>`)
     }
@@ -78,7 +122,28 @@ export async function evalDw(e: Expr, ctx: EvalCtx): Promise<unknown> {
     case 'case': {
       const v = await evalDw(e.e, ctx)
       for (const w of e.w) {
-        for (const c of w.v) if (equals(v, await evalDw(c, ctx))) return evalDw(w.r, ctx)
+        let hit = false
+        if (w.is) {
+          const rv = await evalDw(w.is.e, ctx)
+          const c = cmp(v, rv)
+          switch (w.is.op.toLowerCase()) {
+            case '=': case 'is': hit = equals(v, rv); break
+            case '<>': case 'is not': hit = !equals(v, rv); break
+            case '<': hit = c < 0; break
+            case '>': hit = c > 0; break
+            case '<=': hit = c <= 0; break
+            case '>=': hit = c >= 0; break
+          }
+        } else if (w.to) {
+          for (let i = 0; i < w.v.length; i++) {
+            const lo = await evalDw(w.v[i], ctx)
+            const hi = await evalDw(w.to[i] ?? w.to[w.to.length - 1], ctx)
+            if (equals(v, lo) || (cmp(v, lo) >= 0 && cmp(v, hi) <= 0)) { hit = true; break }
+          }
+        } else {
+          for (const c of w.v) if (equals(v, await evalDw(c, ctx))) { hit = true; break }
+        }
+        if (hit) return evalDw(w.r, ctx)
       }
       return e.d ? evalDw(e.d, ctx) : null
     }
@@ -107,9 +172,10 @@ async function evalBin(e: Extract<Expr, { k: 'bin' }>, ctx: EvalCtx): Promise<un
     return l === null || r === null ? null : false
   }
   const l = await evalDw(e.l, ctx)
-  if (e.op === 'in') {
+  if (e.op === 'in' || e.op === 'not in') {
     const list = (await evalDw(e.r, ctx)) as PBArray
-    return list.a.some((x) => equals(l, x))
+    const found = list.a.some((x) => equals(l, x))
+    return e.op === 'in' ? found : !found
   }
   const r = await evalDw(e.r, ctx)
   switch (e.op) {
@@ -120,7 +186,9 @@ async function evalBin(e: Extract<Expr, { k: 'bin' }>, ctx: EvalCtx): Promise<un
     case '*':
       return mul(l, r)
     case '/':
-      return div(l, r)
+      // DataWindow expressions yield null on division by zero; only
+      // PowerScript raises the runtime error.
+      return l === null || r === null || toNum(r) === 0 ? null : div(l, r)
     case '^':
       return l === null || r === null ? null : Math.pow(toNum(l), toNum(r))
     case 'mod':
@@ -212,7 +280,7 @@ async function aggregate(e: Extract<Expr, { k: 'call' }>, ctx: EvalCtx): Promise
   for (let r = lo; r <= last; r++) {
     const c2: EvalCtx = { ...ctx, row: r }
     if (e.sc?.distinct) {
-      const dk = toStr(await evalDw(e.sc.distinct, c2))
+      const dk = (await Promise.all(e.sc.distinct.map((d) => evalDw(d, c2).then(toStr)))).join('\u0001')
       if (seen.has(dk)) continue
       seen.add(dk)
     }

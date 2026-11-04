@@ -86,8 +86,13 @@ export const num = (o: Props | undefined, k: string, d = 0): number => {
 export function splitExpr(v: string | undefined): { value: string; expr?: string } {
   if (v === undefined) return { value: '' }
   const i = v.search(/	|~t/)
-  if (i < 0) return { value: v }
-  return { value: v.slice(0, i), expr: v.slice(v[i] === '	' ? i + 1 : i + 2) }
+  if (i <= 0) return { value: v }
+  // Only a simple literal before the tab is the value half.  Computed fields
+  // routinely contain tabs as formatting whitespace, and losing everything
+  // before the first one truncates the expression.
+  const head = v.slice(0, i).trim()
+  if (!/^(?:-?\d+(?:\.\d+)?|yes|no|true|false|#[0-9a-f]{1,8}|rgb\s*\([^)]*\))$/i.test(head)) return { value: v }
+  return { value: head, expr: v.slice(v[i] === '	' ? i + 1 : i + 2) }
 }
 
 export class DwCatalog {

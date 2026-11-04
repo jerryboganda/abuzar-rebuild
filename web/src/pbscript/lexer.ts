@@ -4,6 +4,9 @@ export type Tok = { t: 'num' | 'str' | 'id' | 'enum' | 'op' | 'eof'; v: string }
 
 const IDSTART = /[A-Za-z_$#%-￿]/
 const IDCHAR = /[A-Za-z0-9_$#%-￿-]/
+// In DataWindow expressions a hyphen is always subtraction (`stock- dueqty`);
+// only PowerScript object names printed by the decompiler contain one (`m_-m1`).
+const IDCHAR_DW = /[A-Za-z0-9_$#%-￿]/
 const OPS3: string[] = []
 const OPS2 = ['<>', '<=', '>=', '::', '+=', '-=', '*=', '/=', '++', '--']
 const OPS1 = '+-*/^=<>(),.[]{}:;&'
@@ -34,13 +37,13 @@ export function unescape(s: string): string {
   return out
 }
 
-export function lex(src: string): Tok[] {
+export function lex(src: string, dw = false): Tok[] {
   const out: Tok[] = []
   let i = 0
   const n = src.length
   while (i < n) {
     const c = src[i]
-    if (c === ' ' || c === '\t' || c === '\r') {
+    if (c === ' ' || c === '\t' || c === '\r' || c === '\n') {
       i++
       continue
     }
@@ -76,7 +79,8 @@ export function lex(src: string): Tok[] {
     }
     if (IDSTART.test(c)) {
       let j = i + 1
-      while (j < n && IDCHAR.test(src[j])) j++
+      const chars = dw ? IDCHAR_DW : IDCHAR
+      while (j < n && chars.test(src[j])) j++
       // a hyphen only belongs to the name when the decompiler printed it without spaces (m_-, m_-1 ...)
       let word = src.slice(i, j)
       if (src[j] === '!') {
