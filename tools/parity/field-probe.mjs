@@ -12,6 +12,7 @@ const arg = (n, d) => { const i = process.argv.indexOf(n); return i >= 0 && proc
 const BASE = arg('--base', 'http://127.0.0.1:5177')
 const PATH = arg('--path')
 const WIN = arg('--window')
+const TAB = Number(arg('--tab', '0'))
 const OUT = arg('--out', join(process.cwd(), 'screen-parity', 'fields'))
 const loginFile = arg('--login-file', 'C:/Projects/Abuzar/deploy/parity/login-trader.ps1')
 const src = readFileSync(loginFile, 'utf8')
@@ -49,6 +50,19 @@ try {
   await page.evaluate((p) => window.__menu(p), PATH)
   await page.waitForTimeout(2200)
   result.messages.push(...await dismiss(false))
+  if (TAB) {
+    result.messages.push(...await page.evaluate(({ w, tab }) => {
+      const win = window.rt.windowInstances.get(w)
+      if (!win) return []
+      let found = null
+      const walk = (o) => { for (const c of o.children.values()) { if (c.native === 'tab' && !found) found = c; else if (c.children.size) walk(c) } }
+      walk(win)
+      if (found) found.pbSet('selectedtab', tab)
+      return []
+    }, { w: WIN, tab: TAB }))
+    await page.waitForTimeout(700)
+    result.messages.push(...await dismiss(false))
+  }
   const meta = await page.evaluate((w) => {
     const win = window.rt.windowInstances.get(w)
     if (!win) return { ok: false, wins: [...window.rt.windowInstances.keys()] }

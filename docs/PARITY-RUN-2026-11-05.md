@@ -111,6 +111,13 @@ node tools/parity/discover-forms.mjs
   it.  The runtime used to hide `id_itemslist` for every entry window after
   Open.  The decision now looks at the detail DataWindow (`d_retailsaleheader`
   vs `d_wholesaleheader`), not at the title, which is set too late.
+* **Event wiring audit:** every standard interaction event that has a script in
+  the recovered controls (`clicked`, `doubleclicked`, `itemchanged`,
+  `rowfocuschanged`, `selectionchanged`, `getfocus`, `losefocus`, `modified`,
+  drag/drop, label edit, sort, …) is fired by the DOM/native layer.  The only
+  events found without a UI dispatcher are lifecycle events (`constructor`,
+  `create`, `destroy`, `destructor`) and non-visual classes, which the runtime
+  dispatches itself.
 * **Report dialog captions:** the first 67 report dialogs that both sides
   captured were compared by visible caption text: **0 old captions missing**
   in the rebuild.  The rebuild capture contains 585 extra strings because it
