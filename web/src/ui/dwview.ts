@@ -4,7 +4,7 @@ import { argList, colKind } from '../dw/def.ts'
 
 import { renderChart } from '../dw/chart.ts'
 import { keyEnum, keyFlags, virtualKey } from './keys.ts'
-import type { DwModel } from '../dw/model.ts'
+import { DwModel } from '../dw/model.ts'
 import { num, splitExpr } from '../dw/def.ts'
 import type { DwObject } from '../dw/def.ts'
 import { compileDw, evalDw, newCtx } from '../dw/expr.ts'
@@ -315,7 +315,7 @@ export class DwView {
     if (m.buf.primary[f.row - 1]?.sel) el.classList.add('sel')
     if (interactive) {
       el.addEventListener('mousedown', (ev) => void this.rowClick(m, f.row, ev))
-      el.addEventListener('dblclick', () => void this.ctl.rt.fire(this.ctl, 'doubleclicked', [0, 0, f.row, null]))
+      el.addEventListener('dblclick', () => void this.ctl.rt.fire(this.ctl, 'doubleclicked', [0, 0, f.row, { name: '' }]))
     }
     return el
   }
@@ -442,7 +442,7 @@ export class DwView {
     for (let i = a; i < v.flow.length && v.tops[i] < hi; i++) want.add(i)
     for (const [i, el] of v.shown) {
       if (!want.has(i)) {
-        el.remove()
+        if (el.isConnected) el.remove()
         v.shown.delete(i)
       }
     }
@@ -640,7 +640,7 @@ export class DwView {
       const ci = m.colIndex(obj)
       if (ci >= 0) m.col = ci + 1
     }
-    await this.ctl.rt.fire(this.ctl, 'clicked', [ev.offsetX, ev.offsetY, row, obj ? { name: obj } : null])
+    await this.ctl.rt.fire(this.ctl, 'clicked', [ev.offsetX, ev.offsetY, row, { name: obj ?? '' }])
     if (changedRow) await this.ctl.rt.fire(this.ctl, 'rowfocuschanged', [row])
     // An editable cell must stay in the DOM until its click handler has opened
     // the in-cell editor. Repainting here replaces the cell first, which made
@@ -649,6 +649,41 @@ export class DwView {
   }
 
   /** evaluate an expression-carrying property of an object for a row; falls back to the static value */
+  /**
+   * PowerBuilder column validation: the design-time ValidationExpression or a run-time
+   * SetValidate() rule, then the ItemError event.  A false rule rejects the value and
+   * keeps the cell in edit; the column's ValidationMsg is shown when no handler accepts.
+   */
+  private async validateValue(m: DwModel, row: number, o: DwObject, value: string): Promise<boolean> {
+    const ci = m.colIndex(o.name)
+    if (ci < 0) return true
+    const rule = this.ctl.validateRules.get(o.name.toLowerCase()) ?? this.ctl.columnValidation(ci)
+    if (!rule.trim()) return true
+    let ok = true
+    try {
+      const v = await evalDw(compileDw(rule), { ...newCtx(m, row, o.band), text: value })
+      ok = v === true || (typeof v === 'number' && v !== 0) || (v instanceof Dec && !v.isZero())
+    } catch {
+      ok = true // an unparseable vendor rule must not block data entry
+    }
+    if (ok) return true
+    const rej = await this.ctl.rt.fire(this.ctl, 'itemerror', [row, { name: o.name }, value])
+    if (rej === 2 || rej === 3) return true
+    const msg = this.ctl.columnValidationMessage(ci)
+    if (msg) await this.ctl.rt.ui?.messageBox('', msg, 'exclamation!', 'ok!', 1)
+    return false
+  }
+
+  /** ItemChanged -> validation -> write, the order the PowerBuilder DataWindow uses */
+  private async commitValue(m: DwModel, row: number, ci: number, o: DwObject, value: unknown): Promise<boolean> {
+    const rej = await this.ctl.rt.fire(this.ctl, 'itemchanged', [row, { name: o.name }, value])
+    if (rej === 1 || rej === 2) return false
+    if (!(await this.validateValue(m, row, o, toStr(value)))) return false
+    m.setItem(row, ci + 1, value)
+    this.ctl.changed()
+    return true
+  }
+
   private async prop(m: DwModel, o: DwObject, key: string, row: number, band: string): Promise<string> {
     const ov = m.overrides.get(`${o.name.toLowerCase()}.${key}`)
     if (ov !== undefined) return ov
@@ -745,9 +780,9 @@ export class DwView {
       img.style.width = '100%'
       img.style.height = '100%'
       img.onerror = () => {
-        img.onerror = () => img.remove()
+        img.onerror = () => { if (img.isConnected) img.remove() }
         void readFileBytes(file).then((bytes) => {
-          if (!bytes) return img.remove()
+          if (!bytes) { if (img.isConnected) img.remove(); return }
           const ext = (/\.(\w+)$/.exec(file)?.[1] ?? 'bmp').toLowerCase()
           const mime = ext === 'jpg' ? 'image/jpeg' : ext === 'ico' ? 'image/x-icon' : `image/${ext}`
           img.src = URL.createObjectURL(new Blob([bytes as BlobPart], { type: mime }))
@@ -1045,7 +1080,7 @@ export class DwView {
 
   private edit(m: DwModel, o: DwObject, row: number, cell: HTMLElement): void {
     if (this.editor) {
-      this.editor.remove()
+      if (this.editor.isConnected) this.editor.remove()
       this.editor = null
     }
     const ci = m.colIndex(o.name)
@@ -1056,12 +1091,7 @@ export class DwView {
     if (o['checkbox.on'] !== undefined) {
       const cur = toStr(m.buf.primary[row - 1]?.v[ci])
       const next = cur === o['checkbox.on'] ? o['checkbox.off'] : o['checkbox.on']
-      void this.ctl.rt.fire(this.ctl, 'itemchanged', [row, { name: o.name }, next]).then((rej) => {
-        if (rej !== 1 && rej !== 2) {
-          m.setItem(row, ci + 1, next)
-          this.ctl.changed()
-        }
-      })
+      void this.commitValue(m, row, ci, o, next)
       return
     }
     const ct = Object.keys(o).some((k) => k.startsWith('ddlb.')) ? this.codeTable(m, o) : null
@@ -1084,14 +1114,9 @@ export class DwView {
         if (this.editor !== sel) return
         this.editor = null
         const val = sel.value
-        sel.remove()
+        if (sel.isConnected) sel.remove()
         if (val !== cur) {
-          void this.ctl.rt.fire(this.ctl, 'itemchanged', [row, { name: o.name }, val]).then((rej) => {
-            if (rej !== 1 && rej !== 2) {
-              m.setItem(row, ci + 1, val)
-              this.ctl.changed()
-            }
-          })
+          void this.commitValue(m, row, ci, o, val)
         }
       }
       sel.addEventListener('change', done)
@@ -1121,14 +1146,9 @@ export class DwView {
           if (this.editor !== sel) return
           this.editor = null
           const val = sel.value
-          sel.remove()
+          if (sel.isConnected) sel.remove()
           if (val !== cur) {
-            void this.ctl.rt.fire(this.ctl, 'itemchanged', [row, { name: o.name }, val]).then((rej) => {
-              if (rej !== 1 && rej !== 2) {
-                m.setItem(row, ci + 1, val)
-                this.ctl.changed()
-              }
-            })
+            void this.commitValue(m, row, ci, o, val)
           }
         }
         sel.addEventListener('change', done)
@@ -1150,14 +1170,10 @@ export class DwView {
       if (this.editor !== input) return
       this.editor = null
       const text = input.value
-      input.remove()
+      if (input.isConnected) input.remove()
       const cur = v === null || v === undefined ? '' : toStr(v)
       if (text !== cur) {
-        const rej = await this.ctl.rt.fire(this.ctl, 'itemchanged', [row, { name: o.name }, text])
-        if (rej !== 1 && rej !== 2) {
-          m.setItem(row, ci + 1, text)
-          this.ctl.changed()
-        }
+        await this.commitValue(m, row, ci, o, text)
       }
     }
     input.addEventListener('blur', () => void commit())
@@ -1165,7 +1181,7 @@ export class DwView {
       const k = keyEnum(ev)
       if (ev.key === 'Escape') {
         this.editor = null
-        input.remove()
+        if (input.isConnected) input.remove()
         return
       }
       if (ev.key === 'Tab') {
@@ -1187,3 +1203,4 @@ export class DwView {
     })
   }
 }
+

@@ -52,6 +52,16 @@ test('global function with loops, strings and choose case', async () => {
   assert.equal(v, 'ababA!')
 })
 
+test('standard user object ancestors resolve to their native control', async () => {
+  const r = rt()
+  assert.equal((await r.classChain('st_1')).native, 'statictext')
+  assert.equal((await r.classChain('cb_ok')).native, 'commandbutton')
+  assert.equal((await r.classChain('dw_price')).native, 'datawindow')
+  assert.equal((await r.classChain('olecontrol')).native, 'olecustomcontrol')
+  assert.equal((await r.classChain('timing_1')).native, 'timing')
+  assert.equal((await r.classChain('something_else')).native, 'something_else')
+})
+
 test('ref arguments and recursion', async () => {
   const r = rt(`// function f_fact (x)  ancestor: function_object
 

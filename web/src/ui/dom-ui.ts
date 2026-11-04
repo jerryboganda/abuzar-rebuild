@@ -193,9 +193,12 @@ export class DomUi implements UiHost {
       ;(box.querySelector('.txt') as HTMLElement).textContent = text
       const input = box.querySelector('input') as HTMLInputElement
       input.value = def
+      let closed = false
       const done = (v: string | null) => {
-        bg.remove()
-        box.remove()
+        if (closed) return
+        closed = true
+        if (bg.isConnected) bg.remove()
+        if (box.isConnected) box.remove()
         resolve(v)
       }
       ;(box.querySelector('.ok') as HTMLElement).onclick = () => done(input.value)
@@ -242,9 +245,12 @@ export class DomUi implements UiHost {
       }
       const btns = box.querySelector('.btns') as HTMLElement
       const list = defs[buttons] ?? defs['ok!']
+      let closed = false
       const done = (n: number) => {
-        bg.remove()
-        box.remove()
+        if (closed) return
+        closed = true
+        if (bg.isConnected) bg.remove()
+        if (box.isConnected) box.remove()
         resolve(n)
       }
       list.forEach(([label, code], i) => {
@@ -438,10 +444,17 @@ export class WinView {
     this.el.classList.remove('hidden')
     this.syncWindow()
     this.activate()
-    // first focus: the control with the lowest tab order
+    // first focus: the control the opening script gave the keyboard to
+    // (SetFocus during Open records lastFocusDw); otherwise the lowest tab order
     const first = this.firstFocusable()
-    // ... unless a script has given the keyboard to a control of this window meanwhile (Refused Sale starts in its detail grid, not in the header's Remarks)
-    if (first) setTimeout(() => { const a = document.activeElement; if (!a || a === document.body || !this.client.contains(a)) first.focus() }, 0)
+    if (first) setTimeout(() => {
+      const a = document.activeElement
+      if (!a || a === document.body || !this.client.contains(a)) {
+        const last = (this.w as unknown as { lastFocusDw?: PBObject }).lastFocusDw
+        if (last) void this.ui.focusDw(last)
+        else first.focus()
+      }
+    }, 0)
     void this.ui.rt.fire(this.w, 'activate')
   }
 

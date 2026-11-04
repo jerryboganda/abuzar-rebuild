@@ -23,6 +23,8 @@ export interface EvalCtx {
   host: EvalHost
   row: number // 1-based row in the current list
   band: string
+  /** text of the cell being validated (PowerBuilder's GetText() inside a validation rule) */
+  text?: string
   /** memoised aggregate results for this evaluation pass */
   memo: Map<string, unknown>
   depth: number
@@ -33,7 +35,10 @@ export function compileDw(src: string): Expr {
   let e = cache.get(src)
   if (!e) {
     try {
-      e = parseDwExpr(src)
+      // PowerBuilder expressions may carry SQL-style comments (`Round(...) /* old
+      // formula */`); the original engine ignores them, the parser does not.
+      const clean = src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\/\/[^\n]*/g, ' ').trim()
+      e = parseDwExpr(clean)
     } catch (err) {
       throw new PBRuntimeError(`${(err as Error).message} in DataWindow expression <<${src.slice(0, 100)}>>`)
     }
@@ -171,6 +176,7 @@ async function evalCall(e: Extract<Expr, { k: 'call' }>, ctx: EvalCtx): Promise<
     default:
       break
   }
+  if (name === 'gettext') return ctx.text ?? ''
   // crosstabsum(n) ... : over the replicated columns of the n-th value of the current row of a crosstab
   if (/^crosstab(sum|count|avg|min|max)$/.test(name)) return ctx.host.crosstabAgg ? ctx.host.crosstabAgg(name, e.a[0] ? toNum(await evalDw(e.a[0], ctx)) : 1, ctx.row) : null
   if (AGG.has(name)) return aggregate(e, ctx)

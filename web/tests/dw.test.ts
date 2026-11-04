@@ -83,9 +83,9 @@ test('retrieve, aggregates, groups, update statements', async () => {
   m.deleteRow(2)
   const st = m.buildUpdate()
   assert.equal(st.length, 3)
-  assert.match(st[0].sql, /^DELETE FROM item WHERE /)
-  assert.match(st[1].sql, /^UPDATE item SET amt = \$1 WHERE code = \$2 AND grp = \$3 AND amt = \$4$/)
-  assert.match(st[2].sql, /^INSERT INTO item \(code, grp, amt\) VALUES \(\$1, \$2, \$3\)$/)
+  assert.match(st[0].sql, /^DELETE FROM dbo\.item WHERE /)
+  assert.match(st[1].sql, /^UPDATE dbo\.item SET amt = \$1 WHERE code = \$2 AND grp = \$3 AND amt = \$4$/)
+  assert.match(st[2].sql, /^INSERT INTO dbo\.item \(code, grp, amt\) VALUES \(\$1, \$2, \$3\)$/)
   assert.equal(await m.update(), 1)
   assert.equal(m.getStatus(1, null), NOT_MODIFIED)
   assert.equal(m.modifiedCount(), 0)
@@ -322,4 +322,45 @@ test('datawindow.objects lists every object name, each followed by a tab', () =>
     objects: [{ type: 'column', name: 'qty', band: 'detail' }, { type: 'text', name: 'qty_t', band: 'header' }],
   } as unknown as DwDef
   assert.equal(new DwModel(rt, 'd_o', d).describe('datawindow.objects'), 'qty\tqty_t\t')
+})
+
+test('datawindow expressions ignore SQL-style comments left in the recovered formulas', async () => {
+  const { compileDw } = await import('../src/dw/expr.ts')
+  const e = compileDw('Round( ((saleprice - (netrate * 2)) / if(saleprice=0,1,saleprice)) * 100, 2 ) /* Round( old */')
+  assert.equal(e.k, 'call')
+})
+
+test('new rows are inserted into the dbo schema, not the unqualified name', async () => {
+  const rt = new Runtime({ load: async () => undefined })
+  registerSysFuncs(rt)
+  const d = {
+    datawindow: { processing: '1' },
+    bands: { detail: { height: '80' } },
+    table: { columns: [{ type: 'long', name: 'code', key: 'yes', update: 'yes' }, { type: 'char(10)', name: 'name', update: 'yes' }], update: 'manufacturer', updatewhere: '1' },
+    objects: [{ type: 'column', name: 'name', band: 'detail' }],
+  } as unknown as DwDef
+  const m = new DwModel(rt, 'd_u', d)
+  m.insertRow(0)
+  m.setItem(1, 'name', 'X')
+  const st = m.buildUpdate()
+  assert.equal(st.length, 1)
+  assert.match(st[0].sql, /^INSERT INTO dbo\.manufacturer/)
+})
+
+test('SetValidate / GetValidate keep the run-time rule and fall back to the design-time rule', async () => {
+  const { NDwBase } = await import('../src/runtime/native/dwctrl.ts')
+  const rt = new Runtime({ load: async () => undefined })
+  registerSysFuncs(rt)
+  const d = {
+    datawindow: { processing: '1' },
+    bands: { detail: { height: '80' } },
+    table: { columns: [{ type: 'decimal(4)', name: 'qty', validation: 'Real(GetText()) >= 0', validationmsg: "'Qty must be zero or more'" }] },
+    objects: [{ type: 'column', name: 'qty', band: 'detail' }],
+  } as unknown as DwDef
+  const dw = new NDwBase(rt, 'datawindow')
+  dw.attach(new DwModel(rt, 'd_v', d))
+  assert.equal(await dw.n_getvalidate('qty'), 'Real(GetText()) >= 0')
+  assert.equal(await dw.n_setvalidate('qty', 'Real(GetText()) > 0'), 1)
+  assert.equal(await dw.n_getvalidate('qty'), 'Real(GetText()) > 0')
+  assert.equal(dw.columnValidationMessage(0), "'Qty must be zero or more'")
 })

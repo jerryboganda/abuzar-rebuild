@@ -62,6 +62,33 @@ function e0(_e: unknown, r: Routine): Routine {
 
 const PRIMITIVES = new Set([...NUMERIC_TYPES, 'string', 'boolean', 'char', 'date', 'time', 'datetime', 'blob', 'any', 'uint', 'ulong'])
 
+/**
+ * The vendor libraries inherit many controls from standard user objects that are
+ * part of the PowerBuilder runtime and therefore have no recovered class file
+ * (`st_1`, `cb_ok`, `dw_price`, `olecontrol` ...).  Without this map they become
+ * plain non-visual objects, so their labels, buttons and DataWindows disappear.
+ * Only names whose prefix is unambiguous are mapped; a real recovered class with
+ * the same name always wins because this runs only when the class lookup fails.
+ */
+function standardClassNative(name: string): string {
+  const n = name.toLowerCase()
+  if (/^st(_|$)/.test(n)) return 'statictext'
+  if (/^cbx_/.test(n)) return 'checkbox'
+  if (/^cb(_|$)/.test(n)) return 'commandbutton'
+  if (/^rb_/.test(n)) return 'radiobutton'
+  if (/^ddlb_/.test(n)) return 'dropdownlistbox'
+  if (/^dw(_|$)/.test(n)) return 'datawindow'
+  if (/^em_/.test(n)) return 'editmask'
+  if (/^gb_/.test(n)) return 'groupbox'
+  if (/^tab_retrieve$/.test(n)) return 'tab'
+  if (/^tabpage_/.test(n)) return 'tab'
+  if (/^ole/.test(n)) return 'olecustomcontrol'
+  if (/^timing(_|$)/.test(n)) return 'timing'
+  if (n === 'mdiclient') return 'mdiclient'
+  if (['nonvisualobject', 'powerobject', 'dragobject', 'internetresult'].includes(n)) return 'nonvisualobject'
+  return name
+}
+
 /** exception raised by `throw` or converted from runtime errors, catchable with try/catch */
 export class PBThrowable extends PBObject {
   message = ''
@@ -157,7 +184,7 @@ export class Runtime {
       if (seen.has(cur)) break
       seen.add(cur)
       const c: ClassDef | undefined = await this.getClass(cur)
-      if (!c) return { chain, native: cur }
+      if (!c) return { chain, native: standardClassNative(cur) }
       chain.push(c)
       cur = c.ancestor ? c.ancestor.toLowerCase() : null
     }

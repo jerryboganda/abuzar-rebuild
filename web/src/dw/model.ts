@@ -505,7 +505,11 @@ export class DwModel implements EvalHost {
     const table = this.def.table.update
     if (!table) return []
     const out: { sql: string; params: unknown[]; expect: number }[] = []
-    const t = quoteIdent(table.toLowerCase())
+    // The recovered DataWindow names are SQL Server names without the owner.  The
+    // PostgreSQL port puts every vendor table in the `dbo` schema; an unqualified
+    // INSERT/UPDATE/DELETE would hit `public` and fail ("relation does not exist").
+    const parts = table.trim().toLowerCase().split('.')
+    const t = parts.length > 1 ? parts.map((p) => quoteIdent(p)).join('.') : 'dbo.' + quoteIdent(parts[0])
     for (const r of this.buf.deleted) {
       const params: unknown[] = []
       out.push({ sql: `DELETE FROM ${t} WHERE ${this.whereFor(r, params)}`, params, expect: 1 })

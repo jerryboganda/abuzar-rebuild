@@ -148,7 +148,7 @@ test('update statements follow the where-clause mode of the DataWindow', () => {
   const st = m.buildUpdate()
   assert.equal(st.length, 1)
   // mode 1: key columns plus updatable columns with updatewhereclause=yes (amt is excluded)
-  assert.equal(st[0].sql, 'UPDATE t SET kind = $1 WHERE k = $2 AND kind = $3')
+  assert.equal(st[0].sql, 'UPDATE dbo.t SET kind = $1 WHERE k = $2 AND kind = $3')
   assert.deepEqual(st[0].params, ['b', 1, 'a'])
 })
 

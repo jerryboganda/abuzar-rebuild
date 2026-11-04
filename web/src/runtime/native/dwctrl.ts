@@ -68,6 +68,8 @@ export class NDwBase extends PBObject {
   ready: Promise<void> = Promise.resolve()
   dwName = ''
   listeners = new Set<() => void>()
+  /** SetValidate() rules set by scripts at run time (they override the design-time validation) */
+  validateRules = new Map<string, string>()
 
   constructor(rt: Runtime, className: string, native = 'datawindow') {
     super(rt, className, native)
@@ -209,6 +211,34 @@ export class NDwBase extends PBObject {
   async n_deletedcount(): Promise<number> {
     return (await this.m())?.deletedCount() ?? 0
   }
+  /** `dw.SetValidate(column, rule)` / `dw.GetValidate(column)` (run-time validation) */
+  async n_setvalidate(col: unknown, rule: unknown): Promise<number> {
+    const m = await this.m()
+    const name = toStr(col)
+    const i = m?.colIndex(name) ?? -1
+    if (!m || i < 0) return -1
+    const text = toStr(rule)
+    if (text) this.validateRules.set(name.toLowerCase(), text)
+    else this.validateRules.delete(name.toLowerCase())
+    return 1
+  }
+  async n_getvalidate(col: unknown): Promise<string> {
+    const name = toStr(col)
+    const m = await this.m()
+    const i = m?.colIndex(name) ?? -1
+    if (!m || i < 0) return ''
+    return this.validateRules.get(name.toLowerCase()) ?? this.columnValidation(i)
+  }
+  /** validation expression of a column: SetValidate override, then the design-time rule */
+  columnValidation(i: number): string {
+    const c = this.model?.def.table.columns[i] as { validation?: unknown } | undefined
+    return c && typeof c.validation === 'string' ? c.validation : ''
+  }
+  /** validation message of a column (shown when the rule fails and ItemError has no handler) */
+  columnValidationMessage(i: number): string {
+    const c = this.model?.def.table.columns[i] as { validationmsg?: unknown } | undefined
+    return c && typeof c.validationmsg === 'string' ? c.validationmsg : ''
+  }
   async n_modifiedcount(): Promise<number> {
     const m = await this.m()
     return m ? m.buf.primary.filter((r) => r.st === DATA_MODIFIED || r.st === 3).length : 0
@@ -274,7 +304,18 @@ export class NDwBase extends PBObject {
       while (p && !('lastFocusDw' in p)) p = p.parent
       const win = p as unknown as Win | null
       const holder = win ? (win.focusLive ? win.focusOwner : win.lastFocusDw) : null
-      if (holder === null || holder === this) await this.fireItemFocus(n, m.colNames[m.col - 1], true)
+      if (holder === this) {
+        // a real keyboard focus change raises the event
+        await this.fireItemFocus(n, m.colNames[m.col - 1], true)
+      } else {
+        // PowerBuilder does not raise ItemFocusChanged for a row inserted into an
+        // unfocused grid.  The entry windows still need their dirty flag for
+        // wf_validatedate(); mark it directly without simulating a focus (that
+        // used to open the item list as soon as Cash Sale or Purchase opened).
+        let w: PBObject | null = this.parent
+        while (w && !w.props.has('editflag')) w = w.parent
+        if (w) w.props.set('editflag', true)
+      }
     }
     return n
   }

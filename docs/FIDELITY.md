@@ -114,3 +114,92 @@ The smoke opens every window class with a mock database and a `message.powerobje
 | `w_entry`, `w_single_entry`, `w_listview_form`, `w_popup_comprehensicesearch_selection(2)`, `w_popup_partialsearch_selection(_acc)` | the search/list DataWindow that a descendant sets before `wf_populate_ddlb` runs | abstract ancestors / popups, never opened without that setup |
 
 An uncommitted edit that made `DataWindow.InsertRow` always fire `ItemFocusChanged` raised the failures to 180 (164 windows reach `w_main.SetMicroHelp` with no `w_main` in the smoke); it was reverted, and the documented rule stays: a grid that another DataWindow's focus has passed by gets no event.
+
+## 2026-11-05 screen-by-screen and add/edit/delete run
+
+Tools: `tools/parity/capture-old.ps1` (Win32 control tree + screenshot of every
+opened original screen), `tools/parity/crawl-new.mjs` (Playwright; window,
+control and DataWindow inventory of the rebuild), `tools/parity/crud-fields.mjs`
+(types every editable cell, saves, edits from `File | List`, deletes and checks
+the result in PostgreSQL).
+
+### Menu
+
+* Original live menu: 262 items. Rebuild visible menu: 261 items.
+* Missing in the rebuild: `Reports | Sales Reports | Customer Sales | LP Ledger`
+  (it exists in the menu class but is hidden; the original shows it).
+* Renamed: `Reports | Sales Reports | Category Wise | Sale And Return` is
+  `Sale And Return (One Category)` in the rebuild.
+* No enabled/disabled differences among the common 261 items.
+
+### Screens captured on both sides
+
+* Non-report actionable screens: **62/62 opened in the original** (62 screenshots,
+  every top-level control dumped) and **62 attempted in the rebuild** (55 windows
+  opened directly, 7 response windows stopped at their modal and were captured;
+  0 page errors).
+* 141 report screens are being captured separately (`screen-parity/new-reports`);
+  the first report argument dialogs already show the restored labels.
+
+### Per-field add / edit / delete / save (PostgreSQL verified)
+
+| Form | Fields typed through the UI | Add | Edit from List | Delete | Result |
+|---|---:|---|---|---|---|
+| Manufacturer | 17 | code 1030 / name saved | updated in place (no duplicate) | row removed | **pass** |
+| Item Class | 3 | code saved | updated in place | row removed | **pass** |
+| Tax Category | 3 | code saved | updated in place | row removed | **pass** |
+
+The edit step uses `File | List` -> select -> `File | Detail`,
+then changes the name and saves; the row count for the prefix stays 1
+(no insert-on-edit). Delete answers `Yes` to
+`Delete this record permanently from Database?` and the row is gone.
+
+### Defects found and fixed by this run
+
+1. **DataWindow writes hit the wrong schema**: `buildUpdate()` emitted
+   `INSERT INTO manufacturer ...` without `dbo`, so every add/edit on a
+   DataWindow whose `update` table is unqualified failed with
+   `relation ... does not exist`. Now qualifies unqualified tables with
+   `dbo` (`web/src/dw/model.ts`). Evidence: the manufacturer INSERT
+   succeeded (code 1030) and the row was read back from
+   `dbo.manufacturer`.
+2. **Column validation was absent**: `SetValidate`/`GetValidate` were not
+   implemented and design-time `validation` rules were ignored. Added the
+   run-time rule store, design-time lookup, `GetText()` in the expression
+   evaluator, `ItemError`, and `ValidationMsg` display
+   (`web/src/runtime/native/dwctrl.ts`, `web/src/ui/dwview.ts`,
+   `web/src/dw/expr.ts`). `datawindow.setvalidate` no longer appears in the
+   Cash Sale missing-call list.
+3. **Recovered expressions contain SQL comments**, e.g.
+   `Round(...) /* old formula */`; the parser rejected the `/ *` pair.
+   `compileDw` now strips `/* ... */` and `//` comments. Loose Purchase
+   dropped both `dwexpr:unexpected '*'` calls.
+4. **Standard user-object ancestors were unresolved**: `st_1`, `st_2`,
+   `st_3` (101 controls), `olecontrol` (8) and `dw_price` (2) became blank
+   non-visual objects, losing labels/buttons/DataWindows. Unknown ancestors
+   now map to their native class. The report argument dialog now shows
+   `Selectable Areas`, `Selected Areas`, `Start Date`, `End Date`,
+   `Cash`, `Credit` and `All`; before the fix those labels were absent.
+5. **Nested reports threw `DwModel is not defined`** because the class was
+   imported type-only; changed to a value import. Groups no longer logs
+   `nested:DwModel is not defined`.
+6. **Null `dwo` in `Clicked`/`DoubleClicked`**: clicks outside a cell passed
+   `null`, so scripts doing `dwo.name` raised
+   `Null object reference (reading name)`. The event now always receives a
+   `{ name: '' }` object.
+7. **Double-close races** in message boxes and DataWindow editors produced
+   `Failed to execute 'remove' on 'Element'` page errors; close operations
+   are now idempotent/`isConnected`-guarded.
+
+### Remaining measured gaps
+
+* 141 report screens are still being walked; report pixel/column parity is not
+  yet asserted.
+* `LP Ledger` remains hidden; the original's show condition is not recovered.
+* `d_retailsalereturninvreport` and `d_wholesalereturninvreport` are two of the
+  8 DataWindow definitions that were not recovered; sale-return invoice print
+  cannot be completed without them.
+* Delete right 579 is not seeded in the migrated rights table (also absent in
+  the live original); the clone was granted it only for the CRUD test.
+* The 62-screen control diff is captured but not yet reduced to a per-control
+  change list.
