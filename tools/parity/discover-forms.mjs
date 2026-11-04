@@ -1,4 +1,4 @@
-import { createRequire } from 'node:module'
+﻿import { createRequire } from 'node:module'
 import { readFileSync } from 'node:fs'
 const require = createRequire('C:/Users/Admin/AppData/Local/npm-cache/_npx/e41f203b7505f1fb/node_modules/')
 const { chromium } = require('playwright')
@@ -26,6 +26,10 @@ const paths = [
   'Manage | Group Allowed Price Setting',
   'Manage | Group Wise Cash Account Setting',
   'Manage | Group Wise Supplier Category',
+  'Basic Data | Customer .......... | Customer',
+  'Basic Data | Supplier .......... | Supplier',
+  'Basic Data | Item .......... | Item',
+  'Manage | Users',
 ]
 const browser = await chromium.launch()
 const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } })
@@ -64,3 +68,4 @@ for (const path of paths) {
   }
 }
 await browser.close()
+
