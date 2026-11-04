@@ -128,7 +128,7 @@ node tools/parity/discover-forms.mjs
   measured on a concrete dialog rather than estimated.
 * **Report coverage so far:** the original captured **139 of 141** report
   commands (the two that crashed it are listed above); the rebuild has
-  **109 of 141** first-stage captures (84 in `new-reports`, 25 in
+  **128 of 141** first-stage captures (84 in `new-reports`, 44 in
   `new-reports-b`; the remainder is still crawling).  The 67 pairs captured
   before the first background batch are compared below.
 * **Report dialog captions:** the 117 first-stage pairs captured were compared
@@ -154,5 +154,6 @@ node tools/parity/discover-forms.mjs
   columns); Supplier Form 34, 33 typed.  All five probes (including Cash Sale
   and Purchase) finish with **0 page errors**; closing answers No to
   `Do You want to save changes`, so no document was saved.
+
 
 
