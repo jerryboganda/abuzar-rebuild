@@ -126,16 +126,23 @@ node tools/parity/discover-forms.mjs
   pixels differ by more than 40, mostly because the row spacing is 26 px
   instead of 28 px.  This is the known response-window height-factor gap, now
   measured on a concrete dialog rather than estimated.
-* **Report dialog captions:** the first 67 report dialogs that both sides
-  captured were compared by visible caption text: **0 old captions missing**
+* **Report coverage so far:** the original captured **139 of 141** report
+  commands (the two that crashed it are listed above); the rebuild has
+  **109 of 141** first-stage captures (84 in `new-reports`, 25 in
+  `new-reports-b`; the remainder is still crawling).  The 67 pairs captured
+  before the first background batch are compared below.
+* **Report dialog captions:** the 67 first-stage pairs captured were compared
+  by visible caption text: **0 old captions missing**
   in the rebuild.  The rebuild capture contains 585 extra strings because it
   also captured the later stage dialogs (`Specify Retrieval Arguments`,
   `Preparing your report to display`, the final report) that the old crawl did
   not advance to.  This is a caption-level check, not a pixel check.
-* **Original report defect found:** the old crawl stopped at item 68
-  (`Reports | Sales Reports | Customer Sales | Customer NTN Wise Sales Tax
-  Report`) with `NOFRAME`: the original process closed itself on that report.
-  It is recorded as an original defect, not a rebuild failure.
+* **Original report defects found:** the old crawl stopped twice with
+  `NOFRAME`, i.e. the original process closed itself:
+  `Reports | Sales Reports | Customer Sales | Customer NTN Wise Sales Tax
+  Report` (id 10303) and `Reports | Listing | Manufacturer List` (id 10591).
+  Both are recorded as original defects, not rebuild failures.  The other
+  **139 of 141** report commands were captured from the original.
 * **Transaction field probes**: Cash Sale exposes 64 editable detail/header
   columns; 15 were typed through the DOM before the dependency checks stopped
   the rest (item/discount/sale price need a selected item). Purchase exposes
