@@ -674,12 +674,40 @@ export class DwView {
     return false
   }
 
-  /** ItemChanged -> validation -> write, the order the PowerBuilder DataWindow uses */
+  /** ItemChanged -> conversion -> validation -> write, the order the PowerBuilder DataWindow uses */
   private async commitValue(m: DwModel, row: number, ci: number, o: DwObject, value: unknown): Promise<boolean> {
     const rej = await this.ctl.rt.fire(this.ctl, 'itemchanged', [row, { name: o.name }, value])
     if (rej === 1 || rej === 2) return false
+    // Numeric cells reject text the way the original DataWindow does; silently
+    // coercing it to 0 can divide by zero in the window's calculation scripts.
+    const kind = m.kinds[ci]
+    let val = value
+    if (kind === 'number' || kind === 'decimal') {
+      const raw = toStr(value).trim()
+      if (raw === '') {
+        val = null
+      } else {
+        const cleaned = raw.replace(/[,\s]/g, '').replace(/^\((.*)\)$/, '-$1')
+        const n = Number(cleaned)
+        if (!Number.isFinite(n)) {
+          const rej2 = await this.ctl.rt.fire(this.ctl, 'itemerror', [row, { name: o.name }, raw])
+          if (rej2 === 2) {
+            m.setItem(row, ci + 1, 0)
+            this.ctl.changed()
+            return true
+          }
+          if (rej2 === 3) {
+            m.setItem(row, ci + 1, null)
+            this.ctl.changed()
+            return true
+          }
+          return false
+        }
+        val = kind === 'decimal' ? cleaned : n
+      }
+    }
     if (!(await this.validateValue(m, row, o, toStr(value)))) return false
-    m.setItem(row, ci + 1, value)
+    m.setItem(row, ci + 1, val)
     this.ctl.changed()
     return true
   }
@@ -1169,15 +1197,14 @@ export class DwView {
     this.editor = input
     input.focus()
     input.select()
-    const commit = async () => {
-      if (this.editor !== input) return
+    const commit = async (): Promise<boolean> => {
+      if (this.editor !== input) return true
       this.editor = null
       const text = input.value
       if (input.isConnected) input.remove()
       const cur = v === null || v === undefined ? '' : toStr(v)
-      if (text !== cur) {
-        await this.commitValue(m, row, ci, o, text)
-      }
+      if (text !== cur) return this.commitValue(m, row, ci, o, text)
+      return true
     }
     input.addEventListener('blur', () => void commit())
     input.addEventListener('keydown', (ev) => {
@@ -1189,14 +1216,15 @@ export class DwView {
       }
       if (ev.key === 'Tab') {
         ev.preventDefault()
-        void commit().then(() => this.tabNext(ev.shiftKey ? -1 : 1))
+        void commit().then((ok) => { if (ok) this.tabNext(ev.shiftKey ? -1 : 1) })
         return
       }
       if (ev.key === 'Enter') {
         ev.preventDefault()
         // ProcessEnter: a script on the control decides (usually it presses Tab); without one Enter moves on like Tab
         const has = this.ctl.findRoutines('ue_enterkey').length > 0
-        void commit().then(async () => {
+        void commit().then(async (ok) => {
+          if (!ok) return
           if (has) await this.ctl.rt.fire(this.ctl, 'ue_enterkey', [])
           else await this.tabNext(1)
         })
