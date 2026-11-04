@@ -112,4 +112,9 @@ node tools/parity/discover-forms.mjs
   73 and 31 were typed; the validation messages `Supplier with AliasName ...
   does not exist` and `Purchase Price 1 is greater than Sale Price` appeared as
   in the original, with 0 page errors.
+* **Large master forms field probes**: Customer Form 84 editable columns, 53
+  typed; Item Form 124, 30 typed (the rest live in inactive tabs/protected
+  columns); Supplier Form 34, 33 typed.  All five probes (including Cash Sale
+  and Purchase) finish with **0 page errors**; closing answers No to
+  `Do You want to save changes`, so no document was saved.
 
