@@ -980,7 +980,21 @@ export class Runtime {
     const post = mods.includes('post')
     // ---- receiver call
     if (e.o) {
-      const recv = await this.eval(e.o, f)
+      let recv = await this.eval(e.o, f)
+      // Decompiled scripts sometimes omit `CREATE` for a local user object
+      // (`u_deleted_saleitemlog lu_...` followed by a method call).  A null
+      // local whose declared type is a user object is instantiated on first
+      // use, which is what the original autoinstantiate class did.
+      if ((recv === null || recv === undefined) && e.o.k === 'id') {
+        const t = f.types.get(e.o.n)
+        if (t) {
+          const cls = await this.getClass(t)
+          if (cls && (cls.kind === 'userobject' || cls.kind === 'nonvisualobject')) {
+            recv = await this.instantiate(t, null)
+            await this.assign(e.o, recv, f)
+          }
+        }
+      }
       const args: unknown[] = []
       let refIdx = REF_METHODS[e.n]
       // RPC calls on a transaction object: INOUT / OUT parameters come back through the arguments
