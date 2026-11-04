@@ -471,10 +471,23 @@ export class DwModel implements EvalHost {
 
   // ---------------------------------------------------------------- update
   keyCols(): number[] {
-    return this.def.table.columns.map((c, i) => (c.key === 'yes' ? i : -1)).filter((i) => i >= 0)
+    return this.def.table.columns.map((c, i) => (this.colFlag(i, 'key') ? i : -1)).filter((i) => i >= 0)
   }
   updatableCols(): number[] {
-    return this.def.table.columns.map((c, i) => (c.update === 'yes' ? i : -1)).filter((i) => i >= 0)
+    return this.def.table.columns.map((c, i) => (this.colFlag(i, 'update') ? i : -1)).filter((i) => i >= 0)
+  }
+  /** design-time or runtime (`Modify("col.Update=yes")`) update/key flag */
+  private colFlag(i: number, flag: 'update' | 'key'): boolean {
+    const c = this.def.table.columns[i]
+    const ov = this.overrides.get(c.name.toLowerCase() + '.' + flag)
+    if (ov !== undefined) return /^(yes|true|1)$/i.test(String(ov))
+    return c[flag] === 'yes'
+  }
+  /** design-time table or the runtime `DataWindow.Table.UpdateTable` switch */
+  private updateTableName(): string {
+    const ov = this.overrides.get('datawindow.table.updatetable')
+    const t = (ov ?? this.def.table.update ?? '').replace(/^['"]|['"]$/g, '').trim()
+    return t
   }
   dbColName(i: number): string {
     const c = this.def.table.columns[i]
@@ -483,10 +496,10 @@ export class DwModel implements EvalHost {
   }
 
   private whereFor(row: DwRow, params: unknown[]): string {
-    const mode = this.def.table.updatewhere ?? '1'
+    const mode = this.overrides.get('datawindow.table.updatewhere') ?? this.def.table.updatewhere ?? '1'
     const cols = new Set<number>(this.keyCols())
     if (mode === '1') for (const i of this.updatableCols()) if (this.def.table.columns[i].updatewhereclause !== 'no') cols.add(i)
-    if (mode === '2') for (const i of row.mod) if (this.def.table.columns[i].update === 'yes') cols.add(i)
+    if (mode === '2') for (const i of row.mod) if (this.colFlag(i, 'update')) cols.add(i)
     const parts: string[] = []
     for (const i of [...cols].sort((a, b) => a - b)) {
       const old = (row.orig ?? row.v)[i]
@@ -502,7 +515,7 @@ export class DwModel implements EvalHost {
 
   /** statements for all pending changes: deletes, updates, inserts (PowerBuilder order) */
   buildUpdate(): { sql: string; params: unknown[]; expect: number }[] {
-    const table = this.def.table.update
+    const table = this.updateTableName()
     if (!table) return []
     const out: { sql: string; params: unknown[]; expect: number }[] = []
     // The recovered DataWindow names are SQL Server names without the owner.  The
@@ -516,7 +529,7 @@ export class DwModel implements EvalHost {
     }
     for (const r of this.buf.primary) {
       if (r.st === DATA_MODIFIED) {
-        const cols = [...r.mod].filter((i) => this.def.table.columns[i].update === 'yes').sort((a, b) => a - b)
+        const cols = [...r.mod].filter((i) => this.colFlag(i, 'update')).sort((a, b) => a - b)
         if (!cols.length) continue
         const params: unknown[] = []
         const sets = cols.map((i) => {
