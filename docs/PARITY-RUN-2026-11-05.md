@@ -118,6 +118,14 @@ node tools/parity/discover-forms.mjs
   events found without a UI dispatcher are lifecycle events (`constructor`,
   `create`, `destroy`, `destructor`) and non-visual classes, which the runtime
   dispatches itself.
+* **Report dialog pixel measurement:** six first-stage report dialogs were
+  captured on both sides as dialog-only crops.  The rebuild is consistently
+  3 px narrower and 8 px shorter (e.g. 350x332 vs 353x340 for Select Format;
+  414x479 vs 417x487 for the Sale Summary format list), with the same captions
+  and the same radio/button order.  At the current geometry 15-17% of dialog
+  pixels differ by more than 40, mostly because the row spacing is 26 px
+  instead of 28 px.  This is the known response-window height-factor gap, now
+  measured on a concrete dialog rather than estimated.
 * **Report dialog captions:** the first 67 report dialogs that both sides
   captured were compared by visible caption text: **0 old captions missing**
   in the rebuild.  The rebuild capture contains 585 extra strings because it

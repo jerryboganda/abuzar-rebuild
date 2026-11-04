@@ -260,6 +260,10 @@ for (let i = 0; i < paths.length; i++) {
     return { calls: m, recent: recent.slice(-12) }
   })
   await page.screenshot({ path: join(OUT, name + '.png'), timeout: 20000 }).catch(() => {})
+  // dialog-only and window-only crops: the old capture stores the same crops,
+  // so a dialog can be compared without the surrounding desktop pixels
+  await page.locator('.pbwin:not(.sheet):not(.hidden)').last().screenshot({ path: join(OUT, name + '_dlg.png'), timeout: 8000 }).catch(() => {})
+  await page.locator('.pbwin.sheet:not(.hidden)').last().screenshot({ path: join(OUT, name + '_win.png'), timeout: 8000 }).catch(() => {})
   writeFileSync(join(OUT, name + '.json'), JSON.stringify({ path, opened, windows: result, missing, events: events.splice(0) }, null, 1))
 
   // report dialogs: press OK on each one, take the next state (format / arguments / final report)
