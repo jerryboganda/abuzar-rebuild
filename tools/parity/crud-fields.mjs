@@ -1,4 +1,4 @@
-// Per-field add / edit / delete through the rebuilt desktop UI, verified in PostgreSQL.
+﻿// Per-field add / edit / delete through the rebuilt desktop UI, verified in PostgreSQL.
 // Every editable cell is clicked, typed into (or a drop-down option chosen), committed
 // with Tab, then the record is saved, edited and deleted through the window's own
 // File | Save / File | Delete events.  The clone database is the target.
@@ -41,6 +41,68 @@ const FORMS = {
     path: 'Basic Data | Tax Category', window: 'w_taxcategory_form',
     table: 'TaxCategory', dbKey: 'taxcategorycode', keyCol: 'code', nameCol: 'name', prefix: 'TXUI',
     values: { taxperc: 5 },
+  },
+  suppliercategory: {
+    path: 'Basic Data | Supplier .......... | Supplier Category', window: 'w_suppliercategory_form',
+    table: 'suppliercategory', dbKey: 'suppcatcode', keyCol: 'code', nameCol: 'name', prefix: 'SUUI', values: {},
+  },
+  customersector: {
+    path: 'Basic Data | Customer .......... | Customer Sector', window: 'w_custsector_form',
+    table: 'customersector', dbKey: 'customersectorcode', keyCol: 'code', nameCol: 'name', prefix: 'CSUI', values: {},
+  },
+  genericitemtype: {
+    path: 'Basic Data | Item .......... | Generic Item Type', window: 'w_genericitemtype_form',
+    table: 'genericitemtype', dbKey: 'genericitemtypecode', keyCol: 'code', nameCol: 'name', prefix: 'GIUI', values: {},
+  },
+  itemthickness: {
+    path: 'Basic Data | Item .......... | Item Thickness', window: 'w_itemthickness_form',
+    table: 'itemthickness', dbKey: 'itemthicknesscode', keyCol: 'code', nameCol: 'name', prefix: 'ITUI', values: {},
+  },
+  lockreason: {
+    path: 'Basic Data | Item .......... | Lock Reason', window: 'w_lockreason',
+    table: 'lockreason', dbKey: 'lockreasoncode', keyCol: 'code', nameCol: 'name', prefix: 'LKUI', values: {},
+  },
+  categorysegment: {
+    path: 'Basic Data | Item .......... | Category Segment', window: 'w_categorysegment_form',
+    table: 'categorysegment', dbKey: 'categorysegmentcode', keyCol: 'code', nameCol: 'name', prefix: 'CGUI', values: {},
+  },
+  manufacturertype: {
+    path: 'Basic Data | Item .......... | Manufacturer Type', window: 'w_manufacturertype_form',
+    table: 'manufacturertype', dbKey: 'manufacturertypecode', keyCol: 'code', nameCol: 'name', prefix: 'MTUI', values: {},
+  },
+  pctcodes: {
+    path: 'Basic Data | Item .......... | PCT Codes', window: 'w_pctcodes_form',
+    table: 'pct', dbKey: 'pctcode', keyCol: 'code', nameCol: 'name', dbNameCol: 'description', prefix: 'PTUI', values: {},
+  },
+  customercategory: {
+    path: 'Basic Data | Customer .......... | Customer Category', window: 'w_custcategory_form',
+    table: 'customercategory', dbKey: 'custcatcode', keyCol: 'code', nameCol: 'name', prefix: 'CCUI',
+    values: { customersegmentcode: 1, allowincashsale: 'Y', allowincreditsale: 'Y' },
+  },
+  itemcategory: {
+    path: 'Basic Data | Item .......... | Item Category', window: 'w_itemcategory_form',
+    table: 'itemcategory', dbKey: 'icatcode', keyCol: 'code', nameCol: 'name', prefix: 'ICUI',
+    values: { categorysegmentcode: 1, numericalfactor: 1, saleexpirydays: 1 },
+  },
+  genericitem: {
+    path: 'Basic Data | Item .......... | Generic Item', window: 'w_genericitem_form',
+    table: 'genericitem', dbKey: 'genericcode', keyCol: 'code', nameCol: 'name', prefix: 'GEUI',
+    values: { genericitemtypecode: 1 },
+  },
+  salestaxschedule: {
+    path: 'Basic Data | Item .......... | Sales Tax Schedule', window: 'w_salestaxschedule_form',
+    table: 'salestaxschedule', dbKey: 'salestaxschedulecode', keyCol: 'code', nameCol: 'name', prefix: 'SSUI',
+    values: { taxperc: 5, taxtype: 'S', applicable: 'Y' },
+  },
+  itemalert: {
+    path: 'Basic Data | Item .......... | Item Alert', window: 'w_itemalert_form',
+    table: 'itemalert', dbKey: 'itemalertcode', keyCol: 'code', nameCol: 'name', prefix: 'IAUI',
+    values: { itemalerttypecode: 1, bgcolor: 0, alertdetail: 'CRUD ALERT' },
+  },
+  salepromotion: {
+    path: 'Basic Data | Customer .......... | Sale Promotion', window: 'w_salepromotion_form',
+    table: 'salepromotion', dbKey: 'salepromotioncode', keyCol: 'code', nameCol: 'name', prefix: 'SPUI',
+    values: { customergroupcode: 1, defaultitemdiscperc: 0, weekdaycode: 1, startdate: '05/11/2026', enddate: '05/11/2027', active: 'Y' },
   },
 }
 const cfg = FORMS[FORM]
@@ -99,6 +161,7 @@ const valueFor = (col, stamp) => {
   if (cfg.values[n] !== undefined) return String(cfg.values[n])
   if (n === cfg.nameCol) return cfg.prefix + ' ' + stamp
   if (/alias|short/.test(n)) return 'Z' + stamp.slice(-5)
+  if (/^char\(1\)/i.test(col.type)) return 'Y'
   if (col.type.startsWith('char') || col.type === 'string') return 'CRUD'
   if (col.type.startsWith('decimal') || col.type.includes('int') || col.type === 'long' || col.type === 'integer') return '1'
   if (col.type === 'date' || col.type === 'datetime') return '05/11/2026'
@@ -136,6 +199,7 @@ try {
     const tag = await editor.evaluate((e) => e.tagName).catch(() => '')
     if (tag === 'SELECT') {
       const options = await editor.locator('option').evaluateAll((os) => os.map((o) => o.value))
+      if (!options.length) { result.fields.push({ name: obj.name, skipped: 'empty drop-down' }); await page.keyboard.press('Tab'); continue }
       const pick = options.includes(value) ? value : options.find((v) => v !== '')
       await editor.selectOption(pick)
     } else {
@@ -157,7 +221,7 @@ try {
   result.steps.save = await clickMenu('File | Save')
   await page.waitForTimeout(1600)
   result.messages.push(...await dismiss(true))
-  const added = query(`select ${cfg.dbKey}, ${cfg.nameCol} from dbo.${cfg.table} where ${cfg.nameCol} = '${name.replace(/'/g, "''")}'`)
+  const added = query(`select ${cfg.dbKey}, ${cfg.dbNameCol || cfg.nameCol} from dbo.${cfg.table} where ${cfg.dbNameCol || cfg.nameCol} = '${name.replace(/'/g, "''")}'`)
   result.steps.add = { db: added, ok: added.length === 1 }
   result.steps.modelAfterAdd = await page.evaluate((w) => {
     const m = window.rt.windowInstances.get(w).props.get('id_detail').model
@@ -208,8 +272,8 @@ try {
   await clickMenu('File | Save')
   await page.waitForTimeout(1600)
   result.messages.push(...await dismiss(true))
-  const editedDb = query(`select ${cfg.dbKey}, ${cfg.nameCol} from dbo.${cfg.table} where ${cfg.nameCol} = '${edited.replace(/'/g, "''")}'`)
-  const duplicate = query(`select count(*) from dbo.${cfg.table} where ${cfg.nameCol} like '${cfg.prefix} %'`)
+  const editedDb = query(`select ${cfg.dbKey}, ${cfg.dbNameCol || cfg.nameCol} from dbo.${cfg.table} where ${cfg.dbNameCol || cfg.nameCol} = '${edited.replace(/'/g, "''")}'`)
+  const duplicate = query(`select count(*) from dbo.${cfg.table} where ${cfg.dbNameCol || cfg.nameCol} like '${cfg.prefix} %'`)
   result.steps.edit = { db: editedDb, rowsForPrefix: duplicate, ok: editedDb.length === 1 && duplicate[0]?.[0] === '1' }
 
   // delete the edited record: list -> select -> detail -> File | Delete -> Yes
@@ -224,7 +288,7 @@ try {
   result.messages.push(...await dismiss(true))
   await page.waitForTimeout(1200)
   result.messages.push(...await dismiss(true))
-  const gone = query(`select ${cfg.dbKey}, ${cfg.nameCol} from dbo.${cfg.table} where ${cfg.nameCol} like '${cfg.prefix} %'`)
+  const gone = query(`select ${cfg.dbKey}, ${cfg.dbNameCol || cfg.nameCol} from dbo.${cfg.table} where ${cfg.dbNameCol || cfg.nameCol} like '${cfg.prefix} %'`)
   result.steps.delete = { db: gone, ok: gone.length === 0 }
   result.ok = added.length === 1 && editedDb.length === 1 && gone.length === 0 && duplicate[0]?.[0] === '1'
 } catch (e) {
@@ -235,3 +299,4 @@ try {
 writeFileSync(join(OUT, `crud-${FORM}.json`), JSON.stringify(result, null, 1))
 console.log(JSON.stringify(result, null, 1))
 await browser.close()
+

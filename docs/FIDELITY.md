@@ -1,4 +1,4 @@
-# Fidelity against the running original
+﻿# Fidelity against the running original
 
 Everything here was measured on the original `abuzar.exe` (Windows 11, 96 dpi, 1920x1080) running against its SQL Server, not derived from the recovered definitions.
 Tools: `tools/orig/` (crawler, crop, icon and sprite builders), `web/tools/{gen-profile,menu-parity,toolbar-dump}.ts`, `web/e2e/browser-smoke.mjs` (menu walk of the rebuild).
@@ -143,11 +143,22 @@ the result in PostgreSQL).
 
 ### Per-field add / edit / delete / save (PostgreSQL verified)
 
-| Form | Fields typed through the UI | Add | Edit from List | Delete | Result |
-|---|---:|---|---|---|---|
-| Manufacturer | 17 | code 1030 / name saved | updated in place (no duplicate) | row removed | **pass** |
-| Item Class | 3 | code saved | updated in place | row removed | **pass** |
-| Tax Category | 3 | code saved | updated in place | row removed | **pass** |
+16 master-data forms passed the full field-driven add / edit / delete sequence
+(every editable cell was clicked and typed, then `File | Save`, `File | List`,
+select, `File | Detail`, edit, save, `File | Delete`, confirmed):
+
+`Customer Category`, `Customer Sector`, `Generic Item`, `Generic Item Type`,
+`Item Alert`, `Item Category`, `Item Class`, `Item Thickness`, `Lock Reason`,
+`Manufacturer`, `Manufacturer Type`, `PCT Codes`, `Supplier Category`,
+`Sales Tax Schedule`, `Tax Category`, `Category Segment`.
+
+For each: the ADD row was read back from PostgreSQL, the EDIT changed the
+same key in place (row count for the unique name prefix stayed 1, so no
+insert-on-edit), and the DELETE removed it. `Sale Promotion` is the one
+failure: its Active / Customer Group / Weekday drop-downs are empty in the
+migrated clone, so the form cannot produce a valid FK value; this is missing
+reference data, not a form failure (the same empty lists appear in the
+original's database).
 
 The edit step uses `File | List` -> select -> `File | Detail`,
 then changes the name and saves; the row count for the prefix stays 1
@@ -203,3 +214,4 @@ then changes the name and saves; the row count for the prefix stays 1
   the live original); the clone was granted it only for the CRUD test.
 * The 62-screen control diff is captured but not yet reduced to a per-control
   change list.
+
