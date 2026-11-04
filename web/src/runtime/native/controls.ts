@@ -40,6 +40,11 @@ export class NControl extends PBObject {
     const old = name === 'selectedtab' ? toNum(this.props.get('selectedtab') ?? 1) : 0
     super.pbSet(name, value)
     this.changed()
+    // PowerBuilder tab pages fill the tab control's client area.  Scripts read
+    // `tabpage_detail.height` to lay out their children (the Item form sets
+    // dw_detail.height = tabpage_detail.height * 0.70); without this the page
+    // keeps its small design height and large forms are clipped.
+    if (this.native === 'tab' && (name === 'width' || name === 'height')) this.sizePages()
     // `tab.selectedtab = n` in a script raises the tab events like a click does (the entry windows build their new form that way)
     if (name === 'selectedtab' && this.native === 'tab') {
       const n = toNum(value)
@@ -48,6 +53,20 @@ export class NControl extends PBObject {
         await this.rt.fire(this, 'selectionchanged', [old, n])
         this.changed()
       })()
+    }
+  }
+
+  /** size every page of a tab control to its client area (tab strip removed) */
+  private sizePages(): void {
+    const w = toNum(this.props.get('width'))
+    const h = toNum(this.props.get('height'))
+    if (!(w > 0) || !(h > 0)) return
+    const pw = Math.max(0, w - 40)
+    const ph = Math.max(0, h - 128)
+    for (const p of this.children.values()) {
+      if (p.native === 'datawindow') continue
+      if (toNum(p.props.get('width')) !== pw) p.pbSet('width', pw)
+      if (toNum(p.props.get('height')) !== ph) p.pbSet('height', ph)
     }
   }
 
