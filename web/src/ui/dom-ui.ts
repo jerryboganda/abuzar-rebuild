@@ -739,6 +739,7 @@ export class WinView {
         const input = v.el.querySelector('input') as HTMLInputElement
         const g = groups.find((g) => num(c, 'x') >= g.x && num(c, 'y') >= g.y && num(c, 'x') <= g.x + g.w && num(c, 'y') <= g.y + g.h)
         input.name = `rg_${parent.name}_${g ? g.name : 'win'}`
+        c.props.set('_radiogroup', input.name)
         radios.push({ el: input, obj: c })
       }
       if (c.children.size && c.native !== 'tab' && c.native !== 'datawindow') this.renderControls(c, v.el)
@@ -876,7 +877,7 @@ export class WinView {
         i.checked = bool(c, 'checked', false)
         i.disabled = !bool(c, 'enabled', true)
         i.onchange = () => {
-          c.props.set('checked', i.checked)
+          c.pbSet('checked', i.checked)
           void rt.fire(c, 'clicked').then(() => rt.flushPosted())
         }
         const sp = document.createElement('span')

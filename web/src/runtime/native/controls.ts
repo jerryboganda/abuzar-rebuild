@@ -37,6 +37,15 @@ export class NControl extends PBObject {
     return super.pbGet(name)
   }
   override pbSet(name: string, value: unknown): void {
+    // a checked radio button unchecks the other buttons of its group
+    if (name === 'checked' && value === true && this.native === 'radiobutton') {
+      const group = this.props.get('_radiogroup')
+      if (group && this.parent) {
+        for (const s of this.parent.children.values()) {
+          if (s !== this && s.native === 'radiobutton' && s.props.get('_radiogroup') === group && s.props.get('checked') === true) s.pbSet('checked', false)
+        }
+      }
+    }
     const old = name === 'selectedtab' ? toNum(this.props.get('selectedtab') ?? 1) : 0
     super.pbSet(name, value)
     this.changed()
