@@ -77,11 +77,14 @@ async function openWin(rt: Runtime, a: unknown[], sheet: boolean, withParm: bool
       if (boxes.some((b) => num(c, 'x') >= num(b, 'x') && num(c, 'y') >= num(b, 'y') && num(c, 'x') + num(c, 'width') <= num(b, 'x') + num(b, 'width') && num(c, 'y') + num(c, 'height') <= num(b, 'y') + num(b, 'height'))) c.props.set('visible', false)
     }
   }
-  const hidePopups = (o: PBObject) => {
+  const hidePopups = (o: PBObject, keepItemList = false) => {
     hideInHiddenBoxes(o)
     for (const c of o.children.values()) {
-      if (c.name === 'dw_itemslist') c.props.set('visible', false)
-      hidePopups(c)
+      // the sale/purchase entry windows call their list `id_itemslist`; some
+      // recovered screens use `dw_itemslist`.  Cash Sale and Refused Sale open
+      // with that list visible in the original; the other entry windows do not.
+      if (!keepItemList && (c.name === 'dw_itemslist' || c.name === 'id_itemslist')) c.pbSet('visible', false)
+      hidePopups(c, keepItemList)
     }
   }
   hidePopups(w)
@@ -95,6 +98,40 @@ async function openWin(rt: Runtime, a: unknown[], sheet: boolean, withParm: bool
   // DataWindows there, and the tab's SelectionChanged reads those values
   // (Cash Sale's godown and price were still null when the tab ran first).
   await rt.flushPosted()
+  // `ue_newform` runs from the posted queue and can focus the detail grid,
+  // which opens the search list before the window is painted.  The original
+  // starts with it closed; the first real focus on the item cell opens it.
+  // The original opens Cash Sale and Refused Sale with their item search list
+  // visible (the detail grid gets the focus from Open); Credit Sale, Purchase
+  // and Purchase Order open with it shut.  Keep that difference instead of
+  // closing the list for every entry window.
+  const findItemDetail = (o: PBObject): PBObject | null => {
+    for (const c of o.children.values()) {
+      if (c.name === 'id_detail' || c.name === 'dw_detail') return c
+      const f = findItemDetail(c)
+      if (f) return f
+    }
+    return null
+  }
+  const detailObject = String(findItemDetail(w)?.props.get('dataobject') ?? '').toLowerCase()
+  const keepItemList = w.name === 'w_refusedsales' || (w.name === 'w_sale' && detailObject.startsWith('d_retail'))
+  const hideLists = () => {
+    hidePopups(w, keepItemList)
+    if (keepItemList) {
+      const list = [...w.children.values()].find((c) => c.name === 'id_itemslist' || c.name === 'dw_itemslist')
+      if (list && list.props.get('visible') === false) list.pbSet('visible', true)
+      if (w.props.has('ib_itemslistopen')) w.props.set('ib_itemslistopen', true)
+    } else {
+      if (w.props.has('ib_itemslistopen')) w.props.set('ib_itemslistopen', false)
+      if (w.props.has('ib_focusdetail')) w.props.set('ib_focusdetail', false)
+    }
+  }
+  hideLists()
+  // the first-focus timer scheduled by showWindow may run after this point and
+  // open the search list from the detail grid's GetFocus handler; close it once
+  // that initial focus sequence has settled (the original starts with it shut)
+  setTimeout(hideLists, 0)
+  setTimeout(hideLists, 250)
   // a tab control raises SelectionChanging / SelectionChanged for its first page when its window comes up (the entry windows build their blank new form in it:
   // the original's Users, Item or Sale Template window opens with an empty form and the menu in new-form state)
   const tabs: PBObject[] = []

@@ -106,6 +106,11 @@ node tools/parity/discover-forms.mjs
   Priority Setting 14.95% because the old capture had a live find filter and
   wider saved column widths; About 25.6% because the rebuild intentionally has
   no licence text).
+* **Cash Sale and Refused Sale now open with their item search list visible**,
+  as the original does; Credit Sale, Purchase and Purchase Order open without
+  it.  The runtime used to hide `id_itemslist` for every entry window after
+  Open.  The decision now looks at the detail DataWindow (`d_retailsaleheader`
+  vs `d_wholesaleheader`), not at the title, which is set too late.
 * **Transaction field probes**: Cash Sale exposes 64 editable detail/header
   columns; 15 were typed through the DOM before the dependency checks stopped
   the rest (item/discount/sale price need a selected item). Purchase exposes
