@@ -1080,8 +1080,11 @@ export class DwView {
 
   private edit(m: DwModel, o: DwObject, row: number, cell: HTMLElement): void {
     if (this.editor) {
-      if (this.editor.isConnected) this.editor.remove()
+      const ed = this.editor
+      // clearing the field before remove stops a synchronous blur handler from
+      // committing/removing the same editor a second time
       this.editor = null
+      if (ed.isConnected) ed.remove()
     }
     const ci = m.colIndex(o.name)
     if (ci < 0) return

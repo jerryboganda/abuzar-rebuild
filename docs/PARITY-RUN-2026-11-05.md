@@ -81,3 +81,35 @@ node tools/parity/discover-forms.mjs
 7. `dwname:invdiscperc` on Credit Sale: the footer `d_salefooter2` does contain
    the column, so the failing read is somewhere else (a DataStore setitem or a
    child DataWindow); trace the `recent` routine that was running when it fires.
+
+## Later additions (same day)
+
+* **Tab pages now obey `visible`.** Interface Setting hides the patient,
+  service, customer-site and item-registration tabs through
+  `wf_set_tab_visibility()` and `f_rightexists()`; the DOM tab renderer used to
+  draw every page regardless. It now removes the tab and page of a hidden page
+  and re-syncs when a script changes visibility. The screen shows the same 13
+  tabs as the original, not 20+. `f_rightexists(206/455/984/1110)` was verified
+  to return false in the rebuild, so the hiding path itself was correct.
+* **Response windows are centred after Open resizes them.** Interface Setting,
+  About and the report argument dialogs were built centred and then moved to
+  their old coordinates by the resize in Open. `syncWindow()` now re-centres a
+  modal (`windowtype = 3`) window after applying its final size.
+* **Editor removal race fixed.** `DwView.edit()` cleared `this.editor` after
+  removing the old editor; the synchronous blur handler could remove it a
+  second time (`Failed to execute 'remove' on 'Element'`). The field is now
+  cleared first; the Cash Sale field probe reports **0 page errors**.
+* **Visual diff of 59 non-modal screens** (old vs new screenshot, crop
+  0,80-1900,980, per-pixel difference >40): median **2.09%**, mean **3.75%**,
+  28 screens under 2%, 48 under 5%. The worst screens are state or
+  configuration differences (Interface Setting was 31.75% before the tab fix;
+  Priority Setting 14.95% because the old capture had a live find filter and
+  wider saved column widths; About 25.6% because the rebuild intentionally has
+  no licence text).
+* **Transaction field probes**: Cash Sale exposes 64 editable detail/header
+  columns; 15 were typed through the DOM before the dependency checks stopped
+  the rest (item/discount/sale price need a selected item). Purchase exposes
+  73 and 31 were typed; the validation messages `Supplier with AliasName ...
+  does not exist` and `Purchase Price 1 is greater than Sale Price` appeared as
+  in the original, with 0 page errors.
+

@@ -414,6 +414,18 @@ export class WinView {
       s.width = toPx(num(this.w, 'width'), 'x') + 'px'
       s.height = toPx(num(this.w, 'height'), 'y') + 'px'
     }
+    // Response windows are centred on the screen; scripts (Interface Setting,
+    // the report argument dialogs) resize themselves in Open, so centring them
+    // only in the constructor leaves them at the old position.
+    if (this.modal && !this.sheet) {
+      const host = this.el.parentElement?.getBoundingClientRect()
+      const W = parseFloat(s.width) || this.el.offsetWidth
+      const H = parseFloat(s.height) || this.el.offsetHeight
+      if (host && W > 0 && H > 0) {
+        s.left = Math.max(0, (host.width - W) / 2) + 'px'
+        s.top = Math.max(0, (host.height - H) / 3) + 'px'
+      }
+    }
   }
 
   private dragify(bar: HTMLElement): void {
@@ -969,17 +981,33 @@ export class WinView {
         t.className = 'ctl tabctl'
         const strip = document.createElement('div')
         strip.className = 'strip'
-        const pages: HTMLElement[] = []
-        const pageObjs = [...c.children.values()]
+        type TabItem = { po: PBObject; tab: HTMLElement; page: HTMLElement }
+        const items: TabItem[] = []
+        const visibleItems = () => items.filter((x) => x.po.props.get('visible') !== false)
         const show = (n: number) => {
-          pages.forEach((p, i) => (p.style.display = i + 1 === n ? 'block' : 'none'))
-          ;[...strip.children].forEach((s, i) => s.classList.toggle('on', i + 1 === n))
+          const vs = visibleItems()
+          for (const it of items) {
+            const at = vs.indexOf(it)
+            it.tab.style.display = at < 0 ? 'none' : ''
+            it.page.style.display = at >= 0 && at + 1 === n ? 'block' : 'none'
+            if (at >= 0) it.tab.classList.toggle('on', at + 1 === n)
+          }
         }
         const select = (n: number) => {
-          show(n)
-          c.props.set('selectedtab', n)
+          const max = Math.max(1, visibleItems().length)
+          const at = Math.min(Math.max(1, n), max)
+          show(at)
+          c.props.set('selectedtab', at)
         }
-        pageObjs.forEach((po, i) => {
+        // PowerBuilder removes the tab of a page whose Visible is false; the
+        // scripts of the entry windows use that for rights (Interface Setting
+        // hides the patient/service/… tabs of modules that are not licensed).
+        const sync = () => {
+          const vs = visibleItems()
+          const cur = Math.min(toNum(c.props.get('selectedtab') ?? 1) || 1, Math.max(1, vs.length))
+          show(cur)
+        }
+        for (const po of c.children.values()) {
           const tabEl = document.createElement('div')
           tabEl.className = 't'
           // the picture of the page (a stock name such as `Table!`) and the text, which keeps its trailing blanks (they widen the tab)
@@ -994,22 +1022,26 @@ export class WinView {
           label.className = 'lb'
           label.textContent = caption(str(po, 'text'))
           tabEl.appendChild(label)
-          tabEl.onclick = () => {
-            const old = toNum(c.props.get('selectedtab') ?? 1)
-            select(i + 1)
-            void rt.fire(c, 'selectionchanged', [old, i + 1])
-          }
-          strip.appendChild(tabEl)
           const page = document.createElement('div')
           page.className = 'page'
           t.appendChild(page)
-          pages.push(page)
+          const item: TabItem = { po, tab: tabEl, page }
+          items.push(item)
+          tabEl.onclick = () => {
+            const old = toNum(c.props.get('selectedtab') ?? 1)
+            const n = visibleItems().indexOf(item) + 1
+            if (n < 1) return
+            select(n)
+            void rt.fire(c, 'selectionchanged', [old, n])
+          }
+          strip.appendChild(tabEl)
           this.renderControls(po, page)
-        })
+          ;(po as NControl).listeners?.add(sync)
+        }
         t.prepend(strip)
         select(toNum(c.props.get('selectedtab') ?? 1) || 1)
         // a script that sets selectedtab switches the page, too
-        ;(c as unknown as { listeners: Set<() => void> }).listeners.add(() => show(toNum(c.props.get('selectedtab') ?? 1) || 1))
+        ;(c as unknown as { listeners: Set<() => void> }).listeners.add(sync)
         el = t
         break
       }
