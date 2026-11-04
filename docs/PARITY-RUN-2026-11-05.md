@@ -143,6 +143,23 @@ node tools/parity/discover-forms.mjs
   Report` (id 10303) and `Reports | Listing | Manufacturer List` (id 10591).
   Both are recorded as original defects, not rebuild failures.  The other
   **139 of 141** report commands were captured from the original.
+* **Transaction saves re-verified on the clone (2026-11-05):**
+  Cash Sale saved invoice **588888** (customer 19, FACE MASK icode 9801,
+  qty 1, price 10.00, misc 1.00, total 11.00, posted Y); Credit Sale saved
+  **588889** (customer 22, posted Y); Purchase saved **12283** (supplier 311,
+  FACE MASK, purchase price 2.00, posted N).  The database rows were read back
+  from `dbo.saledger` / `dbo.saledetail` / `dbo.purledger` / `dbo.purdetail`.
+  The Sale Return probe selected the item but did not create a new return row
+  in this run (the earlier 61604 evidence predates this session); treat sale
+  return save as **not re-verified today**.
+* **Users add verified:** `Manage | Users` -> New -> model fields -> Save
+  created `dbo.users` usercode **10**, username `PZUSER240478`, active `Y`,
+  group 2 in `dbo.usergroups`.  Users edit/delete from the list did not load
+  the master row in the probe (`id_master` stayed empty), so they remain
+  untested, not failed.
+* **Group/price settings field probes:** Users 7 of 8 editable cells, Price
+  Policy 7 of 7, Group Allowed Price 2, Group Cash Account 2, Group Supplier
+  Category 1; all finish with 0 page errors and close without saving.
 * **Transaction field probes**: Cash Sale exposes 64 editable detail/header
   columns; 15 were typed through the DOM before the dependency checks stopped
   the rest (item/discount/sale price need a selected item). Purchase exposes
