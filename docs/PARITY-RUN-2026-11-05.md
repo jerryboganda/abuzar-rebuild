@@ -1089,6 +1089,40 @@ policy values to the selected Manufacturer.
 
 Probe: `tools/parity/probe-supplier-crud.mjs` - measured `ok=true`.
 
+### Item Basic Data new-item add (verified; edit path original early-return defect)
+
+`Basic Data | Item .......... | Item Basic Data` opens
+`w_item_basicdata_form` (`w_multi_entry`, title "Item Form").  Master
+`d_item_basicdata_detail` updates `Item`; detail `d_item_suplier` updates
+`ItemSuppliers`; nested buffers are `d_iteminmodel`, `d_itemassociation`,
+`d_associateditempart` and `d_itemauthor`.
+
+The new-item path requires non-empty iteminmodel / itemassociation /
+associateditempart / itemauthor buffers; temporary **Model 1**, **Author 1**
+and **ItemPart 2** were inserted, and ItemPart 1 was used for the item.
+
+* **Add:** new item code **29,043** (generated name
+  `PARITY ITEM BASIC ... GEN`, customicode `PIB...`), supplier **18** detail,
+  `iteminmodel (29043,1)`, `itemassociation (29043,9800)`,
+  `associateditempart (1,2)`, `itemauthor (29043,1)`,
+  `itempartinmodel (1,1)`, `itemnotes (29043)`;
+  `_tabmaxkey('Item') 29,042 -> 29,043`; "Changes take effect in database".
+* **Edit path is an original defect:** `ue_save` for `ib_modify = true`
+  writes an itemlog and returns before updating the item/supplier.  Measured:
+  changing `remarks` generated `INSERT INTO dbo.itemlog` but
+  `item.remarks` stayed empty; the itemlog insert rolled back and no
+  item/supplier update occurred.
+* The form has no `ue_delete` handler; cleanup SQL removed the temporary item
+  and all nested rows.
+* Exact restore: `item 28,966 / max 29,040`, `itempart 1 / max 1`,
+  `model 0`, `author 0`, `itempartinmodel 0` (rowid sequence 19),
+  `iteminmodel 0`, `itemassociation 0`, `associateditempart 0`,
+  `itemauthor 0`, `itemsuppliers 21,141`, `itemnotes 28,961`,
+  `pricepolicy 28,966`, `_tabmaxkey`: Item 29,042 / ItemPart 1 / Model 0,
+  `itemlog 98,632 / max 152,907`, `audit_log 1,079 / max 1,127`, no residue.
+
+Probe: `tools/parity/probe-itembasicdata-add.mjs` - measured `ok=true`.
+
 ### Item Association nested form + parent save
 
 `Set Item Associations` (`m_setitemassociations` →
@@ -2103,7 +2137,9 @@ Probe: `tools/parity/probe-itempart-cascade.mjs` — measured `ok=true`.
   job, groups, **Item Part** (master + model detail; `masteripartcode`
   cascade measured as an original no-commit branch), update-item-basic-data,
   standalone **Price Policy** slab add/edit/delete, **Supplier** master +
-  manufacturer detail add/edit/detail-delete, compound reorder qty,
+  manufacturer detail add/edit/detail-delete, **Item Basic Data** new-item
+  add (temporary model/author/part fixtures; edit path original early-return
+  defect), compound reorder qty,
   credit/cash sale,
   change-items-price, supplier-wise-item-settings (add/edit/delete),
   purchase-return add/save, opening-purchase and loose-purchase
