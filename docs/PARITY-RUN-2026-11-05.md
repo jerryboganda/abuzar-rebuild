@@ -11,7 +11,7 @@ the tools in `tools/parity/`.
 | Visible menu items | 262 | 261 | `orig-menu.tsv` vs `menu-compare.json` |
 | Non-report screens opened | 62/62 | 62 attempted (55 direct, 7 captured at their response window) | `deploy/parity/screen-parity/old-nonreport`, `new-nonreport` |
 | Report screens opened | not yet (old crawl pending) | 53+ captured so far | `screen-parity/new-reports` |
-| Master-data forms: every editable field typed, add/edit/delete/save verified in PostgreSQL | 16 forms | 16 forms + 25 extra masters (Godown, Area, Region, Sub Area, Sales Person, Item Packing, Item Size, Unit, Item Style, Item Colour, Item Sleeve, Item Yarn, Item Fabric, Item Brand, Sale Type, Purchase Type, Issue Type, Ward, Relation, Rank, Disease, Patient Location, Diagnostic Item Type, Symptom Type, Visit Type) | `screen-parity/crud-fields/crud-*.json`, `tools/parity/probe-godown-crud.mjs`, `tools/parity/probe-area-crud.mjs`, `tools/parity/probe-single-master.mjs` |
+| Master-data forms: every editable field typed, add/edit/delete/save verified in PostgreSQL | 16 forms | 16 forms + 27 extra masters (Godown, Area, Region, Sub Area, Sales Person, Item Packing, Item Size, Unit, Item Style, Item Colour, Item Sleeve, Item Yarn, Item Fabric, Item Brand, Sale Type, Purchase Type, Issue Type, Ward, Relation, Rank, Disease, Patient Location, Diagnostic Item Type, Symptom Type, Visit Type, Department, Section) | `screen-parity/crud-fields/crud-*.json`, `tools/parity/probe-godown-crud.mjs`, `tools/parity/probe-area-crud.mjs`, `tools/parity/probe-single-master.mjs` |
 | DataWindow expression parse sweep | â€” | every `expression` parses; SQL comments stripped | `tools/parity/dw-expr-audit.mjs` |
 
 The 16 passing forms are: Customer Category, Customer Sector, Generic Item,
@@ -27,12 +27,12 @@ probes fire the real `m_godown` / `m_area0` / `m_region0` / `m_subarea` /
 `m_itembrand` / `m_saletype` / `m_purchasetype` / `m_issuetype` /
 `m_patientward` / `m_relation` / `m_rank` / `m_disease` /
 `m_patientlocation` / `m_diagnosticitemtype` / `m_symptomtype` /
-`m_visittype` handlers).  **Section** is reachable but data-blocked:
-its `deptcode` is required and
-`Department` has 0 rows in live and clone.  **Item Design**
-(`w_itemdesign_form`) is an orphaned window (no menu/`opensheet` reference)
-and **Item Type** has no master window; the `itemtype` table is not exposed
-through a form.
+`m_visittype` / `m_department` / `m_section` handlers).  **Section** is now
+verified with a temporary Department row; in normal use it remains
+data-blocked because `Department` is empty in both live and clone.
+**Item Design** (`w_itemdesign_form`) is an orphaned window (no
+menu/`opensheet` reference) and **Item Type** has no master window; the
+`itemtype` table is not exposed through a form.
 
 `Sale Promotion` is the only tested form that cannot complete: its Active /
 Customer Group / Weekday drop-downs are empty in the migrated clone (missing
@@ -1608,10 +1608,9 @@ Delete in every case showed the confirmation then “Record Deleted
 Successfully”; final counters were `ItemSleeve 1`, `ItemYarn 1`,
 `ItemFabric 1`, `ItemBrand 1`, and `audit_log 1,079 / max 1,127`.
 
-**Section (data-blocked):** `d_section_detail` requires `deptcode`, which is
-an FK to `department`; `Department` has **0 rows in both the live SQL Server
-DB and the clone** (it was already 0 for Receipt/Issue).  Section remains
-unreachable until department data exists.
+**Section:** covered by its own full cycle below; its `deptcode` FK needs a
+department, and `Department` is empty in both databases, so it remains a
+shared data gap for normal users.
 
 Probe: `tools/parity/probe-single-master.mjs <itemsleeve|itemyarn|itemfabric|itembrand>`
 — all four measured `ok=true`.
@@ -1700,6 +1699,23 @@ Successfully”; final counters were `DiagnosticItemType 4`, `SymptomType 4`,
 Probe: `tools/parity/probe-single-master.mjs <diagnosticitemtype|symptomtype|visittype>`
 — all three measured `ok=true`.
 
+### Department and Section (verified)
+
+**Department** (`m_department` → `w_department`, `w_single_entry`) is a clean
+0-row master: add code **1**, `_tabmaxkey('department') 0 -> 1`; edit
+name/description/active; delete with confirmation.  Exact restore:
+`department 0`, tab 0, `audit_log 1,079 / max 1,127` — measured `ok=true`.
+
+**Section** (`m_section` → `w_section_form`, `w_single_entry`) requires
+`deptcode`, and `Department` is empty in both databases.  The probe inserted
+a temporary `Department 1` for the test, then ran add (code **1**,
+`_tabmaxkey('Section') 0 -> 1`), edit and delete; the temporary department was
+removed in a `finally` block.  Exact restore: `section 0`, tab 0,
+`department 0`, tab 0, audit 1,079 / 1,127 — measured `ok=true`.
+
+Probes: `tools/parity/probe-single-master.mjs department` and
+`... section` (with the temporary department fixture).
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -1753,8 +1769,8 @@ Probe: `tools/parity/probe-single-master.mjs <diagnosticitemtype|symptomtype|vis
   **Item Style**, **Item Colour**, **Item Sleeve**, **Item Yarn**,
   **Item Fabric**, **Item Brand**, **Sale Type**, **Purchase Type**,
   **Issue Type**, **Ward**, **Relation**, **Rank**, **Disease**,
-  **Patient Location**, **Diagnostic Item Type**, **Symptom Type** and
-  **Visit Type** add/edit/delete and
+  **Patient Location**, **Diagnostic Item Type**, **Symptom Type**,
+  **Visit Type**, **Department** and **Section** add/edit/delete and
   **Sale Template header+detail**
   add/edit/save verified (File | Delete is original enabled-but-inert);
   committed transaction CRUD

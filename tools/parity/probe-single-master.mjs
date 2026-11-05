@@ -124,6 +124,16 @@ const CONFIGS = {
     fields: { name: '{{name}}' },
     edit: {},
   },
+  department: {
+    menu: 'm_department', window: 'w_department', table: 'department', key: 'deptcode', tab: 'department', prefix: 'PARITY DEPT',
+    fields: { name: '{{name}}', description: 'PARITY DEPARTMENT DESCRIPTION', active: 'Y' },
+    edit: { description: 'PARITY DEPARTMENT DESCRIPTION EDITED' },
+  },
+  section: {
+    menu: 'm_section', window: 'w_section_form', table: 'section', key: 'sectcode', tab: 'Section', prefix: 'PARITY SECTION',
+    fields: { name: '{{name}}', deptcode: 1, description: 'PARITY SECTION DESCRIPTION' },
+    edit: { description: 'PARITY SECTION DESCRIPTION EDITED' },
+  },
 };
 const key = process.argv[2] || 'region';
 const cfg = CONFIGS[key];
