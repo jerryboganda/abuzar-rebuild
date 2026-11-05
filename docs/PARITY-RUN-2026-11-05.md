@@ -1279,10 +1279,38 @@ Row pitch was re-measured on both sides instead of relying on the old note:
 Select Format detail **23-24 px**, Sale summary **20 px**, Select Column
 Criteria **23 px**.  The earlier generic “26 vs 28 px” did not reproduce on
 these pairs; the only residual is a ~3 px gap after the focused first radio
-row in Select Column Criteria.  Priority Setting column widths remain open.
+row in Select Column Criteria.  Priority Setting columns are measured
+separately below (no width change; the old capture had saved user widths and a
+Find/scroll state).
 
 Probe: `tools/parity/probe-dialog-geometry.mjs`; captures in
 `deploy/parity/geometry/`.
+
+### Priority Setting columns (re-measured; no width change)
+
+Measured at the list header row:
+
+| Boundary | Old x | New x |
+|---|---:|---:|
+| left edge | 12 | 7 |
+| after Alias | 91 | 84 |
+| after Item Name | 319 | 312 |
+| after Item Packing | 436 | 429 |
+| after Stock | 487 | 480 |
+| after Active | 527 | 520 |
+| after Manufacturer | 751 | 744 |
+| after Item Category | 937 | 930 |
+| right edge | 1128 | 1122 |
+
+All column widths match except the first (**79 vs 77 px**) and the last
+(**191 vs 192 px**); row pitch is **16 px** on both sides.  The old capture’s
+14.95% diff came from its saved Find/scroll state
+(`Find: ZYTO 500MG TAB`), user-resized columns and native-vs-browser font
+rendering — not a missing column rule.  Recapturing with the same Find text
+and the same first row gives a **14.57%** pixel diff, so no CSS column-width
+change was made (changing it would overfit a saved user layout).
+
+Probe: `tools/parity/probe-priority-geometry.mjs`.
 
 ### Remaining (measured)
 
@@ -1382,8 +1410,10 @@ Probe: `tools/parity/probe-dialog-geometry.mjs`; captures in
   * **Import Historical Data**: SQL-Server cross-database only (source
     database qualifiers/`CONVERT`); no PostgreSQL equivalent or source
     database exists, so it was not run.
-  * Visual: Priority Setting column widths and any remaining focus-row spacing
-    (modal frames now match 353x340 / 417x487 / 236x253 exactly).
+  * Visual: Priority Setting’s remaining difference is capture-state/font
+    rendering (column widths match within 2 px; old capture had a
+    `Find: ZYTO 500MG TAB` state and saved user widths) plus a ~3 px
+    focused-row gap.  Modal frames now match 353x340 / 417x487 / 236x253.
   * 067/068 final reports remain unpaired by original-side limits.
   * Sale Template and Customer/Supplier deletes are confirmed original
     behaviours, not rebuild gaps.
