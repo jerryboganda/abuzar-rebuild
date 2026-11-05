@@ -851,6 +851,29 @@ DataWindows in one `cb_ok` chain:
 * Restored through the same form (`parity9080` -> `password9080`); final DB
   value is `password9080`, `ok=true` for all three checks.
 
+### Modify Last Transaction Date
+
+`Maintenance | Modify Last Transaction Date` (`w_set_lasttransdate`) opened
+with `05/11/2026 00:00:00`.  Setting `04/11/2026 00:00:00` and pressing OK
+showed “The last Transaction Date has been changed”; PostgreSQL
+`serverdate.lasttransdate` changed from `2026-11-05 10:38:09` to
+`2026-11-04 00:00:00`.  The exact baseline timestamp was restored directly
+afterwards and verified (`2026-11-05 10:38:09`).
+
+### Lock Item Batches (lock + unlock save cycle)
+
+`Maintenance | Lock Item Batches` (`w_lockitembatches_form`):
+
+* `ue_list` loaded **28,966 items**; selected item **9801** and its single
+  batch (`gcode 1`, batch `.`, expiry 2030-12-12).
+* Set `locked=Y` and saved: PostgreSQL ran
+  `UPDATE dbo.godowndetail SET batch=$1, locked=$2 WHERE batch=$3 AND
+  expiry=$4 AND manfdate=$5 AND priority=$6 AND icode=$7 AND gcode=$8 AND
+  locked=$9 AND lockreasoncode=$10` with `[".","Y",".",…,9801,1,"N",1]`.
+  `godowndetail.locked` changed **N -> Y**.
+* Set `locked=N` and saved again; the value returned to **N**.  Final row is
+  identical to the captured baseline (`1 | 9801 | . | N | 1`).
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -907,8 +930,8 @@ DataWindows in one `cb_ok` chain:
   change-items-price, supplier-wise-item-settings (add/edit/delete),
   purchase-return add/save, users add/edit, modify-sale-invoices, three
   group-level settings (allowed price/cash account/supplier category),
-  Interface Setting visibility, Change Password and a Preferences setting
-  edit/save; non-destructive
+  Interface Setting visibility, Change Password, Modify Last Transaction Date,
+  Lock Item Batches and a Preferences setting edit/save; non-destructive
   nested actions
   exercised for Customer (40), Supplier (40) and Item (23, including all nine
   item-specific features); **139/141 mapped report paths paired** (only 067/068
