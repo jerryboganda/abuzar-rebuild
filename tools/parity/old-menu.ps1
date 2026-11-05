@@ -99,6 +99,18 @@ while ((Get-Date) -lt $deadline) {
       if ($kc -match 'Button' -and (Norm $kt) -eq 'ok') { $ok = $k; break }
       if ($kc -match 'Button' -and (Norm $kt) -eq 'cancel') { $ok = $k; break }
     }
+    # format choosers (Stock and Sales, stock in hand, ...) have no Ok: pick the
+    # first real format button, never a Cancel/Close or a section label
+    if ($null -eq $ok -and $title -match 'select format|report formats|stock report formats|select report type|column criteria|retrieval arguements') {
+      foreach ($k in $kids) {
+        $kt = [OldMenu]::Text($k)
+        $kc = [OldMenu]::Class($k)
+        if ($kc -notmatch 'Button') { continue }
+        $n = Norm $kt
+        if (-not $n -or $n -match 'cancel|close|^ok$|:$') { continue }
+        $ok = $k; break
+      }
+    }
     if ($ok -ne $null) {
       [OldMenu]::Click($ok)
       $clicked++
