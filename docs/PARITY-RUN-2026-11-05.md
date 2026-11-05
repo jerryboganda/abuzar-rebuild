@@ -1116,6 +1116,31 @@ removes and restores that allowance in the Sale grid:
 * The grids are built from the single company header; adding a genuinely new
   header is data-blocked (both live and clone have no `CompanyHeader` rows).
 
+### Change Item Discount – Category Wise (bulk update verified)
+
+`Maintenance | Change Item Discount` -> category-wise form
+(`w_change_itemdisc_catwise`, `il_changeoption=2`) was run on **category 6**
+(the smallest active category, **29 items**):
+
+* Set `icatcode 6`, `salediscno 1`, `saledisc 5` and pressed Change Now;
+  confirmation “Sale Discount of all those Items which belong to selected Item
+  Category will be Changed. Are You Sure…” answered Yes.
+* `f_generateitemlog` inserted **29 itemlog rows** (total 98,632 -> 98,661;
+  category-6 logs 257 -> 286; max itemrowid 152,907 -> 152,936).
+* `sp_changeitemdisc` updated **29/29 active items**:
+  `salediscperc 0.00 -> 5.00`, `changereason 'Change Discounts Cat Wise'`,
+  `module 'Change Discounts'`, `usercode 1`, `lastupdate` stamped by the
+  server, then “Discount has been changed”.
+* Audit rows 1,079 -> 1,137 (the item update trigger).
+* Exact restore: every category-6 item back to its captured
+  `salediscperc / changereason / module / usercode / lastupdate`, itemlog
+  deleted back to **98,632 / max 152,907** (category-6 257), audit back to
+  **1,079 / max 1,127**, both identity sequences reset.  Final item list is
+  byte-identical to the snapshot (`baselineOk=true`).
+* Harness note: a drop-down column whose child DataWindow has not been
+  retrieved rejects `SetItem(icatcode)`; the probe sets the model value
+  directly (a real user selects it from the list).
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -1172,8 +1197,9 @@ removes and restores that allowance in the Sale grid:
   change-items-price, supplier-wise-item-settings (add/edit/delete),
   purchase-return add/save, opening-purchase and loose-purchase
   add/edit/save, Item Form parent saves with nested price-policy/alias,
-  association, image and RichText notes rows, group-wise godown and header
-  settings, users add/edit,
+  association, image and RichText notes rows, group-wise godown/header
+  settings, Change Item Discount (category wise, 29 items),
+  users add/edit,
   modify-sale-invoices, three
   group-level settings (allowed price/cash account/supplier category),
   Interface Setting visibility, Change Password, Modify Last Transaction Date,
@@ -1198,9 +1224,9 @@ removes and restores that allowance in the Sale grid:
     Author(s)** is data-blocked (`Author`/`ItemAuthor` empty in both
     databases), as are **Set Models** (`Model`) and the item-category
     association (`CustItemCatAssociation`).
-  * **Change Item Discount** would bulk-update a whole category (plus one
-    itemlog row per item) and has not been run; the probe was deliberately
-    not executed against bulk data.
+  * ~~**Change Item Discount** would bulk-update a whole category~~ -
+    resolved: category-wise update of all 29 active category-6 items plus 29
+    itemlog rows verified and fully restored.
   * ~~**Group Wise Header Setting** probe hung~~ — resolved: opened directly
     with the group parameter and completed a remove/restore save cycle
     (35-row snapshot identical).
