@@ -57,7 +57,7 @@ export async function buildPages(ctl: NDwBase): Promise<HTMLElement[]> {
   await ctl.ready
   const m = ctl.model
   if (!m) return []
-  const view = new DwView(ctl, document.createElement('div'))
+  const view = new DwView(ctl, document.createElement('div'), false)
   if (num(m.def.datawindow, 'processing', 0) === 5) {
     // composite: every nested report is printed on its own pages, in the order of the report objects
     const out: HTMLElement[] = []
@@ -100,7 +100,10 @@ export async function buildPages(ctl: NDwBase): Promise<HTMLElement[]> {
     flow.push({ band: 'detail', row: i + 1, cls: 'row' })
     for (const g of [...levels].reverse()) if (i === rows.length - 1 || key(i, g.level) !== key(i + 1, g.level)) flow.push({ band: `trailer.${g.level}`, row: i + 1, cls: 'gtr' })
   }
-  if (view.heightOf(m, 'summary') > 0) flow.push({ band: 'summary', row: Math.max(1, rows.length), cls: 'sum' })
+  // PowerBuilder prints no summary band when the result set has no detail
+  // rows (verified against original report previews); only header/column
+  // bands and the page footer remain.
+  if (rows.length > 0 && view.heightOf(m, 'summary') > 0) flow.push({ band: 'summary', row: Math.max(1, rows.length), cls: 'sum' })
 
   // 2. cut it into pages
   const pagesFlow: Flow[][] = [[]]

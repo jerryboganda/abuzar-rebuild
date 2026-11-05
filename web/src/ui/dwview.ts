@@ -95,8 +95,18 @@ export class DwView {
   editCol = 0
   editObj = ''
   protected acceptEdit: (() => Promise<boolean>) | null = null
+  private textEditor: HTMLInputElement | null = null
+  private syncFocusedText: (() => void) | null = null
+  private releaseTextEditor: (() => void) | null = null
+  private pendingEdits = new Set<Promise<boolean>>()
+  private inputEvents: Promise<boolean> = Promise.resolve(true)
+  private inputEventCount = 0
+  private inputFailed = false
+  private inputVersion = 0
+  private acceptingModel: DwModel | null = null
+  private releaseAcceptance: (() => void) | null = null
   private disposed = false
-  private onChange = () => this.schedule()
+  private onChange = () => { this.bindAcceptance(this.ctl.model); this.schedule() }
   private cancelRender: (() => void) | null = null
   private cancelFill: (() => void) | null = null
 
@@ -108,6 +118,7 @@ export class DwView {
     host.appendChild(this.root)
     this.root.addEventListener('scroll', this.onScroll)
     if (observe) {
+      this.bindAcceptance(ctl.model)
       ctl.listeners.add(this.onChange)
       this.schedule()
     }
@@ -115,6 +126,12 @@ export class DwView {
 
   dispose(): void {
     this.disposed = true
+    this.discardInputEvents()
+    this.releaseTextEditor?.()
+    this.releaseTextEditor = null
+    this.textEditor = null
+    this.syncFocusedText = null
+    this.releaseAcceptance?.()
     this.acceptEdit = null
     this.editor = null
     this.ctl.listeners.delete(this.onChange)
@@ -123,6 +140,91 @@ export class DwView {
     this.fillToken++
     this.root.removeEventListener('scroll', this.onScroll)
     this.root.remove()
+  }
+
+  async acceptPendingEdit(): Promise<boolean> {
+    if (this.disposed) return false
+    while (this.pendingEdits.size) {
+      if ((await Promise.all(this.pendingEdits)).some((accepted) => !accepted)) return false
+    }
+    if (this.disposed || this.inputFailed) return false
+    return this.acceptEdit ? this.acceptEdit() : true
+  }
+
+  protected acceptanceBusy(message = 'The current entry is still being processed. Wait for it to finish before continuing.'): void {
+    console.warn(message)
+  }
+
+  protected discardInputEvents(): void {
+    this.inputVersion++
+    this.inputFailed = false
+  }
+
+  protected async acceptModelEdit(model: DwModel): Promise<boolean> {
+    if (this.disposed || this.ctl.model !== model) return false
+    if (this.inputFailed) {
+      this.acceptanceBusy('The input event failed. Edit the field again or press Escape to cancel before continuing.')
+      return false
+    }
+    if (this.pendingEdits.size) {
+      this.acceptanceBusy()
+      return false
+    }
+    return this.acceptEdit ? this.acceptEdit() : true
+  }
+
+  private bindAcceptance(model: DwModel | null): void {
+    if (this.acceptingModel === model) return
+    this.releaseAcceptance?.()
+    this.releaseAcceptance = null
+    this.acceptingModel = model
+    if (!model) return
+    const previous = model.acceptText
+    const accept = async () => {
+      if (!(await this.acceptModelEdit(model)) || this.disposed || this.ctl.model !== model) return -1
+      return previous()
+    }
+    model.acceptText = accept
+    this.releaseAcceptance = () => { if (model.acceptText === accept) model.acceptText = previous }
+  }
+
+  private async trackEdit(work: Promise<boolean>): Promise<boolean> {
+    const pending = work.catch((error) => {
+      this.ctl.rt.onError(error)
+      return false
+    })
+    this.pendingEdits.add(pending)
+    try {
+      return await pending
+    } finally {
+      this.pendingEdits.delete(pending)
+    }
+  }
+
+  private commitEditValue(model: DwModel, row: number, column: number, object: DwObject, value: unknown): Promise<boolean> {
+    return this.trackEdit(this.commitValue(model, row, column, object, value))
+  }
+
+  private inputChanged(model: DwModel, row: number, object: DwObject, text: string): void {
+    const record = model.rowAt(row)
+    const version = this.inputVersion
+    this.inputEventCount++
+    this.inputEvents = this.trackEdit(this.inputEvents.then(async () => {
+      if (this.disposed || this.ctl.destroyed || version !== this.inputVersion) return true
+      try {
+        if (this.ctl.model !== model || model.rowAt(row) !== record || model.row !== row ||
+          model.colNames[model.col - 1] !== object.name.toLowerCase()) {
+          throw new Error('The record changed before its input event could run. The entry was not applied.')
+        }
+        await this.ctl.rt.fire(this.ctl, 'editchanged', [row, { name: object.name }, text])
+        await this.ctl.rt.flushPosted()
+        if (version === this.inputVersion) this.inputFailed = false
+        return true
+      } catch (error) {
+        if (version === this.inputVersion) this.inputFailed = true
+        throw error
+      }
+    })).finally(() => { this.inputEventCount-- })
   }
 
   schedule(): void {
@@ -414,7 +516,11 @@ export class DwView {
       this.virt = null
       for (const f of flow) inner.appendChild(await this.flowBand(m, L, f, interactive))
     }
-    if (this.bandHeight(m, 'summary') > 0) inner.appendChild(await mk('summary', Math.max(1, rows.length), 'sum'))
+    // PowerBuilder does not print the summary band when the DataWindow has no
+    // detail rows (verified against the original previews: 010 prints header
+    // and column titles but no “Net Total” line, while the rebuild printed
+    // “Net Total 0.00”).  The page footer still prints.
+    if (rows.length > 0 && this.bandHeight(m, 'summary') > 0) inner.appendChild(await mk('summary', Math.max(1, rows.length), 'sum'))
     if (this.bandHeight(m, 'footer') > 0) {
       const f = await mk('footer', Math.max(1, rows.length), 'ftr')
       if (sticky) {
@@ -676,6 +782,15 @@ export class DwView {
   /** ItemChanged -> conversion -> validation -> write, the order the PowerBuilder DataWindow uses */
   protected async commitValue(m: DwModel, row: number, ci: number, o: DwObject, value: unknown): Promise<boolean> {
     return commitDwValue(this.ctl, m, row, ci, o, value)
+  }
+
+  protected async canEdit(model: DwModel, object: DwObject, row: number): Promise<boolean> {
+    return object.type === 'column' && this.ctl.props.get('enabled') !== false && model.colIndex(object.name) >= 0
+      && (await this.prop(model, object, 'visible', row, object.band)) !== '0'
+      && (await this.prop(model, object, 'protect', row, object.band)) !== '1'
+      && Number(await this.prop(model, object, 'tabsequence', row, object.band)) > 0
+      && !/^(yes|true|1)$/i.test(await this.prop(model, object, 'edit.readonly', row, object.band))
+      && !/^(yes|true|1)$/i.test(await this.prop(model, object, 'editmask.readonly', row, object.band))
   }
 
   protected async prop(m: DwModel, o: DwObject, key: string, row: number, band: string): Promise<string> {
@@ -1040,10 +1155,7 @@ export class DwView {
     }
     if (!cell) return false
     if (this.editor instanceof HTMLInputElement && this.editRow === m.row && this.editObj.toLowerCase() === name) {
-      // SetItem on the cell being edited updates the in-place text, as in PB
-      const v = m.buf.primary[m.row - 1]?.v[m.colIndex(name)]
-      const text = v === null || v === undefined ? '' : toStr(v)
-      if (this.editor.value !== text) this.editor.value = text
+      this.syncFocusedText?.()
       this.editor.focus()
       this.editor.select()
       return true
@@ -1085,6 +1197,7 @@ export class DwView {
     const e = this.editor
     if (!(e instanceof HTMLInputElement)) return
     e.value = s.value
+    e.dispatchEvent(new Event('dwtextchange'))
     if (s.start !== null && s.end !== null) e.setSelectionRange(s.start, s.end)
   }
 
@@ -1092,7 +1205,23 @@ export class DwView {
     cell.parentElement?.appendChild(editor)
   }
 
+  protected captureEditText(value: unknown): () => string {
+    const editor = this.textEditor
+    return () => editor?.value ?? toStr(value)
+  }
+
+  protected restoreRejectedText(text: string): void {
+    if (!(this.editor instanceof HTMLInputElement)) return
+    this.editor.value = text
+    this.editor.dispatchEvent(new Event('dwtextchange'))
+    this.editor.setAttribute('aria-invalid', 'true')
+  }
+
   protected edit(m: DwModel, o: DwObject, row: number, cell: HTMLElement): void {
+    this.releaseTextEditor?.()
+    this.releaseTextEditor = null
+    this.textEditor = null
+    this.syncFocusedText = null
     if (this.editor) {
       const ed = this.editor
       // clearing the field before remove stops a synchronous blur handler from
@@ -1108,7 +1237,7 @@ export class DwView {
     if (o['checkbox.on'] !== undefined) {
       const cur = toStr(m.buf.primary[row - 1]?.v[ci])
       const next = cur === o['checkbox.on'] ? o['checkbox.off'] : o['checkbox.on']
-      void this.commitValue(m, row, ci, o, next)
+      void this.commitEditValue(m, row, ci, o, next)
       return
     }
     const ct = Object.keys(o).some((k) => k.startsWith('ddlb.')) ? this.codeTable(m, o) : null
@@ -1133,7 +1262,7 @@ export class DwView {
         const val = sel.value
         if (sel.isConnected) sel.remove()
         if (val !== cur) {
-          void this.commitValue(m, row, ci, o, val)
+          void this.commitEditValue(m, row, ci, o, val)
         }
       }
       sel.addEventListener('change', done)
@@ -1165,7 +1294,7 @@ export class DwView {
           const val = sel.value
           if (sel.isConnected) sel.remove()
           if (val !== cur) {
-            void this.commitValue(m, row, ci, o, val)
+            void this.commitEditValue(m, row, ci, o, val)
           }
         }
         sel.addEventListener('change', done)
@@ -1175,42 +1304,110 @@ export class DwView {
     }
     const input = document.createElement('input')
     input.className = 'dw-edit'
+    const record = m.rowAt(row)
     const v = m.buf.primary[row - 1]?.v[ci]
     input.value = v === null || v === undefined ? '' : toStr(v)
     input.style.cssText = cell.style.cssText + ';z-index:5;border:1px solid #0078d7;background:#fff'
     input.style.lineHeight = 'normal'
     this.placeEditor(input, cell)
     this.editor = input
+    this.textEditor = input
+    let storedText = input.value
+    this.syncFocusedText = () => {
+      const current = toStr(m.getItem(row, ci + 1))
+      if (current !== storedText) {
+        storedText = current
+        input.value = current
+        input.dispatchEvent(new Event('dwtextchange'))
+      }
+    }
+    const releaseText = this.ctl.bindTextEditor(m, row, o.name, {
+      read: () => input.value,
+      write: (text) => {
+        input.value = text
+        input.dispatchEvent(new Event('dwtextchange'))
+      },
+    })
+    this.releaseTextEditor = releaseText
+    const release = () => {
+      releaseText()
+      if (this.textEditor === input) {
+        this.textEditor = null
+        this.syncFocusedText = null
+        this.releaseTextEditor = null
+      }
+    }
     input.focus()
     input.select()
     const commit = async (): Promise<boolean> => {
+      if (this.inputFailed) return false
       if (this.editor !== input) return true
       this.editor = null
       const text = input.value
       if (input.isConnected) input.remove()
       const cur = v === null || v === undefined ? '' : toStr(v)
-      if (text !== cur) return this.commitValue(m, row, ci, o, text)
-      return true
+      try {
+        const accepted = text !== cur ? await this.commitEditValue(m, row, ci, o, text) : true
+        if (!accepted && !this.editor && !this.disposed && this.ctl.model === m &&
+          m.rowAt(row) === record && m.row === row && m.col === ci + 1) {
+          const target = this.cellOf(row, o.name)
+          if (target && await this.canEdit(m, o, row)) {
+            this.edit(m, o, row, target)
+            this.restoreRejectedText(input.value)
+          }
+        }
+        return accepted
+      } finally {
+        release()
+      }
     }
     this.acceptEdit = commit
-    input.addEventListener('blur', () => void commit())
+    const commitFromUi = (): Promise<boolean> => {
+      if (!this.inputEventCount) return commit()
+      const version = this.inputVersion
+      return this.trackEdit((async () => {
+        let pending: Promise<boolean>
+        do {
+          pending = this.inputEvents
+          if (!(await pending)) return false
+        } while (pending !== this.inputEvents)
+        if (this.disposed || version !== this.inputVersion || this.ctl.model !== m || m.rowAt(row) !== record) return false
+        if (this.editor === input) return commit()
+        if (this.editor && this.editRow === row && this.editCol === ci + 1 && this.editObj === o.name) {
+          return this.acceptEdit ? this.acceptEdit() : false
+        }
+        return !this.editor
+      })())
+    }
+    input.addEventListener('input', () => this.inputChanged(m, row, o, input.value))
+    input.addEventListener('blur', () => {
+      queueMicrotask(() => {
+        const modal = document.activeElement instanceof Element
+          ? document.activeElement.closest('dialog[open],.msgbox') : null
+        if (modal && !modal.contains(this.root)) return
+        void commitFromUi()
+      })
+    })
     input.addEventListener('keydown', (ev) => {
       const k = keyEnum(ev)
       if (ev.key === 'Escape') {
         this.editor = null
+        this.acceptEdit = null
+        this.discardInputEvents()
+        release()
         if (input.isConnected) input.remove()
         return
       }
       if (ev.key === 'Tab') {
         ev.preventDefault()
-        void commit().then((ok) => { if (ok) this.tabNext(ev.shiftKey ? -1 : 1) })
+        void commitFromUi().then((ok) => { if (ok) this.tabNext(ev.shiftKey ? -1 : 1) })
         return
       }
       if (ev.key === 'Enter') {
         ev.preventDefault()
         // ProcessEnter: a script on the control decides (usually it presses Tab); without one Enter moves on like Tab
         const has = this.ctl.findRoutines('ue_enterkey').length > 0
-        void commit().then(async (ok) => {
+        void commitFromUi().then(async (ok) => {
           if (!ok) return
           if (has) await this.ctl.rt.fire(this.ctl, 'ue_enterkey', [])
           else await this.tabNext(1)

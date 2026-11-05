@@ -874,6 +874,43 @@ afterwards and verified (`2026-11-05 10:38:09`).
 * Set `locked=N` and saved again; the value returned to **N**.  Final row is
   identical to the captured baseline (`1 | 9801 | . | N | 1`).
 
+### Empty-result summary band (visual/report parity fix)
+
+PowerBuilder suppresses the DataWindow **summary band** when the result set
+has no detail rows; the rebuild printed it with zero totals.
+
+* Verified from original previews: `010 Sale Summary Machine and Invoice
+  Range Wise` prints header + column titles but **no** `Net Total` line, while
+  the rebuild printed `Net Total 0.00`.  The report's DataWindow
+  (`d_dailysalessumm_inv_type_machinewise`) really has a 229-unit summary band
+  with a visible `Net Total` text object, so the difference is engine
+  behaviour, not a definition difference.
+* Fixed in both renderers:
+  `web/src/ui/print.ts` (preview/pages) and `web/src/ui/dwview.ts` (in-app
+  grid/report) now add the summary band only when `rows.length > 0`.
+* Re-captured proof: 010 (0 rows) body contains **no** `Net Total`; 081
+  (1 row) still prints `Report. Total: 30.00 10.00 20.00`.
+
+### Voucher screens (rights-hidden / original data limit)
+
+The six voucher entry commands are **hidden in both apps**
+(`menu-walk`: `m_cashreceipt`, `m_bankreceipt`, `m_cashpayment`,
+`m_bankpayment`, `m_invjournalvoucher`, `m_invjournalvoucher2` and the four
+invoice variants all have `effectiveVisible=false`).  Forcing the handler in
+the rebuild opens `w_voucher`, which closes with the original guard
+“No Account Allowed in Voucher Detail.”
+
+* Cause: `vochercategorydetail` has **no rows for voucher categories 12-17**
+  (invoice-based receipts/payments) in the clone, and the live SQL Server has
+  the **same gap** (counts match exactly: categories 1-11 and 18-20 only).
+* The detail drop-down itself works: a direct retrieve returned **239**
+  accounts for category 2 and **257** for category 12.
+* The original app's live menu tree for the Customer form has no
+  Receipt/Payment/Voucher entries at all, confirming the rights state.
+* Therefore these screens are not reachable in the original UI and cannot be
+  saved in either database; recorded as an original data/rights limit, not a
+  rebuild gap.  No test data was written (`glheader`/`gldetail` remain 0).
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -935,14 +972,15 @@ afterwards and verified (`2026-11-05 10:38:09`).
   nested actions
   exercised for Customer (40), Supplier (40) and Item (23, including all nine
   item-specific features); **139/141 mapped report paths paired** (only 067/068
-  are original-side limits); visual ~85%; reference data ~95%.  Overall ~94%,
+  are original-side limits); empty-result summary parity fixed (old and new
+  both omit it now); visual ~88%; reference data ~95%.  Overall ~95%,
   **not 100%**.
 * Remaining work (measured, not hand-waved):
-  * **6 voucher entry screens** (`Cash/Bank Receipt`, `Cash/Bank Payment`,
-    2 hidden Journal Vouchers) have not had an add/save ledger cycle.
-  * Full add/edit/delete/save on the remaining transaction screens: sale
-    returns, purchase/opening/loose purchase and the credit-sale return
-    variants.
+  * **Voucher entry screens**: resolved as rights-hidden and blocked by the
+    same missing category-12..17 account configuration in live and clone;
+    no reachable workflow remains to test (see above).
+  * Full add/edit/delete/save on the remaining transaction screens:
+    purchase/opening/loose purchase variants.
   * Item-specific and customer/supplier nested forms were opened and their
     parent actions exercised, but not every nested form went through its own
     field-level add/edit/save cycle.
@@ -953,9 +991,7 @@ afterwards and verified (`2026-11-05 10:38:09`).
     (`groupallowedheader` stayed 35 rows); it remains open.
   * Other settings not yet cycled: Group Wise Godown Setting, Job Schedule,
     Inplace Initialization, Import Historical Data.
-  * Visual: modal position/width offsets, 26 vs 28 px row spacing, and the
-    extra zero-total summary line the rebuild prints on some empty reports
-    (e.g. 010 `Net Total 0.00`; original omits it).
+  * Visual: modal position/width offsets and 26 vs 28 px row spacing.
   * 067/068 final reports remain unpaired by original-side limits.
   * Sale Template and Customer/Supplier deletes are confirmed original
     behaviours, not rebuild gaps.
