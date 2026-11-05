@@ -614,6 +614,24 @@ manufacturer sheet:
   Item Basic Data and Sale Margin/Markup Auditing item-log paths.
 * Class bundle regenerated: **2,833 classes, 37,792 routines, 0 parse errors**.
 
+### Supplier Wise Item Settings (Update Item Suppliers)
+
+`Maintenance | Update Item Suppliers` (`w_itemsuppliers_form`, “Supplier Wise
+Item Settings”) was exercised through its own selector:
+
+* `ue_list` retrieved **225 suppliers**; selecting supplier **311** opened the
+  item settings grid.
+* Added item **9801** with priority 2, rate 10.00, discount 1.00, sale qty 2,
+  bonus 1, days 5.  Save produced “Changes take effect in database” and the
+  PostgreSQL row was exactly
+  `9801 | 311 | 2 | 10.00 | 1.00 | 2 | 1 | 5`.
+* The first attempt used priority 1 and was correctly rolled back by the real
+  unique constraint `itemsuppliers_icode_priority_uk` (supplier 247 already
+  holds priority 1 for item 9801).  The form did not surface that database
+  error, but the transaction was not committed.
+* The test row was removed; `itemsuppliers` is back to 21,141 rows and item
+  9801/supplier 311 has no row.
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -663,7 +681,8 @@ manufacturer sheet:
   add/edit/save verified (delete handler missing); committed transaction CRUD
   verified for quotation, purchase order, refused sale, adjustments, cashier
   job, groups, update-item-basic-data, compound reorder qty, credit/cash sale,
-  change-items-price and modify-sale-invoices; non-destructive nested actions
+  change-items-price, supplier-wise-item-settings and modify-sale-invoices;
+  non-destructive nested actions
   exercised for Customer (40), Supplier (40) and Item (23, including all nine
   item-specific features); **45/138 report final-stage pairs captured**;
   visual ~85%; reference data ~95%.  Overall ~89%, **not 100%**.
