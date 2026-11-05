@@ -1382,6 +1382,28 @@ Probe: `tools/parity/probe-empdept-crud.mjs` - measured `ok=true`.
 Probe: `tools/parity/probe-single-master.mjs itemmeter` - measured
 `ok=true`.
 
+### Item Allowed Meter assignment (verified)
+
+`m_itemallowedmeter` (hidden) opens `w_itemallowedmeter`
+(`w_multi_entry`, title "Item Allowed Meter").  The master is the existing
+item (`d_itemallowedmeter_header` on `Item`); the detail
+`d_itemallowedmeter_detail` updates `ItemAllowedMeter`
+(`icode`, `itemmetercode`, `priority`).
+
+* With temporary `ItemMeter 1`, set master code **9801** (`FACE MASK`) and
+  detail meter 1 / priority 10, then Save:
+  `INSERT INTO dbo.itemallowedmeter (icode, itemmetercode, priority)
+  VALUES (9801, 1, 10)` (rowcount 1); "Changes take effect in database".
+* Removed the detail row from the buffer and saved again:
+  `DELETE FROM dbo.itemallowedmeter WHERE icode = 9801 AND itemmetercode = 1
+  AND priority = 10` (rowcount 1).
+* The form never updates `Item`; item 9801 stayed
+  `saleprice 10.00 / lastupdate 2026-11-05 10:38:44.342`.
+* Exact restore: `itemallowedmeter 0`, `itemmeter 0`,
+  `audit_log 1,079 / max 1,127`, no residue.
+
+Probe: `tools/parity/probe-itemallowedmeter-crud.mjs` - measured `ok=true`.
+
 ### Item Association nested form + parent save
 
 `Set Item Associations` (`m_setitemassociations` →
