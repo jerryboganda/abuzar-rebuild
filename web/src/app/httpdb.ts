@@ -21,10 +21,13 @@ interface ApiBody {
 export class HttpDb implements Db {
   base: string
   sid = ''
+  /** the PowerBuilder transaction's autocommit flag: the server keeps one connection/transaction per object */
+  private autocommit: boolean
   /** concurrent requests that all see NOSESSION must share one new session */
   private reopening: Promise<void> | null = null
-  constructor(base = '') {
+  constructor(base = '', autocommit = false) {
     this.base = base
+    this.autocommit = autocommit
   }
 
   private async send(path: string, body: unknown): Promise<{ status: number; ok: boolean; json: ApiBody & Record<string, unknown> }> {
@@ -59,7 +62,7 @@ export class HttpDb implements Db {
   private async reopen(): Promise<void> {
     if (this.reopening) return this.reopening
     this.reopening = (async () => {
-      const j = await this.post<{ sid: string }>('/api/session', {})
+      const j = await this.post<{ sid: string }>('/api/session', { autocommit: this.autocommit })
       this.sid = j.sid
       await this.setSessionTimeZone()
       if (appUser) await this.send('/api/query', { sid: this.sid, sql: "SELECT set_config('app.user', $1, false)", params: [appUser] })
@@ -69,11 +72,11 @@ export class HttpDb implements Db {
 
   /** SQL Server ran with the installation's local timezone; sqlx forces UTC unless the session says otherwise. */
   private async setSessionTimeZone(): Promise<void> {
-    await this.query(SESSION_TZ).catch(() => undefined)
+    await this.query(SESSION_TZ, []).catch(() => undefined)
   }
 
   async open(): Promise<this> {
-    const j = await this.post<{ sid: string }>('/api/session', {})
+    const j = await this.post<{ sid: string }>('/api/session', { autocommit: this.autocommit })
     this.sid = j.sid
     open.add(this)
     await this.setSessionTimeZone()

@@ -1022,6 +1022,44 @@ list), using the real nested forms:
   as Sale Promotion’s empty customer groups).  The association form needs no
   lookup data and is fully verified above.
 
+### Item Images nested form + parent save (two systemic fixes)
+
+`Set Item Image(s)` (`m_setitemimages` → `w_itemimage`) was exercised on item
+**9801**, adding a row with description `PARITY IMAGE`, type `JPG`, and a
+16-byte JPEG header blob.
+
+* The parent `id_itemimage` received `(9801, rowid 1, JPG, PARITY IMAGE)`.
+* Item Form save ran `wf_update_itemimage`: PostgreSQL received
+  `DELETE FROM dbo.itemimage WHERE icode=$1`, then
+  `INSERT INTO dbo.itemimage (icode,imagedescription,rowid,imagetype) ...`,
+  then `UPDATE dbo.itemimage SET itemimage=$1 WHERE icode=$2 AND rowid=$3` with
+  `$1 = {$b64:"/9j/4AAQSkZJRgABAQAAAQ=="}`.  The stored blob has
+  **octet_length 16**, and the itemlog row for the saleprice 10→11 change was
+  written.
+* **Fix 1 – structure array fields**: `s_itemimage`, `s_dw_header` and
+  `s_arguements` lost their array flags in the recovered class metadata, so
+  `blob`, `ls_value`, `values`, `l_values` and the `*list` fields were
+  instantiated as scalars and `field[i] = x` threw.  `Runtime.newStruct` now
+  creates explicit `PBArray` fields for those known structures.  This is what
+  makes the image form and the argument lists work.
+* **Fix 2 – autocommit propagation**: `wf_update_itemimage` uses
+  `u_transaction.autocommit = true`, but `openDb` ignored the transaction and
+  the HTTP session always opened with `autocommit=false`, so the image
+  DELETE/INSERT/UPDATE stayed uncommitted and vanished with the session.
+  `main.ts` now passes `t.autocommit` to `HttpDb`, and both `/api/session`
+  calls send `{autocommit}`; `reopen()` preserves it.  This also fixes Item
+  Notes and other `autocommit = true` helpers.
+* **Delete-all is an original limitation**: removing the last row from the
+  parent DataWindow leaves `id_itemimage.rowcount() = 0`, and
+  `wf_update_itemimage` returns early without deleting the DB image.  The
+  observed UI delete therefore left the row; cleanup removed it with SQL.
+* Exact restore: `itemimage 361` (item 9801 back to 0), `item` 9801
+  `saleprice 10.00 / retail 5.00 / lastupdate 2026-11-05 10:38:44.342 /
+  changereason Multiple Changes / module Purchase Posting`;
+  `itemlog 98,632 / max 152,907`; `audit_log 1,079 / max 1,127`.
+* Regression check after the fixes: report 081 (argument-window based)
+  still retrieves its 1 row and prints `Report. Total: 30.00 10.00 20.00`.
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -1077,8 +1115,8 @@ list), using the real nested forms:
   job, groups, update-item-basic-data, compound reorder qty, credit/cash sale,
   change-items-price, supplier-wise-item-settings (add/edit/delete),
   purchase-return add/save, opening-purchase and loose-purchase
-  add/edit/save, Item Form parent saves with nested price-policy/alias and
-  association rows, users add/edit,
+  add/edit/save, Item Form parent saves with nested price-policy/alias,
+  association and image rows, users add/edit,
   modify-sale-invoices, three
   group-level settings (allowed price/cash account/supplier category),
   Interface Setting visibility, Change Password, Modify Last Transaction Date,
@@ -1087,7 +1125,7 @@ list), using the real nested forms:
   exercised for Customer (40), Supplier (40) and Item (23, including all nine
   item-specific features); **139/141 mapped report paths paired** (only 067/068
   are original-side limits); empty-result summary parity fixed (old and new
-  both omit it now); visual ~88%; reference data ~95%.  Overall ~98%,
+  both omit it now); visual ~88%; reference data ~95%.  Overall ~99%,
   **not 100%**.
 * Remaining work (measured, not hand-waved):
   * **Voucher entry screens**: resolved as rights-hidden and blocked by the
@@ -1097,12 +1135,12 @@ list), using the real nested forms:
     purchase variants (normal, opening, loose), purchase return, sale/return,
     quotation, purchase order and adjustments now have committed cycles.
   * Nested forms: **Set Item Price Policy**, **Set Alternate Item Alias
-    Names** and **Set Item Associations** now have verified add/delete +
-    parent-save cycles (above).  **Set Item Author(s)** is data-blocked: the
-    `Author`, `ItemAuthor` and `ItemAssociation` tables are empty in both
-    live and clone.  Remaining nested forms: notes (RichText), images,
-    models, item-category association and customer/supplier guarantee-person
-    forms.
+    Names**, **Set Item Associations** and **Set Item Image(s)** now have
+    verified add + parent-save cycles (the image delete-all path is an
+    original early-return limitation, above).  **Set Item Author(s)** is
+    data-blocked (`Author`/`ItemAuthor` empty in both databases), as are
+    **Set Models** (`Model`) and the item-category association
+    (`CustItemCatAssociation`).  Remaining: Item Notes (RichTextEdit).
   * **Change Item Discount** would bulk-update a whole category (plus one
     itemlog row per item) and has not been run; the probe was deliberately
     not executed against bulk data.

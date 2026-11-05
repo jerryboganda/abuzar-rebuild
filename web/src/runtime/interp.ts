@@ -2,6 +2,8 @@
 import type { Expr, Stmt, Routine, CaseTest } from '../pbscript/ast.ts'
 import { PBObject, PBStruct, isMember } from './object.ts'
 import { NWinSock } from './native/winsock.ts'
+import type { NWindow } from './native/controls.ts'
+import type { NDwBase } from './native/dwctrl.ts'
 import type { ClassDef, ControlDef, FieldDef, Member, RoutineEntry } from './object.ts'
 import { add, cmp, coerce, defaultValue, Dec, div, equals, isNull, mul, NUMERIC_TYPES, PBArray, PBRuntimeError, sub, toNum, toStr } from './values.ts'
 
@@ -13,9 +15,27 @@ export interface ClassLoader {
 
 export interface UiHost {
   messageBox(title: string, text: string, icon: string, buttons: string, def: number): Promise<number>
-  openWindow(rt: Runtime, w: PBObject, modal: boolean, sheet: boolean): Promise<void>
-  closeWindow(w: PBObject): void
-  [k: string]: unknown
+  openWindow?(rt: Runtime, w: PBObject, modal: boolean, sheet: boolean): Promise<void>
+  createWindow?(w: NWindow, options: { sheet: boolean; modal: boolean }): void
+  showWindow?(w: NWindow, options: { sheet: boolean; modal: boolean }): void
+  hideWindow?(w: NWindow): void
+  closeWindow(w: NWindow): void
+  activate?(w: NWindow): void
+  focus?(object: PBObject): void
+  focusDw?(object: PBObject, fallback?: boolean): Promise<boolean>
+  focused?(): PBObject | null
+  selectText?(object: PBObject, start: number, length: number): void
+  sendKey?(object: unknown, key: number): Promise<void> | void
+  keyIsDown?(key: string): boolean
+  activeSheet?(parent: NWindow): PBObject | null
+  changeMenu?(window: NWindow, menu: unknown): void
+  popMenu?(menu: PBObject, x: number, y: number): void
+  setMicroHelp?(window: NWindow, text: string): void
+  print?(control: NDwBase): Promise<boolean>
+  saveAs?(control: NDwBase, file: string, type: string, headers: boolean): Promise<boolean>
+  printText?(text: string): Promise<boolean>
+  prompt?(title: string, text: string, initial: string): Promise<string | null>
+  dispose?(): void
 }
 
 export interface SysFunc {
@@ -772,9 +792,26 @@ export class Runtime {
     return null
   }
 
+  /**
+   * Structure fields that are arrays in PowerBuilder but whose recovered
+   * class metadata lost the array flag/bounds (the decompiler stored a binary
+   * default instead).  Creating them as scalars made `field[i] = x` throw and
+   * left the image and argument structures unusable.
+   */
+  private static readonly STRUCT_ARRAY_FIELDS: Record<string, string[]> = {
+    s_arguements: ['sa_stringlist', 'ia_integerlist', 'ra_reallist', 'ia_integerlist1', 'ia_integerlist2', 'la_longlist', 'da_doublelist'],
+    s_dw_header: ['values', 'l_values'],
+    s_itemimage: ['ls_value', 'blob'],
+  }
+
   async newStruct(cls: ClassDef): Promise<PBStruct> {
     const s = new PBStruct(cls.name)
+    const arrays = Runtime.STRUCT_ARRAY_FIELDS[cls.name.toLowerCase()]
     for (const fd of cls.fields) {
+      if (arrays?.includes(fd.name.toLowerCase())) {
+        s.f.set(fd.name, new PBArray(fd.type))
+        continue
+      }
       const t = fd.type.toLowerCase()
       const init = PRIMITIVES.has(t) && fd.value !== undefined && fd.value !== null && typeof fd.value !== 'object' ? fd.value : await this.defaultOf(t)
       s.f.set(fd.name, init)
@@ -996,7 +1033,7 @@ export class Runtime {
         }
       }
       const args: unknown[] = []
-      let refIdx = REF_METHODS[e.n]
+      let refIdx: number[] | undefined = REF_METHODS[e.n]
       // RPC calls on a transaction object: INOUT / OUT parameters come back through the arguments
       if (!refIdx && recv instanceof PBObject && recv.native === 'transaction' && this.procs?.refPositions) refIdx = this.procs.refPositions(e.n)
       // a script routine of the receiver with `ref` parameters (`w_main.wf_getappname(ref string as_appname)`) gets references for them

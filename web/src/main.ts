@@ -11,12 +11,15 @@ import { authHeaders } from './runtime/apiauth.ts'
 import { setApiBase } from './runtime/sysfiles.ts'
 import { localeDateOrder, setDateOrder } from './runtime/values.ts'
 import { startApplication, DEFAULT_CONFIG } from './app/startup.ts'
+import { PresentationSession } from './app/ui-preferences.ts'
+import { PresentationUi } from './ui/presentation-ui.ts'
+import { nativeAppearance } from './ui/native-appearance.ts'
 import { fixSqlTables } from './runtime/sql-fixes.ts'
 import { autoLogin } from './app/autologin.ts'
 import { buildPages } from './ui/print.ts'
 import { DwView } from './ui/dwview.ts'
 import type { NDwBase } from './runtime/native/dwctrl.ts'
-import type { NTransaction } from './runtime/native/transaction.ts'
+import { NTransaction } from './runtime/native/transaction.ts'
 
 /** Tauri shell: replace the default resource icon with the Waseela app icon. */
 async function setNativeIcon(): Promise<void> {
@@ -120,16 +123,19 @@ async function main(): Promise<void> {
     stmts: sqlTables.stmt,
     dwSql: sqlTables.dw,
     procs: sqlTables.proc,
-    openDb: async (_t: PBObject): Promise<Db> => (useMock ? new MockDb(rt.dwCatalog!, Number(q.get('rows')) || 6) : await new HttpDb(server ?? '').open()),
+    openDb: async (t: PBObject): Promise<Db> => (useMock ? new MockDb(rt.dwCatalog!, Number(q.get('rows')) || 6) : await new HttpDb(server ?? '', !!t.props.get('autocommit')).open()),
   })
   if (useMock) rt.dwSql = (n) => ({ sql: 'mock:' + n, params: [], proc: !!sqlTables.dw?.[n]?.proc })
-  const ui = new DomUi(rt, desktop)
+  let ui: DomUi = new DomUi(rt, desktop)
   rt.ui = ui
   rt.onError = (e) => {
     console.error(e)
     void ui.messageBox('Application error', (e instanceof Error ? e.message : String(e)) + ((e as { where?: string }).where ? `
 (in ${(e as { where?: string }).where})` : ''), 'stopsign!', 'ok!', 1)
   }
+  void nativeAppearance.set('light').catch((cause: unknown) => rt.onError(
+    new Error('The desktop window could not restore its Classic Light appearance. Restart the application to retry.', { cause }),
+  ))
   ;(window as unknown as { rt: unknown }).rt = rt
   const dwName = q.get('dw') || q.get('live')
   if (dwName) {
@@ -163,7 +169,26 @@ async function main(): Promise<void> {
     const auto = (q.get('autologin') ?? '').split(':')
     if (auto.length === 2) void autoLogin(rt, auto[0], auto[1])
     try {
-      await startApplication(rt, { ...DEFAULT_CONFIG, company: q.get('company') ?? '' })
+      await startApplication(rt, { ...DEFAULT_CONFIG, company: q.get('company') ?? '' }, q.get('presentation') === '1' ? {
+        onAuthenticated: async ({ appUser, config }) => {
+          let database = 'mock:' + config.database
+          if (!useMock) {
+            const transaction = rt.globals.get('sqlca')
+            if (!(transaction instanceof NTransaction) || !transaction.db) throw new Error('Appearance selection requires the signed-in database session.')
+            const result = await transaction.db.query('SELECT current_database() AS database_name', [])
+            const identity = result.rows[0]?.[0]
+            if (typeof identity !== 'string' || !identity.trim()) throw new Error('The active database could not be identified for appearance settings.')
+            database = identity
+          }
+          const session = await PresentationSession.load(localStorage, {
+            server: server ? new URL(server, location.href).href : location.origin,
+            database, appUser, workstation: config.computer,
+          })
+          ui.dispose()
+          ui = new PresentationUi(rt, desktop, session)
+          rt.ui = ui
+        },
+      } : {})
     } catch (e) {
       rt.onError(e)
     }
