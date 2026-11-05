@@ -513,6 +513,17 @@ driven by menu command ID (no blind clicking).  First sample:
   stock IN/OUT, stock management, narcotics register, customer sales
   detail/summary/days/profit margin).  Every new final state title starts with
   `Report:`.
+* Pairs **061-066** are captured: Customer Sales Items Summary (new report
+  **28,966 rows**), Invoice Summary, Hourly Graph (3 rows), Customer Category
+  Net Sales, Customer Wise Category Net Sales and Monthly Net Sales.  New 061
+  wrote its JSON/PNG with 28,966 rows but the batch marked it failed because
+  the process exceeded the 120 s close timeout; the artifact is complete.
+* **067/068 old-side limits**: `Claimable for Allowed Customers` opens a
+  “Row Validation” box and then a PowerBuilder R0023 error with the default
+  arguments, so no old preview can be produced without specific input.
+  `Customer NTN Wise Sales Tax Report` is one of the two known original
+  crashes; it terminated the original app during capture.  New previews for
+  067/068 exist, but these two remain unpaired by original limitation.
 * The capture path is now generic (`deploy/parity/pw/probe-report-generic.mjs`
   on the rebuild, `tools/parity/old-menu.ps1` on the original): it answers
   whichever Select Format / Specify Retrieval Arguements / Selection List
@@ -655,6 +666,22 @@ Item Settings”) was exercised through its own selector:
 * The test row is gone; `itemsuppliers` is back to 21,141 rows and item
   9801/supplier 311 has no row.
 
+### Preferences edit/save (settings persistence)
+
+`Maintenance | Preferences` (`w_preferences`) was exercised on a real
+preference:
+
+* Every tab uses `d_softwarepreferences`; the window opened with 67 rows in
+  `dw_hidden` plus the tab grids.
+* Located `showtransitstockinitemlist` in **`dw_general` row 26** (value `N`).
+* Changed it to `Y` and pressed the form's `cb_ok`.  PostgreSQL
+  `softwarepreferences.prefvalue` changed **N -> Y**.
+* The save also showed “Unable to update backup job status.” — the
+  SQL-Server-Agent backup-job update has no PostgreSQL equivalent; it is a
+  warning, not a rollback (the preference persisted).
+* Restored the clone value to `N` and verified
+  `showtransitstockinitemlist | N`.
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -668,8 +695,9 @@ Item Settings”) was exercised through its own selector:
   behaviour (no `ue_delete` in the original library).  The rest still need
   their own cycles.
 * Reports: final-stage pixel comparison is now method-complete (Win32 menu-ID
-  driver + generic rebuild capture) with **60/138 pairs captured**
-  (001-060), all old and new final previews present; 78 remain.  The
+  driver + generic rebuild capture) with **66/138 pairs captured**
+  (001-066), all old and new final previews present for those paths; 72
+  remain.  The
   empty-result difference is consistent: old shows header only, new also
   prints summary/footer bands with zero totals.
 * Visual geometry: modal 3 px/8 px offset, 26 vs 28 px row spacing, Priority
@@ -702,14 +730,16 @@ Item Settings”) was exercised through its own selector:
 * Measured coverage now: definitions/menus/controls ~100%; non-report screen
   opening ~100% of the 68 effectively visible paths; field-level master CRUD
   **16/16 forms** (51 fields) plus **Sale Template header+detail**
-  add/edit/save verified (delete handler missing); committed transaction CRUD
+  add/edit/save verified (File | Delete is original enabled-but-inert);
+  committed transaction CRUD
   verified for quotation, purchase order, refused sale, adjustments, cashier
   job, groups, update-item-basic-data, compound reorder qty, credit/cash sale,
-  change-items-price, supplier-wise-item-settings (add/edit/delete) and
-  modify-sale-invoices; non-destructive nested actions
+  change-items-price, supplier-wise-item-settings (add/edit/delete),
+  modify-sale-invoices and a Preferences setting edit/save; non-destructive
+  nested actions
   exercised for Customer (40), Supplier (40) and Item (23, including all nine
-  item-specific features); **60/138 report final-stage pairs captured**;
-  visual ~85%; reference data ~95%.  Overall ~90%, **not 100%**.
+  item-specific features); **66/138 report final-stage pairs captured**;
+  visual ~85%; reference data ~95%.  Overall ~91%, **not 100%**.
 * Remaining work: full field-level add/edit/delete/save on the other master and
   transaction screens; remaining report final-stage pairs; modal geometry; and
   a handful of DataWindow/visual edge cases.  Sale Template and
