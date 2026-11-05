@@ -1191,6 +1191,53 @@ title "Item Form").  Master `d_item_detail` updates `Item`, detail
 
 Probe: `tools/parity/probe-item-main-add-delete.mjs` - measured `ok=true`.
 
+### Item Description single-field edit (verified; menu right-hidden)
+
+`Basic Data | Item .......... | Item Description` is invisible under the
+current rights (the original `m_itemdescription.create` also sets
+`visible = false`), so the probe opened `w_item_form2` with the real
+`opensheetwithparm(..., 1, ...)` handler.  `w_item_form2` (`w_single_entry`,
+title "Item Description Form") uses `d_item_detail2`, whose only updateable
+column is `Item.RemarksForPurchase`, and `d_item_list2` (28,966 rows).
+
+* `ue_list` -> row 9,239, `ue_detail` loaded item **9801**;
+  `remarksforpurchase` was NULL.
+* Set `PARITY ITEM DESCRIPTION` and Save: `UPDATE dbo.item SET
+  remarksforpurchase = $1 WHERE icode = $2 AND remarksforpurchase IS NULL`,
+  rowcount 1; "Changes take effect in database".
+* No itemlog row.  The item trigger advanced `lastupdate` to
+  `2026-11-06 00:46:05.303`; cleanup restored
+  `remarksforpurchase NULL / lastupdate 2026-11-05 10:38:44.342` with
+  `session_replication_role = replica`, then removed audit rows above 1,127.
+* Exact restore: `item 28,966 / max 29,040`, `itemlog 98,632 / max 152,907`,
+  `audit_log 1,079 / max 1,127`, original row value and timestamp.
+
+Probe: `tools/parity/probe-itemdescription-edit.mjs` - measured `ok=true`.
+
+### Sales Team add/edit + File | Delete (verified; right-hidden, no ue_delete)
+
+`Basic Data | Customer .......... | Sales Team` is invisible (right 480,
+`m_salesteam.visible = false`), so the probe opened `w_salesteam` directly
+through `opensheetwithparm`.  Master `d_salesteam` updates `SalesTeam`, detail
+`d_salesteamdetail` updates `SalesTeamMember`, list `d_salesteamlist` joins
+`Manufacturer`.
+
+* **Add:** team code **1** through `f_newtableid("salesteam")`
+  (`_tabmaxkey('SalesTeam') 0 -> 1`), name, manufacturer 1, manager, remarks,
+  and member `salesmancode 1`.  PostgreSQL wrote `salesteam (1, 1, ...)` and
+  `salesteammember (1, 1)`; "Changes take effect in database".
+* **Edit:** `ue_list` returned the one team; `ue_detail` loaded it.  Name,
+  manager and remarks changed and Save wrote the `UPDATE dbo.salesteam ...`
+  (rowcount 1).
+* **File | Delete is an original no-op:** `m_delete` was enabled, but
+  `w_salesteam` and its ancestors define no `ue_delete` event.  Clicking it
+  left both the team and the member row in place.
+* Exact restore: `salesteam 0 / max 0`, `salesteammember 0`,
+  `_tabmaxkey('SalesTeam') 0`, `serverdate` unchanged,
+  `audit_log 1,079 / max 1,127`, no residue.
+
+Probe: `tools/parity/probe-salesteam-crud.mjs` - measured `ok=true`.
+
 ### Item Association nested form + parent save
 
 `Set Item Associations` (`m_setitemassociations` →
