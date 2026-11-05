@@ -1082,6 +1082,23 @@ item **9801**:
   changereason Multiple Changes / module Purchase Posting`;
   `itemlog 98,632 / max 152,907`; `audit_log 1,079 / max 1,127`.
 
+### Group Wise Godown Setting (add/delete + save)
+
+`Manage | Group Wise Godown Setting` (`w_groupwisegodownsetting`) was opened
+directly with group 2 (the menu path's group argument) to avoid the previous
+modal-argument hang:
+
+* The Sale grid contained the only godown: `GODOWN1 / gcode 1 / allowed 1`.
+  Unchecking it and Save removed the sale allowance:
+  `DELETE FROM dbo.groupallowedgodown WHERE groupcode=$1 AND gcode=$2 AND
+  module=$3` (the save rebuilds all module rows from the allowed flags).
+  `groupallowedgodown` for group 2 / module 1 became empty.
+* Reopening, checking it again and saving restored the row.  Full snapshot
+  comparison: **33 rows before, 33 after, byte-identical** (group 2 has
+  modules 1-8 and 15 at gcode 1, priority 10).
+* Both saves reported “Changes take effect in database”; the window posts
+  Close after the commit.
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -1138,7 +1155,8 @@ item **9801**:
   change-items-price, supplier-wise-item-settings (add/edit/delete),
   purchase-return add/save, opening-purchase and loose-purchase
   add/edit/save, Item Form parent saves with nested price-policy/alias,
-  association, image and RichText notes rows, users add/edit,
+  association, image and RichText notes rows, group-wise godown setting,
+  users add/edit,
   modify-sale-invoices, three
   group-level settings (allowed price/cash account/supplier category),
   Interface Setting visibility, Change Password, Modify Last Transaction Date,
@@ -1168,8 +1186,8 @@ item **9801**:
     not executed against bulk data.
   * **Group Wise Header Setting** probe hung before changing anything
     (`groupallowedheader` stayed 35 rows); it remains open.
-  * Other settings not yet cycled: Group Wise Godown Setting, Job Schedule,
-    Inplace Initialization, Import Historical Data.
+  * Other settings not yet cycled: Job Schedule, Inplace Initialization,
+    Import Historical Data.
   * Visual: modal position/width offsets and 26 vs 28 px row spacing.
   * 067/068 final reports remain unpaired by original-side limits.
   * Sale Template and Customer/Supplier deletes are confirmed original
