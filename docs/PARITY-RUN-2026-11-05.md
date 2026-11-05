@@ -941,6 +941,26 @@ the rebuild opens `w_voucher`, which closes with the original guard
   `_tabmaxkey(PurLedger)=12283`, purdetail identity sequence reset, stock
   18,035, item prices unchanged, no `PARITY-OPEN` residue.
 
+### Loose Purchase add/edit/save (verified)
+
+`Purchase | Purchases (Loose)` (`w_purchase`, type 7,
+`d_loosepurchaseheader` / `d_loosepurchasedetail`):
+
+* Filled supplier **311**, unique supplier invoice `PARITY-LOOSE-…`,
+  **purcatcode 8** (the category the original loose list retrieves; the first
+  probe used 2 and was corrected), creditdays 0, suppinvamount 10, taxcategory
+  1, salesman 1, posted `N`, impactinventory `Y`; one row **9801** at batch
+  `.`, expiry 2030-12-12, gcode 1, looseqty 1, purprice/rate 10.
+* Save produced purinvcode **12284** (`purcatcode 8`, supplier 311, posted N,
+  invtotal 10.00) and the matching `purdetail` row; no stock/price change
+  before posting (18,035 and 4.87463/2.00 unchanged).
+* **Edit/save**: the loose list (which filters `purcatcode IN (7,8)`) returned
+  the new invoice, `ue_detail` loaded it, remarks were edited and the second
+  save persisted `PARITY LOOSE PURCHASE … EDITED`.
+* Cleanup removed the rows and restored `purledger 12,283`,
+  `purdetail 196,966`, max code 12,283, `_tabmaxkey=12283`, identity sequence,
+  stock 18,035 and item prices; no residue.
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -995,7 +1015,8 @@ the rebuild opens `w_voucher`, which closes with the original guard
   verified for quotation, purchase order, refused sale, adjustments, cashier
   job, groups, update-item-basic-data, compound reorder qty, credit/cash sale,
   change-items-price, supplier-wise-item-settings (add/edit/delete),
-  purchase-return add/save, opening-purchase add/edit/save, users add/edit,
+  purchase-return add/save, opening-purchase and loose-purchase
+  add/edit/save, users add/edit,
   modify-sale-invoices, three
   group-level settings (allowed price/cash account/supplier category),
   Interface Setting visibility, Change Password, Modify Last Transaction Date,
@@ -1004,15 +1025,15 @@ the rebuild opens `w_voucher`, which closes with the original guard
   exercised for Customer (40), Supplier (40) and Item (23, including all nine
   item-specific features); **139/141 mapped report paths paired** (only 067/068
   are original-side limits); empty-result summary parity fixed (old and new
-  both omit it now); visual ~88%; reference data ~95%.  Overall ~96%,
+  both omit it now); visual ~88%; reference data ~95%.  Overall ~97%,
   **not 100%**.
 * Remaining work (measured, not hand-waved):
   * **Voucher entry screens**: resolved as rights-hidden and blocked by the
     same missing category-12..17 account configuration in live and clone;
     no reachable workflow remains to test (see above).
-  * Full add/edit/delete/save on the remaining transaction screens:
-    **Loose Purchase** is the last purchase variant without a cycle
-    (Opening Purchase is now verified).
+  * Full add/edit/delete/save on the remaining transaction screens: all
+    purchase variants (normal, opening, loose), purchase return, sale/return,
+    quotation, purchase order and adjustments now have committed cycles.
   * Item-specific and customer/supplier nested forms were opened and their
     parent actions exercised, but not every nested form went through its own
     field-level add/edit/save cycle.
