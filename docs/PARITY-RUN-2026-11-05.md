@@ -477,6 +477,15 @@ driven by menu command ID (no blind clicking).  First sample:
   header, column titles, summary bands and zero totals on two pages.  This is a
   genuine difference for empty results; a data-range argument must be supplied
   to both sides for a meaningful row-level comparison.
+* Pairs **004-014** were then captured in a batch: 11 old final previews and
+  11 fresh new final previews.  Header/title/client-name and column sets match
+  on the inspected pairs (004, 008, 009, 013, 014).  Reports with clone test
+  data render real rows (006: 2, 007/012/013: 1 each); old previews run against
+  the live data and mostly show none.  The remaining consistent difference is
+  that the rebuild prints summary/footer bands with zero totals when there are
+  no detail rows, while the original prints only the header/column skeleton.
+  Old windows are 650 px wide with a horizontal scrollbar, so right-hand
+  columns are clipped in old captures and must not be counted as missing.
 * The capture path is now generic (`deploy/parity/pw/probe-report-generic.mjs`
   on the rebuild, `tools/parity/old-menu.ps1` on the original): it answers
   whichever Select Format / Specify Retrieval Arguements / Selection List
@@ -519,6 +528,31 @@ prompts answered No/Cancel):
 * The only modal in the sweep was the hidden-path Journal Voucher
   `DataWindowChild` message described above; no visible-screen action failed.
 
+### Sale Template master/detail CRUD
+
+`Basic Data | Sale Template` (`w_saletemplate`) was exercised through its own
+form:
+
+* **Add/save**: new header + item detail (icode 9801, qty 1, price 10) saved to
+  `saletemplateheader` 581/582 and `saletemplatedetail` (1 row each).  The save
+  success box appeared and both tables contained the rows.
+* **Header edit/save**: reopening template 582 from File | List, changing the
+  name and saving produced `PARITY TEMPLATE STEP EDIT` in
+  `saletemplateheader`.
+* **Detail edit/save**: changing `saleprice` to 11 and `remarks` to
+  `PARITY DETAIL EDIT` in `saletemplatedetail` persisted both values.
+* **Delete gap**: File | Delete is **enabled** on the form, and firing it runs
+  the inherited `m_delete.clicked` -> `ue_delete`, but no row is deleted.  The
+  recovered `w_saletemplate` has no `ue_delete` event, and no recovered script
+  contains `DELETE SaleTemplateHeader`; the handler was not recovered.  This is
+  a real missing feature, recorded rather than guessed.
+* Test rows 581/582 were removed; `saletemplateheader`/`saletemplatedetail`
+  counts are back to 71/297 and no `PARITY TEMPLATE%` rows remain.
+* A probe that passed the date as the string `05/11/2026` stored `2026-05-11`
+  because `SetItem` parsed it with the regional order.  UI typing/date masks
+  parse as `dd/mm`; future probes should pass a `PBDateTime` when testing
+  programmatic date assignment.
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -527,12 +561,14 @@ prompts answered No/Cancel):
   Change Item Reorder Qty item 21195 produced `UPDATE dbo.item ... rowcount 1`,
   both persisted and restored.
 * Full add/edit/delete/save on every remaining field of the other master and
-  transaction screens: 16/16 small masters are now verified (see the sweep
-  above); the rest still need their own committed cycles.
+  transaction screens: 16/16 small masters plus Sale Template header/detail
+  are verified; Sale Template delete is a recorded missing handler (enabled
+  menu, no recovered `ue_delete`).  The rest still need their own cycles.
 * Reports: final-stage pixel comparison is now method-complete (Win32 menu-ID
-  driver + fresh rebuild capture) with **3/138 pairs captured** (001, 002,
-  003); 135 remain.  Pair 003 also shows the old-vs-new empty-result behaviour
-  difference (old blank page, new header/footer skeleton).
+  driver + generic rebuild capture) with **14/138 pairs captured**
+  (001-014), all old and new final previews present; 124 remain.  The
+  empty-result difference is consistent: old shows header only, new also
+  prints summary/footer bands with zero totals.
 * Visual geometry: modal 3 px/8 px offset, 26 vs 28 px row spacing, Priority
   Setting column widths.
 * Reference data: **30 tables compared**, counts match except `users` (one
@@ -562,15 +598,18 @@ prompts answered No/Cancel):
   fixes above.
 * Measured coverage now: definitions/menus/controls ~100%; non-report screen
   opening ~100% of the 68 effectively visible paths; field-level master CRUD
-  **16/16 forms** (51 fields) verified add/edit/delete; committed transaction
-  CRUD verified for quotation, purchase order, refused sale, adjustments,
-  cashier job, groups, update-item-basic-data, compound reorder qty and
-  modify-sale-invoices; reports data/rendering verified for Net Cash, but the
-  old-vs-new final-stage/pixel sweep is not complete; visual ~85%; reference
-  data ~95%.  Overall ~87%, **not 100%**.
+  **16/16 forms** (51 fields) plus **Sale Template header+detail**
+  add/edit/save verified (delete handler missing); committed transaction CRUD
+  verified for quotation, purchase order, refused sale, adjustments, cashier
+  job, groups, update-item-basic-data, compound reorder qty, credit/cash sale
+  and modify-sale-invoices; non-destructive nested actions exercised for
+  Customer (40), Supplier (40) and Item (23, including all nine item-specific
+  features); **14/138 report final-stage pairs captured**; visual ~85%;
+  reference data ~95%.  Overall ~88%, **not 100%**.
 * Remaining work: full field-level add/edit/delete/save on the other master and
-  transaction screens; old-app final report preview capture for the pixel
-  comparison; modal geometry; a handful of DataWindow/visual edge cases.
+  transaction screens; **124 report final-stage pairs**; Sale Template
+  `ue_delete` handler; modal geometry; a handful of DataWindow/visual edge
+  cases.
 * **Report pairing (measured)**: old 139 / new 141 / **138 pairs**, 1 old-only,
   3 new-only.  The 572 missing caption instances are frame chrome and dialog
   names, not report fields: `Ready` 138, `Specify Retrieval Arguements` 73,
