@@ -961,6 +961,42 @@ the rebuild opens `w_voucher`, which closes with the original guard
   `purdetail 196,966`, max code 12,283, `_tabmaxkey=12283`, identity sequence,
   stock 18,035 and item prices; no residue.
 
+### Item parent save with nested Price Policy + Alternate Alias
+
+A full Item Form save cycle was run on existing item **9801** (28,966-item
+list), using the real nested forms:
+
+* **Set Item Price Policy** (`m_setitempricepolicy` →
+  `w_item_pricepolicy_form`): inserted a second detail row
+  `qtylimit 1 / price 11 / expiry 2030-12-12 / flatdisc 0 / discperc 0`.
+  The nested form uses `ShareData`; the parent's `id_pricepolicydetail`
+  immediately contained the row.
+* **Set Alternate Item Alias Names** (`m_setalternateitemaliasnames` →
+  `w_alternate_item_aliasname_form`): inserted
+  `PARITYALIAS / PARITY ALIAS / PCS / qty 1 / purprice 1 / saleprice 11 /
+  retailprice 11`; the parent's `id_alternateitemalias` contained it.
+* Changed item `saleprice` 10 → 11 and saved the Item Form. PostgreSQL wrote
+  * `alternateitemalias (9801, PARITYALIAS, PARITY ALIAS, qty 1, saleprice 11)`
+  * `pricepolicydetail (policy 7670, qtylimit 1, price 11, expiry 2030-12-12)`
+  * `item.saleprice = 11.00` and a new `itemlog` row (count for 9801 8 → 9,
+    itemrowid 152907 → 152908)
+  with “Changes take effect in database”.
+* **Delete half**: removed both rows from the parent DataWindows (`deleterow`)
+  and set saleprice back to 10, then saved again. Both nested rows were
+  deleted from PostgreSQL and `item.saleprice` returned to 10.00; itemlog
+  added the second change row (count 10).
+* **Cleanup, exactly restored**: `item` 9801 back to
+  `saleprice 10.00 / retailprice 5.00 / lastupdate 2026-11-05 10:38:44.342 /
+  changereason Multiple Changes / module Purchase Posting / usercode 1 /
+  location null`; `itemlog 98,632 / max itemrowid 152,907` (8 rows for 9801);
+  `alternateitemalias 0`; `pricepolicydetail 28,966`; `audit_log 1,079 /
+  max audit_id 1,127`.
+* **Trigger note**: the clone has
+  `trig_item_afterupdate_updatelastupdate_timestamp` and `audit_trail` on
+  `dbo.item`.  The cleanup runs its item-restore update with
+  `session_replication_role = replica` so `lastupdate` is restored exactly,
+  then removes only the audit rows created by this test.
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -1016,7 +1052,8 @@ the rebuild opens `w_voucher`, which closes with the original guard
   job, groups, update-item-basic-data, compound reorder qty, credit/cash sale,
   change-items-price, supplier-wise-item-settings (add/edit/delete),
   purchase-return add/save, opening-purchase and loose-purchase
-  add/edit/save, users add/edit,
+  add/edit/save, Item Form parent save with nested price-policy/alias rows,
+  users add/edit,
   modify-sale-invoices, three
   group-level settings (allowed price/cash account/supplier category),
   Interface Setting visibility, Change Password, Modify Last Transaction Date,
@@ -1025,7 +1062,7 @@ the rebuild opens `w_voucher`, which closes with the original guard
   exercised for Customer (40), Supplier (40) and Item (23, including all nine
   item-specific features); **139/141 mapped report paths paired** (only 067/068
   are original-side limits); empty-result summary parity fixed (old and new
-  both omit it now); visual ~88%; reference data ~95%.  Overall ~97%,
+  both omit it now); visual ~88%; reference data ~95%.  Overall ~98%,
   **not 100%**.
 * Remaining work (measured, not hand-waved):
   * **Voucher entry screens**: resolved as rights-hidden and blocked by the
@@ -1034,9 +1071,11 @@ the rebuild opens `w_voucher`, which closes with the original guard
   * Full add/edit/delete/save on the remaining transaction screens: all
     purchase variants (normal, opening, loose), purchase return, sale/return,
     quotation, purchase order and adjustments now have committed cycles.
-  * Item-specific and customer/supplier nested forms were opened and their
-    parent actions exercised, but not every nested form went through its own
-    field-level add/edit/save cycle.
+  * Nested forms: **Set Item Price Policy** and **Set Alternate Item Alias
+    Names** now have a verified add/delete + parent-save cycle (above).
+    The remaining nested item/customer/supplier forms (notes, authors,
+    associations, images, models, item-category association, guarantee person)
+    were opened but still need their own parent-save cycles.
   * **Change Item Discount** would bulk-update a whole category (plus one
     itemlog row per item) and has not been run; the probe was deliberately
     not executed against bulk data.
