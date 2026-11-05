@@ -1296,14 +1296,40 @@ windows and MDI sheets are unchanged.
 
 Row pitch was re-measured on both sides instead of relying on the old note:
 Select Format detail **23-24 px**, Sale summary **20 px**, Select Column
-Criteria **23 px**.  The earlier generic “26 vs 28 px” did not reproduce on
-these pairs; the only residual is a ~3 px gap after the focused first radio
-row in Select Column Criteria.  Priority Setting columns are measured
-separately below (no width change; the old capture had saved user widths and a
-Find/scroll state).
+Criteria **23 px**.  The earlier generic "26 vs 28 px" did not reproduce on
+these pairs.  The focused first radio row now matches as well: text rows are
+**60, 83, 106, 129, 152** on both sides after the radio alignment fix below.
+Priority Setting columns are measured separately below (no width change; the
+old capture had saved user widths and a Find/scroll state).
 
 Probe: `tools/parity/probe-dialog-geometry.mjs`; captures in
 `deploy/parity/geometry/`.
+
+### Focused radio-row geometry (fixed)
+
+The remaining 3 px was in the radio rows of **Select Column Criteria**.  The
+DOM row boxes were already 23 px apart, but the native radio input's default
+`margin-top: 3px` plus the flex `align-items: center` pushed the text/radio ink
+3 px below the old rows.
+
+Fix in `web/src/ui/dom-ui.ts` (radiobutton branch only): label content is
+top-aligned (`align-items:flex-start`, no padding), the radio input gets
+`margin-top:2px` and no native focus ring, and keyboard focus draws the
+original **1 px dotted outline on the text span**.
+
+Measured result:
+
+* Old dialog text-row tops: **60, 83, 106, 129, 152**.
+* New after fix: **60, 83, 106, 129, 152** (before: 60, 86, 109, 132, 155).
+* Dialog size remains **236x253**; old-vs-new pixel difference improved from
+  **12.90%** to **12.26%** (pct > 40), with the remaining difference in fonts
+  and control chrome.
+
+Priority Setting rows were re-measured in the same pass: the list DOM rows are
+**16 px** apart with 16 px row heights, matching the old list; the apparent
+first-row difference is the old capture's selected/scrolled state, not a
+layout gap.  Recapturing in the current state shows `.` (not `_SetCol`) in the
+Item Packing column.
 
 ### Priority Setting columns (re-measured; no width change)
 
@@ -1942,10 +1968,12 @@ Probe: `tools/parity/probe-item-model-save.mjs` — measured `ok=true`.
   * **Import Historical Data**: SQL-Server cross-database only (source
     database qualifiers/`CONVERT`); no PostgreSQL equivalent or source
     database exists, so it was not run.
-  * Visual: Priority Setting’s remaining difference is capture-state/font
+  * Visual: Priority Setting's remaining difference is capture-state/font
     rendering (column widths match within 2 px; old capture had a
-    `Find: ZYTO 500MG TAB` state and saved user widths) plus a ~3 px
-    focused-row gap.  Modal frames now match 353x340 / 417x487 / 236x253.
+    `Find: ZYTO 500MG TAB` state and saved user widths; row pitch is 16 px on
+    both sides).  The Select Column Criteria focused-radio gap is fixed
+    (text rows 60/83/106/129/152 on both sides).  Modal frames match
+    353x340 / 417x487 / 236x253.
   * 067/068 final reports remain unpaired by original-side limits.
   * Sale Template and Customer/Supplier deletes are confirmed original
     behaviours, not rebuild gaps.

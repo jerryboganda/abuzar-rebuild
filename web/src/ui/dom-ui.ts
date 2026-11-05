@@ -964,6 +964,23 @@ export class WinView {
         }
         const sp = document.createElement('span')
         setMnemonic(sp, str(c, 'text'))
+        if (k === 'radiobutton') {
+          // PowerBuilder radio rows are text-top aligned; the native input's
+          // default 3 px top margin plus flex centring pushed every row after
+          // the focused one 3 px down (measured against the old dialog).
+          l.style.alignItems = 'flex-start'
+          l.style.paddingTop = '0px'
+          i.style.marginTop = '2px'
+          i.style.outline = 'none'
+          i.addEventListener('focus', () => {
+            sp.style.outline = '1px dotted #000'
+            sp.style.outlineOffset = '0px'
+          })
+          i.addEventListener('blur', () => {
+            sp.style.outline = ''
+            sp.style.outlineOffset = ''
+          })
+        }
         if (bool(c, 'lefttext', false)) l.append(sp, i)
         else l.append(i, sp)
         wire(i)
