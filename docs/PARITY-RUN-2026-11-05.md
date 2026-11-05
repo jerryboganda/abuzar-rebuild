@@ -802,6 +802,29 @@ attempt reached the database and returned
   neither app can create a Sale Promotion; the rebuilt form now reproduces the
   original field-validation path exactly.
 
+### Group-level settings CRUD (three Manage screens)
+
+All three screens use the `w_multi_entry` pattern (group list -> detail grid).
+Each was exercised through `ue_list`, selecting group 2, `ue_detail`, a new
+detail row, `ue_save`, then `ue_deleteitem` + `ue_save`:
+
+* **Group Allowed Price Setting** (`w_groupwiseallowedprices`): added
+  `(groupcode 2, module 7, pricetype 6)`.  Network capture shows
+  `INSERT INTO dbo.groupallowedprice (groupcode, module, pricetypecode)
+  VALUES ($1, $2, $3)` with `[2,7,6]`.  Delete removed it; table back to **52**
+  rows.
+* **Group Wise Cash Account Setting** (`w_groupwiseallowedcashaccount`):
+  added `(2, module 39, cash account 2)` with
+  `INSERT INTO dbo.groupcashaccount (groupcode, moduleid, cashacccode)
+  VALUES ($1, $2, $3)` `[2,39,2]`.  Delete removed it; table back to **43**.
+* **Group Wise Supplier Category** (`w_groupsuppcategory`): the table starts
+  empty; added `(2, status 1, supplier category 1)` with
+  `INSERT INTO dbo.groupsuppliercategory (groupcode, status, suppcatcode)
+  VALUES ($1, $2, $3)` `[2,1,1]`.  Delete removed it; table back to **0**.
+* Probe note: the first price-setting attempt edited an existing row because
+  `ue_newitem` inserts at row 1; the missing row `(2,1,7)` was restored from
+  the captured baseline and the corrected probe then proved the real INSERT.
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -856,7 +879,8 @@ attempt reached the database and returned
   verified for quotation, purchase order, refused sale, adjustments, cashier
   job, groups, update-item-basic-data, compound reorder qty, credit/cash sale,
   change-items-price, supplier-wise-item-settings (add/edit/delete),
-  purchase-return add/save, users add/edit, modify-sale-invoices and a
+  purchase-return add/save, users add/edit, modify-sale-invoices, three
+  group-level settings (allowed price/cash account/supplier category) and a
   Preferences setting edit/save; non-destructive
   nested actions
   exercised for Customer (40), Supplier (40) and Item (23, including all nine
