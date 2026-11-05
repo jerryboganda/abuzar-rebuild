@@ -11,7 +11,7 @@ the tools in `tools/parity/`.
 | Visible menu items | 262 | 261 | `orig-menu.tsv` vs `menu-compare.json` |
 | Non-report screens opened | 62/62 | 62 attempted (55 direct, 7 captured at their response window) | `deploy/parity/screen-parity/old-nonreport`, `new-nonreport` |
 | Report screens opened | not yet (old crawl pending) | 53+ captured so far | `screen-parity/new-reports` |
-| Master-data forms: every editable field typed, add/edit/delete/save verified in PostgreSQL | 16 forms | 16 forms + 28 extra masters (Godown, Area, Region, Sub Area, Sales Person, Item Packing, Item Size, Unit, Item Style, Item Colour, Item Sleeve, Item Yarn, Item Fabric, Item Brand, Sale Type, Purchase Type, Issue Type, Ward, Relation, Rank, Disease, Patient Location, Diagnostic Item Type, Symptom Type, Visit Type, Department, Section, Zone) | `screen-parity/crud-fields/crud-*.json`, `tools/parity/probe-godown-crud.mjs`, `tools/parity/probe-area-crud.mjs`, `tools/parity/probe-single-master.mjs`, `tools/parity/probe-zone-crud.mjs` |
+| Master-data forms: every editable field typed, add/edit/delete/save verified in PostgreSQL | 16 forms | 16 forms + 29 extra masters (Godown, Area, Region, Sub Area, Sales Person, Item Packing, Item Size, Unit, Item Style, Item Colour, Item Sleeve, Item Yarn, Item Fabric, Item Brand, Sale Type, Purchase Type, Issue Type, Ward, Relation, Rank, Disease, Patient Location, Diagnostic Item Type, Symptom Type, Visit Type, Department, Section, Zone, Model) | `screen-parity/crud-fields/crud-*.json`, `tools/parity/probe-godown-crud.mjs`, `tools/parity/probe-area-crud.mjs`, `tools/parity/probe-single-master.mjs`, `tools/parity/probe-zone-crud.mjs` |
 | DataWindow expression parse sweep | â€” | every `expression` parses; SQL comments stripped | `tools/parity/dw-expr-audit.mjs` |
 
 The 16 passing forms are: Customer Category, Customer Sector, Generic Item,
@@ -27,14 +27,16 @@ probes fire the real `m_godown` / `m_area0` / `m_region0` / `m_subarea` /
 `m_itembrand` / `m_saletype` / `m_purchasetype` / `m_issuetype` /
 `m_patientward` / `m_relation` / `m_rank` / `m_disease` /
 `m_patientlocation` / `m_diagnosticitemtype` / `m_symptomtype` /
-`m_visittype` / `m_department` / `m_section` / `m_zone0` handlers).
-**Section** is now verified with a temporary Department row; in normal use it
-remains data-blocked because `Department` is empty in both live and clone.
-**Zone** is verified with temporary ContactGroup rows (see below); its
-File | Delete becomes enabled but has no `ue_delete` handler.  **Item
-Design** (`w_itemdesign_form`) is an orphaned window (no menu/`opensheet`
-reference) and **Item Type** has no master window; the `itemtype` table is
-not exposed through a form.
+`m_visittype` / `m_department` / `m_section` / `m_zone0` / `m_model`
+handlers).  **Section** is now verified with a temporary Department row; in
+normal use it remains data-blocked because `Department` is empty in both live
+and clone.  **Zone** is verified with temporary ContactGroup rows (see below);
+its File | Delete becomes enabled but has no `ue_delete` handler.  **Model**
+is now populated/looked-up by a verified master cycle, which removes the
+`Model` data gap for the nested item-model feature.  **Item Design**
+(`w_itemdesign_form`) is an orphaned window (no menu/`opensheet` reference)
+and **Item Type** has no master window; the `itemtype` table is not exposed
+through a form.
 
 `Sale Promotion` is the only tested form that cannot complete: its Active /
 Customer Group / Weekday drop-downs are empty in the migrated clone (missing
@@ -1775,6 +1777,23 @@ posted; header/detail were empty.
 Probe: `tools/parity/probe-saleorder-crud.mjs` — add/edit/delete/restore
 `ok=true`.
 
+### Model master (verified)
+
+`m_model` → `w_model_form` (`w_single_entry`); the detail DataWindow updates
+`Model` with `code`, `name`, `description`.
+
+* **Add:** code **1**, `_tabmaxkey('Model') 0 -> 1`; “Changes take effect in
+  database”.
+* **Edit:** name + description updated and saved.
+* **Delete:** confirmation then “Record Deleted Successfully”.
+* Exact restore: `model 0`, `_tabmaxkey('Model') 0`,
+  `audit_log 1,079 / max 1,127`.
+
+This removes the `Model` lookup data gap (the table can now be populated);
+the nested **Set Models** item form still needs its own add/delete cycle.
+
+Probe: `tools/parity/probe-single-master.mjs model` — measured `ok=true`.
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -1829,7 +1848,7 @@ Probe: `tools/parity/probe-saleorder-crud.mjs` — add/edit/delete/restore
   **Item Fabric**, **Item Brand**, **Sale Type**, **Purchase Type**,
   **Issue Type**, **Ward**, **Relation**, **Rank**, **Disease**,
   **Patient Location**, **Diagnostic Item Type**, **Symptom Type**,
-  **Visit Type**, **Department**, **Section** and **Zone**
+  **Visit Type**, **Department**, **Section**, **Zone** and **Model**
   add/edit/delete and
   **Sale Template header+detail**
   add/edit/save verified (File | Delete is original enabled-but-inert);

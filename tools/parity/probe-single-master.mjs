@@ -134,6 +134,11 @@ const CONFIGS = {
     fields: { name: '{{name}}', deptcode: 1, description: 'PARITY SECTION DESCRIPTION' },
     edit: { description: 'PARITY SECTION DESCRIPTION EDITED' },
   },
+  model: {
+    menu: 'm_model', window: 'w_model_form', table: 'model', key: 'modelcode', tab: 'Model', prefix: 'PARITY MODEL',
+    fields: { name: '{{name}}', description: 'PARITY MODEL DESCRIPTION' },
+    edit: { description: 'PARITY MODEL DESCRIPTION EDITED' },
+  },
 };
 const key = process.argv[2] || 'region';
 const cfg = CONFIGS[key];
