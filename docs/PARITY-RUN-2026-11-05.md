@@ -1430,6 +1430,47 @@ rows in the live SQL Server database and 0 in the clone**, and the form
 requires selecting a patient/death record.  No workflow can be exercised in
 either app; this is a shared data gap, not a rebuild defect.
 
+### Receipt and Issue edit/save, and delete (measured)
+
+**Delete is not available in either screen.**  `wf_initmodify` sets
+`im_menu.m_file.m_delete.enabled = false` for both, `w_multi_entry.ue_list`
+also disables it, and neither window defines a `ue_delete` handler.  The
+measured state after reopening a saved record is `deleteEnabled = false`.
+Deleting a receipt/issue therefore has no original workflow; cleanup is SQL.
+
+**Receipt edit/save:**
+
+* Created an unposted receipt (code 1) as before, then opened it through
+  `ue_list` -> `ue_detail`: 1 list row, `receipt posted = N`, save enabled,
+  delete disabled.
+* Right **562** (Receipt modify) is **not present in the `rights` catalog**
+  (`rights` has 464 rows, max 5289; 562 does not exist in either live or
+  clone), so the normal rights gate can never enable edit.  The probe forced
+  `ib_receiptmodify = true` to exercise the dormant code path.
+* Changed `remarks` and detail `qty 1 -> 2`; Save showed “Changes take effect
+  in database” and `receiptheader.remarks` / `receiptdetail.qty` were updated.
+* Exact restore: rights 688, department 0, receipt rows 0,
+  `_tabmaxkey('ReceiptHeader') 0`, category counter 0, stock 18,035,
+  `itemlog 98,632`, `_utn 1,628,962`, `audit 1,079 / max 1,127`.
+
+**Issue / Delivery Challan edit/save:**
+
+* Right **560** (Issue modify) is also absent, and `IssuePosting = Y` makes a
+  saved issue posted, which `ue_detail` refuses to edit.  The probe
+  temporarily set `IssuePosting = N` and forced `ib_issuemodify = true`,
+  created an **unposted** issue (code 1, posted N), then reopened it through
+  the list: save enabled, delete disabled, `ib_modify = true`.
+* Changed `remarks` and detail `qty 1 -> 2`; Save showed “Changes take effect
+  in database”; the header/details were updated, stock moved
+  18,035 -> 18,034 (add) -> **18,033** (edit), and `_utn` advanced by 2.
+* Exact restore: `IssuePosting` back to **Y**, department 0, issue rows 0,
+  `_tabmaxkey('IssueHeader') 0`, category counter 0, `_utn 1,628,962`,
+  the full `godowndetail` row 18,035 and `item` pieces/lastupdate unchanged,
+  `audit 1,079 / max 1,127`.
+
+Probes: `tools/parity/probe-receipt-edit.mjs`,
+`tools/parity/probe-issue-edit.mjs` (both `ok=true`).
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -1486,8 +1527,10 @@ either app; this is a shared data gap, not a rebuild defect.
   change-items-price, supplier-wise-item-settings (add/edit/delete),
   purchase-return add/save, opening-purchase and loose-purchase
   add/edit/save, **Receipt** and **Issue / Delivery Challan**
-  add/save (temporary department; exact stock/counter restore),
-  Item Form parent saves with nested price-policy/alias,
+  add/save (temporary department; exact stock/counter restore) and
+  **edit/save** (unposted; modify rights 562/560 absent, dormant path
+  exercised with the window flag), Item Form parent saves with nested
+  price-policy/alias,
   association, image and RichText notes rows, group-wise godown/header
   settings, Change Item Discount (category wise, 29 items), Job Schedule
   (PG scheduler; original screen broken in this deployment), users add/edit,
@@ -1509,9 +1552,12 @@ either app; this is a shared data gap, not a rebuild defect.
   * Full add/edit/delete/save on the remaining transaction screens: all
     purchase variants (normal, opening, loose), purchase return, sale/return,
     quotation, purchase order and adjustments now have committed cycles.
-    Receipt and Issue add/save are now verified as well; their **edit/delete**
-    paths are not exercised, and both need a `department` row that does not
-    exist in live or clone (shared data gap, above).
+    Receipt and Issue add/save and edit/save are now verified (edit required
+    forcing the modify flag because right codes 562/560 are absent from both
+    databases).  **Delete is hard-disabled** in both screens
+    (`m_delete.enabled = false`, no `ue_delete` handler), so they still need a
+    `department` row that does not exist in live or clone (shared data gap,
+    above).
   * Nested forms: **Set Item Price Policy**, **Set Alternate Item Alias
     Names**, **Set Item Associations**, **Set Item Image(s)** and **Set Item
     Notes** now have verified add + parent-save cycles (the image delete-all
