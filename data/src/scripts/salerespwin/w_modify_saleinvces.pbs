@@ -92,8 +92,9 @@
 	if f_validatedw(this.id_detail) < 0 then
 		return
 	end if
-	if this.id_detail.rowcount() > 0 and not isnull(this.id_detail.object.saleinvcode) then
-		this.id_detail.deleterow(this.id_detail.rowcount())
+	ll_row = this.id_detail.rowcount()
+	if ll_row > 0 and isnull(this.id_detail.object.saleinvcode[ll_row]) then
+		this.id_detail.deleterow(ll_row)
 	end if
 	if this.id_detail.update() > 0 then
 		SQL commit USING sqlca;

@@ -490,8 +490,12 @@ posted Y) was created at 2026-11-05 02:16:30 and read back from
   Generate opens `w_arg_manf_cat_class_packing`; its child lists are populated
   (833 manufacturers, 7 categories, 11 classes, 1 packing), all four "All"
   flags and a 2020-2030 date range are set, and `ue_close(1)` is called.
-  The grid still retrieves one blank row, so the compound argument handoff /
-  retrieve remains the open defect (not a missing definition).
+  The argument window closes with `i_status=1` and arrays of 833 manufacturers,
+  7 categories, 11 classes and 1 packing.  `ue_generate` does not resume to
+  call `retrieve` (no query captured), and a direct retrieve with a
+  single-item combo (manf 20 / cat 2 / class 9 / pack 1) still exceeds 300 s.
+  The argument handoff is proven; the compound retrieve/resume path is the
+  remaining blocker.
 * **Reference-data audit (live SQL Server vs clone)**: compared 30
   reference/master tables (`accounts`, `area`, `customer`, `customercategory`,
   `genericitem`, `godown`, `groups`, `itemalert`, `itemcategory`, `itemclass`,
@@ -506,11 +510,12 @@ posted Y) was created at 2026-11-05 02:16:30 and read back from
   parses `dd/mm/yyyy hh:mm:ss` into `PBDateTime` even when `s_arguements`'
   declared field is the legacy `longlong`; verified `d_sdate`/`d_edate` are
   PBDateTime.  The window Open now assigns `istr_arg` before `super::open`;
-  invoking `ue_newform` (List) retrieved **588,884 invoices**.  Remaining: the
-  window's `ue_save` deletes the trailing row; in the harness that row resolves
-  to invoice 588890 and PostgreSQL rejects it with
-  `sdsaleinvcodefk` on `saledetail`.  The trailing insert-row/status path needs
-  a dedicated fix; the invoice-range save already works.
+  invoking `ue_newform` (List) retrieved **588,884 invoices**.  The
+  trailing-row delete now checks the last row's own `saleinvcode` (only a
+  genuinely blank row is deleted).  Editing invoice 588890 and Save produced
+  `UPDATE dbo.saleledger SET remarks=$1, billingdate=$2 WHERE saleinvcode=$3 ...`
+  with rowcount 1; "PARITY MODIFY SALE" persisted and was restored.  Date
+  Period save is verified.
 
 
 
