@@ -13,6 +13,12 @@ import { exportDw } from '../dw/export.ts'
 import { writeFileBytes } from '../runtime/sysfiles.ts'
 import { CSS } from './styles.ts'
 import { keyEnum, keyFlags } from './keys.ts'
+import { messageButtons } from './message-buttons.ts'
+import { TabSelection, tabAvailable } from './tab-selection.ts'
+import { DropdownView } from './dropdown.ts'
+
+let nextTabControl = 0
+let nextRadioGroup = 0
 
 const num = (o: PBObject, k: string, d = 0): number => {
   const v = o.props.get(k)
@@ -48,34 +54,50 @@ function setNativeTitle(title: string): void {
 }
 
 export class DomUi implements UiHost {
-  [k: string]: unknown
   rt: Runtime
   desktop: HTMLElement
   views = new Map<PBObject, WinView>()
   mdi: WinView | null = null
   zTop = 10
+  private lifetime = new AbortController()
+  private style: HTMLStyleElement
 
   constructor(rt: Runtime, desktop: HTMLElement) {
     this.rt = rt
     this.desktop = desktop
     const st = document.createElement('style')
+    this.style = st
     st.textContent = CSS
     document.head.appendChild(st)
     document.addEventListener('keydown', (e) => {
+      if (!this.shortcutsEnabled()) return
       const k = keyEnum(e)
       if (k) this.down.add(k)
       // accelerators of the menu of the active sheet: `shortcut` = virtual key + 256 (Ctrl) + 512 (Alt) + 1024 (Shift)
       const fkey = e.keyCode >= 112 && e.keyCode <= 123
-      if ((e.ctrlKey || e.altKey || fkey || e.keyCode === 45 || e.keyCode === 46) && !(e.ctrlKey && e.altKey && e.key === 'AltGraph')) {
+      if (this.menuShortcutsEnabled() && (e.ctrlKey || e.altKey || fkey || e.keyCode === 45 || e.keyCode === 46) && !(e.ctrlKey && e.altKey && e.key === 'AltGraph')) {
         const code = e.keyCode + (e.ctrlKey ? 256 : 0) + (e.altKey ? 512 : 0) + (e.shiftKey ? 1024 : 0)
         if (this.mdi?.fireShortcut(code)) e.preventDefault()
       }
-    })
+    }, { signal: this.lifetime.signal })
     document.addEventListener('keyup', (e) => {
       const k = keyEnum(e)
       if (k) this.down.delete(k)
-    })
-    window.addEventListener('blur', () => this.down.clear())
+    }, { signal: this.lifetime.signal })
+    window.addEventListener('blur', () => this.down.clear(), { signal: this.lifetime.signal })
+  }
+
+  protected shortcutsEnabled(): boolean { return true }
+  protected menuShortcutsEnabled(): boolean { return true }
+  windowActivated(_window: NWindow): void {}
+  menuRendered(_bar: HTMLElement): void {}
+  accessibleTabs(): boolean { return false }
+
+  dispose(): void {
+    if (this.views.size) throw new Error('Cannot replace presentation while a window is open.')
+    this.lifetime.abort()
+    this.down.clear()
+    this.style.remove()
   }
 
   down = new Set<string>()
@@ -97,9 +119,9 @@ export class DomUi implements UiHost {
     for (const wv of this.views.values()) {
       const cv = wv.ctlViews.get(o as PBObject)
       if (!cv) continue
-      const all = [...wv.client.querySelectorAll<HTMLElement>('input,textarea,select,button')].filter((e) => !(e as HTMLInputElement).disabled && e.tabIndex >= 0)
+      const all = [...wv.client.querySelectorAll<HTMLElement>('input,textarea,select,button')].filter((e) => !(e as HTMLInputElement).disabled && !e.hidden && e.tabIndex >= 0)
       all.sort((a, b) => a.tabIndex - b.tabIndex)
-      const here = (cv.el.matches('input,textarea,select,button') ? cv.el : cv.el.querySelector('input,textarea,select,button')) as HTMLElement | null
+      const here = (cv.el.matches('input,textarea,select,button') ? cv.el : cv.el.querySelector('input:not([hidden]),textarea:not([hidden]),select:not([hidden]),button:not([hidden])')) as HTMLElement | null
       const i = here ? all.indexOf(here) : -1
       all[(i + 1) % Math.max(1, all.length)]?.focus()
       return
@@ -111,6 +133,7 @@ export class DomUi implements UiHost {
     this.views.set(w, v)
     if (Number(w.props.get('windowtype')) >= 4) this.mdi = v
   }
+  createDwView(control: NDwBase, host: HTMLElement): DwView { return new DwView(control, host) }
   showWindow(w: NWindow): void {
     this.views.get(w)?.show()
   }
@@ -139,7 +162,15 @@ export class DomUi implements UiHost {
   findView(o: PBObject): { focus(): void; dw?: DwView } | undefined {
     for (const wv of this.views.values()) {
       const cv = wv.ctlViews.get(o)
-      if (cv) return { focus: () => (cv.el.querySelector('input,textarea,select,button') as HTMLElement | null)?.focus() ?? cv.el.focus?.(), dw: cv.dw }
+      if (cv) return {
+        focus: () => {
+          const editor = cv.dw?.editor
+          const tab = cv.el.querySelector<HTMLElement>(':scope > [role=tablist] > [role=tab][tabindex="0"]')
+          const input = cv.el.querySelector<HTMLElement>('input:not([hidden]),textarea:not([hidden]),select:not([hidden]),button:not([hidden])')
+          ;(editor?.isConnected ? editor : tab ?? input ?? cv.el).focus()
+        },
+        dw: cv.dw ?? undefined,
+      }
     }
     return undefined
   }
@@ -178,6 +209,17 @@ export class DomUi implements UiHost {
   setMicroHelp(_w: NWindow, t: string): void {
     const s = this.desktop.querySelector('.status') as HTMLElement | null
     if (s) s.textContent = t
+  }
+  selectText(object: PBObject, start: number, length: number): void {
+    for (const view of this.views.values()) {
+      const root = view.ctlViews.get(object)?.el
+      const input = root instanceof HTMLInputElement || root instanceof HTMLTextAreaElement ? root :
+        root?.querySelector<HTMLInputElement | HTMLTextAreaElement>('input:not([hidden]),textarea:not([hidden])')
+      if (input && ['text', 'password', 'textarea'].includes(input.type)) {
+        input.setSelectionRange(Math.max(0, start - 1), Math.max(0, start - 1) + Math.max(0, length))
+        return
+      }
+    }
   }
 
   /** text prompt standing in for the file dialogs of the original */
@@ -235,16 +277,8 @@ export class DomUi implements UiHost {
       ;(box.querySelector('.ttl') as HTMLElement).textContent = title
       ;(box.querySelector('.ico') as HTMLElement).innerHTML = ic[icon] ?? ''
       ;(box.querySelector('.txt') as HTMLElement).textContent = text.replace(/\r\n/g, '\n')
-      const defs: Record<string, [string, number][]> = {
-        'ok!': [['OK', 1]],
-        'okcancel!': [['OK', 1], ['Cancel', 2]],
-        'yesno!': [['Yes', 1], ['No', 2]],
-        'yesnocancel!': [['Yes', 1], ['No', 2], ['Cancel', 3]],
-        'retrycancel!': [['Retry', 1], ['Cancel', 2]],
-        'abortretryignore!': [['Abort', 1], ['Retry', 2], ['Ignore', 3]],
-      }
       const btns = box.querySelector('.btns') as HTMLElement
-      const list = defs[buttons] ?? defs['ok!']
+      const list = messageButtons(buttons)
       let closed = false
       const done = (n: number) => {
         if (closed) return
@@ -274,6 +308,7 @@ class CtlView {
   obj: PBObject
   ui: DomUi
   dw: DwView | null = null
+  dropdown: DropdownView | null = null
   constructor(ui: DomUi, obj: PBObject, el: HTMLElement) {
     this.ui = ui
     this.obj = obj
@@ -285,11 +320,20 @@ export class WinView {
   ui: DomUi
   w: NWindow
   el: HTMLElement
-  client: HTMLElement
+  client!: HTMLElement
   ctlViews = new Map<PBObject, CtlView>()
   sheet: boolean
   modal: boolean
   mdiClient: HTMLElement | null = null
+  private lifetime = new AbortController()
+  private subscriptions: (() => void)[] = []
+  private destroyed = false
+
+  private watch(control: PBObject, listener: () => void): void {
+    if (!(control instanceof NControl) && !(control instanceof NDwBase)) return
+    control.listeners.add(listener)
+    this.subscriptions.push(() => control.listeners.delete(listener))
+  }
 
   constructor(ui: DomUi, w: NWindow, opts: { sheet: boolean; modal: boolean }) {
     this.ui = ui
@@ -324,13 +368,16 @@ export class WinView {
       if (w.name.toLowerCase() === 'w_main') setNativeTitle(this.ttlEl.textContent)
       ;(tb.querySelector('.cls') as HTMLElement).onclick = () => void ui.rt.closeWindow(w)
       this.el.appendChild(tb)
-      w.onProp = (n) => {
+      const previous = w.onProp
+      const onProp = (n: string) => {
         if (n === 'title') {
           this.ttlEl!.textContent = str(w, 'title')
           if (this.sheet) ui.mdi?.refreshTitle()
-          else this.refreshTitle()
+          else if (isMdi) this.refreshTitle()
         }
       }
+      w.onProp = onProp
+      this.subscriptions.push(() => { if (w.onProp === onProp) w.onProp = previous })
       if (!isMdi) this.dragify(tb)
     }
     if (isMdi) {
@@ -341,9 +388,8 @@ export class WinView {
       this.client.style.background = pbColor(w.props.get('backcolor') as number, '#f0f0f0')
       this.el.appendChild(this.client)
     }
-    this.client = this.client! // set by buildMdi or above
     this.renderControls(w, this.client)
-    w.listeners.add(() => this.syncWindow())
+    this.watch(w, () => this.syncWindow())
     const host = this.sheet && ui.mdi?.mdiClient ? ui.mdi.mdiClient : ui.desktop
     host.appendChild(this.el)
     if (modal(this)) {
@@ -385,7 +431,7 @@ export class WinView {
     const maxed = [...this.ui.views.values()].filter((v) => v.sheet && v.el.classList.contains('max') && v.el.isConnected && !v.el.classList.contains('hidden'))
     maxed.sort((a, b) => Number(b.el.style.zIndex || 0) - Number(a.el.style.zIndex || 0))
     this.ttlEl.textContent = str(this.w, 'title') + (maxed[0] ? ' - [' + str(maxed[0].w, 'title') + ']' : '')
-  if (this.w.name.toLowerCase() === 'w_main') setNativeTitle(this.ttlEl.textContent)
+    if (this.w.name.toLowerCase() === 'w_main') setNativeTitle(this.ttlEl.textContent)
   }
 
   private syncWindow(): void {
@@ -399,6 +445,7 @@ export class WinView {
         if (max) {
           // the window now has the size of the MDI client: scripts that lay out their controls on `resize` get it in PowerBuilder units
           requestAnimationFrame(() => {
+            if (this.destroyed) return
             const r = this.el.getBoundingClientRect()
             if (!r.width) return
             this.w.props.set('width', r.width / toPx(1, 'x'))
@@ -438,7 +485,7 @@ export class WinView {
       this.el.style.top = oy + e.clientY - sy + 'px'
     }
     bar.addEventListener('mousedown', (e) => {
-      if ((e.target as HTMLElement).classList.contains('cls')) return
+      if (this.el.classList.contains('modern-window') || (e.target as HTMLElement).classList.contains('cls')) return
       sx = e.clientX
       sy = e.clientY
       ox = this.el.offsetLeft
@@ -447,8 +494,8 @@ export class WinView {
         document.removeEventListener('mousemove', move)
         document.removeEventListener('mouseup', up)
       }
-      document.addEventListener('mousemove', move)
-      document.addEventListener('mouseup', up)
+      document.addEventListener('mousemove', move, { signal: this.lifetime.signal })
+      document.addEventListener('mouseup', up, { signal: this.lifetime.signal })
     })
   }
 
@@ -460,6 +507,7 @@ export class WinView {
     // (SetFocus during Open records lastFocusDw); otherwise the lowest tab order
     const first = this.firstFocusable()
     if (first) setTimeout(() => {
+      if (this.destroyed) return
       const a = document.activeElement
       if (!a || a === document.body || !this.client.contains(a)) {
         const last = (this.w as unknown as { lastFocusDw?: PBObject }).lastFocusDw
@@ -471,7 +519,7 @@ export class WinView {
   }
 
   firstFocusable(): HTMLElement | null {
-    const els = [...this.client.querySelectorAll<HTMLElement>('input,textarea,select,button')].filter((e) => !(e as HTMLInputElement).disabled)
+    const els = [...this.client.querySelectorAll<HTMLElement>('input,textarea,select,button')].filter((e) => !(e as HTMLInputElement).disabled && !e.hidden)
     els.sort((a, b) => Number(a.dataset.tab ?? 9999) - Number(b.dataset.tab ?? 9999))
     return els[0] ?? null
   }
@@ -488,9 +536,19 @@ export class WinView {
       this.ui.mdi?.showMenuFor(this.w)
       this.ui.mdi?.refreshTitle()
     }
+    this.ui.windowActivated(this.w)
   }
 
   destroy(): void {
+    if (this.destroyed) return
+    this.destroyed = true
+    this.lifetime.abort()
+    for (const unsubscribe of this.subscriptions) unsubscribe()
+    this.subscriptions = []
+    for (const control of this.ctlViews.values()) {
+      control.dw?.dispose()
+      control.dropdown?.dispose()
+    }
     if (this.toolbarTimer) clearInterval(this.toolbarTimer)
     this.el.remove()
     if (this.sheet && this.ui.mdi) {
@@ -527,6 +585,7 @@ export class WinView {
   async loadMenu(name: string, bar: HTMLElement): Promise<void> {
     const rt = this.ui.rt
     const menu = await rt.instantiate(name, this.w)
+    if (this.destroyed) return
     this.w.props.set('menuid', menu)
     this.frameMenu = menu
     this.shownMenu = menu
@@ -673,8 +732,9 @@ export class WinView {
       document.addEventListener('click', () => {
         bar.querySelectorAll('.menu-drop').forEach((d) => d.remove())
         bar.querySelectorAll('.mi.open').forEach((d) => d.classList.remove('open'))
-      })
+      }, { signal: this.lifetime.signal })
     }
+    this.ui.menuRendered(bar)
   }
 
   dropdown(item: PBObject): HTMLElement {
@@ -726,6 +786,7 @@ export class WinView {
 
   // ---------------------------------------------------------------- controls
   renderControls(parent: PBObject, host: HTMLElement): void {
+    const radioGroup = ++nextRadioGroup
     const radios: { el: HTMLInputElement; obj: PBObject }[] = []
     const groups: { name: string; x: number; y: number; w: number; h: number }[] = []
     const kids = [...parent.children.values()]
@@ -738,7 +799,7 @@ export class WinView {
       if (c.native === 'radiobutton') {
         const input = v.el.querySelector('input') as HTMLInputElement
         const g = groups.find((g) => num(c, 'x') >= g.x && num(c, 'y') >= g.y && num(c, 'x') <= g.x + g.w && num(c, 'y') <= g.y + g.h)
-        input.name = `rg_${parent.name}_${g ? g.name : 'win'}`
+        input.name = `rg_${radioGroup}_${g ? g.name : 'win'}`
         c.props.set('_radiogroup', input.name)
         radios.push({ el: input, obj: c })
       }
@@ -867,6 +928,19 @@ export class WinView {
         el = t
         break
       }
+      case 'richtextedit': {
+        // the notes window edits a RichTextEdit; the runtime keeps its RTF/text
+        // in `text` (PasteRTF/CopyRTF) and renders it as an editable textarea
+        const t = document.createElement('textarea')
+        t.className = 'ctl'
+        t.value = str(c, 'text')
+        this.style(c, t)
+        t.readOnly = bool(c, 'displayonly', false)
+        t.oninput = () => { c.props.set('text', t.value); void rt.fire(c, 'modified') }
+        wire(t)
+        el = t
+        break
+      }
       case 'checkbox':
       case 'radiobutton': {
         const l = document.createElement('label')
@@ -901,8 +975,20 @@ export class WinView {
         el = f
         break
       }
-      case 'listbox':
       case 'dropdownlistbox': {
+        if (!(c instanceof NControl)) throw new Error(`Missing native dropdown control: ${c.name}`)
+        const dropdown = new DropdownView(c)
+        this.style(c, dropdown.el)
+        this.place(c, dropdown.el)
+        this.watch(c, () => {
+          this.refresh(c, dropdown.el)
+          dropdown.refresh()
+        })
+        const view = new CtlView(this.ui, c, dropdown.el)
+        view.dropdown = dropdown
+        return view
+      }
+      case 'listbox': {
         const s = document.createElement('select')
         s.className = 'ctl'
         if (k === 'listbox') s.size = 2
@@ -919,7 +1005,7 @@ export class WinView {
           s.selectedIndex = sel - 1
         }
         fill()
-        ;(c as NControl).listeners.add(fill)
+        this.watch(c, fill)
         s.onchange = () => {
           c.props.set('_selected', s.selectedIndex + 1)
           void rt.fire(c, 'selectionchanged', [s.selectedIndex + 1])
@@ -959,7 +1045,7 @@ export class WinView {
           })
         }
         fill()
-        ;(c as NControl).listeners.add(fill)
+        this.watch(c, fill)
         wire(d)
         el = d
         break
@@ -972,26 +1058,50 @@ export class WinView {
         d.style.overflow = 'hidden'
         this.borderClass(c, d)
         this.place(c, d)
-        ;(c as NControl).listeners?.add(() => this.refresh(c, d))
+        this.watch(c, () => this.refresh(c, d))
         const v = new CtlView(this.ui, c, d)
-        v.dw = new DwView(c as NDwBase, d)
+        v.dw = this.ui.createDwView(c as NDwBase, d)
         return v
       }
       case 'tab': {
+        const accessible = this.ui.accessibleTabs()
         const t = document.createElement('div')
-        t.className = 'ctl tabctl'
+        t.className = 'ctl tabctl' + (accessible ? ' keyboard-tabs' : '')
         const strip = document.createElement('div')
         strip.className = 'strip'
+        const id = `form-tabs-${++nextTabControl}`
+        if (accessible) {
+          strip.setAttribute('role', 'tablist')
+          strip.setAttribute('aria-label', caption(str(c, 'text')).trim() || 'Form pages')
+        }
         type TabItem = { po: PBObject; tab: HTMLElement; page: HTMLElement }
         const items: TabItem[] = []
-        const visibleItems = () => items.filter((x) => x.po.props.get('visible') !== false)
+        const visibleItems = () => items.filter((x) => !x.po.destroyed && x.po.props.get('visible') !== false)
+        const pageControls = (page: HTMLElement) => [...page.querySelectorAll<HTMLElement>('input,textarea,select,button,[tabindex]')]
+          .filter((element) => element.tabIndex >= 0 && !element.matches(':disabled,[aria-disabled=true]') && element.getClientRects().length > 0)
+          .sort((a, b) => (a.tabIndex || Infinity) - (b.tabIndex || Infinity))
         const show = (n: number) => {
           const vs = visibleItems()
+          const enabled = vs.filter((item) => tabAvailable(item.po))
+          const focused = enabled.find((item) => item.tab === document.activeElement)
+          const entry = focused ?? enabled.find((item) => vs.indexOf(item) + 1 === n) ?? enabled[0]
           for (const it of items) {
             const at = vs.indexOf(it)
+            const selected = at >= 0 && at + 1 === n
             it.tab.style.display = at < 0 ? 'none' : ''
-            it.page.style.display = at >= 0 && at + 1 === n ? 'block' : 'none'
-            if (at >= 0) it.tab.classList.toggle('on', at + 1 === n)
+            it.page.style.display = selected ? 'block' : 'none'
+            it.tab.classList.toggle('on', selected)
+            const label = it.tab.querySelector('.lb')!
+            label.textContent = caption(str(it.po, 'text'))
+            if (accessible) {
+              it.tab.setAttribute('aria-selected', String(selected))
+              it.tab.setAttribute('aria-disabled', String(!tabAvailable(it.po)))
+              it.tab.tabIndex = it === entry ? 0 : -1
+              it.page.hidden = !selected
+              it.page.tabIndex = selected && !pageControls(it.page).length ? 0 : -1
+              if (!label.textContent.trim()) it.tab.setAttribute('aria-label', it.po.name)
+              else it.tab.removeAttribute('aria-label')
+            }
           }
         }
         const select = (n: number) => {
@@ -1004,10 +1114,29 @@ export class WinView {
         // scripts of the entry windows use that for rights (Interface Setting
         // hides the patient/service/… tabs of modules that are not licensed).
         const sync = () => {
+          if (this.destroyed) return
           const vs = visibleItems()
           const cur = Math.min(toNum(c.props.get('selectedtab') ?? 1) || 1, Math.max(1, vs.length))
+          const focus = document.activeElement
+          const ownedFocus = focus instanceof HTMLElement && t.contains(focus)
           show(cur)
+          if (accessible) {
+            strip.setAttribute('aria-busy', String(selection.busy))
+            if (ownedFocus && focus instanceof HTMLElement &&
+              (focus.getClientRects().length === 0 || !tabAvailable(c) ||
+                items.some((item) => item.tab === focus && !tabAvailable(item.po)))) {
+              const entry = items.find((item) => item.tab.tabIndex === 0)
+              ;(entry?.tab ?? this.el).focus()
+            }
+          }
         }
+        const selection = new TabSelection(c, sync, async (oldPage) => {
+          const panel = items.find((item) => item.po === oldPage)?.page
+          for (const binding of this.ctlViews.values()) {
+            if (binding.dw && panel?.contains(binding.el) && !(await binding.dw.acceptPendingEdit())) return false
+          }
+          return !this.destroyed
+        })
         for (const po of c.children.values()) {
           const tabEl = document.createElement('div')
           tabEl.className = 't'
@@ -1025,24 +1154,74 @@ export class WinView {
           tabEl.appendChild(label)
           const page = document.createElement('div')
           page.className = 'page'
+          if (accessible) {
+            tabEl.id = `${id}-${items.length + 1}`
+            page.id = `${tabEl.id}-panel`
+            tabEl.setAttribute('role', 'tab')
+            tabEl.setAttribute('aria-controls', page.id)
+            page.setAttribute('role', 'tabpanel')
+            page.setAttribute('aria-labelledby', tabEl.id)
+            page.tabIndex = 0
+          }
           t.appendChild(page)
           const item: TabItem = { po, tab: tabEl, page }
           items.push(item)
+          tabEl.onmousedown = (event) => { if (event.button === 0) event.preventDefault() }
           tabEl.onclick = () => {
-            const old = toNum(c.props.get('selectedtab') ?? 1)
-            const n = visibleItems().indexOf(item) + 1
-            if (n < 1) return
-            select(n)
-            void rt.fire(c, 'selectionchanged', [old, n])
+            if (this.destroyed || !t.isConnected) return
+            const focus = document.activeElement
+            void selection.select(po).then((accepted) => {
+              if (accepted && accessible && !this.destroyed && t.isConnected && tabAvailable(po) &&
+                (document.activeElement === focus || document.activeElement === document.body)) tabEl.focus()
+            }).catch((error) => rt.onError(error))
+          }
+          if (accessible) {
+            tabEl.onfocus = () => {
+              sync()
+              tabEl.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+            }
+            tabEl.onkeydown = (event) => {
+              if (!tabAvailable(po)) return
+              const modified = event.altKey || event.ctrlKey || event.metaKey || event.shiftKey
+              const available = visibleItems().filter((entry) => tabAvailable(entry.po))
+              const index = available.indexOf(item)
+              const target = modified ? null : event.key === 'ArrowRight' ? available[(index + 1) % available.length]
+                : event.key === 'ArrowLeft' ? available[(index - 1 + available.length) % available.length]
+                  : event.key === 'Home' ? available[0] : event.key === 'End' ? available.at(-1) : null
+              if (target) {
+                event.preventDefault()
+                event.stopPropagation()
+                target.tab.focus()
+              } else if (!modified && (event.key === 'Enter' || event.key === ' ')) {
+                event.preventDefault()
+                event.stopPropagation()
+                tabEl.click()
+              } else if (!modified && event.key === 'Tab') {
+                const active = items.find((entry) => entry.tab.getAttribute('aria-selected') === 'true')
+                if (active) {
+                  event.preventDefault()
+                  ;(pageControls(active.page)[0] ?? active.page).focus()
+                }
+              }
+              const key = keyEnum(event)
+              if (key) void rt.fire(c, 'key', [key, keyFlags(event)]).catch((error) => rt.onError(error))
+            }
+            page.addEventListener('keydown', (event) => {
+              if (event.defaultPrevented || event.key !== 'Tab' || !event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) return
+              if (event.target !== page && event.target !== pageControls(page)[0]) return
+              event.preventDefault()
+              tabEl.focus()
+            }, { signal: this.lifetime.signal })
           }
           strip.appendChild(tabEl)
           this.renderControls(po, page)
-          ;(po as NControl).listeners?.add(sync)
+          this.watch(po, sync)
         }
+        if (accessible) strip.addEventListener('focusout', () => queueMicrotask(sync), { signal: this.lifetime.signal })
         t.prepend(strip)
         select(toNum(c.props.get('selectedtab') ?? 1) || 1)
         // a script that sets selectedtab switches the page, too
-        ;(c as unknown as { listeners: Set<() => void> }).listeners.add(sync)
+        this.watch(c, sync)
         el = t
         break
       }
@@ -1060,7 +1239,7 @@ export class WinView {
         p.className = 'ctl'
         p.max = num(c, 'maxposition', 100)
         p.value = num(c, 'position', 0)
-        ;(c as NControl).listeners.add(() => (p.value = num(c, 'position', 0)))
+        this.watch(c, () => (p.value = num(c, 'position', 0)))
         el = p
         break
       }
@@ -1075,7 +1254,7 @@ export class WinView {
     el.classList.add('ctl')
     this.place(c, el)
     if (!bool(c, 'enabled', true) && 'disabled' in el) (el as HTMLButtonElement).disabled = true
-    ;(c as NControl).listeners?.add(() => this.refresh(c, el))
+    this.watch(c, () => this.refresh(c, el))
     return new CtlView(this.ui, c, el)
   }
 
@@ -1093,9 +1272,18 @@ export class WinView {
     }
     if (c.native === 'commandbutton') mnemonic(el, raw)
     else if (c.native === 'statictext') mnemonic(el, raw.replace(/\r\n/g, '\n'))
+    else if (c.native === 'groupbox') {
+      const legend = el.querySelector('legend')
+      if (legend) mnemonic(legend, raw)
+    }
     else if (c.native === 'singlelineedit' || c.native === 'editmask') {
       const i = el as HTMLInputElement
       if (i.value !== str(c, 'text')) i.value = str(c, 'text')
+    } else if (c.native === 'multilineedit' || c.native === 'richtextedit') {
+      const t = el as HTMLTextAreaElement
+      const text = str(c, 'text')
+      if (t.value !== text) t.value = text
+      if (c.native === 'richtextedit') t.readOnly = bool(c, 'displayonly', false)
     } else if (c.native === 'checkbox' || c.native === 'radiobutton') {
       const i = el.querySelector('input') as HTMLInputElement
       i.checked = bool(c, 'checked', false)

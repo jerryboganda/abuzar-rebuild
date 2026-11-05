@@ -21,6 +21,7 @@ class OleStub implements Member {
 
 export class NControl extends PBObject {
   listeners = new Set<() => void>()
+  dropdownTextVersion = 0
   constructor(rt: Runtime, className: string, native: string) {
     super(rt, className, native)
   }
@@ -48,6 +49,13 @@ export class NControl extends PBObject {
     }
     const old = name === 'selectedtab' ? toNum(this.props.get('selectedtab') ?? 1) : 0
     super.pbSet(name, value)
+    if (this.native === 'dropdownlistbox') {
+      if (name === 'text') {
+        this.dropdownTextVersion++
+        if (this.props.get('allowedit') === true) this.props.set('_selected', 0)
+      }
+      if (name === 'sorted' && value === true) this.sortDropdown()
+    }
     this.changed()
     // PowerBuilder tab pages fill the tab control's client area.  Scripts read
     // `tabpage_detail.height` to lay out their children (the Item form sets
@@ -158,6 +166,32 @@ export class NControl extends PBObject {
     this.pbSet('text', toStr(t))
     return 1
   }
+  // ---- rich text edit (Item Notes): the form pastes/copies RTF and toggles display options
+  async n_pastertf(t: unknown): Promise<number> {
+    this.pbSet('text', toStr(t))
+    this.changed()
+    return 1
+  }
+  async n_copyrtf(_richtext?: unknown, _band?: unknown): Promise<string> {
+    return toStr(this.props.get('text'))
+  }
+  async n_linecount(): Promise<number> {
+    const t = toStr(this.props.get('text'))
+    return t ? t.split(/\r?\n/).length : 0
+  }
+  async n_scroll(_rows?: unknown): Promise<number> {
+    return 1
+  }
+  async n_set_displayonly(v: unknown): Promise<number> {
+    this.props.set('displayonly', v === true || toNum(v) !== 0)
+    return 1
+  }
+  async n_set_popmenu(_v?: unknown): Promise<number> {
+    return 1
+  }
+  async n_set_toolbar(_v?: unknown): Promise<number> {
+    return 1
+  }
   // ListBox / DropDownListBox `Text(i)` returns item i (not the control's text
   // property).  Argument windows collect the selected names with
   // `lb_selected....text(n)` and look them up in their DataWindow; returning the
@@ -191,6 +225,15 @@ export class NControl extends PBObject {
       this.props.set('_items', a)
     }
     return a
+  }
+  private sortDropdown(inserted = -1): number {
+    if (this.native !== 'dropdownlistbox' || this.props.get('sorted') !== true) return inserted
+    const selected = toNum(this.props.get('_selected') ?? 0) - 1
+    const entries = this.items().a.map((value, index) => ({ value, index }))
+    entries.sort((a, b) => toStr(a.value).localeCompare(toStr(b.value), undefined, { sensitivity: 'base' }))
+    this.items().a.splice(0, this.items().a.length, ...entries.map((entry) => entry.value))
+    this.props.set('_selected', entries.findIndex((entry) => entry.index === selected) + 1)
+    return entries.findIndex((entry) => entry.index === inserted)
   }
   // ---- list views (the service category chooser): items are listviewitem structures, a picture is read from the file the script just wrote
   lvItems(): PBStruct[] {
@@ -234,25 +277,44 @@ export class NControl extends PBObject {
       return this.lvItems().length
     }
     this.items().a.push(toStr(t))
+    const index = this.sortDropdown(this.items().a.length - 1)
     this.changed()
-    return this.items().a.length
+    return index + 1
   }
   async n_insertitem(t: unknown, at: unknown): Promise<number> {
-    this.items().a.splice(Math.max(0, toNum(at) - 1), 0, toStr(t))
+    const index = Math.min(this.items().a.length, Math.max(0, toNum(at) - 1))
+    this.items().a.splice(index, 0, toStr(t))
+    if (this.native === 'dropdownlistbox') {
+      const selected = toNum(this.props.get('_selected') ?? 0)
+      if (selected > index) this.props.set('_selected', selected + 1)
+    }
+    const position = this.sortDropdown(index)
     this.changed()
-    return this.items().a.length
+    return this.native === 'dropdownlistbox' ? position + 1 : this.items().a.length
   }
   async n_deleteitem(at: unknown): Promise<number> {
     const a = this.items().a
     const i = toNum(at) - 1
     if (i < 0 || i >= a.length) return -1
     a.splice(i, 1)
+    if (this.native === 'dropdownlistbox') {
+      const selected = toNum(this.props.get('_selected') ?? 0)
+      if (selected === i + 1) {
+        this.props.set('_selected', 0)
+        this.props.set('text', '')
+        this.dropdownTextVersion++
+      } else if (selected > i + 1) this.props.set('_selected', selected - 1)
+    }
     this.changed()
     return a.length
   }
   async n_reset(): Promise<number> {
     this.items().a.length = 0
     this.props.set('_selected', 0)
+    if (this.native === 'dropdownlistbox') {
+      this.props.set('text', '')
+      this.dropdownTextVersion++
+    }
     this.changed()
     return 1
   }
@@ -262,8 +324,12 @@ export class NControl extends PBObject {
   }
   async n_selectitem(i: unknown): Promise<number> {
     const n = typeof i === 'string' ? this.items().a.findIndex((x) => x === i) + 1 : toNum(i)
-    if (n < 0 || n > this.items().a.length) return -1
+    if (!Number.isInteger(n) || n < 0 || n > this.items().a.length) return -1
     this.props.set('_selected', n)
+    if (this.native === 'dropdownlistbox') {
+      this.props.set('text', n > 0 ? toStr(this.items().a[n - 1]) : '')
+      this.dropdownTextVersion++
+    }
     this.changed()
     return n
   }

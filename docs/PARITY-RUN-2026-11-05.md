@@ -1060,6 +1060,28 @@ list), using the real nested forms:
 * Regression check after the fixes: report 081 (argument-window based)
   still retrieves its 1 row and prints `Report. Total: 30.00 10.00 20.00`.
 
+### Item Notes nested RichText form + parent save
+
+`Set Item Notes` (`m_setitemnotes` → `w_item_form_notes`) was exercised on
+item **9801**:
+
+* Typed `PARITY ITEM NOTES` into the form's RichTextEdit and confirmed with
+  OK; the parent handler captured the text as `iblob_notes`.
+* Item Form save wrote
+  `UPDATE dbo.itemnotes SET notes = $1 WHERE (icode = $2)` with
+  `$1 = {$b64:"UEFSSVRZIElURU0gTk9URVM="}` (17 bytes, `PARITY ITEM NOTES`),
+  and the saleprice 10→11 change produced the expected `itemlog` row.
+* **Fix – RichTextEdit API/render**: `richtextedit` mapped to a bare control,
+  so `pastertf`, `copyrtf`, `linecount`, `scroll`, `set_displayonly`,
+  `set_popmenu` and `set_toolbar` were missing.  `NControl` now implements
+  them over its `text` property, and `dom-ui` renders a real textarea (respecting
+  display-only) and refreshes it when the text changes.
+* Exact restore: `itemnotes.notes` for 9801 was **null** before the test and
+  is null again; `itemnotes` count 28,961; `item` 9801 back to
+  `saleprice 10.00 / retail 5.00 / lastupdate 2026-11-05 10:38:44.342 /
+  changereason Multiple Changes / module Purchase Posting`;
+  `itemlog 98,632 / max 152,907`; `audit_log 1,079 / max 1,127`.
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -1116,7 +1138,7 @@ list), using the real nested forms:
   change-items-price, supplier-wise-item-settings (add/edit/delete),
   purchase-return add/save, opening-purchase and loose-purchase
   add/edit/save, Item Form parent saves with nested price-policy/alias,
-  association and image rows, users add/edit,
+  association, image and RichText notes rows, users add/edit,
   modify-sale-invoices, three
   group-level settings (allowed price/cash account/supplier category),
   Interface Setting visibility, Change Password, Modify Last Transaction Date,
@@ -1135,12 +1157,12 @@ list), using the real nested forms:
     purchase variants (normal, opening, loose), purchase return, sale/return,
     quotation, purchase order and adjustments now have committed cycles.
   * Nested forms: **Set Item Price Policy**, **Set Alternate Item Alias
-    Names**, **Set Item Associations** and **Set Item Image(s)** now have
-    verified add + parent-save cycles (the image delete-all path is an
-    original early-return limitation, above).  **Set Item Author(s)** is
-    data-blocked (`Author`/`ItemAuthor` empty in both databases), as are
-    **Set Models** (`Model`) and the item-category association
-    (`CustItemCatAssociation`).  Remaining: Item Notes (RichTextEdit).
+    Names**, **Set Item Associations**, **Set Item Image(s)** and **Set Item
+    Notes** now have verified add + parent-save cycles (the image delete-all
+    path is an original early-return limitation, above).  **Set Item
+    Author(s)** is data-blocked (`Author`/`ItemAuthor` empty in both
+    databases), as are **Set Models** (`Model`) and the item-category
+    association (`CustItemCatAssociation`).
   * **Change Item Discount** would bulk-update a whole category (plus one
     itemlog row per item) and has not been run; the probe was deliberately
     not executed against bulk data.
