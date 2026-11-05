@@ -559,11 +559,14 @@ form:
   `saletemplateheader`.
 * **Detail edit/save**: changing `saleprice` to 11 and `remarks` to
   `PARITY DETAIL EDIT` in `saletemplatedetail` persisted both values.
-* **Delete gap**: File | Delete is **enabled** on the form, and firing it runs
-  the inherited `m_delete.clicked` -> `ue_delete`, but no row is deleted.  The
-  recovered `w_saletemplate` has no `ue_delete` event, and no recovered script
-  contains `DELETE SaleTemplateHeader`; the handler was not recovered.  This is
-  a real missing feature, recorded rather than guessed.
+* **Delete behavior (resolved as original limitation)**: File | Delete is
+  **grayed** on the original's empty Sale Template sheet (`GetMenuState` =
+  `MF_GRAYED`), while `ue_detail` enables it after a template is selected.  A
+  scan of the original `templates.pbd` found `w_saletemplate` and only
+  `ue_deleteitem` / `ue_deleteitem_row` events — **no `ue_delete` event** —
+  and no recovered script deletes `SaleTemplateHeader`.  The enabled-but-inert
+  menu is therefore the original behavior, not a rebuild gap; the rebuild
+  matches it and does not invent a delete handler.
 * Test rows 581/582 were removed; `saletemplateheader`/`saletemplatedetail`
   counts are back to 71/297 and no `PARITY TEMPLATE%` rows remain.
 * A probe that passed the date as the string `05/11/2026` stored `2026-05-11`
@@ -641,8 +644,9 @@ Item Settings”) was exercised through its own selector:
   both persisted and restored.
 * Full add/edit/delete/save on every remaining field of the other master and
   transaction screens: 16/16 small masters plus Sale Template header/detail
-  are verified; Sale Template delete is a recorded missing handler (enabled
-  menu, no recovered `ue_delete`).  The rest still need their own cycles.
+  are verified; Sale Template File | Delete is the original's enabled-but-inert
+  behaviour (no `ue_delete` in the original library).  The rest still need
+  their own cycles.
 * Reports: final-stage pixel comparison is now method-complete (Win32 menu-ID
   driver + generic rebuild capture) with **45/138 pairs captured**
   (001-045), all old and new final previews present; 93 remain.  The
