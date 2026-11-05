@@ -38,10 +38,12 @@ is now populated/looked-up by a verified master cycle, which removes the
 and **Item Type** has no master window; the `itemtype` table is not exposed
 through a form.
 
-`Sale Promotion` is the only tested form that cannot complete: its Active /
-Customer Group / Weekday drop-downs are empty in the migrated clone (missing
-reference rows), so no valid FK value can be produced.  This is a data gap,
-not a form defect.
+`Sale Promotion` was the only tested form that could not complete without
+reference rows: its Customer Group drop-down is empty when `CustomerGroup` is
+empty, so no valid FK value can be produced.  With a temporary CustomerGroup 1
+plus one CustomerGroupDetail fixture it now passes add/edit/delete/save (below);
+normal use remains data-blocked in both apps because `CustomerGroup` is empty.
+This is a data gap, not a form defect.
 
 ## How to reproduce
 
@@ -335,8 +337,9 @@ posted Y) was created at 2026-11-05 02:16:30 and read back from
   Schedule) is still in progress.
 * Reports: 138 paths paired; final-stage/pixel comparison still open.
 * Reference-data gaps: live `CustomerGroup` is empty (Sale Promotion cannot
-  choose a group in either app); other reference tables still need a
-  live-vs-clone count audit.
+  choose a group in either app without fixtures; it was verified with a
+  temporary group 1 + group detail, below); other reference tables still need
+  a live-vs-clone count audit.
 * Visual geometry: response dialogs still ~3 px narrower / 8 px shorter; row
   spacing 26 vs 28 px; Priority Setting column widths.
 
@@ -827,7 +830,32 @@ attempt reached the database and returned
   `CustomerGroupDetail` and `SalePromotion` all contain **0 rows in both the
   live SQL Server database and the clone**.  With no selectable customer group,
   neither app can create a Sale Promotion; the rebuilt form now reproduces the
-  original field-validation path exactly.
+  original field-validation path exactly.  This was later bypassed with
+  temporary fixtures; see the verification below.
+
+### Sale Promotion add/edit/delete/save (verified with temporary fixtures)
+
+A temporary **CustomerGroup 1** (`PARITY CUST GROUP ...`) and one
+`CustomerGroupDetail (1, 22, rowid 1)` were inserted; `WeekDays` already
+contains codes 1-7 and the `ddd_weekdays_all` drop-down also offers 0
+`<All Days>`.
+
+* **Add:** promotion code **5**, active **Y**, group **1**, default item disc
+  **5**, weekday **0**, start `2026-11-05`, end `2027-11-05`;
+  “Changes take effect in database”.  The form's Customer update changed
+  customer 22 `DefaultItemDiscPerc` **1 -> 5**.
+* **Edit:** name/remarks changed and discount **5 -> 6**; save updated the
+  promotion row and customer 22 to **6**.
+* **Delete:** `File | List` -> `ue_detail` showed `m_delete` **enabled**;
+  `ue_delete` asked “Delete this record permanently from Database?” and then
+  showed “Record Deleted Successfully”; `salepromotion` row **0**.
+  `_tabmaxkey('SalePromotion')` stayed 5 (the table id is not decremented).
+* Exact restore: `salepromotion 0 / max 0`, `CustomerGroup 0`,
+  `CustomerGroupDetail 0`, customer 22 `DefaultItemDiscPerc 1`,
+  `_tabmaxkey('SalePromotion') 4`,
+  `audit_log 1,079 / max 1,127`, residue 0.
+
+Probe: `tools/parity/probe-salepromotion-crud.mjs` — measured `ok=true`.
 
 ### Group-level settings CRUD (three Manage screens)
 
@@ -2139,7 +2167,8 @@ Probe: `tools/parity/probe-itempart-cascade.mjs` — measured `ok=true`.
   standalone **Price Policy** slab add/edit/delete, **Supplier** master +
   manufacturer detail add/edit/detail-delete, **Item Basic Data** new-item
   add (temporary model/author/part fixtures; edit path original early-return
-  defect), compound reorder qty,
+  defect), **Sale Promotion** add/edit/delete (temporary customer-group
+  fixtures), compound reorder qty,
   credit/cash sale,
   change-items-price, supplier-wise-item-settings (add/edit/delete),
   purchase-return add/save, opening-purchase and loose-purchase
