@@ -825,6 +825,21 @@ detail row, `ue_save`, then `ue_deleteitem` + `ue_save`:
   `ue_newitem` inserts at row 1; the missing row `(2,1,7)` was restored from
   the captured baseline and the corrected probe then proved the real INSERT.
 
+### Interface Setting (multi-grid save)
+
+`Maintenance | Interface Setting` (`w_interfacesetting`) updates 20+ tab
+DataWindows in one `cb_ok` chain:
+
+* Pressing OK **without changes** completed the whole chain and showed
+  “Changes take effect in the database.” — the runtime's `Update()` result is
+  accepted by the `= 1` comparisons.
+* Toggled `visibility` for `(module 1, sequence 17, colname authorcode)` from
+  0 to 1.  PostgreSQL received
+  `UPDATE dbo.interfacesetting SET visibility = $1 WHERE moduleid = $2 AND
+  sequenceid = $3 AND colname = $4 AND colcaption = $5 AND visibility = $6`
+  with `[1,1,17,"authorcode","Author",0]`; the row changed to 1.
+* Restored the original 0; `interfacesetting` count stays **719**.
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -880,8 +895,9 @@ detail row, `ue_save`, then `ue_deleteitem` + `ue_save`:
   job, groups, update-item-basic-data, compound reorder qty, credit/cash sale,
   change-items-price, supplier-wise-item-settings (add/edit/delete),
   purchase-return add/save, users add/edit, modify-sale-invoices, three
-  group-level settings (allowed price/cash account/supplier category) and a
-  Preferences setting edit/save; non-destructive
+  group-level settings (allowed price/cash account/supplier category),
+  Interface Setting visibility and a Preferences setting edit/save;
+  non-destructive
   nested actions
   exercised for Customer (40), Supplier (40) and Item (23, including all nine
   item-specific features); **139/141 mapped report paths paired** (only 067/068
