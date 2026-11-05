@@ -84,6 +84,26 @@ const CONFIGS = {
     fields: { name: '{{name}}' },
     edit: {},
   },
+  ward: {
+    menu: 'm_patientward', window: 'w_ward_form', table: 'ward', key: 'wardcode', tab: 'Ward', prefix: 'PARITY WARD',
+    fields: { name: '{{name}}', description: 'PARITY WARD DESCRIPTION' },
+    edit: { description: 'PARITY WARD DESCRIPTION EDITED' },
+  },
+  relation: {
+    menu: 'm_relation', window: 'w_relation_form', table: 'relation', key: 'relationcode', tab: 'Relation', prefix: 'PARITY RELATION',
+    fields: { name: '{{name}}', description: 'PARITY RELATION DESCRIPTION' },
+    edit: { description: 'PARITY RELATION DESCRIPTION EDITED' },
+  },
+  rank: {
+    menu: 'm_rank', window: 'w_rank_form', table: 'rank', key: 'rankcode', tab: 'Rank', prefix: 'PARITY RANK',
+    fields: { name: '{{name}}', description: 'PARITY RANK DESCRIPTION' },
+    edit: { description: 'PARITY RANK DESCRIPTION EDITED' },
+  },
+  disease: {
+    menu: 'm_disease', window: 'w_disease_form', table: 'disease', key: 'diseasecode', tab: 'Disease', prefix: 'PARITY DISEASE',
+    fields: { name: '{{name}}', diseasetypecode: 1, description: 'PARITY DISEASE DESCRIPTION' },
+    edit: { description: 'PARITY DISEASE DESCRIPTION EDITED' },
+  },
 };
 const key = process.argv[2] || 'region';
 const cfg = CONFIGS[key];
