@@ -90,8 +90,21 @@ async function openWin(rt: Runtime, a: unknown[], sheet: boolean, withParm: bool
   hidePopups(w)
   const type = Number(w.props.get('windowtype') ?? 0)
   const modal = type === 3
+  // Argument sheets often retrieve in their ancestor Open/Activate and assign
+  // `istr_arg = message.powerobjectparm` only later in their own Open.  Seed the
+  // declared argument structure from openwithparm before the UI creates /
+  // activates the window so the first retrieve sees the caller's dates/range.
+  if (withParm && parm && typeof parm === 'object') {
+    for (const k of ['istr_arg', 'is_arg']) if (w.props.has(k)) w.props.set(k, parm)
+  }
   rt.ui?.createWindow?.(w, { sheet, modal })
   await rt.fire(w, 'open')
+  // The child Open may assign `istr_arg` from message.powerobjectparm after an
+  // ancestor call that already consumed/overwrote the message.  Restore the
+  // call parameter before the window is shown and its Activate retrieve runs.
+  if (withParm && parm && typeof parm === 'object') {
+    for (const k of ['istr_arg', 'is_arg']) if (w.props.has(k)) w.props.set(k, parm)
+  }
   rt.ui?.showWindow?.(w, { sheet, modal })
   // `postevent("ue_postopen")` queued by the window's Open must finish before
   // the first tab is selected: the entry windows lay out and initialise their

@@ -500,6 +500,15 @@ posted Y) was created at 2026-11-05 02:16:30 and read back from
   `salepromotion`).  Counts match exactly except `users` (old 9, clone 10; one
   extra test account).  No missing reference rows were found, so blank screens
   are not caused by missing lookup data.
+* **Modify Sale Invoices Date Period (continued)**: `EditMask.GetData` now
+  parses `dd/mm/yyyy hh:mm:ss` into `PBDateTime` even when `s_arguements`'
+  declared field is the legacy `longlong`; verified `d_sdate`/`d_edate` are
+  PBDateTime.  The window Open now assigns `istr_arg` before `super::open`;
+  invoking `ue_newform` (List) retrieved **588,884 invoices**.  Remaining: the
+  window's `ue_save` deletes the trailing row; in the harness that row resolves
+  to invoice 588890 and PostgreSQL rejects it with
+  `sdsaleinvcodefk` on `saledetail`.  The trailing insert-row/status path needs
+  a dedicated fix; the invoice-range save already works.
 
 
 

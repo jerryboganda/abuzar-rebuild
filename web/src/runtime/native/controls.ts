@@ -85,20 +85,20 @@ export class NControl extends PBObject {
     if (!(ref instanceof Ref)) return -1
     const text = toStr(this.props.get('text'))
     const cur = ref.get()
-    if (typeof cur === 'number') await ref.set(Number(text.replace(/,/g, '')) || 0)
-    else {
-      // EditMask.GetData fills a typed variable.  The target may be a struct
-      // member (report arguments), whose type the reference cannot inspect, so
-      // convert a date/time-looking value instead of handing over raw text.
-      const m = /^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})(?:[ T]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/.exec(text.trim())
-      const iso = /^(\d{4})[/-](\d{1,2})[/-](\d{1,2})(?:[ T]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/.exec(text.trim())
-      if (m) {
-        const y = +m[3] < 100 ? 2000 + +m[3] : +m[3]
-        await ref.set(PBDateTime.fromJs(new Date(y, +m[2] - 1, +m[1], +(m[4] ?? 0), +(m[5] ?? 0), +(m[6] ?? 0))))
-      } else if (iso) {
-        await ref.set(PBDateTime.fromJs(new Date(+iso[1], +iso[2] - 1, +iso[3], +(iso[4] ?? 0), +(iso[5] ?? 0), +(iso[6] ?? 0))))
-      } else await ref.set(text)
-    }
+    // EditMask.GetData fills a typed variable.  The target may be a struct
+    // member (report arguments), whose declared type is often a legacy
+    // longlong placeholder even when the value is a date.  Parse date-looking
+    // text first, otherwise `d_sdate = 0` would take the numeric branch and
+    // turn "01/01/2020 00:00:00" into 0.
+    const m = /^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})(?:[ T]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/.exec(text.trim())
+    const iso = /^(\d{4})[/-](\d{1,2})[/-](\d{1,2})(?:[ T]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/.exec(text.trim())
+    if (m) {
+      const y = +m[3] < 100 ? 2000 + +m[3] : +m[3]
+      await ref.set(PBDateTime.fromJs(new Date(y, +m[2] - 1, +m[1], +(m[4] ?? 0), +(m[5] ?? 0), +(m[6] ?? 0))))
+    } else if (iso) {
+      await ref.set(PBDateTime.fromJs(new Date(+iso[1], +iso[2] - 1, +iso[3], +(iso[4] ?? 0), +(iso[5] ?? 0), +(iso[6] ?? 0))))
+    } else if (typeof cur === 'number') await ref.set(Number(text.replace(/,/g, '')) || 0)
+    else await ref.set(text)
     return 1
   }
   /** the window that contains this control */
