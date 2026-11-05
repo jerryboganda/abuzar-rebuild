@@ -911,6 +911,36 @@ the rebuild opens `w_voucher`, which closes with the original guard
   saved in either database; recorded as an original data/rights limit, not a
   rebuild gap.  No test data was written (`glheader`/`gldetail` remain 0).
 
+### Opening Purchase add/edit/save (verified)
+
+`Purchase | Opening Purchase` (`w_purchase`, type 2,
+`d_openingpurchaseheader` / `d_openingpurchasedetail` / `d_purchasefooter`):
+
+* Filled supplier **18** (OPENING SUPPLIER), unique supplier invoice
+  `PARITY-OPEN-…`, purcatcode 3, headerno 1, taxcategory 1, salesman 1,
+  posted `N`, impactinventory `Y`; one item row: **9801**, batch `.`,
+  expiry 2030-12-12, gcode 1, looseqty 1, purprice/rate 10.
+* Save asked nothing extra and reported “Changes take effect in database”.
+  PostgreSQL received:
+  * `INSERT INTO dbo.purledger …` with purinvcode **12284**, purcatcode 3,
+    suppcode 18, suppinvcode `PARITY-OPEN-…`, posted `N`, impactinventory `Y`,
+    invtotal **10.00**
+  * `INSERT INTO dbo.purdetail …` with 12284 / 9801 / batch `.` / gcode 1 /
+    looseqty 1 / purprice 10 / rate 10
+* **No stock or price change on save** (verified): `godowndetail` item 9801
+  stayed **18,035** and `item` avgprice/recentpurprice/sale/retail stayed
+  `4.87463 / 2.00 / 10.00 / 5.00`.  Opening purchases apply stock only on
+  Post.
+* **Edit/save**: reopened invoice 12284 from File | List (1 row), changed the
+  remarks, saved again; `purledger.remarks` persisted with ` EDITED` appended
+  and “Changes take effect in database” appeared a second time.
+* File | Delete has no handler on this window (recovered script defines only
+  `ue_deleteitem`, no `ue_delete`), consistent with the other entry windows.
+* Cleanup removed only the created rows and restored everything exactly:
+  `purledger 12,283`, `purdetail 196,966`, max purinvcode 12,283,
+  `_tabmaxkey(PurLedger)=12283`, purdetail identity sequence reset, stock
+  18,035, item prices unchanged, no `PARITY-OPEN` residue.
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -965,7 +995,8 @@ the rebuild opens `w_voucher`, which closes with the original guard
   verified for quotation, purchase order, refused sale, adjustments, cashier
   job, groups, update-item-basic-data, compound reorder qty, credit/cash sale,
   change-items-price, supplier-wise-item-settings (add/edit/delete),
-  purchase-return add/save, users add/edit, modify-sale-invoices, three
+  purchase-return add/save, opening-purchase add/edit/save, users add/edit,
+  modify-sale-invoices, three
   group-level settings (allowed price/cash account/supplier category),
   Interface Setting visibility, Change Password, Modify Last Transaction Date,
   Lock Item Batches and a Preferences setting edit/save; non-destructive
@@ -973,14 +1004,15 @@ the rebuild opens `w_voucher`, which closes with the original guard
   exercised for Customer (40), Supplier (40) and Item (23, including all nine
   item-specific features); **139/141 mapped report paths paired** (only 067/068
   are original-side limits); empty-result summary parity fixed (old and new
-  both omit it now); visual ~88%; reference data ~95%.  Overall ~95%,
+  both omit it now); visual ~88%; reference data ~95%.  Overall ~96%,
   **not 100%**.
 * Remaining work (measured, not hand-waved):
   * **Voucher entry screens**: resolved as rights-hidden and blocked by the
     same missing category-12..17 account configuration in live and clone;
     no reachable workflow remains to test (see above).
   * Full add/edit/delete/save on the remaining transaction screens:
-    purchase/opening/loose purchase variants.
+    **Loose Purchase** is the last purchase variant without a cycle
+    (Opening Purchase is now verified).
   * Item-specific and customer/supplier nested forms were opened and their
     parent actions exercised, but not every nested form went through its own
     field-level add/edit/save cycle.
