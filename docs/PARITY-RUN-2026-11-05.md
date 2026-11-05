@@ -1789,10 +1789,32 @@ Probe: `tools/parity/probe-saleorder-crud.mjs` — add/edit/delete/restore
 * Exact restore: `model 0`, `_tabmaxkey('Model') 0`,
   `audit_log 1,079 / max 1,127`.
 
-This removes the `Model` lookup data gap (the table can now be populated);
-the nested **Set Models** item form still needs its own add/delete cycle.
+This removes the `Model` lookup data gap; the nested **Set Models** item form
+is verified in its own cycle below.
 
 Probe: `tools/parity/probe-single-master.mjs model` — measured `ok=true`.
+
+### Set Models nested feature (verified)
+
+The Item Form menu command `m_selectmodels` opens `w_iteminmodel_form`
+(shared header DataWindow `d_iteminmodel`, keys `icode` + `modelcode`).  A
+temporary `Model` row (code 1, “PARITY TEMP MODEL”) was inserted because the
+`Model` table is empty in both databases.
+
+On item **9801**:
+
+* Opened the popup, added `modelcode 1`, closed it; the parent
+  `id_iteminmodel` showed `(9801, 1)`.
+* Changed item `saleprice 10 -> 11` to force an item log, then saved the
+  parent Item form: `iteminmodel (9801,1)` written and a new `itemlog` row
+  created (`max itemrowid 152908`); “Changes take effect in database”.
+* Deleted the model row from the parent grid, restored `saleprice 10`, saved
+  again: `iteminmodel` row removed; second save message.
+* Exact restore: `iteminmodel 0`, temporary `model` row removed (`model 0`),
+  item 9801 fields (`saleprice 10`, original `lastupdate` with the trigger
+  disabled), `itemlog 98,632 / max 152,907`, `audit_log 1,079 / max 1,127`.
+
+Probe: `tools/parity/probe-item-model-save.mjs` — measured `ok=true`.
 
 ### Remaining (measured)
 
@@ -1897,11 +1919,12 @@ Probe: `tools/parity/probe-single-master.mjs model` — measured `ok=true`.
     Admission/Transfer** are data-blocked: `Patient` has 0 rows in both
     databases.
   * Nested forms: **Set Item Price Policy**, **Set Alternate Item Alias
-    Names**, **Set Item Associations**, **Set Item Image(s)** and **Set Item
-    Notes** now have verified add + parent-save cycles (the image delete-all
-    path is an original early-return limitation, above).  **Set Item
+    Names**, **Set Item Associations**, **Set Item Image(s)**, **Set Item
+    Notes** and **Set Models** now have verified add + parent-save cycles
+    (the image delete-all path is an original early-return limitation,
+    above).  **Set Item
     Author(s)** is data-blocked (`Author`/`ItemAuthor` empty in both
-    databases), as are **Set Models** (`Model`) and the item-category
+    databases), as is the item-category
     association (`CustItemCatAssociation`).  **Patient Death Certificate**
     is data-blocked too (`DeathCertificate` 0 rows in both databases).
   * ~~**Change Item Discount** would bulk-update a whole category~~ -
