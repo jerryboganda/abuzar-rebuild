@@ -126,6 +126,14 @@ node tools/parity/discover-forms.mjs
   pixels differ by more than 40, mostly because the row spacing is 26 px
   instead of 28 px.  This is the known response-window height-factor gap, now
   measured on a concrete dialog rather than estimated.
+* **Corrected in the visual-geometry pass (later the same day):** the modal
+  frame now matches exactly.  Select Format is **353x340** (old 353x340),
+  Sale Summary is **417x487** (old 417x487) and Select Column Criteria is
+  **236x253** (old 236x253); client areas are 347x308 / 411x455 / 230x221.
+  Row pitch re-measured on both sides: 23-24 px (detail), 20 px (summary),
+  23 px (column criteria) — the earlier generic “26 vs 28” did not reproduce
+  on these pairs.  `syncWindow` adds the measured 4 px width / 9 px height
+  and 3 px modal frame, and centres modals on integer pixels.
 * **Report coverage so far:** the original captured **139 of 141** report
   commands (the two that crashed it are listed above); the rebuild has
   **131 of 141** first-stage captures (84 in `new-reports`, 47 in
@@ -1251,6 +1259,31 @@ removes and restores that allowance in the Sale grid:
   equivalent.  No import was attempted; the live and clone
   `PreviousSaleHistory` table has 94,572 rows.
 
+### Modal frame geometry (fixed)
+
+Measured on the paired old crops and freshly captured rebuild dialogs:
+
+| Dialog | Old | New before | New after |
+|---|---:|---:|---:|
+| Select Format (Sale detail) | 353x340 | 349x331 | **353x340** |
+| Select Format (Sale summary) | 417x487 | 413x478 | **417x487** |
+| Select Column Criteria | 236x253 | 234x245 | **236x253** |
+
+Client areas now match too: 347x308 / 411x455 / 230x221.  The fix is in
+`WinView.syncWindow` (`web/src/ui/dom-ui.ts`): response windows
+(`windowtype = 3`, title bar, not a sheet) add the measured **4 px width /
+9 px height**, use a **3 px frame**, and centre on integer pixels.  Non-modal
+windows and MDI sheets are unchanged.
+
+Row pitch was re-measured on both sides instead of relying on the old note:
+Select Format detail **23-24 px**, Sale summary **20 px**, Select Column
+Criteria **23 px**.  The earlier generic “26 vs 28 px” did not reproduce on
+these pairs; the only residual is a ~3 px gap after the focused first radio
+row in Select Column Criteria.  Priority Setting column widths remain open.
+
+Probe: `tools/parity/probe-dialog-geometry.mjs`; captures in
+`deploy/parity/geometry/`.
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -1349,7 +1382,8 @@ removes and restores that allowance in the Sale grid:
   * **Import Historical Data**: SQL-Server cross-database only (source
     database qualifiers/`CONVERT`); no PostgreSQL equivalent or source
     database exists, so it was not run.
-  * Visual: modal position/width offsets and 26 vs 28 px row spacing.
+  * Visual: Priority Setting column widths and any remaining focus-row spacing
+    (modal frames now match 353x340 / 417x487 / 236x253 exactly).
   * 067/068 final reports remain unpaired by original-side limits.
   * Sale Template and Customer/Supplier deletes are confirmed original
     behaviours, not rebuild gaps.

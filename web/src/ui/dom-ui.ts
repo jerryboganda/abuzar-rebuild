@@ -395,8 +395,8 @@ export class WinView {
     if (modal(this)) {
       // centred like a PowerBuilder response window
       const r = host.getBoundingClientRect()
-      s.left = Math.max(0, (r.width - W) / 2) + 'px'
-      s.top = Math.max(0, (r.height - H) / 3) + 'px'
+      s.left = Math.round(Math.max(0, (r.width - W) / 2)) + 'px'
+      s.top = Math.round(Math.max(0, (r.height - H) / 3)) + 'px'
     }
     this.el.classList.add('hidden')
     this.el.addEventListener('mousedown', () => this.activate())
@@ -455,11 +455,19 @@ export class WinView {
         }
       }
     }
-    if (Number(this.w.props.get('windowtype')) < 4) {
+    const wt = Number(this.w.props.get('windowtype'))
+    if (wt < 4) {
+      // Windows response windows have a 3 px frame and are 4 px wider / 9 px
+      // taller than the recovered PBU size (measured: Select Format 353x340
+      // vs 349x331, Sale Summary format list 417x487 vs 413x478).  The client
+      // area stays the same: the extra width is the 1 -> 3 px border, the
+      // extra height covers the frame and the taller client inset.
+      const frame = this.modal && !this.sheet && wt === 3 && bool(this.w, 'titlebar', true)
       s.left = toPx(num(this.w, 'x'), 'x') + 'px'
       s.top = toPx(num(this.w, 'y'), 'y') + 'px'
-      s.width = toPx(num(this.w, 'width'), 'x') + 'px'
-      s.height = toPx(num(this.w, 'height'), 'y') + 'px'
+      s.width = (frame ? Math.round(toPx(num(this.w, 'width'), 'x')) + 4 : toPx(num(this.w, 'width'), 'x')) + 'px'
+      s.height = (frame ? Math.round(toPx(num(this.w, 'height'), 'y')) + 9 : toPx(num(this.w, 'height'), 'y')) + 'px'
+      s.borderWidth = frame ? '3px' : ''
     }
     // Response windows are centred on the screen; scripts (Interface Setting,
     // the report argument dialogs) resize themselves in Open, so centring them
@@ -469,8 +477,8 @@ export class WinView {
       const W = parseFloat(s.width) || this.el.offsetWidth
       const H = parseFloat(s.height) || this.el.offsetHeight
       if (host && W > 0 && H > 0) {
-        s.left = Math.max(0, (host.width - W) / 2) + 'px'
-        s.top = Math.max(0, (host.height - H) / 3) + 'px'
+        s.left = Math.round(Math.max(0, (host.width - W) / 2)) + 'px'
+        s.top = Math.round(Math.max(0, (host.height - H) / 3)) + 'px'
       }
     }
   }
