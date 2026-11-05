@@ -467,6 +467,13 @@ posted Y) was created at 2026-11-05 02:16:30 and read back from
 * Remaining work: full field-level add/edit/delete/save on every remaining
   screen; the two inner save paths above; reports final-stage/pixel; modal
   geometry; live-vs-clone reference-data reconciliation.
+* **Modify Sale Invoices save detail**: `saleledger` has 588,884 invoices, but
+  the Date Period retrieve still returns an empty grid (the argument dates are
+  not reaching `istr_arg` in the mask's `dd/mm/yyyy hh:mm:ss` form).  Editing
+  the resulting blank row then makes the runtime emit
+  `DELETE FROM dbo.saleledger ...` with rowcount 0 and "Changes Rollback".
+  The form itself is present and writable; the retrieve-argument/row-buffer
+  path is the remaining fix.
 
 
 
