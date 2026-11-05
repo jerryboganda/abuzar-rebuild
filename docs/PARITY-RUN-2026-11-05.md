@@ -757,6 +757,25 @@ add/save was run against the clone:
   `prledger 1,487` / `prdetail 5,923`, item 9801 avg 4.87463, and no
   `PARITY PR RETURN` row exists.
 
+### Users add/edit/save (Manage | Users)
+
+`Manage | Users` (`w_users`, title “User”) was exercised through the form:
+
+* `ue_newform` created a blank user; filled username, password +
+  confirm, father name, address, phone, active `Y`, and detail group
+  `2`.
+* Save wrote **user 12** (`PARITY USER …`, active Y) and the `usergroups`
+  detail row `(12, group 2, modifiedby 1)`, with the usual “Changes take
+  effect in database”.
+* Editing address to `PARITY ADDRESS EDIT` and phone to `03111111111` saved
+  and persisted in `users`.
+* **File | Delete is disabled** on this form (`m_delete.enabled = false`),
+  matching the missing `ue_delete` handler; no delete was invented.
+* Cleanup required the trigger order `usergroups` -> `usergroupslog` ->
+  `users` (deleting `usergroups` writes a log row that blocks the user
+  delete).  The test user/log rows were removed and counts are back to
+  `users 10`, `usergroups 10`, `usergroupslog 31`, no `PARITY USER%` row.
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -811,8 +830,8 @@ add/save was run against the clone:
   verified for quotation, purchase order, refused sale, adjustments, cashier
   job, groups, update-item-basic-data, compound reorder qty, credit/cash sale,
   change-items-price, supplier-wise-item-settings (add/edit/delete),
-  purchase-return add/save, modify-sale-invoices and a Preferences setting
-  edit/save; non-destructive
+  purchase-return add/save, users add/edit, modify-sale-invoices and a
+  Preferences setting edit/save; non-destructive
   nested actions
   exercised for Customer (40), Supplier (40) and Item (23, including all nine
   item-specific features); **139/141 mapped report paths paired** (only 067/068
