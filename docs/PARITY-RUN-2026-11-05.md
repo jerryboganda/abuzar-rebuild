@@ -431,6 +431,22 @@ posted Y) was created at 2026-11-05 02:16:30 and read back from
   click-through ~70%; committed CRUD ~70%; reports ~70%; visual ~85%;
   reference data ~50%.
 
+### Latest continuation
+
+* **Change Item Reorder Qty**: the selector returns `M`; the main window
+  `w_changeitem_reorderqty` opens with `is_dwtype=M` and a blank header/detail
+  row; the Generate action opens `w_arg_manufacturers`.  The manufacturer
+  argument list is still empty in the harness, so the grid currently retrieves
+  one blank row.  The screen and all its controls are present; only the final
+  data-argument/save test remains.
+* **Modify Sale Invoices**: the format selector opens
+  `w_arg_cust_sdate_ldate_withalloption2` with customer/date rows; the final
+  `w_modify_saleinvces` edit/save cycle remains.
+* No additional missing menu, window or control was found in this pass.  The
+  recurring "missing feature" reports were capture-state (list tab, hidden
+  legacy columns), data prerequisites (empty `cashierjob`, manufacturer list)
+  or argument-selection issues.
+
 
 
 
