@@ -35,3 +35,5 @@ fn main() {
 async fn axum_serve(listener: tokio::net::TcpListener, app: trader_server::HttpRouter) -> std::io::Result<()> {
     trader_server::serve(listener, app).await
 }
+// build marker: final item-list startup fix
+// build marker: final pbSet visibility fix

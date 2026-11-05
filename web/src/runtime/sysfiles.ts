@@ -149,28 +149,62 @@ export function registerFileFuncs(rt: Runtime): void {
     await flush(h)
     return bytes.length
   })
+  /** one line in line mode (CR/LF/EOF), or the next 32K block in stream/text mode */
+  const readLine = (h: Handle): { chunk: Uint8Array; last: boolean } | null => {
+    if (h.pos >= h.data.length) return null
+    const eol = h.data.indexOf(10, h.pos)
+    const end = eol < 0 ? h.data.length : eol
+    let chunk = h.data.subarray(h.pos, end)
+    h.pos = eol < 0 ? h.data.length : eol + 1
+    if (chunk.length && chunk[chunk.length - 1] === 13) chunk = chunk.subarray(0, chunk.length - 1)
+    return { chunk, last: eol < 0 }
+  }
   /** fileread(handle, ref string|blob): one line (line mode) or the next 32K block */
-  const readInto = async (a: unknown[], whole: boolean): Promise<number> => {
+  const readInto = async (a: unknown[]): Promise<number> => {
     const h = handles.get(toNum(a[0]))
     const ref = a[1]
     if (!h || h.write || !(ref instanceof Ref)) return -1
-    if (h.pos >= h.data.length) return -100
-    let end: number
-    if (whole) end = h.data.length
-    else if (h.linemode) {
-      end = h.data.indexOf(10, h.pos)
-      end = end < 0 ? h.data.length : end
-    } else end = Math.min(h.data.length, h.pos + 32765)
-    let chunk = h.data.subarray(h.pos, end)
-    h.pos = h.linemode && !whole ? Math.min(h.data.length, end + 1) : end
-    if (h.linemode && !whole && chunk.length && chunk[chunk.length - 1] === 13) chunk = chunk.subarray(0, chunk.length - 1)
     const cur = ref.get()
+    if (h.linemode && cur instanceof Uint8Array) return -1 // PowerBuilder: a blob cannot be read in line mode
+    if (h.pos >= h.data.length) return -100
+    let chunk: Uint8Array
+    if (h.linemode) {
+      const line = readLine(h)
+      if (!line) return -100
+      chunk = line.chunk
+      // PowerBuilder returns 0 when a CR/LF is the first thing read
+      if (!chunk.length && !line.last) return 0
+    } else chunk = h.data.subarray(h.pos, Math.min(h.data.length, h.pos + 32765)), (h.pos = Math.min(h.data.length, h.pos + 32765))
     if (cur instanceof Uint8Array) await ref.set(chunk.slice())
     else await ref.set(dec.decode(chunk))
     return chunk.length
   }
-  def('fileread', (_r, a) => readInto(a, false), [1])
-  def('filereadex', (_r, a) => readInto(a, true), [1])
+  /** filereadex(handle, ref {, length}): one line in line mode, whole file (or length bytes) in stream/text mode */
+  const readEx = async (a: unknown[]): Promise<number> => {
+    const h = handles.get(toNum(a[0]))
+    const ref = a[1]
+    if (!h || h.write || !(ref instanceof Ref)) return -1
+    const cur = ref.get()
+    const isBlob = cur instanceof Uint8Array
+    if (h.linemode) {
+      if (isBlob) return -1
+      if (h.pos >= h.data.length) return -100
+      const line = readLine(h)
+      if (!line) return -100
+      if (!line.chunk.length && !line.last) return 0
+      await ref.set(dec.decode(line.chunk))
+      return line.chunk.length
+    }
+    if (h.pos >= h.data.length) return -100
+    const want = !isBlob && a.length > 2 ? toNum(a[2]) : -1
+    const end = want >= 0 ? Math.min(h.data.length, h.pos + want) : h.data.length
+    const chunk = h.data.subarray(h.pos, end)
+    h.pos = end
+    await ref.set(isBlob ? chunk.slice() : dec.decode(chunk))
+    return chunk.length
+  }
+  def('fileread', (_r, a) => readInto(a), [1])
+  def('filereadex', (_r, a) => readEx(a), [1, 2])
   def('fileseek', (_r, a) => {
     const h = handles.get(toNum(a[0]))
     if (!h) return -1

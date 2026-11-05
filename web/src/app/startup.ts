@@ -50,6 +50,17 @@ export async function startApplication(rt: Runtime, cfg: AppConfig = DEFAULT_CON
   applyConfig(rt, cfg)
   const app = await rt.instantiate('traderappv1')
   rt.globals.set('traderappv1', app)
+  // The original open event starts with af_get_app_setting(), which reads mgmtcomp.pbd:
+  // gs_company (used to pick rows from serviceheads.pbd), server/database names, limits.
+  // The licence / remote-server work that follows it stays out of the rebuild, but this read
+  // is what makes the deployed company key and the report-header lists behave like the original.
+  if (!cfg.company) {
+    try {
+      await rt.callMethod(app, 'af_get_app_setting', [])
+    } catch {
+      // no settings file: the rebuild's own configuration and licensing apply
+    }
+  }
   const msg = rt.globals.get('message') as PBObject
   // login (modal): the window closes with 1 after a successful login
   const ref = new Ref(() => null, () => {})

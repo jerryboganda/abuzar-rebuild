@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url'
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const port = Number(process.argv[2] || 5173)
 const api = process.argv[3] || ''
+const dist = process.env.DIST === '1'
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.bmp': 'image/bmp' }
 
 const tsCache = new Map()
@@ -47,14 +48,15 @@ const server = http.createServer(async (req, res) => {
     }
     if (p === '/') p = '/index.html'
     let file
-    if (p.startsWith('/src/')) file = join(root, normalize(p))
+    if (dist) file = join(root, 'dist', normalize(p))
+    else if (p.startsWith('/src/')) file = join(root, normalize(p))
     else if (p.startsWith('/data/')) file = join(root, 'public', normalize(p))
     else file = join(root, 'public', normalize(p))
     if (!file.startsWith(root)) {
       res.writeHead(403).end()
       return
     }
-    if (p.endsWith('.ts') || (p.startsWith('/src/') && p.endsWith('.ts'))) return await serveTs(file, res)
+    if (!dist && (p.endsWith('.ts') || (p.startsWith('/src/') && p.endsWith('.ts')))) return await serveTs(file, res)
     // gzip-only files are served decompressed (DataWindow bundles are stored as .json.gz)
     try {
       await stat(file)

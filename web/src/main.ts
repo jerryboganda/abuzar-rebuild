@@ -11,11 +11,32 @@ import { authHeaders } from './runtime/apiauth.ts'
 import { setApiBase } from './runtime/sysfiles.ts'
 import { localeDateOrder, setDateOrder } from './runtime/values.ts'
 import { startApplication, DEFAULT_CONFIG } from './app/startup.ts'
+import { fixSqlTables } from './runtime/sql-fixes.ts'
 import { autoLogin } from './app/autologin.ts'
 import { buildPages } from './ui/print.ts'
 import { DwView } from './ui/dwview.ts'
 import type { NDwBase } from './runtime/native/dwctrl.ts'
 import type { NTransaction } from './runtime/native/transaction.ts'
+
+/** Tauri shell: replace the default resource icon with the Waseela app icon. */
+async function setNativeIcon(): Promise<void> {
+  const invoke = (globalThis as { __TAURI_INTERNALS__?: { invoke?: (cmd: string, args: unknown) => Promise<unknown> } }).__TAURI_INTERNALS__?.invoke
+  if (typeof invoke !== 'function') return
+  try {
+    const blob = await (await fetch('/app-icon.png')).blob()
+    const bmp = await createImageBitmap(blob)
+    const canvas = document.createElement('canvas')
+    canvas.width = bmp.width
+    canvas.height = bmp.height
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    ctx.drawImage(bmp, 0, 0)
+    const data = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    await invoke('plugin:window|set_icon', { label: 'main', value: { rgba: Array.from(data.data), width: data.width, height: data.height } })
+  } catch {
+    // older shell without the command
+  }
+}
 
 /** data files; DataWindow bundles are stored gzip-compressed */
 async function text(path: string): Promise<string | undefined> {
@@ -46,7 +67,10 @@ async function findServer(q: URLSearchParams): Promise<{ base: string; db: boole
     !!(globalThis as { __TAURI__?: unknown }).__TAURI__ ||
     location.protocol === 'tauri:' ||
     /(^|\.)tauri\.localhost$/i.test(location.hostname)
-  if (tauri) document.body.classList.add('tauri-shell')
+  if (tauri) {
+    document.body.classList.add('tauri-shell')
+    void setNativeIcon()
+  }
   const bases = q.get('server') ? [q.get('server')!] : q.get('db') === 'server' ? [''] : tauri ? ['http://127.0.0.1:8787'] : ['']
   for (const b of bases) {
     // The desktop shell starts its embedded server in a background task; the
@@ -76,6 +100,7 @@ async function main(): Promise<void> {
   const names = JSON.parse((await text('names.json')) || '{}')
   const loader = new JsonClassLoader((n) => text(`classes/${n}.json`))
   const sqlTables = JSON.parse((await text('sql.json')) || '{}')
+  fixSqlTables(sqlTables)
   const useMock = server === null
   if (server !== null) setApiBase(server)
   const desktop = document.getElementById('desktop') as HTMLElement
