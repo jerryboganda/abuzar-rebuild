@@ -1151,6 +1151,46 @@ and **ItemPart 2** were inserted, and ItemPart 1 was used for the item.
 
 Probe: `tools/parity/probe-itembasicdata-add.mjs` - measured `ok=true`.
 
+### Main Item Form header add + File | Delete (verified; no ue_delete handler)
+
+`Basic Data | Item .......... | Item` opens `w_item_form` (`w_multi_entry`,
+title "Item Form").  Master `d_item_detail` updates `Item`, detail
+`d_item_suplier` updates `ItemSuppliers`, and the hidden buffers are
+`d_iteminmodel`, `d_itemassociation`, `d_itemauthor`,
+`d_alternateitemalias`, `d_itemimage`, `d_pricepolicyheader` and
+`d_pricepolicydetail`.
+
+* **Add:** `ue_newform`, master fields + supplier **18** detail, Save.  The
+  header received generated code **29,043** (`_tabmaxkey('Item') 29,042 ->
+  29,043`) with name `PARITY ITEM MAIN ...`, alias, prices 10/5/10 and the
+  supplier detail.  PostgreSQL wrote `item` (104 columns), `itemsuppliers
+  (29043,18)`, `itemnotes (29043)`, `pricepolicy 28,969` (`name 29043.`) and
+  `pricepolicydetail` (`qtylimit 0 / price 10 / expiry 2012-12-12`);
+  `_tabmaxkey('PricePolicy') 28,968 -> 28,969`; "Changes take effect in
+  database".
+* **Reopen:** File | List retrieved **28,967** rows; `ue_detail` loaded
+  master code 29,043 from the list.
+* **File | Delete is an original no-op:** `ue_detail` enables
+  `m_delete` (text `&Delete`), but `w_item_form` and its ancestors define no
+  `ue_delete` event.  Clicking the menu item and calling `ue_delete`
+  directly both returned without a dialog or SQL; `item` and `itemsuppliers`
+  still contained code 29,043.  This is original behavior, not a rebuild gap.
+* **Systemic fix - `f_validatedw` second gate:** the recovered function
+  contained two `FindRequired` calls; the second tested `FindRequired(...) =
+  1`.  `FindRequired` returns 1 both when it finds a null and when it finds
+  none (it then sets `ll_row` to 0), so every `w_item_form` save showed
+  `Please enter a value for '!.` and returned before SQL.  The class fix now
+  rewrites the second gate to `ll_row <> 0`; the regression test is
+  `web/tests/class-fixes.test.ts`.
+* Exact restore: `item 28,966 / max 29,040`, `itemsuppliers 21,141`,
+  `itemnotes 28,961`, `pricepolicy 28,966`, `pricepolicydetail 28,966`,
+  `itemassociation / iteminmodel / itemauthor / alternateitemalias 0`,
+  `itemimage 361`, `itemlog 98,632 / max 152,907`,
+  `_tabmaxkey`: Item 29,042 / PricePolicy 28,968, `serverdate` unchanged,
+  `audit_log 1,079 / max 1,127`, no residue.
+
+Probe: `tools/parity/probe-item-main-add-delete.mjs` - measured `ok=true`.
+
 ### Item Association nested form + parent save
 
 `Set Item Associations` (`m_setitemassociations` →

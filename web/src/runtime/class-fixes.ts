@@ -138,10 +138,18 @@ function fixPurchase(data: Json): string[] {
 function fixValidatedW(data: Json): boolean {
   const body = data.routines?.f_validatedw?.f_validatedw?.[0]?.body
   if (!Array.isArray(body)) return false
-  const find = body.find((n) => n?.k === 'if' && JSON.stringify(n.c || {}).includes('findrequired'))
-  const target = body.find((n) => n?.k === 'if' && JSON.stringify(n.c || {}).includes('ll_row') && !JSON.stringify(n.c || {}).includes('findrequired'))
-  if (!find || !target) return false
-  target.c = { k: 'bin', op: '=', l: clone(find.c.l), r: num(1) }
+  // The decompiler duplicated the FindRequired call into the second gate and
+  // replaced the original `ll_row <> 0` test with `FindRequired(...) = 1`.
+  // FindRequired returns 1 even when it reports "no required column" (it sets
+  // row to 0), so every save of a valid DataWindow showed the validation box
+  // and aborted.  The first gate (`FindRequired(...) < 0`) is harmless; the
+  // second gate must test the row number that the first call filled in.
+  const gates = body.filter((n) => n?.k === 'if' && JSON.stringify(n.c || {}).includes('findrequired'))
+  if (gates.length < 2) return false
+  const target = gates[1]
+  const c = target.c
+  if (c?.k === 'bin' && c.op === '<>' && c.l?.k === 'id' && c.l.n === 'll_row' && c.r?.k === 'num' && c.r.v === 0) return false
+  target.c = { k: 'bin', op: '<>', l: id('ll_row'), r: num(0) }
   return true
 }
 
