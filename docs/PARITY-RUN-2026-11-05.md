@@ -1057,7 +1057,37 @@ On item 9801's policy **7670**:
   `_tabmaxkey('PricePolicy') 28,968`; `audit_log 1,079 / max 1,127`; no
   residue.
 
-Probe: `tools/parity/probe-pricepolicy-crud.mjs` — measured `ok=true`.
+Probe: `tools/parity/probe-pricepolicy-crud.mjs` - measured `ok=true`.
+
+### Supplier Form (verified; master + manufacturer detail)
+
+`Basic Data | Supplier .......... | Supplier` opens `w_supplier_manf`
+(`w_multi_entry`).  Master `d_supplier_detail` updates `Accounts` then
+`Supplier`; detail `d_supmanf` updates `SupplierManufacturers`
+(`suppcode` + `manfcode`).  The save chain requires **both** a master change
+and `id_detail.update() > 0`; a detail row also pushes its purchase-order
+policy values to the selected Manufacturer.
+
+* **Add:** temporary supplier code **334** (`_tabmaxkey('Accounts')
+  333 -> 334`) with detail manufacturer **1** (`base 45 / projection 30 /
+  policy 1`).  Save wrote the `accounts` and `supplier` rows and
+  `suppliermanufacturers (334,1)`; "Changes take effect in database".
+* **Edit:** city `KARACHI -> LAHORE`, alias changed, added manufacturer **2**
+  detail (`45 / 30 / 1`); save wrote `(334,1)` + `(334,2)`, supplier city
+  LAHORE.
+* **Detail delete:** removed both detail rows, restored city `KARACHI` and
+  the alias, saved: `suppliermanufacturers` **0**; the supplier/account rows
+  remained until SQL cleanup.
+* Manufacturer 1/2 policy fields stayed **45 / 30 / 1** (the detail update
+  was a no-op).
+* Supplier header delete has no `ue_delete` handler; the temporary
+  supplier/account rows were removed by SQL after the detail cycle (the
+  original supplier-delete behavior already documented).
+* Exact restore: `accounts 257 / max 325`, `supplier 225 / max 325`,
+  `suppliermanufacturers 0`, `_tabmaxkey('Accounts') 333`,
+  `audit_log 1,079 / max 1,127`, no residue.
+
+Probe: `tools/parity/probe-supplier-crud.mjs` - measured `ok=true`.
 
 ### Item Association nested form + parent save
 
@@ -2072,7 +2102,8 @@ Probe: `tools/parity/probe-itempart-cascade.mjs` — measured `ok=true`.
   verified for quotation, purchase order, refused sale, adjustments, cashier
   job, groups, **Item Part** (master + model detail; `masteripartcode`
   cascade measured as an original no-commit branch), update-item-basic-data,
-  standalone **Price Policy** slab add/edit/delete, compound reorder qty,
+  standalone **Price Policy** slab add/edit/delete, **Supplier** master +
+  manufacturer detail add/edit/detail-delete, compound reorder qty,
   credit/cash sale,
   change-items-price, supplier-wise-item-settings (add/edit/delete),
   purchase-return add/save, opening-purchase and loose-purchase
