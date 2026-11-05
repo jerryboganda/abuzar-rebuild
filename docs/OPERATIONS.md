@@ -1,5 +1,7 @@
 # Installing and running Trader
 
+> For the live deployment of this machine (192.168.18.39, the pharmacy main PC), see **`docs/DEPLOYMENT.md`** — it documents the installed PostgreSQL database, the scheduled-task server, the firewall rule, the token and the cutover decision. This page is the generic install guide.
+
 ## What you need
 * Windows 10/11 (64-bit).  The Microsoft Edge WebView2 Runtime must be present (it ships with Windows 11 and with current Edge updates on Windows 10); the app refuses to start without it.
 * PostgreSQL 17 (on the same machine or on a server in the network), a database for the company, e.g. `trader`.
