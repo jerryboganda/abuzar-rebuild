@@ -557,6 +557,20 @@ driven by menu command ID (no blind clicking).  First sample:
   captured **11/11 old** (106-116) and the two missing new previews (107/108)
   were captured individually — **16/16 pairs** in total.  Every new final
   state title starts with `Report:`.
+* Pairs **117-141** are captured: Accounts Ledger, Supplier/Manufacturer/
+  GroupWise/Item/Group-Rights listings, Sales Person Scope conflict, all Sale
+  Reprint formats, Selected Sales and Summaries, Item history reports
+  (price/basic data/name/new items), stock adjustment detail, deleted sale
+  items log and Supplier Purchase Return detail/summary.
+  **25/25 old and 25/25 new**.  Old 119 `Items List` exceeded the 60 s driver
+  timeout, but the follow-up capture wrote a valid 14 KB preview; the pair is
+  complete.  141's window title says "Supplier Purchase Return Detail Report"
+  while the page title is `Supplier Wise Purchase Return Summary`; the original
+  page title is also `Supplier Wise Purchase Return Summary`.
+* **Final report coverage: 139/141 mapped paths have both old and new final
+  previews**.  Only 067 `Claimable for Allowed Customers` (original Row
+  Validation + R0023 with default arguments) and 068 `Customer NTN Wise Sales
+  Tax Report` (original crash) remain unpaired.
 * The capture path is now generic (`deploy/parity/pw/probe-report-generic.mjs`
   on the rebuild, `tools/parity/old-menu.ps1` on the original): it answers
   whichever Select Format / Specify Retrieval Arguements / Selection List
@@ -756,11 +770,12 @@ add/save was run against the clone:
   behaviour (no `ue_delete` in the original library).  The rest still need
   their own cycles.
 * Reports: final-stage pixel comparison is now method-complete (Win32 menu-ID
-  driver + generic rebuild capture) with **114/141 mapped paths paired**
-  (all of 001-066 and 069-116 have both final previews); **25 remain**
-  (117-141), and 067/068 are unpaired by original-side limits.  The
-  empty-result difference is consistent: old shows header only, new also
-  prints summary/footer bands with zero totals.
+  driver + generic rebuild capture) with **139/141 mapped paths paired**
+  (every path except 067/068 has both old and new final previews); the two
+  exceptions are unpaired by original-side limits.  The
+  empty-result difference is consistent: on some empty reports the original
+  prints only header + column titles, while the rebuild also prints a summary
+  line with zero totals (e.g. 010 `Net Total 0.00`).
 * Visual geometry: modal 3 px/8 px offset, 26 vs 28 px row spacing, Priority
   Setting column widths.
 * Reference data: **30 tables compared**, counts match except `users` (one
@@ -800,8 +815,9 @@ add/save was run against the clone:
   edit/save; non-destructive
   nested actions
   exercised for Customer (40), Supplier (40) and Item (23, including all nine
-  item-specific features); **114/141 mapped report paths paired**;
-  visual ~85%; reference data ~95%.  Overall ~92%, **not 100%**.
+  item-specific features); **139/141 mapped report paths paired** (only 067/068
+  are original-side limits); visual ~85%; reference data ~95%.  Overall ~93%,
+  **not 100%**.
 * Remaining work: full field-level add/edit/delete/save on the other master and
   transaction screens; remaining report final-stage pairs; modal geometry; and
   a handful of DataWindow/visual edge cases.  Sale Template and
