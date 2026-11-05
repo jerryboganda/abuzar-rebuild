@@ -935,17 +935,38 @@ afterwards and verified (`2026-11-05 10:38:09`).
   nested actions
   exercised for Customer (40), Supplier (40) and Item (23, including all nine
   item-specific features); **139/141 mapped report paths paired** (only 067/068
-  are original-side limits); visual ~85%; reference data ~95%.  Overall ~93%,
+  are original-side limits); visual ~85%; reference data ~95%.  Overall ~94%,
   **not 100%**.
-* Remaining work: full field-level add/edit/delete/save on the other master and
-  transaction screens; remaining report final-stage pairs; modal geometry; and
-  a handful of DataWindow/visual edge cases.  Sale Template and
-  Customer/Supplier deletes are confirmed original behaviours, not rebuild
-  gaps.
-* **Report pairing (measured)**: old 139 / new 141 / **138 pairs**, 1 old-only,
-  3 new-only.  The 572 missing caption instances are frame chrome and dialog
-  names, not report fields: `Ready` 138, `Specify Retrieval Arguements` 73,
-  `Select Format` 31, `Preparing Your Report...` 26, `Selection List` 13,
+* Remaining work (measured, not hand-waved):
+  * **6 voucher entry screens** (`Cash/Bank Receipt`, `Cash/Bank Payment`,
+    2 hidden Journal Vouchers) have not had an add/save ledger cycle.
+  * Full add/edit/delete/save on the remaining transaction screens: sale
+    returns, purchase/opening/loose purchase and the credit-sale return
+    variants.
+  * Item-specific and customer/supplier nested forms were opened and their
+    parent actions exercised, but not every nested form went through its own
+    field-level add/edit/save cycle.
+  * **Change Item Discount** would bulk-update a whole category (plus one
+    itemlog row per item) and has not been run; the probe was deliberately
+    not executed against bulk data.
+  * **Group Wise Header Setting** probe hung before changing anything
+    (`groupallowedheader` stayed 35 rows); it remains open.
+  * Other settings not yet cycled: Group Wise Godown Setting, Job Schedule,
+    Inplace Initialization, Import Historical Data.
+  * Visual: modal position/width offsets, 26 vs 28 px row spacing, and the
+    extra zero-total summary line the rebuild prints on some empty reports
+    (e.g. 010 `Net Total 0.00`; original omits it).
+  * 067/068 final reports remain unpaired by original-side limits.
+  * Sale Template and Customer/Supplier deletes are confirmed original
+    behaviours, not rebuild gaps.
+* **Report pairing (measured)**: final previews now exist for **139 old / 141
+  new** paths, with **no old-only** and **2 new-only** (067 Claimable for
+  Allowed Customers and 068 Customer NTN Wise Sales Tax Report).  The earlier
+  “138 pairs / 572 missing captions” figure describes the first-stage
+  format/argument-dialog captures, not final previews.  The 572 caption
+  instances are frame chrome and dialog names, not report fields: `Ready` 138,
+  `Specify Retrieval Arguements` 73, `Select Format` 31,
+  `Preparing Your Report...` 26, `Selection List` 13,
   `Select Column Criteria` 11.  The old capture set stops at the format /
   argument dialog, so old-side final previews must be captured before a
   final-stage pixel comparison can run.
