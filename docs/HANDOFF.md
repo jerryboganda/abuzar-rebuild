@@ -3,6 +3,14 @@
 Everything a new coding agent (opencode or another) needs to continue this work without the previous conversation.
 Read `CLAUDE.md` (rules), `README.md` (architecture), `docs/PARITY.md` (numbers), `docs/FIDELITY.md` (findings) and `docs/ROADMAP.md` first; this file is the state and the next steps.
 
+**UI enhancement update:** the user has now approved planning and phased work on
+Classic/Modern presentation, superseding the earlier "enhancements later" scope
+for UI/UX only. `PRODUCT.md` records the decisions; `docs/UI-ENHANCEMENT.md`
+records the static inventory, synthetic all-role prototype, and remaining gates.
+Modern is not integrated or released. Preserve Classic and the shared business
+engine; obtain prototype approval before broad migration. No commit, push,
+release, or deployment is authorized by design approval.
+
 ## 1. The goal
 
 Rebuild the compiled PowerBuilder 12.5 ERP/POS "Trader App v1" ("Waseela", Abuzar Consultancy, FazalDin PP19 deployment; no source exists) as
@@ -67,3 +75,12 @@ python -I tools/tsql/build.py --src C:\Projects\Abuzar --repo <dir>        # reg
 ## 7. In-flight work of the previous opencode session
 
 The working tree at handoff contains the last edits of that session, committed together with this file: the Tauri start-up detection and native window title (`web/src/main.ts`, `web/src/ui/dom-ui.ts`, `src-tauri/tauri.conf.json`), `data/sql/statements.json` (soundex), probe scripts under `tools/tsql/probe_*.py` (throwaway, hard-coded local paths), `tools/tsql/prepare_audit.py` (PREPARE every statement against a PostgreSQL database; needs `AUDIT_DATABASE_URL`) and `Cargo.lock`.  The fiscal relay (`server/src/fiscal.rs`, `/api/fiscal`) refuses non-local hosts.  Run CI on the final commit before relying on any of it.
+
+## 8. 2026-11-05 update (supersedes the "not built" notes above)
+
+* All local work committed and pushed to `main` (a161d851..ad458bb8, plus c772a3d9 below).  Local PostgreSQL 17.11 is up (postmaster runs manually, not as the service - do not "start the service" or it will fail on the stale `postmaster.pid`); databases `trader`, `trader_write_test` (2 GB clones) and `trader_install_check` (fresh, schema+seed only) exist.
+* Fresh-install verification passed: every `db/pg/*.sql` applied with **zero errors** (56 `seed skipped` notices, expected); 763 tables; first administrator `ADMIN`.
+* CI on the final HEAD is green: **database, server, web, desktop, e2e** (run 41940944791).  DataWindows executed **8624 of 8668**; expressions **8748 of 8748**; menu walk matched 265/265 items (1 known difference: `Reports | Sales Reports | Category Wise | Sale And Return`).  The known intermittent Chromium renderer freeze in the browser sample still occurs (non-fatal; 6/52 sample opened, 0 exceptions).
+* Release **build-11** published (from c772a3d9): installer, standalone executables, `db/pg/*.sql`.  Installer smoke-tested on this machine: per-user silent install (`/S`) over the existing `%LOCALAPPDATA%\Trader`, embedded server healthy on 127.0.0.1:8787, session read of `dbo.users` OK, `trader-server.exe` healthy on a spare port.  `trader.conf` was removed afterwards; the app therefore has no database configured until one is supplied (first line, or `DATABASE_URL`; fallback `postgres://postgres@127.0.0.1:5432/trader`).
+* Server hardening: a non-loopback `BIND` without `API_TOKEN` now refuses to start (`ALLOW_INSECURE_LAN=1` overrides); documented in OPERATIONS.md.
+* Not done / user decisions: production host and database target (the app has no DSN configured anywhere), code signing, version/release channel (0.1.0, prerelease), the remaining parity items (reports crawl, two unrecovered DataWindows, `LP Ledger` menu, data-dependent screens, pixel geometry) - see ROADMAP.md.

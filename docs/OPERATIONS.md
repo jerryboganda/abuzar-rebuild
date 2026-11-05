@@ -4,6 +4,7 @@
 * Windows 10/11 (64-bit).  The Microsoft Edge WebView2 Runtime must be present (it ships with Windows 11 and with current Edge updates on Windows 10); the app refuses to start without it.
 * PostgreSQL 17 (on the same machine or on a server in the network), a database for the company, e.g. `trader`.
 * The Windows installer or the programs of a release (GitHub release of the repository; built by `.github/workflows/release.yml`).  Releases are not code-signed, so SmartScreen may warn - choose "More info > Run anyway" on a PC you trust, or sign the build yourself.
+* Verified 2026-11-05: release **build-11** (built from `c772a3d`; `Trader_0.1.0_x64-setup.exe`, SHA-256 `5200943388d1d6259bbfba6c9919862edc60f9d8d995aa9bf51c651cc7da2d39`).  The installer upgrades the per-user install on Windows 11; the full install path (apply `db/pg/*.sql` on PostgreSQL 17.11, `/api/health`, a session reading `dbo.users`) was verified end to end.
 
 ## First installation
 1. Create the database and apply the scripts of `db/pg/` in file order:
