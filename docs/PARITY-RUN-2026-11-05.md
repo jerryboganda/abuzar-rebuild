@@ -553,6 +553,25 @@ form:
   parse as `dd/mm`; future probes should pass a `PBDateTime` when testing
   programmatic date assignment.
 
+### Customer delete check
+
+Fresh customer **332** (`PZ CUSTOMER ...`) was created and edited through the
+form; both tables were correct.  File | Delete asked “Delete this record
+permanently from Database?” and, after Yes, answered “You can not Delete this
+record Reason: Some information refering to this record exists”; the row
+remained.
+
+The inherited `w_single_entry.ue_delete` deletes the `accounts` row, but the
+`customer` row still references it.  SQL Server has the same
+`CustCustCodeFK` (Customer -> Accounts, `NO_ACTION`), so this may be the
+original's intended block or an unrecovered customer-specific delete handler.
+It is recorded as an open behavior question, not "fixed" by inventing a
+cascade.  The probe removed its test rows afterwards; `accounts` is back to
+257 and `customer` to 2.
+* **Supplier** behaves identically: fresh supplier 333 was created and edited,
+  then Delete left the row in place (same Accounts/Supplier FK pattern).  Test
+  rows were removed; `supplier` is back to 225.
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
