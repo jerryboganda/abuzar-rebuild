@@ -584,14 +584,19 @@ remained.
 
 The inherited `w_single_entry.ue_delete` deletes the `accounts` row, but the
 `customer` row still references it.  SQL Server has the same
-`CustCustCodeFK` (Customer -> Accounts, `NO_ACTION`), so this may be the
-original's intended block or an unrecovered customer-specific delete handler.
-It is recorded as an open behavior question, not "fixed" by inventing a
-cascade.  The probe removed its test rows afterwards; `accounts` is back to
-257 and `customer` to 2.
+`CustCustCodeFK` (Customer -> Accounts, `NO_ACTION`).
+* **Original confirmed**: `custcomponents.pbd` contains **no exact `ue_delete`
+  event** (a scan found zero; only `ue_deleteitem` variants), so
+  `w_customer_form` does not override the inherited handler either.  The
+  original therefore performs the same right-579 check, deletes `accounts` and
+  hits the same `customer` FK.  The rebuild's blocked delete is original
+  behavior, not a missing feature.
+* The probe removed its test rows afterwards; `accounts` is back to 257 and
+  `customer` to 2.
 * **Supplier** behaves identically: fresh supplier 333 was created and edited,
-  then Delete left the row in place (same Accounts/Supplier FK pattern).  Test
-  rows were removed; `supplier` is back to 225.
+  then Delete left the row in place (same Accounts/Supplier FK pattern and no
+  supplier-specific `ue_delete`).  Test rows were removed; `supplier` is back
+  to 225.
 
 ### Change Items Price (Manufacturer Wise) CRUD
 
@@ -691,9 +696,10 @@ Item Settings”) was exercised through its own selector:
   item-specific features); **45/138 report final-stage pairs captured**;
   visual ~85%; reference data ~95%.  Overall ~89%, **not 100%**.
 * Remaining work: full field-level add/edit/delete/save on the other master and
-  transaction screens; **93 report final-stage pairs**; Sale Template
-  `ue_delete` handler; Customer/Supplier delete behavior; modal geometry; a
-  handful of DataWindow/visual edge cases.
+  transaction screens; remaining report final-stage pairs; modal geometry; and
+  a handful of DataWindow/visual edge cases.  Sale Template and
+  Customer/Supplier deletes are confirmed original behaviours, not rebuild
+  gaps.
 * **Report pairing (measured)**: old 139 / new 141 / **138 pairs**, 1 old-only,
   3 new-only.  The 572 missing caption instances are frame chrome and dialog
   names, not report fields: `Ready` 138, `Specify Retrieval Arguements` 73,
