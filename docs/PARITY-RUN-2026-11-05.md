@@ -485,11 +485,13 @@ posted Y) was created at 2026-11-05 02:16:30 and read back from
   (rowcount 1); the value persisted and was restored.  Date Period still needs
   the edit-mask dates to reach `istr_arg` (currently 0).
 * **Change Item Reorder Qty (compound)**: the compound detail DataWindow
-  `d_changeitem_reorderqty_detail_compound` is present in the runtime bundle
-  (`changeitemprice.json.gz`, 40 DataWindows).  The Compound selector and
-  "Change Item Reorder Qty - Compound Criteria" window load, but the Generate
-  action did not open `w_arg_manfs_cats_classes_packs` within 60 s in the
-  harness, so this is a menu/argument harness gap, not a missing definition.
+  `d_changeitem_reorderqty_detail_compound` is present in the runtime bundle.
+  The Compound selector opens `w_changeitem_reorderqty` (`is_dwtype=O`) and
+  Generate opens `w_arg_manf_cat_class_packing`; its child lists are populated
+  (833 manufacturers, 7 categories, 11 classes, 1 packing), all four "All"
+  flags and a 2020-2030 date range are set, and `ue_close(1)` is called.
+  The grid still retrieves one blank row, so the compound argument handoff /
+  retrieve remains the open defect (not a missing definition).
 * **Reference-data audit (live SQL Server vs clone)**: compared 30
   reference/master tables (`accounts`, `area`, `customer`, `customercategory`,
   `genericitem`, `godown`, `groups`, `itemalert`, `itemcategory`, `itemclass`,
