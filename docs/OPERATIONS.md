@@ -28,8 +28,9 @@ Uninstall with `%LOCALAPPDATA%\Trader\uninstall.exe` or Settings > Apps > Trader
 
 ## Several computers
 Run `trader-server.exe` on one machine with `DATABASE_URL`, `BIND=0.0.0.0:8787`, `STATIC_DIR` (the `web/dist` folder), `API_TOKEN=<secret>` and open
-`http://server:8787/?token=<secret>` in a browser.  Without `API_TOKEN` anyone who can reach the port can run SQL as the application: keep it on localhost or
-behind a firewall.  The file functions (export, import, label files) work on the server machine inside `FS_ROOT`.
+`http://server:8787/?token=<secret>` in a browser.  A non-loopback `BIND` without `API_TOKEN` is refused at start-up (`ALLOW_INSECURE_LAN=1` overrides) -
+without the token anyone who can reach the port can run SQL as the application; if you keep it on localhost or behind a firewall it is not needed.  The file
+functions (export, import, label files) work on the server machine inside `FS_ROOT`.
 
 ## Backups
 The original backed up with SQL Server `BACKUP DATABASE` from inside the program.  The rebuild keeps that menu item: Maintenance > Database Utilities > Backup Database now writes a
