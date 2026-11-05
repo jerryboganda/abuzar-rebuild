@@ -1339,6 +1339,31 @@ recovered DataWindow carries no `Identity` attribute.
 Probe: `tools/parity/probe-empidentity-crud.mjs` with `education`,
 `certification`, `skill` - `ok=true` for all three.
 
+### Employee Department master + weekday timing (verified; no ue_delete)
+
+`m_employeedepartment` (hidden) opens `w_emp_dept` (`w_multi_entry`, title
+"Employee Department Form").  Master `d_emp_dept_detail` updates
+`EMP_Department`; detail `d_emp_dept_daytiming` updates
+`EMP_DepartmentTiming`; list `d_emp_dept_list`.
+
+* Baseline: 1 department (`DEFAULT`), 0 timing rows, `_tabmaxkey
+  ('EMP_Department') 1`.
+* **Add:** code **2**, name `PARITY EMPDEPT ...`, timing weekday 1 with the
+  DataWindow defaults `09:00:00 / 12:59:59 / 14:00:00 / 17:59:59`.
+  PostgreSQL inserted both rows; `_tabmaxkey -> 2`; "Changes take effect in
+  database".
+* **Edit:** File | List returned 2 departments; `ue_detail` loaded code 2 and
+  its timing row.  Name and `shtimeout 17:59:59 -> 18:30:00` were updated by
+  two UPDATE statements (rowcount 1 each); second "Changes take effect".
+* **File | Delete is an original no-op:** `m_delete` was enabled, but
+  `w_emp_dept` and its ancestors define no `ue_delete`; the department and
+  its timing row stayed in place.
+* Exact restore: `emp_department 1 / max 1`, `emp_departmenttiming 0`,
+  `_tabmaxkey('EMP_Department') 1`, `audit_log 1,079 / max 1,127`, no
+  residue.
+
+Probe: `tools/parity/probe-empdept-crud.mjs` - measured `ok=true`.
+
 ### Item Association nested form + parent save
 
 `Set Item Associations` (`m_setitemassociations` →
