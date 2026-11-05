@@ -1238,6 +1238,58 @@ through `opensheetwithparm`.  Master `d_salesteam` updates `SalesTeam`, detail
 
 Probe: `tools/parity/probe-salesteam-crud.mjs` - measured `ok=true`.
 
+### Prospective Customer add/edit/delete (verified)
+
+`Basic Data | Customer .......... | Prospective Customer` is invisible under
+the current rights (right 855), so the probe opened
+`w_prospectivecustomer_form` with the real `opensheetwithparm` handler.
+`w_single_entry`, title "Prospective Customer Form"; `d_prospectivecustomer_detail`
+updates `ProspectiveCustomer`, list `d_prospectivecustomer_list`.
+
+* **Add:** code **1** through `f_newtableid("ProspectiveCustomer")`
+  (`_tabmaxkey 0 -> 1`), alias, name, category 1, area 1, sub-area 1,
+  address/city/country, licence expiry 2030-12-12, message 1, salesman 1.
+  PostgreSQL inserted the 21-column row; "Changes take effect in database".
+  The first attempt with `messagecode 0` correctly failed on
+  `fk_message_prospectivecustomer` (real FK), so 1 was used.
+* **Edit:** File | List returned the one row; `ue_detail` loaded it.  Name,
+  city (`KARACHI -> LAHORE`) and address1 changed and Save updated the row.
+* **Delete:** File | Delete showed the original confirmation
+  "Delete this record permanently from Database?"; Yes produced
+  `DELETE FROM dbo.prospectivecustomer WHERE ...` (rowcount 1) and
+  "Record Deleted Successfully".
+* Exact restore: `prospectivecustomer 0 / max 0`,
+  `_tabmaxkey('ProspectiveCustomer') 0`, `site 0`,
+  `audit_log 1,079 / max 1,127`, no residue.
+
+Probe: `tools/parity/probe-prospectivecustomer-crud.mjs` - measured `ok=true`.
+
+### Guest Room Floor / Type / Status masters (verified; right-hidden)
+
+The three guest-room lookup masters are created with `visible = false` in
+`m_entry`; the probe fires their real `m_guestroomfloor` /
+`m_guestroomtype` / `m_guestroomstatus` menu handlers.  Each uses
+`w_single_entry` and a two-column `..._detail` (`code`, `name`) plus a
+`..._list`.
+
+* **Guest Room Floor** (`guestroomfloor`, key `guestroomfloorcode`, tab
+  `GuestRoomFloor`): add `PARITY FLOOR ...`, edit, then `ue_delete` (right
+  579) deleted it; "Changes take effect in database" twice and "Record
+  Deleted Successfully".
+* **Guest Room Type** (`guestroomtype`, key `guestroomtypecode`, tab
+  `GuestRoomType`): same add/edit/delete cycle.
+* **Guest Room Status** (`guestroomstatus`, key `guestroomstatuscode`, tab
+  `GuestRoomStatus`): same add/edit/delete cycle.
+* The `m_delete` menu item is disabled right after Save (the original
+  `ue_save` only enables `m_new`); it becomes enabled after File | List ->
+  Detail.  The probe calls the real `ue_delete` handler directly, which is
+  the same handler the menu fires.
+* Exact restore for all three: 0 rows / tab 0 / `audit_log 1,079 / max
+  1,127`, no residue.
+
+Probe: `tools/parity/probe-single-master.mjs` with `guestroomfloor`,
+`guestroomtype`, `guestroomstatus` - measured `ok=true` for all three.
+
 ### Item Association nested form + parent save
 
 `Set Item Associations` (`m_setitemassociations` →

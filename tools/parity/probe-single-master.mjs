@@ -139,6 +139,18 @@ const CONFIGS = {
     fields: { name: '{{name}}', description: 'PARITY MODEL DESCRIPTION' },
     edit: { description: 'PARITY MODEL DESCRIPTION EDITED' },
   },
+  guestroomfloor: {
+    menu: 'm_guestroomfloor', window: 'w_guestroomfloor_form', table: 'guestroomfloor', key: 'guestroomfloorcode', tab: 'GuestRoomFloor', prefix: 'PARITY FLOOR',
+    fields: { name: '{{name}}' }, edit: {},
+  },
+  guestroomtype: {
+    menu: 'm_guestroomtype', window: 'w_guestroomtype_form', table: 'guestroomtype', key: 'guestroomtypecode', tab: 'GuestRoomType', prefix: 'PARITY ROOMTYPE',
+    fields: { name: '{{name}}' }, edit: {},
+  },
+  guestroomstatus: {
+    menu: 'm_guestroomstatus', window: 'w_guestroomstatus_form', table: 'guestroomstatus', key: 'guestroomstatuscode', tab: 'GuestRoomStatus', prefix: 'PARITY ROOMSTATUS',
+    fields: { name: '{{name}}' }, edit: {},
+  },
 };
 const key = process.argv[2] || 'region';
 const cfg = CONFIGS[key];
