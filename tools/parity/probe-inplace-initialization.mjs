@@ -9,6 +9,7 @@ const require = createRequire(process.env.PLAYWRIGHT_MODULES || 'C:/Users/Admin/
 const { chromium } = require('playwright');
 const DB = process.env.DB || 'trader_init_test';
 const TRANSFER = process.env.TRANSFER !== '0';
+const BUDGET = Number(process.env.BUDGET || 1500);
 const PSQL = 'C:\\PostgreSQL\\17\\bin\\psql.exe';
 const q = (sql) => execFileSync(PSQL, ['-U', 'postgres', '-h', '127.0.0.1', '-d', DB, '-t', '-A', '-F', '|', '-c', sql], { env: { ...process.env, PGPASSWORD: 'postgres' }, encoding: 'utf8', windowsHide: true }).trim();
 const rows = (sql) => q(sql).split(/\r?\n/).filter(Boolean).map((l) => l.split('|'));
@@ -17,6 +18,14 @@ const rowsA = (sql) => qa(sql).split(/\r?\n/).filter(Boolean).map((l) => l.split
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const TABLES = ['saleledger', 'saledetail', 'srledger', 'srdetail', 'purledger', 'purdetail', 'prledger', 'prdetail', 'glheader', 'gldetail', 'itemlog', 'stockledger', 'godowndetail', 'itembatches', 'previoussalehistory', 'eventlog'];
 const counts = () => Object.fromEntries(rows(TABLES.map((t) => `select '${t}', count(*) from dbo.${t}`).join(' union all ')).map(([t, n]) => [t, Number(n)]));
+const stockStats = () => {
+  const r = rows("select (select count(*) from dbo.godowndetail), (select coalesce(sum(currqty),0) from dbo.godowndetail), (select count(*) from dbo.itembatches), (select count(*) from dbo.accounts), (select count(*) from dbo.virtualgl)")[0];
+  return { godownRows: Number(r[0]), godownQty: String(r[1]), itembatches: Number(r[2]), accounts: Number(r[3]), virtualgl: Number(r[4]) };
+};
+const balanceStats = () => {
+  const r = rows("select (select count(*) from dbo.glheader), (select count(*) from dbo.gldetail), (select count(*) from dbo.purledger), (select count(*) from dbo.purdetail)")[0];
+  return { glheader: Number(r[0]), gldetail: Number(r[1]), purledger: Number(r[2]), purdetail: Number(r[3]) };
+};
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
 const out = { db: DB, messages: [], errors: [] };
@@ -34,6 +43,8 @@ async function poll(seconds = 10) {
 }
 try {
   out.before = counts();
+  out.stockBefore = stockStats();
+  out.balanceBefore = balanceStats();
   out.beforeUtn = rows('select utn from dbo._utn')[0]?.[0] ?? null;
   out.beforeTab = rows("select tabmaxkey from dbo._tabmaxkey where tabname='SaleLedger'")[0]?.[0] ?? null;
   await page.goto('http://127.0.0.1:5177/?app=1&autologin=ADMIN:password9080', { waitUntil: 'load', timeout: 60000 });
@@ -84,7 +95,8 @@ try {
     void rt.fire(w.children.get('cb_ok'), 'clicked').then(() => { window.__inplaceDone = 'ok' }).catch((e) => { window.__inplaceDone = 'ERR ' + String(e.message || e).slice(0, 500) });
     return 'fired';
   }, TRANSFER);
-  for (let i = 0; i < 600; i++) {
+  const deadline = Date.now() + BUDGET * 1000;
+  for (let i = 0; Date.now() < deadline; i++) {
     await sleep(500);
     await poll(1);
     if (!out.blockersKilled) {
@@ -106,6 +118,8 @@ try {
   out.done = out.done ?? await page.evaluate(() => window.__inplaceDone);
   await poll(3);
   out.after = counts();
+  out.stockAfter = stockStats();
+  out.balanceAfter = balanceStats();
   out.afterUtn = rows('select utn from dbo._utn')[0]?.[0] ?? null;
   out.afterTab = rows("select tabmaxkey from dbo._tabmaxkey where tabname='SaleLedger'")[0]?.[0] ?? null;
   out.eventlog = rows("select count(*) from dbo.eventlog where module='Inplace Initialization' and detail='Inplace Initialization Performed.'");
