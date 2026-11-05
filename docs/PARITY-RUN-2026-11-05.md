@@ -1290,6 +1290,55 @@ The three guest-room lookup masters are created with `visible = false` in
 Probe: `tools/parity/probe-single-master.mjs` with `guestroomfloor`,
 `guestroomtype`, `guestroomstatus` - measured `ok=true` for all three.
 
+### Employee lookup masters (verified; right-hidden)
+
+The employee lookup forms are created with `visible = false`; the probe fires
+their real `m_entry` handlers.  All are `w_single_entry` forms.
+
+* **Employee Category** (`m_employeecategory` -> `w_emp_category`,
+  `emp_category`, key `empcatcode`, tab `EMP_Category`): baseline 1 row
+  (`REGULAR EMPLOYEES`), tab 1; add code 2, edit, delete.
+* **Employee Designation** (`m_employeedesignation` -> `w_emp_designation`,
+  `emp_designation`, key `desigcode`, tab `EMP_Designation`): baseline 1 row
+  (`DEFAULT`), tab 1; add code 2, edit, delete.
+* **Pay Allowances** (`m_payallowances` -> `w_emp_allowances`,
+  `emp_allowance`, key `allowancecode`, tab `EMP_Allowance`): 0 rows, tab 0;
+  add code 1 with `attendancewise N / percentage 0 / flatamount 0`, edit to
+  percentage 1 / flatamount 10, delete.
+* **Attendance Status/Policy** (`m_attendancestatuspolicy` ->
+  `w_emp_attendancestatus`, `emp_attendancestatus`, key
+  `attendancestatuscode`, tab `EMP_AttendanceStatus`): baseline 12 policy
+  rows, tab 12; add code 13 (`half 0`, `deductionperc 0`, `autoset N`,
+  `timetype 1`, `margin 0`), edit deduction 1 / margin 5, delete.
+* Exact restore for all four: original rows and tab counters, no residue,
+  `audit_log 1,079 / max 1,127`.
+
+Probe: `tools/parity/probe-single-master.mjs` with `empcategory`,
+`empdesignation`, `empallowance`, `empattendancestatus` - `ok=true` for all.
+
+### Employee Education / Certification / Skill (verified via reopen)
+
+`m_education`, `m_certificationcourse` and `m_skillcapability` open
+`w_emp_education`, `w_emp_certification` and `w_emp_skill`.  Their tables use
+**database identity keys** (`emp_education.educationcode`,
+`emp_certification.certificationcode`, `emp_skill.skillcode`), and the
+recovered DataWindow carries no `Identity` attribute.
+
+* Add: `INSERT INTO dbo.emp_education (name) ...` (the identity key is
+  omitted, as in PowerBuilder), new code **2**; "Changes take effect in
+  database".
+* **Immediately after Insert the buffer key is still null**, so an in-place
+  Update sends `WHERE educationcode IS NULL` and matches 0 rows.  The real
+  user path - File | List -> Detail - reloads the row with code 2 and was
+  used for the verified edit/delete: `UPDATE ... WHERE educationcode = 2 ...`
+  (rowcount 1), then `DELETE ... WHERE educationcode = 2 ...` (rowcount 1),
+  "Record Deleted Successfully".
+* Exact restore for each: table 0 rows, identity sequence back to
+  `last_value 1 / is_called true`, `audit_log 1,079 / max 1,127`.
+
+Probe: `tools/parity/probe-empidentity-crud.mjs` with `education`,
+`certification`, `skill` - `ok=true` for all three.
+
 ### Item Association nested form + parent save
 
 `Set Item Associations` (`m_setitemassociations` →

@@ -151,6 +151,24 @@ const CONFIGS = {
     menu: 'm_guestroomstatus', window: 'w_guestroomstatus_form', table: 'guestroomstatus', key: 'guestroomstatuscode', tab: 'GuestRoomStatus', prefix: 'PARITY ROOMSTATUS',
     fields: { name: '{{name}}' }, edit: {},
   },
+  empcategory: {
+    menu: 'm_employeecategory', window: 'w_emp_category', table: 'emp_category', key: 'empcatcode', tab: 'EMP_Category', prefix: 'PARITY EMPCAT',
+    fields: { name: '{{name}}' }, edit: {},
+  },
+  empdesignation: {
+    menu: 'm_employeedesignation', window: 'w_emp_designation', table: 'emp_designation', key: 'desigcode', tab: 'EMP_Designation', prefix: 'PARITY EMPDESIG',
+    fields: { name: '{{name}}' }, edit: {},
+  },
+  empallowance: {
+    menu: 'm_payallowances', window: 'w_emp_allowances', table: 'emp_allowance', key: 'allowancecode', tab: 'EMP_Allowance', prefix: 'PARITY EMPALLOW',
+    fields: { name: '{{name}}', attendancewise: 'N', percentage: 0, flatamount: 0 },
+    edit: { percentage: 1, flatamount: 10 },
+  },
+  empattendancestatus: {
+    menu: 'm_attendancestatuspolicy', window: 'w_emp_attendancestatus', table: 'emp_attendancestatus', key: 'attendancestatuscode', tab: 'EMP_AttendanceStatus', prefix: 'PARITY EMPSTATUS',
+    fields: { name: '{{name}}', half: 0, deductionperc: 0, autoset: 'N', timetype: 1, margin: 0 },
+    edit: { deductionperc: 1, margin: 5 },
+  },
 };
 const key = process.argv[2] || 'region';
 const cfg = CONFIGS[key];
@@ -180,6 +198,7 @@ const restore = () => {
   try {
     q(`delete from dbo.${cfg.table} where name like '${cfg.prefix.replace(/'/g, "''")} %'`);
     if (out.baseline?.tab !== null) q(`update dbo._tabmaxkey set tabmaxkey=${Number(out.baseline.tab)} where tabname='${cfg.tab}'`);
+    else if (out.baseline) q(`delete from dbo._tabmaxkey where tabname='${cfg.tab}'`);
     if (out.baseline?.auditMax) {
       q(`delete from dbo.audit_log where audit_id > ${out.baseline.auditMax}`);
       q(`select setval(pg_get_serial_sequence('dbo.audit_log','audit_id'), ${out.baseline.auditMax}, true)`);
@@ -194,6 +213,7 @@ try {
     audit: Number(rows('select count(*) from dbo.audit_log')[0][0]),
     auditMax: Number(rows('select max(audit_id) from dbo.audit_log')[0][0]),
   };
+  if (cfg.tabFixture && out.baseline.tab === null) q(`insert into dbo._tabmaxkey (tabid,tabname,tabmaxkey) values ((select coalesce(max(tabid),0)+1 from dbo._tabmaxkey),'${cfg.tab}',0)`);
   await page.goto('http://127.0.0.1:5177/?app=1&autologin=ADMIN:password9080', { waitUntil: 'load', timeout: 60000 });
   await page.waitForFunction(() => window.rt && window.rt.windowInstances.get('w_main') && typeof window.__menu === 'function', null, { timeout: 90000, polling: 300 });
   out.menuOpen = await page.evaluate(async (menuName) => {
