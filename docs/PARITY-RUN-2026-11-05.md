@@ -840,6 +840,17 @@ DataWindows in one `cb_ok` chain:
   with `[1,1,17,"authorcode","Author",0]`; the row changed to 1.
 * Restored the original 0; `interfacesetting` count stays **719**.
 
+### Change Password (validation + save + restore)
+
+`Maintenance | Change Password` (`w_changepassword`) was exercised end to end:
+
+* Wrong current password: “Your current password is incorrect, Enter again”;
+  `users.password` for ADMIN was unchanged.
+* Correct change (ADMIN, `password9080` -> `parity9080`):
+  “Your password has now been changed” and PostgreSQL stored `parity9080`.
+* Restored through the same form (`parity9080` -> `password9080`); final DB
+  value is `password9080`, `ok=true` for all three checks.
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -896,8 +907,8 @@ DataWindows in one `cb_ok` chain:
   change-items-price, supplier-wise-item-settings (add/edit/delete),
   purchase-return add/save, users add/edit, modify-sale-invoices, three
   group-level settings (allowed price/cash account/supplier category),
-  Interface Setting visibility and a Preferences setting edit/save;
-  non-destructive
+  Interface Setting visibility, Change Password and a Preferences setting
+  edit/save; non-destructive
   nested actions
   exercised for Customer (40), Supplier (40) and Item (23, including all nine
   item-specific features); **139/141 mapped report paths paired** (only 067/068
