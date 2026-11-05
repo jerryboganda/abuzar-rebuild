@@ -7,7 +7,8 @@ param(
   [string]$Out = '',
   [string]$Json = '',
   [switch]$DryRun,
-  [int]$TimeoutSec = 60
+  [int]$TimeoutSec = 60,
+  [int]$SettleMs = 2500
 )
 Add-Type -AssemblyName System.Drawing
 Add-Type @"
@@ -112,7 +113,7 @@ while ((Get-Date) -lt $deadline) {
   foreach ($t in $tops) { $all += $t; foreach ($k in [OldMenu]::Kids($t)) { $all += $k } }
   $report = $all | Where-Object { ([OldMenu]::Text($_)) -match '^Report:' -and [OldMenu]::IsWindowVisible($_) } | Select-Object -First 1
   if ($report) {
-    Start-Sleep -Milliseconds 2500
+    Start-Sleep -Milliseconds $SettleMs
     $title = [OldMenu]::Text($report)
     $rect = [OldMenu]::Rect($report)
     "report window '$title' rect=$rect"

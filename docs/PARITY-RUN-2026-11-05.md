@@ -470,6 +470,34 @@ driven by menu command ID (no blind clicking).  First sample:
   Summary`, the client name/address/phone, From/To dates and the same column
   order.  The new preview has 2 real rows and totals because the clone has
   today's test invoices; the old preview ran against the live data with none.
+* Third pair: `Sale Summary Inv. Wise` old
+  (`old-final/003_sale_summary_invwise.png`) and new
+  (`new-final/003_sale_summary_invwise.png`).  With the empty default invoice
+  range the old preview is a **blank page**, while the rebuild prints the
+  header, column titles, summary bands and zero totals on two pages.  This is a
+  genuine difference for empty results; a data-range argument must be supplied
+  to both sides for a meaningful row-level comparison.
+* The capture path is now generic (`deploy/parity/pw/probe-report-generic.mjs`
+  on the rebuild, `tools/parity/old-menu.ps1` on the original): it answers
+  whichever Select Format / Specify Retrieval Arguements / Selection List
+  dialogs appear, waits for `w_reviewreport`, and screenshots it.
+
+### Cross-checks while finishing the sweep
+
+* **Credit Sale** (already saved on 2026-11-03) re-verified in the clone:
+  `saleledger` 588882 (cust 22, salesman 1, total 11.00, posted Y) and
+  `saledetail` 588882 (item 9801, looseqty 1, saleprice 10.00).  Cash Sale
+  588883 has the same item/quantity.  Credit Sale add/save is therefore
+  DB-verified, not just UI-verified.
+* **Journal Voucher error** from the nested sweep: the main-menu path
+  `Transactions | Invoice Base Vouchers | Purchase | Journal Voucher` is
+  rights-hidden (`effectiveVisible=false`).  When invoked through a form's
+  inherited menu, `w_journalvoucher.ue_postopen` calls
+  `id_detail.getchild("patientcode", ...)`; the original
+  `d_invjournalvoucherdetail.srd` has **no `patientcode` object**, so `GetChild`
+  returns -1 and the script closes the window with that message.  This is a
+  hidden-path/original-script condition, not a missing visible-screen feature;
+  it is recorded rather than "fixed" by inventing a column.
 
 ### Remaining (measured)
 
@@ -482,7 +510,9 @@ driven by menu command ID (no blind clicking).  First sample:
   transaction screens: 16/16 small masters are now verified (see the sweep
   above); the rest still need their own committed cycles.
 * Reports: final-stage pixel comparison is now method-complete (Win32 menu-ID
-  driver + fresh rebuild capture) with **2/138 pairs captured**; 136 remain.
+  driver + fresh rebuild capture) with **3/138 pairs captured** (001, 002,
+  003); 135 remain.  Pair 003 also shows the old-vs-new empty-result behaviour
+  difference (old blank page, new header/footer skeleton).
 * Visual geometry: modal 3 px/8 px offset, 26 vs 28 px row spacing, Priority
   Setting column widths.
 * Reference data: **30 tables compared**, counts match except `users` (one
