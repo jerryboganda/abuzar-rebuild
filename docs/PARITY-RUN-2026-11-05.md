@@ -11,7 +11,7 @@ the tools in `tools/parity/`.
 | Visible menu items | 262 | 261 | `orig-menu.tsv` vs `menu-compare.json` |
 | Non-report screens opened | 62/62 | 62 attempted (55 direct, 7 captured at their response window) | `deploy/parity/screen-parity/old-nonreport`, `new-nonreport` |
 | Report screens opened | not yet (old crawl pending) | 53+ captured so far | `screen-parity/new-reports` |
-| Master-data forms: every editable field typed, add/edit/delete/save verified in PostgreSQL | 16 forms | 16 forms + 27 extra masters (Godown, Area, Region, Sub Area, Sales Person, Item Packing, Item Size, Unit, Item Style, Item Colour, Item Sleeve, Item Yarn, Item Fabric, Item Brand, Sale Type, Purchase Type, Issue Type, Ward, Relation, Rank, Disease, Patient Location, Diagnostic Item Type, Symptom Type, Visit Type, Department, Section) | `screen-parity/crud-fields/crud-*.json`, `tools/parity/probe-godown-crud.mjs`, `tools/parity/probe-area-crud.mjs`, `tools/parity/probe-single-master.mjs` |
+| Master-data forms: every editable field typed, add/edit/delete/save verified in PostgreSQL | 16 forms | 16 forms + 28 extra masters (Godown, Area, Region, Sub Area, Sales Person, Item Packing, Item Size, Unit, Item Style, Item Colour, Item Sleeve, Item Yarn, Item Fabric, Item Brand, Sale Type, Purchase Type, Issue Type, Ward, Relation, Rank, Disease, Patient Location, Diagnostic Item Type, Symptom Type, Visit Type, Department, Section, Zone) | `screen-parity/crud-fields/crud-*.json`, `tools/parity/probe-godown-crud.mjs`, `tools/parity/probe-area-crud.mjs`, `tools/parity/probe-single-master.mjs`, `tools/parity/probe-zone-crud.mjs` |
 | DataWindow expression parse sweep | â€” | every `expression` parses; SQL comments stripped | `tools/parity/dw-expr-audit.mjs` |
 
 The 16 passing forms are: Customer Category, Customer Sector, Generic Item,
@@ -27,12 +27,14 @@ probes fire the real `m_godown` / `m_area0` / `m_region0` / `m_subarea` /
 `m_itembrand` / `m_saletype` / `m_purchasetype` / `m_issuetype` /
 `m_patientward` / `m_relation` / `m_rank` / `m_disease` /
 `m_patientlocation` / `m_diagnosticitemtype` / `m_symptomtype` /
-`m_visittype` / `m_department` / `m_section` handlers).  **Section** is now
-verified with a temporary Department row; in normal use it remains
-data-blocked because `Department` is empty in both live and clone.
-**Item Design** (`w_itemdesign_form`) is an orphaned window (no
-menu/`opensheet` reference) and **Item Type** has no master window; the
-`itemtype` table is not exposed through a form.
+`m_visittype` / `m_department` / `m_section` / `m_zone0` handlers).
+**Section** is now verified with a temporary Department row; in normal use it
+remains data-blocked because `Department` is empty in both live and clone.
+**Zone** is verified with temporary ContactGroup rows (see below); its
+File | Delete becomes enabled but has no `ue_delete` handler.  **Item
+Design** (`w_itemdesign_form`) is an orphaned window (no menu/`opensheet`
+reference) and **Item Type** has no master window; the `itemtype` table is
+not exposed through a form.
 
 `Sale Promotion` is the only tested form that cannot complete: its Active /
 Customer Group / Weekday drop-downs are empty in the migrated clone (missing
@@ -1537,7 +1539,7 @@ Probe: `tools/parity/probe-area-crud.mjs` - measured `ok=true`.
 recovered menu handler or `opensheet` reference; it is an orphaned window,
 not a reachable page.  The real Area command is `m_area0`.
 
-### Region, Sub Area, Sales Person, Item Packing (verified) and Zone/Price Type (blocked)
+### Region, Sub Area, Sales Person, Item Packing (verified) and Price Type (no master form)
 
 All four were driven through the real menu command and `w_single_entry`
 (`File | Save`, then `ue_delete` with right 579 and its confirmation); each
@@ -1559,13 +1561,14 @@ edit passed.  No production rows were changed.
 windows are report argument dialogs (`w_arg_*pricetype*`).  The
 `pricetype` table has 8 rows but no screen to add/edit/delete them.
 
-**Zone (data-blocked in both databases):** `w_zone` saves only when both
-`ZoneAreas.update()` and `ZoneContactGroup.update()` return > 0.
-`ContactGroup` has **0 rows in the live SQL Server DB and 0 in the clone**
-(`ZoneContactGroup` and `Zone` are also 0), and
-`zonecontactgroup.contactgroupcode` is an FK to `contactgroup`.  A zone
-therefore cannot be saved in either app without contact-group data.  This is
-a shared data gap, not a rebuild defect.
+**Zone (verified with temporary ContactGroup fixtures):** `w_zone` saves
+only when both `ZoneAreas.update()` and `ZoneContactGroup.update()` return
+> 0. `ContactGroup` has **0 rows in the live SQL Server DB and 0 in the
+clone**, so the probe inserted temporary `ContactGroup` 1/2 rows, added a
+zone with one area + one contact group, edited both, and removed every
+fixture.  `File | Delete` becomes enabled after `ue_detail`, but neither
+`w_zone` nor its ancestors define a `ue_delete` handler, so delete is inert;
+cleanup is SQL.
 
 Probe: `tools/parity/probe-single-master.mjs <region|subarea|salesman|itempacking>`
 — all four measured `ok=true`.
@@ -1716,6 +1719,29 @@ removed in a `finally` block.  Exact restore: `section 0`, tab 0,
 Probes: `tools/parity/probe-single-master.mjs department` and
 `... section` (with the temporary department fixture).
 
+### Zone (verified with temporary ContactGroup fixtures)
+
+`m_zone0` opens `w_zone` (`w_multi_entry`).  Saving requires
+`ZoneAreas.update() > 0` **and** `ZoneContactGroup.update() > 0`, but
+`ContactGroup` is empty in both databases.  The probe inserted temporary
+`ContactGroup` 1/2 rows, then:
+
+* **Add:** Zone code **1**, one `ZoneAreas` row (area 1) and one
+  `ZoneContactGroup` row (group 1), `_tabmaxkey('Zone') 0 -> 1`; Save showed
+  “Changes take effect in database”.
+* **Edit:** changed name + remarks, re-saved the area row (rowid) and changed
+  the contact group to 2; second save message; `ZoneContactGroup` became
+  `(1,2)`.
+* **Delete state:** `m_delete` is disabled before detail, but `ue_detail`
+  enables it.  Neither `w_zone` nor its ancestors define a `ue_delete`
+  handler, so the menu item is inert; cleanup is SQL (as in the probe).
+* Exact restore: `zone 0`, `zoneareas 0`, `zonecontactgroup 0`,
+  `contactgroup 0`, `_tabmaxkey('Zone') 0`, `ContactGroup 0`,
+  `audit_log 1,079 / max 1,127`.
+
+Probe: `tools/parity/probe-zone-crud.mjs` — measured `ok=true` for add/edit
+and exact restore; delete is the original inert-menu behavior.
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -1770,7 +1796,8 @@ Probes: `tools/parity/probe-single-master.mjs department` and
   **Item Fabric**, **Item Brand**, **Sale Type**, **Purchase Type**,
   **Issue Type**, **Ward**, **Relation**, **Rank**, **Disease**,
   **Patient Location**, **Diagnostic Item Type**, **Symptom Type**,
-  **Visit Type**, **Department** and **Section** add/edit/delete and
+  **Visit Type**, **Department**, **Section** and **Zone**
+  add/edit/delete and
   **Sale Template header+detail**
   add/edit/save verified (File | Delete is original enabled-but-inert);
   committed transaction CRUD
