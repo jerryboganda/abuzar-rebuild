@@ -997,6 +997,31 @@ list), using the real nested forms:
   `session_replication_role = replica` so `lastupdate` is restored exactly,
   then removes only the audit rows created by this test.
 
+### Item Association nested form + parent save
+
+`Set Item Associations` (`m_setitemassociations` →
+`w_itemassociation_form`) was exercised on item **9801**:
+
+* Added `associcode 9800` through the nested form; the shared DataWindow put
+  `(9801, 9800)` into the parent's `id_itemassociation`.
+* Changed the item's `saleprice` 10 → 11 to force an item-log entry and saved
+  the Item Form. PostgreSQL wrote `itemassociation (9801, 9800)`,
+  `item.saleprice = 11.00` and a new `itemlog` row (9801 count 8 → 9,
+  itemrowid 152907 → 152908).
+* Removed the association from the parent DataWindow, restored saleprice to
+  10, and saved again: `itemassociation` row gone, `item.saleprice = 10.00`,
+  second item-log row written.
+* Exact restore: `item` 9801 back to `saleprice 10.00 / retail 5.00 /
+  lastupdate 2026-11-05 10:38:44.342 / changereason Multiple Changes /
+  module Purchase Posting / usercode 1 / location null`; `itemassociation 0`;
+  `itemlog 98,632 / max 152,907` (8 rows for 9801); `audit_log 1,079 /
+  max 1,127`.  Cleanup uses the trigger-bypass rule for `lastupdate`.
+* **Set Item Author(s) is data-blocked in both databases**: `Author`,
+  `ItemAuthor` and `ItemAssociation` are all **0 rows in live SQL Server and
+  in the clone**, so there is no author to select (same class of limitation
+  as Sale Promotion’s empty customer groups).  The association form needs no
+  lookup data and is fully verified above.
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -1052,8 +1077,8 @@ list), using the real nested forms:
   job, groups, update-item-basic-data, compound reorder qty, credit/cash sale,
   change-items-price, supplier-wise-item-settings (add/edit/delete),
   purchase-return add/save, opening-purchase and loose-purchase
-  add/edit/save, Item Form parent save with nested price-policy/alias rows,
-  users add/edit,
+  add/edit/save, Item Form parent saves with nested price-policy/alias and
+  association rows, users add/edit,
   modify-sale-invoices, three
   group-level settings (allowed price/cash account/supplier category),
   Interface Setting visibility, Change Password, Modify Last Transaction Date,
@@ -1071,11 +1096,13 @@ list), using the real nested forms:
   * Full add/edit/delete/save on the remaining transaction screens: all
     purchase variants (normal, opening, loose), purchase return, sale/return,
     quotation, purchase order and adjustments now have committed cycles.
-  * Nested forms: **Set Item Price Policy** and **Set Alternate Item Alias
-    Names** now have a verified add/delete + parent-save cycle (above).
-    The remaining nested item/customer/supplier forms (notes, authors,
-    associations, images, models, item-category association, guarantee person)
-    were opened but still need their own parent-save cycles.
+  * Nested forms: **Set Item Price Policy**, **Set Alternate Item Alias
+    Names** and **Set Item Associations** now have verified add/delete +
+    parent-save cycles (above).  **Set Item Author(s)** is data-blocked: the
+    `Author`, `ItemAuthor` and `ItemAssociation` tables are empty in both
+    live and clone.  Remaining nested forms: notes (RichText), images,
+    models, item-category association and customer/supplier guarantee-person
+    forms.
   * **Change Item Discount** would bulk-update a whole category (plus one
     itemlog row per item) and has not been run; the probe was deliberately
     not executed against bulk data.
