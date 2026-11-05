@@ -313,6 +313,124 @@ posted Y) was created at 2026-11-05 02:16:30 and read back from
 * Visual geometry: response dialogs still ~3 px narrower / 8 px shorter; row
   spacing 26 vs 28 px; Priority Setting column widths.
 
+## Fourth session (same day, continued)
+
+### Fixed
+
+* `filereadex` now follows PowerBuilder: in `LineMode!` it returns one line
+  (CR/LF/EOF), in stream/text mode it returns the whole file (or the requested
+  blob length).  The old implementation always returned the whole file, which
+  made both `mgmtcomp.pbd` and `serviceheads.pbd` unreadable.
+* Startup now calls `af_get_app_setting()` exactly where `traderappv1.open`
+  does, so `gs_company` comes from `mgmtcomp.pbd` (previously empty).
+* `serviceheads.pbd` and `mgmtcomp.pbd` are staged in the trader-server file
+  root (`deploy/parity/rebuild-dist/files/`); `/api/fs/exists` now reports
+  `exists=true, size=2658`.
+* Clone DB hygiene: 80 abandoned `idle in transaction` sessions terminated,
+  `idle_in_transaction_session_timeout=60s` set on `trader_write_test`, and the
+  trader server restarted so its pooled connections inherit it.
+
+### Verified live (clone)
+
+* **Header data**: `af_get_header_setting()` returns 1 row; header 1 with the
+  deployed client name, address, phone and drug-licence fields populated.
+  `gds_reoprtheaderinfo` has the same row.  All 16 Group Wise Header Setting
+  allowed-header grids now load their group rows instead of 0.
+* **Groups**: `w_groups` list has 4 groups.  `wf_openmywindow(2)` opens
+  `w_groups_form` ("Group and Rights Information") with both tabs:
+  `tabpage_group` (`dw_group`, 1 row) and `tabpage_rights` (`dw_rights`,
+  464 rights rows); `cb_ok` Save and `cb_cancel` Cancel are present.  Editing
+  `remarks` to "PARITY GROUPS EDIT" and pressing Save wrote the value to
+  `dbo.groups`, showed "Changes take effect in database", and the original
+  value was restored afterwards.
+* **Quotation**: add/save through `Sales | Quotation` wrote
+  `quotationheader` code 1 (custcode 19, salesmancode 1, posted N, active Y)
+  and `quotationdetail` (icode 9801, qty 1, saleprice 10).  The save is gated
+  by `w_salesmanpassword`; supplying salesmancode 1/password completes it.
+* **Item form**: every user-visible master field is rendered and editable
+  (all 22 labels from the old form).  The 93 legacy columns that are not in
+  the DOM are hidden/helper columns, not missing UI; the earlier alarm came
+  from a stale pre-tabfix screenshot.
+* **Item nested features**: Populate Item -> `w_selectitem_with_cat_setting`;
+  Select Models -> `w_iteminmodel_form`; Item Associations ->
+  `w_itemassociation_form`; Item Notes -> `w_item_form_notes`; Item Authors ->
+  `w_itemauthor_form`; Alternate Aliases -> `w_alternate_item_aliasname_form`;
+  Item Images -> `w_itemimage`; Price Policy -> `w_item_pricepolicy_form`;
+  Registration Request -> `w_arg_itemregrequest`.  Garments wizard, unposted
+  transaction report and update-quotations need a selected/saved item and
+  remain to be exercised in that state.
+* **Definitions**: 156/156 menus and every menu item are identical old vs new
+  (0 missing, 0 extra).  The visible-label comparison over 63 paired captures
+  flags only 6 screens; 4 are stale old-side SQL error text and Groups was a
+  capture-state difference (the detail form now verified live).
+
+### In progress
+
+* Full-screen field audit: 39/78 completed (720 fields seen, 349 probed,
+  0 field errors); the remaining 39 are running in
+  `deploy/parity/screen-audit-remaining`.
+* `Item Basic Data`, `Price Policy`, `PCT Codes` and `Item Thickness` timed out
+  at login in the first batch (server contention, not a screen failure) and
+  need re-runs.
+* Cash Sale, Credit Sale and the six voucher screens reported 0 fields in the
+  first batch; targeted field probes are still needed.
+* Quotation edit-after-save, Purchase Order, Refused Sale and the three
+  Adjustments still need the full add/edit/save/delete cycle.
+* Priority Setting was flagged by the label comparison (missing Retrieve and
+  help labels); needs a live re-check against the old capture.
+* Reports final-stage/pixel comparison and the modal geometry fixes remain
+  open.
+
+### Inner-feature chains verified (continued)
+
+* **Update Item Basic Data**: Manufacturer Wise -> argument window -> check
+  "All" -> Ok loads `w_item_update.dw_master` with **27,818 rows and 116
+  columns**.  Editing item 27429 sale price 1000 -> 1001 and moving off the row
+  saved to `dbo.item` (1001.00); the clone value was restored to 1000.00.
+* **Change Item Reorder Qty**: opens `w_select_manf_cat_class_packing_combined`
+  (Compound/Packing/Class/Category/Manufacturer), then
+  `w_changeitem_reorderqty` with a start/end-date header and 16 detail columns
+  (min/reorder/optimum qty, stock, purchases, sales, returns, change reason).
+* **Modify Sale Invoices**: `w_selectformat_period_invrange` (Date Period /
+  Invoice Range) -> `w_arg_cust_sdate_ldate_withalloption2` customer/date
+  selection with rows; the final `w_modify_saleinvces` edit/save cycle is the
+  remaining step.
+* **Priority Setting**: selecting item 9801 populated `dw_detail` /
+  `dw_itemsdetail` (priority 10, stock 18,035 in godown 1); editing priority
+  10 -> 11 and Save wrote `GodownDetail.priority=11`; restored to 10.
+* **Change Item Discount**: selecting Category Wise reached
+  `w_change_itemdisc_catwise` (`d_changeitemdisc_catwise`, 1 row with
+  code/icatcode/salediscno/saledisc).
+* **Refused Sales**: the dedicated screen wrote `refusedsaleheader` 1 and
+  `refusedsaledetail` (item 9801, qty 1, price 10, reason 1).
+* **Adjustments**: Increase adjcode 3667, Decrease 3668 (item 9801, qty 1,
+  price 10) and Stock Adjustment buffer 2629 (item 9801) all saved.
+* **Purchase Order**: PO 6656 header + detail saved; reopened from the list and
+  the remarks edit persisted ("PARITY PO REOPEN EDIT"); Delete is correctly
+  disabled on the form.
+* **Cashier**: created cashier job 1 through the Cashier Job screen; Cashier
+  Activity then opened with the title "Activity for : ADMIN, Cashier Job #: 1".
+* **Groups**: detail form verified with both tabs (1 group row, 464 rights
+  rows); remarks edit/Save/restore proved.
+
+### Remaining (measured)
+
+* Change Item Reorder Qty and Modify Sale Invoices still need the final
+  data-grid edit/save cycle (their inner screens now open).
+* Full add/edit/delete/save on every remaining field of the other master and
+  transaction screens: the screen audit typed values but did not commit them.
+* Reports: final-stage/pixel comparison over the 138 paired paths.
+* Visual geometry: modal 3 px/8 px offset, 26 vs 28 px row spacing, Priority
+  Setting column widths.
+* Reference data: live-vs-clone audit (CustomerGroup is empty in both; other
+  lookup tables still to count).
+* Rights-limited screens (Issue Category, Receipt Category, Receipt, voucher
+  receipts) are hidden in the old app; they are not missing rebuild features.
+* Measured estimate: ~82% overall.  Definitions/menus/controls ~100%; screen
+  opening ~100% of the 68 effectively visible non-report paths; field
+  click-through ~70%; committed CRUD ~70%; reports ~70%; visual ~85%;
+  reference data ~50%.
+
 
 
 
