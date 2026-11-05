@@ -546,6 +546,17 @@ driven by menu command ID (no blind clicking).  First sample:
   Sales Summary with Profit, Monthly Net Sales Summary and Dead Item List.
   **16/16 old and 16/16 new** on the first pass; every new final state title
   starts with `Report:`.
+* Pairs **101-116** are captured: Sales Tax, Periodic Purchases, Purchase Order,
+  Supplier Wise Detail/Purchase Detail/Advance Income Tax, Manufacturer Wise
+  Detail/Monthly Stock Movement, Monthly Purchase Graph, Category Wise
+  Purchase, Days Summary, Purchase Order Supplier Wise, Net Purchase Summary,
+  Supplier Category Input Sales Tax, Withholding Tax Deduction and
+  Supplier/Manufacturer G/P.  First pass captured old 101-105 and new
+  101-106/109-116; the original app exited after the 105-106 sequence, which
+  also aborted old 106-116.  After restarting and logging in, `-OldOnly`
+  captured **11/11 old** (106-116) and the two missing new previews (107/108)
+  were captured individually — **16/16 pairs** in total.  Every new final
+  state title starts with `Report:`.
 * The capture path is now generic (`deploy/parity/pw/probe-report-generic.mjs`
   on the rebuild, `tools/parity/old-menu.ps1` on the original): it answers
   whichever Select Format / Specify Retrieval Arguements / Selection List
@@ -745,9 +756,9 @@ add/save was run against the clone:
   behaviour (no `ue_delete` in the original library).  The rest still need
   their own cycles.
 * Reports: final-stage pixel comparison is now method-complete (Win32 menu-ID
-  driver + generic rebuild capture) with **98/141 mapped paths paired**
-  (all of 001-066 and 069-100 have both final previews); **41 remain**
-  (101-141), and 067/068 are unpaired by original-side limits.  The
+  driver + generic rebuild capture) with **114/141 mapped paths paired**
+  (all of 001-066 and 069-116 have both final previews); **25 remain**
+  (117-141), and 067/068 are unpaired by original-side limits.  The
   empty-result difference is consistent: old shows header only, new also
   prints summary/footer bands with zero totals.
 * Visual geometry: modal 3 px/8 px offset, 26 vs 28 px row spacing, Priority
@@ -789,7 +800,7 @@ add/save was run against the clone:
   edit/save; non-destructive
   nested actions
   exercised for Customer (40), Supplier (40) and Item (23, including all nine
-  item-specific features); **98/141 mapped report paths paired**;
+  item-specific features); **114/141 mapped report paths paired**;
   visual ~85%; reference data ~95%.  Overall ~92%, **not 100%**.
 * Remaining work: full field-level add/edit/delete/save on the other master and
   transaction screens; remaining report final-stage pairs; modal geometry; and
