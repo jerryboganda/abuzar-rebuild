@@ -492,6 +492,18 @@ driven by menu command ID (no blind clicking).  First sample:
   headers and column sets were inspected on the adjustment/purchase/quotation
   samples and match; clone rows exist where the clone has data (021/022: 2,
   018/027/028: 1).
+* Pairs **031-033** (stock in hand: Manufacturer wise, Category wise, Others)
+  are captured.  These open `w_stock_filter` (“Avaiable Stock Report Formats”),
+  which closes through its own `close` event (`closewithreturn`), not
+  `ue_close`; the generic driver now tries the window's `close` event before
+  `ue_close` and reaches the real `Stock In Hand` preview.
+* Pairs **034-045** (stock in hand class/back-date/format2/supplier association/
+  quantity/audit/priority/expiry/reorder/stock register/summary/narcotics) are
+  captured: **12/12 old and 12/12 new** on the first pass.  Every new capture's
+  final state title starts with `Report:`, including the `w_stock_filter`
+  multi-format reports.  Stock reports use `Selection List`, `Select Column
+  Criteria` and `Select Stock Report Type` dialogs; the generic driver answers
+  them all.
 * The capture path is now generic (`deploy/parity/pw/probe-report-generic.mjs`
   on the rebuild, `tools/parity/old-menu.ps1` on the original): it answers
   whichever Select Format / Specify Retrieval Arguements / Selection List
@@ -614,8 +626,8 @@ manufacturer sheet:
   are verified; Sale Template delete is a recorded missing handler (enabled
   menu, no recovered `ue_delete`).  The rest still need their own cycles.
 * Reports: final-stage pixel comparison is now method-complete (Win32 menu-ID
-  driver + generic rebuild capture) with **30/138 pairs captured**
-  (001-030), all old and new final previews present; 108 remain.  The
+  driver + generic rebuild capture) with **45/138 pairs captured**
+  (001-045), all old and new final previews present; 93 remain.  The
   empty-result difference is consistent: old shows header only, new also
   prints summary/footer bands with zero totals.
 * Visual geometry: modal 3 px/8 px offset, 26 vs 28 px row spacing, Priority
@@ -653,10 +665,10 @@ manufacturer sheet:
   job, groups, update-item-basic-data, compound reorder qty, credit/cash sale,
   change-items-price and modify-sale-invoices; non-destructive nested actions
   exercised for Customer (40), Supplier (40) and Item (23, including all nine
-  item-specific features); **30/138 report final-stage pairs captured**;
+  item-specific features); **45/138 report final-stage pairs captured**;
   visual ~85%; reference data ~95%.  Overall ~89%, **not 100%**.
 * Remaining work: full field-level add/edit/delete/save on the other master and
-  transaction screens; **108 report final-stage pairs**; Sale Template
+  transaction screens; **93 report final-stage pairs**; Sale Template
   `ue_delete` handler; Customer/Supplier delete behavior; modal geometry; a
   handful of DataWindow/visual edge cases.
 * **Report pairing (measured)**: old 139 / new 141 / **138 pairs**, 1 old-only,

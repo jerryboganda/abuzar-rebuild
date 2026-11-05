@@ -23,11 +23,12 @@ async function dismiss() {
 async function dialogs() {
   return await page.evaluate(() => {
     const rt = window.rt; const out = [];
+    const rx = /select format|retrieval arguements|selection list|report type|column criteria|stock report formats|available stock/i;
     for (const [k, w] of rt.windowInstances) {
       if (k === 'w_main' || k === 'w_reviewreport') continue;
-      const type = Number(w.props?.get('windowtype') ?? 0);
-      if (type !== 3) continue;
-      out.push({ key: k, title: String(w.props.get('title') ?? '') });
+      const title = String(w.props.get('title') ?? '');
+      if (!rx.test(title)) continue;
+      out.push({ key: k, title });
     }
     return out;
   });
@@ -58,7 +59,12 @@ try {
     await sleep(700);
     const still = await page.evaluate((k) => !!window.rt.windowInstances.get(k), d.key);
     if (still) {
-      await page.evaluate(async (k) => { const rt = window.rt; const w = rt.windowInstances.get(k); if (w) await w.pbCall('ue_close', [1], rt).catch(() => {}); }, d.key);
+      await page.evaluate(async (k) => {
+        const rt = window.rt; const w = rt.windowInstances.get(k);
+        if (!w) return;
+        if (w.findRoutines('close').length) { await rt.fire(w, 'close').catch(() => {}); return }
+        await w.pbCall('ue_close', [1], rt).catch(() => {});
+      }, d.key);
     }
     await sleep(500);
   }
