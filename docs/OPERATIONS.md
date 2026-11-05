@@ -1,8 +1,9 @@
 # Installing and running Trader
 
 ## What you need
+* Windows 10/11 (64-bit).  The Microsoft Edge WebView2 Runtime must be present (it ships with Windows 11 and with current Edge updates on Windows 10); the app refuses to start without it.
 * PostgreSQL 17 (on the same machine or on a server in the network), a database for the company, e.g. `trader`.
-* The Windows installer or the programs of a release (GitHub release of the repository; built by `.github/workflows/release.yml`).
+* The Windows installer or the programs of a release (GitHub release of the repository; built by `.github/workflows/release.yml`).  Releases are not code-signed, so SmartScreen may warn - choose "More info > Run anyway" on a PC you trust, or sign the build yourself.
 
 ## First installation
 1. Create the database and apply the scripts of `db/pg/` in file order:
@@ -12,9 +13,18 @@
    ```
    Errors from `90_seed.sql` are reported as warnings (`seed skipped: ...`): they are statements of the original upgrade scripts that no longer fit the
    final schema.  `40_` - `70_` contain 603 fully translated procedures, 35 partial ones and a few stubs (SQL Server administration, linked-server transfer).
+   Verified 2026-11-05 on PostgreSQL 17.11: all scripts apply with zero errors (56 `seed skipped` notices, expected), leaving 763 tables and the first administrator `ADMIN`.
 2. Tell the program where the database is: first line of `trader.conf` next to `trader-desktop.exe`
-   (`postgres://user:password@host:5432/trader`) or the `DATABASE_URL` variable.
+   (`postgres://user:password@host:5432/trader`) or the `DATABASE_URL` variable.  If neither is set, the app tries
+   `postgres://postgres@127.0.0.1:5432/trader`.
 3. Start `trader-desktop.exe`.  Log in as **admin / admin** and change the password in the user administration window.
+   Smoke check while the app is running: `http://127.0.0.1:8787/api/health` answers `ok` (the desktop embeds the data server on 127.0.0.1:8787).
+
+The installers are NSIS packages built with `tauri build`; silent install (no prompts) works with:
+```
+Trader_0.1.0_x64-setup.exe /S          # per-user install into %LOCALAPPDATA%\Trader
+```
+Uninstall with `%LOCALAPPDATA%\Trader\uninstall.exe` or Settings > Apps > Trader.  `trader.conf` is not removed by the uninstaller.
 
 ## Several computers
 Run `trader-server.exe` on one machine with `DATABASE_URL`, `BIND=0.0.0.0:8787`, `STATIC_DIR` (the `web/dist` folder), `API_TOKEN=<secret>` and open
