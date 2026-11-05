@@ -413,6 +413,25 @@ posted Y) was created at 2026-11-05 02:16:30 and read back from
 * **Groups**: detail form verified with both tabs (1 group row, 464 rights
   rows); remarks edit/Save/restore proved.
 
+### Field-level master CRUD sweep
+
+`tools/parity/crud-fields.mjs` was run against the disposable clone for 16
+small-master screens.  For each form it typed **every editable field** through
+the rebuilt DOM, saved, reopened the row from File | List, edited it, saved
+again, then deleted it and verified PostgreSQL after every step.
+
+* **16/16 forms passed**: manufacturer, itemclass, taxcategory,
+  suppliercategory, customersector, genericitemtype, itemthickness,
+  lockreason, categorysegment, manufacturertype, pctcodes, customercategory,
+  itemcategory, genericitem, salestaxschedule, itemalert.
+* **51 editable fields** were typed and committed; **2** were skipped because
+  their drop-downs were empty in the clone (data gap, not a control gap).
+* PostgreSQL checks: `add=1 row`, `edit=1 row with the edited name`, and
+  `delete=0 rows` for every form.  No `PZUI/CLUI/TXUI/...` test rows were left
+  behind.
+* Evidence: `deploy/parity/crud-sweep-2026-11-05/crud-*.json` (one JSON per
+  form with every field value and message).
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -452,20 +471,27 @@ posted Y) was created at 2026-11-05 02:16:30 and read back from
 * Genuine fixes: header/settings file pipeline (`filereadex` line mode +
   `af_get_app_setting`), clone DB session hygiene, and the measured workflow
   fixes above.
-* Measured coverage: definitions/menus/controls ~100%; non-report screen
-  opening ~100% of the 68 effectively visible paths; field click-through ~70%;
-  committed CRUD ~70%; reports ~70%; visual ~85%; reference data ~50%.
-  Overall ~82%, **not 100%**.
-* Remaining work: full field-level add/edit/delete/save on every remaining
-  screen; the two inner save paths above; reports final-stage/pixel; modal
-  geometry; live-vs-clone reference-data reconciliation.
-* **Modify Sale Invoices save detail**: `saleledger` has 588,884 invoices, but
-  the Date Period retrieve still returns an empty grid (the argument dates are
-  not reaching `istr_arg` in the mask's `dd/mm/yyyy hh:mm:ss` form).  Editing
-  the resulting blank row then makes the runtime emit
-  `DELETE FROM dbo.saleledger ...` with rowcount 0 and "Changes Rollback".
-  The form itself is present and writable; the retrieve-argument/row-buffer
-  path is the remaining fix.
+* Measured coverage now: definitions/menus/controls ~100%; non-report screen
+  opening ~100% of the 68 effectively visible paths; field-level master CRUD
+  **16/16 forms** (51 fields) verified add/edit/delete; committed transaction
+  CRUD verified for quotation, purchase order, refused sale, adjustments,
+  cashier job, groups, update-item-basic-data, compound reorder qty and
+  modify-sale-invoices; reports data/rendering verified for Net Cash, but the
+  old-vs-new final-stage/pixel sweep is not complete; visual ~85%; reference
+  data ~95%.  Overall ~87%, **not 100%**.
+* Remaining work: full field-level add/edit/delete/save on the other master and
+  transaction screens; old-app final report preview capture for the pixel
+  comparison; modal geometry; a handful of DataWindow/visual edge cases.
+* **Report pairing (measured)**: old 139 / new 141 / **138 pairs**, 1 old-only,
+  3 new-only.  The 572 missing caption instances are frame chrome and dialog
+  names, not report fields: `Ready` 138, `Specify Retrieval Arguements` 73,
+  `Select Format` 31, `Preparing Your Report...` 26, `Selection List` 13,
+  `Select Column Criteria` 11.  The old capture set stops at the format /
+  argument dialog, so old-side final previews must be captured before a
+  final-stage pixel comparison can run.
+* **Modify Sale Invoices save detail** (superseded): the earlier empty-grid and
+  trailing-row DELETE findings were fixed.  The current verified behaviour is
+  in the Date Period bullet below.
 * **Fixed (systemic)**: DataWindow retrieval now coerces zero/null
   `datetime`/`date` arguments to PowerBuilder's zero date (1900-01-01) before
   sending them to PostgreSQL.  PostgreSQL rejected the old integer 0 with
@@ -474,8 +500,8 @@ posted Y) was created at 2026-11-05 02:16:30 and read back from
 * **Modify Sale Invoices (invoice range)**: 588890..588890 with all customers
   loaded the real `saleledger` row.  Editing `remarks` and Save produced
   `UPDATE dbo.saleledger SET remarks = $1 WHERE saleinvcode = $2 AND remarks = $3`
-  (rowcount 1); the value persisted and was restored.  Date Period still needs
-  the edit-mask dates to reach `istr_arg` (currently 0).
+  (rowcount 1); the value persisted and was restored.  Date Period was later
+  fixed as well (next bullet).
 * **Change Item Reorder Qty (compound)**: the compound detail DataWindow
   `d_changeitem_reorderqty_detail_compound` is present in the runtime bundle.
   The Compound selector opens `w_changeitem_reorderqty` (`is_dwtype=O`) and
