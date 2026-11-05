@@ -1519,7 +1519,11 @@ table also has unique `name` and `shortname`.
 * Exact restore: `area` 1 row (`DEFAULT AREA`), `_tabmaxkey('Area') 1`,
   `audit_log 1,079 / max 1,127`.
 
-Probe: `tools/parity/probe-area-crud.mjs` — measured `ok=true`.
+Probe: `tools/parity/probe-area-crud.mjs` - measured `ok=true`.
+
+**Inventory note:** `w_godowngroup_form` (the `GodownGroup` master) has no
+recovered menu handler or `opensheet` reference; it is an orphaned window,
+not a reachable page.  The real Area command is `m_area0`.
 
 ### Remaining (measured)
 
