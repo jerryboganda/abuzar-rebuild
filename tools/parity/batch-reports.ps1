@@ -1,4 +1,4 @@
-param([int]$From = 6, [int]$To = 14)
+param([int]$From = 6, [int]$To = 14, [string]$Screens = '', [switch]$OldOnly)
 # Batch final-preview capture with hard per-step timeouts (Playwright can hang
 # in browser.close() when a headless browser dies; the process tree is killed).
 $root = 'C:\Projects\Abuzar\deploy\parity'
@@ -21,8 +21,11 @@ function Invoke-Timeout([string]$file, [string]$argLine, [string]$workdir, [int]
   $err = $p.StandardError.ReadToEnd()
   return @{ ok = ($p.ExitCode -eq 0); out = ($out + $err) }
 }
-$screens = Get-Content (Join-Path $root 'screen-parity\old-reports\screens.json') -Raw | ConvertFrom-Json
-$targets = $screens | Where-Object { $_.n -ge $From -and $_.n -le $To } | Sort-Object n
+$screensFile = if ($Screens) { $Screens } else { Join-Path $root 'screen-parity\old-reports\screens.json' }
+$screenList = Get-Content $screensFile -Raw | ConvertFrom-Json
+"type=$($screenList.GetType().FullName) n0=$($screenList[0].n)"
+$targets = $screenList | Where-Object { $_.n -ge $From -and $_.n -le $To } | Sort-Object n
+"batch from=$From to=$To screens=$screensFile loaded=$($screenList.Count) targets=$(@($targets).Count)"
 foreach ($t in $targets) {
   $n = '{0:000}' -f [int]$t.n
   $slug = (($t.path -replace '&','') -replace '[^A-Za-z0-9]+','_').Trim('_')
@@ -36,6 +39,7 @@ foreach ($t in $targets) {
   $r2 = Invoke-Timeout 'powershell.exe' $capArgs $root 20
   "old-close: $($r2.ok)"
   $newPath = $t.path -replace '&',''
+  if ($OldOnly) { continue }
   $nodeArgs = "`"$root\pw\probe-report-generic.mjs`" `"$newPath`" `"$newOut`" `"$($newOut -replace '\.png$','.json')`""
   $r3 = Invoke-Timeout 'node.exe' $nodeArgs $root 120
   $v = ($r3.out -split "`n" | Select-String -Pattern '"rows"|"fatal"|"title"' | Select-Object -First 3) -join ' / '

@@ -519,11 +519,33 @@ driven by menu command ID (no blind clicking).  First sample:
   wrote its JSON/PNG with 28,966 rows but the batch marked it failed because
   the process exceeded the 120 s close timeout; the artifact is complete.
 * **067/068 old-side limits**: `Claimable for Allowed Customers` opens a
-  “Row Validation” box and then a PowerBuilder R0023 error with the default
+  "Row Validation" box and then a PowerBuilder R0023 error with the default
   arguments, so no old preview can be produced without specific input.
   `Customer NTN Wise Sales Tax Report` is one of the two known original
   crashes; it terminated the original app during capture.  New previews for
   067/068 exist, but these two remain unpaired by original limitation.
+* **Numbering for the b/c sets (measured, no overlap)**: the first capture
+  set ends at 068.  `old-reports-b` has 52 paths and `old-reports-c` has 21;
+  none of their normalised paths exists in the first set.  They are mapped
+  to **069-120 (b)** and **121-141 (c)** in
+  `deploy/parity/screen-parity/screens-bc.json` (73 entries, last n=141).
+  The batch driver now takes `-Screens <file>` and `-OldOnly`; both were
+  needed and verified.
+* Pairs **069-072** (Customer Wise Advance Tax, Category Wise Sale And
+  Return/Sales/Deviated Items) were re-captured on the old side with
+  `-OldOnly` after the original app had exited on a preceding R0023; all four
+  old previews now exist.
+* Pairs **073-084** are captured: Monthly/Net Sale, Gross Profit, Item Wise
+  Sale Discounts, Item Category Monthly Sales, Category Day Net Sale,
+  Manufacturer Sales/Detail/Net Sales/Item Discounts/Return Summary and
+  CNIC/NTN Registered Customers Sales.  **12/12 old and 12/12 new**.
+* Pairs **085-100** are captured: User Wise Invoice Graph / Sales / Category
+  Summary / Discount / Net Cash / Sales Commission / Sales Summary, Hourly
+  Sales Graph, Slow-Fast Moving Items, Net Sale Summary, Item Sale and Return
+  Activity, Item Wise Net Sales, Sale/Return Summary Inv. Type Wise, Daily
+  Sales Summary with Profit, Monthly Net Sales Summary and Dead Item List.
+  **16/16 old and 16/16 new** on the first pass; every new final state title
+  starts with `Report:`.
 * The capture path is now generic (`deploy/parity/pw/probe-report-generic.mjs`
   on the rebuild, `tools/parity/old-menu.ps1` on the original): it answers
   whichever Select Format / Specify Retrieval Arguements / Selection List
@@ -682,6 +704,34 @@ preference:
 * Restored the clone value to `N` and verified
   `showtransitstockinitemlist | N`.
 
+### Purchase Return add/save (verified) and File | Delete (original inert)
+
+`Purchase | Purchase Return` opens `w_purchasereturn` with the
+`d_openpurchasereturn` / `d_openpurchasereturndetail` DataWindows.  A full
+add/save was run against the clone:
+
+* Filled master and item row: supplier **311**, item **9801**, batch `.`,
+  expiry **2030-12-12**, godown 1, qty 1, P/R price 10.
+* Save asked for the salesman password (ADMIN), then reported
+  "Changes take effect in database".
+* PostgreSQL wrote exactly one return invoice and one item row:
+  `prledger 1488 | supp 311 | total 10.00 | posted N | prcatcode 4` and
+  `prdetail 1488 | 9801 | looseqty 1.0000 | prprice 10.00 | batch . | gcode 1`.
+* Stock moved correctly: `godowndetail` item 9801 / gcode 1 went
+  **18,035 -> 18,034**; `item.avgprice` stayed 4.87463 (return price above
+  average).
+* **File | Delete on Purchase Return is enabled but inert in the original**:
+  the recovered window script has only `ue_deleteitem` (detail rows); a scan
+  of the original `prcomponents.pbd` event list for `w_purchasereturn` shows
+  `ue_save / ue_newform / ue_detail / close / ue_deleteitem / ...` with **no
+  `ue_delete`**, and `m_multi_entry.m_delete` only triggers
+  `parentwindow.triggerevent("ue_delete")`.  Firing it left the invoice in
+  place, matching the original wiring; no handler was invented.
+* Cleanup removed invoice 1488 (`prdetail` then `prledger`) and restored
+  `godowndetail.currqty` to **18,035**.  Final counts are back to
+  `prledger 1,487` / `prdetail 5,923`, item 9801 avg 4.87463, and no
+  `PARITY PR RETURN` row exists.
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -695,9 +745,9 @@ preference:
   behaviour (no `ue_delete` in the original library).  The rest still need
   their own cycles.
 * Reports: final-stage pixel comparison is now method-complete (Win32 menu-ID
-  driver + generic rebuild capture) with **66/138 pairs captured**
-  (001-066), all old and new final previews present for those paths; 72
-  remain.  The
+  driver + generic rebuild capture) with **98/141 mapped paths paired**
+  (all of 001-066 and 069-100 have both final previews); **41 remain**
+  (101-141), and 067/068 are unpaired by original-side limits.  The
   empty-result difference is consistent: old shows header only, new also
   prints summary/footer bands with zero totals.
 * Visual geometry: modal 3 px/8 px offset, 26 vs 28 px row spacing, Priority
@@ -735,11 +785,12 @@ preference:
   verified for quotation, purchase order, refused sale, adjustments, cashier
   job, groups, update-item-basic-data, compound reorder qty, credit/cash sale,
   change-items-price, supplier-wise-item-settings (add/edit/delete),
-  modify-sale-invoices and a Preferences setting edit/save; non-destructive
+  purchase-return add/save, modify-sale-invoices and a Preferences setting
+  edit/save; non-destructive
   nested actions
   exercised for Customer (40), Supplier (40) and Item (23, including all nine
-  item-specific features); **66/138 report final-stage pairs captured**;
-  visual ~85%; reference data ~95%.  Overall ~91%, **not 100%**.
+  item-specific features); **98/141 mapped report paths paired**;
+  visual ~85%; reference data ~95%.  Overall ~92%, **not 100%**.
 * Remaining work: full field-level add/edit/delete/save on the other master and
   transaction screens; remaining report final-stage pairs; modal geometry; and
   a handful of DataWindow/visual edge cases.  Sale Template and
