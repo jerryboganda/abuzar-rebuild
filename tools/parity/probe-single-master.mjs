@@ -169,6 +169,11 @@ const CONFIGS = {
     fields: { name: '{{name}}', half: 0, deductionperc: 0, autoset: 'N', timetype: 1, margin: 0 },
     edit: { deductionperc: 1, margin: 5 },
   },
+  itemmeter: {
+    menu: 'm_itemmeter', window: 'w_itemmeter_form', table: 'itemmeter', key: 'itemmetercode', tab: 'ItemMeter', prefix: 'PARITY ITEMMETER',
+    fields: { name: '{{name}}', description: 'PARITY ITEM METER', currentreading: 0 },
+    edit: { description: 'PARITY ITEM METER EDITED', currentreading: 5 },
+  },
 };
 const key = process.argv[2] || 'region';
 const cfg = CONFIGS[key];

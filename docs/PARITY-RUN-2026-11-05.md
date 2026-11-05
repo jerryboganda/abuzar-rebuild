@@ -1364,6 +1364,24 @@ Probe: `tools/parity/probe-empidentity-crud.mjs` with `education`,
 
 Probe: `tools/parity/probe-empdept-crud.mjs` - measured `ok=true`.
 
+### Item Meter master (verified; right-hidden)
+
+`m_itemmeter` (hidden) opens `w_itemmeter_form` (`w_single_entry`, title
+"Item Meter Form").  `d_itemmeter_detail` updates `itemmeter`
+(`itemmetercode`, `name`, `description`, `currentreading`), list
+`d_itemmeter_list`.
+
+* Baseline: 0 rows, `_tabmaxkey('ItemMeter') 0`.
+* Add code **1** with description `PARITY ITEM METER` and current reading 0;
+  edit to description `... EDITED` and reading 5; delete through `ue_delete`
+  (right 579).  All three saves reported "Changes take effect in database";
+  delete reported "Record Deleted Successfully".
+* Exact restore: `itemmeter 0 / max 0`, `_tabmaxkey('ItemMeter') 0`,
+  `audit_log 1,079 / max 1,127`, no residue.
+
+Probe: `tools/parity/probe-single-master.mjs itemmeter` - measured
+`ok=true`.
+
 ### Item Association nested form + parent save
 
 `Set Item Associations` (`m_setitemassociations` →
