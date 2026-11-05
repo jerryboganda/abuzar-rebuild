@@ -11,7 +11,7 @@ the tools in `tools/parity/`.
 | Visible menu items | 262 | 261 | `orig-menu.tsv` vs `menu-compare.json` |
 | Non-report screens opened | 62/62 | 62 attempted (55 direct, 7 captured at their response window) | `deploy/parity/screen-parity/old-nonreport`, `new-nonreport` |
 | Report screens opened | not yet (old crawl pending) | 53+ captured so far | `screen-parity/new-reports` |
-| Master-data forms: every editable field typed, add/edit/delete/save verified in PostgreSQL | 16 forms | 16 forms + 14 extra masters (Godown, Area, Region, Sub Area, Sales Person, Item Packing, Item Size, Unit, Item Style, Item Colour, Item Sleeve, Item Yarn, Item Fabric, Item Brand) | `screen-parity/crud-fields/crud-*.json`, `tools/parity/probe-godown-crud.mjs`, `tools/parity/probe-area-crud.mjs`, `tools/parity/probe-single-master.mjs` |
+| Master-data forms: every editable field typed, add/edit/delete/save verified in PostgreSQL | 16 forms | 16 forms + 17 extra masters (Godown, Area, Region, Sub Area, Sales Person, Item Packing, Item Size, Unit, Item Style, Item Colour, Item Sleeve, Item Yarn, Item Fabric, Item Brand, Sale Type, Purchase Type, Issue Type) | `screen-parity/crud-fields/crud-*.json`, `tools/parity/probe-godown-crud.mjs`, `tools/parity/probe-area-crud.mjs`, `tools/parity/probe-single-master.mjs` |
 | DataWindow expression parse sweep | â€” | every `expression` parses; SQL comments stripped | `tools/parity/dw-expr-audit.mjs` |
 
 The 16 passing forms are: Customer Category, Customer Sector, Generic Item,
@@ -24,8 +24,12 @@ add/edit/delete cycles (their menu items are hidden by the rights state; the
 probes fire the real `m_godown` / `m_area0` / `m_region0` / `m_subarea` /
 `m_salesperson` / `m_itempacking0` / `m_5` / `m_unit` / `m_itemstyle` /
 `m_itemcolour` / `m_itemsleeve` / `m_itemyarn` / `m_itemfabric` /
-`m_itembrand` handlers).  **Section** is reachable but data-blocked: its
-`deptcode` is required and `Department` has 0 rows in live and clone.
+`m_itembrand` / `m_saletype` / `m_purchasetype` / `m_issuetype` handlers).
+**Section** is reachable but data-blocked: its `deptcode` is required and
+`Department` has 0 rows in live and clone.  **Item Design**
+(`w_itemdesign_form`) is an orphaned window (no menu/`opensheet` reference)
+and **Item Type** has no master window; the `itemtype` table is not exposed
+through a form.
 
 `Sale Promotion` is the only tested form that cannot complete: its Active /
 Customer Group / Weekday drop-downs are empty in the migrated clone (missing
@@ -1609,6 +1613,30 @@ unreachable until department data exists.
 Probe: `tools/parity/probe-single-master.mjs <itemsleeve|itemyarn|itemfabric|itembrand>`
 — all four measured `ok=true`.
 
+### Sale Type, Purchase Type, Issue Type (verified)
+
+All three are `w_single_entry` forms driven through their real menu commands;
+each measured `ok=true` with add, edit, `ue_delete` confirmation and exact
+table/tabmax/audit restore.
+
+| Master | Menu | Rows (before/after) | Add | Edit | Delete |
+|---|---|---:|---|---|---|
+| Sale Type | `m_saletype` | 2 / 2 | code 3, tab 2→3 | name + description | “Record Deleted Successfully” |
+| Purchase Type | `m_purchasetype` | 0 / 0 | code 1, tab 0→1 | name | same |
+| Issue Type | `m_issuetype` | 0 / 0 | code 1, tab 0→1 | name | same |
+
+Final counters: `SaleType 2`, `PurchaseType 0`, `IssueType 0`,
+`audit_log 1,079 / max 1,127`.
+
+**Inventory note:** **Item Design** (`w_itemdesign_form`) is an orphaned
+window — no recovered menu handler or `opensheet` reference.  **Item Type**
+has no master window at all; the `itemtype` table is not exposed through a
+form.  The reachable type masters are the generic/manufacturer/sale/purchase/
+issue types above.
+
+Probe: `tools/parity/probe-single-master.mjs <saletype|purchasetype|issuetype>`
+— all three measured `ok=true`.
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -1660,7 +1688,8 @@ Probe: `tools/parity/probe-single-master.mjs <itemsleeve|itemyarn|itemfabric|ite
   **16/16 forms** (51 fields) plus **Godown**, **Area**, **Region**,
   **Sub Area**, **Sales Person**, **Item Packing**, **Item Size**, **Unit**,
   **Item Style**, **Item Colour**, **Item Sleeve**, **Item Yarn**,
-  **Item Fabric** and **Item Brand** add/edit/delete and
+  **Item Fabric**, **Item Brand**, **Sale Type**, **Purchase Type** and
+  **Issue Type** add/edit/delete and
   **Sale Template header+detail**
   add/edit/save verified (File | Delete is original enabled-but-inert);
   committed transaction CRUD

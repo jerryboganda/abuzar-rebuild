@@ -69,6 +69,21 @@ const CONFIGS = {
     fields: { name: '{{name}}', description: 'PARITY BRAND DESCRIPTION' },
     edit: { description: 'PARITY BRAND DESCRIPTION EDITED' },
   },
+  saletype: {
+    menu: 'm_saletype', window: 'w_saletype_form', table: 'saletype', key: 'saletypecode', tab: 'SaleType', prefix: 'PARITY SALETYPE',
+    fields: { name: '{{name}}', description: 'PARITY SALETYPE DESCRIPTION', counter: 0 },
+    edit: { description: 'PARITY SALETYPE DESCRIPTION EDITED' },
+  },
+  purchasetype: {
+    menu: 'm_purchasetype', window: 'w_purchasetype_form', table: 'purchasetype', key: 'purtypecode', tab: 'PurchaseType', prefix: 'PARITY PURTYPE',
+    fields: { name: '{{name}}' },
+    edit: {},
+  },
+  issuetype: {
+    menu: 'm_issuetype', window: 'w_issuetype_form', table: 'issuetype', key: 'issuetypecode', tab: 'IssueType', prefix: 'PARITY ISSUETYPE',
+    fields: { name: '{{name}}' },
+    edit: {},
+  },
 };
 const key = process.argv[2] || 'region';
 const cfg = CONFIGS[key];
