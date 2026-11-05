@@ -29,6 +29,26 @@ const CONFIGS = {
     fields: { name: '{{name}}', numericalfactor: 1 },
     edit: { numericalfactor: 2 },
   },
+  itemsize: {
+    menu: 'm_5', window: 'w_itemsize_form', table: 'itemsize', key: 'isizecode', tab: 'ItemSize', prefix: 'PARITY SIZE',
+    fields: { name: '{{name}}', description: 'PARITY SIZE DESCRIPTION' },
+    edit: { description: 'PARITY SIZE DESCRIPTION EDITED' },
+  },
+  unit: {
+    menu: 'm_unit', window: 'w_unit_form', table: 'unit', key: 'unitcode', tab: 'Unit', prefix: 'PARITY UNIT',
+    fields: { name: '{{name}}', description: 'PARITY UNIT DESCRIPTION' },
+    edit: { description: 'PARITY UNIT DESCRIPTION EDITED' },
+  },
+  itemstyle: {
+    menu: 'm_itemstyle', window: 'w_itemstyle_form', table: 'itemstyle', key: 'istylecode', tab: 'ItemStyle', prefix: 'PARITY STYLE',
+    fields: { name: '{{name}}', description: 'PARITY STYLE DESCRIPTION' },
+    edit: { description: 'PARITY STYLE DESCRIPTION EDITED' },
+  },
+  itemcolour: {
+    menu: 'm_itemcolour', window: 'w_itemcolour_form', table: 'itemcolour', key: 'icolourcode', tab: 'ItemColour', prefix: 'PARITY COLOUR',
+    fields: { name: '{{name}}', description: 'PARITY COLOUR DESCRIPTION' },
+    edit: { description: 'PARITY COLOUR DESCRIPTION EDITED' },
+  },
 };
 const key = process.argv[2] || 'region';
 const cfg = CONFIGS[key];
