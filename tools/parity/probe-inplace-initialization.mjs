@@ -12,6 +12,8 @@ const TRANSFER = process.env.TRANSFER !== '0';
 const PSQL = 'C:\\PostgreSQL\\17\\bin\\psql.exe';
 const q = (sql) => execFileSync(PSQL, ['-U', 'postgres', '-h', '127.0.0.1', '-d', DB, '-t', '-A', '-F', '|', '-c', sql], { env: { ...process.env, PGPASSWORD: 'postgres' }, encoding: 'utf8', windowsHide: true }).trim();
 const rows = (sql) => q(sql).split(/\r?\n/).filter(Boolean).map((l) => l.split('|'));
+const qa = (sql) => execFileSync(PSQL, ['-U', 'postgres', '-h', '127.0.0.1', '-d', 'postgres', '-t', '-A', '-F', '|', '-c', sql], { env: { ...process.env, PGPASSWORD: 'postgres' }, encoding: 'utf8', windowsHide: true }).trim();
+const rowsA = (sql) => qa(sql).split(/\r?\n/).filter(Boolean).map((l) => l.split('|'));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const TABLES = ['saleledger', 'saledetail', 'srledger', 'srdetail', 'purledger', 'purdetail', 'prledger', 'prdetail', 'glheader', 'gldetail', 'itemlog', 'stockledger', 'godowndetail', 'itembatches', 'previoussalehistory', 'eventlog'];
 const counts = () => Object.fromEntries(rows(TABLES.map((t) => `select '${t}', count(*) from dbo.${t}`).join(' union all ')).map(([t, n]) => [t, Number(n)]));
@@ -85,6 +87,17 @@ try {
   for (let i = 0; i < 600; i++) {
     await sleep(500);
     await poll(1);
+    if (!out.blockersKilled) {
+      try {
+        const act = rowsA(`select pid,state from pg_stat_activity where datname='${DB}' and query like '%sp_init_delete_table%'`);
+        if (act.length) {
+          const resetPid = Number(act[0][0]);
+          const killed = rowsA(`select count(pg_terminate_backend(pid)) from pg_stat_activity where datname='${DB}' and pid <> ${resetPid} and pid <> pg_backend_pid()`);
+          out.blockers = { resetPid, killed: Number(killed[0]?.[0] ?? 0) };
+          out.blockersKilled = true;
+        }
+      } catch { /* admin query is best effort */ }
+    }
     const done = await page.evaluate(() => window.__inplaceDone);
     const windowOpen = await page.evaluate(() => !!window.rt.windowInstances.get('w_inplace_initialization'));
     if (done && done !== false) { out.done = done; break; }

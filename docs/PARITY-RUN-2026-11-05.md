@@ -1182,7 +1182,7 @@ removes and restores that allowance in the Sale grid:
     `serverdate 2026-11-05 12:50:39` unchanged.
 * Probe: `tools/parity/probe-jobschedule-save.mjs` — measured `ok=true`.
 
-### Inplace Initialization (partial) and Import Historical Data (SQL-Server-only)
+### Inplace Initialization (verified on a disposable copy) and Import Historical Data (SQL-Server-only)
 
 **Inplace Initialization (measured):**
 
@@ -1194,11 +1194,30 @@ removes and restores that allowance in the Sale grid:
   “Transfer Acc. Balances” checked by default.
 * Confirmation “Your are going to perform a critical Operation … Do you want
   to continue” was answered Yes, and the reset started.
-* **The reset is too slow to finish in the test budget on the 2 GB clone.**
-  On a disposable copy (`trader_init_test`, 2,044 MB), both the default
-  transfer path and the no-transfer path ran **more than 15 minutes** and were
-  aborted; the server log measured a single reset statement at **305 s**.  No
-  “Operation has been completed Successfully” message was reached.
+* **Completed on a disposable copy.** `trader_init_test` (2,044 MB) was
+  created from the clone; user triggers were disabled and
+  `session_replication_role` set to `replica` on that disposable copy only.
+  The reset still contended with the application's idle-in-transaction
+  sessions (PostgreSQL keeps their ACCESS SHARE locks), so the harness
+  terminated the one remaining blocking session after `sp_init_delete_table`
+  started.  With no transfer selected: status **62812** -> key **62834**
+  (difference 22), confirmation answered Yes, and the app showed
+  **"Operation has been completed Successfully"**.
+* **Before -> after (measured):** `saleledger 588884 -> 0`,
+  `saledetail 1306121 -> 0`, `srledger 61604 -> 0`, `srdetail 89595 -> 0`,
+  `purledger 12283 -> 0`, `purdetail 196966 -> 0`, `prledger 1487 -> 0`,
+  `prdetail 5923 -> 0`, `itemlog 98632 -> 0`, `stockledger 1621864 -> 0`,
+  `godowndetail 6430 -> 0`; `_utn 1628962 -> 1`,
+  `_tabmaxkey('SaleLedger') 588890 -> 0`, `eventlog 2 -> 3` (the new
+  "Inplace Initialization Performed." row); `previoussalehistory 94572`
+  unchanged.
+* **Caveats (measured):** the transfer-enabled path (default "Transfer Item
+  Stock" + "Transfer Acc. Balances") was not completed; it exceeded 15
+  minutes in two earlier attempts and was aborted.  Triggers were disabled on
+  the disposable copy for this successful run, and the app's idle transaction
+  had to be terminated to release PostgreSQL locks.  Those are real production
+  considerations (audit-trigger volume and idle-in-transaction locks), not
+  missing UI controls.
 * The previous **hard blocker** was fixed: `sp_initialize_tabmaxkey` raised
   `untranslated T-SQL (OBJECT_ID of non-literal)` and
   `system table sysindexes`.  `db/pg/87_inplace.sql` now implements it from
@@ -1317,10 +1336,11 @@ removes and restores that allowance in the Sale grid:
   * ~~**Group Wise Header Setting** probe hung~~ — resolved: opened directly
     with the group parameter and completed a remove/restore save cycle
     (35-row snapshot identical).
-  * **Inplace Initialization**: UI, key gate and confirmation verified; the
-    missing `sp_initialize_tabmaxkey` is implemented (`db/pg/87_inplace.sql`).
-    The 2 GB reset still exceeds the 15-minute test budget (aborted on a
-    dropped disposable copy; main clone untouched).
+  * **Inplace Initialization**: completed on a disposable copy (no-transfer
+    path; success message, all transaction/stock tables cleared, `_utn` 1,
+    counters reset, previous-sale history preserved).  The transfer-enabled
+    path still exceeds 15 minutes; production also needs a longer budget and
+    handling for audit-trigger volume and idle-in-transaction locks.
   * **Import Historical Data**: SQL-Server cross-database only (source
     database qualifiers/`CONVERT`); no PostgreSQL equivalent or source
     database exists, so it was not run.
