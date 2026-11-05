@@ -158,7 +158,14 @@ export class NControl extends PBObject {
     this.pbSet('text', toStr(t))
     return 1
   }
-  async n_text(): Promise<string> {
+  // ListBox / DropDownListBox `Text(i)` returns item i (not the control's text
+  // property).  Argument windows collect the selected names with
+  // `lb_selected....text(n)` and look them up in their DataWindow; returning the
+  // control text made every such selection empty.
+  async n_text(i?: unknown): Promise<string> {
+    if (i !== undefined && ['listbox', 'dropdownlistbox', 'picturelistbox'].includes(this.native)) {
+      return toStr(this.items().a[toNum(i) - 1])
+    }
     return toStr(this.props.get('text'))
   }
   async n_selecttext(start: unknown, len: unknown): Promise<number> {

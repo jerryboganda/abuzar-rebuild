@@ -415,8 +415,11 @@ posted Y) was created at 2026-11-05 02:16:30 and read back from
 
 ### Remaining (measured)
 
-* Change Item Reorder Qty and Modify Sale Invoices still need the final
-  data-grid edit/save cycle (their inner screens now open).
+* ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
+  data-grid edit/save cycle~~ — **resolved later in this log**: Modify Sale
+  Invoices invoice 588890 produced `UPDATE ... rowcount 1`, and compound
+  Change Item Reorder Qty item 21195 produced `UPDATE dbo.item ... rowcount 1`,
+  both persisted and restored.
 * Full add/edit/delete/save on every remaining field of the other master and
   transaction screens: the screen audit typed values but did not commit them.
 * Reports: final-stage/pixel comparison over the 138 paired paths.
@@ -433,27 +436,16 @@ posted Y) was created at 2026-11-05 02:16:30 and read back from
 
 ### Latest continuation
 
-* **Change Item Reorder Qty**: the selector returns `M`; the main window
-  `w_changeitem_reorderqty` opens with `is_dwtype=M` and a blank header/detail
-  row; the Generate action opens `w_arg_manufacturers`.  The manufacturer
-  argument list is still empty in the harness, so the grid currently retrieves
-  one blank row.  The screen and all its controls are present; only the final
-  data-argument/save test remains.
-* **Modify Sale Invoices**: the format selector opens
-  `w_arg_cust_sdate_ldate_withalloption2` with customer/date rows; the final
-  `w_modify_saleinvces` edit/save cycle remains.
+* **Change Item Reorder Qty** (early attempt, superseded): the manufacturer
+  path opened `w_arg_manufacturers`; the grid stayed blank because the
+  listbox selection text bug was not yet found.  The compound path below is the
+  verified one.
+* **Modify Sale Invoices** (early attempt, superseded): the format selector
+  opened the customer/date dialog; Date Period was later fixed and verified.
 * No additional missing menu, window or control was found in this pass.  The
   recurring "missing feature" reports were capture-state (list tab, hidden
   legacy columns), data prerequisites (empty `cashierjob`, manufacturer list)
   or argument-selection issues.
-* **Modify Sale Invoices**: the final `w_modify_saleinvces` form opens with
-  Detail/List tabs and `d_change_saleinv` (`saleledger`).  Setting a real
-  invoice (588890) and pressing Save showed "Changes take effect in database",
-  but `saleledger.remarks` stayed empty and no UPDATE reached the captured
-  transcript; this save path still needs a dedicated fix.
-* **Change Item Reorder Qty**: selector -> main (`is_dwtype=M`) -> Generate ->
-  `w_arg_manufacturers` all open; the argument list still returns a blank row
-  in the harness, so the final grid/save remains to be proven.
 
 ### Parity status at this checkpoint
 
@@ -490,12 +482,18 @@ posted Y) was created at 2026-11-05 02:16:30 and read back from
   Generate opens `w_arg_manf_cat_class_packing`; its child lists are populated
   (833 manufacturers, 7 categories, 11 classes, 1 packing), all four "All"
   flags and a 2020-2030 date range are set, and `ue_close(1)` is called.
-  The argument window closes with `i_status=1` and arrays of 833 manufacturers,
-  7 categories, 11 classes and 1 packing.  `ue_generate` does not resume to
-  call `retrieve` (no query captured), and a direct retrieve with a
-  single-item combo (manf 20 / cat 2 / class 9 / pack 1) still exceeds 300 s.
-  The argument handoff is proven; the compound retrieve/resume path is the
-  remaining blocker.
+  The argument window closes with `i_status=1`.  Original blocker: every
+  argument window that fills its selection from `lb_selected....text(n)` got an
+  empty string, because the runtime's `ListBox.Text(i)` ignored the index and
+  returned the control's `text` property.  Fixed `NControl.n_text` so list
+  boxes return item *i*.  With one manufacturer/category/class/packing selected
+  by name (ALI GOHAR / NARCOTICS / NARCOTICS / `.`), `ue_generate` resumed and
+  retrieved real row 21195 (CALFINA PLUS TAB).  Editing reorderqty 0 -> 1 and
+  Save produced
+  `UPDATE dbo.item SET lastupdate=$1, reorderqty=$2, changereason=$3, module=$4 WHERE icode=$5`
+  with rowcount 1; the clone row was restored to reorderqty 0.  Compound
+  reorder-qty add/edit/save is verified.  The full-catalog 833-manufacturer
+  selection is simply a heavy query (the single combo runs in 46 ms).
 * **Reference-data audit (live SQL Server vs clone)**: compared 30
   reference/master tables (`accounts`, `area`, `customer`, `customercategory`,
   `genericitem`, `godown`, `groups`, `itemalert`, `itemcategory`, `itemclass`,
