@@ -484,6 +484,12 @@ posted Y) was created at 2026-11-05 02:16:30 and read back from
   `UPDATE dbo.saleledger SET remarks = $1 WHERE saleinvcode = $2 AND remarks = $3`
   (rowcount 1); the value persisted and was restored.  Date Period still needs
   the edit-mask dates to reach `istr_arg` (currently 0).
+* **Change Item Reorder Qty (compound)**: the compound detail DataWindow
+  `d_changeitem_reorderqty_detail_compound` is present in the runtime bundle
+  (`changeitemprice.json.gz`, 40 DataWindows).  The Compound selector and
+  "Change Item Reorder Qty - Compound Criteria" window load, but the Generate
+  action did not open `w_arg_manfs_cats_classes_packs` within 60 s in the
+  harness, so this is a menu/argument harness gap, not a missing definition.
 
 
 
