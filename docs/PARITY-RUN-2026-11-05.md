@@ -1141,6 +1141,47 @@ removes and restores that allowance in the Sale grid:
   retrieved rejects `SetItem(icatcode)`; the probe sets the model value
   directly (a real user selects it from the list).
 
+### Job Schedule (rebuild scheduler; the original screen is broken in this deployment)
+
+**Original-side limitation (measured):**
+
+* The live application database `FazalDinPP19DataBaseV2` has **no
+  `SysJobs` / `SysJobSchedules` tables at all** (`Invalid object name
+  'SysJobs'`); only `msdb` has SQL Agent tables, and `msdb.dbo.sysjobs`
+  contains just `syspolicy_purge_history` — **no application jobs**.
+* Opening `Manage | Job Schedule` in the original app therefore shows
+  `Select Error: SQLSTATE = 42S22 … Invalid column name 'Name'` followed by
+  “Unable to fetch auto client backup job status.” (and the same for the cash
+  sale posting job).  The screen cannot retrieve or save in the original.
+* The recovered job globals (`gs_clientjob`, `gs_autocashsalepostingjob`, …)
+  are **empty strings**; a read-only process-memory scan of the running
+  original after opening the screen found no job-name strings either.
+
+**Rebuild (implemented and verified):**
+
+* `db/pg/86_jobs.sql` now defines a real PostgreSQL stand-in:
+  `dbo.sysjobs (job_id identity, name unique, enabled)` and
+  `dbo.sysjobschedules (schedule_id identity, job_id, name, freq_subday_type,
+  freq_subday_interval, active_start_time)`, plus working
+  `dbo.sp_adjustjobschedule` and `dbo.sp_activatejob` (they previously raised
+  `untranslated T-SQL (procedure outside the database: msdb.sp_update_job)`).
+* `Select enabled … From SysJobs` no longer **inserts** a job row when the
+  name is unknown (it returns `coalesce(max(enabled), 0)`), and blank job
+  names are no-ops in both procedures, so opening the screen with the empty
+  recovered globals cannot create junk rows.
+* Full cycle with configured names:
+  * Enable Auto Backup, “Once At” 10:30:00 PM → `sysjobs` row enabled 1 and
+    `sysjobschedules` row `unit 1 / interval 0 / active_start_time 223000`.
+  * Enable Auto Cash Sale Posting 60 minutes → enabled 1 and
+    `sysjobschedules` row `unit 4 / interval 60 / active_start_time 0`;
+    `softwarepreferences.cashsaleautopostingtime` became `60`.
+  * Reopen and disable both → both `sysjobs` rows enabled 0; the two schedule
+    rows remain (matching `sp_update_job @enabled = 0` semantics).
+  * Exact restore: `sysjobs 0`, `sysjobschedules 0`,
+    `cashsaleautopostingtime 10 / 10`, `audit_log 1,079 / max 1,127`,
+    `serverdate 2026-11-05 12:50:39` unchanged.
+* Probe: `tools/parity/probe-jobschedule-save.mjs` — measured `ok=true`.
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -1198,8 +1239,8 @@ removes and restores that allowance in the Sale grid:
   purchase-return add/save, opening-purchase and loose-purchase
   add/edit/save, Item Form parent saves with nested price-policy/alias,
   association, image and RichText notes rows, group-wise godown/header
-  settings, Change Item Discount (category wise, 29 items),
-  users add/edit,
+  settings, Change Item Discount (category wise, 29 items), Job Schedule
+  (PG scheduler; original screen broken in this deployment), users add/edit,
   modify-sale-invoices, three
   group-level settings (allowed price/cash account/supplier category),
   Interface Setting visibility, Change Password, Modify Last Transaction Date,
@@ -1230,8 +1271,8 @@ removes and restores that allowance in the Sale grid:
   * ~~**Group Wise Header Setting** probe hung~~ — resolved: opened directly
     with the group parameter and completed a remove/restore save cycle
     (35-row snapshot identical).
-  * Other settings not yet cycled: Job Schedule, Inplace Initialization,
-    Import Historical Data.
+  * Other settings not yet cycled: Inplace Initialization, Import Historical
+    Data.
   * Visual: modal position/width offsets and 26 vs 28 px row spacing.
   * 067/068 final reports remain unpaired by original-side limits.
   * Sale Template and Customer/Supplier deletes are confirmed original
