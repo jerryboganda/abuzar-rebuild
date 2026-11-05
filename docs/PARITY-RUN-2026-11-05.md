@@ -446,6 +446,27 @@ posted Y) was created at 2026-11-05 02:16:30 and read back from
   recurring "missing feature" reports were capture-state (list tab, hidden
   legacy columns), data prerequisites (empty `cashierjob`, manufacturer list)
   or argument-selection issues.
+* **Modify Sale Invoices**: the final `w_modify_saleinvces` form opens with
+  Detail/List tabs and `d_change_saleinv` (`saleledger`).  Setting a real
+  invoice (588890) and pressing Save showed "Changes take effect in database",
+  but `saleledger.remarks` stayed empty and no UPDATE reached the captured
+  transcript; this save path still needs a dedicated fix.
+* **Change Item Reorder Qty**: selector -> main (`is_dwtype=M`) -> Generate ->
+  `w_arg_manufacturers` all open; the argument list still returns a blank row
+  in the harness, so the final grid/save remains to be proven.
+
+### Parity status at this checkpoint
+
+* Genuine fixes: header/settings file pipeline (`filereadex` line mode +
+  `af_get_app_setting`), clone DB session hygiene, and the measured workflow
+  fixes above.
+* Measured coverage: definitions/menus/controls ~100%; non-report screen
+  opening ~100% of the 68 effectively visible paths; field click-through ~70%;
+  committed CRUD ~70%; reports ~70%; visual ~85%; reference data ~50%.
+  Overall ~82%, **not 100%**.
+* Remaining work: full field-level add/edit/delete/save on every remaining
+  screen; the two inner save paths above; reports final-stage/pixel; modal
+  geometry; live-vs-clone reference-data reconciliation.
 
 
 
