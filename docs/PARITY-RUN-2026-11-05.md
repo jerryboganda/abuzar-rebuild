@@ -490,6 +490,16 @@ posted Y) was created at 2026-11-05 02:16:30 and read back from
   "Change Item Reorder Qty - Compound Criteria" window load, but the Generate
   action did not open `w_arg_manfs_cats_classes_packs` within 60 s in the
   harness, so this is a menu/argument harness gap, not a missing definition.
+* **Reference-data audit (live SQL Server vs clone)**: compared 30
+  reference/master tables (`accounts`, `area`, `customer`, `customercategory`,
+  `genericitem`, `godown`, `groups`, `itemalert`, `itemcategory`, `itemclass`,
+  `itemcolour`, `itemdesign`, `itempacking`, `itemthickness`, `itemtype`,
+  `manufacturer`, `pct`, `popolicy`, `pricepolicy`, `purordercategory`,
+  `region`, `salestaxschedule`, `supplier`, `suppliercategory`,
+  `taxcategory`, `users`, `zone`, and the empty `customergroup` /
+  `salepromotion`).  Counts match exactly except `users` (old 9, clone 10; one
+  extra test account).  No missing reference rows were found, so blank screens
+  are not caused by missing lookup data.
 
 
 
