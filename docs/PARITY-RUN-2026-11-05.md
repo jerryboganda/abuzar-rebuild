@@ -1043,11 +1043,43 @@ list), using the real nested forms:
   module Purchase Posting / usercode 1 / location null`; `itemassociation 0`;
   `itemlog 98,632 / max 152,907` (8 rows for 9801); `audit_log 1,079 /
   max 1,127`.  Cleanup uses the trigger-bypass rule for `lastupdate`.
-* **Set Item Author(s) is data-blocked in both databases**: `Author`,
-  `ItemAuthor` and `ItemAssociation` are all **0 rows in live SQL Server and
-  in the clone**, so there is no author to select (same class of limitation
-  as Sale Promotion’s empty customer groups).  The association form needs no
-  lookup data and is fully verified above.
+* **Set Item Author(s)** was data-blocked by empty `Author`/`ItemAuthor`
+  tables; it is now verified with a temporary `Author 1` fixture (see the
+  next section).  `ItemAssociation` was also empty, but the association form
+  needs no lookup rows and is fully verified above.
+
+### Set Item Author(s) nested form + parent save (verified; original buffer-reset omission)
+
+`Set Item Author(s)` (`m_setitemauthors` → `w_itemauthor_form`) shares
+`d_itemauthor` with the parent Item Form's `id_itemauthor` (keys `icode` +
+`authorcode`).  `Author` and `ItemAuthor` are empty in both databases, and the
+Author master itself is not reachable from the main menu (`m_author` is
+created hidden in the generic `m_entry` class), so the probe inserted a
+temporary **Author 1** row via SQL and removed it afterwards.
+
+* Added `authorcode 1` through the nested form; the shared row appeared in the
+  parent as `(icode 9801, authorcode 1)`.
+* Changed item `saleprice` 10 → 11 and saved the Item Form. PostgreSQL wrote
+  `itemauthor (9801, 1)`, `item.saleprice = 11.00`, and a new `itemlog` row
+  (`max itemrowid 152908`); “Changes take effect in database”.
+* **Measured original defect:** immediately after the save the parent
+  `id_itemauthor` row still had `getitemstatus = 3` (**new-modified**).
+  `w_item_form.ue_save` calls `resetupdate()` on master, detail,
+  iteminmodel, itemassociation, alternateitemalias and pricepolicyheader,
+  but **not** on `id_itemauthor`.  An in-place delete of the author therefore
+  only removed it from the buffer; the DB row stayed.
+* **Working delete:** reopened the item through `File | List` → `ue_detail`
+  (author row status became **0, not modified**), deleted the author, restored
+  `saleprice` to 10, and saved. PostgreSQL removed `itemauthor (9801,1)`,
+  set `item.saleprice = 10.00`, and wrote the second item-log row; second
+  “Changes take effect in database”.
+* Exact restore: `author 0`, `itemauthor 0`, item 9801 back to
+  `saleprice 10.00 / retail 5.00 / lastupdate 2026-11-05 10:38:44.342 /
+  changereason Multiple Changes / module Purchase Posting / usercode 1 /
+  location null` (trigger bypass), `itemlog 98,632 / max 152,907`
+  (8 rows for 9801), `audit_log 1,079 / max 1,127`.
+
+Probe: `tools/parity/probe-item-author-save.mjs` — measured `ok=true`.
 
 ### Item Images nested form + parent save (two systemic fixes)
 
@@ -1979,8 +2011,8 @@ Probe: `tools/parity/probe-itempart-cascade.mjs` — measured `ok=true`.
   exercised with the window flag), **Sale Order** add/edit/soft-delete/save
   (delete exercised with temporary rights 572/573 that are absent from the
   catalog), Item Form parent saves with nested
-  price-policy/alias,
-  association, image and RichText notes rows, group-wise godown/header
+  price-policy/alias, association, author, image, model and RichText notes
+  rows, group-wise godown/header
   settings, Change Item Discount (category wise, 29 items), Job Schedule
   (PG scheduler; original screen broken in this deployment), users add/edit,
   Priority Setting batch-priority edit/save (item 9801, 10 -> 11, restored),
@@ -2014,13 +2046,13 @@ Probe: `tools/parity/probe-itempart-cascade.mjs` — measured `ok=true`.
     databases.
   * Nested forms: **Set Item Price Policy**, **Set Alternate Item Alias
     Names**, **Set Item Associations**, **Set Item Image(s)**, **Set Item
-    Notes** and **Set Models** now have verified add + parent-save cycles
-    (the image delete-all path is an original early-return limitation,
-    above).  **Set Item
-    Author(s)** is data-blocked (`Author`/`ItemAuthor` empty in both
-    databases), as is the item-category
-    association (`CustItemCatAssociation`).  **Patient Death Certificate**
-    is data-blocked too (`DeathCertificate` 0 rows in both databases).
+    Notes**, **Set Models** and **Set Item Author(s)** now have verified
+    add + parent-save cycles (the image delete-all path is an original
+    early-return limitation, above; the author buffer is not reset by the
+    original save, so its delete path requires reopening the item).  The
+    item-category association (`CustItemCatAssociation`) is still data-blocked
+    (empty in both databases).  **Patient Death Certificate** is data-blocked
+    too (`DeathCertificate` 0 rows in both databases).
   * ~~**Change Item Discount** would bulk-update a whole category~~ -
     resolved: category-wise update of all 29 active category-6 items plus 29
     itemlog rows verified and fully restored.
