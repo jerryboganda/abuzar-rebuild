@@ -11,7 +11,7 @@ the tools in `tools/parity/`.
 | Visible menu items | 262 | 261 | `orig-menu.tsv` vs `menu-compare.json` |
 | Non-report screens opened | 62/62 | 62 attempted (55 direct, 7 captured at their response window) | `deploy/parity/screen-parity/old-nonreport`, `new-nonreport` |
 | Report screens opened | not yet (old crawl pending) | 53+ captured so far | `screen-parity/new-reports` |
-| Master-data forms: every editable field typed, add/edit/delete/save verified in PostgreSQL | 16 forms | 16 forms + 10 extra masters (Godown, Area, Region, Sub Area, Sales Person, Item Packing, Item Size, Unit, Item Style, Item Colour) | `screen-parity/crud-fields/crud-*.json`, `tools/parity/probe-godown-crud.mjs`, `tools/parity/probe-area-crud.mjs`, `tools/parity/probe-single-master.mjs` |
+| Master-data forms: every editable field typed, add/edit/delete/save verified in PostgreSQL | 16 forms | 16 forms + 14 extra masters (Godown, Area, Region, Sub Area, Sales Person, Item Packing, Item Size, Unit, Item Style, Item Colour, Item Sleeve, Item Yarn, Item Fabric, Item Brand) | `screen-parity/crud-fields/crud-*.json`, `tools/parity/probe-godown-crud.mjs`, `tools/parity/probe-area-crud.mjs`, `tools/parity/probe-single-master.mjs` |
 | DataWindow expression parse sweep | â€” | every `expression` parses; SQL comments stripped | `tools/parity/dw-expr-audit.mjs` |
 
 The 16 passing forms are: Customer Category, Customer Sector, Generic Item,
@@ -23,7 +23,9 @@ Sales Tax Schedule, Tax Category, Category Segment.  **Godown**, **Area**,
 add/edit/delete cycles (their menu items are hidden by the rights state; the
 probes fire the real `m_godown` / `m_area0` / `m_region0` / `m_subarea` /
 `m_salesperson` / `m_itempacking0` / `m_5` / `m_unit` / `m_itemstyle` /
-`m_itemcolour` handlers).
+`m_itemcolour` / `m_itemsleeve` / `m_itemyarn` / `m_itemfabric` /
+`m_itembrand` handlers).  **Section** is reachable but data-blocked: its
+`deptcode` is required and `Department` has 0 rows in live and clone.
 
 `Sale Promotion` is the only tested form that cannot complete: its Active /
 Customer Group / Weekday drop-downs are empty in the migrated clone (missing
@@ -1582,6 +1584,31 @@ then “Record Deleted Successfully”; final counters were
 Probe: `tools/parity/probe-single-master.mjs <itemsize|unit|itemstyle|itemcolour>`
 — all four measured `ok=true`.
 
+### Item Sleeve, Item Yarn, Item Fabric, Item Brand (verified)
+
+All four are `w_single_entry` forms driven through their real menu commands;
+each measured `ok=true` with add, edit, `ue_delete` confirmation and exact
+table/tabmax/audit restore.
+
+| Master | Menu | Rows (before/after) | Add | Edit |
+|---|---|---:|---|---|
+| Item Sleeve | `m_itemsleeve` | 1 / 1 | code 2, tab 1→2 | name + description |
+| Item Yarn | `m_itemyarn` | 1 / 1 | code 2, tab 1→2 | name + description |
+| Item Fabric | `m_itemfabric` | 1 / 1 | code 2, tab 1→2 | name + description |
+| Item Brand | `m_itembrand` | 1 / 1 | code 2, tab 1→2 | name + description |
+
+Delete in every case showed the confirmation then “Record Deleted
+Successfully”; final counters were `ItemSleeve 1`, `ItemYarn 1`,
+`ItemFabric 1`, `ItemBrand 1`, and `audit_log 1,079 / max 1,127`.
+
+**Section (data-blocked):** `d_section_detail` requires `deptcode`, which is
+an FK to `department`; `Department` has **0 rows in both the live SQL Server
+DB and the clone** (it was already 0 for Receipt/Issue).  Section remains
+unreachable until department data exists.
+
+Probe: `tools/parity/probe-single-master.mjs <itemsleeve|itemyarn|itemfabric|itembrand>`
+— all four measured `ok=true`.
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -1632,7 +1659,8 @@ Probe: `tools/parity/probe-single-master.mjs <itemsize|unit|itemstyle|itemcolour
   opening ~100% of the 68 effectively visible paths; field-level master CRUD
   **16/16 forms** (51 fields) plus **Godown**, **Area**, **Region**,
   **Sub Area**, **Sales Person**, **Item Packing**, **Item Size**, **Unit**,
-  **Item Style** and **Item Colour** add/edit/delete and
+  **Item Style**, **Item Colour**, **Item Sleeve**, **Item Yarn**,
+  **Item Fabric** and **Item Brand** add/edit/delete and
   **Sale Template header+detail**
   add/edit/save verified (File | Delete is original enabled-but-inert);
   committed transaction CRUD

@@ -49,6 +49,26 @@ const CONFIGS = {
     fields: { name: '{{name}}', description: 'PARITY COLOUR DESCRIPTION' },
     edit: { description: 'PARITY COLOUR DESCRIPTION EDITED' },
   },
+  itemsleeve: {
+    menu: 'm_itemsleeve', window: 'w_itemsleeve_form', table: 'itemsleeve', key: 'isleevecode', tab: 'ItemSleeve', prefix: 'PARITY SLEEVE',
+    fields: { name: '{{name}}', description: 'PARITY SLEEVE DESCRIPTION' },
+    edit: { description: 'PARITY SLEEVE DESCRIPTION EDITED' },
+  },
+  itemyarn: {
+    menu: 'm_itemyarn', window: 'w_itemyarn_form', table: 'itemyarn', key: 'iyarncode', tab: 'ItemYarn', prefix: 'PARITY YARN',
+    fields: { name: '{{name}}', description: 'PARITY YARN DESCRIPTION' },
+    edit: { description: 'PARITY YARN DESCRIPTION EDITED' },
+  },
+  itemfabric: {
+    menu: 'm_itemfabric', window: 'w_itemfabric_form', table: 'itemfabric', key: 'ifabriccode', tab: 'ItemFabric', prefix: 'PARITY FABRIC',
+    fields: { name: '{{name}}', description: 'PARITY FABRIC DESCRIPTION' },
+    edit: { description: 'PARITY FABRIC DESCRIPTION EDITED' },
+  },
+  itembrand: {
+    menu: 'm_itembrand', window: 'w_itembrand_form', table: 'itembrand', key: 'ibrandcode', tab: 'ItemBrand', prefix: 'PARITY BRAND',
+    fields: { name: '{{name}}', description: 'PARITY BRAND DESCRIPTION' },
+    edit: { description: 'PARITY BRAND DESCRIPTION EDITED' },
+  },
 };
 const key = process.argv[2] || 'region';
 const cfg = CONFIGS[key];
