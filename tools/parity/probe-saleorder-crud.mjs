@@ -1,4 +1,4 @@
-// Sale Order add/edit/save and delete-state probe.
+﻿// Sale Order add/edit/save and delete-state probe.
 // SaleOrderCategory 1 is posted; header/detail are empty.  Save uses
 // AskUserPwdInSaleOrder=Y.  Soft delete needs right 572/573, which do not
 // exist in the Rights catalog, so delete should be a measured rights rejection.
@@ -56,12 +56,43 @@ async function runSave() {
   }
   return await page.evaluate(() => window.__saveDone);
 }
+async function runDelete() {
+  await page.evaluate(async () => {
+    const rt = window.rt; const w = rt.windowInstances.get('w_salesorder');
+    window.__delDone = false;
+    void w.pbCall('ue_deleteinvoice', [], rt).then(() => { window.__delDone = 'ok' }).catch((e) => { window.__delDone = 'ERR ' + String(e.message || e).slice(0, 400) });
+  });
+  for (let i = 0; i < 80; i++) {
+    await sleep(500);
+    await poll(1);
+    const pw = await page.evaluate(async () => {
+      const rt = window.rt; const w = rt.windowInstances.get('w_salesmanpassword');
+      if (!w) return false;
+      const dw = w.props.get('id_password') || w.children.get('dw_password');
+      if (!dw?.model) return 'no-dw';
+      if (dw.model.rowCount() === 0) await dw.pbCall('insertrow', [0], rt).catch(() => {});
+      await dw.pbCall('setitem', [1, 'salesmancode', 1], rt).catch(() => {});
+      await dw.pbCall('setitem', [1, 'password', 'password9080'], rt).catch(() => {});
+      await dw.pbCall('accepttext', [], rt).catch(() => {});
+      await rt.fire(w.children.get('cb_ok'), 'clicked').catch(() => {});
+      return 'filled';
+    });
+    if (pw) out.passwordDelete = pw;
+    const done = await page.evaluate(() => window.__delDone);
+    if (done) { await poll(4); return done; }
+  }
+  return await page.evaluate(() => window.__delDone);
+}
 const restore = () => {
   try {
     q(`delete from dbo.saleorderdetail where saleordercode in (select saleordercode from dbo.saleorderheader where remarks like 'PARITY SALEORDER %')`);
     q(`delete from dbo.saleorderheader where remarks like 'PARITY SALEORDER %'`);
     if (out.baseline?.tab !== null) q(`update dbo._tabmaxkey set tabmaxkey=${Number(out.baseline.tab)} where tabname='SaleOrderHeader'`);
     if (out.baseline?.counter !== null) q(`update dbo.saleordercategory set counter=${Number(out.baseline.counter)} where socatcode=1`);
+    if (out.baseline?.grant572 === '0') q('delete from dbo.grouprights where groupcode=2 and rightcode=572');
+    if (out.baseline?.grant573 === '0') q('delete from dbo.grouprights where groupcode=2 and rightcode=573');
+    if (out.baseline?.had572 === '0') q('delete from dbo.rights where rightcode=572');
+    if (out.baseline?.had573 === '0') q('delete from dbo.rights where rightcode=573');
     if (out.baseline?.auditMax) { q(`delete from dbo.audit_log where audit_id > ${out.baseline.auditMax}`); q(`select setval(pg_get_serial_sequence('dbo.audit_log','audit_id'), ${out.baseline.auditMax}, true)`); }
   } catch (e) { out.restoreError = String(e.message || e).slice(0, 500); }
 };
@@ -76,7 +107,15 @@ try {
     utn: rows('select utn from dbo._utn')[0]?.[0] ?? null,
     audit: Number(rows('select count(*) from dbo.audit_log')[0][0]),
     auditMax: Number(rows('select max(audit_id) from dbo.audit_log')[0][0]),
+    had572: rows("select count(*) from dbo.rights where rightcode=572")[0]?.[0] ?? '0',
+    had573: rows("select count(*) from dbo.rights where rightcode=573")[0]?.[0] ?? '0',
+    grant572: rows("select count(*) from dbo.grouprights where groupcode=2 and rightcode=572")[0]?.[0] ?? '0',
+    grant573: rows("select count(*) from dbo.grouprights where groupcode=2 and rightcode=573")[0]?.[0] ?? '0',
   };
+  q("insert into dbo.rights (rightcode,rightname,menuname,levelindex,indicesstring,object,rightcatcode) values (572,'Delete Sales Order',null,1,'1,','W',1) on conflict (rightcode) do nothing");
+  q("insert into dbo.rights (rightcode,rightname,menuname,levelindex,indicesstring,object,rightcatcode) values (573,'Delete Sales Invoice',null,1,'1,','W',1) on conflict (rightcode) do nothing");
+  q("insert into dbo.grouprights (groupcode,rightcode,status) values (2,572,1) on conflict do nothing");
+  q("insert into dbo.grouprights (groupcode,rightcode,status) values (2,573,1) on conflict do nothing");
   await page.goto('http://127.0.0.1:5177/?app=1&autologin=ADMIN:password9080', { waitUntil: 'load', timeout: 60000 });
   await page.waitForFunction(() => window.rt && window.rt.windowInstances.get('w_main') && typeof window.__menu === 'function', null, { timeout: 90000, polling: 300 });
   out.menuOpen = await page.evaluate(async () => {
@@ -182,17 +221,29 @@ try {
     out.editOk = out.afterEdit.header?.[0]?.[1] === REMARK2 && String(out.afterEdit.detail?.[0]?.[2]) === '2.0000';
   }
   // delete: rights 572/573 do not exist, measure the rejection
-  out.deleteAttempt = await page.evaluate(async () => {
+  // list -> select the test row -> real soft delete (temporary rights 572/573)
+  await page.evaluate(async () => {
     const rt = window.rt; const w = rt.windowInstances.get('w_salesorder');
-    window.__delDone = false;
-    void w.pbCall('ue_deleteinvoice', [], rt).then(() => { window.__delDone = 'ok' }).catch((e) => { window.__delDone = 'ERR ' + String(e.message || e).slice(0, 300) });
-    return 'fired';
+    await w.pbCall('ue_list', [], rt).catch(() => {});
   });
-  await poll(8);
+  await sleep(1600); await poll(2);
+  out.listDelete = await page.evaluate((code) => {
+    const rt = window.rt; const w = rt.windowInstances.get('w_salesorder');
+    const l = w.props.get('id_list');
+    let idx = 0;
+    if (l?.model) {
+      const ci = l.model.colIndex('code');
+      for (let i = 0; i < l.model.buf.primary.length; i++) if (Number(l.model.buf.primary[i].v[ci]) === Number(code)) { idx = i + 1; break; }
+    }
+    w.props.set('il_selectedrow', idx);
+    return { rows: l?.model?.rowCount?.() ?? null, idx };
+  }, Number(out.code));
+  out.deleteAttempt = await runDelete();
   out.afterDelete = {
-    delDone: await page.evaluate(() => window.__delDone ?? null),
+    delDone: out.deleteAttempt,
     header: rows(`select saleordercode,remarks,deleted from dbo.saleorderheader where saleordercode=${Number(out.code ?? 0)}`),
   };
+  out.deleteOk = out.afterDelete.header?.[0]?.[2] === 'Y' && out.messages.some((m) => /Sale Order Successfully Deleted/i.test(m));
   out.deleteRightsBlocked = out.messages.some((m) => /Not enough rights to delete Sales Order/i.test(m));
   restore();
   out.final = {
@@ -212,7 +263,7 @@ try {
     && out.final.itemlog === out.baseline.itemlog && out.final.utn === out.baseline.utn
     && out.final.audit === out.baseline.audit && out.final.auditMax === out.baseline.auditMax
     && out.final.residue?.[0]?.[0] === '0';
-  out.ok = !!out.addOk && !!out.deleteRightsBlocked && out.baselineOk;
+  out.ok = !!out.addOk && !!out.editOk && !!out.deleteOk && out.baselineOk;
 } catch (e) { out.fatal = String(e.stack || e).slice(0, 2400); }
 finally {
   restore();

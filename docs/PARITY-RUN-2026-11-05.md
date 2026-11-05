@@ -1742,7 +1742,7 @@ Probes: `tools/parity/probe-single-master.mjs department` and
 Probe: `tools/parity/probe-zone-crud.mjs` — measured `ok=true` for add/edit
 and exact restore; delete is the original inert-menu behavior.
 
-### Sale Order (add/edit/save verified; delete rights-blocked)
+### Sale Order (add/edit/delete/save verified with temporary rights)
 
 `m_saleorder` → `w_salesorder` (`w_multi_entry`).  `SaleOrderCategory` 1 is
 posted; header/detail were empty.
@@ -1756,9 +1756,14 @@ posted; header/detail were empty.
   qty 1 -> 2, set the cell-edit flag (direct `setitem` does not fire the
   normal `itemchanged`), saved: header remarks updated, `modifycounter 1`,
   detail qty 2.
-* **Delete:** `ue_deleteinvoice` shows “Not enough rights to delete Sales
-  Order”; rights **572/573 do not exist** in the `rights` catalog in either
-  database, so soft delete is unreachable.
+* **Delete:** rights **572/573 do not exist** in this deployment's `rights`
+  catalog, so `ue_deleteinvoice` normally rejects with “Not enough rights to
+  delete Sales Order”.  The probe inserted temporary rights 572/573 with
+  `object = 'W'` (the `d_security` query filters on that object level) plus
+  group-2 grants, reopened the list, selected the row and called
+  `ue_deleteinvoice`: password accepted, confirmation accepted, and the header
+  was soft-deleted (`deleted = 'Y'`) with “Sale Order Successfully Deleted”.
+  The temporary rights and grants were then removed.
 * **Save quirk (measured):** the deployed `SaleOnZeroPrice = N` hits an
   unconditional `return` in `w_salesorder.ue_save` after the zero-price check,
   so no sale order can be saved with that preference.  The probe temporarily
@@ -1767,8 +1772,8 @@ posted; header/detail were empty.
   stock 18,035, `itemlog 98,632`, `_utn 1,628,962`,
   `audit_log 1,079 / max 1,127`.
 
-Probe: `tools/parity/probe-saleorder-crud.mjs` — add/edit/restore `ok=true`;
-delete is the measured rights rejection.
+Probe: `tools/parity/probe-saleorder-crud.mjs` — add/edit/delete/restore
+`ok=true`.
 
 ### Remaining (measured)
 
@@ -1836,8 +1841,9 @@ delete is the measured rights rejection.
   add/edit/save, **Receipt** and **Issue / Delivery Challan**
   add/save (temporary department; exact stock/counter restore) and
   **edit/save** (unposted; modify rights 562/560 absent, dormant path
-  exercised with the window flag), **Sale Order** add/save and edit/save
-  (delete rights 572/573 absent), Item Form parent saves with nested
+  exercised with the window flag), **Sale Order** add/edit/soft-delete/save
+  (delete exercised with temporary rights 572/573 that are absent from the
+  catalog), Item Form parent saves with nested
   price-policy/alias,
   association, image and RichText notes rows, group-wise godown/header
   settings, Change Item Discount (category wise, 29 items), Job Schedule
@@ -1865,11 +1871,12 @@ delete is the measured rights rejection.
     databases).  **Delete is hard-disabled** in both screens
     (`m_delete.enabled = false`, no `ue_delete` handler), so they still need a
     `department` row that does not exist in live or clone (shared data gap,
-    above).  **Sale Order** add/save and edit/save are verified; its soft
-    delete needs rights 572/573 (absent), and the deployed
-    `SaleOnZeroPrice = N` makes `ue_save` return before writing (temporarily
-    set to Y for the cycle).  **Patient Admission/Transfer** are data-blocked:
-    `Patient` has 0 rows in both databases.
+    above).  **Sale Order** add/edit/soft-delete/save are verified; its delete
+    was exercised with temporary rights 572/573 (absent from the catalog),
+    and the deployed `SaleOnZeroPrice = N` makes `ue_save` return before
+    writing (temporarily set to Y for the cycle).  **Patient
+    Admission/Transfer** are data-blocked: `Patient` has 0 rows in both
+    databases.
   * Nested forms: **Set Item Price Policy**, **Set Alternate Item Alias
     Names**, **Set Item Associations**, **Set Item Image(s)** and **Set Item
     Notes** now have verified add + parent-save cycles (the image delete-all
