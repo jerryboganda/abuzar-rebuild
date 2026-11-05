@@ -486,6 +486,12 @@ driven by menu command ID (no blind clicking).  First sample:
   no detail rows, while the original prints only the header/column skeleton.
   Old windows are 650 px wide with a horizontal scrollbar, so right-hand
   columns are clipped in old captures and must not be counted as missing.
+* Pairs **015-030** were captured with the hardened batch driver: **16/16 old
+  and 16/16 new** captures on the first pass, including purchase, purchase
+  return, adjustment, quotation and purchase-order reports.  Titles, client
+  headers and column sets were inspected on the adjustment/purchase/quotation
+  samples and match; clone rows exist where the clone has data (021/022: 2,
+  018/027/028: 1).
 * The capture path is now generic (`deploy/parity/pw/probe-report-generic.mjs`
   on the rebuild, `tools/parity/old-menu.ps1` on the original): it answers
   whichever Select Format / Specify Retrieval Arguements / Selection List
@@ -572,6 +578,30 @@ cascade.  The probe removed its test rows afterwards; `accounts` is back to
   then Delete left the row in place (same Accounts/Supplier FK pattern).  Test
   rows were removed; `supplier` is back to 225.
 
+### Change Items Price (Manufacturer Wise) CRUD
+
+`Maintenance | Change Items Price` was exercised through the real selector and
+manufacturer sheet:
+
+* Selector: `rb_companywise` -> direct `ue_close(1)`; sheet opened as
+  `Change Item Price - Manufacturer Wise` (`is_dwtype=MANF_WISE`).
+* `ue_list` retrieved **833 manufacturers**; selecting manufacturer 120
+  retrieved **2,463 item rows**.
+* Edited item **22407** `saleretail` 95 -> 96 and saved. PostgreSQL:
+  `INSERT INTO dbo.itemlog ...` rowcount 1 and
+  `UPDATE dbo.item SET saleprice=$1, retailprice=$2, ...` rowcount 1.
+  `item` 22407 changed 95 -> 96 in both `saleprice` and `retailprice`; the
+  probe restored both to 95 and removed the test `itemlog` row (count back to
+  98,632).
+* **Fixed (systemic)**: `f_generateitemlog` set `ll_retval = 1` and then did a
+  bare `return`.  The runtime treats a bare numeric return as null, and the
+  caller's `f_generateitemlog(...) >= 0` is false for null, so every price
+  change reported “Some Database problem occured generating Item Log!” and
+  rolled back even though the INSERT succeeded.  All five branches now
+  `return ll_retval`; `f_generateitemlog` returns **1**.  This also affects
+  Item Basic Data and Sale Margin/Markup Auditing item-log paths.
+* Class bundle regenerated: **2,833 classes, 37,792 routines, 0 parse errors**.
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -584,8 +614,8 @@ cascade.  The probe removed its test rows afterwards; `accounts` is back to
   are verified; Sale Template delete is a recorded missing handler (enabled
   menu, no recovered `ue_delete`).  The rest still need their own cycles.
 * Reports: final-stage pixel comparison is now method-complete (Win32 menu-ID
-  driver + generic rebuild capture) with **14/138 pairs captured**
-  (001-014), all old and new final previews present; 124 remain.  The
+  driver + generic rebuild capture) with **30/138 pairs captured**
+  (001-030), all old and new final previews present; 108 remain.  The
   empty-result difference is consistent: old shows header only, new also
   prints summary/footer bands with zero totals.
 * Visual geometry: modal 3 px/8 px offset, 26 vs 28 px row spacing, Priority
@@ -620,15 +650,15 @@ cascade.  The probe removed its test rows afterwards; `accounts` is back to
   **16/16 forms** (51 fields) plus **Sale Template header+detail**
   add/edit/save verified (delete handler missing); committed transaction CRUD
   verified for quotation, purchase order, refused sale, adjustments, cashier
-  job, groups, update-item-basic-data, compound reorder qty, credit/cash sale
-  and modify-sale-invoices; non-destructive nested actions exercised for
-  Customer (40), Supplier (40) and Item (23, including all nine item-specific
-  features); **14/138 report final-stage pairs captured**; visual ~85%;
-  reference data ~95%.  Overall ~88%, **not 100%**.
+  job, groups, update-item-basic-data, compound reorder qty, credit/cash sale,
+  change-items-price and modify-sale-invoices; non-destructive nested actions
+  exercised for Customer (40), Supplier (40) and Item (23, including all nine
+  item-specific features); **30/138 report final-stage pairs captured**;
+  visual ~85%; reference data ~95%.  Overall ~89%, **not 100%**.
 * Remaining work: full field-level add/edit/delete/save on the other master and
-  transaction screens; **124 report final-stage pairs**; Sale Template
-  `ue_delete` handler; modal geometry; a handful of DataWindow/visual edge
-  cases.
+  transaction screens; **108 report final-stage pairs**; Sale Template
+  `ue_delete` handler; Customer/Supplier delete behavior; modal geometry; a
+  handful of DataWindow/visual edge cases.
 * **Report pairing (measured)**: old 139 / new 141 / **138 pairs**, 1 old-only,
   3 new-only.  The 572 missing caption instances are frame chrome and dialog
   names, not report fields: `Ready` 138, `Specify Retrieval Arguements` 73,
