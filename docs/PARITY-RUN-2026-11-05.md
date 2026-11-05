@@ -1359,6 +1359,56 @@ Probes: `tools/parity/probe-groups-edit.mjs`,
 `tools/parity/probe-groups-two-phase.mjs` (and the earlier
 `probe-groups-crud.mjs` for the first-press trace).
 
+### Receipt and Issue / Delivery Challan transaction saves (verified; shared department data gap)
+
+Both screens require a **posted and enabled** category.  The clone has one for
+each: `ReceiptCategory` 1 `GENERAL` (`AccountFor = N`) and `IssueCategory` 1
+`GENERAL` (`AccountFor = N`).  Both also require a salesman password
+(`Salesalesmanwindow = Y`); user **1 / ADMIN / password9080** was accepted.
+
+**Receipt** (`Maintenance | Receipt | Receipt`, menu item `m_receiptform`,
+visible):
+
+* Master: temporary `deptcode 1`, `recipientcode 2`, `pricetypecode 1`,
+  `headerno 1`, `headerinvno 1`, `receiptcategorycode 1`,
+  `accountfor N`, `gcode 1`.
+* Detail: item **9801 FACE MASK**, batch `.`, expiry `2030-12-31`,
+  qty **1**, price **10**; the real `wf_validateitem()` path resolved the
+  item and returned success.
+* Save showed “Changes take effect in database” and wrote
+  `receiptheader` (code **1**, receiptcode **1**, posted **N**,
+  salesmancode **1**) and `receiptdetail` (icode **9801**, qty **1**,
+  price **10**).  `_tabmaxkey('ReceiptHeader') 0 -> 1`,
+  `receiptcategory.counter 0 -> 1`; stock stayed **18035**, `itemlog` and
+  `_utn` unchanged.  Exact cleanup restored all of them.
+
+**Issue / Delivery Challan** (`Maintenance | Issue | Issue`, menu item
+`m_issue_form`, parent `m_issue` hidden by menu rights):
+
+* Master: temporary `deptcode 1`, `recipientcode 2`, `acccode 2`,
+  `areacode 1`, `smancode 1`, `pricetypecode 1`, `headerno 1`,
+  `headerinvno 1`, `issuecategorycode 1`, `accountfor N`, `gcode 1`.
+* Detail: item **9801**, batch `.`, expiry `2030-12-12`, qty **1**,
+  price **10**; `wf_validateitem(true)` and `wf_validategodown()` passed.
+* Save showed “Changes take effect in database” and wrote `issueheader`
+  (code **1**, issuecode **1**, posted **Y**, salesmancode **1**) and
+  `issuedetail` (icode **9801**, qty **1**, price **10**).
+  `_tabmaxkey('IssueHeader') 0 -> 1`, `issuecategory.counter 0 -> 1`,
+  `_utn 1,628,962 -> 1,628,963`; stock was deducted
+  **18035 -> 18034**.  Exact cleanup restored the header/detail rows,
+  counters, UTN, the full `godowndetail` row and `item.totalpieces` /
+  `lastupdate` (the item-update trigger was disabled only for the restore
+  `UPDATE`).
+
+**Shared data gap (measured):** the `department` table has **0 rows in both
+the live SQL Server database and the PostgreSQL clone**, while `deptcode` is a
+required `ddd_department` field and an FK on both headers.  A real user
+therefore cannot complete either save in either app.  A temporary department
+row was created in the clone **only** to exercise the save path, then removed.
+
+Probes: `tools/parity/probe-receipt-crud.mjs`,
+`tools/parity/probe-issue-crud.mjs`; both measured `ok=true`.
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -1414,7 +1464,9 @@ Probes: `tools/parity/probe-groups-edit.mjs`,
   job, groups, update-item-basic-data, compound reorder qty, credit/cash sale,
   change-items-price, supplier-wise-item-settings (add/edit/delete),
   purchase-return add/save, opening-purchase and loose-purchase
-  add/edit/save, Item Form parent saves with nested price-policy/alias,
+  add/edit/save, **Receipt** and **Issue / Delivery Challan**
+  add/save (temporary department; exact stock/counter restore),
+  Item Form parent saves with nested price-policy/alias,
   association, image and RichText notes rows, group-wise godown/header
   settings, Change Item Discount (category wise, 29 items), Job Schedule
   (PG scheduler; original screen broken in this deployment), users add/edit,
@@ -1435,6 +1487,9 @@ Probes: `tools/parity/probe-groups-edit.mjs`,
   * Full add/edit/delete/save on the remaining transaction screens: all
     purchase variants (normal, opening, loose), purchase return, sale/return,
     quotation, purchase order and adjustments now have committed cycles.
+    Receipt and Issue add/save are now verified as well; their **edit/delete**
+    paths are not exercised, and both need a `department` row that does not
+    exist in live or clone (shared data gap, above).
   * Nested forms: **Set Item Price Policy**, **Set Alternate Item Alias
     Names**, **Set Item Associations**, **Set Item Image(s)** and **Set Item
     Notes** now have verified add + parent-save cycles (the image delete-all
