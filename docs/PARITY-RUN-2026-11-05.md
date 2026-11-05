@@ -474,6 +474,16 @@ posted Y) was created at 2026-11-05 02:16:30 and read back from
   `DELETE FROM dbo.saleledger ...` with rowcount 0 and "Changes Rollback".
   The form itself is present and writable; the retrieve-argument/row-buffer
   path is the remaining fix.
+* **Fixed (systemic)**: DataWindow retrieval now coerces zero/null
+  `datetime`/`date` arguments to PowerBuilder's zero date (1900-01-01) before
+  sending them to PostgreSQL.  PostgreSQL rejected the old integer 0 with
+  "cannot cast type integer to timestamp without time zone"; this unblocked
+  the Modify Sale Invoices invoice-range retrieve.
+* **Modify Sale Invoices (invoice range)**: 588890..588890 with all customers
+  loaded the real `saleledger` row.  Editing `remarks` and Save produced
+  `UPDATE dbo.saleledger SET remarks = $1 WHERE saleinvcode = $2 AND remarks = $3`
+  (rowcount 1); the value persisted and was restored.  Date Period still needs
+  the edit-mask dates to reach `istr_arg` (currently 0).
 
 
 

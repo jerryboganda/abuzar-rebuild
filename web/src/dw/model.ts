@@ -362,7 +362,15 @@ export class DwModel implements EvalHost {
       const decl = argList(this.def)
       params = src.params.map((p) => {
         const idx = decl.findIndex((a) => a.name === p.toLowerCase())
-        const v = idx >= 0 ? args[idx] : null
+        const a = idx >= 0 ? decl[idx] : undefined
+        let v = idx >= 0 ? args[idx] : null
+        const t = (a?.type || '').toLowerCase()
+        // SQL Server accepted 0/NULL for a datetime retrieval argument;
+        // PostgreSQL rejects integer -> timestamp.  The PowerBuilder zero date
+        // is 1900-01-01, which keeps the original filter semantics.
+        if ((v === 0 || v === null || v === undefined) && (t === 'datetime' || t === 'timestamp' || t === 'date' || t === 'time')) {
+          v = t === 'date' ? '1900-01-01' : t === 'time' ? '00:00:00' : '1900-01-01T00:00:00'
+        }
         return toWire(v)
       })
     }
