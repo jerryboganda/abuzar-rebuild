@@ -1182,6 +1182,52 @@ removes and restores that allowance in the Sale grid:
     `serverdate 2026-11-05 12:50:39` unchanged.
 * Probe: `tools/parity/probe-jobschedule-save.mjs` — measured `ok=true`.
 
+### Inplace Initialization (partial) and Import Historical Data (SQL-Server-only)
+
+**Inplace Initialization (measured):**
+
+* `Maintenance | Inplace Initialization` opens the “Select Format” window
+  with Normal selected by default; the Inplace radio can be selected.
+* The key gate was exercised: status code **72861**, accepted key **72882**
+  (difference 21, even).  The key window handed off to
+  `w_inplace_initialization`, which showed “Transfer Item Stock” and
+  “Transfer Acc. Balances” checked by default.
+* Confirmation “Your are going to perform a critical Operation … Do you want
+  to continue” was answered Yes, and the reset started.
+* **The reset is too slow to finish in the test budget on the 2 GB clone.**
+  On a disposable copy (`trader_init_test`, 2,044 MB), both the default
+  transfer path and the no-transfer path ran **more than 15 minutes** and were
+  aborted; the server log measured a single reset statement at **305 s**.  No
+  “Operation has been completed Successfully” message was reached.
+* The previous **hard blocker** was fixed: `sp_initialize_tabmaxkey` raised
+  `untranslated T-SQL (OBJECT_ID of non-literal)` and
+  `system table sysindexes`.  `db/pg/87_inplace.sql` now implements it from
+  PostgreSQL catalogs (single-column integer primary key of each
+  `_TabMaxKey` table) plus the original explicit counter tail.  A direct call
+  returns 0 and resets the counters (e.g. `Item 29040`, `Accounts 325`,
+  `SaleLedger 588890`).
+* The modal close path was also fixed: the OK button uses
+  `post event ue_close`, and the modal `open` at depth 1 never drained the
+  posted queue.  `Runtime.modalWaiting` now lets posted events run while a
+  modal window waits, so the format → key → inplace handoff works.
+* The disposable copy was dropped.  The main clone was never modified:
+  `saleledger 588884`, `saledetail 1306121`, `srledger 61604`,
+  `srdetail 89595`, `purledger 12283`, `purdetail 196966`, `prledger 1487`,
+  `prdetail 5923`, `itemlog 98632`, `stockledger 1621864`,
+  `godowndetail 6430`, `sysjobs 0`, `sysjobschedules 0`, `audit_log 1079`.
+
+**Import Historical Data (not run — SQL-Server cross-database only):**
+
+* The form connects to the SQL Server `master` database, lists source
+  databases, and `cb_ok` calls
+  `sqlca.get_previoussalehistory(source, target, start, end)`.
+* The PostgreSQL translation builds `"<sourcedb>.DBO.SaleLedger"` /
+  `"<sourcedb>.DBO.SRDetail"` qualifiers and T-SQL `CONVERT(...)` text;
+  PostgreSQL resolves `<sourcedb>` as a **schema**, not a database, so it
+  cannot import across databases without a foreign-data/linked-server
+  equivalent.  No import was attempted; the live and clone
+  `PreviousSaleHistory` table has 94,572 rows.
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -1271,8 +1317,13 @@ removes and restores that allowance in the Sale grid:
   * ~~**Group Wise Header Setting** probe hung~~ — resolved: opened directly
     with the group parameter and completed a remove/restore save cycle
     (35-row snapshot identical).
-  * Other settings not yet cycled: Inplace Initialization, Import Historical
-    Data.
+  * **Inplace Initialization**: UI, key gate and confirmation verified; the
+    missing `sp_initialize_tabmaxkey` is implemented (`db/pg/87_inplace.sql`).
+    The 2 GB reset still exceeds the 15-minute test budget (aborted on a
+    dropped disposable copy; main clone untouched).
+  * **Import Historical Data**: SQL-Server cross-database only (source
+    database qualifiers/`CONVERT`); no PostgreSQL equivalent or source
+    database exists, so it was not run.
   * Visual: modal position/width offsets and 26 vs 28 px row spacing.
   * 067/068 final reports remain unpaired by original-side limits.
   * Sale Template and Customer/Supplier deletes are confirmed original

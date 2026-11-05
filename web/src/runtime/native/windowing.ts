@@ -176,8 +176,13 @@ async function openWin(rt: Runtime, a: unknown[], sheet: boolean, withParm: bool
     }
   }
   if (modal) {
+    rt.modalWaiting++
     rt.yieldQueue()
-    await w.closed
+    try {
+      await w.closed
+    } finally {
+      rt.modalWaiting--
+    }
   }
   else if (w.props.get('visible') === false) rt.ui?.hideWindow?.(w)
   return 1

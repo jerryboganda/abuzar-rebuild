@@ -170,6 +170,8 @@ export class Runtime {
   translateSql: ((text: string) => { sql: string; params: string[] } | undefined) | null = null
   missing = new Map<string, number>() // unimplemented functions / members seen at run time
   depth = 0
+  /** modal windows currently waiting on their `closed` promise: their PowerBuilder message loop still drains posted events */
+  modalWaiting = 0
   /** safety net for scripts that wait for data that never arrives */
   loopLimit = 20_000_000
   /**
@@ -426,7 +428,7 @@ export class Runtime {
     // returned (PowerBuilder's message queue).  A bare setTimeout would fire
     // while the window's Open is still awaiting a query, interleaving
     // ue_postopen with ue_newform and leaving child DataWindows null.
-    if (!this.draining && this.depth === 0) this.kickQueue()
+    if (!this.draining && (this.depth === 0 || this.modalWaiting > 0)) this.kickQueue()
   }
   private kickQueue(): void {
     if (this.draining) return
