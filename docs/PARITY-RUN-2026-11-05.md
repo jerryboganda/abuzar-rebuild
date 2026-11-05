@@ -1024,6 +1024,41 @@ list), using the real nested forms:
   `session_replication_role = replica` so `lastupdate` is restored exactly,
   then removes only the audit rows created by this test.
 
+### Standalone Item Price Policy screen (verified; slab maintenance)
+
+`Basic Data | Item .......... | Price Policy` opens
+`w_itempricepolicy_form` (`w_multi_entry`).  Master `d_pricepolicyheader`
+updates `PricePolicy` (one row per item, `icode` UNIQUE); detail
+`d_pricepolicydetail` updates `PricePolicyDetail` (keys `code` + `qtylimit`).
+
+Measured data constraint: **28,966 items, 28,966 policies, 0 items without a
+policy**, and `pricepolicy.icode` is UNIQUE, so the screen cannot create a
+second header for an existing item.  The reachable workflow is slab
+maintenance on an existing policy.
+
+On item 9801's policy **7670**:
+
+* Selected the policy from the list (row 19,728; header code 7670) and opened
+  the detail: one slab `qtylimit 0 / price 250 / expiry 2012-12-12`.
+* Added slab `qtylimit 1 / price 251 / expiry 2030-12-12` through
+  `ue_newitem`, saved: `pricepolicydetail` count **28,966 -> 28,967**; the
+  header name changed from `9801.` to `FACE MASK ` (the screen sets
+  `name = item.name`); “Changes take effect in database”.
+* **Original quirk:** after the save, `id_master.code` was blank
+  (`code ""`, status 1).  A second in-place save was rejected with
+  “Price Policy already exists for this item”; `ue_save` clears the header
+  code after `super::ue_save`.  Reopening via `File | List` -> `ue_detail`
+  restored code 7670 and both detail rows to status 0.
+* Edited the new slab to price **252**, saved; then reopened and deleted the
+  slab, saved: `pricepolicydetail` back to **28,966**, with the original
+  `qtylimit 0 / price 250` row intact.
+* Exact restore: `pricepolicy 28,966 / max 28,966` with header 7670 name
+  `9801.` / icode 9801; `pricepolicydetail 28,966`;
+  `_tabmaxkey('PricePolicy') 28,968`; `audit_log 1,079 / max 1,127`; no
+  residue.
+
+Probe: `tools/parity/probe-pricepolicy-crud.mjs` — measured `ok=true`.
+
 ### Item Association nested form + parent save
 
 `Set Item Associations` (`m_setitemassociations` →
@@ -2037,7 +2072,8 @@ Probe: `tools/parity/probe-itempart-cascade.mjs` — measured `ok=true`.
   verified for quotation, purchase order, refused sale, adjustments, cashier
   job, groups, **Item Part** (master + model detail; `masteripartcode`
   cascade measured as an original no-commit branch), update-item-basic-data,
-  compound reorder qty, credit/cash sale,
+  standalone **Price Policy** slab add/edit/delete, compound reorder qty,
+  credit/cash sale,
   change-items-price, supplier-wise-item-settings (add/edit/delete),
   purchase-return add/save, opening-purchase and loose-purchase
   add/edit/save, **Receipt** and **Issue / Delivery Challan**
