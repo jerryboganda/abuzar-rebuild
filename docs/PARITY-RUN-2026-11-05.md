@@ -1099,6 +1099,23 @@ modal-argument hang:
 * Both saves reported “Changes take effect in database”; the window posts
   Close after the commit.
 
+### Group Wise Header Setting (remove/restore + save)
+
+`Manage | Group Wise Header Setting` (`w_groupwiseheadersetting`) was opened
+directly with group 2 (same direct `opensheetwithparm` technique).  The
+database contains only header **1** (`Fazal Din's Pharma Plus`), so the cycle
+removes and restores that allowance in the Sale grid:
+
+* Unchecked header 1, saved: `GroupAllowedHeader` for group 2 / module 1
+  became empty; the save issued `DELETE FROM dbo.groupallowedheader WHERE
+  groupcode=$1 AND headercode=$2 AND module=$3 AND priority=$4` for every
+  module row and re-inserted the allowed set.
+* Reopened, checked header 1, saved: full snapshot restored — **35 rows
+  before and after, byte-identical**.  Both saves reported “Changes take
+  effect in database”.
+* The grids are built from the single company header; adding a genuinely new
+  header is data-blocked (both live and clone have no `CompanyHeader` rows).
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -1155,8 +1172,8 @@ modal-argument hang:
   change-items-price, supplier-wise-item-settings (add/edit/delete),
   purchase-return add/save, opening-purchase and loose-purchase
   add/edit/save, Item Form parent saves with nested price-policy/alias,
-  association, image and RichText notes rows, group-wise godown setting,
-  users add/edit,
+  association, image and RichText notes rows, group-wise godown and header
+  settings, users add/edit,
   modify-sale-invoices, three
   group-level settings (allowed price/cash account/supplier category),
   Interface Setting visibility, Change Password, Modify Last Transaction Date,
@@ -1184,8 +1201,9 @@ modal-argument hang:
   * **Change Item Discount** would bulk-update a whole category (plus one
     itemlog row per item) and has not been run; the probe was deliberately
     not executed against bulk data.
-  * **Group Wise Header Setting** probe hung before changing anything
-    (`groupallowedheader` stayed 35 rows); it remains open.
+  * ~~**Group Wise Header Setting** probe hung~~ — resolved: opened directly
+    with the group parameter and completed a remove/restore save cycle
+    (35-row snapshot identical).
   * Other settings not yet cycled: Job Schedule, Inplace Initialization,
     Import Historical Data.
   * Visual: modal position/width offsets and 26 vs 28 px row spacing.
