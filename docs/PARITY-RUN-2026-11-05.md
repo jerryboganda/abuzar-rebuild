@@ -1879,7 +1879,34 @@ rows and removed them in a `finally` block.
   `_tabmaxkey('ItemPart') 1`, `Model 0`,
   `audit_log 1,079 / max 1,127`, no residue, no open transactions.
 
-Probe: `tools/parity/probe-itempart-crud.mjs` — measured `ok=true`.
+Probe: `tools/parity/probe-itempart-crud.mjs` - measured `ok=true`.
+
+### Item Part masteripartcode / cascade branch (measured; original no-commit defect)
+
+Created two temporary parts through the real form: parent **A** (code 2, no
+master) and child **B** (code 3, `masteripartcode = 2`).  Reopened **A**
+through `ue_detail` and set `masteripartcode = 1` (DEFAULT is top-level, so
+`wf_validate_masterpartno(1) = 0`), then saved.
+
+* The original showed **“This Part No. is already master to 1 Item Part(s),
+  Cascading Update Now”**.
+* SQL trace: `UPDATE dbo.itempart SET masteripartcode = $1 WHERE
+  (masteripartcode = $2)` with params `[1,2]`, **rowcount 1**.
+* The cascade branch then **returns without COMMIT**.  A separate psql
+  connection (before ending the transaction) still saw A `masteripartcode`
+  NULL and B `masteripartcode` **2**.
+* After ending the remaining idle session (`xact = 0`), A was still NULL and
+  B was still **2**: the cascade UPDATE rolled back
+  (`cascadeCommitted = false`).  This is the original code’s behavior —
+  `u_transaction` has `autocommit = false`, `CommitOnDisconnect = 'No'`, and
+  `w_multi_entry.wf_disconnect` runs `SQL stop`.
+* The branch also returns before the master `UPDATE`, so the current part’s
+  own `masteripartcode` change is discarded; only the children were targeted.
+* Exact restore: `itempart 1` (`DEFAULT`), `itempartinmodel 0`, `model 0`,
+  `_tabmaxkey('ItemPart') 1`, `Model 0`,
+  `audit_log 1,079 / max 1,127`, residue 0, open transactions 0.
+
+Probe: `tools/parity/probe-itempart-cascade.mjs` — measured `ok=true`.
 
 ### Remaining (measured)
 
@@ -1941,7 +1968,8 @@ Probe: `tools/parity/probe-itempart-crud.mjs` — measured `ok=true`.
   add/edit/save verified (File | Delete is original enabled-but-inert);
   committed transaction CRUD
   verified for quotation, purchase order, refused sale, adjustments, cashier
-  job, groups, **Item Part** (master + model detail), update-item-basic-data,
+  job, groups, **Item Part** (master + model detail; `masteripartcode`
+  cascade measured as an original no-commit branch), update-item-basic-data,
   compound reorder qty, credit/cash sale,
   change-items-price, supplier-wise-item-settings (add/edit/delete),
   purchase-return add/save, opening-purchase and loose-purchase
@@ -2025,7 +2053,10 @@ Probe: `tools/parity/probe-itempart-crud.mjs` — measured `ok=true`.
     `id_detail.update(true, false)` but only `id_master.resetupdate()`, so a
     second save without reopening re-inserts the detail row and hits
     `pk_itempartinmodel`; reopening via `ue_detail` resets the detail and the
-    edit/detail-delete cycle passes (measured above).
+    edit/detail-delete cycle passes (measured above).  Its
+    **`masteripartcode` cascade branch also returns without COMMIT**: the
+    children UPDATE is measured (`rowcount 1`) but rolls back on close
+    (`probe-itempart-cascade.mjs`).
 * **Report pairing (measured)**: final previews now exist for **139 old / 141
   new** paths, with **no old-only** and **2 new-only** (067 Claimable for
   Allowed Customers and 068 Customer NTN Wise Sales Tax Report).  The earlier
