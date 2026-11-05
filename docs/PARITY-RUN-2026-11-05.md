@@ -11,15 +11,16 @@ the tools in `tools/parity/`.
 | Visible menu items | 262 | 261 | `orig-menu.tsv` vs `menu-compare.json` |
 | Non-report screens opened | 62/62 | 62 attempted (55 direct, 7 captured at their response window) | `deploy/parity/screen-parity/old-nonreport`, `new-nonreport` |
 | Report screens opened | not yet (old crawl pending) | 53+ captured so far | `screen-parity/new-reports` |
-| Master-data forms: every editable field typed, add/edit/delete/save verified in PostgreSQL | 16 forms | 16 forms + Godown | `screen-parity/crud-fields/crud-*.json`, `tools/parity/probe-godown-crud.mjs` |
+| Master-data forms: every editable field typed, add/edit/delete/save verified in PostgreSQL | 16 forms | 16 forms + Godown + Area | `screen-parity/crud-fields/crud-*.json`, `tools/parity/probe-godown-crud.mjs`, `tools/parity/probe-area-crud.mjs` |
 | DataWindow expression parse sweep | â€” | every `expression` parses; SQL comments stripped | `tools/parity/dw-expr-audit.mjs` |
 
 The 16 passing forms are: Customer Category, Customer Sector, Generic Item,
 Generic Item Type, Item Alert, Item Category, Item Class, Item Thickness,
 Lock Reason, Manufacturer, Manufacturer Type, PCT Codes, Supplier Category,
-Sales Tax Schedule, Tax Category, Category Segment.  **Godown** was added as a
-separate full add/edit/delete cycle (its menu item is hidden by the rights
-state; the probe fires the real `m_godown` handler).
+Sales Tax Schedule, Tax Category, Category Segment.  **Godown** and **Area**
+were added as separate full add/edit/delete cycles (their menu items are
+hidden by the rights state; the probes fire the real `m_godown` / `m_area0`
+handlers).
 
 `Sale Promotion` is the only tested form that cannot complete: its Active /
 Customer Group / Weekday drop-downs are empty in the migrated clone (missing
@@ -1497,6 +1498,29 @@ DataWindow is `d_godown_detail1` updating `dbo.godown`; columns: `code`,
 
 Probe: `tools/parity/probe-godown-crud.mjs` — measured `ok=true`.
 
+### Area master add/edit/delete (verified)
+
+`Basic Data | Customer .......... | Area` (command `m_area0`, hidden by the
+rights/menu state) opens `w_area_form` (`w_single_entry`, title “Area Form”).
+The detail DataWindow is `d_area_detail` updating `dbo.area`; fields:
+`code`, `name`, `manager`, `regioncode`, `shortname`, `shortname1`,
+`shortname2`, `tag`.  Required: `manager`, `regioncode`, `tag`, `name`; the
+table also has unique `name` and `shortname`.
+
+* **Add:** set all fields (`regioncode 1`, `tag Y`, unique name/shortname),
+  Save -> “Changes take effect in database”; row code **2** written and
+  `_tabmaxkey('Area') 1 -> 2`.
+* **Edit:** changed `name`, `manager` and `shortname`, saved -> row updated,
+  second “Changes take effect in database”.
+* **Delete:** `ue_delete` (right **579**) showed the confirmation and
+  “Record Deleted Successfully”; the row was gone.  The `m_delete` menu was
+  measured disabled on the new/edit form; `w_single_entry.ue_detail` enables
+  it in list mode when right 579 is present.
+* Exact restore: `area` 1 row (`DEFAULT AREA`), `_tabmaxkey('Area') 1`,
+  `audit_log 1,079 / max 1,127`.
+
+Probe: `tools/parity/probe-area-crud.mjs` — measured `ok=true`.
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -1545,7 +1569,7 @@ Probe: `tools/parity/probe-godown-crud.mjs` — measured `ok=true`.
   fixes above.
 * Measured coverage now: definitions/menus/controls ~100%; non-report screen
   opening ~100% of the 68 effectively visible paths; field-level master CRUD
-  **16/16 forms** (51 fields) plus **Godown** add/edit/delete and
+  **16/16 forms** (51 fields) plus **Godown** and **Area** add/edit/delete and
   **Sale Template header+detail**
   add/edit/save verified (File | Delete is original enabled-but-inert);
   committed transaction CRUD
