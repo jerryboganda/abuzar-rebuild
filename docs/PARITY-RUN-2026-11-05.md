@@ -11,13 +11,15 @@ the tools in `tools/parity/`.
 | Visible menu items | 262 | 261 | `orig-menu.tsv` vs `menu-compare.json` |
 | Non-report screens opened | 62/62 | 62 attempted (55 direct, 7 captured at their response window) | `deploy/parity/screen-parity/old-nonreport`, `new-nonreport` |
 | Report screens opened | not yet (old crawl pending) | 53+ captured so far | `screen-parity/new-reports` |
-| Master-data forms: every editable field typed, add/edit/delete/save verified in PostgreSQL | 16 forms | 16 forms | `screen-parity/crud-fields/crud-*.json` |
+| Master-data forms: every editable field typed, add/edit/delete/save verified in PostgreSQL | 16 forms | 16 forms + Godown | `screen-parity/crud-fields/crud-*.json`, `tools/parity/probe-godown-crud.mjs` |
 | DataWindow expression parse sweep | â€” | every `expression` parses; SQL comments stripped | `tools/parity/dw-expr-audit.mjs` |
 
 The 16 passing forms are: Customer Category, Customer Sector, Generic Item,
 Generic Item Type, Item Alert, Item Category, Item Class, Item Thickness,
 Lock Reason, Manufacturer, Manufacturer Type, PCT Codes, Supplier Category,
-Sales Tax Schedule, Tax Category, Category Segment.
+Sales Tax Schedule, Tax Category, Category Segment.  **Godown** was added as a
+separate full add/edit/delete cycle (its menu item is hidden by the rights
+state; the probe fires the real `m_godown` handler).
 
 `Sale Promotion` is the only tested form that cannot complete: its Active /
 Customer Group / Weekday drop-downs are empty in the migrated clone (missing
@@ -1471,6 +1473,30 @@ Deleting a receipt/issue therefore has no original workflow; cleanup is SQL.
 Probes: `tools/parity/probe-receipt-edit.mjs`,
 `tools/parity/probe-issue-edit.mjs` (both `ok=true`).
 
+### Godown master add/edit/delete (verified)
+
+`Basic Data | Godown` (`m_godown`, hidden by the rights/menu state) opens
+`w_godown_form` (`w_single_entry`, title “Godown Form”).  The detail
+DataWindow is `d_godown_detail1` updating `dbo.godown`; columns: `code`,
+`name`, `location`, `godowngroupcode`, `autosatisfydue`,
+`considerstockinpo`, `localgodownname`.
+
+* **Add:** set all editable fields, `File | Save` -> “Changes take effect in
+  database”; `godown` row code **2** written and `_tabmaxkey('godown')
+  1 -> 2`.
+* **Edit:** changed `name` and `location`, saved -> row updated, second
+  “Changes take effect in database”.
+* **Delete:** the `m_delete` menu was measured **disabled** on the new/edit
+  form; the window's `ue_delete` (right **579**, present in group 2) showed
+  “Delete this record permanently from Database?” and then “Record Deleted
+  Successfully”; the row was gone.  (`w_single_entry.ue_detail` enables
+  `m_delete` when right 579 is present in list mode; the probe invokes the
+  same window event directly.)
+* Exact restore: `godown 1` row (`GODOWN1`), `_tabmaxkey('godown') 1`,
+  `audit_log 1,079 / max 1,127`.
+
+Probe: `tools/parity/probe-godown-crud.mjs` — measured `ok=true`.
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -1519,7 +1545,8 @@ Probes: `tools/parity/probe-receipt-edit.mjs`,
   fixes above.
 * Measured coverage now: definitions/menus/controls ~100%; non-report screen
   opening ~100% of the 68 effectively visible paths; field-level master CRUD
-  **16/16 forms** (51 fields) plus **Sale Template header+detail**
+  **16/16 forms** (51 fields) plus **Godown** add/edit/delete and
+  **Sale Template header+detail**
   add/edit/save verified (File | Delete is original enabled-but-inert);
   committed transaction CRUD
   verified for quotation, purchase order, refused sale, adjustments, cashier
