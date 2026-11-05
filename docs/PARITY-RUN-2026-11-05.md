@@ -1081,6 +1081,41 @@ temporary **Author 1** row via SQL and removed it afterwards.
 
 Probe: `tools/parity/probe-item-author-save.mjs` — measured `ok=true`.
 
+### Customer Item Categories Association nested form + parent save (verified)
+
+`m_setitemcategories` → `w_custitemcatassociation_form` shares the Customer
+Form's hidden `d_custitemcatassociation` (`id_cust_itemcat_association`, keys
+`custcode` + `icatcode`).  The Customer Form is `w_customer_form`
+(`w_single_entry`); its save chain calls
+`id_cust_itemcat_association.update()` with the default reset flag.
+
+The probe created a temporary customer through the verified add flow (code
+**334**) and a temporary `ItemCategory` **8** (`PARITY TEMP CAT ...`) via SQL
+(the item-category master itself is already verified).
+
+* Added `icatcode 8` through the popup; the shared parent row was
+  `(custcode null, icatcode 8)` with status **3** before the save.
+* Saved the customer: PostgreSQL wrote `custitemcatassociation (334, 8)`,
+  the `accounts`/`customer` rows for code 334, and
+  `_tabmaxkey('Accounts') 333 -> 334`; “Changes take effect in database”.
+  After the save the association row status was **0** (reset by `update()`
+  with the default reset flag).
+* Deleted the association row from the parent `id_cust_itemcat_association`
+  buffer, changed the customer city `KARACHI -> LAHORE` to force the customer
+  update, and saved: `custitemcatassociation` **0**, city **LAHORE**; second
+  “Changes take effect in database”.
+* **Customer delete remains the original referential guard:** `ue_delete`
+  showed “You can not Delete this record Reason: Some information refering to
+  this record exists”.  The temporary customer was therefore removed by SQL
+  in cleanup (the existing Customer/Supplier probes already document this
+  original behaviour).
+* Exact restore: `accounts 257 / max 325`, `customer 2 / max 22`,
+  `custitemcatassociation 0`, `itemcategory 7` (code 8 removed),
+  `_tabmaxkey('Accounts') 333`, `_tabmaxkey('ItemCategory') 9`,
+  `audit_log 1,079 / max 1,127`, no residue.
+
+Probe: `tools/parity/probe-custitemcat-crud.mjs` — measured `ok=true`.
+
 ### Item Images nested form + parent save (two systemic fixes)
 
 `Set Item Image(s)` (`m_setitemimages` → `w_itemimage`) was exercised on item
@@ -2011,7 +2046,8 @@ Probe: `tools/parity/probe-itempart-cascade.mjs` — measured `ok=true`.
   exercised with the window flag), **Sale Order** add/edit/soft-delete/save
   (delete exercised with temporary rights 572/573 that are absent from the
   catalog), Item Form parent saves with nested
-  price-policy/alias, association, author, image, model and RichText notes
+  price-policy/alias, association, author, image, model, customer item-category
+  association and RichText notes
   rows, group-wise godown/header
   settings, Change Item Discount (category wise, 29 items), Job Schedule
   (PG scheduler; original screen broken in this deployment), users add/edit,
@@ -2050,9 +2086,9 @@ Probe: `tools/parity/probe-itempart-cascade.mjs` — measured `ok=true`.
     add + parent-save cycles (the image delete-all path is an original
     early-return limitation, above; the author buffer is not reset by the
     original save, so its delete path requires reopening the item).  The
-    item-category association (`CustItemCatAssociation`) is still data-blocked
-    (empty in both databases).  **Patient Death Certificate** is data-blocked
-    too (`DeathCertificate` 0 rows in both databases).
+    **Customer Item Categories Association** is now verified with temporary
+    customer/category fixtures (above).  **Patient Death Certificate** is
+    data-blocked too (`DeathCertificate` 0 rows in both databases).
   * ~~**Change Item Discount** would bulk-update a whole category~~ -
     resolved: category-wise update of all 29 active category-6 items plus 29
     itemlog rows verified and fully restored.
