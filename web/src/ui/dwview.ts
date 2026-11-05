@@ -13,6 +13,7 @@ import { Dec, PBDate, PBDateTime, PBTime, toStr } from '../runtime/values.ts'
 import { cssFont, draftCpi, fontSize, pbColor, toPx, setMnemonic } from './pb.ts'
 import { code39Svg, isCode39Font } from './barcode.ts'
 import { readFileBytes } from '../runtime/sysfiles.ts'
+import { commitDwValue } from './dw-edit.ts'
 
 /** space between two columns of a grid, in DataWindow units (the engine of the original leaves 7 to 12, 9.5 on average) */
 const GRID_GAP = 9
@@ -29,15 +30,18 @@ const BORDER_CSS: Record<string, string> = {
 }
 
 /** runs `f` once on the next animation frame, or soon after when the page is hidden and frames are not delivered */
-function nextFrame(f: () => void): void {
+function nextFrame(f: () => void): () => void {
   let done = false
   const once = () => {
     if (done) return
     done = true
+    cancelAnimationFrame(frame)
+    clearTimeout(timer)
     f()
   }
-  requestAnimationFrame(once)
-  setTimeout(once, 60)
+  const frame = requestAnimationFrame(once)
+  const timer = setTimeout(once, 60)
+  return () => { done = true; cancelAnimationFrame(frame); clearTimeout(timer) }
 }
 
 interface FlowItem {
@@ -90,28 +94,48 @@ export class DwView {
   editRow = 0
   editCol = 0
   editObj = ''
+  protected acceptEdit: (() => Promise<boolean>) | null = null
+  private disposed = false
+  private onChange = () => this.schedule()
+  private cancelRender: (() => void) | null = null
+  private cancelFill: (() => void) | null = null
 
-  constructor(ctl: NDwBase, host: HTMLElement) {
+  constructor(ctl: NDwBase, host: HTMLElement, observe = true) {
     this.ctl = ctl
     this.host = host
     this.root = document.createElement('div')
     this.root.className = 'dw'
     host.appendChild(this.root)
     this.root.addEventListener('scroll', this.onScroll)
-    ctl.listeners.add(() => this.schedule())
-    this.schedule()
+    if (observe) {
+      ctl.listeners.add(this.onChange)
+      this.schedule()
+    }
+  }
+
+  dispose(): void {
+    this.disposed = true
+    this.acceptEdit = null
+    this.editor = null
+    this.ctl.listeners.delete(this.onChange)
+    this.cancelRender?.()
+    this.cancelFill?.()
+    this.fillToken++
+    this.root.removeEventListener('scroll', this.onScroll)
+    this.root.remove()
   }
 
   schedule(): void {
-    if (this.scheduled) return
+    if (this.disposed || this.scheduled) return
     this.scheduled = true
-    nextFrame(() => {
+    this.cancelRender = nextFrame(() => {
       this.scheduled = false
       void this.render()
     })
   }
 
   async render(): Promise<void> {
+    if (this.disposed) return
     if (this.rendering) {
       this.again = true
       return
@@ -119,6 +143,7 @@ export class DwView {
     this.rendering = true
     try {
       await this.ctl.ready
+      if (this.disposed) return
       const m = this.ctl.model
       if (!m) {
         this.root.textContent = ''
@@ -409,7 +434,7 @@ export class DwView {
     return inner
   }
 
-  private virt: {
+  protected virt: {
     m: DwModel
     L: ReturnType<DwView['layout']>
     flow: FlowItem[]
@@ -463,7 +488,7 @@ export class DwView {
   private onScroll = (): void => {
     if (!this.virt || this.fillScheduled) return
     this.fillScheduled = true
-    nextFrame(() => {
+    this.cancelFill = nextFrame(() => {
       this.fillScheduled = false
       void this.fillWindow()
     })
@@ -556,7 +581,7 @@ export class DwView {
     this.root.replaceChildren(wrap)
   }
 
-  private async paint(m: DwModel): Promise<void> {
+  protected async paint(m: DwModel): Promise<void> {
     if (this.previewOn(m)) return this.paintPreview(m)
     const inner = await this.buildBody(m, true, true)
     const editor = this.takeEditor()
@@ -623,8 +648,8 @@ export class DwView {
   }
 
   private focused = false
-  private async rowClick(m: DwModel, row: number, ev: MouseEvent): Promise<void> {
-    const target = (ev.target as HTMLElement).closest('[data-obj]') as HTMLElement | null
+  protected async rowClick(m: DwModel, row: number, ev: MouseEvent, source?: HTMLElement): Promise<void> {
+    const target = (source ?? ev.target as HTMLElement).closest('[data-obj]') as HTMLElement | null
     const obj = target?.dataset.obj
     const changedRow = m.row !== row
     m.row = row
@@ -648,86 +673,26 @@ export class DwView {
     if (!(target?.classList.contains('editable') && !changedRow)) this.ctl.changed()
   }
 
-  /** evaluate an expression-carrying property of an object for a row; falls back to the static value */
-  /**
-   * PowerBuilder column validation: the design-time ValidationExpression or a run-time
-   * SetValidate() rule, then the ItemError event.  A false rule rejects the value and
-   * keeps the cell in edit; the column's ValidationMsg is shown when no handler accepts.
-   */
-  private async validateValue(m: DwModel, row: number, o: DwObject, value: string): Promise<boolean> {
-    const ci = m.colIndex(o.name)
-    if (ci < 0) return true
-    const rule = this.ctl.validateRules.get(o.name.toLowerCase()) ?? this.ctl.columnValidation(ci)
-    if (!rule.trim()) return true
-    let ok = true
-    try {
-      const v = await evalDw(compileDw(rule), { ...newCtx(m, row, o.band), text: value })
-      ok = v === true || (typeof v === 'number' && v !== 0) || (v instanceof Dec && !v.isZero())
-    } catch {
-      ok = true // an unparseable vendor rule must not block data entry
-    }
-    if (ok) return true
-    const rej = await this.ctl.rt.fire(this.ctl, 'itemerror', [row, { name: o.name }, value])
-    if (rej === 2 || rej === 3) return true
-    const msg = this.ctl.columnValidationMessage(ci)
-    if (msg) await this.ctl.rt.ui?.messageBox('', msg, 'exclamation!', 'ok!', 1)
-    return false
-  }
-
   /** ItemChanged -> conversion -> validation -> write, the order the PowerBuilder DataWindow uses */
-  private async commitValue(m: DwModel, row: number, ci: number, o: DwObject, value: unknown): Promise<boolean> {
-    const rej = await this.ctl.rt.fire(this.ctl, 'itemchanged', [row, { name: o.name }, value])
-    if (rej === 1 || rej === 2) return false
-    // Numeric cells reject text the way the original DataWindow does; silently
-    // coercing it to 0 can divide by zero in the window's calculation scripts.
-    const kind = m.kinds[ci]
-    let val = value
-    if (kind === 'number' || kind === 'decimal') {
-      const raw = toStr(value).trim()
-      if (raw === '') {
-        val = null
-      } else {
-        const cleaned = raw.replace(/[,\s]/g, '').replace(/^\((.*)\)$/, '-$1')
-        const n = Number(cleaned)
-        if (!Number.isFinite(n)) {
-          const rej2 = await this.ctl.rt.fire(this.ctl, 'itemerror', [row, { name: o.name }, raw])
-          if (rej2 === 2) {
-            m.setItem(row, ci + 1, 0)
-            this.ctl.changed()
-            return true
-          }
-          if (rej2 === 3) {
-            m.setItem(row, ci + 1, null)
-            this.ctl.changed()
-            return true
-          }
-          return false
-        }
-        val = kind === 'decimal' ? cleaned : n
-      }
-    }
-    if (!(await this.validateValue(m, row, o, toStr(value)))) return false
-    m.setItem(row, ci + 1, val)
-    this.ctl.changed()
-    return true
+  protected async commitValue(m: DwModel, row: number, ci: number, o: DwObject, value: unknown): Promise<boolean> {
+    return commitDwValue(this.ctl, m, row, ci, o, value)
   }
 
-  private async prop(m: DwModel, o: DwObject, key: string, row: number, band: string): Promise<string> {
-    const ov = m.overrides.get(`${o.name.toLowerCase()}.${key}`)
-    if (ov !== undefined) return ov
-    const raw = o[key]
+  protected async prop(m: DwModel, o: DwObject, key: string, row: number, band: string): Promise<string> {
+    const raw = m.overrides.get(`${o.name.toLowerCase()}.${key}`) ?? o[key]
     if (raw === undefined) return ''
     const { value, expr } = splitExpr(raw)
     if (!expr) return value
     try {
       const v = await evalDw(compileDw(expr), newCtx(m, row, band))
       return v === null ? value : v instanceof Dec ? v.toString() : String(typeof v === 'boolean' ? (v ? 1 : 0) : v)
-    } catch {
+    } catch (error) {
+      console.warn(`Unsupported DataWindow property: ${m.name}.${o.name}.${key}`, error)
       return value
     }
   }
 
-  private async object(m: DwModel, o: DwObject, row: number, band: string, sx: (v: number) => number, sy: (v: number) => number, _ctx: unknown): Promise<HTMLElement | null> {
+  protected async object(m: DwModel, o: DwObject, row: number, band: string, sx: (v: number) => number, sy: (v: number) => number, _ctx: unknown): Promise<HTMLElement | null> {
     // a script may move or resize an object at run time (`modify("customer_city.X=14 customer_city.Y=100")`: the customer form stacks its fields from InterfaceSetting)
     const geo = ['x', 'y', 'width', 'height'].filter((k) => m.overrides.has(`${o.name.toLowerCase()}.${k}`))
     if (geo.length) o = { ...o, ...Object.fromEntries(geo.map((k) => [k, m.overrides.get(`${o.name.toLowerCase()}.${k}`)!])) } as DwObject
@@ -862,8 +827,25 @@ export class DwView {
     st.lineHeight = st.height
     st.padding = '0 2px'
     if (o.type === 'text') {
-      // the text of a label may carry an expression after ~t ("static~texpression")
-      const t = (await this.prop(m, o, 'text', row, band)).replace(/~r~n/g, '\n')
+      // A DataWindow text object may carry an expression after a tab
+      // (`"static~texpression"`); PowerBuilder paints the value of that
+      // expression, the static part only documents the design.  Thousands of
+      // reports use this for titles and Dr/Cr labels.  Painting the raw text
+      // showed `f_reporttitle(1)` instead of the title.
+      const raw = (await this.prop(m, o, 'text', row, band)).replace(/~r~n/g, '\n')
+      const tab = raw.indexOf('\t')
+      let t = raw
+      if (tab >= 0) {
+        const src = raw.slice(tab + 1).trim()
+        if (src) {
+          try {
+            const v = await evalDw(compileDw(src), newCtx(m, row, band))
+            t = v === null || v === undefined ? '' : toStr(v)
+          } catch {
+            t = ''
+          }
+        }
+      }
       setMnemonic(el, t)
       // a label wider than its box wraps at the words (the grid headers `Manufacturer Name`, `P/O Base Period (Days)` show on two lines)
       const boxW = sx(num(o, 'width')) - 4
@@ -955,7 +937,7 @@ export class DwView {
     const { NDwBase } = await import('../runtime/native/dwctrl.ts')
     const c = new NDwBase(rt, 'datawindow', 'datawindow')
     c.attach(child)
-    const view = new DwView(c, document.createElement('div'))
+    const view = new DwView(c, document.createElement('div'), false)
     return view.buildBody(child, false, false)
   }
 
@@ -1086,13 +1068,13 @@ export class DwView {
   }
 
   /** state of the open in-place editor, kept across a repaint of the DataWindow */
-  private takeEditor(): { row: number; obj: string; value: string; start: number | null; end: number | null } | null {
+  protected takeEditor(): { row: number; obj: string; value: string; start: number | null; end: number | null } | null {
     const e = this.editor
     if (!(e instanceof HTMLInputElement)) return null
     return { row: this.editRow, obj: this.editObj, value: e.value, start: e.selectionStart, end: e.selectionEnd }
   }
 
-  private restoreEditor(s: { row: number; obj: string; value: string; start: number | null; end: number | null }): void {
+  protected restoreEditor(s: { row: number; obj: string; value: string; start: number | null; end: number | null }): void {
     const m = this.ctl.model
     if (!m || s.row < 1 || s.row > m.rowCount()) return
     const o = m.def.objects.find((x) => x.type === 'column' && x.name.toLowerCase() === s.obj.toLowerCase())
@@ -1106,7 +1088,11 @@ export class DwView {
     if (s.start !== null && s.end !== null) e.setSelectionRange(s.start, s.end)
   }
 
-  private edit(m: DwModel, o: DwObject, row: number, cell: HTMLElement): void {
+  protected placeEditor(editor: HTMLElement, cell: HTMLElement): void {
+    cell.parentElement?.appendChild(editor)
+  }
+
+  protected edit(m: DwModel, o: DwObject, row: number, cell: HTMLElement): void {
     if (this.editor) {
       const ed = this.editor
       // clearing the field before remove stops a synchronous blur handler from
@@ -1138,7 +1124,7 @@ export class DwView {
         if (v === cur) op.selected = true
         sel.appendChild(op)
       }
-      cell.parentElement?.appendChild(sel)
+      this.placeEditor(sel, cell)
       this.editor = sel
       sel.focus()
       const done = () => {
@@ -1170,7 +1156,7 @@ export class DwView {
           if (op.value === cur) op.selected = true
           sel.appendChild(op)
         }
-        cell.parentElement?.appendChild(sel)
+        this.placeEditor(sel, cell)
         this.editor = sel
         sel.focus()
         const done = () => {
@@ -1193,7 +1179,7 @@ export class DwView {
     input.value = v === null || v === undefined ? '' : toStr(v)
     input.style.cssText = cell.style.cssText + ';z-index:5;border:1px solid #0078d7;background:#fff'
     input.style.lineHeight = 'normal'
-    cell.parentElement?.appendChild(input)
+    this.placeEditor(input, cell)
     this.editor = input
     input.focus()
     input.select()
@@ -1206,6 +1192,7 @@ export class DwView {
       if (text !== cur) return this.commitValue(m, row, ci, o, text)
       return true
     }
+    this.acceptEdit = commit
     input.addEventListener('blur', () => void commit())
     input.addEventListener('keydown', (ev) => {
       const k = keyEnum(ev)
@@ -1234,4 +1221,3 @@ export class DwView {
     })
   }
 }
-

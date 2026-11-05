@@ -432,6 +432,45 @@ again, then deleted it and verified PostgreSQL after every step.
 * Evidence: `deploy/parity/crud-sweep-2026-11-05/crud-*.json` (one JSON per
   form with every field value and message).
 
+### Report final-stage comparison (first sample)
+
+The old app's report menus are a real Win32 `HMENU`, so reports can now be
+driven by menu command ID (no blind clicking).  First sample:
+`Reports | Daily Reports | Sale | Sale detail` (command 10102).
+
+* Old final preview captured: `deploy/parity/old-final/001_sale_detail.png`
+  (650x504), with header `Date: 05/11/2026`, `a`, **Fazal Din's Pharma Plus**,
+  `NRY Pacific / Franchise Fazal Din's`, `Phone(s): 055 3252501`, and columns
+  `Alias | Item Description | Sale Price | Qty | Disc (%) | Discount Value |
+  Item SalesTax Disc | SalesTax Value | Amount`.  Null date fields print
+  **blank** (`Date:            to`).
+* Existing new capture (`new-reports/001_..._s3.png`, taken before the header
+  pipeline fix) under the same `1) Standard` format shows `a` and
+  `Phone(s):` but **no client name/address/phone**, prints
+  `dd/mm/yyyy to dd/mm/yyyy` for null dates, and adds `Expiry Date` and
+  `Batch Number` columns.
+* Fresh new capture after the header pipeline fix
+  (`deploy/parity/new-final/001_sale_detail_v2.png`) now shows the same header
+  (`a`, Fazal Din's Pharma Plus, address, phone, `Date: 05/11/2026`), so the
+  earlier missing-header finding is resolved.
+* **Fixed (systemic)**: DataWindow text objects may store
+  `"static~texpression"`.  PowerBuilder paints the *expression value*; the
+  rebuild printed the raw text, so this report showed `f_reporttitle(1)`.
+  `web/src/ui/dwview.ts` now evaluates the part after the tab for every text
+  object.  This affects **5,361 recovered DataWindows** that use the pattern
+  (report titles, `Dr`/`Cr` labels, `Cash/Bank Book`, ...).  Verified: the
+  literal `f_reporttitle(1)` is gone and the header now shows `a`, matching the
+  original.
+* The old preview window is only 650x504 with a horizontal scrollbar, so its
+  right-hand columns are clipped in the capture; the earlier "extra Expiry /
+  Batch columns" conclusion was a viewport artifact, not a column-set defect.
+* Second pair: `Sale summary` old
+  (`deploy/parity/old-final/002_sale_summary.png`) and new
+  (`deploy/parity/new-final/002_sale_summary.png`) both show `Daily Sale
+  Summary`, the client name/address/phone, From/To dates and the same column
+  order.  The new preview has 2 real rows and totals because the clone has
+  today's test invoices; the old preview ran against the live data with none.
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -440,18 +479,18 @@ again, then deleted it and verified PostgreSQL after every step.
   Change Item Reorder Qty item 21195 produced `UPDATE dbo.item ... rowcount 1`,
   both persisted and restored.
 * Full add/edit/delete/save on every remaining field of the other master and
-  transaction screens: the screen audit typed values but did not commit them.
-* Reports: final-stage/pixel comparison over the 138 paired paths.
+  transaction screens: 16/16 small masters are now verified (see the sweep
+  above); the rest still need their own committed cycles.
+* Reports: final-stage pixel comparison is now method-complete (Win32 menu-ID
+  driver + fresh rebuild capture) with **2/138 pairs captured**; 136 remain.
 * Visual geometry: modal 3 px/8 px offset, 26 vs 28 px row spacing, Priority
   Setting column widths.
-* Reference data: live-vs-clone audit (CustomerGroup is empty in both; other
-  lookup tables still to count).
+* Reference data: **30 tables compared**, counts match except `users` (one
+  extra test account); the empty lookup tables are empty in both.
 * Rights-limited screens (Issue Category, Receipt Category, Receipt, voucher
   receipts) are hidden in the old app; they are not missing rebuild features.
-* Measured estimate: ~82% overall.  Definitions/menus/controls ~100%; screen
-  opening ~100% of the 68 effectively visible non-report paths; field
-  click-through ~70%; committed CRUD ~70%; reports ~70%; visual ~85%;
-  reference data ~50%.
+* Measured estimate at this earlier checkpoint was ~82%; the current measured
+  status is in "Parity status at this checkpoint" below.
 
 ### Latest continuation
 
