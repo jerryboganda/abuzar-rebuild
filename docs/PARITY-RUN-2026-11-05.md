@@ -1840,7 +1840,46 @@ On item **9801**:
   item 9801 fields (`saleprice 10`, original `lastupdate` with the trigger
   disabled), `itemlog 98,632 / max 152,907`, `audit_log 1,079 / max 1,127`.
 
-Probe: `tools/parity/probe-item-model-save.mjs` — measured `ok=true`.
+Probe: `tools/parity/probe-item-model-save.mjs` - measured `ok=true`.
+
+### Item Part multi-entry add/edit/detail-delete (verified)
+
+`m_itempart` opens `w_item_part_form` (`w_multi_entry`, “Item Parts Form”).
+The master DataWindow `d_item_part` updates `ItemPart`; the detail
+`d_itempartinmodel` updates `ItemPartInModel` (keys `code` + `modelcode`).
+`Model` is empty in both databases, so the probe inserted temporary Model 1/2
+rows and removed them in a `finally` block.
+
+* **Add:** set every editable master field (`name`, `description`,
+  `application`, `remarks`, `icatcode 1`, `iccode 1`, `manfcode 1`,
+  `gcode 1`, `purprice 0`, `saleprice 0`, `reorderlevel 0`, `minlevel 0`,
+  `maxlevel 0`, `qtyused 0`) plus detail `modelcode 1`. Save wrote
+  `itempart` code **2** and `itempartinmodel (2,1)`;
+  `_tabmaxkey('ItemPart') 1 -> 2`; “Changes take effect in database”.
+* **Edit (reopen path):** `File | List` -> `ue_list` -> select the row ->
+  `ue_detail`. The detail retrieve reset the buffer
+  (`getitemstatus = 0` = not modified), the row read back as `(2,10,1)`.
+  Added `modelcode 2`, changed name/remarks, saved: master updated and
+  `itempartinmodel` became `(2,1)` + `(2,2)`.
+* **Detail delete:** reopened again (both detail rows status 0), deleted both
+  rows and saved: `itempartinmodel` **0**, master row still present.
+* **Header delete:** `m_delete.enabled = false` and the window has no
+  `ue_delete` handler, so header delete has no original workflow; cleanup is
+  SQL (as in the probe).
+* **Measured original defect (same pattern as Groups):** `ue_save` calls
+  `id_detail.update(true, false)` but only `id_master.resetupdate()`.  A second
+  save in the same un-reopened buffer therefore sent
+  `INSERT dbo.itempartinmodel (2,1)` again and failed with
+  `duplicate key value violates unique constraint "pk_itempartinmodel"`; the
+  detail update returned <= 0, so the master UPDATE rolled back and the name
+  stayed unchanged.  Reopening through `ue_detail`/`retrieve` resets both
+  buffers and the edit works.  This is the original code’s behavior, not a
+  rebuild gap.
+* Exact restore: `itempart 1` (`DEFAULT`), `itempartinmodel 0`, `model 0`,
+  `_tabmaxkey('ItemPart') 1`, `Model 0`,
+  `audit_log 1,079 / max 1,127`, no residue, no open transactions.
+
+Probe: `tools/parity/probe-itempart-crud.mjs` — measured `ok=true`.
 
 ### Remaining (measured)
 
@@ -1902,7 +1941,8 @@ Probe: `tools/parity/probe-item-model-save.mjs` — measured `ok=true`.
   add/edit/save verified (File | Delete is original enabled-but-inert);
   committed transaction CRUD
   verified for quotation, purchase order, refused sale, adjustments, cashier
-  job, groups, update-item-basic-data, compound reorder qty, credit/cash sale,
+  job, groups, **Item Part** (master + model detail), update-item-basic-data,
+  compound reorder qty, credit/cash sale,
   change-items-price, supplier-wise-item-settings (add/edit/delete),
   purchase-return add/save, opening-purchase and loose-purchase
   add/edit/save, **Receipt** and **Issue / Delivery Challan**
@@ -1981,6 +2021,11 @@ Probe: `tools/parity/probe-item-model-save.mjs` — measured `ok=true`.
     the row flagged as new (`update(true, false)`) and uncommitted; the second
     Save re-inserts and hits the primary key.  Groups **edit/save works** and
     is verified; the list's File | Delete is disabled in the original.
+    **Item Part has the same master-only reset pattern**: its `ue_save` calls
+    `id_detail.update(true, false)` but only `id_master.resetupdate()`, so a
+    second save without reopening re-inserts the detail row and hits
+    `pk_itempartinmodel`; reopening via `ue_detail` resets the detail and the
+    edit/detail-delete cycle passes (measured above).
 * **Report pairing (measured)**: final previews now exist for **139 old / 141
   new** paths, with **no old-only** and **2 new-only** (067 Claimable for
   Allowed Customers and 068 Customer NTN Wise Sales Tax Report).  The earlier
