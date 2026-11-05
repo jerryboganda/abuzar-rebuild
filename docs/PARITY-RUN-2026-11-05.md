@@ -776,6 +776,32 @@ add/save was run against the clone:
   delete).  The test user/log rows were removed and counts are back to
   `users 10`, `usergroups 10`, `usergroupslog 31`, no `PARITY USER%` row.
 
+### Sale Promotion + required-column validation (systemic fix)
+
+`Basic Data | Customer .......... | Sale Promotion` could not save; the first
+attempt reached the database and returned
+`Error Code: -1 / null value in column "customergroupcode" of relation
+"salepromotion" violates not-null constraint`.
+
+* Cause: the screen marks Customer Group as required through the **drop-down
+  DataWindow** edit style (`dddw.required=yes`).  The runtime's `FindRequired`
+  only honoured `edit.required`, so the form skipped the original
+  "Please enter a value for 'Customer Group:'." validation and sent an INSERT
+  without `customergroupcode`.
+* **Fixed (systemic)**: `web/src/runtime/native/dwctrl.ts` `FindRequired` now
+  honours `edit.required`, `dddw.required`, `ddlb.required` and
+  `editmask.required`.  The recovered DataWindows contain **850 + 1,123 + 610
+  + 1,558 = 4,141** required-column definitions, so this affects far more than
+  this one screen.
+* Verified: the same form now stops with
+  `Please enter a value for 'Customer Group:.` and sends **no SQL** (network
+  capture empty).
+* **Data prerequisite, not a rebuild gap**: `CustomerGroup`,
+  `CustomerGroupDetail` and `SalePromotion` all contain **0 rows in both the
+  live SQL Server database and the clone**.  With no selectable customer group,
+  neither app can create a Sale Promotion; the rebuilt form now reproduces the
+  original field-validation path exactly.
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final

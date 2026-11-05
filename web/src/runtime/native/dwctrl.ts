@@ -11,6 +11,11 @@ import { Ref } from '../interp.ts'
 
 const bufferName = (v: unknown): string => String(v ?? 'primary!').replace(/!$/, '').toLowerCase()
 
+export interface DwTextEditor {
+  read(): string
+  write(text: string): void
+}
+
 /** `dw.object.<column>` : column properties and per-row values */
 export class NDwColumn implements Member {
   dw: NDwBase
@@ -67,7 +72,9 @@ export class NDwBase extends PBObject {
   model: DwModel | null = null
   ready: Promise<void> = Promise.resolve()
   dwName = ''
-  listeners = new Set<() => void>()
+  listeners = new Set<(selection?: 'column') => void>()
+  private definitionRevision = 0
+  private textEditor: { current: () => boolean; editor: DwTextEditor } | null = null
   /** SetValidate() rules set by scripts at run time (they override the design-time validation) */
   validateRules = new Map<string, string>()
 
@@ -75,8 +82,19 @@ export class NDwBase extends PBObject {
     super(rt, className, native)
   }
 
-  changed(): void {
-    for (const l of this.listeners) l()
+  changed(selection?: 'column'): void {
+    for (const l of this.listeners) l(selection)
+  }
+
+  bindTextEditor(model: DwModel, row: number, column: string, editor: DwTextEditor): () => void {
+    const record = model.rowAt(row)
+    const binding = {
+      current: () => !this.destroyed && this.model === model && !!record &&
+        model.rowAt(model.row) === record && model.colNames[model.col - 1] === column.toLowerCase(),
+      editor,
+    }
+    this.textEditor = binding
+    return () => { if (this.textEditor === binding) this.textEditor = null }
   }
 
   /** itemfocuschanged is running: SelectText from its script must not raise it again */
@@ -158,21 +176,26 @@ export class NDwBase extends PBObject {
   }
 
   async loadDef(name: string): Promise<void> {
+    const revision = ++this.definitionRevision
     const cat = this.rt.dwCatalog
     if (!cat || !name) {
       this.model = null
+      this.changed()
       return
     }
     const def = await cat.get(name)
+    if (revision !== this.definitionRevision) return
     if (!def) {
       this.rt.noteMissing('dw:' + name)
       this.model = null
+      this.changed()
       return
     }
     this.attach(new DwModel(this.rt, name, def as DwDef))
   }
 
   attach(model: DwModel): void {
+    this.definitionRevision++
     const prevTrans = this.model?.trans ?? null
     this.model = model
     if (prevTrans) model.trans = prevTrans
@@ -523,7 +546,7 @@ export class NDwBase extends PBObject {
     const i = m.colIndex(typeof c === 'number' ? c : toStr(c))
     if (i < 0) return -1
     m.col = i + 1
-    this.changed()
+    this.changed('column')
     return 1
   }
   async n_getcolumnname(): Promise<string> {
@@ -533,11 +556,17 @@ export class NDwBase extends PBObject {
   async n_gettext(): Promise<string> {
     const m = await this.m()
     if (!m || m.row < 1 || m.col < 1) return ''
+    if (this.textEditor?.current()) return this.textEditor.editor.read()
     return toStr(m.getItem(m.row, m.col))
   }
-  async n_settext(t: unknown): Promise<number> {
+  async n_settext(t: unknown): Promise<number | null> {
+    if (t === null || t === undefined) return null
     const m = await this.m()
     if (!m || m.row < 1 || m.col < 1) return -1
+    if (this.textEditor?.current()) {
+      this.textEditor.editor.write(toStr(t))
+      return 1
+    }
     return m.setItem(m.row, m.col, t) > 0 ? 1 : -1
   }
   async n_setfocus(): Promise<number> {
@@ -695,7 +724,13 @@ export class NDwBase extends PBObject {
     const m = await this.m()
     if (!m) return -1
     const only = updateOnly === true || (typeof updateOnly === 'number' && updateOnly !== 0)
-    const required = m.def.objects.filter((o) => o.type === 'column' && o['edit.required'] === 'yes' && m.colIndex(o.name) >= 0).map((o) => m.colIndex(o.name))
+    // PowerBuilder keeps the Required flag on the edit style: drop-down
+    // DataWindow (dddw), drop-down list box (ddlb), edit mask and plain edit
+    // each store their own copy.  Reading only edit.required skipped the other
+    // 3,291 required column definitions (1,123 dddw + 610 ddlb + 1,558 mask).
+    const required = m.def.objects
+      .filter((o) => o.type === 'column' && (o['edit.required'] === 'yes' || o['dddw.required'] === 'yes' || o['ddlb.required'] === 'yes' || o['editmask.required'] === 'yes') && m.colIndex(o.name) >= 0)
+      .map((o) => m.colIndex(o.name))
     const startRow = row instanceof Ref ? Math.max(1, toNum(row.get())) : 1
     for (let r = startRow; r <= m.rowCount(); r++) {
       const dr = m.rowAt(r)
