@@ -1409,6 +1409,27 @@ row was created in the clone **only** to exercise the save path, then removed.
 Probes: `tools/parity/probe-receipt-crud.mjs`,
 `tools/parity/probe-issue-crud.mjs`; both measured `ok=true`.
 
+### Priority Setting edit/save (verified)
+
+* Opened `Maintenance | Priority Setting` (`w_itempriority_form`, title
+  “Item Priority Form”): list **28,966** items.
+* Selected item **9801** (list row 19,728) through the real `ue_detail`
+  handler; the detail grid returned **1** batch row for godown 1:
+  batch `.`, expiry `2030-12-12`, priority **10**, qty **18,035**.
+* Changed `priority` to **11** and pressed Save: “Changes take effect in
+  database”; `dbo.godowndetail` now had priority **11**
+  (`lastupdated` moved to the save time).
+* Restored the full row (priority **10**, original `manfdate` and
+  `lastupdated`) with `session_replication_role=replica` so the clone’s
+  `trig_godowndetail_afterupdate_lastupdated` trigger could not rewrite the
+  timestamp.  `audit_log 1,079 / max 1,127` and `_utn 1,628,962` unchanged.
+* Probe: `tools/parity/probe-priority-save.mjs` — measured `ok=true`.
+
+**Patient Death Certificate (data-blocked):** `DeathCertificate` has **0
+rows in the live SQL Server database and 0 in the clone**, and the form
+requires selecting a patient/death record.  No workflow can be exercised in
+either app; this is a shared data gap, not a rebuild defect.
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -1470,6 +1491,7 @@ Probes: `tools/parity/probe-receipt-crud.mjs`,
   association, image and RichText notes rows, group-wise godown/header
   settings, Change Item Discount (category wise, 29 items), Job Schedule
   (PG scheduler; original screen broken in this deployment), users add/edit,
+  Priority Setting batch-priority edit/save (item 9801, 10 -> 11, restored),
   modify-sale-invoices, three
   group-level settings (allowed price/cash account/supplier category),
   Interface Setting visibility, Change Password, Modify Last Transaction Date,
@@ -1496,7 +1518,8 @@ Probes: `tools/parity/probe-receipt-crud.mjs`,
     path is an original early-return limitation, above).  **Set Item
     Author(s)** is data-blocked (`Author`/`ItemAuthor` empty in both
     databases), as are **Set Models** (`Model`) and the item-category
-    association (`CustItemCatAssociation`).
+    association (`CustItemCatAssociation`).  **Patient Death Certificate**
+    is data-blocked too (`DeathCertificate` 0 rows in both databases).
   * ~~**Change Item Discount** would bulk-update a whole category~~ -
     resolved: category-wise update of all 29 active category-6 items plus 29
     itemlog rows verified and fully restored.
