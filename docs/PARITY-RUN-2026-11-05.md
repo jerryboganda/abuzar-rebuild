@@ -1312,6 +1312,53 @@ change was made (changing it would overfit a saved user layout).
 
 Probe: `tools/parity/probe-priority-geometry.mjs`.
 
+### Groups: edit verified, add is an original defect, delete disabled
+
+**Edit/save (verified on group 12, SALES OFFICER):**
+
+* Opened `Manage | Groups`, `wf_openmywindow(12)`: 1 group row, 464 rights
+  rows, **113 checked**.
+* Changed both `groupname` and `remarks`, pressed Save -> “Changes take effect
+  in database”, form closed.
+* SQL trace: `DELETE FROM dbo.grouprights WHERE groupcode = 12` (113 rows),
+  `UPDATE dbo.groups ... WHERE groupcode = 12` (1 row), then **113**
+  `INSERT INTO dbo.grouprights` rows.  The saved rights set is identical to
+  the baseline (`missing 0`, `extra 0`).
+* Exact restore: `SALES OFFICER` and empty remarks restored, 113 group-12
+  rights reinserted from the snapshot, `grouprights 688`, `groupallowedgodown
+  33`, `groupallowedheader 35`, `_tabmaxkey('Groups') 12`,
+  `audit_log 1,079 / max 1,127`, scratch table dropped.
+
+**New group (original defect, reproduced in the rebuild):**
+
+* First OK sends `UPDATE _tabmaxkey Groups = 13`, `INSERT INTO dbo.groups`
+  code 13, **8** `groupallowedgodown` and **8** `groupallowedheader` rows, and
+  fills the hidden rights DataWindow (measured 3 checked rows with
+  `groupcode 13`).  The original then **returns without COMMIT** and leaves
+  the form open.
+* The recovered script calls `parent.id_group.update(true, false)`:
+  `resetflag = false` keeps the row flagged as **new**.  The second OK
+  therefore runs the `lb_modify` branch and sends a **second**
+  `INSERT INTO dbo.groups` for code 13, which fails with
+  `duplicate key value violates unique constraint "pk___1__11"` and shows
+  “Can not save group level settings … Details: -”.  The first press’s rows
+  are still uncommitted.
+* The original’s `u_transaction.constructor` sets `autocommit = false`; its
+  `ue_close` runs `SQL stop` and the connection string has
+  `CommitOnDisconnect='No'`, so closing the form rolls the transaction back.
+  New-group creation therefore cannot commit in this original build — this is
+  an original defect, not a missing rebuild feature.
+* The leftover idle-in-transaction session was terminated; the uncommitted
+  rows rolled back and the baseline re-verified (`groups 4`, `rights 688`).
+
+**Delete:** `w_groups.ue_list` sets `im_menu.m_file.m_delete.enabled = false`;
+the rebuild measured the same `enabled = false`.  The original has no group
+delete workflow of its own.
+
+Probes: `tools/parity/probe-groups-edit.mjs`,
+`tools/parity/probe-groups-two-phase.mjs` (and the earlier
+`probe-groups-crud.mjs` for the first-press trace).
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -1417,6 +1464,10 @@ Probe: `tools/parity/probe-priority-geometry.mjs`.
   * 067/068 final reports remain unpaired by original-side limits.
   * Sale Template and Customer/Supplier deletes are confirmed original
     behaviours, not rebuild gaps.
+  * Groups **new-group creation is an original defect**: the first Save leaves
+    the row flagged as new (`update(true, false)`) and uncommitted; the second
+    Save re-inserts and hits the primary key.  Groups **edit/save works** and
+    is verified; the list's File | Delete is disabled in the original.
 * **Report pairing (measured)**: final previews now exist for **139 old / 141
   new** paths, with **no old-only** and **2 new-only** (067 Claimable for
   Allowed Customers and 068 Customer NTN Wise Sales Tax Report).  The earlier
