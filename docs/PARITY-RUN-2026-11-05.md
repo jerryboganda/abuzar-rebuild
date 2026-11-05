@@ -499,6 +499,26 @@ driven by menu command ID (no blind clicking).  First sample:
   hidden-path/original-script condition, not a missing visible-screen feature;
   it is recorded rather than "fixed" by inventing a column.
 
+### Nested-action sweep (measured)
+
+The form's own non-destructive menu actions were exercised in a fresh session
+per action (Save/Post/Delete/Update/Print/New/Retrieve and navigation skipped;
+prompts answered No/Cancel):
+
+* **Customer**: 40 actions, 21 opened a sub-window (`Set Item Categories` ->
+  `w_custitemcatassociation_form`; purchases, sales, returns, vouchers and
+  reports all opened their expected windows).
+* **Supplier**: 40 actions, 20 opened a sub-window (`Show Account Ledger`,
+  purchases, sales, returns, vouchers, reports).
+* **Item**: 23 actions before the harness was stopped under login contention;
+  10 opened windows.  All nine item-specific actions opened their real forms:
+  Populate Item, Select Models, Associations, Notes, Authors, Alternate
+  Aliases, Images, Price Policy and Registration Request.  The final two
+  timeouts were 120 s login waits caused by concurrent browser jobs, not app
+  errors.
+* The only modal in the sweep was the hidden-path Journal Voucher
+  `DataWindowChild` message described above; no visible-screen action failed.
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
