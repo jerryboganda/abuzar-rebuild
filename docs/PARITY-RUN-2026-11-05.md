@@ -11,16 +11,17 @@ the tools in `tools/parity/`.
 | Visible menu items | 262 | 261 | `orig-menu.tsv` vs `menu-compare.json` |
 | Non-report screens opened | 62/62 | 62 attempted (55 direct, 7 captured at their response window) | `deploy/parity/screen-parity/old-nonreport`, `new-nonreport` |
 | Report screens opened | not yet (old crawl pending) | 53+ captured so far | `screen-parity/new-reports` |
-| Master-data forms: every editable field typed, add/edit/delete/save verified in PostgreSQL | 16 forms | 16 forms + Godown + Area | `screen-parity/crud-fields/crud-*.json`, `tools/parity/probe-godown-crud.mjs`, `tools/parity/probe-area-crud.mjs` |
+| Master-data forms: every editable field typed, add/edit/delete/save verified in PostgreSQL | 16 forms | 16 forms + Godown + Area + Region + Sub Area + Sales Person + Item Packing | `screen-parity/crud-fields/crud-*.json`, `tools/parity/probe-godown-crud.mjs`, `tools/parity/probe-area-crud.mjs`, `tools/parity/probe-single-master.mjs` |
 | DataWindow expression parse sweep | â€” | every `expression` parses; SQL comments stripped | `tools/parity/dw-expr-audit.mjs` |
 
 The 16 passing forms are: Customer Category, Customer Sector, Generic Item,
 Generic Item Type, Item Alert, Item Category, Item Class, Item Thickness,
 Lock Reason, Manufacturer, Manufacturer Type, PCT Codes, Supplier Category,
-Sales Tax Schedule, Tax Category, Category Segment.  **Godown** and **Area**
-were added as separate full add/edit/delete cycles (their menu items are
-hidden by the rights state; the probes fire the real `m_godown` / `m_area0`
-handlers).
+Sales Tax Schedule, Tax Category, Category Segment.  **Godown**, **Area**,
+**Region**, **Sub Area**, **Sales Person** and **Item Packing** were added as
+separate full add/edit/delete cycles (their menu items are hidden by the
+rights state; the probes fire the real `m_godown` / `m_area0` / `m_region0` /
+`m_subarea` / `m_salesperson` / `m_itempacking0` handlers).
 
 `Sale Promotion` is the only tested form that cannot complete: its Active /
 Customer Group / Weekday drop-downs are empty in the migrated clone (missing
@@ -1525,6 +1526,39 @@ Probe: `tools/parity/probe-area-crud.mjs` - measured `ok=true`.
 recovered menu handler or `opensheet` reference; it is an orphaned window,
 not a reachable page.  The real Area command is `m_area0`.
 
+### Region, Sub Area, Sales Person, Item Packing (verified) and Zone/Price Type (blocked)
+
+All four were driven through the real menu command and `w_single_entry`
+(`File | Save`, then `ue_delete` with right 579 and its confirmation); each
+measured `ok=true` with exact table/tabmax/audit restore.
+
+| Master | Menu | Rows (before/after) | Add | Edit | Delete |
+|---|---|---:|---|---|---|
+| Region | `m_region0` | 1 / 1 | code 2, tab 1→2 | name/manager/remarks | “Record Deleted Successfully” |
+| Sub Area | `m_subarea` | 1 / 1 | code 2, tab 1→2 | name/manager/distance | same |
+| Sales Person | `m_salesperson` | 1 / 1 | code 2, tab 1→2 | name/address/phone | same |
+| Item Packing | `m_itempacking0` | 1 / 1 | code 2, tab 1→2 | name (char(20))/factor | same |
+
+Item Packing’s first edit test used a 21-character test name and the
+`char(20)` column truncated it; the rerun used a 20-character name and the
+edit passed.  No production rows were changed.
+
+**Price Type (not a reachable master):** there is no `w_pricetype` /
+`w_pricetype_form` window in the recovered object set; the only Price Type
+windows are report argument dialogs (`w_arg_*pricetype*`).  The
+`pricetype` table has 8 rows but no screen to add/edit/delete them.
+
+**Zone (data-blocked in both databases):** `w_zone` saves only when both
+`ZoneAreas.update()` and `ZoneContactGroup.update()` return > 0.
+`ContactGroup` has **0 rows in the live SQL Server DB and 0 in the clone**
+(`ZoneContactGroup` and `Zone` are also 0), and
+`zonecontactgroup.contactgroupcode` is an FK to `contactgroup`.  A zone
+therefore cannot be saved in either app without contact-group data.  This is
+a shared data gap, not a rebuild defect.
+
+Probe: `tools/parity/probe-single-master.mjs <region|subarea|salesman|itempacking>`
+— all four measured `ok=true`.
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -1573,7 +1607,8 @@ not a reachable page.  The real Area command is `m_area0`.
   fixes above.
 * Measured coverage now: definitions/menus/controls ~100%; non-report screen
   opening ~100% of the 68 effectively visible paths; field-level master CRUD
-  **16/16 forms** (51 fields) plus **Godown** and **Area** add/edit/delete and
+  **16/16 forms** (51 fields) plus **Godown**, **Area**, **Region**,
+  **Sub Area**, **Sales Person** and **Item Packing** add/edit/delete and
   **Sale Template header+detail**
   add/edit/save verified (File | Delete is original enabled-but-inert);
   committed transaction CRUD
