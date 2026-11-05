@@ -109,6 +109,21 @@ const CONFIGS = {
     fields: { name: '{{name}}', wardcode: 1, description: 'PARITY LOCATION DESCRIPTION' },
     edit: { description: 'PARITY LOCATION DESCRIPTION EDITED' },
   },
+  diagnosticitemtype: {
+    menu: 'm_diagnosticitemtype', window: 'w_diagnosticitemtype_form', table: 'diagnosticitemtype', key: 'diagnosticitemtypecode', tab: 'DiagnosticItemType', prefix: 'PARITY DIAGTYPE',
+    fields: { name: '{{name}}' },
+    edit: {},
+  },
+  symptomtype: {
+    menu: 'm_symptomtype', window: 'w_symptomtype_form', table: 'symptomtype', key: 'symptomtypecode', tab: 'SymptomType', prefix: 'PARITY SYMPTYPE',
+    fields: { name: '{{name}}' },
+    edit: {},
+  },
+  visittype: {
+    menu: 'm_visittype', window: 'w_visittype_form', table: 'visittype', key: 'visittypecode', tab: 'VisitType', prefix: 'PARITY VISITTYPE',
+    fields: { name: '{{name}}' },
+    edit: {},
+  },
 };
 const key = process.argv[2] || 'region';
 const cfg = CONFIGS[key];

@@ -11,7 +11,7 @@ the tools in `tools/parity/`.
 | Visible menu items | 262 | 261 | `orig-menu.tsv` vs `menu-compare.json` |
 | Non-report screens opened | 62/62 | 62 attempted (55 direct, 7 captured at their response window) | `deploy/parity/screen-parity/old-nonreport`, `new-nonreport` |
 | Report screens opened | not yet (old crawl pending) | 53+ captured so far | `screen-parity/new-reports` |
-| Master-data forms: every editable field typed, add/edit/delete/save verified in PostgreSQL | 16 forms | 16 forms + 22 extra masters (Godown, Area, Region, Sub Area, Sales Person, Item Packing, Item Size, Unit, Item Style, Item Colour, Item Sleeve, Item Yarn, Item Fabric, Item Brand, Sale Type, Purchase Type, Issue Type, Ward, Relation, Rank, Disease, Patient Location) | `screen-parity/crud-fields/crud-*.json`, `tools/parity/probe-godown-crud.mjs`, `tools/parity/probe-area-crud.mjs`, `tools/parity/probe-single-master.mjs` |
+| Master-data forms: every editable field typed, add/edit/delete/save verified in PostgreSQL | 16 forms | 16 forms + 25 extra masters (Godown, Area, Region, Sub Area, Sales Person, Item Packing, Item Size, Unit, Item Style, Item Colour, Item Sleeve, Item Yarn, Item Fabric, Item Brand, Sale Type, Purchase Type, Issue Type, Ward, Relation, Rank, Disease, Patient Location, Diagnostic Item Type, Symptom Type, Visit Type) | `screen-parity/crud-fields/crud-*.json`, `tools/parity/probe-godown-crud.mjs`, `tools/parity/probe-area-crud.mjs`, `tools/parity/probe-single-master.mjs` |
 | DataWindow expression parse sweep | â€” | every `expression` parses; SQL comments stripped | `tools/parity/dw-expr-audit.mjs` |
 
 The 16 passing forms are: Customer Category, Customer Sector, Generic Item,
@@ -26,7 +26,8 @@ probes fire the real `m_godown` / `m_area0` / `m_region0` / `m_subarea` /
 `m_itemcolour` / `m_itemsleeve` / `m_itemyarn` / `m_itemfabric` /
 `m_itembrand` / `m_saletype` / `m_purchasetype` / `m_issuetype` /
 `m_patientward` / `m_relation` / `m_rank` / `m_disease` /
-`m_patientlocation` handlers).  **Section** is reachable but data-blocked:
+`m_patientlocation` / `m_diagnosticitemtype` / `m_symptomtype` /
+`m_visittype` handlers).  **Section** is reachable but data-blocked:
 its `deptcode` is required and
 `Department` has 0 rows in live and clone.  **Item Design**
 (`w_itemdesign_form`) is an orphaned window (no menu/`opensheet` reference)
@@ -1680,6 +1681,25 @@ block.
 Probe: `tools/parity/probe-single-master.mjs patientlocation` (with the
 temporary Ward fixture) — measured `ok=true`.
 
+### Diagnostic Item Type, Symptom Type, Visit Type (verified)
+
+All three are `w_single_entry` forms driven through their real menu commands;
+each measured `ok=true` with add, edit, `ue_delete` confirmation and exact
+table/tabmax/audit restore.
+
+| Master | Menu | Rows (before/after) | Add | Edit |
+|---|---|---:|---|---|
+| Diagnostic Item Type | `m_diagnosticitemtype` | 4 / 4 | code 5, tab 4→5 | name |
+| Symptom Type | `m_symptomtype` | 4 / 4 | code 5, tab 4→5 | name |
+| Visit Type | `m_visittype` | 8 / 8 | code 9, tab 8→9 | name |
+
+Delete in every case showed the confirmation then “Record Deleted
+Successfully”; final counters were `DiagnosticItemType 4`, `SymptomType 4`,
+`VisitType 8`, and `audit_log 1,079 / max 1,127`.
+
+Probe: `tools/parity/probe-single-master.mjs <diagnosticitemtype|symptomtype|visittype>`
+— all three measured `ok=true`.
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -1732,8 +1752,9 @@ temporary Ward fixture) — measured `ok=true`.
   **Sub Area**, **Sales Person**, **Item Packing**, **Item Size**, **Unit**,
   **Item Style**, **Item Colour**, **Item Sleeve**, **Item Yarn**,
   **Item Fabric**, **Item Brand**, **Sale Type**, **Purchase Type**,
-  **Issue Type**, **Ward**, **Relation**, **Rank**, **Disease** and
-  **Patient Location** add/edit/delete and
+  **Issue Type**, **Ward**, **Relation**, **Rank**, **Disease**,
+  **Patient Location**, **Diagnostic Item Type**, **Symptom Type** and
+  **Visit Type** add/edit/delete and
   **Sale Template header+detail**
   add/edit/save verified (File | Delete is original enabled-but-inert);
   committed transaction CRUD
