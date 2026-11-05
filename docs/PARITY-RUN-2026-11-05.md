@@ -275,6 +275,12 @@ posted Y) was created at 2026-11-05 02:16:30 and read back from
   deleted (rows 1 -> 0) with **0 page errors**.  The footer keeps the last total
   after line deletion; verify the original’s behavior before treating that as a
   defect.
+* **Modify Last Transaction Date:** dialog `w_set_lasttransdate` showed the date
+  field `05/11/2026 00:00:00` plus Ok/Cancel; Ok updated
+  `dbo.serverdate.lasttransdate` from `2026-11-05 04:14:53` to
+  `2026-11-05 00:00:00`, showed “The last Transaction Date has been changed”,
+  closed the window, and the original value was restored afterwards.  0 page
+  errors.
 
 ### New runtime fixes in this session
 
