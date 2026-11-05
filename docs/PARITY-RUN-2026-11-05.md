@@ -11,7 +11,7 @@ the tools in `tools/parity/`.
 | Visible menu items | 262 | 261 | `orig-menu.tsv` vs `menu-compare.json` |
 | Non-report screens opened | 62/62 | 62 attempted (55 direct, 7 captured at their response window) | `deploy/parity/screen-parity/old-nonreport`, `new-nonreport` |
 | Report screens opened | not yet (old crawl pending) | 53+ captured so far | `screen-parity/new-reports` |
-| Master-data forms: every editable field typed, add/edit/delete/save verified in PostgreSQL | 16 forms | 16 forms + 21 extra masters (Godown, Area, Region, Sub Area, Sales Person, Item Packing, Item Size, Unit, Item Style, Item Colour, Item Sleeve, Item Yarn, Item Fabric, Item Brand, Sale Type, Purchase Type, Issue Type, Ward, Relation, Rank, Disease) | `screen-parity/crud-fields/crud-*.json`, `tools/parity/probe-godown-crud.mjs`, `tools/parity/probe-area-crud.mjs`, `tools/parity/probe-single-master.mjs` |
+| Master-data forms: every editable field typed, add/edit/delete/save verified in PostgreSQL | 16 forms | 16 forms + 22 extra masters (Godown, Area, Region, Sub Area, Sales Person, Item Packing, Item Size, Unit, Item Style, Item Colour, Item Sleeve, Item Yarn, Item Fabric, Item Brand, Sale Type, Purchase Type, Issue Type, Ward, Relation, Rank, Disease, Patient Location) | `screen-parity/crud-fields/crud-*.json`, `tools/parity/probe-godown-crud.mjs`, `tools/parity/probe-area-crud.mjs`, `tools/parity/probe-single-master.mjs` |
 | DataWindow expression parse sweep | â€” | every `expression` parses; SQL comments stripped | `tools/parity/dw-expr-audit.mjs` |
 
 The 16 passing forms are: Customer Category, Customer Sector, Generic Item,
@@ -25,8 +25,9 @@ probes fire the real `m_godown` / `m_area0` / `m_region0` / `m_subarea` /
 `m_salesperson` / `m_itempacking0` / `m_5` / `m_unit` / `m_itemstyle` /
 `m_itemcolour` / `m_itemsleeve` / `m_itemyarn` / `m_itemfabric` /
 `m_itembrand` / `m_saletype` / `m_purchasetype` / `m_issuetype` /
-`m_patientward` / `m_relation` / `m_rank` / `m_disease` handlers).
-**Section** is reachable but data-blocked: its `deptcode` is required and
+`m_patientward` / `m_relation` / `m_rank` / `m_disease` /
+`m_patientlocation` handlers).  **Section** is reachable but data-blocked:
+its `deptcode` is required and
 `Department` has 0 rows in live and clone.  **Item Design**
 (`w_itemdesign_form`) is an orphaned window (no menu/`opensheet` reference)
 and **Item Type** has no master window; the `itemtype` table is not exposed
@@ -1658,6 +1659,27 @@ Successfully”; final counters were `Ward 0`, `Relation 1`, `Rank 1`,
 Probe: `tools/parity/probe-single-master.mjs <ward|relation|rank|disease>`
 — all four measured `ok=true`.
 
+### Patient Location (verified with a temporary Ward)
+
+`m_patientlocation` opens `w_patientlocation_form` (`w_single_entry`); the
+detail DataWindow updates `PatientLocation` with `code`, `name`, `wardcode`,
+`description`; `wardcode` is required and is an FK to `ward`.
+
+Because `ward` is empty in both databases, the probe inserted a temporary
+`Ward 1` (`PARITY TEMP WARD`) for the test and removed it in a `finally`
+block.
+
+* **Add:** Patient Location code **1**, `_tabmaxkey('PatientLocation') 0 -> 1`;
+  Save showed “Changes take effect in database”.
+* **Edit:** name + description updated and saved.
+* **Delete:** confirmation then “Record Deleted Successfully”.
+* Exact restore: `patientlocation 0`, `_tabmaxkey('PatientLocation') 0`,
+  temporary `ward` removed and `_tabmaxkey('Ward') 0`,
+  `audit_log 1,079 / max 1,127`.
+
+Probe: `tools/parity/probe-single-master.mjs patientlocation` (with the
+temporary Ward fixture) — measured `ok=true`.
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -1710,8 +1732,8 @@ Probe: `tools/parity/probe-single-master.mjs <ward|relation|rank|disease>`
   **Sub Area**, **Sales Person**, **Item Packing**, **Item Size**, **Unit**,
   **Item Style**, **Item Colour**, **Item Sleeve**, **Item Yarn**,
   **Item Fabric**, **Item Brand**, **Sale Type**, **Purchase Type**,
-  **Issue Type**, **Ward**, **Relation**, **Rank** and **Disease**
-  add/edit/delete and
+  **Issue Type**, **Ward**, **Relation**, **Rank**, **Disease** and
+  **Patient Location** add/edit/delete and
   **Sale Template header+detail**
   add/edit/save verified (File | Delete is original enabled-but-inert);
   committed transaction CRUD

@@ -104,6 +104,11 @@ const CONFIGS = {
     fields: { name: '{{name}}', diseasetypecode: 1, description: 'PARITY DISEASE DESCRIPTION' },
     edit: { description: 'PARITY DISEASE DESCRIPTION EDITED' },
   },
+  patientlocation: {
+    menu: 'm_patientlocation', window: 'w_patientlocation_form', table: 'patientlocation', key: 'locationcode', tab: 'PatientLocation', prefix: 'PARITY LOCATION',
+    fields: { name: '{{name}}', wardcode: 1, description: 'PARITY LOCATION DESCRIPTION' },
+    edit: { description: 'PARITY LOCATION DESCRIPTION EDITED' },
+  },
 };
 const key = process.argv[2] || 'region';
 const cfg = CONFIGS[key];
