@@ -1742,6 +1742,34 @@ Probes: `tools/parity/probe-single-master.mjs department` and
 Probe: `tools/parity/probe-zone-crud.mjs` — measured `ok=true` for add/edit
 and exact restore; delete is the original inert-menu behavior.
 
+### Sale Order (add/edit/save verified; delete rights-blocked)
+
+`m_saleorder` → `w_salesorder` (`w_multi_entry`).  `SaleOrderCategory` 1 is
+posted; header/detail were empty.
+
+* **Add:** customer 22 (credit walking), item 9801, qty 1, price 10.  Save
+  wrote `saleorderheader` code **1** (posted N, finalized N, deleted N) and
+  `saleorderdetail` (item 9801, qty 1, price 10);
+  `_tabmaxkey('SaleOrderHeader') 0 -> 1`,
+  `saleordercategory.counter 0 -> 1`; “Changes take effect in database”.
+* **Edit:** reopened via `ue_list -> ue_detail`, changed remarks and detail
+  qty 1 -> 2, set the cell-edit flag (direct `setitem` does not fire the
+  normal `itemchanged`), saved: header remarks updated, `modifycounter 1`,
+  detail qty 2.
+* **Delete:** `ue_deleteinvoice` shows “Not enough rights to delete Sales
+  Order”; rights **572/573 do not exist** in the `rights` catalog in either
+  database, so soft delete is unreachable.
+* **Save quirk (measured):** the deployed `SaleOnZeroPrice = N` hits an
+  unconditional `return` in `w_salesorder.ue_save` after the zero-price check,
+  so no sale order can be saved with that preference.  The probe temporarily
+  set it to `Y`, then restored it to **N**.
+* Exact restore: sale-order header/detail 0, tab 0, category counter 0,
+  stock 18,035, `itemlog 98,632`, `_utn 1,628,962`,
+  `audit_log 1,079 / max 1,127`.
+
+Probe: `tools/parity/probe-saleorder-crud.mjs` — add/edit/restore `ok=true`;
+delete is the measured rights rejection.
+
 ### Remaining (measured)
 
 * ~~Change Item Reorder Qty and Modify Sale Invoices still need the final
@@ -1808,7 +1836,8 @@ and exact restore; delete is the original inert-menu behavior.
   add/edit/save, **Receipt** and **Issue / Delivery Challan**
   add/save (temporary department; exact stock/counter restore) and
   **edit/save** (unposted; modify rights 562/560 absent, dormant path
-  exercised with the window flag), Item Form parent saves with nested
+  exercised with the window flag), **Sale Order** add/save and edit/save
+  (delete rights 572/573 absent), Item Form parent saves with nested
   price-policy/alias,
   association, image and RichText notes rows, group-wise godown/header
   settings, Change Item Discount (category wise, 29 items), Job Schedule
@@ -1836,7 +1865,11 @@ and exact restore; delete is the original inert-menu behavior.
     databases).  **Delete is hard-disabled** in both screens
     (`m_delete.enabled = false`, no `ue_delete` handler), so they still need a
     `department` row that does not exist in live or clone (shared data gap,
-    above).
+    above).  **Sale Order** add/save and edit/save are verified; its soft
+    delete needs rights 572/573 (absent), and the deployed
+    `SaleOnZeroPrice = N` makes `ue_save` return before writing (temporarily
+    set to Y for the cycle).  **Patient Admission/Transfer** are data-blocked:
+    `Patient` has 0 rows in both databases.
   * Nested forms: **Set Item Price Policy**, **Set Alternate Item Alias
     Names**, **Set Item Associations**, **Set Item Image(s)** and **Set Item
     Notes** now have verified add + parent-save cycles (the image delete-all
