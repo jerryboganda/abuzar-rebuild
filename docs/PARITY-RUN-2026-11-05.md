@@ -423,10 +423,32 @@ Cash variant) - measured `ok=true` for both.
 * **Visual diff (pairing fixed):** `tools/parity/compare-images.ps1` now pairs
   a main capture only with a main capture, and a `*_dlgN` capture only with
   the same `*_dlgN` role.  Result in
-  `deploy/parity/screen-parity/visual-diff.csv`: **63 paired main screens,
-  17 old dialog captures with no same-role new capture** (left as unpaired
-  rows instead of being compared to a main screen).  Paired median MAE
-  **3.08 %** (min 0.10 %, max 33.08 %), down from the fake 74.38 % maximum.
+  `deploy/parity/screen-parity/visual-diff.csv`: **63 paired main screens**
+  with median MAE **3.08 %** (min 0.10 %, max 33.08 %), down from the fake
+  74.38 % maximum.  The 17 old dialog crops are excluded from this full-screen
+  set because a dialog must be compared as a window, not against a desktop.
+* **Same-role dialog recapture (final):** `tools/parity/probe-dialog-captures.mjs`
+  opened each parent command in a fresh session and captured the matching
+  window element into `deploy/parity/screen-parity/new-dlg-refresh/` under the
+  old `*_dlg1.png` names.  Result
+  (`deploy/parity/screen-parity/visual-diff-dialogs.csv`, window-only,
+  `X=0 Y=0`): **14 of 17 dialogs paired**, median MAE **15.94 %**
+  (min 5.43 %, max 19.76 %); the higher value than full screens is font
+  rasterisation and focus state on small windows, not missing controls
+  (e.g. Change Password: same title, four labels, four fields, Ok/Cancel;
+  Select Column Criteria: same five radios and labels).
+* **Three dialogs have no rebuild equivalent by design:** the original
+  captures for Preferences (038), Job Schedule (060) and Group Wise Supplier
+  Category (061) are a Waseela box reading
+  `Select Error: SQLSTATE = 42S22 ... Invalid column name 'Name'`.
+  The rebuild schema has the column those old queries are missing, so the
+  screens open normally.  These stay unpaired and are recorded as original
+  schema defects, not rebuild gaps.
+* **Cashier Activity (059) recaptured in the original capture state:** the old
+  shot was taken when ADMIN had no active `CashierJob`; the clone now carries
+  the probe-created job 1.  The probe temporarily set the job inactive, captured
+  the identical "Cashier Job Status / Unable to fetch cashier job data from
+  database" box, and restored `Active='Y'` afterwards.  Measured MAE 12.52 %.
 * **The 33 % outlier was a stale capture, not a visual defect:** a fresh
   capture of `Maintenance | Interface Setting`
   (`tools/parity/probe-visual-outliers.mjs`, window-only clip) shows the
@@ -3140,12 +3162,14 @@ Probe: `tools/parity/probe-itempart-cascade.mjs` — measured `ok=true`.
     database qualifiers/`CONVERT`); no PostgreSQL equivalent or source
     database exists, so it was not run.
   * Visual: the `dlg1` pairing bug is fixed.  The corrected set has **63
-    paired main screens** (median MAE 3.08 %, max 33.08 %) and **17 old
-    dialog captures left unpaired** because no same-role new capture exists;
-    those must be recaptured as dialogs, not compared to main screens.
-    `Maintenance | Interface Setting` was recaptured fresh as a window-only
-    clip and its 13-tab strip now matches the old exactly (the 33 % value came
-    from the stale pre-fix capture); the remaining difference is window
+    paired main screens** (median MAE 3.08 %, max 33.08 %) and **14 paired
+    dialog windows** (median MAE 15.94 %, max 19.76 %); only three old dialog
+    captures remain unpaired, all original Waseela SQL errors (`Invalid column
+    name 'Name'`) that the rebuild schema does not reproduce (038 Preferences,
+    060 Job Schedule, 061 Group Wise Supplier Category).  `Maintenance |
+    Interface Setting` was recaptured fresh as a window-only clip and its
+    13-tab strip now matches the old exactly (the 33 % value came from the
+    stale pre-fix capture); the remaining difference is window
     placement/size.  Priority Setting's remaining difference is
     capture-state/font rendering (column widths match within 2 px; old capture
     had a `Find: ZYTO 500MG TAB` state and saved user widths; row pitch is
