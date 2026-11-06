@@ -1373,6 +1373,31 @@ updates `GuestRoom.Occupied` and reconciles `MasterCashWin`.
 
 Probe: `tools/parity/probe-guestcheckin-add.mjs` - measured `ok=true`.
 
+### Guest Check-Out save paths (verified; original no-commit branch)
+
+`m_guestcheckout` (hidden) opens `w_guestcheckout_form` (`w_single_entry`,
+title "Guest Check Out Form"); it lists checked-in guests through
+`d_guestcheckin`/`d_guestcheckinlist`.  The probe used a temporary guest,
+room (occupied Y) and GuestCheckin 1 (checkout N).
+
+* **CheckOut = Y path:** the recovered `ue_save` sets `checkoutby`/
+  `checkoutdate`, runs `sqlca.guestcheckinbalance`, calls
+  `wf_set_guest_inactive` -> `UPDATE dbo.guest SET active='N'`, then
+  **returns without COMMIT and without `id_detail.update()`**.  Measured:
+  the UPDATE was sent (rowcount 1), but an outside session still saw
+  `Guest.Active = 'Y'`, `GuestCheckin.CheckOut = 'N'`,
+  `CheckoutDate/By` empty, `GuestRoom.Occupied = 'Y'`, and no success
+  message.  This is an original defect, not a rebuild gap.
+* **CheckOut = N path:** Save updates `GuestCheckin`
+  (`UPDATE ... SET checkout='N', checkoutdate, checkoutby ...`), frees the
+  room (`UPDATE GuestRoom SET Occupied='N'`), commits and shows "Changes take
+  effect in database".  The commit also persists the pending Guest.Active='N'
+  update from the first path (`Active = 'N'` measured after this save).
+* Exact restore: `guestcheckin 0`, `guestroom 0`, `guest 0`,
+  `audit_log 1,079 / max 1,127`, no residue.
+
+Probe: `tools/parity/probe-guestcheckout.mjs` - measured `ok=true`.
+
 ### Employee lookup masters (verified; right-hidden)
 
 The employee lookup forms are created with `visible = false`; the probe fires
