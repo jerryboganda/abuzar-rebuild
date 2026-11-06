@@ -37,7 +37,7 @@ Status: **V** = add/edit/save (or the screen's full intended cycle) verified in 
 | 30 | Basic Data \| Item .......... \| Item Class | screen-parity/crud-fields (16-form pass) | V | every editable field typed; add/edit/delete/save documented |
 | 31 | Basic Data \| Item .......... \| Item Category | screen-parity/crud-fields (16-form pass) | V | every editable field typed; add/edit/delete/save documented |
 | 32 | Basic Data \| Item .......... \| Generic Item | screen-parity/crud-fields (16-form pass) | V | every editable field typed; add/edit/delete/save documented |
-| 33 | Basic Data \| Item .......... \| Item Basic Data | probe-itembasicdata-add.mjs | P | add path/fields; masterpartname classified as derived |
+| 33 | Basic Data \| Item .......... \| Item Basic Data | probe-itembasicdata-add.mjs | V | new-item add/save verified; edit path original early-return defect (parity); derived masterpartname classified |
 | 34 | Basic Data \| Item .......... \| Price Policy | probe-pricepolicy-crud.mjs | V | slab add/edit/delete, exact restore |
 | 35 | Basic Data \| Item .......... \| Item Alert | screen-parity/crud-fields (16-form pass) | V | every editable field typed; add/edit/delete/save documented |
 | 36 | Basic Data \| Item .......... \| Sales Tax Schedule | screen-parity/crud-fields (16-form pass) | V | every editable field typed; add/edit/delete/save documented |
@@ -50,7 +50,7 @@ Status: **V** = add/edit/save (or the screen's full intended cycle) verified in 
 | 43 | Basic Data \| Sale Template | - | P | field audit only; no committed full cycle |
 | 44 | Basic Data \| Patient \| Death Certificate | - | B | DeathCertificate 0 rows in both databases |
 | 45 | Basic Data \| Tax Category | screen-parity/crud-fields (16-form pass) | V | every editable field typed; add/edit/delete/save documented |
-| 46 | Maintenance \| Change Password | probe-changepassword.mjs | P | window/focus and validation; password change not committed |
+| 46 | Maintenance \| Change Password | probe-changepassword.mjs | V | wrong old password rejected, real change, restore through the form; password back to baseline |
 | 47 | Maintenance \| Preferences | probe-preferences-save.mjs | V | showtransitstockinitemlist N -> Y -> N through the form; DB read-back, exact restore |
 | 48 | Maintenance \| Change Items Price | probe-changeitemprice-crud.mjs | V | manufacturer 120 sheet; item 22407 95 -> 96 saved in Item, exact restore |
 | 49 | Maintenance \| Database Utilities \| Backup Database | - | B | SQL Server utility; no PostgreSQL equivalent |
@@ -84,7 +84,7 @@ Status: **V** = add/edit/save (or the screen's full intended cycle) verified in 
 | 77 | Manage \| Job Schedule | probe-jobschedule-save.mjs | B | original screen fails with Invalid column name 'Name' (no SysJobs tables); rebuild PG scheduler probe is recorded, not a parity gap |
 | 78 | Manage \| Group Wise Supplier Category | probe-groupsuppliercategory-crud.mjs | V | add group 2 / supplier category 1 / status 1, delete through the form, exact restore |
 
-Totals: **V 61**, **P 6**, **N/A 3**, **B 8** of 78.
+Totals: **V 63**, **P 4**, **N/A 3**, **B 8** of 78.
 
 ## Field-cell coverage
 
