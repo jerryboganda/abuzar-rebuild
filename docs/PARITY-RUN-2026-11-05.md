@@ -542,14 +542,33 @@ Cash variant) - measured `ok=true` for both.
 
 ### In progress
 
-* Full-screen field audit: 39/78 completed (720 fields seen, 349 probed,
-  0 field errors); the remaining 39 are running in
-  `deploy/parity/screen-audit-remaining`.
+* Full-screen field audit: all **78/78** non-report menu screens now have an
+  audit file - 39 in `deploy/parity/screen-audit-2026-11-05` (**722** fields
+  seen, **351** probed) and 39 in `deploy/parity/screen-audit-remaining`
+  (**116** fields, **62** probed), **0 field errors**.  The field count is far
+  below the number of DataWindow columns because the audit only counts cells
+  rendered on the current tab; lookups, protected columns and hidden bands are
+  skipped.  Cash/Credit Sale were the two zero-field screens and now have the
+  targeted preparation probe described below.
 * `Item Basic Data`, `Price Policy`, `PCT Codes` and `Item Thickness` timed out
   at login in the first batch (server contention, not a screen failure) and
   need re-runs.
 * Cash Sale, Credit Sale and the six voucher screens reported 0 fields in the
-  first batch; targeted field probes are still needed.
+  first batch; targeted field probes are still needed.  Cash/Credit Sale now
+  have one: the grids only render editors after a customer and item row exist,
+  so `tools/parity/probe-sale-fields.mjs` creates that state (customer 19/22,
+  item 9801) and types into every rendered editable cell.  Cash Sale exposed
+  **8** editable cells (`remarks`, `custrefno`, `sprice`, `looseqty`,
+  `discperc`, `saleprice`, `flatdisc`, `invdiscperc`): **7 applied on a single
+  Tab edit, 0 field errors**, and the footer total followed the qty/price
+  edits (11 -> 6 -> 2).  Credit Sale exposed **7** and **6 applied**; the
+  net-price warning appeared as in the original.  The remaining 56/59 cells
+  are lookup/key fields, protected columns (e.g. `date` has `protect 0<TAB>1`),
+  or not rendered in the current layout.  Two cells reverted once in this
+  synthetic run (`custrefno` on Cash, `flatdisc` on Credit) because the probe
+  sets the customer with `setitem` instead of the real picker, so
+  `wf_setcustomerinfo` never runs; that is a harness-state gap, and the real
+  picker path is the follow-up.  No Save is called, so the clone is untouched.
 * Quotation edit-after-save, Purchase Order, Refused Sale and the three
   Adjustments still need the full add/edit/save/delete cycle.
 * Priority Setting was flagged by the label comparison (missing Retrieve and
