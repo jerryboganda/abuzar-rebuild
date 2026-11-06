@@ -12,8 +12,8 @@ Status: **V** = add/edit/save (or the screen's full intended cycle) verified in 
 | 5 | Purchase \| Opening Purchase | probe-openingpurchase-fields.mjs | V | suppinvcode/remarks typed, saved, DB read-back, exact restore |
 | 6 | Purchase \| Purchases (Loose) | probe-loosepurchase-fields.mjs | V | purprice typed, saved, DB read-back, exact restore |
 | 7 | Purchase \| Purchase Orders | probe-purchaseorder-crud.mjs | V | add/save, reopen/edit remarks, Delete disabled (original), exact restore |
-| 8 | Sales \| CashSale | probe-sale-fields.mjs; docs 588888 | P | 8 editable cells (7 applied); invoice save previously verified; no delete |
-| 9 | Sales \| Credit Sale | probe-sale-fields.mjs; docs 588889 | P | 7 editable cells (6 applied); invoice save previously verified; no delete |
+| 8 | Sales \| CashSale | probe-cashsale-crud.mjs; probe-sale-fields.mjs | V | add/save 588891 (customer 19, item 9801), DB read-back, stock -1, Delete disabled (original), exact restore |
+| 9 | Sales \| Credit Sale | probe-creditsale-crud.mjs; probe-sale-fields.mjs | V | add/save 588891 (customer 22, item 9801), DB read-back, stock -1, Delete disabled (original), exact restore |
 | 10 | Sales \| Sale Return \| Cash Sale Return | probe-salereturn-cash-invoice.mjs | V | invoice 588890 validated/saved; SR 61606, stock +1, return counter, UTN; reopen protected, Delete disabled (original); exact restore |
 | 11 | Sales \| Sale Return \| Credit Sale Return | probe-salereturn-credit.mjs | V | validate invoice, save, stock/UTN/sale counter, exact restore |
 | 12 | Sales \| Open Sale Return \| Cash Sale Return | probe-salereturn-open.mjs (PARITY_OPEN_CASH=1) | V | save, DB read-back, exact restore |
@@ -84,7 +84,7 @@ Status: **V** = add/edit/save (or the screen's full intended cycle) verified in 
 | 77 | Manage \| Job Schedule | probe-jobschedule-save.mjs | B | original screen fails with Invalid column name 'Name' (no SysJobs tables); rebuild PG scheduler probe is recorded, not a parity gap |
 | 78 | Manage \| Group Wise Supplier Category | probe-groupsuppliercategory-crud.mjs | V | add group 2 / supplier category 1 / status 1, delete through the form, exact restore |
 
-Totals: **V 63**, **P 4**, **N/A 3**, **B 8** of 78.
+Totals: **V 65**, **P 2**, **N/A 3**, **B 8** of 78.
 
 ## Field-cell coverage
 
