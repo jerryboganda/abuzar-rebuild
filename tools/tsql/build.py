@@ -177,6 +177,27 @@ def view_order(parsed_views):
     return out
 
 
+def patch_proc(name, sql):
+    """Post-fixes for translation patterns that are valid T-SQL but not
+    valid PostgreSQL.  Keep these narrow and documented."""
+    if name.lower() == 'sp_markattendance':
+        # T-SQL assigns a time-only string to DATETIME, which SQL Server
+        # anchors to 1900-01-01; PostgreSQL rejects a time-only -> timestamp
+        # assignment.  Anchor the time-slab columns to today's date here and
+        # drop the later date+text->timestamp reconstruction.
+        for col in ('fhtimein', 'fhtimeout', 'shtimein', 'shtimeout'):
+            sql = sql.replace(
+                "left(to_char(%s, 'HH24:MI:SS:MS'), 10) AS starttime" % col,
+                "(date_trunc('day', localtimestamp(3)) + %s::time) AS starttime" % col)
+            sql = sql.replace(
+                "left(to_char(%s, 'HH24:MI:SS:MS'), 10) AS endtime" % col,
+                "(date_trunc('day', localtimestamp(3)) + %s::time) AS endtime" % col)
+        sql = re.sub(
+            r"\n[ \t]*v_starttime := \(\(\(left\(to_char\(localtimestamp\(3\), 'MM/DD/YYYY'\), 100\) \|\| ' '\) \|\| left\(to_char\(v_starttime, 'HH24:MI:SS:MS'\), 100\)\)\)::timestamp\(3\);\n[ \t]*v_endtime := \(\(\(left\(to_char\(localtimestamp\(3\), 'MM/DD/YYYY'\), 100\) \|\| ' '\) \|\| left\(to_char\(v_endtime, 'HH24:MI:SS:MS'\), 100\)\)\)::timestamp\(3\);\n",
+            "\n", sql, count=1)
+    return sql
+
+
 def sig_json(tr, kind, u, sg, rs_cols):
     params = [{'name': p.name, 'pg_param': pident(p.name), 'type': p.pgtype, 'tsql_type': p.tsql_type, 'mode': p.mode, 'default': p.default} for p in sg.params]
     d = {'name': u['name'], 'pg_name': 'dbo.' + ident(u['name']).strip('"'), 'kind': kind, 'status': u['status'], 'params': params}
@@ -229,6 +250,8 @@ def run(src_root, repo, only=None, show=False):
                     u['status'] = 'stub'
                     u['error'] = u.get('error') or 'no parse tree'
                 sql = stub_function(tr, kind, u, node, body)
+            else:
+                sql = patch_proc(u['name'], sql)
             files[kind].append((u['name'], sql))
             u['file'] = 'db/pg/' + FILES[kind]
             out_units.append(u)

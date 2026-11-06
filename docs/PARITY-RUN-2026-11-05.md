@@ -83,6 +83,10 @@ node tools/parity/discover-forms.mjs
    now counts the cursor's SELECT at that point; `sp_PostPayroll` therefore
    updates `Posted/PostDate/PostedBy` instead of reporting success without
    writing anything.  Regression case added to `tools/tsql/selftest.py`.
+9. `sp_MarkAttendance` timeslab values are now anchored to the current date
+   (`date_trunc('day', localtimestamp(3)) + fhtimein::time`) instead of
+   assigning time-only text to a `timestamp`; the attendance kiosk clock-in
+   and clock-out paths work with `ApplyDeptTimeSlabsInOnlineAtten='Y'`.
 
 ## Open, in priority order
 
@@ -1607,41 +1611,40 @@ Probe: `tools/parity/probe-empidentity-crud.mjs` with `education`,
 
 Probe: `tools/parity/probe-empdept-crud.mjs` - measured `ok=true`.
 
-### Online Attendance kiosk clock-in/clock-out (verified; timeslab defect recorded)
+### Online Attendance kiosk clock-in/clock-out (verified with timeslabs ON)
 
 `m_employeeonlineattendance` (hidden) opens the modal `w_emp_attendance`
 (empty title, `windowtype 3`).  `wf_validate_empid` looks up
 `EMP_Employee.AllowAttendanceViaID`, calls `markattendance` ->
 `sp_markattendance`, then retrieves the result into the kiosk display.
 
-* Temporary employee `PARITYATT...` with `AllowAttendanceViaID='Y'`.
+* Temporary employee `PARITYATT...` with `AllowAttendanceViaID='Y'` and
+  temporary all-day `Emp_DepartmentTiming` rows (weekdays 1-7).
+* `ApplyDeptTimeSlabsInOnlineAtten` stayed at its original **Y**.
 * **First scan:** `wf_validate_empid` returned 0 and inserted
   `EMP_Attendance` code **2** (identity sequence 1 -> 2):
-  `empcode 1`, `fingercode 1`, `timein 2026-11-06 06:24:03.347`,
-  `timeout NULL`, `attendancestatuscode 1`, `payed N`.
+  `empcode 1`, `fingercode 1`, `timein 2026-11-06 06:31:19.029`,
+  `timeout NULL`, `attendancestatuscode 9`, `payed N`.
 * **Second scan:** the same open row was closed:
-  `timeout 2026-11-06 06:24:08.645` on the same attendance code 2.
+  `timeout 2026-11-06 06:31:24.319`, `attendancestatuscode 3`, same code 2.
+* **Fixed (systemic) - timeslab timestamp:** T-SQL assigns a time-only
+  string to a `DATETIME` and SQL Server anchors it to 1900-01-01; PostgreSQL
+  rejects a time-only -> `timestamp` assignment.  `tools/tsql/build.py`
+  now post-fixes `sp_markattendance` to emit
+  `(date_trunc('day', localtimestamp(3)) + fhtimein::time) AS starttime`
+  (and the other three time columns) and drops the later
+  date+text->timestamp reconstruction.  Regression case added to
+  `tools/tsql/selftest.py` (31/31).
 * Exact restore: `emp_attendance 0`, identity sequence back to
-  `last_value 1 / is_called true`, employee 0, `serverdate 2026-11-06
-  00:38:24`, `audit_log 1,079 / max 1,127`.
-* **Timeslab path defect (recorded):** the installation has
-  `ApplyDeptTimeSlabsInOnlineAtten='Y'`, but the generated
-  `sp_markattendance` converts department times with
-  `to_char(..., 'HH24:MI:SS:MS')`/`left(...,10)` and assigns the resulting
-  time-only text (`'00:00:00:0'`) to a `timestamp` variable.  SQL Server
-  implicitly anchors that to 1900-01-01; PostgreSQL rejects it
-  (`invalid input syntax for type timestamp: "00:00:00:0"`).  Replacing the
-  colon with the valid decimal millisecond separator still leaves
-  `"00:00:00.0"` time-only, so the fix needs to carry a date (or use a
-  `time` variable).  The probe exercised the non-timeslab branch with the
-  preference temporarily `N` (restored to `Y`); the timeslab branch remains
-  a rebuild port gap, not a missing screen.
+  `last_value 1 / is_called true`, employee 0, department timings 0,
+  preference `Y`, `serverdate 2026-11-06 00:38:24`,
+  `audit_log 1,079 / max 1,127`.
 * The kiosk display DataWindow was not resolved through the user-object
   traversal in this probe (`dw_control` rows null), but the DB path above is
   the same one the retrieved kiosk display reads.
 
-Probe: `tools/parity/probe-attendance-kiosk.mjs` - measured `ok=true` for the
-non-timeslab branch.
+Probe: `tools/parity/probe-attendance-kiosk.mjs` - measured `ok=true` with
+timeslabs ON.
 
 ### Item Meter master (verified; right-hidden)
 

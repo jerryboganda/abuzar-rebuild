@@ -63,10 +63,12 @@ const restore = () => {
 try {
   out.baseline = counts();
   q(`insert into dbo.emp_employee (empcode,empid,fullname,empcatcode,deptcode,desigcode,acccode,advacccode,allowattendanceviaid,active) values (1,'${EMPID}','PARITY ATTENDANCE',1,1,1,2,24,'Y','Y')`);
-  // The timeslab branch still mistranslates SQL Server's implicit time-only
-  // to datetime cast (`invalid input syntax ... "00:00:00.0"`), so exercise
-  // the non-timeslab branch with the preference temporarily off.
-  q("update dbo.softwarepreferences set prefvalue='N' where name='ApplyDeptTimeSlabsInOnlineAtten'");
+  // ApplyDeptTimeSlabsInOnlineAtten is ON in this installation; the
+  // department has no timing rows, so provide an all-day 7-day slot.  The
+  // generator now anchors the time-slab values to the current date.
+  q(`insert into dbo.emp_departmenttiming (deptcode,weekdaycode,fhtimein,fhtimeout,shtimein,shtimeout)
+     select 1, w, '1900-01-01 00:00:00', '1900-01-01 23:59:59', '1900-01-01 00:00:00', '1900-01-01 23:59:59'
+     from generate_series(1,7) w`);
   step('fixtures ready ' + EMPID);
   await page.goto('http://127.0.0.1:5177/?app=1&autologin=ADMIN:password9080', { waitUntil: 'load', timeout: 60000 });
   await page.waitForFunction(() => window.rt && window.rt.windowInstances.get('w_main') && typeof window.__menu === 'function', null, { timeout: 90000, polling: 300 });

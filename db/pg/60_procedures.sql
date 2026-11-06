@@ -28353,7 +28353,7 @@ BEGIN
   v_deptcode := (SELECT deptcode FROM dbo.emp_employee WHERE (empcode = v_empcode));
   v_weekday := (extract(dow from localtimestamp(3))::integer + 1);
   IF (v_applydepttimeslabs = 'Y') THEN
-    FOR _r1 IN SELECT timeslabtype AS c1, starttime AS c2, endtime AS c3 FROM (SELECT 1 AS timeslabtype, left(to_char(fhtimein, 'HH24:MI:SS:MS'), 10) AS starttime, left(to_char(fhtimeout, 'HH24:MI:SS:MS'), 10) AS endtime FROM dbo.emp_departmenttiming WHERE (((deptcode = v_deptcode) AND (weekdaycode = v_weekday)) AND ((left(to_char(localtimestamp(3), 'HH24:MI:SS:MS'), 10))::citext BETWEEN (left(to_char(fhtimein, 'HH24:MI:SS:MS'), 10))::citext AND (left(to_char(fhtimeout, 'HH24:MI:SS:MS'), 10))::citext)) UNION SELECT 2 AS timeslabtype, left(to_char(shtimein, 'HH24:MI:SS:MS'), 10) AS starttime, left(to_char(shtimeout, 'HH24:MI:SS:MS'), 10) AS endtime FROM dbo.emp_departmenttiming WHERE (((deptcode = v_deptcode) AND (weekdaycode = v_weekday)) AND ((left(to_char(localtimestamp(3), 'HH24:MI:SS:MS'), 10))::citext BETWEEN (left(to_char(shtimein, 'HH24:MI:SS:MS'), 10))::citext AND (left(to_char(shtimeout, 'HH24:MI:SS:MS'), 10))::citext))) AS timeslabs LIMIT 1 LOOP
+    FOR _r1 IN SELECT timeslabtype AS c1, starttime AS c2, endtime AS c3 FROM (SELECT 1 AS timeslabtype, (date_trunc('day', localtimestamp(3)) + fhtimein::time) AS starttime, (date_trunc('day', localtimestamp(3)) + fhtimeout::time) AS endtime FROM dbo.emp_departmenttiming WHERE (((deptcode = v_deptcode) AND (weekdaycode = v_weekday)) AND ((left(to_char(localtimestamp(3), 'HH24:MI:SS:MS'), 10))::citext BETWEEN (left(to_char(fhtimein, 'HH24:MI:SS:MS'), 10))::citext AND (left(to_char(fhtimeout, 'HH24:MI:SS:MS'), 10))::citext)) UNION SELECT 2 AS timeslabtype, (date_trunc('day', localtimestamp(3)) + shtimein::time) AS starttime, (date_trunc('day', localtimestamp(3)) + shtimeout::time) AS endtime FROM dbo.emp_departmenttiming WHERE (((deptcode = v_deptcode) AND (weekdaycode = v_weekday)) AND ((left(to_char(localtimestamp(3), 'HH24:MI:SS:MS'), 10))::citext BETWEEN (left(to_char(shtimein, 'HH24:MI:SS:MS'), 10))::citext AND (left(to_char(shtimeout, 'HH24:MI:SS:MS'), 10))::citext))) AS timeslabs LIMIT 1 LOOP
       v_timeslabtype := _r1.c1;
       v_starttime := _r1.c2;
       v_endtime := _r1.c3;
@@ -28361,8 +28361,6 @@ BEGIN
     IF ((v_timeslabtype <= 0) OR (v_timeslabtype IS NULL)) THEN
       RAISE EXCEPTION 'No Allowed Time Slot Exists for this employee, Please consult administrator to check allowed time slot for concerned department';
     END IF;
-    v_starttime := (((left(to_char(localtimestamp(3), 'MM/DD/YYYY'), 100) || ' ') || left(to_char(v_starttime, 'HH24:MI:SS:MS'), 100)))::timestamp(3);
-    v_endtime := (((left(to_char(localtimestamp(3), 'MM/DD/YYYY'), 100) || ' ') || left(to_char(v_endtime, 'HH24:MI:SS:MS'), 100)))::timestamp(3);
   ELSE
     v_attendancecode := (SELECT min(attendancecode) FROM dbo.emp_attendance WHERE (((empcode = v_empcode) AND (payed = 'N')) AND (timeout IS NULL)));
     IF (v_attendancecode IS NULL) THEN

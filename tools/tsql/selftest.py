@@ -3,12 +3,14 @@ import os
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, '..'))
 
 from tsql.parser import Parser
 from tsql.schema import Table, Col
 from tsql.routines import Translator, Catalog, Scope
 from tsql.tstmt import Ctx, raise_fmt
+from build import patch_proc
 
 TABLES = {
     'item': Table('Item', [Col('icode', 'integer', 'I', True), Col('name', 'citext', 'S'), Col('saleprice', 'numeric(15,2)', 'N'),
@@ -73,6 +75,7 @@ CASES = [
     ('proc: rollback raises',body('ROLLBACK TRAN'), "ERRCODE = 'TS001'"),
     ('proc: cursor loop', body('DECLARE @a INT DECLARE c CURSOR FOR SELECT icode FROM item OPEN c FETCH NEXT FROM c INTO @a WHILE @@FETCH_STATUS = 0 BEGIN FETCH NEXT FROM c INTO @a END CLOSE c DEALLOCATE c'), 'WHILE (_fs = 0) LOOP'),
     ('proc: @@CURSOR_ROWS counts the opened cursor', body('DECLARE @n INT DECLARE c CURSOR FOR SELECT icode FROM item OPEN c SET @n = @@CURSOR_ROWS CLOSE c DEALLOCATE c'), 'v_n := (SELECT count(*) FROM (SELECT icode FROM dbo.item) _cursor_rows);'),
+    ('proc: markattendance anchors time slabs to today', patch_proc('sp_markattendance', "left(to_char(fhtimein, 'HH24:MI:SS:MS'), 10) AS starttime"), "(date_trunc('day', localtimestamp(3)) + fhtimein::time) AS starttime"),
 ]
 
 
