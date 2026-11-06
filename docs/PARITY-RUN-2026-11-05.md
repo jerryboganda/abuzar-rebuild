@@ -556,15 +556,18 @@ Cash variant) - measured `ok=true` for both.
   (`total`, `flatdisc`, `unitsalestax`, ...), **13** `char(1)` domain codes
   (`pagesize` accepts F/H/Q, the audit typed Y), and 43 ambiguous cells
   (Customer `customer_*` alias columns, item price fields recomputed from
-  purchase price, `remarks` on a blank new row).  One click timed out
+  purchase price, `remarks` on a blank new row).  That ambiguous set is now
+  being driven separately with domain-valid values and a Save: **22 Customer
+  fields and 8 Item fields are verified end-to-end** (below), leaving 11
+  screen-specific cells.  One click timed out
   (Price Policy `icode`, a 366x19 editable cell - the audit's 1.5 s
   actionability window, not a missing field).  Harness fixes:
   `screen-audit.mjs` now reads back from the **same** DataWindow that owns the
   clicked cell (several windows carry a hidden list with the same column name)
   and types a length-appropriate `char` value; PCT Codes and Customer Category
-  now return `PARITY`.  Remaining field work is domain-valid values for the 43
-  ambiguous cells, not more generic runs.  Cash/Credit Sale were the two
-  zero-field screens and have the targeted preparation probe below.
+  now return `PARITY`.  Remaining field work is domain-valid values for the 11
+  screen-specific cells below, not more generic runs.  Cash/Credit Sale were
+  the two zero-field screens and have the targeted preparation probe below.
 * `Item Basic Data`, `Price Policy`, `PCT Codes` and `Item Thickness` timed out
   at login in the first batch (server contention, not a screen failure) and
   need re-runs.
@@ -584,6 +587,51 @@ Cash variant) - measured `ok=true` for both.
   sets the customer with `setitem` instead of the real picker, so
   `wf_setcustomerinfo` never runs; that is a harness-state gap, and the real
   picker path is the follow-up.  No Save is called, so the clone is untouched.
+
+### Customer and Item field follow-up (real editors, Save, DB read-back)
+
+* **Customer: 22/22 fields verified end-to-end.**  `probe-customer-fields.mjs`
+  creates a new customer, types each `customer_*` field through its real DOM
+  editor, saves with `ue_save`, and reads the values back from `dbo.customer`.
+  All 22 applied and all 22 DB values matched (city, membership id,
+  designation, postcode, country, phone, fax, licence no, sales-tax reg no,
+  NTN, invoice discount %, credit limit, days limit, default sale price, NIC,
+  address 1/2, CP/CP2, bank name/address, special instructions).  The customer
+  was deleted and `accounts 257 / max 325`, `customer 2`,
+  `_tabmaxkey('Accounts') 333`, `_utn 1629000`, `audit_log 1,079 / 1,127`
+  restored exactly (`baselineOk: true`).
+* **Root cause fixed:** the Customer form's run-time `Modify()` replaces the
+  DataWindow definition objects, and the text-editor guard compared object
+  **identity**.  Every commit then failed with "The text field configuration
+  changed. The entry was not applied."  `sameDwColumn()` now compares the live
+  column by name/index/row/kind; `dwview.ts` uses it.  Regression test in
+  `web/tests/dw-edit.test.ts`.
+* **Item: 8/8 rendered fields verified end-to-end.**  `probe-item-fields.mjs`
+  creates a new item, types `name`, `location`, `purprice`, `salediscperc`,
+  `minqty`, `packsalestax`, `saleprice`, `commissionperc` through the real
+  editors, saves, and reads them back from `dbo.item`; all 8 applied and all
+  8 DB values matched.  `customicode` (Alias) and `bonusqty` are not rendered
+  in this configuration; the original File | New screenshot also has no Alias
+  field.  The item, item note, supplier row and default price policy were
+  deleted and `item 28,966 / max 29,040`, `itemnotes 28,961`,
+  `pricepolicy 28,966`, `_tabmaxkey('Item') 29,042`, `_utn 1629000`,
+  `audit_log 1,079 / 1,127` restored exactly (`baselineOk: true`).
+* **Second root cause fixed:** the hidden `customicode` (`visible="1<TAB>0"`)
+  was shown because `dw.Object.col.visible` returned the static value half
+  `"1"` instead of the expression result.  The item form's security check
+  compares it with `"1"`, so the alias field appeared at the same position as
+  Packing Units and captured its clicks.  `NDwColumn.pbGet` now returns the
+  evaluated constant for `visible`/`protect` expressions (or the expression
+  string when it is not a constant).  Regression test in
+  `web/tests/dwctrl-model.test.ts`.  The old app's File | New screenshot
+  (captured read-only from `deploy/Application/abuzar.exe`) has no Alias field.
+* **Remaining 11 ambiguous cells:** Purchase `purprice` (normal and loose)
+  needs a selected item row; Opening Purchase `suppinvcode`/`remarks` need a
+  new header; Sale Promotion `weekdaycode` (dddw) and Adjustment
+  Increase/Decrease `remarks` need a new row.  Purchase Order `reorderqty`/
+  `remarks`, Item Basic Data `masterpartname` and Price Policy `name` are
+  hidden/display/derived columns (`visible="0"` in their DataWindows), so they
+  are not typeable fields in this configuration.
 * Quotation edit-after-save, Purchase Order, Refused Sale and the three
   Adjustments still need the full add/edit/save/delete cycle.
 * Priority Setting was flagged by the label comparison (missing Retrieve and

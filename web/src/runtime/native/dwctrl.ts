@@ -5,7 +5,10 @@ import type { Runtime } from '../interp.ts'
 import { Dec, PBDate, PBDateTime, PBTime, PBArray, PBRuntimeError, toNum, toStr, coerce } from '../values.ts'
 import { compileDw } from '../../dw/expr.ts'
 import { DwModel, DATA_MODIFIED, NEW, NEW_MODIFIED, NOT_MODIFIED } from '../../dw/model.ts'
+import type { DwRow } from '../../dw/model.ts'
+import { splitExpr } from '../../dw/def.ts'
 import type { DwDef } from '../../dw/def.ts'
+import { commitDwValue, dwEditText } from '../../dw/edit.ts'
 import { NTransaction } from './transaction.ts'
 import { Ref } from '../interp.ts'
 
@@ -14,6 +17,14 @@ const bufferName = (v: unknown): string => String(v ?? 'primary!').replace(/!$/,
 export interface DwTextEditor {
   read(): string
   write(text: string): void
+}
+
+interface DwScriptText {
+  model: DwModel
+  row: number
+  column: number
+  record: DwRow
+  text: string
 }
 
 /** `dw.object.<column>` : column properties and per-row values */
@@ -28,6 +39,28 @@ export class NDwColumn implements Member {
     const m = this.dw.model
     if (!m) return null
     const path = `${this.col}.${prop}`
+    // `object.column.visible` is an expression in many DataWindows
+    // (`1~t0`).  Describe returns the expression string in the original, not
+    // the static value half: the item form's security check compares it with
+    // "1", and returning "1" would incorrectly reveal a hidden alias field.
+    const dot = path.indexOf('.')
+    if (dot > 0) {
+      const obj = path.slice(0, dot)
+      const attr = path.slice(dot + 1)
+      if (attr === 'visible' || attr === 'protect') {
+        const o = m.def.objects.find((x) => x.name.toLowerCase() === obj.toLowerCase())
+        const raw = m.overrides.get(`${obj.toLowerCase()}.${attr}`) ?? o?.[attr]
+        if (typeof raw === 'string') {
+          const { value, expr } = splitExpr(raw)
+          if (expr !== undefined) {
+            const e = expr.trim()
+            if (/^(0|1|true|false|yes|no)$/i.test(e)) return /^(1|true|yes)$/i.test(e) ? '1' : '0'
+            return raw
+          }
+          return value
+        }
+      }
+    }
     const v = m.describe(path)
     // `object.datawindow.column.count`: an unknown intermediate name continues the path
     return v === '!' ? new NDwColumn(this.dw, path) : v
@@ -74,7 +107,10 @@ export class NDwBase extends PBObject {
   dwName = ''
   listeners = new Set<(selection?: 'column') => void>()
   private definitionRevision = 0
+  private childControls = new Map<string, NDwBase>()
   private textEditor: { current: () => boolean; editor: DwTextEditor } | null = null
+  private scriptText: DwScriptText | null = null
+  private acceptingScriptText = false
   /** SetValidate() rules set by scripts at run time (they override the design-time validation) */
   validateRules = new Map<string, string>()
 
@@ -88,6 +124,11 @@ export class NDwBase extends PBObject {
 
   bindTextEditor(model: DwModel, row: number, column: string, editor: DwTextEditor): () => void {
     const record = model.rowAt(row)
+    const draft = this.scriptText
+    if (draft?.model === model && draft.record === record && draft.column === model.colIndex(column)) {
+      editor.write(draft.text)
+      this.scriptText = null
+    }
     const binding = {
       current: () => !this.destroyed && this.model === model && !!record &&
         model.rowAt(model.row) === record && model.colNames[model.col - 1] === column.toLowerCase(),
@@ -95,6 +136,62 @@ export class NDwBase extends PBObject {
     }
     this.textEditor = binding
     return () => { if (this.textEditor === binding) this.textEditor = null }
+  }
+
+  private clearScriptText(): void {
+    if (this.model) this.model.acceptScriptText = null
+    this.scriptText = null
+  }
+
+  override destroy(): void {
+    if (this.destroyed) return
+    this.definitionRevision++
+    super.destroy()
+    this.clearChildren()
+    this.clearScriptText()
+    this.textEditor = null
+    try { this.changed() }
+    finally { this.listeners.clear() }
+  }
+
+  private clearChildren(): void {
+    for (const child of this.childControls.values()) child.destroy()
+    this.childControls.clear()
+  }
+
+  private async acceptScriptText(model: DwModel, navigation = false): Promise<number> {
+    const draft = this.scriptText
+    if (!draft || draft.model !== model) return 1
+    if (this.acceptingScriptText) {
+      console.warn('The current script entry is still being validated. Wait for it to finish before continuing.')
+      return -1
+    }
+    const object = model.def.objects.find((o) => o.type === 'column' && model.colIndex(o.name) === draft.column) ??
+      { type: 'column', name: model.colNames[draft.column], band: 'detail' }
+    const guard = () => {
+      if (this.destroyed || this.model !== model || model.rowAt(draft.row) !== draft.record ||
+        draft.column >= model.colNames.length || (this.scriptText && this.scriptText !== draft)) {
+        throw new Error('The script edit no longer belongs to the original record. The draft was not written.')
+      }
+    }
+    this.acceptingScriptText = true
+    try {
+      guard()
+      draft.text = dwEditText(model, draft.column, object, draft.text)
+      const result = draft.text === toStr(model.getItem(draft.row, draft.column + 1)) ? 'accepted' :
+        await commitDwValue(this, model, draft.row, draft.column, object, draft.text, guard)
+      if (result !== 'rejected' && this.scriptText === draft) this.scriptText = null
+      return result === 'accepted' || navigation && result === 'discarded' ? 1 : -1
+    } finally {
+      this.acceptingScriptText = false
+    }
+  }
+
+  private async acceptScriptNavigation(model: DwModel): Promise<boolean> {
+    const row = model.row, column = model.col, record = model.rowAt(row)
+    if (await this.acceptScriptText(model, true) === -1) return false
+    return !this.destroyed && this.model === model && model.row === row && model.col === column &&
+      model.rowAt(row) === record
   }
 
   /** itemfocuschanged is running: SelectText from its script must not raise it again */
@@ -176,9 +273,12 @@ export class NDwBase extends PBObject {
   }
 
   async loadDef(name: string): Promise<void> {
+    if (this.destroyed) return
     const revision = ++this.definitionRevision
     const cat = this.rt.dwCatalog
     if (!cat || !name) {
+      this.clearChildren()
+      this.clearScriptText()
       this.model = null
       this.changed()
       return
@@ -187,6 +287,8 @@ export class NDwBase extends PBObject {
     if (revision !== this.definitionRevision) return
     if (!def) {
       this.rt.noteMissing('dw:' + name)
+      this.clearChildren()
+      this.clearScriptText()
       this.model = null
       this.changed()
       return
@@ -197,7 +299,10 @@ export class NDwBase extends PBObject {
   attach(model: DwModel): void {
     this.definitionRevision++
     const prevTrans = this.model?.trans ?? null
+    if (this.model !== model) this.clearChildren()
+    this.clearScriptText()
     this.model = model
+    model.acceptScriptText = () => this.acceptScriptText(model)
     if (prevTrans) model.trans = prevTrans
     else if (this.trans) model.trans = this.trans
     this.changed()
@@ -226,6 +331,7 @@ export class NDwBase extends PBObject {
     const start = await this.rt.fire(this, 'retrievestart')
     if (start === 1) return 0
     const n = await m.retrieve(args)
+    if (n < 0 && m.lastError) await this.reportDbError(m)
     await this.rt.fire(this, 'retrieveend', [n])
     this.changed()
     return n
@@ -236,9 +342,16 @@ export class NDwBase extends PBObject {
     const ok = await this.rt.fire(this, 'updatestart')
     if (ok === 1) return -1
     const r = await m.update(accept !== false, resetFlag !== false)
-    if (r < 0 && m.lastError) await this.rt.fire(this, 'dberror', [-1, m.lastError, '', 'primary!', 0])
+    if (r < 0 && m.lastError) await this.reportDbError(m)
     this.changed()
     return r
+  }
+  private async reportDbError(model: DwModel): Promise<void> {
+    const message = model.lastError
+    const response = await this.rt.fire(this, 'dberror', [-1, message, '', 'primary!', 0])
+    if (this.native !== 'datastore' && response !== 1 && response !== 3) {
+      await this.rt.ui?.messageBox('Database Error', message, 'stopsign!', 'ok!', 1)
+    }
   }
   async n_rowcount(): Promise<number> {
     return (await this.m())?.rowCount() ?? 0
@@ -289,6 +402,9 @@ export class NDwBase extends PBObject {
     if (!m) return -1
     const n = toNum(r)
     if (n < 1 || n > m.rowCount()) return -1
+    const target = m.rowAt(n)
+    if (m.row !== n && !(await this.acceptScriptNavigation(m))) return -1
+    if (this.destroyed || this.model !== m || m.rowAt(n) !== target) return -1
     m.row = n
     this.changed()
     return 1
@@ -299,6 +415,8 @@ export class NDwBase extends PBObject {
     const n = toNum(r)
     if (n < 1 || n > m.rowCount()) return -1
     if (m.row !== n) {
+      const target = m.rowAt(n)
+      if (!(await this.acceptScriptNavigation(m)) || m.rowAt(n) !== target) return -1
       m.row = n
       await this.rt.fire(this, 'rowfocuschanged', [n])
     }
@@ -361,11 +479,13 @@ export class NDwBase extends PBObject {
     const m = await this.m()
     if (!m) return -1
     const n = m.deleteRow(toNum(r))
+    if (this.scriptText?.model === m && !m.buf.primary.includes(this.scriptText.record)) this.scriptText = null
     this.changed()
     return n
   }
   async n_reset(): Promise<number> {
     const m = await this.m()
+    this.scriptText = null
     m?.reset()
     this.changed()
     return 1
@@ -511,7 +631,7 @@ export class NDwBase extends PBObject {
   }
   async n_accepttext(): Promise<number> {
     const m = await this.m()
-    return m ? m.acceptText() : -1
+    return m ? m.acceptText() : 1
   }
   async n_selectrow(row: unknown, sel: unknown): Promise<number> {
     const m = await this.m()
@@ -545,6 +665,8 @@ export class NDwBase extends PBObject {
     if (!m) return -1
     const i = m.colIndex(typeof c === 'number' ? c : toStr(c))
     if (i < 0) return -1
+    if (m.col !== i + 1 && !(await this.acceptScriptNavigation(m))) return -1
+    if (this.destroyed || this.model !== m || i >= m.colNames.length) return -1
     m.col = i + 1
     this.changed('column')
     return 1
@@ -555,26 +677,41 @@ export class NDwBase extends PBObject {
   }
   async n_gettext(): Promise<string> {
     const m = await this.m()
-    if (!m || m.row < 1 || m.col < 1) return ''
+    if (!m || this.destroyed || !m.rowAt(m.row) || m.col < 1 || m.col > m.colNames.length) return ''
     if (this.textEditor?.current()) return this.textEditor.editor.read()
+    if (this.scriptText?.model === m && this.scriptText.record === m.rowAt(m.row) && this.scriptText.column === m.col - 1) {
+      return this.scriptText.text
+    }
     return toStr(m.getItem(m.row, m.col))
   }
   async n_settext(t: unknown): Promise<number | null> {
     if (t === null || t === undefined) return null
     const m = await this.m()
-    if (!m || m.row < 1 || m.col < 1) return -1
+    const record = m?.rowAt(m.row)
+    if (!m || this.destroyed || !record || m.col < 1 || m.col > m.colNames.length) return -1
+    const column = m.col - 1
+    const object = m.def.objects.find((o) => o.type === 'column' && m.colIndex(o.name) === column) ??
+      { type: 'column', name: m.colNames[column], band: 'detail' }
+    const text = dwEditText(m, column, object, toStr(t))
     if (this.textEditor?.current()) {
-      this.textEditor.editor.write(toStr(t))
+      this.textEditor.editor.write(text)
       return 1
     }
-    return m.setItem(m.row, m.col, t) > 0 ? 1 : -1
+    const draft = this.scriptText
+    if (draft && draft.model === m && draft.record === record && draft.column === m.col - 1) {
+      draft.text = text
+    } else {
+      if (draft) throw new Error('Accept or cancel the previous script edit before replacing it with another field.')
+      this.scriptText = { model: m, row: m.row, column, record, text }
+    }
+    return 1
   }
   async n_setfocus(): Promise<number> {
-    this.rt.ui?.focus?.(this)
     type Win = { lastFocusDw: PBObject | null; focusLive: boolean; focusOwner: PBObject | null }
     let p: PBObject | null = this.parent
     while (p && !('lastFocusDw' in p)) p = p.parent
     const win = p as unknown as Win | null
+    if (win?.focusLive === false || !(await this.rt.ui?.focusDw?.(this, true))) this.rt.ui?.focus?.(this)
     if (!win) return 1
     if (!win.focusLive) win.lastFocusDw = this // the window is still opening: GetFocus comes when it is up
     else if (win.focusOwner !== this) {
@@ -620,13 +757,18 @@ export class NDwBase extends PBObject {
   /** GetChild(column, ref DataWindowChild): returns 1 and stores the child in the reference, -1 when the column is not a drop-down DataWindow */
   async n_getchild(col: unknown, ref?: unknown): Promise<unknown> {
     const m = await this.m()
-    if (!m) return -1
+    if (!m || this.destroyed) return -1
     const name = toStr(col).toLowerCase()
-    const store = ((m as unknown as { childCtl?: Map<string, NDwBase> }).childCtl ??= new Map())
+    const o = m.def.objects.find((x) => x.type === 'column' && x.name.toLowerCase() === name)
+    const dddw = m.overrides.get(`${name}.dddw.name`) ?? o?.['dddw.name']
+    const store = this.childControls
     let ch = store.get(name)
+    if (ch && (ch.destroyed || ch.dwName !== dddw?.toLowerCase())) {
+      ch.destroy()
+      store.delete(name)
+      ch = undefined
+    }
     if (!ch) {
-      const o = m.def.objects.find((x) => x.type === 'column' && x.name.toLowerCase() === name)
-      const dddw = o?.['dddw.name']
       if (!dddw) {
         // the variable receives an object even when the column has no DropDownDataWindow (GetChild returns -1): scripts that ignore the return code
         // go on calling SetTransObject / Retrieve on it, and the original's reports (w_reviewreport.wf_retrieve) rely on that
@@ -719,34 +861,42 @@ export class NDwBase extends PBObject {
   async n_setposition(): Promise<number> {
     return 1
   }
-  /** FindRequired(buffer, ref row, ref column number, ref column name, updateOnly): 1 and the position of the first required column left empty, 0 when none */
-  async n_findrequired(_buffer?: unknown, row?: unknown, colNo?: unknown, colName?: unknown, updateOnly?: unknown): Promise<number> {
+  /** FindRequired reports the next required null and sets row to zero at the end of the search. */
+  async n_findrequired(buffer?: unknown, row?: unknown, colNo?: unknown, colName?: unknown, updateOnly?: unknown): Promise<number | null> {
     const m = await this.m()
     if (!m) return -1
+    if ([buffer, row, colNo, colName, updateOnly].some((value) => (value instanceof Ref ? value.get() : value) === null)) return null
+    if (!(row instanceof Ref) || !(colNo instanceof Ref) || !(colName instanceof Ref)) return -1
+    const which = bufferName(buffer)
+    if (which !== 'primary' && which !== 'filter') return -1
+    const rows = which === 'filter' ? m.buf.filtered : m.buf.primary
     const only = updateOnly === true || (typeof updateOnly === 'number' && updateOnly !== 0)
-    // PowerBuilder keeps the Required flag on the edit style: drop-down
-    // DataWindow (dddw), drop-down list box (ddlb), edit mask and plain edit
-    // each store their own copy.  Reading only edit.required skipped the other
-    // 3,291 required column definitions (1,123 dddw + 610 ddlb + 1,558 mask).
     const required = m.def.objects
-      .filter((o) => o.type === 'column' && (o['edit.required'] === 'yes' || o['dddw.required'] === 'yes' || o['ddlb.required'] === 'yes' || o['editmask.required'] === 'yes') && m.colIndex(o.name) >= 0)
+      .filter((o) => o.type === 'column' && ['edit', 'dddw', 'ddlb', 'editmask'].some((style) =>
+        /^(yes|true|1)$/i.test(m.overrides.get(`${o.name.toLowerCase()}.${style}.required`) ?? o[`${style}.required`] ?? ''))
+        && m.colIndex(o.name) >= 0)
       .map((o) => m.colIndex(o.name))
-    const startRow = row instanceof Ref ? Math.max(1, toNum(row.get())) : 1
-    for (let r = startRow; r <= m.rowCount(); r++) {
-      const dr = m.rowAt(r)
-      if (!dr) continue
+      .sort((a, b) => a - b)
+    const startRow = Math.max(1, toNum(row.get()))
+    const startColumn = Math.max(1, toNum(colNo.get()))
+    for (let r = startRow; r <= rows.length; r++) {
+      const dr = rows[r - 1]
+      if (only && dr.st !== DATA_MODIFIED && dr.st !== NEW_MODIFIED) continue
       for (const ci of required) {
-        if (only && dr.st !== DATA_MODIFIED && dr.st !== NEW_MODIFIED) continue
+        if (r === startRow && ci + 1 < startColumn) continue
         const v = dr.v[ci]
-        if (v === null || v === undefined || v === '') {
-          if (row instanceof Ref) await row.set(r)
-          if (colNo instanceof Ref) await colNo.set(ci + 1)
-          if (colName instanceof Ref) await colName.set(m.colNames[ci])
+        if (v === null || v === undefined) {
+          await row.set(r)
+          await colNo.set(ci + 1)
+          await colName.set(m.colNames[ci])
           return 1
         }
       }
     }
-    return 0
+    await row.set(0)
+    await colNo.set(1)
+    await colName.set('')
+    return 1
   }
   /** SetTabOrder(column, n): column-level tab sequence */
   async n_settaborder(col: unknown, n: unknown): Promise<number> {
