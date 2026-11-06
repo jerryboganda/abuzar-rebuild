@@ -436,7 +436,11 @@ Cash variant) - measured `ok=true` for both.
   (min 5.43 %, max 19.76 %); the higher value than full screens is font
   rasterisation and focus state on small windows, not missing controls
   (e.g. Change Password: same title, four labels, four fields, Ok/Cancel;
-  Select Column Criteria: same five radios and labels).
+  Select Column Criteria: same five radios and labels).  One real initial-focus
+  difference is visible: the original Change Password opens with the keyboard
+  in `sle_salesman` (tab order 10), while the rebuild lands on the Ok button;
+  recorded as a workflow difference to fix, separate from the control-set
+  match.
 * **Three dialogs have no rebuild equivalent by design:** the original
   captures for Preferences (038), Job Schedule (060) and Group Wise Supplier
   Category (061) are a Waseela box reading
