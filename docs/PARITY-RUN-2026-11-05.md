@@ -1374,6 +1374,24 @@ updates `GuestRoom.Occupied` and reconciles `MasterCashWin`.
 
 Probe: `tools/parity/probe-guestcheckin-add.mjs` - measured `ok=true`.
 
+### Guest Registration modal add (verified)
+
+`w_guestregistration` (title "Guest Registration", `w_single_entry`-style
+modal opened by the check-in screen's Register Guest action) uses one
+`d_guest_detail` and the Save button `cb_ok`.
+
+* Filled name, NIC, gender M, active Y, customer 22 and the optional guest
+  fields, with regno left blank.
+* Save ran `wf_getserverdatetime` (updating `ServerDate.LastTransDate`),
+  generated `Guest` code **1** (`_tabmaxkey 0 -> 1`), copied it to `regno`,
+  set `usercode 1`, inserted the Guest row and closed with
+  "Changes take effect in database".
+* Exact restore: `guest 0 / max 0`, `_tabmaxkey('Guest') 0`,
+  `serverdate 2026-11-06 00:38:24`, `audit_log 1,079 / max 1,127`,
+  no residue.
+
+Probe: `tools/parity/probe-guestregistration-add.mjs` - measured `ok=true`.
+
 ### Guest Check-Out save paths (verified; original no-commit branch)
 
 `m_guestcheckout` (hidden) opens `w_guestcheckout_form` (`w_single_entry`,
