@@ -52,7 +52,7 @@ Status: **V** = add/edit/save (or the screen's full intended cycle) verified in 
 | 45 | Basic Data \| Tax Category | screen-parity/crud-fields (16-form pass) | V | every editable field typed; add/edit/delete/save documented |
 | 46 | Maintenance \| Change Password | probe-changepassword.mjs | P | window/focus and validation; password change not committed |
 | 47 | Maintenance \| Preferences | - | P | edit/save documented; no committed probe |
-| 48 | Maintenance \| Change Items Price | - | P | field audit only |
+| 48 | Maintenance \| Change Items Price | probe-changeitemprice-crud.mjs | V | manufacturer 120 sheet; item 22407 95 -> 96 saved in Item, exact restore |
 | 49 | Maintenance \| Database Utilities \| Backup Database | - | B | SQL Server utility; no PostgreSQL equivalent |
 | 50 | Maintenance \| Database Utilities \| Check Database Integrity | - | B | SQL Server utility; no PostgreSQL equivalent |
 | 51 | Maintenance \| Adjustment \| Increase | probe-adjustment-remarks.mjs | V | remarks typed, saved, stock/DB/audit exact restore |
@@ -68,7 +68,7 @@ Status: **V** = add/edit/save (or the screen's full intended cycle) verified in 
 | 61 | Maintenance \| Godown Preferences \| Group Wise Godown Setting | probe-groupgodown-crud.mjs | V | add/edit/delete/save |
 | 62 | Maintenance \| Interface Setting | probe-interfacesetting-save.mjs | V | tab visibility edit/save/restore |
 | 63 | Maintenance \| Update Item Basic Data | probe-itembasicdata-add.mjs | P | batch edit/save documented; field matrix partial |
-| 64 | Maintenance \| Update Item Suppliers | - | P | add/edit/delete/save documented; no committed probe |
+| 64 | Maintenance \| Update Item Suppliers | probe-itemsuppliers-crud.mjs | V | add item 9801/supplier 311 at 10.00, edit rate 12, delete through the form; exact restore |
 | 65 | Maintenance \| Change Item Reorder Qty | - | P | dialog/columns only |
 | 66 | Maintenance \| Import Historical Data \| Import Previous Sales | - | B | SQL-Server cross-database source does not exist |
 | 67 | Maintenance \| Inplace Initialization | probe-inplace-initialization.mjs | V | disposable-copy runs documented |
@@ -84,7 +84,7 @@ Status: **V** = add/edit/save (or the screen's full intended cycle) verified in 
 | 77 | Manage \| Job Schedule | probe-jobschedule-save.mjs | P | save path; original screen error in this deployment |
 | 78 | Manage \| Group Wise Supplier Category | - | P | add/delete documented; no committed probe |
 
-Totals: **V 52**, **P 16**, **N/A 3**, **B 7** of 78.
+Totals: **V 54**, **P 14**, **N/A 3**, **B 7** of 78.
 
 ## Field-cell coverage
 
