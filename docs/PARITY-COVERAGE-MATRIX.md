@@ -19,7 +19,7 @@ Status: **V** = add/edit/save (or the screen's full intended cycle) verified in 
 | 12 | Sales \| Open Sale Return \| Cash Sale Return | probe-salereturn-open.mjs (PARITY_OPEN_CASH=1) | V | save, DB read-back, exact restore |
 | 13 | Sales \| Open Sale Return \| Credit Sale Return | probe-salereturn-open.mjs | V | save, DB read-back, exact restore |
 | 14 | Sales \| Quotation | probe-quotation-edit-save.mjs; docs add | V | add/save evidence; reopen/edit remarks/save verified, exact restore |
-| 15 | Sales \| Refused Sales | - | P | dedicated screen add/save documented; no committed full cycle |
+| 15 | Sales \| Refused Sales | probe-refusedsale-crud.mjs | V | add/save, reopen/edit remarks, Delete disabled (original), exact restore |
 | 16 | Transactions \| Invoice Base Vouchers \| Sale \| Cash Receipt | probe-voucher-invoice.mjs | V | invoice balance and GL rows verified, exact restore |
 | 17 | Transactions \| Invoice Base Vouchers \| Sale \| Bank Receipt | probe-voucher-invoice.mjs | V | invoice balance and GL rows verified, exact restore |
 | 18 | Transactions \| Invoice Base Vouchers \| Sale \| Journal Voucher | probe-voucher-journalinv.mjs | B | original GetChild("patientcode") closes the form |
@@ -84,7 +84,7 @@ Status: **V** = add/edit/save (or the screen's full intended cycle) verified in 
 | 77 | Manage \| Job Schedule | probe-jobschedule-save.mjs | P | save path; original screen error in this deployment |
 | 78 | Manage \| Group Wise Supplier Category | - | P | add/delete documented; no committed probe |
 
-Totals: **V 50**, **P 18**, **N/A 3**, **B 7** of 78.
+Totals: **V 51**, **P 17**, **N/A 3**, **B 7** of 78.
 
 ## Field-cell coverage
 
@@ -94,5 +94,5 @@ The v4 full audit covered **860 rendered fields / 426 probed / 306 accepted the 
 * 4 cells are non-text/hidden/derived (Purchase Order `reorderqty`/`remarks`, Price Policy `name` choice, Item Basic Data `masterpartname` absent column).
 * Remaining generic non-applied cells are lookups, recalculated totals, `char(1)` domain codes and date readback objects; they are not missing editors.
 
-The matrix above is the screen-level contract.  A **P** row still needs a committed full add/edit/delete/save probe; the first such transaction screen was Purchase Orders, now **V** (`probe-purchaseorder-crud.mjs`).
+The matrix above is the screen-level contract.  A **P** row still needs a committed full add/edit/delete/save probe.  Purchase Orders and Refused Sales were the first two transaction screens in this state; both are now **V** (`probe-purchaseorder-crud.mjs`, `probe-refusedsale-crud.mjs`).
 

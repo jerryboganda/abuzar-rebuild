@@ -29,7 +29,7 @@ const C = {
   'Sales | Open Sale Return | Cash Sale Return': ['probe-salereturn-open.mjs (PARITY_OPEN_CASH=1)', 'V', 'save, DB read-back, exact restore'],
   'Sales | Open Sale Return | Credit Sale Return': ['probe-salereturn-open.mjs', 'V', 'save, DB read-back, exact restore'],
   'Sales | Quotation': ['probe-quotation-edit-save.mjs; docs add', 'V', 'add/save evidence; reopen/edit remarks/save verified, exact restore'],
-  'Sales | Refused Sales': ['—', 'P', 'dedicated screen add/save documented; no committed full cycle'],
+  'Sales | Refused Sales': ['probe-refusedsale-crud.mjs', 'V', 'add/save, reopen/edit remarks, Delete disabled (original), exact restore'],
   'Transactions | Invoice Base Vouchers | Sale | Cash Receipt': ['probe-voucher-invoice.mjs', 'V', 'invoice balance and GL rows verified, exact restore'],
   'Transactions | Invoice Base Vouchers | Sale | Bank Receipt': ['probe-voucher-invoice.mjs', 'V', 'invoice balance and GL rows verified, exact restore'],
   'Transactions | Invoice Base Vouchers | Sale | Journal Voucher': ['probe-voucher-journalinv.mjs', 'B', 'original GetChild("patientcode") closes the form'],
@@ -120,7 +120,7 @@ lines.push('* 22/22 Customer fields, 8/8 rendered Item fields, 7 remaining Purch
 lines.push('* 4 cells are non-text/hidden/derived (Purchase Order `reorderqty`/`remarks`, Price Policy `name` choice, Item Basic Data `masterpartname` absent column).')
 lines.push('* Remaining generic non-applied cells are lookups, recalculated totals, `char(1)` domain codes and date readback objects; they are not missing editors.')
 lines.push('')
-lines.push('The matrix above is the screen-level contract.  A **P** row still needs a committed full add/edit/delete/save probe; the first such transaction screen was Purchase Orders, now **V** (`probe-purchaseorder-crud.mjs`).')
+lines.push('The matrix above is the screen-level contract.  A **P** row still needs a committed full add/edit/delete/save probe.  Purchase Orders and Refused Sales were the first two transaction screens in this state; both are now **V** (`probe-purchaseorder-crud.mjs`, `probe-refusedsale-crud.mjs`).')
 lines.push('')
 const text = lines.join('\n')
   .replace(/[\u2014\u2013]/g, '-')
