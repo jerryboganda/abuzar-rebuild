@@ -12,6 +12,7 @@ const q = (sql) => execFileSync(PSQL, ['-U', 'postgres', '-h', '127.0.0.1', '-d'
 const rows = (sql) => q(sql).split(/\r?\n/).filter(Boolean).map((l) => l.split('|'));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const REMARK = 'PARITY PAYROLL ' + String(Date.now()).slice(-6);
+const REMARK2 = REMARK + ' EDIT';
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
 const out = { remark: REMARK, messages: [], errors: [], net: [] };
@@ -134,6 +135,54 @@ try {
   out.addOk = !!out.code && out.afterAdd.row?.[3] === '1' && Number(out.afterAdd.row?.[6]) === 2600
     && Number(out.afterAdd.row?.[7]) === 2600 && out.afterAdd.row?.[8] === 'N' && out.afterAdd.tab === out.code
     && out.messages.some((m) => /Changes take effect in database/i.test(m));
+  if (out.code) {
+    await page.evaluate(async () => { const rt = window.rt; const w = rt.windowInstances.get('w_payroll'); void w.pbCall('ue_list', [], rt).catch(() => {}) });
+    for (let i = 0; i < 40; i++) { await sleep(500); const n = await page.evaluate(() => window.rt.windowInstances.get('w_payroll')?.props.get('id_list')?.model?.rowCount?.() ?? 0); if (n > 0) { out.listRows = n; break; } await poll(1); }
+    out.pick = await page.evaluate(async (code) => {
+      const rt = window.rt; const w = rt.windowInstances.get('w_payroll');
+      const l = w.props.get('id_list'); const m = l.model; const ci = m.colIndex('code') >= 0 ? m.colIndex('code') : 0;
+      const hit = [...m.buf.primary.entries()].find(([, r]) => Number(r.v[ci]) === Number(code));
+      if (!hit) return { error: 'payroll not in list', rows: m.rowCount() };
+      w.props.set('id_dwcontrol', l); w.props.set('il_selectedrow', hit[0] + 1);
+      await w.pbCall('ue_detail', [], rt).catch(() => {});
+      await new Promise((r) => setTimeout(r, 1200));
+      const mm = w.props.get('id_master');
+      return { row: hit[0] + 1, listRows: m.rowCount(), masterCode: Number(mm?.model?.buf.primary[0]?.v?.[mm.model.colIndex('code')] ?? 0) };
+    }, Number(out.code));
+    await poll(2);
+    out.edit = await page.evaluate(async ({ remark2 }) => {
+      const rt = window.rt; const w = rt.windowInstances.get('w_payroll'); const m = w.props.get('id_master');
+      await m.pbCall('setitem', [1, 'basicpay', 2700], rt);
+      await m.pbCall('setitem', [1, 'remarks', remark2], rt);
+      await m.pbCall('setrow', [1], rt).catch(() => {});
+      m.model.acceptText = async () => 1;
+      window.__save2 = false;
+      void w.pbCall('ue_save', [], rt).then(() => { window.__save2 = 'ok' }).catch((e) => { window.__save2 = 'ERR ' + String(e.message || e).slice(0, 400) });
+      return { values: m.model.buf.primary[0]?.v };
+    }, { remark2: REMARK2 });
+    for (let i = 0; i < 40; i++) {
+      await sleep(500);
+      const has = await page.evaluate(() => !!window.rt.windowInstances.get('w_salesmanpassword'));
+      if (has) {
+        await page.evaluate(async () => {
+          const rt = window.rt; const w = rt.windowInstances.get('w_salesmanpassword'); const d = w.props.get('id_password');
+          if (!d.model.rowCount()) await d.pbCall('insertrow', [0], rt);
+          await d.pbCall('setitem', [1, 'salesmancode', 1], rt);
+          await d.pbCall('setitem', [1, 'password', 'password9080'], rt);
+          d.model.acceptText = async () => 1;
+          await d.pbCall('accepttext', [], rt).catch(() => {});
+          const ok = [...w.children.values()].find((c) => c.name === 'cb_ok');
+          if (ok) await rt.fire(ok, 'clicked').catch(() => {});
+        });
+        break;
+      }
+      await poll(1);
+    }
+    await poll(18);
+    out.save2Result = await page.evaluate(() => window.__save2 ?? null);
+    out.afterEdit = rows(`select payrollcode,basicpay::text,netpayable::text,remarks from dbo.emp_payroll where payrollcode=${Number(out.code)}`)[0] ?? null;
+    out.editOk = Number(out.afterEdit?.[1]) === 2700 && Number(out.afterEdit?.[2]) === 2700 && out.afterEdit?.[3] === REMARK2;
+  }
   restore();
   out.final = counts();
   out.final.residue = rows(`select count(*) from dbo.emp_payroll where remarks like 'PARITY PAYROLL %'`)[0]?.[0] ?? null;
@@ -143,7 +192,7 @@ try {
     && out.final.serverDate === out.baseline.serverDate
     && out.final.audit === out.baseline.audit && out.final.auditMax === out.baseline.auditMax
     && out.final.residue === '0';
-  out.ok = !!out.addOk && out.baselineOk;
+  out.ok = !!out.addOk && !!out.editOk && out.baselineOk;
 } catch (e) { out.fatal = String(e.stack || e).slice(0, 3000); }
 finally {
   restore();

@@ -1624,6 +1624,11 @@ Master `d_emp_payroll` updates `EMP_Payroll`; detail
   `usercode 1`; "Changes take effect in database".
 * No allowances/deductions rows are written for this zero-deduction case
   (both tables stayed at 0).
+* **Edit:** File | List returned the payroll row; Detail loaded code 1.
+  Basic pay changed 2600 -> 2700 and remarks changed; Save opened the same
+  password dialog, then `UPDATE dbo.emp_payroll` wrote
+  `basicpay 2700.00`, recomputed `netpayable 2700.00`, and the edited remarks
+  (success message again).
 * Exact restore: `emp_payroll 0 / max 0`, `emp_employee 0`,
   `emp_payrollallowances 0`, `emp_payrolldeductions 0`,
   `_tabmaxkey('Emp_Payroll') 0`, `serverdate 2026-11-06 00:38:24`,
