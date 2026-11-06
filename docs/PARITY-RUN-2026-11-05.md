@@ -1607,6 +1607,42 @@ Probe: `tools/parity/probe-empidentity-crud.mjs` with `education`,
 
 Probe: `tools/parity/probe-empdept-crud.mjs` - measured `ok=true`.
 
+### Online Attendance kiosk clock-in/clock-out (verified; timeslab defect recorded)
+
+`m_employeeonlineattendance` (hidden) opens the modal `w_emp_attendance`
+(empty title, `windowtype 3`).  `wf_validate_empid` looks up
+`EMP_Employee.AllowAttendanceViaID`, calls `markattendance` ->
+`sp_markattendance`, then retrieves the result into the kiosk display.
+
+* Temporary employee `PARITYATT...` with `AllowAttendanceViaID='Y'`.
+* **First scan:** `wf_validate_empid` returned 0 and inserted
+  `EMP_Attendance` code **2** (identity sequence 1 -> 2):
+  `empcode 1`, `fingercode 1`, `timein 2026-11-06 06:24:03.347`,
+  `timeout NULL`, `attendancestatuscode 1`, `payed N`.
+* **Second scan:** the same open row was closed:
+  `timeout 2026-11-06 06:24:08.645` on the same attendance code 2.
+* Exact restore: `emp_attendance 0`, identity sequence back to
+  `last_value 1 / is_called true`, employee 0, `serverdate 2026-11-06
+  00:38:24`, `audit_log 1,079 / max 1,127`.
+* **Timeslab path defect (recorded):** the installation has
+  `ApplyDeptTimeSlabsInOnlineAtten='Y'`, but the generated
+  `sp_markattendance` converts department times with
+  `to_char(..., 'HH24:MI:SS:MS')`/`left(...,10)` and assigns the resulting
+  time-only text (`'00:00:00:0'`) to a `timestamp` variable.  SQL Server
+  implicitly anchors that to 1900-01-01; PostgreSQL rejects it
+  (`invalid input syntax for type timestamp: "00:00:00:0"`).  Replacing the
+  colon with the valid decimal millisecond separator still leaves
+  `"00:00:00.0"` time-only, so the fix needs to carry a date (or use a
+  `time` variable).  The probe exercised the non-timeslab branch with the
+  preference temporarily `N` (restored to `Y`); the timeslab branch remains
+  a rebuild port gap, not a missing screen.
+* The kiosk display DataWindow was not resolved through the user-object
+  traversal in this probe (`dw_control` rows null), but the DB path above is
+  the same one the retrieved kiosk display reads.
+
+Probe: `tools/parity/probe-attendance-kiosk.mjs` - measured `ok=true` for the
+non-timeslab branch.
+
 ### Item Meter master (verified; right-hidden)
 
 `m_itemmeter` (hidden) opens `w_itemmeter_form` (`w_single_entry`, title
