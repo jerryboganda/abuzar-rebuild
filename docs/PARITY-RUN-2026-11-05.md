@@ -1597,6 +1597,38 @@ Probe: `tools/parity/probe-empdeduction-crud.mjs` - measured `ok=true`.
 
 Probe: `tools/parity/probe-empadvance-add.mjs` - measured `ok=true`.
 
+### Payroll add (verified, including password dialog)
+
+`m_payroll` (hidden) opens `w_payroll` (`w_multi_entry`, title "Payroll").
+Master `d_emp_payroll` updates `EMP_Payroll`; detail
+`d_emp_payrollallowances` updates `EMP_PayrollAllowances`; footer
+`d_emp_payrolldeduction` updates `EMP_PayrollDeductions`; footer2
+`d_emp_payrollfooter` is a computed net-payable display.
+
+* Temporary employee fixture `PARITY001` / `PARITY EMPLOYEE`.
+* **Add:** one payroll row for employee 1, paid N, cash account 2, from
+  2026-11-01 to 2026-11-30, workdays/presents 26, per-hour rate 100,
+  basic pay 2600, all overtime/bonus/deduction fields 0.  Save opened
+  `w_salesmanpassword`; ADMIN/password9080 accepted, then:
+  `wf_tabnewid("Emp_Payroll")` -> code **1**
+  (`_tabmaxkey 0 -> 1`), and
+  `INSERT INTO dbo.emp_payroll (payrollcode, date, posted, usercode,
+  lastsaved, fromdate, todate, empcode, workdays, presents, absents, leaves,
+  sundays, holidays, hoursworked, perhourrate, basicpay, overtimehours,
+  overtimerate, overtime, bonuspay, specialpay, additionalpay, otherpay,
+  fine, penalty, othercharge, advance, netpayable, remarks, paid, paidvia,
+  paymentdate, paymentrefno) VALUES (1, ..., 1, 1, ..., 2600, ..., 'N', 2,
+  ..., 'CASH')`.
+  Measured row: `basicpay 2600.00`, `netpayable 2600.00`, `paid N`,
+  `usercode 1`; "Changes take effect in database".
+* No allowances/deductions rows are written for this zero-deduction case
+  (both tables stayed at 0).
+* Exact restore: `emp_payroll 0 / max 0`, `emp_employee 0`,
+  `emp_payrollallowances 0`, `emp_payrolldeductions 0`,
+  `_tabmaxkey('Emp_Payroll') 0`, `audit_log 1,079 / max 1,127`, no residue.
+
+Probe: `tools/parity/probe-payroll-add.mjs` - measured `ok=true`.
+
 ### Item Association nested form + parent save
 
 `Set Item Associations` (`m_setitemassociations` →
