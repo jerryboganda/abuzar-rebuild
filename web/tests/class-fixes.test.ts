@@ -27,3 +27,20 @@ test('the f_validatedw fix leaves a class without the duplicated gate untouched'
   assert.deepEqual(fixClassData('f_validatedw', data), [])
   assert.deepEqual(body, [{ k: 'return', e: { k: 'num', v: 1, dec: false } }])
 })
+
+test('the journal voucher fix removes the decompiler trailing save return', () => {
+  const inner = { k: 'if', c: { k: 'bin', op: '<', l: { k: 'id', n: 'll_credit' }, r: { k: 'num', v: 1, dec: false } }, t: [{ k: 'return' }], ei: [] }
+  const outer = {
+    k: 'if',
+    c: { k: 'bin', op: '=', l: { k: 'mem', o: { k: 'id', n: 'this' }, n: 'ii_vouchertype' }, r: { k: 'num', v: 5, dec: false } },
+    t: [inner, { k: 'return' }],
+    ei: [],
+  }
+  const body = [outer]
+  const data = { routines: { w_journalvoucher: { ue_save: [{ body }] } } }
+
+  assert.deepEqual(fixClassData('w_journalvoucher', data), ['journal voucher save returns (1)'])
+  assert.deepEqual(outer.t, [inner])
+  // Idempotent: the trailing return is gone.
+  assert.deepEqual(fixClassData('w_journalvoucher', data), [])
+})

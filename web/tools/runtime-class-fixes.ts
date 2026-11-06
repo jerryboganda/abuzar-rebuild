@@ -280,6 +280,18 @@ export function applyRuntimeClassFixes(out: string): string[] {
     }
   }
 
+  const wj = load(out, 'w_journalvoucher.json')
+  if (wj) {
+    const saveBody = wj.routines?.w_journalvoucher?.ue_save?.[0]?.body
+    if (Array.isArray(saveBody)) {
+      const n = removeSpuriousReturns(saveBody, ['ii_vouchertype'])
+      if (n) {
+        save(out, 'w_journalvoucher.json', wj)
+        messages.push(`w_journalvoucher: removed ${n} spurious save return(s)`)
+      }
+    }
+  }
+
   const fv = load(out, 'f_validatedw.json')
   if (fv && fixValidatedW(fv)) {
     save(out, 'f_validatedw.json', fv)

@@ -135,6 +135,18 @@ function fixPurchase(data: Json): string[] {
   return out
 }
 
+function fixJournalVoucher(data: Json): string[] {
+  const out: string[] = []
+  const save = data.routines?.w_journalvoucher?.ue_save?.[0]?.body
+  if (Array.isArray(save)) {
+    // The decompiler left an unconditional `return` after the category
+    // 5/14/17 validation blocks, so Save validated and then did nothing.
+    const n = removeSpuriousReturns(save, ['ii_vouchertype'])
+    if (n) out.push(`journal voucher save returns (${n})`)
+  }
+  return out
+}
+
 function fixValidatedW(data: Json): boolean {
   const body = data.routines?.f_validatedw?.f_validatedw?.[0]?.body
   if (!Array.isArray(body)) return false
@@ -245,6 +257,7 @@ export function fixClassData(name: string, data: Json): string[] {
   if (n === 'w_multi_entry') return fixMultiEntry(data) ? ['stock transfer'] : []
   if (n === 'w_sale') return fixSale(data)
   if (n === 'w_purchase') return fixPurchase(data)
+  if (n === 'w_journalvoucher') return fixJournalVoucher(data)
   if (n === 'f_validatedw') return fixValidatedW(data) ? ['required-field gate'] : []
   return []
 }

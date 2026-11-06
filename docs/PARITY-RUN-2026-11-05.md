@@ -973,25 +973,72 @@ has no detail rows; the rebuild printed it with zero totals.
 * Re-captured proof: 010 (0 rows) body contains **no** `Net Total`; 081
   (1 row) still prints `Report. Total: 30.00 10.00 20.00`.
 
-### Voucher screens (rights-hidden / original data limit)
+### Voucher screens (rights-hidden; CRUD measured with numeric category)
 
-The six voucher entry commands are **hidden in both apps**
-(`menu-walk`: `m_cashreceipt`, `m_bankreceipt`, `m_cashpayment`,
-`m_bankpayment`, `m_invjournalvoucher`, `m_invjournalvoucher2` and the four
-invoice variants all have `effectiveVisible=false`).  Forcing the handler in
-the rebuild opens `w_voucher`, which closes with the original guard
-“No Account Allowed in Voucher Detail.”
+The voucher entry commands are hidden/rights-gated in this deployment.  The
+old app's live Customer Form menu has no Receipt/Payment/Voucher entries for
+ADMIN, and the rebuild's `menu-walk` marks `m_cashpayment`, `m_cashreceipt`,
+`m_bankpayment`, `m_bankreceipt`, `m_invjournalvoucher`,
+`m_invjournalvoucher2` and the four invoice variants `effectiveVisible=false`.
+Invoking `m_cashpayment` etc. through the rebuilt menu passes an
+`s_arguements` struct, but `w_voucher.ue_postopen` reads
+`message.doubleparm`; the rebuilt runtime leaves that 0, so the hidden path
+shows "Can not get a master DataWindowChild"/"No Account Allowed in Voucher
+Detail."  The old app cannot reach these items either for this login, so this
+hidden-path mismatch is recorded as a parity item, not a visible-screen gap.
 
-* Cause: `vochercategorydetail` has **no rows for voucher categories 12-17**
-  (invoice-based receipts/payments) in the clone, and the live SQL Server has
-  the **same gap** (counts match exactly: categories 1-11 and 18-20 only).
-* The detail drop-down itself works: a direct retrieve returned **239**
-  accounts for category 2 and **257** for category 12.
-* The original app's live menu tree for the Customer form has no
-  Receipt/Payment/Voucher entries at all, confirming the rights state.
-* Therefore these screens are not reachable in the original UI and cannot be
-  saved in either database; recorded as an original data/rights limit, not a
-  rebuild gap.  No test data was written (`glheader`/`gldetail` remain 0).
+The screens themselves were exercised by opening `w_voucher` /
+`w_journalvoucher` with the numeric category (the value their `ue_postopen`
+reads), which is the same path the recovered handlers use:
+
+* **Category 1 Cash Payment:** header glvochcode **3**, `vochcatcode 1`,
+  `acccode 2`, `vouchercode 1`, `posted N`; detail supplier **101 debit
+  100.00**, cash **2 credit 100.00**; password dialog accepted.
+* **Category 2 Cash Receipt:** header **4**, `vochcatcode 2`, `acccode 2`,
+  `vouchercode 1`; detail customer **22 credit 50.00**, cash **2 debit
+  50.00**.
+* **Category 5 Journal Voucher:** header **5**, `vochcatcode 5`,
+  `vouchercode 0` (the JV path does not use the category counter); detail
+  expenses **24 debit 25.00**, cash **2 credit 25.00**.  Before the fix below
+  this Save produced no SQL at all.
+* **Category 12 Cash Receipt against Sales:** sale invoice **588882**
+  (outstanding 11.00) credited to customer **22** for 11.00 and cash **2**
+  debited 11.00; `saleledger.outstandingamt` went 11.00 -> **0.00**.
+* **Category 13 Bank Receipt against Sales:** sale invoice **588886**
+  (11.00) -> **0.00**; customer **22** credit 11.00, bank **326** debit 11.00.
+* **Category 15 Cash Payment against Purchase:** purchase invoice **2**
+  (803.00) -> **0.00**; supplier **115** debit 803.00, cash **2** credit
+  803.00.
+* **Category 16 Bank Payment against Purchase:** purchase invoice **3**
+  (3289.00) -> **0.00**; supplier **111** debit 3289.00, bank **326** credit
+  3289.00.
+* **Data prerequisite for bank categories:** the clone has **no account with
+  subcode 4**, so 13/16 otherwise open with an empty header account list.  A
+  temporary `accounts` row 326 (subcode 4, "PARITY BANK ...") made the header
+  list 1 row and the detail list 258 rows; it was removed afterwards.
+* **Category 14/17 are blocked by the original script, not by accounts:**
+  `w_journalvoucher.ue_postopen` calls
+  `id_detail.getchild("patientcode", ...)`; `d_invjournalvoucherdetail` has no
+  `patientcode` object, so `GetChild` returns -1 and the window closes with
+  "Can not get a detail DataWindowChild".  This matches the earlier nested
+  sweep finding for `d_invjournalvoucherdetail.srd`; recorded rather than
+  inventing a column.
+* **Rebuild fix (decompiler artifact):** `w_journalvoucher.ue_save` had an
+  unconditional `return` after the category 5/14/17 validation blocks, so
+  Save validated and did nothing.  `web/src/runtime/class-fixes.ts` and
+  `web/tools/runtime-class-fixes.ts` now strip that trailing return (same
+  correction already used for Sale/Purchase).  Before: no SQL on Save.
+  After: the category 5 journal rows above.
+* Exact restore: `glheader 0 / gldetail 0`, `invledger 0 / invdetail 0`,
+  `saleledger` 588882/588886 back to **11.00**, `purledger` 2/3 back to
+  **803.00 / 3289.00**, `accounts 257 / max 325`, `_tabmaxkey('Accounts')
+  333`, `_tabmaxkey('glheader') 2`, `_tabmaxkey('InvLedger') 0`,
+  `vochercategory.counter` 1-22 all 0 except 5 = 2,
+  `serverdate 2026-11-06 00:38:24`, `audit_log 1,079 / max 1,127`.
+
+Probes: `tools/parity/probe-voucher-matrix.mjs`,
+`probe-voucher-crud.mjs`, `probe-voucher-invoice.mjs`,
+`probe-voucher-journalinv.mjs`.
 
 ### Opening Purchase add/edit/save (verified)
 
@@ -2950,9 +2997,13 @@ Probe: `tools/parity/probe-itempart-cascade.mjs` — measured `ok=true`.
   both omit it now); visual ~88%; reference data ~95%.  Overall ~99%,
   **not 100%**.
 * Remaining work (measured, not hand-waved):
-  * **Voucher entry screens**: resolved as rights-hidden and blocked by the
-    same missing category-12..17 account configuration in live and clone;
-    no reachable workflow remains to test (see above).
+  * **Voucher entry screens**: exercised with the numeric category path.
+    Categories 1, 2, 5, 12, 13, 15 and 16 add/save with real `glheader` /
+    `gldetail` writes and invoice-balance updates (bank 13/16 needed a
+    temporary subcode-4 account); 14/17 close with the original
+    `GetChild("patientcode")` error because `d_invjournalvoucherdetail` has
+    no such column.  The journal Save no-op was a decompiler trailing return,
+    now fixed.  See the Voucher screens section above.
   * Full add/edit/delete/save on the remaining transaction screens: all
     purchase variants (normal, opening, loose), purchase return, sale/return,
     quotation, purchase order and adjustments now have committed cycles.
