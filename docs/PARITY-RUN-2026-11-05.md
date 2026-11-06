@@ -1498,6 +1498,41 @@ admission's current location.
 
 Probe: `tools/parity/probe-patienttransfer-add.mjs` - measured `ok=true`.
 
+### Patient Admission edit + two-stage Discharge (verified with right fixtures)
+
+The live rights catalog is missing **5022 (initial discharge), 5023 (final
+discharge), 5140 (edit admission) and 1782 (modify initial-discharge date)**.
+Temporary `rights` + `grouprights` rows for group 2 were inserted for this
+probe and removed afterwards; without them the discharge form opens with
+"Rights Limitations" and the admission edit cannot enter modify mode.
+
+* **Admission edit:** reopened admission 1 through File | List; with right
+  5140 `ib_modify = true`.  Changed diagnosis/remarks and saved:
+  `DELETE FROM dbo.admittedpatientrecurringservices WHERE admissioncode=1`
+  (no rows) and `UPDATE dbo.patientadmission SET diagnosis=$1, remarks=$2
+  WHERE admissioncode=1 ...`; the row then read
+  `PARITY DIAGNOSIS EDITED` / `PARITY DISCHARGE ...`.  "Changes take effect
+  in database".
+* **Initial discharge:** checked-in admission 1; set `Discharged1='Y'`
+  (`Discharged='N'`) and saved.  Measured persisted row:
+  `Discharged1='Y'`, `Discharged1By=1`,
+  `Discharged1On=2026-11-06 06:13:44.634`, `Discharged='N'`;
+  "Changes take effect in database".  The admission remains counted as
+  occupied (the occupancy query filters on `Discharged='N'`).
+* **Final discharge is an original early-return defect:** setting
+  `Discharged='Y'` and saving runs the balance/dischargeability checks and
+  sends `UPDATE dbo.patient SET active='N'`, then **returns before
+  `PatientAdmission.update()`**.  Measured after the final save:
+  `Discharged` is still `N`, `DischargedBy/On` are empty, the admission is
+  still counted as occupying bed 1 (1 row), and no success message is shown.
+* Exact restore: admissions/patients/locations/wards = 0,
+  `_tabmaxkey('PatientAdmission') 0`, temporary rights 0,
+  `serverdate 2026-11-06 00:38:24`, `audit_log 1,079 / max 1,127`,
+  no residue.
+
+Probe: `tools/parity/probe-patientadmission-edit-discharge.mjs` - measured
+`ok=true` (the final-discharge early return is recorded as parity behavior).
+
 ### Employee lookup masters (verified; right-hidden)
 
 The employee lookup forms are created with `visible = false`; the probe fires
