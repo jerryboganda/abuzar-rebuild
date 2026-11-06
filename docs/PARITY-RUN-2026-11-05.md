@@ -557,9 +557,9 @@ Cash variant) - measured `ok=true` for both.
   (`pagesize` accepts F/H/Q, the audit typed Y), and 43 ambiguous cells
   (Customer `customer_*` alias columns, item price fields recomputed from
   purchase price, `remarks` on a blank new row).  That ambiguous set is now
-  being driven separately with domain-valid values and a Save: **22 Customer
-  fields and 8 Item fields are verified end-to-end** (below), leaving 11
-  screen-specific cells.  One click timed out
+  fully accounted for: **22 Customer fields + 10 Item fields (8 applied, 2
+  hidden) + the 7 remaining editable cells verified end-to-end + 4 hidden/
+  choice/derived cells classified** (below).  One click timed out
   (Price Policy `icode`, a 366x19 editable cell - the audit's 1.5 s
   actionability window, not a missing field).  Harness fixes:
   `screen-audit.mjs` now reads back from the **same** DataWindow that owns the
@@ -625,13 +625,36 @@ Cash variant) - measured `ok=true` for both.
   string when it is not a constant).  Regression test in
   `web/tests/dwctrl-model.test.ts`.  The old app's File | New screenshot
   (captured read-only from `deploy/Application/abuzar.exe`) has no Alias field.
-* **Remaining 11 ambiguous cells:** Purchase `purprice` (normal and loose)
-  needs a selected item row; Opening Purchase `suppinvcode`/`remarks` need a
-  new header; Sale Promotion `weekdaycode` (dddw) and Adjustment
-  Increase/Decrease `remarks` need a new row.  Purchase Order `reorderqty`/
-  `remarks`, Item Basic Data `masterpartname` and Price Policy `name` are
-  hidden/display/derived columns (`visible="0"` in their DataWindows), so they
-  are not typeable fields in this configuration.
+* **The remaining seven editable cells are verified end-to-end:**
+  * **Purchase (`Purchase | Purchases`) and Purchases (Loose):** `purprice`
+    typed through the grid editor as **9**, save succeeded, and
+    `dbo.purdetail.purprice` read back as **9.00** for both variants.  The
+    loose/normal probe restored `purledger 12,283 / max 12,283`,
+    `purdetail 196,966`, the `PurLedger` counter, stock/avg price,
+    `serverdate 2026-11-06 00:38:24` and `audit_log 1,079 / 1,127` exactly.
+  * **Opening Purchase:** `suppinvcode` and `remarks` typed through the header
+    editors.  The saved `purledger` row returned
+    `suppinvcode = PARITY-OPEN-…` and the exact remarks text; the probe
+    restored the same purchase counters, stock/avg price, server date and
+    audit log exactly.
+  * **Sale Promotion:** `weekdaycode` chosen through its real drop-down as
+    **Monday (code 2)**; `dbo.salepromotion.weekdaycode` read back **2**, then
+    the promotion, temporary customer group/detail and the customer's default
+    discount were removed and `SalePromotion` counter 4 restored exactly.
+  * **Adjustment Increase and Decrease:** `remarks` typed through the header
+    editor.  Each save wrote `adjheader` code **3669** with the exact remarks;
+    stock moved **18035 -> 18036** (increase) and **18035 -> 18034**
+    (decrease), then the probe deleted the adjustment, reversed the stock
+    ledger/item log, restored `godowndetail` 18035 /
+    `2026-11-05 11:45:49.638`, `AdjHeader` 3668, `_utn 1629000`, server date
+    and audit log exactly.
+* **The four remaining cells are not free-text fields:** Purchase Order
+  `reorderqty` and `remarks` have `visible="0"` in `d_purchaseorderdetail`
+  (hidden in this form); Price Policy `name` opens a **drop-down choice**, not
+  a text editor; Item Basic Data `masterpartname` maps to
+  `Item.MasterPartName`, a column that does not exist in the PostgreSQL item
+  table, so it is a display/derived value and cannot be independently
+  persisted.
 * Quotation edit-after-save, Purchase Order, Refused Sale and the three
   Adjustments still need the full add/edit/save/delete cycle.
 * Priority Setting was flagged by the label comparison (missing Retrieve and
