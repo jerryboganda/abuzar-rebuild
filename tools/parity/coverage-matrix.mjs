@@ -24,7 +24,7 @@ const C = {
   'Purchase | Purchase Orders': ['probe-purchaseorder-crud.mjs', 'V', 'add/save, reopen/edit remarks, Delete disabled (original), exact restore'],
   'Sales | CashSale': ['probe-sale-fields.mjs; docs 588888', 'P', '8 editable cells (7 applied); invoice save previously verified; no delete'],
   'Sales | Credit Sale': ['probe-sale-fields.mjs; docs 588889', 'P', '7 editable cells (6 applied); invoice save previously verified; no delete'],
-  'Sales | Sale Return | Cash Sale Return': ['probe-salereturn-open.mjs (open cash); docs 61605', 'P', 'cash return against invoice verified in docs; committed probe covers open-cash variant'],
+  'Sales | Sale Return | Cash Sale Return': ['probe-salereturn-cash-invoice.mjs', 'V', 'invoice 588890 validated/saved; SR 61606, stock +1, return counter, UTN; reopen protected, Delete disabled (original); exact restore'],
   'Sales | Sale Return | Credit Sale Return': ['probe-salereturn-credit.mjs', 'V', 'validate invoice, save, stock/UTN/sale counter, exact restore'],
   'Sales | Open Sale Return | Cash Sale Return': ['probe-salereturn-open.mjs (PARITY_OPEN_CASH=1)', 'V', 'save, DB read-back, exact restore'],
   'Sales | Open Sale Return | Credit Sale Return': ['probe-salereturn-open.mjs', 'V', 'save, DB read-back, exact restore'],
@@ -120,7 +120,7 @@ lines.push('* 22/22 Customer fields, 8/8 rendered Item fields, 7 remaining Purch
 lines.push('* 4 cells are non-text/hidden/derived (Purchase Order `reorderqty`/`remarks`, Price Policy `name` choice, Item Basic Data `masterpartname` absent column).')
 lines.push('* Remaining generic non-applied cells are lookups, recalculated totals, `char(1)` domain codes and date readback objects; they are not missing editors.')
 lines.push('')
-lines.push('The matrix above is the screen-level contract.  A **P** row still needs a committed full add/edit/delete/save probe.  Purchase Orders and Refused Sales were the first two transaction screens in this state; both are now **V** (`probe-purchaseorder-crud.mjs`, `probe-refusedsale-crud.mjs`).')
+lines.push('The matrix above is the screen-level contract.  A **P** row still needs a committed full add/edit/delete/save probe.  Purchase Orders, Refused Sales and Cash Sale Return against an invoice were the first transaction screens in this state; all three are now **V** (`probe-purchaseorder-crud.mjs`, `probe-refusedsale-crud.mjs`, `probe-salereturn-cash-invoice.mjs`).')
 lines.push('')
 const text = lines.join('\n')
   .replace(/[\u2014\u2013]/g, '-')

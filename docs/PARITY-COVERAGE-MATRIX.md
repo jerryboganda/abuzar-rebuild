@@ -14,7 +14,7 @@ Status: **V** = add/edit/save (or the screen's full intended cycle) verified in 
 | 7 | Purchase \| Purchase Orders | probe-purchaseorder-crud.mjs | V | add/save, reopen/edit remarks, Delete disabled (original), exact restore |
 | 8 | Sales \| CashSale | probe-sale-fields.mjs; docs 588888 | P | 8 editable cells (7 applied); invoice save previously verified; no delete |
 | 9 | Sales \| Credit Sale | probe-sale-fields.mjs; docs 588889 | P | 7 editable cells (6 applied); invoice save previously verified; no delete |
-| 10 | Sales \| Sale Return \| Cash Sale Return | probe-salereturn-open.mjs (open cash); docs 61605 | P | cash return against invoice verified in docs; committed probe covers open-cash variant |
+| 10 | Sales \| Sale Return \| Cash Sale Return | probe-salereturn-cash-invoice.mjs | V | invoice 588890 validated/saved; SR 61606, stock +1, return counter, UTN; reopen protected, Delete disabled (original); exact restore |
 | 11 | Sales \| Sale Return \| Credit Sale Return | probe-salereturn-credit.mjs | V | validate invoice, save, stock/UTN/sale counter, exact restore |
 | 12 | Sales \| Open Sale Return \| Cash Sale Return | probe-salereturn-open.mjs (PARITY_OPEN_CASH=1) | V | save, DB read-back, exact restore |
 | 13 | Sales \| Open Sale Return \| Credit Sale Return | probe-salereturn-open.mjs | V | save, DB read-back, exact restore |
@@ -84,7 +84,7 @@ Status: **V** = add/edit/save (or the screen's full intended cycle) verified in 
 | 77 | Manage \| Job Schedule | probe-jobschedule-save.mjs | P | save path; original screen error in this deployment |
 | 78 | Manage \| Group Wise Supplier Category | - | P | add/delete documented; no committed probe |
 
-Totals: **V 51**, **P 17**, **N/A 3**, **B 7** of 78.
+Totals: **V 52**, **P 16**, **N/A 3**, **B 7** of 78.
 
 ## Field-cell coverage
 
@@ -94,5 +94,5 @@ The v4 full audit covered **860 rendered fields / 426 probed / 306 accepted the 
 * 4 cells are non-text/hidden/derived (Purchase Order `reorderqty`/`remarks`, Price Policy `name` choice, Item Basic Data `masterpartname` absent column).
 * Remaining generic non-applied cells are lookups, recalculated totals, `char(1)` domain codes and date readback objects; they are not missing editors.
 
-The matrix above is the screen-level contract.  A **P** row still needs a committed full add/edit/delete/save probe.  Purchase Orders and Refused Sales were the first two transaction screens in this state; both are now **V** (`probe-purchaseorder-crud.mjs`, `probe-refusedsale-crud.mjs`).
+The matrix above is the screen-level contract.  A **P** row still needs a committed full add/edit/delete/save probe.  Purchase Orders, Refused Sales and Cash Sale Return against an invoice were the first transaction screens in this state; all three are now **V** (`probe-purchaseorder-crud.mjs`, `probe-refusedsale-crud.mjs`, `probe-salereturn-cash-invoice.mjs`).
 
