@@ -546,31 +546,24 @@ Cash variant) - measured `ok=true` for both.
 
 ### In progress
 
-* Full-screen field audit (v3, harness corrected): all **78/78** non-report
-  menu screens were opened across the runs.  The generic audit types a
-  synthetic value into every rendered tab-stop cell; on the 73 screens rerun
-  with the corrected readback (v3) it probed **414** cells and **267 accepted
-  the value verbatim**.  The 129 non-applied cells are explained by the
-  synthetic value, not missing editors: **47** lookups (typing `1` resolves to
-  another valid code, e.g. `suppcode` 1 -> 311), **26** recalculated fields
-  (`total`, `flatdisc`, `unitsalestax`, ...), **13** `char(1)` domain codes
-  (`pagesize` accepts F/H/Q, the audit typed Y), and 43 ambiguous cells
-  (Customer `customer_*` alias columns, item price fields recomputed from
-  purchase price, `remarks` on a blank new row).  That ambiguous set is now
-  fully accounted for: **22 Customer fields + 10 Item fields (8 applied, 2
-  hidden) + the 7 remaining editable cells verified end-to-end + 4 hidden/
-  choice/derived cells classified** (below).  One click timed out
-  (Price Policy `icode`, a 366x19 editable cell - the audit's 1.5 s
-  actionability window, not a missing field).  Harness fixes:
-  `screen-audit.mjs` now reads back from the **same** DataWindow that owns the
-  clicked cell (several windows carry a hidden list with the same column name)
-  and types a length-appropriate `char` value; PCT Codes and Customer Category
-  now return `PARITY`.  Remaining field work is domain-valid values for the 11
-  screen-specific cells below, not more generic runs.  Cash/Credit Sale were
-  the two zero-field screens and have the targeted preparation probe below.
-* `Item Basic Data`, `Price Policy`, `PCT Codes` and `Item Thickness` timed out
-  at login in the first batch (server contention, not a screen failure) and
-  need re-runs.
+* Full-screen field audit (v4, final after both editor fixes): **78/78**
+  non-report menu screens opened (two login timeouts were rerun individually).
+  The generic audit typed a synthetic value into every rendered tab-stop cell:
+  **860 fields** seen, **426 probed**, **306 accepted the value verbatim**.
+  The non-applied cells are explained by synthetic values, not missing
+  editors: **41** lookups (typing `1` resolves to another valid code, e.g.
+  `suppcode` 1 -> 311), **28** recalculated fields (`total`, `flatdisc`,
+  `unitsalestax`, ...), **12** `char(1)` domain codes (`pagesize` accepts
+  F/H/Q, the audit typed Y), **19** date/datetime readback objects, **1**
+  click timeout (Price Policy `icode`, a 366x19 editable cell - the audit's
+  1.5 s actionability window), and **20** domain-specific cells.  The 43
+  ambiguous cells are fully accounted for separately: **22 Customer + 10 Item
+  (8 applied, 2 hidden) + 7 remaining editable fields verified end-to-end +
+  4 hidden/choice/derived cells classified** (below).  Harness fixes:
+  `screen-audit.mjs` reads back from the **same** DataWindow that owns the
+  clicked cell and types length-appropriate `char` values; PCT Codes and
+  Customer Category return `PARITY`.  Cash/Credit Sale are the two zero-field
+  screens and have the targeted preparation probe below.
 * Cash Sale, Credit Sale and the six voucher screens reported 0 fields in the
   first batch; targeted field probes are still needed.  Cash/Credit Sale now
   have one: the grids only render editors after a customer and item row exist,
