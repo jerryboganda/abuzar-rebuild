@@ -1710,6 +1710,27 @@ range, then `sp_postpayroll`.
 Probe: `tools/parity/probe-payroll-post.mjs` - measured `ok=true` after
 applying the regenerated `sp_postpayroll` to the clone.
 
+### Payroll Payment (verified; batch payment + password)
+
+`w_payroll.wf_payroll_payment()` is enabled from the list tab and opens
+`w_emp_payroll_payment` (title "Employee Payroll Payment").  Its
+`d_emp_paid_payrolllist` retrieves `EMP_Payroll` rows with `Posted='Y' AND
+Paid='N'`.
+
+* Temporary employee + posted/unpaid payroll 1 (`netpayable 2600`).
+* The payment window listed 1 row.  Set `Paid='Y'`, `PaidVia=2`,
+  `PaymentRefNo='CASH'`, `PaymentRemarks='PARITY PAYMENT REMARKS'` and Save.
+  Password ADMIN/password9080 accepted; `wf_getserverdatetime` updated
+  ServerDate; the update wrote `paid='Y'`,
+  `paymentdate=2026-11-06 05:54:43`, `paidby=1`, `paidvia=2`,
+  `paymentrefno='CASH'`, `paymentremarks='PARITY PAYMENT REMARKS'`;
+  "Changes take effect in database".
+* Exact restore: `emp_payroll 0 / max 0`, `emp_employee 0`,
+  `_tabmaxkey('Emp_Payroll') 0`, `serverdate 2026-11-06 00:38:24`,
+  `audit_log 1,079 / max 1,127`, no residue.
+
+Probe: `tools/parity/probe-payroll-payment.mjs` - measured `ok=true`.
+
 ### Employee master add/edit (verified; creates the salary account)
 
 `m_employeeprofile` (hidden) opens `w_employee_list` (title "Employee List");
