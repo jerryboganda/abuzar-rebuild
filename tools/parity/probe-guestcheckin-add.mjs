@@ -42,6 +42,7 @@ const counts = () => ({
   cashacc: Number(rows('select count(*) from dbo.groupcashaccount')[0][0]),
   cashaccMaxRow: Number(rows('select coalesce(max(rowid),0) from dbo.groupcashaccount')[0][0]),
   tab: rows("select tabmaxkey from dbo._tabmaxkey where tabname='GuestCheckIn'")[0]?.[0] ?? null,
+  serverDate: rows('select lasttransdate::text from dbo.serverdate')[0]?.[0] ?? null,
   audit: Number(rows('select count(*) from dbo.audit_log')[0][0]),
   auditMax: Number(rows('select max(audit_id) from dbo.audit_log')[0][0]),
 });
@@ -63,6 +64,7 @@ const restore = () => {
        set session_replication_role = origin`);
     if (out.fixtureRow) q(`delete from dbo.groupcashaccount where rowid=${Number(out.fixtureRow)}`);
     if (out.baseline?.tab !== null) q(`update dbo._tabmaxkey set tabmaxkey=${Number(out.baseline.tab)} where tabname='GuestCheckIn'`);
+    if (out.baseline?.serverDate) q(`update dbo.serverdate set lasttransdate='${String(out.baseline.serverDate).replace(/'/g, "''")}'::timestamp`);
     if (out.baseline?.auditMax) { q(`delete from dbo.audit_log where audit_id > ${out.baseline.auditMax}`); q(`select setval(pg_get_serial_sequence('dbo.audit_log','audit_id'), ${out.baseline.auditMax}, true)`); }
   } catch (e) { out.restoreError = String(e.message || e).slice(0, 700); }
 };
@@ -163,7 +165,7 @@ try {
     && out.final.services === out.baseline.services && out.final.rooms === out.baseline.rooms
     && out.final.guests === out.baseline.guests && out.final.cashwin === out.baseline.cashwin
     && out.final.cashacc === out.baseline.cashacc && out.final.cashaccMaxRow === out.baseline.cashaccMaxRow
-    && out.final.tab === out.baseline.tab
+    && out.final.tab === out.baseline.tab && out.final.serverDate === out.baseline.serverDate
     && out.final.audit === out.baseline.audit && out.final.auditMax === out.baseline.auditMax
     && out.final.residue === '0';
   out.ok = !!out.addOk && !!out.editOk && out.baselineOk;

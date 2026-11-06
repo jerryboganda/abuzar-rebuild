@@ -37,6 +37,7 @@ const counts = () => ({
   allowances: Number(rows('select count(*) from dbo.emp_payrollallowances')[0][0]),
   deductions: Number(rows('select count(*) from dbo.emp_payrolldeductions')[0][0]),
   tab: rows("select tabmaxkey from dbo._tabmaxkey where tabname='Emp_Payroll'")[0]?.[0] ?? null,
+  serverDate: rows('select lasttransdate::text from dbo.serverdate')[0]?.[0] ?? null,
   audit: Number(rows('select count(*) from dbo.audit_log')[0][0]),
   auditMax: Number(rows('select max(audit_id) from dbo.audit_log')[0][0]),
 });
@@ -50,6 +51,7 @@ const restore = () => {
        delete from dbo.emp_employee where empid='PARITY001';
        set session_replication_role = origin`);
     if (out.baseline?.tab !== null) q(`update dbo._tabmaxkey set tabmaxkey=${Number(out.baseline.tab)} where tabname='Emp_Payroll'`);
+    if (out.baseline?.serverDate) q(`update dbo.serverdate set lasttransdate='${String(out.baseline.serverDate).replace(/'/g, "''")}'::timestamp`);
     if (out.baseline?.auditMax) { q(`delete from dbo.audit_log where audit_id > ${out.baseline.auditMax}`); q(`select setval(pg_get_serial_sequence('dbo.audit_log','audit_id'), ${out.baseline.auditMax}, true)`); }
   } catch (e) { out.restoreError = String(e.message || e).slice(0, 700); }
 };
@@ -138,6 +140,7 @@ try {
   out.baselineOk = out.final.payrolls === out.baseline.payrolls && out.final.payrollMax === out.baseline.payrollMax
     && out.final.employees === out.baseline.employees && out.final.allowances === out.baseline.allowances
     && out.final.deductions === out.baseline.deductions && out.final.tab === out.baseline.tab
+    && out.final.serverDate === out.baseline.serverDate
     && out.final.audit === out.baseline.audit && out.final.auditMax === out.baseline.auditMax
     && out.final.residue === '0';
   out.ok = !!out.addOk && out.baselineOk;

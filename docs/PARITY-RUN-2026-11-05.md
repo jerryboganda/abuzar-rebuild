@@ -1369,6 +1369,7 @@ updates `GuestRoom.Occupied` and reconciles `MasterCashWin`.
 * Exact restore: `guestcheckin 0`, `guestcheckinservice 0`,
   `guestroom 0`, `guest 0`, `mastercashwin 0`, `groupcashaccount 43 /
   max rowid 176`, `_tabmaxkey('GuestCheckIn') 0`,
+  `serverdate 2026-11-06 00:38:24`,
   `audit_log 1,079 / max 1,127`, no residue.
 
 Probe: `tools/parity/probe-guestcheckin-add.mjs` - measured `ok=true`.
@@ -1625,7 +1626,8 @@ Master `d_emp_payroll` updates `EMP_Payroll`; detail
   (both tables stayed at 0).
 * Exact restore: `emp_payroll 0 / max 0`, `emp_employee 0`,
   `emp_payrollallowances 0`, `emp_payrolldeductions 0`,
-  `_tabmaxkey('Emp_Payroll') 0`, `audit_log 1,079 / max 1,127`, no residue.
+  `_tabmaxkey('Emp_Payroll') 0`, `serverdate 2026-11-06 00:38:24`,
+  `audit_log 1,079 / max 1,127`, no residue.
 
 Probe: `tools/parity/probe-payroll-add.mjs` - measured `ok=true`.
 
