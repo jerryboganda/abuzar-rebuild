@@ -1448,6 +1448,56 @@ moves the guest's current room in `GuestCheckIn` and swaps both rooms'
 
 Probe: `tools/parity/probe-guesttransfer-add.mjs` - measured `ok=true`.
 
+### Patient Admission add (verified with patient/bed fixtures)
+
+`m_admitpatient` (hidden) opens `w_patientadmission_form` (title "Patient
+Admission Form").  Master `d_patientadmission_detail` updates
+`PatientAdmission`; the recurring-services detail is
+`d_admitedpatient_recurringservices`; list `d_patientadmission_list`.
+
+* The live/clone `Patient` and `PatientLocation` tables are empty; temporary
+  `Ward` 1, `PatientLocation` 1 ("PARITY BED 1"), and `Patient` 1
+  (`PARITY-P1`, customer 19) were inserted.
+* **Add:** patient 1, customer 19, location 1, disease 1, diagnosis,
+  remarks, procedure/transport charges 0, cash account 2.  Save ran
+  `wf_getserverdatetime` (ServerDate updated), generated admission code **1**
+  (`_tabmaxkey 0 -> 1`) and inserted:
+  `INSERT INTO dbo.patientadmission (admissioncode, patientcode, custcode,
+  locationcode, date, usercode, diseasecode, diagnosis, remarks,
+  cashacccode, cashtendered, cashcharged, cashback, procedurecharges,
+  proceduregstperc, transportcharges, dischargereasoncode) VALUES (1, 1, 19,
+  1, ..., 1, 1, ...)`.
+  No `MasterCashWin` rows were written (the cash-window list is empty); no
+  group cash-account problem because module 36 is configured for group 2.
+  "Changes take effect in database".
+* Exact restore: `patientadmission 0 / max 0`, `patient 0`,
+  `patientlocation 0`, `ward 0`, `mastercashwin 0`,
+  `_tabmaxkey('PatientAdmission') 0`, `serverdate 2026-11-06 00:38:24`,
+  `audit_log 1,079 / max 1,127`, no residue.
+
+Probe: `tools/parity/probe-patientadmission-add.mjs` - measured `ok=true`.
+
+### Patient Transfer add (verified; bed move)
+
+`m_trasnferpatient` (hidden) opens `w_patienttransfer_form` (title is
+"Patient Admission Form" in the recovered object).  Detail
+`d_patienttransferdetail` updates `PatientTransfer`; save also updates the
+admission's current location.
+
+* Fixtures: ward 1, beds 1 and 2, patient 1, admission 1 at bed 1.
+* **Add:** admission 1, source 1, target 2, remarks.  Password
+  ADMIN/password9080 accepted; `f_newtableid("PatientTransfer")` -> code 1;
+  `INSERT INTO dbo.patienttransfer (transfercode, admissioncode, date,
+  sourcelocation, targetlocation, usercode, remarks) VALUES (1, 1, ..., 1,
+  2, 1, ...)`; `UPDATE dbo.patientadmission SET locationcode = 2 WHERE
+  admissioncode = 1` (rowcount 1); "Changes take effect in database".
+* Exact restore: `patienttransfer 0 / max 0`, `patientadmission 0`,
+  `patient 0`, `patientlocation 0`, `ward 0`,
+  `_tabmaxkey('PatientTransfer') 0`, `serverdate 2026-11-06 00:38:24`,
+  `audit_log 1,079 / max 1,127`, no residue.
+
+Probe: `tools/parity/probe-patienttransfer-add.mjs` - measured `ok=true`.
+
 ### Employee lookup masters (verified; right-hidden)
 
 The employee lookup forms are created with `visible = false`; the probe fires
