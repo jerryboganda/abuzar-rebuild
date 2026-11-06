@@ -36,11 +36,22 @@ public static class ImgDiff {
   }
 }
 "@
+function RoleSuffix([string]$name) {
+  if ($name -match '(_dlg\d+|_s\d+)\.png$') { return $Matches[1] }
+  return ''
+}
 $rows = @()
 $old = Get-ChildItem $OldDir -Filter '*.png' | Sort-Object Name
 foreach ($o in $old) {
   $prefix = $o.Name.Substring(0, 3)
-  $n = Get-ChildItem $NewDir -Filter "$prefix*.png" | Where-Object { $_.Name -notmatch '_s\d' -and $_.Name -notmatch '_dlg' } | Select-Object -First 1
+  $suffix = RoleSuffix $o.Name
+  if ($suffix) {
+    # a modal/dialog capture only pairs with the same dialog on the new side
+    $n = Get-ChildItem $NewDir -Filter "$prefix*$suffix.png" | Select-Object -First 1
+  } else {
+    # the main screen only pairs with a main-screen capture, not a dialog
+    $n = Get-ChildItem $NewDir -Filter "$prefix*.png" | Where-Object { (RoleSuffix $_.Name) -eq '' } | Select-Object -First 1
+  }
   if (-not $n) { $rows += [pscustomobject]@{ n = [int]$prefix; old = $o.Name; new = ''; mae = ''; pct40 = '' }; continue }
   $r = [ImgDiff]::Diff($o.FullName, $n.FullName, $X, $Y, $W, $H)
   $p = $r.Split(',')

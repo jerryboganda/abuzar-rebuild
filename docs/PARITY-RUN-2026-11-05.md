@@ -345,11 +345,32 @@ posted Y) was created at 2026-11-05 02:16:30 and read back from
   (4,855 extra new-side strings are the rebuild's additional DataWindow
   captions that the Win32 dump does not enumerate).  Evidence:
   `deploy/parity/control-compare.json`.
-* **Visual diff:** `deploy/parity/screen-parity/visual-diff.csv` now has 80
-  paired screenshots, median MAE **3.48 %** (min 0.10 %, worst 74.38 %).  The
-  five worst values are mispaired `*_dlg1.png` modal captures compared against
-  main-screen new captures, not proven visual defects; the true pairing fix is
-  still open.
+* **Visual diff (pairing fixed):** `tools/parity/compare-images.ps1` now pairs
+  a main capture only with a main capture, and a `*_dlgN` capture only with
+  the same `*_dlgN` role.  Result in
+  `deploy/parity/screen-parity/visual-diff.csv`: **63 paired main screens,
+  17 old dialog captures with no same-role new capture** (left as unpaired
+  rows instead of being compared to a main screen).  Paired median MAE
+  **3.08 %** (min 0.10 %, max 33.08 %), down from the fake 74.38 % maximum.
+* **The 33 % outlier was a stale capture, not a visual defect:** a fresh
+  capture of `Maintenance | Interface Setting`
+  (`tools/parity/probe-visual-outliers.mjs`, window-only clip) shows the
+  tab strip now exactly matches the original's 13 tabs: Patient Registration,
+  Advanced Sales, Service Basic Data, Customer Site, Issue Popup and Item
+  Registration Request are hidden by `wf_set_tab_visibility()`/right codes, and
+  only Item, Cash/Credit Sale PopUp/List, Item List/Search, Sale Order,
+  Purchase Order, P/O List, Customer, Garments and Change Item Price remain.
+  The residual difference is window placement/size and row pitch, not a
+  missing control.
+* Fresh window clips for the other outliers confirm capture-state causes:
+  Cash Sale's old shot has the item list open and a selected invoice;
+  Priority Setting's old shot has a `Find: ZYTO 500MG TAB` filter and saved
+  user column widths; About's old shot contains licence text that is
+  intentionally blank in the rebuild (user requirement).
+* `deploy/parity/screen-parity/outlier-window-diff.csv` is the window-only
+  comparison of the fresh clips (old main windows cropped with
+  `tools/parity/crop-old-windows.ps1`); it is a diagnostic for the remaining
+  capture-state work, not a replacement for the 63-screen paired set.
 
 ### Still open after the third session
 
@@ -3042,12 +3063,20 @@ Probe: `tools/parity/probe-itempart-cascade.mjs` — measured `ok=true`.
   * **Import Historical Data**: SQL-Server cross-database only (source
     database qualifiers/`CONVERT`); no PostgreSQL equivalent or source
     database exists, so it was not run.
-  * Visual: Priority Setting's remaining difference is capture-state/font
-    rendering (column widths match within 2 px; old capture had a
-    `Find: ZYTO 500MG TAB` state and saved user widths; row pitch is 16 px on
-    both sides).  The Select Column Criteria focused-radio gap is fixed
-    (text rows 60/83/106/129/152 on both sides).  Modal frames match
-    353x340 / 417x487 / 236x253.
+  * Visual: the `dlg1` pairing bug is fixed.  The corrected set has **63
+    paired main screens** (median MAE 3.08 %, max 33.08 %) and **17 old
+    dialog captures left unpaired** because no same-role new capture exists;
+    those must be recaptured as dialogs, not compared to main screens.
+    `Maintenance | Interface Setting` was recaptured fresh as a window-only
+    clip and its 13-tab strip now matches the old exactly (the 33 % value came
+    from the stale pre-fix capture); the remaining difference is window
+    placement/size.  Priority Setting's remaining difference is
+    capture-state/font rendering (column widths match within 2 px; old capture
+    had a `Find: ZYTO 500MG TAB` state and saved user widths; row pitch is
+    16 px on both sides).  The Select Column Criteria focused-radio gap is
+    fixed (text rows 60/83/106/129/152 on both sides).  Modal frames match
+    353x340 / 417x487 / 236x253.  About's licence text is intentionally
+    blank in the rebuild, so its difference is expected.
   * 067/068 final reports remain unpaired by original-side limits.
   * Sale Template and Customer/Supplier deletes are confirmed original
     behaviours, not rebuild gaps.
