@@ -436,11 +436,11 @@ Cash variant) - measured `ok=true` for both.
   (min 5.43 %, max 19.76 %); the higher value than full screens is font
   rasterisation and focus state on small windows, not missing controls
   (e.g. Change Password: same title, four labels, four fields, Ok/Cancel;
-  Select Column Criteria: same five radios and labels).  One real initial-focus
-  difference is visible: the original Change Password opens with the keyboard
-  in `sle_salesman` (tab order 10), while the rebuild lands on the Ok button;
-  recorded as a workflow difference to fix, separate from the control-set
-  match.
+  Select Column Criteria: same five radios and labels).  The earlier
+  "Ok button focused" Change Password capture was stale: a fresh recapture and
+  live probe both show the keyboard in `sle_salesman` (tab order 10), exactly
+  as the original.  The residual MAE is focus styling/font rasterisation, not
+  a different focus target.
 * **Three dialogs have no rebuild equivalent by design:** the original
   captures for Preferences (038), Job Schedule (060) and Group Wise Supplier
   Category (061) are a Waseela box reading
@@ -648,8 +648,21 @@ Cash variant) - measured `ok=true` for both.
   `Item.MasterPartName`, a column that does not exist in the PostgreSQL item
   table, so it is a display/derived value and cannot be independently
   persisted.
-* Quotation edit-after-save, Purchase Order, Refused Sale and the three
-  Adjustments still need the full add/edit/save/delete cycle.
+* **Quotation reopen/edit/save (verified):** quotation **1** was reopened from
+  its list, `remarks` typed through the real header editor, saved through
+  `ue_save` with the salesman password, and `dbo.quotationheader.remarks` read
+  back as the exact text; the detail row was unchanged.  The probe restored
+  `remarks`/`modifiedby` to their original NULLs, `serverdate` to
+  `2026-11-06 00:38:24` and `audit_log 1,079 / 1,127` exactly
+  (`baselineOk: true`).  Probe: `tools/parity/probe-quotation-edit-save.mjs`.
+* **Runtime fix found by that workflow:** reopening a row left the untouched
+  focused cell open, so the record switch replaced the whole master DataWindow
+  with the "The record or field changed ... retained for copying" recovery
+  panel and no fields rendered.  `DwView` now tracks whether the editor
+  received a real `input`/`change`; an untouched editor is discarded silently
+  when the record/layout changes, while an edited draft still shows the
+  recovery panel.  Regression evidence: `probe-quotation-edit-save.mjs`
+  (edit/save/DB) and the quote list/detail workflow.
 * Priority Setting was flagged by the label comparison (missing Retrieve and
   help labels); needs a live re-check against the old capture.
 * Reports final-stage/pixel comparison and the modal geometry fixes remain

@@ -117,6 +117,10 @@ export class DwView {
   editObj = ''
   protected acceptEdit: ((navigation?: boolean) => Promise<boolean>) | null = null
   private textEditor: HTMLInputElement | HTMLTextAreaElement | null = null
+  /** value when the editor was opened; an unchanged editor can be discarded silently */
+  private editorInitial = ''
+  /** set by a real input/change event, not by a lookup resolving its display text */
+  private editorDirty = false
   private readTextEditor: (() => string) | null = null
   private checkTextEditor: (() => Promise<boolean>) | null = null
   private recoveredDraft = false
@@ -1356,6 +1360,8 @@ export class DwView {
     this.releaseTextEditor?.()
     this.releaseTextEditor = null
     this.textEditor = null
+    this.editorInitial = ''
+    this.editorDirty = false
     this.readTextEditor = null
     this.checkTextEditor = null
     this.composingText = null
@@ -1365,7 +1371,18 @@ export class DwView {
   private async retainInvalidText(): Promise<boolean> {
     const check = this.checkTextEditor, read = this.readTextEditor
     if (!check || !read || this.editor !== this.textEditor || await check() || check !== this.checkTextEditor) return false
-    this.retainStaleDraft(read())
+    const text = read()
+    if (!this.editorDirty || text === this.editorInitial) {
+      // the record/layout changed under an editor the user never typed in
+      // (reopening a row from a list): discard it silently, do not block the
+      // whole DataWindow behind the "unapplied entry" recovery panel
+      const editor = this.editor
+      this.detachTextEditor()
+      this.editor = null
+      if (editor?.isConnected) editor.remove()
+      return false
+    }
+    this.retainStaleDraft(text)
     return true
   }
 
@@ -1488,6 +1505,10 @@ export class DwView {
     })
     this.choiceEdit = choice
     this.editor = choice.element
+    this.editorInitial = choice.read()
+    const markDirty = () => { this.editorDirty = true }
+    choice.element.addEventListener('input', markDirty)
+    choice.element.addEventListener('change', markDirty)
     choice.element.style.cssText = cell.style.cssText + ';z-index:5;line-height:normal'
     if (style.kind === 'checkbox') choice.element.setAttribute('aria-label', choiceProperty(object, 'checkbox.text', model.overrides) || object.name)
     if (style.kind === 'radio') choice.element.setAttribute('aria-label', object.name)
@@ -1504,6 +1525,8 @@ export class DwView {
     }
     choice.element.focus()
     choice.start()
+    // after start() a lookup editor shows the display text, not the data code
+    this.editorInitial = choice.read()
     if (activate !== false) void choice.activate(activate).catch((error) => this.ctl.rt.onError(error))
   }
 
@@ -1638,6 +1661,7 @@ export class DwView {
     }
     this.cancelChoice()
     this.detachTextEditor()
+    this.editorDirty = false
     if (this.editor) {
       const ed = this.editor
       // clearing the field before remove stops a synchronous blur handler from
@@ -1681,6 +1705,7 @@ export class DwView {
       }
       this.placeEditor(sel, cell)
       this.editor = sel
+      this.editorInitial = cur
       sel.focus()
       const done = () => {
         if (this.editor !== sel) return
@@ -1692,6 +1717,7 @@ export class DwView {
         }
 
       }
+      sel.addEventListener('change', () => { this.editorDirty = true })
       sel.addEventListener('change', done)
       sel.addEventListener('blur', done)
       return
@@ -1714,6 +1740,7 @@ export class DwView {
         }
         this.placeEditor(sel, cell)
         this.editor = sel
+        this.editorInitial = cur
         sel.focus()
         const done = () => {
           if (this.editor !== sel) return
@@ -1724,7 +1751,8 @@ export class DwView {
             void this.commitEditValue(m, row, ci, o, val)
           }
         }
-        sel.addEventListener('change', done)
+        sel.addEventListener('change', () => { this.editorDirty = true })
+      sel.addEventListener('change', done)
         sel.addEventListener('blur', done)
       })
       return
@@ -1737,6 +1765,7 @@ export class DwView {
     const limit = dwTextLimit(m, ci, o)
     if (limit) input.maxLength = limit
     let sourceText = toStr(v)
+    this.editorInitial = sourceText
     input.value = sourceText
     input.style.cssText = cell.style.cssText + ';z-index:5;border:1px solid #0078d7;background:#fff'
     input.style.lineHeight = 'normal'
@@ -1774,6 +1803,7 @@ export class DwView {
         input.dispatchEvent(new Event('dwtextchange'))
       },
     })
+    input.addEventListener('input', () => { this.editorDirty = true })
     input.addEventListener('dwtextchange', (event) => {
       if (event instanceof CustomEvent && typeof event.detail === 'string') sourceText = event.detail
     })
