@@ -1290,6 +1290,34 @@ The three guest-room lookup masters are created with `visible = false` in
 Probe: `tools/parity/probe-single-master.mjs` with `guestroomfloor`,
 `guestroomtype`, `guestroomstatus` - measured `ok=true` for all three.
 
+### Guest Room add/edit + File | Delete (verified; delete hard-disabled)
+
+`m_guestroom` (hidden) opens `w_guestroom_form` (`w_multi_entry`, title
+"Guest Room Form").  Master `d_guestroom_detail` updates `GuestRoom`; the
+detail `d_guestroomservice` updates `GuestRoomService`; list
+`d_guestroom_list` joins floor/type/status and the active check-in.
+
+* Temporary floor/type/status fixtures (`PARITY ... FIXTURE`) were inserted
+  for the required drop-downs, then removed.
+* **Add:** name `PARITY ROOM ...`, capacity 2, floor/type/status 1,
+  occupied N.  `wf_tabnewid("GuestRoom")` generated code **1**
+  (`_tabmaxkey 0 -> 1`); `INSERT INTO dbo.guestroom (guestroomcode, name,
+  capacity, guestroomfloorcode, guestroomtypecode, guestroomstatuscode)
+  VALUES (1, ...)`; "Changes take effect in database".  The form also issued
+  its service-invoice cleanup (`DELETE FROM dbo.guestroomservice WHERE
+  guestroomcode=1`) before the insert, as the script does.
+* **Reopen:** File | List returned the room; Detail loaded code 1.
+* **Edit:** name + capacity 2 -> 3:
+  `UPDATE dbo.guestroom SET name=$1, capacity=$2 WHERE guestroomcode=$3 ...`
+  (rowcount 1).
+* **File | Delete is hard-disabled:** `w_guestroom_form` and its ancestors
+  define no `ue_delete`, and `m_delete` is disabled; the room stayed in place.
+  This is original behavior, not a rebuild gap.
+* Exact restore: `guestroom 0`, floor/type/status 0, `guestroomservice 0`,
+  `_tabmaxkey('GuestRoom') 0`, `audit_log 1,079 / max 1,127`, no residue.
+
+Probe: `tools/parity/probe-guestroom-crud.mjs` - measured `ok=true`.
+
 ### Employee lookup masters (verified; right-hidden)
 
 The employee lookup forms are created with `visible = false`; the probe fires
@@ -1403,6 +1431,91 @@ item (`d_itemallowedmeter_header` on `Item`); the detail
   `audit_log 1,079 / max 1,127`, no residue.
 
 Probe: `tools/parity/probe-itemallowedmeter-crud.mjs` - measured `ok=true`.
+
+### Employee Holiday Calendar (verified via reopen)
+
+`m_holidaycalendar` (hidden) opens `w_emp_holiday` (`w_multi_entry`,
+title "Holiday Calendar").  The master `d_emp_holiday_header` is only a month
+filter (`SELECT DATE=:ad_date`); the detail `d_emp_holiday_detail` updates
+`EMP_Holiday` (`holidayid` identity, `date`, `name`, `payrateperc`) and the
+list `d_emp_holiday_list` returns the distinct month starts.
+
+* **Add:** detail row `2026-12-25`, `PARITY HOLIDAY ...`, `150`:
+  `INSERT INTO dbo.emp_holiday (date, name, payrateperc) ...` (identity key
+  omitted, new code **2**); "Changes take effect in database".  The identity
+  sequence started at 1/true, so the generated key is 2.
+* **Reopen:** File | List returned the `2026-12-01` month row; Detail
+  retrieved the month and loaded code 2, so the identity key was in the buffer.
+* **Edit:** name + `payrateperc 150 -> 200`:
+  `UPDATE dbo.emp_holiday SET name=$1, payrateperc=$2 WHERE holidayid=$3 ...`
+  (rowcount 1).
+* **Delete:** removed the detail row in the buffer and Save:
+  `DELETE FROM dbo.emp_holiday WHERE holidayid=$1 ...` (rowcount 1).
+  File | Delete on the form is an original no-op (`ue_delete` absent).
+* Exact restore: `emp_holiday 0`, identity sequence `last_value 1 / is_called
+  true`, `audit_log 1,079 / max 1,127`.
+
+Probe: `tools/parity/probe-emp-holiday-crud.mjs` - measured `ok=true`.
+
+### Employee Pay Deductions (verified; File | Delete FK-blocked)
+
+`m_paydeductions` (hidden) opens `w_emp_deduction` (`w_single_entry`, title
+"Employee Deduction Form").  Its `ue_save` inserts the Accounts row, then
+switches the DataWindow update table to `emp_deduction` for the deduction
+attributes, then restores Accounts as the update table.
+
+* **Add:** account **334** (`f_newtableid("Accounts")`,
+  `_tabmaxkey 333 -> 334`) with subcode 24, unique name/alias, active Y,
+  restricted N, alert 1, balance limit 100; then
+  `INSERT INTO dbo.emp_deduction (deductioncode, description, percentage,
+  flatamount) VALUES (334, 'PARITY PAY DEDUCTION', 5, 10)`.
+  Both statements committed; "Changes take effect in database".
+* **Edit:** description -> `... EDIT`, percentage 5 -> 7:
+  `UPDATE dbo.emp_deduction ... WHERE deductioncode=334 ...` (rowcount 1).
+  The recovered save marks `remarks.Update=No` after the first save, so the
+  Accounts remarks deliberately stays at its original value - original
+  behavior, not a rebuild gap.
+* **File | Delete is original FK behavior:** after save the update table is
+  Accounts again, so Delete issues `DELETE FROM dbo.accounts WHERE ...` and
+  PostgreSQL raises `fk_accounts_emp_deduction_deductioncode`; the form shows
+  "You can not Delete this record Reason: Some information refering to this
+  record exists" and both rows remain.
+* Exact restore: `accounts 257 / max 325`, `emp_deduction 0`,
+  `_tabmaxkey('Accounts') 333`, `audit_log 1,079 / max 1,127`, no residue.
+
+Probe: `tools/parity/probe-empdeduction-crud.mjs` - measured `ok=true`.
+
+### Employee Advances + voucher (verified, including password dialog)
+
+`m_employeeadvances` (hidden) opens `w_emp_advance` (`w_multi_entry`, title
+"Employee Advances").  Save is add-only: it opens the modal
+`w_salesmanpassword`, checks the entered user/password against `users`, calls
+`wf_tabnewid("EMP_Advance")`, creates the accounting voucher through
+`u_transaction.createvoucher(5, 2, ...)` and inserts `EMP_Advance`.
+
+* Temporary employee fixture `PARITY001`/`PARITY EMPLOYEE` with
+  `AdvAccCode 24` (the advance dropdown `ddd_employees_advance_null` is empty
+  without an employee); advance row: date 2026-11-06, cash account 2, advance
+  account 24, amount 1000, installment 100, refno `PARITY-ADV-...`.
+* Save opened `w_salesmanpassword`; entering **1 / password9080** and clicking
+  Ok closed it with usercode 1.  Measured SQL:
+  `_tabmaxkey('EMP_Advance') 0 -> 1`;
+  `INSERT INTO dbo.glheader` (glvochcode 1, vouchercode 1, vochcatcode 5,
+  remarks); `INSERT INTO dbo.gldetail` debit account 24 = 1000.00 and credit
+  account 2 = 1000.00; then
+  `INSERT INTO dbo.emp_advance (advancecode, date, usercode, acccode,
+  empadvacccode, amount, returnedamt, installment, glvochcode, refno,
+  remarks) VALUES (1, ..., 1, 2, 24, 1000, 0, 100, 1, ...)`.
+  Message: "Changes Take Effect in database".
+* Exact restore: `emp_advance 0`, `emp_employee 0`, `glheader 0`, `gldetail
+  0`, `_tabmaxkey('EMP_Advance') 0`, GL sequence back to 0,
+  `audit_log 1,079 / max 1,127`, no residue.
+* Probe note: programmatic `setitem` leaves the DOM DwView acceptance wrapper
+  in a failed-input state (no editor draft), so the probe commits through the
+  DataWindow model (`acceptText` returns 1) while `f_validatedw` still runs
+  `FindRequired`; a real keyboard entry does not need that workaround.
+
+Probe: `tools/parity/probe-empadvance-add.mjs` - measured `ok=true`.
 
 ### Item Association nested form + parent save
 
