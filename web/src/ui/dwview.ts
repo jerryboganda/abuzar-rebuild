@@ -1,19 +1,39 @@
 // DOM rendering of a DataWindow control: bands, rows, objects, editing.
-import type { NDwBase } from '../runtime/native/dwctrl.ts'
+import { NDwBase } from '../runtime/native/dwctrl.ts'
 import { argList, colKind } from '../dw/def.ts'
 
 import { renderChart } from '../dw/chart.ts'
 import { keyEnum, keyFlags, virtualKey } from './keys.ts'
 import { DwModel } from '../dw/model.ts'
-import { num, splitExpr } from '../dw/def.ts'
+import { num, splitExpr, splitFormatExpr } from '../dw/def.ts'
 import type { DwObject } from '../dw/def.ts'
 import { compileDw, evalDw, newCtx } from '../dw/expr.ts'
 import { formatValue } from '../runtime/sysfuncs.ts'
-import { Dec, PBDate, PBDateTime, PBTime, toStr } from '../runtime/values.ts'
+import { Dec, PBDate, PBDateTime, PBTime, compareLabels, toStr } from '../runtime/values.ts'
 import { cssFont, draftCpi, fontSize, pbColor, toPx, setMnemonic } from './pb.ts'
 import { code39Svg, isCode39Font } from './barcode.ts'
 import { readFileBytes } from '../runtime/sysfiles.ts'
-import { commitDwValue } from './dw-edit.ts'
+import { commitDwValue, dwEditAutoSelect, dwEditText, dwMultiline, dwMultilineDomText, dwMultilineText, dwTextLimit } from '../dw/edit.ts'
+import type { DwEditResult } from '../dw/edit.ts'
+import { choiceProperty, choiceSignature, choiceStyle, codeTable, sameChoiceValue } from '../dw/choices.ts'
+import type { DwChoiceBinding, DwChoices } from '../dw/choices.ts'
+import { DwChoiceEditor } from './dw-choice-editor.ts'
+import { lookupSurfaceIssues } from './data-surfaces.ts'
+import type { DataSurface } from './data-surfaces.ts'
+
+interface DwEditorSnapshot {
+  row: number
+  obj: string
+  value: string
+  start: number | null
+  end: number | null
+  direction?: 'forward' | 'backward' | 'none'
+  scrollTop?: number
+  scrollLeft?: number
+  choice?: DwChoiceEditor
+  focused?: boolean
+  invalid?: boolean
+}
 
 /** space between two columns of a grid, in DataWindow units (the engine of the original leaves 7 to 12, 9.5 on average) */
 const GRID_GAP = 9
@@ -94,8 +114,12 @@ export class DwView {
   editRow = 0
   editCol = 0
   editObj = ''
-  protected acceptEdit: (() => Promise<boolean>) | null = null
-  private textEditor: HTMLInputElement | null = null
+  protected acceptEdit: ((navigation?: boolean) => Promise<boolean>) | null = null
+  private textEditor: HTMLInputElement | HTMLTextAreaElement | null = null
+  private readTextEditor: (() => string) | null = null
+  private checkTextEditor: (() => Promise<boolean>) | null = null
+  private recoveredDraft = false
+  protected composingText: HTMLInputElement | HTMLTextAreaElement | null = null
   private syncFocusedText: (() => void) | null = null
   private releaseTextEditor: (() => void) | null = null
   private pendingEdits = new Set<Promise<boolean>>()
@@ -106,6 +130,8 @@ export class DwView {
   private acceptingModel: DwModel | null = null
   private releaseAcceptance: (() => void) | null = null
   private disposed = false
+  protected choiceEdit: DwChoiceEditor | null = null
+  protected choiceDestination: { model: DwModel; row: number; object: string | undefined; activate: boolean } | null = null
   private onChange = () => { this.bindAcceptance(this.ctl.model); this.schedule() }
   private cancelRender: (() => void) | null = null
   private cancelFill: (() => void) | null = null
@@ -126,11 +152,9 @@ export class DwView {
 
   dispose(): void {
     this.disposed = true
+    this.cancelChoice()
     this.discardInputEvents()
-    this.releaseTextEditor?.()
-    this.releaseTextEditor = null
-    this.textEditor = null
-    this.syncFocusedText = null
+    this.detachTextEditor()
     this.releaseAcceptance?.()
     this.acceptEdit = null
     this.editor = null
@@ -148,7 +172,8 @@ export class DwView {
       if ((await Promise.all(this.pendingEdits)).some((accepted) => !accepted)) return false
     }
     if (this.disposed || this.inputFailed) return false
-    return this.acceptEdit ? this.acceptEdit() : true
+    const model = this.ctl.model
+    return model ? await model.acceptText() !== -1 : true
   }
 
   protected acceptanceBusy(message = 'The current entry is still being processed. Wait for it to finish before continuing.'): void {
@@ -201,8 +226,13 @@ export class DwView {
     }
   }
 
-  private commitEditValue(model: DwModel, row: number, column: number, object: DwObject, value: unknown): Promise<boolean> {
-    return this.trackEdit(this.commitValue(model, row, column, object, value))
+  private async commitEditValue(model: DwModel, row: number, column: number, object: DwObject, value: unknown, guard?: () => Promise<void>): Promise<DwEditResult> {
+    const work = this.commitValue(model, row, column, object, value, guard).catch((error): DwEditResult => {
+      this.ctl.rt.onError(error)
+      return 'rejected'
+    })
+    await this.trackEdit(work.then((result) => result !== 'rejected'))
+    return work
   }
 
   private inputChanged(model: DwModel, row: number, object: DwObject, text: string): void {
@@ -237,7 +267,7 @@ export class DwView {
   }
 
   async render(): Promise<void> {
-    if (this.disposed) return
+    if (this.disposed || this.recoveredDraft || this.composingText && this.editor === this.composingText) return
     if (this.rendering) {
       this.again = true
       return
@@ -246,6 +276,7 @@ export class DwView {
     try {
       await this.ctl.ready
       if (this.disposed) return
+      if (await this.retainInvalidText()) return
       const m = this.ctl.model
       if (!m) {
         this.root.textContent = ''
@@ -688,8 +719,11 @@ export class DwView {
   }
 
   protected async paint(m: DwModel): Promise<void> {
+    if (this.recoveredDraft) return
     if (this.previewOn(m)) return this.paintPreview(m)
     const inner = await this.buildBody(m, true, true)
+    if (this.composingText && this.editor === this.composingText) return
+    if (await this.retainInvalidText()) return
     const editor = this.takeEditor()
     const scroll = this.root.scrollTop
     const left = this.root.scrollLeft
@@ -746,42 +780,67 @@ export class DwView {
       m.row = row
       await this.ctl.rt.fire(this.ctl, 'rowfocuschanged', [row])
     }
+    if (this.disposed || this.ctl.model !== m || m.row !== row) return
     m.col = m.colIndex(cols[i]) + 1
+    const column = m.col
     await this.ctl.fireItemFocus(row, cols[i])
+    if (this.disposed || this.ctl.model !== m || m.row !== row || m.col !== column) return
     await this.paint(m)
+    if (this.disposed || this.ctl.model !== m || m.row !== row || m.col !== column) return
     const cell = this.root.querySelector(`.row[data-row="${row}"] .o[data-obj="${cols[i]}"]`) as HTMLElement | null
-    cell?.click()
+    const object = m.def.objects.find((object) => object.name === cols[i])
+    if (object && cell?.classList.contains('editable')) this.edit(m, object, row, cell)
   }
 
   private focused = false
   protected async rowClick(m: DwModel, row: number, ev: MouseEvent, source?: HTMLElement): Promise<void> {
+    if (this.choiceDestination) {
+      this.acceptanceBusy('Wait for the current field transition to finish before selecting another field.')
+      return
+    }
     const target = (source ?? ev.target as HTMLElement).closest('[data-obj]') as HTMLElement | null
     const obj = target?.dataset.obj
-    const changedRow = m.row !== row
-    m.row = row
-    // a real mouse focus raises the DataWindow's GetFocus event; the entry
-    // screens open their item-search list from it.  This is deliberately not
-    // done for programmatic SetFocus during window open (the customer setup is
-    // still pending there and the validation would fire too early).
-    if (!this.focused) {
-      this.focused = true
-      await this.ctl.rt.fire(this.ctl, 'getfocus')
+    const destination = m.rowAt(row)
+    const leavingChoice = !!this.choiceEdit && (this.editRow !== row || this.editObj !== obj)
+    const transition = leavingChoice ? { model: m, row, object: obj, activate: false } : null
+    this.choiceDestination = transition
+    try {
+      if (leavingChoice && !(await this.choiceEdit!.accept(true))) return
+      if (leavingChoice && (this.disposed || this.ctl.destroyed)) return
+      if (leavingChoice && (this.ctl.model !== m || !destination || m.rowAt(row) !== destination)) {
+        this.acceptanceBusy('The destination record changed while accepting the current entry. Select the destination again.')
+        return
+      }
+      const changedRow = m.row !== row
+      m.row = row
+      // Mouse focus raises source GetFocus; programmatic SetFocus during open does not.
+      if (!this.focused) {
+        this.focused = true
+        await this.ctl.rt.fire(this.ctl, 'getfocus')
+      }
+      if (leavingChoice && (this.disposed || this.ctl.destroyed || this.ctl.model !== m || m.row !== row || m.rowAt(row) !== destination)) return
+      if (obj) {
+        const ci = m.colIndex(obj)
+        if (ci >= 0) m.col = ci + 1
+      }
+      await this.ctl.rt.fire(this.ctl, 'clicked', [ev.offsetX, ev.offsetY, row, { name: obj ?? '' }])
+      if (changedRow) await this.ctl.rt.fire(this.ctl, 'rowfocuschanged', [row])
+      if (leavingChoice && (this.disposed || this.ctl.destroyed || this.ctl.model !== m || m.row !== row || m.rowAt(row) !== destination)) return
+      // Keep an editable cell attached until its click opens the editor.
+      if (!(target?.classList.contains('editable') && !changedRow)) this.ctl.changed()
+      this.choiceDestination = null
+      if (leavingChoice && obj && m.row === row && m.col === m.colIndex(obj) + 1 && !this.editor) {
+        const object = m.def.objects.find((object) => object.name === obj)
+        const cell = this.cellOf(row, obj)
+        if (object && cell?.classList.contains('editable')) this.edit(m, object, row, cell, transition!.activate)
+      }
+    } finally {
+      if (this.choiceDestination === transition) this.choiceDestination = null
     }
-    if (obj) {
-      const ci = m.colIndex(obj)
-      if (ci >= 0) m.col = ci + 1
-    }
-    await this.ctl.rt.fire(this.ctl, 'clicked', [ev.offsetX, ev.offsetY, row, { name: obj ?? '' }])
-    if (changedRow) await this.ctl.rt.fire(this.ctl, 'rowfocuschanged', [row])
-    // An editable cell must stay in the DOM until its click handler has opened
-    // the in-cell editor. Repainting here replaces the cell first, which made
-    // the Login DataWindow impossible to type into.
-    if (!(target?.classList.contains('editable') && !changedRow)) this.ctl.changed()
   }
 
-  /** ItemChanged -> conversion -> validation -> write, the order the PowerBuilder DataWindow uses */
-  protected async commitValue(m: DwModel, row: number, ci: number, o: DwObject, value: unknown): Promise<boolean> {
-    return commitDwValue(this.ctl, m, row, ci, o, value)
+  protected async commitValue(m: DwModel, row: number, ci: number, o: DwObject, value: unknown, guard?: () => Promise<void>): Promise<DwEditResult> {
+    return commitDwValue(this.ctl, m, row, ci, o, value, guard)
   }
 
   protected async canEdit(model: DwModel, object: DwObject, row: number): Promise<boolean> {
@@ -791,12 +850,14 @@ export class DwView {
       && Number(await this.prop(model, object, 'tabsequence', row, object.band)) > 0
       && !/^(yes|true|1)$/i.test(await this.prop(model, object, 'edit.readonly', row, object.band))
       && !/^(yes|true|1)$/i.test(await this.prop(model, object, 'editmask.readonly', row, object.band))
+      && (!dwMultiline(object, model.kinds[model.colIndex(object.name)], model.overrides) ||
+        !/^(yes|true|1)$/i.test(await this.prop(model, object, 'edit.displayonly', row, object.band)))
   }
 
   protected async prop(m: DwModel, o: DwObject, key: string, row: number, band: string): Promise<string> {
     const raw = m.overrides.get(`${o.name.toLowerCase()}.${key}`) ?? o[key]
     if (raw === undefined) return ''
-    const { value, expr } = splitExpr(raw)
+    const { value, expr } = key === 'format' ? splitFormatExpr(raw) : splitExpr(raw)
     if (!expr) return value
     try {
       const v = await evalDw(compileDw(expr), newCtx(m, row, band))
@@ -993,14 +1054,16 @@ export class DwView {
       el.style.padding = '0 2px'
       return el
     }
-    if (o['checkbox.on'] !== undefined && o.type === 'column') {
+    const checkboxOn = choiceProperty(o, 'checkbox.on', m.overrides)
+    if (checkboxOn !== undefined && o.type === 'column') {
       // a check box column: the Windows 11 box (blue with a white tick when on) and its text
-      const on = toStr(v) === o['checkbox.on']
+      const on = sameChoiceValue(v, checkboxOn)
       el.textContent = ''
       const box = document.createElement('span')
       box.className = 'cbx' + (on ? ' on' : '')
       el.appendChild(box)
-      if (o['checkbox.text']) el.append(' ' + o['checkbox.text'])
+      const text = choiceProperty(o, 'checkbox.text', m.overrides)
+      if (text) el.append(' ' + text)
       el.style.display = 'flex'
       el.style.alignItems = 'center'
       el.style.gap = '3px'
@@ -1010,28 +1073,41 @@ export class DwView {
       if (o['dddw.useasborder'] === 'yes' || o['ddlb.useasborder'] === 'yes') el.appendChild(Object.assign(document.createElement('span'), { className: 'dd-arrow' }))
       else if (o['editmask.spin'] === 'yes') el.appendChild(Object.assign(document.createElement('span'), { className: 'dd-spin' }))
       const protect = (await this.prop(m, o, 'protect', row, band)) === '1'
-      const tab = num(o, 'tabsequence', 0)
+      const tab = Number(await this.prop(m, o, 'tabsequence', row, band))
       if (!protect && tab > 0) {
         el.classList.add('editable')
-        el.addEventListener('click', () => this.edit(m, o, row, el))
+        el.addEventListener('click', () => this.edit(m, o, row, el, true))
       }
     }
     return el
   }
 
   /** child DataWindow of a drop-down column, retrieved on first use when the definition asks for it */
-  private loaded = new Set<string>()
-  private async childOf(o: DwObject): Promise<DwModel | null> {
-    const ch = (await this.ctl.n_getchild(o.name)) as unknown
-    if (typeof ch === 'number' || !ch) return null
-    const c = ch as NDwBase
+  private childLoads = new WeakMap<DwModel, { ready: Promise<void>; failed: boolean; error?: unknown }>()
+  private async childOf(o: DwObject, requireSuccess = false, retry = false): Promise<DwModel | null> {
+    const c = await this.ctl.n_getchild(o.name)
+    if (!(c instanceof NDwBase)) return null
     await c.ready
     const cm = c.model
     if (!cm) return null
-    if (cm.rowCount() === 0 && !this.loaded.has(o.name) && o['dddw.autoretrieve'] === 'yes' && argList(cm.def).length === 0) {
-      this.loaded.add(o.name)
-      await c.n_retrieve()
+    let load = this.childLoads.get(cm)
+    if (retry && load?.failed) { this.childLoads.delete(cm); load = undefined }
+    if (cm.rowCount() === 0 && !load && choiceProperty(o, 'dddw.autoretrieve', this.ctl.model?.overrides) === 'yes' && argList(cm.def).length === 0) {
+      const state: { ready: Promise<void>; failed: boolean; error?: unknown } = { ready: Promise.resolve(), failed: false }
+      this.childLoads.set(cm, state)
+      state.ready = (async () => {
+        try {
+          if (await c.n_retrieve() < 0) throw new Error(`The choices for ${o.name} could not be retrieved.`)
+        } catch (error) {
+          state.failed = true
+          state.error = error
+          if (!this.disposed && !this.ctl.destroyed) this.ctl.rt.onError(error)
+        }
+      })()
+      load = state
     }
+    await load?.ready
+    if (requireSuccess && load?.failed) throw load.error
     return cm
   }
 
@@ -1058,31 +1134,19 @@ export class DwView {
 
   /** the code table of a drop-down list box / code-table column: `Yes<tab>Y/No<tab>N/` of the table definition as [display, data] pairs */
   private codeTable(m: DwModel, o: DwObject): [string, string][] | null {
-    if (o.type !== 'column') return null
-    const ddlb = Object.keys(o).some((k) => k.startsWith('ddlb.'))
-    if (!ddlb && o['edit.codetable'] !== 'yes' && o['editmask.codetable'] !== 'yes') return null
-    const ci = m.colIndex(o.name)
-    const raw = ci >= 0 ? m.def.table.columns[ci].values : undefined
-    if (!raw) return null
-    const out: [string, string][] = []
-    for (const part of raw.split('/')) {
-      if (!part) continue
-      const [d, v] = part.split('\t')
-      out.push([d, v ?? d])
-    }
-    return out.length ? out : null
+    return codeTable(m.def, o, m.overrides)
   }
 
   private async display(m: DwModel, o: DwObject, v: unknown, row: number, band: string): Promise<string> {
     const ct = v === null || v === undefined ? null : this.codeTable(m, o)
     if (ct) return ct.find(([, d]) => d === toStr(v))?.[0] ?? toStr(v)
     // a null value shows the row of the drop-down list whose data column is null (`<None>` of the accounts list `ddd_allaccountslist_null`)
-    if ((v === null || v === undefined) && o['dddw.name']) {
+    if ((v === null || v === undefined) && choiceProperty(o, 'dddw.name', m.overrides)) {
       const cm = await this.childOf(o)
-      const dc = cm ? cm.colIndex(o['dddw.datacolumn'] || '') : -1
-      const ds = cm ? cm.colIndex(o['dddw.displaycolumn'] || '') : -1
+      const dc = cm ? cm.colIndex(choiceProperty(o, 'dddw.datacolumn', m.overrides) || '') : -1
+      const ds = cm ? cm.colIndex(choiceProperty(o, 'dddw.displaycolumn', m.overrides) || '') : -1
       const hit = cm && dc >= 0 && ds >= 0 ? cm.buf.primary.find((r) => r.v[dc] === null || r.v[dc] === undefined) : undefined
-      if (hit && cm) return toStr(hit.v[cm.colIndex(o['dddw.displaycolumn'] || '')])
+      if (hit && cm) return toStr(hit.v[ds])
     }
     if (v === null || v === undefined) {
       // an empty column still shows its display format when that has a section for null / zero-length text (the password columns show `*****`)
@@ -1094,11 +1158,11 @@ export class DwView {
       if (mask && ci >= 0 && ['date', 'datetime', 'time'].includes(colKind(m.def.table.columns[ci].type)) && !/am|pm|a\/p/i.test(mask)) return mask.replace(/[dmyhs]/gi, '0')
       return ''
     }
-    if (o['dddw.name']) {
+    if (choiceProperty(o, 'dddw.name', m.overrides)) {
       const cm = await this.childOf(o)
       if (cm) {
-        const dc = cm.colIndex(o['dddw.datacolumn'] || '')
-        const ds = cm.colIndex(o['dddw.displaycolumn'] || '')
+        const dc = cm.colIndex(choiceProperty(o, 'dddw.datacolumn', m.overrides) || '')
+        const ds = cm.colIndex(choiceProperty(o, 'dddw.displaycolumn', m.overrides) || '')
         if (dc >= 0 && ds >= 0) {
           const hit = cm.buf.primary.find((r) => toStr(r.v[dc]) === toStr(v))
           if (hit) return toStr(hit.v[ds])
@@ -1106,9 +1170,11 @@ export class DwView {
       }
       return toStr(v)
     }
-    if (o['checkbox.on'] !== undefined) {
-      const on = toStr(v) === o['checkbox.on']
-      return (on ? '\u2611' : '\u2610') + (o['checkbox.text'] ? ' ' + o['checkbox.text'] : '')
+    const checkboxOn = choiceProperty(o, 'checkbox.on', m.overrides)
+    if (checkboxOn !== undefined) {
+      const on = sameChoiceValue(v, checkboxOn)
+      const text = choiceProperty(o, 'checkbox.text', m.overrides)
+      return (on ? '\u2611' : '\u2610') + (text ? ' ' + text : '')
     }
     // dynamic format expressions like `[currency]\tf_SetColumnFormat('Qty')`
     // must be evaluated, not shown literally
@@ -1154,10 +1220,11 @@ export class DwView {
       cell = this.cellOf(m.row, o.name)
     }
     if (!cell) return false
-    if (this.editor instanceof HTMLInputElement && this.editRow === m.row && this.editObj.toLowerCase() === name) {
+    if ((this.editor instanceof HTMLInputElement || this.editor instanceof HTMLTextAreaElement) &&
+      this.editRow === m.row && this.editObj.toLowerCase() === name) {
       this.syncFocusedText?.()
       this.editor.focus()
-      this.editor.select()
+      if (!this.choiceEdit && dwEditAutoSelect(m, o)) this.editor.select()
       return true
     }
     if (!cell.classList.contains('editable')) {
@@ -1180,25 +1247,44 @@ export class DwView {
   }
 
   /** state of the open in-place editor, kept across a repaint of the DataWindow */
-  protected takeEditor(): { row: number; obj: string; value: string; start: number | null; end: number | null } | null {
+  protected takeEditor(): DwEditorSnapshot | null {
     const e = this.editor
-    if (!(e instanceof HTMLInputElement)) return null
-    return { row: this.editRow, obj: this.editObj, value: e.value, start: e.selectionStart, end: e.selectionEnd }
+    if (this.choiceEdit && e === this.choiceEdit.element) return {
+      row: this.editRow, obj: this.editObj, value: this.choiceEdit.read(), start: null, end: null, choice: this.choiceEdit,
+      focused: document.activeElement === e,
+    }
+    if (!(e instanceof HTMLInputElement || e instanceof HTMLTextAreaElement)) return null
+    return {
+      row: this.editRow, obj: this.editObj, value: this.readTextEditor?.() ?? e.value,
+      start: e.selectionStart, end: e.selectionEnd, direction: e.selectionDirection ?? undefined,
+      scrollTop: e.scrollTop, scrollLeft: e.scrollLeft, focused: document.activeElement === e,
+      invalid: e.getAttribute('aria-invalid') === 'true',
+    }
   }
 
-  protected restoreEditor(s: { row: number; obj: string; value: string; start: number | null; end: number | null }): void {
+  protected restoreEditor(s: DwEditorSnapshot): void {
     const m = this.ctl.model
     if (!m || s.row < 1 || s.row > m.rowCount()) return
     const o = m.def.objects.find((x) => x.type === 'column' && x.name.toLowerCase() === s.obj.toLowerCase())
     if (!o) return
     const cell = this.cellOf(s.row, o.name)
     if (!cell) return
-    this.edit(m, o, s.row, cell)
+    if (s.choice && this.choiceEdit === s.choice) {
+      this.editor = s.choice.element
+      this.placeEditor(s.choice.element, cell)
+      if (s.focused) s.choice.element.focus({ preventScroll: true })
+      return
+    }
+    this.edit(m, o, s.row, cell, false, false)
     const e = this.editor
-    if (!(e instanceof HTMLInputElement)) return
+    if (!(e instanceof HTMLInputElement || e instanceof HTMLTextAreaElement)) return
     e.value = s.value
-    e.dispatchEvent(new Event('dwtextchange'))
-    if (s.start !== null && s.end !== null) e.setSelectionRange(s.start, s.end)
+    e.dispatchEvent(new CustomEvent('dwtextchange', { detail: s.value }))
+    if (s.invalid) e.setAttribute('aria-invalid', 'true')
+    if (s.start !== null && s.end !== null) e.setSelectionRange(s.start, s.end, s.direction)
+    e.scrollTop = s.scrollTop ?? 0
+    e.scrollLeft = s.scrollLeft ?? 0
+    if (s.focused !== false) e.focus({ preventScroll: true })
   }
 
   protected placeEditor(editor: HTMLElement, cell: HTMLElement): void {
@@ -1206,22 +1292,251 @@ export class DwView {
   }
 
   protected captureEditText(value: unknown): () => string {
-    const editor = this.textEditor
-    return () => editor?.value ?? toStr(value)
+    const read = this.readTextEditor
+    const choice = this.choiceEdit
+    return () => choice?.read() ?? read?.() ?? toStr(value)
   }
 
-  protected restoreRejectedText(text: string): void {
-    if (!(this.editor instanceof HTMLInputElement)) return
-    this.editor.value = text
-    this.editor.dispatchEvent(new Event('dwtextchange'))
-    this.editor.setAttribute('aria-invalid', 'true')
-  }
-
-  protected edit(m: DwModel, o: DwObject, row: number, cell: HTMLElement): void {
+  protected detachTextEditor(): void {
     this.releaseTextEditor?.()
     this.releaseTextEditor = null
     this.textEditor = null
+    this.readTextEditor = null
+    this.checkTextEditor = null
+    this.composingText = null
     this.syncFocusedText = null
+  }
+
+  private async retainInvalidText(): Promise<boolean> {
+    const check = this.checkTextEditor, read = this.readTextEditor
+    if (!check || !read || this.editor !== this.textEditor || await check() || check !== this.checkTextEditor) return false
+    this.retainStaleDraft(read())
+    return true
+  }
+
+  protected retainStaleDraft(value: string): void {
+    if (this.disposed) return
+    this.recoveredDraft = true
+    this.cancelChoice()
+    this.detachTextEditor()
+    this.editor = null
+    this.acceptEdit = async () => false
+    const notice = document.createElement('div')
+    notice.className = 'dw-recovery'
+    const message = document.createElement('p')
+    message.setAttribute('role', 'alert')
+    message.textContent = 'The record or field changed. This entry was not applied and is retained for copying.'
+    const label = document.createElement('label')
+    label.textContent = 'Unapplied entry'
+    const text = document.createElement('textarea')
+    text.readOnly = true
+    text.rows = 4
+    text.value = value
+    label.append(text)
+    const discard = document.createElement('button')
+    discard.type = 'button'
+    discard.textContent = 'Discard unapplied entry and use current layout'
+    discard.onclick = () => {
+      this.discardInputEvents()
+      this.recoveredDraft = false
+      this.acceptEdit = null
+      this.schedule()
+    }
+    notice.append(message, label, discard)
+    this.root.replaceChildren(notice)
+    text.focus()
+  }
+
+  protected restoreRejectedText(text: string): void {
+    if (this.choiceEdit && this.editor === this.choiceEdit.element) {
+      this.choiceEdit.element.setAttribute('aria-invalid', 'true')
+      return
+    }
+    if (!(this.editor instanceof HTMLInputElement || this.editor instanceof HTMLTextAreaElement)) return
+    this.editor.value = text
+    this.editor.dispatchEvent(new CustomEvent('dwtextchange', { detail: text }))
+    this.editor.setAttribute('aria-invalid', 'true')
+  }
+
+  protected cancelChoice(): void {
+    this.choiceEdit?.cancel()
+    this.choiceEdit = null
+  }
+
+  protected lookupSurface(_object: DwObject): DataSurface | undefined { return undefined }
+  protected async browseChoices(_editor: DwChoiceEditor): Promise<number | null> {
+    throw new Error('This presentation does not provide a detailed lookup browser.')
+  }
+
+  private editChoice(model: DwModel, object: DwObject, row: number, cell: HTMLElement, style: DwChoiceBinding, activate: boolean): void {
+    const record = model.rowAt(row)
+    const column = model.colIndex(object.name)
+    const signature = choiceSignature(model.def, object, model.overrides)
+    const lookup = style.kind === 'lookup' ? this.lookupSurface(object) : undefined
+    const current = () => !this.disposed && !this.ctl.destroyed && this.choiceEdit === choice &&
+      this.ctl.model === model && model.rowAt(row) === record
+    const configured = () => current() && model.row === row && model.col === column + 1 &&
+      choiceSignature(model.def, object, model.overrides) === signature
+    const guard = async () => {
+      if (!configured() || !(await this.canEdit(model, object, row)) || !configured()) {
+        throw new Error('The record, field or choice configuration changed. The entry was not applied.')
+      }
+    }
+    const choice = new DwChoiceEditor({
+      value: model.getItem(row, column + 1),
+      checkbox: style.kind === 'checkbox',
+      current, guard,
+      load: (retry) => this.choiceOptions(model, object, style, retry, lookup),
+      details: lookup ? (editor) => this.browseChoices(editor) : undefined,
+      commit: (value, check) => this.commitEditValue(model, row, column, object, value, check),
+      status: (message) => this.acceptanceBusy(message),
+      error: (error) => this.ctl.rt.onError(error),
+      close: (restoreFocus) => {
+        if (this.choiceEdit !== choice) return
+        const focused = document.activeElement === choice.element || restoreFocus && document.activeElement === document.body
+        this.cancelChoice()
+        this.releaseTextEditor?.()
+        this.releaseTextEditor = null
+        if (this.editor === choice.element) this.editor = null
+        choice.element.remove()
+        this.acceptEdit = null
+        if (focused) {
+          const target = this.root.classList.contains('modern-surface') ? this.cellOf(row, object.name) : this.root
+          if (target) { if (!target.hasAttribute('tabindex')) target.tabIndex = -1; target.focus({ preventScroll: true }) }
+        }
+        this.schedule()
+      },
+      next: (direction) => this.tabNext(direction),
+    })
+    this.choiceEdit = choice
+    this.editor = choice.element
+    choice.element.style.cssText = cell.style.cssText + ';z-index:5;line-height:normal'
+    if (style.kind === 'checkbox') choice.element.setAttribute('aria-label', choiceProperty(object, 'checkbox.text', model.overrides) || object.name)
+    this.placeEditor(choice.element, cell)
+    this.acceptEdit = (navigation) => choice.accept(navigation)
+    this.releaseTextEditor = this.ctl.bindTextEditor(model, row, object.name, { read: () => choice.read(), write: (text) => choice.write(text) })
+    choice.element.focus()
+    choice.start()
+    if (activate && style.kind === 'checkbox') void choice.toggle().catch((error) => this.ctl.rt.onError(error))
+  }
+
+  private async choiceOptions(model: DwModel, object: DwObject, style: DwChoiceBinding, retry: boolean, lookup?: DataSurface): Promise<DwChoices> {
+    if (style.kind === 'checkbox') {
+      const items = [{ text: 'Unchecked', value: style.off }, { text: 'Checked', value: style.on }]
+      return { items, validate: (choice) => {
+        if (!items.some((item) => item === choice)) throw new Error('The checkbox value is no longer available.')
+      } }
+    }
+    if (style.kind === 'list') {
+      const items = (this.codeTable(model, object) ?? []).map(([text, value]) => ({ text, value }))
+      if (style.sorted) items.sort((left, right) => compareLabels(left.text, right.text))
+      return { items, validate: (choice) => {
+        if (!items.some((item) => item === choice)) throw new Error('The selected value is no longer in this code table.')
+      } }
+    }
+    const child = await this.ctl.n_getchild(object.name)
+    if (!(child instanceof NDwBase)) throw new Error(`The lookup for ${object.name} is unavailable.`)
+    const data = await this.childOf(object, true, retry)
+    if (!data || child.destroyed || data !== child.model || data.name !== style.name) throw new Error(`The lookup for ${object.name} changed while loading.`)
+    const key = data.colIndex(style.dataColumn), label = data.colIndex(style.displayColumn)
+    if (key < 0 || label < 0) throw new Error(`The lookup for ${object.name} is missing its data or display column.`)
+    const rows = [...data.buf.primary]
+    const items = rows.map((record) => ({ text: toStr(record.v[label]), value: record.v[key] }))
+    const choices: DwChoices = { items, validate: (choice) => {
+      const index = items.indexOf(choice), record = rows[index]
+      if (child.destroyed || child.model !== data || !record || !data.buf.primary.includes(record) ||
+        !sameChoiceValue(record.v[key], choice.value) || toStr(record.v[label]) !== choice.text) {
+        throw new Error('The selected lookup row changed. Reopen the field and choose its current value.')
+      }
+    } }
+    if (lookup) await this.addLookupGrid(choices, data, lookup)
+    return choices
+  }
+
+  private async addLookupGrid(choices: DwChoices, data: DwModel, surface: DataSurface): Promise<void> {
+    const issues = lookupSurfaceIssues(data.def, surface, data.overrides)
+    const fields = surface.fields.map((field) => ({
+      field, object: data.def.objects.find((object) => object.name === field.object),
+    }))
+    const visible = fields.filter(({ field, object }) => object &&
+      (data.overrides.get(`${field.object}.visible`) ?? object.visible ?? '1') !== '0')
+    if (!visible.length) issues.push('No visible lookup columns')
+    if (issues.length) {
+      choices.gridIssue = `Detailed choices unavailable: ${issues.join('; ')}. The basic list remains available.`
+      console.warn(choices.gridIssue)
+      return
+    }
+    const definition = data.def
+    const configuration = () => JSON.stringify([data.def, [...data.overrides]])
+    const signature = configuration()
+    const records = [...data.buf.primary]
+    const columns = await Promise.all(visible.map(async ({ field, object }) => {
+      const label = data.def.objects.find((object) => object.name === field.labelObject)
+      const text = label ? await this.prop(data, label, 'text', 1, label.band) : field.label ?? ''
+      const index = data.colIndex(field.object)
+      return {
+        object: object!, index, label: text.replace(/&&/g, '\0').replace(/&/g, '').replace(/\0/g, '&').trim() || field.label || field.object,
+        numeric: field.numeric ?? ['number', 'decimal'].includes(data.kinds[index]),
+        values: codeTable(data.def, object!, data.overrides),
+      }
+    }))
+    const values = records.map((record) => columns.map((column) => record.v[column.index]))
+    const original = choices.validate
+    choices.validate = (choice) => {
+      original(choice)
+      const index = choices.items.indexOf(choice), record = records[index]
+      if (data.def !== definition || configuration() !== signature || !record ||
+        columns.some((column, at) => !sameChoiceValue(record.v[column.index], values[index][at]))) {
+        throw new Error('The lookup details changed. Press Escape and reopen the field before choosing a value.')
+      }
+    }
+    choices.grid = {
+      title: surface.title,
+      columns: columns.map(({ label, numeric }) => ({ label, numeric })),
+      matches: (index, query) => values[index].some((value, at) => {
+        const text = columns[at].values?.find(([, key]) => sameChoiceValue(key, value))?.[0] ?? toStr(value)
+        return text.toLocaleLowerCase().includes(query)
+      }),
+      read: async (index) => {
+        const choice = choices.items[index]
+        if (!choice) throw new Error('The requested lookup row is no longer available.')
+        choices.validate(choice)
+        const row = data.buf.primary.indexOf(records[index]) + 1
+        const result = await Promise.all(columns.map((column, at) =>
+          this.display(data, column.object, values[index][at], row, column.object.band)))
+        choices.validate(choice)
+        return result
+      },
+    }
+  }
+
+  protected edit(m: DwModel, o: DwObject, row: number, cell: HTMLElement, activate = false, focus = true): void {
+    if (this.choiceDestination) {
+      const destination = this.choiceDestination
+      if (destination.model === m && destination.row === row && destination.object === o.name) destination.activate ||= activate
+      else this.acceptanceBusy('Wait for the current field transition to finish before selecting another field.')
+      return
+    }
+    if (this.choiceEdit && this.editor === this.choiceEdit.element) {
+      if (this.editRow === row && this.editObj === o.name) {
+        this.editor.focus()
+        if (activate) void this.choiceEdit.toggle().catch((error) => this.ctl.rt.onError(error))
+        return
+      }
+      if (m.row !== row || m.col !== m.colIndex(o.name) + 1) {
+        this.acceptanceBusy('Finish or cancel the current choice before moving to another field.')
+        return
+      }
+      const destination = m.rowAt(row)
+      void this.choiceEdit.accept(true).then((ok) => {
+        if (!ok || this.disposed || this.ctl.model !== m || m.row !== row || m.rowAt(row) !== destination || m.col !== m.colIndex(o.name) + 1) return
+        const target = this.cellOf(row, o.name)
+        if (target) this.edit(m, o, row, target, activate)
+      }).catch((error) => this.ctl.rt.onError(error))
+      return
+    }
+    this.cancelChoice()
+    this.detachTextEditor()
     if (this.editor) {
       const ed = this.editor
       // clearing the field before remove stops a synchronous blur handler from
@@ -1234,6 +1549,11 @@ export class DwView {
     this.editRow = row
     this.editCol = ci + 1
     this.editObj = o.name
+    const choice = choiceStyle(o, m.overrides)
+    if (choice.kind === 'list' || choice.kind === 'lookup' || choice.kind === 'checkbox') {
+      this.editChoice(m, o, row, cell, choice, activate)
+      return
+    }
     if (o['checkbox.on'] !== undefined) {
       const cur = toStr(m.buf.primary[row - 1]?.v[ci])
       const next = cur === o['checkbox.on'] ? o['checkbox.off'] : o['checkbox.on']
@@ -1264,6 +1584,7 @@ export class DwView {
         if (val !== cur) {
           void this.commitEditValue(m, row, ci, o, val)
         }
+
       }
       sel.addEventListener('change', done)
       sel.addEventListener('blur', done)
@@ -1302,68 +1623,104 @@ export class DwView {
       })
       return
     }
-    const input = document.createElement('input')
+    const multiline = dwMultiline(o, m.kinds[ci], m.overrides)
+    const input = multiline ? document.createElement('textarea') : document.createElement('input')
     input.className = 'dw-edit'
     const record = m.rowAt(row)
     const v = m.buf.primary[row - 1]?.v[ci]
-    input.value = v === null || v === undefined ? '' : toStr(v)
+    const limit = dwTextLimit(m, ci, o)
+    if (limit) input.maxLength = limit
+    let sourceText = toStr(v)
+    input.value = sourceText
     input.style.cssText = cell.style.cssText + ';z-index:5;border:1px solid #0078d7;background:#fff'
     input.style.lineHeight = 'normal'
+    if (input instanceof HTMLTextAreaElement) {
+      input.style.resize = 'none'
+      input.style.whiteSpace = 'pre-wrap'
+      input.wrap = 'soft'
+      input.rows = 4
+      input.title = 'Shift+Enter adds a line. Enter keeps the form action.'
+      input.setAttribute('aria-keyshortcuts', 'Shift+Enter')
+    }
     this.placeEditor(input, cell)
     this.editor = input
     this.textEditor = input
-    let storedText = input.value
+    const domText = (text: string) => multiline ? dwMultilineDomText(text) : text
+    const readText = () => multiline ? dwMultilineText(input.value, sourceText) : input.value
+    this.readTextEditor = readText
+    let storedText = sourceText
+    let composing = false
+    let compositionText: string | null = null
     this.syncFocusedText = () => {
       const current = toStr(m.getItem(row, ci + 1))
       if (current !== storedText) {
         storedText = current
+        sourceText = current
         input.value = current
         input.dispatchEvent(new Event('dwtextchange'))
       }
     }
     const releaseText = this.ctl.bindTextEditor(m, row, o.name, {
-      read: () => input.value,
+      read: readText,
       write: (text) => {
-        input.value = text
+        sourceText = dwEditText(m, ci, o, text)
+        input.value = sourceText
         input.dispatchEvent(new Event('dwtextchange'))
       },
     })
+    input.addEventListener('dwtextchange', (event) => {
+      if (event instanceof CustomEvent && typeof event.detail === 'string') sourceText = event.detail
+    })
     this.releaseTextEditor = releaseText
     const release = () => {
-      releaseText()
-      if (this.textEditor === input) {
-        this.textEditor = null
-        this.syncFocusedText = null
-        this.releaseTextEditor = null
+      if (this.textEditor === input) this.detachTextEditor()
+      else releaseText()
+    }
+    if (focus) {
+      input.focus()
+      if (dwEditAutoSelect(m, o)) input.select()
+    }
+    const configured = () => !this.disposed && !this.ctl.destroyed && this.ctl.model === m && m.rowAt(row) === record &&
+      m.def.objects.includes(o) && m.colIndex(o.name) === ci && dwMultiline(o, m.kinds[ci], m.overrides) === multiline
+    const editable = async () => configured() && await this.canEdit(m, o, row) && configured()
+    this.checkTextEditor = multiline ? editable : null
+    const guard = async () => {
+      if (!configured() || multiline && !(await editable())) {
+        if (multiline) this.retainStaleDraft(readText())
+        throw new Error('The text field configuration changed. The entry was not applied.')
       }
     }
-    input.focus()
-    input.select()
-    const commit = async (): Promise<boolean> => {
+    const commit = async (navigation = false): Promise<boolean> => {
       if (this.inputFailed) return false
       if (this.editor !== input) return true
+      if (composing) {
+        this.acceptanceBusy('Finish composing the current entry before continuing.')
+        return false
+      }
       this.editor = null
-      const text = input.value
-      if (input.isConnected) input.remove()
       const cur = v === null || v === undefined ? '' : toStr(v)
+      if (input.value !== domText(cur)) input.value = dwEditText(m, ci, o, input.value)
+      const text = readText()
+      if (input.isConnected) input.remove()
       try {
-        const accepted = text !== cur ? await this.commitEditValue(m, row, ci, o, text) : true
-        if (!accepted && !this.editor && !this.disposed && this.ctl.model === m &&
+        const result = input.value !== domText(cur) ? await this.commitEditValue(m, row, ci, o, text, guard) : 'accepted'
+        if (result === 'rejected' && !this.editor && !this.disposed && this.ctl.model === m &&
           m.rowAt(row) === record && m.row === row && m.col === ci + 1) {
           const target = this.cellOf(row, o.name)
           if (target && await this.canEdit(m, o, row)) {
             this.edit(m, o, row, target)
-            this.restoreRejectedText(input.value)
+            this.restoreRejectedText(readText())
           }
         }
-        return accepted
+        if (result === 'discarded') this.schedule()
+        return result === 'accepted' || navigation && result === 'discarded'
       } finally {
         release()
       }
     }
     this.acceptEdit = commit
     const commitFromUi = (): Promise<boolean> => {
-      if (!this.inputEventCount) return commit()
+      if (!this.inputEventCount) return commit(true)
       const version = this.inputVersion
       return this.trackEdit((async () => {
         let pending: Promise<boolean>
@@ -1372,23 +1729,49 @@ export class DwView {
           if (!(await pending)) return false
         } while (pending !== this.inputEvents)
         if (this.disposed || version !== this.inputVersion || this.ctl.model !== m || m.rowAt(row) !== record) return false
-        if (this.editor === input) return commit()
+        if (this.editor === input) return commit(true)
         if (this.editor && this.editRow === row && this.editCol === ci + 1 && this.editObj === o.name) {
-          return this.acceptEdit ? this.acceptEdit() : false
+          return this.acceptEdit ? this.acceptEdit(true) : false
         }
         return !this.editor
       })())
     }
-    input.addEventListener('input', () => this.inputChanged(m, row, o, input.value))
+    const normalizeText = () => {
+      const text = input.value
+      const normalized = dwEditText(m, ci, o, text)
+      if (normalized !== text) {
+        const start = input.selectionStart, end = input.selectionEnd, direction = input.selectionDirection
+        input.value = normalized
+        if (start !== null && end !== null) input.setSelectionRange(
+          dwEditText(m, ci, o, text.slice(0, start)).length,
+          dwEditText(m, ci, o, text.slice(0, end)).length, direction ?? undefined)
+      }
+    }
+    input.addEventListener('compositionstart', () => { composing = true; compositionText = null; this.composingText = input })
+    input.addEventListener('compositionend', () => {
+      composing = false
+      if (this.composingText === input) this.composingText = null
+      normalizeText()
+      compositionText = input.value
+      this.inputChanged(m, row, o, readText())
+      this.schedule()
+    })
+    input.addEventListener('input', (event) => {
+      if (composing || event instanceof InputEvent && event.isComposing) return
+      normalizeText()
+      const alreadyNotified = compositionText === input.value
+      compositionText = null
+      if (alreadyNotified) return
+      this.inputChanged(m, row, o, readText())
+    })
     input.addEventListener('blur', () => {
       queueMicrotask(() => {
-        const modal = document.activeElement instanceof Element
-          ? document.activeElement.closest('dialog[open],.msgbox') : null
-        if (modal && !modal.contains(this.root)) return
-        void commitFromUi()
+        // Leaving the DataWindow is not AcceptText; its caller decides when to validate.
+        if (document.activeElement instanceof Element && this.root.contains(document.activeElement)) void commitFromUi()
       })
     })
     input.addEventListener('keydown', (ev) => {
+      if (!(ev instanceof KeyboardEvent) || composing || ev.isComposing) return
       const k = keyEnum(ev)
       if (ev.key === 'Escape') {
         this.editor = null
@@ -1404,6 +1787,7 @@ export class DwView {
         return
       }
       if (ev.key === 'Enter') {
+        if (multiline && ev.shiftKey && !ev.ctrlKey && !ev.altKey && !ev.metaKey) return
         ev.preventDefault()
         // ProcessEnter: a script on the control decides (usually it presses Tab); without one Enter moves on like Tab
         const has = this.ctl.findRoutines('ue_enterkey').length > 0

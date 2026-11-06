@@ -10,7 +10,8 @@ foreach ($png in Get-ChildItem $OldDir -Filter '*.png') {
   if (-not (Test-Path $json)) { continue }
   $raw = Get-Content $json -Raw
   $data = $raw.TrimStart([char]0xFEFF) | ConvertFrom-Json
-  $win = $data.windows | Where-Object { -not $_.isFrame -and $_.w -gt 100 -and $_.h -gt 100 } | Select-Object -First 1
+  $win = $data.sheet
+  if (-not $win) { $win = $data.windows | Where-Object { -not $_.isFrame -and $_.w -gt 100 -and $_.h -gt 100 } | Select-Object -First 1 }
   if (-not $win) { continue }
   $src = [System.Drawing.Image]::FromFile($png.FullName)
   try {

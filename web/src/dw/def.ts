@@ -82,6 +82,19 @@ export const num = (o: Props | undefined, k: string, d = 0): number => {
   return Number.isNaN(n) ? d : n
 }
 
+/**
+ * A DataWindow `format` property may be a pure expression (`"<TAB>f_SetColumnFormat('Qty')"`)
+ * or a static prefix plus an expression (`"[currency]<TAB>f_SetColumnFormat('Qty')"`).
+ * Unlike other properties, a tab here is always the separator; the head is not a
+ * computed-field whitespace fragment.
+ */
+export function splitFormatExpr(v: string | undefined): { value: string; expr?: string } {
+  if (v === undefined) return { value: '' }
+  const i = v.search(/\t|~t/)
+  if (i < 0) return { value: v }
+  return { value: v.slice(0, i).trim(), expr: v.slice(v[i] === '\t' ? i + 1 : i + 2) }
+}
+
 /** property value that may carry an expression: "0<TAB>if(...)" (the compiled form of `0~tif(...)`) -> { value: '0', expr: 'if(...)' } */
 export function splitExpr(v: string | undefined): { value: string; expr?: string } {
   if (v === undefined) return { value: '' }

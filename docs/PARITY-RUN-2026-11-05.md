@@ -87,6 +87,16 @@ node tools/parity/discover-forms.mjs
    (`date_trunc('day', localtimestamp(3)) + fhtimein::time`) instead of
    assigning time-only text to a `timestamp`; the attendance kiosk clock-in
    and clock-out paths work with `ApplyDeptTimeSlabsInOnlineAtten='Y'`.
+10. DataWindow `format` properties that are pure expressions
+    (`"<TAB>f_SetColumnFormat('Qty')"`) were rendered literally (Cash Sale
+    footer showed `f_SetColumnFormat('Qty')`).  `splitFormatExpr` now always
+    treats the tab as the value/expression separator for `format` (the generic
+    `splitExpr` keeps treating tabs in computed expressions as whitespace), and
+    the existing global-function bridge evaluates `f_SetColumnFormat` through
+    `gds_colpref` (`Qty` -> `#,##0`).  Verified: Cash Sale's DOM no longer
+    contains the literal and the footer computed totals show `0` / `1`;
+    the audit finds 10,823 format-bearing objects in 4,220 definitions with a
+    tab-separated format.  Regression tests: `web/tests/dw-format.test.ts`.
 
 ## Open, in priority order
 
@@ -363,10 +373,11 @@ posted Y) was created at 2026-11-05 02:16:30 and read back from
   The residual difference is window placement/size and row pitch, not a
   missing control.
 * Fresh window clips for the other outliers confirm capture-state causes:
-  Cash Sale's old shot has the item list open and a selected invoice;
-  Priority Setting's old shot has a `Find: ZYTO 500MG TAB` filter and saved
-  user column widths; About's old shot contains licence text that is
-  intentionally blank in the rebuild (user requirement).
+  Cash Sale's old shot has the item list open and a selected invoice (its
+  footer format literal is now fixed - see fix 10); Priority Setting's old
+  shot has a `Find: ZYTO 500MG TAB` filter and saved user column widths;
+  About's old shot contains licence text that is intentionally blank in the
+  rebuild (user requirement).
 * `deploy/parity/screen-parity/outlier-window-diff.csv` is the window-only
   comparison of the fresh clips (old main windows cropped with
   `tools/parity/crop-old-windows.ps1`); it is a diagnostic for the remaining
