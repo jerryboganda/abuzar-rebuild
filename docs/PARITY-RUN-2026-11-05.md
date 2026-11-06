@@ -332,6 +332,24 @@ posted Y) was created at 2026-11-05 02:16:30 and read back from
   dataobject differences are the intended Cash/Credit/Opening/Return variants.
   Three screens timed out at login (Manufacturer Type, Preferences, About) and
   need a re-run, not a code change.
+* **Per-field DataWindow diff (final):** `tools/parity/compare-dw.py` compared
+  every recovered legacy definition with the runtime bundle:
+  **8,740 / 8,740 definitions matched, 0 missing, 0 extra, 0 changed**.
+  Seven duplicate names exist on both sides with identical content (8
+  duplicate entries in the pair list).  The last two changes were
+  `d_retailsaledetail`/`d_retailsaleheader` `initial` values; regenerating
+  `data/src/dw/salewin.json.gz` from `recovered/datawindows_json/salewin`
+  cleared them.  Evidence: `deploy/parity/dw-compare.json`.
+* **Per-control caption diff (final):** `tools/parity/compare-controls.py`
+  compared the 62 paired screen inventories: **0 missing old captions**
+  (4,855 extra new-side strings are the rebuild's additional DataWindow
+  captions that the Win32 dump does not enumerate).  Evidence:
+  `deploy/parity/control-compare.json`.
+* **Visual diff:** `deploy/parity/screen-parity/visual-diff.csv` now has 80
+  paired screenshots, median MAE **3.48 %** (min 0.10 %, worst 74.38 %).  The
+  five worst values are mispaired `*_dlg1.png` modal captures compared against
+  main-screen new captures, not proven visual defects; the true pairing fix is
+  still open.
 
 ### Still open after the third session
 
