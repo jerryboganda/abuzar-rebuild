@@ -1631,6 +1631,39 @@ Master `d_emp_payroll` updates `EMP_Payroll`; detail
 
 Probe: `tools/parity/probe-payroll-add.mjs` - measured `ok=true`.
 
+### Employee master add/edit (verified; creates the salary account)
+
+`m_employeeprofile` (hidden) opens `w_employee_list` (title "Employee List");
+its `ue_new` opens the modal `w_emp_form` (title "Employee Form",
+`windowtype 3`).  The form has eight tabs and 62 master columns.
+
+* **Add:** EMPID, full name, gender M, marital S, employee/birth/join dates,
+  category/department/designation 1, active Y, and the salary-account fields
+  (`accounts_name`, `accounts_aliasname`, `accounts_subcode 24`, active Y,
+  restricted N, `openadvaccount N`).
+* Save (`cb_ok`) created the salary account:
+  `_tabmaxkey('accounts') 333 -> 334`,
+  `INSERT INTO dbo.accounts (acccode, subcode, name, aliasname, openingdate,
+  active, restricted, alertcode) VALUES (334, 24, 'PARITY EMPLOYEE AC ...',
+  'PE...', ..., 'Y', 'N', 1)`, then
+  `_tabmaxkey('emp_employee') 0 -> 1` and
+  `INSERT INTO dbo.emp_employee` with 23 columns, `acccode = 334`.
+  The form then wrote its (empty) photo blob:
+  `UPDATE dbo.emp_employee SET picture = ...` and closed.
+* **Reopen:** the list was refreshed with `ue_list` (one row), then
+  `wf_openmywindow(1)` opened the form with code 1 and the saved full name.
+* **Edit:** full name and mobile changed; `UPDATE dbo.emp_employee SET
+  fullname = $1, mobileno = $2 WHERE empcode = ... AND ...` matched
+  (rowcount 1).  The salary account was retrieved, not re-created.
+* **Delete:** `w_employee_list` / `w_listview_form` define no `ue_delete`,
+  and `m_delete` is disabled; the original employee list has no delete
+  action.  Cleanup is by SQL (the probe removed both rows).
+* Exact restore: `emp_employee 0 / max 0`, `accounts 257 / max 325`,
+  `_tabmaxkey('Accounts') 333`, `_tabmaxkey('EMP_Employee') 0`,
+  `audit_log 1,079 / max 1,127`, no residue.
+
+Probe: `tools/parity/probe-employee-crud.mjs` - measured `ok=true`.
+
 ### Item Association nested form + parent save
 
 `Set Item Associations` (`m_setitemassociations` →
