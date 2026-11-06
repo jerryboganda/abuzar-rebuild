@@ -1318,6 +1318,61 @@ detail `d_guestroomservice` updates `GuestRoomService`; list
 
 Probe: `tools/parity/probe-guestroom-crud.mjs` - measured `ok=true`.
 
+### Guest master add/edit/delete (verified; right-hidden)
+
+`m_guestregistration` (hidden) opens `w_guest_form` (`w_single_entry`, title
+"Guest Form").  `d_guest_detail` updates `Guest`; `d_guest_list` lists it.
+The form is the guest registration dialog path (`w_guestregistration` is the
+smaller modal that reuses `d_guest_detail`).
+
+* **Add:** name, NIC, gender M, active Y, customer 22, regno left empty
+  (auto-generated), mobile/address and the remaining optional fields.
+  `sqlca.gettabmaxkey("Guest")` generated code **1**
+  (`_tabmaxkey 0 -> 1`); `regno` became `1`; the INSERT wrote all 19 columns
+  with `usercode 1`; "Changes take effect in database".
+* **Edit:** File | List returned the guest; Detail loaded code 1.  Name,
+  mobile and address changed and the UPDATE wrote all comparison columns
+  (rowcount 1).
+* **Delete:** File | Delete showed "Delete this record permanently from
+  Database?", the DELETE hit `Guest` (rowcount 1) and reported "Record
+  Deleted Successfully".
+* Exact restore: `guest 0 / max 0`, `_tabmaxkey('Guest') 0`,
+  `audit_log 1,079 / max 1,127`, no residue.
+
+Probe: `tools/parity/probe-guest-crud.mjs` - measured `ok=true`.
+
+### Guest Check-In add/edit (verified with a group cash-account fixture)
+
+`m_guestcheckin` (hidden) opens `w_guestcheckin` (`w_multi_entry`, title
+"Guest Check In Form").  Master `d_guestcheckin` updates `GuestCheckin`;
+detail `d_guestcheckinservice` updates `GuestCheckInService`; the save also
+updates `GuestRoom.Occupied` and reconciles `MasterCashWin`.
+
+* **Data prerequisite, not a rebuild gap:** the live and cloned databases
+  have no `groupcashaccount` row for module **42** (guest check-in), so the
+  original path shows "No Cash Account Attached to the group of the user
+  logged on" and aborts before SQL.  The probe inserted the temporary row
+  `(groupcode 2, moduleid 42, cashacccode 2)` and removed it afterwards.
+* **Add:** temporary guest 1 and room 1 (floor/type/status fixtures), guest
+  code 1, room 1, check-in/arrival dates 2026-11-06, departure 2026-11-07,
+  stay 1, persons 1, cash account 2.  `wf_tabnewid("GuestCheckIn")` generated
+  code **1** (`_tabmaxkey 0 -> 1`); the INSERT wrote `guestcheckin` (code,
+  server date, usercode 1, guest 1, room 1, `checkout N`, remarks, cash
+  fields) and the form set `GuestRoom.Occupied = 'Y'`; "Changes take effect
+  in database".
+* **Edit:** File | List returned the check-in; Detail loaded it.  Remarks
+  changed and the UPDATE matched.  **Original defect:** the edit path leaves
+  `ldt_server_datetime` uninitialized and unconditionally assigns it to
+  `Date`, so the reopened row's `date` becomes `1900-01-01 00:00:00`; the
+  check-in date itself (`checkindate`) is unchanged.  This is the recovered
+  script's behavior, not a rebuild regression.
+* Exact restore: `guestcheckin 0`, `guestcheckinservice 0`,
+  `guestroom 0`, `guest 0`, `mastercashwin 0`, `groupcashaccount 43 /
+  max rowid 176`, `_tabmaxkey('GuestCheckIn') 0`,
+  `audit_log 1,079 / max 1,127`, no residue.
+
+Probe: `tools/parity/probe-guestcheckin-add.mjs` - measured `ok=true`.
+
 ### Employee lookup masters (verified; right-hidden)
 
 The employee lookup forms are created with `visible = false`; the probe fires
