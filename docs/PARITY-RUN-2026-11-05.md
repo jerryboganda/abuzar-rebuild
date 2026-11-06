@@ -298,6 +298,71 @@ invoice **61605** (`saleinvcode 588888`, FACE MASK 9801, qty 1, price 10.00,
 posted Y) was created at 2026-11-05 02:16:30 and read back from
 `dbo.srledger` / `dbo.srdetail`.
 
+### Credit Sale Return (verified; all four Sale Return variants now covered)
+
+`Sales | Sale Return | Credit Sale Return` opens `w_salereturn`
+(`ii_salerettype = 1`, title "Credit Sale Return").  Invoice **588889**
+(Credit Whole Sale cat 2, customer 22, FACE MASK 9801, outstanding 11.00) was
+validated with `wf_validatesaleinvcode(1, 588889)` = 0, the sold-item list
+returned 1 row, item 9801 was selected, and Save opened the password dialog
+(ADMIN/password9080).
+
+Measured SQL/rows:
+
+* `_tabmaxkey('SRLedger') 61605 -> 61606`; `_headertabmaxkey(1,2)
+  61605 -> 61606`.
+* `UPDATE dbo.saleledger SET returncounter = returncounter + 1 WHERE
+  saleinvcode = 588889` (0 -> 1).
+* `INSERT INTO dbo.srledger` code **61606**, `saleinvcode 588889`,
+  `srcatcode 7`, `custcode 22`, `posted Y`, `invtotal 11.00`,
+  `headerinvno 61606`, `cashacccode 2`.
+* `INSERT INTO dbo.srdetail`: `srinvcode 61606`, item **9801**, gcode 1,
+  `looseqty 1`, `srprice 10.00`, `srutn 1629001`, `currstock 18035`,
+  `saleprice 10.00`.
+* `godowndetail.currqty` **18035 -> 18036** (+1 returned);
+  `item.totalpieces` stayed 0 because the returned detail carried
+  `totalpieces 0`; `_utn` **1629000 -> 1629001**.
+* Exact restore: `srledger 61,604 / max 61,605`, `srdetail 89,595`,
+  `godowndetail 18035 / lastupdated 2026-11-05 11:45:49.638`,
+  `item.totalpieces 0 / lastupdate 2026-11-05 11:45:49.638`,
+  `saleledger.returncounter 0`, `_utn 1629000`, `_tabmaxkey('SRLedger')
+  61605`, `_headertabmaxkey(1,2) 61605`, `serverdate 2026-11-06 00:38:24`,
+  `audit_log 1,079 / max 1,127`.
+
+Probe: `tools/parity/probe-salereturn-credit.mjs` - measured `ok=true`.
+
+### Open Sale Return variants (verified)
+
+Both open-return menu paths were exercised with no source invoice:
+
+* `Sales | Open Sale Return | Credit Sale Return` -> `w_salereturn`,
+  `ib_opensalereturn = true`, `ii_salerettype = 1`, title
+  "Open Credit Sale Return".  Item 9801 was set, `wf_validateitem()` = 0,
+  the footer was calculated (total 10.00), and Save (password dialog) wrote
+  `srledger` code **61606** with `saleinvcode NULL`, `srcatcode 7`,
+  `custcode 22`, `posted Y`, `invtotal 10.00`; `srdetail` 9801 qty 1,
+  `srprice 10`, `srutn 1629001`; `godowndetail.currqty 18035 -> 18036`;
+  `_utn 1629000 -> 1629001`.
+* `Sales | Open Sale Return | Cash Sale Return` -> same window,
+  `ii_salerettype = 8`, title "Open Cash Sale Return", customer **19**;
+  `srledger` 61606 `srcatcode 8`, `invtotal 10.00`, `srdetail` 9801 qty 1;
+  `godowndetail.currqty 18035 -> 18036`; `_utn 1629000 -> 1629001`.
+* Harness note: the programmatic `wf_validateitem()` path does not run the
+  item-focus `wf_grandtotal()`/footer calculation, so the probe calls it and
+  sets `fbrposfee = 0` before Save; a real user's item focus does the same.
+  Without it the footer `fbrposfee` is NULL and the insert violates
+  `srledger.fbrposfee NOT NULL` (the save then rolls back with the original
+  "Changes Not Saved..." message).
+* Exact restore for both: `srledger 61,604 / max 61,605`,
+  `srdetail 89,595`, `godowndetail 18035 / lastupdated 2026-11-05
+  11:45:49.638`, `item.totalpieces 0 / lastupdate 2026-11-05
+  11:45:49.638`, `_utn 1629000`, `_tabmaxkey('SRLedger') 61605`,
+  `_headertabmaxkey(1,2) 61605`, `serverdate 2026-11-06 00:38:24`,
+  `audit_log 1,079 / max 1,127`, `AutoFiscalizeOnPosting` restored to `Y`.
+
+Probe: `tools/parity/probe-salereturn-open.mjs` (`PARITY_OPEN_CASH=1` for the
+Cash variant) - measured `ok=true` for both.
+
 ## Third session (continued)
 
 ### Verified through the UI and PostgreSQL
