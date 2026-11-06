@@ -67,9 +67,9 @@ Status: **V** = add/edit/save (or the screen's full intended cycle) verified in 
 | 60 | Maintenance \| Modify Last Transaction Date | probe-lasttransdate.mjs | V | change/save/restore |
 | 61 | Maintenance \| Godown Preferences \| Group Wise Godown Setting | probe-groupgodown-crud.mjs | V | add/edit/delete/save |
 | 62 | Maintenance \| Interface Setting | probe-interfacesetting-save.mjs | V | tab visibility edit/save/restore |
-| 63 | Maintenance \| Update Item Basic Data | probe-itembasicdata-add.mjs | P | batch edit/save documented; field matrix partial |
+| 63 | Maintenance \| Update Item Basic Data | probe-itembasicdata-update-crud.mjs; probe-itembasicdata-add.mjs | V | 27,818 rows; item 27429 1000 -> 1001 saved on row focus change, DB read-back, exact restore |
 | 64 | Maintenance \| Update Item Suppliers | probe-itemsuppliers-crud.mjs | V | add item 9801/supplier 311 at 10.00, edit rate 12, delete through the form; exact restore |
-| 65 | Maintenance \| Change Item Reorder Qty | - | P | dialog/columns only |
+| 65 | Maintenance \| Change Item Reorder Qty | probe-reorderqty-crud.mjs | V | compound 20/2/9/1, item 21195 reorderqty 0 -> 1 saved, UPDATE rowcount 1, exact restore |
 | 66 | Maintenance \| Import Historical Data \| Import Previous Sales | - | B | SQL-Server cross-database source does not exist |
 | 67 | Maintenance \| Inplace Initialization | probe-inplace-initialization.mjs | V | disposable-copy runs documented |
 | 68 | Maintenance \| Lock Item Batches | probe-lockitembatches.mjs | V | lock/unlock verified |
@@ -84,7 +84,7 @@ Status: **V** = add/edit/save (or the screen's full intended cycle) verified in 
 | 77 | Manage \| Job Schedule | probe-jobschedule-save.mjs | B | original screen fails with Invalid column name 'Name' (no SysJobs tables); rebuild PG scheduler probe is recorded, not a parity gap |
 | 78 | Manage \| Group Wise Supplier Category | probe-groupsuppliercategory-crud.mjs | V | add group 2 / supplier category 1 / status 1, delete through the form, exact restore |
 
-Totals: **V 59**, **P 8**, **N/A 3**, **B 8** of 78.
+Totals: **V 61**, **P 6**, **N/A 3**, **B 8** of 78.
 
 ## Field-cell coverage
 
