@@ -54,12 +54,14 @@ async function dismiss(page) {
 
 function valueFor(col) {
   const t = String(col.type || '').toLowerCase()
-  if (t.char === 'Y') return 'Y'
-  if (t.startsWith('char') || t === 'string') return 'PARITY'
+  const cm = t.match(/^char\((\d+)\)$/)
+  if (cm) return Number(cm[1]) >= 6 ? 'PARITY' : 'Y'
+  if (t === 'char' || t === 'string') return 'PARITY'
   if (t === 'date') return '05/11/2026'
   if (t === 'datetime') return '05/11/2026 10:00:00'
   if (t === 'time') return '10:00:00'
-  if (t.includes('int') || t === 'long' || t === 'decimal' || t.startsWith('numeric') || t === 'double' || t === 'real' || t === 'boolean') return '1'
+  // DataWindow column types are spelled with a width, e.g. decimal(4), char(1)
+  if (/^(decimal|numeric|real|double|long|ulong|integer|int|uint|smallint|boolean|number)/.test(t)) return '1'
   return 'PARITY'
 }
 
@@ -197,16 +199,18 @@ async function auditPath(path) {
               }
               await page.waitForTimeout(140)
               result.messages.push(...await dismiss(page))
-              rec.got = await page.evaluate(({ win, field }) => {
+              rec.got = await page.evaluate(({ win, dwName, field }) => {
                 const rt = window.rt
                 const w = rt.windowInstances.get(win)
+                // Read the same DataWindow the cell belongs to; several windows
+                // have a hidden list DataWindow with the same column name.
                 let dw = null
-                const find = (o) => { for (const c of o.children.values()) { if (c.native === 'datawindow' && c.model && c.model.colIndex(field) >= 0 && !dw) dw = c; else if (c.children.size) find(c) } }
+                const find = (o) => { for (const c of o.children.values()) { if (c.native === 'datawindow' && c.name === dwName) { dw = c; return } if (c.children.size) find(c) } }
                 find(w)
-                if (!dw) return null
+                if (!dw || !dw.model) return null
                 const m = dw.model
                 return String(m.buf.primary[0]?.v[m.colIndex(field)] ?? '')
-              }, { win: w.key, field: objName })
+              }, { win: w.key, dwName: dw.name, field: objName })
               fieldCount++
             } catch (e) {
               rec.error = String(e.message || e).slice(0, 200)

@@ -546,14 +546,25 @@ Cash variant) - measured `ok=true` for both.
 
 ### In progress
 
-* Full-screen field audit: all **78/78** non-report menu screens now have an
-  audit file - 39 in `deploy/parity/screen-audit-2026-11-05` (**722** fields
-  seen, **351** probed) and 39 in `deploy/parity/screen-audit-remaining`
-  (**116** fields, **62** probed), **0 field errors**.  The field count is far
-  below the number of DataWindow columns because the audit only counts cells
-  rendered on the current tab; lookups, protected columns and hidden bands are
-  skipped.  Cash/Credit Sale were the two zero-field screens and now have the
-  targeted preparation probe described below.
+* Full-screen field audit (v3, harness corrected): all **78/78** non-report
+  menu screens were opened across the runs.  The generic audit types a
+  synthetic value into every rendered tab-stop cell; on the 73 screens rerun
+  with the corrected readback (v3) it probed **414** cells and **267 accepted
+  the value verbatim**.  The 129 non-applied cells are explained by the
+  synthetic value, not missing editors: **47** lookups (typing `1` resolves to
+  another valid code, e.g. `suppcode` 1 -> 311), **26** recalculated fields
+  (`total`, `flatdisc`, `unitsalestax`, ...), **13** `char(1)` domain codes
+  (`pagesize` accepts F/H/Q, the audit typed Y), and 43 ambiguous cells
+  (Customer `customer_*` alias columns, item price fields recomputed from
+  purchase price, `remarks` on a blank new row).  One click timed out
+  (Price Policy `icode`, a 366x19 editable cell - the audit's 1.5 s
+  actionability window, not a missing field).  Harness fixes:
+  `screen-audit.mjs` now reads back from the **same** DataWindow that owns the
+  clicked cell (several windows carry a hidden list with the same column name)
+  and types a length-appropriate `char` value; PCT Codes and Customer Category
+  now return `PARITY`.  Remaining field work is domain-valid values for the 43
+  ambiguous cells, not more generic runs.  Cash/Credit Sale were the two
+  zero-field screens and have the targeted preparation probe below.
 * `Item Basic Data`, `Price Policy`, `PCT Codes` and `Item Thickness` timed out
   at login in the first batch (server contention, not a screen failure) and
   need re-runs.
