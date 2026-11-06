@@ -1399,6 +1399,32 @@ room (occupied Y) and GuestCheckin 1 (checkout N).
 
 Probe: `tools/parity/probe-guestcheckout.mjs` - measured `ok=true`.
 
+### Guest Transfer add (verified; password dialog + room swap)
+
+`m_guesttransfer` (hidden) opens `w_guesttransfer_form` (`w_single_entry`,
+title "Guest Transfer Form").  The form inserts a `GuestTransfer` row and then
+moves the guest's current room in `GuestCheckIn` and swaps both rooms'
+`Occupied` flags.
+
+* Fixtures: guest 1, rooms 1 (occupied Y) and 2 (occupied N), check-in 1
+  (checkout N, current room 1).
+* **Add:** detail row `guestcheckincode 1`, `lastroom 1`, `newroom 2`,
+  remarks.  Save opened `w_salesmanpassword`; ADMIN/password9080 accepted.
+  Measured SQL: `f_newtableid("GuestTransfer")` -> code **1**
+  (`_tabmaxkey 0 -> 1`); `INSERT INTO dbo.guesttransfer (guesttransfercode,
+  guestcheckincode, date, usercode, lastroom, newroom, remarks) VALUES
+  (1, 1, ..., 1, 1, 2, ...)`;
+  `UPDATE dbo.guestcheckin SET currentroom = 2 WHERE guestcheckincode = 1`;
+  `UPDATE dbo.guestroom SET occupied = 'Y' WHERE guestroomcode = 2`;
+  `UPDATE dbo.guestroom SET occupied = 'N' WHERE guestroomcode = 1`;
+  "Changes take effect in database".
+* Exact restore: `guesttransfer 0 / max 0`, `guestcheckin 0`,
+  `guestroom 0`, `guestroomfloor/type/status 0`, `guest 0`,
+  `_tabmaxkey('GuestTransfer') 0`, `audit_log 1,079 / max 1,127`,
+  no residue.
+
+Probe: `tools/parity/probe-guesttransfer-add.mjs` - measured `ok=true`.
+
 ### Employee lookup masters (verified; right-hidden)
 
 The employee lookup forms are created with `visible = false`; the probe fires
