@@ -3597,8 +3597,7 @@ BEGIN
     _rc := 1;
   END IF;
   OPEN cur_cursor_consumableitems FOR SELECT d.servicerowid AS servicerowid, d.icode AS icode, d.rowid AS rowid, coalesce(sum(d.qty), 0) AS consumeableqty, coalesce((SELECT sum(gd.currqty) FROM dbo.godowndetail AS gd WHERE ((gd.icode = d.icode) AND (gd.gcode IN (SELECT code FROM tv_sp_autoissueconsumableitem_godownlist AS godownlist)))), 0) AS availableqty, i.packunits AS packunits, round(((i.purprice / i.packunits))::numeric, 2) AS purprice, round(((i.saleprice / i.packunits))::numeric, 2) AS saleprice, round(((i.recentpurprice / i.packunits))::numeric, 2) AS recentpurprice, (CASE v_pricetype WHEN 1 THEN round(((i.saleprice / i.packunits))::numeric, 2) WHEN 2 THEN round(((i.saleprice2 / i.packunits))::numeric, 2) WHEN 3 THEN round(((i.saleprice3 / i.packunits))::numeric, 2) WHEN 4 THEN round(((i.purprice / i.packunits))::numeric, 2) WHEN 5 THEN round(((i.recentpurprice / i.packunits))::numeric, 2) WHEN 6 THEN round((i.avgprice)::numeric, 2) WHEN 7 THEN round(((i.saleprice4 / i.packunits))::numeric, 2) WHEN 8 THEN round(((i.saleprice5 / i.packunits))::numeric, 2) END + d.processcharge) AS price FROM dbo.serviceissuerequestdetail AS d, dbo.serviceissuerequest AS h, dbo.item AS i WHERE (((h.serviceissuerequestcode = v_serviceissuerequestcode) AND (h.serviceissuerequestcode = d.serviceissuerequestcode)) AND (d.icode = i.icode)) GROUP BY d.servicerowid, d.icode, d.rowid, i.packunits, i.purprice, i.saleprice, i.saleprice2, i.saleprice3, i.saleprice4, i.saleprice5, i.recentpurprice, i.avgprice, d.processcharge ORDER BY d.rowid;
-  v_items_rows := (-1);
-  _rc := 1;
+  v_items_rows := (SELECT count(*) FROM (SELECT d.servicerowid AS servicerowid, d.icode AS icode, d.rowid AS rowid, coalesce(sum(d.qty), 0) AS consumeableqty, coalesce((SELECT sum(gd.currqty) FROM dbo.godowndetail AS gd WHERE ((gd.icode = d.icode) AND (gd.gcode IN (SELECT code FROM tv_sp_autoissueconsumableitem_godownlist AS godownlist)))), 0) AS availableqty, i.packunits AS packunits, round(((i.purprice / i.packunits))::numeric, 2) AS purprice, round(((i.saleprice / i.packunits))::numeric, 2) AS saleprice, round(((i.recentpurprice / i.packunits))::numeric, 2) AS recentpurprice, (CASE v_pricetype WHEN 1 THEN round(((i.saleprice / i.packunits))::numeric, 2) WHEN 2 THEN round(((i.saleprice2 / i.packunits))::numeric, 2) WHEN 3 THEN round(((i.saleprice3 / i.packunits))::numeric, 2) WHEN 4 THEN round(((i.purprice / i.packunits))::numeric, 2) WHEN 5 THEN round(((i.recentpurprice / i.packunits))::numeric, 2) WHEN 6 THEN round((i.avgprice)::numeric, 2) WHEN 7 THEN round(((i.saleprice4 / i.packunits))::numeric, 2) WHEN 8 THEN round(((i.saleprice5 / i.packunits))::numeric, 2) END + d.processcharge) AS price FROM dbo.serviceissuerequestdetail AS d, dbo.serviceissuerequest AS h, dbo.item AS i WHERE (((h.serviceissuerequestcode = v_serviceissuerequestcode) AND (h.serviceissuerequestcode = d.serviceissuerequestcode)) AND (d.icode = i.icode)) GROUP BY d.servicerowid, d.icode, d.rowid, i.packunits, i.purprice, i.saleprice, i.saleprice2, i.saleprice3, i.saleprice4, i.saleprice5, i.recentpurprice, i.avgprice, d.processcharge ORDER BY d.rowid) _cursor_rows);
   IF (v_items_rows > 0) THEN
     SELECT r.return_value, r.key INTO v_rt_code, v_code FROM dbo.sp_gettabmaxkey(tabname => 'IssueHeader', key => v_code) AS r;
     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
@@ -3651,8 +3650,7 @@ BEGIN
                   v_reqqty := v_consumableqty;
                   _rc := 1;
                   OPEN cur_itembatch_cursor FOR SELECT gd.gcode, gd.batch, gd.expiry, gd.currqty FROM dbo.godowndetail AS gd, (SELECT code AS gcode, growid FROM tv_sp_autoissueconsumableitem_godownlist AS godownlist) AS g WHERE ((gd.gcode = g.gcode) AND (gd.icode = v_icode)) ORDER BY g.growid, gd.gcode, gd.priority, gd.expiry, gd.currqty;
-                  v_totalrows := (-1);
-                  _rc := 1;
+                  v_totalrows := (SELECT count(*) FROM (SELECT gd.gcode, gd.batch, gd.expiry, gd.currqty FROM dbo.godowndetail AS gd, (SELECT code AS gcode, growid FROM tv_sp_autoissueconsumableitem_godownlist AS godownlist) AS g WHERE ((gd.gcode = g.gcode) AND (gd.icode = v_icode)) ORDER BY g.growid, gd.gcode, gd.priority, gd.expiry, gd.currqty) _cursor_rows);
                   FETCH NEXT FROM cur_itembatch_cursor INTO v_gcode, v_batch, v_expiry, v_currqty;
                   IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
                   v_counter := 1;
@@ -13575,7 +13573,7 @@ BEGIN
     RETURN;
   END IF;
   OPEN cur_c1 FOR SELECT d.gcode, d.icode, d.batch, d.expiry, sum((d.looseqty + d.bonusqty)) AS qty FROM dbo.saleledger AS s, dbo.saledetail AS d WHERE ((((s.posted = 'N') AND (s.saleinvcode >= v_sinvcode)) AND (s.saleinvcode = d.saleinvcode)) AND (d.due IS NULL)) GROUP BY d.icode, d.gcode, d.batch, d.expiry ORDER BY d.icode, d.gcode, d.batch, d.expiry;
-  v_cursorrows := (-1);
+  v_cursorrows := (SELECT count(*) FROM (SELECT d.gcode, d.icode, d.batch, d.expiry, sum((d.looseqty + d.bonusqty)) AS qty FROM dbo.saleledger AS s, dbo.saledetail AS d WHERE ((((s.posted = 'N') AND (s.saleinvcode >= v_sinvcode)) AND (s.saleinvcode = d.saleinvcode)) AND (d.due IS NULL)) GROUP BY d.icode, d.gcode, d.batch, d.expiry ORDER BY d.icode, d.gcode, d.batch, d.expiry) _cursor_rows);
   IF (v_cursorrows <= 0) THEN
     RAISE EXCEPTION 'Problem in deletion of sale invoices.~r~nReason:- No Items found in these sale invoices ';
     CLOSE cur_c1;
@@ -15200,8 +15198,7 @@ BEGIN
   v_continue := 0;
   _rc := 1;
   OPEN cur_curs_voch FOR SELECT DISTINCT b.billsummarycode, b.billsummarytypecode, d.cashacccode AS acccode, 1 AS type, CASE b.billsummarytypecode WHEN 1 THEN 2 ELSE 12 END AS vochcatcode FROM dbo.billsummary AS b, dbo.billsummarydetail AS d WHERE ((((((b.billsummarycode BETWEEN v_billsummcode1 AND v_billsummcode2) AND (b.posted = 'N')) AND (b.finalized = 'Y')) AND (b.billsummarycode = d.billsummarycode)) AND (d.cashamt <> 0)) AND (d.cashacccode IS NOT NULL)) UNION ALL SELECT DISTINCT b.billsummarycode, b.billsummarytypecode, d.bankacccode AS acccode, 2 AS type, CASE b.billsummarytypecode WHEN 1 THEN 4 ELSE 13 END AS vochcatcode FROM dbo.billsummary AS b, dbo.billsummarydetail AS d WHERE ((((((b.billsummarycode BETWEEN v_billsummcode1 AND v_billsummcode2) AND (b.posted = 'N')) AND (b.finalized = 'Y')) AND (b.billsummarycode = d.billsummarycode)) AND (d.chequeamt <> 0)) AND (d.bankacccode IS NOT NULL)) UNION ALL SELECT DISTINCT b.billsummarycode, b.billsummarytypecode, d.debitnoteacccode AS acccode, 3 AS type, CASE b.billsummarytypecode WHEN 1 THEN 19 ELSE 21 END AS vochcatcode FROM dbo.billsummary AS b, dbo.billsummarydetail AS d WHERE ((((((b.billsummarycode BETWEEN v_billsummcode1 AND v_billsummcode2) AND (b.posted = 'N')) AND (b.finalized = 'Y')) AND (b.billsummarycode = d.billsummarycode)) AND (d.debitnoteamt <> 0)) AND (d.debitnoteacccode IS NOT NULL)) UNION ALL SELECT DISTINCT b.billsummarycode, b.billsummarytypecode, d.creditnoteacccode AS acccode, 4 AS type, CASE b.billsummarytypecode WHEN 1 THEN 20 ELSE 22 END AS vochcatcode FROM dbo.billsummary AS b, dbo.billsummarydetail AS d WHERE ((((((b.billsummarycode BETWEEN v_billsummcode1 AND v_billsummcode2) AND (b.posted = 'N')) AND (b.finalized = 'Y')) AND (b.billsummarycode = d.billsummarycode)) AND (d.creditnoteamt <> 0)) AND (d.creditnoteacccode IS NOT NULL)) ORDER BY 1, 4, 3;
-  v_totvoch := (-1);
-  _rc := 1;
+  v_totvoch := (SELECT count(*) FROM (SELECT DISTINCT b.billsummarycode, b.billsummarytypecode, d.cashacccode AS acccode, 1 AS type, CASE b.billsummarytypecode WHEN 1 THEN 2 ELSE 12 END AS vochcatcode FROM dbo.billsummary AS b, dbo.billsummarydetail AS d WHERE ((((((b.billsummarycode BETWEEN v_billsummcode1 AND v_billsummcode2) AND (b.posted = 'N')) AND (b.finalized = 'Y')) AND (b.billsummarycode = d.billsummarycode)) AND (d.cashamt <> 0)) AND (d.cashacccode IS NOT NULL)) UNION ALL SELECT DISTINCT b.billsummarycode, b.billsummarytypecode, d.bankacccode AS acccode, 2 AS type, CASE b.billsummarytypecode WHEN 1 THEN 4 ELSE 13 END AS vochcatcode FROM dbo.billsummary AS b, dbo.billsummarydetail AS d WHERE ((((((b.billsummarycode BETWEEN v_billsummcode1 AND v_billsummcode2) AND (b.posted = 'N')) AND (b.finalized = 'Y')) AND (b.billsummarycode = d.billsummarycode)) AND (d.chequeamt <> 0)) AND (d.bankacccode IS NOT NULL)) UNION ALL SELECT DISTINCT b.billsummarycode, b.billsummarytypecode, d.debitnoteacccode AS acccode, 3 AS type, CASE b.billsummarytypecode WHEN 1 THEN 19 ELSE 21 END AS vochcatcode FROM dbo.billsummary AS b, dbo.billsummarydetail AS d WHERE ((((((b.billsummarycode BETWEEN v_billsummcode1 AND v_billsummcode2) AND (b.posted = 'N')) AND (b.finalized = 'Y')) AND (b.billsummarycode = d.billsummarycode)) AND (d.debitnoteamt <> 0)) AND (d.debitnoteacccode IS NOT NULL)) UNION ALL SELECT DISTINCT b.billsummarycode, b.billsummarytypecode, d.creditnoteacccode AS acccode, 4 AS type, CASE b.billsummarytypecode WHEN 1 THEN 20 ELSE 22 END AS vochcatcode FROM dbo.billsummary AS b, dbo.billsummarydetail AS d WHERE ((((((b.billsummarycode BETWEEN v_billsummcode1 AND v_billsummcode2) AND (b.posted = 'N')) AND (b.finalized = 'Y')) AND (b.billsummarycode = d.billsummarycode)) AND (d.creditnoteamt <> 0)) AND (d.creditnoteacccode IS NOT NULL)) ORDER BY 1, 4, 3) _cursor_rows);
   IF (v_totvoch <= 0) THEN
     CLOSE cur_curs_voch;
     -- DEALLOCATE Curs_Voch
@@ -15653,8 +15650,7 @@ BEGIN
                     v_reqqty := v_givenqty;
                     _rc := 1;
                     OPEN cur_itembatch_cursor FOR SELECT batch, expiry, currqty FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)) ORDER BY priority, expiry, currqty;
-                    v_totalrows := (-1);
-                    _rc := 1;
+                    v_totalrows := (SELECT count(*) FROM (SELECT batch, expiry, currqty FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)) ORDER BY priority, expiry, currqty) _cursor_rows);
                     FETCH NEXT FROM cur_itembatch_cursor INTO v_batch, v_expiry, v_currqty;
                     IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
                     v_counter := 1;
@@ -15724,8 +15720,7 @@ BEGIN
                       v_reqqty := v_totalqty;
                       _rc := 1;
                       OPEN cur_itembatch_cursor FOR SELECT batch, expiry, currqty FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)) ORDER BY priority, expiry, currqty;
-                      v_totalrows := (-1);
-                      _rc := 1;
+                      v_totalrows := (SELECT count(*) FROM (SELECT batch, expiry, currqty FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)) ORDER BY priority, expiry, currqty) _cursor_rows);
                       FETCH NEXT FROM cur_itembatch_cursor INTO v_batch, v_expiry, v_currqty;
                       IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
                       v_counter := 1;
@@ -17223,8 +17218,7 @@ BEGIN
                   v_reqqty := v_givenqty;
                   _rc := 1;
                   OPEN cur_itembatch_cursor FOR SELECT batch, expiry, currqty FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)) ORDER BY priority, expiry, currqty;
-                  v_totalrows := (-1);
-                  _rc := 1;
+                  v_totalrows := (SELECT count(*) FROM (SELECT batch, expiry, currqty FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)) ORDER BY priority, expiry, currqty) _cursor_rows);
                   FETCH NEXT FROM cur_itembatch_cursor INTO v_batch, v_expiry, v_currqty;
                   IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
                   v_counter := 1;
@@ -17456,8 +17450,7 @@ BEGIN
     _rc := 1;
   END IF;
   OPEN cur_cursor_items FOR SELECT rd.icode, sum(rd.qty) AS qty, max(i.packunits) AS packunits, round(((max(i.purprice) / max(i.packunits)))::numeric, 2) AS purprice, round(((max(i.saleprice) / max(i.packunits)))::numeric, 2) AS saleprice, round(((max(i.recentpurprice) / max(i.packunits)))::numeric, 2) AS recentpurprice, rd.price AS price, rd.itemflatdisc, rd.discperc, rd.processcharge, rd.processchargeperc, rd.prodrowid, rd.rowid FROM (SELECT icode, qty, rowid FROM dbo.proddetail WHERE (proddetail.prodcode = v_prodcode)) AS pd, (SELECT r1.* FROM dbo.recipe AS r1 WHERE (((dbo.tsql_str((r1.resulteditem)::numeric, 7) || dbo.tsql_str((r1.priority)::numeric, 7)))::citext IN (SELECT DISTINCT (dbo.tsql_str((rr.resulteditem)::numeric, 7) || dbo.tsql_str((min(rr.priority))::numeric, 7)) FROM dbo.recipe AS rr WHERE (rr.resulteditem IN (SELECT DISTINCT d.icode FROM dbo.prodheader AS p, dbo.proddetail AS d WHERE ((p.prodcode = v_prodcode) AND (p.prodcode = d.prodcode)))) GROUP BY rr.resulteditem))) AS r, dbo.prodbuffer AS rd, dbo.item AS i WHERE ((((pd.icode = r.resulteditem) AND (rd.prodcode = v_prodcode)) AND (pd.rowid = rd.prodrowid)) AND (rd.icode = i.icode)) GROUP BY rd.prodrowid, rd.icode, rd.price, rd.rowid, rd.itemflatdisc, rd.discperc, rd.processcharge, rd.processchargeperc ORDER BY rd.rowid;
-  v_items_rows := (-1);
-  _rc := 1;
+  v_items_rows := (SELECT count(*) FROM (SELECT rd.icode, sum(rd.qty) AS qty, max(i.packunits) AS packunits, round(((max(i.purprice) / max(i.packunits)))::numeric, 2) AS purprice, round(((max(i.saleprice) / max(i.packunits)))::numeric, 2) AS saleprice, round(((max(i.recentpurprice) / max(i.packunits)))::numeric, 2) AS recentpurprice, rd.price AS price, rd.itemflatdisc, rd.discperc, rd.processcharge, rd.processchargeperc, rd.prodrowid, rd.rowid FROM (SELECT icode, qty, rowid FROM dbo.proddetail WHERE (proddetail.prodcode = v_prodcode)) AS pd, (SELECT r1.* FROM dbo.recipe AS r1 WHERE (((dbo.tsql_str((r1.resulteditem)::numeric, 7) || dbo.tsql_str((r1.priority)::numeric, 7)))::citext IN (SELECT DISTINCT (dbo.tsql_str((rr.resulteditem)::numeric, 7) || dbo.tsql_str((min(rr.priority))::numeric, 7)) FROM dbo.recipe AS rr WHERE (rr.resulteditem IN (SELECT DISTINCT d.icode FROM dbo.prodheader AS p, dbo.proddetail AS d WHERE ((p.prodcode = v_prodcode) AND (p.prodcode = d.prodcode)))) GROUP BY rr.resulteditem))) AS r, dbo.prodbuffer AS rd, dbo.item AS i WHERE ((((pd.icode = r.resulteditem) AND (rd.prodcode = v_prodcode)) AND (pd.rowid = rd.prodrowid)) AND (rd.icode = i.icode)) GROUP BY rd.prodrowid, rd.icode, rd.price, rd.rowid, rd.itemflatdisc, rd.discperc, rd.processcharge, rd.processchargeperc ORDER BY rd.rowid) _cursor_rows);
   IF (v_items_rows > 0) THEN
     SELECT r.return_value, r.key INTO v_rt_code, v_code FROM dbo.sp_gettabmaxkey(tabname => 'IssueHeader', key => v_code) AS r;
     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
@@ -17516,8 +17509,7 @@ BEGIN
                   v_reqqty := v_givenqty;
                   _rc := 1;
                   OPEN cur_itembatch_cursor FOR SELECT batch, expiry, currqty FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)) ORDER BY priority, expiry, currqty;
-                  v_totalrows := (-1);
-                  _rc := 1;
+                  v_totalrows := (SELECT count(*) FROM (SELECT batch, expiry, currqty FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)) ORDER BY priority, expiry, currqty) _cursor_rows);
                   FETCH NEXT FROM cur_itembatch_cursor INTO v_batch, v_expiry, v_currqty;
                   IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
                   v_counter := 1;
@@ -17694,8 +17686,7 @@ BEGIN
     _rc := 1;
   END IF;
   OPEN cur_cursor_items FOR SELECT pni.icode, pni.gcode, sum(pni.qty) AS qty, sum(pni.totalpieces) AS totalpieces, pni.packunits, round(((max(i.purprice) / max(i.packunits)))::numeric, 2) AS purprice, round(((max(i.saleprice) / max(i.packunits)))::numeric, 2) AS saleprice, round(((max(i.recentpurprice) / max(i.packunits)))::numeric, 2) AS recentpurprice, CASE v_pricetype WHEN 1 THEN round(((max(i.saleprice) / max(i.packunits)))::numeric, 2) WHEN 2 THEN round(((max(i.saleprice2) / max(i.packunits)))::numeric, 2) WHEN 3 THEN round(((max(i.saleprice3) / max(i.packunits)))::numeric, 2) WHEN 4 THEN round(((max(i.purprice) / max(i.packunits)))::numeric, 2) WHEN 5 THEN round(((max(i.recentpurprice) / max(i.packunits)))::numeric, 2) WHEN 6 THEN round((max(i.avgprice))::numeric, 2) WHEN 7 THEN round(((max(i.saleprice4) / max(i.packunits)))::numeric, 2) WHEN 8 THEN round(((max(i.saleprice5) / max(i.packunits)))::numeric, 2) END AS price, pni.rowid FROM dbo.prodnoteissue AS pni, dbo.item AS i WHERE ((pni.prodnotecode = v_prodnotecode) AND (pni.icode = i.icode)) GROUP BY pni.rowid, pni.icode, pni.gcode, pni.packunits ORDER BY pni.rowid;
-  v_items_rows := (-1);
-  _rc := 1;
+  v_items_rows := (SELECT count(*) FROM (SELECT pni.icode, pni.gcode, sum(pni.qty) AS qty, sum(pni.totalpieces) AS totalpieces, pni.packunits, round(((max(i.purprice) / max(i.packunits)))::numeric, 2) AS purprice, round(((max(i.saleprice) / max(i.packunits)))::numeric, 2) AS saleprice, round(((max(i.recentpurprice) / max(i.packunits)))::numeric, 2) AS recentpurprice, CASE v_pricetype WHEN 1 THEN round(((max(i.saleprice) / max(i.packunits)))::numeric, 2) WHEN 2 THEN round(((max(i.saleprice2) / max(i.packunits)))::numeric, 2) WHEN 3 THEN round(((max(i.saleprice3) / max(i.packunits)))::numeric, 2) WHEN 4 THEN round(((max(i.purprice) / max(i.packunits)))::numeric, 2) WHEN 5 THEN round(((max(i.recentpurprice) / max(i.packunits)))::numeric, 2) WHEN 6 THEN round((max(i.avgprice))::numeric, 2) WHEN 7 THEN round(((max(i.saleprice4) / max(i.packunits)))::numeric, 2) WHEN 8 THEN round(((max(i.saleprice5) / max(i.packunits)))::numeric, 2) END AS price, pni.rowid FROM dbo.prodnoteissue AS pni, dbo.item AS i WHERE ((pni.prodnotecode = v_prodnotecode) AND (pni.icode = i.icode)) GROUP BY pni.rowid, pni.icode, pni.gcode, pni.packunits ORDER BY pni.rowid) _cursor_rows);
   IF (v_items_rows > 0) THEN
     SELECT r.return_value, r.key INTO v_rt_code, v_code FROM dbo.sp_gettabmaxkey(tabname => 'IssueHeader', key => v_code) AS r;
     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
@@ -17776,8 +17767,7 @@ BEGIN
                   v_reqqty := v_givenqty;
                   _rc := 1;
                   OPEN cur_itembatch_cursor FOR SELECT batch, expiry, currqty FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)) ORDER BY priority, expiry, currqty;
-                  v_totalrows := (-1);
-                  _rc := 1;
+                  v_totalrows := (SELECT count(*) FROM (SELECT batch, expiry, currqty FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)) ORDER BY priority, expiry, currqty) _cursor_rows);
                   FETCH NEXT FROM cur_itembatch_cursor INTO v_batch, v_expiry, v_currqty;
                   IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
                   v_counter := 1;
@@ -18148,8 +18138,7 @@ BEGIN
               v_reqqty := v_givenqty;
               _rc := 1;
               OPEN cur_itembatch_cursor FOR SELECT gcode, batch, expiry, currqty FROM dbo.godowndetail WHERE (godowndetail.icode = v_icode) ORDER BY gcode, priority, expiry, currqty;
-              v_totalrows := (-1);
-              _rc := 1;
+              v_totalrows := (SELECT count(*) FROM (SELECT gcode, batch, expiry, currqty FROM dbo.godowndetail WHERE (godowndetail.icode = v_icode) ORDER BY gcode, priority, expiry, currqty) _cursor_rows);
               FETCH NEXT FROM cur_itembatch_cursor INTO v_gcode, v_batch, v_expiry, v_currqty;
               IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
               v_counter := 1;
@@ -18634,8 +18623,7 @@ BEGIN
     _rc := 1;
   END IF;
   OPEN cur_cursor_items FOR SELECT pd.icode AS icode, pd.batch, pd.expiry, sum(pd.qty) AS qty, max(i.packunits) AS packunits, round(((max(i.purprice) / max(i.packunits)))::numeric, 2) AS purprice, round(((max(i.saleprice) / max(i.packunits)))::numeric, 2) AS saleprice, round(((max(i.recentpurprice) / max(i.packunits)))::numeric, 2) AS recentpurprice, CASE WHEN (v_issueinvcode > 0) THEN CASE v_recomputecost WHEN 'Y' THEN round((((SELECT sum((isd.qty * isd.price)) FROM dbo.issuedetail AS isd, dbo.recipedetail AS rd WHERE (((isd.issueinvcode = v_issueinvcode) AND (r.recipecode = rd.recipecode)) AND (rd.icode = isd.icode))) / CASE WHEN (sum(pd.qty) = 0) THEN 1 ELSE sum(pd.qty) END))::numeric, 2) ELSE CASE v_pricetype WHEN 1 THEN round(((max(i.saleprice) / max(i.packunits)))::numeric, 2) WHEN 2 THEN round(((max(i.saleprice2) / max(i.packunits)))::numeric, 2) WHEN 3 THEN round(((max(i.saleprice3) / max(i.packunits)))::numeric, 2) WHEN 4 THEN round(((max(i.purprice) / max(i.packunits)))::numeric, 2) WHEN 5 THEN round(((max(i.recentpurprice) / max(i.packunits)))::numeric, 2) WHEN 6 THEN round((max(i.avgprice))::numeric, 2) WHEN 7 THEN round(((max(i.saleprice4) / max(i.packunits)))::numeric, 2) WHEN 8 THEN round(((max(i.saleprice5) / max(i.packunits)))::numeric, 2) END END ELSE CASE v_pricetype WHEN 1 THEN round(((max(i.saleprice) / max(i.packunits)))::numeric, 2) WHEN 2 THEN round(((max(i.saleprice2) / max(i.packunits)))::numeric, 2) WHEN 3 THEN round(((max(i.saleprice3) / max(i.packunits)))::numeric, 2) WHEN 4 THEN round(((max(i.purprice) / max(i.packunits)))::numeric, 2) WHEN 5 THEN round(((max(i.recentpurprice) / max(i.packunits)))::numeric, 2) WHEN 6 THEN round((max(i.avgprice))::numeric, 2) WHEN 7 THEN round(((max(i.saleprice4) / max(i.packunits)))::numeric, 2) WHEN 8 THEN round(((max(i.saleprice5) / max(i.packunits)))::numeric, 2) END END AS price FROM dbo.recipe AS r, (SELECT icode, qty, batch, expiry FROM dbo.proddetail WHERE (proddetail.prodcode = v_prodcode)) AS pd, dbo.item AS i WHERE (((r.resulteditem = pd.icode) AND (pd.icode = i.icode)) AND (r.priority = (SELECT min(priority) FROM dbo.recipe WHERE (resulteditem = pd.icode)))) GROUP BY pd.icode, pd.batch, pd.expiry, r.recipecode;
-  v_items_rows := (-1);
-  _rc := 1;
+  v_items_rows := (SELECT count(*) FROM (SELECT pd.icode AS icode, pd.batch, pd.expiry, sum(pd.qty) AS qty, max(i.packunits) AS packunits, round(((max(i.purprice) / max(i.packunits)))::numeric, 2) AS purprice, round(((max(i.saleprice) / max(i.packunits)))::numeric, 2) AS saleprice, round(((max(i.recentpurprice) / max(i.packunits)))::numeric, 2) AS recentpurprice, CASE WHEN (v_issueinvcode > 0) THEN CASE v_recomputecost WHEN 'Y' THEN round((((SELECT sum((isd.qty * isd.price)) FROM dbo.issuedetail AS isd, dbo.recipedetail AS rd WHERE (((isd.issueinvcode = v_issueinvcode) AND (r.recipecode = rd.recipecode)) AND (rd.icode = isd.icode))) / CASE WHEN (sum(pd.qty) = 0) THEN 1 ELSE sum(pd.qty) END))::numeric, 2) ELSE CASE v_pricetype WHEN 1 THEN round(((max(i.saleprice) / max(i.packunits)))::numeric, 2) WHEN 2 THEN round(((max(i.saleprice2) / max(i.packunits)))::numeric, 2) WHEN 3 THEN round(((max(i.saleprice3) / max(i.packunits)))::numeric, 2) WHEN 4 THEN round(((max(i.purprice) / max(i.packunits)))::numeric, 2) WHEN 5 THEN round(((max(i.recentpurprice) / max(i.packunits)))::numeric, 2) WHEN 6 THEN round((max(i.avgprice))::numeric, 2) WHEN 7 THEN round(((max(i.saleprice4) / max(i.packunits)))::numeric, 2) WHEN 8 THEN round(((max(i.saleprice5) / max(i.packunits)))::numeric, 2) END END ELSE CASE v_pricetype WHEN 1 THEN round(((max(i.saleprice) / max(i.packunits)))::numeric, 2) WHEN 2 THEN round(((max(i.saleprice2) / max(i.packunits)))::numeric, 2) WHEN 3 THEN round(((max(i.saleprice3) / max(i.packunits)))::numeric, 2) WHEN 4 THEN round(((max(i.purprice) / max(i.packunits)))::numeric, 2) WHEN 5 THEN round(((max(i.recentpurprice) / max(i.packunits)))::numeric, 2) WHEN 6 THEN round((max(i.avgprice))::numeric, 2) WHEN 7 THEN round(((max(i.saleprice4) / max(i.packunits)))::numeric, 2) WHEN 8 THEN round(((max(i.saleprice5) / max(i.packunits)))::numeric, 2) END END AS price FROM dbo.recipe AS r, (SELECT icode, qty, batch, expiry FROM dbo.proddetail WHERE (proddetail.prodcode = v_prodcode)) AS pd, dbo.item AS i WHERE (((r.resulteditem = pd.icode) AND (pd.icode = i.icode)) AND (r.priority = (SELECT min(priority) FROM dbo.recipe WHERE (resulteditem = pd.icode)))) GROUP BY pd.icode, pd.batch, pd.expiry, r.recipecode) _cursor_rows);
   IF (v_items_rows > 0) THEN
     SELECT r.return_value, r.key INTO v_rt_code, v_code FROM dbo.sp_gettabmaxkey(tabname => 'ReceiptHeader', key => v_code) AS r;
     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
@@ -18858,8 +18846,7 @@ BEGIN
     _rc := 1;
   END IF;
   OPEN cur_cursor_items FOR SELECT pnr.icode, pnr.gcode, pnr.batch, pnr.expiry, sum(pnr.totalpieces) AS totalpieces, sum(pnr.qty) AS qty, pnr.packunits, round(((max(i.purprice) / max(i.packunits)))::numeric, 2) AS purprice, round(((max(i.saleprice) / max(i.packunits)))::numeric, 2) AS saleprice, round(((max(i.recentpurprice) / max(i.packunits)))::numeric, 2) AS recentpurprice, CASE v_pricetype WHEN 1 THEN round(((max(i.saleprice) / max(i.packunits)))::numeric, 2) WHEN 2 THEN round(((max(i.saleprice2) / max(i.packunits)))::numeric, 2) WHEN 3 THEN round(((max(i.saleprice3) / max(i.packunits)))::numeric, 2) WHEN 4 THEN round(((max(i.purprice) / max(i.packunits)))::numeric, 2) WHEN 5 THEN round(((max(i.recentpurprice) / max(i.packunits)))::numeric, 2) WHEN 6 THEN round((max(i.avgprice))::numeric, 2) WHEN 7 THEN round(((max(i.saleprice4) / max(i.packunits)))::numeric, 2) WHEN 8 THEN round(((max(i.saleprice5) / max(i.packunits)))::numeric, 2) END AS price, pnr.rowid FROM dbo.prodnotereceipt AS pnr, dbo.item AS i WHERE ((pnr.prodnotecode = v_prodnotecode) AND (pnr.icode = i.icode)) GROUP BY pnr.icode, pnr.gcode, pnr.batch, pnr.expiry, pnr.packunits, pnr.rowid;
-  v_items_rows := (-1);
-  _rc := 1;
+  v_items_rows := (SELECT count(*) FROM (SELECT pnr.icode, pnr.gcode, pnr.batch, pnr.expiry, sum(pnr.totalpieces) AS totalpieces, sum(pnr.qty) AS qty, pnr.packunits, round(((max(i.purprice) / max(i.packunits)))::numeric, 2) AS purprice, round(((max(i.saleprice) / max(i.packunits)))::numeric, 2) AS saleprice, round(((max(i.recentpurprice) / max(i.packunits)))::numeric, 2) AS recentpurprice, CASE v_pricetype WHEN 1 THEN round(((max(i.saleprice) / max(i.packunits)))::numeric, 2) WHEN 2 THEN round(((max(i.saleprice2) / max(i.packunits)))::numeric, 2) WHEN 3 THEN round(((max(i.saleprice3) / max(i.packunits)))::numeric, 2) WHEN 4 THEN round(((max(i.purprice) / max(i.packunits)))::numeric, 2) WHEN 5 THEN round(((max(i.recentpurprice) / max(i.packunits)))::numeric, 2) WHEN 6 THEN round((max(i.avgprice))::numeric, 2) WHEN 7 THEN round(((max(i.saleprice4) / max(i.packunits)))::numeric, 2) WHEN 8 THEN round(((max(i.saleprice5) / max(i.packunits)))::numeric, 2) END AS price, pnr.rowid FROM dbo.prodnotereceipt AS pnr, dbo.item AS i WHERE ((pnr.prodnotecode = v_prodnotecode) AND (pnr.icode = i.icode)) GROUP BY pnr.icode, pnr.gcode, pnr.batch, pnr.expiry, pnr.packunits, pnr.rowid) _cursor_rows);
   IF (v_items_rows > 0) THEN
     SELECT r.return_value, r.key INTO v_rt_code, v_code FROM dbo.sp_gettabmaxkey(tabname => 'ReceiptHeader', key => v_code) AS r;
     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
@@ -19480,8 +19467,7 @@ BEGIN
                   v_reqqty := v_givenqty;
                   _rc := 1;
                   OPEN cur_itembatch_cursor FOR SELECT batch, expiry, currqty FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)) ORDER BY priority, expiry, currqty;
-                  v_totalrows := (-1);
-                  _rc := 1;
+                  v_totalrows := (SELECT count(*) FROM (SELECT batch, expiry, currqty FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)) ORDER BY priority, expiry, currqty) _cursor_rows);
                   FETCH NEXT FROM cur_itembatch_cursor INTO v_batch, v_expiry, v_currqty;
                   IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
                   v_counter := 1;
@@ -29094,8 +29080,7 @@ BEGIN
   v_priority := 10;
   _rc := 1;
   OPEN cur_cursor_items FOR SELECT rd.icode, rd.gcode, rd.batch, rd.expiry, rd.looseqty, rd.bonusqty, rd.packunits, rd.srprice, rd.discperc, rd.totalpieces, rd.piecesinhand, rd.rowid, i.name FROM dbo.srbufferledger AS r, dbo.srbufferdetail AS rd, dbo.item AS i WHERE ((((r.srbufferinvcode = v_srbufferinvcode) AND (r.retviabillsummary = v_billsumm)) AND (r.srbufferinvcode = rd.srbufferinvcode)) AND (rd.icode = i.icode)) ORDER BY r.srbufferinvcode, rd.rowid;
-  v_items_rows := (-1);
-  _rc := 1;
+  v_items_rows := (SELECT count(*) FROM (SELECT rd.icode, rd.gcode, rd.batch, rd.expiry, rd.looseqty, rd.bonusqty, rd.packunits, rd.srprice, rd.discperc, rd.totalpieces, rd.piecesinhand, rd.rowid, i.name FROM dbo.srbufferledger AS r, dbo.srbufferdetail AS rd, dbo.item AS i WHERE ((((r.srbufferinvcode = v_srbufferinvcode) AND (r.retviabillsummary = v_billsumm)) AND (r.srbufferinvcode = rd.srbufferinvcode)) AND (rd.icode = i.icode)) ORDER BY r.srbufferinvcode, rd.rowid) _cursor_rows);
   IF (v_items_rows <= 0) THEN
     RAISE EXCEPTION 'Unable to fetch sale return invoice : %', v_srbufferinvcode;
     CLOSE cur_cursor_items;
@@ -29361,8 +29346,7 @@ BEGIN
       RETURN;
     END IF;
     OPEN cur_c_bsr FOR SELECT DISTINCT b.billsummarycode, d.saleinvcode, d.srbufferinvcode FROM dbo.billsummary AS b, dbo.billsummarydetail AS d, dbo.srbufferledger AS sr WHERE ((((((((b.billsummarycode BETWEEN v_billsummcode1 AND v_billsummcode2) AND (b.posted = 'N')) AND (b.finalized = 'Y')) AND (b.billsummarycode = d.billsummarycode)) AND (d.srbufferinvcode IS NOT NULL)) AND (sr.posted = 'N')) AND (sr.srbufferinvcode = d.srbufferinvcode)) AND (sr.retviabillsummary = v_billsumm)) ORDER BY b.billsummarycode, d.srbufferinvcode;
-    v_totrows := (-1);
-    _rc := 1;
+    v_totrows := (SELECT count(*) FROM (SELECT DISTINCT b.billsummarycode, d.saleinvcode, d.srbufferinvcode FROM dbo.billsummary AS b, dbo.billsummarydetail AS d, dbo.srbufferledger AS sr WHERE ((((((((b.billsummarycode BETWEEN v_billsummcode1 AND v_billsummcode2) AND (b.posted = 'N')) AND (b.finalized = 'Y')) AND (b.billsummarycode = d.billsummarycode)) AND (d.srbufferinvcode IS NOT NULL)) AND (sr.posted = 'N')) AND (sr.srbufferinvcode = d.srbufferinvcode)) AND (sr.retviabillsummary = v_billsumm)) ORDER BY b.billsummarycode, d.srbufferinvcode) _cursor_rows);
     IF (v_totrows <= 0) THEN
       CLOSE cur_c_bsr;
       -- DEALLOCATE C_BSR
@@ -29792,8 +29776,7 @@ BEGIN
     v_reqqty := v_givenqty;
     _rc := 1;
     OPEN cur_itembatch_cursor FOR SELECT batch, expiry, currqty FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)) ORDER BY priority, expiry, currqty;
-    v_totalrows := (-1);
-    _rc := 1;
+    v_totalrows := (SELECT count(*) FROM (SELECT batch, expiry, currqty FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)) ORDER BY priority, expiry, currqty) _cursor_rows);
     FETCH NEXT FROM cur_itembatch_cursor INTO v_batch, v_expiry, v_currqty;
     IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
     v_counter := 1;
@@ -30016,8 +29999,7 @@ BEGIN
   ELSE
   END IF;
   OPEN cur_cursor_adjinc_items FOR SELECT itemconversiondetail.gcode, itemconversiondetail.icode, itemconversiondetail.qty AS givenqty, item.packunits, item.purprice, item.saleprice, item.recentpurprice FROM dbo.itemconversiondetail JOIN dbo.item ON (itemconversiondetail.icode = item.icode) WHERE ((itemconversioncode = v_code) AND (qty > 0)) ORDER BY rowid;
-  v_adjinc_items_rows := (-1);
-  _rc := 1;
+  v_adjinc_items_rows := (SELECT count(*) FROM (SELECT itemconversiondetail.gcode, itemconversiondetail.icode, itemconversiondetail.qty AS givenqty, item.packunits, item.purprice, item.saleprice, item.recentpurprice FROM dbo.itemconversiondetail JOIN dbo.item ON (itemconversiondetail.icode = item.icode) WHERE ((itemconversioncode = v_code) AND (qty > 0)) ORDER BY rowid) _cursor_rows);
   IF (v_adjinc_items_rows > 0) THEN
     SELECT r.return_value, r.key INTO v_rt_code, v_adjinccode FROM dbo.sp_gettabmaxkey(tabname => 'AdjHeader', key => v_adjinccode) AS r;
     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
@@ -30124,8 +30106,7 @@ BEGIN
     ELSE
     END IF;
     OPEN cur_cursor_adjdec_items FOR SELECT itemconversionheader.gcode, itemconversionheader.icode, itemconversionheader.qty AS givenqty, item.packunits, item.purprice, item.saleprice, item.recentpurprice FROM dbo.itemconversionheader JOIN dbo.item ON (itemconversionheader.icode = item.icode) WHERE ((itemconversioncode = v_code) AND (qty > 0));
-    v_adjdec_items_rows := (-1);
-    _rc := 1;
+    v_adjdec_items_rows := (SELECT count(*) FROM (SELECT itemconversionheader.gcode, itemconversionheader.icode, itemconversionheader.qty AS givenqty, item.packunits, item.purprice, item.saleprice, item.recentpurprice FROM dbo.itemconversionheader JOIN dbo.item ON (itemconversionheader.icode = item.icode) WHERE ((itemconversioncode = v_code) AND (qty > 0))) _cursor_rows);
     IF (v_adjdec_items_rows > 0) THEN
       SELECT r.return_value, r.key INTO v_rt_code, v_adjdeccode FROM dbo.sp_gettabmaxkey(tabname => 'AdjHeader', key => v_adjdeccode) AS r;
       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
@@ -30163,8 +30144,7 @@ BEGIN
                   v_reqqty := v_givenqty;
                   _rc := 1;
                   OPEN cur_itembatch_cursor FOR SELECT batch, expiry, currqty FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)) ORDER BY priority, expiry, currqty;
-                  v_totalrows := (-1);
-                  _rc := 1;
+                  v_totalrows := (SELECT count(*) FROM (SELECT batch, expiry, currqty FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)) ORDER BY priority, expiry, currqty) _cursor_rows);
                   FETCH NEXT FROM cur_itembatch_cursor INTO v_batch, v_expiry, v_currqty;
                   IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
                   v_counter := 1;
@@ -30366,7 +30346,7 @@ BEGIN
   v_ai_usercode := ai_usercode;
   v_serverdate := localtimestamp(3);
   OPEN cur_c1 FOR SELECT ep.payrollcode AS payrollcode, ep.advance AS advance, ep.empcode AS empcode, e.acccode AS acccode, e.advacccode AS advacccode, coalesce((SELECT sum((ea.amount - ea.returnedamt)) FROM dbo.emp_advance AS ea WHERE (ea.empadvacccode = e.advacccode)), 0) AS balance FROM dbo.emp_payroll AS ep, dbo.emp_employee AS e WHERE (((ep.posted = 'N') AND (ep.empcode = e.empcode)) AND (ep.payrollcode BETWEEN v_ai_scode AND v_ai_ecode)) ORDER BY payrollcode;
-  v_totalrows := (-1);
+  v_totalrows := (SELECT count(*) FROM (SELECT ep.payrollcode AS payrollcode, ep.advance AS advance, ep.empcode AS empcode, e.acccode AS acccode, e.advacccode AS advacccode, coalesce((SELECT sum((ea.amount - ea.returnedamt)) FROM dbo.emp_advance AS ea WHERE (ea.empadvacccode = e.advacccode)), 0) AS balance FROM dbo.emp_payroll AS ep, dbo.emp_employee AS e WHERE (((ep.posted = 'N') AND (ep.empcode = e.empcode)) AND (ep.payrollcode BETWEEN v_ai_scode AND v_ai_ecode)) ORDER BY payrollcode) _cursor_rows);
   IF (v_totalrows = 0) THEN
     RAISE EXCEPTION 'Payroll Posting : No rows available for posting';
     CLOSE cur_c1;
@@ -30389,7 +30369,7 @@ BEGIN
       RETURN;
     END IF;
     OPEN cur_c2 FOR SELECT advancecode, amount, returnedamt, installment FROM dbo.emp_advance WHERE ((((empadvacccode = v_advacccode) AND (((amount - returnedamt)) > 0)) AND (v_advance > 0)) AND (installment > 0)) ORDER BY advancecode;
-    v_totalrows2 := (-1);
+    v_totalrows2 := (SELECT count(*) FROM (SELECT advancecode, amount, returnedamt, installment FROM dbo.emp_advance WHERE ((((empadvacccode = v_advacccode) AND (((amount - returnedamt)) > 0)) AND (v_advance > 0)) AND (installment > 0)) ORDER BY advancecode) _cursor_rows);
     IF (v_totalrows2 > 0) THEN
       FETCH NEXT FROM cur_c2 INTO v_advancecode, v_amount, v_returnedamt, v_installment;
       IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
@@ -30408,7 +30388,7 @@ BEGIN
       END LOOP;
       IF (v_advance > 0) THEN
         OPEN cur_c3 FOR SELECT advancecode, amount, returnedamt FROM dbo.emp_advance WHERE (((empadvacccode = v_advacccode) AND (((amount - returnedamt)) > 0)) AND (v_advance > 0)) ORDER BY advancecode;
-        v_totalrows3 := (-1);
+        v_totalrows3 := (SELECT count(*) FROM (SELECT advancecode, amount, returnedamt FROM dbo.emp_advance WHERE (((empadvacccode = v_advacccode) AND (((amount - returnedamt)) > 0)) AND (v_advance > 0)) ORDER BY advancecode) _cursor_rows);
         IF (v_totalrows3 > 0) THEN
           FETCH NEXT FROM cur_c3 INTO v_advancecode, v_amount, v_returnedamt;
           IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
@@ -30852,7 +30832,7 @@ BEGIN
     v_recomputecost := dbo.fn_getpreference('ReComputeCostInProduction');
     UPDATE dbo.receiptdetail AS rd SET currstock = coalesce((SELECT sum(gd.currqty) FROM dbo.godowndetail AS gd WHERE (gd.icode = rd.icode)), 0), price = coalesce(CASE WHEN (v_issueinvcode > 0) THEN CASE v_recomputecost WHEN 'Y' THEN (SELECT (sum((isd.qty * isd.price)) / CASE WHEN (rd.qty = 0) THEN 1 ELSE rd.qty END) FROM dbo.prodheader AS h, dbo.prodbuffer AS b, dbo.proddetail AS d, dbo.issuedetail AS isd WHERE (((((((h.prodcode = v_prodcode) AND (h.prodcode = d.prodcode)) AND (d.icode = rd.icode)) AND (d.prodcode = b.prodcode)) AND (b.prodrowid = d.rowid)) AND (h.issueinvcode = isd.issueinvcode)) AND (isd.icode = b.icode))) ELSE CASE v_pricetype WHEN 1 THEN round(((i.saleprice / i.packunits))::numeric, 2) WHEN 2 THEN round(((i.saleprice2 / i.packunits))::numeric, 2) WHEN 3 THEN round(((i.saleprice3 / i.packunits))::numeric, 2) WHEN 4 THEN round(((i.purprice / i.packunits))::numeric, 2) WHEN 5 THEN round(((i.recentpurprice / i.packunits))::numeric, 2) WHEN 6 THEN round((i.avgprice)::numeric, 2) WHEN 7 THEN round(((i.saleprice4 / i.packunits))::numeric, 2) WHEN 8 THEN round(((i.saleprice5 / i.packunits))::numeric, 2) END END ELSE CASE v_pricetype WHEN 1 THEN round(((i.saleprice / i.packunits))::numeric, 2) WHEN 2 THEN round(((i.saleprice2 / i.packunits))::numeric, 2) WHEN 3 THEN round(((i.saleprice3 / i.packunits))::numeric, 2) WHEN 4 THEN round(((i.purprice / i.packunits))::numeric, 2) WHEN 5 THEN round(((i.recentpurprice / i.packunits))::numeric, 2) WHEN 6 THEN round((i.avgprice)::numeric, 2) WHEN 7 THEN round(((i.saleprice4 / i.packunits))::numeric, 2) WHEN 8 THEN round(((i.saleprice5 / i.packunits))::numeric, 2) END END, 0) FROM dbo.item AS i WHERE ((rd.receiptinvcode = v_receiptinvcode) AND (rd.icode = i.icode));
     OPEN cur_cursor_items FOR SELECT rd.gcode, rd.icode, rd.batch, rd.expiry, sum(rd.qty) AS qty, max(rd.packunits) AS packunits, max(rd.purchaseprice) AS purprice, max(rd.saleprice) AS saleprice, max(rd.mrpp) AS recentpurprice, CASE WHEN (v_issueinvcode > 0) THEN CASE v_recomputecost WHEN 'Y' THEN (SELECT (sum((isd.qty * isd.price)) / CASE WHEN (sum(rd.qty) = 0) THEN 1 ELSE sum(rd.qty) END) FROM dbo.prodheader AS h, dbo.prodbuffer AS b, dbo.proddetail AS d, dbo.issuedetail AS isd WHERE (((((((h.prodcode = v_prodcode) AND (h.prodcode = d.prodcode)) AND (d.icode = rd.icode)) AND (d.prodcode = b.prodcode)) AND (b.prodrowid = d.rowid)) AND (h.issueinvcode = isd.issueinvcode)) AND (isd.icode = b.icode))) ELSE CASE v_pricetype WHEN 1 THEN round(((max(i.saleprice) / max(i.packunits)))::numeric, 2) WHEN 2 THEN round(((max(i.saleprice2) / max(i.packunits)))::numeric, 2) WHEN 3 THEN round(((max(i.saleprice3) / max(i.packunits)))::numeric, 2) WHEN 4 THEN round(((max(i.purprice) / max(i.packunits)))::numeric, 2) WHEN 5 THEN round(((max(i.recentpurprice) / max(i.packunits)))::numeric, 2) WHEN 6 THEN round((max(i.avgprice))::numeric, 2) WHEN 7 THEN round(((max(i.saleprice4) / max(i.packunits)))::numeric, 2) WHEN 8 THEN round(((max(i.saleprice5) / max(i.packunits)))::numeric, 2) END END ELSE CASE v_pricetype WHEN 1 THEN round(((max(i.saleprice) / max(i.packunits)))::numeric, 2) WHEN 2 THEN round(((max(i.saleprice2) / max(i.packunits)))::numeric, 2) WHEN 3 THEN round(((max(i.saleprice3) / max(i.packunits)))::numeric, 2) WHEN 4 THEN round(((max(i.purprice) / max(i.packunits)))::numeric, 2) WHEN 5 THEN round(((max(i.recentpurprice) / max(i.packunits)))::numeric, 2) WHEN 6 THEN round((max(i.avgprice))::numeric, 2) WHEN 7 THEN round(((max(i.saleprice4) / max(i.packunits)))::numeric, 2) WHEN 8 THEN round(((max(i.saleprice5) / max(i.packunits)))::numeric, 2) END END AS price FROM dbo.receiptdetail AS rd, dbo.item AS i WHERE ((rd.receiptinvcode = v_receiptinvcode) AND (rd.icode = i.icode)) GROUP BY rd.gcode, rd.icode, rd.batch, rd.expiry;
-    v_items_rows := (-1);
+    v_items_rows := (SELECT count(*) FROM (SELECT rd.gcode, rd.icode, rd.batch, rd.expiry, sum(rd.qty) AS qty, max(rd.packunits) AS packunits, max(rd.purchaseprice) AS purprice, max(rd.saleprice) AS saleprice, max(rd.mrpp) AS recentpurprice, CASE WHEN (v_issueinvcode > 0) THEN CASE v_recomputecost WHEN 'Y' THEN (SELECT (sum((isd.qty * isd.price)) / CASE WHEN (sum(rd.qty) = 0) THEN 1 ELSE sum(rd.qty) END) FROM dbo.prodheader AS h, dbo.prodbuffer AS b, dbo.proddetail AS d, dbo.issuedetail AS isd WHERE (((((((h.prodcode = v_prodcode) AND (h.prodcode = d.prodcode)) AND (d.icode = rd.icode)) AND (d.prodcode = b.prodcode)) AND (b.prodrowid = d.rowid)) AND (h.issueinvcode = isd.issueinvcode)) AND (isd.icode = b.icode))) ELSE CASE v_pricetype WHEN 1 THEN round(((max(i.saleprice) / max(i.packunits)))::numeric, 2) WHEN 2 THEN round(((max(i.saleprice2) / max(i.packunits)))::numeric, 2) WHEN 3 THEN round(((max(i.saleprice3) / max(i.packunits)))::numeric, 2) WHEN 4 THEN round(((max(i.purprice) / max(i.packunits)))::numeric, 2) WHEN 5 THEN round(((max(i.recentpurprice) / max(i.packunits)))::numeric, 2) WHEN 6 THEN round((max(i.avgprice))::numeric, 2) WHEN 7 THEN round(((max(i.saleprice4) / max(i.packunits)))::numeric, 2) WHEN 8 THEN round(((max(i.saleprice5) / max(i.packunits)))::numeric, 2) END END ELSE CASE v_pricetype WHEN 1 THEN round(((max(i.saleprice) / max(i.packunits)))::numeric, 2) WHEN 2 THEN round(((max(i.saleprice2) / max(i.packunits)))::numeric, 2) WHEN 3 THEN round(((max(i.saleprice3) / max(i.packunits)))::numeric, 2) WHEN 4 THEN round(((max(i.purprice) / max(i.packunits)))::numeric, 2) WHEN 5 THEN round(((max(i.recentpurprice) / max(i.packunits)))::numeric, 2) WHEN 6 THEN round((max(i.avgprice))::numeric, 2) WHEN 7 THEN round(((max(i.saleprice4) / max(i.packunits)))::numeric, 2) WHEN 8 THEN round(((max(i.saleprice5) / max(i.packunits)))::numeric, 2) END END AS price FROM dbo.receiptdetail AS rd, dbo.item AS i WHERE ((rd.receiptinvcode = v_receiptinvcode) AND (rd.icode = i.icode)) GROUP BY rd.gcode, rd.icode, rd.batch, rd.expiry) _cursor_rows);
     IF (v_items_rows > 0) THEN
       FETCH NEXT FROM cur_cursor_items INTO v_gcode, v_icode, v_batch, v_expiry, v_givenqty, v_packunits, v_purprice, v_saleprice, v_recentpurprice, v_price;
       IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
@@ -32093,8 +32073,7 @@ BEGIN
   v_updateavgprice := dbo.fn_getpreference('UpdAvgPriceInAdjInc');
   _rc := 1;
   OPEN cur_cursor_adjinc_items FOR SELECT adjbufferdetail.icode, ((stockonshelf - stockinhand)) AS givenqty, packunits, purprice, saleprice, recentpurprice, alternatecustomicode FROM dbo.adjbufferdetail JOIN dbo.item ON (adjbufferdetail.icode = item.icode) WHERE ((adjbuffercode = v_adjbuffercode) AND (((stockonshelf - stockinhand)) > 0)) ORDER BY rowid;
-  v_adjinc_items_rows := (-1);
-  _rc := 1;
+  v_adjinc_items_rows := (SELECT count(*) FROM (SELECT adjbufferdetail.icode, ((stockonshelf - stockinhand)) AS givenqty, packunits, purprice, saleprice, recentpurprice, alternatecustomicode FROM dbo.adjbufferdetail JOIN dbo.item ON (adjbufferdetail.icode = item.icode) WHERE ((adjbuffercode = v_adjbuffercode) AND (((stockonshelf - stockinhand)) > 0)) ORDER BY rowid) _cursor_rows);
   IF (v_adjinc_items_rows > 0) THEN
     SELECT r.return_value, r.key INTO v_rt_code, v_adjinccode FROM dbo.sp_gettabmaxkey(tabname => 'AdjHeader', key => v_adjinccode) AS r;
     IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
@@ -32198,8 +32177,7 @@ BEGIN
     v_continue := 0;
     _rc := 1;
     OPEN cur_cursor_adjdec_items FOR SELECT adjbufferdetail.icode, abs((stockonshelf - stockinhand)) AS givenqty, packunits, purprice, saleprice, recentpurprice, alternatecustomicode FROM dbo.adjbufferdetail JOIN dbo.item ON (adjbufferdetail.icode = item.icode) WHERE (((adjbuffercode = v_adjbuffercode) AND (stockonshelf <> stockinhand)) AND (((stockonshelf - stockinhand)) <= 0)) ORDER BY rowid;
-    v_adjdec_items_rows := (-1);
-    _rc := 1;
+    v_adjdec_items_rows := (SELECT count(*) FROM (SELECT adjbufferdetail.icode, abs((stockonshelf - stockinhand)) AS givenqty, packunits, purprice, saleprice, recentpurprice, alternatecustomicode FROM dbo.adjbufferdetail JOIN dbo.item ON (adjbufferdetail.icode = item.icode) WHERE (((adjbuffercode = v_adjbuffercode) AND (stockonshelf <> stockinhand)) AND (((stockonshelf - stockinhand)) <= 0)) ORDER BY rowid) _cursor_rows);
     IF (v_adjdec_items_rows > 0) THEN
       SELECT r.return_value, r.key INTO v_rt_code, v_adjdeccode FROM dbo.sp_gettabmaxkey(tabname => 'AdjHeader', key => v_adjdeccode) AS r;
       IF ((0 <> 0) OR (v_rt_code <> 0)) THEN
@@ -32237,8 +32215,7 @@ BEGIN
                   v_reqqty := v_givenqty;
                   _rc := 1;
                   OPEN cur_itembatch_cursor FOR SELECT batch, expiry, currqty FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)) ORDER BY priority, expiry, currqty;
-                  v_totalrows := (-1);
-                  _rc := 1;
+                  v_totalrows := (SELECT count(*) FROM (SELECT batch, expiry, currqty FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)) ORDER BY priority, expiry, currqty) _cursor_rows);
                   FETCH NEXT FROM cur_itembatch_cursor INTO v_batch, v_expiry, v_currqty;
                   IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
                   v_counter := 1;
@@ -32392,8 +32369,7 @@ BEGIN
   v_usercode := v_ai_usercode;
   _rc := 1;
   OPEN cur_c1 FOR SELECT d.studentcode, d.classcode, d.rollno, sum(((((d.fee - d.flatdisc)) * ((1 - (d.discperc * 0.01)))))) AS netamount, s.remarks, d.servicetemplatecode, d.duedate FROM dbo.studentfeesheetdetail AS d, dbo.studentfeesheet AS s, dbo.class AS c, dbo.student AS st WHERE (((((s.studentfeesheetcode = v_ai_code) AND (s.studentfeesheetcode = d.studentfeesheetcode)) AND (d.classcode = c.classcode)) AND (d.studentcode = st.studentcode)) AND (((((d.fee - d.flatdisc)) * ((1 - (d.discperc * 0.01))))) > 0)) GROUP BY d.classcode, c.name, d.rollno, d.studentcode, st.name, s.remarks, d.servicetemplatecode, d.duedate ORDER BY c.name, d.rollno, st.name;
-  v_totrows := (-1);
-  _rc := 1;
+  v_totrows := (SELECT count(*) FROM (SELECT d.studentcode, d.classcode, d.rollno, sum(((((d.fee - d.flatdisc)) * ((1 - (d.discperc * 0.01)))))) AS netamount, s.remarks, d.servicetemplatecode, d.duedate FROM dbo.studentfeesheetdetail AS d, dbo.studentfeesheet AS s, dbo.class AS c, dbo.student AS st WHERE (((((s.studentfeesheetcode = v_ai_code) AND (s.studentfeesheetcode = d.studentfeesheetcode)) AND (d.classcode = c.classcode)) AND (d.studentcode = st.studentcode)) AND (((((d.fee - d.flatdisc)) * ((1 - (d.discperc * 0.01))))) > 0)) GROUP BY d.classcode, c.name, d.rollno, d.studentcode, st.name, s.remarks, d.servicetemplatecode, d.duedate ORDER BY c.name, d.rollno, st.name) _cursor_rows);
   IF (v_totrows > 0) THEN
     FETCH NEXT FROM cur_c1 INTO v_studentcode, v_classcode, v_rollno, v_netamount, v_remarks, v_servicetemplatecode, v_duedate;
     IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
@@ -34548,8 +34524,7 @@ BEGIN
                 v_reqqty := v_givenqty;
                 _rc := 1;
                 OPEN cur_itembatch_cursor FOR SELECT batch, expiry, currqty FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)) ORDER BY priority, expiry, currqty;
-                v_totalrows := (-1);
-                _rc := 1;
+                v_totalrows := (SELECT count(*) FROM (SELECT batch, expiry, currqty FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)) ORDER BY priority, expiry, currqty) _cursor_rows);
                 FETCH NEXT FROM cur_itembatch_cursor INTO v_batch, v_expiry, v_currqty;
                 IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
                 v_counter := 1;
@@ -39215,8 +39190,7 @@ BEGIN
                     _rc := 1;
                   END IF;
                   OPEN cur_itembatch_cursor FOR SELECT batch, expiry, currqty FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)) ORDER BY priority, expiry, currqty;
-                  v_totalrows := (-1);
-                  _rc := 1;
+                  v_totalrows := (SELECT count(*) FROM (SELECT batch, expiry, currqty FROM dbo.godowndetail WHERE ((godowndetail.gcode = v_gcode) AND (godowndetail.icode = v_icode)) ORDER BY priority, expiry, currqty) _cursor_rows);
                   FETCH NEXT FROM cur_itembatch_cursor INTO v_batch, v_expiry, v_currqty;
                   IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
                   v_counter := 1;
@@ -41268,7 +41242,7 @@ BEGIN
     v_updatebasetable := 'N';
   END IF;
   OPEN cur_cstock FOR SELECT documentcode, documenttype, qty, bonus, stock, newstock, utn, due FROM dbo.stockledger WHERE (icode = v_icode) ORDER BY utn;
-  v_totalrows := (-1);
+  v_totalrows := (SELECT count(*) FROM (SELECT documentcode, documenttype, qty, bonus, stock, newstock, utn, due FROM dbo.stockledger WHERE (icode = v_icode) ORDER BY utn) _cursor_rows);
   FETCH NEXT FROM cur_cstock INTO v_documentcode, v_documenttype, v_qty, v_bonus, v_stock, v_newstock, v_utn, v_due;
   IF FOUND THEN _fs := 0; ELSE _fs := -1; END IF;
   v_counter := 1;

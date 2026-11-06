@@ -72,6 +72,7 @@ CASES = [
     ('proc: SET leaves @@ROWCOUNT at 1', body('DECLARE @a INT, @n INT UPDATE item SET active = 1 SET @a = 5 SELECT @n = @@ROWCOUNT'), 'v_a := 5;\n  _rc := 1;'),
     ('proc: rollback raises',body('ROLLBACK TRAN'), "ERRCODE = 'TS001'"),
     ('proc: cursor loop', body('DECLARE @a INT DECLARE c CURSOR FOR SELECT icode FROM item OPEN c FETCH NEXT FROM c INTO @a WHILE @@FETCH_STATUS = 0 BEGIN FETCH NEXT FROM c INTO @a END CLOSE c DEALLOCATE c'), 'WHILE (_fs = 0) LOOP'),
+    ('proc: @@CURSOR_ROWS counts the opened cursor', body('DECLARE @n INT DECLARE c CURSOR FOR SELECT icode FROM item OPEN c SET @n = @@CURSOR_ROWS CLOSE c DEALLOCATE c'), 'v_n := (SELECT count(*) FROM (SELECT icode FROM dbo.item) _cursor_rows);'),
 ]
 
 

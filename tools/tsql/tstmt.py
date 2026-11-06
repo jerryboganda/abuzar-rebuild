@@ -16,6 +16,7 @@ class Ctx:
         self.temps = {}             # '#t'/'@t' lower -> (pgname, Table)
         self.decls = []
         self.cursors = {}
+        self.last_cursor = None     # cursor just opened (for @@CURSOR_ROWS)
         self.trigger_table = None
         self.uses_rowcount = False
         self.uses_fetch = False
@@ -419,6 +420,16 @@ class StmtMixin:
     def s_set(self, n):
         v = self.lookup_var(n.var)
         rhs = n.e
+        # SQL Server: SET @rows = @@CURSOR_ROWS immediately after OPEN counts
+        # the rows of that cursor.  PostgreSQL has no @@CURSOR_ROWS, so count
+        # the cursor's SELECT instead of leaving the loop bound at -1 (which
+        # made every cursor loop using this idiom a no-op).
+        if (rhs.k == 'gvar' and rhs.name == 'cursor_rows' and self.ctx.last_cursor):
+            c = self.ctx.cursors.get(self.ctx.last_cursor)
+            if c is not None:
+                sql, _ = self.select_full(c[1], Scope())
+                self.emit('%s := (SELECT count(*) FROM (%s) _cursor_rows);' % (v[0], sql))
+                return
         if n.op != '=':
             rhs = Node('bin', op=n.op[0], l=Node('var', name=n.var), r=rhs)
         frag = ('@' + n.var.lower()) in self.ctx.sqlvars
@@ -656,6 +667,7 @@ class StmtMixin:
         sql, cols = self.select_full(c[1], Scope())
         scroll = ' SCROLL' if 'SCROLL' in c[2] else ''
         self.emit('OPEN %s%s FOR %s;' % (c[0], scroll, sql))
+        self.ctx.last_cursor = key
 
     def s_close(self, n):
         c = self.ctx.cursors.get(n.name.lower())

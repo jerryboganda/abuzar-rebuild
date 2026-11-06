@@ -78,6 +78,11 @@ node tools/parity/discover-forms.mjs
 6. `Clicked` / `DoubleClicked` always pass a `{ name: '' }` object, removing
    `Null object reference (reading name)`.
 7. Message-box and DataWindow editor close paths are idempotent.
+8. `@@CURSOR_ROWS` was emitted as `(-1)`, so every cursor loop using the
+   `SET @rows = @@CURSOR_ROWS` idiom never ran (32 call sites).  The generator
+   now counts the cursor's SELECT at that point; `sp_PostPayroll` therefore
+   updates `Posted/PostDate/PostedBy` instead of reporting success without
+   writing anything.  Regression case added to `tools/tsql/selftest.py`.
 
 ## Open, in priority order
 
@@ -1679,6 +1684,31 @@ Master `d_emp_payroll` updates `EMP_Payroll`; detail
   `audit_log 1,079 / max 1,127`, no residue.
 
 Probe: `tools/parity/probe-payroll-add.mjs` - measured `ok=true`.
+
+### Payroll Post (verified after the cursor-rows fix)
+
+The Post menu item runs `w_payroll.wf_post()` -> `wf_post_payroll(1)`: a
+`w_salesmanpassword` dialog, then `w_arg_sinvcode_linvcode` for the payroll
+range, then `sp_postpayroll`.
+
+* Temporary employee + unposted payroll row (code 1, basic/net pay 2600).
+* Password ADMIN/password9080 and range 1..1 accepted.  Measured result:
+  `emp_payroll.posted = 'Y'`, `postdate = 2026-11-06 05:51:06.264`,
+  `postedby = 1`, and the message "Posting Successfully done."  No GL header
+  or detail rows are written by this procedure (both stayed 0).
+* **Systemic fix:** the generator had emitted `@@CURSOR_ROWS` as `(-1)`, so
+  the procedure's `WHILE @counter <= @totalrows` loop never executed and the
+  UI reported success without changing the row.  `tools/tsql/tstmt.py` now
+  counts the cursor SELECT when `SET @rows = @@CURSOR_ROWS` follows `OPEN`;
+  `db/pg/60_procedures.sql` was regenerated (32 call sites) and
+  `tools/tsql/selftest.py` has a regression case.
+* Exact restore: `emp_payroll 0 / max 0`, `emp_employee 0`, `emp_advance 0`,
+  `glheader/gldetail 0`, `_tabmaxkey('Emp_Payroll') 0`,
+  `serverdate 2026-11-06 00:38:24`, `audit_log 1,079 / max 1,127`,
+  no residue.
+
+Probe: `tools/parity/probe-payroll-post.mjs` - measured `ok=true` after
+applying the regenerated `sp_postpayroll` to the clone.
 
 ### Employee master add/edit (verified; creates the salary account)
 
