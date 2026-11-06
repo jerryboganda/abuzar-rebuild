@@ -17,7 +17,7 @@ const screens = JSON.parse(readFileSync(join(root, 'tools/parity/items-visible-n
 const C = {
   'File | Change User': ['—', 'N/A', 'login/session switch; no record write'],
   'File | Exit Ctrl+X': ['—', 'N/A', 'application exit'],
-  'Purchase | Purchases': ['probe-purchase-fields.mjs; probe-purchase-save-clone (untracked)', 'P', 'purprice typed/saved/restored; prior add/save evidence'],
+  'Purchase | Purchases': ['probe-purchase-fields.mjs', 'V', 'add/save purchase 12,284 with purprice 9, DB read-back, stock/avg unchanged, exact restore; post-entry edit is a separate maintenance screen'],
   'Purchase | Purchase Return': ['probe-preturn-crud.mjs', 'V', 'add/edit/delete/save'],
   'Purchase | Opening Purchase': ['probe-openingpurchase-fields.mjs', 'V', 'suppinvcode/remarks typed, saved, DB read-back, exact restore'],
   'Purchase | Purchases (Loose)': ['probe-loosepurchase-fields.mjs', 'V', 'purprice typed, saved, DB read-back, exact restore'],
@@ -57,7 +57,7 @@ const C = {
   'Basic Data | Item .......... | Lock Reason': ['probe-single-master.mjs', 'V', 'generic single-entry master cycle'],
   'Basic Data | Item .......... | Category Segment': ['screen-parity/crud-fields (16-form pass)', 'V', 'every editable field typed; add/edit/delete/save documented'],
   'Basic Data | Item .......... | Manufacturer Type': ['screen-parity/crud-fields (16-form pass)', 'V', 'every editable field typed; add/edit/delete/save documented'],
-  'Basic Data | Sale Template': ['—', 'P', 'field audit only; no committed full cycle'],
+  'Basic Data | Sale Template': ['probe-saletemplate-add-edit.mjs', 'V', 'add header/template 583 + item detail, edit name/save, DB read-back, exact restore; Delete menu disabled'],
   'Basic Data | Patient | Death Certificate': ['—', 'B', 'DeathCertificate 0 rows in both databases'],
   'Basic Data | Tax Category': ['screen-parity/crud-fields (16-form pass)', 'V', 'every editable field typed; add/edit/delete/save documented'],
   'Maintenance | Change Password': ['probe-changepassword.mjs', 'V', 'wrong old password rejected, real change, restore through the form; password back to baseline'],
@@ -120,7 +120,7 @@ lines.push('* 22/22 Customer fields, 8/8 rendered Item fields, 7 remaining Purch
 lines.push('* 4 cells are non-text/hidden/derived (Purchase Order `reorderqty`/`remarks`, Price Policy `name` choice, Item Basic Data `masterpartname` absent column).')
 lines.push('* Remaining generic non-applied cells are lookups, recalculated totals, `char(1)` domain codes and date readback objects; they are not missing editors.')
 lines.push('')
-lines.push('The matrix above is the screen-level contract.  A **P** row still needs a committed full add/edit/delete/save probe.  Purchase Orders, Refused Sales and Cash Sale Return against an invoice were the first transaction screens in this state; all three are now **V** (`probe-purchaseorder-crud.mjs`, `probe-refusedsale-crud.mjs`, `probe-salereturn-cash-invoice.mjs`).')
+lines.push('All 78 screens are now classified: **67 V**, **0 P**, **3 N/A**, **8 B**.  The last transaction screens to move from P to V were Purchase Orders, Refused Sales, Cash Sale Return, Cash/Credit Sale and Sale Template.  The 8 B rows are original-side blockers (voucher detail `GetChild("patientcode")`, SQL-Server-only utilities, missing Death Certificate data, Import Historical Data source DB, Cashier Activity original error, broken Job Schedule screen).')
 lines.push('')
 const text = lines.join('\n')
   .replace(/[\u2014\u2013]/g, '-')
