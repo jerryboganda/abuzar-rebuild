@@ -3234,7 +3234,7 @@ try {
   await captureCalculators('light', 'compact', 100, [[1366, 768]])
   await captureEntries('light', 'compact', 100, [[1366, 768]])
   await captureSingleEntries('light', 'compact', 100, [[1366, 768]], 'w_message_form')
-  for (const name of ['w_checklistitem_form', 'w_shift_form', 'w_taxcategory_form', 'w_resourcecategory_form', 'w_grade_form']) {
+  for (const name of ['w_checklistitem_form', 'w_shift_form', 'w_taxcategory_form', 'w_resourcecategory_form', 'w_grade_form', 'w_goodscompany_form']) {
     await captureSingleEntries('light', 'compact', 100, [[1366, 768]], name)
   }
   await captureContacts('light', 'compact', 100, [[1366, 768]])
@@ -3289,7 +3289,7 @@ try {
   await captureCalculators('dark', 'comfortable', 200, [[1366, 768], [683, 384], [320, 768]])
   await captureEntries('dark', 'comfortable', 200, [[1366, 768], [683, 384], [320, 768]])
   await captureSingleEntries('dark', 'comfortable', 200, [[1366, 768], [683, 384], [320, 768]], 'w_manufacturertype_form')
-  for (const name of ['w_checklistitem_form', 'w_shift_form', 'w_taxcategory_form', 'w_resourcecategory_form', 'w_grade_form']) {
+  for (const name of ['w_checklistitem_form', 'w_shift_form', 'w_taxcategory_form', 'w_resourcecategory_form', 'w_grade_form', 'w_goodscompany_form']) {
     await captureSingleEntries('dark', 'comfortable', 200, [[1366, 768], [683, 384], [320, 768]], name)
   }
   await captureContacts('dark', 'comfortable', 200, [[1366, 768], [683, 384], [320, 768]])

@@ -414,9 +414,7 @@ window.runSingleEntryChecks = async () => {
     current.session.save({ ...current.session.preferences, mode })
     await teardown(current)
     current = await setup()
-    await isolated(checkSingleEntrySurfaces, current, (condition, name) => check(condition, `${mode}: ${name}`), settle,
-      ['w_biometricmachine', 'w_crs_clientlist', 'w_custsector_form', 'w_dosage_form',
-        'w_instruction_form', 'w_precaution_form', 'w_region_form', 'w_route_form', 'w_saletype_form', 'w_weighingscale_form'])
+    await isolated(checkSingleEntrySurfaces, current, (condition, name) => check(condition, `${mode}: ${name}`), settle)
   }
   return { passed, failures, errors }
 }

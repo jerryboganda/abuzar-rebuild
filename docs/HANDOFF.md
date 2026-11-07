@@ -11,17 +11,30 @@ result paths and acceptance boundaries are maintained in
 numbers as the latest result. The browser fixtures use synthetic records,
 with backend/external requests and native desktop access forbidden.
 Both original calendar owners, `w_calendar` and `w_calendar2`, are implemented.
-The registry covers 167 of the 2,062 inventoried windows (8.10%): 70 modal layouts
-(55 criteria, 5 native-field, 4 transaction, 4 calculator and 2 calendar) and 97
-entry windows (94 single-entry: 43 Code/Name and 51 richer, including fifteen
+The registry covers 168 of the 2,062 inventoried windows (8.15%): 70 modal layouts
+(55 criteria, 5 native-field, 4 transaction, 4 calculator and 2 calendar) and 98
+entry windows (95 single-entry: 43 Code/Name and 52 richer, including sixteen
 added masters).
-The current snapshot passes 793 frontend tests, 9 static-inventory tests and
-strict types. Consolidated regression passes 12,730 assertions/781 appearances
+The verified snapshot passes 796 frontend tests, 9 static-inventory tests and
+strict types. Consolidated regression passes 12,819 assertions/789 appearances
 and 148 additional forced-color checks, plus 84 focused print assertions, with no
 failures, runtime/page errors or forbidden requests. Verified complete screens
 remain zero; `ui-completion-audit.md` (regenerate with
 `node tools/parity/ui_completion_audit.mjs`) reports the full coverage and a
 verdict of not 100% complete.
+
+All 95 single-entry masters pass 4,007 focused Classic/Modern assertions.
+Goods Company retains its nine-field Detail form, Code/Name List and the
+15-character Phone limit; overlong drafts are rejected and exact-boundary
+values accepted. Eight Detail/List appearance cases cover light/compact/100%
+and dark/comfortable/200% at 1366px, 683px and 320px.
+Evidence is `goodscompany-complete-regression\result.json`,
+`single-entry-complete-verified\single-entry-result.json` and
+`goodscompany-final-print\print-result.json` in session artifacts.
+The committed `--single-entry-only` runner covers the entire single-entry
+registry. Concurrent Email Template/fixture edits appeared during the full
+run and are deliberately outside this verified snapshot; they remain
+uncommitted. Do not mix their counts with this report.
 
 The previous DataWindow-calendar snapshot passed 745 frontend tests, strict types
 and 624 focused both-host DataWindow-calendar assertions/eight appearances.
@@ -301,7 +314,7 @@ interruption; changed text remains copyable in both modes after deletion,
 including after repaint. The plain-text configuration guard uses the same
 record/column identity check as commit, not a blanket choice-editor check.
 
-The registry contains 97 entry mappings (94 standard singles), forty-seven global
+The registry contains 98 entry mappings (95 standard singles), forty-seven global
 DataWindow mappings and the modal layouts enumerated in `UI-ENHANCEMENT.md`
 (criteria dialogs, native-field dialogs, four calculators, the associated-sale
 invoice picker, cashier closing, cash tendering, category changes and the shared
@@ -428,12 +441,13 @@ open/save/retrieve/print workflows remain unaccepted.
 
 Relation and thirty-two additional masters now have control-local mappings,
 retaining source fields, list order and `GetRow()` serials where present. The
-authored registry had 82 mappings (79 single-entry) at that point and now has 97
-(94 single-entry).
+authored registry had 82 mappings (79 single-entry) at that point and now has 98
+(95 single-entry).
 Metadata assertions now pass, including source-position ordering and mixed-case
 Dataobject identifiers. Browser fixtures seed and edit all additional fields,
 test serials and source mnemonics, and add Resource Category/Grade cases; the
-single-entry appearance matrix now has 48 cases. Shared steppers accept decimal
+single-entry appearance matrix now has 56 cases, including eight Goods Company
+cases. Shared steppers accept decimal
 storage with safe integer bounds/increments and preserve exact drafts. Enter
 retains its source route; Shift+Enter is the explicit multiline gesture.
 The browser run exposed an unstubbed replacement contact-child retrieval:

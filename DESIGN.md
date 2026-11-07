@@ -418,8 +418,8 @@ of scope to a mobile product. Native Windows display scaling is a separate gate.
 
 The current stage deliberately labels business windows **Classic compatibility
 layouts**, except for 70 modal mappings (fifty-five criteria, five native-field,
-four calculators, four transaction dialogs and two shared calendars) and 97 entry mappings. The entry registry contains
-aging, Contact Group, Contact Card and 94 standard single-entry windows (43 Code/Name and 51 richer form/list mappings) with
+four calculators, four transaction dialogs and two shared calendars) and 98 entry mappings. The entry registry contains
+aging, Contact Group, Contact Card and 95 standard single-entry windows (43 Code/Name and 52 richer form/list mappings) with
 contextual form/list bindings. Neither count is complete workflow acceptance.
 Explicitly mapped DataWindow roots also use Modern tokens and semantic layouts; other
 controls and outer window geometry remain unchanged. Theme and

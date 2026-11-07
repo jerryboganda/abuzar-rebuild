@@ -198,7 +198,7 @@ export async function checkSingleEntrySurfaces(fixture, check, settle, filter) {
           const mask = sourceField?.['editmask.mask']
           const draft = mask ? (/[#0]/.test(mask) ? '14' : 'AB') :
             f.detail.kinds[column] === 'string' ?
-              (field.multiline ? 'Updated first line\r\nSecond <literal>' : 'Updated <literal>') : '14.75'
+              (field.multiline ? 'Updated first line\r\nSecond <literal>' : '<literal>') : '14.75'
           assert(!!editor.editor && (editor.editor instanceof HTMLTextAreaElement) === !!field.multiline,
             `${field.object}: the real source field opens the declared single-line or multiline editor`)
           await detail.n_settext(draft)
@@ -207,8 +207,36 @@ export async function checkSingleEntrySurfaces(fixture, check, settle, filter) {
             `${field.object}: SetText updates only the live draft`)
           if (field.multiline) assert(editor.editor.value === draft.replace(/\r\n/g, '\n') && expected === draft,
             'textarea DOM uses LF while live PowerScript text retains CRLF')
-          assert(await detail.n_accepttext() === 1 && String(f.detail.getItem(1, field.object)) === expected,
+          const accepted = await detail.n_accepttext()
+          assert(accepted === 1 && String(f.detail.getItem(1, field.object)) === expected,
             `${field.object}: the additional real field uses the shared text/decimal acceptance path`)
+          if (surface.name === 'w_goodscompany_form' && field.object === 'phone') {
+            assert(f.detail.def.table.columns[column].type === 'char(15)',
+              'Phone retains its original 15-character storage limit')
+            await fixture.ui.focusDw(detail, true)
+            await settle()
+            const fire = fixture.rt.fire
+            let itemErrors = 0
+            fixture.rt.fire = async (target, event, args) => {
+              if (target === detail && event === 'itemerror') { itemErrors++; return 1 }
+              return fire(target, event, args)
+            }
+            try {
+              await detail.n_settext('1234567890123456')
+              assert(await detail.n_accepttext() === -1 && itemErrors === 1 &&
+                f.detail.getItem(1, field.object) === expected &&
+                await detail.n_gettext() === '1234567890123456' &&
+                editor.editor?.getAttribute('aria-invalid') === 'true',
+              'Phone rejects an overlong draft without replacing its stored value')
+              await detail.n_settext('123456789012345')
+              assert(await detail.n_accepttext() === 1 &&
+                f.detail.getItem(1, field.object) === '123456789012345' &&
+                editor.editor?.getAttribute('aria-invalid') !== 'true',
+              'Phone accepts its exact storage boundary and clears the invalid state')
+            } finally {
+              fixture.rt.fire = fire
+            }
+          }
           f.window.props.set('editflag', false)
         }
         if (surface.name === 'w_resourcecategory_form') await checkMultilineMaster(f, fixture, assert, settle)

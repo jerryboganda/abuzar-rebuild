@@ -181,8 +181,8 @@ Checklist Item, Shift and Tax Category add richer form/list mappings, including
 guarded native checkbox editing. Contact Card adds a complete eleven-field
 detail/list layout, sorted source-key choices and multiline Address editing.
 Relation and thirty-two additional masters add explicit contextual layouts
-with their source fields and list ordering. Fifteen further masters follow
-the same pattern. The registry now contains 97 authored entry mappings (94
+with their source fields and list ordering. Sixteen further masters follow
+the same pattern. The registry now contains 98 authored entry mappings (95
 single-entry). Corrected mappings preserve source display order;
 Resource Category supports multiline Description and Grade supports exact
 decimal draft stepping with its source integer bounds. The shared editor retains line endings,
@@ -214,12 +214,14 @@ cancellation contracts in Classic and Modern. The DataWindow path rejects
 invalid drafts, keeps millisecond clocks and restores the exact source-masked
 editor text and focus. Keyboard and pointer navigation, month/year choices and
 Today share the original three-control layout. Authored coverage reaches 70
-modal layouts. The current snapshot passes 793 frontend tests, 9
+modal layouts. The verified snapshot passes 796 frontend tests, 9
 static-inventory tests and strict presentation types. Consolidated regression
-passes 12,730 assertions, 781 appearances and 148 additional forced-color
+passes 12,819 assertions, 789 appearances and 148 additional forced-color
 assertions, including both calendars and print settings/document checks, plus 84
-focused print assertions. Authored coverage is 167 of 2,062 inventoried windows
-(8.10%) with no verified complete screens; `docs/ui-completion-audit.md` reports
+focused print assertions. All 95 single-entry masters also pass 4,007 focused
+Classic/Modern assertions, including Goods Company's Phone length boundary.
+Authored coverage is 168 of 2,062 inventoried windows
+(8.15%) with no verified complete screens; `docs/ui-completion-audit.md` reports
 the full gap. The customer-comments F4 override is exercised
 in a synthetic owner, not its complete business window. Full screen/document
 catalogs, remaining callers, workflows, native, database, assistive-technology

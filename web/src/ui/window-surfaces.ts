@@ -924,6 +924,19 @@ singleEntrySurface('w_itemmeter_form', {
     { object: 'code', labelObject: 'code_t' }, { object: 'currentreading', labelObject: 'currentreading_t' },
   ],
 }, 'singleentryitem'),
+singleEntrySurface('w_goodscompany_form', {
+  name: 'd_goodscompany_detail', title: 'Detail', kind: 'form', fields: [
+    { object: 'code', labelObject: 'doctcode_t' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'address1', labelObject: 't_2' }, { object: 'address2', labelObject: 't_4' },
+    { object: 'city', labelObject: 'remarks_t' }, { object: 'country', labelObject: 't_5' },
+    { object: 'phone', labelObject: 't_6' }, { object: 'fax', labelObject: 't_7' },
+    { object: 'email', labelObject: 't_8' },
+  ],
+}, {
+  name: 'd_goodscompanylist_list', title: 'List', kind: 'grid', fields: [
+    { object: 'code', labelObject: 'code_t' }, { object: 'name', labelObject: 'name_t' },
+  ],
+}),
 singleEntrySurface('w_biometricmachine', {
   name: 'd_biometricmachine', title: 'Detail', kind: 'form', fields: [
     { object: 'code', labelObject: 'code_t' }, { object: 'name', labelObject: 'name_t' },

@@ -1,6 +1,6 @@
 # Classic/Modern completion audit
 
-Generated from the working tree on 2026-11-07T21:05:56.739Z.
+Generated from the working tree on 2026-11-07T21:54:59.595Z.
 Static source digest: `fb6f64cdf4822011bb1a6d9146687eb864535ff855af20d461495f448655bb4c`.
 
 ## Verdict
@@ -15,11 +15,11 @@ only the authored surfaces.
 
 | Check | Result |
 |---|---|
-| Frontend tests | 793 passed, 0 failed |
+| Frontend tests | 796 passed, 0 failed |
 | Strict presentation types | Passed |
 | Static inventory tests | 9 passed, 0 failed |
 | Static build | 67 modules |
-| Full browser suite | 12730 assertions, 781 appearances; 0 failures, 0 errors, 0 page errors, 0 forbidden requests |
+| Full browser suite | 12819 assertions, 789 appearances; 0 failures, 0 errors, 0 page errors, 0 forbidden requests |
 | Forced-color checks | 148 assertions, 0 failures, 4 cases |
 | Focused print checks | 84 assertions, 5 settings and 4 document appearances; no printer access |
 | Additional calendar callers | `web/tests/calendar-callers.test.ts` covers f_getdatefromcalendar, aging/list F4 fields and inpatient/service DataWindow F4 fields inside the frontend suite above |
@@ -33,11 +33,11 @@ only the authored surfaces.
 | DataWindow definitions | 8740 |
 | DataWindow columns | 189073 |
 | Missing static DataWindow references | 5 |
-| Windows with an authored Modern layout | 167 (8.10%) |
-| Authored layouts by registry | 9 workspace/tool, 55 criteria, 97 entry, 4 calculator, 2 calendar |
-| Windows without an authored layout | 1895 |
-| DataWindows with an authored surface | 269 (3.08%); 48 from the global registry (with nested lookups) and 233 contextual, overlaps counted once |
-| DataWindows without an authored surface | 8471 |
+| Windows with an authored Modern layout | 168 (8.15%) |
+| Authored layouts by registry | 9 workspace/tool, 55 criteria, 98 entry, 4 calculator, 2 calendar |
+| Windows without an authored layout | 1894 |
+| DataWindows with an authored surface | 271 (3.10%); 48 from the global registry (with nested lookups) and 235 contextual, overlaps counted once |
+| DataWindows without an authored surface | 8469 |
 | Authored names absent from the static inventory | 0 windows, 0 DataWindows |
 | Modern print template families | 3 |
 | Registered Modern print definitions | 4 |
@@ -60,11 +60,11 @@ components, not accepted business workflows.
 | ui-contract | partial | Shared validation, choice, text, temporal, tab, modal and calendar contracts have characterization/synthetic coverage, including the additional f_getdatefromcalendar, aging/list and inpatient/service F4 callers; full native event/property equivalence remains open. |
 | ui-preferences | partial | Versioned workstation/user/database preferences, hashed keys, deferred mode changes and per-family print choices are implemented; authenticated database/native acceptance is pending. |
 | ui-primitives | partial | Modern controls, selectors, grids, dialogs, tabs, feedback, forced colors and print tokens exist; native chrome, assistive-technology and remaining selector variants remain open. |
-| ui-shell | partial | 167 windows have authored layouts; complete rights-aware navigation, the full catalog and role workflows are not covered. |
-| ui-data-surfaces | partial | 269 DataWindow definitions have explicit surfaces (48 global, 233 contextual); 8,471 inventoried DataWindows are unmapped. |
+| ui-shell | partial | 168 windows have authored layouts; complete rights-aware navigation, the full catalog and role workflows are not covered. |
+| ui-data-surfaces | partial | 271 DataWindow definitions have explicit surfaces (48 global, 235 contextual); 8,469 inventoried DataWindows are unmapped. |
 | ui-print-engine | partial | Classic isolation and per-family Modern choice are verified; 0 approved templates and 2 preview templates exist, with 1 blocked family. |
 | ui-pilot | blocked | No all-role end-to-end Cash Sale, Purchase, Account Ledger and Manager reporting pilot has been accepted. |
-| ui-screen-coverage | partial | 167 of 2,062 windows have authored surfaces; complete verified screens remain zero. |
+| ui-screen-coverage | partial | 168 of 2,062 windows have authored surfaces; complete verified screens remain zero. |
 | ui-print-coverage | blocked | 4 of 8,740 DataWindows are registered as print templates; no template is approved and item-label hardware dimensions are unknown. |
 | ui-resilience | partial | Synthetic interaction, focus, contrast, scaling and lifecycle checks pass; native assistive technology, real hardware and production-data acceptance are not performed. |
 | ui-release-verification | blocked | Packaged Windows/WebView2, authenticated PostgreSQL, native assistive technology, printer/scanner and remote CI gates are outstanding. |
@@ -74,7 +74,7 @@ components, not accepted business workflows.
 
 | Criterion | Status | Evidence |
 |---|---|---|
-| Coverage inventory and explicit status for every screen/field/action/state | partial | 167/2,062 windows and 269/8,740 DataWindows have authored surfaces; the inventory reports 0 verified Modern screens. |
+| Coverage inventory and explicit status for every screen/field/action/state | partial | 168/2,062 windows and 271/8,740 DataWindows have authored surfaces; the inventory reports 0 verified Modern screens. |
 | Classic has zero unexplained functional regressions | partial | Local Classic/Modern characterization and synthetic browser checks pass; no complete recorded Classic baseline over all workflows exists. |
 | Modern and Classic produce identical business outcomes for the same synthetic transactions | partial | Component and transaction-dialog fixtures compare values; complete sale/purchase/cashier transactions are not accepted. |
 | Shared-engine event characterization | verified | Editing, validation rejection, dropdown selection, item focus, posted events, dynamic visibility, modal return, CloseQuery and calendar ordering have tests. |
@@ -100,13 +100,13 @@ components, not accepted business workflows.
 | Barcode sequence, rapid keyboard, active-cell preservation | partial | Synthetic keyboard/barcode and active-cell checks pass; scanner hardware is not verified. |
 | No new browser exceptions, unhandled rejections or silent failures | verified | Current full browser run: 0 failures, 0 errors, 0 page errors, 0 forbidden requests. |
 | Packaged Windows/WebView2 native theme, scaling, focus, shortcuts, print dialog, printers | blocked | Not performed on a packaged Windows/WebView2 build. |
-| Local Node tests, type validation, static build | verified | 793 frontend tests passed, 0 failed; strict presentation types passed; 9 inventory tests passed, 0 failed; 67-module static build. |
+| Local Node tests, type validation, static build | verified | 796 frontend tests passed, 0 failed; strict presentation types passed; 9 inventory tests passed, 0 failed; 67-module static build. |
 | Blocking UI acceptance job / typed checks / deterministic fixtures | partial | A blocking CI presentation job and deterministic fixtures exist. Remote CI (the ci and sql workflows) is authoritative for the revision that contains this report and is not recorded in this file; last run supplied when generated: none. |
 | Rust/PostgreSQL/desktop integration in authorized CI | blocked | Remote CI (the ci and sql workflows) is authoritative for the revision that contains this report and is not recorded in this file; last run supplied when generated: none. The presentation job itself uses synthetic fixtures, not an authenticated PostgreSQL session. |
 
 ## Blockers
 
-- Complete screen/field/action/state catalog: 1,895 of 2,062 windows have no authored Modern surface, and 0 complete workflows are accepted.
+- Complete screen/field/action/state catalog: 1,894 of 2,062 windows have no authored Modern surface, and 0 complete workflows are accepted.
 - Complete document catalog: 8,736 of 8,740 DataWindows are not registered as Modern print templates; 0 templates are approved.
 - Document-family classification and caller/reachability evidence are still unclassified for 8,740 DataWindows in the static inventory.
 - No all-role Cash Sale, Purchase, Account Ledger and Manager pilot acceptance.

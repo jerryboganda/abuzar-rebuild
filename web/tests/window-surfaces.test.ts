@@ -559,14 +559,15 @@ const richerFields = new Map([
   ['w_route_form', [['code', 'name', 'description', 'localroute'], ['compute_1', 'code', 'name', 'localroute']]],
   ['w_saletype_form', [['code', 'name', 'description', 'counter'], ['code', 'name']]],
   ['w_weighingscale_form', [['code', 'name', 'manufacturer', 'model', 'scaleid', 'scaleidpos', 'barcodelen', 'itemstartpos', 'itemendpos', 'weightstartpos', 'weightendpos'], ['code', 'name', 'manufacturer', 'model', 'scaleid']]],
+  ['w_goodscompany_form', [['code', 'name', 'address1', 'address2', 'city', 'country', 'phone', 'fax', 'email'], ['code', 'name']]],
 ])
 
-test('entry registry has 43 Code/Name and 51 custom single-entry windows without duplicate identities', () => {
+test('entry registry has 43 Code/Name and 52 custom single-entry windows without duplicate identities', () => {
   const singles = ENTRY_WINDOW_SURFACES.filter((surface) => surface.family === 'single')
-  assert.equal(singles.length, 94)
+  assert.equal(singles.length, 95)
   assert.equal(singles.filter((surface) => !richerFields.has(surface.name)).length, 43)
-  assert.equal(singles.filter((surface) => richerFields.has(surface.name)).length, 51)
-  assert.equal(ENTRY_WINDOW_SURFACES.length, 97)
+  assert.equal(singles.filter((surface) => richerFields.has(surface.name)).length, 52)
+  assert.equal(ENTRY_WINDOW_SURFACES.length, 98)
   assert.equal(new Set(ENTRY_WINDOW_SURFACES.map((surface) => surface.name)).size, ENTRY_WINDOW_SURFACES.length)
 })
 

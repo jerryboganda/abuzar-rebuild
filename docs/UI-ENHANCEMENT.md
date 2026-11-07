@@ -7,21 +7,23 @@ See `../PRODUCT.md` for the confirmed scope and constraints.
 
 ## Current state
 
-**Fifteen more single-entry masters are authored; enhancement remains incomplete and unreleased.**
-As of this snapshot the registry holds 167 authored windows out of the 2,062
-inventoried (8.10%; 9.11% of inherited control paths): 70 modal layouts (55
+**Sixteen more single-entry masters are authored; enhancement remains incomplete and unreleased.**
+As of this snapshot the registry holds 168 authored windows out of the 2,062
+inventoried (8.15%; 9.18% of inherited control paths): 70 modal layouts (55
 criteria, 5 native-field, 4 transaction, 4 calculator and 2 calendar windows)
-and 97 entry windows.
-The entry windows are 3 multi-entry and 94 single-entry layouts, of which 43 are
-standard Code/Name masters and 51 are richer masters; the newest fifteen are
+and 98 entry windows.
+The entry windows are 3 multi-entry and 95 single-entry layouts, of which 43 are
+standard Code/Name masters and 52 are richer masters; the newest sixteen are
 listed under "Additional single-entry masters". There are 47 global DataWindow
 mappings and three print-template families (sales preview, purchase preview and
-the blocked item label); no Modern print template is approved. The other 1,895
+the blocked item label); no Modern print template is approved. The other 1,894
 windows still use labelled Classic compatibility layouts.
 
-The tree passes 793 frontend tests, strict presentation types and the nine
-static-inventory tests. The full browser regression passes 12,730 assertions and
-781 appearances, plus 148 additional forced-color assertions. A focused print run
+The verified snapshot passes 796 frontend tests, strict presentation types and
+the nine static-inventory tests. The full browser regression passes 12,819
+assertions and 789 appearances, plus 148 additional forced-color assertions.
+All 95 single-entry masters pass 4,007 focused Classic/Modern assertions.
+A focused print run
 adds 84 assertions across five settings and four document appearances without
 printer access. There are no failures, runtime/page errors or forbidden
 requests. These are synthetic, isolated checks, not acceptance of any complete
@@ -30,6 +32,12 @@ recorded Classic evidence, runtime reachability or role coverage, and normal
 startup stays Classic. `node tools/parity/ui_completion_audit.mjs` regenerates
 the measured coverage report in `ui-completion-audit.md`; its verdict is
 **not 100% complete**.
+
+The audit describes this verified snapshot, not concurrent working-tree edits.
+Authored DataWindow coverage is 271 of 8,740 definitions (3.10%); 8,469 still
+have no explicit surface. These counts measure authored presentation mappings,
+not the percentage of accepted business workflows. No defensible aggregate
+completion percentage is established by combining these different denominators.
 
 ### Previous DataWindow-calendar snapshot
 
@@ -259,14 +267,15 @@ a scoped Find mapping. Another 43 standard Code/Name entry windows now have
 synthetically verified outer layouts and control-local form/list mappings.
 Contact Group now also has an authored outer layout and contextual member grid,
 using the shared guarded choice editor. The entry registry therefore contains
-97 mappings (aging, Contact Group, Contact Card, 43 Code/Name entries and 51 richer masters),
-not 97 accepted workflows. The richer masters include Checklist Item, Shift, Tax Category,
+98 mappings (aging, Contact Group, Contact Card, 43 Code/Name entries and 52 richer masters),
+not 98 accepted workflows. The richer masters include Checklist Item, Shift, Tax Category,
 Relation, Disease Type, the item brand/colour/fabric/size/sleeve/style/yarn masters, Model,
 Rank, Site, Unit, County, Eye Vision, Generic Item Type, Godown Group, IOL Power, Item Design,
 Item Thickness, Resource Category, School, Surgery, Surgery Procedure, Ward, Author, Dosage
 Unit, Grade, Class, Item Class, Item Packing, Measuring Unit, Transport Route, Discharge
 Referral, Vehicle Type, PCT Codes, Tests, Item Meter, Biometric Machine, CRS Client List,
-Customer Sector, Dosage, Instruction, Precaution, Region, Route, Sale Type and Weighing Scale.
+Customer Sector, Dosage, Instruction, Precaution, Region, Route, Sale Type, Weighing Scale
+and Goods Company.
 Unmapped business windows still use labelled Classic compatibility layouts.
 These entry layouts are not accepted complete workflows;
 accepted production Modern business workflows remain zero.** Classic printing
@@ -1509,7 +1518,7 @@ Unit, Grade, Class, Item Class, Item Packing, Measuring Unit and Transport
 Route. Their original remarks, local dosage labels, numerical factors, measured
 quantities and transport charges are retained. The registry then had **82
 authored entry mappings** (79 single-entry: 43 Code/Name and 36 richer); the
-fifteen masters under "Additional single-entry masters" raise it to 97.
+sixteen masters under "Additional single-entry masters" raise it to 98.
 Metadata assertions now pass; none of these layouts establish complete business
 workflows. Grid-order regressions compare the reviewed declarations against the
 source objects' horizontal positions, independently of export-array order.
@@ -1551,8 +1560,8 @@ Production acceptance remains zero and Modern remains opt-in.
 
 ### Additional single-entry masters
 
-Fifteen more masters raise the registry to **97 authored entry mappings** (94
-single-entry: 43 Code/Name and 51 richer). Like the earlier masters, each uses
+Sixteen more masters raise the registry to **98 authored entry mappings** (95
+single-entry: 43 Code/Name and 52 richer). Like the earlier masters, each uses
 the standard single-entry outer layout with an explicit control-local Detail
 form on `dw_detail`, an explicit List grid in the recovered column order, and
 the hidden `dw_print` and `dw_listprint` companions marked auxiliary. Recovered
@@ -1566,6 +1575,7 @@ list wherever the source has one.
 | `w_pctcodes_form` | code, name, remarks | name, remarks |
 | `w_tests_form` | code, name, testprice | code, name |
 | `w_itemmeter_form` | code, name, description, currentreading | name, description, code, currentreading |
+| `w_goodscompany_form` | code, name, address1, address2, city, country, phone, fax, email | code, name |
 | `w_biometricmachine` | code, name, manufacturer, model, ipaddress, port | name, ipaddress, port, manufacturer, model, code |
 | `w_crs_clientlist` | code, name, address1, address2, phone, phone2, fax, email, web, cp, cpphone, cpmobile | the same twelve columns |
 | `w_custsector_form` | code, name, aliasname, description | name, aliasname, description, code |
@@ -1579,10 +1589,14 @@ list wherever the source has one.
 
 The both-mode single-entry fixture seeds, edits and checks every
 mapped field and computed serial for these windows as for the earlier masters,
-and its synthetic drafts honour each column's recovered edit mask. The
-single-entry appearance matrix is unchanged at 48 cases; the registry-level test
-asserts the 94, 43, 51 and 97 totals. These layouts are not accepted complete
-workflows.
+and its synthetic drafts honour each column's recovered edit mask. Goods
+Company's Phone column is `char(15)`; a prior 17-character synthetic draft
+correctly triggered validation. The fixture now uses a shorter literal-text
+sample and separately checks over-limit rejection, retained drafts and exact
+15-character acceptance in both modes. The registry-level test asserts the
+95, 43, 52 and 98 totals. Eight Goods Company Detail/List appearance cases
+increase the single-entry appearance matrix from 48 to 56. These layouts are
+not accepted complete workflows.
 
 ## Explicit Modern data-surface pilots
 
@@ -2239,21 +2253,28 @@ Current local evidence:
 
 | Check | Result and boundary |
 |---|---|
-| Authored coverage | 167 of 2,062 inventoried windows (8.10%; 9.11% of inherited control paths): 70 modal layouts (55 criteria, 5 native-field, 4 transaction, 4 calculator and 2 calendar) and 97 entry windows (94 single-entry: 43 Code/Name and 51 richer); 47 global DataWindow mappings |
-| Frontend, inventory and strict types | 793 frontend tests and 9 static-inventory tests pass; the strict presentation type check passes |
-| Full browser regression | 12,730 assertions and 781 appearances, plus 148 forced-color assertions; no failures, runtime/page errors, forbidden requests or native access |
+| Authored coverage | 168 of 2,062 inventoried windows (8.15%; 3,005 of 32,730 inherited control paths, 9.18%): 70 modal layouts (55 criteria, 5 native-field, 4 transaction, 4 calculator and 2 calendar) and 98 entry windows (95 single-entry: 43 Code/Name and 52 richer); 47 global DataWindow mappings |
+| Frontend, inventory and strict types | 796 frontend tests and 9 static-inventory tests pass; the strict presentation type check passes |
+| Full browser regression | 12,819 assertions and 789 appearances, plus 148 forced-color assertions; no failures, runtime/page errors, forbidden requests or native access |
+| Focused single-entry regression | All 95 registered masters in Classic and Modern: 4,007 assertions; Phone over-limit rejection and exact-boundary recovery included |
 | Focused print | 84 assertions, five settings and four document appearances; no printer access |
 | Static build | 67 production modules |
 | Generated audit | `ui-completion-audit.md`; verdict not 100% complete |
-| Production acceptance | Verified complete screens remain zero; the 1,895 other windows, about 8,470 DataWindows, the document/print catalog, the all-role pilot, per-window Classic evidence, packaged Windows/WebView2, authenticated PostgreSQL, assistive technology and hardware remain open |
+| Production acceptance | Verified complete screens remain zero; the 1,894 other windows, 8,469 DataWindows, the document/print catalog, the all-role pilot, per-window Classic evidence, packaged Windows/WebView2, authenticated PostgreSQL, assistive technology and hardware remain open |
 
-The full run for this snapshot is `final-candidate-evidence-1\result.json` (build
-`final-candidate-build-1`) and the focused print run is
-`final-candidate-print-1\print-result.json`, both session artifacts. A second full
-run on a byte-identical build produced the same totals. `--single-entry-only` is a
-focused-debugging flag that exercises only a fixed ten-master subset
-(`runSingleEntryChecks` in `presentation-browser.mjs`); the default full run opens
-every registered single-entry master in both modes.
+The full run for this snapshot is `goodscompany-complete-regression\result.json`
+(build `goodscompany-final-build`), with focused evidence in
+`single-entry-complete-verified\single-entry-result.json` and
+`goodscompany-final-print\print-result.json`, all session artifacts. The
+committed `--single-entry-only` runner now exercises every registered
+single-entry master in both modes, rather than a fixed debugging subset.
+Concurrent Email Template/fixture edits appeared during verification and
+remain uncommitted; this audit was generated from the frozen tested registry,
+not those newer edits.
+
+The previous `final-candidate-evidence-1\result.json` snapshot contained 167
+windows and passed 12,730 assertions/781 appearances; a second full run on a
+byte-identical build produced those same historical totals.
 
 Previous DataWindow-calendar evidence:
 
