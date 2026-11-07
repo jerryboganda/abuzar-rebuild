@@ -1,15 +1,428 @@
-# Agent handoff (2026-11-04)
+# Agent handoff (2026-11-06)
 
 Everything a new coding agent (opencode or another) needs to continue this work without the previous conversation.
 Read `CLAUDE.md` (rules), `README.md` (architecture), `docs/PARITY.md` (numbers), `docs/FIDELITY.md` (findings) and `docs/ROADMAP.md` first; this file is the state and the next steps.
 
+**UI enhancement remains incomplete.** Cashier closing, multiple-invoice cash
+tendering and category changes have scoped Modern modals and original-script synthetic coverage.
+Real authorization and database acceptance remain outstanding. Current counts,
+result paths and acceptance boundaries are maintained in
+`UI-ENHANCEMENT.md` under **Current local evidence**; do not reuse older handoff
+numbers as the latest result. The browser fixtures use synthetic records,
+with backend/external requests and native desktop access forbidden.
+It fixed source list ordering, Resource Category multiline, Grade decimal spin,
+non-erasable constructor properties, keyboard-event typing and Classic
+`aria-invalid` recovery. Real pointer tracing found two Modern cell handlers
+toggling a checkbox twice; the shared renderer now owns the only click route.
+Exact ItemChanged sequences cover F2/Space, field/marker clicks and return to
+keyboard use. Grid cells no longer inherit the form scroll margin that obscured
+full-width cells at 320px/200%. Lookup tests use real Tab traversal and correct
+content-box bounds. Appearance settings preserve uppercase, unaccepted drafts.
+Live TabSequence overrides still enable/disable the shared click route. Text
+redraw restores focus with `preventScroll`, retaining user-positioned ancestors;
+active multiline input and genuine form text-editor focus request post-paint
+field visibility. Genuine form radio focus also reveals the complete option label
+after painting; passive radio redraw retains scrolling. Grid, dropdown and checkbox
+focus do not request extra editor redraws.
+Browser checks cover typing after scrolling away and passive numeric/text
+redraw preserving deliberate scrolling. A deterministic paused-paint regression exposed stale
+grid focus restoration; the renderer now reads current focus just before DOM
+replacement, preserving newer cell focus and respecting focus outside the grid.
+
+Editable popup DDDWs now share a guarded display-text/key editor in both
+presentations. `d_arg_manf` and `d_arg_manf2` are explicit Manufacturer form
+mappings. Exact typed labels resolve before validation; explicit duplicate-row
+selection keeps its own key. GetText/SetText, ordered EditChanged, source
+keyboard/Enter continuations, IME, retry and stale recovery stay on the shared
+runtime path. Typing limits cannot reject longer explicitly selected labels.
+Case-insensitive source NULL initialization prevents numeric argument fields
+from starting as NaN. The source-customer search routine runs against synthetic
+child rows; source Enter/validation routes are controlled harnesses, not
+accepted sales/purchase workflows.
+
+The popup and input survive redraw independently of the child row. Classic
+asynchronous row fill no longer closes a focused popup or reclaims newer
+external focus. Real appearance checks now include the entire input/toggle
+and host, not just the popup; a separate preview control/view avoids native
+geometry overwriting narrow fixture bounds. Preview replacement and repeated
+close release only the owned control/view. Large popups use bounded,
+variable-height option windows and source-sized row budgets; full-set keyboard
+navigation retains source indices. The loaded choice array remains O(N).
+
+Twenty-seven criteria components now have explicit global mappings, bringing the
+global registry to forty-seven. The criteria fixture seeds nine original child
+definitions with synthetic rows and strips retrieval SQL. It covers readonly and
+editable captions, duplicate-key selection, veto/retry, source-zero-TabSequence
+dependencies, remarks limits/nulls and voucher/invoice order. Full child detail
+grids and owning report workflows remain separate work.
+Twenty-eight criteria owners now have complete mapped controls and original-script
+synthetic coverage. Item/date/top-customer selection retains both selector
+ancestors, alias procedure routing, sorted native selection, All, dates/count and
+exact key/flag returns. The count guard deliberately excludes transient search
+fields; all-items DataStore failure is visible and cancels. Native Sort resets
+the current row without focus events, preserving the original removal routine.
+Modern native controls keep a two-pixel themed focus outline while the concurrent
+Classic focus rule remains unchanged. Current source-matched evidence and all
+remaining release gates are in `UI-ENHANCEMENT.md`.
+Numeric date-mask entry and initial editor text now use the same source order,
+not the regional order beneath a day-first display. Unchanged date-only edits
+preserve stored times; changing a mask while typing retains the draft for recovery.
+Other temporal mask grammars retain the previous regional editor behavior and
+still need separate native equivalence work.
+
+Specified date, date-only and start/end date owners now retain every inherited
+control, including the empty hidden customer buffer and source-specific date
+visibility. The date-only Open still overrides the inherited preference with
+today, as its source does. Native datetime GetData reuses strict masked parsing:
+impossible dates/clocks return -1 without replacing the destination or text.
+Scoped preflight guards validate every consumed date before any return-field
+write. Rejection has focused feedback, `aria-invalid`, a themed error border and
+a dashed system-color border. Successful conversion clears stale invalid state,
+including after a mask-type change. Title-bar closing cannot reuse a previous
+success. No date-range ordering or source-absent Escape shortcut is added.
+The shared native KeyDown route now reaches original Enter/Handle/Send scripts;
+plain-control navigation skips CSS-hidden and disabled fields and follows
+positive-then-zero tab order. Source Enter navigation cannot also activate a
+default button. Both-mode checks cover hidden/disabled navigation and a synthetic
+default-button collision; real keyboard input covers correction, acceptance and
+explicit Cancel. Calendar popups and full native mask equivalence remain open.
+
+Fifteen additional single-lookup owners preserve their account/item/doctor/
+godown/manufacturer/patient/region/zone/sales-person/subaccount/supplier/user/
+customer-group bindings. Their selectors are context-local; the existing global
+manufacturer surface is reused, and the single-zone owner does not inherit a
+top-customer count buffer. Original external captions remain live accessible
+labels. Source editability, automatic subaccount list, width/row budgets,
+hidden dates and the supplier-label visible All option are retained.
+Suppression/hide return fields are Boolean despite their `i_` prefixes.
+Untouched null selections keep source semantics, including explicit godown and
+sales-person null-to-zero conversion. Edited invalid choices, rejected
+ItemChanged and invalid consumed dates cannot return stale success.
+The item criterion retains empty retrieval followed by insertion; failure
+reports its error and cancels before insertion. Machine/date dependent lookup,
+shared global item lookup and distributor export workflows remain separate work.
+
+Six additional transaction grids now have explicit detail and computed
+summary/footer mappings. Totals reuse source expressions and formatting,
+preserve empty/hidden semantics, and remain readonly without selecting fake
+columns. Filter/delete/reset and accepted/rejected input recalculate through
+the existing model. Horizontal containment now spans the whole table;
+short panes disable vertical stickiness, and source SetColumn restores the
+real record even from an offscreen total. Passive updates retain draft text,
+caret, focus, GetText and scrolling. Print preview retains Classic.
+These isolated buffers do not establish voucher posting or cashier settlement.
+
+The invoice picker now has a real `OpenWithParm` fixture with the recovered
+`s_dw_header`, shared caller buffer, original source routines and five exact
+translated SELECT statements. It covers optional blank cleanup, duplicate
+correction, invoice totals, missing/already-associated/unposted invoices,
+modify-mode exclusion, Cancel, Ctrl+I/Ctrl+D and Enter-to-return. Query
+recorders distinguish the caller transaction from `sqlca` and forbid all
+unexpected retrievals/writes. Synthetic success is not persistence/posting
+acceptance or a complete advance-sale flow.
+
+Cashier closing preserves source field order, conditional figures, lookup keys,
+six horizontal separators and closed-shift protection. Offline bytecode confirms
+three spurious returns blocked successful closing; the production class-fix hook
+removes them. Its two updates now retain dirty/original snapshots until closing,
+so a cash-write rollback cannot make retry omit the prior detail update.
+The 72-assertion fixture records exact translated queries, key-only detail and
+all-column cash-count predicates, separate server-date transactions and atomic
+synthetic commit/rollback. The authorization dialog supplies only a synthetic
+result; no credentials are tested. Eight appearance cases cover open/closed
+shifts, exact 100/200% text, narrow layouts and real keyboard/pointer input.
+
+Modern text activation now resolves its live cell after source-driven repaint,
+with stale-model/record/focus guards. The shared editor consumes Escape before
+removing the input, so it cannot also press the native Cancel button. Unconsumed
+DataWindow Escape reaches native Cancel only after its source key result allows
+it; return 1, changed focus and an already closing window suppress that fallback.
+Controlled delayed-key cases supplement the source-workflow fixture in both modes.
+
+Multiple-invoice cash tendering retains all six source controls, including its
+hidden Classic print companion through a guarded auxiliary binding. Header and
+cash mappings are context-local. The 101-assertion fixture uses original
+sale/return lookup, signed totals, tender validation, keyboard commands, owned
+transactions, native ProcCaller and exact SQL/RPC contracts. It records the
+source's per-document commits and preference-driven failure resets, not an atomic
+batch or guaranteed failed-draft retention. Single-document Print now runs:
+offline bytecode proved that the shared interpreter must retain a FOR counter's
+terminating value. Exit/Return still do not increment it.
+
+Shared pointer/Tab/Modern grid navigation now awaits RowFocusChanging and guards
+pending decisions against replaced rows, changed selection/lifetime and external
+focus. The final-blank-row veto and original Ctrl+I/Ctrl+D/Enter/Escape run in
+both modes; delayed admission and real pointer checks cover rejection without
+editing another record. Eight appearance cases cover sale/return and enlarged
+narrow layouts. Both original report selections and retrieve arguments reach a
+controlled print boundary; no printer or stored-procedure side effects are accepted.
+ModuleID >100 insertion, upstream cashier-job/shift flows and production settlement
+remain separate work. See the detailed cash-tendering section in UI-ENHANCEMENT.md.
+
+Category changes retain nine source fields, readonly/conditional protection,
+real account/code-table keys and original tender calculations. Strict synthetic
+SQL/RPC contracts separate the user-group query on `sqlca` from owned activity,
+account and permission operations. Scoped class-load guards reject pending or
+invalid input, failed data/permission loads and failed commits. Direct updates
+retain dirty/original snapshots and roll back failures. All failed Open exits
+return -1, including when input row ID 1 would otherwise resemble acceptance.
+Lost commit acknowledgment warns to check the document before retrying, retains
+the dialog and does not automatically repeat posting. These are intentional
+rebuild error-handling improvements, not bytecode-correction claims.
+
+Joined result columns use position when complete names are duplicated/aliased;
+complete unique names still support reordering, and partial named results retain
+their existing mapping. Account names therefore remain distinct from subaccount
+names. The category fixture's 112 assertions include zero/fractional tender,
+unchanged read-only saving and negative failed-Open returns. Repaint reveals previously visible form focus after reflow without undoing
+deliberate scrolling away; one-pixel admission tolerance accounts for CSSOM
+rounding, not a weaker final visibility assertion. The browser harness now
+registers production file/platform functions after system/window functions, so
+original Handle/Send are real. Native-field fixtures select windows by registry
+bindings rather than guessing whether a custom control descends from DataWindow.
+The category fixture's eight cash/credit appearances include real Enter,
+account selection and two-stage Escape. Complete cashier workflow, alternative
+insertion, native/database and hardware acceptance remain outstanding.
+
+This exposed shared keyboard and draft defects: unhandled DataWindow keys
+now reach their source event, Classic Escape retains DataWindow focus, and
+TriggerEvent/PostEvent normalize parsed event enums. Source button Enter
+handlers own activation instead of also receiving a duplicate browser click.
+Modern drops an invalidated but untouched text editor without a recovery
+interruption; changed text remains copyable in both modes after deletion,
+including after repaint. The plain-text configuration guard uses the same
+record/column identity check as commit, not a blanket choice-editor check.
+
+The registry contains 82 entry mappings (79 standard singles), forty-four global
+DataWindow mappings and nineteen modal layouts (six criteria dialogs, five native-field dialogs,
+four calculators, the associated-sale invoice picker, cashier closing, cash tendering
+and category changes).
+The criteria registry binds complete inherited argument-window trees plus
+Quotation/Customer and Packing Layout. Native hidden options/date rows remain
+live; the price selector is context-local. The source-workflow fixture explicitly
+substitutes preferences, group lookup and retrieval records. Scoped guards
+retain rejected drafts, close failed retrievals with cancellation values and
+preserve the completed return against stale closes without blocking active Close
+handlers. Native/database/report/calendar
+acceptance remains separate; see `UI-ENHANCEMENT.md` for current evidence.
+The calculators are `w_discountcalculator`, `w_pricecalculator`,
+`w_qty_rate_value_calculator` and `w_set_flatdiscamt`; their 28 source
+field/calculation bindings are context-local, not global mappings. Explicit
+form groups preserve source caption/visibility semantics and exact membership.
+The discount calculator uses guarded native radios in both presentations, source
+Flat/Percentage keys and unchanged validation/return scripts. Hidden source
+fields stay hidden. Native options scale with text and use themed focus outlines.
+Pointer activation preserves index zero; Tab-only entry selects the source column
+without inventing Clicked. Acceptance/Escape cannot reopen the editor, and
+Classic backward navigation now reads live field eligibility and TabSequence.
+Original Open/ItemChanged/ItemError/OK/Cancel routines run against strict
+synthetic query results and precision preferences; no financial formulas are
+duplicated in the UI. Preview activation snapshots and restores the live
+runtime state each time, so cleanup cannot erase subsequently registered routes.
+The current appearance-case counts and result paths are maintained in
+`UI-ENHANCEMENT.md`, including the complete criteria-window matrix.
+Mappings are not accepted workflows. CI, native/hardware,
+printing and production workflow gates remain open. Do not reuse the old
+143/518 result as current evidence. The chronological authoring notes below
+retain their original counts and verification deferral; the current results
+above supersede those "unrun" notes.
+
+Shared selectors now cover focus-open ShowList, the sole recovered editable
+DDLB and all four left-caption checkboxes. Five further global mappings are
+`d_arg_genericitemtype`, `d_changeitem_price_marginbased`, `d_change_purinv`,
+`d_customer_category` and `d_stockleder_inputs`. Explicit bindings retain
+editing/case, sort, automatic-opening and caption-placement contracts.
+The new source fixtures exercise corrected freeform values during pending
+acceptance, actual three-column detail browsing, single pointer/Space
+activation, source protection, rejected drafts and stale-policy recovery.
+The email Subject auto-opening example is fixture-only, not a global mapping.
+No recovered DDDW enables HSplitScroll; dynamic split requests remain guarded.
+The purchase due-date Date result with a mixed date/time mask still renders
+literal hour tokens in the shared formatter. Verify original PB formatting
+before changing it; do not change the source RelativeDate formula or mask.
+
+Full editable transaction lookup layouts, inline multi-column/split selectors,
+unsupported radio variants, remaining transaction
+definitions and grouped/trailer bands, runtime band-height/computed-expression
+replacement and complete sale/purchase/cashier workflows remain
+unfinished. Accepted production Modern workflows and Modern print templates
+remain zero. The latest local evidence is in the session's
+`presentation-selectors-shared-final` directory, including real selector and payment
+row-veto checks. `presentation-category-boundaries` separately records all 112
+category assertions and eight appearances. `presentation-selector-variants-layout`
+records the focused selector run: 336 assertions and 36 appearances.
+The focused runners
+`--editable-lookups-only`, `--transaction-bands-only` and
+`--associated-invoices-only`, `--cashier-only`, `--payment-only` and `--category-only` exercise both modes and appearance cases but cannot
+replace the complete regression suite.
+
+Current additions include correct
+ItemChanged/ItemError outcomes, caller-scoped reentrant AcceptText, required/null
+search semantics, typed temporal input, text limits, source-directed focus,
+external-blur draft retention and visible default DBError handling.
+`presentation-entry-workflow.mjs` now authors original aging New/Delete/Save
+paths against a strict in-memory SQL recorder, including uniqueness, master-key
+propagation and rollback. It is not real persistence acceptance.
+The entry registry now adds 43 exact `w_single_entry` Code/Name windows with
+context-only form/list bindings and all 22 inherited controls retained.
+Shared input now honors Edit.Case, AutoSelect and IME completion; SetText
+normalizes drafts without rewriting stored SetItem values. The Modern radio
+focus rule now overrides the legacy inline outline. New catalog, both-mode
+browser and eight single-entry appearance cases are authored but unrun.
+The browser fixtures execute selected ancestor UI scripts, not the concrete
+windows' save/retrieve/print workflows. The 43 mappings are not accepted
+production workflows. See the standard-entry section for exact boundaries.
+The next authored slice adds guarded native code-table/lookup selection and
+the Contact Group outer/member layout: 45 entry mappings in total, still zero
+accepted production workflows. Selected keys retain their types and pending
+native text bindings; rejection, retry, redraw, pointer/keyboard navigation,
+record/configuration changes and child invalidation are guarded. Native child
+controls are now owned by their parent control and invalidated on replacement
+or destruction; late child definition loads cannot revive them.
+New helper/native and both-mode browser cases execute the recovered contact
+member validation/copying routines with synthetic rows. Twelve additional
+Contact Group appearance cases are authored but unrun.
+The subsequent slice adds the reviewed eleven-column `ddd_contactcardlist`
+browser beside the native select: F4/Alt+Down, loaded-value search, 50-row
+pages and expandable details. It uses the tracked presenter and the same
+guarded choice acceptance; it does not mutate or retrieve the child.
+Hidden fields are excluded, unsupported child layouts warn and retain the
+basic list, and stale details/metadata cannot be committed. Child destruction
+notifies the owner once; owner changes/disposal cancel the browser without
+stealing retained-draft focus. The new generic browser fixture covers 10,003
+synthetic rows and asynchronous/error cases. Contact integration and four
+Lookup appearance cases are also authored (sixteen Contact Group cases total).
+No new checks have run. This is one reviewed lookup, not all dropdown variants;
+Contact Group open/selection/SQL/save/print workflows remain open.
+The preceding slice adds native two-value checkbox editing through the same
+guarded choice state machine. Focus/Tab/F2/redraw do not toggle; pointer/Space
+activation, retained rejection, SetText and queued destinations use shared
+validation and identity checks. Mixed/unknown stored values are preserved.
+Inactive text properties cannot rewrite checkbox keys. Checklist Item, Shift
+and Tax Category now have explicit form/list mappings, including the original
+checkbox codes, computed row number and label/order quirks: 46 single-entry
+and 48 total entry mappings. New helper/metadata and both-mode browser cases
+are authored; 24 additional appearance cases bring the single-entry matrix
+to 32. None have run. Concrete-window business queries, persistence and print
+remain outside these fixtures. Do not treat mapping counts as acceptance.
+Contact Card brought the registry to 49 entry mappings at that point. Its eleven-field
+detail/list layouts retain all 24 controls and the hidden print companion.
+Sorted Title/SMS choices preserve slash-containing keys and stable duplicate
+ordering. Address uses the shared multiline editor with CRLF-aware live text,
+selection/scroll retention, deferred IME redraw and copyable recovery in both
+modes. Enter retains the source handler; Shift+Enter intentionally adds a line.
+Helper/metadata and both-mode browser cases are authored, including the original
+account-copy routine with three whitelisted statements and synthetic recorded
+query results. Twelve Contact Card appearance cases are added. No new checks
+have run; native collation/keyboard equivalence, real SQL and complete
+open/save/retrieve/print workflows remain unaccepted.
+
+Relation and thirty-two additional masters now have control-local mappings,
+retaining source fields, list order and `GetRow()` serials where present. The
+authored registry now has 82 mappings (79 single-entry).
+Metadata assertions now pass, including source-position ordering and mixed-case
+Dataobject identifiers. Browser fixtures seed and edit all additional fields,
+test serials and source mnemonics, and add Resource Category/Grade cases; the
+single-entry appearance matrix now has 48 cases. Shared steppers accept decimal
+storage with safe integer bounds/increments and preserve exact drafts. Enter
+retains its source route; Shift+Enter is the explicit multiline gesture.
+The browser run exposed an unstubbed replacement contact-child retrieval:
+the fixture now supplies synthetic rows and fails if a scenario leaks dialogs.
+The full synthetic browser matrix now passes; no complete production runtime
+acceptance is claimed. The fixture uses real Handle/Send bindings for recovered
+Contact Card Enter-to-Tab, preserves editing-row identity in destination tests,
+and isolates scenarios so leaked dialogs fail at their source.
+See `docs/UI-ENHANCEMENT.md` for exact current boundaries. Preserve shared
+checkout changes; no commit, push, deployment or Modern-default release is
+authorized by the uninterrupted-work request.
+
 **UI enhancement update:** the user has now approved planning and phased work on
 Classic/Modern presentation, superseding the earlier "enhancements later" scope
 for UI/UX only. `PRODUCT.md` records the decisions; `docs/UI-ENHANCEMENT.md`
-records the static inventory, synthetic all-role prototype, and remaining gates.
-Modern is not integrated or released. Preserve Classic and the shared business
-engine; obtain prototype approval before broad migration. No commit, push,
-release, or deployment is authorized by design approval.
+records the static inventory, synthetic all-role prototype, opt-in runtime
+foundation and remaining gates. The user subsequently directed autonomous
+implementation, so another prototype-approval prompt is not blocking progress.
+`?app=1&presentation=1` enables the post-login workspace host; ordinary startup
+is still Classic. Shared edit/validation, typed host calls, scoped preferences,
+tabs, live command search and accessible message/prompt dialogs are implemented.
+Existing response windows now have native modal containment with nested-dialog
+focus/activation restoration. Seven explicitly mapped DataWindow components now
+have Modern forms/lists, shared validation, retained drafts, synchronous
+AcceptText ownership and bounded 10,000-row list rendering. Model clearing,
+replacement and readonly changes cannot redirect an unapplied Modern entry.
+The aging-interval detail pilot includes readonly serial/comparison calculations,
+editable limits, hidden-key preservation and separate presentation/data-column
+focus. Explicit SetColumn, even to the same column, overrides calculated-cell
+navigation without adding ItemFocusChanged. Modern numeric stepping now uses
+actual bounds/increments, named buttons and unmodified Up/Down in the editor.
+Drafts, grouped input, rejection/cancellation, runtime configuration and model
+replacement are covered. Full aging-window validation/save, nonnumeric spin
+variants and Classic/native stepping parity remain open.
+Five response dialogs now have full Modern layouts retaining the original
+controls and scripts (`window-surfaces.ts`, `modern-window.ts`). Dynamic titles,
+field-derived modal names, visibility/enabled state, CloseQuery and numeric
+return channels are covered. Original `ue_keydown` alias/native parity remains
+open; no new shortcut semantics were invented.
+Form-tab pointer transitions in both presentations first accept active editors
+and await pending field validation, then run the recovered SelectionChanging
+guard, including Cancel and failed-save cancellation. Rejection keeps the page
+and Modern draft; waiting does not duplicate ItemChanged. Modern
+adds manual keyboard activation, live tab/panel semantics and hidden-focus
+recovery. Tests execute the actual inherited confirmation scripts with synthetic
+save/list outcomes; they do not prove database commits. Programmatic
+SelectedTab/SelectTab and initial-tab event parity remain open.
+Shared text inputs now deliver ordered EditChanged notifications. Recovered
+scripts enable Save while typing and drive ascending-text Find selection and
+Detail/menu availability. GetText/SetText own the live draft by model/row/column;
+SetText and focus changes preserve unaccepted text without inventing input
+events. Script-corrected rejection, queued-input acceptance, failure/correction,
+message-box blur safety and cancellation on close are covered in both modes.
+Native acceptance fails conservatively while busy; this is not full native
+reentrancy parity. Cancellation invalidates queued work, not a running routine.
+The aging-entry outer layout now reflows its exact 23 inherited control paths,
+including sort/filter controls, original Find labels/instructions and hidden
+auxiliaries. Structural mismatches retain the entire Classic layout; Find is
+mapped only inside an accepted entry layout. Native dropdown selection/SelectItem
+now synchronize Text, enabling the actual filter/unfilter and ascending-sort
+scripts with synthetic rows. Radio groups no longer interfere across windows.
+`ddlb_data.AllowEdit = true` now uses a real editable combo in both modes.
+Typed Text does not invent a selection; Modified finishes an edit, while
+list acceptance uses SelectionChanged. Per-control notification sequencing,
+dynamic state/focus, native text replacement, reset/insert/delete/sort,
+error reporting and disposal are covered. The recovered filter-column
+population and freeform/listed-value filtering run on synthetic rows.
+This is still a layout pilot: exact native message/locale behavior, other list
+families and original database validation/save remain open.
+Native chrome is now wired through Tauri's public global window API with the
+main-window-only theme permission. Requests serialize across hosts; Classic
+restores Light, Modern System passes null, errors are visible and Save retries.
+This is unit/mocked-bridge evidence, not packaged Windows verification.
+Local UI evidence: 143 frontend tests, nine static inventory tests, strict type
+checking, and 518 runtime browser assertions plus four workspace viewports,
+nine component, eight dialog, eight entry and four editable-dropdown
+appearance/contrast cases (minimum observed text contrast 6.18:1). The metadata-only script analyzer
+records 53,976 dependency sites in 37,792 parsed routines; these are migration
+candidates, not runtime coverage. Commands and limitations are in
+`docs/UI-ENHANCEMENT.md`.
+Other outer business windows remain labelled compatibility layouts. Neither the
+component pilots, five synthetic-tested dialog layouts nor authored entry layouts establish accepted
+production Modern workflows; those and verified Modern print templates remain
+zero. See `DESIGN.md` for tokens.
+No commit, push, release, or deployment is authorized by design approval.
+
+Current complete-window candidate: `w_agingintervals` inherits 23 control paths,
+including Detail/List tabs, filter/sort controls, `d_find`, and hidden item-list
+and footer controls. Its outer layout is now mapped, but three mapped DataWindows
+alone were not the full window. Editable filter values are now supported, including
+keyboard/pointer popup operation at 200% text and narrow effective widths.
+Ordered EditChanged and active live-text ownership are now implemented and
+verified, including the original Save and ascending-text Find routines. Remaining
+shared-editor boundaries: no-active-editor/DataStore text methods still use the
+model fallback; native reentrant/no-object AcceptText, other Find branches and
+selector editors need characterization. Do not count this isolated synthetic
+fixture as complete aging-window validation, SQL-save or production acceptance.
+`reports/w_arg_date` is also not a simple date dialog: it inherits list/category
+selection and uses `d_arg_class`. Do not map either from its name alone.
 
 ## 1. The goal
 

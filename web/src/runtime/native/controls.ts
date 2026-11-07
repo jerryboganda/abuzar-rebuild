@@ -2,9 +2,10 @@
 import { PBObject, PBStruct } from '../object.ts'
 import type { Member } from '../object.ts'
 import type { Runtime } from '../interp.ts'
-import { PBArray, PBDateTime, toNum, toStr } from '../values.ts'
+import { PBArray, PBDateTime, compareLabels, toNum, toStr } from '../values.ts'
 import { Ref } from '../interp.ts'
 import { readFileBytes } from '../sysfiles.ts'
+import { numericDateMask, parseMaskedDateTime } from '../sysfuncs.ts'
 
 /** the automation object of an OLE control whose server is not installed here (fingerprint reader, ActiveX viewers): every call fails with -1,
  *  so the window opens and the device features report an error instead of the whole window failing */
@@ -54,8 +55,8 @@ export class NControl extends PBObject {
         this.dropdownTextVersion++
         if (this.props.get('allowedit') === true) this.props.set('_selected', 0)
       }
-      if (name === 'sorted' && value === true) this.sortDropdown()
     }
+    if (name === 'sorted' && value === true) this.sortItems()
     this.changed()
     // PowerBuilder tab pages fill the tab control's client area.  Scripts read
     // `tabpage_detail.height` to lay out their children (the Item form sets
@@ -93,6 +94,18 @@ export class NControl extends PBObject {
     if (!(ref instanceof Ref)) return -1
     const text = toStr(this.props.get('text'))
     const cur = ref.get()
+    const mask = toStr(this.props.get('mask'))
+    if (this.native === 'editmask' && this.props.get('maskdatatype') === 5 && numericDateMask(mask)) {
+      const value = parseMaskedDateTime(text, mask)
+      if (!value) {
+        this.props.set('_invaliddata', true)
+        this.changed()
+        return -1
+      }
+      if (this.props.delete('_invaliddata')) this.changed()
+      await ref.set(value)
+      return 1
+    }
     // EditMask.GetData fills a typed variable.  The target may be a struct
     // member (report arguments), whose declared type is often a legacy
     // longlong placeholder even when the value is a date.  Parse date-looking
@@ -107,6 +120,7 @@ export class NControl extends PBObject {
       await ref.set(PBDateTime.fromJs(new Date(+iso[1], +iso[2] - 1, +iso[3], +(iso[4] ?? 0), +(iso[5] ?? 0), +(iso[6] ?? 0))))
     } else if (typeof cur === 'number') await ref.set(Number(text.replace(/,/g, '')) || 0)
     else await ref.set(text)
+    if (this.props.delete('_invaliddata')) this.changed()
     return 1
   }
   /** the window that contains this control */
@@ -226,11 +240,11 @@ export class NControl extends PBObject {
     }
     return a
   }
-  private sortDropdown(inserted = -1): number {
-    if (this.native !== 'dropdownlistbox' || this.props.get('sorted') !== true) return inserted
+  private sortItems(inserted = -1): number {
+    if (!['listbox', 'dropdownlistbox'].includes(this.native) || this.props.get('sorted') !== true) return inserted
     const selected = toNum(this.props.get('_selected') ?? 0) - 1
     const entries = this.items().a.map((value, index) => ({ value, index }))
-    entries.sort((a, b) => toStr(a.value).localeCompare(toStr(b.value), undefined, { sensitivity: 'base' }))
+    entries.sort((a, b) => compareLabels(a.value, b.value))
     this.items().a.splice(0, this.items().a.length, ...entries.map((entry) => entry.value))
     this.props.set('_selected', entries.findIndex((entry) => entry.index === selected) + 1)
     return entries.findIndex((entry) => entry.index === inserted)
@@ -277,32 +291,34 @@ export class NControl extends PBObject {
       return this.lvItems().length
     }
     this.items().a.push(toStr(t))
-    const index = this.sortDropdown(this.items().a.length - 1)
+    const index = this.sortItems(this.items().a.length - 1)
     this.changed()
     return index + 1
   }
   async n_insertitem(t: unknown, at: unknown): Promise<number> {
     const index = Math.min(this.items().a.length, Math.max(0, toNum(at) - 1))
     this.items().a.splice(index, 0, toStr(t))
-    if (this.native === 'dropdownlistbox') {
+    if (['listbox', 'dropdownlistbox'].includes(this.native)) {
       const selected = toNum(this.props.get('_selected') ?? 0)
       if (selected > index) this.props.set('_selected', selected + 1)
     }
-    const position = this.sortDropdown(index)
+    const position = this.sortItems(index)
     this.changed()
-    return this.native === 'dropdownlistbox' ? position + 1 : this.items().a.length
+    return ['listbox', 'dropdownlistbox'].includes(this.native) ? position + 1 : this.items().a.length
   }
   async n_deleteitem(at: unknown): Promise<number> {
     const a = this.items().a
     const i = toNum(at) - 1
     if (i < 0 || i >= a.length) return -1
     a.splice(i, 1)
-    if (this.native === 'dropdownlistbox') {
+    if (['listbox', 'dropdownlistbox'].includes(this.native)) {
       const selected = toNum(this.props.get('_selected') ?? 0)
       if (selected === i + 1) {
         this.props.set('_selected', 0)
-        this.props.set('text', '')
-        this.dropdownTextVersion++
+        if (this.native === 'dropdownlistbox') {
+          this.props.set('text', '')
+          this.dropdownTextVersion++
+        }
       } else if (selected > i + 1) this.props.set('_selected', selected - 1)
     }
     this.changed()

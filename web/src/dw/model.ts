@@ -69,7 +69,7 @@ export class DwModel implements EvalHost {
   /** crosstab: new column indexes of the replicated columns of each value */
   xt: number[][] = []
   computes = new Map<string, DwObject>()
-  overrides = new Map<string, string>() // modify(): "object.property" -> value
+  overrides = new Map<string, string>() // "object.property" -> value
   trans: DwTrans | null = null
   row = 0 // current row (1-based, 0 = none)
   col = 0
@@ -140,6 +140,7 @@ export class DwModel implements EvalHost {
     // price type in ue_postopen, then ue_newform inserts the header row)
     const ov = this.overrides.get(`${col.name.toLowerCase()}.initial`)
     const ini = ov !== undefined ? ov : col.initial
+    if (ini?.trim().toLowerCase() === 'null') return null
     switch (this.kinds[i]) {
       case 'string':
         return ini !== undefined && ini !== '' && ini !== 'null' ? ini : null
@@ -393,12 +394,12 @@ export class DwModel implements EvalHost {
       if (this.baseDef.crosstab) return await this.pivotResult(res)
       const map: number[] = this.colNames.map((_, i) => i)
       if (res.columns.length) {
-        // Result columns are in the order of the DataWindow columns.  A DDDW's
-        // SQL often renames a column (Name -> customer_name) while keeping the
-        // same count; mapping those by name nulls the column.  Use position
-        // when the counts match, and fall back to names only when they differ.
+        // Complete unique names can be reordered. Joined/renamed columns use
+        // source order when counts match; duplicate SQL names must not overwrite
+        // a distinct DataWindow column (Accounts.Name and SubAccounts.Name).
         const byName = res.columns.map((c) => this.colIdx.get(c.name.toLowerCase()) ?? -1)
-        if (res.columns.length !== this.colNames.length || byName.every((x) => x >= 0)) {
+        if (res.columns.length !== this.colNames.length ||
+          byName.every((x) => x >= 0) && new Set(byName).size === this.colNames.length) {
           for (let k = 0; k < res.columns.length; k++) map[k] = byName[k]
         }
       }
@@ -564,8 +565,16 @@ export class DwModel implements EvalHost {
   }
 
   async update(accept = true, resetFlag = true): Promise<number> {
-    if (!this.trans || !this.trans.db) return -1
-    if (accept) await this.acceptText()
+    if (!this.trans || !this.trans.db) {
+      this.lastError = 'No database connection is available. The changes have not been saved.'
+      this.trans?.setError(-1, this.lastError)
+      return -1
+    }
+    if (accept && await this.acceptText() === -1) {
+      // The editor owns validation feedback; no SQL or database error occurred.
+      this.lastError = ''
+      return -1
+    }
     const stmts = this.buildUpdate()
     try {
       for (const s of stmts) {
@@ -598,8 +607,10 @@ export class DwModel implements EvalHost {
     this.touch()
   }
 
-  /** hook for the visual control: push the text of the cell being edited into the buffer */
-  acceptText: () => Promise<number> = async () => 1
+  /** Script drafts also exist in DataStores and before a visual editor is mounted. */
+  acceptScriptText: (() => Promise<number>) | null = null
+  /** Visual editors wrap this hook, retaining the same nonvisual acceptance contract. */
+  acceptText: () => Promise<number> = async () => this.acceptScriptText ? this.acceptScriptText() : 1
 
   // ---------------------------------------------------------------- find / filter / sort
   async find(expr: string, start: number, end: number): Promise<number> {
@@ -816,10 +827,27 @@ export class DwModel implements EvalHost {
     return '!'
   }
 
-  /** modify("col.prop=value col2.prop=value ...") - returns '' on success, the message on error like PowerBuilder */
-  /** Modify(`col.Visible=...`) calls in the order they were made (see DwView.gridPlan) */
+  /** Visibility changes in assignment order (see DwView.gridPlan). */
   visLog: { name: string; on: boolean }[] = []
 
+  /** Object-property assignments carry literal values, not Modify command text. */
+  setProperty(property: string, value: string): void {
+    this.applyProperty(property, value)
+    this.touch()
+  }
+
+  private applyProperty(property: string, value: string): void {
+    const key = property.toLowerCase()
+    if (/\.(visible|protect)$/.test(key)) value = /^(no|false)$/i.test(value) ? '0' : /^(yes|true)$/i.test(value) ? '1' : value
+    const visibility = /^(.+)\.visible$/.exec(key)
+    if (visibility) this.visLog.push({ name: visibility[1], on: value !== '0' })
+    this.overrides.set(key, value)
+    if (key === 'datawindow.table.select') this.retrieveSqlOverride = value
+    else if (key === 'datawindow.table.sort') this.sortText = value
+    else if (key === 'datawindow.table.filter') this.filterText = value
+  }
+
+  /** modify("col.prop=value col2.prop=value ...") - returns '' on success, the message on error like PowerBuilder */
   modify(text: string): string {
     // split on whitespace that is followed by "name.prop=" (values may be quoted and contain spaces)
     const re = /([A-Za-z_#][\w.#\[\]]*?)\s*=\s*("(?:[^"]|~")*"|'(?:[^']|~')*'|\S+)/g
@@ -827,16 +855,7 @@ export class DwModel implements EvalHost {
     while ((m = re.exec(text)) !== null) {
       let v = m[2]
       if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) v = v.slice(1, -1)
-      const key = m[1].toLowerCase()
-      // `visible` and `protect` are read as 1 / 0: scripts assign booleans (`object.headerno.visible = false` arrives as `no`)
-      if (/\.(visible|protect)$/.test(key)) v = /^(no|false)$/i.test(v) ? '0' : /^(yes|true)$/i.test(v) ? '1' : v
-      // the order of the visibility changes: a grid puts a column that is switched on at the end of the visible ones
-      const vis = /^(.+)\.visible$/.exec(key)
-      if (vis) this.visLog.push({ name: vis[1], on: v !== '0' })
-      this.overrides.set(key, v)
-      if (key === 'datawindow.table.select') this.retrieveSqlOverride = v
-      else if (key === 'datawindow.table.sort') this.sortText = v
-      else if (key === 'datawindow.table.filter') this.filterText = v
+      this.applyProperty(m[1], v)
     }
     this.touch()
     return ''

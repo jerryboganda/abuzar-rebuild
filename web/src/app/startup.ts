@@ -23,6 +23,16 @@ export interface AppConfig {
 
 export const DEFAULT_CONFIG: AppConfig = { company: '', server: 'localhost', database: 'trader', appVersion: 0, computer: 'WORKSTATION' }
 
+export interface AuthenticatedPresentationContext {
+  appUser: string
+  config: Readonly<AppConfig>
+}
+
+export interface StartupOptions {
+  /** Called after successful login closes and before any post-login business window opens. */
+  onAuthenticated?: (context: AuthenticatedPresentationContext) => Promise<void>
+}
+
 export function applyConfig(rt: Runtime, c: AppConfig): void {
   const g = rt.globals
   g.set('gs_company', c.company)
@@ -46,7 +56,7 @@ export async function postLoginStatements(rt: Runtime): Promise<{ decls: Stmt[];
   return { decls: open.body.filter((s) => s.k === 'decl'), tail: open.body.slice(at), idx: 0 }
 }
 
-export async function startApplication(rt: Runtime, cfg: AppConfig = DEFAULT_CONFIG): Promise<boolean> {
+export async function startApplication(rt: Runtime, cfg: AppConfig = DEFAULT_CONFIG, options: StartupOptions = {}): Promise<boolean> {
   applyConfig(rt, cfg)
   const app = await rt.instantiate('traderappv1')
   rt.globals.set('traderappv1', app)
@@ -69,6 +79,12 @@ export async function startApplication(rt: Runtime, cfg: AppConfig = DEFAULT_CON
   if (msg.props.get('doubleparm') !== 1) return false
   const user = rt.globals.get('gl_usercode')
   if (user !== undefined && user !== null) await setAppUser(String(user)) // audit trail
+  if (options.onAuthenticated) {
+    if ((typeof user !== 'number' && typeof user !== 'string') || !String(user).trim() || (typeof user === 'number' && !Number.isFinite(user))) {
+      throw new Error('Presentation selection requires the authenticated application user.')
+    }
+    await options.onAuthenticated({ appUser: String(user), config: Object.freeze({ ...cfg }) })
+  }
   const pl = await postLoginStatements(rt)
   if (!pl) throw new Error('traderappv1.open has no post-login section')
   const open = (await rt.getClass('traderappv1'))!.routines.get('traderappv1')!.get('open')![0]

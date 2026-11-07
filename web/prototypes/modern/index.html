@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en" data-theme="light" data-density="compact">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Trader Modern - design prototype</title>
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+<!-- THESIS: A working counter and back office, not a dashboard of decorative cards.
+OWN-WORLD: Windows system type, restrained blue actions, precise ruled tables, paired light/dark surfaces.
+STORY: Find a task, keep its place, read the business state, and act deliberately.
+FIRST VIEWPORT: Module rail, workspace tabs, transaction grid, adjacent totals, explicit action bar.
+FORM: User-pinned Windows-familiar tabbed workspace. Synthetic prototype only; no business runtime. -->
+<a class="skip" href="#workspace">Skip to workspace</a>
+<svg class="symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <symbol id="i-sale" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16M8 13h3M8 16h7"/></symbol>
+  <symbol id="i-purchase" viewBox="0 0 24 24"><path d="M4 8l8-4 8 4v11H4zM4 8l8 4 8-4M12 12v7"/></symbol>
+  <symbol id="i-inventory" viewBox="0 0 24 24"><path d="M4 4h16v16H4zM4 12h16M12 4v16M7 8h2M15 8h2M7 16h2M15 16h2"/></symbol>
+  <symbol id="i-accounts" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 7h6M9 11h6M9 15h3"/></symbol>
+  <symbol id="i-reports" viewBox="0 0 24 24"><path d="M4 4v16h16M8 16v-5M13 16V7M18 16V4"/></symbol>
+  <symbol id="i-documents" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6zM14 3v5h4M9 12h6M9 16h6"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="15" cy="17" r="3"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10" cy="10" r="6"/><path d="M15 15l5 5"/></symbol>
+</svg>
+<div class="app">
+  <header class="app-header">
+    <div class="brand"><span class="brand-mark" aria-hidden="true">W</span><strong>Waseela <span>Trader</span></strong></div>
+    <span class="preview-notice">Design prototype / Synthetic data <span class="notice-detail">/ No database connection</span></span>
+    <button class="quiet header-settings" data-open="settings"><svg><use href="#i-settings"/></svg>Appearance</button>
+  </header>
+  <aside class="sidebar" aria-label="Modules">
+    <label class="nav-search"><svg aria-hidden="true"><use href="#i-search"/></svg><input id="nav-search" type="search" placeholder="Find a workspace" aria-label="Find a workspace"></label>
+    <nav id="module-nav">
+      <button data-open="sale" class="selected" aria-current="page"><svg><use href="#i-sale"/></svg>Sales</button>
+      <button data-open="purchase"><svg><use href="#i-purchase"/></svg>Purchase</button>
+      <button data-open="inventory"><svg><use href="#i-inventory"/></svg>Inventory</button>
+      <button data-open="accounts"><svg><use href="#i-accounts"/></svg>Accounts</button>
+      <button data-open="reports"><svg><use href="#i-reports"/></svg>Reports</button>
+      <button data-open="documents"><svg><use href="#i-documents"/></svg>Documents</button>
+      <button data-open="settings"><svg><use href="#i-settings"/></svg>Appearance</button>
+    </nav>
+    <p id="nav-empty" hidden>No matching workspace.</p>
+    <div class="sidebar-note"><strong>One app. Your workspace.</strong><p>Classic remains available.<br>Business rules stay shared.</p></div>
+    <div class="demo-user"><span aria-hidden="true">D</span><div><strong>Demo workspace</strong><small>All roles / Synthetic records</small></div></div>
+  </aside>
+  <main id="workspace" tabindex="-1">
+    <div class="workspace-tabs" role="tablist" aria-label="Open workspaces"></div>
+    <section id="page-sale" class="page" role="tabpanel" aria-labelledby="tab-sale">
+      <div class="page-heading"><div><h1>Cash Sale</h1><p>Enter items, review the amount, then save and post.</p></div><span class="state">Unsaved example</span></div>
+      <div id="sale-errors" class="error-summary" role="alert" tabindex="-1" hidden></div>
+      <div class="transaction-layout">
+        <div class="transaction-body">
+          <div class="field-band">
+            <label class="wide">Customer<select><option>Sample walk-in customer</option><option>Sample account customer</option></select></label>
+            <label>Godown<select><option>Sample main godown</option></select></label>
+            <label>Date<input type="date" value="2026-01-15"></label>
+            <label>Price type<select><option>Sale Price 1</option><option>Sale Price 2</option></select></label>
+          </div>
+          <div class="section-toolbar"><h2>Sale items <span id="sale-count" class="count">3</span></h2><button class="secondary" data-picker="sale">Add an item</button></div>
+          <div class="table-scroll">
+            <table class="entry-table" id="sale-table"><caption class="sr-only">Synthetic cash sale items. Edit quantities and prices to preview totals.</caption><thead><tr><th scope="col">Item</th><th scope="col">Pack</th><th scope="col" class="num">Qty</th><th scope="col" class="num">Price</th><th scope="col" class="num">Amount</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead><tbody></tbody></table>
+            <div class="empty-state" id="sale-empty" hidden><h3>No items yet</h3><p>Add a sample item to preview the entry flow.</p></div>
+          </div>
+          <div class="table-note">Illustrative prices only. Item lookup and scanner behavior will use the shared engine in the integrated app.</div>
+          <label class="notes">Notes<textarea rows="2" placeholder="Optional notes for this example"></textarea></label>
+        </div>
+        <aside class="summary-panel" aria-label="Sale summary">
+          <h2>Sale summary</h2>
+          <dl><div><dt>Items</dt><dd id="summary-items">3</dd></div><div><dt>Subtotal</dt><dd data-total="sale">730.00</dd></div><div><dt>Discount</dt><dd>0.00</dd></div><div><dt>Tax &amp; charges</dt><dd>0.00</dd></div></dl>
+          <div class="grand-total"><span>Total amount</span><strong data-total="sale">730.00</strong><small>Sample currency amounts</small></div>
+          <p>Review the customer and line quantities before posting.</p>
+          <button class="primary" id="preview-save">Save + Post</button>
+          <button class="secondary full" data-preview="invoice">Preview document</button>
+          <p class="prototype-note">This prototype cannot save or post transactions.</p>
+        </aside>
+      </div>
+    </section>
+    <section id="page-purchase" class="page" role="tabpanel" aria-labelledby="tab-purchase" hidden>
+      <div class="page-heading"><div><h1>Pack Purchase</h1><p>Supplier details and item entry, in one workspace.</p></div><span class="state">Unsaved example</span></div>
+      <div class="field-band">
+        <label class="wide">Supplier<select><option>Sample supplies company</option></select></label>
+        <label>Supplier invoice<input value="DEMO-P001"></label>
+        <label>Date<input type="date" value="2026-01-15"></label>
+        <label>Godown<select><option>Sample main godown</option></select></label>
+      </div>
+      <div class="section-toolbar"><h2>Purchase items <span id="purchase-count" class="count">2</span></h2><button class="secondary" data-picker="purchase">Add an item</button></div>
+      <div class="table-scroll"><table class="entry-table" id="purchase-table"><caption class="sr-only">Synthetic purchase items</caption><thead><tr><th scope="col">Item</th><th scope="col">Pack</th><th scope="col" class="num">Qty</th><th scope="col" class="num">Purchase price</th><th scope="col" class="num">Amount</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead><tbody></tbody></table><div class="empty-state" id="purchase-empty" hidden><h3>No purchase items</h3><p>Add a sample item to continue.</p></div></div>
+      <div class="document-footer"><p>Example only. Batch, expiry and supplier validation follow the existing engine in the final app.</p><div>Total <strong data-total="purchase">1,520.00</strong></div><button class="primary demo-action" data-message="Purchase preview only. No invoice or stock movement has been saved.">Save purchase</button></div>
+    </section>
+    <section id="page-inventory" class="page" role="tabpanel" aria-labelledby="tab-inventory" hidden>
+      <div class="page-heading"><div><h1>Items</h1><p>Find an item and inspect its information without losing your place.</p></div><button class="secondary demo-action" data-message="The complete Item form will retain all fields, tabs and validation from the shared runtime. This is a layout prototype.">New item</button></div>
+      <label class="filter-field">Find item<input id="item-filter" type="search" placeholder="Search sample name or code"></label>
+      <div class="master-detail">
+        <div class="table-scroll"><table id="inventory-table"><caption class="sr-only">Sample item catalog</caption><thead><tr><th scope="col">Code</th><th scope="col">Item name</th><th scope="col">Pack</th><th scope="col" class="num">Sale price</th></tr></thead><tbody></tbody></table><p id="inventory-empty" class="empty-state" hidden>No matching sample items.</p></div>
+        <aside class="detail-panel"><h2 id="item-title">Sample cotton roll</h2><span class="state">Example / Active</span><dl id="item-detail"></dl><p class="prototype-note">Representative fields only. This preview is not the complete Item form.</p></aside>
+      </div>
+    </section>
+    <section id="page-accounts" class="page" role="tabpanel" aria-labelledby="tab-accounts" hidden>
+      <div class="page-heading"><div><h1>Account Ledger</h1><p>A clear reading order for dates, references, debits and credits.</p></div><button class="secondary" data-preview="ledger">Document preview</button></div>
+      <div class="field-band"><label class="wide">Account<select id="account-filter"><option value="all">All sample accounts</option><option value="Cash">Cash</option><option value="Supplier">Supplier</option></select></label><div class="read-field"><span>Period</span><strong>15 Jan 2026 / Synthetic day</strong></div></div>
+      <div class="table-scroll"><table id="ledger-table"><caption class="sr-only">Synthetic ledger entries, not business records</caption><thead><tr><th scope="col">Reference</th><th scope="col">Account</th><th scope="col">Description</th><th scope="col" class="num">Debit</th><th scope="col" class="num">Credit</th></tr></thead><tbody></tbody><tfoot><tr><th scope="row" colspan="3">Visible totals</th><td id="ledger-debit" class="num"></td><td id="ledger-credit" class="num"></td></tr></tfoot></table></div>
+      <div class="context-note"><strong>Financial meaning stays unchanged.</strong><p>Account classification, balances, posting and date rules remain owned by the existing business engine.</p></div>
+    </section>
+    <section id="page-reports" class="page" role="tabpanel" aria-labelledby="tab-reports" hidden>
+      <div class="page-heading"><div><h1>Reports</h1><p>Find the right report, review its purpose, then choose its arguments.</p></div></div>
+      <label class="filter-field">Find report<input id="report-filter" type="search" placeholder="Search report name"></label>
+      <div class="report-layout"><div id="report-list" aria-label="Sample report selection"></div><section class="report-detail"><h2 id="report-title">Sales summary</h2><p id="report-description">Review totals by document type for a selected period.</p><div class="field-band"><label>From<input type="date" value="2026-01-15"></label><label>To<input type="date" value="2026-01-15"></label></div><button class="primary" id="preview-report">Preview sample report</button><div class="context-note"><strong>No invented analytics.</strong><p>Integrated reports will use their existing queries, arguments, formats and permissions. These examples demonstrate navigation only.</p></div></section></div>
+      <p class="empty-state" id="reports-empty" hidden>No matching sample reports.</p>
+    </section>
+    <section id="page-documents" class="page" role="tabpanel" aria-labelledby="tab-documents" hidden>
+      <div class="page-heading"><div><h1>Document preview</h1><p>Paper-first layouts, independent of your screen theme.</p></div></div>
+      <div class="print-layout">
+        <aside class="print-options">
+          <label>Document<select id="document-kind"><option value="invoice">Sample sale invoice</option><option value="report">Sample report</option></select></label>
+          <label>Paper preview<select id="paper-size"><option value="a4">A4</option><option value="receipt80">80 mm receipt</option><option value="receipt58">58 mm receipt</option></select></label>
+          <label>Layout choice<select id="print-layout"><option value="modern">Modern concept</option><option value="classic">Classic - existing template</option></select></label>
+          <p id="print-layout-note" class="prototype-note">Modern concept only. Required fiscal fields, QR/barcode payloads and physical output need verification before use.</p>
+          <button class="secondary demo-action" data-message="No document was sent to a printer. Printer selection and physical-output verification belong to the integrated pilot.">Print options</button>
+        </aside>
+        <div class="paper-stage"><article class="paper" id="paper" aria-label="Synthetic document layout">
+          <div class="paper-heading"><div><strong>Waseela Trader</strong><span>Sample company / Demonstration only</span></div><h2 id="paper-title">Sale invoice</h2></div>
+          <div class="paper-meta"><p><strong id="paper-recipient">Sample walk-in customer</strong><br>Illustrative document - not valid for business use</p><p>DEMO-001<br>15 Jan 2026</p></div>
+          <table id="paper-table"><caption class="sr-only">Sample document items</caption><thead></thead><tbody></tbody></table>
+          <div class="paper-total"><span id="paper-total-label">Total amount</span><strong id="paper-total"></strong></div>
+          <p class="paper-disclaimer">Synthetic data. Required official fields and machine-readable codes must be mapped from the existing template before approval.</p>
+        </article><div id="classic-print-message" class="classic-placeholder" hidden><h2>Classic output stays unchanged</h2><p>The integrated application will use the existing template here. This prototype does not substitute an imitation for the real Classic document.</p><button class="secondary" id="return-modern-print">View Modern concept</button></div></div>
+      </div>
+    </section>
+    <section id="page-settings" class="page" role="tabpanel" aria-labelledby="tab-settings" hidden>
+      <div class="page-heading"><div><h1>Appearance</h1><p>Your presentation settings. Your business data stays untouched.</p></div></div>
+      <div class="settings-list">
+        <div class="setting-row"><div><h2>Interface</h2><p>Changing this applies at the next sign-in, not during an open transaction.</p></div><label class="sr-only" for="interface-mode">Preferred interface</label><select id="interface-mode"><option value="modern">Modern</option><option value="classic">Classic</option></select></div>
+        <div class="setting-row"><div><h2>Theme</h2><p>Follow Windows, or choose the appearance that suits your workspace.</p></div><label class="sr-only" for="theme">Theme</label><select id="theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></div>
+        <div class="setting-row"><div><h2>Information density</h2><p>Compact for data entry. Comfortable for more space between controls.</p></div><label class="sr-only" for="density">Information density</label><select id="density"><option value="compact">Compact</option><option value="comfortable">Comfortable</option></select></div>
+        <div class="setting-row"><div><h2>Text size</h2><p>Increase text without hiding controls or changing business data.</p></div><div class="size-control"><label class="sr-only" for="text-size">Text size</label><input id="text-size" type="range" min="100" max="200" value="100" step="10"><output id="text-size-value" for="text-size">100%</output></div></div>
+      </div>
+      <div class="context-note"><strong id="mode-notice">Modern is selected for the next sign-in.</strong><p>Prototype settings last only while this page is open. The integrated app will store them on this workstation, separately for each app user and database.</p></div>
+    </section>
+    <footer class="workspace-status"><span id="status" role="status" aria-live="polite">Ready to explore / Nothing is saved to a database</span><span id="appearance-status">Compact / System theme</span></footer>
+  </main>
+</div>
+<dialog id="picker" aria-labelledby="picker-title"><form method="dialog" class="dialog-heading"><h2 id="picker-title">Add a sample item</h2><button class="quiet" value="cancel" aria-label="Close item picker">Close</button></form><label>Find item<input type="search" id="picker-search" placeholder="Search name or code"></label><div id="picker-items"></div><p class="prototype-note">Synthetic catalog. No real stock lookup.</p></dialog>
+<dialog id="message" aria-labelledby="message-title"><h2 id="message-title">Prototype only</h2><p id="message-text"></p><form method="dialog"><button class="primary">Return to workspace</button></form></dialog>
+</body>
+</html>

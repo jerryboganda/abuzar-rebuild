@@ -1,0 +1,429 @@
+import { DomUi } from './dom-ui.ts'
+import type { Runtime } from '../runtime/interp.ts'
+import { NWindow } from '../runtime/native/controls.ts'
+import { PBObject } from '../runtime/object.ts'
+import type { NDwBase } from '../runtime/native/dwctrl.ts'
+import type { PresentationSession } from '../app/ui-preferences.ts'
+import { validatePreferences } from '../app/ui-preferences.ts'
+import { menuCommands, executeMenuCommand } from './menu-commands.ts'
+import { PRESENTATION_CSS } from './presentation-styles.ts'
+import { containDialogFocus, messageDialog, promptDialog } from './presentation-dialogs.ts'
+import type { PresentationDialog } from './presentation-dialogs.ts'
+import { ModernDwView } from './modern-dwview.ts'
+import type { DwView } from './dwview.ts'
+import { applyModernWindow } from './modern-window.ts'
+import { applyModernEntryWindow } from './modern-entry-window.ts'
+import { nativeAppearance, nativeTheme } from './native-appearance.ts'
+import type { NativeAppearance, NativeTheme } from './native-appearance.ts'
+
+/** Incremental Modern shell; business screens stay explicitly labelled compatibility views until migrated. */
+export class PresentationUi extends DomUi {
+  private session: PresentationSession
+  private shell: HTMLElement | null = null
+  private settings: HTMLDialogElement
+  private presentationStyle: HTMLStyleElement
+  private systemTheme = matchMedia('(prefers-color-scheme: dark)')
+  private cleanup = new AbortController()
+  private selected: NWindow | null = null
+  private tabs = new Map<NWindow, { container: HTMLElement; tab: HTMLButtonElement; changed: () => void }>()
+  private executing = false
+  private nextTab = 0
+  private lastFocus = new Map<NWindow, HTMLElement>()
+  private dialogs = new Set<HTMLDialogElement>()
+  private modalWindows = new Map<NWindow, { element: HTMLDialogElement; focus: HTMLElement | null; activeWindow: NWindow | null; nameObserver: MutationObserver }>()
+  private nextModal = 0
+  private lastNativeTheme: NativeTheme | undefined
+  private nativeRevision = 0
+  private nativeAppearance: NativeAppearance
+
+  constructor(rt: Runtime, desktop: HTMLElement, session: PresentationSession, appearance: NativeAppearance = nativeAppearance) {
+    super(rt, desktop)
+    this.session = session
+    this.nativeAppearance = appearance
+    this.presentationStyle = document.createElement('style')
+    this.presentationStyle.textContent = PRESENTATION_CSS
+    document.head.append(this.presentationStyle)
+    this.settings = this.buildSettings()
+    if (session.activeMode === 'modern') {
+      this.shell = document.createElement('section')
+      this.shell.className = 'presentation-ui'
+      this.shell.setAttribute('aria-label', 'Modern workspace preview')
+      this.shell.innerHTML = `<header class="presentation-header"><strong>Waseela Trader</strong><span>Modern workspace preview</span><button class="presentation-action" type="button">Appearance</button></header>
+        <aside class="presentation-sidebar"><label>Find a command<input type="search" autocomplete="off"></label><p class="command-status" role="status"></p><div class="presentation-commands"></div></aside>
+        <section class="presentation-work"><div class="presentation-tabs" role="tablist" aria-label="Open workspaces"></div><p class="presentation-compatibility">Classic compatibility layouts / Modern screen migration is in progress</p><div class="presentation-stage"></div></section>`
+      desktop.before(this.shell)
+      this.shell.querySelector('.presentation-stage')!.append(desktop)
+      this.shell.querySelector('input')!.addEventListener('input', () => this.refreshCommands())
+      this.shell.querySelector('button')!.addEventListener('click', () => this.openSettings())
+    }
+    this.systemTheme.addEventListener('change', () => this.applyAppearance(), { signal: this.cleanup.signal })
+    desktop.addEventListener('focusin', (event) => {
+      if (this.selected && event.target instanceof HTMLElement && this.views.get(this.selected)?.el.contains(event.target)) {
+        this.lastFocus.set(this.selected, event.target)
+      }
+    }, { signal: this.cleanup.signal })
+    this.applyAppearance()
+    this.refreshCommands()
+  }
+
+  protected override shortcutsEnabled(): boolean {
+    if (this.settings?.open || this.dialogs.size) return false
+    const focus = document.activeElement
+    return !this.shell || !focus || !this.shell.contains(focus) || this.desktop.contains(focus)
+  }
+
+  protected override menuShortcutsEnabled(): boolean { return this.session.activeMode === 'classic' || !this.hasModal() }
+  override accessibleTabs(): boolean { return this.session.activeMode === 'modern' }
+
+  override createDwView(control: NDwBase, host: HTMLElement): DwView {
+    if (this.session.activeMode === 'classic') return super.createDwView(control, host)
+    const view = new ModernDwView(control, host, (dialog) => this.present(dialog))
+    this.styleAppearance(view.root)
+    return view
+  }
+
+  private hasModal(): boolean {
+    return this.dialogs.size > 0 || [...this.views.values()].some((view) => view.modal && view.w.isOpen)
+  }
+
+  override menuRendered(bar: HTMLElement): void {
+    if (!this.shell && !bar.querySelector('.appearance-trigger')) {
+      const button = document.createElement('button')
+      button.className = 'appearance-trigger'
+      button.textContent = 'Appearance'
+      button.onclick = () => this.openSettings()
+      bar.append(button)
+    }
+    this.refreshCommands()
+  }
+
+  override createWindow(window: NWindow, options: { sheet: boolean; modal: boolean }): void {
+    const focus = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const activeWindow = [...this.views.values()].find((view) => view.el.classList.contains('active'))?.w ?? null
+    super.createWindow(window, options)
+    if (!this.shell) return
+    const view = this.views.get(window)!
+    const modernWindow = applyModernWindow(view) || applyModernEntryWindow(view)
+    if (modernWindow) this.styleAppearance(view.el)
+    if (options.modal) {
+      const element = document.createElement('dialog')
+      element.className = `presentation-compatibility-dialog${modernWindow ? ' presentation-modern-dialog' : ''}`
+      const title = view.ttlEl
+      if (title) title.id = `compatibility-dialog-${++this.nextModal}`
+      const updateName = () => {
+        const titled = !!title?.textContent?.trim()
+        const label = titled ? title :
+          view.el.querySelector<HTMLElement>('.window-field label .ctl,.window-data .surface-label')
+        view.el.classList.toggle('window-untitled', !titled)
+        if (label?.textContent?.trim()) {
+          element.setAttribute('aria-labelledby', label.id)
+          element.removeAttribute('aria-label')
+        } else {
+          element.setAttribute('aria-label', window.name)
+          element.removeAttribute('aria-labelledby')
+        }
+      }
+      const nameObserver = new MutationObserver(updateName)
+      for (const region of [title, view.client]) if (region) {
+        nameObserver.observe(region, { childList: true, characterData: true, subtree: true })
+      }
+      updateName()
+      element.addEventListener('cancel', (event) => event.preventDefault())
+      containDialogFocus(element)
+      element.append(view.el)
+      document.body.append(element)
+      this.modalWindows.set(window, { element, focus, activeWindow, nameObserver })
+      this.updateTabs()
+      this.refreshCommands()
+      return
+    }
+    if (!options.sheet) return
+    const container = document.createElement('div')
+    container.className = 'presentation-tab'
+    container.setAttribute('role', 'presentation')
+    const tab = document.createElement('button')
+    const id = `workspace-${++this.nextTab}`
+    view.el.id = id
+    view.el.setAttribute('role', 'tabpanel')
+    view.el.setAttribute('aria-labelledby', `${id}-tab`)
+    tab.id = `${id}-tab`
+    tab.setAttribute('role', 'tab')
+    tab.setAttribute('aria-controls', id)
+    tab.onclick = () => {
+      if (this.hasModal()) return
+      this.activate(window)
+      const last = this.lastFocus.get(window)
+      if (last?.isConnected) last.focus()
+      else view.focus()
+    }
+    tab.onkeydown = (event) => {
+      if (this.hasModal()) return
+      const windows = [...this.tabs.keys()]
+      const index = windows.indexOf(window)
+      const next = event.key === 'ArrowRight' ? (index + 1) % windows.length
+        : event.key === 'ArrowLeft' ? (index - 1 + windows.length) % windows.length
+          : event.key === 'Home' ? 0 : event.key === 'End' ? windows.length - 1 : -1
+      if (next < 0) return
+      event.preventDefault()
+      this.activate(windows[next])
+      this.tabs.get(windows[next])!.tab.focus()
+    }
+    const close = document.createElement('button')
+    close.textContent = '\u00d7'
+    close.onclick = () => {
+      if (!this.hasModal()) void this.rt.closeWindow(window).catch((error) => this.rt.onError(error))
+    }
+    container.append(tab, close)
+    this.shell.querySelector('.presentation-tabs')!.append(container)
+    const changed = () => this.updateTabs()
+    this.tabs.set(window, { container, tab, changed })
+    window.listeners.add(changed)
+    this.updateTabs()
+  }
+
+  override showWindow(window: NWindow): void {
+    const modal = this.modalWindows.get(window)
+    if (modal && !modal.element.open) {
+      this.down.clear()
+      modal.element.showModal()
+    }
+    super.showWindow(window)
+  }
+
+  override windowActivated(window: NWindow): void {
+    if (this.tabs.has(window)) this.selected = window
+    this.updateTabs()
+    this.refreshCommands()
+  }
+
+  private updateTabs(): void {
+    const modal = this.hasModal()
+    for (const [window, controls] of this.tabs) {
+      const active = window === this.selected
+      controls.tab.textContent = String(window.props.get('title') || window.name)
+      controls.tab.setAttribute('aria-selected', String(active))
+      controls.tab.tabIndex = active ? 0 : -1
+      controls.tab.disabled = modal
+      const close = controls.container.querySelector<HTMLButtonElement>('button:last-child')
+      if (close) {
+        close.disabled = modal
+        close.setAttribute('aria-label', `Close ${controls.tab.textContent}`)
+      }
+      const view = this.views.get(window)
+      if (view) view.el.hidden = !active
+    }
+    const notice = this.shell?.querySelector('.presentation-compatibility')
+    if (notice) notice.textContent = this.selected && this.views.get(this.selected)?.el.classList.contains('modern-entry-window')
+      ? 'Modern entry layout preview / Production workflow acceptance is pending'
+      : 'Classic compatibility layouts / Modern screen migration is in progress'
+  }
+
+  override closeWindow(window: NWindow): void {
+    const tab = this.tabs.get(window)
+    if (tab) window.listeners.delete(tab.changed)
+    const modal = this.modalWindows.get(window)
+    super.closeWindow(window)
+    if (modal) {
+      modal.nameObserver.disconnect()
+      modal.element.close()
+      modal.element.remove()
+      this.modalWindows.delete(window)
+    }
+    this.tabs.get(window)?.container.remove()
+    this.tabs.delete(window)
+    this.lastFocus.delete(window)
+    if (this.selected === window) {
+      this.selected = [...this.tabs.keys()].at(-1) ?? null
+      if (this.selected) this.activate(this.selected)
+    }
+    if (modal) {
+      const remaining = [...this.modalWindows].filter(([, value]) => value.element.open).at(-1)?.[0]
+      const previous = modal.activeWindow && this.views.has(modal.activeWindow) ? modal.activeWindow : null
+      const active = remaining ?? previous ?? this.selected ?? this.mdi?.w
+      if (active) this.activate(active)
+    }
+    this.updateTabs()
+    this.refreshCommands()
+    if (modal?.focus?.isConnected && !modal.focus.matches(':disabled')) modal.focus.focus()
+  }
+
+  private commandRoot(): PBObject | null {
+    const root = this.selected?.props.get('menuid') ?? this.mdi?.w.props.get('menuid')
+    return root instanceof PBObject ? root : null
+  }
+
+  private refreshCommands(): void {
+    if (!this.shell) return
+    const host = this.shell.querySelector('.presentation-commands')!
+    const status = this.shell.querySelector('.command-status')!
+    host.replaceChildren()
+    const root = this.commandRoot()
+    const query = this.shell.querySelector('input')!.value.trim().toLowerCase()
+    const matches = root ? menuCommands(root).filter((command) => command.label.toLowerCase().includes(query)) : []
+    status.textContent = matches.length > 80 ? `Showing 80 of ${matches.length} commands. Refine your search.` : `${matches.length} available commands`
+    for (const command of matches.slice(0, 80)) {
+      const button = document.createElement('button')
+      button.className = 'presentation-command'
+      button.textContent = command.label
+      button.disabled = this.executing || this.hasModal()
+      button.onclick = async () => {
+        if (this.executing || this.hasModal() || !root) return
+        this.executing = true
+        host.querySelectorAll('button').forEach((item) => { item.disabled = true })
+        try {
+          if (root !== this.commandRoot() || !(await executeMenuCommand(this.rt, root, command))) {
+            await this.messageBox('Command unavailable', 'This command is no longer available in the active workspace.', 'information!', 'ok!', 1)
+          }
+        } catch (error) {
+          this.rt.onError(error)
+        } finally {
+          this.executing = false
+          this.refreshCommands()
+        }
+      }
+      host.append(button)
+    }
+  }
+
+  private buildSettings(): HTMLDialogElement {
+    const dialog = document.createElement('dialog')
+    dialog.className = 'presentation-settings'
+    dialog.setAttribute('aria-labelledby', 'appearance-title')
+    dialog.innerHTML = `<form><h2 id="appearance-title">Appearance</h2>
+      <p>Settings belong to this workstation, application user and database. Interface changes apply at the next sign-in.</p>
+      <label><span id="appearance-mode-label">Next sign-in interface</span><select name="mode" aria-labelledby="appearance-mode-label"><option value="modern">Modern</option><option value="classic">Classic</option></select></label>
+      <label><span id="appearance-theme-label">Theme</span><select name="theme" aria-labelledby="appearance-theme-label"><option value="system">Windows preference</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
+      <label><span id="appearance-density-label">Density</span><select name="density" aria-labelledby="appearance-density-label"><option value="compact">Compact</option><option value="comfortable">Comfortable</option></select></label>
+      <label><span id="appearance-size-label">Text size</span><select name="textSize" aria-labelledby="appearance-size-label"><option value="100">100%</option><option value="125">125%</option><option value="150">150%</option><option value="175">175%</option><option value="200">200%</option></select></label>
+      <label><span id="appearance-print-label">Print layout</span><select name="printMode" aria-labelledby="appearance-print-label"><option value="classic">Classic</option><option value="modern" disabled>Modern (templates not verified yet)</option></select></label>
+      <p>Theme, density and text size apply to the Modern workspace. Compatibility forms and Classic printing retain their original presentation.</p>
+      <p class="presentation-error" role="alert" hidden></p><footer><button type="button">Cancel</button><button type="submit">Save settings</button></footer></form>`
+    dialog.querySelector('button[type=button]')!.addEventListener('click', () => dialog.close())
+    containDialogFocus(dialog)
+    dialog.querySelector('form')!.addEventListener('submit', (event) => {
+      event.preventDefault()
+      const error = dialog.querySelector<HTMLElement>('.presentation-error')!
+      try {
+        const values = new FormData(dialog.querySelector('form')!)
+        const preferences = validatePreferences({
+          version: 1, mode: values.get('mode'), theme: values.get('theme'), density: values.get('density'),
+          textSize: Number(values.get('textSize')), printMode: values.get('printMode'),
+        })
+        this.session.save(preferences)
+        this.applyAppearance(true)
+        dialog.close()
+      } catch (cause) {
+        error.hidden = false
+        error.textContent = cause instanceof Error ? cause.message : 'Settings could not be saved.'
+      }
+    })
+    document.body.append(dialog)
+    return dialog
+  }
+
+  openSettings(): void {
+    if (this.settings.open || this.hasModal()) return
+    this.down.clear()
+    for (const [key, value] of Object.entries(this.session.preferences)) {
+      const select = this.settings.querySelector<HTMLSelectElement>(`select[name="${key}"]`)
+      if (select) {
+        if (![...select.options].some((option) => option.value === String(value))) select.add(new Option(`${value}%`, String(value)))
+        select.value = String(value)
+      }
+    }
+    this.settings.querySelector<HTMLElement>('.presentation-error')!.hidden = true
+    this.settings.showModal()
+  }
+
+  private applyAppearance(retryNative = false): void {
+    for (const element of [this.shell, this.settings, ...this.dialogs]) {
+      if (!element) continue
+      this.styleAppearance(element)
+    }
+    for (const window of this.views.values()) for (const control of window.ctlViews.values()) {
+      if (control.dw instanceof ModernDwView) { this.styleAppearance(control.dw.root); control.dw.schedule() }
+    }
+    for (const window of this.views.values()) if (window.el.matches('.modern-window,.modern-entry-window')) this.styleAppearance(window.el)
+    const theme = nativeTheme(this.session.activeMode, this.session.preferences.theme)
+    if (theme === this.lastNativeTheme && !retryNative) return
+    this.lastNativeTheme = theme
+    const revision = ++this.nativeRevision
+    void this.nativeAppearance.set(theme).catch((error: unknown) => {
+      if (this.cleanup.signal.aborted || revision !== this.nativeRevision) {
+        console.warn('A superseded desktop appearance request failed.', error)
+        return
+      }
+      this.rt.onError(new Error('The desktop window theme could not be applied. Your workspace remains usable. Save Appearance settings again to retry.', { cause: error }))
+    })
+  }
+
+  private styleAppearance(element: HTMLElement): void {
+    const preferences = this.session.preferences
+    element.dataset.theme = preferences.theme === 'system' ? this.systemTheme.matches ? 'dark' : 'light' : preferences.theme
+    element.dataset.density = preferences.density
+    element.style.setProperty('--p-scale', String(preferences.textSize / 100))
+  }
+
+  override print(control: NDwBase): Promise<boolean> {
+    if (this.session.preferences.printMode === 'modern') {
+      return Promise.reject(new Error('Modern print templates are not verified yet. Select Classic print layout in Appearance.'))
+    }
+    return super.print(control)
+  }
+
+  private async present<T>(dialog: PresentationDialog<T>): Promise<T> {
+    const focus = document.activeElement
+    this.dialogs.add(dialog.element)
+    this.down.clear()
+    this.applyAppearance()
+    this.updateTabs()
+    this.refreshCommands()
+    try {
+      dialog.open()
+      return await dialog.result
+    } finally {
+      this.dialogs.delete(dialog.element)
+      this.updateTabs()
+      this.refreshCommands()
+      if (dialog.restoreFocus !== false && !this.dialogs.size && !this.settings.open) {
+        if (focus instanceof HTMLElement && focus.isConnected && !focus.matches(':disabled')) focus.focus()
+        else if (this.shell) this.shell.querySelector('input')!.focus()
+      }
+    }
+  }
+
+  override messageBox(title: string, text: string, icon: string, buttons: string, defaultButton: number): Promise<number> {
+    if (this.session.activeMode === 'classic') return super.messageBox(title, text, icon, buttons, defaultButton)
+    return this.present(messageDialog(title, text, icon, buttons, defaultButton))
+  }
+
+  override prompt(title: string, text: string, initial: string): Promise<string | null> {
+    if (this.session.activeMode === 'classic') return super.prompt(title, text, initial)
+    return this.present(promptDialog(title, text, initial))
+  }
+
+  override saveAs(control: NDwBase, file: string, type: string, headers: boolean): Promise<boolean> {
+    if (/^pdf!?$/i.test(type) && !file) return this.print(control)
+    return super.saveAs(control, file, type, headers)
+  }
+
+  override printText(text: string): Promise<boolean> {
+    if (this.session.preferences.printMode === 'modern') {
+      return Promise.reject(new Error('Modern print templates are not verified yet. Select Classic print layout in Appearance.'))
+    }
+    return super.printText(text)
+  }
+
+  override dispose(): void {
+    if (this.dialogs.size || this.modalWindows.size) throw new Error('Cannot replace presentation while a runtime dialog is open.')
+    super.dispose()
+    this.cleanup.abort()
+    this.settings.close()
+    this.settings.remove()
+    this.presentationStyle.remove()
+    if (this.shell) {
+      this.shell.before(this.desktop)
+      this.shell.remove()
+    }
+  }
+}

@@ -62,6 +62,36 @@ test('standard user object ancestors resolve to their native control', async () 
   assert.equal((await r.classChain('something_else')).native, 'something_else')
 })
 
+for (const posted of [false, true]) {
+  test(`${posted ? 'PostEvent' : 'TriggerEvent'} resolves parsed event enums and named events`, async () => {
+    const r = rt(`// window w_events (x)  ancestor: window
+
+// w_events.wf_dispatch() returns long
+  this.${posted ? 'postevent' : 'triggerevent'}(clicked!)
+  return this.hits
+
+// w_events.clicked() returns long [event]
+  this.hits = this.hits + 1
+  return 27
+
+// w_events.ue_named(long value) returns long [event]
+  this.hits = value
+  return value
+`)
+    const window = await r.instantiate('w_events')
+    window.props.set('hits', 0)
+    assert.equal(await r.callMethod(window, 'wf_dispatch', []), posted ? 0 : 1)
+    await r.flushPosted()
+    assert.equal(window.props.get('hits'), 1)
+    assert.equal(await r.callMethod(window, 'triggerevent', ['ClIcKeD']), 27)
+    assert.equal(window.props.get('hits'), 2)
+    await r.callMethod(window, posted ? 'postevent' : 'triggerevent', ['UE_NAMED', 9])
+    await r.flushPosted()
+    assert.equal(window.props.get('hits'), 9)
+    assert.deepEqual([...r.missing], [])
+  })
+}
+
 test('ref arguments and recursion', async () => {
   const r = rt(`// function f_fact (x)  ancestor: function_object
 

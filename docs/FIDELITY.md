@@ -66,6 +66,55 @@ Tools: `tools/orig/` (crawler, crop, icon and sprite builders), `web/tools/{gen-
 * **The DataWindow engine of the original as an oracle** (`re-tools/dw_oracle`, 32-bit host of `pbdwe125.dll`; `Evaluate()` answers any DataWindow expression; the rebuild's results are compared by `web/tools/format-diff.ts` and `web/tools/expr-diff.ts`). 3,109 number / date-time / text format cases: 3,092 agree (the rest are numbers shown under date masks); 290 expression cases (round, mid, pos, string, date and time functions, conversions): 278 agree. Fixed from it: grouping is by three whatever the commas of a mask say; fraction digits are rounded to the placeholders and trimmed down to the number of `0`s (`###0.##0` shows `1.0`, `######.##` shows `1.`); `[currency]`; `[time]` is `hh:mm:ss`; `[general]` of a date is the short date; `am/pm` keeps the case of the mask; a day name after the time in one mask; `@` masks pad with blanks; a mask without digit places shows itself; doubles print with 16 digits (`1/3`); `Pos('abc', '')` is 0; `Number()`; `Real` / `Dec` read thousands separators.
 * **Regional short date:** `String(date)`, `Date('3/11/2026')` and `[shortdate]` follow the order of the machine, measured month first on the reference machine (`11/3/2026`); the page takes it from the browser's locale (`?dateorder=dmy|mdy` overrides it). Windows' digit grouping setting is not modelled (three digits).
 * Layout of grid DataWindows measured with the engine: a column that is switched on (`Visible=1`) is appended behind the last visible one in the order of the calls, so the Purchase Order follows the InterfaceSetting sequence (Min Qty after Optimum Qty).
+
+## Focused temporal-format follow-up
+
+The historical 3,109-case formatter comparison above excluded engine outputs
+containing question marks. Those exclusions could hide real display
+differences: a Date value has no time, and the original displays missing time
+components as question marks rather than literal tokens or zeroes.
+
+A separate, bounded 32-bit host of the existing DataWindow engine evaluated
+22 synthetic literal expressions, using `d_purchaseorderdetail` from
+`pocomponents.pbd` only as an evaluation container. It did not launch the ERP,
+call Connect/Retrieve, read records, access backups or alter licensing.
+The installed `pbdwe125.dll`, `PBVM125.dll` and `pbshr125.dll` were SHA-256
+matched to their original Application copies before execution. Each probe
+owned its process and had a 30-second timeout; no process-name termination
+was used. This is repository-oracle evidence, not an REA Evidence record.
+
+| Artifact | SHA-256 |
+|---|---|
+| `pbdwe125.dll` | `0681ebb22fa72c7eeabbca07ff964adf190384f2864968a43ad3115bf99a2a9d` |
+| `pocomponents.pbd` | `016faa32e3287d7d61eba358c0fc35da4e7fac5c411048bc6775e9ebc187db2b` |
+| `engine_host.py` | `aa1404707c1e6d8bf821e67b5d7816610ae578fd67e413422acf51b1569c31dc` |
+
+Observed examples:
+
+| Value and mask | Original output |
+|---|---|
+| Date 2026-11-13, `dd/mm/yyyy hh:mm` | `13/11/2026 ??:??` |
+| RelativeDate of 2026-11-06 plus 7 days, same mask | `13/11/2026 ??:??` |
+| DateTime 2026-11-13 05:09:13, same mask | `13/11/2026 05:09` |
+| Date 2026-11-13, `h:m:s a/p` | `??:??:?? ?` |
+| Date 2026-11-13, `mm:ss ddd mm` | `??:?? Fri 11` |
+| Time 05:09:13.123, `hh:mm:ss.ff f fff ffffff` | `05:09:13.12 1 123 123000` |
+
+The shared Date/DateTime formatter now uses one contextual tokenizer, preserving
+the month/minute distinction and the engine's missing-component widths.
+Time and DateTime also honor the observed one- and two-digit fraction tokens.
+The purchase-change due-date formula and `dd/mm/yyyy hh:mm` mask are unchanged.
+`format-diff.ts` includes question-mark outputs instead of treating them as
+failed observations; its U+FFFF and crash handling are unchanged.
+All 22 observations match through `expr-diff.ts`, with none skipped.
+Unit cases and both-mode real-metadata browser cases retain these contracts.
+
+Exact expressions, raw JSONL, all runtime hashes and the comparison are retained
+in this session's `date-mask-oracle` artifacts, including its `tokens` and
+`fractions` subdirectories. This focused result does not rerun or replace the
+historical full-format corpus, prove all temporal masks, recover sub-millisecond
+precision, or establish packaged/native UI or database acceptance.
+
 ## Not yet matched
 * `Long('12.5')` / `Integer('12abc')`: the engine answers null / 0, the rebuild keeps the leading number (PowerScript behaviour the menu rights code relies on).
 * The original crashed during the crawl after `Modify Last Transaction Date`; 16 more windows (Interface Setting, Groups, Users, Session Monitor ...) are not captured yet.
@@ -214,4 +263,3 @@ then changes the name and saves; the row count for the prefix stays 1
   the live original); the clone was granted it only for the CRUD test.
 * The 62-screen control diff is captured but not yet reduced to a per-control
   change list.
-

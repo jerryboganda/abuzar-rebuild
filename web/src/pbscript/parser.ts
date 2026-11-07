@@ -156,7 +156,7 @@ export class ExprParser {
   /** `sum(x for group 1)` style call: arguments followed by a scope clause */
   scopedCall(name: string): Expr {
     const a: Expr[] = []
-    let sc: { kind: string; n?: number; distinct?: Expr } | undefined
+    let sc: { kind: string; n?: number; distinct?: Expr[] } | undefined
     if (!this.eat(')')) {
       do {
         a.push(this.or())

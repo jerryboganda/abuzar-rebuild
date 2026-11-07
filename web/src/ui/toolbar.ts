@@ -29,20 +29,20 @@ export function glyphFor(stock: string, text: string): string {
   return GLYPH[key] ?? (text.trim().slice(0, 2).toUpperCase() || key.slice(0, 2).toUpperCase() || '□')
 }
 
-interface MenuLike {
+interface MenuLike<T> {
   name: string
   props: Map<string, unknown>
-  children: Map<string, MenuLike>
+  children: Map<string, T>
 }
 
 /** the toolbar buttons of a menu tree, depth first in menu order */
-export function toolbarItems(menu: MenuLike): { item: MenuLike; button: ToolButton }[] {
-  const out: { item: MenuLike; button: ToolButton }[] = []
-  const str = (o: MenuLike, k: string): string => {
+export function toolbarItems<T extends MenuLike<T>>(menu: T): { item: T; button: ToolButton }[] {
+  const out: { item: T; button: ToolButton }[] = []
+  const str = (o: T, k: string): string => {
     const v = o.props.get(k)
     return typeof v === 'string' ? v : ''
   }
-  const walk = (m: MenuLike, visible: boolean) => {
+  const walk = (m: T, visible: boolean) => {
     for (const it of m.children.values()) {
       const shown = visible && it.props.get('visible') !== false
       const stock = str(it, 'toolbaritemname')
@@ -55,6 +55,6 @@ export function toolbarItems(menu: MenuLike): { item: MenuLike; button: ToolButt
   }
   walk(menu, true)
   // the toolbar follows `toolbaritemorder` (the items of a sheet's menu are not in toolbar order), `toolbaritembarindex` picks the bar
-  const key = (x: { item: MenuLike }) => [Number(x.item.props.get('toolbaritembarindex') ?? 0), Number(x.item.props.get('toolbaritemorder') ?? 0)]
+  const key = (x: { item: T }) => [Number(x.item.props.get('toolbaritembarindex') ?? 0), Number(x.item.props.get('toolbaritemorder') ?? 0)]
   return out.map((x, i) => ({ x, i })).sort((a, b) => key(a.x)[0] - key(b.x)[0] || key(a.x)[1] - key(b.x)[1] || a.i - b.i).map((e) => e.x)
 }

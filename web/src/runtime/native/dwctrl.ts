@@ -8,7 +8,7 @@ import { DwModel, DATA_MODIFIED, NEW, NEW_MODIFIED, NOT_MODIFIED } from '../../d
 import type { DwRow } from '../../dw/model.ts'
 import { splitExpr } from '../../dw/def.ts'
 import type { DwDef } from '../../dw/def.ts'
-import { commitDwValue, dwEditText } from '../../dw/edit.ts'
+import { commitDwValue, dwEditText, dwRequired } from '../../dw/edit.ts'
 import { NTransaction } from './transaction.ts'
 import { Ref } from '../interp.ts'
 
@@ -66,7 +66,7 @@ export class NDwColumn implements Member {
     return v === '!' ? new NDwColumn(this.dw, path) : v
   }
   pbSet(prop: string, v: unknown): void {
-    this.dw.model?.modify(`${this.col}.${prop}=${typeof v === 'boolean' ? (v ? 'yes' : 'no') : toStr(v)}`)
+    this.dw.model?.setProperty(`${this.col}.${prop}`, typeof v === 'boolean' ? (v ? 'yes' : 'no') : toStr(v))
     this.dw.changed()
   }
   async pbIndex(idx: unknown[]): Promise<unknown> {
@@ -608,6 +608,8 @@ export class NDwBase extends PBObject {
     const m = await this.m()
     if (!m) return -1
     const r = await m.sort()
+    // Native Sort resets the current row without firing row-focus events.
+    if (r === 1 && m.sortText.trim()) m.row = m.rowCount() ? 1 : 0
     this.changed()
     return r
   }
@@ -872,9 +874,7 @@ export class NDwBase extends PBObject {
     const rows = which === 'filter' ? m.buf.filtered : m.buf.primary
     const only = updateOnly === true || (typeof updateOnly === 'number' && updateOnly !== 0)
     const required = m.def.objects
-      .filter((o) => o.type === 'column' && ['edit', 'dddw', 'ddlb', 'editmask'].some((style) =>
-        /^(yes|true|1)$/i.test(m.overrides.get(`${o.name.toLowerCase()}.${style}.required`) ?? o[`${style}.required`] ?? ''))
-        && m.colIndex(o.name) >= 0)
+      .filter((o) => dwRequired(o, m.overrides) && m.colIndex(o.name) >= 0)
       .map((o) => m.colIndex(o.name))
       .sort((a, b) => a - b)
     const startRow = Math.max(1, toNum(row.get()))

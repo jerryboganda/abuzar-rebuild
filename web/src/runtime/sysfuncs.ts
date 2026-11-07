@@ -45,6 +45,41 @@ export function parseTime(text: string): PBTime | null {
   return PBTime.hms(h, +m[2], m[3] ? +m[3] : 0, m[4] ? Math.floor(+('0.' + m[4]) * 1000) : 0)
 }
 
+export function numericDateMask(mask: string): { date: string; order: string[] } | null {
+  const numeric = /^(d{1,2}|m{1,2}|yyyy|yy)[-/.](d{1,2}|m{1,2}|yyyy|yy)[-/.](d{1,2}|m{1,2}|yyyy|yy)(?=$|[\sT])/i.exec(mask)
+  if (!numeric || !/^(?:[ T]h{1,2}:mm(?::ss(?:\.f{1,6})?)?(?:\s+am\/pm)?)?$/i.test(mask.slice(numeric[0].length))) return null
+  const order = numeric.slice(1).map((token) => token[0].toLowerCase())
+  return new Set(order).size === 3 ? { date: numeric[0], order } : null
+}
+
+export function parseMaskedDate(text: string, mask: string): PBDate | null {
+  if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}$/.test(text)) return parseDate(text)
+  const numeric = numericDateMask(mask)
+  if (numeric) {
+    const { order } = numeric
+    const parts = new RegExp('^' + order.map((token) => token === 'y' ? '(\\d{2,4})' : '(\\d{1,2})').join('[-/.]') + '$').exec(text)
+    if (!parts) return null
+    const year = Number(parts[order.indexOf('y') + 1])
+    return parseDate(`${String(year < 100 ? 2000 + year : year).padStart(4, '0')}-${parts[order.indexOf('m') + 1]}-${parts[order.indexOf('d') + 1]}`)
+  }
+  return /^(?:\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4})$/.test(text) ? parseDate(text) : null
+}
+
+export function parseMaskedTime(text: string): PBTime | null {
+  if (/[ap]m$/i.test(text)) {
+    const hour = Number(text.split(':')[0])
+    if (hour < 1 || hour > 12) return null
+  }
+  return parseTime(text)
+}
+
+export function parseMaskedDateTime(text: string, mask: string): PBDateTime | null {
+  const [day, ...clock] = text.trim().split(/[T\s]+/)
+  const date = parseMaskedDate(day, mask)
+  const time = clock.length ? parseMaskedTime(clock.join(' ')) : new PBTime(0)
+  return date && time ? new PBDateTime(date.n, time.ms) : null
+}
+
 export function nowDateTime(): PBDateTime {
   return PBDateTime.fromJs(new Date())
 }

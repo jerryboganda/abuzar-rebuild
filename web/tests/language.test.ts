@@ -230,6 +230,37 @@ test('a for loop tests its limit again on every pass; a local keeps its initial 
   assert.equal(await call(rt, 'f_loop', 0), 108)
 })
 
+test('FOR retains its terminating counter, but EXIT and RETURN do not advance it', async () => {
+  const cases = [
+    { start: 1, end: '1', step: 1, body: 'total = total + 1', expected: 2 },
+    { start: 3, end: '1', step: -1, body: 'total = total + 1', expected: 0 },
+    { start: 5, end: '3', step: 1, body: 'total = total + 1', expected: 5 },
+    { start: 1, end: '3', step: -1, body: 'total = total + 1', expected: 1 },
+    { start: 1, end: '5', step: 1, body: 'if i = 2 then\nexit\nend if', expected: 2 },
+    { start: 1, end: '5', step: 1, body: 'if i = 2 then\nreturn i\nend if', expected: 2 },
+    { start: 1, end: '3', step: 1, body: 'continue', expected: 4 },
+    { start: 1, end: '3', step: 1, body: 'i = 5', expected: 6 },
+    { start: 1, end: 'n', step: 1, body: 'n = 2', expected: 3 },
+    { start: 1, end: '4 - i', step: 1, body: 'total = total + 1', expected: 3 },
+    { start: 0, end: '0.5', step: 0.25, body: 'total = total + 1', expected: 0.75 },
+    { start: 1, end: '1', step: 1, body: '', expected: 2 },
+  ]
+  for (const { start, end, step, body, expected } of cases) {
+    const rt = runtimeWith(`// function f_counter (x)  ancestor: function_object
+
+// f_counter.f_counter() returns double
+  double i = 99
+  long n = 3
+  long total
+  for i = ${start} to ${end} step ${step}
+    ${body}
+  next
+  return i
+`)
+    assert.equal(await call(rt, 'f_counter'), expected, JSON.stringify({ start, end, step, body }))
+  }
+})
+
 test('a ref parameter returns its value to the caller', async () => {
   const rt = runtimeWith(
     `// function f_setter (x)  ancestor: function_object

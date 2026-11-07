@@ -69,6 +69,40 @@ jobs:
       - run: cargo test -p trader-server
       - run: cargo clippy -p trader-server --all-targets -- -D warnings
 
+  presentation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install pinned presentation check tools
+        run: npm ci --prefix web --ignore-scripts --no-audit --no-fund
+      - name: Type-check presentation and its shared runtime dependencies
+        run: npm --prefix web run typecheck:presentation
+      - name: Frontend regression tests
+        run: node --test "web/tests/*.test.ts"
+      - name: Inventory UI definitions and script dependencies
+        run: |
+          python -I tools/parity/test_ui_inventory.py
+          python -I tools/parity/ui_inventory.py --out shots/presentation/ui-inventory.json
+          node web/tools/ui-script-inventory.mjs data/src/scripts shots/presentation/ui-inventory.json shots/presentation/ui-script-inventory.json
+      - name: Build synthetic browser fixture
+        run: node web/tools/build-static.ts web/dist
+      - name: Install Chromium
+        working-directory: web
+        run: npx playwright install --with-deps chromium
+      - name: Verify the real presentation against synthetic fixtures
+        run: node web/e2e/presentation-smoke.mjs
+      - name: Retain synthetic presentation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: presentation-evidence
+          path: shots/presentation
+          if-no-files-found: warn
+
   web:
     runs-on: ubuntu-latest
     timeout-minutes: 20

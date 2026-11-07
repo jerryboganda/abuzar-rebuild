@@ -370,6 +370,50 @@ function fixNumericCancellation(name: string, data: Json, value: number): boolea
   return true
 }
 
+function fixCriteriaDates(data: Json): string[] {
+  const body = data.routines?.cb_ok?.clicked?.[0]?.body
+  if (!Array.isArray(body) || body.some((node) => node.k === 'decl' &&
+    node.vars?.some((variable: Json) => variable.n === 'ldt_criteria_checked'))) return []
+  const controls = [...new Set<string>(body.filter((node) => node.k === 'expr' && node.e?.n === 'getdata' &&
+    ['em_startdate', 'em_enddate'].includes(node.e.o?.n)).map((node) => node.e.o.n))]
+  if (!controls.length) return []
+  const declaration = { k: 'decl', t: 'datetime', arr: false, vars: [{ n: 'ldt_criteria_checked' }] }
+  const guards = controls.map((name) => {
+    const control = mem(id('parent'), name)
+    return { k: 'if', c: { k: 'bin', op: '<>', l: call(control, 'getdata', [id('ldt_criteria_checked')]), r: num(1) },
+      t: [
+        expr(call(null, 'messagebox', [str('Validation Error'),
+          { k: 'bin', op: '+', l: str('Enter a valid date using '), r: mem(control, 'mask') },
+          { k: 'enum', v: 'exclamation!' }, { k: 'enum', v: 'ok!' }, num(1)])),
+        expr(call(control, 'setfocus', [])),
+        { k: 'return', e: mem({ k: 'global', n: 'message' }, 'returnvalue') },
+      ], ei: [] }
+  })
+  let at = 0
+  while (body[at]?.k === 'decl') at++
+  body.splice(at, 0, declaration, ...guards)
+  return ['criteria date acceptance guards']
+}
+
+function fixDateCancellation(name: string, data: Json): string[] {
+  if (!data.routines?.cb_ok?.clicked) return []
+  const owner = data.routines[name]
+  if (!owner) return []
+  if (!owner.open) {
+    owner.open = [{ owner: name, name: 'open', params: [], ret: 'long', locals: [], event: true, line: 0,
+      body: [expr({ k: 'super', n: 'open', a: [] }),
+        { k: 'return', e: mem({ k: 'global', n: 'message' }, 'returnvalue') }] }]
+  }
+  const open = owner.open[0].body
+  const initial = { k: 'assign', l: mem({ k: 'global', n: 'message' }, 'powerobjectparm'),
+    op: '=', r: mem(id('this'), 'istr_arg') }
+  if (open.some((node: Json) => JSON.stringify(node) === JSON.stringify(initial))) return []
+  let at = 0
+  while (open[at]?.k === 'decl') at++
+  open.splice(at, 0, initial)
+  return ['date criteria cancellation default']
+}
+
 function fixItemSelection(data: Json): string[] {
   const open = data.routines?.w_arg_items_sdate_ldate_topn?.open?.[0]?.body
   if (!Array.isArray(open)) return []
@@ -539,11 +583,26 @@ export function fixClassData(name: string, data: Json): string[] {
   if (n === 'w_select_case') return [...fixCriteriaAcceptance(n, data), ...fixPackingSelection(data), ...fixCriteriaRetrieval(n, data)]
   if (n === 'w_sale_replace_custref') return [...fixCriteriaAcceptance(n, data),
     ...(fixNumericCancellation(n, data, -1) ? ['customer reference cancellation default'] : [])]
-  if (n === 'w_arg_items_sdate_ldate_topn') return [...fixCriteriaAcceptance(n, data), ...fixItemSelection(data)]
+  if (['w_arg_sdate', 'w_arg_sdate_notime', 'w_arg_sdate_ldate'].includes(n)) {
+    return [...fixCriteriaDates(data), ...fixDateCancellation(n, data)]
+  }
+  if (['w_arg_acc_sdate_ldate', 'w_arg_antinortixitem_sdate_ldate', 'w_arg_doct_sdate_ldate',
+    'w_arg_godown_sdate_ldate', 'w_arg_manf_sdate_ldate', 'w_arg_patient_sdate_ldate_old',
+    'w_arg_region_sdate_ldate', 'w_arg_singleregion', 'w_arg_singlezone', 'w_arg_sman_sdate_ldate',
+    'w_arg_subacc_sdate_ldate', 'w_arg_supp_label', 'w_arg_supp_sdate_ldate_old',
+    'w_arg_user_sdate_ldate', 'w_arg_custgroup'].includes(n)) {
+    return [...fixCriteriaDates(data), ...fixCriteriaAcceptance(n, data), ...fixDateCancellation(n, data),
+      ...(n === 'w_arg_antinortixitem_sdate_ldate' ? fixCriteriaRetrieval(n, data) : [])]
+  }
+  if (['w_arg_batchno', 'w_arg_containerno', 'w_arg_masterpart', 'w_arg_phoneno', 'w_arg_ref',
+    'w_arg_smscenter'].includes(n)) {
+    return [...fixCriteriaAcceptance(n, data), ...fixDateCancellation(n, data)]
+  }
+  if (n === 'w_arg_items_sdate_ldate_topn') return [...fixCriteriaDates(data), ...fixCriteriaAcceptance(n, data), ...fixItemSelection(data)]
   if (['w_arg_activeclass_single', 'w_arg_letter_sdate_ldate', 'w_arg_pricetype_markup',
     'w_arg_sdate_ldate_margin_markup_range', 'w_arg_quotation_customer_remarks', 'w_arg_percentage_reduce_raise',
     'w_arg_zone_sdate_ldate_top_n_customer'].includes(n)) {
-    return [...fixCriteriaAcceptance(n, data), ...(['w_arg_pricetype_markup', 'w_arg_quotation_customer_remarks'].includes(n) ?
+    return [...fixCriteriaDates(data), ...fixCriteriaAcceptance(n, data), ...(['w_arg_pricetype_markup', 'w_arg_quotation_customer_remarks'].includes(n) ?
       fixCriteriaRetrieval(n, data) : [])]
   }
   if (n === 'f_getbackupdevicename') return fixBackupDevice(data)

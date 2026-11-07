@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { Dec, PBDate, PBTime, formatNumber, formatDate, formatTime, add, mul, div, cmp, coerce, toStr } from '../src/runtime/values.ts'
+import { Dec, PBDate, PBTime, formatNumber, formatDate, formatDateTime, formatTime, add, mul, div, cmp, coerce, toStr } from '../src/runtime/values.ts'
 
 test('decimal arithmetic is exact', () => {
   const a = Dec.parse('0.1')
@@ -41,6 +41,39 @@ test('dates', () => {
   assert.equal(formatTime(PBTime.hms(15, 4, 9), 'h:mm am/pm'), '3:04 pm') // the case of the mask decides
   assert.equal(formatTime(PBTime.hms(15, 4, 9), 'h:mm AM/PM'), '3:04 PM')
   assert.equal(cmp(PBDate.ymd(1900, 2, 28), PBDate.ymd(1899, 12, 30)), 1)
+})
+
+test('date-only values retain the original engine missing-time markers under mixed masks', () => {
+  const date = PBDate.ymd(2026, 11, 13)
+  for (const [mask, expected] of [
+    ['dd/mm/yyyy hh:mm', '13/11/2026 ??:??'],
+    ['dd/mm/yyyy', '13/11/2026'],
+    ['dd/mm/yyyy hh:mm:ss', '13/11/2026 ??:??:??'],
+    ['hh:mm', '??:??'],
+    ['yyyy-mm-dd hh:mm:ss', '2026-11-13 ??:??:??'],
+    ['h:m:s a/p', '??:??:?? ?'],
+    ['hh:mm:ss.fff', '??:??:??.???'],
+    ['m:ss', '??:??'],
+    ['mm:ss', '??:??'],
+    ['mmmm ddd hh:mm', 'November Fri ??:??'],
+    ['hh:m dd/mm/yyyy', '??:?? 13/11/2026'],
+    ['dd/mm/yyyy hh:mm:ss.ffffff', '13/11/2026 ??:??:??.??????'],
+    ['dd/mm/yyyy ff f fff', '13/11/2026 ?? ? ???'],
+    ['yyyy-mm-dd HH:MM:SS', '2026-11-13 ??:??:??'],
+    ['mm:ss ddd mm', '??:?? Fri 11'],
+  ]) assert.equal(formatDate(date, mask), expected, mask)
+  assert.equal(formatDate(PBDate.ymd(2000, 2, 29), 'dd/mm/yyyy hh:mm'), '29/02/2000 ??:??')
+  assert.equal(formatDate(PBDate.ymd(1999, 12, 31), 'dd/mm/yyyy hh:mm am/pm'), '31/12/1999 ??:?? ??')
+})
+
+test('available time components keep their values and support each observed fractional width', () => {
+  const date = PBDate.ymd(2026, 11, 13), time = PBTime.hms(5, 9, 13, 123)
+  assert.equal(formatDateTime(date, time, 'dd/mm/yyyy hh:mm'), '13/11/2026 05:09')
+  assert.equal(formatDateTime(date, time, 'dd/mm/yyyy hh:mm:ss'), '13/11/2026 05:09:13')
+  assert.equal(formatDateTime(date, time, 'hh:mm:ss.ff f fff ffffff'), '05:09:13.12 1 123 123000')
+  assert.equal(formatTime(time, 'hh:mm:ss.ff f fff ffffff'), '05:09:13.12 1 123 123000')
+  assert.equal(formatDateTime(date, PBTime.hms(0, 0, 0), 'h:mm AM/PM'), '12:00 AM')
+  assert.equal(formatDateTime(date, PBTime.hms(15, 4, 9), 'h:mm AM/PM'), '3:04 PM')
 })
 
 test('coercion', () => {

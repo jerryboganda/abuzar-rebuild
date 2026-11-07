@@ -355,6 +355,10 @@ export function toStr(v: unknown): string {
   return String(v)
 }
 
+export function compareLabels(left: unknown, right: unknown): number {
+  return toStr(left).localeCompare(toStr(right), undefined, { sensitivity: 'base' })
+}
+
 /**
  * The order of the regional short date (`11/3/2026` month first, `03/11/2026` day first): String(date), Date('3/11/2026') and `[shortdate]` follow it, like in the original, which
  * follows the Windows settings. Measured with the DataWindow engine of the original on the reference machine: month first. The page sets it from the locale of the browser.
@@ -450,39 +454,20 @@ export { MONTHS, DAYS }
 const pad = (n: number, w: number) => String(n).padStart(w, '0')
 
 export function formatDate(d: PBDate, mask: string): string {
-  const [y, m, day] = civilFromDays(d.n)
-  return mask.replace(/yyyy|yy|mmmm|mmm|mm|m|dddd|ddd|dd|d/gi, (t) => {
-    switch (t.toLowerCase()) {
-      case 'yyyy':
-        return pad(y, 4)
-      case 'yy':
-        return pad(y % 100, 2)
-      case 'mmmm':
-        return MONTHS[m - 1]
-      case 'mmm':
-        return MONTHS[m - 1].slice(0, 3)
-      case 'mm':
-        return pad(m, 2)
-      case 'm':
-        return String(m)
-      case 'dddd':
-        return DAYS[d.dow - 1]
-      case 'ddd':
-        return DAYS[d.dow - 1].slice(0, 3)
-      case 'dd':
-        return pad(day, 2)
-      default:
-        return String(day)
-    }
-  })
+  return formatCalendar(d, null, mask)
 }
 
 /** a date and a time under one mask (`dd/mm/yyyy hh:mm am/pm`, `dd/mm/yyyy hh:mm ddd`): `mm` is the minute after an hour or before a second, else the month; `am/pm` keeps the case of the mask */
 export function formatDateTime(d: PBDate, t: PBTime, mask: string): string {
+  return formatCalendar(d, t, mask)
+}
+
+function formatCalendar(d: PBDate, t: PBTime | null, mask: string): string {
+  // The original shows "??" for missing hours/minutes/seconds, even for single-letter tokens.
   const [y, mo, day] = civilFromDays(d.n)
   const ampm = /am\/pm|a\/p/i.test(mask)
-  const h12 = t.h % 12 === 0 ? 12 : t.h % 12
-  const toks = [...mask.matchAll(/yyyy|yy|mmmm|mmm|mm|m|dddd|ddd|dd|d|hh|h|ss|s|fff+|am\/pm|a\/p/gi)]
+  const hour = t === null ? null : ampm ? t.h % 12 || 12 : t.h
+  const toks = [...mask.matchAll(/yyyy|yy|mmmm|mmm|mm|m|dddd|ddd|dd|d|hh|h|ss|s|f+|am\/pm|a\/p/gi)]
   const kind = toks.map((m) => m[0].toLowerCase())
   let out = ''
   let at = 0
@@ -505,10 +490,10 @@ export function formatDateTime(d: PBDate, t: PBTime, mask: string): string {
         out += MONTHS[mo - 1].slice(0, 3)
         break
       case 'mm':
-        out += pad(minute ? t.mi : mo, 2)
+        out += minute ? t === null ? '??' : pad(t.mi, 2) : pad(mo, 2)
         break
       case 'm':
-        out += String(minute ? t.mi : mo)
+        out += minute ? t === null ? '??' : String(t.mi) : String(mo)
         break
       case 'dddd':
         out += DAYS[d.dow - 1]
@@ -523,29 +508,37 @@ export function formatDateTime(d: PBDate, t: PBTime, mask: string): string {
         out += String(day)
         break
       case 'hh':
-        out += pad(ampm ? h12 : t.h, 2)
+        out += hour === null ? '??' : pad(hour, 2)
         break
       case 'h':
-        out += String(ampm ? h12 : t.h)
+        out += hour === null ? '??' : String(hour)
         break
       case 'ss':
-        out += pad(t.s, 2)
+        out += t === null ? '??' : pad(t.s, 2)
         break
       case 's':
-        out += String(t.s)
+        out += t === null ? '??' : String(t.s)
         break
       case 'am/pm': {
+        if (t === null) {
+          out += '??'
+          break
+        }
         const v = t.h < 12 ? 'am' : 'pm'
         out += m[0] === m[0].toLowerCase() ? v : v.toUpperCase()
         break
       }
       case 'a/p': {
+        if (t === null) {
+          out += '?'
+          break
+        }
         const v = t.h < 12 ? 'a' : 'p'
         out += m[0] === m[0].toLowerCase() ? v : v.toUpperCase()
         break
       }
       default:
-        out += pad(t.frac, 3).padEnd(m[0].length, '0').slice(0, m[0].length)
+        out += t === null ? '?'.repeat(m[0].length) : pad(t.frac, 3).padEnd(m[0].length, '0').slice(0, m[0].length)
     }
   })
   return out + mask.slice(at)
@@ -554,7 +547,7 @@ export function formatDateTime(d: PBDate, t: PBTime, mask: string): string {
 export function formatTime(t: PBTime, mask: string): string {
   const ampm = /am\/pm|a\/p/i.test(mask)
   const h12 = t.h % 12 === 0 ? 12 : t.h % 12
-  return mask.replace(/hh|h|mm|m|ss|s|fff+|ffffff|am\/pm|a\/p/gi, (tok) => {
+  return mask.replace(/hh|h|mm|m|ss|s|f+|am\/pm|a\/p/gi, (tok) => {
     switch (tok.toLowerCase()) {
       case 'hh':
         return pad(ampm ? h12 : t.h, 2)

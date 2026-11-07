@@ -75,13 +75,13 @@ export function compileDw(src: string): Expr {
   let e = cache.get(src)
   if (!e) {
     try {
-      e = stripComments(src).trim()
-      if (!e) {
+      const source = stripComments(src).trim()
+      if (!source) {
         // A computed field whose expression was commented out in the original
         // has no value to show; PowerBuilder renders it blank rather than failing.
-        e = { k: 'str', v: '' } as Expr
+        e = { k: 'str', v: '' }
       } else {
-        e = parseDwExpr(e as string)
+        e = parseDwExpr(source)
       }
     } catch (err) {
       throw new PBRuntimeError(`${(err as Error).message} in DataWindow expression <<${src.slice(0, 100)}>>`)

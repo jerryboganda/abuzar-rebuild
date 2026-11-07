@@ -2,11 +2,16 @@ import type { NDwBase } from '../runtime/native/dwctrl.ts'
 import type { DwModel, DwRow } from './model.ts'
 import type { DwObject } from './def.ts'
 import { compileDw, evalDw, newCtx } from './expr.ts'
-import { Dec, PBDate, PBDateTime, PBTime, toStr } from '../runtime/values.ts'
-import { parseDate, parseTime } from '../runtime/sysfuncs.ts'
+import { Dec, PBDate, PBDateTime, PBTime, shortDateMask, toStr } from '../runtime/values.ts'
+import { formatValue, numericDateMask, parseMaskedDate, parseMaskedTime, parseMaskedDateTime } from '../runtime/sysfuncs.ts'
 import { choiceStyle } from './choices.ts'
 
 export type DwEditResult = 'accepted' | 'rejected' | 'discarded'
+
+export function dwRequired(object: DwObject, overrides?: ReadonlyMap<string, string>): boolean {
+  return object.type === 'column' && ['edit', 'dddw', 'ddlb', 'editmask'].some((style) =>
+    /^(yes|true|1)$/i.test(overrides?.get(`${object.name.toLowerCase()}.${style}.required`) ?? object[`${style}.required`] ?? ''))
+}
 
 export function normalizeDwNumber(value: unknown): string {
   return toStr(value).trim().replace(/[,\s]/g, '').replace(/^\((.*)\)$/, '-$1')
@@ -62,22 +67,22 @@ export function dwMultilineText(text: string, original: string): string {
 export function dwTextLimit(model: DwModel, column: number, object: DwObject): number {
   const length = model.kinds[column] === 'string' ? Number(/\((\d+)\)/.exec(model.def.table.columns[column].type)?.[1]) : 0
   const choice = choiceStyle(object, model.overrides)
-  const configured = choice.kind === 'checkbox' || choice.kind === 'radio' || choice.kind === 'lookup' ? 0 :
+  const configured = choice.kind === 'checkbox' || choice.kind === 'radio' || choice.kind === 'lookup' || choice.kind === 'list' ? 0 :
     Number(model.overrides.get(`${object.name.toLowerCase()}.edit.limit`) ?? object['edit.limit'] ?? 0)
   const limits = [length, configured].filter((value) => Number.isInteger(value) && value > 0)
   return limits.length ? Math.min(...limits) : 0
 }
 
-function dateText(text: string): PBDate | null {
-  return /^(?:\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4})$/.test(text) ? parseDate(text) : null
+function temporalMask(model: DwModel, object: DwObject): string {
+  return (model.overrides.get(`${object.name.toLowerCase()}.editmask.mask`) ?? object['editmask.mask'] ?? '')
+    .replace(/\[shortdate\]/gi, shortDateMask())
+    .replace(/\[time\]/gi, 'hh:mm:ss')
 }
 
-function timeText(text: string): PBTime | null {
-  if (/[ap]m$/i.test(text)) {
-    const hour = Number(text.split(':')[0])
-    if (hour < 1 || hour > 12) return null
-  }
-  return parseTime(text)
+export function dwEditorText(model: DwModel, object: DwObject, value: unknown): string {
+  const mask = temporalMask(model, object), numeric = numericDateMask(mask)
+  return numeric && (value instanceof PBDate || value instanceof PBDateTime) ?
+    formatValue(value, value instanceof PBDate ? numeric.date : mask) : toStr(value)
 }
 
 async function validateValue(ctl: NDwBase, model: DwModel, row: number, object: DwObject, value: string): Promise<boolean> {
@@ -123,15 +128,13 @@ export async function commitDwValue(ctl: NDwBase, model: DwModel, row: number, c
     convertible = !limit || toStr(value).length <= limit
   } else if (kind === 'date' || kind === 'time' || kind === 'datetime') {
     const raw = toStr(value).trim()
+    const mask = temporalMask(model, object)
     if (raw === '') converted = null
-    else if (kind === 'date') converted = value instanceof PBDate ? value : dateText(raw)
-    else if (kind === 'time') converted = value instanceof PBTime ? value : timeText(raw)
+    else if (kind === 'date') converted = value instanceof PBDate ? value : parseMaskedDate(raw, mask)
+    else if (kind === 'time') converted = value instanceof PBTime ? value : parseMaskedTime(raw)
     else if (value instanceof PBDateTime) converted = value
     else {
-      const [day, ...clock] = raw.split(/[T\s]+/)
-      const date = dateText(day)
-      const time = clock.length ? timeText(clock.join(' ')) : new PBTime(0)
-      converted = date && time ? new PBDateTime(date.n, time.ms) : null
+      converted = parseMaskedDateTime(raw, mask)
     }
     convertible = raw === '' || converted !== null
   }

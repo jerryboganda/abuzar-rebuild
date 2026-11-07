@@ -119,8 +119,10 @@ export class DomUi implements UiHost {
     for (const wv of this.views.values()) {
       const cv = wv.ctlViews.get(o as PBObject)
       if (!cv) continue
-      const all = [...wv.client.querySelectorAll<HTMLElement>('input,textarea,select,button')].filter((e) => !(e as HTMLInputElement).disabled && !e.hidden && e.tabIndex >= 0)
-      all.sort((a, b) => a.tabIndex - b.tabIndex)
+      const all = [...wv.client.querySelectorAll<HTMLElement>('input,textarea,select,button')]
+        .filter((e) => e.tabIndex >= 0 && !e.matches(':disabled') && e.getClientRects().length > 0
+          && getComputedStyle(e).visibility !== 'hidden')
+      all.sort((a, b) => (a.tabIndex || Infinity) - (b.tabIndex || Infinity))
       const here = (cv.el.matches('input,textarea,select,button') ? cv.el : cv.el.querySelector('input:not([hidden]),textarea:not([hidden]),select:not([hidden]),button:not([hidden])')) as HTMLElement | null
       const i = here ? all.indexOf(here) : -1
       all[(i + 1) % Math.max(1, all.length)]?.focus()
@@ -408,10 +410,17 @@ export class WinView {
       if (e.target === this.el) void ui.rt.fire(this.w, 'key', [k, keyFlags(e)])
       const tag = (e.target as HTMLElement).tagName
       // default / cancel buttons
-      if (k === 'keyenter!' && tag !== 'TEXTAREA' && tag !== 'BUTTON' && !(e.target as HTMLElement).closest('.dw')) {
+      if (k === 'keyenter!' && !e.defaultPrevented && tag !== 'TEXTAREA' && tag !== 'BUTTON' && !(e.target as HTMLElement).closest('.dw')) {
         for (const [o, cv] of this.ctlViews) if (o.native === 'commandbutton' && o.props.get('default') === true && o.props.get('enabled') !== false) (cv.el as HTMLButtonElement).click()
-      } else if (k === 'keyescape!' && !(e.target as HTMLElement).closest('.dw')) {
-        for (const [o, cv] of this.ctlViews) if (o.native === 'commandbutton' && o.props.get('cancel') === true && o.props.get('enabled') !== false) (cv.el as HTMLButtonElement).click()
+      } else if (k === 'keyescape!' && !e.defaultPrevented) {
+        e.preventDefault()
+        const dw = [...this.ctlViews.values()].find((cv) => cv.dw?.root.contains(e.target as Node))?.dw
+        void (async () => {
+          if (dw && !(await dw.allowsDefaultKey(e))) return
+          if (!this.w.isOpen || this.w.closing || !this.el.contains(document.activeElement) ||
+            dw && !dw.root.contains(document.activeElement)) return
+          for (const [o, cv] of this.ctlViews) if (o.native === 'commandbutton' && o.props.get('cancel') === true && o.props.get('enabled') !== false) (cv.el as HTMLButtonElement).click()
+        })().catch((error) => ui.rt.onError(error))
       }
     })
   }
@@ -852,12 +861,18 @@ export class WinView {
       const order = num(c, 'taborder', 0)
       target.dataset.tab = String(order || 9999)
       target.tabIndex = order > 0 ? order : -1 // taborder 0 = not a tab stop
-      // key events of the control: `key` (and the `ue_enterkey` user event that most buttons / edits map to the key message)
+      // Native KeyDown and the recovered Enter event share the existing control.
       target.addEventListener('keydown', (e) => {
         const k = keyEnum(e)
         if (!k) return
-        void rt.fire(c, 'key', [k, keyFlags(e)])
-        void rt.fire(c, 'ue_enterkey', [k, keyFlags(e)])
+        // Source Enter navigation must not also activate the window's default button.
+        if (k === 'keyenter!' && (c.findRoutines('keydown').length ||
+          target instanceof HTMLButtonElement && c.findRoutines('ue_enterkey').length)) e.preventDefault()
+        const args = [k, keyFlags(e)]
+        void rt.fire(c, 'key', args)
+          .then(() => rt.fire(c, 'keydown', args))
+          .then(() => rt.fire(c, 'ue_enterkey', args))
+          .then(() => rt.flushPosted()).catch((error) => rt.onError(error))
       })
     }
     switch (k) {
@@ -1016,9 +1031,10 @@ export class WinView {
       case 'listbox': {
         const s = document.createElement('select')
         s.className = 'ctl'
-        if (k === 'listbox') s.size = 2
+        s.size = 2
         this.style(c, s)
         const fill = () => {
+          s.disabled = !bool(c, 'enabled', true)
           s.replaceChildren()
           const items = c.props.get('_items') as PBArray | undefined
           for (const it of items?.a ?? []) {
@@ -1035,6 +1051,16 @@ export class WinView {
           c.props.set('_selected', s.selectedIndex + 1)
           void rt.fire(c, 'selectionchanged', [s.selectedIndex + 1])
         }
+        s.onfocus = () => void rt.fire(c, 'getfocus')
+        s.ondblclick = () => void rt.fire(c, 'doubleclicked', [s.selectedIndex + 1])
+          .then(() => rt.flushPosted()).catch((error) => rt.onError(error))
+        if (c.findRoutines('ue_keypressed').length) s.addEventListener('keydown', (event) => {
+          const key = keyEnum(event)
+          if (!key) return
+          if (key === 'keyenter!') event.preventDefault()
+          void rt.fire(c, 'ue_keypressed', [key, keyFlags(event)])
+            .then(() => rt.flushPosted()).catch((error) => rt.onError(error))
+        })
         wire(s)
         el = s
         break
@@ -1304,6 +1330,10 @@ export class WinView {
     else if (c.native === 'singlelineedit' || c.native === 'editmask') {
       const i = el as HTMLInputElement
       if (i.value !== str(c, 'text')) i.value = str(c, 'text')
+      if (c.native === 'editmask') {
+        if (c.props.get('_invaliddata') === true) i.setAttribute('aria-invalid', 'true')
+        else i.removeAttribute('aria-invalid')
+      }
     } else if (c.native === 'multilineedit' || c.native === 'richtextedit') {
       const t = el as HTMLTextAreaElement
       const text = str(c, 'text')

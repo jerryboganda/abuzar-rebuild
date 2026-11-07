@@ -22,7 +22,8 @@ found in the recovered code and scans for leaks); builds and tests run in GitHub
 * The original is a two-tier client: all business logic sits in window / user-object scripts that talk to SQL Server directly.  The
   rebuild runs that logic as-is: the recovered scripts are parsed once (`web/src/pbscript`) and executed by an async interpreter
   (`web/src/runtime`).  Behaviour that PowerBuilder implements natively (windows, controls, DataWindow, transactions, system
-  functions) is implemented in TypeScript natives; everything the vendor wrote runs unmodified.
+  functions) is implemented in TypeScript natives. Business rules stay in that shared interpreter; scoped class fixes correct
+  documented decompiler defects and transaction-retry behavior rather than duplicating financial rules in the UI.
 * The Rust server is the data tier: sessions with the same transaction semantics as the original (implicit transaction until COMMIT, a
   failing statement only undoes itself), parameter binding, and later reporting / printing / file / hardware services.
 * DataWindows (8,748) are rendered from their recovered definitions: bands, positions, fonts, colours, computed fields (expression
@@ -73,3 +74,118 @@ Rust and PostgreSQL are not needed locally: `.github/workflows/ci.yml` applies t
 and the web tests; `sql.yml` validates every translated routine and statement on PostgreSQL 17.
 
 See `docs/PARITY.md` for the generated status of every area (numbers come from the tools, not from memory).
+
+## Classic and Modern UI work
+
+An opt-in Modern workspace foundation is integrated behind
+`?app=1&presentation=1`; normal startup remains Classic. Its tabs, command search,
+dialogs and local appearance preferences share the existing runtime. Forty-seven
+explicit DataWindow form/list components now have Modern layouts and guarded
+editing, including a computed aging-interval detail grid and two Manufacturer
+criteria forms with editable display text and numeric lookup keys. These include
+six transaction grids with original computed summary/footer totals, readonly keyboard access and
+responsive sticky-footers without duplicating financial calculations.
+Twenty-seven criteria components retain source labels, defaults, text/numeric
+rules and explicit lookup bindings, including class, packing layout, service
+template, zone, quotation/customer and voucher/invoice ranges. Shared numeric
+date-mask editing no longer parses day-first input as a regional month-first
+date; unchanged date-only edits preserve stored timestamps.
+Focus-open lists now respect source ShowList and omit the down arrow. Generic
+Item Type and margin criteria have explicit mappings; purchase-change Page Size
+supports editable code-table text, and Customer Category/Stock Ledger Inputs
+retain all four source left-caption checkboxes. These shared selectors preserve
+original keys, validation, IME and copyable rejected drafts. Their synthetic
+coverage does not establish purchase, authorization or maintenance acceptance.
+Forty-one modal surfaces have Modern layouts: twenty-eight criteria windows and nine response dialogs with their
+original controls, validation and return channels (five native-field dialogs
+and four price/quantity/discount calculators), plus the associated-sale invoice
+picker, cashier-shift closing, multiple-invoice cash tendering and category changes.
+The criteria windows cover Class, Letter, Price Type/Mark-Up, Margin Range,
+Quotation/Customer, Packing Layout, percentage adjustment, zone/date/top-customer,
+customer-reference replacement, item/date/top-customer selection, specified date,
+date-only and start/end date arguments. Complete inherited controls retain their
+visibility, native radio groups and action/return scripts. Rejected drafts and
+failed retrieval cannot return a stale success; late close requests no longer
+overwrite a completed modal result. Their preference/group/retrieval coverage
+is synthetic, not production reporting or authorization acceptance. Item selection
+retains the original alias procedure, sorted native list, add/remove events,
+All option and date/count return. Transient search fields do not block an already
+populated selection; failed all-items retrieval reports an error and cancels.
+Native datetime inputs use their declared numeric mask and reject impossible
+dates/clocks without replacing the draft or destination. Date guards check all
+consumed dates before writing the returned structure. The three date-only/range
+owners retain hidden customer controls, source preferences and safe title-bar
+cancellation. Their Enter navigation skips hidden/disabled controls; no source-
+absent Escape shortcut or date-range ordering rule is invented.
+Fifteen further lookup criteria owners cover accounts, items, doctors, godowns,
+manufacturers, patients, regions, zones, sales people, subaccounts, suppliers,
+users and customer groups. Context-local bindings preserve source child keys,
+external captions, editing policies, automatic lists and option visibility.
+Supplier labels retain the visible All option; customer-group and supplier
+flags retain their original Boolean types. Untouched null criteria keep their
+source behavior, including the two explicit null-to-zero conversions. Rejected
+edited choices cannot return an older key, and failed item-criteria retrieval
+cancels with visible feedback.
+The picker now executes its original
+Open/Close, shared-buffer, validation, invoice-total and keyboard scripts in
+both modes against strictly recorded synthetic SELECT results. Its structure
+return channels are covered; real database persistence and the complete
+advance-sale workflow remain unaccepted.
+Cashier closing retains its three source DataWindows, conditional figures,
+denomination counts and closed-shift protection. Its original closing flow has
+strict synthetic transaction coverage, including rollback/retry. Bytecode-backed
+corrections remove blocked success-path exits; deferred update flags preserve
+pending edits after rollback. Authorization is a synthetic result boundary,
+not a verified login. Source-driven repaint no longer swallows text-cell clicks,
+and shared Escape routing separates draft cancellation from native window Cancel.
+Cash tendering retains its document grid, signed total, readonly charged/change
+fields and hidden Classic print companion. Original sale/return lookup, tender
+validation, keyboard commands, per-document supervision and keep-open preferences
+have strict synthetic coverage. A bytecode-confirmed loop-counter correction
+restores single-document printing; shared row navigation now awaits the source
+RowFocusChanging decision. The original per-document commits and preference-driven
+failure resets are not replaced with a claimed atomic batch.
+Category changes retain source field order, conditional protection, account
+permissions and actual tender/charged/change amounts. Scoped acceptance, load,
+rollback and commit guards retain failed edits and explicitly warn about
+unconfirmed saves. Failed Open cannot reuse row ID 1 as an acceptance result.
+Joined account/subaccount names now retain distinct source columns, and visible
+focused fields stay in view after form reflow without undoing deliberate scrolling.
+Guarded native radio groups preserve exact source keys, original
+validation and hidden fields in the flat/percentage discount calculator.
+Calculator forms preserve source groups, precision helpers and
+financial scripts. The aging entry has a mapped
+outer layout; 43 standard Code/Name entry windows now have additional
+synthetically verified layouts and control-local form/list mappings. Contact Group now also
+has an authored member-grid/outer layout, guarded native choice editing and a
+reviewed eleven-column contact lookup with loaded-record search and paging.
+Checklist Item, Shift and Tax Category add richer form/list mappings, including
+guarded native checkbox editing. Contact Card adds a complete eleven-field
+detail/list layout, sorted source-key choices and multiline Address editing.
+Relation and thirty-two additional masters add explicit contextual layouts
+with their source fields and list ordering. The registry now contains 82
+authored entry mappings. Corrected mappings preserve source display order;
+Resource Category supports multiline Description and Grade supports exact
+decimal draft stepping with its source integer bounds. The shared editor retains line endings,
+IME, rejected corrections and copyable interrupted drafts. Its account-copy
+fixture uses recovered routines with strictly synthetic query results.
+Local checks pass: 537 frontend tests, strict presentation types, a 62-module
+static build, 5,273 in-page browser assertions and 215 appearance cases.
+Real pointer checkboxes use one shared activation route; grid focus stays
+visible at narrow widths, and appearance changes retain unaccepted drafts.
+Multiline typing and form text-editor focus reveal their fields. Form reflow keeps
+previously visible focus onscreen without undoing deliberate scrolling away.
+Pending grid redraws preserve the
+latest cell focus and cannot reclaim focus after the user leaves the grid.
+Editable lookup typing, IME, explicit duplicate-row selection, source key
+events and stale-draft recovery share the existing validation path. Classic
+redraw preserves its open popup without stealing newer external focus.
+Complete business workflows remain unaccepted. Other lookup
+variants are not accepted. Unmapped windows
+remain labelled Classic compatibility layouts;
+complete Modern screen coverage and Modern print are not enabled. See
+`docs/UI-ENHANCEMENT.md` for synthetic previews,
+reproducible checks and open coverage gates. `PRODUCT.md` records requirements;
+`DESIGN.md` records the implemented visual direction.
+Native theme synchronization is wired for Modern Light/Dark/System and Classic
+Light, with packaged Windows acceptance still pending.

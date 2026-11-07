@@ -6,6 +6,7 @@ import { DwModel, NOT_MODIFIED, NEW_MODIFIED } from '../src/dw/model.ts'
 import type { DwDef } from '../src/dw/def.ts'
 import { Dec } from '../src/runtime/values.ts'
 import type { Db } from '../src/runtime/wire.ts'
+import { NDwBase, NDwColumn } from '../src/runtime/native/dwctrl.ts'
 
 const def: DwDef = {
   datawindow: { processing: '1' },
@@ -28,6 +29,74 @@ const def: DwDef = {
   ],
 }
 
+test('DataWindow object assignments preserve literal captions without executing embedded property text', () => {
+  const rt = new Runtime({ load: async () => undefined })
+  const definition = structuredClone(def)
+  definition.objects.push({ type: 'text', name: 'caption', band: 'detail', text: 'Original caption' })
+  const model = new DwModel(rt, 'd_synthetic_properties', definition)
+  const control = new NDwBase(rt, 'dw_synthetic_properties')
+  control.attach(model)
+  let changes = 0
+  control.listeners.add(() => { changes++ })
+  model.modify('amt.visible=1 amt.protect=0')
+  const caption = new NDwColumn(control, 'caption')
+  const values = ['Reduce Synthetic price To:', 'Raise Synthetic price By:', '', '  spaced caption  ',
+    `Both "double" and 'single' quotes`, 'Literal ~t ~n ~" ~~', 'Line one\r\nLine two\tcolumn',
+    `A caption amt.visible=0 amt.protect=1`, '<b>literal</b> & \u6f22\u5b57']
+  for (const [index, value] of values.entries()) {
+    const version = model.version
+    caption.pbSet('Text', value)
+    assert.equal(model.describe('caption.text'), value)
+    assert.equal(caption.pbGet('text'), value)
+    assert.equal(model.describe('amt.visible'), '1')
+    assert.equal(model.describe('amt.protect'), '0')
+    assert.equal(changes, index + 1)
+    assert.equal(model.version, version + 1)
+  }
+  const amount = new NDwColumn(control, 'amt')
+  amount.pbSet('Visible', false)
+  amount.pbSet('Protect', true)
+  assert.equal(model.describe('amt.visible'), '0')
+  assert.equal(model.describe('amt.protect'), '1')
+  assert.deepEqual(model.visLog, [{ name: 'amt', on: true }, { name: 'amt', on: false }])
+})
+
+test('literal property assignments and Modify share table and visibility side effects', () => {
+  const rt = new Runtime({ load: async () => undefined })
+  const model = new DwModel(rt, 'd_synthetic_properties', structuredClone(def))
+  const select = "select code, grp from synthetic where grp = 'A B'"
+  model.setProperty('DataWindow.Table.Select', select)
+  model.setProperty('DataWindow.Table.Sort', 'code A grp D')
+  model.setProperty('DataWindow.Table.Filter', "grp = 'A B'")
+  assert.equal(model.retrieveSqlOverride, select)
+  assert.equal(model.sortText, 'code A grp D')
+  assert.equal(model.filterText, "grp = 'A B'")
+  const version = model.version
+  assert.equal(model.modify(`datawindow.table.sort='grp D' datawindow.table.filter="code > 0" amt.visible=no amt.visible=yes`), '')
+  assert.equal(model.version, version + 1)
+  assert.equal(model.sortText, 'grp D')
+  assert.equal(model.filterText, 'code > 0')
+  assert.deepEqual(model.visLog, [{ name: 'amt', on: false }, { name: 'amt', on: true }])
+  model.setProperty('datawindow.table.select', '')
+  assert.equal(model.retrieveSqlOverride, '')
+})
+
+test('source NULL initial values are case-insensitive nulls, not unchangeable NaN keys', () => {
+  const rt = new Runtime({ load: async () => undefined })
+  for (const type of ['long', 'decimal(2)', 'char(10)', 'date', 'datetime', 'time']) {
+    for (const initial of ['null', 'Null', 'NULL']) {
+      const model = new DwModel(rt, 'd_null_initial', { datawindow: {}, bands: {}, objects: [],
+        table: { columns: [{ name: 'code', type, initial }] } })
+      model.insertRow(0)
+      assert.equal(model.getItem(1, 'code'), null, `${type}/${initial}`)
+      if (type === 'long') {
+        assert.equal(model.setItem(1, 'code', 901), 1)
+        assert.equal(model.getItem(1, 'code'), 901)
+      }
+    }
+  }
+})
+
 function makeDb(log: { sql: string; params: unknown[] }[]): Db {
   return {
     async query(sql, params) {
@@ -49,6 +118,30 @@ function makeDb(log: { sql: string; params: unknown[] }[]): Db {
     async close() {},
   }
 }
+
+test('joined duplicate SQL names retain separate DataWindow values without losing unique-name reordering', async () => {
+  const rt = new Runtime({ load: async () => undefined })
+  rt.dwSql = () => ({ sql: 'synthetic lookup', params: [] })
+  const definition: DwDef = { datawindow: {}, bands: {}, objects: [], table: { columns: [
+    { name: 'code', type: 'long' }, { name: 'name', type: 'char(60)' }, { name: 'subaccounts_name', type: 'char(60)' },
+  ] } }
+  for (const [names, row, expected] of [
+    [['code', 'name', 'name'], [1, 'Synthetic customer', 'Customers'], [1, 'Synthetic customer', 'Customers']],
+    [['subaccounts_name', 'code', 'name'], ['Customers', 1, 'Synthetic customer'], [1, 'Synthetic customer', 'Customers']],
+    [['code', 'customer_name', 'group_name'], [1, 'Synthetic customer', 'Customers'], [1, 'Synthetic customer', 'Customers']],
+    [['name', 'code'], ['Synthetic customer', 1], [1, 'Synthetic customer', null]],
+  ] as const) {
+    const db = makeDb([])
+    db.query = async () => ({
+      columns: names.map((name, index) => ({ name, type: typeof row[index] === 'number' ? 'int4' : 'text' })),
+      rows: [[...row]],
+    })
+    const model = new DwModel(rt, 'd_joined_lookup', definition)
+    model.trans = { db, setOk() {}, setError(_code, error) { assert.fail(error) } }
+    assert.equal(await model.retrieve([]), 1)
+    assert.deepEqual(model.colNames.map((name) => model.getItem(1, name)), expected)
+  }
+})
 
 test('retrieve, aggregates, groups, update statements', async () => {
   const rt = new Runtime({ load: async () => undefined })
@@ -91,6 +184,21 @@ test('retrieve, aggregates, groups, update statements', async () => {
   assert.equal(m.getStatus(1, null), NOT_MODIFIED)
   assert.equal(m.modifiedCount(), 0)
   void NEW_MODIFIED; void Dec
+})
+
+test('update does not issue SQL or clear dirty buffers when the editor rejects AcceptText', async () => {
+  const rt = new Runtime({ load: async () => undefined })
+  const log: { sql: string; params: unknown[] }[] = []
+  const model = new DwModel(rt, 'd_synthetic_rejected_update', def)
+  model.trans = { db: makeDb(log), setError() { assert.fail('Validation is not a database error') }, setOk() {} }
+  model.insertRow(0)
+  model.setItem(1, 'code', 42)
+  model.acceptText = async () => -1
+  assert.equal(await model.update(), -1)
+  assert.equal(log.length, 0)
+  assert.notEqual(model.getStatus(1, null), NOT_MODIFIED)
+  assert.equal(await model.update(false), 1, 'An explicit update(false) still skips AcceptText')
+  assert.equal(log.length, 1)
 })
 
 test('crosstab pivot: replicated columns, shifted objects, crosstabsum, sparse', async () => {

@@ -4,10 +4,10 @@ import { Runtime } from '../src/runtime/interp.ts'
 import { NDwBase } from '../src/runtime/native/dwctrl.ts'
 import { DwModel } from '../src/dw/model.ts'
 import type { DwDef, DwObject } from '../src/dw/def.ts'
-import { commitDwValue, dwEditAutoSelect, dwEditText, dwMultiline, dwMultilineDomText, dwMultilineText, sameDwColumn } from '../src/dw/edit.ts'
+import { commitDwValue, dwEditAutoSelect, dwEditorText, dwEditText, dwMultiline, dwMultilineDomText, dwMultilineText, sameDwColumn } from '../src/dw/edit.ts'
 import { parseScriptFile } from '../src/pbscript/parser.ts'
 import type { ClassDef } from '../src/runtime/object.ts'
-import { PBDate, PBDateTime, PBTime } from '../src/runtime/values.ts'
+import { dateOrder, PBDate, PBDateTime, PBTime, setDateOrder, toStr } from '../src/runtime/values.ts'
 
 function scripts(name: string, text: string): ClassDef {
   const { file, errors } = parseScriptFile(text)
@@ -50,6 +50,23 @@ function fixture(type = 'long', validation = '') {
     commit: (value: unknown) => commitDwValue(ctl, model, 1, 0, object, value),
   }
 }
+
+test('native Sort resets to the first sorted row without row-focus callbacks', async () => {
+  const { ctl, model, events } = fixture()
+  model.insertRow(0)
+  model.setItem(2, 1, 3)
+  model.insertRow(0)
+  model.row = 2
+  await ctl.n_setsort('quantity A')
+  assert.equal(await ctl.n_sort(), 1)
+  assert.equal(model.row, 1)
+  assert.equal(model.getItem(1, 1), null)
+  assert.equal(model.getItem(2, 1), 3)
+  assert.equal(model.getItem(3, 1), 7)
+  assert.deepEqual(events, [])
+  assert.equal(await ctl.n_deleterow(0), 1)
+  assert.deepEqual([model.getItem(1, 1), model.getItem(2, 1)], [3, 7])
+})
 
 test('multiline editing requires a plain string Edit with explicit vertical scrolling and wrapping', () => {
   const object: DwObject = { name: 'address', type: 'column', band: 'detail',
@@ -210,6 +227,78 @@ for (const [type, text] of [
     assert.deepEqual(f.events.map((event) => event.name), ['itemerror'])
   })
 }
+
+test('numeric date masks own ambiguous date entry independently of regional order', async () => {
+  const previous = dateOrder
+  try {
+    for (const regional of ['mdy', 'dmy'] as const) {
+      setDateOrder(regional)
+      for (const type of ['date', 'datetime']) for (const [mask, text] of [
+        ['dd/mm/yyyy', '03/04/2028'], ['mm/dd/yyyy', '04/03/2028'],
+        ['d.m.yy', '3.4.28'], ['yyyy-mm-dd', '2028-04-03'],
+      ]) {
+        const f = fixture(type)
+        const object = f.model.def.objects[0]
+        object['editmask.mask'] = mask
+        object['editmask.useformat'] = 'yes'
+        object.format = 'mm/dd/yyyy'
+        assert.equal(await f.commit(text), 'accepted')
+        const value = f.model.getItem(1, 1)
+        assert.ok(value instanceof PBDate || value instanceof PBDateTime)
+        assert.equal(value.n, PBDate.ymd(2028, 4, 3).n)
+        assert.equal(dwEditorText(f.model, object, value), text)
+      }
+    }
+  } finally { setDateOrder(previous) }
+})
+
+test('date masks reject invalid calendar dates, preserve timestamps and honor live overrides', async () => {
+  const f = fixture('datetime')
+  const object = f.model.def.objects[0]
+  object['editmask.mask'] = 'mm/dd/yyyy hh:mm:ss'
+  f.model.modify("quantity.editmask.mask='dd/mm/yyyy hh:mm:ss'")
+  for (const text of ['29/02/2027 12:30:45', '31/04/2028', '29/02/2028 25:00']) {
+    assert.equal(await f.commit(text), 'rejected')
+    assert.equal(f.model.getItem(1, 1), 7)
+  }
+  assert.equal(await f.commit('29/02/2028 12:30:45'), 'accepted')
+  const value = f.model.getItem(1, 1)
+  assert.ok(value instanceof PBDateTime)
+  assert.equal(value.n, PBDate.ymd(2028, 2, 29).n)
+  assert.equal(value.ms, PBTime.hms(12, 30, 45).ms)
+  assert.equal(dwEditorText(f.model, object, value), '29/02/2028 12:30:45')
+  f.model.modify("quantity.editmask.mask='dd/mm/yyyy'")
+  assert.equal(dwEditorText(f.model, object, value), '29/02/2028')
+  assert.equal(dwEditorText(f.model, object, null), '')
+})
+
+test('unmasked and named short-date editors retain regional input order', async () => {
+  const previous = dateOrder
+  try {
+    for (const regional of ['mdy', 'dmy'] as const) for (const mask of ['', '[shortdate]']) {
+      setDateOrder(regional)
+      const f = fixture('date'), object = f.model.def.objects[0]
+      object['editmask.mask'] = mask
+      assert.equal(await f.commit('03/04/2028'), 'accepted')
+      const value = f.model.getItem(1, 1)
+      assert.ok(value instanceof PBDate)
+      assert.equal(value.n, PBDate.ymd(2028, regional === 'mdy' ? 3 : 4, regional === 'mdy' ? 4 : 3).n)
+      assert.equal(dwEditorText(f.model, object, value), regional === 'mdy' ? '3/4/2028' : '03/04/2028')
+    }
+  } finally { setDateOrder(previous) }
+})
+
+test('other temporal mask grammars keep existing editable text rather than showing unparseable tokens', async () => {
+  for (const mask of ['mmmm d, yyyy', 'mm/yyyy', 'dd/mm/yyy', 'dd/mm/yyyy literal', 'hh:mm a/p']) {
+    const f = fixture('datetime'), object = f.model.def.objects[0]
+    object['editmask.mask'] = mask
+    const value = new PBDateTime(PBDate.ymd(2028, 4, 3).n, PBTime.hms(12, 30, 45).ms)
+    const text = dwEditorText(f.model, object, value)
+    assert.equal(text, toStr(value))
+    assert.equal(await f.commit(text), 'accepted')
+    assert.deepEqual(f.model.getItem(1, 1), value)
+  }
+})
 
 test('validation failure invokes ItemError and shows the existing message without writing', async () => {
   const f = fixture('long', 'number(gettext()) > 10')

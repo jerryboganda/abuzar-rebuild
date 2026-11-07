@@ -39,8 +39,8 @@ meta.forEach(([kind, value, fmt], i) => {
     return
   }
   let r: string
-  // a type the format does not suit (a time under a date mask) comes back from the engine as question marks: not compared
-  if (/[?￿]/.test(e)) return
+  // Question marks are real display output for missing temporal parts, not failed observations.
+  if (/\uffff/.test(e)) return
   try {
     r = formatValue(sample(kind, value), fmt)
   } catch (err) {

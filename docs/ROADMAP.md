@@ -29,4 +29,51 @@ Numbers live in `PARITY.md` and `SQL-TRANSLATION-REPORT.md` (generated). This fi
 Start-up verified in CI against PostgreSQL 17 (login through the original login window, post-login code, main window), MDI toolbar from the menu items, QR codes of the fiscal invoices (decoded by OpenCV in CI: versions 1-30, all four levels), Windows installer as a release asset (`release.yml`), Windowed rendering of large DataWindows (the original draws only what is visible), print preview of report windows, page-across printing of wide reports, label sheets, Code 39 barcodes drawn without the barcode fonts, SaveAs to CSV / text / xlsx / HTML / XML, shared-token protection of the server API for LAN use (`API_TOKEN`), audit trail of master data (`db/pg/80_audit.sql`), typed procedure calls, a procedure sweep in CI.
 
 ## Enhancements planned (beyond parity)
+**Working-tree additions with local synthetic coverage:** shared validation outcome/event ordering,
+caller-scoped AcceptText, required-field search, typed temporal edits, text
+limits, redirected focus and default database-error feedback are implemented.
+Original aging validation and New/Delete/Save fixtures, using an isolated SQL
+call recorder, now pass the local frontend/type/browser checks. The radio,
+checkbox and multiline-focus corrections are covered by those checks.
+Three source-backed transaction calculators now have Modern dialog layouts;
+current verification details and remaining gates are in `UI-ENHANCEMENT.md`.
+These additions do not close production workflow, full catalog, printing or
+hardware gates.
+
+Classic/Modern UI and independent print-layout enhancement are now approved for
+phased implementation. Static inventory, an isolated all-role prototype and an
+opt-in runtime workspace foundation are available. The foundation adds scoped
+preferences, retained tabs, live command search and Modern dialogs. Seven explicit
+DataWindow component pilots add semantic forms/lists, guarded editing and
+virtualized rows, including readonly calculations alongside editable aging
+limits. Modern numeric steppers preserve typed input, draft acceptance and
+validation. Other spin variants, native parity and full aging-window rules remain open.
+Five native-control response dialogs have full Modern layouts
+with original scripts and return channels. The aging entry now has an exact
+inherited outer-layout pilot with context-only Find and source-backed
+filter/unfilter/ascending sort on synthetic rows. Dropdown selection Text and
+cross-window radio isolation were corrected. Its editable filter-value combo now
+supports freeform/listed criteria, source-driven population, native text/list
+mutation, serialized notifications and accessible keyboard/pointer choices.
+Exact native message/locale semantics, other list families and database workflow
+acceptance remain open. Other outer windows and unmapped
+controls remain labelled Classic compatibility layouts. Complete Modern screen/document coverage, native
+accessibility and hardware acceptance
+remain open; the Modern-default rollout is not enabled. See
+`UI-ENHANCEMENT.md`, `../PRODUCT.md` and `../DESIGN.md`. This does not mark the
+existing parity or hardware gaps above resolved.
+The Tauri native theme bridge is implemented with ordered updates and visible
+failure/retry, but its actual packaged Windows behavior remains unverified.
+User-initiated form-tab changes now wait for pending field validation and honor
+the original unsaved-change guard in both presentations. Modern adds
+keyboard-operable tabs and live panel semantics;
+programmatic tab/event parity and complete outer-window migration remain open.
+Ordered EditChanged delivery and model/row/column-owned live GetText/SetText now
+cover source-driven Save availability and ascending-text Find in both modes.
+Input-event messages retain drafts; input errors block acceptance until
+correction/cancellation, and closing invalidates queued delivery. Native busy
+acceptance is conservative, not full PowerBuilder reentrancy parity. No-active-
+editor/DataStore text behavior, other search branches, selectors and complete
+business-window validation/save remain open.
+
 Argon2 password hashing with migration of the plain-text `users.password`, server-side rights enforcement (the original trusts the client), audit trail, `pg_dump` based backup replacing the vendor backup code, proper database migrations replacing the upgrade script chain, HTTPS + authentication for multi-user (LAN) mode.

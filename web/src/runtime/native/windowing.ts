@@ -232,13 +232,10 @@ export function registerWindowing(rt: Runtime): void {
   })
   def('closewithreturn', (r, a) => {
     const w = a[0]
-    const msg = r.globals.get('message') as PBObject | undefined
-    if (msg) {
-      msg.props.set('stringparm', typeof a[1] === 'string' ? a[1] : '')
-      msg.props.set('doubleparm', typeof a[1] === 'number' ? a[1] : a[1] instanceof Dec ? a[1].toNumber() : 0)
-      msg.props.set('powerobjectparm', a[1] && typeof a[1] === 'object' && !(a[1] instanceof Dec) ? a[1] : null)
-    }
-    return w instanceof PBObject ? closeWindow(r, w) : 0
+    // A delayed Close event must not overwrite an already accepted modal return.
+    if (!(w instanceof NWindow) || !w.isOpen) return 0
+    setMessage(r, a[1])
+    return closeWindow(r, w)
   })
   def('halt', () => {
     throw new Error('halt')
