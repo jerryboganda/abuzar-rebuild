@@ -96,14 +96,20 @@ supports editable code-table text, and Customer Category/Stock Ledger Inputs
 retain all four source left-caption checkboxes. These shared selectors preserve
 original keys, validation, IME and copyable rejected drafts. Their synthetic
 coverage does not establish purchase, authorization or maintenance acceptance.
-Forty-one modal surfaces have Modern layouts: twenty-eight criteria windows and nine response dialogs with their
+Sixty-eight modal surfaces have Modern layouts: fifty-five criteria windows and nine response dialogs with their
 original controls, validation and return channels (five native-field dialogs
 and four price/quantity/discount calculators), plus the associated-sale invoice
 picker, cashier-shift closing, multiple-invoice cash tendering and category changes.
 The criteria windows cover Class, Letter, Price Type/Mark-Up, Margin Range,
 Quotation/Customer, Packing Layout, percentage adjustment, zone/date/top-customer,
 customer-reference replacement, item/date/top-customer selection, specified date,
-date-only and start/end date arguments. Complete inherited controls retain their
+date-only and start/end date arguments, plus six inherited `d_arg_ref` text
+criteria for batch number, container number, master part, phone, reference and
+SMS center. Six numeric owners cover Day, Discount %, GST %, two code-range
+variants and document-number ranges. Original percentage limits and spin
+policies remain authoritative; range captions stay beside their own fields,
+without introducing a start-before-end rule or reinterpreting ordering flags.
+Complete inherited controls retain their
 visibility, native radio groups and action/return scripts. Rejected drafts and
 failed retrieval cannot return a stale success; late close requests no longer
 overwrite a completed modal result. Their preference/group/retrieval coverage
@@ -126,6 +132,18 @@ flags retain their original Boolean types. Untouched null criteria keep their
 source behavior, including the two explicit null-to-zero conversions. Rejected
 edited choices cannot return an older key, and failed item-criteria retrieval
 cancels with visible feedback.
+Nine date/filter owners add sales/returns cash and credit, adjustments, outstanding
+invoices, posted/unposted status, issue/due/post date selection, purchase and sale
+types, and fifteen transaction categories. Their original defaults and return
+codes remain intact, including All Transactions disabling/clearing and the two
+source-specific reversed-date status rules. Hidden customer criteria are not
+populated or validated. Modern keyboard navigation includes options whose source
+omits TabOrder, without changing explicit exclusions or Classic.
+Six further owners cover As On, cost-price selection, Cash/Credit/Both, cashflow
+accounts and remarks. Their secondary selectors retain literal external labels,
+original defaults/keys and guarded edit acceptance without requiring hidden
+customer data. Source cash/credit arrays, null values and account/remarks flags
+remain unchanged.
 The picker now executes its original
 Open/Close, shared-buffer, validation, invoice-total and keyboard scripts in
 both modes against strictly recorded synthetic SELECT results. Its structure
@@ -163,13 +181,14 @@ Checklist Item, Shift and Tax Category add richer form/list mappings, including
 guarded native checkbox editing. Contact Card adds a complete eleven-field
 detail/list layout, sorted source-key choices and multiline Address editing.
 Relation and thirty-two additional masters add explicit contextual layouts
-with their source fields and list ordering. The registry now contains 82
-authored entry mappings. Corrected mappings preserve source display order;
+with their source fields and list ordering. Fifteen further masters follow
+the same pattern. The registry now contains 97 authored entry mappings (94
+single-entry). Corrected mappings preserve source display order;
 Resource Category supports multiline Description and Grade supports exact
 decimal draft stepping with its source integer bounds. The shared editor retains line endings,
 IME, rejected corrections and copyable interrupted drafts. Its account-copy
 fixture uses recovered routines with strictly synthetic query results.
-Local checks pass: 537 frontend tests, strict presentation types, a 62-module
+That earlier snapshot passed 537 frontend tests, strict presentation types, a 62-module
 static build, 5,273 in-page browser assertions and 215 appearance cases.
 Real pointer checkboxes use one shared activation route; grid focus stays
 visible at narrow widths, and appearance changes retain unaccepted drafts.
@@ -183,7 +202,28 @@ redraw preserves its open popup without stealing newer external focus.
 Complete business workflows remain unaccepted. Other lookup
 variants are not accepted. Unmapped windows
 remain labelled Classic compatibility layouts;
-complete Modern screen coverage and Modern print are not enabled. See
+complete Modern screen coverage and approved Modern printing remain unfinished.
+The opt-in print preview now has independent global and document-family choices.
+`Default` keeps live inheritance; unrelated Appearance saves do not create
+overrides. Sales/purchase invoice templates remain previews, and item labels
+remain blocked pending paper/printer information. Print rules preserve field
+positions, page geometry and zero-height bands without inheriting workspace colors.
+Unavailable Modern requests stop with an explicit Classic-selection instruction.
+Both shared F4 calendar owners now preserve their distinct source return and
+cancellation contracts in Classic and Modern. The DataWindow path rejects
+invalid drafts, keeps millisecond clocks and restores the exact source-masked
+editor text and focus. Keyboard and pointer navigation, month/year choices and
+Today share the original three-control layout. Authored coverage reaches 70
+modal layouts. The current snapshot passes 793 frontend tests, 9
+static-inventory tests and strict presentation types. Consolidated regression
+passes 12,730 assertions, 781 appearances and 148 additional forced-color
+assertions, including both calendars and print settings/document checks, plus 84
+focused print assertions. Authored coverage is 167 of 2,062 inventoried windows
+(8.10%) with no verified complete screens; `docs/ui-completion-audit.md` reports
+the full gap. The customer-comments F4 override is exercised
+in a synthetic owner, not its complete business window. Full screen/document
+catalogs, remaining callers, workflows, native, database, assistive-technology
+and hardware acceptance remain open. No printer was exercised. See
 `docs/UI-ENHANCEMENT.md` for synthetic previews,
 reproducible checks and open coverage gates. `PRODUCT.md` records requirements;
 `DESIGN.md` records the implemented visual direction.

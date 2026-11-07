@@ -7,15 +7,161 @@ See `../PRODUCT.md` for the confirmed scope and constraints.
 
 ## Current state
 
-**Current working tree: consolidated UI/browser verification and strict types pass; enhancement remains incomplete.**
+**Fifteen more single-entry masters are authored; enhancement remains incomplete and unreleased.**
+As of this snapshot the registry holds 167 authored windows out of the 2,062
+inventoried (8.10%; 9.11% of inherited control paths): 70 modal layouts (55
+criteria, 5 native-field, 4 transaction, 4 calculator and 2 calendar windows)
+and 97 entry windows.
+The entry windows are 3 multi-entry and 94 single-entry layouts, of which 43 are
+standard Code/Name masters and 51 are richer masters; the newest fifteen are
+listed under "Additional single-entry masters". There are 47 global DataWindow
+mappings and three print-template families (sales preview, purchase preview and
+the blocked item label); no Modern print template is approved. The other 1,895
+windows still use labelled Classic compatibility layouts.
+
+The tree passes 793 frontend tests, strict presentation types and the nine
+static-inventory tests. The full browser regression passes 12,730 assertions and
+781 appearances, plus 148 additional forced-color assertions. A focused print run
+adds 84 assertions across five settings and four document appearances without
+printer access. There are no failures, runtime/page errors or forbidden
+requests. These are synthetic, isolated checks, not acceptance of any complete
+business workflow: verified complete Modern screens remain zero, no window has
+recorded Classic evidence, runtime reachability or role coverage, and normal
+startup stays Classic. `node tools/parity/ui_completion_audit.mjs` regenerates
+the measured coverage report in `ui-completion-audit.md`; its verdict is
+**not 100% complete**.
+
+### Previous DataWindow-calendar snapshot
+
+**Both shared calendar owners are implemented; enhancement remains incomplete and unreleased.**
+The registry contains 55 criteria owners and 70 modal layouts. `w_calendar2`
+shares the three-control Modern calendar layout. Its two original F4 handlers
+reject invalid drafts, retain millisecond clocks and cancellation values,
+initialize empty datetimes at midnight and restore the visible editor and
+focus. The original colon-separated millisecond mask now parses and formats
+independently of regional date order.
+
+The source-matched snapshot passes 745 frontend tests, strict presentation types
+and 624 focused both-host assertions/eight DataWindow-calendar appearances.
+Consolidated regression passes 11,909 assertions and 781 appearances, including
+eight appearances of each calendar owner, plus 148 additional forced-color
+assertions. All 67 production modules, 25 copied fixtures and 127 inputs match;
+there are no failures, runtime/page errors or forbidden requests.
+`datawindow-calendar-verification.json` records final identity and evidence
+hashes. These are isolated source-handler checks, not acceptance of the complete
+customer-comments window, remaining callers or business workflows. Complete
+catalogs and production acceptance remain open; normal startup stays Classic.
+
+### Previous native-date calendar snapshot
+
+**The shared F4 calendar is implemented; enhancement remains incomplete and unreleased.**
+That registry contained 55 criteria owners and 69 modal layouts, including the
+original three-control `w_calendar`. The verified snapshot passes 739 frontend
+tests, strict presentation types and 924 focused both-host browser assertions.
+Eight calendar appearances cover light/dark, 100/200% text, 320px and short
+viewports, including two forced-color cases. Consolidated regression passes
+11,285 assertions and 773 appearances, plus 148 additional forced-color
+assertions. All 67 production modules, 24 copied fixtures and 126 inputs match;
+there are no failures, runtime/page errors or forbidden requests.
+`calendar-verification.json` records final identity and evidence hashes.
+
+The shared native calendar preserves selected-date output references, source
+DateChanged and double-click handlers, today/week-number properties and modal
+returns. F4 retains the field's date mask and existing clock, and restores the
+invoking field and owning cancellation structure. Source focus requested before
+a Modern modal becomes visible is applied after showing it. Rapid Enter or OK
+waits for queued calendar changes rather than returning stale dates. Date cells
+retain full text scaling and at least four pixels of measured horizontal room
+around their glyphs; other dialogs retain their existing outer margins.
+Normal startup remains Classic. Full catalogs/workflows and packaged Windows,
+database, assistive-technology and hardware acceptance remain outstanding.
+
+### Previous date/choice snapshot
+
+**Six date/choice owners are added; enhancement remains incomplete and unreleased.**
+That registry contained 55 criteria owners and 68 modal layouts. The previous
+snapshot passes 726 frontend tests, strict presentation types and 734 focused
+both-host browser assertions/48 appearances, including real secondary-selector
+keyboard/pointer actions, native date recovery and As On navigation. The full
+source-matched regression passes 10,645 assertions and 765 appearances, plus 148
+forced-color assertions, without failures, runtime/page errors or forbidden requests.
+All 65 modules, 24 fixtures and 123 inputs match the recorded final snapshot.
+Prior full-run results below belong to their own snapshots.
+
+The source cost-price lookup retains keys 5/6 and default 6; Cash/Credit/Both
+retains codes 1/2/3 and default 1. Guards apply to the visible `dw_price` editor.
+The inherited non-blocking customer AcceptText call remains intact; no extra
+guard is imposed on the unused hidden buffer. Original null behavior, sparse
+sales flags, cashflow account/suppression codes and remarks values are preserved.
+Single-field external captions remain live accessible labels outside the
+DataWindow, and actual Tab follows restored selection focus after editor repaint.
+That snapshot did not include the shared native calendar opened by F4.
+
+### Previous date-option snapshot
+
+**Nine additional date/filter dialogs are implemented; enhancement remains incomplete and unreleased.**
+That registry contained 49 criteria owners and 62 modal layouts, alongside the
+unchanged 47 global DataWindow and 82 entry mappings. The date-option snapshot
+passes 713 frontend tests, strict presentation types and 1,282 focused browser
+assertions in both hosts. Seventy-two appearances cover light/dark, 100/200% text,
+320px and short viewports, including runtime-revealed inherited options. Real
+Tab/Space/arrow/Enter and pointer checks cover every added owner. The source-matched
+consolidated regression passes 9,913 assertions and 717 appearances, plus 148
+forced-color assertions, without failures, runtime/page errors or forbidden requests.
+All 65 production modules, 24 copied fixtures and 123 inputs match the final
+snapshot. The prior print results below remain historical evidence.
+
+The nine owners preserve source checkbox/radio captions and defaults, all posting
+combinations, issue/due/post date values, purchase/sale type values and sparse
+transaction return codes. All Transactions checks and disables all fifteen
+choices; clearing it clears and re-enables them. Only purchase/sale type enforce
+the original reversed-range status-zero-and-close rule. Atomic date preflight
+and fresh cancellation leave the unused customer buffer hidden and empty.
+Native options missing a source TabOrder gain normal Modern tab stops, while
+explicit zero exclusions and Classic remain unchanged. None of these synthetic
+dialog checks accepts a complete report workflow, database result or native build.
+
+### Previous print snapshot
+
+The integrated snapshot passes 694 frontend tests, strict presentation types and
+84 focused browser assertions in both hosts. Five settings appearances cover
+light/dark, 100/200% text and 320px/short viewports; four synthetic document
+appearances cover the first/last Classic and Modern pages. All 65 production
+modules, 24 copied browser fixtures and 123 tracked source/test/configuration
+inputs match the tested snapshot. The consolidated run passes 8,633 assertions,
+645 appearances and an additional 148 forced-color assertions.
+Independent print-family inheritance, readable options, storage-failure retry and
+unavailable-template messages are integrated. Decorative rules now preserve
+measured field/band positions, including zero-height groups. Sales/purchase
+invoice previews are not approved official layouts; labels remain blocked.
+No database, native desktop or printer was accessed.
+
+### Earlier numeric-snapshot history
+
 Local checks of the expanded registry exposed source-order, multiline, decimal-spin,
 strip-only compilation, keyboard-event typing, numeric-date-mask and literal
-property-assignment defects, now corrected. All 659 frontend tests pass. The
-fresh lookup-criteria snapshot passes strict presentation types and a 63-module static build.
-The current complete browser snapshot passes 7,997 assertions and 540 appearance cases, including
-twenty-eight owning criteria dialogs. All 63 production modules and 23 copied browser
-fixtures match the tested snapshot. It covers real keyboard/pointer interaction,
+property-assignment defects, now corrected. The numeric snapshot passed 685
+frontend tests and strict presentation types with a 63-module static build.
+It passes 8,549 browser assertions and 636 appearance cases, including
+forty owning criteria dialogs. Both independent tested builds contain identical
+production modules and 23 copied browser fixtures. It covers real keyboard/pointer interaction,
 light/100% and dark/200% layouts, and narrow effective viewports.
+During browser verification, concurrent work added `modern-print.ts` and
+`print-templates.ts` and changed `ui-preferences.ts`, `presentation-styles.ts`,
+`presentation-ui.ts` and `print.ts`. These edits were preserved. Initial
+provenance recorded 59 of 63 production modules and all 23 copied fixtures
+matching the then-current 65-module tree, with 692 passing frontend tests.
+A second full run on `numeric-current-build` also passed 8,549 assertions,
+636 appearances and 148 forced-color assertions. Concurrent work then changed
+the shared `presentation-browser.mjs` and `presentation-smoke.mjs`, added
+`presentation-print-browser.mjs`, and continued changing `modern-print.ts`.
+That phase's latest completed frontend/type run had 693 passing tests, but subsequent
+source drift prevents attributing it or either full result to the final checkout.
+The verification scripts deliberately reject that source/fixture mismatch.
+All numeric-owner edits remain preserved; no competing print edits were reverted.
+Those runs did not establish new Modern document behavior. Their print-unavailable
+statements describe the tested numeric snapshot, not the subsequent integration.
+Do not treat either result as complete print acceptance.
 An additional 148 forced-color assertions pass across four emulated
 light/dark system-palette and viewport cases. Selected text is checked at the
 pixel level, not only through computed colors. This is not native Windows
@@ -25,11 +171,16 @@ annotation; its backup behavior was preserved. The historical failed check
 and snapshot mismatch remain recorded, not overwritten. The fresh build includes
 the current HTTP implementation and the concurrent Classic focus rule. Modern
 native controls retain their stronger two-pixel themed focus outline without
-changing Classic's rule. The expanded twenty-eight-dialog focused fixture passes
-1,356 assertions and 208 appearances, including real item-search keyboard/pointer
-actions, failed-retrieval recovery, native date correction/navigation and all
-fifteen single-lookup owners. Exact source captions, Boolean return flags,
+changing Classic's rule. The expanded forty-dialog focused fixture passes
+1,908 assertions and 304 appearances, including real item-search keyboard/pointer
+actions, failed-retrieval recovery, native date correction/navigation, all
+fifteen single-lookup owners, six inherited reference-text owners and six numeric
+owners. Exact source captions, Boolean return flags,
 untouched null/zero behavior and persistent ShowList/Tab behavior are retained.
+The six text owners share a context-local `d_arg_ref.refno` surface; only
+container number, reference number and SMS center enforce the source null check.
+Numeric owners preserve source percentage limits, scalar return channels and
+ordering flags; range labels remain beside their own fields through repaint.
 Native datetime GetData rejects impossible dates without rollover or partial
 return-field writes. Original KeyDown/Handle/Send navigation skips hidden and
 disabled controls; native error borders remain visible in forced colors.
@@ -97,7 +248,7 @@ the runtime close lifecycle. Accepted closes restore the invoking window and
 editor; cancelled CloseQuery retains the response. Nested response windows and
 message dialogs preserve their own focus and return channels.
 
-**Forty-one modal surfaces have Modern layouts: twenty-eight criteria windows, five native-field dialogs, four
+**Sixty-eight modal surfaces have Modern layouts: fifty-five criteria windows, five native-field dialogs, four
 transaction calculators, the associated-sale invoice picker, cashier-shift closing
 and multiple-invoice cash tendering plus category changes. The picker
 now runs its original shared-buffer, validation, keyboard and structure-return
@@ -108,19 +259,57 @@ a scoped Find mapping. Another 43 standard Code/Name entry windows now have
 synthetically verified outer layouts and control-local form/list mappings.
 Contact Group now also has an authored outer layout and contextual member grid,
 using the shared guarded choice editor. The entry registry therefore contains
-82 mappings (aging, Contact Group, Contact Card, 43 Code/Name entries and 36 richer masters),
-not 82 accepted workflows. The richer masters include Checklist Item, Shift, Tax Category,
+97 mappings (aging, Contact Group, Contact Card, 43 Code/Name entries and 51 richer masters),
+not 97 accepted workflows. The richer masters include Checklist Item, Shift, Tax Category,
 Relation, Disease Type, the item brand/colour/fabric/size/sleeve/style/yarn masters, Model,
 Rank, Site, Unit, County, Eye Vision, Generic Item Type, Godown Group, IOL Power, Item Design,
 Item Thickness, Resource Category, School, Surgery, Surgery Procedure, Ward, Author, Dosage
-Unit, Grade, Class, Item Class, Item Packing, Measuring Unit and Transport Route.
+Unit, Grade, Class, Item Class, Item Packing, Measuring Unit, Transport Route, Discharge
+Referral, Vehicle Type, PCT Codes, Tests, Item Meter, Biometric Machine, CRS Client List,
+Customer Sector, Dosage, Instruction, Precaution, Region, Route, Sale Type and Weighing Scale.
 Unmapped business windows still use labelled Classic compatibility layouts.
 These entry layouts are not accepted complete workflows;
-accepted production Modern business workflows remain zero.** Modern print is disabled; Classic print
-is isolated from workspace themes. A manually persisted Modern print preference
-fails visibly instead of pretending that an unverified template exists.
+accepted production Modern business workflows remain zero.** Classic printing
+is isolated from workspace themes. The opt-in host now enables only explicitly
+registered Modern previews; unavailable Modern requests fail visibly instead
+of substituting Classic or claiming that a print job occurred.
 
 `../DESIGN.md` records the implemented visual direction and its boundaries.
+
+## Independent document presentation
+
+The explicit registry contains sales invoice `d_retailsaleinvreport` and purchase
+invoice `d_purchaseinvreportstock_retailer` as previews. Item-label definitions
+`d_itemlabels_4` and `d_labelbarcode_rahat` stay blocked until paper dimensions,
+margins and target-printer information are known. No entry is approved for
+official use. Unknown documents require Classic; selecting Modern reports the
+missing template and a recovery action before printing.
+
+Appearance stores only explicit per-family choices. `Default` follows global
+Print layout, and selecting it clears an override. Saving a theme/density/text
+change does not pin inherited layouts. Unknown saved family keys are retained.
+An unavailable stored choice stays visible with its reason and can be cleared;
+the disabled Modern option cannot be newly chosen by keyboard. Shared linked
+help explains inheritance and approval status without oversized select labels.
+Failed saves retain the draft and previous preferences; retry and Cancel keep
+their normal semantics. Old v1 preferences without a family map remain readable.
+
+Modern print uses the shared values, bands, dimensions and pagination. Decorative
+rules are pseudo-element overlays: ordinary borders shifted absolute field
+origins and expanded source zero-height bands. The fixture measures rendered
+object/band rectangles under the real print stylesheet, not just inline widths
+or detached text. Its three-page synthetic report keeps all 120 detail rows,
+both group totals (1830/5430), total 7260 and exact page numbers. Empty output and
+zero-height groups retain Classic behavior. First/last pages stay white and
+their body content stays above the footer.
+
+The focused command is
+`node .\e2e\presentation-smoke.mjs <isolated-build> <new-output-directory> --print-only`
+from `web`. It runs both hosts, real Tab/Home/End/Enter/Cancel interactions,
+storage-failure recovery, readable-option measurements and five settings/four
+document appearances. The same checks are wired into the consolidated fixture.
+These are synthetic browser results, not native print-dialog, physical printer,
+barcode/scanner, real invoice or complete report-catalog acceptance.
 
 ## Forced-color interaction states
 
@@ -248,7 +437,7 @@ editable text; textual-month, partial-date and complete native mask-engine parit
 are not claimed by this correction.
 
 These are component migrations, not twenty-seven completed reporting workflows.
-The twenty-eight owning-dialog integrations below cover a subset of inherited and direct
+The forty owning-dialog integrations below cover a subset of inherited and direct
 argument windows. The remaining windows, full multi-column child detail layouts,
 remaining date criteria, report retrieval, authorization and document output
 require separate mappings and acceptance.
@@ -258,7 +447,7 @@ the calling report/invoice workflows.
 
 ## Source-bound criteria dialogs
 
-Twenty-eight complete outer layouts now bind the existing controls and reuse their
+Forty complete outer layouts now bind the existing controls and reuse their
 original window/ancestor routines:
 
 | Window | Scope |
@@ -291,6 +480,18 @@ original window/ancestor routines:
 | `w_arg_supp_sdate_ldate_old` | Editable supplier lookup, dates and original Classic date tab indices |
 | `w_arg_user_sdate_ldate` | User lookup with distinct source data/display columns and dates |
 | `w_arg_custgroup` | Customer-group lookup, dates and Boolean suppression/hide flags; hidden item-group model column stays hidden |
+| `w_arg_batchno` | `Batch Number:` label and source text return through `d_arg_ref.refno` |
+| `w_arg_containerno` | `Container No.:` label and the original required-value check |
+| `w_arg_masterpart` | `Master Part No:` label with optional reference-text return |
+| `w_arg_phoneno` | `Phone Number:` label with optional reference-text return |
+| `w_arg_ref` | `Reference No.:` label and the original required-value check |
+| `w_arg_smscenter` | `SMS Center No.:` label and the original required-value check |
+| `w_arg_day` | Integer Day criterion, explicit header-band label and original scalar/Boolean returns |
+| `w_arg_discperc` | Discount percentage with source 0-100 validation, decimal return and increment-one spinner |
+| `w_arg_gstperc` | GST percentage with its own validation message, 0-100 limits and no spinner |
+| `w_arg_scode_lcode` | Start/end codes, source-visible Alphabetical/Code Wise options and original ordering-flag branch |
+| `w_arg_scode_lcode2` | Start/end codes with inherited hidden option visibility and the same original flag branch |
+| `w_arg_sinvcode_linvcode` | Starting/last document numbers, field-local captions and original integer return fields |
 
 The explicit registry validates the complete instantiated inheritance tree, not
 only child-definition overrides. Source-hidden date fields, standalone captions,
@@ -316,6 +517,34 @@ The region source is `d_region`; the customer-group source is
 `d_arg_custrgroup`. Its hidden `itemgroupcode` model column is not an extra
 visible criterion. The extra customer-count buffer is bound to the top-customer
 owner, not to every owner using `d_arg_zone`.
+
+The six reference-text owners use a scoped presentation contract for the
+one-column `d_arg_ref` DataWindow (`refno`, `char(100)`), preserving each
+external label without adding a global mapping. Their Open, acceptance and
+cancellation paths are checked in both presentations. Only container number,
+reference number and SMS center reject null, matching their recovered source;
+batch number, master part and phone remain optional. Hidden inherited dates are
+not returned or validated by these owners.
+
+The six numeric owners add five context-local DataWindow bindings without
+changing the global catalog. Original Open inserts one row; integer defaults
+remain null and the two percentages begin at zero. Day explicitly binds its
+`day_t` text to the source header band despite freeform processing. The mapping
+gate still rejects an undeclared or incorrect label band.
+For the two-field ranges, original `st_3` and `st_2` caption nodes move into their
+corresponding field wrappers. Their DOM identities, live text and accessible
+associations survive repaint. The hidden ending date instead binds its actual
+`st_4` caption; it cannot claim the visible ending-code label.
+Only Discount % has increment-one spin controls. Both percentages retain
+inclusive 0-100 validation and their individual original error messages.
+Rejected numeric drafts and ItemChanged vetoes remain correctable; no-row
+percentage returns retain status -1. Source-required editing metadata does
+not create whole-buffer validation for untouched defaults. Unused hidden dates
+are neither returned nor newly validated. Range values are not reordered, and
+no start-before-end rule is invented. The code-range handler's original
+Boolean branch is retained even though its flag names do not directly describe
+the visible Alphabetical/Code Wise options. Cancel and title-bar close cannot
+reuse a previous successful numeric result.
 
 Scoped acceptance guards run before original lookup keys are read. Actual
 ItemChanged veto/retry, unmatched editable captions and duplicate-caption
@@ -444,16 +673,21 @@ without changing unrelated properties. The synthetic window helper waits for
 EditChanged processing before invoking OK, rather than weakening the runtime's
 pending-input rejection guard.
 
-The focused fixture passes 1,356 assertions in both presentations and 208 appearance
+The focused fixture passes 1,908 assertions in both presentations and 304 appearance
 cases, including narrow 200% layouts with inherited options both hidden and
 revealed. It runs original Open, validation, OK, Cancel and posted-close routines;
-covers corrected/rejected text, both native date return fields, distinct keys,
+covers corrected/rejected text, both native date return fields, six inherited
+reference-text owners, six numeric owners, distinct keys,
 failed retrieval, listener cleanup, list add/remove/re-add, date preflight
 atomicity, preference branches and return-channel lifetime.
 Real keyboard/pointer input covers alias case conversion, Enter/Handle/Send,
 ArrowDown, F4, grid selection, native list removal and selection/acceptance in
 all fifteen new lookup owners. Automatic ShowList remains open after selection;
-real Tab accepts, dismisses the list and focuses the next action. Preferences,
+real Tab accepts, dismisses the list and focuses the next action. Numeric checks
+include invalid drafts, percentage boundaries, veto/retry, exact decimal/range
+returns, no-row failure, live field-local captions and fresh cancellation.
+Plain Tab traversal verifies the exact focused field node rather than assuming
+that DOM focus must also change the model's current column. Preferences,
 the user-group result and retrieval records are explicitly synthetic. Retrieval
 SQL is removed from fixture metadata except the item-search definition, whose
 GetSQLSelect text selects the original alias-procedure branch. A strict synthetic
@@ -1273,8 +1507,9 @@ distinct source label strings are retained.
 Eight additional masters add explicit contextual layouts for Author, Dosage
 Unit, Grade, Class, Item Class, Item Packing, Measuring Unit and Transport
 Route. Their original remarks, local dosage labels, numerical factors, measured
-quantities and transport charges are retained. The registry now has **82
-authored entry mappings** (79 single-entry: 43 Code/Name and 36 richer).
+quantities and transport charges are retained. The registry then had **82
+authored entry mappings** (79 single-entry: 43 Code/Name and 36 richer); the
+fifteen masters under "Additional single-entry masters" raise it to 97.
 Metadata assertions now pass; none of these layouts establish complete business
 workflows. Grid-order regressions compare the reviewed declarations against the
 source objects' horizontal positions, independently of export-array order.
@@ -1313,6 +1548,41 @@ Fixture boundaries now reject leaked dialogs and preserve failure-state
 diagnostics. Replacement contact children use explicit synthetic retrieval
 instead of accidentally invoking a disconnected database operation.
 Production acceptance remains zero and Modern remains opt-in.
+
+### Additional single-entry masters
+
+Fifteen more masters raise the registry to **97 authored entry mappings** (94
+single-entry: 43 Code/Name and 51 richer). Like the earlier masters, each uses
+the standard single-entry outer layout with an explicit control-local Detail
+form on `dw_detail`, an explicit List grid in the recovered column order, and
+the hidden `dw_print` and `dw_listprint` companions marked auxiliary. Recovered
+label objects name every field, and a computed serial (`compute_1`) leads the
+list wherever the source has one.
+
+| Window | Detail fields | List column order |
+|---|---|---|
+| `w_dischargerefferal_form` | code, name | name |
+| `w_vehicletype_form` | code, name | name, code |
+| `w_pctcodes_form` | code, name, remarks | name, remarks |
+| `w_tests_form` | code, name, testprice | code, name |
+| `w_itemmeter_form` | code, name, description, currentreading | name, description, code, currentreading |
+| `w_biometricmachine` | code, name, manufacturer, model, ipaddress, port | name, ipaddress, port, manufacturer, model, code |
+| `w_crs_clientlist` | code, name, address1, address2, phone, phone2, fax, email, web, cp, cpphone, cpmobile | the same twelve columns |
+| `w_custsector_form` | code, name, aliasname, description | name, aliasname, description, code |
+| `w_dosage_form` | code, name, dosefactor, description, localdosage | serial, code, name, localdosage |
+| `w_instruction_form` | code, name, description, localinstruction | serial, code, name, localinstruction |
+| `w_precaution_form` | code, name, localprecaution | name, localprecaution, code |
+| `w_region_form` | code, name, manager, remarks | code, name |
+| `w_route_form` | code, name, description, localroute | serial, code, name, localroute |
+| `w_saletype_form` | code, name, description, counter | code, name |
+| `w_weighingscale_form` | code, name, manufacturer, model, scaleid, scaleidpos, barcodelen, itemstartpos, itemendpos, weightstartpos, weightendpos | code, name, manufacturer, model, scaleid |
+
+The both-mode single-entry fixture seeds, edits and checks every
+mapped field and computed serial for these windows as for the earlier masters,
+and its synthetic drafts honour each column's recovered edit mask. The
+single-entry appearance matrix is unchanged at 48 cases; the registry-level test
+asserts the 94, 43, 51 and 97 totals. These layouts are not accepted complete
+workflows.
 
 ## Explicit Modern data-surface pilots
 
@@ -1736,7 +2006,7 @@ Its example transactions and document values are synthetic.
 `web/e2e/presentation.html` uses the real runtime, presentation host, controls,
 DataWindow model and Classic page builder with synthetic window/menu definitions,
 the forty-seven global mapped presentation definitions, the compatibility Find definition,
-thirteen non-criteria modal definitions/scripts and twenty-eight criteria owners with
+thirteen non-criteria modal definitions/scripts and forty criteria owners with
 their ancestors, the inherited aging-entry control
 metadata, 79 explicit single-entry definitions with context-scoped data
 surfaces, the Contact Group and Contact Card layouts and selected contact validation
@@ -1829,12 +2099,30 @@ the same component and appearance checks. Other focused runners do not execute
 criteria appearances. This does not exercise inherited report-window workflows
 or replace the full regression and native/database acceptance gates.
 
-Use `--criteria-windows-only` for the twenty-eight complete criteria-dialog integrations.
-It writes `criteria-window-result.json` with 1,356 both-mode assertions and
-208 `criteriaWindowCases`, plus real item-search keyboard, native-list pointer,
-native-date error/recovery/Enter/Cancel and all fifteen lookup-owner selection/
-acceptance checks. The full runner includes the same checks and appearances;
+Use `--criteria-windows-only` for the fifty-five complete criteria-dialog integrations.
+It writes `criteria-window-result.json` with both-mode assertions and
+`criteriaWindowCases`, plus real item-search keyboard, native-list pointer,
+native-date error/recovery/Enter/Cancel, all fifteen lookup-owner selection/
+acceptance checks, six inherited reference-text owners and six numeric owners.
+The full runner includes the same checks and appearances;
 other focused runners do not exercise this owning-window fixture.
+
+Use `--date-options-only` for the nine added native date/filter owners. It writes
+`date-option-result.json` with 1,282 both-mode assertions and 72 appearances,
+plus real date recovery, Tab/Space/radio-arrow/Enter and pointer checks. It covers
+every Boolean/radio combination, fifteen individual transaction positions,
+All on/off, source-specific reversed ranges, cancellation after prior success,
+inherited date preferences and listener cleanup. The focused harness compares
+unchecked runtime defaults as Boolean values: the source may omit a false field
+rather than explicitly assign it. These owners never validate or populate their
+unused hidden customer buffer.
+
+Use `--date-choices-only` for As On, cost price, Cash/Credit/Both, cashflow and
+remarks owners. Its `date-choice-result.json` contains 734 both-host assertions
+and 48 appearances. Real keyboard/pointer checks exercise secondary selector
+labels, choice acceptance, post-selection Tab, radio arrows and date recovery.
+The actual source parent still calls customer AcceptText without blocking on its
+failure; only the secondary buffer gains a new acceptance guard.
 
 The item/date/top-customer owner keeps its two selector ancestors, original
 group captions, native selected list, All option, dates and count buffer.
@@ -1862,36 +2150,289 @@ the source procedure branch, while a strict synthetic procedure supplies only
 its expected output references. Calling reports, persisted database results and
 native acceptance are not established by this dialog's checks.
 
+### Shared source calendar and F4 return
+
+`components/w_calendar` now binds its original MonthCalendar, default OK and
+Cancel controls to the shared runtime. `NCalendar` implements single-date
+SetSelectedDate/GetSelectedDate and SetToday/GetToday. Programmatic selection
+returns zero and fires DateChanged; GetSelectedDate writes through `Ref`;
+SetToday changes only the marker. Unqualified native output calls now receive
+references just like receiver-qualified calls. The original source DateChanged
+uses the unqualified form. These contracts are documentation-backed, not new
+observations of the operational executable:
+[SetSelectedDate](https://docs.appeon.com/pb2019/powerscript_reference/ch10s639.html),
+[GetSelectedDate](https://docs.appeon.com/pb2019/powerscript_reference/ch10s268.html),
+[SetToday](https://docs.appeon.com/pb2019/powerscript_reference/ch10s651.html) and
+[GetToday](https://docs.appeon.com/pb2021/powerscript_reference/ch02s04s351.html).
+
+The shared DOM renderer has a six-week grid, locale weekday/month names,
+four-day-first-week numbering, today marker/action, month/year selection,
+arrows, PageUp/Down, Home/End and native default/cancel actions. Month changes
+clamp month ends and leap days within 1601-9999. A source MaxSelectCount of 31
+does not enable multiselect; range selection, date-limit and bold-date APIs are
+not implemented or claimed. Locale week information must be available in the
+browser; native WebView2 compatibility remains an explicit acceptance gate.
+
+Intentional compatibility corrections select today for invalid initial dates,
+report unsupported initial dates before recovery, and clear the title-close
+string return channel. Original OK, Cancel and posted-close scripts remain
+unchanged. Inherited native-date F4 handlers convert the regional return back
+to the field's declared numeric mask, keep the clock only for timed fields, and
+restore the parent's argument structure and field focus. The renderer retains
+same-shaped cells so selection redraw does not interrupt real double-clicks.
+Calendar button acceptance waits for queued DateChanged work; delayed-source
+cases exercise both immediate Enter and immediate OK in both hosts.
+
+The focused fixture exercises `w_arg_sdate`, `w_arg_sdate_notime`,
+`w_arg_sdate_ldate` (both fields) and `w_arg_ason` in mdy and dmy regions.
+It covers OK, Cancel, title-close, pending-event acceptance and source-listener
+cleanup. Real browser input also covers F4, arrows, PageUp, Enter, Escape,
+double-click, month/year choices, Today and empty date-only recovery.
+Other callers and complete business workflows are not accepted by these checks.
+Other direct native callers occur in `w_listarguments`, `w_arg_agingbased_epi`,
+`w_inpatientservice`, `w_service` and `f_getdatefromcalendar`. Do not infer their
+acceptance from the four criteria-owner cases.
+
+`web/tests/calendar-callers.test.ts` runs the recovered source handlers of those
+callers against a synthetic calendar opener: `f_getdatefromcalendar` returns the
+selected reference text, or an empty string when cancelled; the aging-date and
+list start/end-date F4 handlers keep each field's mask and existing clock and
+leave the field unchanged on cancellation; and the inpatient-service and service
+DataWindow F4 handlers keep the source's second-precision clock and the stored
+value on cancellation. These are isolated source-handler checks, not acceptance
+of those windows or their workflows.
+
+### DataWindow calendar and precise drafts
+
+`components/w_calendar2` reuses the same MonthCalendar renderer and complete
+three-control Modern layout. It retains the original ISO `yyyy-mm-dd` input and
+output, and Cancel restores the original date rather than clearing the return.
+Title-close is initialized to that same original value so it cannot reuse a
+previous selection. Original OK, Cancel and posted-close routines are unchanged.
+Invalid and unsupported initial-date recovery is shared with `w_calendar`.
+
+The two original callers are `components/u_dwstandard.ue_dwnkey` and
+`custcomponents/w_customercomments.dw_itemsdetail.ue_dwnkey`. Source-scoped
+corrections stop F4 when AcceptText rejects the current draft, preserve the
+entire accepted clock and restore DataWindow focus after the modal returns.
+An initially empty datetime receives midnight only when a date is chosen.
+The source's seconds-only clock conversion is deliberately extended to
+milliseconds; otherwise choosing a date or cancelling would discard fractional
+seconds. The recovered `dd/mm/yyyy hh:mm:ss:fff` editor mask now recognizes
+colon-separated fractions through the existing numeric-mask parser and
+formatter, rather than silently reverting to regional display/input order.
+The visible restored editor is checked against the exact accepted value, not
+only the backing buffer.
+
+The dedicated fixture supplies the actual standard source routines separately
+from the older criteria fixture's metadata-only userobject. It asserts the
+resolved F4 handler before opening and applies the original customer-comments
+override to a synthetic owner. Recovered `d_arg_date` remains datetime with its
+original mask; the date-only variant explicitly changes its type and mask for
+native API coverage. Both hosts and both regional orders cover populated/empty
+buffers, edited valid/invalid drafts, OK/Cancel/title close, exact nonzero
+millisecond clocks, restored text/focus and cleanup. Real keyboard/pointer
+checks cover F4, PageUp, Enter and double-click for both handlers. This does not
+accept the complete customer-comments window or its database workflow.
+
 Current local evidence:
+
+| Check | Result and boundary |
+|---|---|
+| Authored coverage | 167 of 2,062 inventoried windows (8.10%; 9.11% of inherited control paths): 70 modal layouts (55 criteria, 5 native-field, 4 transaction, 4 calculator and 2 calendar) and 97 entry windows (94 single-entry: 43 Code/Name and 51 richer); 47 global DataWindow mappings |
+| Frontend, inventory and strict types | 793 frontend tests and 9 static-inventory tests pass; the strict presentation type check passes |
+| Full browser regression | 12,730 assertions and 781 appearances, plus 148 forced-color assertions; no failures, runtime/page errors, forbidden requests or native access |
+| Focused print | 84 assertions, five settings and four document appearances; no printer access |
+| Static build | 67 production modules |
+| Generated audit | `ui-completion-audit.md`; verdict not 100% complete |
+| Production acceptance | Verified complete screens remain zero; the 1,895 other windows, about 8,470 DataWindows, the document/print catalog, the all-role pilot, per-window Classic evidence, packaged Windows/WebView2, authenticated PostgreSQL, assistive technology and hardware remain open |
+
+The full run for this snapshot is `final-candidate-evidence-1\result.json` (build
+`final-candidate-build-1`) and the focused print run is
+`final-candidate-print-1\print-result.json`, both session artifacts. A second full
+run on a byte-identical build produced the same totals. `--single-entry-only` is a
+focused-debugging flag that exercises only a fixed ten-master subset
+(`runSingleEntryChecks` in `presentation-browser.mjs`); the default full run opens
+every registered single-entry master in both modes.
+
+Previous DataWindow-calendar evidence:
+
+| DataWindow calendar integration check | Result and boundary |
+|---|---|
+| Authored coverage | 55 criteria owners, 70 modal layouts and both source calendar owners |
+| Frontend and strict types | 745 tests pass; presentation type check passes |
+| Focused browser | 624 both-host assertions and eight DataWindow-calendar appearances pass; no failures, runtime/page errors, forbidden requests or native access |
+| Layout and contrast | Full 200% date text retains at least 4px measured horizontal room at 320px; ordinary calendar text at least 6.384:1 and emulated forced-color text at least 14.371:1 |
+| Snapshot identity | 67 production modules, 25 copied fixtures and 127 unchanged inputs match the focused and consolidated runs |
+| Consolidated regression | 11,909 assertions and 781 appearances, including eight of each calendar and 424 criteria-window appearances, plus 148 forced-color assertions; no failures, runtime/page errors or forbidden requests |
+| Production acceptance | Complete catalogs/workflows, additional native callers/properties, packaged Windows/WebView2, authenticated PostgreSQL, assistive technology and hardware remain open |
+
+Final identity, evidence hashes and remaining gates are recorded in
+`datawindow-calendar-verification.json`; the full result is
+`datawindow-calendar-final-consolidated\result.json`. Focused evidence is
+`datawindow-calendar-final-focused\datawindow-calendar-result.json`; matching
+source inputs, frontend/type logs and static build use the
+`datawindow-calendar-final-*` prefix in session artifacts. The initial
+`datawindow-calendar-candidate-focused` and `datawindow-calendar-owner-focused`
+failures retain the missing source-handler fixture defect. The later
+`datawindow-calendar-editor-detail` log records the source-mask fallback failure.
+These failures and intermediate snapshots are preserved, not reclassified as
+passing final evidence.
+
+Previous native-date calendar evidence:
+
+| Calendar integration check | Result and boundary |
+|---|---|
+| Frontend and strict types | 739 tests pass; presentation type check passes |
+| Focused browser | 924 both-host assertions and eight calendar appearances pass; no failures, runtime/page errors, forbidden requests or native access |
+| Layout and contrast | Full 200% date text retains at least 4px measured horizontal room at 320px; ordinary calendar text at least 6.384:1 and emulated forced-color text at least 14.371:1 |
+| Snapshot identity | 67 production modules, 24 copied fixtures and 126 unchanged inputs match the focused and consolidated runs |
+| Consolidated regression | 11,285 assertions and 773 appearances, including eight calendar and 424 criteria-window appearances, plus 148 forced-color assertions; no failures, runtime/page errors or forbidden requests |
+| Production acceptance | Complete catalogs/workflows, other native properties, packaged/native, authenticated database, assistive technology and hardware remain open |
+
+That snapshot's identity, evidence hashes and remaining gates are recorded in
+`calendar-verification.json`; the full result is
+`calendar-final-consolidated\result.json`. Focused evidence is
+`calendar-final-focused\calendar-result.json`; matching
+source inputs, frontend/type logs and static build use the `calendar-final-*`
+prefix in session artifacts. The initial `calendar-candidate-focused` failure
+preserves the Modern modal's premature source-focus defect. The passing
+`calendar-focus-focused` snapshot precedes the final queued-event guards and
+narrow-screen spacing correction. Neither replaces final consolidated evidence.
+
+Previous date/choice evidence:
+
+| Date/choice integration check | Result and boundary |
+|---|---|
+| Frontend and strict types | 726 tests pass; presentation type check passes |
+| Focused browser | 734 both-host assertions and 48 appearances pass, including actual secondary-selector and As On keyboard/pointer paths |
+| Snapshot identity | 65 production modules, 24 copied fixtures and 123 unchanged source/test/configuration inputs match the focused and consolidated runs |
+| Consolidated regression | 10,645 assertions and 765 appearances, including 424 criteria-window appearances, plus 148 forced-color assertions; no failures, runtime/page errors or forbidden requests |
+| Measured contrast | Minimum ordinary text 5.959:1; the added dialogs 6.759:1; emulated system selection 14.371:1 |
+| Production acceptance | Complete catalogs/workflows, shared native calendar, packaged/native, authenticated database, assistive technology and hardware remain open |
+
+Final source/build/fixture equality, exact evidence hashes and remaining gates
+are recorded in `date-choice-verification.json`. The full result is
+`date-choice-keyboard-consolidated\result.json`.
+Focused evidence is `date-choice-keyboard-focused\date-choice-result.json`,
+with the matching input manifest, frontend/type logs and build under
+`date-choice-keyboard-*`. `date-choice-candidate-focused` retains the initial
+fixture's incorrect assumptions that the parent never called customer AcceptText
+and that a single external caption moved inside its DataWindow.
+`date-choice-current-focused` retains the stale-editor keyboard-target failure.
+The corrected check follows actual post-selection focus rather than a removed
+editor. Neither failure required changing the original business scripts.
+
+Previous date-option evidence:
+
+| Date-option integration check | Result and boundary |
+|---|---|
+| Frontend and strict types | 713 tests pass; presentation type check passes |
+| Focused browser | 1,282 both-host assertions and 72 appearances pass, including real keyboard/pointer checks; no runtime/page errors, forbidden requests or native access |
+| Snapshot identity | 65 production modules, 24 copied fixtures and 123 unchanged source/test/configuration inputs match the focused run |
+| Consolidated regression | 9,913 assertions and 717 appearances, including 376 criteria-window appearances, plus 148 forced-color assertions pass without failures, runtime/page errors or forbidden requests |
+| Measured contrast | Minimum ordinary text 5.959:1; the added date/filter dialogs 6.759:1; emulated system selection 14.371:1 |
+| Production acceptance | Complete catalogs/workflows, packaged/native, authenticated database, assistive technology and hardware remain open |
+
+Focused evidence is `date-option-keyboard-focused\date-option-result.json`.
+Its input manifest is `date-option-keyboard-inputs.json`; frontend/type logs
+and the 65-module build use the same prefix. The complete result is
+`date-option-keyboard-consolidated\result.json`; `date-option-verification.json`
+records final input/build/fixture equality, measured results, evidence hashes
+and remaining acceptance gates. The earlier
+`date-option-candidate-focused` is retained as a failed snapshot: its new tests
+confused omitted false fields with explicit Boolean false, and exposed native
+options missing TabOrder that Modern keyboard navigation could not reach.
+The corrected fixture keeps the original runtime values, and the renderer only
+adds tab stops for absent ordering rather than explicit exclusions.
+
+Previous print-snapshot evidence:
+
+| Integrated print check | Result and boundary |
+|---|---|
+| Frontend and strict types | 694 tests pass; presentation type check passes |
+| Focused print browser | 84 assertions in both hosts; five settings and four synthetic document appearances; no runtime/page errors, backend/external requests or native access |
+| Focused contrast and geometry | Settings text at least 6.384:1; white-paper text 21:1; all option labels fit at 320px/200%; field and band rectangles match Classic |
+| Snapshot identity | 65 production modules, 24 copied fixtures and 123 unchanged source/test/configuration inputs |
+| Consolidated regression | 8,633 assertions, 645 appearances and an additional 148 forced-color assertions pass; no failures, runtime/page errors or forbidden requests; minimum ordinary text contrast 5.959:1 |
+| Production acceptance | Still open for complete catalogs/workflows, packaged/native, authenticated database, assistive technology and hardware |
+
+Focused evidence is `print-integration-current-focused\print-result.json`;
+`print-integration-current-inputs.json` records its inputs, with
+`print-integration-current-frontend.log` and `print-integration-current-types.log`.
+The consolidated result is `print-integration-current-consolidated\result.json`;
+`print-integration-verification.json` records matching production/fixture/input
+hashes and all measured results. During the full run another edit appended a
+duplicate `runPrintChecks` with the old helper signature, shadowing the complete
+both-host runner. Only that redundant definition was removed; final source
+equality with the tested snapshot then passed. This preserves the intended
+focused entry point rather than accepting the broken duplicate.
+The failed `print-integration-layout-focused` records the original clipped
+selector; `print-integration-geometry-focused` records the field-position/hidden
+band defect. Both are retained as failures, not overwritten with passing output.
+The earlier `print-integration-consolidated` exposed an outdated call signature
+in the shared fixture; the print checks now run at the isolated Classic/Modern
+stages instead of perturbing the shell's intermediate state checks.
+
+Earlier numeric-snapshot evidence:
 
 | Check | Result and boundary |
 |---|---|
 | Static inventory tests | Prior baseline: 9 passing; metadata only |
 | Standalone prototype | Prior baseline: 117 assertions; synthetic design examples |
-| Frontend regression tests | 659 passing, including twenty-eight criteria owners, exact lookup keys/Boolean flags, contextual single-zone ownership, native numeric datetime GetData, invalid-state recovery after mask changes, atomic date preflight and source-preserving cancellation guards; explicit source-processing/header bindings, frame/list/content-order rejection gates, sorted native-list selection identity, Sort current-row behavior without focus callbacks, item-selection count-only acceptance and retrieval/cancellation guards; separate zone/count acceptance, reference numeric cancellation, twenty-seven criteria mappings, source suffix identity/gating, exact percentage/count/reference contracts, literal native property assignment and shared Modify side effects, original criteria-dialog acceptance guards, exact child/key/display bindings, readonly dependencies, remarks/date/range contracts, numeric date-mask parsing/formatting and regional fallback, exact static choice lists/defaults, percentage spin ranges, source field order, hidden city/default, disabled price, monetary validation and multiline/null-policy contracts; shared required-flag aliases/overrides and unchanged FindRequired behavior; fractional/large variable-row prefix indexing and invalid measurement boundaries; source `DDDW.Lines` bounds, explicit mapping and live-policy rejection; native-backed missing-time/fraction formatting and comparator coverage; recovered `DDDW.PercentWidth` selector bindings; ShowList, editable DDLB and left-caption selector contracts/mappings; category source bindings, scoped acceptance/commit/failed-Open guards and duplicate/reordered/partial result mapping; FOR counter termination, payment/auxiliary bindings, cashier source corrections and exact field/separator bindings, parsed event-enum dispatch, transaction-band mappings and rejection gates, editable lookup metadata/key limits and NULL initialization, calculator/group/radio bindings, source-order/field mappings, exact decimal stepping, validation, choice/text ownership, guarded navigation, runtime/native controls, script analysis and lifetime cases |
+| Frontend regression tests | 685 passing for the numeric snapshot; 692 pass in the combined tree after concurrent print additions. Coverage includes forty criteria owners, exact lookup keys/Boolean flags, contextual single-zone ownership, native numeric datetime GetData, invalid-state recovery after mask changes, atomic date preflight and source-preserving cancellation guards; six reference-text owner contracts with source-specific null policy; six numeric owners with exact field types, percentage/spin policy, external range captions and explicit Day header-band rejection gates; explicit source-processing/header bindings, frame/list/content-order rejection gates, sorted native-list selection identity, Sort current-row behavior without focus callbacks, item-selection count-only acceptance and retrieval/cancellation guards; separate zone/count acceptance, reference numeric cancellation, twenty-seven criteria mappings, source suffix identity/gating, exact percentage/count/reference contracts, literal native property assignment and shared Modify side effects, original criteria-dialog acceptance guards, exact child/key/display bindings, readonly dependencies, remarks/date/range contracts, numeric date-mask parsing/formatting and regional fallback, exact static choice lists/defaults, percentage spin ranges, source field order, hidden city/default, disabled price, monetary validation and multiline/null-policy contracts; shared required-flag aliases/overrides and unchanged FindRequired behavior; fractional/large variable-row prefix indexing and invalid measurement boundaries; source `DDDW.Lines` bounds, explicit mapping and live-policy rejection; native-backed missing-time/fraction formatting and comparator coverage; recovered `DDDW.PercentWidth` selector bindings; ShowList, editable DDLB and left-caption selector contracts/mappings; category source bindings, scoped acceptance/commit/failed-Open guards and duplicate/reordered/partial result mapping; FOR counter termination, payment/auxiliary bindings, cashier source corrections and exact field/separator bindings, parsed event-enum dispatch, transaction-band mappings and rejection gates, editable lookup metadata/key limits and NULL initialization, calculator/group/radio bindings, source-order/field mappings, exact decimal stepping, validation, choice/text ownership, guarded navigation, runtime/native controls, script analysis and lifetime cases |
 | Strict type check | Current working tree passes; the historical HTTP backup-parser TS2322 is resolved with its behavior preserved |
-| Isolated static build | Fresh 63-module lookup-criteria snapshot; all production modules and 23 copied fixtures match current sources, including the HTTP backup parser and Classic/Modern native focus rules |
-| Actual-runtime browser fixture | 7,997 assertions pass with no failures, runtime errors or page errors; synthetic data, twenty-seven source-bound criteria forms, live suffix text/visibility/descriptions and retained drafts, twenty-eight complete criteria dialogs including fifteen single-lookup owners, native dates, item selection, zone/count validation and reference cancellation, original percentage captions and decimal return, lookup veto/retry and duplicate-key selection, source Boolean flags and untouched null/zero semantics, timestamp-preserving masked date edits and live mask recovery, atomic native date preflight and preference branches, source KeyDown navigation and default-button collision prevention, focused sibling-action visibility through reflow, required-field form/grid/editor guidance, bounded variable-height lookup windows, source-sized paging and option reuse, forty-seven global mappings, 82 entry mappings, forty-one modal mappings including the shared-buffer invoice picker, cashier closing, cash tendering and category changes, selected source handlers, strict recorded-SQL/RPC fixtures, production Handle/Send and a mocked native theme bridge |
-| Browser layout/keyboard checks | 540 verified appearances in one complete run: 9 component, 8 native-field dialog, 16 calculator, 8 aging-entry, 48 single-entry, 16 Contact Group, 12 Contact Card, 4 editable-dropdown, 5 editable-lookup, 12 automatic-choice, 28 selector-variant, 30 transaction-band, 4 associated-invoice, 8 cashier closing, 8 payment, 8 category, 108 criteria and 208 complete criteria-window cases; four workspace viewport sizes plus short transaction/lookup panes; real native date rejection/recovery and Enter/Cancel, selection/acceptance in all fifteen new lookup owners and persistent ShowList/Tab behavior; native Modern focus remains at least two pixels despite the Classic focus rule |
-| Component/window text contrast | All measured text passes 4.5:1; lowest observed ratio 5.959:1 across the 540 appearance cases, including criteria fields/suffixes, required guidance, active editors, popup choices and totals |
+| Isolated static build | Two identical 63-module numeric snapshots, followed by a 65-module combined snapshot. Both full runs pass the existing regression suite. Continuing concurrent print/fixture edits subsequently break source equality; neither full result establishes final current-tree acceptance |
+| Actual-runtime browser fixture | Frozen numeric snapshot: 8,549 assertions pass with no failures, runtime errors or page errors; synthetic data, twenty-seven source-bound criteria forms, live suffix text/visibility/descriptions and retained drafts, forty complete criteria dialogs including fifteen single-lookup, six inherited reference-text and six numeric owners, native dates, item selection, zone/count validation and reference cancellation, original percentage captions and decimal return, lookup veto/retry and duplicate-key selection, source Boolean flags and untouched null/zero semantics, timestamp-preserving masked date edits and live mask recovery, atomic native date preflight and preference branches, source KeyDown navigation and default-button collision prevention, focused sibling-action visibility through reflow, required-field form/grid/editor guidance, bounded variable-height lookup windows, source-sized paging and option reuse, forty-seven global mappings, 82 entry mappings, fifty-three modal mappings including the shared-buffer invoice picker, cashier closing, cash tendering and category changes, selected source handlers, strict recorded-SQL/RPC fixtures, production Handle/Send and a mocked native theme bridge |
+| Browser layout/keyboard checks | Frozen numeric snapshot: 636 verified appearances in one complete run: 9 component, 8 native-field dialog, 16 calculator, 8 aging-entry, 48 single-entry, 16 Contact Group, 12 Contact Card, 4 editable-dropdown, 5 editable-lookup, 12 automatic-choice, 28 selector-variant, 30 transaction-band, 4 associated-invoice, 8 cashier closing, 8 payment, 8 category, 108 criteria and 304 complete criteria-window cases; four workspace viewport sizes plus short transaction/lookup panes; real native date rejection/recovery and Enter/Cancel, selection/acceptance in all fifteen lookup owners, persistent ShowList/Tab behavior and numeric field-order Tab/Space/Enter; native Modern focus remains at least two pixels despite the Classic focus rule |
+| Component/window text contrast | All measured text passes 4.5:1; lowest observed ratio 5.959:1 across the 636 snapshot appearance cases, including criteria fields/suffixes, required guidance, active editors, popup choices and totals |
 | Forced-color interaction and paint | Additional 148 passing assertions and four emulated system-palette/viewport cases; selected grid, source-suffix and lookup glyphs remain legible, native editors retain system colors, required hints fit enlarged text, rejected drafts/focus remain intact; minimum measured system selection contrast 14.371:1 |
 | Browser fixture isolation | No backend/external requests or native desktop access; helper browser/server closed after each run |
 | Isolated native formatting oracle | 22 synthetic literal observations match the shared expression engine, with none skipped; SHA-matched original DataWindow DLLs, no ERP launch or Retrieve/Connect; see `FIDELITY.md` |
 | Packaged/native UI, database, hardware acceptance | Not performed for these changes |
 
-The latest complete browser evidence is in the session's
-`lookup-criteria-complete\result.json` (7,997 assertions, 540 appearances,
+The latest complete numeric-snapshot browser evidence is in the session's
+`numeric-criteria-consolidated\result.json` (8,549 assertions, 636 appearances,
 plus 148 forced-color assertions). Focused owning-dialog evidence is in
-`lookup-criteria-final-focused\criteria-window-result.json` (1,356 assertions,
-208 appearances). `lookup-criteria-verification.json` records all 63 matching
-production modules, 23 matching copied fixtures, 117 source/test/tool hashes,
-30 redacted owner-script/definition hashes, the generated criteria-source hash,
-actual registry counts, measured contrast and four reviewed representative images.
-`lookup-criteria-verified-frontend.log` records 659 passes;
-`lookup-criteria-types.log` records passing strict types. The complete result includes
+`numeric-criteria-final-focused\criteria-window-result.json` (1,908 assertions,
+304 appearances). `numeric-criteria-verification.json` records both identical
+tested builds, current source/test hashes, matching fixtures, measured results
+and the explicit concurrent-print differences. Its `currentSourceMatch` is
+false; the integrated 65-module tree is not silently attributed these results.
+`numeric-criteria-concurrent-frontend.log` and
+`numeric-criteria-concurrent-types.log` separately record the combined tree's
+692 passing tests and strict types. The earlier numeric logs retain the
+685-test snapshot.
+The subsequent `numeric-current-consolidated\result.json` also records 8,549
+assertions, 636 appearances and 148 forced-color assertions on its 65-module
+build. `numeric-current-frontend.log` and `numeric-current-types.log` record
+693 passing tests and strict types. `numeric-current-inputs.json` captures the
+inputs before those checks. `verify-numeric-current.mjs` refused to issue a
+current-source verification report after detecting subsequent changes to the
+browser fixture; another read then found `modern-print.ts` changed too.
+These results remain separate snapshots, not a basis for freezing or overwriting
+another editor's work. The subsequent print integration is recorded separately above.
+The preceding `text-criteria-verification.json`,
+`text-criteria-consolidated\result.json` (8,243 assertions / 588 appearances) and
+`text-criteria-retry-focused\criteria-window-result.json` (1,602 / 256) remain
+historical evidence for the 672-test reference-text snapshot.
+The previous `lookup-criteria-verification.json` and its result paths retain
+the preceding 659-test, 7,997-assertion snapshot.
+The complete result includes
 `criteriaWindowCases` once; component-only runs do not execute extra owning-window
 appearances. Node-side real-input assertions are additional checks, not part of
 the reported in-page assertion count.
+
+Earlier numeric failures remain recorded. The first mapping missed Day's
+header-band `day_t`; the normal freeform detail-label gate then correctly
+rejected an incomplete correction. An explicit source-band binding resolved it,
+with negative tests for missing/wrong-band declarations. The first browser run
+passed all 1,908 in-page assertions and real numeric input checks, then failed
+because the appearance helper equated plain Tab focus with model-column state.
+The corrected check verifies the exact focused field node without changing
+runtime selection or edit events. Initial provenance verification separately
+detected concurrent print edits; those edits remain intact and outside the
+snapshot's browser-acceptance claim.
 
 Earlier lookup runs remain separate: `lookup-criteria-focused` exposed fixture
 assumptions about Boolean flags and the quotation-specific cancellation value.

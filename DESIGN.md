@@ -167,7 +167,7 @@ place Close beside it, without fabricating a visible title. Long headings wrap
 with a 1.25 line height; actions wrap when required. Keyboard focus can reach
 every control without leaving the modal or losing the original return channel.
 
-Twenty-eight criteria dialogs use this same layout with complete inherited controls,
+Fifty-five criteria dialogs use this same layout with complete inherited controls,
 including hidden dates, captions, checkboxes, native radio groups and a
 context-local price selector. Groupbox captions remain live without hiding
 their fields when the decorative frame is hidden. Native options follow Modern
@@ -199,6 +199,37 @@ null criteria. Godown and sales-person owners retain their explicit null-to-zero
 conversion. Date guards apply only to dates consumed by the original handler.
 Failed item-criteria retrieval reports the failure and returns cancellation
 before the source can insert a replacement row.
+
+Six reference-text owners reuse a context-local field without duplicating their
+source captions or imposing required validation on optional references.
+Six numeric owners preserve Day, Discount %, GST %, code and document ranges.
+Multiple external labels move with their original DOM identities into the
+corresponding field wrappers, remaining live through redraw. The Day header
+label is explicitly bound to its source band even though the form is freeform.
+Percentage limits remain inclusive 0-100; only the source discount field spins.
+Range ordering and Boolean flags follow the original routines, not assumptions
+from their captions. Plain Tab focus is verified against the actual field node;
+it must not manufacture a source selection or edit event.
+
+Nine date/filter owners cover cash/credit sales and returns, stock adjustments,
+outstanding invoices, posting status, date category, purchase/sale types and
+transaction selection. Their hidden customer buffer remains empty and unused.
+The layouts preserve source option captions, checked defaults, visual order,
+radio groups and exact return codes. All Transactions checks and disables its
+fifteen choices; clearing it clears and re-enables them. Only the purchase/sale
+type owners reject reversed ranges with status zero and close, as their original
+scripts require. Date preflight and fresh cancellation do not introduce new
+business validation. A missing native option TabOrder receives a normal Modern
+tab stop; an explicitly declared zero remains excluded, and Classic is unchanged.
+
+Six more owners cover As On, two cost-price variants, Cash/Credit/Both,
+cashflow account choices and remarks. Cost and payment-type selectors retain
+their separate `dw_price` buffer and literal external source labels. Cost lookup
+keys stay 5/6 with default 6; payment-type codes stay 1/2/3 with default 1.
+Only that actual secondary editor receives the extra AcceptText guard. The
+inherited non-blocking customer AcceptText call is preserved rather than
+converted into new hidden-buffer validation. Original null values, cash/credit
+arrays and account/remarks flags are unchanged.
 
 The item-selection criteria owner retains its source selection/selected/date
 captions, native sorted list and All option. An explicit processing-style binding
@@ -386,9 +417,9 @@ of scope to a mobile product. Native Windows display scaling is a separate gate.
 ## Migration boundaries
 
 The current stage deliberately labels business windows **Classic compatibility
-layouts**, except for ten response-dialog mappings (five native-field,
-four calculator dialogs and the associated-sale invoice picker) and 82 entry mappings. The entry registry contains
-aging, Contact Group, Contact Card and 79 standard single-entry windows with
+layouts**, except for 70 modal mappings (fifty-five criteria, five native-field,
+four calculators, four transaction dialogs and two shared calendars) and 97 entry mappings. The entry registry contains
+aging, Contact Group, Contact Card and 94 standard single-entry windows (43 Code/Name and 51 richer form/list mappings) with
 contextual form/list bindings. Neither count is complete workflow acceptance.
 Explicitly mapped DataWindow roots also use Modern tokens and semantic layouts; other
 controls and outer window geometry remain unchanged. Theme and
@@ -399,9 +430,38 @@ Light for Classic; it uses the standard Tauri window controls. Its ordering,
 failure recovery and preferences contract are synthetic-tested, but actual
 Windows chrome and WebView2 behavior still require packaged acceptance.
 
-Print appearance is independent of screen appearance. Classic is currently the
-only enabled print choice. Modern document templates require complete field,
-pagination, barcode, and device evidence before they can be enabled.
+The source calendar keeps its six-week grid, today marker, week numbers and
+original OK/Cancel actions in both hosts. Modern supplies theme tokens, full
+text scaling, roving grid focus and month/year choices without duplicating
+business return logic. At narrow widths only the calendar's outer margin is
+reduced to preserve separation between enlarged two-digit dates and week
+numbers. Vertical overflow remains scrollable, including keyboard actions.
+Source-requested initial focus waits until the modal is visible; acceptance
+waits for queued selection events. Native Windows calendar equivalence and
+assistive-technology acceptance remain separate gates.
+The ISO-returning DataWindow calendar retains its distinct original-date Cancel
+contract. It validates the active draft before opening, keeps the accepted
+clock including milliseconds, and restores the exact source-masked editor text
+and focus. Empty datetimes use midnight only after a date is chosen. Its source
+handlers are exercised in an isolated synthetic owner; the complete
+customer-comments window and database workflow are not accepted by that fixture.
+
+Print appearance is independent of screen appearance. The opt-in host now
+registers sales/purchase invoice previews separately from blocked item labels.
+Global Print layout and explicit per-family choices are independent of the
+screen mode. A family's `Default` choice follows the global layout without
+materializing an override; selecting it again clears an existing override.
+Short option labels remain readable at 320px/200%, with linked help explaining
+inheritance, preview status and unavailable templates.
+
+Modern print rules are absolute overlays, not borders on the source bands:
+they cannot shift field origins or expand a zero-height band. Synthetic rendered
+pages preserve field/band coordinates, detail rows, group totals, the full total
+and page numbers. Paper stays white in either workspace theme. An unavailable
+Modern request stops visibly and asks for Classic rather than claiming that a
+substitute job was printed. These previews are not accepted official documents.
+Complete field, pagination, barcode and device evidence remains required before
+production approval.
 
 See `docs/UI-ENHANCEMENT.md` for measured coverage, reproducible checks, preview
 activation, and open acceptance gates. Do not infer WCAG conformance or release
