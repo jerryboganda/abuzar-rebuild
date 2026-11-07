@@ -14,6 +14,7 @@ export interface WindowSurface {
   lists?: readonly { control: string; caption: string }[]
   captions?: readonly string[]
   options?: readonly { control: string; native: 'checkbox' | 'radiobutton' }[]
+  calendars?: readonly string[]
 }
 
 export const LOOKUP_CRITERIA_WINDOWS = [
@@ -42,6 +43,69 @@ export const REFERENCE_CRITERIA_WINDOWS = [
   ['w_arg_ref', 'Reference No.:'],
   ['w_arg_smscenter', 'SMS Center No.:'],
 ] as const
+
+export const NUMERIC_CRITERIA_WINDOWS = [
+  ['w_arg_day', 'd_arg_days'],
+  ['w_arg_discperc', 'd_arg_discperc'],
+  ['w_arg_gstperc', 'd_arg_gstperc'],
+  ['w_arg_scode_lcode', 'd_arg_scode_lcode'],
+  ['w_arg_scode_lcode2', 'd_arg_scode_lcode'],
+  ['w_arg_sinvcode_linvcode', 'd_arg_sinvcode_linvcode'],
+] as const
+
+export const DATE_OPTION_CRITERIA_WINDOWS: readonly {
+  name: string
+  checkboxes: readonly string[]
+  radios?: readonly string[]
+  frame?: string
+  caption?: string
+}[] = [
+  { name: 'w_arg_sale_sdate_ldate', checkboxes: ['cbx_cash', 'cbx_credit'] },
+  { name: 'w_arg_sale_return_sdate_ldate', checkboxes: ['cbx_cash', 'cbx_credit'] },
+  { name: 'w_arg_sdate_ldate_adj', checkboxes: ['cbx_increase', 'cbx_decrease'] },
+  { name: 'w_arg_sdate_ldate_outstanding_inv', checkboxes: ['cbx_outstandinginv'] },
+  { name: 'w_arg_sdate_ldate_postunpost', checkboxes: ['cbx_posted', 'cbx_unposted'], caption: 'st_4' },
+  { name: 'w_arg_sdate_ldate_postunpost_dateoption', checkboxes: ['cbx_posted', 'cbx_unposted'],
+    radios: ['rb_issuedate', 'rb_duedate', 'rb_postdate'], frame: 'gb_date', caption: 'st_4' },
+  { name: 'w_arg_sdate_ldate_purtype', checkboxes: [], radios: ['rb_pp', 'rb_lp'], frame: 'gb_2' },
+  { name: 'w_arg_sdate_ldate_saletype', checkboxes: [], radios: ['rb_sales', 'rb_returns'], frame: 'gb_2' },
+  { name: 'w_arg_sdate_ldate_transaction', frame: 'gb_2', checkboxes: [
+    'cbx_all', 'cbx_purchase', 'cbx_purchasereturn', 'cbx_sales', 'cbx_salesreturn',
+    'cbx_service', 'cbx_servicereturn', 'cbx_issue', 'cbx_receipt', 'cbx_adjustment',
+    'cbx_cp', 'cbx_cr', 'cbx_bp', 'cbx_br', 'cbx_jv', 'cbx_others',
+  ] },
+]
+
+const costPriceCriteria: DataSurface = {
+  name: 'ddd_avgpricerpp', title: 'Cost price', kind: 'form',
+  fields: [{ object: 'price', label: 'Cost price', choice: {
+    kind: 'lookup', name: 'ddd_pricetype_avg_rpp', dataColumn: 'pricetypecode', displayColumn: 'name',
+  } }],
+}
+
+export const DATE_CHOICE_CRITERIA_WINDOWS: readonly {
+  name: string
+  order: readonly string[]
+  extra?: WindowSurface['options']
+  frame?: string
+  price?: DataSurface
+}[] = [
+  { name: 'w_arg_ason', order: ['em_startdate'] },
+  { name: 'w_arg_sale_sdate_ldate_avgprice_rpp',
+    order: ['em_startdate', 'em_enddate', 'cbx_cash', 'cbx_credit', 'st_4', 'dw_price'],
+    extra: [{ control: 'cbx_cash', native: 'checkbox' }, { control: 'cbx_credit', native: 'checkbox' }],
+    price: costPriceCriteria },
+  { name: 'w_arg_sdate_ldate_avg_rpp', order: ['em_startdate', 'em_enddate', 'st_4', 'dw_price'],
+    price: costPriceCriteria },
+  { name: 'w_arg_sdate_ldate_cashcreditboth', order: ['em_startdate', 'em_enddate', 'st_4', 'dw_price'],
+    price: { name: 'd_arg_cashcreditboth', title: 'Type', kind: 'form',
+      fields: [{ object: 'typecode', label: 'Type', choice: { kind: 'list' } }] } },
+  { name: 'w_arg_sdate_cashflow_crosstab', frame: 'gb_2',
+    order: ['em_startdate', 'em_enddate', 'gb_2', 'rb_cash', 'rb_bank', 'rb_both', 'cbx_supress'],
+    extra: ['rb_cash', 'rb_bank', 'rb_both'].map((control) => ({ control, native: 'radiobutton' })) },
+  { name: 'w_arg_sdate_ldate_remarks_option',
+    order: ['em_startdate', 'em_enddate', 'rb_saleprice', 'rb_purprice'] },
+]
 
 const lookupCriteriaData: readonly DataSurface[] = [
   DATA_SURFACES.find((surface) => surface.name === 'd_arg_manf')!,
@@ -74,6 +138,20 @@ const referenceCriteriaSurface: DataSurface = {
   fields: [{ object: 'refno', label: 'Reference number' }],
 }
 
+const numericCriteriaData: readonly DataSurface[] = [
+  { name: 'd_arg_days', title: 'Day', kind: 'form', fields: [
+    { object: 'day', labelObject: 'day_t', labelBand: 'header', label: 'Day:' },
+  ] },
+  { name: 'd_arg_discperc', title: 'Discount percentage', kind: 'form', fields: [{ object: 'discperc', label: 'Discount %:' }] },
+  { name: 'd_arg_gstperc', title: 'GST percentage', kind: 'form', fields: [{ object: 'gstperc', label: 'GST %:' }] },
+  { name: 'd_arg_scode_lcode', title: 'Code range', kind: 'form', fields: [
+    { object: 'scode', label: 'Start Code:' }, { object: 'lcode', label: 'End Code:' },
+  ] },
+  { name: 'd_arg_sinvcode_linvcode', title: 'Document range', kind: 'form', fields: [
+    { object: 'sinvcode', label: 'Starting Doc. No:' }, { object: 'linvcode', label: 'Last Doc. No.:' },
+  ] },
+]
+
 export const CRITERIA_WINDOW_SURFACES: readonly WindowSurface[] = [
   {
     name: 'w_arg_items_sdate_ldate_topn', library: 'reports', frame: 'gb_1', frames: ['gb_2'],
@@ -102,6 +180,9 @@ export const CRITERIA_WINDOW_SURFACES: readonly WindowSurface[] = [
   ...[
     ...LOOKUP_CRITERIA_WINDOWS,
     ...REFERENCE_CRITERIA_WINDOWS.map(([name]) => [name, 'd_arg_ref'] as const),
+    ...NUMERIC_CRITERIA_WINDOWS,
+    ...DATE_OPTION_CRITERIA_WINDOWS.map(({ name }) => [name, 'd_arg_cust'] as const),
+    ...DATE_CHOICE_CRITERIA_WINDOWS.map(({ name }) => [name, 'd_arg_cust'] as const),
     ['w_arg_sdate', 'd_arg_cust'],
     ['w_arg_sdate_notime', 'd_arg_cust'],
     ['w_arg_sdate_ldate', 'd_arg_cust'],
@@ -113,28 +194,53 @@ export const CRITERIA_WINDOW_SURFACES: readonly WindowSurface[] = [
     ['w_arg_zone_sdate_ldate_top_n_customer', 'd_arg_zone', 'reports_cust'],
   ].map(([name, data, library = 'reports']): WindowSurface => {
     const lookup = lookupCriteriaData.find((surface) => surface.name === data)
+    const numeric = numericCriteriaData.find((surface) => surface.name === data)
+    const range = numeric && numeric.fields.length === 2
     const reference = data === 'd_arg_ref'
+    const dateOptions = DATE_OPTION_CRITERIA_WINDOWS.find((owner) => owner.name === name)
+    const dateChoice = DATE_CHOICE_CRITERIA_WINDOWS.find((owner) => owner.name === name)
+    const frame = dateOptions?.frame ?? dateChoice?.frame
     const sourceLabel = REFERENCE_CRITERIA_WINDOWS.find(([owner]) => owner === name)?.[1]
     return {
       name, library, frame: 'gb_1',
-      fields: [{ control: 'em_startdate', label: 'st_1' }, { control: 'em_enddate', label: 'st_2' }],
-      captions: name === 'w_arg_activeclass_single' ? ['st_3', 'st_godown'] : ['st_3'],
+      fields: [{ control: 'em_startdate', label: 'st_1' }, { control: 'em_enddate', label: range ? 'st_4' : 'st_2' }],
+      captions: range ? ['st_3', 'st_2'] : name === 'w_arg_activeclass_single' ? ['st_3', 'st_godown'] :
+        ['st_3', ...(dateOptions?.caption ? [dateOptions.caption] : []), ...(dateChoice?.price ? ['st_4'] : [])],
+      ...(frame ? { frames: [frame] } : {}),
       actions: ['cb_ok', 'cb_cancel'],
       contentOrder: name === 'w_arg_zone_sdate_ldate_top_n_customer' ?
         ['st_3', 'dw_control', 'em_startdate', 'em_enddate', 'dw_custcount', 'cbx_hide', 'cbx_supress',
-          'rb_saleprice', 'rb_purprice', 'dw_price'] : undefined,
+          'rb_saleprice', 'rb_purprice', 'dw_price'] : dateOptions ? [
+          'em_startdate', 'em_enddate', 'st_3', 'dw_control', 'dw_price',
+          'cbx_hide', 'cbx_supress', 'rb_saleprice', 'rb_purprice',
+          ...(dateOptions.caption ? [dateOptions.caption] : []),
+          ...(dateOptions.frame && !dateOptions.radios ? [dateOptions.frame] : []),
+          ...dateOptions.checkboxes,
+          ...(dateOptions.frame && dateOptions.radios ? [dateOptions.frame] : []),
+          ...(dateOptions.radios ?? []),
+        ] : dateChoice ? [...dateChoice.order, ...[
+          'em_startdate', 'em_enddate', 'st_3', 'dw_control', 'dw_price',
+          'cbx_hide', 'cbx_supress', 'rb_saleprice', 'rb_purprice',
+        ].filter((control) => !dateChoice.order.includes(control))] : undefined,
       options: [
-        { control: 'cbx_hide', native: 'checkbox' }, { control: 'cbx_supress', native: 'checkbox' },
+        ...(range ? ['cbx_supress', 'cbx_hide'] : ['cbx_hide', 'cbx_supress'])
+          .map((control) => ({ control, native: 'checkbox' as const })),
         { control: 'rb_saleprice', native: 'radiobutton' }, { control: 'rb_purprice', native: 'radiobutton' },
+        ...(dateOptions?.checkboxes ?? []).map((control) => ({ control, native: 'checkbox' as const })),
+        ...(dateOptions?.radios ?? []).map((control) => ({ control, native: 'radiobutton' as const })),
+        ...(dateChoice?.extra ?? []),
       ],
       data: [
         { control: 'dw_control',
-          labels: lookup || reference ? [{ field: (lookup ?? referenceCriteriaSurface).fields[0].object, control: 'st_3' }] : undefined,
-          surface: lookup ?? (reference ? referenceCriteriaSurface :
+          labels: numeric ? numeric.fields.map((field, index) => ({ field: field.object, control: index ? 'st_2' : 'st_3' })) :
+            lookup || reference ? [{ field: (lookup ?? referenceCriteriaSurface).fields[0].object, control: 'st_3' }] : undefined,
+          surface: lookup ?? numeric ?? (reference ? referenceCriteriaSurface :
             CRITERIA_DATA_SURFACES.find((surface) => surface.name === data)!) },
         ...(name === 'w_arg_zone_sdate_ldate_top_n_customer' ? [{ control: 'dw_custcount',
           surface: CRITERIA_DATA_SURFACES.find((surface) => surface.name === 'd_arg_top_n_customers')! }] : []),
-        { control: 'dw_price', surface: {
+        { control: 'dw_price',
+          ...(dateChoice?.price ? { labels: [{ field: dateChoice.price.fields[0].object, control: 'st_4' }] } : {}),
+          surface: dateChoice?.price ?? {
           name: 'ddd_typepofprice', title: 'Price', kind: 'form',
           fields: [{ object: 'price', label: 'Price', choice: { kind: 'list' } }],
         } },
@@ -264,6 +370,11 @@ export const WINDOW_SURFACES: readonly WindowSurface[] = [
     name, library: 'reports', fields: [{ control: 'em_val', label: 'st_val' }], actions: ['cb_ok', 'cb_cancel'],
   })),
   { name: 'w_printer_copies', library: 'salerespwin', fields: [{ control: 'em_copies', label: 'st_1' }], actions: ['cb_ok'] },
+]
+
+export const CALENDAR_WINDOW_SURFACES: readonly WindowSurface[] = [
+  { name: 'w_calendar', library: 'components', fields: [], calendars: ['mc_calendar'], actions: ['cb_ok', 'cb_cancel'] },
+  { name: 'w_calendar2', library: 'components', fields: [], calendars: ['mc_calendar'], actions: ['cb_ok', 'cb_cancel'] },
 ]
 
 export const CALCULATOR_WINDOW_SURFACES: readonly WindowSurface[] = [
@@ -761,7 +872,185 @@ singleEntrySurface('w_taxcategory_form', {
     { object: 'name', labelObject: 'name_t' }, { object: 'code', labelObject: 'code_t' },
     { object: 'taxperc', labelObject: 'taxperc_t' },
   ],
-})]
+}),
+singleEntrySurface('w_dischargerefferal_form', {
+  name: 'd_dischargerefferal_detail', title: 'Detail', kind: 'form', fields: [
+    { object: 'code', labelObject: 'code_t' }, { object: 'name', labelObject: 'name_t' },
+  ],
+}, {
+  name: 'd_dischargerefferal_list', title: 'List', kind: 'grid', fields: [
+    { object: 'name', labelObject: 'name_t' },
+  ],
+}, 'patientcomponents'),
+singleEntrySurface('w_vehicletype_form', {
+  name: 'd_vehicletype_detail', title: 'Detail', kind: 'form', fields: [
+    { object: 'code', labelObject: 'vehicletypecode_t' }, { object: 'name', labelObject: 'name_t' },
+  ],
+}, {
+  name: 'd_vehicletype_list', title: 'List', kind: 'grid', sourceProcessing: 0, fields: [
+    { object: 'name', labelObject: 'name_t', labelBand: 'header' },
+    { object: 'code', labelObject: 'code_t', labelBand: 'header' },
+  ],
+}),
+singleEntrySurface('w_pctcodes_form', {
+  name: 'd_pctcodes_detail', title: 'Detail', kind: 'form', fields: [
+    { object: 'code', labelObject: 'code_t' }, { object: 'name', labelObject: 'description_t' },
+    { object: 'remarks', labelObject: 'remarks_t' },
+  ],
+}, {
+  name: 'd_pctcodes_list', title: 'List', kind: 'grid', fields: [
+    { object: 'name', labelObject: 'name_t' }, { object: 'remarks', labelObject: 'remarks_t' },
+  ],
+}, 'singleentryitem'),
+singleEntrySurface('w_tests_form', {
+  name: 'd_test_detail', title: 'Detail', kind: 'form', fields: [
+    { object: 'code', labelObject: 'ctcode_t' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'testprice', labelObject: 'testprice_t' },
+  ],
+}, {
+  name: 'd_test_list', title: 'List', kind: 'grid', fields: [
+    { object: 'code', labelObject: 'ctcode_t' }, { object: 'name', labelObject: 'name_t' },
+  ],
+}),
+singleEntrySurface('w_itemmeter_form', {
+  name: 'd_itemmeter_detail', title: 'Detail', kind: 'form', fields: [
+    { object: 'code', labelObject: 'code_t' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'description', labelObject: 'description_t' },
+    { object: 'currentreading', labelObject: 'currentreading_t' },
+  ],
+}, {
+  name: 'd_itemmeter_list', title: 'List', kind: 'grid', fields: [
+    { object: 'name', labelObject: 'name_t' }, { object: 'description', labelObject: 'description_t' },
+    { object: 'code', labelObject: 'code_t' }, { object: 'currentreading', labelObject: 'currentreading_t' },
+  ],
+}, 'singleentryitem'),
+singleEntrySurface('w_biometricmachine', {
+  name: 'd_biometricmachine', title: 'Detail', kind: 'form', fields: [
+    { object: 'code', labelObject: 'code_t' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'manufacturer', labelObject: 'manufacturer_t' }, { object: 'model', labelObject: 'model_t' },
+    { object: 'ipaddress', labelObject: 'ipaddress_t' }, { object: 'port', labelObject: 'port_t' },
+  ],
+}, {
+  name: 'd_biometricmachinelist', title: 'List', kind: 'grid', fields: [
+    { object: 'name', labelObject: 'name_t' }, { object: 'ipaddress', labelObject: 'ipaddress_t' },
+    { object: 'port', labelObject: 'port_t' }, { object: 'manufacturer', labelObject: 'manufacturer_t' },
+    { object: 'model', labelObject: 'model_t' }, { object: 'code', labelObject: 'code_t' },
+  ],
+}),
+singleEntrySurface('w_crs_clientlist', {
+  name: 'd_clientlist_detail', title: 'Detail', kind: 'form', fields: [
+    { object: 'code', labelObject: 'code_t' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'address1', labelObject: 'address1_t' }, { object: 'address2', labelObject: 'address2_t' },
+    { object: 'phone', labelObject: 'phone_t' }, { object: 'phone2', labelObject: 'phone2_t' },
+    { object: 'fax', labelObject: 'fax_t' }, { object: 'email', labelObject: 'email_t' },
+    { object: 'web', labelObject: 'web_t' }, { object: 'cp', labelObject: 'cp_t' },
+    { object: 'cpphone', labelObject: 'cpphone_t' }, { object: 'cpmobile', labelObject: 'cpmobile_t' },
+  ],
+}, {
+  name: 'd_clientlist_list', title: 'List', kind: 'grid', fields: [
+    { object: 'code', labelObject: 'code_t' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'address1', labelObject: 'address1_t' }, { object: 'address2', labelObject: 'address2_t' },
+    { object: 'phone', labelObject: 'phone_t' }, { object: 'phone2', labelObject: 'phone2_t' },
+    { object: 'fax', labelObject: 'fax_t' }, { object: 'email', labelObject: 'email_t' },
+    { object: 'web', labelObject: 'web_t' }, { object: 'cp', labelObject: 'cp_t' },
+    { object: 'cpphone', labelObject: 'cpphone_t' }, { object: 'cpmobile', labelObject: 'cpmobile_t' },
+  ],
+}, 'crscomponents'),
+singleEntrySurface('w_custsector_form', {
+  name: 'd_customersector_detail', title: 'Detail', kind: 'form', fields: [
+    { object: 'code', labelObject: 'customersegmentcode_t' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'aliasname', labelObject: 't_1' }, { object: 'description', labelObject: 't_2' },
+  ],
+}, {
+  name: 'd_customersector_list', title: 'List', kind: 'grid', fields: [
+    { object: 'name', labelObject: 'name_t' }, { object: 'aliasname', labelObject: 'aliasname_t' },
+    { object: 'description', labelObject: 'description_t' }, { object: 'code', labelObject: 'code_t' },
+  ],
+}, 'custcomponents'),
+singleEntrySurface('w_dosage_form', {
+  name: 'd_dosage', title: 'Detail', kind: 'form', fields: [
+    { object: 'code', labelObject: 't_1' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'dosefactor', labelObject: 't_dosefactor' }, { object: 'description', labelObject: 't_2' },
+    { object: 'localdosage', labelObject: 't_3' },
+  ],
+}, {
+  name: 'd_dosage_list', title: 'List', kind: 'grid', fields: [
+    { object: 'compute_1', labelObject: 't_5', kind: 'computed', numeric: true },
+    { object: 'code', labelObject: 'code_t' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'localdosage', labelObject: 'localdosage_t' },
+  ],
+}, 'patientcomponents'),
+singleEntrySurface('w_instruction_form', {
+  name: 'd_instruction', title: 'Detail', kind: 'form', fields: [
+    { object: 'code', labelObject: 't_1' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'description', labelObject: 't_2' }, { object: 'localinstruction', labelObject: 't_3' },
+  ],
+}, {
+  name: 'd_instruction_list', title: 'List', kind: 'grid', fields: [
+    { object: 'compute_1', labelObject: 't_5', kind: 'computed', numeric: true },
+    { object: 'code', labelObject: 'code_t' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'localinstruction', labelObject: 'localinstruction_t' },
+  ],
+}, 'patientcomponents'),
+singleEntrySurface('w_precaution_form', {
+  name: 'd_precautiondetail', title: 'Detail', kind: 'form', fields: [
+    { object: 'code', labelObject: 't_1' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'localprecaution', labelObject: 't_2' },
+  ],
+}, {
+  name: 'd_precautionlist', title: 'List', kind: 'grid', fields: [
+    { object: 'name', labelObject: 'name_t' }, { object: 'localprecaution', labelObject: 'localprecaution_t' },
+    { object: 'code', labelObject: 'code_t' },
+  ],
+}, 'patientcomponents'),
+singleEntrySurface('w_region_form', {
+  name: 'd_region_detail', title: 'Detail', kind: 'form', fields: [
+    { object: 'code', labelObject: 'salesmancode_t' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'manager', labelObject: 'password_t' }, { object: 'remarks', labelObject: 't_1' },
+  ],
+}, {
+  name: 'd_region_list', title: 'List', kind: 'grid', fields: [
+    { object: 'code', labelObject: 'code_t' }, { object: 'name', labelObject: 'name_t' },
+  ],
+}, 'custcomponents'),
+singleEntrySurface('w_route_form', {
+  name: 'd_route', title: 'Detail', kind: 'form', fields: [
+    { object: 'code', labelObject: 't_1' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'description', labelObject: 't_2' }, { object: 'localroute', labelObject: 't_3' },
+  ],
+}, {
+  name: 'd_route_list', title: 'List', kind: 'grid', fields: [
+    { object: 'compute_1', labelObject: 't_5', kind: 'computed', numeric: true },
+    { object: 'code', labelObject: 'code_t' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'localroute', labelObject: 'localroute_t' },
+  ],
+}, 'patientcomponents'),
+singleEntrySurface('w_saletype_form', {
+  name: 'd_saletype', title: 'Detail', kind: 'form', fields: [
+    { object: 'code', labelObject: 't_1' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'description', labelObject: 't_2' }, { object: 'counter', labelObject: 't_3' },
+  ],
+}, {
+  name: 'd_saletype_list', title: 'List', kind: 'grid', fields: [
+    { object: 'code', labelObject: 'code_t' }, { object: 'name', labelObject: 'name_t' },
+  ],
+}),
+singleEntrySurface('w_weighingscale_form', {
+  name: 'd_weighingscale_detail', title: 'Detail', kind: 'form', fields: [
+    { object: 'code', labelObject: 'code_t' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'manufacturer', labelObject: 'manufacturer_t' }, { object: 'model', labelObject: 'model_t' },
+    { object: 'scaleid', labelObject: 'scaleid_t' }, { object: 'scaleidpos', labelObject: 'scaleidpos_t' },
+    { object: 'barcodelen', labelObject: 'barcodelen_t' }, { object: 'itemstartpos', labelObject: 'itemstartpos_t' },
+    { object: 'itemendpos', labelObject: 'itemendpos_t' }, { object: 'weightstartpos', labelObject: 'weightstartpos_t' },
+    { object: 'weightendpos', labelObject: 'weightendpos_t' },
+  ],
+}, {
+  name: 'd_weighingscale_list', title: 'List', kind: 'grid', fields: [
+    { object: 'code', labelObject: 'code_t' }, { object: 'name', labelObject: 'name_t' },
+    { object: 'manufacturer', labelObject: 'manufacturer_t' }, { object: 'model', labelObject: 'model_t' },
+    { object: 'scaleid', labelObject: 'scaleid_t' },
+  ],
+}, 'singleentryitem')]
 
 export function entryWindowIssues(controls: EntryWindowSurface['controls'], surface: EntryWindowSurface): string[] {
   const issues: string[] = []
@@ -810,6 +1099,7 @@ export function windowSurfaceIssues(
   }
   for (const name of surface.captions ?? []) use(name, ['statictext'])
   for (const option of surface.options ?? []) use(option.control, [option.native])
+  for (const name of surface.calendars ?? []) use(name, ['monthcalendar'])
   for (const action of surface.actions) use(action, ['commandbutton'])
   const labels = new Set<string>()
   for (const data of surface.data ?? []) for (const label of data.labels ?? []) {
@@ -824,7 +1114,7 @@ export function windowSurfaceIssues(
   }
   if (surface.contentOrder) {
     const content = [...surface.fields.map((field) => field.control), ...(surface.captions ?? []), ...(surface.frames ?? []),
-      ...(surface.lists ?? []).map((list) => list.control),
+      ...(surface.lists ?? []).map((list) => list.control), ...(surface.calendars ?? []),
       ...(surface.data ?? []).map((data) => data.control), ...(surface.options ?? []).map((option) => option.control)]
     if (surface.contentOrder.length !== content.length || new Set(surface.contentOrder).size !== content.length ||
       surface.contentOrder.some((name) => !content.includes(name))) {

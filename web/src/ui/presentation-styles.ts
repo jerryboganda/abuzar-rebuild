@@ -47,6 +47,14 @@ export const PRESENTATION_CSS = `
 .presentation-ui .presentation-action:focus-visible,.presentation-sidebar :focus-visible,
 .presentation-tab button:focus-visible,.presentation-settings :focus-visible {outline:2px solid var(--p-accent);outline-offset:2px;}
 .presentation-settings {width:min(650px,calc(100vw - 32px));max-width:calc(100vw - 32px);max-height:calc(100vh - 32px);overflow:auto;border:1px solid var(--p-line);border-radius:8px;padding:24px;background:var(--p-surface);box-shadow:0 8px 28px #00000040;}
+.presentation-settings fieldset {min-width:0;margin:16px 0;padding:12px 14px;border:1px solid var(--p-line);border-radius:6px;}
+.presentation-settings legend {padding:0 6px;font-weight:650;}
+.presentation-print-families p {margin:6px 0;color:var(--p-muted);font-size:.9em;}
+.presentation-print-families .print-family {display:grid;grid-template-columns:minmax(0,1fr) minmax(150px,auto);gap:8px 12px;align-items:center;margin-top:10px;}
+.presentation-print-families .print-family label {font-weight:600;overflow-wrap:anywhere;}
+.presentation-print-families .print-family select {min-width:0;}
+.presentation-print-families .print-family p {grid-column:1/-1;margin:0;}
+@media (max-width:520px) {.presentation-print-families .print-family {grid-template-columns:minmax(0,1fr);}}
 .presentation-settings::backdrop {background:#0c192b70;}
 .presentation-compatibility-dialog {position:fixed;inset:0;width:100vw;height:100vh;max-width:none;max-height:none;margin:0;padding:0;border:0;background:transparent;overflow:hidden;color-scheme:light;color:#000;font:var(--font);}
 .presentation-compatibility-dialog::backdrop {background:#0c192b70;}
@@ -75,6 +83,18 @@ export const PRESENTATION_CSS = `
 .modern-window .window-option:has(input:focus-visible) {outline:2px solid var(--p-accent);outline-offset:2px;}
 .modern-window[data-density=comfortable] .window-option {min-height:42px;}
 .modern-window .ctl {position:static!important;inset:auto!important;width:100%!important;height:auto!important;font:inherit!important;color:var(--p-text)!important;}
+.modern-calendar-window.pbwin {width:min(27em,100%)!important;}
+.modern-calendar-window>.client {padding-inline:8px;}
+@media (max-width:400px) {.presentation-modern-dialog[open]:has(>.modern-calendar-window) {padding-inline:4px;}}
+.modern-window .pb-calendar {width:100%!important;min-width:0;padding:4px;background:var(--p-surface)!important;border-color:var(--p-line);}
+.modern-window .pb-calendar button,.modern-window .pb-calendar td,.modern-window .pb-calendar th {min-height:36px;font:inherit;}
+.modern-window .pb-calendar td,.modern-window .pb-calendar th {height:2em;padding:3px 0;}
+.modern-window .pb-calendar [aria-selected=true] {background:var(--p-accent);color:var(--p-on-accent);}
+.modern-window .pb-calendar .calendar-trailing {color:var(--p-muted);}
+.modern-window .pb-calendar .calendar-trailing[aria-selected=true] {color:var(--p-on-accent);}
+.modern-window .pb-calendar button:hover:not(:disabled),.modern-window .pb-calendar [role=gridcell]:hover:not([aria-disabled=true]) {background:var(--p-selected);color:var(--p-text);}
+.modern-window .pb-calendar [aria-selected=true]:focus-visible {outline-color:var(--p-on-accent);}
+.modern-window .pb-calendar [aria-disabled=true] {color:var(--p-muted);}
 .modern-window .window-field label .ctl {display:block;white-space:normal;overflow-wrap:anywhere;background:transparent!important;font-weight:600!important;text-align:left!important;}
 .modern-window input.ctl {min-width:0;min-height:36px;padding:6px 10px;background:var(--p-surface)!important;border:1px solid var(--p-line)!important;border-radius:4px;}
 .modern-window .window-actions {display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin-top:24px;}

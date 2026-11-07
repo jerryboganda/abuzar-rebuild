@@ -47,7 +47,7 @@ export function parseTime(text: string): PBTime | null {
 
 export function numericDateMask(mask: string): { date: string; order: string[] } | null {
   const numeric = /^(d{1,2}|m{1,2}|yyyy|yy)[-/.](d{1,2}|m{1,2}|yyyy|yy)[-/.](d{1,2}|m{1,2}|yyyy|yy)(?=$|[\sT])/i.exec(mask)
-  if (!numeric || !/^(?:[ T]h{1,2}:mm(?::ss(?:\.f{1,6})?)?(?:\s+am\/pm)?)?$/i.test(mask.slice(numeric[0].length))) return null
+  if (!numeric || !/^(?:[ T]h{1,2}:mm(?::ss(?:[.:]f{1,6})?)?(?:\s+am\/pm)?)?$/i.test(mask.slice(numeric[0].length))) return null
   const order = numeric.slice(1).map((token) => token[0].toLowerCase())
   return new Set(order).size === 3 ? { date: numeric[0], order } : null
 }

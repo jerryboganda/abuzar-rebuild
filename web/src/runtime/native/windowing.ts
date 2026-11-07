@@ -7,6 +7,7 @@ import { NControl, NMenuItem, NWindow } from './controls.ts'
 import { NDwBase } from './dwctrl.ts'
 import { NTransaction } from './transaction.ts'
 import { NWinSock } from './winsock.ts'
+import { NCalendar } from './calendar.ts'
 
 function setMessage(rt: Runtime, parm: unknown): void {
   const msg = rt.globals.get('message') as PBObject | undefined
@@ -254,6 +255,7 @@ export function registerWindowing(rt: Runtime): void {
     'tab', 'groupbox', 'picture', 'picturebutton', 'progressbar', 'hscrollbar', 'vscrollbar', 'hprogressbar', 'userobject', 'oval', 'rectangle', 'roundrectangle', 'line',
     'richtextedit', 'treeview', 'listview', 'ole', 'olecustomcontrol', 'graph', 'hslider', 'vslider', 'monthcalendar', 'datepicker', 'statichyperlink', 'picturehyperlink',
   ]) nat.set(k, (r, c) => new NControl(r, c, k))
+  nat.set('monthcalendar', (r, c) => new NCalendar(r, c))
   rt.nativeParent.set('u_transaction', 'transaction')
   void toStr
 }

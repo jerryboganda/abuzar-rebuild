@@ -1,12 +1,12 @@
 import type { WinView } from './dom-ui.ts'
-import { WINDOW_SURFACES, CALCULATOR_WINDOW_SURFACES, CRITERIA_WINDOW_SURFACES, windowSurfaceIssues } from './window-surfaces.ts'
+import { WINDOW_SURFACES, CALCULATOR_WINDOW_SURFACES, CALENDAR_WINDOW_SURFACES, CRITERIA_WINDOW_SURFACES, windowSurfaceIssues } from './window-surfaces.ts'
 import { ModernDwView } from './modern-dwview.ts'
 
 let nextWindow = 0
 
 /** Reflow the existing controls; their runtime objects and event bindings stay intact. */
 export function applyModernWindow(view: WinView): boolean {
-  const surface = [...WINDOW_SURFACES, ...CALCULATOR_WINDOW_SURFACES, ...CRITERIA_WINDOW_SURFACES]
+  const surface = [...WINDOW_SURFACES, ...CALCULATOR_WINDOW_SURFACES, ...CALENDAR_WINDOW_SURFACES, ...CRITERIA_WINDOW_SURFACES]
     .find((item) => item.name === view.w.className)
   if (!surface || !view.modal) return false
   const controls = [...view.ctlViews].map(([control]) => ({
@@ -81,6 +81,13 @@ export function applyModernWindow(view: WinView): boolean {
     content.append(element)
     contentItems.set(name, element)
   }
+  for (const name of surface.calendars ?? []) {
+    const binding = [...view.ctlViews].find(([control]) => control.name === name)![1]
+    binding.calendar!.setModern(true)
+    content.append(binding.el)
+    contentItems.set(name, binding.el)
+    view.el.classList.add('modern-calendar-window')
+  }
   for (const binding of data) {
     if (binding.view?.dw instanceof ModernDwView) {
       binding.view.el.classList.add('window-data')
@@ -98,7 +105,8 @@ export function applyModernWindow(view: WinView): boolean {
   for (const option of surface.options ?? []) {
     const element = elements.get(option.control)!
     const input = element.querySelector('input')!
-    if (input.tabIndex > 0) input.tabIndex = 0
+    // Missing source ordering is not an explicit exclusion from Modern keyboard navigation.
+    if (input.tabIndex > 0 || !view.w.children.get(option.control)!.props.has('taborder')) input.tabIndex = 0
     element.classList.add('window-option')
     content.append(element)
     contentItems.set(option.control, element)

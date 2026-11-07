@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { parseScriptFile } from '../src/pbscript/parser.ts'
 import type { Routine, Stmt } from '../src/pbscript/ast.ts'
-import { LOOKUP_CRITERIA_WINDOWS, REFERENCE_CRITERIA_WINDOWS } from '../src/ui/window-surfaces.ts'
+import { LOOKUP_CRITERIA_WINDOWS, REFERENCE_CRITERIA_WINDOWS, NUMERIC_CRITERIA_WINDOWS, DATE_OPTION_CRITERIA_WINDOWS, DATE_CHOICE_CRITERIA_WINDOWS } from '../src/ui/window-surfaces.ts'
 
 function removeDateGuards(body: Stmt[], count: number): void {
   const at = body.findIndex((node) => node.k === 'decl' && node.vars.some((variable) => variable.n === 'ldt_criteria_checked'))
@@ -141,7 +141,9 @@ test('item-selection guards only the count draft and failed retrievals, preservi
   assert.deepEqual(fixClassData(name, { routines: {} }), [])
 })
 
-for (const name of ['w_arg_sdate', 'w_arg_sdate_notime', 'w_arg_sdate_ldate']) {
+for (const name of ['w_arg_sdate', 'w_arg_sdate_notime', 'w_arg_sdate_ldate',
+  ...DATE_OPTION_CRITERIA_WINDOWS.map((owner) => owner.name),
+  ...DATE_CHOICE_CRITERIA_WINDOWS.filter((owner) => !owner.price).map((owner) => owner.name)]) {
   test(`${name}: native date guards and cancellation initialization preserve every original routine`, () => {
     const { file, errors } = parseScriptFile(readFileSync(resolve(import.meta.dirname, '..', '..', 'data', 'src',
       'scripts', 'reports', name + '.pbs'), 'utf8'))
@@ -151,7 +153,7 @@ for (const name of ['w_arg_sdate', 'w_arg_sdate_notime', 'w_arg_sdate_ldate']) {
     const data = { routines }, original = structuredClone(data)
     assert.deepEqual(fixClassData(name, data), ['criteria date acceptance guards', 'date criteria cancellation default'])
     assert.deepEqual(fixClassData(name, data), [])
-    removeDateGuards(routines.cb_ok.clicked[0].body, name === 'w_arg_sdate_ldate' ? 2 : 1)
+    removeDateGuards(routines.cb_ok.clicked[0].body, ['w_arg_sdate', 'w_arg_sdate_notime', 'w_arg_ason'].includes(name) ? 1 : 2)
     const open = routines[name].open[0].body
     const at = open.findIndex((node) => node.k !== 'decl')
     assert.match(JSON.stringify(open[at]), /"powerobjectparm"/)
@@ -167,7 +169,8 @@ for (const name of ['w_arg_sdate', 'w_arg_sdate_notime', 'w_arg_sdate_ldate']) {
   })
 }
 
-for (const [name] of LOOKUP_CRITERIA_WINDOWS) {
+for (const [name] of [...LOOKUP_CRITERIA_WINDOWS,
+  ...DATE_CHOICE_CRITERIA_WINDOWS.filter((owner) => owner.price).map((owner) => [owner.name])]) {
   test(`${name}: acceptance, dates and cancellation guards preserve the complete original lookup workflow`, () => {
     const { file, errors } = parseScriptFile(readFileSync(resolve(import.meta.dirname, '..', '..', 'data', 'src',
       'scripts', 'reports', name + '.pbs'), 'utf8'))
@@ -186,7 +189,8 @@ for (const [name] of LOOKUP_CRITERIA_WINDOWS) {
     const body = routines.cb_ok.clicked[0].body
     const accepted = body.findIndex((node) => node.k !== 'decl')
     assert.match(JSON.stringify(body[accepted]), /"accepttext"/)
-    assert.match(JSON.stringify(body[accepted]), /"dw_control"/)
+    assert.match(JSON.stringify(body[accepted]), DATE_CHOICE_CRITERIA_WINDOWS.some((owner) => owner.name === name) ?
+      /"dw_price"/ : /"dw_control"/)
     body.splice(accepted, 1)
     if (dates) removeDateGuards(body, dates)
     const open = routines[name].open[0].body
@@ -207,8 +211,8 @@ for (const [name] of LOOKUP_CRITERIA_WINDOWS) {
   })
 }
 
-for (const [name] of REFERENCE_CRITERIA_WINDOWS) {
-  test(`${name}: text acceptance and cancellation guards preserve the owner script`, () => {
+for (const [name] of [...REFERENCE_CRITERIA_WINDOWS, ...NUMERIC_CRITERIA_WINDOWS]) {
+  test(`${name}: scalar acceptance and cancellation guards preserve the owner script`, () => {
     const { file, errors } = parseScriptFile(readFileSync(resolve(import.meta.dirname, '..', '..', 'data', 'src',
       'scripts', 'reports', name + '.pbs'), 'utf8'))
     assert.deepEqual(errors, [])

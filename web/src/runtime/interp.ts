@@ -75,7 +75,7 @@ export function exprText(e: Expr): string {
 }
 
 /** native methods that return a value through a `ref` argument: name -> argument positions */
-const REF_METHODS: Record<string, number[]> = { getchild: [1], getfullstate: [0], getdata: [0], getitem: [1], getdatetime: [0], getmostrecenttransdate: [0], findrequired: [1, 2, 3] }
+const REF_METHODS: Record<string, number[]> = { getchild: [1], getfullstate: [0], getdata: [0], getitem: [1], getdatetime: [0], getselecteddate: [0], getmostrecenttransdate: [0], findrequired: [1, 2, 3] }
 function e0(_e: unknown, r: Routine): Routine {
   return r
 }
@@ -1092,7 +1092,8 @@ export class Runtime {
       const nm = (self as unknown as Record<string, unknown>)['n_' + name]
       if (typeof nm === 'function') {
         const args: unknown[] = []
-        for (const a of e.a) args.push(await this.eval(a, f))
+        for (let i = 0; i < e.a.length; i++) args.push(REF_METHODS[name]?.includes(i) ?
+          this.refOf(e.a[i], f) : await this.eval(e.a[i], f))
         if (post) {
           this.post(async () => void (await this.callNative(self, name, args)))
           return 1

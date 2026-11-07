@@ -341,13 +341,119 @@ function fixCashierCategory(data: Json): string[] {
   return out
 }
 
-function fixCriteriaAcceptance(name: string, data: Json): string[] {
+function fixCalendar(name: string, data: Json): string[] {
+  const body = data.routines?.[name]?.open?.[0]?.body
+  if (!Array.isArray(body)) return []
+  const out: string[] = []
+  const branch = body.find((node) => node.k === 'if' && node.c?.k === 'call' && node.c.n === 'isdate')
+  const calendar = mem(id('this'), 'mc_calendar')
+  const today = expr(call(calendar, 'setselecteddate', [call(null, 'today', [])]))
+  if (branch?.e && !branch.e.some((node: Json) => node.k === 'expr' && node.e?.n === 'setselecteddate')) {
+    branch.e.push(today)
+    out.push('calendar invalid-date selection')
+  }
+  const original = branch?.t?.[0]
+  const selectionFailure = (result: Json): Json => ({
+    k: 'if', c: { k: 'bin', op: '<>', l: result, r: num(0) }, t: [
+      expr(call(null, 'messagebox', [str('Calendar'),
+        str('This date is outside the calendar range (1601 to 9999). Select a supported date or cancel.'),
+        { k: 'enum', v: 'exclamation!' }, { k: 'enum', v: 'ok!' }, num(1)])),
+      clone(today),
+    ], ei: [],
+  })
+  if (original?.k === 'expr' && original.e?.n === 'setselecteddate') {
+    branch.t[0] = selectionFailure(original.e)
+    out.push('calendar selection failure feedback')
+  } else if (original?.k === 'assign' && original.l?.n === 'll_retcode' &&
+    original.r?.n === 'setselecteddate' && branch.t.length === 1) {
+    branch.t.push(selectionFailure(id('ll_retcode')))
+    out.push('calendar selection failure feedback')
+  }
+  const initial = { k: 'assign', l: mem({ k: 'global', n: 'message' }, 'stringparm'), op: '=',
+    r: name === 'w_calendar2' ? call(null, 'string', [mem(id('this'), 'id_old_date'), str('yyyy-mm-dd')]) : str('') }
+  if (!body.some((node) => JSON.stringify(node) === JSON.stringify(initial))) {
+    const at = body.findIndex((node) => node.k === 'expr' && node.e?.n === 'setfocus')
+    if (at >= 0) { body.splice(at + 1, 0, initial); out.push('calendar cancellation default') }
+  }
+  return out
+}
+
+function fixDataWindowCalendar(data: Json): string[] {
+  const out: string[] = []
+  for (const owner of ['u_dwstandard', 'dw_itemsdetail']) {
+    const body = data.routines?.[owner]?.ue_dwnkey?.[0]?.body
+    const branch = body?.find((node: Json) => node.k === 'if' && node.t?.some((entry: Json) =>
+      entry.k === 'expr' && entry.e?.n === 'openwithparm' && entry.e.a?.[0]?.n === 'w_calendar2'))
+    if (!branch) continue
+    const at = branch.t.findIndex((node: Json) => node.k === 'expr' && node.e?.n === 'accepttext')
+    if (at >= 0) {
+      branch.t[at] = { k: 'if', c: { k: 'bin', op: '<>', l: branch.t[at].e, r: num(1) },
+        t: [{ k: 'return', e: mem({ k: 'global', n: 'message' }, 'returnvalue') }], ei: [] }
+      out.push(`${owner} calendar acceptance guard`)
+    }
+    const emptyClock = { k: 'if', c: { k: 'bin', op: 'or',
+      l: call(null, 'isnull', [id('ls_temp')]), r: { k: 'bin', op: '=', l: id('ls_temp'), r: str('') } },
+      t: [{ k: 'assign', l: id('ls_time'), op: '=', r: str('00:00:00') }], ei: [] }
+    let clockFormat: Json[] | undefined, clockSuffix: Json[] | undefined
+    const visitClock = (node: Json): void => {
+      if (!node || typeof node !== 'object') return
+      if (node.k === 'assign' && node.l?.n === 'ls_temp' && node.r?.n === 'string' &&
+        node.r.a?.[1]?.v === 'yyyy-mm-dd hh:mm:ss') clockFormat = node.r.a
+      if (node.k === 'assign' && node.l?.n === 'ls_time' && node.r?.n === 'right' &&
+        node.r.a?.[0]?.n === 'ls_temp' && node.r.a?.[1]?.v === 8) clockSuffix = node.r.a
+      if (Array.isArray(node)) {
+        const index = node.findIndex((entry) => entry.k === 'assign' && entry.l?.n === 'ls_time' && entry.r?.n === 'right')
+        if (index >= 0 && !node.some((entry) => JSON.stringify(entry) === JSON.stringify(emptyClock))) {
+          node.splice(index + 1, 0, clone(emptyClock))
+          out.push(`${owner} empty calendar clock`)
+        }
+      }
+      for (const value of Object.values(node)) visitClock(value)
+    }
+    visitClock(branch.t)
+    if (clockFormat && clockSuffix) {
+      clockFormat[1] = str('yyyy-mm-dd hh:mm:ss:fff')
+      clockSuffix[1] = num(12)
+      out.push(`${owner} calendar clock precision`)
+    }
+    if (!branch.t.some((node: Json) => node.k === 'expr' && node.e?.n === 'setfocus')) {
+      branch.t.push(expr(call(id('this'), 'setfocus', [])))
+      out.push(`${owner} calendar focus restoration`)
+    }
+  }
+  return out
+}
+
+function fixCriteriaCalendar(data: Json): string[] {
+  const out: string[] = []
+  for (const name of ['em_startdate', 'em_enddate']) {
+    const body = data.routines?.[name]?.keydown?.[0]?.body
+    if (!Array.isArray(body)) continue
+    const f4 = body.find((node) => node.k === 'if' && node.c?.k === 'bin' && node.c.r?.v === 'keyf4!')
+    const selected = f4?.t?.find((node: Json) => node.k === 'if')
+    if (!selected?.t || selected.t.some((node: Json) => node.k === 'assign' && node.l?.n === 'ls_date')) continue
+    const at = selected.t.findIndex((node: Json) => node.k === 'assign' && node.l?.n === 'ls_temp')
+    if (at < 0) continue
+    const format = call(null, 'left', [mem(id('this'), 'mask'), num(10)])
+    selected.t.splice(at, 1,
+      { k: 'assign', l: id('ls_date'), op: '=', r: call(null, 'string', [call(null, 'date', [id('ls_date')]), format]) },
+      { k: 'if', c: { k: 'bin', op: '>', l: call(null, 'len', [mem(id('this'), 'mask')]), r: num(10) },
+        t: [selected.t[at]], ei: [], e: [{ k: 'assign', l: id('ls_temp'), op: '=', r: id('ls_date') }] })
+    f4.t.push({ k: 'assign', l: mem({ k: 'global', n: 'message' }, 'powerobjectparm'),
+      op: '=', r: mem(id('parent'), 'istr_arg') })
+    f4.t.push(expr(call(id('this'), 'setfocus', [])))
+    out.push(`${name} calendar mask preservation`)
+  }
+  return out
+}
+
+function fixCriteriaAcceptance(name: string, data: Json, boundControls?: readonly string[]): string[] {
   const body = data.routines?.cb_ok?.clicked?.[0]?.body
   if (!Array.isArray(body)) return []
-  const controls = name === 'w_arg_quotation_customer_remarks' ? ['dw_selection'] :
+  const controls = boundControls ?? (name === 'w_arg_quotation_customer_remarks' ? ['dw_selection'] :
     name === 'w_sale_replace_custref' ? ['dw_replace_custref'] :
       name === 'w_arg_items_sdate_ldate_topn' ? ['dw_custcount'] :
-        name === 'w_arg_zone_sdate_ldate_top_n_customer' ? ['dw_control', 'dw_custcount'] : ['dw_control']
+        name === 'w_arg_zone_sdate_ldate_top_n_customer' ? ['dw_control', 'dw_custcount'] : ['dw_control'])
   const guards = controls.map((control) => ({
     k: 'if', c: { k: 'bin', op: '<>', l: call(mem(id('parent'), control), 'accepttext', []), r: num(1) },
     t: [{ k: 'return', e: mem({ k: 'global', n: 'message' }, 'returnvalue') }], ei: [],
@@ -580,11 +686,23 @@ export function fixClassData(name: string, data: Json): string[] {
   if (n === 'w_journalvoucher') return fixJournalVoucher(data)
   if (n === 'w_cashiershift_closing') return fixCashierShift(data)
   if (n === 'w_cashierjobactivity_changecategory') return fixCashierCategory(data)
+  if (n === 'w_calendar' || n === 'w_calendar2') return fixCalendar(n, data)
+  if (n === 'u_dwstandard' || n === 'w_customercomments') return fixDataWindowCalendar(data)
+  if (n === 'w_arguements') return fixCriteriaCalendar(data)
   if (n === 'w_select_case') return [...fixCriteriaAcceptance(n, data), ...fixPackingSelection(data), ...fixCriteriaRetrieval(n, data)]
   if (n === 'w_sale_replace_custref') return [...fixCriteriaAcceptance(n, data),
     ...(fixNumericCancellation(n, data, -1) ? ['customer reference cancellation default'] : [])]
-  if (['w_arg_sdate', 'w_arg_sdate_notime', 'w_arg_sdate_ldate'].includes(n)) {
+  if (['w_arg_sdate', 'w_arg_sdate_notime', 'w_arg_sdate_ldate',
+    'w_arg_sale_sdate_ldate', 'w_arg_sale_return_sdate_ldate', 'w_arg_sdate_ldate_adj',
+    'w_arg_sdate_ldate_outstanding_inv', 'w_arg_sdate_ldate_postunpost',
+    'w_arg_sdate_ldate_postunpost_dateoption', 'w_arg_sdate_ldate_purtype',
+    'w_arg_sdate_ldate_saletype', 'w_arg_sdate_ldate_transaction',
+    'w_arg_ason', 'w_arg_sdate_cashflow_crosstab', 'w_arg_sdate_ldate_remarks_option'].includes(n)) {
     return [...fixCriteriaDates(data), ...fixDateCancellation(n, data)]
+  }
+  if (['w_arg_sale_sdate_ldate_avgprice_rpp', 'w_arg_sdate_ldate_avg_rpp',
+    'w_arg_sdate_ldate_cashcreditboth'].includes(n)) {
+    return [...fixCriteriaDates(data), ...fixCriteriaAcceptance(n, data, ['dw_price']), ...fixDateCancellation(n, data)]
   }
   if (['w_arg_acc_sdate_ldate', 'w_arg_antinortixitem_sdate_ldate', 'w_arg_doct_sdate_ldate',
     'w_arg_godown_sdate_ldate', 'w_arg_manf_sdate_ldate', 'w_arg_patient_sdate_ldate_old',
@@ -595,7 +713,8 @@ export function fixClassData(name: string, data: Json): string[] {
       ...(n === 'w_arg_antinortixitem_sdate_ldate' ? fixCriteriaRetrieval(n, data) : [])]
   }
   if (['w_arg_batchno', 'w_arg_containerno', 'w_arg_masterpart', 'w_arg_phoneno', 'w_arg_ref',
-    'w_arg_smscenter'].includes(n)) {
+    'w_arg_smscenter', 'w_arg_day', 'w_arg_discperc', 'w_arg_gstperc', 'w_arg_scode_lcode',
+    'w_arg_scode_lcode2', 'w_arg_sinvcode_linvcode'].includes(n)) {
     return [...fixCriteriaAcceptance(n, data), ...fixDateCancellation(n, data)]
   }
   if (n === 'w_arg_items_sdate_ldate_topn') return [...fixCriteriaDates(data), ...fixCriteriaAcceptance(n, data), ...fixItemSelection(data)]

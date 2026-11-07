@@ -5,9 +5,10 @@ import { PBArray } from './src/runtime/values.js'
 import { entryControls } from './src/ui/modern-entry-window.js'
 
 // Real inherited UI routines, synthetic rows; no per-window save/retrieve/print execution.
-export async function checkSingleEntrySurfaces(fixture, check, settle) {
+export async function checkSingleEntrySurfaces(fixture, check, settle, filter) {
   const source = await (await fetch('./presentation-single-entry.json')).json()
-  const names = new Set(source.surfaces.map((surface) => surface.name))
+  const surfaces = filter ? source.surfaces.filter((surface) => filter.includes(surface.name)) : source.surfaces
+  const names = new Set(surfaces.map((surface) => surface.name))
   for (const definition of source.classes) {
     if (fixture.rt.classes.has(definition.name) && !names.has(definition.name) && definition.name !== 'w_single_entry') continue
     definition.routines = new Map(Object.entries(definition.routines).map(([owner, routines]) => [owner, new Map(Object.entries(routines))]))
@@ -90,7 +91,7 @@ export async function checkSingleEntrySurfaces(fixture, check, settle) {
   const modern = fixture.session.activeMode === 'modern'
   fixture.rt.fire = route
   try {
-    for (const surface of source.surfaces) {
+    for (const surface of surfaces) {
       const f = await open(surface.name)
       const assert = (condition, message) => check(condition, `${surface.name}/${modern ? 'Modern' : 'Classic'}: ${message}`)
       try {
@@ -180,7 +181,12 @@ export async function checkSingleEntrySurfaces(fixture, check, settle) {
           'pointer and Space cannot modify a readonly list checkbox')
         }
         for (const field of surface.details[0].surface.fields.filter((field) =>
-          !['code', 'name'].includes(field.object) && field.kind !== 'computed' && !field.choice)) {
+          !['code', 'name'].includes(field.object) && field.kind !== 'computed' && !field.choice &&
+          (() => {
+            const source = f.detail.def.objects.find((object) => object.name === field.object)
+            return source && source.tabsequence !== '0' && source.protect !== '1' &&
+              source['edit.readonly'] !== 'yes' && source['editmask.readonly'] !== 'yes'
+          })())) {
           tabs[0].click()
           await settle()
           const column = f.detail.colIndex(field.object)
@@ -188,8 +194,11 @@ export async function checkSingleEntrySurfaces(fixture, check, settle) {
           await fixture.ui.focusDw(detail, true)
           await settle()
           const stored = String(f.detail.getItem(1, field.object))
-          const draft = f.detail.kinds[column] === 'string' ?
-            (field.multiline ? 'Updated first line\r\nSecond <literal>' : 'Updated <literal>') : '14.75'
+          const sourceField = f.detail.def.objects.find((object) => object.name === field.object)
+          const mask = sourceField?.['editmask.mask']
+          const draft = mask ? (/[#0]/.test(mask) ? '14' : 'AB') :
+            f.detail.kinds[column] === 'string' ?
+              (field.multiline ? 'Updated first line\r\nSecond <literal>' : 'Updated <literal>') : '14.75'
           assert(!!editor.editor && (editor.editor instanceof HTMLTextAreaElement) === !!field.multiline,
             `${field.object}: the real source field opens the declared single-line or multiline editor`)
           await detail.n_settext(draft)

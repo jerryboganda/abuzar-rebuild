@@ -1,8 +1,11 @@
 export type InterfaceMode = 'classic' | 'modern'
+export type PrintFamilyPreferences = Readonly<Record<string, InterfaceMode>>
 export interface UiPreferences {
   version: 1
   mode: InterfaceMode
   printMode: InterfaceMode
+  /** explicit per-family choices; an absent family follows printMode */
+  printFamilies: PrintFamilyPreferences
   theme: 'system' | 'light' | 'dark'
   density: 'compact' | 'comfortable'
   textSize: number
@@ -21,7 +24,8 @@ export interface PreferenceStorage {
 }
 
 export const DEFAULT_UI_PREFERENCES: Readonly<UiPreferences> = Object.freeze({
-  version: 1, mode: 'modern', printMode: 'classic', theme: 'system', density: 'compact', textSize: 100,
+  version: 1, mode: 'modern', printMode: 'classic', printFamilies: Object.freeze({}),
+  theme: 'system', density: 'compact', textSize: 100,
 })
 
 export class PreferenceError extends Error {
@@ -34,10 +38,16 @@ export class PreferenceError extends Error {
 export function validatePreferences(value: unknown): UiPreferences {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new PreferenceError('Appearance preferences must be an object.')
   const record: Record<string, unknown> = { ...value }
+  const families = record.printFamilies === undefined ? {} : record.printFamilies
+  const validFamilies = families !== null && typeof families === 'object' && !Array.isArray(families)
+    && Object.keys(families).length <= 64
+    && Object.entries(families).every(([family, mode]) =>
+      /^[a-z0-9][a-z0-9._-]{0,63}$/.test(family) && (mode === 'classic' || mode === 'modern'))
   if (Object.keys(record).some((key) => !Object.hasOwn(DEFAULT_UI_PREFERENCES, key))
       || record.version !== 1
       || (record.mode !== 'classic' && record.mode !== 'modern')
       || (record.printMode !== 'classic' && record.printMode !== 'modern')
+      || !validFamilies
       || (record.theme !== 'system' && record.theme !== 'light' && record.theme !== 'dark')
       || (record.density !== 'compact' && record.density !== 'comfortable')
       || typeof record.textSize !== 'number' || !Number.isInteger(record.textSize) || record.textSize < 100 || record.textSize > 200) {
@@ -45,6 +55,7 @@ export function validatePreferences(value: unknown): UiPreferences {
   }
   return {
     version: 1, mode: record.mode, printMode: record.printMode,
+    printFamilies: { ...(families as Record<string, InterfaceMode>) },
     theme: record.theme === 'dark' ? 'dark' : record.theme === 'light' ? 'light' : 'system',
     density: record.density === 'comfortable' ? 'comfortable' : 'compact', textSize: record.textSize,
   }
@@ -93,7 +104,14 @@ export class PresentationSession {
     }
   }
 
-  get preferences(): UiPreferences { return { ...this.current } }
+  get preferences(): UiPreferences {
+    return { ...this.current, printFamilies: { ...this.current.printFamilies } }
+  }
+
+  /** The family's explicit choice, falling back to the global print layout. */
+  printModeFor(family: string): InterfaceMode {
+    return Object.hasOwn(this.current.printFamilies, family) ? this.current.printFamilies[family] : this.current.printMode
+  }
 
   save(preferences: UiPreferences): void {
     const validated = validatePreferences(preferences)

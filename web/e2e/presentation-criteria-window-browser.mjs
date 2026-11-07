@@ -2,14 +2,19 @@ import { Runtime, Ref, Frame } from './src/runtime/interp.js'
 import { fixClassData } from './src/runtime/class-fixes.js'
 import { NTransaction } from './src/runtime/native/transaction.js'
 import { DwCatalog, argList } from './src/dw/def.js'
-import { PBDate, PBDateTime, PBTime } from './src/runtime/values.js'
-import { CRITERIA_WINDOW_SURFACES, LOOKUP_CRITERIA_WINDOWS, REFERENCE_CRITERIA_WINDOWS } from './src/ui/window-surfaces.js'
+import { PBDate, PBDateTime, PBTime, dateOrder, setDateOrder } from './src/runtime/values.js'
+import { CRITERIA_WINDOW_SURFACES, LOOKUP_CRITERIA_WINDOWS, REFERENCE_CRITERIA_WINDOWS, NUMERIC_CRITERIA_WINDOWS, DATE_OPTION_CRITERIA_WINDOWS, DATE_CHOICE_CRITERIA_WINDOWS } from './src/ui/window-surfaces.js'
 
 // Original window/ancestor routines and metadata. Preferences, group and retrieval records are synthetic.
-export async function checkCriteriaWindows(fixture, check, settle) {
-  const nativeDates = ['w_arg_sdate', 'w_arg_sdate_notime', 'w_arg_sdate_ldate']
+export async function checkCriteriaWindows(fixture, check, settle, onlyNames) {
+  const nativeDates = ['w_arg_sdate', 'w_arg_sdate_notime', 'w_arg_sdate_ldate', 'w_arg_ason']
+  const dateOptionOwners = new Map(DATE_OPTION_CRITERIA_WINDOWS.map((owner) => [owner.name, owner]))
+  const dateChoiceOwners = new Map(DATE_CHOICE_CRITERIA_WINDOWS.map((owner) => [owner.name, owner]))
+  const emptyCriteria = (name) => nativeDates.includes(name) || dateOptionOwners.has(name) || dateChoiceOwners.has(name)
+  const selected = CRITERIA_WINDOW_SURFACES.filter((surface) => !onlyNames || onlyNames.includes(surface.name))
   const lookupOwners = new Set(LOOKUP_CRITERIA_WINDOWS.map(([name]) => name))
   const referenceOwners = new Set(REFERENCE_CRITERIA_WINDOWS.map(([name]) => name))
+  const numericOwners = new Set(NUMERIC_CRITERIA_WINDOWS.map(([name]) => name))
   const source = await (await fetch('./presentation-criteria-windows.json')).json()
   const rt = fixture.rt, modern = fixture.session.activeMode === 'modern'
   const classes = source.classes.map((definition) => {
@@ -36,6 +41,8 @@ export async function checkCriteriaWindows(fixture, check, settle) {
     if (name === 'd_popup_itemselection') return state.emptySelection ? [] : items
     if (name === 'd_arg_top_n_customers') return [{ count: 20 }]
     if (name === 'd_arg_antinortixitem') return []
+    if (name === 'ddd_pricetype_avg_rpp') return [5, 6].map((pricetypecode) =>
+      ({ pricetypecode, name: `Synthetic cost basis ${pricetypecode}` }))
     const lookup = lookups.get(name)
     if (lookup) return [901, 902, 903].map((key, index) => ({
       [lookup.dataColumn.toLowerCase()]: key,
@@ -105,7 +112,8 @@ export async function checkCriteriaWindows(fixture, check, settle) {
       701 : reject('Unexpected criteria user-group request') })
     rt.fire = async (target, event, args) => {
       let owner = target
-      while (owner && !CRITERIA_WINDOW_SURFACES.some((surface) => surface.name === owner.className)) owner = owner.parent
+      while (owner && owner.className !== 'w_calendar' &&
+        !CRITERIA_WINDOW_SURFACES.some((surface) => surface.name === owner.className)) owner = owner.parent
       if (!owner) return old.fire(target, event, args)
       events.push({ target, event, args })
       if (event === 'itemerror' || event === 'itemchanged' && state.rejectChanged) return 1
@@ -171,14 +179,16 @@ export async function checkCriteriaWindows(fixture, check, settle) {
     }
     const { control, model, dw } = data.get(surface.data[0].control)
     const children = new Map()
-    for (const field of surface.data[0].surface.fields) if (field.choice?.kind === 'lookup') {
-      const child = await control.n_getchild(field.object)
-      await child.ready
-      if (!child.model.rowCount()) for (const seed of rows(field.choice.name)) {
-        const row = child.model.insertRow(0)
-        for (const [key, value] of Object.entries(seed)) child.model.setItem(row, key, value)
+    for (const binding of surface.data) {
+      for (const field of binding.surface.fields) if (field.choice?.kind === 'lookup') {
+        const child = await data.get(binding.control).control.n_getchild(field.object)
+        await child.ready
+        if (!child.model.rowCount()) for (const seed of rows(field.choice.name)) {
+          const row = child.model.insertRow(0)
+          for (const [key, value] of Object.entries(seed)) child.model.setItem(row, key, value)
+        }
+        children.set(binding.control === surface.data[0].control ? field.object : binding.control + '.' + field.object, child)
       }
-      children.set(field.object, child)
     }
     const el = (name) => view.ctlViews.get(window.children.get(name)).el
     const action = async (name) => {
@@ -224,6 +234,7 @@ export async function checkCriteriaWindows(fixture, check, settle) {
       arg_to: 'Synthetic addressee', arg_subject: 'Synthetic subject', arg_detail: 'Synthetic detail',
       criteria: 'M', startperc: 12.5, endperc: 25, percentage: 12.5, zonecode: 902, count: 20,
       refno: 'Synthetic reference',
+      day: 7, discperc: 12.5, gstperc: 12.5, scode: 100, lcode: 200, sinvcode: 100, linvcode: 200,
     }
     for (const { control, model } of f.data.values()) {
       if (!model.rowCount()) continue
@@ -256,6 +267,76 @@ export async function checkCriteriaWindows(fixture, check, settle) {
     `${f.surface.name}/${name}: rejected date retains the actual input, field focus and non-success status`)
     control.pbSet('visible', visible); label.pbSet('visible', labelVisible); control.pbSet('enabled', enabled)
   }
+  const checkCalendar = async (f) => {
+    const originalOrder = dateOrder
+    try {
+      for (const regional of ['mdy', 'dmy']) {
+        setDateOrder(regional)
+        const fields = f.surface.name === 'w_arg_sdate_ldate' ? ['em_startdate', 'em_enddate'] : ['em_startdate']
+        for (const name of fields) for (const exit of ['ok', 'cancel', 'close', 'rapid-enter', 'rapid-click']) {
+          const field = f.window.children.get(name), dateOnly = field.pbGet('mask') === 'dd/mm/yyyy'
+          const original = dateOnly ? '31/03/2024' : '31/03/2024 21:22:23'
+          field.pbSet('text', original)
+          f.el(name).focus()
+          let failure
+          const work = rt.fire(field, 'keydown', ['keyf4!', 0])
+          work.catch((error) => { failure = error })
+          await wait(() => failure || rt.windowInstances.get('w_calendar')?.isOpen &&
+            rt.modalWaiting === 2, 'nested F4 calendar')
+          if (failure) throw failure
+          const calendarWindow = rt.windowInstances.get('w_calendar')
+          const calendar = calendarWindow.children.get('mc_calendar')
+          const view = fixture.ui.views.get(calendarWindow)
+          check(view.el.classList.contains('modern-calendar-window') === modern &&
+            view.ctlViews.size === 3 && calendar.selectedDate.n === PBDate.ymd(2024, 3, 31).n,
+          `${f.surface.name}/${name}/${regional}/${exit}: F4 opens the complete source calendar with the current masked date`)
+          check(view.el.querySelectorAll('[role=gridcell]').length === 42 &&
+            view.el.querySelector('[aria-selected=true]') === document.activeElement,
+          'Calendar has six weeks and source SetFocus reaches its selected day')
+          await calendar.n_setselecteddate(PBDate.ymd(2024, 2, 29))
+          check(calendarWindow.pbGet('id_date')?.n === PBDate.ymd(2024, 2, 29).n &&
+            calendarWindow.pbGet('is_date') === (regional === 'mdy' ? '2/29/2024' : '29/02/2024'),
+          'Original DateChanged writes its by-reference date and uses regional return text')
+          const rapid = exit.startsWith('rapid-')
+          if (rapid) {
+            let release
+            const delayed = new Promise((resolve) => { release = resolve })
+            const previousFire = rt.fire
+            rt.fire = async (...args) => {
+              if (args[0] === calendar && args[1] === 'datechanged') await delayed
+              return previousFire.apply(rt, args)
+            }
+            try {
+              view.el.querySelector('[aria-selected=true]').dispatchEvent(
+                new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }))
+              await wait(() => calendar.selectedDate.n === PBDate.ymd(2024, 3, 1).n, 'queued date selection')
+              if (exit === 'rapid-enter') view.el.querySelector('[aria-selected=true]').dispatchEvent(
+                new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+              else view.ctlViews.get(calendarWindow.children.get('cb_ok')).el.click()
+              await settle()
+              check(calendarWindow.isOpen && f.el(name).value === original,
+                `${exit}: acceptance waits for the selected date's source DateChanged rather than returning stale text`)
+            } finally { release(); rt.fire = previousFire }
+          } else if (exit === 'close') view.el.querySelector('.tbar .cls').click()
+          else {
+            await rt.fire(calendarWindow.children.get(exit === 'ok' ? 'cb_ok' : 'cb_cancel'), 'clicked')
+            await rt.flushPosted()
+          }
+          await wait(() => !calendarWindow.isOpen, 'calendar close')
+          await work
+          const chosen = rapid ? '01/03/2024' : '29/02/2024'
+          const expected = exit === 'ok' || rapid ? dateOnly ? chosen : chosen + ' 21:22:23' : original
+          check(f.el(name).value === expected && f.window.isOpen && rt.modalWaiting === 1 &&
+            document.activeElement === f.el(name),
+            `${f.surface.name}/${name}/${regional}/${exit}: nested return preserves the date mask, clock and open parent`)
+          check(f.returned() === f.window.pbGet('istr_arg') && f.returned().pbGet('i_status') === 0,
+            'A nested calendar preserves the owning criteria cancellation channel')
+          check(!calendar.listeners.size && !view.el.isConnected,
+            'Calendar closing releases source-control subscriptions and its view')
+        }
+      }
+    } finally { setDateOrder(originalOrder) }
+  }
   const checkNativeDates = async (f) => {
     const name = f.surface.name, dateOnly = name === 'w_arg_sdate_notime', range = name === 'w_arg_sdate_ldate'
     const original = f.window.pbGet('istr_arg')
@@ -273,6 +354,7 @@ export async function checkCriteriaWindows(fixture, check, settle) {
       `${name}: inherited end-of-day initialization remains intact, including hidden fields`)
     if (modern) check(f.el('em_startdate').getAttribute('aria-labelledby') === f.el('st_1').id,
       `${name}: the original native date caption remains the accessible field label`)
+    await checkCalendar(f)
     const enter = async (control, next) => {
       const input = f.el(control)
       input.focus()
@@ -337,6 +419,352 @@ export async function checkCriteriaWindows(fixture, check, settle) {
     f = await open(name, undefined, new PBDateTime(PBDate.ymd(2031, 4, 2).n, PBTime.hms(5, 6, 7).ms))
     check(f.el('em_startdate').value === (dateOnly ? todayText : '02/04/2031 05:06:07'),
       `${name}: the enabled start-date preference and date-only source override retain their original precedence`)
+    await f.close()
+  }
+  const checkDateOptions = async (f) => {
+    const name = f.surface.name, owner = dateOptionOwners.get(name)
+    const transaction = name === 'w_arg_sdate_ldate_transaction'
+    const rangeChecked = ['w_arg_sdate_ldate_purtype', 'w_arg_sdate_ldate_saletype'].includes(name)
+    const defaults = new Set(['cbx_cash', 'cbx_increase', 'cbx_decrease', 'cbx_outstandinginv',
+      'cbx_posted', 'cbx_unposted', 'rb_issuedate', 'rb_pp', 'rb_sales'])
+    const ownOptions = [...owner.checkboxes, ...(owner.radios ?? [])]
+    const original = f.window.pbGet('istr_arg')
+    const snapshot = () => JSON.stringify(['d_sdate', 'd_edate', 'i_status', 's_name1', 's_name2', 'ia_integerlist']
+      .map((field) => original.pbGet(field)))
+    const untouched = snapshot()
+    check(f.returned() === original && original.pbGet('i_status') === 0,
+      `${name}: Open initializes this owner's fresh cancellation structure`)
+    check(f.model.rowCount() === 0 && !calls.length && f.el('dw_control').classList.contains('hidden') &&
+      f.el('st_3').classList.contains('hidden'), `${name}: unused customer criteria remain hidden, empty and unretrieved`)
+    check(f.el('em_startdate').value.endsWith('00:00:00') && f.el('em_enddate').value.endsWith('23:59:59'),
+      `${name}: original Open retains its midnight and end-of-day defaults`)
+    check(f.surface.options.every((option) => {
+      const input = f.el(option.control).querySelector('input')
+      return (!ownOptions.includes(option.control) || input.checked === defaults.has(option.control)) &&
+        f.el(option.control).classList.contains('hidden') === !ownOptions.includes(option.control)
+    }), `${name}: exact checked defaults and inherited hidden-option visibility survive both presentations`)
+    check(ownOptions.every((control) => {
+      const input = f.el(control).querySelector('input')
+      return !input.disabled && f.el(control).textContent.trim() === f.window.children.get(control).pbGet('text') &&
+        (!modern || input.tabIndex === 0)
+    }), `${name}: original option captions, enabled state and Modern keyboard order are retained`)
+    if (modern) {
+      for (const [field, label] of [['em_startdate', 'st_1'], ['em_enddate', 'st_2']]) {
+        check(f.el(field).getAttribute('aria-labelledby') === f.el(label).id,
+          `${name}/${field}: the source date caption is its accessible name`)
+      }
+    }
+    if (owner.frame) {
+      f.window.children.get(owner.frame).pbSet('visible', false)
+      await settle()
+      check(ownOptions.every((control) => f.el(control).getClientRects().length > 0),
+        `${name}: hiding the decorative group caption does not hide any transaction option`)
+      f.window.children.get(owner.frame).pbSet('visible', true)
+    }
+    for (const [field, text] of [['em_startdate', '29/02/2023 12:00:00'],
+      ['em_enddate', '31/04/2024 12:00:00']]) {
+      await prepare(f)
+      await invalidDate(f, field, text)
+      check(snapshot() === untouched, `${name}/${field}: rejection is atomic for dates, flags, strings and status`)
+    }
+    const choose = async (f, flags, radio) => {
+      for (const control of owner.checkboxes) {
+        const input = f.el(control).querySelector('input')
+        if (input.checked !== Boolean(flags[control])) input.click()
+      }
+      if (radio) f.el(radio).querySelector('input').click()
+      await settle()
+      check(owner.checkboxes.every((control) => Boolean(f.window.children.get(control).pbGet('checked')) === Boolean(flags[control])) &&
+        (owner.radios ?? []).every((control) => Boolean(f.window.children.get(control).pbGet('checked')) === (control === radio)),
+      `${name}: native clicks keep checkbox values and source radio exclusivity synchronized`)
+    }
+    const accept = async (f, flags, radio, reversed = false) => {
+      await prepare(f)
+      f.window.children.get('em_startdate').pbSet('text', '29/02/2024 21:22:23')
+      f.window.children.get('em_enddate').pbSet('text', reversed ? '28/02/2024 01:02:03' : '01/03/2024 01:02:03')
+      const original = f.window.pbGet('istr_arg')
+      const result = await f.action('cb_ok'); await f.pending
+      const returned = f.returned()
+      check(!result.messages.length && !f.window.isOpen && returned === original &&
+        returned.pbGet('i_status') === (reversed && rangeChecked ? 0 : 1),
+      `${name}: ${reversed ? 'reverse' : 'valid'} range follows the source status rule and posted close`)
+      check(returned.pbGet('d_sdate')?.n === PBDate.ymd(2024, 2, 29).n &&
+        returned.pbGet('d_sdate')?.ms === PBTime.hms(21, 22, 23).ms &&
+        returned.pbGet('d_edate')?.n === (reversed ? PBDate.ymd(2024, 2, 28).n : PBDate.ymd(2024, 3, 1).n) &&
+        returned.pbGet('d_edate')?.ms === PBTime.hms(1, 2, 3).ms,
+      `${name}: both native dates, leap day and clock values reach the original return structure`)
+      const values = Array.from({ length: 15 }, (_, index) => returned.pbGet('ia_integerlist').a[index] ?? 0)
+      const expected = new Array(15).fill(0)
+      if (name === 'w_arg_sale_sdate_ldate') {
+        if (flags.cbx_cash) { expected[2] = 3; expected[5] = 8 }
+        if (flags.cbx_credit) { expected[0] = 1; expected[1] = 2; expected[3] = 6; expected[4] = 7 }
+      } else if (name === 'w_arg_sale_return_sdate_ldate') {
+        if (flags.cbx_cash) expected[5] = 8
+        if (flags.cbx_credit) { expected[3] = 6; expected[4] = 7 }
+      } else if (name === 'w_arg_sdate_ldate_adj') {
+        expected[0] = flags.cbx_increase ? 1 : -1
+        expected[1] = flags.cbx_decrease ? 2 : -1
+      } else if (transaction) {
+        const codes = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 3, 4, 5, 6]
+        owner.checkboxes.slice(1).forEach((control, index) => { if (flags[control]) expected[index] = codes[index] })
+      }
+      check(JSON.stringify(values) === JSON.stringify(expected),
+        `${name}: the original sparse integer positions, negative branches and unusual transaction codes remain exact`)
+      const expectedName = name === 'w_arg_sdate_ldate_outstanding_inv' ? flags.cbx_outstandinginv ? 'Y' : 'N' :
+        name.includes('postunpost') ? flags.cbx_posted ? flags.cbx_unposted ? 'B' : 'Y' : flags.cbx_unposted ? 'N' : 'X' :
+        name === 'w_arg_sdate_ldate_purtype' ? radio === 'rb_lp' ? 'L' : 'P' :
+        name === 'w_arg_sdate_ldate_saletype' ? radio === 'rb_sales' ? 'S' : 'R' : ''
+      check(returned.pbGet('s_name1') === expectedName &&
+        returned.pbGet('s_name2') === (name === 'w_arg_sdate_ldate_postunpost_dateoption' ?
+          { rb_issuedate: 'ISSUEDATE', rb_duedate: 'DUEDATE', rb_postdate: 'POSTDATE' }[radio] : ''),
+      `${name}: the original posting, outstanding, purchase, sale and date-category strings remain exact`)
+      check(!calls.length && !events.some((event) => event.target === f.control && event.event === 'itemchanged'),
+        `${name}: accepting native filters does not retrieve or edit hidden customer criteria`)
+      const controls = [...f.view.ctlViews.keys()]
+      await f.close()
+      check(controls.every((control) => !control.listeners?.size), `${name}: close releases all source-control subscriptions`)
+      return returned
+    }
+    const defaultFlags = Object.fromEntries(owner.checkboxes.map((control) => [control, defaults.has(control)]))
+    const defaultRadio = owner.radios?.find((control) => defaults.has(control))
+    const previousSuccess = await accept(f, defaultFlags, defaultRadio)
+    if (transaction) {
+      f = await open(name)
+      const all = f.el('cbx_all').querySelector('input')
+      all.click()
+      await wait(() => owner.checkboxes.slice(1).every((control) =>
+        f.window.children.get(control).pbGet('checked') && !f.window.children.get(control).pbGet('enabled')), 'All Transactions')
+      check(owner.checkboxes.slice(1).every((control) => {
+        const input = f.el(control).querySelector('input')
+        return input.checked && input.disabled
+      }), 'All Transactions checks and disables all fifteen original options')
+      await accept(f, Object.fromEntries(owner.checkboxes.map((control) => [control, true])))
+      f = await open(name)
+      f.el('cbx_all').querySelector('input').click()
+      await wait(() => !f.window.children.get('cbx_others').pbGet('enabled'), 'All Transactions on')
+      f.el('cbx_all').querySelector('input').click()
+      await wait(() => owner.checkboxes.slice(1).every((control) =>
+        !f.window.children.get(control).pbGet('checked') && f.window.children.get(control).pbGet('enabled')), 'All Transactions off')
+      check(owner.checkboxes.every((control) => {
+        const input = f.el(control).querySelector('input')
+        return !input.checked && !input.disabled
+      }), 'Clearing All Transactions clears and re-enables all fifteen original options')
+      await accept(f, defaultFlags)
+      for (const control of owner.checkboxes.slice(1)) {
+        f = await open(name)
+        const flags = { [control]: true }
+        await choose(f, flags)
+        await accept(f, flags)
+      }
+    } else {
+      for (let bits = 0; bits < 2 ** owner.checkboxes.length; bits++) {
+        for (const radio of owner.radios ?? [undefined]) {
+          f = await open(name)
+          const flags = Object.fromEntries(owner.checkboxes.map((control, index) => [control, Boolean(bits & 1 << index)]))
+          await choose(f, flags, radio)
+          await accept(f, flags, radio)
+        }
+      }
+    }
+    f = await open(name)
+    await accept(f, defaultFlags, defaultRadio, true)
+    rt.globals.get('message').pbSet('powerobjectparm', previousSuccess)
+    f = await open(name)
+    await f.close()
+    check(f.returned() !== previousSuccess && f.returned()?.pbGet('i_status') === 0,
+      `${name}: Cancel cannot reuse a previous successful result`)
+    rt.globals.get('message').pbSet('powerobjectparm', previousSuccess)
+    f = await open(name)
+    f.view.el.querySelector('.tbar .cls').click()
+    await wait(() => !f.window.isOpen, 'date-option title cancellation')
+    await f.pending
+    check(f.returned() !== previousSuccess && f.returned()?.pbGet('i_status') === 0,
+      `${name}: title-bar close cannot reuse a previous successful result`)
+    await f.close()
+    f = await open(name, undefined, new PBDateTime(PBDate.ymd(2031, 4, 2).n, PBTime.hms(5, 6, 7).ms))
+    check(f.el('em_startdate').value === '02/04/2031 05:06:07',
+      `${name}: inherited start-date preference still initializes the native field`)
+    await f.close()
+  }
+  const checkDateChoice = async (f) => {
+    const name = f.surface.name, owner = dateChoiceOwners.get(name)
+    const cashflow = name === 'w_arg_sdate_cashflow_crosstab'
+    const remarks = name === 'w_arg_sdate_ldate_remarks_option'
+    const sale = name === 'w_arg_sale_sdate_ldate_avgprice_rpp'
+    const field = owner.price?.fields[0]
+    const price = f.data.get('dw_price')
+    const original = f.window.pbGet('istr_arg')
+    const snapshot = () => JSON.stringify(['d_sdate', 'd_edate', 'i_status', 'l_code1', 'l_code2', 's_name1', 'ia_integerlist']
+      .map((key) => original.pbGet(key)))
+    const untouched = snapshot()
+    check(f.returned() === original && original.pbGet('i_status') === 0,
+      `${name}: Open starts with its own cancellation structure`)
+    check(f.model.rowCount() === 0 && f.el('dw_control').classList.contains('hidden') &&
+      f.el('st_3').classList.contains('hidden'), `${name}: unused customer criteria remain hidden and empty`)
+    check(f.surface.options.every((option) =>
+      f.el(option.control).classList.contains('hidden') === !owner.order.includes(option.control)),
+    `${name}: inherited and direct options keep their exact source visibility`)
+    const defaults = new Set(['cbx_cash', 'cbx_supress', 'rb_cash', 'rb_saleprice'])
+    check(f.surface.options.filter((option) => owner.order.includes(option.control)).every((option) =>
+      f.el(option.control).querySelector('input').checked === defaults.has(option.control)),
+    `${name}: cash, account-suppression and remark defaults retain their source meaning`)
+    if (field) {
+      check(price.model.rowCount() === 1 && price.model.getItem(1, field.object) === (field.object === 'price' ? 6 : 1),
+        `${name}: original Open inserts one price/type row with its original default code`)
+      check(!f.el('dw_price').classList.contains('hidden') && !f.el('st_4').classList.contains('hidden'),
+        `${name}: the original cost/type caption and secondary DataWindow remain visible`)
+      if (modern) {
+        const label = f.el('st_4'), text = label.textContent
+        check(price.dw.root.querySelector(`[data-obj="${field.object}"]`)?.getAttribute('aria-labelledby') === label.id,
+          `${name}: the literal source caption names the secondary selector`)
+        f.window.children.get('st_4').pbSet('text', 'Synthetic live cost/type:')
+        price.control.changed(); await settle()
+        check(label.textContent === 'Synthetic live cost/type:' && f.view.el.contains(label) &&
+          price.dw.root.querySelector(`[data-obj="${field.object}"]`)?.getAttribute('aria-labelledby') === label.id,
+          `${name}: source label changes survive secondary-buffer repaint`)
+        f.window.children.get('st_4').pbSet('text', text)
+      }
+      const accept = price.model.acceptText
+      let attempts = 0
+      price.model.acceptText = async () => { attempts++; return -1 }
+      await f.action('cb_ok')
+      check(attempts === 1 && f.window.isOpen && snapshot() === untouched,
+        `${name}: secondary-buffer rejection stops all native date, key and success writes`)
+      price.model.acceptText = accept
+    } else {
+      check(price.model.rowCount() === 0 && f.el('dw_price').classList.contains('hidden'),
+        `${name}: non-price variants do not populate their inherited hidden price buffer`)
+    }
+    for (const [control, text] of [['em_startdate', '30/02/2024 12:00:00'],
+      ['em_enddate', '01/03/2024 24:00:00']]) {
+      await prepare(f)
+      await invalidDate(f, control, text)
+      check(snapshot() === untouched, `${name}/${control}: invalid dates cannot partially write flags or choice codes`)
+    }
+    const choose = async (f, index) => {
+      const editor = await f.edit(field.object, undefined, 'dw_price')
+      const dw = f.data.get('dw_price').dw
+      if (editor instanceof HTMLSelectElement) {
+        editor.value = String(index)
+        editor.dispatchEvent(new Event('change', { bubbles: true }))
+      } else {
+        if (editor.getAttribute('aria-expanded') !== 'true') {
+          editor.dispatchEvent(new KeyboardEvent('keydown', { key: 'F4', bubbles: true, cancelable: true }))
+          await settle()
+        }
+        check(editor.readOnly && editor.getAttribute('aria-expanded') === 'true',
+          `${name}: cost lookup preserves its original readonly selection policy`)
+        dw.root.querySelector(`.dw-choice-popup [data-index="${index}"]`).click()
+      }
+      await settle()
+    }
+    const accept = async (f, { code = field?.object === 'price' ? 6 : field ? 1 : cashflow ? 1 : 0,
+      cash = true, credit = false, suppressed = true, showRemarks = false, reversed = false } = {}) => {
+      await prepare(f)
+      f.window.children.get('em_startdate').pbSet('text', '29/02/2024 21:22:23')
+      f.window.children.get('em_enddate').pbSet('text', reversed ? '28/02/2024 01:02:03' : '01/03/2024 01:02:03')
+      let unusedAccepts = 0
+      const unused = f.model.acceptText
+      f.model.acceptText = async () => { unusedAccepts++; return -1 }
+      const result = await f.action('cb_ok')
+      f.model.acceptText = unused
+      check(!f.window.isOpen && !result.messages.length && unusedAccepts === 1,
+        `${name}: original non-blocking customer AcceptText remains inherited without gaining an extra guard`)
+      if (f.window.isOpen) throw new Error(`${name}: date-choice acceptance unexpectedly stayed open`)
+      await f.pending
+      const returned = f.returned()
+      check(returned.pbGet('i_status') === 1 && returned.pbGet('l_code1') === code &&
+        returned.pbGet('l_code2') === (cashflow && suppressed ? 1 : 0) &&
+        returned.pbGet('s_name1') === (remarks ? showRemarks ? 'Y' : 'N' : ''),
+      `${name}: native account/remarks flags and selected cost/payment codes use the original return fields`)
+      const expected = new Array(6).fill(0)
+      if (sale && cash) { expected[2] = 3; expected[5] = 8 }
+      if (sale && credit) { expected[0] = 1; expected[1] = 2; expected[3] = 6; expected[4] = 7 }
+      check(JSON.stringify(Array.from({ length: 6 }, (_, index) => returned.pbGet('ia_integerlist').a[index] ?? 0)) ===
+        JSON.stringify(expected), `${name}: sales cash/credit flags retain every sparse array position`)
+      check(returned.pbGet('d_sdate')?.n === PBDate.ymd(2024, 2, 29).n &&
+        returned.pbGet('d_sdate')?.ms === PBTime.hms(21, 22, 23).ms &&
+        returned.pbGet('d_edate')?.n === (reversed ? PBDate.ymd(2024, 2, 28).n : PBDate.ymd(2024, 3, 1).n) &&
+        returned.pbGet('d_edate')?.ms === PBTime.hms(1, 2, 3).ms,
+      `${name}: both date/time values follow the source without an invented range-order restriction`)
+      check(calls.every((call) => call.name === 'ddd_pricetype_avg_rpp') && !events.some((event) =>
+        event.target === f.control && event.event === 'itemchanged'), `${name}: only the declared price lookup can read rows`)
+      const controls = [...f.view.ctlViews.keys()]
+      await f.close()
+      check(controls.every((control) => !control.listeners?.size), `${name}: closing releases both buffers and native listeners`)
+      return returned
+    }
+    const previousSuccess = await accept(f)
+    if (field) {
+      f = await open(name)
+      const initial = f.data.get('dw_price').model.getItem(1, field.object)
+      state.rejectChanged = true
+      await choose(f, field.object === 'price' ? 0 : 1)
+      await f.action('cb_ok')
+      check(f.window.isOpen && f.data.get('dw_price').model.getItem(1, field.object) === initial &&
+        f.window.pbGet('istr_arg').pbGet('i_status') === 0,
+      `${name}: a real secondary-field ItemChanged veto retains its prior code without returning success`)
+      state.rejectChanged = false
+      await choose(f, field.object === 'price' ? 0 : 1)
+      await accept(f, { code: field.object === 'price' ? 5 : 2 })
+      const codes = field.object === 'price' ? [5, 6] : [1, 2, 3]
+      for (let index = 0; index < codes.length; index++) for (let flags = 0; flags < (sale ? 4 : 1); flags++) {
+        f = await open(name)
+        const cash = Boolean(flags & 1), credit = Boolean(flags & 2)
+        if (sale) for (const [control, value] of [['cbx_cash', cash], ['cbx_credit', credit]]) {
+          const input = f.el(control).querySelector('input')
+          if (input.checked !== value) input.click()
+        }
+        await choose(f, index)
+        await accept(f, { code: codes[index], cash, credit })
+      }
+      f = await open(name)
+      f.data.get('dw_price').model.setItem(1, field.object, null)
+      f.data.get('dw_price').control.changed(); await settle()
+      await accept(f, { code: null })
+    } else if (cashflow) {
+      for (const [control, code] of [['rb_cash', 1], ['rb_bank', 2], ['rb_both', 3]]) {
+        for (const suppressed of [false, true]) {
+          f = await open(name)
+          f.el(control).querySelector('input').click()
+          const checkbox = f.el('cbx_supress').querySelector('input')
+          if (checkbox.checked !== suppressed) checkbox.click()
+          await settle()
+          check(['rb_cash', 'rb_bank', 'rb_both'].every((name) =>
+            Boolean(f.window.children.get(name).pbGet('checked')) === (name === control)),
+          'Cashflow account radios keep source exclusivity and selection values')
+          await accept(f, { code, suppressed })
+        }
+      }
+    } else {
+      for (const showRemarks of [false, true]) {
+        f = await open(name)
+        f.el(showRemarks ? 'rb_purprice' : 'rb_saleprice').querySelector('input').click()
+        await settle()
+        check(Boolean(f.window.children.get('rb_purprice').pbGet('checked')) === showRemarks &&
+          Boolean(f.window.children.get('rb_saleprice').pbGet('checked')) === !showRemarks,
+        'Remarks choices retain inherited native radio identities and their new source captions')
+        await accept(f, { showRemarks })
+      }
+    }
+    f = await open(name)
+    await accept(f, { reversed: true })
+    rt.globals.get('message').pbSet('powerobjectparm', previousSuccess)
+    f = await open(name)
+    await f.close()
+    check(f.returned() !== previousSuccess && f.returned()?.pbGet('i_status') === 0,
+      `${name}: Cancel cannot reuse a previous returned choice`)
+    rt.globals.get('message').pbSet('powerobjectparm', previousSuccess)
+    f = await open(name)
+    f.view.el.querySelector('.tbar .cls').click()
+    await wait(() => !f.window.isOpen, 'date-choice title cancellation')
+    await f.pending
+    check(f.returned() !== previousSuccess && f.returned()?.pbGet('i_status') === 0,
+      `${name}: title-bar close cannot reuse a previous returned choice`)
+    await f.close()
+    f = await open(name, undefined, new PBDateTime(PBDate.ymd(2031, 4, 2).n, PBTime.hms(5, 6, 7).ms))
+    check(f.el('em_startdate').value === '02/04/2031 05:06:07',
+      `${name}: adding secondary criteria leaves the inherited date preference intact`)
     await f.close()
   }
   const checkLookupOwner = async (f) => {
@@ -528,6 +956,121 @@ export async function checkCriteriaWindows(fixture, check, settle) {
       `${name}: title-bar cancellation cannot reuse an earlier returned string`)
     await f.close()
   }
+  const checkNumericOwner = async (f) => {
+    const name = f.surface.name, fields = f.surface.data[0].surface.fields
+    const percentage = ['w_arg_discperc', 'w_arg_gstperc'].includes(name)
+    const resultFields = percentage ? ['db_code1'] : fields.map((_, index) => `l_code${index + 1}`)
+    const initial = fields.map((field) => f.model.getItem(1, field.object))
+    const original = f.window.pbGet('istr_arg')
+    check(f.returned() === original && original.pbGet('i_status') === 0 && f.model.rowCount() === 1,
+      `${name}: Open inserts one row and establishes this owner's cancellation result`)
+    check(initial.every((value) => percentage ? Number(value) === 0 : value === null),
+      `${name}: percentage zero and integer null defaults come from source metadata`)
+    check(f.el('em_startdate').classList.contains('hidden') && f.el('em_enddate').classList.contains('hidden'),
+      `${name}: unused inherited dates remain hidden`)
+    if (modern) {
+      for (const binding of f.surface.data[0].labels) {
+        const label = f.el(binding.control), id = label.id, caption = label.textContent
+        let cell = f.dw.root.querySelector(`[data-obj="${binding.field}"]`)
+        check(cell?.getAttribute('aria-labelledby') === id && !cell.closest('.surface-field').querySelector('.surface-label'),
+          `${name}/${binding.field}: the original external caption labels the numeric field exactly once`)
+        if (fields.length > 1) check(cell.closest('.surface-field').contains(label),
+          `${name}/${binding.field}: each range caption stays beside its own field rather than above the pair`)
+        f.window.children.get(binding.control).pbSet('text', 'Synthetic live numeric label:')
+        f.control.changed(); await settle()
+        cell = f.dw.root.querySelector(`[data-obj="${binding.field}"]`)
+        check(label.id === id && label.textContent === 'Synthetic live numeric label:' &&
+          cell?.getAttribute('aria-labelledby') === id && document.getElementById(id) === label,
+        `${name}/${binding.field}: repaint preserves live source label identity and its accessible association`)
+        f.window.children.get(binding.control).pbSet('text', caption)
+      }
+    }
+    const accept = f.model.acceptText
+    let attempts = 0
+    f.model.acceptText = async () => { attempts++; return -1 }
+    await f.action('cb_ok')
+    check(attempts === 1 && f.window.isOpen && original.pbGet('i_status') === 0,
+      `${name}: rejected acceptance cannot enter the original scalar-return script`)
+    f.model.acceptText = accept
+    await f.action('cb_ok'); await f.pending
+    check(f.returned().pbGet('i_status') === 1 && resultFields.every((field, index) =>
+      percentage ? Number(f.returned().pbGet(field)) === 0 : f.returned().pbGet(field) === initial[index]),
+    `${name}: untouched defaults retain the source return semantics without invented whole-buffer requirements`)
+    await f.close()
+    f = await open(name)
+    await prepare(f)
+    for (const [index, field] of fields.entries()) {
+      const before = f.model.getItem(1, field.object)
+      for (const text of percentage ? ['-0.01', '100.01', 'not-a-number'] : ['not-a-number']) {
+        const input = await f.edit(field.object, text)
+        const errors = events.filter((event) => event.event === 'itemerror').length
+        await f.action('cb_ok')
+        check(f.window.isOpen && f.model.getItem(1, field.object) === before && input.value === text &&
+          f.window.pbGet('istr_arg').pbGet('i_status') === 0 &&
+          events.filter((event) => event.event === 'itemerror').length > errors,
+        `${name}/${field.object}: invalid numeric draft ${JSON.stringify(text)} stays editable and cannot return stale data`)
+      }
+      if (percentage) for (const boundary of ['0', '100']) {
+        await f.edit(field.object, boundary)
+        check(await f.control.n_accepttext() === 1 && Number(f.model.getItem(1, field.object)) === Number(boundary),
+          `${name}: original inclusive percentage boundary ${boundary} remains accepted`)
+      }
+      await f.edit(field.object, percentage ? '12.34' : String(index ? 121 : 212))
+      state.rejectChanged = true
+      const accepted = f.model.getItem(1, field.object)
+      check(await f.control.n_accepttext() === -1 && f.model.getItem(1, field.object) === accepted && f.window.isOpen,
+        `${name}/${field.object}: a source ItemChanged veto retains the existing numeric buffer`)
+      state.rejectChanged = false
+      check(await f.control.n_accepttext() === 1 &&
+        Number(f.model.getItem(1, field.object)) === (percentage ? 12.34 : index ? 121 : 212),
+      `${name}/${field.object}: correction retries the same draft without losing decimal precision or field identity`)
+    }
+    if (name === 'w_arg_day') {
+      f.window.children.get('cbx_supress').pbSet('checked', true)
+      f.window.children.get('cbx_hide').pbSet('checked', false)
+    }
+    f.window.children.get('em_enddate').pbSet('text', '31/02/2025 00:00:00')
+    await f.action('cb_ok'); await f.pending
+    const returned = f.returned()
+    check(!f.window.isOpen && returned.pbGet('i_status') === 1 && resultFields.every((field, index) =>
+      Number(returned.pbGet(field)) === (percentage ? 12.34 : index ? 121 : 212)),
+    `${name}: source return fields preserve decimal values and unordered ranges without validating unused dates`)
+    if (name === 'w_arg_day') check(returned.pbGet('i_supress') === true && returned.pbGet('i_hide') === false,
+      'Day criteria retain the original Boolean option return fields')
+    if (name.startsWith('w_arg_scode_lcode')) check(returned.pbGet('i_supress') === false && returned.pbGet('i_hide') === true,
+      `${name}: the original checked-Alphabetical return branch is preserved without reinterpreting its flags`)
+    const controls = [...f.view.ctlViews.keys()]
+    await f.close()
+    check(controls.every((control) => !control.listeners?.size), `${name}: closing releases control listeners`)
+    if (percentage) {
+      f = await open(name)
+      f.model.deleteRow(1); f.control.changed(); await settle()
+      await f.action('cb_ok'); await f.pending
+      check(!f.window.isOpen && f.returned().pbGet('i_status') === -1,
+        `${name}: the source no-row branch cannot report a successful percentage`)
+      await f.close()
+    }
+    if (name.startsWith('w_arg_scode_lcode')) {
+      f = await open(name)
+      f.window.children.get('cbx_supress').pbSet('checked', false)
+      await f.action('cb_ok'); await f.pending
+      check(f.returned().pbGet('i_supress') === true && f.returned().pbGet('i_hide') === false,
+        `${name}: the alternate source ordering branch retains its original Boolean values`)
+      await f.close()
+    }
+    f = await open(name)
+    await f.close()
+    check(f.returned()?.pbGet('i_status') === 0, `${name}: Cancel returns fresh non-success state`)
+    rt.globals.get('message').pbSet('powerobjectparm', returned)
+    f = await open(name)
+    await f.edit(fields[0].object, 'not-a-number')
+    f.view.el.querySelector('.tbar .cls').click()
+    await wait(() => !f.window.isOpen, 'numeric criteria title-bar cancellation')
+    await f.pending
+    check(f.returned() !== returned && f.returned()?.pbGet('i_status') === 0,
+      `${name}: closing a rejected draft cannot reuse an earlier successful numeric result`)
+    await f.close()
+  }
   const checkItemSelection = async (f) => {
     const count = f.data.get('dw_custcount'), available = f.data.get('dw_selectionlist')
     const selected = f.window.children.get('lb_selected')
@@ -626,9 +1169,9 @@ export async function checkCriteriaWindows(fixture, check, settle) {
     check(f.returned()?.pbGet('i_status') === 0, 'Original Cancel returns the untouched argument structure')
   }
   try {
-    for (const surface of CRITERIA_WINDOW_SURFACES) {
+    for (const surface of selected) {
       let f = await open(surface.name)
-      check(f.model.rowCount() === (nativeDates.includes(surface.name) ? 0 : 1),
+      check(f.model.rowCount() === (emptyCriteria(surface.name) ? 0 : 1),
         `${surface.name}: original Open preserves its populated or intentionally empty criteria buffer`)
       check(f.view.el.classList.contains('modern-window') === modern, `${surface.name}: the complete dialog follows the chosen presentation`)
       check([...f.view.ctlViews.values()].every((binding) => f.view.el.contains(binding.el)),
@@ -643,9 +1186,17 @@ export async function checkCriteriaWindows(fixture, check, settle) {
       if (surface.frame) {
         f.window.children.get(surface.frame).pbSet('visible', false)
         await settle()
-        check((nativeDates.includes(surface.name) ? f.el('em_startdate') : f.dw.root).getClientRects().length > 0,
+        check((emptyCriteria(surface.name) ? f.el('em_startdate') : f.dw.root).getClientRects().length > 0,
           `${surface.name}: hiding a decorative source frame does not hide its fields`)
         f.window.children.get(surface.frame).pbSet('visible', true)
+      }
+      if (dateOptionOwners.has(surface.name)) {
+        await checkDateOptions(f)
+        continue
+      }
+      if (dateChoiceOwners.has(surface.name) && !nativeDates.includes(surface.name)) {
+        await checkDateChoice(f)
+        continue
       }
       if (surface.options) {
         const visibility = new Map(surface.options.map((option) =>
@@ -673,6 +1224,10 @@ export async function checkCriteriaWindows(fixture, check, settle) {
       }
       if (referenceOwners.has(surface.name)) {
         await checkReferenceOwner(f)
+        continue
+      }
+      if (numericOwners.has(surface.name)) {
+        await checkNumericOwner(f)
         continue
       }
       if (nativeDates.includes(surface.name)) {
@@ -900,7 +1455,7 @@ export async function checkCriteriaWindows(fixture, check, settle) {
       }
     }
     for (const name of ['w_arg_pricetype_markup', 'w_arg_quotation_customer_remarks', 'w_select_case',
-      'w_arg_antinortixitem_sdate_ldate']) {
+      'w_arg_antinortixitem_sdate_ldate'].filter((name) => selected.some((surface) => surface.name === name))) {
       activate()
       const surface = CRITERIA_WINDOW_SURFACES.find((surface) => surface.name === name)
       state.failRetrieve = name === 'w_arg_pricetype_markup' ? surface.data[0].surface.fields[0].choice.name :
@@ -921,10 +1476,10 @@ export async function checkCriteriaWindows(fixture, check, settle) {
         restore(); state.failRetrieve = null
       }
     }
-    for (const failure of [
+    for (const failure of selected.some((surface) => surface.name === 'w_arg_items_sdate_ldate_topn') ? [
       { name: 'd_popup_itemselection', occurrence: 1 }, { name: 'd_popup_itemselection', occurrence: 2 },
       { name: 'd_arg_top_n_customers', occurrence: 1 }, null,
-    ]) {
+    ] : []) {
       activate()
       calls.length = 0
       state.failRetrieve = failure; state.emptySelection = failure === null

@@ -489,6 +489,7 @@ export class ModernDwView extends DwView {
       if (grid) wrapper.setAttribute('role', 'presentation')
       const external = !grid && this.surface === this.contextSurface ? this.contextLabels.get(name) : null
       const labelId = grid ? `${this.identity}-${name}-heading` : external?.id || `${this.identity}-${row}-${name}-label`
+      if (external && this.contextLabels.size > 1) wrapper.append(external)
       if (!grid && !external?.id) {
         const label = document.createElement('span')
         label.id = labelId

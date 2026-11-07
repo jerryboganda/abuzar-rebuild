@@ -4,7 +4,13 @@ import type { NDwBase } from '../runtime/native/dwctrl.ts'
 import type { DwModel } from '../dw/model.ts'
 import { num } from '../dw/def.ts'
 import { DwView } from './dwview.ts'
+import { ModernPrintView, MODERN_PRINT_CSS } from './modern-print.ts'
+import type { PrintPresentation } from './print-templates.ts'
 import { pbColor, toPx } from './pb.ts'
+
+export interface BuildPagesOptions {
+  presentation?: PrintPresentation
+}
 
 /** paper sizes of the Windows DEVMODE (dmPaperSize) in millimetres */
 const PAPER_MM: Record<number, [number, number]> = {
@@ -53,11 +59,14 @@ interface Flow {
 }
 
 /** build the pages of a report: array of `.page` elements */
-export async function buildPages(ctl: NDwBase): Promise<HTMLElement[]> {
+export async function buildPages(ctl: NDwBase, options: BuildPagesOptions = {}): Promise<HTMLElement[]> {
   await ctl.ready
   const m = ctl.model
   if (!m) return []
-  const view = new DwView(ctl, document.createElement('div'), false)
+  const presentation = options.presentation ?? 'classic'
+  const view = presentation === 'modern'
+    ? new ModernPrintView(ctl, document.createElement('div'), false)
+    : new DwView(ctl, document.createElement('div'), false)
   if (num(m.def.datawindow, 'processing', 0) === 5) {
     // composite: every nested report is printed on its own pages, in the order of the report objects
     const out: HTMLElement[] = []
@@ -78,13 +87,13 @@ export async function buildPages(ctl: NDwBase): Promise<HTMLElement[]> {
       if (m.trans) await child.retrieve(args)
       const c = new NDwBase(ctl.rt, 'datawindow', 'datawindow')
       c.attach(child)
-      out.push(...(await buildPages(c)))
+      out.push(...(await buildPages(c, options)))
     }
     return out
   }
   const L = view.layout(m)
   const ps = pageSetup(m)
-  if (num(m.def.datawindow, 'processing', 0) === 2) return buildLabelPages(m, view, L, ps)
+  if (num(m.def.datawindow, 'processing', 0) === 2) return buildLabelPages(m, view, L, ps, presentation)
   const hdrBands = view.headerBands(m)
   const hdrH = hdrBands.reduce((s, b) => s + view.heightOf(m, b), 0)
   const ftrH = view.heightOf(m, 'footer')
@@ -131,7 +140,7 @@ export async function buildPages(ctl: NDwBase): Promise<HTMLElement[]> {
       m.printPageCount = total
       m.printAcross = s + 1
       const page = document.createElement('div')
-      page.className = 'page'
+      page.className = presentation === 'modern' ? 'page print-modern' : 'page'
       page.style.cssText = `position:relative;width:${ps.width}px;height:${ps.height}px;overflow:hidden;background:${pbColor(m.def.datawindow.color, '#fff')};page-break-after:always;break-after:page`
       const inner = document.createElement('div')
       inner.style.cssText = `position:absolute;left:${ps.left}px;top:${ps.top}px;width:${L.width}px`
@@ -191,9 +200,19 @@ export async function printPlainText(text: string): Promise<boolean> {
   return true
 }
 
+/** print-only style block; Classic never receives Modern document rules. */
+export function printDocumentStyle(css: string, ps: PageSetup, presentation: PrintPresentation = 'classic'): string {
+  const presentationCss = presentation === 'modern' ? MODERN_PRINT_CSS : ''
+  return `${css}
+${presentationCss}
+@page { size: ${ps.width}px ${ps.height}px; margin: 0 }
+html, body { height:auto; overflow:visible; background:#fff }
+.page { box-shadow:none }`
+}
+
 /** open the browser print dialog (WebView2 / Chromium: also "save as PDF") for the pages of a report */
-export async function printDw(ctl: NDwBase): Promise<boolean> {
-  const pages = await buildPages(ctl)
+export async function printDw(ctl: NDwBase, options: BuildPagesOptions = {}): Promise<boolean> {
+  const pages = await buildPages(ctl, options)
   if (!pages.length || !ctl.model) return false
   const ps = pageSetup(ctl.model)
   const frame = document.createElement('iframe')
@@ -201,11 +220,9 @@ export async function printDw(ctl: NDwBase): Promise<boolean> {
   document.body.appendChild(frame)
   const doc = frame.contentDocument!
   const css = [...document.querySelectorAll('style')].map((s) => s.textContent).join('\n')
+  const presentation = options.presentation ?? 'classic'
   doc.open()
-  doc.write(`<!doctype html><html><head><meta charset="utf-8"><style>${css}
-@page { size: ${ps.width}px ${ps.height}px; margin: 0 }
-html, body { height:auto; overflow:visible; background:#fff }
-.page { box-shadow:none }
+  doc.write(`<!doctype html><html><head><meta charset="utf-8"><style>${printDocumentStyle(css, ps, presentation)}
 </style></head><body></body></html>`)
   doc.close()
   for (const p of pages) doc.body.appendChild(doc.importNode(p, true))
@@ -217,7 +234,8 @@ html, body { height:auto; overflow:visible; background:#fff }
 }
 
 /** label DataWindows (processing = 2): the detail band is one label; labels fill a sheet of `label.columns` x `label.rows` */
-async function buildLabelPages(m: DwModel, view: DwView, L: ReturnType<DwView['layout']>, ps: PageSetup): Promise<HTMLElement[]> {
+async function buildLabelPages(m: DwModel, view: DwView, L: ReturnType<DwView['layout']>, ps: PageSetup,
+  presentation: PrintPresentation = 'classic'): Promise<HTMLElement[]> {
   const dw = m.def.datawindow
   const units = num(dw, 'units', 0)
   const lw = toPx(num(dw, 'label.width', 2000), 'x', units)
@@ -235,7 +253,7 @@ async function buildLabelPages(m: DwModel, view: DwView, L: ReturnType<DwView['l
     m.printPage = p + 1
     m.printPageCount = total
     const page = document.createElement('div')
-    page.className = 'page'
+    page.className = presentation === 'modern' ? 'page print-modern' : 'page'
     page.style.cssText = `position:relative;width:${ps.width}px;height:${ps.height}px;overflow:hidden;background:${pbColor(dw.color, '#fff')};page-break-after:always;break-after:page`
     for (let k = 0; k < perSheet; k++) {
       const row = p * perSheet + k + 1

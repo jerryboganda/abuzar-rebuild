@@ -272,6 +272,25 @@ test('date masks reject invalid calendar dates, preserve timestamps and honor li
   assert.equal(dwEditorText(f.model, object, null), '')
 })
 
+test('fractional datetime masks round-trip colon and decimal separators without losing date order or precision', async () => {
+  const previous = dateOrder
+  try {
+    for (const regional of ['mdy', 'dmy'] as const) for (const separator of [':', '.']) {
+      setDateOrder(regional)
+      for (const fraction of ['000', '007', '125', '999']) {
+        const f = fixture('datetime'), object = f.model.def.objects[0]
+        object['editmask.mask'] = `dd/mm/yyyy hh:mm:ss${separator}fff`
+        assert.equal(await f.commit(`31/04/2028 21:22:23${separator}${fraction}`), 'rejected')
+        const text = `03/04/2028 21:22:23${separator}${fraction}`
+        assert.equal(await f.commit(text), 'accepted')
+        const value = f.model.getItem(1, 1)
+        assert.deepEqual(value, new PBDateTime(PBDate.ymd(2028, 4, 3).n, PBTime.hms(21, 22, 23, Number(fraction)).ms))
+        assert.equal(dwEditorText(f.model, object, value), text)
+      }
+    }
+  } finally { setDateOrder(previous) }
+})
+
 test('unmasked and named short-date editors retain regional input order', async () => {
   const previous = dateOrder
   try {

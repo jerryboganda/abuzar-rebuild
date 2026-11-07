@@ -48,6 +48,28 @@ input.ctl:focus, textarea.ctl:focus, select.ctl:focus { outline:1px solid #0078d
 .pb-dropdown .dropdown-list [aria-selected=true] {background:var(--sel);color:#fff;}
 .pb-dropdown .dropdown-list [role=option]:hover {outline:1px solid var(--sel);outline-offset:-1px;}
 .pb-dropdown :focus-visible {outline:2px solid var(--sel);outline-offset:-2px;}
+.pb-calendar {background:#fff!important;color:#000;border:1px solid #7a7a7a;padding:3px;overflow:auto;user-select:none;}
+.pb-calendar[data-autosize=true] {width:19em!important;height:auto!important;}
+.calendar-header {display:flex;align-items:center;gap:2px;}
+.pb-calendar button {font:inherit;color:inherit;background:transparent;border:1px solid transparent;padding:2px;cursor:pointer;min-width:0;}
+.calendar-header>button:first-child,.calendar-header>button:last-child {flex:none;width:1.75em;display:flex;justify-content:center;align-items:center;}
+.calendar-header>button:nth-child(2) {flex:1;overflow-wrap:anywhere;font-weight:600;}
+.pb-calendar button:hover:not(:disabled),.pb-calendar [role=gridcell]:hover:not([aria-disabled=true]) {background:#e3edfc;}
+.pb-calendar table {width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;font:inherit;}
+.pb-calendar th {font-weight:400;}
+.pb-calendar td,.pb-calendar th {padding:2px 0;text-align:center;line-height:1.3;}
+.pb-calendar [role=gridcell] {cursor:pointer;}
+.pb-calendar [aria-selected=true] {background:var(--sel);color:#fff;}
+.pb-calendar .calendar-trailing {color:#666;}
+.pb-calendar .calendar-trailing[aria-selected=true] {color:#fff;}
+.pb-calendar .calendar-today-mark {box-shadow:inset 0 0 0 1px currentColor;}
+.pb-calendar .calendar-today {width:100%;white-space:normal;overflow-wrap:anywhere;}
+.pb-calendar [data-mode=months] td,.pb-calendar [data-mode=years] td {height:2.5em;}
+.pb-calendar :disabled,.pb-calendar [aria-disabled=true] {color:GrayText;cursor:default;}
+.pb-calendar :focus-visible {outline:2px solid var(--sel);outline-offset:-2px;}
+.pb-calendar [aria-selected=true]:focus-visible {outline-color:currentColor;}
+.calendar-announcement {position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
+@media(forced-colors:active) {.pb-calendar [aria-selected=true] {background:Highlight!important;color:HighlightText!important;forced-color-adjust:none;}.pb-calendar .calendar-today-mark {box-shadow:none;border:1px solid currentColor;}}
 .dw-edit[role=combobox] {padding-inline-end:26px;}
 .dw-choice-toggle {display:flex;align-items:center;justify-content:center;padding:0;color:inherit;background:var(--face);border:1px solid #7a7a7a;cursor:pointer;}
 .dw-choice-toggle[hidden] {display:none;}

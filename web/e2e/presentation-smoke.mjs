@@ -7,7 +7,7 @@ import { once } from 'node:events'
 import assert from 'node:assert/strict'
 import { gunzipSync } from 'node:zlib'
 import { DATA_SURFACES, CRITERIA_DATA_SURFACES, TRANSACTION_DATA_SURFACES, dataSurfaceIssues } from '../src/ui/data-surfaces.ts'
-import { WINDOW_SURFACES, CALCULATOR_WINDOW_SURFACES, CRITERIA_WINDOW_SURFACES, LOOKUP_CRITERIA_WINDOWS, REFERENCE_CRITERIA_WINDOWS, ENTRY_WINDOW_SURFACES } from '../src/ui/window-surfaces.ts'
+import { WINDOW_SURFACES, CALCULATOR_WINDOW_SURFACES, CRITERIA_WINDOW_SURFACES, LOOKUP_CRITERIA_WINDOWS, REFERENCE_CRITERIA_WINDOWS, NUMERIC_CRITERIA_WINDOWS, DATE_OPTION_CRITERIA_WINDOWS, DATE_CHOICE_CRITERIA_WINDOWS, ENTRY_WINDOW_SURFACES } from '../src/ui/window-surfaces.ts'
 import { parseScriptFile } from '../src/pbscript/parser.ts'
 import { checkForcedColors } from './presentation-forced-colors.mjs'
 
@@ -17,7 +17,7 @@ const visibleContrast = (form) => form.evaluate((root) => {
     const v = value / 255
     return v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4
   }).reduce((total, value, index) => total + value * [.2126, .7152, .0722][index], 0)
-  return [...root.querySelectorAll('.ttl,legend,.window-option span,.window-caption,.window-field label .ctl,.entry-control.st,.entry-order span,input,textarea,select,button,.surface-label,.surface-suffix,.surface-group-caption,.surface-help,.surface-required,.surface-value,.surface-band dt,.surface-band [role=textbox],th,.surface-status,.strip .t,.presentation-lookup h2,.presentation-lookup p,.lookup-search,.lookup-details summary,.lookup-details dt,.lookup-details dd,.lookup-grid-wrap td>span,.dw-choice-popup [role=option]')]
+  return [...root.querySelectorAll('.ttl,legend,.window-option span,.window-caption,.window-field label .ctl,.entry-control.st,.entry-order span,input,textarea,select,button,.surface-label,.surface-suffix,.surface-group-caption,.surface-help,.surface-required,.surface-value,.surface-band dt,.surface-band [role=textbox],th,.surface-status,.strip .t,.presentation-lookup h2,.presentation-lookup p,.lookup-search,.lookup-details summary,.lookup-details dt,.lookup-details dd,.lookup-grid-wrap td>span,.dw-choice-popup [role=option],.presentation-settings h2,.presentation-settings p,.presentation-settings label,.page [data-obj]')]
     .filter((element) => element.getClientRects().length > 0).map((element) => {
       let ancestor = element
       let background = getComputedStyle(ancestor).backgroundColor
@@ -30,9 +30,300 @@ const visibleContrast = (form) => form.evaluate((root) => {
     })
 })
 
-async function captureCriteriaWindows(page, output) {
+async function capturePrintSettings(page, output) {
   const cases = []
-  for (const surface of CRITERIA_WINDOW_SURFACES) for (const reveal of surface.options && !surface.lists ? [false, true] : [false]) {
+  const dialog = page.locator('.presentation-settings')
+  const open = () => page.getByRole('button', { name: 'Appearance', exact: true }).click()
+  await page.setViewportSize({ width: 1366, height: 768 })
+  await open()
+  const saved = await dialog.locator('select[name=theme],select[name=density],select[name=textSize]').evaluateAll((fields) =>
+    fields.map((field) => [field.name, field.value]))
+  try {
+    for (const [theme, scale, width, height] of [
+      ['light', 100, 1366, 768], ['dark', 200, 1366, 768], ['dark', 200, 683, 384],
+      ['light', 200, 320, 768], ['dark', 200, 320, 768],
+    ]) {
+      if (!await dialog.evaluate((element) => element.open)) await open()
+      await dialog.locator('[name=theme]').selectOption(theme)
+      await dialog.locator('[name=textSize]').selectOption(String(scale))
+      await dialog.locator('[name=density]').selectOption('comfortable')
+      await dialog.getByRole('button', { name: 'Save settings', exact: true }).click()
+      await page.setViewportSize({ width, height })
+      await open()
+      const familyNames = await dialog.locator('select[name^="printFamily:"]').evaluateAll((fields) => fields.map((field) => field.name))
+      await dialog.locator('select[name=printMode]').focus()
+      for (const name of familyNames) {
+        await page.keyboard.press('Tab')
+        assert.equal(await page.evaluate(() => document.activeElement.name), name, 'Document layout keyboard order follows its labels')
+        const field = dialog.locator(`select[name="${name}"]`)
+        assert.ok(await field.evaluate((element) => {
+          const r = element.getBoundingClientRect(), s = getComputedStyle(element)
+          return r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight &&
+            s.outlineStyle !== 'none' && parseFloat(s.outlineWidth) >= 2
+        }), `Document layout focus remains visible: ${name}/${theme}/${scale}/${width}`)
+      }
+      await dialog.locator('select[name="printFamily:sales-invoice"]').focus()
+      await page.keyboard.press('End')
+      assert.equal(await dialog.locator('select[name="printFamily:sales-invoice"]').inputValue(), 'modern')
+      await page.keyboard.press('Home')
+      assert.equal(await dialog.locator('select[name="printFamily:sales-invoice"]').inputValue(), '')
+      await page.screenshot({ path: resolve(output, `print-settings-${theme}-${scale}-${width}.png`) })
+      const layout = await dialog.evaluate((root) => {
+        const context = document.createElement('canvas').getContext('2d')
+        return {
+          fits: root.scrollWidth <= root.clientWidth,
+          fields: [...root.querySelectorAll('select[name=printMode],select[name^="printFamily:"]')].map((element) => {
+            const s = getComputedStyle(element)
+            context.font = s.font
+            return { name: element.name, fontSize: parseFloat(s.fontSize),
+              longestOptionWidth: Math.max(...[...element.options].map((option) => context.measureText(option.textContent).width)),
+              availableWidth: element.clientWidth - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight) - 18 }
+          }),
+        }
+      })
+      assert.ok(layout.fits, `Document layout settings do not scroll horizontally: ${theme}/${scale}/${width}`)
+      assert.ok(layout.fields.every((field) => field.longestOptionWidth <= field.availableWidth),
+        `Document layout selections remain readable: ${JSON.stringify({ theme, scale, width, ...layout })}`)
+      assert.ok(layout.fields.every((field) => field.fontSize === 14 * scale / 100))
+      const contrast = await visibleContrast(dialog)
+      assert.ok(contrast.length && contrast.every((ratio) => ratio >= 4.5), 'Document preference text meets contrast requirements')
+      await dialog.locator('select[name="printFamily:item-label"]').focus()
+      await page.keyboard.press('End')
+      assert.equal(await dialog.locator('select[name="printFamily:item-label"]').inputValue(), 'classic',
+        'Keyboard cannot select a blocked Modern label template')
+      await page.keyboard.press('Tab')
+      assert.equal(await page.evaluate(() => document.activeElement.textContent), 'Cancel')
+      await page.keyboard.press('Enter')
+      await open()
+      assert.equal(await dialog.locator('select[name="printFamily:item-label"]').inputValue(), '',
+        'Keyboard cancellation preserves family inheritance')
+      await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
+      cases.push({ theme, scale, width, height, minimumTextContrast: Math.min(...contrast), ...layout })
+      await page.setViewportSize({ width: 1366, height: 768 })
+    }
+  } finally {
+    await page.setViewportSize({ width: 1366, height: 768 })
+    if (!await dialog.evaluate((element) => element.open)) await open()
+    for (const [name, value] of saved) await dialog.locator(`select[name="${name}"]`).selectOption(value)
+    await dialog.getByRole('button', { name: 'Save settings', exact: true }).click()
+  }
+  return cases
+}
+
+async function capturePrintDocuments(page, output) {
+  const cases = []
+  await page.setViewportSize({ width: 1366, height: 1200 })
+  try {
+    for (const presentation of ['classic', 'modern']) {
+      await page.evaluate((mode) => window.openPrintDocumentPreview(mode), presentation)
+      const pages = page.frameLocator(`iframe[title="Synthetic ${presentation} document preview"]`).locator('.page')
+      const count = await pages.count()
+      assert.ok(count > 1)
+      for (const index of [0, count - 1]) {
+        const documentPage = pages.nth(index)
+        const geometry = await documentPage.evaluate((root) => {
+          const r = root.getBoundingClientRect()
+          const footer = root.querySelector('.ftr').getBoundingClientRect()
+          return {
+            width: r.width, height: r.height, background: getComputedStyle(root).backgroundColor,
+            bodyFits: [...root.querySelectorAll('.row,.gtr,.sum')].every((band) =>
+              band.getBoundingClientRect().bottom <= footer.top),
+          }
+        })
+        assert.ok(geometry.bodyFits, 'Printed details and totals do not overlap the page footer')
+        assert.equal(geometry.background, 'rgb(255, 255, 255)', 'Document paper is white in both print presentations')
+        const contrast = await visibleContrast(documentPage)
+        assert.ok(contrast.length && contrast.every((ratio) => ratio >= 4.5), 'Synthetic print text remains readable on white paper')
+        await documentPage.screenshot({ path: resolve(output, `print-document-${presentation}-${index + 1}.png`) })
+        cases.push({ presentation, page: index + 1, totalPages: count, ...geometry, minimumTextContrast: Math.min(...contrast) })
+      }
+      await page.evaluate(() => window.closePrintDocumentPreview())
+    }
+  } finally {
+    await page.evaluate(() => window.closePrintDocumentPreview())
+    await page.setViewportSize({ width: 1366, height: 768 })
+  }
+  return cases
+}
+
+async function openCalendarInput(page, name = 'w_arg_sdate', text) {
+  await page.evaluate((name) => window.openCriteriaWindowPreview(name), name)
+  const field = page.locator(`.pbwin[data-win="${name}"] input[id$="-em_startdate"]`)
+  await field.fill(text ?? (name === 'w_arg_sdate_notime' ? '31/03/2024' : '31/03/2024 21:22:23'))
+  await field.press('F4')
+  const calendar = page.locator('.modern-calendar-window')
+  await calendar.waitFor()
+  await page.waitForFunction(() => {
+    const root = document.querySelector('.modern-calendar-window')
+    return root?.querySelector('[aria-selected=true]') === document.activeElement
+  })
+  return { calendar, field }
+}
+
+async function checkCalendarInput(page) {
+  await page.setViewportSize({ width: 1366, height: 768 })
+  for (const name of ['w_arg_sdate', 'w_arg_sdate_notime', 'w_arg_sdate_ldate', 'w_arg_ason']) {
+    const { calendar, field } = await openCalendarInput(page, name)
+    try {
+      await page.keyboard.press('PageUp')
+      await page.waitForFunction(() => document.querySelector('.modern-calendar-window [aria-selected=true]')
+        ?.getAttribute('aria-label')?.includes('February 29, 2024'))
+      await page.keyboard.press('Enter')
+      await calendar.waitFor({ state: 'detached' })
+      assert.equal(await field.inputValue(), name === 'w_arg_sdate_notime' ? '29/02/2024' : '29/02/2024 21:22:23')
+      assert.ok(await field.evaluate((element) => element === document.activeElement),
+        'Calendar acceptance restores the invoking field')
+      await field.press('F4')
+      await calendar.waitFor()
+      await page.keyboard.press('ArrowRight')
+      await page.waitForFunction(() => document.querySelector('.modern-calendar-window [aria-selected=true]')
+        ?.getAttribute('aria-label')?.includes('March 1, 2024'))
+      await page.keyboard.press('Escape')
+      await calendar.waitFor({ state: 'detached' })
+      assert.equal(await field.inputValue(), name === 'w_arg_sdate_notime' ? '29/02/2024' : '29/02/2024 21:22:23')
+      await field.press('F4')
+      await calendar.waitFor()
+      await calendar.getByRole('gridcell', { name: 'Wednesday, February 28, 2024', exact: true }).dblclick()
+      await calendar.waitFor({ state: 'detached' })
+      assert.equal(await field.inputValue(), name === 'w_arg_sdate_notime' ? '28/02/2024' : '28/02/2024 21:22:23',
+        'Real double-click reaches the original posted OK once')
+    } finally { await page.evaluate(() => window.criteriaWindowPreview.close()) }
+  }
+  const { calendar, field } = await openCalendarInput(page)
+  try {
+    await calendar.getByRole('button', { name: 'Choose month: March 2024', exact: true }).click()
+    assert.equal(await calendar.getByRole('gridcell').count(), 12)
+    await calendar.getByRole('button', { name: 'Choose year: 2024', exact: true }).click()
+    await calendar.getByRole('button', { name: 'Next decade', exact: true }).click()
+    await calendar.getByRole('gridcell', { name: '2032', exact: true }).click()
+    await calendar.getByRole('gridcell', { name: 'February 2032', exact: true }).click()
+    assert.equal(await calendar.locator('[aria-selected=true]').getAttribute('aria-label'), 'Sunday, February 29, 2032')
+    await page.keyboard.press('Home')
+    await page.waitForFunction(() => document.querySelector('.modern-calendar-window [aria-selected=true]')?.textContent === '1')
+    await page.keyboard.press('End')
+    await page.waitForFunction(() => document.querySelector('.modern-calendar-window [aria-selected=true]')?.textContent === '29')
+    await calendar.getByRole('button', { name: /^Today:/ }).click()
+    assert.equal(await calendar.locator('[aria-selected=true]').getAttribute('aria-current'), 'date')
+    await calendar.getByRole('button', { name: 'Close window', exact: true }).click()
+    await calendar.waitFor({ state: 'detached' })
+    assert.equal(await field.inputValue(), '31/03/2024 21:22:23')
+  } finally { await page.evaluate(() => window.criteriaWindowPreview.close()) }
+  const empty = await openCalendarInput(page, 'w_arg_sdate_notime', '')
+  try {
+    assert.equal(await empty.calendar.locator('[aria-selected=true]').getAttribute('aria-current'), 'date')
+    await page.keyboard.press('Enter')
+    await empty.calendar.waitFor({ state: 'detached' })
+    assert.match(await empty.field.inputValue(), /^\d{2}\/\d{2}\/\d{4}$/)
+  } finally { await page.evaluate(() => window.criteriaWindowPreview.close()) }
+}
+
+async function openDataWindowCalendarInput(page, owner = 'standard') {
+  await page.evaluate((owner) => window.openDataWindowCalendarPreview(owner), owner)
+  const field = page.locator('.pbwin[data-win="w_calendar_dw_fixture"] .dw-edit')
+  await field.press('F4')
+  const calendar = page.locator('.pbwin[data-win="w_calendar2"]')
+  await calendar.waitFor()
+  await page.waitForFunction(() => document.querySelector('.pbwin[data-win="w_calendar2"] [aria-selected=true]') === document.activeElement)
+  return { field, calendar }
+}
+
+async function checkDataWindowCalendarInput(page) {
+  await page.setViewportSize({ width: 1366, height: 768 })
+  for (const owner of ['standard', 'comments']) {
+    const { calendar } = await openDataWindowCalendarInput(page, owner)
+    try {
+      await page.keyboard.press('PageUp')
+      await page.waitForFunction(() => document.querySelector('.pbwin[data-win="w_calendar2"] [aria-selected=true]')
+        ?.getAttribute('aria-label')?.includes('February 29, 2024'))
+      await page.keyboard.press('Enter')
+      await calendar.waitFor({ state: 'detached' })
+      await page.evaluate(() => window.dataWindowCalendarPreview.finish())
+      const value = await page.evaluate(() => {
+        const f = window.dataWindowCalendarPreview, value = f.model.getItem(1, 'date')
+        return { date: value.n, clock: value.ms, focused: f.dw.root.contains(document.activeElement) }
+      })
+      assert.deepEqual(value, { date: Date.UTC(2024, 1, 29) / 86400000, clock: (21 * 3600 + 22 * 60 + 23) * 1000 + 125, focused: true })
+      await page.keyboard.press('F4')
+      await calendar.waitFor()
+      await calendar.getByRole('gridcell', { name: 'Wednesday, February 28, 2024', exact: true }).dblclick()
+      await calendar.waitFor({ state: 'detached' })
+      await page.evaluate(() => window.dataWindowCalendarPreview.finish())
+      assert.equal(await page.evaluate(() => window.dataWindowCalendarPreview.model.getItem(1, 'date').n), Date.UTC(2024, 1, 28) / 86400000)
+    } finally { await page.evaluate(() => window.dataWindowCalendarPreview.close()) }
+  }
+}
+
+async function captureCalendars(page, output, dataWindow = false) {
+  const cases = []
+  for (const [theme, scale, width, height, forced] of [
+    ['light', 100, 1366, 768, false], ['dark', 100, 1366, 768, false],
+    ['light', 200, 320, 768, false], ['dark', 200, 320, 768, false],
+    ['light', 200, 683, 384, false], ['dark', 200, 683, 384, false],
+    ['light', 200, 320, 768, true], ['dark', 200, 320, 768, true],
+  ]) {
+    await page.setViewportSize({ width, height })
+    await page.emulateMedia({ forcedColors: forced ? 'active' : 'none', colorScheme: theme })
+    const { calendar } = dataWindow ? await openDataWindowCalendarInput(page) : await openCalendarInput(page)
+    try {
+      await calendar.evaluate((root, { theme, scale }) => {
+        root.dataset.theme = theme
+        root.dataset.density = 'comfortable'
+        root.style.setProperty('--p-scale', String(scale / 100))
+      }, { theme, scale })
+      await calendar.locator('[aria-selected=true]').focus()
+      assert.ok(await calendar.evaluate((root) => {
+        const bounds = root.getBoundingClientRect()
+        return root.scrollWidth <= root.clientWidth + 1 && bounds.left >= 0 && bounds.right <= innerWidth + .5 &&
+          bounds.top >= 0 && bounds.bottom <= innerHeight + .5
+      }), 'Calendar reflows without horizontal overflow or viewport clipping')
+      const selected = calendar.locator('[aria-selected=true]')
+      assert.equal(await selected.evaluate((cell) => parseFloat(getComputedStyle(cell).fontSize)), 14 * scale / 100)
+      const cells = await calendar.locator('[role=gridcell]').evaluateAll((cells) => cells.map((cell) => {
+        const style = getComputedStyle(cell), canvas = document.createElement('canvas').getContext('2d')
+        canvas.font = style.font
+        const l = (color) => (color.match(/[\d.]+/g) || []).slice(0, 3).map((value) => {
+          const v = Number(value) / 255
+          return v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4
+        }).reduce((sum, value, index) => sum + value * [.2126, .7152, .0722][index], 0)
+        let parent = cell
+        let background = getComputedStyle(parent).backgroundColor
+        while (background === 'rgba(0, 0, 0, 0)' && parent.parentElement) {
+          parent = parent.parentElement
+          background = getComputedStyle(parent).backgroundColor
+        }
+        const foreground = l(style.color), back = l(background)
+        return { width: cell.getBoundingClientRect().width, textWidth: canvas.measureText(cell.textContent).width,
+          contrast: (Math.max(foreground, back) + .05) / (Math.min(foreground, back) + .05) }
+      }))
+      assert.ok(cells.every((cell) => cell.textWidth + 4 <= cell.width && cell.contrast >= 4.5),
+        `All calendar dates fit and meet contrast: ${JSON.stringify({ theme, scale, width, forced, cells })}`)
+      await page.keyboard.press('Tab')
+      assert.match(await page.evaluate(() => document.activeElement.textContent), /^Today:/)
+      await page.keyboard.press('Tab')
+      assert.equal(await page.evaluate(() => document.activeElement.textContent), 'Ok')
+      assert.ok(await page.evaluate(() => {
+        const r = document.activeElement.getBoundingClientRect()
+        return r.top >= 0 && r.bottom <= innerHeight
+      }), 'Calendar keyboard actions stay visible at enlarged text and short viewports')
+      const minimumTextContrast = Math.min(...cells.map((cell) => cell.contrast), ...await visibleContrast(calendar))
+      assert.ok(minimumTextContrast >= 4.5)
+      await page.screenshot({ path: resolve(output, `calendar${dataWindow ? '2' : ''}-${theme}-${scale}-${width}${forced ? '-forced' : ''}.png`) })
+      cases.push({ theme, scale, width, height, forced, minimumTextContrast })
+      await calendar.getByRole('button', { name: 'Cancel', exact: true }).click()
+      await calendar.waitFor({ state: 'detached' })
+    } finally {
+      await page.emulateMedia({ forcedColors: 'none' })
+      if (dataWindow) await page.evaluate(() => window.dataWindowCalendarPreview.close())
+      else await page.evaluate(() => window.criteriaWindowPreview.close())
+    }
+  }
+  await page.setViewportSize({ width: 1366, height: 768 })
+  return cases
+}
+
+async function captureCriteriaWindows(page, output, surfaces = CRITERIA_WINDOW_SURFACES) {
+  const cases = []
+  for (const surface of surfaces) for (const reveal of surface.options && !surface.lists ? [false, true] : [false]) {
     for (const [theme, scale, width, height] of [
       ['light', 100, 1366, 768], ['dark', 200, 1366, 768], ['dark', 200, 683, 384], ['dark', 200, 320, 768],
     ]) {
@@ -46,7 +337,7 @@ async function captureCriteriaWindows(page, output) {
           for (const option of f.surface.options) f.window.children.get(option.control).pbSet('visible', true)
           const price = f.window.children.get('dw_price')
           await price.ready
-          price.model.insertRow(0)
+          if (!price.model.rowCount()) price.model.insertRow(0)
           price.pbSet('visible', true)
           f.window.children.get('st_3').pbSet('visible', true)
         }
@@ -66,24 +357,37 @@ async function captureCriteriaWindows(page, output) {
         }), `${surface.name}/${width}: complete criteria dialog reflows inside the viewport`)
         const lookupOwner = LOOKUP_CRITERIA_WINDOWS.some(([name]) => name === surface.name)
         const referenceOwner = REFERENCE_CRITERIA_WINDOWS.some(([name]) => name === surface.name)
-        if (!reveal && (lookupOwner || referenceOwner || ['w_arg_zone_sdate_ldate_top_n_customer', 'w_sale_replace_custref',
+        const numericOwner = NUMERIC_CRITERIA_WINDOWS.some(([name]) => name === surface.name)
+        const dateOptions = DATE_OPTION_CRITERIA_WINDOWS.find((owner) => owner.name === surface.name)
+        const dateChoice = DATE_CHOICE_CRITERIA_WINDOWS.find((owner) => owner.name === surface.name)
+        if (!reveal && (lookupOwner || referenceOwner || numericOwner || dateOptions || dateChoice || ['w_arg_zone_sdate_ldate_top_n_customer', 'w_sale_replace_custref',
           'w_arg_sdate', 'w_arg_sdate_notime', 'w_arg_sdate_ldate'].includes(surface.name))) {
-          const order = lookupOwner ? [
+          const order = dateChoice ? [...dateChoice.order.filter((name) =>
+            !['st_4', 'gb_2', 'rb_bank', 'rb_both', 'rb_purprice'].includes(name)), 'cb_ok', 'cb_cancel'] :
+            dateOptions ? ['em_startdate', 'em_enddate', ...dateOptions.checkboxes,
+            ...(dateOptions.radios ? [dateOptions.radios[0]] : []), 'cb_ok', 'cb_cancel'] : lookupOwner ? [
             ...(['w_arg_singleregion', 'w_arg_singlezone', 'w_arg_supp_label'].includes(surface.name) ? [] :
               ['em_startdate', 'em_enddate']), 'dw_control', ...(surface.name === 'w_arg_supp_label' ? ['cbx_supress'] : []),
             'cb_ok', 'cb_cancel',
+          ] : numericOwner ? [
+            ...surface.data[0].surface.fields.map(() => 'dw_control'),
+            ...(surface.name === 'w_arg_scode_lcode' ? ['cbx_supress', 'cbx_hide'] : []), 'cb_ok', 'cb_cancel',
           ] : referenceOwner ? ['dw_control', 'cb_ok', 'cb_cancel'] : surface.name === 'w_sale_replace_custref' ?
             ['dw_replace_custref', 'cb_ok', 'cb_cancel'] :
             surface.name === 'w_arg_zone_sdate_ldate_top_n_customer' ?
               ['dw_control', 'em_startdate', 'em_enddate', 'dw_custcount', 'cb_ok', 'cb_cancel'] :
               ['em_startdate', ...(surface.name === 'w_arg_sdate_ldate' ? ['em_enddate'] : []), 'cb_ok', 'cb_cancel']
           await form.locator('.tbar .cls').focus()
+          let numericColumn = 0
           for (const name of order) {
             await page.keyboard.press('Tab')
-            await page.waitForFunction((name) => {
+            await page.waitForFunction(({ name, field }) => {
               const f = window.criteriaWindowPreview
-              return f.view.ctlViews.get(f.window.children.get(name)).el.contains(document.activeElement)
-            }, name, { timeout: 5000 })
+              const control = f.view.ctlViews.get(f.window.children.get(name)).el
+              return (field ? control.querySelector(`.surface-value[data-obj="${field}"]`) : control)
+                ?.contains(document.activeElement)
+            }, { name, field: numericOwner && name === 'dw_control' ?
+              surface.data[0].surface.fields[numericColumn++].object : null }, { timeout: 5000 })
           }
           await page.keyboard.press('Tab')
           assert.ok(await form.locator('.tbar .cls').evaluate((element) => element === document.activeElement),
@@ -112,6 +416,8 @@ async function captureCriteriaWindows(page, output) {
         const screenshot = `${surface.name}-${reveal ? 'options' : 'default'}-${theme}-${scale}-${width}.png`
         await page.screenshot({ path: resolve(output, screenshot) })
         cases.push({ name: surface.name, reveal, theme, scale, width, height, minimumContrast: contrast, screenshot })
+      } catch (error) {
+        throw new Error(`${surface.name}/${theme}/${scale}/${width}: ${error.message}`, { cause: error })
       } finally { await page.evaluate(() => window.criteriaWindowPreview.close()) }
     }
   }
@@ -244,9 +550,194 @@ async function checkReferenceCriteriaInput(page) {
   }
 }
 
-async function checkNativeDateInput(page) {
+async function checkNumericCriteriaInput(page) {
   await page.setViewportSize({ width: 1366, height: 768 })
-  for (const name of ['w_arg_sdate', 'w_arg_sdate_notime', 'w_arg_sdate_ldate']) {
+  for (const [name] of NUMERIC_CRITERIA_WINDOWS) {
+    const surface = CRITERIA_WINDOW_SURFACES.find((surface) => surface.name === name)
+    const fields = surface.data[0].surface.fields
+    const percentage = ['w_arg_discperc', 'w_arg_gstperc'].includes(name)
+    await page.evaluate((name) => window.openCriteriaWindowPreview(name), name)
+    try {
+      const form = page.locator('.presentation-modern-dialog[open]>.modern-window')
+      const data = form.locator('[data-window-data=dw_control]')
+      for (const [index, field] of fields.entries()) {
+        await data.locator(`.surface-value[data-obj="${field.object}"]`).click()
+        const input = data.locator('input.surface-editor')
+        const id = await page.evaluate((field) => {
+          const f = window.criteriaWindowPreview
+          return f.el(f.surface.data[0].labels.find((binding) => binding.field === field).control).id
+        }, field.object)
+        assert.equal(await input.getAttribute('aria-labelledby'), id,
+          `${name}/${field.object}: actual numeric input uses its original caption`)
+        await input.fill(percentage ? '12.34' : String(100 + index * 100))
+        await input.press('Tab')
+        if (index + 1 < fields.length) await page.waitForFunction((column) => {
+          const f = window.criteriaWindowPreview
+          return f.model.col === column && f.dw.root.contains(document.activeElement)
+        }, index + 2, { timeout: 5000 })
+      }
+      if (name === 'w_arg_scode_lcode') {
+        for (const control of ['cbx_supress', 'cbx_hide']) {
+          await page.waitForFunction((control) => window.criteriaWindowPreview.el(control).contains(document.activeElement),
+            control, { timeout: 5000 })
+          await page.keyboard.press('Space')
+          await page.keyboard.press('Tab')
+        }
+      }
+      await page.waitForFunction(() => window.criteriaWindowPreview.el('cb_ok') === document.activeElement,
+        null, { timeout: 5000 })
+      await page.keyboard.press('Enter')
+      await page.waitForFunction(() => !window.criteriaWindowPreview.window.isOpen)
+      assert.deepEqual(await page.evaluate(({ percentage, count }) => {
+        const f = window.criteriaWindowPreview, result = f.returned()
+        return [result.pbGet('i_status'), ...Array.from({ length: count }, (_, index) =>
+          Number(result.pbGet(percentage ? 'db_code1' : `l_code${index + 1}`))),
+        f.events.filter((event) => event.target.name === 'cb_ok' && event.event === 'clicked').length]
+      }, { percentage, count: fields.length }), [1, ...fields.map((_, index) => percentage ? 12.34 : 100 + index * 100), 1],
+      `${name}: actual typing, field-order Tab and Enter return the source numeric fields exactly once`)
+    } finally { await page.evaluate(() => window.criteriaWindowPreview.close()) }
+  }
+}
+
+async function checkDateOptionInput(page) {
+  await page.setViewportSize({ width: 1366, height: 768 })
+  for (const owner of DATE_OPTION_CRITERIA_WINDOWS) {
+    await page.evaluate((name) => window.openCriteriaWindowPreview(name), owner.name)
+    try {
+      const form = page.locator('.presentation-modern-dialog[open]>.modern-window')
+      const captions = await page.evaluate((names) => Object.fromEntries(names.map((name) =>
+        [name, window.criteriaWindowPreview.window.children.get(name).pbGet('text')])),
+      [...owner.checkboxes, ...(owner.radios ?? [])])
+      const input = (name) => form.getByRole(owner.radios?.includes(name) ? 'radio' : 'checkbox',
+        { name: captions[name], exact: true })
+      const start = form.locator('input[id$="-em_startdate"]')
+      await start.fill('29/02/2023 12:00:00')
+      await form.getByRole('button', { name: 'Ok', exact: true }).click()
+      const message = page.locator('.presentation-runtime-dialog[open]')
+      await message.waitFor()
+      assert.match(await message.textContent(), /Enter a valid date using/)
+      await message.getByRole('button', { name: 'OK', exact: true }).click()
+      await page.waitForFunction(() => window.criteriaWindowPreview.el('em_startdate') === document.activeElement)
+      assert.equal(await start.inputValue(), '29/02/2023 12:00:00')
+      assert.equal(await start.getAttribute('aria-invalid'), 'true')
+      await start.fill('29/02/2024 21:22:23')
+      await page.keyboard.press('Tab')
+      assert.equal(await page.evaluate(() => document.activeElement === window.criteriaWindowPreview.el('em_enddate')), true)
+      await form.locator('input[id$="-em_enddate"]').fill('01/03/2024 01:02:03')
+      if (owner.checkboxes.length) {
+        const first = owner.checkboxes[0], checkbox = input(first), initial = await checkbox.isChecked()
+        await checkbox.focus()
+        await checkbox.press('Space')
+        assert.equal(await checkbox.isChecked(), !initial, `${owner.name}: real Space changes the native checkbox`)
+        assert.equal(await page.evaluate((name) => window.criteriaWindowPreview.window.children.get(name).pbGet('checked'), first),
+          !initial, `${owner.name}: keyboard changes reach the original runtime control`)
+        if (first === 'cbx_all') {
+          await page.waitForFunction(() => !window.criteriaWindowPreview.window.children.get('cbx_others').pbGet('enabled'))
+          for (const name of owner.checkboxes.slice(1)) {
+            assert.equal(await input(name).isChecked(), true)
+            assert.equal(await input(name).isDisabled(), true)
+          }
+          await checkbox.click()
+          await page.waitForFunction(() => window.criteriaWindowPreview.window.children.get('cbx_others').pbGet('enabled'))
+          for (const name of owner.checkboxes.slice(1)) {
+            assert.equal(await input(name).isChecked(), false)
+            assert.equal(await input(name).isDisabled(), false)
+          }
+          await input('cbx_cr').click()
+        }
+      }
+      if (owner.radios) {
+        await input(owner.radios[0]).focus()
+        await page.keyboard.press('ArrowRight')
+        await page.waitForFunction((name) => window.criteriaWindowPreview.window.children.get(name).pbGet('checked'), owner.radios[1])
+        assert.equal(await input(owner.radios[0]).isChecked(), false)
+        assert.equal(await input(owner.radios[1]).isChecked(), true)
+      }
+      await form.getByRole('button', { name: 'Ok', exact: true }).focus()
+      await page.keyboard.press('Enter')
+      await page.waitForFunction(() => !window.criteriaWindowPreview.window.isOpen)
+      assert.deepEqual(await page.evaluate(() => {
+        const f = window.criteriaWindowPreview
+        return { status: f.returned().pbGet('i_status'),
+          accepts: f.events.filter((event) => event.target === f.window.children.get('cb_ok') && event.event === 'clicked').length,
+          invalid: f.el('em_startdate').getAttribute('aria-invalid'), reads: f.calls.length }
+      }), { status: 1, accepts: 2, invalid: null, reads: 0 },
+      `${owner.name}: corrected keyboard acceptance runs once, clears the error and avoids hidden-buffer retrieval`)
+      if (owner.name === 'w_arg_sdate_ldate_transaction') {
+        assert.equal(await page.evaluate(() => window.criteriaWindowPreview.returned().pbGet('ia_integerlist').a[10]), 2,
+          'Pointer-selected Cash Receipts retains original return position 11 and code 2')
+      }
+    } finally { await page.evaluate(() => window.criteriaWindowPreview.close()) }
+  }
+}
+
+async function checkDateChoiceInput(page) {
+  await page.setViewportSize({ width: 1366, height: 768 })
+  for (const owner of DATE_CHOICE_CRITERIA_WINDOWS.filter((owner) => owner.name !== 'w_arg_ason')) {
+    await page.evaluate((name) => window.openCriteriaWindowPreview(name), owner.name)
+    try {
+      const form = page.locator('.presentation-modern-dialog[open]>.modern-window')
+      const start = form.locator('input[id$="-em_startdate"]'), end = form.locator('input[id$="-em_enddate"]')
+      await end.fill('31/04/2024 12:00:00')
+      await form.getByRole('button', { name: 'Ok', exact: true }).click()
+      const message = page.locator('.presentation-runtime-dialog[open]')
+      await message.waitFor()
+      assert.match(await message.textContent(), /Enter a valid date using/)
+      await message.getByRole('button', { name: 'OK', exact: true }).click()
+      await page.waitForFunction(() => window.criteriaWindowPreview.el('em_enddate') === document.activeElement)
+      assert.equal(await end.getAttribute('aria-invalid'), 'true')
+      assert.equal(await end.inputValue(), '31/04/2024 12:00:00')
+      await start.fill('29/02/2024 21:22:23')
+      await end.fill('01/03/2024 01:02:03')
+      let code = 0, name = ''
+      if (owner.price) {
+        const data = form.locator('[data-window-data=dw_price]')
+        await data.locator('.surface-value').click()
+        const editor = data.locator('input.surface-editor,select.surface-editor')
+        assert.equal(await editor.getAttribute('aria-labelledby'),
+          await page.evaluate(() => window.criteriaWindowPreview.el('st_4').id),
+          `${owner.name}: the source cost/type caption labels the actual editor`)
+        const index = owner.price.fields[0].object === 'price' ? 0 : 2
+        code = index === 0 ? 5 : 3
+        if (await editor.evaluate((input) => input instanceof HTMLSelectElement)) await editor.selectOption(String(index))
+        else {
+          if (await editor.getAttribute('aria-expanded') !== 'true') await editor.press('F4')
+          await data.locator(`.dw-choice-popup [data-index="${index}"]`).click()
+        }
+        await page.waitForFunction(() => window.criteriaWindowPreview.data.get('dw_price').dw.root.contains(document.activeElement),
+          null, { timeout: 5000 })
+        await page.keyboard.press('Tab')
+        await page.waitForFunction(() => window.criteriaWindowPreview.el('cb_ok') === document.activeElement,
+          null, { timeout: 5000 })
+      } else if (owner.name === 'w_arg_sdate_cashflow_crosstab') {
+        await form.getByRole('radio', { name: 'Cash Accounts', exact: true }).focus()
+        await page.keyboard.press('ArrowRight')
+        assert.equal(await form.getByRole('radio', { name: 'Bank Accounts', exact: true }).isChecked(), true)
+        await form.getByRole('checkbox', { name: 'Show Accounts with Transactions only', exact: true }).focus()
+        await page.keyboard.press('Space')
+        code = 2
+      } else {
+        await form.getByRole('radio', { name: 'Show cust/supp', exact: true }).focus()
+        await page.keyboard.press('ArrowRight')
+        assert.equal(await form.getByRole('radio', { name: 'Show Remarks', exact: true }).isChecked(), true)
+        name = 'Y'
+      }
+      await form.getByRole('button', { name: 'Ok', exact: true }).focus()
+      await page.keyboard.press('Enter')
+      await page.waitForFunction(() => !window.criteriaWindowPreview.window.isOpen)
+      assert.deepEqual(await page.evaluate(() => {
+        const f = window.criteriaWindowPreview, result = f.returned()
+        return [result.pbGet('i_status'), result.pbGet('l_code1'), result.pbGet('l_code2'), result.pbGet('s_name1'),
+          f.events.filter((event) => event.target === f.window.children.get('cb_ok') && event.event === 'clicked').length,
+          f.el('em_enddate').getAttribute('aria-invalid')]
+      }), [1, code, 0, name, 2, null], `${owner.name}: actual choice and recovery return exact codes through one corrected acceptance`)
+    } finally { await page.evaluate(() => window.criteriaWindowPreview.close()) }
+  }
+}
+
+async function checkNativeDateInput(page, names = ['w_arg_sdate', 'w_arg_sdate_notime', 'w_arg_sdate_ldate', 'w_arg_ason']) {
+  await page.setViewportSize({ width: 1366, height: 768 })
+  for (const name of names) {
     await page.evaluate((name) => window.openCriteriaWindowPreview(name), name)
     try {
       const form = page.locator('.presentation-modern-dialog[open]>.modern-window')
@@ -479,6 +970,8 @@ await cp(resolve(here, 'presentation-selector-variants-browser.mjs'), resolve(ro
 await cp(resolve(here, 'presentation-transaction-bands-browser.mjs'), resolve(root, 'presentation-transaction-bands-browser.mjs'))
 await cp(resolve(here, 'presentation-criteria-browser.mjs'), resolve(root, 'presentation-criteria-browser.mjs'))
 await cp(resolve(here, 'presentation-criteria-window-browser.mjs'), resolve(root, 'presentation-criteria-window-browser.mjs'))
+await cp(resolve(here, 'presentation-datawindow-calendar-browser.mjs'), resolve(root, 'presentation-datawindow-calendar-browser.mjs'))
+await cp(resolve(here, 'presentation-print-browser.mjs'), resolve(root, 'presentation-print-browser.mjs'))
 const source = resolve(here, '..', '..', 'data', 'src', 'dw')
 const index = JSON.parse(await readFile(resolve(source, '_index.json'), 'utf8'))
 const definitions = {}
@@ -536,6 +1029,7 @@ const criteriaClasses = []
 for (const [name, library, kind] of [
   ...CRITERIA_WINDOW_SURFACES.map((surface) => [surface.name, surface.library, 'window']),
   ['w_arguements', 'reports', 'window'], ['s_arguements', 'reportviewer', 'structure'],
+  ['w_calendar', 'components', 'window'], ['w_calendar2', 'components', 'window'],
   ['w_popup_forselection', 'components', 'window'], ['w_popup_forselection_walias', 'components', 'window'],
   ['s_popup_selection', 'components', 'structure'],
   ['u_dwstandard', 'components', 'userobject'],
@@ -562,6 +1056,23 @@ for (const surface of CRITERIA_WINDOW_SURFACES) for (const binding of surface.da
   }
 }
 await writeFile(resolve(root, 'presentation-criteria-windows.json'), JSON.stringify({ classes: criteriaClasses, data: criteriaWindowData }))
+const { file: commentsSource, errors: commentsErrors } = parseScriptFile(await readFile(
+  resolve(here, '..', '..', 'data', 'src', 'scripts', 'custcomponents', 'w_customercomments.pbs'), 'utf8'))
+assert.deepEqual(commentsErrors, [], 'Parse original customer-comment F4 override')
+const commentsCalendar = commentsSource.routines.filter((routine) => routine.owner === 'dw_itemsdetail' && routine.name === 'ue_dwnkey')
+assert.equal(commentsCalendar.length, 1)
+const { file: standardSource, errors: standardErrors } = parseScriptFile(await readFile(
+  resolve(here, '..', '..', 'data', 'src', 'scripts', 'components', 'u_dwstandard.pbs'), 'utf8'))
+assert.deepEqual(standardErrors, [], 'Parse original standard DataWindow routines')
+const standardRoutines = {}
+for (const routine of standardSource.routines) ((standardRoutines[routine.owner] ??= {})[routine.name] ??= []).push(routine)
+assert.equal(standardRoutines.u_dwstandard.ue_dwnkey.length, 1)
+await writeFile(resolve(root, 'presentation-datawindow-calendar.json'), JSON.stringify({
+  classes: [criteriaClasses.find((definition) => definition.name === 'w_calendar2'),
+    { ...criteriaClasses.find((definition) => definition.name === 'u_dwstandard'), routines: standardRoutines }],
+  comments: { routines: { dw_itemsdetail: { ue_dwnkey: commentsCalendar } } },
+  data: definitions.d_arg_date,
+}))
 for (const surface of WINDOW_SURFACES) {
   const definition = JSON.parse(await readFile(resolve(here, '..', '..', 'data', 'src', 'objects', surface.library, 'window', surface.name + '.json'), 'utf8'))
   const { file, errors } = parseScriptFile(await readFile(resolve(here, '..', '..', 'data', 'src', 'scripts', surface.library, surface.name + '.pbs'), 'utf8'))
@@ -917,7 +1428,18 @@ const focusedCategory = process.argv[4] === '--category-only'
 const focusedColors = process.argv[4] === '--forced-colors-only'
 const focusedCriteria = process.argv[4] === '--criteria-only'
 const focusedCriteriaWindows = process.argv[4] === '--criteria-windows-only'
-await Promise.all([focusedCriteriaWindows ? 'criteria-window-result.json' : focusedCriteria ? 'criteria-result.json' : focusedColors ? 'forced-colors-result.json' : focusedCategory ? 'category-result.json' : focusedPayment ? 'payment-result.json' : focusedCashier ? 'cashier-result.json' : focusedInvoices ? 'associated-invoice-result.json' : focusedBands ? 'transaction-band-result.json' : focusedLookups ? 'editable-lookup-result.json' : 'result.json', 'failure.png', 'failure-state.json']
+const focusedDateOptions = process.argv[4] === '--date-options-only'
+const focusedDateChoices = process.argv[4] === '--date-choices-only'
+const focusedCalendar = process.argv[4] === '--calendar-only'
+const focusedDataWindowCalendar = process.argv[4] === '--datawindow-calendar-only'
+const focusedDateNames = focusedCalendar ? ['w_arg_sdate', 'w_arg_sdate_notime', 'w_arg_sdate_ldate', 'w_arg_ason'] :
+  (focusedDateChoices ? DATE_CHOICE_CRITERIA_WINDOWS :
+  focusedDateOptions ? DATE_OPTION_CRITERIA_WINDOWS : []).map((owner) => owner.name)
+const criteriaWindowResult = focusedCalendar ? 'calendar-result.json' : focusedDateChoices ? 'date-choice-result.json' :
+  focusedDateOptions ? 'date-option-result.json' : 'criteria-window-result.json'
+const focusedPrint = process.argv[4] === '--print-only'
+const focusedSingleEntry = process.argv[4] === '--single-entry-only'
+await Promise.all([focusedSingleEntry ? 'single-entry-result.json' : focusedDataWindowCalendar ? 'datawindow-calendar-result.json' : focusedPrint ? 'print-result.json' : focusedDateNames.length || focusedCriteriaWindows ? criteriaWindowResult : focusedCriteria ? 'criteria-result.json' : focusedColors ? 'forced-colors-result.json' : focusedCategory ? 'category-result.json' : focusedPayment ? 'payment-result.json' : focusedCashier ? 'cashier-result.json' : focusedInvoices ? 'associated-invoice-result.json' : focusedBands ? 'transaction-band-result.json' : focusedLookups ? 'editable-lookup-result.json' : 'result.json', 'failure.png', 'failure-state.json']
   .map((name) => rm(resolve(output, name), { force: true })))
 const mime = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.json': 'application/json', '.png': 'image/png', '.ttf': 'font/ttf' }
 const server = createServer(async (request, response) => {
@@ -962,29 +1484,57 @@ try {
   })
   await page.goto(origin + '/presentation.html')
   await page.waitForFunction(() => window.presentationFixtureReady)
-  const result = await page.evaluate(({ focusedLookups, focusedBands, focusedInvoices, focusedCashier, focusedPayment, focusedCategory, focusedColors, focusedCriteria, focusedCriteriaWindows }) =>
-    focusedCriteriaWindows ? window.runCriteriaWindowChecks() : focusedCriteria ? window.runCriteriaChecks() : focusedColors ? window.runForcedColorChecks() : focusedCategory ? window.runCategoryChecks() : focusedPayment ? window.runPaymentChecks() :
+  const result = await page.evaluate(({ focusedLookups, focusedBands, focusedInvoices, focusedCashier, focusedPayment, focusedCategory, focusedColors, focusedCriteria, focusedCriteriaWindows, focusedDateNames, focusedPrint, focusedDataWindowCalendar, focusedSingleEntry }) =>
+    focusedSingleEntry ? window.runSingleEntryChecks() : focusedDataWindowCalendar ? window.runDataWindowCalendarChecks() : focusedPrint ? window.runPrintChecks() : focusedDateNames.length ? window.runCriteriaWindowChecks(focusedDateNames) : focusedCriteriaWindows ? window.runCriteriaWindowChecks() : focusedCriteria ? window.runCriteriaChecks() : focusedColors ? window.runForcedColorChecks() : focusedCategory ? window.runCategoryChecks() : focusedPayment ? window.runPaymentChecks() :
     focusedCashier ? window.runCashierChecks() :
     focusedInvoices ? window.runAssociatedInvoiceChecks() :
     focusedBands ? window.runTransactionBandChecks() :
-    focusedLookups ? window.runEditableLookupChecks() : window.runPresentationChecks(), { focusedLookups, focusedBands, focusedInvoices, focusedCashier, focusedPayment, focusedCategory, focusedColors, focusedCriteria, focusedCriteriaWindows })
+    focusedLookups ? window.runEditableLookupChecks() : window.runPresentationChecks(), { focusedLookups, focusedBands, focusedInvoices, focusedCashier, focusedPayment, focusedCategory, focusedColors, focusedCriteria, focusedCriteriaWindows, focusedDateNames, focusedPrint, focusedDataWindowCalendar, focusedSingleEntry })
   assert.deepEqual(result.failures, [], JSON.stringify(result))
   assert.deepEqual(result.errors, [], 'Runtime fixture errors must not be hidden by passing assertions')
   assert.deepEqual(pageErrors, [])
   assert.deepEqual(forbidden, [], 'Synthetic checks must not access a database or external server')
   assert.equal(await page.evaluate(() => window.fixtureNativeAccess), 0, 'Injected theme fixture must not access native globals')
   const nativeRequests = await page.evaluate(() => window.presentationNativeThemes.length)
-  if (focusedCriteriaWindows) {
-    await checkItemSelectionInput(page)
-    await checkNativeDateInput(page)
-    await checkLookupCriteriaInput(page)
-    await checkReferenceCriteriaInput(page)
-    const criteriaWindowCases = await captureCriteriaWindows(page, output)
+  if (focusedSingleEntry) {
+    await writeFile(resolve(output, 'single-entry-result.json'),
+      JSON.stringify({ ...result, singleEntryCases: [], pageErrors, forbidden }, null, 2) + '\n')
+    console.log(`Single entry: ${result.passed} assertions.`)
+  } else if (focusedDataWindowCalendar) {
+    await checkDataWindowCalendarInput(page)
+    const dataWindowCalendarCases = await captureCalendars(page, output, true)
+    assert.deepEqual(pageErrors, []); assert.deepEqual(forbidden, [])
+    assert.equal(await page.evaluate(() => window.fixtureNativeAccess), 0)
+    await writeFile(resolve(output, 'datawindow-calendar-result.json'),
+      JSON.stringify({ ...result, dataWindowCalendarCases, pageErrors, forbidden }, null, 2) + '\n')
+    console.log(`DataWindow calendar: ${result.passed} assertions; ${dataWindowCalendarCases.length} appearances.`)
+  } else if (focusedPrint) {
+    const printSettingsCases = await capturePrintSettings(page, output)
+    const printDocumentCases = await capturePrintDocuments(page, output)
+    assert.deepEqual(pageErrors, []); assert.deepEqual(forbidden, [])
+    assert.equal(await page.evaluate(() => window.fixtureNativeAccess), 0)
+    await writeFile(resolve(output, 'print-result.json'), JSON.stringify({ ...result, printSettingsCases, printDocumentCases, pageErrors, forbidden }, null, 2) + '\n')
+    console.log(`Print: ${result.passed} assertions; ${printSettingsCases.length} settings and ${printDocumentCases.length} document appearances; no printer access.`)
+  } else if (focusedCriteriaWindows || focusedDateNames.length) {
+    if (!focusedDateNames.length) {
+      await checkItemSelectionInput(page)
+      await checkNativeDateInput(page)
+      await checkLookupCriteriaInput(page)
+      await checkReferenceCriteriaInput(page)
+      await checkNumericCriteriaInput(page)
+    }
+    if (!focusedDateChoices && !focusedCalendar) await checkDateOptionInput(page)
+    if (!focusedDateOptions && !focusedCalendar) await checkDateChoiceInput(page)
+    if (focusedDateChoices) await checkNativeDateInput(page, ['w_arg_ason'])
+    if (focusedCalendar) await checkCalendarInput(page)
+    const calendarCases = focusedCalendar ? await captureCalendars(page, output) : []
+    const criteriaWindowCases = focusedCalendar ? [] : await captureCriteriaWindows(page, output, focusedDateNames.length ?
+      CRITERIA_WINDOW_SURFACES.filter((surface) => focusedDateNames.includes(surface.name)) : undefined)
     assert.deepEqual(pageErrors, [])
     assert.deepEqual(forbidden, [])
     assert.equal(await page.evaluate(() => window.fixtureNativeAccess), 0)
-    await writeFile(resolve(output, 'criteria-window-result.json'), JSON.stringify({ ...result, criteriaWindowCases, pageErrors, forbidden }, null, 2) + '\n')
-    console.log(`Criteria windows: ${result.passed} assertions; ${criteriaWindowCases.length} appearance cases.`)
+    await writeFile(resolve(output, criteriaWindowResult), JSON.stringify({ ...result, criteriaWindowCases, calendarCases, pageErrors, forbidden }, null, 2) + '\n')
+    console.log(`Criteria windows: ${result.passed} assertions; ${criteriaWindowCases.length} criteria and ${calendarCases.length} calendar appearance cases.`)
   } else if (focusedCriteria) {
     const criteriaCases = await captureCriteria(page, output)
     assert.deepEqual(pageErrors, [])
@@ -2750,16 +3300,25 @@ try {
   const criteriaCases = await captureCriteria(page, output)
   await checkItemSelectionInput(page)
   await checkNativeDateInput(page)
+  await checkCalendarInput(page)
   await checkLookupCriteriaInput(page)
   await checkReferenceCriteriaInput(page)
+  await checkNumericCriteriaInput(page)
+  await checkDateOptionInput(page)
+  await checkDateChoiceInput(page)
   const criteriaWindowCases = await captureCriteriaWindows(page, output)
+  const calendarCases = await captureCalendars(page, output)
+  await checkDataWindowCalendarInput(page)
+  const dataWindowCalendarCases = await captureCalendars(page, output, true)
   const forcedColors = await checkForcedColors(page, output)
+  const printSettingsCases = await capturePrintSettings(page, output)
+  const printDocumentCases = await capturePrintDocuments(page, output)
   assert.deepEqual(forcedColors.failures, [])
   assert.deepEqual(pageErrors, [])
   assert.deepEqual(forbidden, [])
   assert.equal(await page.evaluate(() => window.fixtureNativeAccess), 0)
-  await writeFile(resolve(output, 'result.json'), JSON.stringify({ ...result, surfaceCases, windowCases, calculatorCases, entryCases, singleEntryCases, contactCases, contactCardCases, dropdownCases, editableLookupCases, automaticChoiceCases, selectorVariantCases, transactionBandCases, associatedInvoiceCases, cashierCases, paymentCases, categoryCases, criteriaCases, criteriaWindowCases, forcedColors, pageErrors, forbidden }, null, 2) + '\n')
-  console.log(`Presentation: ${result.passed} browser assertions; four viewport sizes; ${surfaceCases.length} surface, ${windowCases.length} dialog, ${calculatorCases.length} calculator, ${entryCases.length} aging-entry, ${singleEntryCases.length} single-entry, ${contactCases.length} contact-group, ${contactCardCases.length} contact-card, ${dropdownCases.length} editable-dropdown, ${editableLookupCases.length} editable-lookup, ${automaticChoiceCases.length} automatic-choice, ${selectorVariantCases.length} selector-variant, ${transactionBandCases.length} transaction-band, ${associatedInvoiceCases.length} associated-invoice, ${cashierCases.length} cashier, ${paymentCases.length} payment, ${categoryCases.length} category, ${criteriaCases.length} criteria and ${criteriaWindowCases.length} criteria-window appearance cases; no database or external requests.`)
+  await writeFile(resolve(output, 'result.json'), JSON.stringify({ ...result, surfaceCases, windowCases, calculatorCases, calendarCases, dataWindowCalendarCases, entryCases, singleEntryCases, contactCases, contactCardCases, dropdownCases, editableLookupCases, automaticChoiceCases, selectorVariantCases, transactionBandCases, associatedInvoiceCases, cashierCases, paymentCases, categoryCases, criteriaCases, criteriaWindowCases, printSettingsCases, printDocumentCases, forcedColors, pageErrors, forbidden }, null, 2) + '\n')
+  console.log(`Presentation: ${result.passed} browser assertions; four viewport sizes; ${surfaceCases.length} surface, ${windowCases.length} dialog, ${calculatorCases.length} calculator, ${calendarCases.length} calendar, ${dataWindowCalendarCases.length} DataWindow-calendar, ${entryCases.length} aging-entry, ${singleEntryCases.length} single-entry, ${contactCases.length} contact-group, ${contactCardCases.length} contact-card, ${dropdownCases.length} editable-dropdown, ${editableLookupCases.length} editable-lookup, ${automaticChoiceCases.length} automatic-choice, ${selectorVariantCases.length} selector-variant, ${transactionBandCases.length} transaction-band, ${associatedInvoiceCases.length} associated-invoice, ${cashierCases.length} cashier, ${paymentCases.length} payment, ${categoryCases.length} category, ${criteriaCases.length} criteria and ${criteriaWindowCases.length} criteria-window appearance cases; no database or external requests.`)
   }
   }
   }

@@ -16,6 +16,8 @@ import { keyEnum, keyFlags } from './keys.ts'
 import { messageButtons } from './message-buttons.ts'
 import { TabSelection, tabAvailable } from './tab-selection.ts'
 import { DropdownView } from './dropdown.ts'
+import { NCalendar } from '../runtime/native/calendar.ts'
+import { CalendarView } from './calendar.ts'
 
 let nextTabControl = 0
 let nextRadioGroup = 0
@@ -166,6 +168,7 @@ export class DomUi implements UiHost {
       const cv = wv.ctlViews.get(o)
       if (cv) return {
         focus: () => {
+          if (cv.calendar) { cv.calendar.focus(); return }
           const editor = cv.dw?.editor
           const tab = cv.el.querySelector<HTMLElement>(':scope > [role=tablist] > [role=tab][tabindex="0"]')
           const input = cv.el.querySelector<HTMLElement>('input:not([hidden]),textarea:not([hidden]),select:not([hidden]),button:not([hidden])')
@@ -311,6 +314,7 @@ class CtlView {
   ui: DomUi
   dw: DwView | null = null
   dropdown: DropdownView | null = null
+  calendar: CalendarView | null = null
   constructor(ui: DomUi, obj: PBObject, el: HTMLElement) {
     this.ui = ui
     this.obj = obj
@@ -520,6 +524,7 @@ export class WinView {
     this.el.classList.remove('hidden')
     this.syncWindow()
     this.activate()
+    for (const control of this.ctlViews.values()) control.calendar?.shown()
     // first focus: the control the opening script gave the keyboard to
     // (SetFocus during Open records lastFocusDw); otherwise the lowest tab order
     const first = this.firstFocusable()
@@ -565,6 +570,7 @@ export class WinView {
     for (const control of this.ctlViews.values()) {
       control.dw?.dispose()
       control.dropdown?.dispose()
+      control.calendar?.dispose()
     }
     if (this.toolbarTimer) clearInterval(this.toolbarTimer)
     this.el.remove()
@@ -883,7 +889,13 @@ export class WinView {
         setMnemonic(b, str(c, 'text'))
         this.style(c, b)
         b.disabled = !bool(c, 'enabled', true)
-        b.onclick = () => void rt.fire(c, 'clicked').then(() => rt.flushPosted()).then(() => rt.flushPosted())
+        b.onclick = () => void (async () => {
+          for (const control of this.ctlViews.values()) if (control.calendar) await control.calendar.settled()
+          if (this.destroyed || b.disabled) return
+          await rt.fire(c, 'clicked')
+          await rt.flushPosted()
+          await rt.flushPosted()
+        })().catch((error) => rt.onError(error))
         b.onfocus = () => void rt.fire(c, 'getfocus')
         wire(b)
         el = b
@@ -1014,6 +1026,19 @@ export class WinView {
         f.style.pointerEvents = 'none'
         el = f
         break
+      }
+      case 'monthcalendar': {
+        if (!(c instanceof NCalendar)) throw new Error(`Missing native calendar: ${c.name}`)
+        const calendar = new CalendarView(c)
+        this.style(c, calendar.el)
+        this.place(c, calendar.el)
+        this.watch(c, () => {
+          this.refresh(c, calendar.el)
+          calendar.refresh()
+        })
+        const view = new CtlView(this.ui, c, calendar.el)
+        view.calendar = calendar
+        return view
       }
       case 'dropdownlistbox': {
         if (!(c instanceof NControl)) throw new Error(`Missing native dropdown control: ${c.name}`)

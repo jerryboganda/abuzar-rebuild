@@ -8,6 +8,7 @@ import { dwMultiline } from '../dw/edit.ts'
 export interface DataSurfaceField {
   object: string
   labelObject?: string
+  labelBand?: 'header' | 'detail'
   label?: string
   suffixObject?: string
   kind?: 'computed'
@@ -258,7 +259,7 @@ export function dataSurfaceIssues(def: DwDef, surface: DataSurface, overrides?: 
     used.add(field.object)
     if (field.labelObject) {
       const label = objects.get(field.labelObject)
-      if (!label || label.type !== 'text' || label.band !== (processing === 1 ? 'header' : 'detail')) issues.push(`Unsupported label: ${field.labelObject}`)
+      if (!label || label.type !== 'text' || label.band !== (field.labelBand ?? (processing === 1 ? 'header' : 'detail'))) issues.push(`Unsupported label: ${field.labelObject}`)
       if (!label?.text?.trim() && !field.label?.trim()) issues.push(`Missing label: ${field.object}`)
       if (used.has(field.labelObject)) issues.push(`Duplicate label: ${field.labelObject}`)
       used.add(field.labelObject)

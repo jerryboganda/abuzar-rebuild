@@ -3,11 +3,11 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { gunzipSync } from 'node:zlib'
-import { WINDOW_SURFACES, CALCULATOR_WINDOW_SURFACES, CRITERIA_WINDOW_SURFACES, LOOKUP_CRITERIA_WINDOWS, REFERENCE_CRITERIA_WINDOWS, windowSurfaceIssues, ENTRY_WINDOW_SURFACES, entryWindowIssues } from '../src/ui/window-surfaces.ts'
+import { WINDOW_SURFACES, CALCULATOR_WINDOW_SURFACES, CRITERIA_WINDOW_SURFACES, LOOKUP_CRITERIA_WINDOWS, REFERENCE_CRITERIA_WINDOWS, NUMERIC_CRITERIA_WINDOWS, DATE_OPTION_CRITERIA_WINDOWS, DATE_CHOICE_CRITERIA_WINDOWS, windowSurfaceIssues, ENTRY_WINDOW_SURFACES, entryWindowIssues } from '../src/ui/window-surfaces.ts'
 import { Runtime } from '../src/runtime/interp.ts'
 import { entryControls } from '../src/ui/modern-entry-window.ts'
 import { DATA_SURFACES, dataSurfaceIssues } from '../src/ui/data-surfaces.ts'
-import type { DwDef } from '../src/dw/def.ts'
+import { colKind, type DwDef } from '../src/dw/def.ts'
 import { codeTable } from '../src/dw/choices.ts'
 import { numericSpin } from '../src/ui/numeric-spin.ts'
 
@@ -34,8 +34,12 @@ for (const surface of CRITERIA_WINDOW_SURFACES) {
       assert.deepEqual(dataSurfaceIssues(dataDefinition(binding.surface.name), binding.surface), [])
     }
     for (const option of surface.options ?? []) {
+      const dateOptions = DATE_OPTION_CRITERIA_WINDOWS.find((owner) => owner.name === surface.name)
+      const dateChoice = DATE_CHOICE_CRITERIA_WINDOWS.find((owner) => owner.name === surface.name)
       assert.equal(window.children.get(option.control)!.pbGet('visible'), option.control === 'cbx_all' ||
-        surface.name === 'w_arg_supp_label' && option.control === 'cbx_supress')
+        surface.name === 'w_arg_scode_lcode' && ['cbx_supress', 'cbx_hide'].includes(option.control) ||
+        surface.name === 'w_arg_supp_label' && option.control === 'cbx_supress' ||
+        [...(dateOptions?.checkboxes ?? []), ...(dateOptions?.radios ?? []), ...(dateChoice?.order ?? [])].includes(option.control))
       assert.ok(windowSurfaceIssues(controls, { ...surface, options: surface.options!.filter((item) => item !== option) })
         .includes(`Unmapped control: ${option.control}`))
       assert.ok(windowSurfaceIssues(controls.map((control) => control.name === option.control ?
@@ -79,6 +83,52 @@ for (const surface of CRITERIA_WINDOW_SURFACES) {
     window.destroy()
   })
 }
+
+test('date-option layouts keep native source options and hidden data scoped to their owners', () => {
+  for (const owner of DATE_OPTION_CRITERIA_WINDOWS) {
+    const surface = CRITERIA_WINDOW_SURFACES.find((surface) => surface.name === owner.name)!
+    const source = JSON.parse(readFileSync(resolve(import.meta.dirname, '..', '..', 'data', 'src',
+      'objects', 'reports', 'window', owner.name + '.json'), 'utf8'))
+    assert.equal(source.ancestor, 'w_arguements')
+    assert.deepEqual(surface.fields, [
+      { control: 'em_startdate', label: 'st_1' }, { control: 'em_enddate', label: 'st_2' },
+    ])
+    assert.deepEqual(surface.contentOrder!.slice(0, 2), ['em_startdate', 'em_enddate'])
+    assert.equal(surface.data![0].surface.name, 'd_arg_cust')
+    const control = source.controls.find((item: { name: string }) => item.name === 'dw_control')
+    assert.equal(control.fields.find((item: { name: string }) => item.name === 'visible').value, false)
+    for (const [controls, native] of [[owner.checkboxes, 'checkbox'], [owner.radios ?? [], 'radiobutton']] as const) {
+      for (const name of controls) {
+        const definition = source.controls.find((item: { name: string }) => item.name === name)
+        assert.equal(definition.ancestor, native)
+        assert.equal(definition.fields.find((item: { name: string }) => item.name === 'visible').value, true)
+        assert.ok(definition.fields.find((item: { name: string; value: unknown }) => item.name === 'text' && item.value))
+        assert.ok(surface.options!.some((option) => option.control === name && option.native === native))
+      }
+    }
+  }
+})
+
+test('date-choice owners preserve scoped cost/payment choices and literal external labels', () => {
+  for (const owner of DATE_CHOICE_CRITERIA_WINDOWS) {
+    const surface = CRITERIA_WINDOW_SURFACES.find((surface) => surface.name === owner.name)!
+    assert.deepEqual(surface.contentOrder!.slice(0, owner.order.length), owner.order)
+    if (!owner.price) continue
+    const binding = surface.data!.find((binding) => binding.control === 'dw_price')!
+    const field = binding.surface.fields[0], definition = dataDefinition(binding.surface.name)
+    assert.deepEqual(binding.labels, [{ field: field.object, control: 'st_4' }])
+    assert.ok(!DATA_SURFACES.some((global) => global.name === binding.surface.name))
+    assert.equal(definition.table.columns[0].initial, field.object === 'price' ? '6' : '1')
+    if (field.object === 'price') {
+      assert.deepEqual(field.choice, {
+        kind: 'lookup', name: 'ddd_pricetype_avg_rpp', dataColumn: 'pricetypecode', displayColumn: 'name',
+      })
+      assert.match(dataDefinition('ddd_pricetype_avg_rpp').table.retrieve!, /PriceTypeCode IN \(5,6\)/)
+    } else {
+      assert.deepEqual(codeTable(definition, definition.objects[0]), [['Cash', '1'], ['Credit', '2'], ['Both', '3']])
+    }
+  }
+})
 
 test('zone/top-customer criteria bind a context-only editable zone and both original buffers', () => {
   const surface = CRITERIA_WINDOW_SURFACES.find((surface) => surface.name === 'w_arg_zone_sdate_ldate_top_n_customer')!
@@ -181,6 +231,48 @@ test('reference-text criteria share their exact source column and retain owner-s
       'reports', 'window', name + '.json'), 'utf8'))
     assert.equal(owner.controls.find((control: { name: string }) => control.name === 'st_3')?.fields
       .find((field: { name: string }) => field.name === 'text')?.value, caption)
+  }
+})
+
+test('numeric criteria preserve source field types, percentage rules and two external range captions', () => {
+  for (const [name, data] of NUMERIC_CRITERIA_WINDOWS) {
+    const surface = CRITERIA_WINDOW_SURFACES.find((surface) => surface.name === name)!
+    const binding = surface.data![0], source = dataDefinition(data), fields = binding.surface.fields
+    const range = fields.length === 2
+    assert.deepEqual(fields.map((field) => field.object), source.table.columns.map((column) => column.name))
+    assert.deepEqual(source.table.columns.map((column) => column.type), fields.map(() =>
+      ['d_arg_discperc', 'd_arg_gstperc'].includes(data) ? 'decimal(2)' : 'long'))
+    assert.deepEqual(binding.labels, fields.map((field, index) => ({ field: field.object, control: index ? 'st_2' : 'st_3' })))
+    assert.deepEqual(surface.fields, [
+      { control: 'em_startdate', label: 'st_1' }, { control: 'em_enddate', label: range ? 'st_4' : 'st_2' },
+    ])
+    assert.deepEqual(surface.captions, range ? ['st_3', 'st_2'] : ['st_3'])
+    assert.ok(!DATA_SURFACES.some((surface) => surface.name === data))
+    if (data === 'd_arg_days') {
+      assert.equal(fields[0].labelBand, 'header')
+      assert.ok(dataSurfaceIssues(source, { ...binding.surface, fields: [{ ...fields[0], labelBand: undefined }] })
+        .includes('Unsupported label: day_t'))
+      const changed = structuredClone(source)
+      changed.objects.find((object) => object.name === 'day_t')!.band = 'detail'
+      assert.ok(dataSurfaceIssues(changed, binding.surface).includes('Unsupported label: day_t'))
+    }
+    const owner = JSON.parse(readFileSync(resolve(import.meta.dirname, '..', '..', 'data', 'src', 'objects',
+      'reports', 'window', name + '.json'), 'utf8'))
+    for (const [index, field] of fields.entries()) {
+      const object = source.objects.find((object) => object.name === field.object)!
+      assert.equal(object.tabsequence, String((index + 1) * 10))
+      const caption = owner.controls.find((control: { name: string }) => control.name === (index ? 'st_2' : 'st_3'))
+      assert.equal(caption.fields.find((property: { name: string }) => property.name === 'text').value, field.label)
+      const spin = numericSpin(object, colKind(source.table.columns[index].type))
+      if (data === 'd_arg_discperc') {
+        assert.deepEqual(spin, { kind: 'number', minimum: 0, maximum: 100, increment: 1 })
+      } else assert.deepEqual(spin, { kind: 'none' })
+    }
+    if (['d_arg_discperc', 'd_arg_gstperc'].includes(data)) {
+      assert.equal(source.table.columns[0].initial, '0')
+      assert.match(source.table.columns[0].validation!, /real\(gettext\(\)\) >= 0 AND real\(gettext\(\)\) <= 100/i)
+    }
+    if (range) assert.deepEqual(surface.options!.slice(0, 2).map((option) => option.control), ['cbx_supress', 'cbx_hide'])
   }
 })
 
@@ -452,13 +544,29 @@ const richerFields = new Map([
   ['w_itempacking_form', [['code', 'name', 'numericalfactor'], ['code', 'name']]],
   ['w_measuringunit_form', [['code', 'name', 'measureqty'], ['code', 'name', 'measureqty']]],
   ['w_transportroute_form', [['code', 'name', 'transportcharges'], ['name', 'transportcharges', 'code']]],
+  ['w_dischargerefferal_form', [['code', 'name'], ['name']]],
+  ['w_vehicletype_form', [['code', 'name'], ['name', 'code']]],
+  ['w_pctcodes_form', [['code', 'name', 'remarks'], ['name', 'remarks']]],
+  ['w_tests_form', [['code', 'name', 'testprice'], ['code', 'name']]],
+  ['w_itemmeter_form', [['code', 'name', 'description', 'currentreading'], ['name', 'description', 'code', 'currentreading']]],
+  ['w_biometricmachine', [['code', 'name', 'manufacturer', 'model', 'ipaddress', 'port'], ['name', 'ipaddress', 'port', 'manufacturer', 'model', 'code']]],
+  ['w_crs_clientlist', [['code', 'name', 'address1', 'address2', 'phone', 'phone2', 'fax', 'email', 'web', 'cp', 'cpphone', 'cpmobile'], ['code', 'name', 'address1', 'address2', 'phone', 'phone2', 'fax', 'email', 'web', 'cp', 'cpphone', 'cpmobile']]],
+  ['w_custsector_form', [['code', 'name', 'aliasname', 'description'], ['name', 'aliasname', 'description', 'code']]],
+  ['w_dosage_form', [['code', 'name', 'dosefactor', 'description', 'localdosage'], ['compute_1', 'code', 'name', 'localdosage']]],
+  ['w_instruction_form', [['code', 'name', 'description', 'localinstruction'], ['compute_1', 'code', 'name', 'localinstruction']]],
+  ['w_precaution_form', [['code', 'name', 'localprecaution'], ['name', 'localprecaution', 'code']]],
+  ['w_region_form', [['code', 'name', 'manager', 'remarks'], ['code', 'name']]],
+  ['w_route_form', [['code', 'name', 'description', 'localroute'], ['compute_1', 'code', 'name', 'localroute']]],
+  ['w_saletype_form', [['code', 'name', 'description', 'counter'], ['code', 'name']]],
+  ['w_weighingscale_form', [['code', 'name', 'manufacturer', 'model', 'scaleid', 'scaleidpos', 'barcodelen', 'itemstartpos', 'itemendpos', 'weightstartpos', 'weightendpos'], ['code', 'name', 'manufacturer', 'model', 'scaleid']]],
 ])
 
-test('entry registry has 43 Code/Name and 36 richer single-entry windows without duplicate identities', () => {
+test('entry registry has 43 Code/Name and 51 custom single-entry windows without duplicate identities', () => {
   const singles = ENTRY_WINDOW_SURFACES.filter((surface) => surface.family === 'single')
-  assert.equal(singles.length, 79)
+  assert.equal(singles.length, 94)
   assert.equal(singles.filter((surface) => !richerFields.has(surface.name)).length, 43)
-  assert.equal(ENTRY_WINDOW_SURFACES.length, 82)
+  assert.equal(singles.filter((surface) => richerFields.has(surface.name)).length, 51)
+  assert.equal(ENTRY_WINDOW_SURFACES.length, 97)
   assert.equal(new Set(ENTRY_WINDOW_SURFACES.map((surface) => surface.name)).size, ENTRY_WINDOW_SURFACES.length)
 })
 

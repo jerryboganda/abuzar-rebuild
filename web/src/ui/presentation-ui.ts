@@ -3,8 +3,10 @@ import type { Runtime } from '../runtime/interp.ts'
 import { NWindow } from '../runtime/native/controls.ts'
 import { PBObject } from '../runtime/object.ts'
 import type { NDwBase } from '../runtime/native/dwctrl.ts'
-import type { PresentationSession } from '../app/ui-preferences.ts'
+import type { InterfaceMode, PresentationSession } from '../app/ui-preferences.ts'
 import { validatePreferences } from '../app/ui-preferences.ts'
+import { printDw } from './print.ts'
+import { printFamilies, printTemplateFor, resolvePrintPresentation } from './print-templates.ts'
 import { menuCommands, executeMenuCommand } from './menu-commands.ts'
 import { PRESENTATION_CSS } from './presentation-styles.ts'
 import { containDialogFocus, messageDialog, promptDialog } from './presentation-dialogs.ts'
@@ -295,7 +297,12 @@ export class PresentationUi extends DomUi {
       <label><span id="appearance-theme-label">Theme</span><select name="theme" aria-labelledby="appearance-theme-label"><option value="system">Windows preference</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
       <label><span id="appearance-density-label">Density</span><select name="density" aria-labelledby="appearance-density-label"><option value="compact">Compact</option><option value="comfortable">Comfortable</option></select></label>
       <label><span id="appearance-size-label">Text size</span><select name="textSize" aria-labelledby="appearance-size-label"><option value="100">100%</option><option value="125">125%</option><option value="150">150%</option><option value="175">175%</option><option value="200">200%</option></select></label>
-      <label><span id="appearance-print-label">Print layout</span><select name="printMode" aria-labelledby="appearance-print-label"><option value="classic">Classic</option><option value="modern" disabled>Modern (templates not verified yet)</option></select></label>
+      <label><span id="appearance-print-label">Print layout</span><select name="printMode" aria-labelledby="appearance-print-label" aria-describedby="appearance-print-help"><option value="classic">Classic</option><option value="modern">Modern</option></select></label>
+      <p id="appearance-print-help">Modern is available only for listed previews or approved templates. Other documents require Classic.</p>
+      <fieldset class="presentation-print-families"><legend>Document layouts</legend>
+        <p id="appearance-family-help">Default follows Print layout above. Choose Classic or Modern to override it for one document family. Preview templates are synthetic-checked only and are not approved for official documents.</p>
+        <div class="print-family-list"></div>
+      </fieldset>
       <p>Theme, density and text size apply to the Modern workspace. Compatibility forms and Classic printing retain their original presentation.</p>
       <p class="presentation-error" role="alert" hidden></p><footer><button type="button">Cancel</button><button type="submit">Save settings</button></footer></form>`
     dialog.querySelector('button[type=button]')!.addEventListener('click', () => dialog.close())
@@ -305,9 +312,16 @@ export class PresentationUi extends DomUi {
       const error = dialog.querySelector<HTMLElement>('.presentation-error')!
       try {
         const values = new FormData(dialog.querySelector('form')!)
+        const printFamilyValues: Record<string, InterfaceMode> = { ...this.session.preferences.printFamilies }
+        for (const select of dialog.querySelectorAll<HTMLSelectElement>('select[name^="printFamily:"]')) {
+          const family = select.name.slice('printFamily:'.length)
+          if (select.value === '') delete printFamilyValues[family]
+          else if (select.value === 'classic' || select.value === 'modern') printFamilyValues[family] = select.value
+          else throw new Error('Choose a supported document layout before saving settings.')
+        }
         const preferences = validatePreferences({
           version: 1, mode: values.get('mode'), theme: values.get('theme'), density: values.get('density'),
-          textSize: Number(values.get('textSize')), printMode: values.get('printMode'),
+          textSize: Number(values.get('textSize')), printMode: values.get('printMode'), printFamilies: printFamilyValues,
         })
         this.session.save(preferences)
         this.applyAppearance(true)
@@ -331,8 +345,41 @@ export class PresentationUi extends DomUi {
         select.value = String(value)
       }
     }
+    this.renderPrintFamilies()
     this.settings.querySelector<HTMLElement>('.presentation-error')!.hidden = true
     this.settings.showModal()
+  }
+
+  private renderPrintFamilies(): void {
+    const host = this.settings.querySelector<HTMLElement>('.print-family-list')!
+    host.replaceChildren()
+    for (const family of printFamilies()) {
+      const row = document.createElement('div')
+      row.className = 'print-family'
+      const label = document.createElement('label')
+      label.textContent = family.label
+      label.htmlFor = `appearance-family-${family.id}`
+      const select = document.createElement('select')
+      select.id = label.htmlFor
+      select.name = `printFamily:${family.id}`
+      select.setAttribute('aria-describedby', 'appearance-family-help')
+      select.append(new Option('Default', ''), new Option('Classic', 'classic'))
+      const modern = new Option('Modern', 'modern')
+      modern.disabled = family.status === 'blocked'
+      select.append(modern)
+      select.value = this.session.preferences.printFamilies[family.id] ?? ''
+      row.append(label, select)
+      if (family.status !== 'approved') {
+        const note = document.createElement('p')
+        note.id = `${select.id}-availability`
+        note.textContent = family.status === 'blocked'
+          ? `Not available: ${family.blockedReason || 'the template is blocked.'}`
+          : 'Preview only; requires document-level approval before official use.'
+        select.setAttribute('aria-describedby', `appearance-family-help ${note.id}`)
+        row.append(note)
+      }
+      host.append(row)
+    }
   }
 
   private applyAppearance(retryNative = false): void {
@@ -365,8 +412,14 @@ export class PresentationUi extends DomUi {
   }
 
   override print(control: NDwBase): Promise<boolean> {
-    if (this.session.preferences.printMode === 'modern') {
-      return Promise.reject(new Error('Modern print templates are not verified yet. Select Classic print layout in Appearance.'))
+    const definition = control.model?.name
+    const template = printTemplateFor(definition)
+    const requested = template ? this.session.printModeFor(template.family) : this.session.preferences.printMode
+    const resolved = resolvePrintPresentation(definition, requested, { preview: true })
+    if (resolved.presentation === 'modern') return printDw(control, { presentation: 'modern' })
+    if (requested === 'modern') {
+      return Promise.reject(new Error(resolved.notice ||
+        `No Modern print template is registered for ${definition || 'this document'}. Select Classic print layout.`))
     }
     return super.print(control)
   }
@@ -408,9 +461,8 @@ export class PresentationUi extends DomUi {
   }
 
   override printText(text: string): Promise<boolean> {
-    if (this.session.preferences.printMode === 'modern') {
-      return Promise.reject(new Error('Modern print templates are not verified yet. Select Classic print layout in Appearance.'))
-    }
+    // Plain-text print jobs are machine-consumed output, not a styled document
+    // family.  They keep the existing Classic/plain path regardless of layout.
     return super.printText(text)
   }
 

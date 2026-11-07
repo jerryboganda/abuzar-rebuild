@@ -29,6 +29,8 @@ import { checkSelectorVariants } from './presentation-selector-variants-browser.
 import { checkTransactionBands } from './presentation-transaction-bands-browser.mjs'
 import { checkCriteriaSurfaces } from './presentation-criteria-browser.mjs'
 import { checkCriteriaWindows } from './presentation-criteria-window-browser.mjs'
+import { checkDataWindowCalendar } from './presentation-datawindow-calendar-browser.mjs'
+import { checkModernPrint } from './presentation-print-browser.mjs'
 
 const field = (name, value, type = 'long') => ({ name, value, type, attr: '0xbc' })
 const definitions = new Map(['sale', 'purchase', 'response'].map((name) => [name, {
@@ -327,6 +329,8 @@ export async function runPresentationChecks() {
   await isolated(checkContactCardSurfaces, current, check, settle)
   await isolated(checkCriteriaSurfaces, current, check, settle)
   await isolated(checkCriteriaWindows, current, check, settle)
+  await isolated(checkDataWindowCalendar, current, check, settle)
+  await isolated(checkModernPrint, current, check, settle, storage)
   await teardown(current)
   storage.records.clear()
   current = await setup()
@@ -350,6 +354,8 @@ export async function runPresentationChecks() {
   await isolated(checkContactCardSurfaces, current, check, settle)
   await isolated(checkCriteriaSurfaces, current, check, settle)
   await isolated(checkCriteriaWindows, current, check, settle)
+  await isolated(checkDataWindowCalendar, current, check, settle)
+  await isolated(checkModernPrint, current, check, settle, storage)
   const nativeErrors = []
   const onError = current.rt.onError
   let nativeMessage
@@ -386,6 +392,34 @@ export async function runPresentationChecks() {
 
 current = await setup()
 window.runPresentationChecks = runPresentationChecks
+window.runPrintChecks = async () => {
+  let passed = 0
+  const failures = []
+  window.presentationCheckProgress = { get passed() { return passed }, failures }
+  const check = (condition, name) => { if (condition) passed++; else failures.push(name) }
+  for (const mode of ['classic', 'modern']) {
+    current.session.save({ ...current.session.preferences, mode })
+    await teardown(current)
+    current = await setup()
+    await isolated(checkModernPrint, current, (condition, name) => check(condition, `${mode}: ${name}`), settle, storage)
+  }
+  return { passed, failures, errors }
+}
+window.runSingleEntryChecks = async () => {
+  let passed = 0
+  const failures = []
+  window.presentationCheckProgress = { get passed() { return passed }, failures }
+  const check = (condition, name) => { if (condition) passed++; else failures.push(name) }
+  for (const mode of ['classic', 'modern']) {
+    current.session.save({ ...current.session.preferences, mode })
+    await teardown(current)
+    current = await setup()
+    await isolated(checkSingleEntrySurfaces, current, (condition, name) => check(condition, `${mode}: ${name}`), settle,
+      ['w_biometricmachine', 'w_crs_clientlist', 'w_custsector_form', 'w_dosage_form',
+        'w_instruction_form', 'w_precaution_form', 'w_region_form', 'w_route_form', 'w_saletype_form', 'w_weighingscale_form'])
+  }
+  return { passed, failures, errors }
+}
 window.runForcedColorChecks = async () => {
   let passed = 0
   const failures = []
@@ -407,7 +441,7 @@ window.runCriteriaChecks = async () => {
   }
   return { passed, failures, errors }
 }
-window.runCriteriaWindowChecks = async () => {
+window.runDataWindowCalendarChecks = async () => {
   let passed = 0
   const failures = []
   window.presentationCheckProgress = { get passed() { return passed }, failures }
@@ -416,7 +450,20 @@ window.runCriteriaWindowChecks = async () => {
     await current.session.save({ ...current.session.preferences, mode })
     await teardown(current)
     current = await setup()
-    await isolated(checkCriteriaWindows, current, (condition, name) => check(condition, `${mode}: ${name}`), settle)
+    await isolated(checkDataWindowCalendar, current, (condition, name) => check(condition, `${mode}: ${name}`), settle)
+  }
+  return { passed, failures, errors }
+}
+window.runCriteriaWindowChecks = async (onlyNames) => {
+  let passed = 0
+  const failures = []
+  window.presentationCheckProgress = { get passed() { return passed }, failures }
+  const check = (condition, name) => { if (condition) passed++; else failures.push(name) }
+  for (const mode of ['classic', 'modern']) {
+    await current.session.save({ ...current.session.preferences, mode })
+    await teardown(current)
+    current = await setup()
+    await isolated(checkCriteriaWindows, current, (condition, name) => check(condition, `${mode}: ${name}`), settle, onlyNames)
   }
   return { passed, failures, errors }
 }
