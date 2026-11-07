@@ -2,6 +2,8 @@
 // It reads the static inventory, the authored registries and optional measured
 // test results.  It never treats a mapping count as an accepted workflow and it
 // never invents native, hardware or assistive-technology evidence.
+// The registries below are imported live from web/src/ui, so run it from a clean
+// checkout of the commit being reported: uncommitted edits would change the counts.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
