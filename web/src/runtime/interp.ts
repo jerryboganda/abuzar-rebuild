@@ -134,10 +134,12 @@ export class Frame {
   types = new Map<string, string>()
   ret: unknown = null
   gotoLabel = ''
-  constructor(self: PBObject | null, routine: Routine | null, scriptIdx: number) {
+  caller: Frame | null
+  constructor(self: PBObject | null, routine: Routine | null, scriptIdx: number, caller: Frame | null = null) {
     this.self = self
     this.routine = routine
     this.scriptIdx = scriptIdx
+    this.caller = caller
   }
 }
 
@@ -304,7 +306,12 @@ export class Runtime {
 
   /** run the `create` events of an object and its controls (menu items set their captions there; each one chains to its ancestor's with `call super::create`) */
   private async runCreate(obj: PBObject): Promise<void> {
-    const own = obj.findRoutines('create').filter((e) => obj.scripts[e.idx].owner === obj.scripts[e.idx].cls.name)
+    // Nested menu controls inherit the script from the class that declares
+    // them (`owner` is the control name, `cls.name` is the declaring class),
+    // so filtering by owner discarded every control `create` event and left
+    // captions such as Death Certificate empty.  findRoutines returns the
+    // most specific entry first.
+    const own = obj.findRoutines('create')
     if (own.length) await this.runEntry(obj, own[0], [])
     await this.createChildren(obj)
   }
@@ -324,11 +331,11 @@ export class Runtime {
     return this.recent.slice(-n).map(([o, r]) => `${o.className}.${this.routineName(o, r)}`).join(' > ')
   }
 
-  async runEntry(self: PBObject, e: RoutineEntry, args: unknown[]): Promise<unknown> {
+  async runEntry(self: PBObject, e: RoutineEntry, args: unknown[], caller: Frame | null = null): Promise<unknown> {
     const r = e.r
     this.recent.push([self, r])
     if (this.recent.length > 24) this.recent.shift()
-    const f = new Frame(self, r, e.idx)
+    const f = new Frame(self, r, e.idx, caller)
     const refBack: { i: number; ref: Ref }[] = []
     r.params.forEach((p, i) => {
       let v = args[i]
@@ -369,7 +376,7 @@ export class Runtime {
     return entries.find((e) => e.r.params.length === argc) || entries.find((e) => e.r.params.length >= argc) || entries[0]
   }
 
-  async callMethod(obj: PBObject, name: string, args: unknown[]): Promise<unknown> {
+  async callMethod(obj: PBObject, name: string, args: unknown[], caller: Frame | null = null): Promise<unknown> {
     // n_winsock methods are Windows socket wrappers; the recovered scripts
     // call external DLLs the browser does not have.  Use the native model.
     if (obj.native === 'n_winsock' && name.startsWith('of_')) {
@@ -377,23 +384,27 @@ export class Runtime {
       if (typeof fn === 'function') return (fn as (...a: unknown[]) => unknown).apply(obj, args)
     }
     const entries = obj.findRoutines(name)
-    if (entries.length) return this.runEntry(obj, this.pick(entries, args.length)!, args)
-    return this.callNative(obj, name, args)
+    if (entries.length) return this.runEntry(obj, this.pick(entries, args.length)!, args, caller)
+    return this.callNative(obj, name, args, caller)
   }
 
-  async callNative(obj: PBObject, name: string, args: unknown[]): Promise<unknown> {
+  async callNative(obj: PBObject, name: string, args: unknown[], caller: Frame | null = null): Promise<unknown> {
+    // Scope the ItemChanged no-op to this script call chain, not concurrent UI actions.
+    if (name === 'accepttext') for (let frame = caller; frame; frame = frame.caller) {
+      if (frame.self === obj && frame.routine?.event && frame.routine.name === 'itemchanged') return 1
+    }
     const nm = (obj as unknown as Record<string, unknown>)['n_' + name]
     if (typeof nm === 'function') return (nm as (...a: unknown[]) => unknown).apply(obj, args)
     // generic powerobject methods
     switch (name) {
       case 'triggerevent':
       case 'postevent': {
-        const ev = typeof args[0] === 'string' ? args[0].toLowerCase() : String(args[0]).replace(/!$/, '').toLowerCase()
+        const ev = String(args[0]).replace(/!$/, '').toLowerCase()
         if (name === 'postevent') {
           this.post(async () => void (await this.callMethod(obj, ev, args.slice(1))))
           return 1
         }
-        const r = await this.callMethod(obj, ev, args.slice(1))
+        const r = await this.callMethod(obj, ev, args.slice(1), caller)
         return r === null || r === undefined ? 1 : r
       }
       case 'classname':
@@ -559,9 +570,9 @@ export class Runtime {
         }
         // the compiled loop tests the limit expression again on every pass (`for i = 1 to ds.rowcount()` follows rows the body deletes)
         for (let i = a; ; i += step) {
+          await this.assign(s.v, i, f)
           const b = toNum(await this.eval(s.b, f))
           if (!(step > 0 ? i <= b : i >= b)) break
-          await this.assign(s.v, i, f)
           const sig = await this.execBlock(s.body, f)
           if (sig === EXIT) break
           if (sig === RETURN || sig === GOTO) return sig
@@ -627,7 +638,7 @@ export class Runtime {
         const entries = f.self.findRoutines(s.n, f.scriptIdx + 1)
         if (entries.length) {
           const args = f.routine ? f.routine.params.map((p) => f.locals.get(p.n)) : []
-          await this.runEntry(f.self, this.pick(entries, args.length)!, args)
+          await this.runEntry(f.self, this.pick(entries, args.length)!, args, f)
         }
         return NONE
       }
@@ -729,7 +740,7 @@ export class Runtime {
         const entries = f.self.findRoutines(e.n, f.scriptIdx + 1)
         const args: unknown[] = []
         for (const a of e.a) args.push(await this.eval(a, f))
-        if (entries.length) return this.runEntry(f.self, this.pick(entries, args.length)!, args)
+        if (entries.length) return this.runEntry(f.self, this.pick(entries, args.length)!, args, f)
         return null
       }
       case 'un': {
@@ -1049,7 +1060,7 @@ export class Runtime {
       for (let i = 0; i < e.a.length; i++) args.push(refIdx && refIdx.includes(i) ? await this.refWithValue(e.a[i], f) : await this.eval(e.a[i], f))
       if (recv === null || recv === undefined) throw new PBRuntimeError(`Null object reference (calling ${e.n})`)
       const run = async (): Promise<unknown> => {
-        if (recv instanceof PBObject) return this.callMethod(recv, e.n, args)
+        if (recv instanceof PBObject) return this.callMethod(recv, e.n, args, post ? null : f)
         const m = recv as Member
         if (m && m.pbCall) return m.pbCall(e.n, args, this)
         this.noteMissing('method:' + typeof recv + '.' + e.n)
@@ -1074,7 +1085,7 @@ export class Runtime {
         this.post(async () => void (await this.runEntry(self!, entry, args)))
         return 1
       }
-      return this.runEntry(self!, entry, args)
+      return this.runEntry(self!, entry, args, f)
     }
     // the object's native methods (this.settransobject ...) when called without receiver
     if (self) {
@@ -1082,7 +1093,11 @@ export class Runtime {
       if (typeof nm === 'function') {
         const args: unknown[] = []
         for (const a of e.a) args.push(await this.eval(a, f))
-        return (nm as (...a: unknown[]) => unknown).apply(self, args)
+        if (post) {
+          this.post(async () => void (await this.callNative(self, name, args)))
+          return 1
+        }
+        return this.callNative(self, name, args, f)
       }
     }
     const sf = this.sys.get(name)
@@ -1107,14 +1122,14 @@ export class Runtime {
           this.post(async () => void (await this.runEntry(holder, entry, args)))
           return 1
         }
-        return this.runEntry(holder, entry, args)
+        return this.runEntry(holder, entry, args, f)
       }
     }
     // events/functions with a native default (triggerevent, postevent, classname ...)
     if (self && ['triggerevent', 'postevent', 'classname', 'typeof'].includes(name)) {
       const args: unknown[] = []
       for (const a of e.a) args.push(await this.eval(a, f))
-      return this.callNative(self, name, args)
+      return this.callNative(self, name, args, f)
     }
     this.noteMissing('fn:' + name)
     for (const a of e.a) await this.eval(a, f)

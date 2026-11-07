@@ -211,6 +211,27 @@ pub struct BackupReq {
     path: String,
 }
 
+/// Locate pg_dump: the server process often has a PATH without the PostgreSQL
+/// bin directory, so fall back to the standard Windows install location.
+fn pg_dump_exe() -> String {
+    if let Ok(p) = std::env::var("PG_DUMP") {
+        if !p.is_empty() {
+            return p;
+        }
+    }
+    for p in [
+        r"C:\PostgreSQL\17\bin\pg_dump.exe",
+        r"C:\Program Files\PostgreSQL\17\bin\pg_dump.exe",
+        "/usr/bin/pg_dump",
+        "/usr/local/bin/pg_dump",
+    ] {
+        if Path::new(p).is_file() {
+            return p.to_string();
+        }
+    }
+    "pg_dump".to_string()
+}
+
 /// `Backup Database <db> To <device>` of the original: a custom-format `pg_dump` of the company database to the given file (restore with `pg_restore`)
 pub async fn backup(Json(r): Json<BackupReq>) -> Json<Value> {
     let target = match resolve(&r.path) {
@@ -224,7 +245,8 @@ pub async fn backup(Json(r): Json<BackupReq>) -> Json<Value> {
         let _ = std::fs::create_dir_all(dir);
     }
     let file = target.clone();
-    let run = tokio::task::spawn_blocking(move || std::process::Command::new("pg_dump").arg("-Fc").arg("-f").arg(&file).arg(&url).output()).await;
+    let exe = pg_dump_exe();
+    let run = tokio::task::spawn_blocking(move || std::process::Command::new(exe).arg("-Fc").arg("-f").arg(&file).arg(&url).output()).await;
     match run {
         Ok(Ok(o)) if o.status.success() => Json(json!({ "ok": true, "path": target.to_string_lossy() })),
         Ok(Ok(o)) => Json(json!({ "ok": false, "error": String::from_utf8_lossy(&o.stderr).trim() })),

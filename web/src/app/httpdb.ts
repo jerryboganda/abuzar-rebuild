@@ -94,10 +94,21 @@ export class HttpDb implements Db {
   }
   /** `Backup Database <db> To <device> With INIT ...` (SQL Server): a pg_dump of the database into that file; the system databases have nothing to dump */
   private async backup(sql: string): Promise<boolean> {
-    const m = /^\s*backup\s+database\s+(\S+)\s+to\s+(?:disk\s*=\s*)?'([^']+)'/i.exec(sql)
+    let m: readonly string[] | null = /^\s*backup\s+database\s+(\S+)\s+to\s+(?:disk\s*=\s*)?'([^']+)'/i.exec(sql)
+    if (!m) {
+      // the recovered f_getbackupdevicename() returns an unquoted device
+      // name such as `<db>DBDump`, not a quoted file path
+      const u = /^\s*backup\s+database\s+(\S+)\s+to\s+(?:disk\s*=\s*)?(.+?)\s+with\b/i.exec(sql)
+      if (u) m = [u[0], u[1], u[2].trim().replace(/^'|'$/g, '')]
+    }
     if (!m) return false
     if (/^\[?(master|msdb|model)\]?$/i.test(m[1])) return true
-    const r = await fetch(this.base + '/api/backup', { method: 'POST', headers: { 'content-type': 'application/json', ...authHeaders() }, body: JSON.stringify({ path: m[2] }) })
+    let path = m[2].trim()
+    if (!/^[A-Za-z]:[\\/]/.test(path) && !path.startsWith('\\\\') && !path.startsWith('/')) {
+      path = 'backups/' + path.replace(/[^A-Za-z0-9._ -]/g, '_')
+    }
+    if (!/\.[A-Za-z0-9]{2,5}$/.test(path)) path += '.dump'
+    const r = await fetch(this.base + '/api/backup', { method: 'POST', headers: { 'content-type': 'application/json', ...authHeaders() }, body: JSON.stringify({ path }) })
     const j = (await r.json().catch(() => ({}))) as { ok?: boolean; error?: string }
     if (!j.ok) throw new Error(j.error || 'Backup failed')
     return true

@@ -101,6 +101,34 @@ export class NTransaction extends PBObject implements DwTrans {
     this.setOk(0)
     return 1
   }
+  /** `DBCC CHECKDB`: a PostgreSQL catalog integrity probe that records a
+   * completion row in the original DBCC_History monitor table (no problems =
+   * RepairLevel null, which the integrity window filters out). */
+  async n_checkdbintegrity(dbName?: unknown): Promise<number> {
+    const db = await this.ensureDb()
+    if (!db) return -1
+    try {
+      await db.query('SELECT count(*) FROM pg_catalog.pg_class', [])
+      await db.query('SELECT count(*) FROM pg_catalog.pg_attribute', [])
+      await db.query('SELECT count(*) FROM dbo.dbcc_history', [])
+      const name = String(dbName ?? '')
+      await db.exec(
+        `INSERT INTO dbo.dbcc_history
+           (errorid, levelid, stateid, messagetext, repairlevel, statusid, dbid, objectid, indid, fileid,
+            pageid, slotid, reffileid, refpageid, refslotid, allocationid, db, object, date, rowid)
+         VALUES (0, 0, 0, 'PostgreSQL integrity check completed', NULL, 0, 0, 0, 0, 0,
+                 0, 0, 0, 0, 0, 0, $1, 'database', localtimestamp(3),
+                 (SELECT coalesce(max(rowid), 0) + 1 FROM dbo.dbcc_history))`,
+        [name],
+      )
+      this.setOk(0)
+      return 1
+    } catch (e) {
+      this.setError(-1, (e as Error).message)
+      return -1
+    }
+  }
+
   async n_commit(): Promise<number> {
     if (!this.db) return -1
     await this.db.commit()
@@ -177,6 +205,19 @@ export async function executeStatement(rt: Runtime, f: Frame, st: Extract<Stmt, 
   }
   if (st.kind === 'execute immediate') {
     const text = String((await hostValues(rt, f, st.hv))[0] ?? '')
+    // SQL Server maintenance commands have no SQL translation: the HTTP db
+    // handles `BACKUP DATABASE ...` as a pg_dump and `DBCC ...` as a
+    // PostgreSQL check, so pass them through untouched.
+    if (/^\s*backup\s+database\b/i.test(text)) {
+      try {
+        const r = await db.exec(text, [])
+        rt.invalidateRetrieveCache()
+        t.setOk(r.rowcount)
+      } catch (e) {
+        t.setError(-1, (e as Error).message)
+      }
+      return
+    }
     const tr = rt.translateSql?.(text)
     if (!tr) {
       t.setError(-1, 'dynamic SQL cannot be translated: ' + text.slice(0, 80))

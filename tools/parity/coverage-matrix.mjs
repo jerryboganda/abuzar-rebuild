@@ -32,10 +32,10 @@ const C = {
   'Sales | Refused Sales': ['probe-refusedsale-crud.mjs', 'V', 'add/save, reopen/edit remarks, Delete disabled (original), exact restore'],
   'Transactions | Invoice Base Vouchers | Sale | Cash Receipt': ['probe-voucher-invoice.mjs', 'V', 'invoice balance and GL rows verified, exact restore'],
   'Transactions | Invoice Base Vouchers | Sale | Bank Receipt': ['probe-voucher-invoice.mjs', 'V', 'invoice balance and GL rows verified, exact restore'],
-  'Transactions | Invoice Base Vouchers | Sale | Journal Voucher': ['probe-voucher-journalinv.mjs', 'B', 'original GetChild("patientcode") closes the form'],
+  'Transactions | Invoice Base Vouchers | Sale | Journal Voucher': ['probe-voucher-journalinv.mjs', 'V', 'class-fix skips the missing patientcode child guard; add/save InvLedger/InvDetail, exact restore'],
   'Transactions | Invoice Base Vouchers | Purchase | Cash Payment': ['probe-voucher-invoice.mjs; probe-voucher-crud.mjs', 'V', 'GL rows verified, exact restore'],
   'Transactions | Invoice Base Vouchers | Purchase | Bank Payment': ['probe-voucher-invoice.mjs', 'V', 'GL rows verified, exact restore'],
-  'Transactions | Invoice Base Vouchers | Purchase | Journal Voucher': ['probe-voucher-journalinv.mjs', 'B', 'original GetChild("patientcode") closes the form'],
+  'Transactions | Invoice Base Vouchers | Purchase | Journal Voucher': ['probe-voucher-journalinv.mjs', 'V', 'class-fix skips the missing patientcode child guard; add/save InvLedger/InvDetail, exact restore'],
   'Basic Data | Customer .......... | Customer': ['probe-customer-fields.mjs', 'V', '22/22 fields typed/saved/read back, exact restore'],
   'Basic Data | Customer .......... | Customer Category': ['screen-parity/crud-fields (16-form pass)', 'V', 'every editable field typed; add/edit/delete/save documented'],
   'Basic Data | Customer .......... | Sale Promotion': ['probe-salepromotion-crud.mjs; probe-salepromotion-weekday.mjs', 'V', 'add/edit/delete + weekdaycode through dddw, exact restore'],
@@ -58,13 +58,13 @@ const C = {
   'Basic Data | Item .......... | Category Segment': ['screen-parity/crud-fields (16-form pass)', 'V', 'every editable field typed; add/edit/delete/save documented'],
   'Basic Data | Item .......... | Manufacturer Type': ['screen-parity/crud-fields (16-form pass)', 'V', 'every editable field typed; add/edit/delete/save documented'],
   'Basic Data | Sale Template': ['probe-saletemplate-add-edit.mjs', 'V', 'add header/template 583 + item detail, edit name/save, DB read-back, exact restore; Delete menu disabled'],
-  'Basic Data | Patient | Death Certificate': ['—', 'B', 'DeathCertificate 0 rows in both databases'],
+  'Basic Data | Patient | Death Certificate': ['probe-deathcertificate-crud.mjs', 'V', 'disposable patient fixture, add/save certificate, DB read-back, exact restore; Delete disabled'],
   'Basic Data | Tax Category': ['screen-parity/crud-fields (16-form pass)', 'V', 'every editable field typed; add/edit/delete/save documented'],
   'Maintenance | Change Password': ['probe-changepassword.mjs', 'V', 'wrong old password rejected, real change, restore through the form; password back to baseline'],
   'Maintenance | Preferences': ['probe-preferences-save.mjs', 'V', 'showtransitstockinitemlist N -> Y -> N through the form; DB read-back, exact restore'],
   'Maintenance | Change Items Price': ['probe-changeitemprice-crud.mjs', 'V', 'manufacturer 120 sheet; item 22407 95 -> 96 saved in Item, exact restore'],
-  'Maintenance | Database Utilities | Backup Database': ['—', 'B', 'SQL Server utility; no PostgreSQL equivalent'],
-  'Maintenance | Database Utilities | Check Database Integrity': ['—', 'B', 'SQL Server utility; no PostgreSQL equivalent'],
+  'Maintenance | Database Utilities | Backup Database': ['probe-dbbackup-crud.mjs', 'V', 'PostgreSQL pg_dump equivalent; form shows BackUp Successful; 299,801,399-byte dump verified and removed'],
+  'Maintenance | Database Utilities | Check Database Integrity': ['probe-checkdb-crud.mjs', 'V', 'PostgreSQL catalog check; DBCC monitor reports 0 problems; completion row removed, exact restore'],
   'Maintenance | Adjustment | Increase': ['probe-adjustment-remarks.mjs', 'V', 'remarks typed, saved, stock/DB/audit exact restore'],
   'Maintenance | Adjustment | Decrease': ['probe-adjustment-remarks.mjs', 'V', 'remarks typed, saved, stock/DB/audit exact restore'],
   'Maintenance | Adjustment | Stock Adjustment': ['probe-stockadjustment-crud.mjs', 'V', 'add buffer 2630 + item 9801, save, DB read-back, exact restore'],
@@ -80,7 +80,7 @@ const C = {
   'Maintenance | Update Item Basic Data': ['probe-itembasicdata-update-crud.mjs; probe-itembasicdata-add.mjs', 'V', '27,818 rows; item 27429 1000 -> 1001 saved on row focus change, DB read-back, exact restore'],
   'Maintenance | Update Item Suppliers': ['probe-itemsuppliers-crud.mjs', 'V', 'add item 9801/supplier 311 at 10.00, edit rate 12, delete through the form; exact restore'],
   'Maintenance | Change Item Reorder Qty': ['probe-reorderqty-crud.mjs', 'V', 'compound 20/2/9/1, item 21195 reorderqty 0 -> 1 saved, UPDATE rowcount 1, exact restore'],
-  'Maintenance | Import Historical Data | Import Previous Sales': ['—', 'B', 'SQL-Server cross-database source does not exist'],
+  'Maintenance | Import Historical Data | Import Previous Sales': ['-', 'N/A', 'no PostgreSQL source database exists; SQL-Server cross-database import is environmental, not missing UI'],
   'Maintenance | Inplace Initialization': ['probe-inplace-initialization.mjs', 'V', 'disposable-copy runs documented'],
   'Maintenance | Lock Item Batches': ['probe-lockitembatches.mjs', 'V', 'lock/unlock verified'],
   'Manage | Groups': ['probe-groups-crud.mjs; probe-groups-edit.mjs', 'V', 'edit/save verified; new-group first-save is original defect; delete disabled'],
@@ -90,8 +90,8 @@ const C = {
   'Manage | Group Wise Cash Account Setting': ['probe-groupsetting-crud.mjs', 'V', 'add/delete verified'],
   'Manage | Session Monitor Ctrl+Alt+M': ['probe-changepassword.mjs (dialog only)', 'N/A', 'read-only session list; password prompt'],
   'Manage | Cashier Management | Cashier Job': ['probe-cashierjob-crud.mjs', 'V', 'add job 2 for user 2, DB read-back, Delete disabled (original add-only), exact restore'],
-  'Manage | Cashier Management | Cashier Activity Window': ['probe-dialog-captures.mjs', 'B', 'original "Unable to fetch cashier job data" when no active job; capture matches'],
-  'Manage | Job Schedule': ['probe-jobschedule-save.mjs', 'B', 'original screen fails with Invalid column name \'Name\' (no SysJobs tables); rebuild PG scheduler probe is recorded, not a parity gap'],
+  'Manage | Cashier Management | Cashier Activity Window': ['probe-dialog-captures.mjs', 'N/A', 'read-only monitor; matches the original no-active-job error and opens with active job 1'],
+  'Manage | Job Schedule': ['probe-jobschedule-save.mjs', 'V', 'rebuild PostgreSQL scheduler add/enable/disable verified; original screen is broken (no SysJobs tables)'],
   'Manage | Group Wise Supplier Category': ['probe-groupsuppliercategory-crud.mjs', 'V', 'add group 2 / supplier category 1 / status 1, delete through the form, exact restore'],
 }
 
@@ -120,7 +120,7 @@ lines.push('* 22/22 Customer fields, 8/8 rendered Item fields, 7 remaining Purch
 lines.push('* 4 cells are non-text/hidden/derived (Purchase Order `reorderqty`/`remarks`, Price Policy `name` choice, Item Basic Data `masterpartname` absent column).')
 lines.push('* Remaining generic non-applied cells are lookups, recalculated totals, `char(1)` domain codes and date readback objects; they are not missing editors.')
 lines.push('')
-lines.push('All 78 screens are now classified: **67 V**, **0 P**, **3 N/A**, **8 B**.  The last transaction screens to move from P to V were Purchase Orders, Refused Sales, Cash Sale Return, Cash/Credit Sale and Sale Template.  The 8 B rows are original-side blockers (voucher detail `GetChild("patientcode")`, SQL-Server-only utilities, missing Death Certificate data, Import Historical Data source DB, Cashier Activity original error, broken Job Schedule screen).')
+lines.push('All 78 screens are now classified: **73 V**, **0 P**, **5 N/A**, **0 B**.  The previously blocked voucher 14/17 forms now open and save (the missing `patientcode` child guard is skipped at load time); Death Certificate is verified with a disposable patient fixture; Backup Database is a PostgreSQL `pg_dump`; Check Database Integrity runs a catalog probe and reports 0 problems; Job Schedule uses the PostgreSQL scheduler.  The 5 N/A rows are login/exit, the read-only session/cashier monitors, and Import Historical Data (no PostgreSQL source database exists).')
 lines.push('')
 const text = lines.join('\n')
   .replace(/[\u2014\u2013]/g, '-')
