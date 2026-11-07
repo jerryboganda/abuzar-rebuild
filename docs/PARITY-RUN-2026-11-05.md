@@ -208,6 +208,16 @@ true`).
   is environmental, not missing UI.  Job Schedule is verified against the
   rebuild's PostgreSQL scheduler (the original screen is broken because its
   SQL Server Agent tables do not exist).
+* **Remaining original-side evidence (not rebuild gaps):** reports **067/068**
+  render in the rebuild; the old app cannot produce 067 because its customer
+  Selection List is empty ("There are no rows to select in SelectionList") and
+  068 crashes, so no old preview exists.  The three unpaired dialog captures
+  (Preferences 038, Job Schedule 060, Group Wise Supplier Category 061) are old
+  Waseela SQL errors `Invalid column name 'Name'`; the rebuild screens open
+  normally.  Visual residual: main-screen median MAE 3.08 %, dialog median
+  15.94 % (037 Change Password improved from 15.39 % to 14.40 % with the
+  Windows blue focus border), driven by 2-3 px control geometry and classic
+  3D borders, not missing controls.
 
 The 16 passing forms are: Customer Category, Customer Sector, Generic Item,
 Generic Item Type, Item Alert, Item Category, Item Class, Item Thickness,
