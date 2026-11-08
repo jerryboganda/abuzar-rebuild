@@ -96,7 +96,7 @@ const compareStructure = (family, name, modern, rows, check, label) => {
   const present = new Set(rows.boxes.map((box) => box.key))
   const shared = (relations) => relations.filter((relation) => relation.split('<').every((part) => present.has(part)))
   const left = shared(classic).join(','), right = rows.join(',')
-  check(left === right, `${label}: the Modern rows equal the Classic rows (Classic-only ${JSON.stringify(shared(classic).filter((r) => !rows.includes(r)))}; Modern-only ${JSON.stringify(rows.filter((r) => !shared(classic).includes(r)))})`)
+  check(left === right, `${label}: the Modern rows equal the Classic rows (Classic-only ${JSON.stringify(shared(classic).filter((r) => !rows.includes(r)))}; Modern-only ${JSON.stringify(rows.filter((r) => !shared(classic).includes(r)))}; boxes Classic ${JSON.stringify(store[key + ':boxes'])} Modern ${JSON.stringify(rows.boxes)})`)
 }
 
 /** Response windows: the layout is accepted in Modern, absent in Classic, and every original control stays attached. */
