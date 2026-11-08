@@ -56,7 +56,15 @@ export class PresentationUi extends DomUi {
         <section class="presentation-work"><div class="presentation-tabs" role="tablist" aria-label="Open workspaces"></div><p class="presentation-compatibility">Classic compatibility layouts / Modern screen migration is in progress</p><div class="presentation-stage"></div></section>`
       desktop.before(this.shell)
       this.shell.querySelector('.presentation-stage')!.append(desktop)
-      this.shell.querySelector('input')!.addEventListener('input', () => this.refreshCommands())
+      const search = this.shell.querySelector('input')!
+      search.addEventListener('input', () => this.refreshCommands())
+      // Rights and scripts can enable or hide menu items at any time: the list is rebuilt from the live menu whenever the user turns
+      // to it (focusing the search box, or pointing at the sidebar while no command in it has the focus).
+      search.addEventListener('focus', () => this.refreshCommands())
+      const sidebar = this.shell.querySelector('.presentation-sidebar')!
+      sidebar.addEventListener('pointerenter', () => {
+        if (!sidebar.contains(document.activeElement) || document.activeElement === search) this.refreshCommands()
+      })
       this.shell.querySelector('button')!.addEventListener('click', () => this.openSettings())
     }
     this.systemTheme.addEventListener('change', () => this.applyAppearance(), { signal: this.cleanup.signal })
@@ -76,7 +84,7 @@ export class PresentationUi extends DomUi {
     return !this.shell || !focus || !this.shell.contains(focus) || this.desktop.contains(focus) || !!focus.closest('.presentation-tabs')
   }
 
-  protected override menuShortcutsEnabled(): boolean { return this.session.activeMode === 'classic' || !this.hasModal() }
+  protected override menuShortcutsEnabled(): boolean { return this.session.activeMode === 'classic' ? super.menuShortcutsEnabled() : !this.hasModal() }
   override accessibleTabs(): boolean { return this.session.activeMode === 'modern' }
 
   override createDwView(control: NDwBase, host: HTMLElement): DwView {

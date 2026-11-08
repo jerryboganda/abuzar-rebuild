@@ -91,7 +91,10 @@ export class DomUi implements UiHost {
   }
 
   protected shortcutsEnabled(): boolean { return true }
-  protected menuShortcutsEnabled(): boolean { return true }
+  /** PowerBuilder response windows and message boxes are application-modal: the frame's accelerators wait until they close. */
+  protected menuShortcutsEnabled(): boolean {
+    return ![...this.views.values()].some((view) => view.modal && !view.sheet && view.w.isOpen) && !this.desktop.querySelector('.msgbox')
+  }
   windowActivated(_window: NWindow): void {}
   menuRendered(_bar: HTMLElement): void {}
   accessibleTabs(): boolean { return false }
