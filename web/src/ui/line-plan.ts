@@ -5,7 +5,7 @@
 import type { DwDef, DwObject } from '../dw/def.ts'
 import type { DataSurface, DataSurfaceField } from './data-surfaces.ts'
 
-export interface PlanBox { key: string; left: number; right: number; top: number; bottom: number }
+export interface PlanBox { key: string; left: number; right: number; top: number; bottom: number; /** The share of the line this cell takes; defaults to the box width. */ weight?: number }
 export interface PlanCell { key: string; weight: number }
 
 /** Groups boxes into lines (top to bottom) of cells (left to right) by overlap of their vertical extents. */
@@ -25,7 +25,7 @@ export function planLines(boxes: readonly PlanBox[]): PlanCell[][] {
     } else lines.push({ top: box.top, bottom: box.bottom, cells: [box] })
   }
   return lines.sort((a, b) => a.top - b.top).map((line) =>
-    line.cells.sort((a, b) => a.left - b.left || a.top - b.top).map((cell) => ({ key: cell.key, weight: Math.max(1, cell.right - cell.left) })))
+    line.cells.sort((a, b) => a.left - b.left || a.top - b.top).map((cell) => ({ key: cell.key, weight: Math.max(1, cell.weight ?? cell.right - cell.left) })))
 }
 
 const num = (object: DwObject | undefined, key: string): number => {
@@ -33,7 +33,7 @@ const num = (object: DwObject | undefined, key: string): number => {
   return Number.isFinite(value) ? value : 0
 }
 
-function boxOf(def: DwDef, names: readonly (string | undefined)[], key: string): PlanBox | null {
+export function boxOf(def: DwDef, names: readonly (string | undefined)[], key: string, weightOf?: string): PlanBox | null {
   const objects = names.flatMap((name) => {
     const found = name ? def.objects.find((object) => object.name.toLowerCase() === name.toLowerCase()) : undefined
     return found ? [found] : []
@@ -41,8 +41,9 @@ function boxOf(def: DwDef, names: readonly (string | undefined)[], key: string):
   if (!objects.length) return null
   const left = Math.min(...objects.map((object) => num(object, 'x')))
   const top = Math.min(...objects.map((object) => num(object, 'y')))
+  const editor = weightOf ? def.objects.find((object) => object.name.toLowerCase() === weightOf.toLowerCase()) : undefined
   return {
-    key, left, top,
+    key, left, top, ...(editor && num(editor, 'width') > 0 ? { weight: num(editor, 'width') } : {}),
     right: Math.max(...objects.map((object) => num(object, 'x') + num(object, 'width'))),
     bottom: Math.max(...objects.map((object) => num(object, 'y') + Math.max(1, num(object, 'height')))),
   }
@@ -53,7 +54,7 @@ export function formLinePlan(def: DwDef, surface: DataSurface, fieldNames?: read
   const wanted = fieldNames ? new Set(fieldNames) : undefined
   const boxes = surface.fields.flatMap((field: DataSurfaceField) => {
     if (wanted && !wanted.has(field.object)) return []
-    const box = boxOf(def, [field.labelBand === 'header' ? undefined : field.labelObject, field.object, field.suffixObject], field.object)
+    const box = boxOf(def, [field.labelBand === 'header' ? undefined : field.labelObject, field.object, field.suffixObject], field.object, field.object)
     return box ? [box] : []
   })
   const plan = new Map<string, { line: number; weight: number }>()

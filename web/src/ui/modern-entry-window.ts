@@ -4,7 +4,7 @@ import { ModernDwView } from './modern-dwview.ts'
 import { entryWindowIssues } from './window-surfaces.ts'
 import { entryWindowSurfaceByName } from './surface-registry.ts'
 import type { DataSurface } from './data-surfaces.ts'
-import { planLines } from './line-plan.ts'
+import { planGrid, applyGrid } from './grid-plan.ts'
 
 export const ENTRY_FIND_SURFACE: DataSurface = {
   name: 'd_find', title: 'Find', kind: 'form', fields: [{ object: 'find', label: 'Find' }],
@@ -132,16 +132,13 @@ export function applyModernEntryWindow(view: WinView): boolean {
     })
     const container = document.createElement('div')
     container.className = 'entry-extras'
-    const placed = new Set<string>()
-    for (const cells of planLines(boxes)) {
-      const line = document.createElement('div')
-      line.className = 'entry-extra-line'
-      line.style.setProperty('--line-columns', cells.map((cell) => `minmax(0,${cell.weight}fr)`).join(' '))
-      for (const cell of cells) { line.append(view.ctlViews.get(controls.get(cell.key)!)!.el); placed.add(cell.key) }
-      container.append(line)
+    const cells = new Map<string, HTMLElement>()
+    for (const [path, control] of own) {
+      const el = view.ctlViews.get(control)!.el
+      container.append(el)
+      cells.set(path, el)
     }
-    // Controls without usable geometry follow in their source order.
-    for (const [path, control] of own) if (!placed.has(path)) container.append(view.ctlViews.get(control)!.el)
+    applyGrid(container, planGrid(boxes), cells)
     group.append(container)
   }
   findView.useContextSurface(ENTRY_FIND_SURFACE, new Map([['find', findLabel]]))

@@ -1524,6 +1524,16 @@ try {
   })
   await page.goto(origin + '/presentation.html')
   await page.waitForFunction(() => window.presentationFixtureReady)
+  // Focused run of the generated-family checks for the named windows/DataWindows (argv[5..]); a development aid, not an acceptance pass.
+  if (process.argv[4] === '--derived-only') {
+    const outcome = await page.evaluate(async (names) => {
+      window.derivedFilter = names.length ? names : undefined
+      const result = await window.runDerivedChecks()
+      return { passed: result.passed, failures: result.failures, errors: result.errors }
+    }, process.argv.slice(5))
+    console.log(JSON.stringify(outcome, null, 1))
+    await browser.close(); server.close(); process.exit(0)
+  }
   // Stall watchdog: logs progress each minute and fails the pass, with the page state, when no assertion has been counted for
   // ten minutes, so a stuck window is reported instead of hanging silently.
   let lastPassed = -1

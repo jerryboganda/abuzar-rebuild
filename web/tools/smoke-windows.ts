@@ -65,6 +65,10 @@ process.on('unhandledRejection', (e) => late.push((e as Error).message?.slice(0,
 const t0 = Date.now()
 // windows opened with an argument branch on Message.StringParm: a failing window is retried with the usual codes
 const CANDIDATES = ['M', 'C', 'L', 'P', 'S', 'A', 'B', 'G', 'D', 'I', 'R', 'T', 'Y', '2', '0']
+// A window whose close or open never settles (a modal waiting on an answer nobody gives) must not stall the whole sweep:
+// every wait is bounded and the window is reported as not settled.
+const bounded = <T>(promise: Promise<T>, ms: number): Promise<T | undefined> =>
+  Promise.race([promise, new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), ms))])
 async function tryOpen(name: string, type: number, stringparm: string): Promise<{ name: string; ok: boolean; error?: string; ms: number }> {
   const ref = new Ref(() => null, () => {})
   ref.name = name
@@ -89,13 +93,13 @@ async function tryOpen(name: string, type: number, stringparm: string): Promise<
     ])
     if (type === 3 && w) {
       await new Promise((r) => setTimeout(r, 20))
-      await rt.closeWindow(w)
+      await bounded(rt.closeWindow(w), 3000)
     }
     await Promise.race([p, new Promise((r) => setTimeout(r, 3000))])
     await new Promise((r) => setTimeout(r, 5))
     res = openErr ? { name, ok: false, error: openErr, ms: Date.now() - start } : { name, ok: true, ms: Date.now() - start }
     const inst = rt.windowInstances.get(name)
-    if (inst) await rt.closeWindow(inst).catch(() => {})
+    if (inst) await bounded(rt.closeWindow(inst).catch(() => {}), 3000)
   } catch (e) {
     res = { name, ok: false, error: (e as Error).message.slice(0, 120) + ' @' + whereOf(e), ms: Date.now() - start }
     rt.windowInstances.delete(name)
@@ -106,14 +110,18 @@ async function tryOpen(name: string, type: number, stringparm: string): Promise<
 let retried = 0
 let rescued = 0
 for (const name of windows) {
-  const cls = await rt.getClass(name)
+  const cls = await bounded(rt.getClass(name), 10000)
   if (!cls || cls.kind !== 'window') continue
   const type = Number(cls.fields.find((f) => f.name === 'windowtype')?.value ?? 0)
-  let r = await tryOpen(name, type, '1')
+  if (process.env.SMOKE_PROGRESS) console.error(`[smoke] ${results.length}/${windows.length} ${name}`)
+  // One window that never settles is reported and the sweep goes on from a clean state.
+  const settle = async (stringparm: string) => (await bounded(tryOpen(name, type, stringparm), 20000)) ??
+    (rt.windowInstances.delete(name), rt.depth = 0, { name, ok: false, error: 'did not settle within 20 s', ms: 20000 })
+  let r = await settle('1')
   if (!r.ok && /Null object reference|expression/.test(r.error || '')) {
     retried++
     for (const sp of CANDIDATES) {
-      const r2 = await tryOpen(name, type, sp)
+      const r2 = await settle(sp)
       if (r2.ok) {
         r = r2
         rescued++

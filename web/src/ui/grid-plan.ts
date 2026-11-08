@@ -1,0 +1,92 @@
+// Structural parity of arrangement (decision 17).  The Classic view paints every object at its source coordinates; the Modern layout
+// reproduces the *structure* of that arrangement with a CSS grid derived from the same coordinates: objects that share a row share
+// grid rows, a tall object beside two stacked ones spans both rows, and column widths are proportional to the source widths.  Only the
+// geometry of tracks is derived; the DOM order of the elements (and so the tab order) is left exactly as it is.
+export interface GridBox { key: string; left: number; right: number; top: number; bottom: number }
+export interface GridPlacement { colStart: number; colEnd: number; rowStart: number; rowEnd: number }
+export interface GridPlan {
+  /** Relative widths (fr) of the column tracks that carry content. */
+  columns: number[]
+  /** Number of row tracks (each `auto` high). */
+  rows: number
+  place: Map<string, GridPlacement>
+}
+
+const MAX_COLUMNS = 24
+
+/** Snaps near-equal coordinates together; edges closer than `tolerance` become one edge. */
+function snapEdges(values: number[], tolerance: number): number[] {
+  const sorted = [...values].sort((a, b) => a - b)
+  const edges: number[] = []
+  let group: number[] = []
+  const flush = () => { if (group.length) edges.push(group.reduce((sum, value) => sum + value, 0) / group.length); group = [] }
+  for (const value of sorted) {
+    if (group.length && value - group[0] > tolerance) flush()
+    group.push(value)
+  }
+  flush()
+  return edges
+}
+
+const nearest = (edges: readonly number[], value: number): number => {
+  let best = 0
+  for (let index = 1; index < edges.length; index++) if (Math.abs(edges[index] - value) < Math.abs(edges[best] - value)) best = index
+  return best
+}
+
+/** Tracks between consecutive edges that some box covers; returns the track list and, per edge, its grid line number. */
+function tracksOf(edges: readonly number[], spans: readonly [number, number][]): { sizes: number[]; line: number[] } {
+  const sizes: number[] = []
+  const line: number[] = [1]
+  for (let index = 0; index + 1 < edges.length; index++) {
+    const covered = spans.some(([start, end]) => start <= index && end >= index + 1)
+    if (covered) sizes.push(Math.max(1, edges[index + 1] - edges[index]))
+    line.push(sizes.length + 1)
+  }
+  return { sizes, line }
+}
+
+export function planGrid(boxes: readonly GridBox[]): GridPlan {
+  const place = new Map<string, GridPlacement>()
+  if (!boxes.length) return { columns: [], rows: 0, place }
+  const minX = Math.min(...boxes.map((box) => box.left)), maxX = Math.max(...boxes.map((box) => box.right))
+  const heights = boxes.map((box) => Math.max(1, box.bottom - box.top)).sort((a, b) => a - b)
+  const medianHeight = heights[Math.floor(heights.length / 2)]
+  // Row edges snap within half a typical field height, so fields that share a row share its edges.
+  const yEdges = snapEdges(boxes.flatMap((box) => [box.top, box.bottom]), Math.max(1, medianHeight * 0.5))
+  // Column edges snap within 1% of the span, widened until the track count is workable.
+  let xTolerance = Math.max(1, (maxX - minX) * 0.01)
+  let xEdges = snapEdges(boxes.flatMap((box) => [box.left, box.right]), xTolerance)
+  while (xEdges.length - 1 > MAX_COLUMNS && xTolerance < maxX - minX) {
+    xTolerance *= 1.5
+    xEdges = snapEdges(boxes.flatMap((box) => [box.left, box.right]), xTolerance)
+  }
+  const colSpans = boxes.map((box): [number, number] => [nearest(xEdges, box.left), nearest(xEdges, box.right)])
+  const rowSpans = boxes.map((box): [number, number] => [nearest(yEdges, box.top), nearest(yEdges, box.bottom)])
+  const cols = tracksOf(xEdges, colSpans)
+  const rows = tracksOf(yEdges, rowSpans)
+  boxes.forEach((box, index) => {
+    const [c0, c1] = colSpans[index], [r0, r1] = rowSpans[index]
+    const colStart = cols.line[c0]
+    const rowStart = rows.line[r0]
+    place.set(box.key, {
+      colStart, colEnd: Math.max(colStart + 1, cols.line[c1]),
+      rowStart, rowEnd: Math.max(rowStart + 1, rows.line[r1]),
+    })
+  })
+  return { columns: cols.sizes, rows: rows.sizes.length, place }
+}
+
+/** Applies a plan to a container: the grid tracks on the container, the placement on each element (DOM order is untouched). */
+export function applyGrid(container: HTMLElement, plan: GridPlan, elements: ReadonlyMap<string, HTMLElement>, rowOffset = 0): void {
+  if (!plan.columns.length) return
+  container.classList.add('has-grid')
+  container.style.setProperty('--grid-columns', plan.columns.map((size) => `minmax(0,${size}fr)`).join(' '))
+  for (const [key, element] of elements) {
+    const placement = plan.place.get(key)
+    if (!placement) continue
+    element.classList.add('grid-cell')
+    element.style.gridColumn = `${placement.colStart} / ${placement.colEnd}`
+    element.style.gridRow = `${placement.rowStart + rowOffset} / ${placement.rowEnd + rowOffset}`
+  }
+}

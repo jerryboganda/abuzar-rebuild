@@ -132,8 +132,11 @@ export async function buildDerivedFixtures({ here, outDir }) {
     surfaceNames.add(surface.name)
     for (const lookup of lookupNames(surface)) surfaceNames.add(lookup)
   }
+  // Print, PDF and report layouts are exempt from structural parity (AGENTS.md "UI standard"); the evidence classes are generated.
+  const classification = JSON.parse(await readFile(resolve(here, '..', '..', 'docs', 'ui-print-classification.json'), 'utf8')).members
+  const exempt = ['report-or-document', 'print-target', 'registered-template'].flatMap((key) => classification[key] ?? [])
   await writeFile(resolve(outDir, 'presentation-derived-surfaces.json'), JSON.stringify({
-    surfaces: DERIVED_DATA_SURFACES.map((surface) => surface.name), data: await dataWindows(surfaceNames, dwRoot),
+    surfaces: DERIVED_DATA_SURFACES.map((surface) => surface.name), exempt, data: await dataWindows(surfaceNames, dwRoot),
   }))
   return { modal: modalNames.length, entry: entryNames.length, surfaces: DERIVED_DATA_SURFACES.length }
 }

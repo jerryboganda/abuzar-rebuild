@@ -5,7 +5,9 @@ import type { DataSurface, DataSurfaceField } from './data-surfaces.ts'
 import type { NDwBase } from '../runtime/native/dwctrl.ts'
 import type { DwModel, DwRow } from '../dw/model.ts'
 import { buildGroupPlan, rowAtItem } from './group-plan.ts'
-import { formLinePlan, groupLinePlan } from './line-plan.ts'
+import { boxOf } from './line-plan.ts'
+import { planGrid, applyGrid } from './grid-plan.ts'
+import type { GridBox } from './grid-plan.ts'
 import type { GroupPlan } from './group-plan.ts'
 import type { DwObject } from '../dw/def.ts'
 import { toStr } from '../runtime/values.ts'
@@ -800,38 +802,67 @@ export class ModernDwView extends DwView {
   }
 
   /**
-   * Structural parity with the Classic form: fields whose source objects share a row stay on one line, in source order, each
-   * taking its source share of the width; groupboxes that sit side by side stay side by side.  Narrow containers stack the cells.
+   * Structural parity with the Classic form: every field, caption, button, rule and groupbox is placed on a CSS grid derived from the
+   * source coordinates (shared rows stay shared, a tall object beside stacked ones spans them, columns follow the source widths).
+   * Only track geometry is derived: the DOM order, and so the tab order, is untouched.  Narrow containers stack the cells.
    */
   private arrangeLines(element: HTMLElement, model: DwModel): void {
     const surface = this.surface
     if (!surface) return
-    const fields = formLinePlan(model.def, surface)
-    const groups = groupLinePlan(model.def, (surface.groups ?? []).filter((group) => group.object).map((group) => group.object))
-    const wrapRuns = (container: HTMLElement, info: (child: HTMLElement) => { line: number; weight: number } | undefined) => {
-      let run: HTMLElement[] = []
-      const flush = () => {
-        if (run.length > 1) {
-          const line = document.createElement('div')
-          line.className = 'surface-line'
-          line.style.setProperty('--line-columns', run.map((child) => `minmax(0,${info(child)!.weight}fr)`).join(' '))
-          run[0].before(line)
-          line.append(...run)
-        }
-        run = []
-      }
-      for (const child of [...container.children] as HTMLElement[]) {
-        const data = info(child)
-        if (data && (!run.length || info(run[0])!.line === data.line)) run.push(child)
-        else { flush(); if (data) run = [child] }
-      }
-      flush()
-      container.classList.add('has-lines')
+    const def = model.def
+    const fieldOf = new Map(surface.fields.map((field) => [field.object, field]))
+    const lineBox = (name: string): GridBox | null => {
+      const line = def.objects.find((object) => object.name.toLowerCase() === name)
+      if (!line || line.visible === '0') return null
+      const x1 = Number(line.x1), x2 = Number(line.x2), y1 = Number(line.y1), y2 = Number(line.y2)
+      return [x1, x2, y1, y2].every(Number.isFinite) ? { key: '', left: Math.min(x1, x2), right: Math.max(x1, x2), top: Math.min(y1, y2), bottom: Math.max(y1, y2) + 1 } : null
     }
-    const ofField = (child: HTMLElement) => child.classList.contains('surface-field') && !child.hidden && child.dataset.field ? fields.get(child.dataset.field) : undefined
-    const ofGroup = (child: HTMLElement) => child.classList.contains('surface-group') && child.dataset.group ? groups.get(child.dataset.group) : undefined
-    for (const group of element.querySelectorAll<HTMLElement>(':scope > .surface-group')) wrapRuns(group, ofField)
-    wrapRuns(element, (child) => ofField(child) ?? ofGroup(child))
+    const boxFor = (child: HTMLElement): GridBox | null => {
+      if (child.hidden) return null
+      if (child.classList.contains('surface-field') && child.dataset.field) {
+        const field = fieldOf.get(child.dataset.field)
+        return field ? boxOf(def, [field.labelBand === 'header' ? undefined : field.labelObject, field.object, field.suffixObject], `field:${field.object}`) : null
+      }
+      if (child.dataset.caption) return boxOf(def, [child.dataset.caption], `caption:${child.dataset.caption}`)
+      if (child.classList.contains('surface-button') && child.dataset.obj) return boxOf(def, [child.dataset.obj], `button:${child.dataset.obj}`)
+      if (child.dataset.separator) { const box = lineBox(child.dataset.separator); return box ? { ...box, key: `separator:${child.dataset.separator}` } : null }
+      return null
+    }
+    const keyOf = (child: HTMLElement): string | null => {
+      if (child.classList.contains('surface-field') && child.dataset.field) return `field:${child.dataset.field}`
+      if (child.dataset.caption) return `caption:${child.dataset.caption}`
+      if (child.classList.contains('surface-button') && child.dataset.obj) return `button:${child.dataset.obj}`
+      if (child.dataset.separator) return `separator:${child.dataset.separator}`
+      return null
+    }
+    const arrange = (container: HTMLElement, groups: ReadonlyMap<HTMLElement, GridBox>): GridBox | null => {
+      const cells = new Map<string, HTMLElement>()
+      const boxes: GridBox[] = []
+      for (const child of [...container.children] as HTMLElement[]) {
+        const group = groups.get(child)
+        const box = group ?? boxFor(child)
+        const key = group ? `group:${child.dataset.group ?? ''}` : keyOf(child)
+        if (!box || !key) continue
+        cells.set(key, child)
+        boxes.push({ ...box, key })
+      }
+      const legend = container.querySelector<HTMLElement>(':scope > .surface-group-caption')
+      if (legend) { legend.style.gridColumn = '1 / -1'; legend.style.gridRow = '1' }
+      applyGrid(container, planGrid(boxes), cells, legend ? 1 : 0)
+      return boxes.length ? {
+        key: '', left: Math.min(...boxes.map((box) => box.left)), right: Math.max(...boxes.map((box) => box.right)),
+        top: Math.min(...boxes.map((box) => box.top)), bottom: Math.max(...boxes.map((box) => box.bottom)),
+      } : null
+    }
+    // Groups first (their own cells), then the top level, where a group is one cell: its groupbox, or the extent of its contents.
+    const groupBoxes = new Map<HTMLElement, GridBox>()
+    for (const group of element.querySelectorAll<HTMLElement>(':scope > .surface-group')) {
+      const inner = arrange(group, new Map())
+      const named = group.dataset.group ? boxOf(def, [group.dataset.group], `group:${group.dataset.group}`) : null
+      const box = named ?? inner
+      if (box) groupBoxes.set(group, box)
+    }
+    arrange(element, groupBoxes)
   }
 
   private async focusChoice(model: DwModel, object: DwObject, row: number, cell: HTMLElement): Promise<void> {

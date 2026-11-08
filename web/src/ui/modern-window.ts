@@ -2,8 +2,8 @@ import type { WinView } from './dom-ui.ts'
 import { windowSurfaceIssues } from './window-surfaces.ts'
 import { modalWindowSurfaceByName } from './window-registry.ts'
 import { ModernDwView } from './modern-dwview.ts'
-import { planLines } from './line-plan.ts'
-import type { PlanBox } from './line-plan.ts'
+import { planGrid, applyGrid } from './grid-plan.ts'
+import type { GridBox } from './grid-plan.ts'
 
 let nextWindow = 0
 
@@ -53,7 +53,7 @@ export function applyModernWindow(view: WinView): boolean {
     const { frame } = sourceFrame(name)
     content.append(frame)
     contentItems.set(name, frame)
-    itemControls.set(name, [name])
+    // A groupbox frame encloses its fields: it is a container, not a peer on their rows, so it takes no part in the line plan.
   }
   for (const list of surface.lists ?? []) {
     const input = elements.get(list.control)!
@@ -144,7 +144,7 @@ export function applyModernWindow(view: WinView): boolean {
     itemControls.set(option.control, [option.control])
   }
   for (const name of surface.contentOrder ?? []) content.append(contentItems.get(name)!)
-  arrangeLines(view, content, contentItems, itemControls, !surface.contentOrder)
+  arrangeGrid(view, content, contentItems, itemControls)
   const actions = document.createElement('footer')
   actions.className = 'window-actions'
   for (const name of surface.actions) actions.append(elements.get(name)!)
@@ -170,18 +170,18 @@ export function applyModernWindow(view: WinView): boolean {
 }
 
 /**
- * Structural parity with the Classic dialog: the content follows the source positions (top to bottom, left to right) and
- * controls that share a row in the source share a line here, each with its source share of the width.  A window whose controls
- * carry no usable geometry, or whose source order is declared explicitly, keeps its order and only merges neighbours.
+ * Structural parity with the Classic dialog: the content is placed on a CSS grid derived from the source positions of its controls
+ * (controls that share a row share it, a tall list beside stacked fields spans them, columns follow the source widths).  The DOM
+ * order, and so the tab order, is untouched.  A window whose controls carry no usable geometry keeps the single-column flow.
  */
-function arrangeLines(view: WinView, content: HTMLElement, items: Map<string, HTMLElement>, controls: Map<string, string[]>, reorder: boolean): void {
+function arrangeGrid(view: WinView, content: HTMLElement, items: Map<string, HTMLElement>, controls: Map<string, string[]>): void {
   const read = (name: string) => {
     const control = view.w.children?.get(name)
     if (!control?.props || control.props.get('visible') === false) return null
     const box = { x: Number(control.props.get('x')), y: Number(control.props.get('y')), width: Number(control.props.get('width')), height: Number(control.props.get('height')) }
     return Object.values(box).every(Number.isFinite) ? box : null
   }
-  const boxes: PlanBox[] = []
+  const boxes: GridBox[] = []
   for (const [key, names] of controls) {
     if (!items.has(key)) continue
     const parts = names.map(read).filter((part): part is NonNullable<ReturnType<typeof read>> => !!part)
@@ -192,29 +192,9 @@ function arrangeLines(view: WinView, content: HTMLElement, items: Map<string, HT
     })
   }
   if (boxes.length < 2) return
-  const lines = planLines(boxes)
-  const lineOf = new Map<string, { line: number; weight: number }>()
-  lines.forEach((cells, index) => { for (const cell of cells) lineOf.set(cell.key, { line: index, weight: cell.weight }) })
-  if (reorder) for (const cells of lines) for (const cell of cells) content.append(items.get(cell.key)!)
-  let run: HTMLElement[] = []
-  let runKeys: string[] = []
-  const flush = () => {
-    if (run.length > 1) {
-      const line = document.createElement('div')
-      line.className = 'window-line'
-      line.style.setProperty('--line-columns', runKeys.map((key) => `minmax(0,${lineOf.get(key)!.weight}fr)`).join(' '))
-      run[0].before(line)
-      line.append(...run)
-    }
-    run = []
-    runKeys = []
-  }
-  const keyOf = new Map([...items].map(([key, element]) => [element, key] as const))
-  for (const child of [...content.children] as HTMLElement[]) {
-    const key = keyOf.get(child)
-    const data = key ? lineOf.get(key) : undefined
-    if (key && data && (!run.length || lineOf.get(runKeys[0])!.line === data.line)) { run.push(child); runKeys.push(key) }
-    else { flush(); if (key && data) { run = [child]; runKeys = [key] } }
-  }
-  flush()
+  // Anything the plan does not place (the window frame and its legend, groupbox captions) stays full width above the plan.
+  const placed = new Set(boxes.map((box) => items.get(box.key)))
+  const unplaced = ([...content.children] as HTMLElement[]).filter((child) => !placed.has(child))
+  unplaced.forEach((child, index) => { child.style.gridColumn = '1 / -1'; child.style.gridRow = String(index + 1) })
+  applyGrid(content, planGrid(boxes), items, unplaced.length)
 }

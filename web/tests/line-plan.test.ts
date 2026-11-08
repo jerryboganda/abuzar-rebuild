@@ -42,27 +42,3 @@ test('every generated and reviewed form plans every visible field exactly once',
   assert.ok(forms > 100, `forms checked: ${forms}`)
   console.log(`forms checked: ${forms}; forms with fields sharing a row: ${sideBySide}`)
 })
-
-// Forms whose source tab order is not row-major cannot be wrapped into lines without reordering the DOM (and so the tab order).
-// They keep one field per line until a placement-based arrangement exists; the list is pinned so any new case fails loudly.
-const NON_ROW_MAJOR = ['d_mr_patientdischarge', 'd_old_general1', 'd_opensalereturnfooter', 'd_patientvisit_obs_us', 'd_salepreferences', 'd_salereturnfooter_view', 'd_servicefooter_view', 'd_visitvitals']
-
-test('only the known forms have a source order that interleaves lines', () => {
-  const definitions = loadDefinitions()
-  const found: string[] = []
-  for (const surface of ALL_DATA_SURFACES) {
-    const def = definitions.get(surface.name)
-    if (!def || surface.kind !== 'form') continue
-    const plan = formLinePlan(def, surface)
-    const seen = new Set<number>()
-    let last = -1
-    for (const { line } of surface.fields.flatMap((field) => plan.get(field.object) ?? [])) {
-      if (line !== last) {
-        if (seen.has(line)) { found.push(surface.name); break }
-        seen.add(line)
-        last = line
-      }
-    }
-  }
-  assert.deepEqual(found.sort(), NON_ROW_MAJOR)
-})

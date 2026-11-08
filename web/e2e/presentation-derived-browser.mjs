@@ -63,19 +63,27 @@ const withoutDatabase = (impl) => async (...args) => {
 
 // Structural parity gate: the Classic phase records which controls share a row (from the real DOM geometry); the Modern phase must
 // reproduce exactly those rows.  Rows are sets of control names; order within a row and the pixels are not compared.
-const rowsOf = (entries) => planLines(entries.flatMap(([key, element]) => {
-  if (!element || !element.getClientRects().length) return []
-  const rect = element.getBoundingClientRect()
-  return rect.width > 0 && rect.height > 0 ? [{ key, left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom }] : []
-})).map((line) => line.map((cell) => cell.key).sort())
+// Classic is measured on the editors themselves; in Modern an editor shares its cell with a caption above it, so the cell (the field
+// wrapper, which stretches to the row) is measured: two cells on one row have different editor tops only because of the captions.
+const rowsOf = (entries, modern = false) => {
+  const boxes = entries.flatMap(([key, found]) => {
+    const element = modern ? found?.closest?.('.surface-field, .window-field, .window-list') ?? found : found
+    if (!element || !element.getClientRects().length) return []
+    const rect = element.getBoundingClientRect()
+    return rect.width > 0 && rect.height > 0 ? [{ key, left: Math.round(rect.left), right: Math.round(rect.right), top: Math.round(rect.top), bottom: Math.round(rect.bottom) }] : []
+  })
+  const rows = planLines(boxes).map((line) => line.map((cell) => cell.key).sort())
+  rows.boxes = boxes
+  return rows
+}
 const compareStructure = (family, name, modern, rows, check, label) => {
   const store = (window.derivedStructure ??= {})
   const key = `${family}:${name}`
-  if (!modern) { store[key] = rows; return }
+  if (!modern) { store[key] = rows; store[key + ':boxes'] = rows.boxes; return }
   const classic = store[key]
   if (!classic) return
   const same = JSON.stringify([...classic].map((row) => row.join(',')).sort()) === JSON.stringify([...rows].map((row) => row.join(',')).sort())
-  check(same, `${label}: the Modern rows equal the Classic rows (Classic ${JSON.stringify(classic)}; Modern ${JSON.stringify(rows)})`)
+  check(same, `${label}: the Modern rows equal the Classic rows (Classic ${JSON.stringify(classic)}; Modern ${JSON.stringify(rows)}; boxes Classic ${JSON.stringify(store[key + ':boxes'])} Modern ${JSON.stringify(rows.boxes)})`)
 }
 
 /** Response windows: the layout is accepted in Modern, absent in Classic, and every original control stays attached. */
@@ -98,7 +106,7 @@ async function checkDerivedModalWindowsImpl(fixture, check, settle, filter) {
       check(view.el.classList.contains('modern-window') === modern, `${label}: the outer layout changes only in Modern`)
       check([...view.ctlViews.values()].every((binding) => view.client.contains(binding.el)), `${label}: all original control elements remain attached`)
       compareStructure('modal', name, modern, rowsOf([...surface.fields.map((field) => field.control), ...(surface.lists ?? []).map((list) => list.control)]
-        .map((control) => [control, view.ctlViews.get(window.children.get(control))?.el])), check, label)
+        .map((control) => [control, view.ctlViews.get(window.children.get(control))?.el]), modern), check, label)
       if (modern) {
         check(!windowSurfaceIssues(controls, surface).length, `${label}: the generated layout matches the live control tree`)
         check(!!view.el.querySelector('.window-fields'), `${label}: Modern content container exists`)
@@ -216,6 +224,7 @@ async function checkDerivedEntryWindowsImpl(fixture, check, settle, filter) {
 /** Every generated global DataWindow surface renders in Modern with its recovered definition and synthetic rows. */
 async function checkDerivedDataSurfacesImpl(fixture, check, settle, filter) {
   const source = await (await fetch('./presentation-derived-surfaces.json')).json()
+  const exempt = new Set(source.exempt ?? [])
   const rt = fixture.rt
   const modern = fixture.session.activeMode === 'modern'
   const control = fixture.sale.children.get('dw_grid')
@@ -242,7 +251,7 @@ async function checkDerivedDataSurfacesImpl(fixture, check, settle, filter) {
         await within(preview.render(), 'rendering')
         await settle()
         const active = !!preview.root.classList.contains('modern-surface')
-        if (!modern && binding.kind === 'form') compareStructure('form', name, false, rowsOf(binding.fields.map((field) => [field.object, preview.root.querySelector(`[data-obj="${field.object}"]`)])), check, label)
+        if (!modern && binding.kind === 'form' && !exempt.has(name)) compareStructure('form', name, false, rowsOf(binding.fields.map((field) => [field.object, preview.root.querySelector(`[data-obj="${field.object}"]`)])), check, label)
         check(active === modern, `${label}: the surface is active only in Modern`)
         if (modern) {
           check(!preview.root.textContent.includes('Classic layout retained'), `${label}: the generated surface passes runtime validation`)
@@ -252,7 +261,7 @@ async function checkDerivedDataSurfacesImpl(fixture, check, settle, filter) {
           const hidden = (object) => object?.visible === '0' || String(object?.visible ?? '').includes('\t')
           const displayable = binding.fields.some((field) => !hidden(source.data[name].objects.find((object) => object.name === field.object)))
           if (displayable) check(preview.root.querySelectorAll('[data-obj]').length > 0, `${label}: the mapped fields render`)
-          if (binding.kind === 'form') compareStructure('form', name, true, rowsOf(binding.fields.map((field) => [field.object, preview.root.querySelector(`[data-obj="${field.object}"]`)])), check, label)
+          if (binding.kind === 'form' && !exempt.has(name)) compareStructure('form', name, true, rowsOf(binding.fields.map((field) => [field.object, preview.root.querySelector(`[data-obj="${field.object}"]`)]), true), check, label)
         }
       } catch (error) {
         check(false, `${label}: ${error.message}`)

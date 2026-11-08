@@ -125,22 +125,21 @@ Decisions recorded for future sessions:
    startup once the structure-parity gate, the completed browser pass and business acceptance
    of the transaction screens exist. The original app is needed running for side-by-side
    captures (not yet done).
-17. Structural arrangement (decision 16 made concrete; `line-plan.ts`, unit-tested). Modern forms,
-   grids and dialogs follow the source geometry instead of an auto-fit grid: objects whose
-   vertical extents overlap form one line, ordered left to right, each cell taking its source
-   share of the line (fr units); groupboxes side by side stay side by side; grid columns take
-   source width proportions (`colgroup`); dialog content is ordered by source position unless a
-   reviewed `contentOrder` exists. Narrow containers stack the cells. Measured on the recovered
-   definitions: 970 form surfaces, 456 have fields that share a row, all visible fields are
-   planned exactly once. Known gap: 8 forms (`d_mr_patientdischarge`, `d_old_general1`, `d_patientvisit_obs_us`,
-   `d_opensalereturnfooter`, `d_salepreferences`, `d_salereturnfooter_view`,
-   `d_servicefooter_view`, `d_visitvitals`) have a tab order that interleaves lines, so their
-   shared rows are not merged (reordering the DOM would change the tab order); a placement-based
-   arrangement is open. Entry windows keep extra controls a standard layout has no slot for
-   (for example `st_3`/`em_invno` on the sale list page) in source rows instead of dropping them.
-   Gate: the generated-family browser checks record, in Classic, which controls share a row
-   (real DOM geometry through `planLines`) and require the Modern phase to reproduce those rows
-   for every generated form DataWindow and dialog. Not browser verified until that run passes.
+17. Structural arrangement (decision 16 made concrete; `grid-plan.ts`, unit-tested). Modern forms,
+   dialogs and entry-window extras follow the source geometry instead of an auto-fit grid: every
+   field, caption, button, rule and groupbox is placed on a CSS grid whose tracks come from the
+   source coordinates (objects that share a row share grid rows, a tall list beside two stacked
+   fields spans both rows, column widths follow the source widths, empty space is not a track).
+   Only track geometry is derived: DOM order, and so the original tab order, is untouched, which
+   also closes the eight forms whose tab order interleaves rows. Groupboxes are placed as cells and
+   arrange their own fields. Narrow containers stack the cells. Grid columns of grids (tables)
+   follow source width proportions (`colgroup`). Entry windows keep extra controls a standard
+   layout has no slot for (for example `st_3`/`em_invno` on the sale list page). Gate: the
+   generated-family browser checks record, in Classic, which controls share a row (real DOM geometry)
+   and require the Modern phase to reproduce those rows for every generated form DataWindow and
+   dialog; its first run found 274 mismatches (87 after correcting its own measurement), which
+   this grid replaces. On-screen print/report layouts (labels, invoices) are exempt. Not browser
+   verified until that gate passes.
 9. The Modern workspace sidebar now browses the live menu by module (collapsed
    groups, lazily filled, open state retained) as well as searching it; availability
    is still the live visible/enabled state, rechecked before every command.
