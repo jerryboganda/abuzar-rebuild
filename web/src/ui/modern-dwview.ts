@@ -1,8 +1,12 @@
 import { DwView } from './dwview.ts'
-import { DATA_SURFACES, dataSurfaceIssues } from './data-surfaces.ts'
+import { dataSurfaceIssues } from './data-surfaces.ts'
+import { dataSurfaceByName } from './surface-registry.ts'
 import type { DataSurface, DataSurfaceField } from './data-surfaces.ts'
 import type { NDwBase } from '../runtime/native/dwctrl.ts'
 import type { DwModel, DwRow } from '../dw/model.ts'
+import { buildGroupPlan, rowAtItem } from './group-plan.ts'
+import { formLinePlan, groupLinePlan } from './line-plan.ts'
+import type { GroupPlan } from './group-plan.ts'
 import type { DwObject } from '../dw/def.ts'
 import { toStr } from '../runtime/values.ts'
 import { commitDwValue, dwRequired } from '../dw/edit.ts'
@@ -32,6 +36,7 @@ export class ModernDwView extends DwView {
   private previousRow = 0
   private rovingRow = 1
   private start = 0
+  private plan: GroupPlan | null = null
   private rowHeight = 35
   private status = document.createElement('p')
   private changes = new AbortController()
@@ -92,8 +97,7 @@ export class ModernDwView extends DwView {
     }, { signal: this.changes.signal })
     this.root.addEventListener('scroll', () => {
       if (!this.surface || this.surface.kind !== 'grid' || this.stale) return
-      const start = Math.max(0, Math.floor(this.root.scrollTop / this.rowHeight) - 5)
-      if (start !== this.start) this.schedule()
+      if (this.startFor(this.root.scrollTop) !== this.start) this.schedule()
     }, { signal: this.changes.signal })
   }
 
@@ -160,7 +164,7 @@ export class ModernDwView extends DwView {
       else this.schedule()
       return
     }
-    const surface = this.contextSurface?.name === model.name ? this.contextSurface : DATA_SURFACES.find((item) => item.name === model.name)
+    const surface = this.contextSurface?.name === model.name ? this.contextSurface : dataSurfaceByName(model.name)
     const issues = surface ? dataSurfaceIssues(model.def, surface, model.overrides) : []
     const preview = /^(yes|true|1)$/i.test(model.describe('datawindow.print.preview'))
     const modern = !!surface && !issues.length && !preview
@@ -196,7 +200,8 @@ export class ModernDwView extends DwView {
     this.root.style.setProperty('--surface-row-height', `${this.rowHeight}px`)
     const scroll = this.root.scrollTop
     const left = this.root.scrollLeft
-    let start = surface.kind === 'grid' ? Math.max(0, Math.floor(scroll / this.rowHeight) - 5) : 0
+    this.plan = surface.kind === 'grid' ? this.groupPlan(model, surface) : null
+    let start = surface.kind === 'grid' ? this.startFor(scroll) : 0
     const changedRow = model.row !== this.previousRow || this.columnSelected
     let jumped = false
     if (surface.kind === 'grid' && changedRow && model.row > 0) {
@@ -226,6 +231,19 @@ export class ModernDwView extends DwView {
     }
     const body = document.createElement('div')
     body.className = surface.kind === 'grid' ? 'surface-body surface-body-grid' : 'surface-body'
+    if (surface.kind === 'grid') {
+      for (const caption of surface.captions ?? []) {
+        const object = model.def.objects.find((item) => item.name.toLowerCase() === caption.object)!
+        if (await this.prop(model, object, 'visible', 1, 'header') === '0') continue
+        const text = await this.label(model, { object: caption.object, labelObject: caption.object }, 1)
+        if (!text) continue
+        const note = document.createElement('p')
+        note.className = 'surface-caption'
+        note.dataset.caption = caption.object
+        note.textContent = text
+        body.append(note)
+      }
+    }
     const count = model.rowCount()
     const summary = `${surface.title} / ${count} ${count === 1 ? 'row' : 'rows'}`
     if (!count) {
@@ -241,7 +259,7 @@ export class ModernDwView extends DwView {
       table.className = 'surface-grid'
       table.setAttribute('role', 'grid')
       table.setAttribute('aria-label', surface.title)
-      table.setAttribute('aria-rowcount', String(count + 1))
+      table.setAttribute('aria-rowcount', String((this.plan?.prefix[count] ?? count) + 1))
       table.setAttribute('aria-colcount', String(this.bindings.size))
       const head = table.createTHead().insertRow()
       head.setAttribute('aria-rowindex', '1')
@@ -251,12 +269,25 @@ export class ModernDwView extends DwView {
         const label = document.createElement('span')
         label.id = `${this.identity}-${name}-heading`
         label.textContent = field.label
+        const source = this.surface?.fields.find((item) => item.object === name)
+        // Hidden only while the source caption is blank; a script-set caption is painted.
+        if (source?.labelHidden && field.label === source.label) label.classList.add('presentation-visually-hidden')
         th.append(label)
         if (dwRequired(field.object, model.overrides)) th.append(this.requiredHint(`${this.identity}-${name}-required`))
         if (field.numeric) th.classList.add('surface-number')
         if (field.spin) th.classList.add('surface-spin-heading')
         head.append(th)
       }
+      // Column proportions follow the widths the source gives the columns (structure, not pixels).
+      const widths = [...this.bindings.keys()].map((name) => Math.max(1, Number(model.def.objects.find((object) => object.name.toLowerCase() === name.toLowerCase())?.width) || 1))
+      const total = widths.reduce((sum, width) => sum + width, 0)
+      const columns = document.createElement('colgroup')
+      for (const width of widths) {
+        const column = document.createElement('col')
+        column.style.width = `${(width / total * 100).toFixed(2)}%`
+        columns.append(column)
+      }
+      table.prepend(columns)
       const rows = table.createTBody()
       const visible = new Set(Array.from({ length: Math.min(WINDOW_ROWS, count - start) }, (_, index) => start + index + 1))
       if (draft) visible.add(draft.row)
@@ -271,15 +302,21 @@ export class ModernDwView extends DwView {
         cell.style.height = `${length * this.rowHeight}px`
         cell.className = 'surface-spacer'
       }
+      const items = (row: number) => this.plan?.prefix[row] ?? row
       for (const row of [...visible].sort((a, b) => a - b)) {
-        spacer(row - previous - 1)
+        spacer(items(row - 1) - items(previous))
+        for (const [index, band] of (this.plan?.heads.get(row) ?? []).entries()) rows.append(await this.makeGroupRow(model, band, row, items(row - 1) + index + 2))
         rows.append(await this.makeRow(model, row, true))
+        for (const [index, band] of (this.plan?.tails.get(row) ?? []).entries()) {
+          rows.append(await this.makeGroupRow(model, band, row, items(row - 1) + (this.plan?.heads.get(row)?.length ?? 0) + index + 3))
+        }
         previous = row
       }
-      spacer(count - previous)
+      spacer(items(count) - items(previous))
       body.append(table)
     }
     for (const band of surface.bands ?? []) {
+      if (/\./.test(band.band)) continue
       const props = model.def.bands[band.band]
       if (!props || Array.isArray(props) || Number(props.height ?? 0) <= 0 || band.band === 'summary' && !count) continue
       const totals = await this.makeTotals(model, band)
@@ -311,7 +348,7 @@ export class ModernDwView extends DwView {
     if (!invalid) this.status.textContent = this.lookupNotice || this.choiceEdit?.options?.gridIssue || summary
     this.editor = null
     this.root.replaceChildren(this.status, body)
-    this.root.scrollTop = jumped ? start * this.rowHeight : scroll
+    this.root.scrollTop = jumped ? (this.plan?.prefix[start] ?? start) * this.rowHeight : scroll
     this.root.scrollLeft = left
     const headerHeight = this.root.querySelector('thead')?.getBoundingClientRect().height ?? 0
     const headerFits = headerHeight + this.rowHeight <= this.root.clientHeight
@@ -349,13 +386,46 @@ export class ModernDwView extends DwView {
     if (jumped) this.cell(model.row, model.colNames[model.col - 1])?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
   }
 
-  private async makeTotals(model: DwModel, band: NonNullable<DataSurface['bands']>[number]): Promise<HTMLElement | null> {
+  private groupPlan(model: DwModel, surface: DataSurface): GroupPlan | null {
+    return surface.grouped ? buildGroupPlan(model.groupLevels(), model.buf.primary, new Set((surface.bands ?? []).map((band) => band.band))) : null
+  }
+
+  /** First data row (0-based) a scroll offset brings into view, counting group bands as rows. */
+  private startFor(scrollTop: number): number {
+    return rowAtItem(this.plan, Math.max(0, Math.floor(scrollTop / this.rowHeight) - 5))
+  }
+
+  private async makeGroupRow(model: DwModel, name: string, row: number, index: number): Promise<HTMLElement> {
+    const band = this.surface!.bands!.find((item) => item.band === name)!
+    const tr = document.createElement('tr')
+    tr.className = 'surface-group-row'
+    tr.setAttribute('aria-rowindex', String(index))
+    tr.dataset.groupBand = name
+    const cell = tr.insertCell()
+    cell.colSpan = Math.max(1, this.bindings.size)
+    const section = await this.makeTotals(model, band, row)
+    if (section) cell.append(section)
+    return tr
+  }
+
+  private async makeTotals(model: DwModel, band: NonNullable<DataSurface['bands']>[number], atRow?: number): Promise<HTMLElement | null> {
+    const grouped = /\./.test(band.band)
+    const row = atRow ?? Math.max(1, model.rowCount())
     const section = document.createElement('section')
     section.className = `surface-band surface-band-${band.band}`
     section.dataset.surfaceBand = band.band
     section.setAttribute('aria-label', band.label)
+    for (const name of band.captions ?? []) {
+      const object = model.def.objects.find((item) => item.name.toLowerCase() === name)!
+      if (await this.prop(model, object, 'visible', row, band.band) === '0') continue
+      const text = await this.label(model, { object: name, labelObject: name }, row)
+      if (!text) continue
+      const note = document.createElement('p')
+      note.className = 'surface-caption'
+      note.textContent = text
+      section.append(note)
+    }
     const values = document.createElement('dl')
-    const row = Math.max(1, model.rowCount())
     for (const field of band.fields) {
       const object = model.def.objects.find((item) => item.name.toLowerCase() === field.object)!
       const value = await this.object(model, object, row, band.band, (n) => n, (n) => n, null)
@@ -364,8 +434,8 @@ export class ModernDwView extends DwView {
       if (!value && !sourceLabel) continue
       const item = document.createElement('div')
       const label = document.createElement('dt')
-      label.id = `${this.identity}-${band.band}-${field.object}-label`
-      label.textContent = sourceLabel?.textContent ?? (labelObject ? '' : field.label ?? '')
+      label.id = `${this.identity}-${band.band}-${grouped ? `${row}-` : ''}${field.object}-label`
+      label.textContent = field.labelHidden ? '' : sourceLabel?.textContent ?? (labelObject ? '' : field.label ?? '')
       if (label.textContent) item.append(label)
       if (value) {
         const result = document.createElement('dd')
@@ -376,15 +446,15 @@ export class ModernDwView extends DwView {
         value.setAttribute('aria-readonly', 'true')
         if (label.textContent) value.setAttribute('aria-labelledby', label.id)
         else value.setAttribute('aria-label', await this.label(model, field, row))
-        value.tabIndex = 0
+        value.tabIndex = grouped ? -1 : 0
         value.addEventListener('focus', () => { if (!this.restoringFocus) this.revealFocus(value) })
         result.append(value)
         item.append(result)
       }
       values.append(item)
     }
-    if (!values.children.length) return null
-    section.append(values)
+    if (!values.children.length && !section.children.length) return null
+    if (values.children.length) section.append(values)
     return section
   }
 
@@ -435,7 +505,7 @@ export class ModernDwView extends DwView {
     element.className = 'row surface-row'
     element.dataset.row = String(row)
     if (grid) {
-      element.setAttribute('aria-rowindex', String(row + 1))
+      element.setAttribute('aria-rowindex', String((this.plan ? this.plan.prefix[row - 1] + (this.plan.heads.get(row)?.length ?? 0) : row - 1) + 2))
       element.setAttribute('aria-selected', String(!!model.rowAt(row)?.sel))
     }
     else element.setAttribute('aria-label', `${this.surface!.title}, row ${row}`)
@@ -449,6 +519,13 @@ export class ModernDwView extends DwView {
     })
     const grouped = new Map<string, HTMLElement>()
     for (const group of this.surface!.groups ?? []) {
+      if (group.object === '') {
+        const plain = document.createElement('div')
+        plain.className = 'surface-group surface-group-plain'
+        for (const name of group.fields) grouped.set(name, plain)
+        element.append(plain)
+        continue
+      }
       const object = model.def.objects.find((object) => object.name.toLowerCase() === group.object)!
       const visible = await this.prop(model, object, 'visible', row, 'detail') !== '0'
       const text = visible ? await this.label(model, { object: group.object, labelObject: group.object }, row) : ''
@@ -481,11 +558,53 @@ export class ModernDwView extends DwView {
         element.append(line)
       }
     }
+    const appendCaptions = async (before?: string) => {
+      for (const caption of this.surface!.captions ?? []) {
+        if (caption.before !== before) continue
+        const object = model.def.objects.find((object) => object.name.toLowerCase() === caption.object)!
+        if (await this.prop(model, object, 'visible', row, 'detail') === '0') continue
+        const text = await this.label(model, { object: caption.object, labelObject: caption.object }, row)
+        if (!text) continue
+        const note = document.createElement('p')
+        note.className = 'surface-caption'
+        note.dataset.caption = caption.object
+        note.textContent = text
+        ;(before === undefined ? element : grouped.get(before) ?? element).append(note)
+      }
+    }
+    const appendButtons = async (before?: string) => {
+      for (const item of this.surface!.buttons ?? []) {
+        if (item.before !== before) continue
+        const object = model.def.objects.find((object) => object.name.toLowerCase() === item.object)!
+        if (await this.prop(model, object, 'visible', row, 'detail') === '0') continue
+        const text = await this.label(model, { object: item.object, labelObject: item.object }, row)
+        const button = document.createElement('button')
+        button.type = 'button'
+        button.className = 'surface-button'
+        button.dataset.obj = item.object
+        button.textContent = text || item.object
+        button.disabled = await this.prop(model, object, 'enabled', row, 'detail') === 'no' || await this.prop(model, object, 'enabled', row, 'detail') === '0'
+        // A button press is one Clicked on the button object, not also a row click.
+        button.addEventListener('mousedown', (event) => event.stopPropagation())
+        button.addEventListener('click', () => {
+          if (this.committing) return
+          void (async () => {
+            model.row = row
+            await this.ctl.rt.fire(this.ctl, 'clicked', [0, 0, row, { name: item.object }])
+            this.ctl.changed()
+          })().catch((error) => this.ctl.rt.onError(error))
+        })
+        ;(before === undefined ? element : grouped.get(before) ?? element).append(button)
+      }
+    }
     for (const [name, field] of this.bindings) {
       await appendSeparator(name)
+      await appendCaptions(name)
+      await appendButtons(name)
       const container = grouped.get(name) ?? element
       const wrapper = document.createElement(grid ? 'td' : 'div')
       wrapper.className = 'surface-field'
+      wrapper.dataset.field = name
       if (grid) wrapper.setAttribute('role', 'presentation')
       const external = !grid && this.surface === this.contextSurface ? this.contextLabels.get(name) : null
       const labelId = grid ? `${this.identity}-${name}-heading` : external?.id || `${this.identity}-${row}-${name}-label`
@@ -495,6 +614,8 @@ export class ModernDwView extends DwView {
         label.id = labelId
         label.className = 'surface-label'
         label.textContent = field.label
+        const source = this.surface?.fields.find((item) => item.object === name)
+        if (source?.labelHidden && field.label === source.label) label.classList.add('presentation-visually-hidden')
         wrapper.append(label)
       }
       const value = await this.object(model, field.object, row, 'detail', (n) => n, (n) => n, null)
@@ -672,7 +793,45 @@ export class ModernDwView extends DwView {
       container.append(wrapper)
     }
     await appendSeparator()
+    await appendCaptions()
+    await appendButtons()
+    if (!grid) this.arrangeLines(element, model)
     return element
+  }
+
+  /**
+   * Structural parity with the Classic form: fields whose source objects share a row stay on one line, in source order, each
+   * taking its source share of the width; groupboxes that sit side by side stay side by side.  Narrow containers stack the cells.
+   */
+  private arrangeLines(element: HTMLElement, model: DwModel): void {
+    const surface = this.surface
+    if (!surface) return
+    const fields = formLinePlan(model.def, surface)
+    const groups = groupLinePlan(model.def, (surface.groups ?? []).filter((group) => group.object).map((group) => group.object))
+    const wrapRuns = (container: HTMLElement, info: (child: HTMLElement) => { line: number; weight: number } | undefined) => {
+      let run: HTMLElement[] = []
+      const flush = () => {
+        if (run.length > 1) {
+          const line = document.createElement('div')
+          line.className = 'surface-line'
+          line.style.setProperty('--line-columns', run.map((child) => `minmax(0,${info(child)!.weight}fr)`).join(' '))
+          run[0].before(line)
+          line.append(...run)
+        }
+        run = []
+      }
+      for (const child of [...container.children] as HTMLElement[]) {
+        const data = info(child)
+        if (data && (!run.length || info(run[0])!.line === data.line)) run.push(child)
+        else { flush(); if (data) run = [child] }
+      }
+      flush()
+      container.classList.add('has-lines')
+    }
+    const ofField = (child: HTMLElement) => child.classList.contains('surface-field') && !child.hidden && child.dataset.field ? fields.get(child.dataset.field) : undefined
+    const ofGroup = (child: HTMLElement) => child.classList.contains('surface-group') && child.dataset.group ? groups.get(child.dataset.group) : undefined
+    for (const group of element.querySelectorAll<HTMLElement>(':scope > .surface-group')) wrapRuns(group, ofField)
+    wrapRuns(element, (child) => ofField(child) ?? ofGroup(child))
   }
 
   private async focusChoice(model: DwModel, object: DwObject, row: number, cell: HTMLElement): Promise<void> {
@@ -837,7 +996,7 @@ export class ModernDwView extends DwView {
       editor.addEventListener('keydown', (event) => {
         if (!['ArrowUp', 'ArrowDown'].includes(event.key) || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
         const spin = numericSpin(object, model.kinds[model.colIndex(object.name)], model.overrides)
-        if (spin.kind === 'none') return
+        if (spin.kind === 'none' || this.plainSpin(object)) return
         event.preventDefault()
         if (revision !== this.revision) {
           this.status.textContent = 'The layout changed. Try the adjustment again after it refreshes.'
@@ -877,6 +1036,11 @@ export class ModernDwView extends DwView {
     }
   }
 
+  /** The mapped field accepts the source's spin setting as plain editing, as the Classic view does. */
+  private plainSpin(object: DwObject): boolean {
+    return !!this.surface?.fields.find((field) => field.object === object.name.toLowerCase())?.spinPlain
+  }
+
   private syncSpin(input: HTMLInputElement, cell: HTMLElement, model: DwModel, object: DwObject): void {
     const config = numericSpin(object, model.kinds[model.colIndex(object.name)], model.overrides)
     if (config.kind !== 'number') return
@@ -899,7 +1063,7 @@ export class ModernDwView extends DwView {
       return
     }
     const config = numericSpin(object, model.kinds[model.colIndex(object.name)], model.overrides)
-    if (config.kind === 'none') return
+    if (config.kind === 'none' || this.plainSpin(object)) return
     if (config.kind === 'unsupported') {
       this.status.textContent = config.reason
       return

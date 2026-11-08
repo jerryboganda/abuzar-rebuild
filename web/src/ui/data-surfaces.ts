@@ -10,6 +10,10 @@ export interface DataSurfaceField {
   labelObject?: string
   labelBand?: 'header' | 'detail'
   label?: string
+  /** The source shows no caption for this field: `label` is only its accessible name and is not painted. */
+  labelHidden?: boolean
+  /** The source asks for stepping the Modern editor cannot honour (date mask, unbounded range); the field is edited as plain text, like the Classic view. */
+  spinPlain?: boolean
   suffixObject?: string
   kind?: 'computed'
   numeric?: boolean
@@ -24,13 +28,25 @@ export interface DataSurface {
   kind: 'form' | 'grid'
   sourceProcessing?: 0 | 1
   fields: readonly DataSurfaceField[]
+  /** Groupbox sections; one section with an empty `object` holds fields that sit outside every groupbox. */
   groups?: readonly { object: string; fields: readonly string[] }[]
   separators?: readonly { object: string; before?: string }[]
+  /** Plain source text (a heading or note) that belongs to no field; placed before the named field in a form, above the table in a grid. */
+  captions?: readonly { object: string; before?: string }[]
+  /** DataWindow buttons in a form: real buttons that raise the same Clicked event the Classic view raises for that object. */
+  buttons?: readonly { object: string; before?: string }[]
+  /** Static artwork (bitmaps and drawn boxes) in the source; accounted for but not painted by the Modern layout. */
+  decorations?: readonly string[]
   bands?: readonly {
-    band: 'summary' | 'footer'
+    /** Totals bands, or the header/trailer of a group level (`header.1`, `trailer.1`) when `grouped` is set. */
+    band: 'summary' | 'footer' | `header.${number}` | `trailer.${number}`
     label: string
-    fields: readonly Pick<DataSurfaceField, 'object' | 'labelObject' | 'label' | 'numeric'>[]
+    /** Source text in this band that names no total (for example a lone "Total:"), shown above the values. */
+    captions?: readonly string[]
+    fields: readonly Pick<DataSurfaceField, 'object' | 'labelObject' | 'label' | 'labelHidden' | 'numeric'>[]
   }[]
+  /** The grid is sorted by the source's groups: each break shows the group bands listed in `bands`. */
+  grouped?: boolean
 }
 
 const accountChoice: DwChoiceBinding = { kind: 'lookup', name: 'ddd_allaccounts', dataColumn: 'acccode', displayColumn: 'name' }
@@ -250,8 +266,10 @@ export function dataSurfaceIssues(def: DwDef, surface: DataSurface, overrides?: 
   if (objects.size !== def.objects.length) issues.push('Duplicate object identities')
   const processing = surface.sourceProcessing ?? (surface.kind === 'grid' ? 1 : 0)
   if (Number(def.datawindow.processing ?? 0) !== processing) issues.push('Processing style changed')
-  if (def.bands.group?.length) issues.push('Grouped bands require an explicit mapping')
-  if (!surface.fields.length) issues.push('No fields mapped')
+  const groupLevels = new Map(((def.bands.group ?? []) as { level: string; 'header.height'?: string; 'trailer.height'?: string }[]).map((group) => [Number(group.level), group]))
+  if (groupLevels.size && !surface.grouped) issues.push('Grouped bands require an explicit mapping')
+  if (surface.grouped && (!groupLevels.size || surface.kind !== 'grid')) issues.push('Group bands require a grouped grid')
+  if (!surface.fields.length && !(surface.kind === 'form' && (surface.buttons?.length || surface.captions?.length))) issues.push('No fields mapped')
   for (const field of surface.fields) {
     const object = objects.get(field.object)
     if (!object || object.type !== (field.kind === 'computed' ? 'compute' : 'column') || object.band !== 'detail') issues.push(`Unsupported field: ${field.object}`)
@@ -264,6 +282,8 @@ export function dataSurfaceIssues(def: DwDef, surface: DataSurface, overrides?: 
       if (used.has(field.labelObject)) issues.push(`Duplicate label: ${field.labelObject}`)
       used.add(field.labelObject)
     } else if (!field.label?.trim()) issues.push(`Missing label: ${field.object}`)
+    if (field.labelHidden && !field.label?.trim()) issues.push(`Hidden label needs an accessible name: ${field.object}`)
+    if (field.labelHidden && field.labelObject && objects.get(field.labelObject)?.text?.trim()) issues.push(`Hidden label hides a source caption: ${field.object}`)
     if (field.suffixObject) {
       const suffix = objects.get(field.suffixObject)
       if (surface.kind !== 'form') issues.push(`Field suffix requires a form layout: ${field.object}`)
@@ -317,17 +337,21 @@ export function dataSurfaceIssues(def: DwDef, surface: DataSurface, overrides?: 
         issues.push(`Multiline field requires a matching form layout: ${field.object}`)
       }
       const spin = numericSpin(object, column ? colKind(column.type) : '', overrides)
-      if (spin.kind === 'unsupported') issues.push(`${field.object}: ${spin.reason}`)
+      if (spin.kind === 'unsupported' && !field.spinPlain) issues.push(`${field.object}: ${spin.reason}`)
+      if (spin.kind !== 'unsupported' && field.spinPlain) issues.push(`Plain-spin acknowledgement not needed: ${field.object}`)
     }
   }
   if (surface.groups) {
     if (surface.kind !== 'form') issues.push('Field groups require a form layout')
     const grouped: string[] = []
+    if (surface.groups.filter((group) => group.object === '').length > 1) issues.push('Only one ungrouped section is allowed')
     for (const group of surface.groups) {
-      const object = objects.get(group.object)
-      if (!object || object.type !== 'groupbox' || object.band !== 'detail') issues.push(`Unsupported group: ${group.object}`)
-      if (used.has(group.object)) issues.push(`Duplicate group: ${group.object}`)
-      used.add(group.object)
+      if (group.object !== '') {
+        const object = objects.get(group.object)
+        if (!object || object.type !== 'groupbox' || object.band !== 'detail') issues.push(`Unsupported group: ${group.object}`)
+        if (used.has(group.object)) issues.push(`Duplicate group: ${group.object}`)
+        used.add(group.object)
+      }
       if (!group.fields.length) issues.push(`Empty group: ${group.object}`)
       grouped.push(...group.fields)
     }
@@ -352,19 +376,62 @@ export function dataSurfaceIssues(def: DwDef, surface: DataSurface, overrides?: 
       previous = position
     }
   }
+  if (surface.captions) {
+    const captionBand = surface.kind === 'grid' ? 'header' : 'detail'
+    for (const caption of surface.captions) {
+      const object = objects.get(caption.object)
+      if (!object || object.type !== 'text' || object.band !== captionBand) issues.push(`Unsupported caption: ${caption.object}`)
+      if (used.has(caption.object)) issues.push(`Duplicate caption: ${caption.object}`)
+      used.add(caption.object)
+      if (caption.before !== undefined && !surface.fields.some((field) => field.object === caption.before)) issues.push(`Invalid caption position: ${caption.object}`)
+    }
+  }
+  if (surface.buttons) {
+    if (surface.kind !== 'form') issues.push('Buttons require a form layout')
+    for (const button of surface.buttons) {
+      const object = objects.get(button.object)
+      if (!object || object.type !== 'button' || object.band !== 'detail') issues.push(`Unsupported button: ${button.object}`)
+      if (used.has(button.object)) issues.push(`Duplicate button: ${button.object}`)
+      used.add(button.object)
+      if (button.before !== undefined && !surface.fields.some((field) => field.object === button.before)) issues.push(`Invalid button position: ${button.object}`)
+    }
+  }
+  for (const name of surface.decorations ?? []) {
+    const object = objects.get(name)
+    const band = object && def.bands[object.band]
+    const clippedHeight = band && !Array.isArray(band) ? Number(band.height ?? 0) : 0
+    const clipped = !!object && clippedHeight > 0 && Number(object.y ?? 0) >= clippedHeight
+    // Static artwork, or any object the source clips below its band, is accounted for and not painted.
+    if (!object || !(clipped || object.band === 'background' || ['bitmap', 'rectangle', 'roundrectangle', 'ellipse', 'line'].includes(object.type) && !['summary', 'footer'].includes(object.band))) issues.push(`Unsupported decoration: ${name}`)
+    if (used.has(name)) issues.push(`Duplicate decoration: ${name}`)
+    used.add(name)
+  }
   if (surface.bands) {
     if (surface.kind !== 'grid') issues.push('Totals require a grid layout')
     const seen = new Set<string>()
     for (const band of surface.bands) {
-      if (!['summary', 'footer'].includes(band.band) || !def.bands[band.band] || Array.isArray(def.bands[band.band])) {
-        issues.push(`Unsupported totals band: ${band.band}`)
+      const group = /^(header|trailer)\.(\d+)$/.exec(band.band)
+      if (group) {
+        if (!surface.grouped || !groupLevels.has(Number(group[2]))) issues.push(`Unsupported group band: ${band.band}`)
+        if (seen.has(band.band)) issues.push('Totals bands must appear once in source order')
+        seen.add(band.band)
+      } else {
+        if (!['summary', 'footer'].includes(band.band) || !def.bands[band.band] || Array.isArray(def.bands[band.band])) {
+          issues.push(`Unsupported totals band: ${band.band}`)
+        }
+        if (seen.has(band.band) || band.band === 'summary' && seen.has('footer')) issues.push('Totals bands must appear once in source order')
+        seen.add(band.band)
       }
-      if (seen.has(band.band) || band.band === 'summary' && seen.has('footer')) issues.push('Totals bands must appear once in source order')
-      seen.add(band.band)
-      if (!band.label.trim() || !band.fields.length) issues.push(`Missing totals content: ${band.band}`)
+      if (!band.label.trim() || !band.fields.length && !(band.captions?.length && /\./.test(band.band))) issues.push(`Missing totals content: ${band.band}`)
+      for (const name of band.captions ?? []) {
+        const caption = objects.get(name)
+        if (!caption || caption.type !== 'text' || caption.band !== band.band) issues.push(`Unsupported totals caption: ${name}`)
+        if (used.has(name)) issues.push(`Duplicate caption: ${name}`)
+        used.add(name)
+      }
       for (const field of band.fields) {
         const object = objects.get(field.object)
-        if (!object || object.type !== 'compute' || object.band !== band.band || choiceStyle(object, overrides).kind !== 'none') {
+        if (!object || !(object.type === 'compute' || /\./.test(band.band) && object.type === 'column') || object.band !== band.band || choiceStyle(object, overrides).kind !== 'none') {
           issues.push(`Unsupported total: ${field.object}`)
         }
         if (used.has(field.object)) issues.push(`Duplicate field: ${field.object}`)
@@ -376,6 +443,7 @@ export function dataSurfaceIssues(def: DwDef, surface: DataSurface, overrides?: 
           if (used.has(field.labelObject)) issues.push(`Duplicate label: ${field.labelObject}`)
           used.add(field.labelObject)
         } else if (!field.label?.trim()) issues.push(`Missing label: ${field.object}`)
+        if (field.labelHidden && (field.labelObject || !field.label?.trim())) issues.push(`Hidden total label needs a plain name: ${field.object}`)
       }
     }
   }

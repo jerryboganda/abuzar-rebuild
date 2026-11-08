@@ -11,6 +11,9 @@ import {
   WINDOW_SURFACES, CALCULATOR_WINDOW_SURFACES, CALENDAR_WINDOW_SURFACES, CRITERIA_WINDOW_SURFACES, ENTRY_WINDOW_SURFACES,
 } from '../../web/src/ui/window-surfaces.ts'
 import { DATA_SURFACES } from '../../web/src/ui/data-surfaces.ts'
+import { DERIVED_DATA_SURFACES } from '../../web/src/ui/derived-data-surfaces.ts'
+import { DERIVED_ENTRY_WINDOW_SURFACES } from '../../web/src/ui/derived-entry-windows.ts'
+import { DERIVED_MODAL_WINDOW_SURFACES } from '../../web/src/ui/derived-modal-windows.ts'
 import { PRINT_TEMPLATES } from '../../web/src/ui/print-templates.ts'
 
 const here = dirname(fileURLToPath(import.meta.url))
@@ -60,9 +63,19 @@ const windowRegistries = {
   criteriaWindows: CRITERIA_WINDOW_SURFACES,
   entryWindows: ENTRY_WINDOW_SURFACES,
 }
-const mappedWindows = unique(Object.values(windowRegistries).flatMap((registry) => registry.map((item) => item.name)))
+// Reviewed layouts are hand-checked; generated ones come from web/tools/derive-*.ts, validate against the source, and are
+// not individually reviewed or browser-verified.
+const generatedWindowRegistries = {
+  derivedModalWindows: DERIVED_MODAL_WINDOW_SURFACES,
+  derivedEntryWindows: DERIVED_ENTRY_WINDOW_SURFACES,
+}
+const reviewedWindows = unique(Object.values(windowRegistries).flatMap((registry) => registry.map((item) => item.name)))
+const generatedWindows = unique(Object.values(generatedWindowRegistries).flatMap((registry) => registry.map((item) => item.name)))
+const mappedWindows = new Set([...reviewedWindows, ...generatedWindows])
 const inventoryWindows = unique((inventory.windows || []).map((item) => item.id || item.name))
 const mappedWindowsInInventory = new Set([...mappedWindows].filter((name) => inventoryWindows.has(name)))
+const reviewedWindowsInInventory = new Set([...reviewedWindows].filter((name) => inventoryWindows.has(name)))
+const generatedOnlyWindowsInInventory = new Set([...generatedWindows].filter((name) => inventoryWindows.has(name) && !reviewedWindows.has(name)))
 const mappedWindowsOutsideInventory = [...mappedWindows].filter((name) => !inventoryWindows.has(name)).sort()
 
 // A DataWindow counts as authored when it is a global surface or a contextual surface
@@ -84,14 +97,24 @@ const contextualRoots = [
     .flatMap((registry) => registry.flatMap((window) => (window.data || []).map((item) => item.surface))),
   ...ENTRY_WINDOW_SURFACES.flatMap((entry) => [...entry.details.map((detail) => detail.surface), entry.list]),
 ]
+const generatedRoots = [
+  ...DERIVED_MODAL_WINDOW_SURFACES.flatMap((window) => (window.data || []).map((item) => item.surface)),
+  ...DERIVED_ENTRY_WINDOW_SURFACES.flatMap((entry) => [...entry.details.map((detail) => detail.surface), entry.list]),
+]
 const globalDataWindows = surfaceNamesOf(DATA_SURFACES)
 const contextualDataWindows = surfaceNamesOf(contextualRoots)
-const mappedDataWindows = new Set([...globalDataWindows, ...contextualDataWindows])
+const generatedGlobalDataWindows = surfaceNamesOf(DERIVED_DATA_SURFACES)
+const generatedContextualDataWindows = surfaceNamesOf(generatedRoots)
+const reviewedDataWindows = new Set([...globalDataWindows, ...contextualDataWindows])
+const generatedDataWindows = new Set([...generatedGlobalDataWindows, ...generatedContextualDataWindows])
+const mappedDataWindows = new Set([...reviewedDataWindows, ...generatedDataWindows])
 const inventoryDataWindows = unique((inventory.datawindows || []).map((item) => item.id || item.name))
 const mappedDataWindowsInInventory = new Set([...mappedDataWindows].filter((name) => inventoryDataWindows.has(name)))
 const mappedDataWindowsOutsideInventory = [...mappedDataWindows].filter((name) => !inventoryDataWindows.has(name)).sort()
 const printDefinitions = unique(PRINT_TEMPLATES.flatMap((template) => template.definitions))
 const printDefinitionsInInventory = new Set([...printDefinitions].filter((name) => inventoryDataWindows.has(name)))
+const reviewedDataWindowsInInventory = new Set([...reviewedDataWindows].filter((name) => inventoryDataWindows.has(name)))
+const generatedOnlyDataWindowsInInventory = new Set([...generatedDataWindows].filter((name) => inventoryDataWindows.has(name) && !reviewedDataWindows.has(name)))
 const unmappedWindows = inventoryWindows.size - mappedWindowsInInventory.size
 const unmappedDataWindows = inventoryDataWindows.size - mappedDataWindowsInInventory.size
 const unregisteredPrintDefinitions = inventoryDataWindows.size - printDefinitionsInInventory.size
@@ -115,6 +138,9 @@ const contrastValues = result ? caseKeys.flatMap((key) => result[key]
 const minimumContrast = contrastValues.length ? Math.min(...contrastValues) : null
 
 const documentUnclassified = (documentUse.unclassified ?? 0) + (documentUse.unknown ?? 0)
+// Evidence classes (not approvals) from web/tools/classify-documents.ts, when its report is present.
+const classificationPath = resolve(here, '..', '..', 'docs', 'ui-print-classification.json')
+const classification = existsSync(classificationPath) ? readJson(classificationPath) : null
 const approvedPrintTemplates = PRINT_TEMPLATES.filter((template) => template.status === 'approved').length
 if (typecheck !== undefined && typecheck !== 'passed' && typecheck !== 'failed') fail('--typecheck expects passed or failed')
 const localChecks = [
@@ -154,12 +180,12 @@ const workPackages = [
   {
     id: 'ui-shell',
     status: 'partial',
-    evidence: `${mappedWindowsInInventory.size} windows have authored layouts; complete rights-aware navigation, the full catalog and role workflows are not covered.`,
+    evidence: `${mappedWindowsInInventory.size} windows have a reviewed or generated layout (none browser-verified); complete rights-aware navigation, the full catalog and role workflows are not covered.`,
   },
   {
     id: 'ui-data-surfaces',
     status: 'partial',
-    evidence: `${mappedDataWindowsInInventory.size} DataWindow definitions have explicit surfaces (${globalDataWindows.size} global, ${contextualDataWindows.size} contextual); ${number(unmappedDataWindows)} inventoried DataWindows are unmapped.`,
+    evidence: `${mappedDataWindowsInInventory.size} DataWindow definitions have a reviewed or generated surface (${reviewedDataWindowsInInventory.size} reviewed: ${globalDataWindows.size} global, ${contextualDataWindows.size} contextual; ${generatedOnlyDataWindowsInInventory.size} generated only, none browser-verified); ${number(unmappedDataWindows)} inventoried DataWindows are unmapped.`,
   },
   {
     id: 'ui-print-engine',
@@ -174,7 +200,7 @@ const workPackages = [
   {
     id: 'ui-screen-coverage',
     status: 'partial',
-    evidence: `${mappedWindowsInInventory.size} of ${number(inventoryWindows.size)} windows have authored surfaces; complete verified screens remain zero.`,
+    evidence: `${mappedWindowsInInventory.size} of ${number(inventoryWindows.size)} windows have a reviewed or generated Modern layout; complete verified screens remain zero.`,
   },
   {
     id: 'ui-print-coverage',
@@ -200,7 +226,7 @@ const workPackages = [
 
 const acceptance = [
   ['Coverage inventory and explicit status for every screen/field/action/state', 'partial',
-    `${mappedWindowsInInventory.size}/${number(inventoryWindows.size)} windows and ${mappedDataWindowsInInventory.size}/${number(inventoryDataWindows.size)} DataWindows have authored surfaces; the inventory reports ${inventory.counts?.modernVerified ?? 0} verified Modern screens.`],
+    `${mappedWindowsInInventory.size}/${number(inventoryWindows.size)} windows and ${mappedDataWindowsInInventory.size}/${number(inventoryDataWindows.size)} DataWindows have a reviewed or generated Modern surface; the inventory reports ${inventory.counts?.modernVerified ?? 0} verified Modern screens.`],
   ['Classic has zero unexplained functional regressions', 'partial',
     'Local Classic/Modern characterization and synthetic browser checks pass; no complete recorded Classic baseline over all workflows exists.'],
   ['Modern and Classic produce identical business outcomes for the same synthetic transactions', 'partial',
@@ -244,7 +270,9 @@ const acceptance = [
   ['p95 interaction feedback and tab-switch targets on the agreed Windows machine', 'blocked',
     'No packaged Windows performance measurement on the reference machine.'],
   ['30,000-item lookup and 100,000-row report/grid fixtures', 'partial',
-    'Synthetic large-lookup and 10,000-row fixtures exist; the required 30,000/100,000 fixed fixtures are not both verified.'],
+    result?.performanceSamples?.length
+      ? `Fixtures ran: ${result.performanceSamples.map((sample) => `${sample.name} ${sample.milliseconds} ms`).join('; ')} (local timings, not reference-machine p95).`
+      : 'The 30,000-choice lookup and 100,000-row grid fixtures are written but have not been executed for this source tree; no timing was supplied.'],
   ['Barcode sequence, rapid keyboard, active-cell preservation', 'partial',
     'Synthetic keyboard/barcode and active-cell checks pass; scanner hardware is not verified.'],
   ['No new browser exceptions, unhandled rejections or silent failures', 'verified',
@@ -259,18 +287,40 @@ const acceptance = [
     `${ciEvidence} The presentation job itself uses synthetic fixtures, not an authenticated PostgreSQL session.`],
 ]
 
+// Rows whose evidence is a browser run cannot stay "verified" for a tree no browser result was supplied for.
+const browserDependent = new Set([
+  'Fresh preferences start Modern; existing Classic honored; user/database isolation',
+  'Mode change leaves edits intact and applies next sign-in',
+  'Tab activation does not rerun Open; dirty close follows CloseQuery',
+  'Repeated open/close releases listeners and temporary views',
+  'Normal text 4.5:1; large text/non-text 3:1; state not color alone',
+  'Pointer targets 24x24 or documented exception',
+  '200% text and reflow at 320 CSS px equivalent',
+  'No new browser exceptions, unhandled rejections or silent failures',
+])
+if (!result) {
+  for (const row of acceptance) {
+    if (row[1] === 'verified' && browserDependent.has(row[0])) {
+      row[1] = 'partial'
+      row[2] = `No browser result was supplied for this source tree; earlier browser evidence predates the generated layouts. ${row[2]}`
+    }
+  }
+}
+
 const blockers = [
-  `Complete screen/field/action/state catalog: ${number(unmappedWindows)} of ${number(inventoryWindows.size)} windows have no authored Modern surface, and 0 complete workflows are accepted.`,
+  `Complete screen/field/action/state catalog: ${number(unmappedWindows)} of ${number(inventoryWindows.size)} windows have no reviewed or generated Modern layout, and 0 complete workflows are accepted.`,
   `Complete document catalog: ${number(unregisteredPrintDefinitions)} of ${number(inventoryDataWindows.size)} DataWindows are not registered as Modern print templates; ${approvedPrintTemplates} templates are approved.`,
   documentUnclassified
-    ? `Document-family classification and caller/reachability evidence are still unclassified for ${number(documentUnclassified)} DataWindows in the static inventory.`
+    ? classification
+      ? `Document families are evidence-classified (${number(classification.printCandidates)} print or report candidates of ${number(classification.definitions)}) but not approved; role and caller reachability stay unverified.`
+      : `Document-family classification and caller/reachability evidence are still unclassified for ${number(documentUnclassified)} DataWindows in the static inventory.`
     : 'Caller/reachability evidence for each document family is not yet attached to the static inventory.',
   'No all-role Cash Sale, Purchase, Account Ledger and Manager pilot acceptance.',
   'No packaged Windows/WebView2 native theme, scaling, focus, shortcut, print-dialog or printer verification.',
   'No authenticated PostgreSQL end-to-end acceptance of the Modern presentation; the presentation job runs synthetic fixtures.',
   'No manual Windows screen-reader/keyboard WCAG 2.2 AA assessment.',
   'No physical printer, scanner, barcode-scanner or label-paper acceptance; label dimensions are unknown.',
-  'No 30,000-item and 100,000-row required fixed fixtures or reference-machine p95 measurements.',
+  result?.performanceSamples?.length ? 'No reference-machine p95 measurements.' : 'The 30,000-item and 100,000-row fixtures have not been executed for this tree, and there are no reference-machine p95 measurements.',
 ]
 
 const summary = {
@@ -286,6 +336,16 @@ const summary = {
     modernVerified: inventory.counts?.modernVerified ?? 0,
     inventoryStatus,
     documentUse,
+    useEvidence: inventory.counts?.datawindowsOnVisibleControls === undefined ? null : {
+      visibleControls: inventory.counts.datawindowsOnVisibleControls,
+      hiddenOnly: inventory.counts.datawindowsOnlyOnHiddenControls,
+      nestedOnly: inventory.counts.datawindowsNestedOnly,
+      assignedInScripts: inventory.counts.datawindowsAssignedInScripts,
+      reportTargets: inventory.counts.datawindowsAssignedToReportTargets,
+      printTargets: inventory.counts.datawindowsAssignedToPrintTargets,
+      datastores: inventory.counts.datawindowsAssignedToDatastores,
+      noEvidence: inventory.counts.datawindowsWithNoStaticOrScriptUse,
+    },
   },
   authored: {
     windowMappings: {
@@ -294,6 +354,10 @@ const summary = {
       calculatorWindows: CALCULATOR_WINDOW_SURFACES.length,
       criteriaWindows: CRITERIA_WINDOW_SURFACES.length,
       entryWindows: ENTRY_WINDOW_SURFACES.length,
+      generatedModalWindows: DERIVED_MODAL_WINDOW_SURFACES.length,
+      generatedEntryWindows: DERIVED_ENTRY_WINDOW_SURFACES.length,
+      reviewed: reviewedWindowsInInventory.size,
+      generatedOnly: generatedOnlyWindowsInInventory.size,
       unique: mappedWindowsInInventory.size,
       unmapped: unmappedWindows,
       outsideInventory: mappedWindowsOutsideInventory,
@@ -301,6 +365,8 @@ const summary = {
     dataWindowMappings: {
       globalSurfaces: globalDataWindows.size,
       contextualSurfaces: contextualDataWindows.size,
+      reviewed: reviewedDataWindowsInInventory.size,
+      generatedOnly: generatedOnlyDataWindowsInInventory.size,
       unique: mappedDataWindowsInInventory.size,
       unmapped: unmappedDataWindows,
       outsideInventory: mappedDataWindowsOutsideInventory,
@@ -375,11 +441,13 @@ only the authored surfaces.
 | DataWindow definitions | ${summary.inventory.datawindows} |
 | DataWindow columns | ${summary.inventory.datawindowColumns ?? 'unknown'} |
 | Missing static DataWindow references | ${summary.inventory.missingStaticDatawindows ?? 'unknown'} |
-| Windows with an authored Modern layout | ${summary.authored.windowMappings.unique} (${pct(summary.authored.windowMappings.unique, summary.inventory.windows)}) |
+| Windows with a Modern layout (reviewed + generated) | ${summary.authored.windowMappings.unique} (${pct(summary.authored.windowMappings.unique, summary.inventory.windows)}) |
+| - reviewed by hand | ${summary.authored.windowMappings.reviewed} (${pct(summary.authored.windowMappings.reviewed, summary.inventory.windows)}) |
+| - generated from the source definitions (validated, not individually reviewed or browser-verified) | ${summary.authored.windowMappings.generatedOnly}: ${summary.authored.windowMappings.generatedModalWindows} modal and ${summary.authored.windowMappings.generatedEntryWindows} entry layouts |
 | Authored layouts by registry | ${summary.authored.windowMappings.windowSurfaces} workspace/tool, ${summary.authored.windowMappings.criteriaWindows} criteria, ${summary.authored.windowMappings.entryWindows} entry, ${summary.authored.windowMappings.calculatorWindows} calculator, ${summary.authored.windowMappings.calendarWindows} calendar |
-| Windows without an authored layout | ${summary.authored.windowMappings.unmapped} |
-| DataWindows with an authored surface | ${summary.authored.dataWindowMappings.unique} (${pct(summary.authored.dataWindowMappings.unique, summary.inventory.datawindows)}); ${summary.authored.dataWindowMappings.globalSurfaces} from the global registry (with nested lookups) and ${summary.authored.dataWindowMappings.contextualSurfaces} contextual, overlaps counted once |
-| DataWindows without an authored surface | ${summary.authored.dataWindowMappings.unmapped} |
+| Windows without a Modern layout | ${summary.authored.windowMappings.unmapped} |
+| DataWindows with a Modern surface (reviewed + generated) | ${summary.authored.dataWindowMappings.unique} (${pct(summary.authored.dataWindowMappings.unique, summary.inventory.datawindows)}); ${summary.authored.dataWindowMappings.reviewed} reviewed (${summary.authored.dataWindowMappings.globalSurfaces} global with nested lookups, ${summary.authored.dataWindowMappings.contextualSurfaces} contextual) and ${summary.authored.dataWindowMappings.generatedOnly} generated only, overlaps counted once |
+| DataWindows without a Modern surface | ${summary.authored.dataWindowMappings.unmapped} |
 | Authored names absent from the static inventory | ${summary.authored.windowMappings.outsideInventory.length} windows, ${summary.authored.dataWindowMappings.outsideInventory.length} DataWindows${summary.authored.dataWindowMappings.outsideInventory.length ? ` (${summary.authored.dataWindowMappings.outsideInventory.join(', ')})` : ''} |
 | Modern print template families | ${summary.authored.printTemplates.families} |
 | Registered Modern print definitions | ${summary.authored.printTemplates.definitions} |
@@ -387,7 +455,9 @@ only the authored surfaces.
 | Preview Modern print templates | ${summary.authored.printTemplates.preview} |
 | Blocked Modern print templates | ${summary.authored.printTemplates.blocked} |
 | Verified complete Modern screens | ${summary.inventory.modernVerified} |
+| Print and report candidates (evidence classes, not approvals) | ${classification ? `${classification.printCandidates} of ${classification.definitions}: ${Object.entries(classification.classes).map(([key, count]) => `${key} ${count}`).join(', ')}` : 'not generated'} |
 | Document uses classified | ${JSON.stringify(summary.inventory.documentUse)} |
+| DataWindow use evidence (static controls and scripts; not a classification) | ${summary.inventory.useEvidence ? `${summary.inventory.useEvidence.visibleControls} on visible window controls, ${summary.inventory.useEvidence.hiddenOnly} only on hidden controls, ${summary.inventory.useEvidence.nestedOnly} only nested in reports, ${summary.inventory.useEvidence.assignedInScripts} assigned in scripts (${summary.inventory.useEvidence.reportTargets} to report targets, ${summary.inventory.useEvidence.printTargets} to print targets, ${summary.inventory.useEvidence.datastores} to datastores), ${summary.inventory.useEvidence.noEvidence} with no static or script use` : 'not in this inventory'} |
 
 The static inventory reports **0 verified Modern screens** because it has no
 complete per-screen acceptance evidence. Authored mappings are presentation

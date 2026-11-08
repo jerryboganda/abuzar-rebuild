@@ -5,9 +5,187 @@ presentation modes. Modern will be the default for users without a preference;
 Classic remains available. A mode change applies at the next sign-in.
 See `../PRODUCT.md` for the confirmed scope and constraints.
 
+## Execution policy (2026-11-08)
+
+Follow `AGENTS.md`, **Project execution policy**: complete the agreed code
+scope before one consolidated final browser pass; do not run focused or full
+browser checks per slice. Write fixtures during implementation and retain
+non-browser correctness checks. Fix findings after the final pass, but do not
+claim browser re-verification of those fixes or run another browser pass
+without explicit authorization. Use recommended defaults for routine choices
+and save consequential assumptions rather than repeatedly prompting the user.
+Required approvals remain mandatory. This policy supersedes older execution
+instructions below; acceptance requirements and historical evidence are unchanged.
+
 ## Current state
 
-**Sixteen more single-entry masters are authored; enhancement remains incomplete and unreleased.**
+**Source-derived Modern layouts now cover most windows; nothing new is browser-verified, and the enhancement remains incomplete and unreleased.**
+Measured from the working tree by `tools/parity/ui_completion_audit.mjs` (see
+`ui-completion-audit.md`): 1,958 of 2,062 inventoried windows (95.0%) have a
+Modern layout. 170 are hand-reviewed (9 workspace/tool, 55 criteria, 4
+calculator, 2 calendar and 100 entry windows). 1,788 are generated from the
+recovered definitions by `web/tools/derive-*.ts`: 1,540 dialog and sheet windows
+and 248 entry masters. The other 104 windows keep the labelled Classic
+compatibility layout. For DataWindows, 3,206 of 8,740 (36.7%) have a Modern
+surface: 275 reviewed and 2,931 generated. 5,534 have none; most are reports
+and print documents, which are a separate family. Generated mappings are
+validated against the source and re-validated at runtime, but they are **not
+individually reviewed and have no browser evidence**. Verified complete Modern
+screens and accepted workflows remain zero.
+
+Non-browser checks on this tree: 827 frontend tests, strict presentation types,
+nine static-inventory tests and a 73-module static build all pass. No browser
+run exists for this tree. The 12,819-assertion regression listed below belongs
+to commit `0571876b` and says nothing about the generated families or the
+fixes made since. Mapping counts are not a completion percentage; no aggregate
+percentage is defined.
+
+### Generated layouts (2026-11-08)
+
+Generators read `data/src` only and write checked-in TypeScript plus a backlog
+that names every item left on the Classic layout and the reason:
+
+| Generator | Output | Result |
+|---|---|---|
+| `derive-data-surfaces.ts` | `derived-data-surfaces.ts`, `ui-derived-surfaces-backlog.json` | 2,298 DataWindow surfaces; 5,391 pending (4,540 with report-style header, footer, summary or background objects, 494 with groups the form layout cannot hold, 147 crosstabs) |
+| `derive-entry-windows.ts` | `derived-entry-windows.ts`, `ui-derived-windows-backlog.json` | 248 of 262 non-reviewed entry masters; 14 pending, mostly on an unmapped hosted DataWindow |
+| `derive-modal-windows.ts` | `derived-modal-windows.ts`, `ui-derived-modal-windows-backlog.json` | 1,540 of 1,628 non-reviewed dialog and sheet windows; 88 pending (86 unmapped DataWindow, 2 unsupported control) |
+
+`tests/derived-surfaces.test.ts` checks that each generated file matches a fresh
+run, that every surface passes `dataSurfaceIssues` and `windowSurfaceIssues`
+against the real runtime tree, and that the generators **reproduce the
+reviewed mappings they can derive**: 236 DataWindow surfaces, 48 of 50 reviewed
+criteria layouts (the two exceptions are hidden-control caption pairings named
+in the test) and every reviewed entry control tree and detail order.
+
+Decisions recorded for future sessions:
+
+1. Reviewed mappings always win. Generated ones fill gaps and are re-validated on
+   every paint or open; a mismatch falls back to Classic with a visible notice.
+2. A DataWindow hosted by an entry master keeps a context-only mapping (it is
+   embedded in that window's layout), as the reviewed masters do. Only other
+   DataWindows are mapped globally.
+3. Calibration found 18 reviewed Code/Name lists that placed Code before Name where
+   the source puts Name first. They now follow the recovered x positions
+   (`NAME_FIRST_LISTS`); tests compare every single-entry list with the source.
+4. A bare DataWindow field with no source caption is named after its column,
+   as the reviewed Price selector is. These windows are listed under
+   `columnNamedFields` in the modal backlog.
+5. A criteria list may be captioned by a source label instead of a groupbox
+   (`lists[].label`), a dropdown or multiline edit may be a field, and pictures,
+   rectangles and progress bars are passive auxiliary controls.
+6. Totals take the footer text when there is one, otherwise the column header
+   above; the band heading "Totals" is generic and not source text. Hidden
+   inherited controls pair with the nearest hidden caption because their design
+   positions are unreliable.
+7. A visible field the source leaves uncaptioned gets an accessible-only name from
+   its column (`labelHidden`, visually hidden), so no wording is invented on screen.
+   Source text that names no field (a heading, a note, a script-set value) is kept
+   in place as a form caption (`captions`). Form labels pair by globally cheapest
+   vertical-then-horizontal distance; the fallbacks above would hide a bad pairing,
+   so the reviewed-mapping calibration test is the guard. A freeform DataWindow whose
+   captions sit in a header band is generated as a grid (`sourceProcessing: 0`).
+8. Tabs, user objects, OLE, rich-text, list views and hyperlinks in a response
+   window are embedded: kept as their original element, with their own children,
+   inside the Modern frame (`embedded`). Only the window's own controls are mapped.
+   A caption object that is blank in the source keeps an accessible-only name until a
+   script sets it, and a grid's header text that names no column is a grid caption.
+   Fields outside every groupbox form one plain section; bitmaps and drawn boxes are
+   accounted for as `decorations` and not painted; so is any object the source
+   places below its band height (the original clips it).
+11. A form's DataWindow buttons are real buttons that raise the same Clicked event, with
+   the button's name as the object, that the Classic view raises for that object (the
+   runtime has no ButtonClicked event in either view). A lone totals-band text such as
+   "Total:" is shown above the totals (`bands[].captions`).
+12. A spin setting the editor cannot honour (a date mask, an unbounded integer range) is
+   acknowledged per field (`spinPlain`) and edited as plain text, as the Classic view does.
+13. Detail-page controls that are not mapped DataWindows, and DataWindows whose object is
+   assigned at run time, keep their original element in the entry layout (`kind: 'control'`).
+   A DataWindow known to the source but not yet mappable still blocks its window.
+14. Ordinary windows opened as workspace sheets (unset or popup window type) are
+   reflowed like dialogs (`sheet: true`); the MDI frame and background never are. A
+   dialog field or list the source leaves uncaptioned gets an accessible-only name
+   (`fields[].name`, `lists[].name`) from its box or control, and a DataWindow whose
+   object is assigned at run time is embedded as its original element.
+15. A grouped grid (`grouped: true`) shows the source's group header and trailer bands at
+   every break, using the Classic view's break rule (`group-plan.ts`, unit-tested) and the
+   runtime's group-scoped aggregates. Row windowing counts group bands as rows, so scroll
+   position, row indexes and spacers stay consistent. Group titles with no source caption are
+   named accessibly and not painted. Forms with groups still wait for a reviewed mapping.
+16. Parity standard (user decision, 2026-11-08, final; see AGENTS.md "UI standard"): Modern is
+   compulsory, not optional, and must be enterprise-grade and fully functional. It must keep
+   100% structural parity of the UI/UX frontend with Classic (structure, not design): same
+   controls and control types, order, arrangement and proportions (two fields sharing a row 50/50,
+   one dropdown and one text field, stay that way), visible/hidden fields, tabs, groups, actions,
+   validation and behaviour; visual design is free. PDF, print and report output is EXEMPT from
+   parity and may be redesigned freely into modern-grade graphics (its data content must stay
+   correct; on-screen criteria and print-settings dialogs keep parity). Classic is the reference
+   baseline and runtime fallback. Modern becomes the default
+   startup once the structure-parity gate, the completed browser pass and business acceptance
+   of the transaction screens exist. The original app is needed running for side-by-side
+   captures (not yet done).
+17. Structural arrangement (decision 16 made concrete; `line-plan.ts`, unit-tested). Modern forms,
+   grids and dialogs follow the source geometry instead of an auto-fit grid: objects whose
+   vertical extents overlap form one line, ordered left to right, each cell taking its source
+   share of the line (fr units); groupboxes side by side stay side by side; grid columns take
+   source width proportions (`colgroup`); dialog content is ordered by source position unless a
+   reviewed `contentOrder` exists. Narrow containers stack the cells. Measured on the recovered
+   definitions: 970 form surfaces, 456 have fields that share a row, all visible fields are
+   planned exactly once. Known gap: 7 forms (`d_mr_patientdischarge`, `d_old_general1`,
+   `d_opensalereturnfooter`, `d_salepreferences`, `d_salereturnfooter_view`,
+   `d_servicefooter_view`, `d_visitvitals`) have a tab order that interleaves lines, so their
+   shared rows are not merged (reordering the DOM would change the tab order); a placement-based
+   arrangement is open. Not browser verified.
+9. The Modern workspace sidebar now browses the live menu by module (collapsed
+   groups, lazily filled, open state retained) as well as searching it; availability
+   is still the live visible/enabled state, rechecked before every command.
+10. Modern `frame` is the top-left free groupbox. Visible DataWindows follow
+   source reading order and hidden print companions follow by name.
+
+### Static use evidence
+
+The inventory now records, without classifying documents, where each DataWindow
+is used: 1,662 sit on visible window controls, 226 only on hidden controls, 200
+only nested in reports; scripts assign 2,438 (1,326 to report targets, 231 to
+print targets, 588 to datastores); 1,157 have no static or script use. Formal
+document classification and approved templates remain open.
+
+### Document classification (evidence, not approval)
+
+`web/tools/classify-documents.ts` writes `ui-print-classification.json`: each of the 8,740
+DataWindows lands in one class from script and window evidence only. 4,331 are print or
+report candidates (231 assigned to print targets, 4,096 report targets or page-numbered
+layouts, 4 registered templates); 1,705 sit on screen controls; 465 are datastores with no
+screen; 911 have no evidence. Structural flags: 4,211 use page numbers, 2,041 have groups,
+147 are crosstabs, 70 graphs, 59 composites. The 104 windows still without a layout are mostly
+hosts of these report layouts, so they belong to the document family, whose Modern templates
+need layout review, dimensions and approval before they can be generated.
+
+### Final browser pass: matrix prepared, not run
+
+The single consolidated pass (`presentation-smoke.mjs`, no flags) now covers:
+
+- the earlier families, with the debug allowlist removed so every reviewed
+  single-entry master runs, plus the 56 generated single-entry masters that use
+  the standard tree (`standardSingle` in `presentation-derived-fixture.mjs`);
+- `presentation-derived-browser.mjs`: all 2,272 generated global DataWindow surfaces
+  (rendered with their recovered definitions and synthetic rows), the other 192 generated entry masters and
+  all 1,540 generated dialog and sheet windows, each in Classic and Modern, opened
+  through the real `open`/`opensheet` with no scripts or data access, checking
+  that the layout is accepted, original controls stay attached, fields are
+  named, actions stay in the footer and the dialog fits the viewport;
+- appearance captures for one generated window per layout shape
+  (`captureDerivedModalWindows`, 561 shapes at light/100%/1366 and dark/200%/320);
+- a 30,000-choice lookup and a 100,000-row grid, with timings recorded in
+  `performanceSamples` (local timings, not reference-machine p95).
+
+Gaps the pass will not close: generated entry masters get no appearance
+matrix, the generated families have no workflow checks, and none of this
+substitutes for native, PostgreSQL, hardware or assistive-technology acceptance.
+
+### Previous committed snapshot (`0571876b`)
+
+**Sixteen more single-entry masters were authored at that commit.**
 As of this snapshot the registry holds 168 authored windows out of the 2,062
 inventoried (8.15%; 9.18% of inherited control paths): 70 modal layouts (55
 criteria, 5 native-field, 4 transaction, 4 calculator and 2 calendar windows)

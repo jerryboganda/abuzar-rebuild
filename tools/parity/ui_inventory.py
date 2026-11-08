@@ -12,6 +12,7 @@ import copy
 import gzip
 import hashlib
 import json
+import re
 from collections import Counter
 from pathlib import Path
 
@@ -88,6 +89,50 @@ def menu_rows(items, path):
         children = item.get("items", [])
         yield {"id": child, "leaf": not children, "runtimeVisibility": "unverified"}
         yield from menu_rows(children, child)
+
+
+ASSIGN = re.compile(r"""(?:([A-Za-z_][\w]*(?:\.[A-Za-z_][\w]*)*)\s*\.\s*)?dataobject\s*=\s*["']([A-Za-z0-9_]+)["']""", re.I)
+LITERAL = re.compile(r"""["']([A-Za-z_][A-Za-z0-9_]*)["']""")
+
+
+def script_target(identifier):
+    """Category of the object a script assigns a DataWindow to, from the assignment target alone."""
+    name = (identifier or "").split(".")[-1].lower()
+    if not name:
+        return "implicit"
+    if "print" in name:
+        return "print"
+    if "report" in name or name.startswith("rpt"):
+        return "report"
+    if re.match(r"^(l|i|a|g)?ds_|^lds|^ids", name):
+        return "datastore"
+    if name.startswith(("dw_", "adw_", "idw_", "ldw_")):
+        return "control"
+    return "other"
+
+
+def script_references(source, names):
+    """Static DataWindow references found in the redacted scripts (assignment targets and any other literal use)."""
+    root = source / "scripts"
+    uses = {name: Counter() for name in names}
+    literal = set()
+    digest = hashlib.sha256()
+    files = 0
+    if root.is_dir():
+        for path in sorted(root.rglob("*.pbs")):
+            text = path.read_bytes()
+            digest.update(path.relative_to(root).as_posix().encode("utf-8") + b"\0" + text)
+            files += 1
+            decoded = text.decode("utf-8", errors="replace")
+            for match in ASSIGN.finditer(decoded):
+                name = match.group(2).lower()
+                if name in uses:
+                    uses[name][script_target(match.group(1))] += 1
+            for match in LITERAL.finditer(decoded):
+                name = match.group(1).lower()
+                if name in uses:
+                    literal.add(name)
+    return uses, literal, files, digest.hexdigest() if files else None
 
 
 def inventory(root):
@@ -169,6 +214,24 @@ def inventory(root):
     if not definitions:
         raise ValueError("No DataWindow bundles found in data/src/dw")
 
+    uses, literal, script_files, script_digest = script_references(source, definitions.keys())
+    for name, definition in definitions.items():
+        counted = dict(sorted(uses[name].items()))
+        definition["scriptUse"] = {"assignedTo": counted, "referencedInScripts": name in literal}
+    # Static evidence only: where a window control names the DataWindow, and whether that control starts visible.
+    # This is not a document classification; dynamic assignments in scripts are not visible here.
+    for definition in definitions.values():
+        definition["staticUse"] = {"visibleControls": 0, "hiddenControls": 0, "nestedInReports": 0}
+    for window in windows:
+        for row in window["controls"]:
+            target = definitions.get(row["datawindow"]) if row["datawindow"] else None
+            if target is not None:
+                target["staticUse"]["hiddenControls" if row["initialVisibility"] is False else "visibleControls"] += 1
+    for definition in list(definitions.values()):
+        for nested in definition["nestedReports"]:
+            if nested in definitions:
+                definitions[nested]["staticUse"]["nestedInReports"] += 1
+
     menus = []
     for path in sorted((source / "menu_trees").rglob("*.json")):
         node = load(path)
@@ -183,6 +246,7 @@ def inventory(root):
     return {
         "schemaVersion": 1,
         "sourceDigest": digest.hexdigest(),
+        "scriptDigest": script_digest,
         "scope": "static-redacted-definitions",
         "limitations": [
             "Definition counts are not implemented-screen or printable-document counts.",
@@ -204,6 +268,16 @@ def inventory(root):
             "menuItems": sum(len(m["items"]) for m in menus),
             "staticMissingDatawindows": len(missing),
             "modernVerified": 0,
+            "datawindowsOnVisibleControls": sum(1 for d in definitions.values() if d["staticUse"]["visibleControls"]),
+            "datawindowsOnlyOnHiddenControls": sum(1 for d in definitions.values() if not d["staticUse"]["visibleControls"] and d["staticUse"]["hiddenControls"]),
+            "datawindowsNestedOnly": sum(1 for d in definitions.values() if not d["staticUse"]["visibleControls"] and not d["staticUse"]["hiddenControls"] and d["staticUse"]["nestedInReports"]),
+            "datawindowsWithoutStaticUse": sum(1 for d in definitions.values() if not any(d["staticUse"].values())),
+            "scriptFiles": script_files,
+            "datawindowsAssignedInScripts": sum(1 for d in definitions.values() if d["scriptUse"]["assignedTo"]),
+            "datawindowsAssignedToReportTargets": sum(1 for d in definitions.values() if d["scriptUse"]["assignedTo"].get("report")),
+            "datawindowsAssignedToPrintTargets": sum(1 for d in definitions.values() if d["scriptUse"]["assignedTo"].get("print")),
+            "datawindowsAssignedToDatastores": sum(1 for d in definitions.values() if d["scriptUse"]["assignedTo"].get("datastore")),
+            "datawindowsWithNoStaticOrScriptUse": sum(1 for d in definitions.values() if not any(d["staticUse"].values()) and not d["scriptUse"]["assignedTo"] and not d["scriptUse"]["referencedInScripts"]),
             "processing": dict(sorted(Counter(d["processing"] for d in definitions.values()).items())),
         },
         "missingStaticDatawindows": missing,

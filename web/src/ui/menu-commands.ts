@@ -27,6 +27,27 @@ export function menuCommands(root: PBObject): MenuCommand[] {
   return result
 }
 
+export interface MenuModule {
+  /** top-level menu caption (the module) */
+  label: string
+  commands: { label: string; command: MenuCommand }[]
+}
+
+/**
+ * Group the available commands by their top-level menu so the workspace can be browsed, not only searched.
+ * Group order and item order follow the live menu; labels below the module drop its caption.
+ */
+export function menuModules(commands: readonly MenuCommand[]): MenuModule[] {
+  const modules = new Map<string, MenuModule>()
+  for (const command of commands) {
+    const [module, ...rest] = command.label.split(' / ')
+    const entry = modules.get(module) ?? { label: module, commands: [] }
+    entry.commands.push({ label: rest.join(' / ') || module, command })
+    modules.set(module, entry)
+  }
+  return [...modules.values()]
+}
+
 /** Recheck the live tree after Selected handlers; search results never grant permission. */
 export async function executeMenuCommand(rt: Runtime, root: PBObject, command: MenuCommand): Promise<boolean> {
   const valid = () => {

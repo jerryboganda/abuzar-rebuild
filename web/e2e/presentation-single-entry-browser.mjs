@@ -1,8 +1,21 @@
 import { Runtime, Ref, Frame } from './src/runtime/interp.js'
 import { DwModel } from './src/dw/model.js'
 import { PBObject } from './src/runtime/object.js'
-import { PBArray } from './src/runtime/values.js'
+import { PBArray, PBDate, PBDateTime, PBTime } from './src/runtime/values.js'
 import { entryControls } from './src/ui/modern-entry-window.js'
+
+// `surface` is an entry window (its first Detail form) or a single DataWindow binding.
+const displayFieldOf = (surface, definition) => {
+  const fields = (surface.details ? surface.details[0].surface : surface).fields
+  const isText = (field) => {
+    const column = definition.table.columns.find((item) => item.name.toLowerCase() === field.object.toLowerCase())
+    return !!column && /^(char|varchar|text)/i.test(column.type)
+  }
+  return fields.find((field) => field.object === 'name') ??
+    fields.find((field) => field.object !== 'code' && field.kind !== 'computed' && !field.multiline && !field.choice && isText(field)) ??
+    fields.find((field) => field.kind !== 'computed' && !field.choice) ??
+    fields[0]
+}
 
 // Real inherited UI routines, synthetic rows; no per-window save/retrieve/print execution.
 export async function checkSingleEntrySurfaces(fixture, check, settle, filter) {
@@ -22,6 +35,14 @@ export async function checkSingleEntrySurfaces(fixture, check, settle, filter) {
     if (!owner) return oldFire(target, event, args)
     events.push({ target, event, args })
     return Runtime.prototype.fire.call(fixture.rt, target, event, args)
+  }
+  // A synthetic string must fit the recovered column width and edit limit (char(14) and a limit of 6 reject 17 characters), as a real entry would.
+  const fitted = (text, definition, column) => {
+    const type = definition?.table?.columns?.find((item) => item.name === column)?.type ?? ''
+    const width = Number(/\((\d+)\)/.exec(type)?.[1])
+    const limit = Number(definition?.objects?.find((item) => item.name === column)?.['edit.limit'])
+    const widths = [width, limit].filter((value) => value > 0)
+    return widths.length ? text.slice(0, Math.min(...widths)) : text
   }
   const open = async (name) => {
     const surface = source.surfaces.find((surface) => surface.name === name)
@@ -46,8 +67,11 @@ export async function checkSingleEntrySurfaces(fixture, check, settle, filter) {
           if (field.kind === 'computed' || Object.hasOwn(values, field.object)) continue
           const kind = model.kinds[model.colIndex(field.object)]
           if (field.choice?.kind === 'checkbox') model.setItem(row, field.object, field.choice.off)
-          else if (kind === 'string') model.setItem(row, field.object, field.multiline ? 'First line\r\nSecond line' : 'Synthetic details')
+          else if (kind === 'string') model.setItem(row, field.object, field.multiline ? 'First line\r\nSecond line' : fitted('Synthetic details', source.data[dataName], field.object))
           else if (kind === 'number' || kind === 'decimal') model.setItem(row, field.object, '2.25')
+          else if (kind === 'date') model.setItem(row, field.object, PBDate.ymd(2024, 1, 1))
+          else if (kind === 'datetime') model.setItem(row, field.object, new PBDateTime(PBDate.ymd(2024, 1, 1).n, PBTime.hms(0, 0, 0).ms))
+          else if (kind === 'time') model.setItem(row, field.object, PBTime.hms(0, 0, 0))
           else throw new Error(`Add a synthetic value for ${dataName}.${field.object} (${kind})`)
         }
       }
@@ -57,9 +81,12 @@ export async function checkSingleEntrySurfaces(fixture, check, settle, filter) {
     }
     const extra = name === 'w_checklistitem_form' ? { autocheck: 'N' } :
       name === 'w_shift_form' ? { description: 'Evening shift' } : name === 'w_taxcategory_form' ? { taxperc: '17.5' } : {}
-    const detail = attach('dw_detail', surface.details[0].surface.name, [{ code: 1, name: 'Stored Mixed', ...extra }], surface.details[0].surface)
+    const displayField = displayFieldOf(surface, source.data[surface.details[0].surface.name])
+    const detail = attach('dw_detail', surface.details[0].surface.name,
+      [{ code: 1, name: 'Stored Mixed', ...(displayField.object === 'code' ? {} : { [displayField.object]: 'Stored Mixed' }), ...extra }], surface.details[0].surface)
+    const listDisplay = displayFieldOf(surface.list, source.data[surface.list.name])
     const list = attach('dw_list', surface.list.name, ['ALPHA', 'BRAVO', 'CHARLIE'].map((label, index) => ({
-      code: index + 1, name: label,
+      code: index + 1, name: label, ...(listDisplay.object === 'code' ? {} : { [listDisplay.object]: label }),
       ...(name === 'w_checklistitem_form' ? { autocheck: ['N', 'Y', null][index] } :
         name === 'w_taxcategory_form' ? { taxperc: '17.5' } : {}),
     })), surface.list)
@@ -90,8 +117,22 @@ export async function checkSingleEntrySurfaces(fixture, check, settle, filter) {
   }
   const modern = fixture.session.activeMode === 'modern'
   fixture.rt.fire = route
+  // A modal Validation Error that a step did not expect would block every later step: record it as a named failure with the
+  // step's location and dismiss it, so the pass continues instead of stalling.
+  let activeSurface = ''
+  const reported = new Set()
+  const dialogWatcher = setInterval(() => {
+    if (!window.singleEntryStep) return // only inside the additional-field loop; other steps expect their own dialogs
+    for (const box of document.querySelectorAll('.presentation-runtime-dialog[open], dialog[open], .msgbox')) {
+      if (!/Validation/.test(box.textContent) || reported.has(box)) continue
+      reported.add(box)
+      check(false, `${activeSurface}/${modern ? 'Modern' : 'Classic'}: unexpected modal dialog (${box.textContent.replace(/\s+/g, ' ').trim()}); focus ${document.activeElement?.outerHTML?.slice(0, 80)}; step ${window.singleEntryStep ?? ''}; ${window.singleEntryInfo ?? ''}`)
+      box.querySelector('button')?.click()
+    }
+  }, 40)
   try {
     for (const surface of surfaces) {
+      activeSurface = surface.name
       const f = await open(surface.name)
       const assert = (condition, message) => check(condition, `${surface.name}/${modern ? 'Modern' : 'Classic'}: ${message}`)
       try {
@@ -105,12 +146,24 @@ export async function checkSingleEntrySurfaces(fixture, check, settle, filter) {
         if (surface.name === 'w_checklistitem_form') await checkCheckbox(f, fixture, events, assert, settle)
         const detail = f.control('dw_detail')
         const editor = f.view.ctlViews.get(detail).dw
+        const displayField = displayFieldOf(surface, f.detail.def)
+        const displayName = displayField.object
+        // Text-entry checks need a plain text editor.  A master whose first field is a dropdown or masked entry has other editors,
+        // covered by the dropdown and mask checks, so it is counted as skipped instead of being forced through a text path.
+        const displayObject = f.detail.def.objects.find((object) => object.name === displayName)
+        const plainText = !!displayObject && f.detail.kinds[f.detail.colIndex(displayName)] === 'string' && Object.keys(displayObject).some((key) => key.startsWith('edit.')) &&
+          !Object.keys(displayObject).some((key) => /^(dddw|ddlb|editmask|checkbox|radiobutton)\./.test(key)) &&
+          displayObject.tabsequence !== '0' && displayObject.protect !== '1' && displayObject['edit.displayonly'] !== 'yes' && displayObject['edit.codetable'] !== 'yes' &&
+          displayObject.visible !== '0' && String(displayObject.visible ?? '').split('	')[1] !== '0'
+        if (!plainText) (window.singleEntrySkippedText ??= []).push(`${surface.name}/${modern ? 'Modern' : 'Classic'}`)
+        textSection: {
+        if (!plainText) break textSection
         f.detail.row = 1
-        f.detail.col = f.detail.colIndex('name') + 1
+        f.detail.col = f.detail.colIndex(displayName) + 1
         await fixture.ui.focusDw(detail, true)
         await settle()
-        assert(editor.editor && f.detail.getItem(1, 'name') === 'Stored Mixed', 'focusing does not rewrite stored case')
-        const nameObject = f.detail.def.objects.find((object) => object.name === 'name')
+        assert(editor.editor && f.detail.getItem(1, displayName) === 'Stored Mixed', 'focusing does not rewrite stored case')
+        const nameObject = f.detail.def.objects.find((object) => object.name === displayName)
         const casing = nameObject['edit.case']
         assert(nameObject['edit.autoselect'] === 'no' ?
           editor.editor.selectionStart === editor.editor.selectionEnd :
@@ -127,8 +180,8 @@ export async function checkSingleEntrySurfaces(fixture, check, settle, filter) {
           'paste obeys source case and preserves the caret and live GetText')
         assert(edited.length === 1 && edited[0].args[2] === expected && f.window.props.get('editflag') && f.save.props.get('enabled'),
           'the inherited EditChanged enables Save once with the converted text')
-        assert(f.detail.getItem(1, 'name') === 'Stored Mixed', 'typing is still an unaccepted draft')
-        assert(await editor.acceptPendingEdit() && f.detail.getItem(1, 'name') === expected, 'AcceptText uses the shared validation path')
+        assert(f.detail.getItem(1, displayName) === 'Stored Mixed', 'typing is still an unaccepted draft')
+        assert(await editor.acceptPendingEdit() && f.detail.getItem(1, displayName) === expected, 'AcceptText uses the shared validation path')
         const tabs = [...f.element('tab_retrieve').querySelectorAll(':scope > .strip > .t')]
         tabs[1].click()
         await settle()
@@ -138,7 +191,7 @@ export async function checkSingleEntrySurfaces(fixture, check, settle, filter) {
         if (!cancel) throw new Error(`Missing ${surface.name} Cancel action`)
         cancel.click()
         await settle()
-        assert(f.control('tab_retrieve').props.get('selectedtab') === 1 && f.detail.getItem(1, 'name') === expected,
+        assert(f.control('tab_retrieve').props.get('selectedtab') === 1 && f.detail.getItem(1, displayName) === expected,
           'Cancel keeps the Detail page and its edit')
         f.window.props.set('editflag', false)
         tabs[1].click()
@@ -181,24 +234,30 @@ export async function checkSingleEntrySurfaces(fixture, check, settle, filter) {
           'pointer and Space cannot modify a readonly list checkbox')
         }
         for (const field of surface.details[0].surface.fields.filter((field) =>
-          !['code', 'name'].includes(field.object) && field.kind !== 'computed' && !field.choice &&
+          !['code', displayName].includes(field.object) && field.kind !== 'computed' && !field.choice && !['date', 'datetime', 'time'].includes(f.detail.kinds[f.detail.colIndex(field.object)]) &&
           (() => {
             const source = f.detail.def.objects.find((object) => object.name === field.object)
-            return source && source.tabsequence !== '0' && source.protect !== '1' &&
+            // A field whose visibility expression is the constant 0 (visible="1~t0") is never shown, so it has no editor.
+            return source && source.visible !== '0' && String(source.visible ?? '').split('\t')[1] !== '0' && source.tabsequence !== '0' && source.protect !== '1' &&
               source['edit.readonly'] !== 'yes' && source['editmask.readonly'] !== 'yes'
           })())) {
+          window.singleEntryStep = `${field.object}: selecting the Detail tab`
           tabs[0].click()
           await settle()
           const column = f.detail.colIndex(field.object)
           f.detail.col = column + 1
+          window.singleEntryStep = `${field.object}: focusing the field`
           await fixture.ui.focusDw(detail, true)
           await settle()
+          window.singleEntryStep = `${field.object}: draft and accept`
           const stored = String(f.detail.getItem(1, field.object))
           const sourceField = f.detail.def.objects.find((object) => object.name === field.object)
           const mask = sourceField?.['editmask.mask']
           const draft = mask ? (/[#0]/.test(mask) ? '14' : 'AB') :
             f.detail.kinds[column] === 'string' ?
-              (field.multiline ? 'Updated first line\r\nSecond <literal>' : '<literal>') : '14.75'
+              (field.multiline ? (fitted('Updated first line\r\nSecond <literal>', f.detail.def, field.object) === 'Updated first line\r\nSecond <literal>' ?
+                'Updated first line\r\nSecond <literal>' : fitted('A\r\nB', f.detail.def, field.object)) : fitted('<literal>', f.detail.def, field.object)) :
+              /^(long|ulong|int|integer|short|smallint|tinyint|bigint)\b/i.test(f.detail.def.table.columns[column].type) ? '3' : '3.5'
           assert(!!editor.editor && (editor.editor instanceof HTMLTextAreaElement) === !!field.multiline,
             `${field.object}: the real source field opens the declared single-line or multiline editor`)
           await detail.n_settext(draft)
@@ -207,9 +266,24 @@ export async function checkSingleEntrySurfaces(fixture, check, settle, filter) {
             `${field.object}: SetText updates only the live draft`)
           if (field.multiline) assert(editor.editor.value === draft.replace(/\r\n/g, '\n') && expected === draft,
             'textarea DOM uses LF while live PowerScript text retains CRLF')
-          const accepted = await detail.n_accepttext()
+          window.singleEntryInfo = JSON.stringify({ draft, expected, stored, kind: f.detail.kinds[column], editLimit: sourceField?.['edit.limit'],
+            columnType: f.detail.def.table.columns[column].type, case: sourceField?.['edit.case'], validation: f.detail.def.table.columns[column].validation ?? null })
+          // A rejected entry opens a modal Validation Error; report it with the evidence and dismiss it so the pass continues.
+          let rejection
+          const watcher = setInterval(() => {
+            const box = [...document.querySelectorAll('.presentation-runtime-dialog[open]')].find((item) => item.textContent.includes('Validation Error'))
+            if (box && !rejection) {
+              rejection = box.textContent.replace(/\s+/g, ' ').trim()
+              box.querySelector('button')?.click()
+            }
+          }, 40)
+          let accepted
+          try { accepted = await detail.n_accepttext() } finally { clearInterval(watcher) }
+          if (rejection) assert(false, `${field.object}: the synthetic draft was rejected (${JSON.stringify({ draft, expected, stored, kind: f.detail.kinds[column],
+            editLimit: sourceField?.['edit.limit'], columnType: f.detail.def.table.columns[column].type, dialog: rejection })})`)
           assert(accepted === 1 && String(f.detail.getItem(1, field.object)) === expected,
             `${field.object}: the additional real field uses the shared text/decimal acceptance path`)
+          window.singleEntryStep = ''
           if (surface.name === 'w_goodscompany_form' && field.object === 'phone') {
             assert(f.detail.def.table.columns[column].type === 'char(15)',
               'Phone retains its original 15-character storage limit')
@@ -238,6 +312,7 @@ export async function checkSingleEntrySurfaces(fixture, check, settle, filter) {
             }
           }
           f.window.props.set('editflag', false)
+        }
         }
         if (surface.name === 'w_resourcecategory_form') await checkMultilineMaster(f, fixture, assert, settle)
         if (surface.name === 'w_grade_form' && modern) await checkDecimalMaster(f, fixture, assert, settle)
@@ -278,6 +353,8 @@ export async function checkSingleEntrySurfaces(fixture, check, settle, filter) {
       }
     }
   } finally {
+    window.singleEntryStep = ''
+    clearInterval(dialogWatcher)
     fixture.rt.fire = oldFire
   }
 }

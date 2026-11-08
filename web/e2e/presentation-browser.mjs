@@ -19,6 +19,7 @@ import { checkCashierCategory } from './presentation-category-browser.mjs'
 import { checkTabSurfaces } from './presentation-tabs-browser.mjs'
 import { checkEntrySurfaces } from './presentation-entry-browser.mjs'
 import { checkSingleEntrySurfaces } from './presentation-single-entry-browser.mjs'
+import { checkDerivedModalWindows, checkDerivedEntryWindows, checkDerivedDataSurfaces } from './presentation-derived-browser.mjs'
 import { checkChoiceEditors } from './presentation-choice-browser.mjs'
 import { checkContactSurfaces } from './presentation-contact-browser.mjs'
 import { checkContactCardSurfaces } from './presentation-contact-card-browser.mjs'
@@ -299,6 +300,15 @@ export async function runPresentationChecks() {
   search.dispatchEvent(new Event('input'))
   const matches = document.querySelectorAll('.presentation-command')
   check(matches.length === 1 && matches[0].textContent === 'Open synthetic sale', 'Live command search filters actual menu objects')
+  search.value = ''
+  search.dispatchEvent(new Event('input'))
+  const modules = [...document.querySelectorAll('.presentation-module')]
+  check(modules.length > 0 && modules.every((module) => module.querySelector('summary')?.textContent.trim()), 'An empty search browses the live menu by module')
+  check(modules.every((module) => !module.querySelector('button')), 'Closed modules do not render their commands')
+  modules[0].open = true
+  await settle()
+  check(modules[0].querySelectorAll('button.presentation-command').length > 0 && document.querySelector('.command-status').textContent.includes('modules'),
+    'Opening a module lists its currently available commands')
   await matches[0].onclick(new MouseEvent('click'))
   check([...f.ui.views.keys()].filter((window) => window.className === 'sale').length === 1, 'Search executes the real menu event route')
   await teardown(f)
@@ -320,6 +330,9 @@ export async function runPresentationChecks() {
   await isolated(checkTabSurfaces, current, check, settle)
   await isolated(checkEntrySurfaces, current, check, settle)
   await isolated(checkSingleEntrySurfaces, current, check, settle)
+  await isolated(checkDerivedDataSurfaces, current, check, settle)
+  await isolated(checkDerivedEntryWindows, current, check, settle)
+  await isolated(checkDerivedModalWindows, current, check, settle)
   await isolated(checkChoiceEditors, check, settle)
   await isolated(checkEditableLookups, current, check, settle)
   await isolated(checkAutomaticChoices, current, check, settle)
@@ -345,6 +358,9 @@ export async function runPresentationChecks() {
   await isolated(checkTabSurfaces, current, check, settle)
   await isolated(checkEntrySurfaces, current, check, settle)
   await isolated(checkSingleEntrySurfaces, current, check, settle)
+  await isolated(checkDerivedDataSurfaces, current, check, settle)
+  await isolated(checkDerivedEntryWindows, current, check, settle)
+  await isolated(checkDerivedModalWindows, current, check, settle)
   await isolated(checkChoiceEditors, check, settle)
   await isolated(checkEditableLookups, current, check, settle)
   await isolated(checkAutomaticChoices, current, check, settle)
@@ -415,6 +431,21 @@ window.runSingleEntryChecks = async () => {
     await teardown(current)
     current = await setup()
     await isolated(checkSingleEntrySurfaces, current, (condition, name) => check(condition, `${mode}: ${name}`), settle)
+  }
+  return { passed, failures, errors }
+}
+window.runDerivedChecks = async () => {
+  let passed = 0
+  const failures = []
+  window.presentationCheckProgress = { get passed() { return passed }, failures }
+  const check = (condition, name) => { if (condition) passed++; else failures.push(name) }
+  for (const mode of ['classic', 'modern']) {
+    current.session.save({ ...current.session.preferences, mode })
+    await teardown(current)
+    current = await setup()
+    await isolated(checkDerivedDataSurfaces, current, (condition, name) => check(condition, `${mode}: ${name}`), settle, window.derivedFilter)
+    await isolated(checkDerivedEntryWindows, current, (condition, name) => check(condition, `${mode}: ${name}`), settle, window.derivedFilter)
+    await isolated(checkDerivedModalWindows, current, (condition, name) => check(condition, `${mode}: ${name}`), settle, window.derivedFilter)
   }
   return { passed, failures, errors }
 }

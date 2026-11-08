@@ -560,14 +560,16 @@ const richerFields = new Map([
   ['w_saletype_form', [['code', 'name', 'description', 'counter'], ['code', 'name']]],
   ['w_weighingscale_form', [['code', 'name', 'manufacturer', 'model', 'scaleid', 'scaleidpos', 'barcodelen', 'itemstartpos', 'itemendpos', 'weightstartpos', 'weightendpos'], ['code', 'name', 'manufacturer', 'model', 'scaleid']]],
   ['w_goodscompany_form', [['code', 'name', 'address1', 'address2', 'city', 'country', 'phone', 'fax', 'email'], ['code', 'name']]],
+  ['w_emailtemplate_form', [['code', 'subject', 'body'], ['subject', 'code']]],
+  ['w_itemmeterlog', [['code', 'usercode', 'date', 'itemmetercode', 'meterreading', 'reason', 'newreading'], ['code', 'date', 'usercode', 'itemmetercode', 'meterreading', 'reason', 'newreading']]],
 ])
 
-test('entry registry has 43 Code/Name and 52 custom single-entry windows without duplicate identities', () => {
+test('entry registry has 43 Code/Name and 54 custom single-entry windows without duplicate identities', () => {
   const singles = ENTRY_WINDOW_SURFACES.filter((surface) => surface.family === 'single')
-  assert.equal(singles.length, 95)
+  assert.equal(singles.length, 97)
   assert.equal(singles.filter((surface) => !richerFields.has(surface.name)).length, 43)
-  assert.equal(singles.filter((surface) => richerFields.has(surface.name)).length, 52)
-  assert.equal(ENTRY_WINDOW_SURFACES.length, 98)
+  assert.equal(singles.filter((surface) => richerFields.has(surface.name)).length, 54)
+  assert.equal(ENTRY_WINDOW_SURFACES.length, 100)
   assert.equal(new Set(ENTRY_WINDOW_SURFACES.map((surface) => surface.name)).size, ENTRY_WINDOW_SURFACES.length)
 })
 
@@ -662,15 +664,18 @@ for (const surface of ENTRY_WINDOW_SURFACES.filter((surface) => surface.family =
       assert.equal(typeof dataobject, 'string')
       assert.equal(String(dataobject).toLowerCase(), binding.name)
       assert.deepEqual(dataSurfaceIssues(dataDefinition(binding.name), binding), [])
+      const sourceColumns = dataDefinition(binding.name).objects.filter((object) =>
+        object.band === 'detail' && (object.type === 'column' || object.type === 'compute'))
+      const sourceOrder = [...sourceColumns].sort((a, b) => Number(a.x) - Number(b.x)).map((object) => object.name.toLowerCase())
       assert.deepEqual(binding.fields.map((field) => field.object),
-        richerFields.get(surface.name)?.[binding === detail ? 0 : 1] ?? ['code', 'name'])
+        richerFields.get(surface.name)?.[binding === detail ? 0 : 1] ?? (binding === detail ? ['code', 'name'] : sourceOrder))
       assert.ok(!DATA_SURFACES.some((global) => global.name === binding.name), 'A context-only mapping must not change unrelated uses of the same DataWindow')
     }
     assert.equal(controls.get('tab_retrieve.tabpage_list.dw_find')?.props.get('dataobject'), 'd_find')
   })
 
-  test('reviewed richer list layouts follow source horizontal positions, not export array order', () => {
-    for (const surface of ENTRY_WINDOW_SURFACES.filter((entry) => richerFields.has(entry.name))) {
+  test('single-entry list layouts follow source horizontal positions, not export array order', () => {
+    for (const surface of ENTRY_WINDOW_SURFACES.filter((entry) => entry.family === 'single')) {
       const list = surface.list!
       const columns = dataDefinition(list.name).objects.filter((object) =>
         object.band === 'detail' && (object.type === 'column' || object.type === 'compute'))

@@ -4,18 +4,28 @@ import type { DataSurface } from './data-surfaces.ts'
 export interface WindowSurface {
   name: string
   library: string
-  fields: readonly { control: string; label: string }[]
+  /** A field is named by its source caption (`label`, a static text), or, when the source has none, by an accessible-only `name`. */
+  fields: readonly { control: string; label?: string; name?: string }[]
   actions: readonly string[]
   data?: readonly { control: string; surface: DataSurface; labels?: readonly { field: string; control: string }[] }[]
   contentOrder?: readonly string[]
   auxiliary?: readonly string[]
   frame?: string
   frames?: readonly string[]
-  lists?: readonly { control: string; caption: string }[]
+  /** A list is captioned either by its own groupbox (`caption`) or by the source label text beside it (`label`). */
+  lists?: readonly { control: string; caption?: string; label?: string; name?: string }[]
   captions?: readonly string[]
   options?: readonly { control: string; native: 'checkbox' | 'radiobutton' }[]
   calendars?: readonly string[]
+  /** Reflowed when the window opens as a workspace sheet as well as when it opens as a dialog. */
+  sheet?: true
+  /** Containers and rich controls kept as their original element (with their own children) inside the Modern frame. */
+  embedded?: readonly string[]
 }
+
+export const EMBEDDED_NATIVES: readonly string[] = ['tab', 'userobject', 'olecustomcontrol', 'richtextedit', 'listview', 'statichyperlink']
+/** A DataWindow may also be embedded when the source assigns its object at run time. */
+const EMBEDDABLE_NATIVES: readonly string[] = [...EMBEDDED_NATIVES, 'datawindow']
 
 export const LOOKUP_CRITERIA_WINDOWS = [
   ['w_arg_acc_sdate_ldate', 'd_arg_acc'],
@@ -445,14 +455,15 @@ export interface EntryWindowSurface {
   library: string
   family: 'single' | 'multi'
   controls: readonly { path: string; native: string }[]
-  details: readonly { control: string; kind: 'form' | 'grid' | 'auxiliary'; surface?: DataSurface }[]
+  /** `control` is any other Detail-page control, or a DataWindow whose object is assigned at run time; it keeps its original element. */
+  details: readonly { control: string; kind: 'form' | 'grid' | 'auxiliary' | 'control'; surface?: DataSurface }[]
   list?: DataSurface
 }
 
 const entryTab = 'tab_retrieve'
 const detailPage = `${entryTab}.tabpage_detail`
 const listPage = `${entryTab}.tabpage_list`
-function entryControlPaths(details: readonly string[]): EntryWindowSurface['controls'] {
+export function entryControlPaths(details: readonly string[]): EntryWindowSurface['controls'] {
   return [
     { path: entryTab, native: 'tab' },
     { path: detailPage, native: 'userobject' },
@@ -523,10 +534,19 @@ const SINGLE_ENTRIES: readonly SingleEntryBinding[] = [
   { library: 'studentcomponents', name: 'w_schoolbranch_form', detail: ['d_schoolbranch_detail', 'schoolbranchcode_t'], list: ['d_schoolbranch_list', 'schoolbranchcode_t'] },
 ]
 
+// Source lists whose Name column sits left of Code in the recovered DataWindow (checked against object x positions by tests).
+const NAME_FIRST_LISTS: ReadonlySet<string> = new Set([
+  'd_emp_category_list', 'd_emp_certification_list', 'd_emp_designation_list', 'd_emp_education_list', 'd_emp_skill_list',
+  'd_dischargereason_list', 'd_workordertype_list', 'd_servicetype_list', 'd_serviceorderstatuslist', 'd_doctorcategory_list',
+  'd_lockercategory_list', 'd_lockreason_list', 'd_motorvehicletype_list', 'd_productpurpose_list', 'd_producttype_list',
+  'd_serviceinvoicetype_list', 'd_categorysegment_list', 'd_manufacturertype_list',
+])
+
 function codeNameSurface([name, codeLabel, nameLabel = 'name_t']: CodeNameBinding, kind: DataSurface['kind']): DataSurface {
-  return { name, title: kind === 'form' ? 'Detail' : 'List', kind, fields: [
+  const surface: DataSurface = { name, title: kind === 'form' ? 'Detail' : 'List', kind, fields: [
     { object: 'code', labelObject: codeLabel }, { object: 'name', labelObject: nameLabel },
   ] }
+  return kind === 'grid' && NAME_FIRST_LISTS.has(name) ? { ...surface, fields: [...surface.fields].reverse() } : surface
 }
 
 function singleEntrySurface(name: string, detail: DataSurface, list: DataSurface, library = 'singleentry'): EntryWindowSurface {
@@ -937,6 +957,34 @@ singleEntrySurface('w_goodscompany_form', {
     { object: 'code', labelObject: 'code_t' }, { object: 'name', labelObject: 'name_t' },
   ],
 }),
+singleEntrySurface('w_emailtemplate_form', {
+  name: 'd_emailtemplate_detail', title: 'Detail', kind: 'form', fields: [
+    { object: 'code', labelObject: 'code_t' }, { object: 'subject', labelObject: 'subject_t' },
+    { object: 'body', labelObject: 'body_t', multiline: true },
+  ],
+}, {
+  name: 'd_emailtemplate_list', title: 'List', kind: 'grid', fields: [
+    { object: 'subject', labelObject: 'subject_t' }, { object: 'code', labelObject: 'code_t' },
+  ],
+}),
+singleEntrySurface('w_itemmeterlog', {
+  name: 'd_itemmeterlog_detail', title: 'Detail', kind: 'form', fields: [
+    { object: 'code', labelObject: 'code_t' },
+    { object: 'usercode', labelObject: 'usercode_t', choice: { kind: 'lookup', name: 'ddd_users', dataColumn: 'usercode', displayColumn: 'username' } },
+    { object: 'date', labelObject: 'date_t' },
+    { object: 'itemmetercode', labelObject: 'itemmetercode_t', choice: { kind: 'lookup', name: 'ddd_itemmeter', dataColumn: 'itemmetercode', displayColumn: 'name' } },
+    { object: 'meterreading', labelObject: 'meterreading_t' },
+    { object: 'reason', labelObject: 't_1' }, { object: 'newreading', labelObject: 't_2' },
+  ],
+}, {
+  name: 'd_itemmeterlog_list', title: 'List', kind: 'grid', fields: [
+    { object: 'code', labelObject: 'code_t' }, { object: 'date', labelObject: 'date_t' },
+    { object: 'usercode', labelObject: 'usercode_t', choice: { kind: 'lookup', name: 'ddd_users', dataColumn: 'usercode', displayColumn: 'username' } },
+    { object: 'itemmetercode', labelObject: 'itemmetercode_t', choice: { kind: 'lookup', name: 'ddd_itemmeter', dataColumn: 'itemmetercode', displayColumn: 'name' } },
+    { object: 'meterreading', labelObject: 'meterreading_t' }, { object: 'reason', labelObject: 'reason_t' },
+    { object: 'newreading', labelObject: 'newreading_t' },
+  ],
+}, 'singleentryitem'),
 singleEntrySurface('w_biometricmachine', {
   name: 'd_biometricmachine', title: 'Detail', kind: 'form', fields: [
     { object: 'code', labelObject: 'code_t' }, { object: 'name', labelObject: 'name_t' },
@@ -1078,9 +1126,10 @@ export function entryWindowIssues(controls: EntryWindowSurface['controls'], surf
     const path = `${detailPage}.${detail.control}`
     if (placed.has(path)) issues.push(`Duplicate detail placement: ${path}`)
     placed.add(path)
-    if (expected.get(path) !== 'datawindow') issues.push(`Unsupported detail placement: ${path}`)
+    if (detail.kind === 'control' ? !expected.has(path) : expected.get(path) !== 'datawindow') issues.push(`Unsupported detail placement: ${path}`)
   }
-  for (const path of expected.keys()) if (path.startsWith(`${detailPage}.`) && !placed.has(path)) issues.push(`Unplaced detail control: ${path}`)
+  // Only direct children of the Detail page are placed; deeper controls stay inside their parent.
+  for (const path of expected.keys()) if (path.startsWith(`${detailPage}.`) && !path.slice(detailPage.length + 1).includes('.') && !placed.has(path)) issues.push(`Unplaced detail control: ${path}`)
   return issues
 }
 
@@ -1099,20 +1148,29 @@ export function windowSurfaceIssues(
     used.add(name)
   }
   for (const field of surface.fields) {
-    use(field.control, ['editmask', 'singlelineedit'])
-    use(field.label, ['statictext'])
+    use(field.control, ['editmask', 'singlelineedit', 'dropdownlistbox', 'multilineedit'])
+    if (!!field.label === !!field.name) issues.push(`A field needs exactly one caption or name: ${field.control}`)
+    if (field.label) use(field.label, ['statictext'])
   }
   for (const data of surface.data ?? []) use(data.control, ['datawindow'])
-  for (const name of surface.auxiliary ?? []) use(name, ['datawindow'])
+  for (const name of surface.auxiliary ?? []) use(name, ['datawindow', 'hprogressbar', 'picture', 'rectangle'])
   if (surface.frame) use(surface.frame, ['groupbox'])
   for (const name of surface.frames ?? []) use(name, ['groupbox'])
   for (const list of surface.lists ?? []) {
     use(list.control, ['listbox'])
-    use(list.caption, ['groupbox'])
+    if ([list.caption, list.label, list.name].filter(Boolean).length !== 1) issues.push(`A list needs exactly one caption: ${list.control}`)
+    if (list.caption) use(list.caption, ['groupbox'])
+    if (list.label) use(list.label, ['statictext'])
   }
   for (const name of surface.captions ?? []) use(name, ['statictext'])
   for (const option of surface.options ?? []) use(option.control, [option.native])
   for (const name of surface.calendars ?? []) use(name, ['monthcalendar'])
+  for (const name of surface.embedded ?? []) {
+    const control = found.get(name)
+    if (!control || !EMBEDDABLE_NATIVES.includes(control.native)) issues.push(`Unsupported control: ${name}`)
+    if (used.has(name)) issues.push(`Duplicate binding: ${name}`)
+    used.add(name)
+  }
   for (const action of surface.actions) use(action, ['commandbutton'])
   const labels = new Set<string>()
   for (const data of surface.data ?? []) for (const label of data.labels ?? []) {
@@ -1127,7 +1185,7 @@ export function windowSurfaceIssues(
   }
   if (surface.contentOrder) {
     const content = [...surface.fields.map((field) => field.control), ...(surface.captions ?? []), ...(surface.frames ?? []),
-      ...(surface.lists ?? []).map((list) => list.control), ...(surface.calendars ?? []),
+      ...(surface.lists ?? []).map((list) => list.control), ...(surface.calendars ?? []), ...(surface.embedded ?? []),
       ...(surface.data ?? []).map((data) => data.control), ...(surface.options ?? []).map((option) => option.control)]
     if (surface.contentOrder.length !== content.length || new Set(surface.contentOrder).size !== content.length ||
       surface.contentOrder.some((name) => !content.includes(name))) {

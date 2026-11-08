@@ -7,7 +7,7 @@ import type { InterfaceMode, PresentationSession } from '../app/ui-preferences.t
 import { validatePreferences } from '../app/ui-preferences.ts'
 import { printDw } from './print.ts'
 import { printFamilies, printTemplateFor, resolvePrintPresentation } from './print-templates.ts'
-import { menuCommands, executeMenuCommand } from './menu-commands.ts'
+import { menuCommands, menuModules, executeMenuCommand } from './menu-commands.ts'
 import { PRESENTATION_CSS } from './presentation-styles.ts'
 import { containDialogFocus, messageDialog, promptDialog } from './presentation-dialogs.ts'
 import type { PresentationDialog } from './presentation-dialogs.ts'
@@ -29,6 +29,7 @@ export class PresentationUi extends DomUi {
   private selected: NWindow | null = null
   private tabs = new Map<NWindow, { container: HTMLElement; tab: HTMLButtonElement; changed: () => void }>()
   private executing = false
+  private openModules = new Set<string>()
   private nextTab = 0
   private lastFocus = new Map<NWindow, HTMLElement>()
   private dialogs = new Set<HTMLDialogElement>()
@@ -261,12 +262,15 @@ export class PresentationUi extends DomUi {
     host.replaceChildren()
     const root = this.commandRoot()
     const query = this.shell.querySelector('input')!.value.trim().toLowerCase()
-    const matches = root ? menuCommands(root).filter((command) => command.label.toLowerCase().includes(query)) : []
-    status.textContent = matches.length > 80 ? `Showing 80 of ${matches.length} commands. Refine your search.` : `${matches.length} available commands`
-    for (const command of matches.slice(0, 80)) {
+    const all = root ? menuCommands(root) : []
+    const matches = all.filter((command) => command.label.toLowerCase().includes(query))
+    const browse = !query
+    status.textContent = browse ? `${all.length} available commands in ${menuModules(all).length} modules` :
+      matches.length > 80 ? `Showing 80 of ${matches.length} commands. Refine your search.` : `${matches.length} available commands`
+    const run = (command: (typeof all)[number], label: string) => {
       const button = document.createElement('button')
       button.className = 'presentation-command'
-      button.textContent = command.label
+      button.textContent = label
       button.disabled = this.executing || this.hasModal()
       button.onclick = async () => {
         if (this.executing || this.hasModal() || !root) return
@@ -283,7 +287,34 @@ export class PresentationUi extends DomUi {
           this.refreshCommands()
         }
       }
-      host.append(button)
+      return button
+    }
+    if (browse) {
+      // Modules list only commands the live menu currently allows; opened groups survive refreshes.
+      for (const module of menuModules(all)) {
+        const group = document.createElement('details')
+        group.className = 'presentation-module'
+        group.open = this.openModules.has(module.label)
+        const title = document.createElement('summary')
+        title.textContent = `${module.label} (${module.commands.length})`
+        group.append(title)
+        const fill = () => {
+          if (group.querySelector('button')) return
+          for (const item of module.commands.slice(0, 200)) group.append(run(item.command, item.label))
+          if (module.commands.length > 200) {
+            const more = document.createElement('p')
+            more.textContent = `Showing 200 of ${module.commands.length} commands. Search to find the rest.`
+            group.append(more)
+          }
+        }
+        if (group.open) fill()
+        group.addEventListener('toggle', () => {
+          if (group.open) { this.openModules.add(module.label); fill() } else this.openModules.delete(module.label)
+        })
+        host.append(group)
+      }
+    } else {
+      for (const command of matches.slice(0, 80)) host.append(run(command, command.label))
     }
   }
 

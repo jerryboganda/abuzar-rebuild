@@ -57,3 +57,24 @@ test('stale search results cannot execute after Selected revokes visibility or r
     assert.equal(clicked, false)
   }
 })
+
+test('modules group available commands by their top-level menu in live order', async () => {
+  const { menuModules } = await import('../src/ui/menu-commands.ts')
+  const f = fixture()
+  const second = new PBObject(f.rt, 'm_purchase', 'menu')
+  second.props.set('text', 'Purchase')
+  const leaf = new PBObject(f.rt, 'm_order', 'menu')
+  leaf.props.set('text', 'Order')
+  const nested = new PBObject(f.rt, 'm_more', 'menu')
+  nested.props.set('text', 'More')
+  second.children.set('order', leaf)
+  second.children.set('more', nested)
+  nested.children.set('leaf', Object.assign(new PBObject(f.rt, 'm_leaf', 'menu'), {}))
+  nested.children.get('leaf')!.props.set('text', 'Return')
+  f.root.children.set('purchase', second)
+  const modules = menuModules(menuCommands(f.root))
+  assert.deepEqual(modules.map((module) => [module.label, module.commands.map((item) => item.label)]),
+    [['Sales', ['Cash & Sale']], ['Purchase', ['Order', 'More / Return']]])
+  f.item.props.set('enabled', false)
+  assert.deepEqual(menuModules(menuCommands(f.root)).map((module) => module.label), ['Purchase'])
+})

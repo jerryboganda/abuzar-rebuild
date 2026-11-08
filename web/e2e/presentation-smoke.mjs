@@ -7,6 +7,8 @@ import { once } from 'node:events'
 import assert from 'node:assert/strict'
 import { gunzipSync } from 'node:zlib'
 import { DATA_SURFACES, CRITERIA_DATA_SURFACES, TRANSACTION_DATA_SURFACES, dataSurfaceIssues } from '../src/ui/data-surfaces.ts'
+import { ALL_ENTRY_WINDOW_SURFACES } from '../src/ui/surface-registry.ts'
+import { buildDerivedFixtures, standardSingle, representativeModalWindows } from './presentation-derived-fixture.mjs'
 import { WINDOW_SURFACES, CALCULATOR_WINDOW_SURFACES, CRITERIA_WINDOW_SURFACES, LOOKUP_CRITERIA_WINDOWS, REFERENCE_CRITERIA_WINDOWS, NUMERIC_CRITERIA_WINDOWS, DATE_OPTION_CRITERIA_WINDOWS, DATE_CHOICE_CRITERIA_WINDOWS, ENTRY_WINDOW_SURFACES } from '../src/ui/window-surfaces.ts'
 import { parseScriptFile } from '../src/pbscript/parser.ts'
 import { checkForcedColors } from './presentation-forced-colors.mjs'
@@ -321,6 +323,40 @@ async function captureCalendars(page, output, dataWindow = false) {
   return cases
 }
 
+// One generated response window per distinct layout shape, at the lightest and the harshest appearance.
+async function captureDerivedModalWindows(page, output, names = representativeModalWindows()) {
+  const cases = []
+  for (const name of names) {
+    for (const [theme, scale, width, height] of [['light', 100, 1366, 768], ['dark', 200, 320, 768]]) {
+      await page.setViewportSize({ width, height })
+      await page.evaluate(async ({ name, theme, scale }) => {
+        await window.openDerivedModalPreview(name)
+        const { view } = window.derivedModalPreview
+        view.el.dataset.theme = theme; view.el.dataset.density = 'comfortable'
+        view.el.style.setProperty('--p-scale', String(scale / 100))
+      }, { name, theme, scale })
+      const form = page.locator('.presentation-modern-dialog[open]>.modern-window')
+      assert.ok(await form.evaluate((root) => {
+        const bounds = root.getBoundingClientRect()
+        return root.scrollWidth <= root.clientWidth + 1 && bounds.left >= 0 && bounds.right <= innerWidth + .5 &&
+          bounds.top >= 0 && bounds.bottom <= innerHeight + .5
+      }), `${name}/${width}: generated dialog reflows inside the viewport`)
+      for (const control of await form.locator('input:visible:not(:disabled),select:visible:not(:disabled),button:visible:not(:disabled),.surface-value:visible').all()) {
+        await control.focus()
+        assert.ok(await control.evaluate((element) => {
+          const bounds = element.getBoundingClientRect()
+          return bounds.left >= 0 && bounds.right <= innerWidth + 1 && bounds.top >= 0 && bounds.bottom <= innerHeight + 1
+        }), `${name}/${width}: keyboard focus reveals fields and actions`)
+      }
+      const contrast = await visibleContrast(form)
+      const minimumContrast = contrast.length ? Math.min(...contrast) : 21
+      assert.ok(minimumContrast >= 4.5, `${name}/${width}: generated dialog text contrast (${minimumContrast})`)
+      cases.push({ name, theme, scale, width, height, minimumContrast })
+    }
+  }
+  await page.evaluate(() => window.closeDerivedModalPreview())
+  return cases
+}
 async function captureCriteriaWindows(page, output, surfaces = CRITERIA_WINDOW_SURFACES) {
   const cases = []
   for (const surface of surfaces) for (const reveal of surface.options && !surface.lists ? [false, true] : [false]) {
@@ -960,6 +996,7 @@ await cp(resolve(here, 'presentation-tabs-browser.mjs'), resolve(root, 'presenta
 await cp(resolve(here, 'presentation-entry-browser.mjs'), resolve(root, 'presentation-entry-browser.mjs'))
 await cp(resolve(here, 'presentation-entry-workflow.mjs'), resolve(root, 'presentation-entry-workflow.mjs'))
 await cp(resolve(here, 'presentation-single-entry-browser.mjs'), resolve(root, 'presentation-single-entry-browser.mjs'))
+await cp(resolve(here, 'presentation-derived-browser.mjs'), resolve(root, 'presentation-derived-browser.mjs'))
 await cp(resolve(here, 'presentation-choice-browser.mjs'), resolve(root, 'presentation-choice-browser.mjs'))
 await cp(resolve(here, 'presentation-contact-browser.mjs'), resolve(root, 'presentation-contact-browser.mjs'))
 await cp(resolve(here, 'presentation-contact-card-browser.mjs'), resolve(root, 'presentation-contact-card-browser.mjs'))
@@ -1145,7 +1182,10 @@ for (const name of ['vf_dwdupcode1', 'f_validatedw']) {
   entryClasses.push({ name, kind: 'function', ancestor: 'function_object', library: 'functions', fields: [], controls: [], routines })
 }
 await writeFile(resolve(root, 'presentation-entry.json'), JSON.stringify(entryClasses))
-const singleSurfaces = ENTRY_WINDOW_SURFACES.filter((surface) => surface.family === 'single')
+// Generated window families (response windows, multi-entry and non-standard entry trees) get their own fixtures.
+console.log('Derived window fixtures:', JSON.stringify(await buildDerivedFixtures({ here, outDir: root })))
+// Reviewed single-entry masters plus generated ones that use the standard 22-control tree and a Detail form with its own List.
+const singleSurfaces = ALL_ENTRY_WINDOW_SURFACES.filter((surface) => ENTRY_WINDOW_SURFACES.includes(surface) ? surface.family === 'single' : standardSingle(surface))
 const singleClasses = entryClasses.filter((definition) => ['w_entry_primitives', 'u_dwstandard', 'f_validatedw'].includes(definition.name))
 const { file: singleScripts, errors: singleErrors } = parseScriptFile(await readFile(resolve(here, '..', '..', 'data', 'src', 'scripts', 'components', 'w_single_entry.pbs'), 'utf8'))
 assert.deepEqual(singleErrors, [], 'Parse single-entry presentation scripts')
@@ -1484,6 +1524,27 @@ try {
   })
   await page.goto(origin + '/presentation.html')
   await page.waitForFunction(() => window.presentationFixtureReady)
+  // Stall watchdog: logs progress each minute and fails the pass, with the page state, when no assertion has been counted for
+  // ten minutes, so a stuck window is reported instead of hanging silently.
+  let lastPassed = -1
+  let stalledSince = Date.now()
+  const watchdog = setInterval(async () => {
+    const snapshot = await Promise.race([
+      page.evaluate(() => ({ passed: window.presentationCheckProgress?.passed ?? 0, failures: window.presentationCheckProgress?.failures?.length ?? 0, failureNames: (window.presentationCheckProgress?.failures ?? []).slice(0, 60),
+        windows: document.querySelectorAll('.pbwin').length, active: document.activeElement?.outerHTML?.slice(0, 200) })).catch(() => null),
+      new Promise((done) => setTimeout(() => done(null), 20000)),
+    ])
+    if (snapshot && snapshot.passed !== lastPassed) { lastPassed = snapshot.passed; stalledSince = Date.now() }
+    console.log(`[progress] ${new Date().toISOString()} passed=${snapshot?.passed ?? 'page unresponsive'} failures=${snapshot?.failures ?? '?'} windows=${snapshot?.windows ?? '?'}`)
+    if (snapshot?.failureNames?.length) console.log(`[failures so far] ${JSON.stringify(snapshot.failureNames)}`)
+    if (Date.now() - stalledSince > 5 * 60 * 1000) {
+      console.error('[watchdog] no progress for five minutes; last state:', JSON.stringify(snapshot))
+      try { await page.screenshot({ path: resolve(output, 'failure.png'), timeout: 10000 }) } catch {}
+      try { await writeFile(resolve(output, 'failure-state.json'), JSON.stringify({ stalled: true, snapshot }, null, 2) + '\n') } catch {}
+      process.exit(3)
+    }
+  }, 60000)
+  watchdog.unref()
   const result = await page.evaluate(({ focusedLookups, focusedBands, focusedInvoices, focusedCashier, focusedPayment, focusedCategory, focusedColors, focusedCriteria, focusedCriteriaWindows, focusedDateNames, focusedPrint, focusedDataWindowCalendar, focusedSingleEntry }) =>
     focusedSingleEntry ? window.runSingleEntryChecks() : focusedDataWindowCalendar ? window.runDataWindowCalendarChecks() : focusedPrint ? window.runPrintChecks() : focusedDateNames.length ? window.runCriteriaWindowChecks(focusedDateNames) : focusedCriteriaWindows ? window.runCriteriaWindowChecks() : focusedCriteria ? window.runCriteriaChecks() : focusedColors ? window.runForcedColorChecks() : focusedCategory ? window.runCategoryChecks() : focusedPayment ? window.runPaymentChecks() :
     focusedCashier ? window.runCashierChecks() :
@@ -3307,6 +3368,7 @@ try {
   await checkDateOptionInput(page)
   await checkDateChoiceInput(page)
   const criteriaWindowCases = await captureCriteriaWindows(page, output)
+  const derivedModalCases = await captureDerivedModalWindows(page, output)
   const calendarCases = await captureCalendars(page, output)
   await checkDataWindowCalendarInput(page)
   const dataWindowCalendarCases = await captureCalendars(page, output, true)
@@ -3317,8 +3379,8 @@ try {
   assert.deepEqual(pageErrors, [])
   assert.deepEqual(forbidden, [])
   assert.equal(await page.evaluate(() => window.fixtureNativeAccess), 0)
-  await writeFile(resolve(output, 'result.json'), JSON.stringify({ ...result, surfaceCases, windowCases, calculatorCases, calendarCases, dataWindowCalendarCases, entryCases, singleEntryCases, contactCases, contactCardCases, dropdownCases, editableLookupCases, automaticChoiceCases, selectorVariantCases, transactionBandCases, associatedInvoiceCases, cashierCases, paymentCases, categoryCases, criteriaCases, criteriaWindowCases, printSettingsCases, printDocumentCases, forcedColors, pageErrors, forbidden }, null, 2) + '\n')
-  console.log(`Presentation: ${result.passed} browser assertions; four viewport sizes; ${surfaceCases.length} surface, ${windowCases.length} dialog, ${calculatorCases.length} calculator, ${calendarCases.length} calendar, ${dataWindowCalendarCases.length} DataWindow-calendar, ${entryCases.length} aging-entry, ${singleEntryCases.length} single-entry, ${contactCases.length} contact-group, ${contactCardCases.length} contact-card, ${dropdownCases.length} editable-dropdown, ${editableLookupCases.length} editable-lookup, ${automaticChoiceCases.length} automatic-choice, ${selectorVariantCases.length} selector-variant, ${transactionBandCases.length} transaction-band, ${associatedInvoiceCases.length} associated-invoice, ${cashierCases.length} cashier, ${paymentCases.length} payment, ${categoryCases.length} category, ${criteriaCases.length} criteria and ${criteriaWindowCases.length} criteria-window appearance cases; no database or external requests.`)
+  await writeFile(resolve(output, 'result.json'), JSON.stringify({ ...result, surfaceCases, windowCases, calculatorCases, calendarCases, dataWindowCalendarCases, entryCases, singleEntryCases, contactCases, contactCardCases, dropdownCases, editableLookupCases, automaticChoiceCases, selectorVariantCases, transactionBandCases, associatedInvoiceCases, cashierCases, paymentCases, categoryCases, criteriaCases, criteriaWindowCases, derivedModalCases, printSettingsCases, printDocumentCases, forcedColors, performanceSamples: await page.evaluate(() => window.presentationPerformance ?? []), skippedTextChecks: await page.evaluate(() => window.singleEntrySkippedText ?? []), pageErrors, forbidden }, null, 2) + '\n')
+  console.log(`Presentation: ${result.passed} browser assertions; four viewport sizes; ${surfaceCases.length} surface, ${windowCases.length} dialog, ${calculatorCases.length} calculator, ${calendarCases.length} calendar, ${dataWindowCalendarCases.length} DataWindow-calendar, ${entryCases.length} aging-entry, ${singleEntryCases.length} single-entry, ${contactCases.length} contact-group, ${contactCardCases.length} contact-card, ${dropdownCases.length} editable-dropdown, ${editableLookupCases.length} editable-lookup, ${automaticChoiceCases.length} automatic-choice, ${selectorVariantCases.length} selector-variant, ${transactionBandCases.length} transaction-band, ${associatedInvoiceCases.length} associated-invoice, ${cashierCases.length} cashier, ${paymentCases.length} payment, ${categoryCases.length} category, ${criteriaCases.length} criteria, ${criteriaWindowCases.length} criteria-window and ${derivedModalCases.length} generated-window appearance cases; no database or external requests.`)
   }
   }
   }

@@ -250,6 +250,17 @@ export async function checkDataSurfaces(fixture, check, settle) {
   check(view.root.querySelector('[role=grid]')?.getAttribute('aria-rowcount') === '10001'
     && view.root.querySelectorAll('.surface-row').length <= 61,
     'Modern grid exposes 10000 logical rows while rendering a bounded window')
+  // The plan's required report/grid size; timings are recorded for the reference-machine assessment, not asserted here.
+  const huge = modelFor('d_agingintervallist', 100000)
+  const attachStart = performance.now()
+  control.attach(huge)
+  await settle()
+  ;(window.presentationPerformance ??= []).push({ name: 'grid-100000-rows-attach-and-first-paint', rows: 100000, milliseconds: Math.round(performance.now() - attachStart) })
+  check(view.root.querySelector('[role=grid]')?.getAttribute('aria-rowcount') === '100001'
+    && view.root.querySelectorAll('.surface-row').length <= 61,
+    'Modern grid exposes 100000 logical rows while rendering a bounded window')
+  control.attach(grid)
+  await settle()
   check(view.root.querySelectorAll('th[scope=col]').length === 2
     && view.root.querySelectorAll('[data-obj][tabindex="0"]').length === 1, 'Modern grid has named columns and one keyboard entry point')
   cell('code').focus()

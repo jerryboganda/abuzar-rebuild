@@ -1,7 +1,8 @@
 import type { PBObject } from '../runtime/object.ts'
 import type { WinView } from './dom-ui.ts'
 import { ModernDwView } from './modern-dwview.ts'
-import { ENTRY_WINDOW_SURFACES, entryWindowIssues } from './window-surfaces.ts'
+import { entryWindowIssues } from './window-surfaces.ts'
+import { entryWindowSurfaceByName } from './surface-registry.ts'
 import type { DataSurface } from './data-surfaces.ts'
 
 export const ENTRY_FIND_SURFACE: DataSurface = {
@@ -25,7 +26,7 @@ export function entryControls(window: PBObject): Map<string, PBObject> {
 
 /** Reflow reviewed entry controls without replacing their runtime objects or events. */
 export function applyModernEntryWindow(view: WinView): boolean {
-  const surface = ENTRY_WINDOW_SURFACES.find((item) => item.name === view.w.className)
+  const surface = entryWindowSurfaceByName(view.w.className)
   if (!surface || !view.sheet || view.modal) return false
   const controls = entryControls(view.w)
   const issues = entryWindowIssues([...controls].map(([path, control]) => ({ path, native: control.native })), surface)
@@ -65,9 +66,9 @@ export function applyModernEntryWindow(view: WinView): boolean {
     section.append(...children)
     return section
   }
-  const data = (path: string, kind: 'form' | 'grid' | 'auxiliary') => {
+  const data = (path: string, kind: 'form' | 'grid' | 'auxiliary' | 'control') => {
     const host = element(path)
-    host.classList.add('entry-data', `entry-${kind}`)
+    host.classList.add(kind === 'control' ? 'entry-extra' : 'entry-data', `entry-${kind}`)
     return host
   }
   const named = (name: string, label: string) => {

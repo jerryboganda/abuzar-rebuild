@@ -1,5 +1,8 @@
 import { DwChoiceEditor } from './src/ui/dw-choice-editor.js'
 
+// The plan's required lookup size; the previous fixture used 10,000 choices.
+const LARGE_LOOKUP = 30000
+
 const deferred = () => {
   let resolve, reject
   const promise = new Promise((ok, fail) => { resolve = ok; reject = fail })
@@ -164,7 +167,7 @@ export async function checkChoiceEditors(check, settle) {
       host.style.cssText = `position:fixed;left:16px;width:260px;${above ? 'bottom' : 'top'}:16px;font:${16 * scale}px/1.4 sans-serif;z-index:900`
       document.body.append(host)
       const f = mount({ host, popupWidthPercent: 100, popupLines: lines, value: 1,
-        items: Array.from({ length: wrapped ? 10000 : 40 }, (_, index) => ({
+        items: Array.from({ length: wrapped ? LARGE_LOOKUP : 40 }, (_, index) => ({
           text: wrapped && index % 5 === 0 ? 'Choice with a label that wraps across multiple lines' : `Value ${index + 1}`,
           value: index + 1,
         })) })
@@ -251,13 +254,15 @@ export async function checkChoiceEditors(check, settle) {
   largeHost.style.cssText = 'position:fixed;top:16px;left:16px;width:260px;font:16px/1.4 sans-serif'
   document.body.append(largeHost)
   const large = mount({ host: largeHost, popupLines: 7, value: 1,
-    items: Array.from({ length: 10000 }, (_, index) => ({
-      text: index === 5000 || index === 9999 ? 'Zebra repeated choice' : `Option ${index + 1}`, value: index + 1,
+    items: Array.from({ length: LARGE_LOOKUP }, (_, index) => ({
+      text: index === LARGE_LOOKUP / 2 || index === LARGE_LOOKUP - 1 ? 'Zebra repeated choice' : `Option ${index + 1}`, value: index + 1,
     })) })
   large.editor.element.style.cssText = 'width:100%;height:2.5em;font:inherit'
   try {
     await settle()
+    const openStart = performance.now()
     key(large, 'F4'); await settle()
+    ;(window.presentationPerformance ??= []).push({ name: 'lookup-30000-choices-open', rows: LARGE_LOOKUP, milliseconds: Math.round(performance.now() - openStart) })
     const popup = large.editor.popup, list = popup.list
     const visible = () => {
       const active = document.getElementById(large.editor.element.getAttribute('aria-activedescendant'))
@@ -265,7 +270,7 @@ export async function checkChoiceEditors(check, settle) {
       return !!rect && rect.top >= box.top - .5 && rect.bottom <= box.bottom + .5
     }
     check(list.querySelectorAll('[role=option]').length <= 32 && popup.options.size <= 32,
-      'Ten-thousand-choice opening bounds both the rendered options and retained node cache')
+      'Thirty-thousand-choice opening bounds both the rendered options and retained node cache')
     const first = list.querySelector('[data-index="0"]')
     key(large, 'ArrowDown'); await settle()
     check(list.querySelector('[data-index="0"]') === first && popup.index === 1,
@@ -295,15 +300,15 @@ export async function checkChoiceEditors(check, settle) {
     popup.close(); popup.show(); popup.mount(); await settle()
     check(popup.index === 1 && popup.options.size <= 32 && visible(), 'Virtual remounting preserves the cursor and bounded window')
     key(large, 'z'); await settle()
-    check(popup.index === 5000 && visible() && !large.state.writes.length,
+    check(popup.index === LARGE_LOOKUP / 2 && visible() && !large.state.writes.length,
       'Virtual typeahead finds the first matching distant row without remapping its duplicate label')
     key(large, 'z'); await settle()
-    const last = list.querySelector('[data-index="9999"]')
-    check(popup.index === 9999 && last?.textContent === 'Zebra repeated choice' &&
-      last.getAttribute('aria-setsize') === '10000' && last.getAttribute('aria-posinset') === '10000' && visible(),
+    const last = list.querySelector(`[data-index="${LARGE_LOOKUP - 1}"]`)
+    check(popup.index === LARGE_LOOKUP - 1 && last?.textContent === 'Zebra repeated choice' &&
+      last.getAttribute('aria-setsize') === String(LARGE_LOOKUP) && last.getAttribute('aria-posinset') === String(LARGE_LOOKUP) && visible(),
     'Typeahead searches the complete choice set and announces the offscreen match with its real position and size')
     last.click(); await settle()
-    check(large.state.writes.join() === '10000' && large.state.closed === 1 && !list.isConnected &&
+    check(large.state.writes.join() === String(LARGE_LOOKUP) && large.state.closed === 1 && !list.isConnected &&
       !large.state.errors.length, 'Pointer selection from a distant virtual window commits exactly its original key once')
   } finally { large.dispose(); largeHost.remove() }
 

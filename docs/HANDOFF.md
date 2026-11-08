@@ -3,6 +3,29 @@
 Everything a new coding agent (opencode or another) needs to continue this work without the previous conversation.
 Read `CLAUDE.md` (rules), `README.md` (architecture), `docs/PARITY.md` (numbers), `docs/FIDELITY.md` (findings) and `docs/ROADMAP.md` first; this file is the state and the next steps.
 
+**Execution policy updated 2026-11-08:** read `AGENTS.md`, **Project execution
+policy**, before continuing. Finish the agreed code scope without intermediate
+browser runs, then perform one consolidated final browser pass and fix its
+findings. Additional browser passes need explicit authorization; post-pass
+browser-affecting fixes remain unverified in the browser until rerun. Use
+recommended defaults for routine decisions, record consequential assumptions,
+and do not pause for repeated questions. Required safety/permission approvals
+still apply. Older test commands below are reference material, not instructions
+to run browser checks per slice. Historical evidence does not verify new code.
+
+**Generated Modern layouts (2026-11-08, not browser-verified):** 1,958 of 2,062 windows
+now have a Modern layout, 170 hand-reviewed and 1,788 generated from `data/src` by
+`web/tools/derive-data-surfaces.ts`, `derive-entry-windows.ts` and `derive-modal-windows.ts`
+(run from `web/`; `--check` fails on stale output, and `tests/derived-surfaces.test.ts` does the same).
+`surface-registry.ts` and `window-registry.ts` merge reviewed and generated mappings, reviewed first.
+Every item still on Classic is listed with its reason in `docs/ui-derived-*-backlog.json`.
+Decisions, the prepared final browser matrix and the document classification (`web/tools/classify-documents.ts`) are in `UI-ENHANCEMENT.md`, **Current state**.
+The full browser pass has **not** been run for this tree; run it once, then fix its findings.
+Still open for code: the 104 windows without a layout (14 entry masters and 88 dialog or sheet windows left
+on unmapped DataWindows or unsupported controls, plus main/sheet windows), report and print
+document families, the irregular transaction workflows, rights-aware navigation and real
+sign-in/native integration.
+
 **UI enhancement remains incomplete.** Cashier closing, multiple-invoice cash
 tendering and category changes have scoped Modern modals and original-script synthetic coverage.
 Real authorization and database acceptance remain outstanding. Current counts,
