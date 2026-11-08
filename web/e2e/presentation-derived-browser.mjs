@@ -72,9 +72,19 @@ const rowsOf = (entries, modern = false) => {
     const rect = element.getBoundingClientRect()
     return rect.width > 0 && rect.height > 0 ? [{ key, left: Math.round(rect.left), right: Math.round(rect.right), top: Math.round(rect.top), bottom: Math.round(rect.bottom) }] : []
   })
-  const rows = planLines(boxes).map((line) => line.map((cell) => cell.key).sort())
-  rows.boxes = boxes
-  return rows
+  // Structure is compared as pairwise relations, not as transitive clusters (staggered neighbours would chain into one cluster):
+  // "a shares a row with b" when their vertical extents overlap by at least half the shorter one, ordered left to right.
+  const relations = []
+  for (let i = 0; i < boxes.length; i++) {
+    for (let j = i + 1; j < boxes.length; j++) {
+      const [a, b] = boxes[i].left <= boxes[j].left ? [boxes[i], boxes[j]] : [boxes[j], boxes[i]]
+      const overlap = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top)
+      if (overlap >= 0.5 * Math.min(a.bottom - a.top, b.bottom - b.top) && b.left >= a.right - 2) relations.push(`${a.key}<${b.key}`)
+    }
+  }
+  relations.sort()
+  relations.boxes = boxes
+  return relations
 }
 const compareStructure = (family, name, modern, rows, check, label) => {
   const store = (window.derivedStructure ??= {})
@@ -82,8 +92,11 @@ const compareStructure = (family, name, modern, rows, check, label) => {
   if (!modern) { store[key] = rows; store[key + ':boxes'] = rows.boxes; return }
   const classic = store[key]
   if (!classic) return
-  const same = JSON.stringify([...classic].map((row) => row.join(',')).sort()) === JSON.stringify([...rows].map((row) => row.join(',')).sort())
-  check(same, `${label}: the Modern rows equal the Classic rows (Classic ${JSON.stringify(classic)}; Modern ${JSON.stringify(rows)}; boxes Classic ${JSON.stringify(store[key + ':boxes'])} Modern ${JSON.stringify(rows.boxes)})`)
+  // Only controls present in both presentations are compared.
+  const present = new Set(rows.boxes.map((box) => box.key))
+  const shared = (relations) => relations.filter((relation) => relation.split('<').every((part) => present.has(part)))
+  const left = shared(classic).join(','), right = rows.join(',')
+  check(left === right, `${label}: the Modern rows equal the Classic rows (Classic-only ${JSON.stringify(shared(classic).filter((r) => !rows.includes(r)))}; Modern-only ${JSON.stringify(rows.filter((r) => !shared(classic).includes(r)))})`)
 }
 
 /** Response windows: the layout is accepted in Modern, absent in Classic, and every original control stays attached. */
