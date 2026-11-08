@@ -5,20 +5,28 @@ import { chromium } from 'playwright'
 import { execSync } from 'node:child_process'
 
 const base = process.argv[2]
+// CRAWL_MODE=modern signs in through the presentation layer (fresh preferences start Modern); the default is the Classic interface.
+// Both crawls record outcomes from the runtime, not from the DOM, so `node compare-crawls.mjs` can compare them item by item.
+const mode = process.env.CRAWL_MODE === 'modern' ? 'modern' : 'classic'
 const stride = Number(process.argv[3] || 14)
 const browser = await chromium.launch()
 // the size of the screen the original was compared on: windows lay themselves out from the screen size (GetEnvironment)
 const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } })
 await page.addInitScript(() => {
+  // Message boxes of either presentation: the Classic box bar, or the Modern runtime dialog.  "No" is preferred, as a user leaving would.
+  window.answerBoxes = () => {
+    for (const bar of document.querySelectorAll('.msgbox .btns, .presentation-runtime-dialog[open]')) {
+      const buttons = [...bar.querySelectorAll('button')]
+      const no = buttons.find((x) => /^no$/i.test(x.textContent.trim()))
+      ;(no || buttons[0])?.click()
+    }
+  }
   window.closeLikeUser = async (w) => {
     const closing = window.rt.closeWindow(w).catch(() => {})
     for (let i = 0; i < 4; i++) {
       const done = await Promise.race([closing.then(() => true), new Promise((r) => setTimeout(() => r(false), 400))])
       if (done) return
-      document.querySelectorAll('.msgbox .btns').forEach((bar) => {
-        const no = [...bar.querySelectorAll('button')].find((x) => /^no$/i.test(x.textContent.trim()))
-        ;(no || bar.querySelector('button'))?.click()
-      })
+      window.answerBoxes()
     }
   }
 })
@@ -38,7 +46,8 @@ page.on('console', (m) => {
   if (/Failed to load resource/.test(m.text())) missingFiles++
   else errors.push({ win: current, text: m.text().slice(0, 220) })
 })
-await page.goto(base + '/?autologin=admin:admin')
+await page.goto(base + '/?autologin=admin:admin' + (mode === 'modern' ? '&presentation=1' : ''))
+console.log(`interface: ${mode}`)
 try {
   await page.waitForFunction(() => window.__open && window.rt && window.rt.windowInstances.get('w_main'), null, { timeout: 150000, polling: 500 })
 } catch (e) {
@@ -79,7 +88,7 @@ if (shots && !process.argv[5]) {
       }
     }, name)
     await page.waitForTimeout(3500)
-    await page.evaluate(() => document.querySelectorAll('.msgbox .btns button').forEach((b) => b.click()))
+    await page.evaluate(() => window.answerBoxes())
     await page.waitForTimeout(300)
     await page.screenshot({ path: `${shots}/${name}.png` })
     await page.evaluate(async (n) => {
@@ -108,6 +117,14 @@ if (shots && observed) {
       window.__closes.push(`${w.className}<-${window.rt.recentNames(6)}`)
       return cw(w)
     }
+    // every message box the user would see, from the runtime (the same in either presentation)
+    window.__boxes = []
+    const ui = window.rt.ui
+    const shown = ui.messageBox.bind(ui)
+    ui.messageBox = (title, text, ...rest) => {
+      window.__boxes.push(`${title}: ${String(text).replace(/\s+/g, ' ').slice(0, 110)}`)
+      return shown(title, text, ...rest)
+    }
     // message boxes too: the watchdog answers them before the screen is read
     const mb = window.rt.sys.get('messagebox')
     window.rt.sys.set('messagebox', {
@@ -125,7 +142,7 @@ if (shots && observed) {
     const [id, , , path] = p
     current = path
     const name = id + '_' + path.replace(/[^A-Za-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 110)
-    await page.evaluate(() => (window.__closes.length = 0))
+    await page.evaluate(() => { window.__closes.length = 0; window.__boxes.length = 0 })
     const res = await page.evaluate(async (pa) => {
       try {
         return String(await Promise.race([window.__menu(pa), new Promise((r) => setTimeout(() => r('timeout'), 6000))]))
@@ -178,9 +195,10 @@ if (shots && observed) {
       await page.waitForTimeout(800)
       await page.screenshot({ path: `${shots}/${name}_final.png` })
     }
-    const titles = await page.evaluate(() => [...document.querySelectorAll('.pbwin .ttl')].map((t) => t.textContent.trim()).join(' ; '))
+    // open windows and their titles from the runtime, so the two presentations are compared on the same terms
+    const titles = await page.evaluate(() => [...window.rt.windowInstances.values()].map((w) => `${w.className}=${String(w.props.get('title') ?? '').trim()}`).sort().join(' ; '))
     // message boxes that were open (script errors show up as "Application error" boxes): what the user would have seen
-    const boxes = await page.evaluate(() => [...document.querySelectorAll('.msgbox')].map((b) => ((b.querySelector('.ttl')?.textContent || '') + ': ' + (b.querySelector('.txt')?.textContent || '')).replace(/\s+/g, ' ').slice(0, 260)).join(' || '))
+    const boxes = await page.evaluate(() => window.__boxes.splice(0).join(' | '))
     // what the report window holds (for the reports that opened one): the DataWindow's visibility, rows, preview state
     const rep = await page.evaluate(() => {
       const w = window.rt.windowInstances.get('w_reviewreport')
@@ -193,13 +211,10 @@ if (shots && observed) {
     // closed by scripts while this item was opening
     const closed = await page.evaluate(() => window.__closes.splice(0).join(' || '))
     rows.push(`${id}\t${res}\t${titles}\t${path}\t${boxes}\t${rep}\t${closed}`)
-    writeFileSync(`${shots}/menu-crawl.tsv`, rows.join('\n') + '\n') // kept up to date: a frozen page must not lose what was seen
+    writeFileSync(`${shots}/menu-crawl-${mode}.tsv`, rows.join('\n') + '\n') // kept up to date: a frozen page must not lose what was seen
     await page.evaluate(async () => {
       for (let i = 0; i < 4; i++) {
-        document.querySelectorAll('.msgbox .btns button').forEach((b) => {
-          const no = [...b.parentElement.querySelectorAll('button')].find((x) => /^no$/i.test(x.textContent.trim()))
-          ;(no || b).click()
-        })
+        window.answerBoxes()
         // dialogs (password, arguments ...) are left with their Cancel button, as a user would; the rest is closed
         document.querySelectorAll('.pbwin:not(.sheet) button').forEach((b) => {
           if (/^cancel$/i.test(b.textContent.trim())) b.click()
@@ -210,7 +225,7 @@ if (shots && observed) {
       }
     })
   }
-  writeFileSync(`${shots}/menu-crawl.tsv`, rows.join('\n') + '\n')
+  writeFileSync(`${shots}/menu-crawl-${mode}.tsv`, rows.join('\n') + '\n')
   console.log(`menu walk: ${rows.length} of ${order.length} items opened in ${Math.round((Date.now() - t0) / 1000)} s; ${rows.filter((r) => r.split('\t')[1] !== 'true').length} did not click`)
 }
 const names = await page.evaluate(async () => {
@@ -243,8 +258,8 @@ for (const name of sample) {
     }
     await new Promise((res) => setTimeout(res, 150))
     const w = window.rt.windowInstances.get(n)
-    const msgs = [...document.querySelectorAll('.msgbox')].map((b) => (b.querySelector('.txt')?.textContent || '').slice(0, 110))
-    document.querySelectorAll('.msgbox .btns button').forEach((b) => b.click())
+    const msgs = [...document.querySelectorAll('.msgbox .txt, .presentation-runtime-dialog[open] p')].map((b) => (b.textContent || '').slice(0, 110))
+    window.answerBoxes()
     const hadDom = document.querySelectorAll('.win').length
     if (w) {
       try {
