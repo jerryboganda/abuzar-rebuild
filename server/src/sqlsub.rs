@@ -43,7 +43,11 @@ pub fn literal(v: &Value, n: usize) -> Result<String, SubError> {
             }
         }
         Value::Object(o) => {
-            if let Some(Value::String(b64)) = o.get("$b64") {
+            if let Some(Value::String(dec)) = o.get("$dec") {
+                // a PowerScript decimal outside arithmetic: the quoted text, as before (it takes the type of what it meets)
+                decimal(dec, n)?;
+                quote(dec, n)?
+            } else if let Some(Value::String(b64)) = o.get("$b64") {
                 use base64::Engine;
                 let bytes = base64::engine::general_purpose::STANDARD.decode(b64).map_err(|_| SubError::Unsupported(n))?;
                 let hex: String = bytes.iter().map(|b| format!("{b:02x}")).collect();
@@ -53,6 +57,48 @@ pub fn literal(v: &Value, n: usize) -> Result<String, SubError> {
             }
         }
     })
+}
+
+/// The text of a PowerScript decimal (`{"$dec": "-12.50"}`), checked to be a plain number.
+fn decimal(s: &str, n: usize) -> Result<&str, SubError> {
+    let digits = s.strip_prefix('-').unwrap_or(s);
+    let (whole, fraction) = digits.split_once('.').unwrap_or((digits, "0"));
+    let plain = |part: &str| !part.is_empty() && part.bytes().all(|c| c.is_ascii_digit());
+    if plain(whole) && plain(fraction) { Ok(s) } else { Err(SubError::Unsupported(n)) }
+}
+
+/// SQL for one parameter that is an operand of `* / + - %`.  T-SQL converts a decimal string or a NULL there implicitly; in
+/// PostgreSQL a quoted decimal would be read as the other operand's type (`'12.50' * 3` fails as an integer) and two NULLs
+/// have no operator at all, so a decimal becomes a numeric literal and a NULL a numeric NULL.  Every other value is unchanged.
+fn arithmetic_literal(v: &Value, n: usize) -> Result<String, SubError> {
+    match v {
+        Value::Null => Ok("NULL::numeric".to_string()),
+        Value::Object(o) => match o.get("$dec") {
+            Some(Value::String(dec)) => {
+                let text = decimal(dec, n)?;
+                Ok(if text.starts_with('-') { format!("({text})") } else { text.to_string() })
+            }
+            _ => literal(v, n),
+        },
+        _ => literal(v, n),
+    }
+}
+
+/// true when the placeholder at `b[i..j]` is an operand of an arithmetic operator (not a comment opener or closer)
+fn arithmetic_context(b: &[u8], i: usize, j: usize) -> bool {
+    let mut p = i;
+    while p > 0 && b[p - 1].is_ascii_whitespace() {
+        p -= 1;
+    }
+    let before = p > 0 && matches!(b[p - 1], b'*' | b'/' | b'+' | b'-' | b'%') && !(b[p - 1] == b'/' && p > 1 && b[p - 2] == b'*')
+        && !(b[p - 1] == b'-' && p > 1 && b[p - 2] == b'-');
+    let mut k = j;
+    while k < b.len() && b[k].is_ascii_whitespace() {
+        k += 1;
+    }
+    let after = k < b.len() && matches!(b[k], b'*' | b'/' | b'+' | b'-' | b'%')
+        && !(k + 1 < b.len() && ((b[k] == b'-' && b[k + 1] == b'-') || (b[k] == b'/' && b[k + 1] == b'*')));
+    before || after
 }
 
 fn quote(s: &str, n: usize) -> Result<String, SubError> {
@@ -177,6 +223,7 @@ pub fn substitute(sql: &str, params: &[Value]) -> Result<String, SubError> {
                         }
                         // `col = :list` with one member: the member itself, as PowerBuilder substitutes it
                         Value::Array(items) if items.len() == 1 && scalar_context(b, i, j) => out.push_str(&literal(&items[0], n)?),
+                        _ if arithmetic_context(b, i, j) => out.push_str(&arithmetic_literal(v, n)?),
                         _ => out.push_str(&literal(v, n)?),
                     }
                     last = j;
@@ -228,6 +275,20 @@ mod tests {
         assert_eq!(s, "where a = 7 and b <> 7 and c = (7)::numeric and d = any(ARRAY[7]) and e in (7)");
         // more than one member keeps the array: PowerBuilder would not accept it there either
         assert_eq!(substitute("where a = $1", &[json!([1, 2])]).unwrap(), "where a = ARRAY[1,2]");
+    }
+
+    #[test]
+    fn decimals_and_nulls_in_arithmetic_are_numeric() {
+        // `update item set saleprice = round(:ld_price * :ll_packunits, 2)`: a decimal operand is a numeric literal, a NULL a numeric NULL
+        let s = substitute("set saleprice = round($1 * $2, 2), cost = $3 - $1, n = $4 + 1", &[json!({"$dec": "12.50"}), json!(3), json!({"$dec": "-0.75"}), json!(null)]).unwrap();
+        assert_eq!(s, "set saleprice = round(12.50 * 3, 2), cost = (-0.75) - 12.50, n = NULL::numeric + 1");
+        assert_eq!(substitute("$1 / $2", &[json!(null), json!(null)]).unwrap(), "NULL::numeric / NULL::numeric");
+        // anywhere else a decimal keeps its quoted text and a NULL stays NULL, as before
+        assert_eq!(substitute("where code = $1 and qty = $2 and x = $3", &[json!({"$dec": "7.5"}), json!(null), json!("5")]).unwrap(),
+            "where code = '7.5' and qty = NULL and x = '5'");
+        // a comment next to a placeholder is not an operator; a string stays a string even in arithmetic
+        assert_eq!(substitute("select $1 -- c\n, /* c */ $2, $3 * 2", &[json!(null), json!(null), json!("4")]).unwrap(), "select NULL -- c\n, /* c */ NULL, '4' * 2");
+        assert_eq!(substitute("select $1 * 2", &[json!({"$dec": "1e5"})]), Err(SubError::Unsupported(1)));
     }
 
     #[test]

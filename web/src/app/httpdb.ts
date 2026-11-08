@@ -1,6 +1,7 @@
 // Database session over the Rust server's HTTP API (see server/src/lib.rs).
 import type { Db, QueryResult, CallResult } from '../runtime/wire.ts'
 import { askForToken, authHeaders } from '../runtime/apiauth.ts'
+import { Dec } from '../runtime/values.ts'
 
 /** application user of the audit trail: every open session (and every later one) carries it as the setting `app.user` */
 let appUser = ''
@@ -16,6 +17,16 @@ export async function setAppUser(user: string): Promise<void> {
 
 interface ApiBody {
   error?: { code?: string; message: string }
+}
+
+/**
+ * Parameters as the server expects them.  A PowerScript decimal travels as `{"$dec": "12.50"}` (exact text, no float rounding),
+ * so the server can type it as a number where it is an operand of arithmetic (see server/src/sqlsub.rs) and keep the quoted
+ * text everywhere else, as before.
+ */
+export function wireParams(params: readonly unknown[]): unknown[] {
+  const wire = (value: unknown): unknown => value instanceof Dec ? { $dec: value.toString() } : Array.isArray(value) ? value.map(wire) : value
+  return params.map(wire)
 }
 
 export class HttpDb implements Db {
@@ -90,7 +101,7 @@ export class HttpDb implements Db {
     return sql.replace(/\bsysjobs\b/i, 'dbo.sysjobs')
   }
   async query(sql: string, params: unknown[]): Promise<QueryResult> {
-    return this.post('/api/query', { sid: this.sid, sql: await this.jobs(sql, params), params })
+    return this.post('/api/query', { sid: this.sid, sql: await this.jobs(sql, params), params: wireParams(params) })
   }
   /** `Backup Database <db> To <device> With INIT ...` (SQL Server): a pg_dump of the database into that file; the system databases have nothing to dump */
   private async backup(sql: string): Promise<boolean> {
@@ -115,10 +126,10 @@ export class HttpDb implements Db {
   }
   async exec(sql: string, params: unknown[]): Promise<{ rowcount: number }> {
     if (await this.backup(sql)) return { rowcount: 0 }
-    return this.post('/api/exec', { sid: this.sid, sql, params })
+    return this.post('/api/exec', { sid: this.sid, sql, params: wireParams(params) })
   }
   call(sql: string, params: unknown[]): Promise<CallResult> {
-    return this.post('/api/call', { sid: this.sid, sql, params })
+    return this.post('/api/call', { sid: this.sid, sql, params: wireParams(params) })
   }
   async commit(): Promise<void> {
     await this.post('/api/commit', { sid: this.sid })
