@@ -4,6 +4,7 @@ import { modalWindowSurfaceByName } from './window-registry.ts'
 import { ModernDwView } from './modern-dwview.ts'
 import { planGrid, applyGrid, anchoredBox, resolveAnchors } from './grid-plan.ts'
 import type { GridBox } from './grid-plan.ts'
+import { useSourceTabOrder } from './source-tab-order.ts'
 
 let nextWindow = 0
 
@@ -27,7 +28,6 @@ export function applyModernWindow(view: WinView): boolean {
     return false
   }
   const elements = new Map([...view.ctlViews].filter(([control]) => control.parent === view.w).map(([control, binding]) => [control.name, binding.el]))
-  for (const element of elements.values()) if (element.tabIndex > 0) element.tabIndex = 0
   const identity = `modern-window-${++nextWindow}`
   const content = document.createElement('div')
   content.className = 'window-fields'
@@ -86,8 +86,9 @@ export function applyModernWindow(view: WinView): boolean {
     input.id = `${identity}-${field.control}`
     text.id = `${identity}-${field.label ?? field.control + '-name'}`
     input.setAttribute('aria-labelledby', text.id)
+    // The caption names the field (aria-labelledby) but is not bound to it: clicking a caption does not move the focus (and so fires
+    // no GetFocus), as in Classic.
     const label = document.createElement('label')
-    label.htmlFor = input.id
     label.append(text)
     const group = document.createElement('div')
     group.className = 'window-field'
@@ -141,9 +142,7 @@ export function applyModernWindow(view: WinView): boolean {
   }
   for (const option of surface.options ?? []) {
     const element = elements.get(option.control)!
-    const input = element.querySelector('input')!
-    // Missing source ordering is not an explicit exclusion from Modern keyboard navigation.
-    if (input.tabIndex > 0 || !view.w.children.get(option.control)!.props.has('taborder')) input.tabIndex = 0
+    // An option keeps its source tab stop: one without a TabOrder is not a tab stop, as in Classic.
     element.classList.add('window-option')
     content.append(element)
     contentItems.set(option.control, element)
@@ -169,9 +168,12 @@ export function applyModernWindow(view: WinView): boolean {
     button.className = 'cls'
     button.textContent = '\u00d7'
     button.setAttribute('aria-label', 'Close window')
+    // a mouse control, as the Classic title-bar cross: no extra tab stop, and Enter in the window never closes it
+    button.tabIndex = -1
     button.onclick = () => { void view.ui.rt.closeWindow(view.w).catch((error) => view.ui.rt.onError(error)) }
     close.replaceWith(button)
   }
+  useSourceTabOrder(view.el, view.client, [...view.ctlViews].map(([control, binding]) => ({ element: binding.el, taborder: control.props.get('taborder') })))
   return true
 }
 

@@ -76,8 +76,27 @@ export async function preferenceKey(scope: PresentationScope): Promise<string> {
   }
   // Persist neither identifiers nor connection material as readable storage keys.
   const encoded = new TextEncoder().encode(JSON.stringify([server, scope.database, scope.appUser, scope.workstation]))
+  // crypto.subtle exists only on a secure origin (https, localhost, the desktop shell); a browser on a LAN address over plain http has
+  // none, and must still sign in: it keys its preferences with a non-cryptographic digest under its own prefix.
+  if (!globalThis.crypto?.subtle) return 'trader.ui.v1f.' + fallbackDigest(encoded)
   const digest = await crypto.subtle.digest('SHA-256', encoded)
   return 'trader.ui.v1.' + [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('')
+}
+
+/** Four independent FNV-1a 32-bit hashes: an opaque key, not a security boundary (the value stored under it is not secret). */
+function fallbackDigest(bytes: Uint8Array): string {
+  return [0x811c9dc5, 0x01000193, 0x5bd1e995, 0x27d4eb2f].map((seed) => {
+    let hash = seed >>> 0
+    for (const byte of bytes) hash = Math.imul(hash ^ byte, 0x01000193) >>> 0
+    return hash.toString(16).padStart(8, '0')
+  }).join('')
+}
+
+/** Preferences kept for this session only, when the browser storage cannot be used. */
+export class SessionPreferenceStorage implements PreferenceStorage {
+  private values = new Map<string, string>()
+  getItem(key: string): string | null { return this.values.get(key) ?? null }
+  setItem(key: string, value: string): void { this.values.set(key, value) }
 }
 
 /** The current host is fixed at sign-in; saving another mode only affects a later session. */

@@ -156,9 +156,14 @@ async function checkPrintPreferences(fixture, check, settle, storage) {
       'Editing known document families preserves unregistered stored family choices')
     const control = makeControl(fixture.rt, new DwModel(fixture.rt, report.name, structuredClone(report)))
     let rejection
-    try { await fixture.ui.print(control) } catch (error) { rejection = error.message }
-    check(rejection?.includes('Select Classic print layout') && !rejection.includes('will print'),
-      'Unavailable Modern printing reports the recovery action without claiming a print job occurred')
+    const warnings = []
+    const warn = console.warn
+    console.warn = (...args) => { warnings.push(args.join(' ')) }
+    const status = () => document.querySelector('.presentation-ui .command-status')?.textContent ?? ''
+    try { await fixture.ui.print(control) } catch (error) { rejection = error.message } finally { console.warn = warn }
+    const notice = status() || warnings.join(' ')
+    check(rejection === undefined && notice.includes('Printed with the Classic layout'),
+      'A document without a usable Modern template prints with the Classic layout and says so, without failing the print call')
   } finally {
     storage.fail = false
     settings().close()

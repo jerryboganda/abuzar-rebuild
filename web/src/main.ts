@@ -11,7 +11,7 @@ import { authHeaders } from './runtime/apiauth.ts'
 import { setApiBase } from './runtime/sysfiles.ts'
 import { localeDateOrder, setDateOrder } from './runtime/values.ts'
 import { startApplication, DEFAULT_CONFIG } from './app/startup.ts'
-import { PresentationSession } from './app/ui-preferences.ts'
+import { PresentationSession, SessionPreferenceStorage } from './app/ui-preferences.ts'
 import { PresentationUi } from './ui/presentation-ui.ts'
 import { nativeAppearance } from './ui/native-appearance.ts'
 import { fixSqlTables } from './runtime/sql-fixes.ts'
@@ -170,20 +170,36 @@ async function main(): Promise<void> {
     if (auto.length === 2) void autoLogin(rt, auto[0], auto[1])
     try {
       await startApplication(rt, { ...DEFAULT_CONFIG, company: q.get('company') ?? '' }, q.get('presentation') === '1' ? {
+        // Appearance preferences never block a sign-in: an unreadable or newer stored record, refused storage, an unidentified
+        // database or a missing crypto API give this session the default appearance (kept in memory, the stored record untouched),
+        // and if even that fails the Classic interface continues.
         onAuthenticated: async ({ appUser, config }) => {
-          let database = 'mock:' + config.database
-          if (!useMock) {
-            const transaction = rt.globals.get('sqlca')
-            if (!(transaction instanceof NTransaction) || !transaction.db) throw new Error('Appearance selection requires the signed-in database session.')
-            const result = await transaction.db.query('SELECT current_database() AS database_name', [])
-            const identity = result.rows[0]?.[0]
-            if (typeof identity !== 'string' || !identity.trim()) throw new Error('The active database could not be identified for appearance settings.')
-            database = identity
+          const scope = async () => {
+            let database = 'mock:' + config.database
+            if (!useMock) {
+              const transaction = rt.globals.get('sqlca')
+              if (!(transaction instanceof NTransaction) || !transaction.db) throw new Error('Appearance selection requires the signed-in database session.')
+              const result = await transaction.db.query('SELECT current_database() AS database_name', [])
+              const identity = result.rows[0]?.[0]
+              if (typeof identity !== 'string' || !identity.trim()) throw new Error('The active database could not be identified for appearance settings.')
+              database = identity
+            }
+            return { server: server ? new URL(server, location.href).href : location.origin, database, appUser, workstation: config.computer }
           }
-          const session = await PresentationSession.load(localStorage, {
-            server: server ? new URL(server, location.href).href : location.origin,
-            database, appUser, workstation: config.computer,
-          })
+          let session: PresentationSession
+          try {
+            session = await PresentationSession.load(localStorage, await scope())
+          } catch (error) {
+            console.warn('Appearance preferences are unavailable; this session uses the default appearance and saves nothing.', error)
+            try {
+              session = await PresentationSession.load(new SessionPreferenceStorage(), {
+                server: location.origin || 'local', database: config.database || 'local', appUser: appUser || 'user', workstation: config.computer || 'local',
+              })
+            } catch (fallback) {
+              console.warn('The Modern interface could not start; the Classic interface continues.', fallback)
+              return
+            }
+          }
           ui.dispose()
           ui = new PresentationUi(rt, desktop, session)
           rt.ui = ui

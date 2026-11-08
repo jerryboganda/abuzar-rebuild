@@ -18,6 +18,7 @@ import { TabSelection, tabAvailable } from './tab-selection.ts'
 import { DropdownView } from './dropdown.ts'
 import { NCalendar } from '../runtime/native/calendar.ts'
 import { CalendarView } from './calendar.ts'
+import { sourceTabStops } from './source-tab-order.ts'
 
 let nextTabControl = 0
 let nextRadioGroup = 0
@@ -121,10 +122,13 @@ export class DomUi implements UiHost {
     for (const wv of this.views.values()) {
       const cv = wv.ctlViews.get(o as PBObject)
       if (!cv) continue
-      const all = [...wv.client.querySelectorAll<HTMLElement>('input,textarea,select,button')]
-        .filter((e) => e.tabIndex >= 0 && !e.matches(':disabled') && e.getClientRects().length > 0
-          && getComputedStyle(e).visibility !== 'hidden')
-      all.sort((a, b) => (a.tabIndex || Infinity) - (b.tabIndex || Infinity))
+      // A reflowed (Modern) window keeps its tab stops at tabindex 0 and the source order in data-tab.
+      const reflowed = wv.el.classList.contains('modern-window') || wv.el.classList.contains('modern-entry-window')
+      const all = reflowed ? sourceTabStops(wv.client, 'input,textarea,select,button').filter((e) => e.getAttribute('role') !== 'tab')
+        : [...wv.client.querySelectorAll<HTMLElement>('input,textarea,select,button')]
+          .filter((e) => e.tabIndex >= 0 && !e.matches(':disabled') && e.getClientRects().length > 0
+            && getComputedStyle(e).visibility !== 'hidden')
+      if (!reflowed) all.sort((a, b) => (a.tabIndex || Infinity) - (b.tabIndex || Infinity))
       const here = (cv.el.matches('input,textarea,select,button') ? cv.el : cv.el.querySelector('input:not([hidden]),textarea:not([hidden]),select:not([hidden]),button:not([hidden])')) as HTMLElement | null
       const i = here ? all.indexOf(here) : -1
       all[(i + 1) % Math.max(1, all.length)]?.focus()
@@ -297,7 +301,16 @@ export class DomUi implements UiHost {
         b.textContent = label
         b.onclick = () => done(code)
         btns.appendChild(b)
-        if (i + 1 === def || (def === 0 && i === 0)) setTimeout(() => b.focus(), 0)
+        // the Windows message box focuses the first button when the default is out of range
+        if (i + 1 === def || ((def < 1 || def > list.length) && i === 0)) setTimeout(() => b.focus(), 0)
+      })
+      // Escape answers as the Windows message box does (the same rule as the Modern dialog): Cancel, or the only button.
+      const escape = list.find(([label]) => label === 'Cancel') ?? (list.length === 1 ? list[0] : undefined)
+      box.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape' || !escape) return
+        e.preventDefault()
+        e.stopPropagation()
+        done(escape[1])
       })
       this.desktop.appendChild(bg)
       this.desktop.appendChild(box)

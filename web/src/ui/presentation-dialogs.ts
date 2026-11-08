@@ -42,8 +42,10 @@ function base(title: string, text: string) {
   element.className = 'presentation-settings presentation-runtime-dialog'
   const heading = document.createElement('h2')
   heading.id = `runtime-dialog-${++nextDialog}`
-  heading.textContent = title || 'Trader'
-  element.setAttribute('aria-labelledby', heading.id)
+  // The title is the script's, empty included (as in Classic and the original); an empty one still gives the dialog a name.
+  heading.textContent = title
+  if (title.trim()) element.setAttribute('aria-labelledby', heading.id)
+  else element.setAttribute('aria-label', 'Message')
   const copy = document.createElement('p')
   copy.className = 'presentation-copy'
   copy.textContent = text
@@ -90,14 +92,30 @@ export function messageDialog(title: string, text: string, icon: string, buttons
     return button
   })
   element.append(footer)
+  // Escape answers as the Windows message box does: Cancel, or the only button; otherwise it does nothing.  The browser can close a modal
+  // dialog on a repeated Escape even when its cancel event is prevented, so Escape is handled before the browser sees it, and a dialog
+  // closed any other way while its script still waits is shown again: a message box never disappears without an answer.
+  const escape = () => (list.find(([label]) => label === 'Cancel') ?? (list.length === 1 ? list[0] : undefined))?.[1]
+  const focusDefault = () => (controls[defaultButton >= 1 && defaultButton <= controls.length ? defaultButton - 1 : 0])?.focus()
+  element.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return
+    event.preventDefault()
+    const answer = escape()
+    if (answer !== undefined) finish(answer)
+  })
   element.addEventListener('cancel', (event) => {
     event.preventDefault()
-    const cancel = list.find(([label]) => label === 'Cancel') ?? (list.length === 1 ? list[0] : undefined)
-    if (cancel) finish(cancel[1])
+    const answer = escape()
+    if (answer !== undefined) finish(answer)
+  })
+  element.addEventListener('close', () => {
+    if (closed || !element.isConnected) return
+    element.showModal()
+    focusDefault()
   })
   return {
     element, result,
-    open: () => { document.body.append(element); element.showModal(); (controls[Math.max(0, defaultButton - 1)] ?? controls[0]).focus() },
+    open: () => { document.body.append(element); element.showModal(); focusDefault() },
   }
 }
 
@@ -132,6 +150,9 @@ export function promptDialog(title: string, text: string, initial: string): Pres
   }
   form.onsubmit = (event) => { event.preventDefault(); finish(input.value) }
   cancel.onclick = () => finish(null)
+  element.addEventListener('keydown', (event) => { if (event.key === 'Escape') { event.preventDefault(); finish(null) } })
   element.addEventListener('cancel', (event) => { event.preventDefault(); finish(null) })
+  // closed any other way while the script still waits: answered as Cancel, never left unanswered
+  element.addEventListener('close', () => { if (!closed && element.isConnected) finish(null) })
   return { element, result, open: () => { document.body.append(element); element.showModal(); input.focus(); input.select() } }
 }

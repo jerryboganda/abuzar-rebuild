@@ -446,8 +446,8 @@ export async function checkCriteriaWindows(fixture, check, settle, onlyNames) {
     check(ownOptions.every((control) => {
       const input = f.el(control).querySelector('input')
       return !input.disabled && f.el(control).textContent.trim() === f.window.children.get(control).pbGet('text') &&
-        (!modern || input.tabIndex === 0)
-    }), `${name}: original option captions, enabled state and Modern keyboard order are retained`)
+        (!modern || input.tabIndex === (Number(f.window.children.get(control).props.get('taborder')) > 0 ? 0 : -1))
+    }), `${name}: original option captions, enabled state and source tab stops are retained`)
     if (modern) {
       for (const [field, label] of [['em_startdate', 'st_1'], ['em_enddate', 'st_2']]) {
         check(f.el(field).getAttribute('aria-labelledby') === f.el(label).id,

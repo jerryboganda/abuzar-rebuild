@@ -72,7 +72,8 @@ export class PresentationUi extends DomUi {
   protected override shortcutsEnabled(): boolean {
     if (this.settings?.open || this.dialogs.size) return false
     const focus = document.activeElement
-    return !this.shell || !focus || !this.shell.contains(focus) || this.desktop.contains(focus)
+    // Accelerators work while the focus is in the workspace or on its tab strip; the command search box keeps its keys.
+    return !this.shell || !focus || !this.shell.contains(focus) || this.desktop.contains(focus) || !!focus.closest('.presentation-tabs')
   }
 
   protected override menuShortcutsEnabled(): boolean { return this.session.activeMode === 'classic' || !this.hasModal() }
@@ -131,7 +132,14 @@ export class PresentationUi extends DomUi {
         nameObserver.observe(region, { childList: true, characterData: true, subtree: true })
       }
       updateName()
+      // A response window closes only through its scripts.  Escape reaches the window's own controls first and is then kept from the
+      // browser, which can close a modal dialog on a repeated Escape even when its cancel event is prevented; a dialog closed any other
+      // way while its window is still open is shown again.
+      element.addEventListener('keydown', (event) => { if (event.key === 'Escape') event.preventDefault() })
       element.addEventListener('cancel', (event) => event.preventDefault())
+      element.addEventListener('close', () => {
+        if (element.isConnected && this.modalWindows.get(window)?.element === element) element.showModal()
+      })
       containDialogFocus(element)
       element.append(view.el)
       document.body.append(element)
@@ -235,19 +243,37 @@ export class PresentationUi extends DomUi {
     this.tabs.get(window)?.container.remove()
     this.tabs.delete(window)
     this.lastFocus.delete(window)
+    // The window that becomes active is the most recently activated one (the top of the z-order), as in Classic, not the last tab.
+    const top = <T extends PBObject>(windows: Iterable<T>): T | null => [...windows].filter((item) => this.views.has(item))
+      .sort((a, b) => Number(this.views.get(b)!.el.style.zIndex || 0) - Number(this.views.get(a)!.el.style.zIndex || 0))[0] ?? null
     if (this.selected === window) {
-      this.selected = [...this.tabs.keys()].at(-1) ?? null
+      this.selected = top(this.tabs.keys())
       if (this.selected) this.activate(this.selected)
     }
     if (modal) {
       const remaining = [...this.modalWindows].filter(([, value]) => value.element.open).at(-1)?.[0]
-      const previous = modal.activeWindow && this.views.has(modal.activeWindow) ? modal.activeWindow : null
-      const active = remaining ?? previous ?? this.selected ?? this.mdi?.w
+      const active = remaining ?? top([...this.views.keys()].filter((item): item is NWindow => item instanceof NWindow && item !== this.mdi?.w))
+        ?? this.mdi?.w
       if (active) this.activate(active)
     }
     this.updateTabs()
     this.refreshCommands()
-    if (modal?.focus?.isConnected && !modal.focus.matches(':disabled')) modal.focus.focus()
+    if (modal) this.restoreFocus(modal.focus)
+  }
+
+  /**
+   * Focus after a dialog or response window closes.  As in PowerBuilder (Windows gives the focus back to the control that had it, and
+   * the control's GetFocus runs), the previously focused control takes it back.  When that control is gone or disabled, the active
+   * window holds the focus, so the keyboard and the accelerators stay with the workspace instead of the command search box.
+   */
+  private restoreFocus(previous: Element | null): void {
+    if (previous instanceof HTMLElement && previous.isConnected && !previous.matches(':disabled') && previous !== document.body) {
+      previous.focus()
+      return
+    }
+    const active = [...this.views.values()].find((view) => view.el.isConnected && view.el.classList.contains('active'))
+    if (active) active.el.focus({ preventScroll: true })
+    else this.shell?.querySelector<HTMLElement>('.presentation-sidebar input')?.focus()
   }
 
   private commandRoot(): PBObject | null {
@@ -446,13 +472,24 @@ export class PresentationUi extends DomUi {
     const definition = control.model?.name
     const template = printTemplateFor(definition)
     const requested = template ? this.session.printModeFor(template.family) : this.session.preferences.printMode
-    const resolved = resolvePrintPresentation(definition, requested, { preview: true })
+    // Preview templates belong to the opt-in Modern workspace only; a Classic-interface session prints approved templates or Classic.
+    const resolved = resolvePrintPresentation(definition, requested, { preview: this.session.activeMode === 'modern' })
     if (resolved.presentation === 'modern') return printDw(control, { presentation: 'modern' })
+    // A document without a usable Modern template prints exactly as in Classic: the print call never fails because of the layout
+    // preference (a failed print would stop the rest of the script), and the user is told which layout was used.
     if (requested === 'modern') {
-      return Promise.reject(new Error(resolved.notice ||
-        `No Modern print template is registered for ${definition || 'this document'}. Select Classic print layout.`))
+      const reason = (resolved.notice || `No Modern template is registered for ${definition || 'this document'}.`)
+        .replace(/\s*Select Classic print layout\.?\s*$/, '')
+      this.notify(`${reason} Printed with the Classic layout.`)
     }
     return super.print(control)
+  }
+
+  /** A non-blocking notice: the command status line of the Modern workspace, or the console in the Classic interface. */
+  private notify(text: string): void {
+    const status = this.shell?.querySelector<HTMLElement>('.command-status')
+    if (status) status.textContent = text
+    else console.warn(text)
   }
 
   private async present<T>(dialog: PresentationDialog<T>): Promise<T> {
@@ -469,10 +506,7 @@ export class PresentationUi extends DomUi {
       this.dialogs.delete(dialog.element)
       this.updateTabs()
       this.refreshCommands()
-      if (dialog.restoreFocus !== false && !this.dialogs.size && !this.settings.open) {
-        if (focus instanceof HTMLElement && focus.isConnected && !focus.matches(':disabled')) focus.focus()
-        else if (this.shell) this.shell.querySelector('input')!.focus()
-      }
+      if (dialog.restoreFocus !== false && !this.dialogs.size && !this.settings.open) this.restoreFocus(focus)
     }
   }
 

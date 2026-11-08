@@ -96,7 +96,9 @@ export const PRESENTATION_CSS = `
 .modern-window .window-option span {outline:none!important;}
 .modern-window .window-option:has(input:focus-visible) {outline:2px solid var(--p-accent);outline-offset:2px;}
 .modern-window[data-density=comfortable] .window-option {min-height:42px;}
-.modern-window .ctl {position:static!important;inset:auto!important;width:100%!important;height:auto!important;font:inherit!important;color:var(--p-text)!important;}
+/* Reflowed controls only: a container kept as its original element (a tab control, an embedded DataWindow) keeps its own size and its
+   children keep their Classic positions and colours inside it. */
+.modern-window .ctl:not(.window-embedded):not(.window-embedded *) {position:static!important;inset:auto!important;width:100%!important;height:auto!important;font:inherit!important;color:var(--p-text)!important;}
 .modern-calendar-window.pbwin {width:min(27em,100%)!important;}
 .modern-calendar-window>.client {padding-inline:8px;}
 @media (max-width:400px) {.presentation-modern-dialog[open]:has(>.modern-calendar-window) {padding-inline:4px;}}
@@ -110,14 +112,14 @@ export const PRESENTATION_CSS = `
 .modern-window .pb-calendar [aria-selected=true]:focus-visible {outline-color:var(--p-on-accent);}
 .modern-window .pb-calendar [aria-disabled=true] {color:var(--p-muted);}
 .modern-window .window-field label .ctl {display:block;white-space:normal;overflow-wrap:anywhere;background:transparent!important;color:var(--p-text)!important;font-weight:600!important;text-align:left!important;}
-.modern-window input.ctl {min-width:0;min-height:36px;padding:6px 10px;background:var(--p-surface)!important;border:1px solid var(--p-line)!important;border-radius:4px;}
+.modern-window input.ctl:not(.window-embedded *) {min-width:0;min-height:36px;padding:6px 10px;background:var(--p-surface)!important;border:1px solid var(--p-line)!important;border-radius:4px;}
 .modern-window .window-actions {display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin-top:24px;}
 .modern-window .window-actions button {width:auto!important;min-width:6em;min-height:36px;padding:6px 14px;border:1px solid var(--p-line);background:var(--p-surface);cursor:pointer;}
 .modern-window .window-actions button.default {background:var(--p-accent);color:var(--p-on-accent)!important;}
 .modern-window .window-actions button:hover:not(:disabled),.modern-window .tbar .cls:hover {background:var(--p-selected);}
 .modern-window .window-actions button.default:hover:not(:disabled) {background:var(--p-accent);text-decoration:underline;}
 .modern-window button:disabled,.modern-window input:disabled,.modern-window select:disabled {background:var(--p-canvas)!important;color:var(--p-muted)!important;cursor:default;}
-.modern-window[data-density=comfortable] input.ctl,.modern-window[data-density=comfortable] button {min-height:42px;}
+.modern-window[data-density=comfortable] input.ctl:not(.window-embedded *),.modern-window[data-density=comfortable] button {min-height:42px;}
 .modern-window :focus-visible,.modern-window .ctl:focus-visible {outline:2px solid var(--p-accent);outline-offset:2px;}
 .modern-data-window.pbwin {width:min(58em,100%)!important;}
 .modern-data-window.window-untitled>.tbar {position:static;justify-content:flex-end;}

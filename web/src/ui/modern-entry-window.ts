@@ -5,6 +5,7 @@ import { entryWindowIssues } from './window-surfaces.ts'
 import { entryWindowSurfaceByName } from './surface-registry.ts'
 import type { DataSurface } from './data-surfaces.ts'
 import { planGrid, applyGrid } from './grid-plan.ts'
+import { useSourceTabOrder } from './source-tab-order.ts'
 
 export const ENTRY_FIND_SURFACE: DataSurface = {
   name: 'd_find', title: 'Find', kind: 'form', fields: [{ object: 'find', label: 'Find' }],
@@ -57,10 +58,12 @@ export function applyModernEntryWindow(view: WinView): boolean {
     if (!binding) continue
     binding.el.classList.add('entry-control')
     binding.el.dataset.entryControl = path
-    for (const target of [binding.el, ...binding.el.querySelectorAll<HTMLElement>('[tabindex]')]) {
-      if (target.tabIndex > 0) target.tabIndex = 0
-    }
   }
+  // The rearranged pages keep the source tab order (dw_find before the criteria on the List page, as in Classic).
+  useSourceTabOrder(view.el, view.client, [...controls].flatMap(([, control]) => {
+    const binding = view.ctlViews.get(control)
+    return binding ? [{ element: binding.el, taborder: control.props.get('taborder') }] : []
+  }))
   const group = (className: string, children: HTMLElement[]) => {
     const section = document.createElement('div')
     section.className = className
