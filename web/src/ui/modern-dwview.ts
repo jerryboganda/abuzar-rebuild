@@ -219,7 +219,7 @@ export class ModernDwView extends DwView {
     for (const field of surface.fields) {
       const object = model.def.objects.find((item) => item.name.toLowerCase() === field.object)!
       if ((model.overrides.get(`${field.object}.visible`) ?? object.visible) === '0') continue
-      const spin = numericSpin(object, model.kinds[model.colIndex(field.object)], model.overrides)
+      const spin = field.kind === 'button' ? { kind: 'none' as const } : numericSpin(object, model.kinds[model.colIndex(field.object)], model.overrides)
       this.bindings.set(field.object, {
         object, label: await this.label(model, field, Math.max(1, model.row)),
         suffix: field.suffixObject ? model.def.objects.find((object) => object.name.toLowerCase() === field.suffixObject) : undefined,
@@ -620,6 +620,32 @@ export class ModernDwView extends DwView {
         const source = this.surface?.fields.find((item) => item.object === name)
         if (source?.labelHidden && field.label === source.label) label.classList.add('presentation-visually-hidden')
         wrapper.append(label)
+      }
+      if (grid && this.surface?.fields.find((item) => item.object === name)?.kind === 'button') {
+        // A per-row button: a real button that raises the Clicked event the Classic button raises for that object.
+        const source = await this.object(model, field.object, row, 'detail', (n) => n, (n) => n, null)
+        if (source) {
+          const button = document.createElement('button')
+          button.type = 'button'
+          button.className = 'surface-button'
+          button.dataset.obj = name
+          button.textContent = source.textContent?.trim() || field.label
+          button.setAttribute('aria-label', field.label)
+          const enabled = await this.prop(model, field.object, 'enabled', row, 'detail')
+          button.disabled = enabled === 'no' || enabled === '0'
+          button.addEventListener('mousedown', (event) => event.stopPropagation())
+          button.addEventListener('click', () => {
+            if (this.committing) return
+            void (async () => {
+              model.row = row
+              await this.ctl.rt.fire(this.ctl, 'clicked', [0, 0, row, { name }])
+              this.ctl.changed()
+            })().catch((error) => this.ctl.rt.onError(error))
+          })
+          wrapper.append(button)
+        }
+        container.append(wrapper)
+        continue
       }
       const value = await this.object(model, field.object, row, 'detail', (n) => n, (n) => n, null)
       if (!value) {

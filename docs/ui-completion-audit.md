@@ -1,6 +1,6 @@
 # Classic/Modern completion audit
 
-Generated from the working tree on 2026-11-08T19:07:55.352Z.
+Generated from the working tree on 2026-11-08T19:12:07.171Z.
 Static source digest: `fb6f64cdf4822011bb1a6d9146687eb864535ff855af20d461495f448655bb4c`.
 
 ## Verdict
@@ -33,14 +33,14 @@ only the authored surfaces.
 | DataWindow definitions | 8740 |
 | DataWindow columns | 189073 |
 | Missing static DataWindow references | 5 |
-| Windows with a Modern layout (reviewed + generated) | 2024 (98.16%) |
+| Windows with a Modern layout (reviewed + generated) | 2037 (98.79%) |
 | - reviewed by hand | 170 (8.24%) |
-| - generated from the source definitions (validated, not individually reviewed or browser-verified) | 1854: 1601 modal and 253 entry layouts |
+| - generated from the source definitions (validated, not individually reviewed or browser-verified) | 1867: 1613 modal and 254 entry layouts |
 | Authored layouts by registry | 9 workspace/tool, 55 criteria, 100 entry, 4 calculator, 2 calendar |
-| Windows without a Modern layout | 38 |
-| DataWindows with a Modern surface (reviewed + generated) | 3293 (37.68%); 275 reviewed (48 global with nested lookups, 239 contextual) and 3018 generated only, overlaps counted once |
-| DataWindows without a Modern surface | 5447 |
-| On-screen DataWindows (excluding print/report layouts, which are exempt from parity) with a Modern surface | 3007 of 3158 (95.22%); 5582 print/report candidates exempt |
+| Windows without a Modern layout | 25 |
+| DataWindows with a Modern surface (reviewed + generated) | 3311 (37.88%); 275 reviewed (48 global with nested lookups, 239 contextual) and 3036 generated only, overlaps counted once |
+| DataWindows without a Modern surface | 5429 |
+| On-screen DataWindows (excluding print/report layouts, which are exempt from parity) with a Modern surface | 3025 of 3158 (95.79%); 5582 print/report candidates exempt |
 | Authored names absent from the static inventory | 0 windows, 0 DataWindows |
 | Modern print template families | 3 |
 | Registered Modern print definitions | 4 |
@@ -65,11 +65,11 @@ components, not accepted business workflows.
 | ui-contract | partial | Shared validation, choice, text, temporal, tab, modal and calendar contracts have characterization/synthetic coverage, including the additional f_getdatefromcalendar, aging/list and inpatient/service F4 callers; full native event/property equivalence remains open. |
 | ui-preferences | partial | Versioned workstation/user/database preferences, hashed keys, deferred mode changes and per-family print choices are implemented; authenticated database/native acceptance is pending. |
 | ui-primitives | partial | Modern controls, selectors, grids, dialogs, tabs, feedback, forced colors and print tokens exist; native chrome, assistive-technology and remaining selector variants remain open. |
-| ui-shell | partial | 2024 windows have a reviewed or generated layout (none browser-verified); complete rights-aware navigation, the full catalog and role workflows are not covered. |
-| ui-data-surfaces | partial | 3293 DataWindow definitions have a reviewed or generated surface (275 reviewed: 48 global, 239 contextual; 3018 generated only, none browser-verified); 5,447 inventoried DataWindows are unmapped. |
+| ui-shell | partial | 2037 windows have a reviewed or generated layout (none browser-verified); complete rights-aware navigation, the full catalog and role workflows are not covered. |
+| ui-data-surfaces | partial | 3311 DataWindow definitions have a reviewed or generated surface (275 reviewed: 48 global, 239 contextual; 3036 generated only, none browser-verified); 5,429 inventoried DataWindows are unmapped. |
 | ui-print-engine | partial | Classic isolation and per-family Modern choice are verified; 0 approved templates and 2 preview templates exist, with 1 blocked family. |
 | ui-pilot | blocked | No all-role end-to-end Cash Sale, Purchase, Account Ledger and Manager reporting pilot has been accepted. |
-| ui-screen-coverage | partial | 2024 of 2,062 windows have a reviewed or generated Modern layout; complete verified screens remain zero. |
+| ui-screen-coverage | partial | 2037 of 2,062 windows have a reviewed or generated Modern layout; complete verified screens remain zero. |
 | ui-print-coverage | blocked | 4 of 8,740 DataWindows are registered as print templates; no template is approved and item-label hardware dimensions are unknown. |
 | ui-resilience | partial | Synthetic interaction, focus, contrast, scaling and lifecycle checks pass; native assistive technology, real hardware and production-data acceptance are not performed. |
 | ui-release-verification | blocked | Packaged Windows/WebView2, authenticated PostgreSQL, native assistive technology, printer/scanner and remote CI gates are outstanding. |
@@ -79,7 +79,7 @@ components, not accepted business workflows.
 
 | Criterion | Status | Evidence |
 |---|---|---|
-| Coverage inventory and explicit status for every screen/field/action/state | partial | 2024/2,062 windows and 3293/8,740 DataWindows have a reviewed or generated Modern surface; the inventory reports 0 verified Modern screens. |
+| Coverage inventory and explicit status for every screen/field/action/state | partial | 2037/2,062 windows and 3311/8,740 DataWindows have a reviewed or generated Modern surface; the inventory reports 0 verified Modern screens. |
 | Classic has zero unexplained functional regressions | partial | Local Classic/Modern characterization and synthetic browser checks pass; no complete recorded Classic baseline over all workflows exists. |
 | Modern and Classic produce identical business outcomes for the same synthetic transactions | partial | Component and transaction-dialog fixtures compare values; complete sale/purchase/cashier transactions are not accepted. |
 | Shared-engine event characterization | verified | Editing, validation rejection, dropdown selection, item focus, posted events, dynamic visibility, modal return, CloseQuery and calendar ordering have tests. |
@@ -111,7 +111,7 @@ components, not accepted business workflows.
 
 ## Blockers
 
-- Complete screen/field/action/state catalog: 38 of 2,062 windows have no reviewed or generated Modern layout, and 0 complete workflows are accepted.
+- Complete screen/field/action/state catalog: 25 of 2,062 windows have no reviewed or generated Modern layout, and 0 complete workflows are accepted.
 - Complete document catalog: 8,736 of 8,740 DataWindows are not registered as Modern print templates; 0 templates are approved.
 - Document families are evidence-classified (5,582 print or report candidates of 8,740) but not approved; role and caller reachability stay unverified.
 - No all-role Cash Sale, Purchase, Account Ledger and Manager pilot acceptance.

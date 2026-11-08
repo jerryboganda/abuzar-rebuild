@@ -57,6 +57,7 @@ export function derive(name: string, def: DwDef, options: { plainSeparators?: bo
   const groupBands = groupLevels.flatMap((level) => [`header.${level}`, `trailer.${level}`])
   const strange = live.find((object) =>
     !(object.type === 'column' && object.band === 'detail' || object.type === 'compute' && object.band === 'detail' ||
+      kind === 'grid' && object.type === 'button' && object.band === 'detail' ||
       object.type === 'text' && object.band === labelBand ||
       kind === 'form' && (object.type === 'groupbox' || object.type === 'line') && object.band === 'detail' ||
       kind === 'form' && object.type === 'button' && object.band === 'detail' ||
@@ -67,7 +68,8 @@ export function derive(name: string, def: DwDef, options: { plainSeparators?: bo
       kind === 'grid' && (object.type === 'text' || object.type === 'compute' || object.type === 'column') && groupBands.includes(object.band)))
   if (strange) return { reason: `unsupported object: ${strange.type} in ${strange.band}` }
   const inBand = (band: string, type: string) => live.filter((object) => object.band === band && object.type === type)
-  const fields = [...inBand('detail', 'column'), ...inBand('detail', 'compute')]
+  // A button in a grid's detail band is a per-row button column; in a form it is a separate `buttons` entry.
+  const fields = [...inBand('detail', 'column'), ...inBand('detail', 'compute'), ...(kind === 'grid' ? inBand('detail', 'button') : [])]
   const texts = inBand(labelBand, 'text')
   const groupboxes = inBand('detail', 'groupbox')
   const horizontal = (line: DwObject) => num(line, 'y1') === num(line, 'y2') && num(line, 'x2') > num(line, 'x1')
@@ -179,6 +181,11 @@ export function derive(name: string, def: DwDef, options: { plainSeparators?: bo
     const suffix = suffixOf.get(object.name)
     if (suffix) field.suffixObject = suffix.name.toLowerCase()
     if (object.type === 'compute') field.kind = 'computed'
+    if (object.type === 'button') {
+      field.kind = 'button'
+      // The button's own text names it when no header caption does.
+      if (!field.labelObject) { field.label = (object.text ?? '').replace(/&(?=\S)/g, '').replace(/[.\s]+$/g, '').trim() || object.name; field.labelHidden = true }
+    }
     if (style.kind !== 'none') field.choice = style
     if (object.type === 'column' && dwMultiline(object, columnKind)) {
       if (kind !== 'form') return { reason: 'multiline field in a grid' }
@@ -199,7 +206,7 @@ export function derive(name: string, def: DwDef, options: { plainSeparators?: bo
     })
   }
   if (groups) surface.groups = groups
-  const buttons = live.filter((object) => object.type === 'button')
+  const buttons = kind === 'grid' ? [] : live.filter((object) => object.type === 'button')
   if (buttons.length) {
     surface.buttons = [...buttons].sort((x, y) => num(x, 'y') - num(y, 'y') || num(x, 'x') - num(y, 'x')).map((button) => {
       const before = [...order].filter((field) => centreY(field) > centreY(button)).sort((a, b) => centreY(a) - centreY(b) || num(a, 'x') - num(b, 'x'))[0]

@@ -15,7 +15,8 @@ export interface DataSurfaceField {
   /** The source asks for stepping the Modern editor cannot honour (date mask, unbounded range); the field is edited as plain text, like the Classic view. */
   spinPlain?: boolean
   suffixObject?: string
-  kind?: 'computed'
+  /** `computed` is a compute object; `button` is a per-row button in a grid (it raises the same Clicked event as the Classic button). */
+  kind?: 'computed' | 'button'
   numeric?: boolean
   choice?: DwChoiceBinding
   lookup?: DataSurface
@@ -272,7 +273,8 @@ export function dataSurfaceIssues(def: DwDef, surface: DataSurface, overrides?: 
   if (!surface.fields.length && !(surface.kind === 'form' && (surface.buttons?.length || surface.captions?.length))) issues.push('No fields mapped')
   for (const field of surface.fields) {
     const object = objects.get(field.object)
-    if (!object || object.type !== (field.kind === 'computed' ? 'compute' : 'column') || object.band !== 'detail') issues.push(`Unsupported field: ${field.object}`)
+    if (!object || object.type !== (field.kind === 'computed' ? 'compute' : field.kind === 'button' ? 'button' : 'column') || object.band !== 'detail') issues.push(`Unsupported field: ${field.object}`)
+    if (field.kind === 'button' && surface.kind !== 'grid') issues.push(`Button fields require a grid layout: ${field.object}`)
     if (used.has(field.object)) issues.push(`Duplicate field: ${field.object}`)
     used.add(field.object)
     if (field.labelObject) {

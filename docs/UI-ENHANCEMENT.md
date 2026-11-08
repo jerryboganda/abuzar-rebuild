@@ -21,17 +21,17 @@ instructions below; acceptance requirements and historical evidence are unchange
 
 **Source-derived Modern layouts now cover most windows; nothing new is browser-verified, and the enhancement remains incomplete and unreleased.**
 Measured from the working tree by `tools/parity/ui_completion_audit.mjs` (see
-`ui-completion-audit.md`): 2,024 of 2,062 inventoried windows (98.2%) have a
+`ui-completion-audit.md`): 2,037 of 2,062 inventoried windows (98.8%) have a
 Modern layout. 170 are hand-reviewed (9 workspace/tool, 55 criteria, 4
-calculator, 2 calendar and 100 entry windows). 1,854 are generated from the
-recovered definitions by `web/tools/derive-*.ts`: 1,601 dialog and sheet windows
-and 253 entry masters (a print or report DataWindow inside a window keeps its
+calculator, 2 calendar and 100 entry windows). 1,867 are generated from the
+recovered definitions by `web/tools/derive-*.ts`: 1,613 dialog and sheet windows
+and 254 entry masters (a print or report DataWindow inside a window keeps its
 original element in the Modern frame; its own design is redesigned separately).
-The other 38 windows keep the labelled Classic compatibility layout. For
-DataWindows, 3,293 of 8,740 (37.7%) have a Modern surface: 275 reviewed and 3,018
-generated. Print, PDF and report layouts are exempt from structural parity
-(decision 16): 5,582 DataWindows are evidence-classified that way, so on-screen
-coverage is 3,007 of 3,158 (95.2%). Generated mappings are
+The other 25 windows keep the labelled Classic compatibility layout. For
+DataWindows, 3,311 of 8,740 (37.9%) have a Modern surface: 275 reviewed and 3,036
+generated (grids may now carry per-row button columns). Print, PDF and report
+layouts are exempt from structural parity (decision 16): 5,582 DataWindows are
+evidence-classified that way, so on-screen coverage is 3,025 of 3,158 (95.8%). Generated mappings are
 validated against the source and re-validated at runtime, but they are **not
 individually reviewed and have no browser evidence**. Verified complete Modern
 screens and accepted workflows remain zero.
