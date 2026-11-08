@@ -86,6 +86,23 @@ fn in_list_context(b: &[u8], i: usize, j: usize) -> bool {
     p >= 2 && b[p - 2..p].eq_ignore_ascii_case(b"in") && (p == 2 || !(b[p - 3].is_ascii_alphanumeric() || b[p - 3] == b'_'))
 }
 
+/// true when the placeholder at `b[i..j]` is compared as a scalar (`col = $1`, `col <> $1`) or cast as one (`($1)::numeric`):
+/// PowerBuilder substitutes a one-member list argument there as that member.
+fn scalar_context(b: &[u8], i: usize, j: usize) -> bool {
+    let mut p = i;
+    while p > 0 && b[p - 1].is_ascii_whitespace() {
+        p -= 1;
+    }
+    if p > 0 && matches!(b[p - 1], b'=' | b'<' | b'>') {
+        return true;
+    }
+    let mut k = j;
+    while k < b.len() && b[k].is_ascii_whitespace() {
+        k += 1;
+    }
+    p > 0 && b[p - 1] == b'(' && k + 2 < b.len() && b[k] == b')' && b[k + 1] == b':' && b[k + 2] == b':'
+}
+
 /// Replace `$n` placeholders with literals.
 pub fn substitute(sql: &str, params: &[Value]) -> Result<String, SubError> {
     let b = sql.as_bytes();
@@ -158,6 +175,8 @@ pub fn substitute(sql: &str, params: &[Value]) -> Result<String, SubError> {
                                 out.push_str(&parts.join(","));
                             }
                         }
+                        // `col = :list` with one member: the member itself, as PowerBuilder substitutes it
+                        Value::Array(items) if items.len() == 1 && scalar_context(b, i, j) => out.push_str(&literal(&items[0], n)?),
                         _ => out.push_str(&literal(v, n)?),
                     }
                     last = j;
@@ -201,6 +220,14 @@ mod tests {
         assert_eq!(s, "select * from t where a in (1,2) and b in ( 'x' ) and c = any(ARRAY[3]) and d not in (NULL)");
         // a scalar in the same position is unchanged; so is a word that merely ends in "in"
         assert_eq!(substitute("where a in ($1) and begin($2)", &[json!(5), json!([1])]).unwrap(), "where a in (5) and begin(ARRAY[1])");
+    }
+
+    #[test]
+    fn one_member_lists_compared_or_cast_as_scalars() {
+        let s = substitute("where a = $1 and b <> $1 and c = ($1)::numeric and d = any($1) and e in ($1)", &[json!([7])]).unwrap();
+        assert_eq!(s, "where a = 7 and b <> 7 and c = (7)::numeric and d = any(ARRAY[7]) and e in (7)");
+        // more than one member keeps the array: PowerBuilder would not accept it there either
+        assert_eq!(substitute("where a = $1", &[json!([1, 2])]).unwrap(), "where a = ARRAY[1,2]");
     }
 
     #[test]
