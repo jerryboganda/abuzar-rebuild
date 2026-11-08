@@ -243,7 +243,8 @@ export function derive(name: string, def: DwDef, options: { plainSeparators?: bo
       const used = new Set<string>()
       const entries: Total[] = []
       for (const compute of computes) {
-        if (choiceStyle(compute).kind !== 'none') return { reason: 'choice in a totals band' }
+        const groupTitle = band.includes('.') && compute.type === 'column' && ['lookup', 'list'].includes(choiceStyle(compute).kind)
+        if (choiceStyle(compute).kind !== 'none' && !groupTitle) return { reason: 'choice in a totals band' }
         const candidates = bandTexts.filter((text) => !used.has(text.name) && right(text) <= num(compute, 'x') + 8 &&
           Math.abs(centreY(text) - centreY(compute)) <= Math.max(num(compute, 'height'), 40))
           .sort((a, b) => right(b) - right(a))

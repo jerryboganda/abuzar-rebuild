@@ -438,7 +438,9 @@ export function dataSurfaceIssues(def: DwDef, surface: DataSurface, overrides?: 
       }
       for (const field of band.fields) {
         const object = objects.get(field.object)
-        if (!object || !(object.type === 'compute' || /\./.test(band.band) && object.type === 'column') || object.band !== band.band || choiceStyle(object, overrides).kind !== 'none') {
+        if (!object || !(object.type === 'compute' || /\./.test(band.band) && object.type === 'column') || object.band !== band.band ||
+          // A group title may show a code by its lookup or list display text; it is display only, as in Classic.
+          choiceStyle(object, overrides).kind !== 'none' && !(/\./.test(band.band) && object.type === 'column' && ['lookup', 'list'].includes(choiceStyle(object, overrides).kind))) {
           issues.push(`Unsupported total: ${field.object}`)
         }
         if (used.has(field.object)) issues.push(`Duplicate field: ${field.object}`)
