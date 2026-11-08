@@ -65,7 +65,8 @@ export async function deriveWindow(
       const at = { y: Number(control.pbGet('y') ?? 0), x: Number(control.pbGet('x') ?? 0) }
       // Other Detail-page controls keep their original element, in source order.
       if (control.native !== 'datawindow') { placed.push({ detail: { control: controlName, kind: 'control' }, ...at }); continue }
-      const dataobject = String(control.pbGet('dataobject') ?? '')
+      // DataWindow object names are case-insensitive in the source; the definitions are keyed in lower case.
+      const dataobject = String(control.pbGet('dataobject') ?? '').toLowerCase()
       if (control.props.get('visible') === false) { placed.push({ detail: { control: controlName, kind: 'auxiliary' }, ...at }); continue }
       // A DataWindow whose object is assigned at run time cannot be mapped ahead of time: it keeps its original element.
       if (!dataobject) { placed.push({ detail: { control: controlName, kind: 'control' }, ...at }); continue }
@@ -80,7 +81,7 @@ export async function deriveWindow(
       ...placed.filter((item) => item.detail.kind === 'auxiliary').sort((a, b) => a.detail.control.localeCompare(b.detail.control)),
     ].map((item) => item.detail)
     const listControl = controls.get(`${listPage}.dw_list`)
-    const listObject = String(listControl?.pbGet('dataobject') ?? '')
+    const listObject = String(listControl?.pbGet('dataobject') ?? '').toLowerCase()
     const list = lookup(listObject)
     if (!listControl || !list || list.surface.kind !== 'grid') return { reason: `unmapped list DataWindow: ${listObject}` }
     const multi = classes.get(name) && controls.has(`${detailPage}.dw_itemsdetail`)
