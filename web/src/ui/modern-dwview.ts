@@ -892,7 +892,7 @@ export class ModernDwView extends DwView {
       const inner = arrange(group, new Map())
       const named = group.dataset.group ? boxOf(def, [group.dataset.group], `group:${group.dataset.group}`) : null
       const box = named ?? inner
-      if (box) groupBoxes.set(group, box)
+      if (box) groupBoxes.set(group, { ...box, flex: true })
     }
     arrange(element, groupBoxes)
   }

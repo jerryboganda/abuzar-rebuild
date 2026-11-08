@@ -138,7 +138,11 @@ Decisions recorded for future sessions:
    dialogs and entry-window extras follow the source geometry instead of an auto-fit grid: every
    field, caption, button, rule and groupbox is placed on a CSS grid whose tracks come from the
    source coordinates (objects that share a row share grid rows, a tall list beside two stacked
-   fields spans both rows, column widths follow the source widths, empty space is not a track).
+   fields spans both rows, column widths follow the source widths, row heights follow the source
+   distances at a scale where a typical field is four text lines high and grow with content,
+   empty space is not a track, and a container (groupbox, embedded tab or DataWindow) sizes by
+   its own content). An offline simulation of the gate over the 744 on-screen forms predicted
+   13 mismatches for snapped rows and 4 for proportional rows.
    Only track geometry is derived: DOM order, and so the original tab order, is untouched, which
    also closes the eight forms whose tab order interleaves rows. Groupboxes are placed as cells and
    arrange their own fields. Narrow containers stack the cells. Grid columns of grids (tables)

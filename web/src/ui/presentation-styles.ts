@@ -75,10 +75,10 @@ export const PRESENTATION_CSS = `
 .modern-window>.client {position:static;flex:none;overflow:visible;background:var(--p-surface)!important;padding:4px 20px 20px;}
 .modern-window .window-fields {display:grid;gap:16px;}
 .modern-window .window-field {display:grid;gap:6px;min-width:0;align-content:start;}
-.modern-window .window-fields.has-grid {grid-template-columns:var(--grid-columns);column-gap:0;row-gap:12px;align-items:stretch;}
-.modern-window .window-fields.has-grid > .grid-cell {padding-inline:8px;min-width:0;}
+.modern-window .window-fields.has-grid {grid-template-columns:var(--grid-columns);grid-template-rows:var(--grid-rows);column-gap:0;row-gap:0;align-items:stretch;}
+.modern-window .window-fields.has-grid > .grid-cell {padding:3px 8px;min-width:0;}
 @media (max-width:520px) {
-  .modern-window .window-fields.has-grid {grid-template-columns:minmax(0,1fr);}
+  .modern-window .window-fields.has-grid {grid-template-columns:minmax(0,1fr);grid-template-rows:none;row-gap:12px;}
   .modern-window .window-fields.has-grid > * {grid-column:auto!important;grid-row:auto!important;}
 }
 .modern-window .window-field:has(>input.hidden):has(>label>.hidden),.modern-window .window-field>label:has(>.hidden) {display:none;}
@@ -142,9 +142,9 @@ export const PRESENTATION_CSS = `
 .modern-entry-window .entry-grid,.modern-entry-window .entry-auxiliary {height:clamp(14em,42vh,26em)!important;}
 .modern-entry-window .entry-data>.dw:not(.modern-surface) {font:var(--font);color:#000;color-scheme:light;}
 .modern-entry-window .entry-extras {display:grid;gap:12px;margin-top:12px;}
-.modern-entry-window .entry-extras.has-grid {grid-template-columns:var(--grid-columns);column-gap:0;align-items:stretch;}
-.modern-entry-window .entry-extras.has-grid > .grid-cell {padding-inline:8px;min-width:0;}
-@media (max-width:520px) {.modern-entry-window .entry-extras.has-grid {grid-template-columns:minmax(0,1fr);} .modern-entry-window .entry-extras.has-grid > * {grid-column:auto!important;grid-row:auto!important;}}
+.modern-entry-window .entry-extras.has-grid {grid-template-columns:var(--grid-columns);grid-template-rows:var(--grid-rows);column-gap:0;row-gap:0;align-items:stretch;}
+.modern-entry-window .entry-extras.has-grid > .grid-cell {padding:3px 8px;min-width:0;}
+@media (max-width:520px) {.modern-entry-window .entry-extras.has-grid {grid-template-columns:minmax(0,1fr);grid-template-rows:none;row-gap:12px;} .modern-entry-window .entry-extras.has-grid > * {grid-column:auto!important;grid-row:auto!important;}}
 .modern-entry-window .entry-criteria {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,23em),1fr));gap:24px;}
 .modern-entry-window .entry-criteria-group {display:grid;align-content:start;gap:10px;min-width:0;}
 .modern-entry-window .entry-caption {border:0;padding:0;margin:0;font-weight:600!important;}
@@ -256,11 +256,11 @@ export const PRESENTATION_CSS = `
 .modern-surface .surface-total-value {position:relative;font:inherit;line-height:1.5;overflow-wrap:anywhere;padding:2px;}
 .modern-surface section.surface-row {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,16em),1fr));gap:16px;padding:12px;}
 .modern-surface .surface-group {grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,16em),1fr));gap:16px;min-width:0;padding-block:12px;border-block-start:1px solid var(--p-line);}
-.modern-surface section.surface-row.has-grid,.modern-surface .surface-group.has-grid {display:grid;grid-template-columns:var(--grid-columns);column-gap:0;row-gap:12px;align-items:stretch;}
-.modern-surface .grid-cell.surface-field,.modern-surface .grid-cell.surface-caption,.modern-surface .grid-cell.surface-button {padding-inline:8px;min-width:0;}
+.modern-surface section.surface-row.has-grid,.modern-surface .surface-group.has-grid {display:grid;grid-template-columns:var(--grid-columns);grid-template-rows:var(--grid-rows);column-gap:0;row-gap:0;align-items:stretch;}
+.modern-surface .grid-cell.surface-field,.modern-surface .grid-cell.surface-caption,.modern-surface .grid-cell.surface-button {padding:3px 8px;min-width:0;}
 .modern-surface .has-grid > .grid-cell.surface-group {min-width:0;}
 @container (max-width:30em) {
-  .modern-surface section.surface-row.has-grid,.modern-surface .surface-group.has-grid {grid-template-columns:minmax(0,1fr);}
+  .modern-surface section.surface-row.has-grid,.modern-surface .surface-group.has-grid {grid-template-columns:minmax(0,1fr);grid-template-rows:none;row-gap:12px;}
   .modern-surface .grid-cell {grid-column:auto!important;grid-row:auto!important;}
 }
 .modern-surface .surface-group-caption {grid-column:1/-1;font-weight:650;overflow-wrap:anywhere;}

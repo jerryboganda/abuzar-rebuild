@@ -2,13 +2,21 @@
 // reproduces the *structure* of that arrangement with a CSS grid derived from the same coordinates: objects that share a row share
 // grid rows, a tall object beside two stacked ones spans both rows, and column widths are proportional to the source widths.  Only the
 // geometry of tracks is derived; the DOM order of the elements (and so the tab order) is left exactly as it is.
-export interface GridBox { key: string; left: number; right: number; top: number; bottom: number }
+export interface GridBox {
+  key: string; left: number; right: number; top: number; bottom: number
+  /** A container whose own content sizes it (a groupbox, an embedded tab or DataWindow): it adds no minimum height to the rows it spans. */
+  flex?: boolean
+}
 export interface GridPlacement { colStart: number; colEnd: number; rowStart: number; rowEnd: number }
 export interface GridPlan {
   /** Relative widths (fr) of the column tracks that carry content. */
   columns: number[]
-  /** Number of row tracks (each `auto` high). */
+  /** Number of row tracks. */
   rows: number
+  /** Source height of each row track (the distance between its edges), so rows keep the source's vertical proportions. */
+  rowSizes: number[]
+  /** A typical field height in source units: the scale that maps a source height to a Modern line height. */
+  unit: number
   place: Map<string, GridPlacement>
 }
 
@@ -51,12 +59,14 @@ const nearest = (edges: readonly number[], value: number): number => {
 }
 
 /** Tracks between consecutive edges that some box covers; returns the track list and, per edge, its grid line number. */
-function tracksOf(edges: readonly number[], spans: readonly [number, number][]): { sizes: number[]; line: number[] } {
+function tracksOf(edges: readonly number[], spans: readonly [number, number][], flexible: readonly boolean[] = []): { sizes: number[]; line: number[] } {
   const sizes: number[] = []
   const line: number[] = [1]
   for (let index = 0; index + 1 < edges.length; index++) {
     const covered = spans.some(([start, end]) => start <= index && end >= index + 1)
-    if (covered) sizes.push(Math.max(1, edges[index + 1] - edges[index]))
+    // A track only flexible containers cover has no minimum of its own: their content sizes it.
+    const fixed = spans.some(([start, end], box) => start <= index && end >= index + 1 && !flexible[box])
+    if (covered) sizes.push(fixed ? Math.max(1, edges[index + 1] - edges[index]) : 0)
     line.push(sizes.length + 1)
   }
   return { sizes, line }
@@ -64,14 +74,15 @@ function tracksOf(edges: readonly number[], spans: readonly [number, number][]):
 
 export function planGrid(boxes: readonly GridBox[]): GridPlan {
   const place = new Map<string, GridPlacement>()
-  if (!boxes.length) return { columns: [], rows: 0, place }
+  if (!boxes.length) return { columns: [], rows: 0, rowSizes: [], unit: 1, place }
   const minX = Math.min(...boxes.map((box) => box.left)), maxX = Math.max(...boxes.map((box) => box.right))
   const heights = boxes.map((box) => Math.max(1, box.bottom - box.top)).sort((a, b) => a - b)
   // The typical height is a low quantile, not the median: tall containers (a groupbox, a list) must not widen the tolerance that
   // decides whether two small fields share a row.
   const typicalHeight = heights[Math.floor(heights.length * 0.25)]
-  // Row edges snap within half a typical field height, so fields that share a row share its edges.
-  const yEdges = snapEdges(boxes.flatMap((box) => [box.top, box.bottom]), Math.max(1, typicalHeight * 0.5))
+  // Row edges snap within 5% of a typical field height (only measurement jitter), so staggered neighbours keep their stagger:
+  // the rows are then sized in proportion to the source distances.
+  const yEdges = snapEdges(boxes.flatMap((box) => [box.top, box.bottom]), Math.max(1, typicalHeight * 0.05))
   // Column edges snap within 1% of the span, widened until the track count is workable.
   let xTolerance = Math.max(1, (maxX - minX) * 0.01)
   let xEdges = snapEdges(boxes.flatMap((box) => [box.left, box.right]), xTolerance)
@@ -82,7 +93,7 @@ export function planGrid(boxes: readonly GridBox[]): GridPlan {
   const colSpans = boxes.map((box): [number, number] => [nearest(xEdges, box.left), nearest(xEdges, box.right)])
   const rowSpans = boxes.map((box): [number, number] => [nearest(yEdges, box.top), nearest(yEdges, box.bottom)])
   const cols = tracksOf(xEdges, colSpans)
-  const rows = tracksOf(yEdges, rowSpans)
+  const rows = tracksOf(yEdges, rowSpans, boxes.map((box) => !!box.flex))
   boxes.forEach((box, index) => {
     const [c0, c1] = colSpans[index], [r0, r1] = rowSpans[index]
     const colStart = cols.line[c0]
@@ -92,7 +103,7 @@ export function planGrid(boxes: readonly GridBox[]): GridPlan {
       rowStart, rowEnd: Math.max(rowStart + 1, rows.line[r1]),
     })
   })
-  return { columns: cols.sizes, rows: rows.sizes.length, place }
+  return { columns: cols.sizes, rows: rows.sizes.length, rowSizes: rows.sizes, unit: Math.max(1, typicalHeight), place }
 }
 
 /** Applies a plan to a container: the grid tracks on the container, the placement on each element (DOM order is untouched). */
@@ -100,6 +111,9 @@ export function applyGrid(container: HTMLElement, plan: GridPlan, elements: Read
   if (!plan.columns.length) return
   container.classList.add('has-grid')
   container.style.setProperty('--grid-columns', plan.columns.map((size) => `minmax(0,${size}fr)`).join(' '))
+  // A typical field is four lines of text high (caption above editor); every row is at least its source share of that, and grows with content.
+  container.style.setProperty('--grid-unit', `${4 / plan.unit}em`)
+  container.style.setProperty('--grid-rows', [...Array.from({ length: rowOffset }, () => 'auto'), ...plan.rowSizes.map((size) => `minmax(calc(${size} * var(--grid-unit)), auto)`)].join(' '))
   for (const [key, element] of elements) {
     const placement = plan.place.get(key)
     if (!placement) continue

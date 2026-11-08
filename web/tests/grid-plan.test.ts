@@ -7,8 +7,8 @@ const box = (key: string, left: number, right: number, top: number, bottom: numb
 test('two fields sharing a row split it by their source widths', () => {
   const plan = planGrid([box('a', 0, 500, 0, 60), box('b', 520, 1020, 4, 64)])
   const a = plan.place.get('a')!, b = plan.place.get('b')!
-  assert.equal(a.rowStart, b.rowStart)
-  assert.equal(a.rowEnd, b.rowEnd)
+  // Rows follow the source distances, so a 4-unit offset is kept as overlapping row spans rather than snapped away.
+  assert.ok(Math.min(a.rowEnd, b.rowEnd) > Math.max(a.rowStart, b.rowStart), 'their row spans overlap')
   assert.ok(a.colEnd <= b.colStart)
 })
 
@@ -43,4 +43,10 @@ test('empty space between objects does not become a track, and tracks stay bound
 test('a tall container does not merge the rows of the small boxes above it', () => {
   const plan = planGrid([box('plain', 0, 3000, 8, 308), box('group', 30, 2990, 308, 1584)])
   assert.ok(plan.place.get('group')!.rowStart >= plan.place.get('plain')!.rowEnd)
+})
+
+test('rows are sized in proportion to the source distances', () => {
+  const plan = planGrid([box('a', 0, 500, 0, 60), box('b', 0, 500, 60, 120), box('c', 0, 500, 300, 360)])
+  assert.deepEqual(plan.rowSizes, [60, 60, 60], 'the empty space between b and c is not a row')
+  assert.equal(plan.unit, 60)
 })

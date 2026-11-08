@@ -144,7 +144,7 @@ export function applyModernWindow(view: WinView): boolean {
     itemControls.set(option.control, [option.control])
   }
   for (const name of surface.contentOrder ?? []) content.append(contentItems.get(name)!)
-  arrangeGrid(view, content, contentItems, itemControls)
+  arrangeGrid(view, content, contentItems, itemControls, new Set([...(surface.embedded ?? []), ...data.map((binding) => binding.control)]))
   const actions = document.createElement('footer')
   actions.className = 'window-actions'
   for (const name of surface.actions) actions.append(elements.get(name)!)
@@ -174,7 +174,7 @@ export function applyModernWindow(view: WinView): boolean {
  * (controls that share a row share it, a tall list beside stacked fields spans them, columns follow the source widths).  The DOM
  * order, and so the tab order, is untouched.  A window whose controls carry no usable geometry keeps the single-column flow.
  */
-function arrangeGrid(view: WinView, content: HTMLElement, items: Map<string, HTMLElement>, controls: Map<string, string[]>): void {
+function arrangeGrid(view: WinView, content: HTMLElement, items: Map<string, HTMLElement>, controls: Map<string, string[]>, flexible: ReadonlySet<string>): void {
   const read = (name: string) => {
     const control = view.w.children?.get(name)
     if (!control?.props || control.props.get('visible') === false) return null
@@ -192,7 +192,8 @@ function arrangeGrid(view: WinView, content: HTMLElement, items: Map<string, HTM
     }
     const editor = asBox(names[0])
     if (!editor) continue
-    boxes.push(anchoredBox(key, editor, names.slice(1).flatMap((name) => { const box = asBox(name); return box ? [box] : [] })))
+    // Embedded containers and DataWindows size themselves; they add no minimum row height.
+    boxes.push({ ...anchoredBox(key, editor, names.slice(1).flatMap((name) => { const box = asBox(name); return box ? [box] : [] })), ...(flexible.has(key) ? { flex: true } : {}) })
   }
   if (boxes.length < 2) return
   // Anything the plan does not place (the window frame and its legend, groupbox captions) stays full width above the plan.
