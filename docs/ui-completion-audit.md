@@ -1,6 +1,6 @@
 # Classic/Modern completion audit
 
-Generated from the working tree on 2026-11-08T17:40:09.724Z.
+Generated from the working tree on 2026-11-08T18:54:11.737Z.
 Static source digest: `fb6f64cdf4822011bb1a6d9146687eb864535ff855af20d461495f448655bb4c`.
 
 ## Verdict
@@ -40,7 +40,7 @@ only the authored surfaces.
 | Windows without a Modern layout | 103 |
 | DataWindows with a Modern surface (reviewed + generated) | 3278 (37.51%); 275 reviewed (48 global with nested lookups, 239 contextual) and 3003 generated only, overlaps counted once |
 | DataWindows without a Modern surface | 5462 |
-| On-screen DataWindows (excluding print/report layouts, which are exempt from parity) with a Modern surface | 3113 of 3280 (94.91%); 5460 print/report candidates exempt |
+| On-screen DataWindows (excluding print/report layouts, which are exempt from parity) with a Modern surface | 2992 of 3158 (94.74%); 5582 print/report candidates exempt |
 | Authored names absent from the static inventory | 0 windows, 0 DataWindows |
 | Modern print template families | 3 |
 | Registered Modern print definitions | 4 |
@@ -48,7 +48,7 @@ only the authored surfaces.
 | Preview Modern print templates | 2 |
 | Blocked Modern print templates | 1 |
 | Verified complete Modern screens | 0 |
-| Print and report candidates (evidence classes, not approvals) | 5460 of 8740: datastore-only 452, hidden-control-only 54, nested-in-report 103, no-evidence 761, print-target 231, referenced-by-name 236, registered-template 4, report-or-document 5225, screen-control 1648, script-assigned-control 26 |
+| Print and report candidates (evidence classes, not approvals) | 5582 of 8740: datastore-only 341, hidden-control-only 54, nested-in-report 102, no-evidence 760, print-target 231, referenced-by-name 234, registered-template 4, report-or-document 5347, screen-control 1644, script-assigned-control 23 |
 | Document uses classified | {"unclassified":8740} |
 | DataWindow use evidence (static controls and scripts; not a classification) | 1662 on visible window controls, 226 only on hidden controls, 200 only nested in reports, 2438 assigned in scripts (1326 to report targets, 231 to print targets, 588 to datastores), 1157 with no static or script use |
 
@@ -113,7 +113,7 @@ components, not accepted business workflows.
 
 - Complete screen/field/action/state catalog: 103 of 2,062 windows have no reviewed or generated Modern layout, and 0 complete workflows are accepted.
 - Complete document catalog: 8,736 of 8,740 DataWindows are not registered as Modern print templates; 0 templates are approved.
-- Document families are evidence-classified (5,460 print or report candidates of 8,740) but not approved; role and caller reachability stay unverified.
+- Document families are evidence-classified (5,582 print or report candidates of 8,740) but not approved; role and caller reachability stay unverified.
 - No all-role Cash Sale, Purchase, Account Ledger and Manager pilot acceptance.
 - No packaged Windows/WebView2 native theme, scaling, focus, shortcut, print-dialog or printer verification.
 - No authenticated PostgreSQL end-to-end acceptance of the Modern presentation; the presentation job runs synthetic fixtures.

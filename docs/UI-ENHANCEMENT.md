@@ -28,8 +28,8 @@ recovered definitions by `web/tools/derive-*.ts`: 1,541 dialog and sheet windows
 and 248 entry masters. The other 103 windows keep the labelled Classic
 compatibility layout. For DataWindows, 3,278 of 8,740 (37.5%) have a Modern
 surface: 275 reviewed and 3,003 generated. Print, PDF and report layouts are
-exempt from structural parity (decision 16): 5,356 DataWindows are evidence-classified
-that way, so on-screen coverage is 3,216 of 3,384 (95.0%). Generated mappings are
+exempt from structural parity (decision 16): 5,582 DataWindows are evidence-classified
+that way, so on-screen coverage is 2,992 of 3,158 (94.7%). Generated mappings are
 validated against the source and re-validated at runtime, but they are **not
 individually reviewed and have no browser evidence**. Verified complete Modern
 screens and accepted workflows remain zero.
@@ -140,6 +140,19 @@ Decisions recorded for future sessions:
    dialog; its first run found 274 mismatches (87 after correcting its own measurement), which
    this grid replaces. On-screen print/report layouts (labels, invoices) are exempt. Not browser
    verified until that gate passes.
+   Open structural mismatches (measured by the pairwise gate in the last complete local pass,
+   44,997 assertions, 72 failures, every one a gate failure; after counting caption-less export
+   definitions as exempt, 22 on-screen definitions remain): `d_alnaseeb_deliveryorder_saleinvprint`,
+   `d_cashieractivitymonitor_timeperiod`, `d_crs_salefooter_view`, `d_crs_srfooter_view`,
+   `d_issuefooter_view`, `d_mr_pc`, `d_old_general1`, `d_opensalereturnfooter`,
+   `d_patientvisit_gyn_us`, `d_patientvisit_obs_us`, `d_posted_salefooter`,
+   `d_purchase_preferences`, `d_salefooter_view`, `d_saleinpurchase_footer`,
+   `d_salereturnfooter_view`, `d_servicefooter_view`, `d_smscenter_composesms`,
+   `d_smscenter_preview`, `d_visitvitals`, `w_arg_cust_sdate_ldate_v13`,
+   `w_arg_customers_sdate_ldate_v7`, `w_arg_manfs_cats_classes_packs_dates_v3`. They are staggered or
+   overlapping layouts (a tall field bridging two rows, groupboxes with hidden-until-script fields)
+   where grid row snapping differs from Classic; the sale/purchase/return footers are transaction
+   screens and must be fixed before any acceptance.
 9. The Modern workspace sidebar now browses the live menu by module (collapsed
    groups, lazily filled, open state retained) as well as searching it; availability
    is still the live visible/enabled state, rechecked before every command.

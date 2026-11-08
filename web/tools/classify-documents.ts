@@ -72,7 +72,7 @@ export function classify() {
 
   const registered = new Set(PRINT_TEMPLATES.flatMap((template) => template.definitions))
   const classes: Record<string, string[]> = {}
-  const flags = { multiUp: 0, headerData: 0, letterhead: 0, pageNumbers: 0, grouped: 0, crosstab: 0, label: 0, graph: 0, composite: 0 }
+  const flags = { captionless: 0, multiUp: 0, headerData: 0, letterhead: 0, pageNumbers: 0, grouped: 0, crosstab: 0, label: 0, graph: 0, composite: 0 }
   for (const [name, def] of definitions) {
     const used = uses.get(name) ?? {}
     const processing = Number(def.datawindow.processing ?? 0)
@@ -87,6 +87,10 @@ export function classify() {
     const detailColumns = new Set(def.objects.filter((object) => object.type === 'column' && object.band === 'detail').map((object) => object.name))
     const multiUp = [...detailColumns].some((column) => /_1$/.test(column) && detailColumns.has(column.replace(/_1$/, '_2')))
     if (multiUp) flags.multiUp++
+    // Several columns and no caption text anywhere: a data or export definition (distributor interface files), not a human-facing screen.
+    const columnCount = def.objects.filter((object) => object.type === 'column').length
+    const captionless = columnCount >= 4 && !def.objects.some((object) => object.type === 'text')
+    if (captionless) flags.captionless++
     if (pageNumbers) flags.pageNumbers++
     if (def.bands.group?.length) flags.grouped++
     if (processing === 4) flags.crosstab++
@@ -96,7 +100,7 @@ export function classify() {
     // Highest-evidence class first; a DataWindow lands in exactly one class.
     const cls = registered.has(name) ? 'registered-template' :
       used.print ? 'print-target' :
-      used.report || pageNumbers || letterhead || headerData || multiUp || [2, 3, 4, 5].includes(processing) ? 'report-or-document' :
+      used.report || pageNumbers || letterhead || headerData || multiUp || captionless || [2, 3, 4, 5].includes(processing) ? 'report-or-document' :
       onScreen.has(name) ? 'screen-control' :
       used.control || used.implicit ? 'script-assigned-control' :
       used.datastore ? 'datastore-only' :
