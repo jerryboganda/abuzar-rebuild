@@ -125,7 +125,9 @@ export function derive(name: string, def: DwDef, options: { plainSeparators?: bo
       taken.add(text.name)
     }
     for (const field of visibleFields) {
-      const candidates = texts.filter((text) => !taken.has(text.name) && sameRow(text, field) && num(text, 'x') >= right(field) - 8)
+      // A suffix is trailing text directly beside its field ("%", "Customer(s)"); a farther text or a label-like one (ends with a colon) is not.
+      const candidates = texts.filter((text) => !taken.has(text.name) && sameRow(text, field) && num(text, 'x') >= right(field) - 8 &&
+        num(text, 'x') - right(field) <= 120 && !/:\s*$/.test(text.text ?? ''))
         .sort((a, b) => num(a, 'x') - num(b, 'x'))
       if (candidates.length) { suffixOf.set(field.name, candidates[0]); taken.add(candidates[0].name) }
     }
