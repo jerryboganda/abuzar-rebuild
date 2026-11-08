@@ -1542,6 +1542,21 @@ try {
   })
   await page.goto(origin + '/presentation.html')
   await page.waitForFunction(() => window.presentationFixtureReady)
+  // Accessibility of the generated Modern dialogs on its own (CI runs it as a separate step so a failure elsewhere cannot hide it).
+  if (process.argv[4] === '--accessibility-only') {
+    const names = representativeModalWindows()
+    await page.evaluate(async (names) => { window.derivedFilter = names; await window.runDerivedChecks() }, names)
+    let failure = null
+    try { await captureDerivedModalWindows(page, output, names) } catch (error) { failure = error }
+    const serious = axeCases.flatMap((item) => item.violations.filter((violation) => ['serious', 'critical'].includes(violation.impact))
+      .map((violation) => `${item.label}: ${violation.id} (${violation.impact}, ${violation.nodes} nodes, ${violation.sample})`))
+    const moderate = axeCases.flatMap((item) => item.violations.filter((violation) => !['serious', 'critical'].includes(violation.impact)).map((violation) => `${item.label}: ${violation.id} (${violation.impact})`))
+    await writeFile(resolve(output, 'accessibility-result.json'), JSON.stringify({ scanner: axeSource ? 'axe-core' : 'not installed', cases: axeCases, failure: failure ? String(failure.message) : null }, null, 2) + '\n')
+    console.log(axeSource ? `Accessibility: ${names.length} generated dialogs, ${axeCases.length} appearances scanned; ${serious.length} serious or critical and ${moderate.length} other WCAG violations.` : 'Accessibility: axe-core not installed.')
+    for (const line of [...serious, ...moderate].slice(0, 60)) console.log('  ' + line)
+    if (failure) console.log('Appearance check failure: ' + String(failure.message).slice(0, 400))
+    await browser.close(); server.close(); process.exit(serious.length || failure || !axeSource ? 1 : 0)
+  }
   // Focused run of the generated-family checks for the named windows/DataWindows (argv[5..]); a development aid, not an acceptance pass.
   if (process.argv[4] === '--derived-only') {
     const outcome = await page.evaluate(async (names) => {
