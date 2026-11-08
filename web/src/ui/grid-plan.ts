@@ -72,6 +72,16 @@ function tracksOf(edges: readonly number[], spans: readonly [number, number][], 
   return { sizes, line }
 }
 
+/**
+ * A caption beside an editor joins the editor's cell only when that wider cell takes no other editor's place (a caption at the top-left
+ * of a tall memo, with another field below the caption, would otherwise swallow that field's column).  Otherwise the cell is the editor.
+ */
+export function resolveAnchors(items: readonly { editor: GridBox; anchored: GridBox }[]): GridBox[] {
+  const intersects = (a: GridBox, b: GridBox) => Math.min(a.right, b.right) > Math.max(a.left, b.left) && Math.min(a.bottom, b.bottom) > Math.max(a.top, b.top)
+  return items.map((item) => items.some((other) => other !== item && !intersects(item.editor, other.editor) && intersects(item.anchored, other.editor)) ?
+    { ...item.editor, key: item.anchored.key, ...(item.anchored.flex ? { flex: true } : {}) } : item.anchored)
+}
+
 export function planGrid(boxes: readonly GridBox[]): GridPlan {
   const place = new Map<string, GridPlacement>()
   if (!boxes.length) return { columns: [], rows: 0, rowSizes: [], unit: 1, place }

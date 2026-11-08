@@ -165,6 +165,18 @@ Decisions recorded for future sessions:
    Modern line, so Modern's minimum field height changes which neighbours overlap; they are listed
    for manual visual comparison against Classic and are not claimed as matching. The footers
    (`d_*footer_view`) are transaction screens and need that review before any acceptance.
+18. Workflow parity on the real system (CI `e2e` job). The real application signs in against
+   the Rust server and PostgreSQL (converted schema, seed and bootstrap data) and clicks every item
+   of the menu observed in the original, once in Classic and once in Modern
+   (`web/e2e/browser-smoke.mjs`, `CRAWL_MODE`). For each command the runtime records whether it
+   ran, the windows it leaves open and their titles, every message box, the report it produced
+   (DataWindow, rows, visibility, preview) and the windows its scripts close;
+   `web/tools/compare-crawls.mjs` compares the two item by item (clock values in titles ignored).
+   First result (run 42524908981, commit `d7f06b56`): 78 of 78 crawled commands had an identical
+   outcome; the crawl budget then covered 78 of 110 menu items (28 did not click in either mode,
+   the same items), so the budget is raised to cover the whole menu. This compares what the
+   commands do, not every field edit inside a window; data-entry workflows inside windows are
+   covered by the synthetic browser suite, not by this crawl.
 9. The Modern workspace sidebar now browses the live menu by module (collapsed
    groups, lazily filled, open state retained) as well as searching it; availability
    is still the live visible/enabled state, rechecked before every command.

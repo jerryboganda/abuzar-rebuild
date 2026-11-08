@@ -2,7 +2,7 @@ import type { WinView } from './dom-ui.ts'
 import { windowSurfaceIssues } from './window-surfaces.ts'
 import { modalWindowSurfaceByName } from './window-registry.ts'
 import { ModernDwView } from './modern-dwview.ts'
-import { planGrid, applyGrid, anchoredBox } from './grid-plan.ts'
+import { planGrid, applyGrid, anchoredBox, resolveAnchors } from './grid-plan.ts'
 import type { GridBox } from './grid-plan.ts'
 
 let nextWindow = 0
@@ -183,7 +183,7 @@ function arrangeGrid(view: WinView, content: HTMLElement, items: Map<string, HTM
     if (/dropdown|combobox/.test(String(control.native ?? ''))) box.height = Math.min(box.height, 80)
     return Object.values(box).every(Number.isFinite) ? box : null
   }
-  const boxes: GridBox[] = []
+  const anchors: { editor: GridBox; anchored: GridBox }[] = []
   for (const [key, names] of controls) {
     if (!items.has(key)) continue
     const asBox = (name: string): GridBox | null => {
@@ -193,8 +193,10 @@ function arrangeGrid(view: WinView, content: HTMLElement, items: Map<string, HTM
     const editor = asBox(names[0])
     if (!editor) continue
     // Embedded containers and DataWindows size themselves; they add no minimum row height.
-    boxes.push({ ...anchoredBox(key, editor, names.slice(1).flatMap((name) => { const box = asBox(name); return box ? [box] : [] })), ...(flexible.has(key) ? { flex: true } : {}) })
+    const flex = flexible.has(key) ? { flex: true } : {}
+    anchors.push({ editor: { ...editor, key, ...flex }, anchored: { ...anchoredBox(key, editor, names.slice(1).flatMap((name) => { const box = asBox(name); return box ? [box] : [] })), ...flex } })
   }
+  const boxes = resolveAnchors(anchors)
   if (boxes.length < 2) return
   // Anything the plan does not place (the window frame and its legend, groupbox captions) stays full width above the plan.
   const placed = new Set(boxes.map((box) => items.get(box.key)))

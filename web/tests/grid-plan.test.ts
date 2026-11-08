@@ -50,3 +50,16 @@ test('rows are sized in proportion to the source distances', () => {
   assert.deepEqual(plan.rowSizes, [60, 60, 60], 'the empty space between b and c is not a row')
   assert.equal(plan.unit, 60)
 })
+
+test('a caption joins its field cell only when the wider cell takes no other field place', async () => {
+  const { resolveAnchors } = await import('../src/ui/grid-plan.ts')
+  const memo = { key: 'memo', left: 100, right: 600, top: 0, bottom: 300 }
+  const below = { key: 'flag', left: 0, right: 90, top: 250, bottom: 300 }
+  const [cell] = resolveAnchors([
+    { editor: memo, anchored: { ...memo, left: 0 } },
+    { editor: below, anchored: below },
+  ])
+  assert.equal(cell.left, 100, 'the caption at the memo top-left would cover the field below it: the memo keeps its own column')
+  const [free] = resolveAnchors([{ editor: memo, anchored: { ...memo, left: 0 } }])
+  assert.equal(free.left, 0, 'with nothing in the way the caption stays in the cell')
+})

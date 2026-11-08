@@ -6,7 +6,7 @@ import type { NDwBase } from '../runtime/native/dwctrl.ts'
 import type { DwModel, DwRow } from '../dw/model.ts'
 import { buildGroupPlan, rowAtItem } from './group-plan.ts'
 import { boxOf } from './line-plan.ts'
-import { planGrid, applyGrid, anchoredBox } from './grid-plan.ts'
+import { planGrid, applyGrid, anchoredBox, resolveAnchors } from './grid-plan.ts'
 import type { GridBox } from './grid-plan.ts'
 import type { GroupPlan } from './group-plan.ts'
 import type { DwObject } from '../dw/def.ts'
@@ -845,7 +845,9 @@ export class ModernDwView extends DwView {
       const x1 = Number(line.x1), x2 = Number(line.x2), y1 = Number(line.y1), y2 = Number(line.y2)
       return [x1, x2, y1, y2].every(Number.isFinite) ? { key: '', left: Math.min(x1, x2), right: Math.max(x1, x2), top: Math.min(y1, y2), bottom: Math.max(y1, y2) + 1 } : null
     }
-    const boxFor = (child: HTMLElement): GridBox | null => {
+    // A field yields its editor box and its caption-anchored box; `resolveAnchors` keeps the wider one only where it takes no other editor's place.
+    const boxFor = (child: HTMLElement): { editor: GridBox; anchored: GridBox } | null => {
+      const plain = (box: GridBox | null) => box ? { editor: box, anchored: box } : null
       if (child.hidden) return null
       if (child.classList.contains('surface-field') && child.dataset.field) {
         const field = fieldOf.get(child.dataset.field)
@@ -853,11 +855,11 @@ export class ModernDwView extends DwView {
         const editor = boxOf(def, [field.object], `field:${field.object}`)
         if (!editor) return null
         const others = [field.labelBand === 'header' ? undefined : field.labelObject, field.suffixObject].flatMap((name) => { const box = name ? boxOf(def, [name], name) : null; return box ? [box] : [] })
-        return anchoredBox(`field:${field.object}`, editor, others)
+        return { editor, anchored: anchoredBox(`field:${field.object}`, editor, others) }
       }
-      if (child.dataset.caption) return boxOf(def, [child.dataset.caption], `caption:${child.dataset.caption}`)
-      if (child.classList.contains('surface-button') && child.dataset.obj) return boxOf(def, [child.dataset.obj], `button:${child.dataset.obj}`)
-      if (child.dataset.separator) { const box = lineBox(child.dataset.separator); return box ? { ...box, key: `separator:${child.dataset.separator}` } : null }
+      if (child.dataset.caption) return plain(boxOf(def, [child.dataset.caption], `caption:${child.dataset.caption}`))
+      if (child.classList.contains('surface-button') && child.dataset.obj) return plain(boxOf(def, [child.dataset.obj], `button:${child.dataset.obj}`))
+      if (child.dataset.separator) { const box = lineBox(child.dataset.separator); return plain(box ? { ...box, key: `separator:${child.dataset.separator}` } : null) }
       return null
     }
     const keyOf = (child: HTMLElement): string | null => {
@@ -869,15 +871,16 @@ export class ModernDwView extends DwView {
     }
     const arrange = (container: HTMLElement, groups: ReadonlyMap<HTMLElement, GridBox>): GridBox | null => {
       const cells = new Map<string, HTMLElement>()
-      const boxes: GridBox[] = []
+      const items: { editor: GridBox; anchored: GridBox }[] = []
       for (const child of [...container.children] as HTMLElement[]) {
         const group = groups.get(child)
-        const box = group ?? boxFor(child)
+        const found = group ? { editor: group, anchored: group } : boxFor(child)
         const key = group ? `group:${child.dataset.group ?? ''}` : keyOf(child)
-        if (!box || !key) continue
+        if (!found || !key) continue
         cells.set(key, child)
-        boxes.push({ ...box, key })
+        items.push({ editor: { ...found.editor, key }, anchored: { ...found.anchored, key } })
       }
+      const boxes = resolveAnchors(items)
       const legend = container.querySelector<HTMLElement>(':scope > .surface-group-caption')
       if (legend) { legend.style.gridColumn = '1 / -1'; legend.style.gridRow = '1' }
       applyGrid(container, planGrid(boxes), cells, legend ? 1 : 0)
