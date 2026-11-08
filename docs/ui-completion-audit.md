@@ -1,6 +1,6 @@
 # Classic/Modern completion audit
 
-Generated from the working tree on 2026-11-08T19:28:47.357Z.
+Generated from the working tree on 2026-11-08T21:09:26.550Z.
 Static source digest: `fb6f64cdf4822011bb1a6d9146687eb864535ff855af20d461495f448655bb4c`.
 
 ## Verdict
@@ -106,8 +106,8 @@ components, not accepted business workflows.
 | No new browser exceptions, unhandled rejections or silent failures | partial | No browser result was supplied for this source tree; earlier browser evidence predates the generated layouts. See the current browser result artifact. |
 | Packaged Windows/WebView2 native theme, scaling, focus, shortcuts, print dialog, printers | blocked | Not performed on a packaged Windows/WebView2 build. |
 | Local Node tests, type validation, static build | partial | No local check results were supplied to this report. |
-| Blocking UI acceptance job / typed checks / deterministic fixtures | partial | A blocking CI presentation job and deterministic fixtures exist. Remote CI (the ci and sql workflows) is authoritative for the revision that contains this report and is not recorded in this file; last run supplied when generated: none. |
-| Rust/PostgreSQL/desktop integration in authorized CI | blocked | Remote CI (the ci and sql workflows) is authoritative for the revision that contains this report and is not recorded in this file; last run supplied when generated: none. The presentation job itself uses synthetic fixtures, not an authenticated PostgreSQL session. |
+| Blocking UI acceptance job / typed checks / deterministic fixtures | partial | A blocking CI presentation job and deterministic fixtures exist. Remote CI (the ci and sql workflows) is authoritative for the revision that contains this report and is not recorded in this file; last run supplied when generated: GitHub Actions run 42520697084 on commit 492e59ee (branch ui/structural-parity-modern): database, server, desktop, web and e2e jobs passed; presentation job failed on 13 Classic/Modern structure-gate cases (46,151 assertions passed). |
+| Rust/PostgreSQL/desktop integration in authorized CI | partial | Remote CI (the ci and sql workflows) is authoritative for the revision that contains this report and is not recorded in this file; last run supplied when generated: GitHub Actions run 42520697084 on commit 492e59ee (branch ui/structural-parity-modern): database, server, desktop, web and e2e jobs passed; presentation job failed on 13 Classic/Modern structure-gate cases (46,151 assertions passed). The presentation job itself uses synthetic fixtures, not an authenticated PostgreSQL session. |
 
 ## Blockers
 

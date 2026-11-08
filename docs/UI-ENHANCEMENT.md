@@ -153,19 +153,18 @@ Decisions recorded for future sessions:
    dialog; its first run found 274 mismatches (87 after correcting its own measurement), which
    this grid replaces. On-screen print/report layouts (labels, invoices) are exempt. Not browser
    verified until that gate passes.
-   Open structural mismatches (measured by the pairwise gate in the last complete local pass,
-   44,997 assertions, 72 failures, every one a gate failure; after counting caption-less export
-   definitions as exempt, 22 on-screen definitions remain): `d_alnaseeb_deliveryorder_saleinvprint`,
-   `d_cashieractivitymonitor_timeperiod`, `d_crs_salefooter_view`, `d_crs_srfooter_view`,
-   `d_issuefooter_view`, `d_mr_pc`, `d_old_general1`, `d_opensalereturnfooter`,
-   `d_patientvisit_gyn_us`, `d_patientvisit_obs_us`, `d_posted_salefooter`,
-   `d_purchase_preferences`, `d_salefooter_view`, `d_saleinpurchase_footer`,
+   Open structural mismatches. Last CI browser run (commit `492e59ee`, run 42520697084): 46,151
+   assertions passed, 13 failed, every failure a Classic/Modern structure-gate case; every other
+   suite in that pass was clean (the first complete pass had 274 gate failures). The 13:
+   `d_alnaseeb_deliveryorder_saleinvprint` (a print layout), `d_mr_pc`, `d_old_general1`,
+   `d_normalpurchasereturnfooter`, `d_opensalereturnfooter`, `d_patientvisit_obs_us`,
    `d_salereturnfooter_view`, `d_servicefooter_view`, `d_smscenter_composesms`,
-   `d_smscenter_preview`, `d_visitvitals`, `w_arg_cust_sdate_ldate_v13`,
-   `w_arg_customers_sdate_ldate_v7`, `w_arg_manfs_cats_classes_packs_dates_v3`. They are staggered or
-   overlapping layouts (a tall field bridging two rows, groupboxes with hidden-until-script fields)
-   where grid row snapping differs from Classic; the sale/purchase/return footers are transaction
-   screens and must be fixed before any acceptance.
+   `d_smscenter_preview`, `w_arg_cust_sdate_ldate_v13`, `w_arg_customers_sdate_ldate_v7`,
+   `w_arg_manfs_cats_classes_packs_dates_v3`. Cause class: source fields much shorter than a Modern
+   field (for example a 17-unit computed flag beside 56-unit fields) or staggered by less than a
+   Modern line, so Modern's minimum field height changes which neighbours overlap; they are listed
+   for manual visual comparison against Classic and are not claimed as matching. The footers
+   (`d_*footer_view`) are transaction screens and need that review before any acceptance.
 9. The Modern workspace sidebar now browses the live menu by module (collapsed
    groups, lazily filled, open state retained) as well as searching it; availability
    is still the live visible/enabled state, rechecked before every command.
