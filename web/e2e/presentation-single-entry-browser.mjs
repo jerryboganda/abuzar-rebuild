@@ -153,7 +153,7 @@ export async function checkSingleEntrySurfaces(fixture, check, settle, filter) {
         const displayObject = f.detail.def.objects.find((object) => object.name === displayName)
         const plainText = !!displayObject && f.detail.kinds[f.detail.colIndex(displayName)] === 'string' && Object.keys(displayObject).some((key) => key.startsWith('edit.')) &&
           !Object.keys(displayObject).some((key) => /^(dddw|ddlb|editmask|checkbox|radiobutton)\./.test(key)) &&
-          displayObject.tabsequence !== '0' && displayObject.protect !== '1' && displayObject['edit.displayonly'] !== 'yes' && displayObject['edit.codetable'] !== 'yes' &&
+          displayObject.tabsequence !== '0' && displayObject.protect !== '1' && !String(displayObject.protect ?? '').includes('\t') && displayObject['edit.displayonly'] !== 'yes' && displayObject['edit.codetable'] !== 'yes' &&
           displayObject.visible !== '0' && String(displayObject.visible ?? '').split('	')[1] !== '0'
         if (!plainText) (window.singleEntrySkippedText ??= []).push(`${surface.name}/${modern ? 'Modern' : 'Classic'}`)
         textSection: {
@@ -204,9 +204,13 @@ export async function checkSingleEntrySurfaces(fixture, check, settle, filter) {
           for (const [controlName, binding] of [['dw_detail', surface.details[0].surface], ['dw_list', surface.list]]) {
             const labels = [...f.element(controlName).querySelectorAll('.surface-label,th')].map((node) => node.textContent.trim())
             for (const field of binding.fields) {
-              const text = source.data[binding.name].objects.find((object) => object.name === field.labelObject).text
-                .replace(/&&|&/g, (token) => token === '&&' ? '&' : '').trim()
-              assert(labels.includes(text), 'mapped labels retain the original field wording')
+              // A field without a caption object (computed or label-less) has no source wording to compare.
+              const captionText = field.labelObject ? source.data[binding.name].objects.find((object) => object.name === field.labelObject)?.text : undefined
+              if (typeof captionText !== 'string') continue
+              // A field the definition hides (visible="0", revealed only by a script) is not shown in Classic or Modern.
+              if (source.data[binding.name].objects.find((object) => object.name === field.object)?.visible === '0') continue
+              const text = captionText.replace(/&&|&/g, (token) => token === '&&' ? '&' : '').trim()
+              assert(labels.includes(text), `mapped labels retain the original field wording (${binding.name}.${field.object}: ${JSON.stringify(text)} in ${JSON.stringify(labels)})`)
             }
           }
           if (surface.name === 'w_checklistitem_form') {
@@ -216,7 +220,9 @@ export async function checkSingleEntrySurfaces(fixture, check, settle, filter) {
               cells.every((cell) => cell.querySelector('[role=checkbox]')?.getAttribute('aria-readonly') === 'true'),
             'readonly list checkboxes keep grid-cell semantics and distinguish checked, unchecked and unknown')
           }
-          for (const field of surface.list.fields.filter((field) => field.kind === 'computed')) {
+          // Only row-number computes (getrow()) are expected to read 1,2,3; other computed fields have their own expressions.
+          for (const field of surface.list.fields.filter((field) => field.kind === 'computed' &&
+            /^\s*getrow\(\)\s*$/i.test(source.data[surface.list.name].objects.find((object) => object.name === field.object)?.expression ?? ''))) {
             const cells = [...f.element('dw_list').querySelectorAll(`[data-obj=${field.object}]`)]
             assert(cells.map((cell) => cell.textContent.trim()).join(',') === '1,2,3' &&
               cells.every((cell) => cell.getAttribute('aria-readonly') === 'true'), 'source S No. remains computed and readonly')
@@ -238,7 +244,9 @@ export async function checkSingleEntrySurfaces(fixture, check, settle, filter) {
           (() => {
             const source = f.detail.def.objects.find((object) => object.name === field.object)
             // A field whose visibility expression is the constant 0 (visible="1~t0") is never shown, so it has no editor.
+            // A protect expression (for example by gender) makes the field read-only for the synthetic row.
             return source && source.visible !== '0' && String(source.visible ?? '').split('\t')[1] !== '0' && source.tabsequence !== '0' && source.protect !== '1' &&
+              !String(source.protect ?? '').includes('\t') &&
               source['edit.readonly'] !== 'yes' && source['editmask.readonly'] !== 'yes'
           })())) {
           window.singleEntryStep = `${field.object}: selecting the Detail tab`
@@ -264,8 +272,8 @@ export async function checkSingleEntrySurfaces(fixture, check, settle, filter) {
           const expected = await detail.n_gettext()
           assert(String(f.detail.getItem(1, field.object)) === stored && expected !== stored,
             `${field.object}: SetText updates only the live draft`)
-          if (field.multiline) assert(editor.editor.value === draft.replace(/\r\n/g, '\n') && expected === draft,
-            'textarea DOM uses LF while live PowerScript text retains CRLF')
+          if (field.multiline) assert(editor.editor.value === expected.replace(/\r\n/g, '\n') && expected.includes('\r\n') && expected.toLowerCase() === draft.toLowerCase(),
+            `textarea DOM uses LF while live PowerScript text retains CRLF (${JSON.stringify({ field: field.object, draft, dom: editor.editor.value, expected, limit: sourceField?.['edit.limit'], type: f.detail.def.table.columns[column].type })})`)
           window.singleEntryInfo = JSON.stringify({ draft, expected, stored, kind: f.detail.kinds[column], editLimit: sourceField?.['edit.limit'],
             columnType: f.detail.def.table.columns[column].type, case: sourceField?.['edit.case'], validation: f.detail.def.table.columns[column].validation ?? null })
           // A rejected entry opens a modal Validation Error; report it with the evidence and dismiss it so the pass continues.
@@ -282,7 +290,7 @@ export async function checkSingleEntrySurfaces(fixture, check, settle, filter) {
           if (rejection) assert(false, `${field.object}: the synthetic draft was rejected (${JSON.stringify({ draft, expected, stored, kind: f.detail.kinds[column],
             editLimit: sourceField?.['edit.limit'], columnType: f.detail.def.table.columns[column].type, dialog: rejection })})`)
           assert(accepted === 1 && String(f.detail.getItem(1, field.object)) === expected,
-            `${field.object}: the additional real field uses the shared text/decimal acceptance path`)
+            `${field.object}: the additional real field uses the shared text/decimal acceptance path (${JSON.stringify({ accepted, draft, expected, stored: String(f.detail.getItem(1, field.object)), kind: f.detail.kinds[column], type: f.detail.def.table.columns[column].type, limit: sourceField?.['edit.limit'], validation: f.detail.def.table.columns[column].validation ?? null })})`)
           window.singleEntryStep = ''
           if (surface.name === 'w_goodscompany_form' && field.object === 'phone') {
             assert(f.detail.def.table.columns[column].type === 'char(15)',

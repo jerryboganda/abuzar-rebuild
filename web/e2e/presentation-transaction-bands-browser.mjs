@@ -219,15 +219,17 @@ export async function checkTransactionBands(fixture, check, settle) {
       const client = document.createElement('div')
       const root = document.createElement('section')
       root.append(client)
+      // The window's own controls are scoped by their parent, so the stand-in window owns every control.
+      const owner = { className: 'w_assocadvsaleinvlist_form', children: new Map() }
       const actions = ['cb_ok', 'cb_cancel'].map((name) => {
-        const control = { name, native: 'commandbutton', children: new Map() }
+        const control = { name, native: 'commandbutton', children: new Map(), parent: owner }
         const el = document.createElement('button')
         el.textContent = name
         return [control, { el }]
       })
-      const dataControl = { name: 'dw_viewheader', native: 'datawindow', children: new Map() }
+      const dataControl = { name: 'dw_viewheader', native: 'datawindow', children: new Map(), parent: owner }
       const modal = {
-        w: { className: 'w_assocadvsaleinvlist_form' }, modal: true, client, el: root,
+        w: owner, modal: true, client, el: root,
         ctlViews: new Map([[dataControl, { el: f.host, dw: f.view }], ...actions]),
       }
       check(applyModernWindow(modal) && root.classList.contains('modern-window'),

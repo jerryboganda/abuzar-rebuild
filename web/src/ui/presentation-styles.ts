@@ -82,6 +82,8 @@ export const PRESENTATION_CSS = `
 .modern-window .window-frame legend {padding:0;white-space:normal;overflow-wrap:anywhere;font-weight:600;}
 .modern-window .window-list {display:grid;gap:6px;min-width:0;}
 .modern-window .window-list select.ctl {min-width:0;min-height:10em;padding:6px;background:var(--p-surface)!important;border:1px solid var(--p-line)!important;border-radius:4px;}
+/* A container or rich control kept as its original element (a tab control with its pages) scrolls inside the dialog instead of widening it. */
+.modern-window .window-embedded {position:relative!important;left:auto!important;top:auto!important;max-width:100%;max-height:calc(100vh - 14em);overflow:auto;}
 .modern-window .window-caption {white-space:normal;overflow-wrap:anywhere;background:transparent!important;}
 .modern-window .window-option {display:flex;align-items:center!important;gap:8px;min-height:36px;padding:6px 0!important;white-space:normal;overflow-wrap:anywhere;background:transparent!important;}
 .modern-window .window-option input {flex:none;accent-color:var(--p-accent);}
@@ -135,6 +137,9 @@ export const PRESENTATION_CSS = `
 .modern-entry-window .entry-form:has(>.dw:not(.modern-surface)) {height:9em!important;}
 .modern-entry-window .entry-grid,.modern-entry-window .entry-auxiliary {height:clamp(14em,42vh,26em)!important;}
 .modern-entry-window .entry-data>.dw:not(.modern-surface) {font:var(--font);color:#000;color-scheme:light;}
+.modern-entry-window .entry-extras {display:grid;gap:12px;margin-top:12px;}
+.modern-entry-window .entry-extra-line {display:grid;grid-template-columns:var(--line-columns);gap:12px;align-items:start;}
+@media (max-width:520px) {.modern-entry-window .entry-extra-line {grid-template-columns:minmax(0,1fr);}}
 .modern-entry-window .entry-criteria {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,23em),1fr));gap:24px;}
 .modern-entry-window .entry-criteria-group {display:grid;align-content:start;gap:10px;min-width:0;}
 .modern-entry-window .entry-caption {border:0;padding:0;margin:0;font-weight:600!important;}

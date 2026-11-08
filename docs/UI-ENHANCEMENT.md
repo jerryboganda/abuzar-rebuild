@@ -136,7 +136,11 @@ Decisions recorded for future sessions:
    `d_opensalereturnfooter`, `d_salepreferences`, `d_salereturnfooter_view`,
    `d_servicefooter_view`, `d_visitvitals`) have a tab order that interleaves lines, so their
    shared rows are not merged (reordering the DOM would change the tab order); a placement-based
-   arrangement is open. Not browser verified.
+   arrangement is open. Entry windows keep extra controls a standard layout has no slot for
+   (for example `st_3`/`em_invno` on the sale list page) in source rows instead of dropping them.
+   Gate: the generated-family browser checks record, in Classic, which controls share a row
+   (real DOM geometry through `planLines`) and require the Modern phase to reproduce those rows
+   for every generated form DataWindow and dialog. Not browser verified until that run passes.
 9. The Modern workspace sidebar now browses the live menu by module (collapsed
    groups, lazily filled, open state retained) as well as searching it; availability
    is still the live visible/enabled state, rechecked before every command.

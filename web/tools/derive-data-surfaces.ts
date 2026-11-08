@@ -295,7 +295,11 @@ export function reviewedDataWindows(): Set<string> {
   return names
 }
 
-export function deriveAll(definitions = loadDefinitions(), skip: ReadonlySet<string> = new Set([...reviewedDataWindows(), ...entryHostedDataWindows()])) {
+// Shared control DataWindows that every entry window hosts in a compact original presentation (the Find box).  Entry windows that keep
+// their Classic layout must keep it, so no global Modern surface is generated for them.
+const CONTROL_DATAWINDOWS = ['d_find']
+
+export function deriveAll(definitions = loadDefinitions(), skip: ReadonlySet<string> = new Set([...reviewedDataWindows(), ...entryHostedDataWindows(), ...CONTROL_DATAWINDOWS])) {
   const surfaces: DataSurface[] = []
   const backlog: Record<string, string[]> = {}
   let skipped = 0

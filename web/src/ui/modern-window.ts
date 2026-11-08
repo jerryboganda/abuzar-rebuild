@@ -176,8 +176,8 @@ export function applyModernWindow(view: WinView): boolean {
  */
 function arrangeLines(view: WinView, content: HTMLElement, items: Map<string, HTMLElement>, controls: Map<string, string[]>, reorder: boolean): void {
   const read = (name: string) => {
-    const control = view.w.children.get(name)
-    if (!control || control.props.get('visible') === false) return null
+    const control = view.w.children?.get(name)
+    if (!control?.props || control.props.get('visible') === false) return null
     const box = { x: Number(control.props.get('x')), y: Number(control.props.get('y')), width: Number(control.props.get('width')), height: Number(control.props.get('height')) }
     return Object.values(box).every(Number.isFinite) ? box : null
   }

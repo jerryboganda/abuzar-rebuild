@@ -1247,7 +1247,8 @@ export async function checkCriteriaWindows(fixture, check, settle, onlyNames) {
             document.getElementById(f.dw.root.querySelector('[data-obj=zonecode]').getAttribute('aria-labelledby')) === label,
           'The original external zone caption remains live and accessible')
           f.window.children.get('st_3').pbSet('text', 'Zone:')
-          check([...f.view.el.querySelector('.window-fields').children].slice(1).map((element) =>
+          // Controls that share a source row sit in one .window-line; the order is read through those lines.
+          check([...f.view.el.querySelector('.window-fields').children].flatMap((child) => child.classList.contains('window-line') ? [...child.children] : [child]).slice(1).map((element) =>
             [...f.view.ctlViews].find(([, binding]) => binding.el === element ||
               element.querySelector('input.ctl') === binding.el)?.[0].name).join('|') === surface.contentOrder.join('|'),
           'Zone, dates, customer count and hidden options retain the explicit source content order')

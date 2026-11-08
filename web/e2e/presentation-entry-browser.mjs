@@ -516,7 +516,9 @@ export async function checkEntrySurfaces(fixture, check, settle) {
     const fallback = await open()
     check(!fallback.view.el.classList.contains('modern-entry-window') && fallback.controls.size === 24 &&
       !fallback.element('dw_find').querySelector('.modern-surface'),
-    'Unexpected inherited entry controls keep the whole Classic layout and the compact Find presentation')
+    `Unexpected inherited entry controls keep the whole Classic layout and the compact Find presentation (${JSON.stringify({
+      modernWindow: fallback.view.el.classList.contains('modern-entry-window'), controls: fallback.controls.size,
+      findSurface: !!fallback.element('dw_find').querySelector('.modern-surface'), classes: fallback.view.el.className })})`)
     await fallback.close()
     fixture.rt.classes.set(definition.name, definition)
     window.openPresentationEntryPreview = async () => {

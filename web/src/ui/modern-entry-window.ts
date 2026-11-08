@@ -4,6 +4,7 @@ import { ModernDwView } from './modern-dwview.ts'
 import { entryWindowIssues } from './window-surfaces.ts'
 import { entryWindowSurfaceByName } from './surface-registry.ts'
 import type { DataSurface } from './data-surfaces.ts'
+import { planLines } from './line-plan.ts'
 
 export const ENTRY_FIND_SURFACE: DataSurface = {
   name: 'd_find', title: 'Find', kind: 'form', fields: [{ object: 'find', label: 'Find' }],
@@ -114,6 +115,35 @@ export function applyModernEntryWindow(view: WinView): boolean {
   pages[1].replaceChildren(group('entry-list', [
     group('entry-criteria', [sort, filter]), search, data(`${listPath}.dw_list`, 'grid'), decoration,
   ]))
+  // Controls the standard layout has no slot for (a window with extra criteria or lookup controls on a page) are never dropped:
+  // they are kept in source position order, on the source row they share, in their own page group.
+  const extras = [...controls].filter(([path, control]) => {
+    const binding = view.ctlViews.get(control)
+    return !!binding && !view.client.contains(binding.el) && (path.startsWith(`${listPath}.`) || path.startsWith(`${detailPath}.`))
+  })
+  for (const page of [listPath, detailPath]) {
+    const group = (page === listPath ? pages[1] : pages[0]).firstElementChild as HTMLElement | null
+    const own = extras.filter(([path]) => path.startsWith(`${page}.`))
+    if (!group || !own.length) continue
+    const boxes = own.flatMap(([path, control]) => {
+      const x = Number(control.props.get('x')), y = Number(control.props.get('y'))
+      const width = Number(control.props.get('width')), height = Number(control.props.get('height'))
+      return [x, y, width, height].every(Number.isFinite) ? [{ key: path, left: x, top: y, right: x + width, bottom: y + Math.max(1, height) }] : []
+    })
+    const container = document.createElement('div')
+    container.className = 'entry-extras'
+    const placed = new Set<string>()
+    for (const cells of planLines(boxes)) {
+      const line = document.createElement('div')
+      line.className = 'entry-extra-line'
+      line.style.setProperty('--line-columns', cells.map((cell) => `minmax(0,${cell.weight}fr)`).join(' '))
+      for (const cell of cells) { line.append(view.ctlViews.get(controls.get(cell.key)!)!.el); placed.add(cell.key) }
+      container.append(line)
+    }
+    // Controls without usable geometry follow in their source order.
+    for (const [path, control] of own) if (!placed.has(path)) container.append(view.ctlViews.get(control)!.el)
+    group.append(container)
+  }
   findView.useContextSurface(ENTRY_FIND_SURFACE, new Map([['find', findLabel]]))
   for (const binding of scoped) if (binding.view instanceof ModernDwView) binding.view.useContextSurface(binding.surface)
   tab.classList.add('entry-tabs')

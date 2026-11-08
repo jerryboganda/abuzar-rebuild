@@ -6,6 +6,7 @@ import { entryControls } from './src/ui/modern-entry-window.js'
 import { windowSurfaceIssues, entryWindowIssues } from './src/ui/window-surfaces.js'
 import { modalWindowSurfaceByName } from './src/ui/window-registry.js'
 import { entryWindowSurfaceByName, dataSurfaceByName } from './src/ui/surface-registry.js'
+import { planLines } from './src/ui/line-plan.js'
 
 // Generated window families.  Class metadata and DataWindow definitions are the recovered ones; no script runs, nothing is
 // retrieved or saved, and rows are synthetic.  Every generated window is checked: none is sampled away.
@@ -59,6 +60,24 @@ const withoutDatabase = (impl) => async (...args) => {
   try { return await impl(...args) } finally { DwModel.prototype.retrieve = original }
 }
 
+
+// Structural parity gate: the Classic phase records which controls share a row (from the real DOM geometry); the Modern phase must
+// reproduce exactly those rows.  Rows are sets of control names; order within a row and the pixels are not compared.
+const rowsOf = (entries) => planLines(entries.flatMap(([key, element]) => {
+  if (!element || !element.getClientRects().length) return []
+  const rect = element.getBoundingClientRect()
+  return rect.width > 0 && rect.height > 0 ? [{ key, left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom }] : []
+})).map((line) => line.map((cell) => cell.key).sort())
+const compareStructure = (family, name, modern, rows, check, label) => {
+  const store = (window.derivedStructure ??= {})
+  const key = `${family}:${name}`
+  if (!modern) { store[key] = rows; return }
+  const classic = store[key]
+  if (!classic) return
+  const same = JSON.stringify([...classic].map((row) => row.join(',')).sort()) === JSON.stringify([...rows].map((row) => row.join(',')).sort())
+  check(same, `${label}: the Modern rows equal the Classic rows (Classic ${JSON.stringify(classic)}; Modern ${JSON.stringify(rows)})`)
+}
+
 /** Response windows: the layout is accepted in Modern, absent in Classic, and every original control stays attached. */
 async function checkDerivedModalWindowsImpl(fixture, check, settle, filter) {
   const source = await (await fetch('./presentation-derived-modal.json')).json()
@@ -78,6 +97,8 @@ async function checkDerivedModalWindowsImpl(fixture, check, settle, filter) {
         .map(([control]) => ({ name: control.name, native: control.native, children: control.children.size }))
       check(view.el.classList.contains('modern-window') === modern, `${label}: the outer layout changes only in Modern`)
       check([...view.ctlViews.values()].every((binding) => view.client.contains(binding.el)), `${label}: all original control elements remain attached`)
+      compareStructure('modal', name, modern, rowsOf([...surface.fields.map((field) => field.control), ...(surface.lists ?? []).map((list) => list.control)]
+        .map((control) => [control, view.ctlViews.get(window.children.get(control))?.el])), check, label)
       if (modern) {
         check(!windowSurfaceIssues(controls, surface).length, `${label}: the generated layout matches the live control tree`)
         check(!!view.el.querySelector('.window-fields'), `${label}: Modern content container exists`)
@@ -221,10 +242,17 @@ async function checkDerivedDataSurfacesImpl(fixture, check, settle, filter) {
         await within(preview.render(), 'rendering')
         await settle()
         const active = !!preview.root.classList.contains('modern-surface')
+        if (!modern && binding.kind === 'form') compareStructure('form', name, false, rowsOf(binding.fields.map((field) => [field.object, preview.root.querySelector(`[data-obj="${field.object}"]`)])), check, label)
         check(active === modern, `${label}: the surface is active only in Modern`)
         if (modern) {
           check(!preview.root.textContent.includes('Classic layout retained'), `${label}: the generated surface passes runtime validation`)
-          check(preview.root.querySelectorAll('[data-obj]').length > 0, `${label}: the mapped fields render`)
+          // A DataWindow whose every field the definition hides (visible="0" or a constant-false visibility expression) shows
+          // nothing in Classic either; only a DataWindow with a displayable field must render one.
+          // A visibility expression is decided per row (here by the synthetic row), so only unconditional fields must render.
+          const hidden = (object) => object?.visible === '0' || String(object?.visible ?? '').includes('\t')
+          const displayable = binding.fields.some((field) => !hidden(source.data[name].objects.find((object) => object.name === field.object)))
+          if (displayable) check(preview.root.querySelectorAll('[data-obj]').length > 0, `${label}: the mapped fields render`)
+          if (binding.kind === 'form') compareStructure('form', name, true, rowsOf(binding.fields.map((field) => [field.object, preview.root.querySelector(`[data-obj="${field.object}"]`)])), check, label)
         }
       } catch (error) {
         check(false, `${label}: ${error.message}`)
