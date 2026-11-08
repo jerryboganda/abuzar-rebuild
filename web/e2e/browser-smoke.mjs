@@ -224,7 +224,7 @@ if (shots && observed) {
           walk(control, `${path}.`)
         }
       }
-      for (const [name, window] of [...window.rt.windowInstances].sort(([a], [b]) => a.localeCompare(b))) if (name !== 'w_main') walk(window, `${name}.`)
+      for (const [name, instance] of [...window.rt.windowInstances].sort(([a], [b]) => a.localeCompare(b))) if (name !== 'w_main') walk(instance, `${name}.`)
       return parts.join(' ')
     })
     rows.push(`${id}\t${res}\t${titles}\t${path}\t${boxes}\t${rep}\t${closed}\t${state}`)
