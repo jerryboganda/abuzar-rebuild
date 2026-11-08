@@ -74,8 +74,8 @@ export const PRESENTATION_CSS = `
 .modern-window .tbar .cls {flex:none;min-width:32px;min-height:32px;width:auto;height:auto;font:inherit;padding:0 8px;color:var(--p-text);border:1px solid var(--p-line);border-radius:4px;background:var(--p-surface);cursor:pointer;}
 .modern-window>.client {position:static;flex:none;overflow:visible;background:var(--p-surface)!important;padding:4px 20px 20px;}
 .modern-window .window-fields {display:grid;gap:16px;}
-.modern-window .window-field {display:grid;gap:6px;min-width:0;}
-.modern-window .window-fields.has-grid {grid-template-columns:var(--grid-columns);column-gap:0;row-gap:12px;align-items:start;}
+.modern-window .window-field {display:grid;gap:6px;min-width:0;align-content:start;}
+.modern-window .window-fields.has-grid {grid-template-columns:var(--grid-columns);column-gap:0;row-gap:12px;align-items:stretch;}
 .modern-window .window-fields.has-grid > .grid-cell {padding-inline:8px;min-width:0;}
 @media (max-width:520px) {
   .modern-window .window-fields.has-grid {grid-template-columns:minmax(0,1fr);}
@@ -84,7 +84,7 @@ export const PRESENTATION_CSS = `
 .modern-window .window-field:has(>input.hidden):has(>label>.hidden),.modern-window .window-field>label:has(>.hidden) {display:none;}
 .modern-window .window-frame {min-width:0;border:0;margin:0;padding:0;}
 .modern-window .window-frame legend {padding:0;white-space:normal;overflow-wrap:anywhere;font-weight:600;}
-.modern-window .window-list {display:grid;gap:6px;min-width:0;}
+.modern-window .window-list {display:grid;gap:6px;min-width:0;align-content:start;}
 .modern-window .window-list select.ctl {min-width:0;min-height:10em;padding:6px;background:var(--p-surface)!important;border:1px solid var(--p-line)!important;border-radius:4px;}
 /* A container or rich control kept as its original element (a tab control with its pages) scrolls inside the dialog instead of widening it. */
 .modern-window .window-embedded {position:relative!important;left:auto!important;top:auto!important;max-width:100%;max-height:calc(100vh - 14em);overflow:auto;}
@@ -142,7 +142,7 @@ export const PRESENTATION_CSS = `
 .modern-entry-window .entry-grid,.modern-entry-window .entry-auxiliary {height:clamp(14em,42vh,26em)!important;}
 .modern-entry-window .entry-data>.dw:not(.modern-surface) {font:var(--font);color:#000;color-scheme:light;}
 .modern-entry-window .entry-extras {display:grid;gap:12px;margin-top:12px;}
-.modern-entry-window .entry-extras.has-grid {grid-template-columns:var(--grid-columns);column-gap:0;align-items:start;}
+.modern-entry-window .entry-extras.has-grid {grid-template-columns:var(--grid-columns);column-gap:0;align-items:stretch;}
 .modern-entry-window .entry-extras.has-grid > .grid-cell {padding-inline:8px;min-width:0;}
 @media (max-width:520px) {.modern-entry-window .entry-extras.has-grid {grid-template-columns:minmax(0,1fr);} .modern-entry-window .entry-extras.has-grid > * {grid-column:auto!important;grid-row:auto!important;}}
 .modern-entry-window .entry-criteria {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,23em),1fr));gap:24px;}
@@ -255,7 +255,7 @@ export const PRESENTATION_CSS = `
 .modern-surface .surface-total-value {position:relative;font:inherit;line-height:1.5;overflow-wrap:anywhere;padding:2px;}
 .modern-surface section.surface-row {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,16em),1fr));gap:16px;padding:12px;}
 .modern-surface .surface-group {grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,16em),1fr));gap:16px;min-width:0;padding-block:12px;border-block-start:1px solid var(--p-line);}
-.modern-surface section.surface-row.has-grid,.modern-surface .surface-group.has-grid {display:grid;grid-template-columns:var(--grid-columns);column-gap:0;row-gap:12px;align-items:start;}
+.modern-surface section.surface-row.has-grid,.modern-surface .surface-group.has-grid {display:grid;grid-template-columns:var(--grid-columns);column-gap:0;row-gap:12px;align-items:stretch;}
 .modern-surface .grid-cell.surface-field,.modern-surface .grid-cell.surface-caption,.modern-surface .grid-cell.surface-button {padding-inline:8px;min-width:0;}
 .modern-surface .has-grid > .grid-cell.surface-group {min-width:0;}
 @container (max-width:30em) {

@@ -14,6 +14,22 @@ export interface GridPlan {
 
 const MAX_COLUMNS = 24
 
+/**
+ * The cell of a field is its editor, plus a caption or suffix that shares the editor's row (a caption left of the editor).  A caption
+ * on another row (above the editor) is part of the cell's own content, not a reason to occupy that row as well.
+ */
+export function anchoredBox(key: string, editor: GridBox, others: readonly GridBox[]): GridBox {
+  const height = Math.max(1, editor.bottom - editor.top)
+  let { left, right, top, bottom } = editor
+  for (const other of others) {
+    const overlap = Math.min(editor.bottom, other.bottom) - Math.max(editor.top, other.top)
+    if (overlap >= 0.5 * Math.min(height, Math.max(1, other.bottom - other.top))) {
+      left = Math.min(left, other.left); right = Math.max(right, other.right); top = Math.min(top, other.top); bottom = Math.max(bottom, other.bottom)
+    }
+  }
+  return { key, left, right, top, bottom }
+}
+
 /** Snaps near-equal coordinates together; edges closer than `tolerance` become one edge. */
 function snapEdges(values: number[], tolerance: number): number[] {
   const sorted = [...values].sort((a, b) => a - b)

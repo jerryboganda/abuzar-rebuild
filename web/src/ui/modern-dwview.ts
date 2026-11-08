@@ -6,7 +6,7 @@ import type { NDwBase } from '../runtime/native/dwctrl.ts'
 import type { DwModel, DwRow } from '../dw/model.ts'
 import { buildGroupPlan, rowAtItem } from './group-plan.ts'
 import { boxOf } from './line-plan.ts'
-import { planGrid, applyGrid } from './grid-plan.ts'
+import { planGrid, applyGrid, anchoredBox } from './grid-plan.ts'
 import type { GridBox } from './grid-plan.ts'
 import type { GroupPlan } from './group-plan.ts'
 import type { DwObject } from '../dw/def.ts'
@@ -821,7 +821,11 @@ export class ModernDwView extends DwView {
       if (child.hidden) return null
       if (child.classList.contains('surface-field') && child.dataset.field) {
         const field = fieldOf.get(child.dataset.field)
-        return field ? boxOf(def, [field.labelBand === 'header' ? undefined : field.labelObject, field.object, field.suffixObject], `field:${field.object}`) : null
+        if (!field) return null
+        const editor = boxOf(def, [field.object], `field:${field.object}`)
+        if (!editor) return null
+        const others = [field.labelBand === 'header' ? undefined : field.labelObject, field.suffixObject].flatMap((name) => { const box = name ? boxOf(def, [name], name) : null; return box ? [box] : [] })
+        return anchoredBox(`field:${field.object}`, editor, others)
       }
       if (child.dataset.caption) return boxOf(def, [child.dataset.caption], `caption:${child.dataset.caption}`)
       if (child.classList.contains('surface-button') && child.dataset.obj) return boxOf(def, [child.dataset.obj], `button:${child.dataset.obj}`)

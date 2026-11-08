@@ -2,7 +2,7 @@ import type { WinView } from './dom-ui.ts'
 import { windowSurfaceIssues } from './window-surfaces.ts'
 import { modalWindowSurfaceByName } from './window-registry.ts'
 import { ModernDwView } from './modern-dwview.ts'
-import { planGrid, applyGrid } from './grid-plan.ts'
+import { planGrid, applyGrid, anchoredBox } from './grid-plan.ts'
 import type { GridBox } from './grid-plan.ts'
 
 let nextWindow = 0
@@ -184,12 +184,13 @@ function arrangeGrid(view: WinView, content: HTMLElement, items: Map<string, HTM
   const boxes: GridBox[] = []
   for (const [key, names] of controls) {
     if (!items.has(key)) continue
-    const parts = names.map(read).filter((part): part is NonNullable<ReturnType<typeof read>> => !!part)
-    if (!parts.length) continue
-    boxes.push({
-      key, left: Math.min(...parts.map((part) => part.x)), top: Math.min(...parts.map((part) => part.y)),
-      right: Math.max(...parts.map((part) => part.x + part.width)), bottom: Math.max(...parts.map((part) => part.y + Math.max(1, part.height))),
-    })
+    const asBox = (name: string): GridBox | null => {
+      const part = read(name)
+      return part ? { key: name, left: part.x, top: part.y, right: part.x + part.width, bottom: part.y + Math.max(1, part.height) } : null
+    }
+    const editor = asBox(names[0])
+    if (!editor) continue
+    boxes.push(anchoredBox(key, editor, names.slice(1).flatMap((name) => { const box = asBox(name); return box ? [box] : [] })))
   }
   if (boxes.length < 2) return
   // Anything the plan does not place (the window frame and its legend, groupbox captions) stays full width above the plan.
