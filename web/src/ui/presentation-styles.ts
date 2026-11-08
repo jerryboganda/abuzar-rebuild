@@ -82,8 +82,8 @@ export const PRESENTATION_CSS = `
   .modern-window .window-fields.has-grid > * {grid-column:auto!important;grid-row:auto!important;}
 }
 .modern-window .window-field:has(>input.hidden):has(>label>.hidden),.modern-window .window-field>label:has(>.hidden) {display:none;}
-.modern-window .window-frame {min-width:0;border:0;margin:0;padding:0;}
-.modern-window .window-frame legend {padding:0;white-space:normal;overflow-wrap:anywhere;font-weight:600;}
+.modern-window .window-frame {min-width:0;border:0;margin:0;padding:0;background:transparent!important;color:var(--p-text)!important;}
+.modern-window .window-frame legend {padding:0;white-space:normal;overflow-wrap:anywhere;font-weight:600;color:var(--p-text)!important;background:transparent!important;}
 .modern-window .window-list {display:grid;gap:6px;min-width:0;align-content:start;}
 .modern-window .window-list select.ctl {min-width:0;min-height:10em;padding:6px;background:var(--p-surface)!important;border:1px solid var(--p-line)!important;border-radius:4px;}
 /* A container or rich control kept as its original element (a tab control with its pages) scrolls inside the dialog instead of widening it. */
@@ -91,7 +91,7 @@ export const PRESENTATION_CSS = `
 /* Only a container (tab control, user object) scrolls; a link or text control never becomes a scroll region a keyboard cannot reach. */
 .modern-window .window-embedded[data-embedded-scroll] {max-height:calc(100vh - 14em);overflow:auto;}
 .modern-window .window-caption {white-space:normal;overflow-wrap:anywhere;background:transparent!important;color:var(--p-text)!important;}
-.modern-window .window-option {display:flex;align-items:center!important;gap:8px;min-height:36px;padding:6px 0!important;white-space:normal;overflow-wrap:anywhere;background:transparent!important;}
+.modern-window .window-option {display:flex;align-items:center!important;gap:8px;min-height:36px;padding:6px 0!important;white-space:normal;overflow-wrap:anywhere;background:transparent!important;color:var(--p-text)!important;}
 .modern-window .window-option input {flex:none;accent-color:var(--p-accent);}
 .modern-window .window-option span {outline:none!important;}
 .modern-window .window-option:has(input:focus-visible) {outline:2px solid var(--p-accent);outline-offset:2px;}

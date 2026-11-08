@@ -177,7 +177,9 @@ Decisions recorded for future sessions:
    the same items), so the budget was raised to cover the whole menu. Whole-menu result (run
    42528203005, commit `e9a821e5`): 110 of 110 menu items walked in each mode (53 did not click in
    either mode: items the administrator profile does not enable), 114 of 114 recorded outcomes
-   identical in Classic and Modern. This compares what the
+   identical in Classic and Modern; repeated on run 42531947327 (commit `9b78e789`) with the same
+   result. The automated WCAG 2.2 A/AA scan (axe-core) of 159 generated-dialog appearances found
+   0 violations after the scroll-region fix. This compares what the
    commands do, not every field edit inside a window; data-entry workflows inside windows are
    covered by the synthetic browser suite, not by this crawl.
 9. The Modern workspace sidebar now browses the live menu by module (collapsed
