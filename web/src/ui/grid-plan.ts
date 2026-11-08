@@ -67,9 +67,11 @@ export function planGrid(boxes: readonly GridBox[]): GridPlan {
   if (!boxes.length) return { columns: [], rows: 0, place }
   const minX = Math.min(...boxes.map((box) => box.left)), maxX = Math.max(...boxes.map((box) => box.right))
   const heights = boxes.map((box) => Math.max(1, box.bottom - box.top)).sort((a, b) => a - b)
-  const medianHeight = heights[Math.floor(heights.length / 2)]
+  // The typical height is a low quantile, not the median: tall containers (a groupbox, a list) must not widen the tolerance that
+  // decides whether two small fields share a row.
+  const typicalHeight = heights[Math.floor(heights.length * 0.25)]
   // Row edges snap within half a typical field height, so fields that share a row share its edges.
-  const yEdges = snapEdges(boxes.flatMap((box) => [box.top, box.bottom]), Math.max(1, medianHeight * 0.5))
+  const yEdges = snapEdges(boxes.flatMap((box) => [box.top, box.bottom]), Math.max(1, typicalHeight * 0.5))
   // Column edges snap within 1% of the span, widened until the track count is workable.
   let xTolerance = Math.max(1, (maxX - minX) * 0.01)
   let xEdges = snapEdges(boxes.flatMap((box) => [box.left, box.right]), xTolerance)

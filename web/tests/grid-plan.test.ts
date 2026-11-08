@@ -39,3 +39,8 @@ test('empty space between objects does not become a track, and tracks stay bound
   const many = planGrid(Array.from({ length: 80 }, (_, index) => box(`f${index}`, index * 37, index * 37 + 30, index * 100, index * 100 + 50)))
   assert.ok(many.columns.length <= 24)
 })
+
+test('a tall container does not merge the rows of the small boxes above it', () => {
+  const plan = planGrid([box('plain', 0, 3000, 8, 308), box('group', 30, 2990, 308, 1584)])
+  assert.ok(plan.place.get('group')!.rowStart >= plan.place.get('plain')!.rowEnd)
+})

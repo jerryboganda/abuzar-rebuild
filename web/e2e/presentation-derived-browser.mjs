@@ -261,6 +261,13 @@ async function checkDerivedDataSurfacesImpl(fixture, check, settle, filter) {
           const hidden = (object) => object?.visible === '0' || String(object?.visible ?? '').includes('\t')
           const displayable = binding.fields.some((field) => !hidden(source.data[name].objects.find((object) => object.name === field.object)))
           if (displayable) check(preview.root.querySelectorAll('[data-obj]').length > 0, `${label}: the mapped fields render`)
+          if (window.derivedDump === name) {
+            const round = (rect) => [rect.left, rect.top, rect.right, rect.bottom].map(Math.round)
+            window.derivedDumpResult = [...preview.root.querySelectorAll('.has-grid, .surface-group, .surface-field')].map((element) => ({
+              class: element.className, id: element.dataset.group ?? element.dataset.field ?? '', column: element.style.gridColumn, row: element.style.gridRow,
+              rect: round(element.getBoundingClientRect()), tracks: getComputedStyle(element).gridTemplateRows, hidden: element.hidden,
+            }))
+          }
           if (binding.kind === 'form' && !exempt.has(name)) compareStructure('form', name, true, rowsOf(binding.fields.map((field) => [field.object, preview.root.querySelector(`[data-obj="${field.object}"]`)]), true), check, label)
         }
       } catch (error) {

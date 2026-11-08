@@ -1527,9 +1527,11 @@ try {
   // Focused run of the generated-family checks for the named windows/DataWindows (argv[5..]); a development aid, not an acceptance pass.
   if (process.argv[4] === '--derived-only') {
     const outcome = await page.evaluate(async (names) => {
+      const dump = names.find((name) => name.startsWith('dump='))
+      if (dump) { window.derivedDump = dump.slice(5); names = names.filter((name) => name !== dump) }
       window.derivedFilter = names.length ? names : undefined
       const result = await window.runDerivedChecks()
-      return { passed: result.passed, failures: result.failures, errors: result.errors }
+      return { passed: result.passed, failures: result.failures.map((failure) => String(failure).slice(0, 300)), errors: result.errors, dump: window.derivedDumpResult }
     }, process.argv.slice(5))
     console.log(JSON.stringify(outcome, null, 1))
     await browser.close(); server.close(); process.exit(0)

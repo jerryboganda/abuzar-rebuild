@@ -179,6 +179,8 @@ function arrangeGrid(view: WinView, content: HTMLElement, items: Map<string, HTM
     const control = view.w.children?.get(name)
     if (!control?.props || control.props.get('visible') === false) return null
     const box = { x: Number(control.props.get('x')), y: Number(control.props.get('y')), width: Number(control.props.get('width')), height: Number(control.props.get('height')) }
+    // A drop-down's stored height includes its open list; it occupies one line when closed, as Classic paints it.
+    if (/dropdown|combobox/.test(String(control.native ?? ''))) box.height = Math.min(box.height, 80)
     return Object.values(box).every(Number.isFinite) ? box : null
   }
   const boxes: GridBox[] = []
