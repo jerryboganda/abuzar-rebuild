@@ -47,6 +47,8 @@ export interface DataSurface {
     fields: readonly Pick<DataSurfaceField, 'object' | 'labelObject' | 'label' | 'labelHidden' | 'numeric'>[]
   }[]
   /** The grid is sorted by the source's groups: each break shows the group bands listed in `bands`. */
+  /** A grid with a multiline field shows each row this many single-line heights tall (the source's detail band height). */
+  rowLines?: number
   grouped?: boolean
 }
 
@@ -270,6 +272,9 @@ export function dataSurfaceIssues(def: DwDef, surface: DataSurface, overrides?: 
   const groupLevels = new Map(((def.bands.group ?? []) as { level: string; 'header.height'?: string; 'trailer.height'?: string }[]).map((group) => [Number(group.level), group]))
   if (groupLevels.size && !surface.grouped) issues.push('Grouped bands require an explicit mapping')
   if (surface.grouped && (!groupLevels.size || surface.kind !== 'grid')) issues.push('Group bands require a grouped grid')
+  if (surface.rowLines !== undefined && (surface.kind !== 'grid' || !Number.isInteger(surface.rowLines) || surface.rowLines < 2 || surface.rowLines > 12 || !surface.fields.some((field) => field.multiline))) {
+    issues.push('Row lines need a grid with a multiline field')
+  }
   if (!surface.fields.length && !(surface.kind === 'form' && (surface.buttons?.length || surface.captions?.length))) issues.push('No fields mapped')
   for (const field of surface.fields) {
     const object = objects.get(field.object)
@@ -335,7 +340,7 @@ export function dataSurfaceIssues(def: DwDef, surface: DataSurface, overrides?: 
     if (object) {
       const column = def.table.columns.find((column) => column.name.toLowerCase() === field.object)
       const multiline = dwMultiline(object, column ? colKind(column.type) : '', overrides)
-      if (!!field.multiline !== multiline || field.multiline && surface.kind !== 'form') {
+      if (!!field.multiline !== multiline || field.multiline && surface.kind === 'grid' && !surface.rowLines) {
         issues.push(`Multiline field requires a matching form layout: ${field.object}`)
       }
       const spin = numericSpin(object, column ? colKind(column.type) : '', overrides)

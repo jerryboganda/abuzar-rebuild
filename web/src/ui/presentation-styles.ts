@@ -227,6 +227,7 @@ export const PRESENTATION_CSS = `
 .modern-surface td {padding:0;border-bottom:1px solid var(--p-line);}
 .modern-surface .surface-value {position:relative;min-width:min(8em,100cqi);min-height:var(--surface-row-height);padding:6px 12px;line-height:1.5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:min(34em,100cqi);}
 .modern-surface td .surface-value {height:calc(var(--surface-row-height) - 1px);min-height:0;}
+.modern-surface td .surface-multiline {white-space:pre-wrap;overflow:auto;overflow-wrap:anywhere;text-overflow:clip;}
 .modern-surface .surface-number {text-align:right;font-variant-numeric:tabular-nums;}
 .modern-surface .surface-spinner,.modern-surface .surface-spin-heading {padding-right:calc(4em + 12px);}
 .modern-surface .surface-spinner {min-width:calc(9em + 8px);isolation:isolate;}

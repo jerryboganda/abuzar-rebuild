@@ -188,7 +188,6 @@ export function derive(name: string, def: DwDef, options: { plainSeparators?: bo
     }
     if (style.kind !== 'none') field.choice = style
     if (object.type === 'column' && dwMultiline(object, columnKind)) {
-      if (kind !== 'form') return { reason: 'multiline field in a grid' }
       field.multiline = true
     }
     if (numericSpin(object, columnKind).kind === 'unsupported') field.spinPlain = true
@@ -196,6 +195,14 @@ export function derive(name: string, def: DwDef, options: { plainSeparators?: bo
     surfaceFields.push(field)
   }
   const surface: DataSurface = { name, title: titleOf(name), kind, ...(tabular ? { sourceProcessing: 0 as const } : {}), fields: surfaceFields }
+  if (kind === 'grid' && surfaceFields.some((field) => field.multiline)) {
+    // Each row is as many single lines tall as the source's detail band is tall (a typical single-line field is 74-76 units).
+    const detail = def.bands.detail
+    const bandHeight = detail && !Array.isArray(detail) ? Number(detail.height ?? 0) : 0
+    const lines = Math.round(bandHeight / 76)
+    if (lines < 2 || lines > 12) return { reason: 'multiline grid row height' }
+    surface.rowLines = lines
+  }
   if (loose.length && kind === 'grid') {
     surface.captions = [...loose].sort((x, y) => num(x, 'x') - num(y, 'x')).map((text) => ({ object: text.name.toLowerCase() }))
   } else if (loose.length) {

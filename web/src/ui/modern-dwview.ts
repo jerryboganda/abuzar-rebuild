@@ -198,7 +198,7 @@ export class ModernDwView extends DwView {
     this.root.style.background = ''
     this.root.style.overflow = 'auto'
     this.root.setAttribute('aria-label', surface.title)
-    this.rowHeight = Math.ceil(parseFloat(getComputedStyle(this.root).fontSize) * (this.root.dataset.density === 'comfortable' ? 3 : 2.5))
+    this.rowHeight = Math.ceil(parseFloat(getComputedStyle(this.root).fontSize) * (this.root.dataset.density === 'comfortable' ? 3 : 2.5)) * (surface.rowLines ?? 1)
     this.root.style.setProperty('--surface-row-height', `${this.rowHeight}px`)
     const scroll = this.root.scrollTop
     const left = this.root.scrollLeft
@@ -694,8 +694,9 @@ export class ModernDwView extends DwView {
         if (enabled) {
           const hint = document.createElement('span')
           hint.id = `${this.identity}-${row}-${name}-hint`
-          hint.className = 'surface-help'
-          hint.textContent = 'Shift+Enter adds a line. Enter keeps the form action.'
+          // In a grid the hint is an accessible description only: the row has no room for visible help.
+          hint.className = grid ? 'surface-help presentation-visually-hidden' : 'surface-help'
+          hint.textContent = grid ? 'Shift+Enter adds a line.' : 'Shift+Enter adds a line. Enter keeps the form action.'
           wrapper.append(hint)
           value.dataset.describedby = [description, hint.id].filter(Boolean).join(' ')
           value.setAttribute('aria-describedby', value.dataset.describedby)
