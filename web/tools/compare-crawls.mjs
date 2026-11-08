@@ -6,15 +6,15 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 
 const [classicPath, modernPath, reportPath] = process.argv.slice(2)
-const columns = ['clicked', 'windows', 'message boxes', 'report', 'closed by scripts']
+const columns = ['clicked', 'windows', 'message boxes', 'report', 'closed by scripts', 'window state']
 const read = (path) => {
   const rows = new Map()
   if (!existsSync(path)) return rows
   for (const line of readFileSync(path, 'utf8').split(/\r?\n/).filter(Boolean)) {
-    const [id, res, titles, menuPath, boxes, rep, closed] = line.split('\t')
+    const [id, res, titles, menuPath, boxes, rep, closed, state] = line.split('\t')
     // The main window's title carries the sign-in date and time; a clock value is not an outcome of the command.
     const clock = (value) => value.replace(/\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/g, '<date>').replace(/\b\d{1,2}:\d{2}(:\d{2})?\b/g, '<time>')
-    rows.set(`${id}\t${menuPath}`, [res, titles, boxes, rep, closed].map((value) => clock((value ?? '').trim())))
+    rows.set(`${id}\t${menuPath}`, [res, titles, boxes, rep, closed, state].map((value) => clock((value ?? '').trim())))
   }
   return rows
 }

@@ -210,7 +210,24 @@ if (shots && observed) {
     })
     // closed by scripts while this item was opening
     const closed = await page.evaluate(() => window.__closes.splice(0).join(' || '))
-    rows.push(`${id}\t${res}\t${titles}\t${path}\t${boxes}\t${rep}\t${closed}`)
+    // the state the window's scripts left: every control's visibility and enabled state, and every DataWindow's object, rows and
+    // current row and column; the presentation must not change any of it
+    const state = await page.evaluate(() => {
+      const parts = []
+      const walk = (owner, prefix) => {
+        for (const [name, control] of owner.children ?? []) {
+          const path = `${prefix}${name}`
+          const visible = control.props?.get('visible') !== false ? 'v' : 'h'
+          const enabled = control.props?.get('enabled') !== false ? 'e' : 'd'
+          const model = control.model
+          parts.push(model ? `${path}:${visible}${enabled}:${model.name}/${model.rowCount()}/${model.row}/${model.col}` : `${path}:${visible}${enabled}`)
+          walk(control, `${path}.`)
+        }
+      }
+      for (const [name, window] of [...window.rt.windowInstances].sort(([a], [b]) => a.localeCompare(b))) if (name !== 'w_main') walk(window, `${name}.`)
+      return parts.join(' ')
+    })
+    rows.push(`${id}\t${res}\t${titles}\t${path}\t${boxes}\t${rep}\t${closed}\t${state}`)
     writeFileSync(`${shots}/menu-crawl-${mode}.tsv`, rows.join('\n') + '\n') // kept up to date: a frozen page must not lose what was seen
     await page.evaluate(async () => {
       for (let i = 0; i < 4; i++) {
