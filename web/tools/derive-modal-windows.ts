@@ -17,6 +17,7 @@ import { dataSurfaceByName } from '../src/ui/surface-registry.ts'
 import type { DwDef } from '../src/dw/def.ts'
 
 const here = import.meta.dirname
+const ART = new Set(['bitmap', 'rectangle', 'roundrectangle', 'ellipse', 'line'])
 // Evidence classes written by classify-documents.ts (docs/ui-print-classification.json); run it before this generator.
 const classificationPath = resolve(here, '..', '..', 'docs', 'ui-print-classification.json')
 const documents: ReadonlySet<string> = new Set(existsSync(classificationPath) ?
@@ -205,6 +206,8 @@ export async function deriveModal(name: string, library: string, rt: Runtime, re
       // A print, PDF or report DataWindow is exempt from structural parity (its design is redesigned separately): the window around it
       // still gets its Modern layout, and the document keeps its original element inside that frame.
       else if (documents.has(dataobject)) dynamic.push(box)
+      // A DataWindow that holds only artwork (a picture holder the window script fills) or nothing at all has no field to map.
+      else if (definitions.has(dataobject) && definitions.get(dataobject)!.objects.every((object) => ART.has(object.type) || object.band === 'background')) dynamic.push(box)
       else return { reason: `unmapped DataWindow: ${dataobject}` }
     }
     const options = [...by('checkbox').map((box) => ({ box, native: 'checkbox' as const })), ...by('radiobutton').map((box) => ({ box, native: 'radiobutton' as const }))]

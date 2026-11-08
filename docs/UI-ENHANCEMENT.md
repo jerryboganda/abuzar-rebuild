@@ -21,17 +21,24 @@ instructions below; acceptance requirements and historical evidence are unchange
 
 **Source-derived Modern layouts now cover most windows; nothing new is browser-verified, and the enhancement remains incomplete and unreleased.**
 Measured from the working tree by `tools/parity/ui_completion_audit.mjs` (see
-`ui-completion-audit.md`): 2,037 of 2,062 inventoried windows (98.8%) have a
+`ui-completion-audit.md`): 2,045 of 2,062 inventoried windows (99.2%) have a
 Modern layout. 170 are hand-reviewed (9 workspace/tool, 55 criteria, 4
-calculator, 2 calendar and 100 entry windows). 1,867 are generated from the
-recovered definitions by `web/tools/derive-*.ts`: 1,613 dialog and sheet windows
-and 254 entry masters (a print or report DataWindow inside a window keeps its
-original element in the Modern frame; its own design is redesigned separately).
-The other 25 windows keep the labelled Classic compatibility layout. For
-DataWindows, 3,311 of 8,740 (37.9%) have a Modern surface: 275 reviewed and 3,036
-generated (grids may now carry per-row button columns). Print, PDF and report
-layouts are exempt from structural parity (decision 16): 5,582 DataWindows are
-evidence-classified that way, so on-screen coverage is 3,025 of 3,158 (95.8%). Generated mappings are
+calculator, 2 calendar and 100 entry windows). 1,875 are generated from the
+recovered definitions by `web/tools/derive-*.ts`: 1,618 dialog and sheet windows
+and 257 entry masters (a print/report or artwork-only DataWindow inside a window
+keeps its original element in the Modern frame; a report's own design is
+redesigned separately). The other 17 windows keep the labelled Classic
+compatibility layout; the open causes are listed per window in
+`ui-derived-modal-windows-backlog.json` and `ui-derived-windows-backlog.json`
+(DataWindow definitions missing from the recovered source: `w_dashboard`,
+`w_populate_*`, `w_delete_due`; header-text forms `w_visit*`; a dropdown in a
+totals band `w_prodbuffer`, `w_serviceresult_form`; a blob column `w_doctor_form`;
+unsupported controls `w_graphviewer`, `w_sms_center`; others). For DataWindows,
+3,319 of 8,740 (38.0%) have a Modern surface: 275 reviewed and 3,044 generated
+(grids may carry per-row button columns and multiline fields). Print, PDF and
+report layouts are exempt from structural parity (decision 16): 5,582
+DataWindows are evidence-classified that way, so on-screen coverage is 3,033 of
+3,158 (96.0%). Generated mappings are
 validated against the source and re-validated at runtime, but they are **not
 individually reviewed and have no browser evidence**. Verified complete Modern
 screens and accepted workflows remain zero.
